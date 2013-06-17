@@ -161,4 +161,3 @@ fn check_is_legal_to_move_from(bccx: @BorrowckCtxt,
         }
     }
 }
-

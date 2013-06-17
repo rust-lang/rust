@@ -156,4 +156,3 @@ free_env(rust_env *env) {
     free(env->rust_seed);
     free(env);
 }
-

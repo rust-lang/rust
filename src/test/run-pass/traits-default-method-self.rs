@@ -8,9 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//xfail-test
-
-// Currently failing with an ICE in trans.  (FIXME: #4350)
+#[allow(default_methods)];
 
 trait Cat {
     fn meow(&self) -> bool;

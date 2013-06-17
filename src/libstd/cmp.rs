@@ -20,6 +20,8 @@ and `Eq` to overload the `==` and `!=` operators.
 
 */
 
+#[allow(missing_doc)];
+
 /**
 * Trait for values that can be compared for equality and inequality.
 *
@@ -168,36 +170,6 @@ pub trait Ord {
     fn le(&self, other: &Self) -> bool;
     fn ge(&self, other: &Self) -> bool;
     fn gt(&self, other: &Self) -> bool;
-}
-
-#[inline(always)]
-pub fn lt<T:Ord>(v1: &T, v2: &T) -> bool {
-    (*v1).lt(v2)
-}
-
-#[inline(always)]
-pub fn le<T:Ord>(v1: &T, v2: &T) -> bool {
-    (*v1).le(v2)
-}
-
-#[inline(always)]
-pub fn eq<T:Eq>(v1: &T, v2: &T) -> bool {
-    (*v1).eq(v2)
-}
-
-#[inline(always)]
-pub fn ne<T:Eq>(v1: &T, v2: &T) -> bool {
-    (*v1).ne(v2)
-}
-
-#[inline(always)]
-pub fn ge<T:Ord>(v1: &T, v2: &T) -> bool {
-    (*v1).ge(v2)
-}
-
-#[inline(always)]
-pub fn gt<T:Ord>(v1: &T, v2: &T) -> bool {
-    (*v1).gt(v2)
 }
 
 /// The equivalence relation. Two values may be equivalent even if they are

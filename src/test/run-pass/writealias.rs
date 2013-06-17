@@ -9,15 +9,20 @@
 // except according to those terms.
 
 
+use std::unstable;
 
-
-// -*- rust -*-
 struct Point {x: int, y: int, z: int}
 
 fn f(p: &mut Point) { p.z = 13; }
 
 pub fn main() {
-    let mut x: Point = Point {x: 10, y: 11, z: 12};
-    f(&mut x);
-    assert_eq!(x.z, 13);
+    unsafe {
+        let x = Some(unstable::sync::exclusive(true));
+        match x {
+            Some(ref z) if z.with(|b| *b) => {
+                do z.with |b| { assert!(*b); }
+            },
+            _ => fail!()
+        }
+    }
 }

@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[allow(missing_doc)];
+
 /** Task-local reference counted smart pointers
 
 Task-local reference counted smart pointers are an alternative to managed boxes with deterministic
@@ -21,9 +23,11 @@ cycle cannot be created with `Rc<T>` because there is no way to modify it after 
 
 use core::prelude::*;
 
+use core::cast;
 use core::libc::{c_void, size_t, malloc, free};
+use core::ptr;
+use core::sys;
 use core::unstable::intrinsics;
-use core::util;
 
 struct RcBox<T> {
     value: T,
@@ -36,7 +40,7 @@ pub struct Rc<T> {
     priv ptr: *mut RcBox<T>,
 }
 
-priv impl<T> Rc<T> {
+impl<T> Rc<T> {
     unsafe fn new(value: T) -> Rc<T> {
         let ptr = malloc(sys::size_of::<RcBox<T>>() as size_t) as *mut RcBox<T>;
         assert!(!ptr::is_null(ptr));
@@ -55,9 +59,9 @@ pub fn rc_from_const<T: Const>(value: T) -> Rc<T> {
     unsafe { Rc::new(value) }
 }
 
-pub impl<T> Rc<T> {
+impl<T> Rc<T> {
     #[inline(always)]
-    fn borrow<'r>(&'r self) -> &'r T {
+    pub fn borrow<'r>(&'r self) -> &'r T {
         unsafe { cast::copy_lifetime(self, &(*self.ptr).value) }
     }
 }
@@ -68,7 +72,7 @@ impl<T> Drop for Rc<T> {
         unsafe {
             (*self.ptr).count -= 1;
             if (*self.ptr).count == 0 {
-                util::replace_ptr(self.ptr, intrinsics::uninit());
+                ptr::replace_ptr(self.ptr, intrinsics::uninit());
                 free(self.ptr as *c_void)
             }
         }
@@ -101,7 +105,7 @@ mod test_rc {
 
     #[test]
     fn test_clone() {
-        let x = rc_from_owned(Cell(5));
+        let x = rc_from_owned(Cell::new(5));
         let y = x.clone();
         do x.borrow().with_mut_ref |inner| {
             *inner = 20;
@@ -111,7 +115,7 @@ mod test_rc {
 
     #[test]
     fn test_deep_clone() {
-        let x = rc_from_owned(Cell(5));
+        let x = rc_from_owned(Cell::new(5));
         let y = x.deep_clone();
         do x.borrow().with_mut_ref |inner| {
             *inner = 20;
@@ -166,7 +170,7 @@ pub struct RcMut<T> {
     priv ptr: *mut RcMutBox<T>,
 }
 
-priv impl<T> RcMut<T> {
+impl<T> RcMut<T> {
     unsafe fn new(value: T) -> RcMut<T> {
         let ptr = malloc(sys::size_of::<RcMutBox<T>>() as size_t) as *mut RcMutBox<T>;
         assert!(!ptr::is_null(ptr));
@@ -185,10 +189,10 @@ pub fn rc_mut_from_const<T: Const>(value: T) -> RcMut<T> {
     unsafe { RcMut::new(value) }
 }
 
-pub impl<T> RcMut<T> {
+impl<T> RcMut<T> {
     /// Fails if there is already a mutable borrow of the box
     #[inline]
-    fn with_borrow<U>(&self, f: &fn(&T) -> U) -> U {
+    pub fn with_borrow<U>(&self, f: &fn(&T) -> U) -> U {
         unsafe {
             assert!((*self.ptr).borrow != Mutable);
             let previous = (*self.ptr).borrow;
@@ -201,7 +205,7 @@ pub impl<T> RcMut<T> {
 
     /// Fails if there is already a mutable or immutable borrow of the box
     #[inline]
-    fn with_mut_borrow<U>(&self, f: &fn(&mut T) -> U) -> U {
+    pub fn with_mut_borrow<U>(&self, f: &fn(&mut T) -> U) -> U {
         unsafe {
             assert_eq!((*self.ptr).borrow, Nothing);
             (*self.ptr).borrow = Mutable;
@@ -218,7 +222,7 @@ impl<T> Drop for RcMut<T> {
         unsafe {
             (*self.ptr).count -= 1;
             if (*self.ptr).count == 0 {
-                util::replace_ptr(self.ptr, uninit());
+                ptr::replace_ptr(self.ptr, uninit());
                 free(self.ptr as *c_void)
             }
         }

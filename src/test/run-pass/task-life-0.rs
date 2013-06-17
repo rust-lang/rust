@@ -9,6 +9,9 @@
 // except according to those terms.
 
 extern mod extra;
+
+use std::task;
+
 pub fn main() {
     task::spawn(|| child(~"Hello") );
 }

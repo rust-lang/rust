@@ -502,6 +502,7 @@ types.
 > items.
 
 ~~~~
+# use std::float;
 fn angle(vector: (float, float)) -> float {
     let pi = float::consts::pi;
     match vector {
@@ -556,6 +557,7 @@ while cake_amount > 0 {
 `loop` denotes an infinite loop, and is the preferred way of writing `while true`:
 
 ~~~~
+# use std::int;
 let mut x = 5;
 loop {
     x += x - 3;
@@ -567,8 +569,10 @@ loop {
 This code prints out a weird sequence of numbers and stops as soon as
 it finds one that can be divided by five.
 
-For more involved iteration, such as enumerating the elements of a
-collection, Rust uses [higher-order functions](#closures).
+Rust also has a `for` construct. It's different from C's `for` and it works
+best when iterating over collections. See the section on [closures](#closures)
+to find out how to use `for` and higher-order functions for enumerating
+elements of a collection.
 
 # Data structures
 
@@ -699,6 +703,7 @@ get at their contents. All variant constructors can be used as
 patterns, as in this definition of `area`:
 
 ~~~~
+# use std::float;
 # struct Point {x: float, y: float}
 # enum Shape { Circle(Point, float), Rectangle(Point, Point) }
 fn area(sh: Shape) -> float {
@@ -1390,6 +1395,7 @@ assert!(crayons.len() == 3);
 assert!(!crayons.is_empty());
 
 // Iterate over a vector, obtaining a pointer to each element
+// (`for` is explained in the next section)
 for crayons.each |crayon| {
     let delicious_crayon_wax = unwrap_crayon(*crayon);
     eat_crayon_wax(delicious_crayon_wax);
@@ -1404,7 +1410,7 @@ let new_favorite_crayon_name = favorite_crayon_name.trim();
 
 if favorite_crayon_name.len() > 5 {
    // Create a substring
-   println(favorite_crayon_name.substr(0, 5));
+   println(favorite_crayon_name.slice_chars(0, 5));
 }
 ~~~
 
@@ -1436,10 +1442,15 @@ call_closure_with_ten(closure);
 ~~~~
 
 Closures begin with the argument list between vertical bars and are followed by
-a single expression. The types of the arguments are generally omitted,
-as is the return type, because the compiler can almost always infer
-them. In the rare case where the compiler needs assistance, though, the
-arguments and return types may be annotated.
+a single expression. Remember that a block, `{ <expr1>; <expr2>; ... }`, is
+considered a single expression: it evaluates to the result of the last
+expression it contains if that expression is not followed by a semicolon,
+otherwise the block evaluates to `()`.
+
+The types of the arguments are generally omitted, as is the return type,
+because the compiler can almost always infer them. In the rare case where the
+compiler needs assistance, though, the arguments and return types may be
+annotated.
 
 ~~~~
 let square = |x: int| -> uint { x * x as uint };
@@ -1610,18 +1621,19 @@ loop. Like `do`, `for` is a nice syntax for describing control flow
 with closures.  Additionally, within a `for` loop, `break`, `loop`,
 and `return` work just as they do with `while` and `loop`.
 
-Consider again our `each` function, this time improved to
-break early when the iteratee returns `false`:
+Consider again our `each` function, this time improved to return
+immediately when the iteratee returns `false`:
 
 ~~~~
-fn each(v: &[int], op: &fn(v: &int) -> bool) {
+fn each(v: &[int], op: &fn(v: &int) -> bool) -> bool {
    let mut n = 0;
    while n < v.len() {
        if !op(&v[n]) {
-           break;
+           return false;
        }
        n += 1;
    }
+   return true;
 }
 ~~~~
 
@@ -1829,6 +1841,7 @@ vector consisting of the result of applying `function` to each element
 of `vector`:
 
 ~~~~
+# use std::vec;
 fn map<T, U>(vector: &[T], function: &fn(v: &T) -> U) -> ~[U] {
     let mut accumulator = ~[];
     for vec::each(vector) |element| {
@@ -2026,13 +2039,14 @@ themselves contain type parameters. A trait for generalized sequence
 types might look like the following:
 
 ~~~~
+# use std::vec;
 trait Seq<T> {
     fn len(&self) -> uint;
     fn iter(&self, b: &fn(v: &T));
 }
 
 impl<T> Seq<T> for ~[T] {
-    fn len(&self) -> uint { vec::len(*self) }
+    fn len(&self) -> uint { self.len() }
     fn iter(&self, b: &fn(v: &T)) {
         for vec::each(*self) |elt| { b(elt); }
     }

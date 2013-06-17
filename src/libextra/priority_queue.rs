@@ -10,12 +10,16 @@
 
 //! A priority queue implemented with a binary heap
 
+#[allow(missing_doc)];
+
 use core::prelude::*;
 
 use core::old_iter::BaseIter;
 use core::unstable::intrinsics::{move_val_init, init};
 use core::util::{replace, swap};
+use core::vec;
 
+#[allow(missing_doc)]
 pub struct PriorityQueue<T> {
     priv data: ~[T],
 }
@@ -42,26 +46,26 @@ impl<T:Ord> Mutable for PriorityQueue<T> {
     fn clear(&mut self) { self.data.truncate(0) }
 }
 
-pub impl <T:Ord> PriorityQueue<T> {
+impl<T:Ord> PriorityQueue<T> {
     /// Returns the greatest item in the queue - fails if empty
-    fn top<'a>(&'a self) -> &'a T { &self.data[0] }
+    pub fn top<'a>(&'a self) -> &'a T { &self.data[0] }
 
     /// Returns the greatest item in the queue - None if empty
-    fn maybe_top<'a>(&'a self) -> Option<&'a T> {
+    pub fn maybe_top<'a>(&'a self) -> Option<&'a T> {
         if self.is_empty() { None } else { Some(self.top()) }
     }
 
     /// Returns the number of elements the queue can hold without reallocating
-    fn capacity(&self) -> uint { vec::capacity(&self.data) }
+    pub fn capacity(&self) -> uint { vec::capacity(&self.data) }
 
-    fn reserve(&mut self, n: uint) { vec::reserve(&mut self.data, n) }
+    pub fn reserve(&mut self, n: uint) { vec::reserve(&mut self.data, n) }
 
-    fn reserve_at_least(&mut self, n: uint) {
+    pub fn reserve_at_least(&mut self, n: uint) {
         vec::reserve_at_least(&mut self.data, n)
     }
 
     /// Pop the greatest item from the queue - fails if empty
-    fn pop(&mut self) -> T {
+    pub fn pop(&mut self) -> T {
         let mut item = self.data.pop();
         if !self.is_empty() {
             swap(&mut item, &mut self.data[0]);
@@ -71,19 +75,19 @@ pub impl <T:Ord> PriorityQueue<T> {
     }
 
     /// Pop the greatest item from the queue - None if empty
-    fn maybe_pop(&mut self) -> Option<T> {
+    pub fn maybe_pop(&mut self) -> Option<T> {
         if self.is_empty() { None } else { Some(self.pop()) }
     }
 
     /// Push an item onto the queue
-    fn push(&mut self, item: T) {
+    pub fn push(&mut self, item: T) {
         self.data.push(item);
         let new_len = self.len() - 1;
         self.siftup(0, new_len);
     }
 
     /// Optimized version of a push followed by a pop
-    fn push_pop(&mut self, mut item: T) -> T {
+    pub fn push_pop(&mut self, mut item: T) -> T {
         if !self.is_empty() && self.data[0] > item {
             swap(&mut item, &mut self.data[0]);
             self.siftdown(0);
@@ -92,18 +96,18 @@ pub impl <T:Ord> PriorityQueue<T> {
     }
 
     /// Optimized version of a pop followed by a push - fails if empty
-    fn replace(&mut self, mut item: T) -> T {
+    pub fn replace(&mut self, mut item: T) -> T {
         swap(&mut item, &mut self.data[0]);
         self.siftdown(0);
         item
     }
 
     /// Consume the PriorityQueue and return the underlying vector
-    fn to_vec(self) -> ~[T] { let PriorityQueue{data: v} = self; v }
+    pub fn to_vec(self) -> ~[T] { let PriorityQueue{data: v} = self; v }
 
     /// Consume the PriorityQueue and return a vector in sorted
     /// (ascending) order
-    fn to_sorted_vec(self) -> ~[T] {
+    pub fn to_sorted_vec(self) -> ~[T] {
         let mut q = self;
         let mut end = q.len();
         while end > 1 {
@@ -115,10 +119,10 @@ pub impl <T:Ord> PriorityQueue<T> {
     }
 
     /// Create an empty PriorityQueue
-    fn new() -> PriorityQueue<T> { PriorityQueue{data: ~[],} }
+    pub fn new() -> PriorityQueue<T> { PriorityQueue{data: ~[],} }
 
     /// Create a PriorityQueue from a vector (heapify)
-    fn from_vec(xs: ~[T]) -> PriorityQueue<T> {
+    pub fn from_vec(xs: ~[T]) -> PriorityQueue<T> {
         let mut q = PriorityQueue{data: xs,};
         let mut n = q.len() / 2;
         while n > 0 {
@@ -133,8 +137,7 @@ pub impl <T:Ord> PriorityQueue<T> {
     // zeroed element), shift along the others and move it back into the
     // vector over the junk element.  This reduces the constant factor
     // compared to using swaps, which involves twice as many moves.
-
-    priv fn siftup(&mut self, start: uint, mut pos: uint) {
+    fn siftup(&mut self, start: uint, mut pos: uint) {
         unsafe {
             let new = replace(&mut self.data[pos], init());
 
@@ -152,7 +155,7 @@ pub impl <T:Ord> PriorityQueue<T> {
         }
     }
 
-    priv fn siftdown_range(&mut self, mut pos: uint, end: uint) {
+    fn siftdown_range(&mut self, mut pos: uint, end: uint) {
         unsafe {
             let start = pos;
             let new = replace(&mut self.data[pos], init());
@@ -174,7 +177,7 @@ pub impl <T:Ord> PriorityQueue<T> {
         }
     }
 
-    priv fn siftdown(&mut self, pos: uint) {
+    fn siftdown(&mut self, pos: uint) {
         let len = self.len();
         self.siftdown_range(pos, len);
     }
@@ -183,13 +186,12 @@ pub impl <T:Ord> PriorityQueue<T> {
 #[cfg(test)]
 mod tests {
     use sort::merge_sort;
-    use core::cmp::le;
     use priority_queue::PriorityQueue;
 
     #[test]
     fn test_top_and_pop() {
-        let data = ~[2, 4, 6, 2, 1, 8, 10, 3, 5, 7, 0, 9, 1];
-        let mut sorted = merge_sort(data, le);
+        let data = ~[2u, 4, 6, 2, 1, 8, 10, 3, 5, 7, 0, 9, 1];
+        let mut sorted = merge_sort(data, |x, y| x.le(y));
         let mut heap = PriorityQueue::from_vec(data);
         while !heap.is_empty() {
             assert_eq!(heap.top(), sorted.last());
@@ -271,8 +273,9 @@ mod tests {
 
     fn check_to_vec(data: ~[int]) {
         let heap = PriorityQueue::from_vec(copy data);
-        assert_eq!(merge_sort((copy heap).to_vec(), le), merge_sort(data, le));
-        assert_eq!(heap.to_sorted_vec(), merge_sort(data, le));
+        assert_eq!(merge_sort((copy heap).to_vec(), |x, y| x.le(y)),
+                   merge_sort(data, |x, y| x.le(y)));
+        assert_eq!(heap.to_sorted_vec(), merge_sort(data, |x, y| x.le(y)));
     }
 
     #[test]

@@ -6,4 +6,3 @@ pub fn main() {
     let _ = private_variant_xc::Bar;
     let _ = private_variant_xc::Baz;    //~ ERROR unresolved name
 }
-

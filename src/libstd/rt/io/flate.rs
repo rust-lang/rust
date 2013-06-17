@@ -100,13 +100,15 @@ mod test {
     use super::super::mem::*;
     use super::super::Decorator;
 
+    use str;
+
     #[test]
     #[ignore]
     fn smoke_test() {
         let mem_writer = MemWriter::new();
         let mut deflate_writer = DeflateWriter::new(mem_writer);
         let in_msg = "test";
-        let in_bytes = in_msg.to_bytes();
+        let in_bytes = in_msg.as_bytes();
         deflate_writer.write(in_bytes);
         deflate_writer.flush();
         let buf = deflate_writer.inner().inner();

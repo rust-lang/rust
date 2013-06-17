@@ -9,9 +9,14 @@
 // except according to those terms.
 
 extern mod extra;
-use std::hashmap::HashSet;
+
 use extra::bitv::BitvSet;
 use extra::treemap::TreeSet;
+use std::hashmap::HashSet;
+use std::io;
+use std::os;
+use std::rand;
+use std::uint;
 
 struct Results {
     sequential_ints: float,
@@ -30,8 +35,8 @@ fn timed(result: &mut float, op: &fn()) {
     *result = (end - start);
 }
 
-pub impl Results {
-    fn bench_int<T:Set<uint>,
+impl Results {
+    pub fn bench_int<T:Set<uint>,
                  R: rand::Rng>(
                  &mut self,
                  rng: &mut R,
@@ -74,7 +79,7 @@ pub impl Results {
         }
     }
 
-    fn bench_str<T:Set<~str>,
+    pub fn bench_str<T:Set<~str>,
                  R:rand::Rng>(
                  &mut self,
                  rng: &mut R,

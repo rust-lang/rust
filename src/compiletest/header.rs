@@ -10,8 +10,11 @@
 
 use core::prelude::*;
 
-use common;
 use common::config;
+use common;
+
+use core::io;
+use core::os;
 
 pub struct TestProps {
     // Lines that should be expected, in order, on standard out
@@ -95,7 +98,7 @@ pub fn is_test_ignored(config: &config, testfile: &Path) -> bool {
     return false;
 
     fn xfail_target() -> ~str {
-        ~"xfail-" + str::to_owned(os::SYSNAME)
+        ~"xfail-" + os::SYSNAME
     }
 }
 
@@ -107,7 +110,7 @@ fn iter_header(testfile: &Path, it: &fn(~str) -> bool) -> bool {
         // Assume that any directives will be found before the first
         // module or function. This doesn't seem to be an optimization
         // with a warm page cache. Maybe with a cold one.
-        if str::starts_with(ln, "fn") || str::starts_with(ln, "mod") {
+        if ln.starts_with("fn") || ln.starts_with("mod") {
             return false;
         } else { if !(it(ln)) { return false; } }
     }
@@ -137,8 +140,8 @@ fn parse_check_line(line: &str) -> Option<~str> {
 fn parse_exec_env(line: &str) -> Option<(~str, ~str)> {
     do parse_name_value_directive(line, ~"exec-env").map |nv| {
         // nv is either FOO or FOO=BAR
-        let mut strs = ~[];
-        for str::each_splitn_char(*nv, '=', 1u) |s| { strs.push(s.to_owned()); }
+        let mut strs: ~[~str] = nv.splitn_iter('=', 1).transform(|s| s.to_owned()).collect();
+
         match strs.len() {
           1u => (strs.pop(), ~""),
           2u => {
@@ -164,16 +167,16 @@ fn parse_pp_exact(line: &str, testfile: &Path) -> Option<Path> {
 }
 
 fn parse_name_directive(line: &str, directive: &str) -> bool {
-    str::contains(line, directive)
+    line.contains(directive)
 }
 
 fn parse_name_value_directive(line: &str,
                               directive: ~str) -> Option<~str> {
-    let keycolon = directive + ~":";
-    match str::find_str(line, keycolon) {
+    let keycolon = directive + ":";
+    match line.find_str(keycolon) {
         Some(colon) => {
-            let value = str::slice(line, colon + str::len(keycolon),
-                                   str::len(line)).to_owned();
+            let value = line.slice(colon + keycolon.len(),
+                                   line.len()).to_owned();
             debug!("%s: %s", directive,  value);
             Some(value)
         }

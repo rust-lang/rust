@@ -37,6 +37,8 @@ instead implement `Clone`.
 
 */
 
+#[allow(missing_doc)];
+
 #[lang="copy"]
 pub trait Copy {
     // Empty.
@@ -49,5 +51,10 @@ pub trait Owned {
 
 #[lang="const"]
 pub trait Const {
+    // Empty.
+}
+
+#[lang="sized"]
+pub trait Sized {
     // Empty.
 }

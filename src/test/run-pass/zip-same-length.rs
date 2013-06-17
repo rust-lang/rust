@@ -11,6 +11,8 @@
 // In this case, the code should compile and should
 // succeed at runtime
 
+use std::vec;
+
 fn enum_chars(start: u8, end: u8) -> ~[char] {
     assert!(start < end);
     let mut i = start;
@@ -28,7 +30,10 @@ fn enum_uints(start: uint, end: uint) -> ~[uint] {
 }
 
 pub fn main() {
-    let a = 'a' as u8, j = 'j' as u8, k = 1u, l = 10u;
+    let a = 'a' as u8;
+    let j = 'j' as u8;
+    let k = 1u;
+    let l = 10u;
     let chars = enum_chars(a, j);
     let ints = enum_uints(k, l);
 

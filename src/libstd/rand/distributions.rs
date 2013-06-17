@@ -20,7 +20,7 @@
 // Generating Random Variables"], but more robust. If one wanted, one
 // could implement VIZIGNOR the ZIGNOR paper for more speed.
 
-use prelude::*;
+use f64;
 use rand::{Rng,Rand};
 
 mod ziggurat_tables;
@@ -89,7 +89,7 @@ impl Rand for StandardNormal {
             // do-while, so the condition should be true on the first
             // run, they get overwritten anyway (0 < 1, so these are
             // good).
-            let mut x = 1.0, y = 0.0;
+            let mut (x, y) = (1.0, 0.0);
 
             // XXX infinities?
             while -2.0*y < x * x {

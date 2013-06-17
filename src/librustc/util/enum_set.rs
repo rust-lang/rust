@@ -26,40 +26,40 @@ fn bit<E:CLike>(e: E) -> uint {
     1 << e.to_uint()
 }
 
-pub impl<E:CLike> EnumSet<E> {
-    fn empty() -> EnumSet<E> {
+impl<E:CLike> EnumSet<E> {
+    pub fn empty() -> EnumSet<E> {
         EnumSet {bits: 0}
     }
 
-    fn is_empty(&self) -> bool {
+    pub fn is_empty(&self) -> bool {
         self.bits == 0
     }
 
-    fn intersects(&self, e: EnumSet<E>) -> bool {
+    pub fn intersects(&self, e: EnumSet<E>) -> bool {
         (self.bits & e.bits) != 0
     }
 
-    fn intersection(&self, e: EnumSet<E>) -> EnumSet<E> {
+    pub fn intersection(&self, e: EnumSet<E>) -> EnumSet<E> {
         EnumSet {bits: self.bits & e.bits}
     }
 
-    fn contains(&self, e: EnumSet<E>) -> bool {
+    pub fn contains(&self, e: EnumSet<E>) -> bool {
         (self.bits & e.bits) == e.bits
     }
 
-    fn union(&self, e: EnumSet<E>) -> EnumSet<E> {
+    pub fn union(&self, e: EnumSet<E>) -> EnumSet<E> {
         EnumSet {bits: self.bits | e.bits}
     }
 
-    fn add(&mut self, e: E) {
+    pub fn add(&mut self, e: E) {
         self.bits |= bit(e);
     }
 
-    fn contains_elem(&self, e: E) -> bool {
+    pub fn contains_elem(&self, e: E) -> bool {
         (self.bits & bit(e)) != 0
     }
 
-    fn each(&self, f: &fn(E) -> bool) -> bool {
+    pub fn each(&self, f: &fn(E) -> bool) -> bool {
         let mut bits = self.bits;
         let mut index = 0;
         while bits != 0 {
@@ -98,6 +98,7 @@ impl<E:CLike> BitAnd<EnumSet<E>, EnumSet<E>> for EnumSet<E> {
 mod test {
     use core::prelude::*;
 
+    use core::cast;
     use core::iter;
 
     use util::enum_set::*;
@@ -206,19 +207,19 @@ mod test {
     fn test_each() {
         let mut e1: EnumSet<Foo> = EnumSet::empty();
 
-        assert_eq!(~[], iter::to_vec(|f| e1.each(f)))
+        assert_eq!(~[], iter::FromIter::from_iter::<Foo, ~[Foo]>(|f| e1.each(f)))
 
         e1.add(A);
-        assert_eq!(~[A], iter::to_vec(|f| e1.each(f)))
+        assert_eq!(~[A], iter::FromIter::from_iter::<Foo, ~[Foo]>(|f| e1.each(f)))
 
         e1.add(C);
-        assert_eq!(~[A,C], iter::to_vec(|f| e1.each(f)))
+        assert_eq!(~[A,C], iter::FromIter::from_iter::<Foo, ~[Foo]>(|f| e1.each(f)))
 
         e1.add(C);
-        assert_eq!(~[A,C], iter::to_vec(|f| e1.each(f)))
+        assert_eq!(~[A,C], iter::FromIter::from_iter::<Foo, ~[Foo]>(|f| e1.each(f)))
 
         e1.add(B);
-        assert_eq!(~[A,B,C], iter::to_vec(|f| e1.each(f)))
+        assert_eq!(~[A,B,C], iter::FromIter::from_iter::<Foo, ~[Foo]>(|f| e1.each(f)))
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -235,12 +236,12 @@ mod test {
         e2.add(C);
 
         let e_union = e1 | e2;
-        assert_eq!(~[A,B,C], iter::to_vec(|f| e_union.each(f)))
+        assert_eq!(~[A,B,C], iter::FromIter::from_iter::<Foo, ~[Foo]>(|f| e_union.each(f)))
 
         let e_intersection = e1 & e2;
-        assert_eq!(~[C], iter::to_vec(|f| e_intersection.each(f)))
+        assert_eq!(~[C], iter::FromIter::from_iter::<Foo, ~[Foo]>(|f| e_intersection.each(f)))
 
         let e_subtract = e1 - e2;
-        assert_eq!(~[A], iter::to_vec(|f| e_subtract.each(f)))
+        assert_eq!(~[A], iter::FromIter::from_iter::<Foo, ~[Foo]>(|f| e_subtract.each(f)))
     }
 }

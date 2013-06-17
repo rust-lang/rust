@@ -9,14 +9,13 @@
 // except according to those terms.
 
 struct cat {
-  priv mut meows : uint,
+  priv meows : uint,
 
   how_hungry : int,
 }
 
-pub impl cat {
-
-  fn speak(&self) { self.meows += 1u; }
+impl cat {
+    pub fn speak(&self) { self.meows += 1u; }
 }
 
 fn cat(in_x : uint, in_y : int) -> cat {

@@ -11,7 +11,8 @@
 // Check that functions can modify local state.
 
 fn sums_to(v: ~[int], sum: int) -> bool {
-    let mut i = 0u, sum0 = 0;
+    let mut i = 0u;
+    let mut sum0 = 0;
     while i < v.len() {
         sum0 += v[i];
         i += 1u;
@@ -20,7 +21,8 @@ fn sums_to(v: ~[int], sum: int) -> bool {
 }
 
 fn sums_to_using_uniq(v: ~[int], sum: int) -> bool {
-    let mut i = 0u, sum0 = ~0;
+    let mut i = 0u;
+    let mut sum0 = ~0;
     while i < v.len() {
         *sum0 += v[i];
         i += 1u;
@@ -29,7 +31,8 @@ fn sums_to_using_uniq(v: ~[int], sum: int) -> bool {
 }
 
 fn sums_to_using_rec(v: ~[int], sum: int) -> bool {
-    let mut i = 0u, sum0 = F {f: 0};
+    let mut i = 0u;
+    let mut sum0 = F {f: 0};
     while i < v.len() {
         sum0.f += v[i];
         i += 1u;
@@ -40,7 +43,8 @@ fn sums_to_using_rec(v: ~[int], sum: int) -> bool {
 struct F<T> { f: T }
 
 fn sums_to_using_uniq_rec(v: ~[int], sum: int) -> bool {
-    let mut i = 0u, sum0 = F {f: ~0};
+    let mut i = 0u;
+    let mut sum0 = F {f: ~0};
     while i < v.len() {
         *sum0.f += v[i];
         i += 1u;

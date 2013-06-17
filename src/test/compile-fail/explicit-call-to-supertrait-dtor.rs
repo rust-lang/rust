@@ -18,7 +18,7 @@ trait Bar : Drop {
 
 impl Drop for Foo {
     fn finalize(&self) {
-        io::println("kaboom");
+        println("kaboom");
     }
 }
 

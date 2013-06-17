@@ -12,13 +12,18 @@ use core::prelude::*;
 
 use ast;
 use codemap;
-use codemap::{FileMap, Loc, Pos, ExpandedFrom, span};
+use codemap::{Pos, ExpandedFrom, span};
 use codemap::{CallInfo, NameAndSpan};
 use ext::base::*;
 use ext::base;
 use ext::build::AstBuilder;
 use parse;
+use parse::token::{get_ident_interner};
 use print::pprust;
+
+use core::io;
+use core::result;
+use core::vec;
 
 // These macros all relate to the file system; they either return
 // the column/row/filename of the expression, or they include
@@ -53,23 +58,22 @@ pub fn expand_file(cx: @ExtCtxt, sp: span, tts: &[ast::token_tree])
     base::check_zero_tts(cx, sp, tts, "file!");
 
     let topmost = topmost_expn_info(cx.backtrace().get());
-    let Loc { file: @FileMap { name: filename, _ }, _ } =
-        cx.codemap().lookup_char_pos(topmost.call_site.lo);
+    let loc = cx.codemap().lookup_char_pos(topmost.call_site.lo);
+    let filename = loc.file.name;
     base::MRExpr(cx.expr_str(topmost.call_site, filename))
 }
 
 pub fn expand_stringify(cx: @ExtCtxt, sp: span, tts: &[ast::token_tree])
     -> base::MacResult {
-    let s = pprust::tts_to_str(tts, cx.parse_sess().interner);
-    base::MRExpr(cx.expr_str(sp, s))
+    let s = pprust::tts_to_str(tts, get_ident_interner());
+    base::MRExpr(cx.expr_str(sp, s.to_managed()))
 }
 
 pub fn expand_mod(cx: @ExtCtxt, sp: span, tts: &[ast::token_tree])
     -> base::MacResult {
     base::check_zero_tts(cx, sp, tts, "module_path!");
     base::MRExpr(cx.expr_str(sp,
-                              str::connect(cx.mod_path().map(
-                                  |x| cx.str_of(*x)), "::")))
+                             cx.mod_path().map(|x| cx.str_of(*x)).connect("::").to_managed()))
 }
 
 // include! : parse the given file as an expr
@@ -90,13 +94,13 @@ pub fn expand_include_str(cx: @ExtCtxt, sp: span, tts: &[ast::token_tree])
     let file = get_single_str_from_tts(cx, sp, tts, "include_str!");
     let res = io::read_whole_file_str(&res_rel_file(cx, sp, &Path(file)));
     match res {
-      result::Ok(_) => { /* Continue. */ }
-      result::Err(ref e) => {
-        cx.parse_sess().span_diagnostic.handler().fatal((*e));
+      result::Ok(res) => {
+          base::MRExpr(cx.expr_str(sp, res.to_managed()))
+      }
+      result::Err(e) => {
+        cx.span_fatal(sp, e);
       }
     }
-
-    base::MRExpr(cx.expr_str(sp, result::unwrap(res)))
 }
 
 pub fn expand_include_bin(cx: @ExtCtxt, sp: span, tts: &[ast::token_tree])
@@ -127,7 +131,7 @@ fn topmost_expn_info(expn_info: @codemap::ExpnInfo) -> @codemap::ExpnInfo {
                             _
                         }) => {
                             // Don't recurse into file using "include!"
-                            if *name == ~"include" {
+                            if "include" == *name  {
                                 expn_info
                             } else {
                                 topmost_expn_info(next_expn_info)

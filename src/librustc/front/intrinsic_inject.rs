@@ -10,15 +10,16 @@
 
 use core::prelude::*;
 
+use core::vec;
 use driver::session::Session;
 use syntax::parse;
 use syntax::ast;
 use syntax::codemap::spanned;
 
 pub fn inject_intrinsic(sess: Session, crate: @ast::crate) -> @ast::crate {
-    let intrinsic_module = @(include_str!("intrinsic.rs").to_owned());
+    let intrinsic_module = include_str!("intrinsic.rs").to_managed();
 
-    let item = parse::parse_item_from_source_str(~"<intrinsic>",
+    let item = parse::parse_item_from_source_str(@"<intrinsic>",
                                                  intrinsic_module,
                                                  /*bad*/copy sess.opts.cfg,
                                                  ~[],

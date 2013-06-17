@@ -21,36 +21,36 @@ pub struct Context {
 
 pub fn check_crate(tcx: ty::ctxt, crate: @crate) {
     visit::visit_crate(crate,
-                       Context { in_loop: false, can_ret: true },
+                       (Context { in_loop: false, can_ret: true },
                        visit::mk_vt(@visit::Visitor {
-        visit_item: |i, _cx, v| {
-            visit::visit_item(i, Context {
+        visit_item: |i, (_cx, v)| {
+            visit::visit_item(i, (Context {
                                     in_loop: false,
                                     can_ret: true
-                                 }, v);
+                                 }, v));
         },
-        visit_expr: |e: @expr, cx: Context, v: visit::vt<Context>| {
+        visit_expr: |e: @expr, (cx, v): (Context, visit::vt<Context>)| {
             match e.node {
               expr_while(e, ref b) => {
-                (v.visit_expr)(e, cx, v);
-                (v.visit_block)(b, Context { in_loop: true,.. cx }, v);
+                (v.visit_expr)(e, (cx, v));
+                (v.visit_block)(b, (Context { in_loop: true,.. cx }, v));
               }
               expr_loop(ref b, _) => {
-                (v.visit_block)(b, Context { in_loop: true,.. cx }, v);
+                (v.visit_block)(b, (Context { in_loop: true,.. cx }, v));
               }
               expr_fn_block(_, ref b) => {
-                (v.visit_block)(b, Context {
+                (v.visit_block)(b, (Context {
                                          in_loop: false,
                                          can_ret: false
-                                      }, v);
+                                      }, v));
               }
               expr_loop_body(@expr {node: expr_fn_block(_, ref b), _}) => {
                 let sigil = ty::ty_closure_sigil(ty::expr_ty(tcx, e));
                 let blk = (sigil == BorrowedSigil);
-                (v.visit_block)(b, Context {
+                (v.visit_block)(b, (Context {
                                          in_loop: true,
                                          can_ret: blk
-                                     }, v);
+                                     }, v));
               }
               expr_break(_) => {
                 if !cx.in_loop {
@@ -66,11 +66,11 @@ pub fn check_crate(tcx: ty::ctxt, crate: @crate) {
                 if !cx.can_ret {
                     tcx.sess.span_err(e.span, "`return` in block function");
                 }
-                visit::visit_expr_opt(oe, cx, v);
+                visit::visit_expr_opt(oe, (cx, v));
               }
-              _ => visit::visit_expr(e, cx, v)
+              _ => visit::visit_expr(e, (cx, v))
             }
         },
         .. *visit::default_visitor()
-    }));
+    })));
 }

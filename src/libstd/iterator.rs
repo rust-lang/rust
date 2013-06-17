@@ -17,9 +17,17 @@ implementing the `Iterator` trait.
 
 */
 
-use prelude::*;
+use cmp;
+use iter::{FromIter, Times};
 use num::{Zero, One};
+use option::{Option, Some, None};
+use ops::{Add, Mul};
+use cmp::Ord;
+use clone::Clone;
 
+/// An interface for dealing with "external iterators". These types of iterators
+/// can be resumed at any time as all state is stored internally as opposed to
+/// being located on the call stack.
 pub trait Iterator<A> {
     /// Advance the iterator and return the next value. Return `None` when the end is reached.
     fn next(&mut self) -> Option<A>;
@@ -30,27 +38,276 @@ pub trait Iterator<A> {
 ///
 /// In the future these will be default methods instead of a utility trait.
 pub trait IteratorUtil<A> {
-    fn chain<U: Iterator<A>>(self, other: U) -> ChainIterator<Self, U>;
-    fn zip<B, U: Iterator<B>>(self, other: U) -> ZipIterator<Self, U>;
+    /// Chain this iterator with another, returning a new iterator which will
+    /// finish iterating over the current iterator, and then it will iterate
+    /// over the other specified iterator.
+    ///
+    /// # Example
+    ///
+    /// ~~~ {.rust}
+    /// let a = [0];
+    /// let b = [1];
+    /// let mut it = a.iter().chain_(b.iter());
+    /// assert_eq!(it.next().get(), &0);
+    /// assert_eq!(it.next().get(), &1);
+    /// assert!(it.next().is_none());
+    /// ~~~
+    fn chain_<U: Iterator<A>>(self, other: U) -> ChainIterator<A, Self, U>;
+
+    /// Creates an iterator which iterates over both this and the specified
+    /// iterators simultaneously, yielding the two elements as pairs. When
+    /// either iterator returns None, all further invocations of next() will
+    /// return None.
+    ///
+    /// # Example
+    ///
+    /// ~~~ {.rust}
+    /// let a = [0];
+    /// let b = [1];
+    /// let mut it = a.iter().zip(b.iter());
+    /// assert_eq!(it.next().get(), (&0, &1));
+    /// assert!(it.next().is_none());
+    /// ~~~
+    fn zip<B, U: Iterator<B>>(self, other: U) -> ZipIterator<A, Self, B, U>;
+
     // FIXME: #5898: should be called map
+    /// Creates a new iterator which will apply the specified function to each
+    /// element returned by the first, yielding the mapped element instead. This
+    /// similar to the `vec::map` function.
+    ///
+    /// # Example
+    ///
+    /// ~~~ {.rust}
+    /// let a = [1, 2];
+    /// let mut it = a.iter().transform(|&x| 2 * x);
+    /// assert_eq!(it.next().get(), 2);
+    /// assert_eq!(it.next().get(), 4);
+    /// assert!(it.next().is_none());
+    /// ~~~
     fn transform<'r, B>(self, f: &'r fn(A) -> B) -> MapIterator<'r, A, B, Self>;
+
+    /// Creates an iterator which applies the predicate to each element returned
+    /// by this iterator. Only elements which have the predicate evaluate to
+    /// `true` will be yielded.
+    ///
+    /// # Example
+    ///
+    /// ~~~ {.rust}
+    /// let a = [1, 2];
+    /// let mut it = a.iter().filter(|&x| *x > 1);
+    /// assert_eq!(it.next().get(), &2);
+    /// assert!(it.next().is_none());
+    /// ~~~
     fn filter<'r>(self, predicate: &'r fn(&A) -> bool) -> FilterIterator<'r, A, Self>;
+
+    /// Creates an iterator which both filters and maps elements.
+    /// If the specified function returns None, the element is skipped.
+    /// Otherwise the option is unwrapped and the new value is yielded.
+    ///
+    /// # Example
+    ///
+    /// ~~~ {.rust}
+    /// let a = [1, 2];
+    /// let mut it = a.iter().filter_map(|&x| if x > 1 {Some(2 * x)} else {None});
+    /// assert_eq!(it.next().get(), 4);
+    /// assert!(it.next().is_none());
+    /// ~~~
     fn filter_map<'r,  B>(self, f: &'r fn(A) -> Option<B>) -> FilterMapIterator<'r, A, B, Self>;
-    fn enumerate(self) -> EnumerateIterator<Self>;
+
+    /// Creates an iterator which yields a pair of the value returned by this
+    /// iterator plus the current index of iteration.
+    ///
+    /// # Example
+    ///
+    /// ~~~ {.rust}
+    /// let a = [100, 200];
+    /// let mut it = a.iter().enumerate();
+    /// assert_eq!(it.next().get(), (0, &100));
+    /// assert_eq!(it.next().get(), (1, &200));
+    /// assert!(it.next().is_none());
+    /// ~~~
+    fn enumerate(self) -> EnumerateIterator<A, Self>;
+
+    /// Creates an iterator which invokes the predicate on elements until it
+    /// returns false. Once the predicate returns false, all further elements are
+    /// yielded.
+    ///
+    /// # Example
+    ///
+    /// ~~~ {.rust}
+    /// let a = [1, 2, 3, 2, 1];
+    /// let mut it = a.iter().skip_while(|&a| *a < 3);
+    /// assert_eq!(it.next().get(), &3);
+    /// assert_eq!(it.next().get(), &2);
+    /// assert_eq!(it.next().get(), &1);
+    /// assert!(it.next().is_none());
+    /// ~~~
     fn skip_while<'r>(self, predicate: &'r fn(&A) -> bool) -> SkipWhileIterator<'r, A, Self>;
+
+    /// Creates an iterator which yields elements so long as the predicate
+    /// returns true. After the predicate returns false for the first time, no
+    /// further elements will be yielded.
+    ///
+    /// # Example
+    ///
+    /// ~~~ {.rust}
+    /// let a = [1, 2, 3, 2, 1];
+    /// let mut it = a.iter().take_while(|&a| *a < 3);
+    /// assert_eq!(it.next().get(), &1);
+    /// assert_eq!(it.next().get(), &2);
+    /// assert!(it.next().is_none());
+    /// ~~~
     fn take_while<'r>(self, predicate: &'r fn(&A) -> bool) -> TakeWhileIterator<'r, A, Self>;
-    fn skip(self, n: uint) -> SkipIterator<Self>;
-    fn take(self, n: uint) -> TakeIterator<Self>;
+
+    /// Creates an iterator which skips the first `n` elements of this iterator,
+    /// and then it yields all further items.
+    ///
+    /// # Example
+    ///
+    /// ~~~ {.rust}
+    /// let a = [1, 2, 3, 4, 5];
+    /// let mut it = a.iter().skip(3);
+    /// assert_eq!(it.next().get(), &4);
+    /// assert_eq!(it.next().get(), &5);
+    /// assert!(it.next().is_none());
+    /// ~~~
+    fn skip(self, n: uint) -> SkipIterator<A, Self>;
+
+    // FIXME: #5898: should be called take
+    /// Creates an iterator which yields the first `n` elements of this
+    /// iterator, and then it will always return None.
+    ///
+    /// # Example
+    ///
+    /// ~~~ {.rust}
+    /// let a = [1, 2, 3, 4, 5];
+    /// let mut it = a.iter().take_(3);
+    /// assert_eq!(it.next().get(), &1);
+    /// assert_eq!(it.next().get(), &2);
+    /// assert_eq!(it.next().get(), &3);
+    /// assert!(it.next().is_none());
+    /// ~~~
+    fn take_(self, n: uint) -> TakeIterator<A, Self>;
+
+    /// Creates a new iterator which behaves in a similar fashion to foldl.
+    /// There is a state which is passed between each iteration and can be
+    /// mutated as necessary. The yielded values from the closure are yielded
+    /// from the ScanIterator instance when not None.
+    ///
+    /// # Example
+    ///
+    /// ~~~ {.rust}
+    /// let a = [1, 2, 3, 4, 5];
+    /// let mut it = a.iter().scan(1, |fac, &x| {
+    ///   *fac = *fac * x;
+    ///   Some(*fac)
+    /// });
+    /// assert_eq!(it.next().get(), 1);
+    /// assert_eq!(it.next().get(), 2);
+    /// assert_eq!(it.next().get(), 6);
+    /// assert_eq!(it.next().get(), 24);
+    /// assert_eq!(it.next().get(), 120);
+    /// assert!(it.next().is_none());
+    /// ~~~
     fn scan<'r, St, B>(self, initial_state: St, f: &'r fn(&mut St, A) -> Option<B>)
         -> ScanIterator<'r, A, B, Self, St>;
+
+    /// An adaptation of an external iterator to the for-loop protocol of rust.
+    ///
+    /// # Example
+    ///
+    /// ~~~ {.rust}
+    /// use std::iterator::Counter;
+    ///
+    /// for Counter::new(0, 10).advance |i| {
+    ///     io::println(fmt!("%d", i));
+    /// }
+    /// ~~~
     fn advance(&mut self, f: &fn(A) -> bool) -> bool;
-    fn to_vec(&mut self) -> ~[A];
+
+    /// Loops through the entire iterator, collecting all of the elements into
+    /// a container implementing `FromIter`.
+    ///
+    /// # Example
+    ///
+    /// ~~~ {.rust}
+    /// let a = [1, 2, 3, 4, 5];
+    /// let b: ~[int] = a.iter().transform(|&x| x).collect();
+    /// assert!(a == b);
+    /// ~~~
+    fn collect<B: FromIter<A>>(&mut self) -> B;
+
+    /// Loops through `n` iterations, returning the `n`th element of the
+    /// iterator.
+    ///
+    /// # Example
+    ///
+    /// ~~~ {.rust}
+    /// let a = [1, 2, 3, 4, 5];
+    /// let mut it = a.iter();
+    /// assert!(it.nth(2).get() == &3);
+    /// assert!(it.nth(2) == None);
+    /// ~~~
     fn nth(&mut self, n: uint) -> Option<A>;
-    fn last(&mut self) -> Option<A>;
+
+    /// Loops through the entire iterator, returning the last element of the
+    /// iterator.
+    ///
+    /// # Example
+    ///
+    /// ~~~ {.rust}
+    /// let a = [1, 2, 3, 4, 5];
+    /// assert!(a.iter().last().get() == &5);
+    /// ~~~
+    // FIXME: #5898: should be called `last`
+    fn last_(&mut self) -> Option<A>;
+
+    /// Performs a fold operation over the entire iterator, returning the
+    /// eventual state at the end of the iteration.
+    ///
+    /// # Example
+    ///
+    /// ~~~ {.rust}
+    /// let a = [1, 2, 3, 4, 5];
+    /// assert!(a.iter().fold(0, |a, &b| a + b) == 15);
+    /// ~~~
     fn fold<B>(&mut self, start: B, f: &fn(B, A) -> B) -> B;
+
+    /// Counts the number of elements in this iterator.
+    ///
+    /// # Example
+    ///
+    /// ~~~ {.rust}
+    /// let a = [1, 2, 3, 4, 5];
+    /// let mut it = a.iter();
+    /// assert!(it.count() == 5);
+    /// assert!(it.count() == 0);
+    /// ~~~
     fn count(&mut self) -> uint;
-    fn all(&mut self, f: &fn(&A) -> bool) -> bool;
-    fn any(&mut self, f: &fn(&A) -> bool) -> bool;
+
+    /// Tests whether the predicate holds true for all elements in the iterator.
+    ///
+    /// # Example
+    ///
+    /// ~~~ {.rust}
+    /// let a = [1, 2, 3, 4, 5];
+    /// assert!(a.iter().all(|&x| *x > 0));
+    /// assert!(!a.iter().all(|&x| *x > 2));
+    /// ~~~
+    fn all(&mut self, f: &fn(A) -> bool) -> bool;
+
+    /// Tests whether any element of an iterator satisfies the specified
+    /// predicate.
+    ///
+    /// # Example
+    ///
+    /// ~~~ {.rust}
+    /// let a = [1, 2, 3, 4, 5];
+    /// let mut it = a.iter();
+    /// assert!(it.any_(|&x| *x == 3));
+    /// assert!(!it.any_(|&x| *x == 3));
+    /// ~~~
+    fn any_(&mut self, f: &fn(A) -> bool) -> bool;
 }
 
 /// Iterator adaptors provided for every `Iterator` implementation. The adaptor objects are also
@@ -59,12 +316,12 @@ pub trait IteratorUtil<A> {
 /// In the future these will be default methods instead of a utility trait.
 impl<A, T: Iterator<A>> IteratorUtil<A> for T {
     #[inline(always)]
-    fn chain<U: Iterator<A>>(self, other: U) -> ChainIterator<T, U> {
+    fn chain_<U: Iterator<A>>(self, other: U) -> ChainIterator<A, T, U> {
         ChainIterator{a: self, b: other, flag: false}
     }
 
     #[inline(always)]
-    fn zip<B, U: Iterator<B>>(self, other: U) -> ZipIterator<T, U> {
+    fn zip<B, U: Iterator<B>>(self, other: U) -> ZipIterator<A, T, B, U> {
         ZipIterator{a: self, b: other}
     }
 
@@ -85,7 +342,7 @@ impl<A, T: Iterator<A>> IteratorUtil<A> for T {
     }
 
     #[inline(always)]
-    fn enumerate(self) -> EnumerateIterator<T> {
+    fn enumerate(self) -> EnumerateIterator<A, T> {
         EnumerateIterator{iter: self, count: 0}
     }
 
@@ -100,12 +357,13 @@ impl<A, T: Iterator<A>> IteratorUtil<A> for T {
     }
 
     #[inline(always)]
-    fn skip(self, n: uint) -> SkipIterator<T> {
+    fn skip(self, n: uint) -> SkipIterator<A, T> {
         SkipIterator{iter: self, n: n}
     }
 
+    // FIXME: #5898: should be called take
     #[inline(always)]
-    fn take(self, n: uint) -> TakeIterator<T> {
+    fn take_(self, n: uint) -> TakeIterator<A, T> {
         TakeIterator{iter: self, n: n}
     }
 
@@ -129,8 +387,8 @@ impl<A, T: Iterator<A>> IteratorUtil<A> for T {
     }
 
     #[inline(always)]
-    fn to_vec(&mut self) -> ~[A] {
-        iter::to_vec::<A>(|f| self.advance(f))
+    fn collect<B: FromIter<A>>(&mut self) -> B {
+        FromIter::from_iter::<A, B>(|f| self.advance(f))
     }
 
     /// Return the `n`th item yielded by an iterator.
@@ -147,7 +405,7 @@ impl<A, T: Iterator<A>> IteratorUtil<A> for T {
 
     /// Return the last item yielded by an iterator.
     #[inline(always)]
-    fn last(&mut self) -> Option<A> {
+    fn last_(&mut self) -> Option<A> {
         let mut last = None;
         for self.advance |x| { last = Some(x); }
         last
@@ -171,19 +429,29 @@ impl<A, T: Iterator<A>> IteratorUtil<A> for T {
     fn count(&mut self) -> uint { self.fold(0, |cnt, _x| cnt + 1) }
 
     #[inline(always)]
-    fn all(&mut self, f: &fn(&A) -> bool) -> bool {
-        for self.advance |x| { if !f(&x) { return false; } }
+    fn all(&mut self, f: &fn(A) -> bool) -> bool {
+        for self.advance |x| { if !f(x) { return false; } }
         return true;
     }
 
     #[inline(always)]
-    fn any(&mut self, f: &fn(&A) -> bool) -> bool {
-        for self.advance |x| { if f(&x) { return true; } }
+    fn any_(&mut self, f: &fn(A) -> bool) -> bool {
+        for self.advance |x| { if f(x) { return true; } }
         return false;
     }
 }
 
+/// A trait for iterators over elements which can be added together
 pub trait AdditiveIterator<A> {
+    /// Iterates over the entire iterator, summing up all the elements
+    ///
+    /// # Example
+    ///
+    /// ~~~ {.rust}
+    /// let a = [1, 2, 3, 4, 5];
+    /// let mut it = a.iter().transform(|&x| x);
+    /// assert!(it.sum() == 15);
+    /// ~~~
     fn sum(&mut self) -> A;
 }
 
@@ -192,7 +460,23 @@ impl<A: Add<A, A> + Zero, T: Iterator<A>> AdditiveIterator<A> for T {
     fn sum(&mut self) -> A { self.fold(Zero::zero::<A>(), |s, x| s + x) }
 }
 
+/// A trait for iterators over elements whose elements can be multiplied
+/// together.
 pub trait MultiplicativeIterator<A> {
+    /// Iterates over the entire iterator, multiplying all the elements
+    ///
+    /// # Example
+    ///
+    /// ~~~ {.rust}
+    /// use std::iterator::Counter;
+    ///
+    /// fn factorial(n: uint) -> uint {
+    ///     Counter::new(1u, 1).take_while(|&i| i <= n).product()
+    /// }
+    /// assert!(factorial(0) == 1);
+    /// assert!(factorial(1) == 1);
+    /// assert!(factorial(5) == 120);
+    /// ~~~
     fn product(&mut self) -> A;
 }
 
@@ -201,8 +485,27 @@ impl<A: Mul<A, A> + One, T: Iterator<A>> MultiplicativeIterator<A> for T {
     fn product(&mut self) -> A { self.fold(One::one::<A>(), |p, x| p * x) }
 }
 
+/// A trait for iterators over elements which can be compared to one another.
+/// The type of each element must ascribe to the `Ord` trait.
 pub trait OrdIterator<A> {
+    /// Consumes the entire iterator to return the maximum element.
+    ///
+    /// # Example
+    ///
+    /// ~~~ {.rust}
+    /// let a = [1, 2, 3, 4, 5];
+    /// assert!(a.iter().max().get() == &5);
+    /// ~~~
     fn max(&mut self) -> Option<A>;
+
+    /// Consumes the entire iterator to return the minimum element.
+    ///
+    /// # Example
+    ///
+    /// ~~~ {.rust}
+    /// let a = [1, 2, 3, 4, 5];
+    /// assert!(a.iter().min().get() == &1);
+    /// ~~~
     fn min(&mut self) -> Option<A>;
 }
 
@@ -228,13 +531,15 @@ impl<A: Ord, T: Iterator<A>> OrdIterator<A> for T {
     }
 }
 
-pub struct ChainIterator<T, U> {
+/// An iterator which strings two iterators together
+// FIXME #6967: Dummy A parameter to get around type inference bug
+pub struct ChainIterator<A, T, U> {
     priv a: T,
     priv b: U,
     priv flag: bool
 }
 
-impl<A, T: Iterator<A>, U: Iterator<A>> Iterator<A> for ChainIterator<T, U> {
+impl<A, T: Iterator<A>, U: Iterator<A>> Iterator<A> for ChainIterator<A, T, U> {
     #[inline]
     fn next(&mut self) -> Option<A> {
         if self.flag {
@@ -250,12 +555,14 @@ impl<A, T: Iterator<A>, U: Iterator<A>> Iterator<A> for ChainIterator<T, U> {
     }
 }
 
-pub struct ZipIterator<T, U> {
+/// An iterator which iterates two other iterators simultaneously
+// FIXME #6967: Dummy A & B parameters to get around type inference bug
+pub struct ZipIterator<A, T, B, U> {
     priv a: T,
     priv b: U
 }
 
-impl<A, B, T: Iterator<A>, U: Iterator<B>> Iterator<(A, B)> for ZipIterator<T, U> {
+impl<A, B, T: Iterator<A>, U: Iterator<B>> Iterator<(A, B)> for ZipIterator<A, T, B, U> {
     #[inline]
     fn next(&mut self) -> Option<(A, B)> {
         match (self.a.next(), self.b.next()) {
@@ -265,6 +572,7 @@ impl<A, B, T: Iterator<A>, U: Iterator<B>> Iterator<(A, B)> for ZipIterator<T, U
     }
 }
 
+/// An iterator which maps the values of `iter` with `f`
 pub struct MapIterator<'self, A, B, T> {
     priv iter: T,
     priv f: &'self fn(A) -> B
@@ -280,6 +588,7 @@ impl<'self, A, B, T: Iterator<A>> Iterator<B> for MapIterator<'self, A, B, T> {
     }
 }
 
+/// An iterator which filters the elements of `iter` with `predicate`
 pub struct FilterIterator<'self, A, T> {
     priv iter: T,
     priv predicate: &'self fn(&A) -> bool
@@ -299,6 +608,7 @@ impl<'self, A, T: Iterator<A>> Iterator<A> for FilterIterator<'self, A, T> {
     }
 }
 
+/// An iterator which uses `f` to both filter and map elements from `iter`
 pub struct FilterMapIterator<'self, A, B, T> {
     priv iter: T,
     priv f: &'self fn(A) -> Option<B>
@@ -317,12 +627,14 @@ impl<'self, A, B, T: Iterator<A>> Iterator<B> for FilterMapIterator<'self, A, B,
     }
 }
 
-pub struct EnumerateIterator<T> {
+/// An iterator which yields the current count and the element during iteration
+// FIXME #6967: Dummy A parameter to get around type inference bug
+pub struct EnumerateIterator<A, T> {
     priv iter: T,
     priv count: uint
 }
 
-impl<A, T: Iterator<A>> Iterator<(uint, A)> for EnumerateIterator<T> {
+impl<A, T: Iterator<A>> Iterator<(uint, A)> for EnumerateIterator<A, T> {
     #[inline]
     fn next(&mut self) -> Option<(uint, A)> {
         match self.iter.next() {
@@ -336,6 +648,7 @@ impl<A, T: Iterator<A>> Iterator<(uint, A)> for EnumerateIterator<T> {
     }
 }
 
+/// An iterator which rejects elements while `predicate` is true
 pub struct SkipWhileIterator<'self, A, T> {
     priv iter: T,
     priv flag: bool,
@@ -367,6 +680,7 @@ impl<'self, A, T: Iterator<A>> Iterator<A> for SkipWhileIterator<'self, A, T> {
     }
 }
 
+/// An iterator which only accepts elements while `predicate` is true
 pub struct TakeWhileIterator<'self, A, T> {
     priv iter: T,
     priv flag: bool,
@@ -394,12 +708,14 @@ impl<'self, A, T: Iterator<A>> Iterator<A> for TakeWhileIterator<'self, A, T> {
     }
 }
 
-pub struct SkipIterator<T> {
+/// An iterator which skips over `n` elements of `iter`.
+// FIXME #6967: Dummy A parameter to get around type inference bug
+pub struct SkipIterator<A, T> {
     priv iter: T,
     priv n: uint
 }
 
-impl<A, T: Iterator<A>> Iterator<A> for SkipIterator<T> {
+impl<A, T: Iterator<A>> Iterator<A> for SkipIterator<A, T> {
     #[inline]
     fn next(&mut self) -> Option<A> {
         let mut next = self.iter.next();
@@ -425,12 +741,14 @@ impl<A, T: Iterator<A>> Iterator<A> for SkipIterator<T> {
     }
 }
 
-pub struct TakeIterator<T> {
+/// An iterator which only iterates over the first `n` iterations of `iter`.
+// FIXME #6967: Dummy A parameter to get around type inference bug
+pub struct TakeIterator<A, T> {
     priv iter: T,
     priv n: uint
 }
 
-impl<A, T: Iterator<A>> Iterator<A> for TakeIterator<T> {
+impl<A, T: Iterator<A>> Iterator<A> for TakeIterator<A, T> {
     #[inline]
     fn next(&mut self) -> Option<A> {
         let next = self.iter.next();
@@ -443,9 +761,12 @@ impl<A, T: Iterator<A>> Iterator<A> for TakeIterator<T> {
     }
 }
 
+/// An iterator to maintain state while iterating another iterator
 pub struct ScanIterator<'self, A, B, T, St> {
     priv iter: T,
     priv f: &'self fn(&mut St, A) -> Option<B>,
+
+    /// The current internal state to be passed to the closure next.
     state: St
 }
 
@@ -456,14 +777,18 @@ impl<'self, A, B, T: Iterator<A>, St> Iterator<B> for ScanIterator<'self, A, B, 
     }
 }
 
+/// An iterator which just modifies the contained state throughout iteration.
 pub struct UnfoldrIterator<'self, A, St> {
     priv f: &'self fn(&mut St) -> Option<A>,
+    /// Internal state that will be yielded on the next iteration
     state: St
 }
 
-pub impl<'self, A, St> UnfoldrIterator<'self, A, St> {
+impl<'self, A, St> UnfoldrIterator<'self, A, St> {
+    /// Creates a new iterator with the specified closure as the "iterator
+    /// function" and an initial state to eventually pass to the iterator
     #[inline]
-    fn new(f: &'self fn(&mut St) -> Option<A>, initial_state: St)
+    pub fn new(f: &'self fn(&mut St) -> Option<A>, initial_state: St)
         -> UnfoldrIterator<'self, A, St> {
         UnfoldrIterator {
             f: f,
@@ -479,15 +804,19 @@ impl<'self, A, St> Iterator<A> for UnfoldrIterator<'self, A, St> {
     }
 }
 
-/// An infinite iterator starting at `start` and advancing by `step` with each iteration
+/// An infinite iterator starting at `start` and advancing by `step` with each
+/// iteration
 pub struct Counter<A> {
+    /// The current state the counter is at (next value to be yielded)
     state: A,
+    /// The amount that this iterator is stepping by
     step: A
 }
 
-pub impl<A> Counter<A> {
+impl<A> Counter<A> {
+    /// Creates a new counter with the specified start/step
     #[inline(always)]
-    fn new(start: A, step: A) -> Counter<A> {
+    pub fn new(start: A, step: A) -> Counter<A> {
         Counter{state: start, step: step}
     }
 }
@@ -506,10 +835,13 @@ mod tests {
     use super::*;
     use prelude::*;
 
+    use iter;
+    use uint;
+
     #[test]
-    fn test_counter_to_vec() {
-        let mut it = Counter::new(0, 5).take(10);
-        let xs = iter::to_vec(|f| it.advance(f));
+    fn test_counter_from_iter() {
+        let mut it = Counter::new(0, 5).take_(10);
+        let xs: ~[int] = iter::FromIter::from_iter::<int, ~[int]>(|f| it.advance(f));
         assert_eq!(xs, ~[0, 5, 10, 15, 20, 25, 30, 35, 40, 45]);
     }
 
@@ -518,18 +850,18 @@ mod tests {
         let xs = [0u, 1, 2, 3, 4, 5];
         let ys = [30u, 40, 50, 60];
         let expected = [0, 1, 2, 3, 4, 5, 30, 40, 50, 60];
-        let mut it = xs.iter().chain(ys.iter());
+        let mut it = xs.iter().chain_(ys.iter());
         let mut i = 0;
-        for it.advance |&x: &uint| {
+        for it.advance |&x| {
             assert_eq!(x, expected[i]);
             i += 1;
         }
         assert_eq!(i, expected.len());
 
-        let ys = Counter::new(30u, 10).take(4);
-        let mut it = xs.iter().transform(|&x| x).chain(ys);
+        let ys = Counter::new(30u, 10).take_(4);
+        let mut it = xs.iter().transform(|&x| x).chain_(ys);
         let mut i = 0;
-        for it.advance |x: uint| {
+        for it.advance |x| {
             assert_eq!(x, expected[i]);
             i += 1;
         }
@@ -538,16 +870,16 @@ mod tests {
 
     #[test]
     fn test_filter_map() {
-        let mut it = Counter::new(0u, 1u).take(10)
-            .filter_map(|x: uint| if x.is_even() { Some(x*x) } else { None });
-        assert_eq!(it.to_vec(), ~[0*0, 2*2, 4*4, 6*6, 8*8]);
+        let mut it = Counter::new(0u, 1u).take_(10)
+            .filter_map(|x| if x.is_even() { Some(x*x) } else { None });
+        assert_eq!(it.collect::<~[uint]>(), ~[0*0, 2*2, 4*4, 6*6, 8*8]);
     }
 
     #[test]
     fn test_iterator_enumerate() {
         let xs = [0u, 1, 2, 3, 4, 5];
         let mut it = xs.iter().enumerate();
-        for it.advance |(i, &x): (uint, &uint)| {
+        for it.advance |(i, &x)| {
             assert_eq!(i, x);
         }
     }
@@ -558,7 +890,7 @@ mod tests {
         let ys = [0u, 1, 2, 3, 5, 13];
         let mut it = xs.iter().take_while(|&x| *x < 15u);
         let mut i = 0;
-        for it.advance |&x: &uint| {
+        for it.advance |&x| {
             assert_eq!(x, ys[i]);
             i += 1;
         }
@@ -571,7 +903,7 @@ mod tests {
         let ys = [15, 16, 17, 19];
         let mut it = xs.iter().skip_while(|&x| *x < 15u);
         let mut i = 0;
-        for it.advance |&x: &uint| {
+        for it.advance |&x| {
             assert_eq!(x, ys[i]);
             i += 1;
         }
@@ -584,7 +916,7 @@ mod tests {
         let ys = [13, 15, 16, 17, 19, 20, 30];
         let mut it = xs.iter().skip(5);
         let mut i = 0;
-        for it.advance |&x: &uint| {
+        for it.advance |&x| {
             assert_eq!(x, ys[i]);
             i += 1;
         }
@@ -595,9 +927,9 @@ mod tests {
     fn test_iterator_take() {
         let xs = [0u, 1, 2, 3, 5, 13, 15, 16, 17, 19];
         let ys = [0u, 1, 2, 3, 5];
-        let mut it = xs.iter().take(5);
+        let mut it = xs.iter().take_(5);
         let mut i = 0;
-        for it.advance |&x: &uint| {
+        for it.advance |&x| {
             assert_eq!(x, ys[i]);
             i += 1;
         }
@@ -655,8 +987,8 @@ mod tests {
     #[test]
     fn test_iterator_last() {
         let v = &[0, 1, 2, 3, 4];
-        assert_eq!(v.iter().last().unwrap(), &4);
-        assert_eq!(v.slice(0, 1).iter().last().unwrap(), &0);
+        assert_eq!(v.iter().last_().unwrap(), &4);
+        assert_eq!(v.slice(0, 1).iter().last_().unwrap(), &0);
     }
 
     #[test]
@@ -700,20 +1032,27 @@ mod tests {
     }
 
     #[test]
+    fn test_collect() {
+        let a = ~[1, 2, 3, 4, 5];
+        let b: ~[int] = a.iter().transform(|&x| x).collect();
+        assert_eq!(a, b);
+    }
+
+    #[test]
     fn test_all() {
         let v = ~&[1, 2, 3, 4, 5];
-        assert!(v.iter().all(|&x| *x < 10));
+        assert!(v.iter().all(|&x| x < 10));
         assert!(!v.iter().all(|&x| x.is_even()));
-        assert!(!v.iter().all(|&x| *x > 100));
+        assert!(!v.iter().all(|&x| x > 100));
         assert!(v.slice(0, 0).iter().all(|_| fail!()));
     }
 
     #[test]
     fn test_any() {
         let v = ~&[1, 2, 3, 4, 5];
-        assert!(v.iter().any(|&x| *x < 10));
-        assert!(v.iter().any(|&x| x.is_even()));
-        assert!(!v.iter().any(|&x| *x > 100));
-        assert!(!v.slice(0, 0).iter().any(|_| fail!()));
+        assert!(v.iter().any_(|&x| x < 10));
+        assert!(v.iter().any_(|&x| x.is_even()));
+        assert!(!v.iter().any_(|&x| x > 100));
+        assert!(!v.slice(0, 0).iter().any_(|_| fail!()));
     }
 }

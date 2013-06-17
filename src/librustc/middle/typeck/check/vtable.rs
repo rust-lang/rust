@@ -26,6 +26,8 @@ use util::ppaux::tys_to_str;
 use util::ppaux;
 
 use core::hashmap::HashSet;
+use core::result;
+use core::uint;
 use syntax::ast;
 use syntax::ast_util;
 use syntax::codemap::span;
@@ -63,8 +65,8 @@ pub struct VtableContext {
     infcx: @mut infer::InferCtxt
 }
 
-pub impl VtableContext {
-    fn tcx(&const self) -> ty::ctxt { self.ccx.tcx }
+impl VtableContext {
+    pub fn tcx(&const self) -> ty::ctxt { self.ccx.tcx }
 }
 
 fn has_trait_bounds(type_param_defs: &[ty::TypeParameterDef]) -> bool {
@@ -86,7 +88,8 @@ fn lookup_vtables(vcx: &VtableContext,
     let _i = indenter();
 
     let tcx = vcx.tcx();
-    let mut result = ~[], i = 0u;
+    let mut result = ~[];
+    let mut i = 0u;
     for substs.tps.each |ty| {
         // ty is the value supplied for the type parameter A...
 
@@ -270,8 +273,8 @@ fn lookup_vtable(vcx: &VtableContext,
                         // same trait as trait_ref, we need to
                         // unify it with trait_ref in order to get all
                         // the ty vars sorted out.
-                        for ty::impl_trait_ref(tcx, im.did).each |&of_trait_ref|
-                        {
+                        let r = ty::impl_trait_ref(tcx, im.did);
+                        for r.iter().advance |&of_trait_ref| {
                             if of_trait_ref.def_id != trait_ref.def_id { loop; }
 
                             // At this point, we know that of_trait_ref is
@@ -510,19 +513,16 @@ pub fn early_resolve_expr(ex: @ast::expr,
       }
 
       // Must resolve bounds on methods with bounded params
-      ast::expr_binary(*) |
-      ast::expr_unary(*) | ast::expr_assign_op(*) |
-      ast::expr_index(*) | ast::expr_method_call(*) => {
+      ast::expr_binary(callee_id, _, _, _) |
+      ast::expr_unary(callee_id, _, _) |
+      ast::expr_assign_op(callee_id, _, _, _) |
+      ast::expr_index(callee_id, _, _) |
+      ast::expr_method_call(callee_id, _, _, _, _, _) => {
         match ty::method_call_type_param_defs(cx.tcx, fcx.inh.method_map, ex.id) {
           Some(type_param_defs) => {
             debug!("vtable resolution on parameter bounds for method call %s",
                    ex.repr(fcx.tcx()));
             if has_trait_bounds(*type_param_defs) {
-                let callee_id = match ex.node {
-                  ast::expr_field(_, _, _) => ex.id,
-                  _ => ex.callee_id
-                };
-
                 let substs = fcx.node_ty_substs(callee_id);
                 let vcx = VtableContext { ccx: fcx.ccx, infcx: fcx.infcx() };
                 let vtbls = lookup_vtables(&vcx, &location_info_for_expr(ex),
@@ -650,18 +650,18 @@ pub fn early_resolve_expr(ex: @ast::expr,
 }
 
 fn resolve_expr(ex: @ast::expr,
-                fcx: @mut FnCtxt,
-                v: visit::vt<@mut FnCtxt>) {
+                (fcx, v): (@mut FnCtxt,
+                           visit::vt<@mut FnCtxt>)) {
     early_resolve_expr(ex, fcx, false);
-    visit::visit_expr(ex, fcx, v);
+    visit::visit_expr(ex, (fcx, v));
 }
 
 // Detect points where a trait-bounded type parameter is
 // instantiated, resolve the impls for the parameters.
 pub fn resolve_in_block(fcx: @mut FnCtxt, bl: &ast::blk) {
-    visit::visit_block(bl, fcx, visit::mk_vt(@visit::Visitor {
+    visit::visit_block(bl, (fcx, visit::mk_vt(@visit::Visitor {
         visit_expr: resolve_expr,
-        visit_item: |_,_,_| {},
+        visit_item: |_,_| {},
         .. *visit::default_visitor()
-    }));
+    })));
 }

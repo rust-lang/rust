@@ -12,12 +12,12 @@ use core::prelude::*;
 
 use middle::freevars::freevar_entry;
 use middle::freevars;
-use middle::pat_util;
 use middle::ty;
 use middle::typeck;
 use util::ppaux::{Repr, ty_to_str};
 use util::ppaux::UserString;
 
+use core::vec;
 use syntax::ast::*;
 use syntax::attr::attrs_contains_name;
 use syntax::codemap::span;
@@ -70,7 +70,6 @@ pub fn check_crate(tcx: ty::ctxt,
         current_item: -1
     };
     let visit = visit::mk_vt(@visit::Visitor {
-        visit_arm: check_arm,
         visit_expr: check_expr,
         visit_fn: check_fn,
         visit_ty: check_ty,
@@ -78,7 +77,7 @@ pub fn check_crate(tcx: ty::ctxt,
         visit_block: check_block,
         .. *visit::default_visitor()
     });
-    visit::visit_crate(crate, ctx, visit);
+    visit::visit_crate(crate, (ctx, visit));
     tcx.sess.abort_if_errors();
 }
 
@@ -114,11 +113,11 @@ fn check_struct_safe_for_destructor(cx: Context,
     }
 }
 
-fn check_block(block: &blk, cx: Context, visitor: visit::vt<Context>) {
-    visit::visit_block(block, cx, visitor);
+fn check_block(block: &blk, (cx, visitor): (Context, visit::vt<Context>)) {
+    visit::visit_block(block, (cx, visitor));
 }
 
-fn check_item(item: @item, cx: Context, visitor: visit::vt<Context>) {
+fn check_item(item: @item, (cx, visitor): (Context, visit::vt<Context>)) {
     // If this is a destructor, check kinds.
     if !attrs_contains_name(item.attrs, "unsafe_destructor") {
         match item.node {
@@ -157,7 +156,7 @@ fn check_item(item: @item, cx: Context, visitor: visit::vt<Context>) {
     }
 
     let cx = Context { current_item: item.id, ..cx };
-    visit::visit_item(item, cx, visitor);
+    visit::visit_item(item, (cx, visitor));
 }
 
 // Yields the appropriate function to check the kind of closed over
@@ -224,8 +223,8 @@ fn check_fn(
     body: &blk,
     sp: span,
     fn_id: node_id,
-    cx: Context,
-    v: visit::vt<Context>) {
+    (cx, v): (Context,
+              visit::vt<Context>)) {
 
     // Check kinds on free variables:
     do with_appropriate_checker(cx, fn_id) |chk| {
@@ -234,57 +233,46 @@ fn check_fn(
         }
     }
 
-    visit::visit_fn(fk, decl, body, sp, fn_id, cx, v);
+    visit::visit_fn(fk, decl, body, sp, fn_id, (cx, v));
 }
 
-fn check_arm(a: &arm, cx: Context, v: visit::vt<Context>) {
-    for a.pats.each |p| {
-        do pat_util::pat_bindings(cx.tcx.def_map, *p) |mode, id, span, _pth| {
-            if mode == bind_by_copy {
-                let t = ty::node_id_to_type(cx.tcx, id);
-                let reason = "consider binding with `ref` or `move` instead";
-                check_copy(cx, t, span, reason);
-            }
-        }
-    }
-    visit::visit_arm(a, cx, v);
-}
-
-pub fn check_expr(e: @expr, cx: Context, v: visit::vt<Context>) {
+pub fn check_expr(e: @expr, (cx, v): (Context, visit::vt<Context>)) {
     debug!("kind::check_expr(%s)", expr_to_str(e, cx.tcx.sess.intr()));
 
     // Handle any kind bounds on type parameters
-    let type_parameter_id = match e.node {
-        expr_index(*)|expr_assign_op(*)|
-        expr_unary(*)|expr_binary(*)|expr_method_call(*) => e.callee_id,
-        _ => e.id
+    let type_parameter_id = match e.get_callee_id() {
+        Some(callee_id) => callee_id,
+        None => e.id,
     };
-    for cx.tcx.node_type_substs.find(&type_parameter_id).each |ts| {
-        let type_param_defs = match e.node {
-          expr_path(_) => {
-            let did = ast_util::def_id_of_def(cx.tcx.def_map.get_copy(&e.id));
-            ty::lookup_item_type(cx.tcx, did).generics.type_param_defs
-          }
-          _ => {
-            // Type substitutions should only occur on paths and
-            // method calls, so this needs to be a method call.
+    {
+        let r = cx.tcx.node_type_substs.find(&type_parameter_id);
+        for r.iter().advance |ts| {
+            let type_param_defs = match e.node {
+              expr_path(_) => {
+                let did = ast_util::def_id_of_def(cx.tcx.def_map.get_copy(&e.id));
+                ty::lookup_item_type(cx.tcx, did).generics.type_param_defs
+              }
+              _ => {
+                // Type substitutions should only occur on paths and
+                // method calls, so this needs to be a method call.
 
-            // Even though the callee_id may have been the id with
-            // node_type_substs, e.id is correct here.
-            ty::method_call_type_param_defs(cx.tcx, cx.method_map, e.id).expect(
-                "non path/method call expr has type substs??")
-          }
-        };
-        if ts.len() != type_param_defs.len() {
-            // Fail earlier to make debugging easier
-            fail!("internal error: in kind::check_expr, length \
-                  mismatch between actual and declared bounds: actual = \
-                  %s, declared = %s",
-                  ts.repr(cx.tcx),
-                  type_param_defs.repr(cx.tcx));
-        }
-        for vec::each2(**ts, *type_param_defs) |&ty, type_param_def| {
-            check_bounds(cx, type_parameter_id, e.span, ty, type_param_def)
+                // Even though the callee_id may have been the id with
+                // node_type_substs, e.id is correct here.
+                ty::method_call_type_param_defs(cx.tcx, cx.method_map, e.id).expect(
+                    "non path/method call expr has type substs??")
+              }
+            };
+            if ts.len() != type_param_defs.len() {
+                // Fail earlier to make debugging easier
+                fail!("internal error: in kind::check_expr, length \
+                      mismatch between actual and declared bounds: actual = \
+                      %s, declared = %s",
+                      ts.repr(cx.tcx),
+                      type_param_defs.repr(cx.tcx));
+            }
+            for ts.iter().zip(type_param_defs.iter()).advance |(&ty, type_param_def)| {
+                check_bounds(cx, type_parameter_id, e.span, ty, type_param_def)
+            }
         }
     }
 
@@ -314,24 +302,25 @@ pub fn check_expr(e: @expr, cx: Context, v: visit::vt<Context>) {
         }
         _ => {}
     }
-    visit::visit_expr(e, cx, v);
+    visit::visit_expr(e, (cx, v));
 }
 
-fn check_ty(aty: @Ty, cx: Context, v: visit::vt<Context>) {
+fn check_ty(aty: @Ty, (cx, v): (Context, visit::vt<Context>)) {
     match aty.node {
       ty_path(_, id) => {
-        for cx.tcx.node_type_substs.find(&id).each |ts| {
-            let did = ast_util::def_id_of_def(cx.tcx.def_map.get_copy(&id));
-            let type_param_defs =
-                ty::lookup_item_type(cx.tcx, did).generics.type_param_defs;
-            for vec::each2(**ts, *type_param_defs) |&ty, type_param_def| {
-                check_bounds(cx, aty.id, aty.span, ty, type_param_def)
-            }
-        }
+          let r = cx.tcx.node_type_substs.find(&id);
+          for r.iter().advance |ts| {
+              let did = ast_util::def_id_of_def(cx.tcx.def_map.get_copy(&id));
+              let type_param_defs =
+                  ty::lookup_item_type(cx.tcx, did).generics.type_param_defs;
+              for ts.iter().zip(type_param_defs.iter()).advance |(&ty, type_param_def)| {
+                  check_bounds(cx, aty.id, aty.span, ty, type_param_def)
+              }
+          }
       }
       _ => {}
     }
-    visit::visit_ty(aty, cx, v);
+    visit::visit_ty(aty, (cx, v));
 }
 
 pub fn check_bounds(cx: Context,
@@ -362,7 +351,7 @@ fn is_nullary_variant(cx: Context, ex: @expr) -> bool {
       expr_path(_) => {
         match cx.tcx.def_map.get_copy(&ex.id) {
           def_variant(edid, vdid) => {
-              vec::len(ty::enum_variant_with_id(cx.tcx, edid, vdid).args) == 0u
+              ty::enum_variant_with_id(cx.tcx, edid, vdid).args.is_empty()
           }
           _ => false
         }
@@ -420,7 +409,7 @@ pub fn check_durable(tcx: ty::ctxt, ty: ty::t, sp: span) -> bool {
         match ty::get(ty).sty {
           ty::ty_param(*) => {
             tcx.sess.span_err(sp, "value may contain borrowed \
-                                   pointers; use `'static` bound");
+                                   pointers; add `'static` bound");
           }
           _ => {
             tcx.sess.span_err(sp, "value may contain borrowed \

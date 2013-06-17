@@ -17,6 +17,8 @@ use ext::base::ExtCtxt;
 use ext::build::{AstBuilder, Duplicate};
 use ext::deriving::generic::*;
 
+use core::vec;
+
 pub fn expand_deriving_rand(cx: @ExtCtxt,
                             span: span,
                             mitem: @meta_item,
@@ -45,8 +47,7 @@ pub fn expand_deriving_rand(cx: @ExtCtxt,
             }
         ]
     };
-
-    expand_deriving_generic(cx, span, mitem, in_items, &trait_def)
+    trait_def.expand(cx, span, mitem, in_items)
 }
 
 fn rand_substructure(cx: @ExtCtxt, span: span, substr: &Substructure) -> @expr {
@@ -78,18 +79,19 @@ fn rand_substructure(cx: @ExtCtxt, span: span, substr: &Substructure) -> @expr {
             let variant_count = cx.expr_uint(span, variants.len());
 
             // need to specify the uint-ness of the random number
-            let u32_ty = cx.ty_ident(span, cx.ident_of("uint"));
+            let uint_ty = cx.ty_ident(span, cx.ident_of("uint"));
             let r_ty = cx.ty_ident(span, cx.ident_of("R"));
-            let rand_name = cx.path_all(span, false, copy rand_ident, None, ~[ u32_ty, r_ty ]);
+            let rand_name = cx.path_all(span, true, copy rand_ident, None, ~[ uint_ty, r_ty ]);
             let rand_name = cx.expr_path(rand_name);
 
+            // ::std::rand::Rand::rand::<uint>(rng)
             let rv_call = cx.expr_call(span,
                                        rand_name,
                                        ~[ rng[0].duplicate(cx) ]);
 
             // rand() % variants.len()
             let rand_variant = cx.expr_binary(span, ast::rem,
-                                                rv_call, variant_count);
+                                              rv_call, variant_count);
 
             let mut arms = do variants.mapi |i, id_sum| {
                 let i_expr = cx.expr_uint(span, i);
@@ -117,7 +119,7 @@ fn rand_substructure(cx: @ExtCtxt, span: span, substr: &Substructure) -> @expr {
                   summary: &Either<uint, ~[ident]>,
                   rand_call: &fn() -> @expr) -> @expr {
         match *summary {
-            Left(copy count) => {
+            Left(count) => {
                 if count == 0 {
                     cx.expr_ident(span, ctor_ident)
                 } else {

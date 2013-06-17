@@ -14,7 +14,8 @@ struct A<'self> {
 }
 
 fn main() {
-    let a = A { x: &1 }, b = A { x: &2 };
+    let a = A { x: &1 };
+    let b = A { x: &2 };
 
     assert_eq!(a, a);
     assert_eq!(b, b);

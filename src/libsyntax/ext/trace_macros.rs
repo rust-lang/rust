@@ -10,6 +10,7 @@
 
 use core::prelude::*;
 
+use core::vec;
 use ast;
 use codemap::span;
 use ext::base::ExtCtxt;
@@ -26,7 +27,6 @@ pub fn expand_trace_macros(cx: @ExtCtxt,
     let cfg = cx.cfg();
     let tt_rdr = new_tt_reader(
         copy cx.parse_sess().span_diagnostic,
-        cx.parse_sess().interner,
         None,
         vec::to_owned(tt)
     );

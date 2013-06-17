@@ -44,6 +44,8 @@ implement `Reader` and `Writer`, where appropriate.
 
 */
 
+#[allow(missing_doc)];
+
 use result::Result;
 
 use container::Container;
@@ -670,7 +672,7 @@ impl<T:Reader> ReaderUtil for T {
                     val <<= 6;
                     val += (next & 63) as uint;
                 }
-                // See str::char_at
+                // See str::StrSlice::char_at
                 val += ((b0 << ((w + 1) as u8)) as uint)
                     << (w - 1) * 6 - w - 1u;
                 chars.push(val as char);
@@ -746,7 +748,7 @@ impl<T:Reader> ReaderUtil for T {
             if self.eof() && line.is_empty() { break; }
 
             // trim the \n, so that each_line is consistent with read_line
-            let n = str::len(line);
+            let n = line.len();
             if line[n-1] == '\n' as u8 {
                 unsafe { str::raw::set_len(&mut line, n-1); }
             }
@@ -769,7 +771,7 @@ impl<T:Reader> ReaderUtil for T {
     fn read_le_uint_n(&self, nbytes: uint) -> u64 {
         assert!(nbytes > 0 && nbytes <= 8);
 
-        let mut val = 0u64, pos = 0, i = nbytes;
+        let mut (val, pos, i) = (0u64, 0, nbytes);
         while i > 0 {
             val += (self.read_u8() as u64) << pos;
             pos += 8;
@@ -785,7 +787,7 @@ impl<T:Reader> ReaderUtil for T {
     fn read_be_uint_n(&self, nbytes: uint) -> u64 {
         assert!(nbytes > 0 && nbytes <= 8);
 
-        let mut val = 0u64, i = nbytes;
+        let mut (val, i) = (0u64, nbytes);
         while i > 0 {
             i -= 1;
             val += (self.read_u8() as u64) << i * 8;
@@ -980,6 +982,12 @@ pub struct FILERes {
     f: *libc::FILE,
 }
 
+impl FILERes {
+    pub fn new(f: *libc::FILE) -> FILERes {
+        FILERes { f: f }
+    }
+}
+
 impl Drop for FILERes {
     fn finalize(&self) {
         unsafe {
@@ -988,15 +996,9 @@ impl Drop for FILERes {
     }
 }
 
-pub fn FILERes(f: *libc::FILE) -> FILERes {
-    FILERes {
-        f: f
-    }
-}
-
 pub fn FILE_reader(f: *libc::FILE, cleanup: bool) -> @Reader {
     if cleanup {
-        @Wrapper { base: f, cleanup: FILERes(f) } as @Reader
+        @Wrapper { base: f, cleanup: FILERes::new(f) } as @Reader
     } else {
         @f as @Reader
     }
@@ -1089,7 +1091,7 @@ pub fn with_bytes_reader<T>(bytes: &[u8], f: &fn(@Reader) -> T) -> T {
 }
 
 pub fn with_str_reader<T>(s: &str, f: &fn(@Reader) -> T) -> T {
-    str::byte_slice(s, |bytes| with_bytes_reader(bytes, f))
+    with_bytes_reader(s.as_bytes(), f)
 }
 
 // Writing
@@ -1181,7 +1183,7 @@ impl Writer for *libc::FILE {
 
 pub fn FILE_writer(f: *libc::FILE, cleanup: bool) -> @Writer {
     if cleanup {
-        @Wrapper { base: f, cleanup: FILERes(f) } as @Writer
+        @Wrapper { base: f, cleanup: FILERes::new(f) } as @Writer
     } else {
         @f as @Writer
     }
@@ -1225,6 +1227,12 @@ pub struct FdRes {
     fd: fd_t,
 }
 
+impl FdRes {
+    pub fn new(fd: fd_t) -> FdRes {
+        FdRes { fd: fd }
+    }
+}
+
 impl Drop for FdRes {
     fn finalize(&self) {
         unsafe {
@@ -1233,15 +1241,9 @@ impl Drop for FdRes {
     }
 }
 
-pub fn FdRes(fd: fd_t) -> FdRes {
-    FdRes {
-        fd: fd
-    }
-}
-
 pub fn fd_writer(fd: fd_t, cleanup: bool) -> @Writer {
     if cleanup {
-        @Wrapper { base: fd, cleanup: FdRes(fd) } as @Writer
+        @Wrapper { base: fd, cleanup: FdRes::new(fd) } as @Writer
     } else {
         @fd as @Writer
     }
@@ -1302,7 +1304,9 @@ pub fn u64_to_le_bytes<T>(n: u64, size: uint,
               (n >> 56) as u8]),
       _ => {
 
-        let mut bytes: ~[u8] = ~[], i = size, n = n;
+        let mut bytes: ~[u8] = ~[];
+        let mut i = size;
+        let mut n = n;
         while i > 0u {
             bytes.push((n & 255_u64) as u8);
             n >>= 8_u64;
@@ -1458,7 +1462,7 @@ impl<T:Writer> WriterUtil for T {
             self.write_str(str::from_char(ch));
         }
     }
-    fn write_str(&self, s: &str) { str::byte_slice(s, |v| self.write(v)) }
+    fn write_str(&self, s: &str) { self.write(s.as_bytes()) }
     fn write_line(&self, s: &str) {
         self.write_str(s);
         self.write_str(&"\n");
@@ -1632,6 +1636,15 @@ pub struct BytesWriter {
     pos: @mut uint,
 }
 
+impl BytesWriter {
+    pub fn new() -> BytesWriter {
+        BytesWriter {
+            bytes: @mut ~[],
+            pos: @mut 0
+        }
+    }
+}
+
 impl Writer for BytesWriter {
     fn write(&self, v: &[u8]) {
         let v_len = v.len();
@@ -1671,15 +1684,8 @@ impl Writer for BytesWriter {
     }
 }
 
-pub fn BytesWriter() -> BytesWriter {
-    BytesWriter {
-        bytes: @mut ~[],
-        pos: @mut 0
-    }
-}
-
 pub fn with_bytes_writer(f: &fn(@Writer)) -> ~[u8] {
-    let wr = @BytesWriter();
+    let wr = @BytesWriter::new();
     f(wr as @Writer);
     let @BytesWriter { bytes, _ } = wr;
     copy *bytes
@@ -1760,6 +1766,12 @@ pub mod fsync {
         arg: Arg<t>,
     }
 
+    impl <t: Copy> Res<t> {
+        pub fn new(arg: Arg<t>) -> Res<t> {
+            Res { arg: arg }
+        }
+    }
+
     #[unsafe_destructor]
     impl<T:Copy> Drop for Res<T> {
         fn finalize(&self) {
@@ -1774,12 +1786,6 @@ pub mod fsync {
         }
     }
 
-    pub fn Res<t: Copy>(arg: Arg<t>) -> Res<t>{
-        Res {
-            arg: arg
-        }
-    }
-
     pub struct Arg<t> {
         val: t,
         opt_level: Option<Level>,
@@ -1791,7 +1797,7 @@ pub mod fsync {
     // outer res
     pub fn FILE_res_sync(file: &FILERes, opt_level: Option<Level>,
                          blk: &fn(v: Res<*libc::FILE>)) {
-        blk(Res(Arg {
+        blk(Res::new(Arg {
             val: file.f, opt_level: opt_level,
             fsync_fn: |file, l| {
                 unsafe {
@@ -1804,7 +1810,7 @@ pub mod fsync {
     // fsync fd after executing blk
     pub fn fd_res_sync(fd: &FdRes, opt_level: Option<Level>,
                        blk: &fn(v: Res<fd_t>)) {
-        blk(Res(Arg {
+        blk(Res::new(Arg {
             val: fd.fd, opt_level: opt_level,
             fsync_fn: |fd, l| os::fsync_fd(fd, l) as int
         }));
@@ -1816,7 +1822,7 @@ pub mod fsync {
     // Call o.fsync after executing blk
     pub fn obj_sync(o: @FSyncable, opt_level: Option<Level>,
                     blk: &fn(v: Res<@FSyncable>)) {
-        blk(Res(Arg {
+        blk(Res::new(Arg {
             val: o, opt_level: opt_level,
             fsync_fn: |o, l| o.fsync(l)
         }));
@@ -1830,7 +1836,6 @@ mod tests {
     use io;
     use path::Path;
     use result;
-    use str;
     use u64;
     use vec;
 
@@ -1931,7 +1936,7 @@ mod tests {
     #[test]
     fn file_reader_not_exist() {
         match io::file_reader(&Path("not a file")) {
-          result::Err(copy e) => {
+          result::Err(e) => {
             assert_eq!(e, ~"error opening not a file");
           }
           result::Ok(_) => fail!()
@@ -1972,8 +1977,8 @@ mod tests {
     #[test]
     fn file_writer_bad_name() {
         match io::file_writer(&Path("?/?"), []) {
-          result::Err(copy e) => {
-            assert!(str::starts_with(e, "error opening"));
+          result::Err(e) => {
+            assert!(e.starts_with("error opening"));
           }
           result::Ok(_) => fail!()
         }
@@ -1982,8 +1987,8 @@ mod tests {
     #[test]
     fn buffered_file_writer_bad_name() {
         match io::buffered_file_writer(&Path("?/?")) {
-          result::Err(copy e) => {
-            assert!(str::starts_with(e, "error opening"));
+          result::Err(e) => {
+            assert!(e.starts_with("error opening"));
           }
           result::Ok(_) => fail!()
         }
@@ -1991,7 +1996,7 @@ mod tests {
 
     #[test]
     fn bytes_buffer_overwrite() {
-        let wr = BytesWriter();
+        let wr = BytesWriter::new();
         wr.write([0u8, 1u8, 2u8, 3u8]);
         assert!(*wr.bytes == ~[0u8, 1u8, 2u8, 3u8]);
         wr.seek(-2, SeekCur);

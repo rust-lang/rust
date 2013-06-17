@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -18,16 +18,21 @@ use lib::llvm::ModuleRef;
 use lib;
 use metadata::common::LinkMeta;
 use metadata::{encoder, csearch, cstore};
-use middle::trans::common::CrateContext;
+use middle::trans::context::CrateContext;
 use middle::ty;
 use util::ppaux;
 
+use core::char;
 use core::hash::Streaming;
 use core::hash;
 use core::libc::{c_int, c_uint};
 use core::os::consts::{macos, freebsd, linux, android, win32};
+use core::os;
+use core::ptr;
 use core::rt::io::Writer;
 use core::run;
+use core::str;
+use core::vec;
 use syntax::ast;
 use syntax::ast_map::{path, path_mod, path_name};
 use syntax::attr;
@@ -44,8 +49,7 @@ pub enum output_type {
 }
 
 fn write_string<W:Writer>(writer: &mut W, string: &str) {
-    let buffer = str::as_bytes_slice(string);
-    writer.write(buffer);
+    writer.write(string.as_bytes());
 }
 
 pub fn llvm_err(sess: Session, msg: ~str) -> ! {
@@ -97,31 +101,21 @@ pub mod jit {
     use back::link::llvm_err;
     use driver::session::Session;
     use lib::llvm::llvm;
-    use lib::llvm::{ModuleRef, PassManagerRef};
+    use lib::llvm::{ModuleRef, ContextRef};
     use metadata::cstore;
 
-    use core::libc::c_int;
-
-    pub mod rusti {
-        #[nolink]
-        #[abi = "rust-intrinsic"]
-        pub extern "rust-intrinsic" {
-            pub fn morestack_addr() -> *();
-        }
-    }
-
-    pub struct Closure {
-        code: *(),
-        env: *(),
-    }
+    use core::cast;
+    use core::ptr;
+    use core::str;
+    use core::sys;
+    use core::unstable::intrinsics;
 
     pub fn exec(sess: Session,
-                pm: PassManagerRef,
+                c: ContextRef,
                 m: ModuleRef,
-                opt: c_int,
                 stacks: bool) {
         unsafe {
-            let manager = llvm::LLVMRustPrepareJIT(rusti::morestack_addr());
+            let manager = llvm::LLVMRustPrepareJIT(intrinsics::morestack_addr());
 
             // We need to tell JIT where to resolve all linked
             // symbols from. The equivalent of -lstd, -lcore, etc.
@@ -145,26 +139,43 @@ pub mod jit {
                     });
             }
 
-            // The execute function will return a void pointer
-            // to the _rust_main function. We can do closure
-            // magic here to turn it straight into a callable rust
-            // closure. It will also cleanup the memory manager
-            // for us.
-
-            let entry = llvm::LLVMRustExecuteJIT(manager,
-                                                 pm, m, opt, stacks);
-
-            if ptr::is_null(entry) {
-                llvm_err(sess, ~"Could not JIT");
-            } else {
-                let closure = Closure {
-                    code: entry,
-                    env: ptr::null()
-                };
-                let func: &fn() = cast::transmute(closure);
-
-                func();
+            // We custom-build a JIT execution engine via some rust wrappers
+            // first. This wrappers takes ownership of the module passed in.
+            let ee = llvm::LLVMRustBuildJIT(manager, m, stacks);
+            if ee.is_null() {
+                llvm::LLVMContextDispose(c);
+                llvm_err(sess, ~"Could not create the JIT");
             }
+
+            // Next, we need to get a handle on the _rust_main function by
+            // looking up it's corresponding ValueRef and then requesting that
+            // the execution engine compiles the function.
+            let fun = do str::as_c_str("_rust_main") |entry| {
+                llvm::LLVMGetNamedFunction(m, entry)
+            };
+            if fun.is_null() {
+                llvm::LLVMDisposeExecutionEngine(ee);
+                llvm::LLVMContextDispose(c);
+                llvm_err(sess, ~"Could not find _rust_main in the JIT");
+            }
+
+            // Finally, once we have the pointer to the code, we can do some
+            // closure magic here to turn it straight into a callable rust
+            // closure
+            let code = llvm::LLVMGetPointerToGlobal(ee, fun);
+            assert!(!code.is_null());
+            let closure = sys::Closure {
+                code: code,
+                env: ptr::null()
+            };
+            let func: &fn() = cast::transmute(closure);
+            func();
+
+            // Sadly, there currently is no interface to re-use this execution
+            // engine, so it's disposed of here along with the context to
+            // prevent leaks.
+            llvm::LLVMDisposeExecutionEngine(ee);
+            llvm::LLVMContextDispose(c);
         }
     }
 }
@@ -181,6 +192,7 @@ pub mod write {
     use driver::session;
     use lib::llvm::llvm;
     use lib::llvm::{ModuleRef, mk_pass_manager, mk_target_data};
+    use lib::llvm::{ContextRef};
     use lib;
 
     use back::passes;
@@ -188,6 +200,7 @@ pub mod write {
     use core::libc::{c_int, c_uint};
     use core::path::Path;
     use core::run;
+    use core::str;
 
     pub fn is_object_or_assembly_or_exe(ot: output_type) -> bool {
         if ot == output_type_assembly || ot == output_type_object ||
@@ -198,10 +211,13 @@ pub mod write {
     }
 
     pub fn run_passes(sess: Session,
+                      llcx: ContextRef,
                       llmod: ModuleRef,
                       output_type: output_type,
                       output: &Path) {
         unsafe {
+            llvm::LLVMInitializePasses();
+
             let opts = sess.opts;
             if sess.time_llvm_passes() { llvm::LLVMRustEnableTimePasses(); }
             let td = mk_target_data(sess.targ_cfg.target_strs.data_layout);
@@ -232,19 +248,36 @@ pub mod write {
             let mut mpm = passes::PassManager::new(td.lltd);
 
             if !sess.no_verify() {
-                mpm.addPass(llvm::LLVMCreateVerifierPass());
+                mpm.add_pass_from_name("verify");
             }
 
-            if sess.lint_llvm() {
-                mpm.addPass(llvm::LLVMCreateLintPass());
-            }
+            let passes = if sess.opts.custom_passes.len() > 0 {
+                copy sess.opts.custom_passes
+            } else {
+                if sess.lint_llvm() {
+                    mpm.add_pass_from_name("lint");
+                }
+                passes::create_standard_passes(opts.optimize)
+            };
 
-            passes::populatePassManager(&mut mpm, opts.optimize);
+
+            debug!("Passes: %?", passes);
+            passes::populate_pass_manager(sess, &mut mpm, passes);
 
             debug!("Running Module Optimization Pass");
             mpm.run(llmod);
 
-            if is_object_or_assembly_or_exe(output_type) || opts.jit {
+            if opts.jit {
+                // If we are using JIT, go ahead and create and execute the
+                // engine now.  JIT execution takes ownership of the module and
+                // context, so don't dispose and return.
+                jit::exec(sess, llcx, llmod, true);
+
+                if sess.time_llvm_passes() {
+                    llvm::LLVMRustPrintPassTimings();
+                }
+                return;
+            } else if is_object_or_assembly_or_exe(output_type) {
                 let LLVMOptNone       = 0 as c_int; // -O0
                 let LLVMOptLess       = 1 as c_int; // -O1
                 let LLVMOptDefault    = 2 as c_int; // -O2, -Os
@@ -256,20 +289,6 @@ pub mod write {
                   session::Default => LLVMOptDefault,
                   session::Aggressive => LLVMOptAggressive
                 };
-
-                if opts.jit {
-                    // If we are using JIT, go ahead and create and
-                    // execute the engine now.
-                    // JIT execution takes ownership of the module,
-                    // so don't dispose and return.
-
-                    jit::exec(sess, pm.llpm, llmod, CodeGenOptLevel, true);
-
-                    if sess.time_llvm_passes() {
-                        llvm::LLVMRustPrintPassTimings();
-                    }
-                    return;
-                }
 
                 let FileType;
                 if output_type == output_type_object ||
@@ -331,6 +350,7 @@ pub mod write {
                 // Clean up and return
 
                 llvm::LLVMDisposeModule(llmod);
+                llvm::LLVMContextDispose(llcx);
                 if sess.time_llvm_passes() {
                     llvm::LLVMRustPrintPassTimings();
                 }
@@ -349,14 +369,15 @@ pub mod write {
             }
 
             llvm::LLVMDisposeModule(llmod);
+            llvm::LLVMContextDispose(llcx);
             if sess.time_llvm_passes() { llvm::LLVMRustPrintPassTimings(); }
         }
     }
 
     pub fn run_ndk(sess: Session, assembly: &Path, object: &Path) {
         let cc_prog: ~str = match &sess.opts.android_cross_path {
-            &Some(copy path) => {
-                fmt!("%s/bin/arm-linux-androideabi-gcc", path)
+            &Some(ref path) => {
+                fmt!("%s/bin/arm-linux-androideabi-gcc", *path)
             }
             &None => {
                 sess.fatal("need Android NDK path for building \
@@ -375,7 +396,7 @@ pub mod write {
             sess.err(fmt!("building with `%s` failed with code %d",
                         cc_prog, prog.status));
             sess.note(fmt!("%s arguments: %s",
-                        cc_prog, str::connect(cc_args, " ")));
+                        cc_prog, cc_args.connect(" ")));
             sess.note(str::from_bytes(prog.error + prog.output));
             sess.abort_if_errors();
         }
@@ -453,16 +474,16 @@ pub fn build_link_meta(sess: Session,
         let linkage_metas = attr::find_linkage_metas(c.node.attrs);
         attr::require_unique_names(sess.diagnostic(), linkage_metas);
         for linkage_metas.each |meta| {
-            if *attr::get_meta_item_name(*meta) == ~"name" {
+            if "name" == attr::get_meta_item_name(*meta) {
                 match attr::get_meta_item_value_str(*meta) {
                   // Changing attr would avoid the need for the copy
                   // here
-                  Some(v) => { name = Some(v.to_managed()); }
+                  Some(v) => { name = Some(v); }
                   None => cmh_items.push(*meta)
                 }
-            } else if *attr::get_meta_item_name(*meta) == ~"vers" {
+            } else if "vers" == attr::get_meta_item_name(*meta) {
                 match attr::get_meta_item_value_str(*meta) {
-                  Some(v) => { vers = Some(v.to_managed()); }
+                  Some(v) => { vers = Some(v); }
                   None => cmh_items.push(*meta)
                 }
             } else { cmh_items.push(*meta); }
@@ -478,7 +499,7 @@ pub fn build_link_meta(sess: Session,
     // This calculates CMH as defined above
     fn crate_meta_extras_hash(symbol_hasher: &mut hash::State,
                               cmh_items: ~[@ast::meta_item],
-                              dep_hashes: ~[~str]) -> @str {
+                              dep_hashes: ~[@str]) -> @str {
         fn len_and_str(s: &str) -> ~str {
             fmt!("%u_%s", s.len(), s)
         }
@@ -492,14 +513,14 @@ pub fn build_link_meta(sess: Session,
         fn hash(symbol_hasher: &mut hash::State, m: &@ast::meta_item) {
             match m.node {
               ast::meta_name_value(key, value) => {
-                write_string(symbol_hasher, len_and_str(*key));
+                write_string(symbol_hasher, len_and_str(key));
                 write_string(symbol_hasher, len_and_str_lit(value));
               }
               ast::meta_word(name) => {
-                write_string(symbol_hasher, len_and_str(*name));
+                write_string(symbol_hasher, len_and_str(name));
               }
               ast::meta_list(name, ref mis) => {
-                write_string(symbol_hasher, len_and_str(*name));
+                write_string(symbol_hasher, len_and_str(name));
                 for mis.each |m_| {
                     hash(symbol_hasher, m_);
                 }
@@ -596,16 +617,16 @@ pub fn symbol_hash(tcx: ty::ctxt,
     write_string(symbol_hasher, encoder::encoded_ty(tcx, t));
     let mut hash = truncated_hash_result(symbol_hasher);
     // Prefix with _ so that it never blends into adjacent digits
-    str::unshift_char(&mut hash, '_');
+    hash.unshift_char('_');
     // tjc: allocation is unfortunate; need to change core::hash
     hash.to_managed()
 }
 
-pub fn get_symbol_hash(ccx: @CrateContext, t: ty::t) -> @str {
+pub fn get_symbol_hash(ccx: &mut CrateContext, t: ty::t) -> @str {
     match ccx.type_hashcodes.find(&t) {
       Some(&h) => h,
       None => {
-        let hash = symbol_hash(ccx.tcx, ccx.symbol_hasher, t, ccx.link_meta);
+        let hash = symbol_hash(ccx.tcx, &mut ccx.symbol_hasher, t, ccx.link_meta);
         ccx.type_hashcodes.insert(t, hash);
         hash
       }
@@ -615,26 +636,37 @@ pub fn get_symbol_hash(ccx: @CrateContext, t: ty::t) -> @str {
 
 // Name sanitation. LLVM will happily accept identifiers with weird names, but
 // gas doesn't!
+// gas accepts the following characters in symbols: a-z, A-Z, 0-9, ., _, $
 pub fn sanitize(s: &str) -> ~str {
     let mut result = ~"";
-    for str::each_char(s) |c| {
+    for s.iter().advance |c| {
         match c {
-          '@' => result += "_sbox_",
-          '~' => result += "_ubox_",
-          '*' => result += "_ptr_",
-          '&' => result += "_ref_",
-          ',' => result += "_",
+            // Escape these with $ sequences
+            '@' => result += "$SP$",
+            '~' => result += "$UP$",
+            '*' => result += "$RP$",
+            '&' => result += "$BP$",
+            '<' => result += "$LT$",
+            '>' => result += "$GT$",
+            '(' => result += "$LP$",
+            ')' => result += "$RP$",
+            ',' => result += "$C$",
 
-          '{' | '(' => result += "_of_",
-          'a' .. 'z'
-          | 'A' .. 'Z'
-          | '0' .. '9'
-          | '_' => result.push_char(c),
-          _ => {
-            if c > 'z' && char::is_XID_continue(c) {
-                result.push_char(c);
+            // '.' doesn't occur in types and functions, so reuse it
+            // for ':'
+            ':' => result.push_char('.'),
+
+            // These are legal symbols
+            'a' .. 'z'
+            | 'A' .. 'Z'
+            | '0' .. '9'
+            | '_' => result.push_char(c),
+
+            _ => {
+                if c > 'z' && char::is_XID_continue(c) {
+                    result.push_char(c);
+                }
             }
-          }
         }
     }
 
@@ -655,8 +687,8 @@ pub fn mangle(sess: Session, ss: path) -> ~str {
 
     for ss.each |s| {
         match *s { path_name(s) | path_mod(s) => {
-          let sani = sanitize(*sess.str_of(s));
-          n += fmt!("%u%s", str::len(sani), sani);
+          let sani = sanitize(sess.str_of(s));
+          n += fmt!("%u%s", sani.len(), sani);
         } }
     }
     n += "E"; // End name-sequence.
@@ -673,7 +705,7 @@ pub fn exported_name(sess: Session,
             path_name(sess.ident_of(vers))));
 }
 
-pub fn mangle_exported_name(ccx: @CrateContext,
+pub fn mangle_exported_name(ccx: &mut CrateContext,
                             path: path,
                             t: ty::t) -> ~str {
     let hash = get_symbol_hash(ccx, t);
@@ -682,7 +714,7 @@ pub fn mangle_exported_name(ccx: @CrateContext,
                          ccx.link_meta.vers);
 }
 
-pub fn mangle_internal_name_by_type_only(ccx: @CrateContext,
+pub fn mangle_internal_name_by_type_only(ccx: &mut CrateContext,
                                          t: ty::t,
                                          name: &str) -> ~str {
     let s = ppaux::ty_to_short_str(ccx.tcx, t);
@@ -693,7 +725,7 @@ pub fn mangle_internal_name_by_type_only(ccx: @CrateContext,
           path_name(ccx.sess.ident_of(hash))]);
 }
 
-pub fn mangle_internal_name_by_type_and_seq(ccx: @CrateContext,
+pub fn mangle_internal_name_by_type_and_seq(ccx: &mut CrateContext,
                                          t: ty::t,
                                          name: &str) -> ~str {
     let s = ppaux::ty_to_str(ccx.tcx, t);
@@ -704,24 +736,23 @@ pub fn mangle_internal_name_by_type_and_seq(ccx: @CrateContext,
           path_name((ccx.names)(name))]);
 }
 
-pub fn mangle_internal_name_by_path_and_seq(ccx: @CrateContext,
+pub fn mangle_internal_name_by_path_and_seq(ccx: &mut CrateContext,
                                             path: path,
                                             flav: &str) -> ~str {
     return mangle(ccx.sess,
                   vec::append_one(path, path_name((ccx.names)(flav))));
 }
 
-pub fn mangle_internal_name_by_path(ccx: @CrateContext, path: path) -> ~str {
+pub fn mangle_internal_name_by_path(ccx: &mut CrateContext, path: path) -> ~str {
     return mangle(ccx.sess, path);
 }
 
-pub fn mangle_internal_name_by_seq(ccx: @CrateContext, flav: &str) -> ~str {
-    return fmt!("%s_%u", flav, (ccx.names)(flav).repr);
+pub fn mangle_internal_name_by_seq(ccx: &mut CrateContext, flav: &str) -> ~str {
+    return fmt!("%s_%u", flav, (ccx.names)(flav).name);
 }
 
 
 pub fn output_dll_filename(os: session::os, lm: LinkMeta) -> ~str {
-    let libname = fmt!("%s-%s-%s", lm.name, lm.extras_hash, lm.vers);
     let (dll_prefix, dll_suffix) = match os {
         session::os_win32 => (win32::DLL_PREFIX, win32::DLL_SUFFIX),
         session::os_macos => (macos::DLL_PREFIX, macos::DLL_SUFFIX),
@@ -729,8 +760,7 @@ pub fn output_dll_filename(os: session::os, lm: LinkMeta) -> ~str {
         session::os_android => (android::DLL_PREFIX, android::DLL_SUFFIX),
         session::os_freebsd => (freebsd::DLL_PREFIX, freebsd::DLL_SUFFIX),
     };
-    return str::to_owned(dll_prefix) + libname +
-           str::to_owned(dll_suffix);
+    fmt!("%s%s-%s-%s%s", dll_prefix, lm.name, lm.extras_hash, lm.vers, dll_suffix)
 }
 
 // If the user wants an exe generated we need to invoke
@@ -745,12 +775,12 @@ pub fn link_binary(sess: Session,
     // For win32, there is no cc command,
     // so we add a condition to make it use gcc.
     let cc_prog: ~str = match sess.opts.linker {
-        Some(copy linker) => linker,
+        Some(ref linker) => copy *linker,
         None => {
             if sess.targ_cfg.os == session::os_android {
                 match &sess.opts.android_cross_path {
-                    &Some(copy path) => {
-                        fmt!("%s/bin/arm-linux-androideabi-gcc", path)
+                    &Some(ref path) => {
+                        fmt!("%s/bin/arm-linux-androideabi-gcc", *path)
                     }
                     &None => {
                         sess.fatal("need Android NDK path for linking \
@@ -781,14 +811,14 @@ pub fn link_binary(sess: Session,
 
     debug!("output: %s", output.to_str());
     let cc_args = link_args(sess, obj_filename, out_filename, lm);
-    debug!("%s link args: %s", cc_prog, str::connect(cc_args, " "));
+    debug!("%s link args: %s", cc_prog, cc_args.connect(" "));
     // We run 'cc' here
     let prog = run::process_output(cc_prog, cc_args);
     if 0 != prog.status {
         sess.err(fmt!("linking with `%s` failed with code %d",
                       cc_prog, prog.status));
         sess.note(fmt!("%s arguments: %s",
-                       cc_prog, str::connect(cc_args, " ")));
+                       cc_prog, cc_args.connect(" ")));
         sess.note(str::from_bytes(prog.error + prog.output));
         sess.abort_if_errors();
     }
@@ -863,7 +893,7 @@ pub fn link_args(sess: Session,
     }
 
     let ula = cstore::get_used_link_args(cstore);
-    for ula.each |arg| { args.push(/*bad*/copy *arg); }
+    for ula.each |arg| { args.push(arg.to_owned()); }
 
     // Add all the link args for external crates.
     do cstore::iter_crate_data(cstore) |crate_num, _| {

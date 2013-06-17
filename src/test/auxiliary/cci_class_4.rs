@@ -16,10 +16,10 @@ pub mod kitties {
         name : ~str,
     }
 
-    pub impl cat {
-        fn speak(&mut self) { self.meow(); }
+    impl cat {
+        pub fn speak(&mut self) { self.meow(); }
 
-        fn eat(&mut self) -> bool {
+        pub fn eat(&mut self) -> bool {
             if self.how_hungry > 0 {
                 error!("OM NOM NOM");
                 self.how_hungry -= 2;
@@ -31,8 +31,8 @@ pub mod kitties {
         }
     }
 
-    pub impl cat {
-        fn meow(&mut self) {
+    impl cat {
+        pub fn meow(&mut self) {
             error!("Meow");
             self.meows += 1u;
             if self.meows % 5u == 0u {

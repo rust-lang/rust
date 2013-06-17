@@ -12,12 +12,21 @@
 // multi tasking k-nucleotide
 
 extern mod extra;
+
 use extra::sort;
+use std::cmp::Ord;
+use std::comm::{stream, Port, Chan};
+use std::comm;
 use std::hashmap::HashMap;
 use std::io::ReaderUtil;
-use std::comm::{stream, Port, Chan};
-use std::cmp::Ord;
+use std::io;
+use std::option;
+use std::os;
+use std::result;
+use std::str;
+use std::task;
 use std::util;
+use std::vec;
 
 // given a map, print a sorted version of it
 fn sort_and_fmt(mm: &HashMap<~[u8], uint>, total: uint) -> ~str {
@@ -72,7 +81,8 @@ fn sort_and_fmt(mm: &HashMap<~[u8], uint>, total: uint) -> ~str {
 fn find(mm: &HashMap<~[u8], uint>, key: ~str) -> uint {
    // FIXME: #4318 Instead of to_ascii and to_str_ascii, could use
    // to_ascii_consume and to_str_consume to not do a unnecessary copy.
-   match mm.find(&str::to_bytes(key.to_ascii().to_lower().to_str_ascii())) {
+   let key = key.to_ascii().to_lower().to_str_ascii();
+   match mm.find_equiv(&key.as_bytes()) {
       option::None      => { return 0u; }
       option::Some(&num) => { return num; }
    }
@@ -182,13 +192,13 @@ fn main() {
    while !rdr.eof() {
       let line: ~str = rdr.read_line();
 
-      if str::len(line) == 0u { loop; }
+      if line.len() == 0u { loop; }
 
       match (line[0] as char, proc_mode) {
 
          // start processing if this is the one
          ('>', false) => {
-            match str::find_str_from(line, ~"THREE", 1u) {
+            match line.slice_from(1).find_str(~"THREE") {
                option::Some(_) => { proc_mode = true; }
                option::None    => { }
             }
@@ -199,10 +209,10 @@ fn main() {
 
          // process the sequence for k-mers
          (_, true) => {
-            let line_bytes = str::to_bytes(line);
+            let line_bytes = line.as_bytes();
 
            for sizes.eachi |ii, _sz| {
-               let mut lb = copy line_bytes;
+               let mut lb = line_bytes.to_owned();
                to_child[ii].send(lb);
             }
          }

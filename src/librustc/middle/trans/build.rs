@@ -19,8 +19,11 @@ use middle::trans::common::*;
 use middle::trans::machine::llalign_of_min;
 use syntax::codemap::span;
 
+use core::cast;
 use core::hashmap::HashMap;
 use core::libc::{c_uint, c_ulonglong, c_char};
+use core::str;
+use core::vec;
 
 pub fn terminate(cx: block, _: &str) {
     cx.terminated = true;
@@ -43,20 +46,19 @@ pub fn B(cx: block) -> BuilderRef {
 pub fn count_insn(cx: block, category: &str) {
     if cx.ccx().sess.count_llvm_insns() {
 
-        let h = cx.ccx().stats.llvm_insns;
-        let v = &*cx.ccx().stats.llvm_insn_ctxt;
+        let h = &mut cx.ccx().stats.llvm_insns;
+        let v : &[~str] = cx.ccx().stats.llvm_insn_ctxt;
 
         // Build version of path with cycles removed.
 
         // Pass 1: scan table mapping str -> rightmost pos.
         let mut mm = HashMap::new();
-        let len = vec::len(*v);
+        let len = v.len();
         let mut i = 0u;
         while i < len {
             mm.insert(copy v[i], i);
             i += 1u;
         }
-
 
         // Pass 2: concat strings for each elt, skipping
         // forwards over any cycles by advancing to rightmost
@@ -190,9 +192,7 @@ pub fn Invoke(cx: block,
     terminate(cx, "Invoke");
     debug!("Invoke(%s with arguments (%s))",
            val_str(cx.ccx().tn, Fn),
-           str::connect(vec::map(Args, |a| val_str(cx.ccx().tn,
-                                                   *a).to_owned()),
-                        ", "));
+           Args.map(|a| val_str(cx.ccx().tn, *a).to_owned()).connect(", "));
     unsafe {
         count_insn(cx, "invoke");
         llvm::LLVMBuildInvoke(B(cx),
@@ -547,7 +547,7 @@ pub fn AtomicLoad(cx: block, PointerVal: ValueRef, order: AtomicOrdering) -> Val
             return llvm::LLVMGetUndef(ccx.int_type);
         }
         count_insn(cx, "load.atomic");
-        let align = llalign_of_min(*ccx, ccx.int_type);
+        let align = llalign_of_min(ccx, ccx.int_type);
         return llvm::LLVMBuildAtomicLoad(B(cx), PointerVal, noname(), order, align as c_uint);
     }
 }
@@ -564,7 +564,8 @@ pub fn LoadRangeAssert(cx: block, PointerVal: ValueRef, lo: c_ulonglong,
 
         do vec::as_imm_buf([min, max]) |ptr, len| {
             llvm::LLVMSetMetadata(value, lib::llvm::MD_range as c_uint,
-                                  llvm::LLVMMDNode(ptr, len as c_uint));
+                                  llvm::LLVMMDNodeInContext(cx.fcx.ccx.llcx,
+                                                            ptr, len as c_uint));
         }
     }
 
@@ -884,9 +885,9 @@ pub fn add_comment(bcx: block, text: &str) {
     unsafe {
         let ccx = bcx.ccx();
         if ccx.sess.asm_comments() {
-            let sanitized = str::replace(text, "$", "");
+            let sanitized = text.replace("$", "");
             let comment_text = ~"# " +
-                str::replace(sanitized, "\n", "\n\t# ");
+                sanitized.replace("\n", "\n\t# ");
             let asm = str::as_c_str(comment_text, |c| {
                 str::as_c_str("", |e| {
                     count_insn(bcx, "inlineasm");

@@ -31,6 +31,19 @@ pub trait Finally<T> {
     fn finally(&self, dtor: &fn()) -> T;
 }
 
+macro_rules! finally_fn {
+    ($fnty:ty) => {
+        impl<T> Finally<T> for $fnty {
+            fn finally(&self, dtor: &fn()) -> T {
+                let _d = Finallyalizer {
+                    dtor: dtor
+                };
+                (*self)()
+            }
+        }
+    }
+}
+
 impl<'self,T> Finally<T> for &'self fn() -> T {
     fn finally(&self, dtor: &fn()) -> T {
         let _d = Finallyalizer {
@@ -41,25 +54,9 @@ impl<'self,T> Finally<T> for &'self fn() -> T {
     }
 }
 
-impl<T> Finally<T> for ~fn() -> T {
-    fn finally(&self, dtor: &fn()) -> T {
-        let _d = Finallyalizer {
-            dtor: dtor
-        };
-
-        (*self)()
-    }
-}
-
-impl<T> Finally<T> for @fn() -> T {
-    fn finally(&self, dtor: &fn()) -> T {
-        let _d = Finallyalizer {
-            dtor: dtor
-        };
-
-        (*self)()
-    }
-}
+finally_fn!(~fn() -> T)
+finally_fn!(@fn() -> T)
+finally_fn!(extern "Rust" fn() -> T)
 
 struct Finallyalizer<'self> {
     dtor: &'self fn()
@@ -108,10 +105,7 @@ fn test_retval() {
 
 #[test]
 fn test_compact() {
-    // FIXME #4727: Should be able to use a fn item instead
-    // of a closure for do_some_fallible_work,
-    // but it's a type error.
-    let do_some_fallible_work: &fn() = || { };
+    fn do_some_fallible_work() {}
     fn but_always_run_this_function() { }
     do_some_fallible_work.finally(
         but_always_run_this_function);

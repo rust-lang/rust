@@ -22,6 +22,12 @@ use procsrv;
 use util;
 use util::logv;
 
+use core::io;
+use core::os;
+use core::str;
+use core::uint;
+use core::vec;
+
 pub fn run(config: config, testfile: ~str) {
     if config.verbose {
         // We're going to be dumping a lot of info. Start on a new line.
@@ -164,8 +170,8 @@ fn run_pretty_test(config: &config, props: &TestProps, testfile: &Path) {
     if props.pp_exact.is_some() {
         // Now we have to care about line endings
         let cr = ~"\r";
-        actual = str::replace(actual, cr, "");
-        expected = str::replace(expected, cr, "");
+        actual = actual.replace(cr, "");
+        expected = expected.replace(cr, "");
     }
 
     compare_source(expected, actual);
@@ -231,13 +237,13 @@ fn run_debuginfo_test(config: &config, props: &TestProps, testfile: &Path) {
     // do not optimize debuginfo tests
     let mut config = match config.rustcflags {
         Some(ref flags) => config {
-            rustcflags: Some(str::replace(*flags, "-O", "")),
+            rustcflags: Some(flags.replace("-O", "")),
             .. copy *config
         },
         None => copy *config
     };
     let config = &mut config;
-    let cmds = str::connect(props.debugger_cmds, "\n");
+    let cmds = props.debugger_cmds.connect("\n");
     let check_lines = copy props.check_lines;
 
     // compile test file (it shoud have 'compile-flags:-g' in the header)
@@ -247,7 +253,7 @@ fn run_debuginfo_test(config: &config, props: &TestProps, testfile: &Path) {
     }
 
     // write debugger script
-    let script_str = str::append(cmds, "\nquit\n");
+    let script_str = cmds.append("\nquit\n");
     debug!("script_str = %s", script_str);
     dump_output_file(config, testfile, script_str, "debugger.script");
 
@@ -271,7 +277,7 @@ fn run_debuginfo_test(config: &config, props: &TestProps, testfile: &Path) {
         // check if each line in props.check_lines appears in the
         // output (in order)
         let mut i = 0u;
-        for str::each_line(ProcRes.stdout) |line| {
+        for ProcRes.stdout.line_iter().advance |line| {
             if check_lines[i].trim() == line.trim() {
                 i += 1u;
             }
@@ -290,7 +296,7 @@ fn run_debuginfo_test(config: &config, props: &TestProps, testfile: &Path) {
 fn check_error_patterns(props: &TestProps,
                         testfile: &Path,
                         ProcRes: &ProcRes) {
-    if vec::is_empty(props.error_patterns) {
+    if props.error_patterns.is_empty() {
         fatal(~"no error pattern specified in " + testfile.to_str());
     }
 
@@ -301,8 +307,8 @@ fn check_error_patterns(props: &TestProps,
     let mut next_err_idx = 0u;
     let mut next_err_pat = &props.error_patterns[next_err_idx];
     let mut done = false;
-    for str::each_line(ProcRes.stderr) |line| {
-        if str::contains(line, *next_err_pat) {
+    for ProcRes.stderr.line_iter().advance |line| {
+        if line.contains(*next_err_pat) {
             debug!("found error pattern %s", *next_err_pat);
             next_err_idx += 1u;
             if next_err_idx == props.error_patterns.len() {
@@ -351,15 +357,15 @@ fn check_expected_errors(expected_errors: ~[errors::ExpectedError],
     //    filename:line1:col1: line2:col2: *warning:* msg
     // where line1:col1: is the starting point, line2:col2:
     // is the ending point, and * represents ANSI color codes.
-    for str::each_line(ProcRes.stderr) |line| {
+    for ProcRes.stderr.line_iter().advance |line| {
         let mut was_expected = false;
         for vec::eachi(expected_errors) |i, ee| {
             if !found_flags[i] {
                 debug!("prefix=%s ee.kind=%s ee.msg=%s line=%s",
                        prefixes[i], ee.kind, ee.msg, line);
-                if (str::starts_with(line, prefixes[i]) &&
-                    str::contains(line, ee.kind) &&
-                    str::contains(line, ee.msg)) {
+                if (line.starts_with(prefixes[i]) &&
+                    line.contains(ee.kind) &&
+                    line.contains(ee.msg)) {
                     found_flags[i] = true;
                     was_expected = true;
                     break;
@@ -368,11 +374,11 @@ fn check_expected_errors(expected_errors: ~[errors::ExpectedError],
         }
 
         // ignore this msg which gets printed at the end
-        if str::contains(line, "aborting due to") {
+        if line.contains("aborting due to") {
             was_expected = true;
         }
 
-        if !was_expected && is_compiler_error_or_warning(str::to_owned(line)) {
+        if !was_expected && is_compiler_error_or_warning(line) {
             fatal_ProcRes(fmt!("unexpected compiler error or warning: '%s'",
                                line),
                           ProcRes);
@@ -410,7 +416,7 @@ fn scan_until_char(haystack: &str, needle: char, idx: &mut uint) -> bool {
     if *idx >= haystack.len() {
         return false;
     }
-    let opt = str::find_char_from(haystack, needle, *idx);
+    let opt = haystack.slice_from(*idx).find(needle);
     if opt.is_none() {
         return false;
     }
@@ -422,7 +428,7 @@ fn scan_char(haystack: &str, needle: char, idx: &mut uint) -> bool {
     if *idx >= haystack.len() {
         return false;
     }
-    let range = str::char_range_at(haystack, *idx);
+    let range = haystack.char_range_at(*idx);
     if range.ch != needle {
         return false;
     }
@@ -433,7 +439,7 @@ fn scan_char(haystack: &str, needle: char, idx: &mut uint) -> bool {
 fn scan_integer(haystack: &str, idx: &mut uint) -> bool {
     let mut i = *idx;
     while i < haystack.len() {
-        let range = str::char_range_at(haystack, i);
+        let range = haystack.char_range_at(i);
         if range.ch < '0' || '9' < range.ch {
             break;
         }
@@ -453,7 +459,7 @@ fn scan_string(haystack: &str, needle: &str, idx: &mut uint) -> bool {
         if haystack_i >= haystack.len() {
             return false;
         }
-        let range = str::char_range_at(haystack, haystack_i);
+        let range = haystack.char_range_at(haystack_i);
         haystack_i = range.next;
         if !scan_char(needle, range.ch, &mut needle_i) {
             return false;
@@ -590,8 +596,7 @@ fn make_lib_name(config: &config, auxfile: &Path, testfile: &Path) -> Path {
 }
 
 fn make_exe_name(config: &config, testfile: &Path) -> Path {
-    Path(output_base_name(config, testfile).to_str() +
-            str::to_owned(os::EXE_SUFFIX))
+    Path(output_base_name(config, testfile).to_str() + os::EXE_SUFFIX)
 }
 
 fn make_run_args(config: &config, _props: &TestProps, testfile: &Path) ->
@@ -600,21 +605,17 @@ fn make_run_args(config: &config, _props: &TestProps, testfile: &Path) ->
     // then split apart its command
     let toolargs = split_maybe_args(&config.runtool);
 
-    let mut args = toolargs + ~[make_exe_name(config, testfile).to_str()];
+    let mut args = toolargs + [make_exe_name(config, testfile).to_str()];
     let prog = args.shift();
     return ProcArgs {prog: prog, args: args};
 }
 
 fn split_maybe_args(argstr: &Option<~str>) -> ~[~str] {
-    fn rm_whitespace(v: ~[~str]) -> ~[~str] {
-        v.filtered(|s| !str::is_whitespace(*s))
-    }
-
     match *argstr {
         Some(ref s) => {
-            let mut ss = ~[];
-            for str::each_split_char(*s, ' ') |s| { ss.push(s.to_owned()) }
-            rm_whitespace(ss)
+            s.split_iter(' ')
+                .filter_map(|s| if s.is_whitespace() {None} else {Some(s.to_owned())})
+                .collect()
         }
         None => ~[]
     }
@@ -643,13 +644,13 @@ fn program_output(config: &config, testfile: &Path, lib_path: &str, prog: ~str,
 #[cfg(target_os = "macos")]
 #[cfg(target_os = "freebsd")]
 fn make_cmdline(_libpath: &str, prog: &str, args: &[~str]) -> ~str {
-    fmt!("%s %s", prog, str::connect(args, " "))
+    fmt!("%s %s", prog, args.connect(" "))
 }
 
 #[cfg(target_os = "win32")]
 fn make_cmdline(libpath: &str, prog: &str, args: &[~str]) -> ~str {
     fmt!("%s %s %s", lib_path_cmd_prefix(libpath), prog,
-         str::connect(args, ~" "))
+         args.connect(" "))
 }
 
 // Build the LD_LIBRARY_PATH variable as it would be seen on the command line
@@ -733,8 +734,7 @@ fn _arm_exec_compiled_test(config: &config, props: &TestProps,
     let cmdline = make_cmdline("", args.prog, args.args);
 
     // get bare program string
-    let mut tvec = ~[];
-    for str::each_split_char(args.prog, '/') |ts| { tvec.push(ts.to_owned()) }
+    let mut tvec: ~[~str] = args.prog.split_iter('/').transform(|ts| ts.to_owned()).collect();
     let prog_short = tvec.pop();
 
     // copy to target
@@ -748,53 +748,62 @@ fn _arm_exec_compiled_test(config: &config, props: &TestProps,
             copy_result.out, copy_result.err));
     }
 
-    // execute program
     logv(config, fmt!("executing (%s) %s", config.target, cmdline));
 
-    // adb shell dose not forward stdout and stderr of internal result
-    // to stdout and stderr separately but to stdout only
-    let mut newargs_out = ~[];
-    let mut newargs_err = ~[];
-    newargs_out.push(~"shell");
-    newargs_err.push(~"shell");
+    let mut runargs = ~[];
 
-    let mut newcmd_out = ~"";
-    let mut newcmd_err = ~"";
-
-    newcmd_out.push_str(fmt!("LD_LIBRARY_PATH=%s %s/%s",
-        config.adb_test_dir, config.adb_test_dir, prog_short));
-
-    newcmd_err.push_str(fmt!("LD_LIBRARY_PATH=%s %s/%s",
-        config.adb_test_dir, config.adb_test_dir, prog_short));
+    // run test via adb_run_wrapper
+    runargs.push(~"shell");
+    runargs.push(fmt!("%s/adb_run_wrapper.sh", config.adb_test_dir));
+    runargs.push(fmt!("%s", config.adb_test_dir));
+    runargs.push(fmt!("%s", prog_short));
 
     for args.args.each |tv| {
-        newcmd_out.push_str(" ");
-        newcmd_err.push_str(" ");
-        newcmd_out.push_str(tv.to_owned());
-        newcmd_err.push_str(tv.to_owned());
+        runargs.push(tv.to_owned());
     }
 
-    newcmd_out.push_str(" 2>/dev/null");
-    newcmd_err.push_str(" 1>/dev/null");
+    procsrv::run("", config.adb_path, runargs, ~[(~"",~"")], Some(~""));
 
-    newargs_out.push(newcmd_out);
-    newargs_err.push(newcmd_err);
+    // get exitcode of result
+    runargs = ~[];
+    runargs.push(~"shell");
+    runargs.push(~"cat");
+    runargs.push(fmt!("%s/%s.exitcode", config.adb_test_dir, prog_short));
 
-    let procsrv::Result{ out: out_out, err: _out_err, status: out_status } =
-            procsrv::run("", config.adb_path, newargs_out, ~[(~"",~"")],
-                         Some(~""));
-    let procsrv::Result{ out: err_out, err: _err_err, status: _err_status } =
-            procsrv::run("", config.adb_path, newargs_err, ~[(~"",~"")],
-                         Some(~""));
+    let procsrv::Result{ out: exitcode_out, err: _, status: _ } =
+        procsrv::run("", config.adb_path, runargs, ~[(~"",~"")],
+                     Some(~""));
 
-    dump_output(config, testfile, out_out, err_out);
-
-    match err_out {
-        ~"" => ProcRes {status: out_status, stdout: out_out,
-            stderr: err_out, cmdline: cmdline },
-        _   => ProcRes {status: 101, stdout: out_out,
-            stderr: err_out, cmdline: cmdline }
+    let mut exitcode : int = 0;
+    for exitcode_out.iter().advance |c| {
+        if !c.is_digit() { break; }
+        exitcode = exitcode * 10 + match c {
+            '0' .. '9' => c as int - ('0' as int),
+            _ => 101,
+        }
     }
+
+    // get stdout of result
+    runargs = ~[];
+    runargs.push(~"shell");
+    runargs.push(~"cat");
+    runargs.push(fmt!("%s/%s.stdout", config.adb_test_dir, prog_short));
+
+    let procsrv::Result{ out: stdout_out, err: _, status: _ } =
+        procsrv::run("", config.adb_path, runargs, ~[(~"",~"")], Some(~""));
+
+    // get stderr of result
+    runargs = ~[];
+    runargs.push(~"shell");
+    runargs.push(~"cat");
+    runargs.push(fmt!("%s/%s.stderr", config.adb_test_dir, prog_short));
+
+    let procsrv::Result{ out: stderr_out, err: _, status: _ } =
+        procsrv::run("", config.adb_path, runargs, ~[(~"",~"")], Some(~""));
+
+    dump_output(config, testfile, stdout_out, stderr_out);
+
+    ProcRes {status: exitcode, stdout: stdout_out, stderr: stderr_out, cmdline: cmdline }
 }
 
 fn _dummy_exec_compiled_test(config: &config, props: &TestProps,

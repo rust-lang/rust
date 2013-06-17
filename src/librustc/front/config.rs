@@ -10,6 +10,8 @@
 
 use core::prelude::*;
 
+use core::option;
+use core::vec;
 use syntax::{ast, fold, attr};
 
 type in_cfg_pred = @fn(attrs: ~[ast::attribute]) -> bool;
@@ -138,9 +140,18 @@ fn fold_block(
         b.stmts.filter_mapped(|a| filter_stmt(cx, *a));
     let filtered_view_items =
         b.view_items.filter_mapped(|a| filter_view_item(cx, *a));
+    let filtered_view_items =
+        filtered_view_items.map(|x| fld.fold_view_item(*x));
+    let mut resulting_stmts = ~[];
+    for filtered_stmts.each |stmt| {
+        match fld.fold_stmt(*stmt) {
+            None => {}
+            Some(stmt) => resulting_stmts.push(stmt),
+        }
+    }
     ast::blk_ {
-        view_items: vec::map(filtered_view_items, |x| fld.fold_view_item(*x)),
-        stmts: vec::map(filtered_stmts, |x| fld.fold_stmt(*x)),
+        view_items: filtered_view_items,
+        stmts: resulting_stmts,
         expr: b.expr.map(|x| fld.fold_expr(*x)),
         id: b.id,
         rules: b.rules,
@@ -191,7 +202,7 @@ pub fn metas_in_cfg(cfg: ast::crate_cfg,
     cfg_metas.any(|cfg_meta| {
         cfg_meta.all(|cfg_mi| {
             match cfg_mi.node {
-                ast::meta_list(s, ref it) if *s == ~"not"
+                ast::meta_list(s, ref it) if "not" == s
                     => it.all(|mi| !attr::contains(cfg, *mi)),
                 _ => attr::contains(cfg, *cfg_mi)
             }

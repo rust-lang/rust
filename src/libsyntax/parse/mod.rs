@@ -19,7 +19,6 @@ use diagnostic::{span_handler, mk_span_handler, mk_handler, Emitter};
 use parse::attr::parser_attr;
 use parse::lexer::reader;
 use parse::parser::Parser;
-use parse::token::{ident_interner, get_ident_interner};
 
 use core::io;
 use core::option::{None, Option, Some};
@@ -43,14 +42,10 @@ pub mod classify;
 pub mod obsolete;
 
 // info about a parsing session.
-// This structure and the reader both have
-// an interner associated with them. If they're
-// not the same, bad things can happen.
 pub struct ParseSess {
     cm: @codemap::CodeMap, // better be the same as the one in the reader!
     next_id: node_id,
     span_diagnostic: @span_handler, // better be the same as the one in the reader!
-    interner: @ident_interner,
 }
 
 pub fn new_parse_sess(demitter: Option<Emitter>) -> @mut ParseSess {
@@ -59,7 +54,6 @@ pub fn new_parse_sess(demitter: Option<Emitter>) -> @mut ParseSess {
         cm: cm,
         next_id: 1,
         span_diagnostic: mk_span_handler(mk_handler(demitter), cm),
-        interner: get_ident_interner(),
     }
 }
 
@@ -70,7 +64,6 @@ pub fn new_parse_sess_special_handler(sh: @span_handler,
         cm: cm,
         next_id: 1,
         span_diagnostic: sh,
-        interner: get_ident_interner(),
     }
 }
 
@@ -89,38 +82,38 @@ pub fn parse_crate_from_file(
 }
 
 pub fn parse_crate_from_source_str(
-    name: ~str,
-    source: @~str,
+    name: @str,
+    source: @str,
     cfg: ast::crate_cfg,
     sess: @mut ParseSess
 ) -> @ast::crate {
     let p = new_parser_from_source_str(
         sess,
         /*bad*/ copy cfg,
-        /*bad*/ copy name,
+        name,
         source
     );
     maybe_aborted(p.parse_crate_mod(),p)
 }
 
 pub fn parse_expr_from_source_str(
-    name: ~str,
-    source: @~str,
+    name: @str,
+    source: @str,
     cfg: ast::crate_cfg,
     sess: @mut ParseSess
 ) -> @ast::expr {
     let p = new_parser_from_source_str(
         sess,
         cfg,
-        /*bad*/ copy name,
+        name,
         source
     );
     maybe_aborted(p.parse_expr(), p)
 }
 
 pub fn parse_item_from_source_str(
-    name: ~str,
-    source: @~str,
+    name: @str,
+    source: @str,
     cfg: ast::crate_cfg,
     attrs: ~[ast::attribute],
     sess: @mut ParseSess
@@ -128,30 +121,30 @@ pub fn parse_item_from_source_str(
     let p = new_parser_from_source_str(
         sess,
         cfg,
-        /*bad*/ copy name,
+        name,
         source
     );
     maybe_aborted(p.parse_item(attrs),p)
 }
 
 pub fn parse_meta_from_source_str(
-    name: ~str,
-    source: @~str,
+    name: @str,
+    source: @str,
     cfg: ast::crate_cfg,
     sess: @mut ParseSess
 ) -> @ast::meta_item {
     let p = new_parser_from_source_str(
         sess,
         cfg,
-        /*bad*/ copy name,
+        name,
         source
     );
     maybe_aborted(p.parse_meta_item(),p)
 }
 
 pub fn parse_stmt_from_source_str(
-    name: ~str,
-    source: @~str,
+    name: @str,
+    source: @str,
     cfg: ast::crate_cfg,
     attrs: ~[ast::attribute],
     sess: @mut ParseSess
@@ -159,22 +152,22 @@ pub fn parse_stmt_from_source_str(
     let p = new_parser_from_source_str(
         sess,
         cfg,
-        /*bad*/ copy name,
+        name,
         source
     );
     maybe_aborted(p.parse_stmt(attrs),p)
 }
 
 pub fn parse_tts_from_source_str(
-    name: ~str,
-    source: @~str,
+    name: @str,
+    source: @str,
     cfg: ast::crate_cfg,
     sess: @mut ParseSess
 ) -> ~[ast::token_tree] {
     let p = new_parser_from_source_str(
         sess,
         cfg,
-        /*bad*/ copy name,
+        name,
         source
     );
     *p.quote_depth += 1u;
@@ -189,8 +182,8 @@ pub fn parse_tts_from_source_str(
 // result.
 pub fn parse_from_source_str<T>(
     f: &fn(&Parser) -> T,
-    name: ~str, ss: codemap::FileSubstr,
-    source: @~str,
+    name: @str, ss: codemap::FileSubstr,
+    source: @str,
     cfg: ast::crate_cfg,
     sess: @mut ParseSess
 ) -> T {
@@ -220,8 +213,8 @@ pub fn next_node_id(sess: @mut ParseSess) -> node_id {
 // Create a new parser from a source string
 pub fn new_parser_from_source_str(sess: @mut ParseSess,
                                   cfg: ast::crate_cfg,
-                                  name: ~str,
-                                  source: @~str)
+                                  name: @str,
+                                  source: @str)
                                -> Parser {
     filemap_to_parser(sess,string_to_filemap(sess,source,name),cfg)
 }
@@ -230,9 +223,9 @@ pub fn new_parser_from_source_str(sess: @mut ParseSess,
 // is specified as a substring of another file.
 pub fn new_parser_from_source_substr(sess: @mut ParseSess,
                                   cfg: ast::crate_cfg,
-                                  name: ~str,
+                                  name: @str,
                                   ss: codemap::FileSubstr,
-                                  source: @~str)
+                                  source: @str)
                                -> Parser {
     filemap_to_parser(sess,substring_to_filemap(sess,source,name,ss),cfg)
 }
@@ -282,7 +275,7 @@ pub fn new_parser_from_tts(sess: @mut ParseSess,
 pub fn file_to_filemap(sess: @mut ParseSess, path: &Path, spanopt: Option<span>)
     -> @FileMap {
     match io::read_whole_file_str(path) {
-        Ok(src) => string_to_filemap(sess, @src, path.to_str()),
+        Ok(src) => string_to_filemap(sess, src.to_managed(), path.to_str().to_managed()),
         Err(e) => {
             match spanopt {
                 Some(span) => sess.span_diagnostic.span_fatal(span, e),
@@ -294,14 +287,14 @@ pub fn file_to_filemap(sess: @mut ParseSess, path: &Path, spanopt: Option<span>)
 
 // given a session and a string, add the string to
 // the session's codemap and return the new filemap
-pub fn string_to_filemap(sess: @mut ParseSess, source: @~str, path: ~str)
+pub fn string_to_filemap(sess: @mut ParseSess, source: @str, path: @str)
     -> @FileMap {
     sess.cm.new_filemap(path, source)
 }
 
 // given a session and a string and a path and a FileSubStr, add
 // the string to the CodeMap and return the new FileMap
-pub fn substring_to_filemap(sess: @mut ParseSess, source: @~str, path: ~str,
+pub fn substring_to_filemap(sess: @mut ParseSess, source: @str, path: @str,
                            filesubstr: FileSubstr) -> @FileMap {
     sess.cm.new_filemap_w_substr(path,filesubstr,source)
 }
@@ -312,9 +305,7 @@ pub fn filemap_to_tts(sess: @mut ParseSess, filemap: @FileMap)
     // it appears to me that the cfg doesn't matter here... indeed,
     // parsing tt's probably shouldn't require a parser at all.
     let cfg = ~[];
-    let srdr = lexer::new_string_reader(copy sess.span_diagnostic,
-                                        filemap,
-                                        sess.interner);
+    let srdr = lexer::new_string_reader(copy sess.span_diagnostic, filemap);
     let p1 = Parser(sess, cfg, srdr as @reader);
     p1.parse_all_token_trees()
 }
@@ -325,7 +316,6 @@ pub fn tts_to_parser(sess: @mut ParseSess,
                      cfg: ast::crate_cfg) -> Parser {
     let trdr = lexer::new_tt_reader(
         copy sess.span_diagnostic,
-        sess.interner,
         None,
         tts
     );
@@ -353,13 +343,13 @@ mod test {
     use ast;
     use abi;
     use parse::parser::Parser;
-    use parse::token::intern;
-    use util::parser_testing::{string_to_tts_and_sess,string_to_parser};
+    use parse::token::{str_to_ident};
+    use util::parser_testing::{string_to_tts_and_sess, string_to_parser};
     use util::parser_testing::{string_to_expr, string_to_item};
-    use util::parser_testing::{string_to_stmt};
+    use util::parser_testing::{string_to_stmt, strs_to_idents};
 
     // map a string to tts, return the tt without its parsesess
-    fn string_to_tts_only(source_str : @~str) -> ~[ast::token_tree] {
+    fn string_to_tts_only(source_str : @str) -> ~[ast::token_tree] {
         let (tts,_ps) = string_to_tts_and_sess(source_str);
         tts
     }
@@ -377,31 +367,24 @@ mod test {
         span{lo:BytePos(a),hi:BytePos(b),expn_info:None}
     }
 
-    // convert a vector of uints to a vector of ast::idents
-    fn ints_to_idents(ids: ~[~str]) -> ~[ast::ident] {
-        ids.map(|u| intern(*u))
-    }
-
     #[test] fn path_exprs_1 () {
-        assert_eq!(string_to_expr(@~"a"),
+        assert_eq!(string_to_expr(@"a"),
                    @ast::expr{id:1,
-                              callee_id:2,
                               node:ast::expr_path(@ast::Path {span:sp(0,1),
                                                               global:false,
-                                                              idents:~[intern("a")],
+                                                              idents:~[str_to_ident("a")],
                                                               rp:None,
                                                               types:~[]}),
                               span:sp(0,1)})
     }
 
     #[test] fn path_exprs_2 () {
-        assert_eq!(string_to_expr(@~"::a::b"),
+        assert_eq!(string_to_expr(@"::a::b"),
                    @ast::expr{id:1,
-                               callee_id:2,
                                node:ast::expr_path(
                                    @ast::Path {span:sp(0,6),
                                                global:true,
-                                               idents:ints_to_idents(~[~"a",~"b"]),
+                                               idents:strs_to_idents(~["a","b"]),
                                                rp:None,
                                                types:~[]}),
                               span:sp(0,6)})
@@ -411,11 +394,11 @@ mod test {
     // marked as `#[should_fail]`.
     /*#[should_fail]
     #[test] fn bad_path_expr_1() {
-        string_to_expr(@~"::abc::def::return");
+        string_to_expr(@"::abc::def::return");
     }*/
 
     #[test] fn string_to_tts_1 () {
-        let (tts,_ps) = string_to_tts_and_sess(@~"fn a (b : int) { b; }");
+        let (tts,_ps) = string_to_tts_and_sess(@"fn a (b : int) { b; }");
         assert_eq!(to_json_str(@tts),
                    ~"[\
                 [\"tt_tok\",null,[\"IDENT\",\"fn\",false]],\
@@ -444,15 +427,14 @@ mod test {
     }
 
     #[test] fn ret_expr() {
-        assert_eq!(string_to_expr(@~"return d"),
-                   @ast::expr{id:3,
-                              callee_id:4,
+        assert_eq!(string_to_expr(@"return d"),
+                   @ast::expr{id:2,
                               node:ast::expr_ret(
-                                  Some(@ast::expr{id:1,callee_id:2,
+                                  Some(@ast::expr{id:1,
                                                   node:ast::expr_path(
                                                       @ast::Path{span:sp(7,8),
                                                                  global:false,
-                                                                 idents:~[intern("d")],
+                                                                 idents:~[str_to_ident("d")],
                                                                  rp:None,
                                                                  types:~[]
                                                                 }),
@@ -461,20 +443,19 @@ mod test {
     }
 
     #[test] fn parse_stmt_1 () {
-        assert_eq!(string_to_stmt(@~"b;"),
+        assert_eq!(string_to_stmt(@"b;"),
                    @spanned{
                        node: ast::stmt_expr(@ast::expr{
                            id: 1,
-                           callee_id: 2,
                            node: ast::expr_path(
                                @ast::Path{
                                    span:sp(0,1),
                                    global:false,
-                                   idents:~[intern("b")],
+                                   idents:~[str_to_ident("b")],
                                    rp:None,
                                    types: ~[]}),
                            span: sp(0,1)},
-                                            3), // fixme
+                                            2), // fixme
                        span: sp(0,1)})
 
     }
@@ -484,14 +465,14 @@ mod test {
     }
 
     #[test] fn parse_ident_pat () {
-        let parser = string_to_parser(@~"b");
-        assert_eq!(parser.parse_pat(false),
+        let parser = string_to_parser(@"b");
+        assert_eq!(parser.parse_pat(),
                    @ast::pat{id:1, // fixme
-                             node: ast::pat_ident(ast::bind_by_copy,
+                             node: ast::pat_ident(ast::bind_infer,
                                                   @ast::Path{
                                                       span:sp(0,1),
                                                       global:false,
-                                                      idents:~[intern("b")],
+                                                      idents:~[str_to_ident("b")],
                                                       rp: None,
                                                       types: ~[]},
                                                   None // no idea
@@ -501,7 +482,7 @@ mod test {
     }
 
     #[test] fn parse_arg () {
-        let parser = string_to_parser(@~"b : int");
+        let parser = string_to_parser(@"b : int");
         assert_eq!(parser.parse_arg_general(true),
                    ast::arg{
                        is_mutbl: false,
@@ -510,17 +491,17 @@ mod test {
                                         span:sp(4,4), // this is bizarre...
                                         // check this in the original parser?
                                         global:false,
-                                        idents:~[intern("int")],
+                                        idents:~[str_to_ident("int")],
                                         rp: None,
                                         types: ~[]},
                                                        2),
                                     span:sp(4,7)},
                        pat: @ast::pat{id:1,
-                                      node: ast::pat_ident(ast::bind_by_copy,
+                                      node: ast::pat_ident(ast::bind_infer,
                                                            @ast::Path{
                                                                span:sp(0,1),
                                                                global:false,
-                                                               idents:~[intern("b")],
+                                                               idents:~[str_to_ident("b")],
                                                                rp: None,
                                                                types: ~[]},
                                                            None // no idea
@@ -534,11 +515,11 @@ mod test {
     #[test] fn parse_fundecl () {
         // this test depends on the intern order of "fn" and "int", and on the
         // assignment order of the node_ids.
-        assert_eq!(string_to_item(@~"fn a (b : int) { b; }"),
+        assert_eq!(string_to_item(@"fn a (b : int) { b; }"),
                   Some(
-                      @ast::item{ident:intern("a"),
+                      @ast::item{ident:str_to_ident("a"),
                             attrs:~[],
-                            id: 10, // fixme
+                            id: 9, // fixme
                             node: ast::item_fn(ast::fn_decl{
                                 inputs: ~[ast::arg{
                                     is_mutbl: false,
@@ -546,18 +527,18 @@ mod test {
                                                 node: ast::ty_path(@ast::Path{
                                         span:sp(10,13),
                                         global:false,
-                                        idents:~[intern("int")],
+                                        idents:~[str_to_ident("int")],
                                         rp: None,
                                         types: ~[]},
                                                        2),
                                                 span:sp(10,13)},
                                     pat: @ast::pat{id:1, // fixme
                                                    node: ast::pat_ident(
-                                                       ast::bind_by_copy,
+                                                       ast::bind_infer,
                                                        @ast::Path{
                                                            span:sp(6,7),
                                                            global:false,
-                                                           idents:~[intern("b")],
+                                                           idents:~[str_to_ident("b")],
                                                            rp: None,
                                                            types: ~[]},
                                                        None // no idea
@@ -583,19 +564,18 @@ mod test {
                                             stmts: ~[@spanned{
                                                 node: ast::stmt_semi(@ast::expr{
                                                     id: 6,
-                                                    callee_id: 7,
                                                     node: ast::expr_path(
                                                         @ast::Path{
                                                             span:sp(17,18),
                                                             global:false,
-                                                            idents:~[intern("b")],
+                                                            idents:~[str_to_ident("b")],
                                                             rp:None,
                                                             types: ~[]}),
                                                     span: sp(17,18)},
-                                                                     8), // fixme
+                                                                     7), // fixme
                                                 span: sp(17,18)}],
                                             expr: None,
-                                            id: 9, // fixme
+                                            id: 8, // fixme
                                             rules: ast::default_blk // no idea
                                         }}),
                             vis: ast::inherited,
@@ -605,12 +585,12 @@ mod test {
 
     #[test] fn parse_exprs () {
         // just make sure that they parse....
-        string_to_expr(@~"3 + 4");
-        string_to_expr(@~"a::z.froob(b,@(987+3))");
+        string_to_expr(@"3 + 4");
+        string_to_expr(@"a::z.froob(b,@(987+3))");
     }
 
     #[test] fn attrs_fix_bug () {
-        string_to_item(@~"pub fn mk_file_writer(path: &Path, flags: &[FileFlag])
+        string_to_item(@"pub fn mk_file_writer(path: &Path, flags: &[FileFlag])
                    -> Result<@Writer, ~str> {
     #[cfg(windows)]
     fn wb() -> c_int {

@@ -10,6 +10,8 @@
 
 //! Traits for the built-in operators
 
+#[allow(missing_doc)];
+
 #[lang="drop"]
 pub trait Drop {
     fn finalize(&self);  // FIXME(#4332): Rename to "drop"? --pcwalton

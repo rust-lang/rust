@@ -40,9 +40,11 @@ use middle::trans::meth;
 use middle::trans::monomorphize;
 use middle::trans::type_of;
 use middle::ty;
+use middle::subst::Subst;
 use middle::typeck;
 use util::ppaux::Repr;
 
+use core::vec;
 use syntax::ast;
 use syntax::ast_map;
 use syntax::visit;
@@ -228,11 +230,75 @@ pub fn trans_fn_ref_with_vtables(
     // Polytype of the function item (may have type params)
     let fn_tpt = ty::lookup_item_type(tcx, def_id);
 
-    // Modify the def_id if this is a default method; we want to be
-    // monomorphizing the trait's code.
-    let (def_id, opt_impl_did) = match tcx.provided_method_sources.find(&def_id) {
-        None => (def_id, None),
-        Some(source) => (source.method_id, Some(source.impl_id))
+    let substs = ty::substs { self_r: None, self_ty: None,
+                              tps: /*bad*/ type_params.to_owned() };
+
+
+    // We need to do a bunch of special handling for default methods.
+    // We need to modify the def_id and our substs in order to monomorphize
+    // the function.
+    let (def_id, opt_impl_did, substs) = match tcx.provided_method_sources.find(&def_id) {
+        None => (def_id, None, substs),
+        Some(source) => {
+            // There are two relevant substitutions when compiling
+            // default methods. First, there is the substitution for
+            // the type parameters of the impl we are using and the
+            // method we are calling. This substitution is the substs
+            // argument we already have.
+            // In order to compile a default method, though, we need
+            // to consider another substitution: the substitution for
+            // the type parameters on trait; the impl we are using
+            // implements the trait at some particular type
+            // parameters, and we need to substitute for those first.
+            // So, what we need to do is find this substitution and
+            // compose it with the one we already have.
+
+            // In order to find the substitution for the trait params,
+            // we look up the impl in the ast map, find its trait_ref
+            // id, then look up its trait ref. I feel like there
+            // should be a better way.
+            let map_node = session::expect(
+                ccx.sess,
+                ccx.tcx.items.find_copy(&source.impl_id.node),
+                || fmt!("couldn't find node while monomorphizing \
+                         default method: %?", source.impl_id.node));
+            let item = match map_node {
+                ast_map::node_item(item, _) => item,
+                _ => ccx.tcx.sess.bug("Not an item")
+            };
+            let ast_trait_ref = match copy item.node {
+                ast::item_impl(_, Some(tr), _, _) => tr,
+                _ => ccx.tcx.sess.bug("Not an impl with trait_ref")
+            };
+            let trait_ref = ccx.tcx.trait_refs.get(&ast_trait_ref.ref_id);
+
+            // The substs from the trait_ref only substitues for the
+            // trait parameters. Our substitution also needs to be
+            // able to substitute for the actual method type
+            // params. To do this, we figure out how many method
+            // parameters there are and pad out the substitution with
+            // substitution for the variables.
+            let item_ty = ty::lookup_item_type(tcx, source.method_id);
+            let num_params = item_ty.generics.type_param_defs.len() -
+                trait_ref.substs.tps.len();
+            let id_subst = do vec::from_fn(num_params) |i| {
+                ty::mk_param(tcx, i, ast::def_id {crate: 0, node: 0})
+            };
+            // Merge the two substitions together now.
+            let first_subst = ty::substs {tps: trait_ref.substs.tps + id_subst,
+                                          .. trait_ref.substs};
+
+            // And compose them.
+            let new_substs = first_subst.subst(tcx, &substs);
+            debug!("trans_fn_with_vtables - default method: \
+                    substs = %s, id_subst = %s, trait_subst = %s, \
+                    first_subst = %s, new_subst = %s",
+                   substs.repr(tcx),
+                   id_subst.repr(tcx), trait_ref.substs.repr(tcx),
+                   first_subst.repr(tcx), new_substs.repr(tcx));
+
+            (source.method_id, Some(source.impl_id), new_substs)
+        }
     };
 
     // Check whether this fn has an inlined copy and, if so, redirect
@@ -277,7 +343,7 @@ pub fn trans_fn_ref_with_vtables(
         assert_eq!(def_id.crate, ast::local_crate);
 
         let mut (val, must_cast) =
-            monomorphize::monomorphic_fn(ccx, def_id, type_params,
+            monomorphize::monomorphic_fn(ccx, def_id, &substs,
                                          vtables, opt_impl_did, Some(ref_id));
         if must_cast && ref_id != 0 {
             // Monotype of the REFERENCE to the function (type params
@@ -327,6 +393,7 @@ pub fn trans_call(in_cx: block,
 
 pub fn trans_method_call(in_cx: block,
                          call_ex: @ast::expr,
+                         callee_id: ast::node_id,
                          rcvr: @ast::expr,
                          args: CallArgs,
                          dest: expr::Dest)
@@ -338,7 +405,7 @@ pub fn trans_method_call(in_cx: block,
     trans_call_inner(
         in_cx,
         call_ex.info(),
-        node_id_type(in_cx, call_ex.callee_id),
+        node_id_type(in_cx, callee_id),
         expr_ty(in_cx, call_ex),
         |cx| {
             match cx.ccx().maps.method_map.find_copy(&call_ex.id) {
@@ -348,7 +415,7 @@ pub fn trans_method_call(in_cx: block,
                            origin.repr(in_cx.tcx()));
 
                     meth::trans_method_callee(cx,
-                                              call_ex.callee_id,
+                                              callee_id,
                                               rcvr,
                                               origin)
                 }
@@ -431,18 +498,18 @@ pub fn trans_lang_call_with_type_params(bcx: block,
 
 pub fn body_contains_ret(body: &ast::blk) -> bool {
     let cx = @mut false;
-    visit::visit_block(body, cx, visit::mk_vt(@visit::Visitor {
-        visit_item: |_i, _cx, _v| { },
-        visit_expr: |e: @ast::expr, cx: @mut bool, v| {
+    visit::visit_block(body, (cx, visit::mk_vt(@visit::Visitor {
+        visit_item: |_i, (_cx, _v)| { },
+        visit_expr: |e: @ast::expr, (cx, v): (@mut bool, visit::vt<@mut bool>)| {
             if !*cx {
                 match e.node {
                   ast::expr_ret(_) => *cx = true,
-                  _ => visit::visit_expr(e, cx, v),
+                  _ => visit::visit_expr(e, (cx, v)),
                 }
             }
         },
         ..*visit::default_visitor()
-    }));
+    })));
     *cx
 }
 
@@ -580,9 +647,12 @@ pub fn trans_call_inner(in_cx: block,
         } else if ret_in_loop {
             let ret_flag_result = bool_to_i1(bcx, Load(bcx, ret_flag.get()));
             bcx = do with_cond(bcx, ret_flag_result) |bcx| {
-                for (copy bcx.fcx.loop_ret).each |&(flagptr, _)| {
-                    Store(bcx, C_bool(true), flagptr);
-                    Store(bcx, C_bool(false), bcx.fcx.llretptr.get());
+                {
+                    let r = (copy bcx.fcx.loop_ret);
+                    for r.iter().advance |&(flagptr, _)| {
+                        Store(bcx, C_bool(true), flagptr);
+                        Store(bcx, C_bool(false), bcx.fcx.llretptr.get());
+                    }
                 }
                 base::cleanup_and_leave(bcx, None, Some(bcx.fcx.llreturn));
                 Unreachable(bcx);
@@ -710,8 +780,7 @@ pub fn trans_arg_expr(bcx: block,
                     DatumBlock {bcx: bcx,
                                 datum: Datum {val: scratch,
                                               ty: scratch_ty,
-                                              mode: ByRef,
-                                              source: RevokeClean}}
+                                              mode: ByRef(RevokeClean)}}
                 }
                 _ => {
                     bcx.sess().impossible_case(
@@ -774,7 +843,7 @@ pub fn trans_arg_expr(bcx: block,
 
                         match arg_datum.appropriate_mode() {
                             ByValue => val = Load(bcx, scratch.val),
-                            ByRef => val = scratch.val,
+                            ByRef(_) => val = scratch.val,
                         }
                     }
                 }

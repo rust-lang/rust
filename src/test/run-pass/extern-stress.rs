@@ -11,7 +11,12 @@
 // This creates a bunch of yielding tasks that run concurrently
 // while holding onto C stacks
 
+use std::libc;
+use std::task;
+
 mod rustrt {
+    use std::libc;
+
     pub extern {
         pub fn rust_dbg_call(cb: *u8, data: libc::uintptr_t)
                              -> libc::uintptr_t;

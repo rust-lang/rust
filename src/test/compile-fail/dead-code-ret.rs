@@ -9,13 +9,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-fn f(caller: &str) {
-    debug!(caller);
-    let x: uint = 0u32; // induce type error //~ ERROR mismatched types
-}
+#[deny(unreachable_code)];
 
 fn main() {
-    return f("main");
-    debug!("Paul is dead"); //~ WARNING unreachable
+    return;
+    debug!("Paul is dead"); //~ ERROR: unreachable
 }

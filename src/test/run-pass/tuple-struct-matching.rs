@@ -16,7 +16,7 @@ pub fn main() {
         Foo(a, b) => {
             assert_eq!(a, 1);
             assert_eq!(b, 2);
-            io::println(fmt!("%d %d", a, b));
+            println(fmt!("%d %d", a, b));
         }
     }
 }

@@ -24,8 +24,6 @@ An external iterator object implementing the interface in the `iterator` module 
 internal iterator by calling the `advance` method. For example:
 
 ~~~ {.rust}
-use core::iterator::*;
-
 let xs = [0u, 1, 2, 3, 4, 5];
 let ys = [30, 40, 50, 60];
 let mut it = xs.iter().chain(ys.iter());
@@ -42,30 +40,26 @@ much easier to implement.
 
 use cmp::Ord;
 use option::{Option, Some, None};
-use vec::OwnedVector;
 use num::{One, Zero};
 use ops::{Add, Mul};
 
+#[allow(missing_doc)]
 pub trait Times {
     fn times(&self, it: &fn() -> bool) -> bool;
 }
 
-/**
- * Transform an internal iterator into an owned vector.
- *
- * # Example:
- *
- * ~~~ {.rust}
- * let xs = ~[1, 2, 3];
- * let ys = do iter::to_vec |f| { xs.each(|x| f(*x)) };
- * assert_eq!(xs, ys);
- * ~~~
- */
-#[inline(always)]
-pub fn to_vec<T>(iter: &fn(f: &fn(T) -> bool) -> bool) -> ~[T] {
-    let mut v = ~[];
-    for iter |x| { v.push(x) }
-    v
+#[allow(missing_doc)]
+pub trait FromIter<T> {
+    /// Build a container with elements from an internal iterator.
+    ///
+    /// # Example:
+    ///
+    /// ~~~ {.rust}
+    /// let xs = ~[1, 2, 3];
+    /// let ys: ~[int] = do FromIter::from_iter |f| { xs.each(|x| f(*x)) };
+    /// assert_eq!(xs, ys);
+    /// ~~~
+    pub fn from_iter(iter: &fn(f: &fn(T) -> bool) -> bool) -> Self;
 }
 
 /**
@@ -257,10 +251,13 @@ mod tests {
     use super::*;
     use prelude::*;
 
+    use int;
+    use uint;
+
     #[test]
-    fn test_to_vec() {
+    fn test_from_iter() {
         let xs = ~[1, 2, 3];
-        let ys = do to_vec |f| { xs.each(|x| f(*x)) };
+        let ys: ~[int] = do FromIter::from_iter |f| { xs.each(|x| f(*x)) };
         assert_eq!(xs, ys);
     }
 

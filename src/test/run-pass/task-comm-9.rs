@@ -12,6 +12,9 @@
 
 extern mod extra;
 
+use std::comm;
+use std::task;
+
 pub fn main() { test00(); }
 
 fn test00_start(c: &comm::Chan<int>, number_of_messages: int) {

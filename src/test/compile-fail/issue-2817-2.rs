@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::uint;
+
 fn not_bool(f: &fn(int) -> ~str) -> bool {}
 
 fn main() {

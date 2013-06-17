@@ -19,6 +19,8 @@ use middle::typeck::method_map;
 use middle::moves;
 use util::ppaux::ty_to_str;
 
+use core::uint;
+use core::vec;
 use extra::sort;
 use syntax::ast::*;
 use syntax::ast_util::{unguarded_pat, walk_pat};
@@ -38,13 +40,13 @@ pub fn check_crate(tcx: ty::ctxt,
     let cx = @MatchCheckCtxt {tcx: tcx,
                               method_map: method_map,
                               moves_map: moves_map};
-    visit::visit_crate(crate, (), visit::mk_vt(@visit::Visitor {
-        visit_expr: |a,b,c| check_expr(cx, a, b, c),
-        visit_local: |a,b,c| check_local(cx, a, b, c),
-        visit_fn: |kind, decl, body, sp, id, e, v|
-            check_fn(cx, kind, decl, body, sp, id, e, v),
+    visit::visit_crate(crate, ((), visit::mk_vt(@visit::Visitor {
+        visit_expr: |a,b| check_expr(cx, a, b),
+        visit_local: |a,b| check_local(cx, a, b),
+        visit_fn: |kind, decl, body, sp, id, (e, v)|
+            check_fn(cx, kind, decl, body, sp, id, (e, v)),
         .. *visit::default_visitor::<()>()
-    }));
+    })));
     tcx.sess.abort_if_errors();
 }
 
@@ -56,8 +58,8 @@ pub fn expr_is_non_moving_lvalue(cx: @MatchCheckCtxt, expr: @expr) -> bool {
     !cx.moves_map.contains(&expr.id)
 }
 
-pub fn check_expr(cx: @MatchCheckCtxt, ex: @expr, s: (), v: visit::vt<()>) {
-    visit::visit_expr(ex, s, v);
+pub fn check_expr(cx: @MatchCheckCtxt, ex: @expr, (s, v): ((), visit::vt<()>)) {
+    visit::visit_expr(ex, (s, v));
     match ex.node {
       expr_match(scrut, ref arms) => {
         // First, check legality of move bindings.
@@ -141,8 +143,8 @@ pub fn check_exhaustive(cx: @MatchCheckCtxt, sp: span, pats: ~[@pat]) {
             match ty::get(ty).sty {
                 ty::ty_bool => {
                     match (*ctor) {
-                        val(const_bool(true)) => Some(@~"true"),
-                        val(const_bool(false)) => Some(@~"false"),
+                        val(const_bool(true)) => Some(@"true"),
+                        val(const_bool(false)) => Some(@"false"),
                         _ => None
                     }
                 }
@@ -162,7 +164,7 @@ pub fn check_exhaustive(cx: @MatchCheckCtxt, sp: span, pats: ~[@pat]) {
                 }
                 ty::ty_unboxed_vec(*) | ty::ty_evec(*) => {
                     match *ctor {
-                        vec(n) => Some(@fmt!("vectors of length %u", n)),
+                        vec(n) => Some(fmt!("vectors of length %u", n).to_managed()),
                         _ => None
                     }
                 }
@@ -171,7 +173,7 @@ pub fn check_exhaustive(cx: @MatchCheckCtxt, sp: span, pats: ~[@pat]) {
         }
     };
     let msg = ~"non-exhaustive patterns" + match ext {
-        Some(ref s) => ~": " + **s + " not covered",
+        Some(ref s) => fmt!(": %s not covered",  *s),
         None => ~""
     };
     cx.tcx.sess.span_err(sp, msg);
@@ -240,7 +242,7 @@ pub fn is_useful(cx: @MatchCheckCtxt, m: &matrix, v: &[@pat]) -> useful {
                 not_useful
               }
               ty::ty_unboxed_vec(*) | ty::ty_evec(*) => {
-                let max_len = do m.foldr(0) |r, max_len| {
+                let max_len = do m.rev_iter().fold(0) |max_len, r| {
                   match r[0].node {
                     pat_vec(ref before, _, ref after) => {
                       uint::max(before.len() + after.len(), max_len)
@@ -360,7 +362,8 @@ pub fn missing_ctor(cx: @MatchCheckCtxt,
       ty::ty_enum(eid, _) => {
         let mut found = ~[];
         for m.each |r| {
-            for pat_ctor_id(cx, r[0]).each |id| {
+            let r = pat_ctor_id(cx, r[0]);
+            for r.iter().advance |id| {
                 if !vec::contains(found, id) {
                     found.push(/*bad*/copy *id);
                 }
@@ -378,7 +381,8 @@ pub fn missing_ctor(cx: @MatchCheckCtxt,
       }
       ty::ty_nil => None,
       ty::ty_bool => {
-        let mut true_found = false, false_found = false;
+        let mut true_found = false;
+        let mut false_found = false;
         for m.each |r| {
             match pat_ctor_id(cx, r[0]) {
               None => (),
@@ -511,10 +515,12 @@ pub fn specialize(cx: @MatchCheckCtxt,
                                 }
                             },
                             range(ref c_lo, ref c_hi) => {
-                                let m1 = compare_const_vals(c_lo, &e_v),
-                                    m2 = compare_const_vals(c_hi, &e_v);
+                                let m1 = compare_const_vals(c_lo, &e_v);
+                                let m2 = compare_const_vals(c_hi, &e_v);
                                 match (m1, m2) {
-                                    (Some(val1), Some(val2)) => (val1 >= 0 && val2 <= 0),
+                                    (Some(val1), Some(val2)) => {
+                                        (val1 >= 0 && val2 <= 0)
+                                    }
                                     _ => {
                                         cx.tcx.sess.span_err(pat_span,
                                             "mismatched types between ranges");
@@ -558,8 +564,8 @@ pub fn specialize(cx: @MatchCheckCtxt,
                                     }
                                 },
                             range(ref c_lo, ref c_hi) => {
-                                let m1 = compare_const_vals(c_lo, &e_v),
-                                    m2 = compare_const_vals(c_hi, &e_v);
+                                let m1 = compare_const_vals(c_lo, &e_v);
+                                let m2 = compare_const_vals(c_hi, &e_v);
                                 match (m1, m2) {
                                     (Some(val1), Some(val2)) => (val1 >= 0 && val2 <= 0),
                                     _ => {
@@ -620,7 +626,8 @@ pub fn specialize(cx: @MatchCheckCtxt,
                     }
                     _ => {
                         // Grab the class data that we care about.
-                        let class_fields, class_id;
+                        let class_fields;
+                        let class_id;
                         match ty::get(left_ty).sty {
                             ty::ty_struct(cid, _) => {
                                 class_id = cid;
@@ -665,8 +672,8 @@ pub fn specialize(cx: @MatchCheckCtxt,
                         }
                     },
                     range(ref c_lo, ref c_hi) => {
-                        let m1 = compare_const_vals(c_lo, &e_v),
-                            m2 = compare_const_vals(c_hi, &e_v);
+                        let m1 = compare_const_vals(c_lo, &e_v);
+                        let m2 = compare_const_vals(c_hi, &e_v);
                         match (m1, m2) {
                             (Some(val1), Some(val2)) => (val1 >= 0 && val2 <= 0),
                             _ => {
@@ -689,11 +696,11 @@ pub fn specialize(cx: @MatchCheckCtxt,
                     single => return Some(vec::to_owned(r.tail())),
                     _ => fail!("type error")
                 };
-                let v_lo = eval_const_expr(cx.tcx, lo),
-                    v_hi = eval_const_expr(cx.tcx, hi);
+                let v_lo = eval_const_expr(cx.tcx, lo);
+                let v_hi = eval_const_expr(cx.tcx, hi);
 
-                let m1 = compare_const_vals(&c_lo, &v_lo),
-                    m2 = compare_const_vals(&c_hi, &v_hi);
+                let m1 = compare_const_vals(&c_lo, &v_lo);
+                let m2 = compare_const_vals(&c_hi, &v_hi);
                 match (m1, m2) {
                     (Some(val1), Some(val2)) if val1 >= 0 && val2 <= 0 => {
                         Some(vec::to_owned(r.tail()))
@@ -743,9 +750,9 @@ pub fn default(cx: @MatchCheckCtxt, r: &[@pat]) -> Option<~[@pat]> {
 
 pub fn check_local(cx: @MatchCheckCtxt,
                    loc: @local,
-                   s: (),
-                   v: visit::vt<()>) {
-    visit::visit_local(loc, s, v);
+                   (s, v): ((),
+                            visit::vt<()>)) {
+    visit::visit_local(loc, (s, v));
     if is_refutable(cx, loc.node.pat) {
         cx.tcx.sess.span_err(loc.node.pat.span,
                              "refutable pattern in local binding");
@@ -765,9 +772,9 @@ pub fn check_fn(cx: @MatchCheckCtxt,
                 body: &blk,
                 sp: span,
                 id: node_id,
-                s: (),
-                v: visit::vt<()>) {
-    visit::visit_fn(kind, decl, body, sp, id, s, v);
+                (s, v): ((),
+                         visit::vt<()>)) {
+    visit::visit_fn(kind, decl, body, sp, id, (s, v));
     for decl.inputs.each |input| {
         if is_refutable(cx, input.pat) {
             cx.tcx.sess.span_err(input.pat.span,
@@ -779,7 +786,7 @@ pub fn check_fn(cx: @MatchCheckCtxt,
 pub fn is_refutable(cx: @MatchCheckCtxt, pat: &pat) -> bool {
     match cx.tcx.def_map.find(&pat.id) {
       Some(&def_variant(enum_id, _)) => {
-        if vec::len(*ty::enum_variants(cx.tcx, enum_id)) != 1u {
+        if ty::enum_variants(cx.tcx, enum_id).len() != 1u {
             return true;
         }
       }
@@ -825,7 +832,6 @@ pub fn check_legality_of_move_bindings(cx: @MatchCheckCtxt,
     for pats.each |pat| {
         do pat_bindings(def_map, *pat) |bm, id, span, _path| {
             match bm {
-                bind_by_copy => {}
                 bind_by_ref(_) => {
                     by_ref_span = Some(span);
                 }

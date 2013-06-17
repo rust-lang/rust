@@ -13,12 +13,16 @@ use core::prelude::*;
 use ast;
 use codemap::{BytePos, CharPos, CodeMap, Pos};
 use diagnostic;
-use parse::lexer::{is_whitespace, get_str_from, reader};
+use parse::lexer::{is_whitespace, with_str_from, reader};
 use parse::lexer::{StringReader, bump, is_eof, nextch, TokenAndSpan};
 use parse::lexer::{is_line_non_doc_comment, is_block_non_doc_comment};
 use parse::lexer;
 use parse::token;
-use parse;
+use parse::token::{get_ident_interner};
+
+use core::io;
+use core::str;
+use core::uint;
 
 #[deriving(Eq)]
 pub enum cmnt_style {
@@ -54,7 +58,8 @@ pub fn strip_doc_comment_decoration(comment: &str) -> ~str {
 
     /// remove whitespace-only lines from the start/end of lines
     fn vertical_trim(lines: ~[~str]) -> ~[~str] {
-        let mut i = 0u, j = lines.len();
+        let mut i = 0u;
+        let mut j = lines.len();
         while i < j && lines[i].trim().is_empty() {
             i += 1u;
         }
@@ -72,7 +77,7 @@ pub fn strip_doc_comment_decoration(comment: &str) -> ~str {
             if line.trim().is_empty() {
                 loop;
             }
-            for line.each_chari |j, c| {
+            for line.iter().enumerate().advance |(j, c)| {
                 if j >= i {
                     break;
                 }
@@ -85,7 +90,7 @@ pub fn strip_doc_comment_decoration(comment: &str) -> ~str {
 
         return do lines.map |line| {
             let mut chars = ~[];
-            for str::each_char(*line) |c| { chars.push(c) }
+            for line.iter().advance |c| { chars.push(c) }
             if i > chars.len() {
                 ~""
             } else {
@@ -110,7 +115,7 @@ pub fn strip_doc_comment_decoration(comment: &str) -> ~str {
         let lines = block_trim(lines, ~"\t ", None);
         let lines = block_trim(lines, ~"*", Some(1u));
         let lines = block_trim(lines, ~"\t ", None);
-        return str::connect(lines, "\n");
+        return lines.connect("\n");
     }
 
     fail!("not a doc-comment: %s", comment);
@@ -119,7 +124,7 @@ pub fn strip_doc_comment_decoration(comment: &str) -> ~str {
 fn read_to_eol(rdr: @mut StringReader) -> ~str {
     let mut val = ~"";
     while rdr.curr != '\n' && !is_eof(rdr) {
-        str::push_char(&mut val, rdr.curr);
+        val.push_char(rdr.curr);
         bump(rdr);
     }
     if rdr.curr == '\n' { bump(rdr); }
@@ -192,26 +197,35 @@ fn read_line_comments(rdr: @mut StringReader, code_to_the_left: bool,
     }
 }
 
-// FIXME #3961: This is not the right way to convert string byte
-// offsets to characters.
-fn all_whitespace(s: &str, begin: uint, end: uint) -> bool {
-    let mut i: uint = begin;
-    while i != end {
-        if !is_whitespace(s[i] as char) { return false; } i += 1u;
+// Returns None if the first col chars of s contain a non-whitespace char.
+// Otherwise returns Some(k) where k is first char offset after that leading
+// whitespace.  Note k may be outside bounds of s.
+fn all_whitespace(s: &str, col: CharPos) -> Option<uint> {
+    let len = s.len();
+    let mut col = col.to_uint();
+    let mut cursor: uint = 0;
+    while col > 0 && cursor < len {
+        let r: str::CharRange = s.char_range_at(cursor);
+        if !r.ch.is_whitespace() {
+            return None;
+        }
+        cursor = r.next;
+        col -= 1;
     }
-    return true;
+    return Some(cursor);
 }
 
 fn trim_whitespace_prefix_and_push_line(lines: &mut ~[~str],
                                         s: ~str, col: CharPos) {
     let len = s.len();
-    // FIXME #3961: Doing bytewise comparison and slicing with CharPos
-    let col = col.to_uint();
-    let s1 = if all_whitespace(s, 0, uint::min(len, col)) {
-        if col < len {
-            str::slice(s, col, len).to_owned()
-        } else {  ~"" }
-    } else { s };
+    let s1 = match all_whitespace(s, col) {
+        Some(col) => {
+            if col < len {
+                s.slice(col, len).to_owned()
+            } else {  ~"" }
+        }
+        None => s,
+    };
     debug!("pushing line: %s", s1);
     lines.push(s1);
 }
@@ -231,7 +245,7 @@ fn read_block_comment(rdr: @mut StringReader,
     // doc-comments are not really comments, they are attributes
     if rdr.curr == '*' || rdr.curr == '!' {
         while !(rdr.curr == '*' && nextch(rdr) == '/') && !is_eof(rdr) {
-            str::push_char(&mut curr_line, rdr.curr);
+            curr_line.push_char(rdr.curr);
             bump(rdr);
         }
         if !is_eof(rdr) {
@@ -255,7 +269,7 @@ fn read_block_comment(rdr: @mut StringReader,
                 curr_line = ~"";
                 bump(rdr);
             } else {
-                str::push_char(&mut curr_line, rdr.curr);
+                curr_line.push_char(rdr.curr);
                 if rdr.curr == '/' && nextch(rdr) == '*' {
                     bump(rdr);
                     bump(rdr);
@@ -271,7 +285,7 @@ fn read_block_comment(rdr: @mut StringReader,
                 }
             }
         }
-        if str::len(curr_line) != 0 {
+        if curr_line.len() != 0 {
             trim_whitespace_prefix_and_push_line(&mut lines, curr_line, col);
         }
     }
@@ -314,16 +328,13 @@ pub struct lit {
 // probably not a good thing.
 pub fn gather_comments_and_literals(span_diagnostic:
                                     @diagnostic::span_handler,
-                                    path: ~str,
+                                    path: @str,
                                     srdr: @io::Reader)
                                  -> (~[cmnt], ~[lit]) {
-    let src = @str::from_bytes(srdr.read_whole_stream());
-    let itr = parse::token::mk_fake_ident_interner();
+    let src = str::from_bytes(srdr.read_whole_stream()).to_managed();
     let cm = CodeMap::new();
     let filemap = cm.new_filemap(path, src);
-    let rdr = lexer::new_low_level_string_reader(span_diagnostic,
-                                                 filemap,
-                                                 itr);
+    let rdr = lexer::new_low_level_string_reader(span_diagnostic, filemap);
 
     let mut comments: ~[cmnt] = ~[];
     let mut literals: ~[lit] = ~[];
@@ -344,16 +355,17 @@ pub fn gather_comments_and_literals(span_diagnostic:
         }
 
 
-        let bstart = rdr.pos;
+        let bstart = rdr.last_pos;
         rdr.next_token();
         //discard, and look ahead; we're working with internal state
         let TokenAndSpan {tok: tok, sp: sp} = rdr.peek();
         if token::is_lit(&tok) {
-            let s = get_str_from(rdr, bstart);
-            debug!("tok lit: %s", s);
-            literals.push(lit {lit: s, pos: sp.lo});
+            do with_str_from(rdr, bstart) |s| {
+                debug!("tok lit: %s", s);
+                literals.push(lit {lit: s.to_owned(), pos: sp.lo});
+            }
         } else {
-            debug!("tok: %s", token::to_str(rdr.interner, &tok));
+            debug!("tok: %s", token::to_str(get_ident_interner(), &tok));
         }
         first_read = false;
     }

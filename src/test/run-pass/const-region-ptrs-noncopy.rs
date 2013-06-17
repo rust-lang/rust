@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::ptr;
+
 type Big = [u64, ..8];
 struct Pair<'self> { a: int, b: &'self Big }
 static x: &'static Big = &([13, 14, 10, 13, 11, 14, 14, 15]);

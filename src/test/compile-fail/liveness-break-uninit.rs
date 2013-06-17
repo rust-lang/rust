@@ -13,7 +13,7 @@ fn foo() -> int {
 
     loop {
         break;
-        x = 0;  //~ WARNING unreachable statement
+        x = 0;
     }
 
     debug!(x); //~ ERROR use of possibly uninitialized variable: `x`

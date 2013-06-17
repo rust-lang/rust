@@ -10,7 +10,6 @@
 
 use core::prelude::*;
 
-use core::str;
 use core::uint;
 use core::vec;
 
@@ -21,6 +20,8 @@ struct Quad {
     d: u32
 }
 
+/// Calculates the md4 hash of the given slice of bytes, returning the 128-bit
+/// result as a quad of u32's
 pub fn md4(msg: &[u8]) -> Quad {
     // subtle: if orig_len is merely uint, then the code below
     // which performs shifts by 32 bits or more has undefined
@@ -56,9 +57,9 @@ pub fn md4(msg: &[u8]) -> Quad {
     let e = msg.len();
     let mut x = vec::from_elem(16u, 0u32);
     while i < e {
-        let aa = a, bb = b, cc = c, dd = d;
+        let (aa, bb, cc, dd) = (a, b, c, d);
 
-        let mut j = 0u, base = i;
+        let mut (j, base) = (0u, i);
         while j < 16u {
             x[j] = (msg[base] as u32) + (msg[base + 1u] as u32 << 8u32) +
                 (msg[base + 2u] as u32 << 16u32) +
@@ -105,6 +106,8 @@ pub fn md4(msg: &[u8]) -> Quad {
     return Quad {a: a, b: b, c: c, d: d};
 }
 
+/// Calculates the md4 hash of a slice of bytes, returning the hex-encoded
+/// version of the hash
 pub fn md4_str(msg: &[u8]) -> ~str {
     let Quad {a, b, c, d} = md4(msg);
     fn app(a: u32, b: u32, c: u32, d: u32, f: &fn(u32)) {
@@ -123,7 +126,9 @@ pub fn md4_str(msg: &[u8]) -> ~str {
     result
 }
 
-pub fn md4_text(msg: &str) -> ~str { md4_str(str::to_bytes(msg)) }
+/// Calculates the md4 hash of a string, returning the hex-encoded version of
+/// the hash
+pub fn md4_text(msg: &str) -> ~str { md4_str(msg.as_bytes()) }
 
 #[test]
 fn test_md4() {

@@ -14,10 +14,11 @@ Simple compression
 
 */
 
-use core::prelude::*;
+#[allow(missing_doc)];
 
-use core::libc;
 use core::libc::{c_void, size_t, c_int};
+use core::libc;
+use core::vec;
 
 pub mod rustrt {
     use core::libc::{c_int, c_void, size_t};
@@ -84,6 +85,7 @@ mod tests {
     use super::*;
     use core::rand;
     use core::rand::RngUtil;
+    use core::prelude::*;
 
     #[test]
     #[allow(non_implicitly_copyable_typarams)]

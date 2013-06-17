@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -14,8 +14,13 @@ use config;
 use doc::ItemUtils;
 use doc;
 
-use core::run;
 use core::comm::*;
+use core::comm;
+use core::io;
+use core::result;
+use core::run;
+use core::str;
+use core::task;
 use extra::future;
 
 pub enum WriteInstr {
@@ -102,7 +107,7 @@ fn pandoc_writer(
         use core::io::WriterUtil;
 
         debug!("pandoc cmd: %s", pandoc_cmd);
-        debug!("pandoc args: %s", str::connect(pandoc_args, " "));
+        debug!("pandoc args: %s", pandoc_args.connect(" "));
 
         let mut proc = run::Process::new(pandoc_cmd, pandoc_args, run::ProcessOptions::new());
 
@@ -159,7 +164,7 @@ pub fn make_filename(
             }
           }
           doc::ItemPage(doc) => {
-            str::connect(doc.path() + [doc.name()], "_")
+            (doc.path() + [doc.name()]).connect("_")
           }
         }
     };

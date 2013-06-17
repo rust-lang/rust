@@ -28,8 +28,12 @@ use middle::typeck;
 use syntax::abi::AbiSet;
 use syntax::ast_map;
 use syntax::codemap::span;
+use syntax::parse::token;
 use syntax::print::pprust;
 use syntax::{ast, ast_util};
+
+use core::str;
+use core::vec;
 
 /// Produces a string suitable for debugging output.
 pub trait Repr {
@@ -154,7 +158,7 @@ pub fn bound_region_to_str_space(cx: ctxt,
     if cx.sess.verbose() { return fmt!("%s%? ", prefix, br); }
 
     match br {
-      br_named(id)         => fmt!("%s'%s ", prefix, *cx.sess.str_of(id)),
+      br_named(id)         => fmt!("%s'%s ", prefix, cx.sess.str_of(id)),
       br_self              => fmt!("%s'self ", prefix),
       br_anon(_)           => prefix.to_str(),
       br_fresh(_)          => prefix.to_str(),
@@ -179,7 +183,6 @@ pub fn re_scope_id_to_str(cx: ctxt, node_id: ast::node_id) -> ~str {
                  cx.sess.codemap.span_to_str(expr.span))
           }
           ast::expr_assign_op(*) |
-          ast::expr_field(*) |
           ast::expr_unary(*) |
           ast::expr_binary(*) |
           ast::expr_index(*) => {
@@ -198,7 +201,7 @@ pub fn re_scope_id_to_str(cx: ctxt, node_id: ast::node_id) -> ~str {
       _ => { cx.sess.bug(
           fmt!("re_scope refers to %s",
                ast_map::node_id_to_str(cx.items, node_id,
-                                       cx.sess.parse_sess.interner))) }
+                                       token::get_ident_interner()))) }
     }
 }
 
@@ -278,7 +281,7 @@ pub fn vstore_ty_to_str(cx: ctxt, mt: &mt, vs: ty::vstore) -> ~str {
 
 pub fn tys_to_str(cx: ctxt, ts: &[t]) -> ~str {
     let tstrs = ts.map(|t| ty_to_str(cx, *t));
-    fmt!("(%s)", str::connect(tstrs, ", "))
+    fmt!("(%s)", tstrs.connect(", "))
 }
 
 pub fn fn_sig_to_str(cx: ctxt, typ: &ty::FnSig) -> ~str {
@@ -319,7 +322,7 @@ pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
         match ident {
           Some(i) => {
               s.push_char(' ');
-              s.push_str(*cx.sess.str_of(i));
+              s.push_str(cx.sess.str_of(i));
           }
           _ => { }
         }
@@ -366,7 +369,7 @@ pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
     fn push_sig_to_str(cx: ctxt, s: &mut ~str, sig: &ty::FnSig) {
         s.push_char('(');
         let strs = sig.inputs.map(|a| fn_input_to_str(cx, *a));
-        s.push_str(str::connect(strs, ", "));
+        s.push_str(strs.connect(", "));
         s.push_char(')');
         if ty::get(sig.output).sty != ty_nil {
             s.push_str(" -> ");
@@ -385,7 +388,7 @@ pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
                        &m.fty.sig) + ";"
     }
     fn field_to_str(cx: ctxt, f: field) -> ~str {
-        return *cx.sess.str_of(f.ident) + ": " + mt_to_str(cx, &f.mt);
+        return fmt!("%s: %s", cx.sess.str_of(f.ident), mt_to_str(cx, &f.mt));
     }
 
     // if there is an id, print that instead of the structural type:
@@ -413,11 +416,11 @@ pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
       ty_rptr(r, ref tm) => {
         region_to_str_space(cx, "&", r) + mt_to_str(cx, tm)
       }
-      ty_unboxed_vec(ref tm) => { ~"unboxed_vec<" + mt_to_str(cx, tm) + ">" }
+      ty_unboxed_vec(ref tm) => { fmt!("unboxed_vec<%s>", mt_to_str(cx, tm)) }
       ty_type => ~"type",
       ty_tup(ref elems) => {
         let strs = elems.map(|elem| ty_to_str(cx, *elem));
-        ~"(" + str::connect(strs, ",") + ")"
+        ~"(" + strs.connect(",") + ")"
       }
       ty_closure(ref f) => {
           closure_to_str(cx, f)
@@ -474,7 +477,7 @@ pub fn parameterized(cx: ctxt,
 
     if tps.len() > 0u {
         let strs = vec::map(tps, |t| ty_to_str(cx, *t));
-        fmt!("%s%s<%s>", base, r_str, str::connect(strs, ","))
+        fmt!("%s%s<%s>", base, r_str, strs.connect(","))
     } else {
         fmt!("%s%s", base, r_str)
     }
@@ -482,7 +485,7 @@ pub fn parameterized(cx: ctxt,
 
 pub fn ty_to_short_str(cx: ctxt, typ: t) -> ~str {
     let mut s = encoder::encoded_ty(cx, typ);
-    if str::len(s) >= 32u { s = str::slice(s, 0u, 32u).to_owned(); }
+    if s.len() >= 32u { s = s.slice(0u, 32u).to_owned(); }
     return s;
 }
 
@@ -512,7 +515,7 @@ impl<T:Repr> Repr for ~T {
 */
 
 fn repr_vec<T:Repr>(tcx: ctxt, v: &[T]) -> ~str {
-    fmt!("[%s]", str::connect(v.map(|t| t.repr(tcx)), ","))
+    fmt!("[%s]", v.map(|t| t.repr(tcx)).connect(","))
 }
 
 impl<'self, T:Repr> Repr for &'self [T] {
@@ -560,12 +563,13 @@ impl Repr for ty::ParamBounds {
                 ty::BoundStatic => ~"'static",
                 ty::BoundOwned => ~"Owned",
                 ty::BoundConst => ~"Const",
+                ty::BoundSized => ~"Sized",
             });
         }
         for self.trait_bounds.each |t| {
             res.push(t.repr(tcx));
         }
-        str::connect(res, "+")
+        res.connect("+")
     }
 }
 
@@ -650,8 +654,8 @@ impl Repr for ty::Method {
 }
 
 impl Repr for ast::ident {
-    fn repr(&self, tcx: ctxt) -> ~str {
-        copy *tcx.sess.intr().get(*self)
+    fn repr(&self, _tcx: ctxt) -> ~str {
+        token::ident_to_str(self).to_owned()
     }
 }
 
@@ -764,7 +768,8 @@ impl UserString for ty::BuiltinBound {
             ty::BoundCopy => ~"Copy",
             ty::BoundStatic => ~"'static",
             ty::BoundOwned => ~"Owned",
-            ty::BoundConst => ~"Const"
+            ty::BoundConst => ~"Const",
+            ty::BoundSized => ~"Sized",
         }
     }
 }
@@ -782,7 +787,7 @@ impl UserString for ty::BuiltinBounds {
             for self.each |bb| {
                 result.push(bb.user_string(tcx));
             }
-            str::connect(result, "+")
+            result.connect("+")
         }
     }
 }
@@ -793,7 +798,7 @@ impl UserString for ty::TraitRef {
         let base = ast_map::path_to_str(path, tcx.sess.intr());
         if tcx.sess.verbose() && self.substs.self_ty.is_some() {
             let mut all_tps = copy self.substs.tps;
-            for self.substs.self_ty.each |&t| { all_tps.push(t); }
+            for self.substs.self_ty.iter().advance |&t| { all_tps.push(t); }
             parameterized(tcx, base, self.substs.self_r, all_tps)
         } else {
             parameterized(tcx, base, self.substs.self_r,

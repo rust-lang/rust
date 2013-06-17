@@ -36,10 +36,11 @@ use middle::typeck::check::FnCtxt;
 use middle::typeck::check::regionmanip::relate_nested_regions;
 use middle::typeck::infer::resolve_and_force_all_but_regions;
 use middle::typeck::infer::resolve_type;
-use util::ppaux::{note_and_explain_region, ty_to_str,
-                  region_to_str};
+use util::ppaux::{note_and_explain_region, ty_to_str, region_to_str};
 use middle::pat_util;
 
+use core::result;
+use core::uint;
 use syntax::ast::{ManagedSigil, OwnedSigil, BorrowedSigil};
 use syntax::ast::{def_arg, def_binding, def_local, def_self, def_upvar};
 use syntax::ast;
@@ -73,12 +74,12 @@ fn encl_region_of_def(fcx: @mut FnCtxt, def: ast::def) -> ty::Region {
     }
 }
 
-pub impl Rcx {
-    fn tcx(&self) -> ty::ctxt {
+impl Rcx {
+    pub fn tcx(&self) -> ty::ctxt {
         self.fcx.ccx.tcx
     }
 
-    fn resolve_type(&mut self, unresolved_ty: ty::t) -> ty::t {
+    pub fn resolve_type(&mut self, unresolved_ty: ty::t) -> ty::t {
         /*!
          * Try to resolve the type for the given node, returning
          * t_err if an error results.  Note that we never care
@@ -115,12 +116,12 @@ pub impl Rcx {
     }
 
     /// Try to resolve the type for the given node.
-    fn resolve_node_type(@mut self, id: ast::node_id) -> ty::t {
+    pub fn resolve_node_type(@mut self, id: ast::node_id) -> ty::t {
         self.resolve_type(self.fcx.node_ty(id))
     }
 
     /// Try to resolve the type for the given node.
-    fn resolve_expr_type_adjusted(@mut self, expr: @ast::expr) -> ty::t {
+    pub fn resolve_expr_type_adjusted(@mut self, expr: @ast::expr) -> ty::t {
         let ty_unadjusted = self.resolve_node_type(expr.id);
         if ty::type_is_error(ty_unadjusted) || ty::type_is_bot(ty_unadjusted) {
             ty_unadjusted
@@ -138,7 +139,7 @@ pub fn regionck_expr(fcx: @mut FnCtxt, e: @ast::expr) {
     if fcx.err_count_since_creation() == 0 {
         // regionck assumes typeck succeeded
         let v = regionck_visitor();
-        (v.visit_expr)(e, rcx, v);
+        (v.visit_expr)(e, (rcx, v));
     }
     fcx.infcx().resolve_regions();
 }
@@ -148,7 +149,7 @@ pub fn regionck_fn(fcx: @mut FnCtxt, blk: &ast::blk) {
     if fcx.err_count_since_creation() == 0 {
         // regionck assumes typeck succeeded
         let v = regionck_visitor();
-        (v.visit_block)(blk, rcx, v);
+        (v.visit_block)(blk, (rcx, v));
     }
     fcx.infcx().resolve_regions();
 }
@@ -172,28 +173,28 @@ fn regionck_visitor() -> rvt {
                                   .. *visit::default_visitor()})
 }
 
-fn visit_item(_item: @ast::item, _rcx: @mut Rcx, _v: rvt) {
+fn visit_item(_item: @ast::item, (_rcx, _v): (@mut Rcx, rvt)) {
     // Ignore items
 }
 
-fn visit_block(b: &ast::blk, rcx: @mut Rcx, v: rvt) {
+fn visit_block(b: &ast::blk, (rcx, v): (@mut Rcx, rvt)) {
     rcx.fcx.tcx().region_maps.record_cleanup_scope(b.node.id);
-    visit::visit_block(b, rcx, v);
+    visit::visit_block(b, (rcx, v));
 }
 
-fn visit_arm(arm: &ast::arm, rcx: @mut Rcx, v: rvt) {
+fn visit_arm(arm: &ast::arm, (rcx, v): (@mut Rcx, rvt)) {
     // see above
     for arm.pats.each |&p| {
         constrain_bindings_in_pat(p, rcx);
     }
 
-    visit::visit_arm(arm, rcx, v);
+    visit::visit_arm(arm, (rcx, v));
 }
 
-fn visit_local(l: @ast::local, rcx: @mut Rcx, v: rvt) {
+fn visit_local(l: @ast::local, (rcx, v): (@mut Rcx, rvt)) {
     // see above
     constrain_bindings_in_pat(l.node.pat, rcx);
-    visit::visit_local(l, rcx, v);
+    visit::visit_local(l, (rcx, v));
 }
 
 fn constrain_bindings_in_pat(pat: @ast::pat, rcx: @mut Rcx) {
@@ -228,7 +229,7 @@ fn constrain_bindings_in_pat(pat: @ast::pat, rcx: @mut Rcx) {
     }
 }
 
-fn visit_expr(expr: @ast::expr, rcx: @mut Rcx, v: rvt) {
+fn visit_expr(expr: @ast::expr, (rcx, v): (@mut Rcx, rvt)) {
     debug!("regionck::visit_expr(e=%s)", rcx.fcx.expr_to_str(expr));
 
     let has_method_map = rcx.fcx.inh.method_map.contains_key(&expr.id);
@@ -255,8 +256,8 @@ fn visit_expr(expr: @ast::expr, rcx: @mut Rcx, v: rvt) {
         ast::expr_unary(*) if has_method_map => {
             tcx.region_maps.record_cleanup_scope(expr.id);
         }
-        ast::expr_binary(ast::and, lhs, rhs) |
-        ast::expr_binary(ast::or, lhs, rhs) => {
+        ast::expr_binary(_, ast::and, lhs, rhs) |
+        ast::expr_binary(_, ast::or, lhs, rhs) => {
             tcx.region_maps.record_cleanup_scope(lhs.id);
             tcx.region_maps.record_cleanup_scope(rhs.id);
         }
@@ -267,7 +268,7 @@ fn visit_expr(expr: @ast::expr, rcx: @mut Rcx, v: rvt) {
         ast::expr_match(_, ref arms) => {
             tcx.region_maps.record_cleanup_scope(expr.id);
             for arms.each |arm| {
-                for arm.guard.each |guard| {
+                for arm.guard.iter().advance |guard| {
                     tcx.region_maps.record_cleanup_scope(guard.id);
                 }
             }
@@ -280,61 +281,64 @@ fn visit_expr(expr: @ast::expr, rcx: @mut Rcx, v: rvt) {
     }
 
     // Check any autoderefs or autorefs that appear.
-    for rcx.fcx.inh.adjustments.find(&expr.id).each |&adjustment| {
-        debug!("adjustment=%?", adjustment);
-        match *adjustment {
-            @ty::AutoDerefRef(
-                ty::AutoDerefRef {autoderefs: autoderefs, autoref: opt_autoref}) =>
-            {
-                let expr_ty = rcx.resolve_node_type(expr.id);
-                constrain_derefs(rcx, expr, autoderefs, expr_ty);
-                for opt_autoref.each |autoref| {
-                    guarantor::for_autoref(rcx, expr, autoderefs, autoref);
+    {
+        let r = rcx.fcx.inh.adjustments.find(&expr.id);
+        for r.iter().advance |&adjustment| {
+            debug!("adjustment=%?", adjustment);
+            match *adjustment {
+                @ty::AutoDerefRef(
+                    ty::AutoDerefRef {autoderefs: autoderefs, autoref: opt_autoref}) =>
+                {
+                    let expr_ty = rcx.resolve_node_type(expr.id);
+                    constrain_derefs(rcx, expr, autoderefs, expr_ty);
+                    for opt_autoref.iter().advance |autoref| {
+                        guarantor::for_autoref(rcx, expr, autoderefs, autoref);
 
-                    // Require that the resulting region encompasses
-                    // the current node.
-                    //
-                    // FIXME(#6268) remove to support nested method calls
-                    constrain_regions_in_type_of_node(
-                        rcx, expr.id, ty::re_scope(expr.id), expr.span);
+                        // Require that the resulting region encompasses
+                        // the current node.
+                        //
+                        // FIXME(#6268) remove to support nested method calls
+                        constrain_regions_in_type_of_node(
+                            rcx, expr.id, ty::re_scope(expr.id), expr.span);
+                    }
                 }
+                _ => {}
             }
-            _ => {}
         }
     }
 
     match expr.node {
         ast::expr_call(callee, ref args, _) => {
-            constrain_callee(rcx, expr, callee);
-            constrain_call(rcx, expr, None, *args, false);
+            constrain_callee(rcx, callee.id, expr, callee);
+            constrain_call(rcx, callee.id, expr, None, *args, false);
         }
 
-        ast::expr_method_call(arg0, _, _, ref args, _) => {
-            constrain_call(rcx, expr, Some(arg0), *args, false);
+        ast::expr_method_call(callee_id, arg0, _, _, ref args, _) => {
+            constrain_call(rcx, callee_id, expr, Some(arg0), *args, false);
         }
 
-        ast::expr_index(lhs, rhs) |
-        ast::expr_assign_op(_, lhs, rhs) |
-        ast::expr_binary(_, lhs, rhs) if has_method_map => {
+        ast::expr_index(callee_id, lhs, rhs) |
+        ast::expr_assign_op(callee_id, _, lhs, rhs) |
+        ast::expr_binary(callee_id, _, lhs, rhs) if has_method_map => {
             // As `expr_method_call`, but the call is via an
             // overloaded op.  Note that we (sadly) currently use an
             // implicit "by ref" sort of passing style here.  This
             // should be converted to an adjustment!
-            constrain_call(rcx, expr, Some(lhs), [rhs], true);
+            constrain_call(rcx, callee_id, expr, Some(lhs), [rhs], true);
         }
 
-        ast::expr_unary(_, lhs) if has_method_map => {
+        ast::expr_unary(callee_id, _, lhs) if has_method_map => {
             // As above.
-            constrain_call(rcx, expr, Some(lhs), [], true);
+            constrain_call(rcx, callee_id, expr, Some(lhs), [], true);
         }
 
-        ast::expr_unary(ast::deref, base) => {
+        ast::expr_unary(_, ast::deref, base) => {
             // For *a, the lifetime of a must enclose the deref
             let base_ty = rcx.resolve_node_type(base.id);
             constrain_derefs(rcx, expr, 1, base_ty);
         }
 
-        ast::expr_index(vec_expr, _) => {
+        ast::expr_index(_, vec_expr, _) => {
             // For a[b], the lifetime of a must enclose the deref
             let vec_type = rcx.resolve_expr_type_adjusted(vec_expr);
             constrain_index(rcx, expr, vec_type);
@@ -399,10 +403,11 @@ fn visit_expr(expr: @ast::expr, rcx: @mut Rcx, v: rvt) {
         _ => ()
     }
 
-    visit::visit_expr(expr, rcx, v);
+    visit::visit_expr(expr, (rcx, v));
 }
 
 fn constrain_callee(rcx: @mut Rcx,
+                    callee_id: ast::node_id,
                     call_expr: @ast::expr,
                     callee_expr: @ast::expr)
 {
@@ -410,7 +415,7 @@ fn constrain_callee(rcx: @mut Rcx,
 
     let call_region = ty::re_scope(call_expr.id);
 
-    let callee_ty = rcx.resolve_node_type(call_expr.callee_id);
+    let callee_ty = rcx.resolve_node_type(callee_id);
     match ty::get(callee_ty).sty {
         ty::ty_bare_fn(*) => { }
         ty::ty_closure(ref closure_ty) => {
@@ -443,6 +448,7 @@ fn constrain_callee(rcx: @mut Rcx,
 fn constrain_call(rcx: @mut Rcx,
                   // might be expr_call, expr_method_call, or an overloaded
                   // operator
+                  callee_id: ast::node_id,
                   call_expr: @ast::expr,
                   receiver: Option<@ast::expr>,
                   arg_exprs: &[@ast::expr],
@@ -456,7 +462,11 @@ fn constrain_call(rcx: @mut Rcx,
     let tcx = rcx.fcx.tcx();
     debug!("constrain_call(call_expr=%s, implicitly_ref_args=%?)",
            call_expr.repr(tcx), implicitly_ref_args);
-    let callee_ty = rcx.resolve_node_type(call_expr.callee_id);
+    let callee_ty = rcx.resolve_node_type(callee_id);
+    if ty::type_is_error(callee_ty) {
+        // Bail, as function type is unknown
+        return;
+    }
     let fn_sig = ty::ty_fn_sig(callee_ty);
 
     // `callee_region` is the scope representing the time in which the
@@ -482,7 +492,7 @@ fn constrain_call(rcx: @mut Rcx,
     }
 
     // as loop above, but for receiver
-    for receiver.each |&r| {
+    for receiver.iter().advance |&r| {
         constrain_regions_in_type_of_node(
             rcx, r.id, callee_region, r.span);
         if implicitly_ref_args {
@@ -789,6 +799,8 @@ pub mod guarantor {
     use syntax::codemap::span;
     use util::ppaux::{ty_to_str};
 
+    use core::uint;
+
     pub fn for_addr_of(rcx: @mut Rcx, expr: @ast::expr, base: @ast::expr) {
         /*!
          * Computes the guarantor for an expression `&base` and then
@@ -862,9 +874,8 @@ pub mod guarantor {
             rcx: @mut Rcx,
             expr: @ast::expr,
             sub_region: ty::Region,
-            sup_region: Option<ty::Region>)
-        {
-            for sup_region.each |r| {
+            sup_region: Option<ty::Region>) {
+            for sup_region.iter().advance |r| {
                 infallibly_mk_subr(rcx, true, expr.span, sub_region, *r);
             }
         }
@@ -886,7 +897,7 @@ pub mod guarantor {
         debug!("guarantor::for_by_ref(expr=%?, callee_scope=%?) category=%?",
                expr.id, callee_scope, expr_cat);
         let minimum_lifetime = ty::re_scope(callee_scope);
-        for expr_cat.guarantor.each |guarantor| {
+        for expr_cat.guarantor.iter().advance |guarantor| {
             mk_subregion_due_to_derefence(rcx, expr.span,
                                           minimum_lifetime, *guarantor);
         }
@@ -961,14 +972,14 @@ pub mod guarantor {
 
         debug!("guarantor(expr=%s)", rcx.fcx.expr_to_str(expr));
         match expr.node {
-            ast::expr_unary(ast::deref, b) => {
+            ast::expr_unary(_, ast::deref, b) => {
                 let cat = categorize(rcx, b);
                 guarantor_of_deref(&cat)
             }
             ast::expr_field(b, _, _) => {
                 categorize(rcx, b).guarantor
             }
-            ast::expr_index(b, _) => {
+            ast::expr_index(_, b, _) => {
                 let cat = categorize(rcx, b);
                 guarantor_of_deref(&cat)
             }
@@ -1103,6 +1114,12 @@ pub mod guarantor {
      -> ExprCategorizationType {
         let mut ct = ct;
         let tcx = rcx.fcx.ccx.tcx;
+
+        if (ty::type_is_error(ct.ty)) {
+            ct.cat.pointer = NotPointer;
+            return ct;
+        }
+
         for uint::range(0, autoderefs) |_| {
             ct.cat.guarantor = guarantor_of_deref(&ct.cat);
 
@@ -1186,12 +1203,12 @@ pub mod guarantor {
             ast::pat_ident(ast::bind_by_ref(_), _, opt_p) => {
                 link(rcx, pat.span, pat.id, guarantor);
 
-                for opt_p.each |p| {
+                for opt_p.iter().advance |p| {
                     link_ref_bindings_in_pat(rcx, *p, guarantor);
                 }
             }
             ast::pat_ident(_, _, opt_p) => {
-                for opt_p.each |p| {
+                for opt_p.iter().advance |p| {
                     link_ref_bindings_in_pat(rcx, *p, guarantor);
                 }
             }
@@ -1230,7 +1247,7 @@ pub mod guarantor {
                 };
 
                 link_ref_bindings_in_pats(rcx, before, guarantor1);
-                for slice.each |&p| {
+                for slice.iter().advance |&p| {
                     link_ref_bindings_in_pat(rcx, p, guarantor);
                 }
                 link_ref_bindings_in_pats(rcx, after, guarantor1);

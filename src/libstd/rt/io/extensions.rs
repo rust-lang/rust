@@ -342,7 +342,7 @@ impl<T: Reader> ReaderByteConversions for T {
     fn read_le_uint_n(&mut self, nbytes: uint) -> u64 {
         assert!(nbytes > 0 && nbytes <= 8);
 
-        let mut val = 0u64, pos = 0, i = nbytes;
+        let mut (val, pos, i) = (0u64, 0, nbytes);
         while i > 0 {
             val += (self.read_u8() as u64) << pos;
             pos += 8;
@@ -358,7 +358,7 @@ impl<T: Reader> ReaderByteConversions for T {
     fn read_be_uint_n(&mut self, nbytes: uint) -> u64 {
         assert!(nbytes > 0 && nbytes <= 8);
 
-        let mut val = 0u64, i = nbytes;
+        let mut (val, i) = (0u64, nbytes);
         while i > 0 {
             i -= 1;
             val += (self.read_u8() as u64) << i * 8;
@@ -604,7 +604,7 @@ mod test {
     #[test]
     fn read_byte_0_bytes() {
         let mut reader = MockReader::new();
-        let count = Cell(0);
+        let count = Cell::new(0);
         reader.read = |buf| {
             do count.with_mut_ref |count| {
                 if *count == 0 {
@@ -652,7 +652,7 @@ mod test {
     #[test]
     fn read_bytes_partial() {
         let mut reader = MockReader::new();
-        let count = Cell(0);
+        let count = Cell::new(0);
         reader.read = |buf| {
             do count.with_mut_ref |count| {
                 if *count == 0 {
@@ -691,7 +691,7 @@ mod test {
     #[test]
     fn push_bytes_partial() {
         let mut reader = MockReader::new();
-        let count = Cell(0);
+        let count = Cell::new(0);
         reader.read = |buf| {
             do count.with_mut_ref |count| {
                 if *count == 0 {
@@ -725,7 +725,7 @@ mod test {
     #[test]
     fn push_bytes_error() {
         let mut reader = MockReader::new();
-        let count = Cell(0);
+        let count = Cell::new(0);
         reader.read = |buf| {
             do count.with_mut_ref |count| {
                 if *count == 0 {
@@ -752,7 +752,7 @@ mod test {
         // push_bytes unsafely sets the vector length. This is testing that
         // upon failure the length is reset correctly.
         let mut reader = MockReader::new();
-        let count = Cell(0);
+        let count = Cell::new(0);
         reader.read = |buf| {
             do count.with_mut_ref |count| {
                 if *count == 0 {
@@ -778,7 +778,7 @@ mod test {
     #[test]
     fn read_to_end() {
         let mut reader = MockReader::new();
-        let count = Cell(0);
+        let count = Cell::new(0);
         reader.read = |buf| {
             do count.with_mut_ref |count| {
                 if *count == 0 {
@@ -805,7 +805,7 @@ mod test {
     #[ignore(cfg(windows))]
     fn read_to_end_error() {
         let mut reader = MockReader::new();
-        let count = Cell(0);
+        let count = Cell::new(0);
         reader.read = |buf| {
             do count.with_mut_ref |count| {
                 if *count == 0 {

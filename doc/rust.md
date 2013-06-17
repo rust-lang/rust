@@ -301,10 +301,10 @@ num_lit : nonzero_dec [ dec_digit | '_' ] * num_suffix ?
 num_suffix : int_suffix | float_suffix ;
 
 int_suffix : 'u' int_suffix_size ?
-           | 'i' int_suffix_size ;
+           | 'i' int_suffix_size ? ;
 int_suffix_size : [ '8' | '1' '6' | '3' '2' | '6' '4' ] ;
 
-float_suffix : [ exponent | '.' dec_lit exponent ? ] float_suffix_ty ? ;
+float_suffix : [ exponent | '.' dec_lit exponent ? ] ? float_suffix_ty ? ;
 float_suffix_ty : 'f' [ '3' '2' | '6' '4' ] ;
 exponent : ['E' | 'e'] ['-' | '+' ] ? dec_lit ;
 dec_lit : [ dec_digit | '_' ] + ;
@@ -803,19 +803,14 @@ An example of `use` declarations:
 
 ~~~~
 use std::float::sin;
-use std::str::{slice, contains};
-use std::option::Some;
+use std::option::{Some, None};
 
 fn main() {
     // Equivalent to 'info!(std::float::sin(1.0));'
     info!(sin(1.0));
 
-    // Equivalent to 'info!(std::option::Some(1.0));'
-    info!(Some(1.0));
-
-    // Equivalent to
-    // 'info!(std::str::contains(std::str::slice("foo", 0, 1), "oo"));'
-    info!(contains(slice("foo", 0, 1), "oo"));
+    // Equivalent to 'info!(~[std::option::Some(1.0), std::option::None]);'
+    info!(~[Some(1.0), None]);
 }
 ~~~~
 
@@ -1297,7 +1292,7 @@ with matching types and type parameter counts.
 
 An implementation can take type parameters,
 which can be different from the type parameters taken by the trait it implements.
-Implementation parameters are written after after the `impl` keyword.
+Implementation parameters are written after the `impl` keyword.
 
 ~~~~
 # trait Seq<T> { }
@@ -1840,6 +1835,7 @@ is bounds-checked at run-time. When the check fails, it will put the
 task in a _failing state_.
 
 ~~~~
+# use std::task;
 # do task::spawn_unlinked {
 
 ([1, 2, 3, 4])[0];
@@ -2032,7 +2028,8 @@ as
 =
 ~~~~
 
-Operators at the same precedence level are evaluated left-to-right.
+Operators at the same precedence level are evaluated left-to-right. [Unary operators](#unary-operator-expressions)
+have the same precedence level and it is stronger than any of the binary operators'.
 
 ### Grouped expressions
 
@@ -2168,7 +2165,7 @@ fn ten_times(f: &fn(int)) {
     }
 }
 
-ten_times(|j| io::println(fmt!("hello, %d", j)));
+ten_times(|j| println(fmt!("hello, %d", j)));
 
 ~~~~
 
@@ -2189,7 +2186,7 @@ An example:
 let mut i = 0;
 
 while i < 10 {
-    io::println("hello\n");
+    println("hello\n");
     i = i + 1;
 }
 ~~~~
@@ -2323,7 +2320,9 @@ An example of a for loop over the contents of a vector:
 ~~~~
 # type foo = int;
 # fn bar(f: foo) { }
-# let a = 0, b = 0, c = 0;
+# let a = 0;
+# let b = 0;
+# let c = 0;
 
 let v: &[foo] = &[a, b, c];
 
@@ -2335,6 +2334,7 @@ for v.each |e| {
 An example of a for loop over a series of integers:
 
 ~~~~
+# use std::uint;
 # fn bar(b:uint) { }
 for uint::range(0, 256) |i| {
     bar(i);
@@ -2798,6 +2798,7 @@ the vtable pointer for the `T` implementation of `R`, and the pointer value of `
 An example of an object type:
 
 ~~~~~~~~
+# use std::int;
 trait Printable {
   fn to_str(&self) -> ~str;
 }
@@ -2807,7 +2808,7 @@ impl Printable for int {
 }
 
 fn print(a: @Printable) {
-   io::println(a.to_str());
+   println(a.to_str());
 }
 
 fn main() {
@@ -2996,7 +2997,7 @@ allocated within the stack's memory. The value is a part of the stack frame.
 
 Local variables are immutable unless declared with `let mut`.  The
 `mut` keyword applies to all local variables declared within that
-declaration (so `let mut x, y` declares two mutable variables, `x` and
+declaration (so `let mut (x, y) = ...` declares two mutable variables, `x` and
 `y`).
 
 Function parameters are immutable unless declared with `mut`. The

@@ -26,13 +26,18 @@
  * to write OS-ignorant code by default.
  */
 
+#[allow(missing_doc)];
+
 use cast;
 use io;
+use iterator::IteratorUtil;
 use libc;
 use libc::{c_char, c_void, c_int, size_t};
 use libc::{mode_t, FILE};
+use local_data;
 use option;
 use option::{Some, None};
+use os;
 use prelude::*;
 use ptr;
 use str;
@@ -43,6 +48,7 @@ use vec;
 pub use libc::fclose;
 pub use os::consts::*;
 
+/// Delegates to the libc close() function, returning the same return value.
 pub fn close(fd: c_int) -> c_int {
     unsafe {
         libc::close(fd)
@@ -140,7 +146,7 @@ pub mod win32 {
     pub fn as_utf16_p<T>(s: &str, f: &fn(*u16) -> T) -> T {
         let mut t = str::to_utf16(s);
         // Null terminate before passing on.
-        t += ~[0u16];
+        t += [0u16];
         vec::as_imm_buf(t, |buf, _len| f(buf))
     }
 }
@@ -169,6 +175,8 @@ fn with_env_lock<T>(f: &fn() -> T) -> T {
     }
 }
 
+/// Returns a vector of (variable, value) pairs for all the environment
+/// variables of the current process.
 pub fn env() -> ~[(~str,~str)] {
     unsafe {
         #[cfg(windows)]
@@ -217,12 +225,11 @@ pub fn env() -> ~[(~str,~str)] {
         fn env_convert(input: ~[~str]) -> ~[(~str, ~str)] {
             let mut pairs = ~[];
             for input.each |p| {
-                let mut vs = ~[];
-                for str::each_splitn_char(*p, '=', 1) |s| { vs.push(s.to_owned()) }
+                let vs: ~[&str] = p.splitn_iter('=', 1).collect();
                 debug!("splitting: len: %u",
                     vs.len());
                 assert_eq!(vs.len(), 2);
-                pairs.push((copy vs[0], copy vs[1]));
+                pairs.push((vs[0].to_owned(), vs[1].to_owned()));
             }
             pairs
         }
@@ -234,6 +241,8 @@ pub fn env() -> ~[(~str,~str)] {
 }
 
 #[cfg(unix)]
+/// Fetches the environment variable `n` from the current process, returning
+/// None if the variable isn't set.
 pub fn getenv(n: &str) -> Option<~str> {
     unsafe {
         do with_env_lock {
@@ -249,6 +258,8 @@ pub fn getenv(n: &str) -> Option<~str> {
 }
 
 #[cfg(windows)]
+/// Fetches the environment variable `n` from the current process, returning
+/// None if the variable isn't set.
 pub fn getenv(n: &str) -> Option<~str> {
     unsafe {
         do with_env_lock {
@@ -264,6 +275,8 @@ pub fn getenv(n: &str) -> Option<~str> {
 
 
 #[cfg(unix)]
+/// Sets the environment variable `n` to the value `v` for the currently running
+/// process
 pub fn setenv(n: &str, v: &str) {
     unsafe {
         do with_env_lock {
@@ -278,6 +291,8 @@ pub fn setenv(n: &str, v: &str) {
 
 
 #[cfg(windows)]
+/// Sets the environment variable `n` to the value `v` for the currently running
+/// process
 pub fn setenv(n: &str, v: &str) {
     unsafe {
         do with_env_lock {
@@ -420,13 +435,13 @@ fn dup2(src: c_int, dst: c_int) -> c_int {
     }
 }
 
-
+/// Returns the proper dll filename for the given basename of a file.
 pub fn dll_filename(base: &str) -> ~str {
-    return str::to_owned(DLL_PREFIX) + str::to_owned(base) +
-           str::to_owned(DLL_SUFFIX)
+    fmt!("%s%s%s", DLL_PREFIX, base, DLL_SUFFIX)
 }
 
-
+/// Optionally returns the filesystem path to the current executable which is
+/// running. If any failure occurs, None is returned.
 pub fn self_exe_path() -> Option<Path> {
 
     #[cfg(target_os = "freebsd")]
@@ -510,7 +525,7 @@ pub fn self_exe_path() -> Option<Path> {
  */
 pub fn homedir() -> Option<Path> {
     return match getenv("HOME") {
-        Some(ref p) => if !str::is_empty(*p) {
+        Some(ref p) => if !p.is_empty() {
           Some(Path(*p))
         } else {
           secondary()
@@ -526,7 +541,7 @@ pub fn homedir() -> Option<Path> {
     #[cfg(windows)]
     fn secondary() -> Option<Path> {
         do getenv(~"USERPROFILE").chain |p| {
-            if !str::is_empty(p) {
+            if !p.is_empty() {
                 Some(Path(p))
             } else {
                 None
@@ -551,7 +566,7 @@ pub fn tmpdir() -> Path {
     fn getenv_nonempty(v: &str) -> Option<Path> {
         match getenv(v) {
             Some(x) =>
-                if str::is_empty(x) {
+                if x.is_empty() {
                     None
                 } else {
                     Some(Path(x))
@@ -826,6 +841,8 @@ pub fn remove_dir(p: &Path) -> bool {
     }
 }
 
+/// Changes the current working directory to the specified path, returning
+/// whether the change was completed successfully or not.
 pub fn change_dir(p: &Path) -> bool {
     return chdir(p);
 
@@ -861,20 +878,18 @@ pub fn change_dir_locked(p: &Path, action: &fn()) -> bool {
 
     fn key(_: Exclusive<()>) { }
 
-    let result = unsafe {
-        global_data_clone_create(key, || {
-            ~exclusive(())
-        })
-    };
+    unsafe {
+        let result = global_data_clone_create(key, || { ~exclusive(()) });
 
-    do result.with_imm() |_| {
-        let old_dir = os::getcwd();
-        if change_dir(p) {
-            action();
-            change_dir(&old_dir)
-        }
-        else {
-            false
+        do result.with_imm() |_| {
+            let old_dir = os::getcwd();
+            if change_dir(p) {
+                action();
+                change_dir(&old_dir)
+            }
+            else {
+                false
+            }
         }
     }
 }
@@ -981,6 +996,7 @@ pub fn remove_file(p: &Path) -> bool {
 }
 
 #[cfg(unix)]
+/// Returns the platform-specific value of errno
 pub fn errno() -> int {
     #[cfg(target_os = "macos")]
     #[cfg(target_os = "freebsd")]
@@ -1012,6 +1028,7 @@ pub fn errno() -> int {
 }
 
 #[cfg(windows)]
+/// Returns the platform-specific value of errno
 pub fn errno() -> uint {
     use libc::types::os::arch::extra::DWORD;
 
@@ -1162,7 +1179,7 @@ pub fn real_args() -> ~[~str] {
 #[cfg(windows)]
 pub fn real_args() -> ~[~str] {
     let mut nArgs: c_int = 0;
-    let lpArgCount = ptr::to_mut_unsafe_ptr(&mut nArgs);
+    let lpArgCount: *mut c_int = &mut nArgs;
     let lpCmdLine = unsafe { GetCommandLineW() };
     let szArgList = unsafe { CommandLineToArgvW(lpCmdLine, lpArgCount) };
 
@@ -1211,6 +1228,11 @@ struct OverriddenArgs {
 
 fn overridden_arg_key(_v: @OverriddenArgs) {}
 
+/// Returns the arguments which this program was started with (normally passed
+/// via the command line).
+///
+/// The return value of the function can be changed by invoking the
+/// `os::set_args` function.
 pub fn args() -> ~[~str] {
     unsafe {
         match local_data::local_data_get(overridden_arg_key) {
@@ -1220,6 +1242,9 @@ pub fn args() -> ~[~str] {
     }
 }
 
+/// For the current task, overrides the task-local cache of the arguments this
+/// program had when it started. These new arguments are only available to the
+/// current task via the `os::args` method.
 pub fn set_args(new_args: ~[~str]) {
     unsafe {
         let overridden_args = @OverriddenArgs { val: copy new_args };
@@ -1423,8 +1448,9 @@ mod tests {
     use rand::RngUtil;
     use rand;
     use run;
-    use str;
+    use str::StrSlice;
     use vec;
+    use vec::CopyableVector;
     use libc::consts::os::posix88::{S_IRUSR, S_IWUSR, S_IXUSR};
 
 
@@ -1548,7 +1574,7 @@ mod tests {
         setenv("HOME", "");
         assert!(os::homedir().is_none());
 
-        for oldhome.each |s| { setenv("HOME", *s) }
+        for oldhome.iter().advance |s| { setenv("HOME", *s) }
     }
 
     #[test]
@@ -1581,7 +1607,7 @@ mod tests {
 
     #[test]
     fn tmpdir() {
-        assert!(!str::is_empty(os::tmpdir().to_str()));
+        assert!(!os::tmpdir().to_str().is_empty());
     }
 
     // Issue #712
@@ -1646,7 +1672,7 @@ mod tests {
         unsafe {
           let tempdir = getcwd(); // would like to use $TMPDIR,
                                   // doesn't seem to work on Linux
-          assert!((str::len(tempdir.to_str()) > 0u));
+          assert!((tempdir.to_str().len() > 0u));
           let in = tempdir.push("in.txt");
           let out = tempdir.push("out.txt");
 
@@ -1658,10 +1684,10 @@ mod tests {
           };
           assert!((ostream as uint != 0u));
           let s = ~"hello";
-          let mut buf = str::to_bytes(s) + [0 as u8];
+          let mut buf = s.as_bytes_with_null().to_owned();
           do vec::as_mut_buf(buf) |b, _len| {
               assert!((libc::fwrite(b as *c_void, 1u as size_t,
-                                   (str::len(s) + 1u) as size_t, ostream)
+                                   (s.len() + 1u) as size_t, ostream)
                       == buf.len() as size_t))
           }
           assert_eq!(libc::fclose(ostream), (0u as c_int));

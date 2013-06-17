@@ -12,7 +12,7 @@
 
 enum foo { large, small, }
 
-impl cmp::Eq for foo {
+impl Eq for foo {
     fn eq(&self, other: &foo) -> bool {
         ((*self) as uint) == ((*other) as uint)
     }

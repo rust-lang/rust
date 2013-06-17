@@ -12,10 +12,11 @@ use core::prelude::*;
 
 use driver::session::Session;
 
+use core::vec;
 use syntax::ast;
 use syntax::attr;
-use syntax::codemap;
 use syntax::codemap::dummy_sp;
+use syntax::codemap;
 use syntax::fold;
 
 static STD_VERSION: &'static str = "0.7-pre";
@@ -48,8 +49,8 @@ fn inject_libstd_ref(sess: Session, crate: @ast::crate) -> @ast::crate {
                     spanned(ast::attribute_ {
                         style: ast::attr_inner,
                         value: @spanned(ast::meta_name_value(
-                            @~"vers",
-                            spanned(ast::lit_str(@STD_VERSION.to_str()))
+                            @"vers",
+                            spanned(ast::lit_str(STD_VERSION.to_managed()))
                         )),
                         is_sugared_doc: false
                     })

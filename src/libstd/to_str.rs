@@ -22,20 +22,18 @@ use hash::Hash;
 use cmp::Eq;
 use old_iter::BaseIter;
 
+/// A generic trait for converting a value to a string
 pub trait ToStr {
+    /// Converts the value of `self` to an owned string
     fn to_str(&self) -> ~str;
 }
 
 /// Trait for converting a type to a string, consuming it in the process.
 pub trait ToStrConsume {
-    // Cosume and convert to a string.
+    /// Cosume and convert to a string.
     fn to_str_consume(self) -> ~str;
 }
 
-impl ToStr for bool {
-    #[inline(always)]
-    fn to_str(&self) -> ~str { ::bool::to_str(*self) }
-}
 impl ToStr for () {
     #[inline(always)]
     fn to_str(&self) -> ~str { ~"()" }
@@ -46,7 +44,7 @@ impl<A:ToStr> ToStr for (A,) {
     fn to_str(&self) -> ~str {
         match *self {
             (ref a,) => {
-                ~"(" + a.to_str() + ",)"
+                fmt!("(%s,)", (*a).to_str())
             }
         }
     }
@@ -55,7 +53,7 @@ impl<A:ToStr> ToStr for (A,) {
 impl<A:ToStr+Hash+Eq, B:ToStr+Hash+Eq> ToStr for HashMap<A, B> {
     #[inline(always)]
     fn to_str(&self) -> ~str {
-        let mut acc = ~"{", first = true;
+        let mut (acc, first) = (~"{", true);
         for self.each |key, value| {
             if first {
                 first = false;
@@ -75,29 +73,29 @@ impl<A:ToStr+Hash+Eq, B:ToStr+Hash+Eq> ToStr for HashMap<A, B> {
 impl<A:ToStr+Hash+Eq> ToStr for HashSet<A> {
     #[inline(always)]
     fn to_str(&self) -> ~str {
-    let mut acc = ~"{", first = true;
-    for self.each |element| {
-        if first {
-            first = false;
+        let mut (acc, first) = (~"{", true);
+        for self.each |element| {
+            if first {
+                first = false;
+            }
+            else {
+                acc.push_str(", ");
+            }
+            acc.push_str(element.to_str());
         }
-        else {
-            acc.push_str(", ");
-        }
-        acc.push_str(element.to_str());
-    }
-    acc.push_char('}');
-    acc
+        acc.push_char('}');
+        acc
     }
 }
 
 impl<A:ToStr,B:ToStr> ToStr for (A, B) {
     #[inline(always)]
     fn to_str(&self) -> ~str {
-        // FIXME(#4760): this causes an llvm assertion
+        // FIXME(#4653): this causes an llvm assertion
         //let &(ref a, ref b) = self;
         match *self {
             (ref a, ref b) => {
-                ~"(" + a.to_str() + ", " + b.to_str() + ")"
+                fmt!("(%s, %s)", (*a).to_str(), (*b).to_str())
             }
         }
     }
@@ -106,7 +104,7 @@ impl<A:ToStr,B:ToStr> ToStr for (A, B) {
 impl<A:ToStr,B:ToStr,C:ToStr> ToStr for (A, B, C) {
     #[inline(always)]
     fn to_str(&self) -> ~str {
-        // FIXME(#4760): this causes an llvm assertion
+        // FIXME(#4653): this causes an llvm assertion
         //let &(ref a, ref b, ref c) = self;
         match *self {
             (ref a, ref b, ref c) => {
@@ -123,7 +121,7 @@ impl<A:ToStr,B:ToStr,C:ToStr> ToStr for (A, B, C) {
 impl<'self,A:ToStr> ToStr for &'self [A] {
     #[inline(always)]
     fn to_str(&self) -> ~str {
-        let mut acc = ~"[", first = true;
+        let mut (acc, first) = (~"[", true);
         for self.each |elt| {
             if first {
                 first = false;
@@ -141,7 +139,7 @@ impl<'self,A:ToStr> ToStr for &'self [A] {
 impl<A:ToStr> ToStr for ~[A] {
     #[inline(always)]
     fn to_str(&self) -> ~str {
-        let mut acc = ~"[", first = true;
+        let mut (acc, first) = (~"[", true);
         for self.each |elt| {
             if first {
                 first = false;
@@ -159,7 +157,7 @@ impl<A:ToStr> ToStr for ~[A] {
 impl<A:ToStr> ToStr for @[A] {
     #[inline(always)]
     fn to_str(&self) -> ~str {
-        let mut acc = ~"[", first = true;
+        let mut (acc, first) = (~"[", true);
         for self.each |elt| {
             if first {
                 first = false;

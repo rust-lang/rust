@@ -12,6 +12,8 @@
 // Issue Name: pub method preceeded by attribute can't be parsed
 // Abstract: Visibility parsing failed when compiler parsing
 
+use std::float;
+
 struct Point {
     x: float,
     y: float
@@ -22,7 +24,7 @@ pub enum Shape {
     Rectangle(Point, Point)
 }
 
-pub impl Shape {
+impl Shape {
     pub fn area(&self, sh: Shape) -> float {
         match sh {
             Circle(_, size) => float::consts::pi * size * size,
@@ -33,5 +35,5 @@ pub impl Shape {
 
 pub fn main(){
     let s = Circle(Point { x: 1f, y: 2f }, 3f);
-    io::println(fmt!("%f", s.area(s)));
+    println(fmt!("%f", s.area(s)));
 }

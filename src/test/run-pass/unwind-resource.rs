@@ -12,6 +12,7 @@
 extern mod extra;
 
 use std::comm::*;
+use std::task;
 
 struct complainer {
   c: SharedChan<bool>,

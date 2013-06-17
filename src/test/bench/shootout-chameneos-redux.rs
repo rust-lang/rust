@@ -11,16 +11,23 @@
 // chameneos
 
 extern mod extra;
+
 use extra::sort;
 use std::cell::Cell;
 use std::comm::*;
+use std::io;
+use std::option;
+use std::os;
+use std::task;
+use std::uint;
+use std::vec;
 
 fn print_complements() {
     let all = ~[Blue, Red, Yellow];
     for vec::each(all) |aa| {
         for vec::each(all) |bb| {
-            io::println(show_color(*aa) + ~" + " + show_color(*bb) +
-                ~" -> " + show_color(transform(*aa, *bb)));
+            io::println(show_color(*aa) + " + " + show_color(*bb) +
+                " -> " + show_color(transform(*aa, *bb)));
         }
     }
 }
@@ -43,7 +50,7 @@ fn show_color(cc: color) -> ~str {
 fn show_color_list(set: ~[color]) -> ~str {
     let mut out = ~"";
     for vec::eachi(set) |_ii, col| {
-        out += ~" ";
+        out += " ";
         out += show_color(*col);
     }
     return out;
@@ -75,7 +82,7 @@ fn show_number(nn: uint) -> ~str {
     while num != 0 {
         dig = num % 10;
         num = num / 10;
-        out = show_digit(dig) + ~" " + out;
+        out = show_digit(dig) + " " + out;
     }
 
     return out;
@@ -124,8 +131,8 @@ fn creature(
             }
             option::None => {
                 // log creatures met and evil clones of self
-                let report = fmt!("%u", creatures_met) + ~" " +
-                             show_number(evil_clones_met);
+                let report = fmt!("%u %s",
+                                  creatures_met, show_number(evil_clones_met));
                 to_rendezvous_log.send(report);
                 break;
             }
@@ -153,7 +160,7 @@ fn rendezvous(nn: uint, set: ~[color]) {
             let to_rendezvous = to_rendezvous.clone();
             let to_rendezvous_log = to_rendezvous_log.clone();
             let (from_rendezvous, to_creature) = stream();
-            let from_rendezvous = Cell(from_rendezvous);
+            let from_rendezvous = Cell::new(from_rendezvous);
             do task::spawn || {
                 creature(ii, col, from_rendezvous.take(), to_rendezvous.clone(),
                          to_rendezvous_log.clone());

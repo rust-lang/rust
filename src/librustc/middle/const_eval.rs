@@ -18,7 +18,9 @@ use middle;
 use syntax::{ast, ast_map, ast_util, visit};
 use syntax::ast::*;
 
+use core::float;
 use core::hashmap::{HashMap, HashSet};
+use core::vec;
 
 //
 // This pass classifies expressions by their constant-ness.
@@ -70,7 +72,7 @@ pub fn join(a: constness, b: constness) -> constness {
 }
 
 pub fn join_all(cs: &[constness]) -> constness {
-    vec::foldl(integral_const, cs, |a, b| join(a, *b))
+    cs.iter().fold(integral_const, |a, b| join(a, *b))
 }
 
 pub fn classify(e: @expr,
@@ -91,12 +93,12 @@ pub fn classify(e: @expr,
               }
 
               ast::expr_copy(inner) |
-              ast::expr_unary(_, inner) |
+              ast::expr_unary(_, _, inner) |
               ast::expr_paren(inner) => {
                 classify(inner, tcx)
               }
 
-              ast::expr_binary(_, a, b) => {
+              ast::expr_binary(_, _, a, b) => {
                 join(classify(a, tcx),
                      classify(b, tcx))
               }
@@ -118,11 +120,7 @@ pub fn classify(e: @expr,
 
               ast::expr_struct(_, ref fs, None) => {
                 let cs = do vec::map((*fs)) |f| {
-                    if f.node.mutbl == ast::m_imm {
-                        classify(f.node.expr, tcx)
-                    } else {
-                        non_const
-                    }
+                    classify(f.node.expr, tcx)
                 };
                 join_all(cs)
               }
@@ -143,7 +141,7 @@ pub fn classify(e: @expr,
                 classify(base, tcx)
               }
 
-              ast::expr_index(base, idx) => {
+              ast::expr_index(_, base, idx) => {
                 join(classify(base, tcx),
                      classify(idx, tcx))
               }
@@ -225,7 +223,7 @@ pub fn process_crate(crate: @ast::crate,
         visit_expr_post: |e| { classify(e, tcx); },
         .. *visit::default_simple_visitor()
     });
-    visit::visit_crate(crate, (), v);
+    visit::visit_crate(crate, ((), v));
     tcx.sess.abort_if_errors();
 }
 
@@ -237,14 +235,14 @@ pub enum const_val {
     const_float(f64),
     const_int(i64),
     const_uint(u64),
-    const_str(~str),
+    const_str(@str),
     const_bool(bool)
 }
 
 pub fn eval_const_expr(tcx: middle::ty::ctxt, e: @expr) -> const_val {
     match eval_const_expr_partial(tcx, e) {
-        Ok(ref r) => (/*bad*/copy *r),
-        Err(ref s) => fail!(/*bad*/copy *s)
+        Ok(r) => r,
+        Err(s) => tcx.sess.span_fatal(e.span, s)
     }
 }
 
@@ -253,7 +251,7 @@ pub fn eval_const_expr_partial(tcx: middle::ty::ctxt, e: @expr)
     use middle::ty;
     fn fromb(b: bool) -> Result<const_val, ~str> { Ok(const_int(b as i64)) }
     match e.node {
-      expr_unary(neg, inner) => {
+      expr_unary(_, neg, inner) => {
         match eval_const_expr_partial(tcx, inner) {
           Ok(const_float(f)) => Ok(const_float(-f)),
           Ok(const_int(i)) => Ok(const_int(-i)),
@@ -263,7 +261,7 @@ pub fn eval_const_expr_partial(tcx: middle::ty::ctxt, e: @expr)
           ref err => (/*bad*/copy *err)
         }
       }
-      expr_unary(not, inner) => {
+      expr_unary(_, not, inner) => {
         match eval_const_expr_partial(tcx, inner) {
           Ok(const_int(i)) => Ok(const_int(!i)),
           Ok(const_uint(i)) => Ok(const_uint(!i)),
@@ -271,7 +269,7 @@ pub fn eval_const_expr_partial(tcx: middle::ty::ctxt, e: @expr)
           _ => Err(~"Not on float or string")
         }
       }
-      expr_binary(op, a, b) => {
+      expr_binary(_, op, a, b) => {
         match (eval_const_expr_partial(tcx, a),
                eval_const_expr_partial(tcx, b)) {
           (Ok(const_float(a)), Ok(const_float(b))) => {
@@ -410,13 +408,13 @@ pub fn eval_const_expr_partial(tcx: middle::ty::ctxt, e: @expr)
 
 pub fn lit_to_const(lit: @lit) -> const_val {
     match lit.node {
-      lit_str(s) => const_str(/*bad*/copy *s),
+      lit_str(s) => const_str(s),
       lit_int(n, _) => const_int(n),
       lit_uint(n, _) => const_uint(n),
       lit_int_unsuffixed(n) => const_int(n),
-      lit_float(n, _) => const_float(float::from_str(*n).get() as f64),
+      lit_float(n, _) => const_float(float::from_str(n).get() as f64),
       lit_float_unsuffixed(n) =>
-        const_float(float::from_str(*n).get() as f64),
+        const_float(float::from_str(n).get() as f64),
       lit_nil => const_int(0i64),
       lit_bool(b) => const_bool(b)
     }

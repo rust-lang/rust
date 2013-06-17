@@ -19,12 +19,20 @@ use metadata::filesearch::FileSearch;
 use metadata::filesearch;
 use syntax::codemap::span;
 use syntax::diagnostic::span_handler;
+use syntax::parse::token;
 use syntax::parse::token::ident_interner;
 use syntax::print::pprust;
 use syntax::{ast, attr};
 
-use extra::flate;
+use core::cast;
+use core::io;
+use core::option;
 use core::os::consts::{macos, freebsd, linux, android, win32};
+use core::ptr;
+use core::str;
+use core::uint;
+use core::vec;
+use extra::flate;
 
 pub enum os {
     os_macos,
@@ -40,7 +48,7 @@ pub struct Context {
     span: span,
     ident: ast::ident,
     metas: ~[@ast::meta_item],
-    hash: @~str,
+    hash: @str,
     os: os,
     is_static: bool,
     intr: @ident_interner
@@ -52,7 +60,7 @@ pub fn load_library_crate(cx: &Context) -> (~str, @~[u8]) {
       None => {
         cx.diag.span_fatal(
             cx.span, fmt!("can't find crate for `%s`",
-                          *cx.intr.get(cx.ident)));
+                          token::ident_to_str(&cx.ident)));
       }
     }
 }
@@ -81,7 +89,7 @@ fn find_library_crate_aux(
     filesearch: @filesearch::FileSearch
 ) -> Option<(~str, @~[u8])> {
     let crate_name = crate_name_from_metas(cx.metas);
-    let prefix: ~str = prefix + *crate_name + "-";
+    let prefix: ~str = prefix + crate_name + "-";
     let suffix: ~str = /*bad*/copy suffix;
 
     let mut matches = ~[];
@@ -120,7 +128,7 @@ fn find_library_crate_aux(
         Some(/*bad*/copy matches[0])
     } else {
         cx.diag.span_err(
-            cx.span, fmt!("multiple matching crates for `%s`", *crate_name));
+            cx.span, fmt!("multiple matching crates for `%s`", crate_name));
         cx.diag.handler().note("candidates:");
         for matches.each |&(ident, data)| {
             cx.diag.handler().note(fmt!("path: %s", ident));
@@ -132,7 +140,7 @@ fn find_library_crate_aux(
     }
 }
 
-pub fn crate_name_from_metas(metas: &[@ast::meta_item]) -> @~str {
+pub fn crate_name_from_metas(metas: &[@ast::meta_item]) -> @str {
     let name_items = attr::find_meta_items_by_name(metas, "name");
     match name_items.last_opt() {
         Some(i) => {
@@ -158,7 +166,7 @@ pub fn note_linkage_attrs(intr: @ident_interner,
 
 fn crate_matches(crate_data: @~[u8],
                  metas: &[@ast::meta_item],
-                 hash: @~str) -> bool {
+                 hash: @str) -> bool {
     let attrs = decoder::get_crate_attributes(crate_data);
     let linkage_metas = attr::find_linkage_metas(attrs);
     if !hash.is_empty() {
@@ -204,7 +212,7 @@ fn get_metadata_section(os: os,
                 let mut found = None;
                 unsafe {
                     let cvbuf: *u8 = cast::transmute(cbuf);
-                    let vlen = vec::len(encoder::metadata_encoding_version);
+                    let vlen = encoder::metadata_encoding_version.len();
                     debug!("checking %u bytes of metadata-version stamp",
                            vlen);
                     let minsz = uint::min(vlen, csz);
@@ -261,8 +269,7 @@ pub fn list_file_metadata(intr: @ident_interner,
     match get_metadata_section(os, path) {
       option::Some(bytes) => decoder::list_crate_metadata(intr, bytes, out),
       option::None => {
-        out.write_str(~"could not find metadata in "
-                      + path.to_str() + ".\n");
+        out.write_str(fmt!("could not find metadata in %s.\n", path.to_str()))
       }
     }
 }

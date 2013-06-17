@@ -41,16 +41,16 @@ pub struct Reflector {
     bcx: block
 }
 
-pub impl Reflector {
-    fn c_uint(&mut self, u: uint) -> ValueRef {
+impl Reflector {
+    pub fn c_uint(&mut self, u: uint) -> ValueRef {
         C_uint(self.bcx.ccx(), u)
     }
 
-    fn c_int(&mut self, i: int) -> ValueRef {
+    pub fn c_int(&mut self, i: int) -> ValueRef {
         C_int(self.bcx.ccx(), i)
     }
 
-    fn c_slice(&mut self, s: @~str) -> ValueRef {
+    pub fn c_slice(&mut self, s: @str) -> ValueRef {
         // We're careful to not use first class aggregates here because that
         // will kick us off fast isel. (Issue #4352.)
         let bcx = self.bcx;
@@ -64,7 +64,7 @@ pub impl Reflector {
         scratch.val
     }
 
-    fn c_size_and_align(&mut self, t: ty::t) -> ~[ValueRef] {
+    pub fn c_size_and_align(&mut self, t: ty::t) -> ~[ValueRef] {
         let tr = type_of(self.bcx.ccx(), t);
         let s = machine::llsize_of_real(self.bcx.ccx(), tr);
         let a = machine::llalign_of_min(self.bcx.ccx(), tr);
@@ -72,19 +72,19 @@ pub impl Reflector {
              self.c_uint(a)];
     }
 
-    fn c_tydesc(&mut self, t: ty::t) -> ValueRef {
+    pub fn c_tydesc(&mut self, t: ty::t) -> ValueRef {
         let bcx = self.bcx;
         let static_ti = get_tydesc(bcx.ccx(), t);
         glue::lazily_emit_all_tydesc_glue(bcx.ccx(), static_ti);
         PointerCast(bcx, static_ti.tydesc, T_ptr(self.tydesc_ty))
     }
 
-    fn c_mt(&mut self, mt: &ty::mt) -> ~[ValueRef] {
+    pub fn c_mt(&mut self, mt: &ty::mt) -> ~[ValueRef] {
         ~[self.c_uint(mt.mutbl as uint),
           self.c_tydesc(mt.ty)]
     }
 
-    fn visit(&mut self, ty_name: ~str, args: &[ValueRef]) {
+    pub fn visit(&mut self, ty_name: ~str, args: &[ValueRef]) {
         let tcx = self.bcx.tcx();
         let mth_idx = ty::method_idx(
             tcx.sess.ident_of(~"visit_" + ty_name),
@@ -119,19 +119,19 @@ pub impl Reflector {
         self.bcx = next_bcx
     }
 
-    fn bracketed(&mut self,
-                 bracket_name: ~str,
-                 extra: &[ValueRef],
-                 inner: &fn(&mut Reflector)) {
+    pub fn bracketed(&mut self,
+                     bracket_name: ~str,
+                     extra: &[ValueRef],
+                     inner: &fn(&mut Reflector)) {
         self.visit(~"enter_" + bracket_name, extra);
         inner(self);
         self.visit(~"leave_" + bracket_name, extra);
     }
 
-    fn vstore_name_and_extra(&mut self,
-                             t: ty::t,
-                             vstore: ty::vstore) -> (~str, ~[ValueRef])
-    {
+    pub fn vstore_name_and_extra(&mut self,
+                                 t: ty::t,
+                                 vstore: ty::vstore)
+                                 -> (~str, ~[ValueRef]) {
         match vstore {
             ty::vstore_fixed(n) => {
                 let extra = vec::append(~[self.c_uint(n)],
@@ -144,15 +144,14 @@ pub impl Reflector {
         }
     }
 
-    fn leaf(&mut self, name: ~str) {
+    pub fn leaf(&mut self, name: ~str) {
         self.visit(name, []);
     }
 
     // Entrypoint
-    fn visit_ty(&mut self, t: ty::t) {
+    pub fn visit_ty(&mut self, t: ty::t) {
         let bcx = self.bcx;
-        debug!("reflect::visit_ty %s",
-               ty_to_str(bcx.ccx().tcx, t));
+        debug!("reflect::visit_ty %s", ty_to_str(bcx.ccx().tcx, t));
 
         match ty::get(t).sty {
           ty::ty_bot => self.leaf(~"bot"),
@@ -312,16 +311,17 @@ pub impl Reflector {
                 + self.c_size_and_align(t);
             do self.bracketed(~"enum", enum_args) |this| {
                 for variants.eachi |i, v| {
+                    let name = ccx.sess.str_of(v.name);
                     let variant_args = ~[this.c_uint(i),
                                          this.c_int(v.disr_val),
                                          this.c_uint(v.args.len()),
-                                         this.c_slice(ccx.sess.str_of(v.name))];
+                                         this.c_slice(name)];
                     do this.bracketed(~"enum_variant", variant_args) |this| {
                         for v.args.eachi |j, a| {
                             let bcx = this.bcx;
                             let null = C_null(llptrty);
-                            let offset = p2i(ccx, adt::trans_field_ptr(bcx, repr, null,
-                                                                       v.disr_val, j));
+                            let ptr = adt::trans_field_ptr(bcx, repr, null, v.disr_val, j);
+                            let offset = p2i(ccx, ptr);
                             let field_args = ~[this.c_uint(j),
                                                offset,
                                                this.c_tydesc(*a)];
@@ -351,7 +351,7 @@ pub impl Reflector {
         }
     }
 
-    fn visit_sig(&mut self, retval: uint, sig: &ty::FnSig) {
+    pub fn visit_sig(&mut self, retval: uint, sig: &ty::FnSig) {
         for sig.inputs.eachi |i, arg| {
             let modeval = 5u;   // "by copy"
             let extra = ~[self.c_uint(i),

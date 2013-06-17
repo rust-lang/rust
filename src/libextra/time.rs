@@ -8,7 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[allow(missing_doc)];
+
 use core::prelude::*;
+
+use core::i32;
+use core::int;
+use core::io;
+use core::str;
 
 static NSEC_PER_SEC: i32 = 1_000_000_000_i32;
 
@@ -42,8 +49,8 @@ pub struct Timespec { sec: i64, nsec: i32 }
  * -1.2 seconds before the epoch is represented by `Timespec { sec: -2_i64,
  * nsec: 800_000_000_i32 }`.
  */
-pub impl Timespec {
-    fn new(sec: i64, nsec: i32) -> Timespec {
+impl Timespec {
+    pub fn new(sec: i64, nsec: i32) -> Timespec {
         assert!(nsec >= 0 && nsec < NSEC_PER_SEC);
         Timespec { sec: sec, nsec: nsec }
     }
@@ -173,9 +180,9 @@ pub fn strftime(format: &str, tm: &Tm) -> ~str {
     do_strftime(format, tm)
 }
 
-pub impl Tm {
+impl Tm {
     /// Convert time to the seconds from January 1, 1970
-    fn to_timespec(&self) -> Timespec {
+    pub fn to_timespec(&self) -> Timespec {
         unsafe {
             let sec = match self.tm_gmtoff {
                 0_i32 => rustrt::rust_timegm(self),
@@ -187,12 +194,12 @@ pub impl Tm {
     }
 
     /// Convert time to the local timezone
-    fn to_local(&self) -> Tm {
+    pub fn to_local(&self) -> Tm {
         at(self.to_timespec())
     }
 
     /// Convert time to the UTC
-    fn to_utc(&self) -> Tm {
+    pub fn to_utc(&self) -> Tm {
         at_utc(self.to_timespec())
     }
 
@@ -200,10 +207,10 @@ pub impl Tm {
      * Return a string of the current time in the form
      * "Thu Jan  1 00:00:00 1970".
      */
-    fn ctime(&self) -> ~str { self.strftime("%c") }
+    pub fn ctime(&self) -> ~str { self.strftime("%c") }
 
     /// Formats the time according to the format string.
-    fn strftime(&self, format: &str) -> ~str {
+    pub fn strftime(&self, format: &str) -> ~str {
         strftime(format, self)
     }
 
@@ -213,7 +220,7 @@ pub impl Tm {
      * local: "Thu, 22 Mar 2012 07:53:18 PST"
      * utc:   "Thu, 22 Mar 2012 14:53:18 UTC"
      */
-    fn rfc822(&self) -> ~str {
+    pub fn rfc822(&self) -> ~str {
         if self.tm_gmtoff == 0_i32 {
             self.strftime("%a, %d %b %Y %T GMT")
         } else {
@@ -227,7 +234,7 @@ pub impl Tm {
      * local: "Thu, 22 Mar 2012 07:53:18 -0700"
      * utc:   "Thu, 22 Mar 2012 14:53:18 -0000"
      */
-    fn rfc822z(&self) -> ~str {
+    pub fn rfc822z(&self) -> ~str {
         self.strftime("%a, %d %b %Y %T %z")
     }
 
@@ -237,7 +244,7 @@ pub impl Tm {
      * local: "2012-02-22T07:53:18-07:00"
      * utc:   "2012-02-22T14:53:18Z"
      */
-    fn rfc3339(&self) -> ~str {
+    pub fn rfc3339(&self) -> ~str {
         if self.tm_gmtoff == 0_i32 {
             self.strftime("%Y-%m-%dT%H:%M:%SZ")
         } else {
@@ -254,7 +261,7 @@ pub impl Tm {
 priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
     fn match_str(s: &str, pos: uint, needle: &str) -> bool {
         let mut i = pos;
-        for str::each(needle) |ch| {
+        for needle.bytes_iter().advance |ch| {
             if s[i] != ch {
                 return false;
             }
@@ -268,10 +275,12 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
         let mut i = 0u;
         let len = strs.len();
         while i < len {
-            let &(needle, value) = &strs[i];
-
-            if match_str(ss, pos, needle) {
-                return Some((value, pos + str::len(needle)));
+            match strs[i] { // can't use let due to stage0 bugs
+                (ref needle, value) => {
+                    if match_str(ss, pos, *needle) {
+                        return Some((value, pos + needle.len()));
+                    }
+                }
             }
             i += 1u;
         }
@@ -286,7 +295,7 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
 
         let mut i = 0u;
         while i < digits {
-            let range = str::char_range_at(str::to_owned(ss), pos);
+            let range = ss.char_range_at(pos);
             pos = range.next;
 
             match range.ch {
@@ -313,7 +322,7 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
     }
 
     fn parse_char(s: &str, pos: uint, c: char) -> Result<uint, ~str> {
-        let range = str::char_range_at(s, pos);
+        let range = s.char_range_at(pos);
 
         if c == range.ch {
             Ok(range.next)
@@ -588,9 +597,9 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
                 // It's odd, but to maintain compatibility with c's
                 // strptime we ignore the timezone.
                 let mut pos = pos;
-                let len = str::len(s);
+                let len = s.len();
                 while pos < len {
-                    let range = str::char_range_at(s, pos);
+                    let range = s.char_range_at(pos);
                     pos = range.next;
                     if range.ch == ' ' { break; }
                 }
@@ -599,7 +608,7 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
             }
           }
           'z' => {
-            let range = str::char_range_at(s, pos);
+            let range = s.char_range_at(pos);
 
             if range.ch == '+' || range.ch == '-' {
                 match match_digits(s, range.next, 4u, false) {
@@ -625,7 +634,7 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
         }
     }
 
-    do io::with_str_reader(str::to_owned(format)) |rdr| {
+    do io::with_str_reader(format) |rdr| {
         let mut tm = Tm {
             tm_sec: 0_i32,
             tm_min: 0_i32,
@@ -641,11 +650,11 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
             tm_nsec: 0_i32,
         };
         let mut pos = 0u;
-        let len = str::len(s);
+        let len = s.len();
         let mut result = Err(~"Invalid time");
 
         while !rdr.eof() && pos < len {
-            let range = str::char_range_at(s, pos);
+            let range = s.char_range_at(pos);
             let ch = range.ch;
             let next = range.next;
 
@@ -837,11 +846,11 @@ priv fn do_strftime(format: &str, tm: &Tm) -> ~str {
 
     let mut buf = ~"";
 
-    do io::with_str_reader(str::to_owned(format)) |rdr| {
+    do io::with_str_reader(format) |rdr| {
         while !rdr.eof() {
             match rdr.read_char() {
                 '%' => buf += parse_type(rdr.read_char(), tm),
-                ch => str::push_char(&mut buf, ch)
+                ch => buf.push_char(ch)
             }
         }
     }
@@ -1000,7 +1009,7 @@ mod tests {
             == Err(~"Invalid time"));
 
         match strptime("Fri Feb 13 15:31:30 2009", format) {
-          Err(copy e) => fail!(e),
+          Err(e) => fail!(e),
           Ok(ref tm) => {
             assert!(tm.tm_sec == 30_i32);
             assert!(tm.tm_min == 31_i32);
@@ -1020,7 +1029,7 @@ mod tests {
         fn test(s: &str, format: &str) -> bool {
             match strptime(s, format) {
               Ok(ref tm) => tm.strftime(format) == str::to_owned(s),
-              Err(copy e) => fail!(e)
+              Err(e) => fail!(e)
             }
         }
 
@@ -1219,36 +1228,34 @@ mod tests {
     }
 
     fn test_timespec_eq_ord() {
-        use core::cmp::{eq, ge, gt, le, lt, ne};
-
         let a = &Timespec::new(-2, 1);
         let b = &Timespec::new(-1, 2);
         let c = &Timespec::new(1, 2);
         let d = &Timespec::new(2, 1);
         let e = &Timespec::new(2, 1);
 
-        assert!(eq(d, e));
-        assert!(ne(c, e));
+        assert!(d.eq(e));
+        assert!(c.ne(e));
 
-        assert!(lt(a, b));
-        assert!(lt(b, c));
-        assert!(lt(c, d));
+        assert!(a.lt(b));
+        assert!(b.lt(c));
+        assert!(c.lt(d));
 
-        assert!(le(a, b));
-        assert!(le(b, c));
-        assert!(le(c, d));
-        assert!(le(d, e));
-        assert!(le(e, d));
+        assert!(a.le(b));
+        assert!(b.le(c));
+        assert!(c.le(d));
+        assert!(d.le(e));
+        assert!(e.le(d));
 
-        assert!(ge(b, a));
-        assert!(ge(c, b));
-        assert!(ge(d, c));
-        assert!(ge(e, d));
-        assert!(ge(d, e));
+        assert!(b.ge(a));
+        assert!(c.ge(b));
+        assert!(d.ge(c));
+        assert!(e.ge(d));
+        assert!(d.ge(e));
 
-        assert!(gt(b, a));
-        assert!(gt(c, b));
-        assert!(gt(d, c));
+        assert!(b.gt(a));
+        assert!(c.gt(b));
+        assert!(d.gt(c));
     }
 
     #[test]

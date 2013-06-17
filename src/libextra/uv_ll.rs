@@ -31,12 +31,16 @@
  */
 
 #[allow(non_camel_case_types)]; // C types
+#[allow(missing_doc)];
 
 use core::prelude::*;
 
-use core::libc::size_t;
-use core::libc::c_void;
+use core::libc::{c_void, size_t};
+use core::libc;
 use core::ptr::to_unsafe_ptr;
+use core::ptr;
+use core::str;
+use core::vec;
 
 pub type uv_handle_t = c_void;
 pub type uv_loop_t = c_void;
@@ -984,7 +988,7 @@ pub unsafe fn accept(server: *libc::c_void, client: *libc::c_void)
 pub unsafe fn write<T>(req: *uv_write_t, stream: *T,
          buf_in: *~[uv_buf_t], cb: *u8) -> libc::c_int {
     let buf_ptr = vec::raw::to_ptr(*buf_in);
-    let buf_cnt = vec::len(*buf_in) as i32;
+    let buf_cnt = (*buf_in).len() as i32;
     return rust_uv_write(req as *libc::c_void,
                               stream as *libc::c_void,
                               buf_ptr, buf_cnt, cb);
@@ -1225,8 +1229,15 @@ pub unsafe fn addrinfo_as_sockaddr_in6(input: *addrinfo) -> *sockaddr_in6 {
 #[cfg(test)]
 mod test {
     use core::prelude::*;
-    use core::comm::{SharedChan, stream, GenericChan, GenericPort};
+
     use super::*;
+
+    use core::comm::{SharedChan, stream, GenericChan, GenericPort};
+    use core::libc;
+    use core::str;
+    use core::sys;
+    use core::task;
+    use core::vec;
 
     enum tcp_read_data {
         tcp_read_eof,
@@ -1357,7 +1368,7 @@ mod test {
             // In C, this would be a malloc'd or stack-allocated
             // struct that we'd cast to a void* and store as the
             // data field in our uv_connect_t struct
-            let req_str_bytes = str::to_bytes(req_str);
+            let req_str_bytes = req_str.as_bytes();
             let req_msg_ptr: *u8 = vec::raw::to_ptr(req_str_bytes);
             debug!("req_msg ptr: %u", req_msg_ptr as uint);
             let req_msg = ~[
@@ -1469,7 +1480,7 @@ mod test {
 
                 let server_kill_msg = copy (*client_data).server_kill_msg;
                 let write_req = (*client_data).server_write_req;
-                if str::contains(request_str, server_kill_msg) {
+                if request_str.contains(server_kill_msg) {
                     debug!(~"SERVER: client req contains kill_msg!");
                     debug!(~"SERVER: sending response to client");
                     read_stop(client_stream_ptr);
@@ -1615,7 +1626,7 @@ mod test {
             let server_write_req = write_t();
             let server_write_req_ptr: *uv_write_t = &server_write_req;
 
-            let resp_str_bytes = str::to_bytes(server_resp_msg);
+            let resp_str_bytes = server_resp_msg.as_bytes();
             let resp_msg_ptr: *u8 = vec::raw::to_ptr(resp_str_bytes);
             debug!("resp_msg ptr: %u", resp_msg_ptr as uint);
             let resp_msg = ~[
@@ -1742,8 +1753,8 @@ mod test {
         let msg_from_client = server_port.recv();
         let msg_from_server = client_port.recv();
 
-        assert!(str::contains(msg_from_client, kill_server_msg));
-        assert!(str::contains(msg_from_server, server_resp_msg));
+        assert!(msg_from_client.contains(kill_server_msg));
+        assert!(msg_from_server.contains(server_resp_msg));
     }
 
     // FIXME don't run on fbsd or linux 32 bit(#2064)

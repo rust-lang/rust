@@ -63,6 +63,9 @@
 
 use core::prelude::*;
 
+use core::io;
+use core::vec;
+
 #[deriving(Eq)]
 pub enum breaks { consistent, inconsistent, }
 
@@ -77,18 +80,19 @@ pub struct begin_t {
 }
 
 pub enum token {
-    STRING(@~str, int),
+    STRING(@str, int),
     BREAK(break_t),
     BEGIN(begin_t),
     END,
     EOF,
 }
 
-pub impl token {
-    fn is_eof(&self) -> bool {
+impl token {
+    pub fn is_eof(&self) -> bool {
         match *self { EOF => true, _ => false }
     }
-    fn is_hardbreak_tok(&self) -> bool {
+
+    pub fn is_hardbreak_tok(&self) -> bool {
         match *self {
             BREAK(break_t {
                 offset: 0,
@@ -103,7 +107,7 @@ pub impl token {
 
 pub fn tok_str(t: token) -> ~str {
     match t {
-        STRING(s, len) => return fmt!("STR(%s,%d)", *s, len),
+        STRING(s, len) => return fmt!("STR(%s,%d)", s, len),
         BREAK(_) => return ~"BREAK",
         BEGIN(_) => return ~"BEGIN",
         END => return ~"END",
@@ -271,11 +275,13 @@ pub struct Printer {
     pending_indentation: int,
 }
 
-pub impl Printer {
-    fn last_token(&mut self) -> token { self.token[self.right] }
+impl Printer {
+    pub fn last_token(&mut self) -> token { self.token[self.right] }
     // be very careful with this!
-    fn replace_last_token(&mut self, t: token) { self.token[self.right] = t; }
-    fn pretty_print(&mut self, t: token) {
+    pub fn replace_last_token(&mut self, t: token) {
+        self.token[self.right] = t;
+    }
+    pub fn pretty_print(&mut self, t: token) {
         debug!("pp ~[%u,%u]", self.left, self.right);
         match t {
           EOF => {
@@ -329,11 +335,11 @@ pub impl Printer {
           STRING(s, len) => {
             if self.scan_stack_empty {
                 debug!("pp STRING('%s')/print ~[%u,%u]",
-                       *s, self.left, self.right);
+                       s, self.left, self.right);
                 self.print(t, len);
             } else {
                 debug!("pp STRING('%s')/buffer ~[%u,%u]",
-                       *s, self.left, self.right);
+                       s, self.left, self.right);
                 self.advance_right();
                 self.token[self.right] = t;
                 self.size[self.right] = len;
@@ -343,7 +349,7 @@ pub impl Printer {
           }
         }
     }
-    fn check_stream(&mut self) {
+    pub fn check_stream(&mut self) {
         debug!("check_stream ~[%u, %u] with left_total=%d, right_total=%d",
                self.left, self.right, self.left_total, self.right_total);
         if self.right_total - self.left_total > self.space {
@@ -359,7 +365,7 @@ pub impl Printer {
             if self.left != self.right { self.check_stream(); }
         }
     }
-    fn scan_push(&mut self, x: uint) {
+    pub fn scan_push(&mut self, x: uint) {
         debug!("scan_push %u", x);
         if self.scan_stack_empty {
             self.scan_stack_empty = false;
@@ -370,7 +376,7 @@ pub impl Printer {
         }
         self.scan_stack[self.top] = x;
     }
-    fn scan_pop(&mut self) -> uint {
+    pub fn scan_pop(&mut self) -> uint {
         assert!((!self.scan_stack_empty));
         let x = self.scan_stack[self.top];
         if self.top == self.bottom {
@@ -378,11 +384,11 @@ pub impl Printer {
         } else { self.top += self.buf_len - 1u; self.top %= self.buf_len; }
         return x;
     }
-    fn scan_top(&mut self) -> uint {
+    pub fn scan_top(&mut self) -> uint {
         assert!((!self.scan_stack_empty));
         return self.scan_stack[self.top];
     }
-    fn scan_pop_bottom(&mut self) -> uint {
+    pub fn scan_pop_bottom(&mut self) -> uint {
         assert!((!self.scan_stack_empty));
         let x = self.scan_stack[self.bottom];
         if self.top == self.bottom {
@@ -390,12 +396,12 @@ pub impl Printer {
         } else { self.bottom += 1u; self.bottom %= self.buf_len; }
         return x;
     }
-    fn advance_right(&mut self) {
+    pub fn advance_right(&mut self) {
         self.right += 1u;
         self.right %= self.buf_len;
         assert!((self.right != self.left));
     }
-    fn advance_left(&mut self, x: token, L: int) {
+    pub fn advance_left(&mut self, x: token, L: int) {
         debug!("advnce_left ~[%u,%u], sizeof(%u)=%d", self.left, self.right,
                self.left, L);
         if L >= 0 {
@@ -415,7 +421,7 @@ pub impl Printer {
             }
         }
     }
-    fn check_stack(&mut self, k: int) {
+    pub fn check_stack(&mut self, k: int) {
         if !self.scan_stack_empty {
             let x = self.scan_top();
             match copy self.token[x] {
@@ -438,17 +444,17 @@ pub impl Printer {
             }
         }
     }
-    fn print_newline(&mut self, amount: int) {
+    pub fn print_newline(&mut self, amount: int) {
         debug!("NEWLINE %d", amount);
         (*self.out).write_str("\n");
         self.pending_indentation = 0;
         self.indent(amount);
     }
-    fn indent(&mut self, amount: int) {
+    pub fn indent(&mut self, amount: int) {
         debug!("INDENT %d", amount);
         self.pending_indentation += amount;
     }
-    fn get_top(&mut self) -> print_stack_elt {
+    pub fn get_top(&mut self) -> print_stack_elt {
         let print_stack = &mut *self.print_stack;
         let n = print_stack.len();
         if n != 0u {
@@ -460,14 +466,14 @@ pub impl Printer {
             }
         }
     }
-    fn print_str(&mut self, s: &str) {
+    pub fn print_str(&mut self, s: &str) {
         while self.pending_indentation > 0 {
             (*self.out).write_str(" ");
             self.pending_indentation -= 1;
         }
         (*self.out).write_str(s);
     }
-    fn print(&mut self, x: token, L: int) {
+    pub fn print(&mut self, x: token, L: int) {
         debug!("print %s %d (remaining line space=%d)", tok_str(x), L,
                self.space);
         debug!("%s", buf_str(copy self.token,
@@ -528,11 +534,11 @@ pub impl Printer {
             }
           }
           STRING(s, len) => {
-            debug!("print STRING(%s)", *s);
+            debug!("print STRING(%s)", s);
             assert_eq!(L, len);
             // assert!(L <= space);
             self.space -= len;
-            self.print_str(*s);
+            self.print_str(s);
           }
           EOF => {
             // EOF should never get here.
@@ -566,15 +572,15 @@ pub fn end(p: @mut Printer) { p.pretty_print(END); }
 pub fn eof(p: @mut Printer) { p.pretty_print(EOF); }
 
 pub fn word(p: @mut Printer, wrd: &str) {
-    p.pretty_print(STRING(@/*bad*/ wrd.to_owned(), wrd.len() as int));
+    p.pretty_print(STRING(/* bad */ wrd.to_managed(), wrd.len() as int));
 }
 
 pub fn huge_word(p: @mut Printer, wrd: &str) {
-    p.pretty_print(STRING(@/*bad*/ wrd.to_owned(), size_infinity));
+    p.pretty_print(STRING(/* bad */ wrd.to_managed(), size_infinity));
 }
 
 pub fn zero_word(p: @mut Printer, wrd: &str) {
-    p.pretty_print(STRING(@/*bad*/ wrd.to_owned(), 0));
+    p.pretty_print(STRING(/* bad */ wrd.to_managed(), 0));
 }
 
 pub fn spaces(p: @mut Printer, n: uint) { break_offset(p, n, 0); }

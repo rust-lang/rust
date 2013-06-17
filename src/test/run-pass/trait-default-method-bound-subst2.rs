@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-test
+#[allow(default_methods)];
 
 trait A<T> {
     fn g(&self, x: T) -> T { x }

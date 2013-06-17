@@ -105,7 +105,8 @@ pub fn check_pat_variant(pcx: &pat_ctxt, pat: @ast::pat, path: @ast::Path,
     let fcx = pcx.fcx;
     let tcx = pcx.fcx.ccx.tcx;
 
-    let arg_types, kind_name;
+    let arg_types;
+    let kind_name;
 
     // structure_of requires type variables to be resolved.
     // So when we pass in <expected>, it's an error if it
@@ -229,8 +230,8 @@ pub fn check_pat_variant(pcx: &pat_ctxt, pat: @ast::pat, path: @ast::Path,
         }
 
         if !error_happened {
-            for subpats.each |pats| {
-                for vec::each2(*pats, arg_types) |subpat, arg_ty| {
+            for subpats.iter().advance |pats| {
+                for pats.iter().zip(arg_types.iter()).advance |(subpat, arg_ty)| {
                     check_pat(pcx, *subpat, *arg_ty);
                 }
             }
@@ -246,7 +247,7 @@ pub fn check_pat_variant(pcx: &pat_ctxt, pat: @ast::pat, path: @ast::Path,
     }
 
     if error_happened {
-        for subpats.each |pats| {
+        for subpats.iter().advance |pats| {
             for pats.each |pat| {
                 check_pat(pcx, *pat, ty::mk_err());
             }
@@ -295,7 +296,7 @@ pub fn check_struct_pat_fields(pcx: &pat_ctxt,
                 tcx.sess.span_err(span,
                                   fmt!("struct `%s` does not have a field
                                         named `%s`", name,
-                                       *tcx.sess.str_of(field.ident)));
+                                       tcx.sess.str_of(field.ident)));
             }
         }
     }
@@ -308,7 +309,7 @@ pub fn check_struct_pat_fields(pcx: &pat_ctxt,
             }
             tcx.sess.span_err(span,
                               fmt!("pattern does not mention field `%s`",
-                                   *tcx.sess.str_of(field.ident)));
+                                   tcx.sess.str_of(field.ident)));
         }
     }
 }
@@ -449,7 +450,7 @@ pub fn check_pat(pcx: &pat_ctxt, pat: @ast::pat, expected: ty::t) {
             demand::eqtype(fcx, pat.span, region_ty, typ);
           }
           // otherwise the type of x is the expected type T
-          ast::bind_by_copy | ast::bind_infer => {
+          ast::bind_infer => {
             demand::eqtype(fcx, pat.span, expected, typ);
           }
         }
@@ -567,7 +568,7 @@ pub fn check_pat(pcx: &pat_ctxt, pat: @ast::pat, expected: ty::t) {
               for before.each |&elt| {
                   check_pat(pcx, elt, ty::mk_err());
               }
-              for slice.each |&elt| {
+              for slice.iter().advance |&elt| {
                   check_pat(pcx, elt, ty::mk_err());
               }
               for after.each |&elt| {

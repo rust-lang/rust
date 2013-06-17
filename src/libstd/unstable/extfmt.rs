@@ -76,8 +76,8 @@ debug!("hello, %s!", "world");
 
 */
 
-use cmp::Eq;
 use prelude::*;
+use iterator::IteratorUtil;
 
 /*
  * We have a 'ct' (compile-time) module that parses format strings into a
@@ -139,8 +139,8 @@ pub mod ct {
         next: uint
     }
 
-    pub impl<T> Parsed<T> {
-        fn new(val: T, next: uint) -> Parsed<T> {
+    impl<T> Parsed<T> {
+        pub fn new(val: T, next: uint) -> Parsed<T> {
             Parsed {val: val, next: next}
         }
     }
@@ -325,7 +325,7 @@ pub mod ct {
             'o' => TyOctal,
             'f' => TyFloat,
             '?' => TyPoly,
-            _ => err(~"unknown type in conversion: " + s.substr(i, 1))
+            _ => err(fmt!("unknown type in conversion: %c", s.char_at(i)))
         };
 
         Parsed::new(t, i + 1)
@@ -546,8 +546,8 @@ pub mod rt {
         // displayed
         let unpadded = match cv.precision {
           CountImplied => s,
-          CountIs(max) => if (max as uint) < str::char_len(s) {
-            str::slice(s, 0, max as uint)
+          CountIs(max) => if (max as uint) < s.char_len() {
+            s.slice(0, max as uint)
           } else {
             s
           }
@@ -584,7 +584,7 @@ pub mod rt {
                 ~""
             } else {
                 let s = uint::to_str_radix(num, radix);
-                let len = str::char_len(s);
+                let len = s.char_len();
                 if len < prec {
                     let diff = prec - len;
                     let pad = str::from_chars(vec::from_elem(diff, '0'));
@@ -607,16 +607,16 @@ pub mod rt {
         let headsize = match head { Some(_) => 1, _ => 0 };
         let uwidth : uint = match cv.width {
             CountImplied => {
-                for head.each |&c| {
+                for head.iter().advance |&c| {
                     buf.push_char(c);
                 }
                 return buf.push_str(s);
             }
             CountIs(width) => { width as uint }
         };
-        let strlen = str::char_len(s) + headsize;
+        let strlen = s.char_len() + headsize;
         if uwidth <= strlen {
-            for head.each |&c| {
+            for head.iter().advance |&c| {
                 buf.push_char(c);
             }
             return buf.push_str(s);
@@ -624,7 +624,7 @@ pub mod rt {
         let mut padchar = ' ';
         let diff = uwidth - strlen;
         if have_flag(cv.flags, flag_left_justify) {
-            for head.each |&c| {
+            for head.iter().advance |&c| {
                 buf.push_char(c);
             }
             buf.push_str(s);
@@ -658,7 +658,7 @@ pub mod rt {
         // instead.
 
         if signed && zero_padding {
-            for head.each |&head| {
+            for head.iter().advance |&head| {
                 if head == '+' || head == '-' || head == ' ' {
                     buf.push_char(head);
                     buf.push_str(padstr);
@@ -668,7 +668,7 @@ pub mod rt {
             }
         }
         buf.push_str(padstr);
-        for head.each |&c| {
+        for head.iter().advance |&c| {
             buf.push_char(c);
         }
         buf.push_str(s);

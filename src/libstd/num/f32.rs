@@ -9,11 +9,14 @@
 // except according to those terms.
 
 //! Operations and constants for `f32`
+#[allow(missing_doc)];
 
 use libc::c_int;
 use num::{Zero, One, strconv};
 use num::{FPCategory, FPNaN, FPInfinite , FPZero, FPSubnormal, FPNormal};
+use num;
 use prelude::*;
+use to_str;
 
 pub use cmath::c_float_targ_consts::*;
 
@@ -388,7 +391,7 @@ impl Fractional for f32 {
 
 impl Algebraic for f32 {
     #[inline(always)]
-    fn pow(&self, n: f32) -> f32 { pow(*self, n) }
+    fn pow(&self, n: &f32) -> f32 { pow(*self, *n) }
 
     #[inline(always)]
     fn sqrt(&self) -> f32 { sqrt(*self) }
@@ -400,7 +403,7 @@ impl Algebraic for f32 {
     fn cbrt(&self) -> f32 { cbrt(*self) }
 
     #[inline(always)]
-    fn hypot(&self, other: f32) -> f32 { hypot(*self, other) }
+    fn hypot(&self, other: &f32) -> f32 { hypot(*self, *other) }
 }
 
 impl Trigonometric for f32 {
@@ -423,7 +426,7 @@ impl Trigonometric for f32 {
     fn atan(&self) -> f32 { atan(*self) }
 
     #[inline(always)]
-    fn atan2(&self, other: f32) -> f32 { atan2(*self, other) }
+    fn atan2(&self, other: &f32) -> f32 { atan2(*self, *other) }
 
     /// Simultaneously computes the sine and cosine of the number
     #[inline(always)]
@@ -447,7 +450,7 @@ impl Exponential for f32 {
 
     /// Returns the logarithm of the number with respect to an arbitrary base
     #[inline(always)]
-    fn log(&self, base: f32) -> f32 { self.ln() / base.ln() }
+    fn log(&self, base: &f32) -> f32 { self.ln() / base.ln() }
 
     /// Returns the base 2 logarithm of the number
     #[inline(always)]
@@ -958,8 +961,11 @@ impl num::FromStrRadix for f32 {
 #[cfg(test)]
 mod tests {
     use f32::*;
-    use num::*;
     use prelude::*;
+
+    use num::*;
+    use num;
+    use sys;
 
     #[test]
     fn test_num() {

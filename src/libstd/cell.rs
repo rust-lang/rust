@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -9,6 +9,8 @@
 // except according to those terms.
 
 //! A mutable, nullable memory location
+
+#[missing_doc];
 
 use cast::transmute_mut;
 use prelude::*;
@@ -22,22 +24,24 @@ Similar to a mutable option type, but friendlier.
 
 #[mutable]
 #[deriving(Clone, DeepClone, Eq)]
+#[allow(missing_doc)]
 pub struct Cell<T> {
     priv value: Option<T>
 }
 
-/// Creates a new full cell with the given value.
-pub fn Cell<T>(value: T) -> Cell<T> {
-    Cell { value: Some(value) }
-}
+impl<T> Cell<T> {
+    /// Creates a new full cell with the given value.
+    pub fn new(value: T) -> Cell<T> {
+        Cell { value: Some(value) }
+    }
 
-pub fn empty_cell<T>() -> Cell<T> {
-    Cell { value: None }
-}
+    /// Creates a new empty cell with no value inside.
+    pub fn new_empty() -> Cell<T> {
+        Cell { value: None }
+    }
 
-pub impl<T> Cell<T> {
     /// Yields the value, failing if the cell is empty.
-    fn take(&self) -> T {
+    pub fn take(&self) -> T {
         let this = unsafe { transmute_mut(self) };
         if this.is_empty() {
             fail!("attempt to take an empty cell");
@@ -47,7 +51,7 @@ pub impl<T> Cell<T> {
     }
 
     /// Returns the value, failing if the cell is full.
-    fn put_back(&self, value: T) {
+    pub fn put_back(&self, value: T) {
         let this = unsafe { transmute_mut(self) };
         if !this.is_empty() {
             fail!("attempt to put a value back into a full cell");
@@ -56,20 +60,20 @@ pub impl<T> Cell<T> {
     }
 
     /// Returns true if the cell is empty and false if the cell is full.
-    fn is_empty(&self) -> bool {
+    pub fn is_empty(&self) -> bool {
         self.value.is_none()
     }
 
-    // Calls a closure with a reference to the value.
-    fn with_ref<R>(&self, op: &fn(v: &T) -> R) -> R {
+    /// Calls a closure with a reference to the value.
+    pub fn with_ref<R>(&self, op: &fn(v: &T) -> R) -> R {
         let v = self.take();
         let r = op(&v);
         self.put_back(v);
         r
     }
 
-    // Calls a closure with a mutable reference to the value.
-    fn with_mut_ref<R>(&self, op: &fn(v: &mut T) -> R) -> R {
+    /// Calls a closure with a mutable reference to the value.
+    pub fn with_mut_ref<R>(&self, op: &fn(v: &mut T) -> R) -> R {
         let mut v = self.take();
         let r = op(&mut v);
         self.put_back(v);
@@ -79,7 +83,7 @@ pub impl<T> Cell<T> {
 
 #[test]
 fn test_basic() {
-    let value_cell = Cell(~10);
+    let value_cell = Cell::new(~10);
     assert!(!value_cell.is_empty());
     let value = value_cell.take();
     assert!(value == ~10);
@@ -92,7 +96,7 @@ fn test_basic() {
 #[should_fail]
 #[ignore(cfg(windows))]
 fn test_take_empty() {
-    let value_cell = empty_cell::<~int>();
+    let value_cell = Cell::new_empty::<~int>();
     value_cell.take();
 }
 
@@ -100,14 +104,14 @@ fn test_take_empty() {
 #[should_fail]
 #[ignore(cfg(windows))]
 fn test_put_back_non_empty() {
-    let value_cell = Cell(~10);
+    let value_cell = Cell::new(~10);
     value_cell.put_back(~20);
 }
 
 #[test]
 fn test_with_ref() {
     let good = 6;
-    let c = Cell(~[1, 2, 3, 4, 5, 6]);
+    let c = Cell::new(~[1, 2, 3, 4, 5, 6]);
     let l = do c.with_ref() |v| { v.len() };
     assert_eq!(l, good);
 }
@@ -116,7 +120,7 @@ fn test_with_ref() {
 fn test_with_mut_ref() {
     let good = ~[1, 2, 3];
     let v = ~[1, 2];
-    let c = Cell(v);
+    let c = Cell::new(v);
     do c.with_mut_ref() |v| { v.push(3); }
     let v = c.take();
     assert_eq!(v, good);

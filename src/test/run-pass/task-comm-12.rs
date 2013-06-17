@@ -10,6 +10,8 @@
 
 extern mod extra;
 
+use std::task;
+
 pub fn main() { test00(); }
 
 fn start(task_number: int) { debug!("Started / Finished task."); }

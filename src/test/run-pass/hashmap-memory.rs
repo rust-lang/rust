@@ -19,8 +19,10 @@
 pub fn map(filename: ~str, emit: map_reduce::putter) { emit(filename, ~"1"); }
 
 mod map_reduce {
-    use std::hashmap::HashMap;
     use std::comm::*;
+    use std::hashmap::HashMap;
+    use std::str;
+    use std::task;
 
     pub type putter = @fn(~str, ~str);
 
@@ -46,7 +48,7 @@ mod map_reduce {
             }
             let (pp, cc) = stream();
             error!("sending find_reducer");
-            ctrl.send(find_reducer(str::to_bytes(key), cc));
+            ctrl.send(find_reducer(key.as_bytes().to_owned(), cc));
             error!("receiving");
             let c = pp.recv();
             error!(c);

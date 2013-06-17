@@ -17,8 +17,8 @@ use rt::uv::status_to_maybe_uv_error;
 pub struct IdleWatcher(*uvll::uv_idle_t);
 impl Watcher for IdleWatcher { }
 
-pub impl IdleWatcher {
-    fn new(loop_: &mut Loop) -> IdleWatcher {
+impl IdleWatcher {
+    pub fn new(loop_: &mut Loop) -> IdleWatcher {
         unsafe {
             let handle = uvll::idle_new();
             assert!(handle.is_not_null());
@@ -29,7 +29,7 @@ pub impl IdleWatcher {
         }
     }
 
-    fn start(&mut self, cb: IdleCallback) {
+    pub fn start(&mut self, cb: IdleCallback) {
         {
             let data = self.get_watcher_data();
             data.idle_cb = Some(cb);
@@ -48,16 +48,17 @@ pub impl IdleWatcher {
         }
     }
 
-    fn stop(&mut self) {
-        // NB: Not resetting the Rust idle_cb to None here because `stop` is likely
-        // called from *within* the idle callback, causing a use after free
+    pub fn stop(&mut self) {
+        // NB: Not resetting the Rust idle_cb to None here because `stop` is
+        // likely called from *within* the idle callback, causing a use after
+        // free
 
         unsafe {
             assert!(0 == uvll::idle_stop(self.native_handle()));
         }
     }
 
-    fn close(self, cb: NullCallback) {
+    pub fn close(self, cb: NullCallback) {
         {
             let mut this = self;
             let data = this.get_watcher_data();

@@ -9,7 +9,8 @@
 // except according to those terms.
 
 fn main() {
-    fn baz(_x: &fn(y: int) -> int) {}
-    for baz |_e| { } //~ ERROR A `for` loop iterator should expect a closure that returns `bool`
-                     //~^ ERROR expected `for` closure to return `bool`
+    fn quux(_: &fn(&int) -> int) -> bool { true }
+    for quux |_| { } //~ ERROR A `for` loop iterator should expect a
+                     // closure that returns `bool`.  This iterator
+                     // expects a closure that returns `int`.
 }

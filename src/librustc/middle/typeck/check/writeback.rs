@@ -64,13 +64,16 @@ fn resolve_method_map_entry(fcx: @mut FnCtxt, sp: span, id: ast::node_id) {
     match fcx.inh.method_map.find(&id) {
         None => {}
         Some(mme) => {
-            for resolve_type_vars_in_type(fcx, sp, mme.self_ty).each |t| {
-                let method_map = fcx.ccx.method_map;
-                let new_entry = method_map_entry { self_ty: *t, ..*mme };
-                debug!("writeback::resolve_method_map_entry(id=%?, \
-                        new_entry=%?)",
-                       id, new_entry);
-                method_map.insert(id, new_entry);
+            {
+                let r = resolve_type_vars_in_type(fcx, sp, mme.self_ty);
+                for r.iter().advance |t| {
+                    let method_map = fcx.ccx.method_map;
+                    let new_entry = method_map_entry { self_ty: *t, ..*mme };
+                    debug!("writeback::resolve_method_map_entry(id=%?, \
+                            new_entry=%?)",
+                           id, new_entry);
+                    method_map.insert(id, new_entry);
+                }
             }
         }
     }
@@ -107,7 +110,8 @@ fn resolve_vtable_map_entry(fcx: @mut FnCtxt, sp: span, id: ast::node_id) {
 
 fn resolve_type_vars_for_node(wbcx: @mut WbCtxt, sp: span, id: ast::node_id)
                            -> Option<ty::t> {
-    let fcx = wbcx.fcx, tcx = fcx.ccx.tcx;
+    let fcx = wbcx.fcx;
+    let tcx = fcx.ccx.tcx;
 
     // Resolve any borrowings for the node with id `id`
     match fcx.inh.adjustments.find(&id) {
@@ -205,22 +209,34 @@ struct WbCtxt {
 
 type wb_vt = visit::vt<@mut WbCtxt>;
 
-fn visit_stmt(s: @ast::stmt, wbcx: @mut WbCtxt, v: wb_vt) {
+fn visit_stmt(s: @ast::stmt, (wbcx, v): (@mut WbCtxt, wb_vt)) {
     if !wbcx.success { return; }
     resolve_type_vars_for_node(wbcx, s.span, ty::stmt_node_id(s));
-    visit::visit_stmt(s, wbcx, v);
+    visit::visit_stmt(s, (wbcx, v));
 }
 
-fn visit_expr(e: @ast::expr, wbcx: @mut WbCtxt, v: wb_vt) {
+fn visit_expr(e: @ast::expr, (wbcx, v): (@mut WbCtxt, wb_vt)) {
     if !wbcx.success {
         return;
     }
 
     resolve_type_vars_for_node(wbcx, e.span, e.id);
+
     resolve_method_map_entry(wbcx.fcx, e.span, e.id);
-    resolve_method_map_entry(wbcx.fcx, e.span, e.callee_id);
+    {
+        let r = e.get_callee_id();
+        for r.iter().advance |callee_id| {
+            resolve_method_map_entry(wbcx.fcx, e.span, *callee_id);
+        }
+    }
+
     resolve_vtable_map_entry(wbcx.fcx, e.span, e.id);
-    resolve_vtable_map_entry(wbcx.fcx, e.span, e.callee_id);
+    {
+        let r = e.get_callee_id();
+        for r.iter().advance |callee_id| {
+            resolve_vtable_map_entry(wbcx.fcx, e.span, *callee_id);
+        }
+    }
 
     match e.node {
         ast::expr_fn_block(ref decl, _) => {
@@ -229,32 +245,34 @@ fn visit_expr(e: @ast::expr, wbcx: @mut WbCtxt, v: wb_vt) {
             }
         }
 
-        ast::expr_binary(*) | ast::expr_unary(*) | ast::expr_assign_op(*) |
-        ast::expr_index(*) => {
-            maybe_resolve_type_vars_for_node(wbcx, e.span, e.callee_id);
+        ast::expr_binary(callee_id, _, _, _) |
+        ast::expr_unary(callee_id, _, _) |
+        ast::expr_assign_op(callee_id, _, _, _) |
+        ast::expr_index(callee_id, _, _) => {
+            maybe_resolve_type_vars_for_node(wbcx, e.span, callee_id);
         }
 
-        ast::expr_method_call(*) => {
+        ast::expr_method_call(callee_id, _, _, _, _, _) => {
             // We must always have written in a callee ID type for these.
-            resolve_type_vars_for_node(wbcx, e.span, e.callee_id);
+            resolve_type_vars_for_node(wbcx, e.span, callee_id);
         }
 
         _ => ()
     }
 
-    visit::visit_expr(e, wbcx, v);
+    visit::visit_expr(e, (wbcx, v));
 }
 
-fn visit_block(b: &ast::blk, wbcx: @mut WbCtxt, v: wb_vt) {
+fn visit_block(b: &ast::blk, (wbcx, v): (@mut WbCtxt, wb_vt)) {
     if !wbcx.success {
         return;
     }
 
     resolve_type_vars_for_node(wbcx, b.span, b.node.id);
-    visit::visit_block(b, wbcx, v);
+    visit::visit_block(b, (wbcx, v));
 }
 
-fn visit_pat(p: @ast::pat, wbcx: @mut WbCtxt, v: wb_vt) {
+fn visit_pat(p: @ast::pat, (wbcx, v): (@mut WbCtxt, wb_vt)) {
     if !wbcx.success {
         return;
     }
@@ -265,10 +283,10 @@ fn visit_pat(p: @ast::pat, wbcx: @mut WbCtxt, v: wb_vt) {
            wbcx.fcx.infcx().ty_to_str(
                ty::node_id_to_type(wbcx.fcx.ccx.tcx,
                                    p.id)));
-    visit::visit_pat(p, wbcx, v);
+    visit::visit_pat(p, (wbcx, v));
 }
 
-fn visit_local(l: @ast::local, wbcx: @mut WbCtxt, v: wb_vt) {
+fn visit_local(l: @ast::local, (wbcx, v): (@mut WbCtxt, wb_vt)) {
     if !wbcx.success { return; }
     let var_ty = wbcx.fcx.local_ty(l.span, l.node.id);
     match resolve_type(wbcx.fcx.infcx(), var_ty, resolve_all | force_all) {
@@ -288,9 +306,9 @@ fn visit_local(l: @ast::local, wbcx: @mut WbCtxt, v: wb_vt) {
             wbcx.success = false;
         }
     }
-    visit::visit_local(l, wbcx, v);
+    visit::visit_local(l, (wbcx, v));
 }
-fn visit_item(_item: @ast::item, _wbcx: @mut WbCtxt, _v: wb_vt) {
+fn visit_item(_item: @ast::item, (_wbcx, _v): (@mut WbCtxt, wb_vt)) {
     // Ignore items
 }
 
@@ -307,7 +325,7 @@ fn mk_visitor() -> visit::vt<@mut WbCtxt> {
 pub fn resolve_type_vars_in_expr(fcx: @mut FnCtxt, e: @ast::expr) -> bool {
     let wbcx = @mut WbCtxt { fcx: fcx, success: true };
     let visit = mk_visitor();
-    (visit.visit_expr)(e, wbcx, visit);
+    (visit.visit_expr)(e, (wbcx, visit));
     return wbcx.success;
 }
 
@@ -317,8 +335,8 @@ pub fn resolve_type_vars_in_fn(fcx: @mut FnCtxt,
                                self_info: Option<SelfInfo>) -> bool {
     let wbcx = @mut WbCtxt { fcx: fcx, success: true };
     let visit = mk_visitor();
-    (visit.visit_block)(blk, wbcx, visit);
-    for self_info.each |self_info| {
+    (visit.visit_block)(blk, (wbcx, visit));
+    for self_info.iter().advance |self_info| {
         resolve_type_vars_for_node(wbcx,
                                    self_info.span,
                                    self_info.self_id);

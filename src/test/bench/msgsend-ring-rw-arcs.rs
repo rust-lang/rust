@@ -17,10 +17,14 @@
 
 extern mod extra;
 
-use std::cell::Cell;
-use extra::time;
 use extra::arc;
 use extra::future;
+use extra::time;
+use std::cell::Cell;
+use std::io;
+use std::os;
+use std::uint;
+use std::vec;
 
 // A poor man's pipe.
 type pipe = arc::RWARC<~[uint]>;
@@ -33,7 +37,7 @@ fn send(p: &pipe, msg: uint) {
 }
 fn recv(p: &pipe) -> uint {
     do p.write_cond |state, cond| {
-        while vec::is_empty(*state) {
+        while state.is_empty() {
             cond.wait();
         }
         state.pop()
@@ -76,7 +80,7 @@ fn main() {
     let msg_per_task = uint::from_str(args[2]).get();
 
     let (num_chan, num_port) = init();
-    let mut num_chan = Cell(num_chan);
+    let mut num_chan = Cell::new(num_chan);
 
     let start = time::precise_time_s();
 
@@ -86,8 +90,8 @@ fn main() {
     for uint::range(1u, num_tasks) |i| {
         //error!("spawning %?", i);
         let (new_chan, num_port) = init();
-        let num_chan2 = Cell(num_chan.take());
-        let num_port = Cell(num_port);
+        let num_chan2 = Cell::new(num_chan.take());
+        let num_port = Cell::new(num_port);
         let new_future = do future::spawn {
             let num_chan = num_chan2.take();
             let num_port1 = num_port.take();
@@ -101,7 +105,7 @@ fn main() {
     thread_ring(0, msg_per_task, num_chan.take(), num_port);
 
     // synchronize
-    for futures.each_mut |f| {
+    for futures.mut_iter().advance |f| {
         let _ = f.get();
     }
 

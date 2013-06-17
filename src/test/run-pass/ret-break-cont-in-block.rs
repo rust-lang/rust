@@ -11,9 +11,11 @@
 // xfail-fast
 
 use std::cmp::Eq;
+use std::vec;
 
 fn iter<T>(v: ~[T], it: &fn(&T) -> bool) -> bool {
-    let mut i = 0u, l = v.len();
+    let mut i = 0u;
+    let mut l = v.len();
     while i < l {
         if !it(&v[i]) { return false; }
         i += 1u;
@@ -52,7 +54,8 @@ fn ret_deep() -> ~str {
 
 pub fn main() {
     let mut last = 0;
-    for vec::all(~[1, 2, 3, 4, 5, 6, 7]) |e| {
+    let v = ~[1, 2, 3, 4, 5, 6, 7];
+    for v.iter().all |e| {
         last = *e;
         if *e == 5 { break; }
         if *e % 2 == 1 { loop; }

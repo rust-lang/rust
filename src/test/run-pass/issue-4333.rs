@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::io;
+
 fn main() {
     let stdout = &io::stdout() as &io::WriterUtil;
     stdout.write_line("Hello!");

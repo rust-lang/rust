@@ -10,14 +10,22 @@
 
 // Rust JSON serialization library
 // Copyright (c) 2011 Google Inc.
+
 #[forbid(non_camel_case_types)];
+#[allow(missing_doc)];
 
 //! json serialization
 
 use core::prelude::*;
 
-use core::io::{WriterUtil, ReaderUtil};
+use core::char;
+use core::float;
 use core::hashmap::HashMap;
+use core::io::{WriterUtil, ReaderUtil};
+use core::io;
+use core::str;
+use core::to_str;
+use core::vec;
 
 use serialize::Encodable;
 use serialize;
@@ -37,15 +45,20 @@ pub type List = ~[Json];
 pub type Object = HashMap<~str, Json>;
 
 #[deriving(Eq)]
+/// If an error occurs while parsing some JSON, this is the structure which is
+/// returned
 pub struct Error {
+    /// The line number at which the error occurred
     line: uint,
+    /// The column number at which the error occurred
     col: uint,
+    /// A message describing the type of the error
     msg: @~str,
 }
 
 fn escape_str(s: &str) -> ~str {
     let mut escaped = ~"\"";
-    for str::each_char(s) |c| {
+    for s.iter().advance |c| {
         match c {
           '"' => escaped += "\\\"",
           '\\' => escaped += "\\\\",
@@ -65,14 +78,17 @@ fn escape_str(s: &str) -> ~str {
 
 fn spaces(n: uint) -> ~str {
     let mut ss = ~"";
-    for n.times { str::push_str(&mut ss, " "); }
+    for n.times { ss.push_str(" "); }
     return ss;
 }
 
+/// A structure for implementing serialization to JSON.
 pub struct Encoder {
     priv wr: @io::Writer,
 }
 
+/// Creates a new JSON encoder whose output will be written to the writer
+/// specified.
 pub fn Encoder(wr: @io::Writer) -> Encoder {
     Encoder {
         wr: wr
@@ -222,11 +238,14 @@ impl serialize::Encoder for Encoder {
     }
 }
 
+/// Another encoder for JSON, but prints out human-readable JSON instead of
+/// compact data
 pub struct PrettyEncoder {
     priv wr: @io::Writer,
     priv indent: uint,
 }
 
+/// Creates a new encoder whose output will be written to the specified writer
 pub fn PrettyEncoder(wr: @io::Writer) -> PrettyEncoder {
     PrettyEncoder {
         wr: wr,
@@ -462,6 +481,7 @@ pub fn to_pretty_str(json: &Json) -> ~str {
     io::with_str_writer(|wr| to_pretty_writer(wr, json))
 }
 
+#[allow(missing_doc)]
 pub struct Parser {
     priv rdr: @io::Reader,
     priv ch: char,
@@ -479,8 +499,8 @@ pub fn Parser(rdr: @io::Reader) -> Parser {
     }
 }
 
-pub impl Parser {
-    fn parse(&mut self) -> Result<Json, Error> {
+impl Parser {
+    pub fn parse(&mut self) -> Result<Json, Error> {
         match self.parse_value() {
           Ok(value) => {
             // Skip trailing whitespaces.
@@ -497,7 +517,7 @@ pub impl Parser {
     }
 }
 
-priv impl Parser {
+impl Parser {
     fn eof(&self) -> bool { self.ch == -1 as char }
 
     fn bump(&mut self) {
@@ -546,7 +566,7 @@ priv impl Parser {
     }
 
     fn parse_ident(&mut self, ident: &str, value: Json) -> Result<Json, Error> {
-        if str::all(ident, |c| c == self.next_char()) {
+        if ident.iter().all(|c| c == self.next_char()) {
             self.bump();
             Ok(value)
         } else {
@@ -691,14 +711,14 @@ priv impl Parser {
 
             if (escape) {
                 match self.ch {
-                  '"' => str::push_char(&mut res, '"'),
-                  '\\' => str::push_char(&mut res, '\\'),
-                  '/' => str::push_char(&mut res, '/'),
-                  'b' => str::push_char(&mut res, '\x08'),
-                  'f' => str::push_char(&mut res, '\x0c'),
-                  'n' => str::push_char(&mut res, '\n'),
-                  'r' => str::push_char(&mut res, '\r'),
-                  't' => str::push_char(&mut res, '\t'),
+                  '"' => res.push_char('"'),
+                  '\\' => res.push_char('\\'),
+                  '/' => res.push_char('/'),
+                  'b' => res.push_char('\x08'),
+                  'f' => res.push_char('\x0c'),
+                  'n' => res.push_char('\n'),
+                  'r' => res.push_char('\r'),
+                  't' => res.push_char('\t'),
                   'u' => {
                       // Parse \u1234.
                       let mut i = 0u;
@@ -727,7 +747,7 @@ priv impl Parser {
                             ~"invalid \\u escape (not four digits)");
                       }
 
-                      str::push_char(&mut res, n as char);
+                      res.push_char(n as char);
                   }
                   _ => return self.error(~"invalid escape")
                 }
@@ -739,7 +759,7 @@ priv impl Parser {
                     self.bump();
                     return Ok(res);
                 }
-                str::push_char(&mut res, self.ch);
+                res.push_char(self.ch);
             }
         }
 
@@ -840,10 +860,12 @@ pub fn from_str(s: &str) -> Result<Json, Error> {
     }
 }
 
+/// A structure to decode JSON to values in rust.
 pub struct Decoder {
     priv stack: ~[Json],
 }
 
+/// Creates a new decoder instance for decoding the specified JSON value.
 pub fn Decoder(json: Json) -> Decoder {
     Decoder {
         stack: ~[json]
@@ -891,7 +913,8 @@ impl serialize::Decoder for Decoder {
 
     fn read_char(&mut self) -> char {
         let mut v = ~[];
-        for str::each_char(self.read_str()) |c| { v.push(c) }
+        let s = self.read_str();
+        for s.iter().advance |c| { v.push(c) }
         if v.len() != 1 { fail!("string must have one character") }
         v[0]
     }
@@ -1194,7 +1217,11 @@ impl Ord for Json {
     fn gt(&self, other: &Json) -> bool { (*other).lt(&(*self))  }
 }
 
-trait ToJson { fn to_json(&self) -> Json; }
+/// A trait for converting values to JSON
+trait ToJson {
+    /// Converts the value of `self` to an instance of JSON
+    fn to_json(&self) -> Json;
+}
 
 impl ToJson for Json {
     fn to_json(&self) -> Json { copy *self }
@@ -1332,6 +1359,8 @@ mod tests {
     use super::*;
 
     use core::hashmap::HashMap;
+    use core::io;
+    use core::result;
 
     use std::serialize::Decodable;
 
@@ -1358,7 +1387,7 @@ mod tests {
 
         for items.each |item| {
             match *item {
-                (copy key, copy value) => { d.insert(key, value); },
+                (ref key, ref value) => { d.insert(copy *key, copy *value); },
             }
         };
 

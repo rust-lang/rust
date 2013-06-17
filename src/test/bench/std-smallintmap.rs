@@ -11,8 +11,12 @@
 // Microbenchmark for the smallintmap library
 
 extern mod extra;
+
 use extra::smallintmap::SmallIntMap;
 use std::io::WriterUtil;
+use std::io;
+use std::os;
+use std::uint;
 
 fn append_sequential(min: uint, max: uint, map: &mut SmallIntMap<uint>) {
     for uint::range(min, max) |i| {

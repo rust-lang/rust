@@ -13,6 +13,8 @@
 
 #[crate_type = "lib"];
 
+use std::int;
+
 pub trait read {
     fn readMaybe(s: ~str) -> Option<Self>;
 }

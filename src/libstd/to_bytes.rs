@@ -18,7 +18,7 @@ use io;
 use io::Writer;
 use option::{None, Option, Some};
 use old_iter::BaseIter;
-use str;
+use str::StrSlice;
 
 pub type Cb<'self> = &'self fn(buf: &[u8]) -> bool;
 
@@ -239,27 +239,25 @@ impl<A:IterBytes> IterBytes for @[A] {
 impl<'self> IterBytes for &'self str {
     #[inline(always)]
     fn iter_bytes(&self, _lsb0: bool, f: Cb) -> bool {
-        do str::byte_slice(*self) |bytes| {
-            f(bytes)
-        }
+        f(self.as_bytes())
     }
 }
 
 impl IterBytes for ~str {
     #[inline(always)]
     fn iter_bytes(&self, _lsb0: bool, f: Cb) -> bool {
-        do str::byte_slice(*self) |bytes| {
-            f(bytes)
-        }
+        // this should possibly include the null terminator, but that
+        // breaks .find_equiv on hashmaps.
+        f(self.as_bytes())
     }
 }
 
 impl IterBytes for @str {
     #[inline(always)]
     fn iter_bytes(&self, _lsb0: bool, f: Cb) -> bool {
-        do str::byte_slice(*self) |bytes| {
-            f(bytes)
-        }
+        // this should possibly include the null terminator, but that
+        // breaks .find_equiv on hashmaps.
+        f(self.as_bytes())
     }
 }
 
@@ -303,7 +301,11 @@ impl<A> IterBytes for *const A {
     }
 }
 
+/// A trait for converting a value to a list of bytes.
 pub trait ToBytes {
+    /// Converts the current value to a list of bytes. This is equivalent to
+    /// invoking iter_bytes on a type and collecting all yielded values in an
+    /// array
     fn to_bytes(&self, lsb0: bool) -> ~[u8];
 }
 

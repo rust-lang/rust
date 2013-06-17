@@ -9,6 +9,9 @@
 // except according to those terms.
 
 //! An interface for numeric types
+
+#[allow(missing_doc)];
+
 use cmp::{Eq, ApproxEq, Ord};
 use ops::{Add, Sub, Mul, Div, Rem, Neg};
 use ops::{Not, BitAnd, BitOr, BitXor, Shl, Shr};
@@ -103,11 +106,11 @@ pub trait Fractional: Num
 }
 
 pub trait Algebraic {
-    fn pow(&self, n: Self) -> Self;
+    fn pow(&self, n: &Self) -> Self;
     fn sqrt(&self) -> Self;
     fn rsqrt(&self) -> Self;
     fn cbrt(&self) -> Self;
-    fn hypot(&self, other: Self) -> Self;
+    fn hypot(&self, other: &Self) -> Self;
 }
 
 pub trait Trigonometric {
@@ -117,7 +120,7 @@ pub trait Trigonometric {
     fn asin(&self) -> Self;
     fn acos(&self) -> Self;
     fn atan(&self) -> Self;
-    fn atan2(&self, other: Self) -> Self;
+    fn atan2(&self, other: &Self) -> Self;
     fn sin_cos(&self) -> (Self, Self);
 }
 
@@ -125,7 +128,7 @@ pub trait Exponential {
     fn exp(&self) -> Self;
     fn exp2(&self) -> Self;
     fn ln(&self) -> Self;
-    fn log(&self, base: Self) -> Self;
+    fn log(&self, base: &Self) -> Self;
     fn log2(&self) -> Self;
     fn log10(&self) -> Self;
 }

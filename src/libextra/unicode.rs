@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #[forbid(deprecated_mode)];
+#[allow(missing_doc)];
 
 pub mod icu {
     pub type UBool = u8;

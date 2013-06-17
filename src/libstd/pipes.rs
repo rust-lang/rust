@@ -82,9 +82,12 @@ bounded and unbounded protocols allows for less code duplication.
 
 */
 
+#[allow(missing_doc)];
+
 use container::Container;
 use cast::{forget, transmute, transmute_copy};
 use either::{Either, Left, Right};
+use iterator::IteratorUtil;
 use kinds::Owned;
 use libc;
 use ops::Drop;
@@ -92,10 +95,9 @@ use option::{None, Option, Some};
 use unstable::finally::Finally;
 use unstable::intrinsics;
 use ptr;
-use ptr::Ptr;
+use ptr::RawPtr;
 use task;
-use vec;
-use vec::OwnedVector;
+use vec::{OwnedVector, MutableVector};
 use util::replace;
 
 static SPIN_COUNT: uint = 0;
@@ -150,16 +152,16 @@ pub fn PacketHeader() -> PacketHeader {
     }
 }
 
-pub impl PacketHeader {
+impl PacketHeader {
     // Returns the old state.
-    unsafe fn mark_blocked(&mut self, this: *rust_task) -> State {
+    pub unsafe fn mark_blocked(&mut self, this: *rust_task) -> State {
         rustrt::rust_task_ref(this);
         let old_task = swap_task(&mut self.blocked_task, this);
         assert!(old_task.is_null());
         swap_state_acq(&mut self.state, Blocked)
     }
 
-    unsafe fn unblock(&mut self) {
+    pub unsafe fn unblock(&mut self) {
         let old_task = swap_task(&mut self.blocked_task, ptr::null());
         if !old_task.is_null() {
             rustrt::rust_task_deref(old_task)
@@ -174,12 +176,12 @@ pub impl PacketHeader {
     // unsafe because this can do weird things to the space/time
     // continuum. It ends making multiple unique pointers to the same
     // thing. You'll probably want to forget them when you're done.
-    unsafe fn buf_header(&mut self) -> ~BufferHeader {
+    pub unsafe fn buf_header(&mut self) -> ~BufferHeader {
         assert!(self.buffer.is_not_null());
         transmute_copy(&self.buffer)
     }
 
-    fn set_buffer<T:Owned>(&mut self, b: ~Buffer<T>) {
+    pub fn set_buffer<T:Owned>(&mut self, b: ~Buffer<T>) {
         unsafe {
             self.buffer = transmute_copy(&b);
         }
@@ -235,11 +237,11 @@ pub fn packet<T>() -> *mut Packet<T> {
 pub fn entangle_buffer<T:Owned,Tstart:Owned>(
     mut buffer: ~Buffer<T>,
     init: &fn(*libc::c_void, x: &mut T) -> *mut Packet<Tstart>)
-    -> (SendPacketBuffered<Tstart, T>, RecvPacketBuffered<Tstart, T>) {
+    -> (RecvPacketBuffered<Tstart, T>, SendPacketBuffered<Tstart, T>) {
     unsafe {
         let p = init(transmute_copy(&buffer), &mut buffer.data);
         forget(buffer);
-        (SendPacketBuffered(p), RecvPacketBuffered(p))
+        (RecvPacketBuffered(p), SendPacketBuffered(p))
     }
 }
 
@@ -313,6 +315,7 @@ struct BufferResource<T> {
 impl<T> Drop for BufferResource<T> {
     fn finalize(&self) {
         unsafe {
+            // FIXME(#4330) Need self by value to get mutability.
             let this: &mut BufferResource<T> = transmute(self);
 
             let mut b = move_it!(this.buffer);
@@ -598,7 +601,7 @@ pub fn wait_many<T: Selectable>(pkts: &mut [T]) -> uint {
 
     let mut data_avail = false;
     let mut ready_packet = pkts.len();
-    for vec::eachi_mut(pkts) |i, p| {
+    for pkts.mut_iter().enumerate().advance |(i, p)| {
         unsafe {
             let p = &mut *p.header();
             let old = p.mark_blocked(this);
@@ -620,7 +623,7 @@ pub fn wait_many<T: Selectable>(pkts: &mut [T]) -> uint {
         let event = wait_event(this) as *PacketHeader;
 
         let mut pos = None;
-        for vec::eachi_mut(pkts) |i, p| {
+        for pkts.mut_iter().enumerate().advance |(i, p)| {
             if p.header() == event {
                 pos = Some(i);
                 break;
@@ -638,7 +641,7 @@ pub fn wait_many<T: Selectable>(pkts: &mut [T]) -> uint {
 
     debug!("%?", &mut pkts[ready_packet]);
 
-    for vec::each_mut(pkts) |p| {
+    for pkts.mut_iter().advance |p| {
         unsafe {
             (*p.header()).unblock()
         }
@@ -692,12 +695,12 @@ pub fn SendPacketBuffered<T,Tbuffer>(p: *mut Packet<T>)
     }
 }
 
-pub impl<T,Tbuffer> SendPacketBuffered<T,Tbuffer> {
-    fn unwrap(&mut self) -> *mut Packet<T> {
+impl<T,Tbuffer> SendPacketBuffered<T,Tbuffer> {
+    pub fn unwrap(&mut self) -> *mut Packet<T> {
         replace(&mut self.p, None).unwrap()
     }
 
-    fn header(&mut self) -> *mut PacketHeader {
+    pub fn header(&mut self) -> *mut PacketHeader {
         match self.p {
             Some(packet) => unsafe {
                 let packet = &mut *packet;
@@ -708,7 +711,7 @@ pub impl<T,Tbuffer> SendPacketBuffered<T,Tbuffer> {
         }
     }
 
-    fn reuse_buffer(&mut self) -> BufferResource<Tbuffer> {
+    pub fn reuse_buffer(&mut self) -> BufferResource<Tbuffer> {
         //error!("send reuse_buffer");
         replace(&mut self.buffer, None).unwrap()
     }
@@ -740,12 +743,12 @@ impl<T:Owned,Tbuffer:Owned> Drop for RecvPacketBuffered<T,Tbuffer> {
     }
 }
 
-pub impl<T:Owned,Tbuffer:Owned> RecvPacketBuffered<T, Tbuffer> {
-    fn unwrap(&mut self) -> *mut Packet<T> {
+impl<T:Owned,Tbuffer:Owned> RecvPacketBuffered<T, Tbuffer> {
+    pub fn unwrap(&mut self) -> *mut Packet<T> {
         replace(&mut self.p, None).unwrap()
     }
 
-    fn reuse_buffer(&mut self) -> BufferResource<Tbuffer> {
+    pub fn reuse_buffer(&mut self) -> BufferResource<Tbuffer> {
         replace(&mut self.buffer, None).unwrap()
     }
 }
@@ -773,9 +776,9 @@ pub fn RecvPacketBuffered<T,Tbuffer>(p: *mut Packet<T>)
     }
 }
 
-pub fn entangle<T>() -> (SendPacket<T>, RecvPacket<T>) {
+pub fn entangle<T>() -> (RecvPacket<T>, SendPacket<T>) {
     let p = packet();
-    (SendPacket(p), RecvPacket(p))
+    (RecvPacket(p), SendPacket(p))
 }
 
 /** Receives a message from one of two endpoints.
@@ -851,7 +854,7 @@ pub fn select<T:Owned,Tb:Owned>(mut endpoints: ~[RecvPacketBuffered<T, Tb>])
                                     Option<T>,
                                     ~[RecvPacketBuffered<T, Tb>]) {
     let mut endpoint_headers = ~[];
-    for vec::each_mut(endpoints) |endpoint| {
+    for endpoints.mut_iter().advance |endpoint| {
         endpoint_headers.push(endpoint.header());
     }
 

@@ -27,15 +27,23 @@ use util::ppaux::{Repr, UserString};
 use util::common::{indenter};
 use util::enum_set::{EnumSet, CLike};
 
+use core::cast;
+use core::cmp;
+use core::hashmap::{HashMap, HashSet};
+use core::iter;
+use core::ops;
 use core::ptr::to_unsafe_ptr;
 use core::to_bytes;
-use core::hashmap::{HashMap, HashSet};
+use core::u32;
+use core::uint;
+use core::vec;
 use syntax::ast::*;
 use syntax::ast_util::is_local;
 use syntax::ast_util;
 use syntax::attr;
 use syntax::codemap::span;
 use syntax::codemap;
+use syntax::parse::token;
 use syntax::parse::token::special_idents;
 use syntax::{ast, ast_map};
 use syntax::opt_vec::OptVec;
@@ -61,14 +69,15 @@ pub struct Method {
     def_id: ast::def_id
 }
 
-pub impl Method {
-    fn new(ident: ast::ident,
-           generics: ty::Generics,
-           transformed_self_ty: Option<ty::t>,
-           fty: BareFnTy,
-           explicit_self: ast::explicit_self_,
-           vis: ast::visibility,
-           def_id: ast::def_id) -> Method {
+impl Method {
+    pub fn new(ident: ast::ident,
+               generics: ty::Generics,
+               transformed_self_ty: Option<ty::t>,
+               fty: BareFnTy,
+               explicit_self: ast::explicit_self_,
+               vis: ast::visibility,
+               def_id: ast::def_id)
+               -> Method {
         // Check the invariants.
         if explicit_self == ast::sty_static {
             assert!(transformed_self_ty.is_none());
@@ -212,7 +221,7 @@ pub enum AutoRef {
 // implementations.
 //
 // This is a map from ID of each implementation to the method info and trait
-// method ID of each of the default methods belonging to the trait that that
+// method ID of each of the default methods belonging to the trait that
 // implementation implements.
 pub type ProvidedMethodsMap = @mut HashMap<def_id,@mut ~[@ProvidedMethodInfo]>;
 
@@ -261,6 +270,8 @@ struct ctxt_ {
     // A cache for the trait_methods() routine
     trait_methods_cache: @mut HashMap<def_id, @~[@Method]>,
 
+    impl_trait_cache: @mut HashMap<ast::def_id, Option<@ty::TraitRef>>,
+
     trait_refs: @mut HashMap<node_id, @TraitRef>,
     trait_defs: @mut HashMap<def_id, @TraitDef>,
 
@@ -271,7 +282,7 @@ struct ctxt_ {
     tcache: type_cache,
     rcache: creader_cache,
     ccache: constness_cache,
-    short_names_cache: @mut HashMap<t, @~str>,
+    short_names_cache: @mut HashMap<t, @str>,
     needs_unwind_cleanup_cache: @mut HashMap<t, bool>,
     tc_cache: @mut HashMap<uint, TypeContents>,
     ast_ty_to_ty_cache: @mut HashMap<node_id, ast_ty_to_ty_cache_entry>,
@@ -298,6 +309,9 @@ struct ctxt_ {
 
     // Maps a trait onto a mapping from self-ty to impl
     trait_impls: @mut HashMap<ast::def_id, @mut HashMap<t, @Impl>>,
+
+    // Maps a base type to its impl
+    base_impls: @mut HashMap<ast::def_id, @mut ~[@Impl]>,
 
     // Set of used unsafe nodes (functions or blocks). Unsafe nodes not
     // present in this set can be warned about.
@@ -453,8 +467,8 @@ pub enum Region {
     re_empty,
 }
 
-pub impl Region {
-    fn is_bound(&self) -> bool {
+impl Region {
+    pub fn is_bound(&self) -> bool {
         match self {
             &re_bound(*) => true,
             _ => false
@@ -675,6 +689,7 @@ pub enum BuiltinBound {
     BoundStatic,
     BoundOwned,
     BoundConst,
+    BoundSized,
 }
 
 pub fn EmptyBuiltinBounds() -> BuiltinBounds {
@@ -687,6 +702,7 @@ pub fn AllBuiltinBounds() -> BuiltinBounds {
     set.add(BoundStatic);
     set.add(BoundOwned);
     set.add(BoundConst);
+    set.add(BoundSized);
     set
 }
 
@@ -870,8 +886,8 @@ pub struct Generics {
     region_param: Option<region_variance>,
 }
 
-pub impl Generics {
-    fn has_type_params(&self) -> bool {
+impl Generics {
+    pub fn has_type_params(&self) -> bool {
         !self.type_param_defs.is_empty()
     }
 }
@@ -952,6 +968,7 @@ pub fn mk_ctxt(s: session::Session,
         methods: @mut HashMap::new(),
         trait_method_def_ids: @mut HashMap::new(),
         trait_methods_cache: @mut HashMap::new(),
+        impl_trait_cache: @mut HashMap::new(),
         ty_param_defs: @mut HashMap::new(),
         adjustments: @mut HashMap::new(),
         normalized_cache: new_ty_hash(),
@@ -962,6 +979,7 @@ pub fn mk_ctxt(s: session::Session,
         destructor_for_type: @mut HashMap::new(),
         destructors: @mut HashSet::new(),
         trait_impls: @mut HashMap::new(),
+        base_impls:  @mut HashMap::new(),
         used_unsafe: @mut HashSet::new(),
         used_mut_nodes: @mut HashSet::new(),
      }
@@ -1001,7 +1019,7 @@ fn mk_t(cx: ctxt, st: sty) -> t {
     fn sflags(substs: &substs) -> uint {
         let mut f = 0u;
         for substs.tps.each |tt| { f |= get(*tt).flags; }
-        for substs.self_r.each |r| { f |= rflags(*r) }
+        for substs.self_r.iter().advance |r| { f |= rflags(*r) }
         return f;
     }
     match &st {
@@ -1544,8 +1562,8 @@ pub fn type_needs_subst(ty: t) -> bool {
 }
 
 pub fn trait_ref_contains_error(tref: &ty::TraitRef) -> bool {
-    tref.substs.self_ty.any(|&t| type_is_error(t)) ||
-        tref.substs.tps.any(|&t| type_is_error(t))
+    tref.substs.self_ty.iter().any_(|&t| type_is_error(t)) ||
+        tref.substs.tps.iter().any_(|&t| type_is_error(t))
 }
 
 pub fn type_is_ty_var(ty: t) -> bool {
@@ -1808,75 +1826,84 @@ pub struct TypeContents {
     bits: u32
 }
 
-pub impl TypeContents {
-    fn meets_bounds(&self, cx: ctxt, bbs: BuiltinBounds) -> bool {
+impl TypeContents {
+    pub fn meets_bounds(&self, cx: ctxt, bbs: BuiltinBounds) -> bool {
         iter::all(|bb| self.meets_bound(cx, bb), |f| bbs.each(f))
     }
 
-    fn meets_bound(&self, cx: ctxt, bb: BuiltinBound) -> bool {
+    pub fn meets_bound(&self, cx: ctxt, bb: BuiltinBound) -> bool {
         match bb {
             BoundCopy => self.is_copy(cx),
             BoundStatic => self.is_static(cx),
             BoundConst => self.is_const(cx),
-            BoundOwned => self.is_owned(cx)
+            BoundOwned => self.is_owned(cx),
+            BoundSized => self.is_sized(cx),
         }
     }
 
-    fn intersects(&self, tc: TypeContents) -> bool {
+    pub fn intersects(&self, tc: TypeContents) -> bool {
         (self.bits & tc.bits) != 0
     }
 
-    fn is_copy(&self, cx: ctxt) -> bool {
+    pub fn is_copy(&self, cx: ctxt) -> bool {
         !self.intersects(TypeContents::noncopyable(cx))
     }
 
-    fn noncopyable(_cx: ctxt) -> TypeContents {
+    pub fn noncopyable(_cx: ctxt) -> TypeContents {
         TC_DTOR + TC_BORROWED_MUT + TC_ONCE_CLOSURE + TC_OWNED_CLOSURE +
             TC_EMPTY_ENUM
     }
 
-    fn is_static(&self, cx: ctxt) -> bool {
+    pub fn is_static(&self, cx: ctxt) -> bool {
         !self.intersects(TypeContents::nonstatic(cx))
     }
 
-    fn nonstatic(_cx: ctxt) -> TypeContents {
+    pub fn nonstatic(_cx: ctxt) -> TypeContents {
         TC_BORROWED_POINTER
     }
 
-    fn is_owned(&self, cx: ctxt) -> bool {
+    pub fn is_owned(&self, cx: ctxt) -> bool {
         !self.intersects(TypeContents::nonowned(cx))
     }
 
-    fn nonowned(_cx: ctxt) -> TypeContents {
+    pub fn nonowned(_cx: ctxt) -> TypeContents {
         TC_MANAGED + TC_BORROWED_POINTER + TC_NON_OWNED
     }
 
-    fn contains_managed(&self) -> bool {
+    pub fn contains_managed(&self) -> bool {
         self.intersects(TC_MANAGED)
     }
 
-    fn is_const(&self, cx: ctxt) -> bool {
+    pub fn is_const(&self, cx: ctxt) -> bool {
         !self.intersects(TypeContents::nonconst(cx))
     }
 
-    fn nonconst(_cx: ctxt) -> TypeContents {
+    pub fn nonconst(_cx: ctxt) -> TypeContents {
         TC_MUTABLE
     }
 
-    fn moves_by_default(&self, cx: ctxt) -> bool {
+    pub fn is_sized(&self, cx: ctxt) -> bool {
+        !self.intersects(TypeContents::dynamically_sized(cx))
+    }
+
+    pub fn dynamically_sized(_cx: ctxt) -> TypeContents {
+        TC_DYNAMIC_SIZE
+    }
+
+    pub fn moves_by_default(&self, cx: ctxt) -> bool {
         self.intersects(TypeContents::nonimplicitly_copyable(cx))
     }
 
-    fn nonimplicitly_copyable(cx: ctxt) -> TypeContents {
+    pub fn nonimplicitly_copyable(cx: ctxt) -> TypeContents {
         TypeContents::noncopyable(cx) + TC_OWNED_POINTER + TC_OWNED_VEC
     }
 
-    fn needs_drop(&self, cx: ctxt) -> bool {
+    pub fn needs_drop(&self, cx: ctxt) -> bool {
         let tc = TC_MANAGED + TC_DTOR + TypeContents::owned(cx);
         self.intersects(tc)
     }
 
-    fn owned(_cx: ctxt) -> TypeContents {
+    pub fn owned(_cx: ctxt) -> TypeContents {
         //! Any kind of owned contents.
         TC_OWNED_CLOSURE + TC_OWNED_POINTER + TC_OWNED_VEC
     }
@@ -1936,8 +1963,11 @@ static TC_EMPTY_ENUM: TypeContents =       TypeContents{bits: 0b0010_0000_0000};
 /// Contains a type marked with `#[non_owned]`
 static TC_NON_OWNED: TypeContents =        TypeContents{bits: 0b0100_0000_0000};
 
+/// Is a bare vector, str, function, trait, etc (only relevant at top level).
+static TC_DYNAMIC_SIZE: TypeContents =     TypeContents{bits: 0b1000_0000_0000};
+
 /// All possible contents.
-static TC_ALL: TypeContents =              TypeContents{bits: 0b0111_1111_1111};
+static TC_ALL: TypeContents =              TypeContents{bits: 0b1111_1111_1111};
 
 pub fn type_is_copyable(cx: ctxt, t: ty::t) -> bool {
     type_contents(cx, t).is_copy(cx)
@@ -2021,7 +2051,7 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
             }
 
             ty_box(mt) => {
-                TC_MANAGED + nonowned(tc_mt(cx, mt, cache))
+                TC_MANAGED + statically_sized(nonowned(tc_mt(cx, mt, cache)))
             }
 
             ty_trait(_, _, UniqTraitStore, _) => {
@@ -2041,28 +2071,35 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
 
             ty_rptr(r, mt) => {
                 borrowed_contents(r, mt.mutbl) +
-                    nonowned(tc_mt(cx, mt, cache))
+                    statically_sized(nonowned(tc_mt(cx, mt, cache)))
             }
 
             ty_uniq(mt) => {
-                TC_OWNED_POINTER + tc_mt(cx, mt, cache)
+                TC_OWNED_POINTER + statically_sized(tc_mt(cx, mt, cache))
             }
 
             ty_evec(mt, vstore_uniq) => {
-                TC_OWNED_VEC + tc_mt(cx, mt, cache)
+                TC_OWNED_VEC + statically_sized(tc_mt(cx, mt, cache))
             }
 
             ty_evec(mt, vstore_box) => {
-                TC_MANAGED + nonowned(tc_mt(cx, mt, cache))
+                TC_MANAGED + statically_sized(nonowned(tc_mt(cx, mt, cache)))
             }
 
             ty_evec(mt, vstore_slice(r)) => {
                 borrowed_contents(r, mt.mutbl) +
-                    nonowned(tc_mt(cx, mt, cache))
+                    statically_sized(nonowned(tc_mt(cx, mt, cache)))
             }
 
             ty_evec(mt, vstore_fixed(_)) => {
-                tc_mt(cx, mt, cache)
+                let contents = tc_mt(cx, mt, cache);
+                // FIXME(#6308) Uncomment this when construction of such
+                // vectors is prevented earlier in compilation.
+                // if !contents.is_sized(cx) {
+                //     cx.sess.bug("Fixed-length vector of unsized type \
+                //                  should be impossible");
+                // }
+                contents
             }
 
             ty_estr(vstore_box) => {
@@ -2137,7 +2174,7 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
             }
 
             ty_opaque_box => TC_MANAGED,
-            ty_unboxed_vec(mt) => tc_mt(cx, mt, cache),
+            ty_unboxed_vec(mt) => TC_DYNAMIC_SIZE + tc_mt(cx, mt, cache),
             ty_opaque_closure_ptr(sigil) => {
                 match sigil {
                     ast::BorrowedSigil => TC_BORROWED_POINTER,
@@ -2204,6 +2241,14 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
         TypeContents {bits: pointee.bits & mask}
     }
 
+    fn statically_sized(pointee: TypeContents) -> TypeContents {
+        /*!
+         * If a dynamically-sized type is found behind a pointer, we should
+         * restore the 'Sized' kind to the pointer and things that contain it.
+         */
+        TypeContents {bits: pointee.bits & !TC_DYNAMIC_SIZE.bits}
+    }
+
     fn closure_contents(cty: &ClosureTy) -> TypeContents {
         let st = match cty.sigil {
             ast::BorrowedSigil => TC_BORROWED_POINTER,
@@ -2232,6 +2277,8 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
                 BoundStatic => TypeContents::nonstatic(cx),
                 BoundOwned => TypeContents::nonowned(cx),
                 BoundConst => TypeContents::nonconst(cx),
+                // The dynamic-size bit can be removed at pointer-level, etc.
+                BoundSized => TypeContents::dynamically_sized(cx),
             };
         }
 
@@ -2271,69 +2318,69 @@ pub fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
                ::util::ppaux::ty_to_str(cx, ty));
 
         let r = match get(ty).sty {
-          ty_nil |
-          ty_bot |
-          ty_bool |
-          ty_int(_) |
-          ty_uint(_) |
-          ty_float(_) |
-          ty_estr(_) |
-          ty_bare_fn(_) |
-          ty_closure(_) |
-          ty_infer(_) |
-          ty_err |
-          ty_param(_) |
-          ty_self(_) |
-          ty_type |
-          ty_opaque_box |
-          ty_opaque_closure_ptr(_) |
-          ty_evec(_, _) |
-          ty_unboxed_vec(_) => {
-            false
-          }
-          ty_box(ref mt) |
-          ty_uniq(ref mt) |
-          ty_rptr(_, ref mt) => {
-            return type_requires(cx, seen, r_ty, mt.ty);
-          }
+            ty_nil |
+            ty_bot |
+            ty_bool |
+            ty_int(_) |
+            ty_uint(_) |
+            ty_float(_) |
+            ty_estr(_) |
+            ty_bare_fn(_) |
+            ty_closure(_) |
+            ty_infer(_) |
+            ty_err |
+            ty_param(_) |
+            ty_self(_) |
+            ty_type |
+            ty_opaque_box |
+            ty_opaque_closure_ptr(_) |
+            ty_evec(_, _) |
+            ty_unboxed_vec(_) => {
+                false
+            }
+            ty_box(ref mt) |
+            ty_uniq(ref mt) |
+            ty_rptr(_, ref mt) => {
+                type_requires(cx, seen, r_ty, mt.ty)
+            }
 
-          ty_ptr(*) => {
-            false           // unsafe ptrs can always be NULL
-          }
+            ty_ptr(*) => {
+                false           // unsafe ptrs can always be NULL
+            }
 
-          ty_trait(_, _, _, _) => {
-            false
-          }
+            ty_trait(_, _, _, _) => {
+                false
+            }
 
-          ty_struct(ref did, _) if vec::contains(*seen, did) => {
-            false
-          }
+            ty_struct(ref did, _) if vec::contains(*seen, did) => {
+                false
+            }
 
-          ty_struct(did, ref substs) => {
-              seen.push(did);
-              let r = vec::any(struct_fields(cx, did, substs),
-                               |f| type_requires(cx, seen, r_ty, f.mt.ty));
-              seen.pop();
-            r
-          }
+            ty_struct(did, ref substs) => {
+                seen.push(did);
+                let fields = struct_fields(cx, did, substs);
+                let r = fields.iter().any_(|f| type_requires(cx, seen, r_ty, f.mt.ty));
+                seen.pop();
+                r
+            }
 
-          ty_tup(ref ts) => {
-            ts.any(|t| type_requires(cx, seen, r_ty, *t))
-          }
+            ty_tup(ref ts) => {
+                ts.any(|t| type_requires(cx, seen, r_ty, *t))
+            }
 
-          ty_enum(ref did, _) if vec::contains(*seen, did) => {
-            false
-          }
+            ty_enum(ref did, _) if vec::contains(*seen, did) => {
+                false
+            }
 
             ty_enum(did, ref substs) => {
                 seen.push(did);
                 let vs = enum_variants(cx, did);
-                let r = vec::len(*vs) > 0u && vec::all(*vs, |variant| {
-                    vec::any(variant.args, |aty| {
+                let r = !vs.is_empty() && do vs.iter().all |variant| {
+                    do variant.args.iter().any_ |aty| {
                         let sty = subst(cx, substs, *aty);
                         type_requires(cx, seen, r_ty, sty)
-                    })
-                });
+                    }
+                };
                 seen.pop();
                 r
             }
@@ -2347,8 +2394,8 @@ pub fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
         return r;
     }
 
-    let seen = @mut ~[];
-    !subtypes_require(cx, seen, r_ty, r_ty)
+    let mut seen = ~[];
+    !subtypes_require(cx, &mut seen, r_ty, r_ty)
 }
 
 pub fn type_structurally_contains(cx: ctxt,
@@ -2475,11 +2522,12 @@ pub fn type_is_pod(cx: ctxt, ty: t) -> bool {
       ty_param(_) => result = false,
       ty_opaque_closure_ptr(_) => result = true,
       ty_struct(did, ref substs) => {
-        result = vec::any(lookup_struct_fields(cx, did), |f| {
+        let fields = lookup_struct_fields(cx, did);
+        result = do fields.iter().all |f| {
             let fty = ty::lookup_item_type(cx, f.id);
             let sty = subst(cx, substs, fty.ty);
             type_is_pod(cx, sty)
-        });
+        };
       }
 
       ty_estr(vstore_slice(*)) | ty_evec(_, vstore_slice(*)) => {
@@ -2501,6 +2549,21 @@ pub fn type_is_enum(ty: t) -> bool {
     }
 }
 
+// Is the type's representation size known at compile time?
+pub fn type_is_sized(cx: ctxt, ty: ty::t) -> bool {
+    match get(ty).sty {
+        // FIXME(#6308) add trait, vec, str, etc here.
+        ty_param(p) => {
+            let param_def = cx.ty_param_defs.get(&p.def_id.node);
+            if param_def.bounds.builtin_bounds.contains_elem(BoundSized) {
+                return true;
+            }
+            return false;
+        },
+        _ => return true,
+    }
+}
+
 // Whether a type is enum like, that is a enum type with only nullary
 // constructors
 pub fn type_is_c_like_enum(cx: ctxt, ty: t) -> bool {
@@ -2510,7 +2573,7 @@ pub fn type_is_c_like_enum(cx: ctxt, ty: t) -> bool {
             if variants.len() == 0 {
                 false
             } else {
-                variants.all(|v| v.args.len() == 0)
+                variants.iter().all(|v| v.args.len() == 0)
             }
         }
         _ => false
@@ -2620,7 +2683,7 @@ impl cmp::TotalOrd for bound_region {
             (&ty::br_anon(ref a1), &ty::br_anon(ref a2)) => a1.cmp(a2),
             (&ty::br_anon(*), _) => cmp::Less,
 
-            (&ty::br_named(ref a1), &ty::br_named(ref a2)) => a1.repr.cmp(&a2.repr),
+            (&ty::br_named(ref a1), &ty::br_named(ref a2)) => a1.name.cmp(&a2.name),
             (&ty::br_named(*), _) => cmp::Less,
 
             (&ty::br_cap_avoid(ref a1, @ref b1),
@@ -2761,7 +2824,7 @@ pub fn node_id_to_trait_ref(cx: ctxt, id: ast::node_id) -> @ty::TraitRef {
        None => cx.sess.bug(
            fmt!("node_id_to_trait_ref: no trait ref for node `%s`",
                 ast_map::node_id_to_str(cx.items, id,
-                                        cx.sess.parse_sess.interner)))
+                                        token::get_ident_interner())))
     }
 }
 
@@ -2772,7 +2835,7 @@ pub fn node_id_to_type(cx: ctxt, id: ast::node_id) -> t {
        None => cx.sess.bug(
            fmt!("node_id_to_type: no type for node `%s`",
                 ast_map::node_id_to_str(cx.items, id,
-                                        cx.sess.parse_sess.interner)))
+                                        token::get_ident_interner())))
     }
 }
 
@@ -2983,15 +3046,17 @@ pub fn adjust_ty(cx: ctxt,
         Some(@AutoDerefRef(ref adj)) => {
             let mut adjusted_ty = unadjusted_ty;
 
-            for uint::range(0, adj.autoderefs) |i| {
-                match ty::deref(cx, adjusted_ty, true) {
-                    Some(mt) => { adjusted_ty = mt.ty; }
-                    None => {
-                        cx.sess.span_bug(
-                            span,
-                            fmt!("The %uth autoderef failed: %s",
-                                 i, ty_to_str(cx,
-                                              adjusted_ty)));
+            if (!ty::type_is_error(adjusted_ty)) {
+                for uint::range(0, adj.autoderefs) |i| {
+                    match ty::deref(cx, adjusted_ty, true) {
+                        Some(mt) => { adjusted_ty = mt.ty; }
+                        None => {
+                            cx.sess.span_bug(
+                                span,
+                                fmt!("The %uth autoderef failed: %s",
+                                     i, ty_to_str(cx,
+                                                  adjusted_ty)));
+                        }
                     }
                 }
             }
@@ -3067,8 +3132,8 @@ pub fn adjust_ty(cx: ctxt,
     }
 }
 
-pub impl AutoRef {
-    fn map_region(&self, f: &fn(Region) -> Region) -> AutoRef {
+impl AutoRef {
+    pub fn map_region(&self, f: &fn(Region) -> Region) -> AutoRef {
         match *self {
             ty::AutoPtr(r, m) => ty::AutoPtr(f(r), m),
             ty::AutoBorrowVec(r, m) => ty::AutoBorrowVec(f(r), m),
@@ -3199,7 +3264,7 @@ pub fn expr_kind(tcx: ctxt,
             }
         }
 
-        ast::expr_unary(ast::deref, _) |
+        ast::expr_unary(_, ast::deref, _) |
         ast::expr_field(*) |
         ast::expr_index(*) => {
             LvalueExpr
@@ -3303,7 +3368,7 @@ pub fn field_idx_strict(tcx: ty::ctxt, id: ast::ident, fields: &[field])
     for fields.each |f| { if f.ident == id { return i; } i += 1u; }
     tcx.sess.bug(fmt!(
         "No field named `%s` found in the list of fields `%?`",
-        *tcx.sess.str_of(id),
+        tcx.sess.str_of(id),
         fields.map(|f| tcx.sess.str_of(f.ident))));
 }
 
@@ -3451,8 +3516,8 @@ pub fn type_err_to_str(cx: ctxt, err: &type_err) -> ~str {
         terr_record_fields(values) => {
             fmt!("expected a record with field `%s` but found one with field \
                   `%s`",
-                 *cx.sess.str_of(values.expected),
-                 *cx.sess.str_of(values.found))
+                 cx.sess.str_of(values.expected),
+                 cx.sess.str_of(values.found))
         }
         terr_arg_count => ~"incorrect number of function parameters",
         terr_regions_does_not_outlive(*) => {
@@ -3486,7 +3551,7 @@ pub fn type_err_to_str(cx: ctxt, err: &type_err) -> ~str {
                  trait_store_to_str(cx, (*values).found))
         }
         terr_in_field(err, fname) => {
-            fmt!("in field `%s`, %s", *cx.sess.str_of(fname),
+            fmt!("in field `%s`, %s", cx.sess.str_of(fname),
                  type_err_to_str(cx, err))
         }
         terr_sorts(values) => {
@@ -3646,6 +3711,21 @@ pub fn trait_method(cx: ctxt, trait_did: ast::def_id, idx: uint) -> @Method {
     ty::method(cx, method_def_id)
 }
 
+
+pub fn add_base_impl(cx: ctxt, base_def_id: def_id, implementation: @Impl) {
+    let implementations;
+    match cx.base_impls.find(&base_def_id) {
+        None => {
+            implementations = @mut ~[];
+            cx.base_impls.insert(base_def_id, implementations);
+        }
+        Some(&existing) => {
+            implementations = existing;
+        }
+    }
+    implementations.push(implementation);
+}
+
 pub fn trait_methods(cx: ctxt, trait_did: ast::def_id) -> @~[@Method] {
     match cx.trait_methods_cache.find(&trait_did) {
         Some(&methods) => methods,
@@ -3671,22 +3751,24 @@ pub fn trait_method_def_ids(cx: ctxt, id: ast::def_id) -> @~[def_id] {
 }
 
 pub fn impl_trait_ref(cx: ctxt, id: ast::def_id) -> Option<@TraitRef> {
-    if id.crate == ast::local_crate {
-        debug!("(impl_trait_ref) searching for trait impl %?", id);
-        match cx.items.find(&id.node) {
-           Some(&ast_map::node_item(@ast::item {
-                        node: ast::item_impl(_, opt_trait, _, _),
-                        _},
-                    _)) => {
-               match opt_trait {
-                   Some(t) => Some(ty::node_id_to_trait_ref(cx, t.ref_id)),
-                   None => None
-               }
-           }
-           _ => None
+    *do cx.impl_trait_cache.find_or_insert_with(id) |_| {
+        if id.crate == ast::local_crate {
+            debug!("(impl_trait_ref) searching for trait impl %?", id);
+            match cx.items.find(&id.node) {
+                Some(&ast_map::node_item(@ast::item {
+                                         node: ast::item_impl(_, opt_trait, _, _),
+                                         _},
+                                         _)) => {
+                    match opt_trait {
+                        Some(t) => Some(ty::node_id_to_trait_ref(cx, t.ref_id)),
+                        None => None
+                    }
+                }
+                _ => None
+            }
+        } else {
+            csearch::get_impl_trait(cx, id)
         }
-    } else {
-        csearch::get_impl_trait(cx, id)
     }
 }
 
@@ -3748,7 +3830,7 @@ pub fn substd_enum_variants(cx: ctxt,
 }
 
 pub fn item_path_str(cx: ctxt, id: ast::def_id) -> ~str {
-    ast_map::path_to_str(item_path(cx, id), cx.sess.parse_sess.interner)
+    ast_map::path_to_str(item_path(cx, id), token::get_ident_interner())
 }
 
 pub enum DtorKind {
@@ -3756,14 +3838,15 @@ pub enum DtorKind {
     TraitDtor(def_id)
 }
 
-pub impl DtorKind {
-    fn is_not_present(&const self) -> bool {
+impl DtorKind {
+    pub fn is_not_present(&const self) -> bool {
         match *self {
             NoDtor => true,
             _ => false
         }
     }
-    fn is_present(&const self) -> bool {
+
+    pub fn is_present(&const self) -> bool {
         !self.is_not_present()
     }
 }
@@ -3966,7 +4049,7 @@ pub fn has_attr(tcx: ctxt, did: def_id, attr: &str) -> bool {
     } else {
         let mut ret = false;
         do csearch::get_item_attrs(tcx.cstore, did) |meta_items| {
-            ret = attr::contains_name(meta_items, attr);
+            ret = ret || attr::contains_name(meta_items, attr);
         }
         ret
     }
@@ -4033,7 +4116,7 @@ pub fn lookup_struct_fields(cx: ctxt, did: ast::def_id) -> ~[field_ty] {
            cx.sess.bug(
                fmt!("struct ID not bound to an item: %s",
                     ast_map::node_id_to_str(cx.items, did.node,
-                                            cx.sess.parse_sess.interner)));
+                                            token::get_ident_interner())));
        }
     }
         }
@@ -4241,23 +4324,30 @@ pub fn normalize_ty(cx: ctxt, t: t) -> t {
 pub fn eval_repeat_count(tcx: ctxt, count_expr: @ast::expr) -> uint {
     match const_eval::eval_const_expr_partial(tcx, count_expr) {
       Ok(ref const_val) => match *const_val {
-        const_eval::const_int(count) => return count as uint,
+        const_eval::const_int(count) => if count < 0 {
+            tcx.sess.span_err(count_expr.span,
+                              "expected positive integer for \
+                               repeat count but found negative integer");
+            return 0;
+        } else {
+            return count as uint
+        },
         const_eval::const_uint(count) => return count as uint,
         const_eval::const_float(count) => {
             tcx.sess.span_err(count_expr.span,
-                              "expected signed or unsigned integer for \
+                              "expected positive integer for \
                                repeat count but found float");
             return count as uint;
         }
         const_eval::const_str(_) => {
             tcx.sess.span_err(count_expr.span,
-                              "expected signed or unsigned integer for \
+                              "expected positive integer for \
                                repeat count but found string");
             return 0;
         }
         const_eval::const_bool(_) => {
             tcx.sess.span_err(count_expr.span,
-                              "expected signed or unsigned integer for \
+                              "expected positive integer for \
                                repeat count but found boolean");
             return 0;
         }

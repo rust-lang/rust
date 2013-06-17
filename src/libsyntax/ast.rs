@@ -15,7 +15,7 @@ use core::prelude::*;
 use codemap::{span, spanned};
 use abi::AbiSet;
 use opt_vec::OptVec;
-use parse::token::get_ident_interner;
+use parse::token::{interner_get, str_to_ident};
 
 use core::hashmap::HashMap;
 use core::option::Option;
@@ -25,12 +25,15 @@ use core::to_str::ToStr;
 use extra::serialize::{Encodable, Decodable, Encoder, Decoder};
 
 
-// an identifier contains an index into the interner
-// table and a SyntaxContext to track renaming and
+// an identifier contains a Name (index into the interner
+// table) and a SyntaxContext to track renaming and
 // macro expansion per Flatt et al., "Macros
 // That Work Together"
 #[deriving(Eq)]
-pub struct ident { repr: Name, ctxt: SyntaxContext }
+pub struct ident { name: Name, ctxt: SyntaxContext }
+
+/// Construct an identifier with the given name and an empty context:
+pub fn new_ident(name: Name) -> ident { ident {name: name, ctxt: empty_ctxt}}
 
 // a SyntaxContext represents a chain of macro-expandings
 // and renamings. Each macro expansion corresponds to
@@ -72,7 +75,8 @@ pub enum SyntaxContext_ {
     IllegalCtxt()
 }
 
-// a name represents an identifier
+// a name is a part of an identifier, representing a string
+// or gensym. It's the result of interning.
 pub type Name = uint;
 // a mark represents a unique id associated
 // with a macro expansion
@@ -80,22 +84,20 @@ pub type Mrk = uint;
 
 impl<S:Encoder> Encodable<S> for ident {
     fn encode(&self, s: &mut S) {
-        let intr = get_ident_interner();
-        s.emit_str(*(*intr).get(*self));
+        s.emit_str(interner_get(self.name));
     }
 }
 
 impl<D:Decoder> Decodable<D> for ident {
     fn decode(d: &mut D) -> ident {
-        let intr = get_ident_interner();
-        (*intr).intern(d.read_str())
+        str_to_ident(d.read_str())
     }
 }
 
 impl to_bytes::IterBytes for ident {
     #[inline(always)]
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
-        self.repr.iter_bytes(lsb0, f)
+        self.name.iter_bytes(lsb0, f)
     }
 }
 
@@ -166,14 +168,14 @@ pub struct Generics {
     ty_params: OptVec<TyParam>
 }
 
-pub impl Generics {
-    fn is_parameterized(&self) -> bool {
+impl Generics {
+    pub fn is_parameterized(&self) -> bool {
         self.lifetimes.len() + self.ty_params.len() > 0
     }
-    fn is_lt_parameterized(&self) -> bool {
+    pub fn is_lt_parameterized(&self) -> bool {
         self.lifetimes.len() > 0
     }
-    fn is_type_parameterized(&self) -> bool {
+    pub fn is_type_parameterized(&self) -> bool {
         self.ty_params.len() > 0
     }
 }
@@ -226,9 +228,9 @@ pub type meta_item = spanned<meta_item_>;
 
 #[deriving(Eq, Encodable, Decodable)]
 pub enum meta_item_ {
-    meta_word(@~str),
-    meta_list(@~str, ~[@meta_item]),
-    meta_name_value(@~str, lit),
+    meta_word(@str),
+    meta_list(@str, ~[@meta_item]),
+    meta_name_value(@str, lit),
 }
 
 pub type blk = spanned<blk_>;
@@ -257,7 +259,6 @@ pub struct field_pat {
 
 #[deriving(Eq, Encodable, Decodable)]
 pub enum binding_mode {
-    bind_by_copy,
     bind_by_ref(mutability),
     bind_infer
 }
@@ -265,13 +266,13 @@ pub enum binding_mode {
 impl to_bytes::IterBytes for binding_mode {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
         match *self {
-          bind_by_copy => 0u8.iter_bytes(lsb0, f),
-
           bind_by_ref(ref m) => {
-              1u8.iter_bytes(lsb0, f) && m.iter_bytes(lsb0, f)
+              0u8.iter_bytes(lsb0, f) && m.iter_bytes(lsb0, f)
           }
 
-          bind_infer => 2u8.iter_bytes(lsb0, f),
+          bind_infer => {
+              1u8.iter_bytes(lsb0, f)
+          }
         }
     }
 }
@@ -386,6 +387,7 @@ pub type stmt = spanned<stmt_>;
 
 #[deriving(Eq, Encodable, Decodable)]
 pub enum stmt_ {
+    // could be an item or a local (let) binding:
     stmt_decl(@decl, node_id),
 
     // expr without trailing semi-colon (must have unit type):
@@ -414,7 +416,12 @@ pub type local = spanned<local_>;
 pub type decl = spanned<decl_>;
 
 #[deriving(Eq, Encodable, Decodable)]
-pub enum decl_ { decl_local(~[@local]), decl_item(@item), }
+pub enum decl_ {
+    // a local (let) binding:
+    decl_local(@local),
+    // an item binding:
+    decl_item(@item),
+}
 
 #[deriving(Eq, Encodable, Decodable)]
 pub struct arm {
@@ -425,7 +432,6 @@ pub struct arm {
 
 #[deriving(Eq, Encodable, Decodable)]
 pub struct field_ {
-    mutbl: mutability,
     ident: ident,
     expr: @expr,
 }
@@ -438,11 +444,21 @@ pub enum blk_check_mode { default_blk, unsafe_blk, }
 #[deriving(Eq, Encodable, Decodable)]
 pub struct expr {
     id: node_id,
-    // Extra node ID is only used for index, assign_op, unary, binary, method
-    // call
-    callee_id: node_id,
     node: expr_,
     span: span,
+}
+
+impl expr {
+    pub fn get_callee_id(&self) -> Option<node_id> {
+        match self.node {
+            expr_method_call(callee_id, _, _, _, _, _) |
+            expr_index(callee_id, _, _) |
+            expr_binary(callee_id, _, _, _) |
+            expr_assign_op(callee_id, _, _, _) |
+            expr_unary(callee_id, _, _) => Some(callee_id),
+            _ => None,
+        }
+    }
 }
 
 #[deriving(Eq, Encodable, Decodable)]
@@ -457,10 +473,10 @@ pub enum expr_ {
     expr_vstore(@expr, expr_vstore),
     expr_vec(~[@expr], mutability),
     expr_call(@expr, ~[@expr], CallSugar),
-    expr_method_call(@expr, ident, ~[@Ty], ~[@expr], CallSugar),
+    expr_method_call(node_id, @expr, ident, ~[@Ty], ~[@expr], CallSugar),
     expr_tup(~[@expr]),
-    expr_binary(binop, @expr, @expr),
-    expr_unary(unop, @expr),
+    expr_binary(node_id, binop, @expr, @expr),
+    expr_unary(node_id, unop, @expr),
     expr_lit(@lit),
     expr_cast(@expr, @Ty),
     expr_if(@expr, blk, Option<@expr>),
@@ -481,9 +497,9 @@ pub enum expr_ {
 
     expr_copy(@expr),
     expr_assign(@expr, @expr),
-    expr_assign_op(binop, @expr, @expr),
+    expr_assign_op(node_id, binop, @expr, @expr),
     expr_field(@expr, ident, ~[@Ty]),
-    expr_index(@expr, @expr),
+    expr_index(node_id, @expr, @expr),
     expr_path(@Path),
 
     /// The special identifier `self`.
@@ -618,12 +634,12 @@ pub type lit = spanned<lit_>;
 
 #[deriving(Eq, Encodable, Decodable)]
 pub enum lit_ {
-    lit_str(@~str),
+    lit_str(@str),
     lit_int(i64, int_ty),
     lit_uint(u64, uint_ty),
     lit_int_unsuffixed(i64),
-    lit_float(@~str, float_ty),
-    lit_float_unsuffixed(@~str),
+    lit_float(@str, float_ty),
+    lit_float_unsuffixed(@str),
     lit_nil,
     lit_bool(bool),
 }
@@ -803,10 +819,10 @@ pub enum asm_dialect {
 
 #[deriving(Eq, Encodable, Decodable)]
 pub struct inline_asm {
-    asm: @~str,
-    clobbers: @~str,
-    inputs: ~[(@~str, @expr)],
-    outputs: ~[(@~str, @expr)],
+    asm: @str,
+    clobbers: @str,
+    inputs: ~[(@str, @expr)],
+    outputs: ~[(@str, @expr)],
     volatile: bool,
     alignstack: bool,
     dialect: asm_dialect

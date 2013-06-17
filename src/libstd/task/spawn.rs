@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -72,12 +72,13 @@
 
 #[doc(hidden)];
 
+use prelude::*;
+
 use cast::transmute;
 use cast;
 use cell::Cell;
 use container::Map;
 use comm::{Chan, GenericChan};
-use prelude::*;
 use ptr;
 use hashmap::HashSet;
 use task::local_data_priv::{local_get, local_set, OldHandle};
@@ -91,8 +92,12 @@ use uint;
 use util;
 use unstable::sync::{Exclusive, exclusive};
 use rt::local::Local;
+use iterator::{IteratorUtil};
+use rt::task::Task;
 
 #[cfg(test)] use task::default_task_opts;
+#[cfg(test)] use comm;
+#[cfg(test)] use task;
 
 macro_rules! move_it (
     { $x:expr } => ( unsafe { let y = *ptr::to_unsafe_ptr(&($x)); y } )
@@ -159,13 +164,17 @@ struct AncestorList(Option<Exclusive<AncestorNode>>);
 // Accessors for taskgroup arcs and ancestor arcs that wrap the unsafety.
 #[inline(always)]
 fn access_group<U>(x: &TaskGroupArc, blk: &fn(TaskGroupInner) -> U) -> U {
-    x.with(blk)
+    unsafe {
+        x.with(blk)
+    }
 }
 
 #[inline(always)]
 fn access_ancestors<U>(x: &Exclusive<AncestorNode>,
                        blk: &fn(x: &mut AncestorNode) -> U) -> U {
-    x.with(blk)
+    unsafe {
+        x.with(blk)
+    }
 }
 
 // Iterates over an ancestor list.
@@ -269,7 +278,7 @@ fn each_ancestor(list:        &mut AncestorList,
                  * Step 3: Maybe unwind; compute return info for our caller.
                  *##########################################################*/
                 if need_unwind && !nobe_is_dead {
-                    for bail_opt.each |bail_blk| {
+                    for bail_opt.iter().advance |bail_blk| {
                         do with_parent_tg(&mut nobe.parent_group) |tg_opt| {
                             (*bail_blk)(tg_opt)
                         }
@@ -316,11 +325,12 @@ impl Drop for TCB {
     // Runs on task exit.
     fn finalize(&self) {
         unsafe {
+            // FIXME(#4330) Need self by value to get mutability.
             let this: &mut TCB = transmute(self);
 
             // If we are failing, the whole taskgroup needs to die.
             if rt::rust_task_is_unwinding(self.me) {
-                for this.notifier.each_mut |x| {
+                for this.notifier.mut_iter().advance |x| {
                     x.failed = true;
                 }
                 // Take everybody down with us.
@@ -349,7 +359,7 @@ fn TCB(me: *rust_task,
        ancestors: AncestorList,
        is_main: bool,
        mut notifier: Option<AutoNotify>) -> TCB {
-    for notifier.each_mut |x| {
+    for notifier.mut_iter().advance |x| {
         x.failed = false;
     }
 
@@ -576,9 +586,14 @@ pub fn spawn_raw(opts: TaskOpts, f: ~fn()) {
 fn spawn_raw_newsched(_opts: TaskOpts, f: ~fn()) {
     use rt::sched::*;
 
+    let task = do Local::borrow::<Task, ~Task>() |running_task| {
+        ~running_task.new_child()
+    };
+
     let mut sched = Local::take::<Scheduler>();
-    let task = ~Coroutine::new(&mut sched.stack_pool, f);
-    sched.schedule_new_task(task);
+    let task = ~Coroutine::with_task(&mut sched.stack_pool,
+                                     task, f);
+    sched.schedule_task(task);
 }
 
 fn spawn_raw_oldsched(mut opts: TaskOpts, f: ~fn()) {
@@ -587,7 +602,7 @@ fn spawn_raw_oldsched(mut opts: TaskOpts, f: ~fn()) {
         gen_child_taskgroup(opts.linked, opts.supervised);
 
     unsafe {
-        let child_data = Cell((child_tg, ancestors, f));
+        let child_data = Cell::new((child_tg, ancestors, f));
         // Being killed with the unsafe task/closure pointers would leak them.
         do unkillable {
             // Agh. Get move-mode items into the closure. FIXME (#2829)
@@ -629,7 +644,7 @@ fn spawn_raw_oldsched(mut opts: TaskOpts, f: ~fn()) {
                           notify_chan: Option<Chan<TaskResult>>,
                           f: ~fn())
                        -> ~fn() {
-        let child_data = Cell((child_arc, ancestors));
+        let child_data = Cell::new((child_arc, ancestors));
         let result: ~fn() = || {
             // Agh. Get move-mode items into the closure. FIXME (#2829)
             let mut (child_arc, ancestors) = child_data.take();

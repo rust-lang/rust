@@ -30,6 +30,7 @@ use core::hashmap::{HashMap, HashSet};
 use syntax::ast_map;
 use syntax::codemap::span;
 use syntax::print::pprust;
+use syntax::parse::token;
 use syntax::parse::token::special_idents;
 use syntax::{ast, visit};
 
@@ -73,11 +74,8 @@ pub struct Context {
     parent: parent,
 }
 
-pub impl RegionMaps {
-    fn relate_free_regions(&mut self,
-                           sub: FreeRegion,
-                           sup: FreeRegion)
-    {
+impl RegionMaps {
+    pub fn relate_free_regions(&mut self, sub: FreeRegion, sup: FreeRegion) {
         match self.free_region_map.find_mut(&sub) {
             Some(sups) => {
                 if !sups.contains(&sup) {
@@ -93,19 +91,14 @@ pub impl RegionMaps {
         self.free_region_map.insert(sub, ~[sup]);
     }
 
-    fn record_parent(&mut self,
-                     sub: ast::node_id,
-                     sup: ast::node_id)
-    {
+    pub fn record_parent(&mut self, sub: ast::node_id, sup: ast::node_id) {
         debug!("record_parent(sub=%?, sup=%?)", sub, sup);
         assert!(sub != sup);
 
         self.scope_map.insert(sub, sup);
     }
 
-    pub fn record_cleanup_scope(&mut self,
-                                scope_id: ast::node_id)
-    {
+    pub fn record_cleanup_scope(&mut self, scope_id: ast::node_id) {
         //! Records that a scope is a CLEANUP SCOPE.  This is invoked
         //! from within regionck.  We wait until regionck because we do
         //! not know which operators are overloaded until that point,
@@ -114,17 +107,13 @@ pub impl RegionMaps {
         self.cleanup_scopes.insert(scope_id);
     }
 
-    fn opt_encl_scope(&self,
-                      id: ast::node_id) -> Option<ast::node_id>
-    {
+    pub fn opt_encl_scope(&self, id: ast::node_id) -> Option<ast::node_id> {
         //! Returns the narrowest scope that encloses `id`, if any.
 
         self.scope_map.find(&id).map(|&x| *x)
     }
 
-    fn encl_scope(&self,
-                  id: ast::node_id) -> ast::node_id
-    {
+    pub fn encl_scope(&self, id: ast::node_id) -> ast::node_id {
         //! Returns the narrowest scope that encloses `id`, if any.
 
         match self.scope_map.find(&id) {
@@ -133,13 +122,11 @@ pub impl RegionMaps {
         }
     }
 
-    fn is_cleanup_scope(&self, scope_id: ast::node_id) -> bool {
+    pub fn is_cleanup_scope(&self, scope_id: ast::node_id) -> bool {
         self.cleanup_scopes.contains(&scope_id)
     }
 
-    fn cleanup_scope(&self,
-                     expr_id: ast::node_id) -> ast::node_id
-    {
+    pub fn cleanup_scope(&self, expr_id: ast::node_id) -> ast::node_id {
         //! Returns the scope when temps in expr will be cleaned up
 
         let mut id = self.encl_scope(expr_id);
@@ -149,25 +136,22 @@ pub impl RegionMaps {
         return id;
     }
 
-    fn encl_region(&self,
-                   id: ast::node_id) -> ty::Region
-    {
+    pub fn encl_region(&self, id: ast::node_id) -> ty::Region {
         //! Returns the narrowest scope region that encloses `id`, if any.
 
         ty::re_scope(self.encl_scope(id))
     }
 
-    pub fn scopes_intersect(&self,
-                            scope1: ast::node_id,
-                            scope2: ast::node_id) -> bool
-    {
-        self.is_subscope_of(scope1, scope2) || self.is_subscope_of(scope2, scope1)
+    pub fn scopes_intersect(&self, scope1: ast::node_id, scope2: ast::node_id)
+                            -> bool {
+        self.is_subscope_of(scope1, scope2) ||
+        self.is_subscope_of(scope2, scope1)
     }
 
-    fn is_subscope_of(&self,
-                      subscope: ast::node_id,
-                      superscope: ast::node_id) -> bool
-    {
+    pub fn is_subscope_of(&self,
+                          subscope: ast::node_id,
+                          superscope: ast::node_id)
+                          -> bool {
         /*!
          * Returns true if `subscope` is equal to or is lexically
          * nested inside `superscope` and false otherwise.
@@ -192,10 +176,7 @@ pub impl RegionMaps {
         return true;
     }
 
-    fn sub_free_region(&self,
-                       sub: FreeRegion,
-                       sup: FreeRegion) -> bool
-    {
+    pub fn sub_free_region(&self, sub: FreeRegion, sup: FreeRegion) -> bool {
         /*!
          * Determines whether two free regions have a subregion relationship
          * by walking the graph encoded in `free_region_map`.  Note that
@@ -233,10 +214,10 @@ pub impl RegionMaps {
         return false;
     }
 
-    fn is_subregion_of(&self,
-                       sub_region: ty::Region,
-                       super_region: ty::Region) -> bool
-    {
+    pub fn is_subregion_of(&self,
+                           sub_region: ty::Region,
+                           super_region: ty::Region)
+                           -> bool {
         /*!
          * Determines whether one region is a subregion of another.  This is
          * intended to run *after inference* and sadly the logic is somewhat
@@ -271,10 +252,10 @@ pub impl RegionMaps {
         }
     }
 
-    fn nearest_common_ancestor(&self,
-                               scope_a: ast::node_id,
-                               scope_b: ast::node_id) -> Option<ast::node_id>
-    {
+    pub fn nearest_common_ancestor(&self,
+                                   scope_a: ast::node_id,
+                                   scope_b: ast::node_id)
+                                   -> Option<ast::node_id> {
         /*!
          * Finds the nearest common ancestor (if any) of two scopes.  That
          * is, finds the smallest scope which is greater than or equal to
@@ -345,50 +326,52 @@ pub fn parent_id(cx: Context, span: span) -> ast::node_id {
 }
 
 /// Records the current parent (if any) as the parent of `child_id`.
-pub fn parent_to_expr(cx: Context, child_id: ast::node_id) {
-    for cx.parent.each |parent_id| {
+pub fn parent_to_expr(cx: Context, child_id: ast::node_id, sp: span) {
+    debug!("region::parent_to_expr(span=%?)",
+           cx.sess.codemap.span_to_str(sp));
+    for cx.parent.iter().advance |parent_id| {
         cx.region_maps.record_parent(child_id, *parent_id);
     }
 }
 
-pub fn resolve_block(blk: &ast::blk, cx: Context, visitor: visit::vt<Context>) {
+pub fn resolve_block(blk: &ast::blk, (cx, visitor): (Context, visit::vt<Context>)) {
     // Record the parent of this block.
-    parent_to_expr(cx, blk.node.id);
+    parent_to_expr(cx, blk.node.id, blk.span);
 
     // Descend.
     let new_cx = Context {var_parent: Some(blk.node.id),
                           parent: Some(blk.node.id),
                           ..cx};
-    visit::visit_block(blk, new_cx, visitor);
+    visit::visit_block(blk, (new_cx, visitor));
 }
 
-pub fn resolve_arm(arm: &ast::arm, cx: Context, visitor: visit::vt<Context>) {
-    visit::visit_arm(arm, cx, visitor);
+pub fn resolve_arm(arm: &ast::arm, (cx, visitor): (Context, visit::vt<Context>)) {
+    visit::visit_arm(arm, (cx, visitor));
 }
 
-pub fn resolve_pat(pat: @ast::pat, cx: Context, visitor: visit::vt<Context>) {
+pub fn resolve_pat(pat: @ast::pat, (cx, visitor): (Context, visit::vt<Context>)) {
     assert_eq!(cx.var_parent, cx.parent);
-    parent_to_expr(cx, pat.id);
-    visit::visit_pat(pat, cx, visitor);
+    parent_to_expr(cx, pat.id, pat.span);
+    visit::visit_pat(pat, (cx, visitor));
 }
 
-pub fn resolve_stmt(stmt: @ast::stmt, cx: Context, visitor: visit::vt<Context>) {
+pub fn resolve_stmt(stmt: @ast::stmt, (cx, visitor): (Context, visit::vt<Context>)) {
     match stmt.node {
         ast::stmt_decl(*) => {
-            visit::visit_stmt(stmt, cx, visitor);
+            visit::visit_stmt(stmt, (cx, visitor));
         }
         ast::stmt_expr(_, stmt_id) |
         ast::stmt_semi(_, stmt_id) => {
-            parent_to_expr(cx, stmt_id);
+            parent_to_expr(cx, stmt_id, stmt.span);
             let expr_cx = Context {parent: Some(stmt_id), ..cx};
-            visit::visit_stmt(stmt, expr_cx, visitor);
+            visit::visit_stmt(stmt, (expr_cx, visitor));
         }
         ast::stmt_mac(*) => cx.sess.bug("unexpanded macro")
     }
 }
 
-pub fn resolve_expr(expr: @ast::expr, cx: Context, visitor: visit::vt<Context>) {
-    parent_to_expr(cx, expr.id);
+pub fn resolve_expr(expr: @ast::expr, (cx, visitor): (Context, visit::vt<Context>)) {
+    parent_to_expr(cx, expr.id, expr.span);
 
     let mut new_cx = cx;
     new_cx.parent = Some(expr.id);
@@ -423,32 +406,38 @@ pub fn resolve_expr(expr: @ast::expr, cx: Context, visitor: visit::vt<Context>) 
     };
 
 
-    visit::visit_expr(expr, new_cx, visitor);
+    visit::visit_expr(expr, (new_cx, visitor));
 }
 
 pub fn resolve_local(local: @ast::local,
-                     cx: Context,
-                     visitor: visit::vt<Context>) {
+                     (cx, visitor) : (Context,
+                                      visit::vt<Context>)) {
     assert_eq!(cx.var_parent, cx.parent);
-    parent_to_expr(cx, local.node.id);
-    visit::visit_local(local, cx, visitor);
+    parent_to_expr(cx, local.node.id, local.span);
+    visit::visit_local(local, (cx, visitor));
 }
 
-pub fn resolve_item(item: @ast::item, cx: Context, visitor: visit::vt<Context>) {
+pub fn resolve_item(item: @ast::item, (cx, visitor): (Context, visit::vt<Context>)) {
     // Items create a new outer block scope as far as we're concerned.
     let new_cx = Context {var_parent: None, parent: None, ..cx};
-    visit::visit_item(item, new_cx, visitor);
+    visit::visit_item(item, (new_cx, visitor));
 }
 
 pub fn resolve_fn(fk: &visit::fn_kind,
                   decl: &ast::fn_decl,
                   body: &ast::blk,
-                  _sp: span,
+                  sp: span,
                   id: ast::node_id,
-                  cx: Context,
-                  visitor: visit::vt<Context>) {
-    debug!("region::resolve_fn(id=%?, body.node.id=%?, cx.parent=%?)",
-           id, body.node.id, cx.parent);
+                  (cx, visitor): (Context,
+                                  visit::vt<Context>)) {
+    debug!("region::resolve_fn(id=%?, \
+                               span=%?, \
+                               body.node.id=%?, \
+                               cx.parent=%?)",
+           id,
+           cx.sess.codemap.span_to_str(sp),
+           body.node.id,
+           cx.parent);
 
     // The arguments and `self` are parented to the body of the fn.
     let decl_cx = Context {parent: Some(body.node.id),
@@ -460,7 +449,7 @@ pub fn resolve_fn(fk: &visit::fn_kind,
         }
         _ => {}
     }
-    visit::visit_fn_decl(decl, decl_cx, visitor);
+    visit::visit_fn_decl(decl, (decl_cx, visitor));
 
     // The body of the fn itself is either a root scope (top-level fn)
     // or it continues with the inherited scope (closures).
@@ -474,7 +463,7 @@ pub fn resolve_fn(fk: &visit::fn_kind,
             cx
         }
     };
-    (visitor.visit_block)(body, body_cx, visitor);
+    (visitor.visit_block)(body, (body_cx, visitor));
 }
 
 pub fn resolve_crate(sess: Session,
@@ -502,7 +491,7 @@ pub fn resolve_crate(sess: Session,
         visit_local: resolve_local,
         .. *visit::default_visitor()
     });
-    visit::visit_crate(crate, cx, visitor);
+    visit::visit_crate(crate, (cx, visitor));
     return region_maps;
 }
 
@@ -588,15 +577,15 @@ pub fn add_variance(ambient_variance: region_variance,
     }
 }
 
-pub impl DetermineRpCtxt {
-    fn add_variance(&self, variance: region_variance) -> region_variance {
+impl DetermineRpCtxt {
+    pub fn add_variance(&self, variance: region_variance) -> region_variance {
         add_variance(self.ambient_variance, variance)
     }
 
     /// Records that item `id` is region-parameterized with the
     /// variance `variance`.  If `id` was already parameterized, then
     /// the new variance is joined with the old variance.
-    fn add_rp(&mut self, id: ast::node_id, variance: region_variance) {
+    pub fn add_rp(&mut self, id: ast::node_id, variance: region_variance) {
         assert!(id != 0);
         let old_variance = self.region_paramd_items.find(&id).
                                 map_consume(|x| *x);
@@ -607,7 +596,7 @@ pub impl DetermineRpCtxt {
 
         debug!("add_rp() variance for %s: %? == %? ^ %?",
                ast_map::node_id_to_str(self.ast_map, id,
-                                       self.sess.parse_sess.interner),
+                                       token::get_ident_interner()),
                joined_variance, old_variance, variance);
 
         if Some(joined_variance) != old_variance {
@@ -622,13 +611,13 @@ pub impl DetermineRpCtxt {
     /// `from`.  Put another way, it indicates that the current item
     /// contains a value of type `from`, so if `from` is
     /// region-parameterized, so is the current item.
-    fn add_dep(&mut self, from: ast::node_id) {
+    pub fn add_dep(&mut self, from: ast::node_id) {
         debug!("add dependency from %d -> %d (%s -> %s) with variance %?",
                from, self.item_id,
                ast_map::node_id_to_str(self.ast_map, from,
-                                       self.sess.parse_sess.interner),
+                                       token::get_ident_interner()),
                ast_map::node_id_to_str(self.ast_map, self.item_id,
-                                       self.sess.parse_sess.interner),
+                                       token::get_ident_interner()),
                copy self.ambient_variance);
         let vec = match self.dep_map.find(&from) {
             Some(&vec) => vec,
@@ -682,7 +671,7 @@ pub impl DetermineRpCtxt {
     // with &self type, &self is also bound.  We detect those last two
     // cases via flags (anon_implies_rp and self_implies_rp) that are
     // true when the anon or self region implies RP.
-    fn region_is_relevant(&self, r: Option<@ast::Lifetime>) -> bool {
+    pub fn region_is_relevant(&self, r: Option<@ast::Lifetime>) -> bool {
         match r {
             None => {
                 self.anon_implies_rp
@@ -699,10 +688,10 @@ pub impl DetermineRpCtxt {
         }
     }
 
-    fn with(@mut self,
-            item_id: ast::node_id,
-            anon_implies_rp: bool,
-            f: &fn()) {
+    pub fn with(@mut self,
+                item_id: ast::node_id,
+                anon_implies_rp: bool,
+                f: &fn()) {
         let old_item_id = self.item_id;
         let old_anon_implies_rp = self.anon_implies_rp;
         self.item_id = item_id;
@@ -716,7 +705,9 @@ pub impl DetermineRpCtxt {
         self.anon_implies_rp = old_anon_implies_rp;
     }
 
-    fn with_ambient_variance(@mut self, variance: region_variance, f: &fn()) {
+    pub fn with_ambient_variance(@mut self,
+                                 variance: region_variance,
+                                 f: &fn()) {
         let old_ambient_variance = self.ambient_variance;
         self.ambient_variance = self.add_variance(variance);
         f();
@@ -725,10 +716,10 @@ pub impl DetermineRpCtxt {
 }
 
 pub fn determine_rp_in_item(item: @ast::item,
-                            cx: @mut DetermineRpCtxt,
-                            visitor: visit::vt<@mut DetermineRpCtxt>) {
+                            (cx, visitor): (@mut DetermineRpCtxt,
+                                            visit::vt<@mut DetermineRpCtxt>)) {
     do cx.with(item.id, true) {
-        visit::visit_item(item, cx, visitor);
+        visit::visit_item(item, (cx, visitor));
     }
 }
 
@@ -737,32 +728,32 @@ pub fn determine_rp_in_fn(fk: &visit::fn_kind,
                           body: &ast::blk,
                           _: span,
                           _: ast::node_id,
-                          cx: @mut DetermineRpCtxt,
-                          visitor: visit::vt<@mut DetermineRpCtxt>) {
+                          (cx, visitor): (@mut DetermineRpCtxt,
+                                          visit::vt<@mut DetermineRpCtxt>)) {
     do cx.with(cx.item_id, false) {
         do cx.with_ambient_variance(rv_contravariant) {
             for decl.inputs.each |a| {
-                (visitor.visit_ty)(a.ty, cx, visitor);
+                (visitor.visit_ty)(a.ty, (cx, visitor));
             }
         }
-        (visitor.visit_ty)(decl.output, cx, visitor);
+        (visitor.visit_ty)(decl.output, (cx, visitor));
         let generics = visit::generics_of_fn(fk);
-        (visitor.visit_generics)(&generics, cx, visitor);
-        (visitor.visit_block)(body, cx, visitor);
+        (visitor.visit_generics)(&generics, (cx, visitor));
+        (visitor.visit_block)(body, (cx, visitor));
     }
 }
 
 pub fn determine_rp_in_ty_method(ty_m: &ast::ty_method,
-                                 cx: @mut DetermineRpCtxt,
-                                 visitor: visit::vt<@mut DetermineRpCtxt>) {
+                                 (cx, visitor): (@mut DetermineRpCtxt,
+                                                 visit::vt<@mut DetermineRpCtxt>)) {
     do cx.with(cx.item_id, false) {
-        visit::visit_ty_method(ty_m, cx, visitor);
+        visit::visit_ty_method(ty_m, (cx, visitor));
     }
 }
 
 pub fn determine_rp_in_ty(ty: @ast::Ty,
-                          cx: @mut DetermineRpCtxt,
-                          visitor: visit::vt<@mut DetermineRpCtxt>) {
+                          (cx, visitor): (@mut DetermineRpCtxt,
+                                          visit::vt<@mut DetermineRpCtxt>)) {
     // we are only interested in types that will require an item to
     // be region-parameterized.  if cx.item_id is zero, then this type
     // is not a member of a type defn nor is it a constitutent of an
@@ -846,14 +837,14 @@ pub fn determine_rp_in_ty(ty: @ast::Ty,
     match ty.node {
       ast::ty_box(mt) | ast::ty_uniq(mt) | ast::ty_vec(mt) |
       ast::ty_rptr(_, mt) | ast::ty_ptr(mt) => {
-        visit_mt(mt, cx, visitor);
+        visit_mt(mt, (cx, visitor));
       }
 
       ast::ty_path(path, _) => {
         // type parameters are---for now, anyway---always invariant
         do cx.with_ambient_variance(rv_invariant) {
             for path.types.each |tp| {
-                (visitor.visit_ty)(*tp, cx, visitor);
+                (visitor.visit_ty)(*tp, (cx, visitor));
             }
         }
       }
@@ -866,37 +857,37 @@ pub fn determine_rp_in_ty(ty: @ast::Ty,
             // parameters are contravariant
             do cx.with_ambient_variance(rv_contravariant) {
                 for decl.inputs.each |a| {
-                    (visitor.visit_ty)(a.ty, cx, visitor);
+                    (visitor.visit_ty)(a.ty, (cx, visitor));
                 }
             }
-            (visitor.visit_ty)(decl.output, cx, visitor);
+            (visitor.visit_ty)(decl.output, (cx, visitor));
         }
       }
 
       _ => {
-        visit::visit_ty(ty, cx, visitor);
+        visit::visit_ty(ty, (cx, visitor));
       }
     }
 
     fn visit_mt(mt: ast::mt,
-                cx: @mut DetermineRpCtxt,
-                visitor: visit::vt<@mut DetermineRpCtxt>) {
+                (cx, visitor): (@mut DetermineRpCtxt,
+                                visit::vt<@mut DetermineRpCtxt>)) {
         // mutability is invariant
         if mt.mutbl == ast::m_mutbl {
             do cx.with_ambient_variance(rv_invariant) {
-                (visitor.visit_ty)(mt.ty, cx, visitor);
+                (visitor.visit_ty)(mt.ty, (cx, visitor));
             }
         } else {
-            (visitor.visit_ty)(mt.ty, cx, visitor);
+            (visitor.visit_ty)(mt.ty, (cx, visitor));
         }
     }
 }
 
 pub fn determine_rp_in_struct_field(
         cm: @ast::struct_field,
-        cx: @mut DetermineRpCtxt,
-        visitor: visit::vt<@mut DetermineRpCtxt>) {
-    visit::visit_struct_field(cm, cx, visitor);
+        (cx, visitor): (@mut DetermineRpCtxt,
+                        visit::vt<@mut DetermineRpCtxt>)) {
+    visit::visit_struct_field(cm, (cx, visitor));
 }
 
 pub fn determine_rp_in_crate(sess: Session,
@@ -925,7 +916,7 @@ pub fn determine_rp_in_crate(sess: Session,
         visit_struct_field: determine_rp_in_struct_field,
         .. *visit::default_visitor()
     });
-    visit::visit_crate(crate, cx, visitor);
+    visit::visit_crate(crate, (cx, visitor));
 
     // Propagate indirect dependencies
     //
@@ -961,7 +952,7 @@ pub fn determine_rp_in_crate(sess: Session,
             debug!("item %? (%s) is parameterized with variance %?",
                    key,
                    ast_map::node_id_to_str(ast_map, key,
-                                           sess.parse_sess.interner),
+                                           token::get_ident_interner()),
                    value);
         }
         "----"

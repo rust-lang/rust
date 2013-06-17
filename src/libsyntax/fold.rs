@@ -13,7 +13,10 @@ use core::prelude::*;
 use ast::*;
 use ast;
 use codemap::{span, spanned};
+use parse::token;
 use opt_vec::OptVec;
+
+use core::vec;
 
 pub trait ast_fold {
     fn fold_crate(@self, &crate) -> crate;
@@ -24,10 +27,10 @@ pub trait ast_fold {
     fn fold_item_underscore(@self, &item_) -> item_;
     fn fold_method(@self, @method) -> @method;
     fn fold_block(@self, &blk) -> blk;
-    fn fold_stmt(@self, &stmt) -> @stmt;
+    fn fold_stmt(@self, &stmt) -> Option<@stmt>;
     fn fold_arm(@self, &arm) -> arm;
     fn fold_pat(@self, @pat) -> @pat;
-    fn fold_decl(@self, @decl) -> @decl;
+    fn fold_decl(@self, @decl) -> Option<@decl>;
     fn fold_expr(@self, @expr) -> @expr;
     fn fold_ty(@self, @Ty) -> @Ty;
     fn fold_mod(@self, &_mod) -> _mod;
@@ -53,10 +56,10 @@ pub struct AstFoldFns {
     fold_item_underscore: @fn(&item_, @ast_fold) -> item_,
     fold_method: @fn(@method, @ast_fold) -> @method,
     fold_block: @fn(&blk_, span, @ast_fold) -> (blk_, span),
-    fold_stmt: @fn(&stmt_, span, @ast_fold) -> (stmt_, span),
+    fold_stmt: @fn(&stmt_, span, @ast_fold) -> (Option<stmt_>, span),
     fold_arm: @fn(&arm, @ast_fold) -> arm,
     fold_pat: @fn(&pat_, span, @ast_fold) -> (pat_, span),
-    fold_decl: @fn(&decl_, span, @ast_fold) -> (decl_, span),
+    fold_decl: @fn(&decl_, span, @ast_fold) -> (Option<decl_>, span),
     fold_expr: @fn(&expr_, span, @ast_fold) -> (expr_, span),
     fold_ty: @fn(&ty_, span, @ast_fold) -> (ty_, span),
     fold_mod: @fn(&_mod, @ast_fold) -> _mod,
@@ -113,11 +116,43 @@ fn fold_arg_(a: arg, fld: @ast_fold) -> arg {
         id: fld.new_id(a.id),
     }
 }
+
 //used in noop_fold_expr, and possibly elsewhere in the future
 fn fold_mac_(m: &mac, fld: @ast_fold) -> mac {
     spanned {
-        node: match m.node { mac_invoc_tt(*) => copy m.node },
-        span: fld.new_span(m.span),
+        node: match m.node {
+            mac_invoc_tt(p,ref tts) =>
+            mac_invoc_tt(fld.fold_path(p),
+                         fold_tts(*tts,fld))
+        },
+        span: fld.new_span(m.span)
+    }
+}
+
+fn fold_tts(tts : &[token_tree], fld: @ast_fold) -> ~[token_tree] {
+    do tts.map |tt| {
+        match *tt {
+            tt_tok(span, ref tok) =>
+            tt_tok(span,maybe_fold_ident(tok,fld)),
+            tt_delim(ref tts) =>
+            tt_delim(fold_tts(*tts,fld)),
+            tt_seq(span, ref pattern, ref sep, is_optional) =>
+            tt_seq(span,
+                   fold_tts(*pattern,fld),
+                   sep.map(|tok|maybe_fold_ident(tok,fld)),
+                   is_optional),
+            tt_nonterminal(sp,ref ident) =>
+            tt_nonterminal(sp,fld.fold_ident(*ident))
+        }
+    }
+}
+
+// apply ident folder if it's an ident, otherwise leave it alone
+fn maybe_fold_ident(t : &token::Token, fld: @ast_fold) -> token::Token {
+    match *t {
+        token::IDENT(id,followed_by_colons) =>
+        token::IDENT(fld.fold_ident(id),followed_by_colons),
+        _ => copy *t
     }
 }
 
@@ -288,7 +323,10 @@ pub fn noop_fold_item_underscore(i: &item_, fld: @ast_fold) -> item_ {
         }
         item_mac(ref m) => {
             // FIXME #2888: we might actually want to do something here.
-            item_mac(copy *m)
+            // ... okay, we're doing something. It would probably be nicer
+            // to add something to the ast_fold trait, but I'll defer
+            // that work.
+            item_mac(fold_mac_(m,fld))
         }
     }
 }
@@ -338,22 +376,39 @@ fn noop_fold_method(m: @method, fld: @ast_fold) -> @method {
 
 
 pub fn noop_fold_block(b: &blk_, fld: @ast_fold) -> blk_ {
+    let view_items = b.view_items.map(|x| fld.fold_view_item(*x));
+    let mut stmts = ~[];
+    for b.stmts.each |stmt| {
+        match fld.fold_stmt(*stmt) {
+            None => {}
+            Some(stmt) => stmts.push(stmt)
+        }
+    }
     ast::blk_ {
-        view_items: b.view_items.map(|x| fld.fold_view_item(*x)),
-        stmts: b.stmts.map(|x| fld.fold_stmt(*x)),
+        view_items: view_items,
+        stmts: stmts,
         expr: b.expr.map(|x| fld.fold_expr(*x)),
         id: fld.new_id(b.id),
         rules: b.rules,
     }
 }
 
-fn noop_fold_stmt(s: &stmt_, fld: @ast_fold) -> stmt_ {
+fn noop_fold_stmt(s: &stmt_, fld: @ast_fold) -> Option<stmt_> {
     let fold_mac = |x| fold_mac_(x, fld);
     match *s {
-        stmt_decl(d, nid) => stmt_decl(fld.fold_decl(d), fld.new_id(nid)),
-        stmt_expr(e, nid) => stmt_expr(fld.fold_expr(e), fld.new_id(nid)),
-        stmt_semi(e, nid) => stmt_semi(fld.fold_expr(e), fld.new_id(nid)),
-        stmt_mac(ref mac, semi) => stmt_mac(fold_mac(mac), semi)
+        stmt_decl(d, nid) => {
+            match fld.fold_decl(d) {
+                Some(d) => Some(stmt_decl(d, fld.new_id(nid))),
+                None => None,
+            }
+        }
+        stmt_expr(e, nid) => {
+            Some(stmt_expr(fld.fold_expr(e), fld.new_id(nid)))
+        }
+        stmt_semi(e, nid) => {
+            Some(stmt_semi(fld.fold_expr(e), fld.new_id(nid)))
+        }
+        stmt_mac(ref mac, semi) => Some(stmt_mac(fold_mac(mac), semi))
     }
 }
 
@@ -409,13 +464,13 @@ pub fn noop_fold_pat(p: &pat_, fld: @ast_fold) -> pat_ {
     }
 }
 
-fn noop_fold_decl(d: &decl_, fld: @ast_fold) -> decl_ {
+fn noop_fold_decl(d: &decl_, fld: @ast_fold) -> Option<decl_> {
     match *d {
-        decl_local(ref ls) => decl_local(ls.map(|x| fld.fold_local(*x))),
+        decl_local(ref l) => Some(decl_local(fld.fold_local(*l))),
         decl_item(it) => {
             match fld.fold_item(it) {
-                Some(it_folded) => decl_item(it_folded),
-                None => decl_local(~[]),
+                Some(it_folded) => Some(decl_item(it_folded)),
+                None => None,
             }
         }
     }
@@ -433,7 +488,6 @@ pub fn noop_fold_expr(e: &expr_, fld: @ast_fold) -> expr_ {
     fn fold_field_(field: field, fld: @ast_fold) -> field {
         spanned {
             node: ast::field_ {
-                mutbl: field.node.mutbl,
                 ident: fld.fold_ident(field.node.ident),
                 expr: fld.fold_expr(field.node.expr),
             },
@@ -462,8 +516,9 @@ pub fn noop_fold_expr(e: &expr_, fld: @ast_fold) -> expr_ {
                 blk
             )
         }
-        expr_method_call(f, i, ref tps, ref args, blk) => {
+        expr_method_call(callee_id, f, i, ref tps, ref args, blk) => {
             expr_method_call(
+                fld.new_id(callee_id),
                 fld.fold_expr(f),
                 fld.fold_ident(i),
                 tps.map(|x| fld.fold_ty(*x)),
@@ -471,10 +526,21 @@ pub fn noop_fold_expr(e: &expr_, fld: @ast_fold) -> expr_ {
                 blk
             )
         }
-        expr_binary(binop, lhs, rhs) => {
-            expr_binary(binop, fld.fold_expr(lhs), fld.fold_expr(rhs))
+        expr_binary(callee_id, binop, lhs, rhs) => {
+            expr_binary(
+                fld.new_id(callee_id),
+                binop,
+                fld.fold_expr(lhs),
+                fld.fold_expr(rhs)
+            )
         }
-        expr_unary(binop, ohs) => expr_unary(binop, fld.fold_expr(ohs)),
+        expr_unary(callee_id, binop, ohs) => {
+            expr_unary(
+                fld.new_id(callee_id),
+                binop,
+                fld.fold_expr(ohs)
+            )
+        }
         expr_loop_body(f) => expr_loop_body(fld.fold_expr(f)),
         expr_do_body(f) => expr_do_body(fld.fold_expr(f)),
         expr_lit(_) => copy *e,
@@ -513,8 +579,13 @@ pub fn noop_fold_expr(e: &expr_, fld: @ast_fold) -> expr_ {
         expr_assign(el, er) => {
             expr_assign(fld.fold_expr(el), fld.fold_expr(er))
         }
-        expr_assign_op(op, el, er) => {
-            expr_assign_op(op, fld.fold_expr(el), fld.fold_expr(er))
+        expr_assign_op(callee_id, op, el, er) => {
+            expr_assign_op(
+                fld.new_id(callee_id),
+                op,
+                fld.fold_expr(el),
+                fld.fold_expr(er)
+            )
         }
         expr_field(el, id, ref tys) => {
             expr_field(
@@ -522,8 +593,12 @@ pub fn noop_fold_expr(e: &expr_, fld: @ast_fold) -> expr_ {
                 tys.map(|x| fld.fold_ty(*x))
             )
         }
-        expr_index(el, er) => {
-            expr_index(fld.fold_expr(el), fld.fold_expr(er))
+        expr_index(callee_id, el, er) => {
+            expr_index(
+                fld.new_id(callee_id),
+                fld.fold_expr(el),
+                fld.fold_expr(er)
+            )
         }
         expr_path(pth) => expr_path(fld.fold_path(pth)),
         expr_self => expr_self,
@@ -716,10 +791,10 @@ pub fn default_ast_fold() -> ast_fold_fns {
         fold_item_underscore: noop_fold_item_underscore,
         fold_method: noop_fold_method,
         fold_block: wrap(noop_fold_block),
-        fold_stmt: wrap(noop_fold_stmt),
+        fold_stmt: |x, s, fld| (noop_fold_stmt(x, fld), s),
         fold_arm: noop_fold_arm,
         fold_pat: wrap(noop_fold_pat),
-        fold_decl: wrap(noop_fold_decl),
+        fold_decl: |x, s, fld| (noop_fold_decl(x, fld), s),
         fold_expr: wrap(noop_fold_expr),
         fold_ty: wrap(noop_fold_ty),
         fold_mod: noop_fold_mod,
@@ -777,9 +852,12 @@ impl ast_fold for AstFoldFns {
         let (n, s) = (self.fold_block)(&x.node, x.span, self as @ast_fold);
         spanned { node: n, span: (self.new_span)(s) }
     }
-    fn fold_stmt(@self, x: &stmt) -> @stmt {
-        let (n, s) = (self.fold_stmt)(&x.node, x.span, self as @ast_fold);
-        @spanned { node: n, span: (self.new_span)(s) }
+    fn fold_stmt(@self, x: &stmt) -> Option<@stmt> {
+        let (n_opt, s) = (self.fold_stmt)(&x.node, x.span, self as @ast_fold);
+        match n_opt {
+            Some(n) => Some(@spanned { node: n, span: (self.new_span)(s) }),
+            None => None,
+        }
     }
     fn fold_arm(@self, x: &arm) -> arm {
         (self.fold_arm)(x, self as @ast_fold)
@@ -792,15 +870,17 @@ impl ast_fold for AstFoldFns {
             span: (self.new_span)(s),
         }
     }
-    fn fold_decl(@self, x: @decl) -> @decl {
-        let (n, s) = (self.fold_decl)(&x.node, x.span, self as @ast_fold);
-        @spanned { node: n, span: (self.new_span)(s) }
+    fn fold_decl(@self, x: @decl) -> Option<@decl> {
+        let (n_opt, s) = (self.fold_decl)(&x.node, x.span, self as @ast_fold);
+        match n_opt {
+            Some(n) => Some(@spanned { node: n, span: (self.new_span)(s) }),
+            None => None,
+        }
     }
     fn fold_expr(@self, x: @expr) -> @expr {
         let (n, s) = (self.fold_expr)(&x.node, x.span, self as @ast_fold);
         @expr {
             id: (self.new_id)(x.id),
-            callee_id: (self.new_id)(x.callee_id),
             node: n,
             span: (self.new_span)(s),
         }
@@ -859,4 +939,75 @@ impl AstFoldExtensions for @ast_fold {
 
 pub fn make_fold(afp: ast_fold_fns) -> @ast_fold {
     afp as @ast_fold
+}
+
+#[cfg(test)]
+mod test {
+    use ast;
+    use util::parser_testing::{string_to_crate, matches_codepattern};
+    use parse::token;
+    use print::pprust;
+    use super::*;
+
+    // taken from expand
+    // given a function from idents to idents, produce
+    // an ast_fold that applies that function:
+    pub fn fun_to_ident_folder(f: @fn(ast::ident)->ast::ident) -> @ast_fold{
+        let afp = default_ast_fold();
+        let f_pre = @AstFoldFns{
+            fold_ident : |id, _| f(id),
+            .. *afp
+        };
+        make_fold(f_pre)
+    }
+
+    // this version doesn't care about getting comments or docstrings in.
+    fn fake_print_crate(s: @pprust::ps, crate: ast::crate) {
+        pprust::print_mod(s, &crate.node.module, crate.node.attrs);
+    }
+
+    // change every identifier to "zz"
+    pub fn to_zz() -> @fn(ast::ident)->ast::ident {
+        let zz_id = token::str_to_ident("zz");
+        |id| {zz_id}
+    }
+
+    // maybe add to expand.rs...
+    macro_rules! assert_pred (
+        ($pred:expr, $predname:expr, $a:expr , $b:expr) => (
+            {
+                let pred_val = $pred;
+                let a_val = $a;
+                let b_val = $b;
+                if !(pred_val(a_val,b_val)) {
+                    fail!("expected args satisfying %s, got %? and %?",
+                          $predname, a_val, b_val);
+                }
+            }
+        )
+    )
+
+    // make sure idents get transformed everywhere
+    #[test] fn ident_transformation () {
+        let zz_fold = fun_to_ident_folder(to_zz());
+        let ast = string_to_crate(@"#[a] mod b {fn c (d : e, f : g) {h!(i,j,k);l;m}}");
+        assert_pred!(matches_codepattern,
+                     "matches_codepattern",
+                     pprust::to_str(zz_fold.fold_crate(ast),fake_print_crate,
+                                    token::get_ident_interner()),
+                     ~"#[a]mod zz{fn zz(zz:zz,zz:zz){zz!(zz,zz,zz);zz;zz}}");
+    }
+
+    // even inside macro defs....
+    #[test] fn ident_transformation_in_defs () {
+        let zz_fold = fun_to_ident_folder(to_zz());
+        let ast = string_to_crate(@"macro_rules! a {(b $c:expr $(d $e:token)f+
+=> (g $(d $d $e)+))} ");
+        assert_pred!(matches_codepattern,
+                     "matches_codepattern",
+                     pprust::to_str(zz_fold.fold_crate(ast),fake_print_crate,
+                                    token::get_ident_interner()),
+                     ~"zz!zz((zz$zz:zz$(zz $zz:zz)zz+=>(zz$(zz$zz$zz)+)))");
+    }
+
 }

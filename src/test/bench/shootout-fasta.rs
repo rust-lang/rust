@@ -16,7 +16,17 @@
  * http://shootout.alioth.debian.org/
  */
 extern mod extra;
+
+use std::int;
+use std::io;
+use std::option;
+use std::os;
 use std::rand::Rng;
+use std::rand;
+use std::result;
+use std::str;
+use std::uint;
+use std::vec;
 
 fn LINE_LENGTH() -> uint { return 60u; }
 
@@ -39,7 +49,7 @@ fn make_cumulative(aa: ~[AminoAcids]) -> ~[AminoAcids] {
     let mut ans: ~[AminoAcids] = ~[];
     for aa.each |a| {
         cp += a.prob;
-        ans += ~[AminoAcids {ch: a.ch, prob: cp}];
+        ans += [AminoAcids {ch: a.ch, prob: cp}];
     }
     return ans;
 }
@@ -54,7 +64,7 @@ fn select_random(r: u32, genelist: ~[AminoAcids]) -> char {
             } else { return bisect(v, mid, hi, target); }
         } else { return v[hi].ch; }
     }
-    return bisect(copy genelist, 0, vec::len::<AminoAcids>(genelist) - 1, r);
+    return bisect(copy genelist, 0, genelist.len() - 1, r);
 }
 
 fn make_random_fasta(wr: @io::Writer,
@@ -62,36 +72,36 @@ fn make_random_fasta(wr: @io::Writer,
                      desc: ~str,
                      genelist: ~[AminoAcids],
                      n: int) {
-    wr.write_line(~">" + id + ~" " + desc);
+    wr.write_line(~">" + id + " " + desc);
     let mut rng = rand::rng();
     let rng = @mut MyRandom {
         last: rng.next()
     };
     let mut op: ~str = ~"";
     for uint::range(0u, n as uint) |_i| {
-        str::push_char(&mut op, select_random(myrandom_next(rng, 100u32),
+        op.push_char(select_random(myrandom_next(rng, 100u32),
                                               copy genelist));
-        if str::len(op) >= LINE_LENGTH() {
+        if op.len() >= LINE_LENGTH() {
             wr.write_line(op);
             op = ~"";
         }
     }
-    if str::len(op) > 0u { wr.write_line(op); }
+    if op.len() > 0u { wr.write_line(op); }
 }
 
 fn make_repeat_fasta(wr: @io::Writer, id: ~str, desc: ~str, s: ~str, n: int) {
     unsafe {
-        wr.write_line(~">" + id + ~" " + desc);
+        wr.write_line(~">" + id + " " + desc);
         let mut op: ~str = ~"";
-        let sl: uint = str::len(s);
+        let sl: uint = s.len();
         for uint::range(0u, n as uint) |i| {
             str::raw::push_byte(&mut op, s[i % sl]);
-            if str::len(op) >= LINE_LENGTH() {
+            if op.len() >= LINE_LENGTH() {
                 wr.write_line(op);
                 op = ~"";
             }
         }
-        if str::len(op) > 0u { wr.write_line(op); }
+        if op.len() > 0u { wr.write_line(op); }
     }
 }
 
@@ -129,13 +139,13 @@ fn main() {
         make_cumulative(~[acid('a', 30u32), acid('c', 20u32), acid('g', 20u32),
                          acid('t', 30u32)]);
     let alu: ~str =
-        ~"GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTTGG" +
-            ~"GAGGCCGAGGCGGGCGGATCACCTGAGGTCAGGAGTTCGAGA" +
-            ~"CCAGCCTGGCCAACATGGTGAAACCCCGTCTCTACTAAAAAT" +
-            ~"ACAAAAATTAGCCGGGCGTGGTGGCGCGCGCCTGTAATCCCA" +
-            ~"GCTACTCGGGAGGCTGAGGCAGGAGAATCGCTTGAACCCGGG" +
-            ~"AGGCGGAGGTTGCAGTGAGCCGAGATCGCGCCACTGCACTCC" +
-            ~"AGCCTGGGCGACAGAGCGAGACTCCGTCTCAAAAA";
+        ~"GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTTGG\
+          GAGGCCGAGGCGGGCGGATCACCTGAGGTCAGGAGTTCGAGA\
+          CCAGCCTGGCCAACATGGTGAAACCCCGTCTCTACTAAAAAT\
+          ACAAAAATTAGCCGGGCGTGGTGGCGCGCGCCTGTAATCCCA\
+          GCTACTCGGGAGGCTGAGGCAGGAGAATCGCTTGAACCCGGG\
+          AGGCGGAGGTTGCAGTGAGCCGAGATCGCGCCACTGCACTCC\
+          AGCCTGGGCGACAGAGCGAGACTCCGTCTCAAAAA";
     make_repeat_fasta(writer, ~"ONE", ~"Homo sapiens alu", alu, n * 2);
     make_random_fasta(writer, ~"TWO", ~"IUB ambiguity codes", iub, n * 3);
     make_random_fasta(writer, ~"THREE",

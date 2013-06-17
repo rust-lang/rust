@@ -16,7 +16,9 @@ comments in the section "Moves and initialization" and in `doc.rs`.
 */
 
 use core::prelude::*;
+
 use core::hashmap::{HashMap, HashSet};
+use core::uint;
 use middle::borrowck::*;
 use middle::dataflow::DataFlowContext;
 use middle::dataflow::DataFlowOperator;
@@ -514,7 +516,7 @@ impl FlowedMoveData {
                 loop;
             }
 
-            for opt_loan_path_index.each |&loan_path_index| {
+            for opt_loan_path_index.iter().advance |&loan_path_index| {
                 for self.move_data.each_base_path(moved_path) |p| {
                     if p == loan_path_index {
                         // Scenario 3: some extension of `loan_path`

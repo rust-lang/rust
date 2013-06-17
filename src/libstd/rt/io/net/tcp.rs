@@ -287,7 +287,7 @@ mod test {
             do spawntask_immediately {
                 let mut listener = TcpListener::bind(addr);
                 for int::range(0, MAX) |i| {
-                    let stream = Cell(listener.accept());
+                    let stream = Cell::new(listener.accept());
                     rtdebug!("accepted");
                     // Start another task to handle the connection
                     do spawntask_immediately {
@@ -326,7 +326,7 @@ mod test {
             do spawntask_immediately {
                 let mut listener = TcpListener::bind(addr);
                 for int::range(0, MAX) |_| {
-                    let stream = Cell(listener.accept());
+                    let stream = Cell::new(listener.accept());
                     rtdebug!("accepted");
                     // Start another task to handle the connection
                     do spawntask_later {

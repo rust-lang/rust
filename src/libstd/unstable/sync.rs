@@ -117,9 +117,9 @@ fn LittleLock() -> LittleLock {
     }
 }
 
-pub impl LittleLock {
+impl LittleLock {
     #[inline(always)]
-    unsafe fn lock<T>(&self, f: &fn() -> T) -> T {
+    pub unsafe fn lock<T>(&self, f: &fn() -> T) -> T {
         do atomically {
             rust_lock_little_lock(self.l);
             do (|| {
@@ -162,7 +162,7 @@ impl<T:Owned> Clone for Exclusive<T> {
     }
 }
 
-pub impl<T:Owned> Exclusive<T> {
+impl<T:Owned> Exclusive<T> {
     // Exactly like std::arc::mutex_arc,access(), but with the little_lock
     // instead of a proper mutex. Same reason for being unsafe.
     //
@@ -170,7 +170,7 @@ pub impl<T:Owned> Exclusive<T> {
     // accessing the provided condition variable) are prohibited while inside
     // the exclusive. Supporting that is a work in progress.
     #[inline(always)]
-    unsafe fn with<U>(&self, f: &fn(x: &mut T) -> U) -> U {
+    pub unsafe fn with<U>(&self, f: &fn(x: &mut T) -> U) -> U {
         let rec = self.x.get();
         do (*rec).lock.lock {
             if (*rec).failed {
@@ -184,7 +184,7 @@ pub impl<T:Owned> Exclusive<T> {
     }
 
     #[inline(always)]
-    unsafe fn with_imm<U>(&self, f: &fn(x: &T) -> U) -> U {
+    pub unsafe fn with_imm<U>(&self, f: &fn(x: &T) -> U) -> U {
         do self.with |x| {
             f(cast::transmute_immut(x))
         }
@@ -259,48 +259,52 @@ mod tests {
 
     #[test]
     fn exclusive_arc() {
-        let mut futures = ~[];
+        unsafe {
+            let mut futures = ~[];
 
-        let num_tasks = 10;
-        let count = 10;
+            let num_tasks = 10;
+            let count = 10;
 
-        let total = exclusive(~0);
+            let total = exclusive(~0);
 
-        for uint::range(0, num_tasks) |_i| {
-            let total = total.clone();
-            let (port, chan) = comm::stream();
-            futures.push(port);
+            for uint::range(0, num_tasks) |_i| {
+                let total = total.clone();
+                let (port, chan) = comm::stream();
+                futures.push(port);
 
-            do task::spawn || {
-                for uint::range(0, count) |_i| {
-                    do total.with |count| {
-                        **count += 1;
+                do task::spawn || {
+                    for uint::range(0, count) |_i| {
+                        do total.with |count| {
+                            **count += 1;
+                        }
                     }
+                    chan.send(());
                 }
-                chan.send(());
-            }
-        };
+            };
 
-        for futures.each |f| { f.recv() }
+            for futures.each |f| { f.recv() }
 
-        do total.with |total| {
-            assert!(**total == num_tasks * count)
-        };
+            do total.with |total| {
+                assert!(**total == num_tasks * count)
+            };
+        }
     }
 
     #[test] #[should_fail] #[ignore(cfg(windows))]
     fn exclusive_poison() {
-        // Tests that if one task fails inside of an exclusive, subsequent
-        // accesses will also fail.
-        let x = exclusive(1);
-        let x2 = x.clone();
-        do task::try || {
-            do x2.with |one| {
-                assert_eq!(*one, 2);
+        unsafe {
+            // Tests that if one task fails inside of an exclusive, subsequent
+            // accesses will also fail.
+            let x = exclusive(1);
+            let x2 = x.clone();
+            do task::try || {
+                do x2.with |one| {
+                    assert_eq!(*one, 2);
+                }
+            };
+            do x.with |one| {
+                assert_eq!(*one, 1);
             }
-        };
-        do x.with |one| {
-            assert_eq!(*one, 1);
         }
     }
 

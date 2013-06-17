@@ -19,6 +19,8 @@ use fold::Fold;
 use fold;
 use pass::Pass;
 
+use core::str;
+
 pub fn mk_pass() -> Pass {
     Pass {
         name: ~"sectionalize",
@@ -151,8 +153,8 @@ fn sectionalize(desc: Option<~str>) -> (Option<~str>, ~[doc::Section]) {
 }
 
 fn parse_header(line: ~str) -> Option<~str> {
-    if str::starts_with(line, "# ") {
-        Some(str::slice(line, 2u, str::len(line)).to_owned())
+    if line.starts_with("# ") {
+        Some(line.slice(2u, line.len()).to_owned())
     } else {
         None
     }
@@ -170,6 +172,9 @@ mod test {
     use extract;
     use sectionalize_pass::run;
 
+    use core::str;
+    use core::vec;
+
     fn mk_doc(source: ~str) -> doc::Doc {
         do astsrv::from_str(copy source) |srv| {
             let doc = extract::from_srv(srv.clone(), ~"");
@@ -186,9 +191,7 @@ mod test {
               Body\"]\
               mod a {
 }");
-        assert!(str::contains(
-            doc.cratemod().mods()[0].item.sections[0].header,
-            "Header"));
+        assert!(doc.cratemod().mods()[0].item.sections[0].header.contains("Header"));
     }
 
     #[test]
@@ -199,9 +202,7 @@ mod test {
               Body\"]\
               mod a {
 }");
-        assert!(str::contains(
-            doc.cratemod().mods()[0].item.sections[0].body,
-            "Body"));
+        assert!(doc.cratemod().mods()[0].item.sections[0].body.contains("Body"));
     }
 
     #[test]
@@ -212,7 +213,7 @@ mod test {
               Body\"]\
               mod a {
 }");
-        assert!(vec::is_empty(doc.cratemod().mods()[0].item.sections));
+        assert!(doc.cratemod().mods()[0].item.sections.is_empty());
     }
 
     #[test]
@@ -224,12 +225,8 @@ mod test {
               Body\"]\
               mod a {
 }");
-        assert!(!str::contains(
-            doc.cratemod().mods()[0].desc().get(),
-            "Header"));
-        assert!(!str::contains(
-            doc.cratemod().mods()[0].desc().get(),
-            "Body"));
+        assert!(!doc.cratemod().mods()[0].desc().get().contains("Header"));
+        assert!(!doc.cratemod().mods()[0].desc().get().contains("Body"));
     }
 
     #[test]

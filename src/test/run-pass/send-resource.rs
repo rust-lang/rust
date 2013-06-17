@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use std::comm::*;
+use std::task;
 
 struct test {
   f: int,
