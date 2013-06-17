@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -21,8 +21,16 @@ use getopts;
 use sort;
 use term;
 
-use core::to_str::ToStr;
 use core::comm::{stream, SharedChan};
+use core::either;
+use core::io;
+use core::option;
+use core::result;
+use core::str;
+use core::task;
+use core::to_str::ToStr;
+use core::uint;
+use core::vec;
 
 pub mod rustrt {
     use core::libc::size_t;
@@ -202,7 +210,6 @@ struct ConsoleTestState {
 // A simple console test runner
 pub fn run_tests_console(opts: &TestOpts,
                          tests: ~[TestDescAndFn]) -> bool {
-
     fn callback(event: &TestEvent, st: &mut ConsoleTestState) {
         debug!("callback(event=%?)", event);
         match copy *event {
@@ -213,7 +220,7 @@ pub fn run_tests_console(opts: &TestOpts,
           }
           TeWait(ref test) => st.out.write_str(
               fmt!("test %s ... ", test.name.to_str())),
-          TeResult(copy test, result) => {
+          TeResult(test, result) => {
             match st.log_out {
                 Some(f) => write_log(f, copy result, &test),
                 None => ()
@@ -339,12 +346,18 @@ pub fn run_tests_console(opts: &TestOpts,
                     word: &str,
                     color: u8,
                     use_color: bool) {
-        if use_color && term::color_supported() {
-            term::fg(out, color);
-        }
-        out.write_str(word);
-        if use_color && term::color_supported() {
-            term::reset(out);
+        let t = term::Terminal::new(out);
+        match t {
+            Ok(term)  => {
+                if use_color && term.color_supported {
+                    term.fg(color);
+                }
+                out.write_str(word);
+                if use_color && term.color_supported {
+                    term.reset();
+                }
+            },
+            Err(_) => out.write_str(word)
         }
     }
 }
@@ -394,8 +407,8 @@ fn should_sort_failures_before_printing_them() {
         print_failures(st);
     };
 
-    let apos = str::find_str(s, "a").get();
-    let bpos = str::find_str(s, "b").get();
+    let apos = s.find_str("a").get();
+    let bpos = s.find_str("b").get();
     assert!(apos < bpos);
 }
 
@@ -494,15 +507,14 @@ pub fn filter_tests(
     filtered = if opts.filter.is_none() {
         filtered
     } else {
-        let filter_str =
-            match opts.filter {
-          option::Some(copy f) => f,
+        let filter_str = match opts.filter {
+          option::Some(ref f) => copy *f,
           option::None => ~""
         };
 
         fn filter_fn(test: TestDescAndFn, filter_str: &str) ->
             Option<TestDescAndFn> {
-            if str::contains(test.desc.name.to_str(), filter_str) {
+            if test.desc.name.to_str().contains(filter_str) {
                 return option::Some(test);
             } else { return option::None; }
         }
@@ -556,7 +568,7 @@ pub fn run_test(force_ignore: bool,
     fn run_test_inner(desc: TestDesc,
                       monitor_ch: SharedChan<MonitorMsg>,
                       testfn: ~fn()) {
-        let testfn_cell = ::core::cell::Cell(testfn);
+        let testfn_cell = ::core::cell::Cell::new(testfn);
         do task::spawn {
             let mut result_future = None; // task::future_result(builder);
 
@@ -601,13 +613,16 @@ fn calc_result(desc: &TestDesc, task_succeeded: bool) -> TestResult {
 pub mod bench {
     use core::prelude::*;
 
-    use time::precise_time_ns;
-    use test::{BenchHarness, BenchSamples};
-    use stats::Stats;
+    use core::num;
     use core::rand::RngUtil;
+    use core::rand;
+    use core::u64;
+    use core::vec;
+    use stats::Stats;
+    use test::{BenchHarness, BenchSamples};
+    use time::precise_time_ns;
 
-    pub impl BenchHarness {
-
+    impl BenchHarness {
         /// Callback for benchmark functions to run in their body.
         pub fn iter(&mut self, inner:&fn()) {
             self.ns_start = precise_time_ns();
@@ -618,7 +633,7 @@ pub mod bench {
             self.ns_end = precise_time_ns();
         }
 
-        fn ns_elapsed(&mut self) -> u64 {
+        pub fn ns_elapsed(&mut self) -> u64 {
             if self.ns_start == 0 || self.ns_end == 0 {
                 0
             } else {
@@ -626,7 +641,7 @@ pub mod bench {
             }
         }
 
-        fn ns_per_iter(&mut self) -> u64 {
+        pub fn ns_per_iter(&mut self) -> u64 {
             if self.iterations == 0 {
                 0
             } else {
@@ -634,7 +649,7 @@ pub mod bench {
             }
         }
 
-        fn bench_n(&mut self, n: u64, f: &fn(&mut BenchHarness)) {
+        pub fn bench_n(&mut self, n: u64, f: &fn(&mut BenchHarness)) {
             self.iterations = n;
             debug!("running benchmark for %u iterations",
                    n as uint);
@@ -852,7 +867,7 @@ mod tests {
     fn first_free_arg_should_be_a_filter() {
         let args = ~[~"progname", ~"filter"];
         let opts = match parse_opts(args) {
-          either::Left(copy o) => o,
+          either::Left(o) => o,
           _ => fail!("Malformed arg in first_free_arg_should_be_a_filter")
         };
         assert!("filter" == (copy opts.filter).get());
@@ -862,7 +877,7 @@ mod tests {
     fn parse_ignored_flag() {
         let args = ~[~"progname", ~"filter", ~"--ignored"];
         let opts = match parse_opts(args) {
-          either::Left(copy o) => o,
+          either::Left(o) => o,
           _ => fail!("Malformed arg in parse_ignored_flag")
         };
         assert!((opts.run_ignored));

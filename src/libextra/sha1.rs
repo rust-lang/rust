@@ -173,7 +173,7 @@ pub fn sha1() -> @Sha1 {
     fn mk_result(st: &mut Sha1State) -> ~[u8] {
         if !(*st).computed { pad_msg(st); (*st).computed = true; }
         let mut rs: ~[u8] = ~[];
-        for vec::each_mut((*st).h) |ptr_hpart| {
+        for st.h.mut_iter().advance |ptr_hpart| {
             let hpart = *ptr_hpart;
             let a = (hpart >> 24u32 & 0xFFu32) as u8;
             let b = (hpart >> 16u32 & 0xFFu32) as u8;
@@ -194,7 +194,7 @@ pub fn sha1() -> @Sha1 {
      * can be assumed that the message digest has been computed.
      */
     fn pad_msg(st: &mut Sha1State) {
-        assert_eq!(vec::len((*st).msg_block), msg_block_len);
+        assert_eq!((*st).msg_block.len(), msg_block_len);
 
         /*
          * Check to see if the current message block is too small to hold
@@ -245,8 +245,7 @@ pub fn sha1() -> @Sha1 {
         }
         fn input(&mut self, msg: &const [u8]) { add_input(self, msg); }
         fn input_str(&mut self, msg: &str) {
-            let bs = str::to_bytes(msg);
-            add_input(self, bs);
+            add_input(self, msg.as_bytes());
         }
         fn result(&mut self) -> ~[u8] { return mk_result(self); }
         fn result_str(&mut self) -> ~str {
@@ -280,7 +279,6 @@ pub fn sha1() -> @Sha1 {
 mod tests {
     use sha1;
 
-    use core::str;
     use core::vec;
 
     #[test]
@@ -367,8 +365,8 @@ mod tests {
         ];
         let tests = fips_180_1_tests + wikipedia_tests;
         fn check_vec_eq(v0: ~[u8], v1: ~[u8]) {
-            assert_eq!(vec::len::<u8>(v0), vec::len::<u8>(v1));
-            let len = vec::len::<u8>(v0);
+            assert_eq!(v0.len(), v1.len());
+            let len = v0.len();
             let mut i = 0u;
             while i < len {
                 let a = v0[i];
@@ -395,12 +393,11 @@ mod tests {
 
         // Test that it works when accepting the message in pieces
         for tests.each |t| {
-            let len = str::len(t.input);
+            let len = t.input.len();
             let mut left = len;
             while left > 0u {
                 let take = (left + 1u) / 2u;
-                sh.input_str(str::slice(t.input, len - left,
-                             take + len - left).to_owned());
+                sh.input_str(t.input.slice(len - left, take + len - left));
                 left = left - take;
             }
             let out = sh.result();

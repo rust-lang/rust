@@ -13,6 +13,7 @@ use core::prelude::*;
 use driver::session;
 use lib::llvm::ValueRef;
 use lib::llvm::llvm;
+use middle::trans::context::task_llcx;
 use middle::trans::common::*;
 use middle::trans::machine;
 use middle::trans::type_of;
@@ -20,10 +21,15 @@ use middle::trans;
 use middle::ty;
 use util::ppaux::ty_to_str;
 
+use core::cast;
 use core::hashmap::HashMap;
 use core::libc;
+use core::option;
+use core::ptr;
+use core::str;
+use core::sys;
+use core::vec;
 use syntax::codemap::span;
-use syntax::parse::token::ident_interner;
 use syntax::{ast, codemap, ast_util, ast_map};
 
 static LLVMDebugVersion: int = (9 << 16);
@@ -56,7 +62,9 @@ static DW_ATE_unsigned_char: int = 0x08;
 fn llstr(s: &str) -> ValueRef {
     do str::as_c_str(s) |sbuf| {
         unsafe {
-            llvm::LLVMMDString(sbuf, s.len() as libc::c_uint)
+            llvm::LLVMMDStringInContext(task_llcx(),
+                                        sbuf,
+                                        s.len() as libc::c_uint)
         }
     }
 }
@@ -74,7 +82,9 @@ fn lli1(bval: bool) -> ValueRef {
 }
 fn llmdnode(elems: &[ValueRef]) -> ValueRef {
     unsafe {
-        llvm::LLVMMDNode(vec::raw::to_ptr(elems), elems.len() as libc::c_uint)
+        llvm::LLVMMDNodeInContext(task_llcx(),
+                                  vec::raw::to_ptr(elems),
+                                  elems.len() as libc::c_uint)
     }
 }
 fn llunused() -> ValueRef {
@@ -86,7 +96,7 @@ fn llnull() -> ValueRef {
     }
 }
 
-fn add_named_metadata(cx: @CrateContext, name: ~str, val: ValueRef) {
+fn add_named_metadata(cx: &CrateContext, name: ~str, val: ValueRef) {
     str::as_c_str(name, |sbuf| {
         unsafe {
             llvm::LLVMAddNamedMetadataOperand(cx.llmod, sbuf, val)
@@ -102,10 +112,10 @@ pub struct DebugContext {
     crate_file: ~str
 }
 
-pub fn mk_ctxt(crate: ~str, intr: @ident_interner) -> DebugContext {
+pub fn mk_ctxt(crate: ~str) -> DebugContext {
     DebugContext {
         llmetadata: @mut HashMap::new(),
-        names: new_namegen(intr),
+        names: new_namegen(),
         crate_file: crate
     }
 }
@@ -198,7 +208,7 @@ fn cached_metadata<T:Copy>(cache: metadata_cache,
     return option::None;
 }
 
-fn create_compile_unit(cx: @CrateContext) -> @Metadata<CompileUnitMetadata> {
+fn create_compile_unit(cx: &mut CrateContext) -> @Metadata<CompileUnitMetadata> {
     let cache = get_cache(cx);
     let crate_name = /*bad*/copy (/*bad*/copy cx.dbg_cx).get().crate_file;
     let tg = CompileUnitTag;
@@ -234,20 +244,20 @@ fn create_compile_unit(cx: @CrateContext) -> @Metadata<CompileUnitMetadata> {
     return mdval;
 }
 
-fn get_cache(cx: @CrateContext) -> metadata_cache {
-    (/*bad*/copy cx.dbg_cx).get().llmetadata
+fn get_cache(cx: &CrateContext) -> metadata_cache {
+    cx.dbg_cx.get_ref().llmetadata
 }
 
 fn get_file_path_and_dir(work_dir: &str, full_path: &str) -> (~str, ~str) {
-    (if str::starts_with(full_path, work_dir) {
-        str::slice(full_path, str::len(work_dir) + 1u,
-                   str::len(full_path)).to_owned()
+    (if full_path.starts_with(work_dir) {
+        full_path.slice(work_dir.len() + 1u,
+                   full_path.len()).to_owned()
     } else {
         full_path.to_owned()
     }, work_dir.to_owned())
 }
 
-fn create_file(cx: @CrateContext, full_path: ~str)
+fn create_file(cx: &mut CrateContext, full_path: ~str)
     -> @Metadata<FileMetadata> {
     let cache = get_cache(cx);;
     let tg = FileDescriptorTag;
@@ -280,9 +290,8 @@ fn line_from_span(cm: @codemap::CodeMap, sp: span) -> uint {
     cm.lookup_char_pos(sp.lo).line
 }
 
-fn create_block(cx: block) -> @Metadata<BlockMetadata> {
+fn create_block(mut cx: block) -> @Metadata<BlockMetadata> {
     let cache = get_cache(cx.ccx());
-    let mut cx = cx;
     while cx.node_info.is_none() {
         match cx.parent {
           Some(b) => cx = b,
@@ -306,7 +315,7 @@ fn create_block(cx: block) -> @Metadata<BlockMetadata> {
         None => create_function(cx.fcx).node,
         Some(bcx) => create_block(bcx).node
     };
-    let file_node = create_file(cx.ccx(), fname);
+    let file_node = create_file(cx.ccx(), /* bad */ fname.to_owned());
     let unique_id = match cache.find(&LexicalBlockTag) {
       option::Some(v) => v.len() as int,
       option::None => 0
@@ -330,13 +339,13 @@ fn create_block(cx: block) -> @Metadata<BlockMetadata> {
     return mdval;
 }
 
-fn size_and_align_of(cx: @CrateContext, t: ty::t) -> (int, int) {
+fn size_and_align_of(cx: &mut CrateContext, t: ty::t) -> (int, int) {
     let llty = type_of::type_of(cx, t);
     (machine::llsize_of_real(cx, llty) as int,
      machine::llalign_of_pref(cx, llty) as int)
 }
 
-fn create_basic_type(cx: @CrateContext, t: ty::t, span: span)
+fn create_basic_type(cx: &mut CrateContext, t: ty::t, span: span)
     -> @Metadata<TyDescMetadata> {
     let cache = get_cache(cx);
     let tg = BasicTypeDescriptorTag;
@@ -373,7 +382,7 @@ fn create_basic_type(cx: @CrateContext, t: ty::t, span: span)
     };
 
     let fname = filename_from_span(cx, span);
-    let file_node = create_file(cx, fname);
+    let file_node = create_file(cx, fname.to_owned());
     let cu_node = create_compile_unit(cx);
     let (size, align) = size_and_align_of(cx, t);
     let lldata = ~[lltag(tg),
@@ -398,7 +407,7 @@ fn create_basic_type(cx: @CrateContext, t: ty::t, span: span)
     return mdval;
 }
 
-fn create_pointer_type(cx: @CrateContext, t: ty::t, span: span,
+fn create_pointer_type(cx: &mut CrateContext, t: ty::t, span: span,
                        pointee: @Metadata<TyDescMetadata>)
     -> @Metadata<TyDescMetadata> {
     let tg = PointerTypeTag;
@@ -410,7 +419,7 @@ fn create_pointer_type(cx: @CrateContext, t: ty::t, span: span,
     }*/
     let (size, align) = size_and_align_of(cx, t);
     let fname = filename_from_span(cx, span);
-    let file_node = create_file(cx, fname);
+    let file_node = create_file(cx, fname.to_owned());
     //let cu_node = create_compile_unit(cx, fname);
     let name = ty_to_str(cx.tcx, t);
     let llnode = create_derived_type(tg, file_node.node, name, 0, size * 8,
@@ -428,7 +437,7 @@ fn create_pointer_type(cx: @CrateContext, t: ty::t, span: span,
 
 struct StructCtxt {
     file: ValueRef,
-    name: @~str,
+    name: @str,
     line: int,
     members: ~[ValueRef],
     total_size: int,
@@ -437,7 +446,7 @@ struct StructCtxt {
 
 fn finish_structure(cx: @mut StructCtxt) -> ValueRef {
     return create_composite_type(StructureTypeTag,
-                                 *cx.name,
+                                 cx.name,
                                  cx.file,
                                  cx.line,
                                  cx.total_size,
@@ -447,7 +456,7 @@ fn finish_structure(cx: @mut StructCtxt) -> ValueRef {
                                  Some(/*bad*/copy cx.members));
 }
 
-fn create_structure(file: @Metadata<FileMetadata>, name: @~str, line: int)
+fn create_structure(file: @Metadata<FileMetadata>, name: @str, line: int)
                  -> @mut StructCtxt {
     let cx = @mut StructCtxt {
         file: file.node,
@@ -488,17 +497,17 @@ fn add_member(cx: @mut StructCtxt,
     cx.total_size += size * 8;
 }
 
-fn create_struct(cx: @CrateContext, t: ty::t, fields: ~[ty::field],
+fn create_struct(cx: &mut CrateContext, t: ty::t, fields: ~[ty::field],
                  span: span) -> @Metadata<TyDescMetadata> {
     let fname = filename_from_span(cx, span);
-    let file_node = create_file(cx, fname);
-    let scx = create_structure(file_node, @ty_to_str(cx.tcx, t),
+    let file_node = create_file(cx, fname.to_owned());
+    let scx = create_structure(file_node, (ty_to_str(cx.tcx, t)).to_managed(),
                                line_from_span(cx.sess.codemap, span) as int);
     for fields.each |field| {
         let field_t = field.mt.ty;
         let ty_md = create_ty(cx, field_t, span);
         let (size, align) = size_and_align_of(cx, field_t);
-        add_member(scx, *cx.sess.str_of(field.ident),
+        add_member(scx, cx.sess.str_of(field.ident),
                    line_from_span(cx.sess.codemap, span) as int,
                    size as int, align as int, ty_md.node);
     }
@@ -511,10 +520,10 @@ fn create_struct(cx: @CrateContext, t: ty::t, fields: ~[ty::field],
     return mdval;
 }
 
-fn create_tuple(cx: @CrateContext, t: ty::t, elements: &[ty::t], span: span)
+fn create_tuple(cx: &mut CrateContext, t: ty::t, elements: &[ty::t], span: span)
     -> @Metadata<TyDescMetadata> {
     let fname = filename_from_span(cx, span);
-    let file_node = create_file(cx, fname);
+    let file_node = create_file(cx, fname.to_owned());
     let scx = create_structure(file_node,
                                cx.sess.str_of(
                                    ((/*bad*/copy cx.dbg_cx).get().names)
@@ -545,7 +554,7 @@ fn voidptr() -> (ValueRef, int, int) {
     return (vp, size, align);
 }
 
-fn create_boxed_type(cx: @CrateContext, contents: ty::t,
+fn create_boxed_type(cx: &mut CrateContext, contents: ty::t,
                      span: span, boxed: @Metadata<TyDescMetadata>)
     -> @Metadata<TyDescMetadata> {
     //let tg = StructureTypeTag;
@@ -556,12 +565,12 @@ fn create_boxed_type(cx: @CrateContext, contents: ty::t,
       option::None {}
     }*/
     let fname = filename_from_span(cx, span);
-    let file_node = create_file(cx, fname);
+    let file_node = create_file(cx, fname.to_owned());
     //let cu_node = create_compile_unit_metadata(cx, fname);
     let int_t = ty::mk_int();
     let refcount_type = create_basic_type(cx, int_t, span);
     let name = ty_to_str(cx.tcx, contents);
-    let scx = create_structure(file_node, @fmt!("box<%s>", name), 0);
+    let scx = create_structure(file_node, (fmt!("box<%s>", name)).to_managed(), 0);
     add_member(scx, "refcnt", 0, sys::size_of::<uint>() as int,
                sys::min_align_of::<uint>() as int, refcount_type.node);
     // the tydesc and other pointers should be irrelevant to the
@@ -614,11 +623,11 @@ fn create_composite_type(type_tag: int, name: &str, file: ValueRef,
     return llmdnode(lldata);
 }
 
-fn create_fixed_vec(cx: @CrateContext, vec_t: ty::t, elem_t: ty::t,
+fn create_fixed_vec(cx: &mut CrateContext, vec_t: ty::t, elem_t: ty::t,
                     len: int, span: span) -> @Metadata<TyDescMetadata> {
     let t_md = create_ty(cx, elem_t, span);
     let fname = filename_from_span(cx, span);
-    let file_node = create_file(cx, fname);
+    let file_node = create_file(cx, fname.to_owned());
     let (size, align) = size_and_align_of(cx, elem_t);
     let subrange = llmdnode([lltag(SubrangeTag), lli64(0), lli64(len - 1)]);
     let name = fmt!("[%s]", ty_to_str(cx.tcx, elem_t));
@@ -633,14 +642,14 @@ fn create_fixed_vec(cx: @CrateContext, vec_t: ty::t, elem_t: ty::t,
     }
 }
 
-fn create_boxed_vec(cx: @CrateContext, vec_t: ty::t, elem_t: ty::t,
+fn create_boxed_vec(cx: &mut CrateContext, vec_t: ty::t, elem_t: ty::t,
                     vec_ty_span: codemap::span)
     -> @Metadata<TyDescMetadata> {
     let fname = filename_from_span(cx, vec_ty_span);
-    let file_node = create_file(cx, fname);
+    let file_node = create_file(cx, fname.to_owned());
     let elem_ty_md = create_ty(cx, elem_t, vec_ty_span);
     let vec_scx = create_structure(file_node,
-                               @/*bad*/ copy ty_to_str(cx.tcx, vec_t), 0);
+                               ty_to_str(cx.tcx, vec_t).to_managed(), 0);
     let size_t_type = create_basic_type(cx, ty::mk_uint(), vec_ty_span);
     add_member(vec_scx, "fill", 0, sys::size_of::<libc::size_t>() as int,
                sys::min_align_of::<libc::size_t>() as int, size_t_type.node);
@@ -663,7 +672,7 @@ fn create_boxed_vec(cx: @CrateContext, vec_t: ty::t, elem_t: ty::t,
         }
     };
 
-    let box_scx = create_structure(file_node, @fmt!("box<%s>", name), 0);
+    let box_scx = create_structure(file_node, (fmt!("box<%s>", name)).to_managed(), 0);
     let int_t = ty::mk_int();
     let refcount_type = create_basic_type(cx, int_t, vec_ty_span);
     add_member(box_scx, "refcnt", 0, sys::size_of::<uint>() as int,
@@ -685,14 +694,14 @@ fn create_boxed_vec(cx: @CrateContext, vec_t: ty::t, elem_t: ty::t,
     return mdval;
 }
 
-fn create_vec_slice(cx: @CrateContext, vec_t: ty::t, elem_t: ty::t, span: span)
+fn create_vec_slice(cx: &mut CrateContext, vec_t: ty::t, elem_t: ty::t, span: span)
     -> @Metadata<TyDescMetadata> {
     let fname = filename_from_span(cx, span);
-    let file_node = create_file(cx, fname);
+    let file_node = create_file(cx, fname.to_owned());
     let elem_ty_md = create_ty(cx, elem_t, span);
     let uint_type = create_basic_type(cx, ty::mk_uint(), span);
     let elem_ptr = create_pointer_type(cx, elem_t, span, elem_ty_md);
-    let scx = create_structure(file_node, @ty_to_str(cx.tcx, vec_t), 0);
+    let scx = create_structure(file_node, ty_to_str(cx.tcx, vec_t).to_managed(), 0);
     let (_, ptr_size, ptr_align) = voidptr();
     add_member(scx, "vec", 0, ptr_size, ptr_align, elem_ptr.node);
     add_member(scx, "length", 0, sys::size_of::<uint>() as int,
@@ -707,10 +716,10 @@ fn create_vec_slice(cx: @CrateContext, vec_t: ty::t, elem_t: ty::t, span: span)
     return mdval;
 }
 
-fn create_fn_ty(cx: @CrateContext, fn_ty: ty::t, inputs: ~[ty::t], output: ty::t,
+fn create_fn_ty(cx: &mut CrateContext, fn_ty: ty::t, inputs: ~[ty::t], output: ty::t,
                 span: span) -> @Metadata<TyDescMetadata> {
     let fname = filename_from_span(cx, span);
-    let file_node = create_file(cx, fname);
+    let file_node = create_file(cx, fname.to_owned());
     let (vp, _, _) = voidptr();
     let output_md = create_ty(cx, output, span);
     let output_ptr_md = create_pointer_type(cx, output, span, output_md);
@@ -727,7 +736,7 @@ fn create_fn_ty(cx: @CrateContext, fn_ty: ty::t, inputs: ~[ty::t], output: ty::t
     return mdval;
 }
 
-fn create_ty(cx: @CrateContext, t: ty::t, span: span)
+fn create_ty(cx: &mut CrateContext, t: ty::t, span: span)
     -> @Metadata<TyDescMetadata> {
     debug!("create_ty: %?", ty::get(t));
     /*let cache = get_cache(cx);
@@ -807,8 +816,8 @@ fn create_ty(cx: @CrateContext, t: ty::t, span: span)
     }
 }
 
-fn filename_from_span(cx: @CrateContext, sp: codemap::span) -> ~str {
-    /*bad*/copy cx.sess.codemap.lookup_char_pos(sp.lo).file.name
+fn filename_from_span(cx: &CrateContext, sp: codemap::span) -> @str {
+    cx.sess.codemap.lookup_char_pos(sp.lo).file.name
 }
 
 fn create_var(type_tag: int, context: ValueRef, name: &str, file: ValueRef,
@@ -843,12 +852,12 @@ pub fn create_local_var(bcx: block, local: @ast::local)
     let loc = cx.sess.codemap.lookup_char_pos(local.span.lo);
     let ty = node_id_type(bcx, local.node.id);
     let tymd = create_ty(cx, ty, local.node.ty.span);
-    let filemd = create_file(cx, /*bad*/copy loc.file.name);
+    let filemd = create_file(cx, /*bad*/ loc.file.name.to_owned());
     let context = match bcx.parent {
         None => create_function(bcx.fcx).node,
         Some(_) => create_block(bcx).node
     };
-    let mdnode = create_var(tg, context, *cx.sess.str_of(name),
+    let mdnode = create_var(tg, context, cx.sess.str_of(name),
                             filemd.node, loc.line as int, tymd.node);
     let mdval = @Metadata {
         node: mdnode,
@@ -858,27 +867,25 @@ pub fn create_local_var(bcx: block, local: @ast::local)
     };
     update_cache(cache, AutoVariableTag, local_var_metadata(mdval));
 
-    let llptr = match bcx.fcx.lllocals.find(&local.node.id) {
-      option::Some(&local_mem(v)) => v,
-      option::Some(_) => {
-        bcx.tcx().sess.span_bug(local.span, "local is bound to something weird");
-      }
-      option::None => {
-        match bcx.fcx.lllocals.get_copy(&local.node.pat.id) {
-          local_imm(v) => v,
-          _ => bcx.tcx().sess.span_bug(local.span, "local is bound to something weird")
+    // FIXME(#6814) Should use `pat_util::pat_bindings` for pats like (a, b) etc
+    let llptr = match bcx.fcx.lllocals.find_copy(&local.node.pat.id) {
+        Some(v) => v,
+        None => {
+            bcx.tcx().sess.span_bug(
+                local.span,
+                fmt!("No entry in lllocals table for %?", local.node.id));
         }
-      }
     };
     let declargs = ~[llmdnode([llptr]), mdnode];
-    trans::build::Call(bcx, *cx.intrinsics.get(&~"llvm.dbg.declare"),
+    trans::build::Call(bcx, cx.intrinsics.get_copy(&("llvm.dbg.declare")),
                        declargs);
     return mdval;
 }
 
 pub fn create_arg(bcx: block, arg: ast::arg, sp: span)
     -> Option<@Metadata<ArgumentMetadata>> {
-    let fcx = bcx.fcx, cx = *fcx.ccx;
+    let fcx = bcx.fcx;
+    let cx = fcx.ccx;
     let cache = get_cache(cx);
     let tg = ArgVariableTag;
     match cached_metadata::<@Metadata<ArgumentMetadata>>(
@@ -888,12 +895,12 @@ pub fn create_arg(bcx: block, arg: ast::arg, sp: span)
     }
 
     let loc = cx.sess.codemap.lookup_char_pos(sp.lo);
-    if loc.file.name == ~"<intrinsic>" {
+    if "<intrinsic>" == loc.file.name {
         return None;
     }
     let ty = node_id_type(bcx, arg.id);
     let tymd = create_ty(cx, ty, arg.ty.span);
-    let filemd = create_file(cx, /*bad*/copy loc.file.name);
+    let filemd = create_file(cx, /* bad */ loc.file.name.to_owned());
     let context = create_function(bcx.fcx);
 
     match arg.pat.node {
@@ -902,7 +909,7 @@ pub fn create_arg(bcx: block, arg: ast::arg, sp: span)
             let mdnode = create_var(
                 tg,
                 context.node,
-                *cx.sess.str_of(*path.idents.last()),
+                cx.sess.str_of(*path.idents.last()),
                 filemd.node,
                 loc.line as int,
                 tymd.node
@@ -916,12 +923,10 @@ pub fn create_arg(bcx: block, arg: ast::arg, sp: span)
             };
             update_cache(cache, tg, argument_metadata(mdval));
 
-            let llptr = match fcx.llargs.get_copy(&arg.id) {
-              local_mem(v) | local_imm(v) => v,
-            };
+            let llptr = fcx.llargs.get_copy(&arg.id);
             let declargs = ~[llmdnode([llptr]), mdnode];
             trans::build::Call(bcx,
-                               *cx.intrinsics.get(&~"llvm.dbg.declare"),
+                               cx.intrinsics.get_copy(&("llvm.dbg.declare")),
                                declargs);
             return Some(mdval);
         }
@@ -949,8 +954,7 @@ pub fn update_source_pos(cx: block, s: span) {
 }
 
 pub fn create_function(fcx: fn_ctxt) -> @Metadata<SubProgramMetadata> {
-    let cx = *fcx.ccx;
-    let dbg_cx = (/*bad*/copy cx.dbg_cx).get();
+    let mut cx = fcx.ccx;
 
     debug!("~~");
 
@@ -974,6 +978,7 @@ pub fn create_function(fcx: fn_ctxt) -> @Metadata<SubProgramMetadata> {
       ast_map::node_expr(expr) => {
         match expr.node {
           ast::expr_fn_block(ref decl, _) => {
+            let dbg_cx = cx.dbg_cx.get_ref();
             ((dbg_cx.names)("fn"), decl.output, expr.id)
           }
           _ => fcx.ccx.sess.span_bug(expr.span,
@@ -994,7 +999,7 @@ pub fn create_function(fcx: fn_ctxt) -> @Metadata<SubProgramMetadata> {
     }
 
     let loc = cx.sess.codemap.lookup_char_pos(sp.lo);
-    let file_node = create_file(cx, copy loc.file.name).node;
+    let file_node = create_file(cx, loc.file.name.to_owned()).node;
     let ty_node = if cx.sess.opts.extra_debuginfo {
         match ret_ty.node {
           ast::ty_nil => llnull(),
@@ -1011,9 +1016,9 @@ pub fn create_function(fcx: fn_ctxt) -> @Metadata<SubProgramMetadata> {
     let fn_metadata = ~[lltag(SubprogramTag),
                        llunused(),
                        file_node,
-                       llstr(*cx.sess.str_of(ident)),
+                       llstr(cx.sess.str_of(ident)),
                         //XXX fully-qualified C++ name:
-                       llstr(*cx.sess.str_of(ident)),
+                       llstr(cx.sess.str_of(ident)),
                        llstr(""), //XXX MIPS name?????
                        file_node,
                        lli32(loc.line as int),

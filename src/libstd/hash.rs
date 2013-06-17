@@ -19,6 +19,8 @@
  * CPRNG like rand::rng.
  */
 
+#[allow(missing_doc)];
+
 use container::Container;
 use old_iter::BaseIter;
 use rt::io::Writer;
@@ -386,6 +388,8 @@ impl Streaming for SipState {
 mod tests {
     use super::*;
     use prelude::*;
+
+    use uint;
 
     #[test]
     fn test_siphash() {

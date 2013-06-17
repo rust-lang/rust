@@ -13,11 +13,14 @@
 //! The tables use a keyed hash with new random keys generated for each container, so the ordering
 //! of a set of keys in a hash table is randomized.
 
+#[mutable_doc];
+
 use container::{Container, Mutable, Map, Set};
 use cmp::{Eq, Equiv};
 use hash::Hash;
 use old_iter::BaseIter;
 use old_iter;
+use iterator::{IteratorUtil};
 use option::{None, Option, Some};
 use rand::RngUtil;
 use rand;
@@ -34,6 +37,14 @@ struct Bucket<K,V> {
     value: V,
 }
 
+/// A hash map implementation which uses linear probing along with the SipHash
+/// hash function for internal state. This means that the order of all hash maps
+/// is randomized by keying each hash map randomly on creation.
+///
+/// It is required that the keys implement the `Eq` and `Hash` traits, although
+/// this can frequently be achieved by just implementing the `Eq` and
+/// `IterBytes` traits as `Hash` is automatically implemented for types that
+/// implement `IterBytes`.
 pub struct HashMap<K,V> {
     priv k0: u64,
     priv k1: u64,
@@ -53,6 +64,7 @@ fn resize_at(capacity: uint) -> uint {
     ((capacity as float) * 3. / 4.) as uint
 }
 
+/// Creates a new hash map with the specified capacity.
 pub fn linear_map_with_capacity<K:Eq + Hash,V>(
     initial_capacity: uint) -> HashMap<K, V> {
     let mut r = rand::task_rng();
@@ -63,15 +75,16 @@ pub fn linear_map_with_capacity<K:Eq + Hash,V>(
 fn linear_map_with_capacity_and_keys<K:Eq + Hash,V>(
     k0: u64, k1: u64,
     initial_capacity: uint) -> HashMap<K, V> {
+    let cap = uint::max(INITIAL_CAPACITY, initial_capacity);
     HashMap {
         k0: k0, k1: k1,
-        resize_at: resize_at(initial_capacity),
+        resize_at: resize_at(cap),
         size: 0,
-        buckets: vec::from_fn(initial_capacity, |_| None)
+        buckets: vec::from_fn(cap, |_| None)
     }
 }
 
-priv impl<K:Hash + Eq,V> HashMap<K, V> {
+impl<K:Hash + Eq,V> HashMap<K, V> {
     #[inline(always)]
     fn to_bucket(&self, h: uint) -> uint {
         // A good hash function with entropy spread over all of the
@@ -81,9 +94,7 @@ priv impl<K:Hash + Eq,V> HashMap<K, V> {
 
     #[inline(always)]
     fn next_bucket(&self, idx: uint, len_buckets: uint) -> uint {
-        let n = (idx + 1) % len_buckets;
-        debug!("next_bucket(%?, %?) = %?", idx, len_buckets, n);
-        n
+        (idx + 1) % len_buckets
     }
 
     #[inline(always)]
@@ -202,16 +213,12 @@ priv impl<K:Hash + Eq,V> HashMap<K, V> {
         match self.bucket_for_key_with_hash(hash, &k) {
             TableFull => { fail!("Internal logic error"); }
             FoundHole(idx) => {
-                debug!("insert fresh (%?->%?) at idx %?, hash %?",
-                       k, v, idx, hash);
                 self.buckets[idx] = Some(Bucket{hash: hash, key: k,
                                                 value: v});
                 self.size += 1;
                 None
             }
             FoundEntry(idx) => {
-                debug!("insert overwrite (%?->%?) at idx %?, hash %?",
-                       k, v, idx, hash);
                 match self.buckets[idx] {
                     None => { fail!("insert_internal: Internal logic error") }
                     Some(ref mut b) => {
@@ -304,7 +311,7 @@ impl<K:Hash + Eq,V> Map<K, V> for HashMap<K, V> {
     /// Visit all key-value pairs
     fn each<'a>(&'a self, blk: &fn(&K, &'a V) -> bool) -> bool {
         for self.buckets.each |bucket| {
-            for bucket.each |pair| {
+            for bucket.iter().advance |pair| {
                 if !blk(&pair.key, &pair.value) {
                     return false;
                 }
@@ -393,29 +400,30 @@ impl<K:Hash + Eq,V> Map<K, V> for HashMap<K, V> {
     }
 }
 
-pub impl<K: Hash + Eq, V> HashMap<K, V> {
+impl<K: Hash + Eq, V> HashMap<K, V> {
     /// Create an empty HashMap
-    fn new() -> HashMap<K, V> {
+    pub fn new() -> HashMap<K, V> {
         HashMap::with_capacity(INITIAL_CAPACITY)
     }
 
     /// Create an empty HashMap with space for at least `n` elements in
     /// the hash table.
-    fn with_capacity(capacity: uint) -> HashMap<K, V> {
+    pub fn with_capacity(capacity: uint) -> HashMap<K, V> {
         linear_map_with_capacity(capacity)
     }
 
     /// Reserve space for at least `n` elements in the hash table.
-    fn reserve_at_least(&mut self, n: uint) {
+    pub fn reserve_at_least(&mut self, n: uint) {
         if n > self.buckets.len() {
             let buckets = n * 4 / 3 + 1;
             self.resize(uint::next_power_of_two(buckets));
         }
     }
 
-    /// Return the value corresponding to the key in the map, or insert
-    /// and return the value if it doesn't exist.
-    fn find_or_insert<'a>(&'a mut self, k: K, v: V) -> &'a V {
+    /// Modify and return the value corresponding to the key in the map, or
+    /// insert and return a new value if it doesn't exist.
+    pub fn mangle<'a,A>(&'a mut self, k: K, a: A, not_found: &fn(&K, A) -> V,
+                        found: &fn(&K, &mut V, A)) -> &'a mut V {
         if self.size >= self.resize_at {
             // n.b.: We could also do this after searching, so
             // that we do not resize if this call to insert is
@@ -429,49 +437,44 @@ pub impl<K: Hash + Eq, V> HashMap<K, V> {
         let hash = k.hash_keyed(self.k0, self.k1) as uint;
         let idx = match self.bucket_for_key_with_hash(hash, &k) {
             TableFull => fail!("Internal logic error"),
-            FoundEntry(idx) => idx,
+            FoundEntry(idx) => { found(&k, self.mut_value_for_bucket(idx), a); idx }
             FoundHole(idx) => {
-                self.buckets[idx] = Some(Bucket{hash: hash, key: k,
-                                     value: v});
+                let v = not_found(&k, a);
+                self.buckets[idx] = Some(Bucket{hash: hash, key: k, value: v});
                 self.size += 1;
                 idx
-            },
+            }
         };
 
-        self.value_for_bucket(idx)
+        self.mut_value_for_bucket(idx)
+    }
+
+    /// Return the value corresponding to the key in the map, or insert
+    /// and return the value if it doesn't exist.
+    pub fn find_or_insert<'a>(&'a mut self, k: K, v: V) -> &'a mut V {
+        self.mangle(k, v, |_k, a| a, |_k,_v,_a| ())
     }
 
     /// Return the value corresponding to the key in the map, or create,
     /// insert, and return a new value if it doesn't exist.
-    fn find_or_insert_with<'a>(&'a mut self, k: K, f: &fn(&K) -> V) -> &'a V {
-        if self.size >= self.resize_at {
-            // n.b.: We could also do this after searching, so
-            // that we do not resize if this call to insert is
-            // simply going to update a key in place.  My sense
-            // though is that it's worse to have to search through
-            // buckets to find the right spot twice than to just
-            // resize in this corner case.
-            self.expand();
-        }
-
-        let hash = k.hash_keyed(self.k0, self.k1) as uint;
-        let idx = match self.bucket_for_key_with_hash(hash, &k) {
-            TableFull => fail!("Internal logic error"),
-            FoundEntry(idx) => idx,
-            FoundHole(idx) => {
-                let v = f(&k);
-                self.buckets[idx] = Some(Bucket{hash: hash, key: k,
-                                     value: v});
-                self.size += 1;
-                idx
-            },
-        };
-
-        self.value_for_bucket(idx)
+    pub fn find_or_insert_with<'a>(&'a mut self, k: K, f: &fn(&K) -> V)
+                               -> &'a mut V {
+        self.mangle(k, (), |k,_a| f(k), |_k,_v,_a| ())
     }
 
-    fn consume(&mut self, f: &fn(K, V)) {
-        let buckets = replace(&mut self.buckets, ~[]);
+    /// Insert a key-value pair into the map if the key is not already present.
+    /// Otherwise, modify the existing value for the key.
+    /// Returns the new or modified value for the key.
+    pub fn insert_or_update_with<'a>(&'a mut self, k: K, v: V,
+                                     f: &fn(&K, &mut V)) -> &'a mut V {
+        self.mangle(k, v, |_k,a| a, |k,v,_a| f(k,v))
+    }
+
+    /// Calls a function on each element of a hash map, destroying the hash
+    /// map in the process.
+    pub fn consume(&mut self, f: &fn(K, V)) {
+        let buckets = replace(&mut self.buckets,
+                              vec::from_fn(INITIAL_CAPACITY, |_| None));
         self.size = 0;
 
         do vec::consume(buckets) |_, bucket| {
@@ -484,8 +487,19 @@ pub impl<K: Hash + Eq, V> HashMap<K, V> {
         }
     }
 
-    fn get<'a>(&'a self, k: &K) -> &'a V {
+    /// Retrieves a value for the given key, failing if the key is not
+    /// present.
+    pub fn get<'a>(&'a self, k: &K) -> &'a V {
         match self.find(k) {
+            Some(v) => v,
+            None => fail!("No entry found for key: %?", k),
+        }
+    }
+
+    /// Retrieves a (mutable) value for the given key, failing if the key
+    /// is not present.
+    pub fn get_mut<'a>(&'a mut self, k: &K) -> &'a mut V {
+        match self.find_mut(k) {
             Some(v) => v,
             None => fail!("No entry found for key: %?", k),
         }
@@ -493,7 +507,7 @@ pub impl<K: Hash + Eq, V> HashMap<K, V> {
 
     /// Return true if the map contains a value for the specified key,
     /// using equivalence
-    fn contains_key_equiv<Q:Hash + Equiv<K>>(&self, key: &Q) -> bool {
+    pub fn contains_key_equiv<Q:Hash + Equiv<K>>(&self, key: &Q) -> bool {
         match self.bucket_for_key_equiv(key) {
             FoundEntry(_) => {true}
             TableFull | FoundHole(_) => {false}
@@ -502,7 +516,8 @@ pub impl<K: Hash + Eq, V> HashMap<K, V> {
 
     /// Return the value corresponding to the key in the map, using
     /// equivalence
-    fn find_equiv<'a, Q:Hash + Equiv<K>>(&'a self, k: &Q) -> Option<&'a V> {
+    pub fn find_equiv<'a, Q:Hash + Equiv<K>>(&'a self, k: &Q)
+                                             -> Option<&'a V> {
         match self.bucket_for_key_equiv(k) {
             FoundEntry(idx) => Some(self.value_for_bucket(idx)),
             TableFull | FoundHole(_) => None,
@@ -510,14 +525,14 @@ pub impl<K: Hash + Eq, V> HashMap<K, V> {
     }
 }
 
-pub impl<K: Hash + Eq, V: Copy> HashMap<K, V> {
+impl<K: Hash + Eq, V: Copy> HashMap<K, V> {
     /// Like `find`, but returns a copy of the value.
-    fn find_copy(&self, k: &K) -> Option<V> {
+    pub fn find_copy(&self, k: &K) -> Option<V> {
         self.find(k).map_consume(|v| copy *v)
     }
 
     /// Like `get`, but returns a copy of the value.
-    fn get_copy(&self, k: &K) -> V {
+    pub fn get_copy(&self, k: &K) -> V {
         copy *self.get(k)
     }
 }
@@ -539,6 +554,9 @@ impl<K:Hash + Eq,V:Eq> Eq for HashMap<K, V> {
     fn ne(&self, other: &HashMap<K, V>) -> bool { !self.eq(other) }
 }
 
+/// An implementation of a hash set using the underlying representation of a
+/// HashMap where the value is (). As with the `HashMap` type, a `HashSet`
+/// requires that the elements implement the `Eq` and `Hash` traits.
 pub struct HashSet<T> {
     priv map: HashMap<T, ()>
 }
@@ -618,29 +636,31 @@ impl<T:Hash + Eq> Set<T> for HashSet<T> {
     }
 }
 
-pub impl <T:Hash + Eq> HashSet<T> {
+impl<T:Hash + Eq> HashSet<T> {
     /// Create an empty HashSet
-    fn new() -> HashSet<T> {
+    pub fn new() -> HashSet<T> {
         HashSet::with_capacity(INITIAL_CAPACITY)
     }
 
     /// Create an empty HashSet with space for at least `n` elements in
     /// the hash table.
-    fn with_capacity(capacity: uint) -> HashSet<T> {
+    pub fn with_capacity(capacity: uint) -> HashSet<T> {
         HashSet { map: HashMap::with_capacity(capacity) }
     }
 
     /// Reserve space for at least `n` elements in the hash table.
-    fn reserve_at_least(&mut self, n: uint) {
+    pub fn reserve_at_least(&mut self, n: uint) {
         self.map.reserve_at_least(n)
     }
 
     /// Consumes all of the elements in the set, emptying it out
-    fn consume(&mut self, f: &fn(T)) {
+    pub fn consume(&mut self, f: &fn(T)) {
         self.map.consume(|k, _| f(k))
     }
 
-    fn contains_equiv<Q:Hash + Equiv<T>>(&self, value: &Q) -> bool {
+    /// Returns true if the hash set contains a value equivalent to the
+    /// given query value.
+    pub fn contains_equiv<Q:Hash + Equiv<T>>(&self, value: &Q) -> bool {
       self.map.contains_key_equiv(value)
     }
 }
@@ -651,6 +671,12 @@ mod test_map {
     use option::{None, Some};
     use super::*;
     use uint;
+
+    #[test]
+    fn test_create_capacity_zero() {
+        let mut m = HashMap::with_capacity(0);
+        assert!(m.insert(1, 1));
+    }
 
     #[test]
     fn test_insert() {
@@ -733,15 +759,22 @@ mod test_map {
     #[test]
     fn test_find_or_insert() {
         let mut m = HashMap::new::<int, int>();
-        assert_eq!(m.find_or_insert(1, 2), &2);
-        assert_eq!(m.find_or_insert(1, 3), &2);
+        assert_eq!(*m.find_or_insert(1, 2), 2);
+        assert_eq!(*m.find_or_insert(1, 3), 2);
     }
 
     #[test]
     fn test_find_or_insert_with() {
         let mut m = HashMap::new::<int, int>();
-        assert_eq!(m.find_or_insert_with(1, |_| 2), &2);
-        assert_eq!(m.find_or_insert_with(1, |_| 3), &2);
+        assert_eq!(*m.find_or_insert_with(1, |_| 2), 2);
+        assert_eq!(*m.find_or_insert_with(1, |_| 3), 2);
+    }
+
+    #[test]
+    fn test_insert_or_update_with() {
+        let mut m = HashMap::new::<int, int>();
+        assert_eq!(*m.insert_or_update_with(1, 2, |_,x| *x+=1), 2);
+        assert_eq!(*m.insert_or_update_with(1, 2, |_,x| *x+=1), 3);
     }
 
     #[test]
@@ -757,6 +790,14 @@ mod test_map {
         assert_eq!(m2.len(), 2);
         assert_eq!(m2.get(&1), &2);
         assert_eq!(m2.get(&2), &3);
+    }
+
+    #[test]
+    fn test_consume_still_usable() {
+        let mut m = HashMap::new();
+        assert!(m.insert(1, 2));
+        do m.consume |_, _| {}
+        assert!(m.insert(1, 2));
     }
 
     #[test]
@@ -818,6 +859,23 @@ mod test_map {
 
         assert_eq!(m.len(), i);
         assert!(!m.is_empty());
+    }
+
+    #[test]
+    fn test_find_equiv() {
+        let mut m = HashMap::new();
+
+        let (foo, bar, baz) = (1,2,3);
+        m.insert(~"foo", foo);
+        m.insert(~"bar", bar);
+        m.insert(~"baz", baz);
+
+
+        assert_eq!(m.find_equiv(&("foo")), Some(&foo));
+        assert_eq!(m.find_equiv(&("bar")), Some(&bar));
+        assert_eq!(m.find_equiv(&("baz")), Some(&baz));
+
+        assert_eq!(m.find_equiv(&("qux")), None);
     }
 }
 

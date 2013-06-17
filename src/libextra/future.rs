@@ -23,6 +23,8 @@
  * ~~~
  */
 
+#[allow(missing_doc)];
+
 use core::prelude::*;
 
 use core::cast;
@@ -52,15 +54,15 @@ priv enum FutureState<A> {
 }
 
 /// Methods on the `future` type
-pub impl<A:Copy> Future<A> {
-    fn get(&mut self) -> A {
+impl<A:Copy> Future<A> {
+    pub fn get(&mut self) -> A {
         //! Get the value of the future.
         *(self.get_ref())
     }
 }
 
-pub impl<A> Future<A> {
-    fn get_ref<'a>(&'a mut self) -> &'a A {
+impl<A> Future<A> {
+    pub fn get_ref<'a>(&'a mut self) -> &'a A {
         /*!
         * Executes the future's closure and then returns a borrowed
         * pointer to the result.  The borrowed pointer lasts as long as
@@ -107,7 +109,7 @@ pub fn from_port<A:Owned>(port: PortOne<A>) -> Future<A> {
      * waiting for the result to be received on the port.
      */
 
-    let port = Cell(port);
+    let port = Cell::new(port);
     do from_fn {
         recv_one(port.take())
     }
@@ -135,7 +137,7 @@ pub fn spawn<A:Owned>(blk: ~fn() -> A) -> Future<A> {
 
     let (port, chan) = oneshot();
 
-    let chan = Cell(chan);
+    let chan = Cell::new(chan);
     do task::spawn {
         let chan = chan.take();
         send_one(chan, blk());
@@ -202,7 +204,7 @@ mod test {
     #[test]
     fn test_sendable_future() {
         let expected = "schlorf";
-        let f = Cell(do spawn { expected });
+        let f = Cell::new(do spawn { expected });
         do task::spawn {
             let mut f = f.take();
             let actual = f.get();

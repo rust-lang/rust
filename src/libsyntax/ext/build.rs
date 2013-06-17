@@ -126,8 +126,8 @@ pub trait AstBuilder {
     fn expr_vec(&self, sp: span, exprs: ~[@ast::expr]) -> @ast::expr;
     fn expr_vec_uniq(&self, sp: span, exprs: ~[@ast::expr]) -> @ast::expr;
     fn expr_vec_slice(&self, sp: span, exprs: ~[@ast::expr]) -> @ast::expr;
-    fn expr_str(&self, sp: span, s: ~str) -> @ast::expr;
-    fn expr_str_uniq(&self, sp: span, s: ~str) -> @ast::expr;
+    fn expr_str(&self, sp: span, s: @str) -> @ast::expr;
+    fn expr_str_uniq(&self, sp: span, s: @str) -> @ast::expr;
 
     fn expr_unreachable(&self, span: span) -> @ast::expr;
 
@@ -215,9 +215,9 @@ pub trait AstBuilder {
 
     fn attribute(&self, sp: span, mi: @ast::meta_item) -> ast::attribute;
 
-    fn meta_word(&self, sp: span, w: ~str) -> @ast::meta_item;
-    fn meta_list(&self, sp: span, name: ~str, mis: ~[@ast::meta_item]) -> @ast::meta_item;
-    fn meta_name_value(&self, sp: span, name: ~str, value: ast::lit_) -> @ast::meta_item;
+    fn meta_word(&self, sp: span, w: @str) -> @ast::meta_item;
+    fn meta_list(&self, sp: span, name: @str, mis: ~[@ast::meta_item]) -> @ast::meta_item;
+    fn meta_name_value(&self, sp: span, name: @str, value: ast::lit_) -> @ast::meta_item;
 
     fn view_use(&self, sp: span,
                 vis: ast::visibility, vp: ~[@ast::view_path]) -> @ast::view_item;
@@ -385,7 +385,7 @@ impl AstBuilder for @ExtCtxt {
                                 init: Some(ex),
                                 id: self.next_id(),
                             });
-        let decl = respan(sp, ast::decl_local(~[local]));
+        let decl = respan(sp, ast::decl_local(local));
         @respan(sp, ast::stmt_decl(@decl, self.next_id()))
     }
 
@@ -414,7 +414,6 @@ impl AstBuilder for @ExtCtxt {
     fn expr(&self, span: span, node: ast::expr_) -> @ast::expr {
         @ast::expr {
             id: self.next_id(),
-            callee_id: self.next_id(),
             node: node,
             span: span,
         }
@@ -433,8 +432,7 @@ impl AstBuilder for @ExtCtxt {
 
     fn expr_binary(&self, sp: span, op: ast::binop,
                    lhs: @ast::expr, rhs: @ast::expr) -> @ast::expr {
-        self.next_id(); // see ast_util::op_expr_callee_id
-        self.expr(sp, ast::expr_binary(op, lhs, rhs))
+        self.expr(sp, ast::expr_binary(self.next_id(), op, lhs, rhs))
     }
 
     fn expr_deref(&self, sp: span, e: @ast::expr) -> @ast::expr {
@@ -442,8 +440,7 @@ impl AstBuilder for @ExtCtxt {
     }
     fn expr_unary(&self, sp: span, op: ast::unop, e: @ast::expr)
         -> @ast::expr {
-        self.next_id(); // see ast_util::op_expr_callee_id
-        self.expr(sp, ast::expr_unary(op, e))
+        self.expr(sp, ast::expr_unary(self.next_id(), op, e))
     }
 
     fn expr_copy(&self, sp: span, e: @ast::expr) -> @ast::expr {
@@ -480,13 +477,13 @@ impl AstBuilder for @ExtCtxt {
                         ident: ast::ident,
                         args: ~[@ast::expr]) -> @ast::expr {
         self.expr(span,
-                  ast::expr_method_call(expr, ident, ~[], args, ast::NoSugar))
+                  ast::expr_method_call(self.next_id(), expr, ident, ~[], args, ast::NoSugar))
     }
     fn expr_blk(&self, b: ast::blk) -> @ast::expr {
         self.expr(b.span, ast::expr_block(b))
     }
     fn field_imm(&self, span: span, name: ident, e: @ast::expr) -> ast::field {
-        respan(span, ast::field_ { mutbl: ast::m_imm, ident: name, expr: e })
+        respan(span, ast::field_ { ident: name, expr: e })
     }
     fn expr_struct(&self, span: span, path: @ast::Path, fields: ~[ast::field]) -> @ast::expr {
         self.expr(span, ast::expr_struct(path, fields, None))
@@ -524,10 +521,10 @@ impl AstBuilder for @ExtCtxt {
     fn expr_vec_slice(&self, sp: span, exprs: ~[@ast::expr]) -> @ast::expr {
         self.expr_vstore(sp, self.expr_vec(sp, exprs), ast::expr_vstore_slice)
     }
-    fn expr_str(&self, sp: span, s: ~str) -> @ast::expr {
-        self.expr_lit(sp, ast::lit_str(@s))
+    fn expr_str(&self, sp: span, s: @str) -> @ast::expr {
+        self.expr_lit(sp, ast::lit_str(s))
     }
-    fn expr_str_uniq(&self, sp: span, s: ~str) -> @ast::expr {
+    fn expr_str_uniq(&self, sp: span, s: @str) -> @ast::expr {
         self.expr_vstore(sp, self.expr_str(sp, s), ast::expr_vstore_uniq)
     }
 
@@ -543,8 +540,8 @@ impl AstBuilder for @ExtCtxt {
                 self.ident_of("fail_with"),
             ],
             ~[
-                self.expr_str(span, ~"internal error: entered unreachable code"),
-                self.expr_str(span, copy loc.file.name),
+                self.expr_str(span, @"internal error: entered unreachable code"),
+                self.expr_str(span, loc.file.name),
                 self.expr_uint(span, loc.line),
             ])
     }
@@ -560,7 +557,7 @@ impl AstBuilder for @ExtCtxt {
         self.pat(span, ast::pat_lit(expr))
     }
     fn pat_ident(&self, span: span, ident: ast::ident) -> @ast::pat {
-        self.pat_ident_binding_mode(span, ident, ast::bind_by_copy)
+        self.pat_ident_binding_mode(span, ident, ast::bind_infer)
     }
 
     fn pat_ident_binding_mode(&self,
@@ -794,14 +791,14 @@ impl AstBuilder for @ExtCtxt {
                })
     }
 
-    fn meta_word(&self, sp: span, w: ~str) -> @ast::meta_item {
-        @respan(sp, ast::meta_word(@w))
+    fn meta_word(&self, sp: span, w: @str) -> @ast::meta_item {
+        @respan(sp, ast::meta_word(w))
     }
-    fn meta_list(&self, sp: span, name: ~str, mis: ~[@ast::meta_item]) -> @ast::meta_item {
-        @respan(sp, ast::meta_list(@name, mis))
+    fn meta_list(&self, sp: span, name: @str, mis: ~[@ast::meta_item]) -> @ast::meta_item {
+        @respan(sp, ast::meta_list(name, mis))
     }
-    fn meta_name_value(&self, sp: span, name: ~str, value: ast::lit_) -> @ast::meta_item {
-        @respan(sp, ast::meta_name_value(@name, respan(sp, value)))
+    fn meta_name_value(&self, sp: span, name: @str, value: ast::lit_) -> @ast::meta_item {
+        @respan(sp, ast::meta_name_value(name, respan(sp, value)))
     }
 
     fn view_use(&self, sp: span,

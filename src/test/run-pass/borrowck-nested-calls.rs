@@ -14,10 +14,10 @@
 
 struct Foo {a: uint, b: uint}
 
-pub impl Foo {
-    fn inc_a(&mut self, v: uint) { self.a += v; }
+impl Foo {
+    pub fn inc_a(&mut self, v: uint) { self.a += v; }
 
-    fn next_b(&mut self) -> uint {
+    pub fn next_b(&mut self) -> uint {
         let b = self.b;
         self.b += 1;
         b

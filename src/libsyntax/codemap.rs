@@ -23,7 +23,9 @@ source code snippets, etc.
 
 use core::prelude::*;
 
+use core::cmp;
 use core::to_bytes;
+use core::uint;
 use extra::serialize::{Encodable, Decodable, Encoder, Decoder};
 
 pub trait Pos {
@@ -182,7 +184,7 @@ pub struct Loc {
 // Actually, *none* of the clients use the filename *or* file field;
 // perhaps they should just be removed.
 pub struct LocWithOpt {
-    filename: ~str,
+    filename: FileName,
     line: uint,
     col: CharPos,
     file: Option<@FileMap>,
@@ -191,7 +193,7 @@ pub struct LocWithOpt {
 // used to be structural records. Better names, anyone?
 pub struct FileMapAndLine {fm: @FileMap, line: uint}
 pub struct FileMapAndBytePos {fm: @FileMap, pos: BytePos}
-pub struct NameAndSpan {name: ~str, span: Option<span>}
+pub struct NameAndSpan {name: @str, span: Option<span>}
 
 impl to_bytes::IterBytes for NameAndSpan {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
@@ -225,7 +227,7 @@ impl to_bytes::IterBytes for ExpnInfo {
     }
 }
 
-pub type FileName = ~str;
+pub type FileName = @str;
 
 pub struct FileLines
 {
@@ -259,7 +261,7 @@ pub struct FileMap {
     /// Extra information used by qquote
     substr: FileSubstr,
     /// The complete source code
-    src: @~str,
+    src: @str,
     /// The start position of this source in the CodeMap
     start_pos: BytePos,
     /// Locations of lines beginnings in the source code
@@ -268,13 +270,13 @@ pub struct FileMap {
     multibyte_chars: @mut ~[MultiByteChar],
 }
 
-pub impl FileMap {
+impl FileMap {
     // EFFECT: register a start-of-line offset in the
     // table of line-beginnings.
     // UNCHECKED INVARIANT: these offsets must be added in the right
     // order and must be in the right places; there is shared knowledge
     // about what ends a line between this file and parse.rs
-    fn next_line(&self, pos: BytePos) {
+    pub fn next_line(&self, pos: BytePos) {
         // the new charpos must be > the last one (or it's the first one).
         let lines = &mut *self.lines;
         assert!((lines.len() == 0) || (lines[lines.len() - 1] < pos))
@@ -285,11 +287,11 @@ pub impl FileMap {
     pub fn get_line(&self, line: int) -> ~str {
         let begin: BytePos = self.lines[line] - self.start_pos;
         let begin = begin.to_uint();
-        let end = match str::find_char_from(*self.src, '\n', begin) {
-            Some(e) => e,
-            None => str::len(*self.src)
-        };
-        str::slice(*self.src, begin, end).to_owned()
+        let slice = self.src.slice_from(begin);
+        match slice.find('\n') {
+            Some(e) => slice.slice_to(e).to_owned(),
+            None => slice.to_owned()
+        }
     }
 
     pub fn record_multibyte_char(&self, pos: BytePos, bytes: uint) {
@@ -306,7 +308,7 @@ pub struct CodeMap {
     files: @mut ~[@FileMap]
 }
 
-pub impl CodeMap {
+impl CodeMap {
     pub fn new() -> CodeMap {
         CodeMap {
             files: @mut ~[],
@@ -314,16 +316,15 @@ pub impl CodeMap {
     }
 
     /// Add a new FileMap to the CodeMap and return it
-    fn new_filemap(&self, filename: FileName, src: @~str) -> @FileMap {
+    pub fn new_filemap(&self, filename: FileName, src: @str) -> @FileMap {
         return self.new_filemap_w_substr(filename, FssNone, src);
     }
 
-    fn new_filemap_w_substr(
-        &self,
-        filename: FileName,
-        substr: FileSubstr,
-        src: @~str
-    ) -> @FileMap {
+    pub fn new_filemap_w_substr(&self,
+                                filename: FileName,
+                                substr: FileSubstr,
+                                src: @str)
+                                -> @FileMap {
         let files = &mut *self.files;
         let start_pos = if files.len() == 0 {
             0
@@ -356,13 +357,12 @@ pub impl CodeMap {
         return self.lookup_pos(pos);
     }
 
-    pub fn lookup_char_pos_adj(&self, pos: BytePos) -> LocWithOpt
-    {
+    pub fn lookup_char_pos_adj(&self, pos: BytePos) -> LocWithOpt {
         let loc = self.lookup_char_pos(pos);
         match (loc.file.substr) {
             FssNone =>
             LocWithOpt {
-                filename: /* FIXME (#2543) */ copy loc.file.name,
+                filename: loc.file.name,
                 line: loc.line,
                 col: loc.col,
                 file: Some(loc.file)},
@@ -417,21 +417,19 @@ pub impl CodeMap {
         let begin = self.lookup_byte_offset(sp.lo);
         let end = self.lookup_byte_offset(sp.hi);
         assert_eq!(begin.fm.start_pos, end.fm.start_pos);
-        return str::slice(*begin.fm.src,
+        return begin.fm.src.slice(
                           begin.pos.to_uint(), end.pos.to_uint()).to_owned();
     }
 
-    pub fn get_filemap(&self, filename: ~str) -> @FileMap {
-        for self.files.each |fm| { if fm.name == filename { return *fm; } }
+    pub fn get_filemap(&self, filename: &str) -> @FileMap {
+        for self.files.each |fm| { if filename == fm.name { return *fm; } }
         //XXjdm the following triggers a mismatched type bug
         //      (or expected function, found _|_)
         fail!(); // ("asking for " + filename + " which we don't know about");
     }
-
 }
 
-priv impl CodeMap {
-
+impl CodeMap {
     fn lookup_filemap_idx(&self, pos: BytePos) -> uint {
         let files = &*self.files;
         let len = files.len();
@@ -534,7 +532,7 @@ mod test {
     #[test]
     fn t1 () {
         let cm = CodeMap::new();
-        let fm = cm.new_filemap(~"blork.rs",@~"first line.\nsecond line");
+        let fm = cm.new_filemap(@"blork.rs",@"first line.\nsecond line");
         fm.next_line(BytePos(0));
         assert_eq!(&fm.get_line(0),&~"first line.");
         // TESTING BROKEN BEHAVIOR:
@@ -546,7 +544,7 @@ mod test {
     #[should_fail]
     fn t2 () {
         let cm = CodeMap::new();
-        let fm = cm.new_filemap(~"blork.rs",@~"first line.\nsecond line");
+        let fm = cm.new_filemap(@"blork.rs",@"first line.\nsecond line");
         // TESTING *REALLY* BROKEN BEHAVIOR:
         fm.next_line(BytePos(0));
         fm.next_line(BytePos(10));

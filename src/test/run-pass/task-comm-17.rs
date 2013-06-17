@@ -14,6 +14,8 @@
 
 extern mod extra;
 
+use std::task;
+
 fn f() {
 }
 

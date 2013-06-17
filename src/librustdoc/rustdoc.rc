@@ -66,6 +66,15 @@ pub mod escape_pass;
 pub mod prune_private_pass;
 pub mod util;
 
+mod std {
+    pub use core::clone;
+    pub use core::cmp;
+    pub use core::os;
+    pub use core::str;
+    pub use core::sys;
+    pub use core::unstable;
+}
+
 pub fn main() {
     let args = os::args();
 

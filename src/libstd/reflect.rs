@@ -14,6 +14,8 @@ Runtime type reflection
 
 */
 
+#[allow(missing_doc)];
+
 use intrinsic::{TyDesc, TyVisitor};
 use intrinsic::Opaque;
 use libc::c_void;
@@ -46,28 +48,28 @@ pub fn MovePtrAdaptor<V:TyVisitor + MovePtr>(v: V) -> MovePtrAdaptor<V> {
     MovePtrAdaptor { inner: v }
 }
 
-pub impl<V:TyVisitor + MovePtr> MovePtrAdaptor<V> {
+impl<V:TyVisitor + MovePtr> MovePtrAdaptor<V> {
     #[inline(always)]
-    fn bump(&self, sz: uint) {
-      do self.inner.move_ptr() |p| {
+    pub fn bump(&self, sz: uint) {
+        do self.inner.move_ptr() |p| {
             ((p as uint) + sz) as *c_void
-      };
+        };
     }
 
     #[inline(always)]
-    fn align(&self, a: uint) {
-      do self.inner.move_ptr() |p| {
+    pub fn align(&self, a: uint) {
+        do self.inner.move_ptr() |p| {
             align(p as uint, a) as *c_void
-      };
+        };
     }
 
     #[inline(always)]
-    fn align_to<T>(&self) {
+    pub fn align_to<T>(&self) {
         self.align(sys::min_align_of::<T>());
     }
 
     #[inline(always)]
-    fn bump_past<T>(&self) {
+    pub fn bump_past<T>(&self) {
         self.bump(sys::size_of::<T>());
     }
 }

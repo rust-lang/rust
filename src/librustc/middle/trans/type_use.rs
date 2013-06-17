@@ -42,6 +42,7 @@ use syntax::ast;
 use syntax::ast::*;
 use syntax::ast_map;
 use syntax::ast_util;
+use syntax::parse::token;
 use syntax::visit;
 
 pub type type_uses = uint; // Bitmask
@@ -50,11 +51,11 @@ pub static use_repr: uint = 1;   /* Dependency on size/alignment/mode and
 pub static use_tydesc: uint = 2; /* Takes the tydesc, or compares */
 
 pub struct Context {
-    ccx: @CrateContext,
+    ccx: @mut CrateContext,
     uses: @mut ~[type_uses]
 }
 
-pub fn type_uses_for(ccx: @CrateContext, fn_id: def_id, n_tps: uint)
+pub fn type_uses_for(ccx: @mut CrateContext, fn_id: def_id, n_tps: uint)
     -> @~[type_uses] {
     match ccx.type_use_cache.find(&fn_id) {
       Some(uses) => return *uses,
@@ -85,8 +86,8 @@ pub fn type_uses_for(ccx: @CrateContext, fn_id: def_id, n_tps: uint)
     }
 
     if fn_id_loc.crate != local_crate {
-        let Context { uses: @uses, _ } = cx;
-        let uses = @uses; // mutability
+        let Context { uses, _ } = cx;
+        let uses = @copy *uses; // freeze
         ccx.type_use_cache.insert(fn_id, uses);
         return uses;
     }
@@ -116,43 +117,43 @@ pub fn type_uses_for(ccx: @CrateContext, fn_id: def_id, n_tps: uint)
                                  _,
                                  _) => {
         if abi.is_intrinsic() {
-            let flags = match *cx.ccx.sess.str_of(i.ident) {
-                ~"size_of"  | ~"pref_align_of" | ~"min_align_of" |
-                ~"uninit"   | ~"init" | ~"transmute" | ~"move_val" |
-                ~"move_val_init" => use_repr,
+            let flags = match cx.ccx.sess.str_of(i.ident).as_slice() {
+                "size_of"  | "pref_align_of" | "min_align_of" |
+                "uninit"   | "init" | "transmute" | "move_val" |
+                "move_val_init" => use_repr,
 
-                ~"get_tydesc" | ~"needs_drop" => use_tydesc,
+                "get_tydesc" | "needs_drop" => use_tydesc,
 
-                ~"atomic_cxchg"    | ~"atomic_cxchg_acq"|
-                ~"atomic_cxchg_rel"| ~"atomic_load"     |
-                ~"atomic_load_acq" | ~"atomic_store"    |
-                ~"atomic_store_rel"| ~"atomic_xchg"     |
-                ~"atomic_xadd"     | ~"atomic_xsub"     |
-                ~"atomic_xchg_acq" | ~"atomic_xadd_acq" |
-                ~"atomic_xsub_acq" | ~"atomic_xchg_rel" |
-                ~"atomic_xadd_rel" | ~"atomic_xsub_rel" => 0,
+                "atomic_cxchg"    | "atomic_cxchg_acq"|
+                "atomic_cxchg_rel"| "atomic_load"     |
+                "atomic_load_acq" | "atomic_store"    |
+                "atomic_store_rel"| "atomic_xchg"     |
+                "atomic_xadd"     | "atomic_xsub"     |
+                "atomic_xchg_acq" | "atomic_xadd_acq" |
+                "atomic_xsub_acq" | "atomic_xchg_rel" |
+                "atomic_xadd_rel" | "atomic_xsub_rel" => 0,
 
-                ~"visit_tydesc"  | ~"forget" | ~"frame_address" |
-                ~"morestack_addr" => 0,
+                "visit_tydesc"  | "forget" | "frame_address" |
+                "morestack_addr" => 0,
 
-                ~"memcpy32" | ~"memcpy64" | ~"memmove32" | ~"memmove64" |
-                ~"memset32" | ~"memset64" => use_repr,
+                "memcpy32" | "memcpy64" | "memmove32" | "memmove64" |
+                "memset32" | "memset64" => use_repr,
 
-                ~"sqrtf32" | ~"sqrtf64" | ~"powif32" | ~"powif64" |
-                ~"sinf32"  | ~"sinf64"  | ~"cosf32"  | ~"cosf64"  |
-                ~"powf32"  | ~"powf64"  | ~"expf32"  | ~"expf64"  |
-                ~"exp2f32" | ~"exp2f64" | ~"logf32"  | ~"logf64"  |
-                ~"log10f32"| ~"log10f64"| ~"log2f32" | ~"log2f64" |
-                ~"fmaf32"  | ~"fmaf64"  | ~"fabsf32" | ~"fabsf64" |
-                ~"floorf32"| ~"floorf64"| ~"ceilf32" | ~"ceilf64" |
-                ~"truncf32"| ~"truncf64" => 0,
+                "sqrtf32" | "sqrtf64" | "powif32" | "powif64" |
+                "sinf32"  | "sinf64"  | "cosf32"  | "cosf64"  |
+                "powf32"  | "powf64"  | "expf32"  | "expf64"  |
+                "exp2f32" | "exp2f64" | "logf32"  | "logf64"  |
+                "log10f32"| "log10f64"| "log2f32" | "log2f64" |
+                "fmaf32"  | "fmaf64"  | "fabsf32" | "fabsf64" |
+                "floorf32"| "floorf64"| "ceilf32" | "ceilf64" |
+                "truncf32"| "truncf64" => 0,
 
-                ~"ctpop8" | ~"ctpop16" | ~"ctpop32" | ~"ctpop64" => 0,
+                "ctpop8" | "ctpop16" | "ctpop32" | "ctpop64" => 0,
 
-                ~"ctlz8" | ~"ctlz16" | ~"ctlz32" | ~"ctlz64" => 0,
-                ~"cttz8" | ~"cttz16" | ~"cttz32" | ~"cttz64" => 0,
+                "ctlz8" | "ctlz16" | "ctlz32" | "ctlz64" => 0,
+                "cttz8" | "cttz16" | "cttz32" | "cttz64" => 0,
 
-                ~"bswap16" | ~"bswap32" | ~"bswap64" => 0,
+                "bswap16" | "bswap32" | "bswap64" => 0,
 
                 // would be cool to make these an enum instead of strings!
                 _ => fail!("unknown intrinsic in type_use")
@@ -170,11 +171,11 @@ pub fn type_uses_for(ccx: @CrateContext, fn_id: def_id, n_tps: uint)
                               ast_map::node_id_to_str(
                                 ccx.tcx.items,
                                 fn_id_loc.node,
-                                ccx.tcx.sess.parse_sess.interner)));
+                                token::get_ident_interner())));
       }
     }
-    let Context { uses: @uses, _ } = cx;
-    let uses = @uses; // mutability
+    let Context { uses, _ } = cx;
+    let uses = @copy *uses; // freeze
     ccx.type_use_cache.insert(fn_id, uses);
     uses
 }
@@ -240,19 +241,22 @@ pub fn node_type_needs(cx: Context, use_: uint, id: node_id) {
 
 pub fn mark_for_method_call(cx: Context, e_id: node_id, callee_id: node_id) {
     let mut opt_static_did = None;
-    for cx.ccx.maps.method_map.find(&e_id).each |mth| {
-        match mth.origin {
-          typeck::method_static(did) => {
-              opt_static_did = Some(did);
-          }
-          typeck::method_param(typeck::method_param {
-              param_num: param,
-              _
-          }) => {
-            cx.uses[param] |= use_tydesc;
-          }
-          typeck::method_trait(*) | typeck::method_self(*)
-              | typeck::method_super(*) => (),
+    {
+        let r = cx.ccx.maps.method_map.find(&e_id);
+        for r.iter().advance |mth| {
+            match mth.origin {
+              typeck::method_static(did) => {
+                  opt_static_did = Some(did);
+              }
+              typeck::method_param(typeck::method_param {
+                  param_num: param,
+                  _
+              }) => {
+                cx.uses[param] |= use_tydesc;
+              }
+              typeck::method_trait(*) | typeck::method_self(*)
+                  | typeck::method_super(*) => (),
+            }
         }
     }
 
@@ -260,11 +264,14 @@ pub fn mark_for_method_call(cx: Context, e_id: node_id, callee_id: node_id) {
     // above because the recursive call to `type_needs` can trigger
     // inlining and hence can cause `method_map` and
     // `node_type_substs` to be modified.
-    for opt_static_did.each |&did| {
-        for cx.ccx.tcx.node_type_substs.find_copy(&callee_id).each |ts| {
-            let type_uses = type_uses_for(cx.ccx, did, ts.len());
-            for vec::each2(*type_uses, *ts) |uses, subst| {
-                type_needs(cx, *uses, *subst)
+    for opt_static_did.iter().advance |&did| {
+        {
+            let r = cx.ccx.tcx.node_type_substs.find_copy(&callee_id);
+            for r.iter().advance |ts| {
+                let type_uses = type_uses_for(cx.ccx, did, ts.len());
+                for type_uses.iter().zip(ts.iter()).advance |(uses, subst)| {
+                    type_needs(cx, *uses, *subst)
+                }
             }
         }
     }
@@ -273,8 +280,8 @@ pub fn mark_for_method_call(cx: Context, e_id: node_id, callee_id: node_id) {
 pub fn mark_for_expr(cx: Context, e: @expr) {
     match e.node {
       expr_vstore(_, _) | expr_vec(_, _) | expr_struct(*) | expr_tup(_) |
-      expr_unary(box(_), _) | expr_unary(uniq(_), _) |
-      expr_binary(add, _, _) | expr_copy(_) | expr_repeat(*) => {
+      expr_unary(_, box(_), _) | expr_unary(_, uniq(_), _) |
+      expr_binary(_, add, _, _) | expr_copy(_) | expr_repeat(*) => {
         node_type_needs(cx, use_repr, e.id);
       }
       expr_cast(base, _) => {
@@ -288,7 +295,7 @@ pub fn mark_for_expr(cx: Context, e: @expr) {
             _ => ()
         }
       }
-      expr_binary(op, lhs, _) => {
+      expr_binary(_, op, lhs, _) => {
         match op {
           eq | lt | le | ne | ge | gt => {
             node_type_needs(cx, use_tydesc, lhs.id)
@@ -298,10 +305,10 @@ pub fn mark_for_expr(cx: Context, e: @expr) {
       }
       expr_path(_) | expr_self => {
         let opt_ts = cx.ccx.tcx.node_type_substs.find_copy(&e.id);
-        for opt_ts.each |ts| {
+        for opt_ts.iter().advance |ts| {
             let id = ast_util::def_id_of_def(cx.ccx.tcx.def_map.get_copy(&e.id));
             let uses_for_ts = type_uses_for(cx.ccx, id, ts.len());
-            for vec::each2(*uses_for_ts, *ts) |uses, subst| {
+            for uses_for_ts.iter().zip(ts.iter()).advance |(uses, subst)| {
                 type_needs(cx, *uses, *subst)
             }
         }
@@ -317,16 +324,24 @@ pub fn mark_for_expr(cx: Context, e: @expr) {
               }
           }
       }
-      expr_assign(val, _) | expr_assign_op(_, val, _) |
+      expr_assign(val, _) | expr_assign_op(_, _, val, _) |
       expr_ret(Some(val)) => {
         node_type_needs(cx, use_repr, val.id);
       }
-      expr_index(base, _) | expr_field(base, _, _) => {
+      expr_index(callee_id, base, _) => {
         // FIXME (#2537): could be more careful and not count fields after
         // the chosen field.
         let base_ty = ty::node_id_to_type(cx.ccx.tcx, base.id);
         type_needs(cx, use_repr, ty::type_autoderef(cx.ccx.tcx, base_ty));
-        mark_for_method_call(cx, e.id, e.callee_id);
+        mark_for_method_call(cx, e.id, callee_id);
+      }
+      expr_field(base, _, _) => {
+        // Method calls are now a special syntactic form,
+        // so `a.b` should always be a field.
+        assert!(!cx.ccx.maps.method_map.contains_key(&e.id));
+
+        let base_ty = ty::node_id_to_type(cx.ccx.tcx, base.id);
+        type_needs(cx, use_repr, ty::type_autoderef(cx.ccx.tcx, base_ty));
       }
       expr_log(_, val) => {
         node_type_needs(cx, use_tydesc, val.id);
@@ -336,14 +351,14 @@ pub fn mark_for_expr(cx: Context, e: @expr) {
               type_needs(cx, use_repr, *a);
           }
       }
-      expr_method_call(rcvr, _, _, _, _) => {
+      expr_method_call(callee_id, rcvr, _, _, _, _) => {
         let base_ty = ty::node_id_to_type(cx.ccx.tcx, rcvr.id);
         type_needs(cx, use_repr, ty::type_autoderef(cx.ccx.tcx, base_ty));
 
-        for ty::ty_fn_args(ty::node_id_to_type(cx.ccx.tcx, e.callee_id)).each |a| {
+        for ty::ty_fn_args(ty::node_id_to_type(cx.ccx.tcx, callee_id)).each |a| {
             type_needs(cx, use_repr, *a);
         }
-        mark_for_method_call(cx, e.id, e.callee_id);
+        mark_for_method_call(cx, e.id, callee_id);
       }
 
       expr_inline_asm(ref ia) => {
@@ -358,34 +373,34 @@ pub fn mark_for_expr(cx: Context, e: @expr) {
       expr_paren(e) => mark_for_expr(cx, e),
 
       expr_match(*) | expr_block(_) | expr_if(*) | expr_while(*) |
-      expr_break(_) | expr_again(_) | expr_unary(_, _) | expr_lit(_) |
-      expr_mac(_) | expr_addr_of(_, _) | expr_ret(_) | expr_loop(_, _) |
+      expr_break(_) | expr_again(_) | expr_unary(*) | expr_lit(_) |
+      expr_mac(_) | expr_addr_of(*) | expr_ret(_) | expr_loop(*) |
       expr_loop_body(_) | expr_do_body(_) => ()
     }
 }
 
 pub fn handle_body(cx: Context, body: &blk) {
     let v = visit::mk_vt(@visit::Visitor {
-        visit_expr: |e, cx, v| {
-            visit::visit_expr(e, cx, v);
+        visit_expr: |e, (cx, v)| {
+            visit::visit_expr(e, (cx, v));
             mark_for_expr(cx, e);
         },
-        visit_local: |l, cx, v| {
-            visit::visit_local(l, cx, v);
+        visit_local: |l, (cx, v)| {
+            visit::visit_local(l, (cx, v));
             node_type_needs(cx, use_repr, l.node.id);
         },
-        visit_pat: |p, cx, v| {
-            visit::visit_pat(p, cx, v);
+        visit_pat: |p, (cx, v)| {
+            visit::visit_pat(p, (cx, v));
             node_type_needs(cx, use_repr, p.id);
         },
-        visit_block: |b, cx, v| {
-            visit::visit_block(b, cx, v);
-            for b.node.expr.each |e| {
+        visit_block: |b, (cx, v)| {
+            visit::visit_block(b, (cx, v));
+            for b.node.expr.iter().advance |e| {
                 node_type_needs(cx, use_repr, e.id);
             }
         },
-        visit_item: |_i, _cx, _v| { },
+        visit_item: |_i, (_cx, _v)| { },
         ..*visit::default_visitor()
     });
-    (v.visit_block)(body, cx, v);
+    (v.visit_block)(body, (cx, v));
 }

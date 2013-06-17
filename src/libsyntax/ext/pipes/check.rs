@@ -51,7 +51,7 @@ impl proto::visitor<(), (), ()> for @ExtCtxt {
         }
     }
 
-    fn visit_message(&self, name: ~str, _span: span, _tys: &[@ast::Ty],
+    fn visit_message(&self, name: @str, _span: span, _tys: &[@ast::Ty],
                      this: state, next: Option<next_state>) {
         match next {
           Some(ref next_state) => {

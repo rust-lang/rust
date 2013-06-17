@@ -10,6 +10,7 @@
 
 use core::prelude::*;
 
+
 use astsrv;
 use doc;
 use time;
@@ -28,7 +29,7 @@ pub fn run_passes(
     passes: ~[Pass]
 ) -> doc::Doc {
     let mut passno = 0;
-    do vec::foldl(doc, passes) |doc, pass| {
+    do passes.iter().fold(doc) |doc, pass| {
         debug!("pass #%d", passno);
         passno += 1;
         do time(copy pass.name) {

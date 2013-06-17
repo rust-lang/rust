@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::vec;
+
 fn vec_peek<'r, T>(v: &'r [T]) -> &'r [T] {
 // This doesn't work, and should.
 //    v.slice(1, 5)

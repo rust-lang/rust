@@ -30,8 +30,9 @@ use middle::trans::type_use;
 use middle::ty;
 use middle::ty::{FnSig};
 use middle::typeck;
-use util::ppaux::Repr;
+use util::ppaux::{Repr,ty_to_str};
 
+use core::vec;
 use syntax::ast;
 use syntax::ast_map;
 use syntax::ast_map::path_name;
@@ -39,9 +40,9 @@ use syntax::ast_util::local_def;
 use syntax::opt_vec;
 use syntax::abi::AbiSet;
 
-pub fn monomorphic_fn(ccx: @CrateContext,
+pub fn monomorphic_fn(ccx: @mut CrateContext,
                       fn_id: ast::def_id,
-                      real_substs: &[ty::t],
+                      real_substs: &ty::substs,
                       vtables: Option<typeck::vtable_res>,
                       impl_did_opt: Option<ast::def_id>,
                       ref_id: Option<ast::node_id>)
@@ -59,22 +60,22 @@ pub fn monomorphic_fn(ccx: @CrateContext,
            impl_did_opt.repr(ccx.tcx),
            ref_id);
 
-    assert!(real_substs.all(|t| !ty::type_needs_infer(*t)));
+    assert!(real_substs.tps.all(|t| !ty::type_needs_infer(*t)));
     let _icx = ccx.insn_ctxt("monomorphic_fn");
     let mut must_cast = false;
-    let substs = vec::map(real_substs, |t| {
+    let substs = vec::map(real_substs.tps, |t| {
         match normalize_for_monomorphization(ccx.tcx, *t) {
           Some(t) => { must_cast = true; t }
           None => *t
         }
     });
 
-    for real_substs.each() |s| { assert!(!ty::type_has_params(*s)); }
+    for real_substs.tps.each() |s| { assert!(!ty::type_has_params(*s)); }
     for substs.each() |s| { assert!(!ty::type_has_params(*s)); }
     let param_uses = type_use::type_uses_for(ccx, fn_id, substs.len());
     let hash_id = make_mono_id(ccx, fn_id, substs, vtables, impl_did_opt,
                                Some(param_uses));
-    if vec::any(hash_id.params,
+    if hash_id.params.iter().any_(
                 |p| match *p { mono_precise(_, _) => false, _ => true }) {
         must_cast = true;
     }
@@ -143,17 +144,8 @@ pub fn monomorphic_fn(ccx: @CrateContext,
       ast_map::node_struct_ctor(_, i, pt) => (pt, i.ident, i.span)
     };
 
-    // Look up the impl type if we're translating a default method.
-    // XXX: Generics.
-    let impl_ty_opt;
-    match impl_did_opt {
-        None => impl_ty_opt = None,
-        Some(impl_did) => {
-            impl_ty_opt = Some(ty::lookup_item_type(ccx.tcx, impl_did).ty);
-        }
-    }
-
-    let mono_ty = ty::subst_tps(ccx.tcx, substs, impl_ty_opt, llitem_ty);
+    let mono_ty = ty::subst_tps(ccx.tcx, substs,
+                                real_substs.self_ty, llitem_ty);
     let llfty = type_of_fn_from_ty(ccx, mono_ty);
 
     ccx.stats.n_monos += 1;
@@ -171,7 +163,7 @@ pub fn monomorphic_fn(ccx: @CrateContext,
     ccx.monomorphizing.insert(fn_id, depth + 1);
 
     let pt = vec::append(/*bad*/copy *pt,
-                         [path_name((ccx.names)(*ccx.sess.str_of(name)))]);
+                         [path_name((ccx.names)(ccx.sess.str_of(name)))]);
     let s = mangle_exported_name(ccx, /*bad*/copy pt, mono_ty);
 
     let mk_lldecl = || {
@@ -184,7 +176,7 @@ pub fn monomorphic_fn(ccx: @CrateContext,
         tys: substs,
         vtables: vtables,
         type_param_defs: tpt.generics.type_param_defs,
-        self_ty: impl_ty_opt
+        self_ty: real_substs.self_ty
     });
 
     let lldecl = match map_node {
@@ -337,7 +329,7 @@ pub fn normalize_for_monomorphization(tcx: ty::ctxt,
     }
 }
 
-pub fn make_mono_id(ccx: @CrateContext,
+pub fn make_mono_id(ccx: @mut CrateContext,
                     item: ast::def_id,
                     substs: &[ty::t],
                     vtables: Option<typeck::vtable_res>,
@@ -378,9 +370,13 @@ pub fn make_mono_id(ccx: @CrateContext,
                         {
                             let llty = type_of::type_of(ccx, subst);
                             let size = machine::llbitsize_of_real(ccx, llty);
-                            let align = machine::llalign_of_pref(ccx, llty);
+                            let align = machine::llalign_of_min(ccx, llty);
                             let mode = datum::appropriate_mode(subst);
                             let data_class = mono_data_classify(subst);
+
+                            debug!("make_mono_id: type %s -> size %u align %u mode %? class %?",
+                                  ty_to_str(ccx.tcx, subst),
+                                  size, align, mode, data_class);
 
                             // Special value for nil to prevent problems
                             // with undef return pointers.

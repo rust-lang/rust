@@ -95,11 +95,11 @@ priv fn parse_response(io: @io::Reader) -> Result {
 
 priv fn cmd_to_str(cmd: ~[~str]) -> ~str {
   let mut res = ~"*";
-  str::push_str(&mut res, cmd.len().to_str());
-  str::push_str(&mut res, "\r\n");
+  res.push_str(cmd.len().to_str());
+  res.push_str("\r\n");
     for cmd.each |s| {
-    str::push_str(&mut res, str::concat(~[~"$", s.len().to_str(), ~"\r\n",
-                                          copy *s, ~"\r\n"]));
+    res.push_str([~"$", s.len().to_str(), ~"\r\n",
+                  copy *s, ~"\r\n"].concat()));
     }
   res
 }

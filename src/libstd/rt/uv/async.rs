@@ -93,7 +93,7 @@ mod test {
         do run_in_bare_thread {
             let mut loop_ = Loop::new();
             let watcher = AsyncWatcher::new(&mut loop_, |w, _| w.close(||()) );
-            let watcher_cell = Cell(watcher);
+            let watcher_cell = Cell::new(watcher);
             let _thread = do Thread::start {
                 let mut watcher = watcher_cell.take();
                 watcher.send();

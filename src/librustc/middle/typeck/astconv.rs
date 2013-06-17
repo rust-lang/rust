@@ -63,6 +63,8 @@ use middle::typeck::rscope::{region_scope, RegionError};
 use middle::typeck::rscope::RegionParamNames;
 use middle::typeck::lookup_def_tcx;
 
+use core::result;
+use core::vec;
 use syntax::abi::AbiSet;
 use syntax::{ast, ast_util};
 use syntax::codemap::span;
@@ -453,7 +455,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Copy + 'static>(
           }
           _ => {
             tcx.sess.span_fatal(ast_ty.span,
-                                "found type name used as a variable");
+                                fmt!("found value name used as a type: %?", a_def));
           }
         }
       }
@@ -779,6 +781,9 @@ pub fn try_add_builtin_trait(tcx: ty::ctxt,
         true
     } else if trait_def_id == li.const_trait() {
         builtin_bounds.add(ty::BoundConst);
+        true
+    } else if trait_def_id == li.sized_trait() {
+        builtin_bounds.add(ty::BoundSized);
         true
     } else {
         false

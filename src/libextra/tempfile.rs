@@ -12,8 +12,12 @@
 
 use core::prelude::*;
 
+use core::os;
 use core::rand::RngUtil;
+use core::rand;
 
+/// Attempts to make a temporary directory inside of `tmpdir` whose name will
+/// have the suffix `suffix`. If no directory can be created, None is returned.
 pub fn mkdtemp(tmpdir: &Path, suffix: &str) -> Option<Path> {
     let mut r = rand::rng();
     for 1000.times {
@@ -30,13 +34,15 @@ mod tests {
     use core::prelude::*;
 
     use tempfile::mkdtemp;
+
     use core::os;
+    use core::str;
 
     #[test]
     fn test_mkdtemp() {
         let p = mkdtemp(&Path("."), "foobar").unwrap();
         os::remove_dir(&p);
-        assert!(str::ends_with(p.to_str(), "foobar"));
+        assert!(p.to_str().ends_with("foobar"));
     }
 
     // Ideally these would be in core::os but then core would need

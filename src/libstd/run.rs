@@ -10,11 +10,15 @@
 
 //! Process spawning.
 
+#[allow(missing_doc)];
+
+use iterator::IteratorUtil;
 use cast;
-use io;
-use libc;
-use libc::{pid_t, c_void, c_int};
 use comm::{stream, SharedChan, GenericChan, GenericPort};
+use int;
+use io;
+use libc::{pid_t, c_void, c_int};
+use libc;
 use option::{Some, None};
 use os;
 use prelude::*;
@@ -133,8 +137,7 @@ pub struct ProcessOutput {
     error: ~[u8],
 }
 
-pub impl Process {
-
+impl Process {
     /**
      * Spawns a new Process.
      *
@@ -145,8 +148,8 @@ pub impl Process {
      * * options - Options to configure the environment of the process,
      *             the working directory and the standard IO streams.
      */
-    pub fn new(prog: &str, args: &[~str], options: ProcessOptions) -> Process {
-
+    pub fn new(prog: &str, args: &[~str], options: ProcessOptions)
+               -> Process {
         let (in_pipe, in_fd) = match options.in_fd {
             None => {
                 let pipe = os::pipe();
@@ -173,9 +176,9 @@ pub impl Process {
                                    in_fd, out_fd, err_fd);
 
         unsafe {
-            for in_pipe.each  |pipe| { libc::close(pipe.in); }
-            for out_pipe.each |pipe| { libc::close(pipe.out); }
-            for err_pipe.each |pipe| { libc::close(pipe.out); }
+            for in_pipe.iter().advance  |pipe| { libc::close(pipe.in); }
+            for out_pipe.iter().advance |pipe| { libc::close(pipe.out); }
+            for err_pipe.iter().advance |pipe| { libc::close(pipe.out); }
         }
 
         Process {
@@ -189,9 +192,9 @@ pub impl Process {
     }
 
     /// Returns the unique id of the process
-    fn get_id(&self) -> pid_t { self.pid }
+    pub fn get_id(&self) -> pid_t { self.pid }
 
-    priv fn input_fd(&mut self) -> c_int {
+    fn input_fd(&mut self) -> c_int {
         match self.input {
             Some(fd) => fd,
             None => fail!("This Process's stdin was redirected to an \
@@ -199,7 +202,7 @@ pub impl Process {
         }
     }
 
-    priv fn output_file(&mut self) -> *libc::FILE {
+    fn output_file(&mut self) -> *libc::FILE {
         match self.output {
             Some(file) => file,
             None => fail!("This Process's stdout was redirected to an \
@@ -207,7 +210,7 @@ pub impl Process {
         }
     }
 
-    priv fn error_file(&mut self) -> *libc::FILE {
+    fn error_file(&mut self) -> *libc::FILE {
         match self.error {
             Some(file) => file,
             None => fail!("This Process's stderr was redirected to an \
@@ -222,7 +225,7 @@ pub impl Process {
      *
      * If this method returns true then self.input() will fail.
      */
-    fn input_redirected(&self) -> bool {
+    pub fn input_redirected(&self) -> bool {
         self.input.is_none()
     }
 
@@ -233,7 +236,7 @@ pub impl Process {
      *
      * If this method returns true then self.output() will fail.
      */
-    fn output_redirected(&self) -> bool {
+    pub fn output_redirected(&self) -> bool {
         self.output.is_none()
     }
 
@@ -244,7 +247,7 @@ pub impl Process {
      *
      * If this method returns true then self.error() will fail.
      */
-    fn error_redirected(&self) -> bool {
+    pub fn error_redirected(&self) -> bool {
         self.error.is_none()
     }
 
@@ -253,7 +256,7 @@ pub impl Process {
      *
      * Fails if this Process's stdin was redirected to an existing file descriptor.
      */
-    fn input(&mut self) -> @io::Writer {
+    pub fn input(&mut self) -> @io::Writer {
         // FIXME: the Writer can still be used after self is destroyed: #2625
        io::fd_writer(self.input_fd(), false)
     }
@@ -263,7 +266,7 @@ pub impl Process {
      *
      * Fails if this Process's stdout was redirected to an existing file descriptor.
      */
-    fn output(&mut self) -> @io::Reader {
+    pub fn output(&mut self) -> @io::Reader {
         // FIXME: the Reader can still be used after self is destroyed: #2625
         io::FILE_reader(self.output_file(), false)
     }
@@ -273,7 +276,7 @@ pub impl Process {
      *
      * Fails if this Process's stderr was redirected to an existing file descriptor.
      */
-    fn error(&mut self) -> @io::Reader {
+    pub fn error(&mut self) -> @io::Reader {
         // FIXME: the Reader can still be used after self is destroyed: #2625
         io::FILE_reader(self.error_file(), false)
     }
@@ -284,7 +287,7 @@ pub impl Process {
      * If this process is reading its stdin from an existing file descriptor, then this
      * method does nothing.
      */
-    fn close_input(&mut self) {
+    pub fn close_input(&mut self) {
         match self.input {
             Some(-1) | None => (),
             Some(fd) => {
@@ -296,7 +299,7 @@ pub impl Process {
         }
     }
 
-    priv fn close_outputs(&mut self) {
+    fn close_outputs(&mut self) {
         fclose_and_null(&mut self.output);
         fclose_and_null(&mut self.error);
 
@@ -319,8 +322,8 @@ pub impl Process {
      *
      * If the child has already been finished then the exit code is returned.
      */
-    fn finish(&mut self) -> int {
-        for self.exit_code.each |&code| {
+    pub fn finish(&mut self) -> int {
+        for self.exit_code.iter().advance |&code| {
             return code;
         }
         self.close_input();
@@ -339,8 +342,7 @@ pub impl Process {
      * This method will fail if the child process's stdout or stderr streams were
      * redirected to existing file descriptors.
      */
-    fn finish_with_output(&mut self) -> ProcessOutput {
-
+    pub fn finish_with_output(&mut self) -> ProcessOutput {
         let output_file = self.output_file();
         let error_file = self.error_file();
 
@@ -375,8 +377,7 @@ pub impl Process {
                               error: errs};
     }
 
-    priv fn destroy_internal(&mut self, force: bool) {
-
+    fn destroy_internal(&mut self, force: bool) {
         // if the process has finished, and therefore had waitpid called,
         // and we kill it, then on unix we might ending up killing a
         // newer process that happens to have the same (re-used) id
@@ -414,7 +415,7 @@ pub impl Process {
      * On Posix OSs SIGTERM will be sent to the process. On Win32
      * TerminateProcess(..) will be called.
      */
-    fn destroy(&mut self) { self.destroy_internal(false); }
+    pub fn destroy(&mut self) { self.destroy_internal(false); }
 
     /**
      * Terminates the process as soon as possible without giving it a
@@ -423,12 +424,12 @@ pub impl Process {
      * On Posix OSs SIGKILL will be sent to the process. On Win32
      * TerminateProcess(..) will be called.
      */
-    fn force_destroy(&mut self) { self.destroy_internal(true); }
+    pub fn force_destroy(&mut self) { self.destroy_internal(true); }
 }
 
 impl Drop for Process {
     fn finalize(&self) {
-        // FIXME #4943: transmute is bad.
+        // FIXME(#4330) Need self by value to get mutability.
         let mut_self: &mut Process = unsafe { cast::transmute(self) };
 
         mut_self.finish();
@@ -462,6 +463,9 @@ fn spawn_process_os(prog: &str, args: &[~str],
         CreateProcessA
     };
     use libc::funcs::extra::msvcrt::get_osfhandle;
+
+    use sys;
+    use uint;
 
     unsafe {
 
@@ -519,7 +523,7 @@ fn spawn_process_os(prog: &str, args: &[~str],
         CloseHandle(si.hStdOutput);
         CloseHandle(si.hStdError);
 
-        for create_err.each |msg| {
+        for create_err.iter().advance |msg| {
             fail!("failure in CreateProcess: %s", *msg);
         }
 
@@ -574,6 +578,8 @@ fn zeroed_process_information() -> libc::types::os::arch::extra::PROCESS_INFORMA
 #[cfg(windows)]
 pub fn make_command_line(prog: &str, args: &[~str]) -> ~str {
 
+    use uint;
+
     let mut cmd = ~"";
     append_arg(&mut cmd, prog);
     for args.each |arg| {
@@ -583,7 +589,7 @@ pub fn make_command_line(prog: &str, args: &[~str]) -> ~str {
     return cmd;
 
     fn append_arg(cmd: &mut ~str, arg: &str) {
-        let quote = arg.any(|c| c == ' ' || c == '\t');
+        let quote = arg.iter().any_(|c| c == ' ' || c == '\t');
         if quote {
             cmd.push_char('"');
         }
@@ -735,8 +741,7 @@ fn with_envp<T>(env: Option<&[(~str, ~str)]>, cb: &fn(*mut c_void) -> T) -> T {
         let mut blk = ~[];
         for es.each |&(k, v)| {
             let kv = fmt!("%s=%s", k, v);
-            blk.push_all(str::as_bytes_slice(kv));
-            blk.push(0);
+            blk.push_all(kv.as_bytes_with_null_consume());
         }
         blk.push(0);
         vec::as_imm_buf(blk, |p, _len|
@@ -1095,28 +1100,34 @@ mod tests {
 
     #[test]
     fn test_keep_current_working_dir() {
-
         let mut prog = run_pwd(None);
 
         let output = str::from_bytes(prog.finish_with_output().output);
         let parent_dir = os::getcwd().normalize();
         let child_dir = Path(output.trim()).normalize();
 
-        assert_eq!(child_dir.to_str(), parent_dir.to_str());
+        let parent_stat = parent_dir.stat().unwrap();
+        let child_stat = child_dir.stat().unwrap();
+
+        assert_eq!(parent_stat.st_dev, child_stat.st_dev);
+        assert_eq!(parent_stat.st_ino, child_stat.st_ino);
     }
 
     #[test]
     fn test_change_working_directory() {
-
         // test changing to the parent of os::getcwd() because we know
         // the path exists (and os::getcwd() is not expected to be root)
-        let parent_path = os::getcwd().dir_path().normalize();
-        let mut prog = run_pwd(Some(&parent_path));
+        let parent_dir = os::getcwd().dir_path().normalize();
+        let mut prog = run_pwd(Some(&parent_dir));
 
         let output = str::from_bytes(prog.finish_with_output().output);
         let child_dir = Path(output.trim()).normalize();
 
-        assert_eq!(child_dir.to_str(), parent_path.to_str());
+        let parent_stat = parent_dir.stat().unwrap();
+        let child_stat = child_dir.stat().unwrap();
+
+        assert_eq!(parent_stat.st_dev, child_stat.st_dev);
+        assert_eq!(parent_stat.st_ino, child_stat.st_ino);
     }
 
     #[cfg(unix)]

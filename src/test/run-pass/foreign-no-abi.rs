@@ -11,6 +11,8 @@
 // ABI is cdecl by default
 
 mod rustrt {
+    use std::libc;
+
     pub extern {
         pub fn get_task_id() -> libc::intptr_t;
     }

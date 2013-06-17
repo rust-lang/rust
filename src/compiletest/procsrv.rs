@@ -10,7 +10,9 @@
 
 use core::prelude::*;
 
+use core::os;
 use core::run;
+use core::str;
 
 #[cfg(target_os = "win32")]
 fn target_env(lib_path: &str, prog: &str) -> ~[(~str,~str)] {
@@ -18,15 +20,15 @@ fn target_env(lib_path: &str, prog: &str) -> ~[(~str,~str)] {
     let mut env = os::env();
 
     // Make sure we include the aux directory in the path
-    assert!(prog.ends_with(~".exe"));
-    let aux_path = prog.slice(0u, prog.len() - 4u).to_owned() + ~".libaux";
+    assert!(prog.ends_with(".exe"));
+    let aux_path = prog.slice(0u, prog.len() - 4u).to_owned() + ".libaux";
 
     env = do vec::map(env) |pair| {
-        let (k,v) = *pair;
-        if k == ~"PATH" { (~"PATH", v + ~";" + lib_path + ~";" + aux_path) }
+        let (k,v) = copy *pair;
+        if k == ~"PATH" { (~"PATH", v + ";" + lib_path + ";" + aux_path) }
         else { (k,v) }
     };
-    if str::ends_with(prog, "rustc.exe") {
+    if prog.ends_with("rustc.exe") {
         env.push((~"RUST_THREADS", ~"1"));
     }
     return env;
@@ -56,7 +58,7 @@ pub fn run(lib_path: &str,
         err_fd: None
     });
 
-    for input.each |input| {
+    for input.iter().advance |input| {
         proc.input().write_str(*input);
     }
     let output = proc.finish_with_output();
@@ -67,4 +69,3 @@ pub fn run(lib_path: &str,
         err: str::from_bytes(output.error)
     }
 }
-

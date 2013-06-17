@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -11,13 +11,18 @@
 use core::prelude::*;
 
 use ast;
+use ast::Name;
 use ast_util;
 use parse::token;
 use util::interner::StrInterner;
 use util::interner;
 
+use core::cast;
+use core::char;
 use core::cmp::Equiv;
-use core::to_bytes;
+use core::local_data;
+use core::rand;
+use core::rand::RngUtil;
 
 #[deriving(Encodable, Decodable, Eq)]
 pub enum binop {
@@ -172,29 +177,29 @@ pub fn to_str(in: @ident_interner, t: &Token) -> ~str {
           u.to_str() + ast_util::uint_ty_to_str(t)
       }
       LIT_INT_UNSUFFIXED(i) => { i.to_str() }
-      LIT_FLOAT(s, t) => {
-        let mut body = copy *in.get(s);
+      LIT_FLOAT(ref s, t) => {
+        let mut body = ident_to_str(s).to_owned();
         if body.ends_with(".") {
             body += "0";  // `10.f` is not a float literal
         }
         body + ast_util::float_ty_to_str(t)
       }
-      LIT_FLOAT_UNSUFFIXED(s) => {
-        let mut body = copy *in.get(s);
+      LIT_FLOAT_UNSUFFIXED(ref s) => {
+        let mut body = ident_to_str(s).to_owned();
         if body.ends_with(".") {
             body += "0";  // `10.f` is not a float literal
         }
         body
       }
-      LIT_STR(s) => { ~"\"" + str::escape_default(*in.get(s)) + "\"" }
+      LIT_STR(ref s) => { fmt!("\"%s\"", ident_to_str(s).escape_default()) }
 
       /* Name components */
-      IDENT(s, _) => copy *in.get(s),
-      LIFETIME(s) => fmt!("'%s", *in.get(s)),
+      IDENT(s, _) => in.get(s.name).to_owned(),
+      LIFETIME(s) => fmt!("'%s", in.get(s.name)),
       UNDERSCORE => ~"_",
 
       /* Other */
-      DOC_COMMENT(s) => copy *in.get(s),
+      DOC_COMMENT(ref s) => ident_to_str(s).to_owned(),
       EOF => ~"<eof>",
       INTERPOLATED(ref nt) => {
         match nt {
@@ -300,61 +305,47 @@ pub fn is_bar(t: &Token) -> bool {
 pub mod special_idents {
     use ast::ident;
 
-    pub static underscore : ident = ident { repr: 0, ctxt: 0};
-    pub static anon : ident = ident { repr: 1, ctxt: 0};
-    pub static invalid : ident = ident { repr: 2, ctxt: 0}; // ''
-    pub static unary : ident = ident { repr: 3, ctxt: 0};
-    pub static not_fn : ident = ident { repr: 4, ctxt: 0};
-    pub static idx_fn : ident = ident { repr: 5, ctxt: 0};
-    pub static unary_minus_fn : ident = ident { repr: 6, ctxt: 0};
-    pub static clownshoes_extensions : ident = ident { repr: 7, ctxt: 0};
+    pub static underscore : ident = ident { name: 0, ctxt: 0};
+    pub static anon : ident = ident { name: 1, ctxt: 0};
+    pub static invalid : ident = ident { name: 2, ctxt: 0}; // ''
+    pub static unary : ident = ident { name: 3, ctxt: 0};
+    pub static not_fn : ident = ident { name: 4, ctxt: 0};
+    pub static idx_fn : ident = ident { name: 5, ctxt: 0};
+    pub static unary_minus_fn : ident = ident { name: 6, ctxt: 0};
+    pub static clownshoes_extensions : ident = ident { name: 7, ctxt: 0};
 
-    pub static self_ : ident = ident { repr: 8, ctxt: 0}; // 'self'
+    pub static self_ : ident = ident { name: 8, ctxt: 0}; // 'self'
 
     /* for matcher NTs */
-    pub static item : ident = ident { repr: 9, ctxt: 0};
-    pub static block : ident = ident { repr: 10, ctxt: 0};
-    pub static stmt : ident = ident { repr: 11, ctxt: 0};
-    pub static pat : ident = ident { repr: 12, ctxt: 0};
-    pub static expr : ident = ident { repr: 13, ctxt: 0};
-    pub static ty : ident = ident { repr: 14, ctxt: 0};
-    pub static ident : ident = ident { repr: 15, ctxt: 0};
-    pub static path : ident = ident { repr: 16, ctxt: 0};
-    pub static tt : ident = ident { repr: 17, ctxt: 0};
-    pub static matchers : ident = ident { repr: 18, ctxt: 0};
+    pub static item : ident = ident { name: 9, ctxt: 0};
+    pub static block : ident = ident { name: 10, ctxt: 0};
+    pub static stmt : ident = ident { name: 11, ctxt: 0};
+    pub static pat : ident = ident { name: 12, ctxt: 0};
+    pub static expr : ident = ident { name: 13, ctxt: 0};
+    pub static ty : ident = ident { name: 14, ctxt: 0};
+    pub static ident : ident = ident { name: 15, ctxt: 0};
+    pub static path : ident = ident { name: 16, ctxt: 0};
+    pub static tt : ident = ident { name: 17, ctxt: 0};
+    pub static matchers : ident = ident { name: 18, ctxt: 0};
 
-    pub static str : ident = ident { repr: 19, ctxt: 0}; // for the type
+    pub static str : ident = ident { name: 19, ctxt: 0}; // for the type
 
     /* outside of libsyntax */
-    pub static ty_visitor : ident = ident { repr: 20, ctxt: 0};
-    pub static arg : ident = ident { repr: 21, ctxt: 0};
-    pub static descrim : ident = ident { repr: 22, ctxt: 0};
-    pub static clownshoe_abi : ident = ident { repr: 23, ctxt: 0};
-    pub static clownshoe_stack_shim : ident = ident { repr: 24, ctxt: 0};
-    pub static tydesc : ident = ident { repr: 25, ctxt: 0};
-    pub static main : ident = ident { repr: 26, ctxt: 0};
-    pub static opaque : ident = ident { repr: 27, ctxt: 0};
-    pub static blk : ident = ident { repr: 28, ctxt: 0};
-    pub static statik : ident = ident { repr: 29, ctxt: 0};
-    pub static intrinsic : ident = ident { repr: 30, ctxt: 0};
-    pub static clownshoes_foreign_mod: ident = ident { repr: 31, ctxt: 0};
-    pub static unnamed_field: ident = ident { repr: 32, ctxt: 0};
-    pub static c_abi: ident = ident { repr: 33, ctxt: 0};
-    pub static type_self: ident = ident { repr: 34, ctxt: 0};    // `Self`
-}
-
-pub struct StringRef<'self>(&'self str);
-
-impl<'self> Equiv<@~str> for StringRef<'self> {
-    #[inline(always)]
-    fn equiv(&self, other: &@~str) -> bool { str::eq_slice(**self, **other) }
-}
-
-impl<'self> to_bytes::IterBytes for StringRef<'self> {
-    #[inline(always)]
-    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
-        (**self).iter_bytes(lsb0, f)
-    }
+    pub static ty_visitor : ident = ident { name: 20, ctxt: 0};
+    pub static arg : ident = ident { name: 21, ctxt: 0};
+    pub static descrim : ident = ident { name: 22, ctxt: 0};
+    pub static clownshoe_abi : ident = ident { name: 23, ctxt: 0};
+    pub static clownshoe_stack_shim : ident = ident { name: 24, ctxt: 0};
+    pub static tydesc : ident = ident { name: 25, ctxt: 0};
+    pub static main : ident = ident { name: 26, ctxt: 0};
+    pub static opaque : ident = ident { name: 27, ctxt: 0};
+    pub static blk : ident = ident { name: 28, ctxt: 0};
+    pub static statik : ident = ident { name: 29, ctxt: 0};
+    pub static intrinsic : ident = ident { name: 30, ctxt: 0};
+    pub static clownshoes_foreign_mod: ident = ident { name: 31, ctxt: 0};
+    pub static unnamed_field: ident = ident { name: 32, ctxt: 0};
+    pub static c_abi: ident = ident { name: 33, ctxt: 0};
+    pub static type_self: ident = ident { name: 34, ctxt: 0};    // `Self`
 }
 
 /**
@@ -389,25 +380,23 @@ pub struct ident_interner {
     priv interner: StrInterner,
 }
 
-pub impl ident_interner {
-    fn intern(&self, val: &str) -> ast::ident {
-        ast::ident { repr: self.interner.intern(val), ctxt: 0 }
+impl ident_interner {
+    pub fn intern(&self, val: &str) -> Name {
+        self.interner.intern(val)
     }
-    fn gensym(&self, val: &str) -> ast::ident {
-        ast::ident { repr: self.interner.gensym(val), ctxt: 0 }
+    pub fn gensym(&self, val: &str) -> Name {
+        self.interner.gensym(val)
     }
-    fn get(&self, idx: ast::ident) -> @~str {
-        self.interner.get(idx.repr)
+    pub fn get(&self, idx: Name) -> @str {
+        self.interner.get(idx)
     }
-    fn len(&self) -> uint {
+    // is this really something that should be exposed?
+    pub fn len(&self) -> uint {
         self.interner.len()
     }
-    fn find_equiv<Q:Hash + IterBytes + Equiv<@~str>>(&self, val: &Q)
-                                                     -> Option<ast::ident> {
-        match self.interner.find_equiv(val) {
-            Some(v) => Some(ast::ident { repr: v, ctxt: 0 }),
-            None => None,
-        }
+    pub fn find_equiv<Q:Hash + IterBytes + Equiv<@str>>(&self, val: &Q)
+                                                     -> Option<Name> {
+        self.interner.find_equiv(val)
     }
 }
 
@@ -525,9 +514,49 @@ pub fn mk_fake_ident_interner() -> @ident_interner {
 }
 
 // maps a string to its interned representation
-pub fn intern(str : &str) -> ast::ident {
+pub fn intern(str : &str) -> Name {
     let interner = get_ident_interner();
     interner.intern(str)
+}
+
+// gensyms a new uint, using the current interner
+pub fn gensym(str : &str) -> Name {
+    let interner = get_ident_interner();
+    interner.gensym(str)
+}
+
+// map an interned representation back to a string
+pub fn interner_get(name : Name) -> @str {
+    get_ident_interner().get(name)
+}
+
+// maps an identifier to the string that it corresponds to
+pub fn ident_to_str(id : &ast::ident) -> @str {
+    interner_get(id.name)
+}
+
+// maps a string to an identifier with an empty syntax context
+pub fn str_to_ident(str : &str) -> ast::ident {
+    ast::new_ident(intern(str))
+}
+
+// maps a string to a gensym'ed identifier
+pub fn gensym_ident(str : &str) -> ast::ident {
+    ast::new_ident(gensym(str))
+}
+
+
+// create a fresh name. In principle, this is just a
+// gensym, but for debugging purposes, you'd like the
+// resulting name to have a suggestive stringify, without
+// paying the cost of guaranteeing that the name is
+// truly unique.  I'm going to try to strike a balance
+// by using a gensym with a name that has a random number
+// at the end. So, the gensym guarantees the uniqueness,
+// and the int helps to avoid confusion.
+pub fn fresh_name(src_name : &str) -> Name {
+    let num = rand::rng().gen_uint_range(0,0xffff);
+   gensym(fmt!("%s_%u",src_name,num))
 }
 
 /**
@@ -547,7 +576,6 @@ pub mod keywords {
         Const,
         Copy,
         Do,
-        Drop,
         Else,
         Enum,
         Extern,
@@ -583,46 +611,45 @@ pub mod keywords {
         Be,
     }
 
-    pub impl Keyword {
-        fn to_ident(&self) -> ident {
+    impl Keyword {
+        pub fn to_ident(&self) -> ident {
             match *self {
-                As => ident { repr: 35, ctxt: 0 },
-                   Break => ident { repr: 36, ctxt: 0 },
-                   Const => ident { repr: 37, ctxt: 0 },
-                   Copy => ident { repr: 38, ctxt: 0 },
-                   Do => ident { repr: 39, ctxt: 0 },
-                   Drop => ident { repr: 40, ctxt: 0 },
-                   Else => ident { repr: 41, ctxt: 0 },
-                   Enum => ident { repr: 42, ctxt: 0 },
-                   Extern => ident { repr: 43, ctxt: 0 },
-                   False => ident { repr: 44, ctxt: 0 },
-                   Fn => ident { repr: 45, ctxt: 0 },
-                   For => ident { repr: 46, ctxt: 0 },
-                   If => ident { repr: 47, ctxt: 0 },
-                   Impl => ident { repr: 48, ctxt: 0 },
-                   Let => ident { repr: 49, ctxt: 0 },
-                   __Log => ident { repr: 50, ctxt: 0 },
-                   Loop => ident { repr: 51, ctxt: 0 },
-                   Match => ident { repr: 52, ctxt: 0 },
-                   Mod => ident { repr: 53, ctxt: 0 },
-                   Mut => ident { repr: 54, ctxt: 0 },
-                   Once => ident { repr: 55, ctxt: 0 },
-                   Priv => ident { repr: 56, ctxt: 0 },
-                   Pub => ident { repr: 57, ctxt: 0 },
-                   Pure => ident { repr: 58, ctxt: 0 },
-                   Ref => ident { repr: 59, ctxt: 0 },
-                   Return => ident { repr: 60, ctxt: 0 },
-                   Static => ident { repr: 29, ctxt: 0 },
-                   Self => ident { repr: 8, ctxt: 0 },
-                   Struct => ident { repr: 61, ctxt: 0 },
-                   Super => ident { repr: 62, ctxt: 0 },
-                   True => ident { repr: 63, ctxt: 0 },
-                   Trait => ident { repr: 64, ctxt: 0 },
-                   Type => ident { repr: 65, ctxt: 0 },
-                   Unsafe => ident { repr: 66, ctxt: 0 },
-                   Use => ident { repr: 67, ctxt: 0 },
-                   While => ident { repr: 68, ctxt: 0 },
-                   Be => ident { repr: 69, ctxt: 0 },
+                As => ident { name: 35, ctxt: 0 },
+                   Break => ident { name: 36, ctxt: 0 },
+                   Const => ident { name: 37, ctxt: 0 },
+                   Copy => ident { name: 38, ctxt: 0 },
+                   Do => ident { name: 39, ctxt: 0 },
+                   Else => ident { name: 41, ctxt: 0 },
+                   Enum => ident { name: 42, ctxt: 0 },
+                   Extern => ident { name: 43, ctxt: 0 },
+                   False => ident { name: 44, ctxt: 0 },
+                   Fn => ident { name: 45, ctxt: 0 },
+                   For => ident { name: 46, ctxt: 0 },
+                   If => ident { name: 47, ctxt: 0 },
+                   Impl => ident { name: 48, ctxt: 0 },
+                   Let => ident { name: 49, ctxt: 0 },
+                   __Log => ident { name: 50, ctxt: 0 },
+                   Loop => ident { name: 51, ctxt: 0 },
+                   Match => ident { name: 52, ctxt: 0 },
+                   Mod => ident { name: 53, ctxt: 0 },
+                   Mut => ident { name: 54, ctxt: 0 },
+                   Once => ident { name: 55, ctxt: 0 },
+                   Priv => ident { name: 56, ctxt: 0 },
+                   Pub => ident { name: 57, ctxt: 0 },
+                   Pure => ident { name: 58, ctxt: 0 },
+                   Ref => ident { name: 59, ctxt: 0 },
+                   Return => ident { name: 60, ctxt: 0 },
+                   Static => ident { name: 29, ctxt: 0 },
+                   Self => ident { name: 8, ctxt: 0 },
+                   Struct => ident { name: 61, ctxt: 0 },
+                   Super => ident { name: 62, ctxt: 0 },
+                   True => ident { name: 63, ctxt: 0 },
+                   Trait => ident { name: 64, ctxt: 0 },
+                   Type => ident { name: 65, ctxt: 0 },
+                   Unsafe => ident { name: 66, ctxt: 0 },
+                   Use => ident { name: 67, ctxt: 0 },
+                   While => ident { name: 68, ctxt: 0 },
+                   Be => ident { name: 69, ctxt: 0 },
             }
         }
     }
@@ -630,14 +657,14 @@ pub mod keywords {
 
 pub fn is_keyword(kw: keywords::Keyword, tok: &Token) -> bool {
     match *tok {
-        token::IDENT(sid, false) => { kw.to_ident().repr == sid.repr }
+        token::IDENT(sid, false) => { kw.to_ident().name == sid.name }
         _ => { false }
     }
 }
 
 pub fn is_any_keyword(tok: &Token) -> bool {
     match *tok {
-        token::IDENT(sid, false) => match sid.repr {
+        token::IDENT(sid, false) => match sid.name {
             8 | 29 | 35 .. 69 => true,
             _ => false,
         },
@@ -647,7 +674,7 @@ pub fn is_any_keyword(tok: &Token) -> bool {
 
 pub fn is_strict_keyword(tok: &Token) -> bool {
     match *tok {
-        token::IDENT(sid, false) => match sid.repr {
+        token::IDENT(sid, false) => match sid.name {
             8 | 29 | 35 .. 68 => true,
             _ => false,
         },
@@ -657,10 +684,21 @@ pub fn is_strict_keyword(tok: &Token) -> bool {
 
 pub fn is_reserved_keyword(tok: &Token) -> bool {
     match *tok {
-        token::IDENT(sid, false) => match sid.repr {
+        token::IDENT(sid, false) => match sid.name {
             69 => true,
             _ => false,
         },
         _ => false,
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use std::io;
+    #[test] fn t1() {
+        let a = fresh_name("ghi");
+        io::println(fmt!("interned name: %u,\ntextual name: %s\n",
+                         a,interner_get(a)));
     }
 }

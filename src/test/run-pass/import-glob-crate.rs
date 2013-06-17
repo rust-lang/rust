@@ -16,6 +16,6 @@ use std::vec::*;
 
 pub fn main() {
     let mut v = from_elem(0u, 0);
-    v = vec::append(v, ~[4, 2]);
+    v = append(v, ~[4, 2]);
     assert_eq!(reversed(v), ~[2, 4]);
 }

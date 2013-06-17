@@ -78,7 +78,7 @@ impl<T> Drop for RC<T> {
         assert!(self.refcount() > 0);
 
         unsafe {
-            // XXX: Mutable finalizer
+            // FIXME(#4330) Need self by value to get mutability.
             let this: &mut RC<T> = cast::transmute_mut(self);
 
             match *this.get_mut_state() {

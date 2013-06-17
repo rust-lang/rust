@@ -10,6 +10,8 @@
 
 //! Types/fns concerning Internet Protocol (IP), versions 4 & 6
 
+#[allow(missing_doc)];
+
 use core::prelude::*;
 
 use core::libc;
@@ -156,9 +158,7 @@ pub mod v4 {
 
     use core::cast::transmute;
     use core::result;
-    use core::str;
     use core::uint;
-    use core::vec;
 
     /**
      * Convert a str to `ip_addr`
@@ -197,14 +197,12 @@ pub mod v4 {
         }
     }
     pub fn parse_to_ipv4_rep(ip: &str) -> result::Result<Ipv4Rep, ~str> {
-        let mut parts = ~[];
-        for str::each_split_char(ip, '.') |s| { parts.push(s.to_owned()) }
-        let parts = vec::map(parts, |s| {
-            match uint::from_str(*s) {
-              Some(n) if n <= 255 => n,
-              _ => 256
+        let parts: ~[uint] = ip.split_iter('.').transform(|s| {
+            match uint::from_str(s) {
+                Some(n) if n <= 255 => n,
+                _ => 256
             }
-        });
+        }).collect();
         if parts.len() != 4 {
             Err(fmt!("'%s' doesn't have 4 parts", ip))
         } else if parts.contains(&256) {
@@ -228,7 +226,7 @@ pub mod v4 {
             let input_is_inaddr_none =
                 result::get(&ip_rep_result).as_u32() == INADDR_NONE;
 
-            let new_addr = uv_ip4_addr(str::to_owned(ip), 22);
+            let new_addr = uv_ip4_addr(ip, 22);
             let reformatted_name = uv_ip4_name(&new_addr);
             debug!("try_parse_addr: input ip: %s reparsed ip: %s",
                             ip, reformatted_name);
@@ -257,7 +255,6 @@ pub mod v6 {
     use uv_ip6_name = uv::ll::ip6_name;
 
     use core::result;
-    use core::str;
 
     /**
      * Convert a str to `ip_addr`
@@ -277,13 +274,13 @@ pub mod v6 {
     pub fn parse_addr(ip: &str) -> IpAddr {
         match try_parse_addr(ip) {
           result::Ok(addr) => addr,
-          result::Err(copy err_data) => fail!(copy err_data.err_msg)
+          result::Err(err_data) => fail!(copy err_data.err_msg)
         }
     }
     pub fn try_parse_addr(ip: &str) -> result::Result<IpAddr,ParseAddrErr> {
         unsafe {
             // need to figure out how to establish a parse failure..
-            let new_addr = uv_ip6_addr(str::to_owned(ip), 22);
+            let new_addr = uv_ip6_addr(ip, 22);
             let reparsed_name = uv_ip6_name(&new_addr);
             debug!("v6::try_parse_addr ip: '%s' reparsed '%s'",
                             ip, reparsed_name);

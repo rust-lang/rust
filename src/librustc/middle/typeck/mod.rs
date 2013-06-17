@@ -59,6 +59,7 @@ use util::ppaux::Repr;
 use util::ppaux;
 
 use core::hashmap::HashMap;
+use core::result;
 use extra::list::List;
 use extra::list;
 use syntax::codemap::span;
@@ -241,7 +242,8 @@ pub fn require_same_types(
     t2: ty::t,
     msg: &fn() -> ~str) -> bool {
 
-    let l_tcx, l_infcx;
+    let l_tcx;
+    let l_infcx;
     match maybe_infcx {
       None => {
         l_tcx = tcx;
@@ -322,8 +324,8 @@ fn check_main_fn_ty(ccx: @mut CrateCtxt,
         }
         _ => {
             tcx.sess.span_bug(main_span,
-                              ~"main has a non-function type: found `" +
-                              ppaux::ty_to_str(tcx, main_t) + "`");
+                              fmt!("main has a non-function type: found `%s`",
+                                   ppaux::ty_to_str(tcx, main_t)));
         }
     }
 }
@@ -371,8 +373,8 @@ fn check_start_fn_ty(ccx: @mut CrateCtxt,
         }
         _ => {
             tcx.sess.span_bug(start_span,
-                              ~"start has a non-function type: found `" +
-                              ppaux::ty_to_str(tcx, start_t) + "`");
+                              fmt!("start has a non-function type: found `%s`",
+                                   ppaux::ty_to_str(tcx, start_t)));
         }
     }
 }

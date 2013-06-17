@@ -34,7 +34,11 @@ pub struct SchedMetrics {
     // Message receives that do not block the receiver
     rendezvous_recvs: uint,
     // Message receives that block the receiver
-    non_rendezvous_recvs: uint
+    non_rendezvous_recvs: uint,
+    // JoinLatch releases that create tombstones
+    release_tombstone: uint,
+    // JoinLatch releases that do not create tombstones
+    release_no_tombstone: uint,
 }
 
 impl SchedMetrics {
@@ -51,7 +55,9 @@ impl SchedMetrics {
             rendezvous_sends: 0,
             non_rendezvous_sends: 0,
             rendezvous_recvs: 0,
-            non_rendezvous_recvs: 0
+            non_rendezvous_recvs: 0,
+            release_tombstone: 0,
+            release_no_tombstone: 0
         }
     }
 }
@@ -70,6 +76,8 @@ impl ToStr for SchedMetrics {
               non_rendezvous_sends: %u\n\
               rendezvous_recvs: %u\n\
               non_rendezvous_recvs: %u\n\
+              release_tombstone: %u\n\
+              release_no_tombstone: %u\n\
               ",
              self.turns,
              self.messages_received,
@@ -82,7 +90,9 @@ impl ToStr for SchedMetrics {
              self.rendezvous_sends,
              self.non_rendezvous_sends,
              self.rendezvous_recvs,
-             self.non_rendezvous_recvs
+             self.non_rendezvous_recvs,
+             self.release_tombstone,
+             self.release_no_tombstone
         )
     }
 }

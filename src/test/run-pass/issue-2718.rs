@@ -14,8 +14,10 @@ use std::util;
 
 // tjc: I don't know why
 pub mod pipes {
-    use std::util;
     use std::cast::{forget, transmute};
+    use std::cast;
+    use std::task;
+    use std::util;
 
     pub struct Stuff<T> {
         state: state,
@@ -170,8 +172,8 @@ pub mod pipes {
         }
     }
 
-    pub impl<T:Owned> send_packet<T> {
-        fn unwrap(&mut self) -> *packet<T> {
+    impl<T:Owned> send_packet<T> {
+        pub fn unwrap(&mut self) -> *packet<T> {
             util::replace(&mut self.p, None).unwrap()
         }
     }
@@ -200,8 +202,8 @@ pub mod pipes {
         }
     }
 
-    pub impl<T:Owned> recv_packet<T> {
-        fn unwrap(&mut self) -> *packet<T> {
+    impl<T:Owned> recv_packet<T> {
+        pub fn unwrap(&mut self) -> *packet<T> {
             util::replace(&mut self.p, None).unwrap()
         }
     }
@@ -316,8 +318,8 @@ pub fn main() {
 //    Commented out because of option::get error
 
     let (client_, server_) = pingpong::init();
-    let client_ = Cell(client_);
-    let server_ = Cell(server_);
+    let client_ = Cell::new(client_);
+    let server_ = Cell::new(server_);
 
     task::spawn {|client_|
         let client__ = client_.take();

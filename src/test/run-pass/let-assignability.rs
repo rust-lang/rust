@@ -11,7 +11,7 @@
 fn f() {
     let a = ~"hello";
     let b: &str = a;
-    io::println(b);
+    println(b);
 }
 
 pub fn main() {

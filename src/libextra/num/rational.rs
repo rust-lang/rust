@@ -8,17 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 //! Rational numbers
 
 use core::prelude::*;
 
-use core::num::{Zero,One,ToStrRadix,FromStrRadix,Round};
+use core::cmp;
 use core::from_str::FromStr;
+use core::num::{Zero,One,ToStrRadix,FromStrRadix,Round};
 use super::bigint::BigInt;
 
 /// Represents the ratio between 2 numbers.
 #[deriving(Clone)]
+#[allow(missing_doc)]
 pub struct Ratio<T> {
     numer: T,
     denom: T
@@ -46,7 +47,7 @@ impl<T: Clone + Integer + Ord>
         Ratio { numer: numer, denom: denom }
     }
 
-    // Create a new Ratio. Fails if `denom == 0`.
+    /// Create a new Ratio. Fails if `denom == 0`.
     #[inline(always)]
     pub fn new(numer: T, denom: T) -> Ratio<T> {
         if denom == Zero::zero() {
@@ -249,11 +250,7 @@ impl<T: FromStr + Clone + Integer + Ord>
     FromStr for Ratio<T> {
     /// Parses `numer/denom`.
     fn from_str(s: &str) -> Option<Ratio<T>> {
-        let split = vec::build(|push| {
-            for str::each_splitn_char(s, '/', 1) |s| {
-                push(s.to_owned());
-            }
-        });
+        let split: ~[&str] = s.splitn_iter('/', 1).collect();
         if split.len() < 2 { return None; }
         do FromStr::from_str::<T>(split[0]).chain |a| {
             do FromStr::from_str::<T>(split[1]).chain |b| {
@@ -266,11 +263,7 @@ impl<T: FromStrRadix + Clone + Integer + Ord>
     FromStrRadix for Ratio<T> {
     /// Parses `numer/denom` where the numbers are in base `radix`.
     fn from_str_radix(s: &str, radix: uint) -> Option<Ratio<T>> {
-        let split = vec::build(|push| {
-            for str::each_splitn_char(s, '/', 1) |s| {
-                push(s.to_owned());
-            }
-        });
+        let split: ~[&str] = s.splitn_iter('/', 1).collect();
         if split.len() < 2 { None }
         else {
             do FromStrRadix::from_str_radix::<T>(split[0], radix).chain |a| {

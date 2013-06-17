@@ -22,6 +22,8 @@ use ext::base::*;
 use ext::base;
 use ext::build::AstBuilder;
 
+use core::os;
+
 pub fn expand_syntax_ext(cx: @ExtCtxt, sp: span, tts: &[ast::token_tree])
     -> base::MacResult {
 
@@ -31,8 +33,8 @@ pub fn expand_syntax_ext(cx: @ExtCtxt, sp: span, tts: &[ast::token_tree])
     // Option<str> rather than just an maybe-empty string.
 
     let e = match os::getenv(var) {
-      None => cx.expr_str(sp, ~""),
-      Some(ref s) => cx.expr_str(sp, copy *s)
+      None => cx.expr_str(sp, @""),
+      Some(s) => cx.expr_str(sp, s.to_managed())
     };
     MRExpr(e)
 }

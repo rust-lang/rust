@@ -1,3 +1,5 @@
+use std::cast;
+use std::libc;
 use std::unstable::run_in_bare_thread;
 
 extern {

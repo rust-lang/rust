@@ -21,40 +21,48 @@ pub struct WorkQueue<T> {
     priv queue: ~Exclusive<~[T]>
 }
 
-pub impl<T: Owned> WorkQueue<T> {
-    fn new() -> WorkQueue<T> {
+impl<T: Owned> WorkQueue<T> {
+    pub fn new() -> WorkQueue<T> {
         WorkQueue {
             queue: ~exclusive(~[])
         }
     }
 
-    fn push(&mut self, value: T) {
-        let value = Cell(value);
-        self.queue.with(|q| q.unshift(value.take()) );
+    pub fn push(&mut self, value: T) {
+        unsafe {
+            let value = Cell::new(value);
+            self.queue.with(|q| q.unshift(value.take()) );
+        }
     }
 
-    fn pop(&mut self) -> Option<T> {
-        do self.queue.with |q| {
-            if !q.is_empty() {
-                Some(q.shift())
-            } else {
-                None
+    pub fn pop(&mut self) -> Option<T> {
+        unsafe {
+            do self.queue.with |q| {
+                if !q.is_empty() {
+                    Some(q.shift())
+                } else {
+                    None
+                }
             }
         }
     }
 
-    fn steal(&mut self) -> Option<T> {
-        do self.queue.with |q| {
-            if !q.is_empty() {
-                Some(q.pop())
-            } else {
-                None
+    pub fn steal(&mut self) -> Option<T> {
+        unsafe {
+            do self.queue.with |q| {
+                if !q.is_empty() {
+                    Some(q.pop())
+                } else {
+                    None
+                }
             }
         }
     }
 
-    fn is_empty(&self) -> bool {
-        self.queue.with_imm(|q| q.is_empty() )
+    pub fn is_empty(&self) -> bool {
+        unsafe {
+            self.queue.with_imm(|q| q.is_empty() )
+        }
     }
 }
 

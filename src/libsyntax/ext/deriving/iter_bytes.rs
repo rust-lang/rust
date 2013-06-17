@@ -16,6 +16,7 @@ use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use ext::deriving::generic::*;
 
+
 pub fn expand_deriving_iter_bytes(cx: @ExtCtxt,
                                   span: span,
                                   mitem: @meta_item,
@@ -40,7 +41,7 @@ pub fn expand_deriving_iter_bytes(cx: @ExtCtxt,
         ]
     };
 
-    expand_deriving_generic(cx, span, mitem, in_items, &trait_def)
+    trait_def.expand(cx, span, mitem, in_items)
 }
 
 fn iter_bytes_substructure(cx: @ExtCtxt, span: span, substr: &Substructure) -> @expr {
@@ -60,11 +61,11 @@ fn iter_bytes_substructure(cx: @ExtCtxt, span: span, substr: &Substructure) -> @
         Struct(ref fs) => {
             fields = fs
         }
-        EnumMatching(copy index, ref variant, ref fs) => {
+        EnumMatching(index, ref variant, ref fs) => {
             // Determine the discriminant. We will feed this value to the byte
             // iteration function.
             let discriminant = match variant.node.disr_expr {
-                Some(copy d)=> d,
+                Some(d)=> d,
                 None => cx.expr_uint(span, index)
             };
 
@@ -83,7 +84,7 @@ fn iter_bytes_substructure(cx: @ExtCtxt, span: span, substr: &Substructure) -> @
         cx.span_bug(span, "#[deriving(IterBytes)] needs at least one field");
     }
 
-    do vec::foldl(exprs[0], exprs.slice(1, exprs.len())) |prev, me| {
+    do exprs.slice(1, exprs.len()).iter().fold(exprs[0]) |prev, me| {
         cx.expr_binary(span, and, prev, *me)
     }
 }

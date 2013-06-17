@@ -14,12 +14,16 @@
 Core encoding and decoding interfaces.
 */
 
+#[allow(missing_doc)];
 #[forbid(non_camel_case_types)];
 
 use core::prelude::*;
 
+use core::at_vec;
 use core::hashmap::{HashMap, HashSet};
 use core::trie::{TrieMap, TrieSet};
+use core::uint;
+use core::vec;
 use deque::Deque;
 use dlist::DList;
 use treemap::{TreeMap, TreeSet};
@@ -368,6 +372,18 @@ impl<S:Encoder> Encodable<S> for bool {
 impl<D:Decoder> Decodable<D> for bool {
     fn decode(d: &mut D) -> bool {
         d.read_bool()
+    }
+}
+
+impl<S:Encoder> Encodable<S> for char {
+    fn encode(&self, s: &mut S) {
+        s.emit_char(*self)
+    }
+}
+
+impl<D:Decoder> Decodable<D> for char {
+    fn decode(d: &mut D) -> char {
+        d.read_char()
     }
 }
 

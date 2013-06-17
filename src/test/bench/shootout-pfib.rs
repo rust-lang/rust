@@ -22,11 +22,17 @@
 extern mod extra;
 
 use extra::{time, getopts};
-use std::int::range;
 use std::comm::*;
+use std::int::range;
 use std::io::WriterUtil;
-
+use std::io;
+use std::os;
 use std::result::{Ok, Err};
+use std::str;
+use std::task;
+use std::u64;
+use std::uint;
+use std::vec;
 
 fn fib(n: int) -> int {
     fn pfib(c: &Chan<int>, n: int) {
@@ -105,8 +111,7 @@ fn main() {
     if opts.stress {
         stress(2);
     } else {
-        let max = uint::parse_bytes(str::to_bytes(args[1]),
-                                                10u).get() as int;
+        let max = uint::parse_bytes(args[1].as_bytes(), 10u).get() as int;
 
         let num_trials = 10;
 

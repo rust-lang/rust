@@ -94,7 +94,14 @@ total line count).
     }
 */
 
+#[allow(missing_doc)];
+
 use core::prelude::*;
+
+use core::io::ReaderUtil;
+use core::io;
+use core::os;
+use core::vec;
 
 /**
 A summary of the internal state of a `FileInput` object. `line_num`
@@ -187,8 +194,8 @@ impl FileInput {
     arguments. `"-"` represents `stdin`.
     */
     pub fn from_args() -> FileInput {
-        let args = os::args(),
-            pathed = pathify(args.tail(), true);
+        let args = os::args();
+        let pathed = pathify(args.tail(), true);
         FileInput::from_vec(pathed)
     }
 
@@ -215,11 +222,11 @@ impl FileInput {
             return false;
         }
 
-        let path_option = self.fi.files.shift(),
-            file = match path_option {
-                None => io::stdin(),
-                Some(ref path) => io::file_reader(path).get()
-            };
+        let path_option = self.fi.files.shift();
+        let file = match path_option {
+            None => io::stdin(),
+            Some(ref path) => io::file_reader(path).get()
+        };
 
         self.fi.current_reader = Some(file);
         self.fi.state.current_path = path_option;
@@ -407,6 +414,10 @@ mod test {
 
     use super::{FileInput, pathify, input_vec, input_vec_state};
 
+    use core::io;
+    use core::uint;
+    use core::vec;
+
     fn make_file(path : &Path, contents: &[~str]) {
         let file = io::file_writer(path, [io::Create, io::Truncate]).get();
 
@@ -419,8 +430,8 @@ mod test {
     #[test]
     fn test_pathify() {
         let strs = [~"some/path",
-                    ~"some/other/path"],
-            paths = ~[Some(Path("some/path")),
+                    ~"some/other/path"];
+        let paths = ~[Some(Path("some/path")),
                       Some(Path("some/other/path"))];
 
         assert_eq!(pathify(strs, true), copy paths);
@@ -443,7 +454,7 @@ mod test {
 
         let fi = FileInput::from_vec(copy filenames);
 
-        for "012".each_chari |line, c| {
+        for "012".iter().enumerate().advance |(line, c)| {
             assert_eq!(fi.read_byte(), c as int);
             assert_eq!(fi.state().line_num, line);
             assert_eq!(fi.state().line_num_file, 0);
@@ -475,7 +486,7 @@ mod test {
         let mut buf : ~[u8] = vec::from_elem(6, 0u8);
         let count = fi.read(buf, 10);
         assert_eq!(count, 6);
-        assert_eq!(buf, "0\n1\n2\n".to_bytes());
+        assert_eq!(buf, "0\n1\n2\n".as_bytes().to_owned());
         assert!(fi.eof())
         assert_eq!(fi.state().line_num, 3);
     }
@@ -514,9 +525,7 @@ mod test {
         }
 
         for input_vec_state(filenames) |line, state| {
-            let nums = do vec::build |p| {
-                for str::each_split_char(line, ' ') |s| { p(s.to_owned()); }
-            };
+            let nums: ~[&str] = line.split_iter(' ').collect();
             let file_num = uint::from_str(nums[0]).get();
             let line_num = uint::from_str(nums[1]).get();
             assert_eq!(line_num, state.line_num_file);
@@ -549,8 +558,10 @@ mod test {
 
     #[test]
     fn test_no_trailing_newline() {
-        let f1 = Some(Path("tmp/lib-fileinput-test-no-trailing-newline-1.tmp")),
-            f2 = Some(Path("tmp/lib-fileinput-test-no-trailing-newline-2.tmp"));
+        let f1 =
+            Some(Path("tmp/lib-fileinput-test-no-trailing-newline-1.tmp"));
+        let f2 =
+            Some(Path("tmp/lib-fileinput-test-no-trailing-newline-2.tmp"));
 
         let wr = io::file_writer(f1.get_ref(), [io::Create, io::Truncate]).get();
         wr.write_str("1\n2");

@@ -14,8 +14,8 @@ struct cat {
     how_hungry : int,
 }
 
-pub impl cat {
-  fn speak(&mut self) {}
+impl cat {
+    pub fn speak(&mut self) {}
 }
 
 fn cat(in_x : uint, in_y : int) -> cat {

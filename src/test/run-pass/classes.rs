@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::uint;
+
 struct cat {
     priv meows : uint,
 
@@ -15,10 +17,10 @@ struct cat {
     name : ~str,
 }
 
-pub impl cat {
-    fn speak(&mut self) { self.meow(); }
+impl cat {
+    pub fn speak(&mut self) { self.meow(); }
 
-    fn eat(&mut self) -> bool {
+    pub fn eat(&mut self) -> bool {
         if self.how_hungry > 0 {
             error!("OM NOM NOM");
             self.how_hungry -= 2;
@@ -30,7 +32,7 @@ pub impl cat {
     }
 }
 
-priv impl cat {
+impl cat {
     fn meow(&mut self) {
         error!("Meow");
         self.meows += 1u;

@@ -13,9 +13,12 @@ The test runner should check that, after `rustpkg install external crate`
   with RUST_PATH undefined in the environment
   and with `rustpkg install deeply/nested/path/foo` already
      executed:
-   * ./.rust/external_crate exists and is an executable
+   * ../bin/external_crate exists and is an executable
+
+  tjc: Also want a test like this where foo is an external URL,
+    which requires the `extern mod` changes
 */
 
-extern mod foo; // refers to deeply/nested/path/foo
+extern mod foo;
 
 fn main() {}

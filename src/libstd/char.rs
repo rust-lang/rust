@@ -53,8 +53,12 @@ use cmp::{Eq, Ord};
     Cn  Unassigned              a reserved unassigned code point or a noncharacter
 */
 
+/// Returns whether the specified character is considered a unicode alphabetic
+/// character
 pub fn is_alphabetic(c: char) -> bool   { derived_property::Alphabetic(c) }
+#[allow(missing_doc)]
 pub fn is_XID_start(c: char) -> bool    { derived_property::XID_Start(c) }
+#[allow(missing_doc)]
 pub fn is_XID_continue(c: char) -> bool { derived_property::XID_Continue(c) }
 
 ///
@@ -256,6 +260,7 @@ pub fn len_utf8_bytes(c: char) -> uint {
     )
 }
 
+#[allow(missing_doc)]
 pub trait Char {
     fn is_alphabetic(&self) -> bool;
     fn is_XID_start(&self) -> bool;

@@ -12,7 +12,12 @@
 
 use core::prelude::*;
 
+use core::vec;
+
+/// A trait for converting a value to base64 encoding.
 pub trait ToBase64 {
+    /// Converts the value of `self` to a base64 value, returning the owned
+    /// string
     fn to_base64(&self) -> ~str;
 }
 
@@ -43,7 +48,7 @@ impl<'self> ToBase64 for &'self [u8] {
     fn to_base64(&self) -> ~str {
         let mut s = ~"";
         let len = self.len();
-        str::reserve(&mut s, ((len + 3u) / 4u) * 3u);
+        s.reserve(((len + 3u) / 4u) * 3u);
 
         let mut i = 0u;
 
@@ -53,10 +58,10 @@ impl<'self> ToBase64 for &'self [u8] {
                     (self[i + 2u] as uint);
 
             // This 24-bit number gets separated into four 6-bit numbers.
-            str::push_char(&mut s, CHARS[(n >> 18u) & 63u]);
-            str::push_char(&mut s, CHARS[(n >> 12u) & 63u]);
-            str::push_char(&mut s, CHARS[(n >> 6u) & 63u]);
-            str::push_char(&mut s, CHARS[n & 63u]);
+            s.push_char(CHARS[(n >> 18u) & 63u]);
+            s.push_char(CHARS[(n >> 12u) & 63u]);
+            s.push_char(CHARS[(n >> 6u) & 63u]);
+            s.push_char(CHARS[n & 63u]);
 
             i += 3u;
         }
@@ -67,18 +72,18 @@ impl<'self> ToBase64 for &'self [u8] {
           0 => (),
           1 => {
             let n = (self[i] as uint) << 16u;
-            str::push_char(&mut s, CHARS[(n >> 18u) & 63u]);
-            str::push_char(&mut s, CHARS[(n >> 12u) & 63u]);
-            str::push_char(&mut s, '=');
-            str::push_char(&mut s, '=');
+            s.push_char(CHARS[(n >> 18u) & 63u]);
+            s.push_char(CHARS[(n >> 12u) & 63u]);
+            s.push_char('=');
+            s.push_char('=');
           }
           2 => {
             let n = (self[i] as uint) << 16u |
                 (self[i + 1u] as uint) << 8u;
-            str::push_char(&mut s, CHARS[(n >> 18u) & 63u]);
-            str::push_char(&mut s, CHARS[(n >> 12u) & 63u]);
-            str::push_char(&mut s, CHARS[(n >> 6u) & 63u]);
-            str::push_char(&mut s, '=');
+            s.push_char(CHARS[(n >> 18u) & 63u]);
+            s.push_char(CHARS[(n >> 12u) & 63u]);
+            s.push_char(CHARS[(n >> 6u) & 63u]);
+            s.push_char('=');
           }
           _ => fail!("Algebra is broken, please alert the math police")
         }
@@ -105,10 +110,11 @@ impl<'self> ToBase64 for &'self str {
      *
      */
     fn to_base64(&self) -> ~str {
-        str::to_bytes(*self).to_base64()
+        self.as_bytes().to_base64()
     }
 }
 
+#[allow(missing_doc)]
 pub trait FromBase64 {
     fn from_base64(&self) -> ~[u8];
 }
@@ -217,7 +223,7 @@ impl<'self> FromBase64 for &'self str {
      * ~~~
      */
     fn from_base64(&self) -> ~[u8] {
-        str::to_bytes(*self).from_base64()
+        self.as_bytes().from_base64()
     }
 }
 
@@ -238,12 +244,12 @@ mod tests {
 
     #[test]
     fn test_from_base64() {
-        assert_eq!("".from_base64(), str::to_bytes(""));
-        assert_eq!("Zg==".from_base64(), str::to_bytes("f"));
-        assert_eq!("Zm8=".from_base64(), str::to_bytes("fo"));
-        assert_eq!("Zm9v".from_base64(), str::to_bytes("foo"));
-        assert_eq!("Zm9vYg==".from_base64(), str::to_bytes("foob"));
-        assert_eq!("Zm9vYmE=".from_base64(), str::to_bytes("fooba"))
-        assert_eq!("Zm9vYmFy".from_base64(), str::to_bytes("foobar"));
+        assert_eq!("".from_base64(), "".as_bytes().to_owned());
+        assert_eq!("Zg==".from_base64(), "f".as_bytes().to_owned());
+        assert_eq!("Zm8=".from_base64(), "fo".as_bytes().to_owned());
+        assert_eq!("Zm9v".from_base64(), "foo".as_bytes().to_owned());
+        assert_eq!("Zm9vYg==".from_base64(), "foob".as_bytes().to_owned());
+        assert_eq!("Zm9vYmE=".from_base64(), "fooba".as_bytes().to_owned());
+        assert_eq!("Zm9vYmFy".from_base64(), "foobar".as_bytes().to_owned());
     }
 }

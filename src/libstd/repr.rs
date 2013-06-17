@@ -14,12 +14,15 @@ More runtime type reflection
 
 */
 
+#[allow(missing_doc)];
+
 use cast::transmute;
 use char;
 use intrinsic;
 use intrinsic::{TyDesc, TyVisitor, visit_tydesc};
 use intrinsic::Opaque;
 use io::{Writer, WriterUtil};
+use iterator::IteratorUtil;
 use libc::c_void;
 use managed;
 use ptr;
@@ -172,12 +175,11 @@ impl MovePtr for ReprVisitor {
     }
 }
 
-pub impl ReprVisitor {
-
+impl ReprVisitor {
     // Various helpers for the TyVisitor impl
 
     #[inline(always)]
-    fn get<T>(&self, f: &fn(&T)) -> bool {
+    pub fn get<T>(&self, f: &fn(&T)) -> bool {
         unsafe {
             f(transmute::<*c_void,&T>(*self.ptr));
         }
@@ -185,12 +187,12 @@ pub impl ReprVisitor {
     }
 
     #[inline(always)]
-    fn visit_inner(&self, inner: *TyDesc) -> bool {
+    pub fn visit_inner(&self, inner: *TyDesc) -> bool {
         self.visit_ptr_inner(*self.ptr, inner)
     }
 
     #[inline(always)]
-    fn visit_ptr_inner(&self, ptr: *c_void, inner: *TyDesc) -> bool {
+    pub fn visit_ptr_inner(&self, ptr: *c_void, inner: *TyDesc) -> bool {
         unsafe {
             let u = ReprVisitor(ptr, self.writer);
             let v = reflect::MovePtrAdaptor(u);
@@ -200,21 +202,21 @@ pub impl ReprVisitor {
     }
 
     #[inline(always)]
-    fn write<T:Repr>(&self) -> bool {
+    pub fn write<T:Repr>(&self) -> bool {
         do self.get |v:&T| {
             v.write_repr(self.writer);
         }
     }
 
-    fn write_escaped_slice(&self, slice: &str) {
+    pub fn write_escaped_slice(&self, slice: &str) {
         self.writer.write_char('"');
-        for slice.each_char |ch| {
+        for slice.iter().advance |ch| {
             self.writer.write_escaped_char(ch);
         }
         self.writer.write_char('"');
     }
 
-    fn write_mut_qualifier(&self, mtbl: uint) {
+    pub fn write_mut_qualifier(&self, mtbl: uint) {
         if mtbl == 0 {
             self.writer.write_str("mut ");
         } else if mtbl == 1 {
@@ -225,8 +227,12 @@ pub impl ReprVisitor {
         }
     }
 
-    fn write_vec_range(&self, mtbl: uint, ptr: *u8, len: uint,
-                       inner: *TyDesc) -> bool {
+    pub fn write_vec_range(&self,
+                           mtbl: uint,
+                           ptr: *u8,
+                           len: uint,
+                           inner: *TyDesc)
+                           -> bool {
         let mut p = ptr;
         let end = ptr::offset(p, len);
         let (sz, al) = unsafe { ((*inner).size, (*inner).align) };
@@ -246,13 +252,14 @@ pub impl ReprVisitor {
         true
     }
 
-    fn write_unboxed_vec_repr(&self, mtbl: uint, v: &UnboxedVecRepr,
-                              inner: *TyDesc) -> bool {
+    pub fn write_unboxed_vec_repr(&self,
+                                  mtbl: uint,
+                                  v: &UnboxedVecRepr,
+                                  inner: *TyDesc)
+                                  -> bool {
         self.write_vec_range(mtbl, ptr::to_unsafe_ptr(&v.data),
                              v.fill, inner)
     }
-
-
 }
 
 impl TyVisitor for ReprVisitor {

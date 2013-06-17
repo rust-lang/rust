@@ -1,39 +1,81 @@
 body {
-  padding: 1em;
-  margin: 0;
-  margin-bottom: 4em;
-  font-family: "Helvetica Neue", Helvetica, sans-serif;
-  background-color: white;
-  color: black;
-  line-height: 1.6em;
-}
-
-body {
-  padding: 1em 6em;
-  max-width: 60em;
+    padding: 1em 6em;
+    margin: 0;
+    margin-bottom: 4em;
+    font-family: "Helvetica Neue", Helvetica, sans-serif;
+    font-size: 12pt;
+    background-color: white;
+    color: black;
+    line-height: 1.6em;
+    min-width: 45em;
+    max-width: 60em;
 }
 
 h1 {
-  font-size: 20pt;
-  margin-top: 2em;
-  border-bottom: 1px solid silver;
-  line-height: 1.6em;
+    font-size: 20pt;
+    margin-top: 2em;
+    padding-left: 0.4em;
+    line-height: 1.6em;
+    background-color:#FFF2CE;
+    border-radius: 0.2em;
+    border: 1px solid rgba(0, 0, 0, 0.15);
 }
+
 h2 {
     font-size: 15pt;
     margin-top: 2em;
+    padding-left: 0.4em;
+    background-color:#FFF2CE;
+    border-radius: 0.4em;
+    border: 1px solid rgba(0, 0, 0, 0.15);
 }
-h3 { font-size: 13pt; }
+
+h2 code {
+    color: #097334;
+    font-size: 15pt;
+}
+
+h3 {
+    font-size: 13pt;
+    color: black;
+    background-color:#D9E7FF;
+    border-radius: 0.4em;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    padding: 0 0.4em 0 0.4em;
+}
+
+h3 code {
+    color: #541800;
+    font-size: 13pt;
+    font-style: italic;
+}
+
+h4 {
+    font-size: 11pt;
+    margin-top: 0em;
+    margin-bottom: 0em;
+}
+
+code {
+    font-size: 11pt;
+}
 
 pre {
-  margin: 1.1em 0;
-  padding: .4em .4em .4em 2em;
-  font-size: 120%;
+    margin-left: 1.1em;
+    padding: .4em .4em .4em .8em;
+    font-size: 10pt;
+    background-color: #F5F5F5;
+    border-radius: 0.5em;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+}
+
+pre.rust {
+    background-color: #F3F6FF;
 }
 
 a, a:visited, a:link {
-  text-decoration: none;
-  color: rgb(0, 105, 214);
+    text-decoration: none;
+    color: rgb(0, 105, 214);
 }
 
 h1 a:link, h1 a:visited, h2 a:link, h2 a:visited,
@@ -106,4 +148,12 @@ td {
 /* Adjust list alignment so rustdoc indexes don't align with blockquotes */
 div.index ul {
     padding-left: 1em;
+}
+
+ul {
+    margin-top: 0em
+}
+
+div.section.level3  {
+    margin-left: 1.0em;
 }

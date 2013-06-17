@@ -11,6 +11,8 @@
 //! An ordered map and set for integer keys implemented as a radix trie
 
 use prelude::*;
+use iterator::IteratorUtil;
+use uint;
 use util::{swap, replace};
 
 // FIXME: #5244: need to manually update the TrieNode constructor
@@ -24,6 +26,7 @@ enum Child<T> {
     Nothing
 }
 
+#[allow(missing_doc)]
 pub struct TrieMap<T> {
     priv root: TrieNode<T>,
     priv length: uint
@@ -142,32 +145,33 @@ impl<T> Map<uint, T> for TrieMap<T> {
     }
 }
 
-pub impl<T> TrieMap<T> {
+impl<T> TrieMap<T> {
     /// Create an empty TrieMap
     #[inline(always)]
-    fn new() -> TrieMap<T> {
+    pub fn new() -> TrieMap<T> {
         TrieMap{root: TrieNode::new(), length: 0}
     }
 
     /// Visit all key-value pairs in reverse order
     #[inline(always)]
-    fn each_reverse<'a>(&'a self, f: &fn(&uint, &'a T) -> bool) -> bool {
+    pub fn each_reverse<'a>(&'a self, f: &fn(&uint, &'a T) -> bool) -> bool {
         self.root.each_reverse(f)
     }
 
     /// Visit all keys in reverse order
     #[inline(always)]
-    fn each_key_reverse(&self, f: &fn(&uint) -> bool) -> bool {
+    pub fn each_key_reverse(&self, f: &fn(&uint) -> bool) -> bool {
         self.each_reverse(|k, _| f(k))
     }
 
     /// Visit all values in reverse order
     #[inline(always)]
-    fn each_value_reverse(&self, f: &fn(&T) -> bool) -> bool {
+    pub fn each_value_reverse(&self, f: &fn(&T) -> bool) -> bool {
         self.each_reverse(|_, v| f(v))
     }
 }
 
+#[allow(missing_doc)]
 pub struct TrieSet {
     priv map: TrieMap<()>
 }
@@ -204,28 +208,32 @@ impl Mutable for TrieSet {
     fn clear(&mut self) { self.map.clear() }
 }
 
-pub impl TrieSet {
+impl TrieSet {
     /// Create an empty TrieSet
     #[inline(always)]
-    fn new() -> TrieSet {
+    pub fn new() -> TrieSet {
         TrieSet{map: TrieMap::new()}
     }
 
     /// Return true if the set contains a value
     #[inline(always)]
-    fn contains(&self, value: &uint) -> bool {
+    pub fn contains(&self, value: &uint) -> bool {
         self.map.contains_key(value)
     }
 
     /// Add a value to the set. Return true if the value was not already
     /// present in the set.
     #[inline(always)]
-    fn insert(&mut self, value: uint) -> bool { self.map.insert(value, ()) }
+    pub fn insert(&mut self, value: uint) -> bool {
+        self.map.insert(value, ())
+    }
 
     /// Remove a value from the set. Return true if the value was
     /// present in the set.
     #[inline(always)]
-    fn remove(&mut self, value: &uint) -> bool { self.map.remove(value) }
+    pub fn remove(&mut self, value: &uint) -> bool {
+        self.map.remove(value)
+    }
 }
 
 struct TrieNode<T> {
@@ -269,7 +277,7 @@ impl<T> TrieNode<T> {
     }
 
     fn mutate_values<'a>(&'a mut self, f: &fn(&uint, &mut T) -> bool) -> bool {
-        for vec::each_mut(self.children) |child| {
+        for self.children.mut_iter().advance |child| {
             match *child {
                 Internal(ref mut x) => if !x.mutate_values(f) {
                     return false

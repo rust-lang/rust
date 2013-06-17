@@ -47,6 +47,8 @@ block the scheduler thread, so will their pipes.
 
 */
 
+#[allow(missing_doc)];
+
 use core::prelude::*;
 
 // The basic send/recv interface FlatChan and PortChan will implement
@@ -315,8 +317,8 @@ impl<T,F:Flattener<T>,C:ByteChan> GenericChan<T> for FlatChan<T, F, C> {
     }
 }
 
-pub impl<T,U:Unflattener<T>,P:BytePort> FlatPort<T, U, P> {
-    fn new(u: U, p: P) -> FlatPort<T, U, P> {
+impl<T,U:Unflattener<T>,P:BytePort> FlatPort<T, U, P> {
+    pub fn new(u: U, p: P) -> FlatPort<T, U, P> {
         FlatPort {
             unflattener: u,
             byte_port: p
@@ -324,8 +326,8 @@ pub impl<T,U:Unflattener<T>,P:BytePort> FlatPort<T, U, P> {
     }
 }
 
-pub impl<T,F:Flattener<T>,C:ByteChan> FlatChan<T, F, C> {
-    fn new(f: F, c: C) -> FlatChan<T, F, C> {
+impl<T,F:Flattener<T>,C:ByteChan> FlatChan<T, F, C> {
+    pub fn new(f: F, c: C) -> FlatChan<T, F, C> {
         FlatChan {
             flattener: f,
             byte_chan: c
@@ -345,10 +347,10 @@ pub mod flatteners {
 
     use core::cast;
     use core::io::{Writer, Reader, ReaderUtil};
+    use core::io;
     use core::ptr;
     use core::sys::size_of;
     use core::vec;
-
 
     // FIXME #4074: Copy + Owned != POD
     pub struct PodUnflattener<T> {
@@ -378,16 +380,16 @@ pub mod flatteners {
         }
     }
 
-    pub impl<T:Copy + Owned> PodUnflattener<T> {
-        fn new() -> PodUnflattener<T> {
+    impl<T:Copy + Owned> PodUnflattener<T> {
+        pub fn new() -> PodUnflattener<T> {
             PodUnflattener {
                 bogus: ()
             }
         }
     }
 
-    pub impl<T:Copy + Owned> PodFlattener<T> {
-        fn new() -> PodFlattener<T> {
+    impl<T:Copy + Owned> PodFlattener<T> {
+        pub fn new() -> PodFlattener<T> {
             PodFlattener {
                 bogus: ()
             }
@@ -421,8 +423,8 @@ pub mod flatteners {
         }
     }
 
-    pub impl<D:Decoder,T:Decodable<D>> DeserializingUnflattener<D, T> {
-        fn new(deserialize_buffer: DeserializeBuffer<T>)
+    impl<D:Decoder,T:Decodable<D>> DeserializingUnflattener<D, T> {
+        pub fn new(deserialize_buffer: DeserializeBuffer<T>)
                    -> DeserializingUnflattener<D, T> {
             DeserializingUnflattener {
                 deserialize_buffer: deserialize_buffer
@@ -430,8 +432,8 @@ pub mod flatteners {
         }
     }
 
-    pub impl<S:Encoder,T:Encodable<S>> SerializingFlattener<S, T> {
-        fn new(serialize_value: SerializeValue<T>)
+    impl<S:Encoder,T:Encodable<S>> SerializingFlattener<S, T> {
+        pub fn new(serialize_value: SerializeValue<T>)
                    -> SerializingFlattener<S, T> {
             SerializingFlattener {
                 serialize_value: serialize_value
@@ -511,8 +513,10 @@ pub mod bytepipes {
 
     use flatpipes::{ByteChan, BytePort};
 
-    use core::io::{Writer, Reader, ReaderUtil};
     use core::comm::{Port, Chan};
+    use core::comm;
+    use core::io::{Writer, Reader, ReaderUtil};
+    use core::vec;
 
     pub struct ReaderBytePort<R> {
         reader: R
@@ -550,16 +554,16 @@ pub mod bytepipes {
         }
     }
 
-    pub impl<R:Reader> ReaderBytePort<R> {
-        fn new(r: R) -> ReaderBytePort<R> {
+    impl<R:Reader> ReaderBytePort<R> {
+        pub fn new(r: R) -> ReaderBytePort<R> {
             ReaderBytePort {
                 reader: r
             }
         }
     }
 
-    pub impl<W:Writer> WriterByteChan<W> {
-        fn new(w: W) -> WriterByteChan<W> {
+    impl<W:Writer> WriterByteChan<W> {
+        pub fn new(w: W) -> WriterByteChan<W> {
             WriterByteChan {
                 writer: w
             }
@@ -615,8 +619,8 @@ pub mod bytepipes {
         }
     }
 
-    pub impl PipeBytePort {
-        fn new(p: Port<~[u8]>) -> PipeBytePort {
+    impl PipeBytePort {
+        pub fn new(p: Port<~[u8]>) -> PipeBytePort {
             PipeBytePort {
                 port: p,
                 buf: @mut ~[]
@@ -624,8 +628,8 @@ pub mod bytepipes {
         }
     }
 
-    pub impl PipeByteChan {
-        fn new(c: Chan<~[u8]>) -> PipeByteChan {
+    impl PipeByteChan {
+        pub fn new(c: Chan<~[u8]>) -> PipeByteChan {
             PipeByteChan {
                 chan: c
             }
@@ -646,12 +650,16 @@ mod test {
     use flatpipes::{BytePort, FlatChan, FlatPort};
     use net::tcp::TcpSocketBuf;
 
+    use core::comm;
+    use core::int;
     use core::io::BytesWriter;
+    use core::result;
+    use core::task;
 
     #[test]
     #[ignore(reason = "ebml failure")]
     fn test_serializing_memory_stream() {
-        let writer = BytesWriter();
+        let writer = BytesWriter::new();
         let chan = serial::writer_chan(writer);
 
         chan.send(10);
@@ -699,7 +707,7 @@ mod test {
 
     #[test]
     fn test_pod_memory_stream() {
-        let writer = BytesWriter();
+        let writer = BytesWriter::new();
         let chan = pod::writer_chan(writer);
 
         chan.send(10);
@@ -782,8 +790,8 @@ mod test {
 
         let addr0 = ip::v4::parse_addr("127.0.0.1");
 
-        let begin_connect_chan = Cell(begin_connect_chan);
-        let accept_chan = Cell(accept_chan);
+        let begin_connect_chan = Cell::new(begin_connect_chan);
+        let accept_chan = Cell::new(accept_chan);
 
         // The server task
         let addr = copy addr0;
@@ -872,6 +880,11 @@ mod test {
         use flatpipes::flatteners::PodUnflattener;
         use flatpipes::pod;
         use io_util::BufReader;
+
+        use core::comm;
+        use core::io;
+        use core::sys;
+        use core::task;
 
         type PortLoader<P> =
             ~fn(~[u8]) -> FlatPort<int, PodUnflattener<int>, P>;

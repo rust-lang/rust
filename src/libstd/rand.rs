@@ -25,7 +25,7 @@ distributions like normal and exponential.
 use core::rand::RngUtil;
 
 fn main() {
-    let rng = rand::rng();
+    let mut rng = rand::rng();
     if rng.gen() { // bool
         println(fmt!("int: %d, uint: %u", rng.gen(), rng.gen()))
     }
@@ -40,10 +40,14 @@ fn main () {
 ~~~
 */
 
-
+use cast;
+use cmp;
 use int;
+use iterator::IteratorUtil;
+use local_data;
 use prelude::*;
 use str;
+use sys;
 use u32;
 use uint;
 use util;
@@ -55,6 +59,8 @@ pub mod distributions;
 
 /// A type that can be randomly generated using an Rng
 pub trait Rand {
+    /// Generates a random instance of this type using the specified source of
+    /// randomness
     fn rand<R: Rng>(rng: &mut R) -> Self;
 }
 
@@ -253,10 +259,13 @@ pub trait Rng {
 
 /// A value with a particular weight compared to other values
 pub struct Weighted<T> {
+    /// The numerical weight of this item
     weight: uint,
+    /// The actual item which is being weighted
     item: T,
 }
 
+/// Helper functions attached to the Rng type
 pub trait RngUtil {
     /// Return a random value of a Rand type
     fn gen<T:Rand>(&mut self) -> T;
@@ -471,7 +480,7 @@ impl<R: Rng> RngUtil for R {
     fn gen_char_from(&mut self, chars: &str) -> char {
         assert!(!chars.is_empty());
         let mut cs = ~[];
-        for str::each_char(chars) |c| { cs.push(c) }
+        for chars.iter().advance |c| { cs.push(c) }
         self.choose(cs)
     }
 
@@ -604,9 +613,9 @@ pub struct IsaacRng {
     priv c: u32
 }
 
-pub impl IsaacRng {
+impl IsaacRng {
     /// Create an ISAAC random number generator with a random seed.
-    fn new() -> IsaacRng {
+    pub fn new() -> IsaacRng {
         IsaacRng::new_seeded(seed())
     }
 
@@ -615,7 +624,7 @@ pub impl IsaacRng {
     /// will be silently ignored. A generator constructed with a given seed
     /// will generate the same sequence of values as all other generators
     /// constructed with the same seed.
-    fn new_seeded(seed: &[u8]) -> IsaacRng {
+    pub fn new_seeded(seed: &[u8]) -> IsaacRng {
         let mut rng = IsaacRng {
             cnt: 0,
             rsl: [0, .. RAND_SIZE],
@@ -635,7 +644,7 @@ pub impl IsaacRng {
 
     /// Create an ISAAC random number generator using the default
     /// fixed seed.
-    fn new_unseeded() -> IsaacRng {
+    pub fn new_unseeded() -> IsaacRng {
         let mut rng = IsaacRng {
             cnt: 0,
             rsl: [0, .. RAND_SIZE],
@@ -649,14 +658,15 @@ pub impl IsaacRng {
     /// Initialises `self`. If `use_rsl` is true, then use the current value
     /// of `rsl` as a seed, otherwise construct one algorithmically (not
     /// randomly).
-    priv fn init(&mut self, use_rsl: bool) {
-        macro_rules! init_mut_many (
-            ($( $var:ident ),* = $val:expr ) => {
-                let mut $( $var = $val ),*;
-            }
-        );
-        init_mut_many!(a, b, c, d, e, f, g, h = 0x9e3779b9);
-
+    fn init(&mut self, use_rsl: bool) {
+        let mut a = 0x9e3779b9;
+        let mut b = a;
+        let mut c = a;
+        let mut d = a;
+        let mut e = a;
+        let mut f = a;
+        let mut g = a;
+        let mut h = a;
 
         macro_rules! mix(
             () => {{
@@ -707,12 +717,12 @@ pub impl IsaacRng {
 
     /// Refills the output buffer (`self.rsl`)
     #[inline]
-    priv fn isaac(&mut self) {
+    fn isaac(&mut self) {
         self.c += 1;
         // abbreviations
-        let mut a = self.a, b = self.b + self.c;
+        let mut (a, b) = (self.a, self.b + self.c);
 
-        static midpoint: uint =  RAND_SIZE as uint / 2;
+        static midpoint: uint = RAND_SIZE as uint / 2;
 
         macro_rules! ind (($x:expr) => {
             self.mem[($x >> 2) & (RAND_SIZE - 1)]
@@ -787,9 +797,9 @@ impl Rng for XorShiftRng {
     }
 }
 
-pub impl XorShiftRng {
+impl XorShiftRng {
     /// Create an xor shift random number generator with a default seed.
-    fn new() -> XorShiftRng {
+    pub fn new() -> XorShiftRng {
         // constants taken from http://en.wikipedia.org/wiki/Xorshift
         XorShiftRng::new_seeded(123456789u32,
                                 362436069u32,
@@ -799,10 +809,10 @@ pub impl XorShiftRng {
 
     /**
      * Create a random number generator using the specified seed. A generator
-     * constructed with a given seed will generate the same sequence of values as
-     * all other generators constructed with the same seed.
+     * constructed with a given seed will generate the same sequence of values
+     * as all other generators constructed with the same seed.
      */
-    fn new_seeded(x: u32, y: u32, z: u32, w: u32) -> XorShiftRng {
+    pub fn new_seeded(x: u32, y: u32, z: u32, w: u32) -> XorShiftRng {
         XorShiftRng {
             x: x,
             y: y,

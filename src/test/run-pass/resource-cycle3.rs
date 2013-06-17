@@ -12,6 +12,8 @@
 
 // Don't leak the unique pointers
 
+use std::cast;
+
 struct U {
     a: int,
     b: int,

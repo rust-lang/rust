@@ -12,7 +12,7 @@ struct S {
 
 impl Foo<S> for S {
     fn f(&self, x: &S) {
-        io::println(x.x.to_str());
+        println(x.x.to_str());
     }
 }
 

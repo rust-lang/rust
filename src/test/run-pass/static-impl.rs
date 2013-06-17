@@ -10,6 +10,9 @@
 
 // xfail-fast
 
+use std::uint;
+use std::vec;
+
 pub trait plus {
     fn plus(&self) -> int;
 }
@@ -44,7 +47,7 @@ trait vec_utils<T> {
 }
 
 impl<T> vec_utils<T> for ~[T] {
-    fn length_(&self) -> uint { vec::len(*self) }
+    fn length_(&self) -> uint { self.len() }
     fn iter_(&self, f: &fn(&T)) { for self.each |x| { f(x); } }
     fn map_<U:Copy>(&self, f: &fn(&T) -> U) -> ~[U] {
         let mut r = ~[];

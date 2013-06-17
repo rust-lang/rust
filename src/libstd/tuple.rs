@@ -10,14 +10,20 @@
 
 //! Operations on tuples
 
+#[allow(missing_doc)];
+
 use kinds::Copy;
 use vec;
 
 pub use self::inner::*;
 
+/// Method extensions to pairs where both types satisfy the `Copy` bound
 pub trait CopyableTuple<T, U> {
+    /// Return the first element of self
     fn first(&self) -> T;
+    /// Return the second element of self
     fn second(&self) -> U;
+    /// Return the results of swapping the two elements of self
     fn swap(&self) -> (U, T);
 }
 
@@ -47,8 +53,12 @@ impl<T:Copy,U:Copy> CopyableTuple<T, U> for (T, U) {
     }
 }
 
+/// Method extensions for pairs where the types don't necessarily satisfy the
+/// `Copy` bound
 pub trait ImmutableTuple<T, U> {
+    /// Return a reference to the first element of self
     fn first_ref<'a>(&'a self) -> &'a T;
+    /// Return a reference to the second element of self
     fn second_ref<'a>(&'a self) -> &'a U;
 }
 
@@ -402,7 +412,7 @@ mod tests {
 
     #[test]
     fn test_tuple_cmp() {
-        let small = (1u, 2u, 3u), big = (3u, 2u, 1u);
+        let (small, big) = ((1u, 2u, 3u), (3u, 2u, 1u));
 
         // Eq
         assert_eq!(small, small);

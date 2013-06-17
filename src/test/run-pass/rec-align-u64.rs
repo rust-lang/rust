@@ -10,6 +10,8 @@
 
 // Issue #2303
 
+use std::sys;
+
 mod rusti {
     #[abi = "rust-intrinsic"]
     pub extern "rust-intrinsic" {

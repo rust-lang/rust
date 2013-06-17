@@ -13,6 +13,9 @@ use core::prelude::*;
 use codemap::{Pos, span};
 use codemap;
 
+use core::io;
+use core::uint;
+use core::vec;
 use extra::term;
 
 pub type Emitter = @fn(cmsp: Option<(@codemap::CodeMap, span)>,
@@ -187,19 +190,27 @@ fn diagnosticcolor(lvl: level) -> u8 {
 }
 
 fn print_diagnostic(topic: &str, lvl: level, msg: &str) {
-    let use_color = term::color_supported() &&
-        io::stderr().get_type() == io::Screen;
+    let t = term::Terminal::new(io::stderr());
+
+    let stderr = io::stderr();
+
     if !topic.is_empty() {
-        io::stderr().write_str(fmt!("%s ", topic));
+        stderr.write_str(fmt!("%s ", topic));
     }
-    if use_color {
-        term::fg(io::stderr(), diagnosticcolor(lvl));
+
+    match t {
+        Ok(term) => {
+            if stderr.get_type() == io::Screen {
+                term.fg(diagnosticcolor(lvl));
+                stderr.write_str(fmt!("%s: ", diagnosticstr(lvl)));
+                term.reset();
+                stderr.write_str(fmt!("%s\n", msg));
+            } else {
+                stderr.write_str(fmt!("%s: %s\n", diagnosticstr(lvl), msg));
+            }
+        },
+        _ => stderr.write_str(fmt!("%s: %s\n", diagnosticstr(lvl), msg))
     }
-    io::stderr().write_str(fmt!("%s:", diagnosticstr(lvl)));
-    if use_color {
-        term::reset(io::stderr());
-    }
-    io::stderr().write_str(fmt!(" %s\n", msg));
 }
 
 pub fn collect(messages: @mut ~[~str])
@@ -247,7 +258,7 @@ fn highlight_lines(cm: @codemap::CodeMap,
     if elided {
         let last_line = display_lines[display_lines.len() - 1u];
         let s = fmt!("%s:%u ", fm.name, last_line + 1u);
-        let mut indent = str::len(s);
+        let mut indent = s.len();
         let mut out = ~"";
         while indent > 0u { out += " "; indent -= 1u; }
         out += "...\n";
@@ -265,11 +276,11 @@ fn highlight_lines(cm: @codemap::CodeMap,
         while num > 0u { num /= 10u; digits += 1u; }
 
         // indent past |name:## | and the 0-offset column location
-        let left = str::len(fm.name) + digits + lo.col.to_uint() + 3u;
+        let left = fm.name.len() + digits + lo.col.to_uint() + 3u;
         let mut s = ~"";
         // Skip is the number of characters we need to skip because they are
         // part of the 'filename:line ' part of the previous line.
-        let skip = str::len(fm.name) + digits + 3u;
+        let skip = fm.name.len() + digits + 3u;
         for skip.times() {
             s += " ";
         }
@@ -293,9 +304,9 @@ fn highlight_lines(cm: @codemap::CodeMap,
 }
 
 fn print_macro_backtrace(cm: @codemap::CodeMap, sp: span) {
-    for sp.expn_info.each |ei| {
-        let ss = ei.callee.span.map_default(@~"", |span| @cm.span_to_str(*span));
-        print_diagnostic(*ss, note,
+    for sp.expn_info.iter().advance |ei| {
+        let ss = ei.callee.span.map_default(~"", |span| cm.span_to_str(*span));
+        print_diagnostic(ss, note,
                          fmt!("in expansion of %s!", ei.callee.name));
         let ss = cm.span_to_str(ei.call_site);
         print_diagnostic(ss, note, "expansion site");

@@ -10,5 +10,5 @@
 
 // Test that multibyte characters don't crash the compiler
 fn main() {
-    io::println("마이너스 사인이 없으면");
+    println("마이너스 사인이 없으면");
 }

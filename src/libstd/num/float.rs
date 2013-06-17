@@ -20,10 +20,15 @@
 
 // PORT this must match in width according to architecture
 
+#[allow(missing_doc)];
+
+use f64;
 use libc::c_int;
 use num::{Zero, One, strconv};
 use num::FPCategory;
+use num;
 use prelude::*;
+use to_str;
 
 pub use f64::{add, sub, mul, div, rem, lt, le, eq, ne, ge, gt};
 pub use f64::{acos, asin, atan2, cbrt, ceil, copysign, cosh, floor};
@@ -42,8 +47,8 @@ pub static neg_infinity: float = -1.0/0.0;
 /* Module: consts */
 pub mod consts {
     // FIXME (requires Issue #1433 to fix): replace with mathematical
-    // staticants from cmath.
-    /// Archimedes' staticant
+    // constants from cmath.
+    /// Archimedes' constant
     pub static pi: float = 3.14159265358979323846264338327950288;
 
     /// pi/2.0
@@ -470,8 +475,8 @@ impl Fractional for float {
 
 impl Algebraic for float {
     #[inline(always)]
-    fn pow(&self, n: float) -> float {
-        (*self as f64).pow(n as f64) as float
+    fn pow(&self, n: &float) -> float {
+        (*self as f64).pow(&(*n as f64)) as float
     }
 
     #[inline(always)]
@@ -490,8 +495,8 @@ impl Algebraic for float {
     }
 
     #[inline(always)]
-    fn hypot(&self, other: float) -> float {
-        (*self as f64).hypot(other as f64) as float
+    fn hypot(&self, other: &float) -> float {
+        (*self as f64).hypot(&(*other as f64)) as float
     }
 }
 
@@ -527,8 +532,8 @@ impl Trigonometric for float {
     }
 
     #[inline(always)]
-    fn atan2(&self, other: float) -> float {
-        (*self as f64).atan2(other as f64) as float
+    fn atan2(&self, other: &float) -> float {
+        (*self as f64).atan2(&(*other as f64)) as float
     }
 
     /// Simultaneously computes the sine and cosine of the number
@@ -561,8 +566,8 @@ impl Exponential for float {
 
     /// Returns the logarithm of the number with respect to an arbitrary base
     #[inline(always)]
-    fn log(&self, base: float) -> float {
-        (*self as f64).log(base as f64) as float
+    fn log(&self, base: &float) -> float {
+        (*self as f64).log(&(*base as f64)) as float
     }
 
     /// Returns the base 2 logarithm of the number
@@ -945,9 +950,12 @@ impl Float for float {
 
 #[cfg(test)]
 mod tests {
-    use num::*;
     use super::*;
     use prelude::*;
+
+    use num::*;
+    use num;
+    use sys;
 
     #[test]
     fn test_num() {

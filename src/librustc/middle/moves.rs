@@ -136,6 +136,7 @@ use util::ppaux;
 use util::ppaux::Repr;
 use util::common::indenter;
 
+use core::at_vec;
 use core::hashmap::{HashSet, HashMap};
 use syntax::ast::*;
 use syntax::ast_util;
@@ -204,7 +205,7 @@ pub fn compute_moves(tcx: ty::ctxt,
             moved_variables_set: @mut HashSet::new()
         }
     };
-    visit::visit_crate(crate, visit_cx, visitor);
+    visit::visit_crate(crate, (visit_cx, visitor));
     return visit_cx.move_maps;
 }
 
@@ -223,26 +224,20 @@ pub fn moved_variable_node_id_from_def(def: def) -> Option<node_id> {
 // Expressions
 
 fn compute_modes_for_expr(expr: @expr,
-                          cx: VisitContext,
-                          v: vt<VisitContext>)
+                          (cx, v): (VisitContext,
+                                    vt<VisitContext>))
 {
     cx.consume_expr(expr, v);
 }
 
-pub impl VisitContext {
-    fn consume_exprs(&self,
-                     exprs: &[@expr],
-                     visitor: vt<VisitContext>)
-    {
+impl VisitContext {
+    pub fn consume_exprs(&self, exprs: &[@expr], visitor: vt<VisitContext>) {
         for exprs.each |expr| {
             self.consume_expr(*expr, visitor);
         }
     }
 
-    fn consume_expr(&self,
-                    expr: @expr,
-                    visitor: vt<VisitContext>)
-    {
+    pub fn consume_expr(&self, expr: @expr, visitor: vt<VisitContext>) {
         /*!
          * Indicates that the value of `expr` will be consumed,
          * meaning either copied or moved depending on its type.
@@ -260,10 +255,7 @@ pub impl VisitContext {
         };
     }
 
-    fn consume_block(&self,
-                     blk: &blk,
-                     visitor: vt<VisitContext>)
-    {
+    pub fn consume_block(&self, blk: &blk, visitor: vt<VisitContext>) {
         /*!
          * Indicates that the value of `blk` will be consumed,
          * meaning either copied or moved depending on its type.
@@ -272,19 +264,18 @@ pub impl VisitContext {
         debug!("consume_block(blk.id=%?)", blk.node.id);
 
         for blk.node.stmts.each |stmt| {
-            (visitor.visit_stmt)(*stmt, *self, visitor);
+            (visitor.visit_stmt)(*stmt, (*self, visitor));
         }
 
-        for blk.node.expr.each |tail_expr| {
+        for blk.node.expr.iter().advance |tail_expr| {
             self.consume_expr(*tail_expr, visitor);
         }
     }
 
-    fn use_expr(&self,
-                expr: @expr,
-                expr_mode: UseMode,
-                visitor: vt<VisitContext>)
-    {
+    pub fn use_expr(&self,
+                    expr: @expr,
+                    expr_mode: UseMode,
+                    visitor: vt<VisitContext>) {
         /*!
          * Indicates that `expr` is used with a given mode.  This will
          * in turn trigger calls to the subcomponents of `expr`.
@@ -311,7 +302,8 @@ pub impl VisitContext {
                 match comp_mode {
                     Move => {
                         let def = self.tcx.def_map.get_copy(&expr.id);
-                        for moved_variable_node_id_from_def(def).each |&id| {
+                        let r = moved_variable_node_id_from_def(def);
+                        for r.iter().advance |&id| {
                             self.move_maps.moved_variables_set.insert(id);
                         }
                     }
@@ -319,7 +311,7 @@ pub impl VisitContext {
                 }
             }
 
-            expr_unary(deref, base) => {       // *base
+            expr_unary(_, deref, base) => {       // *base
                 if !self.use_overloaded_operator(
                     expr, base, [], visitor)
                 {
@@ -333,7 +325,7 @@ pub impl VisitContext {
                 self.use_expr(base, comp_mode, visitor);
             }
 
-            expr_index(lhs, rhs) => {          // lhs[rhs]
+            expr_index(_, lhs, rhs) => {          // lhs[rhs]
                 if !self.use_overloaded_operator(
                     expr, lhs, [rhs], visitor)
                 {
@@ -347,11 +339,11 @@ pub impl VisitContext {
                 self.use_fn_args(callee.id, *args, visitor);
             }
 
-            expr_method_call(callee, _, _, ref args, _) => { // callee.m(args)
+            expr_method_call(callee_id, rcvr, _, _, ref args, _) => { // callee.m(args)
                 // Implicit self is equivalent to & mode, but every
                 // other kind should be + mode.
-                self.use_receiver(callee, visitor);
-                self.use_fn_args(expr.callee_id, *args, visitor);
+                self.use_receiver(rcvr, visitor);
+                self.use_fn_args(callee_id, *args, visitor);
             }
 
             expr_struct(_, ref fields, opt_with) => {
@@ -359,7 +351,7 @@ pub impl VisitContext {
                     self.consume_expr(field.node.expr, visitor);
                 }
 
-                for opt_with.each |with_expr| {
+                for opt_with.iter().advance |with_expr| {
                     // If there are any fields whose type is move-by-default,
                     // then `with` is consumed, otherwise it is only read
                     let with_ty = ty::expr_ty(self.tcx, *with_expr);
@@ -398,7 +390,7 @@ pub impl VisitContext {
             expr_if(cond_expr, ref then_blk, opt_else_expr) => {
                 self.consume_expr(cond_expr, visitor);
                 self.consume_block(then_blk, visitor);
-                for opt_else_expr.each |else_expr| {
+                for opt_else_expr.iter().advance |else_expr| {
                     self.consume_expr(*else_expr, visitor);
                 }
             }
@@ -453,7 +445,7 @@ pub impl VisitContext {
                 self.consume_block(blk, visitor);
             }
 
-            expr_unary(_, lhs) => {
+            expr_unary(_, _, lhs) => {
                 if !self.use_overloaded_operator(
                     expr, lhs, [], visitor)
                 {
@@ -461,7 +453,7 @@ pub impl VisitContext {
                 }
             }
 
-            expr_binary(_, lhs, rhs) => {
+            expr_binary(_, _, lhs, rhs) => {
                 if !self.use_overloaded_operator(
                     expr, lhs, [rhs], visitor)
                 {
@@ -475,7 +467,7 @@ pub impl VisitContext {
             }
 
             expr_ret(ref opt_expr) => {
-                for opt_expr.each |expr| {
+                for opt_expr.iter().advance |expr| {
                     self.consume_expr(*expr, visitor);
                 }
             }
@@ -489,7 +481,7 @@ pub impl VisitContext {
                 self.consume_expr(base, visitor);
             }
 
-            expr_assign_op(_, lhs, rhs) => {
+            expr_assign_op(_, _, lhs, rhs) => {
                 // FIXME(#4712) --- Overloaded operators?
                 //
                 // if !self.use_overloaded_operator(
@@ -528,12 +520,12 @@ pub impl VisitContext {
         }
     }
 
-    fn use_overloaded_operator(&self,
-                               expr: @expr,
-                               receiver_expr: @expr,
-                               arg_exprs: &[@expr],
-                               visitor: vt<VisitContext>) -> bool
-    {
+    pub fn use_overloaded_operator(&self,
+                                   expr: @expr,
+                                   receiver_expr: @expr,
+                                   arg_exprs: &[@expr],
+                                   visitor: vt<VisitContext>)
+                                   -> bool {
         if !self.method_map.contains_key(&expr.id) {
             return false;
         }
@@ -549,24 +541,19 @@ pub impl VisitContext {
         return true;
     }
 
-    fn consume_arm(&self,
-                   arm: &arm,
-                   visitor: vt<VisitContext>)
-    {
-        for arm.pats.each |pat| {
+    pub fn consume_arm(&self, arm: &arm, visitor: vt<VisitContext>) {
+        for arm.pats.iter().advance |pat| {
             self.use_pat(*pat);
         }
 
-        for arm.guard.each |guard| {
+        for arm.guard.iter().advance |guard| {
             self.consume_expr(*guard, visitor);
         }
 
         self.consume_block(&arm.body, visitor);
     }
 
-    fn use_pat(&self,
-               pat: @pat)
-    {
+    pub fn use_pat(&self, pat: @pat) {
         /*!
          *
          * Decides whether each binding in a pattern moves the value
@@ -575,13 +562,17 @@ pub impl VisitContext {
 
         do pat_bindings(self.tcx.def_map, pat) |bm, id, _span, _path| {
             let binding_moves = match bm {
-                bind_by_copy => false,
                 bind_by_ref(_) => false,
                 bind_infer => {
                     let pat_ty = ty::node_id_to_type(self.tcx, id);
+                    debug!("pattern %? type is %s",
+                           id, pat_ty.repr(self.tcx));
                     ty::type_moves_by_default(self.tcx, pat_ty)
                 }
             };
+
+            debug!("pattern binding %?: bm=%?, binding_moves=%b",
+                   id, bm, binding_moves);
 
             if binding_moves {
                 self.move_maps.moves_map.insert(id);
@@ -589,32 +580,31 @@ pub impl VisitContext {
         }
     }
 
-    fn use_receiver(&self,
-                    receiver_expr: @expr,
-                    visitor: vt<VisitContext>)
-    {
+    pub fn use_receiver(&self,
+                        receiver_expr: @expr,
+                        visitor: vt<VisitContext>) {
         self.use_fn_arg(receiver_expr, visitor);
     }
 
-    fn use_fn_args(&self,
-                   _: node_id,
-                   arg_exprs: &[@expr],
-                   visitor: vt<VisitContext>) {
+    pub fn use_fn_args(&self,
+                       _: node_id,
+                       arg_exprs: &[@expr],
+                       visitor: vt<VisitContext>) {
         //! Uses the argument expressions.
         for arg_exprs.each |arg_expr| {
             self.use_fn_arg(*arg_expr, visitor);
         }
     }
 
-    fn use_fn_arg(&self, arg_expr: @expr, visitor: vt<VisitContext>) {
+    pub fn use_fn_arg(&self, arg_expr: @expr, visitor: vt<VisitContext>) {
         //! Uses the argument.
         self.consume_expr(arg_expr, visitor)
     }
 
-    fn arms_have_by_move_bindings(&self,
-                                  moves_map: MovesMap,
-                                  arms: &[arm]) -> Option<@pat>
-    {
+    pub fn arms_have_by_move_bindings(&self,
+                                      moves_map: MovesMap,
+                                      arms: &[arm])
+                                      -> Option<@pat> {
         for arms.each |arm| {
             for arm.pats.each |&pat| {
                 for ast_util::walk_pat(pat) |p| {
@@ -627,7 +617,7 @@ pub impl VisitContext {
         return None;
     }
 
-    fn compute_captures(&self, fn_expr_id: node_id) -> @[CaptureVar] {
+    pub fn compute_captures(&self, fn_expr_id: node_id) -> @[CaptureVar] {
         debug!("compute_capture_vars(fn_expr_id=%?)", fn_expr_id);
         let _indenter = indenter();
 

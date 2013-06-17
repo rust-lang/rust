@@ -26,6 +26,8 @@ use middle::trans::type_of::*;
 use middle::ty;
 use util::ppaux::ty_to_str;
 
+use core::str;
+use core::vec;
 use syntax::ast;
 use syntax::ast_map::path_name;
 use syntax::ast_util;
@@ -116,8 +118,8 @@ pub struct EnvValue {
     datum: Datum
 }
 
-pub impl EnvAction {
-    fn to_str(&self) -> ~str {
+impl EnvAction {
+    pub fn to_str(&self) -> ~str {
         match *self {
             EnvCopy => ~"EnvCopy",
             EnvMove => ~"EnvMove",
@@ -126,8 +128,8 @@ pub impl EnvAction {
     }
 }
 
-pub impl EnvValue {
-    fn to_str(&self, ccx: @CrateContext) -> ~str {
+impl EnvValue {
+    pub fn to_str(&self, ccx: &CrateContext) -> ~str {
         fmt!("%s(%s)", self.action.to_str(), self.datum.to_str(ccx))
     }
 }
@@ -159,7 +161,8 @@ pub fn mk_closure_tys(tcx: ty::ctxt,
 pub fn allocate_cbox(bcx: block, sigil: ast::Sigil, cdata_ty: ty::t)
                   -> Result {
     let _icx = bcx.insn_ctxt("closure::allocate_cbox");
-    let ccx = bcx.ccx(), tcx = ccx.tcx;
+    let ccx = bcx.ccx();
+    let tcx = ccx.tcx;
 
     fn nuke_ref_count(bcx: block, llbox: ValueRef) {
         let _icx = bcx.insn_ctxt("closure::nuke_ref_count");
@@ -202,7 +205,8 @@ pub fn store_environment(bcx: block,
                          bound_values: ~[EnvValue],
                          sigil: ast::Sigil) -> ClosureResult {
     let _icx = bcx.insn_ctxt("closure::store_environment");
-    let ccx = bcx.ccx(), tcx = ccx.tcx;
+    let ccx = bcx.ccx();
+    let tcx = ccx.tcx;
 
     // compute the shape of the closure
     let cdata_ty = mk_closure_tys(tcx, bound_values);
@@ -282,10 +286,10 @@ pub fn build_closure(bcx0: block,
 
     // If this is a `for` loop body, add two special environment
     // variables:
-    for include_ret_handle.each |flagptr| {
+    for include_ret_handle.iter().advance |flagptr| {
         // Flag indicating we have returned (a by-ref bool):
         let flag_datum = Datum {val: *flagptr, ty: ty::mk_bool(),
-                                mode: ByRef, source: ZeroMem};
+                                mode: ByRef(ZeroMem)};
         env_vals.push(EnvValue {action: EnvRef,
                                 datum: flag_datum});
 
@@ -297,7 +301,7 @@ pub fn build_closure(bcx0: block,
         };
         let ret_casted = PointerCast(bcx, ret_true, T_ptr(T_nil()));
         let ret_datum = Datum {val: ret_casted, ty: ty::mk_nil(),
-                               mode: ByRef, source: ZeroMem};
+                               mode: ByRef(ZeroMem)};
         env_vals.push(EnvValue {action: EnvRef,
                                 datum: ret_datum});
     }
@@ -322,7 +326,9 @@ pub fn load_environment(fcx: fn_ctxt,
                 str::as_c_str("load_env",
                               |buf|
                               unsafe {
-                                llvm::LLVMAppendBasicBlock(fcx.llfn, buf)
+                                llvm::LLVMAppendBasicBlockInContext(fcx.ccx.llcx,
+                                                                    fcx.llfn,
+                                                                    buf)
                               });
             fcx.llloadenv = Some(ll);
             ll
@@ -370,7 +376,7 @@ pub fn trans_expr_fn(bcx: block,
      * - `decl`
      * - `body`
      * - `outer_id`: The id of the closure expression with the correct
-     *   type.  This is usually the same as as `user_id`, but in the
+     *   type.  This is usually the same as `user_id`, but in the
      *   case of a `for` loop, the `outer_id` will have the return
      *   type of boolean, and the `user_id` will have the return type
      *   of `nil`.
@@ -498,7 +504,8 @@ pub fn make_opaque_cbox_take_glue(
     }
 
     // ~fn requires a deep copy.
-    let ccx = bcx.ccx(), tcx = ccx.tcx;
+    let ccx = bcx.ccx();
+    let tcx = ccx.tcx;
     let llopaquecboxty = T_opaque_box_ptr(ccx);
     let cbox_in = Load(bcx, cboxptr);
     do with_cond(bcx, IsNotNull(bcx, cbox_in)) |bcx| {

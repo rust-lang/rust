@@ -25,6 +25,7 @@
 // irrelevant).
 
 use std::comm::*;
+use std::task;
 
 fn foo(x: ()) -> Port<()> {
     let (p, c) = stream::<()>();

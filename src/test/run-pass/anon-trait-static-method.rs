@@ -12,13 +12,13 @@ struct Foo {
     x: int
 }
 
-pub impl Foo {
-    fn new() -> Foo {
+impl Foo {
+    pub fn new() -> Foo {
         Foo { x: 3 }
     }
 }
 
 pub fn main() {
     let x = Foo::new();
-    io::println(x.x.to_str());
+    println(x.x.to_str());
 }

@@ -14,6 +14,8 @@ use doc;
 #[cfg(test)] use extract;
 #[cfg(test)] use parse;
 
+use core::vec;
+
 pub struct Fold<T> {
     ctxt: T,
     fold_doc: FoldDoc<T>,
@@ -366,7 +368,7 @@ pub fn default_seq_fold_struct<T>(
 
 #[test]
 fn default_fold_should_produce_same_doc() {
-    let source = ~"mod a { fn b() { } mod c { fn d() { } } }";
+    let source = @"mod a { fn b() { } mod c { fn d() { } } }";
     let ast = parse::from_str(source);
     let doc = extract::extract(ast, ~"");
     let fld = default_seq_fold(());
@@ -376,7 +378,7 @@ fn default_fold_should_produce_same_doc() {
 
 #[test]
 fn default_fold_should_produce_same_consts() {
-    let source = ~"static a: int = 0;";
+    let source = @"static a: int = 0;";
     let ast = parse::from_str(source);
     let doc = extract::extract(ast, ~"");
     let fld = default_seq_fold(());
@@ -386,7 +388,7 @@ fn default_fold_should_produce_same_consts() {
 
 #[test]
 fn default_fold_should_produce_same_enums() {
-    let source = ~"enum a { b }";
+    let source = @"enum a { b }";
     let ast = parse::from_str(source);
     let doc = extract::extract(ast, ~"");
     let fld = default_seq_fold(());
@@ -396,7 +398,7 @@ fn default_fold_should_produce_same_enums() {
 
 #[test]
 fn default_parallel_fold_should_produce_same_doc() {
-    let source = ~"mod a { fn b() { } mod c { fn d() { } } }";
+    let source = @"mod a { fn b() { } mod c { fn d() { } } }";
     let ast = parse::from_str(source);
     let doc = extract::extract(ast, ~"");
     let fld = default_par_fold(());

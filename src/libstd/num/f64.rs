@@ -10,10 +10,14 @@
 
 //! Operations and constants for `f64`
 
+#[allow(missing_doc)];
+
 use libc::c_int;
 use num::{Zero, One, strconv};
 use num::{FPCategory, FPNaN, FPInfinite , FPZero, FPSubnormal, FPNormal};
+use num;
 use prelude::*;
+use to_str;
 
 pub use cmath::c_double_targ_consts::*;
 pub use cmp::{min, max};
@@ -399,7 +403,7 @@ impl Fractional for f64 {
 
 impl Algebraic for f64 {
     #[inline(always)]
-    fn pow(&self, n: f64) -> f64 { pow(*self, n) }
+    fn pow(&self, n: &f64) -> f64 { pow(*self, *n) }
 
     #[inline(always)]
     fn sqrt(&self) -> f64 { sqrt(*self) }
@@ -411,7 +415,7 @@ impl Algebraic for f64 {
     fn cbrt(&self) -> f64 { cbrt(*self) }
 
     #[inline(always)]
-    fn hypot(&self, other: f64) -> f64 { hypot(*self, other) }
+    fn hypot(&self, other: &f64) -> f64 { hypot(*self, *other) }
 }
 
 impl Trigonometric for f64 {
@@ -434,7 +438,7 @@ impl Trigonometric for f64 {
     fn atan(&self) -> f64 { atan(*self) }
 
     #[inline(always)]
-    fn atan2(&self, other: f64) -> f64 { atan2(*self, other) }
+    fn atan2(&self, other: &f64) -> f64 { atan2(*self, *other) }
 
     /// Simultaneously computes the sine and cosine of the number
     #[inline(always)]
@@ -458,7 +462,7 @@ impl Exponential for f64 {
 
     /// Returns the logarithm of the number with respect to an arbitrary base
     #[inline(always)]
-    fn log(&self, base: f64) -> f64 { self.ln() / base.ln() }
+    fn log(&self, base: &f64) -> f64 { self.ln() / base.ln() }
 
     /// Returns the base 2 logarithm of the number
     #[inline(always)]
@@ -999,8 +1003,11 @@ impl num::FromStrRadix for f64 {
 #[cfg(test)]
 mod tests {
     use f64::*;
-    use num::*;
     use prelude::*;
+
+    use num::*;
+    use num;
+    use sys;
 
     #[test]
     fn test_num() {

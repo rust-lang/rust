@@ -11,9 +11,12 @@
 use core::prelude::*;
 
 use core::cell::Cell;
-use core::run;
-use core::run::ProcessOutput;
+use core::os;
 use core::result::Result;
+use core::result;
+use core::run::ProcessOutput;
+use core::run;
+use core::vec;
 use extra::getopts;
 
 /// The type of document to output
@@ -175,7 +178,7 @@ fn config_from_opts(
             }
         }
     };
-    let process_output = Cell(process_output);
+    let process_output = Cell::new(process_output);
     let result = do result::chain(result) |config| {
         let pandoc_cmd = getopts::opt_maybe_str(matches, opt_pandoc_cmd());
         let pandoc_cmd = maybe_find_pandoc(
@@ -243,7 +246,9 @@ pub fn maybe_find_pandoc(
 #[cfg(test)]
 mod test {
     use core::prelude::*;
+
     use config::*;
+    use core::result;
     use core::run::ProcessOutput;
 
     fn parse_config(args: &[~str]) -> Result<Config, ~str> {
@@ -257,7 +262,7 @@ mod test {
             .. default_config(&Path("test"))
         };
         let mock_process_output: ~fn(&str, &[~str]) -> ProcessOutput = |_, _| {
-            ProcessOutput { status: 0, output: "pandoc 1.8.2.1".to_bytes(), error: ~[] }
+            ProcessOutput { status: 0, output: "pandoc 1.8.2.1".as_bytes().to_owned(), error: ~[] }
         };
         let result = maybe_find_pandoc(&config, None, mock_process_output);
         assert!(result == result::Ok(Some(~"pandoc")));

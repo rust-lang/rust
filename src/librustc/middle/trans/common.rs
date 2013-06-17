@@ -12,26 +12,18 @@
 
 use core::prelude::*;
 
-use back::{abi, upcall};
+use back::{abi};
 use driver::session;
 use driver::session::Session;
-use lib::llvm::{ModuleRef, ValueRef, TypeRef, BasicBlockRef, BuilderRef};
+use lib::llvm::{ValueRef, TypeRef, BasicBlockRef, BuilderRef};
 use lib::llvm::{True, False, Bool};
-use lib::llvm::{llvm, TargetData, TypeNames, associate_type, name_has_type};
+use lib::llvm::{llvm, TypeNames, associate_type, name_has_type};
 use lib;
-use metadata::common::LinkMeta;
-use middle::astencode;
-use middle::resolve;
-use middle::trans::adt;
 use middle::trans::base;
 use middle::trans::build;
 use middle::trans::datum;
-use middle::trans::debuginfo;
 use middle::trans::glue;
-use middle::trans::reachable;
-use middle::trans::shape;
 use middle::trans::type_of;
-use middle::trans::type_use;
 use middle::trans::write_guard;
 use middle::ty::substs;
 use middle::ty;
@@ -40,24 +32,30 @@ use middle::borrowck::root_map_key;
 use util::ppaux::{Repr};
 
 use core::cast::transmute;
-use core::hash;
-use core::hashmap::{HashMap, HashSet};
+use core::cast;
+use core::hashmap::{HashMap};
 use core::libc::{c_uint, c_longlong, c_ulonglong};
+use core::str;
 use core::to_bytes;
 use core::vec::raw::to_ptr;
+use core::vec;
 use syntax::ast::ident;
 use syntax::ast_map::{path, path_elt};
 use syntax::codemap::span;
-use syntax::parse::token::ident_interner;
+use syntax::parse::token;
 use syntax::{ast, ast_map};
 use syntax::abi::{X86, X86_64, Arm, Mips};
 
+pub use middle::trans::context::CrateContext;
+
+// NOTE: this thunk is totally pointless now that we're not passing
+// interners around...
 pub type namegen = @fn(s: &str) -> ident;
-pub fn new_namegen(intr: @ident_interner) -> namegen {
+pub fn new_namegen() -> namegen {
     let f: @fn(s: &str) -> ident = |prefix| {
-        intr.gensym(fmt!("%s_%u",
-                          prefix,
-                          intr.gensym(prefix).repr))
+        token::str_to_ident(fmt!("%s_%u",
+                                 prefix,
+                                 token::gensym(prefix)))
     };
     f
 }
@@ -126,9 +124,9 @@ pub struct Stats {
     n_monos: uint,
     n_inlines: uint,
     n_closures: uint,
-    llvm_insn_ctxt: @mut ~[~str],
-    llvm_insns: @mut HashMap<~str, uint>,
-    fn_times: @mut ~[(~str, int)] // (ident, time)
+    llvm_insn_ctxt: ~[~str],
+    llvm_insns: HashMap<~str, uint>,
+    fn_times: ~[(~str, int)] // (ident, time)
 }
 
 pub struct BuilderRef_res {
@@ -149,85 +147,7 @@ pub fn BuilderRef_res(B: BuilderRef) -> BuilderRef_res {
     }
 }
 
-pub type ExternMap = @mut HashMap<@str, ValueRef>;
-
-// Crate context.  Every crate we compile has one of these.
-pub struct CrateContext {
-     sess: session::Session,
-     llmod: ModuleRef,
-     td: TargetData,
-     tn: @TypeNames,
-     externs: ExternMap,
-     intrinsics: HashMap<~str, ValueRef>,
-     item_vals: @mut HashMap<ast::node_id, ValueRef>,
-     exp_map2: resolve::ExportMap2,
-     reachable: reachable::map,
-     item_symbols: @mut HashMap<ast::node_id, ~str>,
-     link_meta: LinkMeta,
-     enum_sizes: @mut HashMap<ty::t, uint>,
-     discrims: @mut HashMap<ast::def_id, ValueRef>,
-     discrim_symbols: @mut HashMap<ast::node_id, @~str>,
-     tydescs: @mut HashMap<ty::t, @mut tydesc_info>,
-     // Set when running emit_tydescs to enforce that no more tydescs are
-     // created.
-     finished_tydescs: @mut bool,
-     // Track mapping of external ids to local items imported for inlining
-     external: @mut HashMap<ast::def_id, Option<ast::node_id>>,
-     // Cache instances of monomorphized functions
-     monomorphized: @mut HashMap<mono_id, ValueRef>,
-     monomorphizing: @mut HashMap<ast::def_id, uint>,
-     // Cache computed type parameter uses (see type_use.rs)
-     type_use_cache: @mut HashMap<ast::def_id, @~[type_use::type_uses]>,
-     // Cache generated vtables
-     vtables: @mut HashMap<mono_id, ValueRef>,
-     // Cache of constant strings,
-     const_cstr_cache: @mut HashMap<@~str, ValueRef>,
-
-     // Reverse-direction for const ptrs cast from globals.
-     // Key is an int, cast from a ValueRef holding a *T,
-     // Val is a ValueRef holding a *[T].
-     //
-     // Needed because LLVM loses pointer->pointee association
-     // when we ptrcast, and we have to ptrcast during translation
-     // of a [T] const because we form a slice, a [*T,int] pair, not
-     // a pointer to an LLVM array type.
-     const_globals: @mut HashMap<int, ValueRef>,
-
-     // Cache of emitted const values
-     const_values: @mut HashMap<ast::node_id, ValueRef>,
-
-     // Cache of external const values
-     extern_const_values: @mut HashMap<ast::def_id, ValueRef>,
-
-     module_data: @mut HashMap<~str, ValueRef>,
-     lltypes: @mut HashMap<ty::t, TypeRef>,
-     llsizingtypes: @mut HashMap<ty::t, TypeRef>,
-     adt_reprs: @mut HashMap<ty::t, @adt::Repr>,
-     names: namegen,
-     next_addrspace: addrspace_gen,
-     symbol_hasher: @mut hash::State,
-     type_hashcodes: @mut HashMap<ty::t, @str>,
-     type_short_names: @mut HashMap<ty::t, ~str>,
-     all_llvm_symbols: @mut HashSet<@~str>,
-     tcx: ty::ctxt,
-     maps: astencode::Maps,
-     stats: @mut Stats,
-     upcalls: @upcall::Upcalls,
-     tydesc_type: TypeRef,
-     int_type: TypeRef,
-     float_type: TypeRef,
-     task_type: TypeRef,
-     opaque_vec_type: TypeRef,
-     builder: BuilderRef_res,
-     shape_cx: shape::Ctxt,
-     crate_map: ValueRef,
-     // Set when at least one function uses GC. Needed so that
-     // decl_gc_metadata knows whether to link to the module metadata, which
-     // is not emitted by LLVM's GC pass when no functions use GC.
-     uses_gc: @mut bool,
-     dbg_cx: Option<debuginfo::DebugContext>,
-     do_not_commit_warning_issued: @mut bool
-}
+pub type ExternMap = HashMap<@str, ValueRef>;
 
 // Types used for llself.
 pub struct ValSelfData {
@@ -235,8 +155,6 @@ pub struct ValSelfData {
     t: ty::t,
     is_owned: bool
 }
-
-pub enum local_val { local_mem(ValueRef), local_imm(ValueRef), }
 
 // Here `self_ty` is the real type of the self parameter to this method. It
 // will only be set in the case of default methods.
@@ -247,10 +165,10 @@ pub struct param_substs {
     self_ty: Option<ty::t>
 }
 
-pub impl param_substs {
-    fn validate(&self) {
+impl param_substs {
+    pub fn validate(&self) {
         for self.tys.each |t| { assert!(!ty::type_needs_infer(*t)); }
-        for self.self_ty.each |t| { assert!(!ty::type_needs_infer(*t)); }
+        for self.self_ty.iter().advance |t| { assert!(!ty::type_needs_infer(*t)); }
     }
 }
 
@@ -324,10 +242,10 @@ pub struct fn_ctxt_ {
     has_immediate_return_value: bool,
 
     // Maps arguments to allocas created for them in llallocas.
-    llargs: @mut HashMap<ast::node_id, local_val>,
+    llargs: @mut HashMap<ast::node_id, ValueRef>,
     // Maps the def_ids for local variables to the allocas created for
     // them in llallocas.
-    lllocals: @mut HashMap<ast::node_id, local_val>,
+    lllocals: @mut HashMap<ast::node_id, ValueRef>,
     // Same as above, but for closure upvars
     llupvars: @mut HashMap<ast::node_id, ValueRef>,
 
@@ -348,10 +266,10 @@ pub struct fn_ctxt_ {
     path: path,
 
     // This function's enclosing crate context.
-    ccx: @@CrateContext
+    ccx: @mut CrateContext
 }
 
-pub impl fn_ctxt_ {
+impl fn_ctxt_ {
     pub fn arg_pos(&self, arg: uint) -> uint {
         if self.has_immediate_return_value {
             arg + 1u
@@ -377,9 +295,9 @@ pub impl fn_ctxt_ {
 
 pub type fn_ctxt = @mut fn_ctxt_;
 
-pub fn warn_not_to_commit(ccx: @CrateContext, msg: &str) {
-    if !*ccx.do_not_commit_warning_issued {
-        *ccx.do_not_commit_warning_issued = true;
+pub fn warn_not_to_commit(ccx: &mut CrateContext, msg: &str) {
+    if !ccx.do_not_commit_warning_issued {
+        ccx.do_not_commit_warning_issued = true;
         ccx.sess.warn(msg.to_str() + " -- do not commit like this!");
     }
 }
@@ -550,7 +468,7 @@ pub fn revoke_clean(cx: block, val: ValueRef) {
                 clean_temp(v, _, _) if v == val => true,
                 _ => false
             });
-        for cleanup_pos.each |i| {
+        for cleanup_pos.iter().advance |i| {
             scope_info.cleanups =
                 vec::append(vec::slice(scope_info.cleanups, 0u, *i).to_vec(),
                             vec::slice(scope_info.cleanups,
@@ -596,8 +514,8 @@ pub struct scope_info {
     landing_pad: Option<BasicBlockRef>,
 }
 
-pub impl scope_info {
-    fn empty_cleanups(&mut self) -> bool {
+impl scope_info {
+    pub fn empty_cleanups(&mut self) -> bool {
         self.cleanups.is_empty()
     }
 }
@@ -609,7 +527,7 @@ pub trait get_node_info {
 impl get_node_info for @ast::expr {
     fn info(&self) -> Option<NodeInfo> {
         Some(NodeInfo {id: self.id,
-                       callee_id: Some(self.callee_id),
+                       callee_id: self.get_callee_id(),
                        span: self.span})
     }
 }
@@ -693,8 +611,8 @@ pub fn rslt(bcx: block, val: ValueRef) -> Result {
     Result {bcx: bcx, val: val}
 }
 
-pub impl Result {
-    fn unpack(&self, bcx: &mut block) -> ValueRef {
+impl Result {
+    pub fn unpack(&self, bcx: &mut block) -> ValueRef {
         *bcx = self.bcx;
         return self.val;
     }
@@ -740,28 +658,28 @@ pub fn block_parent(cx: block) -> block {
 
 // Accessors
 
-pub impl block_ {
-    fn ccx(@mut self) -> @CrateContext { *self.fcx.ccx }
-    fn tcx(@mut self) -> ty::ctxt { self.fcx.ccx.tcx }
-    fn sess(@mut self) -> Session { self.fcx.ccx.sess }
+impl block_ {
+    pub fn ccx(@mut self) -> @mut CrateContext { self.fcx.ccx }
+    pub fn tcx(@mut self) -> ty::ctxt { self.fcx.ccx.tcx }
+    pub fn sess(@mut self) -> Session { self.fcx.ccx.sess }
 
-    fn node_id_to_str(@mut self, id: ast::node_id) -> ~str {
+    pub fn node_id_to_str(@mut self, id: ast::node_id) -> ~str {
         ast_map::node_id_to_str(self.tcx().items, id, self.sess().intr())
     }
 
-    fn expr_to_str(@mut self, e: @ast::expr) -> ~str {
+    pub fn expr_to_str(@mut self, e: @ast::expr) -> ~str {
         e.repr(self.tcx())
     }
 
-    fn expr_is_lval(@mut self, e: @ast::expr) -> bool {
+    pub fn expr_is_lval(@mut self, e: @ast::expr) -> bool {
         ty::expr_is_lval(self.tcx(), self.ccx().maps.method_map, e)
     }
 
-    fn expr_kind(@mut self, e: @ast::expr) -> ty::ExprKind {
+    pub fn expr_kind(@mut self, e: @ast::expr) -> ty::ExprKind {
         ty::expr_kind(self.tcx(), self.ccx().maps.method_map, e)
     }
 
-    fn def(@mut self, nid: ast::node_id) -> ast::def {
+    pub fn def(@mut self, nid: ast::node_id) -> ast::def {
         match self.tcx().def_map.find(&nid) {
             Some(&v) => v,
             None => {
@@ -771,18 +689,19 @@ pub impl block_ {
         }
     }
 
-    fn val_str(@mut self, val: ValueRef) -> @str {
+    pub fn val_str(@mut self, val: ValueRef) -> @str {
         val_str(self.ccx().tn, val)
     }
 
-    fn llty_str(@mut self, llty: TypeRef) -> @str {
+    pub fn llty_str(@mut self, llty: TypeRef) -> @str {
         ty_str(self.ccx().tn, llty)
     }
 
-    fn ty_to_str(@mut self, t: ty::t) -> ~str {
+    pub fn ty_to_str(@mut self, t: ty::t) -> ~str {
         t.repr(self.tcx())
     }
-    fn to_str(@mut self) -> ~str {
+
+    pub fn to_str(@mut self) -> ~str {
         unsafe {
             match self.node_info {
                 Some(node_info) => fmt!("[block %d]", node_info.id),
@@ -794,34 +713,48 @@ pub impl block_ {
 
 // LLVM type constructors.
 pub fn T_void() -> TypeRef {
-    unsafe {
-        return llvm::LLVMVoidType();
-    }
+    unsafe { return llvm::LLVMVoidTypeInContext(base::task_llcx()); }
 }
 
 pub fn T_nil() -> TypeRef {
     return T_struct([], false)
 }
 
-pub fn T_metadata() -> TypeRef { unsafe { return llvm::LLVMMetadataType(); } }
+pub fn T_metadata() -> TypeRef {
+    unsafe { return llvm::LLVMMetadataTypeInContext(base::task_llcx()); }
+}
 
-pub fn T_i1() -> TypeRef { unsafe { return llvm::LLVMInt1Type(); } }
+pub fn T_i1() -> TypeRef {
+    unsafe { return llvm::LLVMInt1TypeInContext(base::task_llcx()); }
+}
 
-pub fn T_i8() -> TypeRef { unsafe { return llvm::LLVMInt8Type(); } }
+pub fn T_i8() -> TypeRef {
+    unsafe { return llvm::LLVMInt8TypeInContext(base::task_llcx()); }
+}
 
-pub fn T_i16() -> TypeRef { unsafe { return llvm::LLVMInt16Type(); } }
+pub fn T_i16() -> TypeRef {
+    unsafe { return llvm::LLVMInt16TypeInContext(base::task_llcx()); }
+}
 
-pub fn T_i32() -> TypeRef { unsafe { return llvm::LLVMInt32Type(); } }
+pub fn T_i32() -> TypeRef {
+    unsafe { return llvm::LLVMInt32TypeInContext(base::task_llcx()); }
+}
 
-pub fn T_i64() -> TypeRef { unsafe { return llvm::LLVMInt64Type(); } }
+pub fn T_i64() -> TypeRef {
+    unsafe { return llvm::LLVMInt64TypeInContext(base::task_llcx()); }
+}
 
-pub fn T_f32() -> TypeRef { unsafe { return llvm::LLVMFloatType(); } }
+pub fn T_f32() -> TypeRef {
+    unsafe { return llvm::LLVMFloatTypeInContext(base::task_llcx()); }
+}
 
-pub fn T_f64() -> TypeRef { unsafe { return llvm::LLVMDoubleType(); } }
+pub fn T_f64() -> TypeRef {
+    unsafe { return llvm::LLVMDoubleTypeInContext(base::task_llcx()); }
+}
 
 pub fn T_bool() -> TypeRef { return T_i8(); }
 
-pub fn T_int(targ_cfg: @session::config) -> TypeRef {
+pub fn T_int(targ_cfg: &session::config) -> TypeRef {
     return match targ_cfg.arch {
         X86 => T_i32(),
         X86_64 => T_i64(),
@@ -830,7 +763,7 @@ pub fn T_int(targ_cfg: @session::config) -> TypeRef {
     };
 }
 
-pub fn T_int_ty(cx: @CrateContext, t: ast::int_ty) -> TypeRef {
+pub fn T_int_ty(cx: &CrateContext, t: ast::int_ty) -> TypeRef {
     match t {
       ast::ty_i => cx.int_type,
       ast::ty_char => T_char(),
@@ -841,7 +774,7 @@ pub fn T_int_ty(cx: @CrateContext, t: ast::int_ty) -> TypeRef {
     }
 }
 
-pub fn T_uint_ty(cx: @CrateContext, t: ast::uint_ty) -> TypeRef {
+pub fn T_uint_ty(cx: &CrateContext, t: ast::uint_ty) -> TypeRef {
     match t {
       ast::ty_u => cx.int_type,
       ast::ty_u8 => T_i8(),
@@ -851,7 +784,7 @@ pub fn T_uint_ty(cx: @CrateContext, t: ast::uint_ty) -> TypeRef {
     }
 }
 
-pub fn T_float_ty(cx: @CrateContext, t: ast::float_ty) -> TypeRef {
+pub fn T_float_ty(cx: &CrateContext, t: ast::float_ty) -> TypeRef {
     match t {
       ast::ty_f => cx.float_type,
       ast::ty_f32 => T_f32(),
@@ -859,7 +792,7 @@ pub fn T_float_ty(cx: @CrateContext, t: ast::float_ty) -> TypeRef {
     }
 }
 
-pub fn T_float(targ_cfg: @session::config) -> TypeRef {
+pub fn T_float(targ_cfg: &session::config) -> TypeRef {
     return match targ_cfg.arch {
         X86 => T_f64(),
         X86_64 => T_f64(),
@@ -870,19 +803,19 @@ pub fn T_float(targ_cfg: @session::config) -> TypeRef {
 
 pub fn T_char() -> TypeRef { return T_i32(); }
 
-pub fn T_size_t(targ_cfg: @session::config) -> TypeRef {
+pub fn T_size_t(targ_cfg: &session::config) -> TypeRef {
     return T_int(targ_cfg);
 }
 
 pub fn T_fn(inputs: &[TypeRef], output: TypeRef) -> TypeRef {
     unsafe {
         return llvm::LLVMFunctionType(output, to_ptr(inputs),
-                                   inputs.len() as c_uint,
-                                   False);
+                                      inputs.len() as c_uint,
+                                      False);
     }
 }
 
-pub fn T_fn_pair(cx: @CrateContext, tfn: TypeRef) -> TypeRef {
+pub fn T_fn_pair(cx: &CrateContext, tfn: TypeRef) -> TypeRef {
     return T_struct([T_ptr(tfn), T_opaque_cbox_ptr(cx)], false);
 }
 
@@ -900,16 +833,18 @@ pub fn T_root(t: TypeRef, addrspace: addrspace) -> TypeRef {
 
 pub fn T_struct(elts: &[TypeRef], packed: bool) -> TypeRef {
     unsafe {
-        return llvm::LLVMStructType(to_ptr(elts),
-                                    elts.len() as c_uint,
-                                    packed as Bool);
+        return llvm::LLVMStructTypeInContext(base::task_llcx(),
+                                             to_ptr(elts),
+                                             elts.len() as c_uint,
+                                             packed as Bool);
     }
 }
 
 pub fn T_named_struct(name: &str) -> TypeRef {
     unsafe {
-        let c = llvm::LLVMGetGlobalContext();
-        return str::as_c_str(name, |buf| llvm::LLVMStructCreateNamed(c, buf));
+        return str::as_c_str(name, |buf| {
+            llvm::LLVMStructCreateNamed(base::task_llcx(), buf)
+        });
     }
 }
 
@@ -930,44 +865,20 @@ pub fn T_empty_struct() -> TypeRef { return T_struct([], false); }
 // they are described by this opaque type.
 pub fn T_vtable() -> TypeRef { T_array(T_ptr(T_i8()), 1u) }
 
-pub fn T_task(targ_cfg: @session::config) -> TypeRef {
-    let t = T_named_struct("task");
-
-    // Refcount
-    // Delegate pointer
-    // Stack segment pointer
-    // Runtime SP
-    // Rust SP
-    // GC chain
-
-
-    // Domain pointer
-    // Crate cache pointer
-
-    let t_int = T_int(targ_cfg);
-    let elems =
-        ~[t_int, t_int, t_int, t_int,
-         t_int, t_int, t_int, t_int];
-    set_struct_body(t, elems, false);
-    return t;
-}
-
-pub fn T_tydesc_field(cx: @CrateContext, field: uint) -> TypeRef {
+pub fn T_tydesc_field(cx: &CrateContext, field: uint) -> TypeRef {
     // Bit of a kludge: pick the fn typeref out of the tydesc..
 
     unsafe {
         let mut tydesc_elts: ~[TypeRef] =
             vec::from_elem::<TypeRef>(abi::n_tydesc_fields,
                                      T_nil());
-        llvm::LLVMGetStructElementTypes(
-            cx.tydesc_type,
-            ptr::to_mut_unsafe_ptr(&mut tydesc_elts[0]));
+        llvm::LLVMGetStructElementTypes(cx.tydesc_type, &mut tydesc_elts[0]);
         let t = llvm::LLVMGetElementType(tydesc_elts[field]);
         return t;
     }
 }
 
-pub fn T_generic_glue_fn(cx: @CrateContext) -> TypeRef {
+pub fn T_generic_glue_fn(cx: &mut CrateContext) -> TypeRef {
     let s = @"glue_fn";
     match name_has_type(cx.tn, s) {
       Some(t) => return t,
@@ -1007,14 +918,14 @@ pub fn T_vector(t: TypeRef, n: uint) -> TypeRef {
 }
 
 // Interior vector.
-pub fn T_vec2(targ_cfg: @session::config, t: TypeRef) -> TypeRef {
+pub fn T_vec2(targ_cfg: &session::config, t: TypeRef) -> TypeRef {
     return T_struct([T_int(targ_cfg), // fill
                      T_int(targ_cfg), // alloc
                      T_array(t, 0u)], // elements
                     false);
 }
 
-pub fn T_vec(ccx: @CrateContext, t: TypeRef) -> TypeRef {
+pub fn T_vec(ccx: &CrateContext, t: TypeRef) -> TypeRef {
     return T_vec2(ccx.sess.targ_cfg, t);
 }
 
@@ -1036,16 +947,16 @@ pub fn tuplify_box_ty(tcx: ty::ctxt, t: ty::t) -> ty::t {
                          t]);
 }
 
-pub fn T_box_header_fields(cx: @CrateContext) -> ~[TypeRef] {
+pub fn T_box_header_fields(cx: &CrateContext) -> ~[TypeRef] {
     let ptr = T_ptr(T_i8());
     return ~[cx.int_type, T_ptr(cx.tydesc_type), ptr, ptr];
 }
 
-pub fn T_box_header(cx: @CrateContext) -> TypeRef {
+pub fn T_box_header(cx: &CrateContext) -> TypeRef {
     return T_struct(T_box_header_fields(cx), false);
 }
 
-pub fn T_box(cx: @CrateContext, t: TypeRef) -> TypeRef {
+pub fn T_box(cx: &CrateContext, t: TypeRef) -> TypeRef {
     return T_struct(vec::append(T_box_header_fields(cx), [t]), false);
 }
 
@@ -1055,15 +966,15 @@ pub fn T_box_ptr(t: TypeRef) -> TypeRef {
     }
 }
 
-pub fn T_opaque_box(cx: @CrateContext) -> TypeRef {
+pub fn T_opaque_box(cx: &CrateContext) -> TypeRef {
     return T_box(cx, T_i8());
 }
 
-pub fn T_opaque_box_ptr(cx: @CrateContext) -> TypeRef {
+pub fn T_opaque_box_ptr(cx: &CrateContext) -> TypeRef {
     return T_box_ptr(T_opaque_box(cx));
 }
 
-pub fn T_unique(cx: @CrateContext, t: TypeRef) -> TypeRef {
+pub fn T_unique(cx: &CrateContext, t: TypeRef) -> TypeRef {
     return T_struct(vec::append(T_box_header_fields(cx), [t]), false);
 }
 
@@ -1073,34 +984,32 @@ pub fn T_unique_ptr(t: TypeRef) -> TypeRef {
     }
 }
 
-pub fn T_port(cx: @CrateContext, _t: TypeRef) -> TypeRef {
+pub fn T_port(cx: &CrateContext, _t: TypeRef) -> TypeRef {
     return T_struct([cx.int_type], false); // Refcount
 
 }
 
-pub fn T_chan(cx: @CrateContext, _t: TypeRef) -> TypeRef {
+pub fn T_chan(cx: &CrateContext, _t: TypeRef) -> TypeRef {
     return T_struct([cx.int_type], false); // Refcount
 
 }
 
-pub fn T_taskptr(cx: @CrateContext) -> TypeRef { return T_ptr(cx.task_type); }
 
-
-pub fn T_opaque_cbox_ptr(cx: @CrateContext) -> TypeRef {
+pub fn T_opaque_cbox_ptr(cx: &CrateContext) -> TypeRef {
     // closures look like boxes (even when they are ~fn or &fn)
     // see trans_closure.rs
     return T_opaque_box_ptr(cx);
 }
 
-pub fn T_enum_discrim(cx: @CrateContext) -> TypeRef {
+pub fn T_enum_discrim(cx: &CrateContext) -> TypeRef {
     return cx.int_type;
 }
 
-pub fn T_captured_tydescs(cx: @CrateContext, n: uint) -> TypeRef {
+pub fn T_captured_tydescs(cx: &CrateContext, n: uint) -> TypeRef {
     return T_struct(vec::from_elem::<TypeRef>(n, T_ptr(cx.tydesc_type)), false);
 }
 
-pub fn T_opaque_trait(cx: @CrateContext, store: ty::TraitStore) -> TypeRef {
+pub fn T_opaque_trait(cx: &CrateContext, store: ty::TraitStore) -> TypeRef {
     match store {
         ty::BoxTraitStore => {
             T_struct([T_ptr(cx.tydesc_type), T_opaque_box_ptr(cx)], false)
@@ -1166,11 +1075,11 @@ pub fn C_i64(i: i64) -> ValueRef {
     return C_integral(T_i64(), i as u64, True);
 }
 
-pub fn C_int(cx: @CrateContext, i: int) -> ValueRef {
+pub fn C_int(cx: &CrateContext, i: int) -> ValueRef {
     return C_integral(cx.int_type, i as u64, True);
 }
 
-pub fn C_uint(cx: @CrateContext, i: uint) -> ValueRef {
+pub fn C_uint(cx: &CrateContext, i: uint) -> ValueRef {
     return C_integral(cx.int_type, i as u64, False);
 }
 
@@ -1181,18 +1090,19 @@ pub fn C_u8(i: uint) -> ValueRef {
 
 // This is a 'c-like' raw string, which differs from
 // our boxed-and-length-annotated strings.
-pub fn C_cstr(cx: @CrateContext, s: @~str) -> ValueRef {
+pub fn C_cstr(cx: &mut CrateContext, s: @str) -> ValueRef {
     unsafe {
         match cx.const_cstr_cache.find(&s) {
             Some(&llval) => return llval,
             None => ()
         }
 
-        let sc = do str::as_c_str(*s) |buf| {
-            llvm::LLVMConstString(buf, s.len() as c_uint, False)
+        let sc = do str::as_c_str(s) |buf| {
+            llvm::LLVMConstStringInContext(cx.llcx, buf, s.len() as c_uint,
+                                           False)
         };
         let g =
-            str::as_c_str(fmt!("str%u", (cx.names)("str").repr),
+            str::as_c_str(fmt!("str%u", (cx.names)("str").name),
                         |buf| llvm::LLVMAddGlobal(cx.llmod, val_ty(sc), buf));
         llvm::LLVMSetInitializer(g, sc);
         llvm::LLVMSetGlobalConstant(g, True);
@@ -1206,7 +1116,7 @@ pub fn C_cstr(cx: @CrateContext, s: @~str) -> ValueRef {
 
 // NB: Do not use `do_spill_noroot` to make this into a constant string, or
 // you will be kicked off fast isel. See issue #4352 for an example of this.
-pub fn C_estr_slice(cx: @CrateContext, s: @~str) -> ValueRef {
+pub fn C_estr_slice(cx: &mut CrateContext, s: @str) -> ValueRef {
     unsafe {
         let len = s.len();
         let cs = llvm::LLVMConstPointerCast(C_cstr(cx, s), T_ptr(T_i8()));
@@ -1218,7 +1128,8 @@ pub fn C_estr_slice(cx: @CrateContext, s: @~str) -> ValueRef {
 pub fn C_postr(s: &str) -> ValueRef {
     unsafe {
         return do str::as_c_str(s) |buf| {
-            llvm::LLVMConstString(buf, str::len(s) as c_uint, False)
+            llvm::LLVMConstStringInContext(base::task_llcx(),
+                                           buf, s.len() as c_uint, False)
         };
     }
 }
@@ -1237,7 +1148,8 @@ pub fn C_zero_byte_arr(size: uint) -> ValueRef {
 pub fn C_struct(elts: &[ValueRef]) -> ValueRef {
     unsafe {
         do vec::as_imm_buf(elts) |ptr, len| {
-            llvm::LLVMConstStruct(ptr, len as c_uint, False)
+            llvm::LLVMConstStructInContext(base::task_llcx(),
+                                           ptr, len as c_uint, False)
         }
     }
 }
@@ -1245,7 +1157,8 @@ pub fn C_struct(elts: &[ValueRef]) -> ValueRef {
 pub fn C_packed_struct(elts: &[ValueRef]) -> ValueRef {
     unsafe {
         do vec::as_imm_buf(elts) |ptr, len| {
-            llvm::LLVMConstStruct(ptr, len as c_uint, True)
+            llvm::LLVMConstStructInContext(base::task_llcx(),
+                                           ptr, len as c_uint, True)
         }
     }
 }
@@ -1261,13 +1174,13 @@ pub fn C_named_struct(T: TypeRef, elts: &[ValueRef]) -> ValueRef {
 pub fn C_array(ty: TypeRef, elts: &[ValueRef]) -> ValueRef {
     unsafe {
         return llvm::LLVMConstArray(ty, vec::raw::to_ptr(elts),
-                                 elts.len() as c_uint);
+                                    elts.len() as c_uint);
     }
 }
 
 pub fn C_bytes(bytes: &[u8]) -> ValueRef {
     unsafe {
-        return llvm::LLVMConstString(
+        return llvm::LLVMConstStringInContext(base::task_llcx(),
             cast::transmute(vec::raw::to_ptr(bytes)),
             bytes.len() as c_uint, True);
     }
@@ -1275,16 +1188,16 @@ pub fn C_bytes(bytes: &[u8]) -> ValueRef {
 
 pub fn C_bytes_plus_null(bytes: &[u8]) -> ValueRef {
     unsafe {
-        return llvm::LLVMConstString(
+        return llvm::LLVMConstStringInContext(base::task_llcx(),
             cast::transmute(vec::raw::to_ptr(bytes)),
             bytes.len() as c_uint, False);
     }
 }
 
-pub fn C_shape(ccx: @CrateContext, bytes: ~[u8]) -> ValueRef {
+pub fn C_shape(ccx: &CrateContext, bytes: ~[u8]) -> ValueRef {
     unsafe {
         let llshape = C_bytes_plus_null(bytes);
-        let name = fmt!("shape%u", (ccx.names)("shape").repr);
+        let name = fmt!("shape%u", (ccx.names)("shape").name);
         let llglobal = str::as_c_str(name, |buf| {
             llvm::LLVMAddGlobal(ccx.llmod, val_ty(llshape), buf)
         });
@@ -1301,7 +1214,7 @@ pub fn get_param(fndecl: ValueRef, param: uint) -> ValueRef {
     }
 }
 
-pub fn const_get_elt(cx: @CrateContext, v: ValueRef, us: &[c_uint])
+pub fn const_get_elt(cx: &CrateContext, v: ValueRef, us: &[c_uint])
                   -> ValueRef {
     unsafe {
         let r = do vec::as_imm_buf(us) |p, len| {
@@ -1435,13 +1348,14 @@ pub fn align_to(cx: block, off: ValueRef, align: ValueRef) -> ValueRef {
 }
 
 pub fn path_str(sess: session::Session, p: &[path_elt]) -> ~str {
-    let mut r = ~"", first = true;
+    let mut r = ~"";
+    let mut first = true;
     for p.each |e| {
         match *e {
             ast_map::path_name(s) | ast_map::path_mod(s) => {
                 if first { first = false; }
                 else { r += "::"; }
-                r += *sess.str_of(s);
+                r += sess.str_of(s);
             }
         }
     }
@@ -1480,7 +1394,7 @@ pub fn node_id_type_params(bcx: block, id: ast::node_id) -> ~[ty::t] {
     if !params.all(|t| !ty::type_needs_infer(*t)) {
         bcx.sess().bug(
             fmt!("Type parameters for node %d include inference types: %s",
-                 id, str::connect(params.map(|t| bcx.ty_to_str(*t)), ",")));
+                 id, params.map(|t| bcx.ty_to_str(*t)).connect(",")));
     }
 
     match bcx.fcx.param_substs {
@@ -1564,7 +1478,7 @@ pub fn dummy_substs(tps: ~[ty::t]) -> ty::substs {
 pub fn filename_and_line_num_from_span(bcx: block,
                                        span: span) -> (ValueRef, ValueRef) {
     let loc = bcx.sess().parse_sess.cm.lookup_char_pos(span.lo);
-    let filename_cstr = C_cstr(bcx.ccx(), @/*bad*/copy loc.file.name);
+    let filename_cstr = C_cstr(bcx.ccx(), loc.file.name);
     let filename = build::PointerCast(bcx, filename_cstr, T_ptr(T_i8()));
     let line = C_int(bcx.ccx(), loc.line as int);
     (filename, line)

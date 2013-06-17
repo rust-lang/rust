@@ -8,12 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
+//! Miscellaneous helpers for common patterns.
 
-Miscellaneous helpers for common patterns.
-
-*/
-
+use cast;
+use ptr;
 use prelude::*;
 use unstable::intrinsics;
 
@@ -67,26 +65,6 @@ pub fn swap<T>(x: &mut T, y: &mut T) {
 }
 
 /**
- * Swap the values at two mutable locations of the same type, without
- * deinitialising or copying either one.
- */
-#[inline]
-pub unsafe fn swap_ptr<T>(x: *mut T, y: *mut T) {
-    // Give ourselves some scratch space to work with
-    let mut tmp: T = intrinsics::uninit();
-    let t: *mut T = &mut tmp;
-
-    // Perform the swap
-    ptr::copy_memory(t, x, 1);
-    ptr::copy_memory(x, y, 1);
-    ptr::copy_memory(y, t, 1);
-
-    // y and t now point to the same thing, but we need to completely forget `tmp`
-    // because it's no longer relevant.
-    cast::forget(tmp);
-}
-
-/**
  * Replace the value at a mutable location with a new one, returning the old
  * value, without deinitialising or copying either one.
  */
@@ -96,34 +74,25 @@ pub fn replace<T>(dest: &mut T, mut src: T) -> T {
     src
 }
 
-/**
- * Replace the value at a mutable location with a new one, returning the old
- * value, without deinitialising or copying either one.
- */
-#[inline(always)]
-pub unsafe fn replace_ptr<T>(dest: *mut T, mut src: T) -> T {
-    swap_ptr(dest, ptr::to_mut_unsafe_ptr(&mut src));
-    src
-}
-
 /// A non-copyable dummy type.
-pub struct NonCopyable {
-    i: (),
+pub struct NonCopyable;
+
+impl NonCopyable {
+    /// Creates a dummy non-copyable structure and returns it for use.
+    pub fn new() -> NonCopyable { NonCopyable }
 }
 
 impl Drop for NonCopyable {
     fn finalize(&self) { }
 }
 
-pub fn NonCopyable() -> NonCopyable { NonCopyable { i: () } }
-
 
 /// A type with no inhabitants
 pub enum Void { }
 
-pub impl Void {
+impl Void {
     /// A utility function for ignoring this uninhabited type
-    fn uninhabited(self) -> ! {
+    pub fn uninhabited(self) -> ! {
         match self {
             // Nothing to match on
         }
@@ -183,7 +152,7 @@ mod tests {
     }
     #[test]
     pub fn test_replace() {
-        let mut x = Some(NonCopyable());
+        let mut x = Some(NonCopyable::new());
         let y = replace(&mut x, None);
         assert!(x.is_none());
         assert!(y.is_some());

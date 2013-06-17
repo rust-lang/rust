@@ -13,9 +13,9 @@
 use core::prelude::*;
 
 use core::cmp::{Eq, Ord};
-use core::vec::len;
-use core::vec;
+use core::uint;
 use core::util::swap;
+use core::vec;
 
 type Le<'self, T> = &'self fn(v1: &T, v2: &T) -> bool;
 
@@ -28,7 +28,7 @@ type Le<'self, T> = &'self fn(v1: &T, v2: &T) -> bool;
 pub fn merge_sort<T:Copy>(v: &[T], le: Le<T>) -> ~[T] {
     type Slice = (uint, uint);
 
-    return merge_sort_(v, (0u, len(v)), le);
+    return merge_sort_(v, (0u, v.len()), le);
 
     fn merge_sort_<T:Copy>(v: &[T], slice: Slice, le: Le<T>)
         -> ~[T] {
@@ -46,10 +46,10 @@ pub fn merge_sort<T:Copy>(v: &[T], le: Le<T>) -> ~[T] {
     }
 
     fn merge<T:Copy>(le: Le<T>, a: &[T], b: &[T]) -> ~[T] {
-        let mut rs = vec::with_capacity(len(a) + len(b));
-        let a_len = len(a);
+        let mut rs = vec::with_capacity(a.len() + b.len());
+        let a_len = a.len();
         let mut a_ix = 0;
-        let b_len = len(b);
+        let b_len = b.len();
         let mut b_ix = 0;
         while a_ix < a_len && b_ix < b_len {
             if le(&a[a_ix], &b[b_ix]) {
@@ -99,8 +99,9 @@ fn qsort<T>(arr: &mut [T], left: uint,
  * This is an unstable sort.
  */
 pub fn quick_sort<T>(arr: &mut [T], compare_func: Le<T>) {
-    if len::<T>(arr) == 0u { return; }
-    qsort::<T>(arr, 0u, len::<T>(arr) - 1u, compare_func);
+    let len = arr.len();
+    if len == 0u { return; }
+    qsort::<T>(arr, 0u, len - 1u, compare_func);
 }
 
 fn qsort3<T:Copy + Ord + Eq>(arr: &mut [T], left: int, right: int) {
@@ -137,7 +138,7 @@ fn qsort3<T:Copy + Ord + Eq>(arr: &mut [T], left: int, right: int) {
         vec::swap(arr, k as uint, j as uint);
         k += 1;
         j -= 1;
-        if k == len::<T>(arr) as int { break; }
+        if k == arr.len() as int { break; }
     }
     k = right - 1;
     while k > q {
@@ -166,6 +167,7 @@ pub fn quick_sort3<T:Copy + Ord + Eq>(arr: &mut [T]) {
     qsort3(arr, 0, (len - 1) as int);
 }
 
+#[allow(missing_doc)]
 pub trait Sort {
     fn qsort(self);
 }
@@ -178,6 +180,7 @@ static MIN_MERGE: uint = 64;
 static MIN_GALLOP: uint = 7;
 static INITIAL_TMP_STORAGE: uint = 128;
 
+#[allow(missing_doc)]
 pub fn tim_sort<T:Copy + Ord>(array: &mut [T]) {
     let size = array.len();
     if size < 2 {
@@ -751,7 +754,7 @@ mod test_qsort3 {
     use core::vec;
 
     fn check_sort(v1: &mut [int], v2: &mut [int]) {
-        let len = vec::len::<int>(v1);
+        let len = v1.len();
         quick_sort3::<int>(v1);
         let mut i = 0;
         while i < len {
@@ -796,7 +799,7 @@ mod test_qsort {
     use core::vec;
 
     fn check_sort(v1: &mut [int], v2: &mut [int]) {
-        let len = vec::len::<int>(v1);
+        let len = v1.len();
         fn leual(a: &int, b: &int) -> bool { *a <= *b }
         quick_sort::<int>(v1, leual);
         let mut i = 0u;
@@ -861,7 +864,7 @@ mod tests {
     use core::vec;
 
     fn check_sort(v1: &[int], v2: &[int]) {
-        let len = vec::len::<int>(v1);
+        let len = v1.len();
         pub fn le(a: &int, b: &int) -> bool { *a <= *b }
         let f = le;
         let v3 = merge_sort::<int>(v1, f);
@@ -927,6 +930,8 @@ mod test_tim_sort {
 
     use sort::tim_sort;
     use core::rand::RngUtil;
+    use core::rand;
+    use core::vec;
 
     struct CVal {
         val: float,
@@ -946,7 +951,7 @@ mod test_tim_sort {
     }
 
     fn check_sort(v1: &mut [int], v2: &mut [int]) {
-        let len = vec::len::<int>(v1);
+        let len = v1.len();
         tim_sort::<int>(v1);
         let mut i = 0u;
         while i < len {
@@ -1019,7 +1024,12 @@ mod big_tests {
     use core::prelude::*;
 
     use sort::*;
+
+    use core::local_data;
     use core::rand::RngUtil;
+    use core::rand;
+    use core::uint;
+    use core::vec;
 
     #[test]
     fn test_unique() {

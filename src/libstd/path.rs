@@ -14,12 +14,15 @@ Cross-platform file path handling
 
 */
 
+#[allow(missing_doc)];
+
 use container::Container;
 use cmp::Eq;
+use iterator::IteratorUtil;
 use libc;
 use option::{None, Option, Some};
 use str;
-use str::StrSlice;
+use str::{Str, StrSlice, StrVector};
 use to_str::ToStr;
 use ascii::{AsciiCast, AsciiStr};
 use old_iter::BaseIter;
@@ -99,7 +102,7 @@ pub trait GenericPath {
     fn push_rel(&self, (&Self)) -> Self;
     /// Returns a new Path consisting of the path given by the given vector
     /// of strings, relative to `self`.
-    fn push_many(&self, (&[~str])) -> Self;
+    fn push_many<S: Str>(&self, (&[S])) -> Self;
     /// Identical to `dir_path` except in the case where `self` has only one
     /// component. In this case, `pop` returns the empty path.
     fn pop(&self) -> Self;
@@ -306,8 +309,8 @@ mod stat {
 }
 
 
-pub impl Path {
-    fn stat(&self) -> Option<libc::stat> {
+impl Path {
+    pub fn stat(&self) -> Option<libc::stat> {
         unsafe {
              do str::as_c_str(self.to_str()) |buf| {
                 let mut st = stat::arch::default_stat();
@@ -320,7 +323,7 @@ pub impl Path {
     }
 
     #[cfg(unix)]
-    fn lstat(&self) -> Option<libc::stat> {
+    pub fn lstat(&self) -> Option<libc::stat> {
         unsafe {
             do str::as_c_str(self.to_str()) |buf| {
                 let mut st = stat::arch::default_stat();
@@ -332,21 +335,21 @@ pub impl Path {
         }
     }
 
-    fn exists(&self) -> bool {
+    pub fn exists(&self) -> bool {
         match self.stat() {
             None => false,
             Some(_) => true,
         }
     }
 
-    fn get_size(&self) -> Option<i64> {
+    pub fn get_size(&self) -> Option<i64> {
         match self.stat() {
             None => None,
             Some(ref st) => Some(st.st_size as i64),
         }
     }
 
-    fn get_mode(&self) -> Option<uint> {
+    pub fn get_mode(&self) -> Option<uint> {
         match self.stat() {
             None => None,
             Some(ref st) => Some(st.st_mode as uint),
@@ -357,8 +360,8 @@ pub impl Path {
 #[cfg(target_os = "freebsd")]
 #[cfg(target_os = "linux")]
 #[cfg(target_os = "macos")]
-pub impl Path {
-    fn get_atime(&self) -> Option<(i64, int)> {
+impl Path {
+    pub fn get_atime(&self) -> Option<(i64, int)> {
         match self.stat() {
             None => None,
             Some(ref st) => {
@@ -368,7 +371,7 @@ pub impl Path {
         }
     }
 
-    fn get_mtime(&self) -> Option<(i64, int)> {
+    pub fn get_mtime(&self) -> Option<(i64, int)> {
         match self.stat() {
             None => None,
             Some(ref st) => {
@@ -378,7 +381,7 @@ pub impl Path {
         }
     }
 
-    fn get_ctime(&self) -> Option<(i64, int)> {
+    pub fn get_ctime(&self) -> Option<(i64, int)> {
         match self.stat() {
             None => None,
             Some(ref st) => {
@@ -391,8 +394,8 @@ pub impl Path {
 
 #[cfg(target_os = "freebsd")]
 #[cfg(target_os = "macos")]
-pub impl Path {
-    fn get_birthtime(&self) -> Option<(i64, int)> {
+impl Path {
+    pub fn get_birthtime(&self) -> Option<(i64, int)> {
         match self.stat() {
             None => None,
             Some(ref st) => {
@@ -404,8 +407,8 @@ pub impl Path {
 }
 
 #[cfg(target_os = "win32")]
-pub impl Path {
-    fn get_atime(&self) -> Option<(i64, int)> {
+impl Path {
+    pub fn get_atime(&self) -> Option<(i64, int)> {
         match self.stat() {
             None => None,
             Some(ref st) => {
@@ -414,7 +417,7 @@ pub impl Path {
         }
     }
 
-    fn get_mtime(&self) -> Option<(i64, int)> {
+    pub fn get_mtime(&self) -> Option<(i64, int)> {
         match self.stat() {
             None => None,
             Some(ref st) => {
@@ -423,7 +426,7 @@ pub impl Path {
         }
     }
 
-    fn get_ctime(&self) -> Option<(i64, int)> {
+    pub fn get_ctime(&self) -> Option<(i64, int)> {
         match self.stat() {
             None => None,
             Some(ref st) => {
@@ -439,7 +442,7 @@ impl ToStr for PosixPath {
         if self.is_absolute {
             s += "/";
         }
-        s + str::connect(self.components, "/")
+        s + self.components.connect("/")
     }
 }
 
@@ -447,10 +450,9 @@ impl ToStr for PosixPath {
 // PosixPath and WindowsPath, most of their methods are common.
 impl GenericPath for PosixPath {
     fn from_str(s: &str) -> PosixPath {
-        let mut components = ~[];
-        for str::each_split_nonempty(s, |c| c == '/') |s| {
-            components.push(s.to_owned())
-        }
+        let components = s.split_iter('/')
+            .filter_map(|s| if s.is_empty() {None} else {Some(s.to_owned())})
+            .collect();
         let is_absolute = (s.len() != 0 && s[0] == '/' as u8);
         PosixPath {
             is_absolute: is_absolute,
@@ -477,8 +479,8 @@ impl GenericPath for PosixPath {
         match self.filename() {
             None => None,
             Some(ref f) => {
-                match str::rfind_char(*f, '.') {
-                    Some(p) => Some(f.slice(0, p).to_owned()),
+                match f.rfind('.') {
+                    Some(p) => Some(f.slice_to(p).to_owned()),
                     None => Some(copy *f),
                 }
             }
@@ -489,8 +491,8 @@ impl GenericPath for PosixPath {
         match self.filename() {
             None => None,
             Some(ref f) => {
-                match str::rfind_char(*f, '.') {
-                    Some(p) if p < f.len() => Some(f.slice(p, f.len()).to_owned()),
+                match f.rfind('.') {
+                    Some(p) if p < f.len() => Some(f.slice_from(p).to_owned()),
                     _ => None,
                 }
             }
@@ -506,7 +508,7 @@ impl GenericPath for PosixPath {
     }
 
     fn with_filename(&self, f: &str) -> PosixPath {
-        assert!(! str::any(f, |c| windows::is_sep(c as u8)));
+        assert!(! f.iter().all(windows::is_sep));
         self.dir_path().push(f)
     }
 
@@ -564,14 +566,14 @@ impl GenericPath for PosixPath {
         false
     }
 
-    fn push_many(&self, cs: &[~str]) -> PosixPath {
+    fn push_many<S: Str>(&self, cs: &[S]) -> PosixPath {
         let mut v = copy self.components;
         for cs.each |e| {
-            let mut ss = ~[];
-            for str::each_split_nonempty(*e, |c| windows::is_sep(c as u8)) |s| {
-                ss.push(s.to_owned())
+            for e.as_slice().split_iter(windows::is_sep).advance |s| {
+                if !s.is_empty() {
+                    v.push(s.to_owned())
+                }
             }
-            v.push_all_move(ss);
         }
         PosixPath {
             is_absolute: self.is_absolute,
@@ -581,11 +583,11 @@ impl GenericPath for PosixPath {
 
     fn push(&self, s: &str) -> PosixPath {
         let mut v = copy self.components;
-        let mut ss = ~[];
-        for str::each_split_nonempty(s, |c| windows::is_sep(c as u8)) |s| {
-            ss.push(s.to_owned())
+        for s.split_iter(windows::is_sep).advance |s| {
+            if !s.is_empty() {
+                v.push(s.to_owned())
+            }
         }
-        v.push_all_move(ss);
         PosixPath { components: v, ..copy *self }
     }
 
@@ -627,7 +629,7 @@ impl ToStr for WindowsPath {
         if self.is_absolute {
             s += "\\";
         }
-        s + str::connect(self.components, "\\")
+        s + self.components.connect("\\")
     }
 }
 
@@ -659,11 +661,11 @@ impl GenericPath for WindowsPath {
             }
         }
 
-        let mut components = ~[];
-        for str::each_split_nonempty(rest, |c| windows::is_sep(c as u8)) |s| {
-            components.push(s.to_owned())
-        }
-        let is_absolute = (rest.len() != 0 && windows::is_sep(rest[0]));
+        let components = rest.split_iter(windows::is_sep)
+            .filter_map(|s| if s.is_empty() {None} else {Some(s.to_owned())})
+            .collect();
+
+        let is_absolute = (rest.len() != 0 && windows::is_sep(rest[0] as char));
         WindowsPath {
             host: host,
             device: device,
@@ -691,8 +693,8 @@ impl GenericPath for WindowsPath {
         match self.filename() {
             None => None,
             Some(ref f) => {
-                match str::rfind_char(*f, '.') {
-                    Some(p) => Some(f.slice(0, p).to_owned()),
+                match f.rfind('.') {
+                    Some(p) => Some(f.slice_to(p).to_owned()),
                     None => Some(copy *f),
                 }
             }
@@ -703,8 +705,8 @@ impl GenericPath for WindowsPath {
         match self.filename() {
           None => None,
           Some(ref f) => {
-            match str::rfind_char(*f, '.') {
-                Some(p) if p < f.len() => Some(f.slice(p, f.len()).to_owned()),
+            match f.rfind('.') {
+                Some(p) if p < f.len() => Some(f.slice_from(p).to_owned()),
                 _ => None,
             }
           }
@@ -720,7 +722,7 @@ impl GenericPath for WindowsPath {
     }
 
     fn with_filename(&self, f: &str) -> WindowsPath {
-        assert!(! str::any(f, |c| windows::is_sep(c as u8)));
+        assert!(! f.iter().all(windows::is_sep));
         self.dir_path().push(f)
     }
 
@@ -772,9 +774,9 @@ impl GenericPath for WindowsPath {
 
         /* if rhs has a host set, then the whole thing wins */
         match other.host {
-            Some(copy host) => {
+            Some(ref host) => {
                 return WindowsPath {
-                    host: Some(host),
+                    host: Some(copy *host),
                     device: copy other.device,
                     is_absolute: true,
                     components: copy other.components,
@@ -785,10 +787,10 @@ impl GenericPath for WindowsPath {
 
         /* if rhs has a device set, then a part wins */
         match other.device {
-            Some(copy device) => {
+            Some(ref device) => {
                 return WindowsPath {
                     host: None,
-                    device: Some(device),
+                    device: Some(copy *device),
                     is_absolute: true,
                     components: copy other.components,
                 };
@@ -821,14 +823,14 @@ impl GenericPath for WindowsPath {
         }
     }
 
-    fn push_many(&self, cs: &[~str]) -> WindowsPath {
+    fn push_many<S: Str>(&self, cs: &[S]) -> WindowsPath {
         let mut v = copy self.components;
         for cs.each |e| {
-            let mut ss = ~[];
-            for str::each_split_nonempty(*e, |c| windows::is_sep(c as u8)) |s| {
-                ss.push(s.to_owned())
+            for e.as_slice().split_iter(windows::is_sep).advance |s| {
+                if !s.is_empty() {
+                    v.push(s.to_owned())
+                }
             }
-            v.push_all_move(ss);
         }
         // tedious, but as-is, we can't use ..self
         WindowsPath {
@@ -841,11 +843,11 @@ impl GenericPath for WindowsPath {
 
     fn push(&self, s: &str) -> WindowsPath {
         let mut v = copy self.components;
-        let mut ss = ~[];
-        for str::each_split_nonempty(s, |c| windows::is_sep(c as u8)) |s| {
-            ss.push(s.to_owned())
+        for s.split_iter(windows::is_sep).advance |s| {
+            if !s.is_empty() {
+                v.push(s.to_owned())
+            }
         }
-        v.push_all_move(ss);
         WindowsPath { components: v, ..copy *self }
     }
 
@@ -903,8 +905,8 @@ pub mod windows {
     use option::{None, Option, Some};
 
     #[inline(always)]
-    pub fn is_sep(u: u8) -> bool {
-        u == '/' as u8 || u == '\\' as u8
+    pub fn is_sep(u: char) -> bool {
+        u == '/' || u == '\\'
     }
 
     pub fn extract_unc_prefix(s: &str) -> Option<(~str,~str)> {
@@ -913,7 +915,7 @@ pub mod windows {
             s[0] == s[1]) {
             let mut i = 2;
             while i < s.len() {
-                if is_sep(s[i]) {
+                if is_sep(s[i] as char) {
                     let pre = s.slice(2, i).to_owned();
                     let rest = s.slice(i, s.len()).to_owned();
                     return Some((pre, rest));

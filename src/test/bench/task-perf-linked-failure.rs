@@ -23,6 +23,10 @@
 // Doesn't return until all such tasks are ready, but doesn't block forever itself.
 
 use std::comm::*;
+use std::os;
+use std::result;
+use std::task;
+use std::uint;
 
 fn grandchild_group(num_tasks: uint) {
     let (po, ch) = stream();

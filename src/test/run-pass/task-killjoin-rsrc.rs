@@ -15,6 +15,8 @@
 
 use std::cell::Cell;
 use std::comm::*;
+use std::ptr;
+use std::task;
 
 struct notify {
     ch: Chan<bool>, v: @mut bool,
@@ -53,7 +55,7 @@ fn joinable(f: ~fn()) -> Port<bool> {
         *b = true;
     }
     let (p, c) = stream();
-    let c = Cell(c);
+    let c = Cell::new(c);
     do task::spawn_unlinked {
         let ccc = c.take();
         wrapper(ccc, f)

@@ -8,12 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[allow(missing_doc)];
+
 use core::prelude::*;
 
 use core::vec;
 use core::f64;
 use core::cmp;
 use core::num;
+use core::vec;
 use sort;
 
 // NB: this can probably be rewritten in terms of num::Num
@@ -34,17 +37,17 @@ pub trait Stats {
 
 impl<'self> Stats for &'self [f64] {
     fn sum(self) -> f64 {
-        vec::foldl(0.0, self, |p,q| p + *q)
+        self.iter().fold(0.0, |p,q| p + *q)
     }
 
     fn min(self) -> f64 {
         assert!(self.len() != 0);
-        vec::foldl(self[0], self, |p,q| cmp::min(p, *q))
+        self.iter().fold(self[0], |p,q| cmp::min(p, *q))
     }
 
     fn max(self) -> f64 {
         assert!(self.len() != 0);
-        vec::foldl(self[0], self, |p,q| cmp::max(p, *q))
+        self.iter().fold(self[0], |p,q| cmp::max(p, *q))
     }
 
     fn mean(self) -> f64 {

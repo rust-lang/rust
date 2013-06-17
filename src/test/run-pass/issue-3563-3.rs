@@ -20,7 +20,11 @@ extern mod extra;
 
 // Extern mod controls linkage. Use controls the visibility of names to modules that are
 // already linked in. Using WriterUtil allows us to use the write_line method.
+use std::int;
 use std::io::WriterUtil;
+use std::io;
+use std::str;
+use std::vec;
 
 // Represents a position on a canvas.
 struct Point {
@@ -116,7 +120,7 @@ impl ToStr for AsciiArt {
         let lines = do self.lines.map |line| {str::from_chars(*line)};
 
         // Concatenate the lines together using a new-line.
-        str::connect(lines, "\n")
+        lines.connect("\n")
     }
 }
 

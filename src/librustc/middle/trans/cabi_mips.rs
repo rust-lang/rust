@@ -11,10 +11,14 @@
 use core::prelude::*;
 
 use core::libc::c_uint;
+use core::ptr;
+use core::uint;
+use core::vec;
 use lib::llvm::{llvm, TypeRef, Integer, Pointer, Float, Double};
 use lib::llvm::{Struct, Array, Attribute};
 use lib::llvm::{StructRetAttribute};
 use lib::llvm::True;
+use middle::trans::context::task_llcx;
 use middle::trans::common::*;
 use middle::trans::cabi::*;
 
@@ -34,8 +38,7 @@ fn struct_tys(ty: TypeRef) -> ~[TypeRef] {
         return ~[];
     }
         let mut elts = vec::from_elem(n as uint, ptr::null());
-        llvm::LLVMGetStructElementTypes(ty,
-            ptr::to_mut_unsafe_ptr(&mut elts[0]));
+        llvm::LLVMGetStructElementTypes(ty, &mut elts[0]);
         return elts;
     }
 }
@@ -53,9 +56,8 @@ fn ty_align(ty: TypeRef) -> uint {
               if llvm::LLVMIsPackedStruct(ty) == True {
                 1
               } else {
-                do vec::foldl(1, struct_tys(ty)) |a, t| {
-                    uint::max(a, ty_align(*t))
-                }
+                let str_tys = struct_tys(ty);
+                str_tys.iter().fold(1, |a, t| uint::max(a, ty_align(*t)))
               }
             }
             Array => {
@@ -78,13 +80,11 @@ fn ty_size(ty: TypeRef) -> uint {
             Double => 8,
             Struct => {
                 if llvm::LLVMIsPackedStruct(ty) == True {
-                    do vec::foldl(0, struct_tys(ty)) |s, t| {
-                        s + ty_size(*t)
-                    }
+                    let str_tys = struct_tys(ty);
+                    str_tys.iter().fold(0, |s, t| s + ty_size(*t))
                 } else {
-                    let size = do vec::foldl(0, struct_tys(ty)) |s, t| {
-                        align(s, *t) + ty_size(*t)
-                    };
+                    let str_tys = struct_tys(ty);
+                    let size = str_tys.iter().fold(0, |s, t| align(s, *t) + ty_size(*t));
                     align(size, ty)
                 }
             }
@@ -166,7 +166,7 @@ fn coerce_to_int(size: uint) -> ~[TypeRef] {
     let r = size % 32;
     if r > 0 {
         unsafe {
-            args.push(llvm::LLVMIntType(r as c_uint))
+            args.push(llvm::LLVMIntTypeInContext(task_llcx(), r as c_uint))
         }
     }
 

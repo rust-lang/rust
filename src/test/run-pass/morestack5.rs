@@ -12,6 +12,8 @@
 
 extern mod extra;
 
+use std::task;
+
 fn getbig(i: int) {
     if i != 0 {
         getbig(i - 1);

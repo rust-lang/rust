@@ -14,7 +14,12 @@ extern mod extra;
 
 use std::io::{ReaderUtil, WriterUtil};
 use std::io;
+use std::os;
+use std::str;
+use std::u8;
+use std::uint;
 use std::unstable::intrinsics::cttz16;
+use std::vec;
 
 // Computes a single solution to a given 9x9 sudoku
 //
@@ -39,7 +44,7 @@ struct Sudoku {
     grid: grid
 }
 
-pub impl Sudoku {
+impl Sudoku {
     pub fn new(g: grid) -> Sudoku {
         return Sudoku { grid: g }
     }
@@ -68,8 +73,8 @@ pub impl Sudoku {
         let mut g = vec::from_fn(10u, { |_i| ~[0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8] });
         while !reader.eof() {
             let line = reader.read_line();
-            let mut comps = ~[];
-            for str::each_split_char(line.trim(), ',') |s| { comps.push(s.to_owned()) }
+            let comps: ~[&str] = line.trim().split_iter(',').collect();
+
             if comps.len() == 3u {
                 let row     = uint::from_str(comps[0]).get() as u8;
                 let col     = uint::from_str(comps[1]).get() as u8;
@@ -98,7 +103,7 @@ pub impl Sudoku {
         for u8::range(0u8, 9u8) |row| {
             for u8::range(0u8, 9u8) |col| {
                 let color = self.grid[row][col];
-                if color == 0u8 { work += ~[(row, col)]; }
+                if color == 0u8 { work += [(row, col)]; }
             }
         }
 
@@ -167,10 +172,10 @@ impl Colors {
         let val = **self & heads;
         if (0u16 == val) {
             return 0u8;
-        }
-        else
-        {
-            return cttz16(val as i16) as u8;
+        } else {
+            unsafe {
+                return cttz16(val as i16) as u8;
+            }
         }
     }
 

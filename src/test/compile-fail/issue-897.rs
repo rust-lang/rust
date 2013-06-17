@@ -8,8 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[deny(unreachable_code)];
+
 fn f() -> ! {
-    return 42i; //~ ERROR expected `!` but found `int`
-    fail!(); //~ WARNING unreachable statement
+    return fail!();
+    fail!(); //~ ERROR: unreachable statement
 }
 fn main() { }

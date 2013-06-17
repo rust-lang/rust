@@ -10,11 +10,15 @@
 
 use core::prelude::*;
 
+use core::vec;
 use ast;
 use codemap;
 use ext::base::*;
 use ext::base;
 use print;
+use parse::token::{get_ident_interner};
+
+use core::io;
 
 pub fn expand_syntax_ext(cx: @ExtCtxt,
                          sp: codemap::span,
@@ -25,12 +29,11 @@ pub fn expand_syntax_ext(cx: @ExtCtxt,
     io::stdout().write_line(
         print::pprust::tt_to_str(
             ast::tt_delim(vec::to_owned(tt)),
-            cx.parse_sess().interner));
+            get_ident_interner()));
 
     //trivial expression
     MRExpr(@ast::expr {
         id: cx.next_id(),
-        callee_id: cx.next_id(),
         node: ast::expr_lit(@codemap::spanned {
             node: ast::lit_nil,
             span: sp

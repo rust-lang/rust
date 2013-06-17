@@ -12,6 +12,9 @@
   This is about the simplest program that can successfully send a
   message.
  */
+
+use std::comm;
+
 pub fn main() {
     let (po, ch) = comm::stream();
     ch.send(42);

@@ -25,8 +25,8 @@ pub struct Ctxt {
     pad2: u32
 }
 
-pub fn mk_global(ccx: @CrateContext,
-                 name: ~str,
+pub fn mk_global(ccx: &CrateContext,
+                 name: &str,
                  llval: ValueRef,
                  internal: bool)
               -> ValueRef {

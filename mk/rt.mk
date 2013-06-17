@@ -53,6 +53,15 @@ define DEF_RUNTIME_TARGETS
 RUNTIME_CFLAGS_$(1)_$(2) = -D_RUST_STAGE$(2)
 RUNTIME_CXXFLAGS_$(1)_$(2) = -D_RUST_STAGE$(2)
 
+# XXX: Like with --cfg stage0, pass the defines for stage1 to the stage0
+# build of non-build-triple host compilers
+ifeq ($(2),0)
+ifneq ($(strip $(CFG_BUILD_TRIPLE)),$(strip $(1)))
+RUNTIME_CFLAGS_$(1)_$(2) = -D_RUST_STAGE1
+RUNTIME_CXXFLAGS_$(1)_$(2) = -D_RUST_STAGE1
+endif
+endif
+
 RUNTIME_CXXS_$(1)_$(2) := \
               rt/sync/timer.cpp \
               rt/sync/lock_and_signal.cpp \
@@ -97,18 +106,23 @@ RUNTIME_S_$(1)_$(2) := rt/arch/$$(HOST_$(1))/_context.S \
 ifeq ($$(CFG_WINDOWSY_$(1)), 1)
   LIBUV_OSTYPE_$(1)_$(2) := win
   LIBUV_LIB_$(1)_$(2) := rt/$(1)/stage$(2)/libuv/libuv.a
+  JEMALLOC_LIB_$(1)_$(2) := rt/$(1)/stage$(2)/jemalloc/lib/jemalloc.lib
 else ifeq ($(OSTYPE_$(1)), apple-darwin)
   LIBUV_OSTYPE_$(1)_$(2) := mac
   LIBUV_LIB_$(1)_$(2) := rt/$(1)/stage$(2)/libuv/libuv.a
+  JEMALLOC_LIB_$(1)_$(2) := rt/$(1)/stage$(2)/jemalloc/lib/libjemalloc_pic.a
 else ifeq ($(OSTYPE_$(1)), unknown-freebsd)
   LIBUV_OSTYPE_$(1)_$(2) := unix/freebsd
   LIBUV_LIB_$(1)_$(2) := rt/$(1)/stage$(2)/libuv/libuv.a
+  JEMALLOC_LIB_$(1)_$(2) := rt/$(1)/stage$(2)/jemalloc/lib/libjemalloc_pic.a
 else ifeq ($(OSTYPE_$(1)), linux-androideabi)
   LIBUV_OSTYPE_$(1)_$(2) := unix/android
   LIBUV_LIB_$(1)_$(2) := rt/$(1)/stage$(2)/libuv/libuv.a
+  JEMALLOC_LIB_$(1)_$(2) := rt/$(1)/stage$(2)/jemalloc/lib/libjemalloc_pic.a
 else
   LIBUV_OSTYPE_$(1)_$(2) := unix/linux
   LIBUV_LIB_$(1)_$(2) := rt/$(1)/stage$(2)/libuv/libuv.a
+  JEMALLOC_LIB_$(1)_$(2) := rt/$(1)/stage$(2)/jemalloc/lib/libjemalloc_pic.a
 endif
 
 RUNTIME_DEF_$(1)_$(2) := rt/rustrt$(CFG_DEF_SUFFIX_$(1))
@@ -123,8 +137,6 @@ ALL_OBJ_FILES += $$(RUNTIME_OBJS_$(1)_$(2))
 
 MORESTACK_OBJ_$(1)_$(2) := rt/$(1)/stage$(2)/arch/$$(HOST_$(1))/morestack.o
 ALL_OBJ_FILES += $$(MORESTACK_OBJS_$(1)_$(2))
-
-RUNTIME_LIBS_$(1)_$(2) := $$(LIBUV_LIB_$(1)_$(2))
 
 rt/$(1)/stage$(2)/%.o: rt/%.cpp $$(MKFILE_DEPS)
 	@$$(call E, compile: $$@)
@@ -146,11 +158,10 @@ rt/$(1)/stage$(2)/arch/$$(HOST_$(1))/libmorestack.a: $$(MORESTACK_OBJ_$(1)_$(2))
 	$$(Q)$(AR_$(1)) rcs $$@ $$<
 
 rt/$(1)/stage$(2)/$(CFG_RUNTIME_$(1)): $$(RUNTIME_OBJS_$(1)_$(2)) $$(MKFILE_DEPS) \
-                        $$(RUNTIME_DEF_$(1)_$(2)) \
-                        $$(RUNTIME_LIBS_$(1)_$(2))
+                        $$(RUNTIME_DEF_$(1)_$(2)) $$(LIBUV_LIB_$(1)_$(2)) $$(JEMALLOC_LIB_$(1)_$(2))
 	@$$(call E, link: $$@)
 	$$(Q)$$(call CFG_LINK_CXX_$(1),$$@, $$(RUNTIME_OBJS_$(1)_$(2)) \
-	  $$(CFG_GCCISH_POST_LIB_FLAGS_$(1)) $$(RUNTIME_LIBS_$(1)_$(2)) \
+	  $$(JEMALLOC_LIB_$(1)_$(2)) $$(CFG_GCCISH_POST_LIB_FLAGS_$(1)) $$(LIBUV_LIB_$(1)_$(2)) \
 	  $$(CFG_LIBUV_LINK_FLAGS_$(1)),$$(RUNTIME_DEF_$(1)_$(2)),$$(CFG_RUNTIME_$(1)))
 
 # FIXME: For some reason libuv's makefiles can't figure out the
@@ -197,6 +208,28 @@ $$(LIBUV_LIB_$(1)_$(2)): $$(LIBUV_DEPS)
 		AR="$$(AR_$(1))" \
 		builddir_name="$$(CFG_BUILD_DIR)/rt/$(1)/stage$(2)/libuv" \
 		V=$$(VERBOSE)
+endif
+
+ifeq ($(OSTYPE_$(1)), linux-androideabi)
+$$(JEMALLOC_LIB_$(1)_$(2)):
+	cd $$(CFG_BUILD_DIR)/rt/$(1)/stage$(2)/jemalloc; $(S)src/rt/jemalloc/configure \
+		--disable-experimental --build=$(CFG_BUILD_TRIPLE) --host=$(1) --disable-tls \
+		EXTRA_CFLAGS="$$(CFG_GCCISH_CFLAGS) $$(LIBUV_FLAGS_$$(HOST_$(1))) $$(SNAP_DEFINES)" \
+		LDFLAGS="$$(CFG_GCCISH_LINK_FLAGS) $$(LIBUV_FLAGS_$$(HOST_$(1)))" \
+		CC="$$(CC_$(1))" \
+		CXX="$$(CXX_$(1))" \
+		AR="$$(AR_$(1))"
+	$$(Q)$$(MAKE) -C $$(CFG_BUILD_DIR)/rt/$(1)/stage$(2)/jemalloc
+else
+$$(JEMALLOC_LIB_$(1)_$(2)):
+	cd $$(CFG_BUILD_DIR)/rt/$(1)/stage$(2)/jemalloc; $(S)src/rt/jemalloc/configure \
+		--disable-experimental --build=$(CFG_BUILD_TRIPLE) --host=$(1) \
+		EXTRA_CFLAGS="$$(CFG_GCCISH_CFLAGS) $$(LIBUV_FLAGS_$$(HOST_$(1))) $$(SNAP_DEFINES)" \
+		LDFLAGS="$$(CFG_GCCISH_LINK_FLAGS) $$(LIBUV_FLAGS_$$(HOST_$(1)))" \
+		CC="$$(CC_$(1))" \
+		CXX="$$(CXX_$(1))" \
+		AR="$$(AR_$(1))"
+	$$(Q)$$(MAKE) -C $$(CFG_BUILD_DIR)/rt/$(1)/stage$(2)/jemalloc
 endif
 
 

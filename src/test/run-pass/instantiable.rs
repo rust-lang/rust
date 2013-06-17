@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::ptr;
 
 // check that we do not report a type like this as uninstantiable,
 // even though it would be if the nxt field had type @foo:

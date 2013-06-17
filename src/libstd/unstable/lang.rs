@@ -10,6 +10,7 @@
 
 //! Runtime calls emitted by the compiler.
 
+use iterator::IteratorUtil;
 use uint;
 use cast::transmute;
 use libc::{c_char, c_uchar, c_void, size_t, uintptr_t, c_int, STDERR_FILENO};
@@ -133,12 +134,12 @@ unsafe fn fail_borrowed(box: *mut BoxRepr, file: *c_char, line: size_t) {
         Some(borrow_list) => { // recording borrows
             let mut msg = ~"borrowed";
             let mut sep = " at ";
-            for borrow_list.each_reverse |entry| {
+            for borrow_list.rev_iter().advance |entry| {
                 if entry.box == box {
-                    str::push_str(&mut msg, sep);
+                    msg.push_str(sep);
                     let filename = str::raw::from_c_str(entry.file);
-                    str::push_str(&mut msg, filename);
-                    str::push_str(&mut msg, fmt!(":%u", entry.line as uint));
+                    msg.push_str(filename);
+                    msg.push_str(fmt!(":%u", entry.line as uint));
                     sep = " and at ";
                 }
             }
@@ -244,7 +245,7 @@ pub unsafe fn local_malloc(td: *c_char, size: uintptr_t) -> *c_char {
         }
         _ => {
             let mut alloc = ::ptr::null();
-            do Local::borrow::<Task> |task| {
+            do Local::borrow::<Task,()> |task| {
                 alloc = task.heap.alloc(td as *c_void, size as uint) as *c_char;
             }
             return alloc;
@@ -262,7 +263,7 @@ pub unsafe fn local_free(ptr: *c_char) {
             rustrt::rust_upcall_free_noswitch(ptr);
         }
         _ => {
-            do Local::borrow::<Task> |task| {
+            do Local::borrow::<Task,()> |task| {
                 task.heap.free(ptr as *c_void);
             }
         }

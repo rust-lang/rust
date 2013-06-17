@@ -1,6 +1,8 @@
 use std::from_str::FromStr;
 use std::i32::range;
+use std::os;
 use std::vec::MutableVector;
+use std::vec;
 
 fn max(a: i32, b: i32) -> i32 {
     if a > b {
@@ -15,7 +17,9 @@ fn fannkuch_redux(n: i32) -> i32 {
     let mut perm = vec::from_elem(n as uint, 0i32);
     let mut perm1 = vec::from_fn(n as uint, |i| i as i32);
     let mut count = vec::from_elem(n as uint, 0i32);
-    let mut max_flips_count = 0i32, perm_count = 0i32, checksum = 0i32;
+    let mut max_flips_count = 0i32;
+    let mut perm_count = 0i32;
+    let mut checksum = 0i32;
 
     let mut r = n;
     loop {
@@ -25,9 +29,8 @@ fn fannkuch_redux(n: i32) -> i32 {
                 r -= 1;
             }
 
-            // XXX: Need each2_mut.
-            for vec::eachi_mut(perm) |i, perm_i| {
-                *perm_i = perm1.unsafe_get(i);
+            for perm.mut_iter().zip(perm1.iter()).advance |(perm_i, perm1_i)| {
+                *perm_i = *perm1_i;
             }
 
             let mut flips_count: i32 = 0;

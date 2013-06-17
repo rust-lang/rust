@@ -34,6 +34,10 @@ extern mod std(name = "extra", vers = "0.7-pre");
 #[cfg(not(stage0))]
 extern mod std(name = "std", vers = "0.7-pre");
 
+// For bootstrapping purposes.
+#[cfg(stage0)]
+pub use core::unstable;
+
 use core::prelude::*;
 
 use driver::driver::{host_triple, optgroups, early_error};
@@ -44,47 +48,21 @@ use driver::driver::{compile_input};
 use driver::session;
 use middle::lint;
 
+use core::io;
+use core::os;
+use core::result;
+use core::str;
+use core::task;
+use core::uint;
+use core::vec;
 use extra::getopts::{groups, opt_present};
 use extra::getopts;
 use syntax::codemap;
 use syntax::diagnostic;
 
 pub mod middle {
-    pub mod trans {
-        pub mod macros;
-        pub mod inline;
-        pub mod monomorphize;
-        pub mod controlflow;
-        pub mod glue;
-        pub mod datum;
-        pub mod write_guard;
-        pub mod callee;
-        pub mod expr;
-        pub mod common;
-        pub mod consts;
-        pub mod type_of;
-        pub mod build;
-        pub mod base;
-        pub mod _match;
-        pub mod uniq;
-        pub mod closure;
-        pub mod tvec;
-        pub mod meth;
-        pub mod cabi;
-        pub mod cabi_x86;
-        pub mod cabi_x86_64;
-        pub mod cabi_arm;
-        pub mod cabi_mips;
-        pub mod foreign;
-        pub mod reflect;
-        pub mod shape;
-        pub mod debuginfo;
-        pub mod type_use;
-        pub mod reachable;
-        pub mod machine;
-        pub mod adt;
-        pub mod asm;
-    }
+    #[path = "trans/mod.rs"]
+    pub mod trans;
     pub mod ty;
     pub mod subst;
     pub mod resolve;
@@ -109,6 +87,7 @@ pub mod middle {
     pub mod privacy;
     pub mod moves;
     pub mod entry;
+    pub mod effect;
 }
 
 pub mod front {
@@ -147,6 +126,18 @@ pub mod lib {
     pub mod llvm;
 }
 
+// A curious inner module that allows ::std::foo to be available in here for
+// macros.
+mod std {
+    pub use core::cmp;
+    pub use core::os;
+    pub use core::str;
+    pub use core::sys;
+    pub use core::to_bytes;
+    pub use core::unstable;
+    pub use extra::serialize;
+}
+
 pub fn version(argv0: &str) {
     let mut vers = ~"unknown version";
     let env_vers = env!("CFG_VERSION");
@@ -157,11 +148,11 @@ pub fn version(argv0: &str) {
 
 pub fn usage(argv0: &str) {
     let message = fmt!("Usage: %s [OPTIONS] INPUT", argv0);
-    io::println(groups::usage(message, optgroups()) +
-                "Additional help:
-    -W help             Print 'lint' options and default settings
-    -Z help             Print internal options for debugging rustc
-");
+    io::println(fmt!("%s \
+                Additional help: \
+    -W help             Print 'lint' options and default settings \
+    -Z help             Print internal options for debugging rustc",
+                     groups::usage(message, optgroups())));
 }
 
 pub fn describe_warnings() {
@@ -185,7 +176,7 @@ Available lint options:
     io::println(fmt!("    %s  %7.7s  %s\n",
                      padded(max_key, "----"), "-------", "-------"));
     for lint_dict.each |k, v| {
-        let k = str::replace(*k, "_", "-");
+        let k = k.replace("_", "-");
         io::println(fmt!("    %s  %7.7s  %s",
                          padded(max_key, k),
                          match v.default {
@@ -212,9 +203,9 @@ pub fn run_compiler(args: &~[~str], demitter: diagnostic::Emitter) {
     ::core::logging::console_off();
 
     let mut args = /*bad*/copy *args;
-    let binary = @args.shift();
+    let binary = args.shift().to_managed();
 
-    if args.is_empty() { usage(*binary); return; }
+    if args.is_empty() { usage(binary); return; }
 
     let matches =
         &match getopts::groups::getopts(args, optgroups()) {
@@ -225,7 +216,7 @@ pub fn run_compiler(args: &~[~str], demitter: diagnostic::Emitter) {
         };
 
     if opt_present(matches, "h") || opt_present(matches, "help") {
-        usage(*binary);
+        usage(binary);
         return;
     }
 
@@ -246,17 +237,22 @@ pub fn run_compiler(args: &~[~str], demitter: diagnostic::Emitter) {
         return;
     }
 
-    if opt_present(matches, "v") || opt_present(matches, "version") {
-        version(*binary);
+    if getopts::opt_maybe_str(matches, "passes") == Some(~"list") {
+        back::passes::list_passes();
         return;
     }
-    let input = match vec::len(matches.free) {
+
+    if opt_present(matches, "v") || opt_present(matches, "version") {
+        version(binary);
+        return;
+    }
+    let input = match matches.free.len() {
       0u => early_error(demitter, ~"no input filename given"),
       1u => {
-        let ifile = /*bad*/copy matches.free[0];
-        if ifile == ~"-" {
+        let ifile = matches.free[0].as_slice();
+        if "-" == ifile {
             let src = str::from_bytes(io::stdin().read_whole_stream());
-            str_input(src)
+            str_input(src.to_managed())
         } else {
             file_input(Path(ifile))
         }

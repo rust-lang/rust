@@ -27,34 +27,55 @@ pub static bytes : uint = ($bits / 8);
 pub static min_value: $T = 0 as $T;
 pub static max_value: $T = 0 as $T - 1 as $T;
 
+/// Calculates the sum of two numbers
 #[inline(always)]
 pub fn add(x: $T, y: $T) -> $T { x + y }
+/// Subtracts the second number from the first
 #[inline(always)]
 pub fn sub(x: $T, y: $T) -> $T { x - y }
+/// Multiplies two numbers together
 #[inline(always)]
 pub fn mul(x: $T, y: $T) -> $T { x * y }
+/// Divides the first argument by the second argument (using integer division)
 #[inline(always)]
 pub fn div(x: $T, y: $T) -> $T { x / y }
+/// Calculates the integer remainder when x is divided by y (equivalent to the
+/// '%' operator)
 #[inline(always)]
 pub fn rem(x: $T, y: $T) -> $T { x % y }
 
+/// Returns true iff `x < y`
 #[inline(always)]
 pub fn lt(x: $T, y: $T) -> bool { x < y }
+/// Returns true iff `x <= y`
 #[inline(always)]
 pub fn le(x: $T, y: $T) -> bool { x <= y }
+/// Returns true iff `x == y`
 #[inline(always)]
 pub fn eq(x: $T, y: $T) -> bool { x == y }
+/// Returns true iff `x != y`
 #[inline(always)]
 pub fn ne(x: $T, y: $T) -> bool { x != y }
+/// Returns true iff `x >= y`
 #[inline(always)]
 pub fn ge(x: $T, y: $T) -> bool { x >= y }
+/// Returns true iff `x > y`
 #[inline(always)]
 pub fn gt(x: $T, y: $T) -> bool { x > y }
 
 #[inline(always)]
-///
-/// Iterate over the range [`start`,`start`+`step`..`stop`)
-///
+/**
+ * Iterate through a range with a given step value.
+ *
+ * # Examples
+ * ~~~ {.rust}
+ * let nums = [1,2,3,4,5,6,7];
+ *
+ * for uint::range_step(0, nums.len() - 1, 2) |i| {
+ *     println(fmt!("%d & %d", nums[i], nums[i+1]));
+ * }
+ * ~~~
+ */
 pub fn range_step(start: $T, stop: $T, step: $T_SIGNED, it: &fn($T) -> bool) -> bool {
     let mut i = start;
     if step == 0 {
@@ -216,7 +237,7 @@ impl Integer for $T {
     #[inline(always)]
     fn gcd(&self, other: &$T) -> $T {
         // Use Euclid's algorithm
-        let mut m = *self, n = *other;
+        let mut (m, n) = (*self, *other);
         while m != 0 {
             let temp = m;
             m = n % temp;
@@ -402,6 +423,14 @@ mod tests {
     use super::*;
     use prelude::*;
 
+    use num;
+    use sys;
+    use u16;
+    use u32;
+    use u64;
+    use u8;
+    use uint;
+
     #[test]
     fn test_num() {
         num::test_num(10 as $T, 2 as $T);
@@ -509,16 +538,16 @@ mod tests {
 
     #[test]
     pub fn test_parse_bytes() {
-        use str::to_bytes;
-        assert_eq!(parse_bytes(to_bytes("123"), 10u), Some(123u as $T));
-        assert_eq!(parse_bytes(to_bytes("1001"), 2u), Some(9u as $T));
-        assert_eq!(parse_bytes(to_bytes("123"), 8u), Some(83u as $T));
-        assert_eq!(u16::parse_bytes(to_bytes("123"), 16u), Some(291u as u16));
-        assert_eq!(u16::parse_bytes(to_bytes("ffff"), 16u), Some(65535u as u16));
-        assert_eq!(parse_bytes(to_bytes("z"), 36u), Some(35u as $T));
+        use str::StrSlice;
+        assert_eq!(parse_bytes("123".as_bytes(), 10u), Some(123u as $T));
+        assert_eq!(parse_bytes("1001".as_bytes(), 2u), Some(9u as $T));
+        assert_eq!(parse_bytes("123".as_bytes(), 8u), Some(83u as $T));
+        assert_eq!(u16::parse_bytes("123".as_bytes(), 16u), Some(291u as u16));
+        assert_eq!(u16::parse_bytes("ffff".as_bytes(), 16u), Some(65535u as u16));
+        assert_eq!(parse_bytes("z".as_bytes(), 36u), Some(35u as $T));
 
-        assert!(parse_bytes(to_bytes("Z"), 10u).is_none());
-        assert!(parse_bytes(to_bytes("_"), 2u).is_none());
+        assert!(parse_bytes("Z".as_bytes(), 10u).is_none());
+        assert!(parse_bytes("_".as_bytes(), 2u).is_none());
     }
 
     #[test]

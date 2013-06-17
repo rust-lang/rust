@@ -46,12 +46,12 @@ use ops::Add;
 use kinds::Copy;
 use util;
 use num::Zero;
-use old_iter::{BaseIter, MutableIter, ExtendedIter};
-use old_iter;
+use iterator::Iterator;
 use str::StrSlice;
 use clone::DeepClone;
 
 #[cfg(test)] use str;
+#[cfg(test)] use iterator::IteratorUtil;
 
 /// The option type
 #[deriving(Clone, DeepClone, Eq)]
@@ -100,66 +100,39 @@ impl<T: Copy + Add<T,T>> Add<Option<T>, Option<T>> for Option<T> {
     }
 }
 
-impl<T> BaseIter<T> for Option<T> {
-    /// Performs an operation on the contained value by reference
-    #[inline(always)]
-    fn each<'a>(&'a self, f: &fn(x: &'a T) -> bool) -> bool {
-        match *self { None => true, Some(ref t) => { f(t) } }
+impl<T> Option<T> {
+    /// Return an iterator over the possibly contained value
+    #[inline]
+    pub fn iter<'r>(&'r self) -> OptionIterator<'r, T> {
+        match *self {
+            Some(ref x) => OptionIterator{opt: Some(x)},
+            None => OptionIterator{opt: None}
+        }
     }
 
-    #[inline(always)]
-    fn size_hint(&self) -> Option<uint> {
-        if self.is_some() { Some(1) } else { Some(0) }
+    /// Return a mutable iterator over the possibly contained value
+    #[inline]
+    pub fn mut_iter<'r>(&'r mut self) -> OptionMutIterator<'r, T> {
+        match *self {
+            Some(ref mut x) => OptionMutIterator{opt: Some(x)},
+            None => OptionMutIterator{opt: None}
+        }
     }
-}
 
-impl<T> MutableIter<T> for Option<T> {
-    #[inline(always)]
-    fn each_mut<'a>(&'a mut self, f: &fn(&'a mut T) -> bool) -> bool {
-        match *self { None => true, Some(ref mut t) => { f(t) } }
-    }
-}
-
-impl<A> ExtendedIter<A> for Option<A> {
-    pub fn eachi(&self, blk: &fn(uint, v: &A) -> bool) -> bool {
-        old_iter::eachi(self, blk)
-    }
-    pub fn all(&self, blk: &fn(&A) -> bool) -> bool {
-        old_iter::all(self, blk)
-    }
-    pub fn any(&self, blk: &fn(&A) -> bool) -> bool {
-        old_iter::any(self, blk)
-    }
-    pub fn foldl<B>(&self, b0: B, blk: &fn(&B, &A) -> B) -> B {
-        old_iter::foldl(self, b0, blk)
-    }
-    pub fn position(&self, f: &fn(&A) -> bool) -> Option<uint> {
-        old_iter::position(self, f)
-    }
-    fn map_to_vec<B>(&self, op: &fn(&A) -> B) -> ~[B] {
-        old_iter::map_to_vec(self, op)
-    }
-    fn flat_map_to_vec<B,IB:BaseIter<B>>(&self, op: &fn(&A) -> IB)
-        -> ~[B] {
-        old_iter::flat_map_to_vec(self, op)
-    }
-}
-
-pub impl<T> Option<T> {
     /// Returns true if the option equals `none`
-    fn is_none(&const self) -> bool {
+    #[inline]
+    pub fn is_none(&const self) -> bool {
         match *self { None => true, Some(_) => false }
     }
 
     /// Returns true if the option contains some value
     #[inline(always)]
-    fn is_some(&const self) -> bool { !self.is_none() }
+    pub fn is_some(&const self) -> bool { !self.is_none() }
 
     /// Update an optional value by optionally running its content through a
     /// function that returns an option.
     #[inline(always)]
-    fn chain<U>(self, f: &fn(t: T) -> Option<U>) -> Option<U> {
-
+    pub fn chain<U>(self, f: &fn(t: T) -> Option<U>) -> Option<U> {
         match self {
             Some(t) => f(t),
             None => None
@@ -168,7 +141,7 @@ pub impl<T> Option<T> {
 
     /// Returns the leftmost Some() value, or None if both are None.
     #[inline(always)]
-    fn or(self, optb: Option<T>) -> Option<T> {
+    pub fn or(self, optb: Option<T>) -> Option<T> {
         match self {
             Some(opta) => Some(opta),
             _ => optb
@@ -178,45 +151,49 @@ pub impl<T> Option<T> {
     /// Update an optional value by optionally running its content by reference
     /// through a function that returns an option.
     #[inline(always)]
-    fn chain_ref<'a, U>(&'a self, f: &fn(x: &'a T) -> Option<U>) -> Option<U> {
-        match *self { Some(ref x) => f(x), None => None }
+    pub fn chain_ref<'a, U>(&'a self, f: &fn(x: &'a T) -> Option<U>)
+                            -> Option<U> {
+        match *self {
+            Some(ref x) => f(x),
+            None => None
+        }
     }
 
     /// Maps a `some` value from one type to another by reference
     #[inline(always)]
-    fn map<'a, U>(&self, f: &fn(&'a T) -> U) -> Option<U> {
+    pub fn map<'a, U>(&self, f: &fn(&'a T) -> U) -> Option<U> {
         match *self { Some(ref x) => Some(f(x)), None => None }
     }
 
     /// As `map`, but consumes the option and gives `f` ownership to avoid
     /// copying.
     #[inline(always)]
-    fn map_consume<U>(self, f: &fn(v: T) -> U) -> Option<U> {
+    pub fn map_consume<U>(self, f: &fn(v: T) -> U) -> Option<U> {
         match self { None => None, Some(v) => Some(f(v)) }
     }
 
     /// Applies a function to the contained value or returns a default
     #[inline(always)]
-    fn map_default<'a, U>(&'a self, def: U, f: &fn(&'a T) -> U) -> U {
+    pub fn map_default<'a, U>(&'a self, def: U, f: &fn(&'a T) -> U) -> U {
         match *self { None => def, Some(ref t) => f(t) }
     }
 
     /// As `map_default`, but consumes the option and gives `f`
     /// ownership to avoid copying.
     #[inline(always)]
-    fn map_consume_default<U>(self, def: U, f: &fn(v: T) -> U) -> U {
+    pub fn map_consume_default<U>(self, def: U, f: &fn(v: T) -> U) -> U {
         match self { None => def, Some(v) => f(v) }
     }
 
     /// Apply a function to the contained value or do nothing
-    fn mutate(&mut self, f: &fn(T) -> T) {
+    pub fn mutate(&mut self, f: &fn(T) -> T) {
         if self.is_some() {
             *self = Some(f(self.swap_unwrap()));
         }
     }
 
     /// Apply a function to the contained value or set it to a default
-    fn mutate_default(&mut self, def: T, f: &fn(T) -> T) {
+    pub fn mutate_default(&mut self, def: T, f: &fn(T) -> T) {
         if self.is_some() {
             *self = Some(f(self.swap_unwrap()));
         } else {
@@ -239,7 +216,7 @@ pub impl<T> Option<T> {
     case explicitly.
      */
     #[inline(always)]
-    fn get_ref<'a>(&'a self) -> &'a T {
+    pub fn get_ref<'a>(&'a self) -> &'a T {
         match *self {
           Some(ref x) => x,
           None => fail!("option::get_ref none")
@@ -261,7 +238,7 @@ pub impl<T> Option<T> {
     case explicitly.
      */
     #[inline(always)]
-    fn get_mut_ref<'a>(&'a mut self) -> &'a mut T {
+    pub fn get_mut_ref<'a>(&'a mut self) -> &'a mut T {
         match *self {
           Some(ref mut x) => x,
           None => fail!("option::get_mut_ref none")
@@ -269,7 +246,7 @@ pub impl<T> Option<T> {
     }
 
     #[inline(always)]
-    fn unwrap(self) -> T {
+    pub fn unwrap(self) -> T {
         /*!
         Moves a value out of an option type and returns it.
 
@@ -301,7 +278,7 @@ pub impl<T> Option<T> {
      * Fails if the value equals `None`.
      */
     #[inline(always)]
-    fn swap_unwrap(&mut self) -> T {
+    pub fn swap_unwrap(&mut self) -> T {
         if self.is_none() { fail!("option::swap_unwrap none") }
         util::replace(self, None).unwrap()
     }
@@ -315,7 +292,7 @@ pub impl<T> Option<T> {
      * Fails if the value equals `none`
      */
     #[inline(always)]
-    fn expect(self, reason: &str) -> T {
+    pub fn expect(self, reason: &str) -> T {
         match self {
           Some(val) => val,
           None => fail!(reason.to_owned()),
@@ -323,7 +300,7 @@ pub impl<T> Option<T> {
     }
 }
 
-pub impl<T:Copy> Option<T> {
+impl<T:Copy> Option<T> {
     /**
     Gets the value out of an option
 
@@ -339,22 +316,22 @@ pub impl<T:Copy> Option<T> {
     case explicitly.
     */
     #[inline(always)]
-    fn get(self) -> T {
+    pub fn get(self) -> T {
         match self {
-          Some(copy x) => return x,
+          Some(x) => return x,
           None => fail!("option::get none")
         }
     }
 
     /// Returns the contained value or a default
     #[inline(always)]
-    fn get_or_default(self, def: T) -> T {
-        match self { Some(copy x) => x, None => def }
+    pub fn get_or_default(self, def: T) -> T {
+        match self { Some(x) => x, None => def }
     }
 
     /// Applies a function zero or more times until the result is none.
     #[inline(always)]
-    fn while_some(self, blk: &fn(v: T) -> Option<T>) {
+    pub fn while_some(self, blk: &fn(v: T) -> Option<T>) {
         let mut opt = self;
         while opt.is_some() {
             opt = blk(opt.unwrap());
@@ -362,11 +339,36 @@ pub impl<T:Copy> Option<T> {
     }
 }
 
-pub impl<T:Copy + Zero> Option<T> {
+impl<T:Copy + Zero> Option<T> {
     /// Returns the contained value or zero (for this type)
     #[inline(always)]
-    fn get_or_zero(self) -> T {
-        match self { Some(copy x) => x, None => Zero::zero() }
+    pub fn get_or_zero(self) -> T {
+        match self {
+            Some(x) => x,
+            None => Zero::zero()
+        }
+    }
+}
+
+/// Immutable iterator over an `Option<A>`
+pub struct OptionIterator<'self, A> {
+    priv opt: Option<&'self A>
+}
+
+impl<'self, A> Iterator<&'self A> for OptionIterator<'self, A> {
+    fn next(&mut self) -> Option<&'self A> {
+        util::replace(&mut self.opt, None)
+    }
+}
+
+/// Mutable iterator over an `Option<A>`
+pub struct OptionMutIterator<'self, A> {
+    priv opt: Option<&'self mut A>
+}
+
+impl<'self, A> Iterator<&'self mut A> for OptionMutIterator<'self, A> {
+    fn next(&mut self) -> Option<&'self mut A> {
+        util::replace(&mut self.opt, None)
     }
 }
 
@@ -423,7 +425,7 @@ fn test_option_dance() {
     let x = Some(());
     let mut y = Some(5);
     let mut y2 = 0;
-    for x.each |_x| {
+    for x.iter().advance |_x| {
         y2 = y.swap_unwrap();
     }
     assert_eq!(y2, 5);
@@ -431,7 +433,7 @@ fn test_option_dance() {
 }
 #[test] #[should_fail] #[ignore(cfg(windows))]
 fn test_option_too_much_dance() {
-    let mut y = Some(util::NonCopyable());
+    let mut y = Some(util::NonCopyable::new());
     let _y2 = y.swap_unwrap();
     let _y3 = y.swap_unwrap();
 }

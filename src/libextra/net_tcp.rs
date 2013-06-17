@@ -11,6 +11,8 @@
 //! High-level interface to libuv's TCP functionality
 // FIXME #4425: Need FFI fixes
 
+#[allow(missing_doc)];
+
 use core::prelude::*;
 
 use future;
@@ -593,7 +595,7 @@ pub fn accept(new_conn: TcpNewConnection)
                 }
                 // UNSAFE LIBUV INTERACTION END
                 match result_po.recv() {
-                    Some(copy err_data) => result::Err(err_data),
+                    Some(err_data) => result::Err(err_data),
                     None => result::Ok(TcpSocket(client_socket_data))
                 }
             }
@@ -824,7 +826,7 @@ pub fn socket_buf(sock: TcpSocket) -> TcpSocketBuf {
 }
 
 /// Convenience methods extending `net::tcp::TcpSocket`
-pub impl TcpSocket {
+impl TcpSocket {
     pub fn read_start(&self) -> result::Result<@Port<
         result::Result<~[u8], TcpErrData>>, TcpErrData> {
         read_start(self)
@@ -833,11 +835,11 @@ pub impl TcpSocket {
         result::Result<(), TcpErrData> {
         read_stop(self)
     }
-    fn read(&self, timeout_msecs: uint) ->
+    pub fn read(&self, timeout_msecs: uint) ->
         result::Result<~[u8], TcpErrData> {
         read(self, timeout_msecs)
     }
-    fn read_future(&self, timeout_msecs: uint) ->
+    pub fn read_future(&self, timeout_msecs: uint) ->
         future::Future<result::Result<~[u8], TcpErrData>> {
         read_future(self, timeout_msecs)
     }
@@ -1451,6 +1453,10 @@ mod test {
 
     use core::cell::Cell;
     use core::comm::{stream, SharedChan};
+    use core::io;
+    use core::result;
+    use core::str;
+    use core::task;
 
     // FIXME don't run on fbsd or linux 32 bit (#2064)
     #[cfg(target_os="win32")]
@@ -1591,8 +1597,8 @@ mod test {
                        expected_req, actual_req);
         debug!("RESP: expected: '%s' actual: '%s'",
                        expected_resp, actual_resp);
-        assert!(str::contains(actual_req, expected_req));
-        assert!(str::contains(actual_resp, expected_resp));
+        assert!(actual_req.contains(expected_req));
+        assert!(actual_resp.contains(expected_resp));
     }
     pub fn impl_gl_tcp_ipv4_get_peer_addr() {
         let hl_loop = &uv::global_loop::get();
@@ -1630,7 +1636,7 @@ mod test {
         assert_eq!(net::ip::get_port(&sock.get_peer_addr()), 8887);
 
         // Fulfill the protocol the test server expects
-        let resp_bytes = str::to_bytes("ping");
+        let resp_bytes = "ping".as_bytes().to_owned();
         tcp_write_single(&sock, resp_bytes);
         debug!("message sent");
         sock.read(0u);
@@ -1750,17 +1756,15 @@ mod test {
         buf_write(sock_buf, expected_req);
 
         // so contrived!
-        let actual_resp = do str::as_bytes(&expected_resp.to_str()) |resp_buf| {
-            buf_read(sock_buf, resp_buf.len())
-        };
+        let actual_resp = buf_read(sock_buf, expected_resp.as_bytes().len());
 
         let actual_req = server_result_po.recv();
         debug!("REQ: expected: '%s' actual: '%s'",
                        expected_req, actual_req);
         debug!("RESP: expected: '%s' actual: '%s'",
                        expected_resp, actual_resp);
-        assert!(str::contains(actual_req, expected_req));
-        assert!(str::contains(actual_resp, expected_resp));
+        assert!(actual_req.contains(expected_req));
+        assert!(actual_resp.contains(expected_resp));
     }
 
     pub fn impl_tcp_socket_impl_reader_handles_eof() {
@@ -1803,12 +1807,11 @@ mod test {
     }
 
     fn buf_write<W:io::Writer>(w: &W, val: &str) {
-        debug!("BUF_WRITE: val len %?", str::len(val));
-        do str::byte_slice(val) |b_slice| {
-            debug!("BUF_WRITE: b_slice len %?",
-                            b_slice.len());
-            w.write(b_slice)
-        }
+        debug!("BUF_WRITE: val len %?", val.len());
+        let b_slice = val.as_bytes();
+        debug!("BUF_WRITE: b_slice len %?",
+               b_slice.len());
+        w.write(b_slice)
     }
 
     fn buf_read<R:io::Reader>(r: &R, len: uint) -> ~str {
@@ -1824,7 +1827,7 @@ mod test {
         let (server_po, server_ch) = stream::<~str>();
         let server_ch = SharedChan::new(server_ch);
         let server_ip_addr = ip::v4::parse_addr(server_ip);
-        let resp_cell = Cell(resp);
+        let resp_cell = Cell::new(resp);
         let listen_result = listen(server_ip_addr, server_port, 128,
                                    iotask,
             // on_establish_cb -- called when listener is set up
@@ -1836,7 +1839,7 @@ mod test {
             // risky to run this on the loop, but some users
             // will want the POWER
             |new_conn, kill_ch| {
-                let resp_cell2 = Cell(resp_cell.take());
+                let resp_cell2 = Cell::new(resp_cell.take());
                 debug!("SERVER: new connection!");
                 let (cont_po, cont_ch) = stream();
                 let server_ch = server_ch.clone();
@@ -1871,7 +1874,8 @@ mod test {
                             server_ch.send(
                                 str::from_bytes(data));
                             debug!("SERVER: before write");
-                            tcp_write_single(&sock, str::to_bytes(resp_cell2.take()));
+                            let s = resp_cell2.take();
+                            tcp_write_single(&sock, s.as_bytes().to_owned());
                             debug!("SERVER: after write.. die");
                             kill_ch.send(None);
                           }
@@ -1943,7 +1947,7 @@ mod test {
         }
         else {
             let sock = result::unwrap(connect_result);
-            let resp_bytes = str::to_bytes(resp);
+            let resp_bytes = resp.as_bytes().to_owned();
             tcp_write_single(&sock, resp_bytes);
             let read_result = sock.read(0u);
             if read_result.is_err() {

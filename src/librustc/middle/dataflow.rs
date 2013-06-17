@@ -19,7 +19,9 @@
 use core::prelude::*;
 
 use core::cast;
+use core::io;
 use core::uint;
+use core::vec;
 use syntax::ast;
 use syntax::ast_util;
 use syntax::ast_util::id_range;
@@ -369,11 +371,9 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
                  in_out: &mut [uint],
                  loop_scopes: &mut ~[LoopScope]) {
         match decl.node {
-            ast::decl_local(ref locals) => {
-                for locals.each |local| {
-                    self.walk_pat(local.node.pat, in_out, loop_scopes);
-                    self.walk_opt_expr(local.node.init, in_out, loop_scopes);
-                }
+            ast::decl_local(local) => {
+                self.walk_pat(local.node.pat, in_out, loop_scopes);
+                self.walk_opt_expr(local.node.init, in_out, loop_scopes);
             }
 
             ast::decl_item(_) => {}
@@ -636,7 +636,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
             }
 
             ast::expr_assign(l, r) |
-            ast::expr_assign_op(_, l, r) => {
+            ast::expr_assign_op(_, _, l, r) => {
                 self.walk_expr(r, in_out, loop_scopes);
                 self.walk_expr(l, in_out, loop_scopes);
             }
@@ -658,23 +658,23 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
             }
 
             ast::expr_call(f, ref args, _) => {
-                self.walk_call(expr.callee_id, expr.id,
+                self.walk_call(f.id, expr.id,
                                f, *args, in_out, loop_scopes);
             }
 
-            ast::expr_method_call(rcvr, _, _, ref args, _) => {
-                self.walk_call(expr.callee_id, expr.id,
+            ast::expr_method_call(callee_id, rcvr, _, _, ref args, _) => {
+                self.walk_call(callee_id, expr.id,
                                rcvr, *args, in_out, loop_scopes);
             }
 
-            ast::expr_index(l, r) |
-            ast::expr_binary(_, l, r) if self.is_method_call(expr) => {
-                self.walk_call(expr.callee_id, expr.id,
+            ast::expr_index(callee_id, l, r) |
+            ast::expr_binary(callee_id, _, l, r) if self.is_method_call(expr) => {
+                self.walk_call(callee_id, expr.id,
                                l, [r], in_out, loop_scopes);
             }
 
-            ast::expr_unary(_, e) if self.is_method_call(expr) => {
-                self.walk_call(expr.callee_id, expr.id,
+            ast::expr_unary(callee_id, _, e) if self.is_method_call(expr) => {
+                self.walk_call(callee_id, expr.id,
                                e, [], in_out, loop_scopes);
             }
 
@@ -682,7 +682,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
                 self.walk_exprs(*exprs, in_out, loop_scopes);
             }
 
-            ast::expr_binary(op, l, r) if ast_util::lazy_binop(op) => {
+            ast::expr_binary(_, op, l, r) if ast_util::lazy_binop(op) => {
                 self.walk_expr(l, in_out, loop_scopes);
                 let temp = reslice(in_out).to_vec();
                 self.walk_expr(r, in_out, loop_scopes);
@@ -690,8 +690,8 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
             }
 
             ast::expr_log(l, r) |
-            ast::expr_index(l, r) |
-            ast::expr_binary(_, l, r) => {
+            ast::expr_index(_, l, r) |
+            ast::expr_binary(_, _, l, r) => {
                 self.walk_exprs([l, r], in_out, loop_scopes);
             }
 
@@ -705,7 +705,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
             ast::expr_loop_body(e) |
             ast::expr_do_body(e) |
             ast::expr_cast(e, _) |
-            ast::expr_unary(_, e) |
+            ast::expr_unary(_, _, e) |
             ast::expr_paren(e) |
             ast::expr_vstore(e, _) |
             ast::expr_field(e, _, _) => {
@@ -793,7 +793,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
                      opt_expr: Option<@ast::expr>,
                      in_out: &mut [uint],
                      loop_scopes: &mut ~[LoopScope]) {
-        for opt_expr.each |&expr| {
+        for opt_expr.iter().advance |&expr| {
             self.walk_expr(expr, in_out, loop_scopes);
         }
     }
@@ -894,7 +894,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
 
     fn reset(&mut self, bits: &mut [uint]) {
         let e = if self.dfcx.oper.initial_value() {uint::max_value} else {0};
-        for vec::each_mut(bits) |b| { *b = e; }
+        for bits.mut_iter().advance |b| { *b = e; }
     }
 
     fn add_to_entry_set(&mut self, id: ast::node_id, pred_bits: &[uint]) {
@@ -945,13 +945,13 @@ fn bits_to_str(words: &[uint]) -> ~str {
     for words.each |&word| {
         let mut v = word;
         for uint::range(0, uint::bytes) |_| {
-            str::push_char(&mut result, sep);
-            str::push_str(&mut result, fmt!("%02x", v & 0xFF));
+            result.push_char(sep);
+            result.push_str(fmt!("%02x", v & 0xFF));
             v >>= 8;
             sep = '-';
         }
     }
-    str::push_char(&mut result, ']');
+    result.push_char(']');
     return result;
 }
 

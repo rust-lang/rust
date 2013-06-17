@@ -10,6 +10,9 @@
 
 // error-pattern:whatever
 
+use std::os;
+use std::task;
+
 struct r {
   x:int,
 }

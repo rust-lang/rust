@@ -36,7 +36,7 @@ fn match_const_opt_by_imm_ref(v: &const Option<int>) {
 
 fn match_const_opt_by_value(v: &const Option<int>) {
     match *v {
-      Some(copy i) => process(i),
+      Some(i) => process(i),
       None => ()
     }
 }

@@ -22,5 +22,5 @@ fn main() {
     let u = Thing {x: 2};
     let _v = u.mul(&3); // This is ok
     let w = u * 3; //~ ERROR binary operation * cannot be applied to type `Thing`
-    io::println(fmt!("%i", w.x));
+    println(fmt!("%i", w.x));
 }

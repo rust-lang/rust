@@ -28,7 +28,15 @@ extern mod extra(name = "extra", vers = "0.7-pre");
 extern mod syntax(vers = "0.7-pre");
 
 use std::prelude::*;
+
+use std::int;
+use std::io;
+use std::option;
+use std::os;
+use std::result;
 use std::run;
+use std::str;
+use std::uint;
 
 use syntax::diagnostic;
 use syntax::parse::token::ident_interner;
@@ -48,7 +56,7 @@ pub fn write_file(filename: &Path, content: &str) {
 }
 
 pub fn contains(haystack: &str, needle: &str) -> bool {
-    str::contains(haystack, needle)
+    haystack.contains(needle)
 }
 
 pub fn find_rust_files(files: &mut ~[Path], path: &Path) {
@@ -69,7 +77,6 @@ pub fn common_exprs() -> ~[@ast::expr] {
     fn dse(e: ast::expr_) -> @ast::expr {
         @ast::expr {
             id: 0,
-            callee_id: -1,
             node: e,
             span: codemap::dummy_sp(),
         }
@@ -85,9 +92,9 @@ pub fn common_exprs() -> ~[@ast::expr] {
      dse(ast::expr_lit(@dsl(ast::lit_nil))),
      dse(ast::expr_lit(@dsl(ast::lit_bool(false)))),
      dse(ast::expr_lit(@dsl(ast::lit_bool(true)))),
-     dse(ast::expr_unary(ast::box(ast::m_imm),
+     dse(ast::expr_unary(-1, ast::box(ast::m_imm),
                          dse(ast::expr_lit(@dsl(ast::lit_bool(true)))))),
-     dse(ast::expr_unary(ast::uniq(ast::m_imm),
+     dse(ast::expr_unary(-1, ast::uniq(ast::m_imm),
                          dse(ast::expr_lit(@dsl(ast::lit_bool(true))))))
     ]
 }
@@ -119,7 +126,7 @@ pub fn safe_to_use_expr(e: @ast::expr, tm: test_mode) -> bool {
           //ast::expr_cast(_, _) { false }
 
           // https://github.com/mozilla/rust/issues/1458
-          ast::expr_call(_, _, _) => { false }
+          ast::expr_call(*) => { false }
 
           _ => { true }
         }
@@ -169,7 +176,7 @@ pub fn steal(crate: @ast::crate, tm: test_mode) -> StolenStuff {
         visit_ty: |a| stash_ty_if(safe_to_steal_ty, tys, a, tm),
         .. *visit::default_simple_visitor()
     });
-    visit::visit_crate(crate, (), v);
+    visit::visit_crate(crate, ((), v));
     StolenStuff {
         exprs: (*exprs).clone(),
         tys: (*tys).clone(),
@@ -338,13 +345,13 @@ pub fn check_variants_T<T:Copy>(crate: @ast::crate,
                                             intr,
                                             span_handler,
                                             crate2,
-                                            fname.to_str(),
+                                            fname.to_managed(),
                                             rdr,
                                             a,
                                             pprust::no_ann(),
                                             false)
                     };
-                    @string
+                    string.to_managed()
                 };
                 match cx.mode {
                     tm_converge => check_roundtrip_convergence(str3, 1),
@@ -354,9 +361,9 @@ pub fn check_variants_T<T:Copy>(crate: @ast::crate,
                                               thing_label,
                                               i,
                                               j);
-                        let safe_to_run = !(content_is_dangerous_to_run(*str3)
+                        let safe_to_run = !(content_is_dangerous_to_run(str3)
                                             || has_raw_pointers(crate2));
-                        check_whole_compiler(*str3,
+                        check_whole_compiler(str3,
                                              &Path(file_label),
                                              safe_to_run);
                     }
@@ -367,8 +374,8 @@ pub fn check_variants_T<T:Copy>(crate: @ast::crate,
 }
 
 pub fn last_part(filename: ~str) -> ~str {
-    let ix = str::rfind_char(filename, '/').get();
-    str::slice(filename, ix + 1u, str::len(filename) - 3u).to_owned()
+    let ix = filename.rfind('/').get();
+    filename.slice(ix + 1u, filename.len() - 3u).to_owned()
 }
 
 pub enum happiness {
@@ -426,7 +433,7 @@ pub fn check_running(exe_filename: &Path) -> happiness {
         "/Users/jruderman/scripts/timed_run_rust_program.py",
         [exe_filename.to_str()]);
     let comb = str::from_bytes(p.output) + "\n" + str::from_bytes(p.error);
-    if str::len(comb) > 1u {
+    if comb.len() > 1u {
         error!("comb comb comb: %?", comb);
     }
 
@@ -495,15 +502,15 @@ pub fn check_compiling(filename: &Path) -> happiness {
 }
 
 
-pub fn parse_and_print(code: @~str) -> ~str {
+pub fn parse_and_print(code: @str) -> @str {
     let filename = Path("tmp.rs");
     let sess = parse::new_parse_sess(option::None);
-    write_file(&filename, *code);
-    let crate = parse::parse_crate_from_source_str(filename.to_str(),
+    write_file(&filename, code);
+    let crate = parse::parse_crate_from_source_str(filename.to_str().to_managed(),
                                                    code,
                                                    ~[],
                                                    sess);
-    do io::with_str_reader(*code) |rdr| {
+    do io::with_str_reader(code) |rdr| {
         let filename = filename.to_str();
         do as_str |a| {
             pprust::print_crate(sess.cm,
@@ -511,12 +518,12 @@ pub fn parse_and_print(code: @~str) -> ~str {
                                 token::mk_fake_ident_interner(),
                                 copy sess.span_diagnostic,
                                 crate,
-                                filename.to_str(),
+                                filename.to_managed(),
                                 rdr,
                                 a,
                                 pprust::no_ann(),
                                 false)
-        }
+        }.to_managed()
     }
 }
 
@@ -532,7 +539,7 @@ pub fn has_raw_pointers(c: @ast::crate) -> bool {
         visit::mk_simple_visitor(@visit::SimpleVisitor {
             visit_ty: |a| visit_ty(has_rp, a),
             .. *visit::default_simple_visitor()});
-    visit::visit_crate(c, (), v);
+    visit::visit_crate(c, ((), v));
     return *has_rp;
 }
 
@@ -591,15 +598,15 @@ pub fn file_might_not_converge(filename: &Path) -> bool {
     return false;
 }
 
-pub fn check_roundtrip_convergence(code: @~str, maxIters: uint) {
+pub fn check_roundtrip_convergence(code: @str, maxIters: uint) {
     let mut i = 0u;
     let mut newv = code;
     let mut oldv = code;
 
     while i < maxIters {
         oldv = newv;
-        if content_might_not_converge(*oldv) { return; }
-        newv = @parse_and_print(oldv);
+        if content_might_not_converge(oldv) { return; }
+        newv = parse_and_print(oldv);
         if oldv == newv { break; }
         i += 1u;
     }
@@ -608,19 +615,19 @@ pub fn check_roundtrip_convergence(code: @~str, maxIters: uint) {
         error!("Converged after %u iterations", i);
     } else {
         error!("Did not converge after %u iterations!", i);
-        write_file(&Path("round-trip-a.rs"), *oldv);
-        write_file(&Path("round-trip-b.rs"), *newv);
+        write_file(&Path("round-trip-a.rs"), oldv);
+        write_file(&Path("round-trip-b.rs"), newv);
         run::process_status("diff", [~"-w", ~"-u", ~"round-trip-a.rs", ~"round-trip-b.rs"]);
         fail!("Mismatch");
     }
 }
 
 pub fn check_convergence(files: &[Path]) {
-    error!("pp convergence tests: %u files", vec::len(files));
+    error!("pp convergence tests: %u files", files.len());
     for files.each |file| {
         if !file_might_not_converge(file) {
-            let s = @result::get(&io::read_whole_file_str(file));
-            if !content_might_not_converge(*s) {
+            let s = result::get(&io::read_whole_file_str(file)).to_managed();
+            if !content_might_not_converge(s) {
                 error!("pp converge: %s", file.to_str());
                 // Change from 7u to 2u once
                 // https://github.com/mozilla/rust/issues/850 is fixed
@@ -639,14 +646,14 @@ pub fn check_variants(files: &[Path], cx: Context) {
             loop;
         }
 
-        let s = @result::get(&io::read_whole_file_str(file));
-        if contains(*s, "#") {
+        let s = result::get(&io::read_whole_file_str(file)).to_managed();
+        if s.contains_char('#') {
             loop; // Macros are confusing
         }
-        if cx.mode == tm_converge && content_might_not_converge(*s) {
+        if cx.mode == tm_converge && content_might_not_converge(s) {
             loop;
         }
-        if cx.mode == tm_run && content_is_dangerous_to_compile(*s) {
+        if cx.mode == tm_run && content_is_dangerous_to_compile(s) {
             loop;
         }
 
@@ -654,11 +661,11 @@ pub fn check_variants(files: &[Path], cx: Context) {
 
         error!("check_variants: %?", file_str);
         let sess = parse::new_parse_sess(None);
-        let crate = parse::parse_crate_from_source_str(file_str.to_str(),
+        let crate = parse::parse_crate_from_source_str(file_str.to_managed(),
                                                        s,
                                                        ~[],
                                                        sess);
-        io::with_str_reader(*s, |rdr| {
+        io::with_str_reader(s, |rdr| {
             let file_str = file_str.to_str();
             error!("%s",
                    as_str(|a| {
@@ -668,7 +675,7 @@ pub fn check_variants(files: &[Path], cx: Context) {
                         token::mk_fake_ident_interner(),
                         copy sess.span_diagnostic,
                         crate,
-                        file_str.to_str(),
+                        file_str.to_managed(),
                         rdr,
                         a,
                         pprust::no_ann(),
@@ -681,7 +688,7 @@ pub fn check_variants(files: &[Path], cx: Context) {
 
 pub fn main() {
     let args = os::args();
-    if vec::len(args) != 2u {
+    if args.len() != 2u {
         error!("usage: %s <testdir>", args[0]);
         return;
     }
@@ -704,4 +711,3 @@ pub mod core {
     pub use std::cmp;
     pub use std::sys;
 }
-

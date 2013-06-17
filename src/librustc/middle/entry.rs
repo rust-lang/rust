@@ -59,10 +59,10 @@ pub fn find_entry_point(session: Session, crate: @crate, ast_map: ast_map::map) 
         non_main_fns: ~[],
     };
 
-    visit_crate(crate, ctxt, mk_vt(@Visitor {
-        visit_item: |item, ctxt, visitor| find_item(item, ctxt, visitor),
+    visit_crate(crate, (ctxt, mk_vt(@Visitor {
+        visit_item: |item, (ctxt, visitor)| find_item(item, ctxt, visitor),
         .. *default_visitor()
-    }));
+    })));
 
     configure_main(ctxt);
 }
@@ -114,7 +114,7 @@ fn find_item(item: @item, ctxt: @mut EntryContext, visitor: EntryVisitor) {
         _ => ()
     }
 
-    visit_item(item, ctxt, visitor);
+    visit_item(item, (ctxt, visitor));
 }
 
 fn configure_main(ctxt: @mut EntryContext) {

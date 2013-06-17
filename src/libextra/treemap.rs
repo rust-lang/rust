@@ -14,11 +14,11 @@
 
 use core::prelude::*;
 
-use core::iterator::*;
+use core::uint;
 use core::util::{swap, replace};
 
 // This is implemented as an AA tree, which is a simplified variation of
-// a red-black tree where where red (horizontal) nodes can only be added
+// a red-black tree where red (horizontal) nodes can only be added
 // as a right child. The time complexity is the same, and re-balancing
 // operations are more frequent but also cheaper.
 
@@ -33,6 +33,7 @@ use core::util::{swap, replace};
 //   * union: |
 // These would be convenient since the methods work like `each`
 
+#[allow(missing_doc)]
 pub struct TreeMap<K, V> {
     priv root: Option<~TreeNode<K, V>>,
     priv length: uint
@@ -179,28 +180,28 @@ impl<K: TotalOrd, V> Map<K, V> for TreeMap<K, V> {
     }
 }
 
-pub impl<K: TotalOrd, V> TreeMap<K, V> {
+impl<K: TotalOrd, V> TreeMap<K, V> {
     /// Create an empty TreeMap
-    fn new() -> TreeMap<K, V> { TreeMap{root: None, length: 0} }
+    pub fn new() -> TreeMap<K, V> { TreeMap{root: None, length: 0} }
 
     /// Visit all key-value pairs in reverse order
-    fn each_reverse<'a>(&'a self, f: &fn(&'a K, &'a V) -> bool) -> bool {
+    pub fn each_reverse<'a>(&'a self, f: &fn(&'a K, &'a V) -> bool) -> bool {
         each_reverse(&self.root, f)
     }
 
     /// Visit all keys in reverse order
-    fn each_key_reverse(&self, f: &fn(&K) -> bool) -> bool {
+    pub fn each_key_reverse(&self, f: &fn(&K) -> bool) -> bool {
         self.each_reverse(|k, _| f(k))
     }
 
     /// Visit all values in reverse order
-    fn each_value_reverse(&self, f: &fn(&V) -> bool) -> bool {
+    pub fn each_value_reverse(&self, f: &fn(&V) -> bool) -> bool {
         self.each_reverse(|_, v| f(v))
     }
 
     /// Get a lazy iterator over the key-value pairs in the map.
     /// Requires that it be frozen (immutable).
-    fn iter<'a>(&'a self) -> TreeMapIterator<'a, K, V> {
+    pub fn iter<'a>(&'a self) -> TreeMapIterator<'a, K, V> {
         TreeMapIterator{stack: ~[], node: &self.root}
     }
 }
@@ -241,6 +242,9 @@ impl<'self, T> Iterator<&'self T> for TreeSetIterator<'self, T> {
     }
 }
 
+/// A implementation of the `Set` trait on top of the `TreeMap` container. The
+/// only requirement is that the type of the elements contained ascribes to the
+/// `TotalOrd` trait.
 pub struct TreeSet<T> {
     priv map: TreeMap<T, ()>
 }
@@ -422,7 +426,7 @@ impl<T: TotalOrd> Set<T> for TreeSet<T> {
                 b = y.next();
             }
         }
-        return b.each(|&x| f(x)) && y.advance(f);
+        b.iter().advance(|&x| f(x)) && y.advance(f)
     }
 
     /// Visit the values (in-order) representing the intersection
@@ -480,19 +484,19 @@ impl<T: TotalOrd> Set<T> for TreeSet<T> {
                 a = x.next();
             }
         }
-        return b.each(|&x| f(x)) && y.advance(f);
+        b.iter().advance(|&x| f(x)) && y.advance(f)
     }
 }
 
-pub impl <T: TotalOrd> TreeSet<T> {
+impl<T: TotalOrd> TreeSet<T> {
     /// Create an empty TreeSet
     #[inline(always)]
-    fn new() -> TreeSet<T> { TreeSet{map: TreeMap::new()} }
+    pub fn new() -> TreeSet<T> { TreeSet{map: TreeMap::new()} }
 
     /// Get a lazy iterator over the values in the set.
     /// Requires that it be frozen (immutable).
     #[inline(always)]
-    fn iter<'a>(&'a self) -> TreeSetIterator<'a, T> {
+    pub fn iter<'a>(&'a self) -> TreeSetIterator<'a, T> {
         TreeSetIterator{iter: self.map.iter()}
     }
 }
@@ -512,23 +516,24 @@ struct TreeNode<K, V> {
     level: uint
 }
 
-pub impl<K: TotalOrd, V> TreeNode<K, V> {
+impl<K: TotalOrd, V> TreeNode<K, V> {
+    /// Creates a new tree node.
     #[inline(always)]
-    fn new(key: K, value: V) -> TreeNode<K, V> {
+    pub fn new(key: K, value: V) -> TreeNode<K, V> {
         TreeNode{key: key, value: value, left: None, right: None, level: 1}
     }
 }
 
 fn each<'r, K: TotalOrd, V>(node: &'r Option<~TreeNode<K, V>>,
                             f: &fn(&'r K, &'r V) -> bool) -> bool {
-    node.each(|x| each(&x.left, f) && f(&x.key, &x.value) &&
-                  each(&x.right, f))
+    node.iter().advance(|x| each(&x.left, f) && f(&x.key, &x.value) &&
+                            each(&x.right, f))
 }
 
 fn each_reverse<'r, K: TotalOrd, V>(node: &'r Option<~TreeNode<K, V>>,
                                     f: &fn(&'r K, &'r V) -> bool) -> bool {
-    node.each(|x| each_reverse(&x.right, f) && f(&x.key, &x.value) &&
-                  each_reverse(&x.left, f))
+    node.iter().advance(|x| each_reverse(&x.right, f) && f(&x.key, &x.value) &&
+                            each_reverse(&x.left, f))
 }
 
 fn mutate_values<'r, K: TotalOrd, V>(node: &'r mut Option<~TreeNode<K, V>>,
@@ -619,7 +624,7 @@ fn remove<K: TotalOrd, V>(node: &mut Option<~TreeNode<K, V>>,
     fn heir_swap<K: TotalOrd, V>(node: &mut ~TreeNode<K, V>,
                                  child: &mut Option<~TreeNode<K, V>>) {
         // *could* be done without recursion, but it won't borrow check
-        for child.each_mut |x| {
+        for child.mut_iter().advance |x| {
             if x.right.is_some() {
                 heir_swap(node, &mut x.right);
             } else {
@@ -674,18 +679,18 @@ fn remove<K: TotalOrd, V>(node: &mut Option<~TreeNode<K, V>>,
                 save.level -= 1;
 
                 if right_level > save.level {
-                    for save.right.each_mut |x| { x.level = save.level }
+                    for save.right.mut_iter().advance |x| { x.level = save.level }
                 }
 
                 skew(save);
 
-                for save.right.each_mut |right| {
+                for save.right.mut_iter().advance |right| {
                     skew(right);
-                    for right.right.each_mut |x| { skew(x) }
+                    for right.right.mut_iter().advance |x| { skew(x) }
                 }
 
                 split(save);
-                for save.right.each_mut |x| { split(x) }
+                for save.right.mut_iter().advance |x| { split(x) }
             }
 
             return ret;
@@ -701,9 +706,12 @@ fn remove<K: TotalOrd, V>(node: &mut Option<~TreeNode<K, V>>,
 mod test_treemap {
     use core::prelude::*;
 
-    use core::iterator::*;
     use super::*;
+
     use core::rand::RngUtil;
+    use core::rand;
+    use core::str;
+    use core::vec;
 
     #[test]
     fn find_empty() {
@@ -759,10 +767,10 @@ mod test_treemap {
     fn u8_map() {
         let mut m = TreeMap::new();
 
-        let k1 = str::to_bytes("foo");
-        let k2 = str::to_bytes("bar");
-        let v1 = str::to_bytes("baz");
-        let v2 = str::to_bytes("foobar");
+        let k1 = "foo".as_bytes();
+        let k2 = "bar".as_bytes();
+        let v1 = "baz".as_bytes();
+        let v2 = "foobar".as_bytes();
 
         m.insert(copy k1, copy v1);
         m.insert(copy k2, copy v2);
@@ -1020,7 +1028,7 @@ mod test_treemap {
 #[cfg(test)]
 mod test_set {
     use core::prelude::*;
-    use core::iterator::*;
+
     use super::*;
 
     #[test]
@@ -1100,6 +1108,7 @@ mod test_set {
 
         let mut n = 0;
         for m.each |x| {
+            println(fmt!("%?", x));
             assert_eq!(*x, n);
             n += 1
         }

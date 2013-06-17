@@ -10,6 +10,8 @@
 
 //! Semver parsing and logic
 
+#[allow(missing_doc)];
+
 use core::prelude::*;
 
 use core::char;
@@ -17,7 +19,6 @@ use core::cmp;
 use core::io::{ReaderUtil};
 use core::io;
 use core::option::{Option, Some, None};
-use core::str;
 use core::to_str::ToStr;
 use core::uint;
 
@@ -78,12 +79,12 @@ impl ToStr for Version {
         let s = if self.pre.is_empty() {
             s
         } else {
-            s + "-" + str::connect(self.pre.map(|i| i.to_str()), ".")
+            s + "-" + self.pre.map(|i| i.to_str()).connect(".")
         };
         if self.build.is_empty() {
             s
         } else {
-            s + "+" + str::connect(self.build.map(|i| i.to_str()), ".")
+            s + "+" + self.build.map(|i| i.to_str()).connect(".")
         }
     }
 }
@@ -146,7 +147,7 @@ fn take_nonempty_prefix(rdr: @io::Reader,
     let mut buf = ~"";
     let mut ch = ch;
     while pred(ch) {
-        str::push_char(&mut buf, ch);
+        buf.push_char(ch);
         ch = rdr.read_char();
     }
     if buf.is_empty() {
@@ -166,7 +167,7 @@ fn take_num(rdr: @io::Reader, ch: char) -> (uint, char) {
 
 fn take_ident(rdr: @io::Reader, ch: char) -> (Identifier, char) {
     let (s,ch) = take_nonempty_prefix(rdr, ch, char::is_alphanumeric);
-    if s.all(char::is_digit) {
+    if s.iter().all(char::is_digit) {
         match uint::from_str(s) {
             None => { bad_parse::cond.raise(()); (Numeric(0), ch) },
             Some(i) => (Numeric(i), ch)

@@ -18,7 +18,7 @@ use ast::{TyBareFn, TyClosure};
 use ast::{RegionTyParamBound, TraitTyParamBound};
 use ast::{provided, public, purity};
 use ast::{_mod, add, arg, arm, attribute, bind_by_ref, bind_infer};
-use ast::{bind_by_copy, bitand, bitor, bitxor, blk};
+use ast::{bitand, bitor, bitxor, blk};
 use ast::{blk_check_mode, box};
 use ast::{crate, crate_cfg, decl, decl_item};
 use ast::{decl_local, default_blk, deref, div, enum_def, explicit_self};
@@ -76,7 +76,7 @@ use parse::obsolete::{ObsoleteMoveInit, ObsoleteBinaryMove, ObsoleteSwap};
 use parse::obsolete::{ObsoleteSyntax, ObsoleteLowerCaseKindBounds};
 use parse::obsolete::{ObsoleteUnsafeBlock, ObsoleteImplSyntax};
 use parse::obsolete::{ObsoleteTraitBoundSeparator, ObsoleteMutOwnedPointer};
-use parse::obsolete::{ObsoleteMutVector, ObsoleteTraitImplVisibility};
+use parse::obsolete::{ObsoleteMutVector, ObsoleteImplVisibility};
 use parse::obsolete::{ObsoleteRecordType, ObsoleteRecordPattern};
 use parse::obsolete::{ObsoletePostFnTySigil};
 use parse::obsolete::{ObsoleteBareFnType, ObsoleteNewtypeEnum};
@@ -84,8 +84,8 @@ use parse::obsolete::ObsoleteMode;
 use parse::obsolete::{ObsoleteLifetimeNotation, ObsoleteConstManagedPointer};
 use parse::obsolete::{ObsoletePurity, ObsoleteStaticMethod};
 use parse::obsolete::{ObsoleteConstItem, ObsoleteFixedLengthVectorType};
-use parse::obsolete::{ObsoleteNamedExternModule};
-use parse::token::{can_begin_expr, is_ident, is_ident_or_path};
+use parse::obsolete::{ObsoleteNamedExternModule, ObsoleteMultipleLocalDecl};
+use parse::token::{can_begin_expr, get_ident_interner, ident_to_str, is_ident, is_ident_or_path};
 use parse::token::{is_plain_ident, INTERPOLATED, keywords, special_idents, token_to_binop};
 use parse::token;
 use parse::{new_sub_parser_from_file, next_node_id, ParseSess};
@@ -129,11 +129,11 @@ at INTERPOLATED tokens */
 macro_rules! maybe_whole_expr (
     ($p:expr) => (
         match *($p).token {
-            INTERPOLATED(token::nt_expr(copy e)) => {
+            INTERPOLATED(token::nt_expr(e)) => {
                 $p.bump();
                 return e;
             }
-            INTERPOLATED(token::nt_path(copy pt)) => {
+            INTERPOLATED(token::nt_path(pt)) => {
                 $p.bump();
                 return $p.mk_expr(
                     ($p).span.lo,
@@ -148,8 +148,8 @@ macro_rules! maybe_whole_expr (
 
 macro_rules! maybe_whole (
     ($p:expr, $constructor:ident) => (
-        match *($p).token {
-            INTERPOLATED(token::$constructor(copy x)) => {
+        match copy *($p).token {
+            INTERPOLATED(token::$constructor(x)) => {
                 $p.bump();
                 return x;
             }
@@ -157,8 +157,8 @@ macro_rules! maybe_whole (
        }
     );
     (deref $p:expr, $constructor:ident) => (
-        match *($p).token {
-            INTERPOLATED(token::$constructor(copy x)) => {
+        match copy *($p).token {
+            INTERPOLATED(token::$constructor(x)) => {
                 $p.bump();
                 return copy *x;
             }
@@ -166,8 +166,8 @@ macro_rules! maybe_whole (
         }
     );
     (Some $p:expr, $constructor:ident) => (
-        match *($p).token {
-            INTERPOLATED(token::$constructor(copy x)) => {
+        match copy *($p).token {
+            INTERPOLATED(token::$constructor(x)) => {
                 $p.bump();
                 return Some(x);
             }
@@ -175,8 +175,8 @@ macro_rules! maybe_whole (
         }
     );
     (iovi $p:expr, $constructor:ident) => (
-        match *($p).token {
-            INTERPOLATED(token::$constructor(copy x)) => {
+        match copy *($p).token {
+            INTERPOLATED(token::$constructor(x)) => {
                 $p.bump();
                 return iovi_item(x);
             }
@@ -184,8 +184,8 @@ macro_rules! maybe_whole (
         }
     );
     (pair_empty $p:expr, $constructor:ident) => (
-        match *($p).token {
-            INTERPOLATED(token::$constructor(copy x)) => {
+        match copy *($p).token {
+            INTERPOLATED(token::$constructor(x)) => {
                 $p.bump();
                 return (~[], x);
             }
@@ -218,7 +218,7 @@ pub fn Parser(sess: @mut ParseSess,
               rdr: @reader)
            -> Parser {
     let tok0 = copy rdr.next_token();
-    let interner = rdr.interner();
+    let interner = get_ident_interner();
 
     Parser {
         reader: rdr,
@@ -261,7 +261,7 @@ pub struct Parser {
     /// extra detail when the same error is seen twice
     obsolete_set: @mut HashSet<ObsoleteSyntax>,
     /// Used to determine the path to externally loaded source files
-    mod_path_stack: @mut ~[~str],
+    mod_path_stack: @mut ~[@str],
 
 }
 
@@ -271,9 +271,9 @@ impl Drop for Parser {
     fn finalize(&self) {}
 }
 
-pub impl Parser {
+impl Parser {
     // advance the parser by one token
-    fn bump(&self) {
+    pub fn bump(&self) {
         *self.last_span = copy *self.span;
         let next = if *self.buffer_start == *self.buffer_end {
             self.reader.next_token()
@@ -287,17 +287,20 @@ pub impl Parser {
         *self.tokens_consumed += 1u;
     }
     // EFFECT: replace the current token and span with the given one
-    fn replace_token(&self, next: token::Token, lo: BytePos, hi: BytePos) {
+    pub fn replace_token(&self,
+                         next: token::Token,
+                         lo: BytePos,
+                         hi: BytePos) {
         *self.token = next;
         *self.span = mk_sp(lo, hi);
     }
-    fn buffer_length(&self) -> int {
+    pub fn buffer_length(&self) -> int {
         if *self.buffer_start <= *self.buffer_end {
             return *self.buffer_end - *self.buffer_start;
         }
         return (4 - *self.buffer_start) + *self.buffer_end;
     }
-    fn look_ahead(&self, distance: uint) -> token::Token {
+    pub fn look_ahead(&self, distance: uint) -> token::Token {
         let dist = distance as int;
         while self.buffer_length() < dist {
             self.buffer[*self.buffer_end] = self.reader.next_token();
@@ -305,49 +308,49 @@ pub impl Parser {
         }
         return copy self.buffer[(*self.buffer_start + dist - 1) & 3].tok;
     }
-    fn fatal(&self, m: &str) -> ! {
+    pub fn fatal(&self, m: &str) -> ! {
         self.sess.span_diagnostic.span_fatal(*copy self.span, m)
     }
-    fn span_fatal(&self, sp: span, m: &str) -> ! {
+    pub fn span_fatal(&self, sp: span, m: &str) -> ! {
         self.sess.span_diagnostic.span_fatal(sp, m)
     }
-    fn span_note(&self, sp: span, m: &str) {
+    pub fn span_note(&self, sp: span, m: &str) {
         self.sess.span_diagnostic.span_note(sp, m)
     }
-    fn bug(&self, m: &str) -> ! {
+    pub fn bug(&self, m: &str) -> ! {
         self.sess.span_diagnostic.span_bug(*copy self.span, m)
     }
-    fn warn(&self, m: &str) {
+    pub fn warn(&self, m: &str) {
         self.sess.span_diagnostic.span_warn(*copy self.span, m)
     }
-    fn span_err(&self, sp: span, m: &str) {
+    pub fn span_err(&self, sp: span, m: &str) {
         self.sess.span_diagnostic.span_err(sp, m)
     }
-    fn abort_if_errors(&self) {
+    pub fn abort_if_errors(&self) {
         self.sess.span_diagnostic.handler().abort_if_errors();
     }
-    fn get_id(&self) -> node_id { next_node_id(self.sess) }
+    pub fn get_id(&self) -> node_id { next_node_id(self.sess) }
 
-    fn id_to_str(&self, id: ident) -> @~str {
-        self.sess.interner.get(id)
+    pub fn id_to_str(&self, id: ident) -> @str {
+        get_ident_interner().get(id.name)
     }
 
     // is this one of the keywords that signals a closure type?
-    fn token_is_closure_keyword(&self, tok: &token::Token) -> bool {
+    pub fn token_is_closure_keyword(&self, tok: &token::Token) -> bool {
         token::is_keyword(keywords::Pure, tok) ||
             token::is_keyword(keywords::Unsafe, tok) ||
             token::is_keyword(keywords::Once, tok) ||
             token::is_keyword(keywords::Fn, tok)
     }
 
-    fn token_is_lifetime(&self, tok: &token::Token) -> bool {
+    pub fn token_is_lifetime(&self, tok: &token::Token) -> bool {
         match *tok {
             token::LIFETIME(*) => true,
             _ => false,
         }
     }
 
-    fn get_lifetime(&self, tok: &token::Token) -> ast::ident {
+    pub fn get_lifetime(&self, tok: &token::Token) -> ast::ident {
         match *tok {
             token::LIFETIME(ref ident) => copy *ident,
             _ => self.bug("not a lifetime"),
@@ -355,8 +358,7 @@ pub impl Parser {
     }
 
     // parse a ty_bare_fun type:
-    fn parse_ty_bare_fn(&self) -> ty_
-    {
+    pub fn parse_ty_bare_fn(&self) -> ty_ {
         /*
 
         extern "ABI" [pure|unsafe] fn <'lt> (S) -> T
@@ -385,10 +387,10 @@ pub impl Parser {
     }
 
     // parse a ty_closure type
-    fn parse_ty_closure(&self,
-                        sigil: ast::Sigil,
-                        region: Option<@ast::Lifetime>)
-                        -> ty_ {
+    pub fn parse_ty_closure(&self,
+                            sigil: ast::Sigil,
+                            region: Option<@ast::Lifetime>)
+                            -> ty_ {
         /*
 
         (&|~|@) ['r] [pure|unsafe] [once] fn [:Bounds] <'lt> (S) -> T
@@ -439,7 +441,7 @@ pub impl Parser {
     }
 
     // looks like this should be called parse_unsafety
-    fn parse_unsafety(&self) -> purity {
+    pub fn parse_unsafety(&self) -> purity {
         if self.eat_keyword(keywords::Pure) {
             self.obsolete(*self.last_span, ObsoletePurity);
             return impure_fn;
@@ -451,7 +453,7 @@ pub impl Parser {
     }
 
     // parse a function type (following the 'fn')
-    fn parse_ty_fn_decl(&self) -> (fn_decl, OptVec<ast::Lifetime>) {
+    pub fn parse_ty_fn_decl(&self) -> (fn_decl, OptVec<ast::Lifetime>) {
         /*
 
         (fn) <'lt> (S) -> T
@@ -486,7 +488,7 @@ pub impl Parser {
     }
 
     // parse the methods in a trait declaration
-    fn parse_trait_methods(&self) -> ~[trait_method] {
+    pub fn parse_trait_methods(&self) -> ~[trait_method] {
         do self.parse_unspanned_seq(
             &token::LBRACE,
             &token::RBRACE,
@@ -562,9 +564,8 @@ pub impl Parser {
         }
     }
 
-
     // parse a possibly mutable type
-    fn parse_mt(&self) -> mt {
+    pub fn parse_mt(&self) -> mt {
         let mutbl = self.parse_mutability();
         let t = self.parse_ty(false);
         mt { ty: t, mutbl: mutbl }
@@ -572,7 +573,7 @@ pub impl Parser {
 
     // parse [mut/const/imm] ID : TY
     // now used only by obsolete record syntax parser...
-    fn parse_ty_field(&self) -> ty_field {
+    pub fn parse_ty_field(&self) -> ty_field {
         let lo = self.span.lo;
         let mutbl = self.parse_mutability();
         let id = self.parse_ident();
@@ -589,7 +590,7 @@ pub impl Parser {
     }
 
     // parse optional return type [ -> TY ] in function decl
-    fn parse_ret_ty(&self) -> (ret_style, @Ty) {
+    pub fn parse_ret_ty(&self) -> (ret_style, @Ty) {
         return if self.eat(&token::RARROW) {
             let lo = self.span.lo;
             if self.eat(&token::NOT) {
@@ -620,7 +621,7 @@ pub impl Parser {
     // parse a type.
     // Useless second parameter for compatibility with quasiquote macros.
     // Bleh!
-    fn parse_ty(&self, _: bool) -> @Ty {
+    pub fn parse_ty(&self, _: bool) -> @Ty {
         maybe_whole!(self, nt_ty);
 
         let lo = self.span.lo;
@@ -721,11 +722,9 @@ pub impl Parser {
     }
 
     // parse the type following a @ or a ~
-    fn parse_box_or_uniq_pointee(
-        &self,
-        sigil: ast::Sigil,
-        ctor: &fn(v: mt) -> ty_) -> ty_
-    {
+    pub fn parse_box_or_uniq_pointee(&self,
+                                     sigil: ast::Sigil,
+                                     ctor: &fn(v: mt) -> ty_) -> ty_ {
         // @'foo fn() or @foo/fn() or @fn() are parsed directly as fn types:
         match *self.token {
             token::LIFETIME(*) => {
@@ -764,7 +763,7 @@ pub impl Parser {
         ctor(mt)
     }
 
-    fn parse_borrowed_pointee(&self) -> ty_ {
+    pub fn parse_borrowed_pointee(&self) -> ty_ {
         // look for `&'lt` or `&'foo ` and interpret `foo` as the region name:
         let opt_lifetime = self.parse_opt_lifetime();
 
@@ -777,7 +776,7 @@ pub impl Parser {
     }
 
     // parse an optional, obsolete argument mode.
-    fn parse_arg_mode(&self) {
+    pub fn parse_arg_mode(&self) {
         if self.eat(&token::BINOP(token::MINUS)) {
             self.obsolete(*self.span, ObsoleteMode);
         } else if self.eat(&token::ANDAND) {
@@ -793,7 +792,7 @@ pub impl Parser {
         }
     }
 
-    fn is_named_argument(&self) -> bool {
+    pub fn is_named_argument(&self) -> bool {
         let offset = if *self.token == token::BINOP(token::AND) {
             1
         } else if *self.token == token::BINOP(token::MINUS) {
@@ -818,12 +817,12 @@ pub impl Parser {
 
     // This version of parse arg doesn't necessarily require
     // identifier names.
-    fn parse_arg_general(&self, require_name: bool) -> arg {
+    pub fn parse_arg_general(&self, require_name: bool) -> arg {
         let mut is_mutbl = false;
         let pat = if require_name || self.is_named_argument() {
             self.parse_arg_mode();
             is_mutbl = self.eat_keyword(keywords::Mut);
-            let pat = self.parse_pat(false);
+            let pat = self.parse_pat();
             self.expect(&token::COLON);
             pat
         } else {
@@ -843,15 +842,15 @@ pub impl Parser {
     }
 
     // parse a single function argument
-    fn parse_arg(&self) -> arg_or_capture_item {
+    pub fn parse_arg(&self) -> arg_or_capture_item {
         either::Left(self.parse_arg_general(true))
     }
 
     // parse an argument in a lambda header e.g. |arg, arg|
-    fn parse_fn_block_arg(&self) -> arg_or_capture_item {
+    pub fn parse_fn_block_arg(&self) -> arg_or_capture_item {
         self.parse_arg_mode();
         let is_mutbl = self.eat_keyword(keywords::Mut);
-        let pat = self.parse_pat(false);
+        let pat = self.parse_pat();
         let t = if self.eat(&token::COLON) {
             self.parse_ty(false)
         } else {
@@ -869,7 +868,7 @@ pub impl Parser {
         })
     }
 
-    fn maybe_parse_fixed_vstore(&self) -> Option<@ast::expr> {
+    pub fn maybe_parse_fixed_vstore(&self) -> Option<@ast::expr> {
         if self.eat(&token::BINOP(token::STAR)) {
             self.obsolete(*self.last_span, ObsoleteFixedLengthVectorType);
             Some(self.parse_expr())
@@ -884,7 +883,7 @@ pub impl Parser {
     }
 
     // matches token_lit = LIT_INT | ...
-    fn lit_from_token(&self, tok: &token::Token) -> lit_ {
+    pub fn lit_from_token(&self, tok: &token::Token) -> lit_ {
         match *tok {
             token::LIT_INT(i, it) => lit_int(i, it),
             token::LIT_UINT(u, ut) => lit_uint(u, ut),
@@ -899,7 +898,7 @@ pub impl Parser {
     }
 
     // matches lit = true | false | token_lit
-    fn parse_lit(&self) -> lit {
+    pub fn parse_lit(&self) -> lit {
         let lo = self.span.lo;
         let lit = if self.eat_keyword(keywords::True) {
             lit_bool(true)
@@ -915,7 +914,7 @@ pub impl Parser {
     }
 
     // matches '-' lit | lit
-    fn parse_literal_maybe_minus(&self) -> @expr {
+    pub fn parse_literal_maybe_minus(&self) -> @expr {
         let minus_lo = self.span.lo;
         let minus_present = self.eat(&token::BINOP(token::MINUS));
 
@@ -926,7 +925,7 @@ pub impl Parser {
 
         if minus_present {
             let minus_hi = self.span.hi;
-            self.mk_expr(minus_lo, minus_hi, expr_unary(neg, expr))
+            self.mk_expr(minus_lo, minus_hi, self.mk_unary(neg, expr))
         } else {
             expr
         }
@@ -934,7 +933,7 @@ pub impl Parser {
 
     // parse a path into a vector of idents, whether the path starts
     // with ::, and a span.
-    fn parse_path(&self) -> (~[ast::ident],bool,span) {
+    pub fn parse_path(&self) -> (~[ast::ident],bool,span) {
         let lo = self.span.lo;
         let is_global = self.eat(&token::MOD_SEP);
         let (ids,span{lo:_,hi,expn_info}) = self.parse_path_non_global();
@@ -942,7 +941,7 @@ pub impl Parser {
     }
 
     // parse a path beginning with an identifier into a vector of idents and a span
-    fn parse_path_non_global(&self) -> (~[ast::ident],span) {
+    pub fn parse_path_non_global(&self) -> (~[ast::ident],span) {
         let lo = self.span.lo;
         let mut ids = ~[];
         // must be at least one to begin:
@@ -965,8 +964,7 @@ pub impl Parser {
     }
 
     // parse a path that doesn't have type parameters attached
-    fn parse_path_without_tps(&self)
-        -> @ast::Path {
+    pub fn parse_path_without_tps(&self) -> @ast::Path {
         maybe_whole!(self, nt_path);
         let (ids,is_global,sp) = self.parse_path();
         @ast::Path { span: sp,
@@ -979,7 +977,7 @@ pub impl Parser {
     // parse a path optionally with type parameters. If 'colons'
     // is true, then type parameters must be preceded by colons,
     // as in a::t::<t1,t2>
-    fn parse_path_with_tps(&self, colons: bool) -> @ast::Path {
+    pub fn parse_path_with_tps(&self, colons: bool) -> @ast::Path {
         debug!("parse_path_with_tps(colons=%b)", colons);
 
         maybe_whole!(self, nt_path);
@@ -1041,7 +1039,7 @@ pub impl Parser {
     }
 
     /// parses 0 or 1 lifetime
-    fn parse_opt_lifetime(&self) -> Option<@ast::Lifetime> {
+    pub fn parse_opt_lifetime(&self) -> Option<@ast::Lifetime> {
         match *self.token {
             token::LIFETIME(*) => {
                 Some(@self.parse_lifetime())
@@ -1063,16 +1061,9 @@ pub impl Parser {
         }
     }
 
-    fn token_is_lifetime(&self, tok: &token::Token) -> bool {
-        match *tok {
-            token::LIFETIME(_) => true,
-            _ => false
-        }
-    }
-
     /// Parses a single lifetime
     // matches lifetime = ( LIFETIME ) | ( IDENT / )
-    fn parse_lifetime(&self) -> ast::Lifetime {
+    pub fn parse_lifetime(&self) -> ast::Lifetime {
         match *self.token {
             token::LIFETIME(i) => {
                 let span = copy self.span;
@@ -1106,7 +1097,7 @@ pub impl Parser {
     // matches lifetimes = ( lifetime ) | ( lifetime , lifetimes )
     // actually, it matches the empty one too, but putting that in there
     // messes up the grammar....
-    fn parse_lifetimes(&self) -> OptVec<ast::Lifetime> {
+    pub fn parse_lifetimes(&self) -> OptVec<ast::Lifetime> {
         /*!
          *
          * Parses zero or more comma separated lifetimes.
@@ -1138,13 +1129,13 @@ pub impl Parser {
         }
     }
 
-    fn token_is_mutability(&self, tok: &token::Token) -> bool {
+    pub fn token_is_mutability(&self, tok: &token::Token) -> bool {
         token::is_keyword(keywords::Mut, tok) ||
         token::is_keyword(keywords::Const, tok)
     }
 
     // parse mutability declaration (mut/const/imm)
-    fn parse_mutability(&self) -> mutability {
+    pub fn parse_mutability(&self) -> mutability {
         if self.eat_keyword(keywords::Mut) {
             m_mutbl
         } else if self.eat_keyword(keywords::Const) {
@@ -1155,34 +1146,67 @@ pub impl Parser {
     }
 
     // parse ident COLON expr
-    fn parse_field(&self) -> field {
+    pub fn parse_field(&self) -> field {
         let lo = self.span.lo;
-        let m = self.parse_mutability();
         let i = self.parse_ident();
         self.expect(&token::COLON);
         let e = self.parse_expr();
-        spanned(lo, e.span.hi, ast::field_ { mutbl: m, ident: i, expr: e })
+        spanned(lo, e.span.hi, ast::field_ {
+            ident: i,
+            expr: e
+        })
     }
 
-    fn mk_expr(&self, lo: BytePos, hi: BytePos, node: expr_) -> @expr {
+    pub fn mk_expr(&self, lo: BytePos, hi: BytePos, node: expr_) -> @expr {
         @expr {
             id: self.get_id(),
-            callee_id: self.get_id(),
             node: node,
             span: mk_sp(lo, hi),
         }
     }
 
-    fn mk_mac_expr(&self, lo: BytePos, hi: BytePos, m: mac_) -> @expr {
+    pub fn mk_unary(&self, unop: ast::unop, expr: @expr) -> ast::expr_ {
+        expr_unary(self.get_id(), unop, expr)
+    }
+
+    pub fn mk_binary(&self, binop: ast::binop, lhs: @expr, rhs: @expr) -> ast::expr_ {
+        expr_binary(self.get_id(), binop, lhs, rhs)
+    }
+
+    pub fn mk_call(&self, f: @expr, args: ~[@expr], sugar: CallSugar) -> ast::expr_ {
+        expr_call(f, args, sugar)
+    }
+
+    pub fn mk_method_call(&self,
+                      rcvr: @expr,
+                      ident: ident,
+                      tps: ~[@Ty],
+                      args: ~[@expr],
+                      sugar: CallSugar) -> ast::expr_ {
+        expr_method_call(self.get_id(), rcvr, ident, tps, args, sugar)
+    }
+
+    pub fn mk_index(&self, expr: @expr, idx: @expr) -> ast::expr_ {
+        expr_index(self.get_id(), expr, idx)
+    }
+
+    pub fn mk_field(&self, expr: @expr, ident: ident, tys: ~[@Ty]) -> ast::expr_ {
+        expr_field(expr, ident, tys)
+    }
+
+    pub fn mk_assign_op(&self, binop: ast::binop, lhs: @expr, rhs: @expr) -> ast::expr_ {
+        expr_assign_op(self.get_id(), binop, lhs, rhs)
+    }
+
+    pub fn mk_mac_expr(&self, lo: BytePos, hi: BytePos, m: mac_) -> @expr {
         @expr {
             id: self.get_id(),
-            callee_id: self.get_id(),
             node: expr_mac(codemap::spanned {node: m, span: mk_sp(lo, hi)}),
             span: mk_sp(lo, hi),
         }
     }
 
-    fn mk_lit_u32(&self, i: u32) -> @expr {
+    pub fn mk_lit_u32(&self, i: u32) -> @expr {
         let span = self.span;
         let lv_lit = @codemap::spanned {
             node: lit_uint(i as u64, ty_u32),
@@ -1191,7 +1215,6 @@ pub impl Parser {
 
         @expr {
             id: self.get_id(),
-            callee_id: self.get_id(),
             node: expr_lit(lv_lit),
             span: *span,
         }
@@ -1200,7 +1223,7 @@ pub impl Parser {
     // at the bottom (top?) of the precedence hierarchy,
     // parse things like parenthesized exprs,
     // macros, return, etc.
-    fn parse_bottom_expr(&self) -> @expr {
+    pub fn parse_bottom_expr(&self) -> @expr {
         maybe_whole_expr!(self);
 
         let lo = self.span.lo;
@@ -1411,23 +1434,20 @@ pub impl Parser {
     }
 
     // parse a block or unsafe block
-    fn parse_block_expr(
-        &self,
-        lo: BytePos,
-        blk_mode: blk_check_mode
-    ) -> @expr {
+    pub fn parse_block_expr(&self, lo: BytePos, blk_mode: blk_check_mode)
+                            -> @expr {
         self.expect(&token::LBRACE);
         let blk = self.parse_block_tail(lo, blk_mode);
         return self.mk_expr(blk.span.lo, blk.span.hi, expr_block(blk));
     }
 
     // parse a.b or a(13) or a[4] or just a
-    fn parse_dot_or_call_expr(&self) -> @expr {
+    pub fn parse_dot_or_call_expr(&self) -> @expr {
         let b = self.parse_bottom_expr();
         self.parse_dot_or_call_expr_with(b)
     }
 
-    fn parse_dot_or_call_expr_with(&self, e0: @expr) -> @expr {
+    pub fn parse_dot_or_call_expr_with(&self, e0: @expr) -> @expr {
         let mut e = e0;
         let lo = e.span.lo;
         let mut hi;
@@ -1456,11 +1476,11 @@ pub impl Parser {
                             );
                             hi = self.span.hi;
 
-                            let nd = expr_method_call(e, i, tys, es, NoSugar);
+                            let nd = self.mk_method_call(e, i, tys, es, NoSugar);
                             e = self.mk_expr(lo, hi, nd);
                         }
                         _ => {
-                            e = self.mk_expr(lo, hi, expr_field(e, i, tys));
+                            e = self.mk_expr(lo, hi, self.mk_field(e, i, tys));
                         }
                     }
                   }
@@ -1480,7 +1500,7 @@ pub impl Parser {
                 );
                 hi = self.span.hi;
 
-                let nd = expr_call(e, es, NoSugar);
+                let nd = self.mk_call(e, es, NoSugar);
                 e = self.mk_expr(lo, hi, nd);
               }
 
@@ -1490,7 +1510,7 @@ pub impl Parser {
                 let ix = self.parse_expr();
                 hi = ix.span.hi;
                 self.expect(&token::RBRACKET);
-                e = self.mk_expr(lo, hi, expr_index(e, ix));
+                e = self.mk_expr(lo, hi, self.mk_index(e, ix));
               }
 
               _ => return e
@@ -1501,7 +1521,7 @@ pub impl Parser {
 
     // parse an optional separator followed by a kleene-style
     // repetition token (+ or *).
-    fn parse_sep_and_zerok(&self) -> (Option<token::Token>, bool) {
+    pub fn parse_sep_and_zerok(&self) -> (Option<token::Token>, bool) {
         if *self.token == token::BINOP(token::STAR)
             || *self.token == token::BINOP(token::PLUS) {
             let zerok = *self.token == token::BINOP(token::STAR);
@@ -1522,7 +1542,7 @@ pub impl Parser {
     }
 
     // parse a single token tree from the input.
-    fn parse_token_tree(&self) -> token_tree {
+    pub fn parse_token_tree(&self) -> token_tree {
         maybe_whole!(deref self, nt_tt);
 
         // this is the fall-through for the 'match' below.
@@ -1609,7 +1629,7 @@ pub impl Parser {
 
     // parse a stream of tokens into a list of token_trees,
     // up to EOF.
-    fn parse_all_token_trees(&self) -> ~[token_tree] {
+    pub fn parse_all_token_trees(&self) -> ~[token_tree] {
         let mut tts = ~[];
         while *self.token != token::EOF {
             tts.push(self.parse_token_tree());
@@ -1617,7 +1637,7 @@ pub impl Parser {
         tts
     }
 
-    fn parse_matchers(&self) -> ~[matcher] {
+    pub fn parse_matchers(&self) -> ~[matcher] {
         // unification of matchers and token_trees would vastly improve
         // the interpolation of matchers
         maybe_whole!(self, nt_matchers);
@@ -1639,12 +1659,11 @@ pub impl Parser {
     // This goofy function is necessary to correctly match parens in matchers.
     // Otherwise, `$( ( )` would be a valid matcher, and `$( () )` would be
     // invalid. It's similar to common::parse_seq.
-    fn parse_matcher_subseq(
-        &self,
-        name_idx: @mut uint,
-        bra: token::Token,
-        ket: token::Token
-    ) -> ~[matcher] {
+    pub fn parse_matcher_subseq(&self,
+                                name_idx: @mut uint,
+                                bra: token::Token,
+                                ket: token::Token)
+                                -> ~[matcher] {
         let mut ret_val = ~[];
         let mut lparens = 0u;
 
@@ -1661,7 +1680,7 @@ pub impl Parser {
         return ret_val;
     }
 
-    fn parse_matcher(&self, name_idx: @mut uint) -> matcher {
+    pub fn parse_matcher(&self, name_idx: @mut uint) -> matcher {
         let lo = self.span.lo;
 
         let m = if *self.token == token::DOLLAR {
@@ -1696,7 +1715,7 @@ pub impl Parser {
     }
 
     // parse a prefix-operator expr
-    fn parse_prefix_expr(&self) -> @expr {
+    pub fn parse_prefix_expr(&self) -> @expr {
         let lo = self.span.lo;
         let hi;
 
@@ -1706,7 +1725,7 @@ pub impl Parser {
             self.bump();
             let e = self.parse_prefix_expr();
             hi = e.span.hi;
-            ex = expr_unary(not, e);
+            ex = self.mk_unary(not, e);
           }
           token::BINOP(b) => {
             match b {
@@ -1714,13 +1733,13 @@ pub impl Parser {
                 self.bump();
                 let e = self.parse_prefix_expr();
                 hi = e.span.hi;
-                ex = expr_unary(neg, e);
+                ex = self.mk_unary(neg, e);
               }
               token::STAR => {
                 self.bump();
                 let e = self.parse_prefix_expr();
                 hi = e.span.hi;
-                ex = expr_unary(deref, e);
+                ex = self.mk_unary(deref, e);
               }
               token::AND => {
                 self.bump();
@@ -1761,7 +1780,7 @@ pub impl Parser {
               expr_vec(*) |
               expr_lit(@codemap::spanned { node: lit_str(_), span: _}) |
               expr_repeat(*) if m == m_imm => expr_vstore(e, expr_vstore_box),
-              _ => expr_unary(box(m), e)
+              _ => self.mk_unary(box(m), e)
             };
           }
           token::TILDE => {
@@ -1779,7 +1798,7 @@ pub impl Parser {
               expr_lit(@codemap::spanned { node: lit_str(_), span: _}) |
               expr_repeat(*)
               if m == m_imm => expr_vstore(e, expr_vstore_uniq),
-              _ => expr_unary(uniq(m), e)
+              _ => self.mk_unary(uniq(m), e)
             };
           }
           _ => return self.parse_dot_or_call_expr()
@@ -1788,13 +1807,12 @@ pub impl Parser {
     }
 
     // parse an expression of binops
-    fn parse_binops(&self) -> @expr {
+    pub fn parse_binops(&self) -> @expr {
         self.parse_more_binops(self.parse_prefix_expr(), 0)
     }
 
     // parse an expression of binops of at least min_prec precedence
-    fn parse_more_binops(&self, lhs: @expr, min_prec: uint) ->
-        @expr {
+    pub fn parse_more_binops(&self, lhs: @expr, min_prec: uint) -> @expr {
         if self.expr_is_complete(lhs) { return lhs; }
         let peeked = copy *self.token;
         if peeked == token::BINOP(token::OR) &&
@@ -1814,7 +1832,7 @@ pub impl Parser {
                         let expr = self.parse_prefix_expr();
                         let rhs = self.parse_more_binops(expr, cur_prec);
                         let bin = self.mk_expr(lhs.span.lo, rhs.span.hi,
-                                               expr_binary(cur_op, lhs, rhs));
+                                               self.mk_binary(cur_op, lhs, rhs));
                         self.parse_more_binops(bin, min_prec)
                     } else {
                         lhs
@@ -1838,7 +1856,7 @@ pub impl Parser {
     // parse an assignment expression....
     // actually, this seems to be the main entry point for
     // parsing an arbitrary expression.
-    fn parse_assign_expr(&self) -> @expr {
+    pub fn parse_assign_expr(&self) -> @expr {
         let lo = self.span.lo;
         let lhs = self.parse_binops();
         match *self.token {
@@ -1864,7 +1882,7 @@ pub impl Parser {
                   token::SHR => aop = shr
               }
               self.mk_expr(lo, rhs.span.hi,
-                           expr_assign_op(aop, lhs, rhs))
+                           self.mk_assign_op(aop, lhs, rhs))
           }
           token::LARROW => {
               self.obsolete(*self.span, ObsoleteBinaryMove);
@@ -1889,7 +1907,7 @@ pub impl Parser {
     }
 
     // parse an 'if' expression ('if' token already eaten)
-    fn parse_if_expr(&self) -> @expr {
+    pub fn parse_if_expr(&self) -> @expr {
         let lo = self.last_span.lo;
         let cond = self.parse_expr();
         let thn = self.parse_block();
@@ -1904,7 +1922,7 @@ pub impl Parser {
     }
 
     // `|args| { ... }` or `{ ...}` like in `do` expressions
-    fn parse_lambda_block_expr(&self) -> @expr {
+    pub fn parse_lambda_block_expr(&self) -> @expr {
         self.parse_lambda_expr_(
             || {
                 match *self.token {
@@ -1932,7 +1950,7 @@ pub impl Parser {
     }
 
     // `|args| expr`
-    fn parse_lambda_expr(&self) -> @expr {
+    pub fn parse_lambda_expr(&self) -> @expr {
         self.parse_lambda_expr_(|| self.parse_fn_block_decl(),
                                 || self.parse_expr())
     }
@@ -1940,11 +1958,10 @@ pub impl Parser {
     // parse something of the form |args| expr
     // this is used both in parsing a lambda expr
     // and in parsing a block expr as e.g. in for...
-    fn parse_lambda_expr_(
-        &self,
-        parse_decl: &fn() -> fn_decl,
-        parse_body: &fn() -> @expr
-    ) -> @expr {
+    pub fn parse_lambda_expr_(&self,
+                              parse_decl: &fn() -> fn_decl,
+                              parse_body: &fn() -> @expr)
+                              -> @expr {
         let lo = self.last_span.lo;
         let decl = parse_decl();
         let body = parse_body();
@@ -1961,7 +1978,7 @@ pub impl Parser {
                             expr_fn_block(decl, fakeblock));
     }
 
-    fn parse_else_expr(&self) -> @expr {
+    pub fn parse_else_expr(&self) -> @expr {
         if self.eat_keyword(keywords::If) {
             return self.parse_if_expr();
         } else {
@@ -1973,9 +1990,11 @@ pub impl Parser {
     // parse a 'for' or 'do'.
     // the 'for' and 'do' expressions parse as calls, but look like
     // function calls followed by a closure expression.
-    fn parse_sugary_call_expr(&self, keyword: ~str,
-                              sugar: CallSugar,
-                              ctor: &fn(v: @expr) -> expr_) -> @expr {
+    pub fn parse_sugary_call_expr(&self,
+                                  keyword: ~str,
+                                  sugar: CallSugar,
+                                  ctor: &fn(v: @expr) -> expr_)
+                                  -> @expr {
         let lo = self.last_span;
         // Parse the callee `foo` in
         //    for foo || {
@@ -1988,36 +2007,37 @@ pub impl Parser {
         // them as the lambda arguments
         let e = self.parse_expr_res(RESTRICT_NO_BAR_OR_DOUBLEBAR_OP);
         match e.node {
-            expr_call(f, /*bad*/ copy args, NoSugar) => {
+            expr_call(f, ref args, NoSugar) => {
                 let block = self.parse_lambda_block_expr();
                 let last_arg = self.mk_expr(block.span.lo, block.span.hi,
                                             ctor(block));
-                let args = vec::append(args, [last_arg]);
+                let args = vec::append(copy *args, [last_arg]);
                 self.mk_expr(lo.lo, block.span.hi, expr_call(f, args, sugar))
             }
-            expr_method_call(f, i, /*bad*/ copy tps,
-                             /*bad*/ copy args, NoSugar) => {
+            expr_method_call(_, f, i, ref tps, ref args, NoSugar) => {
                 let block = self.parse_lambda_block_expr();
                 let last_arg = self.mk_expr(block.span.lo, block.span.hi,
                                             ctor(block));
-                let args = vec::append(args, [last_arg]);
+                let args = vec::append(copy *args, [last_arg]);
                 self.mk_expr(lo.lo, block.span.hi,
-                             expr_method_call(f, i, tps, args, sugar))
+                             self.mk_method_call(f, i, copy *tps, args, sugar))
             }
-            expr_field(f, i, /*bad*/ copy tps) => {
+            expr_field(f, i, ref tps) => {
                 let block = self.parse_lambda_block_expr();
                 let last_arg = self.mk_expr(block.span.lo, block.span.hi,
                                             ctor(block));
                 self.mk_expr(lo.lo, block.span.hi,
-                             expr_method_call(f, i, tps, ~[last_arg], sugar))
+                             self.mk_method_call(f, i, copy *tps, ~[last_arg], sugar))
             }
             expr_path(*) | expr_call(*) | expr_method_call(*) |
                 expr_paren(*) => {
                 let block = self.parse_lambda_block_expr();
                 let last_arg = self.mk_expr(block.span.lo, block.span.hi,
                                             ctor(block));
-                self.mk_expr(lo.lo, last_arg.span.hi,
-                             expr_call(e, ~[last_arg], sugar))
+                self.mk_expr(
+                    lo.lo,
+                    last_arg.span.hi,
+                    self.mk_call(e, ~[last_arg], sugar))
             }
             _ => {
                 // There may be other types of expressions that can
@@ -2031,7 +2051,7 @@ pub impl Parser {
         }
     }
 
-    fn parse_while_expr(&self) -> @expr {
+    pub fn parse_while_expr(&self) -> @expr {
         let lo = self.last_span.lo;
         let cond = self.parse_expr();
         let body = self.parse_block();
@@ -2039,7 +2059,7 @@ pub impl Parser {
         return self.mk_expr(lo, hi, expr_while(cond, body));
     }
 
-    fn parse_loop_expr(&self, opt_ident: Option<ast::ident>) -> @expr {
+    pub fn parse_loop_expr(&self, opt_ident: Option<ast::ident>) -> @expr {
         // loop headers look like 'loop {' or 'loop unsafe {'
         let is_loop_header =
             *self.token == token::LBRACE
@@ -2122,7 +2142,7 @@ pub impl Parser {
     }
 
     // parse an expression
-    fn parse_expr(&self) -> @expr {
+    pub fn parse_expr(&self) -> @expr {
         return self.parse_expr_res(UNRESTRICTED);
     }
 
@@ -2158,7 +2178,7 @@ pub impl Parser {
     fn parse_pats(&self) -> ~[@pat] {
         let mut pats = ~[];
         loop {
-            pats.push(self.parse_pat(true));
+            pats.push(self.parse_pat());
             if *self.token == token::BINOP(token::OR) { self.bump(); }
             else { return pats; }
         };
@@ -2166,7 +2186,6 @@ pub impl Parser {
 
     fn parse_pat_vec_elements(
         &self,
-        refutable: bool
     ) -> (~[@pat], Option<@pat>, ~[@pat]) {
         let mut before = ~[];
         let mut slice = None;
@@ -2187,7 +2206,7 @@ pub impl Parser {
                 }
             }
 
-            let subpat = self.parse_pat(refutable);
+            let subpat = self.parse_pat();
             if is_slice {
                 match subpat {
                     @ast::pat { node: pat_wild, _ } => (),
@@ -2210,7 +2229,7 @@ pub impl Parser {
     }
 
     // parse the fields of a struct-like pattern
-    fn parse_pat_fields(&self, refutable: bool) -> (~[ast::field_pat], bool) {
+    fn parse_pat_fields(&self) -> (~[ast::field_pat], bool) {
         let mut fields = ~[];
         let mut etc = false;
         let mut first = true;
@@ -2240,7 +2259,7 @@ pub impl Parser {
             let subpat;
             if *self.token == token::COLON {
                 self.bump();
-                subpat = self.parse_pat(refutable);
+                subpat = self.parse_pat();
             } else {
                 subpat = @ast::pat {
                     id: self.get_id(),
@@ -2253,10 +2272,8 @@ pub impl Parser {
         return (fields, etc);
     }
 
-    // parse a pattern. The 'refutable' argument
-    // appears to control whether the binding_mode
-    // 'bind_infer' or 'bind_by_copy' is used.
-    fn parse_pat(&self, refutable: bool) -> @pat {
+    // parse a pattern.
+    pub fn parse_pat(&self) -> @pat {
         maybe_whole!(self, nt_pat);
 
         let lo = self.span.lo;
@@ -2268,7 +2285,7 @@ pub impl Parser {
             // parse @pat
           token::AT => {
             self.bump();
-            let sub = self.parse_pat(refutable);
+            let sub = self.parse_pat();
             hi = sub.span.hi;
             // HACK: parse @"..." as a literal of a vstore @str
             pat = match sub.node {
@@ -2279,7 +2296,6 @@ pub impl Parser {
               }) => {
                 let vst = @expr {
                     id: self.get_id(),
-                    callee_id: self.get_id(),
                     node: expr_vstore(e, expr_vstore_box),
                     span: mk_sp(lo, hi),
                 };
@@ -2291,7 +2307,7 @@ pub impl Parser {
           token::TILDE => {
             // parse ~pat
             self.bump();
-            let sub = self.parse_pat(refutable);
+            let sub = self.parse_pat();
             hi = sub.span.hi;
             // HACK: parse ~"..." as a literal of a vstore ~str
             pat = match sub.node {
@@ -2302,7 +2318,6 @@ pub impl Parser {
               }) => {
                 let vst = @expr {
                     id: self.get_id(),
-                    callee_id: self.get_id(),
                     node: expr_vstore(e, expr_vstore_uniq),
                     span: mk_sp(lo, hi),
                 };
@@ -2315,7 +2330,7 @@ pub impl Parser {
               // parse &pat
               let lo = self.span.lo;
               self.bump();
-              let sub = self.parse_pat(refutable);
+              let sub = self.parse_pat();
               hi = sub.span.hi;
               // HACK: parse &"..." as a literal of a borrowed str
               pat = match sub.node {
@@ -2325,7 +2340,6 @@ pub impl Parser {
                   }) => {
                       let vst = @expr {
                           id: self.get_id(),
-                          callee_id: self.get_id(),
                           node: expr_vstore(e, expr_vstore_slice),
                           span: mk_sp(lo, hi)
                       };
@@ -2336,7 +2350,7 @@ pub impl Parser {
           }
           token::LBRACE => {
             self.bump();
-            let (_, _) = self.parse_pat_fields(refutable);
+            let (_, _) = self.parse_pat_fields();
             hi = self.span.hi;
             self.bump();
             self.obsolete(*self.span, ObsoleteRecordPattern);
@@ -2354,11 +2368,11 @@ pub impl Parser {
                 let expr = self.mk_expr(lo, hi, expr_lit(lit));
                 pat = pat_lit(expr);
             } else {
-                let mut fields = ~[self.parse_pat(refutable)];
+                let mut fields = ~[self.parse_pat()];
                 if self.look_ahead(1) != token::RPAREN {
                     while *self.token == token::COMMA {
                         self.bump();
-                        fields.push(self.parse_pat(refutable));
+                        fields.push(self.parse_pat());
                     }
                 }
                 if fields.len() == 1 { self.expect(&token::COMMA); }
@@ -2371,7 +2385,7 @@ pub impl Parser {
             // parse [pat,pat,...] as vector pattern
             self.bump();
             let (before, slice, after) =
-                self.parse_pat_vec_elements(refutable);
+                self.parse_pat_vec_elements();
             hi = self.span.hi;
             self.expect(&token::RBRACKET);
             pat = ast::pat_vec(before, slice, after);
@@ -2401,15 +2415,13 @@ pub impl Parser {
             } else if self.eat_keyword(keywords::Ref) {
                 // parse ref pat
                 let mutbl = self.parse_mutability();
-                pat = self.parse_pat_ident(refutable, bind_by_ref(mutbl));
+                pat = self.parse_pat_ident(bind_by_ref(mutbl));
             } else if self.eat_keyword(keywords::Copy) {
                 // parse copy pat
-                pat = self.parse_pat_ident(refutable, bind_by_copy);
+                self.warn("copy keyword in patterns no longer has any effect, \
+                           remove it");
+                pat = self.parse_pat_ident(bind_infer);
             } else {
-                // XXX---refutable match bindings should work same as let
-                let binding_mode =
-                    if refutable {bind_infer} else {bind_by_copy};
-
                 let can_be_enum_or_struct;
                 match self.look_ahead(1) {
                     token::LPAREN | token::LBRACKET | token::LT |
@@ -2430,12 +2442,12 @@ pub impl Parser {
                     let sub;
                     if self.eat(&token::AT) {
                         // parse foo @ pat
-                        sub = Some(self.parse_pat(refutable));
+                        sub = Some(self.parse_pat());
                     } else {
                         // or just foo
                         sub = None;
                     }
-                    pat = pat_ident(binding_mode, name, sub);
+                    pat = pat_ident(bind_infer, name, sub);
                 } else {
                     // parse an enum pat
                     let enum_path = self.parse_path_with_tps(true);
@@ -2443,7 +2455,7 @@ pub impl Parser {
                         token::LBRACE => {
                             self.bump();
                             let (fields, etc) =
-                                self.parse_pat_fields(refutable);
+                                self.parse_pat_fields();
                             self.bump();
                             pat = pat_struct(enum_path, fields, etc);
                         }
@@ -2464,7 +2476,7 @@ pub impl Parser {
                                         seq_sep_trailing_disallowed(
                                             token::COMMA
                                         ),
-                                        |p| p.parse_pat(refutable)
+                                        |p| p.parse_pat()
                                     );
                                     pat = pat_enum(enum_path, Some(args));
                                   }
@@ -2474,7 +2486,7 @@ pub impl Parser {
                                       // it could still be either an enum
                                       // or an identifier pattern, resolve
                                       // will sort it out:
-                                      pat = pat_ident(binding_mode,
+                                      pat = pat_ident(bind_infer,
                                                       enum_path,
                                                       None);
                                   } else {
@@ -2496,7 +2508,6 @@ pub impl Parser {
     // used by the copy foo and ref foo patterns to give a good
     // error message when parsing mistakes like ref foo(a,b)
     fn parse_pat_ident(&self,
-                       refutable: bool,
                        binding_mode: ast::binding_mode)
                        -> ast::pat_ {
         if !is_plain_ident(&*self.token) {
@@ -2506,7 +2517,7 @@ pub impl Parser {
         // why a path here, and not just an identifier?
         let name = self.parse_path_without_tps();
         let sub = if self.eat(&token::AT) {
-            Some(self.parse_pat(refutable))
+            Some(self.parse_pat())
         } else {
             None
         };
@@ -2529,7 +2540,7 @@ pub impl Parser {
     // parse a local variable declaration
     fn parse_local(&self, is_mutbl: bool) -> @local {
         let lo = self.span.lo;
-        let pat = self.parse_pat(false);
+        let pat = self.parse_pat();
         let mut ty = @Ty {
             id: self.get_id(),
             node: ty_infer,
@@ -2554,11 +2565,12 @@ pub impl Parser {
     fn parse_let(&self) -> @decl {
         let is_mutbl = self.eat_keyword(keywords::Mut);
         let lo = self.span.lo;
-        let mut locals = ~[self.parse_local(is_mutbl)];
+        let local = self.parse_local(is_mutbl);
         while self.eat(&token::COMMA) {
-            locals.push(self.parse_local(is_mutbl));
+            let _ = self.parse_local(is_mutbl);
+            self.obsolete(*self.span, ObsoleteMultipleLocalDecl);
         }
-        return @spanned(lo, self.last_span.hi, decl_local(locals));
+        return @spanned(lo, self.last_span.hi, decl_local(local));
     }
 
     // parse a structure field
@@ -2566,10 +2578,6 @@ pub impl Parser {
                          pr: visibility,
                          attrs: ~[attribute]) -> @struct_field {
         let lo = self.span.lo;
-        if self.eat_keyword(keywords::Mut) {
-            // Do nothing, for backwards compatibility.
-            // XXX: Remove after snapshot.
-        }
         if !is_plain_ident(&*self.token) {
             self.fatal("expected ident");
         }
@@ -2586,7 +2594,7 @@ pub impl Parser {
 
     // parse a statement. may include decl.
     // precondition: any attributes are parsed already
-    fn parse_stmt(&self, item_attrs: ~[attribute]) -> @stmt {
+    pub fn parse_stmt(&self, item_attrs: ~[attribute]) -> @stmt {
         maybe_whole!(self, nt_stmt);
 
         fn check_expected_item(p: &Parser, current_attrs: &[attribute]) {
@@ -2611,6 +2619,13 @@ pub impl Parser {
             // won't, for brace-delimited macros) it will fall through
             // to the macro clause of parse_item_or_view_item. This
             // could use some cleanup, it appears to me.
+
+            // whoops! I now have a guess: I'm guessing the "parens-only"
+            // rule here is deliberate, to allow macro users to use parens
+            // for things that should be parsed as stmt_mac, and braces
+            // for things that should expand into items. Tricky, and
+            // somewhat awkward... and probably undocumented. Of course,
+            // I could just be wrong.
 
             check_expected_item(self, item_attrs);
 
@@ -2680,7 +2695,7 @@ pub impl Parser {
     }
 
     // parse a block. No inner attrs are allowed.
-    fn parse_block(&self) -> blk {
+    pub fn parse_block(&self) -> blk {
         maybe_whole!(self, nt_block);
 
         let lo = self.span.lo;
@@ -2745,7 +2760,7 @@ pub impl Parser {
             attributes_box.push_all(self.parse_outer_attributes());
             match *self.token {
                 token::SEMI => {
-                    if !vec::is_empty(attributes_box) {
+                    if !attributes_box.is_empty() {
                         self.span_err(*self.last_span, "expected item after attributes");
                         attributes_box = ~[];
                     }
@@ -2760,7 +2775,7 @@ pub impl Parser {
                     match stmt.node {
                         stmt_expr(e, stmt_id) => {
                             // expression without semicolon
-                            match *self.token {
+                            match copy *self.token {
                                 token::SEMI => {
                                     self.bump();
                                     stmts.push(@codemap::spanned {
@@ -2770,7 +2785,7 @@ pub impl Parser {
                                 token::RBRACE => {
                                     expr = Some(e);
                                 }
-                                copy t => {
+                                t => {
                                     if classify::stmt_ends_with_semi(stmt) {
                                         self.fatal(
                                             fmt!(
@@ -2816,7 +2831,7 @@ pub impl Parser {
             }
         }
 
-        if !vec::is_empty(attributes_box) {
+        if !attributes_box.is_empty() {
             self.span_err(*self.last_span, "expected item after attributes");
         }
 
@@ -2869,7 +2884,7 @@ pub impl Parser {
         loop {
             match *self.token {
                 token::LIFETIME(lifetime) => {
-                    if str::eq_slice(*self.id_to_str(lifetime), "static") {
+                    if "static" == self.id_to_str(lifetime) {
                         result.push(RegionTyParamBound);
                     } else {
                         self.span_err(*self.span,
@@ -2880,12 +2895,12 @@ pub impl Parser {
                 token::MOD_SEP | token::IDENT(*) => {
                     let obsolete_bound = match *self.token {
                         token::MOD_SEP => false,
-                        token::IDENT(copy sid, _) => {
-                            match *self.id_to_str(sid) {
-                                ~"send" |
-                                ~"copy" |
-                                ~"const" |
-                                ~"owned" => {
+                        token::IDENT(sid, _) => {
+                            match self.id_to_str(sid).as_slice() {
+                                "send" |
+                                "copy" |
+                                "const" |
+                                "owned" => {
                                     self.obsolete(
                                         *self.span,
                                         ObsoleteLowerCaseKindBounds);
@@ -2930,7 +2945,7 @@ pub impl Parser {
     // matches generics = ( ) | ( < > ) | ( < typaramseq ( , )? > ) | ( < lifetimes ( , )? > )
     //                  | ( < lifetimes , typaramseq ( , )? > )
     // where   typaramseq = ( typaram ) | ( typaram , typaramseq )
-    fn parse_generics(&self) -> ast::Generics {
+    pub fn parse_generics(&self) -> ast::Generics {
         if self.eat(&token::LT) {
             let lifetimes = self.parse_lifetimes();
             let ty_params = self.parse_seq_to_gt(
@@ -2964,9 +2979,7 @@ pub impl Parser {
     }
 
     // parse the argument list and result type of a function declaration
-    fn parse_fn_decl(&self)
-        -> fn_decl
-    {
+    pub fn parse_fn_decl(&self) -> fn_decl {
         let args_or_capture_items: ~[arg_or_capture_item] =
             self.parse_unspanned_seq(
                 &token::LPAREN,
@@ -3072,7 +3085,7 @@ pub impl Parser {
 
         self.expect(&token::LPAREN);
 
-        // A bit of complexity and lookahead is needed here in order to to be
+        // A bit of complexity and lookahead is needed here in order to be
         // backwards compatible.
         let lo = self.span.lo;
         let explicit_self = match *self.token {
@@ -3292,10 +3305,9 @@ pub impl Parser {
             None
         };
 
-        // Do not allow visibility to be specified in `impl...for...`. It is
-        // meaningless.
-        if opt_trait.is_some() && visibility != ast::inherited {
-            self.obsolete(*self.span, ObsoleteTraitImplVisibility);
+        // Do not allow visibility to be specified.
+        if visibility != ast::inherited {
+            self.obsolete(*self.span, ObsoleteImplVisibility);
         }
 
         let mut meths = ~[];
@@ -3350,7 +3362,7 @@ pub impl Parser {
             }
             if fields.len() == 0 {
                 self.fatal(fmt!("Unit-like struct should be written as `struct %s;`",
-                                *self.interner.get(class_name)));
+                                get_ident_interner().get(class_name.name)));
             }
             self.bump();
         } else if *self.token == token::LPAREN {
@@ -3404,9 +3416,10 @@ pub impl Parser {
     }
 
     // parse a structure field declaration
-    fn parse_single_struct_field(&self,
-                                 vis: visibility,
-                                 attrs: ~[attribute]) -> @struct_field {
+    pub fn parse_single_struct_field(&self,
+                                     vis: visibility,
+                                     attrs: ~[attribute])
+                                     -> @struct_field {
         if self.eat_obsolete_ident("let") {
             self.obsolete(*self.last_span, ObsoleteLet);
         }
@@ -3561,12 +3574,12 @@ pub impl Parser {
     }
 
     fn push_mod_path(&self, id: ident, attrs: ~[ast::attribute]) {
-        let default_path = self.sess.interner.get(id);
+        let default_path = token::interner_get(id.name);
         let file_path = match ::attr::first_attr_value_str_by_name(
             attrs, "path") {
 
-            Some(d) => copy *d,
-            None => copy *default_path
+            Some(d) => d,
+            None => default_path
         };
         self.mod_path_stack.push(file_path)
     }
@@ -3584,13 +3597,13 @@ pub impl Parser {
         let prefix = prefix.dir_path();
         let mod_path_stack = &*self.mod_path_stack;
         let mod_path = Path(".").push_many(*mod_path_stack);
-        let default_path = *self.sess.interner.get(id) + ".rs";
+        let default_path = token::interner_get(id.name).to_owned() + ".rs";
         let file_path = match ::attr::first_attr_value_str_by_name(
             outer_attrs, "path") {
             Some(d) => {
-                let path = Path(copy *d);
+                let path = Path(d);
                 if !path.is_absolute {
-                    mod_path.push(copy *d)
+                    mod_path.push(d)
                 } else {
                     path
                 }
@@ -3622,9 +3635,9 @@ pub impl Parser {
         let m0 = p0.parse_mod_items(token::EOF, first_item_outer_attrs);
         return (ast::item_mod(m0), mod_attrs);
 
-        fn cdir_path_opt(default: ~str, attrs: ~[ast::attribute]) -> ~str {
+        fn cdir_path_opt(default: @str, attrs: ~[ast::attribute]) -> @str {
             match ::attr::first_attr_value_str_by_name(attrs, "path") {
-                Some(d) => copy *d,
+                Some(d) => d,
                 None => default
             }
         }
@@ -3827,15 +3840,18 @@ pub impl Parser {
     // parse the part of an "enum" decl following the '{'
     fn parse_enum_def(&self, _generics: &ast::Generics) -> enum_def {
         let mut variants = ~[];
-        let mut all_nullary = true, have_disr = false;
+        let mut all_nullary = true;
+        let mut have_disr = false;
         while *self.token != token::RBRACE {
             let variant_attrs = self.parse_outer_attributes();
             let vlo = self.span.lo;
 
             let vis = self.parse_visibility();
 
-            let ident, kind;
-            let mut args = ~[], disr_expr = None;
+            let ident;
+            let kind;
+            let mut args = ~[];
+            let mut disr_expr = None;
             ident = self.parse_ident();
             if self.eat(&token::LBRACE) {
                 // Parse a struct variant.
@@ -3956,18 +3972,16 @@ pub impl Parser {
         match *self.token {
             token::LIT_STR(s) => {
                 self.bump();
-                let the_string = self.id_to_str(s);
-                let mut words = ~[];
-                for str::each_word(*the_string) |s| { words.push(s) }
+                let the_string = ident_to_str(&s);
                 let mut abis = AbiSet::empty();
-                for words.each |word| {
-                    match abi::lookup(*word) {
+                for the_string.word_iter().advance |word| {
+                    match abi::lookup(word) {
                         Some(abi) => {
                             if abis.contains(abi) {
                                 self.span_err(
                                     *self.span,
                                     fmt!("ABI `%s` appears twice",
-                                         *word));
+                                         word));
                             } else {
                                 abis.add(abi);
                             }
@@ -3979,10 +3993,8 @@ pub impl Parser {
                                 fmt!("illegal ABI: \
                                       expected one of [%s], \
                                       found `%s`",
-                                     str::connect_slices(
-                                         abi::all_names(),
-                                         ", "),
-                                     *word));
+                                     abi::all_names().connect(", "),
+                                     word));
                         }
                     }
                 }
@@ -4220,7 +4232,7 @@ pub impl Parser {
         return iovi_none;
     }
 
-    fn parse_item(&self, attrs: ~[attribute]) -> Option<@ast::item> {
+    pub fn parse_item(&self, attrs: ~[attribute]) -> Option<@ast::item> {
         match self.parse_item_or_view_item(attrs, true) {
             iovi_none =>
                 None,
@@ -4249,7 +4261,7 @@ pub impl Parser {
 
         let first_ident = self.parse_ident();
         let mut path = ~[first_ident];
-        debug!("parsed view_path: %s", *self.id_to_str(first_ident));
+        debug!("parsed view_path: %s", self.id_to_str(first_ident));
         match *self.token {
           token::EQ => {
             // x = foo::bar
@@ -4339,7 +4351,8 @@ pub impl Parser {
     }
 
     fn is_view_item(&self) -> bool {
-        let tok, next_tok;
+        let tok;
+        let next_tok;
         if !self.is_keyword(keywords::Pub) && !self.is_keyword(keywords::Priv) {
             tok = copy *self.token;
             next_tok = self.look_ahead(1);
@@ -4478,9 +4491,9 @@ pub impl Parser {
                     self.span_err(view_item.span,
                                   "`use` and `extern mod` declarations must precede items");
                 }
-                iovi_item(_) => {
+                iovi_item(item) => {
                     // FIXME #5668: this will occur for a macro invocation:
-                    fail!();
+                    self.span_fatal(item.span, "macros cannot expand to foreign items");
                 }
                 iovi_foreign_item(foreign_item) => {
                     foreign_items.push(foreign_item);
@@ -4499,7 +4512,7 @@ pub impl Parser {
 
     // Parses a source module as a crate. This is the main
     // entry point for the parser.
-    fn parse_crate_mod(&self) -> @crate {
+    pub fn parse_crate_mod(&self) -> @crate {
         let lo = self.span.lo;
         // parse the crate's inner attrs, maybe (oops) one
         // of the attrs of an item:
@@ -4513,11 +4526,11 @@ pub impl Parser {
                                config: copy self.cfg })
     }
 
-    fn parse_str(&self) -> @~str {
+    pub fn parse_str(&self) -> @str {
         match *self.token {
             token::LIT_STR(s) => {
                 self.bump();
-                self.id_to_str(s)
+                ident_to_str(&s)
             }
             _ =>  self.fatal("expected string literal")
         }

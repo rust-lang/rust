@@ -31,16 +31,20 @@ impl SleeperList {
     }
 
     pub fn push(&mut self, handle: SchedHandle) {
-        let handle = Cell(handle);
-        self.stack.with(|s| s.push(handle.take()));
+        let handle = Cell::new(handle);
+        unsafe {
+            self.stack.with(|s| s.push(handle.take()));
+        }
     }
 
     pub fn pop(&mut self) -> Option<SchedHandle> {
-        do self.stack.with |s| {
-            if !s.is_empty() {
-                Some(s.pop())
-            } else {
-                None
+        unsafe {
+            do self.stack.with |s| {
+                if !s.is_empty() {
+                    Some(s.pop())
+                } else {
+                    None
+                }
             }
         }
     }

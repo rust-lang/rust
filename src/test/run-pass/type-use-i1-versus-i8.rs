@@ -8,8 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::unstable;
+
 pub fn main() {
-    let mut x: bool = false;
-    // this line breaks it
-    unstable::intrinsics::move_val_init(&mut x, false);
+    unsafe {
+        let mut x: bool = false;
+        // this line breaks it
+        unstable::intrinsics::move_val_init(&mut x, false);
+    }
 }

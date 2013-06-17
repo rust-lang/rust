@@ -12,6 +12,10 @@ use core::prelude::*;
 
 use core::hashmap::HashMap;
 use core::libc::{c_uint, c_ushort};
+use core::option;
+use core::ptr;
+use core::str;
+use core::vec;
 
 pub type Opcode = u32;
 pub type Bool = c_uint;
@@ -201,6 +205,8 @@ pub enum BasicBlock_opaque {}
 pub type BasicBlockRef = *BasicBlock_opaque;
 pub enum Builder_opaque {}
 pub type BuilderRef = *Builder_opaque;
+pub enum ExecutionEngine_opaque {}
+pub type ExecutionEngineRef = *ExecutionEngine_opaque;
 pub enum MemoryBuffer_opaque {}
 pub type MemoryBufferRef = *MemoryBuffer_opaque;
 pub enum PassManager_opaque {}
@@ -219,7 +225,7 @@ pub enum Pass_opaque {}
 pub type PassRef = *Pass_opaque;
 
 pub mod llvm {
-    use super::{AtomicBinOp, AtomicOrdering, BasicBlockRef};
+    use super::{AtomicBinOp, AtomicOrdering, BasicBlockRef, ExecutionEngineRef};
     use super::{Bool, BuilderRef, ContextRef, MemoryBufferRef, ModuleRef};
     use super::{ObjectFileRef, Opcode, PassManagerRef, PassManagerBuilderRef};
     use super::{SectionIteratorRef, TargetDataRef, TypeKind, TypeRef, UseRef};
@@ -235,22 +241,20 @@ pub mod llvm {
         #[fast_ffi]
         pub unsafe fn LLVMContextCreate() -> ContextRef;
         #[fast_ffi]
-        pub unsafe fn LLVMGetGlobalContext() -> ContextRef;
-        #[fast_ffi]
         pub unsafe fn LLVMContextDispose(C: ContextRef);
         #[fast_ffi]
         pub unsafe fn LLVMGetMDKindIDInContext(C: ContextRef,
                                            Name: *c_char,
                                            SLen: c_uint)
                                         -> c_uint;
-        #[fast_ffi]
-        pub unsafe fn LLVMGetMDKindID(Name: *c_char, SLen: c_uint) -> c_uint;
 
         /* Create and destroy modules. */
         #[fast_ffi]
         pub unsafe fn LLVMModuleCreateWithNameInContext(ModuleID: *c_char,
                                                     C: ContextRef)
                                                  -> ModuleRef;
+        #[fast_ffi]
+        pub unsafe fn LLVMGetModuleContext(M: ModuleRef) -> ContextRef;
         #[fast_ffi]
         pub unsafe fn LLVMDisposeModule(M: ModuleRef);
 
@@ -297,18 +301,6 @@ pub mod llvm {
                                            NumBits: c_uint) -> TypeRef;
 
         #[fast_ffi]
-        pub unsafe fn LLVMInt1Type() -> TypeRef;
-        #[fast_ffi]
-        pub unsafe fn LLVMInt8Type() -> TypeRef;
-        #[fast_ffi]
-        pub unsafe fn LLVMInt16Type() -> TypeRef;
-        #[fast_ffi]
-        pub unsafe fn LLVMInt32Type() -> TypeRef;
-        #[fast_ffi]
-        pub unsafe fn LLVMInt64Type() -> TypeRef;
-        #[fast_ffi]
-        pub unsafe fn LLVMIntType(NumBits: c_uint) -> TypeRef;
-        #[fast_ffi]
         pub unsafe fn LLVMGetIntTypeWidth(IntegerTy: TypeRef) -> c_uint;
 
         /* Operations on real types */
@@ -322,17 +314,6 @@ pub mod llvm {
         pub unsafe fn LLVMFP128TypeInContext(C: ContextRef) -> TypeRef;
         #[fast_ffi]
         pub unsafe fn LLVMPPCFP128TypeInContext(C: ContextRef) -> TypeRef;
-
-        #[fast_ffi]
-        pub unsafe fn LLVMFloatType() -> TypeRef;
-        #[fast_ffi]
-        pub unsafe fn LLVMDoubleType() -> TypeRef;
-        #[fast_ffi]
-        pub unsafe fn LLVMX86FP80Type() -> TypeRef;
-        #[fast_ffi]
-        pub unsafe fn LLVMFP128Type() -> TypeRef;
-        #[fast_ffi]
-        pub unsafe fn LLVMPPCFP128Type() -> TypeRef;
 
         /* Operations on function types */
         #[fast_ffi]
@@ -356,11 +337,6 @@ pub mod llvm {
                                               ElementTypes: *TypeRef,
                                               ElementCount: c_uint,
                                               Packed: Bool) -> TypeRef;
-        #[fast_ffi]
-        pub unsafe fn LLVMStructType(ElementTypes: *TypeRef,
-                                     ElementCount: c_uint,
-                                     Packed: Bool)
-                                  -> TypeRef;
         #[fast_ffi]
         pub unsafe fn LLVMCountStructElementTypes(StructTy: TypeRef)
                                                -> c_uint;
@@ -389,6 +365,10 @@ pub mod llvm {
         pub unsafe fn LLVMGetPointerAddressSpace(PointerTy: TypeRef)
                                               -> c_uint;
         #[fast_ffi]
+        pub unsafe fn LLVMGetPointerToGlobal(EE: ExecutionEngineRef,
+                                             V: ValueRef)
+                                              -> *();
+        #[fast_ffi]
         pub unsafe fn LLVMGetVectorSize(VectorTy: TypeRef) -> c_uint;
 
         /* Operations on other types */
@@ -398,13 +378,6 @@ pub mod llvm {
         pub unsafe fn LLVMLabelTypeInContext(C: ContextRef) -> TypeRef;
         #[fast_ffi]
         pub unsafe fn LLVMMetadataTypeInContext(C: ContextRef) -> TypeRef;
-
-        #[fast_ffi]
-        pub unsafe fn LLVMVoidType() -> TypeRef;
-        #[fast_ffi]
-        pub unsafe fn LLVMLabelType() -> TypeRef;
-        #[fast_ffi]
-        pub unsafe fn LLVMMetadataType() -> TypeRef;
 
         /* Operations on all values */
         #[fast_ffi]
@@ -478,14 +451,10 @@ pub mod llvm {
                                         SLen: c_uint)
                                      -> ValueRef;
         #[fast_ffi]
-        pub unsafe fn LLVMMDString(Str: *c_char, SLen: c_uint) -> ValueRef;
-        #[fast_ffi]
         pub unsafe fn LLVMMDNodeInContext(C: ContextRef,
                                       Vals: *ValueRef,
                                       Count: c_uint)
                                    -> ValueRef;
-        #[fast_ffi]
-        pub unsafe fn LLVMMDNode(Vals: *ValueRef, Count: c_uint) -> ValueRef;
         #[fast_ffi]
         pub unsafe fn LLVMAddNamedMetadataOperand(M: ModuleRef, Str: *c_char,
                                        Val: ValueRef);
@@ -540,19 +509,10 @@ pub mod llvm {
                                                Packed: Bool) -> ValueRef;
 
         #[fast_ffi]
-        pub unsafe fn LLVMConstString(Str: *c_char,
-                                      Length: c_uint,
-                                      DontNullTerminate: Bool)
-                                   -> ValueRef;
-        #[fast_ffi]
         pub unsafe fn LLVMConstArray(ElementTy: TypeRef,
                                      ConstantVals: *ValueRef,
                                      Length: c_uint)
                                   -> ValueRef;
-        #[fast_ffi]
-        pub unsafe fn LLVMConstStruct(ConstantVals: *ValueRef,
-                                      Count: c_uint,
-                                      Packed: Bool) -> ValueRef;
         #[fast_ffi]
         pub unsafe fn LLVMConstVector(ScalarConstantVals: *ValueRef,
                                       Size: c_uint) -> ValueRef;
@@ -966,15 +926,6 @@ pub mod llvm {
                                                     BB: BasicBlockRef,
                                                     Name: *c_char)
                                                  -> BasicBlockRef;
-
-        #[fast_ffi]
-        pub unsafe fn LLVMAppendBasicBlock(Fn: ValueRef,
-                                       Name: *c_char)
-                                    -> BasicBlockRef;
-        #[fast_ffi]
-        pub unsafe fn LLVMInsertBasicBlock(InsertBeforeBB: BasicBlockRef,
-                                       Name: *c_char)
-                                    -> BasicBlockRef;
         #[fast_ffi]
         pub unsafe fn LLVMDeleteBasicBlock(BB: BasicBlockRef);
 
@@ -1035,8 +986,6 @@ pub mod llvm {
         #[fast_ffi]
         pub unsafe fn LLVMCreateBuilderInContext(C: ContextRef) -> BuilderRef;
         #[fast_ffi]
-        pub unsafe fn LLVMCreateBuilder() -> BuilderRef;
-        #[fast_ffi]
         pub unsafe fn LLVMPositionBuilder(Builder: BuilderRef,
                                           Block: BasicBlockRef,
                                           Instr: ValueRef);
@@ -1060,6 +1009,8 @@ pub mod llvm {
                                                 Name: *c_char);
         #[fast_ffi]
         pub unsafe fn LLVMDisposeBuilder(Builder: BuilderRef);
+        #[fast_ffi]
+        pub unsafe fn LLVMDisposeExecutionEngine(EE: ExecutionEngineRef);
 
         /* Metadata */
         #[fast_ffi]
@@ -1682,7 +1633,13 @@ pub mod llvm {
         pub unsafe fn LLVMFinalizeFunctionPassManager(FPM:PassManagerRef) -> Bool;
 
         #[fast_ffi]
+        pub unsafe fn LLVMInitializePasses();
+
+        #[fast_ffi]
         pub unsafe fn LLVMAddPass(PM:PassManagerRef,P:PassRef);
+
+        #[fast_ffi]
+        pub unsafe fn LLVMCreatePass(PassName:*c_char) -> PassRef;
 
         /** Adds a verification pass. */
         #[fast_ffi]
@@ -1870,11 +1827,9 @@ pub mod llvm {
 
         /** Execute the JIT engine. */
         #[fast_ffi]
-        pub unsafe fn LLVMRustExecuteJIT(MM: *(),
-                              PM: PassManagerRef,
+        pub unsafe fn LLVMRustBuildJIT(MM: *(),
                               M: ModuleRef,
-                              OptLevel: c_int,
-                              EnableSegmentedStacks: bool) -> *();
+                              EnableSegmentedStacks: bool) -> ExecutionEngineRef;
 
         /** Parses the bitcode in the given memory buffer. */
         #[fast_ffi]
@@ -1883,7 +1838,8 @@ pub mod llvm {
 
         /** Parses LLVM asm in the given file */
         #[fast_ffi]
-        pub unsafe fn LLVMRustParseAssemblyFile(Filename: *c_char)
+        pub unsafe fn LLVMRustParseAssemblyFile(Filename: *c_char,
+                                                C: ContextRef)
                                              -> ModuleRef;
 
         #[fast_ffi]
@@ -1898,6 +1854,9 @@ pub mod llvm {
         /// Print the pass timings since static dtors aren't picking them up.
         #[fast_ffi]
         pub unsafe fn LLVMRustPrintPassTimings();
+
+        #[fast_ffi]
+        pub unsafe fn LLVMRustStartMultithreading() -> bool;
 
         #[fast_ffi]
         pub unsafe fn LLVMStructCreateNamed(C: ContextRef, Name: *c_char)
@@ -1926,202 +1885,6 @@ pub mod llvm {
                                     AlignStack: Bool, Dialect: c_uint)
                                  -> ValueRef;
 
-        // LLVM Passes
-
-        #[fast_ffi]
-        pub fn LLVMCreateStripSymbolsPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateStripNonDebugSymbolsPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateStripDebugDeclarePass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateStripDeadDebugInfoPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateConstantMergePass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateGlobalOptimizerPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateGlobalDCEPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateAlwaysInlinerPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreatePruneEHPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateInternalizePass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateDeadArgEliminationPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateDeadArgHackingPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateArgumentPromotionPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateIPConstantPropagationPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateIPSCCPPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateLoopExtractorPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateSingleLoopExtractorPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateBlockExtractorPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateStripDeadPrototypesPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateFunctionAttrsPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateMergeFunctionsPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreatePartialInliningPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateMetaRenamerPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateBarrierNoopPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateFunctionInliningPass(Threshold:c_int) -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateEdgeProfilerPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateOptimalEdgeProfilerPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreatePathProfilerPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateGCOVProfilerPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateBoundsCheckingPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateConstantPropagationPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateSCCPPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateDeadInstEliminationPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateDeadCodeEliminationPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateDeadStoreEliminationPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateAggressiveDCEPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateSROAPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateScalarReplAggregatesPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateIndVarSimplifyPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateInstructionCombiningPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateLICMPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateLoopStrengthReducePass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateGlobalMergePass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateLoopUnswitchPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateLoopInstSimplifyPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateLoopUnrollPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateLoopRotatePass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateLoopIdiomPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreatePromoteMemoryToRegisterPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateDemoteRegisterToMemoryPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateReassociatePass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateJumpThreadingPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateCFGSimplificationPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateBreakCriticalEdgesPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateLoopSimplifyPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateTailCallEliminationPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateLowerSwitchPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateLowerInvokePass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateBlockPlacementPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateLCSSAPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateEarlyCSEPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateGVNPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateMemCpyOptPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateLoopDeletionPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateSimplifyLibCallsPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateCodeGenPreparePass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateInstructionNamerPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateSinkingPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateLowerAtomicPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateCorrelatedValuePropagationPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateInstructionSimplifierPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateLowerExpectIntrinsicPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateBBVectorizePass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateLoopVectorizePass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateGlobalsModRefPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateAliasAnalysisCounterPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateAAEvalPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateNoAAPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateBasicAliasAnalysisPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateScalarEvolutionAliasAnalysisPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateTypeBasedAliasAnalysisPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateProfileLoaderPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateProfileMetadataLoaderPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateNoProfileInfoPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateProfileEstimatorPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateProfileVerifierPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreatePathProfileLoaderPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateNoPathProfileInfoPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreatePathProfileVerifierPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateLazyValueInfoPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateDependenceAnalysisPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateCostModelAnalysisPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateInstCountPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateRegionInfoPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateModuleDebugInfoPrinterPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateLintPass() -> PassRef;
-        #[fast_ffi]
-        pub fn LLVMCreateVerifierPass() -> PassRef;
     }
 }
 
@@ -2200,7 +1963,7 @@ pub fn type_to_str_inner(names: @TypeNames, outer0: &[TypeRef], ty: TypeRef)
             let mut first: bool = true;
             for tys.each |t| {
                 if first { first = false; } else { s += ", "; }
-                s += type_to_str_inner(names, outer, *t).to_owned();
+                s += type_to_str_inner(names, outer, *t);
             }
             // [Note at-str] FIXME #2543: Could rewrite this without the copy,
             // but need better @str support.
@@ -2303,8 +2066,7 @@ pub fn struct_tys(struct_ty: TypeRef) -> ~[TypeRef] {
             return ~[];
         }
         let mut elts = vec::from_elem(n_elts, ptr::null());
-        llvm::LLVMGetStructElementTypes(
-            struct_ty, ptr::to_mut_unsafe_ptr(&mut elts[0]));
+        llvm::LLVMGetStructElementTypes(struct_ty, &mut elts[0]);
         return elts;
     }
 }

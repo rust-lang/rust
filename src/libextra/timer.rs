@@ -19,6 +19,7 @@ use uv::iotask::IoTask;
 use core::cast::transmute;
 use core::cast;
 use core::comm::{stream, Chan, SharedChan, Port, select2i};
+use core::either;
 use core::libc::c_void;
 use core::libc;
 
@@ -130,7 +131,6 @@ pub fn recv_timeout<T:Copy + Owned>(iotask: &IoTask,
     unsafe {
         let wait_po = cast::transmute_mut(wait_po);
 
-        // FIXME: This could be written clearer (#2618)
         either::either(
             |_| {
                 None
@@ -179,9 +179,12 @@ mod test {
 
     use timer::*;
     use uv;
+
     use core::cell::Cell;
-    use core::rand::RngUtil;
     use core::pipes::{stream, SharedChan};
+    use core::rand::RngUtil;
+    use core::rand;
+    use core::task;
 
     #[test]
     fn test_gl_timer_simple_sleep_test() {
@@ -278,7 +281,7 @@ mod test {
 
         for (times as uint).times {
             let mut rng = rand::rng();
-            let expected = Cell(rng.gen_str(16u));
+            let expected = Cell::new(rng.gen_str(16u));
             let (test_po, test_ch) = stream::<~str>();
             let hl_loop_clone = hl_loop.clone();
             do task::spawn() {

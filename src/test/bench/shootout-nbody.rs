@@ -1,5 +1,8 @@
+use std::f64;
 use std::from_str::FromStr;
+use std::os;
 use std::uint::range;
+use std::vec;
 
 static PI: f64 = 3.141592653589793;
 static SOLAR_MASS: f64 = 4.0 * PI * PI;
@@ -89,7 +92,8 @@ fn advance(bodies: &mut [Planet, ..N_BODIES], dt: f64, steps: i32) {
                 let d2 = d[0]*d[0] + d[1]*d[1] + d[2]*d[2];
                 let mag = dt / (d2 * f64::sqrt(d2));
 
-                let a_mass = bodies[i].mass, b_mass = bodies[j].mass;
+                let a_mass = bodies[i].mass;
+                let b_mass = bodies[j].mass;
                 bodies[i].v[0] -= d[0] * b_mass * mag;
                 bodies[i].v[1] -= d[1] * b_mass * mag;
                 bodies[i].v[2] -= d[2] * b_mass * mag;
@@ -100,7 +104,7 @@ fn advance(bodies: &mut [Planet, ..N_BODIES], dt: f64, steps: i32) {
             }
         }
 
-        for vec::each_mut(*bodies) |a| {
+        for bodies.mut_iter().advance |a| {
             a.x[0] += dt * a.v[0];
             a.x[1] += dt * a.v[1];
             a.x[2] += dt * a.v[2];

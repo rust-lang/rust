@@ -33,7 +33,13 @@
  * * access to a character by index is logarithmic (linear in strings);
  */
 
+#[allow(missing_doc)];
+
 use core::prelude::*;
+
+use core::uint;
+use core::vec;
+use core::str;
 
 /// The type of ropes.
 pub type Rope = node::Root;
@@ -65,7 +71,7 @@ pub fn empty() -> Rope {
  * * the function runs in linear time.
  */
 pub fn of_str(str: @~str) -> Rope {
-    return of_substr(str, 0u, str::len(*str));
+    return of_substr(str, 0u, str.len());
 }
 
 /**
@@ -77,9 +83,9 @@ pub fn of_str(str: @~str) -> Rope {
  *
  * # Return value
  *
- * A rope representing the same string as `str::substr(str, byte_offset,
- * byte_len)`.  Depending on `byte_len`, this rope may be empty, flat or
- * complex.
+ * A rope representing the same string as `str.slice(byte_offset,
+ * byte_offset + byte_len)`.  Depending on `byte_len`, this rope may
+ * be empty, flat or complex.
  *
  * # Performance note
  *
@@ -92,7 +98,7 @@ pub fn of_str(str: @~str) -> Rope {
  */
 pub fn of_substr(str: @~str, byte_offset: uint, byte_len: uint) -> Rope {
     if byte_len == 0u { return node::Empty; }
-    if byte_offset + byte_len  > str::len(*str) { fail!(); }
+    if byte_offset + byte_len  > str.len() { fail!(); }
     return node::Content(node::of_substr(str, byte_offset, byte_len));
 }
 
@@ -556,6 +562,10 @@ pub mod node {
 
     use rope::node;
 
+    use core::cast;
+    use core::uint;
+    use core::vec;
+
     /// Implementation of type `rope`
     pub enum Root {
         /// An empty rope
@@ -576,7 +586,7 @@ pub mod node {
      * * char_len - The number of chars in the leaf.
      * * content - Contents of the leaf.
      *
-     *     Note that we can have `char_len < str::char_len(content)`, if
+     *     Note that we can have `char_len < content.char_len()`, if
      *     this leaf is only a subset of the string. Also note that the
      *     string can be shared between several ropes, e.g. for indexing
      *     purposes.
@@ -646,7 +656,7 @@ pub mod node {
      * the length of `str`.
      */
     pub fn of_str(str: @~str) -> @Node {
-        return of_substr(str, 0u, str::len(*str));
+        return of_substr(str, 0u, str.len());
     }
 
     /**
@@ -668,7 +678,7 @@ pub mod node {
      */
     pub fn of_substr(str: @~str, byte_start: uint, byte_len: uint) -> @Node {
         return of_substr_unsafer(str, byte_start, byte_len,
-                              str::count_chars(*str, byte_start, byte_len));
+                                 str.slice(byte_start, byte_start + byte_len).char_len());
     }
 
     /**
@@ -694,7 +704,7 @@ pub mod node {
      */
     pub fn of_substr_unsafer(str: @~str, byte_start: uint, byte_len: uint,
                              char_len: uint) -> @Node {
-        assert!((byte_start + byte_len <= str::len(*str)));
+        assert!((byte_start + byte_len <= str.len()));
         let candidate = @Leaf(Leaf {
             byte_offset: byte_start,
             byte_len: byte_len,
@@ -722,7 +732,7 @@ pub mod node {
                     if i == 0u  { first_leaf_char_len }
                     else { hint_max_leaf_char_len };
                 let chunk_byte_len =
-                    str::count_bytes(*str, offset, chunk_char_len);
+                    str.slice_from(offset).slice_chars(0, chunk_char_len).len();
                 nodes[i] = @Leaf(Leaf {
                     byte_offset: offset,
                     byte_len: chunk_byte_len,
@@ -926,7 +936,7 @@ pub mod node {
             match (*node) {
               node::Leaf(x) => {
                 let char_len =
-                    str::count_chars(*x.content, byte_offset, byte_len);
+                    x.content.slice(byte_offset, byte_offset + byte_len).char_len();
                 return @Leaf(Leaf {
                     byte_offset: byte_offset,
                     byte_len: byte_len,
@@ -990,9 +1000,9 @@ pub mod node {
                     return node;
                 }
                 let byte_offset =
-                    str::count_bytes(*x.content, 0u, char_offset);
+                    x.content.slice_chars(0, char_offset).len();
                 let byte_len    =
-                    str::count_bytes(*x.content, byte_offset, char_len);
+                    x.content.slice_from(byte_offset).slice_chars(0, char_len).len();
                 return @Leaf(Leaf {
                     byte_offset: byte_offset,
                     byte_len: byte_len,
@@ -1068,9 +1078,7 @@ pub mod node {
 
     pub fn loop_chars(node: @Node, it: &fn(c: char) -> bool) -> bool {
         return loop_leaves(node,|leaf| {
-            str::all_between(*leaf.content,
-                             leaf.byte_offset,
-                             leaf.byte_len, it)
+            leaf.content.slice(leaf.byte_offset, leaf.byte_len).iter().all(it)
         });
     }
 
@@ -1122,7 +1130,7 @@ pub mod node {
     pub fn char_at(mut node: @Node, mut pos: uint) -> char {
         loop {
             match *node {
-              Leaf(x) => return str::char_at(*x.content, pos),
+              Leaf(x) => return x.content.char_at(pos),
               Concat(Concat {left, right, _}) => {
                 let left_len = char_len(left);
                 node = if left_len > pos { left }
@@ -1136,6 +1144,8 @@ pub mod node {
         use core::prelude::*;
 
         use rope::node::{Concat, Leaf, Node, height};
+
+        use core::vec;
 
         pub struct T {
             stack: ~[@Node],
@@ -1243,8 +1253,7 @@ pub mod node {
                     return None
                 } else {
                     let range =
-                        str::char_range_at(*aleaf.content,
-                                     (*it).leaf_byte_pos + aleaf.byte_offset);
+                        aleaf.content.char_range_at((*it).leaf_byte_pos + aleaf.byte_offset);
                     let ch = range.ch;
                     let next = range.next;
                     (*it).leaf_byte_pos = next - aleaf.byte_offset;
@@ -1258,8 +1267,13 @@ pub mod node {
 
 #[cfg(test)]
 mod tests {
-    use rope::*;
     use core::prelude::*;
+
+    use rope::*;
+
+    use core::str;
+    use core::uint;
+    use core::vec;
 
     //Utility function, used for sanity check
     fn rope_to_string(r: Rope) -> ~str {
@@ -1270,11 +1284,7 @@ mod tests {
             fn aux(str: &mut ~str, node: @node::Node) {
                 match (*node) {
                     node::Leaf(x) => {
-                        str::push_str(
-                            str,
-                            str::slice(
-                                *x.content, x.byte_offset,
-                                x.byte_offset + x.byte_len));
+                        str.push_str(x.content.slice(x.byte_offset, x.byte_offset + x.byte_len));
                     }
                     node::Concat(ref x) => {
                         aux(str, x.left);
@@ -1300,7 +1310,7 @@ mod tests {
         let sample = @~"0123456789ABCDE";
         let r      = of_str(sample);
 
-        assert_eq!(char_len(r), str::char_len(*sample));
+        assert_eq!(char_len(r), sample.char_len());
         assert!(rope_to_string(r) == *sample);
     }
 
@@ -1316,11 +1326,11 @@ mod tests {
         }
         let sample = @copy *buf;
         let r      = of_str(sample);
-        assert!(char_len(r) == str::char_len(*sample));
+        assert_eq!(char_len(r), sample.char_len());
         assert!(rope_to_string(r) == *sample);
 
         let mut string_iter = 0u;
-        let string_len = str::len(*sample);
+        let string_len = sample.len();
         let mut rope_iter = iterator::char::start(r);
         let mut equal = true;
         while equal {
@@ -1330,7 +1340,7 @@ mod tests {
                     equal = false;
                 } break; }
               Some(c) => {
-                let range = str::char_range_at(*sample, string_iter);
+                let range = sample.char_range_at(string_iter);
                 string_iter = range.next;
                 if range.ch != c { equal = false; break; }
               }
@@ -1362,7 +1372,7 @@ mod tests {
             }
         }
 
-        assert_eq!(len, str::char_len(*sample));
+        assert_eq!(len, sample.char_len());
     }
 
     #[test]

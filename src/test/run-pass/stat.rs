@@ -11,12 +11,16 @@
 // xfail-fast
 
 extern mod extra;
-use std::io::WriterUtil;
+
 use extra::tempfile;
+use std::io::WriterUtil;
+use std::io;
+use std::os;
+use std::uint;
 
 pub fn main() {
     let dir = tempfile::mkdtemp(&Path("."), "").unwrap();
-    let path = dir.with_filename("file");
+    let path = dir.push("file");
 
     {
         match io::file_writer(&path, [io::Create, io::Truncate]) {
@@ -32,5 +36,6 @@ pub fn main() {
     assert!(path.exists());
     assert_eq!(path.get_size(), Some(1000));
 
+    os::remove_file(&path);
     os::remove_dir(&dir);
 }

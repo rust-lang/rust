@@ -15,28 +15,29 @@ use str;
 use str::StrSlice;
 use cast;
 use old_iter::BaseIter;
+use iterator::IteratorUtil;
 use vec::{CopyableVector, ImmutableVector, OwnedVector};
 
 /// Datatype to hold one ascii character. It is 8 bit long.
 #[deriving(Clone, Eq)]
 pub struct Ascii { priv chr: u8 }
 
-pub impl Ascii {
+impl Ascii {
     /// Converts a ascii character into a `u8`.
     #[inline(always)]
-    fn to_byte(self) -> u8 {
+    pub fn to_byte(self) -> u8 {
         self.chr
     }
 
     /// Converts a ascii character into a `char`.
     #[inline(always)]
-    fn to_char(self) -> char {
+    pub fn to_char(self) -> char {
         self.chr as char
     }
 
     /// Convert to lowercase.
     #[inline(always)]
-    fn to_lower(self) -> Ascii {
+    pub fn to_lower(self) -> Ascii {
         if self.chr >= 65 && self.chr <= 90 {
             Ascii{chr: self.chr | 0x20 }
         } else {
@@ -46,7 +47,7 @@ pub impl Ascii {
 
     /// Convert to uppercase.
     #[inline(always)]
-    fn to_upper(self) -> Ascii {
+    pub fn to_upper(self) -> Ascii {
         if self.chr >= 97 && self.chr <= 122 {
             Ascii{chr: self.chr & !0x20 }
         } else {
@@ -54,9 +55,9 @@ pub impl Ascii {
         }
     }
 
-    // Compares two ascii characters of equality, ignoring case.
+    /// Compares two ascii characters of equality, ignoring case.
     #[inline(always)]
-    fn eq_ignore_case(self, other: Ascii) -> bool {
+    pub fn eq_ignore_case(self, other: Ascii) -> bool {
         self.to_lower().chr == other.to_lower().chr
     }
 }
@@ -101,10 +102,7 @@ impl<'self> AsciiCast<&'self[Ascii]> for &'self str {
 
     #[inline(always)]
     fn is_ascii(&self) -> bool {
-        for self.each |b| {
-            if !b.is_ascii() { return false; }
-        }
-        true
+        self.bytes_iter().all(|b| b.is_ascii())
     }
 }
 
@@ -204,7 +202,6 @@ impl ToStrConsume for ~[Ascii] {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use str;
 
     macro_rules! v2ascii (
         ( [$($e:expr),*]) => ( [$(Ascii{chr:$e}),*]);
@@ -228,8 +225,8 @@ mod tests {
         assert_eq!('`'.to_ascii().to_upper().to_char(), '`');
         assert_eq!('{'.to_ascii().to_upper().to_char(), '{');
 
-        assert!(str::all("banana", |c| c.is_ascii()));
-        assert!(! str::all("ประเทศไทย中华Việt Nam", |c| c.is_ascii()));
+        assert!("banana".iter().all(|c| c.is_ascii()));
+        assert!(!"ประเทศไทย中华Việt Nam".iter().all(|c| c.is_ascii()));
     }
 
     #[test]

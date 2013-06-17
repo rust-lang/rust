@@ -22,7 +22,10 @@ use ext::base::*;
 use ext::base;
 use ext::build::AstBuilder;
 
+use core::option;
 use core::unstable::extfmt::ct::*;
+use core::vec;
+use parse::token::{str_to_ident};
 
 pub fn expand_syntax_ext(cx: @ExtCtxt, sp: span, tts: &[ast::token_tree])
     -> base::MacResult {
@@ -50,13 +53,15 @@ pub fn expand_syntax_ext(cx: @ExtCtxt, sp: span, tts: &[ast::token_tree])
 fn pieces_to_expr(cx: @ExtCtxt, sp: span,
                   pieces: ~[Piece], args: ~[@ast::expr])
    -> @ast::expr {
-    fn make_path_vec(cx: @ExtCtxt, ident: &str) -> ~[ast::ident] {
-        let intr = cx.parse_sess().interner;
-        return ~[intr.intern("unstable"), intr.intern("extfmt"),
-                 intr.intern("rt"), intr.intern(ident)];
+    fn make_path_vec(ident: &str) -> ~[ast::ident] {
+        return ~[str_to_ident("std"),
+                 str_to_ident("unstable"),
+                 str_to_ident("extfmt"),
+                 str_to_ident("rt"),
+                 str_to_ident(ident)];
     }
     fn make_rt_path_expr(cx: @ExtCtxt, sp: span, nm: &str) -> @ast::expr {
-        let path = make_path_vec(cx, nm);
+        let path = make_path_vec(nm);
         cx.expr_path(cx.path_global(sp, path))
     }
     // Produces an AST expression that represents a RT::conv record,
@@ -85,7 +90,7 @@ fn pieces_to_expr(cx: @ExtCtxt, sp: span,
               }
               CountIs(c) => {
                 let count_lit = cx.expr_uint(sp, c as uint);
-                let count_is_path = make_path_vec(cx, "CountIs");
+                let count_is_path = make_path_vec("CountIs");
                 let count_is_args = ~[count_lit];
                 return cx.expr_call_global(sp, count_is_path, count_is_args);
               }
@@ -107,15 +112,14 @@ fn pieces_to_expr(cx: @ExtCtxt, sp: span,
         fn make_conv_struct(cx: @ExtCtxt, sp: span, flags_expr: @ast::expr,
                          width_expr: @ast::expr, precision_expr: @ast::expr,
                          ty_expr: @ast::expr) -> @ast::expr {
-            let intr = cx.parse_sess().interner;
             cx.expr_struct(
                 sp,
-                cx.path_global(sp, make_path_vec(cx, "Conv")),
+                cx.path_global(sp, make_path_vec("Conv")),
                 ~[
-                    cx.field_imm(sp, intr.intern("flags"), flags_expr),
-                    cx.field_imm(sp, intr.intern("width"), width_expr),
-                    cx.field_imm(sp, intr.intern("precision"), precision_expr),
-                    cx.field_imm(sp, intr.intern("ty"), ty_expr)
+                    cx.field_imm(sp, str_to_ident("flags"), flags_expr),
+                    cx.field_imm(sp, str_to_ident("width"), width_expr),
+                    cx.field_imm(sp, str_to_ident("precision"), precision_expr),
+                    cx.field_imm(sp, str_to_ident("ty"), ty_expr)
                 ]
             )
         }
@@ -129,7 +133,7 @@ fn pieces_to_expr(cx: @ExtCtxt, sp: span,
     fn make_conv_call(cx: @ExtCtxt, sp: span, conv_type: &str, cnv: &Conv,
                       arg: @ast::expr, buf: @ast::expr) -> @ast::expr {
         let fname = ~"conv_" + conv_type;
-        let path = make_path_vec(cx, fname);
+        let path = make_path_vec(fname);
         let cnv_expr = make_rt_conv_expr(cx, sp, cnv);
         let args = ~[cnv_expr, arg, buf];
         cx.expr_call_global(arg.span, path, args)
@@ -250,10 +254,11 @@ fn pieces_to_expr(cx: @ExtCtxt, sp: span,
     let nargs = args.len();
 
     /* 'ident' is the local buffer building up the result of fmt! */
-    let ident = cx.parse_sess().interner.intern("__fmtbuf");
+    let ident = str_to_ident("__fmtbuf");
     let buf = || cx.expr_ident(fmt_sp, ident);
-    let str_ident = cx.parse_sess().interner.intern("str");
-    let push_ident = cx.parse_sess().interner.intern("push_str");
+    let core_ident = str_to_ident("std");
+    let str_ident = str_to_ident("str");
+    let push_ident = str_to_ident("push_str");
     let mut stms = ~[];
 
     /* Translate each piece (portion of the fmt expression) by invoking the
@@ -269,11 +274,17 @@ fn pieces_to_expr(cx: @ExtCtxt, sp: span,
                    then there's no need for it to be mutable */
                 if i == 0 {
                     stms.push(cx.stmt_let(fmt_sp, npieces > 1,
-                                          ident, cx.expr_str_uniq(fmt_sp, s)));
+                                          ident, cx.expr_str_uniq(fmt_sp, s.to_managed())));
                 } else {
-                    let args = ~[cx.expr_mut_addr_of(fmt_sp, buf()), cx.expr_str(fmt_sp, s)];
+                    // we call the push_str function because the
+                    // bootstrap doesnt't seem to work if we call the
+                    // method.
+                    let args = ~[cx.expr_mut_addr_of(fmt_sp, buf()),
+                                 cx.expr_str(fmt_sp, s.to_managed())];
                     let call = cx.expr_call_global(fmt_sp,
-                                                   ~[str_ident, push_ident],
+                                                   ~[core_ident,
+                                                     str_ident,
+                                                     push_ident],
                                                    args);
                     stms.push(cx.stmt_expr(call));
                 }
@@ -293,7 +304,7 @@ fn pieces_to_expr(cx: @ExtCtxt, sp: span,
                    must be initialized as an empty string */
                 if i == 0 {
                     stms.push(cx.stmt_let(fmt_sp, true, ident,
-                                          cx.expr_str_uniq(fmt_sp, ~"")));
+                                          cx.expr_str_uniq(fmt_sp, @"")));
                 }
                 stms.push(cx.stmt_expr(make_new_conv(cx, fmt_sp, conv,
                                                      args[n], buf())));

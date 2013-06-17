@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -10,12 +10,21 @@
 
 #[doc(hidden)];
 
-use libc;
 use comm::{GenericChan, GenericPort};
+use comm;
+use libc;
 use prelude::*;
 use task;
 
 pub mod at_exit;
+
+// Currently only works for *NIXes
+#[cfg(target_os = "linux")]
+#[cfg(target_os = "android")]
+#[cfg(target_os = "macos")]
+#[cfg(target_os = "freebsd")]
+pub mod dynamic_lib;
+
 pub mod global;
 pub mod finally;
 pub mod weak_task;

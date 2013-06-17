@@ -30,6 +30,12 @@ or the equivalent on Windows.
 
 Each workspace may contain one or more packages.
 
+When building code that contains one or more directives of the form `extern mod P`,
+rustpkg automatically searches for packages named `P` in the `RUST_PATH` (as described above).
+It builds those dependencies if necessary.
+Thus, when using rustpkg,
+there is no need for `-L` flags to tell the linker where to find libraries for external crates.
+
 # Package structure
 
 A valid workspace must contain each of the following subdirectories:
@@ -66,6 +72,10 @@ A package can be stored in a workspace on the local file system,
 or on a remote Web server, in which case the package ID resembles a URL.
 For example, `github.com/mozilla/rust` is a package ID
 that would refer to the git repository browsable at `http://github.com/mozilla/rust`.
+A package ID can also specify a version, like:
+`github.com/mozilla/rust#0.3`.
+In this case, `rustpkg` will check that the repository `github.com/mozilla/rust` has a tag named `0.3`,
+and report an error otherwise.
 
 ## Source files
 
@@ -75,6 +85,15 @@ rustpkg searches for four different fixed filenames in order to determine the cr
 * `lib.rs`: Assumed to be a library crate.
 * `test.rs`: Assumed to contain tests declared with the `#[test]` attribute.
 * `bench.rs`: Assumed to contain benchmarks declared with the `#[bench]` attribute.
+
+## Versions
+
+`rustpkg` packages do not need to declare their versions with an attribute inside one of the source files,
+because `rustpkg` infers it from the version control system.
+When building a package that is in a `git` repository,
+`rustpkg` assumes that the most recent tag specifies the current version.
+When building a package that is not under version control,
+or that has no tags, `rustpkg` assumes the intended version is 0.1.
 
 # Custom build scripts
 

@@ -15,6 +15,7 @@
 // protocols.
 
 use std::cell::Cell;
+use std::task;
 
 // This was generated initially by the pipe compiler, but it's been
 // modified in hopefully straightforward ways.
@@ -29,7 +30,7 @@ mod pingpong {
         pong: Packet<pong>,
     }
 
-    pub fn init() -> (client::ping, server::ping) {
+    pub fn init() -> (server::ping, client::ping) {
         let buffer = ~Buffer {
             header: BufferHeader(),
             data: Packets {
@@ -111,9 +112,9 @@ mod test {
 }
 
 pub fn main() {
-    let (client_, server_) = ::pingpong::init();
-    let client_ = Cell(client_);
-    let server_ = Cell(server_);
+    let (server_, client_) = ::pingpong::init();
+    let client_ = Cell::new(client_);
+    let server_ = Cell::new(server_);
     do task::spawn {
         let client__ = client_.take();
         test::client(client__);

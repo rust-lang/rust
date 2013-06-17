@@ -10,9 +10,9 @@
 
 fn main() {
     let needlesArr: ~[char] = ~['a', 'f'];
-    do vec::foldr(needlesArr) |x, y| {
+    do needlesArr.iter().fold() |x, y| {
     }
-    //~^ ERROR 2 parameters were supplied (including the closure passed by the `do` keyword)
+    //~^ ERROR 1 parameter was supplied (including the closure passed by the `do` keyword)
     //
     // the first error is, um, non-ideal.
 }

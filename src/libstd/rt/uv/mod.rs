@@ -38,11 +38,9 @@ use container::Container;
 use option::*;
 use str::raw::from_c_str;
 use to_str::ToStr;
-use ptr::Ptr;
-use libc;
+use ptr::RawPtr;
 use vec;
 use ptr;
-use cast;
 use str;
 use libc::{c_void, c_int, size_t, malloc, free};
 use cast::transmute;
@@ -94,18 +92,18 @@ pub trait NativeHandle<T> {
     pub fn native_handle(&self) -> T;
 }
 
-pub impl Loop {
-    fn new() -> Loop {
+impl Loop {
+    pub fn new() -> Loop {
         let handle = unsafe { uvll::loop_new() };
         assert!(handle.is_not_null());
         NativeHandle::from_native_handle(handle)
     }
 
-    fn run(&mut self) {
+    pub fn run(&mut self) {
         unsafe { uvll::run(self.native_handle()) };
     }
 
-    fn close(&mut self) {
+    pub fn close(&mut self) {
         unsafe { uvll::loop_delete(self.native_handle()) };
     }
 }
@@ -204,9 +202,8 @@ impl<H, W: Watcher + NativeHandle<*H>> WatcherInterop for W {
 
 pub struct UvError(uvll::uv_err_t);
 
-pub impl UvError {
-
-    fn name(&self) -> ~str {
+impl UvError {
+    pub fn name(&self) -> ~str {
         unsafe {
             let inner = match self { &UvError(ref a) => a };
             let name_str = uvll::err_name(inner);
@@ -215,7 +212,7 @@ pub impl UvError {
         }
     }
 
-    fn desc(&self) -> ~str {
+    pub fn desc(&self) -> ~str {
         unsafe {
             let inner = match self { &UvError(ref a) => a };
             let desc_str = uvll::strerror(inner);
@@ -224,7 +221,7 @@ pub impl UvError {
         }
     }
 
-    fn is_eof(&self) -> bool {
+    pub fn is_eof(&self) -> bool {
         self.code == uvll::EOF
     }
 }
@@ -250,20 +247,6 @@ pub fn last_uv_error<H, W: Watcher + NativeHandle<*H>>(watcher: &W) -> UvError {
 }
 
 pub fn uv_error_to_io_error(uverr: UvError) -> IoError {
-
-    // XXX: Could go in str::raw
-    unsafe fn c_str_to_static_slice(s: *libc::c_char) -> &'static str {
-        let s = s as *u8;
-        let mut curr = s, len = 0u;
-        while *curr != 0u8 {
-            len += 1u;
-            curr = ptr::offset(s, len);
-        }
-
-        str::raw::buf_as_slice(s, len, |d| cast::transmute(d))
-    }
-
-
     unsafe {
         // Importing error constants
         use rt::uv::uvll::*;
@@ -271,7 +254,7 @@ pub fn uv_error_to_io_error(uverr: UvError) -> IoError {
 
         // uv error descriptions are static
         let c_desc = uvll::strerror(&*uverr);
-        let desc = c_str_to_static_slice(c_desc);
+        let desc = str::raw::c_str_to_static_slice(c_desc);
 
         let kind = match uverr.code {
             UNKNOWN => OtherIoError,

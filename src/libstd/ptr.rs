@@ -11,29 +11,12 @@
 //! Unsafe pointer utility functions
 
 use cast;
-#[cfg(stage0)] use libc;
-#[cfg(stage0)] use libc::{c_void, size_t};
 use option::{Option, Some, None};
 use sys;
+use unstable::intrinsics;
 
 #[cfg(not(test))] use cmp::{Eq, Ord};
 use uint;
-
-#[cfg(stage0)]
-pub mod libc_ {
-    use libc::c_void;
-    use libc;
-
-    #[nolink]
-    #[abi = "cdecl"]
-    pub extern {
-        #[rust_stack]
-        unsafe fn memset(dest: *mut c_void,
-                         c: libc::c_int,
-                         len: libc::size_t)
-                      -> *c_void;
-    }
-}
 
 /// Calculate the offset from a pointer
 #[inline(always)]
@@ -71,11 +54,11 @@ pub unsafe fn position<T>(buf: *T, f: &fn(&T) -> bool) -> uint {
 
 /// Create an unsafe null pointer
 #[inline(always)]
-pub fn null<T>() -> *T { unsafe { cast::transmute(0u) } }
+pub fn null<T>() -> *T { 0 as *T }
 
 /// Create an unsafe mutable null pointer
 #[inline(always)]
-pub fn mut_null<T>() -> *mut T { unsafe { cast::transmute(0u) } }
+pub fn mut_null<T>() -> *mut T { 0 as *mut T }
 
 /// Returns true if the pointer is equal to the null pointer.
 #[inline(always)]
@@ -86,7 +69,7 @@ pub fn is_null<T>(ptr: *const T) -> bool { ptr == null() }
 pub fn is_not_null<T>(ptr: *const T) -> bool { !is_null(ptr) }
 
 /**
- * Copies data from one location to another
+ * Copies data from one location to another.
  *
  * Copies `count` elements (not bytes) from `src` to `dst`. The source
  * and destination may overlap.
@@ -100,7 +83,7 @@ pub unsafe fn copy_memory<T>(dst: *mut T, src: *const T, count: uint) {
 }
 
 /**
- * Copies data from one location to another
+ * Copies data from one location to another.
  *
  * Copies `count` elements (not bytes) from `src` to `dst`. The source
  * and destination may overlap.
@@ -112,6 +95,12 @@ pub unsafe fn copy_memory<T>(dst: *mut T, src: *const T, count: uint) {
     memmove32(dst, src as *T, count as u32);
 }
 
+/**
+ * Copies data from one location to another.
+ *
+ * Copies `count` elements (not bytes) from `src` to `dst`. The source
+ * and destination may overlap.
+ */
 #[inline(always)]
 #[cfg(target_word_size = "64", stage0)]
 pub unsafe fn copy_memory<T>(dst: *mut T, src: *const T, count: uint) {
@@ -120,6 +109,12 @@ pub unsafe fn copy_memory<T>(dst: *mut T, src: *const T, count: uint) {
     memmove64(dst as *mut u8, src as *u8, n as u64);
 }
 
+/**
+ * Copies data from one location to another.
+ *
+ * Copies `count` elements (not bytes) from `src` to `dst`. The source
+ * and destination may overlap.
+ */
 #[inline(always)]
 #[cfg(target_word_size = "64", not(stage0))]
 pub unsafe fn copy_memory<T>(dst: *mut T, src: *const T, count: uint) {
@@ -127,6 +122,12 @@ pub unsafe fn copy_memory<T>(dst: *mut T, src: *const T, count: uint) {
     memmove64(dst, src as *T, count as u64);
 }
 
+/**
+ * Copies data from one location to another.
+ *
+ * Copies `count` elements (not bytes) from `src` to `dst`. The source
+ * and destination may *not* overlap.
+ */
 #[inline(always)]
 #[cfg(target_word_size = "32", stage0)]
 pub unsafe fn copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T, count: uint) {
@@ -135,6 +136,12 @@ pub unsafe fn copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T, count: u
     memmove32(dst as *mut u8, src as *u8, n as u32);
 }
 
+/**
+ * Copies data from one location to another.
+ *
+ * Copies `count` elements (not bytes) from `src` to `dst`. The source
+ * and destination may *not* overlap.
+ */
 #[inline(always)]
 #[cfg(target_word_size = "32", not(stage0))]
 pub unsafe fn copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T, count: uint) {
@@ -142,6 +149,12 @@ pub unsafe fn copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T, count: u
     memcpy32(dst, src as *T, count as u32);
 }
 
+/**
+ * Copies data from one location to another.
+ *
+ * Copies `count` elements (not bytes) from `src` to `dst`. The source
+ * and destination may *not* overlap.
+ */
 #[inline(always)]
 #[cfg(target_word_size = "64", stage0)]
 pub unsafe fn copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T, count: uint) {
@@ -150,6 +163,12 @@ pub unsafe fn copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T, count: u
     memmove64(dst as *mut u8, src as *u8, n as u64);
 }
 
+/**
+ * Copies data from one location to another.
+ *
+ * Copies `count` elements (not bytes) from `src` to `dst`. The source
+ * and destination may *not* overlap.
+ */
 #[inline(always)]
 #[cfg(target_word_size = "64", not(stage0))]
 pub unsafe fn copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T, count: uint) {
@@ -157,13 +176,10 @@ pub unsafe fn copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T, count: u
     memcpy64(dst, src as *T, count as u64);
 }
 
-#[inline(always)]
-#[cfg(stage0)]
-pub unsafe fn set_memory<T>(dst: *mut T, c: int, count: uint) {
-    let n = count * sys::size_of::<T>();
-    libc_::memset(dst as *mut c_void, c as libc::c_int, n as size_t);
-}
-
+/**
+ * Invokes memset on the specified pointer, setting `count * size_of::<T>()`
+ * bytes of memory starting at `dst` to `c`.
+ */
 #[inline(always)]
 #[cfg(target_word_size = "32", not(stage0))]
 pub unsafe fn set_memory<T>(dst: *mut T, c: u8, count: uint) {
@@ -171,6 +187,10 @@ pub unsafe fn set_memory<T>(dst: *mut T, c: u8, count: uint) {
     memset32(dst, c, count as u32);
 }
 
+/**
+ * Invokes memset on the specified pointer, setting `count * size_of::<T>()`
+ * bytes of memory starting at `dst` to `c`.
+ */
 #[inline(always)]
 #[cfg(target_word_size = "64", not(stage0))]
 pub unsafe fn set_memory<T>(dst: *mut T, c: u8, count: uint) {
@@ -179,53 +199,51 @@ pub unsafe fn set_memory<T>(dst: *mut T, c: u8, count: uint) {
 }
 
 /**
-  Transform a region pointer - &T - to an unsafe pointer - *T.
-  This is safe, but is implemented with an unsafe block due to
-  transmute.
-*/
+ * Swap the values at two mutable locations of the same type, without
+ * deinitialising or copying either one.
+ */
+#[inline]
+pub unsafe fn swap_ptr<T>(x: *mut T, y: *mut T) {
+    // Give ourselves some scratch space to work with
+    let mut tmp: T = intrinsics::uninit();
+    let t: *mut T = &mut tmp;
+
+    // Perform the swap
+    copy_memory(t, x, 1);
+    copy_memory(x, y, 1);
+    copy_memory(y, t, 1);
+
+    // y and t now point to the same thing, but we need to completely forget `tmp`
+    // because it's no longer relevant.
+    cast::forget(tmp);
+}
+
+/**
+ * Replace the value at a mutable location with a new one, returning the old
+ * value, without deinitialising or copying either one.
+ */
+#[inline(always)]
+pub unsafe fn replace_ptr<T>(dest: *mut T, mut src: T) -> T {
+    swap_ptr(dest, &mut src);
+    src
+}
+
+/// Transform a region pointer - &T - to an unsafe pointer - *T.
 #[inline(always)]
 pub fn to_unsafe_ptr<T>(thing: &T) -> *T {
-    unsafe { cast::transmute(thing) }
+    thing as *T
 }
 
-/**
-  Transform a const region pointer - &const T - to a const unsafe pointer -
-  *const T. This is safe, but is implemented with an unsafe block due to
-  transmute.
-*/
+/// Transform a const region pointer - &const T - to a const unsafe pointer - *const T.
 #[inline(always)]
 pub fn to_const_unsafe_ptr<T>(thing: &const T) -> *const T {
-    unsafe { cast::transmute(thing) }
+    thing as *const T
 }
 
-/**
-  Transform a mutable region pointer - &mut T - to a mutable unsafe pointer -
-  *mut T. This is safe, but is implemented with an unsafe block due to
-  transmute.
-*/
+/// Transform a mutable region pointer - &mut T - to a mutable unsafe pointer - *mut T.
 #[inline(always)]
 pub fn to_mut_unsafe_ptr<T>(thing: &mut T) -> *mut T {
-    unsafe { cast::transmute(thing) }
-}
-
-/**
-  Cast a region pointer - &T - to a uint.
-  This is safe, but is implemented with an unsafe block due to
-  transmute.
-
-  (I couldn't think of a cutesy name for this one.)
-*/
-#[inline(always)]
-pub fn to_uint<T>(thing: &T) -> uint {
-    unsafe {
-        cast::transmute(thing)
-    }
-}
-
-/// Determine if two borrowed pointers point to the same thing.
-#[inline(always)]
-pub fn ref_eq<'a,'b,T>(thing: &'a T, other: &'b T) -> bool {
-    to_uint(thing) == to_uint(other)
+    thing as *mut T
 }
 
 /**
@@ -268,7 +286,8 @@ pub unsafe fn array_each<T>(arr: **T, cb: &fn(*T)) {
     array_each_with_len(arr, len, cb);
 }
 
-pub trait Ptr<T> {
+#[allow(missing_doc)]
+pub trait RawPtr<T> {
     fn is_null(&const self) -> bool;
     fn is_not_null(&const self) -> bool;
     unsafe fn to_option(&const self) -> Option<&T>;
@@ -276,7 +295,7 @@ pub trait Ptr<T> {
 }
 
 /// Extension methods for immutable pointers
-impl<T> Ptr<T> for *T {
+impl<T> RawPtr<T> for *T {
     /// Returns true if the pointer is equal to the null pointer.
     #[inline(always)]
     fn is_null(&const self) -> bool { is_null(*self) }
@@ -308,7 +327,7 @@ impl<T> Ptr<T> for *T {
 }
 
 /// Extension methods for mutable pointers
-impl<T> Ptr<T> for *mut T {
+impl<T> RawPtr<T> for *mut T {
     /// Returns true if the pointer is equal to the null pointer.
     #[inline(always)]
     fn is_null(&const self) -> bool { is_null(*self) }
@@ -344,14 +363,10 @@ impl<T> Ptr<T> for *mut T {
 impl<T> Eq for *const T {
     #[inline(always)]
     fn eq(&self, other: &*const T) -> bool {
-        unsafe {
-            let a: uint = cast::transmute(*self);
-            let b: uint = cast::transmute(*other);
-            return a == b;
-        }
+        (*self as uint) == (*other as uint)
     }
     #[inline(always)]
-    fn ne(&self, other: &*const T) -> bool { !(*self).eq(other) }
+    fn ne(&self, other: &*const T) -> bool { !self.eq(other) }
 }
 
 // Comparison for pointers
@@ -359,69 +374,19 @@ impl<T> Eq for *const T {
 impl<T> Ord for *const T {
     #[inline(always)]
     fn lt(&self, other: &*const T) -> bool {
-        unsafe {
-            let a: uint = cast::transmute(*self);
-            let b: uint = cast::transmute(*other);
-            return a < b;
-        }
+        (*self as uint) < (*other as uint)
     }
     #[inline(always)]
     fn le(&self, other: &*const T) -> bool {
-        unsafe {
-            let a: uint = cast::transmute(*self);
-            let b: uint = cast::transmute(*other);
-            return a <= b;
-        }
+        (*self as uint) <= (*other as uint)
     }
     #[inline(always)]
     fn ge(&self, other: &*const T) -> bool {
-        unsafe {
-            let a: uint = cast::transmute(*self);
-            let b: uint = cast::transmute(*other);
-            return a >= b;
-        }
+        (*self as uint) >= (*other as uint)
     }
     #[inline(always)]
     fn gt(&self, other: &*const T) -> bool {
-        unsafe {
-            let a: uint = cast::transmute(*self);
-            let b: uint = cast::transmute(*other);
-            return a > b;
-        }
-    }
-}
-
-// Equality for region pointers
-#[cfg(not(test))]
-impl<'self,T:Eq> Eq for &'self T {
-    #[inline(always)]
-    fn eq(&self, other: & &'self T) -> bool {
-        return *(*self) == *(*other);
-    }
-    #[inline(always)]
-    fn ne(&self, other: & &'self T) -> bool {
-        return *(*self) != *(*other);
-    }
-}
-
-// Comparison for region pointers
-#[cfg(not(test))]
-impl<'self,T:Ord> Ord for &'self T {
-    #[inline(always)]
-    fn lt(&self, other: & &'self T) -> bool {
-        *(*self) < *(*other)
-    }
-    #[inline(always)]
-    fn le(&self, other: & &'self T) -> bool {
-        *(*self) <= *(*other)
-    }
-    #[inline(always)]
-    fn ge(&self, other: & &'self T) -> bool {
-        *(*self) >= *(*other)
-    }
-    #[inline(always)]
-    fn gt(&self, other: & &'self T) -> bool {
-        *(*self) > *(*other)
+        (*self as uint) > (*other as uint)
     }
 }
 
@@ -429,6 +394,11 @@ impl<'self,T:Ord> Ord for &'self T {
 pub mod ptr_tests {
     use super::*;
     use prelude::*;
+
+    use cast;
+    use libc;
+    use str;
+    use vec;
 
     #[test]
     fn test() {
@@ -522,18 +492,19 @@ pub mod ptr_tests {
 
     #[test]
     fn test_to_option() {
-        let p: *int = null();
-        // FIXME (#6641): Usage of unsafe methods in safe code doesn't cause an error.
-        assert_eq!(p.to_option(), None);
+        unsafe {
+            let p: *int = null();
+            assert_eq!(p.to_option(), None);
 
-        let q: *int = &2;
-        assert_eq!(q.to_option().unwrap(), &2);     // FIXME (#6641)
+            let q: *int = &2;
+            assert_eq!(q.to_option().unwrap(), &2);
 
-        let p: *mut int = mut_null();
-        assert_eq!(p.to_option(), None);            // FIXME (#6641)
+            let p: *mut int = mut_null();
+            assert_eq!(p.to_option(), None);
 
-        let q: *mut int = &mut 2;
-        assert_eq!(q.to_option().unwrap(), &2);     // FIXME (#6641)
+            let q: *mut int = &mut 2;
+            assert_eq!(q.to_option().unwrap(), &2);
+        }
     }
 
     #[test]
@@ -621,6 +592,7 @@ pub mod ptr_tests {
     }
 
     #[test]
+    #[cfg(not(stage0))]
     fn test_set_memory() {
         let mut xs = [0u8, ..20];
         let ptr = vec::raw::to_mut_ptr(xs);

@@ -136,7 +136,8 @@ pub fn duplicate_uniq(bcx: block, vptr: ValueRef, vec_ty: ty::t) -> Result {
 pub fn make_drop_glue_unboxed(bcx: block, vptr: ValueRef, vec_ty: ty::t) ->
    block {
     let _icx = bcx.insn_ctxt("tvec::make_drop_glue_unboxed");
-    let tcx = bcx.tcx(), unit_ty = ty::sequence_element_type(tcx, vec_ty);
+    let tcx = bcx.tcx();
+    let unit_ty = ty::sequence_element_type(tcx, vec_ty);
     if ty::type_needs_drop(tcx, unit_ty) {
         iter_vec_unboxed(bcx, vptr, vec_ty, glue::drop_ty)
     } else { bcx }
@@ -149,8 +150,8 @@ pub struct VecTypes {
     llunit_size: ValueRef
 }
 
-pub impl VecTypes {
-    fn to_str(&self, ccx: @CrateContext) -> ~str {
+impl VecTypes {
+    pub fn to_str(&self, ccx: &CrateContext) -> ~str {
         fmt!("VecTypes {vec_ty=%s, unit_ty=%s, llunit_ty=%s, llunit_size=%s}",
              ty_to_str(ccx.tcx, self.vec_ty),
              ty_to_str(ccx.tcx, self.unit_ty),
@@ -249,7 +250,7 @@ pub fn trans_slice_vstore(bcx: block,
 
 pub fn trans_lit_str(bcx: block,
                      lit_expr: @ast::expr,
-                     str_lit: @~str,
+                     str_lit: @str,
                      dest: Dest)
                   -> block {
     //!

@@ -17,7 +17,8 @@ fn testfn(cond: bool) {
     // borrow x and y
     let mut r_x = &*x;
     let mut r_y = &*y;
-    let mut r = r_x, exp = 3;
+    let mut r = r_x;
+    let mut exp = 3;
 
     if cond {
         r = r_y;

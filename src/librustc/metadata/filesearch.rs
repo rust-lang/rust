@@ -10,6 +10,11 @@
 
 use core::prelude::*;
 
+use core::option;
+use core::os;
+use core::result;
+use core::str;
+
 // A module for searching for libraries
 // FIXME (#2658): I'm not happy how this module turned out. Should
 // probably just be folded into cstore.
@@ -30,17 +35,18 @@ pub trait FileSearch {
 
 pub fn mk_filesearch(maybe_sysroot: &Option<@Path>,
                      target_triple: &str,
-                     addl_lib_search_paths: ~[Path])
+                     addl_lib_search_paths: @mut ~[Path])
                   -> @FileSearch {
     struct FileSearchImpl {
         sysroot: @Path,
-        addl_lib_search_paths: ~[Path],
+        addl_lib_search_paths: @mut ~[Path],
         target_triple: ~str
     }
     impl FileSearch for FileSearchImpl {
         fn sysroot(&self) -> @Path { self.sysroot }
         fn for_each_lib_search_path(&self, f: &fn(&Path) -> bool) -> bool {
-            debug!("filesearch: searching additional lib search paths");
+            debug!("filesearch: searching additional lib search paths [%?]",
+                   self.addl_lib_search_paths.len());
             // a little weird
             self.addl_lib_search_paths.each(f);
 
@@ -180,7 +186,7 @@ fn get_rustpkg_lib_path_nearest() -> Result<Path, ~str> {
 // On Unix should be "lib", on windows "bin"
 pub fn libdir() -> ~str {
    let libdir = env!("CFG_LIBDIR");
-   if str::is_empty(libdir) {
+   if libdir.is_empty() {
       fail!("rustc compiled without CFG_LIBDIR environment variable");
    }
    libdir.to_owned()
