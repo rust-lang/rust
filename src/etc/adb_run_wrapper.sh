@@ -26,7 +26,7 @@ then
                /system/bin/sleep $WAIT
                /system/bin/sync
             fi
-            L_COUNT=`expr $L_COUNT+1`
+            L_COUNT=$((L_COUNT+1))
         done
 
         echo $L_RET > $PATH/$RUN.exitcode
