@@ -462,7 +462,7 @@ pub fn trans_struct_drop(bcx: block,
 
         // Drop the fields
         let field_tys = ty::struct_fields(bcx.tcx(), class_did, substs);
-        for vec::eachi(field_tys) |i, fld| {
+        for field_tys.iter().enumerate().advance |(i, fld)| {
             let llfld_a = adt::trans_field_ptr(bcx, repr, v0, 0, i);
             bcx = drop_ty(bcx, llfld_a, fld.mt.ty);
         }

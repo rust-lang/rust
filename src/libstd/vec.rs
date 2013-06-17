@@ -1428,21 +1428,6 @@ pub fn each<'r,T>(v: &'r [T], f: &fn(&'r T) -> bool) -> bool {
 }
 
 /**
- * Iterates over a vector's elements and indices
- *
- * Return true to continue, false to break.
- */
-#[inline]
-pub fn eachi<'r,T>(v: &'r [T], f: &fn(uint, v: &'r T) -> bool) -> bool {
-    let mut i = 0;
-    for each(v) |p| {
-        if !f(i, p) { return false; }
-        i += 1;
-    }
-    return true;
-}
-
-/**
  * Iterate over all permutations of vector `v`.
  *
  * Permutations are produced in lexicographic order with respect to the order
@@ -3260,17 +3245,6 @@ mod tests {
     }
 
     #[test]
-    fn test_eachi() {
-        let mut i = 0;
-        for eachi([1, 2, 3]) |j, v| {
-            if i == 0 { assert!(*v == 1); }
-            assert_eq!(j + 1u, *v as uint);
-            i += *v;
-        }
-        assert_eq!(i, 6);
-    }
-
-    #[test]
     fn test_each_ret_len0() {
         let a0 : [int, .. 0] = [];
         assert_eq!(each(a0, |_p| fail!()), true);
@@ -4103,21 +4077,6 @@ mod tests {
         let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
         let mut i = 0;
         do each(v) |_elt| {
-            if i == 2 {
-                fail!()
-            }
-            i += 0;
-            false
-        };
-    }
-
-    #[test]
-    #[ignore(windows)]
-    #[should_fail]
-    fn test_eachi_fail() {
-        let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
-        let mut i = 0;
-        do eachi(v) |_i, _elt| {
             if i == 2 {
                 fail!()
             }
