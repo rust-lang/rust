@@ -294,8 +294,6 @@ pub mod llvm {
         pub unsafe fn LLVMGetModuleContext(M: ModuleRef) -> ContextRef;
         #[fast_ffi]
         pub unsafe fn LLVMDisposeModule(M: ModuleRef);
-        #[fast_ffi]
-        pub unsafe fn LLVMGetModuleContext(M: ModuleRef) -> ContextRef;
 
         /** Data layout. See Module::getDataLayout. */
         #[fast_ffi]
