@@ -42,19 +42,15 @@ impl DynamicLibrary {
     /// Lazily open a dynamic library. When passed None it gives a
     /// handle to the calling process
     pub fn open(filename: Option<&path::Path>) -> Result<DynamicLibrary, ~str> {
-        let open_wrapper = |raw_ptr| {
-            do dl::check_for_errors_in {
-                unsafe {
-                    DynamicLibrary { handle: dl::open(raw_ptr) }
+        do dl::check_for_errors_in {
+            unsafe {
+                DynamicLibrary { handle:
+                    match filename {
+                        Some(name) => dl::open_external(name),
+                        None => dl::open_internal()
+                    }
                 }
             }
-        };
-
-        match filename {
-            Some(name) => do name.to_str().as_c_str |raw_name| {
-                open_wrapper(raw_name)
-            },
-            None => open_wrapper(ptr::null())
         }
     }
 
@@ -74,6 +70,7 @@ impl DynamicLibrary {
 }
 
 #[test]
+#[ignore(cfg(windows))]
 priv fn test_loading_cosine () {
     // The math library does not need to be loaded since it is already
     // statically linked in
@@ -106,13 +103,20 @@ priv fn test_loading_cosine () {
 #[cfg(target_os = "freebsd")]
 mod dl {
     use libc;
+    use path;
     use ptr;
     use str;
     use task;
     use result::*;
 
-    pub unsafe fn open(filename: *libc::c_char) -> *libc::c_void {
-        dlopen(filename, Lazy as libc::c_int)
+    pub unsafe fn open_external(filename: &path::Path) -> *libc::c_void {
+        do filename.to_str().as_c_str |raw_name| {
+            dlopen(raw_name, Lazy as libc::c_int)
+        }
+    }
+
+    pub unsafe fn open_internal() -> *libc::c_void {
+        dlopen(ptr::null(), Lazy as libc::c_int)
     }
 
     pub fn check_for_errors_in<T>(f: &fn()->T) -> Result<T, ~str> {
@@ -159,11 +163,22 @@ mod dl {
 mod dl {
     use os;
     use libc;
+    use path;
+    use ptr;
+    use str;
     use task;
     use result::*;
 
-    pub unsafe fn open(filename: *libc::c_char) -> *libc::c_void {
-        LoadLibrary(filename)
+    pub unsafe fn open_external(filename: &path::Path) -> *libc::c_void {
+        do os::win32::as_utf16_p(filename.to_str()) |raw_name| {
+            LoadLibraryW(raw_name)
+        }
+    }
+
+    pub unsafe fn open_internal() -> *libc::c_void {
+        let mut handle = ptr::null();
+        GetModuleHandleExW(0 as libc::DWORD, ptr::null(), &handle as **libc::c_void);
+        handle
     }
 
     pub fn check_for_errors_in<T>(f: &fn()->T) -> Result<T, ~str> {
@@ -192,7 +207,9 @@ mod dl {
     #[link_name = "kernel32"]
     extern "stdcall" {
         fn SetLastError(error: u32);
-        fn LoadLibrary(name: *libc::c_char) -> *libc::c_void;
+        fn LoadLibraryW(name: *u16) -> *libc::c_void;
+        fn GetModuleHandleExW(dwFlags: libc::DWORD, name: *u16,
+                              handle: **libc::c_void) -> *libc::c_void;
         fn GetProcAddress(handle: *libc::c_void, name: *libc::c_char) -> *libc::c_void;
         fn FreeLibrary(handle: *libc::c_void);
     }
