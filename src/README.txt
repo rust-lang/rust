@@ -4,8 +4,8 @@ Source layout:
 
 librustc/          The self-hosted compiler
 
-libcore/           The core library (imported and linked by default)
-libstd/            The standard library (slightly more peripheral code)
+libstd/            The standard library (imported and linked by default)
+libextra/          The "extras" library (slightly more peripheral code)
 libsyntax/         The Rust parser and pretty-printer
 
 rt/                The runtime system
