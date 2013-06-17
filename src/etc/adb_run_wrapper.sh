@@ -17,9 +17,10 @@ then
 
         L_RET=1
         L_COUNT=0
+        cd $PATH
         while [ $L_RET -eq 1 ]
         do
-            LD_LIBRARY_PATH=$PATH $PATH/$RUN $@ 1>$PATH/$RUN.stdout 2>$PATH/$RUN.stderr
+            TEST_EXEC_ENV=22 LD_LIBRARY_PATH=$PATH $PATH/$RUN $@ 1>$PATH/$RUN.stdout 2>$PATH/$RUN.stderr
             L_RET=$?
             if [ $L_COUNT -gt 0 ]
             then
