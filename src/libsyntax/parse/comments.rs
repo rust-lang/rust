@@ -69,39 +69,48 @@ pub fn strip_doc_comment_decoration(comment: &str) -> ~str {
         return lines.slice(i, j).to_owned();
     }
 
-    // drop leftmost columns that contain only values in chars
-    fn block_trim(lines: ~[~str], chars: ~str, max: Option<uint>) -> ~[~str] {
-
-        let mut i = max.get_or_default(uint::max_value);
-        for lines.each |line| {
-            if line.trim().is_empty() {
-                loop;
-            }
+    /// remove a "[ \t]*\*" block from each line, if possible
+    fn horizontal_trim(lines: ~[~str]) -> ~[~str] {
+        let mut i = uint::max_value;
+        let mut can_trim = true;
+        let mut first = true;
+        for lines.iter().advance |line| {
             for line.iter().enumerate().advance |(j, c)| {
-                if j >= i {
+                if j > i || !"* \t".contains_char(c) {
+                    can_trim = false;
                     break;
                 }
-                if !chars.contains_char(c) {
-                    i = j;
+                if c == '*' {
+                    if first {
+                        i = j;
+                        first = false;
+                    } else if i != j {
+                        can_trim = false;
+                    }
                     break;
                 }
+            }
+            if i > line.len() {
+                can_trim = false;
+            }
+            if !can_trim {
+                break;
             }
         }
 
-        return do lines.map |line| {
-            let chars = line.iter().collect::<~[char]>();
-            if i > chars.len() {
-                ~""
-            } else {
-                str::from_chars(chars.slice(i, chars.len()))
+        if can_trim {
+            do lines.map |line| {
+                line.slice(i + 1, line.len()).to_owned()
             }
-        };
+        } else {
+            lines
+        }
     }
 
     if comment.starts_with("//") {
         // FIXME #5475:
-        // return comment.slice(3u, comment.len()).trim().to_owned();
-        let r = comment.slice(3u, comment.len()); return r.trim().to_owned();
+        // return comment.slice(3u, comment.len()).to_owned();
+        let r = comment.slice(3u, comment.len()); return r.to_owned();
     }
 
     if comment.starts_with("/*") {
@@ -109,10 +118,10 @@ pub fn strip_doc_comment_decoration(comment: &str) -> ~str {
             .any_line_iter()
             .transform(|s| s.to_owned())
             .collect::<~[~str]>();
+
         let lines = vertical_trim(lines);
-        let lines = block_trim(lines, ~"\t ", None);
-        let lines = block_trim(lines, ~"*", Some(1u));
-        let lines = block_trim(lines, ~"\t ", None);
+        let lines = horizontal_trim(lines);
+
         return lines.connect("\n");
     }
 
@@ -369,4 +378,37 @@ pub fn gather_comments_and_literals(span_diagnostic:
     }
 
     (comments, literals)
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test] fn test_block_doc_comment_1() {
+        let comment = "/**\n * Test \n **  Test\n *   Test\n*/";
+        let correct_stripped = " Test \n*  Test\n   Test";
+        let stripped = strip_doc_comment_decoration(comment);
+        assert_eq!(stripped.slice(0, stripped.len()), correct_stripped);
+    }
+
+    #[test] fn test_block_doc_comment_2() {
+        let comment = "/**\n * Test\n *  Test\n*/";
+        let correct_stripped = " Test\n  Test";
+        let stripped = strip_doc_comment_decoration(comment);
+        assert_eq!(stripped.slice(0, stripped.len()), correct_stripped);
+    }
+
+    #[test] fn test_block_doc_comment_3() {
+        let comment = "/**\n let a: *int;\n *a = 5;\n*/";
+        let correct_stripped = " let a: *int;\n *a = 5;";
+        let stripped = strip_doc_comment_decoration(comment);
+        assert_eq!(stripped.slice(0, stripped.len()), correct_stripped);
+    }
+
+    #[test] fn test_line_doc_comment() {
+        let comment = "/// Test";
+        let correct_stripped = " Test";
+        let stripped = strip_doc_comment_decoration(comment);
+        assert_eq!(stripped.slice(0, stripped.len()), correct_stripped);
+    }
 }
