@@ -2202,6 +2202,12 @@ impl<'self> Iterator<u8> for StrBytesRevIterator<'self> {
     }
 }
 
+// This works because every lifetime is a sub-lifetime of 'static
+impl<'self> Zero for &'self str {
+    fn zero() -> &'self str { "" }
+    fn is_zero(&self) -> bool { self.is_empty() }
+}
+
 impl Zero for ~str {
     fn zero() -> ~str { ~"" }
     fn is_zero(&self) -> bool { self.len() == 0 }
@@ -3316,5 +3322,19 @@ mod tests {
         t("ok", "z", ~["ok"]);
         t("zzz", "zz", ~["","z"]);
         t("zzzzz", "zz", ~["","","z"]);
+    }
+
+    #[test]
+    fn test_str_zero() {
+        use num::Zero;
+        fn t<S: Zero + Str>() {
+            let s: S = Zero::zero();
+            assert_eq!(s.as_slice(), "");
+            assert!(s.is_zero());
+        }
+
+        t::<&str>();
+        t::<@str>();
+        t::<~str>();
     }
 }
