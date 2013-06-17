@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-test
+// xfail-win32 Broken because of LLVM bug: http://llvm.org/bugs/show_bug.cgi?id=16249
 
 // Caveats - gdb prints any 8-bit value (meaning rust i8 and u8 values)
 // as its numerical value along with its associated ASCII char, there
@@ -17,8 +17,9 @@
 // its numerical value.
 
 // compile-flags:-Z extra-debug-info
-// debugger:break 67
+// debugger:break _zzz
 // debugger:run
+// debugger:finish
 // debugger:print b
 // check:$1 = false
 // debugger:print i
@@ -66,5 +67,7 @@ fn main() {
     let f: float = 1.5;
     let f32: f32 = 2.5;
     let f64: f64 = 3.5;
-    let _z = ();
+    _zzz();
 }
+
+fn _zzz() {()}

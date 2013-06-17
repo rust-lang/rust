@@ -1908,6 +1908,12 @@ pub fn trans_closure(ccx: @mut CrateContext,
     finish(bcx);
     cleanup_and_Br(bcx, bcx_top, fcx.llreturn);
 
+    // Put return block after all other blocks.
+    // This somewhat improves single-stepping experience in debugger.
+    unsafe {
+        llvm::LLVMMoveBasicBlockAfter(fcx.llreturn, bcx.llbb);
+    }
+
     // Insert the mandatory first few basic blocks before lltop.
     finish_fn(fcx, lltop);
 }
@@ -3102,6 +3108,9 @@ pub fn trans_crate(sess: session::Session,
     fill_crate_map(ccx, ccx.crate_map);
     glue::emit_tydescs(ccx);
     write_abi_version(ccx);
+    if ccx.sess.opts.debuginfo {
+        debuginfo::finalize(ccx);
+    }
 
     // Translate the metadata.
     write_metadata(ccx, crate);
