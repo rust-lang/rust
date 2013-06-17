@@ -339,6 +339,22 @@ pub unsafe fn free_ip6_addr(addr: *sockaddr_in6) {
     rust_uv_free_ip6_addr(addr);
 }
 
+pub unsafe fn ip4_name(addr: *sockaddr_in, dst: *u8, size: size_t) -> c_int {
+    return rust_uv_ip4_name(addr, dst, size);
+}
+
+pub unsafe fn ip6_name(addr: *sockaddr_in6, dst: *u8, size: size_t) -> c_int {
+    return rust_uv_ip6_name(addr, dst, size);
+}
+
+pub unsafe fn ip4_port(addr: *sockaddr_in) -> c_uint {
+   return rust_uv_ip4_port(addr);
+}
+
+pub unsafe fn ip6_port(addr: *sockaddr_in6) -> c_uint {
+    return rust_uv_ip6_port(addr);
+}
+
 // data access helpers
 pub unsafe fn get_loop_for_uv_handle<T>(handle: *T) -> *c_void {
     return rust_uv_get_loop_for_uv_handle(handle as *c_void);
