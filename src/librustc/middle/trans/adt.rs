@@ -145,7 +145,7 @@ fn represent_type_uncached(cx: &mut CrateContext, t: ty::t) -> Repr {
                     mk_struct(cx, self.tys, false).size == 0
                 }
                 fn find_ptr(&self) -> Option<uint> {
-                    self.tys.position(|&ty| mono_data_classify(ty) == MonoNonNull)
+                    self.tys.iter().position_(|&ty| mono_data_classify(ty) == MonoNonNull)
                 }
             }
 
@@ -161,7 +161,7 @@ fn represent_type_uncached(cx: &mut CrateContext, t: ty::t) -> Repr {
                 return Univariant(mk_struct(cx, [], false), false);
             }
 
-            if cases.all(|c| c.tys.len() == 0) {
+            if cases.iter().all(|c| c.tys.len() == 0) {
                 // All bodies empty -> intlike
                 let discrs = cases.map(|c| c.discr);
                 return CEnum(*discrs.iter().min().unwrap(), *discrs.iter().max().unwrap());
@@ -545,7 +545,7 @@ fn build_const_struct(ccx: &mut CrateContext, st: &Struct, vals: &[ValueRef])
 
     let mut offset = 0;
     let mut cfields = ~[];
-    for st.fields.eachi |i, &ty| {
+    for st.fields.iter().enumerate().advance |(i, &ty)| {
         let llty = type_of::sizing_type_of(ccx, ty);
         let type_align = machine::llalign_of_min(ccx, llty)
             /*bad*/as u64;

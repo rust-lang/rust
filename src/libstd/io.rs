@@ -65,7 +65,7 @@ use str::StrSlice;
 use to_str::ToStr;
 use uint;
 use vec;
-use vec::{OwnedVector, OwnedCopyableVector};
+use vec::{OwnedVector, OwnedCopyableVector, CopyableVector};
 
 #[allow(non_camel_case_types)] // not sure what to do about this
 pub type fd_t = c_int;
@@ -698,7 +698,7 @@ impl<T:Reader> ReaderUtil for T {
             // over-read by reading 1-byte per char needed
             nbread = if ncreq > nbreq { ncreq } else { nbreq };
             if nbread > 0 {
-                bytes = vec::slice(bytes, offset, bytes.len()).to_vec();
+                bytes = vec::slice(bytes, offset, bytes.len()).to_owned();
             }
         }
         chars

@@ -60,7 +60,7 @@ pub fn monomorphic_fn(ccx: @mut CrateContext,
            impl_did_opt.repr(ccx.tcx),
            ref_id);
 
-    assert!(real_substs.tps.all(|t| !ty::type_needs_infer(*t)));
+    assert!(real_substs.tps.iter().all(|t| !ty::type_needs_infer(*t)));
     let _icx = ccx.insn_ctxt("monomorphic_fn");
     let mut must_cast = false;
     let substs = vec::map(real_substs.tps, |t| {

@@ -254,7 +254,7 @@ impl<'self> LookupContext<'self> {
             ty_enum(did, _) => {
                 // Watch out for newtype'd enums like "enum t = @T".
                 // See discussion in typeck::check::do_autoderef().
-                if enum_dids.contains(&did) {
+                if enum_dids.iter().any_(|x| x == &did) {
                     return None;
                 }
                 enum_dids.push(did);
@@ -376,7 +376,7 @@ impl<'self> LookupContext<'self> {
 
             let trait_methods = ty::trait_methods(tcx, bound_trait_ref.def_id);
             let pos = {
-                match trait_methods.position(|m| {
+                match trait_methods.iter().position_(|m| {
                     m.explicit_self != ast::sty_static &&
                         m.ident == self.m_name })
                 {
@@ -543,7 +543,7 @@ impl<'self> LookupContext<'self> {
         }
 
         let idx = {
-            match impl_info.methods.position(|m| m.ident == self.m_name) {
+            match impl_info.methods.iter().position_(|m| m.ident == self.m_name) {
                 Some(idx) => idx,
                 None => { return; } // No method with the right name.
             }
@@ -813,8 +813,9 @@ impl<'self> LookupContext<'self> {
                                rcvr_ty: ty::t,
                                candidates: &mut ~[Candidate])
                                -> Option<method_map_entry> {
-        let relevant_candidates =
-            candidates.filter_to_vec(|c| self.is_relevant(rcvr_ty, c));
+        let relevant_candidates: ~[Candidate] =
+            candidates.iter().transform(|c| copy *c).
+                filter(|c| self.is_relevant(rcvr_ty, c)).collect();
 
         let relevant_candidates = self.merge_candidates(relevant_candidates);
 
@@ -942,7 +943,7 @@ impl<'self> LookupContext<'self> {
                      parameters given for this method");
                 self.fcx.infcx().next_ty_vars(num_method_tps)
             } else {
-                self.supplied_tps.to_vec()
+                self.supplied_tps.to_owned()
             }
         };
 

@@ -350,7 +350,7 @@ pub mod ct {
     #[test]
     fn test_parse_flags() {
         fn pack(fs: &[Flag]) -> uint {
-            fs.foldl(0, |&p, &f| p | (1 << f as uint))
+            fs.iter().fold(0, |p, &f| p | (1 << f as uint))
         }
 
         fn test(s: &str, flags: &[Flag], next: uint) {

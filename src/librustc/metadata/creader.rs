@@ -85,16 +85,16 @@ fn warn_if_multiple_versions(e: @mut Env,
             *crate_cache[crate_cache.len() - 1].metas
         );
 
-        let (matches, non_matches) =
-            partition(crate_cache.map_to_vec(|&entry| {
-                let othername = loader::crate_name_from_metas(
-                    copy *entry.metas);
-                if name == othername {
-                    Left(entry)
-                } else {
-                    Right(entry)
-                }
-            }));
+        let vec: ~[Either<cache_entry, cache_entry>] = crate_cache.iter().transform(|&entry| {
+            let othername = loader::crate_name_from_metas(
+                copy *entry.metas);
+            if name == othername {
+                Left(entry)
+            } else {
+                Right(entry)
+            }
+        }).collect();
+        let (matches, non_matches) = partition(vec);
 
         assert!(!matches.is_empty());
 

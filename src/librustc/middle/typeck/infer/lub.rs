@@ -175,7 +175,7 @@ impl Combine for Lub {
             // Variables created during LUB computation which are
             // *related* to regions that pre-date the LUB computation
             // stay as they are.
-            if !tainted.all(|r| is_var_in_set(new_vars, *r)) {
+            if !tainted.iter().all(|r| is_var_in_set(new_vars, *r)) {
                 debug!("generalize_region(r0=%?): \
                         non-new-variables found in %?",
                        r0, tainted);
@@ -189,7 +189,7 @@ impl Combine for Lub {
             // with.
             for list::each(a_isr) |pair| {
                 let (a_br, a_r) = *pair;
-                if tainted.contains(&a_r) {
+                if tainted.iter().any_(|x| x == &a_r) {
                     debug!("generalize_region(r0=%?): \
                             replacing with %?, tainted=%?",
                            r0, a_br, tainted);

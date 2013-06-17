@@ -386,7 +386,7 @@ pub fn write_content(bcx: block,
 
                 SaveIn(lldest) => {
                     let mut temp_cleanups = ~[];
-                    for elements.eachi |i, element| {
+                    for elements.iter().enumerate().advance |(i, element)| {
                         let lleltptr = GEPi(bcx, lldest, [i]);
                         debug!("writing index %? with lleltptr=%?",
                                i, bcx.val_str(lleltptr));

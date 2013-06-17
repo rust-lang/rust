@@ -1014,7 +1014,8 @@ fn encode_info_for_item(ecx: &EncodeContext,
         ebml_w.end_tag();
 
         // Now output the method info for each method.
-        for ty::trait_method_def_ids(tcx, local_def(item.id)).eachi |i, &method_def_id| {
+        let r = ty::trait_method_def_ids(tcx, local_def(item.id));
+        for r.iter().enumerate().advance |(i, &method_def_id)| {
             assert_eq!(method_def_id.crate, ast::local_crate);
 
             let method_ty = ty::method(tcx, method_def_id);

@@ -1317,7 +1317,7 @@ impl<'self> StrSlice<'self> for &'self str {
     }
     /// Returns the number of characters that a string holds
     #[inline]
-    fn char_len(&self) -> uint { self.iter().count() }
+    fn char_len(&self) -> uint { self.iter().len_() }
 
     /**
      * Returns a slice of the given string from the byte range

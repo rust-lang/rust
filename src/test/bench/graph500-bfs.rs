@@ -378,7 +378,7 @@ fn validate(edges: ~[(node_id, node_id)],
 
     info!(~"Verifying graph edges...");
 
-    let status = do edges.all() |e| {
+    let status = do edges.iter().all |e| {
         let (u, v) = *e;
 
         abs(level[u] - level[v]) <= 1
@@ -402,7 +402,7 @@ fn validate(edges: ~[(node_id, node_id)],
             if *v == -1i64 || u == root {
                 true
             } else {
-                edges.contains(&(u, *v)) || edges.contains(&(*v, u))
+                edges.iter().any_(|x| x == &(u, *v)) || edges.iter().any_(|x| x == &(*v, u))
             }
         };
         result

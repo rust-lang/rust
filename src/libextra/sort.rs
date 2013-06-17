@@ -731,7 +731,7 @@ fn copy_vec<T:Copy>(dest: &mut [T],
                     from: &[T]) {
     assert!(s1+from.len() <= dest.len());
 
-    for from.eachi |i, v| {
+    for from.iter().enumerate().advance |(i, v)| {
         dest[s1+i] = copy *v;
     }
 }
@@ -743,7 +743,7 @@ fn shift_vec<T:Copy>(dest: &mut [T],
                      len: uint) {
     assert!(s1+len <= dest.len());
 
-    let tmp = dest.slice(s2, s2+len).to_vec();
+    let tmp = dest.slice(s2, s2+len).to_owned();
     copy_vec(dest, s1, tmp);
 }
 
