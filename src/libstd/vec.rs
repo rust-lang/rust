@@ -2288,6 +2288,22 @@ pub mod bytes {
     use uint;
     use vec::raw;
     use vec;
+    use ptr;
+
+    /// A trait for operations on mutable operations on `[u8]`
+    pub trait MutableByteVector {
+        /// Sets all bytes of the receiver to the given value.
+        pub fn set_memory(self, value: u8);
+    }
+
+    impl<'self> MutableByteVector for &'self mut [u8] {
+        #[inline]
+        fn set_memory(self, value: u8) {
+            do vec::as_mut_buf(self) |p, len| {
+                unsafe { ptr::set_memory(p, value, len) };
+            }
+        }
+    }
 
     /// Bytewise string comparison
     pub fn memcmp(a: &~[u8], b: &~[u8]) -> int {
@@ -3940,5 +3956,15 @@ mod tests {
         t!(&[int]);
         t!(@[int]);
         t!(~[int]);
+    }
+
+    #[test]
+    fn test_bytes_set_memory() {
+        use vec::bytes::MutableByteVector;
+        let mut values = [1u8,2,3,4,5];
+        values.mut_slice(0,5).set_memory(0xAB);
+        assert_eq!(values, [0xAB, 0xAB, 0xAB, 0xAB, 0xAB]);
+        values.mut_slice(2,4).set_memory(0xFF);
+        assert_eq!(values, [0xAB, 0xAB, 0xFF, 0xFF, 0xAB]);
     }
 }
