@@ -139,6 +139,9 @@ pub mod join_latch;
 
 pub mod metrics;
 
+// FIXME #5248 shouldn't be pub
+/// Just stuff
+pub mod util;
 
 /// Set up a default runtime configuration, given compiler-supplied arguments.
 ///
