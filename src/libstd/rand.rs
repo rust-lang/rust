@@ -843,7 +843,7 @@ fn tls_rng_state(_v: @@mut IsaacRng) {}
  * `task_rng().gen::<int>()`.
  */
 #[inline]
-pub fn task_rng() -> @@mut IsaacRng {
+pub fn task_rng() -> @mut IsaacRng {
     let r : Option<@@mut IsaacRng>;
     unsafe {
         r = local_data::local_data_get(tls_rng_state);
@@ -853,20 +853,18 @@ pub fn task_rng() -> @@mut IsaacRng {
             unsafe {
                 let rng = @@mut IsaacRng::new_seeded(seed());
                 local_data::local_data_set(tls_rng_state, rng);
-                rng
+                *rng
             }
         }
-        Some(rng) => rng
+        Some(rng) => *rng
     }
 }
 
 // Allow direct chaining with `task_rng`
-impl<R: Rng> Rng for @@mut R {
+impl<R: Rng> Rng for @mut R {
     #[inline]
     fn next(&mut self) -> u32 {
-        match *self {
-            @@ref mut r => r.next()
-        }
+        (**self).next()
     }
 }
 
@@ -876,9 +874,7 @@ impl<R: Rng> Rng for @@mut R {
  */
 #[inline]
 pub fn random<T: Rand>() -> T {
-    match *task_rng() {
-        @ref mut r => r.gen()
-    }
+    task_rng().gen()
 }
 
 #[cfg(test)]
