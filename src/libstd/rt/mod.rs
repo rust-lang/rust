@@ -176,6 +176,8 @@ pub fn start(_argc: int, _argv: **u8, crate_map: *u8, main: ~fn()) -> int {
     sched.enqueue_task(main_task);
     sched.run();
 
+    cleanup();
+
     return 0;
 }
 
@@ -183,6 +185,10 @@ pub fn start(_argc: int, _argv: **u8, crate_map: *u8, main: ~fn()) -> int {
 /// based on the RUST_LOG environment variable.
 pub fn init(crate_map: *u8) {
     logging::init(crate_map);
+}
+
+pub fn cleanup() {
+    global_heap::cleanup();
 }
 
 /// Possible contexts in which Rust code may be executing.
