@@ -357,7 +357,7 @@ impl Scheduler {
                 home_handle.send(PinnedTask(task));
             }
             AnySched => {
-                abort!("error: cannot send anysched task home");
+                rtabort!("error: cannot send anysched task home");
             }
         }
     }
@@ -422,10 +422,10 @@ impl Scheduler {
                         return true;
                     }
                     4 => {
-                        abort!("task home was None!");
+                        rtabort!("task home was None!");
                     }
                     _ => {
-                        abort!("literally, you should not be here");
+                        rtabort!("literally, you should not be here");
                     }
                 }
             }
@@ -452,7 +452,7 @@ impl Scheduler {
             dead_task.take().recycle(&mut sched.stack_pool);
         }
 
-        abort!("control reached end of task");
+        rtabort!("control reached end of task");
     }
 
     pub fn schedule_task(~self, task: ~Coroutine) {
@@ -672,7 +672,7 @@ impl Coroutine {
                 Some(Sched(SchedHandle { sched_id: ref id, _ })) => {
                     *id == sched.sched_id()
                 }
-                None => { abort!("error: homeless task!"); }
+                None => { rtabort!("error: homeless task!"); }
             }
         }
     }
@@ -696,7 +696,7 @@ impl Coroutine {
         match self.task.home {
             Some(AnySched) => { false }
             Some(Sched(_)) => { true }
-            None => { abort!("error: homeless task!");
+            None => { rtabort!("error: homeless task!");
                     }
         }
     }
@@ -710,7 +710,7 @@ impl Coroutine {
             Some(Sched(SchedHandle { sched_id: ref id, _})) => {
                 *id == sched.sched_id()
             }
-            None => { abort!("error: homeless task!"); }
+            None => { rtabort!("error: homeless task!"); }
         }
     }
 
