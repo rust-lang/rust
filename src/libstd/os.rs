@@ -29,6 +29,7 @@
 #[allow(missing_doc)];
 
 use cast;
+use container::Container;
 use io;
 use iterator::IteratorUtil;
 use libc;
@@ -1500,7 +1501,10 @@ mod tests {
     fn test_getenv_big() {
         let mut s = ~"";
         let mut i = 0;
-        while i < 100 { s += "aaaaaaaaaa"; i += 1; }
+        while i < 100 {
+            s = s + "aaaaaaaaaa";
+            i += 1;
+        }
         let n = make_rand_name();
         setenv(n, s);
         debug!(copy s);

@@ -1140,6 +1140,17 @@ impl<'self> Str for @str {
     }
 }
 
+impl<'self> Container for &'self str {
+    #[inline]
+    fn len(&self) -> uint {
+        do as_buf(*self) |_p, n| { n - 1u }
+    }
+    #[inline]
+    fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+}
+
 #[allow(missing_doc)]
 pub trait StrSlice<'self> {
     fn contains<'a>(&self, needle: &'a str) -> bool;
@@ -1158,10 +1169,8 @@ pub trait StrSlice<'self> {
     fn any_line_iter(&self) -> AnyLineIterator<'self>;
     fn word_iter(&self) -> WordIterator<'self>;
     fn ends_with(&self, needle: &str) -> bool;
-    fn is_empty(&self) -> bool;
     fn is_whitespace(&self) -> bool;
     fn is_alphanumeric(&self) -> bool;
-    fn len(&self) -> uint;
     fn char_len(&self) -> uint;
 
     fn slice(&self, begin: uint, end: uint) -> &'self str;
@@ -1362,9 +1371,6 @@ impl<'self> StrSlice<'self> for &'self str {
         self.split_iter(char::is_whitespace).filter(|s| !s.is_empty())
     }
 
-    /// Returns true if the string has length 0
-    #[inline]
-    fn is_empty(&self) -> bool { self.len() == 0 }
     /**
      * Returns true if the string contains only whitespace
      *
@@ -1379,11 +1385,6 @@ impl<'self> StrSlice<'self> for &'self str {
      */
     #[inline]
     fn is_alphanumeric(&self) -> bool { self.iter().all(char::is_alphanumeric) }
-    /// Returns the size in bytes not counting the null terminator
-    #[inline]
-    fn len(&self) -> uint {
-        do as_buf(*self) |_p, n| { n - 1u }
-    }
     /// Returns the number of characters that a string holds
     #[inline]
     fn char_len(&self) -> uint { self.iter().len_() }

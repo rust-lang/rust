@@ -64,7 +64,7 @@ use util::ppaux::{Repr, ty_to_str};
 use middle::trans::type_::Type;
 
 use core::hash;
-use core::hashmap::{HashMap};
+use core::hashmap::{HashMap, HashSet};
 use core::int;
 use core::io;
 use core::libc::c_uint;
@@ -2509,7 +2509,7 @@ pub fn get_item_val(ccx: @mut CrateContext, id: ast::node_id) -> ValueRef {
                               variant))
           }
         };
-        if !exprt {
+        if !exprt && !ccx.reachable.contains(&id) {
             lib::llvm::SetLinkage(val, lib::llvm::InternalLinkage);
         }
         ccx.item_vals.insert(id, val);
@@ -2816,13 +2816,13 @@ pub fn crate_ctxt_to_encode_parms<'r>(cx: &'r CrateContext, ie: encoder::encode_
         encoder::EncodeParams {
             diag: diag,
             tcx: cx.tcx,
-            reachable: cx.reachable,
             reexports2: cx.exp_map2,
             item_symbols: item_symbols,
             discrim_symbols: discrim_symbols,
             link_meta: link_meta,
             cstore: cx.sess.cstore,
-            encode_inlined_item: ie
+            encode_inlined_item: ie,
+            reachable: cx.reachable,
         }
 }
 
@@ -2890,7 +2890,7 @@ pub fn trans_crate(sess: session::Session,
                    emap2: resolve::ExportMap2,
                    reachable_map: @mut HashSet<ast::node_id>,
                    maps: astencode::Maps)
-                   -> (ModuleRef, LinkMeta) {
+                   -> (ContextRef, ModuleRef, LinkMeta) {
 
     let mut symbol_hasher = hash::default_state();
     let link_meta = link::build_link_meta(sess, crate, output, &mut symbol_hasher);
@@ -2911,8 +2911,15 @@ pub fn trans_crate(sess: session::Session,
     //     sess.bug("couldn't enable multi-threaded LLVM");
     // }
 
-    let ccx = @mut CrateContext::new(sess, llmod_id, tcx, emap2, maps,
-                                 symbol_hasher, link_meta, reachable);
+    let ccx = @mut CrateContext::new(sess,
+                                     llmod_id,
+                                     tcx,
+                                     emap2,
+                                     maps,
+                                     symbol_hasher,
+                                     link_meta,
+                                     reachable_map);
+
     {
         let _icx = push_ctxt("data");
         trans_constants(ccx, crate);

@@ -97,18 +97,14 @@ pub fn get_enum_variants(tcx: ty::ctxt, def: ast::def_id)
     return decoder::get_enum_variants(cstore.intr, cdata, def.node, tcx)
 }
 
-pub fn get_impls_for_mod(cstore: @mut cstore::CStore, def: ast::def_id,
-                         name: Option<ast::ident>)
-                      -> @~[@resolve::Impl] {
-    let cdata = cstore::get_crate_data(cstore, def.crate);
-    do decoder::get_impls_for_mod(cstore.intr, cdata, def.node, name) |cnum| {
-        cstore::get_crate_data(cstore, cnum)
-    }
+/// Returns information about the given implementation.
+pub fn get_impl(cstore: @mut cstore::CStore, impl_def_id: ast::def_id)
+                -> resolve::Impl {
+    let cdata = cstore::get_crate_data(cstore, impl_def_id.crate);
+    decoder::get_impl(cstore.intr, cdata, impl_def_id.node)
 }
 
-pub fn get_method(tcx: ty::ctxt,
-                  def: ast::def_id) -> ty::Method
-{
+pub fn get_method(tcx: ty::ctxt, def: ast::def_id) -> ty::Method {
     let cdata = cstore::get_crate_data(tcx.cstore, def.crate);
     decoder::get_method(tcx.cstore.intr, cdata, def.node, tcx)
 }
