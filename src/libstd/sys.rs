@@ -57,25 +57,25 @@ pub mod rustrt {
  * Useful for calling certain function in the Rust runtime or otherwise
  * performing dark magick.
  */
-#[inline(always)]
+#[inline]
 pub fn get_type_desc<T>() -> *TypeDesc {
     unsafe { intrinsics::get_tydesc::<T>() as *TypeDesc }
 }
 
 /// Returns a pointer to a type descriptor.
-#[inline(always)]
+#[inline]
 pub fn get_type_desc_val<T>(_val: &T) -> *TypeDesc {
     get_type_desc::<T>()
 }
 
 /// Returns the size of a type
-#[inline(always)]
+#[inline]
 pub fn size_of<T>() -> uint {
     unsafe { intrinsics::size_of::<T>() }
 }
 
 /// Returns the size of the type that `_val` points to
-#[inline(always)]
+#[inline]
 pub fn size_of_val<T>(_val: &T) -> uint {
     size_of::<T>()
 }
@@ -85,14 +85,14 @@ pub fn size_of_val<T>(_val: &T) -> uint {
  *
  * Useful for building structures containing variable-length arrays.
  */
-#[inline(always)]
+#[inline]
 pub fn nonzero_size_of<T>() -> uint {
     let s = size_of::<T>();
     if s == 0 { 1 } else { s }
 }
 
 /// Returns the size of the type of the value that `_val` points to
-#[inline(always)]
+#[inline]
 pub fn nonzero_size_of_val<T>(_val: &T) -> uint {
     nonzero_size_of::<T>()
 }
@@ -104,33 +104,33 @@ pub fn nonzero_size_of_val<T>(_val: &T) -> uint {
  * This is the alignment used for struct fields. It may be smaller
  * than the preferred alignment.
  */
-#[inline(always)]
+#[inline]
 pub fn min_align_of<T>() -> uint {
     unsafe { intrinsics::min_align_of::<T>() }
 }
 
 /// Returns the ABI-required minimum alignment of the type of the value that
 /// `_val` points to
-#[inline(always)]
+#[inline]
 pub fn min_align_of_val<T>(_val: &T) -> uint {
     min_align_of::<T>()
 }
 
 /// Returns the preferred alignment of a type
-#[inline(always)]
+#[inline]
 pub fn pref_align_of<T>() -> uint {
     unsafe { intrinsics::pref_align_of::<T>() }
 }
 
 /// Returns the preferred alignment of the type of the value that
 /// `_val` points to
-#[inline(always)]
+#[inline]
 pub fn pref_align_of_val<T>(_val: &T) -> uint {
     pref_align_of::<T>()
 }
 
 /// Returns the refcount of a shared box (as just before calling this)
-#[inline(always)]
+#[inline]
 pub fn refcount<T>(t: @T) -> uint {
     unsafe {
         let ref_ptr: *uint = cast::transmute_copy(&t);

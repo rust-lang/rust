@@ -164,7 +164,7 @@ pub fn ReprVisitor(ptr: *c_void, writer: @Writer) -> ReprVisitor {
 }
 
 impl MovePtr for ReprVisitor {
-    #[inline(always)]
+    #[inline]
     fn move_ptr(&self, adjustment: &fn(*c_void) -> *c_void) {
         *self.ptr = adjustment(*self.ptr);
     }
@@ -179,7 +179,7 @@ impl MovePtr for ReprVisitor {
 impl ReprVisitor {
     // Various helpers for the TyVisitor impl
 
-    #[inline(always)]
+    #[inline]
     pub fn get<T>(&self, f: &fn(&T)) -> bool {
         unsafe {
             f(transmute::<*c_void,&T>(*self.ptr));
@@ -187,12 +187,12 @@ impl ReprVisitor {
         true
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn visit_inner(&self, inner: *TyDesc) -> bool {
         self.visit_ptr_inner(*self.ptr, inner)
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn visit_ptr_inner(&self, ptr: *c_void, inner: *TyDesc) -> bool {
         unsafe {
             let u = ReprVisitor(ptr, self.writer);
@@ -202,7 +202,7 @@ impl ReprVisitor {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn write<T:Repr>(&self) -> bool {
         do self.get |v:&T| {
             v.write_repr(self.writer);

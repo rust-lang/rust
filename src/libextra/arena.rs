@@ -119,7 +119,7 @@ pub fn Arena() -> Arena {
     arena_with_size(32u)
 }
 
-#[inline(always)]
+#[inline]
 fn round_up_to(base: uint, align: uint) -> uint {
     (base + (align - 1)) & !(align - 1)
 }
@@ -156,12 +156,12 @@ unsafe fn destroy_chunk(chunk: &Chunk) {
 // initialized in the arena in the low bit of the tydesc pointer. This
 // is necessary in order to properly do cleanup if a failure occurs
 // during an initializer.
-#[inline(always)]
+#[inline]
 unsafe fn bitpack_tydesc_ptr(p: *TypeDesc, is_done: bool) -> uint {
     let p_bits: uint = transmute(p);
     p_bits | (is_done as uint)
 }
-#[inline(always)]
+#[inline]
 unsafe fn un_bitpack_tydesc_ptr(p: uint) -> (*TypeDesc, bool) {
     (transmute(p & !1), p & 1 == 1)
 }
@@ -179,7 +179,7 @@ impl Arena {
         return self.alloc_pod_inner(n_bytes, align);
     }
 
-    #[inline(always)]
+    #[inline]
     fn alloc_pod_inner(&mut self, n_bytes: uint, align: uint) -> *u8 {
         unsafe {
             // XXX: Borrow check
@@ -199,7 +199,7 @@ impl Arena {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     fn alloc_pod<'a, T>(&'a mut self, op: &fn() -> T) -> &'a T {
         unsafe {
             let tydesc = sys::get_type_desc::<T>();
@@ -223,7 +223,7 @@ impl Arena {
         return self.alloc_nonpod_inner(n_bytes, align);
     }
 
-    #[inline(always)]
+    #[inline]
     fn alloc_nonpod_inner(&mut self, n_bytes: uint, align: uint)
                           -> (*u8, *u8) {
         unsafe {
@@ -246,7 +246,7 @@ impl Arena {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     fn alloc_nonpod<'a, T>(&'a mut self, op: &fn() -> T) -> &'a T {
         unsafe {
             let tydesc = sys::get_type_desc::<T>();
@@ -268,7 +268,7 @@ impl Arena {
     }
 
     // The external interface
-    #[inline(always)]
+    #[inline]
     pub fn alloc<'a, T>(&'a mut self, op: &fn() -> T) -> &'a T {
         unsafe {
             // XXX: Borrow check

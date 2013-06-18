@@ -198,7 +198,7 @@ pub fn is_call_expr(e: @expr) -> bool {
 
 // This makes def_id hashable
 impl to_bytes::IterBytes for def_id {
-    #[inline(always)]
+    #[inline]
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
         self.crate.iter_bytes(lsb0, f) && self.node.iter_bytes(lsb0, f)
     }

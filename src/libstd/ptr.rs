@@ -19,31 +19,31 @@ use unstable::intrinsics;
 use uint;
 
 /// Calculate the offset from a pointer
-#[inline(always)]
+#[inline]
 pub fn offset<T>(ptr: *T, count: uint) -> *T {
     (ptr as uint + count * sys::size_of::<T>()) as *T
 }
 
 /// Calculate the offset from a const pointer
-#[inline(always)]
+#[inline]
 pub fn const_offset<T>(ptr: *const T, count: uint) -> *const T {
     (ptr as uint + count * sys::size_of::<T>()) as *T
 }
 
 /// Calculate the offset from a mut pointer
-#[inline(always)]
+#[inline]
 pub fn mut_offset<T>(ptr: *mut T, count: uint) -> *mut T {
     (ptr as uint + count * sys::size_of::<T>()) as *mut T
 }
 
 /// Return the offset of the first null pointer in `buf`.
-#[inline(always)]
+#[inline]
 pub unsafe fn buf_len<T>(buf: **T) -> uint {
     position(buf, |i| *i == null())
 }
 
 /// Return the first offset `i` such that `f(buf[i]) == true`.
-#[inline(always)]
+#[inline]
 pub unsafe fn position<T>(buf: *T, f: &fn(&T) -> bool) -> uint {
     let mut i = 0;
     loop {
@@ -53,19 +53,19 @@ pub unsafe fn position<T>(buf: *T, f: &fn(&T) -> bool) -> uint {
 }
 
 /// Create an unsafe null pointer
-#[inline(always)]
+#[inline]
 pub fn null<T>() -> *T { 0 as *T }
 
 /// Create an unsafe mutable null pointer
-#[inline(always)]
+#[inline]
 pub fn mut_null<T>() -> *mut T { 0 as *mut T }
 
 /// Returns true if the pointer is equal to the null pointer.
-#[inline(always)]
+#[inline]
 pub fn is_null<T>(ptr: *const T) -> bool { ptr == null() }
 
 /// Returns true if the pointer is not equal to the null pointer.
-#[inline(always)]
+#[inline]
 pub fn is_not_null<T>(ptr: *const T) -> bool { !is_null(ptr) }
 
 /**
@@ -74,7 +74,7 @@ pub fn is_not_null<T>(ptr: *const T) -> bool { !is_null(ptr) }
  * Copies `count` elements (not bytes) from `src` to `dst`. The source
  * and destination may overlap.
  */
-#[inline(always)]
+#[inline]
 #[cfg(target_word_size = "32", stage0)]
 pub unsafe fn copy_memory<T>(dst: *mut T, src: *const T, count: uint) {
     use unstable::intrinsics::memmove32;
@@ -88,7 +88,7 @@ pub unsafe fn copy_memory<T>(dst: *mut T, src: *const T, count: uint) {
  * Copies `count` elements (not bytes) from `src` to `dst`. The source
  * and destination may overlap.
  */
-#[inline(always)]
+#[inline]
 #[cfg(target_word_size = "32", not(stage0))]
 pub unsafe fn copy_memory<T>(dst: *mut T, src: *const T, count: uint) {
     use unstable::intrinsics::memmove32;
@@ -101,7 +101,7 @@ pub unsafe fn copy_memory<T>(dst: *mut T, src: *const T, count: uint) {
  * Copies `count` elements (not bytes) from `src` to `dst`. The source
  * and destination may overlap.
  */
-#[inline(always)]
+#[inline]
 #[cfg(target_word_size = "64", stage0)]
 pub unsafe fn copy_memory<T>(dst: *mut T, src: *const T, count: uint) {
     use unstable::intrinsics::memmove64;
@@ -115,7 +115,7 @@ pub unsafe fn copy_memory<T>(dst: *mut T, src: *const T, count: uint) {
  * Copies `count` elements (not bytes) from `src` to `dst`. The source
  * and destination may overlap.
  */
-#[inline(always)]
+#[inline]
 #[cfg(target_word_size = "64", not(stage0))]
 pub unsafe fn copy_memory<T>(dst: *mut T, src: *const T, count: uint) {
     use unstable::intrinsics::memmove64;
@@ -128,7 +128,7 @@ pub unsafe fn copy_memory<T>(dst: *mut T, src: *const T, count: uint) {
  * Copies `count` elements (not bytes) from `src` to `dst`. The source
  * and destination may *not* overlap.
  */
-#[inline(always)]
+#[inline]
 #[cfg(target_word_size = "32", stage0)]
 pub unsafe fn copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T, count: uint) {
     use unstable::intrinsics::memmove32;
@@ -142,7 +142,7 @@ pub unsafe fn copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T, count: u
  * Copies `count` elements (not bytes) from `src` to `dst`. The source
  * and destination may *not* overlap.
  */
-#[inline(always)]
+#[inline]
 #[cfg(target_word_size = "32", not(stage0))]
 pub unsafe fn copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T, count: uint) {
     use unstable::intrinsics::memcpy32;
@@ -155,7 +155,7 @@ pub unsafe fn copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T, count: u
  * Copies `count` elements (not bytes) from `src` to `dst`. The source
  * and destination may *not* overlap.
  */
-#[inline(always)]
+#[inline]
 #[cfg(target_word_size = "64", stage0)]
 pub unsafe fn copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T, count: uint) {
     use unstable::intrinsics::memmove64;
@@ -169,7 +169,7 @@ pub unsafe fn copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T, count: u
  * Copies `count` elements (not bytes) from `src` to `dst`. The source
  * and destination may *not* overlap.
  */
-#[inline(always)]
+#[inline]
 #[cfg(target_word_size = "64", not(stage0))]
 pub unsafe fn copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T, count: uint) {
     use unstable::intrinsics::memcpy64;
@@ -180,7 +180,7 @@ pub unsafe fn copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T, count: u
  * Invokes memset on the specified pointer, setting `count * size_of::<T>()`
  * bytes of memory starting at `dst` to `c`.
  */
-#[inline(always)]
+#[inline]
 #[cfg(target_word_size = "32", not(stage0))]
 pub unsafe fn set_memory<T>(dst: *mut T, c: u8, count: uint) {
     use unstable::intrinsics::memset32;
@@ -191,7 +191,7 @@ pub unsafe fn set_memory<T>(dst: *mut T, c: u8, count: uint) {
  * Invokes memset on the specified pointer, setting `count * size_of::<T>()`
  * bytes of memory starting at `dst` to `c`.
  */
-#[inline(always)]
+#[inline]
 #[cfg(target_word_size = "64", not(stage0))]
 pub unsafe fn set_memory<T>(dst: *mut T, c: u8, count: uint) {
     use unstable::intrinsics::memset64;
@@ -222,26 +222,26 @@ pub unsafe fn swap_ptr<T>(x: *mut T, y: *mut T) {
  * Replace the value at a mutable location with a new one, returning the old
  * value, without deinitialising or copying either one.
  */
-#[inline(always)]
+#[inline]
 pub unsafe fn replace_ptr<T>(dest: *mut T, mut src: T) -> T {
     swap_ptr(dest, &mut src);
     src
 }
 
 /// Transform a region pointer - &T - to an unsafe pointer - *T.
-#[inline(always)]
+#[inline]
 pub fn to_unsafe_ptr<T>(thing: &T) -> *T {
     thing as *T
 }
 
 /// Transform a const region pointer - &const T - to a const unsafe pointer - *const T.
-#[inline(always)]
+#[inline]
 pub fn to_const_unsafe_ptr<T>(thing: &const T) -> *const T {
     thing as *const T
 }
 
 /// Transform a mutable region pointer - &mut T - to a mutable unsafe pointer - *mut T.
-#[inline(always)]
+#[inline]
 pub fn to_mut_unsafe_ptr<T>(thing: &mut T) -> *mut T {
     thing as *mut T
 }
@@ -297,11 +297,11 @@ pub trait RawPtr<T> {
 /// Extension methods for immutable pointers
 impl<T> RawPtr<T> for *T {
     /// Returns true if the pointer is equal to the null pointer.
-    #[inline(always)]
+    #[inline]
     fn is_null(&const self) -> bool { is_null(*self) }
 
     /// Returns true if the pointer is not equal to the null pointer.
-    #[inline(always)]
+    #[inline]
     fn is_not_null(&const self) -> bool { is_not_null(*self) }
 
     ///
@@ -314,7 +314,7 @@ impl<T> RawPtr<T> for *T {
     /// that this is still an unsafe operation because the returned value could
     /// be pointing to invalid memory.
     ///
-    #[inline(always)]
+    #[inline]
     unsafe fn to_option(&const self) -> Option<&T> {
         if self.is_null() { None } else {
             Some(cast::transmute(*self))
@@ -322,18 +322,18 @@ impl<T> RawPtr<T> for *T {
     }
 
     /// Calculates the offset from a pointer.
-    #[inline(always)]
+    #[inline]
     fn offset(&self, count: uint) -> *T { offset(*self, count) }
 }
 
 /// Extension methods for mutable pointers
 impl<T> RawPtr<T> for *mut T {
     /// Returns true if the pointer is equal to the null pointer.
-    #[inline(always)]
+    #[inline]
     fn is_null(&const self) -> bool { is_null(*self) }
 
     /// Returns true if the pointer is not equal to the null pointer.
-    #[inline(always)]
+    #[inline]
     fn is_not_null(&const self) -> bool { is_not_null(*self) }
 
     ///
@@ -346,7 +346,7 @@ impl<T> RawPtr<T> for *mut T {
     /// that this is still an unsafe operation because the returned value could
     /// be pointing to invalid memory.
     ///
-    #[inline(always)]
+    #[inline]
     unsafe fn to_option(&const self) -> Option<&T> {
         if self.is_null() { None } else {
             Some(cast::transmute(*self))
@@ -354,37 +354,37 @@ impl<T> RawPtr<T> for *mut T {
     }
 
     /// Calculates the offset from a mutable pointer.
-    #[inline(always)]
+    #[inline]
     fn offset(&self, count: uint) -> *mut T { mut_offset(*self, count) }
 }
 
 // Equality for pointers
 #[cfg(not(test))]
 impl<T> Eq for *const T {
-    #[inline(always)]
+    #[inline]
     fn eq(&self, other: &*const T) -> bool {
         (*self as uint) == (*other as uint)
     }
-    #[inline(always)]
+    #[inline]
     fn ne(&self, other: &*const T) -> bool { !self.eq(other) }
 }
 
 // Comparison for pointers
 #[cfg(not(test))]
 impl<T> Ord for *const T {
-    #[inline(always)]
+    #[inline]
     fn lt(&self, other: &*const T) -> bool {
         (*self as uint) < (*other as uint)
     }
-    #[inline(always)]
+    #[inline]
     fn le(&self, other: &*const T) -> bool {
         (*self as uint) <= (*other as uint)
     }
-    #[inline(always)]
+    #[inline]
     fn ge(&self, other: &*const T) -> bool {
         (*self as uint) >= (*other as uint)
     }
-    #[inline(always)]
+    #[inline]
     fn gt(&self, other: &*const T) -> bool {
         (*self as uint) > (*other as uint)
     }

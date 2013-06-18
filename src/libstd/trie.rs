@@ -34,17 +34,17 @@ pub struct TrieMap<T> {
 
 impl<T> Container for TrieMap<T> {
     /// Return the number of elements in the map
-    #[inline(always)]
+    #[inline]
     fn len(&const self) -> uint { self.length }
 
     /// Return true if the map contains no elements
-    #[inline(always)]
+    #[inline]
     fn is_empty(&const self) -> bool { self.len() == 0 }
 }
 
 impl<T> Mutable for TrieMap<T> {
     /// Clear the map, removing all values.
-    #[inline(always)]
+    #[inline]
     fn clear(&mut self) {
         self.root = TrieNode::new();
         self.length = 0;
@@ -53,37 +53,37 @@ impl<T> Mutable for TrieMap<T> {
 
 impl<T> Map<uint, T> for TrieMap<T> {
     /// Return true if the map contains a value for the specified key
-    #[inline(always)]
+    #[inline]
     fn contains_key(&self, key: &uint) -> bool {
         self.find(key).is_some()
     }
 
     /// Visit all key-value pairs in order
-    #[inline(always)]
+    #[inline]
     fn each<'a>(&'a self, f: &fn(&uint, &'a T) -> bool) -> bool {
         self.root.each(f)
     }
 
     /// Visit all keys in order
-    #[inline(always)]
+    #[inline]
     fn each_key(&self, f: &fn(&uint) -> bool) -> bool {
         self.each(|k, _| f(k))
     }
 
     /// Visit all values in order
-    #[inline(always)]
+    #[inline]
     fn each_value<'a>(&'a self, f: &fn(&'a T) -> bool) -> bool {
         self.each(|_, v| f(v))
     }
 
     /// Iterate over the map and mutate the contained values
-    #[inline(always)]
+    #[inline]
     fn mutate_values(&mut self, f: &fn(&uint, &mut T) -> bool) -> bool {
         self.root.mutate_values(f)
     }
 
     /// Return a reference to the value corresponding to the key
-    #[inline(hint)]
+    #[inline]
     fn find<'a>(&'a self, key: &uint) -> Option<&'a T> {
         let mut node: &'a TrieNode<T> = &self.root;
         let mut idx = 0;
@@ -104,7 +104,7 @@ impl<T> Map<uint, T> for TrieMap<T> {
     }
 
     /// Return a mutable reference to the value corresponding to the key
-    #[inline(always)]
+    #[inline]
     fn find_mut<'a>(&'a mut self, key: &uint) -> Option<&'a mut T> {
         find_mut(&mut self.root.children[chunk(*key, 0)], *key, 1)
     }
@@ -112,14 +112,14 @@ impl<T> Map<uint, T> for TrieMap<T> {
     /// Insert a key-value pair into the map. An existing value for a
     /// key is replaced by the new value. Return true if the key did
     /// not already exist in the map.
-    #[inline(always)]
+    #[inline]
     fn insert(&mut self, key: uint, value: T) -> bool {
         self.swap(key, value).is_none()
     }
 
     /// Remove a key-value pair from the map. Return true if the key
     /// was present in the map, otherwise false.
-    #[inline(always)]
+    #[inline]
     fn remove(&mut self, key: &uint) -> bool {
         self.pop(key).is_some()
     }
@@ -147,25 +147,25 @@ impl<T> Map<uint, T> for TrieMap<T> {
 
 impl<T> TrieMap<T> {
     /// Create an empty TrieMap
-    #[inline(always)]
+    #[inline]
     pub fn new() -> TrieMap<T> {
         TrieMap{root: TrieNode::new(), length: 0}
     }
 
     /// Visit all key-value pairs in reverse order
-    #[inline(always)]
+    #[inline]
     pub fn each_reverse<'a>(&'a self, f: &fn(&uint, &'a T) -> bool) -> bool {
         self.root.each_reverse(f)
     }
 
     /// Visit all keys in reverse order
-    #[inline(always)]
+    #[inline]
     pub fn each_key_reverse(&self, f: &fn(&uint) -> bool) -> bool {
         self.each_reverse(|k, _| f(k))
     }
 
     /// Visit all values in reverse order
-    #[inline(always)]
+    #[inline]
     pub fn each_value_reverse(&self, f: &fn(&T) -> bool) -> bool {
         self.each_reverse(|_, v| f(v))
     }
@@ -178,15 +178,15 @@ pub struct TrieSet {
 
 impl BaseIter<uint> for TrieSet {
     /// Visit all values in order
-    #[inline(always)]
+    #[inline]
     fn each(&self, f: &fn(&uint) -> bool) -> bool { self.map.each_key(f) }
-    #[inline(always)]
+    #[inline]
     fn size_hint(&self) -> Option<uint> { Some(self.len()) }
 }
 
 impl ReverseIter<uint> for TrieSet {
     /// Visit all values in reverse order
-    #[inline(always)]
+    #[inline]
     fn each_reverse(&self, f: &fn(&uint) -> bool) -> bool {
         self.map.each_key_reverse(f)
     }
@@ -194,43 +194,43 @@ impl ReverseIter<uint> for TrieSet {
 
 impl Container for TrieSet {
     /// Return the number of elements in the set
-    #[inline(always)]
+    #[inline]
     fn len(&const self) -> uint { self.map.len() }
 
     /// Return true if the set contains no elements
-    #[inline(always)]
+    #[inline]
     fn is_empty(&const self) -> bool { self.map.is_empty() }
 }
 
 impl Mutable for TrieSet {
     /// Clear the set, removing all values.
-    #[inline(always)]
+    #[inline]
     fn clear(&mut self) { self.map.clear() }
 }
 
 impl TrieSet {
     /// Create an empty TrieSet
-    #[inline(always)]
+    #[inline]
     pub fn new() -> TrieSet {
         TrieSet{map: TrieMap::new()}
     }
 
     /// Return true if the set contains a value
-    #[inline(always)]
+    #[inline]
     pub fn contains(&self, value: &uint) -> bool {
         self.map.contains_key(value)
     }
 
     /// Add a value to the set. Return true if the value was not already
     /// present in the set.
-    #[inline(always)]
+    #[inline]
     pub fn insert(&mut self, value: uint) -> bool {
         self.map.insert(value, ())
     }
 
     /// Remove a value from the set. Return true if the value was
     /// present in the set.
-    #[inline(always)]
+    #[inline]
     pub fn remove(&mut self, value: &uint) -> bool {
         self.map.remove(value)
     }
@@ -242,7 +242,7 @@ struct TrieNode<T> {
 }
 
 impl<T> TrieNode<T> {
-    #[inline(always)]
+    #[inline]
     fn new() -> TrieNode<T> {
         // FIXME: #5244: [Nothing, ..SIZE] should be possible without Copy
         TrieNode{count: 0,
@@ -291,7 +291,7 @@ impl<T> TrieNode<T> {
 }
 
 // if this was done via a trait, the key could be generic
-#[inline(always)]
+#[inline]
 fn chunk(n: uint, idx: uint) -> uint {
     let sh = uint::bits - (SHIFT * (idx + 1));
     (n >> sh) & MASK

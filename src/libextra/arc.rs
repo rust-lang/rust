@@ -58,7 +58,7 @@ pub struct Condvar<'self> {
 
 impl<'self> Condvar<'self> {
     /// Atomically exit the associated ARC and block until a signal is sent.
-    #[inline(always)]
+    #[inline]
     pub fn wait(&self) { self.wait_on(0) }
 
     /**
@@ -67,7 +67,7 @@ impl<'self> Condvar<'self> {
      *
      * wait() is equivalent to wait_on(0).
      */
-    #[inline(always)]
+    #[inline]
     pub fn wait_on(&self, condvar_id: uint) {
         assert!(!*self.failed);
         self.cond.wait_on(condvar_id);
@@ -76,28 +76,28 @@ impl<'self> Condvar<'self> {
     }
 
     /// Wake up a blocked task. Returns false if there was no blocked task.
-    #[inline(always)]
+    #[inline]
     pub fn signal(&self) -> bool { self.signal_on(0) }
 
     /**
      * Wake up a blocked task on a specified condvar (as
      * sync::cond.signal_on). Returns false if there was no blocked task.
      */
-    #[inline(always)]
+    #[inline]
     pub fn signal_on(&self, condvar_id: uint) -> bool {
         assert!(!*self.failed);
         self.cond.signal_on(condvar_id)
     }
 
     /// Wake up all blocked tasks. Returns the number of tasks woken.
-    #[inline(always)]
+    #[inline]
     pub fn broadcast(&self) -> uint { self.broadcast_on(0) }
 
     /**
      * Wake up all blocked tasks on a specified condvar (as
      * sync::cond.broadcast_on). Returns the number of tasks woken.
      */
-    #[inline(always)]
+    #[inline]
     pub fn broadcast_on(&self, condvar_id: uint) -> uint {
         assert!(!*self.failed);
         self.cond.broadcast_on(condvar_id)
@@ -198,7 +198,7 @@ impl<T:Owned> MutexARC<T> {
      * any tasks that subsequently try to access it (including those already
      * blocked on the mutex) will also fail immediately.
      */
-    #[inline(always)]
+    #[inline]
     pub unsafe fn access<U>(&self, blk: &fn(x: &mut T) -> U) -> U {
         unsafe {
             let state = self.x.get();
@@ -213,7 +213,7 @@ impl<T:Owned> MutexARC<T> {
     }
 
     /// As access(), but with a condvar, as sync::mutex.lock_cond().
-    #[inline(always)]
+    #[inline]
     pub unsafe fn access_cond<'x, 'c, U>(&self,
                                          blk: &fn(x: &'x mut T,
                                                   c: &'c Condvar) -> U)
@@ -231,7 +231,7 @@ impl<T:Owned> MutexARC<T> {
 }
 
 // Common code for {mutex.access,rwlock.write}{,_cond}.
-#[inline(always)]
+#[inline]
 #[doc(hidden)]
 fn check_poison(is_mutex: bool, failed: bool) {
     if failed {
@@ -322,7 +322,7 @@ impl<T:Const + Owned> RWARC<T> {
      * that other tasks won't block forever. As MutexARC.access, it will also
      * poison the ARC, so subsequent readers and writers will both also fail.
      */
-    #[inline(always)]
+    #[inline]
     pub fn write<U>(&self, blk: &fn(x: &mut T) -> U) -> U {
         unsafe {
             let state = self.x.get();
@@ -335,7 +335,7 @@ impl<T:Const + Owned> RWARC<T> {
     }
 
     /// As write(), but with a condvar, as sync::rwlock.write_cond().
-    #[inline(always)]
+    #[inline]
     pub fn write_cond<'x, 'c, U>(&self,
                                  blk: &fn(x: &'x mut T, c: &'c Condvar) -> U)
                                  -> U {

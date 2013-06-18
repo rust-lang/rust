@@ -45,7 +45,7 @@ pub trait TotalEq {
 macro_rules! totaleq_impl(
     ($t:ty) => {
         impl TotalEq for $t {
-            #[inline(always)]
+            #[inline]
             fn equals(&self, other: &$t) -> bool { *self == *other }
         }
     }
@@ -84,27 +84,27 @@ pub trait TotalOrd: TotalEq {
 }
 
 impl TotalOrd for Ordering {
-    #[inline(always)]
+    #[inline]
     fn cmp(&self, other: &Ordering) -> Ordering {
         (*self as int).cmp(&(*other as int))
     }
 }
 
 impl Ord for Ordering {
-    #[inline(always)]
+    #[inline]
     fn lt(&self, other: &Ordering) -> bool { (*self as int) < (*other as int) }
-    #[inline(always)]
+    #[inline]
     fn le(&self, other: &Ordering) -> bool { (*self as int) <= (*other as int) }
-    #[inline(always)]
+    #[inline]
     fn gt(&self, other: &Ordering) -> bool { (*self as int) > (*other as int) }
-    #[inline(always)]
+    #[inline]
     fn ge(&self, other: &Ordering) -> bool { (*self as int) >= (*other as int) }
 }
 
 macro_rules! totalord_impl(
     ($t:ty) => {
         impl TotalOrd for $t {
-            #[inline(always)]
+            #[inline]
             fn cmp(&self, other: &$t) -> Ordering {
                 if *self < *other { Less }
                 else if *self > *other { Greater }
@@ -146,7 +146,7 @@ Return `o1` if it is not `Equal`, otherwise `o2`. Simulates the
 lexical ordering on a type `(int, int)`.
 */
 // used in deriving code in libsyntax
-#[inline(always)]
+#[inline]
 pub fn lexical_ordering(o1: Ordering, o2: Ordering) -> Ordering {
     match o1 {
         Equal => o2,
@@ -180,12 +180,12 @@ pub trait Equiv<T> {
     fn equiv(&self, other: &T) -> bool;
 }
 
-#[inline(always)]
+#[inline]
 pub fn min<T:Ord>(v1: T, v2: T) -> T {
     if v1 < v2 { v1 } else { v2 }
 }
 
-#[inline(always)]
+#[inline]
 pub fn max<T:Ord>(v1: T, v2: T) -> T {
     if v1 > v2 { v1 } else { v2 }
 }

@@ -1016,7 +1016,7 @@ fn join_bits<O:DataFlowOperator>(oper: &O,
     bitwise(out_vec, in_vec, |a, b| oper.join(a, b))
 }
 
-#[inline(always)]
+#[inline]
 fn bitwise(out_vec: &mut [uint],
            in_vec: &[uint],
            op: &fn(uint, uint) -> uint) -> bool {

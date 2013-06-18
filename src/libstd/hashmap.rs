@@ -59,7 +59,7 @@ enum SearchResult {
     FoundEntry(uint), FoundHole(uint), TableFull
 }
 
-#[inline(always)]
+#[inline]
 fn resize_at(capacity: uint) -> uint {
     ((capacity as float) * 3. / 4.) as uint
 }
@@ -85,19 +85,19 @@ fn linear_map_with_capacity_and_keys<K:Eq + Hash,V>(
 }
 
 impl<K:Hash + Eq,V> HashMap<K, V> {
-    #[inline(always)]
+    #[inline]
     fn to_bucket(&self, h: uint) -> uint {
         // A good hash function with entropy spread over all of the
         // bits is assumed. SipHash is more than good enough.
         h % self.buckets.len()
     }
 
-    #[inline(always)]
+    #[inline]
     fn next_bucket(&self, idx: uint, len_buckets: uint) -> uint {
         (idx + 1) % len_buckets
     }
 
-    #[inline(always)]
+    #[inline]
     fn bucket_sequence(&self, hash: uint,
                        op: &fn(uint) -> bool) -> bool {
         let start_idx = self.to_bucket(hash);
@@ -112,20 +112,20 @@ impl<K:Hash + Eq,V> HashMap<K, V> {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     fn bucket_for_key(&self, k: &K) -> SearchResult {
         let hash = k.hash_keyed(self.k0, self.k1) as uint;
         self.bucket_for_key_with_hash(hash, k)
     }
 
-    #[inline(always)]
+    #[inline]
     fn bucket_for_key_equiv<Q:Hash + Equiv<K>>(&self, k: &Q)
                                                -> SearchResult {
         let hash = k.hash_keyed(self.k0, self.k1) as uint;
         self.bucket_for_key_with_hash_equiv(hash, k)
     }
 
-    #[inline(always)]
+    #[inline]
     fn bucket_for_key_with_hash(&self,
                                 hash: uint,
                                 k: &K)
@@ -141,7 +141,7 @@ impl<K:Hash + Eq,V> HashMap<K, V> {
         TableFull
     }
 
-    #[inline(always)]
+    #[inline]
     fn bucket_for_key_with_hash_equiv<Q:Equiv<K>>(&self,
                                                   hash: uint,
                                                   k: &Q)
@@ -161,7 +161,7 @@ impl<K:Hash + Eq,V> HashMap<K, V> {
 
     /// Expand the capacity of the array to the next power of two
     /// and re-insert each of the existing buckets.
-    #[inline(always)]
+    #[inline]
     fn expand(&mut self) {
         let new_capacity = self.buckets.len() * 2;
         self.resize(new_capacity);
@@ -190,7 +190,7 @@ impl<K:Hash + Eq,V> HashMap<K, V> {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     fn value_for_bucket<'a>(&'a self, idx: uint) -> &'a V {
         match self.buckets[idx] {
             Some(ref bkt) => &bkt.value,
@@ -198,7 +198,7 @@ impl<K:Hash + Eq,V> HashMap<K, V> {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     fn mut_value_for_bucket<'a>(&'a mut self, idx: uint) -> &'a mut V {
         match self.buckets[idx] {
             Some(ref mut bkt) => &mut bkt.value,

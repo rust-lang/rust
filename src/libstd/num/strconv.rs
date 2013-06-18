@@ -42,12 +42,12 @@ pub enum SignFormat {
     SignAll
 }
 
-#[inline(always)]
+#[inline]
 fn is_NaN<T:Eq>(num: &T) -> bool {
     *num != *num
 }
 
-#[inline(always)]
+#[inline]
 fn is_inf<T:Eq+NumStrConv>(num: &T) -> bool {
     match NumStrConv::inf() {
         None    => false,
@@ -55,7 +55,7 @@ fn is_inf<T:Eq+NumStrConv>(num: &T) -> bool {
     }
 }
 
-#[inline(always)]
+#[inline]
 fn is_neg_inf<T:Eq+NumStrConv>(num: &T) -> bool {
     match NumStrConv::neg_inf() {
         None    => false,
@@ -63,7 +63,7 @@ fn is_neg_inf<T:Eq+NumStrConv>(num: &T) -> bool {
     }
 }
 
-#[inline(always)]
+#[inline]
 fn is_neg_zero<T:Eq+One+Zero+NumStrConv+Div<T,T>>(num: &T) -> bool {
     let _0: T = Zero::zero();
     let _1: T = One::one();
@@ -83,23 +83,23 @@ pub trait NumStrConv {
 
 macro_rules! impl_NumStrConv_Floating (($t:ty) => (
     impl NumStrConv for $t {
-        #[inline(always)]
+        #[inline]
         fn NaN()      -> Option<$t> { Some( 0.0 / 0.0) }
-        #[inline(always)]
+        #[inline]
         fn inf()      -> Option<$t> { Some( 1.0 / 0.0) }
-        #[inline(always)]
+        #[inline]
         fn neg_inf()  -> Option<$t> { Some(-1.0 / 0.0) }
-        #[inline(always)]
+        #[inline]
         fn neg_zero() -> Option<$t> { Some(-0.0      ) }
 
-        #[inline(always)]
+        #[inline]
         fn round_to_zero(&self) -> $t {
             ( if *self < 0.0 { f64::ceil(*self as f64)  }
               else           { f64::floor(*self as f64) }
             ) as $t
         }
 
-        #[inline(always)]
+        #[inline]
         fn fractional_part(&self) -> $t {
             *self - self.round_to_zero()
         }
@@ -108,13 +108,13 @@ macro_rules! impl_NumStrConv_Floating (($t:ty) => (
 
 macro_rules! impl_NumStrConv_Integer (($t:ty) => (
     impl NumStrConv for $t {
-        #[inline(always)] fn NaN()      -> Option<$t> { None }
-        #[inline(always)] fn inf()      -> Option<$t> { None }
-        #[inline(always)] fn neg_inf()  -> Option<$t> { None }
-        #[inline(always)] fn neg_zero() -> Option<$t> { None }
+        #[inline] fn NaN()      -> Option<$t> { None }
+        #[inline] fn inf()      -> Option<$t> { None }
+        #[inline] fn neg_inf()  -> Option<$t> { None }
+        #[inline] fn neg_zero() -> Option<$t> { None }
 
-        #[inline(always)] fn round_to_zero(&self)   -> $t { *self }
-        #[inline(always)] fn fractional_part(&self) -> $t {     0 }
+        #[inline] fn round_to_zero(&self)   -> $t { *self }
+        #[inline] fn fractional_part(&self) -> $t {     0 }
     }
 ))
 
@@ -381,7 +381,7 @@ pub fn to_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+NumStrConv+Copy+
  * Converts a number to its string representation. This is a wrapper for
  * `to_str_bytes_common()`, for details see there.
  */
-#[inline(always)]
+#[inline]
 pub fn to_str_common<T:NumCast+Zero+One+Eq+Ord+NumStrConv+Copy+
                             Div<T,T>+Neg<T>+Rem<T,T>+Mul<T,T>>(
         num: &T, radix: uint, negative_zero: bool,
@@ -632,7 +632,7 @@ pub fn from_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Copy+Div<T,T>+
  * Parses a string as a number. This is a wrapper for
  * `from_str_bytes_common()`, for details see there.
  */
-#[inline(always)]
+#[inline]
 pub fn from_str_common<T:NumCast+Zero+One+Eq+Ord+Copy+Div<T,T>+Mul<T,T>+
                               Sub<T,T>+Neg<T>+Add<T,T>+NumStrConv>(
         buf: &str, radix: uint, negative: bool, fractional: bool,

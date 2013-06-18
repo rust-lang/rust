@@ -34,25 +34,25 @@ pub trait Clone {
 
 impl<T: Clone> Clone for ~T {
     /// Return a deep copy of the owned box.
-    #[inline(always)]
+    #[inline]
     fn clone(&self) -> ~T { ~(**self).clone() }
 }
 
 impl<T> Clone for @T {
     /// Return a shallow copy of the managed box.
-    #[inline(always)]
+    #[inline]
     fn clone(&self) -> @T { *self }
 }
 
 impl<T> Clone for @mut T {
     /// Return a shallow copy of the managed box.
-    #[inline(always)]
+    #[inline]
     fn clone(&self) -> @mut T { *self }
 }
 
 impl<'self, T> Clone for &'self T {
     /// Return a shallow copy of the borrowed pointer.
-    #[inline(always)]
+    #[inline]
     fn clone(&self) -> &'self T { *self }
 }
 
@@ -60,7 +60,7 @@ macro_rules! clone_impl(
     ($t:ty) => {
         impl Clone for $t {
             /// Return a deep copy of the value.
-            #[inline(always)]
+            #[inline]
             fn clone(&self) -> $t { *self }
         }
     }
@@ -96,7 +96,7 @@ pub trait DeepClone {
 
 impl<T: DeepClone> DeepClone for ~T {
     /// Return a deep copy of the owned box.
-    #[inline(always)]
+    #[inline]
     fn deep_clone(&self) -> ~T { ~(**self).deep_clone() }
 }
 
@@ -104,7 +104,7 @@ impl<T: DeepClone> DeepClone for ~T {
 impl<T: Const + DeepClone> DeepClone for @T {
     /// Return a deep copy of the managed box. The `Const` trait is required to prevent performing
     /// a deep clone of a potentially cyclical type.
-    #[inline(always)]
+    #[inline]
     fn deep_clone(&self) -> @T { @(**self).deep_clone() }
 }
 
@@ -112,7 +112,7 @@ impl<T: Const + DeepClone> DeepClone for @T {
 impl<T: Const + DeepClone> DeepClone for @mut T {
     /// Return a deep copy of the managed box. The `Const` trait is required to prevent performing
     /// a deep clone of a potentially cyclical type.
-    #[inline(always)]
+    #[inline]
     fn deep_clone(&self) -> @mut T { @mut (**self).deep_clone() }
 }
 
@@ -120,7 +120,7 @@ macro_rules! deep_clone_impl(
     ($t:ty) => {
         impl DeepClone for $t {
             /// Return a deep copy of the value.
-            #[inline(always)]
+            #[inline]
             fn deep_clone(&self) -> $t { *self }
         }
     }

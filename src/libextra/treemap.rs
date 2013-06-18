@@ -75,13 +75,13 @@ fn lt<K: Ord + TotalOrd, V>(a: &TreeMap<K, V>,
 }
 
 impl<K: Ord + TotalOrd, V> Ord for TreeMap<K, V> {
-    #[inline(always)]
+    #[inline]
     fn lt(&self, other: &TreeMap<K, V>) -> bool { lt(self, other) }
-    #[inline(always)]
+    #[inline]
     fn le(&self, other: &TreeMap<K, V>) -> bool { !lt(other, self) }
-    #[inline(always)]
+    #[inline]
     fn ge(&self, other: &TreeMap<K, V>) -> bool { !lt(self, other) }
-    #[inline(always)]
+    #[inline]
     fn gt(&self, other: &TreeMap<K, V>) -> bool { lt(other, self) }
 }
 
@@ -145,7 +145,7 @@ impl<K: TotalOrd, V> Map<K, V> for TreeMap<K, V> {
     }
 
     /// Return a mutable reference to the value corresponding to the key
-    #[inline(always)]
+    #[inline]
     fn find_mut<'a>(&'a mut self, key: &K) -> Option<&'a mut V> {
         find_mut(&mut self.root, key)
     }
@@ -236,7 +236,7 @@ impl<'self, K, V> Iterator<(&'self K, &'self V)> for TreeMapIterator<'self, K, V
 
 impl<'self, T> Iterator<&'self T> for TreeSetIterator<'self, T> {
     /// Advance the iterator to the next node (in order). If there are no more nodes, return `None`.
-    #[inline(always)]
+    #[inline]
     fn next(&mut self) -> Option<&'self T> {
         do self.iter.next().map |&(value, _)| { value }
     }
@@ -251,69 +251,69 @@ pub struct TreeSet<T> {
 
 impl<T: TotalOrd> BaseIter<T> for TreeSet<T> {
     /// Visit all values in order
-    #[inline(always)]
+    #[inline]
     fn each(&self, f: &fn(&T) -> bool) -> bool { self.map.each_key(f) }
-    #[inline(always)]
+    #[inline]
     fn size_hint(&self) -> Option<uint> { Some(self.len()) }
 }
 
 impl<T: TotalOrd> ReverseIter<T> for TreeSet<T> {
     /// Visit all values in reverse order
-    #[inline(always)]
+    #[inline]
     fn each_reverse(&self, f: &fn(&T) -> bool) -> bool {
         self.map.each_key_reverse(f)
     }
 }
 
 impl<T: Eq + TotalOrd> Eq for TreeSet<T> {
-    #[inline(always)]
+    #[inline]
     fn eq(&self, other: &TreeSet<T>) -> bool { self.map == other.map }
-    #[inline(always)]
+    #[inline]
     fn ne(&self, other: &TreeSet<T>) -> bool { self.map != other.map }
 }
 
 impl<T: Ord + TotalOrd> Ord for TreeSet<T> {
-    #[inline(always)]
+    #[inline]
     fn lt(&self, other: &TreeSet<T>) -> bool { self.map < other.map }
-    #[inline(always)]
+    #[inline]
     fn le(&self, other: &TreeSet<T>) -> bool { self.map <= other.map }
-    #[inline(always)]
+    #[inline]
     fn ge(&self, other: &TreeSet<T>) -> bool { self.map >= other.map }
-    #[inline(always)]
+    #[inline]
     fn gt(&self, other: &TreeSet<T>) -> bool { self.map > other.map }
 }
 
 impl<T: TotalOrd> Container for TreeSet<T> {
     /// Return the number of elements in the set
-    #[inline(always)]
+    #[inline]
     fn len(&const self) -> uint { self.map.len() }
 
     /// Return true if the set contains no elements
-    #[inline(always)]
+    #[inline]
     fn is_empty(&const self) -> bool { self.map.is_empty() }
 }
 
 impl<T: TotalOrd> Mutable for TreeSet<T> {
     /// Clear the set, removing all values.
-    #[inline(always)]
+    #[inline]
     fn clear(&mut self) { self.map.clear() }
 }
 
 impl<T: TotalOrd> Set<T> for TreeSet<T> {
     /// Return true if the set contains a value
-    #[inline(always)]
+    #[inline]
     fn contains(&self, value: &T) -> bool {
         self.map.contains_key(value)
     }
 
     /// Add a value to the set. Return true if the value was not already
     /// present in the set.
-    #[inline(always)]
+    #[inline]
     fn insert(&mut self, value: T) -> bool { self.map.insert(value, ()) }
 
     /// Remove a value from the set. Return true if the value was
     /// present in the set.
-    #[inline(always)]
+    #[inline]
     fn remove(&mut self, value: &T) -> bool { self.map.remove(value) }
 
     /// Return true if the set has no elements in common with `other`.
@@ -336,7 +336,7 @@ impl<T: TotalOrd> Set<T> for TreeSet<T> {
     }
 
     /// Return true if the set is a subset of another
-    #[inline(always)]
+    #[inline]
     fn is_subset(&self, other: &TreeSet<T>) -> bool {
         other.is_superset(self)
     }
@@ -490,12 +490,12 @@ impl<T: TotalOrd> Set<T> for TreeSet<T> {
 
 impl<T: TotalOrd> TreeSet<T> {
     /// Create an empty TreeSet
-    #[inline(always)]
+    #[inline]
     pub fn new() -> TreeSet<T> { TreeSet{map: TreeMap::new()} }
 
     /// Get a lazy iterator over the values in the set.
     /// Requires that it be frozen (immutable).
-    #[inline(always)]
+    #[inline]
     pub fn iter<'a>(&'a self) -> TreeSetIterator<'a, T> {
         TreeSetIterator{iter: self.map.iter()}
     }
@@ -518,7 +518,7 @@ struct TreeNode<K, V> {
 
 impl<K: TotalOrd, V> TreeNode<K, V> {
     /// Creates a new tree node.
-    #[inline(always)]
+    #[inline]
     pub fn new(key: K, value: V) -> TreeNode<K, V> {
         TreeNode{key: key, value: value, left: None, right: None, level: 1}
     }

@@ -36,19 +36,19 @@ pub type BigRational = Ratio<BigInt>;
 impl<T: Clone + Integer + Ord>
     Ratio<T> {
     /// Create a ratio representing the integer `t`.
-    #[inline(always)]
+    #[inline]
     pub fn from_integer(t: T) -> Ratio<T> {
         Ratio::new_raw(t, One::one())
     }
 
     /// Create a ratio without checking for `denom == 0` or reducing.
-    #[inline(always)]
+    #[inline]
     pub fn new_raw(numer: T, denom: T) -> Ratio<T> {
         Ratio { numer: numer, denom: denom }
     }
 
     /// Create a new Ratio. Fails if `denom == 0`.
-    #[inline(always)]
+    #[inline]
     pub fn new(numer: T, denom: T) -> Ratio<T> {
         if denom == Zero::zero() {
             fail!("denominator == 0");
@@ -206,7 +206,7 @@ impl<T: Clone + Integer + Ord>
         }
     }
 
-    #[inline(always)]
+    #[inline]
     fn round(&self) -> Ratio<T> {
         if *self < Zero::zero() {
             Ratio::from_integer((self.numer - self.denom + One::one()) / self.denom)
@@ -215,7 +215,7 @@ impl<T: Clone + Integer + Ord>
         }
     }
 
-    #[inline(always)]
+    #[inline]
     fn trunc(&self) -> Ratio<T> {
         Ratio::from_integer(self.numer / self.denom)
     }

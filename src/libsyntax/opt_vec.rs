@@ -103,7 +103,7 @@ impl<T:Copy> OptVec<T> {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     fn mapi_to_vec<B>(&self, op: &fn(uint, &T) -> B) -> ~[B] {
         let mut index = 0;
         old_iter::map_to_vec(self, |a| {
@@ -145,31 +145,31 @@ impl<A> BaseIter<A> for OptVec<A> {
 }
 
 impl<A> old_iter::ExtendedIter<A> for OptVec<A> {
-    #[inline(always)]
+    #[inline]
     fn eachi(&self, blk: &fn(v: uint, v: &A) -> bool) -> bool {
         old_iter::eachi(self, blk)
     }
-    #[inline(always)]
+    #[inline]
     fn all(&self, blk: &fn(&A) -> bool) -> bool {
         old_iter::all(self, blk)
     }
-    #[inline(always)]
+    #[inline]
     fn any(&self, blk: &fn(&A) -> bool) -> bool {
         old_iter::any(self, blk)
     }
-    #[inline(always)]
+    #[inline]
     fn foldl<B>(&self, b0: B, blk: &fn(&B, &A) -> B) -> B {
         old_iter::foldl(self, b0, blk)
     }
-    #[inline(always)]
+    #[inline]
     fn position(&self, f: &fn(&A) -> bool) -> Option<uint> {
         old_iter::position(self, f)
     }
-    #[inline(always)]
+    #[inline]
     fn map_to_vec<B>(&self, op: &fn(&A) -> B) -> ~[B] {
         old_iter::map_to_vec(self, op)
     }
-    #[inline(always)]
+    #[inline]
     fn flat_map_to_vec<B,IB:BaseIter<B>>(&self, op: &fn(&A) -> IB)
         -> ~[B] {
         old_iter::flat_map_to_vec(self, op)
@@ -178,20 +178,20 @@ impl<A> old_iter::ExtendedIter<A> for OptVec<A> {
 }
 
 impl<A: Eq> old_iter::EqIter<A> for OptVec<A> {
-    #[inline(always)]
+    #[inline]
     fn contains(&self, x: &A) -> bool { old_iter::contains(self, x) }
-    #[inline(always)]
+    #[inline]
     fn count(&self, x: &A) -> uint { old_iter::count(self, x) }
 }
 
 impl<A: Copy> old_iter::CopyableIter<A> for OptVec<A> {
-    #[inline(always)]
+    #[inline]
     fn filter_to_vec(&self, pred: &fn(&A) -> bool) -> ~[A] {
         old_iter::filter_to_vec(self, pred)
     }
-    #[inline(always)]
+    #[inline]
     fn to_vec(&self) -> ~[A] { old_iter::to_vec(self) }
-    #[inline(always)]
+    #[inline]
     fn find(&self, f: &fn(&A) -> bool) -> Option<A> {
         old_iter::find(self, f)
     }
