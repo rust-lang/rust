@@ -10,6 +10,8 @@
 
 // Test for concurrent tasks
 
+// xfail-test OOM on linux-32 without opts
+
 use std::comm::*;
 use std::os;
 use std::task;
