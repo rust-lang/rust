@@ -82,8 +82,7 @@ pub fn cleanup() {
         let count_ptr = exchange_count_ptr();
         let allocations = atomic_load(&*count_ptr);
         if allocations != 0 {
-            rtabort!("exchange heap not empty on exit\
-                    %i dangling allocations", allocations);
+            rtabort!("exchange heap not empty on exit - %i dangling allocations", allocations);
         }
     }
 }

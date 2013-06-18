@@ -10,18 +10,16 @@
 
 #[macro_escape];
 
+macro_rules! rterrln (
+    ($( $arg:expr),+) => ( {
+        ::rt::util::dumb_println(fmt!( $($arg),+ ));
+    } )
+)
+
 // Some basic logging
 macro_rules! rtdebug_ (
     ($( $arg:expr),+) => ( {
-        dumb_println(fmt!( $($arg),+ ));
-
-        fn dumb_println(s: &str) {
-            use io::WriterUtil;
-            let dbg = ::libc::STDERR_FILENO as ::io::fd_t;
-            dbg.write_str(s);
-            dbg.write_str("\n");
-        }
-
+        rterrln!( $($arg),+ )
     } )
 )
 
@@ -41,8 +39,7 @@ macro_rules! rtassert (
 
 macro_rules! rtabort(
     ($( $msg:expr),+) => ( {
-        rtdebug!($($msg),+);
-        ::rt::util::abort();
+        ::rt::util::abort(fmt!($($msg),+));
     } )
 )
 
