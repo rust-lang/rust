@@ -26,7 +26,7 @@ use rand::{Rng,Rand};
 mod ziggurat_tables;
 
 // inlining should mean there is no performance penalty for this
-#[inline(always)]
+#[inline]
 fn ziggurat<R:Rng>(rng: &mut R,
                    center_u: bool,
                    X: ziggurat_tables::ZigTable,
@@ -77,11 +77,11 @@ pub struct StandardNormal(f64);
 
 impl Rand for StandardNormal {
     fn rand<R:Rng>(rng: &mut R) -> StandardNormal {
-        #[inline(always)]
+        #[inline]
         fn pdf(x: f64) -> f64 {
             f64::exp((-x*x/2.0) as f64) as f64
         }
-        #[inline(always)]
+        #[inline]
         fn zero_case<R:Rng>(rng: &mut R, u: f64) -> f64 {
             // compute a random number in the tail by hand
 
@@ -131,11 +131,11 @@ pub struct Exp1(f64);
 impl Rand for Exp1 {
     #[inline]
     fn rand<R:Rng>(rng: &mut R) -> Exp1 {
-        #[inline(always)]
+        #[inline]
         fn pdf(x: f64) -> f64 {
             f64::exp(-x)
         }
-        #[inline(always)]
+        #[inline]
         fn zero_case<R:Rng>(rng: &mut R, _u: f64) -> f64 {
             ziggurat_tables::ZIG_EXP_R - f64::ln(rng.gen())
         }

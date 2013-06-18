@@ -29,7 +29,7 @@ pub trait CopyableTuple<T, U> {
 
 impl<T:Copy,U:Copy> CopyableTuple<T, U> for (T, U) {
     /// Return the first element of self
-    #[inline(always)]
+    #[inline]
     fn first(&self) -> T {
         match *self {
             (ref t, _) => copy *t,
@@ -37,7 +37,7 @@ impl<T:Copy,U:Copy> CopyableTuple<T, U> for (T, U) {
     }
 
     /// Return the second element of self
-    #[inline(always)]
+    #[inline]
     fn second(&self) -> U {
         match *self {
             (_, ref u) => copy *u,
@@ -45,7 +45,7 @@ impl<T:Copy,U:Copy> CopyableTuple<T, U> for (T, U) {
     }
 
     /// Return the results of swapping the two elements of self
-    #[inline(always)]
+    #[inline]
     fn swap(&self) -> (U, T) {
         match copy *self {
             (t, u) => (u, t),
@@ -63,13 +63,13 @@ pub trait ImmutableTuple<T, U> {
 }
 
 impl<T, U> ImmutableTuple<T, U> for (T, U) {
-    #[inline(always)]
+    #[inline]
     fn first_ref<'a>(&'a self) -> &'a T {
         match *self {
             (ref t, _) => t,
         }
     }
-    #[inline(always)]
+    #[inline]
     fn second_ref<'a>(&'a self) -> &'a U {
         match *self {
             (_, ref u) => u,
@@ -83,7 +83,7 @@ pub trait ExtendedTupleOps<A,B> {
 }
 
 impl<'self,A:Copy,B:Copy> ExtendedTupleOps<A,B> for (&'self [A], &'self [B]) {
-    #[inline(always)]
+    #[inline]
     fn zip(&self) -> ~[(A, B)] {
         match *self {
             (ref a, ref b) => {
@@ -92,7 +92,7 @@ impl<'self,A:Copy,B:Copy> ExtendedTupleOps<A,B> for (&'self [A], &'self [B]) {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     fn map<C>(&self, f: &fn(a: &A, b: &B) -> C) -> ~[C] {
         match *self {
             (ref a, ref b) => {
@@ -103,7 +103,7 @@ impl<'self,A:Copy,B:Copy> ExtendedTupleOps<A,B> for (&'self [A], &'self [B]) {
 }
 
 impl<A:Copy,B:Copy> ExtendedTupleOps<A,B> for (~[A], ~[B]) {
-    #[inline(always)]
+    #[inline]
     fn zip(&self) -> ~[(A, B)] {
         match *self {
             (ref a, ref b) => {
@@ -112,7 +112,7 @@ impl<A:Copy,B:Copy> ExtendedTupleOps<A,B> for (~[A], ~[B]) {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     fn map<C>(&self, f: &fn(a: &A, b: &B) -> C) -> ~[C] {
         match *self {
             (ref a, ref b) => {
@@ -144,7 +144,7 @@ macro_rules! tuple_impls {
 
                 impl<$($T:Clone),+> $cloneable_trait<$($T),+> for ($($T),+) {
                     $(
-                        #[inline(always)]
+                        #[inline]
                         fn $get_fn(&self) -> $T {
                             self.$get_ref_fn().clone()
                         }
@@ -157,7 +157,7 @@ macro_rules! tuple_impls {
 
                 impl<$($T),+> $immutable_trait<$($T),+> for ($($T),+) {
                     $(
-                        #[inline(always)]
+                        #[inline]
                         fn $get_ref_fn<'a>(&'a self) -> &'a $T {
                             match *self { $get_pattern => $ret }
                         }
@@ -172,11 +172,11 @@ macro_rules! tuple_impls {
 
                 #[cfg(not(test))]
                 impl<$($T:Eq),+> Eq for ($($T),+) {
-                    #[inline(always)]
+                    #[inline]
                     fn eq(&self, other: &($($T),+)) -> bool {
                         $(*self.$get_ref_fn() == *other.$get_ref_fn())&&+
                     }
-                    #[inline(always)]
+                    #[inline]
                     fn ne(&self, other: &($($T),+)) -> bool {
                         !(*self == *other)
                     }
@@ -184,7 +184,7 @@ macro_rules! tuple_impls {
 
                 #[cfg(not(test))]
                 impl<$($T:TotalEq),+> TotalEq for ($($T),+) {
-                    #[inline(always)]
+                    #[inline]
                     fn equals(&self, other: &($($T),+)) -> bool {
                         $(self.$get_ref_fn().equals(other.$get_ref_fn()))&&+
                     }
@@ -192,15 +192,15 @@ macro_rules! tuple_impls {
 
                 #[cfg(not(test))]
                 impl<$($T:Ord),+> Ord for ($($T),+) {
-                    #[inline(always)]
+                    #[inline]
                     fn lt(&self, other: &($($T),+)) -> bool {
                         lexical_lt!($(self.$get_ref_fn(), other.$get_ref_fn()),+)
                     }
-                    #[inline(always)]
+                    #[inline]
                     fn le(&self, other: &($($T),+)) -> bool { !(*other).lt(&(*self)) }
-                    #[inline(always)]
+                    #[inline]
                     fn ge(&self, other: &($($T),+)) -> bool { !(*self).lt(other) }
-                    #[inline(always)]
+                    #[inline]
                     fn gt(&self, other: &($($T),+)) -> bool { (*other).lt(&(*self)) }
                 }
 

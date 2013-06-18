@@ -571,34 +571,34 @@ impl FlowedMoveData {
 }
 
 impl DataFlowOperator for MoveDataFlowOperator {
-    #[inline(always)]
+    #[inline]
     fn initial_value(&self) -> bool {
         false // no loans in scope by default
     }
 
-    #[inline(always)]
+    #[inline]
     fn join(&self, succ: uint, pred: uint) -> uint {
         succ | pred // moves from both preds are in scope
     }
 
-    #[inline(always)]
+    #[inline]
     fn walk_closures(&self) -> bool {
         true
     }
 }
 
 impl DataFlowOperator for AssignDataFlowOperator {
-    #[inline(always)]
+    #[inline]
     fn initial_value(&self) -> bool {
         false // no assignments in scope by default
     }
 
-    #[inline(always)]
+    #[inline]
     fn join(&self, succ: uint, pred: uint) -> uint {
         succ | pred // moves from both preds are in scope
     }
 
-    #[inline(always)]
+    #[inline]
     fn walk_closures(&self) -> bool {
         true
     }

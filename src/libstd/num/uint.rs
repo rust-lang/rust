@@ -95,7 +95,7 @@ pub fn iterate(lo: uint, hi: uint, it: &fn(uint) -> bool) -> bool {
 }
 
 impl iter::Times for uint {
-    #[inline(always)]
+    #[inline]
     ///
     /// A convenience form for basic iteration. Given a uint `x`,
     /// `for x.times { ... }` executes the given block x times.
@@ -117,7 +117,7 @@ impl iter::Times for uint {
 }
 
 /// Returns the smallest power of 2 greater than or equal to `n`
-#[inline(always)]
+#[inline]
 pub fn next_power_of_two(n: uint) -> uint {
     let halfbits: uint = sys::size_of::<uint>() * 4u;
     let mut tmp: uint = n - 1u;

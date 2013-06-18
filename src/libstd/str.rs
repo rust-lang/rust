@@ -106,21 +106,21 @@ pub fn from_bytes_slice<'a>(vector: &'a [u8]) -> &'a str {
 }
 
 /// Copy a slice into a new unique str
-#[inline(always)]
+#[inline]
 pub fn to_owned(s: &str) -> ~str {
     unsafe { raw::slice_bytes_owned(s, 0, s.len()) }
 }
 
 impl ToStr for ~str {
-    #[inline(always)]
+    #[inline]
     fn to_str(&self) -> ~str { to_owned(*self) }
 }
 impl<'self> ToStr for &'self str {
-    #[inline(always)]
+    #[inline]
     fn to_str(&self) -> ~str { to_owned(*self) }
 }
 impl ToStr for @str {
-    #[inline(always)]
+    #[inline]
     fn to_str(&self) -> ~str { to_owned(*self) }
 }
 
@@ -241,26 +241,26 @@ pub trait CharEq {
     fn only_ascii(&self) -> bool;
 }
 impl CharEq for char {
-    #[inline(always)]
+    #[inline]
     fn matches(&self, c: char) -> bool { *self == c }
 
     fn only_ascii(&self) -> bool { (*self as uint) < 128 }
 }
 impl<'self> CharEq for &'self fn(char) -> bool {
-    #[inline(always)]
+    #[inline]
     fn matches(&self, c: char) -> bool { (*self)(c) }
 
     fn only_ascii(&self) -> bool { false }
 }
 impl CharEq for extern "Rust" fn(char) -> bool {
-    #[inline(always)]
+    #[inline]
     fn matches(&self, c: char) -> bool { (*self)(c) }
 
     fn only_ascii(&self) -> bool { false }
 }
 
 impl<'self, C: CharEq> CharEq for &'self [C] {
-    #[inline(always)]
+    #[inline]
     fn matches(&self, c: char) -> bool {
         self.iter().any_(|m| m.matches(c))
     }
@@ -705,7 +705,7 @@ impl<'self> StrUtil for &'self str {
 /**
  * Deprecated. Use the `as_c_str` method on strings instead.
  */
-#[inline(always)]
+#[inline]
 pub fn as_c_str<T>(s: &str, f: &fn(*libc::c_char) -> T) -> T {
     s.as_c_str(f)
 }
@@ -718,7 +718,7 @@ pub fn as_c_str<T>(s: &str, f: &fn(*libc::c_char) -> T) -> T {
  * indexable area for a null byte, as is the case in slices pointing
  * to full strings, or suffixes of them.
  */
-#[inline(always)]
+#[inline]
 pub fn as_buf<T>(s: &str, f: &fn(*u8, uint) -> T) -> T {
     unsafe {
         let v : *(*u8,uint) = transmute(&s);
@@ -915,7 +915,7 @@ pub mod traits {
     use super::{Str, eq_slice};
 
     impl<'self> Add<&'self str,~str> for &'self str {
-        #[inline(always)]
+        #[inline]
         fn add(&self, rhs: & &'self str) -> ~str {
             let mut ret = self.to_owned();
             ret.push_str(*rhs);
@@ -949,98 +949,98 @@ pub mod traits {
     }
 
     impl<'self> Eq for &'self str {
-        #[inline(always)]
+        #[inline]
         fn eq(&self, other: & &'self str) -> bool {
             eq_slice((*self), (*other))
         }
-        #[inline(always)]
+        #[inline]
         fn ne(&self, other: & &'self str) -> bool { !(*self).eq(other) }
     }
 
     impl Eq for ~str {
-        #[inline(always)]
+        #[inline]
         fn eq(&self, other: &~str) -> bool {
             eq_slice((*self), (*other))
         }
-        #[inline(always)]
+        #[inline]
         fn ne(&self, other: &~str) -> bool { !(*self).eq(other) }
     }
 
     impl Eq for @str {
-        #[inline(always)]
+        #[inline]
         fn eq(&self, other: &@str) -> bool {
             eq_slice((*self), (*other))
         }
-        #[inline(always)]
+        #[inline]
         fn ne(&self, other: &@str) -> bool { !(*self).eq(other) }
     }
 
     impl<'self> TotalEq for &'self str {
-        #[inline(always)]
+        #[inline]
         fn equals(&self, other: & &'self str) -> bool {
             eq_slice((*self), (*other))
         }
     }
 
     impl TotalEq for ~str {
-        #[inline(always)]
+        #[inline]
         fn equals(&self, other: &~str) -> bool {
             eq_slice((*self), (*other))
         }
     }
 
     impl TotalEq for @str {
-        #[inline(always)]
+        #[inline]
         fn equals(&self, other: &@str) -> bool {
             eq_slice((*self), (*other))
         }
     }
 
     impl<'self> Ord for &'self str {
-        #[inline(always)]
+        #[inline]
         fn lt(&self, other: & &'self str) -> bool { self.cmp(other) == Less }
-        #[inline(always)]
+        #[inline]
         fn le(&self, other: & &'self str) -> bool { self.cmp(other) != Greater }
-        #[inline(always)]
+        #[inline]
         fn ge(&self, other: & &'self str) -> bool { self.cmp(other) != Less }
-        #[inline(always)]
+        #[inline]
         fn gt(&self, other: & &'self str) -> bool { self.cmp(other) == Greater }
     }
 
     impl Ord for ~str {
-        #[inline(always)]
+        #[inline]
         fn lt(&self, other: &~str) -> bool { self.cmp(other) == Less }
-        #[inline(always)]
+        #[inline]
         fn le(&self, other: &~str) -> bool { self.cmp(other) != Greater }
-        #[inline(always)]
+        #[inline]
         fn ge(&self, other: &~str) -> bool { self.cmp(other) != Less }
-        #[inline(always)]
+        #[inline]
         fn gt(&self, other: &~str) -> bool { self.cmp(other) == Greater }
     }
 
     impl Ord for @str {
-        #[inline(always)]
+        #[inline]
         fn lt(&self, other: &@str) -> bool { self.cmp(other) == Less }
-        #[inline(always)]
+        #[inline]
         fn le(&self, other: &@str) -> bool { self.cmp(other) != Greater }
-        #[inline(always)]
+        #[inline]
         fn ge(&self, other: &@str) -> bool { self.cmp(other) != Less }
-        #[inline(always)]
+        #[inline]
         fn gt(&self, other: &@str) -> bool { self.cmp(other) == Greater }
     }
 
     impl<'self, S: Str> Equiv<S> for &'self str {
-        #[inline(always)]
+        #[inline]
         fn equiv(&self, other: &S) -> bool { eq_slice(*self, other.as_slice()) }
     }
 
     impl<'self, S: Str> Equiv<S> for @str {
-        #[inline(always)]
+        #[inline]
         fn equiv(&self, other: &S) -> bool { eq_slice(*self, other.as_slice()) }
     }
 
     impl<'self, S: Str> Equiv<S> for ~str {
-        #[inline(always)]
+        #[inline]
         fn equiv(&self, other: &S) -> bool { eq_slice(*self, other.as_slice()) }
     }
 }
@@ -1055,17 +1055,17 @@ pub trait Str {
 }
 
 impl<'self> Str for &'self str {
-    #[inline(always)]
+    #[inline]
     fn as_slice<'a>(&'a self) -> &'a str { *self }
 }
 impl<'self> Str for ~str {
-    #[inline(always)]
+    #[inline]
     fn as_slice<'a>(&'a self) -> &'a str {
         let s: &'a str = *self; s
     }
 }
 impl<'self> Str for @str {
-    #[inline(always)]
+    #[inline]
     fn as_slice<'a>(&'a self) -> &'a str {
         let s: &'a str = *self; s
     }
@@ -1311,7 +1311,7 @@ impl<'self> StrSlice<'self> for &'self str {
     #[inline]
     fn is_alphanumeric(&self) -> bool { self.iter().all(char::is_alphanumeric) }
     /// Returns the size in bytes not counting the null terminator
-    #[inline(always)]
+    #[inline]
     fn len(&self) -> uint {
         do as_buf(*self) |_p, n| { n - 1u }
     }
@@ -1854,7 +1854,7 @@ impl<'self> StrSlice<'self> for &'self str {
      * assert!(string.subslice_offset(lines[2]) == 4); // &"c"
      * ~~~
      */
-    #[inline(always)]
+    #[inline]
     fn subslice_offset(&self, inner: &str) -> uint {
         do as_buf(*self) |a, a_len| {
             do as_buf(inner) |b, b_len| {
@@ -1925,7 +1925,7 @@ pub trait OwnedStr {
 
 impl OwnedStr for ~str {
     /// Appends a string slice to the back of a string, without overallocating
-    #[inline(always)]
+    #[inline]
     fn push_str_no_overallocate(&mut self, rhs: &str) {
         unsafe {
             let llen = self.len();
@@ -2078,7 +2078,7 @@ impl OwnedStr for ~str {
      * * s - A string
      * * n - The number of bytes to reserve space for
      */
-    #[inline(always)]
+    #[inline]
     pub fn reserve(&mut self, n: uint) {
         unsafe {
             let v: *mut ~[u8] = cast::transmute(self);
@@ -2106,7 +2106,7 @@ impl OwnedStr for ~str {
      * * s - A string
      * * n - The number of bytes to reserve space for
      */
-    #[inline(always)]
+    #[inline]
     fn reserve_at_least(&mut self, n: uint) {
         self.reserve(uint::next_power_of_two(n + 1u) - 1u)
     }
@@ -2131,7 +2131,7 @@ impl OwnedStr for ~str {
 }
 
 impl Clone for ~str {
-    #[inline(always)]
+    #[inline]
     fn clone(&self) -> ~str {
         to_owned(*self)
     }

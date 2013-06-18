@@ -49,7 +49,7 @@ pub trait IterBytes {
 }
 
 impl IterBytes for bool {
-    #[inline(always)]
+    #[inline]
     fn iter_bytes(&self, _lsb0: bool, f: Cb) -> bool {
         f([
             *self as u8
@@ -58,7 +58,7 @@ impl IterBytes for bool {
 }
 
 impl IterBytes for u8 {
-    #[inline(always)]
+    #[inline]
     fn iter_bytes(&self, _lsb0: bool, f: Cb) -> bool {
         f([
             *self
@@ -67,7 +67,7 @@ impl IterBytes for u8 {
 }
 
 impl IterBytes for u16 {
-    #[inline(always)]
+    #[inline]
     fn iter_bytes(&self, lsb0: bool, f: Cb) -> bool {
         if lsb0 {
             f([
@@ -84,7 +84,7 @@ impl IterBytes for u16 {
 }
 
 impl IterBytes for u32 {
-    #[inline(always)]
+    #[inline]
     fn iter_bytes(&self, lsb0: bool, f: Cb) -> bool {
         if lsb0 {
             f([
@@ -105,7 +105,7 @@ impl IterBytes for u32 {
 }
 
 impl IterBytes for u64 {
-    #[inline(always)]
+    #[inline]
     fn iter_bytes(&self, lsb0: bool, f: Cb) -> bool {
         if lsb0 {
             f([
@@ -134,35 +134,35 @@ impl IterBytes for u64 {
 }
 
 impl IterBytes for i8 {
-    #[inline(always)]
+    #[inline]
     fn iter_bytes(&self, lsb0: bool, f: Cb) -> bool {
         (*self as u8).iter_bytes(lsb0, f)
     }
 }
 
 impl IterBytes for i16 {
-    #[inline(always)]
+    #[inline]
     fn iter_bytes(&self, lsb0: bool, f: Cb) -> bool {
         (*self as u16).iter_bytes(lsb0, f)
     }
 }
 
 impl IterBytes for i32 {
-    #[inline(always)]
+    #[inline]
     fn iter_bytes(&self, lsb0: bool, f: Cb) -> bool {
         (*self as u32).iter_bytes(lsb0, f)
     }
 }
 
 impl IterBytes for i64 {
-    #[inline(always)]
+    #[inline]
     fn iter_bytes(&self, lsb0: bool, f: Cb) -> bool {
         (*self as u64).iter_bytes(lsb0, f)
     }
 }
 
 impl IterBytes for char {
-    #[inline(always)]
+    #[inline]
     fn iter_bytes(&self, lsb0: bool, f: Cb) -> bool {
         (*self as u32).iter_bytes(lsb0, f)
     }
@@ -170,7 +170,7 @@ impl IterBytes for char {
 
 #[cfg(target_word_size = "32")]
 impl IterBytes for uint {
-    #[inline(always)]
+    #[inline]
     fn iter_bytes(&self, lsb0: bool, f: Cb) -> bool {
         (*self as u32).iter_bytes(lsb0, f)
     }
@@ -178,28 +178,28 @@ impl IterBytes for uint {
 
 #[cfg(target_word_size = "64")]
 impl IterBytes for uint {
-    #[inline(always)]
+    #[inline]
     fn iter_bytes(&self, lsb0: bool, f: Cb) -> bool {
         (*self as u64).iter_bytes(lsb0, f)
     }
 }
 
 impl IterBytes for int {
-    #[inline(always)]
+    #[inline]
     fn iter_bytes(&self, lsb0: bool, f: Cb) -> bool {
         (*self as uint).iter_bytes(lsb0, f)
     }
 }
 
 impl IterBytes for float {
-    #[inline(always)]
+    #[inline]
     fn iter_bytes(&self, lsb0: bool, f: Cb) -> bool {
         (*self as f64).iter_bytes(lsb0, f)
     }
 }
 
 impl IterBytes for f32 {
-    #[inline(always)]
+    #[inline]
     fn iter_bytes(&self, lsb0: bool, f: Cb) -> bool {
         let i: u32 = unsafe {
             // 0.0 == -0.0 so they should also have the same hashcode
@@ -210,7 +210,7 @@ impl IterBytes for f32 {
 }
 
 impl IterBytes for f64 {
-    #[inline(always)]
+    #[inline]
     fn iter_bytes(&self, lsb0: bool, f: Cb) -> bool {
         let i: u64 = unsafe {
             // 0.0 == -0.0 so they should also have the same hashcode
@@ -221,14 +221,14 @@ impl IterBytes for f64 {
 }
 
 impl<'self,A:IterBytes> IterBytes for &'self [A] {
-    #[inline(always)]
+    #[inline]
     fn iter_bytes(&self, lsb0: bool, f: Cb) -> bool {
         self.each(|elt| elt.iter_bytes(lsb0, |b| f(b)))
     }
 }
 
 impl<A:IterBytes,B:IterBytes> IterBytes for (A,B) {
-  #[inline(always)]
+  #[inline]
   fn iter_bytes(&self, lsb0: bool, f: Cb) -> bool {
     match *self {
       (ref a, ref b) => { a.iter_bytes(lsb0, f) && b.iter_bytes(lsb0, f) }
@@ -237,7 +237,7 @@ impl<A:IterBytes,B:IterBytes> IterBytes for (A,B) {
 }
 
 impl<A:IterBytes,B:IterBytes,C:IterBytes> IterBytes for (A,B,C) {
-  #[inline(always)]
+  #[inline]
   fn iter_bytes(&self, lsb0: bool, f: Cb) -> bool {
     match *self {
       (ref a, ref b, ref c) => {
@@ -253,28 +253,28 @@ fn borrow<'x,A>(a: &'x [A]) -> &'x [A] {
 }
 
 impl<A:IterBytes> IterBytes for ~[A] {
-    #[inline(always)]
+    #[inline]
     fn iter_bytes(&self, lsb0: bool, f: Cb) -> bool {
         borrow(*self).iter_bytes(lsb0, f)
     }
 }
 
 impl<A:IterBytes> IterBytes for @[A] {
-    #[inline(always)]
+    #[inline]
     fn iter_bytes(&self, lsb0: bool, f: Cb) -> bool {
         borrow(*self).iter_bytes(lsb0, f)
     }
 }
 
 impl<'self> IterBytes for &'self str {
-    #[inline(always)]
+    #[inline]
     fn iter_bytes(&self, _lsb0: bool, f: Cb) -> bool {
         f(self.as_bytes())
     }
 }
 
 impl IterBytes for ~str {
-    #[inline(always)]
+    #[inline]
     fn iter_bytes(&self, _lsb0: bool, f: Cb) -> bool {
         // this should possibly include the null terminator, but that
         // breaks .find_equiv on hashmaps.
@@ -283,7 +283,7 @@ impl IterBytes for ~str {
 }
 
 impl IterBytes for @str {
-    #[inline(always)]
+    #[inline]
     fn iter_bytes(&self, _lsb0: bool, f: Cb) -> bool {
         // this should possibly include the null terminator, but that
         // breaks .find_equiv on hashmaps.
@@ -292,7 +292,7 @@ impl IterBytes for @str {
 }
 
 impl<A:IterBytes> IterBytes for Option<A> {
-    #[inline(always)]
+    #[inline]
     fn iter_bytes(&self, lsb0: bool, f: Cb) -> bool {
         match *self {
           Some(ref a) => 0u8.iter_bytes(lsb0, f) && a.iter_bytes(lsb0, f),
@@ -302,21 +302,21 @@ impl<A:IterBytes> IterBytes for Option<A> {
 }
 
 impl<'self,A:IterBytes> IterBytes for &'self A {
-    #[inline(always)]
+    #[inline]
     fn iter_bytes(&self, lsb0: bool, f: Cb) -> bool {
         (**self).iter_bytes(lsb0, f)
     }
 }
 
 impl<A:IterBytes> IterBytes for @A {
-    #[inline(always)]
+    #[inline]
     fn iter_bytes(&self, lsb0: bool, f: Cb) -> bool {
         (**self).iter_bytes(lsb0, f)
     }
 }
 
 impl<A:IterBytes> IterBytes for ~A {
-    #[inline(always)]
+    #[inline]
     fn iter_bytes(&self, lsb0: bool, f: Cb) -> bool {
         (**self).iter_bytes(lsb0, f)
     }
@@ -325,7 +325,7 @@ impl<A:IterBytes> IterBytes for ~A {
 // NB: raw-pointer IterBytes does _not_ dereference
 // to the target; it just gives you the pointer-bytes.
 impl<A> IterBytes for *const A {
-    #[inline(always)]
+    #[inline]
     fn iter_bytes(&self, lsb0: bool, f: Cb) -> bool {
         (*self as uint).iter_bytes(lsb0, f)
     }

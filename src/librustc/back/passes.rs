@@ -221,7 +221,7 @@ pub static analysis_passes : &'static [(&'static str, &'static str)] = &'static 
 /** Transformation Passes */
 pub static transform_passes : &'static [(&'static str, &'static str)] = &'static [
     ("adce",                            "Aggressive Dead Code Elimination"),
-    ("always-inline",                   "Inliner for #[inline(always)] functions"),
+    ("always-inline",                   "Inliner for #[inline] functions"),
     ("argpromotion",                    "Promote 'by reference' arguments to scalars"),
     ("bb-vectorize",                    "Basic-Block Vectorization"),
     ("block-placement",                 "Profile Guided Basic Block Placement"),

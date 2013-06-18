@@ -65,14 +65,14 @@ pub fn is_XID_continue(c: char) -> bool { derived_property::XID_Continue(c) }
 /// Indicates whether a character is in lower case, defined
 /// in terms of the Unicode General Category 'Ll'
 ///
-#[inline(always)]
+#[inline]
 pub fn is_lowercase(c: char) -> bool { general_category::Ll(c) }
 
 ///
 /// Indicates whether a character is in upper case, defined
 /// in terms of the Unicode General Category 'Lu'.
 ///
-#[inline(always)]
+#[inline]
 pub fn is_uppercase(c: char) -> bool { general_category::Lu(c) }
 
 ///
@@ -80,7 +80,7 @@ pub fn is_uppercase(c: char) -> bool { general_category::Lu(c) }
 /// terms of the Unicode General Categories 'Zs', 'Zl', 'Zp'
 /// additional 'Cc'-category control codes in the range [0x09, 0x0d]
 ///
-#[inline(always)]
+#[inline]
 pub fn is_whitespace(c: char) -> bool {
     ('\x09' <= c && c <= '\x0d')
         || general_category::Zs(c)
@@ -93,7 +93,7 @@ pub fn is_whitespace(c: char) -> bool {
 /// defined in terms of the Unicode General Categories 'Nd', 'Nl', 'No'
 /// and the Derived Core Property 'Alphabetic'.
 ///
-#[inline(always)]
+#[inline]
 pub fn is_alphanumeric(c: char) -> bool {
     derived_property::Alphabetic(c)
         || general_category::Nd(c)
@@ -102,7 +102,7 @@ pub fn is_alphanumeric(c: char) -> bool {
 }
 
 /// Indicates whether the character is numeric (Nd, Nl, or No)
-#[inline(always)]
+#[inline]
 pub fn is_digit(c: char) -> bool {
     general_category::Nd(c)
         || general_category::Nl(c)
@@ -127,7 +127,7 @@ pub fn is_digit(c: char) -> bool {
 ///
 /// This just wraps `to_digit()`.
 ///
-#[inline(always)]
+#[inline]
 pub fn is_digit_radix(c: char, radix: uint) -> bool {
     match to_digit(c, radix) {
         Some(_) => true,
@@ -310,21 +310,21 @@ impl Char for char {
 
 #[cfg(not(test))]
 impl Eq for char {
-    #[inline(always)]
+    #[inline]
     fn eq(&self, other: &char) -> bool { (*self) == (*other) }
-    #[inline(always)]
+    #[inline]
     fn ne(&self, other: &char) -> bool { (*self) != (*other) }
 }
 
 #[cfg(not(test))]
 impl Ord for char {
-    #[inline(always)]
+    #[inline]
     fn lt(&self, other: &char) -> bool { *self < *other }
-    #[inline(always)]
+    #[inline]
     fn le(&self, other: &char) -> bool { *self <= *other }
-    #[inline(always)]
+    #[inline]
     fn gt(&self, other: &char) -> bool { *self > *other }
-    #[inline(always)]
+    #[inline]
     fn ge(&self, other: &char) -> bool { *self >= *other }
 }
 

@@ -212,7 +212,7 @@ impl FromStr for bool {
 * ~~~
 */
 impl ToStr for bool {
-    #[inline(always)]
+    #[inline]
     fn to_str(&self) -> ~str {
         if *self { ~"true" } else { ~"false" }
     }
@@ -250,24 +250,24 @@ pub fn all_values(blk: &fn(v: bool)) {
 * 0
 * ~~~
 */
-#[inline(always)]
+#[inline]
 pub fn to_bit(v: bool) -> u8 { if v { 1u8 } else { 0u8 } }
 
 #[cfg(not(test))]
 impl Ord for bool {
-    #[inline(always)]
+    #[inline]
     fn lt(&self, other: &bool) -> bool { to_bit(*self) < to_bit(*other) }
-    #[inline(always)]
+    #[inline]
     fn le(&self, other: &bool) -> bool { to_bit(*self) <= to_bit(*other) }
-    #[inline(always)]
+    #[inline]
     fn gt(&self, other: &bool) -> bool { to_bit(*self) > to_bit(*other) }
-    #[inline(always)]
+    #[inline]
     fn ge(&self, other: &bool) -> bool { to_bit(*self) >= to_bit(*other) }
 }
 
 #[cfg(not(test))]
 impl TotalOrd for bool {
-    #[inline(always)]
+    #[inline]
     fn cmp(&self, other: &bool) -> Ordering { to_bit(*self).cmp(&to_bit(*other)) }
 }
 
@@ -298,9 +298,9 @@ impl TotalOrd for bool {
 */
 #[cfg(not(test))]
 impl Eq for bool {
-    #[inline(always)]
+    #[inline]
     fn eq(&self, other: &bool) -> bool { (*self) == (*other) }
-    #[inline(always)]
+    #[inline]
     fn ne(&self, other: &bool) -> bool { (*self) != (*other) }
 }
 

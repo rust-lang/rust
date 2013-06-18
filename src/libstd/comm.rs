@@ -625,7 +625,7 @@ mod pipesy {
     }
 
     impl<T: Owned> GenericChan<T> for Chan<T> {
-        #[inline(always)]
+        #[inline]
         fn send(&self, x: T) {
             unsafe {
                 let self_endp = transmute_mut(&self.endp);
@@ -636,7 +636,7 @@ mod pipesy {
     }
 
     impl<T: Owned> GenericSmartChan<T> for Chan<T> {
-        #[inline(always)]
+        #[inline]
         fn try_send(&self, x: T) -> bool {
             unsafe {
                 let self_endp = transmute_mut(&self.endp);
@@ -653,7 +653,7 @@ mod pipesy {
     }
 
     impl<T: Owned> GenericPort<T> for Port<T> {
-        #[inline(always)]
+        #[inline]
         fn recv(&self) -> T {
             unsafe {
                 let self_endp = transmute_mut(&self.endp);
@@ -664,7 +664,7 @@ mod pipesy {
             }
         }
 
-        #[inline(always)]
+        #[inline]
         fn try_recv(&self) -> Option<T> {
             unsafe {
                 let self_endp = transmute_mut(&self.endp);
@@ -681,7 +681,7 @@ mod pipesy {
     }
 
     impl<T: Owned> Peekable<T> for Port<T> {
-        #[inline(always)]
+        #[inline]
         fn peek(&self) -> bool {
             unsafe {
                 let self_endp = transmute_mut(&self.endp);

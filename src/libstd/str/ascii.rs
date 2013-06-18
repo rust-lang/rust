@@ -25,19 +25,19 @@ pub struct Ascii { priv chr: u8 }
 
 impl Ascii {
     /// Converts a ascii character into a `u8`.
-    #[inline(always)]
+    #[inline]
     pub fn to_byte(self) -> u8 {
         self.chr
     }
 
     /// Converts a ascii character into a `char`.
-    #[inline(always)]
+    #[inline]
     pub fn to_char(self) -> char {
         self.chr as char
     }
 
     /// Convert to lowercase.
-    #[inline(always)]
+    #[inline]
     pub fn to_lower(self) -> Ascii {
         if self.chr >= 65 && self.chr <= 90 {
             Ascii{chr: self.chr | 0x20 }
@@ -47,7 +47,7 @@ impl Ascii {
     }
 
     /// Convert to uppercase.
-    #[inline(always)]
+    #[inline]
     pub fn to_upper(self) -> Ascii {
         if self.chr >= 97 && self.chr <= 122 {
             Ascii{chr: self.chr & !0x20 }
@@ -57,14 +57,14 @@ impl Ascii {
     }
 
     /// Compares two ascii characters of equality, ignoring case.
-    #[inline(always)]
+    #[inline]
     pub fn eq_ignore_case(self, other: Ascii) -> bool {
         self.to_lower().chr == other.to_lower().chr
     }
 }
 
 impl ToStr for Ascii {
-    #[inline(always)]
+    #[inline]
     fn to_str(&self) -> ~str { str::from_bytes(['\'' as u8, self.chr, '\'' as u8]) }
 }
 
@@ -81,18 +81,18 @@ pub trait AsciiCast<T> {
 }
 
 impl<'self> AsciiCast<&'self[Ascii]> for &'self [u8] {
-    #[inline(always)]
+    #[inline]
     fn to_ascii(&self) -> &'self[Ascii] {
         assert!(self.is_ascii());
         unsafe {self.to_ascii_nocheck()}
     }
 
-    #[inline(always)]
+    #[inline]
     unsafe fn to_ascii_nocheck(&self) -> &'self[Ascii] {
         cast::transmute(*self)
     }
 
-    #[inline(always)]
+    #[inline]
     fn is_ascii(&self) -> bool {
         for self.each |b| {
             if !b.is_ascii() { return false; }
@@ -102,55 +102,55 @@ impl<'self> AsciiCast<&'self[Ascii]> for &'self [u8] {
 }
 
 impl<'self> AsciiCast<&'self[Ascii]> for &'self str {
-    #[inline(always)]
+    #[inline]
     fn to_ascii(&self) -> &'self[Ascii] {
         assert!(self.is_ascii());
         unsafe {self.to_ascii_nocheck()}
     }
 
-    #[inline(always)]
+    #[inline]
     unsafe fn to_ascii_nocheck(&self) -> &'self[Ascii] {
         let (p,len): (*u8, uint) = cast::transmute(*self);
         cast::transmute((p, len - 1))
     }
 
-    #[inline(always)]
+    #[inline]
     fn is_ascii(&self) -> bool {
         self.bytes_iter().all(|b| b.is_ascii())
     }
 }
 
 impl AsciiCast<Ascii> for u8 {
-    #[inline(always)]
+    #[inline]
     fn to_ascii(&self) -> Ascii {
         assert!(self.is_ascii());
         unsafe {self.to_ascii_nocheck()}
     }
 
-    #[inline(always)]
+    #[inline]
     unsafe fn to_ascii_nocheck(&self) -> Ascii {
         Ascii{ chr: *self }
     }
 
-    #[inline(always)]
+    #[inline]
     fn is_ascii(&self) -> bool {
         *self & 128 == 0u8
     }
 }
 
 impl AsciiCast<Ascii> for char {
-    #[inline(always)]
+    #[inline]
     fn to_ascii(&self) -> Ascii {
         assert!(self.is_ascii());
         unsafe {self.to_ascii_nocheck()}
     }
 
-    #[inline(always)]
+    #[inline]
     unsafe fn to_ascii_nocheck(&self) -> Ascii {
         Ascii{ chr: *self as u8 }
     }
 
-    #[inline(always)]
+    #[inline]
     fn is_ascii(&self) -> bool {
         *self - ('\x7F' & *self) == '\x00'
     }
@@ -167,26 +167,26 @@ pub trait OwnedAsciiCast {
 }
 
 impl OwnedAsciiCast for ~[u8] {
-    #[inline(always)]
+    #[inline]
     fn into_ascii(self) -> ~[Ascii] {
         assert!(self.is_ascii());
         unsafe {self.into_ascii_nocheck()}
     }
 
-    #[inline(always)]
+    #[inline]
     unsafe fn into_ascii_nocheck(self) -> ~[Ascii] {
         cast::transmute(self)
     }
 }
 
 impl OwnedAsciiCast for ~str {
-    #[inline(always)]
+    #[inline]
     fn into_ascii(self) -> ~[Ascii] {
         assert!(self.is_ascii());
         unsafe {self.into_ascii_nocheck()}
     }
 
-    #[inline(always)]
+    #[inline]
     unsafe fn into_ascii_nocheck(self) -> ~[Ascii] {
         let mut r: ~[Ascii] = cast::transmute(self);
         r.pop();
@@ -210,31 +210,31 @@ pub trait AsciiStr {
 }
 
 impl<'self> AsciiStr for &'self [Ascii] {
-    #[inline(always)]
+    #[inline]
     fn to_str_ascii(&self) -> ~str {
         let mut cpy = self.to_owned();
         cpy.push(0u8.to_ascii());
         unsafe {cast::transmute(cpy)}
     }
 
-    #[inline(always)]
+    #[inline]
     fn to_lower(&self) -> ~[Ascii] {
         self.map(|a| a.to_lower())
     }
 
-    #[inline(always)]
+    #[inline]
     fn to_upper(&self) -> ~[Ascii] {
         self.map(|a| a.to_upper())
     }
 
-    #[inline(always)]
+    #[inline]
     fn eq_ignore_case(self, other: &[Ascii]) -> bool {
         do self.iter().zip(other.iter()).all |(&a, &b)| { a.eq_ignore_case(b) }
     }
 }
 
 impl ToStrConsume for ~[Ascii] {
-    #[inline(always)]
+    #[inline]
     fn into_str(self) -> ~str {
         let mut cpy = self;
         cpy.push(0u8.to_ascii());
@@ -243,7 +243,7 @@ impl ToStrConsume for ~[Ascii] {
 }
 
 impl IterBytes for Ascii {
-    #[inline(always)]
+    #[inline]
     fn iter_bytes(&self, _lsb0: bool, f: &fn(buf: &[u8]) -> bool) -> bool {
         f([self.to_byte()])
     }

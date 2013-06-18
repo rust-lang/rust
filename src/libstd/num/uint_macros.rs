@@ -28,42 +28,42 @@ pub static min_value: $T = 0 as $T;
 pub static max_value: $T = 0 as $T - 1 as $T;
 
 /// Calculates the sum of two numbers
-#[inline(always)]
+#[inline]
 pub fn add(x: $T, y: $T) -> $T { x + y }
 /// Subtracts the second number from the first
-#[inline(always)]
+#[inline]
 pub fn sub(x: $T, y: $T) -> $T { x - y }
 /// Multiplies two numbers together
-#[inline(always)]
+#[inline]
 pub fn mul(x: $T, y: $T) -> $T { x * y }
 /// Divides the first argument by the second argument (using integer division)
-#[inline(always)]
+#[inline]
 pub fn div(x: $T, y: $T) -> $T { x / y }
 /// Calculates the integer remainder when x is divided by y (equivalent to the
 /// '%' operator)
-#[inline(always)]
+#[inline]
 pub fn rem(x: $T, y: $T) -> $T { x % y }
 
 /// Returns true iff `x < y`
-#[inline(always)]
+#[inline]
 pub fn lt(x: $T, y: $T) -> bool { x < y }
 /// Returns true iff `x <= y`
-#[inline(always)]
+#[inline]
 pub fn le(x: $T, y: $T) -> bool { x <= y }
 /// Returns true iff `x == y`
-#[inline(always)]
+#[inline]
 pub fn eq(x: $T, y: $T) -> bool { x == y }
 /// Returns true iff `x != y`
-#[inline(always)]
+#[inline]
 pub fn ne(x: $T, y: $T) -> bool { x != y }
 /// Returns true iff `x >= y`
-#[inline(always)]
+#[inline]
 pub fn ge(x: $T, y: $T) -> bool { x >= y }
 /// Returns true iff `x > y`
-#[inline(always)]
+#[inline]
 pub fn gt(x: $T, y: $T) -> bool { x > y }
 
-#[inline(always)]
+#[inline]
 /**
  * Iterate through a range with a given step value.
  *
@@ -99,20 +99,20 @@ pub fn range_step(start: $T, stop: $T, step: $T_SIGNED, it: &fn($T) -> bool) -> 
     return true;
 }
 
-#[inline(always)]
+#[inline]
 /// Iterate over the range [`lo`..`hi`)
 pub fn range(lo: $T, hi: $T, it: &fn($T) -> bool) -> bool {
     range_step(lo, hi, 1 as $T_SIGNED, it)
 }
 
-#[inline(always)]
+#[inline]
 /// Iterate over the range [`hi`..`lo`)
 pub fn range_rev(hi: $T, lo: $T, it: &fn($T) -> bool) -> bool {
     range_step(hi, lo, -1 as $T_SIGNED, it)
 }
 
 /// Computes the bitwise complement
-#[inline(always)]
+#[inline]
 pub fn compl(i: $T) -> $T {
     max_value ^ i
 }
@@ -121,37 +121,37 @@ impl Num for $T {}
 
 #[cfg(not(test))]
 impl Ord for $T {
-    #[inline(always)]
+    #[inline]
     fn lt(&self, other: &$T) -> bool { (*self) < (*other) }
-    #[inline(always)]
+    #[inline]
     fn le(&self, other: &$T) -> bool { (*self) <= (*other) }
-    #[inline(always)]
+    #[inline]
     fn ge(&self, other: &$T) -> bool { (*self) >= (*other) }
-    #[inline(always)]
+    #[inline]
     fn gt(&self, other: &$T) -> bool { (*self) > (*other) }
 }
 
 #[cfg(not(test))]
 impl Eq for $T {
-    #[inline(always)]
+    #[inline]
     fn eq(&self, other: &$T) -> bool { return (*self) == (*other); }
-    #[inline(always)]
+    #[inline]
     fn ne(&self, other: &$T) -> bool { return (*self) != (*other); }
 }
 
 impl Orderable for $T {
-    #[inline(always)]
+    #[inline]
     fn min(&self, other: &$T) -> $T {
         if *self < *other { *self } else { *other }
     }
 
-    #[inline(always)]
+    #[inline]
     fn max(&self, other: &$T) -> $T {
         if *self > *other { *self } else { *other }
     }
 
     /// Returns the number constrained within the range `mn <= self <= mx`.
-    #[inline(always)]
+    #[inline]
     fn clamp(&self, mn: &$T, mx: &$T) -> $T {
         cond!(
             (*self > *mx) { *mx   }
@@ -162,51 +162,51 @@ impl Orderable for $T {
 }
 
 impl Zero for $T {
-    #[inline(always)]
+    #[inline]
     fn zero() -> $T { 0 }
 
-    #[inline(always)]
+    #[inline]
     fn is_zero(&self) -> bool { *self == 0 }
 }
 
 impl One for $T {
-    #[inline(always)]
+    #[inline]
     fn one() -> $T { 1 }
 }
 
 #[cfg(not(test))]
 impl Add<$T,$T> for $T {
-    #[inline(always)]
+    #[inline]
     fn add(&self, other: &$T) -> $T { *self + *other }
 }
 
 #[cfg(not(test))]
 impl Sub<$T,$T> for $T {
-    #[inline(always)]
+    #[inline]
     fn sub(&self, other: &$T) -> $T { *self - *other }
 }
 
 #[cfg(not(test))]
 impl Mul<$T,$T> for $T {
-    #[inline(always)]
+    #[inline]
     fn mul(&self, other: &$T) -> $T { *self * *other }
 }
 
 #[cfg(not(test))]
 impl Div<$T,$T> for $T {
-    #[inline(always)]
+    #[inline]
     fn div(&self, other: &$T) -> $T { *self / *other }
 }
 
 #[cfg(not(test))]
 impl Rem<$T,$T> for $T {
-    #[inline(always)]
+    #[inline]
     fn rem(&self, other: &$T) -> $T { *self % *other }
 }
 
 #[cfg(not(test))]
 impl Neg<$T> for $T {
-    #[inline(always)]
+    #[inline]
     fn neg(&self) -> $T { -*self }
 }
 
@@ -214,27 +214,27 @@ impl Unsigned for $T {}
 
 impl Integer for $T {
     /// Calculates `div` (`\`) and `rem` (`%`) simultaneously
-    #[inline(always)]
+    #[inline]
     fn div_rem(&self, other: &$T) -> ($T,$T) {
         (*self / *other, *self % *other)
     }
 
     /// Unsigned integer division. Returns the same result as `div` (`/`).
-    #[inline(always)]
+    #[inline]
     fn div_floor(&self, other: &$T) -> $T { *self / *other }
 
     /// Unsigned integer modulo operation. Returns the same result as `rem` (`%`).
-    #[inline(always)]
+    #[inline]
     fn mod_floor(&self, other: &$T) -> $T { *self / *other }
 
     /// Calculates `div_floor` and `modulo_floor` simultaneously
-    #[inline(always)]
+    #[inline]
     fn div_mod_floor(&self, other: &$T) -> ($T,$T) {
         (*self / *other, *self % *other)
     }
 
     /// Calculates the Greatest Common Divisor (GCD) of the number and `other`
-    #[inline(always)]
+    #[inline]
     fn gcd(&self, other: &$T) -> $T {
         // Use Euclid's algorithm
         let mut (m, n) = (*self, *other);
@@ -247,21 +247,21 @@ impl Integer for $T {
     }
 
     /// Calculates the Lowest Common Multiple (LCM) of the number and `other`
-    #[inline(always)]
+    #[inline]
     fn lcm(&self, other: &$T) -> $T {
         (*self * *other) / self.gcd(other)
     }
 
     /// Returns `true` if the number can be divided by `other` without leaving a remainder
-    #[inline(always)]
+    #[inline]
     fn is_multiple_of(&self, other: &$T) -> bool { *self % *other == 0 }
 
     /// Returns `true` if the number is divisible by `2`
-    #[inline(always)]
+    #[inline]
     fn is_even(&self) -> bool { self.is_multiple_of(&2) }
 
     /// Returns `true` if the number is not divisible by `2`
-    #[inline(always)]
+    #[inline]
     fn is_odd(&self) -> bool { !self.is_even() }
 }
 
@@ -269,45 +269,45 @@ impl Bitwise for $T {}
 
 #[cfg(not(test))]
 impl BitOr<$T,$T> for $T {
-    #[inline(always)]
+    #[inline]
     fn bitor(&self, other: &$T) -> $T { *self | *other }
 }
 
 #[cfg(not(test))]
 impl BitAnd<$T,$T> for $T {
-    #[inline(always)]
+    #[inline]
     fn bitand(&self, other: &$T) -> $T { *self & *other }
 }
 
 #[cfg(not(test))]
 impl BitXor<$T,$T> for $T {
-    #[inline(always)]
+    #[inline]
     fn bitxor(&self, other: &$T) -> $T { *self ^ *other }
 }
 
 #[cfg(not(test))]
 impl Shl<$T,$T> for $T {
-    #[inline(always)]
+    #[inline]
     fn shl(&self, other: &$T) -> $T { *self << *other }
 }
 
 #[cfg(not(test))]
 impl Shr<$T,$T> for $T {
-    #[inline(always)]
+    #[inline]
     fn shr(&self, other: &$T) -> $T { *self >> *other }
 }
 
 #[cfg(not(test))]
 impl Not<$T> for $T {
-    #[inline(always)]
+    #[inline]
     fn not(&self) -> $T { !*self }
 }
 
 impl Bounded for $T {
-    #[inline(always)]
+    #[inline]
     fn min_value() -> $T { min_value }
 
-    #[inline(always)]
+    #[inline]
     fn max_value() -> $T { max_value }
 }
 
@@ -316,35 +316,35 @@ impl Int for $T {}
 // String conversion functions and impl str -> num
 
 /// Parse a string as a number in base 10.
-#[inline(always)]
+#[inline]
 pub fn from_str(s: &str) -> Option<$T> {
     strconv::from_str_common(s, 10u, false, false, false,
                              strconv::ExpNone, false, false)
 }
 
 /// Parse a string as a number in the given base.
-#[inline(always)]
+#[inline]
 pub fn from_str_radix(s: &str, radix: uint) -> Option<$T> {
     strconv::from_str_common(s, radix, false, false, false,
                              strconv::ExpNone, false, false)
 }
 
 /// Parse a byte slice as a number in the given base.
-#[inline(always)]
+#[inline]
 pub fn parse_bytes(buf: &[u8], radix: uint) -> Option<$T> {
     strconv::from_str_bytes_common(buf, radix, false, false, false,
                                    strconv::ExpNone, false, false)
 }
 
 impl FromStr for $T {
-    #[inline(always)]
+    #[inline]
     fn from_str(s: &str) -> Option<$T> {
         from_str(s)
     }
 }
 
 impl FromStrRadix for $T {
-    #[inline(always)]
+    #[inline]
     fn from_str_radix(s: &str, radix: uint) -> Option<$T> {
         from_str_radix(s, radix)
     }
@@ -353,7 +353,7 @@ impl FromStrRadix for $T {
 // String conversion functions and impl num -> str
 
 /// Convert to a string as a byte slice in a given base.
-#[inline(always)]
+#[inline]
 pub fn to_str_bytes<U>(n: $T, radix: uint, f: &fn(v: &[u8]) -> U) -> U {
     let (buf, _) = strconv::to_str_bytes_common(&n, radix, false,
                             strconv::SignNeg, strconv::DigAll);
@@ -361,7 +361,7 @@ pub fn to_str_bytes<U>(n: $T, radix: uint, f: &fn(v: &[u8]) -> U) -> U {
 }
 
 /// Convert to a string in base 10.
-#[inline(always)]
+#[inline]
 pub fn to_str(num: $T) -> ~str {
     let (buf, _) = strconv::to_str_common(&num, 10u, false,
                             strconv::SignNeg, strconv::DigAll);
@@ -369,7 +369,7 @@ pub fn to_str(num: $T) -> ~str {
 }
 
 /// Convert to a string in a given base.
-#[inline(always)]
+#[inline]
 pub fn to_str_radix(num: $T, radix: uint) -> ~str {
     let (buf, _) = strconv::to_str_common(&num, radix, false,
                             strconv::SignNeg, strconv::DigAll);
@@ -377,42 +377,42 @@ pub fn to_str_radix(num: $T, radix: uint) -> ~str {
 }
 
 impl ToStr for $T {
-    #[inline(always)]
+    #[inline]
     fn to_str(&self) -> ~str {
         to_str(*self)
     }
 }
 
 impl ToStrRadix for $T {
-    #[inline(always)]
+    #[inline]
     fn to_str_radix(&self, radix: uint) -> ~str {
         to_str_radix(*self, radix)
     }
 }
 
 impl Primitive for $T {
-    #[inline(always)]
+    #[inline]
     fn bits() -> uint { bits }
 
-    #[inline(always)]
+    #[inline]
     fn bytes() -> uint { bits / 8 }
 }
 
 impl BitCount for $T {
     /// Counts the number of bits set. Wraps LLVM's `ctpop` intrinsic.
-    #[inline(always)]
+    #[inline]
     fn population_count(&self) -> $T {
         (*self as $T_SIGNED).population_count() as $T
     }
 
     /// Counts the number of leading zeros. Wraps LLVM's `ctlz` intrinsic.
-    #[inline(always)]
+    #[inline]
     fn leading_zeros(&self) -> $T {
         (*self as $T_SIGNED).leading_zeros() as $T
     }
 
     /// Counts the number of trailing zeros. Wraps LLVM's `cttz` intrinsic.
-    #[inline(always)]
+    #[inline]
     fn trailing_zeros(&self) -> $T {
         (*self as $T_SIGNED).trailing_zeros() as $T
     }

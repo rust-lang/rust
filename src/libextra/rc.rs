@@ -60,7 +60,7 @@ pub fn rc_from_const<T: Const>(value: T) -> Rc<T> {
 }
 
 impl<T> Rc<T> {
-    #[inline(always)]
+    #[inline]
     pub fn borrow<'r>(&'r self) -> &'r T {
         unsafe { cast::copy_lifetime(self, &(*self.ptr).value) }
     }
