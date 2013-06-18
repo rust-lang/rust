@@ -20,3 +20,7 @@ pub fn num_cpus() -> uint {
         fn rust_get_num_cpus() -> libc::uintptr_t;
     }
 }
+
+pub fn abort() -> ! {
+    unsafe { libc::abort(); }
+}
