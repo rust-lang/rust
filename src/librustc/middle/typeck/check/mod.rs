@@ -1393,6 +1393,8 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                 method_map.insert(expr.id, (*entry));
             }
             None => {
+                debug!("(checking method call) failing expr is %d", expr.id);
+
                 fcx.type_error_message(expr.span,
                   |actual| {
                       fmt!("type `%s` does not implement any method in scope \
