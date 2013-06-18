@@ -10,6 +10,7 @@
 
 //! Utilities for manipulating the char type
 
+use container::Container;
 use option::{None, Option, Some};
 use str;
 use str::{StrSlice, OwnedStr};

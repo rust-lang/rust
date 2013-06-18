@@ -42,6 +42,7 @@ fn main () {
 
 use cast;
 use cmp;
+use container::Container;
 use int;
 use iterator::IteratorUtil;
 use local_data;

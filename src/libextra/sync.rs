@@ -381,7 +381,7 @@ impl Sem<~[Waitqueue]> {
     // The only other places that condvars get built are rwlock.write_cond()
     // and rwlock_write_mode.
     pub fn access_cond<U>(&self, blk: &fn(c: &Condvar) -> U) -> U {
-        do self.access {
+        do self.access_waitqueue {
             blk(&Condvar { sem: self, order: Nothing })
         }
     }
