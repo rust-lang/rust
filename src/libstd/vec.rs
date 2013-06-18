@@ -15,6 +15,7 @@
 use cast::transmute;
 use cast;
 use container::{Container, Mutable};
+use cmp;
 use cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering, Less, Equal, Greater};
 use clone::Clone;
 use iterator::{FromIterator, Iterator, IteratorUtil};
@@ -2059,6 +2060,21 @@ pub trait MutableVector<'self, T> {
     fn mut_iter(self) -> VecMutIterator<'self, T>;
     fn mut_rev_iter(self) -> VecMutRevIterator<'self, T>;
 
+    /**
+     * Consumes `src` and moves as many elements as it can into `self`
+     * from the range [start,end).
+     *
+     * Returns the number of elements copied (the shorter of self.len()
+     * and end - start).
+     *
+     * # Arguments
+     *
+     * * src - A mutable vector of `T`
+     * * start - The index into `src` to start copying from
+     * * end - The index into `str` to stop copying from
+     */
+    fn move_from(self, src: ~[T], start: uint, end: uint) -> uint;
+
     unsafe fn unsafe_mut_ref(&self, index: uint) -> *mut T;
     unsafe fn unsafe_set(&self, index: uint, val: T);
 }
@@ -2088,6 +2104,14 @@ impl<'self,T> MutableVector<'self, T> for &'self mut [T] {
     }
 
     #[inline]
+    fn move_from(self, mut src: ~[T], start: uint, end: uint) -> uint {
+        for self.mut_iter().zip(src.mut_slice(start, end).mut_iter()).advance |(a, b)| {
+            util::swap(a, b);
+        }
+        cmp::min(self.len(), end-start)
+    }
+
+    #[inline]
     unsafe fn unsafe_mut_ref(&self, index: uint) -> *mut T {
         let pair_ptr: &(*mut T, uint) = transmute(self);
         let (ptr, _) = *pair_ptr;
@@ -2097,6 +2121,23 @@ impl<'self,T> MutableVector<'self, T> for &'self mut [T] {
     #[inline]
     unsafe fn unsafe_set(&self, index: uint, val: T) {
         *self.unsafe_mut_ref(index) = val;
+    }
+}
+
+/// Trait for ~[T] where T is Cloneable
+pub trait MutableCloneableVector<T> {
+    /// Copies as many elements from `src` as it can into `self`
+    /// (the shorter of self.len() and src.len()). Returns the number of elements copied.
+    fn copy_from(self, &[T]) -> uint;
+}
+
+impl<'self, T:Clone> MutableCloneableVector<T> for &'self mut [T] {
+    #[inline]
+    fn copy_from(self, src: &[T]) -> uint {
+        for self.mut_iter().zip(src.iter()).advance |(a, b)| {
+            *a = b.clone();
+        }
+        cmp::min(self.len(), src.len())
     }
 }
 
@@ -3893,6 +3934,38 @@ mod tests {
             *x += i;
         }
         assert_eq!(xs, [5, 5, 5, 5, 5])
+    }
+
+    #[test]
+    fn test_move_from() {
+        let mut a = [1,2,3,4,5];
+        let b = ~[6,7,8];
+        assert_eq!(a.move_from(b, 0, 3), 3);
+        assert_eq!(a, [6,7,8,4,5]);
+        let mut a = [7,2,8,1];
+        let b = ~[3,1,4,1,5,9];
+        assert_eq!(a.move_from(b, 0, 6), 4);
+        assert_eq!(a, [3,1,4,1]);
+        let mut a = [1,2,3,4];
+        let b = ~[5,6,7,8,9,0];
+        assert_eq!(a.move_from(b, 2, 3), 1);
+        assert_eq!(a, [7,2,3,4]);
+        let mut a = [1,2,3,4,5];
+        let b = ~[5,6,7,8,9,0];
+        assert_eq!(a.mut_slice(2,4).move_from(b,1,6), 2);
+        assert_eq!(a, [1,2,6,7,5]);
+    }
+
+    #[test]
+    fn test_copy_from() {
+        let mut a = [1,2,3,4,5];
+        let b = [6,7,8];
+        assert_eq!(a.copy_from(b), 3);
+        assert_eq!(a, [6,7,8,4,5]);
+        let mut c = [7,2,8,1];
+        let d = [3,1,4,1,5,9];
+        assert_eq!(c.copy_from(d), 4);
+        assert_eq!(c, [3,1,4,1]);
     }
 
     #[test]
