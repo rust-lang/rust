@@ -654,7 +654,17 @@ impl NameBindings {
                     Some(ref type_def) => {
                         match (*type_def).type_def {
                             Some(type_def) => Some(type_def),
-                            None => None,
+                            None => {
+                                match type_def.module_def {
+                                    Some(module) => {
+                                        match module.def_id {
+                                            Some(did) => Some(def_mod(did)),
+                                            None => None,
+                                        }
+                                    }
+                                    None => None,
+                                }
+                            }
                         }
                     }
                 }
@@ -3149,12 +3159,14 @@ impl Resolver {
             Some(def_id) if def_id.crate == local_crate => {
                 // OK. Continue.
                 debug!("(recording exports for module subtree) recording \
-                        exports for local module");
+                        exports for local module `%s`",
+                       self.module_to_str(module_));
             }
             None => {
                 // Record exports for the root module.
                 debug!("(recording exports for module subtree) recording \
-                        exports for root module");
+                        exports for root module `%s`",
+                       self.module_to_str(module_));
             }
             Some(_) => {
                 // Bail out.
@@ -5037,6 +5049,9 @@ impl Resolver {
                 self.trait_map.insert(expr.id, @mut traits);
             }
             expr_method_call(_, _, ident, _, _, _) => {
+                debug!("(recording candidate traits for expr) recording \
+                        traits for %d",
+                       expr.id);
                 let traits = self.search_for_traits_containing_method(ident);
                 self.trait_map.insert(expr.id, @mut traits);
             }
@@ -5111,7 +5126,6 @@ impl Resolver {
                                                -> ~[def_id] {
         debug!("(searching for traits containing method) looking for '%s'",
                self.session.str_of(name));
-
 
         let mut found_traits = ~[];
         let mut search_module = self.current_module;

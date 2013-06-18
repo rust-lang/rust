@@ -21,7 +21,6 @@ use middle::resolve;
 use middle::trans::adt;
 use middle::trans::base;
 use middle::trans::debuginfo;
-use middle::trans::reachable;
 use middle::trans::type_use;
 use middle::ty;
 
@@ -48,7 +47,7 @@ pub struct CrateContext {
      intrinsics: HashMap<&'static str, ValueRef>,
      item_vals: HashMap<ast::node_id, ValueRef>,
      exp_map2: resolve::ExportMap2,
-     reachable: reachable::map,
+     reachable: @mut HashSet<ast::node_id>,
      item_symbols: HashMap<ast::node_id, ~str>,
      link_meta: LinkMeta,
      enum_sizes: HashMap<ty::t, uint>,
@@ -115,10 +114,15 @@ pub struct CrateContext {
 }
 
 impl CrateContext {
-    pub fn new(sess: session::Session, name: &str, tcx: ty::ctxt,
-               emap2: resolve::ExportMap2, maps: astencode::Maps,
-               symbol_hasher: hash::State, link_meta: LinkMeta,
-               reachable: reachable::map) -> CrateContext {
+    pub fn new(sess: session::Session,
+               name: &str,
+               tcx: ty::ctxt,
+               emap2: resolve::ExportMap2,
+               maps: astencode::Maps,
+               symbol_hasher: hash::State,
+               link_meta: LinkMeta,
+               reachable: @mut HashSet<ast::node_id>)
+               -> CrateContext {
         unsafe {
             let llcx = llvm::LLVMContextCreate();
             set_task_llcx(llcx);

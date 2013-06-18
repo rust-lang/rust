@@ -77,6 +77,15 @@ fn trait_method_might_be_inlined(trait_method: &trait_method) -> bool {
     }
 }
 
+// The context we're in. If we're in a public context, then public symbols are
+// marked reachable. If we're in a private context, then only trait
+// implementations are marked reachable.
+#[deriving(Eq)]
+enum PrivacyContext {
+    PublicContext,
+    PrivateContext,
+}
+
 // Information needed while computing reachability.
 struct ReachableContext {
     // The type context.
@@ -109,25 +118,31 @@ impl ReachableContext {
         let reachable_symbols = self.reachable_symbols;
         let worklist = self.worklist;
         let visitor = visit::mk_vt(@Visitor {
-            visit_item: |item, (_, visitor)| {
+            visit_item: |item, (privacy_context, visitor):
+                    (PrivacyContext, visit::vt<PrivacyContext>)| {
                 match item.node {
                     item_fn(*) => {
-                        reachable_symbols.insert(item.id);
+                        if privacy_context == PublicContext {
+                            reachable_symbols.insert(item.id);
+                        }
                         if item_might_be_inlined(item) {
                             worklist.push(item.id)
                         }
                     }
                     item_struct(ref struct_def, _) => {
                         match struct_def.ctor_id {
-                            None => {}
-                            Some(ctor_id) => {
+                            Some(ctor_id) if
+                                    privacy_context == PublicContext => {
                                 reachable_symbols.insert(ctor_id);
                             }
+                            Some(_) | None => {}
                         }
                     }
                     item_enum(ref enum_def, _) => {
-                        for enum_def.variants.each |variant| {
-                            reachable_symbols.insert(variant.node.id);
+                        if privacy_context == PublicContext {
+                            for enum_def.variants.each |variant| {
+                                reachable_symbols.insert(variant.node.id);
+                            }
                         }
                     }
                     item_impl(ref generics, trait_ref, _, ref methods) => {
@@ -137,9 +152,15 @@ impl ReachableContext {
                         // treating implementations of reachable or cross-
                         // crate traits as reachable.
 
+                        let should_be_considered_public = |method: @method| {
+                            (method.vis == public &&
+                                    privacy_context == PublicContext) ||
+                                    trait_ref.is_some()
+                        };
+
                         // Mark all public methods as reachable.
-                        for methods.each |method| {
-                            if method.vis == public || trait_ref.is_some() {
+                        for methods.each |&method| {
+                            if should_be_considered_public(method) {
                                 reachable_symbols.insert(method.id);
                             }
                         }
@@ -147,9 +168,8 @@ impl ReachableContext {
                         if generics_require_inlining(generics) {
                             // If the impl itself has generics, add all public
                             // symbols to the worklist.
-                            for methods.each |method| {
-                                if method.vis == public ||
-                                        trait_ref.is_some() {
+                            for methods.each |&method| {
+                                if should_be_considered_public(method) {
                                     worklist.push(method.id)
                                 }
                             }
@@ -161,8 +181,7 @@ impl ReachableContext {
                                 let attrs = &method.attrs;
                                 if generics_require_inlining(generics) ||
                                         attributes_specify_inlining(*attrs) ||
-                                        method.vis == public ||
-                                        trait_ref.is_some() {
+                                        should_be_considered_public(*method) {
                                     worklist.push(method.id)
                                 }
                             }
@@ -170,27 +189,31 @@ impl ReachableContext {
                     }
                     item_trait(_, _, ref trait_methods) => {
                         // Mark all provided methods as reachable.
-                        for trait_methods.each |trait_method| {
-                            match *trait_method {
-                                provided(method) => {
-                                    reachable_symbols.insert(method.id);
-                                    worklist.push(method.id)
+                        if privacy_context == PublicContext {
+                            for trait_methods.each |trait_method| {
+                                match *trait_method {
+                                    provided(method) => {
+                                        reachable_symbols.insert(method.id);
+                                        worklist.push(method.id)
+                                    }
+                                    required(_) => {}
                                 }
-                                required(_) => {}
                             }
                         }
                     }
                     _ => {}
                 }
 
-                if item.vis == public {
-                    visit::visit_item(item, ((), visitor))
+                if item.vis == public && privacy_context == PublicContext {
+                    visit::visit_item(item, (PublicContext, visitor))
+                } else {
+                    visit::visit_item(item, (PrivateContext, visitor))
                 }
             },
             .. *visit::default_visitor()
         });
 
-        visit::visit_crate(crate, ((), visitor))
+        visit::visit_crate(crate, (PublicContext, visitor))
     }
 
     // Returns true if the given def ID represents a local item that is
@@ -247,7 +270,7 @@ impl ReachableContext {
                 }
             }
             Some(_) => false,
-            None => tcx.sess.bug("def ID not in def map?!"),
+            None => false   // This will happen for default methods.
         }
     }
 
