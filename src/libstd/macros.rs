@@ -33,13 +33,13 @@ macro_rules! rtdebug (
 macro_rules! rtassert (
     ( $arg:expr ) => ( {
         if !$arg {
-            abort!("assertion failed: %s", stringify!($arg));
+            rtabort!("assertion failed: %s", stringify!($arg));
         }
     } )
 )
 
 
-macro_rules! abort(
+macro_rules! rtabort(
     ($( $msg:expr),+) => ( {
         rtdebug!($($msg),+);
         ::rt::util::abort();
