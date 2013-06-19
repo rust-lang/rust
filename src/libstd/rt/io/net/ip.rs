@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::cmp::{Eq, TotalEq, eq};
+use std::cmp::{Eq, TotalEq};
 
 pub enum IpAddr {
     Ipv4(u8, u8, u8, u8, u16),
@@ -18,13 +18,13 @@ pub enum IpAddr {
 impl Eq for IpAddr {
     fn eq(&self, other: &IpAddr) -> bool {
         match (*self, *other) {
-            (Ipv4(a,b,c,d,e), Ipv4(f,g,h,i,j)) => a == f && b == g && c == h && d == i && e == j,
+            (Ipv4(a,b,c,d,e), Ipv4(f,g,h,i,j)) => (a,b,c,d,e) == (f,g,h,i,j),
             (Ipv6, Ipv6) => fail!(), 
             _ => false
         }
     }
     fn ne(&self, other: &IpAddr) -> bool {
-        !eq(self, other)
+        !(self == other)
     }
 }
 
