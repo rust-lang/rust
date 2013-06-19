@@ -468,8 +468,7 @@ pub fn add_clean_free(cx: block, ptr: ValueRef, heap: heap) {
 pub fn revoke_clean(cx: block, val: ValueRef) {
     do in_scope_cx(cx) |scope_info| {
         let scope_info = &mut *scope_info; // FIXME(#5074) workaround borrowck
-        let cleanup_pos = vec::position(
-            scope_info.cleanups,
+        let cleanup_pos = scope_info.cleanups.iter().position_(
             |cu| match *cu {
                 clean_temp(v, _, _) if v == val => true,
                 _ => false

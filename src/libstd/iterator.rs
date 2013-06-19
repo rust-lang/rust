@@ -22,7 +22,7 @@ use iter::{FromIter, Times};
 use num::{Zero, One};
 use option::{Option, Some, None};
 use ops::{Add, Mul};
-use cmp::{Ord, Eq};
+use cmp::Ord;
 use clone::Clone;
 
 /// An interface for dealing with "external iterators". These types of iterators
