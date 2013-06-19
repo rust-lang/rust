@@ -45,32 +45,33 @@ pub struct config {
     float_type: float_ty
 }
 
-pub static verbose: uint = 1 << 0;
-pub static time_passes: uint = 1 << 1;
-pub static count_llvm_insns: uint = 1 << 2;
-pub static time_llvm_passes: uint = 1 << 3;
-pub static trans_stats: uint = 1 << 4;
-pub static asm_comments: uint = 1 << 5;
-pub static no_verify: uint = 1 << 6;
-pub static trace: uint = 1 << 7;
-pub static coherence: uint = 1 << 8;
-pub static borrowck_stats: uint = 1 << 9;
-pub static borrowck_note_pure: uint = 1 << 10;
-pub static borrowck_note_loan: uint = 1 << 11;
-pub static no_landing_pads: uint = 1 << 12;
-pub static debug_llvm: uint = 1 << 13;
-pub static count_type_sizes: uint = 1 << 14;
-pub static meta_stats: uint = 1 << 15;
-pub static no_opt: uint = 1 << 16;
+pub static verbose:                 uint = 1 <<  0;
+pub static time_passes:             uint = 1 <<  1;
+pub static count_llvm_insns:        uint = 1 <<  2;
+pub static time_llvm_passes:        uint = 1 <<  3;
+pub static trans_stats:             uint = 1 <<  4;
+pub static asm_comments:            uint = 1 <<  5;
+pub static no_verify:               uint = 1 <<  6;
+pub static trace:                   uint = 1 <<  7;
+pub static coherence:               uint = 1 <<  8;
+pub static borrowck_stats:          uint = 1 <<  9;
+pub static borrowck_note_pure:      uint = 1 << 10;
+pub static borrowck_note_loan:      uint = 1 << 11;
+pub static no_landing_pads:         uint = 1 << 12;
+pub static debug_llvm:              uint = 1 << 13;
+pub static count_type_sizes:        uint = 1 << 14;
+pub static meta_stats:              uint = 1 << 15;
+pub static no_opt:                  uint = 1 << 16;
 pub static no_monomorphic_collapse: uint = 1 << 17;
-pub static gc: uint = 1 << 18;
-pub static jit: uint = 1 << 19;
-pub static debug_info: uint = 1 << 20;
-pub static extra_debug_info: uint = 1 << 21;
-pub static statik: uint = 1 << 22;
-pub static print_link_args: uint = 1 << 23;
-pub static no_debug_borrows: uint = 1 << 24;
-pub static lint_llvm : uint = 1 << 25;
+pub static gc:                      uint = 1 << 18;
+pub static jit:                     uint = 1 << 19;
+pub static debug_info:              uint = 1 << 20;
+pub static extra_debug_info:        uint = 1 << 21;
+pub static statik:                  uint = 1 << 22;
+pub static print_link_args:         uint = 1 << 23;
+pub static no_debug_borrows:        uint = 1 << 24;
+pub static lint_llvm:               uint = 1 << 25;
+pub static once_fns:                uint = 1 << 26;
 
 pub fn debugging_opts_map() -> ~[(~str, ~str, uint)] {
     ~[(~"verbose", ~"in general, enable more debug printouts", verbose),
@@ -112,6 +113,9 @@ pub fn debugging_opts_map() -> ~[(~str, ~str, uint)] {
      (~"lint-llvm",
       ~"Run the LLVM lint pass on the pre-optimization IR",
       lint_llvm),
+     (~"once-fns",
+      ~"Allow 'once fn' closures to deinitialize captured variables",
+      once_fns),
     ]
 }
 
@@ -293,6 +297,7 @@ impl Session_ {
     pub fn debug_borrows(@self) -> bool {
         self.opts.optimize == No && !self.debugging_opt(no_debug_borrows)
     }
+    pub fn once_fns(@self) -> bool { self.debugging_opt(once_fns) }
 
     // pointless function, now...
     pub fn str_of(@self, id: ast::ident) -> @str {
