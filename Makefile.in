@@ -239,17 +239,17 @@ $(foreach target,$(CFG_TARGET_TRIPLES),\
 # Standard library variables
 ######################################################################
 
-STDLIB_CRATE := $(S)src/libstd/core.rc
+STDLIB_CRATE := $(S)src/libstd/std.rs
 STDLIB_INPUTS := $(wildcard $(addprefix $(S)src/libstd/,        \
-                                           core.rc *.rs */*.rs */*/*rs */*/*/*rs))
+                                           *.rs */*.rs */*/*rs */*/*/*rs))
 
 ######################################################################
 # Extra library variables
 ######################################################################
 
-EXTRALIB_CRATE := $(S)src/libextra/std.rc
+EXTRALIB_CRATE := $(S)src/libextra/extra.rs
 EXTRALIB_INPUTS := $(wildcard $(addprefix $(S)src/libextra/,          \
-                                          std.rc *.rs */*.rs))
+                                          *.rs */*.rs))
 
 ######################################################################
 # rustc crate variables
