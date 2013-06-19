@@ -115,11 +115,14 @@ fn check_is_legal_to_move_from(bccx: @BorrowckCtxt,
         // These are separate from the above cases for a better error message.
         mc::cat_stack_upvar(*) |
         mc::cat_copied_upvar(mc::CopiedUpvar { onceness: ast::Many, _ }) => {
+            let once_hint = if bccx.tcx.sess.once_fns() {
+                " (unless the destination closure type is `once fn')"
+            } else {
+                ""
+            };
             bccx.span_err(
                 cmt0.span,
-                fmt!("cannot move out of %s \
-                      (unless the destination closure type is `once fn')",
-                     bccx.cmt_to_str(cmt)));
+                fmt!("cannot move out of %s%s", bccx.cmt_to_str(cmt), once_hint));
             false
         }
 
