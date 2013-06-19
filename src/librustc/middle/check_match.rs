@@ -456,7 +456,7 @@ pub fn ctor_arity(cx: @MatchCheckCtxt, ctor: &ctor, ty: ty::t) -> uint {
       ty::ty_enum(eid, _) => {
           let id = match *ctor { variant(id) => id,
           _ => fail!("impossible case") };
-        match vec::find(*ty::enum_variants(cx.tcx, eid), |v| v.id == id ) {
+        match ty::enum_variants(cx.tcx, eid).iter().find_(|v| v.id == id ) {
             Some(v) => v.args.len(),
             None => fail!("impossible case")
         }
