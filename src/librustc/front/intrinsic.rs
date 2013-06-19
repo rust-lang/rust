@@ -20,14 +20,22 @@ pub mod intrinsic {
     // version in sys is no longer present.
     pub fn get_tydesc<T>() -> *TyDesc {
         unsafe {
-            rusti::get_tydesc::<T>() as *TyDesc
+            rusti::get_tydesc::<T>()
         }
     }
 
+    pub type GlueFn = extern "Rust" fn(**TyDesc, *i8);
+
+    // NB: this has to be kept in sync with the Rust ABI.
     pub struct TyDesc {
         size: uint,
-        align: uint
-        // Remaining fields not listed
+        align: uint,
+        take_glue: GlueFn,
+        drop_glue: GlueFn,
+        free_glue: GlueFn,
+        visit_glue: GlueFn,
+        shape: *i8,
+        shape_tables: *i8
     }
 
     pub enum Opaque { }
@@ -133,7 +141,7 @@ pub mod intrinsic {
 
         #[abi = "rust-intrinsic"]
         pub extern "rust-intrinsic" {
-            pub fn get_tydesc<T>() -> *();
+            pub fn get_tydesc<T>() -> *TyDesc;
             pub fn visit_tydesc(td: *TyDesc, tv: @TyVisitor);
         }
     }

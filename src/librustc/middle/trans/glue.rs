@@ -789,7 +789,6 @@ pub fn emit_tydescs(ccx: &mut CrateContext) {
     };
 }
 
-fn type_of_glue_fn(ccx: &CrateContext) -> Type {
-    let tydescpp = ccx.tydesc_type.ptr_to().ptr_to();
-    Type::func([ Type::nil().ptr_to(), tydescpp, Type::i8p() ], &Type::void())
+pub fn type_of_glue_fn(ccx: &CrateContext) -> Type {
+    Type::glue_fn(ccx.tydesc_type)
 }

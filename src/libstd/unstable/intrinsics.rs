@@ -209,6 +209,9 @@ pub extern "rust-intrinsic" {
     pub fn pref_align_of<T>() -> uint;
 
     /// Get a static pointer to a type descriptor.
+    #[cfg(not(stage0))]
+    pub fn get_tydesc<T>() -> *::intrinsic::TyDesc;
+    #[cfg(stage0)]
     pub fn get_tydesc<T>() -> *();
 
     /// Create a value initialized to zero.
