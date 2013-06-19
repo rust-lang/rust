@@ -19,7 +19,7 @@ use cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering, Less, Equal, Greater};
 use clone::Clone;
 use old_iter::BaseIter;
 use old_iter;
-use iterator::{Iterator};
+use iterator::{Iterator, IteratorUtil};
 use iter::FromIter;
 use kinds::Copy;
 use libc;
@@ -1107,18 +1107,7 @@ pub fn rfind_between<T:Copy>(v: &[T],
 
 /// Find the first index containing a matching value
 pub fn position_elem<T:Eq>(v: &[T], x: &T) -> Option<uint> {
-    position(v, |y| *x == *y)
-}
-
-/**
- * Find the first index matching some predicate
- *
- * Apply function `f` to each element of `v`.  When function `f` returns true
- * then an option containing the index is returned. If `f` matches no elements
- * then none is returned.
- */
-pub fn position<T>(v: &[T], f: &fn(t: &T) -> bool) -> Option<uint> {
-    position_between(v, 0u, v.len(), f)
+    v.iter().position_(|y| *x == *y)
 }
 
 /**
@@ -3147,18 +3136,6 @@ mod tests {
     }
 
     #[test]
-    fn test_position() {
-        fn less_than_three(i: &int) -> bool { *i < 3 }
-        fn is_eighteen(i: &int) -> bool { *i == 18 }
-
-        assert!(position([], less_than_three).is_none());
-
-        let v1 = ~[5, 4, 3, 2, 1];
-        assert_eq!(position(v1, less_than_three), Some(3u));
-        assert!(position(v1, is_eighteen).is_none());
-    }
-
-    #[test]
     fn test_position_between() {
         assert!(position_between([], 0u, 0u, f).is_none());
 
@@ -3234,8 +3211,8 @@ mod tests {
         fn g(xy: &(int, char)) -> bool { let (_x, y) = *xy; y == 'd' }
         let v = ~[(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
 
-        assert_eq!(position(v, f), Some(1u));
-        assert!(position(v, g).is_none());
+        assert_eq!(rposition(v, f), Some(3u));
+        assert!(rposition(v, g).is_none());
     }
 
     #[test]
@@ -3869,21 +3846,6 @@ mod tests {
         let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
         let mut i = 0;
         do find(v) |_elt| {
-            if i == 2 {
-                fail!()
-            }
-            i += 0;
-            false
-        };
-    }
-
-    #[test]
-    #[ignore(windows)]
-    #[should_fail]
-    fn test_position_fail() {
-        let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
-        let mut i = 0;
-        do position(v) |_elt| {
             if i == 2 {
                 fail!()
             }
