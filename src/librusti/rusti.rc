@@ -538,8 +538,8 @@ mod tests {
 
     #[test]
     // FIXME: #7220 rusti on 32bit mac doesn't work.
-    #[cfg(not(and(target_word_size=32,
-                  target_os="mac")))]
+    #[cfg(not(target_word_size="32",
+              target_os="macos"))]
     fn run_all() {
         // FIXME(#7071):
         // By default, unit tests are run in parallel. Rusti, on the other hand,
@@ -652,8 +652,8 @@ mod tests {
 
     #[test]
     // FIXME: #7220 rusti on 32bit mac doesn't work.
-    #[cfg(not(and(target_word_size=32,
-                  target_os="mac")))]
+    #[cfg(not(target_word_size="32",
+              target_os="macos"))]
     fn exit_quits() {
         let mut r = repl();
         assert!(r.running);
