@@ -74,6 +74,8 @@ use rt::task::Task;
 use rt::thread::Thread;
 use rt::work_queue::WorkQueue;
 use rt::uv::uvio::UvEventLoop;
+use unstable::atomics::{AtomicInt, SeqCst};
+use unstable::sync::UnsafeAtomicRcBox;
 use vec::{OwnedVector, MutableVector};
 
 /// The global (exchange) heap.
@@ -174,10 +176,10 @@ pub mod util;
 pub fn start(_argc: int, _argv: **u8, crate_map: *u8, main: ~fn()) -> int {
 
     init(crate_map);
-    run(main);
+    let exit_code = run(main);
     cleanup();
 
-    return 0;
+    return exit_code;
 }
 
 /// One-time runtime initialization. Currently all this does is set up logging
@@ -190,7 +192,9 @@ pub fn cleanup() {
     global_heap::cleanup();
 }
 
-pub fn run(main: ~fn()) {
+pub fn run(main: ~fn()) -> int {
+    static DEFAULT_ERROR_CODE: int = 101;
+
     let nthreads = match os::getenv("RUST_THREADS") {
         Some(nstr) => FromStr::from_str(nstr).get(),
         None => unsafe {
@@ -216,10 +220,13 @@ pub fn run(main: ~fn()) {
         scheds.push(sched);
     }
 
+    let exit_code = UnsafeAtomicRcBox::new(AtomicInt::new(0));
+    let exit_code_clone = exit_code.clone();
+
     let main_cell = Cell::new(main);
     let handles = Cell::new(handles);
     let mut new_task = ~Task::new_root();
-    let on_exit: ~fn(bool) = |exit_status| {
+    let on_exit: ~fn(bool) = |exit_success| {
 
         let mut handles = handles.take();
         // Tell schedulers to exit
@@ -227,7 +234,10 @@ pub fn run(main: ~fn()) {
             handle.send(Shutdown);
         }
 
-        rtassert!(exit_status);
+        unsafe {
+            let exit_code = if exit_success { 0 } else { DEFAULT_ERROR_CODE };
+            (*exit_code_clone.get()).store(exit_code, SeqCst);
+        }
     };
     new_task.on_exit = Some(on_exit);
     let main_task = ~Coroutine::with_task(&mut scheds[0].stack_pool,
@@ -249,6 +259,10 @@ pub fn run(main: ~fn()) {
 
     // Wait for schedulers
     let _threads = threads;
+
+    unsafe {
+        (*exit_code.get()).load(SeqCst)
+    }
 }
 
 /// Possible contexts in which Rust code may be executing.
