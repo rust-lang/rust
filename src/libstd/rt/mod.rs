@@ -197,12 +197,7 @@ pub fn run(main: ~fn()) -> int {
 
     let nthreads = match os::getenv("RUST_THREADS") {
         Some(nstr) => FromStr::from_str(nstr).get(),
-        None => unsafe {
-            // Using more threads than cores in test code
-            // to force the OS to preempt them frequently.
-            // Assuming that this help stress test concurrent types.
-            util::num_cpus() * 2
-        }
+        None => unsafe { util::num_cpus() }
     };
 
     let sleepers = SleeperList::new();
