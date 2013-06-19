@@ -186,6 +186,11 @@ pub fn start(_argc: int, _argv: **u8, crate_map: *u8, main: ~fn()) -> int {
 /// based on the RUST_LOG environment variable.
 pub fn init(crate_map: *u8) {
     logging::init(crate_map);
+    unsafe { rust_update_gc_metadata(crate_map) }
+
+    extern {
+        fn rust_update_gc_metadata(crate_map: *u8);
+    }
 }
 
 /// One-time runtime cleanup.
