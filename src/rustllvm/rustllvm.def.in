@@ -588,6 +588,7 @@ LLVMInlineAsm
 LLVMInitializePasses
 LLVMAddPass
 LLVMCreatePass
+LLVMDestroyPass
 LLVMDIBuilderCreate
 LLVMDIBuilderDispose
 LLVMDIBuilderFinalize

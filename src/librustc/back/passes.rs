@@ -299,18 +299,27 @@ fn passes_exist() {
     let mut failed = ~[];
     unsafe { llvm::LLVMInitializePasses(); }
     for analysis_passes.each() |&(name,_)| {
-        if !create_pass(name).is_some() {
+        let pass = create_pass(name);
+        if !pass.is_some() {
             failed.push(name);
+        } else {
+            unsafe { llvm::LLVMDestroyPass(pass.get()) }
         }
     }
     for transform_passes.each() |&(name,_)| {
-        if !create_pass(name).is_some() {
+        let pass = create_pass(name);
+        if !pass.is_some() {
             failed.push(name);
+        } else {
+            unsafe { llvm::LLVMDestroyPass(pass.get()) }
         }
     }
     for utility_passes.each() |&(name,_)| {
-        if !create_pass(name).is_some() {
+        let pass = create_pass(name);
+        if !pass.is_some() {
             failed.push(name);
+        } else {
+            unsafe { llvm::LLVMDestroyPass(pass.get()) }
         }
     }
 
