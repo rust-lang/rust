@@ -1057,17 +1057,6 @@ pub fn contains<T:Eq>(v: &[T], x: &T) -> bool {
 }
 
 /**
- * Search for the first element that matches a given predicate
- *
- * Apply function `f` to each element of `v`, starting from the first.
- * When function `f` returns true then an option containing the element
- * is returned. If `f` matches no elements then none is returned.
- */
-pub fn find<T:Copy>(v: &[T], f: &fn(t: &T) -> bool) -> Option<T> {
-    find_between(v, 0u, v.len(), f)
-}
-
-/**
  * Search for the first element that matches a given predicate within a range
  *
  * Apply function `f` to each element of `v` within the range
@@ -3164,18 +3153,6 @@ mod tests {
     }
 
     #[test]
-    fn test_find() {
-        assert!(find([], f).is_none());
-
-        fn f(xy: &(int, char)) -> bool { let (_x, y) = *xy; y == 'b' }
-        fn g(xy: &(int, char)) -> bool { let (_x, y) = *xy; y == 'd' }
-        let v = ~[(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
-
-        assert_eq!(find(v, f), Some((1, 'b')));
-        assert!(find(v, g).is_none());
-    }
-
-    #[test]
     fn test_find_between() {
         assert!(find_between([], 0u, 0u, f).is_none());
 
@@ -3205,8 +3182,6 @@ mod tests {
 
     #[test]
     fn test_rposition() {
-        assert!(find([], f).is_none());
-
         fn f(xy: &(int, char)) -> bool { let (_x, y) = *xy; y == 'b' }
         fn g(xy: &(int, char)) -> bool { let (_x, y) = *xy; y == 'd' }
         let v = ~[(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
@@ -3835,22 +3810,6 @@ mod tests {
             }
             i += 0;
             true
-        };
-    }
-
-    #[test]
-    #[ignore(windows)]
-    #[should_fail]
-    #[allow(non_implicitly_copyable_typarams)]
-    fn test_find_fail() {
-        let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
-        let mut i = 0;
-        do find(v) |_elt| {
-            if i == 2 {
-                fail!()
-            }
-            i += 0;
-            false
         };
     }
 
