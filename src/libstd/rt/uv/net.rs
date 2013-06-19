@@ -17,6 +17,7 @@ use rt::uv::{Loop, Watcher, Request, UvError, Buf, NativeHandle, NullCallback,
              status_to_maybe_uv_error};
 use rt::io::net::ip::{IpAddr, Ipv4, Ipv6};
 use rt::uv::last_uv_error;
+use vec;
 
 fn ip4_as_uv_ip4<T>(addr: IpAddr, f: &fn(*sockaddr_in) -> T) -> T {
     match addr {
@@ -161,7 +162,7 @@ pub struct TcpWatcher(*uvll::uv_tcp_t);
 impl Watcher for TcpWatcher { }
 
 impl TcpWatcher {
-    pub fn new(loop_: &mut Loop) -> TcpWatcher {
+    pub fn new(loop_: &Loop) -> TcpWatcher {
         unsafe {
             let handle = malloc_handle(UV_TCP);
             assert!(handle.is_not_null());
@@ -264,8 +265,8 @@ impl NativeHandle<*uvll::uv_tcp_t> for TcpWatcher {
 pub struct UdpWatcher(*uvll::uv_udp_t);
 impl Watcher for UdpWatcher { }
 
-pub impl UdpWatcher {
-    fn new(loop_: &mut Loop) -> UdpWatcher {
+impl UdpWatcher {
+    pub fn new(loop_: &mut Loop) -> UdpWatcher {
         unsafe {
             let handle = malloc_handle(UV_UDP);
             assert!(handle.is_not_null());
@@ -276,7 +277,7 @@ pub impl UdpWatcher {
         }
     }
 
-    fn bind(&mut self, address: IpAddr) -> Result<(), UvError> {
+    pub fn bind(&mut self, address: IpAddr) -> Result<(), UvError> {
         match address {
             Ipv4(*) => {
                 do ip4_as_uv_ip4(address) |addr| {
@@ -294,7 +295,7 @@ pub impl UdpWatcher {
         }
     }
 
-    fn recv_start(&mut self, alloc: AllocCallback, cb: UdpReceiveCallback) {
+    pub fn recv_start(&mut self, alloc: AllocCallback, cb: UdpReceiveCallback) {
         {
             let data = self.get_watcher_data();
             data.alloc_cb = Some(alloc);
@@ -325,12 +326,12 @@ pub impl UdpWatcher {
         }
     }
 
-    fn recv_stop(&mut self) {
+    pub fn recv_stop(&mut self) {
         let handle = self.native_handle();
         unsafe { uvll::udp_recv_stop(handle); }
     }
 
-    fn send(&mut self, buf: Buf, address: IpAddr, cb: UdpSendCallback) {
+    pub fn send(&mut self, buf: Buf, address: IpAddr, cb: UdpSendCallback) {
         {
             let data = self.get_watcher_data();
             assert!(data.udp_send_cb.is_none());
@@ -366,7 +367,7 @@ pub impl UdpWatcher {
         }
     }
 
-    fn close(self, cb: NullCallback) {
+    pub fn close(self, cb: NullCallback) {
         {
             let mut this = self;
             let data = this.get_watcher_data();
@@ -470,11 +471,10 @@ impl NativeHandle<*uvll::uv_write_t> for WriteRequest {
 }
 
 pub struct UdpSendRequest(*uvll::uv_udp_send_t);
-
 impl Request for UdpSendRequest { }
 
-pub impl UdpSendRequest {
-    fn new() -> UdpSendRequest {
+impl UdpSendRequest {
+    pub fn new() -> UdpSendRequest {
         let send_handle = unsafe {
             malloc_req(UV_UDP_SEND)
         };
@@ -483,14 +483,14 @@ pub impl UdpSendRequest {
         UdpSendRequest(send_handle)
     }
 
-    fn handle(&self) -> UdpWatcher {
+    pub fn handle(&self) -> UdpWatcher {
         unsafe {
             let udp_handle = uvll::get_udp_handle_from_send_req(self.native_handle());
             NativeHandle::from_native_handle(udp_handle)
         }
     }
 
-    fn delete(self) {
+    pub fn delete(self) {
         unsafe { free_req(self.native_handle() as *c_void) }
     }
 }
