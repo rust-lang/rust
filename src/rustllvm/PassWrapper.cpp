@@ -63,3 +63,8 @@ extern "C" LLVMPassRef LLVMCreatePass(const char * PassName) {
         return (LLVMPassRef)0;
     }
 }
+
+extern "C" void LLVMDestroyPass(LLVMPassRef PassRef) {
+    Pass *p = unwrap(PassRef);
+    delete p;
+}

@@ -1684,6 +1684,9 @@ pub mod llvm {
         #[fast_ffi]
         pub unsafe fn LLVMCreatePass(PassName:*c_char) -> PassRef;
 
+        #[fast_ffi]
+        pub unsafe fn LLVMDestroyPass(P: PassRef);
+
         /** Adds a verification pass. */
         #[fast_ffi]
         pub unsafe fn LLVMAddVerifierPass(PM: PassManagerRef);
