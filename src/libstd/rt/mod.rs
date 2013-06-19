@@ -63,11 +63,11 @@ use cell::Cell;
 use clone::Clone;
 use container::Container;
 use from_str::FromStr;
+use iter::Times;
 use iterator::IteratorUtil;
 use option::{Some, None};
 use os;
 use ptr::RawPtr;
-use uint;
 use rt::sched::{Scheduler, Coroutine, Shutdown};
 use rt::sleeper_list::SleeperList;
 use rt::task::Task;
@@ -150,7 +150,7 @@ pub mod local_ptr;
 /// Bindings to pthread/windows thread-local storage.
 pub mod thread_local_storage;
 
-/// A concurrent data structure with which parent tasks wait on child tasks.
+/// For waiting on child tasks.
 pub mod join_latch;
 
 pub mod metrics;
@@ -188,11 +188,18 @@ pub fn init(crate_map: *u8) {
     logging::init(crate_map);
 }
 
+/// One-time runtime cleanup.
 pub fn cleanup() {
     global_heap::cleanup();
 }
 
+/// Execute the main function in a scheduler.
+///
+/// Configures the runtime according to the environment, by default
+/// using a task scheduler with the same number of threads as cores.
+/// Returns a process exit code.
 pub fn run(main: ~fn()) -> int {
+
     static DEFAULT_ERROR_CODE: int = 101;
 
     let nthreads = match os::getenv("RUST_THREADS") {
@@ -200,31 +207,39 @@ pub fn run(main: ~fn()) -> int {
         None => unsafe { util::num_cpus() }
     };
 
+    // The shared list of sleeping schedulers. Schedulers wake each other
+    // occassionally to do new work.
     let sleepers = SleeperList::new();
+    // The shared work queue. Temporary until work stealing is implemented.
     let work_queue = WorkQueue::new();
 
-    let mut handles = ~[];
+    // The schedulers.
     let mut scheds = ~[];
+    // Handles to the schedulers. When the main task ends these will be
+    // sent the Shutdown message to terminate the schedulers.
+    let mut handles = ~[];
 
-    for uint::range(0, nthreads) |_| {
+    for nthreads.times {
+        // Every scheduler is driven by an I/O event loop.
         let loop_ = ~UvEventLoop::new();
         let mut sched = ~Scheduler::new(loop_, work_queue.clone(), sleepers.clone());
         let handle = sched.make_handle();
 
-        handles.push(handle);
         scheds.push(sched);
+        handles.push(handle);
     }
 
+    // Create a shared cell for transmitting the process exit
+    // code from the main task to this function.
     let exit_code = UnsafeAtomicRcBox::new(AtomicInt::new(0));
     let exit_code_clone = exit_code.clone();
 
-    let main_cell = Cell::new(main);
+    // When the main task exits, after all the tasks in the main
+    // task tree, shut down the schedulers and set the exit code.
     let handles = Cell::new(handles);
-    let mut new_task = ~Task::new_root();
     let on_exit: ~fn(bool) = |exit_success| {
 
         let mut handles = handles.take();
-        // Tell schedulers to exit
         for handles.mut_iter().advance |handle| {
             handle.send(Shutdown);
         }
@@ -234,13 +249,17 @@ pub fn run(main: ~fn()) -> int {
             (*exit_code_clone.get()).store(exit_code, SeqCst);
         }
     };
+
+    // Create and enqueue the main task.
+    let main_cell = Cell::new(main);
+    let mut new_task = ~Task::new_root();
     new_task.on_exit = Some(on_exit);
     let main_task = ~Coroutine::with_task(&mut scheds[0].stack_pool,
                                           new_task, main_cell.take());
     scheds[0].enqueue_task(main_task);
 
+    // Run each scheduler in a thread.
     let mut threads = ~[];
-
     while !scheds.is_empty() {
         let sched = scheds.pop();
         let sched_cell = Cell::new(sched);
@@ -253,8 +272,9 @@ pub fn run(main: ~fn()) -> int {
     }
 
     // Wait for schedulers
-    let _threads = threads;
+    { let _threads = threads; }
 
+    // Return the exit code
     unsafe {
         (*exit_code.get()).load(SeqCst)
     }
