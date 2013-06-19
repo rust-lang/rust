@@ -915,7 +915,7 @@ priv fn waitpid(pid: pid_t) -> int {
 #[cfg(test)]
 mod tests {
     use io;
-    use libc::{c_int};
+    use libc::{c_int, uintptr_t};
     use option::{Option, None, Some};
     use os;
     use path::Path;
@@ -958,7 +958,10 @@ mod tests {
 
         assert_eq!(status, 0);
         assert_eq!(output_str.trim().to_owned(), ~"hello");
-        assert_eq!(error, ~[]);
+        // FIXME #7224
+        if !running_on_valgrind() {
+            assert_eq!(error, ~[]);
+        }
     }
 
     #[test]
@@ -1043,7 +1046,10 @@ mod tests {
 
         assert_eq!(status, 0);
         assert_eq!(output_str.trim().to_owned(), ~"hello");
-        assert_eq!(error, ~[]);
+        // FIXME #7224
+        if !running_on_valgrind() {
+            assert_eq!(error, ~[]);
+        }
     }
 
     #[test]
@@ -1057,14 +1063,20 @@ mod tests {
 
         assert_eq!(status, 0);
         assert_eq!(output_str.trim().to_owned(), ~"hello");
-        assert_eq!(error, ~[]);
+        // FIXME #7224
+        if !running_on_valgrind() {
+            assert_eq!(error, ~[]);
+        }
 
         let run::ProcessOutput {status, output, error}
             = prog.finish_with_output();
 
         assert_eq!(status, 0);
         assert_eq!(output, ~[]);
-        assert_eq!(error, ~[]);
+        // FIXME #7224
+        if !running_on_valgrind() {
+            assert_eq!(error, ~[]);
+        }
     }
 
     #[test]
@@ -1168,5 +1180,13 @@ mod tests {
         let output = str::from_bytes(prog.finish_with_output().output);
 
         assert!(output.contains("RUN_TEST_NEW_ENV=123"));
+    }
+
+    fn running_on_valgrind() -> bool {
+        unsafe { rust_running_on_valgrind() != 0 }
+    }
+
+    extern {
+        fn rust_running_on_valgrind() -> uintptr_t;
     }
 }

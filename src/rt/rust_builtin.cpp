@@ -17,6 +17,7 @@
 #include "sync/timer.h"
 #include "sync/rust_thread.h"
 #include "rust_abi.h"
+#include "vg/valgrind.h"
 
 #include <time.h>
 
@@ -928,6 +929,11 @@ rust_begin_unwind(uintptr_t token) {
 #else
     abort();
 #endif
+}
+
+extern "C" CDECL uintptr_t
+rust_running_on_valgrind() {
+    return RUNNING_ON_VALGRIND;
 }
 
 //
