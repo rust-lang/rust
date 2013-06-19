@@ -249,6 +249,11 @@ fn pieces_to_expr(cx: @ExtCtxt, sp: span,
         }
     }
 
+    /* Short circuit an easy case up front (won't work otherwise) */
+    if pieces.len() == 0 {
+        return cx.expr_str_uniq(args[0].span, @"");
+    }
+
     let fmt_sp = args[0].span;
     let mut n = 0u;
     let nargs = args.len();
