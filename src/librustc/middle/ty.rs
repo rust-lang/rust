@@ -3649,7 +3649,7 @@ pub fn def_has_ty_params(def: ast::def) -> bool {
     }
 }
 
-pub fn provided_trait_methods(cx: ctxt, id: ast::def_id) -> ~[ast::ident] {
+pub fn provided_trait_methods(cx: ctxt, id: ast::def_id) -> ~[@Method] {
     if is_local(id) {
         match cx.items.find(&id.node) {
             Some(&ast_map::node_item(@ast::item {
@@ -3657,13 +3657,13 @@ pub fn provided_trait_methods(cx: ctxt, id: ast::def_id) -> ~[ast::ident] {
                         _
                     }, _)) =>
                 match ast_util::split_trait_methods(*ms) {
-                   (_, p) => p.map(|method| method.ident)
+                   (_, p) => p.map(|m| method(cx, ast_util::local_def(m.id)))
                 },
             _ => cx.sess.bug(fmt!("provided_trait_methods: %? is not a trait",
                                   id))
         }
     } else {
-        csearch::get_provided_trait_methods(cx, id).map(|ifo| ifo.ty.ident)
+        csearch::get_provided_trait_methods(cx, id)
     }
 }
 
