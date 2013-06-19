@@ -239,3 +239,4 @@ rust_valgrind_stack_deregister
 rust_take_env_lock
 rust_drop_env_lock
 rust_update_log_settings
+rust_running_on_valgrind
