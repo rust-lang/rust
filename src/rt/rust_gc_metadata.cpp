@@ -79,6 +79,11 @@ rust_gc_metadata() {
     return (void *)global_safe_points;
 }
 
+extern "C" CDECL void
+rust_update_gc_metadata(const void* map) {
+    update_gc_metadata(map);
+}
+
 //
 // Local Variables:
 // mode: C++
