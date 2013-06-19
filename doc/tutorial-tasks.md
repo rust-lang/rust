@@ -481,7 +481,7 @@ an `Error` result.
 TODO: Need discussion of `future_result` in order to make failure
 modes useful.
 
-But not all failure is created equal. In some cases you might need to
+But not all failures are created equal. In some cases you might need to
 abort the entire program (perhaps you're writing an assert which, if
 it trips, indicates an unrecoverable logic error); in other cases you
 might want to contain the failure at a certain boundary (perhaps a
