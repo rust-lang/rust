@@ -381,51 +381,43 @@ impl Scheduler {
                     match home {
                         &Some(Sched(ref home_handle))
                         if home_handle.sched_id != this.sched_id() => {
-                            0
+                            SendHome
                         }
                         &Some(AnySched) if this.run_anything => {
-                            1
+                            ResumeNow
                         }
                         &Some(AnySched) => {
-                            2
+                            Requeue
                         }
                         &Some(Sched(_)) => {
-                            3
+                            ResumeNow
                         }
                         &None => {
-                            4
+                            Homeless
                         }
                     }
                 };
 
                 match action_id {
-                    0 => {
+                    SendHome => {
                         rtdebug!("sending task home");
                         Scheduler::send_task_home(task);
                         Local::put(this);
                         return false;
                     }
-                    1 => {
+                    ResumeNow => {
                         rtdebug!("resuming now");
                         this.resume_task_immediately(task);
                         return true;
                     }
-                    2 => {
+                    Requeue => {
                         rtdebug!("re-queueing")
                         this.enqueue_task(task);
                         Local::put(this);
                         return false;
                     }
-                    3 => {
-                        rtdebug!("resuming now");
-                        this.resume_task_immediately(task);
-                        return true;
-                    }
-                    4 => {
+                    Homeless => {
                         rtabort!("task home was None!");
-                    }
-                    _ => {
-                        rtabort!("literally, you should not be here");
                     }
                 }
             }
@@ -652,6 +644,14 @@ impl Scheduler {
                     transmute(next_task_context));
         }
     }
+}
+
+// The cases for the below function.                                              
+enum ResumeAction {
+    SendHome,
+    Requeue,
+    ResumeNow,
+    Homeless                                                                      
 }
 
 impl SchedHandle {
