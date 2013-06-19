@@ -420,7 +420,7 @@ impl<'self> LookupContext<'self> {
 
         let tcx = self.tcx();
         let ms = ty::trait_methods(tcx, did);
-        let index = match vec::position(*ms, |m| m.ident == self.m_name) {
+        let index = match ms.iter().position_(|m| m.ident == self.m_name) {
             Some(i) => i,
             None => { return; } // no method with the right name
         };
@@ -474,7 +474,7 @@ impl<'self> LookupContext<'self> {
         // First, try self methods
         let mut method_info: Option<MethodInfo> = None;
         let methods = ty::trait_methods(tcx, did);
-        match vec::position(*methods, |m| m.ident == self.m_name) {
+        match methods.iter().position_(|m| m.ident == self.m_name) {
             Some(i) => {
                 method_info = Some(MethodInfo {
                     method_ty: methods[i],
@@ -489,8 +489,7 @@ impl<'self> LookupContext<'self> {
             for ty::trait_supertraits(tcx, did).each() |trait_ref| {
                 let supertrait_methods =
                     ty::trait_methods(tcx, trait_ref.def_id);
-                match vec::position(*supertrait_methods,
-                                    |m| m.ident == self.m_name) {
+                match supertrait_methods.iter().position_(|m| m.ident == self.m_name) {
                     Some(i) => {
                         method_info = Some(MethodInfo {
                             method_ty: supertrait_methods[i],

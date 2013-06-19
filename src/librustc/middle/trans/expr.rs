@@ -1152,8 +1152,7 @@ fn trans_rec_or_struct(bcx: block,
         let mut need_base = vec::from_elem(field_tys.len(), true);
 
         let numbered_fields = do fields.map |field| {
-            let opt_pos = vec::position(field_tys, |field_ty|
-                                        field_ty.ident == field.node.ident);
+            let opt_pos = field_tys.iter().position_(|field_ty| field_ty.ident == field.node.ident);
             match opt_pos {
                 Some(i) => {
                     need_base[i] = false;

@@ -3372,7 +3372,7 @@ pub fn field_idx_strict(tcx: ty::ctxt, id: ast::ident, fields: &[field])
 }
 
 pub fn method_idx(id: ast::ident, meths: &[@Method]) -> Option<uint> {
-    vec::position(meths, |m| m.ident == id)
+    meths.iter().position_(|m| m.ident == id)
 }
 
 /// Returns a vector containing the indices of all type parameters that appear
