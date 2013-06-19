@@ -291,7 +291,13 @@ pub fn check_expr(e: @expr, (cx, v): (Context, visit::vt<Context>)) {
     match e.node {
         expr_cast(source, _) => {
             check_cast_for_escaping_regions(cx, source, e);
-            check_kind_bounds_of_cast(cx, source, e);
+            match ty::get(ty::expr_ty(cx.tcx, e)).sty {
+                ty::ty_trait(_, _, store, _, bounds) => {
+                    let source_ty = ty::expr_ty(cx.tcx, source);
+                    check_trait_cast_bounds(cx, e.span, source_ty, bounds, store)
+                }
+                _ => { }
+            }
         }
         expr_copy(expr) => {
             // Note: This is the only place where we must check whether the
@@ -335,8 +341,9 @@ fn check_ty(aty: @Ty, (cx, v): (Context, visit::vt<Context>)) {
     visit::visit_ty(aty, (cx, v));
 }
 
-pub fn check_builtin_bounds(cx: Context, ty: ty::t, bounds: ty::BuiltinBounds)
-                           -> ty::BuiltinBounds // returns the missing bounds
+// Calls "any_missing" if any bounds were missing.
+pub fn check_builtin_bounds(cx: Context, ty: ty::t, bounds: ty::BuiltinBounds,
+                            any_missing: &fn(ty::BuiltinBounds))
 {
     let kind = ty::type_contents(cx.tcx, ty);
     let mut missing = ty::EmptyBuiltinBounds();
@@ -345,7 +352,9 @@ pub fn check_builtin_bounds(cx: Context, ty: ty::t, bounds: ty::BuiltinBounds)
             missing.add(bound);
         }
     }
-    missing
+    if !missing.is_empty() {
+        any_missing(missing);
+    }
 }
 
 pub fn check_typaram_bounds(cx: Context,
@@ -354,8 +363,7 @@ pub fn check_typaram_bounds(cx: Context,
                     ty: ty::t,
                     type_param_def: &ty::TypeParameterDef)
 {
-    let missing = check_builtin_bounds(cx, ty, type_param_def.bounds.builtin_bounds);
-    if !missing.is_empty() {
+    do check_builtin_bounds(cx, ty, type_param_def.bounds.builtin_bounds) |missing| {
         cx.tcx.sess.span_err(
             sp,
             fmt!("instantiating a type parameter with an incompatible type \
@@ -368,8 +376,7 @@ pub fn check_typaram_bounds(cx: Context,
 pub fn check_freevar_bounds(cx: Context, sp: span, ty: ty::t,
                             bounds: ty::BuiltinBounds)
 {
-    let missing = check_builtin_bounds(cx, ty, bounds);
-    if !missing.is_empty() {
+    do check_builtin_bounds(cx, ty, bounds) |missing| {
         cx.tcx.sess.span_err(
             sp,
             fmt!("cannot capture variable of type `%s`, which does not fulfill \
@@ -379,6 +386,22 @@ pub fn check_freevar_bounds(cx: Context, sp: span, ty: ty::t,
             sp,
             fmt!("this closure's environment must satisfy `%s`",
                  bounds.user_string(cx.tcx)));
+    }
+}
+
+pub fn check_trait_cast_bounds(cx: Context, sp: span, ty: ty::t,
+                               bounds: ty::BuiltinBounds, store: ty::TraitStore) {
+    do check_builtin_bounds(cx, ty, bounds) |missing| {
+        cx.tcx.sess.span_err(sp,
+            fmt!("cannot pack type `%s`, which does not fulfill \
+                  `%s`, as a trait bounded by %s",
+                 ty_to_str(cx.tcx, ty), missing.user_string(cx.tcx),
+                 bounds.user_string(cx.tcx)));
+    }
+    // FIXME(#3569): Remove this check when the corresponding restriction
+    // is made with type contents.
+    if store == ty::UniqTraitStore && !ty::type_is_owned(cx.tcx, ty) {
+        cx.tcx.sess.span_err(sp, "uniquely-owned trait objects must be sendable");
     }
 }
 
@@ -562,22 +585,5 @@ pub fn check_cast_for_escaping_regions(
 
     fn is_subregion_of(cx: Context, r_sub: ty::Region, r_sup: ty::Region) -> bool {
         cx.tcx.region_maps.is_subregion_of(r_sub, r_sup)
-    }
-}
-
-/// Ensures that values placed into a ~Trait are copyable and sendable.
-pub fn check_kind_bounds_of_cast(cx: Context, source: @expr, target: @expr) {
-    let target_ty = ty::expr_ty(cx.tcx, target);
-    match ty::get(target_ty).sty {
-        // FIXME(#3569) kind check bounds here
-        ty::ty_trait(_, _, ty::UniqTraitStore, _, _bounds) => {
-            let source_ty = ty::expr_ty(cx.tcx, source);
-            if !ty::type_is_owned(cx.tcx, source_ty) {
-                cx.tcx.sess.span_err(
-                    target.span,
-                    "uniquely-owned trait objects must be sendable");
-            }
-        }
-        _ => {} // Nothing to do.
     }
 }
