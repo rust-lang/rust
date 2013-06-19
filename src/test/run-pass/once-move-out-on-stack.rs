@@ -10,6 +10,7 @@
 
 // Testing guarantees provided by once functions.
 
+// compile-flags:-Z once-fns
 extern mod extra;
 use extra::arc;
 use std::util;
