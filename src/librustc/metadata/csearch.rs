@@ -24,11 +24,6 @@ use syntax::ast;
 use syntax::ast_map;
 use syntax::diagnostic::expect;
 
-pub struct ProvidedTraitMethodInfo {
-    ty: ty::Method,
-    def_id: ast::def_id
-}
-
 pub struct StaticMethodInfo {
     ident: ast::ident,
     def_id: ast::def_id,
@@ -134,7 +129,7 @@ pub fn get_trait_method_def_ids(cstore: @mut cstore::CStore,
 
 pub fn get_provided_trait_methods(tcx: ty::ctxt,
                                   def: ast::def_id)
-                               -> ~[ProvidedTraitMethodInfo] {
+                               -> ~[@ty::Method] {
     let cstore = tcx.cstore;
     let cdata = cstore::get_crate_data(cstore, def.crate);
     decoder::get_provided_trait_methods(cstore.intr, cdata, def.node, tcx)
