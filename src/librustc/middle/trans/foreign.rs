@@ -681,9 +681,12 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
             let static_ti = get_tydesc(ccx, tp_ty);
             glue::lazily_emit_all_tydesc_glue(ccx, static_ti);
 
-            // FIXME (#3727): change this to ccx.tydesc_ty.ptr_to() when the
-            // core::sys copy of the get_tydesc interface dies off.
-            let td = PointerCast(bcx, static_ti.tydesc, Type::nil().ptr_to());
+            // FIXME (#3730): ideally this shouldn't need a cast,
+            // but there's a circularity between translating rust types to llvm
+            // types and having a tydesc type available. So I can't directly access
+            // the llvm type of intrinsic::TyDesc struct.
+            let userland_tydesc_ty = type_of::type_of(ccx, output_type);
+            let td = PointerCast(bcx, static_ti.tydesc, userland_tydesc_ty);
             Store(bcx, td, fcx.llretptr.get());
         }
         "init" => {

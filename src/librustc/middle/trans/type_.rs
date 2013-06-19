@@ -189,18 +189,23 @@ impl Type {
             None => ()
         }
 
+        // Bit of a kludge: pick the fn typeref out of the tydesc..
         let ty = cx.tydesc_type.get_field(abi::tydesc_field_drop_glue);
         cx.tn.associate_type("glue_fn", &ty);
 
         return ty;
     }
 
+    pub fn glue_fn(tydesc: Type) -> Type {
+        let tydescpp = tydesc.ptr_to().ptr_to();
+        Type::func([ Type::nil().ptr_to(), tydescpp, Type::i8p() ],
+            &Type::void())
+    }
+
     pub fn tydesc(arch: Architecture) -> Type {
         let mut tydesc = Type::named_struct("tydesc");
-        let tydescpp = tydesc.ptr_to().ptr_to();
         let pvoid = Type::i8p();
-        let glue_fn_ty = Type::func([ Type::nil().ptr_to(), tydescpp, pvoid ],
-            &Type::void()).ptr_to();
+        let glue_fn_ty = Type::glue_fn(tydesc).ptr_to();
 
         let int_ty = Type::int(arch);
 
