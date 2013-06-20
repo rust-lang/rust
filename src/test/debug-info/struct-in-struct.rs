@@ -55,7 +55,7 @@ struct InternalPaddingParent {
 struct PaddingAtEndParent {
     x: PaddingAtEnd,
     y: PaddingAtEnd,
-    z: PaddingAtEnd   
+    z: PaddingAtEnd
 }
 
 struct Mixed {
@@ -84,7 +84,7 @@ struct Tree {
 }
 
 fn main() {
-   
+
     let three_simple_structs = ThreeSimpleStructs {
         x: Simple { x: 1 },
         y: Simple { x: 2 },
@@ -100,7 +100,7 @@ fn main() {
     let padding_at_end_parent = PaddingAtEndParent {
         x: PaddingAtEnd { x: 10, y: 11 },
         y: PaddingAtEnd { x: 12, y: 13 },
-        z: PaddingAtEnd { x: 14, y: 15 }   
+        z: PaddingAtEnd { x: 14, y: 15 }
     };
 
     let mixed = Mixed {
@@ -111,22 +111,22 @@ fn main() {
     };
 
     let bag = Bag { x: Simple { x: 22 } };
-    let bag_in_bag = BagInBag 
+    let bag_in_bag = BagInBag
     {
-        x: Bag 
+        x: Bag
         {
-            x: Simple { x: 23 } 
-        } 
+            x: Simple { x: 23 }
+        }
     };
 
-    let tjo = ThatsJustOverkill 
+    let tjo = ThatsJustOverkill
     {
-        x: BagInBag 
+        x: BagInBag
         {
-            x: Bag 
+            x: Bag
             {
-                x: Simple { x: 24 } 
-            } 
+                x: Simple { x: 24 }
+            }
         }
     };
 
@@ -138,12 +138,12 @@ fn main() {
             y: InternalPadding { x: 28, y: 29 },
             z: InternalPadding { x: 30, y: 31 }
         },
-        z: BagInBag 
+        z: BagInBag
         {
-            x: Bag 
+            x: Bag
             {
-                x: Simple { x: 32 } 
-            } 
+                x: Simple { x: 32 }
+            }
         }
     };
 
