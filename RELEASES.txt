@@ -7,8 +7,9 @@ Version 0.7 (July 2013)
       * `use mod` is no longer valid.
       * `fail!` and `assert!` accept `~str`, `&'static str` or `fmt!`-style
         argument list.
-      * `Encodable`, `Decodable`, `TotalOrd`, `TotalEq`, `DeepClone` can all
-        be automatically derived with `#[deriving(...)]`.
+      * `Encodable`, `Decodable`, `Ord`, `TotalOrd`, `TotalEq`, `DeepClone`,
+        `Rand`, `Zero` and `ToStr` can all be automatically derived with
+        `#[deriving(...)]`.
       * The `Durable` trait is replaced with the `'static` bounds.
       * At long last, 'argument modes' no longer exist.
       * The `bytes!` macro returns a vector of bytes for string, u8, char,
@@ -52,8 +53,8 @@ Version 0.7 (July 2013)
         `(0, 1, 2).n2()` or `(0, 1, 2).n2_ref()`.
       * std: many types implement `Clone` - tuples, @, @mut. TODO
       * std: `path` type renamed to `Path`.
-      * std: Many standalone functions removed in favor of methods in
-        `vec`, `str`. In the future methods will also work as functions.
+      * std: Many standalone functions removed in favor of methods and iterators
+        in `vec`, `str`. In the future methods will also work as functions.
       * std: `reinterpret_cast` removed. Used `transmute`.
       * std: ascii string handling in `std::ascii`.
       * std: `Rand` is implemented for ~/@.
@@ -65,7 +66,7 @@ Version 0.7 (July 2013)
       * std: `FuzzyEq` renamed to `ApproxEq`.
       * std: `Map` now defines `pop` and `swap` methods.
       * extra: `flate` module moved from `std` to `extra`.
-      * extra: `FileInput` implements `std::io::Reader`.
+      * extra: `fileinput` module for iterating over a series of files.
       * extra: `Complex` number type and `complex` module.
       * extra: `Rational` number type and `rational` module.
       * extra: `BigInt`, `BigUint` implement numeric and comparison traits.
