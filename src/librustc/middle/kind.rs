@@ -81,8 +81,6 @@ pub fn check_crate(tcx: ty::ctxt,
     tcx.sess.abort_if_errors();
 }
 
-type check_fn = @fn(Context, @freevar_entry);
-
 fn check_struct_safe_for_destructor(cx: Context,
                                     span: span,
                                     struct_did: def_id) {
@@ -162,30 +160,43 @@ fn check_item(item: @item, (cx, visitor): (Context, visit::vt<Context>)) {
 // Yields the appropriate function to check the kind of closed over
 // variables. `id` is the node_id for some expression that creates the
 // closure.
-fn with_appropriate_checker(cx: Context, id: node_id, b: &fn(check_fn)) {
-    fn check_for_uniq(cx: Context, fv: @freevar_entry) {
+fn with_appropriate_checker(cx: Context, id: node_id,
+                            b: &fn(checker: &fn(Context, @freevar_entry))) {
+    fn check_for_uniq(cx: Context, fv: @freevar_entry, bounds: ty::BuiltinBounds) {
         // all captured data must be owned, regardless of whether it is
         // moved in or copied in.
         let id = ast_util::def_id_of_def(fv.def).node;
         let var_t = ty::node_id_to_type(cx.tcx, id);
+
+        // FIXME(#3569): Once closure capabilities are restricted based on their
+        // incoming bounds, make this check conditional based on the bounds.
         if !check_owned(cx, var_t, fv.span) { return; }
 
         // check that only immutable variables are implicitly copied in
         check_imm_free_var(cx, fv.def, fv.span);
+
+        check_freevar_bounds(cx, fv.span, var_t, bounds);
     }
 
-    fn check_for_box(cx: Context, fv: @freevar_entry) {
+    fn check_for_box(cx: Context, fv: @freevar_entry, bounds: ty::BuiltinBounds) {
         // all captured data must be owned
         let id = ast_util::def_id_of_def(fv.def).node;
         let var_t = ty::node_id_to_type(cx.tcx, id);
+
+        // FIXME(#3569): Once closure capabilities are restricted based on their
+        // incoming bounds, make this check conditional based on the bounds.
         if !check_durable(cx.tcx, var_t, fv.span) { return; }
 
         // check that only immutable variables are implicitly copied in
         check_imm_free_var(cx, fv.def, fv.span);
+
+        check_freevar_bounds(cx, fv.span, var_t, bounds);
     }
 
-    fn check_for_block(_cx: Context, _fv: @freevar_entry) {
-        // no restrictions
+    fn check_for_block(cx: Context, fv: @freevar_entry, bounds: ty::BuiltinBounds) {
+        let id = ast_util::def_id_of_def(fv.def).node;
+        let var_t = ty::node_id_to_type(cx.tcx, id);
+        check_freevar_bounds(cx, fv.span, var_t, bounds);
     }
 
     fn check_for_bare(cx: Context, fv: @freevar_entry) {
@@ -196,14 +207,14 @@ fn with_appropriate_checker(cx: Context, id: node_id, b: &fn(check_fn)) {
 
     let fty = ty::node_id_to_type(cx.tcx, id);
     match ty::get(fty).sty {
-        ty::ty_closure(ty::ClosureTy {sigil: OwnedSigil, _}) => {
-            b(check_for_uniq)
+        ty::ty_closure(ty::ClosureTy {sigil: OwnedSigil, bounds: bounds, _}) => {
+            b(|cx, fv| check_for_uniq(cx, fv, bounds))
         }
-        ty::ty_closure(ty::ClosureTy {sigil: ManagedSigil, _}) => {
-            b(check_for_box)
+        ty::ty_closure(ty::ClosureTy {sigil: ManagedSigil, bounds: bounds, _}) => {
+            b(|cx, fv| check_for_box(cx, fv, bounds))
         }
-        ty::ty_closure(ty::ClosureTy {sigil: BorrowedSigil, _}) => {
-            b(check_for_block)
+        ty::ty_closure(ty::ClosureTy {sigil: BorrowedSigil, bounds: bounds, _}) => {
+            b(|cx, fv| check_for_block(cx, fv, bounds))
         }
         ty::ty_bare_fn(_) => {
             b(check_for_bare)
@@ -271,7 +282,7 @@ pub fn check_expr(e: @expr, (cx, v): (Context, visit::vt<Context>)) {
                       type_param_defs.repr(cx.tcx));
             }
             for ts.iter().zip(type_param_defs.iter()).advance |(&ty, type_param_def)| {
-                check_bounds(cx, type_parameter_id, e.span, ty, type_param_def)
+                check_typaram_bounds(cx, type_parameter_id, e.span, ty, type_param_def)
             }
         }
     }
@@ -314,7 +325,7 @@ fn check_ty(aty: @Ty, (cx, v): (Context, visit::vt<Context>)) {
               let type_param_defs =
                   ty::lookup_item_type(cx.tcx, did).generics.type_param_defs;
               for ts.iter().zip(type_param_defs.iter()).advance |(&ty, type_param_def)| {
-                  check_bounds(cx, aty.id, aty.span, ty, type_param_def)
+                  check_typaram_bounds(cx, aty.id, aty.span, ty, type_param_def)
               }
           }
       }
@@ -323,19 +334,26 @@ fn check_ty(aty: @Ty, (cx, v): (Context, visit::vt<Context>)) {
     visit::visit_ty(aty, (cx, v));
 }
 
-pub fn check_bounds(cx: Context,
+pub fn check_builtin_bounds(cx: Context, ty: ty::t, bounds: ty::BuiltinBounds)
+                           -> ty::BuiltinBounds // returns the missing bounds
+{
+    let kind = ty::type_contents(cx.tcx, ty);
+    let mut missing = ty::EmptyBuiltinBounds();
+    for bounds.each |bound| {
+        if !kind.meets_bound(cx.tcx, bound) {
+            missing.add(bound);
+        }
+    }
+    missing
+}
+
+pub fn check_typaram_bounds(cx: Context,
                     _type_parameter_id: node_id,
                     sp: span,
                     ty: ty::t,
                     type_param_def: &ty::TypeParameterDef)
 {
-    let kind = ty::type_contents(cx.tcx, ty);
-    let mut missing = ty::EmptyBuiltinBounds();
-    for type_param_def.bounds.builtin_bounds.each |bound| {
-        if !kind.meets_bound(cx.tcx, bound) {
-            missing.add(bound);
-        }
-    }
+    let missing = check_builtin_bounds(cx, ty, type_param_def.bounds.builtin_bounds);
     if !missing.is_empty() {
         cx.tcx.sess.span_err(
             sp,
@@ -343,6 +361,23 @@ pub fn check_bounds(cx: Context,
                   `%s`, which does not fulfill `%s`",
                  ty_to_str(cx.tcx, ty),
                  missing.user_string(cx.tcx)));
+    }
+}
+
+pub fn check_freevar_bounds(cx: Context, sp: span, ty: ty::t,
+                            bounds: ty::BuiltinBounds)
+{
+    let missing = check_builtin_bounds(cx, ty, bounds);
+    if !missing.is_empty() {
+        cx.tcx.sess.span_err(
+            sp,
+            fmt!("cannot capture variable of type `%s`, which does not fulfill \
+                  `%s`, in a bounded closure",
+                 ty_to_str(cx.tcx, ty), missing.user_string(cx.tcx)));
+        cx.tcx.sess.span_note(
+            sp,
+            fmt!("this closure's environment must satisfy `%s`",
+                 bounds.user_string(cx.tcx)));
     }
 }
 
