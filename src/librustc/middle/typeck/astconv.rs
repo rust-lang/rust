@@ -277,7 +277,10 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Copy + 'static>(
                 }
                 return ty::mk_evec(tcx, mt, vst);
             }
-            ast::ty_path(path, id) => {
+            ast::ty_path(path, bounds, id) => {
+                // Note that the "bounds must be empty if path is not a trait"
+                // restriction is enforced in the below case for ty_path, which
+                // will run after this as long as the path isn't a trait.
                 match tcx.def_map.find(&id) {
                     Some(&ast::def_prim_ty(ast::ty_str)) if a_seq_ty.mutbl == ast::m_imm => {
                         check_path_args(tcx, path, NO_TPS | NO_REGIONS);
@@ -300,11 +303,13 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Copy + 'static>(
                                 ty::BoxTraitStore
                             }
                         };
+                        let bounds = conv_builtin_bounds(this.tcx(), bounds);
                         return ty::mk_trait(tcx,
                                             result.def_id,
                                             copy result.substs,
                                             trait_store,
-                                            a_seq_ty.mutbl);
+                                            a_seq_ty.mutbl,
+                                            bounds);
                     }
                     _ => {}
                 }
@@ -395,13 +400,22 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Copy + 'static>(
                                       ast_ty.span);
           ty::mk_closure(tcx, fn_decl)
       }
-      ast::ty_path(path, id) => {
+      ast::ty_path(path, bounds, id) => {
         let a_def = match tcx.def_map.find(&id) {
           None => tcx.sess.span_fatal(
               ast_ty.span, fmt!("unbound path %s",
                                 path_to_str(path, tcx.sess.intr()))),
           Some(&d) => d
         };
+        // Kind bounds on path types are only supported for traits.
+        match a_def {
+            // But don't emit the error if the user meant to do a trait anyway.
+            ast::def_trait(*) => { },
+            _ if !bounds.is_empty() =>
+                tcx.sess.span_err(ast_ty.span,
+                    "kind bounds can only be used on trait types"),
+            _ => { },
+        }
         match a_def {
           ast::def_trait(_) => {
               let path_str = path_to_str(path, tcx.sess.intr());

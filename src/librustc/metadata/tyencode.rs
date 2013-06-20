@@ -261,13 +261,16 @@ fn enc_sty(w: @io::Writer, cx: @ctxt, st: ty::sty) {
         enc_substs(w, cx, substs);
         w.write_char(']');
       }
-      ty::ty_trait(def, ref substs, store, mt) => {
+      ty::ty_trait(def, ref substs, store, mt, bounds) => {
         w.write_str(&"x[");
         w.write_str((cx.ds)(def));
         w.write_char('|');
         enc_substs(w, cx, substs);
         enc_trait_store(w, cx, store);
         enc_mutability(w, mt);
+        let bounds = ty::ParamBounds {builtin_bounds: bounds,
+                                      trait_bounds: ~[]};
+        enc_bounds(w, cx, &bounds);
         w.write_char(']');
       }
       ty::ty_tup(ts) => {

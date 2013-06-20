@@ -422,7 +422,7 @@ pub fn print_type(s: @ps, ty: @ast::Ty) {
                       f.purity, f.onceness, &f.decl, None,
                       Some(&generics), None);
       }
-      ast::ty_path(path, _) => print_path(s, path, false),
+      ast::ty_path(path, bounds, _) => print_bounded_path(s, path, bounds),
       ast::ty_fixed_length_vec(ref mt, v) => {
         word(s.s, "[");
         match mt.mutbl {
@@ -1483,7 +1483,8 @@ pub fn print_for_decl(s: @ps, loc: @ast::local, coll: @ast::expr) {
     print_expr(s, coll);
 }
 
-pub fn print_path(s: @ps, path: @ast::Path, colons_before_params: bool) {
+fn print_path_(s: @ps, path: @ast::Path, colons_before_params: bool,
+               opt_bounds: Option<@OptVec<ast::TyParamBound>>) {
     maybe_print_comment(s, path.span.lo);
     if path.global { word(s.s, "::"); }
     let mut first = true;
@@ -1491,6 +1492,9 @@ pub fn print_path(s: @ps, path: @ast::Path, colons_before_params: bool) {
         if first { first = false; } else { word(s.s, "::"); }
         print_ident(s, *id);
     }
+    do opt_bounds.map_consume |bounds| {
+        print_bounds(s, bounds);
+    };
     if path.rp.is_some() || !path.types.is_empty() {
         if colons_before_params { word(s.s, "::"); }
 
@@ -1509,6 +1513,15 @@ pub fn print_path(s: @ps, path: @ast::Path, colons_before_params: bool) {
             word(s.s, ">");
         }
     }
+}
+
+pub fn print_path(s: @ps, path: @ast::Path, colons_before_params: bool) {
+    print_path_(s, path, colons_before_params, None)
+}
+
+pub fn print_bounded_path(s: @ps, path: @ast::Path,
+                          bounds: @OptVec<ast::TyParamBound>) {
+    print_path_(s, path, false, Some(bounds))
 }
 
 pub fn print_irrefutable_pat(s: @ps, pat: @ast::pat) {

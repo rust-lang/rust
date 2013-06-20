@@ -419,7 +419,8 @@ impl to_bytes::IterBytes for ClosureTy {
         self.sigil.iter_bytes(lsb0, f) &&
         self.onceness.iter_bytes(lsb0, f) &&
         self.region.iter_bytes(lsb0, f) &&
-        self.sig.iter_bytes(lsb0, f)
+        self.sig.iter_bytes(lsb0, f) &&
+        self.bounds.iter_bytes(lsb0, f)
     }
 }
 
@@ -600,7 +601,7 @@ pub enum sty {
     ty_rptr(Region, mt),
     ty_bare_fn(BareFnTy),
     ty_closure(ClosureTy),
-    ty_trait(def_id, substs, TraitStore, ast::mutability),
+    ty_trait(def_id, substs, TraitStore, ast::mutability, BuiltinBounds),
     ty_struct(def_id, substs),
     ty_tup(~[t]),
 
@@ -1046,7 +1047,7 @@ fn mk_t(cx: ctxt, st: sty) -> t {
       &ty_infer(_) => flags |= needs_infer as uint,
       &ty_self(_) => flags |= has_self as uint,
       &ty_enum(_, ref substs) | &ty_struct(_, ref substs) |
-      &ty_trait(_, ref substs, _, _) => {
+      &ty_trait(_, ref substs, _, _, _) => {
         flags |= sflags(substs);
       }
       &ty_box(ref m) | &ty_uniq(ref m) | &ty_evec(ref m, _) |
@@ -1268,10 +1269,11 @@ pub fn mk_trait(cx: ctxt,
                 did: ast::def_id,
                 substs: substs,
                 store: TraitStore,
-                mutability: ast::mutability)
+                mutability: ast::mutability,
+                bounds: BuiltinBounds)
              -> t {
     // take a copy of substs so that we own the vectors inside
-    mk_t(cx, ty_trait(did, substs, store, mutability))
+    mk_t(cx, ty_trait(did, substs, store, mutability, bounds))
 }
 
 pub fn mk_struct(cx: ctxt, struct_id: ast::def_id, substs: substs) -> t {
@@ -1319,7 +1321,7 @@ pub fn maybe_walk_ty(ty: t, f: &fn(t) -> bool) {
         maybe_walk_ty(tm.ty, f);
       }
       ty_enum(_, ref substs) | ty_struct(_, ref substs) |
-      ty_trait(_, ref substs, _, _) => {
+      ty_trait(_, ref substs, _, _, _) => {
         for (*substs).tps.each |subty| { maybe_walk_ty(*subty, f); }
       }
       ty_tup(ref ts) => { for ts.each |tt| { maybe_walk_ty(*tt, f); } }
@@ -1380,8 +1382,8 @@ fn fold_sty(sty: &sty, fldop: &fn(t) -> t) -> sty {
         ty_enum(tid, ref substs) => {
             ty_enum(tid, fold_substs(substs, fldop))
         }
-        ty_trait(did, ref substs, st, mutbl) => {
-            ty_trait(did, fold_substs(substs, fldop), st, mutbl)
+        ty_trait(did, ref substs, st, mutbl, bounds) => {
+            ty_trait(did, fold_substs(substs, fldop), st, mutbl, bounds)
         }
         ty_tup(ref ts) => {
             let new_ts = ts.map(|tt| fldop(*tt));
@@ -1470,8 +1472,12 @@ pub fn fold_regions_and_ty(
       ty_struct(def_id, ref substs) => {
         ty::mk_struct(cx, def_id, fold_substs(substs, fldr, fldt))
       }
-      ty_trait(def_id, ref substs, st, mutbl) => {
-        ty::mk_trait(cx, def_id, fold_substs(substs, fldr, fldt), st, mutbl)
+      ty_trait(def_id, ref substs, st, mutbl, bounds) => {
+        let st = match st {
+            RegionTraitStore(region) => RegionTraitStore(fldr(region)),
+            st => st,
+        };
+        ty::mk_trait(cx, def_id, fold_substs(substs, fldr, fldt), st, mutbl, bounds)
       }
       ty_bare_fn(ref f) => {
           ty::mk_bare_fn(cx, BareFnTy {sig: fold_sig(&f.sig, fldfnt),
@@ -2054,18 +2060,19 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
                 TC_MANAGED + statically_sized(nonowned(tc_mt(cx, mt, cache)))
             }
 
-            ty_trait(_, _, UniqTraitStore, _) => {
+            ty_trait(_, _, UniqTraitStore, _, _bounds) => {
+                // FIXME(#3569): Add privileges with the bounds here
                 TC_OWNED_CLOSURE
             }
 
-            ty_trait(_, _, BoxTraitStore, mutbl) => {
+            ty_trait(_, _, BoxTraitStore, mutbl, _bounds) => {
                 match mutbl {
                     ast::m_mutbl => TC_MANAGED + TC_MUTABLE,
                     _ => TC_MANAGED
                 }
             }
 
-            ty_trait(_, _, RegionTraitStore(r), mutbl) => {
+            ty_trait(_, _, RegionTraitStore(r), mutbl, _bounds) => {
                 borrowed_contents(r, mutbl)
             }
 
@@ -2348,7 +2355,7 @@ pub fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
                 false           // unsafe ptrs can always be NULL
             }
 
-            ty_trait(_, _, _, _) => {
+            ty_trait(_, _, _, _, _) => {
                 false
             }
 
@@ -2500,7 +2507,7 @@ pub fn type_is_pod(cx: ctxt, ty: t) -> bool {
       ty_box(_) | ty_uniq(_) | ty_closure(_) |
       ty_estr(vstore_uniq) | ty_estr(vstore_box) |
       ty_evec(_, vstore_uniq) | ty_evec(_, vstore_box) |
-      ty_trait(_, _, _, _) | ty_rptr(_,_) | ty_opaque_box => result = false,
+      ty_trait(_, _, _, _, _) | ty_rptr(_,_) | ty_opaque_box => result = false,
       // Structural types
       ty_enum(did, ref substs) => {
         let variants = enum_variants(cx, did);
@@ -2791,12 +2798,13 @@ impl to_bytes::IterBytes for sty {
 
             ty_uniq(ref mt) => 19u8.iter_bytes(lsb0, f) && mt.iter_bytes(lsb0, f),
 
-            ty_trait(ref did, ref substs, ref v, ref mutbl) => {
+            ty_trait(ref did, ref substs, ref v, ref mutbl, bounds) => {
                 20u8.iter_bytes(lsb0, f) &&
                 did.iter_bytes(lsb0, f) &&
                 substs.iter_bytes(lsb0, f) &&
                 v.iter_bytes(lsb0, f) &&
-                mutbl.iter_bytes(lsb0, f)
+                mutbl.iter_bytes(lsb0, f) &&
+                bounds.iter_bytes(lsb0, f)
             }
 
             ty_opaque_closure_ptr(ref ck) => 21u8.iter_bytes(lsb0, f) && ck.iter_bytes(lsb0, f),
@@ -3440,7 +3448,7 @@ pub fn ty_sort_str(cx: ctxt, t: t) -> ~str {
       ty_rptr(_, _) => ~"&-ptr",
       ty_bare_fn(_) => ~"extern fn",
       ty_closure(_) => ~"fn",
-      ty_trait(id, _, _, _) => fmt!("trait %s", item_path_str(cx, id)),
+      ty_trait(id, _, _, _, _) => fmt!("trait %s", item_path_str(cx, id)),
       ty_struct(id, _) => fmt!("struct %s", item_path_str(cx, id)),
       ty_tup(_) => ~"tuple",
       ty_infer(TyVar(_)) => ~"inferred type",
@@ -3774,7 +3782,7 @@ pub fn impl_trait_ref(cx: ctxt, id: ast::def_id) -> Option<@TraitRef> {
 
 pub fn ty_to_def_id(ty: t) -> Option<ast::def_id> {
     match get(ty).sty {
-      ty_trait(id, _, _, _) | ty_struct(id, _) | ty_enum(id, _) => Some(id),
+      ty_trait(id, _, _, _, _) | ty_struct(id, _) | ty_enum(id, _) => Some(id),
       _ => None
     }
 }
@@ -4453,5 +4461,6 @@ pub fn visitor_object_ty(tcx: ctxt) -> (@TraitRef, t) {
     assert!(tcx.intrinsic_traits.contains_key(&ty_visitor_name));
     let trait_ref = tcx.intrinsic_traits.get_copy(&ty_visitor_name);
     (trait_ref,
-     mk_trait(tcx, trait_ref.def_id, copy trait_ref.substs, BoxTraitStore, ast::m_imm))
+     mk_trait(tcx, trait_ref.def_id, copy trait_ref.substs,
+              BoxTraitStore, ast::m_imm, EmptyBuiltinBounds()))
 }

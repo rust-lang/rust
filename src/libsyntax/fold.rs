@@ -680,7 +680,9 @@ pub fn noop_fold_ty(t: &ty_, fld: @ast_fold) -> ty_ {
             })
         }
         ty_tup(ref tys) => ty_tup(tys.map(|ty| fld.fold_ty(*ty))),
-        ty_path(path, id) => ty_path(fld.fold_path(path), fld.new_id(id)),
+        ty_path(path, bounds, id) =>
+            ty_path(fld.fold_path(path),
+                    @bounds.map(|x| fold_ty_param_bound(x, fld)), fld.new_id(id)),
         ty_fixed_length_vec(ref mt, e) => {
             ty_fixed_length_vec(
                 fold_mt(mt, fld),
