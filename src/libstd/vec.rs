@@ -281,16 +281,16 @@ pub trait VectorVector<T> {
 impl<'self, T:Copy> VectorVector<T> for &'self [~[T]] {
     /// Flattens a vector of slices of T into a single vector of T.
     pub fn concat_vec(&self) -> ~[T] {
-        self.flat_map(|&inner| inner)
+        self.flat_map(|inner| copy *inner)
     }
 
     /// Concatenate a vector of vectors, placing a given separator between each.
     pub fn connect_vec(&self, sep: &T) -> ~[T] {
         let mut r = ~[];
         let mut first = true;
-        for self.iter().advance |&inner| {
+        for self.iter().advance |inner| {
             if first { first = false; } else { r.push(copy *sep); }
-            r.push_all(inner);
+            r.push_all(copy *inner);
         }
         r
     }
