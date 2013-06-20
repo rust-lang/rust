@@ -2249,16 +2249,23 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
     }
 
     fn closure_contents(cty: &ClosureTy) -> TypeContents {
+        // Closure contents are just like trait contents, but with potentially
+        // even more stuff.
         let st = match cty.sigil {
-            ast::BorrowedSigil => TC_BORROWED_POINTER,
-            ast::ManagedSigil => TC_MANAGED,
-            ast::OwnedSigil => if cty.bounds.contains_elem(BoundCopy) {
-                TC_OWNED_POINTER
-            } else {
-                TC_OWNED_POINTER + TC_NONCOPY_TRAIT
-            }
+            ast::BorrowedSigil =>
+                trait_contents(RegionTraitStore(cty.region), m_imm, cty.bounds)
+                    + TC_BORROWED_POINTER, // might be an env packet even if static
+            ast::ManagedSigil =>
+                trait_contents(BoxTraitStore, m_imm, cty.bounds),
+            ast::OwnedSigil =>
+                trait_contents(UniqTraitStore, m_imm, cty.bounds),
         };
+        // FIXME(#3569): This borrowed_contents call should be taken care of in
+        // trait_contents, after ~Traits and @Traits can have region bounds too.
+        // This one here is redundant for &fns but important for ~fns and @fns.
         let rt = borrowed_contents(cty.region, m_imm);
+        // This also prohibits "@once fn" from being copied, which allows it to
+        // be called. Neither way really makes much sense.
         let ot = match cty.onceness {
             ast::Once => TC_ONCE_CLOSURE,
             ast::Many => TC_NONE
