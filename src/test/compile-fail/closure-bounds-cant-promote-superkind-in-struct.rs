@@ -12,7 +12,7 @@ struct X {
     field: @fn:Copy(),
 }
 
-fn foo(blk: @fn()) -> X {
+fn foo(blk: @fn:()) -> X {
     return X { field: blk }; //~ ERROR expected bounds `Copy` but found no bounds
 }
 
