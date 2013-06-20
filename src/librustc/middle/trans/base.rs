@@ -1653,7 +1653,9 @@ pub fn new_fn_ctxt_w_id(ccx: @mut CrateContext,
     fcx.llenv = unsafe {
           llvm::LLVMGetParam(llfndecl, fcx.env_arg_pos() as c_uint)
     };
-    fcx.llretptr = Some(make_return_pointer(fcx, substd_output_type));
+    if !ty::type_is_nil(substd_output_type) {
+        fcx.llretptr = Some(make_return_pointer(fcx, substd_output_type));
+    }
     fcx
 }
 
@@ -1808,7 +1810,7 @@ pub fn build_return_block(fcx: fn_ctxt) {
     let ret_cx = raw_block(fcx, false, fcx.llreturn);
 
     // Return the value if this function immediate; otherwise, return void.
-    if fcx.has_immediate_return_value {
+    if fcx.llretptr.is_some() && fcx.has_immediate_return_value {
         Ret(ret_cx, Load(ret_cx, fcx.llretptr.get()))
     } else {
         RetVoid(ret_cx)
@@ -2340,8 +2342,7 @@ pub fn create_entry_wrapper(ccx: @mut CrateContext,
             llvm::LLVMGetParam(llfdecl, env_arg as c_uint)
         };
         let args = ~[llenvarg];
-        let llresult = Call(bcx, main_llfn, args);
-        Store(bcx, llresult, fcx.llretptr.get());
+        Call(bcx, main_llfn, args);
 
         build_return(bcx);
         finish_fn(fcx, lltop);
