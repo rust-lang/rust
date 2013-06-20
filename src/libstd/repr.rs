@@ -19,9 +19,6 @@ More runtime type reflection
 use cast::transmute;
 use char;
 use container::Container;
-use intrinsic;
-use intrinsic::{TyDesc, TyVisitor, visit_tydesc};
-use intrinsic::Opaque;
 use io::{Writer, WriterUtil};
 use iterator::IteratorUtil;
 use libc::c_void;
@@ -34,6 +31,10 @@ use to_str::ToStr;
 use vec::raw::{VecRepr, SliceRepr};
 use vec;
 use vec::{OwnedVector, UnboxedVecRepr};
+#[cfg(stage0)]
+use intrinsic::{Opaque, TyDesc, TyVisitor, get_tydesc, visit_tydesc};
+#[cfg(not(stage0))]
+use unstable::intrinsics::{Opaque, TyDesc, TyVisitor, get_tydesc, visit_tydesc};
 
 #[cfg(test)] use io;
 
@@ -564,11 +565,22 @@ impl TyVisitor for ReprVisitor {
     fn visit_self(&self) -> bool { true }
     fn visit_type(&self) -> bool { true }
 
+    #[cfg(not(stage0))]
     fn visit_opaque_box(&self) -> bool {
         self.writer.write_char('@');
         do self.get::<&managed::raw::BoxRepr> |b| {
             let p = ptr::to_unsafe_ptr(&b.data) as *c_void;
             self.visit_ptr_inner(p, b.header.type_desc);
+        }
+    }
+    #[cfg(stage0)]
+    fn visit_opaque_box(&self) -> bool {
+        self.writer.write_char('@');
+        do self.get::<&managed::raw::BoxRepr> |b| {
+            let p = ptr::to_unsafe_ptr(&b.data) as *c_void;
+            unsafe {
+                self.visit_ptr_inner(p, transmute(b.header.type_desc));
+            }
         }
     }
 
@@ -581,7 +593,7 @@ impl TyVisitor for ReprVisitor {
 pub fn write_repr<T>(writer: @Writer, object: &T) {
     unsafe {
         let ptr = ptr::to_unsafe_ptr(object) as *c_void;
-        let tydesc = intrinsic::get_tydesc::<T>();
+        let tydesc = get_tydesc::<T>();
         let u = ReprVisitor(ptr, writer);
         let v = reflect::MovePtrAdaptor(u);
         visit_tydesc(tydesc, @v as @TyVisitor)
