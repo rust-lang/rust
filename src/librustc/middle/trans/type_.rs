@@ -189,8 +189,7 @@ impl Type {
             None => ()
         }
 
-        // Bit of a kludge: pick the fn typeref out of the tydesc..
-        let ty = cx.tydesc_type.get_field(abi::tydesc_field_drop_glue);
+        let ty = Type::glue_fn(cx.tydesc_type).ptr_to();
         cx.tn.associate_type("glue_fn", &ty);
 
         return ty;
@@ -267,10 +266,6 @@ impl Type {
 
     pub fn enum_discrim(cx: &CrateContext) -> Type {
         cx.int_type
-    }
-
-    pub fn captured_tydescs(ctx: &CrateContext, num: uint) -> Type {
-        Type::struct_(vec::from_elem(num, ctx.tydesc_type.ptr_to()), false)
     }
 
     pub fn opaque_trait(ctx: &CrateContext, store: ty::TraitStore) -> Type {

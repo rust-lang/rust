@@ -4453,8 +4453,8 @@ pub fn get_tydesc_ty(tcx: ctxt) -> t {
 }
 
 pub fn get_opaque_ty(tcx: ctxt) -> t {
-    let tydesc_lang_item = tcx.lang_items.opaque();
-    tcx.intrinsic_defs.find_copy(&tydesc_lang_item)
+    let opaque_lang_item = tcx.lang_items.opaque();
+    tcx.intrinsic_defs.find_copy(&opaque_lang_item)
         .expect("Failed to resolve Opaque")
 }
 
