@@ -268,7 +268,7 @@ pub fn trans_opt(bcx: block, o: &Opt) -> opt_result {
         }
         lit(UnitLikeStructLit(pat_id)) => {
             let struct_ty = ty::node_id_to_type(bcx.tcx(), pat_id);
-            let datumblock = datum::scratch_datum(bcx, struct_ty, true);
+            let datumblock = datum::scratch_datum(bcx, struct_ty, "", true);
             return single_result(datumblock.to_result(bcx));
         }
         lit(ConstLit(lit_id)) => {
@@ -927,7 +927,7 @@ pub fn extract_vec_elems(bcx: block,
             ty::mt {ty: vt.unit_ty, mutbl: ast::m_imm},
             ty::vstore_slice(ty::re_static)
         );
-        let scratch = scratch_datum(bcx, slice_ty, false);
+        let scratch = scratch_datum(bcx, slice_ty, "", false);
         Store(bcx, slice_begin,
             GEPi(bcx, scratch.val, [0u, abi::slice_elt_base])
         );
@@ -1095,9 +1095,9 @@ pub fn compare_values(cx: block,
 
     match ty::get(rhs_t).sty {
         ty::ty_estr(ty::vstore_uniq) => {
-            let scratch_lhs = alloca(cx, val_ty(lhs));
+            let scratch_lhs = alloca(cx, val_ty(lhs), "__lhs");
             Store(cx, lhs, scratch_lhs);
-            let scratch_rhs = alloca(cx, val_ty(rhs));
+            let scratch_rhs = alloca(cx, val_ty(rhs), "__rhs");
             Store(cx, rhs, scratch_rhs);
             let did = cx.tcx().lang_items.uniq_str_eq_fn();
             let result = callee::trans_lang_call(cx, did, [scratch_lhs, scratch_rhs], None);
@@ -1636,12 +1636,12 @@ fn create_bindings_map(bcx: block, pat: @ast::pat) -> BindingsMap {
                 // in this case, the final type of the variable will be T,
                 // but during matching we need to store a *T as explained
                 // above
-                let is_move = ccx.maps.moves_map.contains(&p_id);
-                llmatch = alloca(bcx, llvariable_ty.ptr_to());
-                trmode = TrByValue(is_move, alloca(bcx, llvariable_ty));
+                llmatch = alloca(bcx, llvariable_ty.ptr_to(), "__llmatch");
+                trmode = TrByValue(alloca(bcx, llvariable_ty,
+                                          bcx.ident(ident)));
             }
             ast::bind_by_ref(_) => {
-                llmatch = alloca(bcx, llvariable_ty);
+                llmatch = alloca(bcx, llvariable_ty, bcx.ident(ident));
                 trmode = TrByRef;
             }
         };

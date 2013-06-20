@@ -130,10 +130,10 @@ impl FnType {
             j = 1u;
             get_param(llwrapfn, 0u)
         } else if self.ret_ty.cast {
-            let retptr = alloca(bcx, self.ret_ty.ty);
+            let retptr = alloca(bcx, self.ret_ty.ty, "");
             BitCast(bcx, retptr, ret_ty.ptr_to())
         } else {
-            alloca(bcx, ret_ty)
+            alloca(bcx, ret_ty, "")
         };
 
         let mut i = 0u;

@@ -193,7 +193,7 @@ pub fn allocate_cbox(bcx: block, sigil: ast::Sigil, cdata_ty: ty::t)
         }
         ast::BorrowedSigil => {
             let cbox_ty = tuplify_box_ty(tcx, cdata_ty);
-            let llbox = alloc_ty(bcx, cbox_ty);
+            let llbox = alloc_ty(bcx, cbox_ty, "__closure");
             nuke_ref_count(bcx, llbox);
             rslt(bcx, llbox)
         }
