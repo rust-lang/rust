@@ -309,7 +309,7 @@ fn frob_source_file(workspace: &Path, pkgid: &PkgId) {
     }
 }
 
-#[test]
+#[test] #[ignore] //FIXME(#7249)
 fn test_all() {
     // FIXME(#7071): these tests use rustc, so they can't be run in parallel
     //               until this issue is resolved
