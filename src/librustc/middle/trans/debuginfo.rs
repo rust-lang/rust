@@ -11,21 +11,21 @@
 /*!
 # Debug Info Module
 
-This module serves the purpose of generating debug symbols. We use LLVM's 
+This module serves the purpose of generating debug symbols. We use LLVM's
 [source level debugging](http://llvm.org/docs/SourceLevelDebugging.html) features for generating
 the debug information. The general principle is this:
 
-Given the right metadata in the LLVM IR, the LLVM code generator is able to create DWARF debug 
-symbols for the given code. The [metadata](http://llvm.org/docs/LangRef.html#metadata-type) is 
-structured much like DWARF *debugging information entries* (DIE), representing type information 
+Given the right metadata in the LLVM IR, the LLVM code generator is able to create DWARF debug
+symbols for the given code. The [metadata](http://llvm.org/docs/LangRef.html#metadata-type) is
+structured much like DWARF *debugging information entries* (DIE), representing type information
 such as datatype layout, function signatures, block layout, variable location and scope information,
 etc. It is the purpose of this module to generate correct metadata and insert it into the LLVM IR.
 
 As the exact format of metadata trees may change between different LLVM versions, we now use LLVM
 [DIBuilder](http://llvm.org/docs/doxygen/html/classllvm_1_1DIBuilder.html) to create metadata
-where possible. This will hopefully ease the adaption of this module to future LLVM versions. 
+where possible. This will hopefully ease the adaption of this module to future LLVM versions.
 
-The public API of the module is a set of functions that will insert the correct metadata into the 
+The public API of the module is a set of functions that will insert the correct metadata into the
 LLVM IR when called with the right parameters. The module is thus driven from an outside client with
 functions like `debuginfo::create_local_var(bcx: block, local: @ast::local)`.
 
@@ -129,7 +129,7 @@ pub fn finalize(cx: @mut CrateContext) {
 
 /// Creates debug information for the given local variable.
 ///
-/// Adds the created metadata nodes directly to the crate's IR. 
+/// Adds the created metadata nodes directly to the crate's IR.
 /// The return value should be ignored if called from outside of the debuginfo module.
 pub fn create_local_var(bcx: block, local: @ast::local) -> DIVariable {
     let cx = bcx.ccx();
@@ -182,7 +182,7 @@ pub fn create_local_var(bcx: block, local: @ast::local) -> DIVariable {
 
 /// Creates debug information for the given function argument.
 ///
-/// Adds the created metadata nodes directly to the crate's IR. 
+/// Adds the created metadata nodes directly to the crate's IR.
 /// The return value should be ignored if called from outside of the debuginfo module.
 pub fn create_arg(bcx: block, arg: ast::arg, span: span) -> Option<DIVariable> {
     debug!("create_arg");
@@ -246,7 +246,7 @@ pub fn update_source_pos(bcx: block, span: span) {
 
 /// Creates debug information for the given function.
 ///
-/// Adds the created metadata nodes directly to the crate's IR. 
+/// Adds the created metadata nodes directly to the crate's IR.
 /// The return value should be ignored if called from outside of the debuginfo module.
 pub fn create_function(fcx: fn_ctxt) -> DISubprogram {
     let cx = fcx.ccx;
