@@ -464,6 +464,9 @@ fn create_basic_type(cx: @mut CrateContext, t: ty::t, _span: span) -> DIType {
                 size * 8 as u64, align * 8 as u64, encoding as c_uint)
         }};
 
+    // One could think that this call is not necessary, as the create_ty() function will insert the
+    // type descriptor into the cache anyway. Mind, however, that create_basic_type() is also called
+    // directly from other functions (e.g. create_boxed_type()).
     dbg_cx(cx).created_types.insert(ty_id, ty_md);
     return ty_md;
 }
