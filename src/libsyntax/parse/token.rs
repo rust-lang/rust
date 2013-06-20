@@ -498,9 +498,7 @@ pub fn get_ident_interner() -> @ident_interner {
             Some(interner) => *interner,
             None => {
                 let interner = mk_fresh_ident_interner();
-                unsafe {
-                    local_data::local_data_set(key, @interner);
-                }
+                local_data::local_data_set(key, @interner);
                 interner
             }
         }
