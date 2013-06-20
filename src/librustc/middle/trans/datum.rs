@@ -70,8 +70,8 @@
  *   This is a "shallow" clone.  After `move_to()`, the current datum
  *   is invalid and should no longer be used.
  *
- * - `store_to()` either performs a copy or a move by consulting the
- *   moves_map computed by `middle::moves`.
+ * - `store_to()` either performs a copy or a move depending on the
+ *   Rust type of the datum.
  *
  * # Scratch datum
  *
@@ -208,7 +208,6 @@ pub fn appropriate_mode(tcx: ty::ctxt, ty: ty::t) -> DatumMode {
 impl Datum {
     pub fn store_to(&self,
                     bcx: block,
-                    id: ast::node_id,
                     action: CopyAction,
                     dst: ValueRef)
                     -> block {
@@ -218,7 +217,7 @@ impl Datum {
          * `id` is located in the move table, but copies otherwise.
          */
 
-        if bcx.ccx().maps.moves_map.contains(&id) {
+        if ty::type_moves_by_default(bcx.tcx(), self.ty) {
             self.move_to(bcx, action, dst)
         } else {
             self.copy_to(bcx, action, dst)
@@ -227,7 +226,6 @@ impl Datum {
 
     pub fn store_to_dest(&self,
                          bcx: block,
-                         id: ast::node_id,
                          dest: expr::Dest)
                          -> block {
         match dest {
@@ -235,21 +233,20 @@ impl Datum {
                 return bcx;
             }
             expr::SaveIn(addr) => {
-                return self.store_to(bcx, id, INIT, addr);
+                return self.store_to(bcx, INIT, addr);
             }
         }
     }
 
     pub fn store_to_datum(&self,
                           bcx: block,
-                          id: ast::node_id,
                           action: CopyAction,
                           datum: Datum)
                           -> block {
         debug!("store_to_datum(self=%s, action=%?, datum=%s)",
                self.to_str(bcx.ccx()), action, datum.to_str(bcx.ccx()));
         assert!(datum.mode.is_by_ref());
-        self.store_to(bcx, id, action, datum.val)
+        self.store_to(bcx, action, datum.val)
     }
 
     pub fn move_to_datum(&self, bcx: block, action: CopyAction, datum: Datum)
@@ -828,11 +825,10 @@ impl DatumBlock {
     }
 
     pub fn store_to(&self,
-                    id: ast::node_id,
                     action: CopyAction,
                     dst: ValueRef)
                     -> block {
-        self.datum.store_to(self.bcx, id, action, dst)
+        self.datum.store_to(self.bcx, action, dst)
     }
 
     pub fn copy_to(&self, action: CopyAction, dst: ValueRef) -> block {
