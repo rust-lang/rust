@@ -765,19 +765,13 @@ pub fn emit_tydescs(ccx: &mut CrateContext) {
               }
             };
 
-
-        let shape = C_null(Type::i8p());
-        let shape_tables = C_null(Type::i8p());
-
         let tydesc = C_named_struct(ccx.tydesc_type,
-                           [ti.size, // size
-                            ti.align, // align
-                            take_glue, // take_glue
-                            drop_glue, // drop_glue
-                            free_glue, // free_glue
-                            visit_glue, // visit_glue
-                            shape, // shape
-                            shape_tables]); // shape_tables
+                                    [ti.size, // size
+                                    ti.align, // align
+                                    take_glue, // take_glue
+                                    drop_glue, // drop_glue
+                                    free_glue, // free_glue
+                                    visit_glue]); // visit_glue
 
         unsafe {
             let gvar = ti.tydesc;

@@ -57,8 +57,6 @@ struct type_desc {
     glue_fn *drop_glue;
     glue_fn *free_glue;
     glue_fn *visit_glue;
-    const uint8_t *unused;
-    const uint8_t *unused2;
 };
 
 extern "C" type_desc *rust_clone_type_desc(type_desc*);

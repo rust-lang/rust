@@ -49,9 +49,7 @@ pub static tydesc_field_take_glue: uint = 2u;
 pub static tydesc_field_drop_glue: uint = 3u;
 pub static tydesc_field_free_glue: uint = 4u;
 pub static tydesc_field_visit_glue: uint = 5u;
-pub static tydesc_field_shape: uint = 6u;
-pub static tydesc_field_shape_tables: uint = 7u;
-pub static n_tydesc_fields: uint = 8u;
+pub static n_tydesc_fields: uint = 6u;
 
 // The two halves of a closure: code and environment.
 pub static fn_field_code: uint = 0u;
