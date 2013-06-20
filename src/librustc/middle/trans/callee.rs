@@ -245,8 +245,9 @@ pub fn trans_fn_ref_with_vtables(
     // We need to do a bunch of special handling for default methods.
     // We need to modify the def_id and our substs in order to monomorphize
     // the function.
-    let (def_id, opt_impl_did, substs) = match tcx.provided_method_sources.find(&def_id) {
-        None => (def_id, None, substs),
+    let (def_id, opt_impl_did, substs, self_vtable) =
+        match tcx.provided_method_sources.find(&def_id) {
+        None => (def_id, None, substs, None),
         Some(source) => {
             // There are two relevant substitutions when compiling
             // default methods. First, there is the substitution for
@@ -266,6 +267,26 @@ pub fn trans_fn_ref_with_vtables(
                          default methods");
             let method = ty::method(tcx, source.method_id);
 
+            // Get all of the type params for the receiver
+            let param_defs = method.generics.type_param_defs;
+            let receiver_substs =
+                type_params.initn(param_defs.len()).to_owned();
+            let receiver_vtables = match vtables {
+                None => @~[],
+                Some(call_vtables) => {
+                    let num_method_vtables =
+                        ty::count_traits_and_supertraits(tcx, *param_defs);
+                    @call_vtables.initn(num_method_vtables).to_owned()
+                }
+            };
+
+            let self_vtable =
+                typeck::vtable_static(source.impl_id, receiver_substs,
+                                      receiver_vtables);
+
+            // XXX: I think that if the *trait* has vtables on it,
+            // it is all over
+
             // Compute the first substitution
             let first_subst = make_substs_for_receiver_types(
                 tcx, source.impl_id, trait_ref, method);
@@ -279,7 +300,8 @@ pub fn trans_fn_ref_with_vtables(
                    first_subst.repr(tcx), new_substs.repr(tcx));
 
 
-            (source.method_id, Some(source.impl_id), new_substs)
+            (source.method_id, Some(source.impl_id),
+             new_substs, Some(self_vtable))
         }
     };
 
@@ -326,7 +348,8 @@ pub fn trans_fn_ref_with_vtables(
 
         let (val, must_cast) =
             monomorphize::monomorphic_fn(ccx, def_id, &substs,
-                                         vtables, opt_impl_did, Some(ref_id));
+                                         vtables, self_vtable,
+                                         opt_impl_did, Some(ref_id));
         let mut val = val;
         if must_cast && ref_id != 0 {
             // Monotype of the REFERENCE to the function (type params

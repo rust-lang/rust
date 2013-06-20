@@ -154,7 +154,12 @@ pub enum vtable_origin {
       The first uint is the param number (identifying T in the example),
       and the second is the bound number (identifying baz)
      */
-    vtable_param(uint, uint)
+    vtable_param(uint, uint),
+
+    /*
+     Dynamic vtable, comes from self.
+    */
+    vtable_self(ast::def_id)
 }
 
 impl Repr for vtable_origin {
@@ -170,6 +175,9 @@ impl Repr for vtable_origin {
 
             vtable_param(x, y) => {
                 fmt!("vtable_param(%?, %?)", x, y)
+            }
+            vtable_self(def_id) => {
+                fmt!("vtable_self(%?)", def_id)
             }
         }
     }

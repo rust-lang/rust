@@ -139,7 +139,6 @@ pub fn trans_self_arg(bcx: block,
 
     // Compute the type of self.
     let self_ty = monomorphize_type(bcx, mentry.self_ty);
-
     let result = trans_arg_expr(bcx,
                                 self_ty,
                                 mentry.self_mode,
@@ -174,21 +173,6 @@ pub fn trans_method_callee(bcx: block,
     // Replace method_self with method_static here.
     let mut origin = mentry.origin;
     match origin {
-        typeck::method_self(trait_id, method_index) => {
-            // Get the ID of the impl we're inside.
-            let impl_def_id = bcx.fcx.impl_id.get();
-
-            debug!("impl_def_id is %?", impl_def_id);
-
-            // Get the ID of the method we're calling.
-            let method_name =
-                ty::trait_method(tcx, trait_id, method_index).ident;
-            let method_id =
-                method_with_name_or_default(bcx.ccx(),
-                                            impl_def_id,
-                                            method_name);
-            origin = typeck::method_static(method_id);
-        }
         typeck::method_super(trait_id, method_index) => {
             // <self_ty> is the self type for this method call
             let self_ty = node_id_type(bcx, this.id);
@@ -213,6 +197,7 @@ pub fn trans_method_callee(bcx: block,
                                             impl_id,
                                             method_name));
         }
+        typeck::method_self(*) |
         typeck::method_static(*) | typeck::method_param(*) |
         typeck::method_trait(*) => {}
     }
@@ -250,6 +235,21 @@ pub fn trans_method_callee(bcx: block,
                 None => fail!("trans_method_callee: missing param_substs")
             }
         }
+
+        typeck::method_self(trait_id, method_index) => {
+            match bcx.fcx.param_substs {
+                Some(@param_substs
+                     {self_vtable: Some(ref vtbl), _}) => {
+                    trans_monomorphized_callee(bcx, callee_id, this, mentry,
+                                               trait_id, method_index,
+                                               copy *vtbl)
+                }
+                _ => {
+                    fail!("trans_method_callee: missing self_vtable")
+                }
+            }
+        }
+
         typeck::method_trait(_, off, store) => {
             trans_trait_callee(bcx,
                                callee_id,
@@ -258,9 +258,9 @@ pub fn trans_method_callee(bcx: block,
                                store,
                                mentry.explicit_self)
         }
-        typeck::method_self(*) | typeck::method_super(*) => {
-            fail!("method_self or method_super should have been handled \
-                above")
+            typeck::method_super(*) => {
+            fail!("method_super should have been handled \
+                   above")
         }
     }
 }
@@ -459,6 +459,9 @@ pub fn trans_monomorphized_callee(bcx: block,
       }
       typeck::vtable_param(*) => {
           fail!("vtable_param left in monomorphized function's vtable substs");
+      }
+      typeck::vtable_self(*) => {
+          fail!("vtable_self left in monomorphized function's vtable substs");
       }
     };
 

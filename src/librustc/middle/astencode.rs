@@ -632,6 +632,13 @@ fn encode_vtable_origin(ecx: &e::EncodeContext,
                 }
             }
           }
+          typeck::vtable_self(def_id) => {
+            do ebml_w.emit_enum_variant("vtable_self", 2u, 1u) |ebml_w| {
+                do ebml_w.emit_enum_variant_arg(0u) |ebml_w| {
+                    ebml_w.emit_def_id(def_id)
+                }
+            }
+          }
         }
     }
 }
@@ -652,7 +659,9 @@ impl vtable_decoder_helpers for reader::Decoder {
     fn read_vtable_origin(&mut self, xcx: @ExtendedDecodeContext)
         -> typeck::vtable_origin {
         do self.read_enum("vtable_origin") |this| {
-            do this.read_enum_variant(["vtable_static", "vtable_param"])
+            do this.read_enum_variant(["vtable_static",
+                                       "vtable_param",
+                                       "vtable_self"])
                     |this, i| {
                 match i {
                   0 => {
@@ -675,6 +684,13 @@ impl vtable_decoder_helpers for reader::Decoder {
                         },
                         do this.read_enum_variant_arg(1u) |this| {
                             this.read_uint()
+                        }
+                    )
+                  }
+                  2 => {
+                    typeck::vtable_self(
+                        do this.read_enum_variant_arg(0u) |this| {
+                            this.read_def_id(xcx)
                         }
                     )
                   }

@@ -17,8 +17,8 @@ use middle::typeck::check::{structurally_resolved_type};
 use middle::typeck::infer::fixup_err_to_str;
 use middle::typeck::infer::{resolve_and_force_all_but_regions, resolve_type};
 use middle::typeck::infer;
-use middle::typeck::{CrateCtxt, vtable_origin, vtable_param, vtable_res};
-use middle::typeck::vtable_static;
+use middle::typeck::{CrateCtxt, vtable_origin, vtable_res};
+use middle::typeck::{vtable_static, vtable_param, vtable_self};
 use middle::subst::Subst;
 use util::common::indenter;
 use util::ppaux::tys_to_str;
@@ -234,6 +234,17 @@ fn lookup_vtable(vcx: &VtableContext,
                 }
 
                 n_bound += 1;
+            }
+        }
+
+        ty::ty_self(trait_id) => {
+            debug!("trying to find %? vtable for type %?",
+                   trait_ref.def_id, trait_id);
+
+            if trait_id == trait_ref.def_id {
+                let vtable = vtable_self(trait_id);
+                debug!("found self vtable: %?", vtable);
+                return Some(vtable);
             }
         }
 

@@ -132,7 +132,8 @@ pub struct param_substs {
     tys: ~[ty::t],
     vtables: Option<typeck::vtable_res>,
     type_param_defs: @~[ty::TypeParameterDef],
-    self_ty: Option<ty::t>
+    self_ty: Option<ty::t>,
+    self_vtable: Option<typeck::vtable_origin>
 }
 
 impl param_substs {
@@ -981,7 +982,11 @@ pub fn monomorphize_type(bcx: block, t: ty::t) -> ty::t {
         Some(substs) => {
             ty::subst_tps(bcx.tcx(), substs.tys, substs.self_ty, t)
         }
-        _ => { assert!(!ty::type_has_params(t)); t }
+        _ => {
+            assert!(!ty::type_has_params(t));
+            assert!(!ty::type_has_self(t));
+            t
+        }
     }
 }
 
@@ -1060,6 +1065,19 @@ pub fn resolve_vtable_in_fn_ctxt(fcx: fn_ctxt, vt: typeck::vtable_origin)
                     tcx.sess.bug(fmt!(
                         "resolve_vtable_in_fn_ctxt: asked to lookup but \
                          no vtables in the fn_ctxt!"))
+                }
+            }
+        }
+        typeck::vtable_self(_trait_id) => {
+            match fcx.param_substs {
+                Some(@param_substs
+                     {self_vtable: Some(ref self_vtable), _}) => {
+                    copy *self_vtable
+                }
+                _ => {
+                    tcx.sess.bug(fmt!(
+                        "resolve_vtable_in_fn_ctxt: asked to lookup but \
+                         no self_vtable in the fn_ctxt!"))
                 }
             }
         }

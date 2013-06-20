@@ -461,6 +461,7 @@ pub fn get_res_dtor(ccx: @mut CrateContext,
                                                     &tsubsts,
                                                     None,
                                                     None,
+                                                    None,
                                                     None);
 
         val
