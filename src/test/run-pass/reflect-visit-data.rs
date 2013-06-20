@@ -10,15 +10,14 @@
 
 // xfail-fast
 
-use std::bool;
 use std::int;
 use std::libc::c_void;
 use std::ptr;
 use std::sys;
 use std::vec::UnboxedVecRepr;
-use intrinsic::{TyDesc, get_tydesc, visit_tydesc, TyVisitor, Opaque};
+use std::unstable::intrinsics::{TyDesc, get_tydesc, visit_tydesc, TyVisitor, Opaque};
 
-#[doc = "High-level interfaces to `intrinsic::visit_ty` reflection system."]
+#[doc = "High-level interfaces to `std::unstable::intrinsics::visit_ty` reflection system."]
 
 /// Trait for visitor that wishes to reflect on data.
 trait movable_ptr {
@@ -637,7 +636,9 @@ impl TyVisitor for my_visitor {
 }
 
 fn get_tydesc_for<T>(_t: T) -> *TyDesc {
-    get_tydesc::<T>()
+    unsafe {
+        get_tydesc::<T>()
+    }
 }
 
 struct Triple { x: int, y: int, z: int }
@@ -651,8 +652,8 @@ pub fn main() {
                                        vals: ~[]});
         let v = ptr_visit_adaptor(Inner {inner: u});
         let td = get_tydesc_for(r);
-        unsafe { error!("tydesc sz: %u, align: %u",
-                        (*td).size, (*td).align); }
+        error!("tydesc sz: %u, align: %u",
+               (*td).size, (*td).align);
         let v = @v as @TyVisitor;
         visit_tydesc(td, v);
 
@@ -661,8 +662,7 @@ pub fn main() {
             println(fmt!("val: %s", *s));
         }
         error!("%?", u.vals.clone());
-        assert!(u.vals == ~[
-            ~"1", ~"2", ~"3", ~"true", ~"false", ~"5", ~"4", ~"3", ~"12"
-        ]);
+        assert_eq!(u.vals.clone(),
+                   ~[ ~"1", ~"2", ~"3", ~"true", ~"false", ~"5", ~"4", ~"3", ~"12"]);
     }
- }
+}

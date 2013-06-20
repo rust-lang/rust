@@ -206,9 +206,6 @@ pub fn compile_rest(sess: Session,
     let mut crate = crate_opt.unwrap();
 
     let (llcx, llmod, link_meta) = {
-    crate = time(time_passes, ~"intrinsic injection", ||
-                 front::intrinsic_inject::inject_intrinsic(sess, crate));
-
         crate = time(time_passes, ~"extra injection", ||
                      front::std_inject::maybe_inject_libstd_ref(sess, crate));
 

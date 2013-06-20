@@ -76,16 +76,20 @@ pub enum LangItem {
     UnrecordBorrowFnLangItem,   // 36
 
     StartFnLangItem,            // 37
+
+    TyDescStructLangItem,       // 38
+    TyVisitorTraitLangItem,     // 39
+    OpaqueStructLangItem,       // 40
 }
 
 pub struct LanguageItems {
-    items: [Option<def_id>, ..38]
+    items: [Option<def_id>, ..41]
 }
 
 impl LanguageItems {
     pub fn new() -> LanguageItems {
         LanguageItems {
-            items: [ None, ..38 ]
+            items: [ None, ..41 ]
         }
     }
 
@@ -137,6 +141,10 @@ impl LanguageItems {
             36 => "unrecord_borrow",
 
             37 => "start",
+
+            38 => "ty_desc",
+            39 => "ty_visitor",
+            40 => "opaque",
 
             _ => "???"
         }
@@ -262,6 +270,15 @@ impl LanguageItems {
     pub fn start_fn(&const self) -> def_id {
         self.items[StartFnLangItem as uint].get()
     }
+    pub fn ty_desc(&const self) -> def_id {
+        self.items[TyDescStructLangItem as uint].get()
+    }
+    pub fn ty_visitor(&const self) -> def_id {
+        self.items[TyVisitorTraitLangItem as uint].get()
+    }
+    pub fn opaque(&const self) -> def_id {
+        self.items[OpaqueStructLangItem as uint].get()
+    }
 }
 
 fn LanguageItemCollector(crate: @crate,
@@ -313,6 +330,9 @@ fn LanguageItemCollector(crate: @crate,
     item_refs.insert(@"record_borrow", RecordBorrowFnLangItem as uint);
     item_refs.insert(@"unrecord_borrow", UnrecordBorrowFnLangItem as uint);
     item_refs.insert(@"start", StartFnLangItem as uint);
+    item_refs.insert(@"ty_desc", TyDescStructLangItem as uint);
+    item_refs.insert(@"ty_visitor", TyVisitorTraitLangItem as uint);
+    item_refs.insert(@"opaque", OpaqueStructLangItem as uint);
 
     LanguageItemCollector {
         crate: crate,

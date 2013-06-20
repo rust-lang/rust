@@ -17,14 +17,13 @@ use cast;
 use gc;
 use io;
 use libc;
-use libc::{c_void, c_char, size_t};
+use libc::{c_char, size_t};
 use repr;
 use str;
 use unstable::intrinsics;
 
-pub type FreeGlue<'self> = &'self fn(*TypeDesc, *c_void);
-
 // Corresponds to runtime type_desc type
+#[cfg(stage0)]
 pub struct TypeDesc {
     size: uint,
     align: uint,
@@ -58,14 +57,9 @@ pub mod rustrt {
  * performing dark magick.
  */
 #[inline]
+#[cfg(stage0)]
 pub fn get_type_desc<T>() -> *TypeDesc {
     unsafe { intrinsics::get_tydesc::<T>() as *TypeDesc }
-}
-
-/// Returns a pointer to a type descriptor.
-#[inline]
-pub fn get_type_desc_val<T>(_val: &T) -> *TypeDesc {
-    get_type_desc::<T>()
 }
 
 /// Returns the size of a type

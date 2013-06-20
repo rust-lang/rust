@@ -274,9 +274,7 @@ impl Reflector {
             let repr = adt::represent_type(bcx.ccx(), t);
             let variants = ty::substd_enum_variants(ccx.tcx, did, substs);
             let llptrty = type_of(ccx, t).ptr_to();
-            let (_, opaquety) =
-                ccx.tcx.intrinsic_defs.find_copy(&ccx.sess.ident_of("Opaque"))
-                .expect("Failed to resolve intrinsic::Opaque");
+            let opaquety = ty::get_opaque_ty(ccx.tcx);
             let opaqueptrty = ty::mk_ptr(ccx.tcx, ty::mt { ty: opaquety, mutbl: ast::m_imm });
 
             let make_get_disr = || {
@@ -373,10 +371,8 @@ pub fn emit_calls_to_trait_visit_ty(bcx: block,
                                     visitor_val: ValueRef,
                                     visitor_trait_id: def_id)
                                  -> block {
-    use syntax::parse::token::special_idents::tydesc;
     let final = sub_block(bcx, "final");
-    assert!(bcx.ccx().tcx.intrinsic_defs.contains_key(&tydesc));
-    let (_, tydesc_ty) = bcx.ccx().tcx.intrinsic_defs.get_copy(&tydesc);
+    let tydesc_ty = ty::get_tydesc_ty(bcx.ccx().tcx);
     let tydesc_ty = type_of(bcx.ccx(), tydesc_ty);
     let mut r = Reflector {
         visitor_val: visitor_val,
