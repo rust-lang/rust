@@ -2192,9 +2192,7 @@ pub fn type_to_str_inner(names: @TypeNames, outer0: &[TypeRef], ty: TypeRef)
             let out_ty: TypeRef = llvm::LLVMGetReturnType(ty);
             let n_args = llvm::LLVMCountParamTypes(ty) as uint;
             let args = vec::from_elem(n_args, 0 as TypeRef);
-            unsafe {
-                llvm::LLVMGetParamTypes(ty, vec::raw::to_ptr(args));
-            }
+            llvm::LLVMGetParamTypes(ty, vec::raw::to_ptr(args));
             // See [Note at-str]
             return fmt!("fn(%s) -> %s",
                         tys_str(names, outer, args),

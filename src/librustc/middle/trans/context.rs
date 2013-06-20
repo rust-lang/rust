@@ -211,9 +211,7 @@ impl CrateContext {
                   int_type: int_type,
                   float_type: float_type,
                   opaque_vec_type: T_opaque_vec(targ_cfg),
-                  builder: BuilderRef_res(unsafe {
-                      llvm::LLVMCreateBuilderInContext(llcx)
-                  }),
+                  builder: BuilderRef_res(llvm::LLVMCreateBuilderInContext(llcx)),
                   shape_cx: mk_ctxt(llmod),
                   crate_map: crate_map,
                   uses_gc: false,

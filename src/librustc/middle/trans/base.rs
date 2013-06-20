@@ -3050,7 +3050,7 @@ pub fn write_metadata(cx: &mut CrateContext, crate: &ast::crate) {
 
 // Writes the current ABI version into the crate.
 pub fn write_abi_version(ccx: &mut CrateContext) {
-    mk_global(ccx, ~"rust_abi_version", C_uint(ccx, abi::abi_version),
+    mk_global(ccx, "rust_abi_version", C_uint(ccx, abi::abi_version),
                      false);
 }
 
