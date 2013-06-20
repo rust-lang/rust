@@ -242,7 +242,7 @@ fn create_basic_type(cx: @mut CrateContext, t: ty::t, _span: span) -> DIType {
             ast::ty_f32 => (~"f32", DW_ATE_float),
             ast::ty_f64 => (~"f64", DW_ATE_float)
         },
-        _ => cx.sess.bug(~"debuginfo::create_basic_type - t is invalid type")
+        _ => cx.sess.bug("debuginfo::create_basic_type - t is invalid type")
     };
 
     let (size, align) = size_and_align_of(cx, t);
@@ -572,7 +572,7 @@ fn create_ty(cx: @mut CrateContext, t: ty::t, span: span) -> DIType {
         ty::ty_tup(ref elements) => {
             create_tuple(cx, t, *elements, span)
         },
-        _ => cx.sess.bug(~"debuginfo: unexpected type in create_ty")
+        _ => cx.sess.bug("debuginfo: unexpected type in create_ty")
     };
 
     dbg_cx(cx).created_types.insert(ty_id, ty_md);

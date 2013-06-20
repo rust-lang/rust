@@ -10,7 +10,6 @@
 
 use core::prelude::*;
 
-use middle::resolve::Impl;
 use middle::ty::param_ty;
 use middle::ty;
 use middle::typeck::check::{FnCtxt, impl_self_ty};
@@ -27,7 +26,6 @@ use util::ppaux;
 
 use core::hashmap::HashSet;
 use core::result;
-use core::uint;
 use syntax::ast;
 use syntax::ast_util;
 use syntax::codemap::span;
