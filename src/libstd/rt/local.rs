@@ -38,17 +38,17 @@ impl Local for Scheduler {
         }
         match res {
             Some(r) => { r }
-            None => abort!("function failed!")
+            None => rtabort!("function failed!")
         }
     }
     unsafe fn unsafe_borrow() -> *mut Scheduler { local_ptr::unsafe_borrow() }
-    unsafe fn try_unsafe_borrow() -> Option<*mut Scheduler> { abort!("unimpl") }
+    unsafe fn try_unsafe_borrow() -> Option<*mut Scheduler> { rtabort!("unimpl") }
 }
 
 impl Local for Task {
-    fn put(_value: ~Task) { abort!("unimpl") }
-    fn take() -> ~Task { abort!("unimpl") }
-    fn exists() -> bool { abort!("unimpl") }
+    fn put(_value: ~Task) { rtabort!("unimpl") }
+    fn take() -> ~Task { rtabort!("unimpl") }
+    fn exists() -> bool { rtabort!("unimpl") }
     fn borrow<T>(f: &fn(&mut Task) -> T) -> T {
         do Local::borrow::<Scheduler, T> |sched| {
             match sched.current_task {
@@ -56,7 +56,7 @@ impl Local for Task {
                     f(&mut *task.task)
                 }
                 None => {
-                    abort!("no scheduler")
+                    rtabort!("no scheduler")
                 }
             }
         }
@@ -69,7 +69,7 @@ impl Local for Task {
             }
             None => {
                 // Don't fail. Infinite recursion
-                abort!("no scheduler")
+                rtabort!("no scheduler")
             }
         }
     }
@@ -84,16 +84,16 @@ impl Local for Task {
 
 // XXX: This formulation won't work once ~IoFactoryObject is a real trait pointer
 impl Local for IoFactoryObject {
-    fn put(_value: ~IoFactoryObject) { abort!("unimpl") }
-    fn take() -> ~IoFactoryObject { abort!("unimpl") }
-    fn exists() -> bool { abort!("unimpl") }
-    fn borrow<T>(_f: &fn(&mut IoFactoryObject) -> T) -> T { abort!("unimpl") }
+    fn put(_value: ~IoFactoryObject) { rtabort!("unimpl") }
+    fn take() -> ~IoFactoryObject { rtabort!("unimpl") }
+    fn exists() -> bool { rtabort!("unimpl") }
+    fn borrow<T>(_f: &fn(&mut IoFactoryObject) -> T) -> T { rtabort!("unimpl") }
     unsafe fn unsafe_borrow() -> *mut IoFactoryObject {
         let sched = Local::unsafe_borrow::<Scheduler>();
         let io: *mut IoFactoryObject = (*sched).event_loop.io().unwrap();
         return io;
     }
-    unsafe fn try_unsafe_borrow() -> Option<*mut IoFactoryObject> { abort!("unimpl") }
+    unsafe fn try_unsafe_borrow() -> Option<*mut IoFactoryObject> { rtabort!("unimpl") }
 }
 
 #[cfg(test)]
