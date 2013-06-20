@@ -181,90 +181,88 @@ pub fn connect(input_ip: ip::IpAddr, port: uint,
         debug!("stream_handle_ptr outside interact %?",
                         stream_handle_ptr);
         do iotask::interact(iotask) |loop_ptr| {
-            unsafe {
-                debug!("in interact cb for tcp client connect..");
-                debug!("stream_handle_ptr in interact %?",
-                                stream_handle_ptr);
-                match uv::ll::tcp_init( loop_ptr, stream_handle_ptr) {
-                    0i32 => {
-                        debug!("tcp_init successful");
-                        debug!("dealing w/ ipv4 connection..");
-                        let connect_req_ptr: *uv::ll::uv_connect_t =
-                            &(*socket_data_ptr).connect_req;
-                        let addr_str = ip::format_addr(&input_ip);
-                        let connect_result = match input_ip {
-                            ip::Ipv4(ref addr) => {
-                                // have to "recreate" the
-                                // sockaddr_in/6 since the ip_addr
-                                // discards the port info.. should
-                                // probably add an additional rust
-                                // type that actually is closer to
-                                // what the libuv API expects (ip str
-                                // + port num)
-                                debug!("addr: %?", addr);
-                                let in_addr = uv::ll::ip4_addr(addr_str,
-                                                               port as int);
-                                uv::ll::tcp_connect(
-                                    connect_req_ptr,
-                                    stream_handle_ptr,
-                                    &in_addr,
-                                    tcp_connect_on_connect_cb)
-                            }
-                            ip::Ipv6(ref addr) => {
-                                debug!("addr: %?", addr);
-                                let in_addr = uv::ll::ip6_addr(addr_str,
-                                                               port as int);
-                                uv::ll::tcp_connect6(
-                                    connect_req_ptr,
-                                    stream_handle_ptr,
-                                    &in_addr,
-                                    tcp_connect_on_connect_cb)
-                            }
-                        };
-                        match connect_result {
-                            0i32 => {
-                                debug!("tcp_connect successful: \
-                                        stream %x,
-                                        socket data %x",
-                                       stream_handle_ptr as uint,
-                                       socket_data_ptr as uint);
-                                // reusable data that we'll have for the
-                                // duration..
-                                uv::ll::set_data_for_uv_handle(
-                                    stream_handle_ptr,
-                                    socket_data_ptr as
-                                    *libc::c_void);
-                                // just so the connect_cb can send the
-                                // outcome..
-                                uv::ll::set_data_for_req(connect_req_ptr,
-                                                         conn_data_ptr);
-                                debug!("leaving tcp_connect interact cb...");
-                                // let tcp_connect_on_connect_cb send on
-                                // the result_ch, now..
-                            }
-                            _ => {
-                                // immediate connect
-                                // failure.. probably a garbage ip or
-                                // somesuch
-                                let err_data =
-                                    uv::ll::get_last_err_data(loop_ptr);
-                                let result_ch = (*conn_data_ptr)
-                                    .result_ch.clone();
-                                result_ch.send(ConnFailure(err_data));
-                                uv::ll::set_data_for_uv_handle(
-                                    stream_handle_ptr,
-                                    conn_data_ptr);
-                                uv::ll::close(stream_handle_ptr,
-                                              stream_error_close_cb);
-                            }
+            debug!("in interact cb for tcp client connect..");
+            debug!("stream_handle_ptr in interact %?",
+                            stream_handle_ptr);
+            match uv::ll::tcp_init( loop_ptr, stream_handle_ptr) {
+                0i32 => {
+                    debug!("tcp_init successful");
+                    debug!("dealing w/ ipv4 connection..");
+                    let connect_req_ptr: *uv::ll::uv_connect_t =
+                        &(*socket_data_ptr).connect_req;
+                    let addr_str = ip::format_addr(&input_ip);
+                    let connect_result = match input_ip {
+                        ip::Ipv4(ref addr) => {
+                            // have to "recreate" the
+                            // sockaddr_in/6 since the ip_addr
+                            // discards the port info.. should
+                            // probably add an additional rust
+                            // type that actually is closer to
+                            // what the libuv API expects (ip str
+                            // + port num)
+                            debug!("addr: %?", addr);
+                            let in_addr = uv::ll::ip4_addr(addr_str,
+                                                           port as int);
+                            uv::ll::tcp_connect(
+                                connect_req_ptr,
+                                stream_handle_ptr,
+                                &in_addr,
+                                tcp_connect_on_connect_cb)
+                        }
+                        ip::Ipv6(ref addr) => {
+                            debug!("addr: %?", addr);
+                            let in_addr = uv::ll::ip6_addr(addr_str,
+                                                           port as int);
+                            uv::ll::tcp_connect6(
+                                connect_req_ptr,
+                                stream_handle_ptr,
+                                &in_addr,
+                                tcp_connect_on_connect_cb)
+                        }
+                    };
+                    match connect_result {
+                        0i32 => {
+                            debug!("tcp_connect successful: \
+                                    stream %x,
+                                    socket data %x",
+                                   stream_handle_ptr as uint,
+                                   socket_data_ptr as uint);
+                            // reusable data that we'll have for the
+                            // duration..
+                            uv::ll::set_data_for_uv_handle(
+                                stream_handle_ptr,
+                                socket_data_ptr as
+                                *libc::c_void);
+                            // just so the connect_cb can send the
+                            // outcome..
+                            uv::ll::set_data_for_req(connect_req_ptr,
+                                                     conn_data_ptr);
+                            debug!("leaving tcp_connect interact cb...");
+                            // let tcp_connect_on_connect_cb send on
+                            // the result_ch, now..
+                        }
+                        _ => {
+                            // immediate connect
+                            // failure.. probably a garbage ip or
+                            // somesuch
+                            let err_data =
+                                uv::ll::get_last_err_data(loop_ptr);
+                            let result_ch = (*conn_data_ptr)
+                                .result_ch.clone();
+                            result_ch.send(ConnFailure(err_data));
+                            uv::ll::set_data_for_uv_handle(
+                                stream_handle_ptr,
+                                conn_data_ptr);
+                            uv::ll::close(stream_handle_ptr,
+                                          stream_error_close_cb);
                         }
                     }
-                    _ => {
-                        // failure to create a tcp handle
-                        let err_data = uv::ll::get_last_err_data(loop_ptr);
-                        let result_ch = (*conn_data_ptr).result_ch.clone();
-                        result_ch.send(ConnFailure(err_data));
-                    }
+                }
+                _ => {
+                    // failure to create a tcp handle
+                    let err_data = uv::ll::get_last_err_data(loop_ptr);
+                    let result_ch = (*conn_data_ptr).result_ch.clone();
+                    result_ch.send(ConnFailure(err_data));
                 }
             }
         }
@@ -1015,14 +1013,12 @@ fn tear_down_socket_data(socket_data: @TcpSocketData) {
         let close_data_ptr: *TcpSocketCloseData = &close_data;
         let stream_handle_ptr = (*socket_data).stream_handle_ptr;
         do iotask::interact(&(*socket_data).iotask) |loop_ptr| {
-            unsafe {
-                debug!(
-                    "interact dtor for tcp_socket stream %? loop %?",
-                         stream_handle_ptr, loop_ptr);
-                uv::ll::set_data_for_uv_handle(stream_handle_ptr,
-                                               close_data_ptr);
-                uv::ll::close(stream_handle_ptr, tcp_socket_dtor_close_cb);
-            }
+            debug!(
+                "interact dtor for tcp_socket stream %? loop %?",
+                     stream_handle_ptr, loop_ptr);
+            uv::ll::set_data_for_uv_handle(stream_handle_ptr,
+                                           close_data_ptr);
+            uv::ll::close(stream_handle_ptr, tcp_socket_dtor_close_cb);
         };
         closed_po.recv();
         //the line below will most likely crash
@@ -1082,19 +1078,17 @@ fn read_stop_common_impl(socket_data: *TcpSocketData) ->
         let stream_handle_ptr = (*socket_data).stream_handle_ptr;
         let (stop_po, stop_ch) = stream::<Option<TcpErrData>>();
         do iotask::interact(&(*socket_data).iotask) |loop_ptr| {
-            unsafe {
-                debug!("in interact cb for tcp::read_stop");
-                match uv::ll::read_stop(stream_handle_ptr
-                                        as *uv::ll::uv_stream_t) {
-                    0i32 => {
-                        debug!("successfully called uv_read_stop");
-                        stop_ch.send(None);
-                    }
-                    _ => {
-                        debug!("failure in calling uv_read_stop");
-                        let err_data = uv::ll::get_last_err_data(loop_ptr);
-                        stop_ch.send(Some(err_data.to_tcp_err()));
-                    }
+            debug!("in interact cb for tcp::read_stop");
+            match uv::ll::read_stop(stream_handle_ptr
+                                    as *uv::ll::uv_stream_t) {
+                0i32 => {
+                    debug!("successfully called uv_read_stop");
+                    stop_ch.send(None);
+                }
+                _ => {
+                    debug!("failure in calling uv_read_stop");
+                    let err_data = uv::ll::get_last_err_data(loop_ptr);
+                    stop_ch.send(Some(err_data.to_tcp_err()));
                 }
             }
         }
@@ -1114,22 +1108,20 @@ fn read_start_common_impl(socket_data: *TcpSocketData)
         let (start_po, start_ch) = stream::<Option<uv::ll::uv_err_data>>();
         debug!("in tcp::read_start before interact loop");
         do iotask::interact(&(*socket_data).iotask) |loop_ptr| {
-            unsafe {
-                debug!("in tcp::read_start interact cb %?",
-                                loop_ptr);
-                match uv::ll::read_start(stream_handle_ptr
-                                         as *uv::ll::uv_stream_t,
-                                         on_alloc_cb,
-                                         on_tcp_read_cb) {
-                    0i32 => {
-                        debug!("success doing uv_read_start");
-                        start_ch.send(None);
-                    }
-                    _ => {
-                        debug!("error attempting uv_read_start");
-                        let err_data = uv::ll::get_last_err_data(loop_ptr);
-                        start_ch.send(Some(err_data));
-                    }
+            debug!("in tcp::read_start interact cb %?",
+                            loop_ptr);
+            match uv::ll::read_start(stream_handle_ptr
+                                     as *uv::ll::uv_stream_t,
+                                     on_alloc_cb,
+                                     on_tcp_read_cb) {
+                0i32 => {
+                    debug!("success doing uv_read_start");
+                    start_ch.send(None);
+                }
+                _ => {
+                    debug!("error attempting uv_read_start");
+                    let err_data = uv::ll::get_last_err_data(loop_ptr);
+                    start_ch.send(Some(err_data));
                 }
             }
         }
@@ -1166,24 +1158,22 @@ fn write_common_impl(socket_data_ptr: *TcpSocketData,
         };
         let write_data_ptr: *WriteReqData = &write_data;
         do iotask::interact(&(*socket_data_ptr).iotask) |loop_ptr| {
-            unsafe {
-                debug!("in interact cb for tcp::write %?",
-                                loop_ptr);
-                match uv::ll::write(write_req_ptr,
-                                    stream_handle_ptr,
-                                    write_buf_vec_ptr,
-                                    tcp_write_complete_cb) {
-                    0i32 => {
-                        debug!("uv_write() invoked successfully");
-                        uv::ll::set_data_for_req(write_req_ptr,
-                                                 write_data_ptr);
-                    }
-                    _ => {
-                        debug!("error invoking uv_write()");
-                        let err_data = uv::ll::get_last_err_data(loop_ptr);
-                        let result_ch = (*write_data_ptr).result_ch.clone();
-                        result_ch.send(TcpWriteError(err_data.to_tcp_err()));
-                    }
+            debug!("in interact cb for tcp::write %?",
+                            loop_ptr);
+            match uv::ll::write(write_req_ptr,
+                                stream_handle_ptr,
+                                write_buf_vec_ptr,
+                                tcp_write_complete_cb) {
+                0i32 => {
+                    debug!("uv_write() invoked successfully");
+                    uv::ll::set_data_for_req(write_req_ptr,
+                                             write_data_ptr);
+                }
+                _ => {
+                    debug!("error invoking uv_write()");
+                    let err_data = uv::ll::get_last_err_data(loop_ptr);
+                    let result_ch = (*write_data_ptr).result_ch.clone();
+                    result_ch.send(TcpWriteError(err_data.to_tcp_err()));
                 }
             }
         }

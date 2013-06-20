@@ -516,7 +516,6 @@ pub mod bytepipes {
     use core::comm::{Port, Chan};
     use core::comm;
     use core::io::{Writer, Reader, ReaderUtil};
-    use core::vec;
 
     pub struct ReaderBytePort<R> {
         reader: R
