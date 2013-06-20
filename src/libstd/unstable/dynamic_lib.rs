@@ -15,7 +15,6 @@ Dynamic library facilities.
 A simple wrapper over the platforms dynamic library facilities
 
 */
-use ptr;
 use cast;
 use path;
 use libc;

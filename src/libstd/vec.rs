@@ -19,7 +19,7 @@ use cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering, Less, Equal, Greater};
 use clone::Clone;
 use old_iter::BaseIter;
 use old_iter;
-use iterator::{Iterator, IteratorUtil};
+use iterator::{Iterator};
 use iter::FromIter;
 use kinds::Copy;
 use libc;

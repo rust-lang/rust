@@ -20,7 +20,6 @@ use either::{Either, Left, Right};
 use kinds::Owned;
 use option::{Option, Some, None};
 use uint;
-use vec;
 use vec::OwnedVector;
 use util::replace;
 use unstable::sync::{Exclusive, exclusive};
