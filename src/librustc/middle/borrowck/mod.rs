@@ -124,7 +124,7 @@ fn borrowck_fn(fk: &visit::fn_kind,
 
             // Check the body of fn items.
             let (id_range, all_loans, move_data) =
-                gather_loans::gather_loans(this, body);
+                gather_loans::gather_loans(this, decl, body);
             let mut loan_dfcx =
                 DataFlowContext::new(this.tcx,
                                      this.method_map,
@@ -264,7 +264,7 @@ pub fn opt_loan_path(cmt: mc::cmt) -> Option<@LoanPath> {
     //! traverses the CMT.
 
     match cmt.cat {
-        mc::cat_rvalue |
+        mc::cat_rvalue(*) |
         mc::cat_static_item |
         mc::cat_copied_upvar(_) |
         mc::cat_implicit_self => {
@@ -485,7 +485,7 @@ impl BorrowckCtxt {
 
     pub fn mc_ctxt(&self) -> mc::mem_categorization_ctxt {
         mc::mem_categorization_ctxt {tcx: self.tcx,
-                                 method_map: self.method_map}
+                                     method_map: self.method_map}
     }
 
     pub fn cat_pattern(&self,
