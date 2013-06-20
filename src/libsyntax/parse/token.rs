@@ -402,94 +402,6 @@ impl ident_interner {
 
 
 // return a fresh interner, preloaded with special identifiers.
-#[cfg(stage0)]
-fn mk_fresh_ident_interner() -> @ident_interner {
-    // the indices here must correspond to the numbers in
-    // special_idents.
-    let init_vec = ~[
-        "_",                  // 0
-        "anon",               // 1
-        "",                   // 2
-        "unary",              // 3
-        "!",                  // 4
-        "[]",                 // 5
-        "unary-",             // 6
-        "__extensions__",     // 7
-        "self",               // 8
-        "item",               // 9
-        "block",              // 10
-        "stmt",               // 11
-        "pat",                // 12
-        "expr",               // 13
-        "ty",                 // 14
-        "ident",              // 15
-        "path",               // 16
-        "tt",                 // 17
-        "matchers",           // 18
-        "str",                // 19
-        "TyVisitor",          // 20
-        "arg",                // 21
-        "descrim",            // 22
-        "__rust_abi",         // 23
-        "__rust_stack_shim",  // 24
-        "TyDesc",             // 25
-        "main",               // 26
-        "<opaque>",           // 27
-        "blk",                // 28
-        "static",             // 29
-        "intrinsic",          // 30
-        "__foreign_mod__",    // 31
-        "__field__",          // 32
-        "C",                  // 33
-        "Self",               // 34
-
-        "as",                 // 35
-        "break",              // 36
-        "const",              // 37
-        "copy",               // 38
-        "do",                 // 39
-        "drop",               // 40
-        "else",               // 41
-        "enum",               // 42
-        "extern",             // 43
-        "false",              // 44
-        "fn",                 // 45
-        "for",                // 46
-        "if",                 // 47
-        "impl",               // 48
-        "let",                // 49
-        "__log",              // 50
-        "loop",               // 51
-        "match",              // 52
-        "mod",                // 53
-        "mut",                // 54
-        "once",               // 55
-        "priv",               // 56
-        "pub",                // 57
-        "pure",               // 58
-        "ref",                // 59
-        "return",             // 60
-        "static",             // 29 -- also a special ident
-        "self",               //  8 -- also a special ident
-        "struct",             // 61
-        "super",              // 62
-        "true",               // 63
-        "trait",              // 64
-        "type",               // 65
-        "unsafe",             // 66
-        "use",                // 67
-        "while",              // 68
-
-        "be",                 // 69
-    ];
-
-    @ident_interner {
-        interner: interner::StrInterner::prefill(init_vec)
-    }
-}
-
-// return a fresh interner, preloaded with special identifiers.
-#[cfg(not(stage0))]
 fn mk_fresh_ident_interner() -> @ident_interner {
     // the indices here must correspond to the numbers in
     // special_idents.
@@ -700,48 +612,6 @@ pub mod keywords {
     }
 
     impl Keyword {
-        #[cfg(stage0)]
-        pub fn to_ident(&self) -> ident {
-            match *self {
-                As => ident { name: 35, ctxt: 0 },
-                Break => ident { name: 36, ctxt: 0 },
-                Const => ident { name: 37, ctxt: 0 },
-                Copy => ident { name: 38, ctxt: 0 },
-                Do => ident { name: 39, ctxt: 0 },
-                Else => ident { name: 41, ctxt: 0 },
-                Enum => ident { name: 42, ctxt: 0 },
-                Extern => ident { name: 43, ctxt: 0 },
-                False => ident { name: 44, ctxt: 0 },
-                Fn => ident { name: 45, ctxt: 0 },
-                For => ident { name: 46, ctxt: 0 },
-                If => ident { name: 47, ctxt: 0 },
-                Impl => ident { name: 48, ctxt: 0 },
-                Let => ident { name: 49, ctxt: 0 },
-                __Log => ident { name: 50, ctxt: 0 },
-                Loop => ident { name: 51, ctxt: 0 },
-                Match => ident { name: 52, ctxt: 0 },
-                Mod => ident { name: 53, ctxt: 0 },
-                Mut => ident { name: 54, ctxt: 0 },
-                Once => ident { name: 55, ctxt: 0 },
-                Priv => ident { name: 56, ctxt: 0 },
-                Pub => ident { name: 57, ctxt: 0 },
-                Pure => ident { name: 58, ctxt: 0 },
-                Ref => ident { name: 59, ctxt: 0 },
-                Return => ident { name: 60, ctxt: 0 },
-                Static => ident { name: 29, ctxt: 0 },
-                Self => ident { name: 8, ctxt: 0 },
-                Struct => ident { name: 61, ctxt: 0 },
-                Super => ident { name: 62, ctxt: 0 },
-                True => ident { name: 63, ctxt: 0 },
-                Trait => ident { name: 64, ctxt: 0 },
-                Type => ident { name: 65, ctxt: 0 },
-                Unsafe => ident { name: 66, ctxt: 0 },
-                Use => ident { name: 67, ctxt: 0 },
-                While => ident { name: 68, ctxt: 0 },
-                Be => ident { name: 69, ctxt: 0 },
-            }
-        }
-        #[cfg(not(stage0))]
         pub fn to_ident(&self) -> ident {
             match *self {
                 As => ident { name: 35, ctxt: 0 },
@@ -792,18 +662,6 @@ pub fn is_keyword(kw: keywords::Keyword, tok: &Token) -> bool {
     }
 }
 
-#[cfg(stage0)]
-pub fn is_any_keyword(tok: &Token) -> bool {
-    match *tok {
-        token::IDENT(sid, false) => match sid.name {
-            8 | 29 | 35 .. 69 => true,
-            _ => false,
-        },
-        _ => false
-    }
-}
-
-#[cfg(not(stage0))]
 pub fn is_any_keyword(tok: &Token) -> bool {
     match *tok {
         token::IDENT(sid, false) => match sid.name {
@@ -814,18 +672,6 @@ pub fn is_any_keyword(tok: &Token) -> bool {
     }
 }
 
-#[cfg(stage0)]
-pub fn is_strict_keyword(tok: &Token) -> bool {
-    match *tok {
-        token::IDENT(sid, false) => match sid.name {
-            8 | 29 | 35 .. 68 => true,
-            _ => false,
-        },
-        _ => false,
-    }
-}
-
-#[cfg(not(stage0))]
 pub fn is_strict_keyword(tok: &Token) -> bool {
     match *tok {
         token::IDENT(sid, false) => match sid.name {
@@ -836,18 +682,6 @@ pub fn is_strict_keyword(tok: &Token) -> bool {
     }
 }
 
-#[cfg(stage0)]
-pub fn is_reserved_keyword(tok: &Token) -> bool {
-    match *tok {
-        token::IDENT(sid, false) => match sid.name {
-            69 => true,
-            _ => false,
-        },
-        _ => false,
-    }
-}
-
-#[cfg(not(stage0))]
 pub fn is_reserved_keyword(tok: &Token) -> bool {
     match *tok {
         token::IDENT(sid, false) => match sid.name {

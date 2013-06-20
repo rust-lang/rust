@@ -521,25 +521,6 @@ pub fn build_target_config(sopts: @session::options,
     return target_cfg;
 }
 
-#[cfg(stage0)]
-pub fn host_triple() -> ~str {
-    // Get the host triple out of the build environment. This ensures that our
-    // idea of the host triple is the same as for the set of libraries we've
-    // actually built.  We can't just take LLVM's host triple because they
-    // normalize all ix86 architectures to i386.
-    //
-    // Instead of grabbing the host triple (for the current host), we grab (at
-    // compile time) the target triple that this rustc is built with and
-    // calling that (at runtime) the host triple.
-    let ht = env!("CFG_COMPILER_TRIPLE");
-    return if ht != ~"" {
-            ht
-        } else {
-            fail!("rustc built without CFG_COMPILER_TRIPLE")
-        };
-}
-
-#[cfg(not(stage0))]
 pub fn host_triple() -> ~str {
     // Get the host triple out of the build environment. This ensures that our
     // idea of the host triple is the same as for the set of libraries we've

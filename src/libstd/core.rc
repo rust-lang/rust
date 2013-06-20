@@ -57,10 +57,6 @@ they contained the following prologue:
 #[license = "MIT/ASL2"];
 #[crate_type = "lib"];
 
-// NOTE: remove these two attributes after the next snapshot
-#[no_core]; // for stage0
-#[allow(unrecognized_lint)]; // otherwise stage0 is seriously ugly
-
 // Don't link to std. We are std.
 #[no_std];
 

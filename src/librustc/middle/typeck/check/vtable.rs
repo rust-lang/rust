@@ -248,16 +248,9 @@ fn lookup_vtable(vcx: &VtableContext,
                     // Nothing found. Continue.
                 }
                 Some(implementations) => {
-                    let len = { // FIXME(#5074): stage0 requires it
-                        let implementations: &mut ~[@Impl] = *implementations;
-                        implementations.len()
-                    };
-
                     // implementations is the list of all impls in scope for
                     // trait_ref. (Usually, there's just one.)
-                    for uint::range(0, len) |i| {
-                        let im = implementations[i];
-
+                    for implementations.iter().advance |im| {
                         // im is one specific impl of trait_ref.
 
                         // First, ensure we haven't processed this impl yet.

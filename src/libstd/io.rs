@@ -1654,9 +1654,7 @@ impl Writer for BytesWriter {
         vec::reserve(bytes, count);
 
         unsafe {
-            // Silly stage0 borrow check workaround...
-            let casted: &mut ~[u8] = cast::transmute_copy(&bytes);
-            vec::raw::set_len(casted, count);
+            vec::raw::set_len(bytes, count);
 
             let view = vec::mut_slice(*bytes, *self.pos, count);
             vec::bytes::copy_memory(view, v, v_len);
