@@ -169,10 +169,6 @@ fn with_appropriate_checker(cx: Context, id: node_id,
         let id = ast_util::def_id_of_def(fv.def).node;
         let var_t = ty::node_id_to_type(cx.tcx, id);
 
-        // FIXME(#3569): Once closure capabilities are restricted based on their
-        // incoming bounds, make this check conditional based on the bounds.
-        if !check_owned(cx, var_t, fv.span) { return; }
-
         // check that only immutable variables are implicitly copied in
         check_imm_free_var(cx, fv.def, fv.span);
 
@@ -183,10 +179,6 @@ fn with_appropriate_checker(cx: Context, id: node_id,
         // all captured data must be owned
         let id = ast_util::def_id_of_def(fv.def).node;
         let var_t = ty::node_id_to_type(cx.tcx, id);
-
-        // FIXME(#3569): Once closure capabilities are restricted based on their
-        // incoming bounds, make this check conditional based on the bounds.
-        if !check_durable(cx.tcx, var_t, fv.span) { return; }
 
         // check that only immutable variables are implicitly copied in
         check_imm_free_var(cx, fv.def, fv.span);
