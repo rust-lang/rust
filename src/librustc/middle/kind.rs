@@ -128,7 +128,7 @@ fn check_item(item: @item, (cx, visitor): (Context, visit::vt<Context>)) {
                             // Yes, it's a destructor.
                             match self_type.node {
                                 ty_path(_, bounds, path_node_id) => {
-                                    assert!(bounds.is_empty());
+                                    assert!(bounds.is_none());
                                     let struct_def = cx.tcx.def_map.get_copy(
                                         &path_node_id);
                                     let struct_did =

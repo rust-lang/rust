@@ -15,7 +15,7 @@
 fn bar<T: Copy>(x: T) -> (T, T) {
     (copy x, x)
 }
-fn foo(x: ~fn:Copy()) -> (~fn(), ~fn()) {
+fn foo(x: ~fn:Copy()) -> (~fn:(), ~fn:()) {
     bar(x)
 }
 fn main() {

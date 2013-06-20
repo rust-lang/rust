@@ -4497,7 +4497,9 @@ pub fn visitor_object_ty(tcx: ctxt) -> (@TraitRef, t) {
     };
     let trait_lang_item = tcx.lang_items.ty_visitor();
     let trait_ref = @TraitRef { def_id: trait_lang_item, substs: substs };
+    let mut static_trait_bound = EmptyBuiltinBounds();
+    static_trait_bound.add(BoundStatic);
     (trait_ref,
      mk_trait(tcx, trait_ref.def_id, copy trait_ref.substs,
-              BoxTraitStore, ast::m_imm, EmptyBuiltinBounds()))
+              BoxTraitStore, ast::m_imm, static_trait_bound))
 }

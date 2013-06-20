@@ -12,7 +12,7 @@
 
 // Tests correct copying of heap closures' environments.
 
-fn foo(x: ~fn:Copy()) -> (~fn(), ~fn()) {
+fn foo(x: ~fn:Copy()) -> (~fn:(), ~fn:()) {
     (copy x, x)
 }
 fn main() {

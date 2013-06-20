@@ -1047,8 +1047,8 @@ impl Parser {
 
     // Like the above, but can also parse kind bounds in the case of a
     // path to be used as a type that might be a trait.
-    pub fn parse_type_path(&self) -> (@ast::Path, OptVec<TyParamBound>) {
-        let mut bounds = opt_vec::Empty;
+    pub fn parse_type_path(&self) -> (@ast::Path, Option<OptVec<TyParamBound>>) {
+        let mut bounds = None;
         let path = self.parse_bounded_path_with_tps(false, Some(|| {
             // Note: this closure might not even get called in the case of a
             // macro-generated path. But that's the macro parser's job.
@@ -2884,9 +2884,13 @@ impl Parser {
     // matches optbounds = ( ( : ( boundseq )? )? )
     // where   boundseq  = ( bound + boundseq ) | bound
     // and     bound     = 'static | ty
-    fn parse_optional_ty_param_bounds(&self) -> OptVec<TyParamBound> {
+    // Returns "None" if there's no colon (e.g. "T");
+    // Returns "Some(Empty)" if there's a colon but nothing after (e.g. "T:")
+    // Returns "Some(stuff)" otherwise (e.g. "T:stuff").
+    // NB: The None/Some distinction is important for issue #7264.
+    fn parse_optional_ty_param_bounds(&self) -> Option<OptVec<TyParamBound>> {
         if !self.eat(&token::COLON) {
-            return opt_vec::Empty;
+            return None;
         }
 
         let mut result = opt_vec::Empty;
@@ -2935,13 +2939,15 @@ impl Parser {
             }
         }
 
-        return result;
+        return Some(result);
     }
 
     // matches typaram = IDENT optbounds
     fn parse_ty_param(&self) -> TyParam {
         let ident = self.parse_ident();
-        let bounds = @self.parse_optional_ty_param_bounds();
+        let opt_bounds = self.parse_optional_ty_param_bounds();
+        // For typarams we don't care about the difference b/w "<T>" and "<T:>".
+        let bounds = @opt_bounds.get_or_default(opt_vec::Empty);
         ast::TyParam { ident: ident, id: self.get_id(), bounds: bounds }
     }
 
@@ -3288,7 +3294,7 @@ impl Parser {
         let opt_trait = if could_be_trait && self.eat_keyword(keywords::For) {
             // New-style trait. Reinterpret the type as a trait.
             let opt_trait_ref = match ty.node {
-                ty_path(path, @opt_vec::Empty, node_id) => {
+                ty_path(path, @None, node_id) => {
                     Some(@trait_ref {
                         path: path,
                         ref_id: node_id

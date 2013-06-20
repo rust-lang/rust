@@ -357,7 +357,7 @@ impl<'self> TraitDef<'self> {
         // Create the type of `self`.
         let self_type = cx.ty_path(cx.path_all(span, false, ~[ type_ident ], self_lifetime,
                                                opt_vec::take_vec(self_ty_params)),
-                                   @opt_vec::Empty);
+                                   @None);
 
         let doc_attr = cx.attribute(
             span,
