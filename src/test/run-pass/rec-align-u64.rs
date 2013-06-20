@@ -63,8 +63,8 @@ mod m {
 mod m {
     #[cfg(target_arch = "arm")]
     pub mod m {
-        pub fn align() -> uint { 4u }
-        pub fn size() -> uint { 12u }
+        pub fn align() -> uint { 8u }
+        pub fn size() -> uint { 16u }
     }
 }
 

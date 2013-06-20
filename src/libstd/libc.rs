@@ -257,6 +257,8 @@ pub mod types {
                 pub type intptr_t = int;
                 pub type uintptr_t = uint;
             }
+            #[cfg(target_arch = "x86")]
+            #[cfg(target_arch = "mips")]
             pub mod posix88 {
                 pub type off_t = i32;
                 pub type dev_t = u64;
@@ -268,6 +270,20 @@ pub mod types {
                 pub type mode_t = u32;
                 pub type ssize_t = i32;
             }
+            #[cfg(target_arch = "arm")]
+            pub mod posix88 {
+                pub type off_t = i32;
+                pub type dev_t = u32;
+                pub type ino_t = u32;
+                pub type pid_t = i32;
+                pub type uid_t = u32;
+                pub type gid_t = u32;
+                pub type useconds_t = u32;
+                pub type mode_t = u16;
+                pub type ssize_t = i32;
+            }
+            #[cfg(target_arch = "x86")]
+            #[cfg(target_arch = "mips")]
             pub mod posix01 {
                 use libc::types::os::arch::c95::{c_short, c_long, c_ulong, time_t};
                 use libc::types::os::arch::posix88::{dev_t, gid_t, ino_t};
@@ -279,7 +295,6 @@ pub mod types {
                 pub type blkcnt_t = i32;
 
                 #[cfg(target_arch = "x86")]
-                #[cfg(target_arch = "arm")]
                 pub struct stat {
                     st_dev: dev_t,
                     __pad1: c_short,
@@ -325,6 +340,39 @@ pub mod types {
                     st_blksize: blksize_t,
                     st_blocks: blkcnt_t,
                     st_pad5: [c_long, ..14],
+                }
+            }
+            #[cfg(target_arch = "arm")]
+            pub mod posix01 {
+                use libc::types::os::arch::c95::{c_uchar, c_uint, c_ulong, time_t};
+                use libc::types::os::arch::c99::{c_longlong, c_ulonglong};
+                use libc::types::os::arch::posix88::{uid_t, gid_t, ino_t};
+                use libc::types::os::arch::posix88::{uid_t};
+
+                pub type nlink_t = u16;
+                pub type blksize_t = u32;
+                pub type blkcnt_t = u32;
+
+                pub struct stat {
+                    st_dev: c_ulonglong,
+                    __pad0: [c_uchar, ..4],
+                    __st_ino: ino_t,
+                    st_mode: c_uint,
+                    st_nlink: c_uint,
+                    st_uid: uid_t,
+                    st_gid: gid_t,
+                    st_rdev: c_ulonglong,
+                    __pad3: [c_uchar, ..4],
+                    st_size: c_longlong,
+                    st_blksize: blksize_t,
+                    st_blocks: c_ulonglong,
+                    st_atime: time_t,
+                    st_atime_nsec: c_ulong,
+                    st_mtime: time_t,
+                    st_mtime_nsec: c_ulong,
+                    st_ctime: time_t,
+                    st_ctime_nsec: c_ulong,
+                    st_ino: c_ulonglong
                 }
             }
             pub mod posix08 {}
