@@ -25,6 +25,7 @@ use rt::io::{standard_error, OtherIoError};
 use rt::tube::Tube;
 use rt::local::Local;
 use unstable::sync::{Exclusive, exclusive};
+use rt::uv::net::uv_ip4_to_ip4;
 
 #[cfg(test)] use container::Container;
 #[cfg(test)] use uint;
@@ -260,6 +261,24 @@ impl IoFactory for UvIoFactory {
             }
         }
     }
+
+    fn udp_bind(&mut self, addr: IpAddr) -> Result<~RtioUdpSocketObject, IoError> {
+        let mut watcher = UdpWatcher::new(self.uv_loop());
+        match watcher.bind(addr) {
+            Ok(_) => Ok(~UvUdpSocket { watcher: watcher }),
+            Err(uverr) => {
+                let scheduler = Local::take::<Scheduler>();
+                do scheduler.deschedule_running_task_and_then |_, task| {
+                    let task_cell = Cell::new(task);
+                    do watcher.close {
+                        let scheduler = Local::take::<Scheduler>();
+                        scheduler.resume_task_immediately(task_cell.take());
+                    }
+                }
+                Err(uv_error_to_io_error(uverr))
+            }
+        }
+    }
 }
 
 // FIXME #6090: Prefer newtype structs but Drop doesn't work
@@ -358,7 +377,7 @@ impl Drop for UvTcpStream {
 }
 
 impl RtioTcpStream for UvTcpStream {
-    fn read(&mut self, buf: &mut [u8]) -> Result<uint, IoError> {
+    fn read(&self, buf: &mut [u8]) -> Result<uint, IoError> {
         let result_cell = Cell::new_empty();
         let result_cell_ptr: *Cell<Result<uint, IoError>> = &result_cell;
 
@@ -403,7 +422,7 @@ impl RtioTcpStream for UvTcpStream {
         return result_cell.take();
     }
 
-    fn write(&mut self, buf: &[u8]) -> Result<(), IoError> {
+    fn write(&self, buf: &[u8]) -> Result<(), IoError> {
         let result_cell = Cell::new_empty();
         let result_cell_ptr: *Cell<Result<(), IoError>> = &result_cell;
         let scheduler = Local::take::<Scheduler>();
@@ -433,23 +452,21 @@ impl RtioTcpStream for UvTcpStream {
     }
 }
 
-pub struct UvUdpStream {
-    watcher: UdpWatcher,
-    address: IpAddr
+pub struct UvUdpSocket {
+    watcher: UdpWatcher
 }
 
-impl UvUdpStream {
+impl UvUdpSocket {
     fn watcher(&self) -> UdpWatcher { self.watcher }
-    fn address(&self) -> IpAddr { self.address }
 }
 
-impl Drop for UvUdpStream {
+impl Drop for UvUdpSocket {
     fn finalize(&self) {
-        rtdebug!("closing udp stream");
+        rtdebug!("closing udp socket");
         let watcher = self.watcher();
         let scheduler = Local::take::<Scheduler>();
         do scheduler.deschedule_running_task_and_then |_, task| {
-            let task_cell = Cell(task);
+            let task_cell = Cell::new(task);
             do watcher.close {
                 let scheduler = Local::take::<Scheduler>();
                 scheduler.resume_task_immediately(task_cell.take());
@@ -458,40 +475,31 @@ impl Drop for UvUdpStream {
     }
 }
 
-impl RtioUdpStream for UvUdpStream {
-    fn read(&mut self, buf: &mut [u8]) -> Result<uint, IoError> {
-        let result_cell = empty_cell();
-        let result_cell_ptr: *Cell<Result<uint, IoError>> = &result_cell;
+impl RtioUdpSocket for UvUdpSocket {
+    fn recvfrom(&self, buf: &mut [u8]) -> Result<(uint, IpAddr), IoError> {
+        let result_cell = Cell::new_empty();
+        let result_cell_ptr: *Cell<Result<(uint, IpAddr), IoError>> = &result_cell;
 
         let scheduler = Local::take::<Scheduler>();
         assert!(scheduler.in_task_context());
         let watcher = self.watcher();
-        let connection_address = self.address();
         let buf_ptr: *&mut [u8] = &buf;
         do scheduler.deschedule_running_task_and_then |sched, task| {
-            rtdebug!("read: entered scheduler context");
+            rtdebug!("recvfrom: entered scheduler context");
             assert!(!sched.in_task_context());
             let mut watcher = watcher;
-            let task_cell = Cell(task);
-            // XXX: see note in RtioTcpStream implementation for UvTcpStream
-            let alloc: AllocCallback = |_| unsafe {
-                slice_to_uv_buf(*buf_ptr)
-            };
-            do watcher.recv_start(alloc) |watcher, nread, _buf, addr, flags, status| {
-                let _ = flags; // TODO actually use flags
+            let task_cell = Cell::new(task);
+            let alloc: AllocCallback = |_| unsafe { slice_to_uv_buf(*buf_ptr) };
+            do watcher.recv_start(alloc) |watcher, nread, buf, addr, flags, status| {
+                let _ = flags; // TODO 
+                let _ = buf; // TODO 
 
-                // XXX: see note in RtioTcpStream implementation for UvTcpStream
                 let mut watcher = watcher;
                 watcher.recv_stop();
 
-                let incoming_address = net::uv_ip4_to_ip4(&addr);
                 let result = if status.is_none() {
                     assert!(nread >= 0);
-                    if incoming_address != connection_address {
-                        Ok(0u)
-                    } else {
-                        Ok(nread as uint)
-                    }
+                    Ok((nread as uint, uv_ip4_to_ip4(&addr)))
                 } else {
                     Err(uv_error_to_io_error(status.unwrap()))
                 };
@@ -505,11 +513,37 @@ impl RtioUdpStream for UvUdpStream {
 
         assert!(!result_cell.is_empty());
         return result_cell.take();
-    }
 
-    fn write(&mut self, buf: &[u8]) -> Result<(), IoError> { 
-        let _ = buf;
-        fail!() 
+    }
+    fn sendto(&self, buf: &[u8], dst: IpAddr) -> Result<(), IoError> {
+        let result_cell = Cell::new_empty();
+        let result_cell_ptr: *Cell<Result<(), IoError>> = &result_cell;
+        let scheduler = Local::take::<Scheduler>();
+        assert!(scheduler.in_task_context());
+        let watcher = self.watcher();
+        let buf_ptr: *&[u8] = &buf;
+        do scheduler.deschedule_running_task_and_then |_, task| {
+            let mut watcher = watcher;
+            let task_cell = Cell::new(task);
+            let buf = unsafe { slice_to_uv_buf(*buf_ptr) };
+            do watcher.send(buf, dst) |watcher, status| {
+                let _ = watcher; // TODO 
+
+                let result = if status.is_none() {
+                    Ok(())
+                } else {
+                    Err(uv_error_to_io_error(status.unwrap()))
+                };
+
+                unsafe { (*result_cell_ptr).put_back(result); }
+
+                let scheduler = Local::take::<Scheduler>();
+                scheduler.resume_task_immediately(task_cell.take());
+            }
+        }
+
+        assert!(!result_cell.is_empty());
+        return result_cell.take();
     }
 }
 
@@ -535,7 +569,7 @@ fn test_simple_tcp_server_and_client() {
             unsafe {
                 let io = Local::unsafe_borrow::<IoFactoryObject>();
                 let mut listener = (*io).tcp_bind(addr).unwrap();
-                let mut stream = listener.accept().unwrap();
+                let stream = listener.accept().unwrap();
                 let mut buf = [0, .. 2048];
                 let nread = stream.read(buf).unwrap();
                 assert_eq!(nread, 8);
@@ -549,7 +583,7 @@ fn test_simple_tcp_server_and_client() {
         do spawntask_immediately {
             unsafe {
                 let io = Local::unsafe_borrow::<IoFactoryObject>();
-                let mut stream = (*io).tcp_connect(addr).unwrap();
+                let stream = (*io).tcp_connect(addr).unwrap();
                 stream.write([0, 1, 2, 3, 4, 5, 6, 7]);
             }
         }
@@ -564,7 +598,7 @@ fn test_read_and_block() {
         do spawntask_immediately {
             let io = unsafe { Local::unsafe_borrow::<IoFactoryObject>() };
             let mut listener = unsafe { (*io).tcp_bind(addr).unwrap() };
-            let mut stream = listener.accept().unwrap();
+            let stream = listener.accept().unwrap();
             let mut buf = [0, .. 2048];
 
             let expected = 32;
@@ -597,7 +631,7 @@ fn test_read_and_block() {
         do spawntask_immediately {
             unsafe {
                 let io = Local::unsafe_borrow::<IoFactoryObject>();
-                let mut stream = (*io).tcp_connect(addr).unwrap();
+                let stream = (*io).tcp_connect(addr).unwrap();
                 stream.write([0, 1, 2, 3, 4, 5, 6, 7]);
                 stream.write([0, 1, 2, 3, 4, 5, 6, 7]);
                 stream.write([0, 1, 2, 3, 4, 5, 6, 7]);
@@ -618,7 +652,7 @@ fn test_read_read_read() {
             unsafe {
                 let io = Local::unsafe_borrow::<IoFactoryObject>();
                 let mut listener = (*io).tcp_bind(addr).unwrap();
-                let mut stream = listener.accept().unwrap();
+                let stream = listener.accept().unwrap();
                 let buf = [1, .. 2048];
                 let mut total_bytes_written = 0;
                 while total_bytes_written < MAX {
@@ -631,7 +665,7 @@ fn test_read_read_read() {
         do spawntask_immediately {
             unsafe {
                 let io = Local::unsafe_borrow::<IoFactoryObject>();
-                let mut stream = (*io).tcp_connect(addr).unwrap();
+                let stream = (*io).tcp_connect(addr).unwrap();
                 let mut buf = [0, .. 2048];
                 let mut total_bytes_read = 0;
                 while total_bytes_read < MAX {
