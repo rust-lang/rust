@@ -79,7 +79,6 @@ use cast;
 use cell::Cell;
 use container::Map;
 use comm::{Chan, GenericChan};
-use ptr;
 use hashmap::HashSet;
 use task::local_data_priv::{local_get, local_set, OldHandle};
 use task::rt::rust_task;

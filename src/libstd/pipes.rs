@@ -86,7 +86,6 @@ bounded and unbounded protocols allows for less code duplication.
 
 use container::Container;
 use cast::{forget, transmute, transmute_copy, transmute_mut};
-use cast;
 use either::{Either, Left, Right};
 use iterator::IteratorUtil;
 use kinds::Owned;

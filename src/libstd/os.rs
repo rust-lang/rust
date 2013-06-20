@@ -959,12 +959,10 @@ pub fn copy_file(from: &Path, to: &Path) -> bool {
             fclose(ostream);
 
             // Give the new file the old file's permissions
-            unsafe {
-                if do str::as_c_str(to.to_str()) |to_buf| {
-                    libc::chmod(to_buf, from_mode as mode_t)
-                } != 0 {
-                    return false; // should be a condition...
-                }
+            if do str::as_c_str(to.to_str()) |to_buf| {
+                libc::chmod(to_buf, from_mode as mode_t)
+            } != 0 {
+                return false; // should be a condition...
             }
             return ok;
         }

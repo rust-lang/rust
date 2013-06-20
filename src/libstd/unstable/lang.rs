@@ -387,9 +387,6 @@ pub unsafe fn strdup_uniq(ptr: *c_uchar, len: uint) -> ~str {
 pub fn start(main: *u8, argc: int, argv: **c_char,
              crate_map: *u8) -> int {
     use rt;
-    use sys::Closure;
-    use ptr;
-    use cast;
     use os;
 
     unsafe {
@@ -399,17 +396,8 @@ pub fn start(main: *u8, argc: int, argv: **c_char,
                               crate_map as *c_void) as int;
         } else {
             return do rt::start(argc, argv as **u8, crate_map) {
-                unsafe {
-                    // `main` is an `fn() -> ()` that doesn't take an environment
-                    // XXX: Could also call this as an `extern "Rust" fn` once they work
-                    let main = Closure {
-                        code: main as *(),
-                        env: ptr::null(),
-                    };
-                    let mainfn: &fn() = cast::transmute(main);
-
-                    mainfn();
-                }
+                let main: extern "Rust" fn() = transmute(main);
+                main();
             };
         }
     }
