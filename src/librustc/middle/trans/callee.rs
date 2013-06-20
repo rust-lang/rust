@@ -860,8 +860,6 @@ pub fn trans_arg_expr(bcx: block,
         // FIXME(#3548) use the adjustments table
         match autoref_arg {
             DoAutorefArg => {
-                assert!(!
-                    bcx.ccx().maps.moves_map.contains(&arg_expr.id));
                 val = arg_datum.to_ref_llval(bcx);
             }
             DontAutorefArg => {

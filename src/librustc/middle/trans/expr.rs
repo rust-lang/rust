@@ -23,7 +23,8 @@ This will generate code that evaluates `expr`, storing the result into
 `Dest`, which must either be the special flag ignore (throw the result
 away) or be a pointer to memory of the same type/size as the
 expression.  It returns the resulting basic block.  This form will
-handle all automatic adjustments and moves for you.
+handle all automatic adjustments for you. The value will be moved if
+its type is linear and copied otherwise.
 
 ## Translation to a datum
 
@@ -42,18 +43,18 @@ This function generates code to evaluate the expression and return a
 tries to return its result in the most efficient way possible, without
 introducing extra copies or sacrificing information.  Therefore, for
 lvalue expressions, you always get a by-ref `Datum` in return that
-points at the memory for this lvalue (almost, see [1]).  For rvalue
-expressions, we will return a by-value `Datum` whenever possible, but
-it is often necessary to allocate a stack slot, store the result of
-the rvalue in there, and then return a pointer to the slot (see the
-discussion later on about the different kinds of rvalues).
+points at the memory for this lvalue.  For rvalue expressions, we will
+return a by-value `Datum` whenever possible, but it is often necessary
+to allocate a stack slot, store the result of the rvalue in there, and
+then return a pointer to the slot (see the discussion later on about
+the different kinds of rvalues).
 
 NB: The `trans_to_datum()` function does perform adjustments, but
 since it returns a pointer to the value "in place" it does not handle
-any moves that may be relevant.  If you are transing an expression
-whose result should be moved, you should either use the Datum methods
-`move_to()` (for unconditional moves) or `store_to()` (for moves
-conditioned on the type of the expression) at some point.
+moves.  If you wish to copy/move the value returned into a new
+location, you should use the Datum method `store_to()` (move or copy
+depending on type). You can also use `move_to()` (force move) or
+`copy_to()` (force copy) for special situations.
 
 ## Translating local variables
 
@@ -109,13 +110,6 @@ generate phi nodes).
 
 Finally, statement rvalues are rvalues that always produce a nil
 return type, such as `while` loops or assignments (`a = b`).
-
-## Caveats
-
-[1] Actually, some lvalues are only stored by value and not by
-reference.  An example (as of this writing) would be immutable
-arguments or pattern bindings of immediate type.  However, mutable
-lvalues are *never* stored by value.
 
 */
 
@@ -315,7 +309,7 @@ pub fn trans_into(bcx: block, expr: @ast::expr, dest: Dest) -> block {
         let datumblock = trans_to_datum(bcx, expr);
         return match dest {
             Ignore => datumblock.bcx,
-            SaveIn(lldest) => datumblock.store_to(expr.id, INIT, lldest)
+            SaveIn(lldest) => datumblock.store_to(INIT, lldest)
         };
     }
 
@@ -343,7 +337,7 @@ pub fn trans_into(bcx: block, expr: @ast::expr, dest: Dest) -> block {
             let datumblock = trans_lvalue_unadjusted(bcx, expr);
             match dest {
                 Ignore => datumblock.bcx,
-                SaveIn(lldest) => datumblock.store_to(expr.id, INIT, lldest)
+                SaveIn(lldest) => datumblock.store_to(INIT, lldest)
             }
         }
         ty::RvalueDatumExpr => {
@@ -351,8 +345,9 @@ pub fn trans_into(bcx: block, expr: @ast::expr, dest: Dest) -> block {
             match dest {
                 Ignore => datumblock.drop_val(),
 
-                // NB: We always do `move_to()` regardless of the
-                // moves_map because we're processing an rvalue
+                // When processing an rvalue, the value will be newly
+                // allocated, so we always `move_to` so as not to
+                // unnecessarily inc ref counts and so forth:
                 SaveIn(lldest) => datumblock.move_to(INIT, lldest)
             }
         }
@@ -386,11 +381,11 @@ fn trans_lvalue(bcx: block, expr: @ast::expr) -> DatumBlock {
 
 fn trans_to_datum_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
     /*!
-     *
      * Translates an expression into a datum.  If this expression
      * is an rvalue, this will result in a temporary value being
-     * created.  If you already know where the result should be stored,
-     * you should use `trans_into()` instead. */
+     * created.  If you plan to store the value somewhere else,
+     * you should prefer `trans_into()` instead.
+     */
 
     let mut bcx = bcx;
 
@@ -535,7 +530,7 @@ fn trans_rvalue_stmt_unadjusted(bcx: block, expr: @ast::expr) -> block {
             let dst_datum = unpack_datum!(
                 bcx, trans_lvalue(bcx, dst));
             return src_datum.store_to_datum(
-                bcx, src.id, DROP_EXISTING, dst_datum);
+                bcx, DROP_EXISTING, dst_datum);
         }
         ast::expr_assign_op(callee_id, op, dst, src) => {
             return trans_assign_op(bcx, expr, callee_id, op, dst, src);
@@ -638,7 +633,15 @@ fn trans_rvalue_dps_unadjusted(bcx: block, expr: @ast::expr,
             return trans_into(bcx, blk, dest);
         }
         ast::expr_copy(a) => {
-            return trans_into(bcx, a, dest);
+            // If we just called `trans_into(bcx, a, dest)`, then this
+            // might *move* the value into `dest` if the value is
+            // non-copyable. So first get a datum and then do an
+            // explicit copy.
+            let datumblk = trans_to_datum(bcx, a);
+            return match dest {
+                Ignore => datumblk.bcx,
+                SaveIn(llval) => datumblk.copy_to(INIT, llval)
+            };
         }
         ast::expr_call(f, ref args, _) => {
             return callee::trans_call(
@@ -1221,6 +1224,7 @@ fn trans_adt(bcx: block, repr: &adt::Repr, discr: int,
                 bcx = trans_into(bcx, e, Ignore);
             }
             for optbase.iter().advance |sbi| {
+                // FIXME #7261: this moves entire base, not just certain fields
                 bcx = trans_into(bcx, sbi.expr, Ignore);
             }
             return bcx;
@@ -1245,7 +1249,7 @@ fn trans_adt(bcx: block, repr: &adt::Repr, discr: int,
                 adt::trans_field_ptr(bcx, repr, srcval, discr, i)
             };
             let dest = adt::trans_field_ptr(bcx, repr, addr, discr, i);
-            bcx = datum.store_to(bcx, base.expr.id, INIT, dest);
+            bcx = datum.store_to(bcx, INIT, dest);
         }
     }
 

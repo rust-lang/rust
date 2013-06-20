@@ -35,9 +35,6 @@ use syntax::codemap::span;
 pub fn trans_block(bcx: block, b: &ast::blk, dest: expr::Dest) -> block {
     let _icx = push_ctxt("trans_block");
     let mut bcx = bcx;
-    do block_locals(b) |local| {
-        bcx = alloc_local(bcx, local);
-    };
     for b.node.stmts.iter().advance |s| {
         debuginfo::update_source_pos(bcx, b.span);
         bcx = trans_stmt(bcx, *s);
