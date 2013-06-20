@@ -32,16 +32,10 @@ Rust extras are part of the standard Rust distribution.
 #[deny(non_camel_case_types)];
 #[deny(missing_doc)];
 
-// NOTE: remove these two attributes after the next snapshot
-#[no_core]; // for stage0
-#[allow(unrecognized_lint)]; // otherwise stage0 is seriously ugly
-
 #[no_std];
 
 extern mod core(name = "std", vers = "0.7-pre");
 
-#[cfg(stage0)]
-use core::{str, unstable};
 use core::str::{StrSlice, OwnedStr};
 
 pub use core::os;

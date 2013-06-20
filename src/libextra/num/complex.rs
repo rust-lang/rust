@@ -80,7 +80,6 @@ impl<T: Clone + Num> Cmplx<T> {
     }
 }
 
-#[cfg(not(stage0))] // Fixed by #4228
 impl<T: Clone + Algebraic + Num> Cmplx<T> {
     /// Calculate |self|
     #[inline]
@@ -89,7 +88,6 @@ impl<T: Clone + Algebraic + Num> Cmplx<T> {
     }
 }
 
-#[cfg(not(stage0))] // Fixed by #4228
 impl<T: Clone + Trigonometric + Algebraic + Num> Cmplx<T> {
     /// Calculate the principal Arg of self.
     #[inline]

@@ -1318,7 +1318,7 @@ pub fn cleanup_and_leave(bcx: block,
         match cur.kind {
             block_scope(inf) if !inf.empty_cleanups() => {
                 let (sub_cx, dest, inf_cleanups) = {
-                    let inf = &mut *inf; // FIXME(#5074) workaround stage0
+                    let inf = &mut *inf;
                     let mut skip = 0;
                     let mut dest = None;
                     {

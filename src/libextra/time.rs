@@ -275,7 +275,7 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
         let mut i = 0u;
         let len = strs.len();
         while i < len {
-            match strs[i] { // can't use let due to stage0 bugs
+            match strs[i] { // can't use let due to let-pattern bugs
                 (ref needle, value) => {
                     if match_str(ss, pos, *needle) {
                         return Some((value, pos + needle.len()));
