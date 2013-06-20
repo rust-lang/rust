@@ -55,6 +55,7 @@ pub use self::file::FsRequest;
 pub use self::net::{StreamWatcher, TcpWatcher};
 pub use self::idle::IdleWatcher;
 pub use self::timer::TimerWatcher;
+pub use self::async::AsyncWatcher;
 
 /// The implementation of `rtio` for libuv
 pub mod uvio;
@@ -66,6 +67,7 @@ pub mod file;
 pub mod net;
 pub mod idle;
 pub mod timer;
+pub mod async;
 
 /// XXX: Loop(*handle) is buggy with destructors. Normal structs
 /// with dtors may not be destructured, but tuple structs can,
@@ -123,6 +125,7 @@ pub type IdleCallback = ~fn(IdleWatcher, Option<UvError>);
 pub type ConnectionCallback = ~fn(StreamWatcher, Option<UvError>);
 pub type FsCallback = ~fn(FsRequest, Option<UvError>);
 pub type TimerCallback = ~fn(TimerWatcher, Option<UvError>);
+pub type AsyncCallback = ~fn(AsyncWatcher, Option<UvError>);
 
 
 /// Callbacks used by StreamWatchers, set as custom data on the foreign handle
@@ -133,7 +136,8 @@ struct WatcherData {
     close_cb: Option<NullCallback>,
     alloc_cb: Option<AllocCallback>,
     idle_cb: Option<IdleCallback>,
-    timer_cb: Option<TimerCallback>
+    timer_cb: Option<TimerCallback>,
+    async_cb: Option<AsyncCallback>
 }
 
 pub trait WatcherInterop {
@@ -162,7 +166,8 @@ impl<H, W: Watcher + NativeHandle<*H>> WatcherInterop for W {
                 close_cb: None,
                 alloc_cb: None,
                 idle_cb: None,
-                timer_cb: None
+                timer_cb: None,
+                async_cb: None
             };
             let data = transmute::<~WatcherData, *c_void>(data);
             uvll::set_data_for_uv_handle(self.native_handle(), data);
@@ -343,60 +348,6 @@ fn test_slice_to_uv_buf() {
 fn loop_smoke_test() {
     do run_in_bare_thread {
         let mut loop_ = Loop::new();
-        loop_.run();
-        loop_.close();
-    }
-}
-
-#[test]
-#[ignore(reason = "valgrind - loop destroyed before watcher?")]
-fn idle_new_then_close() {
-    do run_in_bare_thread {
-        let mut loop_ = Loop::new();
-        let idle_watcher = { IdleWatcher::new(&mut loop_) };
-        idle_watcher.close(||());
-    }
-}
-
-#[test]
-fn idle_smoke_test() {
-    do run_in_bare_thread {
-        let mut loop_ = Loop::new();
-        let mut idle_watcher = { IdleWatcher::new(&mut loop_) };
-        let mut count = 10;
-        let count_ptr: *mut int = &mut count;
-        do idle_watcher.start |idle_watcher, status| {
-            let mut idle_watcher = idle_watcher;
-            assert!(status.is_none());
-            if unsafe { *count_ptr == 10 } {
-                idle_watcher.stop();
-                idle_watcher.close(||());
-            } else {
-                unsafe { *count_ptr = *count_ptr + 1; }
-            }
-        }
-        loop_.run();
-        loop_.close();
-        assert_eq!(count, 10);
-    }
-}
-
-#[test]
-fn idle_start_stop_start() {
-    do run_in_bare_thread {
-        let mut loop_ = Loop::new();
-        let mut idle_watcher = { IdleWatcher::new(&mut loop_) };
-        do idle_watcher.start |idle_watcher, status| {
-            let mut idle_watcher = idle_watcher;
-            assert!(status.is_none());
-            idle_watcher.stop();
-            do idle_watcher.start |idle_watcher, status| {
-                assert!(status.is_none());
-                let mut idle_watcher = idle_watcher;
-                idle_watcher.stop();
-                idle_watcher.close(||());
-            }
-        }
         loop_.run();
         loop_.close();
     }

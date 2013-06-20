@@ -178,6 +178,7 @@ rust_call_tydesc_glue
 tdefl_compress_mem_to_heap
 tinfl_decompress_mem_to_heap
 rust_gc_metadata
+rust_update_gc_metadata
 rust_uv_ip4_port
 rust_uv_ip6_port
 rust_uv_tcp_getpeername
@@ -240,3 +241,4 @@ rust_take_env_lock
 rust_drop_env_lock
 rust_update_log_settings
 rust_running_on_valgrind
+rust_get_num_cpus
