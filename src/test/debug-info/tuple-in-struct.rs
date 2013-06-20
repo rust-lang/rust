@@ -16,29 +16,29 @@
 // debugger:run
 // debugger:finish
 
-// debugger:print noPadding1
+// debugger:print no_padding1
 // check:$1 = {x = {0, 1}, y = 2, z = {3, 4, 5}}
-// debugger:print noPadding2
+// debugger:print no_padding2
 // check:$2 = {x = {6, 7}, y = {{8, 9}, 10}}
 
-// debugger:print tupleInternalPadding
+// debugger:print tuple_internal_padding
 // check:$3 = {x = {11, 12}, y = {13, 14}}
-// debugger:print structInternalPadding
+// debugger:print struct_internal_padding
 // check:$4 = {x = {15, 16}, y = {17, 18}}
-// debugger:print bothInternallyPadded
+// debugger:print both_internally_padded
 // check:$5 = {x = {19, 20, 21}, y = {22, 23}}
 
-// debugger:print singleTuple
+// debugger:print single_tuple
 // check:$6 = {x = {24, 25, 26}}
 
-// debugger:print tuplePaddedAtEnd
+// debugger:print tuple_padded_at_end
 // check:$7 = {x = {27, 28}, y = {29, 30}}
-// debugger:print structPaddedAtEnd
+// debugger:print struct_padded_at_end
 // check:$8 = {x = {31, 32}, y = {33, 34}}
-// debugger:print bothPaddedAtEnd
+// debugger:print both_padded_at_end
 // check:$9 = {x = {35, 36, 37}, y = {38, 39}}
 
-// debugger:print mixedPadding
+// debugger:print mixed_padding
 // check:$10 = {x = {{40, 41, 42}, {43, 44}}, y = {45, 46, 47, 48}}
 
 struct NoPadding1 {
@@ -95,52 +95,52 @@ struct MixedPadding {
 
 
 fn main() {
-    let noPadding1 = NoPadding1 {
+    let no_padding1 = NoPadding1 {
         x: (0, 1),
         y: 2,
         z: (3, 4, 5)
     };
 
-    let noPadding2 = NoPadding2 {
+    let no_padding2 = NoPadding2 {
         x: (6, 7),
         y: ((8, 9), 10)
     };
 
-    let tupleInternalPadding = TupleInternalPadding {
+    let tuple_internal_padding = TupleInternalPadding {
         x: (11, 12),
         y: (13, 14)
     };
 
-    let structInternalPadding = StructInternalPadding {
+    let struct_internal_padding = StructInternalPadding {
         x: (15, 16),
         y: (17, 18)
     };
 
-    let bothInternallyPadded = BothInternallyPadded {
+    let both_internally_padded = BothInternallyPadded {
         x: (19, 20, 21),
         y: (22, 23)
     };
 
-    let singleTuple = SingleTuple {
+    let single_tuple = SingleTuple {
         x: (24, 25, 26)
     };
 
-    let tuplePaddedAtEnd = TuplePaddedAtEnd {
+    let tuple_padded_at_end = TuplePaddedAtEnd {
         x: (27, 28),
         y: (29, 30)
     };
 
-    let structPaddedAtEnd = StructPaddedAtEnd {
+    let struct_padded_at_end = StructPaddedAtEnd {
         x: (31, 32),
         y: (33, 34)
     };
 
-    let bothPaddedAtEnd = BothPaddedAtEnd {
+    let both_padded_at_end = BothPaddedAtEnd {
         x: (35, 36, 37),
         y: (38, 39)
     };
 
-    let mixedPadding = MixedPadding {
+    let mixed_padding = MixedPadding {
         x: ((40, 41, 42), (43, 44)),
         y: (45, 46, 47, 48)
     };

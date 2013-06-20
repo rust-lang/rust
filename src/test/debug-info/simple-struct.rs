@@ -16,22 +16,22 @@
 // debugger:run
 // debugger:finish
 
-// debugger:print noPadding16
+// debugger:print no_padding16
 // check:$1 = {x = 10000, y = -10001}
 
-// debugger:print noPadding32
+// debugger:print no_padding32
 // check:$2 = {x = -10002, y = -10003.5, z = 10004}
 
-// debugger:print noPadding64
+// debugger:print no_padding64
 // check:$3 = {x = -10005.5, y = 10006, z = 10007}
 
-// debugger:print noPadding163264
+// debugger:print no_padding163264
 // check:$4 = {a = -10008, b = 10009, c = 10010, d = 10011}
 
-// debugger:print internalPadding
+// debugger:print internal_padding
 // check:$5 = {x = 10012, y = -10013}
 
-// debugger:print paddingAtEnd
+// debugger:print padding_at_end
 // check:$6 = {x = -10014, y = 10015}
 
 
@@ -39,7 +39,7 @@ struct NoPadding16 {
     x: u16,
     y: i16
 }
- 
+
 struct NoPadding32 {
     x: i32,
     y: f32,
@@ -70,13 +70,13 @@ struct PaddingAtEnd {
 }
 
 fn main() {
-    let noPadding16 = NoPadding16 { x: 10000, y: -10001 };
-    let noPadding32 = NoPadding32 { x: -10002, y: -10003.5, z: 10004 };
-    let noPadding64 = NoPadding64 { x: -10005.5, y: 10006, z: 10007 };
-    let noPadding163264 = NoPadding163264 { a: -10008, b: 10009, c: 10010, d: 10011 };
- 
-    let internalPadding = InternalPadding { x: 10012, y: -10013 };
-    let paddingAtEnd = PaddingAtEnd { x: -10014, y: 10015 };
+    let no_padding16 = NoPadding16 { x: 10000, y: -10001 };
+    let no_padding32 = NoPadding32 { x: -10002, y: -10003.5, z: 10004 };
+    let no_padding64 = NoPadding64 { x: -10005.5, y: 10006, z: 10007 };
+    let no_padding163264 = NoPadding163264 { a: -10008, b: 10009, c: 10010, d: 10011 };
+
+    let internal_padding = InternalPadding { x: 10012, y: -10013 };
+    let padding_at_end = PaddingAtEnd { x: -10014, y: 10015 };
 
     zzz();
 }
