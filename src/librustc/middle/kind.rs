@@ -293,9 +293,9 @@ pub fn check_expr(e: @expr, (cx, v): (Context, visit::vt<Context>)) {
         expr_cast(source, _) => {
             check_cast_for_escaping_regions(cx, source, e);
             match ty::get(ty::expr_ty(cx.tcx, e)).sty {
-                ty::ty_trait(_, _, store, _, bounds) => {
+                ty::ty_trait(_, _, _, _, bounds) => {
                     let source_ty = ty::expr_ty(cx.tcx, source);
-                    check_trait_cast_bounds(cx, e.span, source_ty, bounds, store)
+                    check_trait_cast_bounds(cx, e.span, source_ty, bounds)
                 }
                 _ => { }
             }
@@ -391,18 +391,13 @@ pub fn check_freevar_bounds(cx: Context, sp: span, ty: ty::t,
 }
 
 pub fn check_trait_cast_bounds(cx: Context, sp: span, ty: ty::t,
-                               bounds: ty::BuiltinBounds, store: ty::TraitStore) {
+                               bounds: ty::BuiltinBounds) {
     do check_builtin_bounds(cx, ty, bounds) |missing| {
         cx.tcx.sess.span_err(sp,
             fmt!("cannot pack type `%s`, which does not fulfill \
                   `%s`, as a trait bounded by %s",
                  ty_to_str(cx.tcx, ty), missing.user_string(cx.tcx),
                  bounds.user_string(cx.tcx)));
-    }
-    // FIXME(#3569): Remove this check when the corresponding restriction
-    // is made with type contents.
-    if store == ty::UniqTraitStore && !ty::type_is_owned(cx.tcx, ty) {
-        cx.tcx.sess.span_err(sp, "uniquely-owned trait objects must be sendable");
     }
 }
 
