@@ -43,6 +43,7 @@ pub fn monomorphic_fn(ccx: @mut CrateContext,
                       fn_id: ast::def_id,
                       real_substs: &ty::substs,
                       vtables: Option<typeck::vtable_res>,
+                      self_vtable: Option<typeck::vtable_origin>,
                       impl_did_opt: Option<ast::def_id>,
                       ref_id: Option<ast::node_id>)
     -> (ValueRef, bool)
@@ -165,6 +166,7 @@ pub fn monomorphic_fn(ccx: @mut CrateContext,
     let mut pt = /* bad */copy (*pt);
     pt.push(elt);
     let s = mangle_exported_name(ccx, /*bad*/copy pt, mono_ty);
+    debug!("monomorphize_fn mangled to %s", s);
 
     let mk_lldecl = || {
         let lldecl = decl_internal_cdecl_fn(ccx.llmod, /*bad*/copy s, llfty);
@@ -176,7 +178,8 @@ pub fn monomorphic_fn(ccx: @mut CrateContext,
         tys: substs,
         vtables: vtables,
         type_param_defs: tpt.generics.type_param_defs,
-        self_ty: real_substs.self_ty
+        self_ty: real_substs.self_ty,
+        self_vtable: self_vtable
     });
 
     let lldecl = match map_node {
