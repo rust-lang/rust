@@ -925,6 +925,13 @@ rust_running_on_valgrind() {
     return RUNNING_ON_VALGRIND;
 }
 
+extern int get_num_cpus();
+
+extern "C" CDECL uintptr_t
+rust_get_num_cpus() {
+    return get_num_cpus();
+}
+
 //
 // Local Variables:
 // mode: C++

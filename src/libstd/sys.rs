@@ -180,10 +180,13 @@ impl FailWithCause for &'static str {
 
 // FIXME #4427: Temporary until rt::rt_fail_ goes away
 pub fn begin_unwind_(msg: *c_char, file: *c_char, line: size_t) -> ! {
+    use cell::Cell;
     use option::Option;
+    use either::Left;
     use rt::{context, OldTaskContext, TaskContext};
     use rt::task::{Task, Unwinder};
     use rt::local::Local;
+    use rt::logging::Logger;
 
     let context = context();
     match context {
@@ -200,12 +203,18 @@ pub fn begin_unwind_(msg: *c_char, file: *c_char, line: size_t) -> ! {
                 let msg = str::raw::from_c_str(msg);
                 let file = str::raw::from_c_str(file);
 
-                let outmsg = fmt!("%s at line %i of file %s", msg, line as int, file);
+                let outmsg = fmt!("task failed: '%s' at line %i of file %s",
+                                  msg, line as int, file);
 
                 // XXX: Logging doesn't work correctly in non-task context because it
                 // invokes the local heap
                 if context == TaskContext {
-                    error!(outmsg);
+                    // XXX: Logging doesn't work here - the check to call the log
+                    // function never passes - so calling the log function directly.
+                    let outmsg = Cell::new(outmsg);
+                    do Local::borrow::<Task, ()> |task| {
+                        task.logger.log(Left(outmsg.take()));
+                    }
                 } else {
                     rtdebug!("%s", outmsg);
                 }
@@ -213,11 +222,7 @@ pub fn begin_unwind_(msg: *c_char, file: *c_char, line: size_t) -> ! {
                 gc::cleanup_stack_for_failure();
 
                 let task = Local::unsafe_borrow::<Task>();
-                let unwinder: &mut Option<Unwinder> = &mut (*task).unwinder;
-                match *unwinder {
-                    Some(ref mut unwinder) => unwinder.begin_unwind(),
-                    None => abort!("failure without unwinder. aborting process")
-                }
+                (*task).unwinder.begin_unwind();
             }
         }
     }

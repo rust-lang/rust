@@ -18,16 +18,22 @@ use cast::transmute;
 use libc::{c_void, uintptr_t};
 use ptr;
 use prelude::*;
+use option::{Option, Some, None};
 use rt::local::Local;
 use rt::logging::StdErrLogger;
 use super::local_heap::LocalHeap;
+use rt::sched::{SchedHome, AnySched};
+use rt::join_latch::JoinLatch;
 
 pub struct Task {
     heap: LocalHeap,
     gc: GarbageCollector,
     storage: LocalStorage,
     logger: StdErrLogger,
-    unwinder: Option<Unwinder>,
+    unwinder: Unwinder,
+    home: Option<SchedHome>,
+    join_latch: Option<~JoinLatch>,
+    on_exit: Option<~fn(bool)>,
     destroyed: bool
 }
 
@@ -39,49 +45,63 @@ pub struct Unwinder {
 }
 
 impl Task {
-    pub fn new() -> Task {
+    pub fn new_root() -> Task {
         Task {
             heap: LocalHeap::new(),
             gc: GarbageCollector,
             storage: LocalStorage(ptr::null(), None),
             logger: StdErrLogger,
-            unwinder: Some(Unwinder { unwinding: false }),
+            unwinder: Unwinder { unwinding: false },
+            home: Some(AnySched),
+            join_latch: Some(JoinLatch::new_root()),
+            on_exit: None,
             destroyed: false
         }
     }
 
-    pub fn without_unwinding() -> Task {
+    pub fn new_child(&mut self) -> Task {
         Task {
             heap: LocalHeap::new(),
             gc: GarbageCollector,
             storage: LocalStorage(ptr::null(), None),
             logger: StdErrLogger,
-            unwinder: None,
+            home: Some(AnySched),
+            unwinder: Unwinder { unwinding: false },
+            join_latch: Some(self.join_latch.get_mut_ref().new_child()),
+            on_exit: None,
             destroyed: false
         }
+    }
+
+    pub fn give_home(&mut self, new_home: SchedHome) {
+        self.home = Some(new_home);
     }
 
     pub fn run(&mut self, f: &fn()) {
         // This is just an assertion that `run` was called unsafely
         // and this instance of Task is still accessible.
-        do Local::borrow::<Task> |task| {
+        do Local::borrow::<Task, ()> |task| {
             assert!(borrow::ref_eq(task, self));
         }
 
-        match self.unwinder {
-            Some(ref mut unwinder) => {
-                // If there's an unwinder then set up the catch block
-                unwinder.try(f);
+        self.unwinder.try(f);
+        self.destroy();
+
+        // Wait for children. Possibly report the exit status.
+        let local_success = !self.unwinder.unwinding;
+        let join_latch = self.join_latch.swap_unwrap();
+        match self.on_exit {
+            Some(ref on_exit) => {
+                let success = join_latch.wait(local_success);
+                (*on_exit)(success);
             }
             None => {
-                // Otherwise, just run the body
-                f()
+                join_latch.release(local_success);
             }
         }
-        self.destroy();
     }
 
-    /// Must be called manually before finalization to clean up
+    /// must be called manually before finalization to clean up
     /// thread-local resources. Some of the routines here expect
     /// Task to be available recursively so this must be
     /// called unsafely, without removing Task from
@@ -89,7 +109,7 @@ impl Task {
     fn destroy(&mut self) {
         // This is just an assertion that `destroy` was called unsafely
         // and this instance of Task is still accessible.
-        do Local::borrow::<Task> |task| {
+        do Local::borrow::<Task, ()> |task| {
             assert!(borrow::ref_eq(task, self));
         }
         match self.storage {
@@ -225,6 +245,16 @@ mod test {
             let (port, chan) = stream();
             chan.send(10);
             assert!(port.recv() == 10);
+        }
+    }
+
+    #[test]
+    fn linked_failure() {
+        do run_in_newsched_task() {
+            let res = do spawntask_try {
+                spawntask_random(|| fail!());
+            };
+            assert!(res.is_err());
         }
     }
 }

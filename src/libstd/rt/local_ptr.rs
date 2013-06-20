@@ -109,7 +109,7 @@ pub unsafe fn unsafe_borrow<T>() -> *mut T {
 fn tls_key() -> tls::Key {
     match maybe_tls_key() {
         Some(key) => key,
-        None => abort!("runtime tls key not initialized")
+        None => rtabort!("runtime tls key not initialized")
     }
 }
 
