@@ -300,13 +300,8 @@ impl<'self> LookupContext<'self> {
                 ty_self(self_did) => {
                     // Call is of the form "self.foo()" and appears in one
                     // of a trait's default method implementations.
-                    let substs = substs {
-                        self_r: None,
-                        self_ty: None,
-                        tps: ~[]
-                    };
                     self.push_inherent_candidates_from_self(
-                        self_ty, self_did, &substs);
+                        self_ty, self_did);
                 }
                 ty_enum(did, _) | ty_struct(did, _) => {
                     if self.check_traits == CheckTraitsAndInherentMethods {
@@ -462,12 +457,12 @@ impl<'self> LookupContext<'self> {
 
     pub fn push_inherent_candidates_from_self(&self,
                                               self_ty: ty::t,
-                                              did: def_id,
-                                              substs: &ty::substs) {
+                                              did: def_id) {
         struct MethodInfo {
             method_ty: @ty::Method,
             trait_def_id: ast::def_id,
-            index: uint
+            index: uint,
+            trait_ref: @ty::TraitRef
         }
 
         let tcx = self.tcx();
@@ -479,7 +474,8 @@ impl<'self> LookupContext<'self> {
                 method_info = Some(MethodInfo {
                     method_ty: methods[i],
                     index: i,
-                    trait_def_id: did
+                    trait_def_id: did,
+                    trait_ref: ty::lookup_trait_def(tcx, did).trait_ref
                 });
             }
             None => ()
@@ -494,7 +490,8 @@ impl<'self> LookupContext<'self> {
                         method_info = Some(MethodInfo {
                             method_ty: supertrait_methods[i],
                             index: i,
-                            trait_def_id: trait_ref.def_id
+                            trait_def_id: trait_ref.def_id,
+                            trait_ref: *trait_ref
                         });
                         break;
                     }
@@ -505,8 +502,6 @@ impl<'self> LookupContext<'self> {
         match method_info {
             Some(ref info) => {
                 // We've found a method -- return it
-                let rcvr_substs = substs {self_ty: Some(self_ty),
-                                          ..copy *substs };
                 let origin = if did == info.trait_def_id {
                     method_self(info.trait_def_id, info.index)
                 } else {
@@ -514,7 +509,7 @@ impl<'self> LookupContext<'self> {
                 };
                 self.inherent_candidates.push(Candidate {
                     rcvr_ty: self_ty,
-                    rcvr_substs: rcvr_substs,
+                    rcvr_substs: copy info.trait_ref.substs,
                     method_ty: info.method_ty,
                     origin: origin
                 });
