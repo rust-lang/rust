@@ -10,18 +10,16 @@
 
 #[macro_escape];
 
+macro_rules! rterrln (
+    ($( $arg:expr),+) => ( {
+        ::rt::util::dumb_println(fmt!( $($arg),+ ));
+    } )
+)
+
 // Some basic logging
 macro_rules! rtdebug_ (
     ($( $arg:expr),+) => ( {
-        dumb_println(fmt!( $($arg),+ ));
-
-        fn dumb_println(s: &str) {
-            use io::WriterUtil;
-            let dbg = ::libc::STDERR_FILENO as ::io::fd_t;
-            dbg.write_str(s);
-            dbg.write_str("\n");
-        }
-
+        rterrln!( $($arg),+ )
     } )
 )
 
@@ -33,24 +31,15 @@ macro_rules! rtdebug (
 macro_rules! rtassert (
     ( $arg:expr ) => ( {
         if !$arg {
-            abort!("assertion failed: %s", stringify!($arg));
+            rtabort!("assertion failed: %s", stringify!($arg));
         }
     } )
 )
 
 
-// The do_abort function was originally inside the abort macro, but
-// this was ICEing the compiler so it has been moved outside. Now this
-// seems to work?
-#[allow(missing_doc)]
-pub fn do_abort() -> ! {
-    unsafe { ::libc::abort(); }
-}
-
-macro_rules! abort(
+macro_rules! rtabort(
     ($( $msg:expr),+) => ( {
-        rtdebug!($($msg),+);
-        ::macros::do_abort();
+        ::rt::util::abort(fmt!($($msg),+));
     } )
 )
 

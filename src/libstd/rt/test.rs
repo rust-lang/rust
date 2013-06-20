@@ -63,11 +63,11 @@ pub fn run_in_newsched_task(f: ~fn()) {
 /// in one of the schedulers. The schedulers will stay alive
 /// until the function `f` returns.
 pub fn run_in_mt_newsched_task(f: ~fn()) {
-    use libc;
     use os;
     use from_str::FromStr;
     use rt::uv::uvio::UvEventLoop;
     use rt::sched::Shutdown;
+    use rt::util;
 
     let f_cell = Cell::new(f);
 
@@ -78,7 +78,7 @@ pub fn run_in_mt_newsched_task(f: ~fn()) {
                 // Using more threads than cores in test code
                 // to force the OS to preempt them frequently.
                 // Assuming that this help stress test concurrent types.
-                rust_get_num_cpus() * 2
+                util::num_cpus() * 2
             }
         };
 
@@ -132,9 +132,6 @@ pub fn run_in_mt_newsched_task(f: ~fn()) {
         let _threads = threads;
     }
 
-    extern {
-        fn rust_get_num_cpus() -> libc::uintptr_t;
-    }
 }
 
 // THIS IS AWFUL. Copy-pasted the above initialization function but

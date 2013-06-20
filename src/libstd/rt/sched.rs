@@ -357,7 +357,7 @@ impl Scheduler {
                 home_handle.send(PinnedTask(task));
             }
             AnySched => {
-                abort!("error: cannot send anysched task home");
+                rtabort!("error: cannot send anysched task home");
             }
         }
     }
@@ -381,51 +381,43 @@ impl Scheduler {
                     match home {
                         &Some(Sched(ref home_handle))
                         if home_handle.sched_id != this.sched_id() => {
-                            0
+                            SendHome
                         }
                         &Some(AnySched) if this.run_anything => {
-                            1
+                            ResumeNow
                         }
                         &Some(AnySched) => {
-                            2
+                            Requeue
                         }
                         &Some(Sched(_)) => {
-                            3
+                            ResumeNow
                         }
                         &None => {
-                            4
+                            Homeless
                         }
                     }
                 };
 
                 match action_id {
-                    0 => {
+                    SendHome => {
                         rtdebug!("sending task home");
                         Scheduler::send_task_home(task);
                         Local::put(this);
                         return false;
                     }
-                    1 => {
+                    ResumeNow => {
                         rtdebug!("resuming now");
                         this.resume_task_immediately(task);
                         return true;
                     }
-                    2 => {
+                    Requeue => {
                         rtdebug!("re-queueing")
                         this.enqueue_task(task);
                         Local::put(this);
                         return false;
                     }
-                    3 => {
-                        rtdebug!("resuming now");
-                        this.resume_task_immediately(task);
-                        return true;
-                    }
-                    4 => {
-                        abort!("task home was None!");
-                    }
-                    _ => {
-                        abort!("literally, you should not be here");
+                    Homeless => {
+                        rtabort!("task home was None!");
                     }
                 }
             }
@@ -452,7 +444,7 @@ impl Scheduler {
             dead_task.take().recycle(&mut sched.stack_pool);
         }
 
-        abort!("control reached end of task");
+        rtabort!("control reached end of task");
     }
 
     pub fn schedule_task(~self, task: ~Coroutine) {
@@ -654,6 +646,14 @@ impl Scheduler {
     }
 }
 
+// The cases for the below function.                                              
+enum ResumeAction {
+    SendHome,
+    Requeue,
+    ResumeNow,
+    Homeless                                                                      
+}
+
 impl SchedHandle {
     pub fn send(&mut self, msg: SchedMessage) {
         self.queue.push(msg);
@@ -672,7 +672,7 @@ impl Coroutine {
                 Some(Sched(SchedHandle { sched_id: ref id, _ })) => {
                     *id == sched.sched_id()
                 }
-                None => { abort!("error: homeless task!"); }
+                None => { rtabort!("error: homeless task!"); }
             }
         }
     }
@@ -696,7 +696,7 @@ impl Coroutine {
         match self.task.home {
             Some(AnySched) => { false }
             Some(Sched(_)) => { true }
-            None => { abort!("error: homeless task!");
+            None => { rtabort!("error: homeless task!");
                     }
         }
     }
@@ -710,7 +710,7 @@ impl Coroutine {
             Some(Sched(SchedHandle { sched_id: ref id, _})) => {
                 *id == sched.sched_id()
             }
-            None => { abort!("error: homeless task!"); }
+            None => { rtabort!("error: homeless task!"); }
         }
     }
 

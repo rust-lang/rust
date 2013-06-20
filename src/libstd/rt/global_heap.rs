@@ -14,7 +14,7 @@ use c_malloc = libc::malloc;
 use c_free = libc::free;
 use managed::raw::{BoxHeaderRepr, BoxRepr};
 use cast::transmute;
-use unstable::intrinsics::{atomic_xadd,atomic_xsub};
+use unstable::intrinsics::{atomic_xadd,atomic_xsub, atomic_load};
 use ptr::null;
 use intrinsic::TyDesc;
 
@@ -34,8 +34,7 @@ pub unsafe fn malloc(td: *TypeDesc, size: uint) -> *c_void {
     box.header.prev = null();
     box.header.next = null();
 
-    let exchange_count = &mut *exchange_count_ptr();
-    atomic_xadd(exchange_count, 1);
+    inc_count();
 
     return transmute(box);
 }
@@ -48,19 +47,44 @@ pub unsafe fn malloc_raw(size: uint) -> *c_void {
     if p.is_null() {
         fail!("Failure in malloc_raw: result ptr is null");
     }
+    inc_count();
     p
 }
 
 pub unsafe fn free(ptr: *c_void) {
-    let exchange_count = &mut *exchange_count_ptr();
-    atomic_xsub(exchange_count, 1);
-
     assert!(ptr.is_not_null());
+    dec_count();
     c_free(ptr);
 }
 ///Thin wrapper around libc::free, as with exchange_alloc::malloc_raw
 pub unsafe fn free_raw(ptr: *c_void) {
+    assert!(ptr.is_not_null());
+    dec_count();
     c_free(ptr);
+}
+
+fn inc_count() {
+    unsafe {
+        let exchange_count = &mut *exchange_count_ptr();
+        atomic_xadd(exchange_count, 1);
+    }
+}
+
+fn dec_count() {
+    unsafe {
+        let exchange_count = &mut *exchange_count_ptr();
+        atomic_xsub(exchange_count, 1);
+    }
+}
+
+pub fn cleanup() {
+    unsafe {
+        let count_ptr = exchange_count_ptr();
+        let allocations = atomic_load(&*count_ptr);
+        if allocations != 0 {
+            rtabort!("exchange heap not empty on exit - %i dangling allocations", allocations);
+        }
+    }
 }
 
 fn get_box_size(body_size: uint, body_align: uint) -> uint {
