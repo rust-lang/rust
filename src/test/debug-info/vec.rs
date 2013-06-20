@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail
+// xfail-test
 
 // compile-flags:-Z extra-debug-info
 // debugger:set print pretty off
