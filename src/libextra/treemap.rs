@@ -773,15 +773,15 @@ mod test_treemap {
                                             map: &TreeMap<K, V>) {
         assert_eq!(ctrl.is_empty(), map.is_empty());
         for ctrl.iter().advance |x| {
-            let &(k, v) = x;
-            assert!(map.find(&k).unwrap() == &v)
+            let &(ref k, ref v) = x;
+            assert!(map.find(k).unwrap() == v)
         }
         for map.iter().advance |(map_k, map_v)| {
             let mut found = false;
             for ctrl.iter().advance |x| {
-                let &(ctrl_k, ctrl_v) = x;
-                if *map_k == ctrl_k {
-                    assert!(*map_v == ctrl_v);
+                let &(ref ctrl_k, ref ctrl_v) = x;
+                if *map_k == *ctrl_k {
+                    assert!(*map_v == *ctrl_v);
                     found = true;
                     break;
                 }
