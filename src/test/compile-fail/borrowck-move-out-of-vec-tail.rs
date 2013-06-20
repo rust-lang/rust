@@ -11,7 +11,7 @@ pub fn main() {
         Foo { string: ~"baz" }
     ];
     match x {
-        [first, ..tail] => {
+        [_, ..tail] => {
             match tail {
                 [Foo { string: a }, Foo { string: b }] => {
                     //~^ ERROR cannot move out of dereference of & pointer
