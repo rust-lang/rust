@@ -127,7 +127,9 @@ fn find_library_crate_aux(
             cx.diag.span_err(
                     cx.span, fmt!("multiple matching crates for `%s`", crate_name));
                 cx.diag.handler().note("candidates:");
-                for matches.iter().advance |&(ident, data)| {
+                for matches.iter().advance |pair| {
+                    let ident = pair.first();
+                    let data = pair.second();
                     cx.diag.handler().note(fmt!("path: %s", ident));
                     let attrs = decoder::get_crate_attributes(data);
                     note_linkage_attrs(cx.intr, cx.diag, attrs);

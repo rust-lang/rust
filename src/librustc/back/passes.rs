@@ -165,10 +165,10 @@ pub fn create_standard_passes(level: OptLevel) -> ~[~str] {
 }
 
 pub fn populate_pass_manager(sess: Session, pm: &mut PassManager, pass_list:&[~str]) {
-    for pass_list.iter().advance |&nm| {
-        match create_pass(nm) {
+    for pass_list.iter().advance |nm| {
+        match create_pass(*nm) {
             Some(p) => pm.add_pass(p),
-            None    => sess.warn(fmt!("Unknown pass %s", nm))
+            None    => sess.warn(fmt!("Unknown pass %s", *nm))
         }
     }
 }
