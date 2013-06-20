@@ -40,8 +40,8 @@ rust_opaque_box *boxed_region::realloc(rust_opaque_box *box,
                                        size_t new_size) {
 
     // We also get called on the unique-vec-in-managed-heap path.
-    assert(box->ref_count == 1 ||
-           box->ref_count == (size_t)(-2));
+    // assert(box->ref_count == 1 ||
+    //        box->ref_count == (size_t)(-2));
 
     size_t total_size = new_size + sizeof(rust_opaque_box);
     rust_opaque_box *new_box =
