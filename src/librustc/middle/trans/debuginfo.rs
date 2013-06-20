@@ -22,12 +22,12 @@ such as datatype layout, function signatures, block layout, variable location an
 etc. It is the purpose of this module to generate correct metadata and insert it into the LLVM IR.
 
 As the exact format of metadata trees may change between different LLVM versions, we now use LLVM
-[DIBuilder](http://llvm.org/docs/doxygen/html/classllvm_1_1DIBuilder.html) which to create metadata
+[DIBuilder](http://llvm.org/docs/doxygen/html/classllvm_1_1DIBuilder.html) to create metadata
 where possible. This will hopefully ease the adaption of this module to future LLVM versions. 
 
 The public API of the module is a set of functions that will insert the correct metadata into the 
 LLVM IR when called with the right parameters. The module is thus driven from an outside client with
-function like `debuginfo::create_local_var(bcx: block, local: @ast::local)`.
+functions like `debuginfo::create_local_var(bcx: block, local: @ast::local)`.
 
 Internally the module will try to reuse already created metadata by utilizing a cache. All private
 state used by the module is stored within a DebugContext struct, which in turn is contained in the
@@ -67,20 +67,8 @@ use syntax::{ast, codemap, ast_util, ast_map};
 
 static DW_LANG_RUST: int = 0x9000;
 
-static CompileUnitTag: int = 17;
-static FileDescriptorTag: int = 41;
-static SubprogramTag: int = 46;
-static SubroutineTag: int = 21;
-static BasicTypeDescriptorTag: int = 36;
 static AutoVariableTag: int = 256;
 static ArgVariableTag: int = 257;
-static ReturnVariableTag: int = 258;
-static LexicalBlockTag: int = 11;
-static PointerTypeTag: int = 15;
-static StructureTypeTag: int = 19;
-static MemberTag: int = 13;
-static ArrayTypeTag: int = 1;
-static SubrangeTag: int = 33;
 
 static DW_ATE_boolean: int = 0x02;
 static DW_ATE_float: int = 0x04;
