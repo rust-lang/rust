@@ -2063,20 +2063,8 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
                 TC_MANAGED + statically_sized(nonowned(tc_mt(cx, mt, cache)))
             }
 
-            ty_trait(_, _, UniqTraitStore, _, _bounds) => {
-                // FIXME(#3569): Make this conditional on the trait's bounds.
-                TC_NONCOPY_TRAIT + TC_OWNED_POINTER
-            }
-
-            ty_trait(_, _, BoxTraitStore, mutbl, _bounds) => {
-                match mutbl {
-                    ast::m_mutbl => TC_MANAGED + TC_MUTABLE,
-                    _ => TC_MANAGED
-                }
-            }
-
-            ty_trait(_, _, RegionTraitStore(r), mutbl, _bounds) => {
-                borrowed_contents(r, mutbl)
+            ty_trait(_, _, store, mutbl, bounds) => {
+                trait_contents(store, mutbl, bounds)
             }
 
             ty_rptr(r, mt) => {
@@ -2276,6 +2264,35 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
             ast::Many => TC_NONE
         };
         st + rt + ot
+    }
+
+    fn trait_contents(store: TraitStore, mutbl: ast::mutability,
+                      bounds: BuiltinBounds) -> TypeContents {
+        let st = match store {
+            UniqTraitStore      => TC_OWNED_POINTER,
+            BoxTraitStore       => TC_MANAGED,
+            RegionTraitStore(r) => borrowed_contents(r, mutbl),
+        };
+        let mt = match mutbl { ast::m_mutbl => TC_MUTABLE, _ => TC_NONE };
+        // We get additional "special type contents" for each bound that *isn't*
+        // on the trait. So iterate over the inverse of the bounds that are set.
+        // This is like with typarams below, but less "pessimistic" and also
+        // dependent on the trait store.
+        let mut bt = TC_NONE;
+        for (AllBuiltinBounds() - bounds).each |bound| {
+            bt = bt + match bound {
+                BoundCopy if store == UniqTraitStore
+                            => TC_NONCOPY_TRAIT,
+                BoundCopy   => TC_NONE, // @Trait/&Trait are copyable either way
+                BoundStatic if bounds.contains_elem(BoundOwned)
+                            => TC_NONE, // Owned bound implies static bound.
+                BoundStatic => TC_BORROWED_POINTER, // Useful for "@Trait:'static"
+                BoundOwned  => TC_NON_OWNED,
+                BoundConst  => TC_MUTABLE,
+                BoundSized  => TC_NONE, // don't care if interior is sized
+            };
+        }
+        st + mt + bt
     }
 
     fn type_param_def_to_contents(cx: ctxt,
