@@ -1160,6 +1160,7 @@ mod tests {
 
     #[test]
     fn test_inherit_env() {
+        if running_on_valgrind() { return; }
 
         let mut prog = run_env(None);
         let output = str::from_bytes(prog.finish_with_output().output);
