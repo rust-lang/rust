@@ -211,8 +211,7 @@ impl Type {
 
         let elems = [
             int_ty, int_ty,
-            glue_fn_ty, glue_fn_ty, glue_fn_ty, glue_fn_ty,
-            pvoid, pvoid
+            glue_fn_ty, glue_fn_ty, glue_fn_ty, glue_fn_ty
         ];
 
         tydesc.set_struct_body(elems, false);

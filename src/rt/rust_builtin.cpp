@@ -732,10 +732,9 @@ rust_task_deref(rust_task *task) {
 // Must call on rust stack.
 extern "C" CDECL void
 rust_call_tydesc_glue(void *root, size_t *tydesc, size_t glue_index) {
-    void (*glue_fn)(void *, void *, void *) =
-        (void (*)(void *, void *, void *))tydesc[glue_index];
-    if (glue_fn)
-        glue_fn(0, 0, root);
+    glue_fn *fn = (glue_fn*) tydesc[glue_index];
+    if (fn)
+        fn(0, 0, root);
 }
 
 // Don't run on the Rust stack!

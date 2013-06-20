@@ -48,8 +48,6 @@ pub struct TyDesc {
     drop_glue: GlueFn,
     free_glue: GlueFn,
     visit_glue: GlueFn,
-    shape: *i8,
-    shape_tables: *i8
 }
 
 #[lang="opaque"]
