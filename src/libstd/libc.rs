@@ -102,10 +102,12 @@ pub use libc::funcs::posix88::stdio::*;
 pub use libc::funcs::posix88::fcntl::*;
 pub use libc::funcs::posix88::dirent::*;
 pub use libc::funcs::posix88::unistd::*;
+pub use libc::funcs::posix88::mman::*;
 
 pub use libc::funcs::posix01::stat_::*;
 pub use libc::funcs::posix01::unistd::*;
 pub use libc::funcs::posix01::glob::*;
+pub use libc::funcs::posix01::mman::*;
 pub use libc::funcs::posix08::unistd::*;
 
 pub use libc::funcs::bsd44::*;
@@ -1043,6 +1045,8 @@ pub mod consts {
         #[cfg(target_arch = "x86_64")]
         #[cfg(target_arch = "arm")]
         pub mod posix88 {
+            use libc::types::common::c95::c_void;
+
             pub static O_RDONLY : int = 0;
             pub static O_WRONLY : int = 1;
             pub static O_RDWR : int = 2;
@@ -1085,9 +1089,31 @@ pub mod consts {
             pub static SIGPIPE : int = 13;
             pub static SIGALRM : int = 14;
             pub static SIGTERM : int = 15;
+
+            pub static PROT_NONE : int = 0;
+            pub static PROT_READ : int = 1;
+            pub static PROT_WRITE : int = 2;
+            pub static PROT_EXEC : int = 4;
+
+            pub static MAP_FILE : int = 0x0000;
+            pub static MAP_SHARED : int = 0x0001;
+            pub static MAP_PRIVATE : int = 0x0002;
+            pub static MAP_FIXED : int = 0x0010;
+            pub static MAP_ANON : int = 0x1000;
+
+            pub static MAP_FAILED : *c_void = -1 as *c_void;
+
+            pub static MCL_CURRENT : int = 0x0001;
+            pub static MCL_FUTURE : int = 0x0002;
+
+            pub static MS_ASYNC : int = 0x0001;
+            pub static MS_INVALIDATE : int = 0x0002;
+            pub static MS_SYNC : int = 0x0004;
         }
         #[cfg(target_arch = "mips")]
         pub mod posix88 {
+            use libc::types::common::c95::c_void;
+
             pub static O_RDONLY : int = 0;
             pub static O_WRONLY : int = 1;
             pub static O_RDWR : int = 2;
@@ -1130,6 +1156,26 @@ pub mod consts {
             pub static SIGPIPE : int = 13;
             pub static SIGALRM : int = 14;
             pub static SIGTERM : int = 15;
+
+            pub static PROT_NONE : int = 0;
+            pub static PROT_READ : int = 1;
+            pub static PROT_WRITE : int = 2;
+            pub static PROT_EXEC : int = 4;
+
+            pub static MAP_FILE : int = 0x0000;
+            pub static MAP_SHARED : int = 0x0001;
+            pub static MAP_PRIVATE : int = 0x0002;
+            pub static MAP_FIXED : int = 0x0010;
+            pub static MAP_ANON : int = 0x1000;
+
+            pub static MAP_FAILED : *c_void = -1 as *c_void;
+
+            pub static MCL_CURRENT : int = 0x0001;
+            pub static MCL_FUTURE : int = 0x0002;
+
+            pub static MS_ASYNC : int = 0x0001;
+            pub static MS_INVALIDATE : int = 0x0002;
+            pub static MS_SYNC : int = 0x0004;
         }
         pub mod posix01 {
             pub static SIGTRAP : int = 5;
@@ -1145,10 +1191,27 @@ pub mod consts {
             pub static GLOB_NOSPACE  : int = 1;
             pub static GLOB_ABORTED  : int = 2;
             pub static GLOB_NOMATCH  : int = 3;
+
+            pub static POSIX_MADV_NORMAL : int = 0;
+            pub static POSIX_MADV_RANDOM : int = 1;
+            pub static POSIX_MADV_SEQUENTIAL : int = 2;
+            pub static POSIX_MADV_WILLNEED : int = 3;
+            pub static POSIX_MADV_DONTNEED : int = 4;
         }
         pub mod posix08 {
         }
         pub mod bsd44 {
+            pub static MADV_NORMAL : int = 0;
+            pub static MADV_RANDOM : int = 1;
+            pub static MADV_SEQUENTIAL : int = 2;
+            pub static MADV_WILLNEED : int = 3;
+            pub static MADV_DONTNEED : int = 4;
+            pub static MADV_REMOVE : int = 9;
+            pub static MADV_DONTFORK : int = 10;
+            pub static MADV_DOFORK : int = 11;
+            pub static MADV_MERGEABLE : int = 12;
+            pub static MADV_UNMERGEABLE : int = 13;
+            pub static MADV_HWPOISON : int = 100;
         }
         #[cfg(target_arch = "x86")]
         #[cfg(target_arch = "x86_64")]
@@ -1157,12 +1220,42 @@ pub mod consts {
             pub static O_RSYNC : int = 1052672;
             pub static O_DSYNC : int = 4096;
             pub static O_SYNC : int = 1052672;
+
+            pub static PROT_GROWSDOWN : int = 0x010000000;
+            pub static PROT_GROWSUP : int = 0x020000000;
+
+            pub static MAP_TYPE : int = 0x000f;
+            pub static MAP_ANONONYMOUS : int = 0x1000;
+            pub static MAP_32BIT : int = 0x0040;
+            pub static MAP_GROWSDOWN : int = 0x0100;
+            pub static MAP_DENYWRITE : int = 0x0800;
+            pub static MAP_EXECUTABLE : int = 0x01000;
+            pub static MAP_LOCKED : int = 0x02000;
+            pub static MAP_NONRESERVE : int = 0x04000;
+            pub static MAP_POPULATE : int = 0x08000;
+            pub static MAP_NONBLOCK : int = 0x010000;
+            pub static MAP_STACK : int = 0x020000;
         }
         #[cfg(target_arch = "mips")]
         pub mod extra {
             pub static O_RSYNC : int = 16400;
             pub static O_DSYNC : int = 16;
             pub static O_SYNC : int = 16400;
+
+            pub static PROT_GROWSDOWN : int = 0x010000000;
+            pub static PROT_GROWSUP : int = 0x020000000;
+
+            pub static MAP_TYPE : int = 0x000f;
+            pub static MAP_ANONONYMOUS : int = 0x1000;
+            pub static MAP_32BIT : int = 0x0040;
+            pub static MAP_GROWSDOWN : int = 0x0100;
+            pub static MAP_DENYWRITE : int = 0x0800;
+            pub static MAP_EXECUTABLE : int = 0x01000;
+            pub static MAP_LOCKED : int = 0x02000;
+            pub static MAP_NONRESERVE : int = 0x04000;
+            pub static MAP_POPULATE : int = 0x08000;
+            pub static MAP_NONBLOCK : int = 0x010000;
+            pub static MAP_STACK : int = 0x020000;
         }
     }
 
@@ -1188,6 +1281,8 @@ pub mod consts {
         pub mod c99 {
         }
         pub mod posix88 {
+            use libc::types::common::c95::c_void;
+
             pub static O_RDONLY : int = 0;
             pub static O_WRONLY : int = 1;
             pub static O_RDWR : int = 2;
@@ -1230,6 +1325,26 @@ pub mod consts {
             pub static SIGPIPE : int = 13;
             pub static SIGALRM : int = 14;
             pub static SIGTERM : int = 15;
+
+            pub static PROT_NONE : int = 0;
+            pub static PROT_READ : int = 1;
+            pub static PROT_WRITE : int = 2;
+            pub static PROT_EXEC : int = 4;
+
+            pub static MAP_FILE : int = 0x0000;
+            pub static MAP_SHARED : int = 0x0001;
+            pub static MAP_PRIVATE : int = 0x0002;
+            pub static MAP_FIXED : int = 0x0010;
+            pub static MAP_ANON : int = 0x1000;
+
+            pub static MAP_FAILED : *c_void = -1 as *c_void;
+
+            pub static MCL_CURRENT : int = 0x0001;
+            pub static MCL_FUTURE : int = 0x0002;
+
+            pub static MS_SYNC : int = 0x0000;
+            pub static MS_ASYNC : int = 0x0001;
+            pub static MS_INVALIDATE : int = 0x0002;
         }
         pub mod posix01 {
             pub static SIGTRAP : int = 5;
@@ -1245,16 +1360,48 @@ pub mod consts {
             pub static GLOB_NOSPACE  : int = -1;
             pub static GLOB_ABORTED  : int = -2;
             pub static GLOB_NOMATCH  : int = -3;
+
+            pub static POSIX_MADV_NORMAL : int = 0;
+            pub static POSIX_MADV_RANDOM : int = 1;
+            pub static POSIX_MADV_SEQUENTIAL : int = 2;
+            pub static POSIX_MADV_WILLNEED : int = 3;
+            pub static POSIX_MADV_DONTNEED : int = 4;
         }
         pub mod posix08 {
         }
         pub mod bsd44 {
+            pub static MADV_NORMAL : int = 0;
+            pub static MADV_RANDOM : int = 1;
+            pub static MADV_SEQUENTIAL : int = 2;
+            pub static MADV_WILLNEED : int = 3;
+            pub static MADV_DONTNEED : int = 4;
+            pub static MADV_FREE : int = 5;
+            pub static MADV_NOSYNC : int = 6;
+            pub static MADV_AUTOSYNC : int = 7;
+            pub static MADV_NOCORE : int = 8;
+            pub static MADV_CORE : int = 9;
+            pub static MADV_PROTECT : int = 10;
+
+            pub static MINCORE_INCORE : int =  0x1;
+            pub static MINCORE_REFERENCED : int = 0x2;
+            pub static MINCORE_MODIFIED : int = 0x4;
+            pub static MINCORE_REFERENCED_OTHER : int = 0x8;
+            pub static MINCORE_MODIFIED_OTHER : int = 0x10;
+            pub static MINCORE_SUPER : int = 0x20;
         }
         pub mod extra {
             pub static O_SYNC : int = 128;
             pub static CTL_KERN: int = 1;
             pub static KERN_PROC: int = 14;
             pub static KERN_PROC_PATHNAME: int = 12;
+
+            pub static MAP_COPY : int = 0x0002;
+            pub static MAP_RENAME : int = 0x0020;
+            pub static MAP_NORESERVE : int = 0x0040;
+            pub static MAP_HASSEMAPHORE : int = 0x0200;
+            pub static MAP_STACK : int = 0x0400;
+            pub static MAP_NOSYNC : int = 0x0800;
+            pub static MAP_NOCORE : int = 0x020000;
         }
     }
 
@@ -1280,6 +1427,8 @@ pub mod consts {
         pub mod c99 {
         }
         pub mod posix88 {
+            use libc::types::common::c95::c_void;
+
             pub static O_RDONLY : int = 0;
             pub static O_WRONLY : int = 1;
             pub static O_RDWR : int = 2;
@@ -1322,6 +1471,29 @@ pub mod consts {
             pub static SIGPIPE : int = 13;
             pub static SIGALRM : int = 14;
             pub static SIGTERM : int = 15;
+
+            pub static PROT_NONE : int = 0;
+            pub static PROT_READ : int = 1;
+            pub static PROT_WRITE : int = 2;
+            pub static PROT_EXEC : int = 4;
+
+            pub static MAP_FILE : int = 0x0000;
+            pub static MAP_SHARED : int = 0x0001;
+            pub static MAP_PRIVATE : int = 0x0002;
+            pub static MAP_FIXED : int = 0x0010;
+            pub static MAP_ANON : int = 0x1000;
+
+            pub static MAP_FAILED : *c_void = -1 as *c_void;
+
+            pub static MCL_CURRENT : int = 0x0001;
+            pub static MCL_FUTURE : int = 0x0002;
+
+            pub static MS_ASYNC : int = 0x0001;
+            pub static MS_INVALIDATE : int = 0x0002;
+            pub static MS_SYNC : int = 0x0010;
+
+            pub static MS_KILLPAGES : int = 0x0004;
+            pub static MS_DEACTIVATE : int = 0x0008;
         }
         pub mod posix01 {
             pub static SIGTRAP : int = 5;
@@ -1337,15 +1509,45 @@ pub mod consts {
             pub static GLOB_NOSPACE  : int = -1;
             pub static GLOB_ABORTED  : int = -2;
             pub static GLOB_NOMATCH  : int = -3;
+
+            pub static POSIX_MADV_NORMAL : int = 0;
+            pub static POSIX_MADV_RANDOM : int = 1;
+            pub static POSIX_MADV_SEQUENTIAL : int = 2;
+            pub static POSIX_MADV_WILLNEED : int = 3;
+            pub static POSIX_MADV_DONTNEED : int = 4;
         }
         pub mod posix08 {
         }
         pub mod bsd44 {
+            pub static MADV_NORMAL : int = 0;
+            pub static MADV_RANDOM : int = 1;
+            pub static MADV_SEQUENTIAL : int = 2;
+            pub static MADV_WILLNEED : int = 3;
+            pub static MADV_DONTNEED : int = 4;
+            pub static MADV_FREE : int = 5;
+            pub static MADV_ZERO_WIRED_PAGES : int = 6;
+            pub static MADV_FREE_REUSABLE : int = 7;
+            pub static MADV_FREE_REUSE : int = 8;
+            pub static MADV_CAN_REUSE : int = 9;
+
+            pub static MINCORE_INCORE : int =  0x1;
+            pub static MINCORE_REFERENCED : int = 0x2;
+            pub static MINCORE_MODIFIED : int = 0x4;
+            pub static MINCORE_REFERENCED_OTHER : int = 0x8;
+            pub static MINCORE_MODIFIED_OTHER : int = 0x10;
         }
         pub mod extra {
             pub static O_DSYNC : int = 4194304;
             pub static O_SYNC : int = 128;
             pub static F_FULLFSYNC : int = 51;
+
+            pub static MAP_COPY : int = 0x0002;
+            pub static MAP_RENAME : int = 0x0020;
+            pub static MAP_NORESERVE : int = 0x0040;
+            pub static MAP_NOEXTEND : int = 0x0100;
+            pub static MAP_HASSEMAPHORE : int = 0x0200;
+            pub static MAP_NOCACHE : int = 0x0400;
+            pub static MAP_JIT : int = 0x0800;
         }
     }
 }
@@ -1658,6 +1860,9 @@ pub mod funcs {
                              -> c_int;
             }
         }
+
+        pub mod mman {
+        }
     }
 
 
@@ -1835,6 +2040,38 @@ pub mod funcs {
                 unsafe fn kill(pid: pid_t, sig: c_int) -> c_int;
             }
         }
+
+        #[nolink]
+        #[abi = "cdecl"]
+        pub mod mman {
+            use libc::types::common::c95::{c_void};
+            use libc::types::os::arch::c95::{size_t, c_int, c_char};
+            use libc::types::os::arch::posix88::{mode_t, off_t};
+
+            pub extern {
+                unsafe fn mlock(addr: *c_void, len: size_t) -> c_int;
+                unsafe fn munlock(addr: *c_void, len: size_t) -> c_int;
+                unsafe fn mlockall(flags: c_int) -> c_int;
+                unsafe fn munlockall() -> c_int;
+
+                unsafe fn mmap(addr: *c_void,
+                               len: size_t,
+                               prot: c_int,
+                               flags: c_int,
+                               fd: c_int,
+                               offset: off_t) -> *mut c_void;
+                unsafe fn munmap(addr: *c_void, len: size_t) -> c_int;
+
+                unsafe fn mprotect(addr: *c_void, len: size_t, prot: c_int)
+                    -> c_int;
+
+                unsafe fn msync(addr: *c_void, len: size_t, flags: c_int)
+                    -> c_int;
+                unsafe fn shm_open(name: *c_char, oflag: c_int, mode: mode_t)
+                    -> c_int;
+                unsafe fn shm_unlink(name: *c_char) -> c_int;
+            }
+        }
     }
 
     #[cfg(target_os = "linux")]
@@ -1913,6 +2150,19 @@ pub mod funcs {
                 unsafe fn globfree(pglob: *mut glob_t);
             }
         }
+
+        #[nolink]
+        #[abi = "cdecl"]
+        pub mod mman {
+            use libc::types::common::c95::{c_void};
+            use libc::types::os::arch::c95::{c_int, size_t};
+
+            pub extern {
+                unsafe fn posix_madvise(addr: *c_void,
+                                        len: size_t,
+                                        advice: c_int) -> c_int;
+            }
+        }
     }
 
     #[cfg(target_os = "win32")]
@@ -1924,6 +2174,9 @@ pub mod funcs {
         }
 
         pub mod glob {
+        }
+
+        pub mod mman {
         }
     }
 
@@ -1943,7 +2196,8 @@ pub mod funcs {
     #[cfg(target_os = "freebsd")]
     pub mod bsd44 {
         use libc::types::common::c95::{c_void};
-        use libc::types::os::arch::c95::{c_char, c_int, c_uint, size_t};
+        use libc::types::os::arch::c95::{c_char, c_uchar, c_int, c_uint,
+                                         size_t};
 
         #[abi = "cdecl"]
         pub extern {
@@ -1959,6 +2213,12 @@ pub mod funcs {
                                sizep: *mut size_t) -> c_int;
 
             unsafe fn getdtablesize() -> c_int;
+
+            unsafe fn madvise(addr: *c_void, len: size_t, advice: c_int)
+                -> c_int;
+
+            unsafe fn mincore(addr: *c_void, len: size_t, vec: *c_uchar)
+                -> c_int;
         }
     }
 
@@ -1966,11 +2226,18 @@ pub mod funcs {
     #[cfg(target_os = "linux")]
     #[cfg(target_os = "android")]
     pub mod bsd44 {
-        use libc::types::os::arch::c95::{c_int};
+        use libc::types::common::c95::{c_void};
+        use libc::types::os::arch::c95::{c_uchar, c_int, size_t};
 
         #[abi = "cdecl"]
         pub extern {
             unsafe fn getdtablesize() -> c_int;
+
+            unsafe fn madvise(addr: *c_void, len: size_t, advice: c_int)
+                -> c_int;
+
+            unsafe fn mincore(addr: *c_void, len: size_t, vec: *c_uchar)
+                -> c_int;
         }
     }
 
