@@ -332,7 +332,7 @@ pub fn trans_uniq_or_managed_vstore(bcx: block, heap: heap, vstore_expr: @ast::e
                     let llptrval = PointerCast(bcx, llptrval, Type::i8p());
                     let llsizeval = C_uint(bcx.ccx(), s.len());
                     let typ = ty::mk_estr(bcx.tcx(), ty::vstore_uniq);
-                    let lldestval = scratch_datum(bcx, typ, false);
+                    let lldestval = scratch_datum(bcx, typ, "", false);
                     let bcx = callee::trans_lang_call(
                         bcx,
                         bcx.tcx().lang_items.strdup_uniq_fn(),
@@ -454,7 +454,7 @@ pub fn write_content(bcx: block,
 
                     let loop_counter = {
                         // i = 0
-                        let i = alloca(loop_bcx, bcx.ccx().int_type);
+                        let i = alloca(loop_bcx, bcx.ccx().int_type, "__i");
                         Store(loop_bcx, C_uint(bcx.ccx(), 0), i);
 
                         Br(loop_bcx, cond_bcx.llbb);

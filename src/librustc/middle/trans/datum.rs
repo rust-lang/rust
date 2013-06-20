@@ -173,19 +173,19 @@ pub fn immediate_rvalue_bcx(bcx: block,
     return DatumBlock {bcx: bcx, datum: immediate_rvalue(val, ty)};
 }
 
-pub fn scratch_datum(bcx: block, ty: ty::t, zero: bool) -> Datum {
+pub fn scratch_datum(bcx: block, ty: ty::t, name: &str, zero: bool) -> Datum {
     /*!
-     *
      * Allocates temporary space on the stack using alloca() and
      * returns a by-ref Datum pointing to it.  If `zero` is true, the
      * space will be zeroed when it is allocated; this is normally not
      * necessary, but in the case of automatic rooting in match
      * statements it is possible to have temporaries that may not get
      * initialized if a certain arm is not taken, so we must zero
-     * them. You must arrange any cleanups etc yourself! */
+     * them. You must arrange any cleanups etc yourself!
+     */
 
     let llty = type_of::type_of(bcx.ccx(), ty);
-    let scratch = alloca_maybe_zeroed(bcx, llty, zero);
+    let scratch = alloca_maybe_zeroed(bcx, llty, name, zero);
     Datum { val: scratch, ty: ty, mode: ByRef(RevokeClean) }
 }
 
@@ -476,7 +476,7 @@ impl Datum {
                 if ty::type_is_nil(self.ty) || ty::type_is_bot(self.ty) {
                     C_null(type_of::type_of(bcx.ccx(), self.ty).ptr_to())
                 } else {
-                    let slot = alloc_ty(bcx, self.ty);
+                    let slot = alloc_ty(bcx, self.ty, "");
                     Store(bcx, self.val, slot);
                     slot
                 }

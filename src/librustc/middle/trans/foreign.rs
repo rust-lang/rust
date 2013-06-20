@@ -195,14 +195,15 @@ fn build_wrap_fn_(ccx: @mut CrateContext,
     if needs_c_return && !ty::type_is_immediate(ccx.tcx, tys.fn_sig.output) {
         let lloutputtype = type_of::type_of(fcx.ccx, tys.fn_sig.output);
         fcx.llretptr = Some(alloca(raw_block(fcx, false, fcx.llstaticallocas),
-                                   lloutputtype));
+                                   lloutputtype,
+                                   ""));
     }
 
     let bcx = top_scope_block(fcx, None);
     let lltop = bcx.llbb;
 
     // Allocate the struct and write the arguments into it.
-    let llargbundle = alloca(bcx, tys.bundle_ty);
+    let llargbundle = alloca(bcx, tys.bundle_ty, "__llargbundle");
     arg_builder(bcx, tys, llwrapfn, llargbundle);
 
     // Create call itself.
@@ -732,7 +733,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
 
                 let llsrcval = get_param(decl, first_real_arg);
                 let llsrcptr = if ty::type_is_immediate(ccx.tcx, in_type) {
-                    let llsrcptr = alloca(bcx, llintype);
+                    let llsrcptr = alloca(bcx, llintype, "__llsrcptr");
                     Store(bcx, llsrcval, llsrcptr);
                     llsrcptr
                 } else {

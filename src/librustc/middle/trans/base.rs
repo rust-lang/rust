@@ -1012,7 +1012,7 @@ pub fn get_landing_pad(bcx: block) -> BasicBlockRef {
     match bcx.fcx.personality {
       Some(addr) => Store(pad_bcx, llretval, addr),
       None => {
-        let addr = alloca(pad_bcx, val_ty(llretval));
+        let addr = alloca(pad_bcx, val_ty(llretval), "");
         bcx.fcx.personality = Some(addr);
         Store(pad_bcx, llretval, addr);
       }
@@ -1056,7 +1056,7 @@ pub fn do_spill(bcx: block, v: ValueRef, t: ty::t) -> ValueRef {
     if ty::type_is_bot(t) {
         return C_null(Type::i8p());
     }
-    let llptr = alloc_ty(bcx, t);
+    let llptr = alloc_ty(bcx, t, "");
     Store(bcx, v, llptr);
     return llptr;
 }
@@ -1064,7 +1064,7 @@ pub fn do_spill(bcx: block, v: ValueRef, t: ty::t) -> ValueRef {
 // Since this function does *not* root, it is the caller's responsibility to
 // ensure that the referent is pointed to by a root.
 pub fn do_spill_noroot(cx: block, v: ValueRef) -> ValueRef {
-    let llptr = alloca(cx, val_ty(v));
+    let llptr = alloca(cx, val_ty(v), "");
     Store(cx, v, llptr);
     return llptr;
 }
@@ -1561,20 +1561,20 @@ pub fn memzero(cx: block, llptr: ValueRef, ty: Type) {
     Call(cx, llintrinsicfn, [llptr, llzeroval, size, align, volatile]);
 }
 
-pub fn alloc_ty(bcx: block, t: ty::t) -> ValueRef {
+pub fn alloc_ty(bcx: block, t: ty::t, name: &str) -> ValueRef {
     let _icx = push_ctxt("alloc_ty");
     let ccx = bcx.ccx();
     let ty = type_of::type_of(ccx, t);
     assert!(!ty::type_has_params(t), "Type has params: %s", ty_to_str(ccx.tcx, t));
-    let val = alloca(bcx, ty);
+    let val = alloca(bcx, ty, name);
     return val;
 }
 
-pub fn alloca(cx: block, ty: Type) -> ValueRef {
-    alloca_maybe_zeroed(cx, ty, false)
+pub fn alloca(cx: block, ty: Type, name: &str) -> ValueRef {
+    alloca_maybe_zeroed(cx, ty, name, false)
 }
 
-pub fn alloca_maybe_zeroed(cx: block, ty: Type, zero: bool) -> ValueRef {
+pub fn alloca_maybe_zeroed(cx: block, ty: Type, name: &str, zero: bool) -> ValueRef {
     let _icx = push_ctxt("alloca");
     if cx.unreachable {
         unsafe {
@@ -1582,7 +1582,7 @@ pub fn alloca_maybe_zeroed(cx: block, ty: Type, zero: bool) -> ValueRef {
         }
     }
     let initcx = base::raw_block(cx.fcx, false, cx.fcx.llstaticallocas);
-    let p = Alloca(initcx, ty);
+    let p = Alloca(initcx, ty, name);
     if zero { memzero(initcx, p, ty); }
     p
 }
@@ -1623,7 +1623,8 @@ pub fn make_return_pointer(fcx: fn_ctxt, output_type: ty::t) -> ValueRef {
             llvm::LLVMGetParam(fcx.llfn, 0)
         } else {
             let lloutputtype = type_of::type_of(fcx.ccx, output_type);
-            alloca(raw_block(fcx, false, fcx.llstaticallocas), lloutputtype)
+            alloca(raw_block(fcx, false, fcx.llstaticallocas), lloutputtype,
+                   "__make_return_pointer")
         }
     }
 }
