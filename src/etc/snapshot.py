@@ -34,7 +34,7 @@ snapshot_files = {
               "lib/librustllvm.so"],
     "macos": ["bin/rustc",
               "lib/libstd-*.dylib",
-              "lib/libcore-*.dylib",
+              "lib/libextra-*.dylib",
               "lib/librustc-*.dylib",
               "lib/libsyntax-*.dylib",
               "lib/librustrt.dylib",
