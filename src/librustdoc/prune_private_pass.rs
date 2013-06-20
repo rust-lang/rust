@@ -82,7 +82,7 @@ fn strip_priv_methods(
     item_vis: ast::visibility
 ) -> doc::ImplDoc {
     let methods = do (&doc.methods).filtered |method| {
-        let ast_method = do methods.find |m| {
+        let ast_method = do methods.iter().find_ |m| {
             extract::to_str(m.ident) == method.name
         };
         assert!(ast_method.is_some());

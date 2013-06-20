@@ -388,7 +388,7 @@ pub fn expand_nested_bindings<'r>(bcx: block,
         match br.pats[col].node {
             ast::pat_ident(_, path, Some(inner)) => {
                 let pats = vec::append(
-                    vec::slice(br.pats, 0u, col).to_vec(),
+                    vec::slice(br.pats, 0u, col).to_owned(),
                     vec::append(~[inner],
                                 vec::slice(br.pats, col + 1u,
                                            br.pats.len())));
@@ -581,8 +581,7 @@ pub fn enter_opt<'r>(bcx: block,
                     let mut reordered_patterns = ~[];
                     for ty::lookup_struct_fields(tcx, struct_id).each
                         |field| {
-                            match field_pats.find(|p|
-                                                  p.ident == field.ident) {
+                            match field_pats.iter().find_(|p| p.ident == field.ident) {
                                 None => reordered_patterns.push(dummy),
                                 Some(fp) => reordered_patterns.push(fp.pat)
                             }
@@ -642,7 +641,7 @@ pub fn enter_rec_or_struct<'r>(bcx: block,
             ast::pat_struct(_, ref fpats, _) => {
                 let mut pats = ~[];
                 for fields.each |fname| {
-                    match fpats.find(|p| p.ident == *fname) {
+                    match fpats.iter().find_(|p| p.ident == *fname) {
                         None => pats.push(dummy),
                         Some(pat) => pats.push(pat.pat)
                     }
@@ -1308,11 +1307,11 @@ pub fn compile_submatch(bcx: block,
         if has_nested_bindings(m, col) {
             expand_nested_bindings(bcx, m, col, val)
         } else {
-            m.to_vec()
+            m.to_owned()
         }
     };
 
-    let vals_left = vec::append(vec::slice(vals, 0u, col).to_vec(),
+    let vals_left = vec::append(vec::slice(vals, 0u, col).to_owned(),
                                 vec::slice(vals, col + 1u, vals.len()));
     let ccx = bcx.fcx.ccx;
     let mut pat_id = 0;
@@ -1808,7 +1807,7 @@ pub fn bind_irrefutable_pat(bcx: block,
                                                     vinfo.disr_val,
                                                     val);
                     for sub_pats.iter().advance |sub_pat| {
-                        for args.vals.eachi |i, argval| {
+                        for args.vals.iter().enumerate().advance |(i, argval)| {
                             bcx = bind_irrefutable_pat(bcx,
                                                        sub_pat[i],
                                                        *argval,
@@ -1826,7 +1825,7 @@ pub fn bind_irrefutable_pat(bcx: block,
                         Some(ref elems) => {
                             // This is the tuple struct case.
                             let repr = adt::represent_node(bcx, pat.id);
-                            for elems.eachi |i, elem| {
+                            for elems.iter().enumerate().advance |(i, elem)| {
                                 let fldptr = adt::trans_field_ptr(bcx, repr,
                                                             val, 0, i);
                                 bcx = bind_irrefutable_pat(bcx,
@@ -1865,7 +1864,7 @@ pub fn bind_irrefutable_pat(bcx: block,
         }
         ast::pat_tup(ref elems) => {
             let repr = adt::represent_node(bcx, pat.id);
-            for elems.eachi |i, elem| {
+            for elems.iter().enumerate().advance |(i, elem)| {
                 let fldptr = adt::trans_field_ptr(bcx, repr, val, 0, i);
                 bcx = bind_irrefutable_pat(bcx,
                                            *elem,

@@ -2116,7 +2116,7 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
 
             ty_struct(did, ref substs) => {
                 let flds = struct_fields(cx, did, substs);
-                let mut res = flds.foldl(
+                let mut res = flds.iter().fold(
                     TC_NONE,
                     |tc, f| tc + tc_mt(cx, f.mt, cache));
                 if ty::has_dtor(cx, did) {
@@ -2126,7 +2126,7 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
             }
 
             ty_tup(ref tys) => {
-                tys.foldl(TC_NONE, |tc, ty| *tc + tc_ty(cx, *ty, cache))
+                tys.iter().fold(TC_NONE, |tc, ty| tc + tc_ty(cx, *ty, cache))
             }
 
             ty_enum(did, ref substs) => {
@@ -2136,10 +2136,9 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
                     // are non-copyable
                     TC_EMPTY_ENUM
                 } else {
-                    variants.foldl(TC_NONE, |tc, variant| {
-                        variant.args.foldl(
-                            *tc,
-                            |tc, arg_ty| *tc + tc_ty(cx, *arg_ty, cache))
+                    variants.iter().fold(TC_NONE, |tc, variant| {
+                        variant.args.iter().fold(tc,
+                            |tc, arg_ty| tc + tc_ty(cx, *arg_ty, cache))
                     })
                 };
                 apply_tc_attr(cx, did, res)
@@ -2365,7 +2364,7 @@ pub fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
             }
 
             ty_tup(ref ts) => {
-                ts.any(|t| type_requires(cx, seen, r_ty, *t))
+                ts.iter().any_(|t| type_requires(cx, seen, r_ty, *t))
             }
 
             ty_enum(ref did, _) if vec::contains(*seen, did) => {
@@ -3373,7 +3372,7 @@ pub fn field_idx_strict(tcx: ty::ctxt, id: ast::ident, fields: &[field])
 }
 
 pub fn method_idx(id: ast::ident, meths: &[@Method]) -> Option<uint> {
-    vec::position(meths, |m| m.ident == id)
+    meths.iter().position_(|m| m.ident == id)
 }
 
 /// Returns a vector containing the indices of all type parameters that appear
@@ -4129,9 +4128,10 @@ pub fn lookup_struct_field(cx: ctxt,
                            parent: ast::def_id,
                            field_id: ast::def_id)
                         -> field_ty {
-    match vec::find(lookup_struct_fields(cx, parent),
+    let r = lookup_struct_fields(cx, parent);
+    match r.iter().find_(
                  |f| f.id.node == field_id.node) {
-        Some(t) => t,
+        Some(t) => *t,
         None => cx.sess.bug("struct ID not found in parent's fields")
     }
 }

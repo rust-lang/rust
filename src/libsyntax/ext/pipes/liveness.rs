@@ -47,13 +47,13 @@ use extra::bitv::Bitv;
 pub fn analyze(proto: @mut protocol_, _cx: @ExtCtxt) {
     debug!("initializing colive analysis");
     let num_states = proto.num_states();
-    let mut colive = do (copy proto.states).map_to_vec |state| {
+    let mut colive: ~[~Bitv] = do (copy proto.states).iter().transform() |state| {
         let mut bv = ~Bitv::new(num_states, false);
         for state.reachable |s| {
             bv.set(s.id, true);
         }
         bv
-    };
+    }.collect();
 
     let mut i = 0;
     let mut changed = true;
@@ -61,7 +61,7 @@ pub fn analyze(proto: @mut protocol_, _cx: @ExtCtxt) {
         changed = false;
         debug!("colive iteration %?", i);
         let mut new_colive = ~[];
-        for colive.eachi |i, this_colive| {
+        for colive.iter().enumerate().advance |(i, this_colive)| {
             let mut result = this_colive.clone();
             let this = proto.get_state_by_id(i);
             for this_colive.ones |j| {
@@ -80,7 +80,7 @@ pub fn analyze(proto: @mut protocol_, _cx: @ExtCtxt) {
 
     // Determine if we're bounded
     let mut self_live = ~[];
-    for colive.eachi |i, bv| {
+    for colive.iter().enumerate().advance |(i, bv)| {
         if bv.get(i) {
             self_live.push(proto.get_state_by_id(i))
         }

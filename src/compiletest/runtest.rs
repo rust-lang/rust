@@ -358,7 +358,7 @@ fn check_expected_errors(expected_errors: ~[errors::ExpectedError],
     // is the ending point, and * represents ANSI color codes.
     for ProcRes.stderr.line_iter().advance |line| {
         let mut was_expected = false;
-        for vec::eachi(expected_errors) |i, ee| {
+        for expected_errors.iter().enumerate().advance |(i, ee)| {
             if !found_flags[i] {
                 debug!("prefix=%s ee.kind=%s ee.msg=%s line=%s",
                        prefixes[i], ee.kind, ee.msg, line);

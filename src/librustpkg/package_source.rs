@@ -60,9 +60,9 @@ impl PkgSrc {
         let dir;
         let dirs = pkgid_src_in_workspace(&self.id, &self.root);
         debug!("Checking dirs: %?", dirs);
-        let path = dirs.find(|d| os::path_exists(d));
+        let path = dirs.iter().find_(|&d| os::path_exists(d));
         match path {
-            Some(d) => dir = d,
+            Some(d) => dir = copy *d,
             None => dir = match self.fetch_git() {
                 None => cond.raise((copy self.id, ~"supplied path for package dir does not \
                                       exist, and couldn't interpret it as a URL fragment")),
