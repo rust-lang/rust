@@ -297,7 +297,10 @@ pub fn build_closure(bcx0: block,
         // the right thing):
         let ret_true = match bcx.fcx.loop_ret {
             Some((_, retptr)) => retptr,
-            None => bcx.fcx.llretptr.get()
+            None => match bcx.fcx.llretptr {
+                None => C_null(T_ptr(T_nil())),
+                Some(retptr) => retptr,
+            }
         };
         let ret_casted = PointerCast(bcx, ret_true, T_ptr(T_nil()));
         let ret_datum = Datum {val: ret_casted, ty: ty::mk_nil(),
