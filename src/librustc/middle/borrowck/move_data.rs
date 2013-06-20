@@ -474,6 +474,24 @@ impl FlowedMoveData {
         }
     }
 
+    pub fn each_path_moved_by(&self,
+                              id: ast::node_id,
+                              f: &fn(&Move, @LoanPath) -> bool)
+                              -> bool {
+        /*!
+         * Iterates through each path moved by `id`
+         */
+
+        for self.dfcx_moves.each_gen_bit_frozen(id) |index| {
+            let move = &self.move_data.moves[index];
+            let moved_path = move.path;
+            if !f(move, self.move_data.path(moved_path).loan_path) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     pub fn each_move_of(&self,
                         id: ast::node_id,
                         loan_path: @LoanPath,
