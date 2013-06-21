@@ -11,7 +11,8 @@
 //! Parameterized string expansion
 
 use core::prelude::*;
-use core::{char, int, vec};
+use core::{char, vec, util};
+use core::num::strconv::{SignNone,SignNeg,SignAll,DigAll,to_str_bytes_common};
 use core::iterator::IteratorUtil;
 
 #[deriving(Eq)]
@@ -23,11 +24,19 @@ enum States {
     PushParam,
     CharConstant,
     CharClose,
-    IntConstant,
+    IntConstant(int),
+    FormatPattern(Flags, FormatState),
     SeekIfElse(int),
     SeekIfElsePercent(int),
     SeekIfEnd(int),
     SeekIfEndPercent(int)
+}
+
+#[deriving(Eq)]
+enum FormatState {
+    FormatStateFlags,
+    FormatStateWidth,
+    FormatStatePrecision
 }
 
 /// Types of parameters a capability can use
@@ -71,8 +80,6 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
 
     let mut stack: ~[Param] = ~[];
 
-    let mut intstate = ~[];
-
     // Copy parameters into a local vector for mutability
     let mut mparams = [Number(0), ..9];
     for mparams.mut_iter().zip(params.iter()).advance |(dst, &src)| {
@@ -100,26 +107,11 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
                             _       => return Err(~"a non-char was used with %c")
                         }
                     } else { return Err(~"stack is empty") },
-                    's' => if stack.len() > 0 {
-                        match stack.pop() {
-                            String(s) => output.push_all(s.as_bytes()),
-                            _         => return Err(~"a non-str was used with %s")
-                        }
-                    } else { return Err(~"stack is empty") },
-                    'd' => if stack.len() > 0 {
-                        match stack.pop() {
-                            Number(x) => {
-                                let s = x.to_str();
-                                output.push_all(s.as_bytes())
-                            }
-                            _         => return Err(~"a non-number was used with %d")
-                        }
-                    } else { return Err(~"stack is empty") },
                     'p' => state = PushParam,
                     'P' => state = SetVar,
                     'g' => state = GetVar,
                     '\'' => state = CharConstant,
-                    '{' => state = IntConstant,
+                    '{' => state = IntConstant(0),
                     'l' => if stack.len() > 0 {
                         match stack.pop() {
                             String(s) => stack.push(Number(s.len() as int)),
@@ -231,6 +223,30 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
                         (_, _) => return Err(~"first two params not numbers with %i")
                     },
 
+                    // printf-style support for %doxXs
+                    'd'|'o'|'x'|'X'|'s' => if stack.len() > 0 {
+                        let flags = Flags::new();
+                        let res = format(stack.pop(), FormatOp::from_char(cur), flags);
+                        if res.is_err() { return res }
+                        output.push_all(res.unwrap())
+                    } else { return Err(~"stack is empty") },
+                    ':'|'#'|' '|'.'|'0'..'9' => {
+                        let mut flags = Flags::new();
+                        let mut fstate = FormatStateFlags;
+                        match cur {
+                            ':' => (),
+                            '#' => flags.alternate = true,
+                            ' ' => flags.space = true,
+                            '.' => fstate = FormatStatePrecision,
+                            '0'..'9' => {
+                                flags.width = (cur - '0') as uint;
+                                fstate = FormatStateWidth;
+                            }
+                            _ => util::unreachable()
+                        }
+                        state = FormatPattern(flags, fstate);
+                    }
+
                     // conditionals
                     '?' => (),
                     't' => if stack.len() > 0 {
@@ -288,17 +304,61 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
                     return Err(~"malformed character constant");
                 }
             },
-            IntConstant => {
-                if cur == '}' {
-                    stack.push(match int::parse_bytes(intstate, 10) {
-                        Some(n) => Number(n),
-                        None => return Err(~"bad int constant")
-                    });
-                    intstate.clear();
-                    state = Nothing;
-                } else {
-                    intstate.push(cur as u8);
-                    old_state = Nothing;
+            IntConstant(i) => {
+                match cur {
+                    '}' => {
+                        stack.push(Number(i));
+                        state = Nothing;
+                    }
+                    '0'..'9' => {
+                        state = IntConstant(i*10 + ((cur - '0') as int));
+                        old_state = Nothing;
+                    }
+                    _ => return Err(~"bad int constant")
+                }
+            }
+            FormatPattern(ref mut flags, ref mut fstate) => {
+                old_state = Nothing;
+                match (*fstate, cur) {
+                    (_,'d')|(_,'o')|(_,'x')|(_,'X')|(_,'s') => if stack.len() > 0 {
+                        let res = format(stack.pop(), FormatOp::from_char(cur), *flags);
+                        if res.is_err() { return res }
+                        output.push_all(res.unwrap());
+                        old_state = state; // will cause state to go to Nothing
+                    } else { return Err(~"stack is empty") },
+                    (FormatStateFlags,'#') => {
+                        flags.alternate = true;
+                    }
+                    (FormatStateFlags,'-') => {
+                        flags.left = true;
+                    }
+                    (FormatStateFlags,'+') => {
+                        flags.sign = true;
+                    }
+                    (FormatStateFlags,' ') => {
+                        flags.space = true;
+                    }
+                    (FormatStateFlags,'0'..'9') => {
+                        flags.width = (cur - '0') as uint;
+                        *fstate = FormatStateWidth;
+                    }
+                    (FormatStateFlags,'.') => {
+                        *fstate = FormatStatePrecision;
+                    }
+                    (FormatStateWidth,'0'..'9') => {
+                        let old = flags.width;
+                        flags.width = flags.width * 10 + ((cur - '0') as uint);
+                        if flags.width < old { return Err(~"format width overflow") }
+                    }
+                    (FormatStateWidth,'.') => {
+                        *fstate = FormatStatePrecision;
+                    }
+                    (FormatStatePrecision,'0'..'9') => {
+                        let old = flags.precision;
+                        flags.precision = flags.precision * 10 + ((cur - '0') as uint);
+                        if flags.precision < old { return Err(~"format precision overflow") }
+                    }
+                    _ => return Err(~"invalid format specifier")
                 }
             }
             SeekIfElse(level) => {
@@ -347,6 +407,142 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
         }
     }
     Ok(output)
+}
+
+#[deriving(Eq)]
+priv struct Flags {
+    width: uint,
+    precision: uint,
+    alternate: bool,
+    left: bool,
+    sign: bool,
+    space: bool
+}
+
+impl Flags {
+    priv fn new() -> Flags {
+        Flags{ width: 0, precision: 0, alternate: false,
+               left: false, sign: false, space: false }
+    }
+}
+
+priv enum FormatOp {
+    FormatDigit,
+    FormatOctal,
+    FormatHex,
+    FormatHEX,
+    FormatString
+}
+
+impl FormatOp {
+    priv fn from_char(c: char) -> FormatOp {
+        match c {
+            'd' => FormatDigit,
+            'o' => FormatOctal,
+            'x' => FormatHex,
+            'X' => FormatHEX,
+            's' => FormatString,
+            _ => fail!("bad FormatOp char")
+        }
+    }
+    priv fn to_char(self) -> char {
+        match self {
+            FormatDigit => 'd',
+            FormatOctal => 'o',
+            FormatHex => 'x',
+            FormatHEX => 'X',
+            FormatString => 's'
+        }
+    }
+}
+
+priv fn format(val: Param, op: FormatOp, flags: Flags) -> Result<~[u8],~str> {
+    let mut s = match val {
+        Number(d) => {
+            match op {
+                FormatString => {
+                    return Err(~"non-number on stack with %s")
+                }
+                _ => {
+                    let radix = match op {
+                        FormatDigit => 10,
+                        FormatOctal => 8,
+                        FormatHex|FormatHEX => 16,
+                        FormatString => util::unreachable()
+                    };
+                    let mut (s,_) = match op {
+                        FormatDigit => {
+                            let sign = if flags.sign { SignAll } else { SignNeg };
+                            to_str_bytes_common(&d, radix, false, sign, DigAll)
+                        }
+                        _ => to_str_bytes_common(&(d as uint), radix, false, SignNone, DigAll)
+                    };
+                    if flags.precision > s.len() {
+                        let mut s_ = vec::with_capacity(flags.precision);
+                        let n = flags.precision - s.len();
+                        s_.grow(n, &('0' as u8));
+                        s_.push_all_move(s);
+                        s = s_;
+                    }
+                    assert!(!s.is_empty(), "string conversion produced empty result");
+                    match op {
+                        FormatDigit => {
+                            if flags.space && !(s[0] == '-' as u8 || s[0] == '+' as u8) {
+                                s.unshift(' ' as u8);
+                            }
+                        }
+                        FormatOctal => {
+                            if flags.alternate && s[0] != '0' as u8 {
+                                s.unshift('0' as u8);
+                            }
+                        }
+                        FormatHex => {
+                            if flags.alternate {
+                                let s_ = util::replace(&mut s, ~['0' as u8, 'x' as u8]);
+                                s.push_all_move(s_);
+                            }
+                        }
+                        FormatHEX => {
+                            s = s.into_ascii().to_upper().into_bytes();
+                            if flags.alternate {
+                                let s_ = util::replace(&mut s, ~['0' as u8, 'X' as u8]);
+                                s.push_all_move(s_);
+                            }
+                        }
+                        FormatString => util::unreachable()
+                    }
+                    s
+                }
+            }
+        }
+        String(s) => {
+            match op {
+                FormatString => {
+                    let mut s = s.as_bytes_with_null_consume();
+                    s.pop(); // remove the null
+                    if flags.precision > 0 && flags.precision < s.len() {
+                        s.truncate(flags.precision);
+                    }
+                    s
+                }
+                _ => {
+                    return Err(fmt!("non-string on stack with %%%c", op.to_char()))
+                }
+            }
+        }
+    };
+    if flags.width > s.len() {
+        let n = flags.width - s.len();
+        if flags.left {
+            s.grow(n, &(' ' as u8));
+        } else {
+            let mut s_ = vec::with_capacity(flags.width);
+            s_.grow(n, &(' ' as u8));
+            s_.push_all_move(s);
+            s = s_;
+        }
+    }
+    Ok(s)
 }
 
 #[cfg(test)]
@@ -442,5 +638,21 @@ mod test {
         let res = expand(s, [Number(42)], &mut vars);
         assert!(res.is_ok(), res.unwrap_err());
         assert_eq!(res.unwrap(), bytes!("\\E[38;5;42m").to_owned());
+    }
+
+    #[test]
+    fn test_format() {
+        let mut varstruct = Variables::new();
+        let vars = &mut varstruct;
+        assert_eq!(expand(bytes!("%p1%s%p2%2s%p3%2s%p4%.2s"),
+                          [String(~"foo"), String(~"foo"), String(~"f"), String(~"foo")], vars),
+                   Ok(bytes!("foofoo ffo").to_owned()));
+        assert_eq!(expand(bytes!("%p1%:-4.2s"), [String(~"foo")], vars),
+                   Ok(bytes!("fo  ").to_owned()));
+
+        assert_eq!(expand(bytes!("%p1%d%p1%.3d%p1%5d%p1%:+d"), [Number(1)], vars),
+                   Ok(bytes!("1001    1+1").to_owned()));
+        assert_eq!(expand(bytes!("%p1%o%p1%#o%p2%6.4x%p2%#6.4X"), [Number(15), Number(27)], vars),
+                   Ok(bytes!("17017  001b0X001B").to_owned()));
     }
 }
