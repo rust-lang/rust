@@ -22,17 +22,6 @@ use repr;
 use str;
 use unstable::intrinsics;
 
-// Corresponds to runtime type_desc type
-#[cfg(stage0)]
-pub struct TypeDesc {
-    size: uint,
-    align: uint,
-    take_glue: uint,
-    drop_glue: uint,
-    free_glue: uint
-    // Remaining fields not listed
-}
-
 /// The representation of a Rust closure
 pub struct Closure {
     code: *(),
@@ -48,18 +37,6 @@ pub mod rustrt {
                                    file: *c_char,
                                    line: size_t);
     }
-}
-
-/**
- * Returns a pointer to a type descriptor.
- *
- * Useful for calling certain function in the Rust runtime or otherwise
- * performing dark magick.
- */
-#[inline]
-#[cfg(stage0)]
-pub fn get_type_desc<T>() -> *TypeDesc {
-    unsafe { intrinsics::get_tydesc::<T>() as *TypeDesc }
 }
 
 /// Returns the size of a type

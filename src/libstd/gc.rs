@@ -40,12 +40,13 @@ with destructors.
 use cast;
 use container::{Map, Set};
 use io;
-use libc::{size_t, uintptr_t};
+use libc::{uintptr_t};
 use option::{None, Option, Some};
 use ptr;
 use hashmap::HashSet;
 use stackwalk::walk_stack;
 use sys;
+use unstable::intrinsics::{TyDesc};
 
 pub use stackwalk::Word;
 
@@ -58,17 +59,11 @@ pub struct StackSegment {
 }
 
 pub mod rustrt {
-    use libc::size_t;
     use stackwalk::Word;
     use super::StackSegment;
 
     #[link_name = "rustrt"]
     pub extern {
-        #[rust_stack]
-        pub unsafe fn rust_call_tydesc_glue(root: *Word,
-                                            tydesc: *Word,
-                                            field: size_t);
-
         #[rust_stack]
         pub unsafe fn rust_gc_metadata() -> *Word;
 
@@ -125,7 +120,7 @@ unsafe fn is_safe_point(pc: *Word) -> Option<SafePoint> {
     return None;
 }
 
-type Visitor<'self> = &'self fn(root: **Word, tydesc: *Word) -> bool;
+type Visitor<'self> = &'self fn(root: **Word, tydesc: *TyDesc) -> bool;
 
 // Walks the list of roots for the given safe point, and calls visitor
 // on each root.
@@ -139,7 +134,7 @@ unsafe fn _walk_safe_point(fp: *Word, sp: SafePoint, visitor: Visitor) -> bool {
     let stack_roots: *u32 = bump(sp_meta, 2);
     let reg_roots: *u8 = bump(stack_roots, num_stack_roots);
     let addrspaces: *Word = align_to_pointer(bump(reg_roots, num_reg_roots));
-    let tydescs: ***Word = bump(addrspaces, num_stack_roots);
+    let tydescs: ***TyDesc = bump(addrspaces, num_stack_roots);
 
     // Stack roots
     let mut sri = 0;
@@ -364,7 +359,7 @@ pub fn cleanup_stack_for_failure() {
                 // FIXME #4420: Destroy this box
                 // FIXME #4330: Destroy this box
             } else {
-                rustrt::rust_call_tydesc_glue(*root, tydesc, 3 as size_t);
+                ((*tydesc).drop_glue)(&tydesc as **TyDesc, *root as *i8);
             }
         }
     }
