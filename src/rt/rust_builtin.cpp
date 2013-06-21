@@ -591,12 +591,18 @@ rust_log_console_on() {
     log_console_on();
 }
 
-extern void log_console_off(rust_env *env);
+extern void log_console_off();
 
 extern "C" CDECL void
 rust_log_console_off() {
-    rust_task *task = rust_get_current_task();
-    log_console_off(task->kernel->env);
+    log_console_off();
+}
+
+extern bool should_log_console();
+
+extern "C" CDECL uintptr_t
+rust_should_log_console() {
+    return (uintptr_t)should_log_console();
 }
 
 extern "C" CDECL void
