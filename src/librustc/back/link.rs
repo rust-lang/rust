@@ -397,7 +397,7 @@ pub mod write {
                         cc_prog, prog.status));
             sess.note(fmt!("%s arguments: %s",
                         cc_prog, cc_args.connect(" ")));
-            sess.note(str::from_bytes(prog.error + prog.output));
+            sess.note(str::from_utf8(prog.error + prog.output));
             sess.abort_if_errors();
         }
     }
@@ -819,7 +819,7 @@ pub fn link_binary(sess: Session,
                       cc_prog, prog.status));
         sess.note(fmt!("%s arguments: %s",
                        cc_prog, cc_args.connect(" ")));
-        sess.note(str::from_bytes(prog.error + prog.output));
+        sess.note(str::from_utf8(prog.error + prog.output));
         sess.abort_if_errors();
     }
 

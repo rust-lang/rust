@@ -1790,7 +1790,7 @@ mod test {
         buf_write(sock_buf, expected_req);
 
         let buf_reader = sock_buf as @Reader;
-        let actual_response = str::from_bytes(buf_reader.read_whole_stream());
+        let actual_response = str::from_utf8(buf_reader.read_whole_stream());
         debug!("Actual response: %s", actual_response);
         assert!(expected_resp == actual_response);
     }
@@ -1807,7 +1807,7 @@ mod test {
         let new_bytes = (*r).read_bytes(len);
         debug!("in buf_read.. new_bytes len: %?",
                         new_bytes.len());
-        str::from_bytes(new_bytes)
+        str::from_utf8(new_bytes)
     }
 
     fn run_tcp_test_server(server_ip: &str, server_port: uint, resp: ~str,
@@ -1857,11 +1857,11 @@ mod test {
                         let received_req_bytes = read(&sock, 0u);
                         match received_req_bytes {
                           result::Ok(data) => {
-                            debug!("SERVER: got REQ str::from_bytes..");
+                            debug!("SERVER: got REQ str::from_utf8..");
                             debug!("SERVER: REQ data len: %?",
                                             data.len());
                             server_ch.send(
-                                str::from_bytes(data));
+                                str::from_utf8(data));
                             debug!("SERVER: before write");
                             let s = resp_cell2.take();
                             tcp_write_single(&sock, s.as_bytes().to_owned());
@@ -1944,7 +1944,7 @@ mod test {
                 Ok(~"")
             }
             else {
-                let ret_val = str::from_bytes(read_result.get());
+                let ret_val = str::from_utf8(read_result.get());
                 debug!("CLIENT: after client_ch recv ret: '%s'",
                    ret_val);
                 Ok(ret_val)

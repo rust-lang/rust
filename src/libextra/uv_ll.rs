@@ -1046,7 +1046,7 @@ pub unsafe fn ip6_addr(ip: &str, port: int) -> sockaddr_in6 {
 pub unsafe fn ip4_name(src: &sockaddr_in) -> ~str {
     // ipv4 addr max size: 15 + 1 trailing null byte
     let dst: ~[u8] = ~[0u8,0u8,0u8,0u8,0u8,0u8,0u8,0u8,
-                     0u8,0u8,0u8,0u8,0u8,0u8,0u8,0u8];
+                       0u8,0u8,0u8,0u8,0u8,0u8,0u8,0u8];
     do vec::as_imm_buf(dst) |dst_buf, size| {
         rust_uv_ip4_name(to_unsafe_ptr(src),
                                  dst_buf, size as libc::size_t);
@@ -1287,7 +1287,7 @@ mod test {
                 let buf_base = get_base_from_buf(buf);
                 let bytes = vec::from_buf(buf_base, nread as uint);
                 let read_chan = (*client_data).read_chan.clone();
-                let msg_from_server = str::from_bytes(bytes);
+                let msg_from_server = str::from_utf8(bytes);
                 read_chan.send(msg_from_server);
                 close(stream as *libc::c_void, after_close_cb)
             }
@@ -1473,7 +1473,7 @@ mod test {
                                 buf_len as uint,
                                 nread);
                 let bytes = vec::from_buf(buf_base, nread as uint);
-                let request_str = str::from_bytes(bytes);
+                let request_str = str::from_utf8(bytes);
 
                 let client_data = get_data_for_uv_handle(
                     client_stream_ptr as *libc::c_void) as *tcp_server_data;

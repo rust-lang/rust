@@ -217,7 +217,7 @@ impl<'self> FromBase64 for &'self str {
      *     println(fmt!("%s",hello_str));
      *     let bytes = hello_str.from_base64();
      *     println(fmt!("%?",bytes));
-     *     let result_str = str::from_bytes(bytes);
+     *     let result_str = str::from_utf8(bytes);
      *     println(fmt!("%s",result_str));
      * }
      * ~~~

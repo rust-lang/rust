@@ -432,12 +432,9 @@ pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
       ty_err => ~"[type error]",
       ty_param(param_ty {idx: id, def_id: did}) => {
           if cx.sess.verbose() {
-              fmt!("'%s:%?",
-                   str::from_bytes([('a' as u8) + (id as u8)]),
-                   did)
+              fmt!("'%s:%?", str::from_byte(('a' as u8) + (id as u8)), did)
           } else {
-              fmt!("'%s",
-                   str::from_bytes([('a' as u8) + (id as u8)]))
+              fmt!("'%s", str::from_byte(('a' as u8) + (id as u8)))
           }
       }
       ty_self(*) => ~"Self",

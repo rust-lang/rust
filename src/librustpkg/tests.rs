@@ -145,8 +145,8 @@ fn command_line_test(args: &[~str], cwd: &Path) -> ProcessOutput {
                                                           });
     let output = prog.finish_with_output();
     io::println(fmt!("Output from command %s with args %? was %s {%s}[%?]",
-                    cmd, args, str::from_bytes(output.output),
-                   str::from_bytes(output.error),
+                    cmd, args, str::from_utf8_slice(output.output),
+                   str::from_utf8_slice(output.error),
                    output.status));
 /*
 By the way, rustpkg *won't* return a nonzero exit code if it fails --
@@ -246,7 +246,7 @@ fn assert_executable_exists(repo: &Path, short_name: &str) {
 fn command_line_test_output(args: &[~str]) -> ~[~str] {
     let mut result = ~[];
     let p_output = command_line_test(args, &os::getcwd());
-    let test_output = str::from_bytes(p_output.output);
+    let test_output = str::from_utf8_slice(p_output.output);
     for test_output.split_iter('\n').advance |s| {
         result += [s.to_owned()];
     }
@@ -660,7 +660,7 @@ fn test_info() {
     let expected_info = ~"package foo"; // fill in
     let workspace = create_local_package(&PkgId::new("foo"));
     let output = command_line_test([~"info", ~"foo"], &workspace);
-    assert_eq!(str::from_bytes(output.output), expected_info);
+    assert_eq!(str::from_utf8(output.output), expected_info);
 }
 
 #[test]
@@ -669,7 +669,7 @@ fn test_rustpkg_test() {
     let expected_results = ~"1 out of 1 tests passed"; // fill in
     let workspace = create_local_package_with_test(&PkgId::new("foo"));
     let output = command_line_test([~"test", ~"foo"], &workspace);
-    assert_eq!(str::from_bytes(output.output), expected_results);
+    assert_eq!(str::from_utf8(output.output), expected_results);
 }
 
 #[test]
@@ -679,5 +679,5 @@ fn test_uninstall() {
     let _output = command_line_test([~"info", ~"foo"], &workspace);
     command_line_test([~"uninstall", ~"foo"], &workspace);
     let output = command_line_test([~"list"], &workspace);
-    assert!(!str::from_bytes(output.output).contains("foo"));
+    assert!(!str::from_utf8(output.output).contains("foo"));
 }

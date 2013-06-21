@@ -914,7 +914,7 @@ fn read_path(d: ebml::Doc) -> (~str, uint) {
     do reader::with_doc_data(d) |desc| {
         let pos = io::u64_from_be_bytes(desc, 0u, 4u) as uint;
         let pathbytes = desc.slice(4u, desc.len());
-        let path = str::from_bytes(pathbytes);
+        let path = str::from_utf8_slice(pathbytes).to_owned();
 
         (path, pos)
     }

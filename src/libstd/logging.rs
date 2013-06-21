@@ -60,7 +60,7 @@ pub fn log_type<T>(level: u32, object: &T) {
         }
         _ => {
             // XXX: Bad allocation
-            let msg = str::from_bytes(bytes);
+            let msg = str::from_utf8(bytes);
             newsched_log_str(msg);
         }
     }
