@@ -801,24 +801,33 @@ pub fn trans_arg_expr(bcx: block,
                         val = arg_datum.to_ref_llval(bcx);
                     }
                     ty::ByCopy => {
-                        debug!("by copy arg with type %s, storing to scratch",
-                               bcx.ty_to_str(arg_datum.ty));
-                        let scratch = scratch_datum(bcx, arg_datum.ty, false);
+                        if ty::type_needs_drop(bcx.tcx(), arg_datum.ty) ||
+                                arg_datum.appropriate_mode().is_by_ref() {
+                            debug!("by copy arg with type %s, storing to scratch",
+                                   bcx.ty_to_str(arg_datum.ty));
+                            let scratch = scratch_datum(bcx, arg_datum.ty, false);
 
-                        arg_datum.store_to_datum(bcx,
-                                                 arg_expr.id,
-                                                 INIT,
-                                                 scratch);
+                            arg_datum.store_to_datum(bcx,
+                                                     arg_expr.id,
+                                                     INIT,
+                                                     scratch);
 
-                        // Technically, ownership of val passes to the callee.
-                        // However, we must cleanup should we fail before the
-                        // callee is actually invoked.
-                        scratch.add_clean(bcx);
-                        temp_cleanups.push(scratch.val);
+                            // Technically, ownership of val passes to the callee.
+                            // However, we must cleanup should we fail before the
+                            // callee is actually invoked.
+                            scratch.add_clean(bcx);
+                            temp_cleanups.push(scratch.val);
 
-                        match arg_datum.appropriate_mode() {
-                            ByValue => val = Load(bcx, scratch.val),
-                            ByRef(_) => val = scratch.val,
+                            match scratch.appropriate_mode() {
+                                ByValue => val = Load(bcx, scratch.val),
+                                ByRef(_) => val = scratch.val,
+                            }
+                        } else {
+                            debug!("by copy arg with type %s");
+                            match arg_datum.mode {
+                                ByRef(_) => val = Load(bcx, arg_datum.val),
+                                ByValue => val = arg_datum.val,
+                            }
                         }
                     }
                 }
