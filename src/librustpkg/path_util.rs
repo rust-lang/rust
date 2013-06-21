@@ -71,8 +71,8 @@ pub fn make_dir_rwx(p: &Path) -> bool { os::make_dir(p, U_RWX) }
 pub fn workspace_contains_package_id(pkgid: &PkgId, workspace: &Path) -> bool {
     let src_dir = workspace.push("src");
     let dirs = os::list_dir(&src_dir);
-    for dirs.iter().advance |&p| {
-        let p = Path(p);
+    for dirs.iter().advance |p| {
+        let p = Path(copy *p);
         debug!("=> p = %s", p.to_str());
         if !os::path_is_dir(&src_dir.push_rel(&p)) {
             loop;
@@ -84,8 +84,8 @@ pub fn workspace_contains_package_id(pkgid: &PkgId, workspace: &Path) -> bool {
         }
         else {
             let pf = p.filename();
-            for pf.iter().advance |&pf| {
-                let f_ = copy pf;
+            for pf.iter().advance |pf| {
+                let f_ = copy *pf;
                 let g = f_.to_str();
                 match split_version_general(g, '-') {
                     Some((ref might_match, ref vers)) => {
@@ -217,10 +217,10 @@ pub fn library_in_workspace(path: &LocalPath, short_name: &str, where: Target,
     debug!("lib_prefix = %s and lib_filetype = %s", lib_prefix, lib_filetype);
 
     let mut result_filename = None;
-    for dir_contents.iter().advance |&p| {
+    for dir_contents.iter().advance |p| {
         let mut which = 0;
         let mut hash = None;
-        let p_path = Path(p);
+        let p_path = Path(copy *p);
         let extension = p_path.filetype();
         debug!("p = %s, p's extension is %?", p.to_str(), extension);
         match extension {
