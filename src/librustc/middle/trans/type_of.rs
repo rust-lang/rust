@@ -55,7 +55,7 @@ pub fn type_of_fn(cx: &mut CrateContext, inputs: &[ty::t], output: ty::t)
         atys.push_all(type_of_explicit_args(cx, inputs));
 
         // Use the output as the actual return value if it's immediate.
-        if output_is_immediate {
+        if output_is_immediate && !ty::type_is_nil(output) {
             T_fn(atys, lloutputtype)
         } else {
             T_fn(atys, llvm::LLVMVoidTypeInContext(cx.llcx))
@@ -352,7 +352,7 @@ pub fn llvm_type_name(cx: &CrateContext,
 }
 
 pub fn type_of_dtor(ccx: &mut CrateContext, self_ty: ty::t) -> TypeRef {
-    T_fn([T_ptr(type_of(ccx, self_ty))] /* self */, T_nil())
+    T_fn([T_ptr(type_of(ccx, self_ty))] /* self */, T_void())
 }
 
 pub fn type_of_rooted(ccx: &mut CrateContext, t: ty::t) -> TypeRef {
@@ -364,5 +364,5 @@ pub fn type_of_rooted(ccx: &mut CrateContext, t: ty::t) -> TypeRef {
 
 pub fn type_of_glue_fn(ccx: &CrateContext) -> TypeRef {
     let tydescpp = T_ptr(T_ptr(ccx.tydesc_type));
-    return T_fn([T_ptr(T_nil()), tydescpp, T_ptr(T_i8())], T_nil());
+    return T_fn([T_ptr(T_nil()), tydescpp, T_ptr(T_i8())], T_void());
 }

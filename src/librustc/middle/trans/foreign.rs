@@ -127,7 +127,7 @@ fn shim_types(ccx: @mut CrateContext, id: ast::node_id) -> ShimTypes {
         llsig: llsig,
         ret_def: ret_def,
         bundle_ty: bundle_ty,
-        shim_fn_ty: T_fn([T_ptr(bundle_ty)], T_nil()),
+        shim_fn_ty: T_fn([T_ptr(bundle_ty)], T_void()),
         fn_ty: fn_ty
     }
 }
@@ -170,7 +170,7 @@ fn build_shim_fn_(ccx: @mut CrateContext,
     tie_up_header_blocks(fcx, lltop);
 
     let ret_cx = raw_block(fcx, false, fcx.llreturn);
-    Ret(ret_cx, C_null(T_nil()));
+    RetVoid(ret_cx);
 
     return llshimfn;
 }
@@ -530,8 +530,10 @@ pub fn trans_foreign_mod(ccx: @mut CrateContext,
 
                 store_inbounds(bcx, llargval, llargbundle, [0u, i]);
             }
-            let llretptr = bcx.fcx.llretptr.get();
-            store_inbounds(bcx, llretptr, llargbundle, [0u, n]);
+
+            for bcx.fcx.llretptr.iter().advance |&retptr| {
+                store_inbounds(bcx, retptr, llargbundle, [0u, n]);
+            }
         }
 
         fn build_ret(bcx: block,
@@ -539,8 +541,10 @@ pub fn trans_foreign_mod(ccx: @mut CrateContext,
                      llargbundle: ValueRef) {
             let _icx = bcx.insn_ctxt("foreign::wrap::build_ret");
             let arg_count = shim_types.fn_sig.inputs.len();
-            let llretptr = load_inbounds(bcx, llargbundle, [0, arg_count]);
-            Store(bcx, Load(bcx, llretptr), bcx.fcx.llretptr.get());
+            for bcx.fcx.llretptr.iter().advance |&retptr| {
+                let llretptr = load_inbounds(bcx, llargbundle, [0, arg_count]);
+                Store(bcx, Load(bcx, llretptr), retptr);
+            }
             build_return(bcx);
         }
     }
@@ -1294,7 +1298,7 @@ pub fn trans_foreign_fn(ccx: @mut CrateContext,
                      shim_types: &ShimTypes,
                      llargbundle: ValueRef,
                      llretval: ValueRef) {
-            if ty::type_is_immediate(shim_types.fn_sig.output) {
+            if bcx.fcx.llretptr.is_some() && ty::type_is_immediate(shim_types.fn_sig.output) {
                 // Write the value into the argument bundle.
                 let arg_count = shim_types.fn_sig.inputs.len();
                 let llretptr = load_inbounds(bcx,

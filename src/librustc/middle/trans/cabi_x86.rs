@@ -60,6 +60,11 @@ impl ABIInfo for X86_ABIInfo {
                 cast: false,
                 ty: T_void(),
             };
+        } else if !ret_def {
+            ret_ty = LLVMType {
+                cast: false,
+                ty: T_void()
+            };
         }
 
         return FnType {
