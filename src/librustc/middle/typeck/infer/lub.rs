@@ -28,7 +28,7 @@ use extra::list;
 use syntax::abi::AbiSet;
 use syntax::ast;
 use syntax::ast::{Many, Once, extern_fn, m_const, impure_fn};
-use syntax::ast::{pure_fn, unsafe_fn};
+use syntax::ast::{unsafe_fn};
 use syntax::ast::{Onceness, purity};
 use syntax::codemap::span;
 
@@ -92,8 +92,7 @@ impl Combine for Lub {
         match (a, b) {
           (unsafe_fn, _) | (_, unsafe_fn) => Ok(unsafe_fn),
           (impure_fn, _) | (_, impure_fn) => Ok(impure_fn),
-          (extern_fn, _) | (_, extern_fn) => Ok(extern_fn),
-          (pure_fn, pure_fn) => Ok(pure_fn)
+          (extern_fn, extern_fn) => Ok(extern_fn),
         }
     }
 
