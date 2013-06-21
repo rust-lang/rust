@@ -1202,7 +1202,7 @@ mod big_tests {
 
     struct LVal<'self> {
         val: uint,
-        key: &'self fn(@uint),
+        key: &'self fn:Copy(@uint),
     }
 
     #[unsafe_destructor]
