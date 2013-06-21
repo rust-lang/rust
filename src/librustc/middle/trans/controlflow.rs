@@ -298,24 +298,27 @@ pub fn trans_cont(bcx: block, label_opt: Option<ident>) -> block {
 pub fn trans_ret(bcx: block, e: Option<@ast::expr>) -> block {
     let _icx = bcx.insn_ctxt("trans_ret");
     let mut bcx = bcx;
-    let retptr = match copy bcx.fcx.loop_ret {
+    let dest = match copy bcx.fcx.loop_ret {
       Some((flagptr, retptr)) => {
         // This is a loop body return. Must set continue flag (our retptr)
         // to false, return flag to true, and then store the value in the
         // parent's retptr.
         Store(bcx, C_bool(true), flagptr);
         Store(bcx, C_bool(false), bcx.fcx.llretptr.get());
-        match e {
+        expr::SaveIn(match e {
           Some(x) => PointerCast(bcx, retptr,
                                  T_ptr(type_of(bcx.ccx(), expr_ty(bcx, x)))),
           None => retptr
-        }
+        })
       }
-      None => bcx.fcx.llretptr.get()
+      None => match bcx.fcx.llretptr {
+        None => expr::Ignore,
+        Some(retptr) => expr::SaveIn(retptr),
+      }
     };
     match e {
       Some(x) => {
-        bcx = expr::trans_into(bcx, x, expr::SaveIn(retptr));
+        bcx = expr::trans_into(bcx, x, dest);
       }
       _ => ()
     }
