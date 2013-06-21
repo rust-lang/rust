@@ -34,8 +34,7 @@ use core::local_data;
 use extra::time;
 use syntax::ast;
 
-use middle::trans::common::{ExternMap,tydesc_info,BuilderRef_res,Stats,namegen};
-use middle::trans::common::{mono_id,new_namegen};
+use middle::trans::common::{mono_id,ExternMap,tydesc_info,BuilderRef_res,Stats};
 
 use middle::trans::base::{decl_crate_map};
 
@@ -93,7 +92,6 @@ pub struct CrateContext {
      lltypes: HashMap<ty::t, Type>,
      llsizingtypes: HashMap<ty::t, Type>,
      adt_reprs: HashMap<ty::t, @adt::Repr>,
-     names: namegen,
      symbol_hasher: hash::State,
      type_hashcodes: HashMap<ty::t, @str>,
      type_short_names: HashMap<ty::t, ~str>,
@@ -194,7 +192,6 @@ impl CrateContext {
                   lltypes: HashMap::new(),
                   llsizingtypes: HashMap::new(),
                   adt_reprs: HashMap::new(),
-                  names: new_namegen(),
                   symbol_hasher: symbol_hasher,
                   type_hashcodes: HashMap::new(),
                   type_short_names: HashMap::new(),

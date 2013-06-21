@@ -64,6 +64,7 @@ use core::sys;
 use core::vec;
 use syntax::codemap::span;
 use syntax::{ast, codemap, ast_util, ast_map};
+use syntax::parse::token;
 
 static DW_LANG_RUST: int = 0x9000;
 
@@ -86,7 +87,6 @@ static DW_ATE_unsigned_char: int = 0x08;
 
 /// A context object for maintaining all state needed by the debuginfo module.
 pub struct DebugContext {
-    names: namegen,
     crate_file: ~str,
     llcontext: ContextRef,
     builder: DIBuilderRef,
@@ -104,7 +104,6 @@ impl DebugContext {
         // DIBuilder inherits context from the module, so we'd better use the same one
         let llcontext = unsafe { llvm::LLVMGetModuleContext(llmod) };
         return DebugContext {
-            names: new_namegen(),
             crate_file: crate,
             llcontext: llcontext,
             builder: builder,
@@ -276,7 +275,8 @@ pub fn create_function(fcx: fn_ctxt) -> DISubprogram {
       ast_map::node_expr(expr) => {
         match expr.node {
           ast::expr_fn_block(ref decl, _) => {
-            ((dbg_cx(cx).names)("fn"), decl.output, expr.id)
+            let name = gensym_name("fn");
+            (name, decl.output, expr.id)
           }
           _ => fcx.ccx.sess.span_bug(expr.span,
                   "create_function: expected an expr_fn_block here")
@@ -628,7 +628,7 @@ fn create_tuple(cx: &mut CrateContext, tuple_type: ty::t, elements: &[ty::t], sp
     let loc = span_start(cx, span);
     let file_md = create_file(cx, loc.file.name);
 
-    let name = (cx.sess.str_of((dbg_cx(cx).names)("tuple"))).to_owned();
+    let name = fmt!("tuple_%u", token::gensym("tuple"));
     let mut scx = StructContext::new(cx, name, file_md, loc.line);
     for elements.iter().advance |element| {
         let ty_md = create_ty(cx, *element, span);
@@ -909,8 +909,6 @@ fn set_debug_location(cx: @mut CrateContext, scope: DIScope, line: uint, col: ui
         llvm::LLVMSetCurrentDebugLocation(cx.builder.B, dbg_loc);
     }
 }
-
-
 
 
 //=-------------------------------------------------------------------------------------------------

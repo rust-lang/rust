@@ -45,14 +45,8 @@ use syntax::{ast, ast_map};
 
 pub use middle::trans::context::CrateContext;
 
-// NOTE: this thunk is totally pointless now that we're not passing
-// interners around...
-pub type namegen = @fn(s: &str) -> ident;
-pub fn new_namegen() -> namegen {
-    let f: @fn(s: &str) -> ident = |prefix| {
-        token::str_to_ident(fmt!("%s_%u", prefix, token::gensym(prefix)))
-    };
-    f
+pub fn gensym_name(name: &str) -> ident {
+    token::str_to_ident(fmt!("%s_%u", name, token::gensym(name)))
 }
 
 pub struct tydesc_info {
@@ -819,8 +813,9 @@ pub fn C_bytes(bytes: &[u8]) -> ValueRef {
 
 pub fn C_bytes_plus_null(bytes: &[u8]) -> ValueRef {
     unsafe {
-        let ptr = cast::transmute(vec::raw::to_ptr(bytes));
-        return llvm::LLVMConstStringInContext(base::task_llcx(), ptr, bytes.len() as c_uint,False);
+        return llvm::LLVMConstStringInContext(base::task_llcx(),
+            cast::transmute(vec::raw::to_ptr(bytes)),
+            bytes.len() as c_uint, False);
     }
 }
 
