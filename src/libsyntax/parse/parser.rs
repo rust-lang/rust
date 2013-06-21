@@ -1050,11 +1050,13 @@ impl Parser {
     // Like the above, but can also parse kind bounds in the case of a
     // path to be used as a type that might be a trait.
     pub fn parse_type_path(&self) -> (@ast::Path, OptVec<TyParamBound>) {
-        let mut bounds = None;
+        let mut bounds = opt_vec::Empty;
         let path = self.parse_bounded_path_with_tps(false, Some(|| {
-            bounds = Some(self.parse_optional_ty_param_bounds());
+            // Note: this closure might not even get called in the case of a
+            // macro-generated path. But that's the macro parser's job.
+            bounds = self.parse_optional_ty_param_bounds();
         }));
-        (path, bounds.unwrap())
+        (path, bounds)
     }
 
     /// parses 0 or 1 lifetime
