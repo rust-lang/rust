@@ -272,7 +272,7 @@ fn touch_source_file(workspace: &Path, short_name: &str) {
     use conditions::bad_path::cond;
     let pkg_src_dir = workspace.push("src").push(short_name);
     let contents = os::list_dir(&pkg_src_dir);
-    for contents.each() |p| {
+    for contents.iter().advance |p| {
         if Path(copy *p).filetype() == Some(~".rs") {
             // should be able to do this w/o a process
             if run::process_output("touch", [p.to_str()]).status != 0 {
@@ -289,7 +289,7 @@ fn frob_source_file(workspace: &Path, pkgid: &PkgId) {
     let pkg_src_dir = workspace.push("src").push(pkgid.to_str());
     let contents = os::list_dir(&pkg_src_dir);
     let mut maybe_p = None;
-    for contents.each() |p| {
+    for contents.iter().advance |p| {
         if Path(copy *p).filetype() == Some(~".rs") {
             maybe_p = Some(p);
             break;

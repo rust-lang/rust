@@ -335,7 +335,7 @@ fn create_struct(cx: @mut CrateContext, t: ty::t, fields: ~[ty::field], span: sp
     let file_md = create_file(cx, loc.file.name);
 
     let mut scx = StructContext::new(cx, ty_to_str(cx.tcx, t), file_md, loc.line);
-    for fields.each |field| {
+    for fields.iter().advance |field| {
         let field_t = field.mt.ty;
         let ty_md = create_ty(cx, field_t, span);
         let (size, align) = size_and_align_of(cx, field_t);
@@ -362,7 +362,7 @@ fn create_tuple(cx: @mut CrateContext, _t: ty::t, elements: &[ty::t], span: span
 
     let name = (cx.sess.str_of((dbg_cx(cx).names)("tuple"))).to_owned();
     let mut scx = StructContext::new(cx, name, file_md, loc.line);
-    for elements.each |element| {
+    for elements.iter().advance |element| {
         let ty_md = create_ty(cx, *element, span);
         let (size, align) = size_and_align_of(cx, *element);
         scx.add_member("", loc.line, size, align, ty_md);

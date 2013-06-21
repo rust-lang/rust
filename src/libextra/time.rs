@@ -1033,7 +1033,7 @@ mod tests {
             }
         }
 
-        for [
+        let days = [
             ~"Sunday",
             ~"Monday",
             ~"Tuesday",
@@ -1041,11 +1041,12 @@ mod tests {
             ~"Thursday",
             ~"Friday",
             ~"Saturday"
-        ].each |day| {
+        ];
+        for days.iter().advance |day| {
             assert!(test(*day, "%A"));
         }
 
-        for [
+        let days = [
             ~"Sun",
             ~"Mon",
             ~"Tue",
@@ -1053,11 +1054,12 @@ mod tests {
             ~"Thu",
             ~"Fri",
             ~"Sat"
-        ].each |day| {
+        ];
+        for days.iter().advance |day| {
             assert!(test(*day, "%a"));
         }
 
-        for [
+        let months = [
             ~"January",
             ~"February",
             ~"March",
@@ -1070,11 +1072,12 @@ mod tests {
             ~"October",
             ~"November",
             ~"December"
-        ].each |day| {
+        ];
+        for months.iter().advance |day| {
             assert!(test(*day, "%B"));
         }
 
-        for [
+        let months = [
             ~"Jan",
             ~"Feb",
             ~"Mar",
@@ -1087,7 +1090,8 @@ mod tests {
             ~"Oct",
             ~"Nov",
             ~"Dec"
-        ].each |day| {
+        ];
+        for months.iter().advance |day| {
             assert!(test(*day, "%b"));
         }
 

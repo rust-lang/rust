@@ -376,7 +376,7 @@ pub fn write_content(bcx: block,
         ast::expr_vec(ref elements, _) => {
             match dest {
                 Ignore => {
-                    for elements.each |element| {
+                    for elements.iter().advance |element| {
                         bcx = expr::trans_into(bcx, *element, Ignore);
                     }
                 }
@@ -392,7 +392,7 @@ pub fn write_content(bcx: block,
                         add_clean_temp_mem(bcx, lleltptr, vt.unit_ty);
                         temp_cleanups.push(lleltptr);
                     }
-                    for temp_cleanups.each |cleanup| {
+                    for temp_cleanups.iter().advance |cleanup| {
                         revoke_clean(bcx, *cleanup);
                     }
                 }

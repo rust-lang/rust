@@ -143,7 +143,7 @@ fn fold_block(
     let filtered_view_items =
         filtered_view_items.map(|x| fld.fold_view_item(*x));
     let mut resulting_stmts = ~[];
-    for filtered_stmts.each |stmt| {
+    for filtered_stmts.iter().advance |stmt| {
         match fld.fold_stmt(*stmt) {
             None => {}
             Some(stmt) => resulting_stmts.push(stmt),

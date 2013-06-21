@@ -598,7 +598,7 @@ pub fn get_enum_variants(intr: @ident_interner, cdata: cmd, id: ast::node_id,
     let mut infos: ~[ty::VariantInfo] = ~[];
     let variant_ids = enum_variant_ids(item, cdata);
     let mut disr_val = 0;
-    for variant_ids.each |did| {
+    for variant_ids.iter().advance |did| {
         let item = find_item(did.node, items);
         let ctor_ty = item_type(ast::def_id { crate: cdata.cnum, node: id},
                                 item, tcx, cdata);
@@ -818,7 +818,7 @@ pub fn get_static_methods_if_impl(intr: @ident_interner,
     }
 
     let mut static_impl_methods = ~[];
-    for impl_method_ids.each |impl_method_id| {
+    for impl_method_ids.iter().advance |impl_method_id| {
         let impl_method_doc = lookup_item(impl_method_id.node, cdata.data);
         let family = item_family(impl_method_doc);
         match family {
@@ -1008,7 +1008,8 @@ fn get_attributes(md: ebml::Doc) -> ~[ast::attribute] {
 fn list_meta_items(intr: @ident_interner,
                    meta_items: ebml::Doc,
                    out: @io::Writer) {
-    for get_meta_items(meta_items).each |mi| {
+    let r = get_meta_items(meta_items);
+    for r.iter().advance |mi| {
         out.write_str(fmt!("%s\n", pprust::meta_item_to_str(*mi, intr)));
     }
 }
@@ -1017,7 +1018,8 @@ fn list_crate_attributes(intr: @ident_interner, md: ebml::Doc, hash: &str,
                          out: @io::Writer) {
     out.write_str(fmt!("=Crate Attributes (%s)=\n", hash));
 
-    for get_attributes(md).each |attr| {
+    let r = get_attributes(md);
+    for r.iter().advance |attr| {
         out.write_str(fmt!("%s\n", pprust::attribute_to_str(*attr, intr)));
     }
 
@@ -1057,7 +1059,8 @@ pub fn get_crate_deps(data: @~[u8]) -> ~[crate_dep] {
 fn list_crate_deps(data: @~[u8], out: @io::Writer) {
     out.write_str("=External Dependencies=\n");
 
-    for get_crate_deps(data).each |dep| {
+    let r = get_crate_deps(data);
+    for r.iter().advance |dep| {
         out.write_str(
             fmt!("%d %s-%s-%s\n",
                  dep.cnum, token::ident_to_str(&dep.name), dep.hash, dep.vers));

@@ -656,7 +656,8 @@ pub fn main() {
         let v = @v as @TyVisitor;
         visit_tydesc(td, v);
 
-        for (u.vals.clone()).each |s| {
+        let r = u.vals.clone();
+        for r.iter().advance |s| {
             println(fmt!("val: %s", *s));
         }
         error!("%?", u.vals.clone());

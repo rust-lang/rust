@@ -11,7 +11,7 @@
 pub fn main() {
     let x = ~[1, 2, 3];
     let mut y = 0;
-    for x.each |i| { debug!(*i); y += *i; }
+    for x.iter().advance |i| { debug!(*i); y += *i; }
     debug!(y);
     assert_eq!(y, 6);
     let s = ~"hello there";

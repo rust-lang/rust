@@ -391,7 +391,7 @@ impl LanguageItemCollector {
         let this: *mut LanguageItemCollector = &mut *self;
         visit_crate(self.crate, ((), mk_simple_visitor(@SimpleVisitor {
             visit_item: |item| {
-                for item.attrs.each |attribute| {
+                for item.attrs.iter().advance |attribute| {
                     unsafe {
                         (*this).match_and_collect_meta_item(
                             local_def(item.id),

@@ -395,7 +395,7 @@ pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
     }
 
     // if there is an id, print that instead of the structural type:
-    /*for ty::type_def_id(typ).each |def_id| {
+    /*for ty::type_def_id(typ).iter().advance |def_id| {
         // note that this typedef cannot have type parameters
         return ast_map::path_to_str(ty::item_path(cx, *def_id),
                                     cx.sess.intr());
@@ -573,7 +573,7 @@ impl Repr for ty::ParamBounds {
                 ty::BoundSized => ~"Sized",
             });
         }
-        for self.trait_bounds.each |t| {
+        for self.trait_bounds.iter().advance |t| {
             res.push(t.repr(tcx));
         }
         res.connect("+")
