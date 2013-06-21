@@ -1828,7 +1828,9 @@ impl TypeContents {
             // Currently all noncopyable existentials are 2nd-class types
             // behind owned pointers. With dynamically-sized types, remove
             // this assertion.
-            assert!(self.intersects(TC_OWNED_POINTER));
+            assert!(self.intersects(TC_OWNED_POINTER) ||
+                    // (...or stack closures without a copy bound.)
+                    self.intersects(TC_BORROWED_POINTER));
         }
         let tc = TC_MANAGED + TC_DTOR + TypeContents::sendable(cx);
         self.intersects(tc)
@@ -2194,7 +2196,14 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
             ast::Once => TC_ONCE_CLOSURE,
             ast::Many => TC_NONE
         };
-        st + rt + ot
+        // Prevent noncopyable types captured in the environment from being copied.
+        let ct = if cty.bounds.contains_elem(BoundCopy) ||
+                    cty.sigil == ast::ManagedSigil {
+            TC_NONE
+        } else {
+            TC_NONCOPY_TRAIT
+        };
+        st + rt + ot + ct
     }
 
     fn trait_contents(store: TraitStore, mutbl: ast::mutability,
