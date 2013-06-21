@@ -249,6 +249,18 @@ mod test {
     }
 
     #[test]
+    fn comm_shared_chan() {
+        use comm::*;
+
+        do run_in_newsched_task() {
+            let (port, chan) = stream();
+            let chan = SharedChan::new(chan);
+            chan.send(10);
+            assert!(port.recv() == 10);
+        }
+    }
+
+    #[test]
     fn linked_failure() {
         do run_in_newsched_task() {
             let res = do spawntask_try {
