@@ -19,7 +19,7 @@ use cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering, Less, Equal, Greater};
 use clone::Clone;
 use old_iter::BaseIter;
 use old_iter;
-use iterator::{Iterator, IteratorUtil};
+use iterator::{FromIterator, Iterator, IteratorUtil};
 use iter::FromIter;
 use kinds::Copy;
 use libc;
@@ -2508,6 +2508,18 @@ impl<T> FromIter<T> for ~[T]{
         let mut v = ~[];
         for iter |x| { v.push(x) }
         v
+    }
+}
+
+#[cfg(not(stage0))]
+impl<A, T: Iterator<A>> FromIterator<A, T> for ~[A] {
+    pub fn from_iterator(iterator: &mut T) -> ~[A] {
+        let (lower, _) = iterator.size_hint();
+        let mut xs = with_capacity(lower.get_or_zero());
+        for iterator.advance |x| {
+            xs.push(x);
+        }
+        xs
     }
 }
 
