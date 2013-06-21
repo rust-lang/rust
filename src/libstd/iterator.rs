@@ -27,6 +27,12 @@ use ops::{Add, Mul};
 use cmp::Ord;
 use clone::Clone;
 
+/// Conversion from an `Iterator`
+pub trait FromIterator<A, T: Iterator<A>> {
+    /// Build a container with elements from an external iterator.
+    pub fn from_iterator(iterator: &mut T) -> Self;
+}
+
 /// An interface for dealing with "external iterators". These types of iterators
 /// can be resumed at any time as all state is stored internally as opposed to
 /// being located on the call stack.
@@ -931,7 +937,7 @@ mod tests {
     #[test]
     fn test_counter_from_iter() {
         let mut it = Counter::new(0, 5).take_(10);
-        let xs: ~[int] = iter::FromIter::from_iter::<int, ~[int]>(|f| it.advance(f));
+        let xs: ~[int] = FromIterator::from_iterator(&mut it);
         assert_eq!(xs, ~[0, 5, 10, 15, 20, 25, 30, 35, 40, 45]);
     }
 
