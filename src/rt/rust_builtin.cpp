@@ -932,6 +932,24 @@ rust_get_num_cpus() {
     return get_num_cpus();
 }
 
+static lock_and_signal global_args_lock;
+static uintptr_t global_args_ptr = 0;
+
+extern "C" CDECL void
+rust_take_global_args_lock() {
+    global_args_lock.lock();
+}
+
+extern "C" CDECL void
+rust_drop_global_args_lock() {
+    global_args_lock.unlock();
+}
+
+extern "C" CDECL uintptr_t*
+rust_get_global_args_ptr() {
+    return &global_args_ptr;
+}
+
 //
 // Local Variables:
 // mode: C++
