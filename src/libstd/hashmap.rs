@@ -18,7 +18,6 @@
 use container::{Container, Mutable, Map, Set};
 use cmp::{Eq, Equiv};
 use hash::Hash;
-use old_iter::BaseIter;
 use iterator::{Iterator, IteratorUtil};
 use option::{None, Option, Some};
 use rand::RngUtil;
@@ -622,12 +621,6 @@ pub struct HashSet<T> {
     priv map: HashMap<T, ()>
 }
 
-impl<T:Hash + Eq> BaseIter<T> for HashSet<T> {
-    /// Visit all values in order
-    fn each(&self, f: &fn(&T) -> bool) -> bool { self.map.each_key(f) }
-    fn size_hint(&self) -> Option<uint> { Some(self.len()) }
-}
-
 impl<T:Hash + Eq> Eq for HashSet<T> {
     fn eq(&self, other: &HashSet<T>) -> bool { self.map == other.map }
     fn ne(&self, other: &HashSet<T>) -> bool { self.map != other.map }
@@ -723,6 +716,12 @@ impl<T:Hash + Eq> HashSet<T> {
     /// given query value.
     pub fn contains_equiv<Q:Hash + Equiv<T>>(&self, value: &Q) -> bool {
       self.map.contains_key_equiv(value)
+    }
+
+    /// Visit all elements in arbitrary order
+    /// FIXME: Remove when all callers are converted
+    pub fn each(&self, f: &fn(&T) -> bool) -> bool {
+        self.iter().advance(f)
     }
 
     /// An iterator visiting all elements in arbitrary order.
