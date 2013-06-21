@@ -415,7 +415,7 @@ pub fn get_impl_trait(cdata: cmd,
 }
 
 pub fn get_impl_method(intr: @ident_interner, cdata: cmd, id: ast::node_id,
-                       name: ast::ident) -> ast::def_id {
+                       name: ast::ident) -> Option<ast::def_id> {
     let items = reader::get_doc(reader::Doc(cdata.data), tag_items);
     let mut found = None;
     for reader::tagged_docs(find_item(id, items), tag_item_impl_method)
@@ -425,7 +425,7 @@ pub fn get_impl_method(intr: @ident_interner, cdata: cmd, id: ast::node_id,
                 found = Some(translate_def_id(cdata, m_did));
             }
         }
-    found.get()
+    found
 }
 
 pub fn get_symbol(data: @~[u8], id: ast::node_id) -> ~str {
@@ -755,40 +755,13 @@ pub fn get_provided_trait_methods(intr: @ident_interner, cdata: cmd,
     let item = lookup_item(id, data);
     let mut result = ~[];
 
-    for reader::tagged_docs(item, tag_item_trait_method) |mth| {
+    for reader::tagged_docs(item, tag_item_trait_method) |mth_id| {
+        let did = item_def_id(mth_id, cdata);
+        let mth = lookup_item(did.node, data);
+
         if item_method_sort(mth) != 'p' { loop; }
 
-        let did = item_def_id(mth, cdata);
-
-        let type_param_defs =
-            item_ty_param_defs(mth, tcx, cdata,
-                               tag_items_data_item_ty_param_bounds);
-        let name = item_name(intr, mth);
-        let ty = doc_type(mth, tcx, cdata);
-
-        let fty = match ty::get(ty).sty {
-            ty::ty_bare_fn(ref f) => copy *f,
-            _ => {
-                tcx.diag.handler().bug("get_provided_trait_methods(): id \
-                                        has non-function type");
-            }
-        };
-
-        let transformed_self_ty = doc_transformed_self_ty(mth, tcx, cdata);
-        let explicit_self = get_explicit_self(mth);
-
-        let ty_method = ty::Method::new(
-            name,
-            ty::Generics {
-                type_param_defs: type_param_defs,
-                region_param: None
-            },
-            transformed_self_ty,
-            fty,
-            explicit_self,
-            ast::public,
-            did
-        );
+        let ty_method = get_method(intr, cdata, did.node, tcx);
         let provided_trait_method_info = ProvidedTraitMethodInfo {
             ty: ty_method,
             def_id: did
