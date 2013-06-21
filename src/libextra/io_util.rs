@@ -10,6 +10,7 @@
 
 use core::io::{Reader, BytesReader};
 use core::io;
+use core::cast;
 
 /// An implementation of the io::Reader interface which reads a buffer of bytes
 pub struct BufReader {
@@ -29,10 +30,13 @@ impl BufReader {
     }
 
     fn as_bytes_reader<A>(&self, f: &fn(&BytesReader) -> A) -> A {
+        // XXX FIXME(#5723)
+        let bytes = ::core::util::id::<&[u8]>(self.buf);
+        let bytes: &'static [u8] = unsafe { cast::transmute(bytes) };
         // Recreating the BytesReader state every call since
         // I can't get the borrowing to work correctly
         let bytes_reader = BytesReader {
-            bytes: ::core::util::id::<&[u8]>(self.buf),
+            bytes: bytes,
             pos: @mut *self.pos
         };
 
