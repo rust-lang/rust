@@ -279,18 +279,6 @@ pub fn malloc_raw_dyn(bcx: block,
     r
 }
 
-/**
-* Get the type of a box in the default address space.
-*
-* Shared box pointers live in address space 1 so the GC strategy can find
-* them. Before taking a pointer to the inside of a box it should be cast into
-* address space 0. Otherwise the resulting (non-box) pointer will be in the
-* wrong address space and thus be the wrong type.
-*/
-pub fn non_gc_box_cast(_: block, val: ValueRef) -> ValueRef {
-    val
-}
-
 // malloc_raw: expects an unboxed type and returns a pointer to
 // enough space for a box of that type.  This includes a rust_opaque_box
 // header.
@@ -312,8 +300,7 @@ pub fn malloc_general_dyn(bcx: block, t: ty::t, heap: heap, size: ValueRef)
     -> MallocResult {
     let _icx = push_ctxt("malloc_general");
     let Result {bcx: bcx, val: llbox} = malloc_raw_dyn(bcx, t, heap, size);
-    let non_gc_box = non_gc_box_cast(bcx, llbox);
-    let body = GEPi(bcx, non_gc_box, [0u, abi::box_field_body]);
+    let body = GEPi(bcx, llbox, [0u, abi::box_field_body]);
 
     MallocResult { bcx: bcx, box: llbox, body: body }
 }
@@ -1827,16 +1814,6 @@ pub fn trans_closure(ccx: @mut CrateContext,
     if attr::attrs_contains_name(attributes, "fixed_stack_segment") {
         set_no_inline(fcx.llfn);
         set_fixed_stack_segment(fcx.llfn);
-    }
-
-    // Set GC for function.
-    if ccx.sess.opts.gc {
-        do str::as_c_str("generic") |strategy| {
-            unsafe {
-                llvm::LLVMSetGC(fcx.llfn, strategy);
-            }
-        }
-        ccx.uses_gc = true;
     }
 
     // Create the first basic block in the function and keep a handle on it to

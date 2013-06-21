@@ -1389,9 +1389,7 @@ pub fn compile_submatch(bcx: block,
     if any_box_pat(m, col) {
         bcx = root_pats_as_necessary(bcx, m, col, val);
         let llbox = Load(bcx, val);
-        let box_no_addrspace = non_gc_box_cast(bcx, llbox);
-        let unboxed =
-            GEPi(bcx, box_no_addrspace, [0u, abi::box_field_body]);
+        let unboxed = GEPi(bcx, llbox, [0u, abi::box_field_body]);
         compile_submatch(bcx, enter_box(bcx, dm, m, col, val),
                          vec::append(~[unboxed], vals_left), chk);
         return;
@@ -1399,9 +1397,7 @@ pub fn compile_submatch(bcx: block,
 
     if any_uniq_pat(m, col) {
         let llbox = Load(bcx, val);
-        let box_no_addrspace = non_gc_box_cast(bcx, llbox);
-        let unboxed =
-            GEPi(bcx, box_no_addrspace, [0u, abi::box_field_body]);
+        let unboxed = GEPi(bcx, llbox, [0u, abi::box_field_body]);
         compile_submatch(bcx, enter_uniq(bcx, dm, m, col, val),
                          vec::append(~[unboxed], vals_left), chk);
         return;

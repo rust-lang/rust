@@ -375,8 +375,6 @@ pub fn make_free_glue(bcx: block, v: ValueRef, t: ty::t) {
       ty::ty_box(body_mt) => {
         let v = Load(bcx, v);
         let body = GEPi(bcx, v, [0u, abi::box_field_body]);
-        // Cast away the addrspace of the box pointer.
-        let body = PointerCast(bcx, body, type_of(ccx, body_mt.ty).ptr_to());
         let bcx = drop_ty(bcx, body, body_mt.ty);
         trans_free(bcx, v)
       }

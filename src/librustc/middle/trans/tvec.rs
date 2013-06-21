@@ -64,7 +64,7 @@ pub fn get_alloc(bcx: block, vptr: ValueRef) -> ValueRef {
 }
 
 pub fn get_bodyptr(bcx: block, vptr: ValueRef) -> ValueRef {
-    base::non_gc_box_cast(bcx, GEPi(bcx, vptr, [0u, abi::box_field_body]))
+    GEPi(bcx, vptr, [0u, abi::box_field_body])
 }
 
 pub fn get_dataptr(bcx: block, vptr: ValueRef) -> ValueRef {
