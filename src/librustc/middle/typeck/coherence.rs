@@ -279,7 +279,7 @@ impl CoherenceChecker {
                    trait_ref.repr(self.crate_context.tcx),
                    self.crate_context.tcx.sess.str_of(item.ident));
 
-            self.instantiate_default_methods(item.id, trait_ref);
+            self.instantiate_default_methods(local_def(item.id), trait_ref);
 
             let implementation;
             if implementation_opt.is_none() {
@@ -327,13 +327,13 @@ impl CoherenceChecker {
     // and trait pair. Then, for each provided method in the trait, inserts a
     // `ProvidedMethodInfo` instance into the `provided_method_sources` map.
     pub fn instantiate_default_methods(&self,
-                                       impl_id: ast::node_id,
+                                       impl_id: ast::def_id,
                                        trait_ref: &ty::TraitRef) {
         let tcx = self.crate_context.tcx;
         debug!("instantiate_default_methods(impl_id=%?, trait_ref=%s)",
                impl_id, trait_ref.repr(tcx));
 
-        let impl_poly_type = ty::lookup_item_type(tcx, local_def(impl_id));
+        let impl_poly_type = ty::lookup_item_type(tcx, impl_id);
 
         for self.each_provided_trait_method(trait_ref.def_id) |trait_method| {
             // Synthesize an ID.
@@ -375,7 +375,7 @@ impl CoherenceChecker {
             // ID of the method.
             let source = ProvidedMethodSource {
                 method_id: trait_method.def_id,
-                impl_id: local_def(impl_id)
+                impl_id: impl_id
             };
 
             self.crate_context.tcx.provided_method_sources.insert(new_did,
@@ -393,7 +393,7 @@ impl CoherenceChecker {
                 };
 
             let pmm = self.crate_context.tcx.provided_methods;
-            match pmm.find(&local_def(impl_id)) {
+            match pmm.find(&impl_id) {
                 Some(&mis) => {
                     // If the trait already has an entry in the
                     // provided_methods_map, we just need to add this
@@ -410,7 +410,7 @@ impl CoherenceChecker {
                             for method `%s`",
                             self.crate_context.tcx.sess.str_of(
                                 provided_method_info.method_info.ident));
-                    pmm.insert(local_def(impl_id),
+                    pmm.insert(impl_id,
                                @mut ~[provided_method_info]);
                 }
             }
@@ -729,10 +729,12 @@ impl CoherenceChecker {
         }
         // Default methods
         for ty::provided_trait_methods(tcx, trait_did).each |ident| {
+            debug!("inserting provided method %s", ident.repr(tcx));
             provided_names.insert(*ident);
         }
 
         for (*ty::trait_methods(tcx, trait_did)).each |method| {
+            debug!("checking for %s", method.ident.repr(tcx));
             if provided_names.contains(&method.ident) { loop; }
 
             tcx.sess.span_err(trait_ref_span,
@@ -781,19 +783,41 @@ impl CoherenceChecker {
         }
     }
 
+    fn add_provided_methods_to_impl(
+        &self,
+        all_methods: &mut ~[@MethodInfo],
+        trait_did: &ast::def_id,
+        impl_id: &ast::def_id) {
+
+
+        match self.crate_context.tcx
+            .provided_methods
+            .find(impl_id) {
+                None => {
+                    debug!("(creating impl) trait with node_id `%d` \
+                            has no provided methods", trait_did.node);
+                    /* fall through */
+                }
+                Some(&all_provided_methods) => {
+                    debug!("(creating impl) trait with node_id `%d` \
+                            has provided methods", trait_did.node);
+                    // Add all provided methods.
+                    for all_provided_methods.each |provided_method| {
+                        debug!(
+                            "(creating impl) adding provided method \
+                             `%s` to impl",
+                            provided_method.method_info
+                            .ident.repr(self.crate_context.tcx));
+                        vec::push(all_methods, provided_method.method_info);
+                    }
+                }
+            }
+
+
+    }
+
     // Converts an implementation in the AST to an Impl structure.
     pub fn create_impl_from_item(&self, item: @item) -> @Impl {
-        fn add_provided_methods(all_methods: &mut ~[@MethodInfo],
-                            all_provided_methods: &mut ~[@ProvidedMethodInfo],
-                            sess: driver::session::Session) {
-            for all_provided_methods.each |provided_method| {
-                debug!(
-                    "(creating impl) adding provided method `%s` to impl",
-                    sess.str_of(provided_method.method_info.ident));
-                vec::push(all_methods, provided_method.method_info);
-            }
-        }
-
         match item.node {
             item_impl(_, ref trait_refs, _, ref ast_methods) => {
                 let mut methods = ~[];
@@ -816,27 +840,11 @@ impl CoherenceChecker {
                 // if a method of that name is not inherent to the
                 // impl, use the provided definition in the trait.
                 for trait_refs.iter().advance |trait_ref| {
-                    let trait_did =
-                        self.trait_ref_to_trait_def_id(*trait_ref);
-
-                    match self.crate_context.tcx
-                              .provided_methods
-                              .find(&local_def(item.id)) {
-                        None => {
-                            debug!("(creating impl) trait with node_id `%d` \
-                                    has no provided methods", trait_did.node);
-                            /* fall through */
-                        }
-                        Some(&all_provided) => {
-                            debug!("(creating impl) trait with node_id `%d` \
-                                    has provided methods", trait_did.node);
-                            // Add all provided methods.
-                            add_provided_methods(
-                                &mut methods,
-                                all_provided,
-                                self.crate_context.tcx.sess);
-                        }
-                    }
+                    let trait_did = self.trait_ref_to_trait_def_id(*trait_ref);
+                    self.add_provided_methods_to_impl(
+                        &mut methods,
+                        &trait_did,
+                        &local_def(item.id));
                 }
 
                 return @Impl {
@@ -913,9 +921,23 @@ impl CoherenceChecker {
                 }
             }
 
+            let mut implementation = *implementation;
+
             // Record all the trait methods.
             for associated_traits.iter().advance |trait_ref| {
-                self.add_trait_method(trait_ref.def_id, *implementation);
+                self.instantiate_default_methods(implementation.did,
+                                                 &**trait_ref);
+                // Could we avoid these copies when we don't need them?
+                let mut methods = /*bad?*/ copy implementation.methods;
+                self.add_provided_methods_to_impl(
+                    &mut methods,
+                    &trait_ref.def_id,
+                    &implementation.did);
+                implementation = @Impl { methods: methods,
+                                        .. *implementation };
+
+
+                self.add_trait_method(trait_ref.def_id, implementation);
             }
 
             // Add the implementation to the mapping from
@@ -933,45 +955,13 @@ impl CoherenceChecker {
                     // `impl Trait for Type`:
                     if associated_traits.is_none() {
                         self.add_inherent_method(base_type_def_id,
-                                                 *implementation);
+                                                 implementation);
                     }
 
                     self.base_type_def_ids.insert(implementation.did,
                                                   base_type_def_id);
                 }
             }
-        }
-    }
-
-    pub fn add_default_methods_for_external_trait(&self,
-                                                  trait_def_id: ast::def_id) {
-        let tcx = self.crate_context.tcx;
-        let pmm = tcx.provided_methods;
-
-        if pmm.contains_key(&trait_def_id) { return; }
-
-        debug!("(adding default methods for trait) processing trait");
-
-        for csearch::get_provided_trait_methods(tcx, trait_def_id).each
-                                                |trait_method_info| {
-            debug!("(adding default methods for trait) found default method");
-
-            // Create a new def ID for this provided method.
-            let parse_sess = &self.crate_context.tcx.sess.parse_sess;
-            let new_did = local_def(parse::next_node_id(*parse_sess));
-
-            let provided_method_info =
-                @ProvidedMethodInfo {
-                    method_info: @MethodInfo {
-                        did: new_did,
-                        n_tps: trait_method_info.ty.generics.type_param_defs.len(),
-                        ident: trait_method_info.ty.ident,
-                        explicit_self: trait_method_info.ty.explicit_self
-                    },
-                    trait_method_def_id: trait_method_info.def_id
-                };
-
-            pmm.insert(trait_def_id, @mut ~[provided_method_info]);
         }
     }
 
@@ -993,9 +983,6 @@ impl CoherenceChecker {
                         self.add_impls_for_module(&mut impls_seen,
                                                   crate_store,
                                                   def_id);
-                    }
-                    dl_def(def_trait(def_id)) => {
-                        self.add_default_methods_for_external_trait(def_id);
                     }
                     dl_def(_) | dl_impl(_) | dl_field => {
                         // Skip this.
@@ -1059,12 +1046,11 @@ impl CoherenceChecker {
     }
 }
 
-fn subst_receiver_types_in_method_ty(tcx: ty::ctxt,
-                                     impl_id: ast::node_id,
-                                     trait_ref: &ty::TraitRef,
-                                     new_def_id: ast::def_id,
-                                     method: &ty::Method)
-                                     -> ty::Method {
+pub fn make_substs_for_receiver_types(tcx: ty::ctxt,
+                                      impl_id: ast::def_id,
+                                      trait_ref: &ty::TraitRef,
+                                      method: &ty::Method)
+                                      -> ty::substs {
     /*!
      * Substitutes the values for the receiver's type parameters
      * that are found in method, leaving the method's type parameters
@@ -1075,7 +1061,7 @@ fn subst_receiver_types_in_method_ty(tcx: ty::ctxt,
 
     // determine how many type parameters were declared on the impl
     let num_impl_type_parameters = {
-        let impl_polytype = ty::lookup_item_type(tcx, local_def(impl_id));
+        let impl_polytype = ty::lookup_item_type(tcx, impl_id);
         impl_polytype.generics.type_param_defs.len()
     };
 
@@ -1101,11 +1087,22 @@ fn subst_receiver_types_in_method_ty(tcx: ty::ctxt,
         }
     });
 
-    let combined_substs = ty::substs {
+    return ty::substs {
         self_r: trait_ref.substs.self_r,
         self_ty: trait_ref.substs.self_ty,
         tps: combined_tps
     };
+}
+
+fn subst_receiver_types_in_method_ty(tcx: ty::ctxt,
+                                     impl_id: ast::def_id,
+                                     trait_ref: &ty::TraitRef,
+                                     new_def_id: ast::def_id,
+                                     method: &ty::Method)
+                                     -> ty::Method {
+
+    let combined_substs = make_substs_for_receiver_types(
+        tcx, impl_id, trait_ref, method);
 
     ty::Method::new(
         method.ident,

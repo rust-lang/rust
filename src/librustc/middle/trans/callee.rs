@@ -42,6 +42,7 @@ use middle::trans::type_of;
 use middle::ty;
 use middle::subst::Subst;
 use middle::typeck;
+use middle::typeck::coherence::make_substs_for_receiver_types;
 use util::ppaux::Repr;
 
 use core::vec;
@@ -253,49 +254,23 @@ pub fn trans_fn_ref_with_vtables(
             // So, what we need to do is find this substitution and
             // compose it with the one we already have.
 
-            // In order to find the substitution for the trait params,
-            // we look up the impl in the ast map, find its trait_ref
-            // id, then look up its trait ref. I feel like there
-            // should be a better way.
-            let map_node = session::expect(
-                ccx.sess,
-                ccx.tcx.items.find_copy(&source.impl_id.node),
-                || fmt!("couldn't find node while monomorphizing \
-                         default method: %?", source.impl_id.node));
-            let item = match map_node {
-                ast_map::node_item(item, _) => item,
-                _ => ccx.tcx.sess.bug("Not an item")
-            };
-            let ast_trait_ref = match copy item.node {
-                ast::item_impl(_, Some(tr), _, _) => tr,
-                _ => ccx.tcx.sess.bug("Not an impl with trait_ref")
-            };
-            let trait_ref = ccx.tcx.trait_refs.get(&ast_trait_ref.ref_id);
+            let trait_ref = ty::impl_trait_ref(tcx, source.impl_id)
+                .expect("could not find trait_ref for impl with \
+                         default methods");
+            let method = ty::method(tcx, source.method_id);
 
-            // The substs from the trait_ref only substitues for the
-            // trait parameters. Our substitution also needs to be
-            // able to substitute for the actual method type
-            // params. To do this, we figure out how many method
-            // parameters there are and pad out the substitution with
-            // substitution for the variables.
-            let item_ty = ty::lookup_item_type(tcx, source.method_id);
-            let num_params = item_ty.generics.type_param_defs.len() -
-                trait_ref.substs.tps.len();
-            let id_subst = do vec::from_fn(num_params) |i| {
-                ty::mk_param(tcx, i, ast::def_id {crate: 0, node: 0})
-            };
-            // Merge the two substitions together now.
-            let first_subst = ty::substs {tps: trait_ref.substs.tps + id_subst,
-                                          .. trait_ref.substs};
+            // Compute the first substitution
+            let first_subst = make_substs_for_receiver_types(
+                tcx, source.impl_id, trait_ref, method);
 
-            // And compose them.
+            // And compose them
             let new_substs = first_subst.subst(tcx, &substs);
             debug!("trans_fn_with_vtables - default method: \
-                    substs = %s, id_subst = %s, trait_subst = %s, \
+                    substs = %s, trait_subst = %s, \
                     first_subst = %s, new_subst = %s",
-                   substs.repr(tcx),
-                   id_subst.repr(tcx), trait_ref.substs.repr(tcx),
+                   substs.repr(tcx), trait_ref.substs.repr(tcx),
                    first_subst.repr(tcx), new_substs.repr(tcx));
+
 
             (source.method_id, Some(source.impl_id), new_substs)
         }

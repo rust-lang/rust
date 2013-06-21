@@ -229,7 +229,7 @@ pub fn get_impl_trait(tcx: ty::ctxt,
 pub fn get_impl_method(cstore: @mut cstore::CStore,
                        def: ast::def_id,
                        mname: ast::ident)
-                    -> ast::def_id {
+                    -> Option<ast::def_id> {
     let cdata = cstore::get_crate_data(cstore, def.crate);
     decoder::get_impl_method(cstore.intr, cdata, def.node, mname)
 }
