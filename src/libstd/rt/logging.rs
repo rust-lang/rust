@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use either::*;
+use libc;
 
 pub trait Logger {
     fn log(&mut self, msg: Either<~str, &'static str>);
@@ -19,6 +20,10 @@ pub struct StdErrLogger;
 impl Logger for StdErrLogger {
     fn log(&mut self, msg: Either<~str, &'static str>) {
         use io::{Writer, WriterUtil};
+
+        if !should_log_console() {
+            return;
+        }
 
         let s: &str = match msg {
             Left(ref s) => {
@@ -44,7 +49,6 @@ pub fn init(crate_map: *u8) {
     use str;
     use ptr;
     use option::{Some, None};
-    use libc::c_char;
 
     let log_spec = os::getenv("RUST_LOG");
     match log_spec {
@@ -61,8 +65,16 @@ pub fn init(crate_map: *u8) {
             }
         }
     }
-
-    extern {
-        fn rust_update_log_settings(crate_map: *u8, settings: *c_char);
-    }
 }
+
+pub fn console_on() { unsafe { rust_log_console_on() } }
+pub fn console_off() { unsafe { rust_log_console_off() } }
+fn should_log_console() -> bool { unsafe { rust_should_log_console() != 0 } }
+
+extern {
+    fn rust_update_log_settings(crate_map: *u8, settings: *libc::c_char);
+    fn rust_log_console_on();
+    fn rust_log_console_off();
+    fn rust_should_log_console() -> libc::uintptr_t;
+}
+
