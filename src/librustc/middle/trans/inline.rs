@@ -93,11 +93,16 @@ pub fn maybe_instantiate_inline(ccx: @mut CrateContext, fn_id: ast::def_id,
         csearch::found(ast::ii_method(impl_did, mth)) => {
           ccx.stats.n_inlines += 1;
           ccx.external.insert(fn_id, Some(mth.id));
-          let impl_tpt = ty::lookup_item_type(ccx.tcx, impl_did);
-          let num_type_params =
-              impl_tpt.generics.type_param_defs.len() +
-              mth.generics.ty_params.len();
-          if translate && num_type_params == 0 {
+          // If this is a default method, we can't look up the
+          // impl type. But we aren't going to translate anyways, so don't.
+          if !translate { return local_def(mth.id); }
+
+            let impl_tpt = ty::lookup_item_type(ccx.tcx, impl_did);
+            let num_type_params =
+                impl_tpt.generics.type_param_defs.len() +
+                mth.generics.ty_params.len();
+
+          if num_type_params == 0 {
               let llfn = get_item_val(ccx, mth.id);
               let path = vec::append(
                   ty::item_path(ccx.tcx, impl_did),

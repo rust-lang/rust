@@ -383,71 +383,48 @@ pub fn method_with_name_or_default(ccx: @mut CrateContext,
                                    name: ast::ident) -> ast::def_id {
     let imp = ccx.impl_method_cache.find_copy(&(impl_id, name));
     match imp {
-        Some(m) => m,
-        None => {
-            let imp = if impl_id.crate == ast::local_crate {
-                match ccx.tcx.items.get_copy(&impl_id.node) {
-                    ast_map::node_item(@ast::item {
-                                       node: ast::item_impl(_, _, _, ref ms), _
-                                       }, _) => {
-                        let did = method_from_methods(*ms, name);
-                        if did.is_some() {
-                            did.get()
-                        } else {
-                            // Look for a default method
-                            let pmm = ccx.tcx.provided_methods;
-                            match pmm.find(&impl_id) {
-                                Some(pmis) => {
-                                    for pmis.each |pmi| {
-                                        if pmi.method_info.ident == name {
-                                            debug!("pmi.method_info.did = %?", pmi.method_info.did);
-                                            return pmi.method_info.did;
-                                        }
-                                    }
-                                    fail!()
-                                }
-                                None => fail!()
-                            }
-                        }
+        Some(m) => return m,
+        None => {}
+    }
+
+    // None of this feels like it should be the best way to do this.
+    let mut did = if impl_id.crate == ast::local_crate {
+        match ccx.tcx.items.get_copy(&impl_id.node) {
+            ast_map::node_item(@ast::item {
+                node: ast::item_impl(_, _, _, ref ms), _
+            }, _) => { method_from_methods(*ms, name) },
+            _ => fail!("method_with_name")
+        }
+    } else {
+        csearch::get_impl_method(ccx.sess.cstore, impl_id, name)
+    };
+
+    if did.is_none() {
+        // Look for a default method
+        let pmm = ccx.tcx.provided_methods;
+        match pmm.find(&impl_id) {
+            Some(pmis) => {
+                for pmis.each |pmi| {
+                    if pmi.method_info.ident == name {
+                        debug!("pmi.method_info.did = %?",
+                               pmi.method_info.did);
+                        did = Some(pmi.method_info.did);
                     }
-                    _ => fail!("method_with_name")
                 }
-            } else {
-                csearch::get_impl_method(ccx.sess.cstore, impl_id, name)
-            };
-
-            ccx.impl_method_cache.insert((impl_id, name), imp);
-
-            imp
+            }
+            None => {}
         }
     }
+
+    let imp = did.expect("could not find method while translating");
+    ccx.impl_method_cache.insert((impl_id, name), imp);
+    imp
 }
 
 pub fn method_ty_param_count(ccx: &CrateContext, m_id: ast::def_id,
                              i_id: ast::def_id) -> uint {
     debug!("method_ty_param_count: m_id: %?, i_id: %?", m_id, i_id);
-    if m_id.crate == ast::local_crate {
-        match ccx.tcx.items.find(&m_id.node) {
-            Some(&ast_map::node_method(m, _, _)) => m.generics.ty_params.len(),
-            None => {
-                match ccx.tcx.provided_method_sources.find(&m_id) {
-                    Some(source) => {
-                        method_ty_param_count(
-                            ccx, source.method_id, source.impl_id)
-                    }
-                    None => fail!()
-                }
-            }
-            Some(&ast_map::node_trait_method(@ast::provided(@ref m),
-                                            _, _)) => {
-                m.generics.ty_params.len()
-            }
-            ref e => fail!("method_ty_param_count %?", *e)
-        }
-    } else {
-        csearch::get_type_param_count(ccx.sess.cstore, m_id) -
-            csearch::get_type_param_count(ccx.sess.cstore, i_id)
-    }
+    ty::method(ccx.tcx, m_id).generics.type_param_defs.len()
 }
 
 pub fn trans_monomorphized_callee(bcx: block,
