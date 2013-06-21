@@ -29,13 +29,13 @@
 
 fn main() {
     let a = @mut 3i;
-    // let b = @mut [a];
-    // let c = @mut [3];
+    let b = @mut [a];
+    let c = @mut [3];
 
     // this should freeze `a` only
     let _x: &mut int = a;
 
     // hence these writes should not fail:
-    // b[0] = b[0];
-    // c[0] = c[0];
+    b[0] = b[0];
+    c[0] = c[0];
 }
