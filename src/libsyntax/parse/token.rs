@@ -484,7 +484,7 @@ pub fn get_ident_interner() -> @ident_interner {
     unsafe {
         let key =
             (cast::transmute::<(uint, uint),
-             &fn(v: @@::parse::token::ident_interner)>(
+             &fn:Copy(v: @@::parse::token::ident_interner)>(
                  (-3 as uint, 0u)));
         match local_data::local_data_get(key) {
             Some(interner) => *interner,

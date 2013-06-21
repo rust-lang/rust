@@ -704,7 +704,7 @@ pub fn new_sctable_internal() -> SCTable {
 pub fn get_sctable() -> @mut SCTable {
     unsafe {
         let sctable_key = (cast::transmute::<(uint, uint),
-                           &fn(v: @@mut SCTable)>(
+                           &fn:Copy(v: @@mut SCTable)>(
                                (-4 as uint, 0u)));
         match local_data::local_data_get(sctable_key) {
             None => {
