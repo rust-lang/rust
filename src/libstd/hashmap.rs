@@ -952,6 +952,7 @@ mod test_set {
     use super::*;
     use container::{Container, Map, Set};
     use vec;
+    use uint;
 
     #[test]
     fn test_disjoint() {
@@ -1002,6 +1003,19 @@ mod test_set {
         assert!(!a.is_superset(&b));
         assert!(!b.is_subset(&a));
         assert!(b.is_superset(&a));
+    }
+
+    #[test]
+    fn test_iterate() {
+        let mut a = HashSet::new();
+        for uint::range(0, 32) |i| {
+            assert!(a.insert(i));
+        }
+        let mut observed = 0;
+        for a.iter().advance |k| {
+            observed |= (1 << *k);
+        }
+        assert_eq!(observed, 0xFFFF_FFFF);
     }
 
     #[test]
