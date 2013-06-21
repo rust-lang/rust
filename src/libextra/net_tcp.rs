@@ -57,7 +57,7 @@ pub struct TcpSocket {
 
 #[unsafe_destructor]
 impl Drop for TcpSocket {
-    fn finalize(&self) {
+    fn drop(&self) {
         tear_down_socket_data(self.socket_data)
     }
 }

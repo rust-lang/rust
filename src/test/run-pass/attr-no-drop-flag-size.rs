@@ -17,7 +17,7 @@ struct Test<T> {
 
 #[unsafe_destructor]
 impl<T> Drop for Test<T> {
-    fn finalize(&self) { }
+    fn drop(&self) { }
 }
 
 fn main() {

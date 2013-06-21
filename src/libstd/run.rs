@@ -428,7 +428,7 @@ impl Process {
 }
 
 impl Drop for Process {
-    fn finalize(&self) {
+    fn drop(&self) {
         // FIXME(#4330) Need self by value to get mutability.
         let mut_self: &mut Process = unsafe { cast::transmute(self) };
 

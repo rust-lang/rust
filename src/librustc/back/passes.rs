@@ -23,7 +23,7 @@ pub struct PassManager {
 }
 
 impl Drop for PassManager {
-    fn finalize(&self) {
+    fn drop(&self) {
         unsafe {
             llvm::LLVMDisposePassManager(self.llpm);
         }

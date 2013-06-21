@@ -160,7 +160,7 @@ pub mod pipes {
 
     #[unsafe_destructor]
     impl<T:Owned> Drop for send_packet<T> {
-        fn finalize(&self) {
+        fn drop(&self) {
             unsafe {
                 if self.p != None {
                     let self_p: &mut Option<*packet<T>> =
@@ -190,7 +190,7 @@ pub mod pipes {
 
     #[unsafe_destructor]
     impl<T:Owned> Drop for recv_packet<T> {
-        fn finalize(&self) {
+        fn drop(&self) {
             unsafe {
                 if self.p != None {
                     let self_p: &mut Option<*packet<T>> =

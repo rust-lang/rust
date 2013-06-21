@@ -3,7 +3,7 @@ struct S {
 }
 
 impl Drop for S {
-    fn finalize(&self) {}
+    fn drop(&self) {}
 }
 
 impl S {

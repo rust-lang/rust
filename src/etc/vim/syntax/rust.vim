@@ -15,7 +15,7 @@ syn keyword   rustOperator    as
 
 syn match     rustAssert      "\<assert\(\w\)*!"
 syn match     rustFail        "\<fail\(\w\)*!"
-syn keyword   rustKeyword     break copy do drop extern
+syn keyword   rustKeyword     break copy do extern
 syn keyword   rustKeyword     for if impl let log
 syn keyword   rustKeyword     copy do extern
 syn keyword   rustKeyword     for impl let log

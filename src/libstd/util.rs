@@ -83,7 +83,7 @@ impl NonCopyable {
 }
 
 impl Drop for NonCopyable {
-    fn finalize(&self) { }
+    fn drop(&self) { }
 }
 
 
