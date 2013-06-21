@@ -23,7 +23,7 @@ use middle::typeck::infer::fold_regions_in_sig;
 use middle::typeck::isr_alist;
 use syntax::ast;
 use syntax::ast::{Many, Once, extern_fn, impure_fn, m_const, m_imm, m_mutbl};
-use syntax::ast::{pure_fn, unsafe_fn};
+use syntax::ast::{unsafe_fn};
 use syntax::ast::{Onceness, purity};
 use syntax::abi::AbiSet;
 use syntax::codemap::span;
@@ -103,7 +103,6 @@ impl Combine for Glb {
 
     fn purities(&self, a: purity, b: purity) -> cres<purity> {
         match (a, b) {
-          (pure_fn, _) | (_, pure_fn) => Ok(pure_fn),
           (extern_fn, _) | (_, extern_fn) => Ok(extern_fn),
           (impure_fn, _) | (_, impure_fn) => Ok(impure_fn),
           (unsafe_fn, unsafe_fn) => Ok(unsafe_fn)

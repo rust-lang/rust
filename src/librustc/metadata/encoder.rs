@@ -753,7 +753,6 @@ fn encode_info_for_method(ecx: &EncodeContext,
 fn purity_fn_family(p: purity) -> char {
     match p {
       unsafe_fn => 'u',
-      pure_fn => 'p',
       impure_fn => 'f',
       extern_fn => 'e'
     }
@@ -762,7 +761,6 @@ fn purity_fn_family(p: purity) -> char {
 fn purity_static_method_family(p: purity) -> char {
     match p {
       unsafe_fn => 'U',
-      pure_fn => 'P',
       impure_fn => 'F',
       _ => fail!("extern fn can't be static")
     }
