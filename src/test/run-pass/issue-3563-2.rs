@@ -12,7 +12,7 @@
 trait Canvas {
     fn add_point(&self, point: &int);
     fn add_points(&self, shapes: &[int]) {
-        for shapes.each |pt| {
+        for shapes.iter().advance |pt| {
             self.add_point(pt)
         }
     }

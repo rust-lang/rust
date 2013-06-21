@@ -238,14 +238,14 @@ mod test {
     fn test_scale_unscale() {
         assert_eq!(_05_05i.scale(2f), _1_1i);
         assert_eq!(_1_1i.unscale(2f), _05_05i);
-        for all_consts.each |&c| {
+        for all_consts.iter().advance |&c| {
             assert_eq!(c.scale(2f).unscale(2f), c);
         }
     }
 
     #[test]
     fn test_conj() {
-        for all_consts.each |&c| {
+        for all_consts.iter().advance |&c| {
             assert_eq!(c.conj(), Cmplx::new(c.re, -c.im));
             assert_eq!(c.conj().conj(), c);
         }
@@ -282,7 +282,7 @@ mod test {
             let (r, theta) = c.to_polar();
             assert!((c - Cmplx::from_polar(&r, &theta)).norm() < 1e-6);
         }
-        for all_consts.each |&c| { test(c); }
+        for all_consts.iter().advance |&c| { test(c); }
     }
 
     mod arith {
@@ -295,7 +295,7 @@ mod test {
             assert_eq!(_0_1i + _1_0i, _1_1i);
             assert_eq!(_1_0i + _neg1_1i, _0_1i);
 
-            for all_consts.each |&c| {
+            for all_consts.iter().advance |&c| {
                 assert_eq!(_0_0i + c, c);
                 assert_eq!(c + _0_0i, c);
             }
@@ -307,7 +307,7 @@ mod test {
             assert_eq!(_0_1i - _1_0i, _neg1_1i);
             assert_eq!(_0_1i - _neg1_1i, _1_0i);
 
-            for all_consts.each |&c| {
+            for all_consts.iter().advance |&c| {
                 assert_eq!(c - _0_0i, c);
                 assert_eq!(c - c, _0_0i);
             }
@@ -322,7 +322,7 @@ mod test {
             assert_eq!(_0_1i * _0_1i, -_1_0i);
             assert_eq!(_0_1i * _0_1i * _0_1i * _0_1i, _1_0i);
 
-            for all_consts.each |&c| {
+            for all_consts.iter().advance |&c| {
                 assert_eq!(c * _1_0i, c);
                 assert_eq!(_1_0i * c, c);
             }
@@ -330,7 +330,7 @@ mod test {
         #[test]
         fn test_div() {
             assert_eq!(_neg1_1i / _0_1i, _1_1i);
-            for all_consts.each |&c| {
+            for all_consts.iter().advance |&c| {
                 if c != Zero::zero() {
                     assert_eq!(c / c, _1_0i);
                 }
@@ -340,7 +340,7 @@ mod test {
         fn test_neg() {
             assert_eq!(-_1_0i + _0_1i, _neg1_1i);
             assert_eq!((-_0_1i) * _0_1i, _1_0i);
-            for all_consts.each |&c| {
+            for all_consts.iter().advance |&c| {
                 assert_eq!(-(-c), c);
             }
         }

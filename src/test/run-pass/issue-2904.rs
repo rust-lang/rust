@@ -73,7 +73,7 @@ fn read_board_grid<rdr:'static + io::Reader>(in: rdr) -> ~[~[square]] {
         grid.push(row)
     }
     let width = grid[0].len();
-    for grid.each |row| { assert!(row.len() == width) }
+    for grid.iter().advance |row| { assert!(row.len() == width) }
     grid
 }
 

@@ -59,7 +59,7 @@ static HOMO_SAPIENS: [AminoAcid, ..4] = [
 fn sum_and_scale(a: &'static [AminoAcid]) -> ~[AminoAcid] {
     let mut result = ~[];
     let mut p = 0f32;
-    for a.each |a_i| {
+    for a.iter().advance |a_i| {
         let mut a_i = *a_i;
         p += a_i.p;
         a_i.p = p * LOOKUP_SCALE;
@@ -151,7 +151,7 @@ impl RandomFasta {
 
     fn nextc(&mut self) -> u8 {
         let r = self.rng(1.0);
-        for self.lookup.each |a| {
+        for self.lookup.iter().advance |a| {
             if a.p >= r {
                 return a.c;
             }

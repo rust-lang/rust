@@ -373,7 +373,7 @@ pub fn check_integrity<T>(trie: &TrieNode<T>) {
 
     let mut sum = 0;
 
-    for trie.children.each |x| {
+    for trie.children.iter().advance |x| {
         match *x {
           Nothing => (),
           Internal(ref y) => {

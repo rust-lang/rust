@@ -35,7 +35,7 @@ pub fn check_match(fcx: @mut FnCtxt,
 
     // Typecheck the patterns first, so that we get types for all the
     // bindings.
-    for arms.each |arm| {
+    for arms.iter().advance |arm| {
         let pcx = pat_ctxt {
             fcx: fcx,
             map: pat_id_map(tcx.def_map, arm.pats[0]),
@@ -43,14 +43,14 @@ pub fn check_match(fcx: @mut FnCtxt,
             block_region: ty::re_scope(arm.body.node.id)
         };
 
-        for arm.pats.each |p| { check_pat(&pcx, *p, pattern_ty);}
+        for arm.pats.iter().advance |p| { check_pat(&pcx, *p, pattern_ty);}
     }
 
     // Now typecheck the blocks.
     let mut result_ty = fcx.infcx().next_ty_var();
     let mut arm_non_bot = false;
     let mut saw_err = false;
-    for arms.each |arm| {
+    for arms.iter().advance |arm| {
         let mut guard_err = false;
         let mut guard_bot = false;
         match arm.guard {
@@ -248,7 +248,7 @@ pub fn check_pat_variant(pcx: &pat_ctxt, pat: @ast::pat, path: @ast::Path,
 
     if error_happened {
         for subpats.iter().advance |pats| {
-            for pats.each |pat| {
+            for pats.iter().advance |pat| {
                 check_pat(pcx, *pat, ty::mk_err());
             }
         }
@@ -280,7 +280,7 @@ pub fn check_struct_pat_fields(pcx: &pat_ctxt,
 
     // Typecheck each field.
     let mut found_fields = HashSet::new();
-    for fields.each |field| {
+    for fields.iter().advance |field| {
         match field_map.find(&field.ident) {
             Some(&index) => {
                 let class_field = class_fields[index];
@@ -516,7 +516,7 @@ pub fn check_pat(pcx: &pat_ctxt, pat: @ast::pat, expected: ty::t) {
                 fcx.write_ty(pat.id, expected);
             }
             _ => {
-                for elts.each |elt| {
+                for elts.iter().advance |elt| {
                     check_pat(pcx, *elt, ty::mk_err());
                 }
                 // use terr_tuple_size if both types are tuples
@@ -565,13 +565,13 @@ pub fn check_pat(pcx: &pat_ctxt, pat: @ast::pat, expected: ty::t) {
             (mt, default_region_var)
           },
           _ => {
-              for before.each |&elt| {
+              for before.iter().advance |&elt| {
                   check_pat(pcx, elt, ty::mk_err());
               }
               for slice.iter().advance |&elt| {
                   check_pat(pcx, elt, ty::mk_err());
               }
-              for after.each |&elt| {
+              for after.iter().advance |&elt| {
                   check_pat(pcx, elt, ty::mk_err());
               }
               fcx.infcx().type_error_message_str_with_expected(
@@ -587,7 +587,7 @@ pub fn check_pat(pcx: &pat_ctxt, pat: @ast::pat, expected: ty::t) {
               return;
           }
         };
-        for before.each |elt| {
+        for before.iter().advance |elt| {
             check_pat(pcx, *elt, elt_type.ty);
         }
         match slice {
@@ -600,7 +600,7 @@ pub fn check_pat(pcx: &pat_ctxt, pat: @ast::pat, expected: ty::t) {
             }
             None => ()
         }
-        for after.each |elt| {
+        for after.iter().advance |elt| {
             check_pat(pcx, *elt, elt_type.ty);
         }
         fcx.write_ty(pat.id, expected);

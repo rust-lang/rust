@@ -78,7 +78,7 @@ pub fn type_uses_for(ccx: @mut CrateContext, fn_id: def_id, n_tps: uint)
     match ty::get(ty::lookup_item_type(cx.ccx.tcx, fn_id).ty).sty {
         ty::ty_bare_fn(ty::BareFnTy {sig: ref sig, _}) |
         ty::ty_closure(ty::ClosureTy {sig: ref sig, _}) => {
-            for sig.inputs.each |arg| {
+            for sig.inputs.iter().advance |arg| {
                 type_needs(cx, use_repr, *arg);
             }
         }
@@ -214,7 +214,7 @@ pub fn type_needs_inner(cx: Context,
                 if list::find(enums_seen, |id| *id == did).is_none() {
                     let seen = @Cons(did, enums_seen);
                     for vec::each(*ty::enum_variants(cx.ccx.tcx, did)) |v| {
-                        for v.args.each |aty| {
+                        for v.args.iter().advance |aty| {
                             let t = ty::subst(cx.ccx.tcx, &(*substs), *aty);
                             type_needs_inner(cx, use_, t, seen);
                         }
@@ -314,7 +314,7 @@ pub fn mark_for_expr(cx: Context, e: @expr) {
           match ty::ty_closure_sigil(ty::expr_ty(cx.ccx.tcx, e)) {
               ast::OwnedSigil => {}
               ast::BorrowedSigil | ast::ManagedSigil => {
-                  for freevars::get_freevars(cx.ccx.tcx, e.id).each |fv| {
+                  for freevars::get_freevars(cx.ccx.tcx, e.id).iter().advance |fv| {
                       let node_id = ast_util::def_id_of_def(fv.def).node;
                       node_type_needs(cx, use_repr, node_id);
                   }
@@ -344,7 +344,8 @@ pub fn mark_for_expr(cx: Context, e: @expr) {
         node_type_needs(cx, use_tydesc, val.id);
       }
       expr_call(f, _, _) => {
-          for ty::ty_fn_args(ty::node_id_to_type(cx.ccx.tcx, f.id)).each |a| {
+          let r = ty::ty_fn_args(ty::node_id_to_type(cx.ccx.tcx, f.id));
+          for r.iter().advance |a| {
               type_needs(cx, use_repr, *a);
           }
       }
@@ -352,17 +353,18 @@ pub fn mark_for_expr(cx: Context, e: @expr) {
         let base_ty = ty::node_id_to_type(cx.ccx.tcx, rcvr.id);
         type_needs(cx, use_repr, ty::type_autoderef(cx.ccx.tcx, base_ty));
 
-        for ty::ty_fn_args(ty::node_id_to_type(cx.ccx.tcx, callee_id)).each |a| {
+        let r = ty::ty_fn_args(ty::node_id_to_type(cx.ccx.tcx, callee_id));
+        for r.iter().advance |a| {
             type_needs(cx, use_repr, *a);
         }
         mark_for_method_call(cx, e.id, callee_id);
       }
 
       expr_inline_asm(ref ia) => {
-        for ia.inputs.each |&(_, in)| {
+        for ia.inputs.iter().advance |&(_, in)| {
           node_type_needs(cx, use_repr, in.id);
         }
-        for ia.outputs.each |&(_, out)| {
+        for ia.outputs.iter().advance |&(_, out)| {
           node_type_needs(cx, use_repr, out.id);
         }
       }

@@ -781,13 +781,13 @@ mod test_treemap {
     fn check_equal<K: Eq + TotalOrd, V: Eq>(ctrl: &[(K, V)],
                                             map: &TreeMap<K, V>) {
         assert_eq!(ctrl.is_empty(), map.is_empty());
-        for ctrl.each |x| {
+        for ctrl.iter().advance |x| {
             let &(k, v) = x;
             assert!(map.find(&k).unwrap() == &v)
         }
         for map.each |map_k, map_v| {
             let mut found = false;
-            for ctrl.each |x| {
+            for ctrl.iter().advance |x| {
                 let &(ctrl_k, ctrl_v) = x;
                 if *map_k == ctrl_k {
                     assert!(*map_v == ctrl_v);
@@ -1135,8 +1135,8 @@ mod test_set {
         let mut set_a = TreeSet::new();
         let mut set_b = TreeSet::new();
 
-        for a.each |x| { assert!(set_a.insert(*x)) }
-        for b.each |y| { assert!(set_b.insert(*y)) }
+        for a.iter().advance |x| { assert!(set_a.insert(*x)) }
+        for b.iter().advance |y| { assert!(set_b.insert(*y)) }
 
         let mut i = 0;
         for f(&set_a, &set_b) |x| {

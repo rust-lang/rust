@@ -12,13 +12,14 @@
 
 use cast::transmute;
 use container::Container;
+use iterator::IteratorUtil;
 use kinds::Copy;
 use old_iter;
-use old_iter::BaseIter;
 use option::Option;
 use sys;
 use uint;
 use vec;
+use vec::ImmutableVector;
 
 /// Code for dealing with @-vectors. This is pretty incomplete, and
 /// contains a bunch of duplication from the code for ~-vectors.
@@ -107,7 +108,7 @@ pub fn build_sized_opt<A>(size: Option<uint>,
 #[inline]
 pub fn append<T:Copy>(lhs: @[T], rhs: &const [T]) -> @[T] {
     do build_sized(lhs.len() + rhs.len()) |push| {
-        for lhs.each |x| { push(copy *x); }
+        for lhs.iter().advance |x| { push(copy *x); }
         for uint::range(0, rhs.len()) |i| { push(copy rhs[i]); }
     }
 }
@@ -116,7 +117,7 @@ pub fn append<T:Copy>(lhs: @[T], rhs: &const [T]) -> @[T] {
 /// Apply a function to each element of a vector and return the results
 pub fn map<T, U>(v: &[T], f: &fn(x: &T) -> U) -> @[U] {
     do build_sized(v.len()) |push| {
-        for v.each |elem| {
+        for v.iter().advance |elem| {
             push(f(elem));
         }
     }

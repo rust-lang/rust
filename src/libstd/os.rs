@@ -224,7 +224,7 @@ pub fn env() -> ~[(~str,~str)] {
 
         fn env_convert(input: ~[~str]) -> ~[(~str, ~str)] {
             let mut pairs = ~[];
-            for input.each |p| {
+            for input.iter().advance |p| {
                 let vs: ~[&str] = p.splitn_iter('=', 1).collect();
                 debug!("splitting: len: %u",
                     vs.len());
@@ -593,7 +593,8 @@ pub fn tmpdir() -> Path {
 
 /// Recursively walk a directory structure
 pub fn walk_dir(p: &Path, f: &fn(&Path) -> bool) -> bool {
-    list_dir(p).each(|q| {
+    let r = list_dir(p);
+    r.iter().advance(|q| {
         let path = &p.push(*q);
         f(path) && (!path_is_dir(path) || walk_dir(path, f))
     })
@@ -1528,7 +1529,7 @@ mod tests {
     fn test_env_getenv() {
         let e = env();
         assert!(e.len() > 0u);
-        for e.each |p| {
+        for e.iter().advance |p| {
             let (n, v) = copy *p;
             debug!(copy n);
             let v2 = getenv(n);
@@ -1599,8 +1600,8 @@ mod tests {
         setenv("USERPROFILE", "/home/PaloAlto");
         assert_eq!(os::homedir(), Some(Path("/home/MountainView")));
 
-        oldhome.each(|s| { setenv("HOME", *s); true });
-        olduserprofile.each(|s| { setenv("USERPROFILE", *s); true });
+        oldhome.iter().advance(|s| { setenv("HOME", *s); true });
+        olduserprofile.iter().advance(|s| { setenv("USERPROFILE", *s); true });
     }
 
     #[test]
@@ -1620,7 +1621,7 @@ mod tests {
         // Just assuming that we've got some contents in the current directory
         assert!(dirs.len() > 0u);
 
-        for dirs.each |dir| {
+        for dirs.iter().advance |dir| {
             debug!(copy *dir);
         }
     }

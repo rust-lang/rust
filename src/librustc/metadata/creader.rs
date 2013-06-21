@@ -66,7 +66,7 @@ struct cache_entry {
 
 fn dump_crates(crate_cache: @mut ~[cache_entry]) {
     debug!("resolved crates:");
-    for crate_cache.each |entry| {
+    for crate_cache.iter().advance |entry| {
         debug!("cnum: %?", entry.cnum);
         debug!("span: %?", entry.span);
         debug!("hash: %?", entry.hash);
@@ -101,7 +101,7 @@ fn warn_if_multiple_versions(e: @mut Env,
         if matches.len() != 1u {
             diag.handler().warn(
                 fmt!("using multiple versions of crate `%s`", name));
-            for matches.each |match_| {
+            for matches.iter().advance |match_| {
                 diag.span_note(match_.span, "used here");
                 let attrs = ~[
                     attr::mk_attr(attr::mk_list_item(
@@ -130,7 +130,7 @@ fn visit_crate(e: @mut Env, c: &ast::crate) {
     let cstore = e.cstore;
     let link_args = attr::find_attrs_by_name(c.node.attrs, "link_args");
 
-    for link_args.each |a| {
+    for link_args.iter().advance |a| {
         match attr::get_meta_item_value_str(attr::attr_meta(*a)) {
           Some(ref linkarg) => {
             cstore::add_used_link_args(cstore, *linkarg);
@@ -191,7 +191,7 @@ fn visit_item(e: @mut Env, i: @ast::item) {
             ast::anonymous => { /* do nothing */ }
         }
 
-        for link_args.each |a| {
+        for link_args.iter().advance |a| {
             match attr::get_meta_item_value_str(attr::attr_meta(*a)) {
                 Some(linkarg) => {
                     cstore::add_used_link_args(cstore, linkarg);
@@ -221,7 +221,7 @@ fn metas_with_ident(ident: @str, metas: ~[@ast::meta_item])
 
 fn existing_match(e: @mut Env, metas: &[@ast::meta_item], hash: @str)
                -> Option<int> {
-    for e.crate_cache.each |c| {
+    for e.crate_cache.iter().advance |c| {
         if loader::metadata_matches(*c.metas, metas)
             && (hash.is_empty() || c.hash == hash) {
             return Some(c.cnum);
@@ -303,7 +303,8 @@ fn resolve_crate_deps(e: @mut Env, cdata: @~[u8]) -> cstore::cnum_map {
     // The map from crate numbers in the crate we're resolving to local crate
     // numbers
     let mut cnum_map = HashMap::new();
-    for decoder::get_crate_deps(cdata).each |dep| {
+    let r = decoder::get_crate_deps(cdata);
+    for r.iter().advance |dep| {
         let extrn_cnum = dep.cnum;
         let cname = dep.name;
         let cname_str = token::ident_to_str(&dep.name);

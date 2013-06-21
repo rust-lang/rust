@@ -16,10 +16,10 @@ use cmp::Eq;
 use either;
 use either::Either;
 use kinds::Copy;
+use iterator::IteratorUtil;
 use option::{None, Option, Some};
-use old_iter::BaseIter;
 use vec;
-use vec::OwnedVector;
+use vec::{OwnedVector, ImmutableVector};
 use container::Container;
 
 /// The result type
@@ -303,7 +303,7 @@ pub fn map_vec<T,U:Copy,V:Copy>(
     ts: &[T], op: &fn(&T) -> Result<V,U>) -> Result<~[V],U> {
 
     let mut vs: ~[V] = vec::with_capacity(ts.len());
-    for ts.each |t| {
+    for ts.iter().advance |t| {
         match op(t) {
           Ok(v) => vs.push(v),
           Err(u) => return Err(u)
