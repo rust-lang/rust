@@ -20,13 +20,13 @@ use cmp::{Eq, Equiv};
 use hash::Hash;
 use old_iter::BaseIter;
 use old_iter;
-use iterator::IteratorUtil;
+use iterator::{Iterator, IteratorUtil};
 use option::{None, Option, Some};
 use rand::RngUtil;
 use rand;
 use uint;
 use vec;
-use vec::ImmutableVector;
+use vec::{ImmutableVector, MutableVector};
 use kinds::Copy;
 use util::{replace, unreachable};
 
@@ -311,24 +311,17 @@ impl<K:Hash + Eq,V> Map<K, V> for HashMap<K, V> {
 
     /// Visit all key-value pairs
     fn each<'a>(&'a self, blk: &fn(&K, &'a V) -> bool) -> bool {
-        for self.buckets.iter().advance |bucket| {
-            for bucket.iter().advance |pair| {
-                if !blk(&pair.key, &pair.value) {
-                    return false;
-                }
-            }
-        }
-        return true;
+        self.iter().advance(|(k, v)| blk(k, v))
     }
 
     /// Visit all keys
     fn each_key(&self, blk: &fn(k: &K) -> bool) -> bool {
-        self.each(|k, _| blk(k))
+        self.iter().advance(|(k, _)| blk(k))
     }
 
     /// Visit all values
     fn each_value<'a>(&'a self, blk: &fn(v: &'a V) -> bool) -> bool {
-        self.each(|_, v| blk(v))
+        self.iter().advance(|(_, v)| blk(v))
     }
 
     /// Iterate over the map and mutate the contained values
@@ -524,6 +517,19 @@ impl<K: Hash + Eq, V> HashMap<K, V> {
             TableFull | FoundHole(_) => None,
         }
     }
+
+    /// An iterator visiting all key-value pairs in arbitrary order.
+    /// Iterator element type is (&'a K, &'a V).
+    pub fn iter<'a>(&'a self) -> HashMapIterator<'a, K, V> {
+        HashMapIterator { iter: self.buckets.iter() }
+    }
+
+    /// An iterator visiting all key-value pairs in arbitrary order,
+    /// with mutable references to the values.
+    /// Iterator element type is (&'a K, &'a mut V).
+    pub fn mut_iter<'a>(&'a mut self) -> HashMapMutIterator<'a, K, V> {
+        HashMapMutIterator { iter: self.buckets.mut_iter() }
+    }
 }
 
 impl<K: Hash + Eq, V: Copy> HashMap<K, V> {
@@ -554,6 +560,61 @@ impl<K:Hash + Eq,V:Eq> Eq for HashMap<K, V> {
 
     fn ne(&self, other: &HashMap<K, V>) -> bool { !self.eq(other) }
 }
+
+/// HashMap iterator
+pub struct HashMapIterator<'self, K, V> {
+    priv iter: vec::VecIterator<'self, Option<Bucket<K, V>>>,
+}
+
+/// HashMap mutable values iterator
+pub struct HashMapMutIterator<'self, K, V> {
+    priv iter: vec::VecMutIterator<'self, Option<Bucket<K, V>>>,
+}
+
+/// HashSet iterator
+pub struct HashSetIterator<'self, K> {
+    priv iter: vec::VecIterator<'self, Option<Bucket<K, ()>>>,
+}
+
+impl<'self, K, V> Iterator<(&'self K, &'self V)> for HashMapIterator<'self, K, V> {
+    #[inline]
+    fn next(&mut self) -> Option<(&'self K, &'self V)> {
+        for self.iter.advance |elt| {
+            match elt {
+                &Some(ref bucket) => return Some((&bucket.key, &bucket.value)),
+                &None => {},
+            }
+        }
+        None
+    }
+}
+
+impl<'self, K, V> Iterator<(&'self K, &'self mut V)> for HashMapMutIterator<'self, K, V> {
+    #[inline]
+    fn next(&mut self) -> Option<(&'self K, &'self mut V)> {
+        for self.iter.advance |elt| {
+            match elt {
+                &Some(ref mut bucket) => return Some((&bucket.key, &mut bucket.value)),
+                &None => {},
+            }
+        }
+        None
+    }
+}
+
+impl<'self, K> Iterator<&'self K> for HashSetIterator<'self, K> {
+    #[inline]
+    fn next(&mut self) -> Option<&'self K> {
+        for self.iter.advance |elt| {
+            match elt {
+                &Some(ref bucket) => return Some(&bucket.key),
+                &None => {},
+            }
+        }
+        None
+    }
+}
+
 
 /// An implementation of a hash set using the underlying representation of a
 /// HashMap where the value is (). As with the `HashMap` type, a `HashSet`
@@ -663,6 +724,12 @@ impl<T:Hash + Eq> HashSet<T> {
     /// given query value.
     pub fn contains_equiv<Q:Hash + Equiv<T>>(&self, value: &Q) -> bool {
       self.map.contains_key_equiv(value)
+    }
+
+    /// An iterator visiting all elements in arbitrary order.
+    /// Iterator element type is &'a T.
+    pub fn iter<'a>(&'a self) -> HashSetIterator<'a, T> {
+        HashSetIterator { iter: self.map.buckets.iter() }
     }
 }
 
