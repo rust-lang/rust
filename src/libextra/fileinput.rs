@@ -448,7 +448,7 @@ mod test {
             |i| fmt!("tmp/lib-fileinput-test-fileinput-read-byte-%u.tmp", i)), true);
 
         // 3 files containing 0\n, 1\n, and 2\n respectively
-        for filenames.eachi |i, &filename| {
+        for filenames.iter().enumerate().advance |(i, &filename)| {
             make_file(filename.get_ref(), [fmt!("%u", i)]);
         }
 
@@ -478,7 +478,7 @@ mod test {
             |i| fmt!("tmp/lib-fileinput-test-fileinput-read-%u.tmp", i)), true);
 
         // 3 files containing 1\n, 2\n, and 3\n respectively
-        for filenames.eachi |i, &filename| {
+        for filenames.iter().enumerate().advance |(i, &filename)| {
             make_file(filename.get_ref(), [fmt!("%u", i)]);
         }
 
@@ -498,7 +498,7 @@ mod test {
             3,
             |i| fmt!("tmp/lib-fileinput-test-input-vec-%u.tmp", i)), true);
 
-        for filenames.eachi |i, &filename| {
+        for filenames.iter().enumerate().advance |(i, &filename)| {
             let contents =
                 vec::from_fn(3, |j| fmt!("%u %u", i, j));
             make_file(filename.get_ref(), contents);
@@ -518,7 +518,7 @@ mod test {
             3,
             |i| fmt!("tmp/lib-fileinput-test-input-vec-state-%u.tmp", i)),true);
 
-        for filenames.eachi |i, &filename| {
+        for filenames.iter().enumerate().advance |(i, &filename)| {
             let contents =
                 vec::from_fn(3, |j| fmt!("%u %u", i, j + 1));
             make_file(filename.get_ref(), contents);
@@ -582,7 +582,7 @@ mod test {
             3,
             |i| fmt!("tmp/lib-fileinput-test-next-file-%u.tmp", i)),true);
 
-        for filenames.eachi |i, &filename| {
+        for filenames.iter().enumerate().advance |(i, &filename)| {
             let contents =
                 vec::from_fn(3, |j| fmt!("%u %u", i, j + 1));
             make_file(&filename.get(), contents);

@@ -16,7 +16,7 @@
 
 #[allow(missing_doc)];
 
-use cmp::{Eq};
+use cmp::Eq;
 use kinds::Copy;
 use option::{None, Option, Some};
 use vec;

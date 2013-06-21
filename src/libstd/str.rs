@@ -60,7 +60,7 @@ pub fn from_bytes(vv: &[u8]) -> ~str {
     use str::not_utf8::cond;
 
     if !is_utf8(vv) {
-        let first_bad_byte = vec::find(vv, |b| !is_utf8([*b])).get();
+        let first_bad_byte = *vv.iter().find_(|&b| !is_utf8([*b])).get();
         cond.raise(fmt!("from_bytes: input is not UTF-8; first bad byte is %u",
                         first_bad_byte as uint))
     }
@@ -1317,7 +1317,7 @@ impl<'self> StrSlice<'self> for &'self str {
     }
     /// Returns the number of characters that a string holds
     #[inline]
-    fn char_len(&self) -> uint { self.iter().count() }
+    fn char_len(&self) -> uint { self.iter().len_() }
 
     /**
      * Returns a slice of the given string from the byte range

@@ -1152,8 +1152,7 @@ fn trans_rec_or_struct(bcx: block,
         let mut need_base = vec::from_elem(field_tys.len(), true);
 
         let numbered_fields = do fields.map |field| {
-            let opt_pos = vec::position(field_tys, |field_ty|
-                                        field_ty.ident == field.node.ident);
+            let opt_pos = field_tys.iter().position_(|field_ty| field_ty.ident == field.node.ident);
             match opt_pos {
                 Some(i) => {
                     need_base[i] = false;
@@ -1168,7 +1167,7 @@ fn trans_rec_or_struct(bcx: block,
         let optbase = match base {
             Some(base_expr) => {
                 let mut leftovers = ~[];
-                for need_base.eachi |i, b| {
+                for need_base.iter().enumerate().advance |(i, b)| {
                     if *b {
                         leftovers.push((i, field_tys[i].mt.ty))
                     }
@@ -1177,7 +1176,7 @@ fn trans_rec_or_struct(bcx: block,
                                      fields: leftovers })
             }
             None => {
-                if need_base.any(|b| *b) {
+                if need_base.iter().any_(|b| *b) {
                     tcx.sess.span_bug(expr_span, "missing fields and no base expr")
                 }
                 None

@@ -226,7 +226,7 @@ pub fn trans_fn_ref_with_vtables(
            type_params.repr(bcx.tcx()),
            vtables.repr(bcx.tcx()));
 
-    assert!(type_params.all(|t| !ty::type_needs_infer(*t)));
+    assert!(type_params.iter().all(|t| !ty::type_needs_infer(*t)));
 
     // Polytype of the function item (may have type params)
     let fn_tpt = ty::lookup_item_type(tcx, def_id);
@@ -681,7 +681,7 @@ pub fn trans_args(cx: block,
     match args {
       ArgExprs(arg_exprs) => {
         let last = arg_exprs.len() - 1u;
-        for arg_exprs.eachi |i, arg_expr| {
+        for arg_exprs.iter().enumerate().advance |(i, arg_expr)| {
             let arg_val = unpack_result!(bcx, {
                 trans_arg_expr(bcx,
                                arg_tys[i],

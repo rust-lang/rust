@@ -230,16 +230,15 @@ pub fn maybe_find_pandoc(
       }
     };
 
-    let pandoc = do vec::find(possible_pandocs) |pandoc| {
+    let pandoc = do possible_pandocs.iter().find_ |&pandoc| {
         let output = process_output(*pandoc, [~"--version"]);
         debug!("testing pandoc cmd %s: %?", *pandoc, output);
         output.status == 0
     };
 
-    if pandoc.is_some() {
-        result::Ok(pandoc)
-    } else {
-        result::Err(~"couldn't find pandoc")
+    match pandoc {
+        Some(x) => Ok(Some(copy *x)), // ugly, shouldn't be doubly wrapped
+        None => Err(~"couldn't find pandoc")
     }
 }
 

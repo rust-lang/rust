@@ -1107,7 +1107,7 @@ pub fn lookup_field_ty(tcx: ty::ctxt,
                        fieldname: ast::ident,
                        substs: &ty::substs) -> Option<ty::t> {
 
-    let o_field = vec::find(items, |f| f.ident == fieldname);
+    let o_field = items.iter().find_(|f| f.ident == fieldname);
     do o_field.map() |f| {
         ty::lookup_field_type(tcx, class_id, f.id, substs)
     }
@@ -1236,7 +1236,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                 vtable::early_resolve_expr(callee_expr, fcx, true);
             }
 
-            for args.eachi |i, arg| {
+            for args.iter().enumerate().advance |(i, arg)| {
                 let is_block = match arg.node {
                     ast::expr_fn_block(*) | ast::expr_loop_body(*) |
                     ast::expr_do_body(*) => true,
@@ -2492,13 +2492,13 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         let discrim_ty = fcx.expr_ty(discrim);
         let arm_tys = arms.map(|a| fcx.node_ty(a.body.node.id));
         if ty::type_is_error(discrim_ty) ||
-            arm_tys.any(|t| ty::type_is_error(*t)) {
+            arm_tys.iter().any_(|t| ty::type_is_error(*t)) {
             fcx.write_error(id);
         }
         // keep in mind that `all` returns true in the empty vec case,
         // which is what we want
         else if ty::type_is_bot(discrim_ty) ||
-            arm_tys.all(|t| ty::type_is_bot(*t)) {
+            arm_tys.iter().all(|t| ty::type_is_bot(*t)) {
             fcx.write_bot(id);
         }
         else {
@@ -2561,8 +2561,8 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
       ast::expr_call(f, ref args, sugar) => {
           check_call(fcx, expr.id, expr, f, *args, sugar);
           let f_ty = fcx.expr_ty(f);
-          let (args_bot, args_err) = args.foldl((false, false),
-             |&(rest_bot, rest_err), a| {
+          let (args_bot, args_err) = args.iter().fold((false, false),
+             |(rest_bot, rest_err), a| {
                  // is this not working?
                  let a_ty = fcx.expr_ty(*a);
                  (rest_bot || ty::type_is_bot(a_ty),
@@ -2578,8 +2578,8 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         check_method_call(fcx, callee_id, expr, rcvr, ident, *args, *tps, sugar);
         let f_ty = fcx.expr_ty(rcvr);
         let arg_tys = args.map(|a| fcx.expr_ty(*a));
-        let (args_bot, args_err) = arg_tys.foldl((false, false),
-             |&(rest_bot, rest_err), a| {
+        let (args_bot, args_err) = arg_tys.iter().fold((false, false),
+             |(rest_bot, rest_err), a| {
               (rest_bot || ty::type_is_bot(*a),
                rest_err || ty::type_is_error(*a))});
         if ty::type_is_error(f_ty) || args_err {
@@ -3419,7 +3419,7 @@ pub fn check_bounds_are_used(ccx: @mut CrateCtxt,
             true
         });
 
-    for tps_used.eachi |i, b| {
+    for tps_used.iter().enumerate().advance |(i, b)| {
         if !*b {
             ccx.tcx.sess.span_err(
                 span, fmt!("type parameter `%s` is unused",

@@ -639,7 +639,7 @@ impl BitvSet {
         if self.capacity() < other.capacity() {
             self.bitv.storage.grow(other.capacity() / uint::bits, &0);
         }
-        for other.bitv.storage.eachi |i, &w| {
+        for other.bitv.storage.iter().enumerate().advance |(i, &w)| {
             let old = self.bitv.storage[i];
             let new = f(old, w);
             self.bitv.storage[i] = new;
@@ -672,7 +672,7 @@ impl BaseIter<uint> for BitvSet {
     fn size_hint(&self) -> Option<uint> { Some(self.len()) }
 
     fn each(&self, blk: &fn(v: &uint) -> bool) -> bool {
-        for self.bitv.storage.eachi |i, &w| {
+        for self.bitv.storage.iter().enumerate().advance |(i, &w)| {
             if !iterate_bits(i * uint::bits, w, |b| blk(&b)) {
                 return false;
             }
@@ -826,7 +826,7 @@ impl BitvSet {
                    f: &fn(uint, uint, uint) -> bool) -> bool {
         let min = uint::min(self.bitv.storage.len(),
                             other.bitv.storage.len());
-        self.bitv.storage.slice(0, min).eachi(|i, &w| {
+        self.bitv.storage.slice(0, min).iter().enumerate().advance(|(i, &w)| {
             f(i * uint::bits, w, other.bitv.storage[i])
         })
     }
@@ -845,12 +845,12 @@ impl BitvSet {
         let min = uint::min(len1, len2);
 
         /* only one of these loops will execute and that's the point */
-        for self.bitv.storage.slice(min, len1).eachi |i, &w| {
+        for self.bitv.storage.slice(min, len1).iter().enumerate().advance |(i, &w)| {
             if !f(true, (i + min) * uint::bits, w) {
                 return false;
             }
         }
-        for other.bitv.storage.slice(min, len2).eachi |i, &w| {
+        for other.bitv.storage.slice(min, len2).iter().enumerate().advance |(i, &w)| {
             if !f(false, (i + min) * uint::bits, w) {
                 return false;
             }

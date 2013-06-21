@@ -132,7 +132,7 @@ fn borrowck_fn(fk: &visit::fn_kind,
                                      LoanDataFlowOperator,
                                      id_range,
                                      all_loans.len());
-            for all_loans.eachi |loan_idx, loan| {
+            for all_loans.iter().enumerate().advance |(loan_idx, loan)| {
                 loan_dfcx.add_gen(loan.gen_scope, loan_idx);
                 loan_dfcx.add_kill(loan.kill_scope, loan_idx);
             }
