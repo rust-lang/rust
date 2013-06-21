@@ -43,7 +43,7 @@ impl FnType {
         let fnty = T_fn(atys, rty);
         let llfn = decl(fnty);
 
-        for vec::eachi(self.attrs) |i, a| {
+        for self.attrs.iter().enumerate().advance |(i, a)| {
             match *a {
                 option::Some(attr) => {
                     unsafe {
@@ -100,7 +100,7 @@ impl FnType {
                           ret_def: bool,
                           llargbundle: ValueRef,
                           llretval: ValueRef) {
-        for vec::eachi(self.attrs) |i, a| {
+        for self.attrs.iter().enumerate().advance |(i, a)| {
             match *a {
                 option::Some(attr) => {
                     unsafe {

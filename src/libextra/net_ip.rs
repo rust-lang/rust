@@ -205,7 +205,7 @@ pub mod v4 {
         }).collect();
         if parts.len() != 4 {
             Err(fmt!("'%s' doesn't have 4 parts", ip))
-        } else if parts.contains(&256) {
+        } else if parts.iter().any_(|x| *x == 256u) {
             Err(fmt!("invalid octal in addr '%s'", ip))
         } else {
             Ok(Ipv4Rep {

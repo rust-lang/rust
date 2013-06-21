@@ -60,7 +60,7 @@ pub fn monomorphic_fn(ccx: @mut CrateContext,
            impl_did_opt.repr(ccx.tcx),
            ref_id);
 
-    assert!(real_substs.tps.all(|t| !ty::type_needs_infer(*t)));
+    assert!(real_substs.tps.iter().all(|t| !ty::type_needs_infer(*t)));
     let _icx = ccx.insn_ctxt("monomorphic_fn");
     let mut must_cast = false;
     let substs = vec::map(real_substs.tps, |t| {
@@ -209,7 +209,7 @@ pub fn monomorphic_fn(ccx: @mut CrateContext,
       }
       ast_map::node_variant(ref v, enum_item, _) => {
         let tvs = ty::enum_variants(ccx.tcx, local_def(enum_item.id));
-        let this_tv = vec::find(*tvs, |tv| { tv.id.node == fn_id.node}).get();
+        let this_tv = *tvs.iter().find_(|tv| { tv.id.node == fn_id.node}).get();
         let d = mk_lldecl();
         set_inline_hint(d);
         match v.node.kind {

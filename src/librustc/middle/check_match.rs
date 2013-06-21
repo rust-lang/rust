@@ -155,7 +155,7 @@ pub fn check_exhaustive(cx: @MatchCheckCtxt, sp: span, pats: ~[@pat]) {
                     };
                     let variants = ty::enum_variants(cx.tcx, id);
 
-                    match variants.find(|v| v.id == vid) {
+                    match variants.iter().find_(|v| v.id == vid) {
                         Some(v) => Some(cx.tcx.sess.str_of(v.name)),
                         None => {
                             fail!("check_exhaustive: bad variant in ctor")
@@ -208,7 +208,7 @@ pub enum ctor {
 pub fn is_useful(cx: @MatchCheckCtxt, m: &matrix, v: &[@pat]) -> useful {
     if m.len() == 0u { return useful_; }
     if m[0].len() == 0u { return not_useful; }
-    let real_pat = match m.find(|r| r[0].id != 0) {
+    let real_pat = match m.iter().find_(|r| r[0].id != 0) {
       Some(r) => r[0], None => v[0]
     };
     let left_ty = if real_pat.id == 0 { ty::mk_nil() }
@@ -372,7 +372,7 @@ pub fn missing_ctor(cx: @MatchCheckCtxt,
         let variants = ty::enum_variants(cx.tcx, eid);
         if found.len() != (*variants).len() {
             for (*variants).each |v| {
-                if !found.contains(&(variant(v.id))) {
+                if !found.iter().any_(|x| x == &(variant(v.id))) {
                     return Some(variant(v.id));
                 }
             }
@@ -456,7 +456,7 @@ pub fn ctor_arity(cx: @MatchCheckCtxt, ctor: &ctor, ty: ty::t) -> uint {
       ty::ty_enum(eid, _) => {
           let id = match *ctor { variant(id) => id,
           _ => fail!("impossible case") };
-        match vec::find(*ty::enum_variants(cx.tcx, eid), |v| v.id == id ) {
+        match ty::enum_variants(cx.tcx, eid).iter().find_(|v| v.id == id ) {
             Some(v) => v.args.len(),
             None => fail!("impossible case")
         }
@@ -613,7 +613,7 @@ pub fn specialize(cx: @MatchCheckCtxt,
                         if variant(variant_id) == *ctor_id {
                             // FIXME #4731: Is this right? --pcw
                             let args = flds.map(|ty_field| {
-                                match flds.find(|f|
+                                match flds.iter().find_(|f|
                                                 f.ident == ty_field.ident) {
                                     Some(f) => f.pat,
                                     _ => wild()
@@ -644,7 +644,7 @@ pub fn specialize(cx: @MatchCheckCtxt,
                             }
                         }
                         let args = vec::map(class_fields, |class_field| {
-                            match flds.find(|f|
+                            match flds.iter().find_(|f|
                                             f.ident == class_field.ident) {
                                 Some(f) => f.pat,
                                 _ => wild()
@@ -806,13 +806,13 @@ pub fn is_refutable(cx: @MatchCheckCtxt, pat: &pat) -> bool {
       }
       pat_lit(_) | pat_range(_, _) => { true }
       pat_struct(_, ref fields, _) => {
-        fields.any(|f| is_refutable(cx, f.pat))
+        fields.iter().any_(|f| is_refutable(cx, f.pat))
       }
       pat_tup(ref elts) => {
-        elts.any(|elt| is_refutable(cx, *elt))
+        elts.iter().any_(|elt| is_refutable(cx, *elt))
       }
       pat_enum(_, Some(ref args)) => {
-        args.any(|a| is_refutable(cx, *a))
+        args.iter().any_(|a| is_refutable(cx, *a))
       }
       pat_enum(_,_) => { false }
       pat_vec(*) => { true }

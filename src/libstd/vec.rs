@@ -19,12 +19,11 @@ use cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering, Less, Equal, Greater};
 use clone::Clone;
 use old_iter::BaseIter;
 use old_iter;
-use iterator::{Iterator};
+use iterator::{Iterator, IteratorUtil};
 use iter::FromIter;
 use kinds::Copy;
 use libc;
 use num::Zero;
-use old_iter::CopyableIter;
 use option::{None, Option, Some};
 use ptr::to_unsafe_ptr;
 use ptr;
@@ -324,12 +323,12 @@ pub fn split<T:Copy>(v: &[T], f: &fn(t: &T) -> bool) -> ~[~[T]] {
         match position_between(v, start, ln, f) {
             None => break,
             Some(i) => {
-                result.push(slice(v, start, i).to_vec());
+                result.push(slice(v, start, i).to_owned());
                 start = i + 1u;
             }
         }
     }
-    result.push(slice(v, start, ln).to_vec());
+    result.push(slice(v, start, ln).to_owned());
     result
 }
 
@@ -348,14 +347,14 @@ pub fn splitn<T:Copy>(v: &[T], n: uint, f: &fn(t: &T) -> bool) -> ~[~[T]] {
         match position_between(v, start, ln, f) {
             None => break,
             Some(i) => {
-                result.push(slice(v, start, i).to_vec());
+                result.push(slice(v, start, i).to_owned());
                 // Make sure to skip the separator.
                 start = i + 1u;
                 count -= 1u;
             }
         }
     }
-    result.push(slice(v, start, ln).to_vec());
+    result.push(slice(v, start, ln).to_owned());
     result
 }
 
@@ -373,12 +372,12 @@ pub fn rsplit<T:Copy>(v: &[T], f: &fn(t: &T) -> bool) -> ~[~[T]] {
         match rposition_between(v, 0, end, f) {
             None => break,
             Some(i) => {
-                result.push(slice(v, i + 1, end).to_vec());
+                result.push(slice(v, i + 1, end).to_owned());
                 end = i;
             }
         }
     }
-    result.push(slice(v, 0u, end).to_vec());
+    result.push(slice(v, 0u, end).to_owned());
     reverse(result);
     result
 }
@@ -398,14 +397,14 @@ pub fn rsplitn<T:Copy>(v: &[T], n: uint, f: &fn(t: &T) -> bool) -> ~[~[T]] {
         match rposition_between(v, 0u, end, f) {
             None => break,
             Some(i) => {
-                result.push(slice(v, i + 1u, end).to_vec());
+                result.push(slice(v, i + 1u, end).to_owned());
                 // Make sure to skip the separator.
                 end = i;
                 count -= 1u;
             }
         }
     }
-    result.push(slice(v, 0u, end).to_vec());
+    result.push(slice(v, 0u, end).to_owned());
     reverse(result);
     result
 }
@@ -1058,17 +1057,6 @@ pub fn contains<T:Eq>(v: &[T], x: &T) -> bool {
 }
 
 /**
- * Search for the first element that matches a given predicate
- *
- * Apply function `f` to each element of `v`, starting from the first.
- * When function `f` returns true then an option containing the element
- * is returned. If `f` matches no elements then none is returned.
- */
-pub fn find<T:Copy>(v: &[T], f: &fn(t: &T) -> bool) -> Option<T> {
-    find_between(v, 0u, v.len(), f)
-}
-
-/**
  * Search for the first element that matches a given predicate within a range
  *
  * Apply function `f` to each element of `v` within the range
@@ -1108,18 +1096,7 @@ pub fn rfind_between<T:Copy>(v: &[T],
 
 /// Find the first index containing a matching value
 pub fn position_elem<T:Eq>(v: &[T], x: &T) -> Option<uint> {
-    position(v, |y| *x == *y)
-}
-
-/**
- * Find the first index matching some predicate
- *
- * Apply function `f` to each element of `v`.  When function `f` returns true
- * then an option containing the index is returned. If `f` matches no elements
- * then none is returned.
- */
-pub fn position<T>(v: &[T], f: &fn(t: &T) -> bool) -> Option<uint> {
-    position_between(v, 0u, v.len(), f)
+    v.iter().position_(|y| *x == *y)
 }
 
 /**
@@ -1425,36 +1402,6 @@ pub fn each<'r,T>(v: &'r [T], f: &fn(&'r T) -> bool) -> bool {
         broke = n > 0;
     }
     return !broke;
-}
-
-/// Like `each()`, but for the case where you have a vector that *may or may
-/// not* have mutable contents.
-#[inline]
-pub fn each_const<T>(v: &const [T], f: &fn(elem: &const T) -> bool) -> bool {
-    let mut i = 0;
-    let n = v.len();
-    while i < n {
-        if !f(&const v[i]) {
-            return false;
-        }
-        i += 1;
-    }
-    return true;
-}
-
-/**
- * Iterates over a vector's elements and indices
- *
- * Return true to continue, false to break.
- */
-#[inline]
-pub fn eachi<'r,T>(v: &'r [T], f: &fn(uint, v: &'r T) -> bool) -> bool {
-    let mut i = 0;
-    for each(v) |p| {
-        if !f(i, p) { return false; }
-        i += 1;
-    }
-    return true;
 }
 
 /**
@@ -1822,7 +1769,6 @@ pub trait ImmutableVector<'self, T> {
     fn initn(&self, n: uint) -> &'self [T];
     fn last(&self) -> &'self T;
     fn last_opt(&self) -> Option<&'self T>;
-    fn position(&self, f: &fn(t: &T) -> bool) -> Option<uint>;
     fn rposition(&self, f: &fn(t: &T) -> bool) -> Option<uint>;
     fn map<U>(&self, f: &fn(t: &T) -> U) -> ~[U];
     fn mapi<U>(&self, f: &fn(uint, t: &T) -> U) -> ~[U];
@@ -1889,18 +1835,6 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
     /// Returns the last element of a `v`, failing if the vector is empty.
     #[inline]
     fn last_opt(&self) -> Option<&'self T> { last_opt(*self) }
-
-    /**
-     * Find the first index matching some predicate
-     *
-     * Apply function `f` to each element of `v`.  When function `f` returns
-     * true then an option containing the index is returned. If `f` matches no
-     * elements then none is returned.
-     */
-    #[inline]
-    fn position(&self, f: &fn(t: &T) -> bool) -> Option<uint> {
-        position(*self, f)
-    }
 
     /**
      * Find the last index matching some predicate
@@ -2464,9 +2398,6 @@ pub mod bytes {
     }
 }
 
-// ___________________________________________________________________________
-// ITERATION TRAIT METHODS
-
 impl<'self,A> old_iter::BaseIter<A> for &'self [A] {
     #[inline]
     fn each<'a>(&'a self, blk: &fn(v: &'a A) -> bool) -> bool {
@@ -2474,152 +2405,6 @@ impl<'self,A> old_iter::BaseIter<A> for &'self [A] {
     }
     #[inline]
     fn size_hint(&self) -> Option<uint> { Some(self.len()) }
-}
-
-// FIXME(#4148): This should be redundant
-impl<A> old_iter::BaseIter<A> for ~[A] {
-    #[inline]
-    fn each<'a>(&'a self, blk: &fn(v: &'a A) -> bool) -> bool {
-        each(*self, blk)
-    }
-    #[inline]
-    fn size_hint(&self) -> Option<uint> { Some(self.len()) }
-}
-
-// FIXME(#4148): This should be redundant
-impl<A> old_iter::BaseIter<A> for @[A] {
-    #[inline]
-    fn each<'a>(&'a self, blk: &fn(v: &'a A) -> bool) -> bool {
-        each(*self, blk)
-    }
-    #[inline]
-    fn size_hint(&self) -> Option<uint> { Some(self.len()) }
-}
-
-impl<'self,A> old_iter::ExtendedIter<A> for &'self [A] {
-    pub fn eachi(&self, blk: &fn(uint, v: &A) -> bool) -> bool {
-        old_iter::eachi(self, blk)
-    }
-    pub fn all(&self, blk: &fn(&A) -> bool) -> bool {
-        old_iter::all(self, blk)
-    }
-    pub fn any(&self, blk: &fn(&A) -> bool) -> bool {
-        old_iter::any(self, blk)
-    }
-    pub fn foldl<B>(&self, b0: B, blk: &fn(&B, &A) -> B) -> B {
-        old_iter::foldl(self, b0, blk)
-    }
-    pub fn position(&self, f: &fn(&A) -> bool) -> Option<uint> {
-        old_iter::position(self, f)
-    }
-    fn map_to_vec<B>(&self, op: &fn(&A) -> B) -> ~[B] {
-        old_iter::map_to_vec(self, op)
-    }
-    fn flat_map_to_vec<B,IB:BaseIter<B>>(&self, op: &fn(&A) -> IB)
-        -> ~[B] {
-        old_iter::flat_map_to_vec(self, op)
-    }
-}
-
-// FIXME(#4148): This should be redundant
-impl<A> old_iter::ExtendedIter<A> for ~[A] {
-    pub fn eachi(&self, blk: &fn(uint, v: &A) -> bool) -> bool {
-        old_iter::eachi(self, blk)
-    }
-    pub fn all(&self, blk: &fn(&A) -> bool) -> bool {
-        old_iter::all(self, blk)
-    }
-    pub fn any(&self, blk: &fn(&A) -> bool) -> bool {
-        old_iter::any(self, blk)
-    }
-    pub fn foldl<B>(&self, b0: B, blk: &fn(&B, &A) -> B) -> B {
-        old_iter::foldl(self, b0, blk)
-    }
-    pub fn position(&self, f: &fn(&A) -> bool) -> Option<uint> {
-        old_iter::position(self, f)
-    }
-    fn map_to_vec<B>(&self, op: &fn(&A) -> B) -> ~[B] {
-        old_iter::map_to_vec(self, op)
-    }
-    fn flat_map_to_vec<B,IB:BaseIter<B>>(&self, op: &fn(&A) -> IB)
-        -> ~[B] {
-        old_iter::flat_map_to_vec(self, op)
-    }
-}
-
-// FIXME(#4148): This should be redundant
-impl<A> old_iter::ExtendedIter<A> for @[A] {
-    pub fn eachi(&self, blk: &fn(uint, v: &A) -> bool) -> bool {
-        old_iter::eachi(self, blk)
-    }
-    pub fn all(&self, blk: &fn(&A) -> bool) -> bool {
-        old_iter::all(self, blk)
-    }
-    pub fn any(&self, blk: &fn(&A) -> bool) -> bool {
-        old_iter::any(self, blk)
-    }
-    pub fn foldl<B>(&self, b0: B, blk: &fn(&B, &A) -> B) -> B {
-        old_iter::foldl(self, b0, blk)
-    }
-    pub fn position(&self, f: &fn(&A) -> bool) -> Option<uint> {
-        old_iter::position(self, f)
-    }
-    fn map_to_vec<B>(&self, op: &fn(&A) -> B) -> ~[B] {
-        old_iter::map_to_vec(self, op)
-    }
-    fn flat_map_to_vec<B,IB:BaseIter<B>>(&self, op: &fn(&A) -> IB)
-        -> ~[B] {
-        old_iter::flat_map_to_vec(self, op)
-    }
-}
-
-impl<'self,A:Eq> old_iter::EqIter<A> for &'self [A] {
-    pub fn contains(&self, x: &A) -> bool { old_iter::contains(self, x) }
-    pub fn count(&self, x: &A) -> uint { old_iter::count(self, x) }
-}
-
-// FIXME(#4148): This should be redundant
-impl<A:Eq> old_iter::EqIter<A> for ~[A] {
-    pub fn contains(&self, x: &A) -> bool { old_iter::contains(self, x) }
-    pub fn count(&self, x: &A) -> uint { old_iter::count(self, x) }
-}
-
-// FIXME(#4148): This should be redundant
-impl<A:Eq> old_iter::EqIter<A> for @[A] {
-    pub fn contains(&self, x: &A) -> bool { old_iter::contains(self, x) }
-    pub fn count(&self, x: &A) -> uint { old_iter::count(self, x) }
-}
-
-impl<'self,A:Copy> old_iter::CopyableIter<A> for &'self [A] {
-    fn filter_to_vec(&self, pred: &fn(&A) -> bool) -> ~[A] {
-        old_iter::filter_to_vec(self, pred)
-    }
-    fn to_vec(&self) -> ~[A] { old_iter::to_vec(self) }
-    pub fn find(&self, f: &fn(&A) -> bool) -> Option<A> {
-        old_iter::find(self, f)
-    }
-}
-
-// FIXME(#4148): This should be redundant
-impl<A:Copy> old_iter::CopyableIter<A> for ~[A] {
-    fn filter_to_vec(&self, pred: &fn(&A) -> bool) -> ~[A] {
-        old_iter::filter_to_vec(self, pred)
-    }
-    fn to_vec(&self) -> ~[A] { old_iter::to_vec(self) }
-    pub fn find(&self, f: &fn(&A) -> bool) -> Option<A> {
-        old_iter::find(self, f)
-    }
-}
-
-// FIXME(#4148): This should be redundant
-impl<A:Copy> old_iter::CopyableIter<A> for @[A] {
-    fn filter_to_vec(&self, pred: &fn(&A) -> bool) -> ~[A] {
-        old_iter::filter_to_vec(self, pred)
-    }
-    fn to_vec(&self) -> ~[A] { old_iter::to_vec(self) }
-    pub fn find(&self, f: &fn(&A) -> bool) -> Option<A> {
-        old_iter::find(self, f)
-    }
 }
 
 impl<A:Clone> Clone for ~[A] {
@@ -2946,7 +2731,7 @@ mod tests {
     fn test_slice() {
         // Test fixed length vector.
         let vec_fixed = [1, 2, 3, 4];
-        let v_a = slice(vec_fixed, 1u, vec_fixed.len()).to_vec();
+        let v_a = slice(vec_fixed, 1u, vec_fixed.len()).to_owned();
         assert_eq!(v_a.len(), 3u);
         assert_eq!(v_a[0], 2);
         assert_eq!(v_a[1], 3);
@@ -2954,14 +2739,14 @@ mod tests {
 
         // Test on stack.
         let vec_stack = &[1, 2, 3];
-        let v_b = slice(vec_stack, 1u, 3u).to_vec();
+        let v_b = slice(vec_stack, 1u, 3u).to_owned();
         assert_eq!(v_b.len(), 2u);
         assert_eq!(v_b[0], 2);
         assert_eq!(v_b[1], 3);
 
         // Test on managed heap.
         let vec_managed = @[1, 2, 3, 4, 5];
-        let v_c = slice(vec_managed, 0u, 3u).to_vec();
+        let v_c = slice(vec_managed, 0u, 3u).to_owned();
         assert_eq!(v_c.len(), 3u);
         assert_eq!(v_c[0], 1);
         assert_eq!(v_c[1], 2);
@@ -2969,7 +2754,7 @@ mod tests {
 
         // Test on exchange heap.
         let vec_unique = ~[1, 2, 3, 4, 5, 6];
-        let v_d = slice(vec_unique, 1u, 6u).to_vec();
+        let v_d = slice(vec_unique, 1u, 6u).to_owned();
         assert_eq!(v_d.len(), 5u);
         assert_eq!(v_d[0], 2);
         assert_eq!(v_d[1], 3);
@@ -3275,17 +3060,6 @@ mod tests {
     }
 
     #[test]
-    fn test_eachi() {
-        let mut i = 0;
-        for eachi([1, 2, 3]) |j, v| {
-            if i == 0 { assert!(*v == 1); }
-            assert_eq!(j + 1u, *v as uint);
-            i += *v;
-        }
-        assert_eq!(i, 6);
-    }
-
-    #[test]
     fn test_each_ret_len0() {
         let a0 : [int, .. 0] = [];
         assert_eq!(each(a0, |_p| fail!()), true);
@@ -3351,18 +3125,6 @@ mod tests {
     }
 
     #[test]
-    fn test_position() {
-        fn less_than_three(i: &int) -> bool { *i < 3 }
-        fn is_eighteen(i: &int) -> bool { *i == 18 }
-
-        assert!(position([], less_than_three).is_none());
-
-        let v1 = ~[5, 4, 3, 2, 1];
-        assert_eq!(position(v1, less_than_three), Some(3u));
-        assert!(position(v1, is_eighteen).is_none());
-    }
-
-    #[test]
     fn test_position_between() {
         assert!(position_between([], 0u, 0u, f).is_none());
 
@@ -3388,18 +3150,6 @@ mod tests {
         assert_eq!(position_between(v, 3u, 4u, f), Some(3u));
 
         assert!(position_between(v, 4u, 4u, f).is_none());
-    }
-
-    #[test]
-    fn test_find() {
-        assert!(find([], f).is_none());
-
-        fn f(xy: &(int, char)) -> bool { let (_x, y) = *xy; y == 'b' }
-        fn g(xy: &(int, char)) -> bool { let (_x, y) = *xy; y == 'd' }
-        let v = ~[(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
-
-        assert_eq!(find(v, f), Some((1, 'b')));
-        assert!(find(v, g).is_none());
     }
 
     #[test]
@@ -3432,14 +3182,12 @@ mod tests {
 
     #[test]
     fn test_rposition() {
-        assert!(find([], f).is_none());
-
         fn f(xy: &(int, char)) -> bool { let (_x, y) = *xy; y == 'b' }
         fn g(xy: &(int, char)) -> bool { let (_x, y) = *xy; y == 'd' }
         let v = ~[(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
 
-        assert_eq!(position(v, f), Some(1u));
-        assert!(position(v, g).is_none());
+        assert_eq!(rposition(v, f), Some(3u));
+        assert!(rposition(v, g).is_none());
     }
 
     #[test]
@@ -4068,37 +3816,6 @@ mod tests {
     #[test]
     #[ignore(windows)]
     #[should_fail]
-    #[allow(non_implicitly_copyable_typarams)]
-    fn test_find_fail() {
-        let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
-        let mut i = 0;
-        do find(v) |_elt| {
-            if i == 2 {
-                fail!()
-            }
-            i += 0;
-            false
-        };
-    }
-
-    #[test]
-    #[ignore(windows)]
-    #[should_fail]
-    fn test_position_fail() {
-        let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
-        let mut i = 0;
-        do position(v) |_elt| {
-            if i == 2 {
-                fail!()
-            }
-            i += 0;
-            false
-        };
-    }
-
-    #[test]
-    #[ignore(windows)]
-    #[should_fail]
     fn test_rposition_fail() {
         let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
         let mut i = 0;
@@ -4118,21 +3835,6 @@ mod tests {
         let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
         let mut i = 0;
         do each(v) |_elt| {
-            if i == 2 {
-                fail!()
-            }
-            i += 0;
-            false
-        };
-    }
-
-    #[test]
-    #[ignore(windows)]
-    #[should_fail]
-    fn test_eachi_fail() {
-        let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
-        let mut i = 0;
-        do eachi(v) |_i, _elt| {
             if i == 2 {
                 fail!()
             }

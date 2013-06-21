@@ -90,7 +90,7 @@ impl LanguageItems {
     }
 
     pub fn each_item(&self, f: &fn(def_id: def_id, i: uint) -> bool) -> bool {
-        self.items.eachi(|i, &item| f(item.get(), i))
+        self.items.iter().enumerate().advance(|(i, &item)| f(item.get(), i))
     }
 
     pub fn item_name(index: uint) -> &'static str {

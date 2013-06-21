@@ -468,15 +468,14 @@ pub fn add_clean_free(cx: block, ptr: ValueRef, heap: heap) {
 pub fn revoke_clean(cx: block, val: ValueRef) {
     do in_scope_cx(cx) |scope_info| {
         let scope_info = &mut *scope_info; // FIXME(#5074) workaround borrowck
-        let cleanup_pos = vec::position(
-            scope_info.cleanups,
+        let cleanup_pos = scope_info.cleanups.iter().position_(
             |cu| match *cu {
                 clean_temp(v, _, _) if v == val => true,
                 _ => false
             });
         for cleanup_pos.iter().advance |i| {
             scope_info.cleanups =
-                vec::append(vec::slice(scope_info.cleanups, 0u, *i).to_vec(),
+                vec::append(vec::slice(scope_info.cleanups, 0u, *i).to_owned(),
                             vec::slice(scope_info.cleanups,
                                       *i + 1u,
                                       scope_info.cleanups.len()));
@@ -1397,7 +1396,7 @@ pub fn node_id_type_params(bcx: block, id: ast::node_id) -> ~[ty::t] {
     let tcx = bcx.tcx();
     let params = ty::node_id_to_type_params(tcx, id);
 
-    if !params.all(|t| !ty::type_needs_infer(*t)) {
+    if !params.iter().all(|t| !ty::type_needs_infer(*t)) {
         bcx.sess().bug(
             fmt!("Type parameters for node %d include inference types: %s",
                  id, params.map(|t| bcx.ty_to_str(*t)).connect(",")));

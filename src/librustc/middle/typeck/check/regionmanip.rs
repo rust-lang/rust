@@ -103,8 +103,8 @@ pub fn replace_bound_regions_in_fn_sig(
         }
 
         // For each type `ty` in `tys`...
-        do tys.foldl(isr) |isr, ty| {
-            let mut isr = *isr;
+        do tys.iter().fold(isr) |isr, ty| {
+            let mut isr = isr;
 
             // Using fold_regions is inefficient, because it
             // constructs new types, but it avoids code duplication in

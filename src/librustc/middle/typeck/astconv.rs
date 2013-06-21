@@ -534,7 +534,7 @@ pub fn bound_lifetimes<AC:AstConv>(
     let special_idents = [special_idents::statik, special_idents::self_];
     let mut bound_lifetime_names = opt_vec::Empty;
     ast_lifetimes.map_to_vec(|ast_lifetime| {
-        if special_idents.any(|&i| i == ast_lifetime.ident) {
+        if special_idents.iter().any_(|&i| i == ast_lifetime.ident) {
             this.tcx().sess.span_err(
                 ast_lifetime.span,
                 fmt!("illegal lifetime parameter name: `%s`",

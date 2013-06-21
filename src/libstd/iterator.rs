@@ -273,6 +273,7 @@ pub trait IteratorUtil<A> {
     /// ~~~
     fn fold<B>(&mut self, start: B, f: &fn(B, A) -> B) -> B;
 
+    // FIXME: #5898: should be called len
     /// Counts the number of elements in this iterator.
     ///
     /// # Example
@@ -280,10 +281,10 @@ pub trait IteratorUtil<A> {
     /// ~~~ {.rust}
     /// let a = [1, 2, 3, 4, 5];
     /// let mut it = a.iter();
-    /// assert!(it.count() == 5);
-    /// assert!(it.count() == 0);
+    /// assert!(it.len_() == 5);
+    /// assert!(it.len_() == 0);
     /// ~~~
-    fn count(&mut self) -> uint;
+    fn len_(&mut self) -> uint;
 
     /// Tests whether the predicate holds true for all elements in the iterator.
     ///
@@ -314,6 +315,9 @@ pub trait IteratorUtil<A> {
 
     /// Return the index of the first element satisfying the specified predicate
     fn position_(&mut self, predicate: &fn(A) -> bool) -> Option<uint>;
+
+    /// Count the number of elements satisfying the specified predicate
+    fn count(&mut self, predicate: &fn(A) -> bool) -> uint;
 }
 
 /// Iterator adaptors provided for every `Iterator` implementation. The adaptor objects are also
@@ -432,7 +436,7 @@ impl<A, T: Iterator<A>> IteratorUtil<A> for T {
 
     /// Count the number of items yielded by an iterator
     #[inline]
-    fn count(&mut self) -> uint { self.fold(0, |cnt, _x| cnt + 1) }
+    fn len_(&mut self) -> uint { self.fold(0, |cnt, _x| cnt + 1) }
 
     #[inline]
     fn all(&mut self, f: &fn(A) -> bool) -> bool {
@@ -466,6 +470,15 @@ impl<A, T: Iterator<A>> IteratorUtil<A> for T {
             i += 1;
         }
         None
+    }
+
+    #[inline]
+    fn count(&mut self, predicate: &fn(A) -> bool) -> uint {
+        let mut i = 0;
+        for self.advance |x| {
+            if predicate(x) { i += 1 }
+        }
+        i
     }
 }
 
@@ -1020,11 +1033,11 @@ mod tests {
     }
 
     #[test]
-    fn test_iterator_count() {
+    fn test_iterator_len() {
         let v = &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-        assert_eq!(v.slice(0, 4).iter().count(), 4);
-        assert_eq!(v.slice(0, 10).iter().count(), 10);
-        assert_eq!(v.slice(0, 0).iter().count(), 0);
+        assert_eq!(v.slice(0, 4).iter().len_(), 4);
+        assert_eq!(v.slice(0, 10).iter().len_(), 10);
+        assert_eq!(v.slice(0, 0).iter().len_(), 0);
     }
 
     #[test]
@@ -1098,5 +1111,13 @@ mod tests {
         assert_eq!(v.iter().position_(|x| *x & 1 == 0).unwrap(), 5);
         assert_eq!(v.iter().position_(|x| *x % 3 == 0).unwrap(), 1);
         assert!(v.iter().position_(|x| *x % 12 == 0).is_none());
+    }
+
+    #[test]
+    fn test_count() {
+        let xs = &[1, 2, 2, 1, 5, 9, 0, 2];
+        assert_eq!(xs.iter().count(|x| *x == 2), 3);
+        assert_eq!(xs.iter().count(|x| *x == 5), 1);
+        assert_eq!(xs.iter().count(|x| *x == 95), 0);
     }
 }

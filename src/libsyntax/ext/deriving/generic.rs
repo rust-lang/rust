@@ -487,7 +487,7 @@ impl<'self> MethodDef<'self> {
             None => respan(span, ast::sty_static),
         };
 
-        for self.args.eachi |i, ty| {
+        for self.args.iter().enumerate().advance |(i, ty)| {
             let ast_ty = ty.to_ty(cx, span, type_ident, generics);
             let ident = cx.ident_of(fmt!("__arg_%u", i));
             arg_tys.push((ident, ast_ty));
@@ -741,7 +741,7 @@ impl<'self> MethodDef<'self> {
                     let mut enum_matching_fields = vec::from_elem(self_vec.len(), ~[]);
 
                     for matches_so_far.tail().each |&(_, _, other_fields)| {
-                        for other_fields.eachi |i, &(_, other_field)| {
+                        for other_fields.iter().enumerate().advance |(i, &(_, other_field))| {
                             enum_matching_fields[i].push(other_field);
                         }
                     }
@@ -809,7 +809,7 @@ impl<'self> MethodDef<'self> {
                 }
             } else {
                 // create an arm matching on each variant
-                for enum_def.variants.eachi |index, variant| {
+                for enum_def.variants.iter().enumerate().advance |(index, variant)| {
                     let (pattern, idents) = create_enum_variant_pattern(cx, span,
                                                                        variant,
                                                                        current_match_str,
@@ -923,7 +923,7 @@ fn create_struct_pattern(cx: @ExtCtxt,
     let mut ident_expr = ~[];
     let mut struct_type = Unknown;
 
-    for struct_def.fields.eachi |i, struct_field| {
+    for struct_def.fields.iter().enumerate().advance |(i, struct_field)| {
         let opt_id = match struct_field.node.kind {
             ast::named_field(ident, _) if (struct_type == Unknown ||
                                            struct_type == Record) => {

@@ -345,7 +345,7 @@ pub fn trans_static_method_callee(bcx: block,
 
     match vtbls[bound_index] {
         typeck::vtable_static(impl_did, ref rcvr_substs, rcvr_origins) => {
-            assert!(rcvr_substs.all(|t| !ty::type_needs_infer(*t)));
+            assert!(rcvr_substs.iter().all(|t| !ty::type_needs_infer(*t)));
 
             let mth_id = method_with_name_or_default(bcx.ccx(),
                                                      impl_did,
@@ -375,7 +375,7 @@ pub fn trans_static_method_callee(bcx: block,
 
 pub fn method_from_methods(ms: &[@ast::method], name: ast::ident)
     -> Option<ast::def_id> {
-    ms.find(|m| m.ident == name).map(|m| ast_util::local_def(m.id))
+    ms.iter().find_(|m| m.ident == name).map(|m| ast_util::local_def(m.id))
 }
 
 pub fn method_with_name_or_default(ccx: @mut CrateContext,
@@ -512,7 +512,7 @@ pub fn combine_impl_and_methods_tps(bcx: block,
     let node_substs = node_id_type_params(bcx, callee_id);
     debug!("rcvr_substs=%?", rcvr_substs.map(|t| bcx.ty_to_str(*t)));
     let ty_substs
-        = vec::append(rcvr_substs.to_vec(),
+        = vec::append(rcvr_substs.to_owned(),
                       vec::tailn(node_substs,
                                  node_substs.len() - n_m_tps));
     debug!("n_m_tps=%?", n_m_tps);

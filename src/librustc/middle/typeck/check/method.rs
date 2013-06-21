@@ -254,7 +254,7 @@ impl<'self> LookupContext<'self> {
             ty_enum(did, _) => {
                 // Watch out for newtype'd enums like "enum t = @T".
                 // See discussion in typeck::check::do_autoderef().
-                if enum_dids.contains(&did) {
+                if enum_dids.iter().any_(|x| x == &did) {
                     return None;
                 }
                 enum_dids.push(did);
@@ -376,7 +376,7 @@ impl<'self> LookupContext<'self> {
 
             let trait_methods = ty::trait_methods(tcx, bound_trait_ref.def_id);
             let pos = {
-                match trait_methods.position(|m| {
+                match trait_methods.iter().position_(|m| {
                     m.explicit_self != ast::sty_static &&
                         m.ident == self.m_name })
                 {
@@ -420,7 +420,7 @@ impl<'self> LookupContext<'self> {
 
         let tcx = self.tcx();
         let ms = ty::trait_methods(tcx, did);
-        let index = match vec::position(*ms, |m| m.ident == self.m_name) {
+        let index = match ms.iter().position_(|m| m.ident == self.m_name) {
             Some(i) => i,
             None => { return; } // no method with the right name
         };
@@ -474,7 +474,7 @@ impl<'self> LookupContext<'self> {
         // First, try self methods
         let mut method_info: Option<MethodInfo> = None;
         let methods = ty::trait_methods(tcx, did);
-        match vec::position(*methods, |m| m.ident == self.m_name) {
+        match methods.iter().position_(|m| m.ident == self.m_name) {
             Some(i) => {
                 method_info = Some(MethodInfo {
                     method_ty: methods[i],
@@ -489,8 +489,7 @@ impl<'self> LookupContext<'self> {
             for ty::trait_supertraits(tcx, did).each() |trait_ref| {
                 let supertrait_methods =
                     ty::trait_methods(tcx, trait_ref.def_id);
-                match vec::position(*supertrait_methods,
-                                    |m| m.ident == self.m_name) {
+                match supertrait_methods.iter().position_(|m| m.ident == self.m_name) {
                     Some(i) => {
                         method_info = Some(MethodInfo {
                             method_ty: supertrait_methods[i],
@@ -547,7 +546,7 @@ impl<'self> LookupContext<'self> {
                impl_info.methods.map(|m| m.ident).repr(self.tcx()));
 
         let idx = {
-            match impl_info.methods.position(|m| m.ident == self.m_name) {
+            match impl_info.methods.iter().position_(|m| m.ident == self.m_name) {
                 Some(idx) => idx,
                 None => { return; } // No method with the right name.
             }
@@ -817,8 +816,9 @@ impl<'self> LookupContext<'self> {
                                rcvr_ty: ty::t,
                                candidates: &mut ~[Candidate])
                                -> Option<method_map_entry> {
-        let relevant_candidates =
-            candidates.filter_to_vec(|c| self.is_relevant(rcvr_ty, c));
+        let relevant_candidates: ~[Candidate] =
+            candidates.iter().transform(|c| copy *c).
+                filter(|c| self.is_relevant(rcvr_ty, c)).collect();
 
         let relevant_candidates = self.merge_candidates(relevant_candidates);
 
@@ -946,7 +946,7 @@ impl<'self> LookupContext<'self> {
                      parameters given for this method");
                 self.fcx.infcx().next_ty_vars(num_method_tps)
             } else {
-                self.supplied_tps.to_vec()
+                self.supplied_tps.to_owned()
             }
         };
 

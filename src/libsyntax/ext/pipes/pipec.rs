@@ -333,14 +333,14 @@ impl gen_init for protocol {
             dummy_sp(),
             path(~[ext_cx.ident_of("__Buffer")],
                  dummy_sp()),
-            self.states.map_to_vec(|s| {
+            self.states.iter().transform(|s| {
                 let fty = s.to_ty(ext_cx);
                 ext_cx.field_imm(dummy_sp(),
                                  ext_cx.ident_of(s.name),
                                  quote_expr!(
                                      ::std::pipes::mk_packet::<$fty>()
                                  ))
-            }))
+            }).collect())
     }
 
     fn gen_init_bounded(&self, ext_cx: @ExtCtxt) -> @ast::expr {
@@ -354,10 +354,10 @@ impl gen_init for protocol {
         let entangle_body = ext_cx.expr_blk(
             ext_cx.blk(
                 dummy_sp(),
-                self.states.map_to_vec(
+                self.states.iter().transform(
                     |s| ext_cx.parse_stmt(
                         fmt!("data.%s.set_buffer(buffer)",
-                             s.name).to_managed())),
+                             s.name).to_managed())).collect(),
                 Some(ext_cx.parse_expr(fmt!(
                     "::std::ptr::to_mut_unsafe_ptr(&mut (data.%s))",
                     self.states[0].name).to_managed()))));
@@ -390,7 +390,7 @@ impl gen_init for protocol {
     fn gen_buffer_type(&self, cx: @ExtCtxt) -> @ast::item {
         let ext_cx = cx;
         let mut params: OptVec<ast::TyParam> = opt_vec::Empty;
-        let fields = do (copy self.states).map_to_vec |s| {
+        let fields = do (copy self.states).iter().transform |s| {
             for s.generics.ty_params.each |tp| {
                 match params.find(|tpp| tp.ident == tpp.ident) {
                   None => params.push(*tp),
@@ -411,7 +411,7 @@ impl gen_init for protocol {
                 },
                 span: dummy_sp()
             }
-        };
+        }.collect();
 
         let generics = Generics {
             lifetimes: opt_vec::Empty,
