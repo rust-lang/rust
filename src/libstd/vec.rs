@@ -29,6 +29,7 @@ use ptr::to_unsafe_ptr;
 use ptr;
 use ptr::RawPtr;
 use sys;
+use sys::size_of;
 use uint;
 use unstable::intrinsics;
 use vec;
@@ -2454,6 +2455,13 @@ macro_rules! iterator {
                     }
                 }
             }
+
+            #[inline]
+            #[cfg(not(stage0))]
+            fn size_hint(&self) -> (Option<uint>, Option<uint>) {
+                let exact = Some(((self.end as uint) - (self.ptr as uint)) / size_of::<$elem>());
+                (exact, exact)
+            }
         }
     }
 }
@@ -3909,16 +3917,23 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(stage0))]
     fn test_iterator() {
         use iterator::*;
         let xs = [1, 2, 5, 10, 11];
-        let ys = [1, 2, 5, 10, 11, 19];
         let mut it = xs.iter();
-        let mut i = 0;
-        for it.advance |&x| {
-            assert_eq!(x, ys[i]);
-            i += 1;
-        }
+        assert_eq!(it.size_hint(), (Some(5), Some(5)));
+        assert_eq!(it.next().unwrap(), &1);
+        assert_eq!(it.size_hint(), (Some(4), Some(4)));
+        assert_eq!(it.next().unwrap(), &2);
+        assert_eq!(it.size_hint(), (Some(3), Some(3)));
+        assert_eq!(it.next().unwrap(), &5);
+        assert_eq!(it.size_hint(), (Some(2), Some(2)));
+        assert_eq!(it.next().unwrap(), &10);
+        assert_eq!(it.size_hint(), (Some(1), Some(1)));
+        assert_eq!(it.next().unwrap(), &11);
+        assert_eq!(it.size_hint(), (Some(0), Some(0)));
+        assert!(it.next().is_none());
     }
 
     #[test]
