@@ -40,6 +40,8 @@ use option::{Some, None};
 use os;
 use prelude::*;
 use ptr;
+use rt;
+use rt::TaskContext;
 use str;
 use uint;
 use unstable::finally::Finally;
@@ -1167,10 +1169,17 @@ pub fn real_args() -> ~[~str] {
 #[cfg(target_os = "android")]
 #[cfg(target_os = "freebsd")]
 pub fn real_args() -> ~[~str] {
-    unsafe {
-        let argc = rustrt::rust_get_argc();
-        let argv = rustrt::rust_get_argv();
-        load_argc_and_argv(argc, argv)
+    if rt::context() == TaskContext {
+        match rt::args::clone() {
+            Some(args) => args,
+            None => fail!("process arguments not initialized")
+        }
+    } else {
+        unsafe {
+            let argc = rustrt::rust_get_argc();
+            let argv = rustrt::rust_get_argv();
+            load_argc_and_argv(argc, argv)
+        }
     }
 }
 

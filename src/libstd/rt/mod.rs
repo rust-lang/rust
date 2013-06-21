@@ -159,6 +159,9 @@ pub mod metrics;
 /// Just stuff
 pub mod util;
 
+// Global command line argument storage
+pub mod args;
+
 /// Set up a default runtime configuration, given compiler-supplied arguments.
 ///
 /// This is invoked by the `start` _language item_ (unstable::lang) to
@@ -173,20 +176,28 @@ pub mod util;
 /// # Return value
 ///
 /// The return value is used as the process return code. 0 on success, 101 on error.
-pub fn start(_argc: int, _argv: **u8, crate_map: *u8, main: ~fn()) -> int {
+pub fn start(argc: int, argv: **u8, crate_map: *u8, main: ~fn()) -> int {
 
-    init(crate_map);
+    init(argc, argv, crate_map);
     let exit_code = run(main);
     cleanup();
 
     return exit_code;
 }
 
-/// One-time runtime initialization. Currently all this does is set up logging
-/// based on the RUST_LOG environment variable.
-pub fn init(crate_map: *u8) {
-    logging::init(crate_map);
-    unsafe { rust_update_gc_metadata(crate_map) }
+/// One-time runtime initialization.
+///
+/// Initializes global state, including frobbing
+/// the crate's logging flags, registering GC
+/// metadata, and storing the process arguments.
+pub fn init(argc: int, argv: **u8, crate_map: *u8) {
+    // XXX: Derefing these pointers is not safe.
+    // Need to propagate the unsafety to `start`.
+    unsafe {
+        args::init(argc, argv);
+        logging::init(crate_map);
+        rust_update_gc_metadata(crate_map);
+    }
 
     extern {
         fn rust_update_gc_metadata(crate_map: *u8);
@@ -195,6 +206,7 @@ pub fn init(crate_map: *u8) {
 
 /// One-time runtime cleanup.
 pub fn cleanup() {
+    args::cleanup();
     global_heap::cleanup();
 }
 
