@@ -19,7 +19,6 @@ use container::{Container, Mutable, Map, Set};
 use cmp::{Eq, Equiv};
 use hash::Hash;
 use old_iter::BaseIter;
-use old_iter;
 use iterator::{Iterator, IteratorUtil};
 use option::{None, Option, Some};
 use rand::RngUtil;
@@ -548,7 +547,7 @@ impl<K:Hash + Eq,V:Eq> Eq for HashMap<K, V> {
     fn eq(&self, other: &HashMap<K, V>) -> bool {
         if self.len() != other.len() { return false; }
 
-        for self.each |key, value| {
+        for self.iter().advance |(key, value)| {
             match other.find(key) {
                 None => return false,
                 Some(v) => if value != v { return false },
@@ -662,12 +661,12 @@ impl<T:Hash + Eq> Set<T> for HashSet<T> {
     /// Return true if the set has no elements in common with `other`.
     /// This is equivalent to checking for an empty intersection.
     fn is_disjoint(&self, other: &HashSet<T>) -> bool {
-        old_iter::all(self, |v| !other.contains(v))
+        self.iter().all(|v| !other.contains(v))
     }
 
     /// Return true if the set is a subset of another
     fn is_subset(&self, other: &HashSet<T>) -> bool {
-        old_iter::all(self, |v| other.contains(v))
+        self.iter().all(|v| other.contains(v))
     }
 
     /// Return true if the set is a superset of another
@@ -677,7 +676,7 @@ impl<T:Hash + Eq> Set<T> for HashSet<T> {
 
     /// Visit the values representing the difference
     fn difference(&self, other: &HashSet<T>, f: &fn(&T) -> bool) -> bool {
-        self.each(|v| other.contains(v) || f(v))
+        self.iter().advance(|v| other.contains(v) || f(v))
     }
 
     /// Visit the values representing the symmetric difference
@@ -689,12 +688,12 @@ impl<T:Hash + Eq> Set<T> for HashSet<T> {
 
     /// Visit the values representing the intersection
     fn intersection(&self, other: &HashSet<T>, f: &fn(&T) -> bool) -> bool {
-        self.each(|v| !other.contains(v) || f(v))
+        self.iter().advance(|v| !other.contains(v) || f(v))
     }
 
     /// Visit the values representing the union
     fn union(&self, other: &HashSet<T>, f: &fn(&T) -> bool) -> bool {
-        self.each(f) && other.each(|v| self.contains(v) || f(v))
+        self.iter().advance(f) && other.iter().advance(|v| self.contains(v) || f(v))
     }
 }
 
@@ -875,7 +874,7 @@ mod test_map {
             assert!(m.insert(i, i*2));
         }
         let mut observed = 0;
-        for m.each |k, v| {
+        for m.iter().advance |(k, v)| {
             assert_eq!(*v, *k * 2);
             observed |= (1 << *k);
         }
