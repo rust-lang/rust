@@ -143,7 +143,7 @@ pub unsafe fn set_memory<T>(dst: *mut T, c: u8, count: uint) {
 }
 
 /**
- * Zeroes out `count` bytes of memory at `dst`
+ * Zeroes out `count * size_of::<T>` bytes of memory at `dst`
  */
 #[inline]
 #[cfg(not(stage0))]
