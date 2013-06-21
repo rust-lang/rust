@@ -158,20 +158,6 @@ fn debug_mem() -> bool {
     false
 }
 
-#[cfg(stage0)]
-unsafe fn call_drop_glue(tydesc: *::std::unstable::intrinsics::TyDesc, data: *i8) {
-    use sys::TypeDesc;
-
-    let tydesc: *TypeDesc = transmute(tydesc);
-    let drop_glue: extern "Rust" fn(**TypeDesc, *i8) = transmute((*tydesc).drop_glue);
-    drop_glue(to_unsafe_ptr(&tydesc), data);
-}
-
-#[cfg(not(stage0))]
-unsafe fn call_drop_glue(tydesc: *::std::unstable::intrinsics::TyDesc, data: *i8) {
-    ((*tydesc).drop_glue)(to_unsafe_ptr(&tydesc), data);
-}
-
 /// Destroys all managed memory (i.e. @ boxes) held by the current task.
 #[cfg(not(test))]
 #[lang="annihilate"]
@@ -213,7 +199,9 @@ pub unsafe fn annihilate() {
     // callback, as the original value may have been freed.
     for each_live_alloc(false) |box, uniq| {
         if !uniq {
-            call_drop_glue((*box).header.type_desc, transmute(&(*box).data));
+            let tydesc = (*box).header.type_desc;
+            let data = transmute(&(*box).data);
+            ((*tydesc).drop_glue)(to_unsafe_ptr(&tydesc), data);
         }
     }
 

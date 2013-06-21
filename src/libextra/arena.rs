@@ -41,36 +41,20 @@ use list::{MutList, MutCons, MutNil};
 use core::at_vec;
 use core::cast::{transmute, transmute_mut_region};
 use core::cast;
-use core::libc::size_t;
 use core::ptr;
 use core::sys;
 use core::uint;
 use core::vec;
 use core::unstable::intrinsics;
+use core::unstable::intrinsics::{TyDesc};
+
+#[cfg(not(stage0))]
+use core::unstable::intrinsics::{get_tydesc};
 
 #[cfg(stage0)]
-use intrinsic::{get_tydesc, TyDesc};
-#[cfg(not(stage0))]
-use core::unstable::intrinsics::{get_tydesc, TyDesc};
-
-pub mod rustrt {
-    use core::libc::size_t;
-    #[cfg(stage0)]
-    use intrinsic::{TyDesc};
-    #[cfg(not(stage0))]
-    use core::unstable::intrinsics::{TyDesc};
-
-    pub extern {
-        #[rust_stack]
-        unsafe fn rust_call_tydesc_glue(root: *u8,
-                                        tydesc: *TyDesc,
-                                        field: size_t);
-    }
+unsafe fn get_tydesc<T>() -> *TyDesc {
+    intrinsics::get_tydesc::<T>() as *TyDesc
 }
-
-// This probably belongs somewhere else. Needs to be kept in sync with
-// changes to glue...
-static tydesc_drop_glue_index: size_t = 3 as size_t;
 
 // The way arena uses arrays is really deeply awful. The arrays are
 // allocated, and have capacities reserved, but the fill for the array
@@ -150,8 +134,8 @@ unsafe fn destroy_chunk(chunk: &Chunk) {
         //debug!("freeing object: idx = %u, size = %u, align = %u, done = %b",
         //       start, size, align, is_done);
         if is_done {
-            rustrt::rust_call_tydesc_glue(
-                ptr::offset(buf, start), tydesc, tydesc_drop_glue_index);
+            ((*tydesc).drop_glue)(&tydesc as **TyDesc,
+                                  ptr::offset(buf, start) as *i8);
         }
 
         // Find where the next tydesc lives
