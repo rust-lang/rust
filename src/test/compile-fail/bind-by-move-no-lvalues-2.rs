@@ -13,7 +13,7 @@
 struct X { x: (), }
 
 impl Drop for X {
-    fn finalize(&self) {
+    fn drop(&self) {
         error!("destructor runs");
     }
 }

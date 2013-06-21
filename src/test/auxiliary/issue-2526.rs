@@ -21,7 +21,7 @@ struct arc_destruct<T> {
 
 #[unsafe_destructor]
 impl<T:Const> Drop for arc_destruct<T> {
-    fn finalize(&self) {}
+    fn drop(&self) {}
 }
 
 fn arc_destruct<T:Const>(data: int) -> arc_destruct<T> {
@@ -45,7 +45,7 @@ struct context_res {
 }
 
 impl Drop for context_res {
-    fn finalize(&self) {}
+    fn drop(&self) {}
 }
 
 fn context_res() -> context_res {

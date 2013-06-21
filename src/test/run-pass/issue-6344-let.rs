@@ -11,7 +11,7 @@
 struct A { x: uint }
 
 impl Drop for A {
-    fn finalize(&self) {}
+    fn drop(&self) {}
 }
 
 fn main() {

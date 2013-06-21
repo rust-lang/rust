@@ -13,7 +13,7 @@ struct foo {
 }
 
 impl Drop for foo {
-    fn finalize(&self) {}
+    fn drop(&self) {}
 }
 
 fn foo(i:int) -> foo {

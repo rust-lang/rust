@@ -128,7 +128,7 @@ struct Bored {
 }
 
 impl Drop for Bored {
-  fn finalize(&self) { }
+  fn drop(&self) { }
 }
 
 /**

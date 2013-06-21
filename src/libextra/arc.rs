@@ -247,7 +247,7 @@ struct PoisonOnFail {
 }
 
 impl Drop for PoisonOnFail {
-    fn finalize(&self) {
+    fn drop(&self) {
         unsafe {
             /* assert!(!*self.failed);
                -- might be false in case of cond.wait() */

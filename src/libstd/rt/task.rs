@@ -103,7 +103,7 @@ impl Task {
 }
 
 impl Drop for Task {
-    fn finalize(&self) { assert!(self.destroyed) }
+    fn drop(&self) { assert!(self.destroyed) }
 }
 
 // Just a sanity check to make sure we are catching a Rust-thrown exception

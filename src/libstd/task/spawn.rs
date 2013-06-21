@@ -317,7 +317,7 @@ struct TCB {
 
 impl Drop for TCB {
     // Runs on task exit.
-    fn finalize(&self) {
+    fn drop(&self) {
         unsafe {
             // FIXME(#4330) Need self by value to get mutability.
             let this: &mut TCB = transmute(self);
@@ -372,7 +372,7 @@ struct AutoNotify {
 }
 
 impl Drop for AutoNotify {
-    fn finalize(&self) {
+    fn drop(&self) {
         let result = if self.failed { Failure } else { Success };
         self.notify_chan.send(result);
     }

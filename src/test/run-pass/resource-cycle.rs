@@ -17,7 +17,7 @@ struct r {
 }
 
 impl Drop for r {
-    fn finalize(&self) {
+    fn drop(&self) {
         unsafe {
             debug!("r's dtor: self = %x, self.v = %x, self.v's value = %x",
               cast::transmute::<*r, uint>(self),

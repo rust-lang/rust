@@ -14,7 +14,7 @@ struct cat {
 }
 
 impl Drop for cat {
-    fn finalize(&self) {
+    fn drop(&self) {
         (self.done)(self.meows);
     }
 }

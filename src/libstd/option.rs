@@ -416,7 +416,7 @@ fn test_unwrap_resource() {
 
     #[unsafe_destructor]
     impl ::ops::Drop for R {
-       fn finalize(&self) { *(self.i) += 1; }
+       fn drop(&self) { *(self.i) += 1; }
     }
 
     fn R(i: @mut int) -> R {

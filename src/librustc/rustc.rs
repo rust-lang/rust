@@ -328,7 +328,7 @@ pub fn monitor(f: ~fn(diagnostic::Emitter)) {
         }
 
         impl Drop for finally {
-            fn finalize(&self) { self.ch.send(done); }
+            fn drop(&self) { self.ch.send(done); }
         }
 
         let _finally = finally { ch: ch };
