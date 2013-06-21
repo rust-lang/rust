@@ -130,6 +130,7 @@ impl Subst for ty::ParamBounds {
 impl Subst for ty::TypeParameterDef {
     fn subst(&self, tcx: ty::ctxt, substs: &ty::substs) -> ty::TypeParameterDef {
         ty::TypeParameterDef {
+            ident: self.ident,
             def_id: self.def_id,
             bounds: self.bounds.subst(tcx, substs)
         }
