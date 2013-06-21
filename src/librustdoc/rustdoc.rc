@@ -78,7 +78,7 @@ mod std {
 pub fn main() {
     let args = os::args();
 
-    if args.contains(&~"-h") || args.contains(&~"--help") {
+    if args.iter().any_(|x| "-h" == *x) || args.iter().any_(|x| "--help" == *x) {
         config::usage();
         return;
     }

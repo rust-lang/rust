@@ -519,8 +519,9 @@ fn get_authority(rawurl: &str) ->
     let end = end; // make end immutable so it can be captured
 
     let host_is_end_plus_one: &fn() -> bool = || {
+        let xs = ['?', '#', '/'];
         end+1 == len
-            && !['?', '#', '/'].contains(&(rawurl[end] as char))
+            && !xs.iter().any_(|x| *x == (rawurl[end] as char))
     };
 
     // finish up

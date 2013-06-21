@@ -197,13 +197,13 @@ pub fn metas_in_cfg(cfg: ast::crate_cfg,
     // which the item is valid
     let cfg_metas = vec::filter_map(cfg_metas, |i| attr::get_meta_item_list(i));
 
-    if cfg_metas.all(|c| c.is_empty()) { return true; }
+    if cfg_metas.iter().all(|c| c.is_empty()) { return true; }
 
-    cfg_metas.any(|cfg_meta| {
-        cfg_meta.all(|cfg_mi| {
+    cfg_metas.iter().any_(|cfg_meta| {
+        cfg_meta.iter().all(|cfg_mi| {
             match cfg_mi.node {
                 ast::meta_list(s, ref it) if "not" == s
-                    => it.all(|mi| !attr::contains(cfg, *mi)),
+                    => it.iter().all(|mi| !attr::contains(cfg, *mi)),
                 _ => attr::contains(cfg, *cfg_mi)
             }
         })

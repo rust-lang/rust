@@ -133,7 +133,7 @@ pub fn trans_inline_asm(bcx: block, ia: &ast::inline_asm) -> block {
         let op = PointerCast(bcx, aoutputs[0], T_ptr(val_ty(outputs[0])));
         Store(bcx, r, op);
     } else {
-        for aoutputs.eachi |i, o| {
+        for aoutputs.iter().enumerate().advance |(i, o)| {
             let v = ExtractValue(bcx, r, i);
             let op = PointerCast(bcx, *o, T_ptr(val_ty(outputs[i])));
             Store(bcx, v, op);

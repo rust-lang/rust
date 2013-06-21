@@ -283,7 +283,7 @@ let ports = do vec::from_fn(3) |init_val| {
 };
 
 // Wait on each port, accumulating the results
-let result = ports.foldl(0, |accum, port| *accum + port.recv() );
+let result = ports.iter().fold(0, |accum, port| accum + port.recv() );
 # fn some_expensive_computation(_i: uint) -> int { 42 }
 ~~~
 

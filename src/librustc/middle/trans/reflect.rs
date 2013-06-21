@@ -95,7 +95,7 @@ impl Reflector {
         let v = self.visitor_val;
         debug!("passing %u args:", args.len());
         let bcx = self.bcx;
-        for args.eachi |i, a| {
+        for args.iter().enumerate().advance |(i, a)| {
             debug!("arg %u: %s", i, val_str(bcx.ccx().tn, *a));
         }
         let bool_ty = ty::mk_bool();
@@ -207,7 +207,7 @@ impl Reflector {
               let extra = ~[self.c_uint(tys.len())]
                   + self.c_size_and_align(t);
               do self.bracketed(~"tup", extra) |this| {
-                  for tys.eachi |i, t| {
+                  for tys.iter().enumerate().advance |(i, t)| {
                       let extra = ~[this.c_uint(i), this.c_tydesc(*t)];
                       this.visit(~"tup_field", extra);
                   }
@@ -252,7 +252,7 @@ impl Reflector {
               let extra = ~[self.c_uint(fields.len())]
                   + self.c_size_and_align(t);
               do self.bracketed(~"class", extra) |this| {
-                  for fields.eachi |i, field| {
+                  for fields.iter().enumerate().advance |(i, field)| {
                       let extra = ~[this.c_uint(i),
                                     this.c_slice(
                                         bcx.ccx().sess.str_of(field.ident))]
@@ -310,14 +310,14 @@ impl Reflector {
             let enum_args = ~[self.c_uint(variants.len()), make_get_disr()]
                 + self.c_size_and_align(t);
             do self.bracketed(~"enum", enum_args) |this| {
-                for variants.eachi |i, v| {
+                for variants.iter().enumerate().advance |(i, v)| {
                     let name = ccx.sess.str_of(v.name);
                     let variant_args = ~[this.c_uint(i),
                                          this.c_int(v.disr_val),
                                          this.c_uint(v.args.len()),
                                          this.c_slice(name)];
                     do this.bracketed(~"enum_variant", variant_args) |this| {
-                        for v.args.eachi |j, a| {
+                        for v.args.iter().enumerate().advance |(j, a)| {
                             let bcx = this.bcx;
                             let null = C_null(llptrty);
                             let ptr = adt::trans_field_ptr(bcx, repr, null, v.disr_val, j);
@@ -352,7 +352,7 @@ impl Reflector {
     }
 
     pub fn visit_sig(&mut self, retval: uint, sig: &ty::FnSig) {
-        for sig.inputs.eachi |i, arg| {
+        for sig.inputs.iter().enumerate().advance |(i, arg)| {
             let modeval = 5u;   // "by copy"
             let extra = ~[self.c_uint(i),
                          self.c_uint(modeval),

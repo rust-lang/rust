@@ -421,7 +421,7 @@ pub fn ensure_supertraits(ccx: &CrateCtxt,
                                               generics, self_ty);
 
         // FIXME(#5527) Could have same trait multiple times
-        if ty_trait_refs.any(|other_trait| other_trait.def_id == trait_ref.def_id) {
+        if ty_trait_refs.iter().any_(|other_trait| other_trait.def_id == trait_ref.def_id) {
             // This means a trait inherited from the same supertrait more
             // than once.
             tcx.sess.span_err(sp, "Duplicate supertrait in trait declaration");
@@ -515,7 +515,7 @@ pub fn compare_impl_method(tcx: ty::ctxt,
         return;
     }
 
-    for trait_m.generics.type_param_defs.eachi |i, trait_param_def| {
+    for trait_m.generics.type_param_defs.iter().enumerate().advance |(i, trait_param_def)| {
         // For each of the corresponding impl ty param's bounds...
         let impl_param_def = &impl_m.generics.type_param_defs[i];
 
@@ -687,11 +687,11 @@ pub fn check_methods_against_trait(ccx: &CrateCtxt,
     // we'll catch it in coherence
     let trait_ms = ty::trait_methods(tcx, trait_ref.def_id);
     for impl_ms.each |impl_m| {
-        match trait_ms.find(|trait_m| trait_m.ident == impl_m.mty.ident) {
+        match trait_ms.iter().find_(|trait_m| trait_m.ident == impl_m.mty.ident) {
             Some(trait_m) => {
                 let num_impl_tps = generics.ty_params.len();
                 compare_impl_method(
-                    ccx.tcx, num_impl_tps, impl_m, trait_m,
+                    ccx.tcx, num_impl_tps, impl_m, *trait_m,
                     &trait_ref.substs, selfty);
             }
             None => {

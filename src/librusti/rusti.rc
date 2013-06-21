@@ -287,7 +287,7 @@ fn compile_crate(src_filename: ~str, binary: ~str) -> Option<bool> {
         // file, skip compilation and return None.
         let mut should_compile = true;
         let dir = os::list_dir_path(&Path(outputs.out_filename.dirname()));
-        let maybe_lib_path = do dir.find |file| {
+        let maybe_lib_path = do dir.iter().find_ |file| {
             // The actual file's name has a hash value and version
             // number in it which is unknown at this time, so looking
             // for a file that matches out_filename won't work,
@@ -381,7 +381,7 @@ fn run_cmd(repl: &mut Repl, _in: @io::Reader, _out: @io::Writer,
                 let crate_path = Path(*crate);
                 let crate_dir = crate_path.dirname();
                 repl.program.record_extern(fmt!("extern mod %s;", *crate));
-                if !repl.lib_search_paths.contains(&crate_dir) {
+                if !repl.lib_search_paths.iter().any_(|x| x == &crate_dir) {
                     repl.lib_search_paths.push(crate_dir);
                 }
             }
@@ -430,7 +430,7 @@ pub fn run_line(repl: &mut Repl, in: @io::Reader, out: @io::Writer, line: ~str,
 
             if !cmd.is_empty() {
                 let args = if len > 1 {
-                    vec::slice(split, 1, len).to_vec()
+                    vec::slice(split, 1, len).to_owned()
                 } else { ~[] };
 
                 match run_cmd(repl, in, out, cmd, args, use_rl) {

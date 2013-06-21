@@ -111,7 +111,7 @@ fn decodable_substructure(cx: @ExtCtxt, span: span,
             let mut variants = ~[];
             let rvariant_arg = cx.ident_of("read_enum_variant_arg");
 
-            for fields.eachi |i, f| {
+            for fields.iter().enumerate().advance |(i, f)| {
                 let (name, parts) = match *f { (i, ref p) => (i, p) };
                 variants.push(cx.expr_str(span, cx.str_of(name)));
 
