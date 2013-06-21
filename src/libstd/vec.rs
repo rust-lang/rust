@@ -17,7 +17,6 @@ use cast;
 use container::{Container, Mutable};
 use cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering, Less, Equal, Greater};
 use clone::Clone;
-use old_iter::BaseIter;
 use old_iter;
 use iterator::{FromIterator, Iterator, IteratorUtil};
 use iter::FromIter;
@@ -1025,7 +1024,7 @@ impl<'self, T:Copy> VectorVector<T> for &'self [~[T]] {
     pub fn connect_vec(&self, sep: &T) -> ~[T] {
         let mut r = ~[];
         let mut first = true;
-        for self.each |&inner| {
+        for self.iter().advance |&inner| {
             if first { first = false; } else { r.push(copy *sep); }
             r.push_all(inner);
         }
@@ -1043,7 +1042,7 @@ impl<'self, T:Copy> VectorVector<T> for &'self [&'self [T]] {
     pub fn connect_vec(&self, sep: &T) -> ~[T] {
         let mut r = ~[];
         let mut first = true;
-        for self.each |&inner| {
+        for self.iter().advance |&inner| {
             if first { first = false; } else { r.push(copy *sep); }
             r.push_all(inner);
         }
@@ -1749,7 +1748,7 @@ impl<'self,T:Copy> CopyableVector<T> for &'self [T] {
     fn to_owned(&self) -> ~[T] {
         let mut result = ~[];
         reserve(&mut result, self.len());
-        for self.each |e| {
+        for self.iter().advance |e| {
             result.push(copy *e);
         }
         result
@@ -2397,15 +2396,6 @@ pub mod bytes {
         // Bound checks are done at vec::raw::copy_memory.
         unsafe { vec::raw::copy_memory(dst, src, count) }
     }
-}
-
-impl<'self,A> old_iter::BaseIter<A> for &'self [A] {
-    #[inline]
-    fn each<'a>(&'a self, blk: &fn(v: &'a A) -> bool) -> bool {
-        each(*self, blk)
-    }
-    #[inline]
-    fn size_hint(&self) -> Option<uint> { Some(self.len()) }
 }
 
 impl<A:Clone> Clone for ~[A] {

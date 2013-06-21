@@ -141,7 +141,7 @@ fn bfs(graph: graph, key: node_id) -> bfs_result {
     while !q.is_empty() {
         let t = q.pop_front();
 
-        do graph[t].each() |k| {
+        do graph[t].iter().advance |k| {
             if marks[*k] == -1i64 {
                 marks[*k] = t;
                 q.add_back(*k);
@@ -201,7 +201,7 @@ fn bfs2(graph: graph, key: node_id) -> bfs_result {
 
                 let mut color = white;
 
-                do neighbors.each() |k| {
+                do neighbors.iter().advance |k| {
                     if is_gray(&colors[*k]) {
                         color = gray(*k);
                         false
@@ -286,7 +286,7 @@ fn pbfs(graph: &arc::ARC<graph>, key: node_id) -> bfs_result {
 
                     let mut color = white;
 
-                    do neighbors.each() |k| {
+                    do neighbors.iter().advance |k| {
                         if is_gray(&colors[*k]) {
                             color = gray(*k);
                             false

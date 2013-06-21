@@ -357,13 +357,13 @@ impl MoveData {
             self.kill_moves(assignment.path, assignment.id, dfcx_moves);
         }
 
-        for self.path_assignments.each |assignment| {
+        for self.path_assignments.iter().advance |assignment| {
             self.kill_moves(assignment.path, assignment.id, dfcx_moves);
         }
 
         // Kill all moves related to a variable `x` when it goes out
         // of scope:
-        for self.paths.each |path| {
+        for self.paths.iter().advance |path| {
             match *path.loan_path {
                 LpVar(id) => {
                     let kill_id = tcx.region_maps.encl_scope(id);

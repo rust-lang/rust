@@ -333,14 +333,14 @@ impl<'self> LookupContext<'self> {
         let trait_map: &mut resolve::TraitMap = &mut self.fcx.ccx.trait_map;
         let opt_applicable_traits = trait_map.find(&self.expr.id);
         for opt_applicable_traits.iter().advance |applicable_traits| {
-            for applicable_traits.each |trait_did| {
+            for applicable_traits.iter().advance |trait_did| {
                 let coherence_info = self.fcx.ccx.coherence_info;
 
                 // Look for explicit implementations.
                 let opt_impl_infos =
                     coherence_info.extension_methods.find(trait_did);
                 for opt_impl_infos.iter().advance |impl_infos| {
-                    for impl_infos.each |impl_info| {
+                    for impl_infos.iter().advance |impl_info| {
                         self.push_candidates_from_impl(
                             self.extension_candidates, *impl_info);
 
@@ -486,7 +486,7 @@ impl<'self> LookupContext<'self> {
         }
         // No method found yet? Check each supertrait
         if method_info.is_none() {
-            for ty::trait_supertraits(tcx, did).each() |trait_ref| {
+            for ty::trait_supertraits(tcx, did).iter().advance |trait_ref| {
                 let supertrait_methods =
                     ty::trait_methods(tcx, trait_ref.def_id);
                 match supertrait_methods.iter().position_(|m| m.ident == self.m_name) {
@@ -527,7 +527,7 @@ impl<'self> LookupContext<'self> {
         let opt_impl_infos =
             self.fcx.ccx.coherence_info.inherent_methods.find(&did);
         for opt_impl_infos.iter().advance |impl_infos| {
-            for impl_infos.each |impl_info| {
+            for impl_infos.iter().advance |impl_info| {
                 self.push_candidates_from_impl(
                     self.inherent_candidates, *impl_info);
             }
@@ -767,7 +767,7 @@ impl<'self> LookupContext<'self> {
         // This is hokey. We should have mutability inference as a
         // variable.  But for now, try &const, then &, then &mut:
         let region = self.infcx().next_region_var_nb(self.expr.span);
-        for mutbls.each |mutbl| {
+        for mutbls.iter().advance |mutbl| {
             let autoref_ty = mk_autoref_ty(*mutbl, region);
             match self.search_for_method(autoref_ty) {
                 None => {}

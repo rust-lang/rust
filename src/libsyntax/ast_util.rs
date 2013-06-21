@@ -281,7 +281,7 @@ pub fn split_trait_methods(trait_methods: &[trait_method])
     -> (~[ty_method], ~[@method]) {
     let mut reqd = ~[];
     let mut provd = ~[];
-    for trait_methods.each |trt_method| {
+    for trait_methods.iter().advance |trt_method| {
         match *trt_method {
           required(ref tm) => reqd.push(copy *tm),
           provided(m) => provd.push(m)
@@ -411,13 +411,13 @@ pub fn id_visitor<T: Copy>(vfn: @fn(node_id, T)) -> visit::vt<T> {
             match vi.node {
               view_item_extern_mod(_, _, id) => vfn(id, copy t),
               view_item_use(ref vps) => {
-                  for vps.each |vp| {
+                  for vps.iter().advance |vp| {
                       match vp.node {
                           view_path_simple(_, _, id) => vfn(id, copy t),
                           view_path_glob(_, id) => vfn(id, copy t),
                           view_path_list(_, ref paths, id) => {
                               vfn(id, copy t);
-                              for paths.each |p| {
+                              for paths.iter().advance |p| {
                                   vfn(p.node.id, copy t);
                               }
                           }
@@ -437,7 +437,7 @@ pub fn id_visitor<T: Copy>(vfn: @fn(node_id, T)) -> visit::vt<T> {
             vfn(i.id, copy t);
             match i.node {
               item_enum(ref enum_definition, _) =>
-                for (*enum_definition).variants.each |v| { vfn(v.node.id, copy t); },
+                for (*enum_definition).variants.iter().advance |v| { vfn(v.node.id, copy t); },
               _ => ()
             }
             visit::visit_item(i, (t, vt));
@@ -500,7 +500,7 @@ pub fn id_visitor<T: Copy>(vfn: @fn(node_id, T)) -> visit::vt<T> {
                 }
             }
 
-            for d.inputs.each |arg| {
+            for d.inputs.iter().advance |arg| {
                 vfn(arg.id, copy t)
             }
             visit::visit_fn(fk, d, a, b, id, (copy t, vt));
@@ -546,16 +546,16 @@ pub fn walk_pat(pat: @pat, it: &fn(@pat) -> bool) -> bool {
     match pat.node {
         pat_ident(_, _, Some(p)) => walk_pat(p, it),
         pat_struct(_, ref fields, _) => {
-            fields.each(|f| walk_pat(f.pat, it))
+            fields.iter().advance(|f| walk_pat(f.pat, it))
         }
         pat_enum(_, Some(ref s)) | pat_tup(ref s) => {
-            s.each(|&p| walk_pat(p, it))
+            s.iter().advance(|&p| walk_pat(p, it))
         }
         pat_box(s) | pat_uniq(s) | pat_region(s) => {
             walk_pat(s, it)
         }
         pat_vec(ref before, ref slice, ref after) => {
-            before.each(|&p| walk_pat(p, it)) &&
+            before.iter().advance(|&p| walk_pat(p, it)) &&
                 slice.iter().advance(|&p| walk_pat(p, it)) &&
                 after.iter().advance(|&p| walk_pat(p, it))
         }

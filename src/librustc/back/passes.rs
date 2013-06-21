@@ -147,7 +147,7 @@ pub fn create_standard_passes(level:OptLevel) -> ~[~str] {
 }
 
 pub fn populate_pass_manager(sess: Session, pm: &mut PassManager, pass_list:&[~str]) {
-    for pass_list.each |&nm| {
+    for pass_list.iter().advance |&nm| {
         match create_pass(nm) {
             Some(p) => pm.add_pass(p),
             None    => sess.warn(fmt!("Unknown pass %s", nm))
@@ -172,15 +172,15 @@ pub fn list_passes() {
     io::println("\nAvailable Passes:");
 
     io::println("\nAnalysis Passes:");
-    for analysis_passes.each |&(name, desc)| {
+    for analysis_passes.iter().advance |&(name, desc)| {
         io::println(fmt!("    %-30s -- %s", name, desc));
     }
     io::println("\nTransformation Passes:");
-    for transform_passes.each |&(name, desc)| {
+    for transform_passes.iter().advance |&(name, desc)| {
         io::println(fmt!("    %-30s -- %s", name, desc));
     }
     io::println("\nUtility Passes:");
-    for utility_passes.each |&(name, desc)| {
+    for utility_passes.iter().advance |&(name, desc)| {
         io::println(fmt!("    %-30s -- %s", name, desc));
     }
 }
@@ -298,7 +298,7 @@ static utility_passes : &'static [(&'static str, &'static str)] = &'static [
 fn passes_exist() {
     let mut failed = ~[];
     unsafe { llvm::LLVMInitializePasses(); }
-    for analysis_passes.each() |&(name,_)| {
+    for analysis_passes.iter().advance |&(name,_)| {
         let pass = create_pass(name);
         if !pass.is_some() {
             failed.push(name);
@@ -306,7 +306,7 @@ fn passes_exist() {
             unsafe { llvm::LLVMDestroyPass(pass.get()) }
         }
     }
-    for transform_passes.each() |&(name,_)| {
+    for transform_passes.iter().advance |&(name,_)| {
         let pass = create_pass(name);
         if !pass.is_some() {
             failed.push(name);
@@ -314,7 +314,7 @@ fn passes_exist() {
             unsafe { llvm::LLVMDestroyPass(pass.get()) }
         }
     }
-    for utility_passes.each() |&(name,_)| {
+    for utility_passes.iter().advance |&(name,_)| {
         let pass = create_pass(name);
         if !pass.is_some() {
             failed.push(name);
@@ -325,7 +325,7 @@ fn passes_exist() {
 
     if failed.len() > 0 {
         io::println("Some passes don't exist:");
-        for failed.each |&n| {
+        for failed.iter().advance |&n| {
             io::println(fmt!("    %s", n));
         }
         fail!();

@@ -270,7 +270,7 @@ impl CoherenceChecker {
         // We only want to generate one Impl structure. When we generate one,
         // we store it here so that we don't recreate it.
         let mut implementation_opt = None;
-        for associated_traits.each |&associated_trait| {
+        for associated_traits.iter().advance |&associated_trait| {
             let trait_ref =
                 ty::node_id_to_trait_ref(
                     self.crate_context.tcx,
@@ -536,11 +536,12 @@ impl CoherenceChecker {
         // XXX: This is horrible.
         let mut provided_method_idents = HashSet::new();
         let tcx = self.crate_context.tcx;
-        for ty::provided_trait_methods(tcx, trait_did).each |ident| {
+        let r = ty::provided_trait_methods(tcx, trait_did);
+        for r.iter().advance |ident| {
             provided_method_idents.insert(*ident);
         }
 
-        for ty::trait_methods(tcx, trait_did).each |&method| {
+        for ty::trait_methods(tcx, trait_did).iter().advance |&method| {
             if provided_method_idents.contains(&method.ident) {
                 if !f(method) {
                     return false;
@@ -611,7 +612,8 @@ impl CoherenceChecker {
             if result.is_ok() {
                 // Check to ensure that each parameter binding respected its
                 // kind bounds.
-                for [ a, b ].each |result| {
+                let xs = [a, b];
+                for xs.iter().advance |result| {
                     for result.type_variables.iter()
                         .zip(result.type_param_defs.iter())
                         .advance |(ty_var, type_param_def)|
@@ -728,12 +730,14 @@ impl CoherenceChecker {
             provided_names.insert(all_methods[i].ident);
         }
         // Default methods
-        for ty::provided_trait_methods(tcx, trait_did).each |ident| {
+        let r = ty::provided_trait_methods(tcx, trait_did);
+        for r.iter().advance |ident| {
             debug!("inserting provided method %s", ident.repr(tcx));
             provided_names.insert(*ident);
         }
 
-        for (*ty::trait_methods(tcx, trait_did)).each |method| {
+        let r = ty::trait_methods(tcx, trait_did);
+        for r.iter().advance |method| {
             debug!("checking for %s", method.ident.repr(tcx));
             if provided_names.contains(&method.ident) { loop; }
 
@@ -802,7 +806,7 @@ impl CoherenceChecker {
                     debug!("(creating impl) trait with node_id `%d` \
                             has provided methods", trait_did.node);
                     // Add all provided methods.
-                    for all_provided_methods.each |provided_method| {
+                    for all_provided_methods.iter().advance |provided_method| {
                         debug!(
                             "(creating impl) adding provided method \
                              `%s` to impl",
@@ -821,7 +825,7 @@ impl CoherenceChecker {
         match item.node {
             item_impl(_, ref trait_refs, _, ref ast_methods) => {
                 let mut methods = ~[];
-                for ast_methods.each |ast_method| {
+                for ast_methods.iter().advance |ast_method| {
                     methods.push(method_to_MethodInfo(*ast_method));
                 }
 
@@ -882,7 +886,7 @@ impl CoherenceChecker {
         let implementations = get_impls_for_mod(crate_store,
                                                 module_def_id,
                                                 None);
-        for implementations.each |implementation| {
+        for implementations.iter().advance |implementation| {
             debug!("coherence: adding impl from external crate: %s",
                    ty::item_path_str(self.crate_context.tcx,
                                      implementation.did));
@@ -1009,7 +1013,7 @@ impl CoherenceChecker {
             Some(found_impls) => impls = found_impls
         }
 
-        for impls.each |impl_info| {
+        for impls.iter().advance |impl_info| {
             if impl_info.methods.len() < 1 {
                 // We'll error out later. For now, just don't ICE.
                 loop;

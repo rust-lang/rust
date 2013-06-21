@@ -208,7 +208,8 @@ pub fn make_tests(config: &config) -> ~[test::TestDescAndFn] {
     debug!("making tests from %s",
            config.src_base.to_str());
     let mut tests = ~[];
-    for os::list_dir_path(&config.src_base).each |file| {
+    let dirs = os::list_dir_path(&config.src_base);
+    for dirs.iter().advance |file| {
         let file = copy *file;
         debug!("inspecting file %s", file.to_str());
         if is_test(config, file) {
@@ -230,11 +231,11 @@ pub fn is_test(config: &config, testfile: &Path) -> bool {
 
     let mut valid = false;
 
-    for valid_extensions.each |ext| {
+    for valid_extensions.iter().advance |ext| {
         if name.ends_with(*ext) { valid = true; }
     }
 
-    for invalid_prefixes.each |pre| {
+    for invalid_prefixes.iter().advance |pre| {
         if name.starts_with(*pre) { valid = false; }
     }
 

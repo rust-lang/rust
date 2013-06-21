@@ -2746,7 +2746,7 @@ impl Parser {
         } = self.parse_items_and_view_items(first_item_attrs,
                                             false, false);
 
-        for items.each |item| {
+        for items.iter().advance |item| {
             let decl = @spanned(item.span.lo, item.span.hi, decl_item(*item));
             stmts.push(@spanned(item.span.lo, item.span.hi,
                                 stmt_decl(decl, self.get_id())));
@@ -3356,7 +3356,8 @@ impl Parser {
             is_tuple_like = false;
             fields = ~[];
             while *self.token != token::RBRACE {
-                for self.parse_struct_decl_field().each |struct_field| {
+                let r = self.parse_struct_decl_field();
+                for r.iter().advance |struct_field| {
                     fields.push(*struct_field)
                 }
             }
@@ -3825,7 +3826,8 @@ impl Parser {
     fn parse_struct_def(&self) -> @struct_def {
         let mut fields: ~[@struct_field] = ~[];
         while *self.token != token::RBRACE {
-            for self.parse_struct_decl_field().each |struct_field| {
+            let r = self.parse_struct_decl_field();
+            for r.iter().advance |struct_field| {
                 fields.push(*struct_field);
             }
         }
@@ -3865,7 +3867,7 @@ impl Parser {
                     seq_sep_trailing_disallowed(token::COMMA),
                     |p| p.parse_ty(false)
                 );
-                for arg_tys.each |ty| {
+                for arg_tys.iter().advance |ty| {
                     args.push(ast::variant_arg {
                         ty: *ty,
                         id: self.get_id(),

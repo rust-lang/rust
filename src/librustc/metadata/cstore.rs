@@ -160,7 +160,7 @@ pub fn get_dep_hashes(cstore: &CStore) -> ~[@str] {
     };
 
     debug!("sorted:");
-    for sorted.each |x| {
+    for sorted.iter().advance |x| {
         debug!("  hash[%s]: %s", x.name, x.hash);
     }
 

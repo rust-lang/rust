@@ -14,7 +14,6 @@ use to_str::{ToStr,ToStrConsume};
 use str;
 use str::StrSlice;
 use cast;
-use old_iter::BaseIter;
 use iterator::IteratorUtil;
 use vec::{CopyableVector, ImmutableVector, OwnedVector};
 use to_bytes::IterBytes;
@@ -94,7 +93,7 @@ impl<'self> AsciiCast<&'self[Ascii]> for &'self [u8] {
 
     #[inline]
     fn is_ascii(&self) -> bool {
-        for self.each |b| {
+        for self.iter().advance |b| {
             if !b.is_ascii() { return false; }
         }
         true

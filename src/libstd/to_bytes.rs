@@ -17,9 +17,10 @@ The `ToBytes` and `IterBytes` traits
 use cast;
 use io;
 use io::Writer;
+use iterator::IteratorUtil;
 use option::{None, Option, Some};
-use old_iter::BaseIter;
 use str::StrSlice;
+use vec::ImmutableVector;
 
 pub type Cb<'self> = &'self fn(buf: &[u8]) -> bool;
 
@@ -223,7 +224,7 @@ impl IterBytes for f64 {
 impl<'self,A:IterBytes> IterBytes for &'self [A] {
     #[inline]
     fn iter_bytes(&self, lsb0: bool, f: Cb) -> bool {
-        self.each(|elt| elt.iter_bytes(lsb0, |b| f(b)))
+        self.iter().advance(|elt| elt.iter_bytes(lsb0, |b| f(b)))
     }
 }
 
