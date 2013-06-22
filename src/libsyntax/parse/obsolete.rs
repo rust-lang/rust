@@ -46,7 +46,6 @@ pub enum ObsoleteSyntax {
     ObsoleteUnsafeBlock,
     ObsoleteUnenforcedBound,
     ObsoleteImplSyntax,
-    ObsoleteTraitBoundSeparator,
     ObsoleteMutOwnedPointer,
     ObsoleteMutVector,
     ObsoleteImplVisibility,
@@ -142,10 +141,6 @@ impl Parser {
             ObsoleteImplSyntax => (
                 "colon-separated impl syntax",
                 "write `impl Trait for Type`"
-            ),
-            ObsoleteTraitBoundSeparator => (
-                "space-separated trait bounds",
-                "write `+` between trait bounds"
             ),
             ObsoleteMutOwnedPointer => (
                 "const or mutable owned pointer",

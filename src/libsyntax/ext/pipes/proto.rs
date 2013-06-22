@@ -15,6 +15,7 @@ use codemap::span;
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use ext::pipes::ast_builder::{append_types, path};
+use opt_vec;
 
 #[deriving(Eq)]
 pub enum direction { send, recv }
@@ -101,7 +102,7 @@ impl state_ {
     pub fn to_ty(&self, cx: @ExtCtxt) -> @ast::Ty {
         cx.ty_path
             (path(~[cx.ident_of(self.name)],self.span).add_tys(
-                cx.ty_vars(&self.generics.ty_params)))
+                cx.ty_vars(&self.generics.ty_params)), @opt_vec::Empty)
     }
 
     /// Iterate over the states that can be reached in one message
