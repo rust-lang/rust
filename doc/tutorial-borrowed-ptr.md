@@ -234,7 +234,7 @@ would therefore be subject to garbage collection. A heap box that is
 unrooted is one such that no pointer values in the heap point to
 it. It would violate memory safety for the box that was originally
 assigned to `x` to be garbage-collected, since a non-heap
-pointer---`y`---still points into it.
+pointer *`y`* still points into it.
 
 > ***Note:*** Our current implementation implements the garbage collector
 > using reference counting and cycle detection.
@@ -475,7 +475,7 @@ but otherwise it requires that the data reside in immutable memory.
 
 # Returning borrowed pointers
 
-So far, all of the examples we've looked at use borrowed pointers in a
+So far, all of the examples we have looked at, use borrowed pointers in a
 “downward” direction. That is, a method or code block creates a
 borrowed pointer, then uses it within the same scope. It is also
 possible to return borrowed pointers as the result of a function, but
@@ -509,7 +509,7 @@ guaranteed to refer to a distinct lifetime from the lifetimes of all
 other parameters.
 
 Named lifetimes that appear in function signatures are conceptually
-the same as the other lifetimes we've seen before, but they are a bit
+the same as the other lifetimes we have seen before, but they are a bit
 abstract: they don’t refer to a specific expression within `get_x()`,
 but rather to some expression within the *caller of `get_x()`*.  The
 lifetime `r` is actually a kind of *lifetime parameter*: it is defined

@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -59,15 +59,15 @@ fn opt_help() -> ~str { ~"h" }
 fn opts() -> ~[(getopts::Opt, ~str)] {
     ~[
         (getopts::optopt(opt_output_dir()),
-         ~"--output-dir <val>     put documents here"),
+         ~"--output-dir <val>     Put documents here (default: .)"),
         (getopts::optopt(opt_output_format()),
-         ~"--output-format <val>  either 'markdown' or 'html'"),
+         ~"--output-format <val>  'markdown' or 'html' (default)"),
         (getopts::optopt(opt_output_style()),
-         ~"--output-style <val>   either 'doc-per-crate' or 'doc-per-mod'"),
+         ~"--output-style <val>   'doc-per-crate' or 'doc-per-mod' (default)"),
         (getopts::optopt(opt_pandoc_cmd()),
-         ~"--pandoc-cmd <val>     the command for running pandoc"),
+         ~"--pandoc-cmd <val>     Command for running pandoc"),
         (getopts::optflag(opt_help()),
-         ~"-h                     print help")
+         ~"-h, --help             Print help")
     ]
 }
 
