@@ -96,7 +96,7 @@ fn fold_const(
             do astsrv::exec(srv) |ctxt| {
                 match ctxt.ast_map.get_copy(&doc.id()) {
                     ast_map::node_item(@ast::item {
-                        node: ast::item_const(ty, _), _
+                        node: ast::item_static(ty, _, _), _
                     }, _) => {
                         pprust::ty_to_str(ty, extract::interner())
                     }

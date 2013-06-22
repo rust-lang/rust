@@ -785,7 +785,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
     let must_write =
         match item.node {
           item_enum(_, _) | item_impl(*) | item_trait(*) | item_struct(*) |
-          item_mod(*) | item_foreign_mod(*) | item_const(*) => true,
+          item_mod(*) | item_foreign_mod(*) | item_static(*) => true,
           _ => false
         };
     if !must_write && !reachable(ecx, item.id) { return; }
@@ -800,11 +800,15 @@ fn encode_info_for_item(ecx: &EncodeContext,
            ecx.tcx.sess.codemap.span_to_str(item.span));
 
     match item.node {
-      item_const(_, _) => {
+      item_static(_, m, _) => {
         add_to_index();
         ebml_w.start_tag(tag_items_data_item);
         encode_def_id(ebml_w, local_def(item.id));
-        encode_family(ebml_w, 'c');
+        if m == ast::m_mutbl {
+            encode_family(ebml_w, 'b');
+        } else {
+            encode_family(ebml_w, 'c');
+        }
         encode_type(ecx, ebml_w, node_id_to_type(tcx, item.id));
         encode_symbol(ecx, ebml_w, item.id);
         encode_path(ecx, ebml_w, path, ast_map::path_name(item.ident));

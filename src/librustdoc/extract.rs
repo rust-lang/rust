@@ -102,7 +102,7 @@ fn moddoc_from_mod(
                     fndoc_from_fn(ItemDoc)
                 ))
               }
-              ast::item_const(_, _) => {
+              ast::item_static(*) => {
                 Some(doc::ConstTag(
                     constdoc_from_const(ItemDoc)
                 ))

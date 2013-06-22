@@ -447,19 +447,29 @@ impl mem_categorization_ctxt {
                    -> cmt {
         match def {
           ast::def_fn(*) | ast::def_static_method(*) | ast::def_mod(_) |
-          ast::def_foreign_mod(_) | ast::def_const(_) |
+          ast::def_foreign_mod(_) | ast::def_static(_, false) |
           ast::def_use(_) | ast::def_variant(*) |
           ast::def_trait(_) | ast::def_ty(_) | ast::def_prim_ty(_) |
           ast::def_ty_param(*) | ast::def_struct(*) |
           ast::def_typaram_binder(*) | ast::def_region(_) |
           ast::def_label(_) | ast::def_self_ty(*) => {
-            @cmt_ {
-                id:id,
-                span:span,
-                cat:cat_static_item,
-                mutbl: McImmutable,
-                ty:expr_ty
-            }
+              @cmt_ {
+                  id:id,
+                  span:span,
+                  cat:cat_static_item,
+                  mutbl: McImmutable,
+                  ty:expr_ty
+              }
+          }
+
+          ast::def_static(_, true) => {
+              @cmt_ {
+                  id:id,
+                  span:span,
+                  cat:cat_static_item,
+                  mutbl: McDeclared,
+                  ty:expr_ty
+              }
           }
 
           ast::def_arg(vid, mutbl) => {
@@ -894,7 +904,7 @@ impl mem_categorization_ctxt {
                         self.cat_pattern(cmt_field, subpat, op);
                     }
                 }
-                Some(&ast::def_const(*)) => {
+                Some(&ast::def_static(*)) => {
                     for subpats.iter().advance |&subpat| {
                         self.cat_pattern(cmt, subpat, op);
                     }
