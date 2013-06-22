@@ -185,7 +185,7 @@ pub fn map_fn(
     (cx,v): (@mut Ctx,
              visit::vt<@mut Ctx>)
 ) {
-    for decl.inputs.each |a| {
+    for decl.inputs.iter().advance |a| {
         cx.map.insert(a.id, node_arg);
     }
     visit::visit_fn(fk, decl, body, sp, id, (cx, v));
@@ -220,19 +220,19 @@ pub fn map_item(i: @item, (cx, v): (@mut Ctx, visit::vt<@mut Ctx>)) {
     match i.node {
         item_impl(_, _, _, ref ms) => {
             let impl_did = ast_util::local_def(i.id);
-            for ms.each |m| {
+            for ms.iter().advance |m| {
                 map_method(impl_did, extend(cx, i.ident), *m, cx);
             }
         }
         item_enum(ref enum_definition, _) => {
-            for (*enum_definition).variants.each |v| {
+            for (*enum_definition).variants.iter().advance |v| {
                 cx.map.insert(v.node.id, node_variant(
                     /* FIXME (#2543) */ copy *v, i,
                     extend(cx, i.ident)));
             }
         }
         item_foreign_mod(ref nm) => {
-            for nm.items.each |nitem| {
+            for nm.items.iter().advance |nitem| {
                 // Compute the visibility for this native item.
                 let visibility = match nitem.vis {
                     public => public,
@@ -266,10 +266,10 @@ pub fn map_item(i: @item, (cx, v): (@mut Ctx, visit::vt<@mut Ctx>)) {
             );
         }
         item_trait(_, ref traits, ref methods) => {
-            for traits.each |p| {
+            for traits.iter().advance |p| {
                 cx.map.insert(p.ref_id, node_item(i, item_path));
             }
-            for methods.each |tm| {
+            for methods.iter().advance |tm| {
                 let id = ast_util::trait_method_to_ty_method(tm).id;
                 let d_id = ast_util::local_def(i.id);
                 cx.map.insert(

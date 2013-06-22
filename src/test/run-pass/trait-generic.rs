@@ -31,7 +31,7 @@ trait map<T> {
 impl<T> map<T> for ~[T] {
     fn map<U:Copy>(&self, f: &fn(&T) -> U) -> ~[U] {
         let mut r = ~[];
-        for self.each |x| { r += ~[f(x)]; }
+        for std::vec::each(*self) |x| { r += ~[f(x)]; }
         r
     }
 }

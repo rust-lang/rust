@@ -31,7 +31,7 @@ mod map_reduce {
     enum ctrl_proto { find_reducer(~[u8], Chan<int>), mapper_done, }
 
     fn start_mappers(ctrl: SharedChan<ctrl_proto>, inputs: ~[~str]) {
-        for inputs.each |i| {
+        for inputs.iter().advance |i| {
             let ctrl = ctrl.clone();
             let i = i.clone();
             task::spawn(|| map_task(ctrl.clone(), i.clone()) );

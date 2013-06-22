@@ -64,7 +64,7 @@ pub fn trans_inline_asm(bcx: block, ia: &ast::inline_asm) -> block {
 
     };
 
-    for cleanups.each |c| {
+    for cleanups.iter().advance |c| {
         revoke_clean(bcx, *c);
     }
     cleanups.clear();
@@ -85,7 +85,7 @@ pub fn trans_inline_asm(bcx: block, ia: &ast::inline_asm) -> block {
 
     };
 
-    for cleanups.each |c| {
+    for cleanups.iter().advance |c| {
         revoke_clean(bcx, *c);
     }
 

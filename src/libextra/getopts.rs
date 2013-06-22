@@ -295,7 +295,7 @@ pub fn getopts(args: &[~str], opts: &[Opt]) -> Result {
                 }
             }
             let mut name_pos = 0;
-            for names.each() |nm| {
+            for names.iter().advance() |nm| {
                 name_pos += 1;
                 let optid = match find_opt(opts, copy *nm) {
                   Some(id) => id,
@@ -373,7 +373,7 @@ pub fn opt_count(mm: &Matches, nm: &str) -> uint {
 
 /// Returns true if any of several options were matched
 pub fn opts_present(mm: &Matches, names: &[~str]) -> bool {
-    for names.each |nm| {
+    for names.iter().advance |nm| {
         match find_opt(mm.opts, mkname(*nm)) {
             Some(id) if !mm.vals[id].is_empty() => return true,
             _ => (),
@@ -400,7 +400,7 @@ pub fn opt_str(mm: &Matches, nm: &str) -> ~str {
  * option took an argument
  */
 pub fn opts_str(mm: &Matches, names: &[~str]) -> ~str {
-    for names.each |nm| {
+    for names.iter().advance |nm| {
         match opt_val(mm, *nm) {
           Val(ref s) => return copy *s,
           _ => ()

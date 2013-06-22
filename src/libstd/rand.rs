@@ -544,7 +544,7 @@ impl<R: Rng> RngUtil for R {
     fn choose_weighted_option<T:Copy>(&mut self, v: &[Weighted<T>])
                                      -> Option<T> {
         let mut total = 0u;
-        for v.each |item| {
+        for v.iter().advance |item| {
             total += item.weight;
         }
         if total == 0u {
@@ -552,7 +552,7 @@ impl<R: Rng> RngUtil for R {
         }
         let chosen = self.gen_uint_range(0u, total);
         let mut so_far = 0u;
-        for v.each |item| {
+        for v.iter().advance |item| {
             so_far += item.weight;
             if so_far > chosen {
                 return Some(copy item.item);
@@ -567,7 +567,7 @@ impl<R: Rng> RngUtil for R {
      */
     fn weighted_vec<T:Copy>(&mut self, v: &[Weighted<T>]) -> ~[T] {
         let mut r = ~[];
-        for v.each |item| {
+        for v.iter().advance |item| {
             for uint::range(0u, item.weight) |_i| {
                 r.push(copy item.item);
             }
@@ -746,7 +746,8 @@ impl IsaacRng {
             }}
         );
 
-        for [(0, midpoint), (midpoint, 0)].each |&(mr_offset, m2_offset)| {
+        let r = [(0, midpoint), (midpoint, 0)];
+        for r.iter().advance |&(mr_offset, m2_offset)| {
             for uint::range_step(0, midpoint, 4) |base| {
                 rngstep!(0, 13);
                 rngstep!(1, -6);

@@ -143,7 +143,7 @@ pub struct param_substs {
 
 impl param_substs {
     pub fn validate(&self) {
-        for self.tys.each |t| { assert!(!ty::type_needs_infer(*t)); }
+        for self.tys.iter().advance |t| { assert!(!ty::type_needs_infer(*t)); }
         for self.self_ty.iter().advance |t| { assert!(!ty::type_needs_infer(*t)); }
     }
 }
@@ -982,7 +982,7 @@ pub fn align_to(cx: block, off: ValueRef, align: ValueRef) -> ValueRef {
 pub fn path_str(sess: session::Session, p: &[path_elt]) -> ~str {
     let mut r = ~"";
     let mut first = true;
-    for p.each |e| {
+    for p.iter().advance |e| {
         match *e {
             ast_map::path_name(s) | ast_map::path_mod(s) => {
                 if first { first = false; }

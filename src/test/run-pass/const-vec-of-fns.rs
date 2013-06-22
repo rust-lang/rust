@@ -21,6 +21,6 @@ struct S<'self>(&'self fn());
 static closures: &'static [S<'static>] = &[S(f), S(f)];
 
 pub fn main() {
-    for bare_fns.each |&bare_fn| { bare_fn() }
-    for closures.each |&closure| { (*closure)() }
+    for bare_fns.iter().advance |&bare_fn| { bare_fn() }
+    for closures.iter().advance |&closure| { (*closure)() }
 }

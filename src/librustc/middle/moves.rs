@@ -232,7 +232,7 @@ fn compute_modes_for_expr(expr: @expr,
 
 impl VisitContext {
     pub fn consume_exprs(&self, exprs: &[@expr], visitor: vt<VisitContext>) {
-        for exprs.each |expr| {
+        for exprs.iter().advance |expr| {
             self.consume_expr(*expr, visitor);
         }
     }
@@ -263,7 +263,7 @@ impl VisitContext {
 
         debug!("consume_block(blk.id=%?)", blk.node.id);
 
-        for blk.node.stmts.each |stmt| {
+        for blk.node.stmts.iter().advance |stmt| {
             (visitor.visit_stmt)(*stmt, (*self, visitor));
         }
 
@@ -347,7 +347,7 @@ impl VisitContext {
             }
 
             expr_struct(_, ref fields, opt_with) => {
-                for fields.each |field| {
+                for fields.iter().advance |field| {
                     self.consume_expr(field.node.expr, visitor);
                 }
 
@@ -398,7 +398,7 @@ impl VisitContext {
             expr_match(discr, ref arms) => {
                 // We must do this first so that `arms_have_by_move_bindings`
                 // below knows which bindings are moves.
-                for arms.each |arm| {
+                for arms.iter().advance |arm| {
                     self.consume_arm(arm, visitor);
                 }
 
@@ -534,7 +534,7 @@ impl VisitContext {
 
         // for overloaded operatrs, we are always passing in a
         // borrowed pointer, so it's always read mode:
-        for arg_exprs.each |arg_expr| {
+        for arg_exprs.iter().advance |arg_expr| {
             self.use_expr(*arg_expr, Read, visitor);
         }
 
@@ -591,7 +591,7 @@ impl VisitContext {
                        arg_exprs: &[@expr],
                        visitor: vt<VisitContext>) {
         //! Uses the argument expressions.
-        for arg_exprs.each |arg_expr| {
+        for arg_exprs.iter().advance |arg_expr| {
             self.use_fn_arg(*arg_expr, visitor);
         }
     }
@@ -605,8 +605,8 @@ impl VisitContext {
                                       moves_map: MovesMap,
                                       arms: &[arm])
                                       -> Option<@pat> {
-        for arms.each |arm| {
-            for arm.pats.each |&pat| {
+        for arms.iter().advance |arm| {
+            for arm.pats.iter().advance |&pat| {
                 for ast_util::walk_pat(pat) |p| {
                     if moves_map.contains(&p.id) {
                         return Some(p);

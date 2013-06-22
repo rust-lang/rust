@@ -69,8 +69,8 @@ pub fn monomorphic_fn(ccx: @mut CrateContext,
         }
     });
 
-    for real_substs.tps.each() |s| { assert!(!ty::type_has_params(*s)); }
-    for substs.each() |s| { assert!(!ty::type_has_params(*s)); }
+    for real_substs.tps.iter().advance |s| { assert!(!ty::type_has_params(*s)); }
+    for substs.iter().advance |s| { assert!(!ty::type_has_params(*s)); }
     let param_uses = type_use::type_uses_for(ccx, fn_id, substs.len());
     let hash_id = make_mono_id(ccx, fn_id, substs, vtables, impl_did_opt,
                                Some(param_uses));
@@ -340,7 +340,7 @@ pub fn make_mono_id(ccx: @mut CrateContext,
         let mut i = 0;
         vec::map_zip(*item_ty.generics.type_param_defs, substs, |type_param_def, subst| {
             let mut v = ~[];
-            for type_param_def.bounds.trait_bounds.each |_bound| {
+            for type_param_def.bounds.trait_bounds.iter().advance |_bound| {
                 v.push(meth::vtable_id(ccx, &vts[i]));
                 i += 1;
             }

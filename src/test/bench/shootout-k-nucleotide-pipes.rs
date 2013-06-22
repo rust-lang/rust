@@ -64,7 +64,7 @@ fn sort_and_fmt(mm: &HashMap<~[u8], uint>, total: uint) -> ~str {
 
    let mut buffer = ~"";
 
-   for pairs_sorted.each |kv| {
+   for pairs_sorted.iter().advance |kv| {
        let (k,v) = copy *kv;
        unsafe {
            let b = str::raw::from_bytes(k);

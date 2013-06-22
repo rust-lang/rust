@@ -21,7 +21,7 @@ pub fn expand_syntax_ext(cx: @ExtCtxt, sp: span, tts: &[ast::token_tree]) -> bas
     let exprs = get_exprs_from_tts(cx, tts);
     let mut bytes = ~[];
 
-    for exprs.each |expr| {
+    for exprs.iter().advance |expr| {
         match expr.node {
             // expression is a literal
             ast::expr_lit(lit) => match lit.node {

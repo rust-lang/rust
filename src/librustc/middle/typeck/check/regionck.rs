@@ -184,7 +184,7 @@ fn visit_block(b: &ast::blk, (rcx, v): (@mut Rcx, rvt)) {
 
 fn visit_arm(arm: &ast::arm, (rcx, v): (@mut Rcx, rvt)) {
     // see above
-    for arm.pats.each |&p| {
+    for arm.pats.iter().advance |&p| {
         constrain_bindings_in_pat(p, rcx);
     }
 
@@ -267,7 +267,7 @@ fn visit_expr(expr: @ast::expr, (rcx, v): (@mut Rcx, rvt)) {
         }
         ast::expr_match(_, ref arms) => {
             tcx.region_maps.record_cleanup_scope(expr.id);
-            for arms.each |arm| {
+            for arms.iter().advance |arm| {
                 for arm.guard.iter().advance |guard| {
                     tcx.region_maps.record_cleanup_scope(guard.id);
                 }
@@ -476,7 +476,7 @@ fn constrain_call(rcx: @mut Rcx,
     let callee_scope = call_expr.id;
     let callee_region = ty::re_scope(callee_scope);
 
-    for arg_exprs.each |&arg_expr| {
+    for arg_exprs.iter().advance |&arg_expr| {
         // ensure that any regions appearing in the argument type are
         // valid for at least the lifetime of the function:
         constrain_regions_in_type_of_node(
@@ -614,7 +614,7 @@ fn constrain_free_variables(rcx: @mut Rcx,
     let tcx = rcx.fcx.ccx.tcx;
     debug!("constrain_free_variables(%s, %s)",
            region.repr(tcx), expr.repr(tcx));
-    for get_freevars(tcx, expr.id).each |freevar| {
+    for get_freevars(tcx, expr.id).iter().advance |freevar| {
         debug!("freevar def is %?", freevar.def);
         let def = freevar.def;
         let en_region = encl_region_of_def(rcx.fcx, def);
@@ -824,8 +824,8 @@ pub mod guarantor {
         debug!("regionck::for_match()");
         let discr_guarantor = guarantor(rcx, discr);
         debug!("discr_guarantor=%s", discr_guarantor.repr(rcx.tcx()));
-        for arms.each |arm| {
-            for arm.pats.each |pat| {
+        for arms.iter().advance |arm| {
+            for arm.pats.iter().advance |pat| {
                 link_ref_bindings_in_pat(rcx, *pat, discr_guarantor);
             }
         }
@@ -1217,7 +1217,7 @@ pub mod guarantor {
                 link_ref_bindings_in_pats(rcx, pats, guarantor);
             }
             ast::pat_struct(_, ref fpats, _) => {
-                for fpats.each |fpat| {
+                for fpats.iter().advance |fpat| {
                     link_ref_bindings_in_pat(rcx, fpat.pat, guarantor);
                 }
             }
@@ -1258,7 +1258,7 @@ pub mod guarantor {
     fn link_ref_bindings_in_pats(rcx: @mut Rcx,
                                  pats: &~[@ast::pat],
                                  guarantor: Option<ty::Region>) {
-        for pats.each |pat| {
+        for pats.iter().advance |pat| {
             link_ref_bindings_in_pat(rcx, *pat, guarantor);
         }
     }

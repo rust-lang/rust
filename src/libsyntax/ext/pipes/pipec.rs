@@ -209,7 +209,7 @@ impl to_type_decls for state {
 
         let mut items_msg = ~[];
 
-        for self.messages.each |m| {
+        for self.messages.iter().advance |m| {
             let message(name, span, tys, this, next) = copy *m;
 
             let tys = match next {
@@ -372,7 +372,7 @@ impl gen_init for protocol {
 
     fn buffer_ty_path(&self, cx: @ExtCtxt) -> @ast::Ty {
         let mut params: OptVec<ast::TyParam> = opt_vec::Empty;
-        for (copy self.states).each |s| {
+        for (copy self.states).iter().advance |s| {
             for s.generics.ty_params.each |tp| {
                 match params.find(|tpp| tp.ident == tpp.ident) {
                   None => params.push(*tp),
@@ -433,7 +433,7 @@ impl gen_init for protocol {
         let mut client_states = ~[];
         let mut server_states = ~[];
 
-        for (copy self.states).each |s| {
+        for (copy self.states).iter().advance |s| {
             items += s.to_type_decls(cx);
 
             client_states += s.to_endpoint_decls(cx, send);

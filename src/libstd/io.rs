@@ -57,7 +57,7 @@ use os;
 use cast;
 use path::Path;
 use ops::Drop;
-use old_iter::{BaseIter, CopyableIter};
+use iterator::IteratorUtil;
 use ptr;
 use result;
 use str;
@@ -65,7 +65,7 @@ use str::StrSlice;
 use to_str::ToStr;
 use uint;
 use vec;
-use vec::{OwnedVector, OwnedCopyableVector, CopyableVector};
+use vec::{ImmutableVector, OwnedVector, OwnedCopyableVector, CopyableVector};
 
 #[allow(non_camel_case_types)] // not sure what to do about this
 pub type fd_t = c_int;
@@ -1261,7 +1261,7 @@ pub fn mk_file_writer(path: &Path, flags: &[FileFlag])
     fn wb() -> c_int { O_WRONLY as c_int }
 
     let mut fflags: c_int = wb();
-    for flags.each |f| {
+    for flags.iter().advance |f| {
         match *f {
           Append => fflags |= O_APPEND as c_int,
           Create => fflags |= O_CREAT as c_int,
@@ -2015,7 +2015,7 @@ mod tests {
         // write the ints to the file
         {
             let file = io::file_writer(&path, [io::Create]).get();
-            for uints.each |i| {
+            for uints.iter().advance |i| {
                 file.write_le_u64(*i);
             }
         }
@@ -2023,7 +2023,7 @@ mod tests {
         // then read them back and check that they are the same
         {
             let file = io::file_reader(&path).get();
-            for uints.each |i| {
+            for uints.iter().advance |i| {
                 assert_eq!(file.read_le_u64(), *i);
             }
         }
@@ -2037,7 +2037,7 @@ mod tests {
         // write the ints to the file
         {
             let file = io::file_writer(&path, [io::Create]).get();
-            for uints.each |i| {
+            for uints.iter().advance |i| {
                 file.write_be_u64(*i);
             }
         }
@@ -2045,7 +2045,7 @@ mod tests {
         // then read them back and check that they are the same
         {
             let file = io::file_reader(&path).get();
-            for uints.each |i| {
+            for uints.iter().advance |i| {
                 assert_eq!(file.read_be_u64(), *i);
             }
         }
@@ -2059,7 +2059,7 @@ mod tests {
         // write the ints to the file
         {
             let file = io::file_writer(&path, [io::Create]).get();
-            for ints.each |i| {
+            for ints.iter().advance |i| {
                 file.write_be_i32(*i);
             }
         }
@@ -2067,7 +2067,7 @@ mod tests {
         // then read them back and check that they are the same
         {
             let file = io::file_reader(&path).get();
-            for ints.each |i| {
+            for ints.iter().advance |i| {
                 // this tests that the sign extension is working
                 // (comparing the values as i32 would not test this)
                 assert_eq!(file.read_be_int_n(4), *i as i64);

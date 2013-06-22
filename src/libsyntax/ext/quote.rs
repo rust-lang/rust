@@ -637,7 +637,7 @@ fn mk_tt(cx: @ExtCtxt, sp: span, tt: &ast::token_tree)
 fn mk_tts(cx: @ExtCtxt, sp: span, tts: &[ast::token_tree])
     -> ~[@ast::stmt] {
     let mut ss = ~[];
-    for tts.each |tt| {
+    for tts.iter().advance |tt| {
         ss.push_all_move(mk_tt(cx, sp, tt));
     }
     ss

@@ -355,7 +355,7 @@ fn visit_fn(fk: &visit::fn_kind,
         debug!("creating fn_maps: %x", transmute(&*fn_maps));
     }
 
-    for decl.inputs.each |arg| {
+    for decl.inputs.iter().advance |arg| {
         do pat_util::pat_bindings(this.tcx.def_map, arg.pat)
                 |_bm, arg_id, _x, path| {
             debug!("adding argument %d", arg_id);
@@ -431,7 +431,7 @@ fn visit_local(local: @local, (this, vt): (@mut IrMaps, vt<@mut IrMaps>)) {
 
 fn visit_arm(arm: &arm, (this, vt): (@mut IrMaps, vt<@mut IrMaps>)) {
     let def_map = this.tcx.def_map;
-    for arm.pats.each |pat| {
+    for arm.pats.iter().advance |pat| {
         do pat_util::pat_bindings(def_map, *pat) |bm, p_id, sp, path| {
             debug!("adding local variable %d from match with bm %?",
                    p_id, bm);
@@ -470,7 +470,7 @@ fn visit_expr(expr: @expr, (this, vt): (@mut IrMaps, vt<@mut IrMaps>)) {
         // construction site.
         let cvs = this.capture_map.get(&expr.id);
         let mut call_caps = ~[];
-        for cvs.each |cv| {
+        for cvs.iter().advance |cv| {
             match moves::moved_variable_node_id_from_def(cv.def) {
               Some(rv) => {
                 let cv_ln = this.add_live_node(FreeVarNode(cv.span));
@@ -1075,7 +1075,7 @@ impl Liveness {
             let ln = self.live_node(expr.id, expr.span);
             self.init_empty(ln, succ);
             let mut first_merge = true;
-            for arms.each |arm| {
+            for arms.iter().advance |arm| {
                 let body_succ =
                     self.propagate_through_block(&arm.body, succ);
                 let guard_succ =
@@ -1453,12 +1453,12 @@ fn check_expr(expr: @expr, (this, vt): (@Liveness, vt<@Liveness>)) {
       }
 
       expr_inline_asm(ref ia) => {
-        for ia.inputs.each |&(_, in)| {
+        for ia.inputs.iter().advance |&(_, in)| {
           (vt.visit_expr)(in, (this, vt));
         }
 
         // Output operands must be lvalues
-        for ia.outputs.each |&(_, out)| {
+        for ia.outputs.iter().advance |&(_, out)| {
           match out.node {
             expr_addr_of(_, inner) => {
               this.check_lvalue(inner, vt);
@@ -1594,7 +1594,7 @@ impl Liveness {
     }
 
     pub fn warn_about_unused_args(&self, decl: &fn_decl, entry_ln: LiveNode) {
-        for decl.inputs.each |arg| {
+        for decl.inputs.iter().advance |arg| {
             do pat_util::pat_bindings(self.tcx.def_map, arg.pat)
                     |_bm, p_id, sp, _n| {
                 let var = self.variable(p_id, sp);
