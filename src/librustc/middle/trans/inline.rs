@@ -12,8 +12,7 @@ use core::prelude::*;
 
 use metadata::csearch;
 use middle::astencode;
-use middle::trans::base::{get_insn_ctxt};
-use middle::trans::base::{impl_owned_self, impl_self, no_self};
+use middle::trans::base::{push_ctxt,impl_owned_self, impl_self, no_self};
 use middle::trans::base::{trans_item, get_item_val, trans_fn};
 use middle::trans::common::*;
 use middle::ty;
@@ -30,7 +29,7 @@ use syntax::ast_util::local_def;
 pub fn maybe_instantiate_inline(ccx: @mut CrateContext, fn_id: ast::def_id,
                                 translate: bool)
     -> ast::def_id {
-    let _icx = ccx.insn_ctxt("maybe_instantiate_inline");
+    let _icx = push_ctxt("maybe_instantiate_inline");
     match ccx.external.find(&fn_id) {
         Some(&Some(node_id)) => {
             // Already inline

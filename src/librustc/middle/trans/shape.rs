@@ -15,7 +15,8 @@
 use lib::llvm::llvm;
 use lib::llvm::{True, ModuleRef, ValueRef};
 use middle::trans::common::*;
-use middle::trans;
+
+use middle::trans::type_::Type;
 
 use core::str;
 
@@ -32,7 +33,7 @@ pub fn mk_global(ccx: &CrateContext,
               -> ValueRef {
     unsafe {
         let llglobal = do str::as_c_str(name) |buf| {
-            llvm::LLVMAddGlobal(ccx.llmod, val_ty(llval), buf)
+            llvm::LLVMAddGlobal(ccx.llmod, val_ty(llval).to_ref(), buf)
         };
         llvm::LLVMSetInitializer(llglobal, llval);
         llvm::LLVMSetGlobalConstant(llglobal, True);
@@ -48,28 +49,15 @@ pub fn mk_global(ccx: &CrateContext,
 
 pub fn mk_ctxt(llmod: ModuleRef) -> Ctxt {
     unsafe {
-        let llshapetablesty = trans::common::T_named_struct("shapes");
-        let _llshapetables = str::as_c_str("shapes", |buf| {
-            llvm::LLVMAddGlobal(llmod, llshapetablesty, buf)
-        });
+        let llshapetablesty = Type::named_struct("shapes");
+        do "shapes".as_c_str |buf| {
+            llvm::LLVMAddGlobal(llmod, llshapetablesty.to_ref(), buf)
+        };
 
-        return Ctxt {
+        Ctxt {
             next_tag_id: 0u16,
             pad: 0u16,
             pad2: 0u32
-        };
+        }
     }
-}
-
-/*
-Although these two functions are never called, they are here
-for a VERY GOOD REASON. See #3670
-*/
-pub fn add_u16(dest: &mut ~[u8], val: u16) {
-    *dest += [(val & 0xffu16) as u8, (val >> 8u16) as u8];
-}
-
-pub fn add_substr(dest: &mut ~[u8], src: ~[u8]) {
-    add_u16(&mut *dest, src.len() as u16);
-    *dest += src;
 }

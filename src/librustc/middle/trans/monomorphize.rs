@@ -13,9 +13,8 @@ use core::prelude::*;
 use back::link::mangle_exported_name;
 use driver::session;
 use lib::llvm::ValueRef;
-use middle::trans::base::{get_insn_ctxt};
 use middle::trans::base::{set_inline_hint_if_appr, set_inline_hint};
-use middle::trans::base::{trans_enum_variant};
+use middle::trans::base::{trans_enum_variant,push_ctxt};
 use middle::trans::base::{trans_fn, decl_internal_cdecl_fn};
 use middle::trans::base::{get_item_val, no_self};
 use middle::trans::base;
@@ -61,7 +60,7 @@ pub fn monomorphic_fn(ccx: @mut CrateContext,
            ref_id);
 
     assert!(real_substs.tps.iter().all(|t| !ty::type_needs_infer(*t)));
-    let _icx = ccx.insn_ctxt("monomorphic_fn");
+    let _icx = push_ctxt("monomorphic_fn");
     let mut must_cast = false;
     let substs = vec::map(real_substs.tps, |t| {
         match normalize_for_monomorphization(ccx.tcx, *t) {

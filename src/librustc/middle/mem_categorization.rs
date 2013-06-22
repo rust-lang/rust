@@ -50,7 +50,7 @@ use core::prelude::*;
 
 use middle::ty;
 use middle::typeck;
-use util::ppaux::{ty_to_str, region_to_str, Repr};
+use util::ppaux::{ty_to_str, region_ptr_to_str, Repr};
 use util::common::indenter;
 
 use core::uint;
@@ -1026,7 +1026,7 @@ impl mem_categorization_ctxt {
     }
 
     pub fn region_to_str(&self, r: ty::Region) -> ~str {
-        region_to_str(self.tcx, r)
+        region_ptr_to_str(self.tcx, r)
     }
 }
 

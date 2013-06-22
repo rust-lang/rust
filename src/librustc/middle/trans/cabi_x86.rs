@@ -12,10 +12,11 @@ use core::prelude::*;
 
 use driver::session::{os_win32, os_macos};
 use lib::llvm::*;
-use lib::llvm::llvm::*;
 use super::cabi::*;
 use super::common::*;
 use super::machine::*;
+
+use middle::trans::type_::Type;
 
 struct X86_ABIInfo {
     ccx: @mut CrateContext
@@ -23,8 +24,8 @@ struct X86_ABIInfo {
 
 impl ABIInfo for X86_ABIInfo {
     fn compute_info(&self,
-                    atys: &[TypeRef],
-                    rty: TypeRef,
+                    atys: &[Type],
+                    rty: Type,
                     ret_def: bool) -> FnType {
         let mut arg_tys = do atys.map |a| {
             LLVMType { cast: false, ty: *a }
@@ -41,7 +42,7 @@ impl ABIInfo for X86_ABIInfo {
         // http://www.angelcode.com/dev/callconv/callconv.html
         // Clang's ABI handling is in lib/CodeGen/TargetInfo.cpp
         let sret = {
-            let returning_a_struct = unsafe { LLVMGetTypeKind(rty) == Struct && ret_def };
+            let returning_a_struct = rty.kind() == Struct && ret_def;
             let big_struct = match self.ccx.sess.targ_cfg.os {
                 os_win32 | os_macos => llsize_of_alloc(self.ccx, rty) > 8,
                 _ => true
@@ -52,18 +53,18 @@ impl ABIInfo for X86_ABIInfo {
         if sret {
             let ret_ptr_ty = LLVMType {
                 cast: false,
-                ty: T_ptr(ret_ty.ty)
+                ty: ret_ty.ty.ptr_to()
             };
             arg_tys = ~[ret_ptr_ty] + arg_tys;
             attrs = ~[Some(StructRetAttribute)] + attrs;
             ret_ty = LLVMType {
                 cast: false,
-                ty: T_void(),
+                ty: Type::void(),
             };
         } else if !ret_def {
             ret_ty = LLVMType {
                 cast: false,
-                ty: T_void()
+                ty: Type::void()
             };
         }
 

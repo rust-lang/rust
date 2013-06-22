@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use back::link::mangle_internal_name_by_path_and_seq;
-use lib::llvm::{TypeRef, ValueRef, llvm};
+use lib::llvm::{ValueRef, llvm};
 use middle::trans::adt;
 use middle::trans::base::*;
 use middle::trans::build::*;
@@ -33,11 +33,13 @@ use syntax::ast;
 use syntax::ast_map::path_name;
 use syntax::parse::token::special_idents;
 
+use middle::trans::type_::Type;
+
 pub struct Reflector {
     visitor_val: ValueRef,
     visitor_methods: @~[@ty::Method],
     final_bcx: block,
-    tydesc_ty: TypeRef,
+    tydesc_ty: Type,
     bcx: block
 }
 
@@ -58,7 +60,7 @@ impl Reflector {
         let str_ty = ty::mk_estr(bcx.tcx(), str_vstore);
         let scratch = scratch_datum(bcx, str_ty, false);
         let len = C_uint(bcx.ccx(), s.len() + 1);
-        let c_str = PointerCast(bcx, C_cstr(bcx.ccx(), s), T_ptr(T_i8()));
+        let c_str = PointerCast(bcx, C_cstr(bcx.ccx(), s), Type::i8p());
         Store(bcx, c_str, GEPi(bcx, scratch.val, [ 0, 0 ]));
         Store(bcx, len, GEPi(bcx, scratch.val, [ 0, 1 ]));
         scratch.val
@@ -76,7 +78,7 @@ impl Reflector {
         let bcx = self.bcx;
         let static_ti = get_tydesc(bcx.ccx(), t);
         glue::lazily_emit_all_tydesc_glue(bcx.ccx(), static_ti);
-        PointerCast(bcx, static_ti.tydesc, T_ptr(self.tydesc_ty))
+        PointerCast(bcx, static_ti.tydesc, self.tydesc_ty.ptr_to())
     }
 
     pub fn c_mt(&mut self, mt: &ty::mt) -> ~[ValueRef] {
@@ -96,7 +98,7 @@ impl Reflector {
         debug!("passing %u args:", args.len());
         let bcx = self.bcx;
         for args.iter().enumerate().advance |(i, a)| {
-            debug!("arg %u: %s", i, val_str(bcx.ccx().tn, *a));
+            debug!("arg %u: %s", i, bcx.val_to_str(*a));
         }
         let bool_ty = ty::mk_bool();
         let scratch = scratch_datum(bcx, bool_ty, false);
@@ -271,7 +273,7 @@ impl Reflector {
             let ccx = bcx.ccx();
             let repr = adt::represent_type(bcx.ccx(), t);
             let variants = ty::substd_enum_variants(ccx.tcx, did, substs);
-            let llptrty = T_ptr(type_of(ccx, t));
+            let llptrty = type_of(ccx, t).ptr_to();
             let (_, opaquety) =
                 ccx.tcx.intrinsic_defs.find_copy(&ccx.sess.ident_of("Opaque"))
                 .expect("Failed to resolve intrinsic::Opaque");

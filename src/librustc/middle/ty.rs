@@ -21,7 +21,7 @@ use middle::ty;
 use middle::subst::Subst;
 use middle::typeck;
 use middle;
-use util::ppaux::{note_and_explain_region, bound_region_to_str};
+use util::ppaux::{note_and_explain_region, bound_region_to_str, bound_region_ptr_to_str};
 use util::ppaux::{trait_store_to_str, ty_to_str, vstore_to_str};
 use util::ppaux::{Repr, UserString};
 use util::common::{indenter};
@@ -3531,12 +3531,12 @@ pub fn type_err_to_str(cx: ctxt, err: &type_err) -> ~str {
         terr_regions_insufficiently_polymorphic(br, _) => {
             fmt!("expected bound lifetime parameter %s, \
                   but found concrete lifetime",
-                 bound_region_to_str(cx, br))
+                 bound_region_ptr_to_str(cx, br))
         }
         terr_regions_overly_polymorphic(br, _) => {
             fmt!("expected concrete lifetime, \
                   but found bound lifetime parameter %s",
-                 bound_region_to_str(cx, br))
+                 bound_region_ptr_to_str(cx, br))
         }
         terr_vstores_differ(k, ref values) => {
             fmt!("%s storage differs: expected %s but found %s",
