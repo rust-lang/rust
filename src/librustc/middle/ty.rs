@@ -1241,15 +1241,15 @@ pub fn maybe_walk_ty(ty: t, f: &fn(t) -> bool) {
       }
       ty_enum(_, ref substs) | ty_struct(_, ref substs) |
       ty_trait(_, ref substs, _, _, _) => {
-        for (*substs).tps.iter().advance |subty| { maybe_walk_ty(*subty, f); }
+        for (*substs).tps.iter().advance |subty| { maybe_walk_ty(*subty, |x| f(x)); }
       }
-      ty_tup(ref ts) => { for ts.iter().advance |tt| { maybe_walk_ty(*tt, f); } }
+      ty_tup(ref ts) => { for ts.iter().advance |tt| { maybe_walk_ty(*tt, |x| f(x)); } }
       ty_bare_fn(ref ft) => {
-        for ft.sig.inputs.iter().advance |a| { maybe_walk_ty(*a, f); }
+        for ft.sig.inputs.iter().advance |a| { maybe_walk_ty(*a, |x| f(x)); }
         maybe_walk_ty(ft.sig.output, f);
       }
       ty_closure(ref ft) => {
-        for ft.sig.inputs.iter().advance |a| { maybe_walk_ty(*a, f); }
+        for ft.sig.inputs.iter().advance |a| { maybe_walk_ty(*a, |x| f(x)); }
         maybe_walk_ty(ft.sig.output, f);
       }
     }
@@ -1331,7 +1331,7 @@ fn fold_sty(sty: &sty, fldop: &fn(t) -> t) -> sty {
 
 // Folds types from the bottom up.
 pub fn fold_ty(cx: ctxt, t0: t, fldop: &fn(t) -> t) -> t {
-    let sty = fold_sty(&get(t0).sty, |t| fold_ty(cx, fldop(t), fldop));
+    let sty = fold_sty(&get(t0).sty, |t| fold_ty(cx, fldop(t), |t| fldop(t)));
     fldop(mk_t(cx, sty))
 }
 
@@ -1345,8 +1345,8 @@ pub fn walk_regions_and_ty(
         fold_regions_and_ty(
             cx, ty,
             |r| { walkr(r); r },
-            |t| { walk_regions_and_ty(cx, t, walkr, walkt); t },
-            |t| { walk_regions_and_ty(cx, t, walkr, walkt); t });
+            |t| { walk_regions_and_ty(cx, t, |r| walkr(r), |t| walkt(t)); t },
+            |t| { walk_regions_and_ty(cx, t, |r| walkr(r), |t| walkt(t)); t });
     }
 }
 
@@ -1426,8 +1426,8 @@ pub fn fold_regions(
         fold_regions_and_ty(
             cx, ty,
             |r| fldr(r, in_fn),
-            |t| do_fold(cx, t, true, fldr),
-            |t| do_fold(cx, t, in_fn, fldr))
+            |t| do_fold(cx, t, true,  |r,b| fldr(r,b)),
+            |t| do_fold(cx, t, in_fn, |r,b| fldr(r,b)))
     }
     do_fold(cx, ty, false, fldr)
 }
@@ -2374,7 +2374,7 @@ pub fn type_structurally_contains(cx: ctxt,
         for (*enum_variants(cx, did)).iter().advance |variant| {
             for variant.args.iter().advance |aty| {
                 let sty = subst(cx, substs, *aty);
-                if type_structurally_contains(cx, sty, test) { return true; }
+                if type_structurally_contains(cx, sty, |x| test(x)) { return true; }
             }
         }
         return false;
@@ -2383,14 +2383,14 @@ pub fn type_structurally_contains(cx: ctxt,
         let r = lookup_struct_fields(cx, did);
         for r.iter().advance |field| {
             let ft = lookup_field_type(cx, did, field.id, substs);
-            if type_structurally_contains(cx, ft, test) { return true; }
+            if type_structurally_contains(cx, ft, |x| test(x)) { return true; }
         }
         return false;
       }
 
       ty_tup(ref ts) => {
         for ts.iter().advance |tt| {
-            if type_structurally_contains(cx, *tt, test) { return true; }
+            if type_structurally_contains(cx, *tt, |x| test(x)) { return true; }
         }
         return false;
       }

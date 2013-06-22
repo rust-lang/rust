@@ -563,7 +563,9 @@ impl RWlock {
                 (&self.order_lock).acquire();
                 do (&self.access_lock).access_waitqueue {
                     (&self.order_lock).release();
-                    task::rekillable(blk)
+                    do task::rekillable {
+                        blk()
+                    }
                 }
             }
         }
@@ -1182,12 +1184,12 @@ mod tests {
             Write => x.write(blk),
             Downgrade =>
                 do x.write_downgrade |mode| {
-                    (&mode).write(blk);
+                    do mode.write { blk() };
                 },
             DowngradeRead =>
                 do x.write_downgrade |mode| {
                     let mode = x.downgrade(mode);
-                    (&mode).read(blk);
+                    do mode.read { blk() };
                 },
         }
     }
@@ -1340,10 +1342,10 @@ mod tests {
         fn lock_cond(x: &RWlock, downgrade: bool, blk: &fn(c: &Condvar)) {
             if downgrade {
                 do x.write_downgrade |mode| {
-                    (&mode).write_cond(blk)
+                    do mode.write_cond |c| { blk(c) }
                 }
             } else {
-                x.write_cond(blk)
+                do x.write_cond |c| { blk(c) }
             }
         }
         let x = ~RWlock();

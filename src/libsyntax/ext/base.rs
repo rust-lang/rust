@@ -509,7 +509,7 @@ impl <K: Eq + Hash + IterBytes ,V: Copy> MapChain<K,V>{
                 }
             },
             ConsMapChain (~ref mut map, rest) => {
-                if satisfies_pred(map,&n,pred) {
+                if satisfies_pred(map,&n,|v|pred(v)) {
                     map.insert(key,ext);
                 } else {
                     rest.insert_into_frame(key,ext,n,pred)

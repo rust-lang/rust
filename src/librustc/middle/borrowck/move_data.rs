@@ -411,7 +411,7 @@ impl MoveData {
 
         let mut p = self.path(index).first_child;
         while p != InvalidMovePathIndex {
-            if !self.each_extending_path(p, f) {
+            if !self.each_extending_path(p, |x| f(x)) {
                 return false;
             }
             p = self.path(p).next_sibling;
