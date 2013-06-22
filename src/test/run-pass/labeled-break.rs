@@ -8,9 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-fast
-// xfail-test
-
 pub fn main() {
     'foo: loop {
         loop {
