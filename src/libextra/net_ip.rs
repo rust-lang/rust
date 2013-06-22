@@ -55,7 +55,7 @@ pub struct ParseAddrErr {
  *
  * # Arguments
  *
- * * ip - a `std::net::ip::IpAddr`
+ * * ip - a `extra::net::ip::IpAddr`
  */
 pub fn format_addr(ip: &IpAddr) -> ~str {
     match *ip {
@@ -80,7 +80,7 @@ pub fn format_addr(ip: &IpAddr) -> ~str {
  * Get the associated port
  *
  * # Arguments
- * * ip - a `std::net::ip::IpAddr`
+ * * ip - a `extra::net::ip::IpAddr`
  */
 pub fn get_port(ip: &IpAddr) -> uint {
     match *ip {
