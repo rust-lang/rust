@@ -8,9 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
 pub static rc_base_field_refcnt: uint = 0u;
 
 pub static task_field_refcnt: uint = 0u;
@@ -69,14 +66,4 @@ pub static vec_elt_elems: uint = 2u;
 pub static slice_elt_base: uint = 0u;
 pub static slice_elt_len: uint = 1u;
 
-pub static worst_case_glue_call_args: uint = 7u;
-
 pub static abi_version: uint = 1u;
-
-pub fn memcpy_glue_name() -> ~str { return ~"rust_memcpy_glue"; }
-
-pub fn bzero_glue_name() -> ~str { return ~"rust_bzero_glue"; }
-
-pub fn yield_glue_name() -> ~str { return ~"rust_yield_glue"; }
-
-pub fn no_op_type_glue_name() -> ~str { return ~"rust_no_op_type_glue"; }

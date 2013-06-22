@@ -232,7 +232,7 @@ pub fn lazily_emit_tydesc_glue(ccx: @mut CrateContext,
                                field: uint,
                                ti: @mut tydesc_info) {
     let _icx = push_ctxt("lazily_emit_tydesc_glue");
-    let llfnty = type_of_glue_fn(ccx);
+    let llfnty = Type::glue_fn();
 
     if lazily_emit_simplified_tydesc_glue(ccx, field, ti) {
         return;
@@ -338,9 +338,7 @@ pub fn call_tydesc_glue_full(bcx: block,
         }
     };
 
-    Call(bcx, llfn, [C_null(Type::nil().ptr_to()),
-                        C_null(bcx.ccx().tydesc_type.ptr_to().ptr_to()),
-                        llrawptr]);
+    Call(bcx, llfn, [C_null(Type::nil().ptr_to()), llrawptr]);
 }
 
 // See [Note-arg-mode]
@@ -680,7 +678,7 @@ pub fn make_generic_glue_inner(ccx: @mut CrateContext,
 
     let bcx = top_scope_block(fcx, None);
     let lltop = bcx.llbb;
-    let rawptr0_arg = fcx.arg_pos(1u);
+    let rawptr0_arg = fcx.arg_pos(0u);
     let llrawptr0 = unsafe { llvm::LLVMGetParam(llfn, rawptr0_arg as c_uint) };
     let llty = type_of(ccx, t);
     let llrawptr0 = PointerCast(bcx, llrawptr0, llty.ptr_to());
@@ -715,7 +713,7 @@ pub fn emit_tydescs(ccx: &mut CrateContext) {
     let _icx = push_ctxt("emit_tydescs");
     // As of this point, allow no more tydescs to be created.
     ccx.finished_tydescs = true;
-    let glue_fn_ty = Type::generic_glue_fn(ccx);
+    let glue_fn_ty = Type::generic_glue_fn(ccx).ptr_to();
     let tyds = &mut ccx.tydescs;
     for tyds.each_value |&val| {
         let ti = val;
@@ -781,8 +779,4 @@ pub fn emit_tydescs(ccx: &mut CrateContext) {
 
         }
     };
-}
-
-pub fn type_of_glue_fn(ccx: &CrateContext) -> Type {
-    Type::glue_fn(ccx.tydesc_type)
 }

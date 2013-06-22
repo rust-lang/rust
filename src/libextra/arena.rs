@@ -115,6 +115,19 @@ fn round_up_to(base: uint, align: uint) -> uint {
     (base + (align - 1)) & !(align - 1)
 }
 
+#[inline]
+#[cfg(not(stage0))]
+unsafe fn call_drop_glue(tydesc: *TyDesc, data: *i8) {
+    // This function should be inlined when stage0 is gone
+    ((*tydesc).drop_glue)(data);
+}
+
+#[inline]
+#[cfg(stage0)]
+unsafe fn call_drop_glue(tydesc: *TyDesc, data: *i8) {
+    ((*tydesc).drop_glue)(0 as **TyDesc, data);
+}
+
 // Walk down a chunk, running the destructors for any objects stored
 // in it.
 unsafe fn destroy_chunk(chunk: &Chunk) {
@@ -134,8 +147,7 @@ unsafe fn destroy_chunk(chunk: &Chunk) {
         //debug!("freeing object: idx = %u, size = %u, align = %u, done = %b",
         //       start, size, align, is_done);
         if is_done {
-            ((*tydesc).drop_glue)(&tydesc as **TyDesc,
-                                  ptr::offset(buf, start) as *i8);
+            call_drop_glue(tydesc, ptr::offset(buf, start) as *i8);
         }
 
         // Find where the next tydesc lives
