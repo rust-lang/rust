@@ -43,9 +43,6 @@ pub mod rustrt {
                                               size: uintptr_t)
                                            -> *c_char;
 
-        #[fast_ffi]
-        unsafe fn rust_upcall_free_noswitch(ptr: *c_char);
-
         #[rust_stack]
         fn rust_try_get_task() -> *rust_task;
 
@@ -105,16 +102,7 @@ pub unsafe fn local_malloc(td: *c_char, size: uintptr_t) -> *c_char {
 // problem occurs, call exit instead.
 #[lang="free"]
 pub unsafe fn local_free(ptr: *c_char) {
-    match context() {
-        OldTaskContext => {
-            rustrt::rust_upcall_free_noswitch(ptr);
-        }
-        _ => {
-            do Local::borrow::<Task,()> |task| {
-                task.heap.free(ptr as *c_void);
-            }
-        }
-    }
+    ::rt::local_heap::local_free(ptr);
 }
 
 #[lang="borrow_as_imm"]
@@ -160,6 +148,11 @@ pub unsafe fn check_not_borrowed(a: *u8,
 #[inline]
 pub unsafe fn strdup_uniq(ptr: *c_uchar, len: uint) -> ~str {
     str::raw::from_buf_len(ptr, len)
+}
+
+#[lang="annihilate"]
+pub unsafe fn annihilate() {
+    ::cleanup::annihilate()
 }
 
 #[lang="start"]

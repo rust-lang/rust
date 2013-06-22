@@ -216,12 +216,15 @@ pub fn begin_unwind_(msg: *c_char, file: *c_char, line: size_t) -> ! {
                         task.logger.log(Left(outmsg.take()));
                     }
                 } else {
-                    rtdebug!("%s", outmsg);
+                    rterrln!("%s", outmsg);
                 }
 
                 gc::cleanup_stack_for_failure();
 
                 let task = Local::unsafe_borrow::<Task>();
+                if (*task).unwinder.unwinding {
+                    rtabort!("unwinding again");
+                }
                 (*task).unwinder.begin_unwind();
             }
         }

@@ -245,3 +245,4 @@ rust_update_log_settings
 rust_running_on_valgrind
 rust_get_num_cpus
 rust_get_global_args_ptr
+rust_current_boxed_region

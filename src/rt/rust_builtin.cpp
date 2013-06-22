@@ -883,6 +883,12 @@ rust_delete_memory_region(memory_region *region) {
 }
 
 extern "C" CDECL boxed_region*
+rust_current_boxed_region() {
+    rust_task *task = rust_get_current_task();
+    return &task->boxed;
+}
+
+extern "C" CDECL boxed_region*
 rust_new_boxed_region(memory_region *region,
                       uintptr_t poison_on_free) {
     return new boxed_region(region, poison_on_free);

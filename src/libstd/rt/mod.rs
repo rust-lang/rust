@@ -124,7 +124,7 @@ mod thread;
 pub mod env;
 
 /// The local, managed heap
-mod local_heap;
+pub mod local_heap;
 
 /// The Logger trait and implementations
 pub mod logging;
