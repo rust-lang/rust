@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-test
+// xfail-test FIXME #5946
 trait Positioned<S> {
   fn SetX(&mut self, S);
   fn X(&self) -> S;
