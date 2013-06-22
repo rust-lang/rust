@@ -189,28 +189,34 @@ fn diagnosticcolor(lvl: level) -> u8 {
     }
 }
 
-fn print_diagnostic(topic: &str, lvl: level, msg: &str) {
-    let t = term::Terminal::new(io::stderr());
+fn print_maybe_colored(msg: &str, color: u8) {
+    let stderr = io::stderr();
 
+    let t = term::Terminal::new(stderr);
+
+    match t {
+        Ok(term) => {
+            if stderr.get_type() == io::Screen {
+                term.fg(color);
+                stderr.write_str(msg);
+                term.reset();
+            } else {
+                stderr.write_str(msg);
+            }
+        },
+        _ => stderr.write_str(msg)
+    }
+}
+
+fn print_diagnostic(topic: &str, lvl: level, msg: &str) {
     let stderr = io::stderr();
 
     if !topic.is_empty() {
         stderr.write_str(fmt!("%s ", topic));
     }
 
-    match t {
-        Ok(term) => {
-            if stderr.get_type() == io::Screen {
-                term.fg(diagnosticcolor(lvl));
-                stderr.write_str(fmt!("%s: ", diagnosticstr(lvl)));
-                term.reset();
-                stderr.write_str(fmt!("%s\n", msg));
-            } else {
-                stderr.write_str(fmt!("%s: %s\n", diagnosticstr(lvl), msg));
-            }
-        },
-        _ => stderr.write_str(fmt!("%s: %s\n", diagnosticstr(lvl), msg))
-    }
+    print_maybe_colored(fmt!("%s: ", diagnosticstr(lvl)), diagnosticcolor(lvl));
+    stderr.write_str(fmt!("%s\n", msg));
 }
 
 pub fn collect(messages: @mut ~[~str])
@@ -292,14 +298,15 @@ fn highlight_lines(cm: @codemap::CodeMap,
                 _ => " "         // -squigly-line as well (instead of a
             };                   // space). This way the squigly-line will
         }                        // usually appear in the correct position.
-        s += "^";
+        io::stderr().write_str(s);
+        let mut s = ~"^";
         let hi = cm.lookup_char_pos(sp.hi);
         if hi.col != lo.col {
             // the ^ already takes up one space
             let num_squiglies = hi.col.to_uint()-lo.col.to_uint()-1u;
             for num_squiglies.times() { s += "~"; }
         }
-        io::stderr().write_str(s + "\n");
+        print_maybe_colored(s + "\n", term::color_bright_green);
     }
 }
 
