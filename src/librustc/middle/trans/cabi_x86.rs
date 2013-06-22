@@ -64,7 +64,7 @@ impl ABIInfo for X86_ABIInfo {
         } else if !ret_def {
             ret_ty = LLVMType {
                 cast: false,
-                ty: T_void()
+                ty: Type::void()
             };
         }
 

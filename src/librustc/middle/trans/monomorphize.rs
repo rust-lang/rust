@@ -61,7 +61,6 @@ pub fn monomorphic_fn(ccx: @mut CrateContext,
 
     assert!(real_substs.tps.iter().all(|t| !ty::type_needs_infer(*t)));
     let _icx = push_ctxt("monomorphic_fn");
-    let _icx = ccx.insn_ctxt("monomorphic_fn");
     let mut must_cast = false;
     let substs = vec::map(real_substs.tps, |t| {
         match normalize_for_monomorphization(ccx.tcx, *t) {

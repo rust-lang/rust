@@ -300,12 +300,11 @@ pub fn build_closure(bcx0: block,
         let ret_true = match bcx.fcx.loop_ret {
             Some((_, retptr)) => retptr,
             None => match bcx.fcx.llretptr {
-                None => C_null(T_ptr(T_nil())),
-                Some(retptr) => retptr,
+                None => C_null(Type::nil().ptr_to()),
+                Some(retptr) => PointerCast(bcx, retptr, Type::nil().ptr_to()),
             }
         };
-        let ret_casted = PointerCast(bcx, ret_true, Type::nil().ptr_to());
-        let ret_datum = Datum {val: ret_casted, ty: ty::mk_nil(),
+        let ret_datum = Datum {val: ret_true, ty: ty::mk_nil(),
                                mode: ByRef(ZeroMem)};
         env_vals.push(EnvValue {action: EnvRef,
                                 datum: ret_datum});

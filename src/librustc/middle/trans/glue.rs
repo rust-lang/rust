@@ -370,7 +370,6 @@ pub fn make_visit_glue(bcx: block, v: ValueRef, t: ty::t) {
 pub fn make_free_glue(bcx: block, v: ValueRef, t: ty::t) {
     // NB: v0 is an *alias* of type t here, not a direct value.
     let _icx = push_ctxt("make_free_glue");
-    let ccx = bcx.ccx();
     let bcx = match ty::get(t).sty {
       ty::ty_box(body_mt) => {
         let v = Load(bcx, v);
