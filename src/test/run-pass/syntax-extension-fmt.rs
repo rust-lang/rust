@@ -58,6 +58,9 @@ fn part1() {
     test(fmt!("%x", 0xffffffff_u), ~"ffffffff");
     test(fmt!("%o", 0xffffffff_u), ~"37777777777");
     test(fmt!("%t", 0xffffffff_u), ~"11111111111111111111111111111111");
+
+    // Don't result in a compilation error
+    test(fmt!(""), ~"");
 }
 fn part2() {
     // Widths
