@@ -236,8 +236,8 @@ fn noop_fold_foreign_item(ni: @foreign_item, fld: @ast_fold)
                         purity,
                         fold_generics(generics, fld))
                 }
-                foreign_item_const(t) => {
-                    foreign_item_const(fld.fold_ty(t))
+                foreign_item_static(t, m) => {
+                    foreign_item_static(fld.fold_ty(t), m)
                 }
             },
         id: fld.new_id(ni.id),

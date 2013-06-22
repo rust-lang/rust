@@ -2463,7 +2463,7 @@ pub fn get_item_val(ccx: @mut CrateContext, id: ast::node_id) -> ValueRef {
                                 ni.id,
                                 ni.attrs)
                 }
-                ast::foreign_item_const(*) => {
+                ast::foreign_item_static(*) => {
                     let typ = ty::node_id_to_type(ccx.tcx, ni.id);
                     let ident = token::ident_to_str(&ni.ident);
                     let g = do str::as_c_str(ident) |buf| {

@@ -1153,7 +1153,7 @@ pub fn ty_of_foreign_item(ccx: &CrateCtxt,
                                   generics,
                                   abis)
         }
-        ast::foreign_item_const(t) => {
+        ast::foreign_item_static(t, _) => {
             ty::ty_param_bounds_and_ty {
                 generics: ty::Generics {
                     type_param_defs: @~[],

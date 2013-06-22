@@ -326,7 +326,7 @@ pub fn visit_foreign_item<E: Copy>(ni: @foreign_item, (e, v): (E, vt<E>)) {
             visit_fn_decl(fd, (copy e, v));
             (v.visit_generics)(generics, (e, v));
         }
-        foreign_item_const(t) => {
+        foreign_item_static(t, _) => {
             (v.visit_ty)(t, (e, v));
         }
     }

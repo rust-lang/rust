@@ -1566,8 +1566,8 @@ impl Resolver {
                     visit_foreign_item(foreign_item, (new_parent, visitor));
                 }
             }
-            foreign_item_const(*) => {
-                let def = def_static(local_def(foreign_item.id), false);
+            foreign_item_static(_, m) => {
+                let def = def_static(local_def(foreign_item.id), m);
                 name_bindings.define_value(Public, def, foreign_item.span);
 
                 visit_foreign_item(foreign_item, (new_parent, visitor));
@@ -3665,7 +3665,7 @@ impl Resolver {
                                     || visit_foreign_item(*foreign_item,
                                                           ((), visitor)));
                             }
-                            foreign_item_const(_) => {
+                            foreign_item_static(*) => {
                                 visit_foreign_item(*foreign_item,
                                                    ((), visitor));
                             }

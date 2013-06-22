@@ -1111,9 +1111,13 @@ fn encode_info_for_foreign_item(ecx: &EncodeContext,
         }
         encode_path(ecx, ebml_w, path, ast_map::path_name(nitem.ident));
       }
-      foreign_item_const(*) => {
+      foreign_item_static(_, mutbl) => {
         encode_def_id(ebml_w, local_def(nitem.id));
-        encode_family(ebml_w, 'c');
+        if mutbl {
+            encode_family(ebml_w, 'b');
+        } else {
+            encode_family(ebml_w, 'c');
+        }
         encode_type(ecx, ebml_w, node_id_to_type(ecx.tcx, nitem.id));
         encode_symbol(ecx, ebml_w, nitem.id);
         encode_path(ecx, ebml_w, path, ast_map::path_name(nitem.ident));

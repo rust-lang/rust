@@ -33,7 +33,7 @@ use ast::{expr_vec, expr_vstore, expr_vstore_mut_box};
 use ast::{expr_vstore_slice, expr_vstore_box};
 use ast::{expr_vstore_mut_slice, expr_while, extern_fn, field, fn_decl};
 use ast::{expr_vstore_uniq, Onceness, Once, Many};
-use ast::{foreign_item, foreign_item_const, foreign_item_fn, foreign_mod};
+use ast::{foreign_item, foreign_item_static, foreign_item_fn, foreign_mod};
 use ast::{ident, impure_fn, inherited, item, item_, item_static};
 use ast::{item_enum, item_fn, item_foreign_mod, item_impl};
 use ast::{item_mac, item_mod, item_struct, item_trait, item_ty, lit, lit_};
@@ -3684,6 +3684,7 @@ impl Parser {
         } else {
             self.expect_keyword(keywords::Static);
         }
+        let mutbl = self.eat_keyword(keywords::Mut);
 
         let ident = self.parse_ident();
         self.expect(&token::COLON);
@@ -3692,7 +3693,7 @@ impl Parser {
         self.expect(&token::SEMI);
         @ast::foreign_item { ident: ident,
                              attrs: attrs,
-                             node: foreign_item_const(ty),
+                             node: foreign_item_static(ty, mutbl),
                              id: self.get_id(),
                              span: mk_sp(lo, hi),
                              vis: vis }

@@ -1124,7 +1124,7 @@ pub struct foreign_item {
 #[deriving(Eq, Encodable, Decodable)]
 pub enum foreign_item_ {
     foreign_item_fn(fn_decl, purity, Generics),
-    foreign_item_const(@Ty)
+    foreign_item_static(@Ty, /* is_mutbl */ bool),
 }
 
 // The data we save and restore about an inlined item or method.  This is not
