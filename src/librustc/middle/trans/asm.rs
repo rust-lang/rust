@@ -20,6 +20,8 @@ use middle::trans::callee;
 use middle::trans::common::*;
 use middle::ty;
 
+use middle::trans::type_::Type;
+
 use core::str;
 use syntax::ast;
 
@@ -110,11 +112,11 @@ pub fn trans_inline_asm(bcx: block, ia: &ast::inline_asm) -> block {
 
     // Depending on how many outputs we have, the return type is different
     let output = if numOutputs == 0 {
-        T_void()
+        Type::void()
     } else if numOutputs == 1 {
         val_ty(outputs[0])
     } else {
-        T_struct(outputs.map(|o| val_ty(*o)), false)
+        Type::struct_(outputs.map(|o| val_ty(*o)), false)
     };
 
     let dialect = match ia.dialect {
@@ -130,12 +132,12 @@ pub fn trans_inline_asm(bcx: block, ia: &ast::inline_asm) -> block {
 
     // Again, based on how many outputs we have
     if numOutputs == 1 {
-        let op = PointerCast(bcx, aoutputs[0], T_ptr(val_ty(outputs[0])));
+        let op = PointerCast(bcx, aoutputs[0], val_ty(outputs[0]).ptr_to());
         Store(bcx, r, op);
     } else {
         for aoutputs.iter().enumerate().advance |(i, o)| {
             let v = ExtractValue(bcx, r, i);
-            let op = PointerCast(bcx, *o, T_ptr(val_ty(outputs[i])));
+            let op = PointerCast(bcx, *o, val_ty(outputs[i]).ptr_to());
             Store(bcx, v, op);
         }
     }

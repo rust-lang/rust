@@ -24,6 +24,8 @@ use middle::ty;
 use util::common::indenter;
 use util::ppaux;
 
+use middle::trans::type_::Type;
+
 use core::str;
 use core::vec;
 use syntax::ast;
@@ -33,7 +35,7 @@ use syntax::ast_util;
 use syntax::codemap::span;
 
 pub fn trans_block(bcx: block, b: &ast::blk, dest: expr::Dest) -> block {
-    let _icx = bcx.insn_ctxt("trans_block");
+    let _icx = push_ctxt("trans_block");
     let mut bcx = bcx;
     do block_locals(b) |local| {
         bcx = alloc_local(bcx, local);
@@ -65,7 +67,7 @@ pub fn trans_if(bcx: block,
            dest.to_str(bcx.ccx()));
     let _indenter = indenter();
 
-    let _icx = bcx.insn_ctxt("trans_if");
+    let _icx = push_ctxt("trans_if");
     let Result {bcx, val: cond_val} =
         expr::trans_to_datum(bcx, cond).to_result();
 
@@ -124,7 +126,7 @@ pub fn join_blocks(parent_bcx: block, in_cxs: &[block]) -> block {
 }
 
 pub fn trans_while(bcx: block, cond: @ast::expr, body: &ast::blk) -> block {
-    let _icx = bcx.insn_ctxt("trans_while");
+    let _icx = push_ctxt("trans_while");
     let next_bcx = sub_block(bcx, "while next");
 
     //            bcx
@@ -166,7 +168,7 @@ pub fn trans_loop(bcx:block,
                   body: &ast::blk,
                   opt_label: Option<ident>)
                -> block {
-    let _icx = bcx.insn_ctxt("trans_loop");
+    let _icx = push_ctxt("trans_loop");
     let next_bcx = sub_block(bcx, "next");
     let body_bcx_in = loop_scope_block(bcx, next_bcx, opt_label, "`loop`",
                                        body.info());
@@ -180,7 +182,7 @@ pub fn trans_log(log_ex: @ast::expr,
                  lvl: @ast::expr,
                  bcx: block,
                  e: @ast::expr) -> block {
-    let _icx = bcx.insn_ctxt("trans_log");
+    let _icx = push_ctxt("trans_log");
     let ccx = bcx.ccx();
     let mut bcx = bcx;
     if ty::type_is_bot(expr_ty(bcx, lvl)) {
@@ -204,10 +206,10 @@ pub fn trans_log(log_ex: @ast::expr,
         let global;
         unsafe {
             global = str::as_c_str(s, |buf| {
-                llvm::LLVMAddGlobal(ccx.llmod, T_i32(), buf)
+                llvm::LLVMAddGlobal(ccx.llmod, Type::i32().to_ref(), buf)
             });
             llvm::LLVMSetGlobalConstant(global, False);
-            llvm::LLVMSetInitializer(global, C_null(T_i32()));
+            llvm::LLVMSetInitializer(global, C_null(Type::i32()));
             lib::llvm::SetLinkage(global, lib::llvm::InternalLinkage);
         }
         ccx.module_data.insert(modname, global);
@@ -242,7 +244,7 @@ pub fn trans_break_cont(bcx: block,
                         opt_label: Option<ident>,
                         to_end: bool)
                      -> block {
-    let _icx = bcx.insn_ctxt("trans_break_cont");
+    let _icx = push_ctxt("trans_break_cont");
     // Locate closest loop block, outputting cleanup as we go.
     let mut unwind = bcx;
     let mut target;
@@ -296,7 +298,7 @@ pub fn trans_cont(bcx: block, label_opt: Option<ident>) -> block {
 }
 
 pub fn trans_ret(bcx: block, e: Option<@ast::expr>) -> block {
-    let _icx = bcx.insn_ctxt("trans_ret");
+    let _icx = push_ctxt("trans_ret");
     let mut bcx = bcx;
     let dest = match copy bcx.fcx.loop_ret {
       Some((flagptr, retptr)) => {
@@ -307,7 +309,7 @@ pub fn trans_ret(bcx: block, e: Option<@ast::expr>) -> block {
         Store(bcx, C_bool(false), bcx.fcx.llretptr.get());
         expr::SaveIn(match e {
           Some(x) => PointerCast(bcx, retptr,
-                                 T_ptr(type_of(bcx.ccx(), expr_ty(bcx, x)))),
+                                 type_of(bcx.ccx(), expr_ty(bcx, x)).ptr_to()),
           None => retptr
         })
       }
@@ -331,7 +333,7 @@ pub fn trans_fail_expr(bcx: block,
                        sp_opt: Option<span>,
                        fail_expr: Option<@ast::expr>)
                     -> block {
-    let _icx = bcx.insn_ctxt("trans_fail_expr");
+    let _icx = push_ctxt("trans_fail_expr");
     let mut bcx = bcx;
     match fail_expr {
         Some(arg_expr) => {
@@ -359,7 +361,7 @@ pub fn trans_fail(bcx: block,
                   sp_opt: Option<span>,
                   fail_str: @str)
                -> block {
-    let _icx = bcx.insn_ctxt("trans_fail");
+    let _icx = push_ctxt("trans_fail");
     let V_fail_str = C_cstr(bcx.ccx(), fail_str);
     return trans_fail_value(bcx, sp_opt, V_fail_str);
 }
@@ -368,7 +370,7 @@ fn trans_fail_value(bcx: block,
                     sp_opt: Option<span>,
                     V_fail_str: ValueRef)
                  -> block {
-    let _icx = bcx.insn_ctxt("trans_fail_value");
+    let _icx = push_ctxt("trans_fail_value");
     let ccx = bcx.ccx();
     let (V_filename, V_line) = match sp_opt {
       Some(sp) => {
@@ -381,8 +383,8 @@ fn trans_fail_value(bcx: block,
         (C_cstr(bcx.ccx(), @"<runtime>"), 0)
       }
     };
-    let V_str = PointerCast(bcx, V_fail_str, T_ptr(T_i8()));
-    let V_filename = PointerCast(bcx, V_filename, T_ptr(T_i8()));
+    let V_str = PointerCast(bcx, V_fail_str, Type::i8p());
+    let V_filename = PointerCast(bcx, V_filename, Type::i8p());
     let args = ~[V_str, V_filename, C_int(ccx, V_line)];
     let bcx = callee::trans_lang_call(
         bcx, bcx.tcx().lang_items.fail_fn(), args, expr::Ignore);
@@ -392,7 +394,7 @@ fn trans_fail_value(bcx: block,
 
 pub fn trans_fail_bounds_check(bcx: block, sp: span,
                                index: ValueRef, len: ValueRef) -> block {
-    let _icx = bcx.insn_ctxt("trans_fail_bounds_check");
+    let _icx = push_ctxt("trans_fail_bounds_check");
     let (filename, line) = filename_and_line_num_from_span(bcx, sp);
     let args = ~[filename, line, index, len];
     let bcx = callee::trans_lang_call(

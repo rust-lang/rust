@@ -117,46 +117,43 @@ pub fn type_uses_for(ccx: @mut CrateContext, fn_id: def_id, n_tps: uint)
                                  _,
                                  _) => {
         if abi.is_intrinsic() {
-            let flags = match cx.ccx.sess.str_of(i.ident).as_slice() {
-                "size_of"  | "pref_align_of" | "min_align_of" |
-                "uninit"   | "init" | "transmute" | "move_val" |
-                "move_val_init" => use_repr,
+            let nm = cx.ccx.sess.str_of(i.ident);
+            let name = nm.as_slice();
+            let flags = if name.starts_with("atomic_") {
+                0
+            } else {
+                match name {
+                    "size_of"  | "pref_align_of" | "min_align_of" |
+                    "uninit"   | "init" | "transmute" | "move_val" |
+                    "move_val_init" => use_repr,
 
-                "get_tydesc" | "needs_drop" => use_tydesc,
+                    "get_tydesc" | "needs_drop" => use_tydesc,
 
-                "atomic_cxchg"    | "atomic_cxchg_acq"|
-                "atomic_cxchg_rel"| "atomic_load"     |
-                "atomic_load_acq" | "atomic_store"    |
-                "atomic_store_rel"| "atomic_xchg"     |
-                "atomic_xadd"     | "atomic_xsub"     |
-                "atomic_xchg_acq" | "atomic_xadd_acq" |
-                "atomic_xsub_acq" | "atomic_xchg_rel" |
-                "atomic_xadd_rel" | "atomic_xsub_rel" => 0,
+                    "visit_tydesc"  | "forget" | "frame_address" |
+                    "morestack_addr" => 0,
 
-                "visit_tydesc"  | "forget" | "frame_address" |
-                "morestack_addr" => 0,
+                    "memcpy32" | "memcpy64" | "memmove32" | "memmove64" |
+                    "memset32" | "memset64" => use_repr,
 
-                "memcpy32" | "memcpy64" | "memmove32" | "memmove64" |
-                "memset32" | "memset64" => use_repr,
+                    "sqrtf32" | "sqrtf64" | "powif32" | "powif64" |
+                    "sinf32"  | "sinf64"  | "cosf32"  | "cosf64"  |
+                    "powf32"  | "powf64"  | "expf32"  | "expf64"  |
+                    "exp2f32" | "exp2f64" | "logf32"  | "logf64"  |
+                    "log10f32"| "log10f64"| "log2f32" | "log2f64" |
+                    "fmaf32"  | "fmaf64"  | "fabsf32" | "fabsf64" |
+                    "floorf32"| "floorf64"| "ceilf32" | "ceilf64" |
+                    "truncf32"| "truncf64" => 0,
 
-                "sqrtf32" | "sqrtf64" | "powif32" | "powif64" |
-                "sinf32"  | "sinf64"  | "cosf32"  | "cosf64"  |
-                "powf32"  | "powf64"  | "expf32"  | "expf64"  |
-                "exp2f32" | "exp2f64" | "logf32"  | "logf64"  |
-                "log10f32"| "log10f64"| "log2f32" | "log2f64" |
-                "fmaf32"  | "fmaf64"  | "fabsf32" | "fabsf64" |
-                "floorf32"| "floorf64"| "ceilf32" | "ceilf64" |
-                "truncf32"| "truncf64" => 0,
+                    "ctpop8" | "ctpop16" | "ctpop32" | "ctpop64" => 0,
 
-                "ctpop8" | "ctpop16" | "ctpop32" | "ctpop64" => 0,
+                    "ctlz8" | "ctlz16" | "ctlz32" | "ctlz64" => 0,
+                    "cttz8" | "cttz16" | "cttz32" | "cttz64" => 0,
 
-                "ctlz8" | "ctlz16" | "ctlz32" | "ctlz64" => 0,
-                "cttz8" | "cttz16" | "cttz32" | "cttz64" => 0,
+                    "bswap16" | "bswap32" | "bswap64" => 0,
 
-                "bswap16" | "bswap32" | "bswap64" => 0,
-
-                // would be cool to make these an enum instead of strings!
-                _ => fail!("unknown intrinsic in type_use")
+                    // would be cool to make these an enum instead of strings!
+                    _ => fail!("unknown intrinsic in type_use")
+                }
             };
             for uint::range(0u, n_tps) |n| { cx.uses[n] |= flags;}
         }

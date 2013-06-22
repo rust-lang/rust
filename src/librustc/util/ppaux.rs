@@ -112,7 +112,7 @@ pub fn explain_region_and_span(cx: ctxt, region: ty::Region)
                                idx + 1),
           br_fresh(_) => fmt!("an anonymous lifetime defined on"),
           _ => fmt!("the lifetime %s as defined on",
-                    bound_region_to_str(cx, fr.bound_region))
+                    bound_region_ptr_to_str(cx, fr.bound_region))
         };
 
         match cx.items.find(&fr.scope_id) {
@@ -147,22 +147,23 @@ pub fn explain_region_and_span(cx: ctxt, region: ty::Region)
     }
 }
 
-pub fn bound_region_to_str(cx: ctxt, br: bound_region) -> ~str {
-    bound_region_to_str_space(cx, "&", br)
+pub fn bound_region_ptr_to_str(cx: ctxt, br: bound_region) -> ~str {
+    bound_region_to_str(cx, "&", true, br)
 }
 
-pub fn bound_region_to_str_space(cx: ctxt,
-                                 prefix: &str,
-                                 br: bound_region)
-                              -> ~str {
-    if cx.sess.verbose() { return fmt!("%s%? ", prefix, br); }
+pub fn bound_region_to_str(cx: ctxt,
+                           prefix: &str, space: bool,
+                           br: bound_region) -> ~str {
+    let space_str = if space { " " } else { "" };
+
+    if cx.sess.verbose() { return fmt!("%s%?%s", prefix, br, space_str); }
 
     match br {
-      br_named(id)         => fmt!("%s'%s ", prefix, cx.sess.str_of(id)),
-      br_self              => fmt!("%s'self ", prefix),
+      br_named(id)         => fmt!("%s'%s%s", prefix, cx.sess.str_of(id), space_str),
+      br_self              => fmt!("%s'self%s", prefix, space_str),
       br_anon(_)           => prefix.to_str(),
       br_fresh(_)          => prefix.to_str(),
-      br_cap_avoid(_, br)  => bound_region_to_str_space(cx, prefix, *br)
+      br_cap_avoid(_, br)  => bound_region_to_str(cx, prefix, space, *br)
     }
 }
 
@@ -208,13 +209,15 @@ pub fn re_scope_id_to_str(cx: ctxt, node_id: ast::node_id) -> ~str {
 // In general, if you are giving a region error message,
 // you should use `explain_region()` or, better yet,
 // `note_and_explain_region()`
-pub fn region_to_str(cx: ctxt, region: Region) -> ~str {
-    region_to_str_space(cx, "&", region)
+pub fn region_ptr_to_str(cx: ctxt, region: Region) -> ~str {
+    region_to_str(cx, "&", true, region)
 }
 
-pub fn region_to_str_space(cx: ctxt, prefix: &str, region: Region) -> ~str {
+pub fn region_to_str(cx: ctxt, prefix: &str, space: bool, region: Region) -> ~str {
+    let space_str = if space { " " } else { "" };
+
     if cx.sess.verbose() {
-        return fmt!("%s%? ", prefix, region);
+        return fmt!("%s%?%s", prefix, region, space_str);
     }
 
     // These printouts are concise.  They do not contain all the information
@@ -223,14 +226,14 @@ pub fn region_to_str_space(cx: ctxt, prefix: &str, region: Region) -> ~str {
     // `explain_region()` or `note_and_explain_region()`.
     match region {
         re_scope(_) => prefix.to_str(),
-        re_bound(br) => bound_region_to_str_space(cx, prefix, br),
-        re_free(ref fr) => bound_region_to_str_space(cx, prefix, fr.bound_region),
+        re_bound(br) => bound_region_to_str(cx, prefix, space, br),
+        re_free(ref fr) => bound_region_to_str(cx, prefix, space, fr.bound_region),
         re_infer(ReSkolemized(_, br)) => {
-            bound_region_to_str_space(cx, prefix, br)
+            bound_region_to_str(cx, prefix, space, br)
         }
         re_infer(ReVar(_)) => prefix.to_str(),
-        re_static => fmt!("%s'static ", prefix),
-        re_empty => fmt!("%s'<empty> ", prefix)
+        re_static => fmt!("%s'static%s", prefix, space_str),
+        re_empty => fmt!("%s'<empty>%s", prefix, space_str)
     }
 }
 
@@ -256,7 +259,7 @@ pub fn vstore_to_str(cx: ctxt, vs: ty::vstore) -> ~str {
       ty::vstore_fixed(n) => fmt!("%u", n),
       ty::vstore_uniq => ~"~",
       ty::vstore_box => ~"@",
-      ty::vstore_slice(r) => region_to_str_space(cx, "&", r)
+      ty::vstore_slice(r) => region_ptr_to_str(cx, r)
     }
 }
 
@@ -264,7 +267,7 @@ pub fn trait_store_to_str(cx: ctxt, s: ty::TraitStore) -> ~str {
     match s {
       ty::UniqTraitStore => ~"~",
       ty::BoxTraitStore => ~"@",
-      ty::RegionTraitStore(r) => region_to_str_space(cx, "&", r)
+      ty::RegionTraitStore(r) => region_ptr_to_str(cx, r)
     }
 }
 
@@ -340,7 +343,7 @@ pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
             (ast::OwnedSigil, ty::re_static) => {}
 
             (_, region) => {
-                s.push_str(region_to_str_space(cx, "", region));
+                s.push_str(region_to_str(cx, "", true, region));
             }
         }
 
@@ -414,7 +417,7 @@ pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
       ty_uniq(ref tm) => ~"~" + mt_to_str(cx, tm),
       ty_ptr(ref tm) => ~"*" + mt_to_str(cx, tm),
       ty_rptr(r, ref tm) => {
-        region_to_str_space(cx, "&", r) + mt_to_str(cx, tm)
+        region_ptr_to_str(cx, r) + mt_to_str(cx, tm)
       }
       ty_unboxed_vec(ref tm) => { fmt!("unboxed_vec<%s>", mt_to_str(cx, tm)) }
       ty_type => ~"type",
@@ -431,13 +434,15 @@ pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
       ty_infer(infer_ty) => infer_ty.to_str(),
       ty_err => ~"[type error]",
       ty_param(param_ty {idx: id, def_id: did}) => {
+          let mut parm = (('T' as uint) + id) as char;
+          if (parm as uint) > ('Z' as uint) {
+              parm = (parm as uint - 26) as char;
+          }
+
           if cx.sess.verbose() {
-              fmt!("'%s:%?",
-                   str::from_bytes([('a' as u8) + (id as u8)]),
-                   did)
+              fmt!("%c:%?", parm, did)
           } else {
-              fmt!("'%s",
-                   str::from_bytes([('a' as u8) + (id as u8)]))
+              fmt!("%c", parm)
           }
       }
       ty_self(*) => ~"Self",
@@ -457,9 +462,9 @@ pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
       }
       ty_estr(vs) => fmt!("%s%s", vstore_to_str(cx, vs), "str"),
       ty_opaque_box => ~"@?",
-      ty_opaque_closure_ptr(ast::BorrowedSigil) => ~"closure&",
-      ty_opaque_closure_ptr(ast::ManagedSigil) => ~"closure@",
-      ty_opaque_closure_ptr(ast::OwnedSigil) => ~"closure~",
+      ty_opaque_closure_ptr(ast::BorrowedSigil) => ~"&closure",
+      ty_opaque_closure_ptr(ast::ManagedSigil) => ~"@closure",
+      ty_opaque_closure_ptr(ast::OwnedSigil) => ~"~closure",
     }
 }
 
@@ -468,18 +473,20 @@ pub fn parameterized(cx: ctxt,
                      self_r: Option<ty::Region>,
                      tps: &[ty::t]) -> ~str {
 
-    let r_str = match self_r {
-      None => ~"",
-      Some(r) => {
-        fmt!("/%s", region_to_str(cx, r))
-      }
+    let mut strs = ~[];
+    match self_r {
+        None => (),
+        Some(r) => {
+            strs.push(region_to_str(cx, "", false, r))
+        }
     };
 
-    if tps.len() > 0u {
-        let strs = vec::map(tps, |t| ty_to_str(cx, *t));
-        fmt!("%s%s<%s>", base, r_str, strs.connect(","))
+    strs += vec::map(tps, |t| ty_to_str(cx, *t));
+
+    if strs.len() > 0u {
+        fmt!("%s<%s>", base, strs.connect(","))
     } else {
-        fmt!("%s%s", base, r_str)
+        fmt!("%s", base)
     }
 }
 
@@ -597,7 +604,7 @@ impl Repr for @ast::pat {
 
 impl Repr for ty::Region {
     fn repr(&self, tcx: ctxt) -> ~str {
-        region_to_str(tcx, *self)
+        region_to_str(tcx, "", false, *self)
     }
 }
 

@@ -821,7 +821,7 @@ impl InferCtxt {
                 // debug message.
                 let rvar = self.next_region_var_nb(span);
                 debug!("Bound region %s maps to %?",
-                       bound_region_to_str(self.tcx, br),
+                       bound_region_to_str(self.tcx, "", false, br),
                        rvar);
                 rvar
             });
