@@ -191,7 +191,7 @@ pub fn split<T:Copy>(v: &[T], f: &fn(t: &T) -> bool) -> ~[~[T]] {
     let mut start = 0u;
     let mut result = ~[];
     while start < ln {
-        match position_between(v, start, ln, f) {
+        match position_between(v, start, ln, |t| f(t)) {
             None => break,
             Some(i) => {
                 result.push(v.slice(start, i).to_owned());
@@ -215,7 +215,7 @@ pub fn splitn<T:Copy>(v: &[T], n: uint, f: &fn(t: &T) -> bool) -> ~[~[T]] {
     let mut count = n;
     let mut result = ~[];
     while start < ln && count > 0u {
-        match position_between(v, start, ln, f) {
+        match position_between(v, start, ln, |t| f(t)) {
             None => break,
             Some(i) => {
                 result.push(v.slice(start, i).to_owned());
@@ -240,7 +240,7 @@ pub fn rsplit<T:Copy>(v: &[T], f: &fn(t: &T) -> bool) -> ~[~[T]] {
     let mut end = ln;
     let mut result = ~[];
     while end > 0 {
-        match rposition_between(v, 0, end, f) {
+        match rposition_between(v, 0, end, |t| f(t)) {
             None => break,
             Some(i) => {
                 result.push(v.slice(i + 1, end).to_owned());
@@ -265,7 +265,7 @@ pub fn rsplitn<T:Copy>(v: &[T], n: uint, f: &fn(t: &T) -> bool) -> ~[~[T]] {
     let mut count = n;
     let mut result = ~[];
     while end > 0u && count > 0u {
-        match rposition_between(v, 0u, end, f) {
+        match rposition_between(v, 0u, end, |t| f(t)) {
             None => break,
             Some(i) => {
                 result.push(v.slice(i + 1u, end).to_owned());

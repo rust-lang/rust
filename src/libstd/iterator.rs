@@ -964,7 +964,7 @@ impl<'self, A, T: Iterator<A>, B, U: Iterator<B>> Iterator<B> for
                     return Some(x)
                 }
             }
-            match self.iter.next().map_consume(self.f) {
+            match self.iter.next().map_consume(|x| (self.f)(x)) {
                 None => return None,
                 next => self.subiter = next,
             }

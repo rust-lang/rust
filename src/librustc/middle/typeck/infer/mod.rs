@@ -582,7 +582,7 @@ impl InferCtxt {
 
         debug!("commit()");
         do indent {
-            let r = self.try(f);
+            let r = self.try(|| f());
 
             self.ty_var_bindings.bindings.truncate(0);
             self.int_var_bindings.bindings.truncate(0);
@@ -836,6 +836,6 @@ pub fn fold_regions_in_sig(
     fldr: &fn(r: ty::Region, in_fn: bool) -> ty::Region) -> ty::FnSig
 {
     do ty::fold_sig(fn_sig) |t| {
-        ty::fold_regions(tcx, t, fldr)
+        ty::fold_regions(tcx, t, |r, in_fn| fldr(r, in_fn))
     }
 }

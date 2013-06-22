@@ -43,15 +43,21 @@ pub fn expand_deriving_iter_bytes(cx: @ExtCtxt,
 }
 
 fn iter_bytes_substructure(cx: @ExtCtxt, span: span, substr: &Substructure) -> @expr {
-    let lsb0_f = match substr.nonself_args {
-        [l, f] => ~[l, f],
+    let (lsb0, f)= match substr.nonself_args {
+        [l, f] => (l, f),
         _ => cx.span_bug(span, "Incorrect number of arguments in `deriving(IterBytes)`")
     };
+    // Build the "explicitly borrowed" stack closure, "|_buf| f(_buf)".
+    let blk_arg = cx.ident_of("_buf");
+    let borrowed_f =
+        cx.lambda_expr_1(span, cx.expr_call(span, f, ~[cx.expr_ident(span, blk_arg)]),
+                         blk_arg);
+
     let iter_bytes_ident = substr.method_ident;
     let call_iterbytes = |thing_expr| {
         cx.expr_method_call(span,
                               thing_expr, iter_bytes_ident,
-                              copy lsb0_f)
+                              ~[lsb0, borrowed_f])
     };
     let mut exprs = ~[];
     let fields;

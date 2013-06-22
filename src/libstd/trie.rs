@@ -251,7 +251,7 @@ impl<T> TrieNode<T> {
     fn each<'a>(&'a self, f: &fn(&uint, &'a T) -> bool) -> bool {
         for uint::range(0, self.children.len()) |idx| {
             match self.children[idx] {
-                Internal(ref x) => if !x.each(f) { return false },
+                Internal(ref x) => if !x.each(|i,t| f(i,t)) { return false },
                 External(k, ref v) => if !f(&k, v) { return false },
                 Nothing => ()
             }
@@ -262,7 +262,7 @@ impl<T> TrieNode<T> {
     fn each_reverse<'a>(&'a self, f: &fn(&uint, &'a T) -> bool) -> bool {
         for uint::range_rev(self.children.len(), 0) |idx| {
             match self.children[idx - 1] {
-                Internal(ref x) => if !x.each_reverse(f) { return false },
+                Internal(ref x) => if !x.each_reverse(|i,t| f(i,t)) { return false },
                 External(k, ref v) => if !f(&k, v) { return false },
                 Nothing => ()
             }
@@ -273,7 +273,7 @@ impl<T> TrieNode<T> {
     fn mutate_values<'a>(&'a mut self, f: &fn(&uint, &mut T) -> bool) -> bool {
         for self.children.mut_iter().advance |child| {
             match *child {
-                Internal(ref mut x) => if !x.mutate_values(f) {
+                Internal(ref mut x) => if !x.mutate_values(|i,t| f(i,t)) {
                     return false
                 },
                 External(k, ref mut v) => if !f(&k, v) { return false },

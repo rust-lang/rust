@@ -535,18 +535,18 @@ pub fn walk_pat(pat: @pat, it: &fn(@pat) -> bool) -> bool {
     match pat.node {
         pat_ident(_, _, Some(p)) => walk_pat(p, it),
         pat_struct(_, ref fields, _) => {
-            fields.iter().advance(|f| walk_pat(f.pat, it))
+            fields.iter().advance(|f| walk_pat(f.pat, |p| it(p)))
         }
         pat_enum(_, Some(ref s)) | pat_tup(ref s) => {
-            s.iter().advance(|&p| walk_pat(p, it))
+            s.iter().advance(|&p| walk_pat(p, |p| it(p)))
         }
         pat_box(s) | pat_uniq(s) | pat_region(s) => {
             walk_pat(s, it)
         }
         pat_vec(ref before, ref slice, ref after) => {
-            before.iter().advance(|&p| walk_pat(p, it)) &&
-                slice.iter().advance(|&p| walk_pat(p, it)) &&
-                after.iter().advance(|&p| walk_pat(p, it))
+            before.iter().advance(|&p| walk_pat(p, |p| it(p))) &&
+                slice.iter().advance(|&p| walk_pat(p, |p| it(p))) &&
+                after.iter().advance(|&p| walk_pat(p, |p| it(p)))
         }
         pat_wild | pat_lit(_) | pat_range(_, _) | pat_ident(_, _, _) |
         pat_enum(_, _) => {

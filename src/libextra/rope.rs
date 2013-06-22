@@ -1078,7 +1078,7 @@ pub mod node {
 
     pub fn loop_chars(node: @Node, it: &fn(c: char) -> bool) -> bool {
         return loop_leaves(node,|leaf| {
-            leaf.content.slice(leaf.byte_offset, leaf.byte_len).iter().all(it)
+            leaf.content.slice(leaf.byte_offset, leaf.byte_len).iter().all(|c| it(c))
         });
     }
 
@@ -1101,7 +1101,7 @@ pub mod node {
         loop {
             match (*current) {
               Leaf(x) => return it(x),
-              Concat(ref x) => if loop_leaves(x.left, it) { //non tail call
+              Concat(ref x) => if loop_leaves(x.left, |l| it(l)) { //non tail call
                 current = x.right;       //tail call
               } else {
                 return false;
