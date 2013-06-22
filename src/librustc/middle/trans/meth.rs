@@ -30,6 +30,8 @@ use middle::typeck;
 use util::common::indenter;
 use util::ppaux::Repr;
 
+use middle::trans::type_::Type;
+
 use core::str;
 use core::vec;
 use syntax::ast_map::{path, path_mod, path_name};
@@ -49,7 +51,7 @@ pub fn trans_impl(ccx: @mut CrateContext,
                   generics: &ast::Generics,
                   self_ty: Option<ty::t>,
                   id: ast::node_id) {
-    let _icx = ccx.insn_ctxt("impl::trans_impl");
+    let _icx = push_ctxt("impl::trans_impl");
     let tcx = ccx.tcx;
 
     debug!("trans_impl(path=%s, name=%s, self_ty=%s, id=%?)",
@@ -157,7 +159,7 @@ pub fn trans_method(ccx: @mut CrateContext,
 pub fn trans_self_arg(bcx: block,
                       base: @ast::expr,
                       mentry: typeck::method_map_entry) -> Result {
-    let _icx = bcx.insn_ctxt("impl::trans_self_arg");
+    let _icx = push_ctxt("impl::trans_self_arg");
     let mut temp_cleanups = ~[];
 
     // Compute the type of self.
@@ -185,7 +187,7 @@ pub fn trans_method_callee(bcx: block,
                            this: @ast::expr,
                            mentry: typeck::method_map_entry)
                            -> Callee {
-    let _icx = bcx.insn_ctxt("impl::trans_method_callee");
+    let _icx = push_ctxt("impl::trans_method_callee");
     let tcx = bcx.tcx();
 
     debug!("trans_method_callee(callee_id=%?, this=%s, mentry=%s)",
@@ -291,7 +293,7 @@ pub fn trans_static_method_callee(bcx: block,
                                   trait_id: ast::def_id,
                                   callee_id: ast::node_id)
                                -> FnData {
-    let _icx = bcx.insn_ctxt("impl::trans_static_method_callee");
+    let _icx = push_ctxt("impl::trans_static_method_callee");
     let ccx = bcx.ccx();
 
     debug!("trans_static_method_callee(method_id=%?, trait_id=%s, \
@@ -363,7 +365,7 @@ pub fn trans_static_method_callee(bcx: block,
                                           Some(callee_origins));
 
             let callee_ty = node_id_type(bcx, callee_id);
-            let llty = T_ptr(type_of_fn_from_ty(ccx, callee_ty));
+            let llty = type_of_fn_from_ty(ccx, callee_ty).ptr_to();
             FnData {llfn: PointerCast(bcx, lval, llty)}
         }
         _ => {
@@ -435,7 +437,7 @@ pub fn trans_monomorphized_callee(bcx: block,
                                   n_method: uint,
                                   vtbl: typeck::vtable_origin)
                                   -> Callee {
-    let _icx = bcx.insn_ctxt("impl::trans_monomorphized_callee");
+    let _icx = push_ctxt("impl::trans_monomorphized_callee");
     return match vtbl {
       typeck::vtable_static(impl_did, ref rcvr_substs, rcvr_origins) => {
           let ccx = bcx.ccx();
@@ -463,7 +465,7 @@ pub fn trans_monomorphized_callee(bcx: block,
 
           // create a llvalue that represents the fn ptr
           let fn_ty = node_id_type(bcx, callee_id);
-          let llfn_ty = T_ptr(type_of_fn_from_ty(ccx, fn_ty));
+          let llfn_ty = type_of_fn_from_ty(ccx, fn_ty).ptr_to();
           let llfn_val = PointerCast(bcx, callee.llfn, llfn_ty);
 
           // combine the self environment with the rest
@@ -584,7 +586,7 @@ pub fn trans_trait_callee(bcx: block,
     // first evaluate the self expression (expected a by-ref result) and then
     // extract the self data and vtable out of the pair.
 
-    let _icx = bcx.insn_ctxt("impl::trans_trait_callee");
+    let _icx = push_ctxt("impl::trans_trait_callee");
     let mut bcx = bcx;
     let self_datum = unpack_datum!(bcx,
         expr::trans_to_datum(bcx, self_expr));
@@ -617,18 +619,18 @@ pub fn trans_trait_callee_from_llval(bcx: block,
     // Same as `trans_trait_callee()` above, except that it is given
     // a by-ref pointer to the @Trait pair.
 
-    let _icx = bcx.insn_ctxt("impl::trans_trait_callee");
+    let _icx = push_ctxt("impl::trans_trait_callee");
     let ccx = bcx.ccx();
     let mut bcx = bcx;
 
     // Load the vtable from the @Trait pair
     debug!("(translating trait callee) loading vtable from pair %s",
-           val_str(bcx.ccx().tn, llpair));
+           bcx.val_to_str(llpair));
     let llvtable = Load(bcx,
                       PointerCast(bcx,
                                   GEPi(bcx, llpair,
                                        [0u, abi::trt_field_vtable]),
-                                  T_ptr(T_ptr(T_vtable()))));
+                                  Type::vtable().ptr_to().ptr_to()));
 
     // Load the box from the @Trait pair and GEP over the box header if
     // necessary:
@@ -705,7 +707,7 @@ pub fn trans_trait_callee_from_llval(bcx: block,
     // Plus one in order to skip past the type descriptor.
     let mptr = Load(bcx, GEPi(bcx, llvtable, [0u, n_method + 1]));
 
-    let mptr = PointerCast(bcx, mptr, T_ptr(llcallee_ty));
+    let mptr = PointerCast(bcx, mptr, llcallee_ty.ptr_to());
 
     return Callee {
         bcx: bcx,
@@ -768,7 +770,7 @@ pub fn make_vtable(ccx: @mut CrateContext,
                    ptrs: &[ValueRef])
                    -> ValueRef {
     unsafe {
-        let _icx = ccx.insn_ctxt("impl::make_vtable");
+        let _icx = push_ctxt("impl::make_vtable");
 
         let mut components = ~[ tydesc.tydesc ];
         for ptrs.each |&ptr| {
@@ -778,7 +780,7 @@ pub fn make_vtable(ccx: @mut CrateContext,
         let tbl = C_struct(components);
         let vtable = ccx.sess.str_of((ccx.names)("vtable"));
         let vt_gvar = do str::as_c_str(vtable) |buf| {
-            llvm::LLVMAddGlobal(ccx.llmod, val_ty(tbl), buf)
+            llvm::LLVMAddGlobal(ccx.llmod, val_ty(tbl).to_ref(), buf)
         };
         llvm::LLVMSetInitializer(vt_gvar, tbl);
         llvm::LLVMSetGlobalConstant(vt_gvar, lib::llvm::True);
@@ -795,7 +797,7 @@ pub fn make_impl_vtable(bcx: block,
                         vtables: typeck::vtable_res)
                         -> ValueRef {
     let ccx = bcx.ccx();
-    let _icx = ccx.insn_ctxt("impl::make_impl_vtable");
+    let _icx = push_ctxt("impl::make_impl_vtable");
     let tcx = ccx.tcx;
 
     let trt_id = match ty::impl_trait_ref(tcx, impl_id) {
@@ -814,7 +816,7 @@ pub fn make_impl_vtable(bcx: block,
         if im.generics.has_type_params() || ty::type_has_self(fty) {
             debug!("(making impl vtable) method has self or type params: %s",
                    tcx.sess.str_of(im.ident));
-            C_null(T_ptr(T_nil()))
+            C_null(Type::nil().ptr_to())
         } else {
             debug!("(making impl vtable) adding method to vtable: %s",
                    tcx.sess.str_of(im.ident));
@@ -839,7 +841,7 @@ pub fn trans_trait_cast(bcx: block,
                         _store: ty::TraitStore)
                      -> block {
     let mut bcx = bcx;
-    let _icx = bcx.insn_ctxt("impl::trans_cast");
+    let _icx = push_ctxt("impl::trans_cast");
 
     let lldest = match dest {
         Ignore => {
@@ -857,7 +859,7 @@ pub fn trans_trait_cast(bcx: block,
     // have no type descriptor field.)
     llboxdest = PointerCast(bcx,
                             llboxdest,
-                            T_ptr(type_of(bcx.ccx(), v_ty)));
+                            type_of(bcx.ccx(), v_ty).ptr_to());
     bcx = expr::trans_into(bcx, val, SaveIn(llboxdest));
 
     // Store the vtable into the pair or triple.
@@ -866,7 +868,7 @@ pub fn trans_trait_cast(bcx: block,
     let vtable = get_vtable(bcx, v_ty, orig);
     Store(bcx, vtable, PointerCast(bcx,
                                    GEPi(bcx, lldest, [0u, abi::trt_field_vtable]),
-                                   T_ptr(val_ty(vtable))));
+                                   val_ty(vtable).ptr_to()));
 
     bcx
 }

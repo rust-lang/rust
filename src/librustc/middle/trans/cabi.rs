@@ -8,25 +8,24 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use lib::llvm::{llvm, TypeRef, ValueRef, Attribute, Void};
+use lib::llvm::{llvm, ValueRef, Attribute, Void};
 use middle::trans::base::*;
 use middle::trans::build::*;
 use middle::trans::common::*;
+
+use middle::trans::type_::Type;
 
 use core::libc::c_uint;
 use core::option;
 use core::vec;
 
 pub trait ABIInfo {
-    fn compute_info(&self,
-                    atys: &[TypeRef],
-                    rty: TypeRef,
-                    ret_def: bool) -> FnType;
+    fn compute_info(&self, atys: &[Type], rty: Type, ret_def: bool) -> FnType;
 }
 
 pub struct LLVMType {
     cast: bool,
-    ty: TypeRef
+    ty: Type
 }
 
 pub struct FnType {
@@ -37,10 +36,10 @@ pub struct FnType {
 }
 
 impl FnType {
-    pub fn decl_fn(&self, decl: &fn(fnty: TypeRef) -> ValueRef) -> ValueRef {
+    pub fn decl_fn(&self, decl: &fn(fnty: Type) -> ValueRef) -> ValueRef {
         let atys = vec::map(self.arg_tys, |t| t.ty);
         let rty = self.ret_ty.ty;
-        let fnty = T_fn(atys, rty);
+        let fnty = Type::func(atys, &rty);
         let llfn = decl(fnty);
 
         for self.attrs.iter().enumerate().advance |(i, a)| {
@@ -57,10 +56,7 @@ impl FnType {
         return llfn;
     }
 
-    pub fn build_shim_args(&self,
-                           bcx: block,
-                           arg_tys: &[TypeRef],
-                           llargbundle: ValueRef)
+    pub fn build_shim_args(&self, bcx: block, arg_tys: &[Type], llargbundle: ValueRef)
                            -> ~[ValueRef] {
         let mut atys: &[LLVMType] = self.arg_tys;
         let mut attrs: &[option::Option<Attribute>] = self.attrs;
@@ -80,7 +76,7 @@ impl FnType {
         while i < n {
             let llargval = if atys[i].cast {
                 let arg_ptr = GEPi(bcx, llargbundle, [0u, i]);
-                let arg_ptr = BitCast(bcx, arg_ptr, T_ptr(atys[i].ty));
+                let arg_ptr = BitCast(bcx, arg_ptr, atys[i].ty.ptr_to());
                 Load(bcx, arg_ptr)
             } else if attrs[i].is_some() {
                 GEPi(bcx, llargbundle, [0u, i])
@@ -94,19 +90,13 @@ impl FnType {
         return llargvals;
     }
 
-    pub fn build_shim_ret(&self,
-                          bcx: block,
-                          arg_tys: &[TypeRef],
-                          ret_def: bool,
-                          llargbundle: ValueRef,
-                          llretval: ValueRef) {
+    pub fn build_shim_ret(&self, bcx: block, arg_tys: &[Type], ret_def: bool,
+                          llargbundle: ValueRef, llretval: ValueRef) {
         for self.attrs.iter().enumerate().advance |(i, a)| {
             match *a {
                 option::Some(attr) => {
                     unsafe {
-                        llvm::LLVMAddInstrAttribute(llretval,
-                                                    (i + 1u) as c_uint,
-                                                    attr as c_uint);
+                        llvm::LLVMAddInstrAttribute(llretval, (i + 1u) as c_uint, attr as c_uint);
                     }
                 }
                 _ => ()
@@ -121,7 +111,7 @@ impl FnType {
         // R* llretloc = *llretptr; /* (args->r) */
         let llretloc = Load(bcx, llretptr);
         if self.ret_ty.cast {
-            let tmp_ptr = BitCast(bcx, llretloc, T_ptr(self.ret_ty.ty));
+            let tmp_ptr = BitCast(bcx, llretloc, self.ret_ty.ty.ptr_to());
             // *args->r = r;
             Store(bcx, llretval, tmp_ptr);
         } else {
@@ -130,11 +120,8 @@ impl FnType {
         };
     }
 
-    pub fn build_wrap_args(&self,
-                           bcx: block,
-                           ret_ty: TypeRef,
-                           llwrapfn: ValueRef,
-                           llargbundle: ValueRef) {
+    pub fn build_wrap_args(&self, bcx: block, ret_ty: Type,
+                           llwrapfn: ValueRef, llargbundle: ValueRef) {
         let mut atys: &[LLVMType] = self.arg_tys;
         let mut attrs: &[option::Option<Attribute>] = self.attrs;
         let mut j = 0u;
@@ -145,7 +132,7 @@ impl FnType {
             get_param(llwrapfn, 0u)
         } else if self.ret_ty.cast {
             let retptr = alloca(bcx, self.ret_ty.ty);
-            BitCast(bcx, retptr, T_ptr(ret_ty))
+            BitCast(bcx, retptr, ret_ty.ptr_to())
         } else {
             alloca(bcx, ret_ty)
         };
@@ -159,7 +146,7 @@ impl FnType {
                 store_inbounds(bcx, argval, llargbundle, [0u, i]);
             } else if atys[i].cast {
                 let argptr = GEPi(bcx, llargbundle, [0u, i]);
-                let argptr = BitCast(bcx, argptr, T_ptr(atys[i].ty));
+                let argptr = BitCast(bcx, argptr, atys[i].ty.ptr_to());
                 Store(bcx, argval, argptr);
             } else {
                 store_inbounds(bcx, argval, llargbundle, [0u, i]);
@@ -169,27 +156,20 @@ impl FnType {
         store_inbounds(bcx, llretptr, llargbundle, [0u, n]);
     }
 
-    pub fn build_wrap_ret(&self,
-                          bcx: block,
-                          arg_tys: &[TypeRef],
-                          llargbundle: ValueRef) {
-        unsafe {
-            if llvm::LLVMGetTypeKind(self.ret_ty.ty) == Void {
-                return;
-            }
+    pub fn build_wrap_ret(&self, bcx: block, arg_tys: &[Type], llargbundle: ValueRef) {
+        if self.ret_ty.ty.kind() == Void {
+            return;
         }
 
         if bcx.fcx.llretptr.is_some() {
             let llretval = load_inbounds(bcx, llargbundle, [ 0, arg_tys.len() ]);
             let llretval = if self.ret_ty.cast {
-                let retptr = BitCast(bcx, llretval, T_ptr(self.ret_ty.ty));
+                let retptr = BitCast(bcx, llretval, self.ret_ty.ty.ptr_to());
                 Load(bcx, retptr)
             } else {
                 Load(bcx, llretval)
             };
-            let llretptr = BitCast(bcx,
-                                   bcx.fcx.llretptr.get(),
-                                   T_ptr(self.ret_ty.ty));
+            let llretptr = BitCast(bcx, bcx.fcx.llretptr.get(), self.ret_ty.ty.ptr_to());
             Store(bcx, llretval, llretptr);
         }
     }

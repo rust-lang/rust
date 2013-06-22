@@ -45,6 +45,8 @@ use middle::typeck;
 use middle::typeck::coherence::make_substs_for_receiver_types;
 use util::ppaux::Repr;
 
+use middle::trans::type_::Type;
+
 use core::vec;
 use syntax::ast;
 use syntax::ast_map;
@@ -76,7 +78,7 @@ pub struct Callee {
 }
 
 pub fn trans(bcx: block, expr: @ast::expr) -> Callee {
-    let _icx = bcx.insn_ctxt("trans_callee");
+    let _icx = push_ctxt("trans_callee");
     debug!("callee::trans(expr=%s)", expr.repr(bcx.tcx()));
 
     // pick out special kinds of expressions that can be called:
@@ -170,7 +172,7 @@ pub fn trans_fn_ref(bcx: block,
      * with id `def_id` into a function pointer.  This may require
      * monomorphization or inlining. */
 
-    let _icx = bcx.insn_ctxt("trans_fn_ref");
+    let _icx = push_ctxt("trans_fn_ref");
 
     let type_params = node_id_type_params(bcx, ref_id);
     let vtables = node_vtables(bcx, ref_id);
@@ -214,7 +216,7 @@ pub fn trans_fn_ref_with_vtables(
     // - `type_params`: values for each of the fn/method's type parameters
     // - `vtables`: values for each bound on each of the type parameters
 
-    let _icx = bcx.insn_ctxt("trans_fn_ref_with_vtables");
+    let _icx = push_ctxt("trans_fn_ref_with_vtables");
     let ccx = bcx.ccx();
     let tcx = ccx.tcx;
 
@@ -326,7 +328,7 @@ pub fn trans_fn_ref_with_vtables(
             let ref_ty = common::node_id_type(bcx, ref_id);
 
             val = PointerCast(
-                bcx, val, T_ptr(type_of::type_of_fn_from_ty(ccx, ref_ty)));
+                bcx, val, type_of::type_of_fn_from_ty(ccx, ref_ty).ptr_to());
         }
         return FnData {llfn: val};
     }
@@ -355,7 +357,7 @@ pub fn trans_call(in_cx: block,
                   id: ast::node_id,
                   dest: expr::Dest)
                   -> block {
-    let _icx = in_cx.insn_ctxt("trans_call");
+    let _icx = push_ctxt("trans_call");
     trans_call_inner(in_cx,
                      call_ex.info(),
                      expr_ty(in_cx, f),
@@ -373,7 +375,7 @@ pub fn trans_method_call(in_cx: block,
                          args: CallArgs,
                          dest: expr::Dest)
                          -> block {
-    let _icx = in_cx.insn_ctxt("trans_method_call");
+    let _icx = push_ctxt("trans_method_call");
     debug!("trans_method_call(call_ex=%s, rcvr=%s)",
            call_ex.repr(in_cx.tcx()),
            rcvr.repr(in_cx.tcx()));
@@ -516,7 +518,7 @@ pub fn trans_call_inner(in_cx: block,
         let mut bcx = callee.bcx;
         let ccx = cx.ccx();
         let ret_flag = if ret_in_loop {
-            let flag = alloca(bcx, T_bool());
+            let flag = alloca(bcx, Type::bool());
             Store(bcx, C_bool(false), flag);
             Some(flag)
         } else {
@@ -526,13 +528,13 @@ pub fn trans_call_inner(in_cx: block,
         let (llfn, llenv) = unsafe {
             match callee.data {
                 Fn(d) => {
-                    (d.llfn, llvm::LLVMGetUndef(T_opaque_box_ptr(ccx)))
+                    (d.llfn, llvm::LLVMGetUndef(Type::opaque_box(ccx).ptr_to().to_ref()))
                 }
                 Method(d) => {
                     // Weird but true: we pass self in the *environment* slot!
                     let llself = PointerCast(bcx,
                                              d.llself,
-                                             T_opaque_box_ptr(ccx));
+                                             Type::opaque_box(ccx).ptr_to());
                     (d.llfn, llself)
                 }
                 Closure(d) => {
@@ -572,9 +574,9 @@ pub fn trans_call_inner(in_cx: block,
 
         // Uncomment this to debug calls.
         /*
-        io::println(fmt!("calling: %s", bcx.val_str(llfn)));
+        io::println(fmt!("calling: %s", bcx.val_to_str(llfn)));
         for llargs.each |llarg| {
-            io::println(fmt!("arg: %s", bcx.val_str(*llarg)));
+            io::println(fmt!("arg: %s", bcx.val_to_str(*llarg)));
         }
         io::println("---");
         */
@@ -653,7 +655,7 @@ pub fn trans_ret_slot(bcx: block, fn_ty: ty::t, dest: expr::Dest)
         expr::Ignore => {
             if ty::type_is_nil(retty) {
                 unsafe {
-                    llvm::LLVMGetUndef(T_ptr(T_nil()))
+                    llvm::LLVMGetUndef(Type::nil().ptr_to().to_ref())
                 }
             } else {
                 alloc_ty(bcx, retty)
@@ -669,7 +671,7 @@ pub fn trans_args(cx: block,
                   autoref_arg: AutorefArg,
                   llargs: &mut ~[ValueRef]) -> block
 {
-    let _icx = cx.insn_ctxt("trans_args");
+    let _icx = push_ctxt("trans_args");
     let mut temp_cleanups = ~[];
     let arg_tys = ty::ty_fn_args(fn_ty);
 
@@ -723,7 +725,7 @@ pub fn trans_arg_expr(bcx: block,
                       temp_cleanups: &mut ~[ValueRef],
                       ret_flag: Option<ValueRef>,
                       autoref_arg: AutorefArg) -> Result {
-    let _icx = bcx.insn_ctxt("trans_arg_expr");
+    let _icx = push_ctxt("trans_arg_expr");
     let ccx = bcx.ccx();
 
     debug!("trans_arg_expr(formal_arg_ty=(%s), self_mode=%?, arg_expr=%s, \
@@ -731,7 +733,7 @@ pub fn trans_arg_expr(bcx: block,
            formal_arg_ty.repr(bcx.tcx()),
            self_mode,
            arg_expr.repr(bcx.tcx()),
-           ret_flag.map(|v| bcx.val_str(*v)));
+           ret_flag.map(|v| bcx.val_to_str(*v)));
 
     // translate the arg expr to a datum
     let arg_datumblock = match ret_flag {
@@ -777,7 +779,7 @@ pub fn trans_arg_expr(bcx: block,
         // to have type lldestty (the callee's expected type).
         let llformal_arg_ty = type_of::type_of(ccx, formal_arg_ty);
         unsafe {
-            val = llvm::LLVMGetUndef(llformal_arg_ty);
+            val = llvm::LLVMGetUndef(llformal_arg_ty.to_ref());
         }
     } else {
         // FIXME(#3548) use the adjustments table
@@ -838,15 +840,15 @@ pub fn trans_arg_expr(bcx: block,
             // this could happen due to e.g. subtyping
             let llformal_arg_ty = type_of::type_of_explicit_arg(ccx, &formal_arg_ty);
             let llformal_arg_ty = match self_mode {
-                ty::ByRef => T_ptr(llformal_arg_ty),
+                ty::ByRef => llformal_arg_ty.ptr_to(),
                 ty::ByCopy => llformal_arg_ty,
             };
             debug!("casting actual type (%s) to match formal (%s)",
-                   bcx.val_str(val), bcx.llty_str(llformal_arg_ty));
+                   bcx.val_to_str(val), bcx.llty_str(llformal_arg_ty));
             val = PointerCast(bcx, val, llformal_arg_ty);
         }
     }
 
-    debug!("--- trans_arg_expr passing %s", val_str(bcx.ccx().tn, val));
+    debug!("--- trans_arg_expr passing %s", bcx.val_to_str(val));
     return rslt(bcx, val);
 }

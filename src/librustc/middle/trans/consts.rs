@@ -11,8 +11,7 @@
 use core::prelude::*;
 
 use back::abi;
-use lib::llvm::{llvm, ConstFCmp, ConstICmp, SetLinkage, PrivateLinkage, ValueRef, TypeRef, Bool,
-    True, False};
+use lib::llvm::{llvm, ConstFCmp, ConstICmp, SetLinkage, PrivateLinkage, ValueRef, Bool, True};
 use lib::llvm::{IntEQ, IntNE, IntUGT, IntUGE, IntULT, IntULE, IntSGT, IntSGE, IntSLT, IntSLE,
     RealOEQ, RealOGT, RealOGE, RealOLT, RealOLE, RealONE};
 
@@ -20,7 +19,7 @@ use metadata::csearch;
 use middle::const_eval;
 use middle::trans::adt;
 use middle::trans::base;
-use middle::trans::base::get_insn_ctxt;
+use middle::trans::base::push_ctxt;
 use middle::trans::common::*;
 use middle::trans::consts;
 use middle::trans::expr;
@@ -30,36 +29,38 @@ use middle::trans::type_of;
 use middle::ty;
 use util::ppaux::{Repr, ty_to_str};
 
+use middle::trans::type_::Type;
+
 use core::libc::c_uint;
 use core::str;
 use syntax::{ast, ast_util, ast_map};
 
 pub fn const_lit(cx: @mut CrateContext, e: @ast::expr, lit: ast::lit)
     -> ValueRef {
-    let _icx = cx.insn_ctxt("trans_lit");
+    let _icx = push_ctxt("trans_lit");
     match lit.node {
-      ast::lit_int(i, t) => C_integral(T_int_ty(cx, t), i as u64, True),
-      ast::lit_uint(u, t) => C_integral(T_uint_ty(cx, t), u, False),
+      ast::lit_int(i, t) => C_integral(Type::int_from_ty(cx, t), i as u64, true),
+      ast::lit_uint(u, t) => C_integral(Type::uint_from_ty(cx, t), u, false),
       ast::lit_int_unsuffixed(i) => {
         let lit_int_ty = ty::node_id_to_type(cx.tcx, e.id);
         match ty::get(lit_int_ty).sty {
           ty::ty_int(t) => {
-            C_integral(T_int_ty(cx, t), i as u64, True)
+            C_integral(Type::int_from_ty(cx, t), i as u64, true)
           }
           ty::ty_uint(t) => {
-            C_integral(T_uint_ty(cx, t), i as u64, False)
+            C_integral(Type::uint_from_ty(cx, t), i as u64, false)
           }
           _ => cx.sess.span_bug(lit.span,
                    fmt!("integer literal has type %s (expected int or uint)",
                         ty_to_str(cx.tcx, lit_int_ty)))
         }
       }
-      ast::lit_float(fs, t) => C_floating(fs, T_float_ty(cx, t)),
+      ast::lit_float(fs, t) => C_floating(fs, Type::float_from_ty(cx, t)),
       ast::lit_float_unsuffixed(fs) => {
         let lit_float_ty = ty::node_id_to_type(cx.tcx, e.id);
         match ty::get(lit_float_ty).sty {
           ty::ty_float(t) => {
-            C_floating(fs, T_float_ty(cx, t))
+            C_floating(fs, Type::float_from_ty(cx, t))
           }
           _ => {
             cx.sess.span_bug(lit.span,
@@ -73,16 +74,16 @@ pub fn const_lit(cx: @mut CrateContext, e: @ast::expr, lit: ast::lit)
     }
 }
 
-pub fn const_ptrcast(cx: &mut CrateContext, a: ValueRef, t: TypeRef) -> ValueRef {
+pub fn const_ptrcast(cx: &mut CrateContext, a: ValueRef, t: Type) -> ValueRef {
     unsafe {
-        let b = llvm::LLVMConstPointerCast(a, T_ptr(t));
+        let b = llvm::LLVMConstPointerCast(a, t.ptr_to().to_ref());
         assert!(cx.const_globals.insert(b as int, a));
         b
     }
 }
 
 pub fn const_vec(cx: @mut CrateContext, e: @ast::expr, es: &[@ast::expr])
-    -> (ValueRef, ValueRef, TypeRef) {
+    -> (ValueRef, ValueRef, Type) {
     unsafe {
         let vec_ty = ty::expr_ty(cx.tcx, e);
         let unit_ty = ty::sequence_element_type(cx.tcx, vec_ty);
@@ -102,8 +103,8 @@ pub fn const_vec(cx: @mut CrateContext, e: @ast::expr, es: &[@ast::expr])
 
 fn const_addr_of(cx: @mut CrateContext, cv: ValueRef) -> ValueRef {
     unsafe {
-        let gv = do str::as_c_str("const") |name| {
-            llvm::LLVMAddGlobal(cx.llmod, val_ty(cv), name)
+        let gv = do "const".as_c_str |name| {
+            llvm::LLVMAddGlobal(cx.llmod, val_ty(cv).to_ref(), name)
         };
         llvm::LLVMSetInitializer(gv, cv);
         llvm::LLVMSetGlobalConstant(gv, True);
@@ -180,7 +181,7 @@ pub fn const_expr(cx: @mut CrateContext, e: @ast::expr) -> ValueRef {
     match adjustment {
         None => { }
         Some(@ty::AutoAddEnv(ty::re_static, ast::BorrowedSigil)) => {
-            llconst = C_struct([llconst, C_null(T_opaque_box_ptr(cx))])
+            llconst = C_struct([llconst, C_null(Type::opaque_box(cx).ptr_to())])
         }
         Some(@ty::AutoAddEnv(ref r, ref s)) => {
             cx.sess.span_bug(e.span, fmt!("unexpected static function: \
@@ -248,7 +249,7 @@ pub fn const_expr(cx: @mut CrateContext, e: @ast::expr) -> ValueRef {
 
 fn const_expr_unadjusted(cx: @mut CrateContext, e: @ast::expr) -> ValueRef {
     unsafe {
-        let _icx = cx.insn_ctxt("const_expr");
+        let _icx = push_ctxt("const_expr");
         return match e.node {
           ast::expr_lit(lit) => consts::const_lit(cx, e, *lit),
           ast::expr_binary(_, b, e1, e2) => {
@@ -349,9 +350,9 @@ fn const_expr_unadjusted(cx: @mut CrateContext, e: @ast::expr) -> ValueRef {
                     ty::ty_bool => {
                         // Somewhat questionable, but I believe this is
                         // correct.
-                        let te = llvm::LLVMConstTrunc(te, T_i1());
+                        let te = llvm::LLVMConstTrunc(te, Type::i1().to_ref());
                         let te = llvm::LLVMConstNot(te);
-                        llvm::LLVMConstZExt(te, T_bool())
+                        llvm::LLVMConstZExt(te, Type::bool().to_ref())
                     }
                     _ => llvm::LLVMConstNot(te),
                 }
@@ -426,21 +427,21 @@ fn const_expr_unadjusted(cx: @mut CrateContext, e: @ast::expr) -> ValueRef {
 
               (expr::cast_integral, expr::cast_integral) => {
                 let s = ty::type_is_signed(basety) as Bool;
-                llvm::LLVMConstIntCast(v, llty, s)
+                llvm::LLVMConstIntCast(v, llty.to_ref(), s)
               }
               (expr::cast_integral, expr::cast_float) => {
                 if ty::type_is_signed(basety) {
-                    llvm::LLVMConstSIToFP(v, llty)
+                    llvm::LLVMConstSIToFP(v, llty.to_ref())
                 } else {
-                    llvm::LLVMConstUIToFP(v, llty)
+                    llvm::LLVMConstUIToFP(v, llty.to_ref())
                 }
               }
               (expr::cast_float, expr::cast_float) => {
-                llvm::LLVMConstFPCast(v, llty)
+                llvm::LLVMConstFPCast(v, llty.to_ref())
               }
               (expr::cast_float, expr::cast_integral) => {
-                if ty::type_is_signed(ety) { llvm::LLVMConstFPToSI(v, llty) }
-                else { llvm::LLVMConstFPToUI(v, llty) }
+                if ty::type_is_signed(ety) { llvm::LLVMConstFPToSI(v, llty.to_ref()) }
+                else { llvm::LLVMConstFPToUI(v, llty.to_ref()) }
               }
               (expr::cast_enum, expr::cast_integral) |
               (expr::cast_enum, expr::cast_float)  => {
@@ -451,18 +452,18 @@ fn const_expr_unadjusted(cx: @mut CrateContext, e: @ast::expr) -> ValueRef {
                 match ety_cast {
                     expr::cast_integral => {
                         let s = ty::type_is_signed(ety) as Bool;
-                        llvm::LLVMConstIntCast(iv, llty, s)
+                        llvm::LLVMConstIntCast(iv, llty.to_ref(), s)
                     }
-                    expr::cast_float => llvm::LLVMConstUIToFP(iv, llty),
+                    expr::cast_float => llvm::LLVMConstUIToFP(iv, llty.to_ref()),
                     _ => cx.sess.bug("enum cast destination is not \
                                       integral or float")
                 }
               }
               (expr::cast_pointer, expr::cast_pointer) => {
-                llvm::LLVMConstPointerCast(v, llty)
+                llvm::LLVMConstPointerCast(v, llty.to_ref())
               }
               (expr::cast_integral, expr::cast_pointer) => {
-                llvm::LLVMConstIntToPtr(v, llty)
+                llvm::LLVMConstIntToPtr(v, llty.to_ref())
               }
               _ => {
                 cx.sess.impossible_case(e.span,
@@ -513,7 +514,7 @@ fn const_expr_unadjusted(cx: @mut CrateContext, e: @ast::expr) -> ValueRef {
                 let (cv, sz, llunitty) = const_vec(cx, e, *es);
                 let llty = val_ty(cv);
                 let gv = do str::as_c_str("const") |name| {
-                    llvm::LLVMAddGlobal(cx.llmod, llty, name)
+                    llvm::LLVMAddGlobal(cx.llmod, llty.to_ref(), name)
                 };
                 llvm::LLVMSetInitializer(gv, cv);
                 llvm::LLVMSetGlobalConstant(gv, True);
@@ -588,7 +589,7 @@ fn const_expr_unadjusted(cx: @mut CrateContext, e: @ast::expr) -> ValueRef {
 
 pub fn trans_const(ccx: @mut CrateContext, _e: @ast::expr, id: ast::node_id) {
     unsafe {
-        let _icx = ccx.insn_ctxt("trans_const");
+        let _icx = push_ctxt("trans_const");
         let g = base::get_item_val(ccx, id);
         // At this point, get_item_val has already translated the
         // constant's initializer to determine its LLVM type.

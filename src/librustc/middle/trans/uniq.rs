@@ -21,7 +21,7 @@ use middle::ty;
 
 pub fn make_free_glue(bcx: block, vptrptr: ValueRef, box_ty: ty::t)
     -> block {
-    let _icx = bcx.insn_ctxt("uniq::make_free_glue");
+    let _icx = push_ctxt("uniq::make_free_glue");
     let box_datum = immediate_rvalue(Load(bcx, vptrptr), box_ty);
 
     let not_null = IsNotNull(bcx, box_datum.val);
@@ -38,7 +38,7 @@ pub fn make_free_glue(bcx: block, vptrptr: ValueRef, box_ty: ty::t)
 }
 
 pub fn duplicate(bcx: block, src_box: ValueRef, src_ty: ty::t) -> Result {
-    let _icx = bcx.insn_ctxt("uniq::duplicate");
+    let _icx = push_ctxt("uniq::duplicate");
 
     // Load the body of the source (*src)
     let src_datum = immediate_rvalue(src_box, src_ty);
