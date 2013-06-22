@@ -40,7 +40,6 @@ use middle::trans::type_::Type;
 use core::io;
 use core::libc::c_uint;
 use core::str;
-use core::vec;
 use extra::time;
 use syntax::ast;
 
@@ -578,11 +577,19 @@ pub fn make_take_glue(bcx: block, v: ValueRef, t: ty::t) {
         bcx
       }
       ty::ty_trait(_, _, ty::UniqTraitStore, _) => {
-        let llval = GEPi(bcx, v, [0, abi::trt_field_box]);
-        let lltydesc = Load(bcx, GEPi(bcx, v, [0, abi::trt_field_tydesc]));
-        call_tydesc_glue_full(bcx, llval, lltydesc,
-                              abi::tydesc_field_take_glue, None);
-        bcx
+          let lluniquevalue = GEPi(bcx, v, [0, abi::trt_field_box]);
+          let llvtable = Load(bcx, GEPi(bcx, v, [0, abi::trt_field_vtable]));
+
+          // Cast the vtable to a pointer to a pointer to a tydesc.
+          let llvtable = PointerCast(bcx, llvtable,
+                                     bcx.ccx().tydesc_type.ptr_to().ptr_to());
+          let lltydesc = Load(bcx, llvtable);
+          call_tydesc_glue_full(bcx,
+                                lluniquevalue,
+                                lltydesc,
+                                abi::tydesc_field_take_glue,
+                                None);
+          bcx
       }
       ty::ty_opaque_closure_ptr(ck) => {
         closure::make_opaque_cbox_take_glue(bcx, ck, v)
