@@ -197,7 +197,7 @@ impl RegionMaps {
         while i < queue.len() {
             match self.free_region_map.find(&queue[i]) {
                 Some(parents) => {
-                    for parents.each |parent| {
+                    for parents.iter().advance |parent| {
                         if *parent == sup {
                             return true;
                         }
@@ -732,7 +732,7 @@ pub fn determine_rp_in_fn(fk: &visit::fn_kind,
                                           visit::vt<@mut DetermineRpCtxt>)) {
     do cx.with(cx.item_id, false) {
         do cx.with_ambient_variance(rv_contravariant) {
-            for decl.inputs.each |a| {
+            for decl.inputs.iter().advance |a| {
                 (visitor.visit_ty)(a.ty, (cx, visitor));
             }
         }
@@ -843,7 +843,7 @@ pub fn determine_rp_in_ty(ty: @ast::Ty,
       ast::ty_path(path, _) => {
         // type parameters are---for now, anyway---always invariant
         do cx.with_ambient_variance(rv_invariant) {
-            for path.types.each |tp| {
+            for path.types.iter().advance |tp| {
                 (visitor.visit_ty)(*tp, (cx, visitor));
             }
         }
@@ -856,7 +856,7 @@ pub fn determine_rp_in_ty(ty: @ast::Ty,
         do cx.with(cx.item_id, false) {
             // parameters are contravariant
             do cx.with_ambient_variance(rv_contravariant) {
-                for decl.inputs.each |a| {
+                for decl.inputs.iter().advance |a| {
                     (visitor.visit_ty)(a.ty, (cx, visitor));
                 }
             }
@@ -936,7 +936,7 @@ pub fn determine_rp_in_crate(sess: Session,
             match cx.dep_map.find(&c_id) {
               None => {}
               Some(deps) => {
-                for deps.each |dep| {
+                for deps.iter().advance |dep| {
                     let v = add_variance(dep.ambient_variance, c_variance);
                     cx.add_rp(dep.id, v);
                 }

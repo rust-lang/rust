@@ -482,7 +482,8 @@ mod test {
             assert_eq!(FromStr::from_str::<Rational>(s), None);
         }
 
-        for ["0 /1", "abc", "", "1/", "--1/2","3/2/1"].each |&s| {
+        let xs = ["0 /1", "abc", "", "1/", "--1/2","3/2/1"];
+        for xs.iter().advance |&s| {
             test(s);
         }
     }
@@ -521,7 +522,8 @@ mod test {
             assert_eq!(FromStrRadix::from_str_radix::<Rational>(s, 3), None);
         }
 
-        for ["0 /1", "abc", "", "1/", "--1/2","3/2/1", "3/2"].each |&s| {
+        let xs = ["0 /1", "abc", "", "1/", "--1/2","3/2/1", "3/2"];
+        for xs.iter().advance |&s| {
             test(s);
         }
     }

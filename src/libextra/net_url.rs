@@ -210,7 +210,7 @@ pub fn encode_form_urlencoded(m: &HashMap<~str, ~[~str]>) -> ~str {
     for m.each |key, values| {
         let key = encode_plus(*key);
 
-        for values.each |value| {
+        for values.iter().advance |value| {
             if first {
                 first = false;
             } else {
@@ -342,7 +342,7 @@ fn query_from_str(rawquery: &str) -> Query {
 
 pub fn query_to_str(query: &Query) -> ~str {
     let mut strvec = ~[];
-    for query.each |kv| {
+    for query.iter().advance |kv| {
         match kv {
             &(ref k, ref v) => {
                 strvec.push(fmt!("%s=%s",

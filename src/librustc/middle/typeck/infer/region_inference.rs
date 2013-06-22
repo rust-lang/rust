@@ -1572,8 +1572,8 @@ impl RegionVarBindings {
             return;
         }
 
-        for lower_bounds.each |lower_bound| {
-            for upper_bounds.each |upper_bound| {
+        for lower_bounds.iter().advance |lower_bound| {
+            for upper_bounds.iter().advance |upper_bound| {
                 if !self.is_subregion_of(lower_bound.region,
                                          upper_bound.region) {
 
@@ -1629,8 +1629,8 @@ impl RegionVarBindings {
             return;
         }
 
-        for upper_bounds.each |upper_bound_1| {
-            for upper_bounds.each |upper_bound_2| {
+        for upper_bounds.iter().advance |upper_bound_1| {
+            for upper_bounds.iter().advance |upper_bound_2| {
                 match self.glb_concrete_regions(upper_bound_1.region,
                                                 upper_bound_2.region) {
                   Ok(_) => {}

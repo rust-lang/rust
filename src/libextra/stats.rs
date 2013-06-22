@@ -72,7 +72,7 @@ impl<'self> Stats for &'self [f64] {
         } else {
             let mean = self.mean();
             let mut v = 0.0;
-            for self.each |s| {
+            for self.iter().advance |s| {
                 let x = *s - mean;
                 v += x*x;
             }

@@ -217,7 +217,7 @@ mod test {
 
         for repeat.times {
             let ch = ch.clone();
-            for spec.each |spec| {
+            for spec.iter().advance |spec| {
                 let (times, maxms) = *spec;
                 let ch = ch.clone();
                 let hl_loop_clone = hl_loop.clone();

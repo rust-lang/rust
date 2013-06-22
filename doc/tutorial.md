@@ -1396,7 +1396,7 @@ assert!(!crayons.is_empty());
 
 // Iterate over a vector, obtaining a pointer to each element
 // (`for` is explained in the next section)
-for crayons.each |crayon| {
+for crayons.iter().advance |crayon| {
     let delicious_crayon_wax = unwrap_crayon(*crayon);
     eat_crayon_wax(delicious_crayon_wax);
 }
@@ -2119,7 +2119,7 @@ generic types.
 ~~~~
 # trait Printable { fn print(&self); }
 fn print_all<T: Printable>(printable_things: ~[T]) {
-    for printable_things.each |thing| {
+    for printable_things.iter().advance |thing| {
         thing.print();
     }
 }
@@ -2165,7 +2165,7 @@ However, consider this function:
 trait Drawable { fn draw(&self); }
 
 fn draw_all<T: Drawable>(shapes: ~[T]) {
-    for shapes.each |shape| { shape.draw(); }
+    for shapes.iter().advance |shape| { shape.draw(); }
 }
 # let c: Circle = new_circle();
 # draw_all(~[c]);
@@ -2180,7 +2180,7 @@ an _object_.
 ~~~~
 # trait Drawable { fn draw(&self); }
 fn draw_all(shapes: &[@Drawable]) {
-    for shapes.each |shape| { shape.draw(); }
+    for shapes.iter().advance |shape| { shape.draw(); }
 }
 ~~~~
 

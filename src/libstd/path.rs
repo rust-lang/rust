@@ -25,8 +25,7 @@ use str;
 use str::{Str, StrSlice, StrVector};
 use to_str::ToStr;
 use ascii::{AsciiCast, AsciiStr};
-use old_iter::BaseIter;
-use vec::OwnedVector;
+use vec::{OwnedVector, ImmutableVector};
 
 #[cfg(windows)]
 pub use Path = self::WindowsPath;
@@ -596,7 +595,7 @@ impl GenericPath for PosixPath {
 
     fn push_many<S: Str>(&self, cs: &[S]) -> PosixPath {
         let mut v = copy self.components;
-        for cs.each |e| {
+        for cs.iter().advance |e| {
             for e.as_slice().split_iter(windows::is_sep).advance |s| {
                 if !s.is_empty() {
                     v.push(s.to_owned())
@@ -853,7 +852,7 @@ impl GenericPath for WindowsPath {
 
     fn push_many<S: Str>(&self, cs: &[S]) -> WindowsPath {
         let mut v = copy self.components;
-        for cs.each |e| {
+        for cs.iter().advance |e| {
             for e.as_slice().split_iter(windows::is_sep).advance |s| {
                 if !s.is_empty() {
                     v.push(s.to_owned())
@@ -915,7 +914,7 @@ impl GenericPath for WindowsPath {
 
 pub fn normalize(components: &[~str]) -> ~[~str] {
     let mut cs = ~[];
-    for components.each |c| {
+    for components.iter().advance |c| {
         if *c == ~"." && components.len() > 1 { loop; }
         if *c == ~"" { loop; }
         if *c == ~".." && cs.len() != 0 {

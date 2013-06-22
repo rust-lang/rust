@@ -66,13 +66,13 @@ pub fn collect_item_types(ccx: @mut CrateCtxt, crate: @ast::crate) {
     // FIXME (#2592): hooking into the "intrinsic" root module is crude.
     // There ought to be a better approach. Attributes?
 
-    for crate.node.module.items.each |crate_item| {
+    for crate.node.module.items.iter().advance |crate_item| {
         if crate_item.ident
             == ::syntax::parse::token::special_idents::intrinsic {
 
             match crate_item.node {
               ast::item_mod(ref m) => {
-                for m.items.each |intrinsic_item| {
+                for m.items.iter().advance |intrinsic_item| {
                     let def_id = ast::def_id { crate: ast::local_crate,
                                                node: intrinsic_item.id };
                     let substs = substs {
@@ -168,7 +168,7 @@ pub fn get_enum_variant_types(ccx: &CrateCtxt,
     let tcx = ccx.tcx;
 
     // Create a set of parameter types shared among all the variants.
-    for variants.each |variant| {
+    for variants.iter().advance |variant| {
         let region_parameterization =
             RegionParameterization::from_variance_and_generics(rp, generics);
 
@@ -233,7 +233,7 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt,
 
             // For each method, construct a suitable ty::Method and
             // store it into the `tcx.methods` table:
-            for ms.each |m| {
+            for ms.iter().advance |m| {
                 let ty_method = @match m {
                     &ast::required(ref m) => {
                         ty_method_of_trait_method(
@@ -416,7 +416,7 @@ pub fn ensure_supertraits(ccx: &CrateCtxt,
 
     let self_ty = ty::mk_self(ccx.tcx, local_def(id));
     let mut ty_trait_refs: ~[@ty::TraitRef] = ~[];
-    for ast_trait_refs.each |&ast_trait_ref| {
+    for ast_trait_refs.iter().advance |&ast_trait_ref| {
         let trait_ref = instantiate_trait_ref(ccx, ast_trait_ref, rp,
                                               generics, self_ty);
 
@@ -686,7 +686,7 @@ pub fn check_methods_against_trait(ccx: &CrateCtxt,
     // Trait methods we don't implement must be default methods, but if not
     // we'll catch it in coherence
     let trait_ms = ty::trait_methods(tcx, trait_ref.def_id);
-    for impl_ms.each |impl_m| {
+    for impl_ms.iter().advance |impl_m| {
         match trait_ms.iter().find_(|trait_m| trait_m.ident == impl_m.mty.ident) {
             Some(trait_m) => {
                 let num_impl_tps = generics.ty_params.len();
@@ -921,7 +921,7 @@ pub fn convert_struct(ccx: &CrateCtxt,
     let tcx = ccx.tcx;
 
     // Write the type of each of the members
-    for struct_def.fields.each |f| {
+    for struct_def.fields.iter().advance |f| {
        convert_field(ccx, rp, tpt.generics.type_param_defs, *f, generics);
     }
     let (_, substs) = mk_item_substs(ccx, generics, rp, None);

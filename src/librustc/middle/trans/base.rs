@@ -670,7 +670,7 @@ pub fn iter_structural_ty(cx: block, av: ValueRef, t: ty::t,
                                         n_variants);
                   let next_cx = sub_block(cx, "enum-iter-next");
 
-                  for (*variants).each |variant| {
+                  for (*variants).iter().advance |variant| {
                       let variant_cx =
                           sub_block(cx, ~"enum-iter-variant-" +
                                     int::to_str(variant.disr_val));
@@ -804,7 +804,7 @@ pub fn invoke(bcx: block, llfn: ValueRef, llargs: ~[ValueRef])
             debug!("invoking %x at %x",
                    ::core::cast::transmute(llfn),
                    ::core::cast::transmute(bcx.llbb));
-            for llargs.each |&llarg| {
+            for llargs.iter().advance |&llarg| {
                 debug!("arg: %x", ::core::cast::transmute(llarg));
             }
         }
@@ -820,7 +820,7 @@ pub fn invoke(bcx: block, llfn: ValueRef, llargs: ~[ValueRef])
             debug!("calling %x at %x",
                    ::core::cast::transmute(llfn),
                    ::core::cast::transmute(bcx.llbb));
-            for llargs.each |&llarg| {
+            for llargs.iter().advance |&llarg| {
                 debug!("arg: %x", ::core::cast::transmute(llarg));
             }
         }
@@ -849,7 +849,7 @@ pub fn need_invoke(bcx: block) -> bool {
         match cur.kind {
             block_scope(inf) => {
                 let inf = &mut *inf; // FIXME(#5074) workaround old borrowck
-                for inf.cleanups.each |cleanup| {
+                for inf.cleanups.iter().advance |cleanup| {
                     match *cleanup {
                         clean(_, cleanup_type) | clean_temp(_, _, cleanup_type) => {
                             if cleanup_type == normal_exit_and_unwind {
@@ -1366,7 +1366,7 @@ pub fn with_scope_datumblock(bcx: block, opt_node_info: Option<NodeInfo>,
 }
 
 pub fn block_locals(b: &ast::blk, it: &fn(@ast::local)) {
-    for b.node.stmts.each |s| {
+    for b.node.stmts.iter().advance |s| {
         match s.node {
           ast::stmt_decl(d, _) => {
             match d.node {
@@ -2046,7 +2046,7 @@ pub fn trans_tuple_struct(ccx: @mut CrateContext,
 pub fn trans_enum_def(ccx: @mut CrateContext, enum_definition: &ast::enum_def,
                       id: ast::node_id, vi: @~[ty::VariantInfo],
                       i: &mut uint) {
-    for enum_definition.variants.each |variant| {
+    for enum_definition.variants.iter().advance |variant| {
         let disr_val = vi[*i].disr_val;
         *i += 1;
 
@@ -2097,7 +2097,7 @@ pub fn trans_item(ccx: @mut CrateContext, item: &ast::item) {
                      None,
                      item.attrs);
         } else {
-            for body.node.stmts.each |stmt| {
+            for body.node.stmts.iter().advance |stmt| {
                 match stmt.node {
                   ast::stmt_decl(@codemap::spanned { node: ast::decl_item(i),
                                                  _ }, _) => {
@@ -2126,7 +2126,7 @@ pub fn trans_item(ccx: @mut CrateContext, item: &ast::item) {
           consts::trans_const(ccx, expr, item.id);
           // Do static_assert checking. It can't really be done much earlier because we need to get
           // the value of the bool out of LLVM
-          for item.attrs.each |attr| {
+          for item.attrs.iter().advance |attr| {
               match attr.node.value.node {
                   ast::meta_word(x) => {
                       if x.slice(0, x.len()) == "static_assert" {
@@ -2175,7 +2175,7 @@ pub fn trans_struct_def(ccx: @mut CrateContext, struct_def: @ast::struct_def) {
 // and control visibility.
 pub fn trans_mod(ccx: @mut CrateContext, m: &ast::_mod) {
     let _icx = push_ctxt("trans_mod");
-    for m.items.each |item| {
+    for m.items.iter().advance |item| {
         trans_item(ccx, *item);
     }
 }
@@ -2549,7 +2549,7 @@ pub fn trans_constant(ccx: @mut CrateContext, it: @ast::item) {
                                                  node: it.id });
         let mut i = 0;
         let path = item_path(ccx, it);
-        for (*enum_definition).variants.each |variant| {
+        for (*enum_definition).variants.iter().advance |variant| {
             let p = vec::append(/*bad*/copy path, [
                 path_name(variant.node.name),
                 path_name(special_idents::descrim)
@@ -2729,7 +2729,7 @@ pub fn create_module_map(ccx: &mut CrateContext) -> ValueRef {
         keys.push(k.to_managed());
     }
 
-    for keys.each |key| {
+    for keys.iter().advance |key| {
         let val = *ccx.module_data.find_equiv(key).get();
         let s_const = C_cstr(ccx, *key);
         let s_ptr = p2i(ccx, s_const);

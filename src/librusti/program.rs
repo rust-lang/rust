@@ -112,7 +112,7 @@ impl Program {
             None => {}
         }
 
-        for new_locals.each |p| {
+        for new_locals.iter().advance |p| {
             code.push_str(fmt!("assert_encodable(&%s);\n", *p.first_ref()));
         }
         code.push_str("};}");
@@ -370,7 +370,7 @@ impl Program {
         // helper functions to perform ast iteration
         fn each_user_local(blk: &ast::blk, f: &fn(@ast::local)) {
             do find_user_block(blk) |blk| {
-                for blk.node.stmts.each |stmt| {
+                for blk.node.stmts.iter().advance |stmt| {
                     match stmt.node {
                         ast::stmt_decl(d, _) => {
                             match d.node {
@@ -385,7 +385,7 @@ impl Program {
         }
 
         fn find_user_block(blk: &ast::blk, f: &fn(&ast::blk)) {
-            for blk.node.stmts.each |stmt| {
+            for blk.node.stmts.iter().advance |stmt| {
                 match stmt.node {
                     ast::stmt_semi(e, _) => {
                         match e.node {

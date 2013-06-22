@@ -133,7 +133,7 @@ impl ABIInfo for ARM_ABIInfo {
                     ret_def: bool) -> FnType {
         let mut arg_tys = ~[];
         let mut attrs = ~[];
-        for atys.each |&aty| {
+        for atys.iter().advance |&aty| {
             let (ty, attr) = classify_arg_ty(aty);
             arg_tys.push(ty);
             attrs.push(attr);

@@ -517,6 +517,7 @@ mod tests {
 
     use arc::*;
 
+    use core::vec;
     use core::cell::Cell;
     use core::comm;
     use core::task;
@@ -725,7 +726,7 @@ mod tests {
         }
 
         // Wait for children to pass their asserts
-        for children.each |r| {
+        for children.iter().advance |r| {
             r.recv();
         }
 
@@ -790,7 +791,7 @@ mod tests {
                 assert_eq!(*state, 42);
                 *state = 31337;
                 // send to other readers
-                for reader_convos.each |x| {
+                for vec::each(reader_convos) |x| {
                     match *x {
                         (ref rc, _) => rc.send(()),
                     }
@@ -799,7 +800,7 @@ mod tests {
             let read_mode = arc.downgrade(write_mode);
             do (&read_mode).read |state| {
                 // complete handshake with other readers
-                for reader_convos.each |x| {
+                for vec::each(reader_convos) |x| {
                     match *x {
                         (_, ref rp) => rp.recv(),
                     }

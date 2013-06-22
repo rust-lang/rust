@@ -389,7 +389,8 @@ mod test {
                     if status.is_none() {
                         rtdebug!("got %d bytes", nread);
                         let buf = buf.unwrap();
-                        for buf.slice(0, nread as uint).each |byte| {
+                        let r = buf.slice(0, nread as uint);
+                        for r.iter().advance |byte| {
                             assert!(*byte == count as u8);
                             rtdebug!("%u", *byte as uint);
                             count += 1;

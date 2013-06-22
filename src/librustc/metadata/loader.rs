@@ -130,7 +130,7 @@ fn find_library_crate_aux(
         cx.diag.span_err(
             cx.span, fmt!("multiple matching crates for `%s`", crate_name));
         cx.diag.handler().note("candidates:");
-        for matches.each |&(ident, data)| {
+        for matches.iter().advance |&(ident, data)| {
             cx.diag.handler().note(fmt!("path: %s", ident));
             let attrs = decoder::get_crate_attributes(data);
             note_linkage_attrs(cx.intr, cx.diag, attrs);
@@ -158,9 +158,9 @@ pub fn crate_name_from_metas(metas: &[@ast::meta_item]) -> @str {
 pub fn note_linkage_attrs(intr: @ident_interner,
                           diag: @span_handler,
                           attrs: ~[ast::attribute]) {
-    for attr::find_linkage_metas(attrs).each |mi| {
-        diag.handler().note(fmt!("meta: %s",
-              pprust::meta_item_to_str(*mi,intr)));
+    let r = attr::find_linkage_metas(attrs);
+    for r.iter().advance |mi| {
+        diag.handler().note(fmt!("meta: %s", pprust::meta_item_to_str(*mi,intr)));
     }
 }
 
@@ -182,7 +182,7 @@ pub fn metadata_matches(extern_metas: &[@ast::meta_item],
     debug!("matching %u metadata requirements against %u items",
            local_metas.len(), extern_metas.len());
 
-    for local_metas.each |needed| {
+    for local_metas.iter().advance |needed| {
         if !attr::contains(extern_metas, *needed) {
             return false;
         }

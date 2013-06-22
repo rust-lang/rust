@@ -389,7 +389,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
 
         self.merge_with_entry_set(blk.node.id, in_out);
 
-        for blk.node.stmts.each |&stmt| {
+        for blk.node.stmts.iter().advance |&stmt| {
             self.walk_stmt(stmt, in_out, loop_scopes);
         }
 
@@ -510,7 +510,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
                         loop_kind: ForLoop,
                         break_bits: reslice(in_out).to_owned()
                     });
-                    for decl.inputs.each |input| {
+                    for decl.inputs.iter().advance |input| {
                         self.walk_pat(input.pat, func_bits, loop_scopes);
                     }
                     self.walk_block(body, func_bits, loop_scopes);
@@ -627,7 +627,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
                 // together the bits from each arm:
                 self.reset(in_out);
 
-                for arms.each |arm| {
+                for arms.iter().advance |arm| {
                     // in_out reflects the discr and all guards to date
                     self.walk_opt_expr(arm.guard, guards, loop_scopes);
 
@@ -702,7 +702,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
             }
 
             ast::expr_struct(_, ref fields, with_expr) => {
-                for fields.each |field| {
+                for fields.iter().advance |field| {
                     self.walk_expr(field.node.expr, in_out, loop_scopes);
                 }
                 self.walk_opt_expr(with_expr, in_out, loop_scopes);
@@ -764,10 +764,10 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
             }
 
             ast::expr_inline_asm(ref inline_asm) => {
-                for inline_asm.inputs.each |&(_, expr)| {
+                for inline_asm.inputs.iter().advance |&(_, expr)| {
                     self.walk_expr(expr, in_out, loop_scopes);
                 }
-                for inline_asm.outputs.each |&(_, expr)| {
+                for inline_asm.outputs.iter().advance |&(_, expr)| {
                     self.walk_expr(expr, in_out, loop_scopes);
                 }
             }
@@ -835,7 +835,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
                   exprs: &[@ast::expr],
                   in_out: &mut [uint],
                   loop_scopes: &mut ~[LoopScope]) {
-        for exprs.each |&expr| {
+        for exprs.iter().advance |&expr| {
             self.walk_expr(expr, in_out, loop_scopes);
         }
     }
@@ -897,7 +897,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
         // alternatives, so we must treat this like an N-way select
         // statement.
         let initial_state = reslice(in_out).to_owned();
-        for pats.each |&pat| {
+        for pats.iter().advance |&pat| {
             let mut temp = copy initial_state;
             self.walk_pat(pat, temp, loop_scopes);
             join_bits(&self.dfcx.oper, temp, in_out);
@@ -993,7 +993,7 @@ fn bits_to_str(words: &[uint]) -> ~str {
 
     // Note: this is a little endian printout of bytes.
 
-    for words.each |&word| {
+    for words.iter().advance |&word| {
         let mut v = word;
         for uint::range(0, uint::bytes) |_| {
             result.push_char(sep);
