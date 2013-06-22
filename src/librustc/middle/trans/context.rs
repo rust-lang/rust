@@ -96,7 +96,7 @@ pub struct CrateContext {
      all_llvm_symbols: HashSet<@str>,
      tcx: ty::ctxt,
      maps: astencode::Maps,
-     stats: Stats,
+     stats: @mut Stats,
      upcalls: @upcall::Upcalls,
      tydesc_type: Type,
      int_type: Type,
@@ -201,7 +201,7 @@ impl CrateContext {
                   all_llvm_symbols: HashSet::new(),
                   tcx: tcx,
                   maps: maps,
-                  stats: Stats {
+                  stats: @mut Stats {
                     n_static_tydescs: 0u,
                     n_glues_created: 0u,
                     n_null_glues: 0u,
