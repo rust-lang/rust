@@ -19,7 +19,6 @@ use visit;
 use std::hashmap::HashMap;
 use std::int;
 use std::option;
-use std::to_bytes;
 use std::cast;
 use std::local_data;
 
@@ -192,14 +191,6 @@ pub fn float_ty_to_str(t: float_ty) -> ~str {
 
 pub fn is_call_expr(e: @expr) -> bool {
     match e.node { expr_call(*) => true, _ => false }
-}
-
-// This makes def_id hashable
-impl to_bytes::IterBytes for def_id {
-    #[inline]
-    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
-        self.crate.iter_bytes(lsb0, f) && self.node.iter_bytes(lsb0, f)
-    }
 }
 
 pub fn block_from_expr(e: @expr) -> blk {

@@ -22,7 +22,6 @@ source code snippets, etc.
 */
 
 use std::cmp;
-use std::to_bytes;
 use std::uint;
 use extra::serialize::{Encodable, Decodable, Encoder, Decoder};
 
@@ -32,12 +31,12 @@ pub trait Pos {
 }
 
 /// A byte offset
-#[deriving(Eq)]
+#[deriving(Eq,IterBytes)]
 pub struct BytePos(uint);
 /// A character offset. Because of multibyte utf8 characters, a byte offset
 /// is not equivalent to a character offset. The CodeMap will convert BytePos
 /// values to CharPos values as necessary.
-#[deriving(Eq)]
+#[deriving(Eq,IterBytes)]
 pub struct CharPos(uint);
 
 // XXX: Lots of boilerplate in these impls, but so far my attempts to fix
@@ -67,12 +66,6 @@ impl Sub<BytePos, BytePos> for BytePos {
     }
 }
 
-impl to_bytes::IterBytes for BytePos {
-    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
-        (**self).iter_bytes(lsb0, f)
-    }
-}
-
 impl Pos for CharPos {
     fn from_uint(n: uint) -> CharPos { CharPos(n) }
     fn to_uint(&self) -> uint { **self }
@@ -83,12 +76,6 @@ impl cmp::Ord for CharPos {
     fn le(&self, other: &CharPos) -> bool { **self <= **other }
     fn ge(&self, other: &CharPos) -> bool { **self >= **other }
     fn gt(&self, other: &CharPos) -> bool { **self > **other }
-}
-
-impl to_bytes::IterBytes for CharPos {
-    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
-        (**self).iter_bytes(lsb0, f)
-    }
 }
 
 impl Add<CharPos,CharPos> for CharPos {
@@ -109,13 +96,14 @@ are *absolute* positions from the beginning of the codemap, not positions
 relative to FileMaps. Methods on the CodeMap can be used to relate spans back
 to the original source.
 */
+#[deriving(IterBytes)]
 pub struct span {
     lo: BytePos,
     hi: BytePos,
     expn_info: Option<@ExpnInfo>
 }
 
-#[deriving(Eq, Encodable, Decodable)]
+#[deriving(Eq, Encodable, Decodable,IterBytes)]
 pub struct spanned<T> { node: T, span: span }
 
 impl cmp::Eq for span {
@@ -135,14 +123,6 @@ impl<S:Encoder> Encodable<S> for span {
 impl<D:Decoder> Decodable<D> for span {
     fn decode(_d: &mut D) -> span {
         dummy_sp()
-    }
-}
-
-impl to_bytes::IterBytes for span {
-    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
-        self.lo.iter_bytes(lsb0, f) &&
-        self.hi.iter_bytes(lsb0, f) &&
-        self.expn_info.iter_bytes(lsb0, f)
     }
 }
 
@@ -191,38 +171,19 @@ pub struct LocWithOpt {
 // used to be structural records. Better names, anyone?
 pub struct FileMapAndLine {fm: @FileMap, line: uint}
 pub struct FileMapAndBytePos {fm: @FileMap, pos: BytePos}
+#[deriving(IterBytes)]
 pub struct NameAndSpan {name: @str, span: Option<span>}
 
-impl to_bytes::IterBytes for NameAndSpan {
-    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
-        self.name.iter_bytes(lsb0, f) && self.span.iter_bytes(lsb0, f)
-    }
-}
-
+#[deriving(IterBytes)]
 pub struct CallInfo {
     call_site: span,
     callee: NameAndSpan
 }
 
-impl to_bytes::IterBytes for CallInfo {
-    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
-        self.call_site.iter_bytes(lsb0, f) && self.callee.iter_bytes(lsb0, f)
-    }
-}
-
 /// Extra information for tracking macro expansion of spans
+#[deriving(IterBytes)]
 pub enum ExpnInfo {
     ExpandedFrom(CallInfo)
-}
-
-impl to_bytes::IterBytes for ExpnInfo {
-    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
-        match *self {
-            ExpandedFrom(ref call_info) => {
-                0u8.iter_bytes(lsb0, f) && call_info.iter_bytes(lsb0, f)
-            }
-        }
-    }
 }
 
 pub type FileName = @str;
