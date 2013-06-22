@@ -820,7 +820,7 @@ pub fn get_options(bcx: block, m: &[@Match], col: uint) -> ~[Opt] {
                         add_to_set(ccx.tcx, &mut found,
                                    lit(UnitLikeStructLit(cur.id)));
                     }
-                    Some(&ast::def_const(const_did)) => {
+                    Some(&ast::def_static(const_did, false)) => {
                         add_to_set(ccx.tcx, &mut found,
                                    lit(ConstLit(const_did)));
                     }
@@ -836,7 +836,7 @@ pub fn get_options(bcx: block, m: &[@Match], col: uint) -> ~[Opt] {
                         add_to_set(ccx.tcx, &mut found,
                                    variant_opt(bcx, cur.id));
                     }
-                    Some(&ast::def_const(const_did)) => {
+                    Some(&ast::def_static(const_did, false)) => {
                         add_to_set(ccx.tcx, &mut found,
                                    lit(ConstLit(const_did)));
                     }
@@ -1831,8 +1831,9 @@ pub fn bind_irrefutable_pat(bcx: block,
                         }
                     }
                 }
-                Some(&ast::def_const(*)) => {
-                    bcx = bind_irrefutable_pat(bcx, pat, val, make_copy, binding_mode);
+                Some(&ast::def_static(_, false)) => {
+                    bcx = bind_irrefutable_pat(bcx, pat, val, make_copy,
+                                               binding_mode);
                 }
                 _ => {
                     // Nothing to do here.

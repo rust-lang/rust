@@ -3269,7 +3269,7 @@ pub fn expr_kind(tcx: ctxt,
                 // Note: there is actually a good case to be made that
                 // def_args, particularly those of immediate type, ought to
                 // considered rvalues.
-                ast::def_const(*) |
+                ast::def_static(*) |
                 ast::def_binding(*) |
                 ast::def_upvar(*) |
                 ast::def_arg(*) |

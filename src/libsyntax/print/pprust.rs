@@ -477,8 +477,11 @@ pub fn print_item(s: @ps, item: @ast::item) {
     let ann_node = node_item(s, item);
     (s.ann.pre)(ann_node);
     match item.node {
-      ast::item_const(ty, expr) => {
+      ast::item_static(ty, m, expr) => {
         head(s, visibility_qualified(item.vis, "static"));
+        if m == ast::m_mutbl {
+            word_space(s, "mut");
+        }
         print_ident(s, item.ident);
         word_space(s, ":");
         print_type(s, ty);

@@ -34,7 +34,7 @@ use ast::{expr_vstore_slice, expr_vstore_box};
 use ast::{expr_vstore_mut_slice, expr_while, extern_fn, field, fn_decl};
 use ast::{expr_vstore_uniq, Onceness, Once, Many};
 use ast::{foreign_item, foreign_item_const, foreign_item_fn, foreign_mod};
-use ast::{ident, impure_fn, inherited, item, item_, item_const};
+use ast::{ident, impure_fn, inherited, item, item_, item_static};
 use ast::{item_enum, item_fn, item_foreign_mod, item_impl};
 use ast::{item_mac, item_mod, item_struct, item_trait, item_ty, lit, lit_};
 use ast::{lit_bool, lit_float, lit_float_unsuffixed, lit_int};
@@ -3556,13 +3556,14 @@ impl Parser {
     }
 
     fn parse_item_const(&self) -> item_info {
+        let m = if self.eat_keyword(keywords::Mut) {m_mutbl} else {m_imm};
         let id = self.parse_ident();
         self.expect(&token::COLON);
         let ty = self.parse_ty(false);
         self.expect(&token::EQ);
         let e = self.parse_expr();
         self.expect(&token::SEMI);
-        (id, item_const(ty, e), None)
+        (id, item_static(ty, m, e), None)
     }
 
     // parse a mod { ...}  item

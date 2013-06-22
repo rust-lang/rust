@@ -17,7 +17,7 @@ use middle::typeck::method_map;
 use util::ppaux;
 
 use syntax::ast::{deref, expr_call, expr_inline_asm, expr_method_call};
-use syntax::ast::{expr_unary, node_id, unsafe_blk, unsafe_fn};
+use syntax::ast::{expr_unary, node_id, unsafe_blk, unsafe_fn, expr_path};
 use syntax::ast;
 use syntax::codemap::span;
 use syntax::visit::{fk_item_fn, fk_method};
@@ -142,6 +142,14 @@ pub fn check_crate(tcx: ty::ctxt,
                 }
                 expr_inline_asm(*) => {
                     require_unsafe(expr.span, "use of inline assembly")
+                }
+                expr_path(*) => {
+                    match ty::resolve_expr(tcx, expr) {
+                        ast::def_static(_, true) => {
+                            require_unsafe(expr.span, "use of mutable static")
+                        }
+                        _ => {}
+                    }
                 }
                 _ => {}
             }
