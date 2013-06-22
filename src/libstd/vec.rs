@@ -48,12 +48,8 @@ pub mod rustrt {
         // to ~[] and reserve_shared_actual applies to @[].
         #[fast_ffi]
         unsafe fn vec_reserve_shared(t: *sys::TypeDesc,
-                                     v: **raw::VecRepr,
+                                     v: *mut *mut raw::VecRepr,
                                      n: libc::size_t);
-        #[fast_ffi]
-        unsafe fn vec_reserve_shared_actual(t: *sys::TypeDesc,
-                                            v: **raw::VecRepr,
-                                            n: libc::size_t);
     }
 }
 
@@ -79,11 +75,11 @@ pub fn reserve<T>(v: &mut ~[T], n: uint) {
     use managed;
     if capacity(v) < n {
         unsafe {
-            let ptr: **raw::VecRepr = cast::transmute(v);
+            let ptr: *mut *mut raw::VecRepr = cast::transmute(v);
             let td = sys::get_type_desc::<T>();
             if ((**ptr).box_header.ref_count ==
                 managed::raw::RC_MANAGED_UNIQUE) {
-                rustrt::vec_reserve_shared_actual(td, ptr, n as libc::size_t);
+                ::at_vec::raw::reserve_raw(td, ptr, n);
             } else {
                 rustrt::vec_reserve_shared(td, ptr, n as libc::size_t);
             }
