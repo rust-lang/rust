@@ -11,9 +11,10 @@
 #[doc(hidden)];
 
 use libc::{c_char, intptr_t, uintptr_t};
-use ptr::{mut_null, to_unsafe_ptr};
+use ptr::{mut_null};
 use repr::BoxRepr;
 use cast::transmute;
+use unstable::intrinsics::TyDesc;
 #[cfg(not(test))] use unstable::lang::clear_task_borrow_list;
 
 /**
@@ -158,6 +159,19 @@ fn debug_mem() -> bool {
     false
 }
 
+#[inline]
+#[cfg(not(stage0))]
+unsafe fn call_drop_glue(tydesc: *TyDesc, data: *i8) {
+    // This function should be inlined when stage0 is gone
+    ((*tydesc).drop_glue)(data);
+}
+
+#[inline]
+#[cfg(stage0)]
+unsafe fn call_drop_glue(tydesc: *TyDesc, data: *i8) {
+    ((*tydesc).drop_glue)(0 as **TyDesc, data);
+}
+
 /// Destroys all managed memory (i.e. @ boxes) held by the current task.
 #[cfg(not(test))]
 #[lang="annihilate"]
@@ -201,7 +215,7 @@ pub unsafe fn annihilate() {
         if !uniq {
             let tydesc = (*box).header.type_desc;
             let data = transmute(&(*box).data);
-            ((*tydesc).drop_glue)(to_unsafe_ptr(&tydesc), data);
+            call_drop_glue(tydesc, data);
         }
     }
 

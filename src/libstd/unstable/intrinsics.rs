@@ -36,6 +36,10 @@ A quick refresher on memory ordering:
 #[cfg(test)]
 pub use realstd::unstable::intrinsics::{TyDesc, Opaque, TyVisitor};
 
+#[cfg(not(stage0))]
+pub type GlueFn = extern "Rust" fn(*i8);
+
+#[cfg(stage0)]
 pub type GlueFn = extern "Rust" fn(**TyDesc, *i8);
 
 // NB: this has to be kept in sync with the Rust ABI.

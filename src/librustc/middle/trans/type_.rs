@@ -20,7 +20,6 @@ use middle::trans::base;
 
 use syntax::ast;
 use syntax::abi::{Architecture, X86, X86_64, Arm, Mips};
-use back::abi;
 
 use core::vec;
 use core::cast;
@@ -189,22 +188,20 @@ impl Type {
             None => ()
         }
 
-        let ty = Type::glue_fn(cx.tydesc_type).ptr_to();
+        let ty = Type::glue_fn();
         cx.tn.associate_type("glue_fn", &ty);
 
         return ty;
     }
 
-    pub fn glue_fn(tydesc: Type) -> Type {
-        let tydescpp = tydesc.ptr_to().ptr_to();
-        Type::func([ Type::nil().ptr_to(), tydescpp, Type::i8p() ],
+    pub fn glue_fn() -> Type {
+        Type::func([ Type::nil().ptr_to(), Type::i8p() ],
             &Type::void())
     }
 
     pub fn tydesc(arch: Architecture) -> Type {
         let mut tydesc = Type::named_struct("tydesc");
-        let pvoid = Type::i8p();
-        let glue_fn_ty = Type::glue_fn(tydesc).ptr_to();
+        let glue_fn_ty = Type::glue_fn().ptr_to();
 
         let int_ty = Type::int(arch);
 

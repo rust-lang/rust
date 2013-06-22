@@ -316,6 +316,19 @@ fn expect_sentinel() -> bool { true }
 #[cfg(nogc)]
 fn expect_sentinel() -> bool { false }
 
+#[inline]
+#[cfg(not(stage0))]
+unsafe fn call_drop_glue(tydesc: *TyDesc, data: *i8) {
+    // This function should be inlined when stage0 is gone
+    ((*tydesc).drop_glue)(data);
+}
+
+#[inline]
+#[cfg(stage0)]
+unsafe fn call_drop_glue(tydesc: *TyDesc, data: *i8) {
+    ((*tydesc).drop_glue)(0 as **TyDesc, data);
+}
+
 // Entry point for GC-based cleanup. Walks stack looking for exchange
 // heap and stack allocations requiring drop, and runs all
 // destructors.
@@ -359,7 +372,7 @@ pub fn cleanup_stack_for_failure() {
                 // FIXME #4420: Destroy this box
                 // FIXME #4330: Destroy this box
             } else {
-                ((*tydesc).drop_glue)(&tydesc as **TyDesc, *root as *i8);
+                call_drop_glue(tydesc, *root as *i8);
             }
         }
     }
