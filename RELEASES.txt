@@ -7,12 +7,14 @@ Version 0.7 (July 2013)
       * `use mod` is no longer valid.
       * `fail!` and `assert!` accept `~str`, `&'static str` or `fmt!`-style
         argument list.
-      * `Encodable`, `Decodable`, `TotalOrd`, `TotalEq`, `DeepClone` can all
-        be automatically derived with `#[deriving(...)]`.
+      * `Encodable`, `Decodable`, `Ord`, `TotalOrd`, `TotalEq`, `DeepClone`,
+        `Rand`, `Zero` and `ToStr` can all be automatically derived with
+        `#[deriving(...)]`.
       * The `Durable` trait is replaced with the `'static` bounds.
       * At long last, 'argument modes' no longer exist.
       * The `bytes!` macro returns a vector of bytes for string, u8, char,
         and unsuffixed integer literals.
+      * `#[static_assert]` makes compile-time assertions about static bools.
 
    * Semantic changes
       * The borrow checker has been rewritten with flow-sensitivity, fixing
@@ -34,7 +36,7 @@ Version 0.7 (July 2013)
       * The `#[mutable]` attribute makes a type that would otherwise be
         `Const`, note. TODO this may change to non_freeze before 0.7
       * Unbounded recursion will abort the process after reaching the limit
-        specified by the `RUST_MAX_STACK` environment variable.
+        specified by the `RUST_MAX_STACK` environment variable (default: 1GB).
       * The `vecs_implicitly_copyable` lint mode has been removed. Vectors
         are never implicitly copyable.
 
@@ -46,30 +48,36 @@ Version 0.7 (July 2013)
       * std: Prelude additions: `print`, `println`, `FromStr`, `ApproxEq`, `Equiv`,
         `Iterator`, `IteratorUtil`, many numeric traits, many tuple traits.
       * std: `iterator` module for external iterator objects.
+      * std: Many old internal vector and string iterators,
+        incl. `any`, `all`. removed.
       * std: new numeric traits: `Fractional`, `Real`, `RealExt`, `Integer`, `Ratio`,
         `Algebraic`, `Trigonometric`, `Exponential`, `Primitive`.
       * std: Tuple traits and accessors defined for up to 12-tuples, e.g.
         `(0, 1, 2).n2()` or `(0, 1, 2).n2_ref()`.
-      * std: many types implement `Clone` - tuples, @, @mut. TODO
+      * std: many types implement `Clone`.
       * std: `path` type renamed to `Path`.
-      * std: Many standalone functions removed in favor of methods in
-        `vec`, `str`. In the future methods will also work as functions.
+      * std: Many standalone functions removed in favor of methods and iterators
+        in `vec`, `str`. In the future methods will also work as functions.
       * std: `reinterpret_cast` removed. Used `transmute`.
       * std: ascii string handling in `std::ascii`.
       * std: `Rand` is implemented for ~/@.
       * std: `run` module for spawning processes overhauled.
       * std: Various atomic types added to `unstable::atomic`.
       * std: `LinearMap` and `LinearSet` renamed to `HashMap` and `HashSet`.
+      * std: Borrowed pointer functions moved from `ptr` to `borrow`.
       * std: Added `os::mkdir_recursive`.
       * std: Added `os::glob` function performs filesystems globs.
       * std: `FuzzyEq` renamed to `ApproxEq`.
       * std: `Map` now defines `pop` and `swap` methods.
+      * std: `Cell` constructors converted to static methods.
+      * extra: `rc` module adds the reference counted pointers, `Rc` and `RcMut`.
       * extra: `flate` module moved from `std` to `extra`.
-      * extra: `FileInput` implements `std::io::Reader`.
+      * extra: `fileinput` module for iterating over a series of files.
       * extra: `Complex` number type and `complex` module.
       * extra: `Rational` number type and `rational` module.
       * extra: `BigInt`, `BigUint` implement numeric and comparison traits.
       * extra: `term` uses terminfo now, is more correct.
+      * extra: `arc` functions converted to methods.
 
    * Tooling
       * `unused_unsafe` lint mode for detecting unnecessary `unsafe` blocks.

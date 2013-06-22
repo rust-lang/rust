@@ -1561,6 +1561,7 @@ Supported traits for `deriving` are:
 * `Clone` and `DeepClone`, to perform (deep) copies.
 * `IterBytes`, to iterate over the bytes in a data type.
 * `Rand`, to create a random instance of a data type.
+* `Zero`, to create an zero (or empty) instance of a data type.
 * `ToStr`, to convert to a string. For a type with this instance,
   `obj.to_str()` has the same output as `fmt!("%?", obj)`.
 
