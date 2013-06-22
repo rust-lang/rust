@@ -458,8 +458,11 @@ pub fn print_foreign_item(s: @ps, item: @ast::foreign_item) {
         word(s.s, ";");
         end(s); // end the outer fn box
       }
-      ast::foreign_item_const(t) => {
+      ast::foreign_item_static(t, m) => {
         head(s, "static");
+        if m {
+            word_space(s, "mut");
+        }
         print_ident(s, item.ident);
         word_space(s, ":");
         print_type(s, t);

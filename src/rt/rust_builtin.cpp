@@ -154,6 +154,16 @@ debug_abi_2(floats f) {
     return ff;
 }
 
+extern "C" int
+debug_static_mut;
+
+int debug_static_mut = 3;
+
+extern "C" void
+debug_static_mut_check_four() {
+    assert(debug_static_mut == 4);
+}
+
 /* Debug builtins for std::dbg. */
 
 static void
