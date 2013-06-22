@@ -49,6 +49,12 @@ impl LocalHeap {
         }
     }
 
+    pub fn realloc(&mut self, ptr: *OpaqueBox, size: uint) -> *OpaqueBox {
+        unsafe {
+            return rust_boxed_region_realloc(self.boxed_region, ptr, size as size_t);
+        }
+    }
+
     pub fn free(&mut self, box: *OpaqueBox) {
         unsafe {
             return rust_boxed_region_free(self.boxed_region, box);
@@ -76,5 +82,8 @@ extern {
     fn rust_boxed_region_malloc(region: *BoxedRegion,
                                 td: *TypeDesc,
                                 size: size_t) -> *OpaqueBox;
+    fn rust_boxed_region_realloc(region: *BoxedRegion,
+                                 ptr: *OpaqueBox,
+                                 size: size_t) -> *OpaqueBox;
     fn rust_boxed_region_free(region: *BoxedRegion, box: *OpaqueBox);
 }

@@ -53,7 +53,7 @@ rust_get_stack_segment
 rust_get_c_stack
 rust_log_str
 start_task
-vec_reserve_shared_actual
+rust_local_realloc
 vec_reserve_shared
 task_clear_event_reject
 task_wait_event
@@ -231,6 +231,7 @@ rust_delete_memory_region
 rust_new_boxed_region
 rust_delete_boxed_region
 rust_boxed_region_malloc
+rust_boxed_region_realloc
 rust_boxed_region_free
 rust_try
 rust_begin_unwind

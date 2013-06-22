@@ -23,20 +23,6 @@ use vec;
 /// Code for dealing with @-vectors. This is pretty incomplete, and
 /// contains a bunch of duplication from the code for ~-vectors.
 
-pub mod rustrt {
-    use libc;
-    use sys;
-    use vec;
-
-    #[abi = "cdecl"]
-    #[link_name = "rustrt"]
-    pub extern {
-        pub unsafe fn vec_reserve_shared_actual(t: *sys::TypeDesc,
-                                                v: **vec::raw::VecRepr,
-                                                n: libc::size_t);
-    }
-}
-
 /// Returns the number of elements the vector can hold without reallocating
 #[inline]
 pub fn capacity<T>(v: @[T]) -> uint {
@@ -189,7 +175,7 @@ pub mod traits {
 pub mod traits {}
 
 pub mod raw {
-    use at_vec::{capacity, rustrt};
+    use at_vec::capacity;
     use cast::{transmute, transmute_copy};
     use libc;
     use ptr;
@@ -197,6 +183,8 @@ pub mod raw {
     use uint;
     use unstable::intrinsics::{move_val_init};
     use vec;
+    use vec::UnboxedVecRepr;
+    use sys::TypeDesc;
 
     pub type VecRepr = vec::raw::VecRepr;
     pub type SliceRepr = vec::raw::SliceRepr;
@@ -257,9 +245,47 @@ pub mod raw {
     pub unsafe fn reserve<T>(v: &mut @[T], n: uint) {
         // Only make the (slow) call into the runtime if we have to
         if capacity(*v) < n {
-            let ptr: **VecRepr = transmute(v);
-            rustrt::vec_reserve_shared_actual(sys::get_type_desc::<T>(),
-                                              ptr, n as libc::size_t);
+            let ptr: *mut *mut VecRepr = transmute(v);
+            let ty = sys::get_type_desc::<T>();
+            return reserve_raw(ty, ptr, n);
+        }
+    }
+
+    // Implementation detail. Shouldn't be public
+    #[allow(missing_doc)]
+    pub fn reserve_raw(ty: *TypeDesc, ptr: *mut *mut VecRepr, n: uint) {
+
+        unsafe {
+            let size_in_bytes = n * (*ty).size;
+            if size_in_bytes > (**ptr).unboxed.alloc {
+                let total_size = size_in_bytes + sys::size_of::<UnboxedVecRepr>();
+                // XXX: UnboxedVecRepr has an extra u8 at the end
+                let total_size = total_size - sys::size_of::<u8>();
+                (*ptr) = local_realloc(*ptr as *(), total_size) as *mut VecRepr;
+                (**ptr).unboxed.alloc = size_in_bytes;
+            }
+        }
+
+        fn local_realloc(ptr: *(), size: uint) -> *() {
+            use rt;
+            use rt::OldTaskContext;
+            use rt::local::Local;
+            use rt::task::Task;
+
+            if rt::context() == OldTaskContext {
+                unsafe {
+                    return rust_local_realloc(ptr, size as libc::size_t);
+                }
+
+                extern {
+                    #[fast_ffi]
+                    fn rust_local_realloc(ptr: *(), size: libc::size_t) -> *();
+                }
+            } else {
+                do Local::borrow::<Task, *()> |task| {
+                    task.heap.realloc(ptr as *libc::c_void, size) as *()
+                }
+            }
         }
     }
 

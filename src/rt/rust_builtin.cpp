@@ -68,11 +68,10 @@ rust_env_pairs() {
 }
 #endif
 
-extern "C" CDECL void
-vec_reserve_shared_actual(type_desc* ty, rust_vec_box** vp,
-                          size_t n_elts) {
+extern "C" CDECL void *
+rust_local_realloc(rust_opaque_box *ptr, size_t size) {
     rust_task *task = rust_get_current_task();
-    reserve_vec_exact_shared(task, vp, n_elts * ty->size);
+    return task->boxed.realloc(ptr, size);
 }
 
 // This is completely misnamed.
@@ -897,6 +896,11 @@ rust_delete_boxed_region(boxed_region *region) {
 extern "C" CDECL rust_opaque_box*
 rust_boxed_region_malloc(boxed_region *region, type_desc *td, size_t size) {
     return region->malloc(td, size);
+}
+
+extern "C" CDECL rust_opaque_box*
+rust_boxed_region_realloc(boxed_region *region, rust_opaque_box *ptr, size_t size) {
+    return region->realloc(ptr, size);
 }
 
 extern "C" CDECL void
