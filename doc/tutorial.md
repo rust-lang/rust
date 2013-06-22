@@ -1084,8 +1084,8 @@ let managed_box  : @Point = @Point { x: 5.0, y: 1.0 };
 let owned_box    : ~Point = ~Point { x: 7.0, y: 9.0 };
 ~~~
 
-Suppose we wanted to write a procedure that computed the distance
-between any two points, no matter where they were stored. For example,
+Suppose we want to write a procedure that computes the distance
+between any two points, no matter where they are stored. For example,
 we might like to compute the distance between `on_the_stack` and
 `managed_box`, or between `managed_box` and `owned_box`. One option is
 to define a function that takes two arguments of type point—that is,
@@ -1230,7 +1230,7 @@ let area = rect.area();
 ~~~
 
 You can write an expression that dereferences any number of pointers
-automatically. For example, if you felt inclined, you could write
+automatically. For example, if you feel inclined, you could write
 something silly like
 
 ~~~
@@ -1808,7 +1808,7 @@ s.draw_borrowed();
 ~~~
 
 Implementations may also define standalone (sometimes called "static")
-methods. The absence of a `self` paramater distinguishes such methods.
+methods. The absence of a `self` parameter distinguishes such methods.
 These methods are the preferred way to define constructor functions.
 
 ~~~~ {.xfail-test}
@@ -2319,7 +2319,7 @@ enum ABC { A, B, C }
 
 The full list of derivable traits is `Eq`, `TotalEq`, `Ord`,
 `TotalOrd`, `Encodable` `Decodable`, `Clone`, `DeepClone`,
-`IterBytes`, `Rand` and `ToStr`.
+`IterBytes`, `Rand`, `Zero`, and `ToStr`.
 
 # Modules and crates
 
@@ -2522,7 +2522,7 @@ will not be compiled successfully.
 
 ## A minimal example
 
-Now for something that you can actually compile yourself. We have
+Now for something that you can actually compile yourself, we have
 these two files:
 
 ~~~~
