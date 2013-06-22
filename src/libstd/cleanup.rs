@@ -15,7 +15,7 @@ use ptr::mut_null;
 use repr::BoxRepr;
 use sys::TypeDesc;
 use cast::transmute;
-#[cfg(not(test))] use unstable::lang::clear_task_borrow_list;
+#[cfg(not(test))] use rt::borrowck::clear_task_borrow_list;
 
 #[cfg(not(test))] use ptr::to_unsafe_ptr;
 
