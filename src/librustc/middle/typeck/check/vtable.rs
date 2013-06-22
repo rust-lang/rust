@@ -478,6 +478,12 @@ pub fn location_info_for_expr(expr: @ast::expr) -> LocationInfo {
         id: expr.id
     }
 }
+pub fn location_info_for_item(item: @ast::item) -> LocationInfo {
+    LocationInfo {
+        span: item.span,
+        id: item.id
+    }
+}
 
 pub fn early_resolve_expr(ex: @ast::expr,
                           fcx: @mut FnCtxt,
@@ -659,6 +665,27 @@ fn resolve_expr(ex: @ast::expr,
                            visit::vt<@mut FnCtxt>)) {
     early_resolve_expr(ex, fcx, false);
     visit::visit_expr(ex, (fcx, v));
+}
+
+pub fn resolve_impl(ccx: @mut CrateCtxt, impl_item: @ast::item) {
+    let def_id = ast_util::local_def(impl_item.id);
+    match ty::impl_trait_ref(ccx.tcx, def_id) {
+        None => {},
+        Some(trait_ref) => {
+            let infcx = infer::new_infer_ctxt(ccx.tcx);
+            let vcx = VtableContext { ccx: ccx, infcx: infcx };
+            let trait_def = ty::lookup_trait_def(ccx.tcx, trait_ref.def_id);
+
+            let vtbls = lookup_vtables(&vcx,
+                                       &location_info_for_item(impl_item),
+                                       *trait_def.generics.type_param_defs,
+                                       &trait_ref.substs,
+                                       false);
+
+            // FIXME(#7450): Doesn't work cross crate
+            ccx.vtable_map.insert(impl_item.id, vtbls);
+        }
+    }
 }
 
 // Detect points where a trait-bounded type parameter is

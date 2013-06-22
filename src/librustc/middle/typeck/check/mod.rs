@@ -609,6 +609,7 @@ pub fn check_item(ccx: @mut CrateCtxt, it: @ast::item) {
         for ms.iter().advance |m| {
             check_method(ccx, *m);
         }
+        vtable::resolve_impl(ccx, it);
       }
       ast::item_trait(_, _, ref trait_methods) => {
         for (*trait_methods).iter().advance |trait_method| {
