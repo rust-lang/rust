@@ -15,6 +15,7 @@
 
 use borrow;
 use cast::transmute;
+use cleanup;
 use libc::{c_void, uintptr_t};
 use ptr;
 use prelude::*;
@@ -118,6 +119,10 @@ impl Task {
             }
             _ => ()
         }
+
+        // Destroy remaining boxes
+        unsafe { cleanup::annihilate(); }
+
         self.destroyed = true;
     }
 }
@@ -267,6 +272,22 @@ mod test {
                 spawntask_random(|| fail!());
             };
             assert!(res.is_err());
+        }
+    }
+
+    #[test]
+    fn heap_cycles() {
+        use option::{Option, Some, None};
+
+        do run_in_newsched_task {
+            struct List {
+                next: Option<@mut List>,
+            }
+
+            let a = @mut List { next: None };
+            let b = @mut List { next: Some(a) };
+
+            a.next = Some(b);
         }
     }
 }
