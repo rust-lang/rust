@@ -92,7 +92,6 @@ impl FnType {
 
     pub fn build_shim_ret(&self, bcx: block, arg_tys: &[Type], ret_def: bool,
                           llargbundle: ValueRef, llretval: ValueRef) {
-        for vec::eachi(self.attrs) |i, a| {
         for self.attrs.iter().enumerate().advance |(i, a)| {
             match *a {
                 option::Some(attr) => {

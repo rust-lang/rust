@@ -339,5 +339,5 @@ pub fn llvm_type_name(cx: &CrateContext,
 
 pub fn type_of_dtor(ccx: &mut CrateContext, self_ty: ty::t) -> Type {
     let self_ty = type_of(ccx, self_ty).ptr_to();
-    Type::func([self_ty], Type::void())
+    Type::func([self_ty], &Type::void())
 }
