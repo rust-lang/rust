@@ -8,11 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-test
-// See #3283
-fn foo(blk: &fn(p: &'a fn() -> &'a fn())) {
-        let mut state = 0;
-        let statep = &mut state;
+fn foo<'a>(blk: &fn(p: &'a fn() -> &'a fn())) {
+    let mut state = 0;
+    let statep = &mut state;
     do blk {
         || { *statep = 1; }
     }

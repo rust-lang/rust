@@ -1,4 +1,4 @@
-// xfail-test #7103 `extern mod` does not work on windows
+// xfail-fast #7103 `extern mod` does not work on windows
 
 // Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at

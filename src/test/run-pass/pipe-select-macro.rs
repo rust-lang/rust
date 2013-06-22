@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-test
+// FIXME #7303: xfail-test
 
 // Protocols
 proto! foo (
