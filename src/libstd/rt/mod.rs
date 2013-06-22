@@ -162,6 +162,9 @@ pub mod util;
 // Global command line argument storage
 pub mod args;
 
+// Support for dynamic borrowck
+pub mod borrowck;
+
 /// Set up a default runtime configuration, given compiler-supplied arguments.
 ///
 /// This is invoked by the `start` _language item_ (unstable::lang) to
