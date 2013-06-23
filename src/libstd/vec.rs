@@ -17,9 +17,8 @@ use cast;
 use container::{Container, Mutable};
 use cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering, Less, Equal, Greater};
 use clone::Clone;
-use old_iter::BaseIter;
 use old_iter;
-use iterator::{Iterator, IteratorUtil};
+use iterator::{FromIterator, Iterator, IteratorUtil};
 use iter::FromIter;
 use kinds::Copy;
 use libc;
@@ -29,6 +28,7 @@ use ptr::to_unsafe_ptr;
 use ptr;
 use ptr::RawPtr;
 use sys;
+use sys::size_of;
 use uint;
 use unstable::intrinsics;
 use vec;
@@ -1024,7 +1024,7 @@ impl<'self, T:Copy> VectorVector<T> for &'self [~[T]] {
     pub fn connect_vec(&self, sep: &T) -> ~[T] {
         let mut r = ~[];
         let mut first = true;
-        for self.each |&inner| {
+        for self.iter().advance |&inner| {
             if first { first = false; } else { r.push(copy *sep); }
             r.push_all(inner);
         }
@@ -1042,7 +1042,7 @@ impl<'self, T:Copy> VectorVector<T> for &'self [&'self [T]] {
     pub fn connect_vec(&self, sep: &T) -> ~[T] {
         let mut r = ~[];
         let mut first = true;
-        for self.each |&inner| {
+        for self.iter().advance |&inner| {
             if first { first = false; } else { r.push(copy *sep); }
             r.push_all(inner);
         }
@@ -1748,7 +1748,7 @@ impl<'self,T:Copy> CopyableVector<T> for &'self [T] {
     fn to_owned(&self) -> ~[T] {
         let mut result = ~[];
         reserve(&mut result, self.len());
-        for self.each |e| {
+        for self.iter().advance |e| {
             result.push(copy *e);
         }
         result
@@ -2398,15 +2398,6 @@ pub mod bytes {
     }
 }
 
-impl<'self,A> old_iter::BaseIter<A> for &'self [A] {
-    #[inline]
-    fn each<'a>(&'a self, blk: &fn(v: &'a A) -> bool) -> bool {
-        each(*self, blk)
-    }
-    #[inline]
-    fn size_hint(&self) -> Option<uint> { Some(self.len()) }
-}
-
 impl<A:Clone> Clone for ~[A] {
     #[inline]
     fn clone(&self) -> ~[A] {
@@ -2454,6 +2445,13 @@ macro_rules! iterator {
                     }
                 }
             }
+
+            #[inline]
+            #[cfg(not(stage0))]
+            fn size_hint(&self) -> (Option<uint>, Option<uint>) {
+                let exact = Some(((self.end as uint) - (self.ptr as uint)) / size_of::<$elem>());
+                (exact, exact)
+            }
         }
     }
 }
@@ -2500,6 +2498,18 @@ impl<T> FromIter<T> for ~[T]{
         let mut v = ~[];
         for iter |x| { v.push(x) }
         v
+    }
+}
+
+#[cfg(not(stage0))]
+impl<A, T: Iterator<A>> FromIterator<A, T> for ~[A] {
+    pub fn from_iterator(iterator: &mut T) -> ~[A] {
+        let (lower, _) = iterator.size_hint();
+        let mut xs = with_capacity(lower.get_or_zero());
+        for iterator.advance |x| {
+            xs.push(x);
+        }
+        xs
     }
 }
 
@@ -3909,16 +3919,23 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(stage0))]
     fn test_iterator() {
         use iterator::*;
         let xs = [1, 2, 5, 10, 11];
-        let ys = [1, 2, 5, 10, 11, 19];
         let mut it = xs.iter();
-        let mut i = 0;
-        for it.advance |&x| {
-            assert_eq!(x, ys[i]);
-            i += 1;
-        }
+        assert_eq!(it.size_hint(), (Some(5), Some(5)));
+        assert_eq!(it.next().unwrap(), &1);
+        assert_eq!(it.size_hint(), (Some(4), Some(4)));
+        assert_eq!(it.next().unwrap(), &2);
+        assert_eq!(it.size_hint(), (Some(3), Some(3)));
+        assert_eq!(it.next().unwrap(), &5);
+        assert_eq!(it.size_hint(), (Some(2), Some(2)));
+        assert_eq!(it.next().unwrap(), &10);
+        assert_eq!(it.size_hint(), (Some(1), Some(1)));
+        assert_eq!(it.next().unwrap(), &11);
+        assert_eq!(it.size_hint(), (Some(0), Some(0)));
+        assert!(it.next().is_none());
     }
 
     #[test]

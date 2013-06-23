@@ -91,7 +91,7 @@ fn stress(num_tasks: int) {
             stress_task(i);
         }
     }
-    for results.each |r| {
+    for results.iter().advance |r| {
         r.recv();
     }
 }

@@ -14,7 +14,7 @@ struct trie_node {
 }
 
 fn print_str_vector(vector: ~[~str]) {
-    for vector.each() |string| {
+    for vector.iter().advance |string| {
         println(*string);
     }
 }

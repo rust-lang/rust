@@ -994,13 +994,13 @@ mod tests {
         }
 
         // wait until all children get in the mutex
-        for ports.each |port| { let _ = port.recv(); }
+        for ports.iter().advance |port| { let _ = port.recv(); }
         do m.lock_cond |cond| {
             let num_woken = cond.broadcast();
             assert_eq!(num_woken, num_waiters);
         }
         // wait until all children wake up
-        for ports.each |port| { let _ = port.recv(); }
+        for ports.iter().advance |port| { let _ = port.recv(); }
     }
     #[test]
     fn test_mutex_cond_broadcast() {
@@ -1085,7 +1085,7 @@ mod tests {
                     }
                 }
             }
-            for sibling_convos.each |p| {
+            for sibling_convos.iter().advance |p| {
                 let _ = p.recv(); // wait for sibling to get in the mutex
             }
             do m2.lock { }
@@ -1361,13 +1361,13 @@ mod tests {
         }
 
         // wait until all children get in the mutex
-        for ports.each |port| { let _ = port.recv(); }
+        for ports.iter().advance |port| { let _ = port.recv(); }
         do lock_cond(x, dg2) |cond| {
             let num_woken = cond.broadcast();
             assert_eq!(num_woken, num_waiters);
         }
         // wait until all children wake up
-        for ports.each |port| { let _ = port.recv(); }
+        for ports.iter().advance |port| { let _ = port.recv(); }
     }
     #[test]
     fn test_rwlock_cond_broadcast() {

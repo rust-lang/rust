@@ -20,12 +20,13 @@ use cmp::{Eq, Equiv};
 use hash::Hash;
 use old_iter::BaseIter;
 use old_iter;
-use iterator::{IteratorUtil};
+use iterator::IteratorUtil;
 use option::{None, Option, Some};
 use rand::RngUtil;
 use rand;
 use uint;
 use vec;
+use vec::ImmutableVector;
 use kinds::Copy;
 use util::{replace, unreachable};
 
@@ -310,7 +311,7 @@ impl<K:Hash + Eq,V> Map<K, V> for HashMap<K, V> {
 
     /// Visit all key-value pairs
     fn each<'a>(&'a self, blk: &fn(&K, &'a V) -> bool) -> bool {
-        for self.buckets.each |bucket| {
+        for self.buckets.iter().advance |bucket| {
             for bucket.iter().advance |pair| {
                 if !blk(&pair.key, &pair.value) {
                     return false;

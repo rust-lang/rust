@@ -895,7 +895,7 @@ impl mem_categorization_ctxt {
                     }
                 }
                 Some(&ast::def_const(*)) => {
-                    for subpats.each |&subpat| {
+                    for subpats.iter().advance |&subpat| {
                         self.cat_pattern(cmt, subpat, op);
                     }
                 }
@@ -917,7 +917,7 @@ impl mem_categorization_ctxt {
 
           ast::pat_struct(_, ref field_pats, _) => {
             // {f1: p1, ..., fN: pN}
-            for field_pats.each |fp| {
+            for field_pats.iter().advance |fp| {
                 let field_ty = self.pat_ty(fp.pat); // see (*)
                 let cmt_field = self.cat_field(pat, cmt, fp.ident, field_ty);
                 self.cat_pattern(cmt_field, fp.pat, op);
@@ -945,7 +945,7 @@ impl mem_categorization_ctxt {
 
           ast::pat_vec(ref before, slice, ref after) => {
               let elt_cmt = self.cat_index(pat, cmt, 0);
-              for before.each |&before_pat| {
+              for before.iter().advance |&before_pat| {
                   self.cat_pattern(elt_cmt, before_pat, op);
               }
               for slice.iter().advance |&slice_pat| {
@@ -953,7 +953,7 @@ impl mem_categorization_ctxt {
                   let slice_cmt = self.cat_rvalue(pat, slice_ty);
                   self.cat_pattern(slice_cmt, slice_pat, op);
               }
-              for after.each |&after_pat| {
+              for after.iter().advance |&after_pat| {
                   self.cat_pattern(elt_cmt, after_pat, op);
               }
           }
@@ -1041,7 +1041,8 @@ pub fn field_mutbl(tcx: ty::ctxt,
     // Need to refactor so that struct/enum fields can be treated uniformly.
     match ty::get(base_ty).sty {
       ty::ty_struct(did, _) => {
-        for ty::lookup_struct_fields(tcx, did).each |fld| {
+        let r = ty::lookup_struct_fields(tcx, did);
+        for r.iter().advance |fld| {
             if fld.ident == f_name {
                 return Some(ast::m_imm);
             }
@@ -1050,7 +1051,8 @@ pub fn field_mutbl(tcx: ty::ctxt,
       ty::ty_enum(*) => {
         match tcx.def_map.get_copy(&node_id) {
           ast::def_variant(_, variant_id) => {
-            for ty::lookup_struct_fields(tcx, variant_id).each |fld| {
+            let r = ty::lookup_struct_fields(tcx, variant_id);
+            for r.iter().advance |fld| {
                 if fld.ident == f_name {
                     return Some(ast::m_imm);
                 }

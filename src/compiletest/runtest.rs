@@ -327,7 +327,7 @@ fn check_error_patterns(props: &TestProps,
         fatal_ProcRes(fmt!("error pattern '%s' not found!",
                            missing_patterns[0]), ProcRes);
     } else {
-        for missing_patterns.each |pattern| {
+        for missing_patterns.iter().advance |pattern| {
             error(fmt!("error pattern '%s' not found!", *pattern));
         }
         fatal_ProcRes(~"multiple error patterns not found", ProcRes);
@@ -757,7 +757,7 @@ fn _arm_exec_compiled_test(config: &config, props: &TestProps,
     runargs.push(fmt!("%s", config.adb_test_dir));
     runargs.push(fmt!("%s", prog_short));
 
-    for args.args.each |tv| {
+    for args.args.iter().advance |tv| {
         runargs.push(tv.to_owned());
     }
 
@@ -822,7 +822,8 @@ fn _dummy_exec_compiled_test(config: &config, props: &TestProps,
 fn _arm_push_aux_shared_library(config: &config, testfile: &Path) {
     let tstr = aux_output_dir_name(config, testfile).to_str();
 
-    for os::list_dir_path(&Path(tstr)).each |file| {
+    let dirs = os::list_dir_path(&Path(tstr));
+    for dirs.iter().advance |file| {
 
         if (file.filetype() == Some(~".so")) {
 

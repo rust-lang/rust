@@ -575,7 +575,7 @@ pub fn trans_call_inner(in_cx: block,
         // Uncomment this to debug calls.
         /*
         io::println(fmt!("calling: %s", bcx.val_to_str(llfn)));
-        for llargs.each |llarg| {
+        for llargs.iter().advance |llarg| {
             io::println(fmt!("arg: %s", bcx.val_to_str(*llarg)));
         }
         io::println("---");

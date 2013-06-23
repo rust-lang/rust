@@ -1349,7 +1349,7 @@ mod biguint_tests {
 
     #[test]
     fn test_add() {
-        for sum_triples.each |elm| {
+        for sum_triples.iter().advance |elm| {
             let (aVec, bVec, cVec) = *elm;
             let a = BigUint::from_slice(aVec);
             let b = BigUint::from_slice(bVec);
@@ -1362,7 +1362,7 @@ mod biguint_tests {
 
     #[test]
     fn test_sub() {
-        for sum_triples.each |elm| {
+        for sum_triples.iter().advance |elm| {
             let (aVec, bVec, cVec) = *elm;
             let a = BigUint::from_slice(aVec);
             let b = BigUint::from_slice(bVec);
@@ -1413,7 +1413,7 @@ mod biguint_tests {
 
     #[test]
     fn test_mul() {
-        for mul_triples.each |elm| {
+        for mul_triples.iter().advance |elm| {
             let (aVec, bVec, cVec) = *elm;
             let a = BigUint::from_slice(aVec);
             let b = BigUint::from_slice(bVec);
@@ -1423,7 +1423,7 @@ mod biguint_tests {
             assert!(b * a == c);
         }
 
-        for div_rem_quadruples.each |elm| {
+        for div_rem_quadruples.iter().advance |elm| {
             let (aVec, bVec, cVec, dVec) = *elm;
             let a = BigUint::from_slice(aVec);
             let b = BigUint::from_slice(bVec);
@@ -1437,7 +1437,7 @@ mod biguint_tests {
 
     #[test]
     fn test_div_rem() {
-        for mul_triples.each |elm| {
+        for mul_triples.iter().advance |elm| {
             let (aVec, bVec, cVec) = *elm;
             let a = BigUint::from_slice(aVec);
             let b = BigUint::from_slice(bVec);
@@ -1451,7 +1451,7 @@ mod biguint_tests {
             }
         }
 
-        for div_rem_quadruples.each |elm| {
+        for div_rem_quadruples.iter().advance |elm| {
             let (aVec, bVec, cVec, dVec) = *elm;
             let a = BigUint::from_slice(aVec);
             let b = BigUint::from_slice(bVec);
@@ -1567,9 +1567,10 @@ mod biguint_tests {
 
     #[test]
     fn test_to_str_radix() {
-        for to_str_pairs().each |num_pair| {
+        let r = to_str_pairs();
+        for r.iter().advance |num_pair| {
             let &(n, rs) = num_pair;
-            for rs.each |str_pair| {
+            for rs.iter().advance |str_pair| {
                 let &(radix, str) = str_pair;
                 assert_eq!(n.to_str_radix(radix), str);
             }
@@ -1578,9 +1579,10 @@ mod biguint_tests {
 
     #[test]
     fn test_from_str_radix() {
-        for to_str_pairs().each |num_pair| {
+        let r = to_str_pairs();
+        for r.iter().advance |num_pair| {
             let &(n, rs) = num_pair;
-            for rs.each |str_pair| {
+            for rs.iter().advance |str_pair| {
                 let &(radix, str) = str_pair;
                 assert_eq!(&n, &FromStrRadix::from_str_radix(str, radix).get());
             }
@@ -1756,7 +1758,7 @@ mod bigint_tests {
 
     #[test]
     fn test_add() {
-        for sum_triples.each |elm| {
+        for sum_triples.iter().advance |elm| {
             let (aVec, bVec, cVec) = *elm;
             let a = BigInt::from_slice(Plus, aVec);
             let b = BigInt::from_slice(Plus, bVec);
@@ -1775,7 +1777,7 @@ mod bigint_tests {
 
     #[test]
     fn test_sub() {
-        for sum_triples.each |elm| {
+        for sum_triples.iter().advance |elm| {
             let (aVec, bVec, cVec) = *elm;
             let a = BigInt::from_slice(Plus, aVec);
             let b = BigInt::from_slice(Plus, bVec);
@@ -1832,7 +1834,7 @@ mod bigint_tests {
 
     #[test]
     fn test_mul() {
-        for mul_triples.each |elm| {
+        for mul_triples.iter().advance |elm| {
             let (aVec, bVec, cVec) = *elm;
             let a = BigInt::from_slice(Plus, aVec);
             let b = BigInt::from_slice(Plus, bVec);
@@ -1845,7 +1847,7 @@ mod bigint_tests {
             assert!((-b) * a == -c);
         }
 
-        for div_rem_quadruples.each |elm| {
+        for div_rem_quadruples.iter().advance |elm| {
             let (aVec, bVec, cVec, dVec) = *elm;
             let a = BigInt::from_slice(Plus, aVec);
             let b = BigInt::from_slice(Plus, bVec);
@@ -1884,7 +1886,7 @@ mod bigint_tests {
             }
         }
 
-        for mul_triples.each |elm| {
+        for mul_triples.iter().advance |elm| {
             let (aVec, bVec, cVec) = *elm;
             let a = BigInt::from_slice(Plus, aVec);
             let b = BigInt::from_slice(Plus, bVec);
@@ -1894,7 +1896,7 @@ mod bigint_tests {
             if !b.is_zero() { check(&c, &b, &a, &Zero::zero()); }
         }
 
-        for div_rem_quadruples.each |elm| {
+        for div_rem_quadruples.iter().advance |elm| {
             let (aVec, bVec, cVec, dVec) = *elm;
             let a = BigInt::from_slice(Plus, aVec);
             let b = BigInt::from_slice(Plus, bVec);
@@ -1927,7 +1929,7 @@ mod bigint_tests {
             check_sub(&a.neg(), b, &q.neg(), &r.neg());
             check_sub(&a.neg(), &b.neg(), q, &r.neg());
         }
-        for mul_triples.each |elm| {
+        for mul_triples.iter().advance |elm| {
             let (aVec, bVec, cVec) = *elm;
             let a = BigInt::from_slice(Plus, aVec);
             let b = BigInt::from_slice(Plus, bVec);
@@ -1937,7 +1939,7 @@ mod bigint_tests {
             if !b.is_zero() { check(&c, &b, &a, &Zero::zero()); }
         }
 
-        for div_rem_quadruples.each |elm| {
+        for div_rem_quadruples.iter().advance |elm| {
             let (aVec, bVec, cVec, dVec) = *elm;
             let a = BigInt::from_slice(Plus, aVec);
             let b = BigInt::from_slice(Plus, bVec);

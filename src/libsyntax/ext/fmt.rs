@@ -70,7 +70,7 @@ fn pieces_to_expr(cx: @ExtCtxt, sp: span,
     fn make_rt_conv_expr(cx: @ExtCtxt, sp: span, cnv: &Conv) -> @ast::expr {
         fn make_flags(cx: @ExtCtxt, sp: span, flags: &[Flag]) -> @ast::expr {
             let mut tmp_expr = make_rt_path_expr(cx, sp, "flag_none");
-            for flags.each |f| {
+            for flags.iter().advance |f| {
                 let fstr = match *f {
                   FlagLeftJustify => "flag_left_justify",
                   FlagLeftZeroPad => "flag_left_zero_pad",
@@ -156,7 +156,7 @@ fn pieces_to_expr(cx: @ExtCtxt, sp: span,
           option::None => (),
           _ => cx.span_unimpl(sp, unsupported)
         }
-        for cnv.flags.each |f| {
+        for cnv.flags.iter().advance |f| {
             match *f {
               FlagLeftJustify => (),
               FlagSignAlways => {
@@ -205,7 +205,7 @@ fn pieces_to_expr(cx: @ExtCtxt, sp: span,
           Some(p) => { debug!("param: %s", p.to_str()); }
           _ => debug!("param: none")
         }
-        for c.flags.each |f| {
+        for c.flags.iter().advance |f| {
             match *f {
               FlagLeftJustify => debug!("flag: left justify"),
               FlagLeftZeroPad => debug!("flag: left zero pad"),

@@ -103,10 +103,10 @@ fn fold_item(ctx: @mut ReadyCtx,
     if attrs.len() > 0 {
         let mut cmds = ~[];
 
-        for attrs.each |attr| {
+        for attrs.iter().advance |attr| {
             match attr.node.value.node {
                 ast::meta_list(_, ref mis) => {
-                    for mis.each |mi| {
+                    for mis.iter().advance |mi| {
                         match mi.node {
                             ast::meta_word(cmd) => cmds.push(cmd.to_owned()),
                             _ => {}
@@ -211,7 +211,7 @@ pub fn compile_input(ctxt: &Ctx,
     let addl_lib_search_paths = @mut options.addl_lib_search_paths;
     // Make sure all the library directories actually exist, since the linker will complain
     // otherwise
-    for addl_lib_search_paths.each() |p| {
+    for addl_lib_search_paths.iter().advance |p| {
         assert!(os::path_is_dir(p));
     }
 
@@ -280,7 +280,7 @@ pub fn compile_crate_from_input(input: &driver::input,
 
     debug!("Outputs are %? and output type = %?", outputs, sess.opts.output_type);
     debug!("additional libraries:");
-    for sess.opts.addl_lib_search_paths.each |lib| {
+    for sess.opts.addl_lib_search_paths.iter().advance |lib| {
         debug!("an additional library: %s", lib.to_str());
     }
 
@@ -311,7 +311,7 @@ pub fn compile_crate(ctxt: &Ctx, pkg_id: &PkgId,
                      what: OutputType) -> bool {
     debug!("compile_crate: crate=%s, dir=%s", crate.to_str(), dir.to_str());
     debug!("compile_crate: short_name = %s, flags =...", pkg_id.to_str());
-    for flags.each |&fl| {
+    for flags.iter().advance |&fl| {
         debug!("+++ %s", fl);
     }
     compile_input(ctxt, pkg_id, crate, dir, flags, cfgs, opt, what)

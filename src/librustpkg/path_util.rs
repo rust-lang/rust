@@ -43,7 +43,8 @@ pub fn make_dir_rwx(p: &Path) -> bool { os::make_dir(p, u_rwx) }
 /// pkgid's short name
 pub fn workspace_contains_package_id(pkgid: &PkgId, workspace: &Path) -> bool {
     let src_dir = workspace.push("src");
-    for os::list_dir(&src_dir).each |&p| {
+    let dirs = os::list_dir(&src_dir);
+    for dirs.iter().advance |&p| {
         let p = Path(p);
         debug!("=> p = %s", p.to_str());
         if !os::path_is_dir(&src_dir.push_rel(&p)) {
@@ -93,7 +94,7 @@ pub fn pkgid_src_in_workspace(pkgid: &PkgId, workspace: &Path) -> ~[Path] {
 /// Returns a src for pkgid that does exist -- None if none of them do
 pub fn first_pkgid_src_in_workspace(pkgid: &PkgId, workspace: &Path) -> Option<Path> {
     let rs = pkgid_src_in_workspace(pkgid, workspace);
-    for rs.each |p| {
+    for rs.iter().advance |p| {
         if os::path_exists(p) {
             return Some(copy *p);
         }
@@ -189,7 +190,7 @@ pub fn library_in_workspace(path: &LocalPath, short_name: &str, where: Target,
     debug!("lib_prefix = %s and lib_filetype = %s", lib_prefix, lib_filetype);
 
     let mut result_filename = None;
-    for dir_contents.each |&p| {
+    for dir_contents.iter().advance |&p| {
         let mut which = 0;
         let mut hash = None;
         let p_path = Path(p);

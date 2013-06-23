@@ -231,7 +231,7 @@ pub fn relate_nested_regions(
               r_sub: ty::Region,
               relate_op: &fn(ty::Region, ty::Region))
     {
-        for the_stack.each |&r| {
+        for the_stack.iter().advance |&r| {
             if !r.is_bound() && !r_sub.is_bound() {
                 relate_op(r, r_sub);
             }
@@ -259,14 +259,14 @@ pub fn relate_free_regions(
     debug!("relate_free_regions >>");
 
     let mut all_tys = ~[];
-    for fn_sig.inputs.each |arg| {
+    for fn_sig.inputs.iter().advance |arg| {
         all_tys.push(*arg);
     }
     for self_ty.iter().advance |&t| {
         all_tys.push(t);
     }
 
-    for all_tys.each |&t| {
+    for all_tys.iter().advance |&t| {
         debug!("relate_free_regions(t=%s)", ppaux::ty_to_str(tcx, t));
         relate_nested_regions(tcx, None, t, |a, b| {
             match (&a, &b) {

@@ -15,14 +15,14 @@ fn foo(c: ~[int]) {
 
 
     match none::<int> {
-      some::<int>(_) => {
-        for c.each |i| {
-            debug!(a);
-            let a = 17;
-            b += ~[a];
+        some::<int>(_) => {
+            for c.iter().advance |i| {
+                debug!(a);
+                let a = 17;
+                b += ~[a];
+            }
         }
-      }
-      _ => { }
+        _ => { }
     }
 }
 

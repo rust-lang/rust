@@ -286,7 +286,7 @@ impl<'self> TraitDef<'self> {
                   _mitem: @ast::meta_item,
                   in_items: ~[@ast::item]) -> ~[@ast::item] {
         let mut result = ~[];
-        for in_items.each |item| {
+        for in_items.iter().advance |item| {
             result.push(*item);
             match item.node {
                 ast::item_struct(struct_def, ref generics) => {
@@ -740,7 +740,7 @@ impl<'self> MethodDef<'self> {
 
                     let mut enum_matching_fields = vec::from_elem(self_vec.len(), ~[]);
 
-                    for matches_so_far.tail().each |&(_, _, other_fields)| {
+                    for matches_so_far.tail().iter().advance |&(_, _, other_fields)| {
                         for other_fields.iter().enumerate().advance |(i, &(_, other_field))| {
                             enum_matching_fields[i].push(other_field);
                         }
@@ -870,7 +870,7 @@ fn summarise_struct(cx: @ExtCtxt, span: span,
                     struct_def: &struct_def) -> Either<uint, ~[ident]> {
     let mut named_idents = ~[];
     let mut unnamed_count = 0;
-    for struct_def.fields.each |field| {
+    for struct_def.fields.iter().advance |field| {
         match field.node.kind {
             ast::named_field(ident, _) => named_idents.push(ident),
             ast::unnamed_field => unnamed_count += 1,

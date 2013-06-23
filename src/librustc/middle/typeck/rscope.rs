@@ -75,7 +75,7 @@ impl RegionParamNames {
                             opt_vec::Vec(new_lifetimes.map(|lt| lt.ident)));
                     }
                     opt_vec::Vec(ref mut existing_lifetimes) => {
-                        for new_lifetimes.each |new_lifetime| {
+                        for new_lifetimes.iter().advance |new_lifetime| {
                             existing_lifetimes.push(new_lifetime.ident);
                         }
                     }

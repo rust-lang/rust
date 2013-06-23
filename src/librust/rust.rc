@@ -222,7 +222,7 @@ fn usage() {
         \n"
     );
 
-    for commands.each |command| {
+    for commands.iter().advance |command| {
         let padding = " ".repeat(indent - command.cmd.len());
         io::println(fmt!("    %s%s%s",
                          command.cmd, padding, command.usage_line));

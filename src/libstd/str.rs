@@ -29,7 +29,7 @@ use iterator::{Iterator, IteratorUtil, FilterIterator, AdditiveIterator, MapIter
 use libc;
 use num::Zero;
 use option::{None, Option, Some};
-use old_iter::{BaseIter, EqIter};
+use old_iter::EqIter;
 use ptr;
 use ptr::RawPtr;
 use to_str::ToStr;
@@ -147,7 +147,7 @@ pub fn from_char(ch: char) -> ~str {
 pub fn from_chars(chs: &[char]) -> ~str {
     let mut buf = ~"";
     buf.reserve(chs.len());
-    for chs.each |ch| {
+    for chs.iter().advance |ch| {
         buf.push_char(*ch)
     }
     buf
@@ -864,7 +864,7 @@ pub mod raw {
     unsafe fn push_bytes(s: &mut ~str, bytes: &[u8]) {
         let new_len = s.len() + bytes.len();
         s.reserve_at_least(new_len);
-        for bytes.each |byte| { push_byte(&mut *s, *byte); }
+        for bytes.iter().advance |byte| { push_byte(&mut *s, *byte); }
     }
 
     /// Removes the last byte from a string and returns it. (Not UTF-8 safe).
@@ -3080,7 +3080,7 @@ mod tests {
                 0xd801_u16, 0xdc95_u16, 0xd801_u16, 0xdc86_u16,
                 0x000a_u16 ]) ];
 
-        for pairs.each |p| {
+        for pairs.iter().advance |p| {
             let (s, u) = copy *p;
             assert!(s.to_utf16() == u);
             assert!(from_utf16(u) == s);
@@ -3094,7 +3094,7 @@ mod tests {
         let s = ~"ศไทย中华Việt Nam";
         let v = ~['ศ','ไ','ท','ย','中','华','V','i','ệ','t',' ','N','a','m'];
         let mut pos = 0;
-        for v.each |ch| {
+        for v.iter().advance |ch| {
             assert!(s.char_at(pos) == *ch);
             pos += from_char(*ch).len();
         }

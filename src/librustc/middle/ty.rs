@@ -1018,7 +1018,7 @@ fn mk_t(cx: ctxt, st: sty) -> t {
     }
     fn sflags(substs: &substs) -> uint {
         let mut f = 0u;
-        for substs.tps.each |tt| { f |= get(*tt).flags; }
+        for substs.tps.iter().advance |tt| { f |= get(*tt).flags; }
         for substs.self_r.iter().advance |r| { f |= rflags(*r) }
         return f;
     }
@@ -1057,16 +1057,16 @@ fn mk_t(cx: ctxt, st: sty) -> t {
         flags |= rflags(r);
         flags |= get(m.ty).flags;
       }
-      &ty_tup(ref ts) => for ts.each |tt| { flags |= get(*tt).flags; },
+      &ty_tup(ref ts) => for ts.iter().advance |tt| { flags |= get(*tt).flags; },
       &ty_bare_fn(ref f) => {
-        for f.sig.inputs.each |a| { flags |= get(*a).flags; }
+        for f.sig.inputs.iter().advance |a| { flags |= get(*a).flags; }
          flags |= get(f.sig.output).flags;
          // T -> _|_ is *not* _|_ !
          flags &= !(has_ty_bot as uint);
       }
       &ty_closure(ref f) => {
         flags |= rflags(f.region);
-        for f.sig.inputs.each |a| { flags |= get(*a).flags; }
+        for f.sig.inputs.iter().advance |a| { flags |= get(*a).flags; }
         flags |= get(f.sig.output).flags;
         // T -> _|_ is *not* _|_ !
         flags &= !(has_ty_bot as uint);
@@ -1320,15 +1320,15 @@ pub fn maybe_walk_ty(ty: t, f: &fn(t) -> bool) {
       }
       ty_enum(_, ref substs) | ty_struct(_, ref substs) |
       ty_trait(_, ref substs, _, _) => {
-        for (*substs).tps.each |subty| { maybe_walk_ty(*subty, f); }
+        for (*substs).tps.iter().advance |subty| { maybe_walk_ty(*subty, f); }
       }
-      ty_tup(ref ts) => { for ts.each |tt| { maybe_walk_ty(*tt, f); } }
+      ty_tup(ref ts) => { for ts.iter().advance |tt| { maybe_walk_ty(*tt, f); } }
       ty_bare_fn(ref ft) => {
-        for ft.sig.inputs.each |a| { maybe_walk_ty(*a, f); }
+        for ft.sig.inputs.iter().advance |a| { maybe_walk_ty(*a, f); }
         maybe_walk_ty(ft.sig.output, f);
       }
       ty_closure(ref ft) => {
-        for ft.sig.inputs.each |a| { maybe_walk_ty(*a, f); }
+        for ft.sig.inputs.iter().advance |a| { maybe_walk_ty(*a, f); }
         maybe_walk_ty(ft.sig.output, f);
       }
     }
@@ -1772,8 +1772,8 @@ fn type_needs_unwind_cleanup_(cx: ctxt, ty: t,
             true
           }
           ty_enum(did, ref substs) => {
-            for (*enum_variants(cx, did)).each |v| {
-                for v.args.each |aty| {
+            for (*enum_variants(cx, did)).iter().advance |v| {
+                for v.args.iter().advance |aty| {
                     let t = subst(cx, substs, *aty);
                     needs_unwind_cleanup |=
                         type_needs_unwind_cleanup_(cx, t, tycache,
@@ -2407,8 +2407,8 @@ pub fn type_structurally_contains(cx: ctxt,
     if test(sty) { return true; }
     match *sty {
       ty_enum(did, ref substs) => {
-        for (*enum_variants(cx, did)).each |variant| {
-            for variant.args.each |aty| {
+        for (*enum_variants(cx, did)).iter().advance |variant| {
+            for variant.args.iter().advance |aty| {
                 let sty = subst(cx, substs, *aty);
                 if type_structurally_contains(cx, sty, test) { return true; }
             }
@@ -2416,7 +2416,8 @@ pub fn type_structurally_contains(cx: ctxt,
         return false;
       }
       ty_struct(did, ref substs) => {
-        for lookup_struct_fields(cx, did).each |field| {
+        let r = lookup_struct_fields(cx, did);
+        for r.iter().advance |field| {
             let ft = lookup_field_type(cx, did, field.id, substs);
             if type_structurally_contains(cx, ft, test) { return true; }
         }
@@ -2424,7 +2425,7 @@ pub fn type_structurally_contains(cx: ctxt,
       }
 
       ty_tup(ref ts) => {
-        for ts.each |tt| {
+        for ts.iter().advance |tt| {
             if type_structurally_contains(cx, *tt, test) { return true; }
         }
         return false;
@@ -2503,7 +2504,7 @@ pub fn type_is_pod(cx: ctxt, ty: t) -> bool {
       // Structural types
       ty_enum(did, ref substs) => {
         let variants = enum_variants(cx, did);
-        for (*variants).each |variant| {
+        for (*variants).iter().advance |variant| {
             let tup_ty = mk_tup(cx, /*bad*/copy variant.args);
 
             // Perform any type parameter substitutions.
@@ -2512,7 +2513,7 @@ pub fn type_is_pod(cx: ctxt, ty: t) -> bool {
         }
       }
       ty_tup(ref elts) => {
-        for elts.each |elt| { if !type_is_pod(cx, *elt) { result = false; } }
+        for elts.iter().advance |elt| { if !type_is_pod(cx, *elt) { result = false; } }
       }
       ty_estr(vstore_fixed(_)) => result = true,
       ty_evec(ref mt, vstore_fixed(_)) | ty_unboxed_vec(ref mt) => {
@@ -3357,14 +3358,14 @@ pub fn stmt_node_id(s: @ast::stmt) -> ast::node_id {
 
 pub fn field_idx(id: ast::ident, fields: &[field]) -> Option<uint> {
     let mut i = 0u;
-    for fields.each |f| { if f.ident == id { return Some(i); } i += 1u; }
+    for fields.iter().advance |f| { if f.ident == id { return Some(i); } i += 1u; }
     return None;
 }
 
 pub fn field_idx_strict(tcx: ty::ctxt, id: ast::ident, fields: &[field])
                      -> uint {
     let mut i = 0u;
-    for fields.each |f| { if f.ident == id { return i; } i += 1u; }
+    for fields.iter().advance |f| { if f.ident == id { return i; } i += 1u; }
     tcx.sess.bug(fmt!(
         "No field named `%s` found in the list of fields `%?`",
         tcx.sess.str_of(id),
@@ -4383,7 +4384,7 @@ pub fn determine_inherited_purity(parent: (ast::purity, ast::node_id),
 pub fn each_bound_trait_and_supertraits(tcx: ctxt,
                                         bounds: &ParamBounds,
                                         f: &fn(@TraitRef) -> bool) -> bool {
-    for bounds.trait_bounds.each |&bound_trait_ref| {
+    for bounds.trait_bounds.iter().advance |&bound_trait_ref| {
         let mut supertrait_set = HashMap::new();
         let mut trait_refs = ~[];
         let mut i = 0;
@@ -4403,7 +4404,7 @@ pub fn each_bound_trait_and_supertraits(tcx: ctxt,
 
             // Add supertraits to supertrait_set
             let supertrait_refs = trait_ref_supertraits(tcx, trait_refs[i]);
-            for supertrait_refs.each |&supertrait_ref| {
+            for supertrait_refs.iter().advance |&supertrait_ref| {
                 debug!("each_bound_trait_and_supertraits(supertrait_ref=%s)",
                        supertrait_ref.repr(tcx));
 
@@ -4424,7 +4425,7 @@ pub fn each_bound_trait_and_supertraits(tcx: ctxt,
 pub fn count_traits_and_supertraits(tcx: ctxt,
                                     type_param_defs: &[TypeParameterDef]) -> uint {
     let mut total = 0;
-    for type_param_defs.each |type_param_def| {
+    for type_param_defs.iter().advance |type_param_def| {
         for each_bound_trait_and_supertraits(tcx, type_param_def.bounds) |_| {
             total += 1;
         }
