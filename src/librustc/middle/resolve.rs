@@ -1415,24 +1415,26 @@ impl Resolver {
                                            (ReducedGraphParent,
                                             vt<ReducedGraphParent>)) {
         let ident = variant.node.name;
-        let (child, _) = self.add_child(ident, parent, ForbidDuplicateValues,
-                                        variant.span);
 
-        let privacy;
-        match variant.node.vis {
-            public => privacy = Public,
-            private => privacy = Private,
-            inherited => privacy = parent_privacy
-        }
+        let privacy =
+            match variant.node.vis {
+                public    => Public,
+                private   => Private,
+                inherited => parent_privacy
+            };
 
         match variant.node.kind {
             tuple_variant_kind(_) => {
+                let (child, _) = self.add_child(ident, parent, ForbidDuplicateValues,
+                                                variant.span);
                 child.define_value(privacy,
                                    def_variant(item_id,
                                                local_def(variant.node.id)),
                                    variant.span);
             }
             struct_variant_kind(_) => {
+                let (child, _) = self.add_child(ident, parent, ForbidDuplicateTypesAndValues,
+                                                variant.span);
                 child.define_type(privacy,
                                   def_variant(item_id,
                                               local_def(variant.node.id)),
