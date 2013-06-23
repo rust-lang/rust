@@ -114,7 +114,7 @@ pub fn type_is_defined_in_local_crate(original_type: t) -> bool {
     do ty::walk_ty(original_type) |t| {
         match get(t).sty {
             ty_enum(def_id, _) |
-            ty_trait(def_id, _, _, _) |
+            ty_trait(def_id, _, _, _, _) |
             ty_struct(def_id, _) => {
                 if def_id.crate == ast::local_crate {
                     found_nominal = true;
@@ -140,7 +140,7 @@ pub fn get_base_type_def_id(inference_context: @mut InferCtxt,
             match get(base_type).sty {
                 ty_enum(def_id, _) |
                 ty_struct(def_id, _) |
-                ty_trait(def_id, _, _, _) => {
+                ty_trait(def_id, _, _, _, _) => {
                     return Some(def_id);
                 }
                 _ => {
@@ -753,7 +753,7 @@ impl CoherenceChecker {
     pub fn ast_type_is_defined_in_local_crate(&self, original_type: @ast::Ty)
                                               -> bool {
         match original_type.node {
-            ty_path(_, path_id) => {
+            ty_path(_, _, path_id) => {
                 match self.crate_context.tcx.def_map.get_copy(&path_id) {
                     def_ty(def_id) | def_struct(def_id) => {
                         if def_id.crate != local_crate {

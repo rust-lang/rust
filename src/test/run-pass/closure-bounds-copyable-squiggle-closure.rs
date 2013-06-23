@@ -8,10 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn foopy() {}
+// xfail-pretty
 
-static f: &'static fn() = foopy; //~ ERROR found extern fn
+// Tests correct copying of heap closures' environments.
 
-fn main () {
-    f();
+fn foo(x: ~fn:Copy()) -> (~fn(), ~fn()) {
+    (copy x, x)
+}
+fn main() {
+    let v = ~[~[1,2,3],~[4,5,6]]; // shouldn't get double-freed
+    let (f1,f2) = do foo {
+        assert!(v.len() == 2);
+    };
+    f1();
+    f2();
 }

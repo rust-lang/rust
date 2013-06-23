@@ -714,7 +714,7 @@ fn check_item_ctypes(cx: &Context, it: @ast::item) {
         let tys = vec::map(decl.inputs, |a| a.ty );
         for vec::each(vec::append_one(tys, decl.output)) |ty| {
             match ty.node {
-              ast::ty_path(_, id) => {
+              ast::ty_path(_, _, id) => {
                 match cx.tcx.def_map.get_copy(&id) {
                   ast::def_prim_ty(ast::ty_int(ast::ty_i)) => {
                     cx.span_lint(ctypes, ty.span,

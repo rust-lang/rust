@@ -797,7 +797,7 @@ pub enum ty_ {
     ty_closure(@TyClosure),
     ty_bare_fn(@TyBareFn),
     ty_tup(~[@Ty]),
-    ty_path(@Path, node_id),
+    ty_path(@Path, @OptVec<TyParamBound>, node_id),
     ty_mac(mac),
     // ty_infer means the type should be inferred instead of it having been
     // specified. This should only appear at the "top level" of a type and not

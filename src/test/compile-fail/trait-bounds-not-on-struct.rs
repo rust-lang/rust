@@ -8,10 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn foopy() {}
+struct Foo;
 
-static f: &'static fn() = foopy; //~ ERROR found extern fn
+fn foo(_x: ~Foo:Owned) { } //~ ERROR kind bounds can only be used on trait types
 
-fn main () {
-    f();
-}
+fn main() { }

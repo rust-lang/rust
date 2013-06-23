@@ -8,10 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn foopy() {}
-
-static f: &'static fn() = foopy; //~ ERROR found extern fn
-
-fn main () {
-    f();
+trait Foo {
 }
+
+struct Bar;
+
+impl Foo:Owned for Bar { //~ ERROR bounded traits are only valid in type position
+}
+
+fn main() { }

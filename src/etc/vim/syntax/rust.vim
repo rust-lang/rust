@@ -2,7 +2,7 @@
 " Language:     Rust
 " Maintainer:   Patrick Walton <pcwalton@mozilla.com>
 " Maintainer:   Ben Blum <bblum@cs.cmu.edu>
-" Last Change:  2012 Dec 25
+" Last Change:  2012 Jun 14
 
 if version < 600
   syntax clear
@@ -13,13 +13,16 @@ endif
 syn keyword   rustConditional match if else
 syn keyword   rustOperator    as
 
+syn match     rustAssert      "\<assert\(\w\)*!"
+syn match     rustFail        "\<fail\(\w\)*!"
 syn keyword   rustKeyword     break copy do drop extern
 syn keyword   rustKeyword     for if impl let log
 syn keyword   rustKeyword     copy do extern
 syn keyword   rustKeyword     for impl let log
 syn keyword   rustKeyword     loop mod once priv pub
 syn keyword   rustKeyword     return
-syn keyword   rustKeyword     unsafe use while
+syn keyword   rustKeyword     unsafe while
+syn keyword   rustKeyword     use nextgroup=rustModPath skipwhite
 " FIXME: Scoped impl's name is also fallen in this category
 syn keyword   rustKeyword     mod trait struct enum type nextgroup=rustIdentifier skipwhite
 syn keyword   rustKeyword     fn nextgroup=rustFuncName skipwhite
@@ -45,7 +48,8 @@ syn keyword   rustType        c_longlong c_ulonglong intptr_t uintptr_t
 syn keyword   rustType        off_t dev_t ino_t pid_t mode_t ssize_t
 
 syn keyword   rustTrait       Const Copy Send Owned Sized " inherent traits
-syn keyword   rustTrait       Eq Ord Num Ptr
+syn keyword   rustTrait       Clone Decodable Encodable IterBytes Rand ToStr
+syn keyword   rustTrait       Eq Ord TotalEq TotalOrd Num Ptr
 syn keyword   rustTrait       Drop Add Sub Mul Quot Rem Neg BitAnd BitOr
 syn keyword   rustTrait       BitXor Shl Shr Index
 
@@ -72,19 +76,21 @@ syn keyword   rustConstant    STDIN_FILENO STDOUT_FILENO STDERR_FILENO
 " If foo::bar changes to foo.bar, change this ("::" to "\.").
 " If foo::bar changes to Foo::bar, change this (first "\w" to "\u").
 syn match     rustModPath     "\w\(\w\)*::[^<]"he=e-3,me=e-3
+syn match     rustModPath     "\w\(\w\)*" contained " only for 'use path;'
 syn match     rustModPathSep  "::"
 
 syn match     rustFuncCall    "\w\(\w\)*("he=e-1,me=e-1
 syn match     rustFuncCall    "\w\(\w\)*::<"he=e-3,me=e-3 " foo::<T>();
 
-syn match     rustMacro       '\w\(\w\)*!'
-syn match     rustMacro       '#\w\(\w\)*'
+syn match     rustMacro       '\w\(\w\)*!' contains=rustAssert,rustFail
+syn match     rustMacro       '#\w\(\w\)*' contains=rustAssert,rustFail
 
 syn match     rustFormat      display "%\(\d\+\$\)\=[-+' #0*]*\(\d*\|\*\|\*\d\+\$\)\(\.\(\d*\|\*\|\*\d\+\$\)\)\=\([hlLjzt]\|ll\|hh\)\=\([aAbdiuoxXDOUfFeEgGcCsSpn?]\|\[\^\=.[^]]*\]\)" contained
 syn match     rustFormat      display "%%" contained
 syn region    rustString      start=+L\="+ skip=+\\\\\|\\"+ end=+"+ contains=rustTodo,rustFormat
 
-syn region    rustAttribute   start="#\[" end="\]" contains=rustString
+syn region    rustAttribute   start="#\[" end="\]" contains=rustString,rustDeriving
+syn region    rustDeriving    start="deriving(" end=")" contains=rustTrait
 
 " Number literals
 syn match     rustNumber      display "\<[0-9][0-9_]*\>"
@@ -143,11 +149,17 @@ hi def link rustMacro         Macro
 hi def link rustType          Type
 hi def link rustTodo          Todo
 hi def link rustAttribute     PreProc
+hi def link rustDeriving      PreProc
 hi def link rustStorage       StorageClass
 hi def link rustLifetime      Special
 
 " Other Suggestions:
+" hi rustAttribute ctermfg=cyan
+" hi rustDeriving ctermfg=cyan
+" hi rustAssert ctermfg=yellow
+" hi rustFail ctermfg=red
 " hi rustMacro ctermfg=magenta
+" hi rustModPathSep ctermfg=grey
 
 syn sync minlines=200
 syn sync maxlines=500

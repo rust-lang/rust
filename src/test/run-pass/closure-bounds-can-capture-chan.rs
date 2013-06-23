@@ -8,10 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn foopy() {}
+use std::comm;
 
-static f: &'static fn() = foopy; //~ ERROR found extern fn
+fn foo(blk: ~fn:Owned()) {
+    blk();
+}
 
-fn main () {
-    f();
+fn main() {
+    let (p,c) = comm::stream();
+    do foo {
+        c.send(());
+    }
+    p.recv();
 }

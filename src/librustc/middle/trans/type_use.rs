@@ -208,7 +208,7 @@ pub fn type_needs_inner(cx: Context,
                 ty::ty_bare_fn(*) |
                 ty::ty_ptr(_) |
                 ty::ty_rptr(_, _) |
-                ty::ty_trait(_, _, _, _) => false,
+                ty::ty_trait(*) => false,
 
               ty::ty_enum(did, ref substs) => {
                 if list::find(enums_seen, |id| *id == did).is_none() {

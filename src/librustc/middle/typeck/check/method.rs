@@ -292,7 +292,7 @@ impl<'self> LookupContext<'self> {
                 ty_param(p) => {
                     self.push_inherent_candidates_from_param(self_ty, p);
                 }
-                ty_trait(did, ref substs, store, _) => {
+                ty_trait(did, ref substs, store, _, _) => {
                     self.push_inherent_candidates_from_trait(
                         self_ty, did, substs, store);
                     self.push_inherent_impl_candidates_for_type(did);

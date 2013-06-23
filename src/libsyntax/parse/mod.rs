@@ -494,7 +494,7 @@ mod test {
                                         idents:~[str_to_ident("int")],
                                         rp: None,
                                         types: ~[]},
-                                                       2),
+                                                       @opt_vec::Empty, 2),
                                     span:sp(4,7)},
                        pat: @ast::pat{id:1,
                                       node: ast::pat_ident(ast::bind_infer,
@@ -530,7 +530,7 @@ mod test {
                                         idents:~[str_to_ident("int")],
                                         rp: None,
                                         types: ~[]},
-                                                       2),
+                                                       @opt_vec::Empty, 2),
                                                 span:sp(10,13)},
                                     pat: @ast::pat{id:1, // fixme
                                                    node: ast::pat_ident(

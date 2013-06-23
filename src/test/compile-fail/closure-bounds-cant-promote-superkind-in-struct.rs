@@ -8,10 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn foopy() {}
+struct X {
+    field: @fn:Copy(),
+}
 
-static f: &'static fn() = foopy; //~ ERROR found extern fn
+fn foo(blk: @fn()) -> X {
+    return X { field: blk }; //~ ERROR expected bounds `Copy` but found no bounds
+}
 
-fn main () {
-    f();
+fn main() {
 }
