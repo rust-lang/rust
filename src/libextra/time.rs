@@ -1142,6 +1142,9 @@ mod tests {
         assert!(result::unwrap(strptime("-0800", "%z")).tm_gmtoff ==
             0);
         assert!(test("%", "%%"));
+
+        // Test for #7256
+        assert_eq!(strptime("360", "%Y-%m-%d"), Err(~"Invalid year"))
     }
 
     fn test_ctime() {
