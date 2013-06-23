@@ -21,6 +21,7 @@ use container::Map;
 use hash::Hash;
 use cmp::Eq;
 use old_iter::BaseIter;
+use iterator::IteratorUtil;
 
 /// A generic trait for converting a value to a string
 pub trait ToStr {
@@ -54,7 +55,7 @@ impl<A:ToStr+Hash+Eq, B:ToStr+Hash+Eq> ToStr for HashMap<A, B> {
     #[inline]
     fn to_str(&self) -> ~str {
         let mut (acc, first) = (~"{", true);
-        for self.each |key, value| {
+        for self.iter().advance |(key, value)| {
             if first {
                 first = false;
             }
@@ -74,7 +75,7 @@ impl<A:ToStr+Hash+Eq> ToStr for HashSet<A> {
     #[inline]
     fn to_str(&self) -> ~str {
         let mut (acc, first) = (~"{", true);
-        for self.each |element| {
+        for self.iter().advance |element| {
             if first {
                 first = false;
             }
