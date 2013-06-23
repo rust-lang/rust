@@ -12,6 +12,7 @@
 
 use core::prelude::*;
 
+use digest::DigestUtil;
 use json;
 use sha1::Sha1;
 use serialize::{Encoder, Encodable, Decoder, Decodable};
@@ -248,16 +249,16 @@ fn json_decode<T:Decodable<json::Decoder>>(s: &str) -> T {
 }
 
 fn digest<T:Encodable<json::Encoder>>(t: &T) -> ~str {
-    let mut sha = Sha1::new();
-    sha.input_str(json_encode(t));
-    sha.result_str()
+    let mut sha = ~Sha1::new();
+    (*sha).input_str(json_encode(t));
+    (*sha).result_str()
 }
 
 fn digest_file(path: &Path) -> ~str {
-    let mut sha = Sha1::new();
+    let mut sha = ~Sha1::new();
     let s = io::read_whole_file_str(path);
-    sha.input_str(*s.get_ref());
-    sha.result_str()
+    (*sha).input_str(*s.get_ref());
+    (*sha).result_str()
 }
 
 impl Context {

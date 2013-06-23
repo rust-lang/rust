@@ -24,7 +24,7 @@
 
 use core::prelude::*;
 
-use core::uint;
+use digest::Digest;
 
 /*
  * A SHA-1 implementation derived from Paul E. Jones's reference
@@ -148,18 +148,17 @@ fn circular_shift(bits: u32, word: u32) -> u32 {
     return word << bits | word >> 32u32 - bits;
 }
 
-fn mk_result(st: &mut Sha1) -> ~[u8] {
+fn mk_result(st: &mut Sha1, rs: &mut [u8]) {
     if !st.computed { pad_msg(st); st.computed = true; }
-    let mut rs: ~[u8] = ~[];
+    let mut i = 0;
     for st.h.mut_iter().advance |ptr_hpart| {
         let hpart = *ptr_hpart;
-        let a = (hpart >> 24u32 & 0xFFu32) as u8;
-        let b = (hpart >> 16u32 & 0xFFu32) as u8;
-        let c = (hpart >> 8u32 & 0xFFu32) as u8;
-        let d = (hpart & 0xFFu32) as u8;
-        rs = vec::append(copy rs, [a, b, c, d]);
+        rs[i]   = (hpart >> 24u32 & 0xFFu32) as u8;
+        rs[i+1] = (hpart >> 16u32 & 0xFFu32) as u8;
+        rs[i+2] = (hpart >> 8u32 & 0xFFu32) as u8;
+        rs[i+3] = (hpart & 0xFFu32) as u8;
+        i += 4;
     }
-    return rs;
 }
 
 /*
@@ -221,6 +220,9 @@ impl Sha1 {
         st.reset();
         return st;
     }
+}
+
+impl Digest for Sha1 {
     pub fn reset(&mut self) {
         self.len_low = 0;
         self.len_high = 0;
@@ -233,28 +235,15 @@ impl Sha1 {
         self.computed = false;
     }
     pub fn input(&mut self, msg: &[u8]) { add_input(self, msg); }
-    pub fn input_str(&mut self, msg: &str) {
-        add_input(self, msg.as_bytes());
-    }
-    pub fn result(&mut self) -> ~[u8] { return mk_result(self); }
-    pub fn result_str(&mut self) -> ~str {
-        let rr = mk_result(self);
-        let mut s = ~"";
-        for rr.iter().advance() |b| {
-            let hex = uint::to_str_radix(*b as uint, 16u);
-            if hex.len() == 1 {
-                s += "0";
-            }
-            s += hex;
-        }
-        return s;
-    }
+    pub fn result(&mut self, out: &mut [u8]) { return mk_result(self, out); }
+    pub fn output_bits(&self) -> uint { 160 }
 }
 
 #[cfg(test)]
 mod tests {
     use core::vec;
 
+    use digest::{Digest, DigestUtil};
     use sha1::Sha1;
 
     #[test]
@@ -343,13 +332,15 @@ mod tests {
 
         // Test that it works when accepting the message all at once
 
+        let mut out = [0u8, ..20];
+
         let mut sh = ~Sha1::new();
         for tests.iter().advance |t| {
-            sh.input_str(t.input);
-            let out = sh.result();
+            (*sh).input_str(t.input);
+            sh.result(out);
             assert!(vec::eq(t.output, out));
 
-            let out_str = sh.result_str();
+            let out_str = (*sh).result_str();
             assert_eq!(out_str.len(), 40);
             assert!(out_str == t.output_str);
 
@@ -363,13 +354,13 @@ mod tests {
             let mut left = len;
             while left > 0u {
                 let take = (left + 1u) / 2u;
-                sh.input_str(t.input.slice(len - left, take + len - left));
+                (*sh).input_str(t.input.slice(len - left, take + len - left));
                 left = left - take;
             }
-            let out = sh.result();
+            sh.result(out);
             assert!(vec::eq(t.output, out));
 
-            let out_str = sh.result_str();
+            let out_str = (*sh).result_str();
             assert_eq!(out_str.len(), 40);
             assert!(out_str == t.output_str);
 
