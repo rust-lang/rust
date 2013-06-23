@@ -58,6 +58,7 @@ Several modules in `core` are clients of `rt`:
 #[deny(unused_imports)];
 #[deny(unused_mut)];
 #[deny(unused_variable)];
+#[deny(unused_unsafe)];
 
 use cell::Cell;
 use clone::Clone;
@@ -224,7 +225,7 @@ pub fn run(main: ~fn()) -> int {
 
     let nthreads = match os::getenv("RUST_THREADS") {
         Some(nstr) => FromStr::from_str(nstr).get(),
-        None => unsafe { util::num_cpus() }
+        None => util::num_cpus()
     };
 
     // The shared list of sleeping schedulers. Schedulers wake each other
