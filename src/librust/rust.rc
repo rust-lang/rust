@@ -118,6 +118,13 @@ static commands: &'static [Command<'static>] = &[
         usage_line: "run a rust interpreter",
         usage_full: UsgStr("\nUsage:\trusti"),
     },
+    Command{cmd: "format",
+              action: Call(format_source_code),
+              usage_line: "Formats and overwrites the specified files",
+              usage_full:
+                  UsgStr("usage: \"rust format file1.rs file2.rs\" aborts on error. Do 
+                          \"rust format --force file1.rs file2.rs\" if you want to contiue 
+                          formating even if an error is thrown")},
     Command{
         cmd: "help",
         action: Call(cmd_help),
@@ -129,6 +136,48 @@ static commands: &'static [Command<'static>] = &[
         )
     }
 ];
+pub fn format_source_code(args: &[~str]) -> ValidUsage {
+    let mut args = args.to_owned();
+
+    // true if all specified files are formatable
+    fn check_for_error(args: &[~str]) -> bool {
+        for args.iter().advance |p| {
+            let source_code =
+                core::run::process_output("rustc", &[copy *p, ~"--pretty"]);
+            if (source_code.output.is_empty()) { return false; }
+        }
+        true
+    }
+
+    fn write_output(args: &[~str]) {
+
+        
+        // If we have a writer in our result then we write the source code to it.
+        for args.iter().advance |path| {
+            let source_code =
+                core::run::process_output("rustc", &[copy *path, ~"--pretty"]);
+            let path = core::path::Path(*path);
+            // We overwrite the input file.
+            let writer_result = io::buffered_file_writer(&path);
+            match writer_result {
+                core::result::Ok(writer) => writer.write(source_code.output),
+                core::result::Err(u) => ()
+            };
+        }
+    }
+
+    // rust format --force file1 file2
+    if (*args.head() == ~"--force") {
+        args.shift();
+        write_output(args);
+        // rust format file1 file2 --format_source_code
+    } else if (*args.last() == ~"--force") {
+        args.pop();
+        write_output(args);
+
+    } else if (check_for_error(args)) { write_output(args); } else { return Invalid }
+    Valid(0)
+}
 
 fn rustc_help() {
     rustc::usage(copy os::args()[0])
