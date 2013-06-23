@@ -882,11 +882,11 @@ the function name.
 
 ~~~~ {.xfail-test}
 fn iter<T>(seq: &[T], f: &fn(T)) {
-    for seq.each |elt| { f(elt); }
+    for seq.iter().advance |elt| { f(elt); }
 }
 fn map<T, U>(seq: &[T], f: &fn(T) -> U) -> ~[U] {
     let mut acc = ~[];
-    for seq.each |elt| { acc.push(f(elt)); }
+    for seq.iter().advance |elt| { acc.push(f(elt)); }
     acc
 }
 ~~~~
@@ -2329,7 +2329,7 @@ An example of a for loop over the contents of a vector:
 
 let v: &[foo] = &[a, b, c];
 
-for v.each |e| {
+for v.iter().advance |e| {
     bar(*e);
 }
 ~~~~

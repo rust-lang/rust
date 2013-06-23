@@ -1385,7 +1385,7 @@ mod tests {
     fn mk_object(items: &[(~str, Json)]) -> Json {
         let mut d = ~HashMap::new();
 
-        for items.each |item| {
+        for items.iter().advance |item| {
             match *item {
                 (ref key, ref value) => { d.insert(copy *key, copy *value); },
             }

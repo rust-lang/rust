@@ -59,7 +59,7 @@ pub fn trans_impl(ccx: @mut CrateContext,
 
     if !generics.ty_params.is_empty() { return; }
     let sub_path = vec::append_one(path, path_name(name));
-    for methods.each |method| {
+    for methods.iter().advance |method| {
         if method.generics.ty_params.len() == 0u {
             let llfn = get_item_val(ccx, method.id);
             let path = vec::append_one(/*bad*/copy sub_path,
@@ -175,7 +175,7 @@ pub fn trans_self_arg(bcx: block,
 
     // FIXME(#3446)---this is wrong, actually.  The temp_cleanups
     // should be revoked only after all arguments have been passed.
-    for temp_cleanups.each |c| {
+    for temp_cleanups.iter().advance |c| {
         revoke_clean(bcx, *c)
     }
 
@@ -406,7 +406,7 @@ pub fn method_with_name_or_default(ccx: @mut CrateContext,
         let pmm = ccx.tcx.provided_methods;
         match pmm.find(&impl_id) {
             Some(pmis) => {
-                for pmis.each |pmi| {
+                for pmis.iter().advance |pmi| {
                     if pmi.method_info.ident == name {
                         debug!("pmi.method_info.did = %?",
                                pmi.method_info.did);
@@ -773,7 +773,7 @@ pub fn make_vtable(ccx: @mut CrateContext,
         let _icx = push_ctxt("impl::make_vtable");
 
         let mut components = ~[ tydesc.tydesc ];
-        for ptrs.each |&ptr| {
+        for ptrs.iter().advance |&ptr| {
             components.push(ptr)
         }
 

@@ -130,7 +130,7 @@ pub fn static_size_of_enum(cx: &mut CrateContext, t: ty::t) -> uint {
             // Compute max(variant sizes).
             let mut max_size = 0;
             let variants = ty::enum_variants(cx.tcx, tid);
-            for variants.each |variant| {
+            for variants.iter().advance |variant| {
                 if variant.args.len() == 0 {
                     loop;
                 }

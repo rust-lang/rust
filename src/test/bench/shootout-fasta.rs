@@ -47,11 +47,11 @@ struct AminoAcids {
 fn make_cumulative(aa: ~[AminoAcids]) -> ~[AminoAcids] {
     let mut cp: u32 = 0u32;
     let mut ans: ~[AminoAcids] = ~[];
-    for aa.each |a| {
+    for aa.iter().advance |a| {
         cp += a.prob;
         ans += [AminoAcids {ch: a.ch, prob: cp}];
     }
-    return ans;
+    ans
 }
 
 fn select_random(r: u32, genelist: ~[AminoAcids]) -> char {
@@ -64,7 +64,7 @@ fn select_random(r: u32, genelist: ~[AminoAcids]) -> char {
             } else { return bisect(v, mid, hi, target); }
         } else { return v[hi].ch; }
     }
-    return bisect(copy genelist, 0, genelist.len() - 1, r);
+    bisect(copy genelist, 0, genelist.len() - 1, r)
 }
 
 fn make_random_fasta(wr: @io::Writer,
@@ -106,7 +106,7 @@ fn make_repeat_fasta(wr: @io::Writer, id: ~str, desc: ~str, s: ~str, n: int) {
 }
 
 fn acid(ch: char, prob: u32) -> AminoAcids {
-    return AminoAcids {ch: ch, prob: prob};
+    AminoAcids {ch: ch, prob: prob}
 }
 
 fn main() {

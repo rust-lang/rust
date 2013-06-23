@@ -289,7 +289,7 @@ pub fn trans_foreign_mod(ccx: @mut CrateContext,
         Some(abi) => abi,
     };
 
-    for foreign_mod.items.each |&foreign_item| {
+    for foreign_mod.items.iter().advance |&foreign_item| {
         match foreign_item.node {
             ast::foreign_item_fn(*) => {
                 let id = foreign_item.id;

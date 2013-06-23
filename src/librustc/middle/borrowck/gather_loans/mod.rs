@@ -229,8 +229,8 @@ fn gather_loans_in_expr(ex: @ast::expr,
 
       ast::expr_match(ex_v, ref arms) => {
         let cmt = this.bccx.cat_expr(ex_v);
-        for arms.each |arm| {
-            for arm.pats.each |pat| {
+        for arms.iter().advance |arm| {
+            for arm.pats.iter().advance |pat| {
                 this.gather_pat(cmt, *pat, arm.body.node.id, ex.id);
             }
         }

@@ -582,7 +582,7 @@ pub fn make_command_line(prog: &str, args: &[~str]) -> ~str {
 
     let mut cmd = ~"";
     append_arg(&mut cmd, prog);
-    for args.each |arg| {
+    for args.iter().advance |arg| {
         cmd.push_char(' ');
         append_arg(&mut cmd, *arg);
     }
@@ -698,7 +698,7 @@ fn with_argv<T>(prog: &str, args: &[~str],
                 cb: &fn(**libc::c_char) -> T) -> T {
     let mut argptrs = ~[str::as_c_str(prog, |b| b)];
     let mut tmps = ~[];
-    for args.each |arg| {
+    for args.iter().advance |arg| {
         let t = @copy *arg;
         tmps.push(t);
         argptrs.push(str::as_c_str(*t, |b| b));
@@ -716,7 +716,7 @@ fn with_envp<T>(env: Option<&[(~str, ~str)]>, cb: &fn(*c_void) -> T) -> T {
         let mut tmps = ~[];
         let mut ptrs = ~[];
 
-        for es.each |&(k, v)| {
+        for es.iter().advance |&(k, v)| {
             let kv = @fmt!("%s=%s", k, v);
             tmps.push(kv);
             ptrs.push(str::as_c_str(*kv, |b| b));
@@ -739,7 +739,7 @@ fn with_envp<T>(env: Option<&[(~str, ~str)]>, cb: &fn(*mut c_void) -> T) -> T {
     match env {
       Some(es) => {
         let mut blk = ~[];
-        for es.each |&(k, v)| {
+        for es.iter().advance |&(k, v)| {
             let kv = fmt!("%s=%s", k, v);
             blk.push_all(kv.as_bytes_with_null_consume());
         }
@@ -1165,7 +1165,8 @@ mod tests {
         let mut prog = run_env(None);
         let output = str::from_bytes(prog.finish_with_output().output);
 
-        for os::env().each |&(k, v)| {
+        let r = os::env();
+        for r.iter().advance |&(k, v)| {
             // don't check windows magical empty-named variables
             assert!(k.is_empty() || output.contains(fmt!("%s=%s", k, v)));
         }

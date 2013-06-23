@@ -88,7 +88,7 @@ fn lookup_vtables(vcx: &VtableContext,
     let tcx = vcx.tcx();
     let mut result = ~[];
     let mut i = 0u;
-    for substs.tps.each |ty| {
+    for substs.tps.iter().advance |ty| {
         // ty is the value supplied for the type parameter A...
 
         for ty::each_bound_trait_and_supertraits(

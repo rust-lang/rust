@@ -19,7 +19,7 @@ trait vec_monad<A> {
 impl<A> vec_monad<A> for ~[A] {
     fn bind<B:Copy>(&self, f: &fn(&A) -> ~[B]) -> ~[B] {
         let mut r = ~[];
-        for self.each |elt| { r += f(elt); }
+        for self.iter().advance |elt| { r += f(elt); }
         r
     }
 }

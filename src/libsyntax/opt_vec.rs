@@ -135,7 +135,7 @@ impl<A> BaseIter<A> for OptVec<A> {
     fn each(&self, blk: &fn(v: &A) -> bool) -> bool {
         match *self {
             Empty => true,
-            Vec(ref v) => v.each(blk)
+            Vec(ref v) => v.iter().advance(blk)
         }
     }
 

@@ -248,7 +248,7 @@ fn generic_fields_of(cx: &mut CrateContext, r: &Repr, sizing: bool) -> ~[Type] {
             let mut most_aligned = None;
             let mut largest_align = 0;
             let mut largest_size = 0;
-            for sts.each |st| {
+            for sts.iter().advance |st| {
                 if largest_size < st.size {
                     largest_size = st.size;
                 }

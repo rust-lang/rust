@@ -87,7 +87,7 @@ fn each_abi(op: &fn(abi: Abi) -> bool) -> bool {
      * Iterates through each of the defined ABIs.
      */
 
-    AbiDatas.each(|abi_data| op(abi_data.abi))
+    AbiDatas.iter().advance(|abi_data| op(abi_data.abi))
 }
 
 pub fn lookup(name: &str) -> Option<Abi> {
@@ -213,7 +213,7 @@ impl AbiSet {
 
         for abis.iter().enumerate().advance |(i, abi)| {
             let data = abi.data();
-            for abis.slice(0, i).each |other_abi| {
+            for abis.slice(0, i).iter().advance |other_abi| {
                 let other_data = other_abi.data();
                 debug!("abis=(%?,%?) datas=(%?,%?)",
                        abi, data.abi_arch,
@@ -389,7 +389,7 @@ fn indices_are_correct() {
 #[cfg(test)]
 fn check_arch(abis: &[Abi], arch: Architecture, expect: Option<Abi>) {
     let mut set = AbiSet::empty();
-    for abis.each |&abi| {
+    for abis.iter().advance |&abi| {
         set.add(abi);
     }
     let r = set.for_arch(arch);

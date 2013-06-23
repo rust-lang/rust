@@ -187,7 +187,7 @@ fn encode_ty_type_param_defs(ebml_w: &mut writer::Encoder,
         tcx: ecx.tcx,
         reachable: |a| r.contains(&a),
         abbrevs: tyencode::ac_use_abbrevs(ecx.type_abbrevs)};
-    for params.each |param| {
+    for params.iter().advance |param| {
         ebml_w.start_tag(tag);
         tyencode::enc_type_param_def(ebml_w.writer, ty_str_ctxt, param);
         ebml_w.end_tag();
@@ -325,7 +325,7 @@ fn encode_enum_variant_info(ecx: &EncodeContext,
     let mut i = 0;
     let vi = ty::enum_variants(ecx.tcx,
                                ast::def_id { crate: local_crate, node: id });
-    for variants.each |variant| {
+    for variants.iter().advance |variant| {
         index.push(entry {val: variant.node.id, pos: ebml_w.writer.tell()});
         ebml_w.start_tag(tag_items_data_item);
         encode_def_id(ebml_w, local_def(variant.node.id));
@@ -373,7 +373,7 @@ fn encode_path(ecx: &EncodeContext,
 
     ebml_w.start_tag(tag_path);
     ebml_w.wr_tagged_u32(tag_path_len, (path.len() + 1) as u32);
-    for path.each |pe| {
+    for path.iter().advance |pe| {
         encode_path_elt(ecx, ebml_w, *pe);
     }
     encode_path_elt(ecx, ebml_w, name);
@@ -403,8 +403,8 @@ fn encode_reexported_static_base_methods(ecx: &EncodeContext,
                                          -> bool {
     match ecx.tcx.base_impls.find(&exp.def_id) {
         Some(implementations) => {
-            for implementations.each |&base_impl| {
-                for base_impl.methods.each |&m| {
+            for implementations.iter().advance |&base_impl| {
+                for base_impl.methods.iter().advance |&m| {
                     if m.explicit_self == ast::sty_static {
                         encode_reexported_static_method(ecx, ebml_w, exp,
                                                         m.did, m.ident);
@@ -424,7 +424,7 @@ fn encode_reexported_static_trait_methods(ecx: &EncodeContext,
                                           -> bool {
     match ecx.tcx.trait_methods_cache.find(&exp.def_id) {
         Some(methods) => {
-            for methods.each |&m| {
+            for methods.iter().advance |&m| {
                 if m.explicit_self == ast::sty_static {
                     encode_reexported_static_method(ecx, ebml_w, exp,
                                                     m.def_id, m.ident);
@@ -486,7 +486,7 @@ fn encode_info_for_mod(ecx: &EncodeContext,
     debug!("(encoding info for module) encoding info for module ID %d", id);
 
     // Encode info about all the module children.
-    for md.items.each |item| {
+    for md.items.iter().advance |item| {
         match item.node {
             item_impl(*) => {
                 let (ident, did) = (item.ident, item.id);
@@ -511,7 +511,7 @@ fn encode_info_for_mod(ecx: &EncodeContext,
     match ecx.reexports2.find(&id) {
         Some(ref exports) => {
             debug!("(encoding info for module) found reexports for %d", id);
-            for exports.each |exp| {
+            for exports.iter().advance |exp| {
                 debug!("(encoding info for module) reexport '%s' for %d",
                        exp.name, id);
                 ebml_w.start_tag(tag_items_data_item_reexport);
@@ -617,7 +617,7 @@ fn encode_info_for_struct(ecx: &EncodeContext,
     let tcx = ecx.tcx;
      /* We encode both private and public fields -- need to include
         private fields to get the offsets right */
-    for fields.each |field| {
+    for fields.iter().advance |field| {
         let (nm, vis) = match field.node.kind {
             named_field(nm, vis) => (nm, vis),
             unnamed_field => (special_idents::unnamed_field, inherited)
@@ -862,7 +862,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_type_param_bounds(ebml_w, ecx, &generics.ty_params);
         encode_type(ecx, ebml_w, node_id_to_type(tcx, item.id));
         encode_name(ecx, ebml_w, item.ident);
-        for (*enum_definition).variants.each |v| {
+        for (*enum_definition).variants.iter().advance |v| {
             encode_variant_id(ebml_w, local_def(v.node.id));
         }
         (ecx.encode_inlined_item)(ecx, ebml_w, path, ii_item(item));
@@ -921,7 +921,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         /* Encode def_ids for each field and method
          for methods, write all the stuff get_trait_method
         needs to know*/
-        for struct_def.fields.each |f| {
+        for struct_def.fields.iter().advance |f| {
             match f.node.kind {
                 named_field(ident, vis) => {
                    ebml_w.start_tag(tag_item_field);
@@ -960,7 +960,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
             }
             _ => {}
         }
-        for methods.each |m| {
+        for methods.iter().advance |m| {
             ebml_w.start_tag(tag_item_impl_method);
             let method_def_id = local_def(m.id);
             let s = def_to_str(method_def_id);
@@ -978,7 +978,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         let mut impl_path = vec::append(~[], path);
         impl_path += [ast_map::path_name(item.ident)];
 
-        for methods.each |m| {
+        for methods.iter().advance |m| {
             index.push(entry {val: m.id, pos: ebml_w.writer.tell()});
             encode_info_for_method(ecx,
                                    ebml_w,
@@ -1001,13 +1001,13 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_trait_ref(ebml_w, ecx, trait_def.trait_ref, tag_item_trait_ref);
         encode_name(ecx, ebml_w, item.ident);
         encode_attributes(ebml_w, item.attrs);
-        for ty::trait_method_def_ids(tcx, local_def(item.id)).each |&method_def_id| {
+        for ty::trait_method_def_ids(tcx, local_def(item.id)).iter().advance |&method_def_id| {
             ebml_w.start_tag(tag_item_trait_method);
             encode_def_id(ebml_w, method_def_id);
             ebml_w.end_tag();
         }
         encode_path(ecx, ebml_w, path, ast_map::path_name(item.ident));
-        for super_traits.each |ast_trait_ref| {
+        for super_traits.iter().advance |ast_trait_ref| {
             let trait_ref = ty::node_id_to_trait_ref(ecx.tcx, ast_trait_ref.ref_id);
             encode_trait_ref(ebml_w, ecx, trait_ref, tag_item_super_trait_ref);
         }
@@ -1183,13 +1183,13 @@ fn create_index<T:Copy + Hash + IterBytes>(index: ~[entry<T>]) ->
    ~[@~[entry<T>]] {
     let mut buckets: ~[@mut ~[entry<T>]] = ~[];
     for uint::range(0u, 256u) |_i| { buckets.push(@mut ~[]); };
-    for index.each |elt| {
+    for index.iter().advance |elt| {
         let h = elt.val.hash() as uint;
         buckets[h % 256].push(copy *elt);
     }
 
     let mut buckets_frozen = ~[];
-    for buckets.each |bucket| {
+    for buckets.iter().advance |bucket| {
         buckets_frozen.push(@/*bad*/copy **bucket);
     }
     return buckets_frozen;
@@ -1202,10 +1202,10 @@ fn encode_index<T>(ebml_w: &mut writer::Encoder,
     ebml_w.start_tag(tag_index);
     let mut bucket_locs: ~[uint] = ~[];
     ebml_w.start_tag(tag_index_buckets);
-    for buckets.each |bucket| {
+    for buckets.iter().advance |bucket| {
         bucket_locs.push(ebml_w.writer.tell());
         ebml_w.start_tag(tag_index_buckets_bucket);
-        for (**bucket).each |elt| {
+        for (**bucket).iter().advance |elt| {
             ebml_w.start_tag(tag_index_buckets_bucket_elt);
             assert!(elt.pos < 0xffff_ffff);
             writer.write_be_u32(elt.pos as u32);
@@ -1216,7 +1216,7 @@ fn encode_index<T>(ebml_w: &mut writer::Encoder,
     }
     ebml_w.end_tag();
     ebml_w.start_tag(tag_index_table);
-    for bucket_locs.each |pos| {
+    for bucket_locs.iter().advance |pos| {
         assert!(*pos < 0xffff_ffff);
         writer.write_be_u32(*pos as u32);
     }
@@ -1262,7 +1262,7 @@ fn encode_meta_item(ebml_w: &mut writer::Encoder, mi: @meta_item) {
         ebml_w.start_tag(tag_meta_item_name);
         ebml_w.writer.write(name.as_bytes());
         ebml_w.end_tag();
-        for items.each |inner_item| {
+        for items.iter().advance |inner_item| {
             encode_meta_item(ebml_w, *inner_item);
         }
         ebml_w.end_tag();
@@ -1272,7 +1272,7 @@ fn encode_meta_item(ebml_w: &mut writer::Encoder, mi: @meta_item) {
 
 fn encode_attributes(ebml_w: &mut writer::Encoder, attrs: &[attribute]) {
     ebml_w.start_tag(tag_attributes);
-    for attrs.each |attr| {
+    for attrs.iter().advance |attr| {
         ebml_w.start_tag(tag_attribute);
         encode_meta_item(ebml_w, attr.node.value);
         ebml_w.end_tag();
@@ -1314,7 +1314,7 @@ fn synthesize_crate_attrs(ecx: &EncodeContext,
 
     let mut attrs: ~[attribute] = ~[];
     let mut found_link_attr = false;
-    for crate.node.attrs.each |attr| {
+    for crate.node.attrs.iter().advance |attr| {
         attrs.push(
             if "link" != attr::get_attr_name(attr)  {
                 copy *attr
@@ -1356,7 +1356,7 @@ fn encode_crate_deps(ecx: &EncodeContext,
 
         // Sanity-check the crate numbers
         let mut expected_cnum = 1;
-        for deps.each |n| {
+        for deps.iter().advance |n| {
             assert_eq!(n.cnum, expected_cnum);
             expected_cnum += 1;
         }
@@ -1370,7 +1370,8 @@ fn encode_crate_deps(ecx: &EncodeContext,
     // FIXME (#2166): This is not nearly enough to support correct versioning
     // but is enough to get transitive crate dependencies working.
     ebml_w.start_tag(tag_crate_deps);
-    for get_ordered_deps(ecx, cstore).each |dep| {
+    let r = get_ordered_deps(ecx, cstore);
+    for r.iter().advance |dep| {
         encode_crate_dep(ecx, ebml_w, *dep);
     }
     ebml_w.end_tag();
@@ -1404,7 +1405,7 @@ fn encode_link_args(ecx: &EncodeContext, ebml_w: &mut writer::Encoder) {
     ebml_w.start_tag(tag_link_args);
 
     let link_args = cstore::get_used_link_args(ecx.cstore);
-    for link_args.each |link_arg| {
+    for link_args.iter().advance |link_arg| {
         ebml_w.start_tag(tag_link_args_arg);
         ebml_w.writer.write_str(link_arg.to_str());
         ebml_w.end_tag();
@@ -1515,7 +1516,7 @@ pub fn encode_metadata(parms: EncodeParams, crate: &crate) -> ~[u8] {
     ecx.stats.total_bytes = *wr.pos;
 
     if (tcx.sess.meta_stats()) {
-        for wr.bytes.each |e| {
+        for wr.bytes.iter().advance |e| {
             if *e == 0 {
                 ecx.stats.zero_bytes += 1;
             }

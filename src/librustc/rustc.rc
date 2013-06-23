@@ -184,7 +184,8 @@ Available lint options:
 
 pub fn describe_debug_flags() {
     io::println(fmt!("\nAvailable debug options:\n"));
-    for session::debugging_opts_map().each |pair| {
+    let r = session::debugging_opts_map();
+    for r.iter().advance |pair| {
         let (name, desc, _) = /*bad*/copy *pair;
         io::println(fmt!("    -Z %-20s -- %s", name, desc));
     }
@@ -344,13 +345,14 @@ pub fn monitor(f: ~fn(diagnostic::Emitter)) {
                     diagnostic::ice_msg("unexpected failure"),
                     diagnostic::error);
 
-                for [
+                let xs = [
                     ~"the compiler hit an unexpected failure path. \
                      this is a bug",
                     ~"try running with RUST_LOG=rustc=1,::rt::backtrace \
                      to get further details and report the results \
                      to github.com/mozilla/rust/issues"
-                ].each |note| {
+                ];
+                for xs.iter().advance |note| {
                     diagnostic::emit(None, *note, diagnostic::note)
                 }
             }

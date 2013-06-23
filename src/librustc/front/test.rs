@@ -386,7 +386,7 @@ fn is_std(cx: &TestCtxt) -> bool {
 fn mk_test_descs(cx: &TestCtxt) -> @ast::expr {
     debug!("building test vector from %u tests", cx.testfns.len());
     let mut descs = ~[];
-    for cx.testfns.each |test| {
+    for cx.testfns.iter().advance |test| {
         descs.push(mk_test_desc_and_fn_rec(cx, test));
     }
 

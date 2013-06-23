@@ -550,7 +550,7 @@ pub fn check_no_duplicate_fields(tcx: ty::ctxt,
                                  fields: ~[(ast::ident, span)]) {
     let mut field_names = HashMap::new();
 
-    for fields.each |p| {
+    for fields.iter().advance |p| {
         let (id, sp) = *p;
         let orig_sp = field_names.find(&id).map_consume(|x| *x);
         match orig_sp {
@@ -599,12 +599,12 @@ pub fn check_item(ccx: @mut CrateCtxt, it: @ast::item) {
         let rp = ccx.tcx.region_paramd_items.find(&it.id).map_consume(|x| *x);
         debug!("item_impl %s with id %d rp %?",
                ccx.tcx.sess.str_of(it.ident), it.id, rp);
-        for ms.each |m| {
+        for ms.iter().advance |m| {
             check_method(ccx, *m);
         }
       }
       ast::item_trait(_, _, ref trait_methods) => {
-        for (*trait_methods).each |trait_method| {
+        for (*trait_methods).iter().advance |trait_method| {
             match *trait_method {
               required(*) => {
                 // Nothing to do, since required methods don't have
@@ -625,11 +625,11 @@ pub fn check_item(ccx: @mut CrateCtxt, it: @ast::item) {
       }
       ast::item_foreign_mod(ref m) => {
         if m.abis.is_intrinsic() {
-            for m.items.each |item| {
+            for m.items.iter().advance |item| {
                 check_intrinsic_type(ccx, *item);
             }
         } else {
-            for m.items.each |item| {
+            for m.items.iter().advance |item| {
                 let tpt = ty::lookup_item_type(ccx.tcx, local_def(item.id));
                 if tpt.generics.has_type_params() {
                     ccx.tcx.sess.span_err(
@@ -1225,7 +1225,8 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         // functions. This is so that we have more information about the types
         // of arguments when we typecheck the functions. This isn't really the
         // right way to do this.
-        for [false, true].each |check_blocks| {
+        let xs = [false, true];
+        for xs.iter().advance |check_blocks| {
             let check_blocks = *check_blocks;
             debug!("check_blocks=%b", check_blocks);
 
@@ -1803,14 +1804,14 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
 
         let mut class_field_map = HashMap::new();
         let mut fields_found = 0;
-        for field_types.each |field| {
+        for field_types.iter().advance |field| {
             class_field_map.insert(field.ident, (field.id, false));
         }
 
         let mut error_happened = false;
 
         // Typecheck each field.
-        for ast_fields.each |field| {
+        for ast_fields.iter().advance |field| {
             let mut expected_field_type = ty::mk_err();
 
             let pair = class_field_map.find(&field.node.ident).
@@ -1856,7 +1857,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
             assert!(fields_found <= field_types.len());
             if fields_found < field_types.len() {
                 let mut missing_fields = ~[];
-                for field_types.each |class_field| {
+                for field_types.iter().advance |class_field| {
                     let name = class_field.ident;
                     let (_, seen) = *class_field_map.get(&name);
                     if !seen {
@@ -2175,7 +2176,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                 _ => mutability = mutbl
             }
             let t: ty::t = fcx.infcx().next_ty_var();
-            for args.each |e| {
+            for args.iter().advance |e| {
                 check_expr_has_type(fcx, *e, t);
                 let arg_t = fcx.expr_ty(*e);
                 if ty::type_is_error(arg_t) {
@@ -2377,10 +2378,10 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         fcx.write_ty(id, ty_param_bounds_and_ty.ty);
       }
       ast::expr_inline_asm(ref ia) => {
-          for ia.inputs.each |&(_, in)| {
+          for ia.inputs.iter().advance |&(_, in)| {
               check_expr(fcx, in);
           }
-          for ia.outputs.each |&(_, out)| {
+          for ia.outputs.iter().advance |&(_, out)| {
               check_expr(fcx, out);
           }
           fcx.write_nil(id);
@@ -2506,7 +2507,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
             // We know there's at least one because we already checked
             // for n=0 as well as all arms being _|_ in the previous
             // `if`.
-            for arm_tys.each() |arm_ty| {
+            for arm_tys.iter().advance |arm_ty| {
                 if !ty::type_is_bot(*arm_ty) {
                     fcx.write_ty(id, *arm_ty);
                     break;
@@ -2687,7 +2688,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         let t: ty::t = fcx.infcx().next_ty_var();
         let mut arg_is_bot = false;
         let mut arg_is_err = false;
-        for args.each |e| {
+        for args.iter().advance |e| {
             check_expr_has_type(fcx, *e, t);
             let arg_t = fcx.expr_ty(*e);
             arg_is_bot |= ty::type_is_bot(arg_t);
@@ -2948,7 +2949,7 @@ pub fn check_block_with_expected(fcx: @mut FnCtxt,
         let mut last_was_bot = false;
         let mut any_bot = false;
         let mut any_err = false;
-        for blk.node.stmts.each |s| {
+        for blk.node.stmts.iter().advance |s| {
             check_stmt(fcx, *s);
             let s_id = ast_util::stmt_id(*s);
             let s_ty = fcx.node_ty(s_id);
@@ -3085,7 +3086,7 @@ pub fn check_enum_variants(ccx: @mut CrateCtxt,
                 disr_val: &mut int,
                 variants: &mut ~[ty::VariantInfo]) {
         let rty = ty::node_id_to_type(ccx.tcx, id);
-        for vs.each |v| {
+        for vs.iter().advance |v| {
             for v.node.disr_expr.iter().advance |e_ref| {
                 let e = *e_ref;
                 debug!("disr expr, checking %s",
