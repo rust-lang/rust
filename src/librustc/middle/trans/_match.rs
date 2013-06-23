@@ -1738,6 +1738,7 @@ pub fn store_local(bcx: block,
      * Generates code for a local variable declaration like
      * `let <pat>;` or `let <pat> = <opt_init_expr>`.
      */
+    let _icx = bcx.insn_ctxt("match::store_local");
     let mut bcx = bcx;
 
     return match opt_init_expr {
@@ -1812,6 +1813,7 @@ pub fn store_arg(mut bcx: block,
      *   if the argument type is `T`, then `llval` is a `T*`). In some
      *   cases, this code may zero out the memory `llval` points at.
      */
+    let _icx = bcx.insn_ctxt("match::store_arg");
 
     // We always need to cleanup the argument as we exit the fn scope.
     // Note that we cannot do it before for fear of a fn like
