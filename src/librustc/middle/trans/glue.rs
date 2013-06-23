@@ -406,13 +406,8 @@ pub fn make_free_glue(bcx: block, v: ValueRef, t: ty::t) {
     build_return(bcx);
 }
 
-pub fn trans_struct_drop(bcx: block,
-                         t: ty::t,
-                         v0: ValueRef,
-                         dtor_did: ast::def_id,
-                         class_did: ast::def_id,
-                         substs: &ty::substs)
-                      -> block {
+pub fn trans_struct_drop_flag(bcx: block, t: ty::t, v0: ValueRef, dtor_did: ast::def_id,
+                              class_did: ast::def_id, substs: &ty::substs) -> block {
     let repr = adt::represent_type(bcx.ccx(), t);
     let drop_flag = adt::trans_drop_flag_ptr(bcx, repr, v0);
     do with_cond(bcx, IsNotNull(bcx, Load(bcx, drop_flag))) |cx| {
@@ -454,6 +449,49 @@ pub fn trans_struct_drop(bcx: block,
     }
 }
 
+pub fn trans_struct_drop(mut bcx: block, t: ty::t, v0: ValueRef, dtor_did: ast::def_id,
+                         class_did: ast::def_id, substs: &ty::substs) -> block {
+    let repr = adt::represent_type(bcx.ccx(), t);
+
+    // Find and call the actual destructor
+    let dtor_addr = get_res_dtor(bcx.ccx(), dtor_did,
+                                 class_did, /*bad*/copy substs.tps);
+
+    // The second argument is the "self" argument for drop
+    let params = unsafe {
+        let ty = Type::from_ref(llvm::LLVMTypeOf(dtor_addr));
+        ty.element_type().func_params()
+    };
+
+    // Class dtors have no explicit args, so the params should
+    // just consist of the environment (self)
+    assert_eq!(params.len(), 1);
+
+    // Take a reference to the class (because it's using the Drop trait),
+    // do so now.
+    let llval = alloca(bcx, val_ty(v0));
+    Store(bcx, v0, llval);
+
+    let self_arg = PointerCast(bcx, llval, params[0]);
+    let args = ~[self_arg];
+
+    Call(bcx, dtor_addr, args);
+
+    // Drop the fields
+    let field_tys = ty::struct_fields(bcx.tcx(), class_did, substs);
+    for field_tys.iter().enumerate().advance |(i, fld)| {
+        let llfld_a = adt::trans_field_ptr(bcx, repr, v0, 0, i);
+        bcx = drop_ty(bcx, llfld_a, fld.mt.ty);
+    }
+
+    // Zero out the struct
+    unsafe {
+        let ty = Type::from_ref(llvm::LLVMTypeOf(v0));
+        memzero(bcx, v0, ty);
+    }
+
+    bcx
+}
 
 pub fn make_drop_glue(bcx: block, v0: ValueRef, t: ty::t) {
     // NB: v0 is an *alias* of type t here, not a direct value.
@@ -474,7 +512,10 @@ pub fn make_drop_glue(bcx: block, v0: ValueRef, t: ty::t) {
       ty::ty_struct(did, ref substs) => {
         let tcx = bcx.tcx();
         match ty::ty_dtor(tcx, did) {
-          ty::TraitDtor(dtor) => {
+          ty::TraitDtor(dtor, true) => {
+            trans_struct_drop_flag(bcx, t, v0, dtor, did, substs)
+          }
+          ty::TraitDtor(dtor, false) => {
             trans_struct_drop(bcx, t, v0, dtor, did, substs)
           }
           ty::NoDtor => {
