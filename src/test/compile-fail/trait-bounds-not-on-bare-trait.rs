@@ -8,10 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn foopy() {}
-
-static f: &'static fn() = foopy; //~ ERROR found extern fn
-
-fn main () {
-    f();
+trait Foo {
 }
+
+// This should emit the less confusing error, not the more confusing one.
+
+fn foo(_x: Foo:Owned) { //~ERROR reference to trait `Foo` where a type is expected
+}
+
+fn main() { }

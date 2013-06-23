@@ -486,13 +486,13 @@ pub fn make_drop_glue(bcx: block, v0: ValueRef, t: ty::t) {
       ty::ty_closure(_) => {
         closure::make_closure_glue(bcx, v0, t, drop_ty)
       }
-      ty::ty_trait(_, _, ty::BoxTraitStore, _) => {
+      ty::ty_trait(_, _, ty::BoxTraitStore, _, _) => {
           let llbox_ptr = GEPi(bcx, v0, [0u, abi::trt_field_box]);
           let llbox = Load(bcx, llbox_ptr);
           decr_refcnt_maybe_free(bcx, llbox, Some(llbox_ptr),
                                  ty::mk_opaque_box(ccx.tcx))
       }
-      ty::ty_trait(_, _, ty::UniqTraitStore, _) => {
+      ty::ty_trait(_, _, ty::UniqTraitStore, _, _) => {
           let lluniquevalue = GEPi(bcx, v0, [0, abi::trt_field_box]);
           // Only drop the value when it is non-null
           do with_cond(bcx, IsNotNull(bcx, Load(bcx, lluniquevalue))) |bcx| {
@@ -571,12 +571,12 @@ pub fn make_take_glue(bcx: block, v: ValueRef, t: ty::t) {
       ty::ty_closure(_) => {
         closure::make_closure_glue(bcx, v, t, take_ty)
       }
-      ty::ty_trait(_, _, ty::BoxTraitStore, _) => {
+      ty::ty_trait(_, _, ty::BoxTraitStore, _, _) => {
         let llbox = Load(bcx, GEPi(bcx, v, [0u, abi::trt_field_box]));
         incr_refcnt_of_boxed(bcx, llbox);
         bcx
       }
-      ty::ty_trait(_, _, ty::UniqTraitStore, _) => {
+      ty::ty_trait(_, _, ty::UniqTraitStore, _, _) => {
           let lluniquevalue = GEPi(bcx, v, [0, abi::trt_field_box]);
           let llvtable = Load(bcx, GEPi(bcx, v, [0, abi::trt_field_vtable]));
 

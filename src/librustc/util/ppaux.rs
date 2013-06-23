@@ -365,6 +365,11 @@ pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
 
         s.push_str("fn");
 
+        if !cty.bounds.is_empty() {
+            s.push_str(":");
+        }
+        s.push_str(cty.bounds.repr(cx));
+
         push_sig_to_str(cx, &mut s, &cty.sig);
 
         return s;
@@ -451,11 +456,14 @@ pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
         let base = ast_map::path_to_str(path, cx.sess.intr());
         parameterized(cx, base, substs.self_r, substs.tps)
       }
-      ty_trait(did, ref substs, s, mutbl) => {
+      ty_trait(did, ref substs, s, mutbl, ref bounds) => {
         let path = ty::item_path(cx, did);
         let base = ast_map::path_to_str(path, cx.sess.intr());
         let ty = parameterized(cx, base, substs.self_r, substs.tps);
-        fmt!("%s%s%s", trait_store_to_str(cx, s), mutability_to_str(mutbl), ty)
+        let bound_sep = if bounds.is_empty() { "" } else { ":" };
+        let bound_str = bounds.repr(cx);
+        fmt!("%s%s%s%s%s", trait_store_to_str(cx, s), mutability_to_str(mutbl), ty,
+                           bound_sep, bound_str)
       }
       ty_evec(ref mt, vs) => {
         vstore_ty_to_str(cx, mt, vs)

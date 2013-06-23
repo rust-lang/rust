@@ -1250,7 +1250,7 @@ impl Resolver {
                 // If there are static methods, then create the module
                 // and add them.
                 match (trait_ref_opt, ty) {
-                    (None, @Ty { node: ty_path(path, _), _ }) if
+                    (None, @Ty { node: ty_path(path, _, _), _ }) if
                             has_static_methods && path.idents.len() == 1 => {
                         let name = path_to_ident(path);
 
@@ -4120,7 +4120,7 @@ impl Resolver {
             // Like path expressions, the interpretation of path types depends
             // on whether the path has multiple elements in it or not.
 
-            ty_path(path, path_id) => {
+            ty_path(path, bounds, path_id) => {
                 // This is a path in the type namespace. Walk through scopes
                 // scopes looking for it.
                 let mut result_def = None;
@@ -4178,6 +4178,10 @@ impl Resolver {
                             (ty.span, fmt!("use of undeclared type name `%s`",
                                            self.idents_to_str(path.idents)));
                     }
+                }
+
+                for bounds.each |bound| {
+                    self.resolve_type_parameter_bound(bound, visitor);
                 }
             }
 

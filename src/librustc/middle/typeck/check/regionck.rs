@@ -360,7 +360,7 @@ fn visit_expr(expr: @ast::expr, (rcx, v): (@mut Rcx, rvt)) {
             // explaining how it goes about doing that.
             let target_ty = rcx.resolve_node_type(expr.id);
             match ty::get(target_ty).sty {
-                ty::ty_trait(_, _, ty::RegionTraitStore(trait_region), _) => {
+                ty::ty_trait(_, _, ty::RegionTraitStore(trait_region), _, _) => {
                     let source_ty = rcx.fcx.expr_ty(source);
                     constrain_regions_in_type(rcx, trait_region,
                                               expr.span, source_ty);
