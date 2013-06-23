@@ -1351,16 +1351,19 @@ pub fn reversed<T:Copy>(v: &const [T]) -> ~[T] {
  * * continue iterating, false to break.
  *
  * # Examples
+ * (not using vec::each(), because it will be removed soon)
  *
  * ~~~ {.rust}
- * [1,2,3].each(|&i| {
+ * let v = [1,2,3];
+ * v.iter().advance(|&i| {
  *     io::println(int::str(i));
  *     true
  * });
  * ~~~
  *
  * ~~~ {.rust}
- * [1,2,3,4,5].each(|&i| {
+ * let v = [1,2,3,4,5];
+ * v.iter().advance(|&i| {
  *     if i < 4 {
  *         io::println(int::str(i));
  *         true
@@ -1375,7 +1378,8 @@ pub fn reversed<T:Copy>(v: &const [T]) -> ~[T] {
  * on your iteration needs:
  *
  * ~~~ {.rust}
- * for [1,2,3].each |&i| {
+ * let v = [1,2,3];
+ * v.iter().advance |&i| {
  *     io::println(int::str(i));
  * }
  * ~~~
