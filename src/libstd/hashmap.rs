@@ -719,7 +719,7 @@ impl<T:Hash + Eq> HashSet<T> {
     }
 
     /// Visit all elements in arbitrary order
-    /// FIXME: Remove when all callers are converted
+    /// FIXME: #6978: Remove when all callers are converted
     pub fn each(&self, f: &fn(&T) -> bool) -> bool {
         self.iter().advance(f)
     }
