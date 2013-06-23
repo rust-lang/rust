@@ -52,7 +52,7 @@ pub fn check_crate<'mm>(tcx: ty::ctxt,
                 *count += 1;
             }
             item_impl(_, _, _, ref methods) => {
-                for methods.each |method| {
+                for methods.iter().advance |method| {
                     privileged_items.push(method.id);
                     *count += 1;
                 }
@@ -60,7 +60,7 @@ pub fn check_crate<'mm>(tcx: ty::ctxt,
                 *count += 1;
             }
             item_foreign_mod(ref foreign_mod) => {
-                for foreign_mod.items.each |foreign_item| {
+                for foreign_mod.items.iter().advance |foreign_item| {
                     privileged_items.push(foreign_item.id);
                     *count += 1;
                 }
@@ -72,7 +72,7 @@ pub fn check_crate<'mm>(tcx: ty::ctxt,
     // Adds items that are privileged to this scope.
     let add_privileged_items: @fn(&[@ast::item]) -> uint = |items| {
         let mut count = 0;
-        for items.each |&item| {
+        for items.iter().advance |&item| {
             add_privileged_item(item, &mut count);
         }
         count
@@ -231,7 +231,7 @@ pub fn check_crate<'mm>(tcx: ty::ctxt,
     let check_field: @fn(span: span, id: ast::def_id, ident: ast::ident) =
             |span, id, ident| {
         let fields = ty::lookup_struct_fields(tcx, id);
-        for fields.each |field| {
+        for fields.iter().advance |field| {
             if field.ident != ident { loop; }
             if field.vis == private {
                 tcx.sess.span_err(span, fmt!("field `%s` is private",
@@ -377,7 +377,7 @@ pub fn check_crate<'mm>(tcx: ty::ctxt,
         visit_block: |block, (method_map, visitor)| {
             // Gather up all the privileged items.
             let mut n_added = 0;
-            for block.node.stmts.each |stmt| {
+            for block.node.stmts.iter().advance |stmt| {
                 match stmt.node {
                     stmt_decl(decl, _) => {
                         match decl.node {
@@ -450,7 +450,7 @@ pub fn check_crate<'mm>(tcx: ty::ctxt,
                         ty_struct(id, _) => {
                             if id.crate != local_crate ||
                                     !privileged_items.iter().any_(|x| x == &(id.node)) {
-                                for (*fields).each |field| {
+                                for (*fields).iter().advance |field| {
                                         debug!("(privacy checking) checking \
                                                 field in struct literal");
                                     check_field(expr.span, id,
@@ -463,7 +463,7 @@ pub fn check_crate<'mm>(tcx: ty::ctxt,
                                     !privileged_items.iter().any_(|x| x == &(id.node)) {
                                 match tcx.def_map.get_copy(&expr.id) {
                                     def_variant(_, variant_id) => {
-                                        for (*fields).each |field| {
+                                        for (*fields).iter().advance |field| {
                                                 debug!("(privacy checking) \
                                                         checking field in \
                                                         struct variant \
@@ -516,7 +516,7 @@ pub fn check_crate<'mm>(tcx: ty::ctxt,
                         ty_struct(id, _) => {
                             if id.crate != local_crate ||
                                     !privileged_items.iter().any_(|x| x == &(id.node)) {
-                                for fields.each |field| {
+                                for fields.iter().advance |field| {
                                         debug!("(privacy checking) checking \
                                                 struct pattern");
                                     check_field(pattern.span, id,
@@ -529,7 +529,7 @@ pub fn check_crate<'mm>(tcx: ty::ctxt,
                                     !privileged_items.iter().any_(|x| x == &enum_id.node) {
                                 match tcx.def_map.find(&pattern.id) {
                                     Some(&def_variant(_, variant_id)) => {
-                                        for fields.each |field| {
+                                        for fields.iter().advance |field| {
                                             debug!("(privacy checking) \
                                                     checking field in \
                                                     struct variant pattern");

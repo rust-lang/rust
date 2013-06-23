@@ -266,7 +266,7 @@ pub fn build_closure(bcx0: block,
 
     // Package up the captured upvars
     let mut env_vals = ~[];
-    for cap_vars.each |cap_var| {
+    for cap_vars.iter().advance |cap_var| {
         debug!("Building closure: captured variable %?", *cap_var);
         let datum = expr::trans_local_var(bcx, cap_var.def);
         match cap_var.mode {
@@ -346,7 +346,7 @@ pub fn load_environment(fcx: fn_ctxt,
 
     // Populate the upvars from the environment.
     let mut i = 0u;
-    for cap_vars.each |cap_var| {
+    for cap_vars.iter().advance |cap_var| {
         let mut upvarptr = GEPi(bcx, llcdata, [0u, i]);
         match sigil {
             ast::BorrowedSigil => { upvarptr = Load(bcx, upvarptr); }

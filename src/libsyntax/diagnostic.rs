@@ -256,7 +256,7 @@ fn highlight_lines(cm: @codemap::CodeMap,
         elided = true;
     }
     // Print the offending lines
-    for display_lines.each |line| {
+    for display_lines.iter().advance |line| {
         io::stderr().write_str(fmt!("%s:%u ", fm.name, *line + 1u));
         let s = fm.get_line(*line as int) + "\n";
         io::stderr().write_str(s);

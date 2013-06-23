@@ -280,7 +280,7 @@ fn write_desc(
 }
 
 fn write_sections(ctxt: &Ctxt, sections: &[doc::Section]) {
-    for sections.each |section| {
+    for sections.iter().advance |section| {
         write_section(ctxt, copy *section);
     }
 }
@@ -300,7 +300,7 @@ fn write_mod_contents(
         write_index(ctxt, doc.index.get_ref());
     }
 
-    for doc.items.each |itemTag| {
+    for doc.items.iter().advance |itemTag| {
         write_item(ctxt, copy *itemTag);
     }
 }
@@ -350,7 +350,7 @@ fn write_index(ctxt: &Ctxt, index: &doc::Index) {
     ctxt.w.put_line(~"<div class='index'>");
     ctxt.w.put_line(~"");
 
-    for index.entries.each |entry| {
+    for index.entries.iter().advance |entry| {
         let header = header_text_(entry.kind, entry.name);
         let id = copy entry.link;
         if entry.brief.is_some() {
@@ -371,7 +371,7 @@ fn write_nmod(ctxt: &Ctxt, doc: doc::NmodDoc) {
         write_index(ctxt, doc.index.get_ref());
     }
 
-    for doc.fns.each |FnDoc| {
+    for doc.fns.iter().advance |FnDoc| {
         write_item_header(ctxt, doc::FnTag(copy *FnDoc));
         write_fn(ctxt, copy *FnDoc);
     }
@@ -441,7 +441,7 @@ fn write_variants(
 
     write_header_(ctxt, H4, ~"Variants");
 
-    for docs.each |variant| {
+    for docs.iter().advance |variant| {
         write_variant(ctxt, copy *variant);
     }
 
@@ -480,7 +480,7 @@ fn write_trait(ctxt: &Ctxt, doc: doc::TraitDoc) {
 }
 
 fn write_methods(ctxt: &Ctxt, docs: &[doc::MethodDoc]) {
-    for docs.each |doc| {
+    for docs.iter().advance |doc| {
         write_method(ctxt, copy *doc);
     }
 }

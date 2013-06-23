@@ -36,7 +36,7 @@ impl<T:Eq + IterBytes + Hash + Const + Copy> Interner<T> {
 
     pub fn prefill(init: &[T]) -> Interner<T> {
         let rv = Interner::new();
-        for init.each() |v| { rv.intern(copy *v); }
+        for init.iter().advance |v| { rv.intern(copy *v); }
         rv
     }
 
@@ -94,7 +94,7 @@ impl StrInterner {
 
     pub fn prefill(init: &[&str]) -> StrInterner {
         let rv = StrInterner::new();
-        for init.each |&v| { rv.intern(v); }
+        for init.iter().advance |&v| { rv.intern(v); }
         rv
     }
 

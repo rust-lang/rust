@@ -124,7 +124,8 @@ pub mod jit {
             // incase the user wants to use an older extra library.
 
             let cstore = sess.cstore;
-            for cstore::get_used_crate_files(cstore).each |cratepath| {
+            let r = cstore::get_used_crate_files(cstore);
+            for r.iter().advance |cratepath| {
                 let path = cratepath.to_str();
 
                 debug!("linking: %s", path);
@@ -470,7 +471,7 @@ pub fn build_link_meta(sess: Session,
         let mut cmh_items = ~[];
         let linkage_metas = attr::find_linkage_metas(c.node.attrs);
         attr::require_unique_names(sess.diagnostic(), linkage_metas);
-        for linkage_metas.each |meta| {
+        for linkage_metas.iter().advance |meta| {
             match attr::get_meta_item_value_str(*meta) {
                 Some(value) => {
                     let item_name : &str = attr::get_meta_item_name(*meta);
@@ -518,7 +519,7 @@ pub fn build_link_meta(sess: Session,
               }
               ast::meta_list(name, ref mis) => {
                 write_string(symbol_hasher, len_and_str(name));
-                for mis.each |m_| {
+                for mis.iter().advance |m_| {
                     hash(symbol_hasher, m_);
                 }
               }
@@ -526,11 +527,11 @@ pub fn build_link_meta(sess: Session,
         }
 
         symbol_hasher.reset();
-        for cmh_items.each |m| {
+        for cmh_items.iter().advance |m| {
             hash(symbol_hasher, m);
         }
 
-        for dep_hashes.each |dh| {
+        for dep_hashes.iter().advance |dh| {
             write_string(symbol_hasher, len_and_str(*dh));
         }
 
@@ -682,7 +683,7 @@ pub fn mangle(sess: Session, ss: path) -> ~str {
 
     let mut n = ~"_ZN"; // Begin name-sequence.
 
-    for ss.each |s| {
+    for ss.iter().advance |s| {
         match *s { path_name(s) | path_mod(s) => {
           let sani = sanitize(sess.str_of(s));
           n += fmt!("%u%s", sani.len(), sani);
@@ -872,7 +873,8 @@ pub fn link_args(sess: Session,
     // # Crate linking
 
     let cstore = sess.cstore;
-    for cstore::get_used_crate_files(cstore).each |cratepath| {
+    let r = cstore::get_used_crate_files(cstore);
+    for r.iter().advance |cratepath| {
         if cratepath.filetype() == Some(~".rlib") {
             args.push(cratepath.to_str());
             loop;
@@ -884,7 +886,7 @@ pub fn link_args(sess: Session,
     }
 
     let ula = cstore::get_used_link_args(cstore);
-    for ula.each |arg| { args.push(arg.to_owned()); }
+    for ula.iter().advance |arg| { args.push(arg.to_owned()); }
 
     // Add all the link args for external crates.
     do cstore::iter_crate_data(cstore) |crate_num, _| {
@@ -902,13 +904,13 @@ pub fn link_args(sess: Session,
     // to be found at compile time so it is still entirely up to outside
     // forces to make sure that library can be found at runtime.
 
-    for sess.opts.addl_lib_search_paths.each |path| {
+    for sess.opts.addl_lib_search_paths.iter().advance |path| {
         args.push(~"-L" + path.to_str());
     }
 
     // The names of the extern libraries
     let used_libs = cstore::get_used_libraries(cstore);
-    for used_libs.each |l| { args.push(~"-l" + *l); }
+    for used_libs.iter().advance |l| { args.push(~"-l" + *l); }
 
     if *sess.building_library {
         args.push(lib_cmd);

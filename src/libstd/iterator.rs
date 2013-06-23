@@ -17,6 +17,8 @@ implementing the `Iterator` trait.
 
 */
 
+#[allow(default_methods)]; // solid enough for the use case here
+
 use cmp;
 use iter::{FromIter, Times};
 use num::{Zero, One};
@@ -25,12 +27,24 @@ use ops::{Add, Mul};
 use cmp::Ord;
 use clone::Clone;
 
+/// Conversion from an `Iterator`
+pub trait FromIterator<A, T: Iterator<A>> {
+    /// Build a container with elements from an external iterator.
+    pub fn from_iterator(iterator: &mut T) -> Self;
+}
+
 /// An interface for dealing with "external iterators". These types of iterators
 /// can be resumed at any time as all state is stored internally as opposed to
 /// being located on the call stack.
 pub trait Iterator<A> {
     /// Advance the iterator and return the next value. Return `None` when the end is reached.
     fn next(&mut self) -> Option<A>;
+
+    /// Return a lower bound and upper bound on the remaining length of the iterator.
+    ///
+    /// The common use case for the estimate is pre-allocating space to store the results.
+    #[cfg(not(stage0))]
+    fn size_hint(&self) -> (Option<uint>, Option<uint>) { (None, None) }
 }
 
 /// Iterator adaptors provided for every `Iterator` implementation. The adaptor objects are also
@@ -594,6 +608,27 @@ impl<A, T: Iterator<A>, U: Iterator<A>> Iterator<A> for ChainIterator<A, T, U> {
             self.b.next()
         }
     }
+
+    #[inline]
+    #[cfg(not(stage0))]
+    fn size_hint(&self) -> (Option<uint>, Option<uint>) {
+        let (a_lower, a_upper) = self.a.size_hint();
+        let (b_lower, b_upper) = self.b.size_hint();
+
+        let lower = match (a_lower, b_lower) {
+            (Some(x), Some(y)) => Some(x + y),
+            (Some(x), None) => Some(x),
+            (None, Some(y)) => Some(y),
+            (None, None) => None
+        };
+
+        let upper = match (a_upper, b_upper) {
+            (Some(x), Some(y)) => Some(x + y),
+            _ => None
+        };
+
+        (lower, upper)
+    }
 }
 
 /// An iterator which iterates two other iterators simultaneously
@@ -627,6 +662,12 @@ impl<'self, A, B, T: Iterator<A>> Iterator<B> for MapIterator<'self, A, B, T> {
             _ => None
         }
     }
+
+    #[inline]
+    #[cfg(not(stage0))]
+    fn size_hint(&self) -> (Option<uint>, Option<uint>) {
+        self.iter.size_hint()
+    }
 }
 
 /// An iterator which filters the elements of `iter` with `predicate`
@@ -647,6 +688,13 @@ impl<'self, A, T: Iterator<A>> Iterator<A> for FilterIterator<'self, A, T> {
         }
         None
     }
+
+    #[inline]
+    #[cfg(not(stage0))]
+    fn size_hint(&self) -> (Option<uint>, Option<uint>) {
+        let (_, upper) = self.iter.size_hint();
+        (None, upper) // can't know a lower bound, due to the predicate
+    }
 }
 
 /// An iterator which uses `f` to both filter and map elements from `iter`
@@ -665,6 +713,13 @@ impl<'self, A, B, T: Iterator<A>> Iterator<B> for FilterMapIterator<'self, A, B,
             }
         }
         None
+    }
+
+    #[inline]
+    #[cfg(not(stage0))]
+    fn size_hint(&self) -> (Option<uint>, Option<uint>) {
+        let (_, upper) = self.iter.size_hint();
+        (None, upper) // can't know a lower bound, due to the predicate
     }
 }
 
@@ -882,7 +937,7 @@ mod tests {
     #[test]
     fn test_counter_from_iter() {
         let mut it = Counter::new(0, 5).take_(10);
-        let xs: ~[int] = iter::FromIter::from_iter::<int, ~[int]>(|f| it.advance(f));
+        let xs: ~[int] = FromIterator::from_iterator(&mut it);
         assert_eq!(xs, ~[0, 5, 10, 15, 20, 25, 30, 35, 40, 45]);
     }
 

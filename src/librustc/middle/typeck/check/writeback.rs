@@ -175,7 +175,7 @@ fn resolve_type_vars_for_node(wbcx: @mut WbCtxt, sp: span, id: ast::node_id)
         write_ty_to_tcx(tcx, id, t);
         for fcx.opt_node_ty_substs(id) |substs| {
           let mut new_tps = ~[];
-          for substs.tps.each |subst| {
+          for substs.tps.iter().advance |subst| {
               match resolve_type_vars_in_type(fcx, sp, *subst) {
                 Some(t) => new_tps.push(t),
                 None => { wbcx.success = false; return None; }
@@ -240,7 +240,7 @@ fn visit_expr(e: @ast::expr, (wbcx, v): (@mut WbCtxt, wb_vt)) {
 
     match e.node {
         ast::expr_fn_block(ref decl, _) => {
-            for decl.inputs.each |input| {
+            for decl.inputs.iter().advance |input| {
                 let _ = resolve_type_vars_for_node(wbcx, e.span, input.id);
             }
         }
@@ -341,7 +341,7 @@ pub fn resolve_type_vars_in_fn(fcx: @mut FnCtxt,
                                    self_info.span,
                                    self_info.self_id);
     }
-    for decl.inputs.each |arg| {
+    for decl.inputs.iter().advance |arg| {
         do pat_util::pat_bindings(fcx.tcx().def_map, arg.pat)
                 |_bm, pat_id, span, _path| {
             resolve_type_vars_for_node(wbcx, span, pat_id);

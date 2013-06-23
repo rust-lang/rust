@@ -158,7 +158,7 @@ pub fn find_attrs_by_name(attrs: &[ast::attribute], name: &str) ->
 pub fn find_meta_items_by_name(metas: &[@ast::meta_item], name: &str) ->
    ~[@ast::meta_item] {
     let mut rs = ~[];
-    for metas.each |mi| {
+    for metas.iter().advance |mi| {
         if name == get_meta_item_name(*mi) {
             rs.push(*mi)
         }
@@ -172,7 +172,7 @@ pub fn find_meta_items_by_name(metas: &[@ast::meta_item], name: &str) ->
  */
 pub fn contains(haystack: &[@ast::meta_item],
                 needle: @ast::meta_item) -> bool {
-    for haystack.each |item| {
+    for haystack.iter().advance |item| {
         if eq(*item, needle) { return true; }
     }
     return false;
@@ -193,7 +193,7 @@ fn eq(a: @ast::meta_item, b: @ast::meta_item) -> bool {
         ast::meta_list(ref na, ref misa) => match b.node {
             ast::meta_list(ref nb, ref misb) => {
                 if na != nb { return false; }
-                for misa.each |mi| {
+                for misa.iter().advance |mi| {
                     if !misb.iter().any_(|x| x == mi) { return false; }
                 }
                 true
@@ -334,7 +334,7 @@ pub fn find_inline_attr(attrs: &[ast::attribute]) -> inline_attr {
 pub fn require_unique_names(diagnostic: @span_handler,
                             metas: &[@ast::meta_item]) {
     let mut set = HashSet::new();
-    for metas.each |meta| {
+    for metas.iter().advance |meta| {
         let name = get_meta_item_name(*meta);
 
         // FIXME: How do I silence the warnings? --pcw (#2619)

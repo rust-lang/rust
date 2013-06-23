@@ -846,7 +846,7 @@ mod test_qsort {
         let immut_names = names;
 
         let pairs = vec::zip_slice(expected, immut_names);
-        for pairs.each |p| {
+        for pairs.iter().advance |p| {
             let (a, b) = *p;
             debug!("%d %d", a, b);
             assert_eq!(a, b);

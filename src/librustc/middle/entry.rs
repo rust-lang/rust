@@ -138,7 +138,7 @@ fn configure_main(ctxt: @mut EntryContext) {
                                    but you have one or more functions named 'main' that are not \
                                    defined at the crate level. Either move the definition or \
                                    attach the `#[main]` attribute to override this behavior.");
-                for this.non_main_fns.each |&(_, span)| {
+                for this.non_main_fns.iter().advance |&(_, span)| {
                     this.session.span_note(span, "here is a function named 'main'");
                 }
             }

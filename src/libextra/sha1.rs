@@ -250,7 +250,7 @@ pub fn sha1() -> @Sha1 {
         fn result_str(&mut self) -> ~str {
             let rr = mk_result(self);
             let mut s = ~"";
-            for rr.each |b| {
+            for rr.iter().advance |b| {
                 let hex = uint::to_str_radix(*b as uint, 16u);
                 if hex.len() == 1 {
                     s += "0";
@@ -375,7 +375,7 @@ mod tests {
         // Test that it works when accepting the message all at once
 
         let mut sh = sha1::sha1();
-        for tests.each |t| {
+        for tests.iter().advance |t| {
             sh.input_str(t.input);
             let out = sh.result();
             check_vec_eq(copy t.output, out);
@@ -389,7 +389,7 @@ mod tests {
 
 
         // Test that it works when accepting the message in pieces
-        for tests.each |t| {
+        for tests.iter().advance |t| {
             let len = t.input.len();
             let mut left = len;
             while left > 0u {

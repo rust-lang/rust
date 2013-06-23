@@ -1221,7 +1221,7 @@ fn trans_adt(bcx: block, repr: &adt::Repr, discr: int,
     let mut bcx = bcx;
     let addr = match dest {
         Ignore => {
-            for fields.each |&(_i, e)| {
+            for fields.iter().advance |&(_i, e)| {
                 bcx = trans_into(bcx, e, Ignore);
             }
             for optbase.iter().advance |sbi| {
@@ -1233,7 +1233,7 @@ fn trans_adt(bcx: block, repr: &adt::Repr, discr: int,
     };
     let mut temp_cleanups = ~[];
     adt::trans_start_init(bcx, repr, addr, discr);
-    for fields.each |&(i, e)| {
+    for fields.iter().advance |&(i, e)| {
         let dest = adt::trans_field_ptr(bcx, repr, addr, discr, i);
         let e_ty = expr_ty(bcx, e);
         bcx = trans_into(bcx, e, SaveIn(dest));
@@ -1253,7 +1253,7 @@ fn trans_adt(bcx: block, repr: &adt::Repr, discr: int,
         }
     }
 
-    for temp_cleanups.each |cleanup| {
+    for temp_cleanups.iter().advance |cleanup| {
         revoke_clean(bcx, *cleanup);
     }
     return bcx;

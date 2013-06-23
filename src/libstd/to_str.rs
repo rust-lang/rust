@@ -17,10 +17,12 @@ The `ToStr` trait for converting to strings
 use str::OwnedStr;
 use hashmap::HashMap;
 use hashmap::HashSet;
+use iterator::IteratorUtil;
 use container::Map;
 use hash::Hash;
 use cmp::Eq;
 use old_iter::BaseIter;
+use vec::ImmutableVector;
 
 /// A generic trait for converting a value to a string
 pub trait ToStr {
@@ -122,7 +124,7 @@ impl<'self,A:ToStr> ToStr for &'self [A] {
     #[inline]
     fn to_str(&self) -> ~str {
         let mut (acc, first) = (~"[", true);
-        for self.each |elt| {
+        for self.iter().advance |elt| {
             if first {
                 first = false;
             }
@@ -140,7 +142,7 @@ impl<A:ToStr> ToStr for ~[A] {
     #[inline]
     fn to_str(&self) -> ~str {
         let mut (acc, first) = (~"[", true);
-        for self.each |elt| {
+        for self.iter().advance |elt| {
             if first {
                 first = false;
             }
@@ -158,7 +160,7 @@ impl<A:ToStr> ToStr for @[A] {
     #[inline]
     fn to_str(&self) -> ~str {
         let mut (acc, first) = (~"[", true);
-        for self.each |elt| {
+        for self.iter().advance |elt| {
             if first {
                 first = false;
             }

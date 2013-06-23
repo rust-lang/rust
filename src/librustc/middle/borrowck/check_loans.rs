@@ -118,7 +118,7 @@ impl<'self> CheckLoanCtxt<'self> {
         //! given `loan_path`
 
         for self.each_in_scope_loan(scope_id) |loan| {
-            for loan.restrictions.each |restr| {
+            for loan.restrictions.iter().advance |restr| {
                 if restr.loan_path == loan_path {
                     if !op(loan, restr) {
                         return false;
@@ -152,7 +152,7 @@ impl<'self> CheckLoanCtxt<'self> {
         debug!("new_loan_indices = %?", new_loan_indices);
 
         for self.each_issued_loan(scope_id) |issued_loan| {
-            for new_loan_indices.each |&new_loan_index| {
+            for new_loan_indices.iter().advance |&new_loan_index| {
                 let new_loan = &self.all_loans[new_loan_index];
                 self.report_error_if_loans_conflict(issued_loan, new_loan);
             }
@@ -210,7 +210,7 @@ impl<'self> CheckLoanCtxt<'self> {
         };
         debug!("illegal_if=%?", illegal_if);
 
-        for loan1.restrictions.each |restr| {
+        for loan1.restrictions.iter().advance |restr| {
             if !restr.set.intersects(illegal_if) { loop; }
             if restr.loan_path != loan2.loan_path { loop; }
 
@@ -634,7 +634,7 @@ fn check_loans_in_fn<'a>(fk: &visit::fn_kind,
                                 closure_id: ast::node_id,
                                 span: span) {
         let cap_vars = this.bccx.capture_map.get(&closure_id);
-        for cap_vars.each |cap_var| {
+        for cap_vars.iter().advance |cap_var| {
             match cap_var.mode {
                 moves::CapRef | moves::CapCopy => {
                     let var_id = ast_util::def_id_of_def(cap_var.def).node;

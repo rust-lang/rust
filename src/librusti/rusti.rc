@@ -130,7 +130,7 @@ fn run(mut repl: Repl, input: ~str) -> Repl {
     do find_main(crate, sess) |blk| {
         // Fish out all the view items, be sure to record 'extern mod' items
         // differently beause they must appear before all 'use' statements
-        for blk.node.view_items.each |vi| {
+        for blk.node.view_items.iter().advance |vi| {
             let s = do with_pp(intr) |pp, _| {
                 pprust::print_view_item(pp, *vi);
             };
@@ -144,7 +144,7 @@ fn run(mut repl: Repl, input: ~str) -> Repl {
 
         // Iterate through all of the block's statements, inserting them into
         // the correct portions of the program
-        for blk.node.stmts.each |stmt| {
+        for blk.node.stmts.iter().advance |stmt| {
             let s = do with_pp(intr) |pp, _| { pprust::print_stmt(pp, *stmt); };
             match stmt.node {
                 ast::stmt_decl(d, _) => {
@@ -248,7 +248,7 @@ fn run(mut repl: Repl, input: ~str) -> Repl {
 
     fn find_main(crate: @ast::crate, sess: session::Session,
                  f: &fn(&ast::blk)) {
-        for crate.node.module.items.each |item| {
+        for crate.node.module.items.iter().advance |item| {
             match item.node {
                 ast::item_fn(_, _, _, _, ref blk) => {
                     if item.ident == sess.ident_of("main") {
@@ -365,7 +365,7 @@ fn run_cmd(repl: &mut Repl, _in: @io::Reader, _out: @io::Writer,
         }
         ~"load" => {
             let mut loaded_crates: ~[~str] = ~[];
-            for args.each |arg| {
+            for args.iter().advance |arg| {
                 let (crate, filename) =
                     if arg.ends_with(".rs") || arg.ends_with(".rc") {
                     (arg.slice_to(arg.len() - 3).to_owned(), copy *arg)
@@ -377,7 +377,7 @@ fn run_cmd(repl: &mut Repl, _in: @io::Reader, _out: @io::Writer,
                     None => { }
                 }
             }
-            for loaded_crates.each |crate| {
+            for loaded_crates.iter().advance |crate| {
                 let crate_path = Path(*crate);
                 let crate_dir = crate_path.dirname();
                 repl.program.record_extern(fmt!("extern mod %s;", *crate));

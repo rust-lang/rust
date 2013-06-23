@@ -147,7 +147,7 @@ impl PkgSrc {
         assert!(p.components.len() > prefix);
         let mut sub = Path("");
         for vec::slice(p.components, prefix,
-                       p.components.len()).each |c| {
+                       p.components.len()).iter().advance |c| {
             sub = sub.push(*c);
         }
         debug!("found crate %s", sub.to_str());
@@ -204,7 +204,7 @@ impl PkgSrc {
                     crates: &[Crate],
                     cfgs: &[~str],
                     what: OutputType) {
-        for crates.each |&crate| {
+        for crates.iter().advance |&crate| {
             let path = &src_dir.push_rel(&crate.file).normalize();
             note(fmt!("build_crates: compiling %s", path.to_str()));
             note(fmt!("build_crates: destination dir is %s", dst_dir.to_str()));

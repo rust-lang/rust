@@ -59,7 +59,7 @@ fn traverse_exports(cx: @mut ctx, mod_id: node_id) -> bool {
     let mut found_export = false;
     match cx.exp_map2.find(&mod_id) {
       Some(ref exp2s) => {
-        for (*exp2s).each |e2| {
+        for (*exp2s).iter().advance |e2| {
             found_export = true;
             traverse_def_id(cx, e2.def_id)
         };
@@ -90,7 +90,7 @@ fn traverse_def_id(cx: @mut ctx, did: def_id) {
 fn traverse_public_mod(cx: @mut ctx, mod_id: node_id, m: &_mod) {
     if !traverse_exports(cx, mod_id) {
         // No exports, so every local item is exported
-        for m.items.each |item| {
+        for m.items.iter().advance |item| {
             traverse_public_item(cx, *item);
         }
     }
@@ -109,7 +109,7 @@ fn traverse_public_item(cx: @mut ctx, item: @item) {
       item_mod(ref m) => traverse_public_mod(cx, item.id, m),
       item_foreign_mod(ref nm) => {
           if !traverse_exports(cx, item.id) {
-              for nm.items.each |item| {
+              for nm.items.iter().advance |item| {
                   let cx = &mut *cx; // FIXME(#6269) reborrow @mut to &mut
                   cx.rmap.insert(item.id);
               }
@@ -122,7 +122,7 @@ fn traverse_public_item(cx: @mut ctx, item: @item) {
         }
       }
       item_impl(ref generics, _, _, ref ms) => {
-        for ms.each |m| {
+        for ms.iter().advance |m| {
             if generics.ty_params.len() > 0u ||
                 m.generics.ty_params.len() > 0u ||
                 attr::find_inline_attr(m.attrs) != attr::ia_none
@@ -168,7 +168,7 @@ fn traverse_ty<'a>(ty: @Ty, (cx, v): (@mut ctx<'a>, visit::vt<@mut ctx<'a>>)) {
           Some(&d) => traverse_def_id(cx, def_id_of_def(d)),
           None    => { /* do nothing -- but should we fail here? */ }
         }
-        for p.types.each |t| {
+        for p.types.iter().advance |t| {
             (v.visit_ty)(*t, (cx, v));
         }
       }
