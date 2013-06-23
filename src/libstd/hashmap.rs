@@ -18,15 +18,13 @@
 use container::{Container, Mutable, Map, Set};
 use cmp::{Eq, Equiv};
 use hash::Hash;
-use old_iter::BaseIter;
-use old_iter;
-use iterator::IteratorUtil;
+use iterator::{Iterator, IteratorUtil};
 use option::{None, Option, Some};
 use rand::RngUtil;
 use rand;
 use uint;
 use vec;
-use vec::ImmutableVector;
+use vec::{ImmutableVector, MutableVector};
 use kinds::Copy;
 use util::{replace, unreachable};
 
@@ -311,24 +309,17 @@ impl<K:Hash + Eq,V> Map<K, V> for HashMap<K, V> {
 
     /// Visit all key-value pairs
     fn each<'a>(&'a self, blk: &fn(&K, &'a V) -> bool) -> bool {
-        for self.buckets.iter().advance |bucket| {
-            for bucket.iter().advance |pair| {
-                if !blk(&pair.key, &pair.value) {
-                    return false;
-                }
-            }
-        }
-        return true;
+        self.iter().advance(|(k, v)| blk(k, v))
     }
 
     /// Visit all keys
     fn each_key(&self, blk: &fn(k: &K) -> bool) -> bool {
-        self.each(|k, _| blk(k))
+        self.iter().advance(|(k, _)| blk(k))
     }
 
     /// Visit all values
     fn each_value<'a>(&'a self, blk: &fn(v: &'a V) -> bool) -> bool {
-        self.each(|_, v| blk(v))
+        self.iter().advance(|(_, v)| blk(v))
     }
 
     /// Iterate over the map and mutate the contained values
@@ -524,6 +515,19 @@ impl<K: Hash + Eq, V> HashMap<K, V> {
             TableFull | FoundHole(_) => None,
         }
     }
+
+    /// An iterator visiting all key-value pairs in arbitrary order.
+    /// Iterator element type is (&'a K, &'a V).
+    pub fn iter<'a>(&'a self) -> HashMapIterator<'a, K, V> {
+        HashMapIterator { iter: self.buckets.iter() }
+    }
+
+    /// An iterator visiting all key-value pairs in arbitrary order,
+    /// with mutable references to the values.
+    /// Iterator element type is (&'a K, &'a mut V).
+    pub fn mut_iter<'a>(&'a mut self) -> HashMapMutIterator<'a, K, V> {
+        HashMapMutIterator { iter: self.buckets.mut_iter() }
+    }
 }
 
 impl<K: Hash + Eq, V: Copy> HashMap<K, V> {
@@ -542,7 +546,7 @@ impl<K:Hash + Eq,V:Eq> Eq for HashMap<K, V> {
     fn eq(&self, other: &HashMap<K, V>) -> bool {
         if self.len() != other.len() { return false; }
 
-        for self.each |key, value| {
+        for self.iter().advance |(key, value)| {
             match other.find(key) {
                 None => return false,
                 Some(v) => if value != v { return false },
@@ -555,17 +559,66 @@ impl<K:Hash + Eq,V:Eq> Eq for HashMap<K, V> {
     fn ne(&self, other: &HashMap<K, V>) -> bool { !self.eq(other) }
 }
 
+/// HashMap iterator
+pub struct HashMapIterator<'self, K, V> {
+    priv iter: vec::VecIterator<'self, Option<Bucket<K, V>>>,
+}
+
+/// HashMap mutable values iterator
+pub struct HashMapMutIterator<'self, K, V> {
+    priv iter: vec::VecMutIterator<'self, Option<Bucket<K, V>>>,
+}
+
+/// HashSet iterator
+pub struct HashSetIterator<'self, K> {
+    priv iter: vec::VecIterator<'self, Option<Bucket<K, ()>>>,
+}
+
+impl<'self, K, V> Iterator<(&'self K, &'self V)> for HashMapIterator<'self, K, V> {
+    #[inline]
+    fn next(&mut self) -> Option<(&'self K, &'self V)> {
+        for self.iter.advance |elt| {
+            match elt {
+                &Some(ref bucket) => return Some((&bucket.key, &bucket.value)),
+                &None => {},
+            }
+        }
+        None
+    }
+}
+
+impl<'self, K, V> Iterator<(&'self K, &'self mut V)> for HashMapMutIterator<'self, K, V> {
+    #[inline]
+    fn next(&mut self) -> Option<(&'self K, &'self mut V)> {
+        for self.iter.advance |elt| {
+            match elt {
+                &Some(ref mut bucket) => return Some((&bucket.key, &mut bucket.value)),
+                &None => {},
+            }
+        }
+        None
+    }
+}
+
+impl<'self, K> Iterator<&'self K> for HashSetIterator<'self, K> {
+    #[inline]
+    fn next(&mut self) -> Option<&'self K> {
+        for self.iter.advance |elt| {
+            match elt {
+                &Some(ref bucket) => return Some(&bucket.key),
+                &None => {},
+            }
+        }
+        None
+    }
+}
+
+
 /// An implementation of a hash set using the underlying representation of a
 /// HashMap where the value is (). As with the `HashMap` type, a `HashSet`
 /// requires that the elements implement the `Eq` and `Hash` traits.
 pub struct HashSet<T> {
     priv map: HashMap<T, ()>
-}
-
-impl<T:Hash + Eq> BaseIter<T> for HashSet<T> {
-    /// Visit all values in order
-    fn each(&self, f: &fn(&T) -> bool) -> bool { self.map.each_key(f) }
-    fn size_hint(&self) -> Option<uint> { Some(self.len()) }
 }
 
 impl<T:Hash + Eq> Eq for HashSet<T> {
@@ -601,12 +654,12 @@ impl<T:Hash + Eq> Set<T> for HashSet<T> {
     /// Return true if the set has no elements in common with `other`.
     /// This is equivalent to checking for an empty intersection.
     fn is_disjoint(&self, other: &HashSet<T>) -> bool {
-        old_iter::all(self, |v| !other.contains(v))
+        self.iter().all(|v| !other.contains(v))
     }
 
     /// Return true if the set is a subset of another
     fn is_subset(&self, other: &HashSet<T>) -> bool {
-        old_iter::all(self, |v| other.contains(v))
+        self.iter().all(|v| other.contains(v))
     }
 
     /// Return true if the set is a superset of another
@@ -616,7 +669,7 @@ impl<T:Hash + Eq> Set<T> for HashSet<T> {
 
     /// Visit the values representing the difference
     fn difference(&self, other: &HashSet<T>, f: &fn(&T) -> bool) -> bool {
-        self.each(|v| other.contains(v) || f(v))
+        self.iter().advance(|v| other.contains(v) || f(v))
     }
 
     /// Visit the values representing the symmetric difference
@@ -628,12 +681,12 @@ impl<T:Hash + Eq> Set<T> for HashSet<T> {
 
     /// Visit the values representing the intersection
     fn intersection(&self, other: &HashSet<T>, f: &fn(&T) -> bool) -> bool {
-        self.each(|v| !other.contains(v) || f(v))
+        self.iter().advance(|v| !other.contains(v) || f(v))
     }
 
     /// Visit the values representing the union
     fn union(&self, other: &HashSet<T>, f: &fn(&T) -> bool) -> bool {
-        self.each(f) && other.each(|v| self.contains(v) || f(v))
+        self.iter().advance(f) && other.iter().advance(|v| self.contains(v) || f(v))
     }
 }
 
@@ -663,6 +716,18 @@ impl<T:Hash + Eq> HashSet<T> {
     /// given query value.
     pub fn contains_equiv<Q:Hash + Equiv<T>>(&self, value: &Q) -> bool {
       self.map.contains_key_equiv(value)
+    }
+
+    /// Visit all elements in arbitrary order
+    /// FIXME: #6978: Remove when all callers are converted
+    pub fn each(&self, f: &fn(&T) -> bool) -> bool {
+        self.iter().advance(f)
+    }
+
+    /// An iterator visiting all elements in arbitrary order.
+    /// Iterator element type is &'a T.
+    pub fn iter<'a>(&'a self) -> HashSetIterator<'a, T> {
+        HashSetIterator { iter: self.map.buckets.iter() }
     }
 }
 
@@ -808,7 +873,7 @@ mod test_map {
             assert!(m.insert(i, i*2));
         }
         let mut observed = 0;
-        for m.each |k, v| {
+        for m.iter().advance |(k, v)| {
             assert_eq!(*v, *k * 2);
             observed |= (1 << *k);
         }
@@ -885,6 +950,7 @@ mod test_set {
     use super::*;
     use container::{Container, Map, Set};
     use vec;
+    use uint;
 
     #[test]
     fn test_disjoint() {
@@ -935,6 +1001,19 @@ mod test_set {
         assert!(!a.is_superset(&b));
         assert!(!b.is_subset(&a));
         assert!(b.is_superset(&a));
+    }
+
+    #[test]
+    fn test_iterate() {
+        let mut a = HashSet::new();
+        for uint::range(0, 32) |i| {
+            assert!(a.insert(i));
+        }
+        let mut observed = 0;
+        for a.iter().advance |k| {
+            observed |= (1 << *k);
+        }
+        assert_eq!(observed, 0xFFFF_FFFF);
     }
 
     #[test]
