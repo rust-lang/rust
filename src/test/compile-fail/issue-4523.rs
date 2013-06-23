@@ -10,7 +10,7 @@
 
 fn foopy() {}
 
-static f: &'static fn() = foopy; //~ ERROR mismatched types: expected `&'static fn()`
+static f: &'static fn() = foopy; //~ ERROR found extern fn
 
 fn main () {
     f();
