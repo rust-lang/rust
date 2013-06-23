@@ -8,10 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn foopy() {}
+use std::comm;
 
-static f: &'static fn() = foopy; //~ ERROR found extern fn
+// If this were legal you could use it to copy captured noncopyables.
+// Issue (#2828)
 
-fn main () {
-    f();
+fn foo(blk: ~fn:Copy()) {
+    blk();
+}
+
+fn main() {
+    let (p,c) = comm::stream();
+    do foo {
+        c.send(()); //~ ERROR does not fulfill `Copy`
+    }
+    p.recv();
 }

@@ -8,10 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn foopy() {}
+fn bar(blk: &fn:'static()) {
+}
 
-static f: &'static fn() = foopy; //~ ERROR found extern fn
+fn foo(x: &()) {
+    do bar {
+        let _ = x; //~ ERROR does not fulfill `'static`
+    }
+}
 
-fn main () {
-    f();
+fn main() {
 }

@@ -8,10 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn foopy() {}
-
-static f: &'static fn() = foopy; //~ ERROR found extern fn
-
-fn main () {
-    f();
+trait Foo {
 }
+
+fn a(_x: ~Foo) {
+}
+
+fn b(_x: ~Foo:Owned) {
+}
+
+fn c(x: ~Foo:Const+Owned) {
+    a(x);
+}
+
+fn d(x: ~Foo:Owned+Copy) {
+    b(x);
+}
+
+fn main() { }

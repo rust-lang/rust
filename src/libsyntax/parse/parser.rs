@@ -75,7 +75,7 @@ use parse::obsolete::{ObsoleteLet, ObsoleteFieldTerminator};
 use parse::obsolete::{ObsoleteMoveInit, ObsoleteBinaryMove, ObsoleteSwap};
 use parse::obsolete::{ObsoleteSyntax, ObsoleteLowerCaseKindBounds};
 use parse::obsolete::{ObsoleteUnsafeBlock, ObsoleteImplSyntax};
-use parse::obsolete::{ObsoleteTraitBoundSeparator, ObsoleteMutOwnedPointer};
+use parse::obsolete::{ObsoleteMutOwnedPointer};
 use parse::obsolete::{ObsoleteMutVector, ObsoleteImplVisibility};
 use parse::obsolete::{ObsoleteRecordType, ObsoleteRecordPattern};
 use parse::obsolete::{ObsoletePostFnTySigil};
@@ -710,8 +710,8 @@ impl Parser {
         } else if *self.token == token::MOD_SEP
             || is_ident_or_path(self.token) {
             // NAMED TYPE
-            let path = self.parse_path_with_tps(false);
-            ty_path(path, self.get_id())
+            let (path, bounds) = self.parse_type_path();
+            ty_path(path, @bounds, self.get_id())
         } else {
             self.fatal(fmt!("expected type, found token %?",
                             *self.token));
@@ -974,10 +974,8 @@ impl Parser {
                      types: ~[] }
     }
 
-    // parse a path optionally with type parameters. If 'colons'
-    // is true, then type parameters must be preceded by colons,
-    // as in a::t::<t1,t2>
-    pub fn parse_path_with_tps(&self, colons: bool) -> @ast::Path {
+    pub fn parse_bounded_path_with_tps(&self, colons: bool,
+                                        before_tps: Option<&fn()>) -> @ast::Path {
         debug!("parse_path_with_tps(colons=%b)", colons);
 
         maybe_whole!(self, nt_path);
@@ -986,6 +984,10 @@ impl Parser {
         if colons && !self.eat(&token::MOD_SEP) {
             return path;
         }
+
+        // If the path might have bounds on it, they should be parsed before
+        // the parameters, e.g. module::TraitName:B1+B2<T>
+        before_tps.map_consume(|callback| callback());
 
         // Parse the (obsolete) trailing region parameter, if any, which will
         // be written "foo/&x"
@@ -1036,6 +1038,25 @@ impl Parser {
                      rp: rp,
                      types: tps,
                      .. copy *path }
+    }
+
+    // parse a path optionally with type parameters. If 'colons'
+    // is true, then type parameters must be preceded by colons,
+    // as in a::t::<t1,t2>
+    pub fn parse_path_with_tps(&self, colons: bool) -> @ast::Path {
+        self.parse_bounded_path_with_tps(colons, None)
+    }
+
+    // Like the above, but can also parse kind bounds in the case of a
+    // path to be used as a type that might be a trait.
+    pub fn parse_type_path(&self) -> (@ast::Path, OptVec<TyParamBound>) {
+        let mut bounds = opt_vec::Empty;
+        let path = self.parse_bounded_path_with_tps(false, Some(|| {
+            // Note: this closure might not even get called in the case of a
+            // macro-generated path. But that's the macro parser's job.
+            bounds = self.parse_optional_ty_param_bounds();
+        }));
+        (path, bounds)
     }
 
     /// parses 0 or 1 lifetime
@@ -2847,16 +2868,6 @@ impl Parser {
         spanned(lo, hi, bloc)
     }
 
-    fn mk_ty_path(&self, i: ident) -> @Ty {
-        @Ty {
-            id: self.get_id(),
-            node: ty_path(
-                ident_to_path(*self.last_span, i),
-                self.get_id()),
-            span: *self.last_span,
-        }
-    }
-
     fn parse_optional_purity(&self) -> ast::purity {
         if self.eat_keyword(keywords::Pure) {
             self.obsolete(*self.last_span, ObsoletePurity);
@@ -2921,13 +2932,8 @@ impl Parser {
                 _ => break,
             }
 
-            if self.eat(&token::BINOP(token::PLUS)) {
-                loop;
-            }
-
-            if is_ident_or_path(self.token) {
-                self.obsolete(*self.span,
-                              ObsoleteTraitBoundSeparator);
+            if !self.eat(&token::BINOP(token::PLUS)) {
+                break;
             }
         }
 
@@ -3284,14 +3290,19 @@ impl Parser {
         let opt_trait = if could_be_trait && self.eat_keyword(keywords::For) {
             // New-style trait. Reinterpret the type as a trait.
             let opt_trait_ref = match ty.node {
-                ty_path(path, node_id) => {
+                ty_path(path, @opt_vec::Empty, node_id) => {
                     Some(@trait_ref {
                         path: path,
                         ref_id: node_id
                     })
                 }
+                ty_path(*) => {
+                    self.span_err(ty.span,
+                                  "bounded traits are only valid in type position");
+                    None
+                }
                 _ => {
-                    self.span_err(*self.span, "not a trait");
+                    self.span_err(ty.span, "not a trait");
                     None
                 }
             };
