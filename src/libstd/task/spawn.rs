@@ -578,12 +578,28 @@ pub fn spawn_raw(opts: TaskOpts, f: ~fn()) {
     }
 }
 
-fn spawn_raw_newsched(_opts: TaskOpts, f: ~fn()) {
+fn spawn_raw_newsched(mut opts: TaskOpts, f: ~fn()) {
     use rt::sched::*;
 
-    let task = do Local::borrow::<Task, ~Task>() |running_task| {
-        ~running_task.new_child()
+    let mut task = if opts.linked {
+        do Local::borrow::<Task, ~Task>() |running_task| {
+            ~running_task.new_child()
+        }
+    } else {
+        // An unlinked task is a new root in the task tree
+        ~Task::new_root()
     };
+
+    if opts.notify_chan.is_some() {
+        let notify_chan = opts.notify_chan.swap_unwrap();
+        let notify_chan = Cell::new(notify_chan);
+        let on_exit: ~fn(bool) = |success| {
+            notify_chan.take().send(
+                if success { Success } else { Failure }
+            )
+        };
+        task.on_exit = Some(on_exit);
+    }
 
     let mut sched = Local::take::<Scheduler>();
     let task = ~Coroutine::with_task(&mut sched.stack_pool,
