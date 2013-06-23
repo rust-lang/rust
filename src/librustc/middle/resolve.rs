@@ -1053,7 +1053,7 @@ impl Resolver {
                         let r = child.span_for_namespace(ns);
                         for r.iter().advance |sp| {
                             self.session.span_note(*sp,
-                                 fmt!("first definition of %s %s here:",
+                                 fmt!("first definition of %s `%s` here",
                                       namespace_error_to_str(duplicate_type),
                                       self.session.str_of(name)));
                         }
