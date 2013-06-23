@@ -86,13 +86,16 @@ pub mod sort;
 pub mod dlist;
 pub mod treemap;
 
+// Crypto
+#[path="crypto/sha1.rs"]
+pub mod sha1;
+
 // And ... other stuff
 
 pub mod ebml;
 pub mod dbg;
 pub mod getopts;
 pub mod json;
-pub mod sha1;
 pub mod md4;
 pub mod tempfile;
 pub mod term;
