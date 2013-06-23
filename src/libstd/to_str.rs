@@ -21,7 +21,6 @@ use iterator::IteratorUtil;
 use container::Map;
 use hash::Hash;
 use cmp::Eq;
-use old_iter::BaseIter;
 use vec::ImmutableVector;
 use iterator::IteratorUtil;
 

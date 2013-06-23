@@ -46,8 +46,6 @@ pub use cmp::{Eq, ApproxEq, Ord, TotalEq, TotalOrd, Ordering, Less, Equal, Great
 pub use char::Char;
 pub use container::{Container, Mutable, Map, Set};
 pub use hash::Hash;
-pub use old_iter::{BaseIter, ReverseIter, ExtendedIter, EqIter};
-pub use old_iter::CopyableIter;
 pub use iter::{Times, FromIter};
 pub use iterator::{Iterator, IteratorUtil, OrdIterator};
 pub use num::{Num, NumCast};

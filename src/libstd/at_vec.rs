@@ -14,7 +14,6 @@ use cast::transmute;
 use container::Container;
 use iterator::IteratorUtil;
 use kinds::Copy;
-use old_iter;
 use option::Option;
 use sys;
 use uint;
@@ -129,7 +128,7 @@ pub fn map<T, U>(v: &[T], f: &fn(x: &T) -> U) -> @[U] {
  * Creates an immutable vector of size `n_elts` and initializes the elements
  * to the value returned by the function `op`.
  */
-pub fn from_fn<T>(n_elts: uint, op: old_iter::InitOp<T>) -> @[T] {
+pub fn from_fn<T>(n_elts: uint, op: &fn(uint) -> T) -> @[T] {
     do build_sized(n_elts) |push| {
         let mut i: uint = 0u;
         while i < n_elts { push(op(i)); i += 1u; }
