@@ -1586,7 +1586,7 @@ mod biguint_tests {
             let &(ref n, ref rs) = num_pair;
             for rs.iter().advance |str_pair| {
                 let &(ref radix, ref str) = str_pair;
-                assert_eq!(&n, &FromStrRadix::from_str_radix(*str, *radix).get());
+                assert_eq!(n, &FromStrRadix::from_str_radix(*str, *radix).get());
             }
         }
 

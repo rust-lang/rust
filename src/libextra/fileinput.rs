@@ -418,7 +418,7 @@ mod test {
     fn make_file(path : &Path, contents: &[~str]) {
         let file = io::file_writer(path, [io::Create, io::Truncate]).get();
 
-        for contents.iter().advance |&str| {
+        for contents.iter().advance |str| {
             file.write_str(*str);
             file.write_char('\n');
         }

@@ -617,7 +617,7 @@ impl GatherLoanCtxt {
          */
 
         let mc_ctxt = self.bccx.mc_ctxt();
-        for decl.inputs.each |arg| {
+        for decl.inputs.iter().advance |arg| {
             let arg_ty = ty::node_id_to_type(self.tcx(), arg.pat.id);
 
             let arg_cmt = mc_ctxt.cat_rvalue(

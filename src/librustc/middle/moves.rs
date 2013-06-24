@@ -190,15 +190,8 @@ enum UseMode {
 
 pub fn compute_moves(tcx: ty::ctxt,
                      method_map: method_map,
-<<<<<<< HEAD
                      crate: &crate) -> MoveMaps
 {
-||||||| merged common ancestors
-                     crate: @crate) -> MoveMaps
-{
-=======
-                     crate: @crate) -> MoveMaps {
->>>>>>> Modify borrow checker to visit irrefutable patterns that appear in
     let visitor = visit::mk_vt(@visit::Visitor {
         visit_fn: compute_modes_for_fn,
         visit_expr: compute_modes_for_expr,
@@ -248,7 +241,7 @@ fn compute_modes_for_fn(fk: &visit::fn_kind,
                         id: node_id,
                         (cx, v): (VisitContext,
                                   vt<VisitContext>)) {
-    for decl.inputs.each |a| {
+    for decl.inputs.iter().advance |a| {
         cx.use_pat(a.pat);
     }
     visit::visit_fn(fk, decl, body, span, id, (cx, v));
@@ -554,7 +547,7 @@ impl VisitContext {
             }
 
             expr_fn_block(ref decl, ref body) => {
-                for decl.inputs.each |a| {
+                for decl.inputs.iter().advance |a| {
                     self.use_pat(a.pat);
                 }
                 let cap_vars = self.compute_captures(expr.id);
