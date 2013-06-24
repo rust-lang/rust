@@ -44,8 +44,8 @@ static lz_fast : c_int = 0x1;   // LZ with only one probe
 static lz_norm : c_int = 0x80;  // LZ with 128 probes, "normal"
 static lz_best : c_int = 0xfff; // LZ with 4095 probes, "best"
 
-pub fn deflate_bytes(bytes: &const [u8]) -> ~[u8] {
-    do vec::as_const_buf(bytes) |b, len| {
+pub fn deflate_bytes(bytes: &[u8]) -> ~[u8] {
+    do vec::as_imm_buf(bytes) |b, len| {
         unsafe {
             let mut outsz : size_t = 0;
             let res =
@@ -62,8 +62,8 @@ pub fn deflate_bytes(bytes: &const [u8]) -> ~[u8] {
     }
 }
 
-pub fn inflate_bytes(bytes: &const [u8]) -> ~[u8] {
-    do vec::as_const_buf(bytes) |b, len| {
+pub fn inflate_bytes(bytes: &[u8]) -> ~[u8] {
+    do vec::as_imm_buf(bytes) |b, len| {
         unsafe {
             let mut outsz : size_t = 0;
             let res =

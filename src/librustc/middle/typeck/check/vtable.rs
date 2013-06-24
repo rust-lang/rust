@@ -64,7 +64,7 @@ pub struct VtableContext {
 }
 
 impl VtableContext {
-    pub fn tcx(&const self) -> ty::ctxt { self.ccx.tcx }
+    pub fn tcx(&self) -> ty::ctxt { self.ccx.tcx }
 }
 
 fn has_trait_bounds(type_param_defs: &[ty::TypeParameterDef]) -> bool {
