@@ -85,7 +85,7 @@ fn show_number(nn: uint) -> ~str {
         out = show_digit(dig) + " " + out;
     }
 
-    return out;
+    return ~" " + out;
 }
 
 fn transform(aa: color, bb: color) -> color {

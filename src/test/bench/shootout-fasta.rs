@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -19,16 +19,14 @@ extern mod extra;
 
 use std::int;
 use std::io;
-use std::option;
 use std::os;
 use std::rand::Rng;
 use std::rand;
 use std::result;
 use std::str;
 use std::uint;
-use std::vec;
 
-fn LINE_LENGTH() -> uint { return 60u; }
+static LINE_LENGTH: uint = 60u;
 
 struct MyRandom {
     last: u32
@@ -81,7 +79,7 @@ fn make_random_fasta(wr: @io::Writer,
     for uint::range(0u, n as uint) |_i| {
         op.push_char(select_random(myrandom_next(rng, 100u32),
                                               copy genelist));
-        if op.len() >= LINE_LENGTH() {
+        if op.len() >= LINE_LENGTH {
             wr.write_line(op);
             op = ~"";
         }
@@ -90,18 +88,18 @@ fn make_random_fasta(wr: @io::Writer,
 }
 
 fn make_repeat_fasta(wr: @io::Writer, id: ~str, desc: ~str, s: ~str, n: int) {
-    unsafe {
-        wr.write_line(~">" + id + " " + desc);
-        let mut op: ~str = ~"";
-        let sl: uint = s.len();
-        for uint::range(0u, n as uint) |i| {
-            str::raw::push_byte(&mut op, s[i % sl]);
-            if op.len() >= LINE_LENGTH() {
-                wr.write_line(op);
-                op = ~"";
-            }
+    wr.write_line(~">" + id + " " + desc);
+    let mut op = str::with_capacity( LINE_LENGTH );
+    let sl = s.len();
+    for uint::range(0u, n as uint) |i| {
+        if (op.len() >= LINE_LENGTH) {
+            wr.write_line( op );
+            op = str::with_capacity( LINE_LENGTH );
         }
-        if op.len() > 0u { wr.write_line(op); }
+        op.push_char( s[i % sl] as char );
+    }
+    if op.len() > 0 {
+        wr.write_line(op)
     }
 }
 
@@ -111,7 +109,7 @@ fn acid(ch: char, prob: u32) -> AminoAcids {
 
 fn main() {
     let args = os::args();
-    let args = if os::getenv(~"RUST_BENCH").is_some() {
+    let args = if os::getenv("RUST_BENCH").is_some() {
         // alioth tests k-nucleotide with this data at 25,000,000
         ~[~"", ~"5000000"]
     } else if args.len() <= 1u {
@@ -120,9 +118,9 @@ fn main() {
         args
     };
 
-    let writer = if os::getenv(~"RUST_BENCH").is_some() {
+    let writer = if os::getenv("RUST_BENCH").is_some() {
         result::get(&io::file_writer(&Path("./shootout-fasta.data"),
-                                    ~[io::Truncate, io::Create]))
+                                    [io::Truncate, io::Create]))
     } else {
         io::stdout()
     };
