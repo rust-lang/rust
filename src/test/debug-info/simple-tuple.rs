@@ -16,8 +16,8 @@
 // debugger:run
 // debugger:finish
 
-// debugger:print noPadding8
-// check:$1 = {-100 '\234', 100 'd'}
+// debugger:print/d noPadding8
+// check:$1 = {-100, 100}
 // debugger:print noPadding16
 // check:$2 = {0, 1, 2}
 // debugger:print noPadding32
