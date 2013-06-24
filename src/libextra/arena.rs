@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -39,7 +39,7 @@ use core::prelude::*;
 use list::{MutList, MutCons, MutNil};
 
 use core::at_vec;
-use core::cast::{transmute, transmute_mut_region};
+use core::cast::{transmute, transmute_mut, transmute_mut_region};
 use core::cast;
 use core::libc::size_t;
 use core::ptr;
@@ -74,6 +74,7 @@ struct Chunk {
     is_pod: bool,
 }
 
+#[mutable]
 pub struct Arena {
     // The head is separated out from the list as a unbenchmarked
     // microoptimization, to avoid needing to case on the list to
@@ -269,23 +270,22 @@ impl Arena {
 
     // The external interface
     #[inline]
-    pub fn alloc<'a, T>(&'a mut self, op: &fn() -> T) -> &'a T {
+    pub fn alloc<'a, T>(&'a self, op: &fn() -> T) -> &'a T {
         unsafe {
             // XXX: Borrow check
-            let this = transmute_mut_region(self);
-            if !intrinsics::needs_drop::<T>() {
-                return this.alloc_pod(op);
+            let this = transmute_mut(self);
+            if intrinsics::needs_drop::<T>() {
+                this.alloc_nonpod(op)
+            } else {
+                this.alloc_pod(op)
             }
-            // XXX: Borrow check
-            let this = transmute_mut_region(self);
-            this.alloc_nonpod(op)
         }
     }
 }
 
 #[test]
 fn test_arena_destructors() {
-    let mut arena = Arena();
+    let arena = Arena();
     for uint::range(0, 10) |i| {
         // Arena allocate something with drop glue to make sure it
         // doesn't leak.
@@ -300,7 +300,7 @@ fn test_arena_destructors() {
 #[should_fail]
 #[ignore(cfg(windows))]
 fn test_arena_destructors_fail() {
-    let mut arena = Arena();
+    let arena = Arena();
     // Put some stuff in the arena.
     for uint::range(0, 10) |i| {
         // Arena allocate something with drop glue to make sure it
