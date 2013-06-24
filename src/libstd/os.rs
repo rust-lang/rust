@@ -758,7 +758,7 @@ pub fn list_dir(p: &Path) -> ~[~str] {
                     FindFirstFileW(
                         path_ptr,
                         ::cast::transmute(wfd_ptr));
-                if find_handle as int != INVALID_HANDLE_VALUE {
+                if find_handle as libc::c_int != INVALID_HANDLE_VALUE {
                     let mut more_files = 1 as libc::c_int;
                     while more_files != 0 {
                         let fp_buf = rust_list_dir_wfd_fp_buf(wfd_ptr);
