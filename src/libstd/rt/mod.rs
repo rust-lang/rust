@@ -63,11 +63,9 @@ Several modules in `core` are clients of `rt`:
 use cell::Cell;
 use clone::Clone;
 use container::Container;
-use from_str::FromStr;
 use iter::Times;
 use iterator::IteratorUtil;
-use option::{Some, None};
-use os;
+use option::Some;
 use ptr::RawPtr;
 use rt::sched::{Scheduler, Coroutine, Shutdown};
 use rt::sleeper_list::SleeperList;
@@ -223,10 +221,7 @@ pub fn run(main: ~fn()) -> int {
 
     static DEFAULT_ERROR_CODE: int = 101;
 
-    let nthreads = match os::getenv("RUST_THREADS") {
-        Some(nstr) => FromStr::from_str(nstr).get(),
-        None => util::num_cpus()
-    };
+    let nthreads = util::default_sched_threads();
 
     // The shared list of sleeping schedulers. Schedulers wake each other
     // occassionally to do new work.
