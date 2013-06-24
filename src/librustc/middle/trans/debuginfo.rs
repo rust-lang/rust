@@ -370,7 +370,7 @@ fn create_compile_unit(cx: @mut CrateContext) {
     }}}}}};
 }
 
-fn create_file(cx: @mut CrateContext, full_path: &str) -> DIFile {
+fn create_file(cx: &mut CrateContext, full_path: &str) -> DIFile {
     match dbg_cx(cx).created_files.find_equiv(&full_path) {
         Some(file_md) => return *file_md,
         None => ()
@@ -440,7 +440,7 @@ fn create_block(bcx: block) -> DILexicalBlock {
 
 
 
-fn create_basic_type(cx: @mut CrateContext, t: ty::t, _span: span) -> DIType {
+fn create_basic_type(cx: &mut CrateContext, t: ty::t, _span: span) -> DIType {
     let ty_id = ty::type_id(t);
     match dbg_cx(cx).created_types.find(&ty_id) {
         Some(ty_md) => return *ty_md,
@@ -492,7 +492,7 @@ fn create_basic_type(cx: @mut CrateContext, t: ty::t, _span: span) -> DIType {
     return ty_md;
 }
 
-fn create_pointer_type(cx: @mut CrateContext, t: ty::t, _span: span, pointee: DIType) -> DIType {
+fn create_pointer_type(cx: &mut CrateContext, t: ty::t, _span: span, pointee: DIType) -> DIType {
     let (size, align) = size_and_align_of(cx, t);
     let name = ty_to_str(cx.tcx, t);
     let ptr_md = do as_c_str(name) |name| { unsafe {
@@ -517,9 +517,9 @@ struct StructContext {
 }
 
 impl StructContext {
-    fn new(cx: &CrateContext, name: ~str, file: DIFile, line: uint) -> ~StructContext {
+    fn new(cx: &CrateContext, name: ~str, file: DIFile, line: uint) -> StructContext {
         debug!("StructContext::create: %s", name);
-        let scx = ~StructContext {
+        return StructContext {
             builder: DIB(cx),
             file: file,
             name: name,
@@ -528,7 +528,6 @@ impl StructContext {
             total_size: 0,
             align: 1
         };
-        return scx;
     }
 
     fn add_member(&mut self, name: &str, line: uint, size: uint, align: uint, ty: DIType) {
@@ -569,17 +568,19 @@ impl StructContext {
         //         let size_with_alignment = self.get_total_size_with_alignment();
 
         //         if st.size != size_with_alignment {
-        //             ccx.sess.bug("StructContext(%s)::verify_against_struct_or_tuple_type: invalid type size. Expected = %u, actual = %u",
+        //             ccx.sess.bug("StructContext(%s)::verify_against_struct_or_tuple_type:
+        //                           invalid type size. Expected = %u, actual = %u",
         //                          st.size, size_with_alignment);
         //         }
 
         //         if st.align != self.align {
-        //             ccx.sess.bug("StructContext(%s)::verify_against_struct_or_tuple_type: invalid type alignment. Expected = %u, actual = %u",
+        //             ccx.sess.bug("StructContext(%s)::verify_against_struct_or_tuple_type:
+        //                           invalid type alignment. Expected = %u, actual = %u",
         //                          st.align, self.align);
         //         }
         //     },
-        //     _ => ccx.sess.bug(fmt!("StructContext(%s)::verify_against_struct_or_tuple_type: called with invalid type %?",
-        //                       self.name, t))
+        //     _ => ccx.sess.bug(fmt!("StructContext(%s)::verify_against_struct_or_tuple_type:
+        //                             called with invalid type %?", self.name, t))
         // }
     //}
 
@@ -613,14 +614,14 @@ impl StructContext {
     }
 }
 
-fn create_struct(cx: @mut CrateContext, struct_type: ty::t, fields: ~[ty::field], span: span)
+fn create_struct(cx: &mut CrateContext, struct_type: ty::t, fields: ~[ty::field], span: span)
                 -> DICompositeType {
     debug!("create_struct: %?", ty::get(struct_type));
 
     let loc = span_start(cx, span);
     let file_md = create_file(cx, loc.file.name);
 
-    let mut scx = StructContext::new(cx, ty_to_str(cx.tcx, t), file_md, loc.line);
+    let mut scx = StructContext::new(cx, ty_to_str(cx.tcx, struct_type), file_md, loc.line);
     for fields.iter().advance |field| {
         let field_t = field.mt.ty;
         let ty_md = create_ty(cx, field_t, span);
@@ -631,7 +632,7 @@ fn create_struct(cx: @mut CrateContext, struct_type: ty::t, fields: ~[ty::field]
 }
 
 // returns (void* type as a ValueRef, size in bytes, align in bytes)
-fn voidptr(cx: @mut CrateContext) -> (DIDerivedType, uint, uint) {
+fn voidptr(cx: &mut CrateContext) -> (DIDerivedType, uint, uint) {
     let size = sys::size_of::<ValueRef>();
     let align = sys::min_align_of::<ValueRef>();
     let vp = do as_c_str("*void") |name| { unsafe {
@@ -645,7 +646,7 @@ fn voidptr(cx: @mut CrateContext) -> (DIDerivedType, uint, uint) {
     return (vp, size, align);
 }
 
-fn create_tuple(cx: @mut CrateContext, tuple_type: ty::t, elements: &[ty::t], span: span)
+fn create_tuple(cx: &mut CrateContext, tuple_type: ty::t, elements: &[ty::t], span: span)
                 -> DICompositeType {
     debug!("create_tuple: %?", ty::get(tuple_type));
 
@@ -662,7 +663,7 @@ fn create_tuple(cx: @mut CrateContext, tuple_type: ty::t, elements: &[ty::t], sp
     return scx.finalize();
 }
 
-fn create_boxed_type(cx: @mut CrateContext, contents: ty::t,
+fn create_boxed_type(cx: &mut CrateContext, contents: ty::t,
                      span: span, boxed: DIType) -> DICompositeType {
     debug!("create_boxed_type: %?", ty::get(contents));
 
@@ -686,7 +687,7 @@ fn create_boxed_type(cx: @mut CrateContext, contents: ty::t,
     return scx.finalize();
 }
 
-fn create_fixed_vec(cx: @mut CrateContext, _vec_t: ty::t, elem_t: ty::t,
+fn create_fixed_vec(cx: &mut CrateContext, _vec_t: ty::t, elem_t: ty::t,
                     len: uint, span: span) -> DIType {
     debug!("create_fixed_vec: %?", ty::get(_vec_t));
 
@@ -708,7 +709,7 @@ fn create_fixed_vec(cx: @mut CrateContext, _vec_t: ty::t, elem_t: ty::t,
     };
 }
 
-fn create_boxed_vec(cx: @mut CrateContext, vec_t: ty::t, elem_t: ty::t,
+fn create_boxed_vec(cx: &mut CrateContext, vec_t: ty::t, elem_t: ty::t,
                     vec_ty_span: span) -> DICompositeType {
     debug!("create_boxed_vec: %?", ty::get(vec_t));
 
@@ -778,7 +779,7 @@ fn create_boxed_vec(cx: @mut CrateContext, vec_t: ty::t, elem_t: ty::t,
     return mdval;
 }
 
-fn create_vec_slice(cx: @mut CrateContext, vec_t: ty::t, elem_t: ty::t, span: span)
+fn create_vec_slice(cx: &mut CrateContext, vec_t: ty::t, elem_t: ty::t, span: span)
                     -> DICompositeType {
     debug!("create_vec_slice: %?", ty::get(vec_t));
 
@@ -795,7 +796,7 @@ fn create_vec_slice(cx: @mut CrateContext, vec_t: ty::t, elem_t: ty::t, span: sp
     return scx.finalize();
 }
 
-fn create_fn_ty(cx: @mut CrateContext, _fn_ty: ty::t, inputs: ~[ty::t], output: ty::t,
+fn create_fn_ty(cx: &mut CrateContext, _fn_ty: ty::t, inputs: ~[ty::t], output: ty::t,
                 span: span) -> DICompositeType {
     debug!("create_fn_ty: %?", ty::get(_fn_ty));
 
@@ -815,7 +816,7 @@ fn create_fn_ty(cx: @mut CrateContext, _fn_ty: ty::t, inputs: ~[ty::t], output: 
     };
 }
 
-fn create_unimpl_ty(cx: @mut CrateContext, t: ty::t) -> DIType {
+fn create_unimpl_ty(cx: &mut CrateContext, t: ty::t) -> DIType {
     debug!("create_unimpl_ty: %?", ty::get(t));
 
     let name = ty_to_str(cx.tcx, t);
@@ -830,7 +831,7 @@ fn create_unimpl_ty(cx: @mut CrateContext, t: ty::t) -> DIType {
     return md;
 }
 
-fn create_ty(cx: @mut CrateContext, t: ty::t, span: span) -> DIType {
+fn create_ty(cx: &mut CrateContext, t: ty::t, span: span) -> DIType {
     let ty_id = ty::type_id(t);
     match dbg_cx(cx).created_types.find(&ty_id) {
         Some(ty_md) => return *ty_md,
@@ -951,7 +952,7 @@ fn span_start(cx: &CrateContext, span: span) -> codemap::Loc {
     cx.sess.codemap.lookup_char_pos(span.lo)
 }
 
-fn size_and_align_of(cx: @mut CrateContext, t: ty::t) -> (uint, uint) {
+fn size_and_align_of(cx: &mut CrateContext, t: ty::t) -> (uint, uint) {
     let llty = type_of::type_of(cx, t);
     (machine::llsize_of_real(cx, llty), machine::llalign_of_min(cx, llty))
 }
