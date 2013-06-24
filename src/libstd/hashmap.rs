@@ -488,11 +488,6 @@ impl<K: Hash + Eq, V> HashMap<K, V> {
         }
     }
 
-    /// Visit all key-value pairs
-    pub fn each<'a>(&'a self, blk: &fn(&K, &'a V) -> bool) -> bool {
-        self.iter().advance(|(k, v)| blk(k, v))
-    }
-
     /// Visit all keys
     pub fn each_key(&self, blk: &fn(k: &K) -> bool) -> bool {
         self.iter().advance(|(k, _)| blk(k))
@@ -716,12 +711,6 @@ impl<T:Hash + Eq> HashSet<T> {
     /// given query value.
     pub fn contains_equiv<Q:Hash + Equiv<T>>(&self, value: &Q) -> bool {
       self.map.contains_key_equiv(value)
-    }
-
-    /// Visit all elements in arbitrary order
-    /// FIXME: #6978: Remove when all callers are converted
-    pub fn each(&self, f: &fn(&T) -> bool) -> bool {
-        self.iter().advance(f)
     }
 
     /// An iterator visiting all elements in arbitrary order.

@@ -1673,7 +1673,7 @@ pub fn trans_match_inner(scope_cx: block,
 
     let mut arm_datas = ~[];
     let mut matches = ~[];
-    for vec::each(arms) |arm| {
+    for arms.iter().advance |arm| {
         let body = scope_block(bcx, arm.body.info(), "case_body");
         let bindings_map = create_bindings_map(bcx, arm.pats[0]);
         let arm_data = @ArmData {bodycx: body,

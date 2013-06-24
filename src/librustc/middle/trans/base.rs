@@ -2945,7 +2945,7 @@ pub fn trans_crate(sess: session::Session,
     }
 
     if ccx.sess.count_llvm_insns() {
-        for ccx.stats.llvm_insns.each |&k, &v| {
+        for ccx.stats.llvm_insns.iter().advance |(&k, &v)| {
             io::println(fmt!("%-7u %s", v, k));
         }
     }

@@ -12,21 +12,19 @@
 // making method calls, but only if there aren't any matches without
 // it.
 
-use std::vec;
-
 trait iterable<A> {
     fn iterate(&self, blk: &fn(x: &A) -> bool) -> bool;
 }
 
 impl<'self,A> iterable<A> for &'self [A] {
     fn iterate(&self, f: &fn(x: &A) -> bool) -> bool {
-        vec::each(*self, f)
+        self.iter().advance(f)
     }
 }
 
 impl<A> iterable<A> for ~[A] {
     fn iterate(&self, f: &fn(x: &A) -> bool) -> bool {
-        vec::each(*self, f)
+        self.iter().advance(f)
     }
 }
 

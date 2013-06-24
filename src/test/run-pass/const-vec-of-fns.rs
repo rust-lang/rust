@@ -23,6 +23,6 @@ struct S<'self>(&'self fn());
 static closures: &'static [S<'static>] = &[S(f), S(f)];
 
 pub fn main() {
-    for std::vec::each(bare_fns) |&bare_fn| { bare_fn() }
-    for std::vec::each(closures) |&closure| { (*closure)() }
+    for bare_fns.iter().advance |&bare_fn| { bare_fn() }
+    for closures.iter().advance |&closure| { (*closure)() }
 }
