@@ -1,8 +1,6 @@
-// xfail-test
-
 fn sum(x: &[int]) -> int {
     let mut sum = 0;
-    for x.each |y| { sum += *y; }
+    for x.iter().advance |y| { sum += *y; }
     return sum;
 }
 
@@ -14,8 +12,10 @@ fn sum_imm(y: &[int]) -> int {
     sum(y)
 }
 
+/* FIXME #7304
 fn sum_const(y: &const [int]) -> int {
     sum(y)
 }
+*/
 
 pub fn main() {}

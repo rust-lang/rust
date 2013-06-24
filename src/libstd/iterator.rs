@@ -20,7 +20,7 @@ implementing the `Iterator` trait.
 #[allow(default_methods)]; // solid enough for the use case here
 
 use cmp;
-use iter::{FromIter, Times};
+use iter::Times;
 use num::{Zero, One};
 use option::{Option, Some, None};
 use ops::{Add, Mul};
@@ -240,7 +240,7 @@ pub trait IteratorUtil<A> {
     fn advance(&mut self, f: &fn(A) -> bool) -> bool;
 
     /// Loops through the entire iterator, collecting all of the elements into
-    /// a container implementing `FromIter`.
+    /// a container implementing `FromIterator`.
     ///
     /// # Example
     ///
@@ -249,7 +249,7 @@ pub trait IteratorUtil<A> {
     /// let b: ~[int] = a.iter().transform(|&x| x).collect();
     /// assert!(a == b);
     /// ~~~
-    fn collect<B: FromIter<A>>(&mut self) -> B;
+    fn collect<B: FromIterator<A, Self>>(&mut self) -> B;
 
     /// Loops through `n` iterations, returning the `n`th element of the
     /// iterator.
@@ -411,8 +411,8 @@ impl<A, T: Iterator<A>> IteratorUtil<A> for T {
     }
 
     #[inline]
-    fn collect<B: FromIter<A>>(&mut self) -> B {
-        FromIter::from_iter::<A, B>(|f| self.advance(f))
+    fn collect<B: FromIterator<A, T>>(&mut self) -> B {
+        FromIterator::from_iterator(self)
     }
 
     /// Return the `n`th item yielded by an iterator.

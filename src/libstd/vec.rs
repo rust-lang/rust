@@ -17,7 +17,6 @@ use cast;
 use container::{Container, Mutable};
 use cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering, Less, Equal, Greater};
 use clone::Clone;
-use old_iter;
 use iterator::{FromIterator, Iterator, IteratorUtil};
 use iter::FromIter;
 use kinds::Copy;
@@ -124,7 +123,7 @@ pub fn capacity<T>(v: &const ~[T]) -> uint {
  * Creates an owned vector of size `n_elts` and initializes the elements
  * to the value returned by the function `op`.
  */
-pub fn from_fn<T>(n_elts: uint, op: old_iter::InitOp<T>) -> ~[T] {
+pub fn from_fn<T>(n_elts: uint, op: &fn(uint) -> T) -> ~[T] {
     unsafe {
         let mut v = with_capacity(n_elts);
         do as_mut_buf(v) |p, _len| {
@@ -815,7 +814,7 @@ pub fn grow<T:Copy>(v: &mut ~[T], n: uint, initval: &T) {
  * * init_op - A function to call to retreive each appended element's
  *             value
  */
-pub fn grow_fn<T>(v: &mut ~[T], n: uint, op: old_iter::InitOp<T>) {
+pub fn grow_fn<T>(v: &mut ~[T], n: uint, op: &fn(uint) -> T) {
     let new_len = v.len() + n;
     reserve_at_least(&mut *v, new_len);
     let mut i: uint = 0u;
@@ -1985,7 +1984,7 @@ pub trait OwnedVector<T> {
     fn consume_reverse(self, f: &fn(uint, v: T));
     fn filter(self, f: &fn(t: &T) -> bool) -> ~[T];
     fn partition(self, f: &fn(&T) -> bool) -> (~[T], ~[T]);
-    fn grow_fn(&mut self, n: uint, op: old_iter::InitOp<T>);
+    fn grow_fn(&mut self, n: uint, op: &fn(uint) -> T);
 }
 
 impl<T> OwnedVector<T> for ~[T] {
@@ -2064,7 +2063,7 @@ impl<T> OwnedVector<T> for ~[T] {
     }
 
     #[inline]
-    fn grow_fn(&mut self, n: uint, op: old_iter::InitOp<T>) {
+    fn grow_fn(&mut self, n: uint, op: &fn(uint) -> T) {
         grow_fn(self, n, op);
     }
 }
@@ -2501,7 +2500,17 @@ impl<T> FromIter<T> for ~[T]{
     }
 }
 
-#[cfg(not(stage0))]
+impl<A, T: Iterator<A>> FromIterator<A, T> for ~[A] {
+    pub fn from_iterator(iterator: &mut T) -> ~[A] {
+        let mut xs = ~[];
+        for iterator.advance |x| {
+            xs.push(x);
+        }
+        xs
+    }
+}
+
+/* FIXME: #7341 - ICE
 impl<A, T: Iterator<A>> FromIterator<A, T> for ~[A] {
     pub fn from_iterator(iterator: &mut T) -> ~[A] {
         let (lower, _) = iterator.size_hint();
@@ -2512,6 +2521,7 @@ impl<A, T: Iterator<A>> FromIterator<A, T> for ~[A] {
         xs
     }
 }
+*/
 
 #[cfg(test)]
 mod tests {

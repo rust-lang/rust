@@ -1,6 +1,8 @@
-// xfail-test
+// FIXME #7306
 // xfail-fast
-// -*- rust -*-
+
+use std::io;
+
 fn f1(ref_string: &str) {
     match ref_string {
         "a" => io::println("found a"),

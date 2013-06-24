@@ -10,6 +10,8 @@
 
 // xfail-test
 
+use std::ptr;
+
 enum a_tag<A,B> {
     varA(A),
     varB(B)
