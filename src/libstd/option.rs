@@ -159,6 +159,15 @@ impl<T> Option<T> {
         }
     }
 
+    /// Filters an optional value using given function.
+    #[inline(always)]
+    pub fn filtered<'a>(self, f: &fn(t: &'a T) -> bool) -> Option<T> {
+        match self {
+            Some(x) => if(f(&x)) {Some(x)} else {None},
+            None => None
+        }
+    }
+
     /// Maps a `some` value from one type to another by reference
     #[inline]
     pub fn map<'a, U>(&self, f: &fn(&'a T) -> U) -> Option<U> {
@@ -463,4 +472,12 @@ fn test_get_or_zero() {
     assert_eq!(some_stuff.get_or_zero(), 42);
     let no_stuff: Option<int> = None;
     assert_eq!(no_stuff.get_or_zero(), 0);
+}
+
+#[test]
+fn test_filtered() {
+    let some_stuff = Some(42);
+    let modified_stuff = some_stuff.filtered(|&x| {x < 10});
+    assert_eq!(some_stuff.get(), 42);
+    assert!(modified_stuff.is_none());
 }
