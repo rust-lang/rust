@@ -35,11 +35,11 @@ pub struct TrieMap<T> {
 impl<T> Container for TrieMap<T> {
     /// Return the number of elements in the map
     #[inline]
-    fn len(&const self) -> uint { self.length }
+    fn len(&self) -> uint { self.length }
 
     /// Return true if the map contains no elements
     #[inline]
-    fn is_empty(&const self) -> bool { self.len() == 0 }
+    fn is_empty(&self) -> bool { self.len() == 0 }
 }
 
 impl<T> Mutable for TrieMap<T> {
@@ -179,11 +179,11 @@ pub struct TrieSet {
 impl Container for TrieSet {
     /// Return the number of elements in the set
     #[inline]
-    fn len(&const self) -> uint { self.map.len() }
+    fn len(&self) -> uint { self.map.len() }
 
     /// Return true if the set contains no elements
     #[inline]
-    fn is_empty(&const self) -> bool { self.map.is_empty() }
+    fn is_empty(&self) -> bool { self.map.is_empty() }
 }
 
 impl Mutable for TrieSet {

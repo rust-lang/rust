@@ -108,7 +108,7 @@ pub fn build_sized_opt<A>(size: Option<uint>,
 /// Iterates over the `rhs` vector, copying each element and appending it to the
 /// `lhs`. Afterwards, the `lhs` is then returned for use again.
 #[inline]
-pub fn append<T:Copy>(lhs: @[T], rhs: &const [T]) -> @[T] {
+pub fn append<T:Copy>(lhs: @[T], rhs: &[T]) -> @[T] {
     do build_sized(lhs.len() + rhs.len()) |push| {
         for lhs.iter().advance |x| { push(copy *x); }
         for uint::range(0, rhs.len()) |i| { push(copy rhs[i]); }
@@ -180,9 +180,9 @@ pub mod traits {
     use kinds::Copy;
     use ops::Add;
 
-    impl<'self,T:Copy> Add<&'self const [T],@[T]> for @[T] {
+    impl<'self,T:Copy> Add<&'self [T],@[T]> for @[T] {
         #[inline]
-        fn add(&self, rhs: & &'self const [T]) -> @[T] {
+        fn add(&self, rhs: & &'self [T]) -> @[T] {
             append(*self, (*rhs))
         }
     }
