@@ -11,7 +11,7 @@
 use std::io;
 
 fn parse_args() -> ~str {
-    let args = std::os::args();
+    let args = ::std::os::args();
     let mut n = 0;
 
     while n < args.len() {
