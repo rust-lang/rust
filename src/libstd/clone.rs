@@ -56,6 +56,18 @@ impl<'self, T> Clone for &'self T {
     fn clone(&self) -> &'self T { *self }
 }
 
+impl<'self, T> Clone for &'self [T] {
+    /// Return a shallow copy of the slice.
+    #[inline]
+    fn clone(&self) -> &'self [T] { *self }
+}
+
+impl<'self> Clone for &'self str {
+    /// Return a shallow copy of the slice.
+    #[inline]
+    fn clone(&self) -> &'self str { *self }
+}
+
 macro_rules! clone_impl(
     ($t:ty) => {
         impl Clone for $t {
