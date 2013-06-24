@@ -41,6 +41,6 @@ unsafe fn run() {
     static_bound_set(&mut debug_static_mut);
 }
 
-fn main() {
+pub fn main() {
     unsafe { run() }
 }
