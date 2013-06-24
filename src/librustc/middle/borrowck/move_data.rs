@@ -507,7 +507,7 @@ impl FlowedMoveData {
         for self.dfcx_moves.each_bit_on_entry_frozen(id) |index| {
             let move = &self.move_data.moves[index];
             let moved_path = move.path;
-            if base_indices.contains(&moved_path) {
+            if base_indices.iter().any_(|x| x == &moved_path) {
                 // Scenario 1 or 2: `loan_path` or some base path of
                 // `loan_path` was moved.
                 if !f(move, self.move_data.path(moved_path).loan_path) {
@@ -536,7 +536,7 @@ impl FlowedMoveData {
                        -> bool {
         //! True if `id` is the id of the LHS of an assignment
 
-        self.move_data.assignee_ids.contains(&id)
+        self.move_data.assignee_ids.iter().any_(|x| x == &id)
     }
 
     pub fn each_assignment_of(&self,

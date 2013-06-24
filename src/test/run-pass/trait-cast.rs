@@ -1,4 +1,4 @@
-// xfail-test
+// xfail-test FIXME #5882
 // Weird borrow check bug
 
 // Copyright 2012 The Rust Project Developers. See the COPYRIGHT
@@ -17,45 +17,45 @@ struct Tree(@mut TreeR);
 struct TreeR {
     left: Option<Tree>,
     right: Option<Tree>,
-    val: to_str
+    val: ~to_str
 }
 
 trait to_str {
-    fn to_str(&self) -> ~str;
+    fn to_str_(&self) -> ~str;
 }
 
 impl<T:to_str> to_str for Option<T> {
-    fn to_str(&self) -> ~str {
+    fn to_str_(&self) -> ~str {
         match *self {
           None => { ~"none" }
-          Some(ref t) => { ~"some(" + t.to_str() + ~")" }
+          Some(ref t) => { ~"some(" + t.to_str_() + ~")" }
         }
     }
 }
 
 impl to_str for int {
-    fn to_str(&self) -> ~str { int::str(*self) }
+    fn to_str_(&self) -> ~str { self.to_str() }
 }
 
 impl to_str for Tree {
-    fn to_str(&self) -> ~str {
-        let l = self.left, r = self.right;
+    fn to_str_(&self) -> ~str {
+        let (l, r) = (self.left, self.right);
         let val = &self.val;
-        fmt!("[%s, %s, %s]", val.to_str(), l.to_str(), r.to_str())
+        fmt!("[%s, %s, %s]", val.to_str_(), l.to_str_(), r.to_str_())
     }
 }
 
-fn foo<T:to_str>(x: T) -> ~str { x.to_str() }
+fn foo<T:to_str>(x: T) -> ~str { x.to_str_() }
 
 pub fn main() {
     let t1 = Tree(@mut TreeR{left: None,
                              right: None,
-                             val: 1 as to_str });
+                             val: ~1 as ~to_str });
     let t2 = Tree(@mut TreeR{left: Some(t1),
                              right: Some(t1),
-                             val: 2 as to_str });
+                             val: ~2 as ~to_str });
     let expected = ~"[2, some([1, none, none]), some([1, none, none])]";
-    assert_eq!(t2.to_str(), expected);
-    assert_eq!(foo(t2 as to_str), expected);
+    assert!(t2.to_str_() == expected);
+    assert!(foo(t2) == expected);
     t1.left = Some(t2); // create cycle
 }

@@ -21,8 +21,6 @@ Do not use ==, !=, <, etc on doubly-linked lists -- it may not terminate.
 use core::prelude::*;
 
 use core::managed;
-use core::old_iter;
-use core::vec;
 
 pub type DListLink<T> = Option<@mut DListNode<T>>;
 
@@ -213,6 +211,42 @@ impl<T> DList<T> {
 }
 
 impl<T> DList<T> {
+    /**
+     * Iterates through the current contents.
+     *
+     * Attempts to access this dlist during iteration are allowed (to
+     * allow for e.g. breadth-first search with in-place enqueues), but
+     * removing the current node is forbidden.
+     */
+    pub fn each(@mut self, f: &fn(v: &T) -> bool) -> bool {
+        let mut link = self.peek_n();
+        while link.is_some() {
+            let nobe = link.get();
+            assert!(nobe.linked);
+
+            {
+                let frozen_nobe = &*nobe;
+                if !f(&frozen_nobe.data) { return false; }
+            }
+
+            // Check (weakly) that the user didn't do a remove.
+            if self.size == 0 {
+                fail!("The dlist became empty during iteration??")
+            }
+            if !nobe.linked ||
+                (!((nobe.prev.is_some()
+                    || managed::mut_ptr_eq(self.hd.expect("headless dlist?"),
+                                           nobe))
+                   && (nobe.next.is_some()
+                    || managed::mut_ptr_eq(self.tl.expect("tailless dlist?"),
+                                           nobe)))) {
+                fail!("Removing a dlist node during iteration is forbidden!")
+            }
+            link = nobe.next_link();
+        }
+        return true;
+    }
+
     /// Get the size of the list. O(1).
     pub fn len(@mut self) -> uint { self.size }
     /// Returns true if the list is empty. O(1).
@@ -484,56 +518,6 @@ impl<T:Copy> DList<T> {
 
     /// Get data at the list's tail, failing if empty. O(1).
     pub fn tail(@mut self) -> T { copy self.tail_n().data }
-
-    /// Get the elements of the list as a vector. O(n).
-    pub fn to_vec(@mut self) -> ~[T] {
-        let mut v = vec::with_capacity(self.size);
-        for old_iter::eachi(&self) |index,data| {
-            v[index] = copy *data;
-        }
-        v
-    }
-}
-
-impl<T> BaseIter<T> for @mut DList<T> {
-    /**
-     * Iterates through the current contents.
-     *
-     * Attempts to access this dlist during iteration are allowed (to
-     * allow for e.g. breadth-first search with in-place enqueues), but
-     * removing the current node is forbidden.
-     */
-    fn each(&self, f: &fn(v: &T) -> bool) -> bool {
-        let mut link = self.peek_n();
-        while link.is_some() {
-            let nobe = link.get();
-            assert!(nobe.linked);
-
-            {
-                let frozen_nobe = &*nobe;
-                if !f(&frozen_nobe.data) { return false; }
-            }
-
-            // Check (weakly) that the user didn't do a remove.
-            if self.size == 0 {
-                fail!("The dlist became empty during iteration??")
-            }
-            if !nobe.linked ||
-                (!((nobe.prev.is_some()
-                    || managed::mut_ptr_eq(self.hd.expect("headless dlist?"),
-                                           nobe))
-                   && (nobe.next.is_some()
-                    || managed::mut_ptr_eq(self.tl.expect("tailless dlist?"),
-                                           nobe)))) {
-                fail!("Removing a dlist node during iteration is forbidden!")
-            }
-            link = nobe.next_link();
-        }
-        return true;
-    }
-
-    #[inline]
-    fn size_hint(&self) -> Option<uint> { Some(self.len()) }
 }
 
 #[cfg(test)]
@@ -542,7 +526,6 @@ mod tests {
 
     use super::*;
 
-    use core::old_iter;
     use core::vec;
 
     #[test]
@@ -757,11 +740,6 @@ mod tests {
         assert_eq!(l.head(), 1);
         assert_eq!(l.tail(), 3);
         assert_eq!(l.len(), 3);
-    }
-    #[test]
-    fn test_dlist_foldl() {
-        let l = from_vec(vec::from_fn(101, |x|x));
-        assert_eq!(old_iter::foldl(&l, 0, |accum,elem| *accum+*elem), 5050);
     }
     #[test]
     fn test_dlist_break_early() {

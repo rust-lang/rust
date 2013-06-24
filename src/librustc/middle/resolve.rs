@@ -3710,7 +3710,7 @@ impl Resolver {
                 let function_type_rib = @Rib(rib_kind);
                 self.type_ribs.push(function_type_rib);
 
-                for generics.ty_params.eachi |index, type_parameter| {
+                for generics.ty_params.iter().enumerate().advance |(index, type_parameter)| {
                     let name = type_parameter.ident;
                     debug!("with_type_parameter_rib: %d %d", node_id,
                            type_parameter.id);

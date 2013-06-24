@@ -176,22 +176,6 @@ pub struct TrieSet {
     priv map: TrieMap<()>
 }
 
-impl BaseIter<uint> for TrieSet {
-    /// Visit all values in order
-    #[inline]
-    fn each(&self, f: &fn(&uint) -> bool) -> bool { self.map.each_key(f) }
-    #[inline]
-    fn size_hint(&self) -> Option<uint> { Some(self.len()) }
-}
-
-impl ReverseIter<uint> for TrieSet {
-    /// Visit all values in reverse order
-    #[inline]
-    fn each_reverse(&self, f: &fn(&uint) -> bool) -> bool {
-        self.map.each_key_reverse(f)
-    }
-}
-
 impl Container for TrieSet {
     /// Return the number of elements in the set
     #[inline]
@@ -233,6 +217,16 @@ impl TrieSet {
     #[inline]
     pub fn remove(&mut self, value: &uint) -> bool {
         self.map.remove(value)
+    }
+
+    /// Visit all values in order
+    #[inline]
+    pub fn each(&self, f: &fn(&uint) -> bool) -> bool { self.map.each_key(f) }
+
+    /// Visit all values in reverse order
+    #[inline]
+    pub fn each_reverse(&self, f: &fn(&uint) -> bool) -> bool {
+        self.map.each_key_reverse(f)
     }
 }
 

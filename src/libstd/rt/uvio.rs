@@ -15,7 +15,6 @@ use super::io::net::ip::IpAddr;
 use super::uv::*;
 use super::rtio::*;
 use ops::Drop;
-use old_iter::CopyableIter;
 use cell::Cell;
 use cast::transmute;
 use super::sched::{Scheduler, local_sched};

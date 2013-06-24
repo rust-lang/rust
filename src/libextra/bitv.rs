@@ -666,12 +666,8 @@ impl BitvSet {
     pub fn symmetric_difference_with(&mut self, other: &BitvSet) {
         self.other_op(other, |w1, w2| w1 ^ w2);
     }
-}
 
-impl BaseIter<uint> for BitvSet {
-    fn size_hint(&self) -> Option<uint> { Some(self.len()) }
-
-    fn each(&self, blk: &fn(v: &uint) -> bool) -> bool {
+    pub fn each(&self, blk: &fn(v: &uint) -> bool) -> bool {
         for self.bitv.storage.iter().enumerate().advance |(i, &w)| {
             if !iterate_bits(i * uint::bits, w, |b| blk(&b)) {
                 return false;

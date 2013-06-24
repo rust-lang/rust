@@ -29,7 +29,6 @@ use iterator::{Iterator, IteratorUtil, FilterIterator, AdditiveIterator, MapIter
 use libc;
 use num::Zero;
 use option::{None, Option, Some};
-use old_iter::EqIter;
 use ptr;
 use ptr::RawPtr;
 use to_str::ToStr;
@@ -2225,7 +2224,6 @@ mod tests {
     use option::Some;
     use libc::c_char;
     use libc;
-    use old_iter::BaseIter;
     use ptr;
     use str::*;
     use vec;
