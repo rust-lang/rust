@@ -1683,21 +1683,20 @@ pub fn copy_args_to_allocas(fcx: fn_ctxt,
 
     match fcx.llself {
       Some(slf) => {
-        // We really should do this regardless of whether self is owned, but
-        // it doesn't work right with default method impls yet. (FIXME: #2794)
-        if slf.is_owned {
-            let self_val = if datum::appropriate_mode(slf.t).is_by_value() {
-                let tmp = BitCast(bcx, slf.v, type_of(bcx.ccx(), slf.t));
-                let alloc = alloc_ty(bcx, slf.t);
-                Store(bcx, tmp, alloc);
-                alloc
-            } else {
-                PointerCast(bcx, slf.v, type_of(bcx.ccx(), slf.t).ptr_to())
-            };
+          let self_val = if slf.is_owned
+                  && datum::appropriate_mode(slf.t).is_by_value() {
+              let tmp = BitCast(bcx, slf.v, type_of(bcx.ccx(), slf.t));
+              let alloc = alloc_ty(bcx, slf.t);
+              Store(bcx, tmp, alloc);
+              alloc
+          } else {
+              PointerCast(bcx, slf.v, type_of(bcx.ccx(), slf.t).ptr_to())
+          };
 
-            fcx.llself = Some(ValSelfData {v: self_val, ..slf});
-            add_clean(bcx, self_val, slf.t);
-        }
+          fcx.llself = Some(ValSelfData {v: self_val, ..slf});
+          if slf.is_owned {
+              add_clean(bcx, self_val, slf.t);
+          }
       }
       _ => {}
     }
