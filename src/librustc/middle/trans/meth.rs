@@ -103,8 +103,8 @@ pub fn trans_method(ccx: @mut CrateContext,
         let self_ty = ty::node_id_to_type(ccx.tcx, method.self_id);
         let self_ty = match param_substs {
             None => self_ty,
-            Some(@param_substs {tys: ref tys, _}) => {
-                ty::subst_tps(ccx.tcx, *tys, None, self_ty)
+            Some(@param_substs {tys: ref tys, self_ty: ref self_sub, _}) => {
+                ty::subst_tps(ccx.tcx, *tys, *self_sub, self_ty)
             }
         };
         debug!("calling trans_fn with self_ty %s",
