@@ -324,11 +324,11 @@ impl<'self> TraitDef<'self> {
 
         let mut trait_generics = self.generics.to_generics(cx, span, type_ident, generics);
         // Copy the lifetimes
-        for generics.lifetimes.each |l| {
+        for generics.lifetimes.iter().advance |l| {
             trait_generics.lifetimes.push(copy *l)
         };
         // Create the type parameters.
-        for generics.ty_params.each |ty_param| {
+        for generics.ty_params.iter().advance |ty_param| {
             // I don't think this can be moved out of the loop, since
             // a TyParamBound requires an ast id
             let mut bounds = opt_vec::from(

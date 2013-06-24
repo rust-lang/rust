@@ -374,7 +374,7 @@ impl gen_init for protocol {
     fn buffer_ty_path(&self, cx: @ExtCtxt) -> @ast::Ty {
         let mut params: OptVec<ast::TyParam> = opt_vec::Empty;
         for (copy self.states).iter().advance |s| {
-            for s.generics.ty_params.each |tp| {
+            for s.generics.ty_params.iter().advance |tp| {
                 match params.iter().find_(|tpp| tp.ident == tpp.ident) {
                   None => params.push(*tp),
                   _ => ()
@@ -392,7 +392,7 @@ impl gen_init for protocol {
         let ext_cx = cx;
         let mut params: OptVec<ast::TyParam> = opt_vec::Empty;
         let fields = do (copy self.states).iter().transform |s| {
-            for s.generics.ty_params.each |tp| {
+            for s.generics.ty_params.iter().advance |tp| {
                 match params.iter().find_(|tpp| tp.ident == tpp.ident) {
                   None => params.push(*tp),
                   _ => ()

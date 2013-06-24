@@ -775,7 +775,7 @@ pub fn ensure_no_ty_param_bounds(ccx: &CrateCtxt,
                                  span: span,
                                  generics: &ast::Generics,
                                  thing: &'static str) {
-    for generics.ty_params.each |ty_param| {
+    for generics.ty_params.iter().advance |ty_param| {
         if ty_param.bounds.len() > 0 {
             ccx.tcx.sess.span_err(
                 span,
@@ -1172,7 +1172,7 @@ pub fn ty_generics(ccx: &CrateCtxt,
             builtin_bounds: ty::EmptyBuiltinBounds(),
             trait_bounds: ~[]
         };
-        for ast_bounds.each |ast_bound| {
+        for ast_bounds.iter().advance |ast_bound| {
             match *ast_bound {
                 TraitTyParamBound(b) => {
                     let ty = ty::mk_param(ccx.tcx, param_ty.idx, param_ty.def_id);

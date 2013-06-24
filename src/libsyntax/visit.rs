@@ -334,7 +334,7 @@ pub fn visit_foreign_item<E: Copy>(ni: @foreign_item, (e, v): (E, vt<E>)) {
 
 pub fn visit_ty_param_bounds<E: Copy>(bounds: &OptVec<TyParamBound>,
                                       (e, v): (E, vt<E>)) {
-    for bounds.each |bound| {
+    for bounds.iter().advance |bound| {
         match *bound {
             TraitTyParamBound(ty) => visit_trait_ref(ty, (copy e, v)),
             RegionTyParamBound => {}
@@ -343,7 +343,7 @@ pub fn visit_ty_param_bounds<E: Copy>(bounds: &OptVec<TyParamBound>,
 }
 
 pub fn visit_generics<E: Copy>(generics: &Generics, (e, v): (E, vt<E>)) {
-    for generics.ty_params.each |tp| {
+    for generics.ty_params.iter().advance |tp| {
         visit_ty_param_bounds(tp.bounds, (copy e, v));
     }
 }
