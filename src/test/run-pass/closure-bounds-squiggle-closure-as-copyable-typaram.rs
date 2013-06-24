@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-pretty
-
 // Tests correct copying of heap closures' environments.
 
 fn bar<T: Copy>(x: T) -> (T, T) {
