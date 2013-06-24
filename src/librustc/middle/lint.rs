@@ -361,7 +361,7 @@ impl Context {
     }
 
     fn lint_to_str(&self, lint: lint) -> &'static str {
-        for self.dict.each |k, v| {
+        for self.dict.iter().advance |(k, v)| {
             if v.lint == lint {
                 return *k;
             }
@@ -742,7 +742,8 @@ fn check_item_ctypes(cx: &Context, it: @ast::item) {
 
     fn check_foreign_fn(cx: &Context, decl: &ast::fn_decl) {
         let tys = vec::map(decl.inputs, |a| a.ty );
-        for vec::each(vec::append_one(tys, decl.output)) |ty| {
+        let r = vec::append_one(tys, decl.output);
+        for r.iter().advance |ty| {
             check_ty(cx, *ty);
         }
     }
@@ -1171,7 +1172,7 @@ pub fn check_crate(tcx: ty::ctxt, crate: @ast::crate) {
 
     // If we missed any lints added to the session, then there's a bug somewhere
     // in the iteration code.
-    for tcx.sess.lints.each |_, v| {
+    for tcx.sess.lints.iter().advance |(_, v)| {
         for v.iter().advance |t| {
             match *t {
                 (lint, span, ref msg) =>
