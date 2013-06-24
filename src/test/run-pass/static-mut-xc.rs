@@ -37,7 +37,7 @@ unsafe fn run() {
     static_bound_set(&mut static_mut_xc::a);
 }
 
-fn main() {
+pub fn main() {
     unsafe { run() }
 }
 
