@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// xfail-test
+// FIXME: #7336: codegen bug makes this segfault on Linux x86_64
+
 fn foo<'a>(blk: &fn(p: &'a fn() -> &'a fn())) {
     let mut state = 0;
     let statep = &mut state;
