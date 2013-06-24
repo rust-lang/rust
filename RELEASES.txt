@@ -78,6 +78,7 @@ Version 0.7 (July 2013)
       * extra: `BigInt`, `BigUint` implement numeric and comparison traits.
       * extra: `term` uses terminfo now, is more correct.
       * extra: `arc` functions converted to methods.
+      * extra: Implementation of fixed output size variations of SHA-2.
 
    * Tooling
       * `unused_unsafe` lint mode for detecting unnecessary `unsafe` blocks.
