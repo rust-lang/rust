@@ -8,10 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-test
 extern mod extra;
 
 use extra::net::tcp::TcpSocketBuf;
+
+use std::io;
+use std::int;
 
 use std::io::{ReaderUtil,WriterUtil};
 
@@ -99,7 +101,7 @@ priv fn cmd_to_str(cmd: ~[~str]) -> ~str {
   res.push_str("\r\n");
     for cmd.each |s| {
     res.push_str([~"$", s.len().to_str(), ~"\r\n",
-                  copy *s, ~"\r\n"].concat()));
+                  copy *s, ~"\r\n"].concat() );
     }
   res
 }

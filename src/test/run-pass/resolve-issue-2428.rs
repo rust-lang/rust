@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-test
-
 static foo: int = 4 >> 1;
 enum bs { thing = foo }
 pub fn main() { assert!((thing as int == foo)); }
