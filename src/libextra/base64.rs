@@ -36,8 +36,8 @@ impl<'self> ToBase64 for &'self [u8] {
      * # Example
      *
      * ~~~ {.rust}
-     * extern mod std;
-     * use std::base64::ToBase64;
+     * extern mod extra;
+     * use extra::base64::ToBase64;
      *
      * fn main () {
      *     let str = [52,32].to_base64();
@@ -99,8 +99,8 @@ impl<'self> ToBase64 for &'self str {
      * # Example
      *
      * ~~~ {.rust}
-     * extern mod std;
-     * use std::base64::ToBase64;
+     * extern mod extra;
+     * use extra::base64::ToBase64;
      *
      * fn main () {
      *     let str = "Hello, World".to_base64();
@@ -127,9 +127,9 @@ impl<'self> FromBase64 for &'self [u8] {
      * # Example
      *
      * ~~~ {.rust}
-     * extern mod std;
-     * use std::base64::ToBase64;
-     * use std::base64::FromBase64;
+     * extern mod extra;
+     * use extra::base64::ToBase64;
+     * use extra::base64::FromBase64;
      *
      * fn main () {
      *     let str = [52,32].to_base64();
@@ -207,9 +207,9 @@ impl<'self> FromBase64 for &'self str {
      * This converts a string literal to base64 and back.
      *
      * ~~~ {.rust}
-     * extern mod std;
-     * use std::base64::ToBase64;
-     * use std::base64::FromBase64;
+     * extern mod extra;
+     * use extra::base64::ToBase64;
+     * use extra::base64::FromBase64;
      * use core::str;
      *
      * fn main () {
