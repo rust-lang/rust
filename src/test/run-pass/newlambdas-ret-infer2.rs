@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-test ~fn is not inferred
 // Test that the lambda kind is inferred correctly as a return
 // expression
 
