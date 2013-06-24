@@ -107,26 +107,6 @@ impl<K: TotalOrd, V> Map<K, V> for TreeMap<K, V> {
         self.find(key).is_some()
     }
 
-    /// Visit all key-value pairs in order
-    fn each<'a>(&'a self, f: &fn(&'a K, &'a V) -> bool) -> bool {
-        each(&self.root, f)
-    }
-
-    /// Visit all keys in order
-    fn each_key(&self, f: &fn(&K) -> bool) -> bool {
-        self.each(|k, _| f(k))
-    }
-
-    /// Visit all values in order
-    fn each_value<'a>(&'a self, f: &fn(&'a V) -> bool) -> bool {
-        self.each(|_, v| f(v))
-    }
-
-    /// Iterate over the map and mutate the contained values
-    fn mutate_values(&mut self, f: &fn(&K, &mut V) -> bool) -> bool {
-        mutate_values(&mut self.root, f)
-    }
-
     /// Return a reference to the value corresponding to the key
     fn find<'a>(&'a self, key: &K) -> Option<&'a V> {
         let mut current: &'a Option<~TreeNode<K, V>> = &self.root;
@@ -183,6 +163,26 @@ impl<K: TotalOrd, V> Map<K, V> for TreeMap<K, V> {
 impl<K: TotalOrd, V> TreeMap<K, V> {
     /// Create an empty TreeMap
     pub fn new() -> TreeMap<K, V> { TreeMap{root: None, length: 0} }
+
+    /// Visit all key-value pairs in order
+    pub fn each<'a>(&'a self, f: &fn(&'a K, &'a V) -> bool) -> bool {
+        each(&self.root, f)
+    }
+
+    /// Visit all keys in order
+    pub fn each_key(&self, f: &fn(&K) -> bool) -> bool {
+        self.each(|k, _| f(k))
+    }
+
+    /// Visit all values in order
+    pub fn each_value<'a>(&'a self, f: &fn(&'a V) -> bool) -> bool {
+        self.each(|_, v| f(v))
+    }
+
+    /// Iterate over the map and mutate the contained values
+    pub fn mutate_values(&mut self, f: &fn(&K, &mut V) -> bool) -> bool {
+        mutate_values(&mut self.root, f)
+    }
 
     /// Visit all key-value pairs in reverse order
     pub fn each_reverse<'a>(&'a self, f: &fn(&'a K, &'a V) -> bool) -> bool {
