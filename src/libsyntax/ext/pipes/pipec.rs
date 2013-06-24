@@ -375,7 +375,7 @@ impl gen_init for protocol {
         let mut params: OptVec<ast::TyParam> = opt_vec::Empty;
         for (copy self.states).iter().advance |s| {
             for s.generics.ty_params.each |tp| {
-                match params.find(|tpp| tp.ident == tpp.ident) {
+                match params.iter().find_(|tpp| tp.ident == tpp.ident) {
                   None => params.push(*tp),
                   _ => ()
                 }
@@ -393,7 +393,7 @@ impl gen_init for protocol {
         let mut params: OptVec<ast::TyParam> = opt_vec::Empty;
         let fields = do (copy self.states).iter().transform |s| {
             for s.generics.ty_params.each |tp| {
-                match params.find(|tpp| tp.ident == tpp.ident) {
+                match params.iter().find_(|tpp| tp.ident == tpp.ident) {
                   None => params.push(*tp),
                   _ => ()
                 }

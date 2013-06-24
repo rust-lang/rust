@@ -249,22 +249,6 @@ pub struct TreeSet<T> {
     priv map: TreeMap<T, ()>
 }
 
-impl<T: TotalOrd> BaseIter<T> for TreeSet<T> {
-    /// Visit all values in order
-    #[inline]
-    fn each(&self, f: &fn(&T) -> bool) -> bool { self.map.each_key(f) }
-    #[inline]
-    fn size_hint(&self) -> Option<uint> { Some(self.len()) }
-}
-
-impl<T: TotalOrd> ReverseIter<T> for TreeSet<T> {
-    /// Visit all values in reverse order
-    #[inline]
-    fn each_reverse(&self, f: &fn(&T) -> bool) -> bool {
-        self.map.each_key_reverse(f)
-    }
-}
-
 impl<T: Eq + TotalOrd> Eq for TreeSet<T> {
     #[inline]
     fn eq(&self, other: &TreeSet<T>) -> bool { self.map == other.map }
@@ -498,6 +482,16 @@ impl<T: TotalOrd> TreeSet<T> {
     #[inline]
     pub fn iter<'a>(&'a self) -> TreeSetIterator<'a, T> {
         TreeSetIterator{iter: self.map.iter()}
+    }
+
+    /// Visit all values in order
+    #[inline]
+    pub fn each(&self, f: &fn(&T) -> bool) -> bool { self.map.each_key(f) }
+
+    /// Visit all values in reverse order
+    #[inline]
+    pub fn each_reverse(&self, f: &fn(&T) -> bool) -> bool {
+        self.map.each_key_reverse(f)
     }
 }
 

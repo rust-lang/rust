@@ -19,8 +19,6 @@ use core::prelude::*;
 
 use core::cmp;
 use core::container::{Container, Mutable, Map, Set};
-use core::old_iter::BaseIter;
-use core::old_iter;
 use core::uint;
 use core::util::replace;
 use core::vec;
@@ -212,12 +210,6 @@ impl Mutable for SmallIntSet {
     fn clear(&mut self) { self.map.clear() }
 }
 
-impl BaseIter<uint> for SmallIntSet {
-    /// Visit all values in order
-    fn each(&self, f: &fn(&uint) -> bool) -> bool { self.map.each_key(f) }
-    fn size_hint(&self) -> Option<uint> { Some(self.len()) }
-}
-
 impl Set<uint> for SmallIntSet {
     /// Return true if the set contains a value
     fn contains(&self, value: &uint) -> bool { self.map.contains_key(value) }
@@ -233,12 +225,14 @@ impl Set<uint> for SmallIntSet {
     /// Return true if the set has no elements in common with `other`.
     /// This is equivalent to checking for an empty uintersection.
     fn is_disjoint(&self, other: &SmallIntSet) -> bool {
-        old_iter::all(self, |v| !other.contains(v))
+        for self.each |v| { if other.contains(v) { return false } }
+        true
     }
 
     /// Return true if the set is a subset of another
     fn is_subset(&self, other: &SmallIntSet) -> bool {
-        old_iter::all(self, |v| other.contains(v))
+        for self.each |v| { if !other.contains(v) { return false } }
+        true
     }
 
     /// Return true if the set is a superset of another
@@ -286,6 +280,9 @@ impl Set<uint> for SmallIntSet {
 impl SmallIntSet {
     /// Create an empty SmallIntSet
     pub fn new() -> SmallIntSet { SmallIntSet{map: SmallIntMap::new()} }
+
+    /// Visit all values in order
+    pub fn each(&self, f: &fn(&uint) -> bool) -> bool { self.map.each_key(f) }
 }
 
 #[cfg(test)]

@@ -14,23 +14,13 @@
 
 use core::prelude::*;
 
-use core::old_iter::BaseIter;
 use core::unstable::intrinsics::{move_val_init, init};
 use core::util::{replace, swap};
 use core::vec;
 
-#[allow(missing_doc)]
+/// A priority queue implemented with a binary heap
 pub struct PriorityQueue<T> {
     priv data: ~[T],
-}
-
-impl<T:Ord> BaseIter<T> for PriorityQueue<T> {
-    /// Visit all values in the underlying vector.
-    ///
-    /// The values are **not** visited in order.
-    fn each(&self, f: &fn(&T) -> bool) -> bool { self.data.iter().advance(f) }
-
-    fn size_hint(&self) -> Option<uint> { Some(self.data.len()) }
 }
 
 impl<T:Ord> Container for PriorityQueue<T> {
@@ -47,6 +37,11 @@ impl<T:Ord> Mutable for PriorityQueue<T> {
 }
 
 impl<T:Ord> PriorityQueue<T> {
+    /// Visit all values in the underlying vector.
+    ///
+    /// The values are **not** visited in order.
+    pub fn each(&self, f: &fn(&T) -> bool) -> bool { self.data.iter().advance(f) }
+
     /// Returns the greatest item in the queue - fails if empty
     pub fn top<'a>(&'a self) -> &'a T { &self.data[0] }
 

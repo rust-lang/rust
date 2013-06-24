@@ -13,7 +13,6 @@
 use std::cmp;
 use std::container::{Container, Mutable, Map};
 use std::int;
-use std::old_iter::BaseIter;
 use std::uint;
 
 enum cat_type { tuxedo, tabby, tortoiseshell }
