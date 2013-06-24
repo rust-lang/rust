@@ -2301,7 +2301,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
       ast::expr_unary(callee_id, unop, oprnd) => {
         let exp_inner = do unpack_expected(fcx, expected) |sty| {
             match unop {
-              ast::box(_) | ast::uniq(_) => match *sty {
+              ast::box(_) | ast::uniq => match *sty {
                 ty::ty_box(ref mt) | ty::ty_uniq(ref mt) => Some(mt.ty),
                 _ => None
               },
@@ -2318,9 +2318,10 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                     oprnd_t = ty::mk_box(tcx,
                                          ty::mt {ty: oprnd_t, mutbl: mutbl});
                 }
-                ast::uniq(mutbl) => {
+                ast::uniq => {
                     oprnd_t = ty::mk_uniq(tcx,
-                                          ty::mt {ty: oprnd_t, mutbl: mutbl});
+                                          ty::mt {ty: oprnd_t,
+                                                  mutbl: ast::m_imm});
                 }
                 ast::deref => {
                     let sty = structure_of(fcx, expr.span, oprnd_t);

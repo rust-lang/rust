@@ -92,7 +92,7 @@ pub fn check_expr(sess: Session,
     if is_const {
         match e.node {
           expr_unary(_, deref, _) => { }
-          expr_unary(_, box(_), _) | expr_unary(_, uniq(_), _) => {
+          expr_unary(_, box(_), _) | expr_unary(_, uniq, _) => {
             sess.span_err(e.span,
                           "disallowed operator in constant expression");
             return;

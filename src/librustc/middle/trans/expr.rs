@@ -1314,7 +1314,7 @@ fn trans_unary_datum(bcx: block,
             trans_boxed_expr(bcx, un_ty, sub_expr, sub_ty,
                              heap_managed)
         }
-        ast::uniq(_) => {
+        ast::uniq => {
             let heap  = heap_for_unique(bcx, un_ty);
             trans_boxed_expr(bcx, un_ty, sub_expr, sub_ty, heap)
         }
