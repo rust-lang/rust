@@ -2500,6 +2500,17 @@ impl<T> FromIter<T> for ~[T]{
     }
 }
 
+#[cfg(stage0)]
+impl<A, T: Iterator<A>> FromIterator<A, T> for ~[A] {
+    pub fn from_iterator(iterator: &mut T) -> ~[A] {
+        let mut xs = ~[];
+        for iterator.advance |x| {
+            xs.push(x);
+        }
+        xs
+    }
+}
+
 #[cfg(not(stage0))]
 impl<A, T: Iterator<A>> FromIterator<A, T> for ~[A] {
     pub fn from_iterator(iterator: &mut T) -> ~[A] {
