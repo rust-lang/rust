@@ -886,9 +886,9 @@ fn create_ty(cx: &mut CrateContext, t: ty::t, span: span) -> DIType {
             let pointee = create_ty(cx, mt.ty, span);
             create_pointer_type(cx, t, span, pointee)
         },
-        ty::ty_rptr(ref _region, ref _mt) => {
-            cx.sess.span_note(span, "debuginfo for rptr NYI");
-            create_unimpl_ty(cx, t)
+        ty::ty_rptr(_, ref mt) => {
+            let pointee = create_ty(cx, mt.ty, span);
+            create_pointer_type(cx, t, span, pointee)
         },
         ty::ty_bare_fn(ref barefnty) => {
             let inputs = barefnty.sig.inputs.map(|a| *a);
