@@ -1738,7 +1738,7 @@ pub fn store_local(bcx: block,
      * Generates code for a local variable declaration like
      * `let <pat>;` or `let <pat> = <opt_init_expr>`.
      */
-    let _icx = bcx.insn_ctxt("match::store_local");
+    let _icx = push_ctxt("match::store_local");
     let mut bcx = bcx;
 
     return match opt_init_expr {
@@ -1813,7 +1813,7 @@ pub fn store_arg(mut bcx: block,
      *   if the argument type is `T`, then `llval` is a `T*`). In some
      *   cases, this code may zero out the memory `llval` points at.
      */
-    let _icx = bcx.insn_ctxt("match::store_arg");
+    let _icx = push_ctxt("match::store_arg");
 
     // We always need to cleanup the argument as we exit the fn scope.
     // Note that we cannot do it before for fear of a fn like
@@ -1882,10 +1882,9 @@ fn bind_irrefutable_pat(bcx: block,
      * - binding_mode: is this for an argument or a local variable?
      */
 
-    debug!("bind_irrefutable_pat(bcx=%s, pat=%s, val=%s, binding_mode=%?)",
+    debug!("bind_irrefutable_pat(bcx=%s, pat=%s, binding_mode=%?)",
            bcx.to_str(),
            pat_to_str(pat, bcx.sess().intr()),
-           val_str(bcx.ccx().tn, val),
            binding_mode);
 
     if bcx.sess().asm_comments() {
@@ -1895,7 +1894,7 @@ fn bind_irrefutable_pat(bcx: block,
 
     let _indenter = indenter();
 
-    let _icx = bcx.insn_ctxt("alt::bind_irrefutable_pat");
+    let _icx = push_ctxt("alt::bind_irrefutable_pat");
     let mut bcx = bcx;
     let tcx = bcx.tcx();
     let ccx = bcx.ccx();

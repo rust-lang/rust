@@ -112,8 +112,8 @@ impl Drop for _InsnCtxt {
     fn drop(&self) {
         unsafe {
             do local_data::local_data_modify(task_local_insn_key) |c| {
-                do c.map_consume |@ctx| {
-                    let mut ctx = ctx;
+                do c.map_consume |ctx| {
+                    let mut ctx = copy *ctx;
                     ctx.pop();
                     @ctx
                 }
@@ -126,8 +126,8 @@ pub fn push_ctxt(s: &'static str) -> _InsnCtxt {
     debug!("new InsnCtxt: %s", s);
     unsafe {
         do local_data::local_data_modify(task_local_insn_key) |c| {
-            do c.map_consume |@ctx| {
-                let mut ctx = ctx;
+            do c.map_consume |ctx| {
+                let mut ctx = copy *ctx;
                 ctx.push(s);
                 @ctx
             }
@@ -1438,54 +1438,6 @@ pub fn block_locals(b: &ast::blk, it: &fn(@ast::local)) {
     }
 }
 
-<<<<<<< variant A
-pub fn alloc_local(cx: block, local: &ast::local) -> block {
-    let _icx = push_ctxt("alloc_local");
-    let t = node_id_type(cx, local.node.id);
-    let simple_name = match local.node.pat.node {
-      ast::pat_ident(_, ref pth, None) => Some(path_to_ident(pth)),
-      _ => None
-    };
-    let val = alloc_ty(cx, t);
-    if cx.sess().opts.debuginfo {
-        for simple_name.iter().advance |name| {
-            str::as_c_str(cx.ccx().sess.str_of(*name), |buf| {
-                unsafe {
-                    llvm::LLVMSetValueName(val, buf)
-                }
-            });
-        }
-    }
-    cx.fcx.lllocals.insert(local.node.id, val);
-    cx
-}
-
-
->>>>>>> variant B
-####### Ancestor
-pub fn alloc_local(cx: block, local: @ast::local) -> block {
-    let _icx = push_ctxt("alloc_local");
-    let t = node_id_type(cx, local.node.id);
-    let simple_name = match local.node.pat.node {
-      ast::pat_ident(_, pth, None) => Some(path_to_ident(pth)),
-      _ => None
-    };
-    let val = alloc_ty(cx, t);
-    if cx.sess().opts.debuginfo {
-        for simple_name.iter().advance |name| {
-            str::as_c_str(cx.ccx().sess.str_of(*name), |buf| {
-                unsafe {
-                    llvm::LLVMSetValueName(val, buf)
-                }
-            });
-        }
-    }
-    cx.fcx.lllocals.insert(local.node.id, val);
-    cx
-}
-
-
-======= end
 pub fn with_cond(bcx: block, val: ValueRef, f: &fn(block) -> block) -> block {
     let _icx = push_ctxt("with_cond");
     let next_cx = base::sub_block(bcx, "next");
@@ -1763,7 +1715,7 @@ pub fn copy_args_to_allocas(fcx: fn_ctxt,
             let self_val = if slf.is_copy
                     && datum::appropriate_mode(bcx.tcx(), slf.t).is_by_value() {
                 let tmp = BitCast(bcx, slf.v, type_of(bcx.ccx(), slf.t));
-                let alloc = alloc_ty(bcx, slf.t);
+                let alloc = alloc_ty(bcx, slf.t, "__self");
                 Store(bcx, tmp, alloc);
                 alloc
             } else {
@@ -3030,7 +2982,7 @@ pub fn trans_crate(sess: session::Session,
         }
     }
     if ccx.sess.count_llvm_insns() {
-        for ccx.stats.llvm_insns.each |k, v| {
+        for ccx.stats.llvm_insns.iter().advance |(k, v)| {
             io::println(fmt!("%-7u %s", *v, *k));
         }
     }

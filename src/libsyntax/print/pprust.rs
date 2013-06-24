@@ -1521,7 +1521,12 @@ pub fn print_path(s: @ps, path: &ast::Path, colons_before_params: bool) {
     print_path_(s, path, colons_before_params, &None)
 }
 
-pub fn print_pat(s: @ps, pat: &ast::pat) {
+pub fn print_bounded_path(s: @ps, path: &ast::Path,
+                          bounds: &Option<OptVec<ast::TyParamBound>>) {
+    print_path_(s, path, false, bounds)
+}
+
+pub fn print_pat(s: @ps, pat: @ast::pat) {
     maybe_print_comment(s, pat.span.lo);
     let ann_node = node_pat(s, pat);
     (s.ann.pre)(ann_node);

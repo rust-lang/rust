@@ -614,7 +614,8 @@ pub fn trans_trait_callee_from_llval(bcx: block,
     }
 
     llself = PointerCast(bcx, llself, Type::opaque_box(ccx).ptr_to());
-    let scratch = scratch_datum(bcx, ty::mk_opaque_box(bcx.tcx()), false);
+    let scratch = scratch_datum(bcx, ty::mk_opaque_box(bcx.tcx()),
+                                "__trait_callee", false);
     Store(bcx, llself, scratch.val);
     scratch.add_clean(bcx);
 
