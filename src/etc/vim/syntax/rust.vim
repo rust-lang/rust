@@ -2,7 +2,7 @@
 " Language:     Rust
 " Maintainer:   Patrick Walton <pcwalton@mozilla.com>
 " Maintainer:   Ben Blum <bblum@cs.cmu.edu>
-" Last Change:  2012 Jun 14
+" Last Change:  2013 Jun 14
 
 if version < 600
   syntax clear
