@@ -289,7 +289,8 @@ fn lookup_vtable(vcx: &VtableContext,
                             let ty::ty_param_substs_and_ty {
                                 substs: substs,
                                 ty: for_ty
-                            } = impl_self_ty(vcx, location_info, im.did);
+                            } = impl_self_ty(vcx, location_info, im.did, None)
+                                .expect("Implementation");
                             match infer::mk_subty(vcx.infcx,
                                                   false,
                                                   location_info.span,

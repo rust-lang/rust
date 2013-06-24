@@ -1077,12 +1077,13 @@ pub fn check_expr(fcx: @mut FnCtxt, expr: @ast::expr)  {
 pub fn impl_self_ty(vcx: &VtableContext,
                     location_info: &LocationInfo, // (potential) receiver for
                                                   // this impl
-                    did: ast::def_id)
-                 -> ty_param_substs_and_ty {
+                    did: ast::def_id,
+                    self_ty: Option<ty::t>)
+                 -> Option<ty_param_substs_and_ty> {
     let tcx = vcx.tcx();
+    let ity = ty::lookup_item_type(tcx, did);
 
     let (n_tps, region_param, raw_ty) = {
-        let ity = ty::lookup_item_type(tcx, did);
         (ity.generics.type_param_defs.len(), ity.generics.region_param, ity.ty)
     };
 
@@ -1096,7 +1097,52 @@ pub fn impl_self_ty(vcx: &VtableContext,
     let substs = substs { self_r: self_r, self_ty: None, tps: tps };
     let substd_ty = ty::subst(tcx, &substs, raw_ty);
 
-    ty_param_substs_and_ty { substs: substs, ty: substd_ty }
+    match substs.tps.iter().position_(|&ty| ty == substd_ty) {
+        // Check trait bounds on self
+        Some(i) => match self_ty {
+            Some(self_ty) => {
+                for ity.generics.type_param_defs[i].bounds
+                       .trait_bounds.iter().advance |&trait_ref| {
+                    // Search for traits implementations in scope
+                    match vcx.ccx.coherence_info.extension_methods
+                             .find(&trait_ref.def_id) {
+                        Some(implementations) => {
+                            let mut found = false;
+                            for implementations.iter().advance |im| {
+                                let ty::ty_param_substs_and_ty {
+                                    substs: substs,
+                                    ty: for_ty
+                                } = impl_self_ty(vcx,
+                                                 location_info,
+                                                 im.did,
+                                                 None)
+                                    .expect("Implementation");
+                                match infer::mk_subty(vcx.infcx,
+                                                      false,
+                                                      location_info.span,
+                                                      self_ty,
+                                                      for_ty) {
+                                    result::Ok(()) => { found = true; break; },
+                                    result::Err(_) => ()
+                                }
+                            }
+                            if !found { return None; }
+                        },
+
+                        // No implementations - no chance this impl could be
+                        // applied.
+                        None => { return None; }
+                    }
+                }
+            },
+            None => ()
+        },
+
+        // No trait bounds on self
+        None => ()
+    }
+
+    Some(ty_param_substs_and_ty { substs: substs, ty: substd_ty })
 }
 
 // Only for fields! Returns <none> for methods>

@@ -192,7 +192,7 @@ impl<'self> LookupContext<'self> {
 
         // Prepare the list of candidates
         self.push_inherent_candidates(self_ty);
-        self.push_extension_candidates();
+        self.push_extension_candidates(self_ty);
 
         let mut enum_dids = ~[];
         let mut self_ty = self_ty;
@@ -295,7 +295,7 @@ impl<'self> LookupContext<'self> {
                 ty_trait(did, ref substs, store, _, _) => {
                     self.push_inherent_candidates_from_trait(
                         self_ty, did, substs, store);
-                    self.push_inherent_impl_candidates_for_type(did);
+                    self.push_inherent_impl_candidates_for_type(self_ty, did);
                 }
                 ty_self(self_did) => {
                     // Call is of the form "self.foo()" and appears in one
@@ -310,7 +310,8 @@ impl<'self> LookupContext<'self> {
                 }
                 ty_enum(did, _) | ty_struct(did, _) => {
                     if self.check_traits == CheckTraitsAndInherentMethods {
-                        self.push_inherent_impl_candidates_for_type(did);
+                        self.push_inherent_impl_candidates_for_type(self_ty,
+                                                                    did);
                     }
                 }
                 _ => { /* No inherent methods in these types */ }
@@ -326,7 +327,7 @@ impl<'self> LookupContext<'self> {
         }
     }
 
-    pub fn push_extension_candidates(&self) {
+    pub fn push_extension_candidates(&self, self_ty: ty::t) {
         // If the method being called is associated with a trait, then
         // find all the impls of that trait.  Each of those are
         // candidates.
@@ -342,7 +343,7 @@ impl<'self> LookupContext<'self> {
                 for opt_impl_infos.iter().advance |impl_infos| {
                     for impl_infos.iter().advance |impl_info| {
                         self.push_candidates_from_impl(
-                            self.extension_candidates, *impl_info);
+                            self_ty, self.extension_candidates, *impl_info);
 
                     }
                 }
@@ -523,18 +524,21 @@ impl<'self> LookupContext<'self> {
         }
     }
 
-    pub fn push_inherent_impl_candidates_for_type(&self, did: def_id) {
+    pub fn push_inherent_impl_candidates_for_type(&self,
+                                                  self_ty: ty::t,
+                                                  did: def_id) {
         let opt_impl_infos =
             self.fcx.ccx.coherence_info.inherent_methods.find(&did);
         for opt_impl_infos.iter().advance |impl_infos| {
             for impl_infos.iter().advance |impl_info| {
                 self.push_candidates_from_impl(
-                    self.inherent_candidates, *impl_info);
+                    self_ty, self.inherent_candidates, *impl_info);
             }
         }
     }
 
     pub fn push_candidates_from_impl(&self,
+                                     self_ty: ty::t,
                                      candidates: &mut ~[Candidate],
                                      impl_info: &resolve::Impl) {
         if !self.impl_dups.insert(impl_info.did) {
@@ -561,17 +565,25 @@ impl<'self> LookupContext<'self> {
             ccx: self.fcx.ccx,
             infcx: self.fcx.infcx()
         };
-        let ty::ty_param_substs_and_ty {
-            substs: impl_substs,
-            ty: impl_ty
-        } = impl_self_ty(&vcx, location_info, impl_info.did);
-
-        candidates.push(Candidate {
-            rcvr_ty: impl_ty,
-            rcvr_substs: impl_substs,
-            method_ty: method,
-            origin: method_static(method.def_id)
-        });
+        match impl_self_ty(&vcx, location_info, impl_info.did, Some(self_ty)) {
+            Some(ty::ty_param_substs_and_ty {
+                substs: impl_substs,
+                ty: impl_ty
+            }) => {
+                candidates.push(Candidate {
+                    rcvr_ty: impl_ty,
+                    rcvr_substs: impl_substs,
+                    method_ty: method,
+                    origin: method_static(method.def_id)
+                });
+            },
+            None => {
+                debug!("push_candidates_from_impl match failed: %s %s %s",
+                       self.m_name.repr(self.tcx()),
+                       impl_info.ident.repr(self.tcx()),
+                       impl_info.methods.map(|m| m.ident).repr(self.tcx()));
+            }
+        }
     }
 
     // ______________________________________________________________________
