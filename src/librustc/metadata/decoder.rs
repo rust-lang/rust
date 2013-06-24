@@ -786,7 +786,7 @@ fn get_explicit_self(item: ebml::Doc) -> ast::explicit_self_ {
         's' => { return ast::sty_static; }
         'v' => { return ast::sty_value; }
         '@' => { return ast::sty_box(get_mutability(string[1])); }
-        '~' => { return ast::sty_uniq(get_mutability(string[1])); }
+        '~' => { return ast::sty_uniq; }
         '&' => {
             // FIXME(#4846) expl. region
             return ast::sty_region(None, get_mutability(string[1]));

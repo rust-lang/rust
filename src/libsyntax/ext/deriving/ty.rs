@@ -248,7 +248,7 @@ pub fn get_explicit_self(cx: @ExtCtxt, span: span, self_ptr: &Option<PtrTy>)
             let self_ty = respan(
                 span,
                 match *ptr {
-                    Send => ast::sty_uniq(ast::m_imm),
+                    Send => ast::sty_uniq,
                     Managed(mutbl) => ast::sty_box(mutbl),
                     Borrowed(ref lt, mutbl) => {
                         let lt = lt.map(|s| @cx.lifetime(span,

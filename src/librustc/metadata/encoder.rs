@@ -630,9 +630,8 @@ fn encode_explicit_self(ebml_w: &mut writer::Encoder, explicit_self: ast::explic
             ebml_w.writer.write(&[ '@' as u8 ]);
             encode_mutability(ebml_w, m);
         }
-        sty_uniq(m) => {
+        sty_uniq => {
             ebml_w.writer.write(&[ '~' as u8 ]);
-            encode_mutability(ebml_w, m);
         }
     }
 

@@ -340,7 +340,7 @@ fn const_expr_unadjusted(cx: @mut CrateContext, e: &ast::expr) -> ValueRef {
             let is_float = ty::type_is_fp(ty);
             return match u {
               ast::box(_)  |
-              ast::uniq(_) |
+              ast::uniq |
               ast::deref  => {
                 let (dv, _dt) = const_deref(cx, te, ty, true);
                 dv
