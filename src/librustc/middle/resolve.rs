@@ -3834,8 +3834,8 @@ impl Resolver {
     pub fn resolve_type_parameters(@mut self,
                                    type_parameters: &OptVec<TyParam>,
                                    visitor: ResolveVisitor) {
-        for type_parameters.each |type_parameter| {
-            for type_parameter.bounds.each |bound| {
+        for type_parameters.iter().advance |type_parameter| {
+            for type_parameter.bounds.iter().advance |bound| {
                 self.resolve_type_parameter_bound(bound, visitor);
             }
         }
@@ -4181,13 +4181,13 @@ impl Resolver {
                     }
                 }
 
-                for bounds.each |bound| {
+                for bounds.iter().advance |bound| {
                     self.resolve_type_parameter_bound(bound, visitor);
                 }
             }
 
             ty_closure(c) => {
-                for c.bounds.each |bound| {
+                for c.bounds.iter().advance |bound| {
                     self.resolve_type_parameter_bound(bound, visitor);
                 }
                 visit_ty(ty, ((), visitor));

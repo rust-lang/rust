@@ -752,7 +752,7 @@ fn conv_builtin_bounds(tcx: ty::ctxt,
     //! legal.
 
     let mut builtin_bounds = ty::EmptyBuiltinBounds();
-    for ast_bounds.each |ast_bound| {
+    for ast_bounds.iter().advance |ast_bound| {
         match *ast_bound {
             ast::TraitTyParamBound(b) => {
                 match lookup_def_tcx(tcx, b.path.span, b.ref_id) {

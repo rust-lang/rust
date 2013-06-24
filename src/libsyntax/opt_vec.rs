@@ -38,13 +38,6 @@ pub fn from<T>(t: ~[T]) -> OptVec<T> {
 }
 
 impl<T> OptVec<T> {
-    fn each(&self, blk: &fn(v: &T) -> bool) -> bool {
-        match *self {
-            Empty => true,
-            Vec(ref v) => v.iter().advance(blk)
-        }
-    }
-
     fn push(&mut self, t: T) {
         match *self {
             Vec(ref mut v) => {
