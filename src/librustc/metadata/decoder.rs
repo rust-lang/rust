@@ -35,7 +35,6 @@ use extra::ebml;
 use extra::serialize::Decodable;
 use syntax::ast_map;
 use syntax::attr;
-use syntax::diagnostic::span_handler;
 use syntax::parse::token::{ident_interner, special_idents};
 use syntax::print::pprust;
 use syntax::{ast, ast_util};
