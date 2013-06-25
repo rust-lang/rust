@@ -70,10 +70,12 @@ impl<T> Rc<T> {
 impl<T> Drop for Rc<T> {
     fn finalize(&self) {
         unsafe {
-            (*self.ptr).count -= 1;
-            if (*self.ptr).count == 0 {
-                ptr::replace_ptr(self.ptr, intrinsics::uninit());
-                free(self.ptr as *c_void)
+            if self.ptr.is_not_null() {
+                (*self.ptr).count -= 1;
+                if (*self.ptr).count == 0 {
+                    ptr::replace_ptr(self.ptr, intrinsics::uninit());
+                    free(self.ptr as *c_void)
+                }
             }
         }
     }
@@ -220,10 +222,12 @@ impl<T> RcMut<T> {
 impl<T> Drop for RcMut<T> {
     fn finalize(&self) {
         unsafe {
-            (*self.ptr).count -= 1;
-            if (*self.ptr).count == 0 {
-                ptr::replace_ptr(self.ptr, uninit());
-                free(self.ptr as *c_void)
+            if self.ptr.is_not_null() {
+                (*self.ptr).count -= 1;
+                if (*self.ptr).count == 0 {
+                    ptr::replace_ptr(self.ptr, uninit());
+                    free(self.ptr as *c_void)
+                }
             }
         }
     }
