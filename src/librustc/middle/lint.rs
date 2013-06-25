@@ -96,6 +96,8 @@ pub enum lint {
 
     missing_doc,
     unreachable_code,
+
+    warnings,
 }
 
 pub fn level_to_str(lv: level) -> &'static str {
@@ -280,6 +282,13 @@ static lint_table: &'static [(&'static str, LintSpec)] = &[
         desc: "detects unreachable code",
         default: warn
     }),
+
+    ("warnings",
+     LintSpec {
+        lint: warnings,
+        desc: "mass-change the level for lints which produce warnings",
+        default: warn
+    }),
 ];
 
 /*
@@ -362,10 +371,11 @@ impl Context {
 
     fn span_lint(&self, lint: lint, span: span, msg: &str) {
         let (level, src) = match self.curr.find(&(lint as uint)) {
+            None => { return }
+            Some(&(warn, src)) => (self.get_level(warnings), src),
             Some(&pair) => pair,
-            None => { return; }
         };
-        if level == allow { return; }
+        if level == allow { return }
 
         let mut note = None;
         let msg = match src {
