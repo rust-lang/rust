@@ -14,13 +14,13 @@
 use prelude::*;
 
 /// Cast a region pointer - &T - to a uint.
-#[inline(always)]
+#[inline]
 pub fn to_uint<T>(thing: &T) -> uint {
     thing as *T as uint
 }
 
 /// Determine if two borrowed pointers point to the same thing.
-#[inline(always)]
+#[inline]
 pub fn ref_eq<'a, 'b, T>(thing: &'a T, other: &'b T) -> bool {
     to_uint(thing) == to_uint(other)
 }
@@ -28,11 +28,11 @@ pub fn ref_eq<'a, 'b, T>(thing: &'a T, other: &'b T) -> bool {
 // Equality for region pointers
 #[cfg(not(test))]
 impl<'self, T: Eq> Eq for &'self T {
-    #[inline(always)]
+    #[inline]
     fn eq(&self, other: & &'self T) -> bool {
         *(*self) == *(*other)
     }
-    #[inline(always)]
+    #[inline]
     fn ne(&self, other: & &'self T) -> bool {
         *(*self) != *(*other)
     }
@@ -41,19 +41,19 @@ impl<'self, T: Eq> Eq for &'self T {
 // Comparison for region pointers
 #[cfg(not(test))]
 impl<'self, T: Ord> Ord for &'self T {
-    #[inline(always)]
+    #[inline]
     fn lt(&self, other: & &'self T) -> bool {
         *(*self) < *(*other)
     }
-    #[inline(always)]
+    #[inline]
     fn le(&self, other: & &'self T) -> bool {
         *(*self) <= *(*other)
     }
-    #[inline(always)]
+    #[inline]
     fn ge(&self, other: & &'self T) -> bool {
         *(*self) >= *(*other)
     }
-    #[inline(always)]
+    #[inline]
     fn gt(&self, other: & &'self T) -> bool {
         *(*self) > *(*other)
     }

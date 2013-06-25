@@ -646,12 +646,12 @@ impl Scheduler {
     }
 }
 
-// The cases for the below function.                                              
+// The cases for the below function.
 enum ResumeAction {
     SendHome,
     Requeue,
     ResumeNow,
-    Homeless                                                                      
+    Homeless
 }
 
 impl SchedHandle {

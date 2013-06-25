@@ -105,7 +105,7 @@ unsafe fn global_data_modify_<T:Owned>(
                 let dtor: ~fn() = match maybe_dtor {
                     Some(dtor) => dtor,
                     None => {
-                        let dtor: ~fn() = || unsafe {
+                        let dtor: ~fn() = || {
                             let _destroy_value: ~T = transmute(data);
                         };
                         dtor

@@ -618,13 +618,11 @@ pub fn InBoundsGEP(cx: block, Pointer: ValueRef, Indices: &[ValueRef]) ->
    ValueRef {
     unsafe {
         if cx.unreachable { return llvm::LLVMGetUndef(T_ptr(T_nil())); }
-        unsafe {
-            count_insn(cx, "inboundsgep");
+        count_insn(cx, "inboundsgep");
         return llvm::LLVMBuildInBoundsGEP(B(cx), Pointer,
                                            vec::raw::to_ptr(Indices),
                                            Indices.len() as c_uint,
                                            noname());
-        }
     }
 }
 
@@ -1072,11 +1070,9 @@ pub fn Trap(cx: block) {
         });
         assert!((T as int != 0));
         let Args: ~[ValueRef] = ~[];
-        unsafe {
-            count_insn(cx, "trap");
-            llvm::LLVMBuildCall(b, T, vec::raw::to_ptr(Args),
-                                Args.len() as c_uint, noname());
-        }
+        count_insn(cx, "trap");
+        llvm::LLVMBuildCall(b, T, vec::raw::to_ptr(Args),
+                            Args.len() as c_uint, noname());
     }
 }
 

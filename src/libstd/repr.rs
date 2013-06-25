@@ -18,6 +18,7 @@ More runtime type reflection
 
 use cast::transmute;
 use char;
+use container::Container;
 use intrinsic;
 use intrinsic::{TyDesc, TyVisitor, visit_tydesc};
 use intrinsic::Opaque;
@@ -163,7 +164,7 @@ pub fn ReprVisitor(ptr: *c_void, writer: @Writer) -> ReprVisitor {
 }
 
 impl MovePtr for ReprVisitor {
-    #[inline(always)]
+    #[inline]
     fn move_ptr(&self, adjustment: &fn(*c_void) -> *c_void) {
         *self.ptr = adjustment(*self.ptr);
     }
@@ -178,7 +179,7 @@ impl MovePtr for ReprVisitor {
 impl ReprVisitor {
     // Various helpers for the TyVisitor impl
 
-    #[inline(always)]
+    #[inline]
     pub fn get<T>(&self, f: &fn(&T)) -> bool {
         unsafe {
             f(transmute::<*c_void,&T>(*self.ptr));
@@ -186,12 +187,12 @@ impl ReprVisitor {
         true
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn visit_inner(&self, inner: *TyDesc) -> bool {
         self.visit_ptr_inner(*self.ptr, inner)
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn visit_ptr_inner(&self, ptr: *c_void, inner: *TyDesc) -> bool {
         unsafe {
             let u = ReprVisitor(ptr, self.writer);
@@ -201,7 +202,7 @@ impl ReprVisitor {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn write<T:Repr>(&self) -> bool {
         do self.get |v:&T| {
             v.write_repr(self.writer);
@@ -502,7 +503,7 @@ impl TyVisitor for ReprVisitor {
                                 _offset: uint,
                                 inner: *TyDesc)
                                 -> bool {
-        match self.var_stk[vec::uniq_len(&const *self.var_stk) - 1] {
+        match self.var_stk[self.var_stk.len() - 1] {
             Matched => {
                 if i != 0 {
                     self.writer.write_str(", ");
@@ -520,7 +521,7 @@ impl TyVisitor for ReprVisitor {
                                 _disr_val: int,
                                 n_fields: uint,
                                 _name: &str) -> bool {
-        match self.var_stk[vec::uniq_len(&const *self.var_stk) - 1] {
+        match self.var_stk[self.var_stk.len() - 1] {
             Matched => {
                 if n_fields > 0 {
                     self.writer.write_char(')');

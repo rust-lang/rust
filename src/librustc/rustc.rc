@@ -28,15 +28,7 @@ extern mod core(name = "std");
 extern mod extra(name = "extra");
 extern mod syntax;
 
-// For deriving(Encodable) purposes...
-#[cfg(stage0)]
-extern mod std(name = "extra", vers = "0.7-pre");
-#[cfg(not(stage0))]
 extern mod std(name = "std", vers = "0.7-pre");
-
-// For bootstrapping purposes.
-#[cfg(stage0)]
-pub use core::unstable;
 
 use core::prelude::*;
 

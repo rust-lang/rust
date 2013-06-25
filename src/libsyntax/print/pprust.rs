@@ -322,7 +322,7 @@ pub fn commasep<IN: Copy>(s: @ps, b: breaks, elts: &[IN], op: &fn(@ps, IN)) {
     let mut first = true;
     for elts.each |elt| {
         if first { first = false; } else { word_space(s, ","); }
-        op(s, *elt);
+        op(s, copy *elt);
     }
     end(s);
 }
@@ -334,13 +334,13 @@ pub fn commasep_cmnt<IN: Copy>(s: @ps, b: breaks, elts: &[IN], op: &fn(@ps, IN),
     let len = elts.len();
     let mut i = 0u;
     for elts.each |elt| {
-        maybe_print_comment(s, get_span(*elt).hi);
-        op(s, *elt);
+        maybe_print_comment(s, get_span(copy *elt).hi);
+        op(s, copy *elt);
         i += 1u;
         if i < len {
             word(s.s, ",");
-            maybe_print_trailing_comment(s, get_span(*elt),
-                                         Some(get_span(elts[i]).hi));
+            maybe_print_trailing_comment(s, get_span(copy *elt),
+                                         Some(get_span(copy elts[i]).hi));
             space_if_not_bol(s);
         }
     }
@@ -2118,7 +2118,7 @@ pub fn print_string(s: @ps, st: &str) {
 pub fn to_str<T: Copy>(t: T, f: @fn(@ps, T), intr: @ident_interner) -> ~str {
     do io::with_str_writer |wr| {
         let s = rust_printer(wr, intr);
-        f(s, t);
+        f(s, copy t);
         eof(s.s);
     }
 }

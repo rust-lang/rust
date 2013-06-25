@@ -21,7 +21,7 @@ trait bool_like {
 }
 
 fn andand<T:bool_like + Copy>(x1: T, x2: T) -> T {
-    bool_like::select(x1, x2, x1)
+    bool_like::select(copy x1, x2, x1)
 }
 
 impl bool_like for bool {

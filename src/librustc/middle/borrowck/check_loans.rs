@@ -82,7 +82,7 @@ impl<'self> CheckLoanCtxt<'self> {
         //! are issued for future scopes and thus they may have been
         //! *issued* but not yet be in effect.
 
-        for self.dfcx_loans.each_bit_on_entry(scope_id) |loan_index| {
+        for self.dfcx_loans.each_bit_on_entry_frozen(scope_id) |loan_index| {
             let loan = &self.all_loans[loan_index];
             if !op(loan) {
                 return false;
@@ -134,7 +134,7 @@ impl<'self> CheckLoanCtxt<'self> {
         //! we encounter `scope_id`.
 
         let mut result = ~[];
-        for self.dfcx_loans.each_gen_bit(scope_id) |loan_index| {
+        for self.dfcx_loans.each_gen_bit_frozen(scope_id) |loan_index| {
             result.push(loan_index);
         }
         return result;

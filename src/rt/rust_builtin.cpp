@@ -17,6 +17,7 @@
 #include "sync/timer.h"
 #include "sync/rust_thread.h"
 #include "rust_abi.h"
+#include "vg/valgrind.h"
 
 #include <time.h>
 
@@ -67,11 +68,10 @@ rust_env_pairs() {
 }
 #endif
 
-extern "C" CDECL void
-vec_reserve_shared_actual(type_desc* ty, rust_vec_box** vp,
-                          size_t n_elts) {
+extern "C" CDECL void *
+rust_local_realloc(rust_opaque_box *ptr, size_t size) {
     rust_task *task = rust_get_current_task();
-    reserve_vec_exact_shared(task, vp, n_elts * ty->size);
+    return task->boxed.realloc(ptr, size);
 }
 
 // This is completely misnamed.
@@ -590,12 +590,18 @@ rust_log_console_on() {
     log_console_on();
 }
 
-extern void log_console_off(rust_env *env);
+extern void log_console_off();
 
 extern "C" CDECL void
 rust_log_console_off() {
-    rust_task *task = rust_get_current_task();
-    log_console_off(task->kernel->env);
+    log_console_off();
+}
+
+extern bool should_log_console();
+
+extern "C" CDECL uintptr_t
+rust_should_log_console() {
+    return (uintptr_t)should_log_console();
 }
 
 extern "C" CDECL void
@@ -731,17 +737,10 @@ rust_task_deref(rust_task *task) {
 // Must call on rust stack.
 extern "C" CDECL void
 rust_call_tydesc_glue(void *root, size_t *tydesc, size_t glue_index) {
-#ifdef _RUST_STAGE0
-    void (*glue_fn)(void *, void *, void *, void *) =
-        (void (*)(void *, void *, void *, void *))tydesc[glue_index];
-    if (glue_fn)
-        glue_fn(0, 0, 0, root);
-#else
     void (*glue_fn)(void *, void *, void *) =
         (void (*)(void *, void *, void *))tydesc[glue_index];
     if (glue_fn)
         glue_fn(0, 0, root);
-#endif
 }
 
 // Don't run on the Rust stack!
@@ -761,11 +760,7 @@ public:
 
     virtual void run() {
         record_sp_limit(0);
-#ifdef _RUST_STAGE0
-        fn.f(NULL, fn.env, NULL);
-#else
         fn.f(fn.env, NULL);
-#endif
     }
 };
 
@@ -888,6 +883,12 @@ rust_delete_memory_region(memory_region *region) {
 }
 
 extern "C" CDECL boxed_region*
+rust_current_boxed_region() {
+    rust_task *task = rust_get_current_task();
+    return &task->boxed;
+}
+
+extern "C" CDECL boxed_region*
 rust_new_boxed_region(memory_region *region,
                       uintptr_t poison_on_free) {
     return new boxed_region(region, poison_on_free);
@@ -901,6 +902,11 @@ rust_delete_boxed_region(boxed_region *region) {
 extern "C" CDECL rust_opaque_box*
 rust_boxed_region_malloc(boxed_region *region, type_desc *td, size_t size) {
     return region->malloc(td, size);
+}
+
+extern "C" CDECL rust_opaque_box*
+rust_boxed_region_realloc(boxed_region *region, rust_opaque_box *ptr, size_t size) {
+    return region->realloc(ptr, size);
 }
 
 extern "C" CDECL void
@@ -930,11 +936,34 @@ rust_begin_unwind(uintptr_t token) {
 #endif
 }
 
+extern "C" CDECL uintptr_t
+rust_running_on_valgrind() {
+    return RUNNING_ON_VALGRIND;
+}
+
 extern int get_num_cpus();
 
 extern "C" CDECL uintptr_t
 rust_get_num_cpus() {
     return get_num_cpus();
+}
+
+static lock_and_signal global_args_lock;
+static uintptr_t global_args_ptr = 0;
+
+extern "C" CDECL void
+rust_take_global_args_lock() {
+    global_args_lock.lock();
+}
+
+extern "C" CDECL void
+rust_drop_global_args_lock() {
+    global_args_lock.unlock();
+}
+
+extern "C" CDECL uintptr_t*
+rust_get_global_args_ptr() {
+    return &global_args_ptr;
 }
 
 //

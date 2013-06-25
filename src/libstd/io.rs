@@ -1654,9 +1654,7 @@ impl Writer for BytesWriter {
         vec::reserve(bytes, count);
 
         unsafe {
-            // Silly stage0 borrow check workaround...
-            let casted: &mut ~[u8] = cast::transmute_copy(&bytes);
-            vec::raw::set_len(casted, count);
+            vec::raw::set_len(bytes, count);
 
             let view = vec::mut_slice(*bytes, *self.pos, count);
             vec::bytes::copy_memory(view, v, v_len);
@@ -1667,7 +1665,7 @@ impl Writer for BytesWriter {
 
     fn seek(&self, offset: int, whence: SeekStyle) {
         let pos = *self.pos;
-        let len = vec::uniq_len(&const *self.bytes);
+        let len = self.bytes.len();
         *self.pos = seek_in_buf(offset, pos, len, whence);
     }
 
@@ -1779,7 +1777,7 @@ pub mod fsync {
                 None => (),
                 Some(level) => {
                   // fail hard if not succesful
-                  assert!(((self.arg.fsync_fn)(self.arg.val, level)
+                  assert!(((self.arg.fsync_fn)(copy self.arg.val, level)
                     != -1));
                 }
             }

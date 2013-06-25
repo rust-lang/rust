@@ -969,7 +969,7 @@ mod test {
     // change every identifier to "zz"
     pub fn to_zz() -> @fn(ast::ident)->ast::ident {
         let zz_id = token::str_to_ident("zz");
-        |id| {zz_id}
+        |_id| {zz_id}
     }
 
     // maybe add to expand.rs...

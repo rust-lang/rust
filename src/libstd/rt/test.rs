@@ -74,7 +74,7 @@ pub fn run_in_mt_newsched_task(f: ~fn()) {
     do run_in_bare_thread {
         let nthreads = match os::getenv("RUST_TEST_THREADS") {
             Some(nstr) => FromStr::from_str(nstr).get(),
-            None => unsafe {
+            None => {
                 // Using more threads than cores in test code
                 // to force the OS to preempt them frequently.
                 // Assuming that this help stress test concurrent types.

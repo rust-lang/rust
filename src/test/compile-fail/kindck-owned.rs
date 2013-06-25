@@ -9,12 +9,13 @@
 // except according to those terms.
 
 fn copy1<T:Copy>(t: T) -> @fn() -> T {
-    let result: @fn() -> T = || t; //~ ERROR value may contain borrowed pointers
+    let result: @fn() -> T = || copy t;
+    //~^ ERROR value may contain borrowed pointers
     result
 }
 
 fn copy2<T:Copy + 'static>(t: T) -> @fn() -> T {
-    let result: @fn() -> T = || t;
+    let result: @fn() -> T = || copy t;
     result
 }
 

@@ -16,9 +16,6 @@ extern mod core(name = "std", vers = "0.7-pre");
 #[cfg(rustpkg)]
 extern mod this(name = "rustpkg");
 
-#[cfg(fuzzer)]
-extern mod this(name = "fuzzer");
-
 #[cfg(rustdoc)]
 extern mod this(name = "rustdoc");
 

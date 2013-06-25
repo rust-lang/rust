@@ -749,11 +749,7 @@ impl Liveness {
             None => {
                 // Vanilla 'break' or 'loop', so use the enclosing
                 // loop scope
-                let len = { // FIXME(#5074) stage0
-                    let loop_scope = &mut *self.loop_scope;
-                    loop_scope.len()
-                };
-                if len == 0 {
+                if self.loop_scope.len() == 0 {
                     self.tcx.sess.span_bug(sp, "break outside loop");
                 } else {
                     // FIXME(#5275): this shouldn't have to be a method...

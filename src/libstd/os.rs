@@ -40,6 +40,8 @@ use option::{Some, None};
 use os;
 use prelude::*;
 use ptr;
+use rt;
+use rt::TaskContext;
 use str;
 use uint;
 use unstable::finally::Finally;
@@ -144,7 +146,7 @@ pub mod win32 {
     }
 
     pub fn as_utf16_p<T>(s: &str, f: &fn(*u16) -> T) -> T {
-        let mut t = str::to_utf16(s);
+        let mut t = s.to_utf16();
         // Null terminate before passing on.
         t += [0u16];
         vec::as_imm_buf(t, |buf, _len| f(buf))
@@ -959,12 +961,10 @@ pub fn copy_file(from: &Path, to: &Path) -> bool {
             fclose(ostream);
 
             // Give the new file the old file's permissions
-            unsafe {
-                if do str::as_c_str(to.to_str()) |to_buf| {
-                    libc::chmod(to_buf, from_mode as mode_t)
-                } != 0 {
-                    return false; // should be a condition...
-                }
+            if do str::as_c_str(to.to_str()) |to_buf| {
+                libc::chmod(to_buf, from_mode as mode_t)
+            } != 0 {
+                return false; // should be a condition...
             }
             return ok;
         }
@@ -1169,10 +1169,17 @@ pub fn real_args() -> ~[~str] {
 #[cfg(target_os = "android")]
 #[cfg(target_os = "freebsd")]
 pub fn real_args() -> ~[~str] {
-    unsafe {
-        let argc = rustrt::rust_get_argc();
-        let argv = rustrt::rust_get_argv();
-        load_argc_and_argv(argc, argv)
+    if rt::context() == TaskContext {
+        match rt::args::clone() {
+            Some(args) => args,
+            None => fail!("process arguments not initialized")
+        }
+    } else {
+        unsafe {
+            let argc = rustrt::rust_get_argc();
+            let argv = rustrt::rust_get_argv();
+            load_argc_and_argv(argc, argv)
+        }
     }
 }
 
@@ -1685,10 +1692,11 @@ mod tests {
           assert!((ostream as uint != 0u));
           let s = ~"hello";
           let mut buf = s.as_bytes_with_null().to_owned();
+          let len = buf.len();
           do vec::as_mut_buf(buf) |b, _len| {
-              assert!((libc::fwrite(b as *c_void, 1u as size_t,
-                                   (s.len() + 1u) as size_t, ostream)
-                      == buf.len() as size_t))
+              assert_eq!(libc::fwrite(b as *c_void, 1u as size_t,
+                                      (s.len() + 1u) as size_t, ostream),
+                         len as size_t)
           }
           assert_eq!(libc::fclose(ostream), (0u as c_int));
           let in_mode = in.get_mode();

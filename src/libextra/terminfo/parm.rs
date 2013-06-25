@@ -224,9 +224,9 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
                         }
                     } else { return Err(~"stack is empty") },
                     'i' => match (copy mparams[0], copy mparams[1]) {
-                        (Number(ref mut x), Number(ref mut y)) => {
-                            *x += 1;
-                            *y += 1;
+                        (Number(x), Number(y)) => {
+                            mparams[0] = Number(x+1);
+                            mparams[1] = Number(y+1);
                         },
                         (_, _) => return Err(~"first two params not numbers with %i")
                     },
@@ -352,6 +352,7 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
 #[cfg(test)]
 mod test {
     use super::*;
+    use core::result::Ok;
 
     #[test]
     fn test_basic_setabf() {
@@ -364,6 +365,16 @@ mod test {
     fn test_multiple_int_constants() {
         assert_eq!(expand(bytes!("%{1}%{2}%d%d"), [], &mut Variables::new()).unwrap(),
                    bytes!("21").to_owned());
+    }
+
+    #[test]
+    fn test_op_i() {
+        let mut vars = Variables::new();
+        assert_eq!(expand(bytes!("%p1%d%p2%d%p3%d%i%p1%d%p2%d%p3%d"),
+                          [Number(1),Number(2),Number(3)], &mut vars),
+                   Ok(bytes!("123233").to_owned()));
+        assert_eq!(expand(bytes!("%p1%d%p2%d%i%p1%d%p2%d"), [], &mut vars),
+                   Ok(bytes!("0011").to_owned()));
     }
 
     #[test]

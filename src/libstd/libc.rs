@@ -14,8 +14,8 @@
 * This module contains bindings to the C standard library,
 * organized into modules by their defining standard.
 * Additionally, it contains some assorted platform-specific definitions.
-* For convenience, most functions and types are reexported from `core::libc`,
-* so `pub use core::libc::*` will import the available
+* For convenience, most functions and types are reexported from `std::libc`,
+* so `pub use std::libc::*` will import the available
 * C bindings as appropriate for the target platform. The exact
 * set of functions available are platform specific.
 *
@@ -1457,11 +1457,11 @@ pub mod funcs {
                 // These are fine to execute on the Rust stack. They must be,
                 // in fact, because LLVM generates calls to them!
                 #[rust_stack]
-                #[inline(always)]
+                #[inline]
                 unsafe fn memcmp(cx: *c_void, ct: *c_void, n: size_t)
                               -> c_int;
                 #[rust_stack]
-                #[inline(always)]
+                #[inline]
                 unsafe fn memchr(cx: *c_void, c: c_int, n: size_t) -> *c_void;
             }
         }

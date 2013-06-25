@@ -9,8 +9,11 @@
 // except according to those terms.
 
 use container::Container;
+use from_str::FromStr;
 use iterator::IteratorUtil;
 use libc;
+use option::{Some, None};
+use os;
 use str::StrSlice;
 
 /// Get the number of cores available
@@ -21,6 +24,15 @@ pub fn num_cpus() -> uint {
 
     extern {
         fn rust_get_num_cpus() -> libc::uintptr_t;
+    }
+}
+
+/// Get's the number of scheduler threads requested by the environment
+/// either `RUST_THREADS` or `num_cpus`.
+pub fn default_sched_threads() -> uint {
+    match os::getenv("RUST_THREADS") {
+        Some(nstr) => FromStr::from_str(nstr).get(),
+        None => num_cpus()
     }
 }
 

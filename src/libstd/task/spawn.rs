@@ -79,7 +79,6 @@ use cast;
 use cell::Cell;
 use container::Map;
 use comm::{Chan, GenericChan};
-use ptr;
 use hashmap::HashSet;
 use task::local_data_priv::{local_get, local_set, OldHandle};
 use task::rt::rust_task;
@@ -98,10 +97,6 @@ use rt::task::Task;
 #[cfg(test)] use task::default_task_opts;
 #[cfg(test)] use comm;
 #[cfg(test)] use task;
-
-macro_rules! move_it (
-    { $x:expr } => ( unsafe { let y = *ptr::to_unsafe_ptr(&($x)); y } )
-)
 
 type TaskSet = HashSet<*rust_task>;
 
@@ -162,14 +157,14 @@ struct AncestorNode {
 struct AncestorList(Option<Exclusive<AncestorNode>>);
 
 // Accessors for taskgroup arcs and ancestor arcs that wrap the unsafety.
-#[inline(always)]
+#[inline]
 fn access_group<U>(x: &TaskGroupArc, blk: &fn(TaskGroupInner) -> U) -> U {
     unsafe {
         x.with(blk)
     }
 }
 
-#[inline(always)]
+#[inline]
 fn access_ancestors<U>(x: &Exclusive<AncestorNode>,
                        blk: &fn(x: &mut AncestorNode) -> U) -> U {
     unsafe {
@@ -583,12 +578,28 @@ pub fn spawn_raw(opts: TaskOpts, f: ~fn()) {
     }
 }
 
-fn spawn_raw_newsched(_opts: TaskOpts, f: ~fn()) {
+fn spawn_raw_newsched(mut opts: TaskOpts, f: ~fn()) {
     use rt::sched::*;
 
-    let task = do Local::borrow::<Task, ~Task>() |running_task| {
-        ~running_task.new_child()
+    let mut task = if opts.linked {
+        do Local::borrow::<Task, ~Task>() |running_task| {
+            ~running_task.new_child()
+        }
+    } else {
+        // An unlinked task is a new root in the task tree
+        ~Task::new_root()
     };
+
+    if opts.notify_chan.is_some() {
+        let notify_chan = opts.notify_chan.swap_unwrap();
+        let notify_chan = Cell::new(notify_chan);
+        let on_exit: ~fn(bool) = |success| {
+            notify_chan.take().send(
+                if success { Success } else { Failure }
+            )
+        };
+        task.on_exit = Some(on_exit);
+    }
 
     let mut sched = Local::take::<Scheduler>();
     let task = ~Coroutine::with_task(&mut sched.stack_pool,
@@ -644,23 +655,16 @@ fn spawn_raw_oldsched(mut opts: TaskOpts, f: ~fn()) {
                           notify_chan: Option<Chan<TaskResult>>,
                           f: ~fn())
                        -> ~fn() {
-        let child_data = Cell::new((child_arc, ancestors));
+        let child_data = Cell::new((notify_chan, child_arc, ancestors));
         let result: ~fn() = || {
             // Agh. Get move-mode items into the closure. FIXME (#2829)
-            let mut (child_arc, ancestors) = child_data.take();
+            let mut (notify_chan, child_arc, ancestors) = child_data.take();
             // Child task runs this code.
 
             // Even if the below code fails to kick the child off, we must
             // send Something on the notify channel.
 
-            //let mut notifier = None;//notify_chan.map(|c| AutoNotify(c));
-            let notifier = match notify_chan {
-                Some(ref notify_chan_value) => {
-                    let moved_ncv = move_it!(*notify_chan_value);
-                    Some(AutoNotify(moved_ncv))
-                }
-                _ => None
-            };
+            let notifier = notify_chan.map_consume(|c| AutoNotify(c));
 
             if enlist_many(child, &child_arc, &mut ancestors) {
                 let group = @@mut TCB(child,

@@ -43,6 +43,8 @@
 #include "llvm/Transforms/IPO.h"
 #include "llvm/Transforms/Instrumentation.h"
 #include "llvm/Transforms/Vectorize.h"
+#include "llvm/DebugInfo.h"
+#include "llvm/DIBuilder.h"
 #include "llvm-c/Core.h"
 #include "llvm-c/BitReader.h"
 #include "llvm-c/ExecutionEngine.h"

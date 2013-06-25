@@ -370,7 +370,7 @@ fn run_cmd(repl: &mut Repl, _in: @io::Reader, _out: @io::Writer,
                     if arg.ends_with(".rs") || arg.ends_with(".rc") {
                     (arg.slice_to(arg.len() - 3).to_owned(), copy *arg)
                 } else {
-                    (copy *arg, arg + ".rs")
+                    (copy *arg, *arg + ".rs")
                 };
                 match compile_crate(filename, copy repl.binary) {
                     Some(_) => loaded_crates.push(crate),
@@ -537,6 +537,9 @@ mod tests {
     }
 
     #[test]
+    // FIXME: #7220 rusti on 32bit mac doesn't work.
+    #[cfg(not(target_word_size="32",
+              target_os="macos"))]
     fn run_all() {
         // FIXME(#7071):
         // By default, unit tests are run in parallel. Rusti, on the other hand,
@@ -648,6 +651,9 @@ mod tests {
     }
 
     #[test]
+    // FIXME: #7220 rusti on 32bit mac doesn't work.
+    #[cfg(not(target_word_size="32",
+              target_os="macos"))]
     fn exit_quits() {
         let mut r = repl();
         assert!(r.running);

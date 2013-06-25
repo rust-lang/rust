@@ -16,11 +16,11 @@ use prelude::*;
 use unstable::intrinsics;
 
 /// The identity function.
-#[inline(always)]
+#[inline]
 pub fn id<T>(x: T) -> T { x }
 
 /// Ignores a value.
-#[inline(always)]
+#[inline]
 pub fn ignore<T>(_x: T) { }
 
 /// Sets `*ptr` to `new_value`, invokes `op()`, and then restores the
@@ -30,7 +30,7 @@ pub fn ignore<T>(_x: T) { }
 /// an obvious borrowck hazard. Typically passing in `&mut T` will
 /// cause borrow check errors because it freezes whatever location
 /// that `&mut T` is stored in (either statically or dynamically).
-#[inline(always)]
+#[inline]
 pub fn with<T,R>(
     ptr: @mut T,
     value: T,
@@ -46,7 +46,7 @@ pub fn with<T,R>(
  * Swap the values at two mutable locations of the same type, without
  * deinitialising or copying either one.
  */
-#[inline(always)]
+#[inline]
 pub fn swap<T>(x: &mut T, y: &mut T) {
     unsafe {
         // Give ourselves some scratch space to work with
@@ -68,7 +68,7 @@ pub fn swap<T>(x: &mut T, y: &mut T) {
  * Replace the value at a mutable location with a new one, returning the old
  * value, without deinitialising or copying either one.
  */
-#[inline(always)]
+#[inline]
 pub fn replace<T>(dest: &mut T, mut src: T) -> T {
     swap(dest, &mut src);
     src

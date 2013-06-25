@@ -43,11 +43,15 @@ log_console_on() {
  * overridden by the environment.
  */
 void
-log_console_off(rust_env *env) {
+log_console_off() {
     scoped_lock with(_log_lock);
-    if (env->logspec == NULL) {
-        _log_to_console = false;
-    }
+    _log_to_console = false;
+}
+
+bool
+should_log_console() {
+    scoped_lock with(_log_lock);
+    return _log_to_console;
 }
 
 rust_log::rust_log(rust_sched_loop *sched_loop) :

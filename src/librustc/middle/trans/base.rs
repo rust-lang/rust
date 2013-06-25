@@ -71,7 +71,6 @@ use core::libc::c_uint;
 use core::str;
 use core::uint;
 use core::vec;
-use core::local_data;
 use extra::time;
 use syntax::ast::ident;
 use syntax::ast_map::{path, path_elt_to_str, path_name};
@@ -1318,26 +1317,38 @@ pub fn cleanup_and_leave(bcx: block,
 
         match cur.kind {
             block_scope(inf) if !inf.empty_cleanups() => {
-                let (sub_cx, inf_cleanups) = {
-                    let inf = &mut *inf; // FIXME(#5074) workaround stage0
+                let (sub_cx, dest, inf_cleanups) = {
+                    let inf = &mut *inf;
+                    let mut skip = 0;
+                    let mut dest = None;
                     {
-                        let r = vec::find((*inf).cleanup_paths, |cp| cp.target == leave);
+                        let r = vec::rfind((*inf).cleanup_paths, |cp| cp.target == leave);
                         for r.iter().advance |cp| {
-                            Br(bcx, cp.dest);
-                            return;
+                            if cp.size == inf.cleanups.len() {
+                                Br(bcx, cp.dest);
+                                return;
+                            }
+
+                            skip = cp.size;
+                            dest = Some(cp.dest);
                         }
                     }
                     let sub_cx = sub_block(bcx, "cleanup");
                     Br(bcx, sub_cx.llbb);
                     inf.cleanup_paths.push(cleanup_path {
                         target: leave,
+                        size: inf.cleanups.len(),
                         dest: sub_cx.llbb
                     });
-                    (sub_cx, copy inf.cleanups)
+                    (sub_cx, dest, inf.cleanups.tailn(skip).to_owned())
                 };
                 bcx = trans_block_cleanups_(sub_cx,
                                             inf_cleanups,
                                             is_lpad);
+                for dest.iter().advance |&dest| {
+                    Br(bcx, dest);
+                    return;
+                }
             }
             _ => ()
         }
@@ -1896,6 +1907,12 @@ pub fn trans_closure(ccx: @mut CrateContext,
 
     finish(bcx);
     cleanup_and_Br(bcx, bcx_top, fcx.llreturn);
+
+    // Put return block after all other blocks.
+    // This somewhat improves single-stepping experience in debugger.
+    unsafe {
+        llvm::LLVMMoveBasicBlockAfter(fcx.llreturn, bcx.llbb);
+    }
 
     // Insert the mandatory first few basic blocks before lltop.
     finish_fn(fcx, lltop);
@@ -3033,7 +3050,7 @@ pub fn write_metadata(cx: &mut CrateContext, crate: &ast::crate) {
 
 // Writes the current ABI version into the crate.
 pub fn write_abi_version(ccx: &mut CrateContext) {
-    mk_global(ccx, ~"rust_abi_version", C_uint(ccx, abi::abi_version),
+    mk_global(ccx, "rust_abi_version", C_uint(ccx, abi::abi_version),
                      false);
 }
 
@@ -3091,6 +3108,9 @@ pub fn trans_crate(sess: session::Session,
     fill_crate_map(ccx, ccx.crate_map);
     glue::emit_tydescs(ccx);
     write_abi_version(ccx);
+    if ccx.sess.opts.debuginfo {
+        debuginfo::finalize(ccx);
+    }
 
     // Translate the metadata.
     write_metadata(ccx, crate);
@@ -3120,4 +3140,3 @@ pub fn trans_crate(sess: session::Session,
 
     return (llcx, llmod, link_meta);
 }
-

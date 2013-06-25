@@ -725,7 +725,7 @@ impl FnCtxt {
         ty::re_scope(self.region_lb)
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn write_ty(&self, node_id: ast::node_id, ty: ty::t) {
         debug!("write_ty(%d, %s) in fcx %s",
                node_id, ppaux::ty_to_str(self.tcx(), ty), self.tag());

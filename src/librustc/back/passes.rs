@@ -221,7 +221,7 @@ pub static analysis_passes : &'static [(&'static str, &'static str)] = &'static 
 /** Transformation Passes */
 pub static transform_passes : &'static [(&'static str, &'static str)] = &'static [
     ("adce",                            "Aggressive Dead Code Elimination"),
-    ("always-inline",                   "Inliner for #[inline(always)] functions"),
+    ("always-inline",                   "Inliner for #[inline] functions"),
     ("argpromotion",                    "Promote 'by reference' arguments to scalars"),
     ("bb-vectorize",                    "Basic-Block Vectorization"),
     ("block-placement",                 "Profile Guided Basic Block Placement"),
@@ -299,18 +299,27 @@ fn passes_exist() {
     let mut failed = ~[];
     unsafe { llvm::LLVMInitializePasses(); }
     for analysis_passes.each() |&(name,_)| {
-        if !create_pass(name).is_some() {
+        let pass = create_pass(name);
+        if !pass.is_some() {
             failed.push(name);
+        } else {
+            unsafe { llvm::LLVMDestroyPass(pass.get()) }
         }
     }
     for transform_passes.each() |&(name,_)| {
-        if !create_pass(name).is_some() {
+        let pass = create_pass(name);
+        if !pass.is_some() {
             failed.push(name);
+        } else {
+            unsafe { llvm::LLVMDestroyPass(pass.get()) }
         }
     }
     for utility_passes.each() |&(name,_)| {
-        if !create_pass(name).is_some() {
+        let pass = create_pass(name);
+        if !pass.is_some() {
             failed.push(name);
+        } else {
+            unsafe { llvm::LLVMDestroyPass(pass.get()) }
         }
     }
 

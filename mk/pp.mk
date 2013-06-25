@@ -17,7 +17,6 @@ else
               $(wildcard $(addprefix $(S)src/rustc/,*.rs */*.rs */*/*.rs)) \
               $(wildcard $(S)src/test/*/*.rs    \
                          $(S)src/test/*/*/*.rs) \
-              $(wildcard $(S)src/fuzzer/*.rs)   \
               $(wildcard $(S)src/rustpkg/*.rs) \
               $(wildcard $(S)src/rusti/*.rs) \
               $(wildcard $(S)src/rust/*.rs)

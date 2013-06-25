@@ -24,7 +24,6 @@ use fold::Fold;
 use fold;
 use pass::Pass;
 
-use core::str;
 use core::util;
 
 pub fn mk_pass() -> Pass {
@@ -129,25 +128,21 @@ fn first_sentence_(s: &str) -> ~str {
         }
     });
     match idx {
-        Some(idx) if idx > 2u => {
-            str::to_owned(s.slice(0, idx - 1))
-        }
+        Some(idx) if idx > 2u => s.slice(0, idx - 1).to_owned(),
         _ => {
             if s.ends_with(".") {
-                str::to_owned(s)
+                s.to_owned()
             } else {
-                str::to_owned(s)
+                s.to_owned()
             }
         }
     }
 }
 
 pub fn paragraphs(s: &str) -> ~[~str] {
-    let mut lines = ~[];
-    for str::each_line_any(s) |line| { lines.push(line.to_owned()); }
     let mut whitespace_lines = 0;
     let mut accum = ~"";
-    let paras = do lines.iter().fold(~[]) |paras, line| {
+    let paras = do s.any_line_iter().fold(~[]) |paras, line| {
         let mut res = paras;
 
         if line.is_whitespace() {
@@ -163,9 +158,9 @@ pub fn paragraphs(s: &str) -> ~[~str] {
             whitespace_lines = 0;
 
             accum = if accum.is_empty() {
-                copy *line
+                line.to_owned()
             } else {
-                accum + "\n" + *line
+                fmt!("%s\n%s", accum, line)
             }
         }
 

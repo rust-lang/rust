@@ -1052,7 +1052,7 @@ f(cx, span, ~[self_1.method(__arg_1_1, __arg_2_1),
               self_2.method(__arg_1_2, __arg_2_2)])
 ~~~
 */
-#[inline(always)]
+#[inline]
 pub fn cs_same_method(f: &fn(@ExtCtxt, span, ~[@expr]) -> @expr,
                       enum_nonmatch_f: EnumNonMatchFunc,
                       cx: @ExtCtxt, span: span,
@@ -1083,7 +1083,7 @@ Fold together the results of calling the derived method on all the
 fields. `use_foldl` controls whether this is done left-to-right
 (`true`) or right-to-left (`false`).
 */
-#[inline(always)]
+#[inline]
 pub fn cs_same_method_fold(use_foldl: bool,
                            f: &fn(@ExtCtxt, span, @expr, @expr) -> @expr,
                            base: @expr,
@@ -1111,7 +1111,7 @@ pub fn cs_same_method_fold(use_foldl: bool,
 Use a given binop to combine the result of calling the derived method
 on all the fields.
 */
-#[inline(always)]
+#[inline]
 pub fn cs_binop(binop: ast::binop, base: @expr,
                 enum_nonmatch_f: EnumNonMatchFunc,
                 cx: @ExtCtxt, span: span,
@@ -1130,7 +1130,7 @@ pub fn cs_binop(binop: ast::binop, base: @expr,
 }
 
 /// cs_binop with binop == or
-#[inline(always)]
+#[inline]
 pub fn cs_or(enum_nonmatch_f: EnumNonMatchFunc,
              cx: @ExtCtxt, span: span,
              substructure: &Substructure) -> @expr {
@@ -1139,7 +1139,7 @@ pub fn cs_or(enum_nonmatch_f: EnumNonMatchFunc,
              cx, span, substructure)
 }
 /// cs_binop with binop == and
-#[inline(always)]
+#[inline]
 pub fn cs_and(enum_nonmatch_f: EnumNonMatchFunc,
               cx: @ExtCtxt, span: span,
               substructure: &Substructure) -> @expr {

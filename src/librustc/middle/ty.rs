@@ -1094,62 +1094,62 @@ fn mk_t(cx: ctxt, st: sty) -> t {
     }
 }
 
-#[inline(always)]
+#[inline]
 pub fn mk_prim_t(primitive: &'static t_box_) -> t {
     unsafe {
         cast::transmute::<&'static t_box_, t>(primitive)
     }
 }
 
-#[inline(always)]
+#[inline]
 pub fn mk_nil() -> t { mk_prim_t(&primitives::TY_NIL) }
 
-#[inline(always)]
+#[inline]
 pub fn mk_err() -> t { mk_prim_t(&primitives::TY_ERR) }
 
-#[inline(always)]
+#[inline]
 pub fn mk_bot() -> t { mk_prim_t(&primitives::TY_BOT) }
 
-#[inline(always)]
+#[inline]
 pub fn mk_bool() -> t { mk_prim_t(&primitives::TY_BOOL) }
 
-#[inline(always)]
+#[inline]
 pub fn mk_int() -> t { mk_prim_t(&primitives::TY_INT) }
 
-#[inline(always)]
+#[inline]
 pub fn mk_i8() -> t { mk_prim_t(&primitives::TY_I8) }
 
-#[inline(always)]
+#[inline]
 pub fn mk_i16() -> t { mk_prim_t(&primitives::TY_I16) }
 
-#[inline(always)]
+#[inline]
 pub fn mk_i32() -> t { mk_prim_t(&primitives::TY_I32) }
 
-#[inline(always)]
+#[inline]
 pub fn mk_i64() -> t { mk_prim_t(&primitives::TY_I64) }
 
-#[inline(always)]
+#[inline]
 pub fn mk_float() -> t { mk_prim_t(&primitives::TY_FLOAT) }
 
-#[inline(always)]
+#[inline]
 pub fn mk_f32() -> t { mk_prim_t(&primitives::TY_F32) }
 
-#[inline(always)]
+#[inline]
 pub fn mk_f64() -> t { mk_prim_t(&primitives::TY_F64) }
 
-#[inline(always)]
+#[inline]
 pub fn mk_uint() -> t { mk_prim_t(&primitives::TY_UINT) }
 
-#[inline(always)]
+#[inline]
 pub fn mk_u8() -> t { mk_prim_t(&primitives::TY_U8) }
 
-#[inline(always)]
+#[inline]
 pub fn mk_u16() -> t { mk_prim_t(&primitives::TY_U16) }
 
-#[inline(always)]
+#[inline]
 pub fn mk_u32() -> t { mk_prim_t(&primitives::TY_U32) }
 
-#[inline(always)]
+#[inline]
 pub fn mk_u64() -> t { mk_prim_t(&primitives::TY_U64) }
 
 pub fn mk_mach_int(tm: ast::int_ty) -> t {
@@ -1181,7 +1181,7 @@ pub fn mk_mach_float(tm: ast::float_ty) -> t {
     }
 }
 
-#[inline(always)]
+#[inline]
 pub fn mk_char() -> t { mk_prim_t(&primitives::TY_CHAR) }
 
 pub fn mk_estr(cx: ctxt, t: vstore) -> t {
@@ -2273,7 +2273,7 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
         for type_param_def.bounds.builtin_bounds.each |bound| {
             debug!("tc = %s, bound = %?", tc.to_str(), bound);
             tc = tc - match bound {
-                BoundCopy => TypeContents::nonimplicitly_copyable(cx),
+                BoundCopy => TypeContents::noncopyable(cx),
                 BoundStatic => TypeContents::nonstatic(cx),
                 BoundOwned => TypeContents::nonowned(cx),
                 BoundConst => TypeContents::nonconst(cx),
@@ -3694,7 +3694,7 @@ fn lookup_locally_or_in_crate_store<V:Copy>(
      */
 
     match map.find(&def_id) {
-        Some(&v) => { return v; }
+        Some(&ref v) => { return copy *v; }
         None => { }
     }
 
@@ -3702,8 +3702,8 @@ fn lookup_locally_or_in_crate_store<V:Copy>(
         fail!("No def'n found for %? in tcx.%s", def_id, descr);
     }
     let v = load_external();
-    map.insert(def_id, v);
-    return v;
+    map.insert(def_id, copy v);
+    return copy v;
 }
 
 pub fn trait_method(cx: ctxt, trait_did: ast::def_id, idx: uint) -> @Method {

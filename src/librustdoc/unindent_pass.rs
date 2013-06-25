@@ -21,7 +21,6 @@ middle of a line, and each of the following lines is indented.
 
 use core::prelude::*;
 
-use core::str;
 use core::uint;
 use pass::Pass;
 use text_pass;
@@ -31,8 +30,7 @@ pub fn mk_pass() -> Pass {
 }
 
 fn unindent(s: &str) -> ~str {
-    let mut lines = ~[];
-    for str::each_line_any(s) |line| { lines.push(line.to_owned()); }
+    let lines = s.any_line_iter().collect::<~[&str]>();
     let mut saw_first_line = false;
     let mut saw_second_line = false;
     let min_indent = do lines.iter().fold(uint::max_value)
@@ -76,19 +74,20 @@ fn unindent(s: &str) -> ~str {
         }
     };
 
-    if !lines.is_empty() {
-        let unindented = ~[lines.head().trim().to_owned()]
-            + do lines.tail().map |line| {
-            if line.is_whitespace() {
-                copy *line
-            } else {
-                assert!(line.len() >= min_indent);
-                line.slice(min_indent, line.len()).to_owned()
-            }
-        };
-        unindented.connect("\n")
-    } else {
-        s.to_str()
+    match lines {
+        [head, .. tail] => {
+            let mut unindented = ~[ head.trim() ];
+            unindented.push_all(do tail.map |&line| {
+                if line.is_whitespace() {
+                    line
+                } else {
+                    assert!(line.len() >= min_indent);
+                    line.slice_from(min_indent)
+                }
+            });
+            unindented.connect("\n")
+        }
+        [] => s.to_owned()
     }
 }
 

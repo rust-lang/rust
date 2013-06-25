@@ -122,7 +122,7 @@ pub unsafe fn c_vec_with_dtor<T>(base: *mut T, len: uint, dtor: @fn())
  */
 pub fn get<T:Copy>(t: CVec<T>, ofs: uint) -> T {
     assert!(ofs < len(t));
-    return unsafe { *ptr::mut_offset(t.base, ofs) };
+    return unsafe { copy *ptr::mut_offset(t.base, ofs) };
 }
 
 /**

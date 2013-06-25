@@ -553,7 +553,7 @@ pub fn make_opaque_cbox_drop_glue(
         ast::BorrowedSigil => bcx,
         ast::ManagedSigil => {
             glue::decr_refcnt_maybe_free(
-                bcx, Load(bcx, cboxptr),
+                bcx, Load(bcx, cboxptr), Some(cboxptr),
                 ty::mk_opaque_closure_ptr(bcx.tcx(), sigil))
         }
         ast::OwnedSigil => {

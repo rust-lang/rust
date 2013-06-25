@@ -23,7 +23,7 @@ fn target_env(lib_path: &str, prog: &str) -> ~[(~str,~str)] {
     assert!(prog.ends_with(".exe"));
     let aux_path = prog.slice(0u, prog.len() - 4u).to_owned() + ".libaux";
 
-    env = do vec::map(env) |pair| {
+    env = do env.map() |pair| {
         let (k,v) = copy *pair;
         if k == ~"PATH" { (~"PATH", v + ";" + lib_path + ";" + aux_path) }
         else { (k,v) }

@@ -105,7 +105,8 @@ fn check_is_legal_to_move_from(bccx: @BorrowckCtxt,
         mc::cat_implicit_self(*) |
         mc::cat_copied_upvar(*) |
         mc::cat_deref(_, _, mc::region_ptr(*)) |
-        mc::cat_deref(_, _, mc::gc_ptr(*)) => {
+        mc::cat_deref(_, _, mc::gc_ptr(*)) |
+        mc::cat_deref(_, _, mc::unsafe_ptr(*)) => {
             bccx.span_err(
                 cmt0.span,
                 fmt!("cannot move out of %s",
@@ -129,8 +130,7 @@ fn check_is_legal_to_move_from(bccx: @BorrowckCtxt,
         mc::cat_rvalue(*) |
         mc::cat_local(*) |
         mc::cat_arg(*) |
-        mc::cat_self(*) |
-        mc::cat_deref(_, _, mc::unsafe_ptr(*)) => {
+        mc::cat_self(*) => {
             true
         }
 
