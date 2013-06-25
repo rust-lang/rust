@@ -143,6 +143,7 @@ hi def link rustConditional   Conditional
 hi def link rustIdentifier    Identifier
 hi def link rustModPath       Include
 hi def link rustFuncName      Function
+hi def link rustFuncCall      Function
 hi def link rustCommentDoc    SpecialComment
 hi def link rustComment       Comment
 hi def link rustMacro         Macro
