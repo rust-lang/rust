@@ -309,13 +309,13 @@ rust_uv_udp_bind6(uv_udp_t* server, sockaddr_in6* addr_ptr, unsigned flags) {
 }
 
 extern "C" int
-rust_uv_udp_send(uv_udp_send_t* req, uv_udp_t* handle, uv_buf_t* buf_in, 
+rust_uv_udp_send(uv_udp_send_t* req, uv_udp_t* handle, uv_buf_t* buf_in,
                  int buf_cnt, sockaddr_in* addr_ptr, uv_udp_send_cb cb) {
     return uv_udp_send(req, handle, buf_in, buf_cnt, *addr_ptr, cb);
 }
 
 extern "C" int
-rust_uv_udp_send6(uv_udp_send_t* req, uv_udp_t* handle, uv_buf_t* buf_in, 
+rust_uv_udp_send6(uv_udp_send_t* req, uv_udp_t* handle, uv_buf_t* buf_in,
                   int buf_cnt, sockaddr_in6* addr_ptr, uv_udp_send_cb cb) {
     return uv_udp_send6(req, handle, buf_in, buf_cnt, *addr_ptr, cb);
 }

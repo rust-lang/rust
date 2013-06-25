@@ -84,7 +84,7 @@ impl UdpStream {
 }
 
 impl Reader for UdpStream {
-    fn read(&mut self, buf: &mut [u8]) -> Option<uint> { 
+    fn read(&mut self, buf: &mut [u8]) -> Option<uint> {
         do self.as_socket |sock| {
             match sock.recvfrom(buf) {
                 Some((_nread, src)) if src != self.connectedTo => Some(0),
@@ -131,7 +131,7 @@ mod test {
         }
     }
 
-    #[test] 
+    #[test]
     fn socket_smoke_test() {
         do run_in_newsched_task {
             let server_ip = next_test_ip4();
