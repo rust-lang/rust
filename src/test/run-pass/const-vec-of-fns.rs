@@ -8,7 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-fast
+// xfail-test
+// FIXME: #7385: hits a codegen bug on OS X x86_64
 
 /*!
  * Try to double-check that static fns have the right size (with or
