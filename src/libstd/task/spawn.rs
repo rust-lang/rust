@@ -111,7 +111,7 @@ fn taskset_remove(tasks: &mut TaskSet, task: *rust_task) {
     assert!(was_present);
 }
 pub fn taskset_each(tasks: &TaskSet, blk: &fn(v: *rust_task) -> bool) -> bool {
-    tasks.each(|k| blk(*k))
+    tasks.iter().advance(|k| blk(*k))
 }
 
 // One of these per group of linked-failure tasks.

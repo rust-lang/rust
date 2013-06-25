@@ -704,11 +704,11 @@ pub fn trans_args(cx: block,
     // now that all arguments have been successfully built, we can revoke any
     // temporary cleanups, as they are only needed if argument construction
     // should fail (for example, cleanup of copy mode args).
-    for vec::each(temp_cleanups) |c| {
+    for temp_cleanups.iter().advance |c| {
         revoke_clean(bcx, *c)
     }
 
-    return bcx;
+    bcx
 }
 
 pub enum AutorefArg {

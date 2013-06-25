@@ -394,10 +394,10 @@ impl id_range {
 
 pub fn id_visitor<T: Copy>(vfn: @fn(node_id, T)) -> visit::vt<T> {
     let visit_generics: @fn(&Generics, T) = |generics, t| {
-        for generics.ty_params.each |p| {
+        for generics.ty_params.iter().advance |p| {
             vfn(p.id, copy t);
         }
-        for generics.lifetimes.each |p| {
+        for generics.lifetimes.iter().advance |p| {
             vfn(p.id, copy t);
         }
     };

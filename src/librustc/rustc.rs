@@ -166,7 +166,7 @@ Available lint options:
                      padded(max_key, "name"), "default", "meaning"));
     io::println(fmt!("    %s  %7.7s  %s\n",
                      padded(max_key, "----"), "-------", "-------"));
-    for lint_dict.each |k, v| {
+    for lint_dict.iter().advance |(k, v)| {
         let k = k.replace("_", "-");
         io::println(fmt!("    %s  %7.7s  %s",
                          padded(max_key, k),
