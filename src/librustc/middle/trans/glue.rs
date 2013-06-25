@@ -484,12 +484,6 @@ pub fn trans_struct_drop(mut bcx: block, t: ty::t, v0: ValueRef, dtor_did: ast::
         bcx = drop_ty(bcx, llfld_a, fld.mt.ty);
     }
 
-    // Zero out the struct
-    unsafe {
-        let ty = Type::from_ref(llvm::LLVMTypeOf(v0));
-        memzero(bcx, v0, ty);
-    }
-
     bcx
 }
 
@@ -634,6 +628,23 @@ pub fn make_take_glue(bcx: block, v: ValueRef, t: ty::t) {
       }
       ty::ty_opaque_closure_ptr(ck) => {
         closure::make_opaque_cbox_take_glue(bcx, ck, v)
+      }
+      ty::ty_struct(did, ref substs) => {
+        let tcx = bcx.tcx();
+        let bcx = iter_structural_ty(bcx, v, t, take_ty);
+
+        match ty::ty_dtor(tcx, did) {
+          ty::TraitDtor(dtor, false) => {
+            // Zero out the struct
+            unsafe {
+                let ty = Type::from_ref(llvm::LLVMTypeOf(v));
+                memzero(bcx, v, ty);
+            }
+
+          }
+          _ => { }
+        }
+        bcx
       }
       _ if ty::type_is_structural(t) => {
         iter_structural_ty(bcx, v, t, take_ty)
