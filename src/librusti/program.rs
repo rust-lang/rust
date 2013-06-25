@@ -107,7 +107,7 @@ impl Program {
         match *to_print {
             Some(ref s) => {
                 code.push_str(*s);
-                code.push_char('\n');
+                code.push_str(";\n");
             }
             None => {}
         }
