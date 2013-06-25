@@ -18,8 +18,12 @@ use rt::uv::{Loop, Watcher, Request, UvError, Buf, NativeHandle, NullCallback,
 use rt::io::net::ip::{IpAddr, Ipv4, Ipv6};
 use rt::uv::last_uv_error;
 use vec;
+use str;
+use from_str::{FromStr};
 
-fn ip4_as_uv_ip4<T>(addr: IpAddr, f: &fn(*sockaddr_in) -> T) -> T {
+//#[cfg(test)] use rt::test::*;
+
+pub fn ip4_as_uv_ip4<T>(addr: IpAddr, f: &fn(*sockaddr_in) -> T) -> T {
     match addr {
         Ipv4(a, b, c, d, p) => {
             unsafe {
@@ -41,11 +45,20 @@ fn ip4_as_uv_ip4<T>(addr: IpAddr, f: &fn(*sockaddr_in) -> T) -> T {
 
 pub fn uv_ip4_to_ip4(addr: *sockaddr_in) -> IpAddr {
     let ip4_size = 16;
-    let buf = vec::from_elem(ip4_size, 0u8);
-    unsafe { ip4_name(addr, &buf[0], ip4_size as u64) };
+    let buf = vec::from_elem(ip4_size + 1 /*null terminated*/, 0u8);
+    unsafe { ip4_name(addr, vec::raw::to_ptr(buf), ip4_size as u64) };
     let port = unsafe { ip4_port(addr) };
-    Ipv4(buf[0], buf[1], buf[2], buf[3], port as u16)
+    let ip_str = str::from_bytes_slice(buf).trim_right_chars(&'\x00');
+    let ip: ~[u8] = ip_str.split_iter('.')
+                          .transform(|s: &str| -> u8 { 
+                                        let x = FromStr::from_str(s); 
+                                        assert!(x.is_some());
+                                        x.unwrap() })
+                          .collect();
+    assert!(ip.len() >= 4); 
+    Ipv4(ip[0], ip[1], ip[2], ip[3], port as u16)
 }
+
 
 // uv_stream t is the parent class of uv_tcp_t, uv_pipe_t, uv_tty_t
 // and uv_file_t
@@ -266,7 +279,7 @@ pub struct UdpWatcher(*uvll::uv_udp_t);
 impl Watcher for UdpWatcher { }
 
 impl UdpWatcher {
-    pub fn new(loop_: &mut Loop) -> UdpWatcher {
+    pub fn new(loop_: &Loop) -> UdpWatcher {
         unsafe {
             let handle = malloc_handle(UV_UDP);
             assert!(handle.is_not_null());
@@ -277,7 +290,7 @@ impl UdpWatcher {
         }
     }
 
-    pub fn bind(&mut self, address: IpAddr) -> Result<(), UvError> {
+    pub fn bind(&self, address: IpAddr) -> Result<(), UvError> {
         match address {
             Ipv4(*) => {
                 do ip4_as_uv_ip4(address) |addr| {
@@ -295,58 +308,59 @@ impl UdpWatcher {
         }
     }
 
-    pub fn recv_start(&mut self, alloc: AllocCallback, cb: UdpReceiveCallback) {
+    pub fn recv_start(&self, alloc: AllocCallback, cb: UdpReceiveCallback) {
         {
-            let data = self.get_watcher_data();
+            let mut this = *self;
+            let data = this.get_watcher_data();
             data.alloc_cb = Some(alloc);
             data.udp_recv_cb = Some(cb);
         }
 
         let handle = self.native_handle();
-        unsafe { uvll::read_start(handle, alloc_cb, recv_cb); }
+        unsafe { uvll::udp_recv_start(handle, alloc_cb, recv_cb); }
 
         extern fn alloc_cb(handle: *uvll::uv_udp_t, suggested_size: size_t) -> Buf {
             let mut udp_watcher: UdpWatcher = NativeHandle::from_native_handle(handle);
-            let data = udp_watcher.get_watcher_data();
-            let alloc_cb = data.alloc_cb.get_ref();
+            let alloc_cb = udp_watcher.get_watcher_data().alloc_cb.get_ref();
             return (*alloc_cb)(suggested_size as uint);
         }
 
         /* TODO the socket address should actually be a pointer to either a sockaddr_in or sockaddr_in6.
            In libuv, the udp_recv callback takes a struct *sockaddr */
         extern fn recv_cb(handle: *uvll::uv_udp_t, nread: ssize_t, buf: Buf, 
-                          address: *uvll::sockaddr_in, flags: c_uint) {
+                          addr: *uvll::sockaddr_in, flags: c_uint) {
             rtdebug!("buf addr: %x", buf.base as uint);
             rtdebug!("buf len: %d", buf.len as int);
             let mut udp_watcher: UdpWatcher = NativeHandle::from_native_handle(handle);
             let data = udp_watcher.get_watcher_data();
             let cb = data.udp_recv_cb.get_ref();
             let status = status_to_maybe_uv_error(handle, nread as c_int);
-            unsafe { (*cb)(udp_watcher, nread as int, buf, *address, flags as uint, status) };
+            let address = uv_ip4_to_ip4(addr);
+            unsafe { (*cb)(udp_watcher, nread as int, buf, address, flags as uint, status) };
         }
     }
 
-    pub fn recv_stop(&mut self) {
+    pub fn recv_stop(&self) {
         let handle = self.native_handle();
         unsafe { uvll::udp_recv_stop(handle); }
     }
 
-    pub fn send(&mut self, buf: Buf, address: IpAddr, cb: UdpSendCallback) {
+    pub fn send(&self, buf: Buf, address: IpAddr, cb: UdpSendCallback) {
         {
-            let data = self.get_watcher_data();
+            let mut this = *self;
+            let data = this.get_watcher_data();
             assert!(data.udp_send_cb.is_none());
             data.udp_send_cb = Some(cb);
         }
 
         let req = UdpSendRequest::new();
-        let bufs = [buf];
         match address {
             Ipv4(*) => {
                 do ip4_as_uv_ip4(address) |addr| {
                     unsafe {
                         assert!(0 == uvll::udp_send(req.native_handle(),
                                                     self.native_handle(),
-                                                    bufs, addr, send_cb));
+                                                    [buf], addr, send_cb));
                     }
                 }
             }
@@ -357,11 +371,7 @@ impl UdpWatcher {
             let send_request: UdpSendRequest = NativeHandle::from_native_handle(req);
             let mut udp_watcher = send_request.handle();
             send_request.delete();
-            let cb = {
-                let data = udp_watcher.get_watcher_data();
-                let cb = data.udp_send_cb.swap_unwrap();
-                cb
-            };
+            let cb = udp_watcher.get_watcher_data().udp_send_cb.swap_unwrap();
             let status = status_to_maybe_uv_error(udp_watcher.native_handle(), status);
             cb(udp_watcher, status);
         }
@@ -379,10 +389,7 @@ impl UdpWatcher {
 
         extern fn close_cb(handle: *uvll::uv_udp_t) {
             let mut udp_watcher: UdpWatcher = NativeHandle::from_native_handle(handle);
-            {
-                let data = udp_watcher.get_watcher_data();
-                data.close_cb.swap_unwrap()();
-            }
+            udp_watcher.get_watcher_data().close_cb.swap_unwrap()();
             udp_watcher.drop_watcher_data();
             unsafe { free_handle(handle as *c_void) }
         }
@@ -475,9 +482,7 @@ impl Request for UdpSendRequest { }
 
 impl UdpSendRequest {
     pub fn new() -> UdpSendRequest {
-        let send_handle = unsafe {
-            malloc_req(UV_UDP_SEND)
-        };
+        let send_handle = unsafe { malloc_req(UV_UDP_SEND) };
         assert!(send_handle.is_not_null());
         let send_handle = send_handle as *uvll::uv_udp_send_t;
         UdpSendRequest(send_handle)
@@ -485,8 +490,7 @@ impl UdpSendRequest {
 
     pub fn handle(&self) -> UdpWatcher {
         unsafe {
-            let udp_handle = uvll::get_udp_handle_from_send_req(self.native_handle());
-            NativeHandle::from_native_handle(udp_handle)
+            NativeHandle::from_native_handle(uvll::get_udp_handle_from_send_req(self.native_handle()))
         }
     }
 
@@ -517,6 +521,12 @@ mod test {
     use rt::uv::{vec_from_uv_buf, vec_to_uv_buf, slice_to_uv_buf};
 
     #[test]
+    fn test_ip4_conversion() {
+        let ip4 = next_test_ip4();
+        assert_eq!(ip4, ip4_as_uv_ip4(ip4, uv_ip4_to_ip4));
+    }
+
+    #[test]
     fn connect_close() {
         do run_in_bare_thread() {
             let mut loop_ = Loop::new();
@@ -529,6 +539,19 @@ mod test {
                 assert_eq!(status.get().name(), ~"ECONNREFUSED");
                 stream_watcher.close(||());
             }
+            loop_.run();
+            loop_.close();
+        }
+    }
+
+    #[test] 
+    fn udp_bind_close() {
+        do run_in_bare_thread() {
+            let mut loop_ = Loop::new();
+            let udp_watcher = { UdpWatcher::new(&mut loop_) };
+            let addr = next_test_ip4();
+            udp_watcher.bind(addr);
+            udp_watcher.close(||());
             loop_.run();
             loop_.close();
         }
@@ -605,6 +628,65 @@ mod test {
             };
 
             let mut loop_ = loop_;
+            loop_.run();
+            loop_.close();
+        }
+    }
+
+    #[test] 
+    fn udp_recv() {
+        do run_in_bare_thread() {
+            static MAX: int = 10;
+            let mut loop_ = Loop::new();
+            let server_addr = next_test_ip4();
+            let client_addr = next_test_ip4();
+
+            let server = UdpWatcher::new(&loop_);
+            assert!(server.bind(server_addr).is_ok());
+
+            rtdebug!("starting read");
+            let alloc: AllocCallback = |size| {
+                vec_to_uv_buf(vec::from_elem(size, 0))
+            };
+
+            do server.recv_start(alloc) |server, nread, buf, src, flags, status| {
+                server.recv_stop();
+                rtdebug!("i'm reading!");
+                assert!(status.is_none());
+                assert_eq!(flags, 0);
+                assert_eq!(src, client_addr);
+
+                let buf = vec_from_uv_buf(buf);
+                let mut count = 0;
+                rtdebug!("got %d bytes", nread);
+
+                let buf = buf.unwrap();
+                for buf.slice(0, nread as uint).iter().advance() |&byte| {
+                    assert!(byte == count as u8);
+                    rtdebug!("%u", byte as uint);
+                    count += 1;
+                }
+                assert_eq!(count, MAX);
+
+                server.close(||{});
+            }
+
+            do Thread::start {
+                let mut loop_ = Loop::new();
+                let client = UdpWatcher::new(&loop_);
+                assert!(client.bind(client_addr).is_ok());
+                let msg = ~[0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+                let buf = slice_to_uv_buf(msg);
+                do client.send(buf, server_addr) |client, status| {
+                    rtdebug!("writing");
+                    assert!(status.is_none());
+                    client.close(||{});
+                }
+
+                loop_.run();
+                loop_.close();
+            };
+
             loop_.run();
             loop_.close();
         }

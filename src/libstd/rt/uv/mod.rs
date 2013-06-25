@@ -46,6 +46,7 @@ use libc::{c_void, c_int, size_t, malloc, free};
 use cast::transmute;
 use ptr::null;
 use unstable::finally::Finally;
+use rt::io::net::ip::IpAddr;
 
 use rt::io::IoError;
 
@@ -126,7 +127,7 @@ pub type ConnectionCallback = ~fn(StreamWatcher, Option<UvError>);
 pub type FsCallback = ~fn(FsRequest, Option<UvError>);
 pub type TimerCallback = ~fn(TimerWatcher, Option<UvError>);
 pub type AsyncCallback = ~fn(AsyncWatcher, Option<UvError>);
-pub type UdpReceiveCallback = ~fn(UdpWatcher, int, Buf, Ipv4, uint, Option<UvError>);
+pub type UdpReceiveCallback = ~fn(UdpWatcher, int, Buf, IpAddr, uint, Option<UvError>);
 pub type UdpSendCallback = ~fn(UdpWatcher, Option<UvError>);
 
 
@@ -297,9 +298,6 @@ pub fn status_to_maybe_uv_error<T>(handle: *T, status: c_int) -> Option<UvError>
 
 /// The uv buffer type
 pub type Buf = uvll::uv_buf_t;
-
-/// The uv IPv4 type
-pub type Ipv4 = uvll::sockaddr_in;
 
 /// Borrow a slice to a Buf
 pub fn slice_to_uv_buf(v: &[u8]) -> Buf {
