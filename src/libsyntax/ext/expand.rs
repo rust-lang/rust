@@ -8,20 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ast::{Block, Crate, expr_, expr_mac, mac_invoc_tt};
-use ast::{item_mac, stmt_, stmt_mac, stmt_expr, stmt_semi};
-use ast::{illegal_ctxt};
+use ast::{Block, Crate, decl_local, expr_, expr_mac, Local, mac_invoc_tt};
+use ast::{item_mac, Mrk, stmt_, stmt_decl, stmt_mac, stmt_expr, stmt_semi};
+use ast::{SCTable, token_tree, illegal_ctxt};
 use ast;
 use ast_util::{new_rename, new_mark, mtwt_resolve};
 use attr;
 use attr::AttrMetaMethods;
 use codemap;
-use codemap::{span, ExpnInfo, NameAndSpan};
+use codemap::{span, spanned, ExpnInfo, NameAndSpan};
 use ext::base::*;
 use fold::*;
 use parse;
 use parse::{parse_item_from_source_str};
-use parse::token::{ident_to_str, intern};
+use parse::token::{fresh_name, ident_to_str, intern};
 use visit;
 use visit::Visitor;
 
@@ -362,6 +362,74 @@ pub fn expand_stmt(extsbox: @mut SyntaxEnv,
 
 }
 
+
+// expand a non-macro stmt. this is essentially the fallthrough for
+// expand_stmt, above.
+fn expand_non_macro_stmt (exts: SyntaxEnv,
+                          s: &stmt_,
+                          sp: span,
+                          fld: @ast_fold,
+                          orig: @fn(&stmt_, span, @ast_fold) -> (Option<stmt_>, span))
+    -> (Option<stmt_>,span) {
+    // is it a let?
+    match *s {
+        stmt_decl(@spanned{node: decl_local(ref local), span: stmt_span}, node_id) => {
+            let block_info = get_block_info(exts);
+            let pending_renames = block_info.pending_renames;
+            // there's no need to have a lot of these, we could
+            // just pass one of them around...
+            let name_finder = new_name_finder();
+
+            // take it apart:
+            let @Local{is_mutbl:is_mutbl,
+                       ty:_,
+                       pat:pat,
+                       init:init,
+                       id:id,
+                       span:span
+                      } = *local;
+            // types can't be copied automatically because of the owned ptr in ty_tup...
+            let ty = local.ty.clone();
+            // expand the pat (it might contain exprs... #:(o)>
+            let expanded_pat = fld.fold_pat(pat);
+            // find the pat_idents in the pattern:
+            // oh dear heaven... this is going to include the enum names, as well....
+            let idents = @mut ~[];
+            ((*name_finder).visit_pat) (expanded_pat,
+                                        (idents,
+                                         visit::mk_vt(name_finder)));
+            // generate fresh names, push them to a new pending list
+            let new_pending_renames = @mut ~[];
+            for idents.iter().advance |ident| {
+                let new_name = fresh_name(ident);
+                new_pending_renames.push((*ident,new_name));
+            }
+            let mut rename_fld = renames_to_fold(new_pending_renames);
+            // rewrite the pattern using the new names (the old ones
+            // have already been applied):
+            let rewritten_pat = rename_fld.fold_pat(expanded_pat);
+            // add them to the existing pending renames:
+            for new_pending_renames.iter().advance |pr| {pending_renames.push(*pr)}
+            // also, don't forget to expand the init:
+            let new_init_opt = init.map(|e| fld.fold_expr(*e));
+            let rewritten_local =
+                @Local{is_mutbl:is_mutbl,
+                       ty:ty,
+                       pat:rewritten_pat,
+                       init:new_init_opt,
+                       id:id,
+                       span:span};
+            (Some(stmt_decl(@spanned{node:decl_local(rewritten_local),
+                                     span: stmt_span},node_id)),
+             sp)
+        },
+        _ => {
+            orig(s, sp, fld)
+        }
+    }
+}
+
+
 // return a visitor that extracts the pat_ident paths
 // from a given pattern and puts them in a mutable
 // array (passed in to the traversal)
@@ -393,30 +461,10 @@ pub fn new_name_finder() -> @Visitor<@mut ~[ast::ident]> {
     }
 }
 
-pub fn expand_block(extsbox: @mut SyntaxEnv,
-                    _cx: @ExtCtxt,
-                    blk: &Block,
-                    fld: @ast_fold,
-                    orig: @fn(&Block, @ast_fold) -> Block)
-                 -> Block {
-    // see note below about treatment of exts table
-    with_exts_frame!(extsbox,false,orig(blk,fld))
-}
-
-
-// get the (innermost) BlockInfo from an exts stack
-fn get_block_info(exts : SyntaxEnv) -> BlockInfo {
-    match exts.find_in_topmost_frame(&intern(special_block_name)) {
-        Some(@BlockInfo(bi)) => bi,
-        _ => fail!(fmt!("special identifier %? was bound to a non-BlockInfo",
-                       @" block"))
-    }
-}
-
-
 // given a mutable list of renames, return a tree-folder that applies those
 // renames.
-fn renames_to_fold(renames : @mut ~[(ast::ident,ast::Name)]) -> @ast_fold {
+// FIXME #4536: currently pub to allow testing
+pub fn renames_to_fold(renames : @mut ~[(ast::ident,ast::Name)]) -> @ast_fold {
     let afp = default_ast_fold();
     let f_pre = @AstFoldFns {
         fold_ident: |id,_| {
@@ -432,15 +480,57 @@ fn renames_to_fold(renames : @mut ~[(ast::ident,ast::Name)]) -> @ast_fold {
     make_fold(f_pre)
 }
 
-// perform a bunch of renames
-fn apply_pending_renames(folder : @ast_fold, stmt : ast::stmt) -> @ast::stmt {
-    match folder.fold_stmt(&stmt) {
-        Some(s) => s,
-        None => fail!(fmt!("renaming of stmt produced None"))
-    }
+
+pub fn expand_block(extsbox: @mut SyntaxEnv,
+                    _cx: @ExtCtxt,
+                    blk: &Block,
+                    fld: @ast_fold,
+                    orig: @fn(&Block, @ast_fold) -> Block)
+                 -> Block {
+    // see note below about treatment of exts table
+    with_exts_frame!(extsbox,false,orig(blk,fld))
 }
 
 
+pub fn expand_block_elts(exts: SyntaxEnv, b: &Block, fld: @ast_fold) -> Block {
+    let block_info = get_block_info(exts);
+    let pending_renames = block_info.pending_renames;
+    let mut rename_fld = renames_to_fold(pending_renames);
+    let new_view_items = b.view_items.map(|x| fld.fold_view_item(x));
+    let mut new_stmts = ~[];
+    for b.stmts.iter().advance |x| {
+        match fld.fold_stmt(mustbesome(rename_fld.fold_stmt(*x))) {
+            Some(s) => new_stmts.push(s),
+            None => ()
+        }
+    }
+    let new_expr = b.expr.map(|x| fld.fold_expr(rename_fld.fold_expr(*x)));
+    Block{
+        view_items: new_view_items,
+        stmts: new_stmts,
+        expr: new_expr,
+        id: fld.new_id(b.id),
+        rules: b.rules,
+        span: b.span,
+    }
+}
+
+// rename_fold should never return "None".
+fn mustbesome<T>(val : Option<T>) -> T {
+    match val {
+        Some(v) => v,
+        None => fail!("rename_fold returned None")
+    }
+}
+
+// get the (innermost) BlockInfo from an exts stack
+fn get_block_info(exts : SyntaxEnv) -> BlockInfo {
+    match exts.find_in_topmost_frame(&intern(special_block_name)) {
+        Some(@BlockInfo(bi)) => bi,
+        _ => fail!(fmt!("special identifier %? was bound to a non-BlockInfo",
+                       @" block"))
+    }
+}
 
 pub fn new_span(cx: @ExtCtxt, sp: span) -> span {
     /* this discards information in the case of macro-defining macros */
@@ -794,12 +884,14 @@ mod test {
     use super::*;
     use ast;
     use ast::{Attribute_, AttrOuter, MetaWord, empty_ctxt};
+    use ast_util::{get_sctable, new_ident, new_rename};
     use codemap;
     use codemap::spanned;
     use parse;
-    use parse::token::{intern, get_ident_interner};
+    use parse::token::{gensym, intern, get_ident_interner};
     use print::pprust;
-    use util::parser_testing::{string_to_item, string_to_pat, strs_to_idents};
+    use std;
+    use util::parser_testing::{string_to_crate_and_sess, string_to_item, string_to_pat, strs_to_idents};
     use visit::{mk_vt};
 
     // make sure that fail! is present
@@ -900,26 +992,60 @@ mod test {
 
     #[test]
     fn renaming () {
-        let maybe_item_ast = string_to_item(@"fn a() -> int { let b = 13; b }");
-        let item_ast = match maybe_item_ast {
-            Some(x) => x,
-            None => fail!("test case fail")
-        };
+        let item_ast = string_to_item(@"fn a() -> int { let b = 13; b }").get();
         let a_name = intern("a");
-        let a2_name = intern("a2");
+        let a2_name = gensym("a2");
         let renamer = new_ident_renamer(ast::ident{name:a_name,ctxt:empty_ctxt},
                                         a2_name);
         let renamed_ast = fun_to_ident_folder(renamer).fold_item(item_ast).get();
         let resolver = new_ident_resolver();
-        let resolved_ast = fun_to_ident_folder(resolver).fold_item(renamed_ast).get();
+        let resolver_fold = fun_to_ident_folder(resolver);
+        let resolved_ast = resolver_fold.fold_item(renamed_ast).get();
         let resolved_as_str = pprust::item_to_str(resolved_ast,
                                                   get_ident_interner());
         assert_eq!(resolved_as_str,~"fn a2() -> int { let b = 13; b }");
 
+        // try a double-rename, with pending_renames.
+        let a3_name = gensym("a3");
+        let ctxt2 = new_rename(new_ident(a_name),a2_name,empty_ctxt);
+        let pending_renames = @mut ~[(new_ident(a_name),a2_name),
+                                     (ast::ident{name:a_name,ctxt:ctxt2},a3_name)];
+        let double_renamed = renames_to_fold(pending_renames).fold_item(item_ast).get();
+        let resolved_again = resolver_fold.fold_item(double_renamed).get();
+        let double_renamed_as_str = pprust::item_to_str(resolved_again,
+                                                        get_ident_interner());
+        assert_eq!(double_renamed_as_str,~"fn a3() -> int { let b = 13; b }");
 
     }
 
-    // sigh... it looks like I have two different renaming mechanisms, now...
+    fn fake_print_crate(s: @pprust::ps, crate: &ast::Crate) {
+        pprust::print_mod(s, &crate.module, crate.attrs);
+    }
+
+    // "fn a() -> int { let b = 13; let c = b; b+c }" --> b & c should get new names, in the expr too.
+    // "macro_rules! f (($x:ident) => ($x + b)) fn a() -> int { let b = 13; f!(b)}" --> one should
+    //     be renamed, one should not.
+
+    fn expand_and_resolve_and_pretty_print (crate_str : @str) -> ~str {
+        let resolver = new_ident_resolver();
+        let resolver_fold = fun_to_ident_folder(resolver);
+        let (crate_ast,ps) = string_to_crate_and_sess(crate_str);
+        // the cfg argument actually does matter, here...
+        let expanded_ast = expand_crate(ps,~[],crate_ast);
+        // std::io::println(fmt!("expanded: %?\n",expanded_ast));
+        let resolved_ast = resolver_fold.fold_crate(expanded_ast);
+        pprust::to_str(&resolved_ast,fake_print_crate,get_ident_interner())
+    }
+
+    #[test]
+    fn automatic_renaming () {
+        let teststrs =
+            ~[@"fn a() -> int { let b = 13; let c = b; b+c }",
+              @"macro_rules! f (($x:ident) => ($x + b)) fn a() -> int { let b = 13; f!(b)}"];
+        for teststrs.iter().advance |s| {
+            std::io::println(expand_and_resolve_and_pretty_print(*s));
+        }
+    }
 
     #[test]
     fn pat_idents(){
