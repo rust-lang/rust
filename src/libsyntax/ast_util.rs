@@ -825,9 +825,6 @@ pub fn pat_is_ident(pat: @ast::Pat) -> bool {
 
 // HYGIENE FUNCTIONS
 
-/// Construct an identifier with the given name and an empty context:
-pub fn new_ident(name: Name) -> Ident { Ident {name: name, ctxt: 0}}
-
 /// Extend a syntax context with a given mark
 pub fn new_mark(m:Mrk, tail:SyntaxContext) -> SyntaxContext {
     new_mark_internal(m,tail,get_sctable())
