@@ -203,8 +203,8 @@ pub fn begin_unwind_(msg: *c_char, file: *c_char, line: size_t) -> ! {
                 let msg = str::raw::from_c_str(msg);
                 let file = str::raw::from_c_str(file);
 
-                let outmsg = fmt!("task failed: '%s' at line %i of file %s",
-                                  msg, line as int, file);
+                let outmsg = fmt!("task failed at '%s', %s:%i",
+                                  msg, file, line as int);
 
                 // XXX: Logging doesn't work correctly in non-task context because it
                 // invokes the local heap
