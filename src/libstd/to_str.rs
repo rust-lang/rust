@@ -177,7 +177,7 @@ impl<A:ToStr> ToStr for @[A] {
 mod tests {
     use hashmap::HashMap;
     use hashmap::HashSet;
-    use container::Set;
+    use container::{Set,Map};
     #[test]
     fn test_simple_types() {
         assert_eq!(1i.to_str(), ~"1");
