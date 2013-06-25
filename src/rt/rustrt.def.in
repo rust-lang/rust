@@ -37,6 +37,7 @@ rust_list_dir_wfd_size
 rust_list_dir_wfd_fp_buf
 rust_log_console_on
 rust_log_console_off
+rust_should_log_console
 rust_set_environ
 rust_unset_sigprocmask
 rust_sched_current_nonlazy_threads
@@ -52,7 +53,7 @@ rust_get_stack_segment
 rust_get_c_stack
 rust_log_str
 start_task
-vec_reserve_shared_actual
+rust_local_realloc
 vec_reserve_shared
 task_clear_event_reject
 task_wait_event
@@ -186,6 +187,7 @@ rust_call_tydesc_glue
 tdefl_compress_mem_to_heap
 tinfl_decompress_mem_to_heap
 rust_gc_metadata
+rust_update_gc_metadata
 rust_uv_ip4_port
 rust_uv_ip6_port
 rust_uv_tcp_getpeername
@@ -237,6 +239,7 @@ rust_delete_memory_region
 rust_new_boxed_region
 rust_delete_boxed_region
 rust_boxed_region_malloc
+rust_boxed_region_realloc
 rust_boxed_region_free
 rust_try
 rust_begin_unwind
@@ -247,4 +250,7 @@ rust_valgrind_stack_deregister
 rust_take_env_lock
 rust_drop_env_lock
 rust_update_log_settings
+rust_running_on_valgrind
 rust_get_num_cpus
+rust_get_global_args_ptr
+rust_current_boxed_region

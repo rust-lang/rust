@@ -24,7 +24,6 @@
 
 use core::prelude::*;
 
-use core::str;
 use core::uint;
 use core::vec;
 
@@ -93,7 +92,7 @@ pub fn sha1() -> @Sha1 {
     }
     fn process_msg_block(st: &mut Sha1State) {
         assert_eq!(st.h.len(), digest_buf_len);
-        assert_eq!(vec::uniq_len(st.work_buf), work_buf_len);
+        assert_eq!(st.work_buf.len(), work_buf_len);
         let mut t: int; // Loop counter
         let w = st.work_buf;
 
@@ -278,8 +277,6 @@ pub fn sha1() -> @Sha1 {
 #[cfg(test)]
 mod tests {
     use sha1;
-
-    use core::vec;
 
     #[test]
     fn test() {

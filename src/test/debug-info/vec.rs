@@ -12,8 +12,9 @@
 
 // compile-flags:-Z extra-debug-info
 // debugger:set print pretty off
-// debugger:break 29
+// debugger:break _zzz
 // debugger:run
+// debugger:finish
 // debugger:print a
 // check:$1 = {1, 2, 3}
 // debugger:print b.vec[0]
@@ -28,5 +29,7 @@ fn main() {
     let b = &[4, 5, 6];
     let c = @[7, 8, 9];
     let d = ~[10, 11, 12];
-    let _z = 0;
+    _zzz();
 }
+
+fn _zzz() {()}

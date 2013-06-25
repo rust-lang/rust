@@ -104,7 +104,7 @@ struct WorkKey {
 }
 
 impl to_bytes::IterBytes for WorkKey {
-    #[inline(always)]
+    #[inline]
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
         self.kind.iter_bytes(lsb0, f) && self.name.iter_bytes(lsb0, f)
     }

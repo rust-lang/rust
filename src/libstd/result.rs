@@ -38,7 +38,7 @@ pub enum Result<T, U> {
  *
  * If the result is an error
  */
-#[inline(always)]
+#[inline]
 pub fn get<T:Copy,U>(res: &Result<T, U>) -> T {
     match *res {
       Ok(ref t) => copy *t,
@@ -54,7 +54,7 @@ pub fn get<T:Copy,U>(res: &Result<T, U>) -> T {
  *
  * If the result is an error
  */
-#[inline(always)]
+#[inline]
 pub fn get_ref<'a, T, U>(res: &'a Result<T, U>) -> &'a T {
     match *res {
         Ok(ref t) => t,
@@ -70,7 +70,7 @@ pub fn get_ref<'a, T, U>(res: &'a Result<T, U>) -> &'a T {
  *
  * If the result is not an error
  */
-#[inline(always)]
+#[inline]
 pub fn get_err<T, U: Copy>(res: &Result<T, U>) -> U {
     match *res {
       Err(ref u) => copy *u,
@@ -79,7 +79,7 @@ pub fn get_err<T, U: Copy>(res: &Result<T, U>) -> U {
 }
 
 /// Returns true if the result is `ok`
-#[inline(always)]
+#[inline]
 pub fn is_ok<T, U>(res: &Result<T, U>) -> bool {
     match *res {
       Ok(_) => true,
@@ -88,7 +88,7 @@ pub fn is_ok<T, U>(res: &Result<T, U>) -> bool {
 }
 
 /// Returns true if the result is `err`
-#[inline(always)]
+#[inline]
 pub fn is_err<T, U>(res: &Result<T, U>) -> bool {
     !is_ok(res)
 }
@@ -99,7 +99,7 @@ pub fn is_err<T, U>(res: &Result<T, U>) -> bool {
  * `ok` result variants are converted to `either::right` variants, `err`
  * result variants are converted to `either::left`.
  */
-#[inline(always)]
+#[inline]
 pub fn to_either<T:Copy,U:Copy>(res: &Result<U, T>)
     -> Either<T, U> {
     match *res {
@@ -122,7 +122,7 @@ pub fn to_either<T:Copy,U:Copy>(res: &Result<U, T>)
  *         ok(parse_bytes(buf))
  *     }
  */
-#[inline(always)]
+#[inline]
 pub fn chain<T, U, V>(res: Result<T, V>, op: &fn(T)
     -> Result<U, V>) -> Result<U, V> {
     match res {
@@ -139,7 +139,7 @@ pub fn chain<T, U, V>(res: Result<T, V>, op: &fn(T)
  * immediately returned.  This function can be used to pass through a
  * successful result while handling an error.
  */
-#[inline(always)]
+#[inline]
 pub fn chain_err<T, U, V>(
     res: Result<T, V>,
     op: &fn(t: V) -> Result<T, U>)
@@ -164,7 +164,7 @@ pub fn chain_err<T, U, V>(
  *         print_buf(buf)
  *     }
  */
-#[inline(always)]
+#[inline]
 pub fn iter<T, E>(res: &Result<T, E>, f: &fn(&T)) {
     match *res {
       Ok(ref t) => f(t),
@@ -180,7 +180,7 @@ pub fn iter<T, E>(res: &Result<T, E>, f: &fn(&T)) {
  * This function can be used to pass through a successful result while
  * handling an error.
  */
-#[inline(always)]
+#[inline]
 pub fn iter_err<T, E>(res: &Result<T, E>, f: &fn(&E)) {
     match *res {
       Ok(_) => (),
@@ -202,7 +202,7 @@ pub fn iter_err<T, E>(res: &Result<T, E>, f: &fn(&E)) {
  *         parse_bytes(buf)
  *     }
  */
-#[inline(always)]
+#[inline]
 pub fn map<T, E: Copy, U: Copy>(res: &Result<T, E>, op: &fn(&T) -> U)
   -> Result<U, E> {
     match *res {
@@ -219,7 +219,7 @@ pub fn map<T, E: Copy, U: Copy>(res: &Result<T, E>, op: &fn(&T) -> U)
  * is immediately returned.  This function can be used to pass through a
  * successful result while handling an error.
  */
-#[inline(always)]
+#[inline]
 pub fn map_err<T:Copy,E,F:Copy>(res: &Result<T, E>, op: &fn(&E) -> F)
   -> Result<T, F> {
     match *res {
@@ -229,53 +229,53 @@ pub fn map_err<T:Copy,E,F:Copy>(res: &Result<T, E>, op: &fn(&E) -> F)
 }
 
 impl<T, E> Result<T, E> {
-    #[inline(always)]
+    #[inline]
     pub fn get_ref<'a>(&'a self) -> &'a T { get_ref(self) }
 
-    #[inline(always)]
+    #[inline]
     pub fn is_ok(&self) -> bool { is_ok(self) }
 
-    #[inline(always)]
+    #[inline]
     pub fn is_err(&self) -> bool { is_err(self) }
 
-    #[inline(always)]
+    #[inline]
     pub fn iter(&self, f: &fn(&T)) { iter(self, f) }
 
-    #[inline(always)]
+    #[inline]
     pub fn iter_err(&self, f: &fn(&E)) { iter_err(self, f) }
 
-    #[inline(always)]
+    #[inline]
     pub fn unwrap(self) -> T { unwrap(self) }
 
-    #[inline(always)]
+    #[inline]
     pub fn unwrap_err(self) -> E { unwrap_err(self) }
 
-    #[inline(always)]
+    #[inline]
     pub fn chain<U>(self, op: &fn(T) -> Result<U,E>) -> Result<U,E> {
         chain(self, op)
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn chain_err<F>(self, op: &fn(E) -> Result<T,F>) -> Result<T,F> {
         chain_err(self, op)
     }
 }
 
 impl<T:Copy,E> Result<T, E> {
-    #[inline(always)]
+    #[inline]
     pub fn get(&self) -> T { get(self) }
 
-    #[inline(always)]
+    #[inline]
     pub fn map_err<F:Copy>(&self, op: &fn(&E) -> F) -> Result<T,F> {
         map_err(self, op)
     }
 }
 
 impl<T, E: Copy> Result<T, E> {
-    #[inline(always)]
+    #[inline]
     pub fn get_err(&self) -> E { get_err(self) }
 
-    #[inline(always)]
+    #[inline]
     pub fn map<U:Copy>(&self, op: &fn(&T) -> U) -> Result<U,E> {
         map(self, op)
     }
@@ -298,7 +298,7 @@ impl<T, E: Copy> Result<T, E> {
  *         assert!(incd == ~[2u, 3u, 4u]);
  *     }
  */
-#[inline(always)]
+#[inline]
 pub fn map_vec<T,U:Copy,V:Copy>(
     ts: &[T], op: &fn(&T) -> Result<V,U>) -> Result<~[V],U> {
 
@@ -312,7 +312,7 @@ pub fn map_vec<T,U:Copy,V:Copy>(
     return Ok(vs);
 }
 
-#[inline(always)]
+#[inline]
 #[allow(missing_doc)]
 pub fn map_opt<T,U:Copy,V:Copy>(
     o_t: &Option<T>, op: &fn(&T) -> Result<V,U>) -> Result<Option<V>,U> {
@@ -335,7 +335,7 @@ pub fn map_opt<T,U:Copy,V:Copy>(
  * used in 'careful' code contexts where it is both appropriate and easy
  * to accommodate an error like the vectors being of different lengths.
  */
-#[inline(always)]
+#[inline]
 pub fn map_vec2<S,T,U:Copy,V:Copy>(ss: &[S], ts: &[T],
                 op: &fn(&S,&T) -> Result<V,U>) -> Result<~[V],U> {
 
@@ -358,7 +358,7 @@ pub fn map_vec2<S,T,U:Copy,V:Copy>(ss: &[S], ts: &[T],
  * error.  This could be implemented using `map_zip()` but it is more efficient
  * on its own as no result vector is built.
  */
-#[inline(always)]
+#[inline]
 pub fn iter_vec2<S,T,U:Copy>(ss: &[S], ts: &[T],
                          op: &fn(&S,&T) -> Result<(),U>) -> Result<(),U> {
 
@@ -376,7 +376,7 @@ pub fn iter_vec2<S,T,U:Copy>(ss: &[S], ts: &[T],
 }
 
 /// Unwraps a result, assuming it is an `ok(T)`
-#[inline(always)]
+#[inline]
 pub fn unwrap<T, U>(res: Result<T, U>) -> T {
     match res {
       Ok(t) => t,
@@ -385,7 +385,7 @@ pub fn unwrap<T, U>(res: Result<T, U>) -> T {
 }
 
 /// Unwraps a result, assuming it is an `err(U)`
-#[inline(always)]
+#[inline]
 pub fn unwrap_err<T, U>(res: Result<T, U>) -> U {
     match res {
       Err(u) => u,

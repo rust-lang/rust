@@ -23,7 +23,7 @@ impl to_opt for uint {
 
 impl<T:Copy> to_opt for Option<T> {
     fn to_option(&self) -> Option<Option<T>> {
-        Some(*self)
+        Some(copy *self)
     }
 }
 

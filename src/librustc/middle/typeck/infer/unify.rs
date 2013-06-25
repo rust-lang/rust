@@ -61,7 +61,7 @@ impl InferCtxt {
         {
             let vid_u = vid.to_uint();
             let var_val = match vb.vals.find(&vid_u) {
-                Some(&var_val) => var_val,
+                Some(&ref var_val) => copy *var_val,
                 None => {
                     tcx.sess.bug(fmt!(
                         "failed lookup of vid `%u`", vid_u));
@@ -69,11 +69,11 @@ impl InferCtxt {
             };
             match var_val {
                 Redirect(vid) => {
-                    let node: Node<V,T> = helper(tcx, vb, vid);
+                    let node: Node<V,T> = helper(tcx, vb, copy vid);
                     if node.root != vid {
                         // Path compression
                         vb.vals.insert(vid.to_uint(),
-                                       Redirect(node.root));
+                                       Redirect(copy node.root));
                     }
                     node
                 }
@@ -96,12 +96,10 @@ impl InferCtxt {
         debug!("Updating variable %s to %s",
                vid.to_str(), new_v.inf_str(self));
 
-        { // FIXME(#4903)---borrow checker is not flow sensitive
-            let vb = UnifyVid::appropriate_vals_and_bindings(self);
-            let old_v = { *vb.vals.get(&vid.to_uint()) }; // FIXME(#4903)
-            vb.bindings.push((vid, old_v));
-            vb.vals.insert(vid.to_uint(), new_v);
-        }
+        let vb = UnifyVid::appropriate_vals_and_bindings(self);
+        let old_v = copy *vb.vals.get(&vid.to_uint());
+        vb.bindings.push((copy vid, old_v));
+        vb.vals.insert(vid.to_uint(), new_v);
     }
 
     pub fn unify<T:Copy + InferStr,
@@ -120,18 +118,18 @@ impl InferCtxt {
         if node_a.rank > node_b.rank {
             // a has greater rank, so a should become b's parent,
             // i.e., b should redirect to a.
-            self.set(node_b.root, Redirect(node_a.root));
-            (node_a.root, node_a.rank)
+            self.set(copy node_b.root, Redirect(copy node_a.root));
+            (copy node_a.root, node_a.rank)
         } else if node_a.rank < node_b.rank {
             // b has greater rank, so a should redirect to b.
-            self.set(node_a.root, Redirect(node_b.root));
-            (node_b.root, node_b.rank)
+            self.set(copy node_a.root, Redirect(copy node_b.root));
+            (copy node_b.root, node_b.rank)
         } else {
             // If equal, redirect one to the other and increment the
             // other's rank.
             assert_eq!(node_a.rank, node_b.rank);
-            self.set(node_b.root, Redirect(node_a.root));
-            (node_a.root, node_a.rank + 1)
+            self.set(copy node_b.root, Redirect(copy node_a.root));
+            (copy node_a.root, node_a.rank + 1)
         }
     }
 
@@ -174,20 +172,20 @@ impl InferCtxt {
 
         let node_a = self.get(a_id);
         let node_b = self.get(b_id);
-        let a_id = node_a.root;
-        let b_id = node_b.root;
+        let a_id = copy node_a.root;
+        let b_id = copy node_b.root;
 
         if a_id == b_id { return uok(); }
 
         let combined = match (&node_a.possible_types, &node_b.possible_types)
         {
             (&None, &None) => None,
-            (&Some(ref v), &None) | (&None, &Some(ref v)) => Some(*v),
+            (&Some(ref v), &None) | (&None, &Some(ref v)) => Some(copy *v),
             (&Some(ref v1), &Some(ref v2)) => {
                 if *v1 != *v2 {
-                    return mk_err(a_is_expected, *v1, *v2);
+                    return mk_err(a_is_expected, copy *v1, copy *v2);
                 }
-                Some(*v1)
+                Some(copy *v1)
             }
         };
 
@@ -211,7 +209,7 @@ impl InferCtxt {
          * `b`. */
 
         let node_a = self.get(a_id);
-        let a_id = node_a.root;
+        let a_id = copy node_a.root;
 
         match node_a.possible_types {
             None => {
@@ -223,7 +221,7 @@ impl InferCtxt {
                 if *a_t == b {
                     return uok();
                 } else {
-                    return mk_err(a_is_expected, *a_t, b);
+                    return mk_err(a_is_expected, copy *a_t, b);
                 }
             }
         }

@@ -307,7 +307,7 @@ pub trait Float: Real
 /// assert_eq!(twenty, 20f32);
 /// ~~~
 ///
-#[inline(always)]
+#[inline]
 pub fn cast<T:NumCast,U:NumCast>(n: T) -> U {
     NumCast::from(n)
 }
@@ -338,28 +338,28 @@ pub trait NumCast {
 macro_rules! impl_num_cast(
     ($T:ty, $conv:ident) => (
         impl NumCast for $T {
-            #[inline(always)]
+            #[inline]
             fn from<N:NumCast>(n: N) -> $T {
                 // `$conv` could be generated using `concat_idents!`, but that
                 // macro seems to be broken at the moment
                 n.$conv()
             }
 
-            #[inline(always)] fn to_u8(&self)    -> u8    { *self as u8    }
-            #[inline(always)] fn to_u16(&self)   -> u16   { *self as u16   }
-            #[inline(always)] fn to_u32(&self)   -> u32   { *self as u32   }
-            #[inline(always)] fn to_u64(&self)   -> u64   { *self as u64   }
-            #[inline(always)] fn to_uint(&self)  -> uint  { *self as uint  }
+            #[inline] fn to_u8(&self)    -> u8    { *self as u8    }
+            #[inline] fn to_u16(&self)   -> u16   { *self as u16   }
+            #[inline] fn to_u32(&self)   -> u32   { *self as u32   }
+            #[inline] fn to_u64(&self)   -> u64   { *self as u64   }
+            #[inline] fn to_uint(&self)  -> uint  { *self as uint  }
 
-            #[inline(always)] fn to_i8(&self)    -> i8    { *self as i8    }
-            #[inline(always)] fn to_i16(&self)   -> i16   { *self as i16   }
-            #[inline(always)] fn to_i32(&self)   -> i32   { *self as i32   }
-            #[inline(always)] fn to_i64(&self)   -> i64   { *self as i64   }
-            #[inline(always)] fn to_int(&self)   -> int   { *self as int   }
+            #[inline] fn to_i8(&self)    -> i8    { *self as i8    }
+            #[inline] fn to_i16(&self)   -> i16   { *self as i16   }
+            #[inline] fn to_i32(&self)   -> i32   { *self as i32   }
+            #[inline] fn to_i64(&self)   -> i64   { *self as i64   }
+            #[inline] fn to_int(&self)   -> int   { *self as int   }
 
-            #[inline(always)] fn to_f32(&self)   -> f32   { *self as f32   }
-            #[inline(always)] fn to_f64(&self)   -> f64   { *self as f64   }
-            #[inline(always)] fn to_float(&self) -> float { *self as float }
+            #[inline] fn to_f32(&self)   -> f32   { *self as f32   }
+            #[inline] fn to_f64(&self)   -> f64   { *self as f64   }
+            #[inline] fn to_float(&self) -> float { *self as float }
         }
     )
 )
@@ -410,12 +410,27 @@ pub fn pow_with_uint<T:NumCast+One+Zero+Copy+Div<T,T>+Mul<T,T>>(radix: uint, pow
     let mut multiplier = cast(radix);
     while (my_pow > 0u) {
         if my_pow % 2u == 1u {
-            total *= multiplier;
+            total = total * multiplier;
         }
-        my_pow     /= 2u;
-        multiplier *= multiplier;
+        my_pow     = my_pow / 2u;
+        multiplier = multiplier * multiplier;
     }
     total
+}
+
+impl<T: Zero> Zero for @mut T {
+    fn zero() -> @mut T { @mut Zero::zero() }
+    fn is_zero(&self) -> bool { (**self).is_zero() }
+}
+
+impl<T: Zero> Zero for @T {
+    fn zero() -> @T { @Zero::zero() }
+    fn is_zero(&self) -> bool { (**self).is_zero() }
+}
+
+impl<T: Zero> Zero for ~T {
+    fn zero() -> ~T { ~Zero::zero() }
+    fn is_zero(&self) -> bool { (**self).is_zero() }
 }
 
 /// Helper function for testing numeric operations

@@ -36,7 +36,7 @@ impl<T:Eq + IterBytes + Hash + Const + Copy> Interner<T> {
 
     pub fn prefill(init: &[T]) -> Interner<T> {
         let rv = Interner::new();
-        for init.each() |v| { rv.intern(*v); }
+        for init.each() |v| { rv.intern(copy *v); }
         rv
     }
 
@@ -48,7 +48,7 @@ impl<T:Eq + IterBytes + Hash + Const + Copy> Interner<T> {
 
         let vect = &mut *self.vect;
         let new_idx = vect.len();
-        self.map.insert(val, new_idx);
+        self.map.insert(copy val, new_idx);
         vect.push(val);
         new_idx
     }
@@ -63,7 +63,7 @@ impl<T:Eq + IterBytes + Hash + Const + Copy> Interner<T> {
         new_idx
     }
 
-    pub fn get(&self, idx: uint) -> T { self.vect[idx] }
+    pub fn get(&self, idx: uint) -> T { copy self.vect[idx] }
 
     pub fn len(&self) -> uint { let vect = &*self.vect; vect.len() }
 

@@ -19,32 +19,32 @@ use prelude::*;
 
 #[cfg(not(test))]
 impl Eq for () {
-    #[inline(always)]
+    #[inline]
     fn eq(&self, _other: &()) -> bool { true }
-    #[inline(always)]
+    #[inline]
     fn ne(&self, _other: &()) -> bool { false }
 }
 
 #[cfg(not(test))]
 impl Ord for () {
-    #[inline(always)]
+    #[inline]
     fn lt(&self, _other: &()) -> bool { false }
-    #[inline(always)]
+    #[inline]
     fn le(&self, _other: &()) -> bool { true }
-    #[inline(always)]
+    #[inline]
     fn ge(&self, _other: &()) -> bool { true }
-    #[inline(always)]
+    #[inline]
     fn gt(&self, _other: &()) -> bool { false }
 }
 
 #[cfg(not(test))]
 impl TotalOrd for () {
-    #[inline(always)]
+    #[inline]
     fn cmp(&self, _other: &()) -> Ordering { Equal }
 }
 
 #[cfg(not(test))]
 impl TotalEq for () {
-    #[inline(always)]
+    #[inline]
     fn equals(&self, _other: &()) -> bool { true }
 }

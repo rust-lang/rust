@@ -23,22 +23,8 @@ use vec;
 /// Code for dealing with @-vectors. This is pretty incomplete, and
 /// contains a bunch of duplication from the code for ~-vectors.
 
-pub mod rustrt {
-    use libc;
-    use sys;
-    use vec;
-
-    #[abi = "cdecl"]
-    #[link_name = "rustrt"]
-    pub extern {
-        pub unsafe fn vec_reserve_shared_actual(t: *sys::TypeDesc,
-                                                v: **vec::raw::VecRepr,
-                                                n: libc::size_t);
-    }
-}
-
 /// Returns the number of elements the vector can hold without reallocating
-#[inline(always)]
+#[inline]
 pub fn capacity<T>(v: @[T]) -> uint {
     unsafe {
         let repr: **raw::VecRepr = transmute(&v);
@@ -58,7 +44,7 @@ pub fn capacity<T>(v: @[T]) -> uint {
  *             as an argument a function that will push an element
  *             onto the vector being constructed.
  */
-#[inline(always)]
+#[inline]
 pub fn build_sized<A>(size: uint, builder: &fn(push: &fn(v: A))) -> @[A] {
     let mut vec: @[A] = @[];
     unsafe { raw::reserve(&mut vec, size); }
@@ -76,7 +62,7 @@ pub fn build_sized<A>(size: uint, builder: &fn(push: &fn(v: A))) -> @[A] {
  *             as an argument a function that will push an element
  *             onto the vector being constructed.
  */
-#[inline(always)]
+#[inline]
 pub fn build<A>(builder: &fn(push: &fn(v: A))) -> @[A] {
     build_sized(4, builder)
 }
@@ -93,7 +79,7 @@ pub fn build<A>(builder: &fn(push: &fn(v: A))) -> @[A] {
  *             as an argument a function that will push an element
  *             onto the vector being constructed.
  */
-#[inline(always)]
+#[inline]
 pub fn build_sized_opt<A>(size: Option<uint>,
                           builder: &fn(push: &fn(v: A)))
                        -> @[A] {
@@ -104,11 +90,11 @@ pub fn build_sized_opt<A>(size: Option<uint>,
 
 /// Iterates over the `rhs` vector, copying each element and appending it to the
 /// `lhs`. Afterwards, the `lhs` is then returned for use again.
-#[inline(always)]
+#[inline]
 pub fn append<T:Copy>(lhs: @[T], rhs: &const [T]) -> @[T] {
     do build_sized(lhs.len() + rhs.len()) |push| {
-        for lhs.each |x| { push(*x); }
-        for uint::range(0, rhs.len()) |i| { push(rhs[i]); }
+        for lhs.each |x| { push(copy *x); }
+        for uint::range(0, rhs.len()) |i| { push(copy rhs[i]); }
     }
 }
 
@@ -168,7 +154,7 @@ pub fn to_managed_consume<T>(v: ~[T]) -> @[T] {
  * elements of a slice.
  */
 pub fn to_managed<T:Copy>(v: &[T]) -> @[T] {
-    from_fn(v.len(), |i| v[i])
+    from_fn(v.len(), |i| copy v[i])
 }
 
 #[cfg(not(test))]
@@ -178,7 +164,7 @@ pub mod traits {
     use ops::Add;
 
     impl<'self,T:Copy> Add<&'self const [T],@[T]> for @[T] {
-        #[inline(always)]
+        #[inline]
         fn add(&self, rhs: & &'self const [T]) -> @[T] {
             append(*self, (*rhs))
         }
@@ -189,7 +175,7 @@ pub mod traits {
 pub mod traits {}
 
 pub mod raw {
-    use at_vec::{capacity, rustrt};
+    use at_vec::capacity;
     use cast::{transmute, transmute_copy};
     use libc;
     use ptr;
@@ -197,6 +183,8 @@ pub mod raw {
     use uint;
     use unstable::intrinsics::{move_val_init};
     use vec;
+    use vec::UnboxedVecRepr;
+    use sys::TypeDesc;
 
     pub type VecRepr = vec::raw::VecRepr;
     pub type SliceRepr = vec::raw::SliceRepr;
@@ -208,7 +196,7 @@ pub mod raw {
      * modifing its buffers, so it is up to the caller to ensure that
      * the vector is actually the specified size.
      */
-    #[inline(always)]
+    #[inline]
     pub unsafe fn set_len<T>(v: @[T], new_len: uint) {
         let repr: **mut VecRepr = transmute(&v);
         (**repr).unboxed.fill = new_len * sys::size_of::<T>();
@@ -217,7 +205,7 @@ pub mod raw {
     /**
      * Pushes a new value onto this vector.
      */
-    #[inline(always)]
+    #[inline]
     pub unsafe fn push<T>(v: &mut @[T], initval: T) {
         let repr: **VecRepr = transmute_copy(&v);
         let fill = (**repr).unboxed.fill;
@@ -228,7 +216,7 @@ pub mod raw {
         }
     }
 
-    #[inline(always)] // really pretty please
+    #[inline] // really pretty please
     unsafe fn push_fast<T>(v: &mut @[T], initval: T) {
         let repr: **mut VecRepr = ::cast::transmute(v);
         let fill = (**repr).unboxed.fill;
@@ -257,9 +245,47 @@ pub mod raw {
     pub unsafe fn reserve<T>(v: &mut @[T], n: uint) {
         // Only make the (slow) call into the runtime if we have to
         if capacity(*v) < n {
-            let ptr: **VecRepr = transmute(v);
-            rustrt::vec_reserve_shared_actual(sys::get_type_desc::<T>(),
-                                              ptr, n as libc::size_t);
+            let ptr: *mut *mut VecRepr = transmute(v);
+            let ty = sys::get_type_desc::<T>();
+            return reserve_raw(ty, ptr, n);
+        }
+    }
+
+    // Implementation detail. Shouldn't be public
+    #[allow(missing_doc)]
+    pub fn reserve_raw(ty: *TypeDesc, ptr: *mut *mut VecRepr, n: uint) {
+
+        unsafe {
+            let size_in_bytes = n * (*ty).size;
+            if size_in_bytes > (**ptr).unboxed.alloc {
+                let total_size = size_in_bytes + sys::size_of::<UnboxedVecRepr>();
+                // XXX: UnboxedVecRepr has an extra u8 at the end
+                let total_size = total_size - sys::size_of::<u8>();
+                (*ptr) = local_realloc(*ptr as *(), total_size) as *mut VecRepr;
+                (**ptr).unboxed.alloc = size_in_bytes;
+            }
+        }
+
+        fn local_realloc(ptr: *(), size: uint) -> *() {
+            use rt;
+            use rt::OldTaskContext;
+            use rt::local::Local;
+            use rt::task::Task;
+
+            if rt::context() == OldTaskContext {
+                unsafe {
+                    return rust_local_realloc(ptr, size as libc::size_t);
+                }
+
+                extern {
+                    #[fast_ffi]
+                    fn rust_local_realloc(ptr: *(), size: libc::size_t) -> *();
+                }
+            } else {
+                do Local::borrow::<Task, *()> |task| {
+                    task.heap.realloc(ptr as *libc::c_void, size) as *()
+                }
+            }
         }
     }
 

@@ -26,20 +26,11 @@ use core::either;
 use core::io;
 use core::option;
 use core::result;
-use core::str;
 use core::task;
 use core::to_str::ToStr;
 use core::uint;
 use core::vec;
 
-pub mod rustrt {
-    use core::libc::size_t;
-
-    #[abi = "cdecl"]
-    pub extern {
-        pub unsafe fn rust_sched_threads() -> size_t;
-    }
-}
 
 // The name of a test. By convention this follows the rules for rust
 // paths; i.e. it should be a series of identifiers separated by double
@@ -365,7 +356,7 @@ pub fn run_tests_console(opts: &TestOpts,
 fn print_failures(st: &ConsoleTestState) {
     st.out.write_line("\nfailures:");
     let mut failures = ~[];
-    for uint::range(0, vec::uniq_len(&const st.failures)) |i| {
+    for uint::range(0, st.failures.len()) |i| {
         let name = copy st.failures[i].name;
         failures.push(name.to_str());
     }
@@ -489,11 +480,10 @@ static sched_overcommit : uint = 1;
 static sched_overcommit : uint = 4u;
 
 fn get_concurrency() -> uint {
-    unsafe {
-        let threads = rustrt::rust_sched_threads() as uint;
-        if threads == 1 { 1 }
-        else { threads * sched_overcommit }
-    }
+    use core::rt;
+    let threads = rt::util::default_sched_threads();
+    if threads == 1 { 1 }
+    else { threads * sched_overcommit }
 }
 
 #[allow(non_implicitly_copyable_typarams)]
@@ -542,7 +532,7 @@ pub fn filter_tests(
 
     // Sort the tests alphabetically
     fn lteq(t1: &TestDescAndFn, t2: &TestDescAndFn) -> bool {
-        str::le(t1.desc.name.to_str(), t2.desc.name.to_str())
+        t1.desc.name.to_str() < t2.desc.name.to_str()
     }
     sort::quick_sort(filtered, lteq);
 

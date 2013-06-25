@@ -1941,12 +1941,14 @@ fn head_bad<T>(v: &[T]) -> T {
 ~~~~
 
 However, we can tell the compiler that the `head` function is only for
-copyable types: that is, those that have the `Copy` trait.
+copyable types: that is, those that have the `Copy` trait. In that
+case, we can explicitly create a second copy of the value we are
+returning using the `copy` keyword:
 
 ~~~~
 // This does
 fn head<T: Copy>(v: &[T]) -> T {
-    v[0]
+    copy v[0]
 }
 ~~~~
 
@@ -2039,17 +2041,12 @@ themselves contain type parameters. A trait for generalized sequence
 types might look like the following:
 
 ~~~~
-# use std::vec;
 trait Seq<T> {
-    fn len(&self) -> uint;
-    fn iter(&self, b: &fn(v: &T));
+    fn length(&self) -> uint;
 }
 
 impl<T> Seq<T> for ~[T] {
-    fn len(&self) -> uint { self.len() }
-    fn iter(&self, b: &fn(v: &T)) {
-        for vec::each(*self) |elt| { b(elt); }
-    }
+    fn length(&self) -> uint { self.len() }
 }
 ~~~~
 
@@ -2142,7 +2139,7 @@ as in this version of `print_all` that copies elements.
 fn print_all<T: Printable + Copy>(printable_things: ~[T]) {
     let mut i = 0;
     while i < printable_things.len() {
-        let copy_of_thing = printable_things[i];
+        let copy_of_thing = copy printable_things[i];
         copy_of_thing.print();
         i += 1;
     }

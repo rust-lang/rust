@@ -297,7 +297,8 @@ impl<T: Reader> ReaderUtil for T {
 
             do (|| {
                 while total_read < len {
-                    let slice = vec::mut_slice(*buf, start_len + total_read, buf.len());
+                    let len = buf.len();
+                    let slice = vec::mut_slice(*buf, start_len + total_read, len);
                     match self.read(slice) {
                         Some(nread) => {
                             total_read += nread;

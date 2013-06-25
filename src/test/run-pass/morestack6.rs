@@ -23,7 +23,6 @@ mod rustrt {
         pub fn rust_get_sched_id() -> libc::intptr_t;
         pub fn rust_get_argc() -> libc::c_int;
         pub fn get_task_id() -> libc::intptr_t;
-        pub fn rust_sched_threads();
         pub fn rust_get_task();
     }
 }
@@ -31,7 +30,6 @@ mod rustrt {
 fn calllink01() { unsafe { rustrt::rust_get_sched_id(); } }
 fn calllink02() { unsafe { rustrt::rust_get_argc(); } }
 fn calllink08() { unsafe { rustrt::get_task_id(); } }
-fn calllink09() { unsafe { rustrt::rust_sched_threads(); } }
 fn calllink10() { unsafe { rustrt::rust_get_task(); } }
 
 fn runtest(f: extern fn(), frame_backoff: u32) {
@@ -64,7 +62,6 @@ pub fn main() {
         calllink01,
         calllink02,
         calllink08,
-        calllink09,
         calllink10
     ];
     let mut rng = rand::rng();

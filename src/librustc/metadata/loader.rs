@@ -204,35 +204,33 @@ fn get_metadata_section(os: os,
         let si = mk_section_iter(of.llof);
         while llvm::LLVMIsSectionIteratorAtEnd(of.llof, si.llsi) == False {
             let name_buf = llvm::LLVMGetSectionName(si.llsi);
-            let name = unsafe { str::raw::from_c_str(name_buf) };
+            let name = str::raw::from_c_str(name_buf);
             debug!("get_metadata_section: name %s", name);
             if name == read_meta_section_name(os) {
                 let cbuf = llvm::LLVMGetSectionContents(si.llsi);
                 let csz = llvm::LLVMGetSectionSize(si.llsi) as uint;
                 let mut found = None;
-                unsafe {
-                    let cvbuf: *u8 = cast::transmute(cbuf);
-                    let vlen = encoder::metadata_encoding_version.len();
-                    debug!("checking %u bytes of metadata-version stamp",
-                           vlen);
-                    let minsz = uint::min(vlen, csz);
-                    let mut version_ok = false;
-                    do vec::raw::buf_as_slice(cvbuf, minsz) |buf0| {
-                        version_ok = (buf0 ==
-                                      encoder::metadata_encoding_version);
-                    }
-                    if !version_ok { return None; }
+                let cvbuf: *u8 = cast::transmute(cbuf);
+                let vlen = encoder::metadata_encoding_version.len();
+                debug!("checking %u bytes of metadata-version stamp",
+                       vlen);
+                let minsz = uint::min(vlen, csz);
+                let mut version_ok = false;
+                do vec::raw::buf_as_slice(cvbuf, minsz) |buf0| {
+                    version_ok = (buf0 ==
+                                  encoder::metadata_encoding_version);
+                }
+                if !version_ok { return None; }
 
-                    let cvbuf1 = ptr::offset(cvbuf, vlen);
-                    debug!("inflating %u bytes of compressed metadata",
-                           csz - vlen);
-                    do vec::raw::buf_as_slice(cvbuf1, csz-vlen) |bytes| {
-                        let inflated = flate::inflate_bytes(bytes);
-                        found = Some(@(inflated));
-                    }
-                    if found != None {
-                        return found;
-                    }
+                let cvbuf1 = ptr::offset(cvbuf, vlen);
+                debug!("inflating %u bytes of compressed metadata",
+                       csz - vlen);
+                do vec::raw::buf_as_slice(cvbuf1, csz-vlen) |bytes| {
+                    let inflated = flate::inflate_bytes(bytes);
+                    found = Some(@(inflated));
+                }
+                if found != None {
+                    return found;
                 }
             }
             llvm::LLVMMoveToNextSection(si.llsi);

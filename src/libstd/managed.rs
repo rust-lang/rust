@@ -38,14 +38,14 @@ pub mod raw {
 }
 
 /// Determine if two shared boxes point to the same object
-#[inline(always)]
+#[inline]
 pub fn ptr_eq<T>(a: @T, b: @T) -> bool {
     let (a_ptr, b_ptr): (*T, *T) = (to_unsafe_ptr(&*a), to_unsafe_ptr(&*b));
     a_ptr == b_ptr
 }
 
 /// Determine if two mutable shared boxes point to the same object
-#[inline(always)]
+#[inline]
 pub fn mut_ptr_eq<T>(a: @mut T, b: @mut T) -> bool {
     let (a_ptr, b_ptr): (*T, *T) = (to_unsafe_ptr(&*a), to_unsafe_ptr(&*b));
     a_ptr == b_ptr
@@ -53,41 +53,41 @@ pub fn mut_ptr_eq<T>(a: @mut T, b: @mut T) -> bool {
 
 #[cfg(not(test))]
 impl<T:Eq> Eq for @T {
-    #[inline(always)]
+    #[inline]
     fn eq(&self, other: &@T) -> bool { *(*self) == *(*other) }
-    #[inline(always)]
+    #[inline]
     fn ne(&self, other: &@T) -> bool { *(*self) != *(*other) }
 }
 
 #[cfg(not(test))]
 impl<T:Eq> Eq for @mut T {
-    #[inline(always)]
+    #[inline]
     fn eq(&self, other: &@mut T) -> bool { *(*self) == *(*other) }
-    #[inline(always)]
+    #[inline]
     fn ne(&self, other: &@mut T) -> bool { *(*self) != *(*other) }
 }
 
 #[cfg(not(test))]
 impl<T:Ord> Ord for @T {
-    #[inline(always)]
+    #[inline]
     fn lt(&self, other: &@T) -> bool { *(*self) < *(*other) }
-    #[inline(always)]
+    #[inline]
     fn le(&self, other: &@T) -> bool { *(*self) <= *(*other) }
-    #[inline(always)]
+    #[inline]
     fn ge(&self, other: &@T) -> bool { *(*self) >= *(*other) }
-    #[inline(always)]
+    #[inline]
     fn gt(&self, other: &@T) -> bool { *(*self) > *(*other) }
 }
 
 #[cfg(not(test))]
 impl<T:Ord> Ord for @mut T {
-    #[inline(always)]
+    #[inline]
     fn lt(&self, other: &@mut T) -> bool { *(*self) < *(*other) }
-    #[inline(always)]
+    #[inline]
     fn le(&self, other: &@mut T) -> bool { *(*self) <= *(*other) }
-    #[inline(always)]
+    #[inline]
     fn ge(&self, other: &@mut T) -> bool { *(*self) >= *(*other) }
-    #[inline(always)]
+    #[inline]
     fn gt(&self, other: &@mut T) -> bool { *(*self) > *(*other) }
 }
 

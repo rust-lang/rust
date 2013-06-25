@@ -520,12 +520,8 @@ impl CoherenceChecker {
 
         match extension_methods.find(&trait_def_id) {
             Some(impls) => {
-                let len = { // FIXME(#5074) stage0 requires this
-                    let impls: &mut ~[@Impl] = *impls;
-                    impls.len()
-                };
-                for uint::range(0, len) |i| {
-                    f(impls[i]);
+                for impls.iter().advance |&im| {
+                    f(im);
                 }
             }
             None => { /* no impls? */ }

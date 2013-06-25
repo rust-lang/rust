@@ -148,7 +148,7 @@ impl CrateContext {
             lib::llvm::associate_type(tn, @"tydesc", tydesc_type);
             let crate_map = decl_crate_map(sess, link_meta, llmod);
             let dbg_cx = if sess.opts.debuginfo {
-                Some(debuginfo::mk_ctxt(name.to_owned()))
+                Some(debuginfo::DebugContext::new(llmod, name.to_owned()))
             } else {
                 None
             };
@@ -211,9 +211,7 @@ impl CrateContext {
                   int_type: int_type,
                   float_type: float_type,
                   opaque_vec_type: T_opaque_vec(targ_cfg),
-                  builder: BuilderRef_res(unsafe {
-                      llvm::LLVMCreateBuilderInContext(llcx)
-                  }),
+                  builder: BuilderRef_res(llvm::LLVMCreateBuilderInContext(llcx)),
                   shape_cx: mk_ctxt(llmod),
                   crate_map: crate_map,
                   uses_gc: false,

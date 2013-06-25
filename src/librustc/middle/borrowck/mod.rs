@@ -775,17 +775,17 @@ impl BorrowckCtxt {
 }
 
 impl DataFlowOperator for LoanDataFlowOperator {
-    #[inline(always)]
+    #[inline]
     fn initial_value(&self) -> bool {
         false // no loans in scope by default
     }
 
-    #[inline(always)]
+    #[inline]
     fn join(&self, succ: uint, pred: uint) -> uint {
         succ | pred // loans from both preds are in scope
     }
 
-    #[inline(always)]
+    #[inline]
     fn walk_closures(&self) -> bool {
         true
     }

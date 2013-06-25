@@ -40,7 +40,7 @@ impl<T: Owned> UnsafeAtomicRcBox<T> {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     pub unsafe fn get(&self) -> *mut T
     {
         let mut data: ~AtomicRcBoxData<T> = cast::transmute(self.data);
@@ -50,7 +50,7 @@ impl<T: Owned> UnsafeAtomicRcBox<T> {
         return r;
     }
 
-    #[inline(always)]
+    #[inline]
     pub unsafe fn get_immut(&self) -> *T
     {
         let mut data: ~AtomicRcBoxData<T> = cast::transmute(self.data);
@@ -118,7 +118,7 @@ fn LittleLock() -> LittleLock {
 }
 
 impl LittleLock {
-    #[inline(always)]
+    #[inline]
     pub unsafe fn lock<T>(&self, f: &fn() -> T) -> T {
         do atomically {
             rust_lock_little_lock(self.l);
@@ -169,7 +169,7 @@ impl<T:Owned> Exclusive<T> {
     // Currently, scheduling operations (i.e., yielding, receiving on a pipe,
     // accessing the provided condition variable) are prohibited while inside
     // the exclusive. Supporting that is a work in progress.
-    #[inline(always)]
+    #[inline]
     pub unsafe fn with<U>(&self, f: &fn(x: &mut T) -> U) -> U {
         let rec = self.x.get();
         do (*rec).lock.lock {
@@ -183,7 +183,7 @@ impl<T:Owned> Exclusive<T> {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     pub unsafe fn with_imm<U>(&self, f: &fn(x: &T) -> U) -> U {
         do self.with |x| {
             f(cast::transmute_immut(x))

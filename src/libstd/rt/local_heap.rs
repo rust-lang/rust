@@ -10,11 +10,24 @@
 
 //! The local, garbage collected heap
 
+use libc;
 use libc::{c_void, uintptr_t, size_t};
 use ops::Drop;
+use repr::BoxRepr;
+use rt;
+use rt::OldTaskContext;
+use rt::local::Local;
+use rt::task::Task;
 
 type MemoryRegion = c_void;
-type BoxedRegion = c_void;
+
+struct Env { priv opaque: () }
+
+struct BoxedRegion {
+    env: *Env,
+    backing_region: *MemoryRegion,
+    live_allocs: *BoxRepr
+}
 
 pub type OpaqueBox = c_void;
 pub type TypeDesc = c_void;
@@ -49,6 +62,12 @@ impl LocalHeap {
         }
     }
 
+    pub fn realloc(&mut self, ptr: *OpaqueBox, size: uint) -> *OpaqueBox {
+        unsafe {
+            return rust_boxed_region_realloc(self.boxed_region, ptr, size as size_t);
+        }
+    }
+
     pub fn free(&mut self, box: *OpaqueBox) {
         unsafe {
             return rust_boxed_region_free(self.boxed_region, box);
@@ -65,6 +84,40 @@ impl Drop for LocalHeap {
     }
 }
 
+// A little compatibility function
+pub unsafe fn local_free(ptr: *libc::c_char) {
+    match rt::context() {
+        OldTaskContext => {
+            rust_upcall_free_noswitch(ptr);
+
+            extern {
+                #[fast_ffi]
+                unsafe fn rust_upcall_free_noswitch(ptr: *libc::c_char);
+            }
+        }
+        _ => {
+            do Local::borrow::<Task,()> |task| {
+                task.heap.free(ptr as *libc::c_void);
+            }
+        }
+    }
+}
+
+pub fn live_allocs() -> *BoxRepr {
+    let region = match rt::context() {
+        OldTaskContext => {
+            unsafe { rust_current_boxed_region() }
+        }
+        _ => {
+            do Local::borrow::<Task, *BoxedRegion> |task| {
+                task.heap.boxed_region
+            }
+        }
+    };
+
+    return unsafe { (*region).live_allocs };
+}
+
 extern {
     fn rust_new_memory_region(synchronized: uintptr_t,
                                detailed_leaks: uintptr_t,
@@ -76,5 +129,9 @@ extern {
     fn rust_boxed_region_malloc(region: *BoxedRegion,
                                 td: *TypeDesc,
                                 size: size_t) -> *OpaqueBox;
+    fn rust_boxed_region_realloc(region: *BoxedRegion,
+                                 ptr: *OpaqueBox,
+                                 size: size_t) -> *OpaqueBox;
     fn rust_boxed_region_free(region: *BoxedRegion, box: *OpaqueBox);
+    fn rust_current_boxed_region() -> *BoxedRegion;
 }

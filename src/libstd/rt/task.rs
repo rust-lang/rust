@@ -15,6 +15,7 @@
 
 use borrow;
 use cast::transmute;
+use cleanup;
 use libc::{c_void, uintptr_t};
 use ptr;
 use prelude::*;
@@ -118,6 +119,10 @@ impl Task {
             }
             _ => ()
         }
+
+        // Destroy remaining boxes
+        unsafe { cleanup::annihilate(); }
+
         self.destroyed = true;
     }
 }
@@ -249,12 +254,65 @@ mod test {
     }
 
     #[test]
+    fn comm_shared_chan() {
+        use comm::*;
+
+        do run_in_newsched_task() {
+            let (port, chan) = stream();
+            let chan = SharedChan::new(chan);
+            chan.send(10);
+            assert!(port.recv() == 10);
+        }
+    }
+
+    #[test]
     fn linked_failure() {
         do run_in_newsched_task() {
             let res = do spawntask_try {
                 spawntask_random(|| fail!());
             };
             assert!(res.is_err());
+        }
+    }
+
+    #[test]
+    fn heap_cycles() {
+        use option::{Option, Some, None};
+
+        do run_in_newsched_task {
+            struct List {
+                next: Option<@mut List>,
+            }
+
+            let a = @mut List { next: None };
+            let b = @mut List { next: Some(a) };
+
+            a.next = Some(b);
+        }
+    }
+
+    // XXX: This is a copy of test_future_result in std::task.
+    // It can be removed once the scheduler is turned on by default.
+    #[test]
+    fn future_result() {
+        do run_in_newsched_task {
+            use option::{Some, None};
+            use task::*;
+
+            let mut result = None;
+            let mut builder = task();
+            builder.future_result(|r| result = Some(r));
+            do builder.spawn {}
+            assert_eq!(result.unwrap().recv(), Success);
+
+            result = None;
+            let mut builder = task();
+            builder.future_result(|r| result = Some(r));
+            builder.unlinked();
+            do builder.spawn {
+                fail!();
+            }
+            assert_eq!(result.unwrap().recv(), Failure);
         }
     }
 }

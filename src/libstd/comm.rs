@@ -20,7 +20,6 @@ use either::{Either, Left, Right};
 use kinds::Owned;
 use option::{Option, Some, None};
 use uint;
-use vec;
 use vec::OwnedVector;
 use util::replace;
 use unstable::sync::{Exclusive, exclusive};
@@ -209,7 +208,7 @@ impl<T: Owned> Peekable<T> for PortSet<T> {
     fn peek(&self) -> bool {
         // It'd be nice to use self.port.each, but that version isn't
         // pure.
-        for uint::range(0, vec::uniq_len(&const self.ports)) |i| {
+        for uint::range(0, self.ports.len()) |i| {
             let port: &pipesy::Port<T> = &self.ports[i];
             if port.peek() {
                 return true;
@@ -221,7 +220,7 @@ impl<T: Owned> Peekable<T> for PortSet<T> {
 
 /// A channel that can be shared between many senders.
 pub struct SharedChan<T> {
-    ch: Exclusive<pipesy::Chan<T>>
+    inner: Either<Exclusive<pipesy::Chan<T>>, rtcomm::SharedChan<T>>
 }
 
 impl<T: Owned> SharedChan<T> {
@@ -229,40 +228,50 @@ impl<T: Owned> SharedChan<T> {
     pub fn new(c: Chan<T>) -> SharedChan<T> {
         let Chan { inner } = c;
         let c = match inner {
-            Left(c) => c,
-            Right(_) => fail!("SharedChan not implemented")
+            Left(c) => Left(exclusive(c)),
+            Right(c) => Right(rtcomm::SharedChan::new(c))
         };
-        SharedChan { ch: exclusive(c) }
+        SharedChan { inner: c }
     }
 }
 
 impl<T: Owned> GenericChan<T> for SharedChan<T> {
     fn send(&self, x: T) {
-        unsafe {
-            let mut xx = Some(x);
-            do self.ch.with_imm |chan| {
-                let x = replace(&mut xx, None);
-                chan.send(x.unwrap())
+        match self.inner {
+            Left(ref chan) => {
+                unsafe {
+                    let mut xx = Some(x);
+                    do chan.with_imm |chan| {
+                        let x = replace(&mut xx, None);
+                        chan.send(x.unwrap())
+                    }
+                }
             }
+            Right(ref chan) => chan.send(x)
         }
     }
 }
 
 impl<T: Owned> GenericSmartChan<T> for SharedChan<T> {
     fn try_send(&self, x: T) -> bool {
-        unsafe {
-            let mut xx = Some(x);
-            do self.ch.with_imm |chan| {
-                let x = replace(&mut xx, None);
-                chan.try_send(x.unwrap())
+        match self.inner {
+            Left(ref chan) => {
+                unsafe {
+                    let mut xx = Some(x);
+                    do chan.with_imm |chan| {
+                        let x = replace(&mut xx, None);
+                        chan.try_send(x.unwrap())
+                    }
+                }
             }
+            Right(ref chan) => chan.try_send(x)
         }
     }
 }
 
 impl<T: Owned> ::clone::Clone for SharedChan<T> {
     fn clone(&self) -> SharedChan<T> {
-        SharedChan { ch: self.ch.clone() }
+        SharedChan { inner: self.inner.clone() }
     }
 }
 
@@ -625,7 +634,7 @@ mod pipesy {
     }
 
     impl<T: Owned> GenericChan<T> for Chan<T> {
-        #[inline(always)]
+        #[inline]
         fn send(&self, x: T) {
             unsafe {
                 let self_endp = transmute_mut(&self.endp);
@@ -636,7 +645,7 @@ mod pipesy {
     }
 
     impl<T: Owned> GenericSmartChan<T> for Chan<T> {
-        #[inline(always)]
+        #[inline]
         fn try_send(&self, x: T) -> bool {
             unsafe {
                 let self_endp = transmute_mut(&self.endp);
@@ -653,7 +662,7 @@ mod pipesy {
     }
 
     impl<T: Owned> GenericPort<T> for Port<T> {
-        #[inline(always)]
+        #[inline]
         fn recv(&self) -> T {
             unsafe {
                 let self_endp = transmute_mut(&self.endp);
@@ -664,7 +673,7 @@ mod pipesy {
             }
         }
 
-        #[inline(always)]
+        #[inline]
         fn try_recv(&self) -> Option<T> {
             unsafe {
                 let self_endp = transmute_mut(&self.endp);
@@ -681,7 +690,7 @@ mod pipesy {
     }
 
     impl<T: Owned> Peekable<T> for Port<T> {
-        #[inline(always)]
+        #[inline]
         fn peek(&self) -> bool {
             unsafe {
                 let self_endp = transmute_mut(&self.endp);

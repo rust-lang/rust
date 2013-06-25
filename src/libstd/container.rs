@@ -16,10 +16,10 @@ use option::Option;
 /// knowledge known is the number of elements contained within.
 pub trait Container {
     /// Return the number of elements in the container
-    fn len(&const self) -> uint;
+    fn len(&self) -> uint;
 
     /// Return true if the container contains no elements
-    fn is_empty(&const self) -> bool;
+    fn is_empty(&self) -> bool;
 }
 
 /// A trait to represent mutable containers
