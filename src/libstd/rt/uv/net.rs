@@ -15,13 +15,11 @@ use rt::uv::uvll::*;
 use rt::uv::{AllocCallback, ConnectionCallback, ReadCallback, UdpReceiveCallback, UdpSendCallback};
 use rt::uv::{Loop, Watcher, Request, UvError, Buf, NativeHandle, NullCallback,
              status_to_maybe_uv_error};
-use rt::io::net::ip::{IpAddr, Ipv4, Ipv6};
+use rt::io::net::ip::{IpAddr, Ipv4};
 use rt::uv::last_uv_error;
 use vec;
 use str;
 use from_str::{FromStr};
-
-//#[cfg(test)] use rt::test::*;
 
 pub fn ip4_as_uv_ip4<T>(addr: IpAddr, f: &fn(*sockaddr_in) -> T) -> T {
     match addr {
@@ -39,7 +37,7 @@ pub fn ip4_as_uv_ip4<T>(addr: IpAddr, f: &fn(*sockaddr_in) -> T) -> T {
                 }
             }
         }
-        Ipv6 => fail!()
+        _ => fail!() // NOTE ipv6
     }
 }
 
