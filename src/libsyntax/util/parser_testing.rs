@@ -40,10 +40,17 @@ fn with_error_checking_parse<T>(s: @str, f: &fn(&mut Parser) -> T) -> T {
     x
 }
 
+// parse a string, return a crate.
 pub fn string_to_crate (source_str : @str) -> @ast::Crate {
     do with_error_checking_parse(source_str) |p| {
         p.parse_crate_mod()
     }
+}
+
+// parse a string, return a crate and the ParseSess
+pub fn string_to_crate_and_sess (source_str : @str) -> (@ast::Crate,@mut ParseSess) {
+    let (p,ps) = string_to_parser_and_sess(source_str);
+    (p.parse_crate_mod(),ps)
 }
 
 // parse a string, return an expr
@@ -58,14 +65,6 @@ pub fn string_to_item (source_str : @str) -> Option<@ast::item> {
     do with_error_checking_parse(source_str) |p| {
         p.parse_item(~[])
     }
-}
-
-// parse a string, return an item and the ParseSess
-pub fn string_to_item_and_sess (source_str : @str) -> (Option<@ast::item>,@mut ParseSess) {
-    let (p,ps) = string_to_parser_and_sess(source_str);
-    let io = p.parse_item(~[]);
-    p.abort_if_errors();
-    (io,ps)
 }
 
 // parse a string, return a stmt

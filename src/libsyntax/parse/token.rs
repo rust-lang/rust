@@ -545,9 +545,9 @@ pub fn gensym_ident(str : &str) -> ast::ident {
 // by using a gensym with a name that has a random number
 // at the end. So, the gensym guarantees the uniqueness,
 // and the int helps to avoid confusion.
-pub fn fresh_name(src_name : &str) -> Name {
+pub fn fresh_name(src_name : &ast::ident) -> Name {
     let num = rand::rng().gen_uint_range(0,0xffff);
-   gensym(fmt!("%s_%u",src_name,num))
+    gensym(fmt!("%s_%u",ident_to_str(src_name),num))
 }
 
 /**

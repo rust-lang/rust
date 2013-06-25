@@ -547,7 +547,7 @@ pub enum token_tree {
     // These only make sense for right-hand-sides of MBE macros:
 
     // a kleene-style repetition sequence with a span, a tt_forest,
-    // an optional separator (?), and a boolean where true indicates
+    // an optional separator, and a boolean where true indicates
     // zero or more (*), and false indicates one or more (+).
     tt_seq(span, @mut ~[token_tree], Option<::parse::token::Token>, bool),
 
