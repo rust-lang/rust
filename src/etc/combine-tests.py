@@ -60,7 +60,7 @@ i = 0
 for t in stage2_tests:
     p = os.path.join("test", "run-pass", t)
     p = p.replace("\\", "\\\\")
-    d.write("    out.write_str(~\"run-pass [stage2]: %s\\n\");\n" % p)
+    d.write("    out.write_str(\"run-pass [stage2]: %s\\n\");\n" % p)
     d.write("    t_%d::main();\n" % i)
     i += 1
 d.write("}\n")
