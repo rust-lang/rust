@@ -231,7 +231,7 @@ pub fn emit(cmsp: Option<(@codemap::CodeMap, span)>, msg: &str, lvl: level) {
         let ss = cm.span_to_str(sp);
         let lines = cm.span_to_lines(sp);
         print_diagnostic(ss, lvl, msg);
-        highlight_lines(cm, sp, lines);
+        highlight_lines(cm, sp, lvl, lines);
         print_macro_backtrace(cm, sp);
       }
       None => {
@@ -241,7 +241,7 @@ pub fn emit(cmsp: Option<(@codemap::CodeMap, span)>, msg: &str, lvl: level) {
 }
 
 fn highlight_lines(cm: @codemap::CodeMap,
-                   sp: span,
+                   sp: span, lvl: level,
                    lines: @codemap::FileLines) {
     let fm = lines.file;
 
@@ -293,18 +293,18 @@ fn highlight_lines(cm: @codemap::CodeMap,
             let curChar = (orig[pos] as char);
             s += match curChar { // Whenever a tab occurs on the previous
                 '\t' => "\t",    // line, we insert one on the error-point-
-                _ => " "         // -squigly-line as well (instead of a
-            };                   // space). This way the squigly-line will
+                _ => " "         // -squiggly-line as well (instead of a
+            };                   // space). This way the squiggly-line will
         }                        // usually appear in the correct position.
         io::stderr().write_str(s);
         let mut s = ~"^";
         let hi = cm.lookup_char_pos(sp.hi);
         if hi.col != lo.col {
             // the ^ already takes up one space
-            let num_squiglies = hi.col.to_uint()-lo.col.to_uint()-1u;
-            for num_squiglies.times() { s += "~"; }
+            let num_squigglies = hi.col.to_uint()-lo.col.to_uint()-1u;
+            for num_squigglies.times() { s += "~"; }
         }
-        print_maybe_colored(s + "\n", term::color_bright_green);
+        print_maybe_colored(s + "\n", diagnosticcolor(lvl));
     }
 }
 
