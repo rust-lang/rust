@@ -585,7 +585,7 @@ pub fn check_item(ccx: @mut CrateCtxt, it: @ast::item) {
     let _indenter = indenter();
 
     match it.node {
-      ast::item_const(_, e) => check_const(ccx, it.span, e, it.id),
+      ast::item_static(_, _, e) => check_const(ccx, it.span, e, it.id),
       ast::item_enum(ref enum_definition, _) => {
         check_enum_variants(ccx,
                             it.span,
@@ -3216,7 +3216,7 @@ pub fn ty_param_bounds_and_ty_for_def(fcx: @mut FnCtxt,
       }
 
       ast::def_fn(id, _) | ast::def_static_method(id, _, _) |
-      ast::def_const(id) | ast::def_variant(_, id) |
+      ast::def_static(id, _) | ast::def_variant(_, id) |
       ast::def_struct(id) => {
         return ty::lookup_item_type(fcx.ccx.tcx, id);
       }

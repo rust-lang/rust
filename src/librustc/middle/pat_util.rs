@@ -45,7 +45,7 @@ pub fn pat_is_const(dm: resolve::DefMap, pat: &pat) -> bool {
     match pat.node {
         pat_ident(_, _, None) | pat_enum(*) => {
             match dm.find(&pat.id) {
-                Some(&def_const(*)) => true,
+                Some(&def_static(_, false)) => true,
                 _ => false
             }
         }

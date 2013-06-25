@@ -166,7 +166,7 @@ pub fn classify(e: @expr,
 
 pub fn lookup_const(tcx: ty::ctxt, e: @expr) -> Option<@expr> {
     match tcx.def_map.find(&e.id) {
-        Some(&ast::def_const(def_id)) => lookup_const_by_id(tcx, def_id),
+        Some(&ast::def_static(def_id, false)) => lookup_const_by_id(tcx, def_id),
         _ => None
     }
 }
@@ -178,7 +178,7 @@ pub fn lookup_const_by_id(tcx: ty::ctxt,
         match tcx.items.find(&def_id.node) {
             None => None,
             Some(&ast_map::node_item(it, _)) => match it.node {
-                item_const(_, const_expr) => Some(const_expr),
+                item_static(_, ast::m_imm, const_expr) => Some(const_expr),
                 _ => None
             },
             Some(_) => None
@@ -195,7 +195,7 @@ pub fn lookup_const_by_id(tcx: ty::ctxt,
         match csearch::maybe_get_item_ast(tcx, def_id,
             |a, b, c, d| astencode::decode_inlined_item(a, b, maps, /*bar*/ copy c, d)) {
             csearch::found(ast::ii_item(item)) => match item.node {
-                item_const(_, const_expr) => Some(const_expr),
+                item_static(_, ast::m_imm, const_expr) => Some(const_expr),
                 _ => None
             },
             _ => None

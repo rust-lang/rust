@@ -945,7 +945,7 @@ fn trans_lvalue_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
         let _icx = push_ctxt("trans_def_lvalue");
         let ccx = bcx.ccx();
         match def {
-            ast::def_const(did) => {
+            ast::def_static(did, _) => {
                 let const_ty = expr_ty(bcx, ref_expr);
 
                 fn get_did(ccx: @mut CrateContext, did: ast::def_id)
