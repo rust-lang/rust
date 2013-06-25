@@ -126,7 +126,7 @@ fn fold_mac_(m: &mac, fld: @ast_fold) -> mac {
 
 // build a new vector of tts by appling the given function to
 // all of the identifiers in the token trees.
-pub fn fold_tts(tts : &[token_tree], f: @fn(ident)->ident) -> ~[token_tree] {
+pub fn fold_tts(tts : &[token_tree], f: @fn(Ident)->Ident) -> ~[token_tree] {
     do tts.map |tt| {
         match *tt {
             tt_tok(span, ref tok) =>
@@ -145,7 +145,7 @@ pub fn fold_tts(tts : &[token_tree], f: @fn(ident)->ident) -> ~[token_tree] {
 }
 
 // apply ident folder if it's an ident, otherwise leave it alone
-fn maybe_fold_ident(t : &token::Token, f: @fn(ident)->ident) -> token::Token {
+fn maybe_fold_ident(t : &token::Token, f: @fn(Ident)->Ident) -> token::Token {
     match *t {
         token::IDENT(id,followed_by_colons) =>
         token::IDENT(f(id),followed_by_colons),
