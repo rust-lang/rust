@@ -25,13 +25,16 @@ use vec::ImmutableVector;
 
 pub mod rustrt {
     use libc;
-    use sys;
     use vec;
+    #[cfg(stage0)]
+    use intrinsic::{TyDesc};
+    #[cfg(not(stage0))]
+    use unstable::intrinsics::{TyDesc};
 
     #[abi = "cdecl"]
     #[link_name = "rustrt"]
     pub extern {
-        pub unsafe fn vec_reserve_shared_actual(t: *sys::TypeDesc,
+        pub unsafe fn vec_reserve_shared_actual(t: *TyDesc,
                                                 v: **vec::raw::VecRepr,
                                                 n: libc::size_t);
     }
@@ -197,6 +200,10 @@ pub mod raw {
     use uint;
     use unstable::intrinsics::{move_val_init};
     use vec;
+    #[cfg(stage0)]
+    use intrinsic::{get_tydesc};
+    #[cfg(not(stage0))]
+    use unstable::intrinsics::{get_tydesc};
 
     pub type VecRepr = vec::raw::VecRepr;
     pub type SliceRepr = vec::raw::SliceRepr;
@@ -258,7 +265,7 @@ pub mod raw {
         // Only make the (slow) call into the runtime if we have to
         if capacity(*v) < n {
             let ptr: **VecRepr = transmute(v);
-            rustrt::vec_reserve_shared_actual(sys::get_type_desc::<T>(),
+            rustrt::vec_reserve_shared_actual(get_tydesc::<T>(),
                                               ptr, n as libc::size_t);
         }
     }

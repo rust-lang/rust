@@ -8,9 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
 pub static rc_base_field_refcnt: uint = 0u;
 
 pub static task_field_refcnt: uint = 0u;
@@ -49,9 +46,7 @@ pub static tydesc_field_take_glue: uint = 2u;
 pub static tydesc_field_drop_glue: uint = 3u;
 pub static tydesc_field_free_glue: uint = 4u;
 pub static tydesc_field_visit_glue: uint = 5u;
-pub static tydesc_field_shape: uint = 6u;
-pub static tydesc_field_shape_tables: uint = 7u;
-pub static n_tydesc_fields: uint = 8u;
+pub static n_tydesc_fields: uint = 6u;
 
 // The two halves of a closure: code and environment.
 pub static fn_field_code: uint = 0u;
@@ -71,14 +66,4 @@ pub static vec_elt_elems: uint = 2u;
 pub static slice_elt_base: uint = 0u;
 pub static slice_elt_len: uint = 1u;
 
-pub static worst_case_glue_call_args: uint = 7u;
-
 pub static abi_version: uint = 1u;
-
-pub fn memcpy_glue_name() -> ~str { return ~"rust_memcpy_glue"; }
-
-pub fn bzero_glue_name() -> ~str { return ~"rust_bzero_glue"; }
-
-pub fn yield_glue_name() -> ~str { return ~"rust_yield_glue"; }
-
-pub fn no_op_type_glue_name() -> ~str { return ~"rust_no_op_type_glue"; }

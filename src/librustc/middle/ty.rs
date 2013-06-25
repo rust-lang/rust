@@ -44,7 +44,6 @@ use syntax::attr;
 use syntax::codemap::span;
 use syntax::codemap;
 use syntax::parse::token;
-use syntax::parse::token::special_idents;
 use syntax::{ast, ast_map};
 use syntax::opt_vec::OptVec;
 use syntax::opt_vec;
@@ -276,8 +275,7 @@ struct ctxt_ {
     trait_defs: @mut HashMap<def_id, @TraitDef>,
 
     items: ast_map::map,
-    intrinsic_defs: @mut HashMap<ast::ident, (ast::def_id, t)>,
-    intrinsic_traits: @mut HashMap<ast::ident, @TraitRef>,
+    intrinsic_defs: @mut HashMap<ast::def_id, t>,
     freevars: freevars::freevar_map,
     tcache: type_cache,
     rcache: creader_cache,
@@ -954,7 +952,6 @@ pub fn mk_ctxt(s: session::Session,
         node_type_substs: @mut HashMap::new(),
         trait_refs: @mut HashMap::new(),
         trait_defs: @mut HashMap::new(),
-        intrinsic_traits: @mut HashMap::new(),
         items: amap,
         intrinsic_defs: @mut HashMap::new(),
         freevars: freevars,
@@ -4469,10 +4466,26 @@ pub fn get_impl_id(tcx: ctxt, trait_id: def_id, self_ty: t) -> def_id {
     }
 }
 
+pub fn get_tydesc_ty(tcx: ctxt) -> t {
+    let tydesc_lang_item = tcx.lang_items.ty_desc();
+    tcx.intrinsic_defs.find_copy(&tydesc_lang_item)
+        .expect("Failed to resolve TyDesc")
+}
+
+pub fn get_opaque_ty(tcx: ctxt) -> t {
+    let opaque_lang_item = tcx.lang_items.opaque();
+    tcx.intrinsic_defs.find_copy(&opaque_lang_item)
+        .expect("Failed to resolve Opaque")
+}
+
 pub fn visitor_object_ty(tcx: ctxt) -> (@TraitRef, t) {
-    let ty_visitor_name = special_idents::ty_visitor;
-    assert!(tcx.intrinsic_traits.contains_key(&ty_visitor_name));
-    let trait_ref = tcx.intrinsic_traits.get_copy(&ty_visitor_name);
+    let substs = substs {
+        self_r: None,
+        self_ty: None,
+        tps: ~[]
+    };
+    let trait_lang_item = tcx.lang_items.ty_visitor();
+    let trait_ref = @TraitRef { def_id: trait_lang_item, substs: substs };
     (trait_ref,
      mk_trait(tcx, trait_ref.def_id, copy trait_ref.substs,
               BoxTraitStore, ast::m_imm, EmptyBuiltinBounds()))
