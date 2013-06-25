@@ -231,6 +231,21 @@ impl ErrorReporting for InferCtxt {
                     sup,
                     "");
             }
+            infer::InfStackClosure(span) => {
+                self.tcx.sess.span_err(
+                    span,
+                    "closure outlives stack frame");
+                note_and_explain_region(
+                    self.tcx,
+                    "...the closure must be valid for ",
+                    sub,
+                    "...");
+                note_and_explain_region(
+                    self.tcx,
+                    "...but the closure's stack frame is only valid for ",
+                    sup,
+                    "");
+            }
             infer::InvokeClosure(span) => {
                 self.tcx.sess.span_err(
                     span,
