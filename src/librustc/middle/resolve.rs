@@ -101,6 +101,14 @@ pub enum Namespace {
     ValueNS
 }
 
+#[deriving(Eq)]
+pub enum NamespaceError {
+    NoError,
+    ModuleError,
+    TypeError,
+    ValueError
+}
+
 /// A NamespaceResult represents the result of resolving an import in
 /// a particular namespace. The result is either definitely-resolved,
 /// definitely- unresolved, or unknown.
@@ -759,10 +767,12 @@ pub fn PrimitiveTypeTable() -> PrimitiveTypeTable {
 }
 
 
-pub fn namespace_to_str(ns: Namespace) -> ~str {
+pub fn namespace_error_to_str(ns: NamespaceError) -> &'static str {
     match ns {
-        TypeNS  => ~"type",
-        ValueNS => ~"value",
+        NoError     => "",
+        ModuleError => "module",
+        TypeError   => "type",
+        ValueError  => "value",
     }
 }
 
@@ -993,21 +1003,25 @@ impl Resolver {
                 // * If no duplicate checking was requested at all, do
                 //   nothing.
 
-                let mut is_duplicate = false;
+                let mut duplicate_type = NoError;
                 let ns = match duplicate_checking_mode {
                     ForbidDuplicateModules => {
-                        is_duplicate = child.get_module_if_available().is_some();
+                        if (child.get_module_if_available().is_some()) {
+                            duplicate_type = ModuleError;
+                        }
                         Some(TypeNS)
                     }
                     ForbidDuplicateTypes => {
                         match child.def_for_namespace(TypeNS) {
                             Some(def_mod(_)) | None => {}
-                            Some(_) => is_duplicate = true
+                            Some(_) => duplicate_type = TypeError
                         }
                         Some(TypeNS)
                     }
                     ForbidDuplicateValues => {
-                        is_duplicate = child.defined_in_namespace(ValueNS);
+                        if child.defined_in_namespace(ValueNS) {
+                            duplicate_type = ValueError;
+                        }
                         Some(ValueNS)
                     }
                     ForbidDuplicateTypesAndValues => {
@@ -1016,31 +1030,31 @@ impl Resolver {
                             Some(def_mod(_)) | None => {}
                             Some(_) => {
                                 n = Some(TypeNS);
-                                is_duplicate = true;
+                                duplicate_type = TypeError;
                             }
                         };
                         if child.defined_in_namespace(ValueNS) {
-                            is_duplicate = true;
+                            duplicate_type = ValueError;
                             n = Some(ValueNS);
                         }
                         n
                     }
                     OverwriteDuplicates => None
                 };
-                if is_duplicate {
+                if (duplicate_type != NoError) {
                     // Return an error here by looking up the namespace that
                     // had the duplicate.
                     let ns = ns.unwrap();
                     self.session.span_err(sp,
                         fmt!("duplicate definition of %s `%s`",
-                             namespace_to_str(ns),
+                             namespace_error_to_str(duplicate_type),
                              self.session.str_of(name)));
                     {
                         let r = child.span_for_namespace(ns);
                         for r.iter().advance |sp| {
                             self.session.span_note(*sp,
-                                 fmt!("first definition of %s %s here:",
-                                      namespace_to_str(ns),
+                                 fmt!("first definition of %s `%s` here",
+                                      namespace_error_to_str(duplicate_type),
                                       self.session.str_of(name)));
                         }
                     }
