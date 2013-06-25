@@ -1400,7 +1400,7 @@ impl Resolver {
                 }
 
                 let def_id = local_def(item.id);
-                for method_names.each |name, _| {
+                for method_names.iter().advance |(name, _)| {
                     if !self.method_map.contains_key(name) {
                         self.method_map.insert(*name, HashSet::new());
                     }
@@ -1718,7 +1718,7 @@ impl Resolver {
                       interned_method_names.insert(method_name);
                   }
               }
-              for interned_method_names.each |name| {
+              for interned_method_names.iter().advance |name| {
                   if !self.method_map.contains_key(name) {
                       self.method_map.insert(*name, HashSet::new());
                   }
@@ -2484,8 +2484,8 @@ impl Resolver {
         assert_eq!(containing_module.glob_count, 0);
 
         // Add all resolved imports from the containing module.
-        for containing_module.import_resolutions.each
-                |ident, target_import_resolution| {
+        for containing_module.import_resolutions.iter().advance
+                |(ident, target_import_resolution)| {
 
             debug!("(resolving glob import) writing module resolution \
                     %? into `%s`",
@@ -2569,13 +2569,13 @@ impl Resolver {
         };
 
         // Add all children from the containing module.
-        for containing_module.children.each |&ident, name_bindings| {
+        for containing_module.children.iter().advance |(&ident, name_bindings)| {
             merge_import_resolution(ident, *name_bindings);
         }
 
         // Add external module children from the containing module.
-        for containing_module.external_module_children.each
-                |&ident, module| {
+        for containing_module.external_module_children.iter().advance
+                |(&ident, module)| {
             let name_bindings =
                 @mut Resolver::create_name_bindings_from_module(*module);
             merge_import_resolution(ident, name_bindings);
@@ -3265,7 +3265,7 @@ impl Resolver {
     pub fn add_exports_for_module(@mut self,
                                   exports2: &mut ~[Export2],
                                   module_: @mut Module) {
-        for module_.children.each |ident, namebindings| {
+        for module_.children.iter().advance |(ident, namebindings)| {
             debug!("(computing exports) maybe export '%s'",
                    self.session.str_of(*ident));
             self.add_exports_of_namebindings(&mut *exports2,
@@ -3280,7 +3280,7 @@ impl Resolver {
                                              false);
         }
 
-        for module_.import_resolutions.each |ident, importresolution| {
+        for module_.import_resolutions.iter().advance |(ident, importresolution)| {
             if importresolution.privacy != Public {
                 debug!("(computing exports) not reexporting private `%s`",
                        self.session.str_of(*ident));
@@ -3848,8 +3848,8 @@ impl Resolver {
     pub fn resolve_type_parameters(@mut self,
                                    type_parameters: &OptVec<TyParam>,
                                    visitor: ResolveVisitor) {
-        for type_parameters.each |type_parameter| {
-            for type_parameter.bounds.each |bound| {
+        for type_parameters.iter().advance |type_parameter| {
+            for type_parameter.bounds.iter().advance |bound| {
                 self.resolve_type_parameter_bound(bound, visitor);
             }
         }
@@ -4053,7 +4053,7 @@ impl Resolver {
         for arm.pats.iter().enumerate().advance |(i, p)| {
             let map_i = self.binding_mode_map(*p);
 
-            for map_0.each |&key, &binding_0| {
+            for map_0.iter().advance |(&key, &binding_0)| {
                 match map_i.find(&key) {
                   None => {
                     self.session.span_err(
@@ -4074,7 +4074,7 @@ impl Resolver {
                 }
             }
 
-            for map_i.each |&key, &binding| {
+            for map_i.iter().advance |(&key, &binding)| {
                 if !map_0.contains_key(&key) {
                     self.session.span_err(
                         binding.span,
@@ -4195,13 +4195,13 @@ impl Resolver {
                     }
                 }
 
-                for bounds.each |bound| {
+                for bounds.iter().advance |bound| {
                     self.resolve_type_parameter_bound(bound, visitor);
                 }
             }
 
             ty_closure(c) => {
-                for c.bounds.each |bound| {
+                for c.bounds.iter().advance |bound| {
                     self.resolve_type_parameter_bound(bound, visitor);
                 }
                 visit_ty(ty, ((), visitor));
@@ -5369,7 +5369,7 @@ impl Resolver {
         }
 
         debug!("Import resolutions:");
-        for module_.import_resolutions.each |name, import_resolution| {
+        for module_.import_resolutions.iter().advance |(name, import_resolution)| {
             let value_repr;
             match import_resolution.target_for_namespace(ValueNS) {
                 None => { value_repr = ~""; }

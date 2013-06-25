@@ -8,11 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::vec;
-
 pub fn main() {
     let mut sum = 0;
-    for vec::each(~[1, 2, 3, 4, 5]) |x| {
+    let xs = ~[1, 2, 3, 4, 5];
+    for xs.iter().advance |x| {
         sum += *x;
     }
     assert_eq!(sum, 15);

@@ -188,7 +188,7 @@ fn rendezvous(nn: uint, set: ~[color]) {
 
     // save each creature's meeting stats
     let mut report = ~[];
-    for vec::each(to_creature) |_to_one| {
+    for to_creature.iter().advance |_to_one| {
         report.push(from_creatures_log.recv());
     }
 
@@ -196,7 +196,7 @@ fn rendezvous(nn: uint, set: ~[color]) {
     io::println(show_color_list(set));
 
     // print each creature's stats
-    for vec::each(report) |rep| {
+    for report.iter().advance |rep| {
         io::println(*rep);
     }
 

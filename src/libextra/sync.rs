@@ -1094,7 +1094,8 @@ mod tests {
         };
         assert!(result.is_err());
         // child task must have finished by the time try returns
-        for vec::each(p.recv()) |p| { p.recv(); } // wait on all its siblings
+        let r = p.recv();
+        for r.iter().advance |p| { p.recv(); } // wait on all its siblings
         do m.lock_cond |cond| {
             let woken = cond.broadcast();
             assert_eq!(woken, 0);
