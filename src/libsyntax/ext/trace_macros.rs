@@ -8,9 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
-
-use core::vec;
 use ast;
 use codemap::span;
 use ext::base::ExtCtxt;
@@ -18,6 +15,8 @@ use ext::base;
 use parse::lexer::{new_tt_reader, reader};
 use parse::parser::Parser;
 use parse::token::keywords;
+
+use std::vec;
 
 pub fn expand_trace_macros(cx: @ExtCtxt,
                            sp: span,

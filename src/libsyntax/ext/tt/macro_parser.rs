@@ -10,8 +10,6 @@
 
 // Earley-like parser for macros.
 
-use core::prelude::*;
-
 use ast;
 use ast::{matcher, match_tok, match_seq, match_nonterminal, ident};
 use codemap::{BytePos, mk_sp};
@@ -22,9 +20,9 @@ use parse::parser::Parser;
 use parse::token::{Token, EOF, to_str, nonterminal, get_ident_interner, ident_to_str};
 use parse::token;
 
-use core::hashmap::HashMap;
-use core::uint;
-use core::vec;
+use std::hashmap::HashMap;
+use std::uint;
+use std::vec;
 
 /* This is an Earley-like parser, without support for in-grammar nonterminals,
 only by calling out to the main rust parser for named nonterminals (which it

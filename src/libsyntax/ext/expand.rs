@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
-
 use ast::{blk_, attribute_, attr_outer, meta_word};
 use ast::{crate, expr_, expr_mac, mac_invoc_tt};
 use ast::{item_mac, stmt_, stmt_mac, stmt_expr, stmt_semi};
@@ -27,7 +25,7 @@ use parse::token::{ident_to_str, intern};
 use visit;
 use visit::Visitor;
 
-use core::vec;
+use std::vec;
 
 pub fn expand_expr(extsbox: @mut SyntaxEnv,
                    cx: @ExtCtxt,
@@ -757,8 +755,6 @@ mod test {
     use print::pprust;
     use util::parser_testing::{string_to_item, string_to_pat, strs_to_idents};
     use visit::{mk_vt};
-
-    use core::option::{None, Some};
 
     // make sure that fail! is present
     #[test] fn fail_exists_test () {

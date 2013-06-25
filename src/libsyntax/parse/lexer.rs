@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
-
 use ast;
 use codemap::{BytePos, CharPos, CodeMap, Pos, span};
 use codemap;
@@ -19,9 +17,9 @@ use ext::tt::transcribe::{dup_tt_reader};
 use parse::token;
 use parse::token::{str_to_ident};
 
-use core::char;
-use core::either;
-use core::u64;
+use std::char;
+use std::either;
+use std::u64;
 
 pub use ext::tt::transcribe::{TtReader, new_tt_reader};
 
@@ -789,7 +787,6 @@ mod test {
 
     use ast;
     use codemap::{BytePos, CodeMap, span};
-    use core::option::None;
     use diagnostic;
     use parse::token;
     use parse::token::{str_to_ident};

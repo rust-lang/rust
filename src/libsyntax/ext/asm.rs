@@ -12,15 +12,14 @@
  * Inline assembly support.
  */
 
-use core::prelude::*;
-
-use core::vec;
 use ast;
 use codemap::span;
 use ext::base;
 use ext::base::*;
 use parse;
 use parse::token;
+
+use std::vec;
 
 enum State {
     Asm,

@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
-
 use ast;
 use ast::{meta_item, item, expr, ident};
 use codemap::span;
@@ -17,7 +15,7 @@ use ext::base::ExtCtxt;
 use ext::build::{AstBuilder, Duplicate};
 use ext::deriving::generic::*;
 
-use core::vec;
+use std::vec;
 
 pub fn expand_deriving_rand(cx: @ExtCtxt,
                             span: span,

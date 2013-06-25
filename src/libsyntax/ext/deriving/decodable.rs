@@ -13,9 +13,8 @@ The compiler code necessary for #[deriving(Decodable)]. See
 encodable.rs for more.
 */
 
-use core::prelude::*;
-use core::vec;
-use core::uint;
+use std::vec;
+use std::uint;
 
 use ast::{meta_item, item, expr, m_mutbl};
 use codemap::span;
