@@ -22,7 +22,6 @@ use middle::trans::adt;
 use middle::trans::base;
 use middle::trans::debuginfo;
 use middle::trans::reachable;
-use middle::trans::shape;
 use middle::trans::type_use;
 use middle::ty;
 
@@ -39,8 +38,6 @@ use middle::trans::common::{ExternMap,tydesc_info,BuilderRef_res,Stats,namegen};
 use middle::trans::common::{mono_id,new_namegen};
 
 use middle::trans::base::{decl_crate_map};
-
-use middle::trans::shape::{mk_ctxt};
 
 pub struct CrateContext {
      sess: session::Session,
@@ -110,7 +107,6 @@ pub struct CrateContext {
      float_type: Type,
      opaque_vec_type: Type,
      builder: BuilderRef_res,
-     shape_cx: shape::Ctxt,
      crate_map: ValueRef,
      // Set when at least one function uses GC. Needed so that
      // decl_gc_metadata knows whether to link to the module metadata, which
@@ -223,7 +219,6 @@ impl CrateContext {
                   float_type: float_type,
                   opaque_vec_type: opaque_vec_type,
                   builder: BuilderRef_res(llvm::LLVMCreateBuilderInContext(llcx)),
-                  shape_cx: mk_ctxt(llmod),
                   crate_map: crate_map,
                   uses_gc: false,
                   dbg_cx: dbg_cx,
