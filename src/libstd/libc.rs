@@ -633,8 +633,9 @@ pub mod types {
             pub mod bsd44 {
             }
             pub mod extra {
+                use ptr;
                 use libc::types::common::c95::c_void;
-                use libc::types::os::arch::c95::{c_char, c_int, c_uint};
+                use libc::types::os::arch::c95::{c_char, c_int, c_uint, size_t};
                 use libc::types::os::arch::c95::{c_long, c_ulong};
                 use libc::types::os::arch::c95::{wchar_t};
                 use libc::types::os::arch::c99::{c_ulonglong};
@@ -665,6 +666,7 @@ pub mod types {
                 pub type LPSECURITY_ATTRIBUTES = LPVOID;
 
                 pub type LPVOID = *mut c_void;
+                pub type LPCVOID = *c_void;
                 pub type LPBYTE = *mut BYTE;
                 pub type LPWORD = *mut WORD;
                 pub type LPDWORD = *mut DWORD;
@@ -674,6 +676,7 @@ pub mod types {
                 pub type PBOOL = *mut BOOL;
                 pub type WCHAR = wchar_t;
                 pub type WORD = u16;
+                pub type SIZE_T = size_t;
 
                 pub type time64_t = i64;
                 pub type int64 = i64;
@@ -707,6 +710,50 @@ pub mod types {
                     dwThreadId: DWORD
                 }
                 pub type LPPROCESS_INFORMATION = *mut PROCESS_INFORMATION;
+
+                pub struct SYSTEM_INFO {
+                    wProcessorArchitecture: WORD,
+                    wReserved: WORD,
+                    dwPageSize: DWORD,
+                    lpMinimumApplicationAddress: LPVOID,
+                    lpMaximumApplicationAddress: LPVOID,
+                    dwActiveProcessorMask: DWORD,
+                    dwNumberOfProcessors: DWORD,
+                    dwProcessorType: DWORD,
+                    dwAllocationGranularity: DWORD,
+                    wProcessorLevel: WORD,
+                    wProcessorRevision: WORD
+                }
+                pub type LPSYSTEM_INFO = *mut SYSTEM_INFO;
+
+                impl SYSTEM_INFO {
+                    pub fn new() -> SYSTEM_INFO {
+                        SYSTEM_INFO {
+                            wProcessorArchitecture: 0,
+                            wReserved: 0,
+                            dwPageSize: 0,
+                            lpMinimumApplicationAddress: ptr::null(),
+                            lpMaximumApplicationAddress: ptr::null(),
+                            dwActiveProcessorMask: 0,
+                            dwNumberOfProcessors: 0,
+                            dwProcessorType: 0,
+                            dwAllocationGranularity: 0,
+                            wProcessorLevel: 0,
+                            wProcessorRevision: 0
+                        }
+                    }
+                }
+
+                pub struct MEMORY_BASIC_INFORMATION {
+                    BaseAddress: LPVOID,
+                    AllocationBase: LPVOID,
+                    AllocationProtect: DWORD,
+                    RegionSize: SIZE_T,
+                    State: DWORD,
+                    Protect: DWORD,
+                    Type: DWORD
+                }
+                pub type LPMEMORY_BASIC_INFORMATION = *mut MEMORY_BASIC_INFORMATION;
             }
         }
     }
@@ -974,7 +1021,12 @@ pub mod consts {
             pub static O_NOINHERIT: c_int = 128;
 
             pub static ERROR_SUCCESS : c_int = 0;
+            pub static ERROR_INVALID_HANDLE : c_int = 6;
+            pub static ERROR_DISK_FULL : c_int = 112;
             pub static ERROR_INSUFFICIENT_BUFFER : c_int = 122;
+            pub static ERROR_ALREADY_EXISTS : c_int = 183;
+            pub static ERROR_INVALID_ADDRESS : c_int = 487;
+            pub static ERROR_FILE_INVALID : c_int = 1006;
             pub static INVALID_HANDLE_VALUE: c_int = -1;
 
             pub static DELETE : DWORD = 0x00010000;
@@ -1020,6 +1072,49 @@ pub mod consts {
 
             pub static INFINITE : DWORD = -1;
             pub static STILL_ACTIVE : DWORD = 259;
+
+            pub static MEM_COMMIT : DWORD = 0x00001000;
+            pub static MEM_RESERVE : DWORD = 0x00002000;
+            pub static MEM_DECOMMIT : DWORD = 0x00004000;
+            pub static MEM_RELEASE : DWORD = 0x00008000;
+            pub static MEM_RESET : DWORD = 0x00080000;
+            pub static MEM_RESET_UNDO : DWORD = 0x1000000;
+            pub static MEM_LARGE_PAGES : DWORD = 0x20000000;
+            pub static MEM_PHYSICAL : DWORD = 0x00400000;
+            pub static MEM_TOP_DOWN : DWORD = 0x00100000;
+            pub static MEM_WRITE_WATCH : DWORD = 0x00200000;
+
+            pub static PAGE_EXECUTE : DWORD = 0x10;
+            pub static PAGE_EXECUTE_READ : DWORD = 0x20;
+            pub static PAGE_EXECUTE_READWRITE : DWORD = 0x40;
+            pub static PAGE_EXECUTE_WRITECOPY : DWORD = 0x80;
+            pub static PAGE_NOACCESS : DWORD = 0x01;
+            pub static PAGE_READONLY : DWORD = 0x02;
+            pub static PAGE_READWRITE : DWORD = 0x04;
+            pub static PAGE_WRITECOPY : DWORD = 0x08;
+            pub static PAGE_GUARD : DWORD = 0x100;
+            pub static PAGE_NOCACHE : DWORD = 0x200;
+            pub static PAGE_WRITECOMBINE : DWORD = 0x400;
+
+            pub static SEC_COMMIT : DWORD = 0x8000000;
+            pub static SEC_IMAGE : DWORD = 0x1000000;
+            pub static SEC_IMAGE_NO_EXECUTE : DWORD = 0x11000000;
+            pub static SEC_LARGE_PAGES : DWORD = 0x80000000;
+            pub static SEC_NOCACHE : DWORD = 0x10000000;
+            pub static SEC_RESERVE : DWORD = 0x4000000;
+            pub static SEC_WRITECOMBINE : DWORD = 0x40000000;
+
+            pub static FILE_MAP_ALL_ACCESS : DWORD = 0xf001f;
+            pub static FILE_MAP_READ : DWORD = 0x4;
+            pub static FILE_MAP_WRITE : DWORD = 0x2;
+            pub static FILE_MAP_COPY : DWORD = 0x1;
+            pub static FILE_MAP_EXECUTE : DWORD = 0x20;
+
+            pub static PROCESSOR_ARCHITECTURE_INTEL : WORD = 0;
+            pub static PROCESSOR_ARCHITECTURE_ARM : WORD = 5;
+            pub static PROCESSOR_ARCHITECTURE_IA64 : WORD = 6;
+            pub static PROCESSOR_ARCHITECTURE_AMD64 : WORD = 9;
+            pub static PROCESSOR_ARCHITECTURE_UNKNOWN : WORD = 0xffff;
         }
     }
 
@@ -2620,11 +2715,13 @@ pub mod funcs {
 
         pub mod kernel32 {
             use libc::types::os::arch::c95::{c_uint};
-            use libc::types::os::arch::extra::{BOOL, DWORD, HMODULE};
+            use libc::types::os::arch::extra::{BOOL, DWORD, SIZE_T, HMODULE};
             use libc::types::os::arch::extra::{LPCWSTR, LPWSTR, LPCTSTR,
-                                               LPTSTR, LPTCH, LPDWORD, LPVOID};
+                                               LPTSTR, LPTCH, LPDWORD, LPVOID,
+                                               LPCVOID};
             use libc::types::os::arch::extra::{LPSECURITY_ATTRIBUTES, LPSTARTUPINFO,
-                                               LPPROCESS_INFORMATION};
+                                               LPPROCESS_INFORMATION,
+                                               LPMEMORY_BASIC_INFORMATION};
             use libc::types::os::arch::extra::{HANDLE, LPHANDLE};
 
             #[abi = "stdcall"]
@@ -2687,6 +2784,37 @@ pub mod funcs {
                 unsafe fn WaitForSingleObject(hHandle: HANDLE, dwMilliseconds: DWORD) -> DWORD;
                 unsafe fn TerminateProcess(hProcess: HANDLE, uExitCode: c_uint) -> BOOL;
                 unsafe fn GetExitCodeProcess(hProcess: HANDLE, lpExitCode: LPDWORD) -> BOOL;
+
+                unsafe fn GetSystemInfo(lpSystemInfo: LPSYSTEM_INFO);
+                unsafe fn VirtualAlloc(lpAddress: LPVOID,
+                                       dwSize: SIZE_T,
+                                       flAllocationType: DWORD,
+                                       flProtect: DWORD) -> LPVOID;
+                unsafe fn VirtualFree(lpAddress: LPVOID,
+                                      dwSize: SIZE_T,
+                                      dwFreeType: DWORD) -> BOOL;
+                unsafe fn VirtualLock(lpAddress: LPVOID, dwSize: SIZE_T) -> BOOL;
+                unsafe fn VirtualUnlock(lpAddress: LPVOID, dwSize: SIZE_T) -> BOOL;
+                unsafe fn VirtualProtect(lpAddress: LPVOID,
+                                         dwSize: SIZE_T,
+                                         flNewProtect: DWORD,
+                                         lpflOldProtect: LPDWORD) -> BOOL;
+                unsafe fn VirtualQuery(lpAddress: LPCVOID,
+                                       lpBuffer: LPMEMORY_BASIC_INFORMATION,
+                                       dwLength: SIZE_T) -> SIZE_T;
+
+                unsafe fn CreateFileMappingW(hFile: HANDLE,
+                                             lpAttributes: LPSECURITY_ATTRIBUTES,
+                                             flProtect: DWORD,
+                                             dwMaximumSizeHigh: DWORD,
+                                             dwMaximumSizeLow: DWORD,
+                                             lpName: LPCTSTR) -> HANDLE;
+                unsafe fn MapViewOfFile(hFileMappingObject: HANDLE,
+                                        dwDesiredAccess: DWORD,
+                                        dwFileOffsetHigh: DWORD,
+                                        dwFileOffsetLow: DWORD,
+                                        dwNumberOfBytesToMap: SIZE_T) -> LPVOID;
+                unsafe fn UnmapViewOfFile(lpBaseAddress: LPCVOID) -> BOOL;
             }
         }
 
