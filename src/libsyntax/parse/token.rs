@@ -15,10 +15,12 @@ use parse::token;
 use util::interner::StrInterner;
 use util::interner;
 
+use std::char;
 use std::cmp::Equiv;
 use std::local_data;
 use std::rand;
 use std::rand::RngUtil;
+use std::ptr::to_unsafe_ptr;
 
 #[deriving(Clone, Encodable, Decodable, Eq, IterBytes)]
 pub enum binop {
@@ -535,14 +537,30 @@ pub fn gensym_ident(str : &str) -> ast::ident {
 }
 
 // create a fresh name that maps to the same string as the old one.
+// note that this guarantees that ptr_eq(ident_to_str(src),interner_get(fresh_name(src)));
+// that is, that the new name and the old one are connected to ptr_eq strings.
 pub fn fresh_name(src : &ast::ident) -> Name {
     gensym(ident_to_str(src))
     // following: debug version. Could work in final except that it's incompatible with
     // good error messages and uses of struct names in ambiguous could-be-binding
-    // locations.
+    // locations. Also definitely destroys the guarantee given above about ptr_eq.
     /*let num = rand::rng().gen_uint_range(0,0xffff);
     gensym(fmt!("%s_%u",ident_to_str(src),num))*/
 }
+
+// it looks like there oughta be a str_ptr_eq fn, but no one bothered to implement it?
+pub fn str_ptr_eq<T>(a: @str, b: @str) -> bool {
+    // doesn't compile! ...because of rebase mangling. this should be fixed
+    // in the commit that follows this.
+    let (a_ptr, b_ptr): (*uint, *uint) = (to_unsafe_ptr(a), to_unsafe_ptr(b));
+    a_ptr == b_ptr
+}
+
+
+
+// return true when two identifiers refer (through the intern table) to the same ptr_eq
+// string. This is used to compare identifiers in places where hygienic comparison is
+// not wanted (i.e. not lexical vars).
 
 // create a fresh mark.
 pub fn fresh_mark() -> Mrk {
@@ -698,6 +716,8 @@ mod test {
     use ast;
     use ast_util;
     use super::*;
+    use std::io;
+    use std::managed;
 
     fn mark_ident(id : ast::ident, m : ast::Mrk) -> ast::ident {
         ast::ident{name:id.name,ctxt:ast_util::new_mark(m,id.ctxt)}
@@ -708,6 +728,15 @@ mod test {
         let a = str_to_ident("bac");
         let a1 = mark_ident(a,92);
         assert!(mtwt_token_eq(&IDENT(a,true),&IDENT(a1,false)));
+    }
+
+    #[test] fn t1() {
+        let ghi = str_to_ident("ghi");
+        assert_eq!(ident_to_str(&ghi),@"ghi");
+        let fresh = ast::new_ident(fresh_name(&ghi));
+        assert_eq!(ident_to_str(&fresh),@"ghi");
+        assert!(str_ptr_eq(ident_to_str(&ghi),ident_to_str(&fresh)));
+        assert_eq!(3,4);
     }
 
 }
