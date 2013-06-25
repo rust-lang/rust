@@ -178,16 +178,16 @@ fn diagnosticstr(lvl: level) -> ~str {
     }
 }
 
-fn diagnosticcolor(lvl: level) -> u8 {
+fn diagnosticcolor(lvl: level) -> term::color::Color {
     match lvl {
-        fatal => term::color_bright_red,
-        error => term::color_bright_red,
-        warning => term::color_bright_yellow,
-        note => term::color_bright_green
+        fatal => term::color::bright_red,
+        error => term::color::bright_red,
+        warning => term::color::bright_yellow,
+        note => term::color::bright_green
     }
 }
 
-fn print_maybe_colored(msg: &str, color: u8) {
+fn print_maybe_colored(msg: &str, color: term::color::Color) {
     let stderr = io::stderr();
 
     let t = term::Terminal::new(stderr);
@@ -304,7 +304,7 @@ fn highlight_lines(cm: @codemap::CodeMap,
             let num_squiglies = hi.col.to_uint()-lo.col.to_uint()-1u;
             for num_squiglies.times() { s += "~"; }
         }
-        print_maybe_colored(s + "\n", term::color_bright_green);
+        print_maybe_colored(s + "\n", term::color::bright_green);
     }
 }
 
