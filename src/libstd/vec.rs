@@ -2346,6 +2346,7 @@ impl<T> FromIter<T> for ~[T]{
     }
 }
 
+#[cfg(stage0)]
 impl<A, T: Iterator<A>> FromIterator<A, T> for ~[A] {
     pub fn from_iterator(iterator: &mut T) -> ~[A] {
         let mut xs = ~[];
@@ -2356,7 +2357,8 @@ impl<A, T: Iterator<A>> FromIterator<A, T> for ~[A] {
     }
 }
 
-/* FIXME: #7341 - ICE
+
+#[cfg(not(stage0))]
 impl<A, T: Iterator<A>> FromIterator<A, T> for ~[A] {
     pub fn from_iterator(iterator: &mut T) -> ~[A] {
         let (lower, _) = iterator.size_hint();
@@ -2367,7 +2369,7 @@ impl<A, T: Iterator<A>> FromIterator<A, T> for ~[A] {
         xs
     }
 }
-*/
+
 
 #[cfg(test)]
 mod tests {
