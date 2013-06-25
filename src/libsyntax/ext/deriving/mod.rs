@@ -18,8 +18,6 @@ library.
 
 */
 
-use core::prelude::*;
-
 use ast::{enum_def, ident, item, Generics, meta_item, struct_def};
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;

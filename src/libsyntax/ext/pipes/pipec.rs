@@ -10,8 +10,6 @@
 
 // A protocol compiler for Rust.
 
-use core::prelude::*;
-
 use ast;
 use codemap::{dummy_sp, spanned};
 use ext::base::ExtCtxt;
@@ -23,7 +21,7 @@ use ext::quote::rt::*;
 use opt_vec;
 use opt_vec::OptVec;
 
-use core::vec;
+use std::vec;
 
 pub trait gen_send {
     fn gen_send(&mut self, cx: @ExtCtxt, try: bool) -> @ast::item;

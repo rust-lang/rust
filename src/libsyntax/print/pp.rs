@@ -61,10 +61,8 @@
  * avoid combining it with other lines and making matters even worse.
  */
 
-use core::prelude::*;
-
-use core::io;
-use core::vec;
+use std::io;
+use std::vec;
 
 #[deriving(Eq)]
 pub enum breaks { consistent, inconsistent, }

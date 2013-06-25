@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
-
 use abi::AbiSet;
 use ast::{RegionTyParamBound, TraitTyParamBound, required, provided};
 use ast;
@@ -29,10 +27,10 @@ use print::pp::{breaks, consistent, inconsistent, eof};
 use print::pp;
 use print::pprust;
 
-use core::char;
-use core::io;
-use core::u64;
-use core::uint;
+use std::char;
+use std::io;
+use std::u64;
+use std::uint;
 
 // The @ps is stored here to prevent recursive type.
 pub enum ann_node<'self> {
@@ -2251,8 +2249,6 @@ mod test {
     use ast;
     use ast_util;
     use codemap;
-    use core::cmp::Eq;
-    use core::option::None;
     use parse::token;
 
     fn string_check<T:Eq> (given : &T, expected: &T) {

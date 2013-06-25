@@ -8,22 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
-
 use ast::*;
 use ast;
 use ast_util;
 use codemap::{span, spanned};
-use core::cast;
-use core::local_data;
 use opt_vec;
 use parse::token;
 use visit;
 
-use core::hashmap::HashMap;
-use core::int;
-use core::option;
-use core::to_bytes;
+use std::hashmap::HashMap;
+use std::int;
+use std::option;
+use std::to_bytes;
+use std::cast;
+use std::local_data;
 
 pub fn path_name_i(idents: &[ident]) -> ~str {
     // FIXME: Bad copies (#2543 -- same for everything else that says "bad")
@@ -793,7 +791,7 @@ pub fn getLast(arr: &~[Mrk]) -> uint {
 mod test {
     use ast::*;
     use super::*;
-    use core::io;
+    use std::io;
 
     #[test] fn xorpush_test () {
         let mut s = ~[];

@@ -20,10 +20,8 @@ use parse::attr::parser_attr;
 use parse::lexer::reader;
 use parse::parser::Parser;
 
-use core::io;
-use core::option::{None, Option, Some};
-use core::path::Path;
-use core::result::{Err, Ok};
+use std::io;
+use std::path::Path;
 
 pub mod lexer;
 pub mod parser;
@@ -335,9 +333,7 @@ mod test {
     use super::*;
     use extra::serialize::Encodable;
     use extra;
-    use core::io;
-    use core::option::Some;
-    use core::option::None;
+    use std::io;
     use codemap::{span, BytePos, spanned};
     use opt_vec;
     use ast;

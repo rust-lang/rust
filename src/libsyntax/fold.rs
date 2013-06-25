@@ -8,15 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
-
 use ast::*;
 use ast;
 use codemap::{span, spanned};
 use parse::token;
 use opt_vec::OptVec;
 
-use core::vec;
+use std::vec;
 
 pub trait ast_fold {
     fn fold_crate(@self, &crate) -> crate;
@@ -1011,5 +1009,4 @@ mod test {
                                     token::get_ident_interner()),
                      ~"zz!zz((zz$zz:zz$(zz $zz:zz)zz+=>(zz$(zz$zz$zz)+)))");
     }
-
 }

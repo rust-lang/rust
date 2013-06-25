@@ -17,8 +17,6 @@ Obsolete syntax that becomes too hard to parse can be
 removed.
 */
 
-use core::prelude::*;
-
 use ast::{expr, expr_lit, lit_nil, attribute};
 use ast;
 use codemap::{span, respan};
@@ -26,8 +24,8 @@ use parse::parser::Parser;
 use parse::token::{keywords, Token};
 use parse::token;
 
-use core::str;
-use core::to_bytes;
+use std::str;
+use std::to_bytes;
 
 /// The specific types of unsupported syntax
 #[deriving(Eq)]
@@ -127,7 +125,7 @@ impl Parser {
             ),
             ObsoleteSwap => (
                 "swap",
-                "Use core::util::{swap, replace} instead"
+                "Use std::util::{swap, replace} instead"
             ),
             ObsoleteUnsafeBlock => (
                 "non-standalone unsafe block",

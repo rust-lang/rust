@@ -21,11 +21,9 @@ source code snippets, etc.
 
 */
 
-use core::prelude::*;
-
-use core::cmp;
-use core::to_bytes;
-use core::uint;
+use std::cmp;
+use std::to_bytes;
+use std::uint;
 use extra::serialize::{Encodable, Decodable, Encoder, Decoder};
 
 pub trait Pos {

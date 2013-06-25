@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
-
 use ast;
 use codemap;
 use codemap::{Pos, ExpandedFrom, span};
@@ -21,9 +19,9 @@ use parse;
 use parse::token::{get_ident_interner};
 use print::pprust;
 
-use core::io;
-use core::result;
-use core::vec;
+use std::io;
+use std::result;
+use std::vec;
 
 // These macros all relate to the file system; they either return
 // the column/row/filename of the expression, or they include
