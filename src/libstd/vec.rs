@@ -30,6 +30,10 @@ use sys;
 use sys::size_of;
 use uint;
 use unstable::intrinsics;
+#[cfg(stage0)]
+use intrinsic::{get_tydesc};
+#[cfg(not(stage0))]
+use unstable::intrinsics::{get_tydesc};
 use vec;
 use util;
 
@@ -37,19 +41,22 @@ use util;
 
 pub mod rustrt {
     use libc;
-    use sys;
     use vec::raw;
+    #[cfg(stage0)]
+    use intrinsic::{TyDesc};
+    #[cfg(not(stage0))]
+    use unstable::intrinsics::{TyDesc};
 
     #[abi = "cdecl"]
     pub extern {
         // These names are terrible. reserve_shared applies
         // to ~[] and reserve_shared_actual applies to @[].
         #[fast_ffi]
-        unsafe fn vec_reserve_shared(t: *sys::TypeDesc,
+        unsafe fn vec_reserve_shared(t: *TyDesc,
                                      v: **raw::VecRepr,
                                      n: libc::size_t);
         #[fast_ffi]
-        unsafe fn vec_reserve_shared_actual(t: *sys::TypeDesc,
+        unsafe fn vec_reserve_shared_actual(t: *TyDesc,
                                             v: **raw::VecRepr,
                                             n: libc::size_t);
     }
@@ -78,7 +85,7 @@ pub fn reserve<T>(v: &mut ~[T], n: uint) {
     if capacity(v) < n {
         unsafe {
             let ptr: **raw::VecRepr = cast::transmute(v);
-            let td = sys::get_type_desc::<T>();
+            let td = get_tydesc::<T>();
             if ((**ptr).box_header.ref_count ==
                 managed::raw::RC_MANAGED_UNIQUE) {
                 rustrt::vec_reserve_shared_actual(td, ptr, n as libc::size_t);

@@ -20,7 +20,6 @@ use middle::trans::base;
 
 use syntax::ast;
 use syntax::abi::{Architecture, X86, X86_64, Arm, Mips};
-use back::abi;
 
 use core::vec;
 use core::cast;
@@ -189,25 +188,26 @@ impl Type {
             None => ()
         }
 
-        let ty = cx.tydesc_type.get_field(abi::tydesc_field_drop_glue);
+        let ty = Type::glue_fn();
         cx.tn.associate_type("glue_fn", &ty);
 
         return ty;
     }
 
+    pub fn glue_fn() -> Type {
+        Type::func([ Type::nil().ptr_to(), Type::i8p() ],
+            &Type::void())
+    }
+
     pub fn tydesc(arch: Architecture) -> Type {
         let mut tydesc = Type::named_struct("tydesc");
-        let tydescpp = tydesc.ptr_to().ptr_to();
-        let pvoid = Type::i8p();
-        let glue_fn_ty = Type::func([ Type::nil().ptr_to(), tydescpp, pvoid ],
-            &Type::void()).ptr_to();
+        let glue_fn_ty = Type::glue_fn().ptr_to();
 
         let int_ty = Type::int(arch);
 
         let elems = [
             int_ty, int_ty,
-            glue_fn_ty, glue_fn_ty, glue_fn_ty, glue_fn_ty,
-            pvoid, pvoid
+            glue_fn_ty, glue_fn_ty, glue_fn_ty, glue_fn_ty
         ];
 
         tydesc.set_struct_body(elems, false);
@@ -263,10 +263,6 @@ impl Type {
 
     pub fn enum_discrim(cx: &CrateContext) -> Type {
         cx.int_type
-    }
-
-    pub fn captured_tydescs(ctx: &CrateContext, num: uint) -> Type {
-        Type::struct_(vec::from_elem(num, ctx.tydesc_type.ptr_to()), false)
     }
 
     pub fn opaque_trait(ctx: &CrateContext, store: ty::TraitStore) -> Type {
