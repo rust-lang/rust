@@ -307,34 +307,6 @@ impl<K:Hash + Eq,V> Map<K, V> for HashMap<K, V> {
         }
     }
 
-    /// Visit all key-value pairs
-    fn each<'a>(&'a self, blk: &fn(&K, &'a V) -> bool) -> bool {
-        self.iter().advance(|(k, v)| blk(k, v))
-    }
-
-    /// Visit all keys
-    fn each_key(&self, blk: &fn(k: &K) -> bool) -> bool {
-        self.iter().advance(|(k, _)| blk(k))
-    }
-
-    /// Visit all values
-    fn each_value<'a>(&'a self, blk: &fn(v: &'a V) -> bool) -> bool {
-        self.iter().advance(|(_, v)| blk(v))
-    }
-
-    /// Iterate over the map and mutate the contained values
-    fn mutate_values(&mut self, blk: &fn(&K, &mut V) -> bool) -> bool {
-        for uint::range(0, self.buckets.len()) |i| {
-            match self.buckets[i] {
-              Some(Bucket{key: ref key, value: ref mut value, _}) => {
-                if !blk(key, value) { return false; }
-              }
-              None => ()
-            }
-        }
-        return true;
-    }
-
     /// Return a reference to the value corresponding to the key
     fn find<'a>(&'a self, k: &K) -> Option<&'a V> {
         match self.bucket_for_key(k) {
@@ -514,6 +486,29 @@ impl<K: Hash + Eq, V> HashMap<K, V> {
             FoundEntry(idx) => Some(self.value_for_bucket(idx)),
             TableFull | FoundHole(_) => None,
         }
+    }
+
+    /// Visit all keys
+    pub fn each_key(&self, blk: &fn(k: &K) -> bool) -> bool {
+        self.iter().advance(|(k, _)| blk(k))
+    }
+
+    /// Visit all values
+    pub fn each_value<'a>(&'a self, blk: &fn(v: &'a V) -> bool) -> bool {
+        self.iter().advance(|(_, v)| blk(v))
+    }
+
+    /// Iterate over the map and mutate the contained values
+    pub fn mutate_values(&mut self, blk: &fn(&K, &mut V) -> bool) -> bool {
+        for uint::range(0, self.buckets.len()) |i| {
+            match self.buckets[i] {
+              Some(Bucket{key: ref key, value: ref mut value, _}) => {
+                if !blk(key, value) { return false; }
+              }
+              None => ()
+            }
+        }
+        return true;
     }
 
     /// An iterator visiting all key-value pairs in arbitrary order.
@@ -716,12 +711,6 @@ impl<T:Hash + Eq> HashSet<T> {
     /// given query value.
     pub fn contains_equiv<Q:Hash + Equiv<T>>(&self, value: &Q) -> bool {
       self.map.contains_key_equiv(value)
-    }
-
-    /// Visit all elements in arbitrary order
-    /// FIXME: #6978: Remove when all callers are converted
-    pub fn each(&self, f: &fn(&T) -> bool) -> bool {
-        self.iter().advance(f)
     }
 
     /// An iterator visiting all elements in arbitrary order.

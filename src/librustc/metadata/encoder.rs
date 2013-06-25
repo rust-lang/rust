@@ -731,8 +731,8 @@ fn encode_info_for_method(ecx: &EncodeContext,
     }
 
     let mut combined_ty_params = opt_vec::Empty;
-    for owner_generics.ty_params.each |x| { combined_ty_params.push(copy *x) }
-    for method_generics.ty_params.each |x| { combined_ty_params.push(copy *x) }
+    for owner_generics.ty_params.iter().advance |x| { combined_ty_params.push(copy *x) }
+    for method_generics.ty_params.iter().advance |x| { combined_ty_params.push(copy *x) }
     let len = combined_ty_params.len();
     encode_type_param_bounds(ebml_w, ecx, &combined_ty_params);
 

@@ -86,7 +86,7 @@ fn make_graph(N: uint, edges: ~[(node_id, node_id)]) -> graph {
         HashSet::new()
     };
 
-    for vec::each(edges) |e| {
+    for edges.iter().advance |e| {
         match *e {
             (i, j) => {
                 graph[i].insert(j);
@@ -441,7 +441,7 @@ fn main() {
     let stop = time::precise_time_s();
 
     let mut total_edges = 0;
-    vec::each(graph, |edges| { total_edges += edges.len(); true });
+    for graph.iter().advance |edges| { total_edges += edges.len(); }
 
     io::stdout().write_line(fmt!("Generated graph with %? edges in %? seconds.",
                                  total_edges / 2,

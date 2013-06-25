@@ -529,7 +529,7 @@ fn compose_and_run_compiler(
     let extra_link_args = ~[~"-L",
                             aux_output_dir_name(config, testfile).to_str()];
 
-    for vec::each(props.aux_builds) |rel_ab| {
+    for props.aux_builds.iter().advance |rel_ab| {
         let abs_ab = config.aux_base.push_rel(&Path(*rel_ab));
         let aux_args =
             make_compile_args(config, props, ~[~"--lib"] + extra_link_args,

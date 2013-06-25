@@ -57,7 +57,7 @@ impl RegionParamNames {
     }
 
     fn has_ident(&self, ident: ast::ident) -> bool {
-        for self.each |region_param_name| {
+        for self.iter().advance |region_param_name| {
             if *region_param_name == ident {
                 return true;
             }

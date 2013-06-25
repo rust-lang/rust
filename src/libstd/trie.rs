@@ -58,30 +58,6 @@ impl<T> Map<uint, T> for TrieMap<T> {
         self.find(key).is_some()
     }
 
-    /// Visit all key-value pairs in order
-    #[inline]
-    fn each<'a>(&'a self, f: &fn(&uint, &'a T) -> bool) -> bool {
-        self.root.each(f)
-    }
-
-    /// Visit all keys in order
-    #[inline]
-    fn each_key(&self, f: &fn(&uint) -> bool) -> bool {
-        self.each(|k, _| f(k))
-    }
-
-    /// Visit all values in order
-    #[inline]
-    fn each_value<'a>(&'a self, f: &fn(&'a T) -> bool) -> bool {
-        self.each(|_, v| f(v))
-    }
-
-    /// Iterate over the map and mutate the contained values
-    #[inline]
-    fn mutate_values(&mut self, f: &fn(&uint, &mut T) -> bool) -> bool {
-        self.root.mutate_values(f)
-    }
-
     /// Return a reference to the value corresponding to the key
     #[inline]
     fn find<'a>(&'a self, key: &uint) -> Option<&'a T> {
@@ -156,6 +132,30 @@ impl<T> TrieMap<T> {
     #[inline]
     pub fn each_reverse<'a>(&'a self, f: &fn(&uint, &'a T) -> bool) -> bool {
         self.root.each_reverse(f)
+    }
+
+    /// Visit all key-value pairs in order
+    #[inline]
+    pub fn each<'a>(&'a self, f: &fn(&uint, &'a T) -> bool) -> bool {
+        self.root.each(f)
+    }
+
+    /// Visit all keys in order
+    #[inline]
+    pub fn each_key(&self, f: &fn(&uint) -> bool) -> bool {
+        self.each(|k, _| f(k))
+    }
+
+    /// Visit all values in order
+    #[inline]
+    pub fn each_value<'a>(&'a self, f: &fn(&'a T) -> bool) -> bool {
+        self.each(|_, v| f(v))
+    }
+
+    /// Iterate over the map and mutate the contained values
+    #[inline]
+    pub fn mutate_values(&mut self, f: &fn(&uint, &mut T) -> bool) -> bool {
+        self.root.mutate_values(f)
     }
 
     /// Visit all keys in reverse order

@@ -1743,7 +1743,7 @@ pub fn print_bounds(s: @ps, bounds: @OptVec<ast::TyParamBound>) {
     if !bounds.is_empty() {
         word(s.s, ":");
         let mut first = true;
-        for bounds.each |bound| {
+        for bounds.iter().advance |bound| {
             nbsp(s);
             if first {
                 first = false;

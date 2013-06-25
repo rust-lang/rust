@@ -240,7 +240,8 @@ fn check_fn(
 
     // Check kinds on free variables:
     do with_appropriate_checker(cx, fn_id) |chk| {
-        for vec::each(*freevars::get_freevars(cx.tcx, fn_id)) |fv| {
+        let r = freevars::get_freevars(cx.tcx, fn_id);
+        for r.iter().advance |fv| {
             chk(cx, *fv);
         }
     }

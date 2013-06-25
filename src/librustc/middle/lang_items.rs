@@ -436,7 +436,7 @@ impl LanguageItemCollector {
     }
 
     pub fn check_completeness(&self) {
-        for self.item_refs.each |&key, &item_ref| {
+        for self.item_refs.iter().advance |(&key, &item_ref)| {
             match self.items.items[item_ref] {
                 None => {
                     self.session.err(fmt!("no item found for `%s`", key));

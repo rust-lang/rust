@@ -16,7 +16,7 @@ struct Foo {
 
 impl Foo {
     pub fn foo(&mut self, fun: &fn(&int)) {
-        for self.n.each |f| {
+        for self.n.iter().advance |f| {
             fun(f);
         }
     }

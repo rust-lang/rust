@@ -418,10 +418,11 @@ pub fn opts_str(mm: &Matches, names: &[~str]) -> ~str {
  */
 pub fn opt_strs(mm: &Matches, nm: &str) -> ~[~str] {
     let mut acc: ~[~str] = ~[];
-    for vec::each(opt_vals(mm, nm)) |v| {
+    let r = opt_vals(mm, nm);
+    for r.iter().advance |v| {
         match *v { Val(ref s) => acc.push(copy *s), _ => () }
     }
-    return acc;
+    acc
 }
 
 /// Returns the string argument supplied to a matching option or none

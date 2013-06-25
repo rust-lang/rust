@@ -146,7 +146,7 @@ impl WorkMap {
 impl<S:Encoder> Encodable<S> for WorkMap {
     fn encode(&self, s: &mut S) {
         let mut d = ~[];
-        for self.each |k, v| {
+        for self.iter().advance |(k, v)| {
             d.push((copy *k, copy *v))
         }
         sort::tim_sort(d);
@@ -320,7 +320,7 @@ impl TPrep for Prep {
     }
 
     fn all_fresh(&self, cat: &str, map: &WorkMap) -> bool {
-        for map.each |k, v| {
+        for map.iter().advance |(k, v)| {
             if ! self.is_fresh(cat, k.kind, k.name, *v) {
                 return false;
             }
