@@ -50,12 +50,12 @@ pub fn uv_ip4_to_ip4(addr: *sockaddr_in) -> IpAddr {
     let port = unsafe { ip4_port(addr) };
     let ip_str = str::from_bytes_slice(buf).trim_right_chars(&'\x00');
     let ip: ~[u8] = ip_str.split_iter('.')
-                          .transform(|s: &str| -> u8 { 
-                                        let x = FromStr::from_str(s); 
+                          .transform(|s: &str| -> u8 {
+                                        let x = FromStr::from_str(s);
                                         assert!(x.is_some());
                                         x.unwrap() })
                           .collect();
-    assert!(ip.len() >= 4); 
+    assert!(ip.len() >= 4);
     Ipv4(ip[0], ip[1], ip[2], ip[3], port as u16)
 }
 
@@ -304,7 +304,7 @@ impl UdpWatcher {
                     }
                 }
             }
-            _ => fail!() // TODO ipv6
+            _ => fail!() // NOTE ipv6
         }
     }
 
@@ -325,9 +325,10 @@ impl UdpWatcher {
             return (*alloc_cb)(suggested_size as uint);
         }
 
-        /* TODO the socket address should actually be a pointer to either a sockaddr_in or sockaddr_in6.
+        /* NOTE the socket address should actually be a pointer to
+           either a sockaddr_in or sockaddr_in6.
            In libuv, the udp_recv callback takes a struct *sockaddr */
-        extern fn recv_cb(handle: *uvll::uv_udp_t, nread: ssize_t, buf: Buf, 
+        extern fn recv_cb(handle: *uvll::uv_udp_t, nread: ssize_t, buf: Buf,
                           addr: *uvll::sockaddr_in, flags: c_uint) {
             rtdebug!("buf addr: %x", buf.base as uint);
             rtdebug!("buf len: %d", buf.len as int);
@@ -364,7 +365,7 @@ impl UdpWatcher {
                     }
                 }
             }
-            _ => fail!() // TODO ipv6
+            _ => fail!() // NOTE ipv6
         }
 
         extern fn send_cb(req: *uvll::uv_udp_send_t, status: c_int) {
@@ -490,7 +491,9 @@ impl UdpSendRequest {
 
     pub fn handle(&self) -> UdpWatcher {
         unsafe {
-            NativeHandle::from_native_handle(uvll::get_udp_handle_from_send_req(self.native_handle()))
+            NativeHandle::from_native_handle(
+                uvll::get_udp_handle_from_send_req(
+                    self.native_handle()))
         }
     }
 
@@ -544,7 +547,7 @@ mod test {
         }
     }
 
-    #[test] 
+    #[test]
     fn udp_bind_close() {
         do run_in_bare_thread() {
             let mut loop_ = Loop::new();
@@ -633,7 +636,7 @@ mod test {
         }
     }
 
-    #[test] 
+    #[test]
     fn udp_recv() {
         do run_in_bare_thread() {
             static MAX: int = 10;

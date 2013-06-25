@@ -218,7 +218,8 @@ pub unsafe fn udp_send6<T>(req: *uv_udp_send_t, handle: *T, buf_in: &[uv_buf_t],
     return rust_uv_udp_send6(req, handle as *c_void, buf_ptr, buf_cnt, addr, cb);
 }
 
-pub unsafe fn udp_recv_start(server: *uv_udp_t, on_alloc: uv_alloc_cb, on_recv: uv_udp_recv_cb) -> c_int {
+pub unsafe fn udp_recv_start(server: *uv_udp_t, on_alloc: uv_alloc_cb,
+                             on_recv: uv_udp_recv_cb) -> c_int {
     return rust_uv_udp_recv_start(server, on_alloc, on_recv);
 }
 

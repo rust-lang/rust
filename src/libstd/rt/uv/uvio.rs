@@ -489,7 +489,7 @@ impl RtioUdpSocket for UvUdpSocket {
             let task_cell = Cell::new(task);
             let alloc: AllocCallback = |_| unsafe { slice_to_uv_buf(*buf_ptr) };
             do watcher.recv_start(alloc) |watcher, nread, _buf, addr, flags, status| {
-                let _ = flags; // TODO add handling for partials?
+                let _ = flags; // NOTE add handling for partials?
 
                 watcher.recv_stop();
 
@@ -596,7 +596,7 @@ fn test_simple_tcp_server_and_client() {
     }
 }
 
-#[test] 
+#[test]
 fn test_simple_udp_server_and_client() {
     do run_in_newsched_task {
         let server_addr = next_test_ip4();
