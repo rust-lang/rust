@@ -3506,13 +3506,15 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
             }
 
             "get_tydesc" => {
-              // FIXME (#3730): return *intrinsic::tydesc, not *()
-              (1u, ~[], ty::mk_nil_ptr(ccx.tcx))
+              let tydesc_ty = ty::get_tydesc_ty(ccx.tcx);
+              let td_ptr = ty::mk_ptr(ccx.tcx, ty::mt {
+                  ty: tydesc_ty,
+                  mutbl: ast::m_imm
+              });
+              (1u, ~[], td_ptr)
             }
             "visit_tydesc" => {
-              let tydesc_name = special_idents::tydesc;
-              assert!(tcx.intrinsic_defs.contains_key(&tydesc_name));
-              let (_, tydesc_ty) = tcx.intrinsic_defs.get_copy(&tydesc_name);
+              let tydesc_ty = ty::get_tydesc_ty(ccx.tcx);
               let (_, visitor_object_ty) = ty::visitor_object_ty(tcx);
               let td_ptr = ty::mk_ptr(ccx.tcx, ty::mt {
                   ty: tydesc_ty,
