@@ -102,10 +102,12 @@ pub use libc::funcs::posix88::stdio::*;
 pub use libc::funcs::posix88::fcntl::*;
 pub use libc::funcs::posix88::dirent::*;
 pub use libc::funcs::posix88::unistd::*;
+pub use libc::funcs::posix88::mman::*;
 
 pub use libc::funcs::posix01::stat_::*;
 pub use libc::funcs::posix01::unistd::*;
 pub use libc::funcs::posix01::glob::*;
+pub use libc::funcs::posix01::mman::*;
 pub use libc::funcs::posix08::unistd::*;
 
 pub use libc::funcs::bsd44::*;
@@ -285,7 +287,7 @@ pub mod types {
             #[cfg(target_arch = "x86")]
             #[cfg(target_arch = "mips")]
             pub mod posix01 {
-                use libc::types::os::arch::c95::{c_short, c_long, c_ulong, time_t};
+                use libc::types::os::arch::c95::{c_short, c_long, time_t};
                 use libc::types::os::arch::posix88::{dev_t, gid_t, ino_t};
                 use libc::types::os::arch::posix88::{mode_t, off_t};
                 use libc::types::os::arch::posix88::{uid_t};
@@ -903,52 +905,56 @@ pub mod consts {
     #[cfg(target_os = "win32")]
     pub mod os {
         pub mod c95 {
-            pub static EXIT_FAILURE : int = 1;
-            pub static EXIT_SUCCESS : int = 0;
-            pub static RAND_MAX : int = 32767;
-            pub static EOF : int = -1;
-            pub static SEEK_SET : int = 0;
-            pub static SEEK_CUR : int = 1;
-            pub static SEEK_END : int = 2;
-            pub static _IOFBF : int = 0;
-            pub static _IONBF : int = 4;
-            pub static _IOLBF : int = 64;
-            pub static BUFSIZ : uint = 512_u;
-            pub static FOPEN_MAX : uint = 20_u;
-            pub static FILENAME_MAX : uint = 260_u;
-            pub static L_tmpnam : uint = 16_u;
-            pub static TMP_MAX : uint = 32767_u;
+            use libc::types::os::arch::c95::{c_int, c_uint};
+
+            pub static EXIT_FAILURE : c_int = 1;
+            pub static EXIT_SUCCESS : c_int = 0;
+            pub static RAND_MAX : c_int = 32767;
+            pub static EOF : c_int = -1;
+            pub static SEEK_SET : c_int = 0;
+            pub static SEEK_CUR : c_int = 1;
+            pub static SEEK_END : c_int = 2;
+            pub static _IOFBF : c_int = 0;
+            pub static _IONBF : c_int = 4;
+            pub static _IOLBF : c_int = 64;
+            pub static BUFSIZ : c_uint = 512_u32;
+            pub static FOPEN_MAX : c_uint = 20_u32;
+            pub static FILENAME_MAX : c_uint = 260_u32;
+            pub static L_tmpnam : c_uint = 16_u32;
+            pub static TMP_MAX : c_uint = 32767_u32;
         }
         pub mod c99 {
         }
         pub mod posix88 {
-            pub static O_RDONLY : int = 0;
-            pub static O_WRONLY : int = 1;
-            pub static O_RDWR : int = 2;
-            pub static O_APPEND : int = 8;
-            pub static O_CREAT : int = 256;
-            pub static O_EXCL : int = 1024;
-            pub static O_TRUNC : int = 512;
-            pub static S_IFIFO : int = 4096;
-            pub static S_IFCHR : int = 8192;
-            pub static S_IFBLK : int = 12288;
-            pub static S_IFDIR : int = 16384;
-            pub static S_IFREG : int = 32768;
-            pub static S_IFMT : int = 61440;
-            pub static S_IEXEC : int = 64;
-            pub static S_IWRITE : int = 128;
-            pub static S_IREAD : int = 256;
-            pub static S_IRWXU : int = 448;
-            pub static S_IXUSR : int = 64;
-            pub static S_IWUSR : int = 128;
-            pub static S_IRUSR : int = 256;
-            pub static F_OK : int = 0;
-            pub static R_OK : int = 4;
-            pub static W_OK : int = 2;
-            pub static X_OK : int = 1;
-            pub static STDIN_FILENO : int = 0;
-            pub static STDOUT_FILENO : int = 1;
-            pub static STDERR_FILENO : int = 2;
+            use libc::types::os::arch::c95::c_int;
+
+            pub static O_RDONLY : c_int = 0;
+            pub static O_WRONLY : c_int = 1;
+            pub static O_RDWR : c_int = 2;
+            pub static O_APPEND : c_int = 8;
+            pub static O_CREAT : c_int = 256;
+            pub static O_EXCL : c_int = 1024;
+            pub static O_TRUNC : c_int = 512;
+            pub static S_IFIFO : c_int = 4096;
+            pub static S_IFCHR : c_int = 8192;
+            pub static S_IFBLK : c_int = 12288;
+            pub static S_IFDIR : c_int = 16384;
+            pub static S_IFREG : c_int = 32768;
+            pub static S_IFMT : c_int = 61440;
+            pub static S_IEXEC : c_int = 64;
+            pub static S_IWRITE : c_int = 128;
+            pub static S_IREAD : c_int = 256;
+            pub static S_IRWXU : c_int = 448;
+            pub static S_IXUSR : c_int = 64;
+            pub static S_IWUSR : c_int = 128;
+            pub static S_IRUSR : c_int = 256;
+            pub static F_OK : c_int = 0;
+            pub static R_OK : c_int = 4;
+            pub static W_OK : c_int = 2;
+            pub static X_OK : c_int = 1;
+            pub static STDIN_FILENO : c_int = 0;
+            pub static STDOUT_FILENO : c_int = 1;
+            pub static STDERR_FILENO : c_int = 2;
         }
         pub mod posix01 {
         }
@@ -957,18 +963,19 @@ pub mod consts {
         pub mod bsd44 {
         }
         pub mod extra {
+            use libc::types::os::arch::c95::c_int;
             use libc::types::os::arch::extra::{DWORD, BOOL};
 
             pub static TRUE : BOOL = 1;
             pub static FALSE : BOOL = 0;
 
-            pub static O_TEXT : int = 16384;
-            pub static O_BINARY : int = 32768;
-            pub static O_NOINHERIT: int = 128;
+            pub static O_TEXT : c_int = 16384;
+            pub static O_BINARY : c_int = 32768;
+            pub static O_NOINHERIT: c_int = 128;
 
-            pub static ERROR_SUCCESS : int = 0;
-            pub static ERROR_INSUFFICIENT_BUFFER : int = 122;
-            pub static INVALID_HANDLE_VALUE: int = -1;
+            pub static ERROR_SUCCESS : c_int = 0;
+            pub static ERROR_INSUFFICIENT_BUFFER : c_int = 122;
+            pub static INVALID_HANDLE_VALUE: c_int = -1;
 
             pub static DELETE : DWORD = 0x00010000;
             pub static READ_CONTROL : DWORD = 0x00020000;
@@ -1021,21 +1028,23 @@ pub mod consts {
     #[cfg(target_os = "android")]
     pub mod os {
         pub mod c95 {
-            pub static EXIT_FAILURE : int = 1;
-            pub static EXIT_SUCCESS : int = 0;
-            pub static RAND_MAX : int = 2147483647;
-            pub static EOF : int = -1;
-            pub static SEEK_SET : int = 0;
-            pub static SEEK_CUR : int = 1;
-            pub static SEEK_END : int = 2;
-            pub static _IOFBF : int = 0;
-            pub static _IONBF : int = 2;
-            pub static _IOLBF : int = 1;
-            pub static BUFSIZ : uint = 8192_u;
-            pub static FOPEN_MAX : uint = 16_u;
-            pub static FILENAME_MAX : uint = 4096_u;
-            pub static L_tmpnam : uint = 20_u;
-            pub static TMP_MAX : uint = 238328_u;
+            use libc::types::os::arch::c95::{c_int, c_uint};
+
+            pub static EXIT_FAILURE : c_int = 1;
+            pub static EXIT_SUCCESS : c_int = 0;
+            pub static RAND_MAX : c_int = 2147483647;
+            pub static EOF : c_int = -1;
+            pub static SEEK_SET : c_int = 0;
+            pub static SEEK_CUR : c_int = 1;
+            pub static SEEK_END : c_int = 2;
+            pub static _IOFBF : c_int = 0;
+            pub static _IONBF : c_int = 2;
+            pub static _IOLBF : c_int = 1;
+            pub static BUFSIZ : c_uint = 8192_u32;
+            pub static FOPEN_MAX : c_uint = 16_u32;
+            pub static FILENAME_MAX : c_uint = 4096_u32;
+            pub static L_tmpnam : c_uint = 20_u32;
+            pub static TMP_MAX : c_uint = 238328_u32;
         }
         pub mod c99 {
         }
@@ -1043,309 +1052,791 @@ pub mod consts {
         #[cfg(target_arch = "x86_64")]
         #[cfg(target_arch = "arm")]
         pub mod posix88 {
-            pub static O_RDONLY : int = 0;
-            pub static O_WRONLY : int = 1;
-            pub static O_RDWR : int = 2;
-            pub static O_APPEND : int = 1024;
-            pub static O_CREAT : int = 64;
-            pub static O_EXCL : int = 128;
-            pub static O_TRUNC : int = 512;
-            pub static S_IFIFO : int = 4096;
-            pub static S_IFCHR : int = 8192;
-            pub static S_IFBLK : int = 24576;
-            pub static S_IFDIR : int = 16384;
-            pub static S_IFREG : int = 32768;
-            pub static S_IFMT : int = 61440;
-            pub static S_IEXEC : int = 64;
-            pub static S_IWRITE : int = 128;
-            pub static S_IREAD : int = 256;
-            pub static S_IRWXU : int = 448;
-            pub static S_IXUSR : int = 64;
-            pub static S_IWUSR : int = 128;
-            pub static S_IRUSR : int = 256;
-            pub static F_OK : int = 0;
-            pub static R_OK : int = 4;
-            pub static W_OK : int = 2;
-            pub static X_OK : int = 1;
-            pub static STDIN_FILENO : int = 0;
-            pub static STDOUT_FILENO : int = 1;
-            pub static STDERR_FILENO : int = 2;
-            pub static F_LOCK : int = 1;
-            pub static F_TEST : int = 3;
-            pub static F_TLOCK : int = 2;
-            pub static F_ULOCK : int = 0;
-            pub static SIGHUP : int = 1;
-            pub static SIGINT : int = 2;
-            pub static SIGQUIT : int = 3;
-            pub static SIGILL : int = 4;
-            pub static SIGABRT : int = 6;
-            pub static SIGFPE : int = 8;
-            pub static SIGKILL : int = 9;
-            pub static SIGSEGV : int = 11;
-            pub static SIGPIPE : int = 13;
-            pub static SIGALRM : int = 14;
-            pub static SIGTERM : int = 15;
+            use libc::types::os::arch::c95::c_int;
+            use libc::types::common::c95::c_void;
+
+            pub static O_RDONLY : c_int = 0;
+            pub static O_WRONLY : c_int = 1;
+            pub static O_RDWR : c_int = 2;
+            pub static O_APPEND : c_int = 1024;
+            pub static O_CREAT : c_int = 64;
+            pub static O_EXCL : c_int = 128;
+            pub static O_TRUNC : c_int = 512;
+            pub static S_IFIFO : c_int = 4096;
+            pub static S_IFCHR : c_int = 8192;
+            pub static S_IFBLK : c_int = 24576;
+            pub static S_IFDIR : c_int = 16384;
+            pub static S_IFREG : c_int = 32768;
+            pub static S_IFMT : c_int = 61440;
+            pub static S_IEXEC : c_int = 64;
+            pub static S_IWRITE : c_int = 128;
+            pub static S_IREAD : c_int = 256;
+            pub static S_IRWXU : c_int = 448;
+            pub static S_IXUSR : c_int = 64;
+            pub static S_IWUSR : c_int = 128;
+            pub static S_IRUSR : c_int = 256;
+            pub static F_OK : c_int = 0;
+            pub static R_OK : c_int = 4;
+            pub static W_OK : c_int = 2;
+            pub static X_OK : c_int = 1;
+            pub static STDIN_FILENO : c_int = 0;
+            pub static STDOUT_FILENO : c_int = 1;
+            pub static STDERR_FILENO : c_int = 2;
+            pub static F_LOCK : c_int = 1;
+            pub static F_TEST : c_int = 3;
+            pub static F_TLOCK : c_int = 2;
+            pub static F_ULOCK : c_int = 0;
+            pub static SIGHUP : c_int = 1;
+            pub static SIGINT : c_int = 2;
+            pub static SIGQUIT : c_int = 3;
+            pub static SIGILL : c_int = 4;
+            pub static SIGABRT : c_int = 6;
+            pub static SIGFPE : c_int = 8;
+            pub static SIGKILL : c_int = 9;
+            pub static SIGSEGV : c_int = 11;
+            pub static SIGPIPE : c_int = 13;
+            pub static SIGALRM : c_int = 14;
+            pub static SIGTERM : c_int = 15;
+
+            pub static PROT_NONE : c_int = 0;
+            pub static PROT_READ : c_int = 1;
+            pub static PROT_WRITE : c_int = 2;
+            pub static PROT_EXEC : c_int = 4;
+
+            pub static MAP_FILE : c_int = 0x0000;
+            pub static MAP_SHARED : c_int = 0x0001;
+            pub static MAP_PRIVATE : c_int = 0x0002;
+            pub static MAP_FIXED : c_int = 0x0010;
+            pub static MAP_ANON : c_int = 0x1000;
+
+            pub static MAP_FAILED : *c_void = -1 as *c_void;
+
+            pub static MCL_CURRENT : c_int = 0x0001;
+            pub static MCL_FUTURE : c_int = 0x0002;
+
+            pub static MS_ASYNC : c_int = 0x0001;
+            pub static MS_INVALIDATE : c_int = 0x0002;
+            pub static MS_SYNC : c_int = 0x0004;
         }
         #[cfg(target_arch = "mips")]
         pub mod posix88 {
-            pub static O_RDONLY : int = 0;
-            pub static O_WRONLY : int = 1;
-            pub static O_RDWR : int = 2;
-            pub static O_APPEND : int = 8;
-            pub static O_CREAT : int = 256;
-            pub static O_EXCL : int = 1024;
-            pub static O_TRUNC : int = 512;
-            pub static S_IFIFO : int = 4096;
-            pub static S_IFCHR : int = 8192;
-            pub static S_IFBLK : int = 24576;
-            pub static S_IFDIR : int = 16384;
-            pub static S_IFREG : int = 32768;
-            pub static S_IFMT : int = 61440;
-            pub static S_IEXEC : int = 64;
-            pub static S_IWRITE : int = 128;
-            pub static S_IREAD : int = 256;
-            pub static S_IRWXU : int = 448;
-            pub static S_IXUSR : int = 64;
-            pub static S_IWUSR : int = 128;
-            pub static S_IRUSR : int = 256;
-            pub static F_OK : int = 0;
-            pub static R_OK : int = 4;
-            pub static W_OK : int = 2;
-            pub static X_OK : int = 1;
-            pub static STDIN_FILENO : int = 0;
-            pub static STDOUT_FILENO : int = 1;
-            pub static STDERR_FILENO : int = 2;
-            pub static F_LOCK : int = 1;
-            pub static F_TEST : int = 3;
-            pub static F_TLOCK : int = 2;
-            pub static F_ULOCK : int = 0;
-            pub static SIGHUP : int = 1;
-            pub static SIGINT : int = 2;
-            pub static SIGQUIT : int = 3;
-            pub static SIGILL : int = 4;
-            pub static SIGABRT : int = 6;
-            pub static SIGFPE : int = 8;
-            pub static SIGKILL : int = 9;
-            pub static SIGSEGV : int = 11;
-            pub static SIGPIPE : int = 13;
-            pub static SIGALRM : int = 14;
-            pub static SIGTERM : int = 15;
+            use libc::types::os::arch::c95::c_int;
+            use libc::types::common::c95::c_void;
+
+            pub static O_RDONLY : c_int = 0;
+            pub static O_WRONLY : c_int = 1;
+            pub static O_RDWR : c_int = 2;
+            pub static O_APPEND : c_int = 8;
+            pub static O_CREAT : c_int = 256;
+            pub static O_EXCL : c_int = 1024;
+            pub static O_TRUNC : c_int = 512;
+            pub static S_IFIFO : c_int = 4096;
+            pub static S_IFCHR : c_int = 8192;
+            pub static S_IFBLK : c_int = 24576;
+            pub static S_IFDIR : c_int = 16384;
+            pub static S_IFREG : c_int = 32768;
+            pub static S_IFMT : c_int = 61440;
+            pub static S_IEXEC : c_int = 64;
+            pub static S_IWRITE : c_int = 128;
+            pub static S_IREAD : c_int = 256;
+            pub static S_IRWXU : c_int = 448;
+            pub static S_IXUSR : c_int = 64;
+            pub static S_IWUSR : c_int = 128;
+            pub static S_IRUSR : c_int = 256;
+            pub static F_OK : c_int = 0;
+            pub static R_OK : c_int = 4;
+            pub static W_OK : c_int = 2;
+            pub static X_OK : c_int = 1;
+            pub static STDIN_FILENO : c_int = 0;
+            pub static STDOUT_FILENO : c_int = 1;
+            pub static STDERR_FILENO : c_int = 2;
+            pub static F_LOCK : c_int = 1;
+            pub static F_TEST : c_int = 3;
+            pub static F_TLOCK : c_int = 2;
+            pub static F_ULOCK : c_int = 0;
+            pub static SIGHUP : c_int = 1;
+            pub static SIGINT : c_int = 2;
+            pub static SIGQUIT : c_int = 3;
+            pub static SIGILL : c_int = 4;
+            pub static SIGABRT : c_int = 6;
+            pub static SIGFPE : c_int = 8;
+            pub static SIGKILL : c_int = 9;
+            pub static SIGSEGV : c_int = 11;
+            pub static SIGPIPE : c_int = 13;
+            pub static SIGALRM : c_int = 14;
+            pub static SIGTERM : c_int = 15;
+
+            pub static PROT_NONE : c_int = 0;
+            pub static PROT_READ : c_int = 1;
+            pub static PROT_WRITE : c_int = 2;
+            pub static PROT_EXEC : c_int = 4;
+
+            pub static MAP_FILE : c_int = 0x0000;
+            pub static MAP_SHARED : c_int = 0x0001;
+            pub static MAP_PRIVATE : c_int = 0x0002;
+            pub static MAP_FIXED : c_int = 0x0010;
+            pub static MAP_ANON : c_int = 0x1000;
+
+            pub static MAP_FAILED : *c_void = -1 as *c_void;
+
+            pub static MCL_CURRENT : c_int = 0x0001;
+            pub static MCL_FUTURE : c_int = 0x0002;
+
+            pub static MS_ASYNC : c_int = 0x0001;
+            pub static MS_INVALIDATE : c_int = 0x0002;
+            pub static MS_SYNC : c_int = 0x0004;
+
+            pub static _SC_ARG_MAX : c_int = 0;
+            pub static _SC_CHILD_MAX : c_int = 1;
+            pub static _SC_CLK_TCK : c_int = 2;
+            pub static _SC_NGROUPS_MAX : c_int = 3;
+            pub static _SC_OPEN_MAX : c_int = 4;
+            pub static _SC_STREAM_MAX : c_int = 5;
+            pub static _SC_TZNAME_MAX : c_int = 6;
+            pub static _SC_JOB_CONTROL : c_int = 7;
+            pub static _SC_SAVED_IDS : c_int = 8;
+            pub static _SC_REALTIME_SIGNALS : c_int = 9;
+            pub static _SC_PRIORITY_SCHEDULING : c_int = 10;
+            pub static _SC_TIMERS : c_int = 11;
+            pub static _SC_ASYNCHRONOUS_IO : c_int = 12;
+            pub static _SC_PRIORITIZED_IO : c_int = 13;
+            pub static _SC_SYNCHRONIZED_IO : c_int = 14;
+            pub static _SC_FSYNC : c_int = 15;
+            pub static _SC_MAPPED_FILES : c_int = 16;
+            pub static _SC_MEMLOCK : c_int = 17;
+            pub static _SC_MEMLOCK_RANGE : c_int = 18;
+            pub static _SC_MEMORY_PROTECTION : c_int = 19;
+            pub static _SC_MESSAGE_PASSING : c_int = 20;
+            pub static _SC_SEMAPHORES : c_int = 21;
+            pub static _SC_SHARED_MEMORY_OBJECTS : c_int = 22;
+            pub static _SC_AIO_LISTIO_MAX : c_int = 23;
+            pub static _SC_AIO_MAX : c_int = 24;
+            pub static _SC_AIO_PRIO_DELTA_MAX : c_int = 25;
+            pub static _SC_DELAYTIMER_MAX : c_int = 26;
+            pub static _SC_MQ_OPEN_MAX : c_int = 27;
+            pub static _SC_VERSION : c_int = 29;
+            pub static _SC_PAGESIZE : c_int = 30;
+            pub static _SC_RTSIG_MAX : c_int = 31;
+            pub static _SC_SEM_NSEMS_MAX : c_int = 32;
+            pub static _SC_SEM_VALUE_MAX : c_int = 33;
+            pub static _SC_SIGQUEUE_MAX : c_int = 34;
+            pub static _SC_TIMER_MAX : c_int = 35;
+            pub static _SC_BC_BASE_MAX : c_int = 36;
+            pub static _SC_BC_DIM_MAX : c_int = 37;
+            pub static _SC_BC_SCALE_MAX : c_int = 38;
+            pub static _SC_BC_STRING_MAX : c_int = 39;
+            pub static _SC_COLL_WEIGHTS_MAX : c_int = 40;
+            pub static _SC_EXPR_NEST_MAX : c_int = 42;
+            pub static _SC_LINE_MAX : c_int = 43;
+            pub static _SC_RE_DUP_MAX : c_int = 44;
+            pub static _SC_2_VERSION : c_int = 46;
+            pub static _SC_2_C_BIND : c_int = 47;
+            pub static _SC_2_C_DEV : c_int = 48;
+            pub static _SC_2_FORT_DEV : c_int = 49;
+            pub static _SC_2_FORT_RUN : c_int = 50;
+            pub static _SC_2_SW_DEV : c_int = 51;
+            pub static _SC_2_LOCALEDEF : c_int = 52;
+            pub static _SC_2_CHAR_TERM : c_int = 95;
+            pub static _SC_2_C_VERSION : c_int = 96;
+            pub static _SC_2_UPE : c_int = 97;
+            pub static _SC_XBS5_ILP32_OFF32 : c_int = 125;
+            pub static _SC_XBS5_ILP32_OFFBIG : c_int = 126;
+            pub static _SC_XBS5_LPBIG_OFFBIG : c_int = 128;
         }
         pub mod posix01 {
-            pub static SIGTRAP : int = 5;
+            use libc::types::os::arch::c95::c_int;
 
-            pub static GLOB_ERR      : int = 1 << 0;
-            pub static GLOB_MARK     : int = 1 << 1;
-            pub static GLOB_NOSORT   : int = 1 << 2;
-            pub static GLOB_DOOFFS   : int = 1 << 3;
-            pub static GLOB_NOCHECK  : int = 1 << 4;
-            pub static GLOB_APPEND   : int = 1 << 5;
-            pub static GLOB_NOESCAPE : int = 1 << 6;
+            pub static SIGTRAP : c_int = 5;
 
-            pub static GLOB_NOSPACE  : int = 1;
-            pub static GLOB_ABORTED  : int = 2;
-            pub static GLOB_NOMATCH  : int = 3;
+            pub static GLOB_ERR      : c_int = 1 << 0;
+            pub static GLOB_MARK     : c_int = 1 << 1;
+            pub static GLOB_NOSORT   : c_int = 1 << 2;
+            pub static GLOB_DOOFFS   : c_int = 1 << 3;
+            pub static GLOB_NOCHECK  : c_int = 1 << 4;
+            pub static GLOB_APPEND   : c_int = 1 << 5;
+            pub static GLOB_NOESCAPE : c_int = 1 << 6;
+
+            pub static GLOB_NOSPACE  : c_int = 1;
+            pub static GLOB_ABORTED  : c_int = 2;
+            pub static GLOB_NOMATCH  : c_int = 3;
+
+            pub static POSIX_MADV_NORMAL : c_int = 0;
+            pub static POSIX_MADV_RANDOM : c_int = 1;
+            pub static POSIX_MADV_SEQUENTIAL : c_int = 2;
+            pub static POSIX_MADV_WILLNEED : c_int = 3;
+            pub static POSIX_MADV_DONTNEED : c_int = 4;
+
+            pub static _SC_MQ_PRIO_MAX : c_int = 28;
+            pub static _SC_IOV_MAX : c_int = 60;
+            pub static _SC_GETGR_R_SIZE_MAX : c_int = 69;
+            pub static _SC_GETPW_R_SIZE_MAX : c_int = 70;
+            pub static _SC_LOGIN_NAME_MAX : c_int = 71;
+            pub static _SC_TTY_NAME_MAX : c_int = 72;
+            pub static _SC_THREADS : c_int = 67;
+            pub static _SC_THREAD_SAFE_FUNCTIONS : c_int = 68;
+            pub static _SC_THREAD_DESTRUCTOR_ITERATIONS : c_int = 73;
+            pub static _SC_THREAD_KEYS_MAX : c_int = 74;
+            pub static _SC_THREAD_STACK_MIN : c_int = 75;
+            pub static _SC_THREAD_THREADS_MAX : c_int = 76;
+            pub static _SC_THREAD_ATTR_STACKADDR : c_int = 77;
+            pub static _SC_THREAD_ATTR_STACKSIZE : c_int = 78;
+            pub static _SC_THREAD_PRIORITY_SCHEDULING : c_int = 79;
+            pub static _SC_THREAD_PRIO_INHERIT : c_int = 80;
+            pub static _SC_THREAD_PRIO_PROTECT : c_int = 81;
+            pub static _SC_THREAD_PROCESS_SHARED : c_int = 82;
+            pub static _SC_ATEXIT_MAX : c_int = 87;
+            pub static _SC_XOPEN_VERSION : c_int = 89;
+            pub static _SC_XOPEN_XCU_VERSION : c_int = 90;
+            pub static _SC_XOPEN_UNIX : c_int = 91;
+            pub static _SC_XOPEN_CRYPT : c_int = 92;
+            pub static _SC_XOPEN_ENH_I18N : c_int = 93;
+            pub static _SC_XOPEN_SHM : c_int = 94;
+            pub static _SC_XOPEN_LEGACY : c_int = 129;
+            pub static _SC_XOPEN_REALTIME : c_int = 130;
+            pub static _SC_XOPEN_REALTIME_THREADS : c_int = 131;
         }
         pub mod posix08 {
         }
         pub mod bsd44 {
+            use libc::types::os::arch::c95::c_int;
+
+            pub static MADV_NORMAL : c_int = 0;
+            pub static MADV_RANDOM : c_int = 1;
+            pub static MADV_SEQUENTIAL : c_int = 2;
+            pub static MADV_WILLNEED : c_int = 3;
+            pub static MADV_DONTNEED : c_int = 4;
+            pub static MADV_REMOVE : c_int = 9;
+            pub static MADV_DONTFORK : c_int = 10;
+            pub static MADV_DOFORK : c_int = 11;
+            pub static MADV_MERGEABLE : c_int = 12;
+            pub static MADV_UNMERGEABLE : c_int = 13;
+            pub static MADV_HWPOISON : c_int = 100;
         }
         #[cfg(target_arch = "x86")]
         #[cfg(target_arch = "x86_64")]
         #[cfg(target_arch = "arm")]
         pub mod extra {
-            pub static O_RSYNC : int = 1052672;
-            pub static O_DSYNC : int = 4096;
-            pub static O_SYNC : int = 1052672;
+            use libc::types::os::arch::c95::c_int;
+
+            pub static O_RSYNC : c_int = 1052672;
+            pub static O_DSYNC : c_int = 4096;
+            pub static O_SYNC : c_int = 1052672;
+
+            pub static PROT_GROWSDOWN : c_int = 0x010000000;
+            pub static PROT_GROWSUP : c_int = 0x020000000;
+
+            pub static MAP_TYPE : c_int = 0x000f;
+            pub static MAP_ANONONYMOUS : c_int = 0x1000;
+            pub static MAP_32BIT : c_int = 0x0040;
+            pub static MAP_GROWSDOWN : c_int = 0x0100;
+            pub static MAP_DENYWRITE : c_int = 0x0800;
+            pub static MAP_EXECUTABLE : c_int = 0x01000;
+            pub static MAP_LOCKED : c_int = 0x02000;
+            pub static MAP_NONRESERVE : c_int = 0x04000;
+            pub static MAP_POPULATE : c_int = 0x08000;
+            pub static MAP_NONBLOCK : c_int = 0x010000;
+            pub static MAP_STACK : c_int = 0x020000;
         }
         #[cfg(target_arch = "mips")]
         pub mod extra {
-            pub static O_RSYNC : int = 16400;
-            pub static O_DSYNC : int = 16;
-            pub static O_SYNC : int = 16400;
+            use libc::types::os::arch::c95::c_int;
+
+            pub static O_RSYNC : c_int = 16400;
+            pub static O_DSYNC : c_int = 16;
+            pub static O_SYNC : c_int = 16400;
+
+            pub static PROT_GROWSDOWN : c_int = 0x010000000;
+            pub static PROT_GROWSUP : c_int = 0x020000000;
+
+            pub static MAP_TYPE : c_int = 0x000f;
+            pub static MAP_ANONONYMOUS : c_int = 0x1000;
+            pub static MAP_32BIT : c_int = 0x0040;
+            pub static MAP_GROWSDOWN : c_int = 0x0100;
+            pub static MAP_DENYWRITE : c_int = 0x0800;
+            pub static MAP_EXECUTABLE : c_int = 0x01000;
+            pub static MAP_LOCKED : c_int = 0x02000;
+            pub static MAP_NONRESERVE : c_int = 0x04000;
+            pub static MAP_POPULATE : c_int = 0x08000;
+            pub static MAP_NONBLOCK : c_int = 0x010000;
+            pub static MAP_STACK : c_int = 0x020000;
         }
     }
 
     #[cfg(target_os = "freebsd")]
     pub mod os {
         pub mod c95 {
-            pub static EXIT_FAILURE : int = 1;
-            pub static EXIT_SUCCESS : int = 0;
-            pub static RAND_MAX : int = 2147483647;
-            pub static EOF : int = -1;
-            pub static SEEK_SET : int = 0;
-            pub static SEEK_CUR : int = 1;
-            pub static SEEK_END : int = 2;
-            pub static _IOFBF : int = 0;
-            pub static _IONBF : int = 2;
-            pub static _IOLBF : int = 1;
-            pub static BUFSIZ : uint = 1024_u;
-            pub static FOPEN_MAX : uint = 20_u;
-            pub static FILENAME_MAX : uint = 1024_u;
-            pub static L_tmpnam : uint = 1024_u;
-            pub static TMP_MAX : uint = 308915776_u;
+            use libc::types::os::arch::c95::{c_int, c_uint};
+
+            pub static EXIT_FAILURE : c_int = 1;
+            pub static EXIT_SUCCESS : c_int = 0;
+            pub static RAND_MAX : c_int = 2147483647;
+            pub static EOF : c_int = -1;
+            pub static SEEK_SET : c_int = 0;
+            pub static SEEK_CUR : c_int = 1;
+            pub static SEEK_END : c_int = 2;
+            pub static _IOFBF : c_int = 0;
+            pub static _IONBF : c_int = 2;
+            pub static _IOLBF : c_int = 1;
+            pub static BUFSIZ : c_uint = 1024_u32;
+            pub static FOPEN_MAX : c_uint = 20_u32;
+            pub static FILENAME_MAX : c_uint = 1024_u32;
+            pub static L_tmpnam : c_uint = 1024_u32;
+            pub static TMP_MAX : c_uint = 308915776_u32;
         }
         pub mod c99 {
         }
         pub mod posix88 {
-            pub static O_RDONLY : int = 0;
-            pub static O_WRONLY : int = 1;
-            pub static O_RDWR : int = 2;
-            pub static O_APPEND : int = 8;
-            pub static O_CREAT : int = 512;
-            pub static O_EXCL : int = 2048;
-            pub static O_TRUNC : int = 1024;
-            pub static S_IFIFO : int = 4096;
-            pub static S_IFCHR : int = 8192;
-            pub static S_IFBLK : int = 24576;
-            pub static S_IFDIR : int = 16384;
-            pub static S_IFREG : int = 32768;
-            pub static S_IFMT : int = 61440;
-            pub static S_IEXEC : int = 64;
-            pub static S_IWRITE : int = 128;
-            pub static S_IREAD : int = 256;
-            pub static S_IRWXU : int = 448;
-            pub static S_IXUSR : int = 64;
-            pub static S_IWUSR : int = 128;
-            pub static S_IRUSR : int = 256;
-            pub static F_OK : int = 0;
-            pub static R_OK : int = 4;
-            pub static W_OK : int = 2;
-            pub static X_OK : int = 1;
-            pub static STDIN_FILENO : int = 0;
-            pub static STDOUT_FILENO : int = 1;
-            pub static STDERR_FILENO : int = 2;
-            pub static F_LOCK : int = 1;
-            pub static F_TEST : int = 3;
-            pub static F_TLOCK : int = 2;
-            pub static F_ULOCK : int = 0;
-            pub static SIGHUP : int = 1;
-            pub static SIGINT : int = 2;
-            pub static SIGQUIT : int = 3;
-            pub static SIGILL : int = 4;
-            pub static SIGABRT : int = 6;
-            pub static SIGFPE : int = 8;
-            pub static SIGKILL : int = 9;
-            pub static SIGSEGV : int = 11;
-            pub static SIGPIPE : int = 13;
-            pub static SIGALRM : int = 14;
-            pub static SIGTERM : int = 15;
+            use libc::types::common::c95::c_void;
+            use libc::types::os::arch::c95::c_int;
+
+            pub static O_RDONLY : c_int = 0;
+            pub static O_WRONLY : c_int = 1;
+            pub static O_RDWR : c_int = 2;
+            pub static O_APPEND : c_int = 8;
+            pub static O_CREAT : c_int = 512;
+            pub static O_EXCL : c_int = 2048;
+            pub static O_TRUNC : c_int = 1024;
+            pub static S_IFIFO : c_int = 4096;
+            pub static S_IFCHR : c_int = 8192;
+            pub static S_IFBLK : c_int = 24576;
+            pub static S_IFDIR : c_int = 16384;
+            pub static S_IFREG : c_int = 32768;
+            pub static S_IFMT : c_int = 61440;
+            pub static S_IEXEC : c_int = 64;
+            pub static S_IWRITE : c_int = 128;
+            pub static S_IREAD : c_int = 256;
+            pub static S_IRWXU : c_int = 448;
+            pub static S_IXUSR : c_int = 64;
+            pub static S_IWUSR : c_int = 128;
+            pub static S_IRUSR : c_int = 256;
+            pub static F_OK : c_int = 0;
+            pub static R_OK : c_int = 4;
+            pub static W_OK : c_int = 2;
+            pub static X_OK : c_int = 1;
+            pub static STDIN_FILENO : c_int = 0;
+            pub static STDOUT_FILENO : c_int = 1;
+            pub static STDERR_FILENO : c_int = 2;
+            pub static F_LOCK : c_int = 1;
+            pub static F_TEST : c_int = 3;
+            pub static F_TLOCK : c_int = 2;
+            pub static F_ULOCK : c_int = 0;
+            pub static SIGHUP : c_int = 1;
+            pub static SIGINT : c_int = 2;
+            pub static SIGQUIT : c_int = 3;
+            pub static SIGILL : c_int = 4;
+            pub static SIGABRT : c_int = 6;
+            pub static SIGFPE : c_int = 8;
+            pub static SIGKILL : c_int = 9;
+            pub static SIGSEGV : c_int = 11;
+            pub static SIGPIPE : c_int = 13;
+            pub static SIGALRM : c_int = 14;
+            pub static SIGTERM : c_int = 15;
+
+            pub static PROT_NONE : c_int = 0;
+            pub static PROT_READ : c_int = 1;
+            pub static PROT_WRITE : c_int = 2;
+            pub static PROT_EXEC : c_int = 4;
+
+            pub static MAP_FILE : c_int = 0x0000;
+            pub static MAP_SHARED : c_int = 0x0001;
+            pub static MAP_PRIVATE : c_int = 0x0002;
+            pub static MAP_FIXED : c_int = 0x0010;
+            pub static MAP_ANON : c_int = 0x1000;
+
+            pub static MAP_FAILED : *c_void = -1 as *c_void;
+
+            pub static MCL_CURRENT : c_int = 0x0001;
+            pub static MCL_FUTURE : c_int = 0x0002;
+
+            pub static MS_SYNC : c_int = 0x0000;
+            pub static MS_ASYNC : c_int = 0x0001;
+            pub static MS_INVALIDATE : c_int = 0x0002;
+
+            pub static _SC_ARG_MAX : c_int = 1;
+            pub static _SC_CHILD_MAX : c_int = 2;
+            pub static _SC_CLK_TCK : c_int = 3;
+            pub static _SC_NGROUPS_MAX : c_int = 4;
+            pub static _SC_OPEN_MAX : c_int = 5;
+            pub static _SC_JOB_CONTROL : c_int = 6;
+            pub static _SC_SAVED_IDS : c_int = 7;
+            pub static _SC_VERSION : c_int = 8;
+            pub static _SC_BC_BASE_MAX : c_int = 9;
+            pub static _SC_BC_DIM_MAX : c_int = 10;
+            pub static _SC_BC_SCALE_MAX : c_int = 11;
+            pub static _SC_BC_STRING_MAX : c_int = 12;
+            pub static _SC_COLL_WEIGHTS_MAX : c_int = 13;
+            pub static _SC_EXPR_NEST_MAX : c_int = 14;
+            pub static _SC_LINE_MAX : c_int = 15;
+            pub static _SC_RE_DUP_MAX : c_int = 16;
+            pub static _SC_2_VERSION : c_int = 17;
+            pub static _SC_2_C_BIND : c_int = 18;
+            pub static _SC_2_C_DEV : c_int = 19;
+            pub static _SC_2_CHAR_TERM : c_int = 20;
+            pub static _SC_2_FORT_DEV : c_int = 21;
+            pub static _SC_2_FORT_RUN : c_int = 22;
+            pub static _SC_2_LOCALEDEF : c_int = 23;
+            pub static _SC_2_SW_DEV : c_int = 24;
+            pub static _SC_2_UPE : c_int = 25;
+            pub static _SC_STREAM_MAX : c_int = 26;
+            pub static _SC_TZNAME_MAX : c_int = 27;
+            pub static _SC_ASYNCHRONOUS_IO : c_int = 28;
+            pub static _SC_MAPPED_FILES : c_int = 29;
+            pub static _SC_MEMLOCK : c_int = 30;
+            pub static _SC_MEMLOCK_RANGE : c_int = 31;
+            pub static _SC_MEMORY_PROTECTION : c_int = 32;
+            pub static _SC_MESSAGE_PASSING : c_int = 33;
+            pub static _SC_PRIORITIZED_IO : c_int = 34;
+            pub static _SC_PRIORITY_SCHEDULING : c_int = 35;
+            pub static _SC_REALTIME_SIGNALS : c_int = 36;
+            pub static _SC_SEMAPHORES : c_int = 37;
+            pub static _SC_FSYNC : c_int = 38;
+            pub static _SC_SHARED_MEMORY_OBJECTS : c_int = 39;
+            pub static _SC_SYNCHRONIZED_IO : c_int = 40;
+            pub static _SC_TIMERS : c_int = 41;
+            pub static _SC_AIO_LISTIO_MAX : c_int = 42;
+            pub static _SC_AIO_MAX : c_int = 43;
+            pub static _SC_AIO_PRIO_DELTA_MAX : c_int = 44;
+            pub static _SC_DELAYTIMER_MAX : c_int = 45;
+            pub static _SC_MQ_OPEN_MAX : c_int = 46;
+            pub static _SC_PAGESIZE : c_int = 47;
+            pub static _SC_RTSIG_MAX : c_int = 48;
+            pub static _SC_SEM_NSEMS_MAX : c_int = 49;
+            pub static _SC_SEM_VALUE_MAX : c_int = 50;
+            pub static _SC_SIGQUEUE_MAX : c_int = 51;
+            pub static _SC_TIMER_MAX : c_int = 52;
         }
         pub mod posix01 {
-            pub static SIGTRAP : int = 5;
+            use libc::types::os::arch::c95::c_int;
 
-            pub static GLOB_APPEND   : int = 0x0001;
-            pub static GLOB_DOOFFS   : int = 0x0002;
-            pub static GLOB_ERR      : int = 0x0004;
-            pub static GLOB_MARK     : int = 0x0008;
-            pub static GLOB_NOCHECK  : int = 0x0010;
-            pub static GLOB_NOSORT   : int = 0x0020;
-            pub static GLOB_NOESCAPE : int = 0x2000;
+            pub static SIGTRAP : c_int = 5;
 
-            pub static GLOB_NOSPACE  : int = -1;
-            pub static GLOB_ABORTED  : int = -2;
-            pub static GLOB_NOMATCH  : int = -3;
+            pub static GLOB_APPEND   : c_int = 0x0001;
+            pub static GLOB_DOOFFS   : c_int = 0x0002;
+            pub static GLOB_ERR      : c_int = 0x0004;
+            pub static GLOB_MARK     : c_int = 0x0008;
+            pub static GLOB_NOCHECK  : c_int = 0x0010;
+            pub static GLOB_NOSORT   : c_int = 0x0020;
+            pub static GLOB_NOESCAPE : c_int = 0x2000;
+
+            pub static GLOB_NOSPACE  : c_int = -1;
+            pub static GLOB_ABORTED  : c_int = -2;
+            pub static GLOB_NOMATCH  : c_int = -3;
+
+            pub static POSIX_MADV_NORMAL : c_int = 0;
+            pub static POSIX_MADV_RANDOM : c_int = 1;
+            pub static POSIX_MADV_SEQUENTIAL : c_int = 2;
+            pub static POSIX_MADV_WILLNEED : c_int = 3;
+            pub static POSIX_MADV_DONTNEED : c_int = 4;
+
+            pub static _SC_IOV_MAX : c_int = 56;
+            pub static _SC_GETGR_R_SIZE_MAX : c_int = 70;
+            pub static _SC_GETPW_R_SIZE_MAX : c_int = 71;
+            pub static _SC_LOGIN_NAME_MAX : c_int = 73;
+            pub static _SC_MQ_PRIO_MAX : c_int = 75;
+            pub static _SC_THREAD_ATTR_STACKADDR : c_int = 82;
+            pub static _SC_THREAD_ATTR_STACKSIZE : c_int = 83;
+            pub static _SC_THREAD_DESTRUCTOR_ITERATIONS : c_int = 85;
+            pub static _SC_THREAD_KEYS_MAX : c_int = 86;
+            pub static _SC_THREAD_PRIO_INHERIT : c_int = 87;
+            pub static _SC_THREAD_PRIO_PROTECT : c_int = 88;
+            pub static _SC_THREAD_PRIORITY_SCHEDULING : c_int = 89;
+            pub static _SC_THREAD_PROCESS_SHARED : c_int = 90;
+            pub static _SC_THREAD_SAFE_FUNCTIONS : c_int = 91;
+            pub static _SC_THREAD_STACK_MIN : c_int = 93;
+            pub static _SC_THREAD_THREADS_MAX : c_int = 94;
+            pub static _SC_THREADS : c_int = 96;
+            pub static _SC_TTY_NAME_MAX : c_int = 101;
+            pub static _SC_ATEXIT_MAX : c_int = 107;
+            pub static _SC_XOPEN_CRYPT : c_int = 108;
+            pub static _SC_XOPEN_ENH_I18N : c_int = 109;
+            pub static _SC_XOPEN_LEGACY : c_int = 110;
+            pub static _SC_XOPEN_REALTIME : c_int = 111;
+            pub static _SC_XOPEN_REALTIME_THREADS : c_int = 112;
+            pub static _SC_XOPEN_SHM : c_int = 113;
+            pub static _SC_XOPEN_UNIX : c_int = 115;
+            pub static _SC_XOPEN_VERSION : c_int = 116;
+            pub static _SC_XOPEN_XCU_VERSION : c_int = 117;
         }
         pub mod posix08 {
         }
         pub mod bsd44 {
+            use libc::types::os::arch::c95::c_int;
+
+            pub static MADV_NORMAL : c_int = 0;
+            pub static MADV_RANDOM : c_int = 1;
+            pub static MADV_SEQUENTIAL : c_int = 2;
+            pub static MADV_WILLNEED : c_int = 3;
+            pub static MADV_DONTNEED : c_int = 4;
+            pub static MADV_FREE : c_int = 5;
+            pub static MADV_NOSYNC : c_int = 6;
+            pub static MADV_AUTOSYNC : c_int = 7;
+            pub static MADV_NOCORE : c_int = 8;
+            pub static MADV_CORE : c_int = 9;
+            pub static MADV_PROTECT : c_int = 10;
+
+            pub static MINCORE_INCORE : c_int =  0x1;
+            pub static MINCORE_REFERENCED : c_int = 0x2;
+            pub static MINCORE_MODIFIED : c_int = 0x4;
+            pub static MINCORE_REFERENCED_OTHER : c_int = 0x8;
+            pub static MINCORE_MODIFIED_OTHER : c_int = 0x10;
+            pub static MINCORE_SUPER : c_int = 0x20;
         }
         pub mod extra {
-            pub static O_SYNC : int = 128;
-            pub static CTL_KERN: int = 1;
-            pub static KERN_PROC: int = 14;
-            pub static KERN_PROC_PATHNAME: int = 12;
+            use libc::types::os::arch::c95::c_int;
+
+            pub static O_SYNC : c_int = 128;
+            pub static CTL_KERN: c_int = 1;
+            pub static KERN_PROC: c_int = 14;
+            pub static KERN_PROC_PATHNAME: c_int = 12;
+
+            pub static MAP_COPY : c_int = 0x0002;
+            pub static MAP_RENAME : c_int = 0x0020;
+            pub static MAP_NORESERVE : c_int = 0x0040;
+            pub static MAP_HASSEMAPHORE : c_int = 0x0200;
+            pub static MAP_STACK : c_int = 0x0400;
+            pub static MAP_NOSYNC : c_int = 0x0800;
+            pub static MAP_NOCORE : c_int = 0x020000;
         }
     }
 
     #[cfg(target_os = "macos")]
     pub mod os {
         pub mod c95 {
-            pub static EXIT_FAILURE : int = 1;
-            pub static EXIT_SUCCESS : int = 0;
-            pub static RAND_MAX : int = 2147483647;
-            pub static EOF : int = -1;
-            pub static SEEK_SET : int = 0;
-            pub static SEEK_CUR : int = 1;
-            pub static SEEK_END : int = 2;
-            pub static _IOFBF : int = 0;
-            pub static _IONBF : int = 2;
-            pub static _IOLBF : int = 1;
-            pub static BUFSIZ : uint = 1024_u;
-            pub static FOPEN_MAX : uint = 20_u;
-            pub static FILENAME_MAX : uint = 1024_u;
-            pub static L_tmpnam : uint = 1024_u;
-            pub static TMP_MAX : uint = 308915776_u;
+            use libc::types::os::arch::c95::{c_int, c_uint};
+
+            pub static EXIT_FAILURE : c_int = 1;
+            pub static EXIT_SUCCESS : c_int = 0;
+            pub static RAND_MAX : c_int = 2147483647;
+            pub static EOF : c_int = -1;
+            pub static SEEK_SET : c_int = 0;
+            pub static SEEK_CUR : c_int = 1;
+            pub static SEEK_END : c_int = 2;
+            pub static _IOFBF : c_int = 0;
+            pub static _IONBF : c_int = 2;
+            pub static _IOLBF : c_int = 1;
+            pub static BUFSIZ : c_uint = 1024_u32;
+            pub static FOPEN_MAX : c_uint = 20_u32;
+            pub static FILENAME_MAX : c_uint = 1024_u32;
+            pub static L_tmpnam : c_uint = 1024_u32;
+            pub static TMP_MAX : c_uint = 308915776_u32;
         }
         pub mod c99 {
         }
         pub mod posix88 {
-            pub static O_RDONLY : int = 0;
-            pub static O_WRONLY : int = 1;
-            pub static O_RDWR : int = 2;
-            pub static O_APPEND : int = 8;
-            pub static O_CREAT : int = 512;
-            pub static O_EXCL : int = 2048;
-            pub static O_TRUNC : int = 1024;
-            pub static S_IFIFO : int = 4096;
-            pub static S_IFCHR : int = 8192;
-            pub static S_IFBLK : int = 24576;
-            pub static S_IFDIR : int = 16384;
-            pub static S_IFREG : int = 32768;
-            pub static S_IFMT : int = 61440;
-            pub static S_IEXEC : int = 64;
-            pub static S_IWRITE : int = 128;
-            pub static S_IREAD : int = 256;
-            pub static S_IRWXU : int = 448;
-            pub static S_IXUSR : int = 64;
-            pub static S_IWUSR : int = 128;
-            pub static S_IRUSR : int = 256;
-            pub static F_OK : int = 0;
-            pub static R_OK : int = 4;
-            pub static W_OK : int = 2;
-            pub static X_OK : int = 1;
-            pub static STDIN_FILENO : int = 0;
-            pub static STDOUT_FILENO : int = 1;
-            pub static STDERR_FILENO : int = 2;
-            pub static F_LOCK : int = 1;
-            pub static F_TEST : int = 3;
-            pub static F_TLOCK : int = 2;
-            pub static F_ULOCK : int = 0;
-            pub static SIGHUP : int = 1;
-            pub static SIGINT : int = 2;
-            pub static SIGQUIT : int = 3;
-            pub static SIGILL : int = 4;
-            pub static SIGABRT : int = 6;
-            pub static SIGFPE : int = 8;
-            pub static SIGKILL : int = 9;
-            pub static SIGSEGV : int = 11;
-            pub static SIGPIPE : int = 13;
-            pub static SIGALRM : int = 14;
-            pub static SIGTERM : int = 15;
+            use libc::types::common::c95::c_void;
+            use libc::types::os::arch::c95::c_int;
+
+            pub static O_RDONLY : c_int = 0;
+            pub static O_WRONLY : c_int = 1;
+            pub static O_RDWR : c_int = 2;
+            pub static O_APPEND : c_int = 8;
+            pub static O_CREAT : c_int = 512;
+            pub static O_EXCL : c_int = 2048;
+            pub static O_TRUNC : c_int = 1024;
+            pub static S_IFIFO : c_int = 4096;
+            pub static S_IFCHR : c_int = 8192;
+            pub static S_IFBLK : c_int = 24576;
+            pub static S_IFDIR : c_int = 16384;
+            pub static S_IFREG : c_int = 32768;
+            pub static S_IFMT : c_int = 61440;
+            pub static S_IEXEC : c_int = 64;
+            pub static S_IWRITE : c_int = 128;
+            pub static S_IREAD : c_int = 256;
+            pub static S_IRWXU : c_int = 448;
+            pub static S_IXUSR : c_int = 64;
+            pub static S_IWUSR : c_int = 128;
+            pub static S_IRUSR : c_int = 256;
+            pub static F_OK : c_int = 0;
+            pub static R_OK : c_int = 4;
+            pub static W_OK : c_int = 2;
+            pub static X_OK : c_int = 1;
+            pub static STDIN_FILENO : c_int = 0;
+            pub static STDOUT_FILENO : c_int = 1;
+            pub static STDERR_FILENO : c_int = 2;
+            pub static F_LOCK : c_int = 1;
+            pub static F_TEST : c_int = 3;
+            pub static F_TLOCK : c_int = 2;
+            pub static F_ULOCK : c_int = 0;
+            pub static SIGHUP : c_int = 1;
+            pub static SIGINT : c_int = 2;
+            pub static SIGQUIT : c_int = 3;
+            pub static SIGILL : c_int = 4;
+            pub static SIGABRT : c_int = 6;
+            pub static SIGFPE : c_int = 8;
+            pub static SIGKILL : c_int = 9;
+            pub static SIGSEGV : c_int = 11;
+            pub static SIGPIPE : c_int = 13;
+            pub static SIGALRM : c_int = 14;
+            pub static SIGTERM : c_int = 15;
+
+            pub static PROT_NONE : c_int = 0;
+            pub static PROT_READ : c_int = 1;
+            pub static PROT_WRITE : c_int = 2;
+            pub static PROT_EXEC : c_int = 4;
+
+            pub static MAP_FILE : c_int = 0x0000;
+            pub static MAP_SHARED : c_int = 0x0001;
+            pub static MAP_PRIVATE : c_int = 0x0002;
+            pub static MAP_FIXED : c_int = 0x0010;
+            pub static MAP_ANON : c_int = 0x1000;
+
+            pub static MAP_FAILED : *c_void = -1 as *c_void;
+
+            pub static MCL_CURRENT : c_int = 0x0001;
+            pub static MCL_FUTURE : c_int = 0x0002;
+
+            pub static MS_ASYNC : c_int = 0x0001;
+            pub static MS_INVALIDATE : c_int = 0x0002;
+            pub static MS_SYNC : c_int = 0x0010;
+
+            pub static MS_KILLPAGES : c_int = 0x0004;
+            pub static MS_DEACTIVATE : c_int = 0x0008;
+
+            pub static _SC_ARG_MAX : c_int = 1;
+            pub static _SC_CHILD_MAX : c_int = 2;
+            pub static _SC_CLK_TCK : c_int = 3;
+            pub static _SC_NGROUPS_MAX : c_int = 4;
+            pub static _SC_OPEN_MAX : c_int = 5;
+            pub static _SC_JOB_CONTROL : c_int = 6;
+            pub static _SC_SAVED_IDS : c_int = 7;
+            pub static _SC_VERSION : c_int = 8;
+            pub static _SC_BC_BASE_MAX : c_int = 9;
+            pub static _SC_BC_DIM_MAX : c_int = 10;
+            pub static _SC_BC_SCALE_MAX : c_int = 11;
+            pub static _SC_BC_STRING_MAX : c_int = 12;
+            pub static _SC_COLL_WEIGHTS_MAX : c_int = 13;
+            pub static _SC_EXPR_NEST_MAX : c_int = 14;
+            pub static _SC_LINE_MAX : c_int = 15;
+            pub static _SC_RE_DUP_MAX : c_int = 16;
+            pub static _SC_2_VERSION : c_int = 17;
+            pub static _SC_2_C_BIND : c_int = 18;
+            pub static _SC_2_C_DEV : c_int = 19;
+            pub static _SC_2_CHAR_TERM : c_int = 20;
+            pub static _SC_2_FORT_DEV : c_int = 21;
+            pub static _SC_2_FORT_RUN : c_int = 22;
+            pub static _SC_2_LOCALEDEF : c_int = 23;
+            pub static _SC_2_SW_DEV : c_int = 24;
+            pub static _SC_2_UPE : c_int = 25;
+            pub static _SC_STREAM_MAX : c_int = 26;
+            pub static _SC_TZNAME_MAX : c_int = 27;
+            pub static _SC_ASYNCHRONOUS_IO : c_int = 28;
+            pub static _SC_PAGESIZE : c_int = 29;
+            pub static _SC_MEMLOCK : c_int = 30;
+            pub static _SC_MEMLOCK_RANGE : c_int = 31;
+            pub static _SC_MEMORY_PROTECTION : c_int = 32;
+            pub static _SC_MESSAGE_PASSING : c_int = 33;
+            pub static _SC_PRIORITIZED_IO : c_int = 34;
+            pub static _SC_PRIORITY_SCHEDULING : c_int = 35;
+            pub static _SC_REALTIME_SIGNALS : c_int = 36;
+            pub static _SC_SEMAPHORES : c_int = 37;
+            pub static _SC_FSYNC : c_int = 38;
+            pub static _SC_SHARED_MEMORY_OBJECTS : c_int = 39;
+            pub static _SC_SYNCHRONIZED_IO : c_int = 40;
+            pub static _SC_TIMERS : c_int = 41;
+            pub static _SC_AIO_LISTIO_MAX : c_int = 42;
+            pub static _SC_AIO_MAX : c_int = 43;
+            pub static _SC_AIO_PRIO_DELTA_MAX : c_int = 44;
+            pub static _SC_DELAYTIMER_MAX : c_int = 45;
+            pub static _SC_MQ_OPEN_MAX : c_int = 46;
+            pub static _SC_MAPPED_FILES : c_int = 47;
+            pub static _SC_RTSIG_MAX : c_int = 48;
+            pub static _SC_SEM_NSEMS_MAX : c_int = 49;
+            pub static _SC_SEM_VALUE_MAX : c_int = 50;
+            pub static _SC_SIGQUEUE_MAX : c_int = 51;
+            pub static _SC_TIMER_MAX : c_int = 52;
+            pub static _SC_XBS5_ILP32_OFF32 : c_int = 122;
+            pub static _SC_XBS5_ILP32_OFFBIG : c_int = 123;
+            pub static _SC_XBS5_LP64_OFF64 : c_int = 124;
+            pub static _SC_XBS5_LPBIG_OFFBIG : c_int = 125;
         }
         pub mod posix01 {
-            pub static SIGTRAP : int = 5;
+            use libc::types::os::arch::c95::c_int;
 
-            pub static GLOB_APPEND   : int = 0x0001;
-            pub static GLOB_DOOFFS   : int = 0x0002;
-            pub static GLOB_ERR      : int = 0x0004;
-            pub static GLOB_MARK     : int = 0x0008;
-            pub static GLOB_NOCHECK  : int = 0x0010;
-            pub static GLOB_NOSORT   : int = 0x0020;
-            pub static GLOB_NOESCAPE : int = 0x2000;
+            pub static SIGTRAP : c_int = 5;
 
-            pub static GLOB_NOSPACE  : int = -1;
-            pub static GLOB_ABORTED  : int = -2;
-            pub static GLOB_NOMATCH  : int = -3;
+            pub static GLOB_APPEND   : c_int = 0x0001;
+            pub static GLOB_DOOFFS   : c_int = 0x0002;
+            pub static GLOB_ERR      : c_int = 0x0004;
+            pub static GLOB_MARK     : c_int = 0x0008;
+            pub static GLOB_NOCHECK  : c_int = 0x0010;
+            pub static GLOB_NOSORT   : c_int = 0x0020;
+            pub static GLOB_NOESCAPE : c_int = 0x2000;
+
+            pub static GLOB_NOSPACE  : c_int = -1;
+            pub static GLOB_ABORTED  : c_int = -2;
+            pub static GLOB_NOMATCH  : c_int = -3;
+
+            pub static POSIX_MADV_NORMAL : c_int = 0;
+            pub static POSIX_MADV_RANDOM : c_int = 1;
+            pub static POSIX_MADV_SEQUENTIAL : c_int = 2;
+            pub static POSIX_MADV_WILLNEED : c_int = 3;
+            pub static POSIX_MADV_DONTNEED : c_int = 4;
+
+            pub static _SC_IOV_MAX : c_int = 56;
+            pub static _SC_GETGR_R_SIZE_MAX : c_int = 70;
+            pub static _SC_GETPW_R_SIZE_MAX : c_int = 71;
+            pub static _SC_LOGIN_NAME_MAX : c_int = 73;
+            pub static _SC_MQ_PRIO_MAX : c_int = 75;
+            pub static _SC_THREAD_ATTR_STACKADDR : c_int = 82;
+            pub static _SC_THREAD_ATTR_STACKSIZE : c_int = 83;
+            pub static _SC_THREAD_DESTRUCTOR_ITERATIONS : c_int = 85;
+            pub static _SC_THREAD_KEYS_MAX : c_int = 86;
+            pub static _SC_THREAD_PRIO_INHERIT : c_int = 87;
+            pub static _SC_THREAD_PRIO_PROTECT : c_int = 88;
+            pub static _SC_THREAD_PRIORITY_SCHEDULING : c_int = 89;
+            pub static _SC_THREAD_PROCESS_SHARED : c_int = 90;
+            pub static _SC_THREAD_SAFE_FUNCTIONS : c_int = 91;
+            pub static _SC_THREAD_STACK_MIN : c_int = 93;
+            pub static _SC_THREAD_THREADS_MAX : c_int = 94;
+            pub static _SC_THREADS : c_int = 96;
+            pub static _SC_TTY_NAME_MAX : c_int = 101;
+            pub static _SC_ATEXIT_MAX : c_int = 107;
+            pub static _SC_XOPEN_CRYPT : c_int = 108;
+            pub static _SC_XOPEN_ENH_I18N : c_int = 109;
+            pub static _SC_XOPEN_LEGACY : c_int = 110;
+            pub static _SC_XOPEN_REALTIME : c_int = 111;
+            pub static _SC_XOPEN_REALTIME_THREADS : c_int = 112;
+            pub static _SC_XOPEN_SHM : c_int = 113;
+            pub static _SC_XOPEN_UNIX : c_int = 115;
+            pub static _SC_XOPEN_VERSION : c_int = 116;
+            pub static _SC_XOPEN_XCU_VERSION : c_int = 121;
         }
         pub mod posix08 {
         }
         pub mod bsd44 {
+            use libc::types::os::arch::c95::c_int;
+
+            pub static MADV_NORMAL : c_int = 0;
+            pub static MADV_RANDOM : c_int = 1;
+            pub static MADV_SEQUENTIAL : c_int = 2;
+            pub static MADV_WILLNEED : c_int = 3;
+            pub static MADV_DONTNEED : c_int = 4;
+            pub static MADV_FREE : c_int = 5;
+            pub static MADV_ZERO_WIRED_PAGES : c_int = 6;
+            pub static MADV_FREE_REUSABLE : c_int = 7;
+            pub static MADV_FREE_REUSE : c_int = 8;
+            pub static MADV_CAN_REUSE : c_int = 9;
+
+            pub static MINCORE_INCORE : c_int =  0x1;
+            pub static MINCORE_REFERENCED : c_int = 0x2;
+            pub static MINCORE_MODIFIED : c_int = 0x4;
+            pub static MINCORE_REFERENCED_OTHER : c_int = 0x8;
+            pub static MINCORE_MODIFIED_OTHER : c_int = 0x10;
         }
         pub mod extra {
-            pub static O_DSYNC : int = 4194304;
-            pub static O_SYNC : int = 128;
-            pub static F_FULLFSYNC : int = 51;
+            use libc::types::os::arch::c95::c_int;
+
+            pub static O_DSYNC : c_int = 4194304;
+            pub static O_SYNC : c_int = 128;
+            pub static F_FULLFSYNC : c_int = 51;
+
+            pub static MAP_COPY : c_int = 0x0002;
+            pub static MAP_RENAME : c_int = 0x0020;
+            pub static MAP_NORESERVE : c_int = 0x0040;
+            pub static MAP_NOEXTEND : c_int = 0x0100;
+            pub static MAP_HASSEMAPHORE : c_int = 0x0200;
+            pub static MAP_NOCACHE : c_int = 0x0400;
+            pub static MAP_JIT : c_int = 0x0800;
         }
     }
 }
@@ -1658,6 +2149,9 @@ pub mod funcs {
                              -> c_int;
             }
         }
+
+        pub mod mman {
+        }
     }
 
 
@@ -1835,6 +2329,38 @@ pub mod funcs {
                 unsafe fn kill(pid: pid_t, sig: c_int) -> c_int;
             }
         }
+
+        #[nolink]
+        #[abi = "cdecl"]
+        pub mod mman {
+            use libc::types::common::c95::{c_void};
+            use libc::types::os::arch::c95::{size_t, c_int, c_char};
+            use libc::types::os::arch::posix88::{mode_t, off_t};
+
+            pub extern {
+                unsafe fn mlock(addr: *c_void, len: size_t) -> c_int;
+                unsafe fn munlock(addr: *c_void, len: size_t) -> c_int;
+                unsafe fn mlockall(flags: c_int) -> c_int;
+                unsafe fn munlockall() -> c_int;
+
+                unsafe fn mmap(addr: *c_void,
+                               len: size_t,
+                               prot: c_int,
+                               flags: c_int,
+                               fd: c_int,
+                               offset: off_t) -> *mut c_void;
+                unsafe fn munmap(addr: *c_void, len: size_t) -> c_int;
+
+                unsafe fn mprotect(addr: *c_void, len: size_t, prot: c_int)
+                    -> c_int;
+
+                unsafe fn msync(addr: *c_void, len: size_t, flags: c_int)
+                    -> c_int;
+                unsafe fn shm_open(name: *c_char, oflag: c_int, mode: mode_t)
+                    -> c_int;
+                unsafe fn shm_unlink(name: *c_char) -> c_int;
+            }
+        }
     }
 
     #[cfg(target_os = "linux")]
@@ -1913,6 +2439,19 @@ pub mod funcs {
                 unsafe fn globfree(pglob: *mut glob_t);
             }
         }
+
+        #[nolink]
+        #[abi = "cdecl"]
+        pub mod mman {
+            use libc::types::common::c95::{c_void};
+            use libc::types::os::arch::c95::{c_int, size_t};
+
+            pub extern {
+                unsafe fn posix_madvise(addr: *c_void,
+                                        len: size_t,
+                                        advice: c_int) -> c_int;
+            }
+        }
     }
 
     #[cfg(target_os = "win32")]
@@ -1924,6 +2463,9 @@ pub mod funcs {
         }
 
         pub mod glob {
+        }
+
+        pub mod mman {
         }
     }
 
@@ -1943,7 +2485,8 @@ pub mod funcs {
     #[cfg(target_os = "freebsd")]
     pub mod bsd44 {
         use libc::types::common::c95::{c_void};
-        use libc::types::os::arch::c95::{c_char, c_int, c_uint, size_t};
+        use libc::types::os::arch::c95::{c_char, c_uchar, c_int, c_uint,
+                                         size_t};
 
         #[abi = "cdecl"]
         pub extern {
@@ -1959,6 +2502,12 @@ pub mod funcs {
                                sizep: *mut size_t) -> c_int;
 
             unsafe fn getdtablesize() -> c_int;
+
+            unsafe fn madvise(addr: *c_void, len: size_t, advice: c_int)
+                -> c_int;
+
+            unsafe fn mincore(addr: *c_void, len: size_t, vec: *c_uchar)
+                -> c_int;
         }
     }
 
@@ -1966,11 +2515,18 @@ pub mod funcs {
     #[cfg(target_os = "linux")]
     #[cfg(target_os = "android")]
     pub mod bsd44 {
-        use libc::types::os::arch::c95::{c_int};
+        use libc::types::common::c95::{c_void};
+        use libc::types::os::arch::c95::{c_uchar, c_int, size_t};
 
         #[abi = "cdecl"]
         pub extern {
             unsafe fn getdtablesize() -> c_int;
+
+            unsafe fn madvise(addr: *c_void, len: size_t, advice: c_int)
+                -> c_int;
+
+            unsafe fn mincore(addr: *c_void, len: size_t, vec: *c_uchar)
+                -> c_int;
         }
     }
 
