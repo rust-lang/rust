@@ -4,6 +4,8 @@ Version 0.7 (July 2013)
    * ??? changes, numerous bugfixes
 
    * Syntax changes
+      * `impl`s no longer accept a visibility qualifier. Put them on methods
+        instead.
       * `use mod` is no longer valid.
       * `fail!` and `assert!` accept `~str`, `&'static str` or `fmt!`-style
         argument list.
@@ -25,6 +27,10 @@ Version 0.7 (July 2013)
         no padding between fields.
       * The `for` loop protocol now requires `for`-iterators to return `bool`
         so they compose better.
+      * Trait default methods work more often.
+      * Type parameters bound by `Copy` must now be copied explicitly with
+        the `copy` keyword.
+      * It is now illegal to move out of a dereferenced unsafe pointer.
       * `Option<~T>` is now represented as a nullable pointer.
       * `@mut` does dynamic borrow checks correctly.
       * Macros TODO
@@ -43,26 +49,30 @@ Version 0.7 (July 2013)
    * Libraries
       * The `core` crate was renamed to `std`.
       * The `std` crate was renamed to `extra`.
-      * `std::mut` removed.
+      * std: `iterator` module for external iterator objects.
+      * Many old-style (internal, higher-order function) iterators replaced by
+        implementations of `Iterator`.
+      * std: Many old internal vector and string iterators,
+        incl. `any`, `all`. removed.
+      * std: The `finalize` method of `Drop` renamed to `drop`.
       * std: The prelude no longer reexports any modules, only types and traits.
       * std: Prelude additions: `print`, `println`, `FromStr`, `ApproxEq`, `Equiv`,
         `Iterator`, `IteratorUtil`, many numeric traits, many tuple traits.
-      * std: `iterator` module for external iterator objects.
-      * std: Many old internal vector and string iterators,
-        incl. `any`, `all`. removed.
-      * std: new numeric traits: `Fractional`, `Real`, `RealExt`, `Integer`, `Ratio`,
+      * std: New numeric traits: `Fractional`, `Real`, `RealExt`, `Integer`, `Ratio`,
         `Algebraic`, `Trigonometric`, `Exponential`, `Primitive`.
       * std: Tuple traits and accessors defined for up to 12-tuples, e.g.
         `(0, 1, 2).n2()` or `(0, 1, 2).n2_ref()`.
-      * std: many types implement `Clone`.
+      * std: Many types implement `Clone`.
       * std: `path` type renamed to `Path`.
+      * std: `mut` module and `Mut` type removed.
       * std: Many standalone functions removed in favor of methods and iterators
         in `vec`, `str`. In the future methods will also work as functions.
-      * std: `reinterpret_cast` removed. Used `transmute`.
+      * std: `reinterpret_cast` removed. Use `transmute`.
       * std: ascii string handling in `std::ascii`.
       * std: `Rand` is implemented for ~/@.
       * std: `run` module for spawning processes overhauled.
       * std: Various atomic types added to `unstable::atomic`.
+      * std: Various types implement `Zero`.
       * std: `LinearMap` and `LinearSet` renamed to `HashMap` and `HashSet`.
       * std: Borrowed pointer functions moved from `ptr` to `borrow`.
       * std: Added `os::mkdir_recursive`.
@@ -96,7 +106,6 @@ Version 0.7 (July 2013)
       * More and improved library documentation.
       * Various improvements on ARM and Android.
       * Various improvements to MIPS backend.
-      * jemalloc is the Rust allocator.
 
 Version 0.6 (April 2013)
 ------------------------
