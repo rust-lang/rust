@@ -60,7 +60,7 @@ use ast::{view_item_, view_item_extern_mod, view_item_use};
 use ast::{view_path, view_path_glob, view_path_list, view_path_simple};
 use ast::visibility;
 use ast;
-use ast_util::{as_prec, ident_to_path, operator_prec};
+use ast_util::{as_prec, operator_prec};
 use ast_util;
 use codemap::{span, BytePos, spanned, mk_sp};
 use codemap;
