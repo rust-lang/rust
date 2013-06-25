@@ -18,11 +18,9 @@ use str::OwnedStr;
 use hashmap::HashMap;
 use hashmap::HashSet;
 use iterator::IteratorUtil;
-use container::Map;
 use hash::Hash;
 use cmp::Eq;
 use vec::ImmutableVector;
-use iterator::IteratorUtil;
 
 /// A generic trait for converting a value to a string
 pub trait ToStr {

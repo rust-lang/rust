@@ -21,7 +21,7 @@ use middle::ty;
 use middle::subst::Subst;
 use middle::typeck;
 use middle;
-use util::ppaux::{note_and_explain_region, bound_region_to_str, bound_region_ptr_to_str};
+use util::ppaux::{note_and_explain_region, bound_region_ptr_to_str};
 use util::ppaux::{trait_store_to_str, ty_to_str, vstore_to_str};
 use util::ppaux::{Repr, UserString};
 use util::common::{indenter};
