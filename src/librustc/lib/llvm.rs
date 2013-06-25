@@ -2161,6 +2161,7 @@ impl TypeNames {
             match kind {
                 Void => ~"Void",
                 Half => ~"Half",
+                Float => ~"Float",
                 Double => ~"Double",
                 X86_FP80 => ~"X86_FP80",
                 FP128 => ~"FP128",
