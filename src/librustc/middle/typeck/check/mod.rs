@@ -107,7 +107,7 @@ use middle::typeck::{isr_alist, lookup_def_ccx};
 use middle::typeck::no_params;
 use middle::typeck::{require_same_types, method_map, vtable_map};
 use util::common::{block_query, indenter, loop_query};
-use util::ppaux::{bound_region_to_str,bound_region_ptr_to_str};
+use util::ppaux::{bound_region_ptr_to_str};
 use util::ppaux;
 
 
