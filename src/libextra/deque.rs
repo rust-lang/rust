@@ -153,6 +153,101 @@ impl<T> Deque<T> {
     pub fn reserve_at_least(&mut self, n: uint) {
         vec::reserve_at_least(&mut self.elts, n);
     }
+
+    /// Front-to-back iterator.
+    pub fn iter<'a>(&'a self) -> DequeIterator<'a, T> {
+	DequeIterator { iter: self.elts.iter() }
+    }
+    
+    /// Front-to-back iterator which returns mutable values.
+    pub fn mut_iter<'a>(&'a mut self) -> DequeMutIterator<'a, T> {
+	DequeMutIterator { iter: self.elts.mut_iter() }
+    }
+
+    /// Back-to-front iterator.
+    pub fn rev_iter<'a>(&'a self) -> DequeRevIterator<'a, T> {
+	DequeRevIterator { iter: self.elts.rev_iter() }
+    }
+
+    /// Back-to-front iterator which returns mutable values.
+    pub fn mut_rev_iter<'a>(&'a mut self) -> DequeMutRevIterator<'a, T> {
+	DequeMutRevIterator { iter: self.elts.mut_rev_iter() }
+    }
+}
+
+/// Deque iterator
+pub struct DequeIterator<'self, T> {
+	priv iter: vec::VecIterator<'self, Option<T>>
+}
+
+/// Deque reverse iterator
+pub struct DequeRevIterator<'self, T> {
+	priv iter: vec::VecRevIterator<'self, Option<T>>
+}
+/// Deque mutable iterator
+pub struct DequeMutIterator<'self, T> {
+	priv iter: vec::VecMutIterator<'self, Option<T>>
+}
+
+/// Deque mutable reverse iterator
+pub struct DequeMutRevIterator<'self, T> {
+	priv iter: vec::VecMutRevIterator<'self, Option<T>>
+}
+
+/// Iterator visiting elements of the deque from front to back
+impl<'self, T> Iterator<&'self T> for DequeIterator<'self, T> {
+	#[inline]
+	fn next(&mut self) -> Option<&'self T> {
+		for self.iter.advance |elt| {
+			match elt {
+				&Some(ref e) => return Some(e),
+				&None => {},
+			}
+		}
+		None
+	}
+}
+
+/// Iterator visiting elements of the deque mutably from front to back
+impl<'self, T> Iterator<&'self mut T> for DequeMutIterator<'self, T> {
+	#[inline]
+	fn next(&mut self) -> Option<&'self mut T> {
+		for self.iter.advance |elt| {
+			match elt {
+				&Some(ref mut e) => return Some(e),
+				&None => {},
+			}
+		}
+		None
+	}
+}
+
+/// Iterator visiting elements of the deque from back to front
+impl<'self, T> Iterator<&'self T> for DequeRevIterator<'self, T> {
+	#[inline]
+	fn next(&mut self) -> Option<&'self T> {
+		for self.iter.advance |elt| {
+			match elt {
+				&Some(ref e) => return Some(e),
+				&None => {},
+			}
+		}
+		None
+	}
+}
+
+/// Iterator visiting elements of the deque mutably from back to front
+impl<'self, T> Iterator<&'self mut T> for DequeMutRevIterator<'self, T> {
+	#[inline]
+	fn next(&mut self) -> Option<&'self mut T> {
+		for self.iter.advance |elt| {
+			match elt {
+				&Some(ref mut e) => return Some(e),
+				&None => {},
+			}
+		}
+		None
+	}
 }
 
 /// Grow is only called on full elts, so nelts is also len(elts), unlike
