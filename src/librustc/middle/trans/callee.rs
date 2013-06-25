@@ -930,7 +930,7 @@ pub fn trans_arg_expr(bcx: block,
                                 ByRef(_) => val = scratch.val,
                             }
                         } else {
-                            debug!("by copy arg with type %s");
+                            debug!("by copy arg with type %s", bcx.ty_to_str(arg_datum.ty));
                             match arg_datum.mode {
                                 ByRef(_) => val = Load(bcx, arg_datum.val),
                                 ByValue => val = arg_datum.val,
