@@ -7,6 +7,8 @@ debug_tydesc
 debug_get_stk_seg
 debug_abi_1
 debug_abi_2
+debug_static_mut
+debug_static_mut_check_four
 get_task_id
 get_time
 rust_tzset

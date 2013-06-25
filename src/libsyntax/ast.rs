@@ -190,7 +190,7 @@ pub enum def {
     def_self_ty(/* trait id */ node_id),
     def_mod(def_id),
     def_foreign_mod(def_id),
-    def_const(def_id),
+    def_static(def_id, bool /* is_mutbl */),
     def_arg(node_id, bool /* is_mutbl */),
     def_local(node_id, bool /* is_mutbl */),
     def_variant(def_id /* enum */, def_id /* variant */),
@@ -1095,7 +1095,7 @@ pub struct item {
 
 #[deriving(Eq, Encodable, Decodable)]
 pub enum item_ {
-    item_const(@Ty, @expr),
+    item_static(@Ty, mutability, @expr),
     item_fn(fn_decl, purity, AbiSet, Generics, blk),
     item_mod(_mod),
     item_foreign_mod(foreign_mod),
@@ -1124,7 +1124,7 @@ pub struct foreign_item {
 #[deriving(Eq, Encodable, Decodable)]
 pub enum foreign_item_ {
     foreign_item_fn(fn_decl, purity, Generics),
-    foreign_item_const(@Ty)
+    foreign_item_static(@Ty, /* is_mutbl */ bool),
 }
 
 // The data we save and restore about an inlined item or method.  This is not

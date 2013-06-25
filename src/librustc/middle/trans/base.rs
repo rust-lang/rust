@@ -2122,14 +2122,19 @@ pub fn trans_item(ccx: @mut CrateContext, item: &ast::item) {
             trans_enum_def(ccx, enum_definition, item.id, vi, &mut i);
         }
       }
-      ast::item_const(_, expr) => {
-          consts::trans_const(ccx, expr, item.id);
+      ast::item_static(_, m, expr) => {
+          consts::trans_const(ccx, m, item.id);
           // Do static_assert checking. It can't really be done much earlier because we need to get
           // the value of the bool out of LLVM
           for item.attrs.iter().advance |attr| {
               match attr.node.value.node {
                   ast::meta_word(x) => {
                       if x.slice(0, x.len()) == "static_assert" {
+                          if m == ast::m_mutbl {
+                              ccx.sess.span_fatal(expr.span,
+                                                  "cannot have static_assert \
+                                                   on a mutable static");
+                          }
                           let v = ccx.const_values.get_copy(&item.id);
                           unsafe {
                               if !(llvm::LLVMConstIntGetZExtValue(v) as bool) {
@@ -2398,13 +2403,14 @@ pub fn get_item_val(ccx: @mut CrateContext, id: ast::node_id) -> ValueRef {
             let my_path = vec::append(/*bad*/copy *pth,
                                       [path_name(i.ident)]);
             match i.node {
-              ast::item_const(_, expr) => {
+              ast::item_static(_, m, expr) => {
                 let typ = ty::node_id_to_type(ccx.tcx, i.id);
                 let s = mangle_exported_name(ccx, my_path, typ);
                 // We need the translated value here, because for enums the
                 // LLVM type is not fully determined by the Rust type.
                 let v = consts::const_expr(ccx, expr);
                 ccx.const_values.insert(id, v);
+                exprt = m == ast::m_mutbl;
                 unsafe {
                     let llty = llvm::LLVMTypeOf(v);
                     let g = str::as_c_str(s, |buf| {
@@ -2457,7 +2463,7 @@ pub fn get_item_val(ccx: @mut CrateContext, id: ast::node_id) -> ValueRef {
                                 ni.id,
                                 ni.attrs)
                 }
-                ast::foreign_item_const(*) => {
+                ast::foreign_item_static(*) => {
                     let typ = ty::node_id_to_type(ccx.tcx, ni.id);
                     let ident = token::ident_to_str(&ni.ident);
                     let g = do str::as_c_str(ident) |buf| {

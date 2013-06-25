@@ -332,7 +332,7 @@ pub fn trans_foreign_mod(ccx: @mut CrateContext,
                     }
                 }
             }
-            ast::foreign_item_const(*) => {
+            ast::foreign_item_static(*) => {
                 let ident = token::ident_to_str(&foreign_item.ident);
                 ccx.item_symbols.insert(foreign_item.id, /* bad */ident.to_owned());
             }

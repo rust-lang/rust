@@ -146,7 +146,7 @@ fn traverse_public_item(cx: @mut ctx, item: @item) {
                         visit::mk_vt(@visit::Visitor {visit_ty: traverse_ty,
                                                       ..*visit::default_visitor()})))
       }
-      item_const(*) |
+      item_static(*) |
       item_enum(*) | item_trait(*) => (),
       item_mac(*) => fail!("item macros unimplemented")
     }

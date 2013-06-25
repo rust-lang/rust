@@ -304,7 +304,7 @@ pub fn pat_ctor_id(cx: @MatchCheckCtxt, p: @pat) -> Option<ctor> {
       pat_ident(_, _, _) | pat_enum(_, _) => {
         match cx.tcx.def_map.find(&pat.id) {
           Some(&def_variant(_, id)) => Some(variant(id)),
-          Some(&def_const(did)) => {
+          Some(&def_static(did, false)) => {
             let const_expr = lookup_const_by_id(cx.tcx, did).get();
             Some(val(eval_const_expr(cx.tcx, const_expr)))
           }
@@ -339,7 +339,7 @@ pub fn is_wild(cx: @MatchCheckCtxt, p: @pat) -> bool {
       pat_wild => { true }
       pat_ident(_, _, _) => {
         match cx.tcx.def_map.find(&pat.id) {
-          Some(&def_variant(_, _)) | Some(&def_const(*)) => { false }
+          Some(&def_variant(_, _)) | Some(&def_static(*)) => { false }
           _ => { true }
         }
       }
@@ -499,7 +499,7 @@ pub fn specialize(cx: @MatchCheckCtxt,
                             None
                         }
                     }
-                    Some(&def_const(did)) => {
+                    Some(&def_static(did, _)) => {
                         let const_expr =
                             lookup_const_by_id(cx.tcx, did).get();
                         let e_v = eval_const_expr(cx.tcx, const_expr);
@@ -549,7 +549,7 @@ pub fn specialize(cx: @MatchCheckCtxt,
             }
             pat_enum(_, args) => {
                 match cx.tcx.def_map.get_copy(&pat_id) {
-                    def_const(did) => {
+                    def_static(did, _) => {
                         let const_expr =
                             lookup_const_by_id(cx.tcx, did).get();
                         let e_v = eval_const_expr(cx.tcx, const_expr);
@@ -790,7 +790,7 @@ pub fn is_refutable(cx: @MatchCheckCtxt, pat: &pat) -> bool {
             return true;
         }
       }
-      Some(&def_const(*)) => return true,
+      Some(&def_static(*)) => return true,
       _ => ()
     }
 

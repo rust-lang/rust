@@ -59,7 +59,7 @@ pub fn variant_def_ids(d: def) -> Option<(def_id, def_id)> {
 pub fn def_id_of_def(d: def) -> def_id {
     match d {
       def_fn(id, _) | def_static_method(id, _, _) | def_mod(id) |
-      def_foreign_mod(id) | def_const(id) |
+      def_foreign_mod(id) | def_static(id, _) |
       def_variant(_, id) | def_ty(id) | def_ty_param(id, _) |
       def_use(id) | def_struct(id) | def_trait(id) => {
         id

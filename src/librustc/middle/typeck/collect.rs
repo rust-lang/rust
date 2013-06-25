@@ -1060,7 +1060,7 @@ pub fn ty_of_item(ccx: &CrateCtxt, it: @ast::item)
     }
     let rp = tcx.region_paramd_items.find(&it.id).map_consume(|x| *x);
     match it.node {
-      ast::item_const(t, _) => {
+      ast::item_static(t, _, _) => {
         let typ = ccx.to_ty(&empty_rscope, t);
         let tpt = no_params(typ);
         tcx.tcache.insert(local_def(it.id), tpt);
@@ -1153,7 +1153,7 @@ pub fn ty_of_foreign_item(ccx: &CrateCtxt,
                                   generics,
                                   abis)
         }
-        ast::foreign_item_const(t) => {
+        ast::foreign_item_static(t, _) => {
             ty::ty_param_bounds_and_ty {
                 generics: ty::Generics {
                     type_param_defs: @~[],
