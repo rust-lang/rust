@@ -336,7 +336,7 @@ impl UdpWatcher {
             let cb = data.udp_recv_cb.get_ref();
             let status = status_to_maybe_uv_error(handle, nread as c_int);
             let address = uv_ip4_to_ip4(addr);
-            unsafe { (*cb)(udp_watcher, nread as int, buf, address, flags as uint, status) };
+            (*cb)(udp_watcher, nread as int, buf, address, flags as uint, status);
         }
     }
 
