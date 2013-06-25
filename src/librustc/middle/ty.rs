@@ -3852,7 +3852,7 @@ pub fn item_path_str(cx: ctxt, id: ast::def_id) -> ~str {
 
 pub enum DtorKind {
     NoDtor,
-    TraitDtor(def_id)
+    TraitDtor(def_id, bool)
 }
 
 impl DtorKind {
@@ -3866,13 +3866,24 @@ impl DtorKind {
     pub fn is_present(&const self) -> bool {
         !self.is_not_present()
     }
+
+    pub fn has_drop_flag(&self) -> bool {
+        match self {
+            &NoDtor => false,
+            &TraitDtor(_, flag) => flag
+        }
+    }
 }
 
 /* If struct_id names a struct with a dtor, return Some(the dtor's id).
    Otherwise return none. */
 pub fn ty_dtor(cx: ctxt, struct_id: def_id) -> DtorKind {
     match cx.destructor_for_type.find(&struct_id) {
-        Some(&method_def_id) => TraitDtor(method_def_id),
+        Some(&method_def_id) => {
+            let flag = !has_attr(cx, struct_id, "no_drop_flag");
+
+            TraitDtor(method_def_id, flag)
+        }
         None => NoDtor,
     }
 }
