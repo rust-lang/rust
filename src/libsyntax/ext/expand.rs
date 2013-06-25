@@ -65,7 +65,9 @@ pub fn expand_expr(extsbox: @mut SyntaxEnv,
                                 },
                             });
 
-                            let expanded = match expandfun(cx, mac.span, *tts) {
+                            let fm = fresh_mark();
+                            let marked_tts = mark_tts(*tts,fm);
+                            let expanded = match expandfun(cx, mac.span, marked_tts) {
                                 MRExpr(e) => e,
                                 MRAny(expr_maker,_,_) => expr_maker(),
                                 _ => {
@@ -99,6 +101,12 @@ pub fn expand_expr(extsbox: @mut SyntaxEnv,
         _ => orig(e, s, fld)
     }
 }
+
+// apply a fresh mark to the given token trees. Used prior to expansion of a macro.
+fn mark_tts(tts : &[token_tree], m : Mrk) -> ~[token_tree] {
+    fold_tts(tts,new_ident_marker(m))
+}
+
 
 // This is a secondary mechanism for invoking syntax extensions on items:
 // "decorator" attributes, such as #[auto_encode]. These are invoked by an
@@ -855,7 +863,7 @@ pub fn new_ident_renamer(from: ast::ident,
 
 
 // update the ctxts in a path to get a mark node
-pub fn new_ident_marker(mark: uint) ->
+pub fn new_ident_marker(mark: Mrk) ->
     @fn(ast::ident)->ast::ident {
     |id : ast::ident|
     ast::ident{
@@ -1031,18 +1039,18 @@ mod test {
 
     #[test]
     fn automatic_renaming () {
-        // "fn a() -> int { let b = 13; let c = b; b+c }"
-        //    --> b & c should get new names, in the expr too.
-        // "macro_rules! f (($x:ident) => ($x + b)) fn a() -> int { let b = 13; f!(b)}"
-        //    --> one should be renamed, one should not.
-
         let teststrs =
             ~[// b & c should get new names throughout, in the expr too:
                 @"fn a() -> int { let b = 13; let c = b; b+c }",
                 // the use of b before the + should be renamed, the other one not:
                 @"macro_rules! f (($x:ident) => ($x + b)) fn a() -> int { let b = 13; f!(b)}",
                 // the b before the plus should not be renamed (requires marks)
-                @"macro_rules! f (($x:ident) => ({let b=9; ($x + b)})) fn a() -> int { f!(b)}"];
+                @"macro_rules! f (($x:ident) => ({let b=9; ($x + b)})) fn a() -> int { f!(b)}",
+                // the z flows into and out of two macros (g & f) along one path, and one (just g) along the
+                // other, so the result of the whole thing should be "let z_123 = 3; z_123"
+                @"macro_rules! g (($x:ident) => ({macro_rules! f(($y:ident)=>({let $y=3;$x}));f!($x)}))
+                   fn a(){g!(z)}"
+            ];
         for teststrs.iter().advance |s| {
             // we need regexps to test these!
             std::io::println(expand_and_resolve_and_pretty_print(*s));
