@@ -2446,7 +2446,6 @@ macro_rules! iterator {
             }
 
             #[inline]
-            #[cfg(not(stage0))]
             fn size_hint(&self) -> (Option<uint>, Option<uint>) {
                 let exact = Some(((self.end as uint) - (self.ptr as uint)) / size_of::<$elem>());
                 (exact, exact)
@@ -3929,7 +3928,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg(not(stage0))]
     fn test_iterator() {
         use iterator::*;
         let xs = [1, 2, 5, 10, 11];
