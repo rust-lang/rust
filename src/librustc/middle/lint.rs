@@ -709,28 +709,31 @@ fn check_item_default_methods(cx: &Context, item: @ast::item) {
 }
 
 fn check_item_ctypes(cx: &Context, it: @ast::item) {
+    fn check_ty(cx: &Context, ty: @ast::Ty) {
+        match ty.node {
+            ast::ty_path(_, _, id) => {
+                match cx.tcx.def_map.get_copy(&id) {
+                    ast::def_prim_ty(ast::ty_int(ast::ty_i)) => {
+                        cx.span_lint(ctypes, ty.span,
+                                "found rust type `int` in foreign module, while \
+                                libc::c_int or libc::c_long should be used");
+                    }
+                    ast::def_prim_ty(ast::ty_uint(ast::ty_u)) => {
+                        cx.span_lint(ctypes, ty.span,
+                                "found rust type `uint` in foreign module, while \
+                                libc::c_uint or libc::c_ulong should be used");
+                    }
+                    _ => ()
+                }
+            }
+            _ => ()
+        }
+    }
 
     fn check_foreign_fn(cx: &Context, decl: &ast::fn_decl) {
         let tys = vec::map(decl.inputs, |a| a.ty );
         for vec::each(vec::append_one(tys, decl.output)) |ty| {
-            match ty.node {
-              ast::ty_path(_, _, id) => {
-                match cx.tcx.def_map.get_copy(&id) {
-                  ast::def_prim_ty(ast::ty_int(ast::ty_i)) => {
-                    cx.span_lint(ctypes, ty.span,
-                        "found rust type `int` in foreign module, while \
-                         libc::c_int or libc::c_long should be used");
-                  }
-                  ast::def_prim_ty(ast::ty_uint(ast::ty_u)) => {
-                    cx.span_lint(ctypes, ty.span,
-                        "found rust type `uint` in foreign module, while \
-                         libc::c_uint or libc::c_ulong should be used");
-                  }
-                  _ => ()
-                }
-              }
-              _ => ()
-            }
+            check_ty(cx, *ty);
         }
     }
 
@@ -738,11 +741,10 @@ fn check_item_ctypes(cx: &Context, it: @ast::item) {
       ast::item_foreign_mod(ref nmod) if !nmod.abis.is_intrinsic() => {
         for nmod.items.iter().advance |ni| {
             match ni.node {
-              ast::foreign_item_fn(ref decl, _, _) => {
-                check_foreign_fn(cx, decl);
-              }
-              // FIXME #4622: Not implemented.
-              ast::foreign_item_const(*) => {}
+                ast::foreign_item_fn(ref decl, _, _) => {
+                    check_foreign_fn(cx, decl);
+                }
+                ast::foreign_item_static(t, _) => { check_ty(cx, t); }
             }
         }
       }

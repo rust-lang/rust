@@ -1146,12 +1146,13 @@ impl Resolver {
             }
 
             // These items live in the value namespace.
-            item_const(*) => {
+            item_static(_, m, _) => {
                 let (name_bindings, _) =
                     self.add_child(ident, parent, ForbidDuplicateValues, sp);
+                let mutbl = m == ast::m_mutbl;
 
                 name_bindings.define_value
-                    (privacy, def_const(local_def(item.id)), sp);
+                    (privacy, def_static(local_def(item.id), mutbl), sp);
             }
             item_fn(_, purity, _, _, _) => {
               let (name_bindings, new_parent) =
@@ -1565,8 +1566,8 @@ impl Resolver {
                     visit_foreign_item(foreign_item, (new_parent, visitor));
                 }
             }
-            foreign_item_const(*) => {
-                let def = def_const(local_def(foreign_item.id));
+            foreign_item_static(_, m) => {
+                let def = def_static(local_def(foreign_item.id), m);
                 name_bindings.define_value(Public, def, foreign_item.span);
 
                 visit_foreign_item(foreign_item, (new_parent, visitor));
@@ -1673,7 +1674,7 @@ impl Resolver {
             let privacy = variant_visibility_to_privacy(visibility, true);
             child_name_bindings.define_value(privacy, def, dummy_sp());
           }
-          def_fn(*) | def_static_method(*) | def_const(*) => {
+          def_fn(*) | def_static_method(*) | def_static(*) => {
             debug!("(building reduced graph for external \
                     crate) building value %s", final_ident);
             child_name_bindings.define_value(privacy, def, dummy_sp());
@@ -3664,7 +3665,7 @@ impl Resolver {
                                     || visit_foreign_item(*foreign_item,
                                                           ((), visitor)));
                             }
-                            foreign_item_const(_) => {
+                            foreign_item_static(*) => {
                                 visit_foreign_item(*foreign_item,
                                                    ((), visitor));
                             }
@@ -3686,7 +3687,7 @@ impl Resolver {
                                       visitor);
             }
 
-            item_const(*) => {
+            item_static(*) => {
                 self.with_constant_rib(|| {
                     visit_item(item, ((), visitor));
                 });
@@ -4344,7 +4345,7 @@ impl Resolver {
                                 Some(def @ def_struct(*)) => {
                             self.record_def(pattern.id, def);
                         }
-                        Some(def @ def_const(*)) => {
+                        Some(def @ def_static(*)) => {
                             self.enforce_default_binding_mode(
                                 pattern,
                                 binding_mode,
@@ -4376,7 +4377,7 @@ impl Resolver {
                         Some(def @ def_fn(*))      |
                         Some(def @ def_variant(*)) |
                         Some(def @ def_struct(*))  |
-                        Some(def @ def_const(*)) => {
+                        Some(def @ def_static(*)) => {
                             self.record_def(pattern.id, def);
                         }
                         Some(_) => {
@@ -4459,7 +4460,7 @@ impl Resolver {
                             def @ def_variant(*) | def @ def_struct(*) => {
                                 return FoundStructOrEnumVariant(def);
                             }
-                            def @ def_const(*) => {
+                            def @ def_static(_, false) => {
                                 return FoundConst(def);
                             }
                             _ => {
