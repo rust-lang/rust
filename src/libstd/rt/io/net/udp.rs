@@ -19,12 +19,10 @@ use rt::local::Local;
 pub struct UdpSocket(~RtioUdpSocketObject);
 
 impl UdpSocket {
-    fn new(s: ~RtioUdpSocketObject) -> UdpSocket { UdpSocket(s) }
-
     pub fn bind(addr: IpAddr) -> Option<UdpSocket> {
         let socket = unsafe { (*Local::unsafe_borrow::<IoFactoryObject>()).udp_bind(addr) };
         match socket {
-            Ok(s) => Some(UdpSocket::new(s)),
+            Ok(s) => Some(UdpSocket(s)),
             Err(ioerr) => {
                 io_error::cond.raise(ioerr);
                 None
