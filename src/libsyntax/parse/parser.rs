@@ -266,7 +266,7 @@ pub struct Parser {
 #[unsafe_destructor]
 impl Drop for Parser {
     /* do not copy the parser; its state is tied to outside state */
-    fn finalize(&self) {}
+    fn drop(&self) {}
 }
 
 impl Parser {

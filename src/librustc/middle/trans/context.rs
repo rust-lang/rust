@@ -241,7 +241,7 @@ impl CrateContext {
 
 #[unsafe_destructor]
 impl Drop for CrateContext {
-    fn finalize(&self) {
+    fn drop(&self) {
         unsafe {
             unset_task_llcx();
         }

@@ -309,7 +309,7 @@ struct BufferResource<T> {
 
 #[unsafe_destructor]
 impl<T> Drop for BufferResource<T> {
-    fn finalize(&self) {
+    fn drop(&self) {
         unsafe {
             // FIXME(#4330) Need self by value to get mutability.
             let this: &mut BufferResource<T> = transmute_mut(self);
@@ -672,7 +672,7 @@ pub struct SendPacketBuffered<T, Tbuffer> {
 
 #[unsafe_destructor]
 impl<T:Owned,Tbuffer:Owned> Drop for SendPacketBuffered<T,Tbuffer> {
-    fn finalize(&self) {
+    fn drop(&self) {
         unsafe {
             let this: &mut SendPacketBuffered<T,Tbuffer> = transmute(self);
             if this.p != None {
@@ -730,7 +730,7 @@ pub struct RecvPacketBuffered<T, Tbuffer> {
 
 #[unsafe_destructor]
 impl<T:Owned,Tbuffer:Owned> Drop for RecvPacketBuffered<T,Tbuffer> {
-    fn finalize(&self) {
+    fn drop(&self) {
         unsafe {
             let this: &mut RecvPacketBuffered<T,Tbuffer> = transmute(self);
             if this.p != None {

@@ -183,7 +183,7 @@ impl<T: Owned> Unique<T> {
 
 #[unsafe_destructor]
 impl<T: Owned> Drop for Unique<T> {
-    fn finalize(&self) {
+    fn drop(&self) {
         unsafe {
             let x = intrinsics::init(); // dummy value to swap in
             // moving the object out is needed to call the destructor

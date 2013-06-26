@@ -13,12 +13,12 @@ struct Foo {
 }
 
 impl Drop for Foo {
-    fn finalize(&self) {
+    fn drop(&self) {
         println("kaboom");
     }
 }
 
 fn main() {
     let x = Foo { x: 3 };
-    x.finalize();   //~ ERROR explicit call to destructor
+    x.drop();   //~ ERROR explicit call to destructor
 }

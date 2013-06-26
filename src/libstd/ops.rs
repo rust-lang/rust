@@ -14,7 +14,7 @@
 
 #[lang="drop"]
 pub trait Drop {
-    fn finalize(&self);  // FIXME(#4332): Rename to "drop"? --pcwalton
+    fn drop(&self);
 }
 
 #[lang="add"]

@@ -2010,7 +2010,7 @@ types by the compiler, and may not be overridden:
 > iterations of the language, and often still are.
 
 Additionally, the `Drop` trait is used to define destructors. This
-trait defines one method called `finalize`, which is automatically
+trait defines one method called `drop`, which is automatically
 called when a value of the type that implements this trait is
 destroyed, either because the value went out of scope or because the
 garbage collector reclaimed it.
@@ -2021,7 +2021,7 @@ struct TimeBomb {
 }
 
 impl Drop for TimeBomb {
-    fn finalize(&self) {
+    fn drop(&self) {
         for self.explosivity.times {
             println("blam!");
         }
@@ -2029,7 +2029,7 @@ impl Drop for TimeBomb {
 }
 ~~~
 
-It is illegal to call `finalize` directly. Only code inserted by the compiler
+It is illegal to call `drop` directly. Only code inserted by the compiler
 may call it.
 
 ## Declaring and implementing traits

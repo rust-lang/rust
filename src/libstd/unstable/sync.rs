@@ -75,7 +75,7 @@ impl<T: Owned> Clone for UnsafeAtomicRcBox<T> {
 
 #[unsafe_destructor]
 impl<T> Drop for UnsafeAtomicRcBox<T>{
-    fn finalize(&self) {
+    fn drop(&self) {
         unsafe {
             do task::unkillable {
                 let mut data: ~AtomicRcBoxData<T> = cast::transmute(self.data);
@@ -102,7 +102,7 @@ struct LittleLock {
 }
 
 impl Drop for LittleLock {
-    fn finalize(&self) {
+    fn drop(&self) {
         unsafe {
             rust_destroy_little_lock(self.l);
         }
