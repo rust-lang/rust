@@ -382,8 +382,6 @@ impl Integer for BigUint {
             while m >= b {
                 let (d0, d_unit, b_unit) = div_estimate(&m, &b, n);
                 let mut d0 = d0;
-                let mut d_unit = d_unit;
-                let mut b_unit = b_unit;
                 let mut prod = b * d0;
                 while prod > m {
                     // FIXME(#6050): overloaded operators force moves with generic types
