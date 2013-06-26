@@ -637,7 +637,6 @@ fn spawn_raw_oldsched(mut opts: TaskOpts, f: ~fn()) {
         let result: ~fn() = || {
             // Agh. Get move-mode items into the closure. FIXME (#2829)
             let (notify_chan, child_arc, ancestors) = child_data.take();
-            let mut child_arc = child_arc;
             let mut ancestors = ancestors;
             // Child task runs this code.
 

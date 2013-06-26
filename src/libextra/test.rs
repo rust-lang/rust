@@ -751,9 +751,6 @@ impl BenchHarness {
 }
 
 pub mod bench {
-    use core::prelude::*;
-
-    use core::vec;
     use test::{BenchHarness, BenchSamples};
 
     pub fn benchmark(f: &fn(&mut BenchHarness)) -> BenchSamples {
