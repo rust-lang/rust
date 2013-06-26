@@ -8,7 +8,7 @@ fn take_copyable(_: &fn:Copy()) {
 fn take_copyable_owned(_: &fn:Copy+Send()) {
 }
 
-fn take_const_owned(_: &fn:Const+Owned()) {
+fn take_const_owned(_: &fn:Freeze+Send()) {
 }
 
 fn give_any(f: &fn:()) {
@@ -33,7 +33,7 @@ fn give_copyable_owned(f: &fn:Copy+Send()) {
     take_any(f);
     take_copyable(f);
     take_copyable_owned(f);
-    take_const_owned(f); //~ ERROR expected bounds `Owned+Const` but found bounds `Copy+Owned`
+    take_const_owned(f); //~ ERROR expected bounds `Send+Freeze` but found bounds `Copy+Send`
 }
 
 fn main() {}

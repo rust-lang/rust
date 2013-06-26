@@ -1088,16 +1088,19 @@ impl<'self> LookupContext<'self> {
             _ => {}
         }
 
-        return match candidate.method_ty.explicit_self {
+        let result = match candidate.method_ty.explicit_self {
             sty_static => {
+                debug!("(is relevant?) explicit self is static");
                 false
             }
 
             sty_value => {
+                debug!("(is relevant?) explicit self is by-value");
                 self.fcx.can_mk_subty(rcvr_ty, candidate.rcvr_ty).is_ok()
             }
 
             sty_region(_, m) => {
+                debug!("(is relevant?) explicit self is a region");
                 match ty::get(rcvr_ty).sty {
                     ty::ty_rptr(_, mt) => {
                         mutability_matches(mt.mutbl, m) &&
@@ -1109,6 +1112,7 @@ impl<'self> LookupContext<'self> {
             }
 
             sty_box(m) => {
+                debug!("(is relevant?) explicit self is a box");
                 match ty::get(rcvr_ty).sty {
                     ty::ty_box(mt) => {
                         mutability_matches(mt.mutbl, m) &&
@@ -1120,6 +1124,7 @@ impl<'self> LookupContext<'self> {
             }
 
             sty_uniq(m) => {
+                debug!("(is relevant?) explicit self is a unique pointer");
                 match ty::get(rcvr_ty).sty {
                     ty::ty_uniq(mt) => {
                         mutability_matches(mt.mutbl, m) &&
@@ -1130,6 +1135,10 @@ impl<'self> LookupContext<'self> {
                 }
             }
         };
+
+        debug!("(is relevant?) %s", if result { "yes" } else { "no" });
+
+        return result;
 
         fn mutability_matches(self_mutbl: ast::mutability,
                               candidate_mutbl: ast::mutability) -> bool {

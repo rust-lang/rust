@@ -488,7 +488,9 @@ pub fn parameterized(cx: ctxt,
         }
     };
 
-    strs += vec::map(tps, |t| ty_to_str(cx, *t));
+    for tps.iter().advance |t| {
+        strs.push(ty_to_str(cx, *t))
+    }
 
     if strs.len() > 0u {
         fmt!("%s<%s>", base, strs.connect(","))

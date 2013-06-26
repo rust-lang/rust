@@ -484,7 +484,7 @@ fn each_auxiliary_node_id(item: @item, callback: &fn(node_id) -> bool)
     let mut continue = true;
     match item.node {
         item_enum(ref enum_def, _) => {
-            for enum_def.variants.each |variant| {
+            for enum_def.variants.iter().advance |variant| {
                 continue = callback(variant.node.id);
                 if !continue {
                     break
@@ -516,7 +516,7 @@ fn encode_reexports(ecx: &EncodeContext,
     match ecx.reexports2.find(&id) {
         Some(ref exports) => {
             debug!("(encoding info for module) found reexports for %d", id);
-            for exports.each |exp| {
+            for exports.iter().advance |exp| {
                 debug!("(encoding info for module) reexport '%s' for %d",
                        exp.name, id);
                 ebml_w.start_tag(tag_items_data_item_reexport);
@@ -900,7 +900,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_path(ecx, ebml_w, path, ast_map::path_name(item.ident));
 
         // Encode all the items in this module.
-        for fm.items.each |foreign_item| {
+        for fm.items.iter().advance |foreign_item| {
             ebml_w.start_tag(tag_mod_child);
             ebml_w.wr_str(def_to_str(local_def(foreign_item.id)));
             ebml_w.end_tag();
@@ -1506,7 +1506,7 @@ fn encode_misc_info(ecx: &EncodeContext,
                     ebml_w: &mut writer::Encoder) {
     ebml_w.start_tag(tag_misc_info);
     ebml_w.start_tag(tag_misc_info_crate_items);
-    for crate.node.module.items.each |&item| {
+    for crate.node.module.items.iter().advance |&item| {
         ebml_w.start_tag(tag_mod_child);
         ebml_w.wr_str(def_to_str(local_def(item.id)));
         ebml_w.end_tag();
