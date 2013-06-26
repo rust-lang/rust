@@ -568,7 +568,7 @@ pub mod types {
     pub mod os {
         pub mod common {
             pub mod posix01 {
-                use libc::types::os::arch::c95::{c_int, c_short};
+                use libc::types::os::arch::c95::c_short;
                 use libc::types::os::arch::extra::{int64, time64_t};
                 use libc::types::os::arch::posix88::{dev_t, ino_t};
                 use libc::types::os::arch::posix88::mode_t;
