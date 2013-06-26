@@ -164,19 +164,14 @@ impl<K: TotalOrd, V> TreeMap<K, V> {
     /// Create an empty TreeMap
     pub fn new() -> TreeMap<K, V> { TreeMap{root: None, length: 0} }
 
-    /// Visit all key-value pairs in order
-    pub fn each<'a>(&'a self, f: &fn(&'a K, &'a V) -> bool) -> bool {
-        each(&self.root, f)
-    }
-
     /// Visit all keys in order
     pub fn each_key(&self, f: &fn(&K) -> bool) -> bool {
-        self.each(|k, _| f(k))
+        self.iter().advance(|(k, _)| f(k))
     }
 
     /// Visit all values in order
     pub fn each_value<'a>(&'a self, f: &fn(&'a V) -> bool) -> bool {
-        self.each(|_, v| f(v))
+        self.iter().advance(|(_, v)| f(v))
     }
 
     /// Iterate over the map and mutate the contained values
@@ -484,10 +479,6 @@ impl<T: TotalOrd> TreeSet<T> {
         TreeSetIterator{iter: self.map.iter()}
     }
 
-    /// Visit all values in order
-    #[inline]
-    pub fn each(&self, f: &fn(&T) -> bool) -> bool { self.map.each_key(f) }
-
     /// Visit all values in reverse order
     #[inline]
     pub fn each_reverse(&self, f: &fn(&T) -> bool) -> bool {
@@ -779,7 +770,7 @@ mod test_treemap {
             let &(k, v) = x;
             assert!(map.find(&k).unwrap() == &v)
         }
-        for map.each |map_k, map_v| {
+        for map.iter().advance |(map_k, map_v)| {
             let mut found = false;
             for ctrl.iter().advance |x| {
                 let &(ctrl_k, ctrl_v) = x;
@@ -885,7 +876,7 @@ mod test_treemap {
     }
 
     #[test]
-    fn test_each() {
+    fn test_iterator() {
         let mut m = TreeMap::new();
 
         assert!(m.insert(3, 6));
@@ -895,7 +886,7 @@ mod test_treemap {
         assert!(m.insert(1, 2));
 
         let mut n = 0;
-        for m.each |k, v| {
+        for m.iter().advance |(k, v)| {
             assert_eq!(*k, n);
             assert_eq!(*v, n * 2);
             n += 1;
@@ -1090,7 +1081,7 @@ mod test_set {
     }
 
     #[test]
-    fn test_each() {
+    fn test_iterator() {
         let mut m = TreeSet::new();
 
         assert!(m.insert(3));
@@ -1100,7 +1091,7 @@ mod test_set {
         assert!(m.insert(1));
 
         let mut n = 0;
-        for m.each |x| {
+        for m.iter().advance |x| {
             println(fmt!("%?", x));
             assert_eq!(*x, n);
             n += 1
