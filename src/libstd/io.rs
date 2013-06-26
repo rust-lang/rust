@@ -989,7 +989,7 @@ impl FILERes {
 }
 
 impl Drop for FILERes {
-    fn finalize(&self) {
+    fn drop(&self) {
         unsafe {
             libc::fclose(self.f);
         }
@@ -1234,7 +1234,7 @@ impl FdRes {
 }
 
 impl Drop for FdRes {
-    fn finalize(&self) {
+    fn drop(&self) {
         unsafe {
             libc::close(self.fd);
         }
@@ -1772,7 +1772,7 @@ pub mod fsync {
 
     #[unsafe_destructor]
     impl<T:Copy> Drop for Res<T> {
-        fn finalize(&self) {
+        fn drop(&self) {
             match self.arg.opt_level {
                 None => (),
                 Some(level) => {

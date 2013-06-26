@@ -15,7 +15,7 @@ fn foo<T>() {
     }
 
     impl<T> Drop for foo<T> {
-        fn finalize(&self) {}
+        fn drop(&self) {}
     }
 }
 fn main() { }

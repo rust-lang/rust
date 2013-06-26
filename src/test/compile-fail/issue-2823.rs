@@ -13,7 +13,7 @@ struct C {
 }
 
 impl Drop for C {
-    fn finalize(&self) {
+    fn drop(&self) {
         error!("dropping: %?", self.x);
     }
 }

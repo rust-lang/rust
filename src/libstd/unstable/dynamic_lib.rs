@@ -25,7 +25,7 @@ use result::*;
 pub struct DynamicLibrary { priv handle: *libc::c_void }
 
 impl Drop for DynamicLibrary {
-    fn finalize(&self) {
+    fn drop(&self) {
         match do dl::check_for_errors_in {
             unsafe {
                 dl::close(self.handle)

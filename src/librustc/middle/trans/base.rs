@@ -110,7 +110,7 @@ pub struct _InsnCtxt { _x: () }
 
 #[unsafe_destructor]
 impl Drop for _InsnCtxt {
-    fn finalize(&self) {
+    fn drop(&self) {
         unsafe {
             do local_data::local_data_modify(task_local_insn_key) |c| {
                 do c.map_consume |@ctx| {
