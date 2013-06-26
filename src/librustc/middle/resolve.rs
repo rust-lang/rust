@@ -1240,7 +1240,7 @@ impl Resolver {
                 // Create the module and add all methods.
                 match *ty {
                     Ty {
-                        node: ty_path(path, _),
+                        node: ty_path(path, _, _),
                         _
                     } if path.idents.len() == 1 => {
                         let name = path_to_ident(path);

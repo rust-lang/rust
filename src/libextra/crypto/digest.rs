@@ -49,9 +49,9 @@ fn to_hex(rr: &[u8]) -> ~str {
     for rr.iter().advance() |b| {
         let hex = uint::to_str_radix(*b as uint, 16u);
         if hex.len() == 1 {
-            s += "0";
+            s.push_char('0');
         }
-        s += hex;
+        s.push_str(hex);
     }
     return s;
 }
