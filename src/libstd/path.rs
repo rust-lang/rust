@@ -382,6 +382,15 @@ impl Path {
             Some(ref st) => Some(st.st_mode as uint),
         }
     }
+
+    /// Execute a function on p as well as all of its ancestors
+    pub fn each_parent(&self, f: &fn(&Path)) {
+        if !self.components.is_empty() {
+            f(self);
+            self.pop().each_parent(f);
+        }
+    }
+
 }
 
 #[cfg(target_os = "freebsd")]
