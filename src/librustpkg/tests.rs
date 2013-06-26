@@ -268,12 +268,12 @@ fn output_file_name(workspace: &Path, short_name: &str) -> Path {
     workspace.push(fmt!("%s%s", short_name, os::EXE_SUFFIX))
 }
 
-fn touch_source_file(workspace: &Path, short_name: &str) {
+fn touch_source_file(workspace: &Path, pkgid: &PkgId) {
     use conditions::bad_path::cond;
-    let pkg_src_dir = workspace.push("src").push(short_name);
-    let contents = os::list_dir(&pkg_src_dir);
+    let pkg_src_dir = workspace.push("src").push(pkgid.to_str());
+    let contents = os::list_dir_path(&pkg_src_dir);
     for contents.iter().advance |p| {
-        if Path(copy *p).filetype() == Some(~".rs") {
+        if p.filetype() == Some(~".rs") {
             // should be able to do this w/o a process
             if run::process_output("touch", [p.to_str()]).status != 0 {
                 let _ = cond.raise((copy pkg_src_dir, ~"Bad path"));
@@ -287,20 +287,19 @@ fn touch_source_file(workspace: &Path, short_name: &str) {
 fn frob_source_file(workspace: &Path, pkgid: &PkgId) {
     use conditions::bad_path::cond;
     let pkg_src_dir = workspace.push("src").push(pkgid.to_str());
-    let contents = os::list_dir(&pkg_src_dir);
+    let contents = os::list_dir_path(&pkg_src_dir);
     let mut maybe_p = None;
     for contents.iter().advance |p| {
-        if Path(copy *p).filetype() == Some(~".rs") {
+        if p.filetype() == Some(~".rs") {
             maybe_p = Some(p);
             break;
         }
     }
     match maybe_p {
         Some(p) => {
-            let p = Path(copy *p);
-            let w = io::buffered_file_writer(&p);
+            let w = io::file_writer(*p, &[io::Append]);
             match w {
-                Err(s) => { let _ = cond.raise((p, fmt!("Bad path: %s", s))); }
+                Err(s) => { let _ = cond.raise((copy **p, fmt!("Bad path: %s", s))); }
                 Ok(w)  => w.write_line("")
             }
         }
@@ -615,7 +614,7 @@ fn do_rebuild_dep_dates_change() {
     let workspace = create_local_package_with_dep(&p_id, &dep_id);
     command_line_test([~"build", ~"foo"], &workspace);
     let bar_date = datestamp(&lib_output_file_name(&workspace, "build", "bar"));
-    touch_source_file(&workspace, "bar");
+    touch_source_file(&workspace, &dep_id);
     command_line_test([~"build", ~"foo"], &workspace);
     let new_bar_date = datestamp(&lib_output_file_name(&workspace, "build", "bar"));
     assert!(new_bar_date > bar_date);
