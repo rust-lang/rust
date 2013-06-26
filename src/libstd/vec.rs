@@ -1300,44 +1300,6 @@ pub fn reverse<T>(v: &mut [T]) {
     }
 }
 
-/**
- * Reverse part of a vector in place.
- *
- * Reverse the elements in the vector between `start` and `end - 1`.
- *
- * If either start or end do not represent valid positions in the vector, the
- * vector is returned unchanged.
- *
- * # Arguments
- *
- * * `v` - The mutable vector to be modified
- *
- * * `start` - Index of the first element of the slice
- *
- * * `end` - Index one past the final element to be reversed.
- *
- * # Example
- *
- * Assume a mutable vector `v` contains `[1,2,3,4,5]`. After the call:
- *
- * ~~~ {.rust}
- * reverse_part(v, 1, 4);
- * ~~~
- *
- * `v` now contains `[1,4,3,2,5]`.
- */
-pub fn reverse_part<T>(v: &mut [T], start: uint, end : uint) {
-    let sz = v.len();
-    if start >= sz || end > sz { return; }
-    let mut i = start;
-    let mut j = end - 1;
-    while i < j {
-        vec::swap(v, i, j);
-        i += 1;
-        j -= 1;
-    }
-}
-
 /// Returns a vector with the order of elements reversed
 pub fn reversed<T:Copy>(v: &const [T]) -> ~[T] {
     let mut rs: ~[T] = ~[];
@@ -1394,7 +1356,7 @@ pub fn each_permutation<T:Copy>(values: &[T], fun: &fn(perm : &[T]) -> bool) -> 
         // swap indices[k] and indices[l]; sort indices[k+1..]
         // (they're just reversed)
         vec::swap(indices, k, l);
-        reverse_part(indices, k+1, length);
+        reverse(indices.mut_slice(k+1, length));
         // fixup permutation based on indices
         for uint::range(k, length) |i| {
             permutation[i] = copy values[indices[i]];
@@ -3971,7 +3933,7 @@ mod tests {
     #[test]
     fn test_reverse_part() {
         let mut values = [1,2,3,4,5];
-        reverse_part(values,1,4);
+        reverse(values.mut_slice(1, 4));
         assert_eq!(values, [1,4,3,2,5]);
     }
 
