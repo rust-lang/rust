@@ -60,13 +60,13 @@ pub type Key = DWORD;
 #[cfg(windows)]
 pub unsafe fn create(key: &mut Key) {
     static TLS_OUT_OF_INDEXES: DWORD = 0xFFFFFFFF;
-    *key = unsafe { TlsAlloc() };
+    *key = TlsAlloc();
     assert!(*key != TLS_OUT_OF_INDEXES);
 }
 
 #[cfg(windows)]
 pub unsafe fn set(key: Key, value: *mut c_void) {
-    unsafe { assert!(0 != TlsSetValue(key, value)) }
+    assert!(0 != TlsSetValue(key, value))
 }
 
 #[cfg(windows)]
