@@ -162,8 +162,6 @@ StaticEnum(<ast::enum_def of C>, ~[(<ident of C0>, Left(1)),
 
 */
 
-use core::prelude::*;
-
 use ast;
 use ast::{enum_def, expr, ident, Generics, struct_def};
 
@@ -172,8 +170,8 @@ use ext::build::AstBuilder;
 use codemap::{span,respan};
 use opt_vec;
 
-use core::uint;
-use core::vec;
+use std::uint;
+use std::vec;
 
 pub use self::ty::*;
 mod ty;
@@ -195,7 +193,7 @@ pub struct TraitDef<'self> {
 pub struct MethodDef<'self> {
     /// name of the method
     name: &'self str,
-    /// List of generics, e.g. `R: core::rand::Rng`
+    /// List of generics, e.g. `R: std::rand::Rng`
     generics: LifetimeBounds<'self>,
 
     /// Whether there is a self argument (outer Option) i.e. whether

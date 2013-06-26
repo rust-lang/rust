@@ -8,9 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
-
-use core::vec;
 use ast;
 use codemap::{BytePos, Pos, span};
 use ext::base::ExtCtxt;
@@ -19,6 +16,8 @@ use ext::build::AstBuilder;
 use parse::token::*;
 use parse::token;
 use parse;
+
+use std::vec;
 
 /**
 *
@@ -32,8 +31,6 @@ use parse;
 */
 
 pub mod rt {
-    use core::prelude::*;
-
     use ast;
     use ext::base::ExtCtxt;
     use parse;

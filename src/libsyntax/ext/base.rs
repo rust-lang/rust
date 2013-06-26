@@ -8,9 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
-
-use core::vec;
 use ast;
 use ast::Name;
 use codemap;
@@ -22,7 +19,8 @@ use parse;
 use parse::token;
 use parse::token::{ident_to_str, intern, str_to_ident};
 
-use core::hashmap::HashMap;
+use std::vec;
+use std::hashmap::HashMap;
 
 // new-style macro! tt code:
 //
@@ -535,7 +533,7 @@ fn satisfies_pred<K : Eq + Hash + IterBytes,V>(map : &mut HashMap<K,V>,
 #[cfg(test)]
 mod test {
     use super::MapChain;
-    use core::hashmap::HashMap;
+    use std::hashmap::HashMap;
 
     #[test] fn testenv () {
         let mut a = HashMap::new();

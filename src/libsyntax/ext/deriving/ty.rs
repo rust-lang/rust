@@ -13,8 +13,6 @@ A mini version of ast::Ty, which is easier to use, and features an
 explicit `Self` type to use when specifying impls to be derived.
 */
 
-use core::prelude::*;
-
 use ast;
 use ast::{expr,Generics,ident};
 use ext::base::ExtCtxt;
@@ -29,7 +27,7 @@ pub enum PtrTy<'self> {
     Borrowed(Option<&'self str>, ast::mutability), // &['lifetime] [mut]
 }
 
-/// A path, e.g. `::core::option::Option::<int>` (global). Has support
+/// A path, e.g. `::std::option::Option::<int>` (global). Has support
 /// for type parameters and a lifetime.
 pub struct Path<'self> {
     path: ~[&'self str],

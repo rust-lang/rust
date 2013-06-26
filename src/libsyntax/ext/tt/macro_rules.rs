@@ -8,9 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
-
-use core::vec;
 use ast::{ident, matcher_, matcher, match_tok, match_nonterminal, match_seq};
 use ast::{tt_delim};
 use ast;
@@ -26,7 +23,8 @@ use parse::token::{get_ident_interner, special_idents, gensym_ident, ident_to_st
 use parse::token::{FAT_ARROW, SEMI, nt_matchers, nt_tt};
 use print;
 
-use core::io;
+use std::vec;
+use std::io;
 
 pub fn add_new_extension(cx: @ExtCtxt,
                          sp: span,

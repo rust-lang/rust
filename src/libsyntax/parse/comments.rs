@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
-
 use ast;
 use codemap::{BytePos, CharPos, CodeMap, Pos};
 use diagnostic;
@@ -20,9 +18,9 @@ use parse::lexer;
 use parse::token;
 use parse::token::{get_ident_interner};
 
-use core::io;
-use core::str;
-use core::uint;
+use std::io;
+use std::str;
+use std::uint;
 
 #[deriving(Eq)]
 pub enum cmnt_style {

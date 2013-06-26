@@ -10,7 +10,7 @@
 
 // Functions dealing with attributes and meta_items
 
-use core::prelude::*;
+use extra;
 
 use ast;
 use codemap::{spanned, dummy_spanned};
@@ -19,10 +19,8 @@ use codemap::BytePos;
 use diagnostic::span_handler;
 use parse::comments::{doc_comment_style, strip_doc_comment_decoration};
 
-use core::hashmap::HashSet;
-use core::vec;
-use extra;
-
+use std::hashmap::HashSet;
+use std::vec;
 /* Constructors */
 
 pub fn mk_name_value_item_str(name: @str, value: @str)
