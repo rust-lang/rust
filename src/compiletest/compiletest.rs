@@ -261,7 +261,7 @@ pub fn make_test_name(config: &config, testfile: &Path) -> test::TestName {
         let dir = path.pop().filename();
         fmt!("%s/%s", dir.get_or_default(~""), filename.get_or_default(~""))
     }
-    
+
     test::DynTestName(fmt!("[%s] %s",
                            mode_str(config.mode),
                            shorten(testfile)))
