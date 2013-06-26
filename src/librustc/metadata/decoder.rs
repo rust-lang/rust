@@ -14,7 +14,7 @@ use core::prelude::*;
 
 use metadata::cstore::crate_metadata;
 use metadata::common::*;
-use metadata::csearch::{ProvidedTraitMethodInfo, StaticMethodInfo};
+use metadata::csearch::StaticMethodInfo;
 use metadata::csearch;
 use metadata::cstore;
 use metadata::decoder;
@@ -752,7 +752,7 @@ pub fn get_trait_method_def_ids(cdata: cmd,
 
 pub fn get_provided_trait_methods(intr: @ident_interner, cdata: cmd,
                                   id: ast::node_id, tcx: ty::ctxt) ->
-        ~[ProvidedTraitMethodInfo] {
+        ~[@ty::Method] {
     let data = cdata.data;
     let item = lookup_item(id, data);
     let mut result = ~[];
@@ -763,13 +763,8 @@ pub fn get_provided_trait_methods(intr: @ident_interner, cdata: cmd,
 
         if item_method_sort(mth) != 'p' { loop; }
 
-        let ty_method = get_method(intr, cdata, did.node, tcx);
-        let provided_trait_method_info = ProvidedTraitMethodInfo {
-            ty: ty_method,
-            def_id: did
-        };
-
-        vec::push(&mut result, provided_trait_method_info);
+        vec::push(&mut result,
+                  @get_method(intr, cdata, did.node, tcx));
     }
 
     return result;

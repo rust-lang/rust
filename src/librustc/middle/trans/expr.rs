@@ -1051,14 +1051,8 @@ pub fn trans_local_var(bcx: block, def: ast::def) -> Datum {
             debug!("def_self() reference, self_info.t=%s",
                    self_info.t.repr(bcx.tcx()));
 
-            // This cast should not be necessary. We should cast self *once*,
-            // but right now this conflicts with default methods.
-            let real_self_ty = monomorphize_type(bcx, self_info.t);
-            let llselfty = type_of::type_of(bcx.ccx(), real_self_ty).ptr_to();
-
-            let casted_val = PointerCast(bcx, self_info.v, llselfty);
             Datum {
-                val: casted_val,
+                val: self_info.v,
                 ty: self_info.t,
                 mode: ByRef(ZeroMem)
             }

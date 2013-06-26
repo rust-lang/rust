@@ -233,14 +233,14 @@ pub fn monomorphic_fn(ccx: @mut CrateContext,
             Some(override_impl_did) => impl_did = override_impl_did
         }
 
-        meth::trans_method(ccx, pt, mth, psubsts, None, d, impl_did);
+        meth::trans_method(ccx, pt, mth, psubsts, d, impl_did);
         d
       }
       ast_map::node_trait_method(@ast::provided(mth), _, pt) => {
         let d = mk_lldecl();
         set_inline_hint_if_appr(/*bad*/copy mth.attrs, d);
         debug!("monomorphic_fn impl_did_opt is %?", impl_did_opt);
-        meth::trans_method(ccx, /*bad*/copy *pt, mth, psubsts, None, d,
+        meth::trans_method(ccx, /*bad*/copy *pt, mth, psubsts, d,
                            impl_did_opt.get());
         d
       }
