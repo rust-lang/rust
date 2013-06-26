@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-test
-
 // compile-flags:-Z extra-debug-info
 // debugger:break zzz
 // debugger:run
@@ -34,7 +32,7 @@ struct WithDestructor {
 }
 
 impl Drop for WithDestructor {
-    fn finalize(&self) {}
+    fn drop(&self) {}
 }
 
 struct NoDestructorGuarded {
