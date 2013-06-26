@@ -188,11 +188,22 @@ pub fn compile_rest(sess: Session,
         *sess.building_library = session::building_library(
             sess.opts.crate_type, crate_opt.unwrap(), sess.opts.test);
 
+        // strip before expansion to allow macros to depend on
+        // configuration variables e.g/ in
+        //
+        //   #[macro_escape] #[cfg(foo)]
+        //   mod bar { macro_rules! baz!(() => {{}}) }
+        //
+        // baz! should not use this definition unless foo is enabled.
+        crate_opt = Some(time(time_passes, ~"configuration 1", ||
+                     front::config::strip_unconfigured_items(crate_opt.unwrap())));
+
         crate_opt = Some(time(time_passes, ~"expansion", ||
                      syntax::ext::expand::expand_crate(sess.parse_sess, copy cfg,
                                                        crate_opt.unwrap())));
 
-        crate_opt = Some(time(time_passes, ~"configuration", ||
+        // strip again, in case expansion added anything with a #[cfg].
+        crate_opt = Some(time(time_passes, ~"configuration 2", ||
                      front::config::strip_unconfigured_items(crate_opt.unwrap())));
 
         crate_opt = Some(time(time_passes, ~"maybe building test harness", ||
