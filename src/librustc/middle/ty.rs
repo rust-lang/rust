@@ -1908,7 +1908,7 @@ impl TypeContents {
             // this assertion.
             assert!(self.intersects(TC_OWNED_POINTER));
         }
-        let tc = TC_MANAGED + TC_DTOR + TypeContents::owned(cx);
+        let tc = TC_MANAGED + TC_DTOR + TypeContents::sendable(cx);
         self.intersects(tc)
     }
 

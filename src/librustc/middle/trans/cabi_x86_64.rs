@@ -39,7 +39,11 @@ enum RegClass {
     Memory
 }
 
-impl Type {
+trait TypeMethods {
+    fn is_reg_ty(&self) -> bool;
+}
+
+impl TypeMethods for Type {
     fn is_reg_ty(&self) -> bool {
         match self.kind() {
             Integer | Pointer | Float | Double => true,

@@ -10,7 +10,7 @@
 
 trait Foo {
     fn orange(&self);
-    fn orange(&self);   //~ ERROR error: duplicate definition of method `orange`
+    fn orange(&self);   //~ ERROR error: duplicate definition of value `orange`
 }
 
 fn main() {}
