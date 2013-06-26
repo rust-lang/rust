@@ -43,7 +43,6 @@ pub trait Iterator<A> {
     /// Return a lower bound and upper bound on the remaining length of the iterator.
     ///
     /// The common use case for the estimate is pre-allocating space to store the results.
-    #[cfg(not(stage0))]
     fn size_hint(&self) -> (Option<uint>, Option<uint>) { (None, None) }
 }
 
@@ -610,7 +609,6 @@ impl<A, T: Iterator<A>, U: Iterator<A>> Iterator<A> for ChainIterator<A, T, U> {
     }
 
     #[inline]
-    #[cfg(not(stage0))]
     fn size_hint(&self) -> (Option<uint>, Option<uint>) {
         let (a_lower, a_upper) = self.a.size_hint();
         let (b_lower, b_upper) = self.b.size_hint();
@@ -664,7 +662,6 @@ impl<'self, A, B, T: Iterator<A>> Iterator<B> for MapIterator<'self, A, B, T> {
     }
 
     #[inline]
-    #[cfg(not(stage0))]
     fn size_hint(&self) -> (Option<uint>, Option<uint>) {
         self.iter.size_hint()
     }
@@ -690,7 +687,6 @@ impl<'self, A, T: Iterator<A>> Iterator<A> for FilterIterator<'self, A, T> {
     }
 
     #[inline]
-    #[cfg(not(stage0))]
     fn size_hint(&self) -> (Option<uint>, Option<uint>) {
         let (_, upper) = self.iter.size_hint();
         (None, upper) // can't know a lower bound, due to the predicate
@@ -716,7 +712,6 @@ impl<'self, A, B, T: Iterator<A>> Iterator<B> for FilterMapIterator<'self, A, B,
     }
 
     #[inline]
-    #[cfg(not(stage0))]
     fn size_hint(&self) -> (Option<uint>, Option<uint>) {
         let (_, upper) = self.iter.size_hint();
         (None, upper) // can't know a lower bound, due to the predicate

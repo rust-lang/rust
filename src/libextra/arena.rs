@@ -41,29 +41,20 @@ use list::{MutList, MutCons, MutNil};
 use core::at_vec;
 use core::cast::{transmute, transmute_mut, transmute_mut_region};
 use core::cast;
-use core::libc::size_t;
 use core::ptr;
-use core::sys::TypeDesc;
 use core::sys;
 use core::uint;
 use core::vec;
 use core::unstable::intrinsics;
+use core::unstable::intrinsics::{TyDesc};
 
-pub mod rustrt {
-    use core::libc::size_t;
-    use core::sys::TypeDesc;
+#[cfg(not(stage0))]
+use core::unstable::intrinsics::{get_tydesc};
 
-    pub extern {
-        #[rust_stack]
-        unsafe fn rust_call_tydesc_glue(root: *u8,
-                                        tydesc: *TypeDesc,
-                                        field: size_t);
-    }
+#[cfg(stage0)]
+unsafe fn get_tydesc<T>() -> *TyDesc {
+    intrinsics::get_tydesc::<T>() as *TyDesc
 }
-
-// This probably belongs somewhere else. Needs to be kept in sync with
-// changes to glue...
-static tydesc_drop_glue_index: size_t = 3 as size_t;
 
 // The way arena uses arrays is really deeply awful. The arrays are
 // allocated, and have capacities reserved, but the fill for the array
@@ -125,6 +116,19 @@ fn round_up_to(base: uint, align: uint) -> uint {
     (base + (align - 1)) & !(align - 1)
 }
 
+#[inline]
+#[cfg(not(stage0))]
+unsafe fn call_drop_glue(tydesc: *TyDesc, data: *i8) {
+    // This function should be inlined when stage0 is gone
+    ((*tydesc).drop_glue)(data);
+}
+
+#[inline]
+#[cfg(stage0)]
+unsafe fn call_drop_glue(tydesc: *TyDesc, data: *i8) {
+    ((*tydesc).drop_glue)(0 as **TyDesc, data);
+}
+
 // Walk down a chunk, running the destructors for any objects stored
 // in it.
 unsafe fn destroy_chunk(chunk: &Chunk) {
@@ -137,19 +141,18 @@ unsafe fn destroy_chunk(chunk: &Chunk) {
         let (tydesc, is_done) = un_bitpack_tydesc_ptr(*tydesc_data);
         let (size, align) = ((*tydesc).size, (*tydesc).align);
 
-        let after_tydesc = idx + sys::size_of::<*TypeDesc>();
+        let after_tydesc = idx + sys::size_of::<*TyDesc>();
 
         let start = round_up_to(after_tydesc, align);
 
         //debug!("freeing object: idx = %u, size = %u, align = %u, done = %b",
         //       start, size, align, is_done);
         if is_done {
-            rustrt::rust_call_tydesc_glue(
-                ptr::offset(buf, start), tydesc, tydesc_drop_glue_index);
+            call_drop_glue(tydesc, ptr::offset(buf, start) as *i8);
         }
 
         // Find where the next tydesc lives
-        idx = round_up_to(start + size, sys::pref_align_of::<*TypeDesc>());
+        idx = round_up_to(start + size, sys::pref_align_of::<*TyDesc>());
     }
 }
 
@@ -158,12 +161,12 @@ unsafe fn destroy_chunk(chunk: &Chunk) {
 // is necessary in order to properly do cleanup if a failure occurs
 // during an initializer.
 #[inline]
-unsafe fn bitpack_tydesc_ptr(p: *TypeDesc, is_done: bool) -> uint {
+unsafe fn bitpack_tydesc_ptr(p: *TyDesc, is_done: bool) -> uint {
     let p_bits: uint = transmute(p);
     p_bits | (is_done as uint)
 }
 #[inline]
-unsafe fn un_bitpack_tydesc_ptr(p: uint) -> (*TypeDesc, bool) {
+unsafe fn un_bitpack_tydesc_ptr(p: uint) -> (*TyDesc, bool) {
     (transmute(p & !1), p & 1 == 1)
 }
 
@@ -203,7 +206,7 @@ impl Arena {
     #[inline]
     fn alloc_pod<'a, T>(&'a mut self, op: &fn() -> T) -> &'a T {
         unsafe {
-            let tydesc = sys::get_type_desc::<T>();
+            let tydesc = get_tydesc::<T>();
             let ptr = self.alloc_pod_inner((*tydesc).size, (*tydesc).align);
             let ptr: *mut T = transmute(ptr);
             intrinsics::move_val_init(&mut (*ptr), op());
@@ -231,13 +234,13 @@ impl Arena {
             let head = transmute_mut_region(&mut self.head);
 
             let tydesc_start = head.fill;
-            let after_tydesc = head.fill + sys::size_of::<*TypeDesc>();
+            let after_tydesc = head.fill + sys::size_of::<*TyDesc>();
             let start = round_up_to(after_tydesc, align);
             let end = start + n_bytes;
             if end > at_vec::capacity(head.data) {
                 return self.alloc_nonpod_grow(n_bytes, align);
             }
-            head.fill = round_up_to(end, sys::pref_align_of::<*TypeDesc>());
+            head.fill = round_up_to(end, sys::pref_align_of::<*TyDesc>());
 
             //debug!("idx = %u, size = %u, align = %u, fill = %u",
             //       start, n_bytes, align, head.fill);
@@ -250,7 +253,7 @@ impl Arena {
     #[inline]
     fn alloc_nonpod<'a, T>(&'a mut self, op: &fn() -> T) -> &'a T {
         unsafe {
-            let tydesc = sys::get_type_desc::<T>();
+            let tydesc = get_tydesc::<T>();
             let (ty_ptr, ptr) =
                 self.alloc_nonpod_inner((*tydesc).size, (*tydesc).align);
             let ty_ptr: *mut uint = transmute(ty_ptr);

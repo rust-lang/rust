@@ -31,7 +31,10 @@ trait map<T> {
 impl<T> map<T> for ~[T] {
     fn map<U:Copy>(&self, f: &fn(&T) -> U) -> ~[U] {
         let mut r = ~[];
-        for std::vec::each(*self) |x| { r += ~[f(x)]; }
+        // FIXME: #7355 generates bad code with Iterator
+        for std::uint::range(0, self.len()) |i| {
+            r += ~[f(&self[i])];
+        }
         r
     }
 }

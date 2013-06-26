@@ -458,8 +458,11 @@ pub fn print_foreign_item(s: @ps, item: @ast::foreign_item) {
         word(s.s, ";");
         end(s); // end the outer fn box
       }
-      ast::foreign_item_const(t) => {
+      ast::foreign_item_static(t, m) => {
         head(s, "static");
+        if m {
+            word_space(s, "mut");
+        }
         print_ident(s, item.ident);
         word_space(s, ":");
         print_type(s, t);
@@ -477,8 +480,11 @@ pub fn print_item(s: @ps, item: @ast::item) {
     let ann_node = node_item(s, item);
     (s.ann.pre)(ann_node);
     match item.node {
-      ast::item_const(ty, expr) => {
+      ast::item_static(ty, m, expr) => {
         head(s, visibility_qualified(item.vis, "static"));
+        if m == ast::m_mutbl {
+            word_space(s, "mut");
+        }
         print_ident(s, item.ident);
         word_space(s, ":");
         print_type(s, ty);
@@ -1737,7 +1743,7 @@ pub fn print_bounds(s: @ps, bounds: @OptVec<ast::TyParamBound>) {
     if !bounds.is_empty() {
         word(s.s, ":");
         let mut first = true;
-        for bounds.each |bound| {
+        for bounds.iter().advance |bound| {
             nbsp(s);
             if first {
                 first = false;

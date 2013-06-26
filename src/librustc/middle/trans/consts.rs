@@ -164,9 +164,9 @@ pub fn get_const_val(cx: @mut CrateContext, mut def_id: ast::def_id) -> ValueRef
         }
         match cx.tcx.items.get_copy(&def_id.node) {
             ast_map::node_item(@ast::item {
-                node: ast::item_const(_, subexpr), _
+                node: ast::item_static(_, ast::m_imm, _), _
             }, _) => {
-                trans_const(cx, subexpr, def_id.node);
+                trans_const(cx, ast::m_imm, def_id.node);
             }
             _ => cx.tcx.sess.bug("expected a const to be an item")
         }
@@ -538,7 +538,7 @@ fn const_expr_unadjusted(cx: @mut CrateContext, e: @ast::expr) -> ValueRef {
                         base::get_item_val(cx, def_id.node)
                     }
                 }
-                Some(&ast::def_const(def_id)) => {
+                Some(&ast::def_static(def_id, false)) => {
                     get_const_val(cx, def_id)
                 }
                 Some(&ast::def_variant(enum_did, variant_did)) => {
@@ -587,7 +587,7 @@ fn const_expr_unadjusted(cx: @mut CrateContext, e: @ast::expr) -> ValueRef {
     }
 }
 
-pub fn trans_const(ccx: @mut CrateContext, _e: @ast::expr, id: ast::node_id) {
+pub fn trans_const(ccx: @mut CrateContext, m: ast::mutability, id: ast::node_id) {
     unsafe {
         let _icx = push_ctxt("trans_const");
         let g = base::get_item_val(ccx, id);
@@ -595,6 +595,8 @@ pub fn trans_const(ccx: @mut CrateContext, _e: @ast::expr, id: ast::node_id) {
         // constant's initializer to determine its LLVM type.
         let v = ccx.const_values.get_copy(&id);
         llvm::LLVMSetInitializer(g, v);
-        llvm::LLVMSetGlobalConstant(g, True);
+        if m != ast::m_mutbl {
+            llvm::LLVMSetGlobalConstant(g, True);
+        }
     }
 }

@@ -62,54 +62,15 @@ use syntax::opt_vec::OptVec;
 use syntax::opt_vec;
 
 pub fn collect_item_types(ccx: @mut CrateCtxt, crate: @ast::crate) {
-
-    // FIXME (#2592): hooking into the "intrinsic" root module is crude.
-    // There ought to be a better approach. Attributes?
-
-    for crate.node.module.items.iter().advance |crate_item| {
-        if crate_item.ident
-            == ::syntax::parse::token::special_idents::intrinsic {
-
-            match crate_item.node {
-              ast::item_mod(ref m) => {
-                for m.items.iter().advance |intrinsic_item| {
-                    let def_id = ast::def_id { crate: ast::local_crate,
-                                               node: intrinsic_item.id };
-                    let substs = substs {
-                        self_r: None,
-                        self_ty: None,
-                        tps: ~[]
-                    };
-
-                    match intrinsic_item.node {
-                      ast::item_trait(*) => {
-                          let tref = @ty::TraitRef {def_id: def_id,
-                                                    substs: substs};
-                          ccx.tcx.intrinsic_traits.insert
-                              (intrinsic_item.ident, tref);
-                      }
-
-                      ast::item_enum(*) => {
-                        let ty = ty::mk_enum(ccx.tcx, def_id, substs);
-                        ccx.tcx.intrinsic_defs.insert
-                            (intrinsic_item.ident, (def_id, ty));
-                      }
-
-                      ast::item_struct(*) => {
-                        let ty = ty::mk_struct(ccx.tcx, def_id, substs);
-                        ccx.tcx.intrinsic_defs.insert
-                            (intrinsic_item.ident, (def_id, ty));
-                      }
-
-                      _ => {}
-                    }
-                }
-              }
-              _ => { }
-            }
-            break;
-        }
+    fn collect_intrinsic_type(ccx: @mut CrateCtxt,
+                              lang_item: ast::def_id) {
+        let ty::ty_param_bounds_and_ty { ty: ty, _ } =
+            ccx.get_item_ty(lang_item);
+        ccx.tcx.intrinsic_defs.insert(lang_item, ty);
     }
+
+    collect_intrinsic_type(ccx, ccx.tcx.lang_items.ty_desc());
+    collect_intrinsic_type(ccx, ccx.tcx.lang_items.opaque());
 
     visit::visit_crate(
         crate, ((),
@@ -814,7 +775,7 @@ pub fn ensure_no_ty_param_bounds(ccx: &CrateCtxt,
                                  span: span,
                                  generics: &ast::Generics,
                                  thing: &'static str) {
-    for generics.ty_params.each |ty_param| {
+    for generics.ty_params.iter().advance |ty_param| {
         if ty_param.bounds.len() > 0 {
             ccx.tcx.sess.span_err(
                 span,
@@ -1060,7 +1021,7 @@ pub fn ty_of_item(ccx: &CrateCtxt, it: @ast::item)
     }
     let rp = tcx.region_paramd_items.find(&it.id).map_consume(|x| *x);
     match it.node {
-      ast::item_const(t, _) => {
+      ast::item_static(t, _, _) => {
         let typ = ccx.to_ty(&empty_rscope, t);
         let tpt = no_params(typ);
         tcx.tcache.insert(local_def(it.id), tpt);
@@ -1153,7 +1114,7 @@ pub fn ty_of_foreign_item(ccx: &CrateCtxt,
                                   generics,
                                   abis)
         }
-        ast::foreign_item_const(t) => {
+        ast::foreign_item_static(t, _) => {
             ty::ty_param_bounds_and_ty {
                 generics: ty::Generics {
                     type_param_defs: @~[],
@@ -1211,7 +1172,7 @@ pub fn ty_generics(ccx: &CrateCtxt,
             builtin_bounds: ty::EmptyBuiltinBounds(),
             trait_bounds: ~[]
         };
-        for ast_bounds.each |ast_bound| {
+        for ast_bounds.iter().advance |ast_bound| {
             match *ast_bound {
                 TraitTyParamBound(b) => {
                     let ty = ty::mk_param(ccx.tcx, param_ty.idx, param_ty.def_id);

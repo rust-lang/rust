@@ -96,7 +96,7 @@ impl Program {
 
         code.push_str("fn main() {\n");
         // It's easy to initialize things if we don't run things...
-        for self.local_vars.each |name, var| {
+        for self.local_vars.iter().advance |(name, var)| {
             let mt = var.mt();
             code.push_str(fmt!("let%s %s: %s = fail!();\n", mt, *name, var.ty));
             var.alter(*name, &mut code);
@@ -149,7 +149,7 @@ impl Program {
 
         // Using this __tls_map handle, deserialize each variable binding that
         // we know about
-        for self.local_vars.each |name, var| {
+        for self.local_vars.iter().advance |(name, var)| {
             let mt = var.mt();
             code.push_str(fmt!("let%s %s: %s = {
                 let data = __tls_map.get_copy(&~\"%s\");
@@ -175,7 +175,7 @@ impl Program {
 
         // After the input code is run, we can re-serialize everything back out
         // into tls map (to be read later on by this task)
-        for self.local_vars.each |name, var| {
+        for self.local_vars.iter().advance |(name, var)| {
             code.push_str(fmt!("{
                 let local: %s = %s;
                 let bytes = do ::std::io::with_bytes_writer |io| {
@@ -237,7 +237,7 @@ impl Program {
     /// program starts
     pub fn set_cache(&self) {
         let map = @mut HashMap::new();
-        for self.local_vars.each |name, value| {
+        for self.local_vars.iter().advance |(name, value)| {
             map.insert(copy *name, @copy value.data);
         }
         unsafe {

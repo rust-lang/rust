@@ -7,6 +7,8 @@ debug_tydesc
 debug_get_stk_seg
 debug_abi_1
 debug_abi_2
+debug_static_mut
+debug_static_mut_check_four
 get_task_id
 get_time
 rust_tzset
@@ -174,7 +176,6 @@ rust_set_task_local_data
 rust_task_local_data_atexit
 rust_task_ref
 rust_task_deref
-rust_call_tydesc_glue
 tdefl_compress_mem_to_heap
 tinfl_decompress_mem_to_heap
 rust_gc_metadata

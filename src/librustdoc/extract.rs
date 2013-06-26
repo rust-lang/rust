@@ -102,7 +102,7 @@ fn moddoc_from_mod(
                     fndoc_from_fn(ItemDoc)
                 ))
               }
-              ast::item_const(_, _) => {
+              ast::item_static(*) => {
                 Some(doc::ConstTag(
                     constdoc_from_const(ItemDoc)
                 ))
@@ -150,7 +150,7 @@ fn nmoddoc_from_mod(
           ast::foreign_item_fn(*) => {
             fns.push(fndoc_from_fn(ItemDoc));
           }
-          ast::foreign_item_const(*) => {} // XXX: Not implemented.
+          ast::foreign_item_static(*) => {} // XXX: Not implemented.
         }
     }
     doc::NmodDoc {

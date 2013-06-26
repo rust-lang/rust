@@ -148,7 +148,7 @@ fn visit_trait_ref<E: Copy>(tref: @ast::trait_ref, (e, v): (E, vt<E>)) {
 
 pub fn visit_item<E: Copy>(i: @item, (e, v): (E, vt<E>)) {
     match i.node {
-        item_const(t, ex) => {
+        item_static(t, _, ex) => {
             (v.visit_ty)(t, (copy e, v));
             (v.visit_expr)(ex, (copy e, v));
         }
@@ -326,7 +326,7 @@ pub fn visit_foreign_item<E: Copy>(ni: @foreign_item, (e, v): (E, vt<E>)) {
             visit_fn_decl(fd, (copy e, v));
             (v.visit_generics)(generics, (e, v));
         }
-        foreign_item_const(t) => {
+        foreign_item_static(t, _) => {
             (v.visit_ty)(t, (e, v));
         }
     }
@@ -334,7 +334,7 @@ pub fn visit_foreign_item<E: Copy>(ni: @foreign_item, (e, v): (E, vt<E>)) {
 
 pub fn visit_ty_param_bounds<E: Copy>(bounds: &OptVec<TyParamBound>,
                                       (e, v): (E, vt<E>)) {
-    for bounds.each |bound| {
+    for bounds.iter().advance |bound| {
         match *bound {
             TraitTyParamBound(ty) => visit_trait_ref(ty, (copy e, v)),
             RegionTyParamBound => {}
@@ -343,7 +343,7 @@ pub fn visit_ty_param_bounds<E: Copy>(bounds: &OptVec<TyParamBound>,
 }
 
 pub fn visit_generics<E: Copy>(generics: &Generics, (e, v): (E, vt<E>)) {
-    for generics.ty_params.each |tp| {
+    for generics.ty_params.iter().advance |tp| {
         visit_ty_param_bounds(tp.bounds, (copy e, v));
     }
 }

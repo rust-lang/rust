@@ -79,7 +79,7 @@ fn run(args: &[~str]) {
         server(&from_parent, &to_parent);
     }
 
-    for vec::each(worker_results) |r| {
+    for worker_results.iter().advance |r| {
         r.recv();
     }
 

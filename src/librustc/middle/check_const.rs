@@ -43,7 +43,7 @@ pub fn check_item(sess: Session,
                   (_is_const, v): (bool,
                                    visit::vt<bool>)) {
     match it.node {
-      item_const(_, ex) => {
+      item_static(_, _, ex) => {
         (v.visit_expr)(ex, (true, v));
         check_item_recursion(sess, ast_map, def_map, it);
       }
@@ -124,7 +124,7 @@ pub fn check_expr(sess: Session,
                              items without type parameters");
             }
             match def_map.find(&e.id) {
-              Some(&def_const(_)) |
+              Some(&def_static(*)) |
               Some(&def_fn(_, _)) |
               Some(&def_variant(_, _)) |
               Some(&def_struct(_)) => { }
@@ -236,7 +236,7 @@ pub fn check_item_recursion(sess: Session,
     fn visit_expr(e: @expr, (env, v): (env, visit::vt<env>)) {
         match e.node {
             expr_path(*) => match env.def_map.find(&e.id) {
-                Some(&def_const(def_id)) if ast_util::is_local(def_id) =>
+                Some(&def_static(def_id, _)) if ast_util::is_local(def_id) =>
                     match env.ast_map.get_copy(&def_id.node) {
                         ast_map::node_item(it, _) => {
                             (v.visit_item)(it, (env, v));

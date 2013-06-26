@@ -8,25 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use sys::{TypeDesc, size_of};
+use sys::{size_of};
 use libc::{c_void, size_t, uintptr_t};
 use c_malloc = libc::malloc;
 use c_free = libc::free;
 use managed::raw::{BoxHeaderRepr, BoxRepr};
 use cast::transmute;
-use unstable::intrinsics::{atomic_xadd,atomic_xsub};
+use unstable::intrinsics::{atomic_xadd,atomic_xsub,TyDesc};
 use ptr::null;
-use intrinsic::TyDesc;
 
-pub unsafe fn malloc(td: *TypeDesc, size: uint) -> *c_void {
+pub unsafe fn malloc(td: *TyDesc, size: uint) -> *c_void {
     assert!(td.is_not_null());
 
     let total_size = get_box_size(size, (*td).align);
     let p = c_malloc(total_size as size_t);
     assert!(p.is_not_null());
-
-    // FIXME #3475: Converting between our two different tydesc types
-    let td: *TyDesc = transmute(td);
 
     let box: &mut BoxRepr = transmute(p);
     box.header.ref_count = -1; // Exchange values not ref counted

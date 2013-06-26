@@ -21,7 +21,7 @@ use middle::ty;
 use middle::subst::Subst;
 use middle::typeck;
 use middle;
-use util::ppaux::{note_and_explain_region, bound_region_to_str, bound_region_ptr_to_str};
+use util::ppaux::{note_and_explain_region, bound_region_ptr_to_str};
 use util::ppaux::{trait_store_to_str, ty_to_str, vstore_to_str};
 use util::ppaux::{Repr, UserString};
 use util::common::{indenter};
@@ -44,7 +44,6 @@ use syntax::attr;
 use syntax::codemap::span;
 use syntax::codemap;
 use syntax::parse::token;
-use syntax::parse::token::special_idents;
 use syntax::{ast, ast_map};
 use syntax::opt_vec::OptVec;
 use syntax::opt_vec;
@@ -276,8 +275,7 @@ struct ctxt_ {
     trait_defs: @mut HashMap<def_id, @TraitDef>,
 
     items: ast_map::map,
-    intrinsic_defs: @mut HashMap<ast::ident, (ast::def_id, t)>,
-    intrinsic_traits: @mut HashMap<ast::ident, @TraitRef>,
+    intrinsic_defs: @mut HashMap<ast::def_id, t>,
     freevars: freevars::freevar_map,
     tcache: type_cache,
     rcache: creader_cache,
@@ -954,7 +952,6 @@ pub fn mk_ctxt(s: session::Session,
         node_type_substs: @mut HashMap::new(),
         trait_refs: @mut HashMap::new(),
         trait_defs: @mut HashMap::new(),
-        intrinsic_traits: @mut HashMap::new(),
         items: amap,
         intrinsic_defs: @mut HashMap::new(),
         freevars: freevars,
@@ -3269,7 +3266,7 @@ pub fn expr_kind(tcx: ctxt,
                 // Note: there is actually a good case to be made that
                 // def_args, particularly those of immediate type, ought to
                 // considered rvalues.
-                ast::def_const(*) |
+                ast::def_static(*) |
                 ast::def_binding(*) |
                 ast::def_upvar(*) |
                 ast::def_arg(*) |
@@ -3855,7 +3852,7 @@ pub fn item_path_str(cx: ctxt, id: ast::def_id) -> ~str {
 
 pub enum DtorKind {
     NoDtor,
-    TraitDtor(def_id)
+    TraitDtor(def_id, bool)
 }
 
 impl DtorKind {
@@ -3869,13 +3866,24 @@ impl DtorKind {
     pub fn is_present(&const self) -> bool {
         !self.is_not_present()
     }
+
+    pub fn has_drop_flag(&self) -> bool {
+        match self {
+            &NoDtor => false,
+            &TraitDtor(_, flag) => flag
+        }
+    }
 }
 
 /* If struct_id names a struct with a dtor, return Some(the dtor's id).
    Otherwise return none. */
 pub fn ty_dtor(cx: ctxt, struct_id: def_id) -> DtorKind {
     match cx.destructor_for_type.find(&struct_id) {
-        Some(&method_def_id) => TraitDtor(method_def_id),
+        Some(&method_def_id) => {
+            let flag = !has_attr(cx, struct_id, "no_drop_flag");
+
+            TraitDtor(method_def_id, flag)
+        }
         None => NoDtor,
     }
 }
@@ -4469,10 +4477,26 @@ pub fn get_impl_id(tcx: ctxt, trait_id: def_id, self_ty: t) -> def_id {
     }
 }
 
+pub fn get_tydesc_ty(tcx: ctxt) -> t {
+    let tydesc_lang_item = tcx.lang_items.ty_desc();
+    tcx.intrinsic_defs.find_copy(&tydesc_lang_item)
+        .expect("Failed to resolve TyDesc")
+}
+
+pub fn get_opaque_ty(tcx: ctxt) -> t {
+    let opaque_lang_item = tcx.lang_items.opaque();
+    tcx.intrinsic_defs.find_copy(&opaque_lang_item)
+        .expect("Failed to resolve Opaque")
+}
+
 pub fn visitor_object_ty(tcx: ctxt) -> (@TraitRef, t) {
-    let ty_visitor_name = special_idents::ty_visitor;
-    assert!(tcx.intrinsic_traits.contains_key(&ty_visitor_name));
-    let trait_ref = tcx.intrinsic_traits.get_copy(&ty_visitor_name);
+    let substs = substs {
+        self_r: None,
+        self_ty: None,
+        tps: ~[]
+    };
+    let trait_lang_item = tcx.lang_items.ty_visitor();
+    let trait_ref = @TraitRef { def_id: trait_lang_item, substs: substs };
     (trait_ref,
      mk_trait(tcx, trait_ref.def_id, copy trait_ref.substs,
               BoxTraitStore, ast::m_imm, EmptyBuiltinBounds()))

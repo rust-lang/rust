@@ -143,7 +143,7 @@ pub fn trans(bcx: block, expr: @ast::expr) -> Callee {
                 datum_callee(bcx, ref_expr)
             }
             ast::def_mod(*) | ast::def_foreign_mod(*) | ast::def_trait(*) |
-            ast::def_const(*) | ast::def_ty(*) | ast::def_prim_ty(*) |
+            ast::def_static(*) | ast::def_ty(*) | ast::def_prim_ty(*) |
             ast::def_use(*) | ast::def_typaram_binder(*) |
             ast::def_region(*) | ast::def_label(*) | ast::def_ty_param(*) |
             ast::def_self_ty(*) => {
@@ -704,11 +704,11 @@ pub fn trans_args(cx: block,
     // now that all arguments have been successfully built, we can revoke any
     // temporary cleanups, as they are only needed if argument construction
     // should fail (for example, cleanup of copy mode args).
-    for vec::each(temp_cleanups) |c| {
+    for temp_cleanups.iter().advance |c| {
         revoke_clean(bcx, *c)
     }
 
-    return bcx;
+    bcx
 }
 
 pub enum AutorefArg {

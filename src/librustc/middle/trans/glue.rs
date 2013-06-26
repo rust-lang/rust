@@ -232,7 +232,7 @@ pub fn lazily_emit_tydesc_glue(ccx: @mut CrateContext,
                                field: uint,
                                ti: @mut tydesc_info) {
     let _icx = push_ctxt("lazily_emit_tydesc_glue");
-    let llfnty = type_of_glue_fn(ccx);
+    let llfnty = Type::glue_fn();
 
     if lazily_emit_simplified_tydesc_glue(ccx, field, ti) {
         return;
@@ -338,9 +338,7 @@ pub fn call_tydesc_glue_full(bcx: block,
         }
     };
 
-    Call(bcx, llfn, [C_null(Type::nil().ptr_to()),
-                        C_null(bcx.ccx().tydesc_type.ptr_to().ptr_to()),
-                        llrawptr]);
+    Call(bcx, llfn, [C_null(Type::nil().ptr_to()), llrawptr]);
 }
 
 // See [Note-arg-mode]
@@ -406,13 +404,8 @@ pub fn make_free_glue(bcx: block, v: ValueRef, t: ty::t) {
     build_return(bcx);
 }
 
-pub fn trans_struct_drop(bcx: block,
-                         t: ty::t,
-                         v0: ValueRef,
-                         dtor_did: ast::def_id,
-                         class_did: ast::def_id,
-                         substs: &ty::substs)
-                      -> block {
+pub fn trans_struct_drop_flag(bcx: block, t: ty::t, v0: ValueRef, dtor_did: ast::def_id,
+                              class_did: ast::def_id, substs: &ty::substs) -> block {
     let repr = adt::represent_type(bcx.ccx(), t);
     let drop_flag = adt::trans_drop_flag_ptr(bcx, repr, v0);
     do with_cond(bcx, IsNotNull(bcx, Load(bcx, drop_flag))) |cx| {
@@ -454,6 +447,43 @@ pub fn trans_struct_drop(bcx: block,
     }
 }
 
+pub fn trans_struct_drop(mut bcx: block, t: ty::t, v0: ValueRef, dtor_did: ast::def_id,
+                         class_did: ast::def_id, substs: &ty::substs) -> block {
+    let repr = adt::represent_type(bcx.ccx(), t);
+
+    // Find and call the actual destructor
+    let dtor_addr = get_res_dtor(bcx.ccx(), dtor_did,
+                                 class_did, /*bad*/copy substs.tps);
+
+    // The second argument is the "self" argument for drop
+    let params = unsafe {
+        let ty = Type::from_ref(llvm::LLVMTypeOf(dtor_addr));
+        ty.element_type().func_params()
+    };
+
+    // Class dtors have no explicit args, so the params should
+    // just consist of the environment (self)
+    assert_eq!(params.len(), 1);
+
+    // Take a reference to the class (because it's using the Drop trait),
+    // do so now.
+    let llval = alloca(bcx, val_ty(v0));
+    Store(bcx, v0, llval);
+
+    let self_arg = PointerCast(bcx, llval, params[0]);
+    let args = ~[self_arg];
+
+    Call(bcx, dtor_addr, args);
+
+    // Drop the fields
+    let field_tys = ty::struct_fields(bcx.tcx(), class_did, substs);
+    for field_tys.iter().enumerate().advance |(i, fld)| {
+        let llfld_a = adt::trans_field_ptr(bcx, repr, v0, 0, i);
+        bcx = drop_ty(bcx, llfld_a, fld.mt.ty);
+    }
+
+    bcx
+}
 
 pub fn make_drop_glue(bcx: block, v0: ValueRef, t: ty::t) {
     // NB: v0 is an *alias* of type t here, not a direct value.
@@ -474,7 +504,10 @@ pub fn make_drop_glue(bcx: block, v0: ValueRef, t: ty::t) {
       ty::ty_struct(did, ref substs) => {
         let tcx = bcx.tcx();
         match ty::ty_dtor(tcx, did) {
-          ty::TraitDtor(dtor) => {
+          ty::TraitDtor(dtor, true) => {
+            trans_struct_drop_flag(bcx, t, v0, dtor, did, substs)
+          }
+          ty::TraitDtor(dtor, false) => {
             trans_struct_drop(bcx, t, v0, dtor, did, substs)
           }
           ty::NoDtor => {
@@ -594,6 +627,23 @@ pub fn make_take_glue(bcx: block, v: ValueRef, t: ty::t) {
       ty::ty_opaque_closure_ptr(ck) => {
         closure::make_opaque_cbox_take_glue(bcx, ck, v)
       }
+      ty::ty_struct(did, ref substs) => {
+        let tcx = bcx.tcx();
+        let bcx = iter_structural_ty(bcx, v, t, take_ty);
+
+        match ty::ty_dtor(tcx, did) {
+          ty::TraitDtor(dtor, false) => {
+            // Zero out the struct
+            unsafe {
+                let ty = Type::from_ref(llvm::LLVMTypeOf(v));
+                memzero(bcx, v, ty);
+            }
+
+          }
+          _ => { }
+        }
+        bcx
+      }
       _ if ty::type_is_structural(t) => {
         iter_structural_ty(bcx, v, t, take_ty)
       }
@@ -680,7 +730,7 @@ pub fn make_generic_glue_inner(ccx: @mut CrateContext,
 
     let bcx = top_scope_block(fcx, None);
     let lltop = bcx.llbb;
-    let rawptr0_arg = fcx.arg_pos(1u);
+    let rawptr0_arg = fcx.arg_pos(0u);
     let llrawptr0 = unsafe { llvm::LLVMGetParam(llfn, rawptr0_arg as c_uint) };
     let llty = type_of(ccx, t);
     let llrawptr0 = PointerCast(bcx, llrawptr0, llty.ptr_to());
@@ -715,7 +765,7 @@ pub fn emit_tydescs(ccx: &mut CrateContext) {
     let _icx = push_ctxt("emit_tydescs");
     // As of this point, allow no more tydescs to be created.
     ccx.finished_tydescs = true;
-    let glue_fn_ty = Type::generic_glue_fn(ccx);
+    let glue_fn_ty = Type::generic_glue_fn(ccx).ptr_to();
     let tyds = &mut ccx.tydescs;
     for tyds.each_value |&val| {
         let ti = val;
@@ -765,19 +815,13 @@ pub fn emit_tydescs(ccx: &mut CrateContext) {
               }
             };
 
-
-        let shape = C_null(Type::i8p());
-        let shape_tables = C_null(Type::i8p());
-
         let tydesc = C_named_struct(ccx.tydesc_type,
-                           [ti.size, // size
-                            ti.align, // align
-                            take_glue, // take_glue
-                            drop_glue, // drop_glue
-                            free_glue, // free_glue
-                            visit_glue, // visit_glue
-                            shape, // shape
-                            shape_tables]); // shape_tables
+                                    [ti.size, // size
+                                    ti.align, // align
+                                    take_glue, // take_glue
+                                    drop_glue, // drop_glue
+                                    free_glue, // free_glue
+                                    visit_glue]); // visit_glue
 
         unsafe {
             let gvar = ti.tydesc;
@@ -787,9 +831,4 @@ pub fn emit_tydescs(ccx: &mut CrateContext) {
 
         }
     };
-}
-
-fn type_of_glue_fn(ccx: &CrateContext) -> Type {
-    let tydescpp = ccx.tydesc_type.ptr_to().ptr_to();
-    Type::func([ Type::nil().ptr_to(), tydescpp, Type::i8p() ], &Type::void())
 }

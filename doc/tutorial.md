@@ -1552,13 +1552,6 @@ fn each(v: &[int], op: &fn(v: &int)) {
 }
 ~~~~
 
-As an aside, the reason we pass in a *pointer* to an integer rather
-than the integer itself is that this is how the actual `each()`
-function for vectors works. `vec::each` though is a
-[generic](#generics) function, so must be efficient to use for all
-types. Passing the elements by pointer avoids copying potentially
-large objects.
-
 As a caller, if we use a closure to provide the final operator
 argument, we can write it in a way that has a pleasant, block-like
 structure.
@@ -1616,6 +1609,9 @@ To enable `debug!` logging, set the RUST_LOG environment variable to the name of
 
 ## For loops
 
+> ***Note:*** The closure-based protocol used `for` loop is on the way out. The `for` loop will
+> use iterator objects in the future instead.
+
 The most common way to express iteration in Rust is with a `for`
 loop. Like `do`, `for` is a nice syntax for describing control flow
 with closures.  Additionally, within a `for` loop, `break`, `loop`,
@@ -1640,7 +1636,16 @@ fn each(v: &[int], op: &fn(v: &int) -> bool) -> bool {
 And using this function to iterate over a vector:
 
 ~~~~
-# use each = std::vec::each;
+# fn each(v: &[int], op: &fn(v: &int) -> bool) -> bool {
+#    let mut n = 0;
+#    while n < v.len() {
+#        if !op(&v[n]) {
+#            return false;
+#        }
+#        n += 1;
+#    }
+#    return true;
+# }
 each([2, 4, 8, 5, 16], |n| {
     if *n % 2 != 0 {
         println("found odd number!");
@@ -1656,7 +1661,16 @@ out of the loop, you just write `break`. To skip ahead
 to the next iteration, write `loop`.
 
 ~~~~
-# use each = std::vec::each;
+# fn each(v: &[int], op: &fn(v: &int) -> bool) -> bool {
+#    let mut n = 0;
+#    while n < v.len() {
+#        if !op(&v[n]) {
+#            return false;
+#        }
+#        n += 1;
+#    }
+#    return true;
+# }
 for each([2, 4, 8, 5, 16]) |n| {
     if *n % 2 != 0 {
         println("found odd number!");
@@ -1671,7 +1685,16 @@ normally allowed in closures, in a block that appears as the body of a
 the enclosing function, not just the loop body.
 
 ~~~~
-# use each = std::vec::each;
+# fn each(v: &[int], op: &fn(v: &int) -> bool) -> bool {
+#    let mut n = 0;
+#    while n < v.len() {
+#        if !op(&v[n]) {
+#            return false;
+#        }
+#        n += 1;
+#    }
+#    return true;
+# }
 fn contains(v: &[int], elt: int) -> bool {
     for each(v) |x| {
         if (*x == elt) { return true; }
@@ -1686,7 +1709,16 @@ In these situations it can be convenient to lean on Rust's
 argument patterns to bind `x` to the actual value, not the pointer.
 
 ~~~~
-# use each = std::vec::each;
+# fn each(v: &[int], op: &fn(v: &int) -> bool) -> bool {
+#    let mut n = 0;
+#    while n < v.len() {
+#        if !op(&v[n]) {
+#            return false;
+#        }
+#        n += 1;
+#    }
+#    return true;
+# }
 # fn contains(v: &[int], elt: int) -> bool {
     for each(v) |&x| {
         if (x == elt) { return true; }
@@ -1841,10 +1873,9 @@ vector consisting of the result of applying `function` to each element
 of `vector`:
 
 ~~~~
-# use std::vec;
 fn map<T, U>(vector: &[T], function: &fn(v: &T) -> U) -> ~[U] {
     let mut accumulator = ~[];
-    for vec::each(vector) |element| {
+    for vector.iter().advance |element| {
         accumulator.push(function(element));
     }
     return accumulator;

@@ -154,6 +154,16 @@ debug_abi_2(floats f) {
     return ff;
 }
 
+extern "C" int
+debug_static_mut;
+
+int debug_static_mut = 3;
+
+extern "C" void
+debug_static_mut_check_four() {
+    assert(debug_static_mut == 4);
+}
+
 /* Debug builtins for std::dbg. */
 
 static void
@@ -727,15 +737,6 @@ rust_task_ref(rust_task *task) {
 extern "C" void
 rust_task_deref(rust_task *task) {
     task->deref();
-}
-
-// Must call on rust stack.
-extern "C" CDECL void
-rust_call_tydesc_glue(void *root, size_t *tydesc, size_t glue_index) {
-    void (*glue_fn)(void *, void *, void *) =
-        (void (*)(void *, void *, void *))tydesc[glue_index];
-    if (glue_fn)
-        glue_fn(0, 0, root);
 }
 
 // Don't run on the Rust stack!
