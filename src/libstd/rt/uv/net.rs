@@ -37,7 +37,7 @@ pub fn ip4_as_uv_ip4<T>(addr: IpAddr, f: &fn(*sockaddr_in) -> T) -> T {
                 }
             }
         }
-        _ => fail!() // NOTE ipv6
+        _ => fail!() // TODO ipv6
     }
 }
 
@@ -279,7 +279,7 @@ impl UdpWatcher {
                     }
                 }
             }
-            _ => fail!() // NOTE ipv6
+            _ => fail!() // TODO ipv6
         }
     }
 
@@ -299,7 +299,7 @@ impl UdpWatcher {
             return (*alloc_cb)(suggested_size as uint);
         }
 
-        /* NOTE the socket address should actually be a pointer to
+        /* TODO the socket address should actually be a pointer to
            either a sockaddr_in or sockaddr_in6.
            In libuv, the udp_recv callback takes a struct *sockaddr */
         extern fn recv_cb(handle: *uvll::uv_udp_t, nread: ssize_t, buf: Buf,
@@ -336,7 +336,7 @@ impl UdpWatcher {
                     }
                 }
             }
-            _ => fail!() // NOTE ipv6
+            _ => fail!() // TODO ipv6
         }
 
         extern fn send_cb(req: *uvll::uv_udp_send_t, status: c_int) {
