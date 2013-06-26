@@ -396,7 +396,8 @@ impl ReachableContext {
     // this properly would result in the necessity of computing *type*
     // reachability, which might result in a compile time loss.
     fn mark_destructors_reachable(&self) {
-        for self.tcx.destructor_for_type.each |_, destructor_def_id| {
+        for self.tcx.destructor_for_type.iter().advance
+                |(_, destructor_def_id)| {
             if destructor_def_id.crate == local_crate {
                 self.reachable_symbols.insert(destructor_def_id.node);
             }

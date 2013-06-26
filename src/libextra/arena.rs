@@ -229,15 +229,25 @@ impl Arena {
     fn alloc_nonpod_inner(&mut self, n_bytes: uint, align: uint)
                           -> (*u8, *u8) {
         unsafe {
-            let head = transmute_mut_region(&mut self.head);
+            let start;
+            let end;
+            let tydesc_start;
+            let after_tydesc;
 
-            let tydesc_start = head.fill;
-            let after_tydesc = head.fill + sys::size_of::<*TyDesc>();
-            let start = round_up_to(after_tydesc, align);
-            let end = start + n_bytes;
+            {
+                let head = transmute_mut_region(&mut self.head);
+
+                tydesc_start = head.fill;
+                after_tydesc = head.fill + sys::size_of::<*TyDesc>();
+                start = round_up_to(after_tydesc, align);
+                end = start + n_bytes;
+            }
+
             if end > at_vec::capacity(self.head.data) {
                 return self.alloc_nonpod_grow(n_bytes, align);
             }
+
+            let head = transmute_mut_region(&mut self.head);
             head.fill = round_up_to(end, sys::pref_align_of::<*TyDesc>());
 
             //debug!("idx = %u, size = %u, align = %u, fill = %u",
