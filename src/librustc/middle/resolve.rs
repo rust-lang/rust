@@ -4706,25 +4706,13 @@ impl Resolver {
         return NoNameDefinition;
     }
 
-    pub fn intern_module_part_of_path(@mut self, path: &Path) -> ~[Ident] {
-        let mut module_path_idents = ~[];
-        for (index, segment) in path.segments.iter().enumerate() {
-            if index == path.segments.len() - 1 {
-                break;
-            }
-
-            module_path_idents.push(segment.identifier);
-        }
-
-        return module_path_idents;
-    }
-
+    // resolve a "module-relative" path, e.g. a::b::c
     pub fn resolve_module_relative_path(@mut self,
                                         path: &Path,
                                         xray: XrayFlag,
                                         namespace: Namespace)
                                         -> Option<Def> {
-        let module_path_idents = self.intern_module_part_of_path(path);
+        let module_path_idents = path.segments.init().map(|ps| ps.identifier);
 
         let containing_module;
         match self.resolve_module_path(self.current_module,
@@ -4790,7 +4778,7 @@ impl Resolver {
                                        xray: XrayFlag,
                                        namespace: Namespace)
                                        -> Option<Def> {
-        let module_path_idents = self.intern_module_part_of_path(path);
+        let module_path_idents = path.segments.init().map(|ps| ps.identifier);
 
         let root_module = self.graph_root.get_module();
 
