@@ -225,6 +225,26 @@ pub trait IteratorUtil<A> {
     fn scan<'r, St, B>(self, initial_state: St, f: &'r fn(&mut St, A) -> Option<B>)
         -> ScanIterator<'r, A, B, Self, St>;
 
+    /// Creates an iterator that maps each element to an iterator,
+    /// and yields the elements of the produced iterators
+    ///
+    /// # Example
+    ///
+    /// ~~~ {.rust}
+    /// let xs = [2u, 3];
+    /// let ys = [0u, 1, 0, 1, 2];
+    /// let mut it = xs.iter().flat_map_(|&x| Counter::new(0u, 1).take_(x));
+    /// // Check that `it` has the same elements as `ys`
+    /// let mut i = 0;
+    /// for it.advance |x: uint| {
+    ///     assert_eq!(x, ys[i]);
+    ///     i += 1;
+    /// }
+    /// ~~~
+    // FIXME: #5898: should be called `flat_map`
+    fn flat_map_<'r, B, U: Iterator<B>>(self, f: &'r fn(A) -> U)
+        -> FlatMapIterator<'r, A, B, Self, U>;
+
     /// An adaptation of an external iterator to the for-loop protocol of rust.
     ///
     /// # Example
@@ -394,6 +414,12 @@ impl<A, T: Iterator<A>> IteratorUtil<A> for T {
     fn scan<'r, St, B>(self, initial_state: St, f: &'r fn(&mut St, A) -> Option<B>)
         -> ScanIterator<'r, A, B, T, St> {
         ScanIterator{iter: self, f: f, state: initial_state}
+    }
+
+    #[inline]
+    fn flat_map_<'r, B, U: Iterator<B>>(self, f: &'r fn(A) -> U)
+        -> FlatMapIterator<'r, A, B, T, U> {
+        FlatMapIterator{iter: self, f: f, subiter: None }
     }
 
     /// A shim implementing the `for` loop iteration protocol for iterator objects
@@ -868,6 +894,34 @@ impl<'self, A, B, T: Iterator<A>, St> Iterator<B> for ScanIterator<'self, A, B, 
     }
 }
 
+/// An iterator that maps each element to an iterator,
+/// and yields the elements of the produced iterators
+///
+// FIXME #6967: Dummy B parameter to get around type inference bug
+pub struct FlatMapIterator<'self, A, B, T, U> {
+    priv iter: T,
+    priv f: &'self fn(A) -> U,
+    priv subiter: Option<U>,
+}
+
+impl<'self, A, T: Iterator<A>, B, U: Iterator<B>> Iterator<B> for
+    FlatMapIterator<'self, A, B, T, U> {
+    #[inline]
+    fn next(&mut self) -> Option<B> {
+        loop {
+            for self.subiter.mut_iter().advance |inner| {
+                for inner.advance |x| {
+                    return Some(x)
+                }
+            }
+            match self.iter.next().map_consume(self.f) {
+                None => return None,
+                next => self.subiter = next,
+            }
+        }
+    }
+}
+
 /// An iterator which just modifies the contained state throughout iteration.
 pub struct UnfoldrIterator<'self, A, St> {
     priv f: &'self fn(&mut St) -> Option<A>,
@@ -1040,6 +1094,19 @@ mod tests {
         let mut it = xs.iter().scan(0, add);
         let mut i = 0;
         for it.advance |x| {
+            assert_eq!(x, ys[i]);
+            i += 1;
+        }
+        assert_eq!(i, ys.len());
+    }
+
+    #[test]
+    fn test_iterator_flat_map() {
+        let xs = [0u, 3, 6];
+        let ys = [0u, 1, 2, 3, 4, 5, 6, 7, 8];
+        let mut it = xs.iter().flat_map_(|&x| Counter::new(x, 1).take_(3));
+        let mut i = 0;
+        for it.advance |x: uint| {
             assert_eq!(x, ys[i]);
             i += 1;
         }
