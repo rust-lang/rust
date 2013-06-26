@@ -8,6 +8,39 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+/*!
+# Debug Info Module
+
+This module serves the purpose of generating debug symbols. We use LLVM's
+[source level debugging](http://llvm.org/docs/SourceLevelDebugging.html) features for generating
+the debug information. The general principle is this:
+
+Given the right metadata in the LLVM IR, the LLVM code generator is able to create DWARF debug
+symbols for the given code. The [metadata](http://llvm.org/docs/LangRef.html#metadata-type) is
+structured much like DWARF *debugging information entries* (DIE), representing type information
+such as datatype layout, function signatures, block layout, variable location and scope information,
+etc. It is the purpose of this module to generate correct metadata and insert it into the LLVM IR.
+
+As the exact format of metadata trees may change between different LLVM versions, we now use LLVM
+[DIBuilder](http://llvm.org/docs/doxygen/html/classllvm_1_1DIBuilder.html) to create metadata
+where possible. This will hopefully ease the adaption of this module to future LLVM versions.
+
+The public API of the module is a set of functions that will insert the correct metadata into the
+LLVM IR when called with the right parameters. The module is thus driven from an outside client with
+functions like `debuginfo::create_local_var(bcx: block, local: @ast::local)`.
+
+Internally the module will try to reuse already created metadata by utilizing a cache. All private
+state used by the module is stored within a DebugContext struct, which in turn is contained in the
+CrateContext.
+
+
+This file consists of three conceptual sections:
+1. The public interface of the module
+2. Module-internal metadata creation functions
+3. Minor utility functions
+
+*/
+
 use core::prelude::*;
 
 use driver::session;
@@ -34,20 +67,8 @@ use syntax::{ast, codemap, ast_util, ast_map};
 
 static DW_LANG_RUST: int = 0x9000;
 
-static CompileUnitTag: int = 17;
-static FileDescriptorTag: int = 41;
-static SubprogramTag: int = 46;
-static SubroutineTag: int = 21;
-static BasicTypeDescriptorTag: int = 36;
 static AutoVariableTag: int = 256;
 static ArgVariableTag: int = 257;
-static ReturnVariableTag: int = 258;
-static LexicalBlockTag: int = 11;
-static PointerTypeTag: int = 15;
-static StructureTypeTag: int = 19;
-static MemberTag: int = 13;
-static ArrayTypeTag: int = 1;
-static SubrangeTag: int = 33;
 
 static DW_ATE_boolean: int = 0x02;
 static DW_ATE_float: int = 0x04;
@@ -56,8 +77,14 @@ static DW_ATE_signed_char: int = 0x06;
 static DW_ATE_unsigned: int = 0x07;
 static DW_ATE_unsigned_char: int = 0x08;
 
-////////////////
 
+
+
+//=-------------------------------------------------------------------------------------------------
+//  Public Interface of debuginfo module
+//=-------------------------------------------------------------------------------------------------
+
+/// A context object for maintaining all state needed by the debuginfo module.
 pub struct DebugContext {
     names: namegen,
     crate_file: ~str,
@@ -90,16 +117,6 @@ impl DebugContext {
     }
 }
 
-#[inline]
-fn dbg_cx<'a>(cx: &'a mut CrateContext) -> &'a mut DebugContext {
-    cx.dbg_cx.get_mut_ref()
-}
-
-#[inline]
-fn DIB(cx: &CrateContext) -> DIBuilderRef {
-    cx.dbg_cx.get_ref().builder
-}
-
 /// Create any deferred debug metadata nodes
 pub fn finalize(cx: @mut CrateContext) {
     debug!("finalize");
@@ -109,6 +126,207 @@ pub fn finalize(cx: @mut CrateContext) {
         llvm::LLVMDIBuilderDispose(DIB(cx));
     };
 }
+
+/// Creates debug information for the given local variable.
+///
+/// Adds the created metadata nodes directly to the crate's IR.
+/// The return value should be ignored if called from outside of the debuginfo module.
+pub fn create_local_var(bcx: block, local: @ast::local) -> DIVariable {
+    let cx = bcx.ccx();
+
+    let ident = match local.node.pat.node {
+      ast::pat_ident(_, pth, _) => ast_util::path_to_ident(pth),
+      // FIXME this should be handled (#2533)
+      _ => {
+        bcx.sess().span_note(local.span, "debuginfo for pattern bindings NYI");
+        return ptr::null();
+      }
+    };
+    let name: &str = cx.sess.str_of(ident);
+    debug!("create_local_var: %s", name);
+
+    let loc = span_start(cx, local.span);
+    let ty = node_id_type(bcx, local.node.id);
+    let tymd = create_ty(cx, ty, local.node.ty.span);
+    let filemd = create_file(cx, loc.file.name);
+    let context = match bcx.parent {
+        None => create_function(bcx.fcx),
+        Some(_) => create_block(bcx)
+    };
+
+    let var_md = do as_c_str(name) |name| { unsafe {
+        llvm::LLVMDIBuilderCreateLocalVariable(
+            DIB(cx), AutoVariableTag as u32,
+            context, name, filemd,
+            loc.line as c_uint, tymd, false, 0, 0)
+        }};
+
+    // FIXME(#6814) Should use `pat_util::pat_bindings` for pats like (a, b) etc
+    let llptr = match bcx.fcx.lllocals.find_copy(&local.node.pat.id) {
+        Some(v) => v,
+        None => {
+            bcx.tcx().sess.span_bug(
+                local.span,
+                fmt!("No entry in lllocals table for %?", local.node.id));
+        }
+    };
+
+    set_debug_location(cx, create_block(bcx), loc.line, loc.col.to_uint());
+    unsafe {
+        let instr = llvm::LLVMDIBuilderInsertDeclareAtEnd(DIB(cx), llptr, var_md, bcx.llbb);
+        llvm::LLVMSetInstDebugLocation(trans::build::B(bcx), instr);
+    }
+
+    return var_md;
+}
+
+/// Creates debug information for the given function argument.
+///
+/// Adds the created metadata nodes directly to the crate's IR.
+/// The return value should be ignored if called from outside of the debuginfo module.
+pub fn create_arg(bcx: block, arg: ast::arg, span: span) -> Option<DIVariable> {
+    debug!("create_arg");
+    if true {
+        // XXX create_arg disabled for now because "node_id_type(bcx, arg.id)" below blows
+        // up: "error: internal compiler error: node_id_to_type: no type for node `arg (id=10)`"
+        return None;
+    }
+
+    let fcx = bcx.fcx;
+    let cx = fcx.ccx;
+
+    let loc = span_start(cx, span);
+    if "<intrinsic>" == loc.file.name {
+        return None;
+    }
+
+    let ty = node_id_type(bcx, arg.id);
+    let tymd = create_ty(cx, ty, arg.ty.span);
+    let filemd = create_file(cx, loc.file.name);
+    let context = create_function(fcx);
+
+    match arg.pat.node {
+        ast::pat_ident(_, path, _) => {
+            // XXX: This is wrong; it should work for multiple bindings.
+            let ident = path.idents.last();
+            let name: &str = cx.sess.str_of(*ident);
+            let mdnode = do as_c_str(name) |name| { unsafe {
+                llvm::LLVMDIBuilderCreateLocalVariable(DIB(cx),
+                    ArgVariableTag as u32, context, name,
+                    filemd, loc.line as c_uint, tymd, false, 0, 0)
+                    // XXX need to pass in a real argument number
+            }};
+
+            let llptr = fcx.llargs.get_copy(&arg.id);
+            set_debug_location(cx, create_block(bcx), loc.line, loc.col.to_uint());
+            unsafe {
+                let instr = llvm::LLVMDIBuilderInsertDeclareAtEnd(
+                        DIB(cx), llptr, mdnode, bcx.llbb);
+                llvm::LLVMSetInstDebugLocation(trans::build::B(bcx), instr);
+            }
+            return Some(mdnode);
+        }
+        _ => {
+            return None;
+        }
+    }
+}
+
+/// Sets the current debug location at the beginning of the span
+///
+/// Maps to a call to llvm::LLVMSetCurrentDebugLocation(...)
+pub fn update_source_pos(bcx: block, span: span) {
+    if !bcx.sess().opts.debuginfo || (*span.lo == 0 && *span.hi == 0) {
+        return;
+    }
+    debug!("update_source_pos: %s", bcx.sess().codemap.span_to_str(span));
+    let loc = span_start(bcx.ccx(), span);
+    set_debug_location(bcx.ccx(), create_block(bcx), loc.line, loc.col.to_uint())
+}
+
+/// Creates debug information for the given function.
+///
+/// Adds the created metadata nodes directly to the crate's IR.
+/// The return value should be ignored if called from outside of the debuginfo module.
+pub fn create_function(fcx: fn_ctxt) -> DISubprogram {
+    let cx = fcx.ccx;
+    let fcx = &mut *fcx;
+    let span = fcx.span.get();
+
+    let (ident, ret_ty, id) = match cx.tcx.items.get_copy(&fcx.id) {
+      ast_map::node_item(item, _) => {
+        match item.node {
+          ast::item_fn(ref decl, _, _, _, _) => {
+            (item.ident, decl.output, item.id)
+          }
+          _ => fcx.ccx.sess.span_bug(item.span, "create_function: item bound to non-function")
+        }
+      }
+      ast_map::node_method(method, _, _) => {
+          (method.ident, method.decl.output, method.id)
+      }
+      ast_map::node_expr(expr) => {
+        match expr.node {
+          ast::expr_fn_block(ref decl, _) => {
+            ((dbg_cx(cx).names)("fn"), decl.output, expr.id)
+          }
+          _ => fcx.ccx.sess.span_bug(expr.span,
+                  "create_function: expected an expr_fn_block here")
+        }
+      }
+      _ => fcx.ccx.sess.bug("create_function: unexpected sort of node")
+    };
+
+    match dbg_cx(cx).created_functions.find(&id) {
+        Some(fn_md) => return *fn_md,
+        None => ()
+    }
+
+    debug!("create_function: %s, %s", cx.sess.str_of(ident), cx.sess.codemap.span_to_str(span));
+
+    let loc = span_start(cx, span);
+    let file_md = create_file(cx, loc.file.name);
+
+    let ret_ty_md = if cx.sess.opts.extra_debuginfo {
+        match ret_ty.node {
+          ast::ty_nil => ptr::null(),
+          _ => create_ty(cx, ty::node_id_to_type(cx.tcx, id),
+                         ret_ty.span)
+        }
+    } else {
+        ptr::null()
+    };
+
+    let fn_ty = unsafe {
+        llvm::LLVMDIBuilderCreateSubroutineType(DIB(cx),
+            file_md, create_DIArray(DIB(cx), [ret_ty_md]))
+    };
+
+    let fn_md =
+        do as_c_str(cx.sess.str_of(ident)) |name| {
+        do as_c_str(cx.sess.str_of(ident)) |linkage| { unsafe {
+            llvm::LLVMDIBuilderCreateFunction(
+                DIB(cx),
+                file_md,
+                name, linkage,
+                file_md, loc.line as c_uint,
+                fn_ty, false, true,
+                loc.line as c_uint,
+                FlagPrototyped as c_uint,
+                cx.sess.opts.optimize != session::No,
+                fcx.llfn, ptr::null(), ptr::null())
+            }}};
+
+    dbg_cx(cx).created_functions.insert(id, fn_md);
+    return fn_md;
+}
+
+
+
+
+//=-------------------------------------------------------------------------------------------------
+// Module-Internal debug info creation functions
+//=-------------------------------------------------------------------------------------------------
 
 fn create_DIArray(builder: DIBuilderRef, arr: &[DIDescriptor]) -> DIArray {
     return unsafe {
@@ -160,10 +378,7 @@ fn create_file(cx: @mut CrateContext, full_path: &str) -> DIFile {
     return file_md;
 }
 
-/// Return codemap::Loc corresponding to the beginning of the span
-fn span_start(cx: &CrateContext, span: span) -> codemap::Loc {
-    return cx.sess.codemap.lookup_char_pos(span.lo);
-}
+
 
 fn create_block(bcx: block) -> DILexicalBlock {
     let mut bcx = bcx;
@@ -205,10 +420,7 @@ fn create_block(bcx: block) -> DILexicalBlock {
     return block_md;
 }
 
-fn size_and_align_of(cx: @mut CrateContext, t: ty::t) -> (uint, uint) {
-    let llty = type_of::type_of(cx, t);
-    (machine::llsize_of_real(cx, llty), machine::llalign_of_min(cx, llty))
-}
+
 
 fn create_basic_type(cx: @mut CrateContext, t: ty::t, _span: span) -> DIType {
     let ty_id = ty::type_id(t);
@@ -252,6 +464,9 @@ fn create_basic_type(cx: @mut CrateContext, t: ty::t, _span: span) -> DIType {
                 size * 8 as u64, align * 8 as u64, encoding as c_uint)
         }};
 
+    // One could think that this call is not necessary, as the create_ty() function will insert the
+    // type descriptor into the cache anyway. Mind, however, that create_basic_type() is also called
+    // directly from other functions (e.g. create_boxed_type()).
     dbg_cx(cx).created_types.insert(ty_id, ty_md);
     return ty_md;
 }
@@ -322,11 +537,6 @@ impl StructContext {
             }};
         return struct_md;
     }
-}
-
-#[inline]
-fn roundup(x: uint, a: uint) -> uint {
-    ((x + (a - 1)) / a) * a
 }
 
 fn create_struct(cx: @mut CrateContext, t: ty::t, fields: ~[ty::field], span: span)
@@ -579,103 +789,6 @@ fn create_ty(cx: @mut CrateContext, t: ty::t, span: span) -> DIType {
     return ty_md;
 }
 
-pub fn create_local_var(bcx: block, local: @ast::local) -> DIVariable {
-    let cx = bcx.ccx();
-
-    let ident = match local.node.pat.node {
-      ast::pat_ident(_, pth, _) => ast_util::path_to_ident(pth),
-      // FIXME this should be handled (#2533)
-      _ => {
-        bcx.sess().span_note(local.span, "debuginfo for pattern bindings NYI");
-        return ptr::null();
-      }
-    };
-    let name: &str = cx.sess.str_of(ident);
-    debug!("create_local_var: %s", name);
-
-    let loc = span_start(cx, local.span);
-    let ty = node_id_type(bcx, local.node.id);
-    let tymd = create_ty(cx, ty, local.node.ty.span);
-    let filemd = create_file(cx, loc.file.name);
-    let context = match bcx.parent {
-        None => create_function(bcx.fcx),
-        Some(_) => create_block(bcx)
-    };
-
-    let var_md = do as_c_str(name) |name| { unsafe {
-        llvm::LLVMDIBuilderCreateLocalVariable(
-            DIB(cx), AutoVariableTag as u32,
-            context, name, filemd,
-            loc.line as c_uint, tymd, false, 0, 0)
-        }};
-
-    // FIXME(#6814) Should use `pat_util::pat_bindings` for pats like (a, b) etc
-    let llptr = match bcx.fcx.lllocals.find_copy(&local.node.pat.id) {
-        Some(v) => v,
-        None => {
-            bcx.tcx().sess.span_bug(
-                local.span,
-                fmt!("No entry in lllocals table for %?", local.node.id));
-        }
-    };
-
-    set_debug_location(cx, create_block(bcx), loc.line, loc.col.to_uint());
-    unsafe {
-        let instr = llvm::LLVMDIBuilderInsertDeclareAtEnd(DIB(cx), llptr, var_md, bcx.llbb);
-        llvm::LLVMSetInstDebugLocation(trans::build::B(bcx), instr);
-    }
-
-    return var_md;
-}
-
-pub fn create_arg(bcx: block, arg: ast::arg, span: span) -> Option<DIVariable> {
-    debug!("create_arg");
-    if true {
-        // XXX create_arg disabled for now because "node_id_type(bcx, arg.id)" below blows
-        // up: "error: internal compiler error: node_id_to_type: no type for node `arg (id=10)`"
-        return None;
-    }
-
-    let fcx = bcx.fcx;
-    let cx = fcx.ccx;
-
-    let loc = span_start(cx, span);
-    if "<intrinsic>" == loc.file.name {
-        return None;
-    }
-
-    let ty = node_id_type(bcx, arg.id);
-    let tymd = create_ty(cx, ty, arg.ty.span);
-    let filemd = create_file(cx, loc.file.name);
-    let context = create_function(fcx);
-
-    match arg.pat.node {
-        ast::pat_ident(_, path, _) => {
-            // XXX: This is wrong; it should work for multiple bindings.
-            let ident = path.idents.last();
-            let name: &str = cx.sess.str_of(*ident);
-            let mdnode = do as_c_str(name) |name| { unsafe {
-                llvm::LLVMDIBuilderCreateLocalVariable(DIB(cx),
-                    ArgVariableTag as u32, context, name,
-                    filemd, loc.line as c_uint, tymd, false, 0, 0)
-                    // XXX need to pass in a real argument number
-            }};
-
-            let llptr = fcx.llargs.get_copy(&arg.id);
-            set_debug_location(cx, create_block(bcx), loc.line, loc.col.to_uint());
-            unsafe {
-                let instr = llvm::LLVMDIBuilderInsertDeclareAtEnd(
-                        DIB(cx), llptr, mdnode, bcx.llbb);
-                llvm::LLVMSetInstDebugLocation(trans::build::B(bcx), instr);
-            }
-            return Some(mdnode);
-        }
-        _ => {
-            return None;
-        }
-    }
-}
-
 fn set_debug_location(cx: @mut CrateContext, scope: DIScope, line: uint, col: uint) {
     if dbg_cx(cx).curr_loc == (line, col) {
         return;
@@ -692,85 +805,34 @@ fn set_debug_location(cx: @mut CrateContext, scope: DIScope, line: uint, col: ui
     }
 }
 
-/// Set current debug location at the beginning of the span
-pub fn update_source_pos(bcx: block, span: span) {
-    if !bcx.sess().opts.debuginfo || (*span.lo == 0 && *span.hi == 0) {
-        return;
-    }
-    debug!("update_source_pos: %s", bcx.sess().codemap.span_to_str(span));
-    let loc = span_start(bcx.ccx(), span);
-    set_debug_location(bcx.ccx(), create_block(bcx), loc.line, loc.col.to_uint())
+
+
+
+//=-------------------------------------------------------------------------------------------------
+//  Utility Functions
+//=-------------------------------------------------------------------------------------------------
+
+#[inline]
+fn roundup(x: uint, a: uint) -> uint {
+    ((x + (a - 1)) / a) * a
 }
 
-pub fn create_function(fcx: fn_ctxt) -> DISubprogram {
-    let cx = fcx.ccx;
-    let fcx = &mut *fcx;
-    let span = fcx.span.get();
+/// Return codemap::Loc corresponding to the beginning of the span
+fn span_start(cx: &CrateContext, span: span) -> codemap::Loc {
+    return cx.sess.codemap.lookup_char_pos(span.lo);
+}
 
-    let (ident, ret_ty, id) = match cx.tcx.items.get_copy(&fcx.id) {
-      ast_map::node_item(item, _) => {
-        match item.node {
-          ast::item_fn(ref decl, _, _, _, _) => {
-            (item.ident, decl.output, item.id)
-          }
-          _ => fcx.ccx.sess.span_bug(item.span, "create_function: item bound to non-function")
-        }
-      }
-      ast_map::node_method(method, _, _) => {
-          (method.ident, method.decl.output, method.id)
-      }
-      ast_map::node_expr(expr) => {
-        match expr.node {
-          ast::expr_fn_block(ref decl, _) => {
-            ((dbg_cx(cx).names)("fn"), decl.output, expr.id)
-          }
-          _ => fcx.ccx.sess.span_bug(expr.span,
-                  "create_function: expected an expr_fn_block here")
-        }
-      }
-      _ => fcx.ccx.sess.bug("create_function: unexpected sort of node")
-    };
+fn size_and_align_of(cx: @mut CrateContext, t: ty::t) -> (uint, uint) {
+    let llty = type_of::type_of(cx, t);
+    (machine::llsize_of_real(cx, llty), machine::llalign_of_min(cx, llty))
+}
 
-    match dbg_cx(cx).created_functions.find(&id) {
-        Some(fn_md) => return *fn_md,
-        None => ()
-    }
+#[inline]
+fn dbg_cx<'a>(cx: &'a mut CrateContext) -> &'a mut DebugContext {
+    cx.dbg_cx.get_mut_ref()
+}
 
-    debug!("create_function: %s, %s", cx.sess.str_of(ident), cx.sess.codemap.span_to_str(span));
-
-    let loc = span_start(cx, span);
-    let file_md = create_file(cx, loc.file.name);
-
-    let ret_ty_md = if cx.sess.opts.extra_debuginfo {
-        match ret_ty.node {
-          ast::ty_nil => ptr::null(),
-          _ => create_ty(cx, ty::node_id_to_type(cx.tcx, id),
-                         ret_ty.span)
-        }
-    } else {
-        ptr::null()
-    };
-
-    let fn_ty = unsafe {
-        llvm::LLVMDIBuilderCreateSubroutineType(DIB(cx),
-            file_md, create_DIArray(DIB(cx), [ret_ty_md]))
-    };
-
-    let fn_md =
-        do as_c_str(cx.sess.str_of(ident)) |name| {
-        do as_c_str(cx.sess.str_of(ident)) |linkage| { unsafe {
-            llvm::LLVMDIBuilderCreateFunction(
-                DIB(cx),
-                file_md,
-                name, linkage,
-                file_md, loc.line as c_uint,
-                fn_ty, false, true,
-                loc.line as c_uint,
-                FlagPrototyped as c_uint,
-                cx.sess.opts.optimize != session::No,
-                fcx.llfn, ptr::null(), ptr::null())
-            }}};
-
-    dbg_cx(cx).created_functions.insert(id, fn_md);
-    return fn_md;
+#[inline]
+fn DIB(cx: &CrateContext) -> DIBuilderRef {
+    cx.dbg_cx.get_ref().builder
 }
