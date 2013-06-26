@@ -9,7 +9,6 @@
 // except according to those terms.
 
 //! A double-ended queue implemented as a circular buffer
-
 use core::prelude::*;
 
 use core::uint;
@@ -156,98 +155,122 @@ impl<T> Deque<T> {
 
     /// Front-to-back iterator.
     pub fn iter<'a>(&'a self) -> DequeIterator<'a, T> {
-	DequeIterator { iter: self.elts.iter() }
+    DequeIterator { idx: self.lo, nelts: self.nelts, used: 0, vec: self.elts }
     }
     
     /// Front-to-back iterator which returns mutable values.
     pub fn mut_iter<'a>(&'a mut self) -> DequeMutIterator<'a, T> {
-	DequeMutIterator { iter: self.elts.mut_iter() }
+    DequeMutIterator { idx: self.lo, nelts: self.nelts, used: 0, vec: self.elts }
     }
 
     /// Back-to-front iterator.
     pub fn rev_iter<'a>(&'a self) -> DequeRevIterator<'a, T> {
-	DequeRevIterator { iter: self.elts.rev_iter() }
+    DequeRevIterator { idx: self.hi - 1u, nelts: self.nelts, used: 0, vec: self.elts }
     }
 
     /// Back-to-front iterator which returns mutable values.
     pub fn mut_rev_iter<'a>(&'a mut self) -> DequeMutRevIterator<'a, T> {
-	DequeMutRevIterator { iter: self.elts.mut_rev_iter() }
+    DequeMutRevIterator { idx: self.hi - 1u, nelts: self.nelts, used: 0, vec: self.elts }
     }
 }
 
 /// Deque iterator
 pub struct DequeIterator<'self, T> {
-	priv iter: vec::VecIterator<'self, Option<T>>
+    priv idx: uint,
+    priv nelts: uint,
+    priv used: uint,
+    priv vec: &'self [Option<T>]
 }
 
 /// Deque reverse iterator
 pub struct DequeRevIterator<'self, T> {
-	priv iter: vec::VecRevIterator<'self, Option<T>>
+    priv idx: uint,
+    priv nelts: uint,
+    priv used: uint,
+    priv vec: &'self [Option<T>]
 }
 /// Deque mutable iterator
 pub struct DequeMutIterator<'self, T> {
-	priv iter: vec::VecMutIterator<'self, Option<T>>
+    priv idx: uint,
+    priv nelts: uint,
+    priv used: uint,
+    priv vec: &'self mut [Option<T>]
+
 }
 
 /// Deque mutable reverse iterator
 pub struct DequeMutRevIterator<'self, T> {
-	priv iter: vec::VecMutRevIterator<'self, Option<T>>
+    priv idx: uint,
+    priv nelts: uint,
+    priv used: uint,
+    priv vec: &'self mut [Option<T>]
 }
 
 /// Iterator visiting elements of the deque from front to back
 impl<'self, T> Iterator<&'self T> for DequeIterator<'self, T> {
-	#[inline]
-	fn next(&mut self) -> Option<&'self T> {
-		for self.iter.advance |elt| {
-			match elt {
-				&Some(ref e) => return Some(e),
-				&None => {},
-			}
-		}
-		None
-	}
+    fn next(&mut self) -> Option<&'self T> {
+        if self.used >= self.nelts {
+            return None;
+        }
+        let ret = match self.vec[self.idx % self.vec.len()] {
+            Some(ref e) => Some(e),
+            None => None
+        };
+        self.idx += 1;
+        self.used += 1;
+        ret
+    }
 }
 
 /// Iterator visiting elements of the deque mutably from front to back
 impl<'self, T> Iterator<&'self mut T> for DequeMutIterator<'self, T> {
-	#[inline]
-	fn next(&mut self) -> Option<&'self mut T> {
-		for self.iter.advance |elt| {
-			match elt {
-				&Some(ref mut e) => return Some(e),
-				&None => {},
-			}
-		}
-		None
-	}
+    fn next(&mut self) -> Option<&'self mut T> {
+        if self.used >= self.nelts {
+            return None;
+        }
+        let ret = match self.vec[self.idx % self.vec.len()] {
+            Some(ref mut e) => Some(e),
+            None => None
+        };
+        self.idx += 1;
+        self.used += 1;
+        ret
+    }
 }
 
 /// Iterator visiting elements of the deque from back to front
 impl<'self, T> Iterator<&'self T> for DequeRevIterator<'self, T> {
-	#[inline]
-	fn next(&mut self) -> Option<&'self T> {
-		for self.iter.advance |elt| {
-			match elt {
-				&Some(ref e) => return Some(e),
-				&None => {},
-			}
-		}
-		None
-	}
+    #[inline]
+    fn next(&mut self) -> Option<&'self T> {
+        if self.used >= self.nelts {
+            return None;
+        }
+        let ret = match self.vec[self.idx % self.vec.len()] {
+            Some(ref e) => Some(e),
+            None => None
+        };
+        self.idx -= 1;
+        self.used += 1;
+        ret
+
+    }
 }
 
 /// Iterator visiting elements of the deque mutably from back to front
 impl<'self, T> Iterator<&'self mut T> for DequeMutRevIterator<'self, T> {
-	#[inline]
-	fn next(&mut self) -> Option<&'self mut T> {
-		for self.iter.advance |elt| {
-			match elt {
-				&Some(ref mut e) => return Some(e),
-				&None => {},
-			}
-		}
-		None
-	}
+    #[inline]
+    fn next(&mut self) -> Option<&'self mut T> {
+        if self.used >= self.nelts {
+            return None;
+        }
+        let ret = match self.vec[self.idx % self.vec.len()] {
+            Some(ref mut e) => Some(e),
+            None => None
+        };
+        self.idx -= 1;
+        self.used += 1;
+        ret
+    }
 }
 
 /// Grow is only called on full elts, so nelts is also len(elts), unlike
