@@ -10,18 +10,16 @@
 
 // The Rust abstract syntax tree.
 
-use core::prelude::*;
-
 use codemap::{span, spanned};
 use abi::AbiSet;
 use opt_vec::OptVec;
 use parse::token::{interner_get, str_to_ident};
 
-use core::hashmap::HashMap;
-use core::option::Option;
-use core::to_bytes::IterBytes;
-use core::to_bytes;
-use core::to_str::ToStr;
+use std::hashmap::HashMap;
+use std::option::Option;
+use std::to_bytes::IterBytes;
+use std::to_bytes;
+use std::to_str::ToStr;
 use extra::serialize::{Encodable, Decodable, Encoder, Decoder};
 
 

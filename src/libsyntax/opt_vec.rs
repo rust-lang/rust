@@ -16,8 +16,7 @@
  * other useful things like `push()` and `len()`.
  */
 
-use core::prelude::*;
-use core::vec::VecIterator;
+use std::vec::VecIterator;
 
 #[deriving(Encodable, Decodable)]
 pub enum OptVec<T> {

@@ -8,14 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
-
 use ast::{meta_item, item, expr};
 use codemap::span;
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use ext::deriving::generic::*;
-use core::cmp::{Ordering, Equal, Less, Greater};
+use std::cmp::{Ordering, Equal, Less, Greater};
 
 pub fn expand_deriving_totalord(cx: @ExtCtxt,
                                 span: span,
