@@ -19,12 +19,12 @@
 // debugger:print y
 // check:$2 = true
 
-// debugger:run
+// debugger:continue
 // debugger:finish
 // debugger:print x
 // check:$3 = 10
 
-// debugger:run
+// debugger:continue
 // debugger:finish
 // debugger:print x
 // check:$4 = false

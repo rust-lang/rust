@@ -111,20 +111,15 @@ fn main() {
     };
 
     let bag = Bag { x: Simple { x: 22 } };
-    let bag_in_bag = BagInBag
-    {
-        x: Bag
-        {
+    let bag_in_bag = BagInBag {
+        x: Bag {
             x: Simple { x: 23 }
         }
     };
 
-    let tjo = ThatsJustOverkill
-    {
-        x: BagInBag
-        {
-            x: Bag
-            {
+    let tjo = ThatsJustOverkill {
+        x: BagInBag {
+            x: Bag {
                 x: Simple { x: 24 }
             }
         }
@@ -132,16 +127,13 @@ fn main() {
 
     let tree = Tree {
         x: Simple { x: 25 },
-        y: InternalPaddingParent
-        {
+        y: InternalPaddingParent {
             x: InternalPadding { x: 26, y: 27 },
             y: InternalPadding { x: 28, y: 29 },
             z: InternalPadding { x: 30, y: 31 }
         },
-        z: BagInBag
-        {
-            x: Bag
-            {
+        z: BagInBag {
+            x: Bag {
                 x: Simple { x: 32 }
             }
         }
