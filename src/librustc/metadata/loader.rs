@@ -128,7 +128,7 @@ fn find_library_crate_aux(
             cx.diag.span_err(
                     cx.span, fmt!("multiple matching crates for `%s`", crate_name));
                 cx.diag.handler().note("candidates:");
-                for matches.each |&(ident, data)| {
+                for matches.iter().advance |&(ident, data)| {
                     cx.diag.handler().note(fmt!("path: %s", ident));
                     let attrs = decoder::get_crate_attributes(data);
                     note_linkage_attrs(cx.intr, cx.diag, attrs);
@@ -140,7 +140,7 @@ fn find_library_crate_aux(
 }
 
 pub fn crate_name_from_metas(metas: &[@ast::meta_item]) -> @str {
-    for metas.each |m| {
+    for metas.iter().advance |m| {
         match m.node {
             ast::meta_name_value(s, ref l) if s == @"name" =>
                 match l.node {
