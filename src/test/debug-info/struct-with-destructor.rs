@@ -37,14 +37,12 @@ impl Drop for WithDestructor {
     fn finalize(&self) {}
 }
 
-struct NoDestructorGuarded
-{
+struct NoDestructorGuarded {
     a: NoDestructor,
     guard: i64
 }
 
-struct WithDestructorGuarded
-{
+struct WithDestructorGuarded {
     a: WithDestructor,
     guard: i64
 }
