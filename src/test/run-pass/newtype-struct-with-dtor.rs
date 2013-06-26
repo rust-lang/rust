@@ -4,7 +4,7 @@ use std::libc;
 pub struct Fd(c_int);
 
 impl Drop for Fd {
-    fn finalize(&self) {
+    fn drop(&self) {
         unsafe {
             libc::close(**self);
         }

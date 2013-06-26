@@ -16,7 +16,7 @@ use std::task;
 struct Foo;
 
 impl Drop for Foo {
-    fn finalize(&self) {
+    fn drop(&self) {
         fail!("This failure should happen.");
     }
 }

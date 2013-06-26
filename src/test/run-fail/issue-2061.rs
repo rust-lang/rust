@@ -15,7 +15,7 @@ struct R {
 }
 
 impl Drop for R {
-    fn finalize(&self) {
+    fn drop(&self) {
         let _y = R { b: self.b };
     }
 }

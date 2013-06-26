@@ -57,7 +57,7 @@ impl LocalHeap {
 }
 
 impl Drop for LocalHeap {
-    fn finalize(&self) {
+    fn drop(&self) {
         unsafe {
             rust_delete_boxed_region(self.boxed_region);
             rust_delete_memory_region(self.memory_region);

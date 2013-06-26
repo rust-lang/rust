@@ -24,7 +24,7 @@ struct r {
 }
 
 impl Drop for r {
-    fn finalize(&self) {
+    fn drop(&self) {
         unsafe {
             if !*(self.recursed) {
                 *(self.recursed) = true;

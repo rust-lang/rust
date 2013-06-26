@@ -147,7 +147,7 @@ struct GlobalState {
 }
 
 impl Drop for GlobalState {
-    fn finalize(&self) {
+    fn drop(&self) {
         for self.map.each_value |v| {
             match v {
                 &(_, ref dtor) => (*dtor)()

@@ -176,7 +176,7 @@ struct SemReleaseGeneric<'self, Q> { sem: &'self Sem<Q> }
 #[doc(hidden)]
 #[unsafe_destructor]
 impl<'self, Q:Owned> Drop for SemReleaseGeneric<'self, Q> {
-    fn finalize(&self) {
+    fn drop(&self) {
         self.sem.release();
     }
 }
@@ -219,7 +219,7 @@ pub struct Condvar<'self> {
 }
 
 #[unsafe_destructor]
-impl<'self> Drop for Condvar<'self> { fn finalize(&self) {} }
+impl<'self> Drop for Condvar<'self> { fn drop(&self) {} }
 
 impl<'self> Condvar<'self> {
     /**
@@ -295,7 +295,7 @@ impl<'self> Condvar<'self> {
 
         #[unsafe_destructor]
         impl<'self> Drop for CondvarReacquire<'self> {
-            fn finalize(&self) {
+            fn drop(&self) {
                 unsafe {
                     // Needs to succeed, instead of itself dying.
                     do task::unkillable {
@@ -689,7 +689,7 @@ struct RWlockReleaseRead<'self> {
 #[doc(hidden)]
 #[unsafe_destructor]
 impl<'self> Drop for RWlockReleaseRead<'self> {
-    fn finalize(&self) {
+    fn drop(&self) {
         unsafe {
             do task::unkillable {
                 let state = &mut *self.lock.state.get();
@@ -726,7 +726,7 @@ struct RWlockReleaseDowngrade<'self> {
 #[doc(hidden)]
 #[unsafe_destructor]
 impl<'self> Drop for RWlockReleaseDowngrade<'self> {
-    fn finalize(&self) {
+    fn drop(&self) {
         unsafe {
             do task::unkillable {
                 let writer_or_last_reader;
@@ -769,12 +769,12 @@ fn RWlockReleaseDowngrade<'r>(lock: &'r RWlock)
 /// The "write permission" token used for rwlock.write_downgrade().
 pub struct RWlockWriteMode<'self> { priv lock: &'self RWlock }
 #[unsafe_destructor]
-impl<'self> Drop for RWlockWriteMode<'self> { fn finalize(&self) {} }
+impl<'self> Drop for RWlockWriteMode<'self> { fn drop(&self) {} }
 
 /// The "read permission" token used for rwlock.write_downgrade().
 pub struct RWlockReadMode<'self> { priv lock: &'self RWlock }
 #[unsafe_destructor]
-impl<'self> Drop for RWlockReadMode<'self> { fn finalize(&self) {} }
+impl<'self> Drop for RWlockReadMode<'self> { fn drop(&self) {} }
 
 impl<'self> RWlockWriteMode<'self> {
     /// Access the pre-downgrade rwlock in write mode.
@@ -1105,7 +1105,7 @@ mod tests {
         }
 
         impl Drop for SendOnFailure {
-            fn finalize(&self) {
+            fn drop(&self) {
                 self.c.send(());
             }
         }

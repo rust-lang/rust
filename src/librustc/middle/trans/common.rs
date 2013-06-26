@@ -110,7 +110,7 @@ pub struct BuilderRef_res {
 }
 
 impl Drop for BuilderRef_res {
-    fn finalize(&self) {
+    fn drop(&self) {
         unsafe {
             llvm::LLVMDisposeBuilder(self.B);
         }
