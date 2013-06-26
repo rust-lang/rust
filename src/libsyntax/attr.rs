@@ -10,7 +10,7 @@
 
 // Functions dealing with attributes and meta_items
 
-extern mod extra;
+use extra;
 
 use ast;
 use codemap::{spanned, dummy_spanned};
