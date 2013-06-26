@@ -41,6 +41,7 @@ use os;
 use prelude::*;
 use ptr;
 use str;
+use to_str;
 use uint;
 use unstable::finally::Finally;
 use vec;
@@ -1335,6 +1336,288 @@ extern {
     pub fn _NSGetArgv() -> ***c_char;
 }
 
+// Round up `from` to be divisible by `to`
+fn round_up(from: uint, to: uint) -> uint {
+    let r = if from % to == 0 {
+        from
+    } else {
+        from + to - (from % to)
+    };
+    if r == 0 {
+        to
+    } else {
+        r
+    }
+}
+
+#[cfg(unix)]
+pub fn page_size() -> uint {
+    unsafe {
+        libc::sysconf(libc::_SC_PAGESIZE) as uint
+    }
+}
+
+#[cfg(windows)]
+pub fn page_size() -> uint {
+  unsafe {
+    let mut info = libc::SYSTEM_INFO::new();
+    libc::GetSystemInfo(&mut info);
+
+    return info.dwPageSize as uint;
+  }
+}
+
+pub struct MemoryMap {
+    data: *mut u8,
+    len: size_t,
+    kind: MemoryMapKind
+}
+
+pub enum MemoryMapKind {
+    MapFile(*c_void),
+    MapVirtual
+}
+
+pub enum MapOption {
+    MapReadable,
+    MapWritable,
+    MapExecutable,
+    MapAddr(*c_void),
+    MapFd(c_int),
+    MapOffset(uint)
+}
+
+pub enum MapError {
+    // Linux-specific errors
+    ErrFdNotAvail,
+    ErrInvalidFd,
+    ErrUnaligned,
+    ErrNoMapSupport,
+    ErrNoMem,
+    ErrUnknown(libc::c_int),
+
+    // Windows-specific errors
+    ErrUnsupProt,
+    ErrUnsupOffset,
+    ErrNeedRW,
+    ErrAlreadyExists,
+    ErrVirtualAlloc(uint),
+    ErrCreateFileMappingW(uint),
+    ErrMapViewOfFile(uint)
+}
+
+impl to_str::ToStr for MapError {
+    fn to_str(&self) -> ~str {
+        match *self {
+            ErrFdNotAvail => ~"fd not available for reading or writing",
+            ErrInvalidFd => ~"Invalid fd",
+            ErrUnaligned => ~"Unaligned address, invalid flags, \
+                              negative length or unaligned offset",
+            ErrNoMapSupport=> ~"File doesn't support mapping",
+            ErrNoMem => ~"Invalid address, or not enough available memory",
+            ErrUnknown(code) => fmt!("Unknown error=%?", code),
+            ErrUnsupProt => ~"Protection mode unsupported",
+            ErrUnsupOffset => ~"Offset in virtual memory mode is unsupported",
+            ErrNeedRW => ~"File mapping should be at least readable/writable",
+            ErrAlreadyExists => ~"File mapping for specified file already exists",
+            ErrVirtualAlloc(code) => fmt!("VirtualAlloc failure=%?", code),
+            ErrCreateFileMappingW(code) => fmt!("CreateFileMappingW failure=%?", code),
+            ErrMapViewOfFile(code) => fmt!("MapViewOfFile failure=%?", code)
+        }
+    }
+}
+
+#[cfg(unix)]
+impl MemoryMap {
+    pub fn new(min_len: uint, options: ~[MapOption]) -> Result<~MemoryMap, MapError> {
+        use libc::off_t;
+
+        let mut addr: *c_void = ptr::null();
+        let mut prot: c_int = 0;
+        let mut flags: c_int = libc::MAP_PRIVATE;
+        let mut fd: c_int = -1;
+        let mut offset: off_t = 0;
+        let len = round_up(min_len, page_size()) as size_t;
+
+        for options.iter().advance |&o| {
+            match o {
+                MapReadable => { prot |= libc::PROT_READ; },
+                MapWritable => { prot |= libc::PROT_WRITE; },
+                MapExecutable => { prot |= libc::PROT_EXEC; },
+                MapAddr(addr_) => {
+                    flags |= libc::MAP_FIXED;
+                    addr = addr_;
+                },
+                MapFd(fd_) => {
+                    flags |= libc::MAP_FILE;
+                    fd = fd_;
+                },
+                MapOffset(offset_) => { offset = offset_ as off_t; }
+            }
+        }
+        if fd == -1 { flags |= libc::MAP_ANON; }
+
+        let r = unsafe {
+            libc::mmap(addr, len, prot, flags, fd, offset)
+        };
+        if r == libc::MAP_FAILED {
+            Err(match errno() as c_int {
+                libc::EACCES => ErrFdNotAvail,
+                libc::EBADF => ErrInvalidFd,
+                libc::EINVAL => ErrUnaligned,
+                libc::ENODEV => ErrNoMapSupport,
+                libc::ENOMEM => ErrNoMem,
+                code => ErrUnknown(code)
+            })
+        } else {
+            Ok(~MemoryMap {
+               data: r as *mut u8,
+               len: len,
+               kind: if fd == -1 {
+                   MapVirtual
+               } else {
+                   MapFile(ptr::null())
+               }
+            })
+        }
+    }
+}
+
+#[cfg(unix)]
+impl Drop for MemoryMap {
+    fn drop(&self) {
+        unsafe {
+            match libc::munmap(self.data as *c_void, self.len) {
+                0 => (),
+                -1 => error!(match errno() as c_int {
+                    libc::EINVAL => ~"invalid addr or len",
+                    e => fmt!("unknown errno=%?", e)
+                }),
+                r => error!(fmt!("Unexpected result %?", r))
+            }
+        }
+    }
+}
+
+#[cfg(windows)]
+impl MemoryMap {
+    pub fn new(min_len: uint, options: ~[MapOption]) -> Result<~MemoryMap, MapError> {
+        use libc::types::os::arch::extra::{LPVOID, DWORD, SIZE_T, HANDLE};
+
+        let mut lpAddress: LPVOID = ptr::mut_null();
+        let mut readable = false;
+        let mut writable = false;
+        let mut executable = false;
+        let mut fd: c_int = -1;
+        let mut offset: uint = 0;
+        let len = round_up(min_len, page_size()) as SIZE_T;
+
+        for options.iter().advance |&o| {
+            match o {
+                MapReadable => { readable = true; },
+                MapWritable => { writable = true; },
+                MapExecutable => { executable = true; }
+                MapAddr(addr_) => { lpAddress = addr_ as LPVOID; },
+                MapFd(fd_) => { fd = fd_; },
+                MapOffset(offset_) => { offset = offset_; }
+            }
+        }
+
+        let flProtect = match (executable, readable, writable) {
+            (false, false, false) if fd == -1 => libc::PAGE_NOACCESS,
+            (false, true, false) => libc::PAGE_READONLY,
+            (false, true, true) => libc::PAGE_READWRITE,
+            (true, false, false) if fd == -1 => libc::PAGE_EXECUTE,
+            (true, true, false) => libc::PAGE_EXECUTE_READ,
+            (true, true, true) => libc::PAGE_EXECUTE_READWRITE,
+            _ => return Err(ErrUnsupProt)
+        };
+
+        if fd == -1 {
+            if offset != 0 {
+                return Err(ErrUnsupOffset);
+            }
+            let r = unsafe {
+                libc::VirtualAlloc(lpAddress,
+                                   len,
+                                   libc::MEM_COMMIT | libc::MEM_RESERVE,
+                                   flProtect)
+            };
+            match r as uint {
+                0 => Err(ErrVirtualAlloc(errno())),
+                _ => Ok(~MemoryMap {
+                   data: r as *mut u8,
+                   len: len,
+                   kind: MapVirtual
+                })
+            }
+        } else {
+            let dwDesiredAccess = match (readable, writable) {
+                (true, true) => libc::FILE_MAP_ALL_ACCESS,
+                (true, false) => libc::FILE_MAP_READ,
+                (false, true) => libc::FILE_MAP_WRITE,
+                _ => {
+                    return Err(ErrNeedRW);
+                }
+            };
+            unsafe {
+                let hFile = libc::get_osfhandle(fd) as HANDLE;
+                let mapping = libc::CreateFileMappingW(hFile,
+                                                       ptr::mut_null(),
+                                                       flProtect,
+                                                       (len >> 32) as DWORD,
+                                                       (len & 0xffff_ffff) as DWORD,
+                                                       ptr::null());
+                if mapping == ptr::mut_null() {
+                    return Err(ErrCreateFileMappingW(errno()));
+                }
+                if errno() as c_int == libc::ERROR_ALREADY_EXISTS {
+                    return Err(ErrAlreadyExists);
+                }
+                let r = libc::MapViewOfFile(mapping,
+                                            dwDesiredAccess,
+                                            (offset >> 32) as DWORD,
+                                            (offset & 0xffff_ffff) as DWORD,
+                                            0);
+                match r as uint {
+                    0 => Err(ErrMapViewOfFile(errno())),
+                    _ => Ok(~MemoryMap {
+                       data: r as *mut u8,
+                       len: len,
+                       kind: MapFile(mapping as *c_void)
+                    })
+                }
+            }
+        }
+    }
+}
+
+#[cfg(windows)]
+impl Drop for MemoryMap {
+    fn drop(&self) {
+        use libc::types::os::arch::extra::{LPCVOID, HANDLE};
+
+        unsafe {
+            match self.kind {
+                MapVirtual => match libc::VirtualFree(self.data as *mut c_void,
+                                                      self.len,
+                                                      libc::MEM_RELEASE) {
+                    0 => error!(fmt!("VirtualFree failed: %?", errno())),
+                    _ => ()
+                },
+                MapFile(mapping) => {
+                    if libc::UnmapViewOfFile(self.data as LPCVOID) != 0 {
+                        error!(fmt!("UnmapViewOfFile failed: %?", errno()));
+                    }
+                    if libc::CloseHandle(mapping as HANDLE) != 0 {
+                        error!(fmt!("CloseHandle failed: %?", errno()));
+                    }
+                }
+            }
+        }
+    }
+}
+
 pub mod consts {
 
     #[cfg(unix)]
@@ -1713,6 +1996,76 @@ mod tests {
     fn recursive_mkdir_empty() {
         let path = Path("");
         assert!(!os::mkdir_recursive(&path, (S_IRUSR | S_IWUSR | S_IXUSR) as i32));
+    }
+
+    #[test]
+    fn memory_map_rw() {
+        use result::{Ok, Err};
+
+        let chunk = match os::MemoryMap::new(16, ~[
+            os::MapReadable,
+            os::MapWritable
+        ]) {
+            Ok(chunk) => chunk,
+            Err(msg) => fail!(msg.to_str())
+        };
+        assert!(chunk.len >= 16);
+
+        unsafe {
+            *chunk.data = 0xBE;
+            assert!(*chunk.data == 0xBE);
+        }
+    }
+
+    #[test]
+    fn memory_map_file() {
+        use result::{Ok, Err};
+        use os::*;
+        use libc::*;
+
+        #[cfg(unix)]
+        fn lseek_(fd: c_int, size: uint) {
+            unsafe {
+                assert!(lseek(fd, size as off_t, SEEK_SET) == size as off_t);
+            }
+        }
+        #[cfg(windows)]
+        fn lseek_(fd: c_int, size: uint) {
+           unsafe {
+               assert!(lseek(fd, size as c_long, SEEK_SET) == size as c_long);
+           }
+        }
+
+        let p = tmpdir().push("mmap_file.tmp");
+        let size = page_size() * 2;
+        remove_file(&p);
+
+        let fd = unsafe {
+            let fd = do as_c_charp(p.to_str()) |path| {
+                open(path, O_CREAT | O_RDWR | O_TRUNC, S_IRUSR | S_IWUSR)
+            };
+            lseek_(fd, size);
+            do as_c_charp("x") |x| {
+                assert!(write(fd, x as *c_void, 1) == 1);
+            }
+            fd
+        };
+        let chunk = match MemoryMap::new(size / 2, ~[
+            MapReadable,
+            MapWritable,
+            MapFd(fd),
+            MapOffset(size / 2)
+        ]) {
+            Ok(chunk) => chunk,
+            Err(msg) => fail!(msg.to_str())
+        };
+        assert!(chunk.len > 0);
+
+        unsafe {
+            *chunk.data = 0xbe;
+            assert!(*chunk.data == 0xbe);
+            close(fd);
+        }
     }
 
     // More recursive_mkdir tests are in extra::tempfile
