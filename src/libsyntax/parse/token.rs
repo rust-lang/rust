@@ -15,12 +15,12 @@ use parse::token;
 use util::interner::StrInterner;
 use util::interner;
 
+use std::cast;
 use std::char;
 use std::cmp::Equiv;
 use std::local_data;
 use std::rand;
 use std::rand::RngUtil;
-use std::ptr::to_unsafe_ptr;
 
 #[deriving(Clone, Encodable, Decodable, Eq, IterBytes)]
 pub enum binop {
@@ -382,30 +382,8 @@ pub fn token_to_binop(tok: &Token) -> Option<ast::BinOp> {
   }
 }
 
-pub struct ident_interner {
-    priv interner: StrInterner,
-}
-
-impl ident_interner {
-    pub fn intern(&self, val: &str) -> Name {
-        self.interner.intern(val)
-    }
-    pub fn gensym(&self, val: &str) -> Name {
-        self.interner.gensym(val)
-    }
-    pub fn get(&self, idx: Name) -> @str {
-        self.interner.get(idx)
-    }
-    // is this really something that should be exposed?
-    pub fn len(&self) -> uint {
-        self.interner.len()
-    }
-    pub fn find_equiv<Q:Hash + IterBytes + Equiv<@str>>(&self, val: &Q)
-                                                     -> Option<Name> {
-        self.interner.find_equiv(val)
-    }
-}
-
+// looks like we can get rid of this completely...
+pub type ident_interner = StrInterner;
 
 // return a fresh interner, preloaded with special identifiers.
 fn mk_fresh_ident_interner() -> @ident_interner {
@@ -486,9 +464,7 @@ fn mk_fresh_ident_interner() -> @ident_interner {
         "typeof",             // 67
     ];
 
-    @ident_interner {
-        interner: interner::StrInterner::prefill(init_vec)
-    }
+    @interner::StrInterner::prefill(init_vec)
 }
 
 // if an interner exists in TLS, return it. Otherwise, prepare a
@@ -509,7 +485,7 @@ pub fn get_ident_interner() -> @ident_interner {
 /* for when we don't care about the contents; doesn't interact with TLD or
    serialization */
 pub fn mk_fake_ident_interner() -> @ident_interner {
-    @ident_interner { interner: interner::StrInterner::new() }
+    @interner::StrInterner::new()
 }
 
 // maps a string to its interned representation
@@ -545,10 +521,11 @@ pub fn gensym_ident(str : &str) -> ast::Ident {
 }
 
 // create a fresh name that maps to the same string as the old one.
-// note that this guarantees that ptr_eq(ident_to_str(src),interner_get(fresh_name(src)));
+// note that this guarantees that str_ptr_eq(ident_to_str(src),interner_get(fresh_name(src)));
 // that is, that the new name and the old one are connected to ptr_eq strings.
 pub fn fresh_name(src : &ast::Ident) -> Name {
-    gensym(ident_to_str(src))
+    let interner = get_ident_interner();
+    interner.gensym_copy(src.name)
     // following: debug version. Could work in final except that it's incompatible with
     // good error messages and uses of struct names in ambiguous could-be-binding
     // locations. Also definitely destroys the guarantee given above about ptr_eq.
@@ -557,18 +534,26 @@ pub fn fresh_name(src : &ast::Ident) -> Name {
 }
 
 // it looks like there oughta be a str_ptr_eq fn, but no one bothered to implement it?
-pub fn str_ptr_eq<T>(a: @str, b: @str) -> bool {
-    // doesn't compile! ...because of rebase mangling. this should be fixed
-    // in the commit that follows this.
-    let (a_ptr, b_ptr): (*uint, *uint) = (to_unsafe_ptr(a), to_unsafe_ptr(b));
-    a_ptr == b_ptr
+
+// determine whether two @str values are pointer-equal
+pub fn str_ptr_eq(a : @str, b : @str) -> bool {
+    unsafe {
+        let p : uint = cast::transmute(a);
+        let q : uint = cast::transmute(b);
+        let result = p == q;
+        // got to transmute them back, to make sure the ref count is correct:
+        let junk1 : @str = cast::transmute(p);
+        let junk2 : @str = cast::transmute(q);
+        result
+    }
 }
-
-
 
 // return true when two identifiers refer (through the intern table) to the same ptr_eq
 // string. This is used to compare identifiers in places where hygienic comparison is
 // not wanted (i.e. not lexical vars).
+pub fn ident_spelling_eq(a : &ast::Ident, b : &ast::Ident) -> bool {
+    str_ptr_eq(interner_get(a.name),interner_get(b.name))
+}
 
 // create a fresh mark.
 pub fn fresh_mark() -> Mrk {
@@ -721,13 +706,21 @@ mod test {
     use ast_util;
 
 
-    #[test] fn t1() {
+    #[test] fn str_ptr_eq_tests(){
+        let a = @"abc";
+        let b = @"abc";
+        let c = a;
+        assert!(str_ptr_eq(a,c));
+        assert!(!str_ptr_eq(a,b));
+    }
+
+    #[test] fn fresh_name_pointer_sharing() {
         let ghi = str_to_ident("ghi");
         assert_eq!(ident_to_str(&ghi),@"ghi");
+        assert!(str_ptr_eq(ident_to_str(&ghi),ident_to_str(&ghi)))
         let fresh = ast::Ident::new(fresh_name(&ghi));
         assert_eq!(ident_to_str(&fresh),@"ghi");
         assert!(str_ptr_eq(ident_to_str(&ghi),ident_to_str(&fresh)));
-        assert_eq!(3,4);
     }
 
 }
