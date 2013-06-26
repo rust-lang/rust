@@ -15,12 +15,12 @@
 use core::prelude::*;
 
 use core::io;
-use core::os;
 
-use terminfo::*;
-use terminfo::searcher::open;
-use terminfo::parser::compiled::parse;
-use terminfo::parm::{expand, Number, Variables};
+#[cfg(not(target_os = "win32"))] use core::os;
+#[cfg(not(target_os = "win32"))] use terminfo::*;
+#[cfg(not(target_os = "win32"))] use terminfo::searcher::open;
+#[cfg(not(target_os = "win32"))] use terminfo::parser::compiled::parse;
+#[cfg(not(target_os = "win32"))] use terminfo::parm::{expand, Number, Variables};
 
 // FIXME (#2807): Windows support.
 
@@ -122,10 +122,10 @@ impl Terminal {
         return Ok(Terminal {out: out, color_supported: false});
     }
 
-    pub fn fg(&self, color: u8) {
+    pub fn fg(&self, _color: u8) {
     }
 
-    pub fn bg(&self, color: u8) {
+    pub fn bg(&self, _color: u8) {
     }
 
     pub fn reset(&self) {

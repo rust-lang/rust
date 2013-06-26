@@ -33,9 +33,8 @@ use io;
 use iterator::IteratorUtil;
 use libc;
 use libc::{c_char, c_void, c_int, size_t};
-use libc::{mode_t, FILE};
+use libc::FILE;
 use local_data;
-use option;
 use option::{Some, None};
 use os;
 use prelude::*;
@@ -181,7 +180,6 @@ pub fn env() -> ~[(~str,~str)] {
     unsafe {
         #[cfg(windows)]
         unsafe fn get_env_pairs() -> ~[~str] {
-            use libc::types::os::arch::extra::LPTCH;
             use libc::funcs::extra::kernel32::{
                 GetEnvironmentStringsA,
                 FreeEnvironmentStringsA
@@ -248,10 +246,10 @@ pub fn getenv(n: &str) -> Option<~str> {
         do with_env_lock {
             let s = str::as_c_str(n, |s| libc::getenv(s));
             if ptr::null::<u8>() == cast::transmute(s) {
-                option::None::<~str>
+                None::<~str>
             } else {
                 let s = cast::transmute(s);
-                option::Some::<~str>(str::raw::from_buf(s))
+                Some::<~str>(str::raw::from_buf(s))
             }
         }
     }
@@ -540,7 +538,7 @@ pub fn homedir() -> Option<Path> {
 
     #[cfg(windows)]
     fn secondary() -> Option<Path> {
-        do getenv(~"USERPROFILE").chain |p| {
+        do getenv("USERPROFILE").chain |p| {
             if !p.is_empty() {
                 Some(Path(p))
             } else {
@@ -647,9 +645,7 @@ pub fn make_dir(p: &Path, mode: c_int) -> bool {
             use os::win32::as_utf16_p;
             // FIXME: turn mode into something useful? #2623
             do as_utf16_p(p.to_str()) |buf| {
-                libc::CreateDirectoryW(buf, unsafe {
-                    cast::transmute(0)
-                })
+                libc::CreateDirectoryW(buf, cast::transmute(0))
                     != (0 as libc::BOOL)
             }
         }
@@ -659,7 +655,7 @@ pub fn make_dir(p: &Path, mode: c_int) -> bool {
     fn mkdir(p: &Path, mode: c_int) -> bool {
         unsafe {
             do as_c_charp(p.to_str()) |c| {
-                libc::mkdir(c, mode as mode_t) == (0 as c_int)
+                libc::mkdir(c, mode as libc::mode_t) == (0 as c_int)
             }
         }
     }
@@ -732,7 +728,6 @@ pub fn list_dir(p: &Path) -> ~[~str] {
         }
         #[cfg(windows)]
         unsafe fn get_list(p: &Path) -> ~[~str] {
-            use libc::types::os::arch::extra::{LPCTSTR, HANDLE, BOOL};
             use libc::consts::os::extra::INVALID_HANDLE_VALUE;
             use libc::wcslen;
             use libc::funcs::extra::kernel32::{
@@ -961,7 +956,7 @@ pub fn copy_file(from: &Path, to: &Path) -> bool {
 
             // Give the new file the old file's permissions
             if do str::as_c_str(to.to_str()) |to_buf| {
-                libc::chmod(to_buf, from_mode as mode_t)
+                libc::chmod(to_buf, from_mode as libc::mode_t)
             } != 0 {
                 return false; // should be a condition...
             }
@@ -1329,7 +1324,7 @@ pub fn glob(pattern: &str) -> ~[Path] {
 
 /// Returns a vector of Path objects that match the given glob pattern
 #[cfg(target_os = "win32")]
-pub fn glob(pattern: &str) -> ~[Path] {
+pub fn glob(_pattern: &str) -> ~[Path] {
     fail!("glob() is unimplemented on Windows")
 }
 
