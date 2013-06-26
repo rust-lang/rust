@@ -56,38 +56,6 @@ impl<V> Map<uint, V> for SmallIntMap<V> {
         self.find(key).is_some()
     }
 
-    /// Visit all key-value pairs in order
-    fn each<'a>(&'a self, it: &fn(&uint, &'a V) -> bool) -> bool {
-        for uint::range(0, self.v.len()) |i| {
-            match self.v[i] {
-              Some(ref elt) => if !it(&i, elt) { return false; },
-              None => ()
-            }
-        }
-        return true;
-    }
-
-    /// Visit all keys in order
-    fn each_key(&self, blk: &fn(key: &uint) -> bool) -> bool {
-        self.each(|k, _| blk(k))
-    }
-
-    /// Visit all values in order
-    fn each_value<'a>(&'a self, blk: &fn(value: &'a V) -> bool) -> bool {
-        self.each(|_, v| blk(v))
-    }
-
-    /// Iterate over the map and mutate the contained values
-    fn mutate_values(&mut self, it: &fn(&uint, &mut V) -> bool) -> bool {
-        for uint::range(0, self.v.len()) |i| {
-            match self.v[i] {
-              Some(ref mut elt) => if !it(&i, elt) { return false; },
-              None => ()
-            }
-        }
-        return true;
-    }
-
     /// Return a reference to the value corresponding to the key
     fn find<'a>(&'a self, key: &uint) -> Option<&'a V> {
         if *key < self.v.len() {
@@ -155,6 +123,38 @@ impl<V> Map<uint, V> for SmallIntMap<V> {
 impl<V> SmallIntMap<V> {
     /// Create an empty SmallIntMap
     pub fn new() -> SmallIntMap<V> { SmallIntMap{v: ~[]} }
+
+    /// Visit all key-value pairs in order
+    pub fn each<'a>(&'a self, it: &fn(&uint, &'a V) -> bool) -> bool {
+        for uint::range(0, self.v.len()) |i| {
+            match self.v[i] {
+              Some(ref elt) => if !it(&i, elt) { return false; },
+              None => ()
+            }
+        }
+        return true;
+    }
+
+    /// Visit all keys in order
+    pub fn each_key(&self, blk: &fn(key: &uint) -> bool) -> bool {
+        self.each(|k, _| blk(k))
+    }
+
+    /// Visit all values in order
+    pub fn each_value<'a>(&'a self, blk: &fn(value: &'a V) -> bool) -> bool {
+        self.each(|_, v| blk(v))
+    }
+
+    /// Iterate over the map and mutate the contained values
+    pub fn mutate_values(&mut self, it: &fn(&uint, &mut V) -> bool) -> bool {
+        for uint::range(0, self.v.len()) |i| {
+            match self.v[i] {
+              Some(ref mut elt) => if !it(&i, elt) { return false; },
+              None => ()
+            }
+        }
+        return true;
+    }
 
     /// Visit all key-value pairs in reverse order
     pub fn each_reverse<'a>(&'a self, it: &fn(uint, &'a V) -> bool) -> bool {

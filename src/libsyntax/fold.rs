@@ -236,8 +236,8 @@ fn noop_fold_foreign_item(ni: @foreign_item, fld: @ast_fold)
                         purity,
                         fold_generics(generics, fld))
                 }
-                foreign_item_const(t) => {
-                    foreign_item_const(fld.fold_ty(t))
+                foreign_item_static(t, m) => {
+                    foreign_item_static(fld.fold_ty(t), m)
                 }
             },
         id: fld.new_id(ni.id),
@@ -270,7 +270,7 @@ fn noop_fold_struct_field(sf: @struct_field, fld: @ast_fold)
 
 pub fn noop_fold_item_underscore(i: &item_, fld: @ast_fold) -> item_ {
     match *i {
-        item_const(t, e) => item_const(fld.fold_ty(t), fld.fold_expr(e)),
+        item_static(t, m, e) => item_static(fld.fold_ty(t), m, fld.fold_expr(e)),
         item_fn(ref decl, purity, abi, ref generics, ref body) => {
             item_fn(
                 fold_fn_decl(decl, fld),

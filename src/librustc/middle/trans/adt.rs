@@ -135,7 +135,7 @@ fn represent_type_uncached(cx: &mut CrateContext, t: ty::t) -> Repr {
                 ty::lookup_field_type(cx.tcx, def_id, field.id, substs)
             };
             let packed = ty::lookup_packed(cx.tcx, def_id);
-            let dtor = ty::ty_dtor(cx.tcx, def_id).is_present();
+            let dtor = ty::ty_dtor(cx.tcx, def_id).has_drop_flag();
             let ftys =
                 if dtor { ftys + [ty::mk_bool()] } else { ftys };
             return Univariant(mk_struct(cx, ftys, packed), dtor)

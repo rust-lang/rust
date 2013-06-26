@@ -101,6 +101,14 @@ pub enum Namespace {
     ValueNS
 }
 
+#[deriving(Eq)]
+pub enum NamespaceError {
+    NoError,
+    ModuleError,
+    TypeError,
+    ValueError
+}
+
 /// A NamespaceResult represents the result of resolving an import in
 /// a particular namespace. The result is either definitely-resolved,
 /// definitely- unresolved, or unknown.
@@ -759,10 +767,12 @@ pub fn PrimitiveTypeTable() -> PrimitiveTypeTable {
 }
 
 
-pub fn namespace_to_str(ns: Namespace) -> ~str {
+pub fn namespace_error_to_str(ns: NamespaceError) -> &'static str {
     match ns {
-        TypeNS  => ~"type",
-        ValueNS => ~"value",
+        NoError     => "",
+        ModuleError => "module",
+        TypeError   => "type",
+        ValueError  => "value",
     }
 }
 
@@ -993,21 +1003,25 @@ impl Resolver {
                 // * If no duplicate checking was requested at all, do
                 //   nothing.
 
-                let mut is_duplicate = false;
+                let mut duplicate_type = NoError;
                 let ns = match duplicate_checking_mode {
                     ForbidDuplicateModules => {
-                        is_duplicate = child.get_module_if_available().is_some();
+                        if (child.get_module_if_available().is_some()) {
+                            duplicate_type = ModuleError;
+                        }
                         Some(TypeNS)
                     }
                     ForbidDuplicateTypes => {
                         match child.def_for_namespace(TypeNS) {
                             Some(def_mod(_)) | None => {}
-                            Some(_) => is_duplicate = true
+                            Some(_) => duplicate_type = TypeError
                         }
                         Some(TypeNS)
                     }
                     ForbidDuplicateValues => {
-                        is_duplicate = child.defined_in_namespace(ValueNS);
+                        if child.defined_in_namespace(ValueNS) {
+                            duplicate_type = ValueError;
+                        }
                         Some(ValueNS)
                     }
                     ForbidDuplicateTypesAndValues => {
@@ -1016,31 +1030,31 @@ impl Resolver {
                             Some(def_mod(_)) | None => {}
                             Some(_) => {
                                 n = Some(TypeNS);
-                                is_duplicate = true;
+                                duplicate_type = TypeError;
                             }
                         };
                         if child.defined_in_namespace(ValueNS) {
-                            is_duplicate = true;
+                            duplicate_type = ValueError;
                             n = Some(ValueNS);
                         }
                         n
                     }
                     OverwriteDuplicates => None
                 };
-                if is_duplicate {
+                if (duplicate_type != NoError) {
                     // Return an error here by looking up the namespace that
                     // had the duplicate.
                     let ns = ns.unwrap();
                     self.session.span_err(sp,
                         fmt!("duplicate definition of %s `%s`",
-                             namespace_to_str(ns),
+                             namespace_error_to_str(duplicate_type),
                              self.session.str_of(name)));
                     {
                         let r = child.span_for_namespace(ns);
                         for r.iter().advance |sp| {
                             self.session.span_note(*sp,
-                                 fmt!("first definition of %s %s here:",
-                                      namespace_to_str(ns),
+                                 fmt!("first definition of %s `%s` here",
+                                      namespace_error_to_str(duplicate_type),
                                       self.session.str_of(name)));
                         }
                     }
@@ -1146,12 +1160,13 @@ impl Resolver {
             }
 
             // These items live in the value namespace.
-            item_const(*) => {
+            item_static(_, m, _) => {
                 let (name_bindings, _) =
                     self.add_child(ident, parent, ForbidDuplicateValues, sp);
+                let mutbl = m == ast::m_mutbl;
 
                 name_bindings.define_value
-                    (privacy, def_const(local_def(item.id)), sp);
+                    (privacy, def_static(local_def(item.id), mutbl), sp);
             }
             item_fn(_, purity, _, _, _) => {
               let (name_bindings, new_parent) =
@@ -1385,7 +1400,7 @@ impl Resolver {
                 }
 
                 let def_id = local_def(item.id);
-                for method_names.each |name, _| {
+                for method_names.iter().advance |(name, _)| {
                     if !self.method_map.contains_key(name) {
                         self.method_map.insert(*name, HashSet::new());
                     }
@@ -1565,8 +1580,8 @@ impl Resolver {
                     visit_foreign_item(foreign_item, (new_parent, visitor));
                 }
             }
-            foreign_item_const(*) => {
-                let def = def_const(local_def(foreign_item.id));
+            foreign_item_static(_, m) => {
+                let def = def_static(local_def(foreign_item.id), m);
                 name_bindings.define_value(Public, def, foreign_item.span);
 
                 visit_foreign_item(foreign_item, (new_parent, visitor));
@@ -1673,7 +1688,7 @@ impl Resolver {
             let privacy = variant_visibility_to_privacy(visibility, true);
             child_name_bindings.define_value(privacy, def, dummy_sp());
           }
-          def_fn(*) | def_static_method(*) | def_const(*) => {
+          def_fn(*) | def_static_method(*) | def_static(*) => {
             debug!("(building reduced graph for external \
                     crate) building value %s", final_ident);
             child_name_bindings.define_value(privacy, def, dummy_sp());
@@ -1703,7 +1718,7 @@ impl Resolver {
                       interned_method_names.insert(method_name);
                   }
               }
-              for interned_method_names.each |name| {
+              for interned_method_names.iter().advance |name| {
                   if !self.method_map.contains_key(name) {
                       self.method_map.insert(*name, HashSet::new());
                   }
@@ -2469,8 +2484,8 @@ impl Resolver {
         assert_eq!(containing_module.glob_count, 0);
 
         // Add all resolved imports from the containing module.
-        for containing_module.import_resolutions.each
-                |ident, target_import_resolution| {
+        for containing_module.import_resolutions.iter().advance
+                |(ident, target_import_resolution)| {
 
             debug!("(resolving glob import) writing module resolution \
                     %? into `%s`",
@@ -2554,13 +2569,13 @@ impl Resolver {
         };
 
         // Add all children from the containing module.
-        for containing_module.children.each |&ident, name_bindings| {
+        for containing_module.children.iter().advance |(&ident, name_bindings)| {
             merge_import_resolution(ident, *name_bindings);
         }
 
         // Add external module children from the containing module.
-        for containing_module.external_module_children.each
-                |&ident, module| {
+        for containing_module.external_module_children.iter().advance
+                |(&ident, module)| {
             let name_bindings =
                 @mut Resolver::create_name_bindings_from_module(*module);
             merge_import_resolution(ident, name_bindings);
@@ -3250,7 +3265,7 @@ impl Resolver {
     pub fn add_exports_for_module(@mut self,
                                   exports2: &mut ~[Export2],
                                   module_: @mut Module) {
-        for module_.children.each |ident, namebindings| {
+        for module_.children.iter().advance |(ident, namebindings)| {
             debug!("(computing exports) maybe export '%s'",
                    self.session.str_of(*ident));
             self.add_exports_of_namebindings(&mut *exports2,
@@ -3265,7 +3280,7 @@ impl Resolver {
                                              false);
         }
 
-        for module_.import_resolutions.each |ident, importresolution| {
+        for module_.import_resolutions.iter().advance |(ident, importresolution)| {
             if importresolution.privacy != Public {
                 debug!("(computing exports) not reexporting private `%s`",
                        self.session.str_of(*ident));
@@ -3664,7 +3679,7 @@ impl Resolver {
                                     || visit_foreign_item(*foreign_item,
                                                           ((), visitor)));
                             }
-                            foreign_item_const(_) => {
+                            foreign_item_static(*) => {
                                 visit_foreign_item(*foreign_item,
                                                    ((), visitor));
                             }
@@ -3686,7 +3701,7 @@ impl Resolver {
                                       visitor);
             }
 
-            item_const(*) => {
+            item_static(*) => {
                 self.with_constant_rib(|| {
                     visit_item(item, ((), visitor));
                 });
@@ -3833,8 +3848,8 @@ impl Resolver {
     pub fn resolve_type_parameters(@mut self,
                                    type_parameters: &OptVec<TyParam>,
                                    visitor: ResolveVisitor) {
-        for type_parameters.each |type_parameter| {
-            for type_parameter.bounds.each |bound| {
+        for type_parameters.iter().advance |type_parameter| {
+            for type_parameter.bounds.iter().advance |bound| {
                 self.resolve_type_parameter_bound(bound, visitor);
             }
         }
@@ -4038,7 +4053,7 @@ impl Resolver {
         for arm.pats.iter().enumerate().advance |(i, p)| {
             let map_i = self.binding_mode_map(*p);
 
-            for map_0.each |&key, &binding_0| {
+            for map_0.iter().advance |(&key, &binding_0)| {
                 match map_i.find(&key) {
                   None => {
                     self.session.span_err(
@@ -4059,7 +4074,7 @@ impl Resolver {
                 }
             }
 
-            for map_i.each |&key, &binding| {
+            for map_i.iter().advance |(&key, &binding)| {
                 if !map_0.contains_key(&key) {
                     self.session.span_err(
                         binding.span,
@@ -4180,13 +4195,13 @@ impl Resolver {
                     }
                 }
 
-                for bounds.each |bound| {
+                for bounds.iter().advance |bound| {
                     self.resolve_type_parameter_bound(bound, visitor);
                 }
             }
 
             ty_closure(c) => {
-                for c.bounds.each |bound| {
+                for c.bounds.iter().advance |bound| {
                     self.resolve_type_parameter_bound(bound, visitor);
                 }
                 visit_ty(ty, ((), visitor));
@@ -4344,7 +4359,7 @@ impl Resolver {
                                 Some(def @ def_struct(*)) => {
                             self.record_def(pattern.id, def);
                         }
-                        Some(def @ def_const(*)) => {
+                        Some(def @ def_static(*)) => {
                             self.enforce_default_binding_mode(
                                 pattern,
                                 binding_mode,
@@ -4376,7 +4391,7 @@ impl Resolver {
                         Some(def @ def_fn(*))      |
                         Some(def @ def_variant(*)) |
                         Some(def @ def_struct(*))  |
-                        Some(def @ def_const(*)) => {
+                        Some(def @ def_static(*)) => {
                             self.record_def(pattern.id, def);
                         }
                         Some(_) => {
@@ -4459,7 +4474,7 @@ impl Resolver {
                             def @ def_variant(*) | def @ def_struct(*) => {
                                 return FoundStructOrEnumVariant(def);
                             }
-                            def @ def_const(*) => {
+                            def @ def_static(_, false) => {
                                 return FoundConst(def);
                             }
                             _ => {
@@ -5354,7 +5369,7 @@ impl Resolver {
         }
 
         debug!("Import resolutions:");
-        for module_.import_resolutions.each |name, import_resolution| {
+        for module_.import_resolutions.iter().advance |(name, import_resolution)| {
             let value_repr;
             match import_resolution.target_for_namespace(ValueNS) {
                 None => { value_repr = ~""; }

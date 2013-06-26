@@ -35,7 +35,6 @@ use extra::ebml;
 use extra::serialize::Decodable;
 use syntax::ast_map;
 use syntax::attr;
-use syntax::diagnostic::span_handler;
 use syntax::parse::token::{ident_interner, special_idents};
 use syntax::print::pprust;
 use syntax::{ast, ast_util};
@@ -97,7 +96,8 @@ fn lookup_item(item_id: int, data: @~[u8]) -> ebml::Doc {
 
 #[deriving(Eq)]
 enum Family {
-    Const,                 // c
+    ImmStatic,             // c
+    MutStatic,             // b
     Fn,                    // f
     UnsafeFn,              // u
     StaticMethod,          // F
@@ -120,7 +120,8 @@ enum Family {
 fn item_family(item: ebml::Doc) -> Family {
     let fam = reader::get_doc(item, tag_items_data_item_family);
     match reader::doc_as_u8(fam) as char {
-      'c' => Const,
+      'c' => ImmStatic,
+      'b' => MutStatic,
       'f' => Fn,
       'u' => UnsafeFn,
       'F' => StaticMethod,
@@ -317,7 +318,8 @@ fn item_to_def_like(item: ebml::Doc, did: ast::def_id, cnum: ast::crate_num)
     -> def_like {
     let fam = item_family(item);
     match fam {
-        Const     => dl_def(ast::def_const(did)),
+        ImmStatic => dl_def(ast::def_static(did, false)),
+        MutStatic => dl_def(ast::def_static(did, true)),
         Struct    => dl_def(ast::def_struct(did)),
         UnsafeFn  => dl_def(ast::def_fn(did, ast::unsafe_fn)),
         Fn        => dl_def(ast::def_fn(did, ast::impure_fn)),
@@ -890,8 +892,8 @@ pub fn get_item_visibility(cdata: cmd, id: ast::node_id)
 
 fn family_has_type_params(fam: Family) -> bool {
     match fam {
-      Const | ForeignType | Mod | ForeignMod | PublicField | PrivateField
-      | ForeignFn => false,
+      ImmStatic | ForeignType | Mod | ForeignMod | PublicField | PrivateField
+      | ForeignFn | MutStatic => false,
       _           => true
     }
 }
@@ -921,7 +923,8 @@ fn describe_def(items: ebml::Doc, id: ast::def_id) -> ~str {
 
 fn item_family_to_str(fam: Family) -> ~str {
     match fam {
-      Const => ~"const",
+      ImmStatic => ~"static",
+      MutStatic => ~"static mut",
       Fn => ~"fn",
       UnsafeFn => ~"unsafe fn",
       StaticMethod => ~"static method",

@@ -21,8 +21,6 @@ struct type_desc str_body_tydesc = {
     NULL, // drop_glue
     NULL, // free_glue
     NULL, // visit_glue
-    NULL, // shape
-    NULL, // shape_tables
 };
 
 //

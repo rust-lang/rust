@@ -107,7 +107,7 @@ use middle::typeck::{isr_alist, lookup_def_ccx};
 use middle::typeck::no_params;
 use middle::typeck::{require_same_types, method_map, vtable_map};
 use util::common::{block_query, indenter, loop_query};
-use util::ppaux::{bound_region_to_str,bound_region_ptr_to_str};
+use util::ppaux::{bound_region_ptr_to_str};
 use util::ppaux;
 
 
@@ -585,7 +585,7 @@ pub fn check_item(ccx: @mut CrateCtxt, it: @ast::item) {
     let _indenter = indenter();
 
     match it.node {
-      ast::item_const(_, e) => check_const(ccx, it.span, e, it.id),
+      ast::item_static(_, _, e) => check_const(ccx, it.span, e, it.id),
       ast::item_enum(ref enum_definition, _) => {
         check_enum_variants(ccx,
                             it.span,
@@ -3216,7 +3216,7 @@ pub fn ty_param_bounds_and_ty_for_def(fcx: @mut FnCtxt,
       }
 
       ast::def_fn(id, _) | ast::def_static_method(id, _, _) |
-      ast::def_const(id) | ast::def_variant(_, id) |
+      ast::def_static(id, _) | ast::def_variant(_, id) |
       ast::def_struct(id) => {
         return ty::lookup_item_type(fcx.ccx.tcx, id);
       }
@@ -3506,13 +3506,15 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
             }
 
             "get_tydesc" => {
-              // FIXME (#3730): return *intrinsic::tydesc, not *()
-              (1u, ~[], ty::mk_nil_ptr(ccx.tcx))
+              let tydesc_ty = ty::get_tydesc_ty(ccx.tcx);
+              let td_ptr = ty::mk_ptr(ccx.tcx, ty::mt {
+                  ty: tydesc_ty,
+                  mutbl: ast::m_imm
+              });
+              (1u, ~[], td_ptr)
             }
             "visit_tydesc" => {
-              let tydesc_name = special_idents::tydesc;
-              assert!(tcx.intrinsic_defs.contains_key(&tydesc_name));
-              let (_, tydesc_ty) = tcx.intrinsic_defs.get_copy(&tydesc_name);
+              let tydesc_ty = ty::get_tydesc_ty(ccx.tcx);
               let (_, visitor_object_ty) = ty::visitor_object_ty(tcx);
               let td_ptr = ty::mk_ptr(ccx.tcx, ty::mt {
                   ty: tydesc_ty,

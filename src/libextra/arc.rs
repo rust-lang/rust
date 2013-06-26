@@ -521,6 +521,7 @@ mod tests {
     use core::cell::Cell;
     use core::comm;
     use core::task;
+    use core::uint;
 
     #[test]
     fn manually_share_arc() {
@@ -790,18 +791,20 @@ mod tests {
                 }
                 assert_eq!(*state, 42);
                 *state = 31337;
+                // FIXME: #7372: hits type inference bug with iterators
                 // send to other readers
-                for vec::each(reader_convos) |x| {
-                    match *x {
+                for uint::range(0, reader_convos.len()) |i| {
+                    match reader_convos[i] {
                         (ref rc, _) => rc.send(()),
                     }
                 }
             }
             let read_mode = arc.downgrade(write_mode);
             do (&read_mode).read |state| {
+                // FIXME: #7372: hits type inference bug with iterators
                 // complete handshake with other readers
-                for vec::each(reader_convos) |x| {
-                    match *x {
+                for uint::range(0, reader_convos.len()) |i| {
+                    match reader_convos[i] {
                         (_, ref rp) => rp.recv(),
                     }
                 }

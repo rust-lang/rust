@@ -213,7 +213,8 @@ pub fn type_needs_inner(cx: Context,
               ty::ty_enum(did, ref substs) => {
                 if list::find(enums_seen, |id| *id == did).is_none() {
                     let seen = @Cons(did, enums_seen);
-                    for vec::each(*ty::enum_variants(cx.ccx.tcx, did)) |v| {
+                    let r = ty::enum_variants(cx.ccx.tcx, did);
+                    for r.iter().advance |v| {
                         for v.args.iter().advance |aty| {
                             let t = ty::subst(cx.ccx.tcx, &(*substs), *aty);
                             type_needs_inner(cx, use_, t, seen);
