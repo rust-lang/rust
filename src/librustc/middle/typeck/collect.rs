@@ -675,7 +675,7 @@ pub fn check_methods_against_trait(ccx: &CrateCtxt,
     // we'll catch it in coherence
     let trait_ms = ty::trait_methods(tcx, trait_ref.def_id);
     for impl_ms.iter().advance |impl_m| {
-        match trait_ms.iter().find_(|trait_m| trait_m.ident == impl_m.mty.ident) {
+        match trait_ms.iter().find_(|trait_m| trait_m.ident.name == impl_m.mty.ident.name) {
             Some(trait_m) => {
                 let num_impl_tps = generics.ty_params.len();
                 compare_impl_method(
