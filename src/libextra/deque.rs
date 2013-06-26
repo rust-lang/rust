@@ -158,7 +158,7 @@ impl<T> Deque<T> {
     pub fn iter<'a>(&'a self) -> DequeIterator<'a, T> {
     DequeIterator { idx: self.lo, nelts: self.nelts, used: 0, vec: self.elts }
     }
-    
+
     /// Front-to-back iterator which returns mutable values.
     pub fn mut_iter<'a>(&'a mut self) -> DequeMutIterator<'a, T> {
     DequeMutIterator { idx: self.lo, nelts: self.nelts, used: 0, vec: self.elts }
@@ -183,7 +183,7 @@ macro_rules! iterator {
                 if self.used >= self.nelts {
                     return None;
                 }
-                let ret = unsafe { 
+                let ret = unsafe {
                     match self.vec[self.idx % self.vec.len()] {
                         Some(ref e) => Some(transmute(e)),
                         None => None
@@ -397,8 +397,7 @@ mod tests {
 
     #[test]
     fn test_param_taggy() {
-        test_parameterized::<Taggy>(One(1), Two(1, 2), Three(1, 2, 3),
-                                    Two(17, 42));
+        test_parameterized::<Taggy>(One(1), Two(1, 2), Three(1, 2, 3), Two(17, 42));
     }
 
     #[test]
@@ -467,14 +466,12 @@ mod tests {
         for std::int::range(0,5) |i| {
             d.add_back(i);
         }
-        assert_eq!(d.iter().collect::<~[&int]>(),
-           ~[&0,&1,&2,&3,&4]);
-        
+        assert_eq!(d.iter().collect::<~[&int]>(), ~[&0,&1,&2,&3,&4]);
+
         for std::int::range(6,9) |i| {
             d.add_front(i);
         }
-        assert_eq!(d.iter().collect::<~[&int]>(),
-            ~[&8,&7,&6,&0,&1,&2,&3,&4]);
+        assert_eq!(d.iter().collect::<~[&int]>(), ~[&8,&7,&6,&0,&1,&2,&3,&4]);
     }
 
     #[test]
@@ -483,13 +480,11 @@ mod tests {
         for std::int::range(0,5) |i| {
             d.add_back(i);
         }
-        assert_eq!(d.rev_iter().collect::<~[&int]>(),
-           ~[&4,&3,&2,&1,&0]);
-        
+        assert_eq!(d.rev_iter().collect::<~[&int]>(), ~[&4,&3,&2,&1,&0]);
+
         for std::int::range(6,9) |i| {
             d.add_front(i);
         }
-        assert_eq!(d.rev_iter().collect::<~[&int]>(),
-            ~[&4,&3,&2,&1,&0,&6,&7,&8]);
+        assert_eq!(d.rev_iter().collect::<~[&int]>(), ~[&4,&3,&2,&1,&0,&6,&7,&8]);
     }
 }
