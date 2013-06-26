@@ -49,6 +49,7 @@ use lib::llvm::debuginfo::*;
 use middle::trans::common::*;
 use middle::trans::machine;
 use middle::trans::type_of;
+use middle::trans::type_::Type;
 use middle::trans;
 use middle::ty;
 use util::ppaux::ty_to_str;
@@ -64,6 +65,8 @@ use std::vec;
 use syntax::codemap::span;
 use syntax::{ast, codemap, ast_util, ast_map};
 use syntax::parse::token;
+
+
 
 static DW_LANG_RUST: int = 0x9000;
 
@@ -594,17 +597,102 @@ fn create_struct(cx: &mut CrateContext, struct_type: ty::t, fields: ~[ty::field]
                 -> DICompositeType {
     debug!("create_struct: %?", ty::get(struct_type));
 
-    let loc = span_start(cx, span);
-    let file_md = create_file(cx, loc.file.name);
+    let struct_name = ty_to_str(cx.tcx, struct_type);
+    let struct_llvm_type = type_of::type_of(cx, struct_type);
 
-    let mut scx = StructContext::new(cx, ty_to_str(cx.tcx, struct_type), file_md, loc.line);
-    for fields.iter().advance |field| {
-        let field_t = field.mt.ty;
-        let ty_md = create_ty(cx, field_t, span);
-        let (size, align) = size_and_align_of(cx, field_t);
-        scx.add_member(cx.sess.str_of(field.ident), loc.line, size, align, ty_md);
-    }
-    return scx.finalize();
+    let field_llvm_types = fields.map(|field| type_of::type_of(cx, field.mt.ty));
+    let field_names = fields.map(|field| cx.sess.str_of(field.ident).to_owned());
+    let field_types_metadata = fields.map(|field| create_ty(cx, field.mt.ty, span));
+
+    return create_composite_type(
+        cx,
+        struct_llvm_type,
+        struct_name,
+        field_llvm_types,
+        field_names,
+        field_types_metadata,
+        span);
+}
+
+fn create_tuple(cx: &mut CrateContext,
+                tuple_type: ty::t,
+                component_types: &[ty::t],
+                span: span)
+             -> DICompositeType {
+
+    let tuple_name = (cx.sess.str_of((dbg_cx(cx).names)("tuple"))).to_owned();
+    let tuple_llvm_type = type_of::type_of(cx, tuple_type);
+    // Create a vec of empty strings. A vec::build_n() function would be nice for this.
+    let mut component_names : ~[~str] = vec::with_capacity(component_types.len());
+    component_names.grow_fn(component_types.len(), |_| ~"");
+
+    let component_llvm_types = component_types.map(|it| type_of::type_of(cx, *it));
+    let component_types_metadata = component_types.map(|it| create_ty(cx, *it, span));
+
+    return create_composite_type(
+        cx,
+        tuple_llvm_type,
+        tuple_name,
+        component_llvm_types,
+        component_names,
+        component_types_metadata,
+        span);
+}
+
+fn create_composite_type(cx: &mut CrateContext,
+                         composite_llvm_type: Type,
+                         composite_type_name: &str,
+                         member_llvm_types: &[Type],
+                         member_names: &[~str],
+                         member_type_metadata: &[DIType],
+                         span: span)
+                      -> DICompositeType {
+
+    let loc = span_start(cx, span);
+    let file_metadata = create_file(cx, loc.file.name);
+
+    let composite_size = machine::llsize_of_alloc(cx, composite_llvm_type);
+    let composite_align = machine::llalign_of_min(cx, composite_llvm_type);
+
+    let member_metadata = create_DIArray(
+        DIB(cx),
+        // transform the ty::t array of components into an array of DIEs
+        do vec::mapi(member_llvm_types) |i, member_llvm_type| {
+            let member_size = machine::llsize_of_alloc(cx, *member_llvm_type);
+            let member_align = machine::llalign_of_min(cx, *member_llvm_type);
+            let member_offset = machine::llelement_offset(cx, composite_llvm_type, i);
+            let member_name : &str = member_names[i];
+
+            do member_name.as_c_str |member_name| { unsafe {
+                llvm::LLVMDIBuilderCreateMemberType(
+                    DIB(cx),
+                    file_metadata,
+                    member_name,
+                    file_metadata,
+                    loc.line as c_uint,
+                    bytes_to_bits(member_size),
+                    bytes_to_bits(member_align),
+                    bytes_to_bits(member_offset),
+                    0,
+                    member_type_metadata[i])
+            }}
+        });
+
+    return do composite_type_name.as_c_str |name| { unsafe {
+        llvm::LLVMDIBuilderCreateStructType(
+            DIB(cx),
+            file_metadata,
+            name,
+            file_metadata,
+            loc.line as c_uint,
+            bytes_to_bits(composite_size),
+            bytes_to_bits(composite_align),
+            0,
+            ptr::null(),
+            member_metadata,
+            0,
+            ptr::null())
+    }};
 }
 
 // returns (void* type as a ValueRef, size in bytes, align in bytes)
@@ -639,29 +727,82 @@ fn create_tuple(cx: &mut CrateContext, tuple_type: ty::t, elements: &[ty::t], sp
     return scx.finalize();
 }
 
-fn create_boxed_type(cx: &mut CrateContext, contents: ty::t,
-                     span: span, boxed: DIType) -> DICompositeType {
-    debug!("create_boxed_type: %?", ty::get(contents));
+fn create_boxed_type(cx: &mut CrateContext,
+                     content_type: ty::t,
+                     span: span)
+                  -> DICompositeType {
 
-    let loc = span_start(cx, span);
-    let file_md = create_file(cx, loc.file.name);
-    let int_t = ty::mk_int();
-    let refcount_type = create_basic_type(cx, int_t, span);
-    let name = ty_to_str(cx.tcx, contents);
+    debug!("create_boxed_type: %?", ty::get(content_type));
 
-    let mut scx = StructContext::new(cx, fmt!("box<%s>", name), file_md, 0);
-    scx.add_member("refcnt", 0, sys::size_of::<uint>(),
-               sys::min_align_of::<uint>(), refcount_type);
-    // the tydesc and other pointers should be irrelevant to the
-    // debugger, so treat them as void* types
-    let (vp, vpsize, vpalign) = voidptr(cx);
-    scx.add_member("tydesc", 0, vpsize, vpalign, vp);
-    scx.add_member("prev", 0, vpsize, vpalign, vp);
-    scx.add_member("next", 0, vpsize, vpalign, vp);
-    let (size, align) = size_and_align_of(cx, contents);
-    scx.add_member("boxed", 0, size, align, boxed);
-    return scx.finalize();
+    let content_llvm_type = type_of::type_of(cx, content_type);
+    let content_type_metadata = create_ty(cx, content_type, span);
+
+    let box_llvm_type = Type::box(cx, &content_llvm_type);
+    let member_llvm_types = box_llvm_type.field_types();
+    let member_names = [~"refcnt", ~"tydesc", ~"prev", ~"next", ~"val"];
+
+    assert!(box_layout_is_as_expected(cx, member_llvm_types, content_llvm_type));
+
+    let int_type = ty::mk_int();
+    let nil_pointer_type = ty::mk_nil_ptr(cx.tcx);
+
+    let member_types_metadata = [
+        create_ty(cx, int_type, span),
+        create_ty(cx, nil_pointer_type, span),
+        create_ty(cx, nil_pointer_type, span),
+        create_ty(cx, nil_pointer_type, span),
+        content_type_metadata
+    ];
+
+    return create_composite_type(
+        cx,
+        box_llvm_type,
+        "box name",
+        member_llvm_types,
+        member_names,
+        member_types_metadata,
+        span);
+
+    fn box_layout_is_as_expected(cx: &CrateContext,
+                                 member_types: &[Type],
+                                 content_type: Type)
+                              -> bool {
+        return member_types[0] == cx.int_type
+            && member_types[1] == cx.tydesc_type.ptr_to()
+            && member_types[2] == Type::i8().ptr_to()
+            && member_types[3] == Type::i8().ptr_to()
+            && member_types[4] == content_type;
+    }
 }
+
+// fn create_boxed_type(cx: &mut CrateContext,
+//                      contents: ty::t,
+//                      span: span,
+//                      boxed: DIType)
+//                   -> DICompositeType {
+
+//     debug!("create_boxed_type: %?", ty::get(contents));
+
+//     let loc = span_start(cx, span);
+//     let file_md = create_file(cx, loc.file.name);
+//     let int_t = ty::mk_int();
+//     let refcount_type = create_basic_type(cx, int_t, span);
+//     let name = ty_to_str(cx.tcx, contents);
+
+//     let mut scx = StructContext::new(cx, fmt!("box<%s>", name), file_md, 0);
+//     scx.add_member("refcnt", 0, sys::size_of::<uint>(),
+//                sys::min_align_of::<uint>(), refcount_type);
+//     // the tydesc and other pointers should be irrelevant to the
+//     // debugger, so treat them as void* types
+//     let (vp, vpsize, vpalign) = voidptr(cx);
+//     scx.add_member("tydesc", 0, vpsize, vpalign, vp);
+//     scx.add_member("prev", 0, vpsize, vpalign, vp);
+//     scx.add_member("next", 0, vpsize, vpalign, vp);
+//     let (size, align) = size_and_align_of(cx, contents);
+//     scx.add_member("val", 0, size, align, boxed);
+//     return scx.finalize();
+// }
+
 
 fn create_fixed_vec(cx: &mut CrateContext, _vec_t: ty::t, elem_t: ty::t,
                     len: uint, span: span) -> DIType {
@@ -840,9 +981,8 @@ fn create_ty(cx: &mut CrateContext, t: ty::t, span: span) -> DIType {
             create_unimpl_ty(cx, t)
         }
         ty::ty_box(ref mt) | ty::ty_uniq(ref mt) => {
-            let boxed = create_ty(cx, mt.ty, span);
-            let box_md = create_boxed_type(cx, mt.ty, span, boxed);
-            create_pointer_type(cx, t, span, box_md)
+            let box_metadata = create_boxed_type(cx, mt.ty, span);
+            create_pointer_type(cx, t, span, box_metadata)
         },
         ty::ty_evec(ref mt, ref vstore) => {
             match *vstore {
@@ -858,10 +998,7 @@ fn create_ty(cx: &mut CrateContext, t: ty::t, span: span) -> DIType {
                 }
             }
         },
-        ty::ty_ptr(ref mt) => {
-            let pointee = create_ty(cx, mt.ty, span);
-            create_pointer_type(cx, t, span, pointee)
-        },
+        ty::ty_ptr(ref mt) |
         ty::ty_rptr(_, ref mt) => {
             let pointee = create_ty(cx, mt.ty, span);
             create_pointer_type(cx, t, span, pointee)

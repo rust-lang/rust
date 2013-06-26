@@ -1635,6 +1635,14 @@ pub mod llvm {
         #[fast_ffi]
         pub unsafe fn LLVMABIAlignmentOfType(TD: TargetDataRef,
                                   Ty: TypeRef) -> c_uint;
+
+        /** Computes the byte offset of the indexed struct element for a target. */
+        #[fast_ffi]
+        pub unsafe fn LLVMOffsetOfElement(TD: TargetDataRef,
+                                          StructTy: TypeRef,
+                                          Element: c_uint)
+                                       -> c_ulonglong;
+
         /**
          * Returns the minimum alignment of a type when part of a call frame.
          */

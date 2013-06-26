@@ -113,3 +113,48 @@ pub fn llalign_of(cx: &CrateContext, ty: Type) -> ValueRef {
             llvm::LLVMAlignOf(ty.to_ref()), cx.int_type.to_ref(), False);
     }
 }
+
+pub fn llelement_offset(cx: &CrateContext, struct_ty: Type, element: uint) -> uint {
+    unsafe {
+        return llvm::LLVMOffsetOfElement(cx.td.lltd, struct_ty.to_ref(), element as u32) as uint;
+    }
+}
+
+// Computes the size of the data part of an enum.
+pub fn static_size_of_enum(cx: &mut CrateContext, t: ty::t) -> uint {
+    if cx.enum_sizes.contains_key(&t) {
+        return cx.enum_sizes.get_copy(&t);
+    }
+
+    debug!("static_size_of_enum %s", ty_to_str(cx.tcx, t));
+
+    match ty::get(t).sty {
+        ty::ty_enum(tid, ref substs) => {
+            // Compute max(variant sizes).
+            let mut max_size = 0;
+            let variants = ty::enum_variants(cx.tcx, tid);
+            for variants.iter().advance |variant| {
+                if variant.args.len() == 0 {
+                    loop;
+                }
+
+                let lltypes = variant.args.map(|&variant_arg| {
+                    let substituted = ty::subst(cx.tcx, substs, variant_arg);
+                    type_of::sizing_type_of(cx, substituted)
+                });
+
+                debug!("static_size_of_enum: variant %s type %s",
+                       cx.tcx.sess.str_of(variant.name),
+                       cx.tn.type_to_str(Type::struct_(lltypes, false)));
+
+                let this_size = llsize_of_real(cx, Type::struct_(lltypes, false));
+                if max_size < this_size {
+                    max_size = this_size;
+                }
+            }
+            cx.enum_sizes.insert(t, max_size);
+            return max_size;
+        }
+        _ => cx.sess.bug("static_size_of_enum called on non-enum")
+    }
+}
