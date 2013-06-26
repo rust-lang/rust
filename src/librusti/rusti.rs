@@ -648,6 +648,11 @@ mod tests {
             fn f() {}
             f()
         ");
+
+        debug!("simultaneous definitions + expressions are allowed");
+        run_program("
+            let a = 3; a as u8
+        ");
     }
 
     #[test]
