@@ -16,31 +16,24 @@ use rt::io::{io_error, read_error, EndOfFile};
 use rt::rtio::{RtioUdpSocketObject, RtioUdpSocket, IoFactory, IoFactoryObject};
 use rt::local::Local;
 
-pub struct UdpSocket {
-    rtsocket: ~RtioUdpSocketObject
-}
+pub struct UdpSocket(~RtioUdpSocketObject);
 
 impl UdpSocket {
-    fn new(s: ~RtioUdpSocketObject) -> UdpSocket {
-        UdpSocket { rtsocket: s }
-    }
+    fn new(s: ~RtioUdpSocketObject) -> UdpSocket { UdpSocket(s) }
 
     pub fn bind(addr: IpAddr) -> Option<UdpSocket> {
-        let socket = unsafe {
-            let io = Local::unsafe_borrow::<IoFactoryObject>();
-            (*io).udp_bind(addr)
-        };
+        let socket = unsafe { (*Local::unsafe_borrow::<IoFactoryObject>()).udp_bind(addr) };
         match socket {
-            Ok(s) => { Some(UdpSocket { rtsocket: s }) }
+            Ok(s) => Some(UdpSocket::new(s)),
             Err(ioerr) => {
                 io_error::cond.raise(ioerr);
-                return None;
+                None
             }
         }
     }
 
     pub fn recvfrom(&self, buf: &mut [u8]) -> Option<(uint, IpAddr)> {
-        match (*self.rtsocket).recvfrom(buf) {
+        match (**self).recvfrom(buf) {
             Ok((nread, src)) => Some((nread, src)),
             Err(ioerr) => {
                 // EOF is indicated by returning None
@@ -53,34 +46,26 @@ impl UdpSocket {
     }
 
     pub fn sendto(&self, buf: &[u8], dst: IpAddr) {
-        match (*self.rtsocket).sendto(buf, dst) {
+        match (**self).sendto(buf, dst) {
             Ok(_) => (),
-            Err(ioerr) => {
-                io_error::cond.raise(ioerr);
-            }
+            Err(ioerr) => io_error::cond.raise(ioerr),
         }
     }
 
-    // XXX convert ~self to self eventually
-    pub fn connect(~self, other: IpAddr) -> UdpStream {
+    pub fn connect(self, other: IpAddr) -> UdpStream {
         UdpStream { socket: self, connectedTo: other }
     }
 }
 
 pub struct UdpStream {
-    socket: ~UdpSocket,
+    socket: UdpSocket,
     connectedTo: IpAddr
 }
 
 impl UdpStream {
-    pub fn as_socket<T>(&self, f: &fn(&UdpSocket) -> T) -> T {
-        f(self.socket)
-    }
+    pub fn as_socket<T>(&self, f: &fn(&UdpSocket) -> T) -> T { f(&self.socket) }
 
-    pub fn disconnect(self) -> ~UdpSocket {
-        let UdpStream { socket: s, _ } = self;
-        s
-    }
+    pub fn disconnect(self) -> UdpSocket { self.socket }
 }
 
 impl Reader for UdpStream {
