@@ -895,8 +895,22 @@ impl CoherenceChecker {
         }
 
         // Record all the trait methods.
-        let implementation = @implementation;
+        let mut implementation = @implementation;
         for associated_traits.iter().advance |trait_ref| {
+            self.instantiate_default_methods(implementation.did,
+                                             *trait_ref);
+
+            // XXX(sully): We could probably avoid this copy if there are no
+            // default methods.
+            let mut methods = copy implementation.methods;
+            self.add_provided_methods_to_impl(&mut methods,
+                                              &trait_ref.def_id,
+                                              &implementation.did);
+            implementation = @Impl {
+                methods: methods,
+                ..*implementation
+            };
+
             self.add_trait_method(trait_ref.def_id, implementation);
         }
 
@@ -929,9 +943,6 @@ impl CoherenceChecker {
         do iter_crate_data(crate_store) |crate_number, _crate_metadata| {
             for each_path(crate_store, crate_number) |_, def_like, _| {
                 match def_like {
-                    dl_def(def_trait(def_id)) => {
-                        self.add_default_methods_for_external_trait(def_id);
-                    }
                     dl_impl(def_id) => {
                         self.add_external_impl(&mut impls_seen,
                                                crate_store,

@@ -140,7 +140,7 @@ impl ReachableContext {
                     }
                     item_enum(ref enum_def, _) => {
                         if privacy_context == PublicContext {
-                            for enum_def.variants.each |variant| {
+                            for enum_def.variants.iter().advance |variant| {
                                 reachable_symbols.insert(variant.node.id);
                             }
                         }
@@ -159,7 +159,7 @@ impl ReachableContext {
                         };
 
                         // Mark all public methods as reachable.
-                        for methods.each |&method| {
+                        for methods.iter().advance |&method| {
                             if should_be_considered_public(method) {
                                 reachable_symbols.insert(method.id);
                             }
@@ -168,7 +168,7 @@ impl ReachableContext {
                         if generics_require_inlining(generics) {
                             // If the impl itself has generics, add all public
                             // symbols to the worklist.
-                            for methods.each |&method| {
+                            for methods.iter().advance |&method| {
                                 if should_be_considered_public(method) {
                                     worklist.push(method.id)
                                 }
@@ -176,7 +176,7 @@ impl ReachableContext {
                         } else {
                             // Otherwise, add only public methods that have
                             // generics to the worklist.
-                            for methods.each |method| {
+                            for methods.iter().advance |method| {
                                 let generics = &method.generics;
                                 let attrs = &method.attrs;
                                 if generics_require_inlining(generics) ||
@@ -190,7 +190,7 @@ impl ReachableContext {
                     item_trait(_, _, ref trait_methods) => {
                         // Mark all provided methods as reachable.
                         if privacy_context == PublicContext {
-                            for trait_methods.each |trait_method| {
+                            for trait_methods.iter().advance |trait_method| {
                                 match *trait_method {
                                     provided(method) => {
                                         reachable_symbols.insert(method.id);

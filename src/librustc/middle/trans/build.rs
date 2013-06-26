@@ -616,7 +616,7 @@ pub fn GEPi(cx: block, base: ValueRef, ixs: &[uint]) -> ValueRef {
     // we care about.
     if ixs.len() < 16 {
         let mut small_vec = [ C_i32(0), ..16 ];
-        for ixs.eachi |i, &ix| {
+        for ixs.iter().enumerate().advance |(i, &ix)| {
             small_vec[i] = C_i32(ix as i32)
         }
         InBoundsGEP(cx, base, small_vec.slice(0, ixs.len()))

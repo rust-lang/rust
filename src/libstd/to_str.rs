@@ -55,7 +55,7 @@ impl<A:ToStr+Hash+Eq, B:ToStr+Hash+Eq> ToStr for HashMap<A, B> {
     fn to_str(&self) -> ~str {
         let mut acc = ~"{";
         let mut first = true;
-        for self.iter().advance |key, value| {
+        for self.iter().advance |(key, value)| {
             if first {
                 first = false;
             }
