@@ -481,7 +481,7 @@ impl RtioUdpSocket for UvUdpSocket {
             let task_cell = Cell::new(task);
             let alloc: AllocCallback = |_| unsafe { slice_to_uv_buf(*buf_ptr) };
             do self.recv_start(alloc) |watcher, nread, _buf, addr, flags, status| {
-                let _ = flags; // NOTE add handling for partials?
+                let _ = flags; // TODO add handling for partials?
 
                 watcher.recv_stop();
 
