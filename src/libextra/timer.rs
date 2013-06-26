@@ -125,7 +125,6 @@ pub fn recv_timeout<T:Copy + Send>(iotask: &IoTask,
                                    -> Option<T> {
     let (timeout_po, timeout_ch) = stream::<()>();
     let mut timeout_po = timeout_po;
-    let mut timeout_ch = timeout_ch;
     delayed_send(iotask, msecs, &timeout_ch, ());
 
     // XXX: Workaround due to ports and channels not being &mut. They should

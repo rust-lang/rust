@@ -94,12 +94,11 @@ pub mod reader {
 
     use serialize;
 
-    use core::prelude::*;
     use core::cast::transmute;
     use core::int;
     use core::io;
+    use core::option::{None, Option, Some};
     use core::ptr::offset;
-    use core::str;
     use core::unstable::intrinsics::bswap32;
     use core::vec;
 
