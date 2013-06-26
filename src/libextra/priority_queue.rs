@@ -37,10 +37,11 @@ impl<T:Ord> Mutable for PriorityQueue<T> {
 }
 
 impl<T:Ord> PriorityQueue<T> {
-    /// Visit all values in the underlying vector.
-    ///
-    /// The values are **not** visited in order.
-    pub fn each(&self, f: &fn(&T) -> bool) -> bool { self.data.iter().advance(f) }
+    /// An iterator visiting all values in underlying vector, in
+    /// arbitrary order.
+    pub fn iter<'a>(&'a self) -> PriorityQueueIterator<'a, T> {
+        PriorityQueueIterator { iter: self.data.iter() }
+    }
 
     /// Returns the greatest item in the queue - fails if empty
     pub fn top<'a>(&'a self) -> &'a T { &self.data[0] }
@@ -178,10 +179,32 @@ impl<T:Ord> PriorityQueue<T> {
     }
 }
 
+/// PriorityQueue iterator
+pub struct PriorityQueueIterator <'self, T> {
+    priv iter: vec::VecIterator<'self, T>,
+}
+
+impl<'self, T> Iterator<&'self T> for PriorityQueueIterator<'self, T> {
+    #[inline]
+    fn next(&mut self) -> Option<(&'self T)> { self.iter.next() }
+}
+
 #[cfg(test)]
 mod tests {
     use sort::merge_sort;
     use priority_queue::PriorityQueue;
+
+    #[test]
+    fn test_iterator() {
+        let data = ~[5, 9, 3];
+        let iterout = ~[9, 5, 3];
+        let pq = PriorityQueue::from_vec(data);
+        let mut i = 0;
+        for pq.iter().advance |el| {
+            assert_eq!(*el, iterout[i]);
+            i += 1;
+        }
+    }
 
     #[test]
     fn test_top_and_pop() {
