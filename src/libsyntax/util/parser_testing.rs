@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::option::{Option,None};
 use ast;
 use parse::{new_parse_sess};
 use parse::{ParseSess,string_to_filemap,filemap_to_tts};

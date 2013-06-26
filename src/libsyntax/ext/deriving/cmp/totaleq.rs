@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
+use std::prelude::*;
 
 use ast::{meta_item, item, expr};
 use codemap::span;

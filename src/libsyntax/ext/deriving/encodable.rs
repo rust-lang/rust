@@ -75,8 +75,6 @@ would yield functions like:
     }
 */
 
-use core::prelude::*;
-
 use ast::{meta_item, item, expr, m_imm, m_mutbl};
 use codemap::span;
 use ext::base::ExtCtxt;

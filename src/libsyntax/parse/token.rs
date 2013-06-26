@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
-
 use ast;
 use ast::Name;
 use ast_util;
@@ -17,12 +15,12 @@ use parse::token;
 use util::interner::StrInterner;
 use util::interner;
 
-use core::cast;
-use core::char;
-use core::cmp::Equiv;
-use core::local_data;
-use core::rand;
-use core::rand::RngUtil;
+use std::cast;
+use std::char;
+use std::cmp::Equiv;
+use std::local_data;
+use std::rand;
+use std::rand::RngUtil;
 
 #[deriving(Encodable, Decodable, Eq)]
 pub enum binop {

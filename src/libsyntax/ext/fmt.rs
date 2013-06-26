@@ -14,17 +14,15 @@
  * compiler syntax extension plugin interface.
  */
 
-use core::prelude::*;
-
 use ast;
 use codemap::span;
 use ext::base::*;
 use ext::base;
 use ext::build::AstBuilder;
 
-use core::option;
-use core::unstable::extfmt::ct::*;
-use core::vec;
+use std::option;
+use std::unstable::extfmt::ct::*;
+use std::vec;
 use parse::token::{str_to_ident};
 
 pub fn expand_syntax_ext(cx: @ExtCtxt, sp: span, tts: &[ast::token_tree])
@@ -267,7 +265,7 @@ fn pieces_to_expr(cx: @ExtCtxt, sp: span,
     let mut stms = ~[];
 
     /* Translate each piece (portion of the fmt expression) by invoking the
-       corresponding function in core::unstable::extfmt. Each function takes a
+       corresponding function in std::unstable::extfmt. Each function takes a
        buffer to insert data into along with the data being formatted. */
     let npieces = pieces.len();
     do vec::consume(pieces) |i, pc| {
