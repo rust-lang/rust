@@ -18,15 +18,11 @@ use rt::rtio::{IoFactory, IoFactoryObject,
                RtioTcpStream, RtioTcpStreamObject};
 use rt::local::Local;
 
-pub struct TcpStream {
-    rtstream: ~RtioTcpStreamObject
-}
+pub struct TcpStream(~RtioTcpStreamObject);
 
 impl TcpStream {
     fn new(s: ~RtioTcpStreamObject) -> TcpStream {
-        TcpStream {
-            rtstream: s
-        }
+        TcpStream(s)
     }
 
     pub fn connect(addr: IpAddr) -> Option<TcpStream> {
@@ -38,13 +34,11 @@ impl TcpStream {
         };
 
         match stream {
-            Ok(s) => {
-                Some(TcpStream::new(s))
-            }
+            Ok(s) => Some(TcpStream::new(s)),
             Err(ioerr) => {
                 rtdebug!("failed to connect: %?", ioerr);
                 io_error::cond.raise(ioerr);
-                return None;
+                None
             }
         }
     }
@@ -52,8 +46,7 @@ impl TcpStream {
 
 impl Reader for TcpStream {
     fn read(&mut self, buf: &mut [u8]) -> Option<uint> {
-        let bytes_read = self.rtstream.read(buf);
-        match bytes_read {
+        match (**self).read(buf) {
             Ok(read) => Some(read),
             Err(ioerr) => {
                 // EOF is indicated by returning None
@@ -70,8 +63,7 @@ impl Reader for TcpStream {
 
 impl Writer for TcpStream {
     fn write(&mut self, buf: &[u8]) {
-        let res = self.rtstream.write(buf);
-        match res {
+        match (**self).write(buf) {
             Ok(_) => (),
             Err(ioerr) => {
                 io_error::cond.raise(ioerr);
@@ -82,9 +74,7 @@ impl Writer for TcpStream {
     fn flush(&mut self) { fail!() }
 }
 
-pub struct TcpListener {
-    rtlistener: ~RtioTcpListenerObject,
-}
+pub struct TcpListener(~RtioTcpListenerObject);
 
 impl TcpListener {
     pub fn bind(addr: IpAddr) -> Option<TcpListener> {
@@ -93,11 +83,7 @@ impl TcpListener {
             (*io).tcp_bind(addr)
         };
         match listener {
-            Ok(l) => {
-                Some(TcpListener {
-                    rtlistener: l
-                })
-            }
+            Ok(l) => Some(TcpListener(l)),
             Err(ioerr) => {
                 io_error::cond.raise(ioerr);
                 return None;
@@ -108,8 +94,7 @@ impl TcpListener {
 
 impl Listener<TcpStream> for TcpListener {
     fn accept(&mut self) -> Option<TcpStream> {
-        let rtstream = self.rtlistener.accept();
-        match rtstream {
+        match (**self).accept() {
             Ok(s) => {
                 Some(TcpStream::new(s))
             }
