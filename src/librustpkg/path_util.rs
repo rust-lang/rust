@@ -22,11 +22,40 @@ use core::iterator::IteratorUtil;
 use messages::*;
 use package_id::*;
 
+fn push_if_exists(vec: &mut ~[Path], p: &Path) {
+    let maybe_dir = p.push(".rust");
+    if os::path_exists(&maybe_dir) {
+        vec.push(maybe_dir);
+    }
+}
+
+#[cfg(windows)]
+static path_entry_separator: &'static str = ";";
+#[cfg(not(windows))]
+static path_entry_separator: &'static str = ":";
+
 /// Returns the value of RUST_PATH, as a list
-/// of Paths. In general this should be read from the
-/// environment; for now, it's hard-wired to just be "."
+/// of Paths. Includes default entries for, if they exist:
+/// $HOME/.rust
+/// DIR/.rust for any DIR that's the current working directory
+/// or an ancestor of it
 pub fn rust_path() -> ~[Path] {
-    ~[Path(".")]
+    let env_path: ~str = os::getenv("RUST_PATH").get_or_default(~"");
+    let mut env_rust_path: ~[Path] = match os::getenv("RUST_PATH") {
+        Some(env_path) => {
+            let env_path_components: ~[&str] =
+                env_path.split_str_iter(path_entry_separator).collect();
+            env_path_components.map(|&s| Path(s))
+        }
+        None => ~[]
+    };
+    let cwd = os::getcwd();
+    // now add in default entries
+    env_rust_path.push(copy cwd);
+    do cwd.each_parent() |p| { push_if_exists(&mut env_rust_path, p) };
+    let h = os::homedir();
+    for h.iter().advance |h| { push_if_exists(&mut env_rust_path, h); }
+    env_rust_path
 }
 
 pub static u_rwx: i32 = (S_IRUSR | S_IWUSR | S_IXUSR) as i32;

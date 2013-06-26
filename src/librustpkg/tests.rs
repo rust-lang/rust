@@ -12,7 +12,7 @@
 
 use context::Ctx;
 use core::hashmap::HashMap;
-use core::{io, libc, os, result, run, str};
+use core::{io, libc, os, result, run, str, vec};
 use core::prelude::*;
 use extra::tempfile::mkdtemp;
 use core::run::ProcessOutput;
@@ -25,7 +25,7 @@ use path_util::{target_executable_in_workspace, target_library_in_workspace,
                make_dir_rwx, u_rwx, library_in_workspace,
                built_bench_in_workspace, built_test_in_workspace,
                built_library_in_workspace, built_executable_in_workspace,
-                installed_library_in_workspace};
+                installed_library_in_workspace, rust_path};
 use target::*;
 
 /// Returns the last-modified date as an Option
@@ -562,13 +562,58 @@ fn package_script_with_default_build() {
 }
 
 #[test]
-#[ignore (reason = "RUST_PATH not yet implemented -- #5682")]
+#[ignore (reason = "Un-ignore when #7071 is fixed")]
 fn rust_path_test() {
-    let dir = mk_workspace(&Path("/home/more_rust"),
-                           &normalize(RemotePath(Path("foo"))),
-                           &NoVersion);
-  //  command_line_test("RUST_PATH=/home/rust:/home/more_rust rustpkg install foo");
-    command_line_test([~"install", ~"foo"], &dir);
+    let dir_for_path = mkdtemp(&os::tmpdir(), "more_rust").expect("rust_path_test failed");
+    let dir = mk_workspace(&dir_for_path, &normalize(RemotePath(Path("foo"))), &NoVersion);
+    debug!("dir = %s", dir.to_str());
+    writeFile(&Path("/Users/tjc/more_rust/src/foo-0.1/main.rs"),
+              "fn main() { let _x = (); }");
+
+    let cwd = os::getcwd();
+    debug!("cwd = %s", cwd.to_str());
+    let mut prog = run::Process::new("rustpkg",
+                                     [~"install", ~"foo"],
+                                     run::ProcessOptions { env: Some(&[(~"RUST_PATH",
+                                                                       dir_for_path.to_str())]),
+                                                          dir: Some(&cwd),
+                                                          in_fd: None,
+                                                          out_fd: None,
+                                                          err_fd: None
+                                                         });
+    prog.finish_with_output();
+    assert_executable_exists(&dir_for_path, "foo");
+}
+
+#[test]
+fn rust_path_contents() {
+    let dir = mkdtemp(&os::tmpdir(), "rust_path").expect("rust_path_contents failed");
+    let abc = &dir.push("A").push("B").push("C");
+    assert!(os::mkdir_recursive(&abc.push(".rust"), u_rwx));
+    assert!(os::mkdir_recursive(&abc.pop().push(".rust"), u_rwx));
+    assert!(os::mkdir_recursive(&abc.pop().pop().push(".rust"), u_rwx));
+    assert!(do os::change_dir_locked(&dir.push("A").push("B").push("C")) {
+        let p = rust_path();
+        let cwd = os::getcwd().push(".rust");
+        let parent = cwd.pop().pop().push(".rust");
+        let grandparent = cwd.pop().pop().pop().push(".rust");
+        assert!(vec::contains(p, &cwd));
+        assert!(vec::contains(p, &parent));
+        assert!(vec::contains(p, &grandparent));
+        for p.iter().advance() |a_path| {
+            assert!(!a_path.components.is_empty());
+        }
+    });
+}
+
+#[test]
+fn rust_path_parse() {
+    os::setenv("RUST_PATH", "/a/b/c:/d/e/f:/g/h/i");
+    let paths = rust_path();
+    assert!(vec::contains(paths, &Path("/g/h/i")));
+    assert!(vec::contains(paths, &Path("/d/e/f")));
+    assert!(vec::contains(paths, &Path("/a/b/c")));
+    os::unsetenv("RUST_PATH");
 }
 
 #[test]
