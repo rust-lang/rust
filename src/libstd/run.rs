@@ -12,11 +12,10 @@
 
 #[allow(missing_doc)];
 
-use iterator::IteratorUtil;
 use cast;
 use comm::{stream, SharedChan, GenericChan, GenericPort};
-use int;
 use io;
+use iterator::IteratorUtil;
 use libc::{pid_t, c_void, c_int};
 use libc;
 use option::{Some, None};
@@ -465,7 +464,6 @@ fn spawn_process_os(prog: &str, args: &[~str],
     use libc::funcs::extra::msvcrt::get_osfhandle;
 
     use sys;
-    use uint;
 
     unsafe {
 
@@ -638,6 +636,7 @@ fn spawn_process_os(prog: &str, args: &[~str],
 
     use libc::funcs::posix88::unistd::{fork, dup2, close, chdir, execvp};
     use libc::funcs::bsd44::getdtablesize;
+    use int;
 
     mod rustrt {
         use libc::c_void;

@@ -17,8 +17,8 @@ The `ToStr` trait for converting to strings
 use str::OwnedStr;
 use hashmap::HashMap;
 use hashmap::HashSet;
-use iterator::IteratorUtil;
 use hash::Hash;
+use iterator::IteratorUtil;
 use cmp::Eq;
 use vec::ImmutableVector;
 
@@ -177,7 +177,7 @@ impl<A:ToStr> ToStr for @[A] {
 mod tests {
     use hashmap::HashMap;
     use hashmap::HashSet;
-    use container::{Set,Map};
+    use container::{Set, Map};
     #[test]
     fn test_simple_types() {
         assert_eq!(1i.to_str(), ~"1");

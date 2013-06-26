@@ -164,7 +164,6 @@ mod dl {
     use libc;
     use path;
     use ptr;
-    use str;
     use task;
     use result::*;
 
@@ -175,7 +174,7 @@ mod dl {
     }
 
     pub unsafe fn open_internal() -> *libc::c_void {
-        let mut handle = ptr::null();
+        let handle = ptr::null();
         GetModuleHandleExW(0 as libc::DWORD, ptr::null(), &handle as **libc::c_void);
         handle
     }
