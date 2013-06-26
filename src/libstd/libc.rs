@@ -732,8 +732,8 @@ pub mod types {
                             wProcessorArchitecture: 0,
                             wReserved: 0,
                             dwPageSize: 0,
-                            lpMinimumApplicationAddress: ptr::null(),
-                            lpMaximumApplicationAddress: ptr::null(),
+                            lpMinimumApplicationAddress: ptr::mut_null(),
+                            lpMaximumApplicationAddress: ptr::mut_null(),
                             dwActiveProcessorMask: 0,
                             dwNumberOfProcessors: 0,
                             dwProcessorType: 0,
@@ -1011,7 +1011,7 @@ pub mod consts {
         }
         pub mod extra {
             use libc::types::os::arch::c95::c_int;
-            use libc::types::os::arch::extra::{DWORD, BOOL};
+            use libc::types::os::arch::extra::{WORD, DWORD, BOOL};
 
             pub static TRUE : BOOL = 1;
             pub static FALSE : BOOL = 0;
@@ -3002,7 +3002,8 @@ pub mod funcs {
                                                LPCVOID};
             use libc::types::os::arch::extra::{LPSECURITY_ATTRIBUTES, LPSTARTUPINFO,
                                                LPPROCESS_INFORMATION,
-                                               LPMEMORY_BASIC_INFORMATION};
+                                               LPMEMORY_BASIC_INFORMATION,
+                                               LPSYSTEM_INFO};
             use libc::types::os::arch::extra::{HANDLE, LPHANDLE};
 
             #[abi = "stdcall"]
