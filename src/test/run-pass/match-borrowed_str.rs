@@ -58,4 +58,3 @@ pub fn main() {
     assert_eq!(g2(&"c", &"d"), ~"not found (c, d)");
     assert_eq!(g2("d", "e"), ~"not found (d, e)");
 }
-
