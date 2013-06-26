@@ -264,7 +264,7 @@ impl IoFactory for UvIoFactory {
     fn udp_bind(&mut self, addr: IpAddr) -> Result<~RtioUdpSocketObject, IoError> {
         let /*mut*/ watcher = UdpWatcher::new(self.uv_loop());
         match watcher.bind(addr) {
-            Ok(_) => Ok(~UvUdpSocket { watcher: watcher }),
+            Ok(_) => Ok(~UvUdpSocket(watcher)),
             Err(uverr) => {
                 let scheduler = Local::take::<Scheduler>();
                 do scheduler.deschedule_running_task_and_then |_, task| {
@@ -451,22 +451,15 @@ impl RtioTcpStream for UvTcpStream {
     }
 }
 
-pub struct UvUdpSocket {
-    watcher: UdpWatcher
-}
-
-impl UvUdpSocket {
-    fn watcher(&self) -> UdpWatcher { self.watcher }
-}
+pub struct UvUdpSocket(UdpWatcher);
 
 impl Drop for UvUdpSocket {
     fn finalize(&self) {
         rtdebug!("closing udp socket");
-        let watcher = self.watcher();
         let scheduler = Local::take::<Scheduler>();
         do scheduler.deschedule_running_task_and_then |_, task| {
             let task_cell = Cell::new(task);
-            do watcher.close {
+            do self.close {
                 let scheduler = Local::take::<Scheduler>();
                 scheduler.resume_task_immediately(task_cell.take());
             }
@@ -481,14 +474,13 @@ impl RtioUdpSocket for UvUdpSocket {
 
         let scheduler = Local::take::<Scheduler>();
         assert!(scheduler.in_task_context());
-        let watcher = self.watcher();
         let buf_ptr: *&mut [u8] = &buf;
         do scheduler.deschedule_running_task_and_then |sched, task| {
             rtdebug!("recvfrom: entered scheduler context");
             assert!(!sched.in_task_context());
             let task_cell = Cell::new(task);
             let alloc: AllocCallback = |_| unsafe { slice_to_uv_buf(*buf_ptr) };
-            do watcher.recv_start(alloc) |watcher, nread, _buf, addr, flags, status| {
+            do self.recv_start(alloc) |watcher, nread, _buf, addr, flags, status| {
                 let _ = flags; // NOTE add handling for partials?
 
                 watcher.recv_stop();
@@ -517,12 +509,11 @@ impl RtioUdpSocket for UvUdpSocket {
         let result_cell_ptr: *Cell<Result<(), IoError>> = &result_cell;
         let scheduler = Local::take::<Scheduler>();
         assert!(scheduler.in_task_context());
-        let watcher = self.watcher();
         let buf_ptr: *&[u8] = &buf;
         do scheduler.deschedule_running_task_and_then |_, task| {
             let task_cell = Cell::new(task);
             let buf = unsafe { slice_to_uv_buf(*buf_ptr) };
-            do watcher.send(buf, dst) |_watcher, status| {
+            do self.send(buf, dst) |_watcher, status| {
 
                 let result = match status {
                     None => Ok(()),
