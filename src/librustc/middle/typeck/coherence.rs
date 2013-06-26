@@ -333,7 +333,8 @@ impl CoherenceChecker {
 
         let impl_poly_type = ty::lookup_item_type(tcx, impl_id);
 
-        for self.each_provided_trait_method(trait_ref.def_id) |trait_method| {
+        let provided = ty::provided_trait_methods(tcx, trait_ref.def_id);
+        for provided.iter().advance |trait_method| {
             // Synthesize an ID.
             let new_id = parse::next_node_id(tcx.sess.parse_sess);
             let new_did = local_def(new_id);
@@ -347,7 +348,7 @@ impl CoherenceChecker {
                     impl_id,
                     trait_ref,
                     new_did,
-                    trait_method);
+                    *trait_method);
 
             debug!("new_method_ty=%s", new_method_ty.repr(tcx));
 
@@ -524,29 +525,6 @@ impl CoherenceChecker {
             }
             None => { /* no impls? */ }
         }
-    }
-
-    pub fn each_provided_trait_method(&self,
-                                      trait_did: ast::def_id,
-                                      f: &fn(x: @ty::Method) -> bool)
-                                      -> bool {
-        // Make a list of all the names of the provided methods.
-        // XXX: This is horrible.
-        let mut provided_method_idents = HashSet::new();
-        let tcx = self.crate_context.tcx;
-        let r = ty::provided_trait_methods(tcx, trait_did);
-        for r.iter().advance |ident| {
-            provided_method_idents.insert(*ident);
-        }
-
-        for ty::trait_methods(tcx, trait_did).iter().advance |&method| {
-            if provided_method_idents.contains(&method.ident) {
-                if !f(method) {
-                    return false;
-                }
-            }
-        }
-        return true;
     }
 
     pub fn polytypes_unify(&self,
@@ -729,9 +707,9 @@ impl CoherenceChecker {
         }
         // Default methods
         let r = ty::provided_trait_methods(tcx, trait_did);
-        for r.iter().advance |ident| {
-            debug!("inserting provided method %s", ident.repr(tcx));
-            provided_names.insert(*ident);
+        for r.iter().advance |method| {
+            debug!("inserting provided method %s", method.ident.repr(tcx));
+            provided_names.insert(method.ident);
         }
 
         let r = ty::trait_methods(tcx, trait_did);

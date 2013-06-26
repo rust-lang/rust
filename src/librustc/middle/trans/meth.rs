@@ -49,13 +49,12 @@ pub fn trans_impl(ccx: @mut CrateContext,
                   name: ast::ident,
                   methods: &[@ast::method],
                   generics: &ast::Generics,
-                  self_ty: Option<ty::t>,
                   id: ast::node_id) {
     let _icx = push_ctxt("impl::trans_impl");
     let tcx = ccx.tcx;
 
-    debug!("trans_impl(path=%s, name=%s, self_ty=%s, id=%?)",
-           path.repr(tcx), name.repr(tcx), self_ty.repr(tcx), id);
+    debug!("trans_impl(path=%s, name=%s, id=%?)",
+           path.repr(tcx), name.repr(tcx), id);
 
     if !generics.ty_params.is_empty() { return; }
     let sub_path = vec::append_one(path, path_name(name));
@@ -65,24 +64,10 @@ pub fn trans_impl(ccx: @mut CrateContext,
             let path = vec::append_one(/*bad*/copy sub_path,
                                        path_name(method.ident));
 
-            let param_substs_opt;
-            match self_ty {
-                None => param_substs_opt = None,
-                Some(self_ty) => {
-                    param_substs_opt = Some(@param_substs {
-                        tys: ~[],
-                        vtables: None,
-                        type_param_defs: @~[],
-                        self_ty: Some(self_ty)
-                    });
-                }
-            }
-
             trans_method(ccx,
                          path,
                          *method,
-                         param_substs_opt,
-                         self_ty,
+                         None,
                          llfn,
                          ast_util::local_def(id));
         }
@@ -98,9 +83,6 @@ Translates a (possibly monomorphized) method body.
 - `method`: the AST node for the method
 - `param_substs`: if this is a generic method, the current values for
   type parameters and so forth, else none
-- `base_self_ty`: optionally, the explicit self type for this method. This
-  will be none if this is not a default method and must always be present
-  if this is a default method.
 - `llfn`: the LLVM ValueRef for the method
 - `impl_id`: the node ID of the impl this method is inside
 */
@@ -108,7 +90,6 @@ pub fn trans_method(ccx: @mut CrateContext,
                     path: path,
                     method: &ast::method,
                     param_substs: Option<@param_substs>,
-                    base_self_ty: Option<ty::t>,
                     llfn: ValueRef,
                     impl_id: ast::def_id) {
     // figure out how self is being passed
@@ -119,18 +100,14 @@ pub fn trans_method(ccx: @mut CrateContext,
       _ => {
         // determine the (monomorphized) type that `self` maps to for
         // this method
-        let self_ty = match base_self_ty {
-            None => ty::node_id_to_type(ccx.tcx, method.self_id),
-            Some(provided_self_ty) => provided_self_ty,
-        };
+        let self_ty = ty::node_id_to_type(ccx.tcx, method.self_id);
         let self_ty = match param_substs {
             None => self_ty,
-            Some(@param_substs {tys: ref tys, _}) => {
-                ty::subst_tps(ccx.tcx, *tys, None, self_ty)
+            Some(@param_substs {tys: ref tys, self_ty: ref self_sub, _}) => {
+                ty::subst_tps(ccx.tcx, *tys, *self_sub, self_ty)
             }
         };
-        debug!("calling trans_fn with base_self_ty %s, self_ty %s",
-               base_self_ty.repr(ccx.tcx),
+        debug!("calling trans_fn with self_ty %s",
                self_ty.repr(ccx.tcx));
         match method.explicit_self.node {
           ast::sty_value => {
