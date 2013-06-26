@@ -3240,8 +3240,8 @@ impl Resolver {
     pub fn add_exports_for_module(@mut self,
                                   exports2: &mut ~[Export2],
                                   module_: @mut Module) {
-        for module_.import_resolutions.iter().advance |ident,
-                                                       importresolution| {
+        for module_.import_resolutions.iter().advance |(ident,
+                                                        importresolution)| {
             if importresolution.privacy != Public {
                 debug!("(computing exports) not reexporting private `%s`",
                        self.session.str_of(*ident));
