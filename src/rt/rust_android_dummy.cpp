@@ -83,4 +83,29 @@ extern "C" int pthread_atfork(void (*prefork)(void),
     return 0;
 }
 
+extern "C" int mlockall(int flags)
+{
+    return 0;
+}
+
+extern "C" int munlockall(void)
+{
+    return 0;
+}
+
+extern "C" int shm_open(const char *name, int oflag, mode_t mode)
+{
+    return 0;
+}
+
+extern "C" int shm_unlink(const char *name)
+{
+    return 0;
+}
+
+extern "C" int posix_madvise(void *addr, size_t len, int advice)
+{
+    return 0;
+}
+
 #endif
