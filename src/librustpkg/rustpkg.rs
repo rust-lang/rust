@@ -192,6 +192,7 @@ pub trait CtxMethods {
     fn clean(&self, workspace: &Path, id: &PkgId);
     fn info(&self);
     fn install(&self, workspace: &Path, id: &PkgId);
+    fn install_no_build(&self, workspace: &Path, id: &PkgId);
     fn prefer(&self, _id: &str, _vers: Option<~str>);
     fn test(&self);
     fn uninstall(&self, _id: &str, _vers: Option<~str>);
