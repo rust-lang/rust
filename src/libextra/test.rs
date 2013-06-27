@@ -423,7 +423,7 @@ type MonitorMsg = (TestDesc, TestResult);
 
 fn run_tests(opts: &TestOpts,
              tests: ~[TestDescAndFn],
-             callback: @fn(e: TestEvent)) {
+             callback: &fn(e: TestEvent)) {
 
     let filtered_tests = filter_tests(opts, tests);
     let filtered_descs = filtered_tests.map(|t| copy t.desc);
