@@ -3904,7 +3904,7 @@ impl DtorKind {
 pub fn ty_dtor(cx: ctxt, struct_id: def_id) -> DtorKind {
     match cx.destructor_for_type.find(&struct_id) {
         Some(&method_def_id) => {
-            let flag = !has_attr(cx, struct_id, "no_drop_flag");
+            let flag = !has_attr(cx, struct_id, "unsafe_no_drop_flag");
 
             TraitDtor(method_def_id, flag)
         }
