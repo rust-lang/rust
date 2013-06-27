@@ -651,6 +651,12 @@ pub fn noop_fold_ty(t: &ty_, fld: @ast_fold) -> ty_ {
             span: fld.new_span(f.span),
         }
     }
+    fn fold_opt_bounds(b: &Option<OptVec<TyParamBound>>, fld: @ast_fold)
+                        -> Option<OptVec<TyParamBound>> {
+        do b.map |bounds| {
+            do bounds.map |bound| { fold_ty_param_bound(bound, fld) }
+        }
+    }
     match *t {
         ty_nil | ty_bot | ty_infer => copy *t,
         ty_box(ref mt) => ty_box(fold_mt(mt, fld)),
@@ -664,7 +670,7 @@ pub fn noop_fold_ty(t: &ty_, fld: @ast_fold) -> ty_ {
                 purity: f.purity,
                 region: f.region,
                 onceness: f.onceness,
-                bounds: f.bounds.map(|x| fold_ty_param_bound(x, fld)),
+                bounds: fold_opt_bounds(&f.bounds, fld),
                 decl: fold_fn_decl(&f.decl, fld),
                 lifetimes: copy f.lifetimes,
             })
@@ -679,8 +685,7 @@ pub fn noop_fold_ty(t: &ty_, fld: @ast_fold) -> ty_ {
         }
         ty_tup(ref tys) => ty_tup(tys.map(|ty| fld.fold_ty(*ty))),
         ty_path(path, bounds, id) =>
-            ty_path(fld.fold_path(path),
-                    @bounds.map(|x| fold_ty_param_bound(x, fld)), fld.new_id(id)),
+            ty_path(fld.fold_path(path), @fold_opt_bounds(bounds, fld), fld.new_id(id)),
         ty_fixed_length_vec(ref mt, e) => {
             ty_fixed_length_vec(
                 fold_mt(mt, fld),

@@ -1,5 +1,5 @@
 
-fn take_any(_: &fn()) {
+fn take_any(_: &fn:()) {
 }
 
 fn take_copyable(_: &fn:Copy()) {
@@ -11,7 +11,7 @@ fn take_copyable_owned(_: &fn:Copy+Owned()) {
 fn take_const_owned(_: &fn:Const+Owned()) {
 }
 
-fn give_any(f: &fn()) {
+fn give_any(f: &fn:()) {
     take_any(f);
     take_copyable(f); //~ ERROR expected bounds `Copy` but found no bounds
     take_copyable_owned(f); //~ ERROR expected bounds `Copy+Owned` but found no bounds

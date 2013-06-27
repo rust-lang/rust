@@ -246,7 +246,9 @@ pub fn visit_ty<E: Copy>(t: @Ty, (e, v): (E, vt<E>)) {
         ty_closure(ref f) => {
             for f.decl.inputs.iter().advance |a| { (v.visit_ty)(a.ty, (copy e, v)); }
             (v.visit_ty)(f.decl.output, (copy e, v));
-            visit_ty_param_bounds(&f.bounds, (e, v));
+            do f.bounds.map |bounds| {
+                visit_ty_param_bounds(bounds, (copy e, v));
+            };
         },
         ty_bare_fn(ref f) => {
             for f.decl.inputs.iter().advance |a| { (v.visit_ty)(a.ty, (copy e, v)); }
@@ -254,7 +256,9 @@ pub fn visit_ty<E: Copy>(t: @Ty, (e, v): (E, vt<E>)) {
         },
         ty_path(p, bounds, _) => {
             visit_path(p, (copy e, v));
-            visit_ty_param_bounds(bounds, (e, v));
+            do bounds.map |bounds| {
+                visit_ty_param_bounds(bounds, (copy e, v));
+            };
         },
         ty_fixed_length_vec(ref mt, ex) => {
             (v.visit_ty)(mt.ty, (copy e, v));

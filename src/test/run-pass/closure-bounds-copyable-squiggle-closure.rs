@@ -8,11 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-pretty
-
 // Tests correct copying of heap closures' environments.
 
-fn foo(x: ~fn:Copy()) -> (~fn(), ~fn()) {
+fn foo(x: ~fn:Copy()) -> (~fn:(), ~fn:()) {
     (copy x, x)
 }
 fn main() {

@@ -21,7 +21,7 @@ fn c(x: ~Foo:Const+Owned) {
     b(x); //~ ERROR expected bounds `Copy+Owned`
 }
 
-fn d(x: ~Foo) {
+fn d(x: ~Foo:) {
     a(x); //~ ERROR found no bounds
 }
 

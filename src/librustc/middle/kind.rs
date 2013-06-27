@@ -128,7 +128,7 @@ fn check_item(item: @item, (cx, visitor): (Context, visit::vt<Context>)) {
                             // Yes, it's a destructor.
                             match self_type.node {
                                 ty_path(_, bounds, path_node_id) => {
-                                    assert!(bounds.is_empty());
+                                    assert!(bounds.is_none());
                                     let struct_def = cx.tcx.def_map.get_copy(
                                         &path_node_id);
                                     let struct_did =
@@ -169,10 +169,6 @@ fn with_appropriate_checker(cx: Context, id: node_id,
         let id = ast_util::def_id_of_def(fv.def).node;
         let var_t = ty::node_id_to_type(cx.tcx, id);
 
-        // FIXME(#3569): Once closure capabilities are restricted based on their
-        // incoming bounds, make this check conditional based on the bounds.
-        if !check_owned(cx, var_t, fv.span) { return; }
-
         // check that only immutable variables are implicitly copied in
         check_imm_free_var(cx, fv.def, fv.span);
 
@@ -183,10 +179,6 @@ fn with_appropriate_checker(cx: Context, id: node_id,
         // all captured data must be owned
         let id = ast_util::def_id_of_def(fv.def).node;
         let var_t = ty::node_id_to_type(cx.tcx, id);
-
-        // FIXME(#3569): Once closure capabilities are restricted based on their
-        // incoming bounds, make this check conditional based on the bounds.
-        if !check_durable(cx.tcx, var_t, fv.span) { return; }
 
         // check that only immutable variables are implicitly copied in
         check_imm_free_var(cx, fv.def, fv.span);
@@ -293,9 +285,9 @@ pub fn check_expr(e: @expr, (cx, v): (Context, visit::vt<Context>)) {
         expr_cast(source, _) => {
             check_cast_for_escaping_regions(cx, source, e);
             match ty::get(ty::expr_ty(cx.tcx, e)).sty {
-                ty::ty_trait(_, _, store, _, bounds) => {
+                ty::ty_trait(_, _, _, _, bounds) => {
                     let source_ty = ty::expr_ty(cx.tcx, source);
-                    check_trait_cast_bounds(cx, e.span, source_ty, bounds, store)
+                    check_trait_cast_bounds(cx, e.span, source_ty, bounds)
                 }
                 _ => { }
             }
@@ -391,18 +383,13 @@ pub fn check_freevar_bounds(cx: Context, sp: span, ty: ty::t,
 }
 
 pub fn check_trait_cast_bounds(cx: Context, sp: span, ty: ty::t,
-                               bounds: ty::BuiltinBounds, store: ty::TraitStore) {
+                               bounds: ty::BuiltinBounds) {
     do check_builtin_bounds(cx, ty, bounds) |missing| {
         cx.tcx.sess.span_err(sp,
             fmt!("cannot pack type `%s`, which does not fulfill \
                   `%s`, as a trait bounded by %s",
                  ty_to_str(cx.tcx, ty), missing.user_string(cx.tcx),
                  bounds.user_string(cx.tcx)));
-    }
-    // FIXME(#3569): Remove this check when the corresponding restriction
-    // is made with type contents.
-    if store == ty::UniqTraitStore && !ty::type_is_owned(cx.tcx, ty) {
-        cx.tcx.sess.span_err(sp, "uniquely-owned trait objects must be sendable");
     }
 }
 

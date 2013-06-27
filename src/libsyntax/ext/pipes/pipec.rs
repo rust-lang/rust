@@ -59,7 +59,7 @@ impl gen_send for message {
 
             let pipe_ty = cx.ty_path(
                 path(~[this.data_name()], span)
-                .add_tys(cx.ty_vars(&this.generics.ty_params)), @opt_vec::Empty);
+                .add_tys(cx.ty_vars(&this.generics.ty_params)), @None);
             let args_ast = vec::append(
                 ~[cx.arg(span, cx.ident_of("pipe"), pipe_ty)],
                 args_ast);
@@ -115,7 +115,7 @@ impl gen_send for message {
 
             let mut rty = cx.ty_path(path(~[next.data_name()],
                                           span)
-                                     .add_tys(copy next_state.tys), @opt_vec::Empty);
+                                     .add_tys(copy next_state.tys), @None);
             if try {
                 rty = cx.ty_option(rty);
             }
@@ -144,7 +144,7 @@ impl gen_send for message {
                              cx.ty_path(
                                  path(~[this.data_name()], span)
                                  .add_tys(cx.ty_vars(
-                                     &this.generics.ty_params)), @opt_vec::Empty))],
+                                     &this.generics.ty_params)), @None))],
                     args_ast);
 
                 let message_args = if arg_names.len() == 0 {
@@ -190,7 +190,7 @@ impl gen_send for message {
 
     fn to_ty(&mut self, cx: @ExtCtxt) -> @ast::Ty {
         cx.ty_path(path(~[cx.ident_of(self.name())], self.span())
-          .add_tys(cx.ty_vars(&self.get_generics().ty_params)), @opt_vec::Empty)
+          .add_tys(cx.ty_vars(&self.get_generics().ty_params)), @None)
     }
 }
 
@@ -224,7 +224,7 @@ impl to_type_decls for state {
                                 cx.ty_path(
                                     path(~[cx.ident_of(dir),
                                            cx.ident_of(next_name)], span)
-                                    .add_tys(copy next_state.tys), @opt_vec::Empty))
+                                    .add_tys(copy next_state.tys), @None))
               }
               None => tys
             };
@@ -277,8 +277,8 @@ impl to_type_decls for state {
                                    self.data_name()],
                                  dummy_sp())
                             .add_tys(cx.ty_vars(
-                                &self.generics.ty_params)), @opt_vec::Empty)),
-                        @opt_vec::Empty),
+                                &self.generics.ty_params)), @None)),
+                        @None),
                     cx.strip_bounds(&self.generics)));
         }
         else {
@@ -297,8 +297,8 @@ impl to_type_decls for state {
                                    self.data_name()],
                                         dummy_sp())
                             .add_tys(cx.ty_vars_global(
-                                &self.generics.ty_params)), @opt_vec::Empty),
-                                   self.proto.buffer_ty_path(cx)]), @opt_vec::Empty),
+                                &self.generics.ty_params)), @None),
+                                   self.proto.buffer_ty_path(cx)]), @None),
                     cx.strip_bounds(&self.generics)));
         };
         items
@@ -383,7 +383,7 @@ impl gen_init for protocol {
         cx.ty_path(path(~[cx.ident_of("super"),
                           cx.ident_of("__Buffer")],
                         copy self.span)
-                   .add_tys(cx.ty_vars_global(&params)), @opt_vec::Empty)
+                   .add_tys(cx.ty_vars_global(&params)), @None)
     }
 
     fn gen_buffer_type(&self, cx: @ExtCtxt) -> @ast::item {
