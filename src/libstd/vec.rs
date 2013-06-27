@@ -438,20 +438,6 @@ pub fn consume_reverse<T>(mut v: ~[T], f: &fn(uint, v: T)) {
     }
 }
 
-/// Shorten a vector, dropping excess elements.
-pub fn truncate<T>(v: &mut ~[T], newlen: uint) {
-    do as_mut_buf(*v) |p, oldlen| {
-        assert!(newlen <= oldlen);
-        unsafe {
-            // This loop is optimized out for non-drop types.
-            for uint::range(newlen, oldlen) |i| {
-                ptr::replace_ptr(ptr::mut_offset(p, i), intrinsics::uninit());
-            }
-        }
-    }
-    unsafe { raw::set_len(&mut *v, newlen); }
-}
-
 /**
  * Remove consecutive repeated elements from a vector; if the vector is
  * sorted, this removes all duplicates.
@@ -1820,9 +1806,18 @@ impl<T> OwnedVector<T> for ~[T] {
         self.pop()
     }
 
-    #[inline]
+    /// Shorten a vector, dropping excess elements.
     fn truncate(&mut self, newlen: uint) {
-        truncate(self, newlen);
+        do as_mut_buf(*self) |p, oldlen| {
+            assert!(newlen <= oldlen);
+            unsafe {
+                // This loop is optimized out for non-drop types.
+                for uint::range(newlen, oldlen) |i| {
+                    ptr::replace_ptr(ptr::mut_offset(p, i), intrinsics::uninit());
+                }
+            }
+        }
+        unsafe { raw::set_len(self, newlen); }
     }
 
     #[inline]
