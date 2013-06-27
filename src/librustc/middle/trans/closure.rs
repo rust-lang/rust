@@ -468,7 +468,7 @@ pub fn make_closure_glue(
         cx: block,
         v: ValueRef,
         t: ty::t,
-        glue_fn: @fn(block, v: ValueRef, t: ty::t) -> block) -> block {
+        glue_fn: &fn(block, v: ValueRef, t: ty::t) -> block) -> block {
     let _icx = push_ctxt("closure::make_closure_glue");
     let bcx = cx;
     let tcx = cx.tcx();

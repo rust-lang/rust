@@ -3017,7 +3017,7 @@ pub fn block_ty(cx: ctxt, b: &ast::blk) -> t {
 
 // Returns the type of a pattern as a monotype. Like @expr_ty, this function
 // doesn't provide type parameter substitutions.
-pub fn pat_ty(cx: ctxt, pat: @ast::pat) -> t {
+pub fn pat_ty(cx: ctxt, pat: &ast::pat) -> t {
     return node_id_to_type(cx, pat.id);
 }
 
@@ -3033,11 +3033,11 @@ pub fn pat_ty(cx: ctxt, pat: @ast::pat) -> t {
 // ask for the type of "id" in "id(3)", it will return "fn(&int) -> int"
 // instead of "fn(t) -> T with T = int". If this isn't what you want, see
 // expr_ty_params_and_ty() below.
-pub fn expr_ty(cx: ctxt, expr: @ast::expr) -> t {
+pub fn expr_ty(cx: ctxt, expr: &ast::expr) -> t {
     return node_id_to_type(cx, expr.id);
 }
 
-pub fn expr_ty_adjusted(cx: ctxt, expr: @ast::expr) -> t {
+pub fn expr_ty_adjusted(cx: ctxt, expr: &ast::expr) -> t {
     /*!
      *
      * Returns the type of `expr`, considering any `AutoAdjustment`
@@ -3191,7 +3191,7 @@ pub struct ParamsTy {
 }
 
 pub fn expr_ty_params_and_ty(cx: ctxt,
-                             expr: @ast::expr)
+                             expr: &ast::expr)
                           -> ParamsTy {
     ParamsTy {
         params: node_id_to_type_params(cx, expr.id),
@@ -3199,7 +3199,7 @@ pub fn expr_ty_params_and_ty(cx: ctxt,
     }
 }
 
-pub fn expr_has_ty_params(cx: ctxt, expr: @ast::expr) -> bool {
+pub fn expr_has_ty_params(cx: ctxt, expr: &ast::expr) -> bool {
     return node_id_has_type_params(cx, expr.id);
 }
 
@@ -3235,7 +3235,7 @@ pub fn method_call_type_param_defs(
     }
 }
 
-pub fn resolve_expr(tcx: ctxt, expr: @ast::expr) -> ast::def {
+pub fn resolve_expr(tcx: ctxt, expr: &ast::expr) -> ast::def {
     match tcx.def_map.find(&expr.id) {
         Some(&def) => def,
         None => {
@@ -3247,7 +3247,7 @@ pub fn resolve_expr(tcx: ctxt, expr: @ast::expr) -> ast::def {
 
 pub fn expr_is_lval(tcx: ctxt,
                     method_map: typeck::method_map,
-                    e: @ast::expr) -> bool {
+                    e: &ast::expr) -> bool {
     match expr_kind(tcx, method_map, e) {
         LvalueExpr => true,
         RvalueDpsExpr | RvalueDatumExpr | RvalueStmtExpr => false
@@ -3268,7 +3268,7 @@ pub enum ExprKind {
 
 pub fn expr_kind(tcx: ctxt,
                  method_map: typeck::method_map,
-                 expr: @ast::expr) -> ExprKind {
+                 expr: &ast::expr) -> ExprKind {
     if method_map.contains_key(&expr.id) {
         // Overloaded operations are generally calls, and hence they are
         // generated via DPS.  However, assign_op (e.g., `x += y`) is an
@@ -3388,7 +3388,7 @@ pub fn expr_kind(tcx: ctxt,
     }
 }
 
-pub fn stmt_node_id(s: @ast::stmt) -> ast::node_id {
+pub fn stmt_node_id(s: &ast::stmt) -> ast::node_id {
     match s.node {
       ast::stmt_decl(_, id) | stmt_expr(_, id) | stmt_semi(_, id) => {
         return id;
@@ -4374,7 +4374,7 @@ pub fn normalize_ty(cx: ctxt, t: t) -> t {
 }
 
 // Returns the repeat count for a repeating vector expression.
-pub fn eval_repeat_count(tcx: ctxt, count_expr: @ast::expr) -> uint {
+pub fn eval_repeat_count(tcx: ctxt, count_expr: &ast::expr) -> uint {
     match const_eval::eval_const_expr_partial(tcx, count_expr) {
       Ok(ref const_val) => match *const_val {
         const_eval::const_int(count) => if count < 0 {

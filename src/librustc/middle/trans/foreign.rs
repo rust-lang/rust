@@ -55,7 +55,7 @@ fn abi_info(ccx: @mut CrateContext) -> @cabi::ABIInfo {
     }
 }
 
-pub fn link_name(ccx: &CrateContext, i: @ast::foreign_item) -> @str {
+pub fn link_name(ccx: &CrateContext, i: &ast::foreign_item) -> @str {
      match attr::first_attr_value_str_by_name(i.attrs, "link_name") {
         None => ccx.sess.str_of(i.ident),
         Some(ln) => ln,
@@ -89,7 +89,7 @@ struct LlvmSignature {
     sret: bool,
 }
 
-fn foreign_signature(ccx: @mut CrateContext, fn_sig: &ty::FnSig)
+fn foreign_signature(ccx: &mut CrateContext, fn_sig: &ty::FnSig)
                      -> LlvmSignature {
     /*!
      * The ForeignSignature is the LLVM types of the arguments/return type
@@ -138,7 +138,7 @@ type shim_ret_builder<'self> =
               llretval: ValueRef);
 
 fn build_shim_fn_(ccx: @mut CrateContext,
-                  shim_name: ~str,
+                  shim_name: &str,
                   llbasefn: ValueRef,
                   tys: &ShimTypes,
                   cc: lib::llvm::CallConv,
@@ -357,7 +357,7 @@ pub fn trans_foreign_mod(ccx: @mut CrateContext,
     }
 
     fn build_shim_fn(ccx: @mut CrateContext,
-                     foreign_item: @ast::foreign_item,
+                     foreign_item: &ast::foreign_item,
                      tys: &ShimTypes,
                      cc: lib::llvm::CallConv)
                   -> ValueRef {
@@ -419,7 +419,7 @@ pub fn trans_foreign_mod(ccx: @mut CrateContext,
     // over the place
     fn build_direct_fn(ccx: @mut CrateContext,
                        decl: ValueRef,
-                       item: @ast::foreign_item,
+                       item: &ast::foreign_item,
                        tys: &ShimTypes,
                        cc: lib::llvm::CallConv) {
         debug!("build_direct_fn(%s)", link_name(ccx, item));
@@ -446,7 +446,7 @@ pub fn trans_foreign_mod(ccx: @mut CrateContext,
     // over the place
     fn build_fast_ffi_fn(ccx: @mut CrateContext,
                          decl: ValueRef,
-                         item: @ast::foreign_item,
+                         item: &ast::foreign_item,
                          tys: &ShimTypes,
                          cc: lib::llvm::CallConv) {
         debug!("build_fast_ffi_fn(%s)", link_name(ccx, item));
@@ -541,7 +541,7 @@ pub fn trans_foreign_mod(ccx: @mut CrateContext,
 
 pub fn trans_intrinsic(ccx: @mut CrateContext,
                        decl: ValueRef,
-                       item: @ast::foreign_item,
+                       item: &ast::foreign_item,
                        path: ast_map::path,
                        substs: @param_substs,
                        attributes: &[ast::attribute],

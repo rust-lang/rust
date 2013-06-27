@@ -92,7 +92,7 @@ fn generate_test_harness(sess: session::Session,
     return res;
 }
 
-fn strip_test_functions(crate: @ast::crate) -> @ast::crate {
+fn strip_test_functions(crate: &ast::crate) -> @ast::crate {
     // When not compiling with --test we should not compile the
     // #[test] functions
     do config::strip_items(crate) |attrs| {

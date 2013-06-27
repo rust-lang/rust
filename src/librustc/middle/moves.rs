@@ -190,7 +190,7 @@ enum UseMode {
 
 pub fn compute_moves(tcx: ty::ctxt,
                      method_map: method_map,
-                     crate: @crate) -> MoveMaps
+                     crate: &crate) -> MoveMaps
 {
     let visitor = visit::mk_vt(@visit::Visitor {
         visit_expr: compute_modes_for_expr,
@@ -521,7 +521,7 @@ impl VisitContext {
     }
 
     pub fn use_overloaded_operator(&self,
-                                   expr: @expr,
+                                   expr: &expr,
                                    receiver_expr: @expr,
                                    arg_exprs: &[@expr],
                                    visitor: vt<VisitContext>)

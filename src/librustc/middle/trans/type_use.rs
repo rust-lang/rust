@@ -79,7 +79,7 @@ pub fn type_uses_for(ccx: @mut CrateContext, fn_id: def_id, n_tps: uint)
         ty::ty_bare_fn(ty::BareFnTy {sig: ref sig, _}) |
         ty::ty_closure(ty::ClosureTy {sig: ref sig, _}) => {
             for sig.inputs.iter().advance |arg| {
-                type_needs(cx, use_repr, *arg);
+                type_needs(&cx, use_repr, *arg);
             }
         }
         _ => ()
@@ -100,7 +100,7 @@ pub fn type_uses_for(ccx: @mut CrateContext, fn_id: def_id, n_tps: uint)
       ast_map::node_item(@ast::item { node: item_fn(_, _, _, _, ref body),
                                       _ }, _) |
       ast_map::node_method(@ast::method {body: ref body, _}, _, _) => {
-        handle_body(cx, body);
+        handle_body(&cx, body);
       }
       ast_map::node_trait_method(*) => {
         // This will be a static trait method. For now, we just assume
@@ -177,7 +177,7 @@ pub fn type_uses_for(ccx: @mut CrateContext, fn_id: def_id, n_tps: uint)
     uses
 }
 
-pub fn type_needs(cx: Context, use_: uint, ty: ty::t) {
+pub fn type_needs(cx: &Context, use_: uint, ty: ty::t) {
     // Optimization -- don't descend type if all params already have this use
     let len = {
         let uses = &*cx.uses;
@@ -191,7 +191,7 @@ pub fn type_needs(cx: Context, use_: uint, ty: ty::t) {
     }
 }
 
-pub fn type_needs_inner(cx: Context,
+pub fn type_needs_inner(cx: &Context,
                         use_: uint,
                         ty: ty::t,
                         enums_seen: @List<def_id>) {
@@ -233,11 +233,11 @@ pub fn type_needs_inner(cx: Context,
     }
 }
 
-pub fn node_type_needs(cx: Context, use_: uint, id: node_id) {
+pub fn node_type_needs(cx: &Context, use_: uint, id: node_id) {
     type_needs(cx, use_, ty::node_id_to_type(cx.ccx.tcx, id));
 }
 
-pub fn mark_for_method_call(cx: Context, e_id: node_id, callee_id: node_id) {
+pub fn mark_for_method_call(cx: &Context, e_id: node_id, callee_id: node_id) {
     let mut opt_static_did = None;
     {
         let r = cx.ccx.maps.method_map.find(&e_id);
@@ -275,7 +275,7 @@ pub fn mark_for_method_call(cx: Context, e_id: node_id, callee_id: node_id) {
     }
 }
 
-pub fn mark_for_expr(cx: Context, e: @expr) {
+pub fn mark_for_expr(cx: &Context, e: &expr) {
     match e.node {
       expr_vstore(_, _) | expr_vec(_, _) | expr_struct(*) | expr_tup(_) |
       expr_unary(_, box(_), _) | expr_unary(_, uniq(_), _) |
@@ -379,7 +379,7 @@ pub fn mark_for_expr(cx: Context, e: @expr) {
     }
 }
 
-pub fn handle_body(cx: Context, body: &blk) {
+pub fn handle_body(cx: &Context, body: &blk) {
     let v = visit::mk_vt(@visit::Visitor {
         visit_expr: |e, (cx, v)| {
             visit::visit_expr(e, (cx, v));

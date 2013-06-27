@@ -644,7 +644,7 @@ pub fn core_macros() -> @str {
 }
 
 pub fn expand_crate(parse_sess: @mut parse::ParseSess,
-                    cfg: ast::crate_cfg, c: @crate) -> @crate {
+                    cfg: ast::crate_cfg, c: &crate) -> @crate {
     // adding *another* layer of indirection here so that the block
     // visitor can swap out one exts table for another for the duration
     // of the block.  The cleaner alternative would be to thread the
@@ -695,7 +695,7 @@ pub fn expand_crate(parse_sess: @mut parse::ParseSess,
     // as it registers all the core macros as expanders.
     f.fold_item(cm);
 
-    @f.fold_crate(&*c)
+    @f.fold_crate(c)
 }
 
 // given a function from idents to idents, produce

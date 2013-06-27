@@ -329,11 +329,9 @@ impl<'self> LookupContext<'self> {
         let opt_applicable_traits = trait_map.find(&self.expr.id);
         for opt_applicable_traits.iter().advance |applicable_traits| {
             for applicable_traits.iter().advance |trait_did| {
-                let coherence_info = self.fcx.ccx.coherence_info;
-
                 // Look for explicit implementations.
                 let opt_impl_infos =
-                    coherence_info.extension_methods.find(trait_did);
+                    self.fcx.ccx.coherence_info.extension_methods.find(trait_did);
                 for opt_impl_infos.iter().advance |impl_infos| {
                     for impl_infos.iter().advance |impl_info| {
                         self.push_candidates_from_impl(
