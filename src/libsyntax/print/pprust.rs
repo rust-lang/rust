@@ -410,14 +410,14 @@ pub fn print_type(s: @ps, ty: @ast::Ty) {
           let generics = ast::Generics {lifetimes: copy f.lifetimes,
                                         ty_params: opt_vec::Empty};
           print_ty_fn(s, Some(f.abis), None, None,
-                      f.purity, ast::Many, &f.decl, None,
+                      f.purity, ast::Many, &f.decl, None, &None,
                       Some(&generics), None);
       }
       ast::ty_closure(f) => {
           let generics = ast::Generics {lifetimes: copy f.lifetimes,
                                         ty_params: opt_vec::Empty};
           print_ty_fn(s, None, Some(f.sigil), f.region,
-                      f.purity, f.onceness, &f.decl, None,
+                      f.purity, f.onceness, &f.decl, None, &f.bounds,
                       Some(&generics), None);
       }
       ast::ty_path(path, bounds, _) => print_bounded_path(s, path, bounds),
@@ -806,7 +806,7 @@ pub fn print_ty_method(s: @ps, m: &ast::ty_method) {
     maybe_print_comment(s, m.span.lo);
     print_outer_attributes(s, m.attrs);
     print_ty_fn(s, None, None, None, m.purity, ast::Many,
-                &m.decl, Some(m.ident), Some(&m.generics),
+                &m.decl, Some(m.ident), &None, Some(&m.generics),
                 Some(/*bad*/ copy m.explicit_self.node));
     word(s.s, ";");
 }
@@ -1488,7 +1488,7 @@ pub fn print_for_decl(s: @ps, loc: @ast::local, coll: @ast::expr) {
 }
 
 fn print_path_(s: @ps, path: @ast::Path, colons_before_params: bool,
-               opt_bounds: Option<@OptVec<ast::TyParamBound>>) {
+               opt_bounds: &Option<OptVec<ast::TyParamBound>>) {
     maybe_print_comment(s, path.span.lo);
     if path.global { word(s.s, "::"); }
     let mut first = true;
@@ -1496,8 +1496,8 @@ fn print_path_(s: @ps, path: @ast::Path, colons_before_params: bool,
         if first { first = false; } else { word(s.s, "::"); }
         print_ident(s, *id);
     }
-    do opt_bounds.map_consume |bounds| {
-        print_bounds(s, bounds);
+    do opt_bounds.map |bounds| {
+        print_bounds(s, bounds, true);
     };
     if path.rp.is_some() || !path.types.is_empty() {
         if colons_before_params { word(s.s, "::"); }
@@ -1520,12 +1520,12 @@ fn print_path_(s: @ps, path: @ast::Path, colons_before_params: bool,
 }
 
 pub fn print_path(s: @ps, path: @ast::Path, colons_before_params: bool) {
-    print_path_(s, path, colons_before_params, None)
+    print_path_(s, path, colons_before_params, &None)
 }
 
 pub fn print_bounded_path(s: @ps, path: @ast::Path,
-                          bounds: @OptVec<ast::TyParamBound>) {
-    print_path_(s, path, false, Some(bounds))
+                          bounds: &Option<OptVec<ast::TyParamBound>>) {
+    print_path_(s, path, false, bounds)
 }
 
 pub fn print_irrefutable_pat(s: @ps, pat: @ast::pat) {
@@ -1737,7 +1737,8 @@ pub fn print_fn_block_args(s: @ps, decl: &ast::fn_decl) {
     maybe_print_comment(s, decl.output.span.lo);
 }
 
-pub fn print_bounds(s: @ps, bounds: @OptVec<ast::TyParamBound>) {
+pub fn print_bounds(s: @ps, bounds: &OptVec<ast::TyParamBound>,
+                    print_colon_anyway: bool) {
     if !bounds.is_empty() {
         word(s.s, ":");
         let mut first = true;
@@ -1754,6 +1755,8 @@ pub fn print_bounds(s: @ps, bounds: @OptVec<ast::TyParamBound>) {
                 RegionTyParamBound => word(s.s, "'static"),
             }
         }
+    } else if print_colon_anyway {
+        word(s.s, ":");
     }
 }
 
@@ -1774,7 +1777,7 @@ pub fn print_generics(s: @ps, generics: &ast::Generics) {
                 let idx = idx - generics.lifetimes.len();
                 let param = generics.ty_params.get(idx);
                 print_ident(s, param.ident);
-                print_bounds(s, param.bounds);
+                print_bounds(s, param.bounds, false);
             }
         }
 
@@ -1917,6 +1920,7 @@ pub fn print_ty_fn(s: @ps,
                    onceness: ast::Onceness,
                    decl: &ast::fn_decl,
                    id: Option<ast::ident>,
+                   opt_bounds: &Option<OptVec<ast::TyParamBound>>,
                    generics: Option<&ast::Generics>,
                    opt_explicit_self: Option<ast::explicit_self_>) {
     ibox(s, indent_unit);
@@ -1930,6 +1934,7 @@ pub fn print_ty_fn(s: @ps,
     print_onceness(s, onceness);
     word(s.s, "fn");
     match id { Some(id) => { word(s.s, " "); print_ident(s, id); } _ => () }
+    do opt_bounds.map |bounds| { print_bounds(s, bounds, true); };
     match generics { Some(g) => print_generics(s, g), _ => () }
     zerobreak(s.s);
 

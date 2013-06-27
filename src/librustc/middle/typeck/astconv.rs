@@ -303,7 +303,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Copy + 'static>(
                                 ty::BoxTraitStore
                             }
                         };
-                        let bounds = conv_builtin_bounds(this.tcx(), bounds);
+                        let bounds = conv_builtin_bounds(this.tcx(), bounds, trait_store);
                         return ty::mk_trait(tcx,
                                             result.def_id,
                                             copy result.substs,
@@ -386,7 +386,13 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Copy + 'static>(
                                             bf.abis, &bf.lifetimes, &bf.decl))
       }
       ast::ty_closure(ref f) => {
-          let bounds = conv_builtin_bounds(this.tcx(), &f.bounds);
+          let bounds = conv_builtin_bounds(this.tcx(), &f.bounds, match f.sigil {
+              // Use corresponding trait store to figure out default bounds
+              // if none were specified.
+              ast::BorrowedSigil => ty::RegionTraitStore(ty::re_empty), // dummy region
+              ast::OwnedSigil    => ty::UniqTraitStore,
+              ast::ManagedSigil  => ty::BoxTraitStore,
+          });
           let fn_decl = ty_of_closure(this,
                                       rscope,
                                       f.sigil,
@@ -411,7 +417,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Copy + 'static>(
         match a_def {
             // But don't emit the error if the user meant to do a trait anyway.
             ast::def_trait(*) => { },
-            _ if !bounds.is_empty() =>
+            _ if bounds.is_some() =>
                 tcx.sess.span_err(ast_ty.span,
                     "kind bounds can only be used on trait types"),
             _ => { },
@@ -741,8 +747,8 @@ pub fn ty_of_closure<AC:AstConv,RS:region_scope + Copy + 'static>(
     }
 }
 
-fn conv_builtin_bounds(tcx: ty::ctxt,
-                       ast_bounds: &OptVec<ast::TyParamBound>)
+fn conv_builtin_bounds(tcx: ty::ctxt, ast_bounds: &Option<OptVec<ast::TyParamBound>>,
+                       store: ty::TraitStore)
                        -> ty::BuiltinBounds {
     //! Converts a list of bounds from the AST into a `BuiltinBounds`
     //! struct. Reports an error if any of the bounds that appear
@@ -750,32 +756,51 @@ fn conv_builtin_bounds(tcx: ty::ctxt,
     //! like `Copy` or `Owned`. Used to translate the bounds that
     //! appear in closure and trait types, where only builtin bounds are
     //! legal.
+    //! If no bounds were specified, we choose a "default" bound based on
+    //! the allocation type of the fn/trait, as per issue #7264. The user can
+    //! override this with an empty bounds list, e.g. "~fn:()" or "~Trait:".
 
-    let mut builtin_bounds = ty::EmptyBuiltinBounds();
-    for ast_bounds.iter().advance |ast_bound| {
-        match *ast_bound {
-            ast::TraitTyParamBound(b) => {
-                match lookup_def_tcx(tcx, b.path.span, b.ref_id) {
-                    ast::def_trait(trait_did) => {
-                        if try_add_builtin_trait(tcx,
-                                                 trait_did,
-                                                 &mut builtin_bounds) {
-                            loop; // success
+    match (ast_bounds, store) {
+        (&Some(ref bound_vec), _) => {
+            let mut builtin_bounds = ty::EmptyBuiltinBounds();
+            for bound_vec.iter().advance |ast_bound| {
+                match *ast_bound {
+                    ast::TraitTyParamBound(b) => {
+                        match lookup_def_tcx(tcx, b.path.span, b.ref_id) {
+                            ast::def_trait(trait_did) => {
+                                if try_add_builtin_trait(tcx,
+                                                         trait_did,
+                                                         &mut builtin_bounds) {
+                                    loop; // success
+                                }
+                            }
+                            _ => { }
                         }
+                        tcx.sess.span_fatal(
+                            b.path.span,
+                            fmt!("only the builtin traits can be used \
+                                  as closure or object bounds"));
                     }
-                    _ => { }
+                    ast::RegionTyParamBound => {
+                        builtin_bounds.add(ty::BoundStatic);
+                    }
                 }
-                tcx.sess.span_fatal(
-                    b.path.span,
-                    fmt!("only the builtin traits can be used \
-                          as closure or object bounds"));
             }
-            ast::RegionTyParamBound => {
-                builtin_bounds.add(ty::BoundStatic);
-            }
+            builtin_bounds
+        },
+        // ~Trait is sugar for ~Trait:Owned.
+        (&None, ty::UniqTraitStore) => {
+            let mut set = ty::EmptyBuiltinBounds(); set.add(ty::BoundOwned); set
         }
+        // @Trait is sugar for @Trait:'static.
+        // &'static Trait is sugar for &'static Trait:'static.
+        (&None, ty::BoxTraitStore) |
+        (&None, ty::RegionTraitStore(ty::re_static)) => {
+            let mut set = ty::EmptyBuiltinBounds(); set.add(ty::BoundStatic); set
+        }
+        // &'r Trait is sugar for &'r Trait:<no-bounds>.
+        (&None, ty::RegionTraitStore(*)) => ty::EmptyBuiltinBounds(),
     }
-    builtin_bounds
 }
 
 pub fn try_add_builtin_trait(tcx: ty::ctxt,

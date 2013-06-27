@@ -2063,20 +2063,8 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
                 TC_MANAGED + statically_sized(nonowned(tc_mt(cx, mt, cache)))
             }
 
-            ty_trait(_, _, UniqTraitStore, _, _bounds) => {
-                // FIXME(#3569): Make this conditional on the trait's bounds.
-                TC_NONCOPY_TRAIT + TC_OWNED_POINTER
-            }
-
-            ty_trait(_, _, BoxTraitStore, mutbl, _bounds) => {
-                match mutbl {
-                    ast::m_mutbl => TC_MANAGED + TC_MUTABLE,
-                    _ => TC_MANAGED
-                }
-            }
-
-            ty_trait(_, _, RegionTraitStore(r), mutbl, _bounds) => {
-                borrowed_contents(r, mutbl)
+            ty_trait(_, _, store, mutbl, bounds) => {
+                trait_contents(store, mutbl, bounds)
             }
 
             ty_rptr(r, mt) => {
@@ -2261,21 +2249,57 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
     }
 
     fn closure_contents(cty: &ClosureTy) -> TypeContents {
+        // Closure contents are just like trait contents, but with potentially
+        // even more stuff.
         let st = match cty.sigil {
-            ast::BorrowedSigil => TC_BORROWED_POINTER,
-            ast::ManagedSigil => TC_MANAGED,
-            ast::OwnedSigil => if cty.bounds.contains_elem(BoundCopy) {
-                TC_OWNED_POINTER
-            } else {
-                TC_OWNED_POINTER + TC_NONCOPY_TRAIT
-            }
+            ast::BorrowedSigil =>
+                trait_contents(RegionTraitStore(cty.region), m_imm, cty.bounds)
+                    + TC_BORROWED_POINTER, // might be an env packet even if static
+            ast::ManagedSigil =>
+                trait_contents(BoxTraitStore, m_imm, cty.bounds),
+            ast::OwnedSigil =>
+                trait_contents(UniqTraitStore, m_imm, cty.bounds),
         };
+        // FIXME(#3569): This borrowed_contents call should be taken care of in
+        // trait_contents, after ~Traits and @Traits can have region bounds too.
+        // This one here is redundant for &fns but important for ~fns and @fns.
         let rt = borrowed_contents(cty.region, m_imm);
+        // This also prohibits "@once fn" from being copied, which allows it to
+        // be called. Neither way really makes much sense.
         let ot = match cty.onceness {
             ast::Once => TC_ONCE_CLOSURE,
             ast::Many => TC_NONE
         };
         st + rt + ot
+    }
+
+    fn trait_contents(store: TraitStore, mutbl: ast::mutability,
+                      bounds: BuiltinBounds) -> TypeContents {
+        let st = match store {
+            UniqTraitStore      => TC_OWNED_POINTER,
+            BoxTraitStore       => TC_MANAGED,
+            RegionTraitStore(r) => borrowed_contents(r, mutbl),
+        };
+        let mt = match mutbl { ast::m_mutbl => TC_MUTABLE, _ => TC_NONE };
+        // We get additional "special type contents" for each bound that *isn't*
+        // on the trait. So iterate over the inverse of the bounds that are set.
+        // This is like with typarams below, but less "pessimistic" and also
+        // dependent on the trait store.
+        let mut bt = TC_NONE;
+        for (AllBuiltinBounds() - bounds).each |bound| {
+            bt = bt + match bound {
+                BoundCopy if store == UniqTraitStore
+                            => TC_NONCOPY_TRAIT,
+                BoundCopy   => TC_NONE, // @Trait/&Trait are copyable either way
+                BoundStatic if bounds.contains_elem(BoundOwned)
+                            => TC_NONE, // Owned bound implies static bound.
+                BoundStatic => TC_BORROWED_POINTER, // Useful for "@Trait:'static"
+                BoundOwned  => TC_NON_OWNED,
+                BoundConst  => TC_MUTABLE,
+                BoundSized  => TC_NONE, // don't care if interior is sized
+            };
+        }
+        st + mt + bt
     }
 
     fn type_param_def_to_contents(cx: ctxt,
@@ -4497,7 +4521,9 @@ pub fn visitor_object_ty(tcx: ctxt) -> (@TraitRef, t) {
     };
     let trait_lang_item = tcx.lang_items.ty_visitor();
     let trait_ref = @TraitRef { def_id: trait_lang_item, substs: substs };
+    let mut static_trait_bound = EmptyBuiltinBounds();
+    static_trait_bound.add(BoundStatic);
     (trait_ref,
      mk_trait(tcx, trait_ref.def_id, copy trait_ref.substs,
-              BoxTraitStore, ast::m_imm, EmptyBuiltinBounds()))
+              BoxTraitStore, ast::m_imm, static_trait_bound))
 }

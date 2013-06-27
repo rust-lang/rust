@@ -959,7 +959,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_attributes(ebml_w, item.attrs);
         match ty.node {
             ast::ty_path(path, bounds, _) if path.idents.len() == 1 => {
-                assert!(bounds.is_empty());
+                assert!(bounds.is_none());
                 encode_impl_type_basename(ecx, ebml_w,
                                           ast_util::path_to_ident(path));
             }

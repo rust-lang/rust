@@ -8,25 +8,30 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Tests for "default" bounds inferred for traits with no bounds list.
+
 trait Foo {
 }
 
-fn a(_x: ~Foo:) {
+fn a(_x: ~Foo) { // should be same as ~Foo:Owned
 }
 
-fn b(_x: ~Foo:Owned) {
+fn b(_x: @Foo) { // should be same as ~Foo:'static
 }
 
-fn c(x: ~Foo:Const+Owned) {
-    a(x);
+fn c(_x: &'static Foo) { // should be same as &'static Foo:'static
 }
 
-fn d(x: ~Foo:Owned+Copy) {
-    b(x);
+fn d(x: ~Foo:Const) {
+    a(x); //~ ERROR expected bounds `Owned`
 }
 
-fn e(x: ~Foo) { // sugar for ~Foo:Owned
-    b(x);
+fn e(x: @Foo:Const) {
+    b(x); //~ ERROR expected bounds `'static`
+}
+
+fn f(x: &'static Foo:Const) {
+    c(x); //~ ERROR expected bounds `'static`
 }
 
 fn main() { }

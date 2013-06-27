@@ -4195,15 +4195,19 @@ impl Resolver {
                     }
                 }
 
-                for bounds.iter().advance |bound| {
-                    self.resolve_type_parameter_bound(bound, visitor);
-                }
+                do bounds.map |bound_vec| {
+                    for bound_vec.iter().advance |bound| {
+                        self.resolve_type_parameter_bound(bound, visitor);
+                    }
+                };
             }
 
             ty_closure(c) => {
-                for c.bounds.iter().advance |bound| {
-                    self.resolve_type_parameter_bound(bound, visitor);
-                }
+                do c.bounds.map |bounds| {
+                    for bounds.iter().advance |bound| {
+                        self.resolve_type_parameter_bound(bound, visitor);
+                    }
+                };
                 visit_ty(ty, ((), visitor));
             }
 

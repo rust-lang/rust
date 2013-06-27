@@ -771,7 +771,11 @@ pub struct TyClosure {
     purity: purity,
     onceness: Onceness,
     decl: fn_decl,
-    bounds: OptVec<TyParamBound>
+    // Optional optvec distinguishes between "fn()" and "fn:()" so we can
+    // implement issue #7264. None means "fn()", which means infer a default
+    // bound based on pointer sigil during typeck. Some(Empty) means "fn:()",
+    // which means use no bounds (e.g., not even Owned on a ~fn()).
+    bounds: Option<OptVec<TyParamBound>>,
 }
 
 #[deriving(Eq, Encodable, Decodable)]
@@ -795,7 +799,7 @@ pub enum ty_ {
     ty_closure(@TyClosure),
     ty_bare_fn(@TyBareFn),
     ty_tup(~[@Ty]),
-    ty_path(@Path, @OptVec<TyParamBound>, node_id),
+    ty_path(@Path, @Option<OptVec<TyParamBound>>, node_id), // for #7264; see above
     ty_mac(mac),
     // ty_infer means the type should be inferred instead of it having been
     // specified. This should only appear at the "top level" of a type and not

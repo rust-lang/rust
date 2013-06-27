@@ -1042,12 +1042,14 @@ pub fn file_reader(path: &Path) -> Result<@Reader, ~str> {
 
 
 // Byte readers
-pub struct BytesReader<'self> {
-    bytes: &'self [u8],
+pub struct BytesReader {
+    // FIXME(#5723) see other FIXME below
+    // FIXME(#7268) this should also be parameterized over <'self>
+    bytes: &'static [u8],
     pos: @mut uint
 }
 
-impl<'self> Reader for BytesReader<'self> {
+impl Reader for BytesReader {
     fn read(&self, bytes: &mut [u8], len: uint) -> uint {
         let count = uint::min(len, self.bytes.len() - *self.pos);
 
@@ -1084,6 +1086,10 @@ impl<'self> Reader for BytesReader<'self> {
 }
 
 pub fn with_bytes_reader<T>(bytes: &[u8], f: &fn(@Reader) -> T) -> T {
+    // XXX XXX XXX this is glaringly unsound
+    // FIXME(#5723) Use a &Reader for the callback's argument. Should be:
+    // fn with_bytes_reader<'r, T>(bytes: &'r [u8], f: &fn(&'r Reader) -> T) -> T
+    let bytes: &'static [u8] = unsafe { cast::transmute(bytes) };
     f(@BytesReader {
         bytes: bytes,
         pos: @mut 0
@@ -1091,6 +1097,7 @@ pub fn with_bytes_reader<T>(bytes: &[u8], f: &fn(@Reader) -> T) -> T {
 }
 
 pub fn with_str_reader<T>(s: &str, f: &fn(@Reader) -> T) -> T {
+    // FIXME(#5723): As above.
     with_bytes_reader(s.as_bytes(), f)
 }
 

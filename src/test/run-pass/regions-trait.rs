@@ -22,7 +22,7 @@ impl<'self> get_ctxt<'self> for HasCtxt<'self> {
     }
 }
 
-fn get_v(gc: @get_ctxt) -> uint {
+fn get_v(gc: @get_ctxt:) -> uint {
     gc.get_ctxt().v
 }
 
@@ -30,5 +30,5 @@ pub fn main() {
     let ctxt = Ctxt { v: 22 };
     let hc = HasCtxt { c: &ctxt };
 
-    assert_eq!(get_v(@hc as @get_ctxt), 22);
+    assert_eq!(get_v(@hc as @get_ctxt:), 22);
 }
