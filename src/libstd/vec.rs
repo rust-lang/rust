@@ -251,17 +251,17 @@ pub fn head_opt<'r,T>(v: &'r [T]) -> Option<&'r T> {
 }
 
 /// Returns a vector containing all but the first element of a slice
-pub fn tail<'r,T>(v: &'r [T]) -> &'r [T] { slice(v, 1, v.len()) }
+pub fn tail<'r,T>(v: &'r [T]) -> &'r [T] { v.slice(1, v.len()) }
 
 /// Returns a vector containing all but the first `n` elements of a slice
-pub fn tailn<'r,T>(v: &'r [T], n: uint) -> &'r [T] { slice(v, n, v.len()) }
+pub fn tailn<'r,T>(v: &'r [T], n: uint) -> &'r [T] { v.slice(n, v.len()) }
 
 /// Returns a vector containing all but the last element of a slice
-pub fn init<'r,T>(v: &'r [T]) -> &'r [T] { slice(v, 0, v.len() - 1) }
+pub fn init<'r,T>(v: &'r [T]) -> &'r [T] { v.slice(0, v.len() - 1) }
 
 /// Returns a vector containing all but the last `n' elements of a slice
 pub fn initn<'r,T>(v: &'r [T], n: uint) -> &'r [T] {
-    slice(v, 0, v.len() - n)
+    v.slice(0, v.len() - n)
 }
 
 /// Returns the last element of the slice `v`, failing if the slice is empty.
@@ -274,47 +274,6 @@ pub fn last<'r,T>(v: &'r [T]) -> &'r T {
 /// `None` if the vector is empty.
 pub fn last_opt<'r,T>(v: &'r [T]) -> Option<&'r T> {
     if v.len() == 0 { None } else { Some(&v[v.len() - 1]) }
-}
-
-/// Return a slice that points into another slice.
-#[inline]
-pub fn slice<'r,T>(v: &'r [T], start: uint, end: uint) -> &'r [T] {
-    assert!(start <= end);
-    assert!(end <= v.len());
-    do as_imm_buf(v) |p, _len| {
-        unsafe {
-            transmute((ptr::offset(p, start),
-                       (end - start) * sys::nonzero_size_of::<T>()))
-        }
-    }
-}
-
-/// Return a slice that points into another slice.
-#[inline]
-pub fn mut_slice<'r,T>(v: &'r mut [T], start: uint, end: uint)
-                    -> &'r mut [T] {
-    assert!(start <= end);
-    assert!(end <= v.len());
-    do as_mut_buf(v) |p, _len| {
-        unsafe {
-            transmute((ptr::mut_offset(p, start),
-                       (end - start) * sys::nonzero_size_of::<T>()))
-        }
-    }
-}
-
-/// Return a slice that points into another slice.
-#[inline]
-pub fn const_slice<'r,T>(v: &'r const [T], start: uint, end: uint)
-                      -> &'r const [T] {
-    assert!(start <= end);
-    assert!(end <= v.len());
-    do as_const_buf(v) |p, _len| {
-        unsafe {
-            transmute((ptr::const_offset(p, start),
-                       (end - start) * sys::nonzero_size_of::<T>()))
-        }
-    }
 }
 
 /// Copies
@@ -330,12 +289,12 @@ pub fn split<T:Copy>(v: &[T], f: &fn(t: &T) -> bool) -> ~[~[T]] {
         match position_between(v, start, ln, f) {
             None => break,
             Some(i) => {
-                result.push(slice(v, start, i).to_owned());
+                result.push(v.slice(start, i).to_owned());
                 start = i + 1u;
             }
         }
     }
-    result.push(slice(v, start, ln).to_owned());
+    result.push(v.slice(start, ln).to_owned());
     result
 }
 
@@ -354,14 +313,14 @@ pub fn splitn<T:Copy>(v: &[T], n: uint, f: &fn(t: &T) -> bool) -> ~[~[T]] {
         match position_between(v, start, ln, f) {
             None => break,
             Some(i) => {
-                result.push(slice(v, start, i).to_owned());
+                result.push(v.slice(start, i).to_owned());
                 // Make sure to skip the separator.
                 start = i + 1u;
                 count -= 1u;
             }
         }
     }
-    result.push(slice(v, start, ln).to_owned());
+    result.push(v.slice(start, ln).to_owned());
     result
 }
 
@@ -379,12 +338,12 @@ pub fn rsplit<T:Copy>(v: &[T], f: &fn(t: &T) -> bool) -> ~[~[T]] {
         match rposition_between(v, 0, end, f) {
             None => break,
             Some(i) => {
-                result.push(slice(v, i + 1, end).to_owned());
+                result.push(v.slice(i + 1, end).to_owned());
                 end = i;
             }
         }
     }
-    result.push(slice(v, 0u, end).to_owned());
+    result.push(v.slice(0u, end).to_owned());
     reverse(result);
     result
 }
@@ -404,14 +363,14 @@ pub fn rsplitn<T:Copy>(v: &[T], n: uint, f: &fn(t: &T) -> bool) -> ~[~[T]] {
         match rposition_between(v, 0u, end, f) {
             None => break,
             Some(i) => {
-                result.push(slice(v, i + 1u, end).to_owned());
+                result.push(v.slice(i + 1u, end).to_owned());
                 // Make sure to skip the separator.
                 end = i;
                 count -= 1u;
             }
         }
     }
-    result.push(slice(v, 0u, end).to_owned());
+    result.push(v.slice(0u, end).to_owned());
     reverse(result);
     result
 }
@@ -487,15 +446,15 @@ pub fn shift<T>(v: &mut ~[T]) -> T {
         // popped. For the moment it unsafely exists at both the head and last
         // positions
         {
-            let first_slice = slice(*v, 0, 1);
-            let last_slice = slice(*v, next_ln, ln);
+            let first_slice = v.slice(0, 1);
+            let last_slice = v.slice(next_ln, ln);
             raw::copy_memory(transmute(last_slice), first_slice, 1);
         }
 
         // Memcopy everything to the left one element
         {
-            let init_slice = slice(*v, 0, next_ln);
-            let tail_slice = slice(*v, 1, ln);
+            let init_slice = v.slice(0, next_ln);
+            let tail_slice = v.slice(1, ln);
             raw::copy_memory(transmute(init_slice),
                              tail_slice,
                              next_ln);
@@ -1689,7 +1648,14 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
     /// Return a slice that points into another slice.
     #[inline]
     fn slice(&self, start: uint, end: uint) -> &'self [T] {
-        slice(*self, start, end)
+    assert!(start <= end);
+    assert!(end <= self.len());
+        do as_imm_buf(*self) |p, _len| {
+            unsafe {
+                transmute((ptr::offset(p, start),
+                           (end - start) * sys::nonzero_size_of::<T>()))
+            }
+        }
     }
 
     #[inline]
@@ -2042,9 +2008,17 @@ pub trait MutableVector<'self, T> {
 }
 
 impl<'self,T> MutableVector<'self, T> for &'self mut [T] {
+    /// Return a slice that points into another slice.
     #[inline]
     fn mut_slice(self, start: uint, end: uint) -> &'self mut [T] {
-        mut_slice(self, start, end)
+        assert!(start <= end);
+        assert!(end <= self.len());
+        do as_mut_buf(self) |p, _len| {
+            unsafe {
+                transmute((ptr::mut_offset(p, start),
+                           (end - start) * sys::nonzero_size_of::<T>()))
+            }
+        }
     }
 
     #[inline]
@@ -2713,7 +2687,7 @@ mod tests {
     fn test_slice() {
         // Test fixed length vector.
         let vec_fixed = [1, 2, 3, 4];
-        let v_a = slice(vec_fixed, 1u, vec_fixed.len()).to_owned();
+        let v_a = vec_fixed.slice(1u, vec_fixed.len()).to_owned();
         assert_eq!(v_a.len(), 3u);
         assert_eq!(v_a[0], 2);
         assert_eq!(v_a[1], 3);
@@ -2721,14 +2695,14 @@ mod tests {
 
         // Test on stack.
         let vec_stack = &[1, 2, 3];
-        let v_b = slice(vec_stack, 1u, 3u).to_owned();
+        let v_b = vec_stack.slice(1u, 3u).to_owned();
         assert_eq!(v_b.len(), 2u);
         assert_eq!(v_b[0], 2);
         assert_eq!(v_b[1], 3);
 
         // Test on managed heap.
         let vec_managed = @[1, 2, 3, 4, 5];
-        let v_c = slice(vec_managed, 0u, 3u).to_owned();
+        let v_c = vec_managed.slice(0u, 3u).to_owned();
         assert_eq!(v_c.len(), 3u);
         assert_eq!(v_c[0], 1);
         assert_eq!(v_c[1], 2);
@@ -2736,7 +2710,7 @@ mod tests {
 
         // Test on exchange heap.
         let vec_unique = ~[1, 2, 3, 4, 5, 6];
-        let v_d = slice(vec_unique, 1u, 6u).to_owned();
+        let v_d = vec_unique.slice(1u, 6u).to_owned();
         assert_eq!(v_d.len(), 5u);
         assert_eq!(v_d[0], 2);
         assert_eq!(v_d[1], 3);

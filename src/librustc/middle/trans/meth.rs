@@ -528,7 +528,7 @@ pub fn combine_impl_and_methods_origins(bcx: block,
     } = ty::lookup_item_type(tcx, mth_did);
     let n_r_m_tps = r_m_generics.type_param_defs.len(); // rcvr + method tps
     let m_type_param_defs =
-        vec::slice(*r_m_generics.type_param_defs, n_r_m_tps - n_m_tps, n_r_m_tps);
+        r_m_generics.type_param_defs.slice(n_r_m_tps - n_m_tps, n_r_m_tps);
 
     // Flatten out to find the number of vtables the method expects.
     let m_vtables = ty::count_traits_and_supertraits(tcx, m_type_param_defs);

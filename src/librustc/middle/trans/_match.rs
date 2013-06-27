@@ -388,9 +388,9 @@ pub fn expand_nested_bindings<'r>(bcx: block,
         match br.pats[col].node {
             ast::pat_ident(_, path, Some(inner)) => {
                 let pats = vec::append(
-                    vec::slice(br.pats, 0u, col).to_owned(),
+                    br.pats.slice(0u, col).to_owned(),
                     vec::append(~[inner],
-                                vec::slice(br.pats, col + 1u,
+                                br.pats.slice(col + 1u,
                                            br.pats.len())));
 
                 let binding_info =
@@ -437,8 +437,8 @@ pub fn enter_match<'r>(bcx: block,
             Some(sub) => {
                 let pats =
                     vec::append(
-                        vec::append(sub, vec::slice(br.pats, 0u, col)),
-                        vec::slice(br.pats, col + 1u, br.pats.len()));
+                        vec::append(sub, br.pats.slice(0u, col)),
+                        br.pats.slice(col + 1u, br.pats.len()));
 
                 let this = br.pats[col];
                 match this.node {
@@ -1290,7 +1290,7 @@ pub fn compile_submatch(bcx: block,
         match data.arm.guard {
             Some(guard_expr) => {
                 bcx = compile_guard(bcx, guard_expr, m[0].data,
-                                    vec::slice(m, 1, m.len()),
+                                    m.slice(1, m.len()),
                                     vals, chk);
             }
             _ => ()
@@ -1309,8 +1309,8 @@ pub fn compile_submatch(bcx: block,
         }
     };
 
-    let vals_left = vec::append(vec::slice(vals, 0u, col).to_owned(),
-                                vec::slice(vals, col + 1u, vals.len()));
+    let vals_left = vec::append(vals.slice(0u, col).to_owned(),
+                                vals.slice(col + 1u, vals.len()));
     let ccx = bcx.fcx.ccx;
     let mut pat_id = 0;
     let mut pat_span = dummy_sp();

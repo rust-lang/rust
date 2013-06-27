@@ -13,7 +13,6 @@ use codemap;
 
 use std::io;
 use std::uint;
-use std::vec;
 use extra::term;
 
 pub type Emitter = @fn(cmsp: Option<(@codemap::CodeMap, span)>,
@@ -250,7 +249,7 @@ fn highlight_lines(cm: @codemap::CodeMap,
     let mut elided = false;
     let mut display_lines = /* FIXME (#2543) */ copy lines.lines;
     if display_lines.len() > max_lines {
-        display_lines = vec::slice(display_lines, 0u, max_lines).to_owned();
+        display_lines = display_lines.slice(0u, max_lines).to_owned();
         elided = true;
     }
     // Print the offending lines

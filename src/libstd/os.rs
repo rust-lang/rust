@@ -134,7 +134,7 @@ pub mod win32 {
                     }
                 }
                 if k != 0 && done {
-                    let sub = vec::slice(buf, 0u, k as uint);
+                    let sub = buf.slice(0, k as uint);
                     res = option::Some(str::from_utf16(sub));
                 }
             }
