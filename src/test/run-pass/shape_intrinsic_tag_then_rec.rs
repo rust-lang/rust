@@ -1,5 +1,3 @@
-// xfail-fast
-
 // Copyright 2012 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
@@ -14,9 +12,6 @@
 // on x86_64: when there is a enum embedded in an
 // interior record which is then itself interior to
 // something else, shape calculations were off.
-extern mod extra;
-use extra::list;
-use extra::list::list;
 
 enum opt_span {
 

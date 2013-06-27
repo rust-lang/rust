@@ -35,7 +35,6 @@ pub mod cabi_arm;
 pub mod cabi_mips;
 pub mod foreign;
 pub mod reflect;
-pub mod shape;
 pub mod debuginfo;
 pub mod type_use;
 pub mod reachable;

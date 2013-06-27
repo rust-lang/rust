@@ -326,33 +326,33 @@ pub fn run_tests_console(opts: &TestOpts,
     }
 
     fn write_ok(out: @io::Writer, use_color: bool) {
-        write_pretty(out, "ok", term::color_green, use_color);
+        write_pretty(out, "ok", term::color::green, use_color);
     }
 
     fn write_failed(out: @io::Writer, use_color: bool) {
-        write_pretty(out, "FAILED", term::color_red, use_color);
+        write_pretty(out, "FAILED", term::color::red, use_color);
     }
 
     fn write_ignored(out: @io::Writer, use_color: bool) {
-        write_pretty(out, "ignored", term::color_yellow, use_color);
+        write_pretty(out, "ignored", term::color::yellow, use_color);
     }
 
     fn write_bench(out: @io::Writer, use_color: bool) {
-        write_pretty(out, "bench", term::color_cyan, use_color);
+        write_pretty(out, "bench", term::color::cyan, use_color);
     }
 
     fn write_pretty(out: @io::Writer,
                     word: &str,
-                    color: u8,
+                    color: term::color::Color,
                     use_color: bool) {
         let t = term::Terminal::new(out);
         match t {
             Ok(term)  => {
-                if use_color && term.color_supported {
+                if use_color {
                     term.fg(color);
                 }
                 out.write_str(word);
-                if use_color && term.color_supported {
+                if use_color {
                     term.reset();
                 }
             },
