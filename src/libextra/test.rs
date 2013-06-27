@@ -431,7 +431,7 @@ fn run_tests(opts: &TestOpts,
     callback(TeFiltered(filtered_descs));
 
     let (filtered_tests, filtered_benchs) =
-        do vec::partition(filtered_tests) |e| {
+        do filtered_tests.partition |e| {
         match e.testfn {
             StaticTestFn(_) | DynTestFn(_) => true,
             StaticBenchFn(_) | DynBenchFn(_) => false

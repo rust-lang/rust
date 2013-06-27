@@ -337,46 +337,6 @@ pub fn rsplitn<T:Copy>(v: &[T], n: uint, f: &fn(t: &T) -> bool) -> ~[~[T]] {
     result
 }
 
-/**
- * Partitions a vector into two new vectors: those that satisfies the
- * predicate, and those that do not.
- */
-pub fn partition<T>(v: ~[T], f: &fn(&T) -> bool) -> (~[T], ~[T]) {
-    let mut lefts  = ~[];
-    let mut rights = ~[];
-
-    // FIXME (#4355 maybe): using v.consume here crashes
-    // do v.consume |_, elt| {
-    do consume(v) |_, elt| {
-        if f(&elt) {
-            lefts.push(elt);
-        } else {
-            rights.push(elt);
-        }
-    }
-
-    (lefts, rights)
-}
-
-/**
- * Partitions a vector into two new vectors: those that satisfies the
- * predicate, and those that do not.
- */
-pub fn partitioned<T:Copy>(v: &[T], f: &fn(&T) -> bool) -> (~[T], ~[T]) {
-    let mut lefts  = ~[];
-    let mut rights = ~[];
-
-    for v.iter().advance |elt| {
-        if f(elt) {
-            lefts.push(copy *elt);
-        } else {
-            rights.push(copy *elt);
-        }
-    }
-
-    (lefts, rights)
-}
-
 /// Consumes all elements, in a vector, moving them out into the / closure
 /// provided. The vector is traversed from the start to the end.
 ///
@@ -1572,7 +1532,18 @@ impl<'self,T:Copy> ImmutableCopyableVector<T> for &'self [T] {
      */
     #[inline]
     fn partitioned(&self, f: &fn(&T) -> bool) -> (~[T], ~[T]) {
-        partitioned(*self, f)
+        let mut lefts  = ~[];
+        let mut rights = ~[];
+
+        for self.iter().advance |elt| {
+            if f(elt) {
+                lefts.push(copy *elt);
+            } else {
+                rights.push(copy *elt);
+            }
+        }
+
+        (lefts, rights)
     }
 
     /// Returns the element at the given index, without doing bounds checking.
@@ -1842,7 +1813,18 @@ impl<T> OwnedVector<T> for ~[T] {
      */
     #[inline]
     fn partition(self, f: &fn(&T) -> bool) -> (~[T], ~[T]) {
-        partition(self, f)
+        let mut lefts  = ~[];
+        let mut rights = ~[];
+
+        do self.consume |_, elt| {
+            if f(&elt) {
+                lefts.push(elt);
+            } else {
+                rights.push(elt);
+            }
+        }
+
+        (lefts, rights)
     }
 
     #[inline]
@@ -3228,11 +3210,10 @@ mod tests {
 
     #[test]
     fn test_partition() {
-        // FIXME (#4355 maybe): using v.partition here crashes
-        assert_eq!(partition(~[], |x: &int| *x < 3), (~[], ~[]));
-        assert_eq!(partition(~[1, 2, 3], |x: &int| *x < 4), (~[1, 2, 3], ~[]));
-        assert_eq!(partition(~[1, 2, 3], |x: &int| *x < 2), (~[1], ~[2, 3]));
-        assert_eq!(partition(~[1, 2, 3], |x: &int| *x < 0), (~[], ~[1, 2, 3]));
+        assert_eq!((~[]).partition(|x: &int| *x < 3), (~[], ~[]));
+        assert_eq!((~[1, 2, 3]).partition(|x: &int| *x < 4), (~[1, 2, 3], ~[]));
+        assert_eq!((~[1, 2, 3]).partition(|x: &int| *x < 2), (~[1], ~[2, 3]));
+        assert_eq!((~[1, 2, 3]).partition(|x: &int| *x < 0), (~[], ~[1, 2, 3]));
     }
 
     #[test]
