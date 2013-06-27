@@ -295,9 +295,9 @@ impl<'self> LanguageItemCollector<'self> {
                    -> LanguageItemCollector<'a> {
         let mut item_refs = HashMap::new();
 
-        item_refs.insert(@"const", FreezeTraitLangItem as uint);
+        item_refs.insert(@"freeze", FreezeTraitLangItem as uint);
         item_refs.insert(@"copy", CopyTraitLangItem as uint);
-        item_refs.insert(@"owned", SendTraitLangItem as uint);
+        item_refs.insert(@"send", SendTraitLangItem as uint);
         item_refs.insert(@"sized", SizedTraitLangItem as uint);
 
         item_refs.insert(@"drop", DropTraitLangItem as uint);
