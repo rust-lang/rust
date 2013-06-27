@@ -808,7 +808,6 @@ mod tests {
     use core::comm;
     use core::result;
     use core::task;
-    use core::vec;
 
     /************************************************************************
      * Semaphore tests
