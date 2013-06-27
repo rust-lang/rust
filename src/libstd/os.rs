@@ -1712,5 +1712,5 @@ mod tests {
         assert!(!os::mkdir_recursive(&path, (S_IRUSR | S_IWUSR | S_IXUSR) as i32));
     }
 
-    // More recursive_mkdir tests are in std::tempfile
+    // More recursive_mkdir tests are in extra::tempfile
 }

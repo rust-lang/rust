@@ -254,9 +254,17 @@ pub fn make_test(config: &config, testfile: &Path) -> test::TestDescAndFn {
 }
 
 pub fn make_test_name(config: &config, testfile: &Path) -> test::TestName {
+
+    // Try to elide redundant long paths
+    fn shorten(path: &Path) -> ~str {
+        let filename = path.filename();
+        let dir = path.pop().filename();
+        fmt!("%s/%s", dir.get_or_default(~""), filename.get_or_default(~""))
+    }
+
     test::DynTestName(fmt!("[%s] %s",
                            mode_str(config.mode),
-                           testfile.to_str()))
+                           shorten(testfile)))
 }
 
 pub fn make_test_closure(config: &config, testfile: &Path) -> test::TestFn {
