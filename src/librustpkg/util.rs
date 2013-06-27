@@ -187,7 +187,7 @@ pub fn compile_input(ctxt: &Ctx,
         Lib => lib_crate,
         Test | Bench | Main => bin_crate
     };
-    let matches = getopts(~[~"-Z", ~"time-passes"]
+    let matches = getopts(debug_flags()
                           + match what {
                               Lib => ~[~"--lib"],
                               // --test compiles both #[test] and #[bench] fns
@@ -415,3 +415,7 @@ mod test {
     }
 
 }
+
+// tjc: cheesy
+fn debug_flags() -> ~[~str] { ~[] }
+// static debug_flags: ~[~str] = ~[~"-Z", ~"time-passes"];
