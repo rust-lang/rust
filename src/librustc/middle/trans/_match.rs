@@ -406,8 +406,6 @@ pub fn expand_nested_bindings<'r>(bcx: block,
     }
 }
 
-pub type enter_pat<'self> = &'self fn(@ast::pat) -> Option<~[@ast::pat]>;
-
 pub fn assert_is_binding_or_wild(bcx: block, p: @ast::pat) {
     if !pat_is_binding_or_wild(bcx.tcx().def_map, p) {
         bcx.sess().span_bug(
@@ -416,6 +414,8 @@ pub fn assert_is_binding_or_wild(bcx: block, p: @ast::pat) {
                  pat_to_str(p, bcx.sess().intr())));
     }
 }
+
+pub type enter_pat<'self> = &'self fn(@ast::pat) -> Option<~[@ast::pat]>;
 
 pub fn enter_match<'r>(bcx: block,
                        dm: DefMap,
@@ -1048,7 +1048,7 @@ pub fn any_tuple_struct_pat(bcx: block, m: &[@Match], col: uint) -> bool {
 pub type mk_fail = @fn() -> BasicBlockRef;
 
 pub fn pick_col(m: &[@Match]) -> uint {
-    fn score(p: @ast::pat) -> uint {
+    fn score(p: &ast::pat) -> uint {
         match p.node {
           ast::pat_lit(_) | ast::pat_enum(_, _) | ast::pat_range(_, _) => 1u,
           ast::pat_ident(_, _, Some(p)) => score(p),
@@ -1609,7 +1609,7 @@ pub fn compile_submatch(bcx: block,
 }
 
 pub fn trans_match(bcx: block,
-                   match_expr: @ast::expr,
+                   match_expr: &ast::expr,
                    discr_expr: @ast::expr,
                    arms: ~[ast::arm],
                    dest: Dest) -> block {

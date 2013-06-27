@@ -284,7 +284,7 @@ pub fn blank_fn_ctxt(ccx: @mut CrateCtxt,
     }
 }
 
-pub fn check_item_types(ccx: @mut CrateCtxt, crate: @ast::crate) {
+pub fn check_item_types(ccx: @mut CrateCtxt, crate: &ast::crate) {
     let visit = visit::mk_simple_visitor(@visit::SimpleVisitor {
         visit_item: |a| check_item(ccx, a),
         .. *visit::default_simple_visitor()

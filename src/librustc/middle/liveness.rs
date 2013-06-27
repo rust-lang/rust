@@ -150,7 +150,7 @@ fn live_node_kind_to_str(lnk: LiveNodeKind, cx: ty::ctxt) -> ~str {
 pub fn check_crate(tcx: ty::ctxt,
                    method_map: typeck::method_map,
                    capture_map: moves::CaptureMap,
-                   crate: @crate) {
+                   crate: &crate) {
     let visitor = visit::mk_vt(@visit::Visitor {
         visit_fn: visit_fn,
         visit_local: visit_local,
@@ -322,7 +322,7 @@ impl IrMaps {
         self.capture_info_map.insert(node_id, @cs);
     }
 
-    pub fn captures(&mut self, expr: @expr) -> @~[CaptureInfo] {
+    pub fn captures(&mut self, expr: &expr) -> @~[CaptureInfo] {
         match self.capture_info_map.find(&expr.id) {
           Some(&caps) => caps,
           None => {
@@ -596,7 +596,7 @@ impl Liveness {
         }
     }
 
-    pub fn variable_from_path(&self, expr: @expr) -> Option<Variable> {
+    pub fn variable_from_path(&self, expr: &expr) -> Option<Variable> {
         match expr.node {
           expr_path(_) => {
             let def = self.tcx.def_map.get_copy(&expr.id);
@@ -923,7 +923,7 @@ impl Liveness {
         }
     }
 
-    pub fn propagate_through_stmt(&self, stmt: @stmt, succ: LiveNode)
+    pub fn propagate_through_stmt(&self, stmt: &stmt, succ: LiveNode)
                                   -> LiveNode {
         match stmt.node {
           stmt_decl(decl, _) => {
@@ -940,7 +940,7 @@ impl Liveness {
         }
     }
 
-    pub fn propagate_through_decl(&self, decl: @decl, succ: LiveNode)
+    pub fn propagate_through_decl(&self, decl: &decl, succ: LiveNode)
                                   -> LiveNode {
         match decl.node {
             decl_local(ref local) => {
@@ -950,7 +950,7 @@ impl Liveness {
         }
     }
 
-    pub fn propagate_through_local(&self, local: @local, succ: LiveNode)
+    pub fn propagate_through_local(&self, local: &local, succ: LiveNode)
                                    -> LiveNode {
         // Note: we mark the variable as defined regardless of whether
         // there is an initializer.  Initially I had thought to only mark
@@ -1293,7 +1293,7 @@ impl Liveness {
     }
 
     // see comment on propagate_through_lvalue()
-    pub fn write_lvalue(&self, expr: @expr, succ: LiveNode, acc: uint)
+    pub fn write_lvalue(&self, expr: &expr, succ: LiveNode, acc: uint)
                         -> LiveNode {
         match expr.node {
           expr_path(_) => self.access_path(expr, succ, acc),
@@ -1306,7 +1306,7 @@ impl Liveness {
         }
     }
 
-    pub fn access_path(&self, expr: @expr, succ: LiveNode, acc: uint)
+    pub fn access_path(&self, expr: &expr, succ: LiveNode, acc: uint)
                        -> LiveNode {
         let def = self.tcx.def_map.get_copy(&expr.id);
         match moves::moved_variable_node_id_from_def(def) {
@@ -1324,7 +1324,7 @@ impl Liveness {
     }
 
     pub fn propagate_through_loop(&self,
-                                  expr: @expr,
+                                  expr: &expr,
                                   cond: Option<@expr>,
                                   body: &blk,
                                   succ: LiveNode)

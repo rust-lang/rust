@@ -29,7 +29,7 @@ pub fn pat_id_map(dm: resolve::DefMap, pat: @pat) -> PatIdMap {
     map
 }
 
-pub fn pat_is_variant_or_struct(dm: resolve::DefMap, pat: @pat) -> bool {
+pub fn pat_is_variant_or_struct(dm: resolve::DefMap, pat: &pat) -> bool {
     match pat.node {
         pat_enum(_, _) | pat_ident(_, _, None) | pat_struct(*) => {
             match dm.find(&pat.id) {

@@ -411,7 +411,6 @@ pub fn add_clean_free(cx: block, ptr: ValueRef, heap: heap) {
 // drop glue checks whether it is zero.
 pub fn revoke_clean(cx: block, val: ValueRef) {
     do in_scope_cx(cx) |scope_info| {
-        let scope_info = &mut *scope_info; // FIXME(#5074) workaround borrowck
         let cleanup_pos = scope_info.cleanups.iter().position_(
             |cu| match *cu {
                 clean_temp(v, _, _) if v == val => true,
@@ -473,7 +472,7 @@ pub trait get_node_info {
     fn info(&self) -> Option<NodeInfo>;
 }
 
-impl get_node_info for @ast::expr {
+impl get_node_info for ast::expr {
     fn info(&self) -> Option<NodeInfo> {
         Some(NodeInfo {id: self.id,
                        callee_id: self.get_callee_id(),
@@ -573,7 +572,7 @@ pub fn val_ty(v: ValueRef) -> Type {
     }
 }
 
-pub fn in_scope_cx(cx: block, f: &fn(si: @mut scope_info)) {
+pub fn in_scope_cx(cx: block, f: &fn(si: &mut scope_info)) {
     let mut cur = cx;
     loop {
         match cur.kind {
@@ -612,11 +611,11 @@ impl block_ {
         e.repr(self.tcx())
     }
 
-    pub fn expr_is_lval(&self, e: @ast::expr) -> bool {
+    pub fn expr_is_lval(&self, e: &ast::expr) -> bool {
         ty::expr_is_lval(self.tcx(), self.ccx().maps.method_map, e)
     }
 
-    pub fn expr_kind(&self, e: @ast::expr) -> ty::ExprKind {
+    pub fn expr_kind(&self, e: &ast::expr) -> ty::ExprKind {
         ty::expr_kind(self.tcx(), self.ccx().maps.method_map, e)
     }
 
@@ -995,11 +994,11 @@ pub fn node_id_type(bcx: block, id: ast::node_id) -> ty::t {
     monomorphize_type(bcx, t)
 }
 
-pub fn expr_ty(bcx: block, ex: @ast::expr) -> ty::t {
+pub fn expr_ty(bcx: block, ex: &ast::expr) -> ty::t {
     node_id_type(bcx, ex.id)
 }
 
-pub fn expr_ty_adjusted(bcx: block, ex: @ast::expr) -> ty::t {
+pub fn expr_ty_adjusted(bcx: block, ex: &ast::expr) -> ty::t {
     let tcx = bcx.tcx();
     let t = ty::expr_ty_adjusted(tcx, ex);
     monomorphize_type(bcx, t)

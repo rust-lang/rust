@@ -18,7 +18,6 @@ use metadata::filesearch::FileSearch;
 use metadata::loader;
 
 use core::hashmap::HashMap;
-use core::vec;
 use syntax::attr;
 use syntax::codemap::{span, dummy_sp};
 use syntax::diagnostic::span_handler;
@@ -30,7 +29,7 @@ use syntax::ast;
 // Traverses an AST, reading all the information about use'd crates and extern
 // libraries necessary for later resolving, typechecking, linking, etc.
 pub fn read_crates(diag: @span_handler,
-                   crate: @ast::crate,
+                   crate: &ast::crate,
                    cstore: @mut cstore::CStore,
                    filesearch: @FileSearch,
                    os: loader::os,
@@ -53,8 +52,8 @@ pub fn read_crates(diag: @span_handler,
             .. *visit::default_simple_visitor()});
     visit_crate(e, crate);
     visit::visit_crate(crate, ((), v));
-    dump_crates(e.crate_cache);
-    warn_if_multiple_versions(e, diag, e.crate_cache);
+    dump_crates(*e.crate_cache);
+    warn_if_multiple_versions(e, diag, *e.crate_cache);
 }
 
 struct cache_entry {
@@ -64,7 +63,7 @@ struct cache_entry {
     metas: @~[@ast::meta_item]
 }
 
-fn dump_crates(crate_cache: @mut ~[cache_entry]) {
+fn dump_crates(crate_cache: &[cache_entry]) {
     debug!("resolved crates:");
     for crate_cache.iter().advance |entry| {
         debug!("cnum: %?", entry.cnum);
@@ -75,10 +74,8 @@ fn dump_crates(crate_cache: @mut ~[cache_entry]) {
 
 fn warn_if_multiple_versions(e: @mut Env,
                              diag: @span_handler,
-                             crate_cache: @mut ~[cache_entry]) {
+                             crate_cache: &[cache_entry]) {
     use core::either::*;
-
-    let crate_cache = &mut *crate_cache;
 
     if crate_cache.len() != 0u {
         let name = loader::crate_name_from_metas(
@@ -111,7 +108,7 @@ fn warn_if_multiple_versions(e: @mut Env,
             }
         }
 
-        warn_if_multiple_versions(e, diag, @mut non_matches);
+        warn_if_multiple_versions(e, diag, non_matches);
     }
 }
 
@@ -126,7 +123,7 @@ struct Env {
     intr: @ident_interner
 }
 
-fn visit_crate(e: @mut Env, c: &ast::crate) {
+fn visit_crate(e: &Env, c: &ast::crate) {
     let cstore = e.cstore;
     let link_args = attr::find_attrs_by_name(c.node.attrs, "link_args");
 
@@ -152,7 +149,7 @@ fn visit_view_item(e: @mut Env, i: @ast::view_item) {
     }
 }
 
-fn visit_item(e: @mut Env, i: @ast::item) {
+fn visit_item(e: &Env, i: @ast::item) {
     match i.node {
       ast::item_foreign_mod(ref fm) => {
         if fm.abis.is_rust() || fm.abis.is_intrinsic() {
@@ -204,14 +201,13 @@ fn visit_item(e: @mut Env, i: @ast::item) {
     }
 }
 
-fn metas_with(ident: @str, key: @str, metas: ~[@ast::meta_item])
+fn metas_with(ident: @str, key: @str, mut metas: ~[@ast::meta_item])
     -> ~[@ast::meta_item] {
     let name_items = attr::find_meta_items_by_name(metas, key);
     if name_items.is_empty() {
-        vec::append_one(metas, attr::mk_name_value_item_str(key, ident))
-    } else {
-        metas
+        metas.push(attr::mk_name_value_item_str(key, ident));
     }
+    metas
 }
 
 fn metas_with_ident(ident: @str, metas: ~[@ast::meta_item])
@@ -219,11 +215,11 @@ fn metas_with_ident(ident: @str, metas: ~[@ast::meta_item])
     metas_with(ident, @"name", metas)
 }
 
-fn existing_match(e: @mut Env, metas: &[@ast::meta_item], hash: @str)
+fn existing_match(e: &Env, metas: &[@ast::meta_item], hash: &str)
                -> Option<int> {
     for e.crate_cache.iter().advance |c| {
         if loader::metadata_matches(*c.metas, metas)
-            && (hash.is_empty() || c.hash == hash) {
+            && (hash.is_empty() || c.hash.as_slice() == hash) {
             return Some(c.cnum);
         }
     }

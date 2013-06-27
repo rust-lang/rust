@@ -124,7 +124,7 @@ pub fn mk_ast_map_visitor() -> vt {
     });
 }
 
-pub fn map_crate(diag: @span_handler, c: @crate) -> map {
+pub fn map_crate(diag: @span_handler, c: &crate) -> map {
     let cx = @mut Ctx {
         map: @mut HashMap::new(),
         path: ~[],

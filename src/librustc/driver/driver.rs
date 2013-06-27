@@ -181,12 +181,12 @@ pub fn compile_rest(sess: Session,
 
     let time_passes = sess.time_passes();
 
-    let mut crate_opt = curr;
+    let mut crate = curr.unwrap();
 
     if phases.from == cu_parse || phases.from == cu_everything {
 
         *sess.building_library = session::building_library(
-            sess.opts.crate_type, crate_opt.unwrap(), sess.opts.test);
+            sess.opts.crate_type, crate, sess.opts.test);
 
         // strip before expansion to allow macros to depend on
         // configuration variables e.g/ in
@@ -195,26 +195,24 @@ pub fn compile_rest(sess: Session,
         //   mod bar { macro_rules! baz!(() => {{}}) }
         //
         // baz! should not use this definition unless foo is enabled.
-        crate_opt = Some(time(time_passes, ~"configuration 1", ||
-                     front::config::strip_unconfigured_items(crate_opt.unwrap())));
+        crate = time(time_passes, ~"configuration 1", ||
+                     front::config::strip_unconfigured_items(crate));
 
-        crate_opt = Some(time(time_passes, ~"expansion", ||
+        crate = time(time_passes, ~"expansion", ||
                      syntax::ext::expand::expand_crate(sess.parse_sess, copy cfg,
-                                                       crate_opt.unwrap())));
+                                                       crate));
 
         // strip again, in case expansion added anything with a #[cfg].
-        crate_opt = Some(time(time_passes, ~"configuration 2", ||
-                     front::config::strip_unconfigured_items(crate_opt.unwrap())));
+        crate = time(time_passes, ~"configuration 2", ||
+                     front::config::strip_unconfigured_items(crate));
 
-        crate_opt = Some(time(time_passes, ~"maybe building test harness", ||
-                     front::test::modify_for_testing(sess, crate_opt.unwrap())));
+        crate = time(time_passes, ~"maybe building test harness", ||
+                     front::test::modify_for_testing(sess, crate));
     }
 
-    if phases.to == cu_expand { return (crate_opt, None); }
+    if phases.to == cu_expand { return (Some(crate), None); }
 
     assert!(phases.from != cu_no_trans);
-
-    let mut crate = crate_opt.unwrap();
 
     let (llcx, llmod, link_meta) = {
         crate = time(time_passes, ~"extra injection", ||

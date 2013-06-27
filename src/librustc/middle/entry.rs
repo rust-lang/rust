@@ -41,7 +41,7 @@ struct EntryContext {
 
 type EntryVisitor = vt<@mut EntryContext>;
 
-pub fn find_entry_point(session: Session, crate: @crate, ast_map: ast_map::map) {
+pub fn find_entry_point(session: Session, crate: &crate, ast_map: ast_map::map) {
 
     // FIXME #4404 android JNI hacks
     if *session.building_library &&
