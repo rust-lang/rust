@@ -559,31 +559,6 @@ impl StructContext {
         roundup(self.total_size, self.align)
     }
 
-    //fn verify_against_struct_or_tuple_type(&self, t: ty::t, ccx: &mut CrateContext) {
-        // let repr = adt::represent_type(ccx, t);
-
-        // match *repr {
-        //     Univariant(*) =>
-        //     {
-        //         let size_with_alignment = self.get_total_size_with_alignment();
-
-        //         if st.size != size_with_alignment {
-        //             ccx.sess.bug("StructContext(%s)::verify_against_struct_or_tuple_type:
-        //                           invalid type size. Expected = %u, actual = %u",
-        //                          st.size, size_with_alignment);
-        //         }
-
-        //         if st.align != self.align {
-        //             ccx.sess.bug("StructContext(%s)::verify_against_struct_or_tuple_type:
-        //                           invalid type alignment. Expected = %u, actual = %u",
-        //                          st.align, self.align);
-        //         }
-        //     },
-        //     _ => ccx.sess.bug(fmt!("StructContext(%s)::verify_against_struct_or_tuple_type:
-        //                             called with invalid type %?", self.name, t))
-        // }
-    //}
-
     fn finalize(&self) -> DICompositeType {
         debug!("StructContext(%s)::finalize: total_size=%u, align=%u",
                 self.name, self.total_size, self.align);

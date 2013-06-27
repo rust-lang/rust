@@ -49,7 +49,7 @@ struct WithDestructorGuarded {
 
 
 // The compiler adds a 'destructed' boolean field to structs implementing Drop. This field is used
-// at runtime to prevent finalize() to be executed more than once (see middle::trans::adt).
+// at runtime to prevent drop() to be executed more than once (see middle::trans::adt).
 // This field must be incorporated by the debug info generation. Otherwise the debugger assumes a
 // wrong size/layout for the struct.
 fn main() {
@@ -63,7 +63,20 @@ fn main() {
 
     // If the destructor flag field is not incorporated into the debug info for 'WithDestructor'
     // then the debugger will have an invalid offset for the field 'guard' and thus should not be
-    // able to read its value correctly.
+    // able to read its value correctly (dots are padding bytes, D is the boolean destructor flag):
+    //
+    // NoDestructorGuarded = 0000....00000000FFFFFFFF
+    //                       <--------------><------>
+    //                         NoDestructor   guard
+    //
+    //
+    // withDestructorGuarded = 0000....00000000D.......FFFFFFFF
+    //                         <--------------><------>          // How debug info says it is
+    //                          WithDestructor  guard
+    //
+    //                         <----------------------><------>  // How it actually is
+    //                              WithDestructor      guard
+    //
     let withDestructor = WithDestructorGuarded {
         a: WithDestructor { x: 10, y: 20 },
         guard: -1
