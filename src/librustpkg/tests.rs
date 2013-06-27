@@ -144,10 +144,10 @@ fn command_line_test(args: &[~str], cwd: &Path) -> ProcessOutput {
                                                            err_fd: None
                                                           });
     let output = prog.finish_with_output();
-    io::println(fmt!("Output from command %s with args %? was %s {%s}[%?]",
+    debug!("Output from command %s with args %? was %s {%s}[%?]",
                     cmd, args, str::from_bytes(output.output),
                    str::from_bytes(output.error),
-                   output.status));
+                   output.status);
 /*
 By the way, rustpkg *won't* return a nonzero exit code if it fails --
 see #4547
