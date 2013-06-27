@@ -20,6 +20,7 @@ use middle::trans::build::*;
 use middle::trans::callee::*;
 use middle::trans::callee;
 use middle::trans::common::*;
+use middle::trans::datum::*;
 use middle::trans::expr::{SaveIn, Ignore};
 use middle::trans::expr;
 use middle::trans::glue;
@@ -107,10 +108,8 @@ pub fn trans_method(ccx: @mut CrateContext,
         debug!("calling trans_fn with self_ty %s",
                self_ty.repr(ccx.tcx));
         match method.explicit_self.node {
-          ast::sty_value => impl_owned_self(self_ty),
-          _ => {
-            impl_self(self_ty)
-          }
+          ast::sty_value => impl_self(self_ty, ty::ByRef),
+          _ => impl_self(self_ty, ty::ByCopy),
         }
       }
     };
@@ -138,7 +137,6 @@ pub fn trans_self_arg(bcx: block,
     trans_arg_expr(bcx,
                    self_ty,
                    mentry.self_mode,
-                   mentry.explicit_self,
                    base,
                    temp_cleanups,
                    None,
@@ -205,7 +203,6 @@ pub fn trans_method_callee(bcx: block,
                     temp_cleanup: temp_cleanups.head_opt().map(|&v| *v),
                     self_ty: node_id_type(bcx, this.id),
                     self_mode: mentry.self_mode,
-                    explicit_self: mentry.explicit_self
                 })
             }
         }
@@ -438,7 +435,6 @@ pub fn trans_monomorphized_callee(bcx: block,
                   temp_cleanup: temp_cleanups.head_opt().map(|&v| *v),
                   self_ty: node_id_type(bcx, base.id),
                   self_mode: mentry.self_mode,
-                  explicit_self: mentry.explicit_self
               })
           }
       }
@@ -568,7 +564,8 @@ pub fn trans_trait_callee_from_llval(bcx: block,
     // necessary:
     let mut llself;
     debug!("(translating trait callee) loading second index from pair");
-    let llbox = Load(bcx, GEPi(bcx, llpair, [0u, abi::trt_field_box]));
+    let llboxptr = GEPi(bcx, llpair, [0u, abi::trt_field_box]);
+    let llbox = Load(bcx, llboxptr);
 
     // Munge `llself` appropriately for the type of `self` in the method.
     match explicit_self {
@@ -580,8 +577,6 @@ pub fn trans_trait_callee_from_llval(bcx: block,
                                 called on objects");
         }
         ast::sty_region(*) => {
-            // As before, we need to pass a pointer to a pointer to the
-            // payload.
             match store {
                 ty::BoxTraitStore |
                 ty::UniqTraitStore => {
@@ -596,7 +591,7 @@ pub fn trans_trait_callee_from_llval(bcx: block,
             // Bump the reference count on the box.
             debug!("(translating trait callee) callee type is `%s`",
                    bcx.ty_to_str(callee_ty));
-            bcx = glue::take_ty(bcx, llbox, callee_ty);
+            glue::incr_refcnt_of_boxed(bcx, llbox);
 
             // Pass a pointer to the box.
             match store {
@@ -610,12 +605,15 @@ pub fn trans_trait_callee_from_llval(bcx: block,
                 ty::UniqTraitStore => llself = llbox,
                 _ => bcx.tcx().sess.bug("~self receiver with non-~Trait")
             }
+
+            zero_mem(bcx, llboxptr, ty::mk_opaque_box(bcx.tcx()));
         }
     }
 
-    let llscratch = alloca(bcx, val_ty(llself));
-    Store(bcx, llself, llscratch);
-    llself = PointerCast(bcx, llscratch, Type::opaque_box(ccx).ptr_to());
+    llself = PointerCast(bcx, llself, Type::opaque_box(ccx).ptr_to());
+    let scratch = scratch_datum(bcx, ty::mk_opaque_box(bcx.tcx()), false);
+    Store(bcx, llself, scratch.val);
+    scratch.add_clean(bcx);
 
     // Load the function from the vtable and cast it to the expected type.
     debug!("(translating trait callee) loading method");
@@ -630,11 +628,10 @@ pub fn trans_trait_callee_from_llval(bcx: block,
         bcx: bcx,
         data: Method(MethodData {
             llfn: mptr,
-            llself: llself,
-            temp_cleanup: None,
-            self_ty: ty::mk_opaque_box(bcx.tcx()),
-            self_mode: ty::ByRef,
-            explicit_self: explicit_self
+            llself: scratch.to_value_llval(bcx),
+            temp_cleanup: Some(scratch.val),
+            self_ty: scratch.ty,
+            self_mode: ty::ByCopy,
             /* XXX: Some(llbox) */
         })
     };
