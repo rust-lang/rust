@@ -139,7 +139,7 @@ type OptRes = Either<TestOpts, ~str>;
 
 // Parses command line arguments into test options
 pub fn parse_opts(args: &[~str]) -> OptRes {
-    let args_ = vec::tail(args);
+    let args_ = args.tail();
     let opts = ~[getopts::optflag("ignored"),
                  getopts::optflag("test"),
                  getopts::optflag("bench"),
@@ -431,7 +431,7 @@ fn run_tests(opts: &TestOpts,
     callback(TeFiltered(filtered_descs));
 
     let (filtered_tests, filtered_benchs) =
-        do vec::partition(filtered_tests) |e| {
+        do filtered_tests.partition |e| {
         match e.testfn {
             StaticTestFn(_) | DynTestFn(_) => true,
             StaticBenchFn(_) | DynBenchFn(_) => false

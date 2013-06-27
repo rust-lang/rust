@@ -137,7 +137,7 @@ impl<T> Deque<T> {
     ///
     /// * n - The number of elements to reserve space for
     pub fn reserve(&mut self, n: uint) {
-        vec::reserve(&mut self.elts, n);
+        self.elts.reserve(n);
     }
 
     /// Reserve capacity for at least `n` elements in the given deque,
@@ -151,7 +151,7 @@ impl<T> Deque<T> {
     ///
     /// * n - The number of elements to reserve space for
     pub fn reserve_at_least(&mut self, n: uint) {
-        vec::reserve_at_least(&mut self.elts, n);
+        self.elts.reserve_at_least(n);
     }
 
     /// Front-to-back iterator.
@@ -256,7 +256,6 @@ mod tests {
     use super::*;
     use core::cmp::Eq;
     use core::kinds::Copy;
-    use core::vec::capacity;
     use core;
 
     #[test]
@@ -442,11 +441,11 @@ mod tests {
         let mut d = Deque::new();
         d.add_back(0u64);
         d.reserve(50);
-        assert_eq!(capacity(&mut d.elts), 50);
+        assert_eq!(d.elts.capacity(), 50);
         let mut d = Deque::new();
         d.add_back(0u32);
         d.reserve(50);
-        assert_eq!(capacity(&mut d.elts), 50);
+        assert_eq!(d.elts.capacity(), 50);
     }
 
     #[test]
@@ -454,11 +453,11 @@ mod tests {
         let mut d = Deque::new();
         d.add_back(0u64);
         d.reserve_at_least(50);
-        assert_eq!(capacity(&mut d.elts), 64);
+        assert_eq!(d.elts.capacity(), 64);
         let mut d = Deque::new();
         d.add_back(0u32);
         d.reserve_at_least(50);
-        assert_eq!(capacity(&mut d.elts), 64);
+        assert_eq!(d.elts.capacity(), 64);
     }
 
     #[test]

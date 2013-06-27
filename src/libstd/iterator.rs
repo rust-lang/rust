@@ -1030,7 +1030,6 @@ mod tests {
     use super::*;
     use prelude::*;
 
-    use iter;
     use uint;
 
     #[test]
