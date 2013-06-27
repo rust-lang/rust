@@ -492,8 +492,7 @@ pub fn combine_impl_and_methods_tps(bcx: block,
     debug!("rcvr_substs=%?", rcvr_substs.map(|t| bcx.ty_to_str(*t)));
     let ty_substs
         = vec::append(rcvr_substs.to_owned(),
-                      vec::tailn(node_substs,
-                                 node_substs.len() - n_m_tps));
+                      node_substs.tailn(node_substs.len() - n_m_tps));
     debug!("n_m_tps=%?", n_m_tps);
     debug!("node_substs=%?", node_substs.map(|t| bcx.ty_to_str(*t)));
     debug!("ty_substs=%?", ty_substs.map(|t| bcx.ty_to_str(*t)));
@@ -540,7 +539,7 @@ pub fn combine_impl_and_methods_origins(bcx: block,
     };
 
     // Extract those that belong to method:
-    let m_origins = vec::tailn(*r_m_origins, r_m_origins.len() - m_vtables);
+    let m_origins = r_m_origins.tailn(r_m_origins.len() - m_vtables);
 
     // Combine rcvr + method to find the final result:
     @vec::append(/*bad*/copy *rcvr_origins, m_origins)

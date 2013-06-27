@@ -238,44 +238,6 @@ pub fn build_sized_opt<A>(size: Option<uint>,
 
 // Accessors
 
-/// Returns the first element of a vector
-pub fn head<'r,T>(v: &'r [T]) -> &'r T {
-    if v.len() == 0 { fail!("head: empty vector") }
-    &v[0]
-}
-
-/// Returns `Some(x)` where `x` is the first element of the slice `v`,
-/// or `None` if the vector is empty.
-pub fn head_opt<'r,T>(v: &'r [T]) -> Option<&'r T> {
-    if v.len() == 0 { None } else { Some(&v[0]) }
-}
-
-/// Returns a vector containing all but the first element of a slice
-pub fn tail<'r,T>(v: &'r [T]) -> &'r [T] { v.slice(1, v.len()) }
-
-/// Returns a vector containing all but the first `n` elements of a slice
-pub fn tailn<'r,T>(v: &'r [T], n: uint) -> &'r [T] { v.slice(n, v.len()) }
-
-/// Returns a vector containing all but the last element of a slice
-pub fn init<'r,T>(v: &'r [T]) -> &'r [T] { v.slice(0, v.len() - 1) }
-
-/// Returns a vector containing all but the last `n' elements of a slice
-pub fn initn<'r,T>(v: &'r [T], n: uint) -> &'r [T] {
-    v.slice(0, v.len() - n)
-}
-
-/// Returns the last element of the slice `v`, failing if the slice is empty.
-pub fn last<'r,T>(v: &'r [T]) -> &'r T {
-    if v.len() == 0 { fail!("last: empty vector") }
-    &v[v.len() - 1]
-}
-
-/// Returns `Some(x)` where `x` is the last element of the slice `v`, or
-/// `None` if the vector is empty.
-pub fn last_opt<'r,T>(v: &'r [T]) -> Option<&'r T> {
-    if v.len() == 0 { None } else { Some(&v[v.len() - 1]) }
-}
-
 /// Copies
 
 /// Split the vector `v` by applying each element against the predicate `f`.
@@ -1678,35 +1640,49 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
 
     /// Returns the first element of a vector, failing if the vector is empty.
     #[inline]
-    fn head(&self) -> &'self T { head(*self) }
+    fn head(&self) -> &'self T {
+        if self.len() == 0 { fail!("head: empty vector") }
+        &self[0]
+    }
 
-    /// Returns the first element of a vector
+    /// Returns the first element of a vector, or `None` if it is empty
     #[inline]
-    fn head_opt(&self) -> Option<&'self T> { head_opt(*self) }
+    fn head_opt(&self) -> Option<&'self T> {
+        if self.len() == 0 { None } else { Some(&self[0]) }
+    }
 
     /// Returns all but the first element of a vector
     #[inline]
-    fn tail(&self) -> &'self [T] { tail(*self) }
+    fn tail(&self) -> &'self [T] { self.slice(1, self.len()) }
 
     /// Returns all but the first `n' elements of a vector
     #[inline]
-    fn tailn(&self, n: uint) -> &'self [T] { tailn(*self, n) }
+    fn tailn(&self, n: uint) -> &'self [T] { self.slice(n, self.len()) }
 
-    /// Returns all but the last elemnt of a vector
+    /// Returns all but the last element of a vector
     #[inline]
-    fn init(&self) -> &'self [T] { init(*self) }
+    fn init(&self) -> &'self [T] {
+        self.slice(0, self.len() - 1)
+    }
 
     /// Returns all but the last `n' elemnts of a vector
     #[inline]
-    fn initn(&self, n: uint) -> &'self [T] { initn(*self, n) }
+    fn initn(&self, n: uint) -> &'self [T] {
+        self.slice(0, self.len() - n)
+    }
 
-    /// Returns the last element of a `v`, failing if the vector is empty.
+    /// Returns the last element of a vector, failing if the vector is empty.
     #[inline]
-    fn last(&self) -> &'self T { last(*self) }
+    fn last(&self) -> &'self T {
+        if self.len() == 0 { fail!("last: empty vector") }
+        &self[self.len() - 1]
+    }
 
-    /// Returns the last element of a `v`, failing if the vector is empty.
+    /// Returns the last element of a vector, or `None` if it is empty.
     #[inline]
-    fn last_opt(&self) -> Option<&'self T> { last_opt(*self) }
+    fn last_opt(&self) -> Option<&'self T> {
+            if self.len() == 0 { None } else { Some(&self[self.len() - 1]) }
+    }
 
     /**
      * Find the last index matching some predicate

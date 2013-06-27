@@ -75,7 +75,7 @@ pub fn parse_config(args: ~[~str]) -> config {
          ];
 
     assert!(!args.is_empty());
-    let args_ = vec::tail(args);
+    let args_ = args.tail();
     let matches =
         &match getopts::getopts(args_, opts) {
           Ok(m) => m,

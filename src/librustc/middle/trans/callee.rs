@@ -47,7 +47,6 @@ use util::ppaux::Repr;
 
 use middle::trans::type_::Type;
 
-use core::vec;
 use syntax::ast;
 use syntax::ast_map;
 use syntax::visit;
@@ -503,7 +502,7 @@ pub fn trans_call_inner(in_cx: block,
     do base::with_scope(in_cx, call_info, "call") |cx| {
         let ret_in_loop = match args {
           ArgExprs(args) => {
-            args.len() > 0u && match vec::last(args).node {
+            args.len() > 0u && match args.last().node {
               ast::expr_loop_body(@ast::expr {
                 node: ast::expr_fn_block(_, ref body),
                 _
