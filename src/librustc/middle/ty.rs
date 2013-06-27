@@ -1251,7 +1251,7 @@ pub fn mk_ctor_fn(cx: ctxt, input_tys: &[ty::t], output: ty::t) -> t {
     let input_args = input_tys.map(|t| *t);
     mk_bare_fn(cx,
                BareFnTy {
-                   purity: ast::pure_fn,
+                   purity: ast::impure_fn,
                    abis: AbiSet::Rust(),
                    sig: FnSig {
                     bound_lifetime_names: opt_vec::Empty,

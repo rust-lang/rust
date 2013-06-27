@@ -350,7 +350,6 @@ fn enc_sigil(w: @io::Writer, sigil: Sigil) {
 
 fn enc_purity(w: @io::Writer, p: purity) {
     match p {
-      pure_fn => w.write_char('p'),
       impure_fn => w.write_char('i'),
       unsafe_fn => w.write_char('u'),
       extern_fn => w.write_char('c')
