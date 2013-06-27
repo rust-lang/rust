@@ -4882,7 +4882,7 @@ impl Resolver {
             values[smallest] <= max_distance &&
             name != maybes[smallest] {
 
-            Some(vec::swap_remove(&mut maybes, smallest))
+            Some(maybes.swap_remove(smallest))
 
         } else {
             None
