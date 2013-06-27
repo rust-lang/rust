@@ -76,7 +76,7 @@ pub fn replace<T>(dest: &mut T, mut src: T) -> T {
 
 /// A non-copyable dummy type.
 #[deriving(Eq, TotalEq, Ord, TotalOrd)]
-#[no_drop_flag]
+#[unsafe_no_drop_flag]
 pub struct NonCopyable;
 
 impl Drop for NonCopyable {
@@ -171,7 +171,7 @@ mod tests {
     fn test_noncopyable() {
         assert_eq!(size_of::<NonCopyable>(), 0);
 
-        // verify that `#[no_drop_flag]` works as intended on a zero-size struct
+        // verify that `#[unsafe_no_drop_flag]` works as intended on a zero-size struct
 
         static mut did_run: bool = false;
 
