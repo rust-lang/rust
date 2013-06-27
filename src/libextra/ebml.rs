@@ -82,8 +82,14 @@ pub mod reader {
     use core::cast::transmute;
     use core::int;
     use core::io;
-    use core::ptr::offset;
     use core::str;
+
+    #[cfg(target_arch = "x86")]
+    #[cfg(target_arch = "x86_64")]
+    use core::ptr::offset;
+
+    #[cfg(target_arch = "x86")]
+    #[cfg(target_arch = "x86_64")]
     use core::unstable::intrinsics::bswap32;
 
     // ebml reading
