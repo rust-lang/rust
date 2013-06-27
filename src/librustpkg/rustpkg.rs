@@ -46,6 +46,7 @@ use context::Ctx;
 use package_id::PkgId;
 use package_source::PkgSrc;
 
+pub mod api;
 mod conditions;
 mod context;
 mod crate;
@@ -104,8 +105,10 @@ impl<'self> PkgScript<'self> {
         let binary = os::args()[0].to_managed();
         // Build the rustc session data structures to pass
         // to the compiler
+    debug!("pkgscript parse: %?", os::self_exe_path());
         let options = @session::options {
             binary: binary,
+            maybe_sysroot: Some(@os::self_exe_path().get().pop()),
             crate_type: session::bin_crate,
             .. copy *session::basic_options()
         };
@@ -132,8 +135,7 @@ impl<'self> PkgScript<'self> {
     /// Returns a pair of an exit code and list of configs (obtained by
     /// calling the package script's configs() function if it exists
     // FIXME (#4432): Use workcache to only compile the script when changed
-    fn run_custom(&self, what: ~str) -> (~[~str], ExitCode) {
-        debug!("run_custom: %s", what);
+    fn run_custom(&self, sysroot: @Path) -> (~[~str], ExitCode) {
         let sess = self.sess;
 
         debug!("Working directory = %s", self.build_dir.to_str());
@@ -152,9 +154,12 @@ impl<'self> PkgScript<'self> {
                                                sess,
                                                crate,
                                                driver::build_configuration(sess,
-                                                                           binary, &self.input));
-                debug!("Running program: %s %s %s", exe.to_str(), root.to_str(), what);
-                let status = run::process_status(exe.to_str(), [root.to_str(), what]);
+                                                                           binary, &self.input),
+                                               driver::cu_parse);
+                debug!("Running program: %s %s %s %s", exe.to_str(),
+                       sysroot.to_str(), root.to_str(), "install");
+                // FIXME #7401 should support commands besides `install`
+                let status = run::process_status(exe.to_str(), [sysroot.to_str(), ~"install"]);
                 if status != 0 {
                     return (~[], status);
                 }
@@ -291,10 +296,8 @@ impl Ctx {
                 let pscript = PkgScript::parse(package_script_path,
                                                workspace,
                                                pkgid);
-                // Limited right now -- we're only running the post_build
-                // hook and probably fail otherwise
-                // also post_build should be called pre_build
-                let (cfgs, hook_result) = pscript.run_custom(~"post_build");
+                let sysroot = self.sysroot_opt.expect("custom build needs a sysroot");
+                let (cfgs, hook_result) = pscript.run_custom(sysroot);
                 debug!("Command return code = %?", hook_result);
                 if hook_result != 0 {
                     fail!("Error running custom build command")
@@ -341,13 +344,17 @@ impl Ctx {
     }
 
     fn install(&self, workspace: &Path, id: &PkgId)  {
-        use conditions::copy_failed::cond;
-
-        // Should use RUST_PATH in the future.
+        // FIXME #7402: Use RUST_PATH to determine target dir
         // Also should use workcache to not build if not necessary.
         self.build(workspace, id);
         debug!("install: workspace = %s, id = %s", workspace.to_str(),
                id.to_str());
+        self.install_no_build(workspace, id);
+
+    }
+
+    fn install_no_build(&self, workspace: &Path, id: &PkgId) {
+        use conditions::copy_failed::cond;
 
         // Now copy stuff into the install dirs
         let maybe_executable = built_executable_in_workspace(id, workspace);
