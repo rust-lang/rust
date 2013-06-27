@@ -218,7 +218,6 @@ fn command_line_test(args: &[~str], cwd: &Path) -> ProcessOutput {
 fn command_line_test_with_env(args: &[~str], cwd: &Path, env: Option<~[(~str, ~str)]>)
     -> ProcessOutput {
     let cmd = test_sysroot().push("bin").push("rustpkg").to_str();
-    let cwd = normalize(RemotePath((*cwd).clone()));
     debug!("About to run command: %? %? in %s", cmd, args, cwd.to_str());
     assert!(os::path_is_dir(&*cwd));
     let cwd = (*cwd).clone();
@@ -318,6 +317,14 @@ fn assert_lib_exists(repo: &Path, short_name: &str, v: Version) {
 fn assert_executable_exists(repo: &Path, short_name: &str) {
     debug!("assert_executable_exists: repo = %s, short_name = %s", repo.to_str(), short_name);
     let exec = target_executable_in_workspace(&PkgId::new(short_name, repo), repo);
+    assert!(os::path_exists(&exec));
+    assert!(is_rwx(&exec));
+}
+
+fn assert_built_executable_exists(repo: &Path, short_name: &str) {
+    debug!("assert_built_executable_exists: repo = %s, short_name = %s", repo.to_str(), short_name);
+    let exec = built_executable_in_workspace(&PkgId::new(short_name, repo),
+                                             repo).expect("assert_built_executable_exists failed");
     assert!(os::path_exists(&exec));
     assert!(is_rwx(&exec));
 }
@@ -490,30 +497,29 @@ fn test_install_git() {
     // should have test, bench, lib, and main
     command_line_test([~"install", temp_pkg_id.local_path.to_str()], &repo);
     // Check that all files exist
-    let ws = repo.push(".rust");
-    debug!("Checking for files in %s", ws.to_str());
-    let exec = target_executable_in_workspace(&temp_pkg_id, &ws);
+    debug!("Checking for files in %s", repo.to_str());
+    let exec = target_executable_in_workspace(&temp_pkg_id, &repo);
     debug!("exec = %s", exec.to_str());
     assert!(os::path_exists(&exec));
     assert!(is_rwx(&exec));
     let _built_lib =
         built_library_in_workspace(&temp_pkg_id,
-                                   &ws).expect("test_install_git: built lib should exist");
-    let lib = target_library_in_workspace(&temp_pkg_id, &ws);
+                                   &repo).expect("test_install_git: built lib should exist");
+    let lib = target_library_in_workspace(&temp_pkg_id, &repo);
     debug!("lib = %s", lib.to_str());
     assert!(os::path_exists(&lib));
     assert!(is_rwx(&lib));
     let built_test = built_test_in_workspace(&temp_pkg_id,
-                         &ws).expect("test_install_git: built test should exist");
+                         &repo).expect("test_install_git: built test should exist");
     assert!(os::path_exists(&built_test));
     let built_bench = built_bench_in_workspace(&temp_pkg_id,
-                          &ws).expect("test_install_git: built bench should exist");
+                          &repo).expect("test_install_git: built bench should exist");
     assert!(os::path_exists(&built_bench));
     // And that the test and bench executables aren't installed
-    let test = target_test_in_workspace(&temp_pkg_id, &ws);
+    let test = target_test_in_workspace(&temp_pkg_id, &repo);
     assert!(!os::path_exists(&test));
     debug!("test = %s", test.to_str());
-    let bench = target_bench_in_workspace(&temp_pkg_id, &ws);
+    let bench = target_bench_in_workspace(&temp_pkg_id, &repo);
     debug!("bench = %s", bench.to_str());
     assert!(!os::path_exists(&bench));
 }
@@ -586,12 +592,12 @@ fn test_package_version() {
     command_line_test([~"install", ~"mockgithub.com/catamorphism/test_pkg_version"],
                       &repo);
     assert!(match built_library_in_workspace(&temp_pkg_id,
-                                             &repo.push(".rust")) {
+                                             &repo) {
         Some(p) => p.to_str().ends_with(fmt!("0.4%s", os::consts::DLL_SUFFIX)),
         None    => false
     });
-    assert!(built_executable_in_workspace(&temp_pkg_id, &repo.push(".rust"))
-            == Some(repo.push(".rust").push("build").
+    assert!(built_executable_in_workspace(&temp_pkg_id, &repo)
+            == Some(repo.push("build").
                     push("mockgithub.com").
                     push("catamorphism").
                     push("test_pkg_version").
@@ -689,7 +695,7 @@ fn rustpkg_library_target() {
 
     add_git_tag(&package_dir, ~"1.0");
     command_line_test([~"install", ~"foo"], &foo_repo);
-    assert_lib_exists(&foo_repo.push(".rust"), "foo", ExactRevision(~"1.0"));
+    assert_lib_exists(&foo_repo, "foo", ExactRevision(~"1.0"));
 }
 
 #[test]
@@ -717,13 +723,54 @@ fn package_script_with_default_build() {
 }
 
 #[test]
+fn rustpkg_build_no_arg() {
+    let tmp = mkdtemp(&os::tmpdir(), "rustpkg_build_no_arg").expect("rustpkg_build_no_arg failed");
+    let package_dir = tmp.push("src").push("foo");
+    assert!(os::mkdir_recursive(&package_dir, U_RWX));
+
+    writeFile(&package_dir.push("main.rs"),
+              "fn main() { let _x = (); }");
+    debug!("build_no_arg: dir = %s", package_dir.to_str());
+    command_line_test([~"build"], &package_dir);
+    assert_built_executable_exists(&tmp, "foo");
+}
+
+#[test]
+fn rustpkg_install_no_arg() {
+    let tmp = mkdtemp(&os::tmpdir(),
+                      "rustpkg_install_no_arg").expect("rustpkg_build_no_arg failed");
+    let package_dir = tmp.push("src").push("foo");
+    assert!(os::mkdir_recursive(&package_dir, U_RWX));
+    writeFile(&package_dir.push("lib.rs"),
+              "fn main() { let _x = (); }");
+    debug!("install_no_arg: dir = %s", package_dir.to_str());
+    command_line_test([~"install"], &package_dir);
+    assert_lib_exists(&tmp, "foo", NoVersion);
+}
+
+#[test]
+fn rustpkg_clean_no_arg() {
+    let tmp = mkdtemp(&os::tmpdir(), "rustpkg_clean_no_arg").expect("rustpkg_clean_no_arg failed");
+    let package_dir = tmp.push("src").push("foo");
+    assert!(os::mkdir_recursive(&package_dir, U_RWX));
+
+    writeFile(&package_dir.push("main.rs"),
+              "fn main() { let _x = (); }");
+    debug!("clean_no_arg: dir = %s", package_dir.to_str());
+    command_line_test([~"build"], &package_dir);
+    assert_built_executable_exists(&tmp, "foo");
+    command_line_test([~"clean"], &package_dir);
+    assert!(!built_executable_in_workspace(&PkgId::new("foo", &package_dir),
+                &tmp).map_default(false, |m| { os::path_exists(m) }));
+}
+
+#[test]
 #[ignore (reason = "Un-ignore when #7071 is fixed")]
 fn rust_path_test() {
     let dir_for_path = mkdtemp(&os::tmpdir(), "more_rust").expect("rust_path_test failed");
     let dir = mk_workspace(&dir_for_path, &normalize(RemotePath(Path("foo"))), &NoVersion);
     debug!("dir = %s", dir.to_str());
-    writeFile(&Path("/Users/tjc/more_rust/src/foo-0.1/main.rs"),
-              "fn main() { let _x = (); }");
+    writeFile(&dir.push("main.rs"), "fn main() { let _x = (); }");
 
     let cwd = os::getcwd();
     debug!("cwd = %s", cwd.to_str());
@@ -781,21 +828,24 @@ fn test_list() {
     let quux = PkgId::new("quux", &dir);
     create_local_package_in(&quux, &dir);
 
+// NOTE Not really great output, though...
+// NOTE do any tests need to be unignored?
     command_line_test([~"install", ~"foo"], &dir);
     let env_arg = ~[(~"RUST_PATH", dir.to_str())];
+    debug!("RUST_PATH = %s", dir.to_str());
     let list_output = command_line_test_output_with_env([~"list"], env_arg.clone());
-    assert!(list_output.iter().any(|x| x.starts_with("foo-")));
+    assert!(list_output.iter().any(|x| x.starts_with("libfoo_")));
 
     command_line_test([~"install", ~"bar"], &dir);
     let list_output = command_line_test_output_with_env([~"list"], env_arg.clone());
-    assert!(list_output.iter().any(|x| x.starts_with("foo-")));
-    assert!(list_output.iter().any(|x| x.starts_with("bar-")));
+    assert!(list_output.iter().any(|x| x.starts_with("libfoo_")));
+    assert!(list_output.iter().any(|x| x.starts_with("libbar_")));
 
     command_line_test([~"install", ~"quux"], &dir);
     let list_output = command_line_test_output_with_env([~"list"], env_arg);
-    assert!(list_output.iter().any(|x| x.starts_with("foo-")));
-    assert!(list_output.iter().any(|x| x.starts_with("bar-")));
-    assert!(list_output.iter().any(|x| x.starts_with("quux-")));
+    assert!(list_output.iter().any(|x| x.starts_with("libfoo_")));
+    assert!(list_output.iter().any(|x| x.starts_with("libbar_")));
+    assert!(list_output.iter().any(|x| x.starts_with("libquux_")));
 }
 
 #[test]
@@ -836,7 +886,7 @@ fn install_check_duplicates() {
     let mut contents = ~[];
     let check_dups = |p: &PkgId| {
         if contents.contains(p) {
-            fail!("package database contains duplicate ID");
+            fail!("package %s appears in `list` output more than once", p.local_path.to_str());
         }
         else {
             contents.push((*p).clone());
