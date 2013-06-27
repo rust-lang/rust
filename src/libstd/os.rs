@@ -134,7 +134,7 @@ pub mod win32 {
                     }
                 }
                 if k != 0 && done {
-                    let sub = vec::slice(buf, 0u, k as uint);
+                    let sub = buf.slice(0, k as uint);
                     res = option::Some(str::from_utf16(sub));
                 }
             }
@@ -1140,7 +1140,7 @@ pub fn set_exit_status(code: int) {
 unsafe fn load_argc_and_argv(argc: c_int, argv: **c_char) -> ~[~str] {
     let mut args = ~[];
     for uint::range(0, argc as uint) |i| {
-        vec::push(&mut args, str::raw::from_c_str(*argv.offset(i)));
+        args.push(str::raw::from_c_str(*argv.offset(i)));
     }
     args
 }
@@ -1186,8 +1186,7 @@ pub fn real_args() -> ~[~str] {
             while *ptr.offset(len) != 0 { len += 1; }
 
             // Push it onto the list.
-            vec::push(&mut args,
-                      vec::raw::buf_as_slice(ptr, len,
+            args.push(vec::raw::buf_as_slice(ptr, len,
                                              str::from_utf16));
         }
     }

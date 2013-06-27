@@ -788,7 +788,7 @@ impl CoherenceChecker {
                              `%s` to impl",
                             provided_method.method_info
                             .ident.repr(self.crate_context.tcx));
-                        vec::push(all_methods, provided_method.method_info);
+                        all_methods.push(provided_method.method_info);
                     }
                 }
             }

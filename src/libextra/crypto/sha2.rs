@@ -11,7 +11,6 @@
 use core::prelude::*;
 
 use core::uint;
-use core::vec;
 
 use digest::Digest;
 
@@ -118,7 +117,7 @@ impl Engine512 {
         }
 
         while in.len() - i >= 8 {
-            let w = to_u64(vec::slice(in, i, i + 8));
+            let w = to_u64(in.slice(i, i + 8));
             self.process_word(w);
             self.bit_counter.add_bytes(8);
             i += 8;
@@ -274,43 +273,43 @@ impl Engine512 {
     fn result_512(&mut self, out: &mut [u8]) {
         self.finish();
 
-        from_u64(self.H0, vec::mut_slice(out, 0, 8));
-        from_u64(self.H1, vec::mut_slice(out, 8, 16));
-        from_u64(self.H2, vec::mut_slice(out, 16, 24));
-        from_u64(self.H3, vec::mut_slice(out, 24, 32));
-        from_u64(self.H4, vec::mut_slice(out, 32, 40));
-        from_u64(self.H5, vec::mut_slice(out, 40, 48));
-        from_u64(self.H6, vec::mut_slice(out, 48, 56));
-        from_u64(self.H7, vec::mut_slice(out, 56, 64));
+        from_u64(self.H0, out.mut_slice(0, 8));
+        from_u64(self.H1, out.mut_slice(8, 16));
+        from_u64(self.H2, out.mut_slice(16, 24));
+        from_u64(self.H3, out.mut_slice(24, 32));
+        from_u64(self.H4, out.mut_slice(32, 40));
+        from_u64(self.H5, out.mut_slice(40, 48));
+        from_u64(self.H6, out.mut_slice(48, 56));
+        from_u64(self.H7, out.mut_slice(56, 64));
     }
 
     fn result_384(&mut self, out: &mut [u8]) {
         self.finish();
 
-        from_u64(self.H0, vec::mut_slice(out, 0, 8));
-        from_u64(self.H1, vec::mut_slice(out, 8, 16));
-        from_u64(self.H2, vec::mut_slice(out, 16, 24));
-        from_u64(self.H3, vec::mut_slice(out, 24, 32));
-        from_u64(self.H4, vec::mut_slice(out, 32, 40));
-        from_u64(self.H5, vec::mut_slice(out, 40, 48));
+        from_u64(self.H0, out.mut_slice(0, 8));
+        from_u64(self.H1, out.mut_slice(8, 16));
+        from_u64(self.H2, out.mut_slice(16, 24));
+        from_u64(self.H3, out.mut_slice(24, 32));
+        from_u64(self.H4, out.mut_slice(32, 40));
+        from_u64(self.H5, out.mut_slice(40, 48));
     }
 
     fn result_256(&mut self, out: &mut [u8]) {
         self.finish();
 
-        from_u64(self.H0, vec::mut_slice(out, 0, 8));
-        from_u64(self.H1, vec::mut_slice(out, 8, 16));
-        from_u64(self.H2, vec::mut_slice(out, 16, 24));
-        from_u64(self.H3, vec::mut_slice(out, 24, 32));
+        from_u64(self.H0, out.mut_slice(0, 8));
+        from_u64(self.H1, out.mut_slice(8, 16));
+        from_u64(self.H2, out.mut_slice(16, 24));
+        from_u64(self.H3, out.mut_slice(24, 32));
     }
 
     fn result_224(&mut self, out: &mut [u8]) {
         self.finish();
 
-        from_u64(self.H0, vec::mut_slice(out, 0, 8));
-        from_u64(self.H1, vec::mut_slice(out, 8, 16));
-        from_u64(self.H2, vec::mut_slice(out, 16, 24));
-        from_u32((self.H3 >> 32) as u32, vec::mut_slice(out, 24, 28));
+        from_u64(self.H0, out.mut_slice(0, 8));
+        from_u64(self.H1, out.mut_slice(8, 16));
+        from_u64(self.H2, out.mut_slice(16, 24));
+        from_u32((self.H3 >> 32) as u32, out.mut_slice(24, 28));
     }
 }
 
@@ -400,7 +399,7 @@ impl Engine256 {
         }
 
         while in.len() - i >= 4 {
-            let w = to_u32(vec::slice(in, i, i + 4));
+            let w = to_u32(in.slice(i, i + 4));
             self.process_word(w);
             self.length_bytes += 4;
             i += 4;
@@ -556,26 +555,26 @@ impl Engine256 {
     fn result_256(&mut self, out: &mut [u8]) {
         self.finish();
 
-        from_u32(self.H0, vec::mut_slice(out, 0, 4));
-        from_u32(self.H1, vec::mut_slice(out, 4, 8));
-        from_u32(self.H2, vec::mut_slice(out, 8, 12));
-        from_u32(self.H3, vec::mut_slice(out, 12, 16));
-        from_u32(self.H4, vec::mut_slice(out, 16, 20));
-        from_u32(self.H5, vec::mut_slice(out, 20, 24));
-        from_u32(self.H6, vec::mut_slice(out, 24, 28));
-        from_u32(self.H7, vec::mut_slice(out, 28, 32));
+        from_u32(self.H0, out.mut_slice(0, 4));
+        from_u32(self.H1, out.mut_slice(4, 8));
+        from_u32(self.H2, out.mut_slice(8, 12));
+        from_u32(self.H3, out.mut_slice(12, 16));
+        from_u32(self.H4, out.mut_slice(16, 20));
+        from_u32(self.H5, out.mut_slice(20, 24));
+        from_u32(self.H6, out.mut_slice(24, 28));
+        from_u32(self.H7, out.mut_slice(28, 32));
     }
 
     fn result_224(&mut self, out: &mut [u8]) {
         self.finish();
 
-        from_u32(self.H0, vec::mut_slice(out, 0, 4));
-        from_u32(self.H1, vec::mut_slice(out, 4, 8));
-        from_u32(self.H2, vec::mut_slice(out, 8, 12));
-        from_u32(self.H3, vec::mut_slice(out, 12, 16));
-        from_u32(self.H4, vec::mut_slice(out, 16, 20));
-        from_u32(self.H5, vec::mut_slice(out, 20, 24));
-        from_u32(self.H6, vec::mut_slice(out, 24, 28));
+        from_u32(self.H0, out.mut_slice(0, 4));
+        from_u32(self.H1, out.mut_slice(4, 8));
+        from_u32(self.H2, out.mut_slice(8, 12));
+        from_u32(self.H3, out.mut_slice(12, 16));
+        from_u32(self.H4, out.mut_slice(16, 20));
+        from_u32(self.H5, out.mut_slice(20, 24));
+        from_u32(self.H6, out.mut_slice(24, 28));
     }
 }
 

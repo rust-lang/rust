@@ -321,8 +321,7 @@ fn check_error_patterns(props: &TestProps,
     if done { return; }
 
     let missing_patterns =
-        vec::slice(props.error_patterns, next_err_idx,
-                   props.error_patterns.len());
+        props.error_patterns.slice(next_err_idx, props.error_patterns.len());
     if missing_patterns.len() == 1u {
         fatal_ProcRes(fmt!("error pattern '%s' not found!",
                            missing_patterns[0]), ProcRes);

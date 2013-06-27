@@ -90,7 +90,7 @@ fn find(mm: &HashMap<~[u8], uint>, key: ~str) -> uint {
 
 // given a map, increment the counter for a key
 fn update_freq(mm: &mut HashMap<~[u8], uint>, key: &[u8]) {
-    let key = vec::slice(key, 0, key.len()).to_owned();
+    let key = key.to_owned();
     let newval = match mm.pop(&key) {
         Some(v) => v + 1,
         None => 1
@@ -107,11 +107,11 @@ fn windows_with_carry(bb: &[u8], nn: uint,
 
    let len = bb.len();
    while ii < len - (nn - 1u) {
-      it(vec::slice(bb, ii, ii+nn));
+      it(bb.slice(ii, ii+nn));
       ii += 1u;
    }
 
-   return vec::slice(bb, len - (nn - 1u), len).to_owned();
+   return bb.slice(len - (nn - 1u), len).to_owned();
 }
 
 fn make_sequence_processor(sz: uint,

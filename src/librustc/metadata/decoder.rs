@@ -60,7 +60,7 @@ fn lookup_hash(d: ebml::Doc, eq_fn: &fn(x:&[u8]) -> bool, hash: uint) ->
     let belt = tag_index_buckets_bucket_elt;
     for reader::tagged_docs(tagged_doc.doc, belt) |elt| {
         let pos = io::u64_from_be_bytes(*elt.data, elt.start, 4u) as uint;
-        if eq_fn(vec::slice(*elt.data, elt.start + 4u, elt.end)) {
+        if eq_fn(elt.data.slice(elt.start + 4u, elt.end)) {
             return Some(reader::doc_at(d.data, pos).doc);
         }
     };
@@ -72,7 +72,7 @@ pub type GetCrateDataCb<'self> = &'self fn(ast::crate_num) -> cmd;
 pub fn maybe_find_item(item_id: int, items: ebml::Doc) -> Option<ebml::Doc> {
     fn eq_item(bytes: &[u8], item_id: int) -> bool {
         return io::u64_from_be_bytes(
-            vec::slice(bytes, 0u, 4u), 0u, 4u) as int
+            bytes.slice(0u, 4u), 0u, 4u) as int
             == item_id;
     }
     lookup_hash(items,
@@ -754,8 +754,7 @@ pub fn get_provided_trait_methods(intr: @ident_interner, cdata: cmd,
 
         if item_method_sort(mth) != 'p' { loop; }
 
-        vec::push(&mut result,
-                  @get_method(intr, cdata, did.node, tcx));
+        result.push(@get_method(intr, cdata, did.node, tcx));
     }
 
     return result;

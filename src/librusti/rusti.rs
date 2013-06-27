@@ -55,7 +55,7 @@ extern mod extra;
 extern mod rustc;
 extern mod syntax;
 
-use std::{libc, io, os, task, vec};
+use std::{libc, io, os, task};
 use std::cell::Cell;
 use extra::rl;
 
@@ -430,7 +430,7 @@ pub fn run_line(repl: &mut Repl, in: @io::Reader, out: @io::Writer, line: ~str,
 
             if !cmd.is_empty() {
                 let args = if len > 1 {
-                    vec::slice(split, 1, len).to_owned()
+                    split.slice(1, len).to_owned()
                 } else { ~[] };
 
                 match run_cmd(repl, in, out, cmd, args, use_rl) {

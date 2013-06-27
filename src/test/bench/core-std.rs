@@ -29,7 +29,7 @@ macro_rules! bench (
 
 fn main() {
     let argv = os::args();
-    let tests = vec::slice(argv, 1, argv.len());
+    let tests = argv.slice(1, argv.len());
 
     bench!(shift_push);
     bench!(read_line);

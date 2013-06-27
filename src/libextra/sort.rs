@@ -57,8 +57,8 @@ pub fn merge_sort<T:Copy>(v: &[T], le: Le<T>) -> ~[T] {
                 a_ix += 1;
             } else { rs.push(copy b[b_ix]); b_ix += 1; }
         }
-        rs.push_all(vec::slice(a, a_ix, a_len));
-        rs.push_all(vec::slice(b, b_ix, b_len));
+        rs.push_all(a.slice(a_ix, a_len));
+        rs.push_all(b.slice(b_ix, b_len));
         rs
     }
 }
@@ -201,12 +201,12 @@ pub fn tim_sort<T:Copy + Ord>(array: &mut [T]) {
     loop {
         let run_len: uint = {
             // This scope contains the slice `arr` here:
-            let arr = vec::mut_slice(array, idx, size);
+            let arr = array.mut_slice(idx, size);
             let mut run_len: uint = count_run_ascending(arr);
 
             if run_len < min_run {
                 let force = if remaining <= min_run {remaining} else {min_run};
-                let slice = vec::mut_slice(arr, 0, force);
+                let slice = arr.mut_slice(0, force);
                 binarysort(slice, run_len);
                 run_len = force;
             }
@@ -443,14 +443,14 @@ impl<T:Copy + Ord> MergeState<T> {
         }
 
         let k = { // constrain lifetime of slice below
-            let slice = vec::slice(array, b1, b1+l1);
+            let slice = array.slice(b1, b1+l1);
             gallop_right(&array[b2], slice, 0)
         };
         b1 += k;
         l1 -= k;
         if l1 != 0 {
             let l2 = { // constrain lifetime of slice below
-                let slice = vec::slice(array, b2, b2+l2);
+                let slice = array.slice(b2, b2+l2);
                 gallop_left(&array[b1+l1-1],slice,l2-1)
             };
             if l2 > 0 {
@@ -526,7 +526,7 @@ impl<T:Copy + Ord> MergeState<T> {
                 assert!(len1 > 1 && len2 != 0);
 
                 count1 = {
-                    let tmp_view = vec::slice(tmp, c1, c1+len1);
+                    let tmp_view = tmp.slice(c1, c1+len1);
                     gallop_right(&array[c2], tmp_view, 0)
                 };
                 if count1 != 0 {
@@ -539,7 +539,7 @@ impl<T:Copy + Ord> MergeState<T> {
                 if len2 == 0 { break_outer = true; break; }
 
                 count2 = {
-                    let tmp_view = vec::slice(array, c2, c2+len2);
+                    let tmp_view = array.slice(c2, c2+len2);
                     gallop_left(&tmp[c1], tmp_view, 0)
                 };
                 if count2 != 0 {
@@ -638,7 +638,7 @@ impl<T:Copy + Ord> MergeState<T> {
                 assert!(len2 > 1 && len1 != 0);
 
                 { // constrain scope of tmp_view:
-                    let tmp_view = vec::mut_slice (array, base1, base1+len1);
+                    let tmp_view = array.mut_slice(base1, base1+len1);
                     count1 = len1 - gallop_right(
                         &tmp[c2], tmp_view, len1-1);
                 }
@@ -655,7 +655,7 @@ impl<T:Copy + Ord> MergeState<T> {
 
                 let count2;
                 { // constrain scope of tmp_view
-                    let tmp_view = vec::mut_slice(tmp, 0, len2);
+                    let tmp_view = tmp.mut_slice(0, len2);
                     count2 = len2 - gallop_left(&array[c1],
                                                 tmp_view,
                                                 len2-1);
@@ -1111,7 +1111,7 @@ mod big_tests {
             isSorted(arr);
 
             let mut arr = if n > 4 {
-                let part = vec::slice(arr, 0, 4);
+                let part = arr.slice(0, 4);
                 multiplyVec(part, n)
             } else { arr };
             tim_sort(arr); // ~sort
@@ -1183,7 +1183,7 @@ mod big_tests {
             isSorted(arr);
 
             let mut arr = if n > 4 {
-                let part = vec::slice(arr, 0, 4);
+                let part = arr.slice(0, 4);
                 multiplyVec(part, n)
             } else { arr };
             tim_sort(arr); // ~sort

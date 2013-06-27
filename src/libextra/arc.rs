@@ -517,7 +517,6 @@ mod tests {
 
     use arc::*;
 
-    use core::vec;
     use core::cell::Cell;
     use core::comm;
     use core::task;

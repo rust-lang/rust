@@ -976,9 +976,7 @@ impl io::Writer for TcpSocketBuf {
         let socket_data_ptr: *TcpSocketData =
             &(*((*(self.data)).sock).socket_data);
         let w_result = write_common_impl(socket_data_ptr,
-                                         vec::slice(data,
-                                                    0,
-                                                    data.len()).to_owned());
+                                         data.slice(0, data.len()).to_owned());
         if w_result.is_err() {
             let err_data = w_result.get_err();
             debug!(
@@ -1459,33 +1457,23 @@ mod test {
 
             #[test]
             fn test_gl_tcp_server_and_client_ipv4() {
-                unsafe {
-                    impl_gl_tcp_ipv4_server_and_client();
-                }
+                impl_gl_tcp_ipv4_server_and_client();
             }
             #[test]
             fn test_gl_tcp_get_peer_addr() {
-                unsafe {
-                    impl_gl_tcp_ipv4_get_peer_addr();
-                }
+                impl_gl_tcp_ipv4_get_peer_addr();
             }
             #[test]
             fn test_gl_tcp_ipv4_client_error_connection_refused() {
-                unsafe {
-                    impl_gl_tcp_ipv4_client_error_connection_refused();
-                }
+                impl_gl_tcp_ipv4_client_error_connection_refused();
             }
             #[test]
             fn test_gl_tcp_server_address_in_use() {
-                unsafe {
-                    impl_gl_tcp_ipv4_server_address_in_use();
-                }
+                impl_gl_tcp_ipv4_server_address_in_use();
             }
             #[test]
             fn test_gl_tcp_server_access_denied() {
-                unsafe {
-                    impl_gl_tcp_ipv4_server_access_denied();
-                }
+                impl_gl_tcp_ipv4_server_access_denied();
             }
             // Strange failure on Windows. --pcwalton
             #[test]
