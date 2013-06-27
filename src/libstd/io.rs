@@ -1658,7 +1658,7 @@ impl Writer for BytesWriter {
 
         let bytes = &mut *self.bytes;
         let count = uint::max(bytes.len(), *self.pos + v_len);
-        vec::reserve(bytes, count);
+        bytes.reserve(count);
 
         unsafe {
             vec::raw::set_len(bytes, count);
