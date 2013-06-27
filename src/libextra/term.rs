@@ -97,7 +97,7 @@ impl Terminal {
             if s.is_ok() {
                 self.out.write(s.unwrap());
             } else {
-                warn!(s.unwrap_err());
+                warn!("%s", s.unwrap_err());
             }
         }
     }
@@ -113,17 +113,20 @@ impl Terminal {
             if s.is_ok() {
                 self.out.write(s.unwrap());
             } else {
-                warn!(s.unwrap_err());
+                warn!("%s", s.unwrap_err());
             }
         }
     }
     pub fn reset(&self) {
         let mut vars = Variables::new();
-        let s = expand(*self.ti.strings.find_equiv(&("op")).unwrap(), [], &mut vars);
+        let s = do self.ti.strings.find_equiv(&("op"))
+                       .map_consume_default(Err(~"can't find op")) |&op| {
+                           expand(op, [], &mut vars)
+                       };
         if s.is_ok() {
             self.out.write(s.unwrap());
         } else {
-            warn!(s.unwrap_err());
+            warn!("%s", s.unwrap_err());
         }
     }
 
