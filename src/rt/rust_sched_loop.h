@@ -211,12 +211,13 @@ rust_sched_loop::return_c_stack(stk_seg *stack) {
 // NB: Runs on the Rust stack. Might return NULL!
 inline stk_seg *
 rust_sched_loop::borrow_big_stack() {
-    assert(cached_big_stack);
     stk_seg *your_stack;
     if (extra_big_stack) {
         your_stack = extra_big_stack;
         extra_big_stack = NULL;
     } else {
+        // NB: This may be null if we're asking for a *second*
+        // big stack, in which case the caller will fall back to a slow path
         your_stack = cached_big_stack;
         cached_big_stack = NULL;
     }
