@@ -17,6 +17,7 @@
 // closure.
 
 use core::prelude::*;
+use core::vec;
 
 use back::abi;
 use driver::session;
@@ -274,9 +275,7 @@ pub fn trans_fn_ref_with_vtables(
             let receiver_vtables = match vtables {
                 None => @~[],
                 Some(call_vtables) => {
-                    let num_method_vtables =
-                        ty::count_traits_and_supertraits(tcx, *param_defs);
-                    @call_vtables.initn(num_method_vtables).to_owned()
+                    @call_vtables.initn(param_defs.len()).to_owned()
                 }
             };
 
@@ -304,6 +303,27 @@ pub fn trans_fn_ref_with_vtables(
              new_substs, Some(self_vtable))
         }
     };
+
+    // XXX: this is *completely* bad and wrong. I feel bad.  Handling
+    // of vtables is currently bogus for default methods, and changing
+    // to an unflattented representation of vtables causes this to
+    // show up in cases that it did not previously. We need to make
+    // the vtables list be the same length as the substs.  There is
+    // nothing right about this. I really need to emphasize just how
+    // wrong it is: it is completely wrong.
+    // XXX: bad.
+    // This will be fixed in the next commit.
+    let vtables = do vtables.map |vtbls| {
+        if vtbls.len() < substs.tps.len() {
+            @(vec::from_elem(substs.tps.len() - vtbls.len(), @~[]) +
+              **vtbls)
+        } else if vtbls.len() > substs.tps.len() {
+            @vtbls.tailn(vtbls.len() - substs.tps.len()).to_owned()
+        } else {
+            *vtbls
+        }
+    };
+
 
     // Check whether this fn has an inlined copy and, if so, redirect
     // def_id to the local id of the inlined copy.

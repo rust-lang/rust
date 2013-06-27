@@ -340,14 +340,10 @@ pub fn make_mono_id(ccx: @mut CrateContext,
                     param_uses: Option<@~[type_use::type_uses]>) -> mono_id {
     let precise_param_ids = match vtables {
       Some(vts) => {
-        let item_ty = ty::lookup_item_type(ccx.tcx, item);
-        let mut i = 0;
-        vec::map_zip(*item_ty.generics.type_param_defs, substs, |type_param_def, subst| {
-            let mut v = ~[];
-            for type_param_def.bounds.trait_bounds.iter().advance |_bound| {
-                v.push(meth::vtable_id(ccx, &vts[i]));
-                i += 1;
-            }
+        debug!("make_mono_id vtables=%s substs=%s",
+               vts.repr(ccx.tcx), substs.repr(ccx.tcx));
+        vec::map_zip(*vts, substs, |vtable, subst| {
+            let v = vtable.map(|vt| meth::vtable_id(ccx, vt));
             (*subst, if !v.is_empty() { Some(@v) } else { None })
         })
       }

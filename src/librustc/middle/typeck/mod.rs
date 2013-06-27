@@ -135,8 +135,9 @@ pub struct method_map_entry {
 // of the method to be invoked
 pub type method_map = @mut HashMap<ast::node_id, method_map_entry>;
 
+pub type vtable_param_res = @~[vtable_origin];
 // Resolutions for bounds of all parameters, left to right, for a given path.
-pub type vtable_res = @~[vtable_origin];
+pub type vtable_res = @~[vtable_param_res];
 
 pub enum vtable_origin {
     /*

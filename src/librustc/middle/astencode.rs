@@ -599,8 +599,10 @@ fn encode_vtable_res(ecx: &e::EncodeContext,
     // ty::t doesn't work, and there is no way (atm) to have
     // hand-written encoding routines combine with auto-generated
     // ones.  perhaps we should fix this.
-    do ebml_w.emit_from_vec(*dr) |ebml_w, vtable_origin| {
-        encode_vtable_origin(ecx, ebml_w, vtable_origin)
+    do ebml_w.emit_from_vec(*dr) |ebml_w, param_tables| {
+        do ebml_w.emit_from_vec(**param_tables) |ebml_w, vtable_origin| {
+            encode_vtable_origin(ecx, ebml_w, vtable_origin)
+        }
     }
 }
 
@@ -653,7 +655,9 @@ trait vtable_decoder_helpers {
 impl vtable_decoder_helpers for reader::Decoder {
     fn read_vtable_res(&mut self, xcx: @ExtendedDecodeContext)
                       -> typeck::vtable_res {
-        @self.read_to_vec(|this| this.read_vtable_origin(xcx))
+        @self.read_to_vec(|this|
+           @this.read_to_vec(|this|
+               this.read_vtable_origin(xcx)))
     }
 
     fn read_vtable_origin(&mut self, xcx: @ExtendedDecodeContext)

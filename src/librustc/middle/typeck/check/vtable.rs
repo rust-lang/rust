@@ -90,6 +90,7 @@ fn lookup_vtables(vcx: &VtableContext,
     let mut i = 0u;
     for substs.tps.iter().advance |ty| {
         // ty is the value supplied for the type parameter A...
+        let mut param_result = ~[];
 
         for ty::each_bound_trait_and_supertraits(
             tcx, type_param_defs[i].bounds) |trait_ref|
@@ -106,7 +107,7 @@ fn lookup_vtables(vcx: &VtableContext,
             debug!("after subst: %s", trait_ref.repr(tcx));
 
             match lookup_vtable(vcx, location_info, *ty, &trait_ref, is_early) {
-                Some(vtable) => result.push(vtable),
+                Some(vtable) => param_result.push(vtable),
                 None => {
                     vcx.tcx().sess.span_fatal(
                         location_info.span,
@@ -117,6 +118,7 @@ fn lookup_vtables(vcx: &VtableContext,
                 }
             }
         }
+        result.push(@param_result);
         i += 1u;
     }
     debug!("lookup_vtables result(\
@@ -600,7 +602,8 @@ pub fn early_resolve_expr(ex: @ast::expr,
                                   // vtable (that is: "ex has vtable
                                   // <vtable>")
                                   if !is_early {
-                                      insert_vtables(fcx, ex.id, @~[vtable]);
+                                      insert_vtables(fcx, ex.id,
+                                                     @~[@~[vtable]]);
                                   }
                               }
                               None => {
