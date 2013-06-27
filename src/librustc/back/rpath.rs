@@ -154,7 +154,7 @@ pub fn get_relative_to(abs1: &Path, abs2: &Path) -> Path {
     let mut path = ~[];
     for uint::range(start_idx, len1 - 1) |_i| { path.push(~".."); };
 
-    path.push_all(vec::slice(split2, start_idx, len2 - 1));
+    path.push_all(split2.slice(start_idx, len2 - 1));
 
     return if !path.is_empty() {
         Path("").push_many(path)
