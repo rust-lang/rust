@@ -351,6 +351,26 @@ pub trait IteratorUtil<A> {
 
     /// Count the number of elements satisfying the specified predicate
     fn count(&mut self, predicate: &fn(A) -> bool) -> uint;
+
+    /// Return the element that gives the maximum value from the specfied function
+    ///
+    /// # Example
+    ///
+    /// --- {.rust}
+    /// let xs = [-3, 0, 1, 5, -10];
+    /// assert_eq!(*xs.iter().max_by(|x| x.abs()).unwrap(), -10);
+    /// ---
+    fn max_by<B: Ord>(&mut self, f: &fn(&A) -> B) -> Option<A>;
+
+    /// Return the element that gives the minimum value from the specfied function
+    ///
+    /// # Example
+    ///
+    /// --- {.rust}
+    /// let xs = [-3, 0, 1, 5, -10];
+    /// assert_eq!(*xs.iter().min_by(|x| x.abs()).unwrap(), 0);
+    /// ---
+    fn min_by<B: Ord>(&mut self, f: &fn(&A) -> B) -> Option<A>;
 }
 
 /// Iterator adaptors provided for every `Iterator` implementation. The adaptor objects are also
@@ -518,6 +538,36 @@ impl<A, T: Iterator<A>> IteratorUtil<A> for T {
             if predicate(x) { i += 1 }
         }
         i
+    }
+
+    #[inline]
+    fn max_by<B: Ord>(&mut self, f: &fn(&A) -> B) -> Option<A> {
+        self.fold(None, |max: Option<(A, B)>, x| {
+            let x_val = f(&x);
+            match max {
+                None             => Some((x, x_val)),
+                Some((y, y_val)) => if x_val > y_val {
+                    Some((x, x_val))
+                } else {
+                    Some((y, y_val))
+                }
+            }
+        }).map_consume(|(x, _)| x)
+    }
+
+    #[inline]
+    fn min_by<B: Ord>(&mut self, f: &fn(&A) -> B) -> Option<A> {
+        self.fold(None, |min: Option<(A, B)>, x| {
+            let x_val = f(&x);
+            match min {
+                None             => Some((x, x_val)),
+                Some((y, y_val)) => if x_val < y_val {
+                    Some((x, x_val))
+                } else {
+                    Some((y, y_val))
+                }
+            }
+        }).map_consume(|(x, _)| x)
     }
 }
 
@@ -1236,5 +1286,17 @@ mod tests {
         assert_eq!(xs.iter().count(|x| *x == 2), 3);
         assert_eq!(xs.iter().count(|x| *x == 5), 1);
         assert_eq!(xs.iter().count(|x| *x == 95), 0);
+    }
+
+    #[test]
+    fn test_max_by() {
+        let xs = [-3, 0, 1, 5, -10];
+        assert_eq!(*xs.iter().max_by(|x| x.abs()).unwrap(), -10);
+    }
+
+    #[test]
+    fn test_min_by() {
+        let xs = [-3, 0, 1, 5, -10];
+        assert_eq!(*xs.iter().min_by(|x| x.abs()).unwrap(), 0);
     }
 }
