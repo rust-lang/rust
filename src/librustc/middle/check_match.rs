@@ -36,7 +36,7 @@ pub struct MatchCheckCtxt {
 pub fn check_crate(tcx: ty::ctxt,
                    method_map: method_map,
                    moves_map: moves::MovesMap,
-                   crate: @crate) {
+                   crate: &crate) {
     let cx = @MatchCheckCtxt {tcx: tcx,
                               method_map: method_map,
                               moves_map: moves_map};
@@ -50,7 +50,7 @@ pub fn check_crate(tcx: ty::ctxt,
     tcx.sess.abort_if_errors();
 }
 
-pub fn expr_is_non_moving_lvalue(cx: @MatchCheckCtxt, expr: @expr) -> bool {
+pub fn expr_is_non_moving_lvalue(cx: &MatchCheckCtxt, expr: &expr) -> bool {
     if !ty::expr_is_lval(cx.tcx, cx.method_map, expr) {
         return false;
     }
@@ -108,7 +108,7 @@ pub fn check_expr(cx: @MatchCheckCtxt, ex: @expr, (s, v): ((), visit::vt<()>)) {
 }
 
 // Check for unreachable patterns
-pub fn check_arms(cx: @MatchCheckCtxt, arms: &[arm]) {
+pub fn check_arms(cx: &MatchCheckCtxt, arms: &[arm]) {
     let mut seen = ~[];
     for arms.iter().advance |arm| {
         for arm.pats.iter().advance |pat| {
@@ -131,7 +131,7 @@ pub fn raw_pat(p: @pat) -> @pat {
     }
 }
 
-pub fn check_exhaustive(cx: @MatchCheckCtxt, sp: span, pats: ~[@pat]) {
+pub fn check_exhaustive(cx: &MatchCheckCtxt, sp: span, pats: ~[@pat]) {
     assert!((!pats.is_empty()));
     let ext = match is_useful(cx, &pats.map(|p| ~[*p]), [wild()]) {
         not_useful => {
@@ -205,7 +205,7 @@ pub enum ctor {
 
 // Note: is_useful doesn't work on empty types, as the paper notes.
 // So it assumes that v is non-empty.
-pub fn is_useful(cx: @MatchCheckCtxt, m: &matrix, v: &[@pat]) -> useful {
+pub fn is_useful(cx: &MatchCheckCtxt, m: &matrix, v: &[@pat]) -> useful {
     if m.len() == 0u { return useful_; }
     if m[0].len() == 0u { return not_useful; }
     let real_pat = match m.iter().find_(|r| r[0].id != 0) {
@@ -281,7 +281,7 @@ pub fn is_useful(cx: @MatchCheckCtxt, m: &matrix, v: &[@pat]) -> useful {
     }
 }
 
-pub fn is_useful_specialized(cx: @MatchCheckCtxt,
+pub fn is_useful_specialized(cx: &MatchCheckCtxt,
                              m: &matrix,
                              v: &[@pat],
                              ctor: ctor,
@@ -297,7 +297,7 @@ pub fn is_useful_specialized(cx: @MatchCheckCtxt,
     }
 }
 
-pub fn pat_ctor_id(cx: @MatchCheckCtxt, p: @pat) -> Option<ctor> {
+pub fn pat_ctor_id(cx: &MatchCheckCtxt, p: @pat) -> Option<ctor> {
     let pat = raw_pat(p);
     match pat.node {
       pat_wild => { None }
@@ -333,7 +333,7 @@ pub fn pat_ctor_id(cx: @MatchCheckCtxt, p: @pat) -> Option<ctor> {
     }
 }
 
-pub fn is_wild(cx: @MatchCheckCtxt, p: @pat) -> bool {
+pub fn is_wild(cx: &MatchCheckCtxt, p: @pat) -> bool {
     let pat = raw_pat(p);
     match pat.node {
       pat_wild => { true }
@@ -347,7 +347,7 @@ pub fn is_wild(cx: @MatchCheckCtxt, p: @pat) -> bool {
     }
 }
 
-pub fn missing_ctor(cx: @MatchCheckCtxt,
+pub fn missing_ctor(cx: &MatchCheckCtxt,
                     m: &matrix,
                     left_ty: ty::t)
                  -> Option<ctor> {
@@ -449,7 +449,7 @@ pub fn missing_ctor(cx: @MatchCheckCtxt,
     }
 }
 
-pub fn ctor_arity(cx: @MatchCheckCtxt, ctor: &ctor, ty: ty::t) -> uint {
+pub fn ctor_arity(cx: &MatchCheckCtxt, ctor: &ctor, ty: ty::t) -> uint {
     match ty::get(ty).sty {
       ty::ty_tup(ref fs) => fs.len(),
       ty::ty_box(_) | ty::ty_uniq(_) | ty::ty_rptr(*) => 1u,
@@ -476,7 +476,7 @@ pub fn wild() -> @pat {
     @pat {id: 0, node: pat_wild, span: dummy_sp()}
 }
 
-pub fn specialize(cx: @MatchCheckCtxt,
+pub fn specialize(cx: &MatchCheckCtxt,
                   r: &[@pat],
                   ctor_id: &ctor,
                   arity: uint,
@@ -743,12 +743,12 @@ pub fn specialize(cx: @MatchCheckCtxt,
     }
 }
 
-pub fn default(cx: @MatchCheckCtxt, r: &[@pat]) -> Option<~[@pat]> {
+pub fn default(cx: &MatchCheckCtxt, r: &[@pat]) -> Option<~[@pat]> {
     if is_wild(cx, r[0]) { Some(vec::to_owned(r.tail())) }
     else { None }
 }
 
-pub fn check_local(cx: @MatchCheckCtxt,
+pub fn check_local(cx: &MatchCheckCtxt,
                    loc: @local,
                    (s, v): ((),
                             visit::vt<()>)) {
@@ -766,7 +766,7 @@ pub fn check_local(cx: @MatchCheckCtxt,
     check_legality_of_move_bindings(cx, is_lvalue, false, [ loc.node.pat ]);
 }
 
-pub fn check_fn(cx: @MatchCheckCtxt,
+pub fn check_fn(cx: &MatchCheckCtxt,
                 kind: &visit::fn_kind,
                 decl: &fn_decl,
                 body: &blk,
@@ -783,7 +783,7 @@ pub fn check_fn(cx: @MatchCheckCtxt,
     }
 }
 
-pub fn is_refutable(cx: @MatchCheckCtxt, pat: &pat) -> bool {
+pub fn is_refutable(cx: &MatchCheckCtxt, pat: &pat) -> bool {
     match cx.tcx.def_map.find(&pat.id) {
       Some(&def_variant(enum_id, _)) => {
         if ty::enum_variants(cx.tcx, enum_id).len() != 1u {
@@ -821,7 +821,7 @@ pub fn is_refutable(cx: @MatchCheckCtxt, pat: &pat) -> bool {
 
 // Legality of move bindings checking
 
-pub fn check_legality_of_move_bindings(cx: @MatchCheckCtxt,
+pub fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
                                        is_lvalue: bool,
                                        has_guard: bool,
                                        pats: &[@pat]) {

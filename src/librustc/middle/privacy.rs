@@ -40,7 +40,7 @@ use syntax::visit;
 
 pub fn check_crate<'mm>(tcx: ty::ctxt,
                    method_map: &'mm method_map,
-                   crate: @ast::crate) {
+                   crate: &ast::crate) {
     let privileged_items = @mut ~[];
 
     // Adds an item to its scope.
