@@ -2293,11 +2293,11 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
                 BoundCopy if store == UniqTraitStore
                             => TC_NONCOPY_TRAIT,
                 BoundCopy   => TC_NONE, // @Trait/&Trait are copyable either way
-                BoundStatic if bounds.contains_elem(BoundOwned)
-                            => TC_NONE, // Owned bound implies static bound.
+                BoundStatic if bounds.contains_elem(BoundSend)
+                            => TC_NONE, // Send bound implies static bound.
                 BoundStatic => TC_BORROWED_POINTER, // Useful for "@Trait:'static"
-                BoundOwned  => TC_NON_OWNED,
-                BoundConst  => TC_MUTABLE,
+                BoundSend   => TC_NON_SENDABLE,
+                BoundFreeze => TC_MUTABLE,
                 BoundSized  => TC_NONE, // don't care if interior is sized
             };
         }
