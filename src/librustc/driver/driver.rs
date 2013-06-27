@@ -161,7 +161,7 @@ pub struct compile_upto {
 #[deriving(Eq)]
 pub enum compile_phase {
     cu_parse,
-    cu_expand,
+    cu_expand, // means "it's already expanded"
     cu_typeck,
     cu_no_trans,
     cu_everything,
