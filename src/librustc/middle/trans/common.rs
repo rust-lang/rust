@@ -1035,7 +1035,8 @@ pub fn node_vtables(bcx: block, id: ast::node_id)
 
 pub fn resolve_vtables_in_fn_ctxt(fcx: fn_ctxt, vts: typeck::vtable_res)
     -> typeck::vtable_res {
-    @vec::map(*vts, |d| resolve_vtable_in_fn_ctxt(fcx, copy *d))
+    @vec::map(*vts, |ds|
+      @vec::map(**ds, |d|  resolve_vtable_in_fn_ctxt(fcx, copy *d)))
 }
 
 // Apply the typaram substitutions in the fn_ctxt to a vtable. This should
@@ -1090,13 +1091,7 @@ pub fn find_vtable(tcx: ty::ctxt, ps: &param_substs,
     debug!("find_vtable(n_param=%u, n_bound=%u, ps=%s)",
            n_param, n_bound, ps.repr(tcx));
 
-    // Vtables are stored in a flat array, finding the right one is
-    // somewhat awkward
-    let first_n_type_param_defs = ps.type_param_defs.slice(0, n_param);
-    let vtables_to_skip =
-        ty::count_traits_and_supertraits(tcx, first_n_type_param_defs);
-    let vtable_off = vtables_to_skip + n_bound;
-    /*bad*/ copy ps.vtables.get()[vtable_off]
+    /*bad*/ copy ps.vtables.get()[n_param][n_bound]
 }
 
 pub fn dummy_substs(tps: ~[ty::t]) -> ty::substs {
