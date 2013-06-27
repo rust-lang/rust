@@ -15,6 +15,7 @@
 use cast::transmute;
 use cast;
 use container::{Container, Mutable};
+use cmp;
 use cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering, Less, Equal, Greater};
 use clone::Clone;
 use iterator::{FromIterator, Iterator, IteratorUtil};
@@ -1299,44 +1300,6 @@ pub fn reverse<T>(v: &mut [T]) {
     }
 }
 
-/**
- * Reverse part of a vector in place.
- *
- * Reverse the elements in the vector between `start` and `end - 1`.
- *
- * If either start or end do not represent valid positions in the vector, the
- * vector is returned unchanged.
- *
- * # Arguments
- *
- * * `v` - The mutable vector to be modified
- *
- * * `start` - Index of the first element of the slice
- *
- * * `end` - Index one past the final element to be reversed.
- *
- * # Example
- *
- * Assume a mutable vector `v` contains `[1,2,3,4,5]`. After the call:
- *
- * ~~~ {.rust}
- * reverse_part(v, 1, 4);
- * ~~~
- *
- * `v` now contains `[1,4,3,2,5]`.
- */
-pub fn reverse_part<T>(v: &mut [T], start: uint, end : uint) {
-    let sz = v.len();
-    if start >= sz || end > sz { return; }
-    let mut i = start;
-    let mut j = end - 1;
-    while i < j {
-        vec::swap(v, i, j);
-        i += 1;
-        j -= 1;
-    }
-}
-
 /// Returns a vector with the order of elements reversed
 pub fn reversed<T:Copy>(v: &const [T]) -> ~[T] {
     let mut rs: ~[T] = ~[];
@@ -1393,7 +1356,7 @@ pub fn each_permutation<T:Copy>(values: &[T], fun: &fn(perm : &[T]) -> bool) -> 
         // swap indices[k] and indices[l]; sort indices[k+1..]
         // (they're just reversed)
         vec::swap(indices, k, l);
-        reverse_part(indices, k+1, length);
+        reverse(indices.mut_slice(k+1, length));
         // fixup permutation based on indices
         for uint::range(k, length) |i| {
             permutation[i] = copy values[indices[i]];
@@ -2059,6 +2022,21 @@ pub trait MutableVector<'self, T> {
     fn mut_iter(self) -> VecMutIterator<'self, T>;
     fn mut_rev_iter(self) -> VecMutRevIterator<'self, T>;
 
+    /**
+     * Consumes `src` and moves as many elements as it can into `self`
+     * from the range [start,end).
+     *
+     * Returns the number of elements copied (the shorter of self.len()
+     * and end - start).
+     *
+     * # Arguments
+     *
+     * * src - A mutable vector of `T`
+     * * start - The index into `src` to start copying from
+     * * end - The index into `str` to stop copying from
+     */
+    fn move_from(self, src: ~[T], start: uint, end: uint) -> uint;
+
     unsafe fn unsafe_mut_ref(&self, index: uint) -> *mut T;
     unsafe fn unsafe_set(&self, index: uint, val: T);
 }
@@ -2088,6 +2066,14 @@ impl<'self,T> MutableVector<'self, T> for &'self mut [T] {
     }
 
     #[inline]
+    fn move_from(self, mut src: ~[T], start: uint, end: uint) -> uint {
+        for self.mut_iter().zip(src.mut_slice(start, end).mut_iter()).advance |(a, b)| {
+            util::swap(a, b);
+        }
+        cmp::min(self.len(), end-start)
+    }
+
+    #[inline]
     unsafe fn unsafe_mut_ref(&self, index: uint) -> *mut T {
         let pair_ptr: &(*mut T, uint) = transmute(self);
         let (ptr, _) = *pair_ptr;
@@ -2097,6 +2083,23 @@ impl<'self,T> MutableVector<'self, T> for &'self mut [T] {
     #[inline]
     unsafe fn unsafe_set(&self, index: uint, val: T) {
         *self.unsafe_mut_ref(index) = val;
+    }
+}
+
+/// Trait for ~[T] where T is Cloneable
+pub trait MutableCloneableVector<T> {
+    /// Copies as many elements from `src` as it can into `self`
+    /// (the shorter of self.len() and src.len()). Returns the number of elements copied.
+    fn copy_from(self, &[T]) -> uint;
+}
+
+impl<'self, T:Clone> MutableCloneableVector<T> for &'self mut [T] {
+    #[inline]
+    fn copy_from(self, src: &[T]) -> uint {
+        for self.mut_iter().zip(src.iter()).advance |(a, b)| {
+            *a = b.clone();
+        }
+        cmp::min(self.len(), src.len())
     }
 }
 
@@ -2288,6 +2291,22 @@ pub mod bytes {
     use uint;
     use vec::raw;
     use vec;
+    use ptr;
+
+    /// A trait for operations on mutable operations on `[u8]`
+    pub trait MutableByteVector {
+        /// Sets all bytes of the receiver to the given value.
+        pub fn set_memory(self, value: u8);
+    }
+
+    impl<'self> MutableByteVector for &'self mut [u8] {
+        #[inline]
+        fn set_memory(self, value: u8) {
+            do vec::as_mut_buf(self) |p, len| {
+                unsafe { ptr::set_memory(p, value, len) };
+            }
+        }
+    }
 
     /// Bytewise string comparison
     pub fn memcmp(a: &~[u8], b: &~[u8]) -> int {
@@ -3880,9 +3899,41 @@ mod tests {
     }
 
     #[test]
+    fn test_move_from() {
+        let mut a = [1,2,3,4,5];
+        let b = ~[6,7,8];
+        assert_eq!(a.move_from(b, 0, 3), 3);
+        assert_eq!(a, [6,7,8,4,5]);
+        let mut a = [7,2,8,1];
+        let b = ~[3,1,4,1,5,9];
+        assert_eq!(a.move_from(b, 0, 6), 4);
+        assert_eq!(a, [3,1,4,1]);
+        let mut a = [1,2,3,4];
+        let b = ~[5,6,7,8,9,0];
+        assert_eq!(a.move_from(b, 2, 3), 1);
+        assert_eq!(a, [7,2,3,4]);
+        let mut a = [1,2,3,4,5];
+        let b = ~[5,6,7,8,9,0];
+        assert_eq!(a.mut_slice(2,4).move_from(b,1,6), 2);
+        assert_eq!(a, [1,2,6,7,5]);
+    }
+
+    #[test]
+    fn test_copy_from() {
+        let mut a = [1,2,3,4,5];
+        let b = [6,7,8];
+        assert_eq!(a.copy_from(b), 3);
+        assert_eq!(a, [6,7,8,4,5]);
+        let mut c = [7,2,8,1];
+        let d = [3,1,4,1,5,9];
+        assert_eq!(c.copy_from(d), 4);
+        assert_eq!(c, [3,1,4,1]);
+    }
+
+    #[test]
     fn test_reverse_part() {
         let mut values = [1,2,3,4,5];
-        reverse_part(values,1,4);
+        reverse(values.mut_slice(1, 4));
         assert_eq!(values, [1,4,3,2,5]);
     }
 
@@ -3940,5 +3991,15 @@ mod tests {
         t!(&[int]);
         t!(@[int]);
         t!(~[int]);
+    }
+
+    #[test]
+    fn test_bytes_set_memory() {
+        use vec::bytes::MutableByteVector;
+        let mut values = [1u8,2,3,4,5];
+        values.mut_slice(0,5).set_memory(0xAB);
+        assert_eq!(values, [0xAB, 0xAB, 0xAB, 0xAB, 0xAB]);
+        values.mut_slice(2,4).set_memory(0xFF);
+        assert_eq!(values, [0xAB, 0xAB, 0xFF, 0xFF, 0xAB]);
     }
 }

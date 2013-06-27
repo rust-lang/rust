@@ -658,7 +658,7 @@ impl block_ {
 pub fn tuplify_box_ty(tcx: ty::ctxt, t: ty::t) -> ty::t {
     let ptr = ty::mk_ptr(
         tcx,
-        ty::mt {ty: ty::mk_nil(), mutbl: ast::m_imm}
+        ty::mt {ty: ty::mk_i8(), mutbl: ast::m_imm}
     );
     return ty::mk_tup(tcx, ~[ty::mk_uint(), ty::mk_type(tcx),
                          ptr, ptr,
@@ -823,20 +823,6 @@ pub fn C_bytes_plus_null(bytes: &[u8]) -> ValueRef {
     unsafe {
         let ptr = cast::transmute(vec::raw::to_ptr(bytes));
         return llvm::LLVMConstStringInContext(base::task_llcx(), ptr, bytes.len() as c_uint,False);
-    }
-}
-
-pub fn C_shape(ccx: &CrateContext, bytes: ~[u8]) -> ValueRef {
-    unsafe {
-        let llshape = C_bytes_plus_null(bytes);
-        let name = fmt!("shape%u", token::gensym("shape"));
-        let llglobal = do name.as_c_str |buf| {
-            llvm::LLVMAddGlobal(ccx.llmod, val_ty(llshape).to_ref(), buf)
-        };
-        llvm::LLVMSetInitializer(llglobal, llshape);
-        llvm::LLVMSetGlobalConstant(llglobal, True);
-        lib::llvm::SetLinkage(llglobal, lib::llvm::InternalLinkage);
-        return llvm::LLVMConstPointerCast(llglobal, Type::i8p().to_ref());
     }
 }
 
