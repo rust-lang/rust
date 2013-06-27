@@ -687,26 +687,6 @@ pub fn filtered<T:Copy>(v: &[T], f: &fn(t: &T) -> bool) -> ~[T] {
     result
 }
 
-/**
- * Like `filter()`, but in place.  Preserves order of `v`.  Linear time.
- */
-pub fn retain<T>(v: &mut ~[T], f: &fn(t: &T) -> bool) {
-    let len = v.len();
-    let mut deleted: uint = 0;
-
-    for uint::range(0, len) |i| {
-        if !f(&v[i]) {
-            deleted += 1;
-        } else if deleted > 0 {
-            swap(*v, i - deleted, i);
-        }
-    }
-
-    if deleted > 0 {
-        v.truncate(len - deleted);
-    }
-}
-
 /// Flattens a vector of vectors of T into a single vector of T.
 pub fn concat<T:Copy>(v: &[~[T]]) -> ~[T] { v.concat_vec() }
 
@@ -1820,9 +1800,25 @@ impl<T> OwnedVector<T> for ~[T] {
         unsafe { raw::set_len(self, newlen); }
     }
 
-    #[inline]
+
+    /**
+     * Like `filter()`, but in place.  Preserves order of `v`.  Linear time.
+     */
     fn retain(&mut self, f: &fn(t: &T) -> bool) {
-        retain(self, f);
+        let len = self.len();
+        let mut deleted: uint = 0;
+
+        for uint::range(0, len) |i| {
+            if !f(&self[i]) {
+                deleted += 1;
+            } else if deleted > 0 {
+                swap(*self, i - deleted, i);
+            }
+        }
+
+        if deleted > 0 {
+            self.truncate(len - deleted);
+        }
     }
 
     #[inline]
