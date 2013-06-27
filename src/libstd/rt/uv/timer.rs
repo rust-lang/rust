@@ -160,14 +160,14 @@ mod test {
                         let mut timer2 = TimerWatcher::new(&mut loop_);
                         do timer2.start(10, 0) |timer2, _| {
 
-                            unsafe { *count_ptr += 1; }
+                            *count_ptr += 1;
 
                             timer2.close(||());
 
                             // Restart the original timer
                             let mut timer = timer;
                             do timer.start(1, 0) |timer, _| {
-                                unsafe { *count_ptr += 1; }
+                                *count_ptr += 1;
                                 timer.close(||());
                             }
                         }

@@ -2249,7 +2249,7 @@ mod tests {
         assert!("" <= "");
         assert!("" <= "foo");
         assert!("foo" <= "foo");
-        assert!("foo" != ~"bar");
+        assert!("foo" != "bar");
     }
 
     #[test]
@@ -3156,6 +3156,7 @@ mod tests {
 
     #[test]
     fn test_add() {
+        #[allow(unnecessary_allocation)];
         macro_rules! t (
             ($s1:expr, $s2:expr, $e:expr) => {
                 assert_eq!($s1 + $s2, $e);
