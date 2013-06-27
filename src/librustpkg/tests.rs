@@ -546,6 +546,22 @@ fn rustpkg_local_pkg() {
 }
 
 #[test]
+fn package_script_with_default_build() {
+    let dir = create_local_package(&PkgId::new("fancy-lib"));
+    debug!("dir = %s", dir.to_str());
+    let source = test_sysroot().pop().pop().pop().push("src").push("librustpkg").
+        push("testsuite").push("pass").push("src").push("fancy-lib").push("pkg.rs");
+    debug!("package_script_with_default_build: %s", source.to_str());
+    if !os::copy_file(&source,
+                      & dir.push("src").push("fancy_lib-0.1").push("pkg.rs")) {
+        fail!("Couldn't copy file");
+    }
+    command_line_test([~"install", ~"fancy-lib"], &dir);
+    assert_lib_exists(&dir, "fancy-lib");
+    assert!(os::path_exists(&dir.push("build").push("fancy_lib").push("generated.rs")));
+}
+
+#[test]
 #[ignore (reason = "RUST_PATH not yet implemented -- #5682")]
 fn rust_path_test() {
     let dir = mk_workspace(&Path("/home/more_rust"),

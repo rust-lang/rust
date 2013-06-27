@@ -257,7 +257,7 @@ pub fn compile_input(ctxt: &Ctx,
 
     debug!("calling compile_crate_from_input, out_dir = %s,
            building_library = %?", out_dir.to_str(), sess.building_library);
-    compile_crate_from_input(&input, out_dir, sess, crate, copy cfg);
+    compile_crate_from_input(&input, out_dir, sess, crate, copy cfg, driver::cu_expand);
     true
 }
 
@@ -270,7 +270,8 @@ pub fn compile_crate_from_input(input: &driver::input,
                                 build_dir: &Path,
                                 sess: session::Session,
                                 crate: @ast::crate,
-                                cfg: ast::crate_cfg) {
+                                cfg: ast::crate_cfg,
+                                compile_from: driver::compile_phase) {
     debug!("Calling build_output_filenames with %s, building library? %?",
            build_dir.to_str(), sess.building_library);
 
@@ -287,7 +288,7 @@ pub fn compile_crate_from_input(input: &driver::input,
     driver::compile_rest(sess,
                          cfg,
                          compile_upto {
-                             from: driver::cu_expand,
+                             from: compile_from,
                              to: driver::cu_everything
                          },
                          Some(outputs),
