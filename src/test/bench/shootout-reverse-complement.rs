@@ -5,7 +5,6 @@ use std::cast::transmute;
 use std::libc::{STDOUT_FILENO, c_int, fdopen, fgets, fopen, fputc, fwrite};
 use std::libc::{size_t};
 use std::ptr::null;
-use std::vec::{capacity, reserve, reserve_at_least};
 use std::vec::raw::set_len;
 
 static LINE_LEN: u32 = 80;
@@ -103,13 +102,13 @@ fn main() {
         let stdout = fdopen(STDOUT_FILENO as c_int, transmute(&mode[0]));
 
         let mut out: ~[u8] = ~[];
-        reserve(&mut out, 12777888);
+        out.reserve(12777888);
         let mut pos = 0;
 
         loop {
             let needed = pos + (LINE_LEN as uint) + 1;
-            if capacity(&out) < needed {
-                reserve_at_least(&mut out, needed);
+            if out.capacity() < needed {
+                out.reserve_at_least(needed);
             }
 
             let mut ptr = out.unsafe_mut_ref(pos);

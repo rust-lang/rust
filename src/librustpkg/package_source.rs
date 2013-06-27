@@ -12,7 +12,7 @@ use target::*;
 use package_id::PkgId;
 use core::path::Path;
 use core::option::*;
-use core::{os, run, str, vec};
+use core::{os, run, str};
 use context::*;
 use crate::Crate;
 use messages::*;
@@ -146,8 +146,7 @@ impl PkgSrc {
     fn push_crate(cs: &mut ~[Crate], prefix: uint, p: &Path) {
         assert!(p.components.len() > prefix);
         let mut sub = Path("");
-        for vec::slice(p.components, prefix,
-                       p.components.len()).iter().advance |c| {
+        for p.components.slice(prefix, p.components.len()).iter().advance |c| {
             sub = sub.push(*c);
         }
         debug!("found crate %s", sub.to_str());

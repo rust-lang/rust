@@ -1767,9 +1767,7 @@ mod test {
         mod impl64 {
             #[test]
             fn test_uv_ll_tcp_server_and_request() {
-                unsafe {
-                    super::super::impl_uv_tcp_server_and_request();
-                }
+                super::super::impl_uv_tcp_server_and_request();
             }
         }
         #[cfg(target_arch="x86")]

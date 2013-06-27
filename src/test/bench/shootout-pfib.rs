@@ -32,7 +32,6 @@ use std::str;
 use std::task;
 use std::u64;
 use std::uint;
-use std::vec;
 
 fn fib(n: int) -> int {
     fn pfib(c: &Chan<int>, n: int) {
@@ -62,7 +61,7 @@ struct Config {
 fn parse_opts(argv: ~[~str]) -> Config {
     let opts = ~[getopts::optflag(~"stress")];
 
-    let opt_args = vec::slice(argv, 1, argv.len());
+    let opt_args = argv.slice(1, argv.len());
 
     match getopts::getopts(opt_args, opts) {
       Ok(ref m) => {

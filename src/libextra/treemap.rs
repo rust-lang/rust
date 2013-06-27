@@ -695,7 +695,6 @@ mod test_treemap {
 
     use core::rand::RngUtil;
     use core::rand;
-    use core::vec;
 
     #[test]
     fn find_empty() {
@@ -848,7 +847,7 @@ mod test_treemap {
 
             for 30.times {
                 let r = rng.gen_uint_range(0, ctrl.len());
-                let (key, _) = vec::remove(&mut ctrl, r);
+                let (key, _) = ctrl.remove(r);
                 assert!(map.remove(&key));
                 check_structure(&map);
                 check_equal(ctrl, &map);

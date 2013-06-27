@@ -85,7 +85,6 @@ pub mod reader {
     use core::ptr::offset;
     use core::str;
     use core::unstable::intrinsics::bswap32;
-    use core::vec;
 
     // ebml reading
 
@@ -248,7 +247,7 @@ pub mod reader {
     }
 
     pub fn with_doc_data<T>(d: Doc, f: &fn(x: &[u8]) -> T) -> T {
-        f(vec::slice(*d.data, d.start, d.end))
+        f(d.data.slice(d.start, d.end))
     }
 
 

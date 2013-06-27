@@ -298,9 +298,8 @@ impl Mul<BigUint, BigUint> for BigUint {
 
         fn cut_at(a: &BigUint, n: uint) -> (BigUint, BigUint) {
             let mid = uint::min(a.data.len(), n);
-            return (BigUint::from_slice(vec::slice(a.data, mid,
-                                                   a.data.len())),
-                    BigUint::from_slice(vec::slice(a.data, 0, mid)));
+            return (BigUint::from_slice(a.data.slice(mid, a.data.len())),
+                    BigUint::from_slice(a.data.slice(0, mid)));
         }
 
 
@@ -413,7 +412,7 @@ impl Integer for BigUint {
                 return (Zero::zero(), Zero::zero(), copy *a);
             }
 
-            let an = vec::slice(a.data, a.data.len() - n, a.data.len());
+            let an = a.data.slice(a.data.len() - n, a.data.len());
             let bn = *b.data.last();
             let mut d = ~[];
             let mut carry = 0;
@@ -578,7 +577,7 @@ impl BigUint {
         let mut power: BigUint  = One::one();
         loop {
             let start = uint::max(end, unit_len) - unit_len;
-            match uint::parse_bytes(vec::slice(buf, start, end), radix) {
+            match uint::parse_bytes(buf.slice(start, end), radix) {
                 // FIXME(#6102): Assignment operator for BigInt causes ICE
                 // Some(d) => n += BigUint::from_uint(d) * power,
                 Some(d) => n = n + BigUint::from_uint(d) * power,
@@ -634,7 +633,7 @@ impl BigUint {
         if n_unit == 0 { return copy *self; }
         if self.data.len() < n_unit { return Zero::zero(); }
         return BigUint::from_slice(
-            vec::slice(self.data, n_unit, self.data.len())
+            self.data.slice(n_unit, self.data.len())
         );
     }
 
@@ -1132,7 +1131,7 @@ impl BigInt {
             sign  = Minus;
             start = 1;
         }
-        return BigUint::parse_bytes(vec::slice(buf, start, buf.len()), radix)
+        return BigUint::parse_bytes(buf.slice(start, buf.len()), radix)
             .map_consume(|bu| BigInt::from_biguint(sign, bu));
     }
 
@@ -1176,7 +1175,7 @@ mod biguint_tests {
         let data = [ &[], &[1], &[2], &[-1], &[0, 1], &[2, 1], &[1, 1, 1]  ]
             .map(|v| BigUint::from_slice(*v));
         for data.iter().enumerate().advance |(i, ni)| {
-            for vec::slice(data, i, data.len()).iter().enumerate().advance |(j0, nj)| {
+            for data.slice(i, data.len()).iter().enumerate().advance |(j0, nj)| {
                 let j = j0 + i;
                 if i == j {
                     assert_eq!(ni.cmp(nj), Equal);
@@ -1654,7 +1653,7 @@ mod bigint_tests {
         nums.push_all_move(vs.map(|s| BigInt::from_slice(Plus, *s)));
 
         for nums.iter().enumerate().advance |(i, ni)| {
-            for vec::slice(nums, i, nums.len()).iter().enumerate().advance |(j0, nj)| {
+            for nums.slice(i, nums.len()).iter().enumerate().advance |(j0, nj)| {
                 let j = i + j0;
                 if i == j {
                     assert_eq!(ni.cmp(nj), Equal);

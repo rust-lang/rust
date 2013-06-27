@@ -69,63 +69,6 @@ pub fn same_length<T, U>(xs: &const [T], ys: &const [U]) -> bool {
 }
 
 /**
- * Reserves capacity for exactly `n` elements in the given vector.
- *
- * If the capacity for `v` is already equal to or greater than the requested
- * capacity, then no action is taken.
- *
- * # Arguments
- *
- * * v - A vector
- * * n - The number of elements to reserve space for
- */
-#[inline]
-pub fn reserve<T>(v: &mut ~[T], n: uint) {
-    // Only make the (slow) call into the runtime if we have to
-    use managed;
-    if capacity(v) < n {
-        unsafe {
-            let ptr: **raw::VecRepr = cast::transmute(v);
-            let td = get_tydesc::<T>();
-            if ((**ptr).box_header.ref_count ==
-                managed::raw::RC_MANAGED_UNIQUE) {
-                rustrt::vec_reserve_shared_actual(td, ptr, n as libc::size_t);
-            } else {
-                rustrt::vec_reserve_shared(td, ptr, n as libc::size_t);
-            }
-        }
-    }
-}
-
-/**
- * Reserves capacity for at least `n` elements in the given vector.
- *
- * This function will over-allocate in order to amortize the allocation costs
- * in scenarios where the caller may need to repeatedly reserve additional
- * space.
- *
- * If the capacity for `v` is already equal to or greater than the requested
- * capacity, then no action is taken.
- *
- * # Arguments
- *
- * * v - A vector
- * * n - The number of elements to reserve space for
- */
-pub fn reserve_at_least<T>(v: &mut ~[T], n: uint) {
-    reserve(v, uint::next_power_of_two(n));
-}
-
-/// Returns the number of elements the vector can hold without reallocating
-#[inline]
-pub fn capacity<T>(v: &const ~[T]) -> uint {
-    unsafe {
-        let repr: **raw::VecRepr = transmute(v);
-        (**repr).unboxed.alloc / sys::nonzero_size_of::<T>()
-    }
-}
-
-/**
  * Creates and initializes an owned vector.
  *
  * Creates an owned vector of size `n_elts` and initializes the elements
@@ -179,7 +122,7 @@ pub fn to_owned<T:Copy>(t: &[T]) -> ~[T] {
 /// Creates a new vector with a capacity of `capacity`
 pub fn with_capacity<T>(capacity: uint) -> ~[T] {
     let mut vec = ~[];
-    reserve(&mut vec, capacity);
+    vec.reserve(capacity);
     vec
 }
 
@@ -238,85 +181,6 @@ pub fn build_sized_opt<A>(size: Option<uint>,
 
 // Accessors
 
-/// Returns the first element of a vector
-pub fn head<'r,T>(v: &'r [T]) -> &'r T {
-    if v.len() == 0 { fail!("head: empty vector") }
-    &v[0]
-}
-
-/// Returns `Some(x)` where `x` is the first element of the slice `v`,
-/// or `None` if the vector is empty.
-pub fn head_opt<'r,T>(v: &'r [T]) -> Option<&'r T> {
-    if v.len() == 0 { None } else { Some(&v[0]) }
-}
-
-/// Returns a vector containing all but the first element of a slice
-pub fn tail<'r,T>(v: &'r [T]) -> &'r [T] { slice(v, 1, v.len()) }
-
-/// Returns a vector containing all but the first `n` elements of a slice
-pub fn tailn<'r,T>(v: &'r [T], n: uint) -> &'r [T] { slice(v, n, v.len()) }
-
-/// Returns a vector containing all but the last element of a slice
-pub fn init<'r,T>(v: &'r [T]) -> &'r [T] { slice(v, 0, v.len() - 1) }
-
-/// Returns a vector containing all but the last `n' elements of a slice
-pub fn initn<'r,T>(v: &'r [T], n: uint) -> &'r [T] {
-    slice(v, 0, v.len() - n)
-}
-
-/// Returns the last element of the slice `v`, failing if the slice is empty.
-pub fn last<'r,T>(v: &'r [T]) -> &'r T {
-    if v.len() == 0 { fail!("last: empty vector") }
-    &v[v.len() - 1]
-}
-
-/// Returns `Some(x)` where `x` is the last element of the slice `v`, or
-/// `None` if the vector is empty.
-pub fn last_opt<'r,T>(v: &'r [T]) -> Option<&'r T> {
-    if v.len() == 0 { None } else { Some(&v[v.len() - 1]) }
-}
-
-/// Return a slice that points into another slice.
-#[inline]
-pub fn slice<'r,T>(v: &'r [T], start: uint, end: uint) -> &'r [T] {
-    assert!(start <= end);
-    assert!(end <= v.len());
-    do as_imm_buf(v) |p, _len| {
-        unsafe {
-            transmute((ptr::offset(p, start),
-                       (end - start) * sys::nonzero_size_of::<T>()))
-        }
-    }
-}
-
-/// Return a slice that points into another slice.
-#[inline]
-pub fn mut_slice<'r,T>(v: &'r mut [T], start: uint, end: uint)
-                    -> &'r mut [T] {
-    assert!(start <= end);
-    assert!(end <= v.len());
-    do as_mut_buf(v) |p, _len| {
-        unsafe {
-            transmute((ptr::mut_offset(p, start),
-                       (end - start) * sys::nonzero_size_of::<T>()))
-        }
-    }
-}
-
-/// Return a slice that points into another slice.
-#[inline]
-pub fn const_slice<'r,T>(v: &'r const [T], start: uint, end: uint)
-                      -> &'r const [T] {
-    assert!(start <= end);
-    assert!(end <= v.len());
-    do as_const_buf(v) |p, _len| {
-        unsafe {
-            transmute((ptr::const_offset(p, start),
-                       (end - start) * sys::nonzero_size_of::<T>()))
-        }
-    }
-}
-
 /// Copies
 
 /// Split the vector `v` by applying each element against the predicate `f`.
@@ -330,12 +194,12 @@ pub fn split<T:Copy>(v: &[T], f: &fn(t: &T) -> bool) -> ~[~[T]] {
         match position_between(v, start, ln, f) {
             None => break,
             Some(i) => {
-                result.push(slice(v, start, i).to_owned());
+                result.push(v.slice(start, i).to_owned());
                 start = i + 1u;
             }
         }
     }
-    result.push(slice(v, start, ln).to_owned());
+    result.push(v.slice(start, ln).to_owned());
     result
 }
 
@@ -354,14 +218,14 @@ pub fn splitn<T:Copy>(v: &[T], n: uint, f: &fn(t: &T) -> bool) -> ~[~[T]] {
         match position_between(v, start, ln, f) {
             None => break,
             Some(i) => {
-                result.push(slice(v, start, i).to_owned());
+                result.push(v.slice(start, i).to_owned());
                 // Make sure to skip the separator.
                 start = i + 1u;
                 count -= 1u;
             }
         }
     }
-    result.push(slice(v, start, ln).to_owned());
+    result.push(v.slice(start, ln).to_owned());
     result
 }
 
@@ -379,12 +243,12 @@ pub fn rsplit<T:Copy>(v: &[T], f: &fn(t: &T) -> bool) -> ~[~[T]] {
         match rposition_between(v, 0, end, f) {
             None => break,
             Some(i) => {
-                result.push(slice(v, i + 1, end).to_owned());
+                result.push(v.slice(i + 1, end).to_owned());
                 end = i;
             }
         }
     }
-    result.push(slice(v, 0u, end).to_owned());
+    result.push(v.slice(0u, end).to_owned());
     reverse(result);
     result
 }
@@ -404,146 +268,16 @@ pub fn rsplitn<T:Copy>(v: &[T], n: uint, f: &fn(t: &T) -> bool) -> ~[~[T]] {
         match rposition_between(v, 0u, end, f) {
             None => break,
             Some(i) => {
-                result.push(slice(v, i + 1u, end).to_owned());
+                result.push(v.slice(i + 1u, end).to_owned());
                 // Make sure to skip the separator.
                 end = i;
                 count -= 1u;
             }
         }
     }
-    result.push(slice(v, 0u, end).to_owned());
+    result.push(v.slice(0u, end).to_owned());
     reverse(result);
     result
-}
-
-/**
- * Partitions a vector into two new vectors: those that satisfies the
- * predicate, and those that do not.
- */
-pub fn partition<T>(v: ~[T], f: &fn(&T) -> bool) -> (~[T], ~[T]) {
-    let mut lefts  = ~[];
-    let mut rights = ~[];
-
-    // FIXME (#4355 maybe): using v.consume here crashes
-    // do v.consume |_, elt| {
-    do consume(v) |_, elt| {
-        if f(&elt) {
-            lefts.push(elt);
-        } else {
-            rights.push(elt);
-        }
-    }
-
-    (lefts, rights)
-}
-
-/**
- * Partitions a vector into two new vectors: those that satisfies the
- * predicate, and those that do not.
- */
-pub fn partitioned<T:Copy>(v: &[T], f: &fn(&T) -> bool) -> (~[T], ~[T]) {
-    let mut lefts  = ~[];
-    let mut rights = ~[];
-
-    for v.iter().advance |elt| {
-        if f(elt) {
-            lefts.push(copy *elt);
-        } else {
-            rights.push(copy *elt);
-        }
-    }
-
-    (lefts, rights)
-}
-
-// Mutators
-
-/// Removes the first element from a vector and return it
-pub fn shift<T>(v: &mut ~[T]) -> T {
-    unsafe {
-        assert!(!v.is_empty());
-
-        if v.len() == 1 { return v.pop() }
-
-        if v.len() == 2 {
-            let last = v.pop();
-            let first = v.pop();
-            v.push(last);
-            return first;
-        }
-
-        let ln = v.len();
-        let next_ln = v.len() - 1;
-
-        // Save the last element. We're going to overwrite its position
-        let work_elt = v.pop();
-        // We still should have room to work where what last element was
-        assert!(capacity(v) >= ln);
-        // Pretend like we have the original length so we can use
-        // the vector copy_memory to overwrite the hole we just made
-        raw::set_len(&mut *v, ln);
-
-        // Memcopy the head element (the one we want) to the location we just
-        // popped. For the moment it unsafely exists at both the head and last
-        // positions
-        {
-            let first_slice = slice(*v, 0, 1);
-            let last_slice = slice(*v, next_ln, ln);
-            raw::copy_memory(transmute(last_slice), first_slice, 1);
-        }
-
-        // Memcopy everything to the left one element
-        {
-            let init_slice = slice(*v, 0, next_ln);
-            let tail_slice = slice(*v, 1, ln);
-            raw::copy_memory(transmute(init_slice),
-                             tail_slice,
-                             next_ln);
-        }
-
-        // Set the new length. Now the vector is back to normal
-        raw::set_len(&mut *v, next_ln);
-
-        // Swap out the element we want from the end
-        let vp = raw::to_mut_ptr(*v);
-        let vp = ptr::mut_offset(vp, next_ln - 1);
-
-        ptr::replace_ptr(vp, work_elt)
-    }
-}
-
-/// Prepend an element to the vector
-pub fn unshift<T>(v: &mut ~[T], x: T) {
-    let vv = util::replace(v, ~[x]);
-    v.push_all_move(vv);
-}
-
-/// Insert an element at position i within v, shifting all
-/// elements after position i one position to the right.
-pub fn insert<T>(v: &mut ~[T], i: uint, x: T) {
-    let len = v.len();
-    assert!(i <= len);
-
-    v.push(x);
-    let mut j = len;
-    while j > i {
-        swap(*v, j, j - 1);
-        j -= 1;
-    }
-}
-
-/// Remove and return the element at position i within v, shifting
-/// all elements after position i one position to the left.
-pub fn remove<T>(v: &mut ~[T], i: uint) -> T {
-    let len = v.len();
-    assert!(i < len);
-
-    let mut j = i;
-    while j < len - 1 {
-        swap(*v, j, j + 1);
-        j += 1;
-    }
-    v.pop()
 }
 
 /// Consumes all elements, in a vector, moving them out into the / closure
@@ -605,131 +339,6 @@ pub fn consume_reverse<T>(mut v: ~[T], f: &fn(uint, v: T)) {
 
         raw::set_len(&mut v, 0);
     }
-}
-
-/// Remove the last element from a vector and return it
-pub fn pop<T>(v: &mut ~[T]) -> T {
-    let ln = v.len();
-    if ln == 0 {
-        fail!("sorry, cannot vec::pop an empty vector")
-    }
-    let valptr = ptr::to_mut_unsafe_ptr(&mut v[ln - 1u]);
-    unsafe {
-        let val = ptr::replace_ptr(valptr, intrinsics::init());
-        raw::set_len(v, ln - 1u);
-        val
-    }
-}
-
-/**
- * Remove an element from anywhere in the vector and return it, replacing it
- * with the last element. This does not preserve ordering, but is O(1).
- *
- * Fails if index >= length.
- */
-pub fn swap_remove<T>(v: &mut ~[T], index: uint) -> T {
-    let ln = v.len();
-    if index >= ln {
-        fail!("vec::swap_remove - index %u >= length %u", index, ln);
-    }
-    if index < ln - 1 {
-        swap(*v, index, ln - 1);
-    }
-    v.pop()
-}
-
-/// Append an element to a vector
-#[inline]
-pub fn push<T>(v: &mut ~[T], initval: T) {
-    unsafe {
-        let repr: **raw::VecRepr = transmute(&mut *v);
-        let fill = (**repr).unboxed.fill;
-        if (**repr).unboxed.alloc > fill {
-            push_fast(v, initval);
-        }
-        else {
-            push_slow(v, initval);
-        }
-    }
-}
-
-// This doesn't bother to make sure we have space.
-#[inline] // really pretty please
-unsafe fn push_fast<T>(v: &mut ~[T], initval: T) {
-    let repr: **mut raw::VecRepr = transmute(v);
-    let fill = (**repr).unboxed.fill;
-    (**repr).unboxed.fill += sys::nonzero_size_of::<T>();
-    let p = to_unsafe_ptr(&((**repr).unboxed.data));
-    let p = ptr::offset(p, fill) as *mut T;
-    intrinsics::move_val_init(&mut(*p), initval);
-}
-
-#[inline(never)]
-fn push_slow<T>(v: &mut ~[T], initval: T) {
-    let new_len = v.len() + 1;
-    reserve_at_least(&mut *v, new_len);
-    unsafe { push_fast(v, initval) }
-}
-
-/// Iterates over the slice `rhs`, copies each element, and then appends it to
-/// the vector provided `v`. The `rhs` vector is traversed in-order.
-///
-/// # Example
-///
-/// ~~~ {.rust}
-/// let mut a = ~[1];
-/// vec::push_all(&mut a, [2, 3, 4]);
-/// assert!(a == ~[1, 2, 3, 4]);
-/// ~~~
-#[inline]
-pub fn push_all<T:Copy>(v: &mut ~[T], rhs: &const [T]) {
-    let new_len = v.len() + rhs.len();
-    reserve(&mut *v, new_len);
-
-    for uint::range(0u, rhs.len()) |i| {
-        push(&mut *v, unsafe { raw::get(rhs, i) })
-    }
-}
-
-/// Takes ownership of the vector `rhs`, moving all elements into the specified
-/// vector `v`. This does not copy any elements, and it is illegal to use the
-/// `rhs` vector after calling this method (because it is moved here).
-///
-/// # Example
-///
-/// ~~~ {.rust}
-/// let mut a = ~[~1];
-/// vec::push_all_move(&mut a, ~[~2, ~3, ~4]);
-/// assert!(a == ~[~1, ~2, ~3, ~4]);
-/// ~~~
-#[inline]
-pub fn push_all_move<T>(v: &mut ~[T], mut rhs: ~[T]) {
-    let new_len = v.len() + rhs.len();
-    reserve(&mut *v, new_len);
-    unsafe {
-        do as_mut_buf(rhs) |p, len| {
-            for uint::range(0, len) |i| {
-                let x = ptr::replace_ptr(ptr::mut_offset(p, i),
-                                         intrinsics::uninit());
-                push(&mut *v, x);
-            }
-        }
-        raw::set_len(&mut rhs, 0);
-    }
-}
-
-/// Shorten a vector, dropping excess elements.
-pub fn truncate<T>(v: &mut ~[T], newlen: uint) {
-    do as_mut_buf(*v) |p, oldlen| {
-        assert!(newlen <= oldlen);
-        unsafe {
-            // This loop is optimized out for non-drop types.
-            for uint::range(newlen, oldlen) |i| {
-                ptr::replace_ptr(ptr::mut_offset(p, i), intrinsics::uninit());
-            }
-        }
-    }
-    unsafe { raw::set_len(&mut *v, newlen); }
 }
 
 /**
@@ -800,7 +409,7 @@ pub fn append_one<T>(lhs: ~[T], x: T) -> ~[T] {
  */
 pub fn grow<T:Copy>(v: &mut ~[T], n: uint, initval: &T) {
     let new_len = v.len() + n;
-    reserve_at_least(&mut *v, new_len);
+    v.reserve_at_least(new_len);
     let mut i: uint = 0u;
 
     while i < n {
@@ -824,7 +433,7 @@ pub fn grow<T:Copy>(v: &mut ~[T], n: uint, initval: &T) {
  */
 pub fn grow_fn<T>(v: &mut ~[T], n: uint, op: &fn(uint) -> T) {
     let new_len = v.len() + n;
-    reserve_at_least(&mut *v, new_len);
+    v.reserve_at_least(new_len);
     let mut i: uint = 0u;
     while i < n {
         v.push(op(i));
@@ -979,26 +588,6 @@ pub fn filtered<T:Copy>(v: &[T], f: &fn(t: &T) -> bool) -> ~[T] {
         if f(elem) { result.push(copy *elem); }
     }
     result
-}
-
-/**
- * Like `filter()`, but in place.  Preserves order of `v`.  Linear time.
- */
-pub fn retain<T>(v: &mut ~[T], f: &fn(t: &T) -> bool) {
-    let len = v.len();
-    let mut deleted: uint = 0;
-
-    for uint::range(0, len) |i| {
-        if !f(&v[i]) {
-            deleted += 1;
-        } else if deleted > 0 {
-            swap(*v, i - deleted, i);
-        }
-    }
-
-    if deleted > 0 {
-        v.truncate(len - deleted);
-    }
 }
 
 /// Flattens a vector of vectors of T into a single vector of T.
@@ -1652,13 +1241,11 @@ impl<'self,T:Copy> CopyableVector<T> for &'self [T] {
     /// Returns a copy of `v`.
     #[inline]
     fn to_owned(&self) -> ~[T] {
-        let mut result = ~[];
-        reserve(&mut result, self.len());
+        let mut result = with_capacity(self.len());
         for self.iter().advance |e| {
             result.push(copy *e);
         }
         result
-
     }
 }
 
@@ -1689,7 +1276,14 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
     /// Return a slice that points into another slice.
     #[inline]
     fn slice(&self, start: uint, end: uint) -> &'self [T] {
-        slice(*self, start, end)
+    assert!(start <= end);
+    assert!(end <= self.len());
+        do as_imm_buf(*self) |p, _len| {
+            unsafe {
+                transmute((ptr::offset(p, start),
+                           (end - start) * sys::nonzero_size_of::<T>()))
+            }
+        }
     }
 
     #[inline]
@@ -1712,35 +1306,49 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
 
     /// Returns the first element of a vector, failing if the vector is empty.
     #[inline]
-    fn head(&self) -> &'self T { head(*self) }
+    fn head(&self) -> &'self T {
+        if self.len() == 0 { fail!("head: empty vector") }
+        &self[0]
+    }
 
-    /// Returns the first element of a vector
+    /// Returns the first element of a vector, or `None` if it is empty
     #[inline]
-    fn head_opt(&self) -> Option<&'self T> { head_opt(*self) }
+    fn head_opt(&self) -> Option<&'self T> {
+        if self.len() == 0 { None } else { Some(&self[0]) }
+    }
 
     /// Returns all but the first element of a vector
     #[inline]
-    fn tail(&self) -> &'self [T] { tail(*self) }
+    fn tail(&self) -> &'self [T] { self.slice(1, self.len()) }
 
     /// Returns all but the first `n' elements of a vector
     #[inline]
-    fn tailn(&self, n: uint) -> &'self [T] { tailn(*self, n) }
+    fn tailn(&self, n: uint) -> &'self [T] { self.slice(n, self.len()) }
 
-    /// Returns all but the last elemnt of a vector
+    /// Returns all but the last element of a vector
     #[inline]
-    fn init(&self) -> &'self [T] { init(*self) }
+    fn init(&self) -> &'self [T] {
+        self.slice(0, self.len() - 1)
+    }
 
     /// Returns all but the last `n' elemnts of a vector
     #[inline]
-    fn initn(&self, n: uint) -> &'self [T] { initn(*self, n) }
+    fn initn(&self, n: uint) -> &'self [T] {
+        self.slice(0, self.len() - n)
+    }
 
-    /// Returns the last element of a `v`, failing if the vector is empty.
+    /// Returns the last element of a vector, failing if the vector is empty.
     #[inline]
-    fn last(&self) -> &'self T { last(*self) }
+    fn last(&self) -> &'self T {
+        if self.len() == 0 { fail!("last: empty vector") }
+        &self[self.len() - 1]
+    }
 
-    /// Returns the last element of a `v`, failing if the vector is empty.
+    /// Returns the last element of a vector, or `None` if it is empty.
     #[inline]
-    fn last_opt(&self) -> Option<&'self T> { last_opt(*self) }
+    fn last_opt(&self) -> Option<&'self T> {
+            if self.len() == 0 { None } else { Some(&self[self.len() - 1]) }
+    }
 
     /**
      * Find the last index matching some predicate
@@ -1865,7 +1473,18 @@ impl<'self,T:Copy> ImmutableCopyableVector<T> for &'self [T] {
      */
     #[inline]
     fn partitioned(&self, f: &fn(&T) -> bool) -> (~[T], ~[T]) {
-        partitioned(*self, f)
+        let mut lefts  = ~[];
+        let mut rights = ~[];
+
+        for self.iter().advance |elt| {
+            if f(elt) {
+                lefts.push(copy *elt);
+            } else {
+                rights.push(copy *elt);
+            }
+        }
+
+        (lefts, rights)
     }
 
     /// Returns the element at the given index, without doing bounds checking.
@@ -1877,7 +1496,13 @@ impl<'self,T:Copy> ImmutableCopyableVector<T> for &'self [T] {
 
 #[allow(missing_doc)]
 pub trait OwnedVector<T> {
+    fn reserve(&mut self, n: uint);
+    fn reserve_at_least(&mut self, n: uint);
+    fn capacity(&self) -> uint;
+
     fn push(&mut self, t: T);
+    unsafe fn push_fast(&mut self, t: T);
+
     fn push_all_move(&mut self, rhs: ~[T]);
     fn pop(&mut self) -> T;
     fn shift(&mut self) -> T;
@@ -1895,54 +1520,276 @@ pub trait OwnedVector<T> {
 }
 
 impl<T> OwnedVector<T> for ~[T] {
+    /**
+     * Reserves capacity for exactly `n` elements in the given vector.
+     *
+     * If the capacity for `self` is already equal to or greater than the requested
+     * capacity, then no action is taken.
+     *
+     * # Arguments
+     *
+     * * n - The number of elements to reserve space for
+     */
+    #[inline]
+    fn reserve(&mut self, n: uint) {
+        // Only make the (slow) call into the runtime if we have to
+        use managed;
+        if self.capacity() < n {
+            unsafe {
+                let ptr: **raw::VecRepr = cast::transmute(self);
+                let td = get_tydesc::<T>();
+                if ((**ptr).box_header.ref_count ==
+                    managed::raw::RC_MANAGED_UNIQUE) {
+                    rustrt::vec_reserve_shared_actual(td, ptr, n as libc::size_t);
+                } else {
+                    rustrt::vec_reserve_shared(td, ptr, n as libc::size_t);
+                }
+            }
+        }
+    }
+
+    /**
+     * Reserves capacity for at least `n` elements in the given vector.
+     *
+     * This function will over-allocate in order to amortize the allocation costs
+     * in scenarios where the caller may need to repeatedly reserve additional
+     * space.
+     *
+     * If the capacity for `self` is already equal to or greater than the requested
+     * capacity, then no action is taken.
+     *
+     * # Arguments
+     *
+     * * n - The number of elements to reserve space for
+     */
+    fn reserve_at_least(&mut self, n: uint) {
+        self.reserve(uint::next_power_of_two(n));
+    }
+
+    /// Returns the number of elements the vector can hold without reallocating.
+    #[inline]
+    fn capacity(&self) -> uint {
+        unsafe {
+            let repr: **raw::VecRepr = transmute(self);
+            (**repr).unboxed.alloc / sys::nonzero_size_of::<T>()
+        }
+    }
+
+    /// Append an element to a vector
     #[inline]
     fn push(&mut self, t: T) {
-        push(self, t);
+        unsafe {
+            let repr: **raw::VecRepr = transmute(&mut *self);
+            let fill = (**repr).unboxed.fill;
+            if (**repr).unboxed.alloc <= fill {
+                // need more space
+                reserve_no_inline(self);
+            }
+
+            self.push_fast(t);
+        }
+
+        // this peculiar function is because reserve_at_least is very
+        // large (because of reserve), and will be inlined, which
+        // makes push too large.
+        #[inline(never)]
+        fn reserve_no_inline<T>(v: &mut ~[T]) {
+            let new_len = v.len() + 1;
+            v.reserve_at_least(new_len);
+        }
     }
 
-    #[inline]
-    fn push_all_move(&mut self, rhs: ~[T]) {
-        push_all_move(self, rhs);
+    // This doesn't bother to make sure we have space.
+    #[inline] // really pretty please
+    unsafe fn push_fast(&mut self, t: T) {
+        let repr: **mut raw::VecRepr = transmute(self);
+        let fill = (**repr).unboxed.fill;
+        (**repr).unboxed.fill += sys::nonzero_size_of::<T>();
+        let p = to_unsafe_ptr(&((**repr).unboxed.data));
+        let p = ptr::offset(p, fill) as *mut T;
+        intrinsics::move_val_init(&mut(*p), t);
     }
 
+    /// Takes ownership of the vector `rhs`, moving all elements into
+    /// the current vector. This does not copy any elements, and it is
+    /// illegal to use the `rhs` vector after calling this method
+    /// (because it is moved here).
+    ///
+    /// # Example
+    ///
+    /// ~~~ {.rust}
+    /// let mut a = ~[~1];
+    /// a.push_all_move(~[~2, ~3, ~4]);
+    /// assert!(a == ~[~1, ~2, ~3, ~4]);
+    /// ~~~
     #[inline]
+    fn push_all_move(&mut self, mut rhs: ~[T]) {
+        let new_len = self.len() + rhs.len();
+        self.reserve(new_len);
+        unsafe {
+            do as_mut_buf(rhs) |p, len| {
+                for uint::range(0, len) |i| {
+                    let x = ptr::replace_ptr(ptr::mut_offset(p, i),
+                                             intrinsics::uninit());
+                    self.push(x);
+                }
+            }
+            raw::set_len(&mut rhs, 0);
+        }
+    }
+
+    /// Remove the last element from a vector and return it
     fn pop(&mut self) -> T {
-        pop(self)
+        let ln = self.len();
+        if ln == 0 {
+            fail!("sorry, cannot pop an empty vector")
+        }
+        let valptr = ptr::to_mut_unsafe_ptr(&mut self[ln - 1u]);
+        unsafe {
+            let val = ptr::replace_ptr(valptr, intrinsics::init());
+            raw::set_len(self, ln - 1u);
+            val
+        }
     }
 
-    #[inline]
+    /// Removes the first element from a vector and return it
     fn shift(&mut self) -> T {
-        shift(self)
+        unsafe {
+            assert!(!self.is_empty());
+
+            if self.len() == 1 { return self.pop() }
+
+            if self.len() == 2 {
+                let last = self.pop();
+                let first = self.pop();
+                self.push(last);
+                return first;
+            }
+
+            let ln = self.len();
+            let next_ln = self.len() - 1;
+
+            // Save the last element. We're going to overwrite its position
+            let work_elt = self.pop();
+            // We still should have room to work where what last element was
+            assert!(self.capacity() >= ln);
+            // Pretend like we have the original length so we can use
+            // the vector copy_memory to overwrite the hole we just made
+            raw::set_len(self, ln);
+
+            // Memcopy the head element (the one we want) to the location we just
+            // popped. For the moment it unsafely exists at both the head and last
+            // positions
+            {
+                let first_slice = self.slice(0, 1);
+                let last_slice = self.slice(next_ln, ln);
+                raw::copy_memory(transmute(last_slice), first_slice, 1);
+            }
+
+            // Memcopy everything to the left one element
+            {
+                let init_slice = self.slice(0, next_ln);
+                let tail_slice = self.slice(1, ln);
+                raw::copy_memory(transmute(init_slice),
+                                 tail_slice,
+                                 next_ln);
+            }
+
+            // Set the new length. Now the vector is back to normal
+            raw::set_len(self, next_ln);
+
+            // Swap out the element we want from the end
+            let vp = raw::to_mut_ptr(*self);
+            let vp = ptr::mut_offset(vp, next_ln - 1);
+
+            ptr::replace_ptr(vp, work_elt)
+        }
     }
 
-    #[inline]
+    /// Prepend an element to the vector
     fn unshift(&mut self, x: T) {
-        unshift(self, x)
+        let v = util::replace(self, ~[x]);
+        self.push_all_move(v);
     }
 
-    #[inline]
+    /// Insert an element at position i within v, shifting all
+    /// elements after position i one position to the right.
     fn insert(&mut self, i: uint, x:T) {
-        insert(self, i, x)
+        let len = self.len();
+        assert!(i <= len);
+
+        self.push(x);
+        let mut j = len;
+        while j > i {
+            swap(*self, j, j - 1);
+            j -= 1;
+        }
     }
 
-    #[inline]
+    /// Remove and return the element at position i within v, shifting
+    /// all elements after position i one position to the left.
     fn remove(&mut self, i: uint) -> T {
-        remove(self, i)
+        let len = self.len();
+        assert!(i < len);
+
+        let mut j = i;
+        while j < len - 1 {
+            swap(*self, j, j + 1);
+            j += 1;
+        }
+        self.pop()
     }
 
-    #[inline]
+    /**
+     * Remove an element from anywhere in the vector and return it, replacing it
+     * with the last element. This does not preserve ordering, but is O(1).
+     *
+     * Fails if index >= length.
+     */
     fn swap_remove(&mut self, index: uint) -> T {
-        swap_remove(self, index)
+        let ln = self.len();
+        if index >= ln {
+            fail!("vec::swap_remove - index %u >= length %u", index, ln);
+        }
+        if index < ln - 1 {
+            swap(*self, index, ln - 1);
+        }
+        self.pop()
     }
 
-    #[inline]
+    /// Shorten a vector, dropping excess elements.
     fn truncate(&mut self, newlen: uint) {
-        truncate(self, newlen);
+        do as_mut_buf(*self) |p, oldlen| {
+            assert!(newlen <= oldlen);
+            unsafe {
+                // This loop is optimized out for non-drop types.
+                for uint::range(newlen, oldlen) |i| {
+                    ptr::replace_ptr(ptr::mut_offset(p, i), intrinsics::uninit());
+                }
+            }
+        }
+        unsafe { raw::set_len(self, newlen); }
     }
 
-    #[inline]
+
+    /**
+     * Like `filter()`, but in place.  Preserves order of `v`.  Linear time.
+     */
     fn retain(&mut self, f: &fn(t: &T) -> bool) {
-        retain(self, f);
+        let len = self.len();
+        let mut deleted: uint = 0;
+
+        for uint::range(0, len) |i| {
+            if !f(&self[i]) {
+                deleted += 1;
+            } else if deleted > 0 {
+                swap(*self, i - deleted, i);
+            }
+        }
+
+        if deleted > 0 {
+            self.truncate(len - deleted);
+        }
     }
 
     #[inline]
@@ -1966,7 +1813,18 @@ impl<T> OwnedVector<T> for ~[T] {
      */
     #[inline]
     fn partition(self, f: &fn(&T) -> bool) -> (~[T], ~[T]) {
-        partition(self, f)
+        let mut lefts  = ~[];
+        let mut rights = ~[];
+
+        do self.consume |_, elt| {
+            if f(&elt) {
+                lefts.push(elt);
+            } else {
+                rights.push(elt);
+            }
+        }
+
+        (lefts, rights)
     }
 
     #[inline]
@@ -1988,9 +1846,24 @@ pub trait OwnedCopyableVector<T:Copy> {
 }
 
 impl<T:Copy> OwnedCopyableVector<T> for ~[T] {
+    /// Iterates over the slice `rhs`, copies each element, and then appends it to
+    /// the vector provided `v`. The `rhs` vector is traversed in-order.
+    ///
+    /// # Example
+    ///
+    /// ~~~ {.rust}
+    /// let mut a = ~[1];
+    /// a.push_all([2, 3, 4]);
+    /// assert!(a == ~[1, 2, 3, 4]);
+    /// ~~~
     #[inline]
     fn push_all(&mut self, rhs: &const [T]) {
-        push_all(self, rhs);
+        let new_len = self.len() + rhs.len();
+        self.reserve(new_len);
+
+        for uint::range(0u, rhs.len()) |i| {
+            self.push(unsafe { raw::get(rhs, i) })
+        }
     }
 
     #[inline]
@@ -2042,9 +1915,17 @@ pub trait MutableVector<'self, T> {
 }
 
 impl<'self,T> MutableVector<'self, T> for &'self mut [T] {
+    /// Return a slice that points into another slice.
     #[inline]
     fn mut_slice(self, start: uint, end: uint) -> &'self mut [T] {
-        mut_slice(self, start, end)
+        assert!(start <= end);
+        assert!(end <= self.len());
+        do as_mut_buf(self) |p, _len| {
+            unsafe {
+                transmute((ptr::mut_offset(p, start),
+                           (end - start) * sys::nonzero_size_of::<T>()))
+            }
+        }
     }
 
     #[inline]
@@ -2713,7 +2594,7 @@ mod tests {
     fn test_slice() {
         // Test fixed length vector.
         let vec_fixed = [1, 2, 3, 4];
-        let v_a = slice(vec_fixed, 1u, vec_fixed.len()).to_owned();
+        let v_a = vec_fixed.slice(1u, vec_fixed.len()).to_owned();
         assert_eq!(v_a.len(), 3u);
         assert_eq!(v_a[0], 2);
         assert_eq!(v_a[1], 3);
@@ -2721,14 +2602,14 @@ mod tests {
 
         // Test on stack.
         let vec_stack = &[1, 2, 3];
-        let v_b = slice(vec_stack, 1u, 3u).to_owned();
+        let v_b = vec_stack.slice(1u, 3u).to_owned();
         assert_eq!(v_b.len(), 2u);
         assert_eq!(v_b[0], 2);
         assert_eq!(v_b[1], 3);
 
         // Test on managed heap.
         let vec_managed = @[1, 2, 3, 4, 5];
-        let v_c = slice(vec_managed, 0u, 3u).to_owned();
+        let v_c = vec_managed.slice(0u, 3u).to_owned();
         assert_eq!(v_c.len(), 3u);
         assert_eq!(v_c[0], 1);
         assert_eq!(v_c[1], 2);
@@ -2736,7 +2617,7 @@ mod tests {
 
         // Test on exchange heap.
         let vec_unique = ~[1, 2, 3, 4, 5, 6];
-        let v_d = slice(vec_unique, 1u, 6u).to_owned();
+        let v_d = vec_unique.slice(1u, 6u).to_owned();
         assert_eq!(v_d.len(), 5u);
         assert_eq!(v_d[0], 2);
         assert_eq!(v_d[1], 3);
@@ -3329,11 +3210,10 @@ mod tests {
 
     #[test]
     fn test_partition() {
-        // FIXME (#4355 maybe): using v.partition here crashes
-        assert_eq!(partition(~[], |x: &int| *x < 3), (~[], ~[]));
-        assert_eq!(partition(~[1, 2, 3], |x: &int| *x < 4), (~[1, 2, 3], ~[]));
-        assert_eq!(partition(~[1, 2, 3], |x: &int| *x < 2), (~[1], ~[2, 3]));
-        assert_eq!(partition(~[1, 2, 3], |x: &int| *x < 0), (~[], ~[1, 2, 3]));
+        assert_eq!((~[]).partition(|x: &int| *x < 3), (~[], ~[]));
+        assert_eq!((~[1, 2, 3]).partition(|x: &int| *x < 4), (~[1, 2, 3], ~[]));
+        assert_eq!((~[1, 2, 3]).partition(|x: &int| *x < 2), (~[1], ~[2, 3]));
+        assert_eq!((~[1, 2, 3]).partition(|x: &int| *x < 0), (~[], ~[1, 2, 3]));
     }
 
     #[test]
@@ -3453,11 +3333,11 @@ mod tests {
     #[test]
     fn test_capacity() {
         let mut v = ~[0u64];
-        reserve(&mut v, 10u);
-        assert_eq!(capacity(&v), 10u);
+        v.reserve(10u);
+        assert_eq!(v.capacity(), 10u);
         let mut v = ~[0u32];
-        reserve(&mut v, 10u);
-        assert_eq!(capacity(&v), 10u);
+        v.reserve(10u);
+        assert_eq!(v.capacity(), 10u);
     }
 
     #[test]
@@ -3981,11 +3861,11 @@ mod tests {
     fn test_vec_zero() {
         use num::Zero;
         macro_rules! t (
-            ($ty:ty) => {
+            ($ty:ty) => {{
                 let v: $ty = Zero::zero();
                 assert!(v.is_empty());
                 assert!(v.is_zero());
-            }
+            }}
         );
 
         t!(&[int]);

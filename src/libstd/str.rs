@@ -2081,7 +2081,7 @@ impl OwnedStr for ~str {
     pub fn reserve(&mut self, n: uint) {
         unsafe {
             let v: *mut ~[u8] = cast::transmute(self);
-            vec::reserve(&mut *v, n + 1);
+            (*v).reserve(n + 1);
         }
     }
 
@@ -2115,8 +2115,8 @@ impl OwnedStr for ~str {
      * reallocating
      */
     fn capacity(&self) -> uint {
-        let buf: &const ~[u8] = unsafe { cast::transmute(self) };
-        let vcap = vec::capacity(buf);
+        let buf: &~[u8] = unsafe { cast::transmute(self) };
+        let vcap = buf.capacity();
         assert!(vcap > 0u);
         vcap - 1u
     }
@@ -2249,7 +2249,7 @@ mod tests {
         assert!("" <= "");
         assert!("" <= "foo");
         assert!("foo" <= "foo");
-        assert!("foo" != ~"bar");
+        assert!("foo" != "bar");
     }
 
     #[test]
@@ -3156,6 +3156,7 @@ mod tests {
 
     #[test]
     fn test_add() {
+        #[allow(unnecessary_allocation)];
         macro_rules! t (
             ($s1:expr, $s2:expr, $e:expr) => {
                 assert_eq!($s1 + $s2, $e);

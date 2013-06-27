@@ -65,7 +65,7 @@ use str::StrSlice;
 use to_str::ToStr;
 use uint;
 use vec;
-use vec::{ImmutableVector, OwnedVector, OwnedCopyableVector, CopyableVector};
+use vec::{MutableVector, ImmutableVector, OwnedVector, OwnedCopyableVector, CopyableVector};
 
 #[allow(non_camel_case_types)] // not sure what to do about this
 pub type fd_t = c_int;
@@ -698,7 +698,7 @@ impl<T:Reader> ReaderUtil for T {
             // over-read by reading 1-byte per char needed
             nbread = if ncreq > nbreq { ncreq } else { nbreq };
             if nbread > 0 {
-                bytes = vec::slice(bytes, offset, bytes.len()).to_owned();
+                bytes = bytes.slice(offset, bytes.len()).to_owned();
             }
         }
         chars
@@ -1053,7 +1053,7 @@ impl Reader for BytesReader {
     fn read(&self, bytes: &mut [u8], len: uint) -> uint {
         let count = uint::min(len, self.bytes.len() - *self.pos);
 
-        let view = vec::slice(self.bytes, *self.pos, self.bytes.len());
+        let view = self.bytes.slice(*self.pos, self.bytes.len());
         vec::bytes::copy_memory(bytes, view, count);
 
         *self.pos += count;
@@ -1658,12 +1658,12 @@ impl Writer for BytesWriter {
 
         let bytes = &mut *self.bytes;
         let count = uint::max(bytes.len(), *self.pos + v_len);
-        vec::reserve(bytes, count);
+        bytes.reserve(count);
 
         unsafe {
             vec::raw::set_len(bytes, count);
 
-            let view = vec::mut_slice(*bytes, *self.pos, count);
+            let view = bytes.mut_slice(*self.pos, count);
             vec::bytes::copy_memory(view, v, v_len);
         }
 
@@ -1909,8 +1909,7 @@ mod tests {
                 if len <= ivals.len() {
                     assert_eq!(res.len(), len);
                 }
-                assert!(vec::slice(ivals, 0u, res.len()) ==
-                             vec::map(res, |x| *x as int));
+                assert!(ivals.slice(0u, res.len()) == vec::map(res, |x| *x as int));
             }
         }
         let mut i = 0;

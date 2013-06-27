@@ -132,7 +132,7 @@ impl<O:DataFlowOperator> DataFlowContext<O> {
         debug!("add_gen(id=%?, bit=%?)", id, bit);
         let (start, end) = self.compute_id_range(id);
         {
-            let gens = vec::mut_slice(self.gens, start, end);
+            let gens = self.gens.mut_slice(start, end);
             set_bit(gens, bit);
         }
     }
@@ -143,7 +143,7 @@ impl<O:DataFlowOperator> DataFlowContext<O> {
         debug!("add_kill(id=%?, bit=%?)", id, bit);
         let (start, end) = self.compute_id_range(id);
         {
-            let kills = vec::mut_slice(self.kills, start, end);
+            let kills = self.kills.mut_slice(start, end);
             set_bit(kills, bit);
         }
     }
@@ -216,7 +216,7 @@ impl<O:DataFlowOperator> DataFlowContext<O> {
             return true;
         }
         let (start, end) = self.compute_id_range_frozen(id);
-        let on_entry = vec::slice(self.on_entry, start, end);
+        let on_entry = self.on_entry.slice(start, end);
         debug!("each_bit_on_entry_frozen(id=%?, on_entry=%s)",
                id, bits_to_str(on_entry));
         self.each_bit(on_entry, f)
@@ -229,7 +229,7 @@ impl<O:DataFlowOperator> DataFlowContext<O> {
         //! Only useful after `propagate()` has been called.
 
         let (start, end) = self.compute_id_range(id);
-        let on_entry = vec::slice(self.on_entry, start, end);
+        let on_entry = self.on_entry.slice(start, end);
         debug!("each_bit_on_entry(id=%?, on_entry=%s)",
                id, bits_to_str(on_entry));
         self.each_bit(on_entry, f)
@@ -241,7 +241,7 @@ impl<O:DataFlowOperator> DataFlowContext<O> {
         //! Iterates through each bit in the gen set for `id`.
 
         let (start, end) = self.compute_id_range(id);
-        let gens = vec::slice(self.gens, start, end);
+        let gens = self.gens.slice(start, end);
         debug!("each_gen_bit(id=%?, gens=%s)",
                id, bits_to_str(gens));
         self.each_bit(gens, f)
@@ -255,7 +255,7 @@ impl<O:DataFlowOperator> DataFlowContext<O> {
             return true;
         }
         let (start, end) = self.compute_id_range_frozen(id);
-        let gens = vec::slice(self.gens, start, end);
+        let gens = self.gens.slice(start, end);
         debug!("each_gen_bit(id=%?, gens=%s)",
                id, bits_to_str(gens));
         self.each_bit(gens, f)
@@ -338,17 +338,17 @@ impl<O:DataFlowOperator+Copy+'static> DataFlowContext<O> {
 
             if self.nodeid_to_bitset.contains_key(&id) {
                 let (start, end) = self.compute_id_range_frozen(id);
-                let on_entry = vec::slice(self.on_entry, start, end);
+                let on_entry = self.on_entry.slice(start, end);
                 let entry_str = bits_to_str(on_entry);
 
-                let gens = vec::slice(self.gens, start, end);
+                let gens = self.gens.slice(start, end);
                 let gens_str = if gens.iter().any_(|&u| u != 0) {
                     fmt!(" gen: %s", bits_to_str(gens))
                 } else {
                     ~""
                 };
 
-                let kills = vec::slice(self.kills, start, end);
+                let kills = self.kills.slice(start, end);
                 let kills_str = if kills.iter().any_(|&u| u != 0) {
                     fmt!(" kill: %s", bits_to_str(kills))
                 } else {
@@ -953,7 +953,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
                id, bits_to_str(pred_bits));
         let (start, end) = self.dfcx.compute_id_range(id);
         let changed = { // FIXME(#5074) awkward construction
-            let on_entry = vec::mut_slice(self.dfcx.on_entry, start, end);
+            let on_entry = self.dfcx.on_entry.mut_slice(start, end);
             join_bits(&self.dfcx.oper, pred_bits, on_entry)
         };
         if changed {
@@ -970,7 +970,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
                id, mut_bits_to_str(pred_bits));
         let (start, end) = self.dfcx.compute_id_range(id);
         let changed = { // FIXME(#5074) awkward construction
-            let on_entry = vec::mut_slice(self.dfcx.on_entry, start, end);
+            let on_entry = self.dfcx.on_entry.mut_slice(start, end);
             let changed = join_bits(&self.dfcx.oper, reslice(pred_bits), on_entry);
             copy_bits(reslice(on_entry), pred_bits);
             changed
