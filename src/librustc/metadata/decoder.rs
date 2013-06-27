@@ -763,8 +763,7 @@ pub fn get_provided_trait_methods(intr: @ident_interner, cdata: cmd,
 
         if item_method_sort(mth) != 'p' { loop; }
 
-        vec::push(&mut result,
-                  @get_method(intr, cdata, did.node, tcx));
+        result.push(@get_method(intr, cdata, did.node, tcx));
     }
 
     return result;
