@@ -146,7 +146,7 @@ pub mod win32 {
     pub fn as_utf16_p<T>(s: &str, f: &fn(*u16) -> T) -> T {
         let mut t = s.to_utf16();
         // Null terminate before passing on.
-        t += [0u16];
+        t.push(0u16);
         vec::as_imm_buf(t, |buf, _len| f(buf))
     }
 }
