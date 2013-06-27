@@ -21,7 +21,7 @@ use syntax::codemap;
 use syntax::{visit, ast_util, ast_map};
 
 pub fn check_crate(sess: Session,
-                   crate: @crate,
+                   crate: &crate,
                    ast_map: ast_map::map,
                    def_map: resolve::DefMap,
                    method_map: typeck::method_map,

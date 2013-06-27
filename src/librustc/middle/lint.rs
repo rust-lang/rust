@@ -701,7 +701,7 @@ fn lint_type_limits() -> visit::vt<@mut Context> {
     })
 }
 
-fn check_item_default_methods(cx: &Context, item: @ast::item) {
+fn check_item_default_methods(cx: &Context, item: &ast::item) {
     match item.node {
         ast::item_trait(_, _, ref methods) => {
             for methods.iter().advance |method| {
@@ -718,8 +718,8 @@ fn check_item_default_methods(cx: &Context, item: @ast::item) {
     }
 }
 
-fn check_item_ctypes(cx: &Context, it: @ast::item) {
-    fn check_ty(cx: &Context, ty: @ast::Ty) {
+fn check_item_ctypes(cx: &Context, it: &ast::item) {
+    fn check_ty(cx: &Context, ty: &ast::Ty) {
         match ty.node {
             ast::ty_path(_, _, id) => {
                 match cx.tcx.def_map.get_copy(&id) {
@@ -797,7 +797,7 @@ fn check_type(cx: &Context, span: span, ty: ty::t) {
     }
 }
 
-fn check_item_heap(cx: &Context, it: @ast::item) {
+fn check_item_heap(cx: &Context, it: &ast::item) {
     match it.node {
       ast::item_fn(*) |
       ast::item_ty(*) |
@@ -851,7 +851,7 @@ fn lint_path_statement() -> visit::vt<@mut Context> {
     })
 }
 
-fn check_item_non_camel_case_types(cx: &Context, it: @ast::item) {
+fn check_item_non_camel_case_types(cx: &Context, it: &ast::item) {
     fn is_camel_case(cx: ty::ctxt, ident: ast::ident) -> bool {
         let ident = cx.sess.str_of(ident);
         assert!(!ident.is_empty());
@@ -973,7 +973,7 @@ fn lint_session() -> visit::vt<@mut Context> {
 fn lint_unnecessary_allocations() -> visit::vt<@mut Context> {
     // Warn if string and vector literals with sigils are immediately borrowed.
     // Those can have the sigil removed.
-    fn check(cx: &Context, e: @ast::expr) {
+    fn check(cx: &Context, e: &ast::expr) {
         match e.node {
             ast::expr_vstore(e2, ast::expr_vstore_uniq) |
             ast::expr_vstore(e2, ast::expr_vstore_box) => {

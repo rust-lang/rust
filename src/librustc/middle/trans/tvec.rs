@@ -164,7 +164,7 @@ impl VecTypes {
 
 pub fn trans_fixed_vstore(bcx: block,
                           vstore_expr: @ast::expr,
-                          content_expr: @ast::expr,
+                          content_expr: &ast::expr,
                           dest: expr::Dest)
                        -> block {
     //!
@@ -286,7 +286,7 @@ pub fn trans_lit_str(bcx: block,
 
 
 pub fn trans_uniq_or_managed_vstore(bcx: block, heap: heap, vstore_expr: @ast::expr,
-                                    content_expr: @ast::expr) -> DatumBlock {
+                                    content_expr: &ast::expr) -> DatumBlock {
     //!
     //
     // @[...] or ~[...] (also @"..." or ~"...") allocate boxes in the
@@ -346,7 +346,7 @@ pub fn trans_uniq_or_managed_vstore(bcx: block, heap: heap, vstore_expr: @ast::e
 pub fn write_content(bcx: block,
                      vt: &VecTypes,
                      vstore_expr: @ast::expr,
-                     content_expr: @ast::expr,
+                     content_expr: &ast::expr,
                      dest: Dest)
                   -> block {
     let _icx = push_ctxt("tvec::write_content");
@@ -471,7 +471,7 @@ pub fn write_content(bcx: block,
     }
 }
 
-pub fn vec_types_from_expr(bcx: block, vec_expr: @ast::expr) -> VecTypes {
+pub fn vec_types_from_expr(bcx: block, vec_expr: &ast::expr) -> VecTypes {
     let vec_ty = node_id_type(bcx, vec_expr.id);
     vec_types(bcx, vec_ty)
 }
@@ -488,7 +488,7 @@ pub fn vec_types(bcx: block, vec_ty: ty::t) -> VecTypes {
               llunit_size: llunit_size}
 }
 
-pub fn elements_required(bcx: block, content_expr: @ast::expr) -> uint {
+pub fn elements_required(bcx: block, content_expr: &ast::expr) -> uint {
     //! Figure out the number of elements we need to store this content
 
     match content_expr.node {
@@ -541,8 +541,6 @@ pub fn get_base_and_len(bcx: block,
         }
     }
 }
-
-pub type val_and_ty_fn = @fn(block, ValueRef, ty::t) -> Result;
 
 pub type iter_vec_block<'self> = &'self fn(block, ValueRef, ty::t) -> block;
 

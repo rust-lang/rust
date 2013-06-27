@@ -160,7 +160,7 @@ pub fn decl_cdecl_fn(llmod: ModuleRef, name: &str, ty: Type) -> ValueRef {
 
 // Only use this if you are going to actually define the function. It's
 // not valid to simply declare a function as internal.
-pub fn decl_internal_cdecl_fn(llmod: ModuleRef, name: ~str, ty: Type) -> ValueRef {
+pub fn decl_internal_cdecl_fn(llmod: ModuleRef, name: &str, ty: Type) -> ValueRef {
     let llfn = decl_cdecl_fn(llmod, name, ty);
     lib::llvm::SetLinkage(llfn, lib::llvm::InternalLinkage);
     return llfn;
@@ -592,8 +592,7 @@ pub fn compare_scalar_values(cx: block,
     }
 }
 
-pub type val_pair_fn = @fn(block, ValueRef, ValueRef) -> block;
-pub type val_and_ty_fn = @fn(block, ValueRef, ty::t) -> block;
+pub type val_and_ty_fn<'self> = &'self fn(block, ValueRef, ty::t) -> block;
 
 pub fn load_inbounds(cx: block, p: ValueRef, idxs: &[uint]) -> ValueRef {
     return Load(cx, GEPi(cx, p, idxs));
@@ -1032,13 +1031,13 @@ pub fn build_return(bcx: block) {
     Br(bcx, bcx.fcx.llreturn);
 }
 
-pub fn ignore_lhs(_bcx: block, local: @ast::local) -> bool {
+pub fn ignore_lhs(_bcx: block, local: &ast::local) -> bool {
     match local.node.pat.node {
         ast::pat_wild => true, _ => false
     }
 }
 
-pub fn init_local(bcx: block, local: @ast::local) -> block {
+pub fn init_local(bcx: block, local: &ast::local) -> block {
 
     debug!("init_local(bcx=%s, local.id=%?)",
            bcx.to_str(), local.node.id);
@@ -1378,7 +1377,7 @@ pub fn block_locals(b: &ast::blk, it: &fn(@ast::local)) {
     }
 }
 
-pub fn alloc_local(cx: block, local: @ast::local) -> block {
+pub fn alloc_local(cx: block, local: &ast::local) -> block {
     let _icx = push_ctxt("alloc_local");
     let t = node_id_type(cx, local.node.id);
     let simple_name = match local.node.pat.node {
@@ -2379,7 +2378,7 @@ pub fn fill_fn_pair(bcx: block, pair: ValueRef, llfn: ValueRef,
     Store(bcx, llenvblobptr, env_cell);
 }
 
-pub fn item_path(ccx: &CrateContext, i: @ast::item) -> path {
+pub fn item_path(ccx: &CrateContext, i: &ast::item) -> path {
     let base = match ccx.tcx.items.get_copy(&i.id) {
         ast_map::node_item(_, p) => p,
             // separate map for paths?
@@ -2544,7 +2543,7 @@ pub fn register_method(ccx: @mut CrateContext,
 }
 
 // The constant translation pass.
-pub fn trans_constant(ccx: @mut CrateContext, it: @ast::item) {
+pub fn trans_constant(ccx: &mut CrateContext, it: @ast::item) {
     let _icx = push_ctxt("trans_constant");
     match it.node {
       ast::item_enum(ref enum_definition, _) => {
@@ -2894,7 +2893,7 @@ pub fn write_abi_version(ccx: &mut CrateContext) {
 }
 
 pub fn trans_crate(sess: session::Session,
-                   crate: @ast::crate,
+                   crate: &ast::crate,
                    tcx: ty::ctxt,
                    output: &Path,
                    emap2: resolve::ExportMap2,

@@ -19,7 +19,7 @@ pub struct Context {
     can_ret: bool
 }
 
-pub fn check_crate(tcx: ty::ctxt, crate: @crate) {
+pub fn check_crate(tcx: ty::ctxt, crate: &crate) {
     visit::visit_crate(crate,
                        (Context { in_loop: false, can_ret: true },
                        visit::mk_vt(@visit::Visitor {

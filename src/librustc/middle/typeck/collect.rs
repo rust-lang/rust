@@ -61,8 +61,8 @@ use syntax::visit;
 use syntax::opt_vec::OptVec;
 use syntax::opt_vec;
 
-pub fn collect_item_types(ccx: @mut CrateCtxt, crate: @ast::crate) {
-    fn collect_intrinsic_type(ccx: @mut CrateCtxt,
+pub fn collect_item_types(ccx: @mut CrateCtxt, crate: &ast::crate) {
+    fn collect_intrinsic_type(ccx: &CrateCtxt,
                               lang_item: ast::def_id) {
         let ty::ty_param_bounds_and_ty { ty: ty, _ } =
             ccx.get_item_ty(lang_item);
@@ -83,7 +83,7 @@ pub fn collect_item_types(ccx: @mut CrateCtxt, crate: @ast::crate) {
 
 impl CrateCtxt {
     fn to_ty<RS:region_scope + Copy + 'static>(
-        &self, rs: &RS, ast_ty: @ast::Ty) -> ty::t
+        &self, rs: &RS, ast_ty: &ast::Ty) -> ty::t
     {
         ast_ty_to_ty(self, rs, ast_ty)
     }
@@ -632,7 +632,7 @@ pub fn check_methods_against_trait(ccx: &CrateCtxt,
                                    generics: &ast::Generics,
                                    rp: Option<ty::region_variance>,
                                    selfty: ty::t,
-                                   a_trait_ty: @ast::trait_ref,
+                                   a_trait_ty: &ast::trait_ref,
                                    impl_ms: &[ConvertedMethod])
 {
     let tcx = ccx.tcx;
@@ -670,7 +670,7 @@ pub fn check_methods_against_trait(ccx: &CrateCtxt,
 pub fn convert_field(ccx: &CrateCtxt,
                      rp: Option<ty::region_variance>,
                      type_param_defs: @~[ty::TypeParameterDef],
-                     v: @ast::struct_field,
+                     v: &ast::struct_field,
                      generics: &ast::Generics) {
     let region_parameterization =
         RegionParameterization::from_variance_and_generics(rp, generics);
@@ -736,7 +736,7 @@ pub fn convert_methods(ccx: &CrateCtxt,
     });
 
     fn ty_of_method(ccx: &CrateCtxt,
-                    m: @ast::method,
+                    m: &ast::method,
                     rp: Option<ty::region_variance>,
                     untransformed_rcvr_ty: ty::t,
                     rcvr_generics: &ast::Generics,
@@ -785,7 +785,7 @@ pub fn ensure_no_ty_param_bounds(ccx: &CrateCtxt,
     }
 }
 
-pub fn convert(ccx: &CrateCtxt, it: @ast::item) {
+pub fn convert(ccx: &CrateCtxt, it: &ast::item) {
     let tcx = ccx.tcx;
     let rp = tcx.region_paramd_items.find(&it.id).map_consume(|x| *x);
     debug!("convert: item %s with id %d rp %?",
@@ -875,7 +875,7 @@ pub fn convert(ccx: &CrateCtxt, it: @ast::item) {
 
 pub fn convert_struct(ccx: &CrateCtxt,
                       rp: Option<ty::region_variance>,
-                      struct_def: @ast::struct_def,
+                      struct_def: &ast::struct_def,
                       generics: &ast::Generics,
                       tpt: ty::ty_param_bounds_and_ty,
                       id: ast::node_id) {
@@ -914,7 +914,7 @@ pub fn convert_struct(ccx: &CrateCtxt,
     }
 }
 
-pub fn convert_foreign(ccx: &CrateCtxt, i: @ast::foreign_item) {
+pub fn convert_foreign(ccx: &CrateCtxt, i: &ast::foreign_item) {
     // As above, this call populates the type table with the converted
     // type of the foreign item. We simply write it into the node type
     // table.
@@ -937,7 +937,7 @@ pub fn convert_foreign(ccx: &CrateCtxt, i: @ast::foreign_item) {
 }
 
 pub fn instantiate_trait_ref(ccx: &CrateCtxt,
-                             ast_trait_ref: @ast::trait_ref,
+                             ast_trait_ref: &ast::trait_ref,
                              rp: Option<ty::region_variance>,
                              generics: &ast::Generics,
                              self_ty: ty::t) -> @ty::TraitRef
@@ -983,7 +983,7 @@ fn get_trait_def(ccx: &CrateCtxt, trait_id: ast::def_id) -> @ty::TraitDef {
     }
 }
 
-pub fn trait_def_of_item(ccx: &CrateCtxt, it: @ast::item) -> @ty::TraitDef {
+pub fn trait_def_of_item(ccx: &CrateCtxt, it: &ast::item) -> @ty::TraitDef {
     let def_id = local_def(it.id);
     let tcx = ccx.tcx;
     match tcx.trait_defs.find(&def_id) {
@@ -1011,7 +1011,7 @@ pub fn trait_def_of_item(ccx: &CrateCtxt, it: @ast::item) -> @ty::TraitDef {
     }
 }
 
-pub fn ty_of_item(ccx: &CrateCtxt, it: @ast::item)
+pub fn ty_of_item(ccx: &CrateCtxt, it: &ast::item)
                -> ty::ty_param_bounds_and_ty {
     let def_id = local_def(it.id);
     let tcx = ccx.tcx;
@@ -1103,7 +1103,7 @@ pub fn ty_of_item(ccx: &CrateCtxt, it: @ast::item)
 }
 
 pub fn ty_of_foreign_item(ccx: &CrateCtxt,
-                          it: @ast::foreign_item,
+                          it: &ast::foreign_item,
                           abis: AbiSet) -> ty::ty_param_bounds_and_ty
 {
     match it.node {

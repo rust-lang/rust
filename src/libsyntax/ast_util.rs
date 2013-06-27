@@ -565,11 +565,11 @@ pub fn walk_pat(pat: @pat, it: &fn(@pat) -> bool) -> bool {
 }
 
 pub trait EachViewItem {
-    pub fn each_view_item(&self, f: @fn(@ast::view_item) -> bool) -> bool;
+    pub fn each_view_item(&self, f: @fn(&ast::view_item) -> bool) -> bool;
 }
 
 impl EachViewItem for ast::crate {
-    fn each_view_item(&self, f: @fn(@ast::view_item) -> bool) -> bool {
+    fn each_view_item(&self, f: @fn(&ast::view_item) -> bool) -> bool {
         let broke = @mut false;
         let vtor: visit::vt<()> = visit::mk_simple_visitor(@visit::SimpleVisitor {
             visit_view_item: |vi| { *broke = f(vi); }, ..*visit::default_simple_visitor()
@@ -579,7 +579,7 @@ impl EachViewItem for ast::crate {
     }
 }
 
-pub fn view_path_id(p: @view_path) -> node_id {
+pub fn view_path_id(p: &view_path) -> node_id {
     match p.node {
       view_path_simple(_, _, id) |
       view_path_glob(_, id) |

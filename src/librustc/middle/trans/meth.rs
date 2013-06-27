@@ -357,7 +357,7 @@ pub fn method_from_methods(ms: &[@ast::method], name: ast::ident)
     ms.iter().find_(|m| m.ident == name).map(|m| ast_util::local_def(m.id))
 }
 
-pub fn method_with_name_or_default(ccx: @mut CrateContext,
+pub fn method_with_name_or_default(ccx: &mut CrateContext,
                                    impl_id: ast::def_id,
                                    name: ast::ident) -> ast::def_id {
     let imp = ccx.impl_method_cache.find_copy(&(impl_id, name));
@@ -742,8 +742,8 @@ pub fn get_vtable(bcx: block,
 }
 
 /// Helper function to declare and initialize the vtable.
-pub fn make_vtable(ccx: @mut CrateContext,
-                   tydesc: @mut tydesc_info,
+pub fn make_vtable(ccx: &mut CrateContext,
+                   tydesc: &tydesc_info,
                    ptrs: &[ValueRef])
                    -> ValueRef {
     unsafe {
@@ -770,7 +770,7 @@ pub fn make_vtable(ccx: @mut CrateContext,
 pub fn make_impl_vtable(bcx: block,
                         impl_id: ast::def_id,
                         self_ty: ty::t,
-                        substs: ~[ty::t],
+                        substs: &[ty::t],
                         vtables: typeck::vtable_res)
                         -> ValueRef {
     let ccx = bcx.ccx();
