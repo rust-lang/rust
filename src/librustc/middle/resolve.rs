@@ -4862,8 +4862,8 @@ impl Resolver {
         while j != 0 {
             j -= 1;
             for this.value_ribs[j].bindings.each_key |&k| {
-                vec::push(&mut maybes, this.session.str_of(k));
-                vec::push(&mut values, uint::max_value);
+                maybes.push(this.session.str_of(k));
+                values.push(uint::max_value);
             }
         }
 

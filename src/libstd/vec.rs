@@ -438,86 +438,6 @@ pub fn consume_reverse<T>(mut v: ~[T], f: &fn(uint, v: T)) {
     }
 }
 
-/// Append an element to a vector
-#[inline]
-pub fn push<T>(v: &mut ~[T], initval: T) {
-    unsafe {
-        let repr: **raw::VecRepr = transmute(&mut *v);
-        let fill = (**repr).unboxed.fill;
-        if (**repr).unboxed.alloc > fill {
-            push_fast(v, initval);
-        }
-        else {
-            push_slow(v, initval);
-        }
-    }
-}
-
-// This doesn't bother to make sure we have space.
-#[inline] // really pretty please
-unsafe fn push_fast<T>(v: &mut ~[T], initval: T) {
-    let repr: **mut raw::VecRepr = transmute(v);
-    let fill = (**repr).unboxed.fill;
-    (**repr).unboxed.fill += sys::nonzero_size_of::<T>();
-    let p = to_unsafe_ptr(&((**repr).unboxed.data));
-    let p = ptr::offset(p, fill) as *mut T;
-    intrinsics::move_val_init(&mut(*p), initval);
-}
-
-#[inline(never)]
-fn push_slow<T>(v: &mut ~[T], initval: T) {
-    let new_len = v.len() + 1;
-    reserve_at_least(&mut *v, new_len);
-    unsafe { push_fast(v, initval) }
-}
-
-/// Iterates over the slice `rhs`, copies each element, and then appends it to
-/// the vector provided `v`. The `rhs` vector is traversed in-order.
-///
-/// # Example
-///
-/// ~~~ {.rust}
-/// let mut a = ~[1];
-/// vec::push_all(&mut a, [2, 3, 4]);
-/// assert!(a == ~[1, 2, 3, 4]);
-/// ~~~
-#[inline]
-pub fn push_all<T:Copy>(v: &mut ~[T], rhs: &const [T]) {
-    let new_len = v.len() + rhs.len();
-    reserve(&mut *v, new_len);
-
-    for uint::range(0u, rhs.len()) |i| {
-        push(&mut *v, unsafe { raw::get(rhs, i) })
-    }
-}
-
-/// Takes ownership of the vector `rhs`, moving all elements into the specified
-/// vector `v`. This does not copy any elements, and it is illegal to use the
-/// `rhs` vector after calling this method (because it is moved here).
-///
-/// # Example
-///
-/// ~~~ {.rust}
-/// let mut a = ~[~1];
-/// vec::push_all_move(&mut a, ~[~2, ~3, ~4]);
-/// assert!(a == ~[~1, ~2, ~3, ~4]);
-/// ~~~
-#[inline]
-pub fn push_all_move<T>(v: &mut ~[T], mut rhs: ~[T]) {
-    let new_len = v.len() + rhs.len();
-    reserve(&mut *v, new_len);
-    unsafe {
-        do as_mut_buf(rhs) |p, len| {
-            for uint::range(0, len) |i| {
-                let x = ptr::replace_ptr(ptr::mut_offset(p, i),
-                                         intrinsics::uninit());
-                push(&mut *v, x);
-            }
-        }
-        raw::set_len(&mut rhs, 0);
-    }
-}
-
 /// Shorten a vector, dropping excess elements.
 pub fn truncate<T>(v: &mut ~[T], newlen: uint) {
     do as_mut_buf(*v) |p, oldlen| {
@@ -1699,6 +1619,8 @@ impl<'self,T:Copy> ImmutableCopyableVector<T> for &'self [T] {
 #[allow(missing_doc)]
 pub trait OwnedVector<T> {
     fn push(&mut self, t: T);
+    unsafe fn push_fast(&mut self, t: T);
+
     fn push_all_move(&mut self, rhs: ~[T]);
     fn pop(&mut self) -> T;
     fn shift(&mut self) -> T;
@@ -1716,14 +1638,67 @@ pub trait OwnedVector<T> {
 }
 
 impl<T> OwnedVector<T> for ~[T] {
+    /// Append an element to a vector
     #[inline]
     fn push(&mut self, t: T) {
-        push(self, t);
+        unsafe {
+            let repr: **raw::VecRepr = transmute(&mut *self);
+            let fill = (**repr).unboxed.fill;
+            if (**repr).unboxed.alloc <= fill {
+                // need more space
+                reserve_no_inline(self);
+            }
+
+            self.push_fast(t);
+        }
+
+        // this peculiar function is because reserve_at_least is very
+        // large (because of reserve), and will be inlined, which
+        // makes push too large.
+        #[inline(never)]
+        fn reserve_no_inline<T>(v: &mut ~[T]) {
+            let new_len = v.len() + 1;
+            reserve_at_least(v, new_len);
+        }
     }
 
+    // This doesn't bother to make sure we have space.
+    #[inline] // really pretty please
+    unsafe fn push_fast(&mut self, t: T) {
+        let repr: **mut raw::VecRepr = transmute(self);
+        let fill = (**repr).unboxed.fill;
+        (**repr).unboxed.fill += sys::nonzero_size_of::<T>();
+        let p = to_unsafe_ptr(&((**repr).unboxed.data));
+        let p = ptr::offset(p, fill) as *mut T;
+        intrinsics::move_val_init(&mut(*p), t);
+    }
+
+    /// Takes ownership of the vector `rhs`, moving all elements into
+    /// the current vector. This does not copy any elements, and it is
+    /// illegal to use the `rhs` vector after calling this method
+    /// (because it is moved here).
+    ///
+    /// # Example
+    ///
+    /// ~~~ {.rust}
+    /// let mut a = ~[~1];
+    /// a.push_all_move(~[~2, ~3, ~4]);
+    /// assert!(a == ~[~1, ~2, ~3, ~4]);
+    /// ~~~
     #[inline]
-    fn push_all_move(&mut self, rhs: ~[T]) {
-        push_all_move(self, rhs);
+    fn push_all_move(&mut self, mut rhs: ~[T]) {
+        let new_len = self.len() + rhs.len();
+        reserve(self, new_len);
+        unsafe {
+            do as_mut_buf(rhs) |p, len| {
+                for uint::range(0, len) |i| {
+                    let x = ptr::replace_ptr(ptr::mut_offset(p, i),
+                                             intrinsics::uninit());
+                    self.push(x);
+                }
+            }
+            raw::set_len(&mut rhs, 0);
+        }
     }
 
     /// Remove the last element from a vector and return it
@@ -1898,9 +1873,24 @@ pub trait OwnedCopyableVector<T:Copy> {
 }
 
 impl<T:Copy> OwnedCopyableVector<T> for ~[T] {
+    /// Iterates over the slice `rhs`, copies each element, and then appends it to
+    /// the vector provided `v`. The `rhs` vector is traversed in-order.
+    ///
+    /// # Example
+    ///
+    /// ~~~ {.rust}
+    /// let mut a = ~[1];
+    /// a.push_all([2, 3, 4]);
+    /// assert!(a == ~[1, 2, 3, 4]);
+    /// ~~~
     #[inline]
     fn push_all(&mut self, rhs: &const [T]) {
-        push_all(self, rhs);
+        let new_len = self.len() + rhs.len();
+        reserve(self, new_len);
+
+        for uint::range(0u, rhs.len()) |i| {
+            self.push(unsafe { raw::get(rhs, i) })
+        }
     }
 
     #[inline]

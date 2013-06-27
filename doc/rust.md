@@ -2620,7 +2620,7 @@ assert!(b != "world");
 
 The vector type constructor represents a homogeneous array of values of a given type.
 A vector has a fixed size.
-(Operations like `vec::push` operate solely on owned vectors.)
+(Operations like `vec.push` operate solely on owned vectors.)
 A vector type can be annotated with a _definite_ size,
 written with a trailing asterisk and integer literal, such as `[int * 10]`.
 Such a definite-sized vector type is a first-class type, since its size is known statically.
