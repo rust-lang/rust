@@ -523,10 +523,10 @@ impl<'self> EachItemContext<'self> {
                 Mod | ForeignMod | Trait | Impl => {
                     continue = self.each_item_of_module(def_id);
                 }
-                ImmStatic | MutStatic | Struct | UnsafeFn | Fn | PureFn |
-                ForeignFn | UnsafeStaticMethod | StaticMethod |
-                PureStaticMethod | Type | ForeignType | Variant | Enum |
-                PublicField | PrivateField | InheritedField => {}
+                ImmStatic | MutStatic | Struct | UnsafeFn | Fn | ForeignFn |
+                UnsafeStaticMethod | StaticMethod | Type | ForeignType |
+                Variant | Enum | PublicField | PrivateField |
+                InheritedField => {}
             }
         }
 
