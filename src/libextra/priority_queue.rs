@@ -52,12 +52,12 @@ impl<T:Ord> PriorityQueue<T> {
     }
 
     /// Returns the number of elements the queue can hold without reallocating
-    pub fn capacity(&self) -> uint { vec::capacity(&self.data) }
+    pub fn capacity(&self) -> uint { self.data.capacity() }
 
-    pub fn reserve(&mut self, n: uint) { vec::reserve(&mut self.data, n) }
+    pub fn reserve(&mut self, n: uint) { self.data.reserve(n) }
 
     pub fn reserve_at_least(&mut self, n: uint) {
-        vec::reserve_at_least(&mut self.data, n)
+        self.data.reserve_at_least(n)
     }
 
     /// Pop the greatest item from the queue - fails if empty

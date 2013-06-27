@@ -69,63 +69,6 @@ pub fn same_length<T, U>(xs: &const [T], ys: &const [U]) -> bool {
 }
 
 /**
- * Reserves capacity for exactly `n` elements in the given vector.
- *
- * If the capacity for `v` is already equal to or greater than the requested
- * capacity, then no action is taken.
- *
- * # Arguments
- *
- * * v - A vector
- * * n - The number of elements to reserve space for
- */
-#[inline]
-pub fn reserve<T>(v: &mut ~[T], n: uint) {
-    // Only make the (slow) call into the runtime if we have to
-    use managed;
-    if capacity(v) < n {
-        unsafe {
-            let ptr: **raw::VecRepr = cast::transmute(v);
-            let td = get_tydesc::<T>();
-            if ((**ptr).box_header.ref_count ==
-                managed::raw::RC_MANAGED_UNIQUE) {
-                rustrt::vec_reserve_shared_actual(td, ptr, n as libc::size_t);
-            } else {
-                rustrt::vec_reserve_shared(td, ptr, n as libc::size_t);
-            }
-        }
-    }
-}
-
-/**
- * Reserves capacity for at least `n` elements in the given vector.
- *
- * This function will over-allocate in order to amortize the allocation costs
- * in scenarios where the caller may need to repeatedly reserve additional
- * space.
- *
- * If the capacity for `v` is already equal to or greater than the requested
- * capacity, then no action is taken.
- *
- * # Arguments
- *
- * * v - A vector
- * * n - The number of elements to reserve space for
- */
-pub fn reserve_at_least<T>(v: &mut ~[T], n: uint) {
-    reserve(v, uint::next_power_of_two(n));
-}
-
-/// Returns the number of elements the vector can hold without reallocating
-#[inline]
-pub fn capacity<T>(v: &const ~[T]) -> uint {
-    unsafe {
-        let repr: **raw::VecRepr = transmute(v);
-        (**repr).unboxed.alloc / sys::nonzero_size_of::<T>()
-    }
-}
-
-/**
  * Creates and initializes an owned vector.
  *
  * Creates an owned vector of size `n_elts` and initializes the elements
@@ -179,7 +122,7 @@ pub fn to_owned<T:Copy>(t: &[T]) -> ~[T] {
 /// Creates a new vector with a capacity of `capacity`
 pub fn with_capacity<T>(capacity: uint) -> ~[T] {
     let mut vec = ~[];
-    reserve(&mut vec, capacity);
+    vec.reserve(capacity);
     vec
 }
 
@@ -466,7 +409,7 @@ pub fn append_one<T>(lhs: ~[T], x: T) -> ~[T] {
  */
 pub fn grow<T:Copy>(v: &mut ~[T], n: uint, initval: &T) {
     let new_len = v.len() + n;
-    reserve_at_least(&mut *v, new_len);
+    v.reserve_at_least(new_len);
     let mut i: uint = 0u;
 
     while i < n {
@@ -490,7 +433,7 @@ pub fn grow<T:Copy>(v: &mut ~[T], n: uint, initval: &T) {
  */
 pub fn grow_fn<T>(v: &mut ~[T], n: uint, op: &fn(uint) -> T) {
     let new_len = v.len() + n;
-    reserve_at_least(&mut *v, new_len);
+    v.reserve_at_least(new_len);
     let mut i: uint = 0u;
     while i < n {
         v.push(op(i));
@@ -1298,13 +1241,11 @@ impl<'self,T:Copy> CopyableVector<T> for &'self [T] {
     /// Returns a copy of `v`.
     #[inline]
     fn to_owned(&self) -> ~[T] {
-        let mut result = ~[];
-        reserve(&mut result, self.len());
+        let mut result = with_capacity(self.len());
         for self.iter().advance |e| {
             result.push(copy *e);
         }
         result
-
     }
 }
 
@@ -1555,6 +1496,10 @@ impl<'self,T:Copy> ImmutableCopyableVector<T> for &'self [T] {
 
 #[allow(missing_doc)]
 pub trait OwnedVector<T> {
+    fn reserve(&mut self, n: uint);
+    fn reserve_at_least(&mut self, n: uint);
+    fn capacity(&self) -> uint;
+
     fn push(&mut self, t: T);
     unsafe fn push_fast(&mut self, t: T);
 
@@ -1575,6 +1520,61 @@ pub trait OwnedVector<T> {
 }
 
 impl<T> OwnedVector<T> for ~[T] {
+    /**
+     * Reserves capacity for exactly `n` elements in the given vector.
+     *
+     * If the capacity for `self` is already equal to or greater than the requested
+     * capacity, then no action is taken.
+     *
+     * # Arguments
+     *
+     * * n - The number of elements to reserve space for
+     */
+    #[inline]
+    fn reserve(&mut self, n: uint) {
+        // Only make the (slow) call into the runtime if we have to
+        use managed;
+        if self.capacity() < n {
+            unsafe {
+                let ptr: **raw::VecRepr = cast::transmute(self);
+                let td = get_tydesc::<T>();
+                if ((**ptr).box_header.ref_count ==
+                    managed::raw::RC_MANAGED_UNIQUE) {
+                    rustrt::vec_reserve_shared_actual(td, ptr, n as libc::size_t);
+                } else {
+                    rustrt::vec_reserve_shared(td, ptr, n as libc::size_t);
+                }
+            }
+        }
+    }
+
+    /**
+     * Reserves capacity for at least `n` elements in the given vector.
+     *
+     * This function will over-allocate in order to amortize the allocation costs
+     * in scenarios where the caller may need to repeatedly reserve additional
+     * space.
+     *
+     * If the capacity for `self` is already equal to or greater than the requested
+     * capacity, then no action is taken.
+     *
+     * # Arguments
+     *
+     * * n - The number of elements to reserve space for
+     */
+    fn reserve_at_least(&mut self, n: uint) {
+        self.reserve(uint::next_power_of_two(n));
+    }
+
+    /// Returns the number of elements the vector can hold without reallocating.
+    #[inline]
+    fn capacity(&self) -> uint {
+        unsafe {
+            let repr: **raw::VecRepr = transmute(self);
+            (**repr).unboxed.alloc / sys::nonzero_size_of::<T>()
+        }
+    }
+
     /// Append an element to a vector
     #[inline]
     fn push(&mut self, t: T) {
@@ -1595,7 +1595,7 @@ impl<T> OwnedVector<T> for ~[T] {
         #[inline(never)]
         fn reserve_no_inline<T>(v: &mut ~[T]) {
             let new_len = v.len() + 1;
-            reserve_at_least(v, new_len);
+            v.reserve_at_least(new_len);
         }
     }
 
@@ -1625,7 +1625,7 @@ impl<T> OwnedVector<T> for ~[T] {
     #[inline]
     fn push_all_move(&mut self, mut rhs: ~[T]) {
         let new_len = self.len() + rhs.len();
-        reserve(self, new_len);
+        self.reserve(new_len);
         unsafe {
             do as_mut_buf(rhs) |p, len| {
                 for uint::range(0, len) |i| {
@@ -1672,7 +1672,7 @@ impl<T> OwnedVector<T> for ~[T] {
             // Save the last element. We're going to overwrite its position
             let work_elt = self.pop();
             // We still should have room to work where what last element was
-            assert!(capacity(self) >= ln);
+            assert!(self.capacity() >= ln);
             // Pretend like we have the original length so we can use
             // the vector copy_memory to overwrite the hole we just made
             raw::set_len(self, ln);
@@ -1859,7 +1859,7 @@ impl<T:Copy> OwnedCopyableVector<T> for ~[T] {
     #[inline]
     fn push_all(&mut self, rhs: &const [T]) {
         let new_len = self.len() + rhs.len();
-        reserve(self, new_len);
+        self.reserve(new_len);
 
         for uint::range(0u, rhs.len()) |i| {
             self.push(unsafe { raw::get(rhs, i) })
@@ -3333,11 +3333,11 @@ mod tests {
     #[test]
     fn test_capacity() {
         let mut v = ~[0u64];
-        reserve(&mut v, 10u);
-        assert_eq!(capacity(&v), 10u);
+        v.reserve(10u);
+        assert_eq!(v.capacity(), 10u);
         let mut v = ~[0u32];
-        reserve(&mut v, 10u);
-        assert_eq!(capacity(&v), 10u);
+        v.reserve(10u);
+        assert_eq!(v.capacity(), 10u);
     }
 
     #[test]

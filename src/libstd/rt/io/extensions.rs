@@ -292,7 +292,7 @@ impl<T: Reader> ReaderUtil for T {
             let start_len = buf.len();
             let mut total_read = 0;
 
-            vec::reserve_at_least(buf, start_len + len);
+            buf.reserve_at_least(start_len + len);
             vec::raw::set_len(buf, start_len + len);
 
             do (|| {
