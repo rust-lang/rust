@@ -3861,11 +3861,11 @@ mod tests {
     fn test_vec_zero() {
         use num::Zero;
         macro_rules! t (
-            ($ty:ty) => {
+            ($ty:ty) => {{
                 let v: $ty = Zero::zero();
                 assert!(v.is_empty());
                 assert!(v.is_zero());
-            }
+            }}
         );
 
         t!(&[int]);

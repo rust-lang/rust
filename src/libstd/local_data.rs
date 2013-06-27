@@ -92,14 +92,12 @@ fn test_tls_multitask() {
         fn my_key(_x: @~str) { }
         local_data_set(my_key, @~"parent data");
         do task::spawn {
-            unsafe {
-                // TLS shouldn't carry over.
-                assert!(local_data_get(my_key).is_none());
-                local_data_set(my_key, @~"child data");
-                assert!(*(local_data_get(my_key).get()) ==
+            // TLS shouldn't carry over.
+            assert!(local_data_get(my_key).is_none());
+            local_data_set(my_key, @~"child data");
+            assert!(*(local_data_get(my_key).get()) ==
                     ~"child data");
-                // should be cleaned up for us
-            }
+            // should be cleaned up for us
         }
         // Must work multiple times
         assert!(*(local_data_get(my_key).get()) == ~"parent data");
@@ -206,12 +204,11 @@ fn test_tls_cleanup_on_failure() {
         local_data_set(str_key, @~"parent data");
         local_data_set(box_key, @@());
         do task::spawn {
-            unsafe { // spawn_linked
-                local_data_set(str_key, @~"string data");
-                local_data_set(box_key, @@());
-                local_data_set(int_key, @42);
-                fail!();
-            }
+            // spawn_linked
+            local_data_set(str_key, @~"string data");
+            local_data_set(box_key, @@());
+            local_data_set(int_key, @42);
+            fail!();
         }
         // Not quite nondeterministic.
         local_data_set(int_key, @31337);
