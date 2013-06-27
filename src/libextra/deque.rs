@@ -9,12 +9,12 @@
 // except according to those terms.
 
 //! A double-ended queue implemented as a circular buffer
-
 use core::prelude::*;
 
 use core::uint;
 use core::util::replace;
 use core::vec;
+use core::cast::transmute;
 
 static initial_capacity: uint = 32u; // 2^5
 
@@ -153,7 +153,86 @@ impl<T> Deque<T> {
     pub fn reserve_at_least(&mut self, n: uint) {
         vec::reserve_at_least(&mut self.elts, n);
     }
+
+    /// Front-to-back iterator.
+    pub fn iter<'a>(&'a self) -> DequeIterator<'a, T> {
+    DequeIterator { idx: self.lo, nelts: self.nelts, used: 0, vec: self.elts }
+    }
+
+    /// Front-to-back iterator which returns mutable values.
+    pub fn mut_iter<'a>(&'a mut self) -> DequeMutIterator<'a, T> {
+    DequeMutIterator { idx: self.lo, nelts: self.nelts, used: 0, vec: self.elts }
+    }
+
+    /// Back-to-front iterator.
+    pub fn rev_iter<'a>(&'a self) -> DequeRevIterator<'a, T> {
+    DequeRevIterator { idx: self.hi - 1u, nelts: self.nelts, used: 0, vec: self.elts }
+    }
+
+    /// Back-to-front iterator which returns mutable values.
+    pub fn mut_rev_iter<'a>(&'a mut self) -> DequeMutRevIterator<'a, T> {
+    DequeMutRevIterator { idx: self.hi - 1u, nelts: self.nelts, used: 0, vec: self.elts }
+    }
 }
+
+macro_rules! iterator {
+    (impl $name:ident -> $elem:ty, $step:expr) => {
+        impl<'self, T> Iterator<$elem> for $name<'self, T> {
+            #[inline]
+            fn next(&mut self) -> Option<$elem> {
+                if self.used >= self.nelts {
+                    return None;
+                }
+                let ret = unsafe {
+                    match self.vec[self.idx % self.vec.len()] {
+                        Some(ref e) => Some(transmute(e)),
+                        None => None
+                    }
+                };
+                self.idx += $step;
+                self.used += 1;
+                ret
+            }
+        }
+    }
+}
+
+/// Deque iterator
+pub struct DequeIterator<'self, T> {
+    priv idx: uint,
+    priv nelts: uint,
+    priv used: uint,
+    priv vec: &'self [Option<T>]
+}
+iterator!{impl DequeIterator -> &'self T, 1}
+
+/// Deque reverse iterator
+pub struct DequeRevIterator<'self, T> {
+    priv idx: uint,
+    priv nelts: uint,
+    priv used: uint,
+    priv vec: &'self [Option<T>]
+}
+iterator!{impl DequeRevIterator -> &'self T, -1}
+
+/// Deque mutable iterator
+pub struct DequeMutIterator<'self, T> {
+    priv idx: uint,
+    priv nelts: uint,
+    priv used: uint,
+    priv vec: &'self mut [Option<T>]
+
+}
+iterator!{impl DequeMutIterator -> &'self mut T, 1}
+
+/// Deque mutable reverse iterator
+pub struct DequeMutRevIterator<'self, T> {
+    priv idx: uint,
+    priv nelts: uint,
+    priv used: uint,
+    priv vec: &'self mut [Option<T>]
+}
+iterator!{impl DequeMutRevIterator -> &'self mut T, -1}
 
 /// Grow is only called on full elts, so nelts is also len(elts), unlike
 /// elsewhere.
@@ -178,6 +257,7 @@ mod tests {
     use core::cmp::Eq;
     use core::kinds::Copy;
     use core::vec::capacity;
+    use core;
 
     #[test]
     fn test_simple() {
@@ -318,8 +398,7 @@ mod tests {
 
     #[test]
     fn test_param_taggy() {
-        test_parameterized::<Taggy>(One(1), Two(1, 2), Three(1, 2, 3),
-                                    Two(17, 42));
+        test_parameterized::<Taggy>(One(1), Two(1, 2), Three(1, 2, 3), Two(17, 42));
     }
 
     #[test]
@@ -382,4 +461,31 @@ mod tests {
         assert_eq!(capacity(&mut d.elts), 64);
     }
 
+    #[test]
+    fn test_iter() {
+        let mut d = Deque::new();
+        for core::int::range(0,5) |i| {
+            d.add_back(i);
+        }
+        assert_eq!(d.iter().collect::<~[&int]>(), ~[&0,&1,&2,&3,&4]);
+
+        for core::int::range(6,9) |i| {
+            d.add_front(i);
+        }
+        assert_eq!(d.iter().collect::<~[&int]>(), ~[&8,&7,&6,&0,&1,&2,&3,&4]);
+    }
+
+    #[test]
+    fn test_rev_iter() {
+        let mut d = Deque::new();
+        for core::int::range(0,5) |i| {
+            d.add_back(i);
+        }
+        assert_eq!(d.rev_iter().collect::<~[&int]>(), ~[&4,&3,&2,&1,&0]);
+
+        for core::int::range(6,9) |i| {
+            d.add_front(i);
+        }
+        assert_eq!(d.rev_iter().collect::<~[&int]>(), ~[&4,&3,&2,&1,&0,&6,&7,&8]);
+    }
 }

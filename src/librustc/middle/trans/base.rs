@@ -55,7 +55,6 @@ use middle::trans::machine::{llalign_of_min, llsize_of};
 use middle::trans::meth;
 use middle::trans::monomorphize;
 use middle::trans::reachable;
-use middle::trans::shape::*;
 use middle::trans::tvec;
 use middle::trans::type_of;
 use middle::trans::type_of::*;
@@ -2866,6 +2865,26 @@ pub fn write_metadata(cx: &mut CrateContext, crate: &ast::crate) {
         };
         lib::llvm::SetLinkage(llvm_used, lib::llvm::AppendingLinkage);
         llvm::LLVMSetInitializer(llvm_used, C_array(t_ptr_i8, [llglobal]));
+    }
+}
+
+fn mk_global(ccx: &CrateContext,
+             name: &str,
+             llval: ValueRef,
+             internal: bool)
+          -> ValueRef {
+    unsafe {
+        let llglobal = do str::as_c_str(name) |buf| {
+            llvm::LLVMAddGlobal(ccx.llmod, val_ty(llval).to_ref(), buf)
+        };
+        llvm::LLVMSetInitializer(llglobal, llval);
+        llvm::LLVMSetGlobalConstant(llglobal, True);
+
+        if internal {
+            lib::llvm::SetLinkage(llglobal, lib::llvm::InternalLinkage);
+        }
+
+        return llglobal;
     }
 }
 

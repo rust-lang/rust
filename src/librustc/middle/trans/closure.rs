@@ -210,7 +210,7 @@ pub fn store_environment(bcx: block,
     let ccx = bcx.ccx();
     let tcx = ccx.tcx;
 
-    // compute the shape of the closure
+    // compute the type of the closure
     let cdata_ty = mk_closure_tys(tcx, bound_values);
 
     // allocate closure in the heap

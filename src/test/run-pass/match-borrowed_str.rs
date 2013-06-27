@@ -1,55 +1,60 @@
-// FIXME #7306
-// xfail-fast
+// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// file at the top-level directory of this distribution and at
+// http://rust-lang.org/COPYRIGHT.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
 
-use std::io;
-
-fn f1(ref_string: &str) {
+fn f1(ref_string: &str) -> ~str {
     match ref_string {
-        "a" => io::println("found a"),
-        "b" => io::println("found b"),
-        _ => io::println("not found")
+        "a" => ~"found a",
+        "b" => ~"found b",
+        _ => ~"not found"
     }
 }
 
-fn f2(ref_string: &str) {
+fn f2(ref_string: &str) -> ~str {
     match ref_string {
-        "a" => io::println("found a"),
-        "b" => io::println("found b"),
-        s => io::println(fmt!("not found (%s)", s))
+        "a" => ~"found a",
+        "b" => ~"found b",
+        s => fmt!("not found (%s)", s)
     }
 }
 
-fn g1(ref_1: &str, ref_2: &str) {
+fn g1(ref_1: &str, ref_2: &str) -> ~str {
     match (ref_1, ref_2) {
-        ("a", "b") => io::println("found a,b"),
-        ("b", "c") => io::println("found b,c"),
-        _ => io::println("not found")
+        ("a", "b") => ~"found a,b",
+        ("b", "c") => ~"found b,c",
+        _ => ~"not found"
     }
 }
 
-fn g2(ref_1: &str, ref_2: &str) {
+fn g2(ref_1: &str, ref_2: &str) -> ~str {
     match (ref_1, ref_2) {
-        ("a", "b") => io::println("found a,b"),
-        ("b", "c") => io::println("found b,c"),
-        (s1, s2) => io::println(fmt!("not found (%s, %s)", s1, s2))
+        ("a", "b") => ~"found a,b",
+        ("b", "c") => ~"found b,c",
+        (s1, s2) => fmt!("not found (%s, %s)", s1, s2)
     }
 }
 
 pub fn main() {
-    f1(@"a");
-    f1(~"b");
-    f1(&"c");
-    f1("d");
-    f2(@"a");
-    f2(~"b");
-    f2(&"c");
-    f2("d");
-    g1(@"a", @"b");
-    g1(~"b", ~"c");
-    g1(&"c", &"d");
-    g1("d", "e");
-    g2(@"a", @"b");
-    g2(~"b", ~"c");
-    g2(&"c", &"d");
-    g2("d", "e");
+    assert_eq!(f1(@"a"), ~"found a");
+    assert_eq!(f1(~"b"), ~"found b");
+    assert_eq!(f1(&"c"), ~"not found");
+    assert_eq!(f1("d"), ~"not found");
+    assert_eq!(f2(@"a"), ~"found a");
+    assert_eq!(f2(~"b"), ~"found b");
+    assert_eq!(f2(&"c"), ~"not found (c)");
+    assert_eq!(f2("d"), ~"not found (d)");
+    assert_eq!(g1(@"a", @"b"), ~"found a,b");
+    assert_eq!(g1(~"b", ~"c"), ~"found b,c");
+    assert_eq!(g1(&"c", &"d"), ~"not found");
+    assert_eq!(g1("d", "e"), ~"not found");
+    assert_eq!(g2(@"a", @"b"), ~"found a,b");
+    assert_eq!(g2(~"b", ~"c"), ~"found b,c");
+    assert_eq!(g2(&"c", &"d"), ~"not found (c, d)");
+    assert_eq!(g2("d", "e"), ~"not found (d, e)");
 }
