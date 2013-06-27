@@ -377,96 +377,6 @@ pub fn partitioned<T:Copy>(v: &[T], f: &fn(&T) -> bool) -> (~[T], ~[T]) {
     (lefts, rights)
 }
 
-// Mutators
-
-/// Removes the first element from a vector and return it
-pub fn shift<T>(v: &mut ~[T]) -> T {
-    unsafe {
-        assert!(!v.is_empty());
-
-        if v.len() == 1 { return v.pop() }
-
-        if v.len() == 2 {
-            let last = v.pop();
-            let first = v.pop();
-            v.push(last);
-            return first;
-        }
-
-        let ln = v.len();
-        let next_ln = v.len() - 1;
-
-        // Save the last element. We're going to overwrite its position
-        let work_elt = v.pop();
-        // We still should have room to work where what last element was
-        assert!(capacity(v) >= ln);
-        // Pretend like we have the original length so we can use
-        // the vector copy_memory to overwrite the hole we just made
-        raw::set_len(&mut *v, ln);
-
-        // Memcopy the head element (the one we want) to the location we just
-        // popped. For the moment it unsafely exists at both the head and last
-        // positions
-        {
-            let first_slice = v.slice(0, 1);
-            let last_slice = v.slice(next_ln, ln);
-            raw::copy_memory(transmute(last_slice), first_slice, 1);
-        }
-
-        // Memcopy everything to the left one element
-        {
-            let init_slice = v.slice(0, next_ln);
-            let tail_slice = v.slice(1, ln);
-            raw::copy_memory(transmute(init_slice),
-                             tail_slice,
-                             next_ln);
-        }
-
-        // Set the new length. Now the vector is back to normal
-        raw::set_len(&mut *v, next_ln);
-
-        // Swap out the element we want from the end
-        let vp = raw::to_mut_ptr(*v);
-        let vp = ptr::mut_offset(vp, next_ln - 1);
-
-        ptr::replace_ptr(vp, work_elt)
-    }
-}
-
-/// Prepend an element to the vector
-pub fn unshift<T>(v: &mut ~[T], x: T) {
-    let vv = util::replace(v, ~[x]);
-    v.push_all_move(vv);
-}
-
-/// Insert an element at position i within v, shifting all
-/// elements after position i one position to the right.
-pub fn insert<T>(v: &mut ~[T], i: uint, x: T) {
-    let len = v.len();
-    assert!(i <= len);
-
-    v.push(x);
-    let mut j = len;
-    while j > i {
-        swap(*v, j, j - 1);
-        j -= 1;
-    }
-}
-
-/// Remove and return the element at position i within v, shifting
-/// all elements after position i one position to the left.
-pub fn remove<T>(v: &mut ~[T], i: uint) -> T {
-    let len = v.len();
-    assert!(i < len);
-
-    let mut j = i;
-    while j < len - 1 {
-        swap(*v, j, j + 1);
-        j += 1;
-    }
-    v.pop()
-}
-
 /// Consumes all elements, in a vector, moving them out into the / closure
 /// provided. The vector is traversed from the start to the end.
 ///
@@ -526,37 +436,6 @@ pub fn consume_reverse<T>(mut v: ~[T], f: &fn(uint, v: T)) {
 
         raw::set_len(&mut v, 0);
     }
-}
-
-/// Remove the last element from a vector and return it
-pub fn pop<T>(v: &mut ~[T]) -> T {
-    let ln = v.len();
-    if ln == 0 {
-        fail!("sorry, cannot vec::pop an empty vector")
-    }
-    let valptr = ptr::to_mut_unsafe_ptr(&mut v[ln - 1u]);
-    unsafe {
-        let val = ptr::replace_ptr(valptr, intrinsics::init());
-        raw::set_len(v, ln - 1u);
-        val
-    }
-}
-
-/**
- * Remove an element from anywhere in the vector and return it, replacing it
- * with the last element. This does not preserve ordering, but is O(1).
- *
- * Fails if index >= length.
- */
-pub fn swap_remove<T>(v: &mut ~[T], index: uint) -> T {
-    let ln = v.len();
-    if index >= ln {
-        fail!("vec::swap_remove - index %u >= length %u", index, ln);
-    }
-    if index < ln - 1 {
-        swap(*v, index, ln - 1);
-    }
-    v.pop()
 }
 
 /// Append an element to a vector
@@ -1847,34 +1726,123 @@ impl<T> OwnedVector<T> for ~[T] {
         push_all_move(self, rhs);
     }
 
-    #[inline]
+    /// Remove the last element from a vector and return it
     fn pop(&mut self) -> T {
-        pop(self)
+        let ln = self.len();
+        if ln == 0 {
+            fail!("sorry, cannot pop an empty vector")
+        }
+        let valptr = ptr::to_mut_unsafe_ptr(&mut self[ln - 1u]);
+        unsafe {
+            let val = ptr::replace_ptr(valptr, intrinsics::init());
+            raw::set_len(self, ln - 1u);
+            val
+        }
     }
 
-    #[inline]
+    /// Removes the first element from a vector and return it
     fn shift(&mut self) -> T {
-        shift(self)
+        unsafe {
+            assert!(!self.is_empty());
+
+            if self.len() == 1 { return self.pop() }
+
+            if self.len() == 2 {
+                let last = self.pop();
+                let first = self.pop();
+                self.push(last);
+                return first;
+            }
+
+            let ln = self.len();
+            let next_ln = self.len() - 1;
+
+            // Save the last element. We're going to overwrite its position
+            let work_elt = self.pop();
+            // We still should have room to work where what last element was
+            assert!(capacity(self) >= ln);
+            // Pretend like we have the original length so we can use
+            // the vector copy_memory to overwrite the hole we just made
+            raw::set_len(self, ln);
+
+            // Memcopy the head element (the one we want) to the location we just
+            // popped. For the moment it unsafely exists at both the head and last
+            // positions
+            {
+                let first_slice = self.slice(0, 1);
+                let last_slice = self.slice(next_ln, ln);
+                raw::copy_memory(transmute(last_slice), first_slice, 1);
+            }
+
+            // Memcopy everything to the left one element
+            {
+                let init_slice = self.slice(0, next_ln);
+                let tail_slice = self.slice(1, ln);
+                raw::copy_memory(transmute(init_slice),
+                                 tail_slice,
+                                 next_ln);
+            }
+
+            // Set the new length. Now the vector is back to normal
+            raw::set_len(self, next_ln);
+
+            // Swap out the element we want from the end
+            let vp = raw::to_mut_ptr(*self);
+            let vp = ptr::mut_offset(vp, next_ln - 1);
+
+            ptr::replace_ptr(vp, work_elt)
+        }
     }
 
-    #[inline]
+    /// Prepend an element to the vector
     fn unshift(&mut self, x: T) {
-        unshift(self, x)
+        let v = util::replace(self, ~[x]);
+        self.push_all_move(v);
     }
 
-    #[inline]
+    /// Insert an element at position i within v, shifting all
+    /// elements after position i one position to the right.
     fn insert(&mut self, i: uint, x:T) {
-        insert(self, i, x)
+        let len = self.len();
+        assert!(i <= len);
+
+        self.push(x);
+        let mut j = len;
+        while j > i {
+            swap(*self, j, j - 1);
+            j -= 1;
+        }
     }
 
-    #[inline]
+    /// Remove and return the element at position i within v, shifting
+    /// all elements after position i one position to the left.
     fn remove(&mut self, i: uint) -> T {
-        remove(self, i)
+        let len = self.len();
+        assert!(i < len);
+
+        let mut j = i;
+        while j < len - 1 {
+            swap(*self, j, j + 1);
+            j += 1;
+        }
+        self.pop()
     }
 
-    #[inline]
+    /**
+     * Remove an element from anywhere in the vector and return it, replacing it
+     * with the last element. This does not preserve ordering, but is O(1).
+     *
+     * Fails if index >= length.
+     */
     fn swap_remove(&mut self, index: uint) -> T {
-        swap_remove(self, index)
+        let ln = self.len();
+        if index >= ln {
+            fail!("vec::swap_remove - index %u >= length %u", index, ln);
+        }
+        if index < ln - 1 {
+            swap(*self, index, ln - 1);
+        }
+        self.pop()
     }
 
     #[inline]
