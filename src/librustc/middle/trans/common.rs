@@ -125,7 +125,7 @@ pub type ExternMap = HashMap<@str, ValueRef>;
 pub struct ValSelfData {
     v: ValueRef,
     t: ty::t,
-    is_owned: bool
+    is_copy: bool,
 }
 
 // Here `self_ty` is the real type of the self parameter to this method. It
