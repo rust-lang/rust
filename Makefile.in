@@ -139,7 +139,7 @@ endif
 
 # version-string calculation
 CFG_GIT_DIR := $(CFG_SRC_DIR).git
-CFG_RELEASE = 0.6
+CFG_RELEASE = 0.7-pre
 CFG_VERSION = $(CFG_RELEASE)
 
 ifneq ($(wildcard $(CFG_GIT)),)
