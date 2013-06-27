@@ -42,7 +42,7 @@ use path_util::{U_RWX, rust_path, in_rust_path};
 use path_util::{built_executable_in_workspace, built_library_in_workspace, default_workspace};
 use path_util::{target_executable_in_workspace, target_library_in_workspace};
 use source_control::is_git_dir;
-use workspace::{each_pkg_parent_workspace, pkg_parent_workspaces};
+use workspace::{each_pkg_parent_workspace, pkg_parent_workspaces, in_workspace, cwd_to_workspace};
 use context::Ctx;
 use package_id::PkgId;
 use package_source::PkgSrc;
@@ -199,26 +199,41 @@ impl CtxMethods for Ctx {
         match cmd {
             "build" => {
                 if args.len() < 1 {
-                    return usage::build();
+                    if !in_workspace(|| { usage::build() } ) {
+                        return;
+                    }
+                    let (workspace, pkgid) = cwd_to_workspace();
+                    self.build(&workspace, &pkgid);
                 }
-                // The package id is presumed to be the first command-line
-                // argument
-                let pkgid = PkgId::new(args[0].clone(), &os::getcwd());
-                for each_pkg_parent_workspace(&pkgid) |workspace| {
-                    debug!("found pkg %s in workspace %s, trying to build",
-                           pkgid.to_str(), workspace.to_str());
-                    self.build(workspace, &pkgid);
+                else {
+                    // The package id is presumed to be the first command-line
+                    // argument
+                    let pkgid = PkgId::new(args[0].clone(), &os::getcwd());
+                    for each_pkg_parent_workspace(&pkgid) |workspace| {
+                        debug!("found pkg %s in workspace %s, trying to build",
+                               pkgid.to_str(), workspace.to_str());
+                        self.build(workspace, &pkgid);
+                    }
                 }
             }
             "clean" => {
                 if args.len() < 1 {
-                    return usage::build();
+                    if !in_workspace(|| { usage::clean() } ) {
+                        return;
+                    }
+                    // tjc: Maybe clean should clean all the packages in the
+                    // current workspace, though?
+                    let (workspace, pkgid) = cwd_to_workspace();
+                    self.clean(&workspace, &pkgid);
+
                 }
-                // The package id is presumed to be the first command-line
-                // argument
-                let pkgid = PkgId::new(args[0].clone(), &os::getcwd());
-                let cwd = os::getcwd();
-                self.clean(&cwd, &pkgid); // tjc: should use workspace, not cwd
+                else {
+                    // The package id is presumed to be the first command-line
+                    // argument
+                    let pkgid = PkgId::new(args[0].clone(), &os::getcwd());
+                    let cwd = os::getcwd();
+                    self.clean(&cwd, &pkgid); // tjc: should use workspace, not cwd
+                }
             }
             "do" => {
                 if args.len() < 2 {
@@ -232,37 +247,36 @@ impl CtxMethods for Ctx {
             }
             "install" => {
                 if args.len() < 1 {
-                    return usage::install();
-                }
-
-                // The package id is presumed to be the first command-line
-                // argument
-                let pkgid = PkgId::new(args[0], &os::getcwd());
-                let workspaces = pkg_parent_workspaces(&pkgid);
-                if workspaces.is_empty() {
-                    debug!("install! workspaces was empty");
-                    let rp = rust_path();
-                    assert!(!rp.is_empty());
-                    let src = PkgSrc::new(&rp[0], &build_pkg_id_in_workspace(&pkgid, &rp[0]),
-                                          &pkgid);
-                    src.fetch_git();
-                    self.install(&rp[0], &pkgid);
+                    if !in_workspace(|| { usage::install() }) {
+                        return;
+                    }
+                    let (workspace, pkgid) = cwd_to_workspace();
+                    self.install(&workspace, &pkgid);
                 }
                 else {
-                    for each_pkg_parent_workspace(&pkgid) |workspace| {
-                        debug!("install: found pkg %s in workspace %s, trying to build",
-                               pkgid.to_str(), workspace.to_str());
-
-                        self.install(workspace, &pkgid);
+                    // The package id is presumed to be the first command-line
+                    // argument
+                    let pkgid = PkgId::new(args[0], &os::getcwd());
+                    let workspaces = pkg_parent_workspaces(&pkgid);
+                    if workspaces.is_empty() {
+                        let rp = rust_path();
+                        assert!(!rp.is_empty());
+                        let src = PkgSrc::new(&rp[0], &build_pkg_id_in_workspace(&pkgid, &rp[0]),
+                                              &pkgid);
+                        src.fetch_git();
+                        self.install(&rp[0], &pkgid);
+                    }
+                    else {
+                        for each_pkg_parent_workspace(&pkgid) |workspace| {
+                            self.install(workspace, &pkgid);
+                        }
                     }
                 }
             }
             "list" => {
                 io::println("Installed packages:");
                 for installed_packages::list_installed_packages |pkg_id| {
-                    io::println(fmt!("%s-%s",
-                                     pkg_id.local_path.to_str(),
-                                     pkg_id.version.to_str()));
+                    io::println(pkg_id.local_path.to_str());
                 }
             }
             "prefer" => {
