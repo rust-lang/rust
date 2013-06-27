@@ -30,11 +30,11 @@ pub fn maybe_inject_libstd_ref(sess: Session, crate: @ast::crate)
     }
 }
 
-fn use_std(crate: @ast::crate) -> bool {
+fn use_std(crate: &ast::crate) -> bool {
     !attr::attrs_contains_name(crate.node.attrs, "no_std")
 }
 
-fn inject_libstd_ref(sess: Session, crate: @ast::crate) -> @ast::crate {
+fn inject_libstd_ref(sess: Session, crate: &ast::crate) -> @ast::crate {
     fn spanned<T:Copy>(x: T) -> codemap::spanned<T> {
         codemap::spanned { node: x, span: dummy_sp() }
     }

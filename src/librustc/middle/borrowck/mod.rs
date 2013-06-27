@@ -58,7 +58,7 @@ pub fn check_crate(
     moves_map: moves::MovesMap,
     moved_variables_set: moves::MovedVariablesSet,
     capture_map: moves::CaptureMap,
-    crate: @ast::crate) -> (root_map, write_guard_map)
+    crate: &ast::crate) -> (root_map, write_guard_map)
 {
     let bccx = @BorrowckCtxt {
         tcx: tcx,
@@ -507,7 +507,7 @@ impl BorrowckCtxt {
     pub fn report_use_of_moved_value(&self,
                                      use_span: span,
                                      use_kind: MovedValueUseKind,
-                                     lp: @LoanPath,
+                                     lp: &LoanPath,
                                      move: &move_data::Move,
                                      moved_lp: @LoanPath) {
         let verb = match use_kind {
@@ -570,7 +570,7 @@ impl BorrowckCtxt {
 
     pub fn report_reassigned_immutable_variable(&self,
                                                 span: span,
-                                                lp: @LoanPath,
+                                                lp: &LoanPath,
                                                 assign:
                                                 &move_data::Assignment) {
         self.tcx.sess.span_err(

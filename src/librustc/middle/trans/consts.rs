@@ -35,7 +35,7 @@ use core::libc::c_uint;
 use core::str;
 use syntax::{ast, ast_util, ast_map};
 
-pub fn const_lit(cx: @mut CrateContext, e: @ast::expr, lit: ast::lit)
+pub fn const_lit(cx: &mut CrateContext, e: &ast::expr, lit: ast::lit)
     -> ValueRef {
     let _icx = push_ctxt("trans_lit");
     match lit.node {
@@ -82,7 +82,7 @@ pub fn const_ptrcast(cx: &mut CrateContext, a: ValueRef, t: Type) -> ValueRef {
     }
 }
 
-pub fn const_vec(cx: @mut CrateContext, e: @ast::expr, es: &[@ast::expr])
+pub fn const_vec(cx: @mut CrateContext, e: &ast::expr, es: &[@ast::expr])
     -> (ValueRef, ValueRef, Type) {
     unsafe {
         let vec_ty = ty::expr_ty(cx.tcx, e);
@@ -101,7 +101,7 @@ pub fn const_vec(cx: @mut CrateContext, e: @ast::expr, es: &[@ast::expr])
     }
 }
 
-fn const_addr_of(cx: @mut CrateContext, cv: ValueRef) -> ValueRef {
+fn const_addr_of(cx: &mut CrateContext, cv: ValueRef) -> ValueRef {
     unsafe {
         let gv = do "const".as_c_str |name| {
             llvm::LLVMAddGlobal(cx.llmod, val_ty(cv).to_ref(), name)
@@ -113,7 +113,7 @@ fn const_addr_of(cx: @mut CrateContext, cv: ValueRef) -> ValueRef {
     }
 }
 
-fn const_deref_ptr(cx: @mut CrateContext, v: ValueRef) -> ValueRef {
+fn const_deref_ptr(cx: &mut CrateContext, v: ValueRef) -> ValueRef {
     let v = match cx.const_globals.find(&(v as int)) {
         Some(&v) => v,
         None => v
@@ -124,13 +124,13 @@ fn const_deref_ptr(cx: @mut CrateContext, v: ValueRef) -> ValueRef {
     }
 }
 
-fn const_deref_newtype(cx: @mut CrateContext, v: ValueRef, t: ty::t)
+fn const_deref_newtype(cx: &mut CrateContext, v: ValueRef, t: ty::t)
     -> ValueRef {
     let repr = adt::represent_type(cx, t);
     adt::const_get_field(cx, repr, v, 0, 0)
 }
 
-fn const_deref(cx: @mut CrateContext, v: ValueRef, t: ty::t, explicit: bool)
+fn const_deref(cx: &mut CrateContext, v: ValueRef, t: ty::t, explicit: bool)
     -> (ValueRef, ty::t) {
     match ty::deref(cx.tcx, t, explicit) {
         Some(ref mt) => {
@@ -247,7 +247,7 @@ pub fn const_expr(cx: @mut CrateContext, e: @ast::expr) -> ValueRef {
     llconst
 }
 
-fn const_expr_unadjusted(cx: @mut CrateContext, e: @ast::expr) -> ValueRef {
+fn const_expr_unadjusted(cx: @mut CrateContext, e: &ast::expr) -> ValueRef {
     unsafe {
         let _icx = push_ctxt("const_expr");
         return match e.node {
@@ -393,7 +393,8 @@ fn const_expr_unadjusted(cx: @mut CrateContext, e: @ast::expr) -> ValueRef {
                           let llunitty = type_of::type_of(cx, unit_ty);
                           let unit_sz = machine::llsize_of(cx, llunitty);
 
-                          (const_deref_ptr(cx, const_get_elt(cx, bv, [0])),
+                          let e1 = const_get_elt(cx, bv, [0]);
+                          (const_deref_ptr(cx, e1),
                            llvm::LLVMConstUDiv(const_get_elt(cx, bv, [1]),
                                                unit_sz))
                       },

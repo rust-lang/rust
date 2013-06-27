@@ -75,7 +75,7 @@ pub fn join_all(cs: &[constness]) -> constness {
     cs.iter().fold(integral_const, |a, b| join(a, *b))
 }
 
-pub fn classify(e: @expr,
+pub fn classify(e: &expr,
                 tcx: ty::ctxt)
              -> constness {
     let did = ast_util::local_def(e.id);
@@ -164,7 +164,7 @@ pub fn classify(e: @expr,
     }
 }
 
-pub fn lookup_const(tcx: ty::ctxt, e: @expr) -> Option<@expr> {
+pub fn lookup_const(tcx: ty::ctxt, e: &expr) -> Option<@expr> {
     match tcx.def_map.find(&e.id) {
         Some(&ast::def_static(def_id, false)) => lookup_const_by_id(tcx, def_id),
         _ => None
@@ -203,7 +203,7 @@ pub fn lookup_const_by_id(tcx: ty::ctxt,
     }
 }
 
-pub fn lookup_constness(tcx: ty::ctxt, e: @expr) -> constness {
+pub fn lookup_constness(tcx: ty::ctxt, e: &expr) -> constness {
     match lookup_const(tcx, e) {
         Some(rhs) => {
             let ty = ty::expr_ty(tcx, rhs);
@@ -217,7 +217,7 @@ pub fn lookup_constness(tcx: ty::ctxt, e: @expr) -> constness {
     }
 }
 
-pub fn process_crate(crate: @ast::crate,
+pub fn process_crate(crate: &ast::crate,
                      tcx: ty::ctxt) {
     let v = visit::mk_simple_visitor(@visit::SimpleVisitor {
         visit_expr_post: |e| { classify(e, tcx); },
@@ -239,14 +239,14 @@ pub enum const_val {
     const_bool(bool)
 }
 
-pub fn eval_const_expr(tcx: middle::ty::ctxt, e: @expr) -> const_val {
+pub fn eval_const_expr(tcx: middle::ty::ctxt, e: &expr) -> const_val {
     match eval_const_expr_partial(tcx, e) {
         Ok(r) => r,
         Err(s) => tcx.sess.span_fatal(e.span, s)
     }
 }
 
-pub fn eval_const_expr_partial(tcx: middle::ty::ctxt, e: @expr)
+pub fn eval_const_expr_partial(tcx: middle::ty::ctxt, e: &expr)
                             -> Result<const_val, ~str> {
     use middle::ty;
     fn fromb(b: bool) -> Result<const_val, ~str> { Ok(const_int(b as i64)) }
@@ -406,7 +406,7 @@ pub fn eval_const_expr_partial(tcx: middle::ty::ctxt, e: @expr)
     }
 }
 
-pub fn lit_to_const(lit: @lit) -> const_val {
+pub fn lit_to_const(lit: &lit) -> const_val {
     match lit.node {
       lit_str(s) => const_str(s),
       lit_int(n, _) => const_int(n),
@@ -434,14 +434,14 @@ pub fn compare_const_vals(a: &const_val, b: &const_val) -> Option<int> {
     }
 }
 
-pub fn compare_lit_exprs(tcx: middle::ty::ctxt, a: @expr, b: @expr) -> Option<int> {
+pub fn compare_lit_exprs(tcx: middle::ty::ctxt, a: &expr, b: &expr) -> Option<int> {
     compare_const_vals(&eval_const_expr(tcx, a), &eval_const_expr(tcx, b))
 }
 
-pub fn lit_expr_eq(tcx: middle::ty::ctxt, a: @expr, b: @expr) -> Option<bool> {
+pub fn lit_expr_eq(tcx: middle::ty::ctxt, a: &expr, b: &expr) -> Option<bool> {
     compare_lit_exprs(tcx, a, b).map(|&val| val == 0)
 }
 
-pub fn lit_eq(a: @lit, b: @lit) -> Option<bool> {
+pub fn lit_eq(a: &lit, b: &lit) -> Option<bool> {
     compare_const_vals(&lit_to_const(a), &lit_to_const(b)).map(|&val| val == 0)
 }

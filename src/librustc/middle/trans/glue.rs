@@ -205,7 +205,7 @@ pub fn simplified_glue_type(tcx: ty::ctxt, field: uint, t: ty::t) -> ty::t {
 
 pub fn lazily_emit_simplified_tydesc_glue(ccx: @mut CrateContext,
                                           field: uint,
-                                          ti: @mut tydesc_info) -> bool {
+                                          ti: &mut tydesc_info) -> bool {
     let _icx = push_ctxt("lazily_emit_simplified_tydesc_glue");
     let simpl = simplified_glue_type(ccx.tcx, field, ti.ty);
     if simpl != ti.ty {
@@ -244,7 +244,7 @@ pub fn lazily_emit_tydesc_glue(ccx: @mut CrateContext,
           None => {
             debug!("+++ lazily_emit_tydesc_glue TAKE %s",
                    ppaux::ty_to_str(ccx.tcx, ti.ty));
-            let glue_fn = declare_generic_glue(ccx, ti.ty, llfnty, ~"take");
+            let glue_fn = declare_generic_glue(ccx, ti.ty, llfnty, "take");
             ti.take_glue = Some(glue_fn);
             make_generic_glue(ccx, ti.ty, glue_fn, make_take_glue, "take");
             debug!("--- lazily_emit_tydesc_glue TAKE %s",
@@ -257,7 +257,7 @@ pub fn lazily_emit_tydesc_glue(ccx: @mut CrateContext,
           None => {
             debug!("+++ lazily_emit_tydesc_glue DROP %s",
                    ppaux::ty_to_str(ccx.tcx, ti.ty));
-            let glue_fn = declare_generic_glue(ccx, ti.ty, llfnty, ~"drop");
+            let glue_fn = declare_generic_glue(ccx, ti.ty, llfnty, "drop");
             ti.drop_glue = Some(glue_fn);
             make_generic_glue(ccx, ti.ty, glue_fn, make_drop_glue, "drop");
             debug!("--- lazily_emit_tydesc_glue DROP %s",
@@ -270,7 +270,7 @@ pub fn lazily_emit_tydesc_glue(ccx: @mut CrateContext,
           None => {
             debug!("+++ lazily_emit_tydesc_glue FREE %s",
                    ppaux::ty_to_str(ccx.tcx, ti.ty));
-            let glue_fn = declare_generic_glue(ccx, ti.ty, llfnty, ~"free");
+            let glue_fn = declare_generic_glue(ccx, ti.ty, llfnty, "free");
             ti.free_glue = Some(glue_fn);
             make_generic_glue(ccx, ti.ty, glue_fn, make_free_glue, "free");
             debug!("--- lazily_emit_tydesc_glue FREE %s",
@@ -283,7 +283,7 @@ pub fn lazily_emit_tydesc_glue(ccx: @mut CrateContext,
           None => {
             debug!("+++ lazily_emit_tydesc_glue VISIT %s",
                    ppaux::ty_to_str(ccx.tcx, ti.ty));
-            let glue_fn = declare_generic_glue(ccx, ti.ty, llfnty, ~"visit");
+            let glue_fn = declare_generic_glue(ccx, ti.ty, llfnty, "visit");
             ti.visit_glue = Some(glue_fn);
             make_generic_glue(ccx, ti.ty, glue_fn, make_visit_glue, "visit");
             debug!("--- lazily_emit_tydesc_glue VISIT %s",
@@ -627,12 +627,12 @@ pub fn make_take_glue(bcx: block, v: ValueRef, t: ty::t) {
       ty::ty_opaque_closure_ptr(ck) => {
         closure::make_opaque_cbox_take_glue(bcx, ck, v)
       }
-      ty::ty_struct(did, ref substs) => {
+      ty::ty_struct(did, _) => {
         let tcx = bcx.tcx();
         let bcx = iter_structural_ty(bcx, v, t, take_ty);
 
         match ty::ty_dtor(tcx, did) {
-          ty::TraitDtor(dtor, false) => {
+          ty::TraitDtor(_, false) => {
             // Zero out the struct
             unsafe {
                 let ty = Type::from_ref(llvm::LLVMTypeOf(v));
@@ -700,12 +700,11 @@ pub fn declare_tydesc(ccx: &mut CrateContext, t: ty::t) -> @mut tydesc_info {
     return inf;
 }
 
-pub type glue_helper = @fn(block, ValueRef, ty::t);
+pub type glue_helper<'self> = &'self fn(block, ValueRef, ty::t);
 
-pub fn declare_generic_glue(ccx: @mut CrateContext, t: ty::t, llfnty: Type,
-                            name: ~str) -> ValueRef {
+pub fn declare_generic_glue(ccx: &mut CrateContext, t: ty::t, llfnty: Type,
+                            name: &str) -> ValueRef {
     let _icx = push_ctxt("declare_generic_glue");
-    let name = name;
     let fn_nm = mangle_internal_name_by_type_and_seq(ccx, t, (~"glue_" + name)).to_managed();
     debug!("%s is for type %s", fn_nm, ppaux::ty_to_str(ccx.tcx, t));
     note_unique_llvm_symbol(ccx, fn_nm);

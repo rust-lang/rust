@@ -254,7 +254,7 @@ pub fn trans_to_datum(bcx: block, expr: @ast::expr) -> DatumBlock {
 
     fn auto_slice(bcx: block,
                   autoderefs: uint,
-                  expr: @ast::expr,
+                  expr: &ast::expr,
                   datum: Datum) -> DatumBlock {
         // This is not the most efficient thing possible; since slices
         // are two words it'd be better if this were compiled in
@@ -280,7 +280,7 @@ pub fn trans_to_datum(bcx: block, expr: @ast::expr) -> DatumBlock {
         DatumBlock {bcx: bcx, datum: scratch}
     }
 
-    fn add_env(bcx: block, expr: @ast::expr, datum: Datum) -> DatumBlock {
+    fn add_env(bcx: block, expr: &ast::expr, datum: Datum) -> DatumBlock {
         // This is not the most efficient thing possible; since closures
         // are two words it'd be better if this were compiled in
         // 'dest' mode, but I can't find a nice way to structure the
@@ -301,7 +301,7 @@ pub fn trans_to_datum(bcx: block, expr: @ast::expr) -> DatumBlock {
 
     fn auto_slice_and_ref(bcx: block,
                           autoderefs: uint,
-                          expr: @ast::expr,
+                          expr: &ast::expr,
                           datum: Datum) -> DatumBlock {
         let DatumBlock { bcx, datum } = auto_slice(bcx, autoderefs, expr, datum);
         auto_ref(bcx, datum)
@@ -705,7 +705,7 @@ fn trans_rvalue_dps_unadjusted(bcx: block, expr: @ast::expr,
     }
 }
 
-fn trans_def_dps_unadjusted(bcx: block, ref_expr: @ast::expr,
+fn trans_def_dps_unadjusted(bcx: block, ref_expr: &ast::expr,
                             def: ast::def, dest: Dest) -> block {
     let _icx = push_ctxt("trans_def_dps_unadjusted");
     let ccx = bcx.ccx();
@@ -752,7 +752,7 @@ fn trans_def_dps_unadjusted(bcx: block, ref_expr: @ast::expr,
 }
 
 fn trans_def_datum_unadjusted(bcx: block,
-                              ref_expr: @ast::expr,
+                              ref_expr: &ast::expr,
                               def: ast::def) -> DatumBlock
 {
     let _icx = push_ctxt("trans_def_datum_unadjusted");
@@ -776,7 +776,7 @@ fn trans_def_datum_unadjusted(bcx: block,
     }
 
     fn fn_data_to_datum(bcx: block,
-                        ref_expr: @ast::expr,
+                        ref_expr: &ast::expr,
                         def_id: ast::def_id,
                         fn_data: callee::FnData) -> DatumBlock {
         /*!
@@ -873,7 +873,7 @@ fn trans_lvalue_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
     }
 
     fn trans_index(bcx: block,
-                   index_expr: @ast::expr,
+                   index_expr: &ast::expr,
                    base: @ast::expr,
                    idx: @ast::expr) -> DatumBlock {
         //! Translates `base[idx]`.
@@ -936,7 +936,7 @@ fn trans_lvalue_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
     }
 
     fn trans_def_lvalue(bcx: block,
-                        ref_expr: @ast::expr,
+                        ref_expr: &ast::expr,
                         def: ast::def)
         -> DatumBlock
     {
@@ -1263,7 +1263,7 @@ fn trans_immediate_lit(bcx: block, expr: @ast::expr,
 }
 
 fn trans_unary_datum(bcx: block,
-                     un_expr: @ast::expr,
+                     un_expr: &ast::expr,
                      op: ast::unop,
                      sub_expr: @ast::expr) -> DatumBlock {
     let _icx = push_ctxt("trans_unary_datum");
@@ -1337,7 +1337,7 @@ fn trans_unary_datum(bcx: block,
     }
 }
 
-fn trans_addr_of(bcx: block, expr: @ast::expr,
+fn trans_addr_of(bcx: block, expr: &ast::expr,
                  subexpr: @ast::expr) -> DatumBlock {
     let _icx = push_ctxt("trans_addr_of");
     let mut bcx = bcx;
@@ -1349,7 +1349,7 @@ fn trans_addr_of(bcx: block, expr: @ast::expr,
 // Important to get types for both lhs and rhs, because one might be _|_
 // and the other not.
 fn trans_eager_binop(bcx: block,
-                     binop_expr: @ast::expr,
+                     binop_expr: &ast::expr,
                      binop_ty: ty::t,
                      op: ast::binop,
                      lhs_datum: &Datum,
@@ -1447,7 +1447,7 @@ fn trans_eager_binop(bcx: block,
 enum lazy_binop_ty { lazy_and, lazy_or }
 
 fn trans_lazy_binop(bcx: block,
-                    binop_expr: @ast::expr,
+                    binop_expr: &ast::expr,
                     op: lazy_binop_ty,
                     a: @ast::expr,
                     b: @ast::expr) -> DatumBlock {
@@ -1492,7 +1492,7 @@ fn trans_lazy_binop(bcx: block,
 }
 
 fn trans_binary(bcx: block,
-                binop_expr: @ast::expr,
+                binop_expr: &ast::expr,
                 op: ast::binop,
                 lhs: @ast::expr,
                 rhs: @ast::expr) -> DatumBlock
@@ -1518,7 +1518,7 @@ fn trans_binary(bcx: block,
 }
 
 fn trans_overloaded_op(bcx: block,
-                       expr: @ast::expr,
+                       expr: &ast::expr,
                        callee_id: ast::node_id,
                        rcvr: @ast::expr,
                        args: ~[@ast::expr],

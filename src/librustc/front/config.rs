@@ -24,11 +24,11 @@ struct Context {
 // any items that do not belong in the current configuration
 pub fn strip_unconfigured_items(crate: @ast::crate) -> @ast::crate {
     do strip_items(crate) |attrs| {
-        in_cfg(/*bad*/copy crate.node.config, attrs)
+        in_cfg(crate.node.config, attrs)
     }
 }
 
-pub fn strip_items(crate: @ast::crate, in_cfg: in_cfg_pred)
+pub fn strip_items(crate: &ast::crate, in_cfg: in_cfg_pred)
     -> @ast::crate {
 
     let ctxt = @Context { in_cfg: in_cfg };
@@ -44,8 +44,7 @@ pub fn strip_items(crate: @ast::crate, in_cfg: in_cfg_pred)
           .. *fold::default_ast_fold()};
 
     let fold = fold::make_fold(precursor);
-    let res = @fold.fold_crate(&*crate);
-    return res;
+    @fold.fold_crate(crate)
 }
 
 fn filter_item(cx: @Context, item: @ast::item) ->
@@ -183,12 +182,12 @@ fn trait_method_in_cfg(cx: @Context, meth: &ast::trait_method) -> bool {
 
 // Determine if an item should be translated in the current crate
 // configuration based on the item's attributes
-fn in_cfg(cfg: ast::crate_cfg, attrs: ~[ast::attribute]) -> bool {
+fn in_cfg(cfg: &[@ast::meta_item], attrs: &[ast::attribute]) -> bool {
     metas_in_cfg(cfg, attr::attr_metas(attrs))
 }
 
-pub fn metas_in_cfg(cfg: ast::crate_cfg,
-                    metas: ~[@ast::meta_item]) -> bool {
+pub fn metas_in_cfg(cfg: &[@ast::meta_item],
+                    metas: &[@ast::meta_item]) -> bool {
     // The "cfg" attributes on the item
     let cfg_metas = attr::find_meta_items_by_name(metas, "cfg");
 

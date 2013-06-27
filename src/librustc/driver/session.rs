@@ -349,7 +349,7 @@ pub fn expect<T:Copy>(sess: Session,
 }
 
 pub fn building_library(req_crate_type: crate_type,
-                        crate: @ast::crate,
+                        crate: &ast::crate,
                         testing: bool) -> bool {
     match req_crate_type {
       bin_crate => false,

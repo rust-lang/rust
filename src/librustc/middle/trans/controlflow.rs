@@ -178,7 +178,7 @@ pub fn trans_loop(bcx:block,
     return next_bcx;
 }
 
-pub fn trans_log(log_ex: @ast::expr,
+pub fn trans_log(log_ex: &ast::expr,
                  lvl: @ast::expr,
                  bcx: block,
                  e: @ast::expr) -> block {

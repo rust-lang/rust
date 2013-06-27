@@ -17,7 +17,6 @@ use middle::typeck;
 use util::ppaux::{Repr, ty_to_str};
 use util::ppaux::UserString;
 
-use core::vec;
 use syntax::ast::*;
 use syntax::attr::attrs_contains_name;
 use syntax::codemap::span;
@@ -63,7 +62,7 @@ pub struct Context {
 
 pub fn check_crate(tcx: ty::ctxt,
                    method_map: typeck::method_map,
-                   crate: @crate) {
+                   crate: &crate) {
     let ctx = Context {
         tcx: tcx,
         method_map: method_map,
@@ -163,7 +162,7 @@ fn check_item(item: @item, (cx, visitor): (Context, visit::vt<Context>)) {
 // closure.
 fn with_appropriate_checker(cx: Context, id: node_id,
                             b: &fn(checker: &fn(Context, @freevar_entry))) {
-    fn check_for_uniq(cx: Context, fv: @freevar_entry, bounds: ty::BuiltinBounds) {
+    fn check_for_uniq(cx: Context, fv: &freevar_entry, bounds: ty::BuiltinBounds) {
         // all captured data must be owned, regardless of whether it is
         // moved in or copied in.
         let id = ast_util::def_id_of_def(fv.def).node;
@@ -175,7 +174,7 @@ fn with_appropriate_checker(cx: Context, id: node_id,
         check_freevar_bounds(cx, fv.span, var_t, bounds);
     }
 
-    fn check_for_box(cx: Context, fv: @freevar_entry, bounds: ty::BuiltinBounds) {
+    fn check_for_box(cx: Context, fv: &freevar_entry, bounds: ty::BuiltinBounds) {
         // all captured data must be owned
         let id = ast_util::def_id_of_def(fv.def).node;
         let var_t = ty::node_id_to_type(cx.tcx, id);
@@ -186,7 +185,7 @@ fn with_appropriate_checker(cx: Context, id: node_id,
         check_freevar_bounds(cx, fv.span, var_t, bounds);
     }
 
-    fn check_for_block(cx: Context, fv: @freevar_entry, bounds: ty::BuiltinBounds) {
+    fn check_for_block(cx: Context, fv: &freevar_entry, bounds: ty::BuiltinBounds) {
         let id = ast_util::def_id_of_def(fv.def).node;
         let var_t = ty::node_id_to_type(cx.tcx, id);
         check_freevar_bounds(cx, fv.span, var_t, bounds);
@@ -496,8 +495,8 @@ pub fn check_durable(tcx: ty::ctxt, ty: ty::t, sp: span) -> bool {
 /// FIXME(#5723)---This code should probably move into regionck.
 pub fn check_cast_for_escaping_regions(
     cx: Context,
-    source: @expr,
-    target: @expr)
+    source: &expr,
+    target: &expr)
 {
     // Determine what type we are casting to; if it is not an trait, then no
     // worries.

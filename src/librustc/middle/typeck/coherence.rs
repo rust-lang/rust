@@ -197,7 +197,7 @@ pub struct CoherenceChecker {
 }
 
 impl CoherenceChecker {
-    pub fn check_coherence(self, crate: @crate) {
+    pub fn check_coherence(self, crate: &crate) {
         // Check implementations and traits. This populates the tables
         // containing the inherent methods and extension methods. It also
         // builds up the trait inheritance table.
@@ -455,7 +455,7 @@ impl CoherenceChecker {
     }
 
     pub fn check_implementation_coherence(&self) {
-        let coherence_info = self.crate_context.coherence_info;
+        let coherence_info = &self.crate_context.coherence_info;
         for coherence_info.extension_methods.each_key |&trait_id| {
             self.check_implementation_coherence_of(trait_id);
         }
@@ -514,7 +514,7 @@ impl CoherenceChecker {
     }
 
     pub fn iter_impls_of_trait(&self, trait_def_id: def_id, f: &fn(@Impl)) {
-        let coherence_info = self.crate_context.coherence_info;
+        let coherence_info = &self.crate_context.coherence_info;
         let extension_methods = &*coherence_info.extension_methods;
 
         match extension_methods.find(&trait_def_id) {
@@ -631,7 +631,7 @@ impl CoherenceChecker {
     }
 
     // Privileged scope checking
-    pub fn check_privileged_scopes(self, crate: @crate) {
+    pub fn check_privileged_scopes(self, crate: &crate) {
         visit_crate(crate, ((), mk_vt(@Visitor {
             visit_item: |item, (_context, visitor)| {
                 match item.node {
@@ -978,7 +978,7 @@ impl CoherenceChecker {
     //
 
     pub fn populate_destructor_table(&self) {
-        let coherence_info = self.crate_context.coherence_info;
+        let coherence_info = &self.crate_context.coherence_info;
         let tcx = self.crate_context.tcx;
         let drop_trait = tcx.lang_items.drop_trait();
         let impls_opt = coherence_info.extension_methods.find(&drop_trait);
@@ -1102,7 +1102,7 @@ fn subst_receiver_types_in_method_ty(tcx: ty::ctxt,
     )
 }
 
-pub fn check_coherence(crate_context: @mut CrateCtxt, crate: @crate) {
-    let coherence_checker = @CoherenceChecker(crate_context);
+pub fn check_coherence(crate_context: @mut CrateCtxt, crate: &crate) {
+    let coherence_checker = CoherenceChecker(crate_context);
     coherence_checker.check_coherence(crate);
 }
