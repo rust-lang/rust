@@ -267,11 +267,10 @@ pub fn run(main: ~fn()) -> int {
     };
 
     // Create and enqueue the main task.
-    let main_cell = Cell::new(main);
     let mut new_task = ~Task::new_root();
     new_task.on_exit = Some(on_exit);
     let main_task = ~Coroutine::with_task(&mut scheds[0].stack_pool,
-                                          new_task, main_cell.take());
+                                          new_task, main);
     scheds[0].enqueue_task(main_task);
 
     // Run each scheduler in a thread.
