@@ -24,35 +24,38 @@ use core::io;
 
 // FIXME (#2807): Windows support.
 
-pub static color_black: u8 = 0u8;
-pub static color_red: u8 = 1u8;
-pub static color_green: u8 = 2u8;
-pub static color_yellow: u8 = 3u8;
-pub static color_blue: u8 = 4u8;
-pub static color_magenta: u8 = 5u8;
-pub static color_cyan: u8 = 6u8;
-pub static color_light_gray: u8 = 7u8;
-pub static color_light_grey: u8 = 7u8;
-pub static color_dark_gray: u8 = 8u8;
-pub static color_dark_grey: u8 = 8u8;
-pub static color_bright_red: u8 = 9u8;
-pub static color_bright_green: u8 = 10u8;
-pub static color_bright_yellow: u8 = 11u8;
-pub static color_bright_blue: u8 = 12u8;
-pub static color_bright_magenta: u8 = 13u8;
-pub static color_bright_cyan: u8 = 14u8;
-pub static color_bright_white: u8 = 15u8;
+pub mod color {
+    pub type Color = u16;
+
+    pub static black:   Color = 0u16;
+    pub static red:     Color = 1u16;
+    pub static green:   Color = 2u16;
+    pub static yellow:  Color = 3u16;
+    pub static blue:    Color = 4u16;
+    pub static magenta: Color = 5u16;
+    pub static cyan:    Color = 6u16;
+    pub static white:   Color = 7u16;
+
+    pub static bright_black:   Color = 8u16;
+    pub static bright_red:     Color = 9u16;
+    pub static bright_green:   Color = 10u16;
+    pub static bright_yellow:  Color = 11u16;
+    pub static bright_blue:    Color = 12u16;
+    pub static bright_magenta: Color = 13u16;
+    pub static bright_cyan:    Color = 14u16;
+    pub static bright_white:   Color = 15u16;
+}
 
 #[cfg(not(target_os = "win32"))]
 pub struct Terminal {
-    color_supported: bool,
+    num_colors: u16,
     priv out: @io::Writer,
     priv ti: ~TermInfo
 }
 
 #[cfg(target_os = "win32")]
 pub struct Terminal {
-    color_supported: bool,
+    num_colors: u16,
     priv out: @io::Writer,
 }
 
@@ -66,66 +69,81 @@ impl Terminal {
 
         let entry = open(term.unwrap());
         if entry.is_err() {
-            return Err(entry.get_err());
+            return Err(entry.unwrap_err());
         }
 
-        let ti = parse(entry.get(), false);
+        let ti = parse(entry.unwrap(), false);
         if ti.is_err() {
-            return Err(entry.get_err());
+            return Err(ti.unwrap_err());
         }
 
-        let mut inf = ti.get();
-        let cs = *inf.numbers.find_or_insert(~"colors", 0) >= 16
-            && inf.strings.find(&~"setaf").is_some()
-            && inf.strings.find_equiv(&("setab")).is_some();
+        let inf = ti.unwrap();
+        let nc = if inf.strings.find_equiv(&("setaf")).is_some()
+                 && inf.strings.find_equiv(&("setab")).is_some() {
+                     inf.numbers.find_equiv(&("colors")).map_consume_default(0, |&n| n)
+                 } else { 0 };
 
-        return Ok(Terminal {out: out, ti: inf, color_supported: cs});
+        return Ok(Terminal {out: out, ti: inf, num_colors: nc});
     }
-    pub fn fg(&self, color: u8) {
-        if self.color_supported {
+    /// Sets the foreground color to the given color.
+    ///
+    /// If the color is a bright color, but the terminal only supports 8 colors,
+    /// the corresponding normal color will be used instead.
+    pub fn fg(&self, color: color::Color) {
+        let color = self.dim_if_necessary(color);
+        if self.num_colors > color {
             let s = expand(*self.ti.strings.find_equiv(&("setaf")).unwrap(),
                            [Number(color as int)], &mut Variables::new());
             if s.is_ok() {
-                self.out.write(s.get());
+                self.out.write(s.unwrap());
             } else {
-                warn!(s.get_err());
+                warn!(s.unwrap_err());
             }
         }
     }
-    pub fn bg(&self, color: u8) {
-        if self.color_supported {
+    /// Sets the background color to the given color.
+    ///
+    /// If the color is a bright color, but the terminal only supports 8 colors,
+    /// the corresponding normal color will be used instead.
+    pub fn bg(&self, color: color::Color) {
+        let color = self.dim_if_necessary(color);
+        if self.num_colors > color {
             let s = expand(*self.ti.strings.find_equiv(&("setab")).unwrap(),
                            [Number(color as int)], &mut Variables::new());
             if s.is_ok() {
-                self.out.write(s.get());
+                self.out.write(s.unwrap());
             } else {
-                warn!(s.get_err());
+                warn!(s.unwrap_err());
             }
         }
     }
     pub fn reset(&self) {
-        if self.color_supported {
-            let mut vars = Variables::new();
-            let s = expand(*self.ti.strings.find_equiv(&("op")).unwrap(), [], &mut vars);
-            if s.is_ok() {
-                self.out.write(s.get());
-            } else {
-                warn!(s.get_err());
-            }
+        let mut vars = Variables::new();
+        let s = expand(*self.ti.strings.find_equiv(&("op")).unwrap(), [], &mut vars);
+        if s.is_ok() {
+            self.out.write(s.unwrap());
+        } else {
+            warn!(s.unwrap_err());
         }
+    }
+
+    priv fn dim_if_necessary(&self, color: color::Color) -> color::Color {
+        if color >= self.num_colors && color >= 8 && color < 16 {
+            color-8
+        } else { color }
     }
 }
 
 #[cfg(target_os = "win32")]
 impl Terminal {
     pub fn new(out: @io::Writer) -> Result<Terminal, ~str> {
-        return Ok(Terminal {out: out, color_supported: false});
+        return Ok(Terminal {out: out, num_colors: 0});
     }
 
-    pub fn fg(&self, _color: u8) {
+    pub fn fg(&self, _color: color::Color) {
     }
 
-    pub fn bg(&self, _color: u8) {
+    pub fn bg(&self, _color: color::Color) {
     }
 
     pub fn reset(&self) {
