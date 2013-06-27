@@ -396,7 +396,6 @@ pub fn ast_sigil_constant(sigil: ast::Sigil) -> uint {
 
 pub fn ast_purity_constant(purity: ast::purity) -> uint {
     match purity {
-        ast::pure_fn => 0u,
         ast::unsafe_fn => 1u,
         ast::impure_fn => 2u,
         ast::extern_fn => 3u

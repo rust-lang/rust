@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -235,22 +235,17 @@ pub fn check_item_recursion(sess: Session,
 
     fn visit_expr(e: @expr, (env, v): (env, visit::vt<env>)) {
         match e.node {
-          expr_path(*) => {
-            match env.def_map.find(&e.id) {
-              Some(&def_static(def_id, _)) => {
-                if ast_util::is_local(def_id) {
-                  match env.ast_map.get_copy(&def_id.node) {
-                    ast_map::node_item(it, _) => {
-                      (v.visit_item)(it, (env, v));
-                    }
-                    _ => fail!("const not bound to an item")
-                  }
-                }
-              }
-              _ => ()
-            }
-          }
-          _ => ()
+            expr_path(*) => match env.def_map.find(&e.id) {
+                Some(&def_static(def_id, _)) if ast_util::is_local(def_id) =>
+                    match env.ast_map.get_copy(&def_id.node) {
+                        ast_map::node_item(it, _) => {
+                            (v.visit_item)(it, (env, v));
+                        }
+                        _ => fail!("const not bound to an item")
+                    },
+                _ => ()
+            },
+            _ => ()
         }
         visit::visit_expr(e, (env, v));
     }

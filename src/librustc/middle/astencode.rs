@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -319,15 +319,10 @@ fn simplify_ast(ii: &ast::inlined_item) -> ast::inlined_item {
     });
 
     match *ii {
-      ast::ii_item(i) => {
-        ast::ii_item(fld.fold_item(i).get()) //hack: we're not dropping items
-      }
-      ast::ii_method(d, m) => {
-        ast::ii_method(d, fld.fold_method(m))
-      }
-      ast::ii_foreign(i) => {
-        ast::ii_foreign(fld.fold_foreign_item(i))
-      }
+        //hack: we're not dropping items
+        ast::ii_item(i) => ast::ii_item(fld.fold_item(i).get()),
+        ast::ii_method(d, m) => ast::ii_method(d, fld.fold_method(m)),
+        ast::ii_foreign(i) => ast::ii_foreign(fld.fold_foreign_item(i))
     }
 }
 
@@ -346,16 +341,10 @@ fn renumber_ast(xcx: @ExtendedDecodeContext, ii: ast::inlined_item)
     });
 
     match ii {
-      ast::ii_item(i) => {
-        ast::ii_item(fld.fold_item(i).get())
-      }
-      ast::ii_method(d, m) => {
-        ast::ii_method(xcx.tr_def_id(d), fld.fold_method(m))
-      }
-      ast::ii_foreign(i) => {
-        ast::ii_foreign(fld.fold_foreign_item(i))
-      }
-     }
+        ast::ii_item(i) => ast::ii_item(fld.fold_item(i).get()),
+        ast::ii_method(d, m) => ast::ii_method(xcx.tr_def_id(d), fld.fold_method(m)),
+        ast::ii_foreign(i) => ast::ii_foreign(fld.fold_foreign_item(i)),
+    }
 }
 
 // ______________________________________________________________________
@@ -374,22 +363,22 @@ fn decode_def(xcx: @ExtendedDecodeContext, doc: ebml::Doc) -> ast::def {
 impl tr for ast::def {
     fn tr(&self, xcx: @ExtendedDecodeContext) -> ast::def {
         match *self {
-          ast::def_fn(did, p) => { ast::def_fn(did.tr(xcx), p) }
+          ast::def_fn(did, p) => ast::def_fn(did.tr(xcx), p),
           ast::def_static_method(did, did2_opt, p) => {
             ast::def_static_method(did.tr(xcx),
                                    did2_opt.map(|did2| did2.tr(xcx)),
                                    p)
-          }
-          ast::def_self_ty(nid) => { ast::def_self_ty(xcx.tr_id(nid)) }
-          ast::def_self(nid, i) => { ast::def_self(xcx.tr_id(nid), i) }
-          ast::def_mod(did) => { ast::def_mod(did.tr(xcx)) }
-          ast::def_foreign_mod(did) => { ast::def_foreign_mod(did.tr(xcx)) }
-          ast::def_static(did, m) => { ast::def_static(did.tr(xcx), m) }
-          ast::def_arg(nid, b) => { ast::def_arg(xcx.tr_id(nid), b) }
-          ast::def_local(nid, b) => { ast::def_local(xcx.tr_id(nid), b) }
+          },
+          ast::def_self_ty(nid) => ast::def_self_ty(xcx.tr_id(nid)),
+          ast::def_self(nid, i) => ast::def_self(xcx.tr_id(nid), i),
+          ast::def_mod(did) => ast::def_mod(did.tr(xcx)),
+          ast::def_foreign_mod(did) => ast::def_foreign_mod(did.tr(xcx)),
+          ast::def_static(did, m) => ast::def_static(did.tr(xcx), m),
+          ast::def_arg(nid, b) => ast::def_arg(xcx.tr_id(nid), b),
+          ast::def_local(nid, b) => ast::def_local(xcx.tr_id(nid), b),
           ast::def_variant(e_did, v_did) => {
             ast::def_variant(e_did.tr(xcx), v_did.tr(xcx))
-          }
+          },
           ast::def_trait(did) => ast::def_trait(did.tr(xcx)),
           ast::def_ty(did) => ast::def_ty(did.tr(xcx)),
           ast::def_prim_ty(p) => ast::def_prim_ty(p),
@@ -402,9 +391,7 @@ impl tr for ast::def {
                            xcx.tr_id(nid2),
                            xcx.tr_id(nid3))
           }
-          ast::def_struct(did) => {
-            ast::def_struct(did.tr(xcx))
-          }
+          ast::def_struct(did) => ast::def_struct(did.tr(xcx)),
           ast::def_region(nid) => ast::def_region(xcx.tr_id(nid)),
           ast::def_typaram_binder(nid) => {
             ast::def_typaram_binder(xcx.tr_id(nid))
@@ -419,12 +406,9 @@ impl tr for ast::def {
 
 impl tr for ty::AutoAdjustment {
     fn tr(&self, xcx: @ExtendedDecodeContext) -> ty::AutoAdjustment {
-        match self {
-            &ty::AutoAddEnv(r, s) => {
-                ty::AutoAddEnv(r.tr(xcx), s)
-            }
-
-            &ty::AutoDerefRef(ref adr) => {
+        match *self {
+            ty::AutoAddEnv(r, s) => ty::AutoAddEnv(r.tr(xcx), s),
+            ty::AutoDerefRef(ref adr) => {
                 ty::AutoDerefRef(ty::AutoDerefRef {
                     autoderefs: adr.autoderefs,
                     autoref: adr.autoref.map(|ar| ar.tr(xcx)),
@@ -1110,55 +1094,74 @@ fn decode_side_tables(xcx: @ExtendedDecodeContext,
                 found for id %d (orig %d)",
                tag, id, id0);
 
-        if tag == (c::tag_table_moves_map as uint) {
-            dcx.maps.moves_map.insert(id);
-        } else {
-            let val_doc = entry_doc.get(c::tag_table_val as uint);
-            let mut val_dsr = reader::Decoder(val_doc);
-            let val_dsr = &mut val_dsr;
-            if tag == (c::tag_table_def as uint) {
-                let def = decode_def(xcx, val_doc);
-                dcx.tcx.def_map.insert(id, def);
-            } else if tag == (c::tag_table_node_type as uint) {
-                let ty = val_dsr.read_ty(xcx);
-                debug!("inserting ty for node %?: %s",
-                       id, ty_to_str(dcx.tcx, ty));
-                dcx.tcx.node_types.insert(id as uint, ty);
-            } else if tag == (c::tag_table_node_type_subst as uint) {
-                let tys = val_dsr.read_tys(xcx);
-                dcx.tcx.node_type_substs.insert(id, tys);
-            } else if tag == (c::tag_table_freevars as uint) {
-                let fv_info = @val_dsr.read_to_vec(|val_dsr| {
-                    @val_dsr.read_freevar_entry(xcx)
-                });
-                dcx.tcx.freevars.insert(id, fv_info);
-            } else if tag == (c::tag_table_tcache as uint) {
-                let tpbt = val_dsr.read_ty_param_bounds_and_ty(xcx);
-                let lid = ast::def_id { crate: ast::local_crate, node: id };
-                dcx.tcx.tcache.insert(lid, tpbt);
-            } else if tag == (c::tag_table_param_defs as uint) {
-                let bounds = val_dsr.read_type_param_def(xcx);
-                dcx.tcx.ty_param_defs.insert(id, bounds);
-            } else if tag == (c::tag_table_method_map as uint) {
-                dcx.maps.method_map.insert(
-                    id,
-                    val_dsr.read_method_map_entry(xcx));
-            } else if tag == (c::tag_table_vtable_map as uint) {
-                dcx.maps.vtable_map.insert(id,
-                                           val_dsr.read_vtable_res(xcx));
-            } else if tag == (c::tag_table_adjustments as uint) {
-                let adj: @ty::AutoAdjustment = @Decodable::decode(val_dsr);
-                adj.tr(xcx);
-                dcx.tcx.adjustments.insert(id, adj);
-            } else if tag == (c::tag_table_capture_map as uint) {
-                let cvars =
-                    at_vec::to_managed_consume(
-                        val_dsr.read_to_vec(
-                            |val_dsr| val_dsr.read_capture_var(xcx)));
-                dcx.maps.capture_map.insert(id, cvars);
-            } else {
+        match c::astencode_tag::from_uint(tag) {
+            None => {
                 xcx.dcx.tcx.sess.bug(
                     fmt!("unknown tag found in side tables: %x", tag));
+            }
+            Some(value) => if value == c::tag_table_moves_map {
+                dcx.maps.moves_map.insert(id);
+            } else {
+                let val_doc = entry_doc.get(c::tag_table_val as uint);
+                let mut val_dsr = reader::Decoder(val_doc);
+                let val_dsr = &mut val_dsr;
+
+                match value {
+                    c::tag_table_def => {
+                        let def = decode_def(xcx, val_doc);
+                        dcx.tcx.def_map.insert(id, def);
+                    }
+                    c::tag_table_node_type => {
+                        let ty = val_dsr.read_ty(xcx);
+                        debug!("inserting ty for node %?: %s",
+                               id, ty_to_str(dcx.tcx, ty));
+                        dcx.tcx.node_types.insert(id as uint, ty);
+                    }
+                    c::tag_table_node_type_subst => {
+                        let tys = val_dsr.read_tys(xcx);
+                        dcx.tcx.node_type_substs.insert(id, tys);
+                    }
+                    c::tag_table_freevars => {
+                        let fv_info = @val_dsr.read_to_vec(|val_dsr| {
+                            @val_dsr.read_freevar_entry(xcx)
+                        });
+                        dcx.tcx.freevars.insert(id, fv_info);
+                    }
+                    c::tag_table_tcache => {
+                        let tpbt = val_dsr.read_ty_param_bounds_and_ty(xcx);
+                        let lid = ast::def_id { crate: ast::local_crate, node: id };
+                        dcx.tcx.tcache.insert(lid, tpbt);
+                    }
+                    c::tag_table_param_defs => {
+                        let bounds = val_dsr.read_type_param_def(xcx);
+                        dcx.tcx.ty_param_defs.insert(id, bounds);
+                    }
+                    c::tag_table_method_map => {
+                        dcx.maps.method_map.insert(
+                            id,
+                            val_dsr.read_method_map_entry(xcx));
+                    }
+                    c::tag_table_vtable_map => {
+                        dcx.maps.vtable_map.insert(id,
+                                                   val_dsr.read_vtable_res(xcx));
+                    }
+                    c::tag_table_adjustments => {
+                        let adj: @ty::AutoAdjustment = @Decodable::decode(val_dsr);
+                        adj.tr(xcx);
+                        dcx.tcx.adjustments.insert(id, adj);
+                    }
+                    c::tag_table_capture_map => {
+                        let cvars =
+                            at_vec::to_managed_consume(
+                                val_dsr.read_to_vec(
+                                    |val_dsr| val_dsr.read_capture_var(xcx)));
+                        dcx.maps.capture_map.insert(id, cvars);
+                    }
+                    _ => {
+                        xcx.dcx.tcx.sess.bug(
+                            fmt!("unknown tag found in side tables: %x", tag));
+                    }
+                }
             }
         }
 

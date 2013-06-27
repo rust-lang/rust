@@ -19,7 +19,7 @@
  *
  * ~~~ {.rust}
  * extern mod std;
- * use std::arc;
+ * use extra::arc;
  * let numbers=vec::from_fn(100, |ind| (ind as float)*rand::random());
  * let shared_numbers=arc::ARC(numbers);
  *

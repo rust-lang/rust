@@ -440,10 +440,9 @@ fn parse_hex(st: &mut PState) -> uint {
 fn parse_purity(c: char) -> purity {
     match c {
       'u' => unsafe_fn,
-      'p' => pure_fn,
       'i' => impure_fn,
       'c' => extern_fn,
-      _ => fail!("parse_purity: bad purity")
+      _ => fail!("parse_purity: bad purity %c", c)
     }
 }
 

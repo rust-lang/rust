@@ -847,7 +847,6 @@ pub struct fn_decl {
 
 #[deriving(Eq, Encodable, Decodable)]
 pub enum purity {
-    pure_fn, // declared with "pure fn"
     unsafe_fn, // declared with "unsafe fn"
     impure_fn, // declared with "fn"
     extern_fn, // declared with "extern fn"
@@ -858,7 +857,6 @@ impl ToStr for purity {
         match *self {
             impure_fn => ~"impure",
             unsafe_fn => ~"unsafe",
-            pure_fn => ~"pure",
             extern_fn => ~"extern"
         }
     }

@@ -2210,26 +2210,29 @@ pub fn print_fn_header_info(s: @ps,
     print_opt_sigil(s, opt_sigil);
 }
 
-pub fn opt_sigil_to_str(opt_p: Option<ast::Sigil>) -> ~str {
+pub fn opt_sigil_to_str(opt_p: Option<ast::Sigil>) -> &'static str {
     match opt_p {
-      None => ~"fn",
-      Some(p) => fmt!("fn%s", p.to_str())
+      None => "fn",
+      Some(p) => match p {
+          ast::BorrowedSigil => "fn&",
+          ast::OwnedSigil => "fn~",
+          ast::ManagedSigil => "fn@"
+      }
     }
 }
 
-pub fn purity_to_str(p: ast::purity) -> ~str {
+pub fn purity_to_str(p: ast::purity) -> &'static str {
     match p {
-      ast::impure_fn => ~"impure",
-      ast::unsafe_fn => ~"unsafe",
-      ast::pure_fn => ~"pure",
-      ast::extern_fn => ~"extern"
+      ast::impure_fn => "impure",
+      ast::unsafe_fn => "unsafe",
+      ast::extern_fn => "extern"
     }
 }
 
-pub fn onceness_to_str(o: ast::Onceness) -> ~str {
+pub fn onceness_to_str(o: ast::Onceness) -> &'static str {
     match o {
-        ast::Once => ~"once",
-        ast::Many => ~"many"
+        ast::Once => "once",
+        ast::Many => "many"
     }
 }
 

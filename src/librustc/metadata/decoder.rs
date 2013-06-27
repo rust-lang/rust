@@ -100,10 +100,8 @@ enum Family {
     MutStatic,             // b
     Fn,                    // f
     UnsafeFn,              // u
-    PureFn,                // p
     StaticMethod,          // F
     UnsafeStaticMethod,    // U
-    PureStaticMethod,      // P
     ForeignFn,             // e
     Type,                  // y
     ForeignType,           // T
@@ -126,10 +124,8 @@ fn item_family(item: ebml::Doc) -> Family {
       'b' => MutStatic,
       'f' => Fn,
       'u' => UnsafeFn,
-      'p' => PureFn,
       'F' => StaticMethod,
       'U' => UnsafeStaticMethod,
-      'P' => PureStaticMethod,
       'e' => ForeignFn,
       'y' => Type,
       'T' => ForeignType,
@@ -327,7 +323,6 @@ fn item_to_def_like(item: ebml::Doc, did: ast::def_id, cnum: ast::crate_num)
         Struct    => dl_def(ast::def_struct(did)),
         UnsafeFn  => dl_def(ast::def_fn(did, ast::unsafe_fn)),
         Fn        => dl_def(ast::def_fn(did, ast::impure_fn)),
-        PureFn    => dl_def(ast::def_fn(did, ast::pure_fn)),
         ForeignFn => dl_def(ast::def_fn(did, ast::extern_fn)),
         UnsafeStaticMethod => {
             let trait_did_opt = translated_parent_item_opt(cnum, item);
@@ -336,10 +331,6 @@ fn item_to_def_like(item: ebml::Doc, did: ast::def_id, cnum: ast::crate_num)
         StaticMethod => {
             let trait_did_opt = translated_parent_item_opt(cnum, item);
             dl_def(ast::def_static_method(did, trait_did_opt, ast::impure_fn))
-        }
-        PureStaticMethod => {
-            let trait_did_opt = translated_parent_item_opt(cnum, item);
-            dl_def(ast::def_static_method(did, trait_did_opt, ast::pure_fn))
         }
         Type | ForeignType => dl_def(ast::def_ty(did)),
         Mod => dl_def(ast::def_mod(did)),
@@ -819,12 +810,11 @@ pub fn get_static_methods_if_impl(intr: @ident_interner,
         let impl_method_doc = lookup_item(impl_method_id.node, cdata.data);
         let family = item_family(impl_method_doc);
         match family {
-            StaticMethod | UnsafeStaticMethod | PureStaticMethod => {
+            StaticMethod | UnsafeStaticMethod => {
                 let purity;
                 match item_family(impl_method_doc) {
                     StaticMethod => purity = ast::impure_fn,
                     UnsafeStaticMethod => purity = ast::unsafe_fn,
-                    PureStaticMethod => purity = ast::pure_fn,
                     _ => fail!()
                 }
 
@@ -932,10 +922,8 @@ fn item_family_to_str(fam: Family) -> ~str {
       MutStatic => ~"static mut",
       Fn => ~"fn",
       UnsafeFn => ~"unsafe fn",
-      PureFn => ~"pure fn",
       StaticMethod => ~"static method",
       UnsafeStaticMethod => ~"unsafe static method",
-      PureStaticMethod => ~"pure static method",
       ForeignFn => ~"foreign fn",
       Type => ~"type",
       ForeignType => ~"foreign type",
