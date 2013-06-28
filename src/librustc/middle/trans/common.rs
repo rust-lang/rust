@@ -130,9 +130,8 @@ pub struct ValSelfData {
 // will only be set in the case of default methods.
 pub struct param_substs {
     tys: ~[ty::t],
-    vtables: Option<typeck::vtable_res>,
-    type_param_defs: @~[ty::TypeParameterDef],
     self_ty: Option<ty::t>,
+    vtables: Option<typeck::vtable_res>,
     self_vtable: Option<typeck::vtable_origin>
 }
 
@@ -144,10 +143,9 @@ impl param_substs {
 }
 
 fn param_substs_to_str(this: &param_substs, tcx: ty::ctxt) -> ~str {
-    fmt!("param_substs {tys:%s, vtables:%s, type_param_defs:%s}",
+    fmt!("param_substs {tys:%s, vtables:%s}",
          this.tys.repr(tcx),
-         this.vtables.repr(tcx),
-         this.type_param_defs.repr(tcx))
+         this.vtables.repr(tcx))
 }
 
 impl Repr for param_substs {

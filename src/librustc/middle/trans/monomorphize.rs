@@ -177,7 +177,6 @@ pub fn monomorphic_fn(ccx: @mut CrateContext,
     let psubsts = Some(@param_substs {
         tys: substs,
         vtables: vtables,
-        type_param_defs: tpt.generics.type_param_defs,
         self_ty: real_substs.self_ty,
         self_vtable: self_vtable
     });
