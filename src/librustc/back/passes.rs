@@ -60,90 +60,109 @@ impl PassManager {
     }
 }
 
-pub fn create_standard_passes(level:OptLevel) -> ~[~str] {
-    let mut passes = ~[~"strip-dead-prototypes"];
+pub fn create_standard_passes(level: OptLevel) -> ~[~str] {
+    let mut passes = ~[];
 
-    if level == No {
+    // mostly identical to clang 3.3, all differences are documented with comments
+
+    if level != No {
+        passes.push(~"targetlibinfo");
+        passes.push(~"no-aa");
+        // "tbaa" omitted, we don't emit clang-style type-based alias analysis information
+        passes.push(~"basicaa");
+        passes.push(~"globalopt");
+        passes.push(~"ipsccp");
+        passes.push(~"deadargelim");
+        passes.push(~"instcombine");
+        passes.push(~"simplifycfg");
+    }
+
+    passes.push(~"basiccg");
+
+    if level != No {
+        passes.push(~"prune-eh");
+    }
+
+    passes.push(~"inline-cost");
+
+    if level == No || level == Less {
         passes.push(~"always-inline");
-        return passes;
+    } else {
+        passes.push(~"inline");
     }
 
-    passes.push(~"targetlibinfo");
-
-    passes.push(~"scev-aa");
-    passes.push(~"basicaa");
-
-    passes.push(~"instcombine");
-    passes.push(~"simplifycfg");
-    passes.push(~"scalarrepl-ssa");
-    passes.push(~"early-cse");
-
-    passes.push(~"globalopt");
-    passes.push(~"ipsccp");
-    passes.push(~"deadargelim");
-    passes.push(~"instcombine");
-    passes.push(~"simplifycfg");
-
-    passes.push(~"prune-eh");
-
-    passes.push(~"inline");
-
-    passes.push(~"functionattrs");
-
-    if level == Aggressive {
-        passes.push(~"argpromotion");
+    if level != No {
+        passes.push(~"functionattrs");
+        if level == Aggressive {
+            passes.push(~"argpromotion");
+        }
+        passes.push(~"sroa");
+        passes.push(~"domtree");
+        passes.push(~"early-cse");
+        passes.push(~"simplify-libcalls");
+        passes.push(~"lazy-value-info");
+        passes.push(~"jump-threading");
+        passes.push(~"correlated-propagation");
+        passes.push(~"simplifycfg");
+        passes.push(~"instcombine");
+        passes.push(~"tailcallelim");
+        passes.push(~"simplifycfg");
+        passes.push(~"reassociate");
+        passes.push(~"domtree");
+        passes.push(~"loops");
+        passes.push(~"loop-simplify");
+        passes.push(~"lcssa");
+        passes.push(~"loop-rotate");
+        passes.push(~"licm");
+        passes.push(~"lcssa");
+        passes.push(~"loop-unswitch");
+        passes.push(~"instcombine");
+        passes.push(~"scalar-evolution");
+        passes.push(~"loop-simplify");
+        passes.push(~"lcssa");
+        passes.push(~"indvars");
+        passes.push(~"loop-idiom");
+        passes.push(~"loop-deletion");
+        if level == Aggressive {
+            passes.push(~"loop-simplify");
+            passes.push(~"lcssa");
+            passes.push(~"loop-vectorize");
+            passes.push(~"loop-simplify");
+            passes.push(~"lcssa");
+            passes.push(~"scalar-evolution");
+            passes.push(~"loop-simplify");
+            passes.push(~"lcssa");
+        }
+        if level != Less {
+            passes.push(~"loop-unroll");
+            passes.push(~"memdep");
+            passes.push(~"gvn");
+        }
+        passes.push(~"memdep");
+        passes.push(~"memcpyopt");
+        passes.push(~"sccp");
+        passes.push(~"instcombine");
+        passes.push(~"lazy-value-info");
+        passes.push(~"jump-threading");
+        passes.push(~"correlated-propagation");
+        passes.push(~"domtree");
+        passes.push(~"memdep");
+        passes.push(~"dse");
+        passes.push(~"adce");
+        passes.push(~"simplifycfg");
+        passes.push(~"instcombine");
+        // clang does `strip-dead-prototypes` here, since it does not emit them
     }
 
-    passes.push(~"scalarrepl-ssa");
-    passes.push(~"early-cse");
-    passes.push(~"simplify-libcalls");
-    passes.push(~"jump-threading");
-    passes.push(~"correlated-propagation");
-    passes.push(~"simplifycfg");
-    passes.push(~"instcombine");
-
-    passes.push(~"tailcallelim");
-    passes.push(~"simplifycfg");
-    passes.push(~"reassociate");
-    passes.push(~"loop-rotate");
-    passes.push(~"licm");
-
-    passes.push(~"lcssa");
-    passes.push(~"loop-unswitch");
-
-    passes.push(~"instcombine");
-    passes.push(~"indvars");
-    passes.push(~"loop-idiom");
-    passes.push(~"loop-deletion");
-
-    if level == Aggressive {
-        passes.push(~"loop-vectorize");
-    }
-
-    passes.push(~"loop-unroll");
-
-    if level != Less {
-        passes.push(~"gvn");
-    }
-
-    passes.push(~"memcpyopt");
-    passes.push(~"sccp");
-
-    passes.push(~"instcombine");
-    passes.push(~"jump-threading");
-    passes.push(~"correlated-propagation");
-    passes.push(~"dse");
-
-    passes.push(~"adce");
-    passes.push(~"simplifycfg");
-    passes.push(~"instsimplify");
+    // rustc emits dead prototypes, so always ask LLVM to strip them
+    passes.push(~"strip-dead-prototypes");
 
     if level != Less {
         passes.push(~"globaldce");
         passes.push(~"constmerge");
     }
 
-    return passes;
+    passes
 }
 
 pub fn populate_pass_manager(sess: Session, pm: &mut PassManager, pass_list:&[~str]) {
