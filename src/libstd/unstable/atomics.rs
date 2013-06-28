@@ -62,7 +62,7 @@ pub struct AtomicPtr<T> {
 /**
  * An owned atomic pointer. Ensures that only a single reference to the data is held at any time.
  */
-#[no_drop_flag]
+#[unsafe_no_drop_flag]
 pub struct AtomicOption<T> {
     priv p: *mut c_void
 }

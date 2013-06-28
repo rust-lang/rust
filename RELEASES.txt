@@ -101,6 +101,7 @@ Version 0.7 (July 2013)
         dynamic borrowcheck failures for debugging.
       * rustdoc has a nicer stylesheet.
       * Various improvements to rustdoc.
+      * Improvements to rustpkg (see the detailed release notes)
 
    * Other
       * More and improved library documentation.

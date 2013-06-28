@@ -75,17 +75,13 @@ pub fn replace<T>(dest: &mut T, mut src: T) -> T {
 }
 
 /// A non-copyable dummy type.
+#[deriving(Eq, TotalEq, Ord, TotalOrd)]
+#[unsafe_no_drop_flag]
 pub struct NonCopyable;
-
-impl NonCopyable {
-    /// Creates a dummy non-copyable structure and returns it for use.
-    pub fn new() -> NonCopyable { NonCopyable }
-}
 
 impl Drop for NonCopyable {
     fn drop(&self) { }
 }
-
 
 /// A type with no inhabitants
 pub enum Void { }
@@ -130,39 +126,73 @@ pub fn unreachable() -> ! {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use option::{None, Some};
-    use util::{Void, NonCopyable, id, replace, swap};
     use either::{Either, Left, Right};
+    use sys::size_of;
+    use kinds::Drop;
 
     #[test]
-    pub fn identity_crisis() {
+    fn identity_crisis() {
         // Writing a test for the identity function. How did it come to this?
         let x = ~[(5, false)];
         //FIXME #3387 assert!(x.eq(id(copy x)));
         let y = copy x;
         assert!(x.eq(&id(y)));
     }
+
     #[test]
-    pub fn test_swap() {
+    fn test_swap() {
         let mut x = 31337;
         let mut y = 42;
         swap(&mut x, &mut y);
         assert_eq!(x, 42);
         assert_eq!(y, 31337);
     }
+
     #[test]
-    pub fn test_replace() {
-        let mut x = Some(NonCopyable::new());
+    fn test_replace() {
+        let mut x = Some(NonCopyable);
         let y = replace(&mut x, None);
         assert!(x.is_none());
         assert!(y.is_some());
     }
+
     #[test]
-    pub fn test_uninhabited() {
+    fn test_uninhabited() {
         let could_only_be_coin : Either <Void, ()> = Right (());
         match could_only_be_coin {
             Right (coin) => coin,
             Left (is_void) => is_void.uninhabited ()
         }
+    }
+
+    #[test]
+    fn test_noncopyable() {
+        assert_eq!(size_of::<NonCopyable>(), 0);
+
+        // verify that `#[unsafe_no_drop_flag]` works as intended on a zero-size struct
+
+        // NOTE: uncomment after snapshot, will not parse yet
+        //static mut did_run: bool = false;
+
+        struct Foo { five: int }
+
+        impl Drop for Foo {
+            fn drop(&self) {
+                assert_eq!(self.five, 5);
+                // NOTE: uncomment after snapshot, will not parse yet
+                //unsafe {
+                    //did_run = true;
+                //}
+            }
+        }
+
+        {
+            let _a = (NonCopyable, Foo { five: 5 }, NonCopyable);
+        }
+
+        // NOTE: uncomment after snapshot, will not parse yet
+        //unsafe { assert_eq!(did_run, true); }
     }
 }

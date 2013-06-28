@@ -349,7 +349,6 @@ pub mod types {
                 use libc::types::os::arch::c95::{c_uchar, c_uint, c_ulong, time_t};
                 use libc::types::os::arch::c99::{c_longlong, c_ulonglong};
                 use libc::types::os::arch::posix88::{uid_t, gid_t, ino_t};
-                use libc::types::os::arch::posix88::{uid_t};
 
                 pub type nlink_t = u16;
                 pub type blksize_t = u32;
