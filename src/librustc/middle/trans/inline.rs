@@ -127,7 +127,6 @@ pub fn maybe_instantiate_inline(ccx: @mut CrateContext, fn_id: ast::def_id,
                        self_kind,
                        None,
                        mth.id,
-                       Some(impl_did),
                        []);
           }
           local_def(mth.id)
