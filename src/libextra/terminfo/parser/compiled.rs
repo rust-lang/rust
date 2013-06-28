@@ -291,12 +291,13 @@ pub fn parse(file: @Reader, longnames: bool) -> Result<~TermInfo, ~str> {
 
 
             // Find the offset of the NUL we want to go to
-            let nulpos = vec::position_between(string_table, offset as uint,
-                                               string_table_bytes as uint, |&b| b == 0);
+            let nulpos = string_table.slice(offset as uint, string_table_bytes as uint)
+                .iter().position_(|&b| b == 0);
             match nulpos {
-                Some(x) => {
+                Some(len) => {
                     string_map.insert(name.to_owned(),
-                                      string_table.slice(offset as uint, x).to_owned())
+                                      string_table.slice(offset as uint,
+                                                         offset as uint + len).to_owned())
                 },
                 None => {
                     return Err(~"invalid file: missing NUL in string_table");
