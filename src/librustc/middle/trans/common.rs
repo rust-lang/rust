@@ -1035,18 +1035,37 @@ pub fn node_vtables(bcx: block, id: ast::node_id)
 
 pub fn resolve_vtables_in_fn_ctxt(fcx: fn_ctxt, vts: typeck::vtable_res)
     -> typeck::vtable_res {
-    @vec::map(*vts, |ds|
-      @vec::map(**ds, |d|  resolve_vtable_in_fn_ctxt(fcx, copy *d)))
+    resolve_vtables_under_param_substs(fcx.ccx.tcx,
+                                       fcx.param_substs,
+                                       vts)
 }
+
+pub fn resolve_vtables_under_param_substs(tcx: ty::ctxt,
+                                          param_substs: Option<@param_substs>,
+                                          vts: typeck::vtable_res)
+    -> typeck::vtable_res {
+    @vec::map(*vts, |ds|
+      @vec::map(**ds, |d|
+                resolve_vtable_under_param_substs(tcx, param_substs, copy *d)))
+}
+
 
 // Apply the typaram substitutions in the fn_ctxt to a vtable. This should
 // eliminate any vtable_params.
 pub fn resolve_vtable_in_fn_ctxt(fcx: fn_ctxt, vt: typeck::vtable_origin)
     -> typeck::vtable_origin {
-    let tcx = fcx.ccx.tcx;
+    resolve_vtable_under_param_substs(fcx.ccx.tcx,
+                                      fcx.param_substs,
+                                      vt)
+}
+
+pub fn resolve_vtable_under_param_substs(tcx: ty::ctxt,
+                                         param_substs: Option<@param_substs>,
+                                         vt: typeck::vtable_origin)
+    -> typeck::vtable_origin {
     match vt {
         typeck::vtable_static(trait_id, tys, sub) => {
-            let tys = match fcx.param_substs {
+            let tys = match param_substs {
                 Some(substs) => {
                     do vec::map(tys) |t| {
                         ty::subst_tps(tcx, substs.tys, substs.self_ty, *t)
@@ -1054,11 +1073,12 @@ pub fn resolve_vtable_in_fn_ctxt(fcx: fn_ctxt, vt: typeck::vtable_origin)
                 }
                 _ => tys
             };
-            typeck::vtable_static(trait_id, tys,
-                                  resolve_vtables_in_fn_ctxt(fcx, sub))
+            typeck::vtable_static(
+                trait_id, tys,
+                resolve_vtables_under_param_substs(tcx, param_substs, sub))
         }
         typeck::vtable_param(n_param, n_bound) => {
-            match fcx.param_substs {
+            match param_substs {
                 Some(substs) => {
                     find_vtable(tcx, substs, n_param, n_bound)
                 }
@@ -1070,7 +1090,7 @@ pub fn resolve_vtable_in_fn_ctxt(fcx: fn_ctxt, vt: typeck::vtable_origin)
             }
         }
         typeck::vtable_self(_trait_id) => {
-            match fcx.param_substs {
+            match param_substs {
                 Some(@param_substs
                      {self_vtable: Some(ref self_vtable), _}) => {
                     copy *self_vtable
