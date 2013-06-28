@@ -363,7 +363,7 @@ pub fn missing_ctor(cx: &MatchCheckCtxt,
         for m.iter().advance |r| {
             let r = pat_ctor_id(cx, r[0]);
             for r.iter().advance |id| {
-                if !vec::contains(found, id) {
+                if !found.contains(id) {
                     found.push(/*bad*/copy *id);
                 }
             }
