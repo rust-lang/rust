@@ -536,7 +536,6 @@ more convincing in the future.
 
 */
 
-use core::prelude::*;
 
 use middle::ty;
 use middle::ty::{FreeRegion, Region, RegionVid};
@@ -546,10 +545,10 @@ use middle::typeck::infer::cres;
 use util::common::indenter;
 use util::ppaux::note_and_explain_region;
 
-use core::cell::Cell;
-use core::hashmap::{HashMap, HashSet};
-use core::uint;
-use core::vec;
+use std::cell::Cell;
+use std::hashmap::{HashMap, HashSet};
+use std::uint;
+use std::vec;
 use syntax::codemap::span;
 use syntax::ast;
 

@@ -10,12 +10,11 @@
 
 #[allow(missing_doc)];
 
-use core::prelude::*;
 
-use core::i32;
-use core::int;
-use core::io;
-use core::str;
+use std::i32;
+use std::int;
+use std::io;
+use std::str;
 
 static NSEC_PER_SEC: i32 = 1_000_000_000_i32;
 
@@ -862,11 +861,11 @@ priv fn do_strftime(format: &str, tm: &Tm) -> ~str {
 mod tests {
     use time::*;
 
-    use core::float;
-    use core::os;
-    use core::result;
-    use core::result::{Err, Ok};
-    use core::str;
+    use std::float;
+    use std::os;
+    use std::result;
+    use std::result::{Err, Ok};
+    use std::str;
 
     fn test_get_time() {
         static some_recent_date: i64 = 1325376000i64; // 2012-01-01T00:00:00Z

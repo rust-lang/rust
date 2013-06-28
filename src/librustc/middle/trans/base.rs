@@ -23,7 +23,6 @@
 //     but many TypeRefs correspond to one ty::t; for instance, tup(int, int,
 //     int) and rec(x=int, y=int, z=int) will have the same TypeRef.
 
-use core::prelude::*;
 
 use back::link::{mangle_exported_name};
 use back::{link, abi};
@@ -63,15 +62,15 @@ use util::ppaux::{Repr, ty_to_str};
 
 use middle::trans::type_::Type;
 
-use core::hash;
-use core::hashmap::{HashMap, HashSet};
-use core::int;
-use core::io;
-use core::libc::c_uint;
-use core::str;
-use core::uint;
-use core::vec;
-use core::local_data;
+use std::hash;
+use std::hashmap::{HashMap, HashSet};
+use std::int;
+use std::io;
+use std::libc::c_uint;
+use std::str;
+use std::uint;
+use std::vec;
+use std::local_data;
 use extra::time;
 use syntax::ast::ident;
 use syntax::ast_map::{path, path_elt_to_str, path_name};
@@ -800,10 +799,10 @@ pub fn invoke(bcx: block, llfn: ValueRef, llargs: ~[ValueRef])
     if need_invoke(bcx) {
         unsafe {
             debug!("invoking %x at %x",
-                   ::core::cast::transmute(llfn),
-                   ::core::cast::transmute(bcx.llbb));
+                   ::std::cast::transmute(llfn),
+                   ::std::cast::transmute(bcx.llbb));
             for llargs.iter().advance |&llarg| {
-                debug!("arg: %x", ::core::cast::transmute(llarg));
+                debug!("arg: %x", ::std::cast::transmute(llarg));
             }
         }
         let normal_bcx = sub_block(bcx, "normal return");
@@ -816,10 +815,10 @@ pub fn invoke(bcx: block, llfn: ValueRef, llargs: ~[ValueRef])
     } else {
         unsafe {
             debug!("calling %x at %x",
-                   ::core::cast::transmute(llfn),
-                   ::core::cast::transmute(bcx.llbb));
+                   ::std::cast::transmute(llfn),
+                   ::std::cast::transmute(bcx.llbb));
             for llargs.iter().advance |&llarg| {
-                debug!("arg: %x", ::core::cast::transmute(llarg));
+                debug!("arg: %x", ::std::cast::transmute(llarg));
             }
         }
         let llresult = Call(bcx, llfn, llargs);

@@ -10,7 +10,6 @@
 
 // Metadata encoding
 
-use core::prelude::*;
 
 use metadata::common::*;
 use metadata::cstore;
@@ -21,13 +20,13 @@ use middle::ty;
 use middle;
 use util::ppaux::ty_to_str;
 
-use core::hash::HashUtil;
-use core::hashmap::{HashMap, HashSet};
-use core::int;
-use core::io;
-use core::str;
-use core::uint;
-use core::vec;
+use std::hash::HashUtil;
+use std::hashmap::{HashMap, HashSet};
+use std::int;
+use std::io;
+use std::str;
+use std::uint;
+use std::vec;
 use extra::flate;
 use extra::serialize::Encodable;
 use extra;
@@ -46,7 +45,7 @@ use syntax::parse::token;
 use syntax;
 use writer = extra::ebml::writer;
 
-use core::cast;
+use std::cast;
 
 // used by astencode:
 type abbrev_map = @mut HashMap<ty::t, tyencode::ty_abbrev>;

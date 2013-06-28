@@ -39,15 +39,14 @@
 
 #[allow(missing_doc)];
 
-use core::prelude::*;
 
 use sync;
 use sync::{Mutex, mutex_with_condvars, RWlock, rwlock_with_condvars};
 
-use core::cast;
-use core::unstable::sync::UnsafeAtomicRcBox;
-use core::task;
-use core::borrow;
+use std::cast;
+use std::unstable::sync::UnsafeAtomicRcBox;
+use std::task;
+use std::borrow;
 
 /// As sync::condvar, a mechanism for unlock-and-descheduling and signaling.
 pub struct Condvar<'self> {
@@ -514,14 +513,13 @@ impl<'self, T:Freeze + Send> RWReadMode<'self, T> {
 
 #[cfg(test)]
 mod tests {
-    use core::prelude::*;
 
     use arc::*;
 
-    use core::cell::Cell;
-    use core::comm;
-    use core::task;
-    use core::uint;
+    use std::cell::Cell;
+    use std::comm;
+    use std::task;
+    use std::uint;
 
     #[test]
     fn manually_share_arc() {

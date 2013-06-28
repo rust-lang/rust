@@ -15,14 +15,13 @@
  * in std.
  */
 
-use core::prelude::*;
 
-use core::borrow;
-use core::comm;
-use core::task;
-use core::unstable::sync::{Exclusive, exclusive, UnsafeAtomicRcBox};
-use core::unstable::atomics;
-use core::util;
+use std::borrow;
+use std::comm;
+use std::task;
+use std::unstable::sync::{Exclusive, exclusive, UnsafeAtomicRcBox};
+use std::unstable::atomics;
+use std::util;
 
 /****************************************************************************
  * Internals
@@ -803,15 +802,14 @@ impl<'self> RWlockReadMode<'self> {
 
 #[cfg(test)]
 mod tests {
-    use core::prelude::*;
 
     use sync::*;
 
-    use core::cast;
-    use core::cell::Cell;
-    use core::comm;
-    use core::result;
-    use core::task;
+    use std::cast;
+    use std::cell::Cell;
+    use std::comm;
+    use std::result;
+    use std::task;
 
     /************************************************************************
      * Semaphore tests

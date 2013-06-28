@@ -49,14 +49,13 @@ block the scheduler thread, so will their pipes.
 
 #[allow(missing_doc)];
 
-use core::prelude::*;
 
 // The basic send/recv interface FlatChan and PortChan will implement
-use core::io;
-use core::comm::GenericChan;
-use core::comm::GenericPort;
-use core::sys::size_of;
-use core::vec;
+use std::io;
+use std::comm::GenericChan;
+use std::comm::GenericPort;
+use std::sys::size_of;
+use std::vec;
 
 /**
 A FlatPort, consisting of a `BytePort` that receives byte vectors,
@@ -95,9 +94,9 @@ pub mod serial {
     use flatpipes::bytepipes::{PipeBytePort, PipeByteChan};
     use flatpipes::{FlatPort, FlatChan};
 
-    use core::io::{Reader, Writer};
-    use core::comm::{Port, Chan};
-    use core::comm;
+    use std::io::{Reader, Writer};
+    use std::comm::{Port, Chan};
+    use std::comm;
 
     pub type ReaderPort<T, R> = FlatPort<
         T, DeserializingUnflattener<DefaultDecoder, T>,
@@ -172,16 +171,15 @@ POD are not equivelant.
 
 */
 pub mod pod {
-    use core::prelude::*;
 
     use flatpipes::flatteners::{PodUnflattener, PodFlattener};
     use flatpipes::bytepipes::{ReaderBytePort, WriterByteChan};
     use flatpipes::bytepipes::{PipeBytePort, PipeByteChan};
     use flatpipes::{FlatPort, FlatChan};
 
-    use core::io::{Reader, Writer};
-    use core::comm::{Port, Chan};
-    use core::comm;
+    use std::io::{Reader, Writer};
+    use std::comm::{Port, Chan};
+    use std::comm;
 
     pub type ReaderPort<T, R> =
         FlatPort<T, PodUnflattener<T>, ReaderBytePort<R>>;
@@ -337,7 +335,6 @@ impl<T,F:Flattener<T>,C:ByteChan> FlatChan<T, F, C> {
 
 
 pub mod flatteners {
-    use core::prelude::*;
 
     use ebml;
     use flatpipes::{Flattener, Unflattener};
@@ -345,12 +342,12 @@ pub mod flatteners {
     use json;
     use serialize::{Encoder, Decoder, Encodable, Decodable};
 
-    use core::cast;
-    use core::io::{Writer, Reader, ReaderUtil};
-    use core::io;
-    use core::ptr;
-    use core::sys::size_of;
-    use core::vec;
+    use std::cast;
+    use std::io::{Writer, Reader, ReaderUtil};
+    use std::io;
+    use std::ptr;
+    use std::sys::size_of;
+    use std::vec;
 
     // FIXME #4074: Copy + Send != POD
     pub struct PodUnflattener<T> {
@@ -509,13 +506,12 @@ pub mod flatteners {
 }
 
 pub mod bytepipes {
-    use core::prelude::*;
 
     use flatpipes::{ByteChan, BytePort};
 
-    use core::comm::{Port, Chan};
-    use core::comm;
-    use core::io::{Writer, Reader, ReaderUtil};
+    use std::comm::{Port, Chan};
+    use std::comm;
+    use std::io::{Writer, Reader, ReaderUtil};
 
     pub struct ReaderBytePort<R> {
         reader: R
@@ -583,12 +579,12 @@ pub mod bytepipes {
     impl BytePort for PipeBytePort {
         fn try_recv(&self, count: uint) -> Option<~[u8]> {
             if self.buf.len() >= count {
-                let mut bytes = ::core::util::replace(&mut *self.buf, ~[]);
+                let mut bytes = ::std::util::replace(&mut *self.buf, ~[]);
                 *self.buf = bytes.slice(count, bytes.len()).to_owned();
                 bytes.truncate(count);
                 return Some(bytes);
             } else if !self.buf.is_empty() {
-                let mut bytes = ::core::util::replace(&mut *self.buf, ~[]);
+                let mut bytes = ::std::util::replace(&mut *self.buf, ~[]);
                 assert!(count > bytes.len());
                 match self.try_recv(count - bytes.len()) {
                     Some(rest) => {
@@ -637,7 +633,6 @@ pub mod bytepipes {
 
 #[cfg(test)]
 mod test {
-    use core::prelude::*;
 
     use flatpipes::{Flattener, Unflattener};
     use flatpipes::bytepipes::*;
@@ -647,11 +642,11 @@ mod test {
     use flatpipes::{BytePort, FlatChan, FlatPort};
     use net::tcp::TcpSocketBuf;
 
-    use core::comm;
-    use core::int;
-    use core::io::BytesWriter;
-    use core::result;
-    use core::task;
+    use std::comm;
+    use std::int;
+    use std::io::BytesWriter;
+    use std::result;
+    use std::task;
 
     #[test]
     #[ignore(reason = "ebml failure")]
@@ -772,7 +767,7 @@ mod test {
         writer_chan: WriterChanFactory<F>,
         port: uint) {
 
-        use core::cell::Cell;
+        use std::cell::Cell;
         use net::ip;
         use net::tcp;
         use uv;
@@ -871,17 +866,16 @@ mod test {
     // Tests that the different backends behave the same when the
     // binary streaming protocol is broken
     mod broken_protocol {
-        use core::prelude::*;
 
         use flatpipes::{BytePort, FlatPort};
         use flatpipes::flatteners::PodUnflattener;
         use flatpipes::pod;
         use io_util::BufReader;
 
-        use core::comm;
-        use core::io;
-        use core::sys;
-        use core::task;
+        use std::comm;
+        use std::io;
+        use std::sys;
+        use std::task;
 
         type PortLoader<P> =
             ~fn(~[u8]) -> FlatPort<int, PodUnflattener<int>, P>;

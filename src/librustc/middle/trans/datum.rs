@@ -87,7 +87,6 @@
  * methods themselves.  Most are only suitable for some types of
  * values. */
 
-use core::prelude::*;
 
 use lib;
 use lib::llvm::ValueRef;
@@ -105,7 +104,7 @@ use middle::ty;
 use util::common::indenter;
 use util::ppaux::ty_to_str;
 
-use core::uint;
+use std::uint;
 use syntax::ast;
 use syntax::codemap::span;
 use syntax::parse::token::special_idents;

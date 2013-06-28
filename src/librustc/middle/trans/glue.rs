@@ -12,7 +12,6 @@
 //
 // Code relating to taking, dropping, etc as well as type descriptors.
 
-use core::prelude::*;
 
 use back::abi;
 use back::link::*;
@@ -37,9 +36,9 @@ use util::ppaux::ty_to_short_str;
 
 use middle::trans::type_::Type;
 
-use core::io;
-use core::libc::c_uint;
-use core::str;
+use std::io;
+use std::libc::c_uint;
+use std::str;
 use extra::time;
 use syntax::ast;
 

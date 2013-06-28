@@ -12,11 +12,10 @@
 
 #[allow(missing_doc)];
 
-use core::prelude::*;
 
-use core::unstable::intrinsics::{move_val_init, init};
-use core::util::{replace, swap};
-use core::vec;
+use std::unstable::intrinsics::{move_val_init, init};
+use std::util::{replace, swap};
+use std::vec;
 
 /// A priority queue implemented with a binary heap
 pub struct PriorityQueue<T> {

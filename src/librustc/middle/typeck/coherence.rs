@@ -14,7 +14,6 @@
 // has at most one implementation for each type. Then we build a mapping from
 // each trait in the system to its implementations.
 
-use core::prelude::*;
 
 use metadata::csearch::{each_path, get_impl_trait};
 use metadata::csearch;
@@ -52,10 +51,10 @@ use syntax::visit::{Visitor, SimpleVisitor};
 use syntax::visit::{visit_mod};
 use util::ppaux::ty_to_str;
 
-use core::hashmap::{HashMap, HashSet};
-use core::result::Ok;
-use core::uint;
-use core::vec;
+use std::hashmap::{HashMap, HashSet};
+use std::result::Ok;
+use std::uint;
+use std::vec;
 
 pub struct UniversalQuantificationResult {
     monotype: t,

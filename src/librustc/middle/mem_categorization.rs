@@ -46,14 +46,13 @@
  * then an index to jump forward to the relevant item.
  */
 
-use core::prelude::*;
 
 use middle::ty;
 use middle::typeck;
 use util::ppaux::{ty_to_str, region_ptr_to_str, Repr};
 use util::common::indenter;
 
-use core::uint;
+use std::uint;
 use syntax::ast::{m_imm, m_const, m_mutbl};
 use syntax::ast;
 use syntax::codemap::span;

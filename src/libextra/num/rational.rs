@@ -10,11 +10,10 @@
 
 //! Rational numbers
 
-use core::prelude::*;
 
-use core::cmp;
-use core::from_str::FromStr;
-use core::num::{Zero,One,ToStrRadix,FromStrRadix,Round};
+use std::cmp;
+use std::from_str::FromStr;
+use std::num::{Zero,One,ToStrRadix,FromStrRadix,Round};
 use super::bigint::BigInt;
 
 /// Represents the ratio between 2 numbers.
@@ -277,11 +276,10 @@ impl<T: FromStrRadix + Clone + Integer + Ord>
 
 #[cfg(test)]
 mod test {
-    use core::prelude::*;
 
     use super::*;
-    use core::num::{Zero,One,FromStrRadix,IntConvertible};
-    use core::from_str::FromStr;
+    use std::num::{Zero,One,FromStrRadix,IntConvertible};
+    use std::from_str::FromStr;
 
     pub static _0 : Rational = Ratio { numer: 0, denom: 1};
     pub static _1 : Rational = Ratio { numer: 1, denom: 1};

@@ -17,10 +17,9 @@
 // 3. assignments do not affect things loaned out as immutable
 // 4. moves do not affect things loaned out in any way
 
-use core::prelude::*;
 
-use core::hashmap::HashSet;
-use core::uint;
+use std::hashmap::HashSet;
+use std::uint;
 use mc = middle::mem_categorization;
 use middle::borrowck::*;
 use middle::moves;

@@ -52,7 +52,6 @@
  * an rptr (`&r.T`) use the region `r` that appears in the rptr.
  */
 
-use core::prelude::*;
 
 use middle::const_eval;
 use middle::ty::{substs};
@@ -63,8 +62,8 @@ use middle::typeck::rscope::{region_scope, RegionError};
 use middle::typeck::rscope::RegionParamNames;
 use middle::typeck::lookup_def_tcx;
 
-use core::result;
-use core::vec;
+use std::result;
+use std::vec;
 use syntax::abi::AbiSet;
 use syntax::{ast, ast_util};
 use syntax::codemap::span;

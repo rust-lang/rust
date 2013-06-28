@@ -10,7 +10,6 @@
 
 // Decoding metadata from a single crate's metadata
 
-use core::prelude::*;
 
 use metadata::cstore::crate_metadata;
 use metadata::common::*;
@@ -23,13 +22,13 @@ use metadata::tydecode::{parse_ty_data, parse_def_id,
                          parse_bare_fn_ty_data, parse_trait_ref_data};
 use middle::{ty, resolve};
 
-use core::hash::HashUtil;
-use core::int;
-use core::io::WriterUtil;
-use core::io;
-use core::option;
-use core::str;
-use core::vec;
+use std::hash::HashUtil;
+use std::int;
+use std::io::WriterUtil;
+use std::io;
+use std::option;
+use std::str;
+use std::vec;
 use extra::ebml::reader;
 use extra::ebml;
 use extra::serialize::Decodable;

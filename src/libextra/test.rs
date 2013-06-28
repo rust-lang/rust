@@ -15,7 +15,6 @@
 // simplest interface possible for representing and running tests
 // while providing a base that other test frameworks may build off of.
 
-use core::prelude::*;
 
 use getopts;
 use sort;
@@ -23,22 +22,22 @@ use stats::Stats;
 use term;
 use time::precise_time_ns;
 
-use core::comm::{stream, SharedChan};
-use core::either;
-use core::io;
-use core::num;
-use core::option;
-use core::rand::RngUtil;
-use core::rand;
-use core::result;
-use core::task;
-use core::to_str::ToStr;
-use core::u64;
-use core::uint;
-use core::vec;
+use std::comm::{stream, SharedChan};
+use std::either;
+use std::io;
+use std::num;
+use std::option;
+use std::rand::RngUtil;
+use std::rand;
+use std::result;
+use std::task;
+use std::to_str::ToStr;
+use std::u64;
+use std::uint;
+use std::vec;
 
 pub mod rustrt {
-    use core::libc::size_t;
+    use std::libc::size_t;
 
     #[abi = "cdecl"]
     pub extern {
@@ -573,7 +572,7 @@ pub fn run_test(force_ignore: bool,
     fn run_test_inner(desc: TestDesc,
                       monitor_ch: SharedChan<MonitorMsg>,
                       testfn: ~fn()) {
-        let testfn_cell = ::core::cell::Cell::new(testfn);
+        let testfn_cell = ::std::cell::Cell::new(testfn);
         do task::spawn {
             let mut result_future = None; // task::future_result(builder);
 
@@ -781,10 +780,10 @@ mod tests {
                StaticTestName, DynTestName, DynTestFn};
     use test::{TestOpts, run_test};
 
-    use core::either;
-    use core::comm::{stream, SharedChan};
-    use core::option;
-    use core::vec;
+    use std::either;
+    use std::comm::{stream, SharedChan};
+    use std::option;
+    use std::vec;
 
     #[test]
     pub fn do_not_run_ignored_tests() {

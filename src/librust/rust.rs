@@ -20,28 +20,15 @@
 #[license = "MIT/ASL2"];
 #[crate_type = "lib"];
 
-#[no_std];
-
-extern mod core(name = "std");
-
 extern mod rustpkg;
 extern mod rustdoc;
 extern mod rusti;
 extern mod rustc;
 
-use core::prelude::*;
-
-use core::io;
-use core::os;
-use core::run;
-use core::libc::exit;
-
-// For bootstrapping.
-mod std {
-    pub use core::os;
-    pub use core::str;
-    pub use core::unstable;
-}
+use std::io;
+use std::os;
+use std::run;
+use std::libc::exit;
 
 enum ValidUsage {
     Valid(int), Invalid
