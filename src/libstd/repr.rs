@@ -57,9 +57,9 @@ impl EscapedCharWriter for @Writer {
             '"' => self.write_str("\\\""),
             '\x20'..'\x7e' => self.write_char(ch),
             _ => {
-                // FIXME #4423: This is inefficient because it requires a
-                // malloc.
-                self.write_str(char::escape_unicode(ch))
+                do char::escape_unicode(ch) |c| {
+                    self.write_char(c);
+                }
             }
         }
     }

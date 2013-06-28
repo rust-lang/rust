@@ -27,7 +27,6 @@ use print::pp::{breaks, consistent, inconsistent, eof};
 use print::pp;
 use print::pprust;
 
-use std::char;
 use std::io;
 use std::u64;
 use std::uint;
@@ -2016,7 +2015,12 @@ pub fn print_literal(s: @ps, lit: @ast::lit) {
     match lit.node {
       ast::lit_str(st) => print_string(s, st),
       ast::lit_int(ch, ast::ty_char) => {
-        word(s.s, ~"'" + char::escape_default(ch as char) + "'");
+          let mut res = ~"'";
+          do (ch as char).escape_default |c| {
+              res.push_char(c);
+          }
+          res.push_char('\'');
+          word(s.s, res);
       }
       ast::lit_int(i, t) => {
         if i < 0_i64 {

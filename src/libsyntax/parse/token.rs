@@ -16,7 +16,6 @@ use util::interner::StrInterner;
 use util::interner;
 
 use std::cast;
-use std::char;
 use std::cmp::Equiv;
 use std::local_data;
 use std::rand;
@@ -166,7 +165,12 @@ pub fn to_str(in: @ident_interner, t: &Token) -> ~str {
 
       /* Literals */
       LIT_INT(c, ast::ty_char) => {
-        ~"'" + char::escape_default(c as char) + "'"
+          let mut res = ~"'";
+          do (c as char).escape_default |c| {
+              res.push_char(c);
+          }
+          res.push_char('\'');
+          res
       }
       LIT_INT(i, t) => {
           i.to_str() + ast_util::int_ty_to_str(t)
