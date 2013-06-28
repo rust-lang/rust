@@ -53,8 +53,9 @@ pub fn add_new_extension(cx: @ExtCtxt,
 
 
     // Parse the macro_rules! invocation (`none` is for no interpolations):
-    let arg_reader = new_tt_reader(copy cx.parse_sess().span_diagnostic,
-                                   None, copy arg);
+    let arg_reader = new_tt_reader(cx.parse_sess().span_diagnostic,
+                                   None,
+                                   copy arg);
     let argument_map = parse_or_else(cx.parse_sess(),
                                      cx.cfg(),
                                      arg_reader as @reader,

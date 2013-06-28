@@ -803,9 +803,17 @@ pub fn print_ty_method(s: @ps, m: &ast::ty_method) {
     hardbreak_if_not_bol(s);
     maybe_print_comment(s, m.span.lo);
     print_outer_attributes(s, m.attrs);
-    print_ty_fn(s, None, None, &None, m.purity, ast::Many,
-                &m.decl, Some(m.ident), &None, Some(&m.generics),
-                Some(/*bad*/ copy m.explicit_self.node));
+    print_ty_fn(s,
+                None,
+                None,
+                &None,
+                m.purity,
+                ast::Many,
+                &m.decl,
+                Some(m.ident),
+                &None,
+                Some(&m.generics),
+                Some(m.explicit_self.node));
     word(s.s, ";");
 }
 

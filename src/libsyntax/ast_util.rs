@@ -27,7 +27,9 @@ pub fn path_name_i(idents: &[ident]) -> ~str {
     idents.map(|i| token::interner_get(i.name)).connect("::")
 }
 
-pub fn path_to_ident(p: &Path) -> ident { copy *p.idents.last() }
+pub fn path_to_ident(p: &Path) -> ident {
+    *p.idents.last()
+}
 
 pub fn local_def(id: node_id) -> def_id {
     ast::def_id { crate: local_crate, node: id }
@@ -297,9 +299,9 @@ pub trait inlined_item_utils {
 impl inlined_item_utils for inlined_item {
     fn ident(&self) -> ident {
         match *self {
-            ii_item(i) => /* FIXME (#2543) */ copy i.ident,
-            ii_foreign(i) => /* FIXME (#2543) */ copy i.ident,
-            ii_method(_, _, m) => /* FIXME (#2543) */ copy m.ident,
+            ii_item(i) => i.ident,
+            ii_foreign(i) => i.ident,
+            ii_method(_, _, m) => m.ident,
         }
     }
 

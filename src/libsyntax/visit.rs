@@ -361,18 +361,12 @@ pub fn visit_fn_decl<E: Copy>(fd: &fn_decl, (e, v): (E, vt<E>)) {
 // because it is not a default impl of any method, though I doubt that really
 // clarifies anything. - Niko
 pub fn visit_method_helper<E: Copy>(m: &method, (e, v): (E, vt<E>)) {
-    (v.visit_fn)(
-        &fk_method(
-            /* FIXME (#2543) */ copy m.ident,
-            &m.generics,
-            m
-        ),
-        &m.decl,
-        &m.body,
-        m.span,
-        m.id,
-        (e, v)
-    );
+    (v.visit_fn)(&fk_method(m.ident, &m.generics, m),
+                 &m.decl,
+                 &m.body,
+                 m.span,
+                 m.id,
+                 (e, v));
 }
 
 pub fn visit_fn<E: Copy>(fk: &fn_kind, decl: &fn_decl, body: &blk, _sp: span,

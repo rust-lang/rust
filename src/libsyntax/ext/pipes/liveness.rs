@@ -45,7 +45,7 @@ use extra::bitv::Bitv;
 pub fn analyze(proto: @mut protocol_, _cx: @ExtCtxt) {
     debug!("initializing colive analysis");
     let num_states = proto.num_states();
-    let mut colive: ~[~Bitv] = do (copy proto.states).iter().transform() |state| {
+    let mut colive: ~[~Bitv] = do proto.states.iter().transform() |state| {
         let mut bv = ~Bitv::new(num_states, false);
         for state.reachable |s| {
             bv.set(s.id, true);
@@ -85,10 +85,11 @@ pub fn analyze(proto: @mut protocol_, _cx: @ExtCtxt) {
     }
 
     if self_live.len() > 0 {
-        let states = self_live.map(|s| copy s.name).connect(" ");
+        let states = self_live.map(|s| s.name).connect(" ");
 
         debug!("protocol %s is unbounded due to loops involving: %s",
-               copy proto.name, states);
+               proto.name,
+               states);
 
         // Someday this will be configurable with a warning
         //cx.span_warn(empty_span(),
@@ -98,9 +99,8 @@ pub fn analyze(proto: @mut protocol_, _cx: @ExtCtxt) {
         //                   states));
 
         proto.bounded = Some(false);
-    }
-    else {
-        debug!("protocol %s is bounded. yay!", copy proto.name);
+    } else {
+        debug!("protocol %s is bounded. yay!", proto.name);
         proto.bounded = Some(true);
     }
 }

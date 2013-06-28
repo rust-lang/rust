@@ -35,11 +35,9 @@ pub fn strip_items(crate: &ast::crate, in_cfg: in_cfg_pred)
           fold_mod: |a,b| fold_mod(ctxt, a, b),
           fold_block: |a,b| fold_block(ctxt, a, b),
           fold_foreign_mod: |a,b| fold_foreign_mod(ctxt, a, b),
-          fold_item_underscore: |a,b| {
-            // Bad copy.
-            fold_item_underscore(ctxt, copy a, b)
-          },
-          .. *fold::default_ast_fold()};
+          fold_item_underscore: |a,b| fold_item_underscore(ctxt, a, b),
+          .. *fold::default_ast_fold()
+    };
 
     let fold = fold::make_fold(precursor);
     @fold.fold_crate(crate)

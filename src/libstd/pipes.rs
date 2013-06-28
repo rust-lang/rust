@@ -476,7 +476,7 @@ fn try_recv_<T:Send>(p: &mut Packet<T>) -> Option<T> {
                 // sometimes blocking the thing we are waiting on.
                 task::yield();
             }
-            debug!("woke up, p.state = %?", copy p.header.state);
+            debug!("woke up, p.state = %?", p.header.state);
           }
           Blocked => if first {
             fail!("blocking on already blocked packet")

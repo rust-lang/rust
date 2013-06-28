@@ -2953,7 +2953,7 @@ pub fn trans_crate(sess: session::Session,
                    -> (ContextRef, ModuleRef, LinkMeta) {
     // Before we touch LLVM, make sure that multithreading is enabled.
     if unsafe { !llvm::LLVMRustStartMultithreading() } {
-        sess.bug("couldn't enable multi-threaded LLVM");
+        //sess.bug("couldn't enable multi-threaded LLVM");
     }
 
     let mut symbol_hasher = hash::default_state();

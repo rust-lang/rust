@@ -63,7 +63,7 @@ use middle::typeck::infer::glb::Glb;
 use middle::typeck::infer::lub::Lub;
 use middle::typeck::infer::sub::Sub;
 use middle::typeck::infer::to_str::InferStr;
-use middle::typeck::infer::unify::{InferCtxtMethods};
+use middle::typeck::infer::unify::InferCtxtMethods;
 use middle::typeck::infer::{InferCtxt, cres, ures};
 use middle::typeck::infer::{TypeTrace};
 use util::common::indent;

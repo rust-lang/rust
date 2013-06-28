@@ -87,7 +87,7 @@ fn fold_meta_item_(mi: @meta_item, fld: @ast_fold) -> @meta_item {
                     )
                 }
                 meta_name_value(id, s) => {
-                    meta_name_value(id, /* FIXME (#2543) */ copy s)
+                    meta_name_value(id, s)
                 }
             },
         span: fld.new_span(mi.span) }
@@ -258,11 +258,15 @@ fn noop_fold_struct_field(sf: @struct_field, fld: @ast_fold)
                        -> @struct_field {
     let fold_attribute = |x| fold_attribute_(x, fld);
 
-    @spanned { node: ast::struct_field_ { kind: copy sf.node.kind,
-                                          id: sf.node.id,
-                                          ty: fld.fold_ty(&sf.node.ty),
-                                          attrs: sf.node.attrs.map(|e| fold_attribute(*e)) },
-               span: sf.span }
+    @spanned {
+        node: ast::struct_field_ {
+            kind: sf.node.kind,
+            id: sf.node.id,
+            ty: fld.fold_ty(&sf.node.ty),
+            attrs: sf.node.attrs.map(|e| fold_attribute(*e))
+        },
+        span: sf.span
+    }
 }
 
 pub fn noop_fold_item_underscore(i: &item_, fld: @ast_fold) -> item_ {
@@ -346,7 +350,7 @@ fn fold_trait_ref(p: &trait_ref, fld: @ast_fold) -> trait_ref {
 fn fold_struct_field(f: @struct_field, fld: @ast_fold) -> @struct_field {
     @spanned {
         node: ast::struct_field_ {
-            kind: copy f.node.kind,
+            kind: f.node.kind,
             id: fld.new_id(f.node.id),
             ty: fld.fold_ty(&f.node.ty),
             attrs: /* FIXME (#2543) */ copy f.node.attrs,
@@ -439,7 +443,7 @@ pub fn noop_fold_pat(p: &pat_, fld: @ast_fold) -> pat_ {
             let pth_ = fld.fold_path(pth);
             let fs = do fields.map |f| {
                 ast::field_pat {
-                    ident: /* FIXME (#2543) */ copy f.ident,
+                    ident: f.ident,
                     pat: fld.fold_pat(f.pat)
                 }
             };
@@ -743,7 +747,7 @@ fn noop_fold_variant(v: &variant_, fld: @ast_fold) -> variant_ {
       None => None
     };
     ast::variant_ {
-        name: /* FIXME (#2543) */ copy v.name,
+        name: v.name,
         attrs: attrs,
         kind: kind,
         id: fld.new_id(v.id),
@@ -753,7 +757,7 @@ fn noop_fold_variant(v: &variant_, fld: @ast_fold) -> variant_ {
 }
 
 fn noop_fold_ident(i: ident, _fld: @ast_fold) -> ident {
-    /* FIXME (#2543) */ copy i
+    i
 }
 
 fn noop_fold_path(p: &Path, fld: @ast_fold) -> Path {
@@ -837,7 +841,7 @@ impl ast_fold for AstFoldFns {
     fn fold_struct_field(@self, sf: @struct_field) -> @struct_field {
         @spanned {
             node: ast::struct_field_ {
-                kind: copy sf.node.kind,
+                kind: sf.node.kind,
                 id: sf.node.id,
                 ty: self.fold_ty(&sf.node.ty),
                 attrs: copy sf.node.attrs,

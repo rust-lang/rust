@@ -214,9 +214,8 @@ pub trait visitor<Tproto, Tstate, Tmessage> {
 pub fn visit<Tproto, Tstate, Tmessage, V: visitor<Tproto, Tstate, Tmessage>>(
     proto: protocol, visitor: V) -> Tproto {
 
-    // the copy keywords prevent recursive use of dvec
-    let states: ~[Tstate] = do (copy proto.states).iter().transform |&s| {
-        let messages: ~[Tmessage] = do (copy s.messages).iter().transform |m| {
+    let states: ~[Tstate] = do proto.states.iter().transform |&s| {
+        let messages: ~[Tmessage] = do s.messages.iter().transform |m| {
             let message(name, span, tys, this, next) = copy *m;
             visitor.visit_message(name, span, tys, this, next)
         }.collect();

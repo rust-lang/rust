@@ -83,6 +83,7 @@ pub enum lint {
     type_limits,
     default_methods,
     unused_unsafe,
+    copy_implicitly_copyable,
 
     managed_heap_memory,
     owned_heap_memory,
@@ -256,6 +257,14 @@ static lint_table: &'static [(&'static str, LintSpec)] = &[
      LintSpec {
         lint: unused_unsafe,
         desc: "unnecessary use of an `unsafe` block",
+        default: warn
+    }),
+
+    ("copy_implicitly_copyable",
+     LintSpec {
+        lint: copy_implicitly_copyable,
+        desc: "detect unnecessary uses of `copy` on implicitly copyable \
+               values",
         default: warn
     }),
 
@@ -514,7 +523,7 @@ impl Context {
             // item_stopping_visitor has overridden visit_fn(&fk_method(... ))
             // to be a no-op, so manually invoke visit_fn.
             Method(m) => {
-                let fk = visit::fk_method(copy m.ident, &m.generics, m);
+                let fk = visit::fk_method(m.ident, &m.generics, m);
                 for self.visitors.iter().advance |&(orig, stopping)| {
                     (orig.visit_fn)(&fk, &m.decl, &m.body, m.span, m.id,
                                     (self, stopping));
@@ -935,6 +944,26 @@ fn lint_unused_unsafe() -> visit::vt<@mut Context> {
     })
 }
 
+fn lint_copy_implicitly_copyable() -> visit::vt<@mut Context> {
+    visit::mk_vt(@visit::Visitor {
+        visit_expr: |e, (cx, vt): (@mut Context, visit::vt<@mut Context>)| {
+            match e.node {
+                ast::expr_copy(subexpr) => {
+                    let ty = ty::expr_ty(cx.tcx, subexpr);
+                    if !ty::type_moves_by_default(cx.tcx, ty) {
+                        cx.span_lint(copy_implicitly_copyable,
+                                     e.span,
+                                     "unnecessary `copy`; this value is implicitly copyable");
+                    }
+                }
+                _ => ()
+            }
+            visit::visit_expr(e, (cx, vt));
+        },
+        .. *visit::default_visitor()
+    })
+}
+
 fn lint_unused_mut() -> visit::vt<@mut Context> {
     fn check_pat(cx: &Context, p: @ast::pat) {
         let mut used = false;
@@ -1147,6 +1176,7 @@ pub fn check_crate(tcx: ty::ctxt, crate: @ast::crate) {
     cx.add_lint(lint_heap());
     cx.add_lint(lint_type_limits());
     cx.add_lint(lint_unused_unsafe());
+    cx.add_lint(lint_copy_implicitly_copyable());
     cx.add_lint(lint_unused_mut());
     cx.add_lint(lint_session());
     cx.add_lint(lint_unnecessary_allocations());

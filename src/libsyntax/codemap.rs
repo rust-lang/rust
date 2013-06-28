@@ -354,7 +354,7 @@ impl CodeMap {
 
     pub fn span_to_filename(&self, sp: span) -> FileName {
         let lo = self.lookup_char_pos(sp.lo);
-        return /* FIXME (#2543) */ copy lo.file.name;
+        lo.file.name
     }
 
     pub fn span_to_lines(&self, sp: span) -> @FileLines {
