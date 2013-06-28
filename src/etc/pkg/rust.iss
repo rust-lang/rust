@@ -1,4 +1,5 @@
 #define CFG_VERSION GetEnv("CFG_VERSION")
+#define CFG_VERSION_WIN GetEnv("CFG_VERSION_WIN")
 
 [Setup]
 
@@ -8,7 +9,7 @@ AppVersion={#CFG_VERSION}
 AppCopyright=Copyright (C) 2006-2013 Mozilla Foundation, MIT license
 AppPublisher=Mozilla Foundation
 AppPublisherURL=http://www.rust-lang.org
-VersionInfoVersion={#CFG_VERSION}
+VersionInfoVersion={#CFG_VERSION_WIN}
 LicenseFile=LICENSE.txt
 
 DisableWelcomePage=true

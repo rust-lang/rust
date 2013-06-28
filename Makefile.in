@@ -141,6 +141,9 @@ endif
 CFG_GIT_DIR := $(CFG_SRC_DIR).git
 CFG_RELEASE = 0.7-pre
 CFG_VERSION = $(CFG_RELEASE)
+# windows exe's need numeric versions - don't use anything but
+# numbers and dots here
+CFG_VERSION_WIN = 0.7
 
 ifneq ($(wildcard $(CFG_GIT)),)
 ifneq ($(wildcard $(CFG_GIT_DIR)),)
@@ -311,6 +314,7 @@ $(foreach host,$(CFG_HOST_TRIPLES), \
 export CFG_SRC_DIR
 export CFG_BUILD_DIR
 export CFG_VERSION
+export CFG_VERSION_WIN
 export CFG_BUILD_TRIPLE
 export CFG_LLVM_ROOT
 export CFG_ENABLE_MINGW_CROSS

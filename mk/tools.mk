@@ -191,7 +191,8 @@ $(foreach host,$(CFG_HOST_TRIPLES),				\
 $(foreach target,$(CFG_TARGET_TRIPLES),				\
  $(eval $(call TOOLS_STAGE_N_TARGET,0,1,$(host),$(target)))	\
  $(eval $(call TOOLS_STAGE_N_TARGET,1,2,$(host),$(target)))	\
- $(eval $(call TOOLS_STAGE_N_TARGET,2,3,$(host),$(target)))))
+ $(eval $(call TOOLS_STAGE_N_TARGET,2,3,$(host),$(target)))	\
+ $(eval $(call TOOLS_STAGE_N_TARGET,3,bogus,$(host),$(target)))))
 
 $(foreach host,$(CFG_HOST_TRIPLES),				\
  $(eval $(call TOOLS_STAGE_N_HOST,0,1,$(host),$(host)))	\
