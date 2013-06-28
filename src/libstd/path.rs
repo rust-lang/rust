@@ -508,6 +508,14 @@ impl WindowsPath {
             }
         }
     }
+
+    /// Execute a function on p as well as all of its ancestors
+    pub fn each_parent(&self, f: &fn(&Path)) {
+        if !self.components.is_empty() {
+            f(self);
+            self.pop().each_parent(f);
+        }
+    }
 }
 
 impl ToStr for PosixPath {
