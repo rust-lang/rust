@@ -788,7 +788,7 @@ fn conv_builtin_bounds(tcx: ty::ctxt, ast_bounds: &Option<OptVec<ast::TyParamBou
             }
             builtin_bounds
         },
-        // ~Trait is sugar for ~Trait:Owned.
+        // ~Trait is sugar for ~Trait:Send.
         (&None, ty::UniqTraitStore) => {
             let mut set = ty::EmptyBuiltinBounds(); set.add(ty::BoundSend); set
         }
