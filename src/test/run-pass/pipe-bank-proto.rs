@@ -45,8 +45,8 @@ proto! bank (
     }
 )
 
-fn switch<T:Owned,U>(endp: pipes::RecvPacket<T>,
-                     f: &fn(v: Option<T>) -> U) -> U {
+fn switch<T:Send,U>(endp: pipes::RecvPacket<T>,
+                    f: &fn(v: Option<T>) -> U) -> U {
     f(pipes::try_recv(endp))
 }
 

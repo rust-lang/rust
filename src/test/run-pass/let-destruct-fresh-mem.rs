@@ -13,7 +13,9 @@ struct A { a: int }
 
 pub fn main() {
     let u = X {x: 10, y: @A {a: 20}};
-    let mut X {x: x, y: @A {a: a}} = u;
+    let X {x: x, y: @A {a: a}} = u;
+    let mut x = x;
+    let mut a = a;
     x = 100;
     a = 100;
     assert_eq!(x, 100);

@@ -51,7 +51,9 @@ impl<T> vec_utils<T> for ~[T] {
     fn iter_(&self, f: &fn(&T)) { for self.iter().advance |x| { f(x); } }
     fn map_<U:Copy>(&self, f: &fn(&T) -> U) -> ~[U] {
         let mut r = ~[];
-        for self.iter().advance |elt| { r += ~[f(elt)]; }
+        for self.iter().advance |elt| {
+            r.push(f(elt));
+        }
         r
     }
 }

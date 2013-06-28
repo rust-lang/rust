@@ -44,12 +44,12 @@ fn main () {
     let a = thing { x: 0 };
     let b = thing { x: 1 };
 
-    assert_eq!(0i.g(), 10);
+    //assert_eq!(0i.g(), 10);
     assert_eq!(a.g(), 10);
     assert_eq!(a.h(), 10);
 
 
-    assert_eq!(0i.thing(3.14, 1), (3.14, 1));
+    //assert_eq!(0i.thing(3.14, 1), (3.14, 1));
 
     assert_eq!(g(0i, 3.14, 1), (3.14, 1));
     assert_eq!(g(false, 3.14, 1), (3.14, 1));
@@ -59,8 +59,8 @@ fn main () {
 
 
     // Trying out a real one
-    assert!(12.test_neq(&10));
-    assert!(!10.test_neq(&10));
+    //assert!(12.test_neq(&10));
+    //assert!(!10.test_neq(&10));
     assert!(a.test_neq(&b));
     assert!(!a.test_neq(&a));
 

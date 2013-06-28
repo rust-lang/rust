@@ -19,15 +19,21 @@ use core::prelude::*;
 
 use getopts;
 use sort;
+use stats::Stats;
 use term;
+use time::precise_time_ns;
 
 use core::comm::{stream, SharedChan};
 use core::either;
 use core::io;
+use core::num;
 use core::option;
+use core::rand::RngUtil;
+use core::rand;
 use core::result;
 use core::task;
 use core::to_str::ToStr;
+use core::u64;
 use core::uint;
 use core::vec;
 
@@ -609,152 +615,143 @@ fn calc_result(desc: &TestDesc, task_succeeded: bool) -> TestResult {
     }
 }
 
-pub mod bench {
-    use core::prelude::*;
-
-    use core::num;
-    use core::rand::RngUtil;
-    use core::rand;
-    use core::u64;
-    use core::vec;
-    use stats::Stats;
-    use test::{BenchHarness, BenchSamples};
-    use time::precise_time_ns;
-
-    impl BenchHarness {
-        /// Callback for benchmark functions to run in their body.
-        pub fn iter(&mut self, inner:&fn()) {
-            self.ns_start = precise_time_ns();
-            let k = self.iterations;
-            for u64::range(0, k) |_| {
-                inner();
-            }
-            self.ns_end = precise_time_ns();
+impl BenchHarness {
+    /// Callback for benchmark functions to run in their body.
+    pub fn iter(&mut self, inner:&fn()) {
+        self.ns_start = precise_time_ns();
+        let k = self.iterations;
+        for u64::range(0, k) |_| {
+            inner();
         }
+        self.ns_end = precise_time_ns();
+    }
 
-        pub fn ns_elapsed(&mut self) -> u64 {
-            if self.ns_start == 0 || self.ns_end == 0 {
-                0
-            } else {
-                self.ns_end - self.ns_start
-            }
-        }
-
-        pub fn ns_per_iter(&mut self) -> u64 {
-            if self.iterations == 0 {
-                0
-            } else {
-                self.ns_elapsed() / self.iterations
-            }
-        }
-
-        pub fn bench_n(&mut self, n: u64, f: &fn(&mut BenchHarness)) {
-            self.iterations = n;
-            debug!("running benchmark for %u iterations",
-                   n as uint);
-            f(self);
-        }
-
-        // This is the Go benchmark algorithm. It produces a single
-        // datapoint and always tries to run for 1s.
-        pub fn go_bench(&mut self, f: &fn(&mut BenchHarness)) {
-
-            // Rounds a number down to the nearest power of 10.
-            fn round_down_10(n: u64) -> u64 {
-                let mut n = n;
-                let mut res = 1;
-                while n > 10 {
-                    n = n / 10;
-                    res *= 10;
-                }
-                res
-            }
-
-            // Rounds x up to a number of the form [1eX, 2eX, 5eX].
-            fn round_up(n: u64) -> u64 {
-                let base = round_down_10(n);
-                if n < (2 * base) {
-                    2 * base
-                } else if n < (5 * base) {
-                    5 * base
-                } else {
-                    10 * base
-                }
-            }
-
-            // Initial bench run to get ballpark figure.
-            let mut n = 1_u64;
-            self.bench_n(n, f);
-
-            while n < 1_000_000_000 &&
-                self.ns_elapsed() < 1_000_000_000 {
-                let last = n;
-
-                // Try to estimate iter count for 1s falling back to 1bn
-                // iterations if first run took < 1ns.
-                if self.ns_per_iter() == 0 {
-                    n = 1_000_000_000;
-                } else {
-                    n = 1_000_000_000 / self.ns_per_iter();
-                }
-
-                n = u64::max(u64::min(n+n/2, 100*last), last+1);
-                n = round_up(n);
-                self.bench_n(n, f);
-            }
-        }
-
-        // This is a more statistics-driven benchmark algorithm.
-        // It stops as quickly as 50ms, so long as the statistical
-        // properties are satisfactory. If those properties are
-        // not met, it may run as long as the Go algorithm.
-        pub fn auto_bench(&mut self, f: &fn(&mut BenchHarness)) -> ~[f64] {
-
-            let mut rng = rand::rng();
-            let mut magnitude = 10;
-            let mut prev_madp = 0.0;
-
-            loop {
-                let n_samples = rng.gen_uint_range(50, 60);
-                let n_iter = rng.gen_uint_range(magnitude,
-                                                magnitude * 2);
-
-                let samples = do vec::from_fn(n_samples) |_| {
-                    self.bench_n(n_iter as u64, f);
-                    self.ns_per_iter() as f64
-                };
-
-                // Eliminate outliers
-                let med = samples.median();
-                let mad = samples.median_abs_dev();
-                let samples = do vec::filter(samples) |f| {
-                    num::abs(*f - med) <= 3.0 * mad
-                };
-
-                debug!("%u samples, median %f, MAD=%f, %u survived filter",
-                       n_samples, med as float, mad as float,
-                       samples.len());
-
-                if samples.len() != 0 {
-                    // If we have _any_ cluster of signal...
-                    let curr_madp = samples.median_abs_dev_pct();
-                    if self.ns_elapsed() > 1_000_000 &&
-                        (curr_madp < 1.0 ||
-                         num::abs(curr_madp - prev_madp) < 0.1) {
-                        return samples;
-                    }
-                    prev_madp = curr_madp;
-
-                    if n_iter > 20_000_000 ||
-                        self.ns_elapsed() > 20_000_000 {
-                        return samples;
-                    }
-                }
-
-                magnitude *= 2;
-            }
+    pub fn ns_elapsed(&mut self) -> u64 {
+        if self.ns_start == 0 || self.ns_end == 0 {
+            0
+        } else {
+            self.ns_end - self.ns_start
         }
     }
+
+    pub fn ns_per_iter(&mut self) -> u64 {
+        if self.iterations == 0 {
+            0
+        } else {
+            self.ns_elapsed() / self.iterations
+        }
+    }
+
+    pub fn bench_n(&mut self, n: u64, f: &fn(&mut BenchHarness)) {
+        self.iterations = n;
+        debug!("running benchmark for %u iterations",
+               n as uint);
+        f(self);
+    }
+
+    // This is the Go benchmark algorithm. It produces a single
+    // datapoint and always tries to run for 1s.
+    pub fn go_bench(&mut self, f: &fn(&mut BenchHarness)) {
+
+        // Rounds a number down to the nearest power of 10.
+        fn round_down_10(n: u64) -> u64 {
+            let mut n = n;
+            let mut res = 1;
+            while n > 10 {
+                n = n / 10;
+                res *= 10;
+            }
+            res
+        }
+
+        // Rounds x up to a number of the form [1eX, 2eX, 5eX].
+        fn round_up(n: u64) -> u64 {
+            let base = round_down_10(n);
+            if n < (2 * base) {
+                2 * base
+            } else if n < (5 * base) {
+                5 * base
+            } else {
+                10 * base
+            }
+        }
+
+        // Initial bench run to get ballpark figure.
+        let mut n = 1_u64;
+        self.bench_n(n, f);
+
+        while n < 1_000_000_000 &&
+            self.ns_elapsed() < 1_000_000_000 {
+            let last = n;
+
+            // Try to estimate iter count for 1s falling back to 1bn
+            // iterations if first run took < 1ns.
+            if self.ns_per_iter() == 0 {
+                n = 1_000_000_000;
+            } else {
+                n = 1_000_000_000 / self.ns_per_iter();
+            }
+
+            n = u64::max(u64::min(n+n/2, 100*last), last+1);
+            n = round_up(n);
+            self.bench_n(n, f);
+        }
+    }
+
+    // This is a more statistics-driven benchmark algorithm.
+    // It stops as quickly as 50ms, so long as the statistical
+    // properties are satisfactory. If those properties are
+    // not met, it may run as long as the Go algorithm.
+    pub fn auto_bench(&mut self, f: &fn(&mut BenchHarness)) -> ~[f64] {
+
+        let mut rng = rand::rng();
+        let mut magnitude = 10;
+        let mut prev_madp = 0.0;
+
+        loop {
+            let n_samples = rng.gen_uint_range(50, 60);
+            let n_iter = rng.gen_uint_range(magnitude,
+                                            magnitude * 2);
+
+            let samples = do vec::from_fn(n_samples) |_| {
+                self.bench_n(n_iter as u64, f);
+                self.ns_per_iter() as f64
+            };
+
+            // Eliminate outliers
+            let med = samples.median();
+            let mad = samples.median_abs_dev();
+            let samples = do vec::filter(samples) |f| {
+                num::abs(*f - med) <= 3.0 * mad
+            };
+
+            debug!("%u samples, median %f, MAD=%f, %u survived filter",
+                   n_samples, med as float, mad as float,
+                   samples.len());
+
+            if samples.len() != 0 {
+                // If we have _any_ cluster of signal...
+                let curr_madp = samples.median_abs_dev_pct();
+                if self.ns_elapsed() > 1_000_000 &&
+                    (curr_madp < 1.0 ||
+                     num::abs(curr_madp - prev_madp) < 0.1) {
+                    return samples;
+                }
+                prev_madp = curr_madp;
+
+                if n_iter > 20_000_000 ||
+                    self.ns_elapsed() > 20_000_000 {
+                    return samples;
+                }
+            }
+
+            magnitude *= 2;
+        }
+    }
+}
+
+pub mod bench {
+    use test::{BenchHarness, BenchSamples};
 
     pub fn benchmark(f: &fn(&mut BenchHarness)) -> BenchSamples {
 

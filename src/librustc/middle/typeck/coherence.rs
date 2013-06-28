@@ -17,7 +17,7 @@
 use core::prelude::*;
 
 use metadata::csearch::{each_path, get_impl_trait};
-use metadata::csearch::{get_impls_for_mod};
+use metadata::csearch;
 use metadata::cstore::{CStore, iter_crate_data};
 use metadata::decoder::{dl_def, dl_field, dl_impl};
 use middle::resolve::{Impl, MethodInfo};
@@ -855,92 +855,81 @@ impl CoherenceChecker {
 
     // External crate handling
 
-    pub fn add_impls_for_module(&self,
-                                impls_seen: &mut HashSet<def_id>,
-                                crate_store: @mut CStore,
-                                module_def_id: def_id) {
-        let implementations = get_impls_for_mod(crate_store,
-                                                module_def_id,
-                                                None);
-        for implementations.iter().advance |implementation| {
-            debug!("coherence: adding impl from external crate: %s",
-                   ty::item_path_str(self.crate_context.tcx,
-                                     implementation.did));
+    pub fn add_external_impl(&self,
+                             impls_seen: &mut HashSet<def_id>,
+                             crate_store: @mut CStore,
+                             impl_def_id: def_id) {
+        let implementation = csearch::get_impl(crate_store, impl_def_id);
 
-            // Make sure we don't visit the same implementation
-            // multiple times.
-            if !impls_seen.insert(implementation.did) {
-                // Skip this one.
-                loop;
-            }
-            // Good. Continue.
+        debug!("coherence: adding impl from external crate: %s",
+               ty::item_path_str(self.crate_context.tcx, implementation.did));
 
-            let self_type = lookup_item_type(self.crate_context.tcx,
-                                             implementation.did);
-            let associated_traits = get_impl_trait(self.crate_context.tcx,
-                                                    implementation.did);
+        // Make sure we don't visit the same implementation multiple times.
+        if !impls_seen.insert(implementation.did) {
+            // Skip this one.
+            return
+        }
+        // Good. Continue.
 
-            // Do a sanity check to make sure that inherent methods have base
-            // types.
+        let self_type = lookup_item_type(self.crate_context.tcx,
+                                         implementation.did);
+        let associated_traits = get_impl_trait(self.crate_context.tcx,
+                                               implementation.did);
 
-            if associated_traits.is_none() {
-                match get_base_type_def_id(self.inference_context,
-                                           dummy_sp(),
-                                           self_type.ty) {
-                    None => {
-                        let session = self.crate_context.tcx.sess;
-                        session.bug(fmt!(
-                            "no base type for external impl \
-                             with no trait: %s (type %s)!",
-                             session.str_of(implementation.ident),
-                             ty_to_str(self.crate_context.tcx,self_type.ty)));
-                    }
-                    Some(_) => {
-                        // Nothing to do.
-                    }
-                }
-            }
-
-            let mut implementation = *implementation;
-
-            // Record all the trait methods.
-            for associated_traits.iter().advance |trait_ref| {
-                self.instantiate_default_methods(implementation.did,
-                                                 &**trait_ref);
-                // Could we avoid these copies when we don't need them?
-                let mut methods = /*bad?*/ copy implementation.methods;
-                self.add_provided_methods_to_impl(
-                    &mut methods,
-                    &trait_ref.def_id,
-                    &implementation.did);
-                implementation = @Impl { methods: methods,
-                                        .. *implementation };
-
-
-                self.add_trait_method(trait_ref.def_id, implementation);
-            }
-
-            // Add the implementation to the mapping from
-            // implementation to base type def ID, if there is a base
-            // type for this implementation.
-
+        // Do a sanity check to make sure that inherent methods have base
+        // types.
+        if associated_traits.is_none() {
             match get_base_type_def_id(self.inference_context,
-                                     dummy_sp(),
-                                     self_type.ty) {
+                                       dummy_sp(),
+                                       self_type.ty) {
                 None => {
-                    // Nothing to do.
+                    let session = self.crate_context.tcx.sess;
+                    session.bug(fmt!("no base type for external impl with no \
+                                      trait: %s (type %s)!",
+                                     session.str_of(implementation.ident),
+                                     ty_to_str(self.crate_context.tcx,
+                                               self_type.ty)));
                 }
-                Some(base_type_def_id) => {
-                    // inherent methods apply to `impl Type` but not
-                    // `impl Trait for Type`:
-                    if associated_traits.is_none() {
-                        self.add_inherent_method(base_type_def_id,
-                                                 implementation);
-                    }
+                Some(_) => {} // Nothing to do.
+            }
+        }
 
-                    self.base_type_def_ids.insert(implementation.did,
-                                                  base_type_def_id);
+        // Record all the trait methods.
+        let mut implementation = @implementation;
+        for associated_traits.iter().advance |trait_ref| {
+            self.instantiate_default_methods(implementation.did,
+                                             *trait_ref);
+
+            // XXX(sully): We could probably avoid this copy if there are no
+            // default methods.
+            let mut methods = copy implementation.methods;
+            self.add_provided_methods_to_impl(&mut methods,
+                                              &trait_ref.def_id,
+                                              &implementation.did);
+            implementation = @Impl {
+                methods: methods,
+                ..*implementation
+            };
+
+            self.add_trait_method(trait_ref.def_id, implementation);
+        }
+
+        // Add the implementation to the mapping from implementation to base
+        // type def ID, if there is a base type for this implementation.
+        match get_base_type_def_id(self.inference_context,
+                                   dummy_sp(),
+                                   self_type.ty) {
+            None => {} // Nothing to do.
+            Some(base_type_def_id) => {
+                // inherent methods apply to `impl Type` but not
+                // `impl Trait for Type`:
+                if associated_traits.is_none() {
+                    self.add_inherent_method(base_type_def_id,
+                                             implementation);
                 }
+
+                self.base_type_def_ids.insert(implementation.did,
+                                              base_type_def_id);
             }
         }
     }
@@ -952,22 +941,14 @@ impl CoherenceChecker {
 
         let crate_store = self.crate_context.tcx.sess.cstore;
         do iter_crate_data(crate_store) |crate_number, _crate_metadata| {
-            self.add_impls_for_module(&mut impls_seen,
-                                      crate_store,
-                                      def_id { crate: crate_number,
-                                               node: 0 });
-
             for each_path(crate_store, crate_number) |_, def_like, _| {
                 match def_like {
-                    dl_def(def_mod(def_id)) => {
-                        self.add_impls_for_module(&mut impls_seen,
-                                                  crate_store,
-                                                  def_id);
+                    dl_impl(def_id) => {
+                        self.add_external_impl(&mut impls_seen,
+                                               crate_store,
+                                               def_id)
                     }
-                    dl_def(_) | dl_impl(_) | dl_field => {
-                        // Skip this.
-                        loop;
-                    }
+                    dl_def(_) | dl_field => loop,   // Skip this.
                 }
             }
         }

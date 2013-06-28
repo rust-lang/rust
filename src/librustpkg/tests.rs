@@ -248,7 +248,7 @@ fn command_line_test_output(args: &[~str]) -> ~[~str] {
     let p_output = command_line_test(args, &os::getcwd());
     let test_output = str::from_bytes(p_output.output);
     for test_output.split_iter('\n').advance |s| {
-        result += [s.to_owned()];
+        result.push(s.to_owned());
     }
     result
 }

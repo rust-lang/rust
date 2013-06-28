@@ -22,7 +22,7 @@ by convention implementing the `Clone` trait and calling the
 
 */
 
-use core::kinds::Const;
+use core::kinds::Freeze;
 
 /// A common trait for cloning an object.
 pub trait Clone {
@@ -112,17 +112,17 @@ impl<T: DeepClone> DeepClone for ~T {
     fn deep_clone(&self) -> ~T { ~(**self).deep_clone() }
 }
 
-// FIXME: #6525: should also be implemented for `T: Owned + DeepClone`
-impl<T: Const + DeepClone> DeepClone for @T {
-    /// Return a deep copy of the managed box. The `Const` trait is required to prevent performing
+// FIXME: #6525: should also be implemented for `T: Send + DeepClone`
+impl<T: Freeze + DeepClone> DeepClone for @T {
+    /// Return a deep copy of the managed box. The `Freeze` trait is required to prevent performing
     /// a deep clone of a potentially cyclical type.
     #[inline]
     fn deep_clone(&self) -> @T { @(**self).deep_clone() }
 }
 
-// FIXME: #6525: should also be implemented for `T: Owned + DeepClone`
-impl<T: Const + DeepClone> DeepClone for @mut T {
-    /// Return a deep copy of the managed box. The `Const` trait is required to prevent performing
+// FIXME: #6525: should also be implemented for `T: Send + DeepClone`
+impl<T: Freeze + DeepClone> DeepClone for @mut T {
+    /// Return a deep copy of the managed box. The `Freeze` trait is required to prevent performing
     /// a deep clone of a potentially cyclical type.
     #[inline]
     fn deep_clone(&self) -> @mut T { @mut (**self).deep_clone() }

@@ -272,7 +272,7 @@ impl Context {
         }
     }
 
-    pub fn prep<T:Owned +
+    pub fn prep<T:Send +
                   Encodable<json::Encoder> +
                   Decodable<json::Decoder>>(@self, // FIXME(#5121)
                                             fn_name:&str,
@@ -292,7 +292,7 @@ trait TPrep {
     fn declare_input(&mut self, kind:&str, name:&str, val:&str);
     fn is_fresh(&self, cat:&str, kind:&str, name:&str, val:&str) -> bool;
     fn all_fresh(&self, cat:&str, map:&WorkMap) -> bool;
-    fn exec<T:Owned +
+    fn exec<T:Send +
               Encodable<json::Encoder> +
               Decodable<json::Decoder>>( // FIXME(#5121)
         &self, blk: ~fn(&Exec) -> T) -> Work<T>;
@@ -328,7 +328,7 @@ impl TPrep for Prep {
         return true;
     }
 
-    fn exec<T:Owned +
+    fn exec<T:Send +
               Encodable<json::Encoder> +
               Decodable<json::Decoder>>( // FIXME(#5121)
             &self, blk: ~fn(&Exec) -> T) -> Work<T> {
@@ -365,7 +365,7 @@ impl TPrep for Prep {
     }
 }
 
-impl<T:Owned +
+impl<T:Send +
        Encodable<json::Encoder> +
        Decodable<json::Decoder>> Work<T> { // FIXME(#5121)
     pub fn new(p: @mut Prep, e: Either<T,PortOne<(Exec,T)>>) -> Work<T> {
@@ -374,7 +374,7 @@ impl<T:Owned +
 }
 
 // FIXME (#3724): movable self. This should be in impl Work.
-fn unwrap<T:Owned +
+fn unwrap<T:Send +
             Encodable<json::Encoder> +
             Decodable<json::Decoder>>( // FIXME(#5121)
         w: Work<T>) -> T {

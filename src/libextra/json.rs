@@ -60,25 +60,27 @@ fn escape_str(s: &str) -> ~str {
     let mut escaped = ~"\"";
     for s.iter().advance |c| {
         match c {
-          '"' => escaped += "\\\"",
-          '\\' => escaped += "\\\\",
-          '\x08' => escaped += "\\b",
-          '\x0c' => escaped += "\\f",
-          '\n' => escaped += "\\n",
-          '\r' => escaped += "\\r",
-          '\t' => escaped += "\\t",
-          _ => escaped += str::from_char(c)
+          '"' => escaped.push_str("\\\""),
+          '\\' => escaped.push_str("\\\\"),
+          '\x08' => escaped.push_str("\\b"),
+          '\x0c' => escaped.push_str("\\f"),
+          '\n' => escaped.push_str("\\n"),
+          '\r' => escaped.push_str("\\r"),
+          '\t' => escaped.push_str("\\t"),
+          _ => escaped.push_char(c),
         }
     };
 
-    escaped += "\"";
+    escaped.push_char('"');
 
     escaped
 }
 
 fn spaces(n: uint) -> ~str {
     let mut ss = ~"";
-    for n.times { ss.push_str(" "); }
+    for n.times {
+        ss.push_str(" ");
+    }
     return ss;
 }
 
