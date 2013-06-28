@@ -738,15 +738,9 @@ pub fn make_generic_glue(ccx: @mut CrateContext,
                          name: &str)
                       -> ValueRef {
     let _icx = push_ctxt("make_generic_glue");
-    if !ccx.sess.trans_stats() {
-        return make_generic_glue_inner(ccx, t, llfn, helper);
-    }
-
-    let start = time::get_time();
-    let llval = make_generic_glue_inner(ccx, t, llfn, helper);
-    let end = time::get_time();
-    ccx.log_fn_time(fmt!("glue %s %s", name, ty_to_short_str(ccx.tcx, t)), start, end);
-    return llval;
+    let glue_name = fmt!("glue %s %s", name, ty_to_short_str(ccx.tcx, t));
+    let _s = StatRecorder::new(ccx, glue_name);
+    make_generic_glue_inner(ccx, t, llfn, helper)
 }
 
 pub fn emit_tydescs(ccx: &mut CrateContext) {
