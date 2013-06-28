@@ -112,7 +112,7 @@ impl<'self> Condvar<'self> {
 pub struct ARC<T> { x: UnsafeAtomicRcBox<T> }
 
 /// Create an atomically reference counted wrapper.
-pub fn ARC<T:Const + Owned>(data: T) -> ARC<T> {
+pub fn ARC<T:Freeze + Send>(data: T) -> ARC<T> {
     ARC { x: UnsafeAtomicRcBox::new(data) }
 }
 
@@ -120,7 +120,7 @@ pub fn ARC<T:Const + Owned>(data: T) -> ARC<T> {
  * Access the underlying data in an atomically reference counted
  * wrapper.
  */
-impl<T:Const+Owned> ARC<T> {
+impl<T:Freeze+Send> ARC<T> {
     pub fn get<'a>(&'a self) -> &'a T {
         unsafe { &*self.x.get_immut() }
     }
@@ -133,7 +133,7 @@ impl<T:Const+Owned> ARC<T> {
  * object. However, one of the `arc` objects can be sent to another task,
  * allowing them to share the underlying data.
  */
-impl<T:Const + Owned> Clone for ARC<T> {
+impl<T:Freeze + Send> Clone for ARC<T> {
     fn clone(&self) -> ARC<T> {
         ARC { x: self.x.clone() }
     }
@@ -149,14 +149,14 @@ struct MutexARCInner<T> { lock: Mutex, failed: bool, data: T }
 struct MutexARC<T> { x: UnsafeAtomicRcBox<MutexARCInner<T>> }
 
 /// Create a mutex-protected ARC with the supplied data.
-pub fn MutexARC<T:Owned>(user_data: T) -> MutexARC<T> {
+pub fn MutexARC<T:Send>(user_data: T) -> MutexARC<T> {
     mutex_arc_with_condvars(user_data, 1)
 }
 /**
  * Create a mutex-protected ARC with the supplied data and a specified number
  * of condvars (as sync::mutex_with_condvars).
  */
-pub fn mutex_arc_with_condvars<T:Owned>(user_data: T,
+pub fn mutex_arc_with_condvars<T:Send>(user_data: T,
                                     num_condvars: uint) -> MutexARC<T> {
     let data =
         MutexARCInner { lock: mutex_with_condvars(num_condvars),
@@ -164,7 +164,7 @@ pub fn mutex_arc_with_condvars<T:Owned>(user_data: T,
     MutexARC { x: UnsafeAtomicRcBox::new(data) }
 }
 
-impl<T:Owned> Clone for MutexARC<T> {
+impl<T:Send> Clone for MutexARC<T> {
     /// Duplicate a mutex-protected ARC, as arc::clone.
     fn clone(&self) -> MutexARC<T> {
         // NB: Cloning the underlying mutex is not necessary. Its reference
@@ -173,7 +173,7 @@ impl<T:Owned> Clone for MutexARC<T> {
     }
 }
 
-impl<T:Owned> MutexARC<T> {
+impl<T:Send> MutexARC<T> {
 
     /**
      * Access the underlying mutable data with mutual exclusion from other
@@ -282,14 +282,14 @@ struct RWARC<T> {
 }
 
 /// Create a reader/writer ARC with the supplied data.
-pub fn RWARC<T:Const + Owned>(user_data: T) -> RWARC<T> {
+pub fn RWARC<T:Freeze + Send>(user_data: T) -> RWARC<T> {
     rw_arc_with_condvars(user_data, 1)
 }
 /**
  * Create a reader/writer ARC with the supplied data and a specified number
  * of condvars (as sync::rwlock_with_condvars).
  */
-pub fn rw_arc_with_condvars<T:Const + Owned>(
+pub fn rw_arc_with_condvars<T:Freeze + Send>(
     user_data: T,
     num_condvars: uint) -> RWARC<T>
 {
@@ -299,7 +299,7 @@ pub fn rw_arc_with_condvars<T:Const + Owned>(
     RWARC { x: UnsafeAtomicRcBox::new(data), }
 }
 
-impl<T:Const + Owned> RWARC<T> {
+impl<T:Freeze + Send> RWARC<T> {
     /// Duplicate a rwlock-protected ARC, as arc::clone.
     pub fn clone(&self) -> RWARC<T> {
         RWARC {
@@ -309,7 +309,7 @@ impl<T:Const + Owned> RWARC<T> {
 
 }
 
-impl<T:Const + Owned> RWARC<T> {
+impl<T:Freeze + Send> RWARC<T> {
     /**
      * Access the underlying data mutably. Locks the rwlock in write mode;
      * other readers and writers will block.
@@ -435,7 +435,7 @@ impl<T:Const + Owned> RWARC<T> {
 // lock it. This wraps the unsafety, with the justification that the 'lock'
 // field is never overwritten; only 'failed' and 'data'.
 #[doc(hidden)]
-fn borrow_rwlock<T:Const + Owned>(state: *const RWARCInner<T>) -> *RWlock {
+fn borrow_rwlock<T:Freeze + Send>(state: *const RWARCInner<T>) -> *RWlock {
     unsafe { cast::transmute(&const (*state).lock) }
 }
 
@@ -452,7 +452,7 @@ pub struct RWReadMode<'self, T> {
     token: sync::RWlockReadMode<'self>,
 }
 
-impl<'self, T:Const + Owned> RWWriteMode<'self, T> {
+impl<'self, T:Freeze + Send> RWWriteMode<'self, T> {
     /// Access the pre-downgrade RWARC in write mode.
     pub fn write<U>(&mut self, blk: &fn(x: &mut T) -> U) -> U {
         match *self {
@@ -493,7 +493,7 @@ impl<'self, T:Const + Owned> RWWriteMode<'self, T> {
     }
 }
 
-impl<'self, T:Const + Owned> RWReadMode<'self, T> {
+impl<'self, T:Freeze + Send> RWReadMode<'self, T> {
     /// Access the post-downgrade rwlock in read mode.
     pub fn read<U>(&self, blk: &fn(x: &T) -> U) -> U {
         match *self {

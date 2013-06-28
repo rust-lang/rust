@@ -185,7 +185,21 @@ impl<'self> PkgScript<'self> {
 
 }
 
-impl Ctx {
+pub trait CtxMethods {
+    fn run(&self, cmd: &str, args: ~[~str]);
+    fn do_cmd(&self, _cmd: &str, _pkgname: &str);
+    fn build(&self, workspace: &Path, pkgid: &PkgId);
+    fn clean(&self, workspace: &Path, id: &PkgId);
+    fn info(&self);
+    fn install(&self, workspace: &Path, id: &PkgId);
+    fn install_no_build(&self, workspace: &Path, id: &PkgId);
+    fn prefer(&self, _id: &str, _vers: Option<~str>);
+    fn test(&self);
+    fn uninstall(&self, _id: &str, _vers: Option<~str>);
+    fn unprefer(&self, _id: &str, _vers: Option<~str>);
+}
+
+impl CtxMethods for Ctx {
 
     fn run(&self, cmd: &str, args: ~[~str]) {
         match cmd {

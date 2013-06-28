@@ -20,17 +20,17 @@ struct arc_destruct<T> {
 }
 
 #[unsafe_destructor]
-impl<T:Const> Drop for arc_destruct<T> {
+impl<T:Freeze> Drop for arc_destruct<T> {
     fn drop(&self) {}
 }
 
-fn arc_destruct<T:Const>(data: int) -> arc_destruct<T> {
+fn arc_destruct<T:Freeze>(data: int) -> arc_destruct<T> {
     arc_destruct {
         _data: data
     }
 }
 
-fn arc<T:Const>(_data: T) -> arc_destruct<T> {
+fn arc<T:Freeze>(_data: T) -> arc_destruct<T> {
     arc_destruct(0)
 }
 

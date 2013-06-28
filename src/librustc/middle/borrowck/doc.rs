@@ -359,7 +359,7 @@ of its owner:
     LIFETIME(LV.f, LT, MQ)              // L-Field
       LIFETIME(LV, LT, MQ)
 
-    LIFETIME(*LV, LT, MQ)               // L-Deref-Owned
+    LIFETIME(*LV, LT, MQ)               // L-Deref-Send
       TYPE(LV) = ~Ty
       LIFETIME(LV, LT, MQ)
 
@@ -504,7 +504,7 @@ must prevent the owned pointer `LV` from being mutated, which means
 that we always add `MUTATE` and `CLAIM` to the restriction set imposed
 on `LV`:
 
-    RESTRICTIONS(*LV, ACTIONS) = RS, (*LV, ACTIONS)    // R-Deref-Owned-Pointer
+    RESTRICTIONS(*LV, ACTIONS) = RS, (*LV, ACTIONS)    // R-Deref-Send-Pointer
       TYPE(LV) = ~Ty
       RESTRICTIONS(LV, ACTIONS|MUTATE|CLAIM) = RS
 
@@ -539,14 +539,14 @@ mutable borrowed pointers.
 
 ### Restrictions for loans of const aliasable pointees
 
-Const pointers are read-only. There may be `&mut` or `&` aliases, and
+Freeze pointers are read-only. There may be `&mut` or `&` aliases, and
 we can not prevent *anything* but moves in that case. So the
 `RESTRICTIONS` function is only defined if `ACTIONS` is the empty set.
 Because moves from a `&const` or `@const` lvalue are never legal, it
 is not necessary to add any restrictions at all to the final
 result.
 
-    RESTRICTIONS(*LV, []) = []                         // R-Deref-Const-Borrowed
+    RESTRICTIONS(*LV, []) = []                         // R-Deref-Freeze-Borrowed
       TYPE(LV) = &const Ty or @const Ty
 
 ### Restrictions for loans of mutable borrowed pointees

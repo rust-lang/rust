@@ -94,6 +94,7 @@ use iterator::IteratorUtil;
 #[doc(hidden)]
 pub mod ct {
     use char;
+    use container::Container;
     use prelude::*;
     use str;
 

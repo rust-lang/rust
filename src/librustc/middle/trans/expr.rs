@@ -907,9 +907,12 @@ fn trans_lvalue_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
         let scaled_ix = Mul(bcx, ix_val, vt.llunit_size);
         base::maybe_name_value(bcx.ccx(), scaled_ix, "scaled_ix");
 
-        let mut (bcx, base, len) =
+        let (bcx, base, len) =
             base_datum.get_vec_base_and_len(bcx, index_expr.span,
                                             index_expr.id, 0);
+        let mut bcx = bcx;
+        let mut base = base;
+        let mut len = len;
 
         if ty::type_is_str(base_ty) {
             // acccount for null terminator in the case of string

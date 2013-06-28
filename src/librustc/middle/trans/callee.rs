@@ -146,7 +146,7 @@ pub fn trans(bcx: block, expr: @ast::expr) -> Callee {
             ast::def_static(*) | ast::def_ty(*) | ast::def_prim_ty(*) |
             ast::def_use(*) | ast::def_typaram_binder(*) |
             ast::def_region(*) | ast::def_label(*) | ast::def_ty_param(*) |
-            ast::def_self_ty(*) => {
+            ast::def_self_ty(*) | ast::def_method(*) => {
                 bcx.tcx().sess.span_bug(
                     ref_expr.span,
                     fmt!("Cannot translate def %? \
@@ -319,9 +319,10 @@ pub fn trans_fn_ref_with_vtables(
         // Should be either intra-crate or inlined.
         assert_eq!(def_id.crate, ast::local_crate);
 
-        let mut (val, must_cast) =
+        let (val, must_cast) =
             monomorphize::monomorphic_fn(ccx, def_id, &substs,
                                          vtables, opt_impl_did, Some(ref_id));
+        let mut val = val;
         if must_cast && ref_id != 0 {
             // Monotype of the REFERENCE to the function (type params
             // are subst'd)

@@ -470,13 +470,14 @@ priv fn format(val: Param, op: FormatOp, flags: Flags) -> Result<~[u8],~str> {
                         FormatHex|FormatHEX => 16,
                         FormatString => util::unreachable()
                     };
-                    let mut (s,_) = match op {
+                    let (s,_) = match op {
                         FormatDigit => {
                             let sign = if flags.sign { SignAll } else { SignNeg };
                             to_str_bytes_common(&d, radix, false, sign, DigAll)
                         }
                         _ => to_str_bytes_common(&(d as uint), radix, false, SignNone, DigAll)
                     };
+                    let mut s = s;
                     if flags.precision > s.len() {
                         let mut s_ = vec::with_capacity(flags.precision);
                         let n = flags.precision - s.len();

@@ -80,6 +80,7 @@ pub mod middle {
     pub mod moves;
     pub mod entry;
     pub mod effect;
+    pub mod reachable;
 }
 
 pub mod front {

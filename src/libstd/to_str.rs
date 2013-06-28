@@ -53,7 +53,8 @@ impl<A:ToStr> ToStr for (A,) {
 impl<A:ToStr+Hash+Eq, B:ToStr+Hash+Eq> ToStr for HashMap<A, B> {
     #[inline]
     fn to_str(&self) -> ~str {
-        let mut (acc, first) = (~"{", true);
+        let mut acc = ~"{";
+        let mut first = true;
         for self.iter().advance |(key, value)| {
             if first {
                 first = false;
@@ -73,7 +74,8 @@ impl<A:ToStr+Hash+Eq, B:ToStr+Hash+Eq> ToStr for HashMap<A, B> {
 impl<A:ToStr+Hash+Eq> ToStr for HashSet<A> {
     #[inline]
     fn to_str(&self) -> ~str {
-        let mut (acc, first) = (~"{", true);
+        let mut acc = ~"{";
+        let mut first = true;
         for self.iter().advance |element| {
             if first {
                 first = false;
@@ -121,7 +123,8 @@ impl<A:ToStr,B:ToStr,C:ToStr> ToStr for (A, B, C) {
 impl<'self,A:ToStr> ToStr for &'self [A] {
     #[inline]
     fn to_str(&self) -> ~str {
-        let mut (acc, first) = (~"[", true);
+        let mut acc = ~"[";
+        let mut first = true;
         for self.iter().advance |elt| {
             if first {
                 first = false;
@@ -139,7 +142,8 @@ impl<'self,A:ToStr> ToStr for &'self [A] {
 impl<A:ToStr> ToStr for ~[A] {
     #[inline]
     fn to_str(&self) -> ~str {
-        let mut (acc, first) = (~"[", true);
+        let mut acc = ~"[";
+        let mut first = true;
         for self.iter().advance |elt| {
             if first {
                 first = false;
@@ -157,7 +161,8 @@ impl<A:ToStr> ToStr for ~[A] {
 impl<A:ToStr> ToStr for @[A] {
     #[inline]
     fn to_str(&self) -> ~str {
-        let mut (acc, first) = (~"[", true);
+        let mut acc = ~"[";
+        let mut first = true;
         for self.iter().advance |elt| {
             if first {
                 first = false;

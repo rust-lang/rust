@@ -93,10 +93,10 @@ fn encode_inner(s: &str, full_url: bool) -> ~str {
                         out.push_char(ch);
                       }
 
-                      _ => out += fmt!("%%%X", ch as uint)
+                      _ => out.push_str(fmt!("%%%X", ch as uint))
                     }
                 } else {
-                    out += fmt!("%%%X", ch as uint);
+                    out.push_str(fmt!("%%%X", ch as uint));
                 }
               }
             }
@@ -192,7 +192,7 @@ fn encode_plus(s: &str) -> ~str {
                 out.push_char(ch);
               }
               ' ' => out.push_char('+'),
-              _ => out += fmt!("%%%X", ch as uint)
+              _ => out.push_str(fmt!("%%%X", ch as uint))
             }
         }
 
@@ -218,7 +218,7 @@ pub fn encode_form_urlencoded(m: &HashMap<~str, ~[~str]>) -> ~str {
                 first = false;
             }
 
-            out += fmt!("%s=%s", key, encode_plus(*value));
+            out.push_str(fmt!("%s=%s", key, encode_plus(*value)));
         }
     }
 
@@ -415,7 +415,9 @@ fn get_authority(rawurl: &str) ->
     let mut port = None;
 
     let mut colon_count = 0;
-    let mut (pos, begin, end) = (0, 2, len);
+    let mut pos = 0;
+    let mut begin = 2;
+    let mut end = len;
 
     for rawurl.iter().enumerate().advance |(i,c)| {
         if i < 2 { loop; } // ignore the leading //

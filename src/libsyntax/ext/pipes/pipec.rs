@@ -65,8 +65,8 @@ impl gen_send for message {
                 args_ast);
 
             let mut body = ~"{\n";
-            body += fmt!("use super::%s;\n", name);
-            body += "let mut pipe = pipe;\n";
+            body.push_str(fmt!("use super::%s;\n", name));
+            body.push_str("let mut pipe = pipe;\n");
 
             if this.proto.is_bounded() {
                 let (sp, rp) = match (this.dir, next.dir) {
@@ -76,13 +76,15 @@ impl gen_send for message {
                   (recv, recv) => (~"c", ~"s")
                 };
 
-                body += "let mut b = pipe.reuse_buffer();\n";
-                body += fmt!("let %s = ::std::pipes::SendPacketBuffered(\
-                              &mut (b.buffer.data.%s));\n",
-                             sp, next.name);
-                body += fmt!("let %s = ::std::pipes::RecvPacketBuffered(\
-                              &mut (b.buffer.data.%s));\n",
-                             rp, next.name);
+                body.push_str("let mut b = pipe.reuse_buffer();\n");
+                body.push_str(fmt!("let %s = ::std::pipes::SendPacketBuffered(\
+                                    &mut (b.buffer.data.%s));\n",
+                                    sp,
+                                    next.name));
+                body.push_str(fmt!("let %s = ::std::pipes::RecvPacketBuffered(\
+                                   &mut (b.buffer.data.%s));\n",
+                                   rp,
+                                   next.name));
             }
             else {
                 let pat = match (this.dir, next.dir) {
@@ -92,23 +94,22 @@ impl gen_send for message {
                   (recv, recv) => "(s, c)"
                 };
 
-                body += fmt!("let %s = ::std::pipes::entangle();\n", pat);
+                body.push_str(fmt!("let %s = ::std::pipes::entangle();\n", pat));
             }
-            body += fmt!("let message = %s(%s);\n",
-                         name,
-                         vec::append_one(
-                             arg_names.map(|x| cx.str_of(*x)),
-                             @"s").connect(", "));
+            body.push_str(fmt!("let message = %s(%s);\n",
+                                name,
+                                vec::append_one(arg_names.map(|x| cx.str_of(*x)), @"s")
+                                                         .connect(", ")));
 
             if !try {
-                body += fmt!("::std::pipes::send(pipe, message);\n");
+                body.push_str(fmt!("::std::pipes::send(pipe, message);\n"));
                 // return the new channel
-                body += "c }";
+                body.push_str("c }");
             }
             else {
-                body += fmt!("if ::std::pipes::send(pipe, message) {\n \
+                body.push_str(fmt!("if ::std::pipes::send(pipe, message) {\n \
                                   ::std::pipes::rt::make_some(c) \
-                              } else { ::std::pipes::rt::make_none() } }");
+                              } else { ::std::pipes::rt::make_none() } }"));
             }
 
             let body = cx.parse_expr(body.to_managed());
@@ -155,19 +156,19 @@ impl gen_send for message {
                 };
 
                 let mut body = ~"{ ";
-                body += fmt!("use super::%s;\n", name);
-                body += fmt!("let message = %s%s;\n", name, message_args);
+                body.push_str(fmt!("use super::%s;\n", name));
+                body.push_str(fmt!("let message = %s%s;\n", name, message_args));
 
                 if !try {
-                    body += fmt!("::std::pipes::send(pipe, message);\n");
-                    body += " }";
+                    body.push_str(fmt!("::std::pipes::send(pipe, message);\n"));
+                    body.push_str(" }");
                 } else {
-                    body += fmt!("if ::std::pipes::send(pipe, message) \
+                    body.push_str(fmt!("if ::std::pipes::send(pipe, message) \
                                         { \
                                       ::std::pipes::rt::make_some(()) \
                                   } else { \
                                     ::std::pipes::rt::make_none() \
-                                  } }");
+                                  } }"));
                 }
 
                 let body = cx.parse_expr(body.to_managed());
@@ -433,10 +434,10 @@ impl gen_init for protocol {
         let mut server_states = ~[];
 
         for (copy self.states).iter().advance |s| {
-            items += s.to_type_decls(cx);
+            items.push_all_move(s.to_type_decls(cx));
 
-            client_states += s.to_endpoint_decls(cx, send);
-            server_states += s.to_endpoint_decls(cx, recv);
+            client_states.push_all_move(s.to_endpoint_decls(cx, send));
+            server_states.push_all_move(s.to_endpoint_decls(cx, recv));
         }
 
         if self.is_bounded() {

@@ -68,13 +68,13 @@ pub fn count_insn(cx: block, category: &str) {
         i = 0u;
         while i < len {
             i = *mm.get(&v[i]);
-            s += "/";
-            s += v[i];
+            s.push_char('/');
+            s.push_str(v[i]);
             i += 1u;
         }
 
-        s += "/";
-        s += category;
+        s.push_char('/');
+        s.push_str(category);
 
         let n = match h.find(&s) {
           Some(&n) => n,
@@ -610,12 +610,21 @@ pub fn GEP(cx: block, Pointer: ValueRef, Indices: &[ValueRef]) -> ValueRef {
 
 // Simple wrapper around GEP that takes an array of ints and wraps them
 // in C_i32()
-//
-// FIXME #6571: Use a small-vector optimization to avoid allocations here.
+#[inline]
 pub fn GEPi(cx: block, base: ValueRef, ixs: &[uint]) -> ValueRef {
-    let v = do vec::map(ixs) |i| { C_i32(*i as i32) };
-    count_insn(cx, "gepi");
-    return InBoundsGEP(cx, base, v);
+    // Small vector optimization. This should catch 100% of the cases that
+    // we care about.
+    if ixs.len() < 16 {
+        let mut small_vec = [ C_i32(0), ..16 ];
+        for ixs.iter().enumerate().advance |(i, &ix)| {
+            small_vec[i] = C_i32(ix as i32)
+        }
+        InBoundsGEP(cx, base, small_vec.slice(0, ixs.len()))
+    } else {
+        let v = do vec::map(ixs) |i| { C_i32(*i as i32) };
+        count_insn(cx, "gepi");
+        InBoundsGEP(cx, base, v)
+    }
 }
 
 pub fn InBoundsGEP(cx: block, Pointer: ValueRef, Indices: &[ValueRef]) -> ValueRef {

@@ -652,19 +652,17 @@ impl NameBindings {
                 match self.type_def {
                     None => None,
                     Some(ref type_def) => {
-                        // FIXME (#3784): This is reallllly questionable.
-                        // Perhaps the right thing to do is to merge def_mod
-                        // and def_ty.
                         match (*type_def).type_def {
                             Some(type_def) => Some(type_def),
                             None => {
-                                match (*type_def).module_def {
-                                    Some(module_def) => {
-                                        let module_def = &mut *module_def;
-                                        module_def.def_id.map(|def_id|
-                                            def_mod(*def_id))
+                                match type_def.module_def {
+                                    Some(module) => {
+                                        match module.def_id {
+                                            Some(did) => Some(def_mod(did)),
+                                            None => None,
+                                        }
                                     }
-                                    None => None
+                                    None => None,
                                 }
                             }
                         }
@@ -1230,49 +1228,29 @@ impl Resolver {
                 visit_item(item, (new_parent, visitor));
             }
 
-            item_impl(_, trait_ref_opt, ty, ref methods) => {
-                // If this implements an anonymous trait and it has static
-                // methods, then add all the static methods within to a new
-                // module, if the type was defined within this module.
+            item_impl(_, None, ty, ref methods) => {
+                // If this implements an anonymous trait, then add all the
+                // methods within to a new module, if the type was defined
+                // within this module.
                 //
                 // FIXME (#3785): This is quite unsatisfactory. Perhaps we
                 // should modify anonymous traits to only be implementable in
                 // the same module that declared the type.
 
-                // Bail out early if there are no static methods.
-                let mut methods_seen = HashMap::new();
-                let mut has_static_methods = false;
-                for methods.iter().advance |method| {
-                    match method.explicit_self.node {
-                        sty_static => has_static_methods = true,
-                        _ => {
-                            // Make sure you can't define duplicate methods
-                            let ident = method.ident;
-                            let span = method.span;
-                            let old_sp = methods_seen.find_or_insert(ident, span);
-                            if *old_sp != span {
-                                self.session.span_err(span,
-                                                      fmt!("duplicate definition of method `%s`",
-                                                           self.session.str_of(ident)));
-                                self.session.span_note(*old_sp,
-                                                       fmt!("first definition of method `%s` here",
-                                                            self.session.str_of(ident)));
-                            }
-                        }
-                    }
-                }
-
-                // If there are static methods, then create the module
-                // and add them.
-                match (trait_ref_opt, ty) {
-                    (None, @Ty { node: ty_path(path, _, _), _ }) if
-                            has_static_methods && path.idents.len() == 1 => {
+                // Create the module and add all methods.
+                match *ty {
+                    Ty {
+                        node: ty_path(path, _, _),
+                        _
+                    } if path.idents.len() == 1 => {
                         let name = path_to_ident(path);
 
                         let new_parent = match parent.children.find(&name) {
                             // It already exists
-                            Some(&child) if child.get_module_if_available().is_some() &&
-                                            child.get_module().kind == ImplModuleKind => {
+                            Some(&child) if child.get_module_if_available()
+                                                 .is_some() &&
+                                            child.get_module().kind ==
+                                                ImplModuleKind => {
                                 ModuleReducedGraphParent(child.get_module())
                             }
                             // Create the module
@@ -1283,8 +1261,8 @@ impl Resolver {
                                                    ForbidDuplicateModules,
                                                    sp);
 
-                                let parent_link = self.get_parent_link(new_parent,
-                                                                       ident);
+                                let parent_link =
+                                    self.get_parent_link(new_parent, ident);
                                 let def_id = local_def(item.id);
                                 name_bindings.define_module(Public,
                                                             parent_link,
@@ -1292,30 +1270,36 @@ impl Resolver {
                                                             ImplModuleKind,
                                                             sp);
 
-                                ModuleReducedGraphParent(name_bindings.get_module())
+                                ModuleReducedGraphParent(
+                                    name_bindings.get_module())
                             }
                         };
 
-                        // For each static method...
+                        // For each method...
                         for methods.iter().advance |method| {
-                            match method.explicit_self.node {
+                            // Add the method to the module.
+                            let ident = method.ident;
+                            let (method_name_bindings, _) =
+                                self.add_child(ident,
+                                               new_parent,
+                                               ForbidDuplicateValues,
+                                               method.span);
+                            let def = match method.explicit_self.node {
                                 sty_static => {
-                                    // Add the static method to the
-                                    // module.
-                                    let ident = method.ident;
-                                    let (method_name_bindings, _) =
-                                        self.add_child(
-                                            ident,
-                                            new_parent,
-                                            ForbidDuplicateValues,
-                                            method.span);
-                                    let def = def_fn(local_def(method.id),
-                                                     method.purity);
-                                    method_name_bindings.define_value(
-                                        Public, def, method.span);
+                                    // Static methods become `def_fn`s.
+                                    def_fn(local_def(method.id),
+                                           method.purity)
                                 }
-                                _ => {}
-                            }
+                                _ => {
+                                    // Non-static methods become
+                                    // `def_method`s.
+                                    def_method(local_def(method.id), None)
+                                }
+                            };
+
+                            method_name_bindings.define_value(Public,
+                                                              def,
+                                                              method.span);
                         }
                     }
                     _ => {}
@@ -1324,41 +1308,23 @@ impl Resolver {
                 visit_item(item, (parent, visitor));
             }
 
+            item_impl(_, Some(_), ty, ref methods) => {
+                visit_item(item, (parent, visitor));
+            }
+
             item_trait(_, _, ref methods) => {
                 let (name_bindings, new_parent) =
                     self.add_child(ident, parent, ForbidDuplicateTypes, sp);
 
-                // If the trait has static methods, then add all the static
-                // methods within to a new module.
-                //
-                // We only need to create the module if the trait has static
-                // methods, so check that first.
-                let mut has_static_methods = false;
-                for (*methods).iter().advance |method| {
-                    let ty_m = trait_method_to_ty_method(method);
-                    match ty_m.explicit_self.node {
-                        sty_static => {
-                            has_static_methods = true;
-                            break;
-                        }
-                        _ => {}
-                    }
-                }
-
-                // Create the module if necessary.
-                let module_parent_opt;
-                if has_static_methods {
-                    let parent_link = self.get_parent_link(parent, ident);
-                    name_bindings.define_module(privacy,
-                                                parent_link,
-                                                Some(local_def(item.id)),
-                                                TraitModuleKind,
-                                                sp);
-                    module_parent_opt = Some(ModuleReducedGraphParent(
-                        name_bindings.get_module()));
-                } else {
-                    module_parent_opt = None;
-                }
+                // Add all the methods within to a new module.
+                let parent_link = self.get_parent_link(parent, ident);
+                name_bindings.define_module(privacy,
+                                            parent_link,
+                                            Some(local_def(item.id)),
+                                            TraitModuleKind,
+                                            sp);
+                let module_parent = ModuleReducedGraphParent(name_bindings.
+                                                             get_module());
 
                 // Add the names of all the methods to the trait info.
                 let mut method_names = HashMap::new();
@@ -1366,35 +1332,34 @@ impl Resolver {
                     let ty_m = trait_method_to_ty_method(method);
 
                     let ident = ty_m.ident;
-                    // Add it to the trait info if not static,
-                    // add it as a name in the trait module otherwise.
-                    match ty_m.explicit_self.node {
-                        sty_static => {
-                            let def = def_static_method(
-                                local_def(ty_m.id),
-                                Some(local_def(item.id)),
-                                ty_m.purity);
 
-                            let (method_name_bindings, _) =
-                                self.add_child(ident,
-                                               module_parent_opt.get(),
-                                               ForbidDuplicateValues,
-                                               ty_m.span);
-                            method_name_bindings.define_value(Public,
-                                                              def,
-                                                              ty_m.span);
+                    // Add it as a name in the trait module.
+                    let def = match ty_m.explicit_self.node {
+                        sty_static => {
+                            // Static methods become `def_static_method`s.
+                            def_static_method(local_def(ty_m.id),
+                                              Some(local_def(item.id)),
+                                              ty_m.purity)
                         }
                         _ => {
-                            // Make sure you can't define duplicate methods
-                            let old_sp = method_names.find_or_insert(ident, ty_m.span);
-                            if *old_sp != ty_m.span {
-                                self.session.span_err(ty_m.span,
-                                                      fmt!("duplicate definition of method `%s`",
-                                                           self.session.str_of(ident)));
-                                self.session.span_note(*old_sp,
-                                                       fmt!("first definition of method `%s` here",
-                                                            self.session.str_of(ident)));
-                            }
+                            // Non-static methods become `def_method`s.
+                            def_method(local_def(ty_m.id),
+                                       Some(local_def(item.id)))
+                        }
+                    };
+
+                    let (method_name_bindings, _) =
+                        self.add_child(ident,
+                                       module_parent,
+                                       ForbidDuplicateValues,
+                                       ty_m.span);
+                    method_name_bindings.define_value(Public, def, ty_m.span);
+
+                    // Add it to the trait info if not static.
+                    match ty_m.explicit_self.node {
+                        sty_static => {}
+                        _ => {
+                            method_names.insert(ident, ());
                         }
                     }
                 }
@@ -1751,6 +1716,9 @@ impl Resolver {
             child_name_bindings.define_type(privacy, def, dummy_sp());
             self.structs.insert(def_id);
           }
+          def_method(*) => {
+            // Ignored; handled elsewhere.
+          }
           def_self(*) | def_arg(*) | def_local(*) |
           def_prim_ty(*) | def_ty_param(*) | def_binding(*) |
           def_use(*) | def_upvar(*) | def_region(*) |
@@ -2091,8 +2059,12 @@ impl Resolver {
         let mut first = true;
         let mut result = ~"";
         for idents.iter().advance |ident| {
-            if first { first = false; } else { result += "::" };
-            result += self.session.str_of(*ident);
+            if first {
+                first = false
+            } else {
+                result.push_str("::")
+            }
+            result.push_str(self.session.str_of(*ident));
         };
         return result;
     }
@@ -2387,7 +2359,8 @@ impl Resolver {
         }
         match type_result {
             BoundResult(target_module, name_bindings) => {
-                debug!("(resolving single import) found type target");
+                debug!("(resolving single import) found type target: %?",
+                        name_bindings.type_def.get().type_def);
                 import_resolution.type_target =
                     Some(Target(target_module, name_bindings));
                 import_resolution.type_id = directive.id;
@@ -3186,12 +3159,14 @@ impl Resolver {
             Some(def_id) if def_id.crate == local_crate => {
                 // OK. Continue.
                 debug!("(recording exports for module subtree) recording \
-                        exports for local module");
+                        exports for local module `%s`",
+                       self.module_to_str(module_));
             }
             None => {
                 // Record exports for the root module.
                 debug!("(recording exports for module subtree) recording \
-                        exports for root module");
+                        exports for root module `%s`",
+                       self.module_to_str(module_));
             }
             Some(_) => {
                 // Bail out.
@@ -3265,22 +3240,8 @@ impl Resolver {
     pub fn add_exports_for_module(@mut self,
                                   exports2: &mut ~[Export2],
                                   module_: @mut Module) {
-        for module_.children.iter().advance |(ident, namebindings)| {
-            debug!("(computing exports) maybe export '%s'",
-                   self.session.str_of(*ident));
-            self.add_exports_of_namebindings(&mut *exports2,
-                                             *ident,
-                                             *namebindings,
-                                             TypeNS,
-                                             false);
-            self.add_exports_of_namebindings(&mut *exports2,
-                                             *ident,
-                                             *namebindings,
-                                             ValueNS,
-                                             false);
-        }
-
-        for module_.import_resolutions.iter().advance |(ident, importresolution)| {
+        for module_.import_resolutions.iter().advance |(ident,
+                                                        importresolution)| {
             if importresolution.privacy != Public {
                 debug!("(computing exports) not reexporting private `%s`",
                        self.session.str_of(*ident));
@@ -4514,8 +4475,8 @@ impl Resolver {
 
         if path.global {
             return self.resolve_crate_relative_path(path,
-                                                 self.xray_context,
-                                                 namespace);
+                                                    self.xray_context,
+                                                    namespace);
         }
 
         if path.idents.len() > 1 {
@@ -4943,6 +4904,22 @@ impl Resolver {
                         // Write the result into the def map.
                         debug!("(resolving expr) resolved `%s`",
                                self.idents_to_str(path.idents));
+
+                        // First-class methods are not supported yet; error
+                        // out here.
+                        match def {
+                            def_method(*) => {
+                                self.session.span_err(expr.span,
+                                                      "first-class methods \
+                                                       are not supported");
+                                self.session.span_note(expr.span,
+                                                       "call the method \
+                                                        using the `.` \
+                                                        syntax");
+                            }
+                            _ => {}
+                        }
+
                         self.record_def(expr.id, def);
                     }
                     None => {
@@ -5072,6 +5049,9 @@ impl Resolver {
                 self.trait_map.insert(expr.id, @mut traits);
             }
             expr_method_call(_, _, ident, _, _, _) => {
+                debug!("(recording candidate traits for expr) recording \
+                        traits for %d",
+                       expr.id);
                 let traits = self.search_for_traits_containing_method(ident);
                 self.trait_map.insert(expr.id, @mut traits);
             }
@@ -5146,7 +5126,6 @@ impl Resolver {
                                                -> ~[def_id] {
         debug!("(searching for traits containing method) looking for '%s'",
                self.session.str_of(name));
-
 
         let mut found_traits = ~[];
         let mut search_module = self.current_module;
@@ -5411,7 +5390,7 @@ pub fn resolve_crate(session: Session,
                   -> CrateMap {
     let resolver = @mut Resolver(session, lang_items, crate);
     resolver.resolve();
-    let Resolver{def_map, export_map2, trait_map, _} = copy *resolver;
+    let Resolver { def_map, export_map2, trait_map, _ } = copy *resolver;
     CrateMap {
         def_map: def_map,
         exp_map2: export_map2,

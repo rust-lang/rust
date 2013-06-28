@@ -122,12 +122,14 @@ pub fn buf_str(toks: ~[token], szs: ~[int], left: uint, right: uint,
     let mut s = ~"[";
     while i != right && L != 0u {
         L -= 1u;
-        if i != left { s += ", "; }
-        s += fmt!("%d=%s", szs[i], tok_str(toks[i]));
+        if i != left {
+            s.push_str(", ");
+        }
+        s.push_str(fmt!("%d=%s", szs[i], tok_str(toks[i])));
         i += 1u;
         i %= n;
     }
-    s += "]";
+    s.push_char(']');
     return s;
 }
 
