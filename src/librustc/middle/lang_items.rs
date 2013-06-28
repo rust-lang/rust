@@ -13,9 +13,9 @@
 // Language items are items that represent concepts intrinsic to the language
 // itself. Examples are:
 //
-// * Traits that specify "kinds"; e.g. "const", "copy", "owned".
+// * Traits that specify "kinds"; e.g. "Freeze", "Copy", "Send".
 //
-// * Traits that represent operators; e.g. "add", "sub", "index".
+// * Traits that represent operators; e.g. "Add", "Sub", "Index".
 //
 // * Functions called by the compiler itself.
 
@@ -33,9 +33,9 @@ use syntax::visit::visit_crate;
 use core::hashmap::HashMap;
 
 pub enum LangItem {
-    ConstTraitLangItem,         // 0
+    FreezeTraitLangItem,        // 0
     CopyTraitLangItem,          // 1
-    OwnedTraitLangItem,         // 2
+    SendTraitLangItem,          // 2
     SizedTraitLangItem,         // 3
 
     DropTraitLangItem,          // 4
@@ -99,9 +99,9 @@ impl LanguageItems {
 
     pub fn item_name(index: uint) -> &'static str {
         match index {
-            0  => "const",
+            0  => "freeze",
             1  => "copy",
-            2  => "owned",
+            2  => "send",
             3  => "sized",
 
             4  => "drop",
@@ -152,14 +152,14 @@ impl LanguageItems {
 
     // FIXME #4621: Method macros sure would be nice here.
 
-    pub fn const_trait(&const self) -> def_id {
-        self.items[ConstTraitLangItem as uint].get()
+    pub fn freeze_trait(&const self) -> def_id {
+        self.items[FreezeTraitLangItem as uint].get()
     }
     pub fn copy_trait(&const self) -> def_id {
         self.items[CopyTraitLangItem as uint].get()
     }
-    pub fn owned_trait(&const self) -> def_id {
-        self.items[OwnedTraitLangItem as uint].get()
+    pub fn send_trait(&const self) -> def_id {
+        self.items[SendTraitLangItem as uint].get()
     }
     pub fn sized_trait(&const self) -> def_id {
         self.items[SizedTraitLangItem as uint].get()
@@ -291,13 +291,13 @@ struct LanguageItemCollector<'self> {
 }
 
 impl<'self> LanguageItemCollector<'self> {
-
-    pub fn new<'a>(crate: &'a crate, session: Session) -> LanguageItemCollector<'a> {
+    pub fn new<'a>(crate: &'a crate, session: Session)
+                   -> LanguageItemCollector<'a> {
         let mut item_refs = HashMap::new();
 
-        item_refs.insert(@"const", ConstTraitLangItem as uint);
+        item_refs.insert(@"freeze", FreezeTraitLangItem as uint);
         item_refs.insert(@"copy", CopyTraitLangItem as uint);
-        item_refs.insert(@"owned", OwnedTraitLangItem as uint);
+        item_refs.insert(@"send", SendTraitLangItem as uint);
         item_refs.insert(@"sized", SizedTraitLangItem as uint);
 
         item_refs.insert(@"drop", DropTraitLangItem as uint);

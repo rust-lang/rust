@@ -11,14 +11,14 @@
 trait Foo {
 }
 
-fn a(_x: ~Foo:Owned) {
+fn a(_x: ~Foo:Send) {
 }
 
-fn b(_x: ~Foo:Owned+Copy) {
+fn b(_x: ~Foo:Send+Copy) {
 }
 
-fn c(x: ~Foo:Const+Owned) {
-    b(x); //~ ERROR expected bounds `Copy+Owned`
+fn c(x: ~Foo:Freeze+Send) {
+    b(x); //~ ERROR expected bounds `Copy+Send`
 }
 
 fn d(x: ~Foo:) {

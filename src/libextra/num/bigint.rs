@@ -380,7 +380,8 @@ impl Integer for BigUint {
             let mut d = Zero::zero::<BigUint>();
             let mut n = 1;
             while m >= b {
-                let mut (d0, d_unit, b_unit) = div_estimate(&m, &b, n);
+                let (d0, d_unit, b_unit) = div_estimate(&m, &b, n);
+                let mut d0 = d0;
                 let mut prod = b * d0;
                 while prod > m {
                     // FIXME(#6050): overloaded operators force moves with generic types
@@ -442,7 +443,8 @@ impl Integer for BigUint {
 
     fn gcd(&self, other: &BigUint) -> BigUint {
         // Use Euclid's algorithm
-        let mut (m, n) = (copy *self, copy *other);
+        let mut m = copy *self;
+        let mut n = copy *other;
         while !m.is_zero() {
             let temp = m;
             m = n % temp;
@@ -506,11 +508,11 @@ impl ToStrRadix for BigUint {
             let mut m      = n;
             while m > divider {
                 let (d, m0) = m.div_mod_floor(&divider);
-                result += [m0.to_uint() as BigDigit];
+                result.push(m0.to_uint() as BigDigit);
                 m = d;
             }
             if !m.is_zero() {
-                result += [m.to_uint() as BigDigit];
+                result.push(m.to_uint() as BigDigit);
             }
             return result;
         }

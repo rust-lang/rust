@@ -27,7 +27,7 @@ avoid hitting the mutex.
 
 use cast::{transmute};
 use clone::Clone;
-use kinds::Owned;
+use kinds::Send;
 use libc::{c_void};
 use option::{Option, Some, None};
 use ops::Drop;
@@ -43,7 +43,7 @@ use sys::Closure;
 
 pub type GlobalDataKey<'self,T> = &'self fn(v: T);
 
-pub unsafe fn global_data_clone_create<T:Owned + Clone>(
+pub unsafe fn global_data_clone_create<T:Send + Clone>(
     key: GlobalDataKey<T>, create: &fn() -> ~T) -> T {
     /*!
      * Clone a global value or, if it has not been created,
@@ -59,7 +59,7 @@ pub unsafe fn global_data_clone_create<T:Owned + Clone>(
     global_data_clone_create_(key_ptr(key), create)
 }
 
-unsafe fn global_data_clone_create_<T:Owned + Clone>(
+unsafe fn global_data_clone_create_<T:Send + Clone>(
     key: uint, create: &fn() -> ~T) -> T {
 
     let mut clone_value: Option<T> = None;
@@ -79,13 +79,13 @@ unsafe fn global_data_clone_create_<T:Owned + Clone>(
     return clone_value.unwrap();
 }
 
-unsafe fn global_data_modify<T:Owned>(
+unsafe fn global_data_modify<T:Send>(
     key: GlobalDataKey<T>, op: &fn(Option<~T>) -> Option<~T>) {
 
     global_data_modify_(key_ptr(key), op)
 }
 
-unsafe fn global_data_modify_<T:Owned>(
+unsafe fn global_data_modify_<T:Send>(
     key: uint, op: &fn(Option<~T>) -> Option<~T>) {
 
     let mut old_dtor = None;
@@ -124,7 +124,7 @@ unsafe fn global_data_modify_<T:Owned>(
     }
 }
 
-pub unsafe fn global_data_clone<T:Owned + Clone>(
+pub unsafe fn global_data_clone<T:Send + Clone>(
     key: GlobalDataKey<T>) -> Option<T> {
     let mut maybe_clone: Option<T> = None;
     do global_data_modify(key) |current| {
@@ -220,7 +220,7 @@ fn get_global_state() -> Exclusive<GlobalState> {
     }
 }
 
-fn key_ptr<T:Owned>(key: GlobalDataKey<T>) -> uint {
+fn key_ptr<T:Send>(key: GlobalDataKey<T>) -> uint {
     unsafe {
         let closure: Closure = transmute(key);
         return transmute(closure.code);

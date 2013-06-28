@@ -642,15 +642,15 @@ pub fn sanitize(s: &str) -> ~str {
     for s.iter().advance |c| {
         match c {
             // Escape these with $ sequences
-            '@' => result += "$SP$",
-            '~' => result += "$UP$",
-            '*' => result += "$RP$",
-            '&' => result += "$BP$",
-            '<' => result += "$LT$",
-            '>' => result += "$GT$",
-            '(' => result += "$LP$",
-            ')' => result += "$RP$",
-            ',' => result += "$C$",
+            '@' => result.push_str("$SP$"),
+            '~' => result.push_str("$UP$"),
+            '*' => result.push_str("$RP$"),
+            '&' => result.push_str("$BP$"),
+            '<' => result.push_str("$LT$"),
+            '>' => result.push_str("$GT$"),
+            '(' => result.push_str("$LP$"),
+            ')' => result.push_str("$RP$"),
+            ',' => result.push_str("$C$"),
 
             // '.' doesn't occur in types and functions, so reuse it
             // for ':'
@@ -686,12 +686,14 @@ pub fn mangle(sess: Session, ss: path) -> ~str {
     let mut n = ~"_ZN"; // Begin name-sequence.
 
     for ss.iter().advance |s| {
-        match *s { path_name(s) | path_mod(s) => {
-          let sani = sanitize(sess.str_of(s));
-          n += fmt!("%u%s", sani.len(), sani);
-        } }
+        match *s {
+            path_name(s) | path_mod(s) => {
+                let sani = sanitize(sess.str_of(s));
+                n.push_str(fmt!("%u%s", sani.len(), sani));
+            }
+        }
     }
-    n += "E"; // End name-sequence.
+    n.push_char('E'); // End name-sequence.
     n
 }
 

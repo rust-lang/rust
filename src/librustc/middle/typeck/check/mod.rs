@@ -213,6 +213,13 @@ impl PurityState {
     }
 }
 
+/// Whether `check_binop` allows overloaded operators to be invoked.
+#[deriving(Eq)]
+enum AllowOverloadedOperatorsFlag {
+    AllowOverloadedOperators,
+    DontAllowOverloadedOperators,
+}
+
 pub struct FnCtxt {
     // Number of errors that had been reported when we started
     // checking this function. On exit, if we find that *more* errors
@@ -784,10 +791,6 @@ impl FnCtxt {
         ast_ty_to_ty(self, self, ast_t)
     }
 
-    pub fn expr_to_str(&self, expr: @ast::expr) -> ~str {
-        expr.repr(self.tcx())
-    }
-
     pub fn pat_to_str(&self, pat: @ast::pat) -> ~str {
         pat.repr(self.tcx())
     }
@@ -796,9 +799,8 @@ impl FnCtxt {
         match self.inh.node_types.find(&ex.id) {
             Some(&t) => t,
             None => {
-                self.tcx().sess.bug(
-                    fmt!("no type for %s in fcx %s",
-                         self.expr_to_str(ex), self.tag()));
+                self.tcx().sess.bug(fmt!("no type for expr in fcx %s",
+                                         self.tag()));
             }
         }
     }
@@ -1138,7 +1140,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                                expr: @ast::expr,
                                expected: Option<ty::t>,
                                unifier: &fn()) {
-    debug!(">> typechecking %s", fcx.expr_to_str(expr));
+    debug!(">> typechecking");
 
     fn check_method_argument_types(
         fcx: @mut FnCtxt,
@@ -1391,6 +1393,8 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                 method_map.insert(expr.id, (*entry));
             }
             None => {
+                debug!("(checking method call) failing expr is %d", expr.id);
+
                 fcx.type_error_message(expr.span,
                   |actual| {
                       fmt!("type `%s` does not implement any method in scope \
@@ -1487,7 +1491,8 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                    lhs: @ast::expr,
                    rhs: @ast::expr,
                    // Used only in the error case
-                   expected_result: Option<ty::t>
+                   expected_result: Option<ty::t>,
+                   allow_overloaded_operators: AllowOverloadedOperatorsFlag
                   ) {
         let tcx = fcx.ccx.tcx;
 
@@ -1537,8 +1542,30 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
 
         }
 
-        let result_t = check_user_binop(fcx, callee_id, expr, lhs, lhs_t, op, rhs,
-                                       expected_result);
+        // Check for overloaded operators if allowed.
+        let result_t;
+        if allow_overloaded_operators == AllowOverloadedOperators {
+            result_t = check_user_binop(fcx,
+                                        callee_id,
+                                        expr,
+                                        lhs,
+                                        lhs_t,
+                                        op,
+                                        rhs,
+                                        expected_result);
+        } else {
+            fcx.type_error_message(expr.span,
+                                   |actual| {
+                                        fmt!("binary operation %s cannot be \
+                                              applied to type `%s`",
+                                             ast_util::binop_to_str(op),
+                                             actual)
+                                   },
+                                   lhs_t,
+                                   None);
+            result_t = ty::mk_err();
+        }
+
         fcx.write_ty(expr.id, result_t);
         if ty::type_is_error(result_t) {
             fcx.write_ty(rhs.id, result_t);
@@ -1704,8 +1731,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
             ty::mk_closure(tcx, fn_ty_copy)
         };
 
-        debug!("check_expr_fn_with_unifier %s fty=%s",
-               fcx.expr_to_str(expr),
+        debug!("check_expr_fn_with_unifier fty=%s",
                fcx.infcx().ty_to_str(fty));
 
         fcx.write_ty(expr.id, fty);
@@ -2229,7 +2255,15 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         fcx.write_ty(id, typ);
       }
       ast::expr_binary(callee_id, op, lhs, rhs) => {
-        check_binop(fcx, callee_id, expr, op, lhs, rhs, expected);
+        check_binop(fcx,
+                    callee_id,
+                    expr,
+                    op,
+                    lhs,
+                    rhs,
+                    expected,
+                    AllowOverloadedOperators);
+
         let lhs_ty = fcx.expr_ty(lhs);
         let rhs_ty = fcx.expr_ty(rhs);
         if ty::type_is_error(lhs_ty) ||
@@ -2242,7 +2276,15 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         }
       }
       ast::expr_assign_op(callee_id, op, lhs, rhs) => {
-        check_binop(fcx, callee_id, expr, op, lhs, rhs, expected);
+        check_binop(fcx,
+                    callee_id,
+                    expr,
+                    op,
+                    lhs,
+                    rhs,
+                    expected,
+                    DontAllowOverloadedOperators);
+
         let lhs_t = fcx.expr_ty(lhs);
         let result_t = fcx.expr_ty(expr);
         demand::suptype(fcx, expr.span, result_t, lhs_t);
@@ -3246,6 +3288,9 @@ pub fn ty_param_bounds_and_ty_for_def(fcx: @mut FnCtxt,
       }
       ast::def_self_ty(*) => {
         fcx.ccx.tcx.sess.span_bug(sp, "expected value but found self ty");
+      }
+      ast::def_method(*) => {
+        fcx.ccx.tcx.sess.span_bug(sp, "expected value but found method");
       }
     }
 }

@@ -10,9 +10,9 @@
 
 // error-pattern:so long
 fn main() {
-    let x = ~[];
+    let mut x = ~[];
     let y = ~[3];
     fail!("so long");
-    x += y;
+    x.push_all_move(y);
     ~"good" + ~"bye";
 }

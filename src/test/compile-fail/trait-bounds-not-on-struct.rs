@@ -10,6 +10,6 @@
 
 struct Foo;
 
-fn foo(_x: ~Foo:Owned) { } //~ ERROR kind bounds can only be used on trait types
+fn foo(_x: ~Foo:Send) { } //~ ERROR kind bounds can only be used on trait types
 
 fn main() { }

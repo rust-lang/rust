@@ -488,7 +488,9 @@ pub fn parameterized(cx: ctxt,
         }
     };
 
-    strs += vec::map(tps, |t| ty_to_str(cx, *t));
+    for tps.iter().advance |t| {
+        strs.push(ty_to_str(cx, *t))
+    }
 
     if strs.len() > 0u {
         fmt!("%s<%s>", base, strs.connect(","))
@@ -575,8 +577,8 @@ impl Repr for ty::ParamBounds {
             res.push(match b {
                 ty::BoundCopy => ~"Copy",
                 ty::BoundStatic => ~"'static",
-                ty::BoundOwned => ~"Owned",
-                ty::BoundConst => ~"Const",
+                ty::BoundSend => ~"Send",
+                ty::BoundFreeze => ~"Freeze",
                 ty::BoundSized => ~"Sized",
             });
         }
@@ -781,8 +783,8 @@ impl UserString for ty::BuiltinBound {
         match *self {
             ty::BoundCopy => ~"Copy",
             ty::BoundStatic => ~"'static",
-            ty::BoundOwned => ~"Owned",
-            ty::BoundConst => ~"Const",
+            ty::BoundSend => ~"Send",
+            ty::BoundFreeze => ~"Freeze",
             ty::BoundSized => ~"Sized",
         }
     }

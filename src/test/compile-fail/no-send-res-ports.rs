@@ -32,7 +32,7 @@ fn main() {
     let x = Cell::new(foo(Port(@())));
 
     do task::spawn {
-        let y = x.take();   //~ ERROR does not fulfill `Owned`
+        let y = x.take();   //~ ERROR does not fulfill `Send`
         error!(y);
     }
 }

@@ -87,9 +87,8 @@ fn vec_plus() {
     while i < 1500 {
         let rv = vec::from_elem(r.gen_uint_range(0, i + 1), i);
         if r.gen() {
-            v += rv;
-        }
-        else {
+            v.push_all_move(rv);
+        } else {
             v = rv + v;
         }
         i += 1;

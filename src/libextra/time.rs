@@ -849,7 +849,7 @@ priv fn do_strftime(format: &str, tm: &Tm) -> ~str {
     do io::with_str_reader(format) |rdr| {
         while !rdr.eof() {
             match rdr.read_char() {
-                '%' => buf += parse_type(rdr.read_char(), tm),
+                '%' => buf.push_str(parse_type(rdr.read_char(), tm)),
                 ch => buf.push_char(ch)
             }
         }
