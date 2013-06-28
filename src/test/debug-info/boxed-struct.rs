@@ -8,9 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// GDB doesn't know about UTF-32 character encoding and will print a rust char as only its numerical
-// value.
-
 // compile-flags:-Z extra-debug-info
 // debugger:break zzz
 // debugger:run
