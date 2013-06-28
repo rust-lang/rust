@@ -236,8 +236,8 @@ pub fn Parser(sess: @mut ParseSess,
         sess: sess,
         cfg: cfg,
         token: @mut copy tok0.tok,
-        span: @mut copy tok0.sp,
-        last_span: @mut copy tok0.sp,
+        span: @mut tok0.sp,
+        last_span: @mut tok0.sp,
         buffer: @mut ([copy tok0, .. 4]),
         buffer_start: @mut 0,
         buffer_end: @mut 0,
@@ -530,7 +530,7 @@ impl Parser {
 
     // advance the parser by one token
     pub fn bump(&self) {
-        *self.last_span = copy *self.span;
+        *self.last_span = *self.span;
         let next = if *self.buffer_start == *self.buffer_end {
             self.reader.next_token()
         } else {
@@ -538,8 +538,8 @@ impl Parser {
             *self.buffer_start = (*self.buffer_start + 1) & 3;
             next
         };
-        *self.token = copy next.tok;
-        *self.span = copy next.sp;
+        *self.token = /*bad*/copy next.tok;
+        *self.span = next.sp;
         *self.tokens_consumed += 1u;
     }
     // EFFECT: replace the current token and span with the given one
@@ -565,7 +565,7 @@ impl Parser {
         return copy self.buffer[(*self.buffer_start + dist - 1) & 3].tok;
     }
     pub fn fatal(&self, m: &str) -> ! {
-        self.sess.span_diagnostic.span_fatal(*copy self.span, m)
+        self.sess.span_diagnostic.span_fatal(*self.span, m)
     }
     pub fn span_fatal(&self, sp: span, m: &str) -> ! {
         self.sess.span_diagnostic.span_fatal(sp, m)
@@ -574,10 +574,10 @@ impl Parser {
         self.sess.span_diagnostic.span_note(sp, m)
     }
     pub fn bug(&self, m: &str) -> ! {
-        self.sess.span_diagnostic.span_bug(*copy self.span, m)
+        self.sess.span_diagnostic.span_bug(*self.span, m)
     }
     pub fn warn(&self, m: &str) {
-        self.sess.span_diagnostic.span_warn(*copy self.span, m)
+        self.sess.span_diagnostic.span_warn(*self.span, m)
     }
     pub fn span_err(&self, sp: span, m: &str) {
         self.sess.span_diagnostic.span_err(sp, m)
@@ -608,7 +608,7 @@ impl Parser {
 
     pub fn get_lifetime(&self, tok: &token::Token) -> ast::ident {
         match *tok {
-            token::LIFETIME(ref ident) => copy *ident,
+            token::LIFETIME(ref ident) => *ident,
             _ => self.bug("not a lifetime"),
         }
     }
@@ -1259,7 +1259,7 @@ impl Parser {
                 self.obsolete(*self.last_span, ObsoleteLifetimeNotation);
                 match *self.token {
                     token::IDENT(sid, _) => {
-                        let span = copy self.span;
+                        let span = self.span;
                         self.bump();
                         Some(ast::Lifetime {
                             id: self.get_id(),
@@ -1347,7 +1347,7 @@ impl Parser {
     pub fn parse_lifetime(&self) -> ast::Lifetime {
         match *self.token {
             token::LIFETIME(i) => {
-                let span = copy self.span;
+                let span = self.span;
                 self.bump();
                 return ast::Lifetime {
                     id: self.get_id(),
@@ -1358,7 +1358,7 @@ impl Parser {
 
             // Also accept the (obsolete) syntax `foo/`
             token::IDENT(i, _) => {
-                let span = copy self.span;
+                let span = self.span;
                 self.bump();
                 self.expect(&token::BINOP(token::SLASH));
                 self.obsolete(*self.last_span, ObsoleteLifetimeNotation);
@@ -2981,7 +2981,7 @@ impl Parser {
 
         let lo = self.span.lo;
         if self.eat_keyword(keywords::Unsafe) {
-            self.obsolete(copy *self.span, ObsoleteUnsafeBlock);
+            self.obsolete(*self.span, ObsoleteUnsafeBlock);
         }
         self.expect(&token::LBRACE);
 
@@ -2996,7 +2996,7 @@ impl Parser {
 
         let lo = self.span.lo;
         if self.eat_keyword(keywords::Unsafe) {
-            self.obsolete(copy *self.span, ObsoleteUnsafeBlock);
+            self.obsolete(*self.span, ObsoleteUnsafeBlock);
         }
         self.expect(&token::LBRACE);
         let (inner, next) = self.parse_inner_attrs_and_next();
@@ -3581,7 +3581,7 @@ impl Parser {
             ty = self.parse_ty(false);
             opt_trait_ref
         } else if self.eat(&token::COLON) {
-            self.obsolete(copy *self.span, ObsoleteImplSyntax);
+            self.obsolete(*self.span, ObsoleteImplSyntax);
             Some(self.parse_trait_ref())
         } else {
             None
@@ -3626,7 +3626,7 @@ impl Parser {
         self.parse_region_param();
         let generics = self.parse_generics();
         if self.eat(&token::COLON) {
-            self.obsolete(copy *self.span, ObsoleteClassTraits);
+            self.obsolete(*self.span, ObsoleteClassTraits);
             let _ = self.parse_trait_ref_list(&token::LBRACE);
         }
 
@@ -3710,7 +3710,7 @@ impl Parser {
         let a_var = self.parse_name_and_ty(vis, attrs);
         match *self.token {
             token::SEMI => {
-                self.obsolete(copy *self.span, ObsoleteFieldTerminator);
+                self.obsolete(*self.span, ObsoleteFieldTerminator);
                 self.bump();
             }
             token::COMMA => {
@@ -3718,13 +3718,9 @@ impl Parser {
             }
             token::RBRACE => {}
             _ => {
-                self.span_fatal(
-                    copy *self.span,
-                    fmt!(
-                        "expected `,`, or '}' but found `%s`",
-                        self.this_token_to_str()
-                    )
-                );
+                self.span_fatal(*self.span,
+                                fmt!("expected `,`, or '}' but found `%s`",
+                                     self.this_token_to_str()));
             }
         }
         a_var
@@ -4043,26 +4039,19 @@ impl Parser {
             must_be_named_mod = true;
             self.expect_keyword(keywords::Mod);
         } else if *self.token != token::LBRACE {
-            self.span_fatal(
-                copy *self.span,
-                fmt!(
-                    "expected `{` or `mod` but found `%s`",
-                    self.this_token_to_str()
-                )
-            );
+            self.span_fatal(*self.span,
+                            fmt!("expected `{` or `mod` but found `%s`",
+                                 self.this_token_to_str()));
         }
 
         let (sort, ident) = match *self.token {
             token::IDENT(*) => (ast::named, self.parse_ident()),
             _ => {
                 if must_be_named_mod {
-                    self.span_fatal(
-                        copy *self.span,
-                        fmt!(
-                            "expected foreign module name but found `%s`",
-                            self.this_token_to_str()
-                        )
-                    );
+                    self.span_fatal(*self.span,
+                                    fmt!("expected foreign module name but \
+                                          found `%s`",
+                                         self.this_token_to_str()));
                 }
 
                 (ast::anonymous,

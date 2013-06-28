@@ -269,7 +269,7 @@ pub fn sort_meta_items(items: &[@ast::meta_item]) -> ~[@ast::meta_item] {
                     .. /*bad*/ copy **m
                 }
             }
-            _ => /*bad*/ copy *m
+            _ => *m
         }
     }
 }

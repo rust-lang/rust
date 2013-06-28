@@ -382,7 +382,7 @@ impl gen_init for protocol {
 
         cx.ty_path(path(~[cx.ident_of("super"),
                           cx.ident_of("__Buffer")],
-                        copy self.span)
+                        self.span)
                    .add_tys(cx.ty_vars_global(&params)), None)
     }
 
@@ -432,7 +432,7 @@ impl gen_init for protocol {
         let mut client_states = ~[];
         let mut server_states = ~[];
 
-        for (copy self.states).iter().advance |s| {
+        for self.states.iter().advance |s| {
             items.push_all_move(s.to_type_decls(cx));
 
             client_states.push_all_move(s.to_endpoint_decls(cx, send));
@@ -443,11 +443,11 @@ impl gen_init for protocol {
             items.push(self.gen_buffer_type(cx))
         }
 
-        items.push(cx.item_mod(copy self.span,
+        items.push(cx.item_mod(self.span,
                                cx.ident_of("client"),
                                ~[], ~[],
                                client_states));
-        items.push(cx.item_mod(copy self.span,
+        items.push(cx.item_mod(self.span,
                                cx.ident_of("server"),
                                ~[], ~[],
                                server_states));
@@ -455,12 +455,11 @@ impl gen_init for protocol {
         // XXX: Would be nice if our generated code didn't violate
         // Rust coding conventions
         let allows = cx.attribute(
-            copy self.span,
-            cx.meta_list(copy self.span,
+            self.span,
+            cx.meta_list(self.span,
                          @"allow",
-                         ~[cx.meta_word(copy self.span, @"non_camel_case_types"),
-                           cx.meta_word(copy self.span, @"unused_mut")]));
-        cx.item_mod(copy self.span, cx.ident_of(copy self.name),
-                    ~[allows], ~[], items)
+                         ~[cx.meta_word(self.span, @"non_camel_case_types"),
+                           cx.meta_word(self.span, @"unused_mut")]));
+        cx.item_mod(self.span, cx.ident_of(self.name), ~[allows], ~[], items)
     }
 }

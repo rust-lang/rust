@@ -33,18 +33,18 @@ impl<T:Clone> Clone for Fold<T> {
     fn clone(&self) -> Fold<T> {
         Fold {
             ctxt: self.ctxt.clone(),
-            fold_doc: copy self.fold_doc,
-            fold_crate: copy self.fold_crate,
-            fold_item: copy self.fold_item,
-            fold_mod: copy self.fold_mod,
-            fold_nmod: copy self.fold_nmod,
-            fold_fn: copy self.fold_fn,
-            fold_const: copy self.fold_const,
-            fold_enum: copy self.fold_enum,
-            fold_trait: copy self.fold_trait,
-            fold_impl: copy self.fold_impl,
-            fold_type: copy self.fold_type,
-            fold_struct: copy self.fold_struct
+            fold_doc: self.fold_doc,
+            fold_crate: self.fold_crate,
+            fold_item: self.fold_item,
+            fold_mod: self.fold_mod,
+            fold_nmod: self.fold_nmod,
+            fold_fn: self.fold_fn,
+            fold_const: self.fold_const,
+            fold_enum: self.fold_enum,
+            fold_trait: self.fold_trait,
+            fold_impl: self.fold_impl,
+            fold_type: self.fold_type,
+            fold_struct: self.fold_struct
         }
     }
 }

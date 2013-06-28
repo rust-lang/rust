@@ -511,8 +511,7 @@ pub fn lattice_var_and_t<L:LatticeDir + Combine,
             debug!("bnd=None");
             let a_bounds = this.with_bnd(a_bounds, copy *b);
             do this.combine_fields().bnds(&a_bounds.lb, &a_bounds.ub).then {
-                this.infcx().set(copy a_id,
-                                 Root(copy a_bounds, copy nde_a.rank));
+                this.infcx().set(copy a_id, Root(copy a_bounds, nde_a.rank));
                 Ok(copy *b)
             }
         }

@@ -329,8 +329,9 @@ impl ParserObsoleteMethods for Parser {
 
     pub fn try_parse_obsolete_priv_section(&self, attrs: &[attribute])
                                            -> bool {
-        if self.is_keyword(keywords::Priv) && self.look_ahead(1) == token::LBRACE {
-            self.obsolete(copy *self.span, ObsoletePrivSection);
+        if self.is_keyword(keywords::Priv) && self.look_ahead(1) ==
+                token::LBRACE {
+            self.obsolete(*self.span, ObsoletePrivSection);
             self.eat_keyword(keywords::Priv);
             self.bump();
             while *self.token != token::RBRACE {

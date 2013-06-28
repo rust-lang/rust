@@ -124,7 +124,7 @@ fn rustc_help() {
 fn find_cmd(command_string: &str) -> Option<Command> {
     do COMMANDS.iter().find_ |command| {
         command.cmd == command_string
-    }.map_consume(|x| copy *x)
+    }.map_consume(|x| *x)
 }
 
 fn cmd_help(args: &[~str]) -> ValidUsage {

@@ -680,7 +680,7 @@ impl Liveness {
     */
     pub fn live_on_exit(&self, ln: LiveNode, var: Variable)
                         -> Option<LiveNodeKind> {
-        self.live_on_entry(copy self.successors[*ln], var)
+        self.live_on_entry(self.successors[*ln], var)
     }
 
     pub fn used_on_entry(&self, ln: LiveNode, var: Variable) -> bool {
@@ -697,7 +697,7 @@ impl Liveness {
 
     pub fn assigned_on_exit(&self, ln: LiveNode, var: Variable)
                             -> Option<LiveNodeKind> {
-        self.assigned_on_entry(copy self.successors[*ln], var)
+        self.assigned_on_entry(self.successors[*ln], var)
     }
 
     pub fn indices(&self, ln: LiveNode, op: &fn(uint)) {
@@ -768,14 +768,14 @@ impl Liveness {
             wr.write_str("[ln(");
             wr.write_uint(*ln);
             wr.write_str(") of kind ");
-            wr.write_str(fmt!("%?", copy self.ir.lnks[*ln]));
+            wr.write_str(fmt!("%?", self.ir.lnks[*ln]));
             wr.write_str(" reads");
             self.write_vars(wr, ln, |idx| self.users[idx].reader );
             wr.write_str("  writes");
             self.write_vars(wr, ln, |idx| self.users[idx].writer );
             wr.write_str(" ");
             wr.write_str(" precedes ");
-            wr.write_str((copy self.successors[*ln]).to_str());
+            wr.write_str((self.successors[*ln]).to_str());
             wr.write_str("]");
         }
     }
@@ -813,9 +813,9 @@ impl Liveness {
         let mut changed = false;
         do self.indices2(ln, succ_ln) |idx, succ_idx| {
             let users = &mut *self.users;
-            changed |= copy_if_invalid(copy users[succ_idx].reader,
+            changed |= copy_if_invalid(users[succ_idx].reader,
                                        &mut users[idx].reader);
-            changed |= copy_if_invalid(copy users[succ_idx].writer,
+            changed |= copy_if_invalid(users[succ_idx].writer,
                                        &mut users[idx].writer);
             if users[succ_idx].used && !users[idx].used {
                 users[idx].used = true;

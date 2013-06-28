@@ -240,7 +240,7 @@ pub mod v4 {
                     err_msg: ~"uv_ip4_name produced invalid result.",
                 })
             } else {
-                Ok(Ipv4(copy(new_addr)))
+                Ok(Ipv4(new_addr))
             }
         }
     }
@@ -312,12 +312,10 @@ extern fn get_addr_cb(handle: *uv_getaddrinfo_t,
                 let mut curr_addr = res;
                 loop {
                     let new_ip_addr = if ll::is_ipv4_addrinfo(curr_addr) {
-                        Ipv4(copy((
-                            *ll::addrinfo_as_sockaddr_in(curr_addr))))
+                        Ipv4(*ll::addrinfo_as_sockaddr_in(curr_addr))
                     }
                     else if ll::is_ipv6_addrinfo(curr_addr) {
-                        Ipv6(copy((
-                            *ll::addrinfo_as_sockaddr_in6(curr_addr))))
+                        Ipv6(*ll::addrinfo_as_sockaddr_in6(curr_addr))
                     }
                     else {
                         debug!("curr_addr is not of family AF_INET or \

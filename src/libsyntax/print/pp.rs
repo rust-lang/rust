@@ -424,7 +424,7 @@ impl Printer {
     pub fn check_stack(&mut self, k: int) {
         if !self.scan_stack_empty {
             let x = self.scan_top();
-            match copy self.token[x] {
+            match self.token[x] {
               BEGIN(_) => {
                 if k > 0 {
                     self.size[self.scan_pop()] = self.size[x] +

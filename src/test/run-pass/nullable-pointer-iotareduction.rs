@@ -36,7 +36,6 @@ impl<T> E<T> {
 
 macro_rules! check_option {
     ($e:expr: $T:ty) => {{
-        // FIXME #6000: remove the copy
         check_option!(copy $e: $T, |ptr| assert!(*ptr == $e));
     }};
     ($e:expr: $T:ty, |$v:ident| $chk:expr) => {{
@@ -49,7 +48,6 @@ macro_rules! check_option {
 
 macro_rules! check_fancy {
     ($e:expr: $T:ty) => {{
-        // FIXME #6000: remove the copy
         check_fancy!(copy $e: $T, |ptr| assert!(*ptr == $e));
     }};
     ($e:expr: $T:ty, |$v:ident| $chk:expr) => {{

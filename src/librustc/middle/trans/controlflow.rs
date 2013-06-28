@@ -351,7 +351,7 @@ pub fn trans_cont(bcx: block, label_opt: Option<ident>) -> block {
 pub fn trans_ret(bcx: block, e: Option<@ast::expr>) -> block {
     let _icx = push_ctxt("trans_ret");
     let mut bcx = bcx;
-    let dest = match copy bcx.fcx.loop_ret {
+    let dest = match bcx.fcx.loop_ret {
       Some((flagptr, retptr)) => {
         // This is a loop body return. Must set continue flag (our retptr)
         // to false, return flag to true, and then store the value in the

@@ -94,7 +94,7 @@ fn dup_string_reader(r: @mut StringReader) -> @mut StringReader {
         curr: r.curr,
         filemap: r.filemap,
         peek_tok: copy r.peek_tok,
-        peek_span: copy r.peek_span
+        peek_span: r.peek_span
     }
 }
 
@@ -103,20 +103,20 @@ impl reader for StringReader {
     // return the next token. EFFECT: advances the string_reader.
     fn next_token(@mut self) -> TokenAndSpan {
         let ret_val = TokenAndSpan {
-            tok: copy self.peek_tok,
-            sp: copy self.peek_span,
+            tok: /*bad*/copy self.peek_tok,
+            sp: self.peek_span,
         };
         string_advance_token(self);
         ret_val
     }
     fn fatal(@mut self, m: ~str) -> ! {
-        self.span_diagnostic.span_fatal(copy self.peek_span, m)
+        self.span_diagnostic.span_fatal(self.peek_span, m)
     }
     fn span_diag(@mut self) -> @span_handler { self.span_diagnostic }
     fn peek(@mut self) -> TokenAndSpan {
         TokenAndSpan {
-            tok: copy self.peek_tok,
-            sp: copy self.peek_span,
+            tok: /*bad*/copy self.peek_tok,
+            sp: self.peek_span,
         }
     }
     fn dup(@mut self) -> @reader { dup_string_reader(self) as @reader }
@@ -126,13 +126,13 @@ impl reader for TtReader {
     fn is_eof(@mut self) -> bool { self.cur_tok == token::EOF }
     fn next_token(@mut self) -> TokenAndSpan { tt_next_token(self) }
     fn fatal(@mut self, m: ~str) -> ! {
-        self.sp_diag.span_fatal(copy self.cur_span, m);
+        self.sp_diag.span_fatal(self.cur_span, m);
     }
     fn span_diag(@mut self) -> @span_handler { self.sp_diag }
     fn peek(@mut self) -> TokenAndSpan {
         TokenAndSpan {
             tok: copy self.cur_tok,
-            sp: copy self.cur_span,
+            sp: self.cur_span,
         }
     }
     fn dup(@mut self) -> @reader { dup_tt_reader(self) as @reader }
@@ -144,7 +144,7 @@ fn string_advance_token(r: @mut StringReader) {
     match (consume_whitespace_and_comments(r)) {
         Some(comment) => {
             r.peek_tok = copy comment.tok;
-            r.peek_span = copy comment.sp;
+            r.peek_span = comment.sp;
         },
         None => {
             if is_eof(r) {

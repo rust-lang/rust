@@ -780,8 +780,12 @@ fn encode_info_for_method(ecx: &EncodeContext,
     }
 
     let mut combined_ty_params = opt_vec::Empty;
-    for owner_generics.ty_params.iter().advance |x| { combined_ty_params.push(copy *x) }
-    for method_generics.ty_params.iter().advance |x| { combined_ty_params.push(copy *x) }
+    for owner_generics.ty_params.iter().advance |x| {
+        combined_ty_params.push(copy *x)
+    }
+    for method_generics.ty_params.iter().advance |x| {
+        combined_ty_params.push(copy *x)
+    }
     let len = combined_ty_params.len();
     encode_type_param_bounds(ebml_w, ecx, &combined_ty_params);
 
@@ -1392,14 +1396,14 @@ fn synthesize_crate_attrs(ecx: &EncodeContext,
     for crate.node.attrs.iter().advance |attr| {
         attrs.push(
             if "link" != attr::get_attr_name(attr)  {
-                copy *attr
+                *attr
             } else {
                 match attr.node.value.node {
                   meta_list(_, ref l) => {
                     found_link_attr = true;;
                     synthesize_link_attr(ecx, /*bad*/copy *l)
                   }
-                  _ => copy *attr
+                  _ => *attr
                 }
             });
     }

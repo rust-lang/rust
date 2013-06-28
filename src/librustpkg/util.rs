@@ -327,7 +327,7 @@ pub fn find_and_install_dependencies(ctxt: &Ctx,
     // :-(
     debug!("In find_and_install_dependencies...");
     let my_workspace = copy *workspace;
-    let my_ctxt      = copy *ctxt;
+    let my_ctxt      = *ctxt;
     for c.each_view_item() |vi: &ast::view_item| {
         debug!("A view item!");
         match vi.node {
