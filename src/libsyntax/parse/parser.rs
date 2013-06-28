@@ -64,7 +64,7 @@ use codemap::{span, BytePos, spanned, mk_sp};
 use codemap;
 use parse::attr::parser_attr;
 use parse::classify;
-use parse::common::{seq_sep_none};
+use parse::common::{SeqSep, seq_sep_none};
 use parse::common::{seq_sep_trailing_disallowed, seq_sep_trailing_allowed};
 use parse::lexer::reader;
 use parse::lexer::TokenAndSpan;
@@ -83,8 +83,12 @@ use parse::obsolete::{ObsoleteLifetimeNotation, ObsoleteConstManagedPointer};
 use parse::obsolete::{ObsoletePurity, ObsoleteStaticMethod};
 use parse::obsolete::{ObsoleteConstItem, ObsoleteFixedLengthVectorType};
 use parse::obsolete::{ObsoleteNamedExternModule, ObsoleteMultipleLocalDecl};
-use parse::token::{can_begin_expr, get_ident_interner, ident_to_str, is_ident, is_ident_or_path};
-use parse::token::{is_plain_ident, INTERPOLATED, keywords, special_idents, token_to_binop};
+use parse::obsolete::{ObsoleteMutWithMultipleBindings};
+use parse::obsolete::{ObsoletePatternCopyKeyword, ParserObsoleteMethods};
+use parse::token::{can_begin_expr, get_ident_interner, ident_to_str, is_ident};
+use parse::token::{is_ident_or_path};
+use parse::token::{is_plain_ident, INTERPOLATED, keywords, special_idents};
+use parse::token::{token_to_binop};
 use parse::token;
 use parse::{new_sub_parser_from_file, next_node_id, ParseSess};
 use opt_vec;
@@ -270,6 +274,253 @@ impl Drop for Parser {
 }
 
 impl Parser {
+    // convert a token to a string using self's reader
+    pub fn token_to_str(&self, token: &token::Token) -> ~str {
+        token::to_str(get_ident_interner(), token)
+    }
+
+    // convert the current token to a string using self's reader
+    pub fn this_token_to_str(&self) -> ~str {
+        self.token_to_str(self.token)
+    }
+
+    pub fn unexpected_last(&self, t: &token::Token) -> ! {
+        self.span_fatal(
+            *self.last_span,
+            fmt!(
+                "unexpected token: `%s`",
+                self.token_to_str(t)
+            )
+        );
+    }
+
+    pub fn unexpected(&self) -> ! {
+        self.fatal(
+            fmt!(
+                "unexpected token: `%s`",
+                self.this_token_to_str()
+            )
+        );
+    }
+
+    // expect and consume the token t. Signal an error if
+    // the next token is not t.
+    pub fn expect(&self, t: &token::Token) {
+        if *self.token == *t {
+            self.bump();
+        } else {
+            self.fatal(
+                fmt!(
+                    "expected `%s` but found `%s`",
+                    self.token_to_str(t),
+                    self.this_token_to_str()
+                )
+            )
+        }
+    }
+
+    pub fn parse_ident(&self) -> ast::ident {
+        self.check_strict_keywords();
+        self.check_reserved_keywords();
+        match *self.token {
+            token::IDENT(i, _) => {
+                self.bump();
+                i
+            }
+            token::INTERPOLATED(token::nt_ident(*)) => {
+                self.bug("ident interpolation not converted to real token");
+            }
+            _ => {
+                self.fatal(
+                    fmt!(
+                        "expected ident, found `%s`",
+                        self.this_token_to_str()
+                    )
+                );
+            }
+        }
+    }
+
+    pub fn parse_path_list_ident(&self) -> ast::path_list_ident {
+        let lo = self.span.lo;
+        let ident = self.parse_ident();
+        let hi = self.last_span.hi;
+        spanned(lo, hi, ast::path_list_ident_ { name: ident,
+                                                id: self.get_id() })
+    }
+
+    // consume token 'tok' if it exists. Returns true if the given
+    // token was present, false otherwise.
+    pub fn eat(&self, tok: &token::Token) -> bool {
+        return if *self.token == *tok { self.bump(); true } else { false };
+    }
+
+    pub fn is_keyword(&self, kw: keywords::Keyword) -> bool {
+        token::is_keyword(kw, self.token)
+    }
+
+    // if the next token is the given keyword, eat it and return
+    // true. Otherwise, return false.
+    pub fn eat_keyword(&self, kw: keywords::Keyword) -> bool {
+        let is_kw = match *self.token {
+            token::IDENT(sid, false) => kw.to_ident().name == sid.name,
+            _ => false
+        };
+        if is_kw { self.bump() }
+        is_kw
+    }
+
+    // if the given word is not a keyword, signal an error.
+    // if the next token is not the given word, signal an error.
+    // otherwise, eat it.
+    pub fn expect_keyword(&self, kw: keywords::Keyword) {
+        if !self.eat_keyword(kw) {
+            self.fatal(
+                fmt!(
+                    "expected `%s`, found `%s`",
+                    self.id_to_str(kw.to_ident()).to_str(),
+                    self.this_token_to_str()
+                )
+            );
+        }
+    }
+
+    // signal an error if the given string is a strict keyword
+    pub fn check_strict_keywords(&self) {
+        if token::is_strict_keyword(self.token) {
+            self.span_err(*self.last_span,
+                          fmt!("found `%s` in ident position", self.this_token_to_str()));
+        }
+    }
+
+    // signal an error if the current token is a reserved keyword
+    pub fn check_reserved_keywords(&self) {
+        if token::is_reserved_keyword(self.token) {
+            self.fatal(fmt!("`%s` is a reserved keyword", self.this_token_to_str()));
+        }
+    }
+
+    // expect and consume a GT. if a >> is seen, replace it
+    // with a single > and continue. If a GT is not seen,
+    // signal an error.
+    pub fn expect_gt(&self) {
+        if *self.token == token::GT {
+            self.bump();
+        } else if *self.token == token::BINOP(token::SHR) {
+            self.replace_token(
+                token::GT,
+                self.span.lo + BytePos(1u),
+                self.span.hi
+            );
+        } else {
+            let mut s: ~str = ~"expected `";
+            s.push_str(self.token_to_str(&token::GT));
+            s.push_str("`, found `");
+            s.push_str(self.this_token_to_str());
+            s.push_str("`");
+            self.fatal(s);
+        }
+    }
+
+    // parse a sequence bracketed by '<' and '>', stopping
+    // before the '>'.
+    pub fn parse_seq_to_before_gt<T: Copy>(&self,
+                                           sep: Option<token::Token>,
+                                           f: &fn(&Parser) -> T)
+                                           -> OptVec<T> {
+        let mut first = true;
+        let mut v = opt_vec::Empty;
+        while *self.token != token::GT
+            && *self.token != token::BINOP(token::SHR) {
+            match sep {
+              Some(ref t) => {
+                if first { first = false; }
+                else { self.expect(t); }
+              }
+              _ => ()
+            }
+            v.push(f(self));
+        }
+        return v;
+    }
+
+    pub fn parse_seq_to_gt<T: Copy>(&self,
+                                    sep: Option<token::Token>,
+                                    f: &fn(&Parser) -> T)
+                                    -> OptVec<T> {
+        let v = self.parse_seq_to_before_gt(sep, f);
+        self.expect_gt();
+        return v;
+    }
+
+    // parse a sequence, including the closing delimiter. The function
+    // f must consume tokens until reaching the next separator or
+    // closing bracket.
+    pub fn parse_seq_to_end<T: Copy>(&self,
+                                     ket: &token::Token,
+                                     sep: SeqSep,
+                                     f: &fn(&Parser) -> T)
+                                     -> ~[T] {
+        let val = self.parse_seq_to_before_end(ket, sep, f);
+        self.bump();
+        val
+    }
+
+    // parse a sequence, not including the closing delimiter. The function
+    // f must consume tokens until reaching the next separator or
+    // closing bracket.
+    pub fn parse_seq_to_before_end<T: Copy>(&self,
+                                            ket: &token::Token,
+                                            sep: SeqSep,
+                                            f: &fn(&Parser) -> T)
+                                            -> ~[T] {
+        let mut first: bool = true;
+        let mut v: ~[T] = ~[];
+        while *self.token != *ket {
+            match sep.sep {
+              Some(ref t) => {
+                if first { first = false; }
+                else { self.expect(t); }
+              }
+              _ => ()
+            }
+            if sep.trailing_sep_allowed && *self.token == *ket { break; }
+            v.push(f(self));
+        }
+        return v;
+    }
+
+    // parse a sequence, including the closing delimiter. The function
+    // f must consume tokens until reaching the next separator or
+    // closing bracket.
+    pub fn parse_unspanned_seq<T: Copy>(&self,
+                                        bra: &token::Token,
+                                        ket: &token::Token,
+                                        sep: SeqSep,
+                                        f: &fn(&Parser) -> T)
+                                        -> ~[T] {
+        self.expect(bra);
+        let result = self.parse_seq_to_before_end(ket, sep, f);
+        self.bump();
+        result
+    }
+
+    // NB: Do not use this function unless you actually plan to place the
+    // spanned list in the AST.
+    pub fn parse_seq<T: Copy>(&self,
+                              bra: &token::Token,
+                              ket: &token::Token,
+                              sep: SeqSep,
+                              f: &fn(&Parser) -> T)
+                              -> spanned<~[T]> {
+        let lo = self.span.lo;
+        self.expect(bra);
+        let result = self.parse_seq_to_before_end(ket, sep, f);
+        let hi = self.span.hi;
+        self.bump();
+        spanned(lo, hi, result)
+    }
+
     // advance the parser by one token
     pub fn bump(&self) {
         *self.last_span = copy *self.span;
@@ -821,6 +1072,11 @@ impl Parser {
             self.parse_arg_mode();
             is_mutbl = self.eat_keyword(keywords::Mut);
             let pat = self.parse_pat();
+
+            if is_mutbl && !ast_util::pat_is_ident(pat) {
+                self.obsolete(*self.span, ObsoleteMutWithMultipleBindings)
+            }
+
             self.expect(&token::COLON);
             pat
         } else {
@@ -2437,8 +2693,7 @@ impl Parser {
                 pat = self.parse_pat_ident(bind_by_ref(mutbl));
             } else if self.eat_keyword(keywords::Copy) {
                 // parse copy pat
-                self.warn("copy keyword in patterns no longer has any effect, \
-                           remove it");
+                self.obsolete(*self.span, ObsoletePatternCopyKeyword);
                 pat = self.parse_pat_ident(bind_infer);
             } else {
                 let can_be_enum_or_struct;
@@ -2560,6 +2815,11 @@ impl Parser {
     fn parse_local(&self, is_mutbl: bool) -> @local {
         let lo = self.span.lo;
         let pat = self.parse_pat();
+
+        if is_mutbl && !ast_util::pat_is_ident(pat) {
+            self.obsolete(*self.span, ObsoleteMutWithMultipleBindings)
+        }
+
         let mut ty = @Ty {
             id: self.get_id(),
             node: ty_infer,
@@ -4244,8 +4504,12 @@ impl Parser {
         // FAILURE TO PARSE ITEM
         if visibility != inherited {
             let mut s = ~"unmatched visibility `";
-            s += if visibility == public { "pub" } else { "priv" };
-            s += "`";
+            if visibility == public {
+                s.push_str("pub")
+            } else {
+                s.push_str("priv")
+            }
+            s.push_char('`');
             self.span_fatal(*self.last_span, s);
         }
         return iovi_none;
@@ -4420,7 +4684,8 @@ impl Parser {
         let mut attrs = vec::append(first_item_attrs,
                                     self.parse_outer_attributes());
         // First, parse view items.
-        let mut (view_items, items) = (~[], ~[]);
+        let mut view_items = ~[];
+        let mut items = ~[];
         let mut done = false;
         // I think this code would probably read better as a single
         // loop with a mutable three-state-variable (for extern mods,

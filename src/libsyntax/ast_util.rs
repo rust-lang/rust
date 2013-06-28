@@ -59,7 +59,7 @@ pub fn def_id_of_def(d: def) -> def_id {
       def_fn(id, _) | def_static_method(id, _, _) | def_mod(id) |
       def_foreign_mod(id) | def_static(id, _) |
       def_variant(_, id) | def_ty(id) | def_ty_param(id, _) |
-      def_use(id) | def_struct(id) | def_trait(id) => {
+      def_use(id) | def_struct(id) | def_trait(id) | def_method(id, _) => {
         id
       }
       def_arg(id, _) | def_local(id, _) | def_self(id, _) | def_self_ty(id)
@@ -617,6 +617,15 @@ pub fn variant_visibility_to_privacy(visibility: visibility,
 pub enum Privacy {
     Private,
     Public
+}
+
+/// Returns true if the given pattern consists solely of an identifier
+/// and false otherwise.
+pub fn pat_is_ident(pat: @ast::pat) -> bool {
+    match pat.node {
+        ast::pat_ident(*) => true,
+        _ => false,
+    }
 }
 
 // HYGIENE FUNCTIONS

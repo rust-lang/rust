@@ -130,7 +130,7 @@ fn generic_writer(process: ~fn(markdown: ~str)) -> Writer {
         let mut keep_going = true;
         while keep_going {
             match po.recv() {
-              Write(s) => markdown += s,
+              Write(s) => markdown.push_str(s),
               Done => keep_going = false
             }
         }
@@ -214,7 +214,7 @@ fn future_writer() -> (Writer, future::Future<~str>) {
         let mut res = ~"";
         loop {
             match port.recv() {
-              Write(s) => res += s,
+              Write(s) => res.push_str(s),
               Done => break
             }
         }

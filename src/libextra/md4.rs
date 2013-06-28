@@ -59,7 +59,8 @@ pub fn md4(msg: &[u8]) -> Quad {
     while i < e {
         let (aa, bb, cc, dd) = (a, b, c, d);
 
-        let mut (j, base) = (0u, i);
+        let mut j = 0u;
+        let mut base = i;
         while j < 16u {
             x[j] = (msg[base] as u32) + (msg[base + 1u] as u32 << 8u32) +
                 (msg[base + 2u] as u32 << 16u32) +
@@ -118,8 +119,10 @@ pub fn md4_str(msg: &[u8]) -> ~str {
         let mut i = 0u32;
         while i < 4u32 {
             let byte = (u >> (i * 8u32)) as u8;
-            if byte <= 16u8 { result += "0"; }
-            result += uint::to_str_radix(byte as uint, 16u);
+            if byte <= 16u8 {
+                result.push_char('0')
+            }
+            result.push_str(uint::to_str_radix(byte as uint, 16u));
             i += 1u32;
         }
     }

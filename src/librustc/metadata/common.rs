@@ -176,6 +176,10 @@ pub static tag_item_method_tps: uint = 0x7b;
 pub static tag_item_method_fty: uint = 0x7c;
 pub static tag_item_method_transformed_self_ty: uint = 0x7d;
 
+pub static tag_mod_child: uint = 0x7e;
+pub static tag_misc_info: uint = 0x7f;
+pub static tag_misc_info_crate_items: uint = 0x80;
+
 pub struct LinkMeta {
     name: @str,
     vers: @str,

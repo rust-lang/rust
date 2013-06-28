@@ -86,7 +86,7 @@ struct SemInner<Q> {
 struct Sem<Q>(Exclusive<SemInner<Q>>);
 
 #[doc(hidden)]
-fn new_sem<Q:Owned>(count: int, q: Q) -> Sem<Q> {
+fn new_sem<Q:Send>(count: int, q: Q) -> Sem<Q> {
     Sem(exclusive(SemInner {
         count: count, waiters: new_waitqueue(), blocked: q }))
 }
@@ -101,7 +101,7 @@ fn new_sem_and_signal(count: int, num_condvars: uint)
 }
 
 #[doc(hidden)]
-impl<Q:Owned> Sem<Q> {
+impl<Q:Send> Sem<Q> {
     pub fn acquire(&self) {
         unsafe {
             let mut waiter_nobe = None;
@@ -153,7 +153,7 @@ impl Sem<()> {
 
 #[doc(hidden)]
 impl Sem<~[Waitqueue]> {
-    pub fn access<U>(&self, blk: &fn() -> U) -> U {
+    pub fn access_waitqueue<U>(&self, blk: &fn() -> U) -> U {
         let mut release = None;
         unsafe {
             do task::unkillable {
@@ -175,7 +175,7 @@ struct SemReleaseGeneric<'self, Q> { sem: &'self Sem<Q> }
 
 #[doc(hidden)]
 #[unsafe_destructor]
-impl<'self, Q:Owned> Drop for SemReleaseGeneric<'self, Q> {
+impl<'self, Q:Send> Drop for SemReleaseGeneric<'self, Q> {
     fn drop(&self) {
         self.sem.release();
     }
@@ -381,7 +381,7 @@ impl Sem<~[Waitqueue]> {
     // The only other places that condvars get built are rwlock.write_cond()
     // and rwlock_write_mode.
     pub fn access_cond<U>(&self, blk: &fn(c: &Condvar) -> U) -> U {
-        do self.access {
+        do self.access_waitqueue {
             blk(&Condvar { sem: self, order: Nothing })
         }
     }
@@ -456,7 +456,9 @@ impl Clone for Mutex {
 
 impl Mutex {
     /// Run a function with ownership of the mutex.
-    pub fn lock<U>(&self, blk: &fn() -> U) -> U { (&self.sem).access(blk) }
+    pub fn lock<U>(&self, blk: &fn() -> U) -> U {
+        (&self.sem).access_waitqueue(blk)
+    }
 
     /// Run a function with ownership of the mutex and a handle to a condvar.
     pub fn lock_cond<U>(&self, blk: &fn(c: &Condvar) -> U) -> U {
@@ -559,7 +561,7 @@ impl RWlock {
         unsafe {
             do task::unkillable {
                 (&self.order_lock).acquire();
-                do (&self.access_lock).access {
+                do (&self.access_lock).access_waitqueue {
                     (&self.order_lock).release();
                     task::rekillable(blk)
                 }

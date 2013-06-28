@@ -42,6 +42,7 @@ fn main () {
 
 use cast;
 use cmp;
+use container::Container;
 use int;
 use iterator::IteratorUtil;
 use local_data;
@@ -720,7 +721,8 @@ impl IsaacRng {
     fn isaac(&mut self) {
         self.c += 1;
         // abbreviations
-        let mut (a, b) = (self.a, self.b + self.c);
+        let mut a = self.a;
+        let mut b = self.b + self.c;
 
         static midpoint: uint = RAND_SIZE as uint / 2;
 

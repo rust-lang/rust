@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // Tests that a heterogeneous list of existential types can be put inside an ARC
-// and shared between tasks as long as all types fulfill Const+Owned.
+// and shared between tasks as long as all types fulfill Freeze+Send.
 
 // xfail-fast
 
@@ -64,10 +64,10 @@ fn main() {
     let dogge1 = Dogge { bark_decibels: 100, tricks_known: 42, name: ~"alan_turing" };
     let dogge2 = Dogge { bark_decibels: 55,  tricks_known: 11, name: ~"albert_einstein" };
     let fishe = Goldfyshe { swim_speed: 998, name: ~"alec_guinness" };
-    let arc = arc::ARC(~[~catte  as ~Pet:Const+Owned,
-                         ~dogge1 as ~Pet:Const+Owned,
-                         ~fishe  as ~Pet:Const+Owned,
-                         ~dogge2 as ~Pet:Const+Owned]);
+    let arc = arc::ARC(~[~catte  as ~Pet:Freeze+Send,
+                         ~dogge1 as ~Pet:Freeze+Send,
+                         ~fishe  as ~Pet:Freeze+Send,
+                         ~dogge2 as ~Pet:Freeze+Send]);
     let (p1,c1) = comm::stream();
     let arc1 = cell::Cell::new(arc.clone());
     do task::spawn { check_legs(arc1.take()); c1.send(()); }
@@ -82,21 +82,21 @@ fn main() {
     p3.recv();
 }
 
-fn check_legs(arc: arc::ARC<~[~Pet:Const+Owned]>) {
+fn check_legs(arc: arc::ARC<~[~Pet:Freeze+Send]>) {
     let mut legs = 0;
     for arc.get().iter().advance |pet| {
         legs += pet.num_legs();
     }
     assert!(legs == 12);
 }
-fn check_names(arc: arc::ARC<~[~Pet:Const+Owned]>) {
+fn check_names(arc: arc::ARC<~[~Pet:Freeze+Send]>) {
     for arc.get().iter().advance |pet| {
         do pet.name |name| {
             assert!(name[0] == 'a' as u8 && name[1] == 'l' as u8);
         }
     }
 }
-fn check_pedigree(arc: arc::ARC<~[~Pet:Const+Owned]>) {
+fn check_pedigree(arc: arc::ARC<~[~Pet:Freeze+Send]>) {
     for arc.get().iter().advance |pet| {
         assert!(pet.of_good_pedigree());
     }

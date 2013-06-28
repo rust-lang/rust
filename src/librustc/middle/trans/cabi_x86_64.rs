@@ -39,7 +39,11 @@ enum RegClass {
     Memory
 }
 
-impl Type {
+trait TypeMethods {
+    fn is_reg_ty(&self) -> bool;
+}
+
+impl TypeMethods for Type {
     fn is_reg_ty(&self) -> bool {
         match self.kind() {
             Integer | Pointer | Float | Double => true,
@@ -360,8 +364,9 @@ fn x86_64_tys(atys: &[Type],
         arg_tys.push(ty);
         attrs.push(attr);
     }
-    let mut (ret_ty, ret_attr) = x86_64_ty(rty, |cls| cls.is_ret_bysret(),
+    let (ret_ty, ret_attr) = x86_64_ty(rty, |cls| cls.is_ret_bysret(),
                                        StructRetAttribute);
+    let mut ret_ty = ret_ty;
     let sret = ret_attr.is_some();
     if sret {
         arg_tys = vec::append(~[ret_ty], arg_tys);

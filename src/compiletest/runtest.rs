@@ -226,8 +226,8 @@ actual:\n\
                          ~"-L", config.build_base.to_str(),
                          ~"-L",
                          aux_output_dir_name(config, testfile).to_str()];
-        args += split_maybe_args(&config.rustcflags);
-        args += split_maybe_args(&props.compile_flags);
+        args.push_all_move(split_maybe_args(&config.rustcflags));
+        args.push_all_move(split_maybe_args(&props.compile_flags));
         return ProcArgs {prog: config.rustc_path.to_str(), args: args};
     }
 }
@@ -581,8 +581,8 @@ fn make_compile_args(config: &config, props: &TestProps, extras: ~[~str],
                      ~"-o", xform(config, testfile).to_str(),
                      ~"-L", config.build_base.to_str()]
         + extras;
-    args += split_maybe_args(&config.rustcflags);
-    args += split_maybe_args(&props.compile_flags);
+    args.push_all_move(split_maybe_args(&config.rustcflags));
+    args.push_all_move(split_maybe_args(&props.compile_flags));
     return ProcArgs {prog: config.rustc_path.to_str(), args: args};
 }
 

@@ -964,9 +964,12 @@ pub fn path_str(sess: session::Session, p: &[path_elt]) -> ~str {
     for p.iter().advance |e| {
         match *e {
             ast_map::path_name(s) | ast_map::path_mod(s) => {
-                if first { first = false; }
-                else { r += "::"; }
-                r += sess.str_of(s);
+                if first {
+                    first = false
+                } else {
+                    r.push_str("::")
+                }
+                r.push_str(sess.str_of(s));
             }
         }
     }

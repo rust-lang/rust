@@ -1281,9 +1281,9 @@ let your_crayons = ~[BananaMania, Beaver, Bittersweet];
 // Add two vectors to create a new one
 let our_crayons = my_crayons + your_crayons;
 
-// += will append to a vector, provided it lives in a mutable slot
+// .push_all() will append to a vector, provided it lives in a mutable slot
 let mut my_crayons = my_crayons;
-my_crayons += your_crayons;
+my_crayons.push_all(your_crayons);
 ~~~~
 
 > ***Note:*** The above examples of vector addition use owned

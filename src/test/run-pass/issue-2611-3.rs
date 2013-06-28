@@ -12,7 +12,7 @@
 // than the traits require.
 
 trait A {
-  fn b<C:Copy + Const,D>(x: C) -> C;
+  fn b<C:Copy + Freeze,D>(x: C) -> C;
 }
 
 struct E {

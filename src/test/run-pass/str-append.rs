@@ -15,7 +15,7 @@ extern mod extra;
 
 fn test1() {
     let mut s: ~str = ~"hello";
-    s += ~"world";
+    s.push_str("world");
     debug!(s.clone());
     assert_eq!(s[9], 'd' as u8);
 }

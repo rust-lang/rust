@@ -62,6 +62,8 @@ pub enum ObsoleteSyntax {
     ObsoleteFixedLengthVectorType,
     ObsoleteNamedExternModule,
     ObsoleteMultipleLocalDecl,
+    ObsoleteMutWithMultipleBindings,
+    ObsoletePatternCopyKeyword,
 }
 
 impl to_bytes::IterBytes for ObsoleteSyntax {
@@ -71,7 +73,26 @@ impl to_bytes::IterBytes for ObsoleteSyntax {
     }
 }
 
-impl Parser {
+pub trait ParserObsoleteMethods {
+    /// Reports an obsolete syntax non-fatal error.
+    fn obsolete(&self, sp: span, kind: ObsoleteSyntax);
+    // Reports an obsolete syntax non-fatal error, and returns
+    // a placeholder expression
+    fn obsolete_expr(&self, sp: span, kind: ObsoleteSyntax) -> @expr;
+    fn report(&self,
+              sp: span,
+              kind: ObsoleteSyntax,
+              kind_str: &str,
+              desc: &str);
+    fn token_is_obsolete_ident(&self, ident: &str, token: &Token) -> bool;
+    fn is_obsolete_ident(&self, ident: &str) -> bool;
+    fn eat_obsolete_ident(&self, ident: &str) -> bool;
+    fn try_parse_obsolete_struct_ctor(&self) -> bool;
+    fn try_parse_obsolete_with(&self) -> bool;
+    fn try_parse_obsolete_priv_section(&self, attrs: &[attribute]) -> bool;
+}
+
+impl ParserObsoleteMethods for Parser {
     /// Reports an obsolete syntax non-fatal error.
     pub fn obsolete(&self, sp: span, kind: ObsoleteSyntax) {
         let (kind_str, desc) = match kind {
@@ -222,6 +243,15 @@ impl Parser {
                 "declaration of multiple locals at once",
                 "instead of e.g. `let a = 1, b = 2`, write \
                  `let (a, b) = (1, 2)`."
+            ),
+            ObsoleteMutWithMultipleBindings => (
+                "`mut` with multiple bindings",
+                "use multiple local declarations instead of e.g. `let mut \
+                 (x, y) = ...`."
+            ),
+            ObsoletePatternCopyKeyword => (
+                "`copy` in patterns",
+                "`copy` in patterns no longer has any effect"
             ),
         };
 

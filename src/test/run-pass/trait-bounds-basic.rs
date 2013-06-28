@@ -14,14 +14,14 @@ trait Foo {
 fn a(_x: ~Foo:) {
 }
 
-fn b(_x: ~Foo:Owned) {
+fn b(_x: ~Foo:Send) {
 }
 
-fn c(x: ~Foo:Const+Owned) {
+fn c(x: ~Foo:Freeze+Send) {
     a(x);
 }
 
-fn d(x: ~Foo:Owned+Copy) {
+fn d(x: ~Foo:Send+Copy) {
     b(x);
 }
 
