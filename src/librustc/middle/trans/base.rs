@@ -1129,15 +1129,10 @@ pub fn new_block(cx: fn_ctxt, parent: Option<block>, kind: block_kind,
                  is_lpad: bool, name: &str, opt_node_info: Option<NodeInfo>)
     -> block {
 
-    let s = if cx.ccx.sess.opts.save_temps || cx.ccx.sess.opts.debuginfo {
-        (cx.ccx.names)(name)
-    } else {
-        special_idents::invalid
-    };
     unsafe {
-        let llbb = str::as_c_str(cx.ccx.sess.str_of(s), |buf| {
+        let llbb = do name.as_c_str |buf| {
             llvm::LLVMAppendBasicBlockInContext(cx.ccx.llcx, cx.llfn, buf)
-        });
+        };
         let bcx = mk_block(llbb,
                            parent,
                            kind,
@@ -1145,8 +1140,11 @@ pub fn new_block(cx: fn_ctxt, parent: Option<block>, kind: block_kind,
                            opt_node_info,
                            cx);
         for parent.iter().advance |cx| {
-            if cx.unreachable { Unreachable(bcx); }
-        };
+            if cx.unreachable {
+                Unreachable(bcx);
+                break;
+            }
+        }
         bcx
     }
 }
@@ -2524,12 +2522,15 @@ pub fn get_item_val(ccx: @mut CrateContext, id: ast::node_id) -> ValueRef {
 
 pub fn register_method(ccx: @mut CrateContext,
                        id: ast::node_id,
-                       pth: @ast_map::path,
+                       path: @ast_map::path,
                        m: @ast::method) -> ValueRef {
     let mty = ty::node_id_to_type(ccx.tcx, id);
-    let pth = vec::append(/*bad*/copy *pth, [path_name((ccx.names)("meth")),
-                                  path_name(m.ident)]);
-    let llfn = register_fn_full(ccx, m.span, pth, id, m.attrs, mty);
+
+    let mut path = /*bad*/ copy *path;
+    path.push(path_name(gensym_name("meth")));
+    path.push(path_name(m.ident));
+
+    let llfn = register_fn_full(ccx, m.span, path, id, m.attrs, mty);
     set_inline_hint_if_appr(m.attrs, llfn);
     llfn
 }

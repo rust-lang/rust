@@ -19,6 +19,7 @@ use lib;
 use metadata::common::LinkMeta;
 use metadata::{encoder, csearch, cstore};
 use middle::trans::context::CrateContext;
+use middle::trans::common::gensym_name;
 use middle::ty;
 use util::ppaux;
 
@@ -37,6 +38,7 @@ use syntax::ast;
 use syntax::ast_map::{path, path_mod, path_name};
 use syntax::attr;
 use syntax::print::pprust;
+use syntax::parse::token;
 
 #[deriving(Eq)]
 pub enum output_type {
@@ -731,22 +733,22 @@ pub fn mangle_internal_name_by_type_and_seq(ccx: &mut CrateContext,
     return mangle(ccx.sess,
         ~[path_name(ccx.sess.ident_of(s)),
           path_name(ccx.sess.ident_of(hash)),
-          path_name((ccx.names)(name))]);
+          path_name(gensym_name(name))]);
 }
 
 pub fn mangle_internal_name_by_path_and_seq(ccx: &mut CrateContext,
-                                            path: path,
+                                            mut path: path,
                                             flav: &str) -> ~str {
-    mangle(ccx.sess,
-           vec::append_one(path, path_name((ccx.names)(flav))))
+    path.push(path_name(gensym_name(flav)));
+    mangle(ccx.sess, path)
 }
 
 pub fn mangle_internal_name_by_path(ccx: &mut CrateContext, path: path) -> ~str {
     mangle(ccx.sess, path)
 }
 
-pub fn mangle_internal_name_by_seq(ccx: &mut CrateContext, flav: &str) -> ~str {
-    fmt!("%s_%u", flav, (ccx.names)(flav).name)
+pub fn mangle_internal_name_by_seq(_ccx: &mut CrateContext, flav: &str) -> ~str {
+    return fmt!("%s_%u", flav, token::gensym(flav));
 }
 
 

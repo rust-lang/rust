@@ -28,15 +28,15 @@ use middle::trans::type_of::*;
 use middle::ty;
 use middle::typeck;
 use util::common::indenter;
-use util::ppaux::Repr;
+use util::ppaux::{Repr, ty_to_str};
 
 use middle::trans::type_::Type;
 
-use core::str;
 use core::vec;
 use syntax::ast_map::{path, path_mod, path_name};
 use syntax::ast_util;
 use syntax::{ast, ast_map};
+use syntax::parse::token;
 
 /**
 The main "translation" pass for methods.  Generates code
@@ -755,9 +755,10 @@ pub fn make_vtable(ccx: &mut CrateContext,
             components.push(ptr)
         }
 
+        let name = fmt!("%s_vtable_%u", ty_to_str(ccx.tcx, tydesc.ty), token::gensym("vtable"));
+
         let tbl = C_struct(components);
-        let vtable = ccx.sess.str_of((ccx.names)("vtable"));
-        let vt_gvar = do str::as_c_str(vtable) |buf| {
+        let vt_gvar = do name.as_c_str |buf| {
             llvm::LLVMAddGlobal(ccx.llmod, val_ty(tbl).to_ref(), buf)
         };
         llvm::LLVMSetInitializer(vt_gvar, tbl);
