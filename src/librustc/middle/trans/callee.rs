@@ -195,6 +195,58 @@ pub fn trans_fn_ref_with_vtables_to_callee(
                                                type_params, vtables))}
 }
 
+fn get_impl_resolutions(bcx: block,
+                        impl_id: ast::def_id)
+                         -> typeck::vtable_res {
+    if impl_id.crate == ast::local_crate {
+        *bcx.ccx().maps.vtable_map.get(&impl_id.node)
+    } else {
+        // XXX: This is a temporary hack to work around not properly
+        // exporting information about resolutions for impls.
+        // This doesn't actually work if the trait has param bounds,
+        // but it does allow us to survive the case when it does not.
+        let trait_ref = ty::impl_trait_ref(bcx.tcx(), impl_id).get();
+        @vec::from_elem(trait_ref.substs.tps.len(), @~[])
+    }
+}
+
+fn resolve_default_method_vtables(bcx: block,
+                                  impl_id: ast::def_id,
+                                  method: &ty::Method,
+                                  substs: &ty::substs,
+                                  impl_vtables: Option<typeck::vtable_res>)
+                                 -> typeck::vtable_res {
+
+    // Get the vtables that the impl implements the trait at
+    let trait_vtables = get_impl_resolutions(bcx, impl_id);
+
+    // Build up a param_substs that we are going to resolve the
+    // trait_vtables under.
+    let param_substs = Some(@param_substs {
+        tys: copy substs.tps,
+        self_ty: substs.self_ty,
+        vtables: impl_vtables,
+        self_vtable: None
+    });
+
+    let trait_vtables_fixed = resolve_vtables_under_param_substs(
+        bcx.tcx(), param_substs, trait_vtables);
+
+    // Now we pull any vtables for parameters on the actual method.
+    let num_method_vtables = method.generics.type_param_defs.len();
+    let method_vtables = match impl_vtables {
+        Some(vtables) => {
+            let num_impl_type_parameters =
+                vtables.len() - num_method_vtables;
+            vtables.tailn(num_impl_type_parameters).to_owned()
+        },
+        None => vec::from_elem(num_method_vtables, @~[])
+    };
+
+    @(*trait_vtables_fixed + method_vtables)
+}
+
+
 pub fn trans_fn_ref_with_vtables(
         bcx: block,            //
         def_id: ast::def_id,   // def id of fn
@@ -246,9 +298,9 @@ pub fn trans_fn_ref_with_vtables(
     // We need to do a bunch of special handling for default methods.
     // We need to modify the def_id and our substs in order to monomorphize
     // the function.
-    let (def_id, opt_impl_did, substs, self_vtable) =
+    let (def_id, opt_impl_did, substs, self_vtable, vtables) =
         match tcx.provided_method_sources.find(&def_id) {
-        None => (def_id, None, substs, None),
+        None => (def_id, None, substs, None, vtables),
         Some(source) => {
             // There are two relevant substitutions when compiling
             // default methods. First, there is the substitution for
@@ -282,48 +334,30 @@ pub fn trans_fn_ref_with_vtables(
             let self_vtable =
                 typeck::vtable_static(source.impl_id, receiver_substs,
                                       receiver_vtables);
-
-            // XXX: I think that if the *trait* has vtables on it,
-            // it is all over
-
             // Compute the first substitution
             let first_subst = make_substs_for_receiver_types(
                 tcx, source.impl_id, trait_ref, method);
 
             // And compose them
             let new_substs = first_subst.subst(tcx, &substs);
+
+
+            let vtables =
+                resolve_default_method_vtables(bcx, source.impl_id,
+                                               method, &new_substs, vtables);
+
             debug!("trans_fn_with_vtables - default method: \
                     substs = %s, trait_subst = %s, \
-                    first_subst = %s, new_subst = %s",
+                    first_subst = %s, new_subst = %s, \
+                    self_vtable = %s, vtables = %s",
                    substs.repr(tcx), trait_ref.substs.repr(tcx),
-                   first_subst.repr(tcx), new_substs.repr(tcx));
-
+                   first_subst.repr(tcx), new_substs.repr(tcx),
+                   self_vtable.repr(tcx), vtables.repr(tcx));
 
             (source.method_id, Some(source.impl_id),
-             new_substs, Some(self_vtable))
+             new_substs, Some(self_vtable), Some(vtables))
         }
     };
-
-    // XXX: this is *completely* bad and wrong. I feel bad.  Handling
-    // of vtables is currently bogus for default methods, and changing
-    // to an unflattented representation of vtables causes this to
-    // show up in cases that it did not previously. We need to make
-    // the vtables list be the same length as the substs.  There is
-    // nothing right about this. I really need to emphasize just how
-    // wrong it is: it is completely wrong.
-    // XXX: bad.
-    // This will be fixed in the next commit.
-    let vtables = do vtables.map |vtbls| {
-        if vtbls.len() < substs.tps.len() {
-            @(vec::from_elem(substs.tps.len() - vtbls.len(), @~[]) +
-              **vtbls)
-        } else if vtbls.len() > substs.tps.len() {
-            @vtbls.tailn(vtbls.len() - substs.tps.len()).to_owned()
-        } else {
-            *vtbls
-        }
-    };
-
 
     // Check whether this fn has an inlined copy and, if so, redirect
     // def_id to the local id of the inlined copy.
