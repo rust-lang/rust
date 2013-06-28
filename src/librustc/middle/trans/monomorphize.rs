@@ -161,8 +161,9 @@ pub fn monomorphic_fn(ccx: @mut CrateContext,
     }
     ccx.monomorphizing.insert(fn_id, depth + 1);
 
-    let pt = vec::append(/*bad*/copy *pt,
-                         [path_name((ccx.names)(ccx.sess.str_of(name)))]);
+    let elt = path_name(gensym_name(ccx.sess.str_of(name)));
+    let mut pt = /* bad */copy (*pt);
+    pt.push(elt);
     let s = mangle_exported_name(ccx, /*bad*/copy pt, mono_ty);
 
     let mk_lldecl = || {
