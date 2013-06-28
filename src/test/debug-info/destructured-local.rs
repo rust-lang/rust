@@ -8,19 +8,26 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-win32 Broken because of LLVM bug: http://llvm.org/bugs/show_bug.cgi?id=16249
+// xfail-test
+
+// GDB doesn't know about UTF-32 character encoding and will print a rust char as only its numerical
+// value.
 
 // compile-flags:-Z extra-debug-info
-// debugger:set print pretty off
-// debugger:break _zzz
+// debugger:break zzz
 // debugger:run
 // debugger:finish
-// debugger:print t
-// check:$1 = {4, 5.5, true}
+
+// debugger:print a
+// check:$1 = 9898
+
+// debugger:print b
+// check:$2 = false
 
 fn main() {
-    let t = (4, 5.5, true);
-    _zzz();
+    let (a, b) : (int, bool) = (9898, false);
+
+    zzz();
 }
 
-fn _zzz() {()}
+fn zzz() {()}
