@@ -238,6 +238,12 @@ fn usage() {
 
 pub fn main() {
     let os_args = os::args();
+
+    if (os_args.len() > 1 && (os_args[1] == ~"-v" || os_args[1] == ~"--version")) {
+        rustc::version(os_args[0]);
+        unsafe { exit(0); }
+    }
+
     let args = os_args.tail();
 
     if !args.is_empty() {
