@@ -652,44 +652,6 @@ pub fn contains<T:Eq>(v: &[T], x: &T) -> bool {
     false
 }
 
-/**
- * Search for the first element that matches a given predicate within a range
- *
- * Apply function `f` to each element of `v` within the range
- * [`start`, `end`). When function `f` returns true then an option containing
- * the element is returned. If `f` matches no elements then none is returned.
- */
-pub fn find_between<T:Copy>(v: &[T], start: uint, end: uint,
-                      f: &fn(t: &T) -> bool) -> Option<T> {
-    position_between(v, start, end, f).map(|i| copy v[*i])
-}
-
-/**
- * Search for the last element that matches a given predicate
- *
- * Apply function `f` to each element of `v` in reverse order. When function
- * `f` returns true then an option containing the element is returned. If `f`
- * matches no elements then none is returned.
- */
-pub fn rfind<T:Copy>(v: &[T], f: &fn(t: &T) -> bool) -> Option<T> {
-    rfind_between(v, 0u, v.len(), f)
-}
-
-/**
- * Search for the last element that matches a given predicate within a range
- *
- * Apply function `f` to each element of `v` in reverse order within the range
- * [`start`, `end`). When function `f` returns true then an option containing
- * the element is returned. If `f` matches no elements then none is return.
- */
-pub fn rfind_between<T:Copy>(v: &[T],
-                             start: uint,
-                             end: uint,
-                             f: &fn(t: &T) -> bool)
-                          -> Option<T> {
-    rposition_between(v, start, end, f).map(|i| copy v[*i])
-}
-
 /// Find the first index containing a matching value
 pub fn position_elem<T:Eq>(v: &[T], x: &T) -> Option<uint> {
     v.iter().position_(|y| *x == *y)
@@ -1422,7 +1384,6 @@ impl<'self,T:Eq> ImmutableEqVector<T> for &'self [T] {
 #[allow(missing_doc)]
 pub trait ImmutableCopyableVector<T> {
     fn filtered(&self, f: &fn(&T) -> bool) -> ~[T];
-    fn rfind(&self, f: &fn(t: &T) -> bool) -> Option<T>;
     fn partitioned(&self, f: &fn(&T) -> bool) -> (~[T], ~[T]);
     unsafe fn unsafe_get(&self, elem: uint) -> T;
 }
@@ -1439,18 +1400,6 @@ impl<'self,T:Copy> ImmutableCopyableVector<T> for &'self [T] {
     #[inline]
     fn filtered(&self, f: &fn(t: &T) -> bool) -> ~[T] {
         filtered(*self, f)
-    }
-
-    /**
-     * Search for the last element that matches a given predicate
-     *
-     * Apply function `f` to each element of `v` in reverse order. When
-     * function `f` returns true then an option containing the element is
-     * returned. If `f` matches no elements then none is returned.
-     */
-    #[inline]
-    fn rfind(&self, f: &fn(t: &T) -> bool) -> Option<T> {
-        rfind(*self, f)
     }
 
     /**
@@ -2965,34 +2914,6 @@ mod tests {
     }
 
     #[test]
-    fn test_find_between() {
-        assert!(find_between([], 0u, 0u, f).is_none());
-
-        fn f(xy: &(int, char)) -> bool { let (_x, y) = *xy; y == 'b' }
-        let v = ~[(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
-
-        assert!(find_between(v, 0u, 0u, f).is_none());
-        assert!(find_between(v, 0u, 1u, f).is_none());
-        assert_eq!(find_between(v, 0u, 2u, f), Some((1, 'b')));
-        assert_eq!(find_between(v, 0u, 3u, f), Some((1, 'b')));
-        assert_eq!(find_between(v, 0u, 4u, f), Some((1, 'b')));
-
-        assert!(find_between(v, 1u, 1u, f).is_none());
-        assert_eq!(find_between(v, 1u, 2u, f), Some((1, 'b')));
-        assert_eq!(find_between(v, 1u, 3u, f), Some((1, 'b')));
-        assert_eq!(find_between(v, 1u, 4u, f), Some((1, 'b')));
-
-        assert!(find_between(v, 2u, 2u, f).is_none());
-        assert!(find_between(v, 2u, 3u, f).is_none());
-        assert_eq!(find_between(v, 2u, 4u, f), Some((3, 'b')));
-
-        assert!(find_between(v, 3u, 3u, f).is_none());
-        assert_eq!(find_between(v, 3u, 4u, f), Some((3, 'b')));
-
-        assert!(find_between(v, 4u, 4u, f).is_none());
-    }
-
-    #[test]
     fn test_rposition() {
         fn f(xy: &(int, char)) -> bool { let (_x, y) = *xy; y == 'b' }
         fn g(xy: &(int, char)) -> bool { let (_x, y) = *xy; y == 'd' }
@@ -3028,46 +2949,6 @@ mod tests {
         assert_eq!(rposition_between(v, 3u, 4u, f), Some(3u));
 
         assert!(rposition_between(v, 4u, 4u, f).is_none());
-    }
-
-    #[test]
-    fn test_rfind() {
-        assert!(rfind([], f).is_none());
-
-        fn f(xy: &(int, char)) -> bool { let (_x, y) = *xy; y == 'b' }
-        fn g(xy: &(int, char)) -> bool { let (_x, y) = *xy; y == 'd' }
-        let v = ~[(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
-
-        assert_eq!(rfind(v, f), Some((3, 'b')));
-        assert!(rfind(v, g).is_none());
-    }
-
-    #[test]
-    fn test_rfind_between() {
-        assert!(rfind_between([], 0u, 0u, f).is_none());
-
-        fn f(xy: &(int, char)) -> bool { let (_x, y) = *xy; y == 'b' }
-        let v = ~[(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
-
-        assert!(rfind_between(v, 0u, 0u, f).is_none());
-        assert!(rfind_between(v, 0u, 1u, f).is_none());
-        assert_eq!(rfind_between(v, 0u, 2u, f), Some((1, 'b')));
-        assert_eq!(rfind_between(v, 0u, 3u, f), Some((1, 'b')));
-        assert_eq!(rfind_between(v, 0u, 4u, f), Some((3, 'b')));
-
-        assert!(rfind_between(v, 1u, 1u, f).is_none());
-        assert_eq!(rfind_between(v, 1u, 2u, f), Some((1, 'b')));
-        assert_eq!(rfind_between(v, 1u, 3u, f), Some((1, 'b')));
-        assert_eq!(rfind_between(v, 1u, 4u, f), Some((3, 'b')));
-
-        assert!(rfind_between(v, 2u, 2u, f).is_none());
-        assert!(rfind_between(v, 2u, 3u, f).is_none());
-        assert_eq!(rfind_between(v, 2u, 4u, f), Some((3, 'b')));
-
-        assert!(rfind_between(v, 3u, 3u, f).is_none());
-        assert_eq!(rfind_between(v, 3u, 4u, f), Some((3, 'b')));
-
-        assert!(rfind_between(v, 4u, 4u, f).is_none());
     }
 
     #[test]
