@@ -251,7 +251,7 @@ pub fn rsplit<T:Copy>(v: &[T], f: &fn(t: &T) -> bool) -> ~[~[T]] {
         }
     }
     result.push(v.slice(0u, end).to_owned());
-    reverse(result);
+    result.reverse();
     result
 }
 
@@ -278,7 +278,7 @@ pub fn rsplitn<T:Copy>(v: &[T], n: uint, f: &fn(t: &T) -> bool) -> ~[~[T]] {
         }
     }
     result.push(v.slice(0u, end).to_owned());
-    reverse(result);
+    result.reverse();
     result
 }
 
@@ -751,38 +751,8 @@ pub fn zip<T, U>(mut v: ~[T], mut u: ~[U]) -> ~[(T, U)] {
         w.push((v.pop(),u.pop()));
         i -= 1;
     }
-    reverse(w);
+    w.reverse();
     w
-}
-
-/**
- * Swaps two elements in a vector
- *
- * # Arguments
- *
- * * v  The input vector
- * * a - The index of the first element
- * * b - The index of the second element
- */
-#[inline]
-pub fn swap<T>(v: &mut [T], a: uint, b: uint) {
-    unsafe {
-        // Can't take two mutable loans from one vector, so instead just cast
-        // them to their raw pointers to do the swap
-        let pa: *mut T = &mut v[a];
-        let pb: *mut T = &mut v[b];
-        ptr::swap_ptr(pa, pb);
-    }
-}
-
-/// Reverse the order of elements in a vector, in place
-pub fn reverse<T>(v: &mut [T]) {
-    let mut i: uint = 0;
-    let ln = v.len();
-    while i < ln / 2 {
-        swap(v, i, ln - i - 1);
-        i += 1;
-    }
 }
 
 /// Returns a vector with the order of elements reversed
@@ -840,8 +810,8 @@ pub fn each_permutation<T:Copy>(values: &[T], fun: &fn(perm : &[T]) -> bool) -> 
         }
         // swap indices[k] and indices[l]; sort indices[k+1..]
         // (they're just reversed)
-        vec::swap(indices, k, l);
-        reverse(indices.mut_slice(k+1, length));
+        indices.swap(k, l);
+        indices.mut_slice(k+1, length).reverse();
         // fixup permutation based on indices
         for uint::range(k, length) |i| {
             permutation[i] = copy values[indices[i]];
@@ -1598,7 +1568,7 @@ impl<T> OwnedVector<T> for ~[T] {
         self.push(x);
         let mut j = len;
         while j > i {
-            swap(*self, j, j - 1);
+            self.swap(j, j - 1);
             j -= 1;
         }
     }
@@ -1611,7 +1581,7 @@ impl<T> OwnedVector<T> for ~[T] {
 
         let mut j = i;
         while j < len - 1 {
-            swap(*self, j, j + 1);
+            self.swap(j, j + 1);
             j += 1;
         }
         self.pop()
@@ -1629,7 +1599,7 @@ impl<T> OwnedVector<T> for ~[T] {
             fail!("vec::swap_remove - index %u >= length %u", index, ln);
         }
         if index < ln - 1 {
-            swap(*self, index, ln - 1);
+            self.swap(index, ln - 1);
         }
         self.pop()
     }
@@ -1660,7 +1630,7 @@ impl<T> OwnedVector<T> for ~[T] {
             if !f(&self[i]) {
                 deleted += 1;
             } else if deleted > 0 {
-                swap(*self, i - deleted, i);
+                self.swap(i - deleted, i);
             }
         }
 
@@ -1772,6 +1742,10 @@ pub trait MutableVector<'self, T> {
     fn mut_iter(self) -> VecMutIterator<'self, T>;
     fn mut_rev_iter(self) -> VecMutRevIterator<'self, T>;
 
+    fn swap(self, a: uint, b: uint);
+
+    fn reverse(self);
+
     /**
      * Consumes `src` and moves as many elements as it can into `self`
      * from the range [start,end).
@@ -1820,6 +1794,34 @@ impl<'self,T> MutableVector<'self, T> for &'self mut [T] {
             VecMutRevIterator{ptr: p.offset(self.len() - 1),
                               end: p.offset(-1),
                               lifetime: cast::transmute(p)}
+        }
+    }
+
+    /**
+     * Swaps two elements in a vector
+     *
+     * # Arguments
+     *
+     * * a - The index of the first element
+     * * b - The index of the second element
+     */
+    fn swap(self, a: uint, b: uint) {
+        unsafe {
+            // Can't take two mutable loans from one vector, so instead just cast
+            // them to their raw pointers to do the swap
+            let pa: *mut T = &mut self[a];
+            let pb: *mut T = &mut self[b];
+            ptr::swap_ptr(pa, pb);
+        }
+    }
+
+    /// Reverse the order of elements in a vector, in place
+    fn reverse(self) {
+        let mut i: uint = 0;
+        let ln = self.len();
+        while i < ln / 2 {
+            self.swap(i, ln - i - 1);
+            i += 1;
         }
     }
 
@@ -2887,7 +2889,7 @@ mod tests {
         let mut v: ~[int] = ~[10, 20];
         assert_eq!(v[0], 10);
         assert_eq!(v[1], 20);
-        reverse(v);
+        v.reverse();
         assert_eq!(v[0], 20);
         assert_eq!(v[1], 10);
         let v2 = reversed::<int>([10, 20]);
@@ -2900,7 +2902,7 @@ mod tests {
         let v4 = reversed::<int>([]);
         assert_eq!(v4, ~[]);
         let mut v3: ~[int] = ~[];
-        reverse::<int>(v3);
+        v3.reverse();
     }
 
     #[test]
@@ -3549,7 +3551,7 @@ mod tests {
     #[test]
     fn test_reverse_part() {
         let mut values = [1,2,3,4,5];
-        reverse(values.mut_slice(1, 4));
+        values.mut_slice(1, 4).reverse();
         assert_eq!(values, [1,4,3,2,5]);
     }
 
