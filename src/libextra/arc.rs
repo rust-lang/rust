@@ -276,7 +276,8 @@ struct RWARCInner<T> { lock: RWlock, failed: bool, data: T }
  *
  * Unlike mutex_arcs, rw_arcs are safe, because they cannot be nested.
  */
-#[mutable]
+#[mutable] // XXX remove after snap
+#[no_freeze]
 struct RWARC<T> {
     x: UnsafeAtomicRcBox<RWARCInner<T>>,
 }

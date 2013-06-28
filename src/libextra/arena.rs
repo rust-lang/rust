@@ -65,7 +65,8 @@ struct Chunk {
     is_pod: bool,
 }
 
-#[mutable]
+#[mutable] // XXX remove after snap
+#[no_freeze]
 pub struct Arena {
     // The head is separated out from the list as a unbenchmarked
     // microoptimization, to avoid needing to case on the list to
