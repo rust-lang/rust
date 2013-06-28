@@ -110,9 +110,7 @@ pub fn trans_method(ccx: @mut CrateContext,
         debug!("calling trans_fn with self_ty %s",
                self_ty.repr(ccx.tcx));
         match method.explicit_self.node {
-          ast::sty_value => {
-            impl_owned_self(self_ty)
-          }
+          ast::sty_value => impl_owned_self(self_ty),
           _ => {
             impl_self(self_ty)
           }
@@ -145,6 +143,7 @@ pub fn trans_self_arg(bcx: block,
     let result = trans_arg_expr(bcx,
                                 self_ty,
                                 mentry.self_mode,
+                                mentry.explicit_self,
                                 base,
                                 &mut temp_cleanups,
                                 None,
@@ -231,6 +230,7 @@ pub fn trans_method_callee(bcx: block,
                     llself: val,
                     self_ty: node_id_type(bcx, this.id),
                     self_mode: mentry.self_mode,
+                    explicit_self: mentry.explicit_self
                 })
             }
         }
@@ -453,6 +453,7 @@ pub fn trans_monomorphized_callee(bcx: block,
                   llself: llself_val,
                   self_ty: node_id_type(bcx, base.id),
                   self_mode: mentry.self_mode,
+                  explicit_self: mentry.explicit_self
               })
           }
       }
@@ -692,6 +693,7 @@ pub fn trans_trait_callee_from_llval(bcx: block,
             llself: llself,
             self_ty: ty::mk_opaque_box(bcx.tcx()),
             self_mode: self_mode,
+            explicit_self: explicit_self
             /* XXX: Some(llbox) */
         })
     };
