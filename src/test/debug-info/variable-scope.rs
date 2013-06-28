@@ -8,28 +8,42 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-win32 Broken because of LLVM bug: http://llvm.org/bugs/show_bug.cgi?id=16249
+// xfail-test
 
 // compile-flags:-Z extra-debug-info
-// debugger:set print pretty off
-// debugger:break _zzz
+// debugger:break zzz
 // debugger:run
 // debugger:finish
-// debugger:print pair
-// check:$1 = {x = 1, y = 2}
-// debugger:print pair.x
-// check:$2 = 1
-// debugger:print pair.y
-// check:$3 = 2
+// debugger:print x
+// check:$1 = false
+// debugger:print y
+// check:$2 = true
 
-struct Pair {
-    x: int,
-    y: int
-}
+// debugger:continue
+// debugger:finish
+// debugger:print x
+// check:$3 = 10
+
+// debugger:continue
+// debugger:finish
+// debugger:print x
+// check:$4 = false
+// debugger:print y
+// check:$5 = 11
 
 fn main() {
-    let pair = Pair { x: 1, y: 2 };
-    _zzz();
+    let x = false;
+    let y = true;
+
+    zzz();
+
+    {
+        let x = 10;
+        zzz();
+    }
+
+    let y = 11;
+    zzz();
 }
 
-fn _zzz() {()}
+fn zzz() {()}
