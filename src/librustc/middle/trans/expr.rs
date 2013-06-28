@@ -119,7 +119,6 @@ lvalues are *never* stored by value.
 
 */
 
-use core::prelude::*;
 
 use back::abi;
 use lib::llvm::{ValueRef, llvm};
@@ -154,9 +153,9 @@ use util::ppaux::Repr;
 
 use middle::trans::type_::Type;
 
-use core::cast::transmute;
-use core::hashmap::HashMap;
-use core::vec;
+use std::cast::transmute;
+use std::hashmap::HashMap;
+use std::vec;
 use syntax::print::pprust::{expr_to_str};
 use syntax::ast;
 use syntax::codemap;

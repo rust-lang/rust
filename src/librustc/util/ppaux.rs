@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
 
 use metadata::encoder;
 use middle::ty::{ReSkolemized, ReVar};
@@ -32,7 +31,7 @@ use syntax::parse::token;
 use syntax::print::pprust;
 use syntax::{ast, ast_util};
 
-use core::vec;
+use std::vec;
 
 /// Produces a string suitable for debugging output.
 pub trait Repr {

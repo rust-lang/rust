@@ -10,11 +10,10 @@
 
 /// ncurses-compatible compiled terminfo format parsing (term(5))
 
-use core::prelude::*;
 
-use core::{vec, int, str};
-use core::io::Reader;
-use core::hashmap::HashMap;
+use std::{vec, int, str};
+use std::io::Reader;
+use std::hashmap::HashMap;
 use super::super::TermInfo;
 
 // These are the orders ncurses uses in its compiled format (as of 5.9). Not sure if portable.

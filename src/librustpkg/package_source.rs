@@ -10,9 +10,9 @@
 
 use target::*;
 use package_id::PkgId;
-use core::path::Path;
-use core::option::*;
-use core::{os, run, str};
+use std::path::Path;
+use std::option::*;
+use std::{os, run, str};
 use context::*;
 use crate::Crate;
 use messages::*;

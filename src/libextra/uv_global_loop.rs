@@ -10,16 +10,15 @@
 
 //! A process-wide libuv event loop for library use.
 
-use core::prelude::*;
 
 use iotask = uv_iotask;
 use uv_iotask::{IoTask, spawn_iotask};
 
-use core::comm::Chan;
-use core::option::{Some, None};
-use core::task::task;
-use core::unstable::global::{global_data_clone_create, global_data_clone};
-use core::unstable::weak_task::weaken_task;
+use std::comm::Chan;
+use std::option::{Some, None};
+use std::task::task;
+use std::unstable::global::{global_data_clone_create, global_data_clone};
+use std::unstable::weak_task::weaken_task;
 
 /**
  * Race-free helper to get access to a global task where a libuv
@@ -126,11 +125,11 @@ mod test {
     use uv::ll;
     use uv_iotask::IoTask;
 
-    use core::libc;
-    use core::task;
-    use core::cast::transmute;
-    use core::libc::c_void;
-    use core::comm::{stream, SharedChan, Chan};
+    use std::libc;
+    use std::task;
+    use std::cast::transmute;
+    use std::libc::c_void;
+    use std::comm::{stream, SharedChan, Chan};
 
     extern fn simple_timer_close_cb(timer_ptr: *ll::uv_timer_t) {
         unsafe {

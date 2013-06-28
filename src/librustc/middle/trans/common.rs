@@ -10,7 +10,6 @@
 
 //! Code that is useful in various trans modules.
 
-use core::prelude::*;
 
 use driver::session;
 use driver::session::Session;
@@ -31,14 +30,14 @@ use util::ppaux::{Repr};
 
 use middle::trans::type_::Type;
 
-use core::cast::transmute;
-use core::cast;
-use core::hashmap::{HashMap};
-use core::libc::{c_uint, c_longlong, c_ulonglong};
-use core::to_bytes;
-use core::str;
-use core::vec::raw::to_ptr;
-use core::vec;
+use std::cast::transmute;
+use std::cast;
+use std::hashmap::{HashMap};
+use std::libc::{c_uint, c_longlong, c_ulonglong};
+use std::to_bytes;
+use std::str;
+use std::vec::raw::to_ptr;
+use std::vec;
 use syntax::ast::ident;
 use syntax::ast_map::{path, path_elt};
 use syntax::codemap::span;

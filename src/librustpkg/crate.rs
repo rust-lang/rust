@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::path::Path;
-use core::vec;
+use std::path::Path;
+use std::vec;
 
 /// A crate is a unit of Rust code to be compiled into a binary or library
 pub struct Crate {

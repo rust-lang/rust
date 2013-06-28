@@ -11,9 +11,8 @@
 
 //! Complex numbers.
 
-use core::prelude::*;
 
-use core::num::{Zero,One,ToStrRadix};
+use std::num::{Zero,One,ToStrRadix};
 
 // FIXME #1284: handle complex NaN & infinity etc. This
 // probably doesn't map to C's _Complex correctly.
@@ -193,7 +192,7 @@ impl<T: ToStrRadix + Num + Ord> ToStrRadix for Cmplx<T> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use core::num::{Zero,One,Real};
+    use std::num::{Zero,One,Real};
 
     pub static _0_0i : Complex = Cmplx { re: 0f, im: 0f };
     pub static _1_0i : Complex = Cmplx { re: 1f, im: 0f };
@@ -287,7 +286,7 @@ mod test {
 
     mod arith {
         use super::*;
-        use core::num::Zero;
+        use std::num::Zero;
 
         #[test]
         fn test_add() {

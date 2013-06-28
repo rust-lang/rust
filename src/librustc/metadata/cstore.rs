@@ -12,13 +12,12 @@
 // The crate store - a central repo for information collected about external
 // crates and libraries
 
-use core::prelude::*;
 
 use metadata::cstore;
 use metadata::decoder;
 
-use core::hashmap::HashMap;
-use core::vec;
+use std::hashmap::HashMap;
+use std::vec;
 use extra;
 use syntax::ast;
 use syntax::parse::token::ident_interner;

@@ -12,13 +12,12 @@
 
 #[allow(missing_doc)];
 
-use core::prelude::*;
 
-use core::libc;
-use core::comm::{stream, SharedChan};
-use core::ptr;
-use core::result;
-use core::str;
+use std::libc;
+use std::comm::{stream, SharedChan};
+use std::ptr;
+use std::result;
+use std::str;
 
 use iotask = uv::iotask::IoTask;
 use interact = uv::iotask::interact;
@@ -149,16 +148,15 @@ pub fn get_addr(node: &str, iotask: &iotask)
 }
 
 pub mod v4 {
-    use core::prelude::*;
 
     use net::ip::{IpAddr, Ipv4, ParseAddrErr};
     use uv::ll;
     use uv_ip4_addr = uv::ll::ip4_addr;
     use uv_ip4_name = uv::ll::ip4_name;
 
-    use core::cast::transmute;
-    use core::result;
-    use core::uint;
+    use std::cast::transmute;
+    use std::result;
+    use std::uint;
 
     /**
      * Convert a str to `ip_addr`
@@ -248,13 +246,12 @@ pub mod v4 {
     }
 }
 pub mod v6 {
-    use core::prelude::*;
 
     use net::ip::{IpAddr, Ipv6, ParseAddrErr};
     use uv_ip6_addr = uv::ll::ip6_addr;
     use uv_ip6_name = uv::ll::ip6_name;
 
-    use core::result;
+    use std::result;
 
     /**
      * Convert a str to `ip_addr`
@@ -371,7 +368,7 @@ mod test {
     use net_ip::v6;
     use uv;
 
-    use core::result;
+    use std::result;
 
     #[test]
     fn test_ip_ipv4_parse_and_format_ip() {

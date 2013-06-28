@@ -17,14 +17,13 @@
 
 #[allow(missing_doc)];
 
-use core::prelude::*;
 
 use ll = uv_ll;
 
-use core::comm::{stream, Port, Chan, SharedChan};
-use core::libc::c_void;
-use core::libc;
-use core::task;
+use std::comm::{stream, Port, Chan, SharedChan};
+use std::libc::c_void;
+use std::libc;
+use std::task;
 
 /// Used to abstract-away direct interaction with a libuv loop.
 pub struct IoTask {
@@ -226,7 +225,7 @@ struct AhData {
 
 #[cfg(test)]
 fn impl_uv_iotask_async(iotask: &IoTask) {
-    use core::ptr;
+    use std::ptr;
 
     let async_handle = ll::async_t();
     let ah_ptr: *ll::uv_async_t = &async_handle;

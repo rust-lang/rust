@@ -33,14 +33,13 @@
 #[allow(non_camel_case_types)]; // C types
 #[allow(missing_doc)];
 
-use core::prelude::*;
 
-use core::libc::{c_void, size_t};
-use core::libc;
-use core::ptr::to_unsafe_ptr;
-use core::ptr;
-use core::str;
-use core::vec;
+use std::libc::{c_void, size_t};
+use std::libc;
+use std::ptr::to_unsafe_ptr;
+use std::ptr;
+use std::str;
+use std::vec;
 
 pub type uv_handle_t = c_void;
 pub type uv_loop_t = c_void;
@@ -362,7 +361,7 @@ pub struct uv_getaddrinfo_t {
 
 pub mod uv_ll_struct_stubgen {
 
-    use core::ptr;
+    use std::ptr;
 
     use super::{
         uv_async_t,
@@ -1228,16 +1227,15 @@ pub unsafe fn addrinfo_as_sockaddr_in6(input: *addrinfo) -> *sockaddr_in6 {
 
 #[cfg(test)]
 mod test {
-    use core::prelude::*;
 
     use super::*;
 
-    use core::comm::{SharedChan, stream, GenericChan, GenericPort};
-    use core::libc;
-    use core::str;
-    use core::sys;
-    use core::task;
-    use core::vec;
+    use std::comm::{SharedChan, stream, GenericChan, GenericPort};
+    use std::libc;
+    use std::str;
+    use std::sys;
+    use std::task;
+    use std::vec;
 
     enum tcp_read_data {
         tcp_read_eof,

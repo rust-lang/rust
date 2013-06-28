@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
 
 use back::abi;
 use lib::llvm::{llvm, ConstFCmp, ConstICmp, SetLinkage, PrivateLinkage, ValueRef, Bool, True};
@@ -31,8 +30,8 @@ use util::ppaux::{Repr, ty_to_str};
 
 use middle::trans::type_::Type;
 
-use core::libc::c_uint;
-use core::str;
+use std::libc::c_uint;
+use std::str;
 use syntax::{ast, ast_util, ast_map};
 
 pub fn const_lit(cx: &mut CrateContext, e: &ast::expr, lit: ast::lit)

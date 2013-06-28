@@ -14,8 +14,8 @@ use middle::trans::cabi::{ABIInfo, FnType, LLVMType};
 
 use middle::trans::type_::Type;
 
-use core::option::{Option, None, Some};
-use core::uint;
+use std::option::{Option, None, Some};
+use std::uint;
 
 fn align_up_to(off: uint, a: uint) -> uint {
     return (off + a - 1u) / a * a;

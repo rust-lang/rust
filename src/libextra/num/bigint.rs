@@ -18,13 +18,12 @@ A BigInt is a combination of BigUint and Sign.
 
 #[allow(missing_doc)];
 
-use core::prelude::*;
-use core::cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering, Less, Equal, Greater};
-use core::int;
-use core::num::{IntConvertible, Zero, One, ToStrRadix, FromStrRadix, Orderable};
-use core::str;
-use core::uint;
-use core::vec;
+use std::cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering, Less, Equal, Greater};
+use std::int;
+use std::num::{IntConvertible, Zero, One, ToStrRadix, FromStrRadix, Orderable};
+use std::str;
+use std::uint;
+use std::vec;
 
 /**
 A BigDigit is a BigUint's composing element.
@@ -1148,16 +1147,15 @@ impl BigInt {
 
 #[cfg(test)]
 mod biguint_tests {
-    use core::prelude::*;
 
     use super::*;
 
-    use core::cmp::{Less, Equal, Greater};
-    use core::int;
-    use core::num::{IntConvertible, Zero, One, FromStrRadix};
-    use core::str;
-    use core::uint;
-    use core::vec;
+    use std::cmp::{Less, Equal, Greater};
+    use std::int;
+    use std::num::{IntConvertible, Zero, One, FromStrRadix};
+    use std::str;
+    use std::uint;
+    use std::vec;
 
     #[test]
     fn test_from_slice() {
@@ -1623,15 +1621,14 @@ mod biguint_tests {
 
 #[cfg(test)]
 mod bigint_tests {
-    use core::prelude::*;
 
     use super::*;
 
-    use core::cmp::{Less, Equal, Greater};
-    use core::int;
-    use core::num::{IntConvertible, Zero, One, FromStrRadix};
-    use core::uint;
-    use core::vec;
+    use std::cmp::{Less, Equal, Greater};
+    use std::int;
+    use std::num::{IntConvertible, Zero, One, FromStrRadix};
+    use std::uint;
+    use std::vec;
 
     #[test]
     fn test_from_biguint() {

@@ -46,7 +46,6 @@
 // future).  If you want to resolve everything but one type, you are
 // probably better off writing `resolve_all - resolve_ivar`.
 
-use core::prelude::*;
 
 use middle::ty::{FloatVar, FloatVid, IntVar, IntVid, RegionVid, TyVar, TyVid};
 use middle::ty::{type_is_bot, IntType, UintType};
@@ -58,7 +57,7 @@ use middle::typeck::infer::unify::{Root, UnifyInferCtxtMethods};
 use util::common::{indent, indenter};
 use util::ppaux::ty_to_str;
 
-use core::vec;
+use std::vec;
 use syntax::ast;
 
 pub static resolve_nested_tvar: uint = 0b0000000001;

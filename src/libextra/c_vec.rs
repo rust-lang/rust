@@ -36,10 +36,9 @@
  * still held if needed.
  */
 
-use core::prelude::*;
 
-use core::option;
-use core::ptr;
+use std::option;
+use std::ptr;
 
 /**
  * The type representing a foreign chunk of memory
@@ -150,8 +149,8 @@ mod tests {
 
     use c_vec::*;
 
-    use core::libc::*;
-    use core::libc;
+    use std::libc::*;
+    use std::libc;
 
     fn malloc(n: size_t) -> CVec<u8> {
         unsafe {

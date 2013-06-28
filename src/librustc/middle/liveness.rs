@@ -102,7 +102,6 @@
  *   to return explicitly.
  */
 
-use core::prelude::*;
 
 use middle::lint::{unused_variable, dead_assignment};
 use middle::pat_util;
@@ -110,12 +109,12 @@ use middle::ty;
 use middle::typeck;
 use middle::moves;
 
-use core::cast::transmute;
-use core::hashmap::HashMap;
-use core::io;
-use core::to_str;
-use core::uint;
-use core::vec;
+use std::cast::transmute;
+use std::hashmap::HashMap;
+use std::io;
+use std::to_str;
+use std::uint;
+use std::vec;
 use syntax::ast::*;
 use syntax::codemap::span;
 use syntax::parse::token::special_idents;

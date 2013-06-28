@@ -12,11 +12,10 @@
 
 #[allow(missing_doc)];
 
-use core::prelude::*;
 
-use core::io;
+use std::io;
 
-#[cfg(not(target_os = "win32"))] use core::os;
+#[cfg(not(target_os = "win32"))] use std::os;
 #[cfg(not(target_os = "win32"))] use terminfo::*;
 #[cfg(not(target_os = "win32"))] use terminfo::searcher::open;
 #[cfg(not(target_os = "win32"))] use terminfo::parser::compiled::parse;

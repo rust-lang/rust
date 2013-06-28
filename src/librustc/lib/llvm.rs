@@ -8,12 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
 
-use core::hashmap::HashMap;
-use core::libc::{c_uint, c_ushort};
-use core::option;
-use core::str;
+use std::hashmap::HashMap;
+use std::libc::{c_uint, c_ushort};
+use std::option;
+use std::str;
 
 use middle::trans::type_::Type;
 
@@ -268,7 +267,7 @@ pub mod llvm {
     use super::{SectionIteratorRef, TargetDataRef, TypeKind, TypeRef, UseRef};
     use super::{ValueRef, PassRef};
     use super::debuginfo::*;
-    use core::libc::{c_char, c_int, c_longlong, c_ushort, c_uint, c_ulonglong};
+    use std::libc::{c_char, c_int, c_longlong, c_ushort, c_uint, c_ulonglong};
 
     #[link_args = "-Lrustllvm -lrustllvm"]
     #[link_name = "rustllvm"]

@@ -13,8 +13,8 @@ use middle::ty;
 use middle::typeck::check::FnCtxt;
 use middle::typeck::infer;
 
-use core::result::{Err, Ok};
-use core::result;
+use std::result::{Err, Ok};
+use std::result;
 use syntax::ast;
 use syntax::codemap::span;
 

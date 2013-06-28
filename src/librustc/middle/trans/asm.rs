@@ -12,7 +12,6 @@
 # Translation of inline assembly.
 */
 
-use core::prelude::*;
 
 use lib;
 use middle::trans::build::*;
@@ -22,7 +21,7 @@ use middle::ty;
 
 use middle::trans::type_::Type;
 
-use core::str;
+use std::str;
 use syntax::ast;
 
 // Take an inline assembly expression and splat it out via LLVM

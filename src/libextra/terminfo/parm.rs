@@ -10,10 +10,9 @@
 
 //! Parameterized string expansion
 
-use core::prelude::*;
-use core::{char, vec, util};
-use core::num::strconv::{SignNone,SignNeg,SignAll,DigAll,to_str_bytes_common};
-use core::iterator::IteratorUtil;
+use std::{char, vec, util};
+use std::num::strconv::{SignNone,SignNeg,SignAll,DigAll,to_str_bytes_common};
+use std::iterator::IteratorUtil;
 
 #[deriving(Eq)]
 enum States {
@@ -549,7 +548,7 @@ priv fn format(val: Param, op: FormatOp, flags: Flags) -> Result<~[u8],~str> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use core::result::Ok;
+    use std::result::Ok;
 
     #[test]
     fn test_basic_setabf() {

@@ -10,9 +10,8 @@
 
 // Context data structure used by rustpkg
 
-use core::prelude::*;
 
-use core::hashmap::HashMap;
+use std::hashmap::HashMap;
 
 pub struct Ctx {
     // Sysroot -- if this is None, uses rustc filesearch's

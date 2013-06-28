@@ -22,7 +22,6 @@
  * the `reset` method.
  */
 
-use core::prelude::*;
 
 use digest::Digest;
 
@@ -241,7 +240,7 @@ impl Digest for Sha1 {
 
 #[cfg(test)]
 mod tests {
-    use core::vec;
+    use std::vec;
 
     use digest::{Digest, DigestUtil};
     use sha1::Sha1;

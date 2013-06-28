@@ -15,9 +15,9 @@ use middle::trans::common::*;
 
 use middle::trans::type_::Type;
 
-use core::libc::c_uint;
-use core::option;
-use core::vec;
+use std::libc::c_uint;
+use std::option;
+use std::vec;
 
 pub trait ABIInfo {
     fn compute_info(&self, atys: &[Type], rty: Type, ret_def: bool) -> FnType;

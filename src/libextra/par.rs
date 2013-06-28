@@ -8,13 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
 
-use core::cast;
-use core::ptr;
-use core::sys;
-use core::uint;
-use core::vec;
+use std::cast;
+use std::ptr;
+use std::sys;
+use std::uint;
+use std::vec;
 use future_spawn = future::spawn;
 
 /**

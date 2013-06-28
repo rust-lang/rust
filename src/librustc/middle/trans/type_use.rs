@@ -33,9 +33,9 @@ use middle::trans::inline;
 use middle::ty;
 use middle::typeck;
 
-use core::option::{Some, None};
-use core::uint;
-use core::vec;
+use std::option::{Some, None};
+use std::uint;
+use std::vec;
 use extra::list::{List, Cons, Nil};
 use extra::list;
 use syntax::ast;

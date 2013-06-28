@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
 
 use lib::llvm::llvm;
 use lib::llvm::{CallConv, AtomicBinOp, AtomicOrdering, AsmDialect};
@@ -22,11 +21,11 @@ use syntax::codemap::span;
 use middle::trans::base;
 use middle::trans::type_::Type;
 
-use core::cast;
-use core::libc::{c_uint, c_ulonglong, c_char};
-use core::hashmap::HashMap;
-use core::str;
-use core::vec;
+use std::cast;
+use std::libc::{c_uint, c_ulonglong, c_char};
+use std::hashmap::HashMap;
+use std::str;
+use std::vec;
 
 pub fn terminate(cx: block, _: &str) {
     cx.terminated = true;

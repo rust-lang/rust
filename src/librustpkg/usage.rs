@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::io;
+use std::io;
 
 pub fn general() {
     io::println("Usage: rustpkg [options] <cmd> [args..]
