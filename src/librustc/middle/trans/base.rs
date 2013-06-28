@@ -1680,23 +1680,15 @@ pub fn copy_args_to_allocas(fcx: fn_ctxt,
     let mut bcx = bcx;
 
     match fcx.llself {
-      Some(slf) => {
-          let self_val = if slf.is_owned
-                  && datum::appropriate_mode(slf.t).is_by_value() {
-              let tmp = BitCast(bcx, slf.v, type_of(bcx.ccx(), slf.t));
-              let alloc = alloc_ty(bcx, slf.t);
-              Store(bcx, tmp, alloc);
-              alloc
-          } else {
-              PointerCast(bcx, slf.v, type_of(bcx.ccx(), slf.t).ptr_to())
-          };
+        Some(slf) => {
+            let self_val = PointerCast(bcx, slf.v, type_of(bcx.ccx(), slf.t).ptr_to());
+            fcx.llself = Some(ValSelfData {v: self_val, ..slf});
 
-          fcx.llself = Some(ValSelfData {v: self_val, ..slf});
-          if slf.is_owned {
-              add_clean(bcx, self_val, slf.t);
-          }
-      }
-      _ => {}
+            if slf.is_owned {
+                add_clean(bcx, slf.v, slf.t);
+            }
+        }
+        _ => {}
     }
 
     for uint::range(0, arg_tys.len()) |arg_n| {
