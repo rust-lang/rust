@@ -193,11 +193,11 @@ pub fn split<T:Copy>(v: &[T], f: &fn(t: &T) -> bool) -> ~[~[T]] {
     let mut start = 0u;
     let mut result = ~[];
     while start < ln {
-        match position_between(v, start, ln, |t| f(t)) {
+        match v.slice(start, ln).iter().position_(|t| f(t)) {
             None => break,
             Some(i) => {
-                result.push(v.slice(start, i).to_owned());
-                start = i + 1u;
+                result.push(v.slice(start, start + i).to_owned());
+                start += i + 1u;
             }
         }
     }
@@ -217,7 +217,7 @@ pub fn splitn<T:Copy>(v: &[T], n: uint, f: &fn(t: &T) -> bool) -> ~[~[T]] {
     let mut count = n;
     let mut result = ~[];
     while start < ln && count > 0u {
-        match position_between(v, start, ln, |t| f(t)) {
+        match v.slice(start, ln).iter().position_(|t| f(t)) {
             None => break,
             Some(i) => {
                 result.push(v.slice(start, i).to_owned());
@@ -242,7 +242,7 @@ pub fn rsplit<T:Copy>(v: &[T], f: &fn(t: &T) -> bool) -> ~[~[T]] {
     let mut end = ln;
     let mut result = ~[];
     while end > 0 {
-        match rposition_between(v, 0, end, |t| f(t)) {
+        match v.slice(0, end).rposition(|t| f(t)) {
             None => break,
             Some(i) => {
                 result.push(v.slice(i + 1, end).to_owned());
@@ -267,7 +267,7 @@ pub fn rsplitn<T:Copy>(v: &[T], n: uint, f: &fn(t: &T) -> bool) -> ~[~[T]] {
     let mut count = n;
     let mut result = ~[];
     while end > 0u && count > 0u {
-        match rposition_between(v, 0u, end, |t| f(t)) {
+        match v.slice(0, end).rposition(|t| f(t)) {
             None => break,
             Some(i) => {
                 result.push(v.slice(i + 1u, end).to_owned());
@@ -657,25 +657,6 @@ pub fn position_elem<T:Eq>(v: &[T], x: &T) -> Option<uint> {
     v.iter().position_(|y| *x == *y)
 }
 
-/**
- * Find the first index matching some predicate within a range
- *
- * Apply function `f` to each element of `v` between the range
- * [`start`, `end`). When function `f` returns true then an option containing
- * the index is returned. If `f` matches no elements then none is returned.
- */
-pub fn position_between<T>(v: &[T],
-                           start: uint,
-                           end: uint,
-                           f: &fn(t: &T) -> bool)
-                        -> Option<uint> {
-    assert!(start <= end);
-    assert!(end <= v.len());
-    let mut i = start;
-    while i < end { if f(&v[i]) { return Some::<uint>(i); } i += 1u; }
-    None
-}
-
 /// Find the last index containing a matching value
 pub fn rposition_elem<T:Eq>(v: &[T], x: &T) -> Option<uint> {
     rposition(v, |y| *x == *y)
@@ -689,30 +670,11 @@ pub fn rposition_elem<T:Eq>(v: &[T], x: &T) -> Option<uint> {
  * matches no elements then none is returned.
  */
 pub fn rposition<T>(v: &[T], f: &fn(t: &T) -> bool) -> Option<uint> {
-    rposition_between(v, 0u, v.len(), f)
-}
-
-/**
- * Find the last index matching some predicate within a range
- *
- * Apply function `f` to each element of `v` in reverse order between the
- * range [`start`, `end`). When function `f` returns true then an option
- * containing the index is returned. If `f` matches no elements then none is
- * returned.
- */
-pub fn rposition_between<T>(v: &[T], start: uint, end: uint,
-                             f: &fn(t: &T) -> bool) -> Option<uint> {
-    assert!(start <= end);
-    assert!(end <= v.len());
-    let mut i = end;
-    while i > start {
-        if f(&v[i - 1u]) { return Some::<uint>(i - 1u); }
-        i -= 1u;
+    for v.rev_iter().enumerate().advance |(i, t)| {
+        if f(t) { return Some(v.len() - i - 1); }
     }
     None
 }
-
-
 
 /**
  * Binary search a sorted vector with a comparator function.
@@ -2886,34 +2848,6 @@ mod tests {
     }
 
     #[test]
-    fn test_position_between() {
-        assert!(position_between([], 0u, 0u, f).is_none());
-
-        fn f(xy: &(int, char)) -> bool { let (_x, y) = *xy; y == 'b' }
-        let v = ~[(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
-
-        assert!(position_between(v, 0u, 0u, f).is_none());
-        assert!(position_between(v, 0u, 1u, f).is_none());
-        assert_eq!(position_between(v, 0u, 2u, f), Some(1u));
-        assert_eq!(position_between(v, 0u, 3u, f), Some(1u));
-        assert_eq!(position_between(v, 0u, 4u, f), Some(1u));
-
-        assert!(position_between(v, 1u, 1u, f).is_none());
-        assert_eq!(position_between(v, 1u, 2u, f), Some(1u));
-        assert_eq!(position_between(v, 1u, 3u, f), Some(1u));
-        assert_eq!(position_between(v, 1u, 4u, f), Some(1u));
-
-        assert!(position_between(v, 2u, 2u, f).is_none());
-        assert!(position_between(v, 2u, 3u, f).is_none());
-        assert_eq!(position_between(v, 2u, 4u, f), Some(3u));
-
-        assert!(position_between(v, 3u, 3u, f).is_none());
-        assert_eq!(position_between(v, 3u, 4u, f), Some(3u));
-
-        assert!(position_between(v, 4u, 4u, f).is_none());
-    }
-
-    #[test]
     fn test_rposition() {
         fn f(xy: &(int, char)) -> bool { let (_x, y) = *xy; y == 'b' }
         fn g(xy: &(int, char)) -> bool { let (_x, y) = *xy; y == 'd' }
@@ -2921,34 +2855,6 @@ mod tests {
 
         assert_eq!(rposition(v, f), Some(3u));
         assert!(rposition(v, g).is_none());
-    }
-
-    #[test]
-    fn test_rposition_between() {
-        assert!(rposition_between([], 0u, 0u, f).is_none());
-
-        fn f(xy: &(int, char)) -> bool { let (_x, y) = *xy; y == 'b' }
-        let v = ~[(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
-
-        assert!(rposition_between(v, 0u, 0u, f).is_none());
-        assert!(rposition_between(v, 0u, 1u, f).is_none());
-        assert_eq!(rposition_between(v, 0u, 2u, f), Some(1u));
-        assert_eq!(rposition_between(v, 0u, 3u, f), Some(1u));
-        assert_eq!(rposition_between(v, 0u, 4u, f), Some(3u));
-
-        assert!(rposition_between(v, 1u, 1u, f).is_none());
-        assert_eq!(rposition_between(v, 1u, 2u, f), Some(1u));
-        assert_eq!(rposition_between(v, 1u, 3u, f), Some(1u));
-        assert_eq!(rposition_between(v, 1u, 4u, f), Some(3u));
-
-        assert!(rposition_between(v, 2u, 2u, f).is_none());
-        assert!(rposition_between(v, 2u, 3u, f).is_none());
-        assert_eq!(rposition_between(v, 2u, 4u, f), Some(3u));
-
-        assert!(rposition_between(v, 3u, 3u, f).is_none());
-        assert_eq!(rposition_between(v, 3u, 4u, f), Some(3u));
-
-        assert!(rposition_between(v, 4u, 4u, f).is_none());
     }
 
     #[test]
