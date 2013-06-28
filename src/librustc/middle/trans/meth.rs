@@ -68,8 +68,7 @@ pub fn trans_impl(ccx: @mut CrateContext,
                          path,
                          *method,
                          None,
-                         llfn,
-                         ast_util::local_def(id));
+                         llfn);
         }
     }
 }
@@ -90,8 +89,7 @@ pub fn trans_method(ccx: @mut CrateContext,
                     path: path,
                     method: &ast::method,
                     param_substs: Option<@param_substs>,
-                    llfn: ValueRef,
-                    impl_id: ast::def_id) {
+                    llfn: ValueRef) {
     // figure out how self is being passed
     let self_arg = match method.explicit_self.node {
       ast::sty_static => {
@@ -127,7 +125,6 @@ pub fn trans_method(ccx: @mut CrateContext,
              self_arg,
              param_substs,
              method.id,
-             Some(impl_id),
              []);
 }
 

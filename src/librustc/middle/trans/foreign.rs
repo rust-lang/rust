@@ -555,7 +555,6 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
                                decl,
                                item.id,
                                output_type,
-                               None,
                                Some(substs),
                                Some(item.span));
 
@@ -1183,7 +1182,6 @@ pub fn trans_foreign_fn(ccx: @mut CrateContext,
                  no_self,
                  None,
                  id,
-                 None,
                  []);
         return llfndecl;
     }

@@ -222,9 +222,6 @@ pub struct fn_ctxt_ {
     // a user-defined function.
     id: ast::node_id,
 
-    // The def_id of the impl we're inside, or None if we aren't inside one.
-    impl_id: Option<ast::def_id>,
-
     // If this function is being monomorphized, this contains the type
     // substitutions used.
     param_substs: Option<@param_substs>,
