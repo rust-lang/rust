@@ -10,7 +10,7 @@
 
 use std::sys::size_of;
 
-#[no_drop_flag]
+#[unsafe_no_drop_flag]
 struct Test<T> {
     a: T
 }

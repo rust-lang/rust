@@ -36,6 +36,7 @@ struct RcBox<T> {
 
 /// Immutable reference counted pointer type
 #[non_owned]
+#[unsafe_no_drop_flag]
 pub struct Rc<T> {
     priv ptr: *mut RcBox<T>,
 }
@@ -168,6 +169,7 @@ struct RcMutBox<T> {
 /// Mutable reference counted pointer type
 #[non_owned]
 #[mutable]
+#[unsafe_no_drop_flag]
 pub struct RcMut<T> {
     priv ptr: *mut RcMutBox<T>,
 }

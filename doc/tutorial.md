@@ -1607,132 +1607,6 @@ do spawn {
 If you want to see the output of `debug!` statements, you will need to turn on `debug!` logging.
 To enable `debug!` logging, set the RUST_LOG environment variable to the name of your crate, which, for a file named `foo.rs`, will be `foo` (e.g., with bash, `export RUST_LOG=foo`).
 
-## For loops
-
-> ***Note:*** The closure-based protocol used `for` loop is on the way out. The `for` loop will
-> use iterator objects in the future instead.
-
-The most common way to express iteration in Rust is with a `for`
-loop. Like `do`, `for` is a nice syntax for describing control flow
-with closures.  Additionally, within a `for` loop, `break`, `loop`,
-and `return` work just as they do with `while` and `loop`.
-
-Consider again our `each` function, this time improved to return
-immediately when the iteratee returns `false`:
-
-~~~~
-fn each(v: &[int], op: &fn(v: &int) -> bool) -> bool {
-   let mut n = 0;
-   while n < v.len() {
-       if !op(&v[n]) {
-           return false;
-       }
-       n += 1;
-   }
-   return true;
-}
-~~~~
-
-And using this function to iterate over a vector:
-
-~~~~
-# fn each(v: &[int], op: &fn(v: &int) -> bool) -> bool {
-#    let mut n = 0;
-#    while n < v.len() {
-#        if !op(&v[n]) {
-#            return false;
-#        }
-#        n += 1;
-#    }
-#    return true;
-# }
-each([2, 4, 8, 5, 16], |n| {
-    if *n % 2 != 0 {
-        println("found odd number!");
-        false
-    } else { true }
-});
-~~~~
-
-With `for`, functions like `each` can be treated more
-like built-in looping structures. When calling `each`
-in a `for` loop, instead of returning `false` to break
-out of the loop, you just write `break`. To skip ahead
-to the next iteration, write `loop`.
-
-~~~~
-# fn each(v: &[int], op: &fn(v: &int) -> bool) -> bool {
-#    let mut n = 0;
-#    while n < v.len() {
-#        if !op(&v[n]) {
-#            return false;
-#        }
-#        n += 1;
-#    }
-#    return true;
-# }
-for each([2, 4, 8, 5, 16]) |n| {
-    if *n % 2 != 0 {
-        println("found odd number!");
-        break;
-    }
-}
-~~~~
-
-As an added bonus, you can use the `return` keyword, which is not
-normally allowed in closures, in a block that appears as the body of a
-`for` loop: the meaning of `return` in such a block is to return from
-the enclosing function, not just the loop body.
-
-~~~~
-# fn each(v: &[int], op: &fn(v: &int) -> bool) -> bool {
-#    let mut n = 0;
-#    while n < v.len() {
-#        if !op(&v[n]) {
-#            return false;
-#        }
-#        n += 1;
-#    }
-#    return true;
-# }
-fn contains(v: &[int], elt: int) -> bool {
-    for each(v) |x| {
-        if (*x == elt) { return true; }
-    }
-    false
-}
-~~~~
-
-Notice that, because `each` passes each value by borrowed pointer,
-the iteratee needs to dereference it before using it.
-In these situations it can be convenient to lean on Rust's
-argument patterns to bind `x` to the actual value, not the pointer.
-
-~~~~
-# fn each(v: &[int], op: &fn(v: &int) -> bool) -> bool {
-#    let mut n = 0;
-#    while n < v.len() {
-#        if !op(&v[n]) {
-#            return false;
-#        }
-#        n += 1;
-#    }
-#    return true;
-# }
-# fn contains(v: &[int], elt: int) -> bool {
-    for each(v) |&x| {
-        if (x == elt) { return true; }
-    }
-#    false
-# }
-~~~~
-
-`for` syntax only works with stack closures.
-
-> ***Note:*** This is, essentially, a special loop protocol:
-> the keywords `break`, `loop`, and `return` work, in varying degree,
-> with `while`, `loop`, `do`, and `for` constructs.
-
 # Methods
 
 Methods are like functions except that they always begin with a special argument,
@@ -2653,6 +2527,7 @@ tutorials on individual topics.
 * [Tasks and communication][tasks]
 * [Macros][macros]
 * [The foreign function interface][ffi]
+* [Containers and iterators](tutorial-container.html)
 
 There is further documentation on the [wiki].
 

@@ -1,4 +1,4 @@
-.TH RUSTC "1" "February 2013" "rustc 0.6" "User Commands"
+.TH RUSTC "1" "July 2013" "rustc 0.7" "User Commands"
 .SH NAME
 rustc \- rust compiler
 .SH SYNOPSIS
@@ -33,6 +33,12 @@ Add a directory to the library search path
 \fB\-\-lib\fR
 Compile a library crate
 .TP
+\fB\-\-linker\fR LINKER
+Program to use for linking instead of the default
+.TP
+\fB\-\-link-args\fR FLAGS
+A space-separated list of flags passed to the linker
+.TP
 \fB\-\-ls\fR
 List the symbols defined by a library crate
 .TP
@@ -47,6 +53,11 @@ Write output to <filename>
 .TP
 \fB\-\-opt\-level\fR LEVEL
 Optimize with possible levels 0-3
+.TP
+\fB\-\-passes\fR NAMES
+Comma- or space-separated list of optimization passes. Overrides
+the default passes for the optimization level. A value of 'list'
+will list the available passes.
 .TP
 \fB\-\-out\-dir\fR DIR
 Write output to compiler-chosen filename in <dir>
@@ -77,6 +88,12 @@ Target triple cpu-manufacturer-kernel[-os] to compile for (see
 http://sources.redhat.com/autobook/autobook/autobook_17.html
 for detail)
 .TP
+\fB\-\-target-feature\fR TRIPLE
+Target-specific attributes (see llc -mattr=help for detail)
+.TP
+\fB\-\-android-cross-path\fR PATH
+The path to the Android NDK
+.TP
 \fB\-W\fR help
 Print 'lint' options and default settings
 .TP
@@ -94,56 +111,6 @@ Set lint forbidden
 .TP
 \fB\-Z\fR FLAG
 Set internal debugging options. Use "-Z help" to print available options.
-
-Available debug flags are:
-.RS
-.IP \[bu]
-\fBverbose\fR - in general, enable more debug printouts
-.IP \[bu]
-\fBtime\-passes\fR - measure time of each rustc pass
-.IP \[bu]
-\fBcount\-llvm\-insns\fR - count where LLVM instrs originate
-.IP \[bu]
-\fBtime\-llvm\-passes\fR - measure time of each LLVM pass
-.IP \[bu]
-\fBtrans\-stats\fR - gather trans statistics
-.IP \[bu]
-\fBno\-asm\-comments\fR - omit comments when using \fI\-S\fR
-.IP \[bu]
-\fBno\-verify\fR - skip LLVM verification
-.IP \[bu]
-\fBtrace\fR - emit trace logs
-.IP \[bu]
-\fBcoherence\fR - perform coherence checking
-.IP \[bu]
-\fBborrowck\-stats\fR - gather borrowck statistics
-.IP \[bu]
-\fBborrowck\-note\-pure\fR - note where purity is req'd
-.IP \[bu]
-\fBborrowck\-note\-loan\fR - note where loans are req'd
-.IP \[bu]
-\fBno\-landing\-pads\fR - omit landing pads for unwinding
-.IP \[bu]
-\fBdebug\-llvm\fR - enable debug output from LLVM
-.IP \[bu]
-\fBcount\-type\-sizes\fR - count the sizes of aggregate types
-.IP \[bu]
-\fBmeta\-stats\fR - gather metadata statistics
-.IP \[bu]
-\fBno\-opt\fR - do not optimize, even if \fI\-O\fR is passed
-.IP \[bu]
-\fBno\-monomorphic\-collapse\fR - do not collapse template instantiations
-.IP \[bu]
-\fBgc\fR - Garbage collect shared data (experimental)
-.IP \[bu]
-\fBjit\fR - Execute using JIT (experimental)
-.IP \[bu]
-\fBextra\-debug\-info\fR - Extra debugging info (experimental)
-.IP \[bu]
-\fBdebug\-info\fR - Produce debug info (experimental)
-.IP \[bu]
-\fBstatic\fR - Use or produce static libraries or binaries (experimental)
-.RE
 .TP
 \fB\-v\fR, \fB\-\-version\fR
 Print version info and exit
