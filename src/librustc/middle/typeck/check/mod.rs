@@ -985,7 +985,7 @@ pub fn do_autoderef(fcx: @mut FnCtxt, sp: span, t: ty::t) -> (ty::t, uint) {
                 // concerned with this, as an error will be reported
                 // on the enum definition as well because the enum is
                 // not instantiable.
-                if vec::contains(enum_dids, did) {
+                if enum_dids.contains(did) {
                     return (t1, autoderefs);
                 }
                 enum_dids.push(*did);
@@ -3156,7 +3156,7 @@ pub fn check_enum_variants(ccx: @mut CrateCtxt,
                   }
                 }
             }
-            if vec::contains(*disr_vals, &*disr_val) {
+            if disr_vals.contains(&*disr_val) {
                 ccx.tcx.sess.span_err(v.span,
                                       "discriminator value already exists");
             }

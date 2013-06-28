@@ -2323,7 +2323,7 @@ pub fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
                 false
             }
 
-            ty_struct(ref did, _) if vec::contains(*seen, did) => {
+            ty_struct(ref did, _) if seen.contains(did) => {
                 false
             }
 
@@ -2339,7 +2339,7 @@ pub fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
                 ts.iter().any_(|t| type_requires(cx, seen, r_ty, *t))
             }
 
-            ty_enum(ref did, _) if vec::contains(*seen, did) => {
+            ty_enum(ref did, _) if seen.contains(did) => {
                 false
             }
 
@@ -3266,7 +3266,7 @@ pub fn occurs_check(tcx: ctxt, sp: span, vid: TyVid, rt: t) {
     if !type_needs_infer(rt) { return; }
 
     // Occurs check!
-    if vec::contains(vars_in_type(rt), &vid) {
+    if vars_in_type(rt).contains(&vid) {
             // Maybe this should be span_err -- however, there's an
             // assertion later on that the type doesn't contain
             // variables, so in this case we have to be sure to die.

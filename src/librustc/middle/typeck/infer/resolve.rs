@@ -57,7 +57,6 @@ use middle::typeck::infer::unify::{Root, UnifyInferCtxtMethods};
 use util::common::{indent, indenter};
 use util::ppaux::ty_to_str;
 
-use std::vec;
 use syntax::ast;
 
 pub static resolve_nested_tvar: uint = 0b0000000001;
@@ -204,7 +203,7 @@ impl ResolveState {
     }
 
     pub fn resolve_ty_var(&mut self, vid: TyVid) -> ty::t {
-        if vec::contains(self.v_seen, &vid) {
+        if self.v_seen.contains(&vid) {
             self.err = Some(cyclic_ty(vid));
             return ty::mk_var(self.infcx.tcx, vid);
         } else {

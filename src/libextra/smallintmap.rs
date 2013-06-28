@@ -383,8 +383,6 @@ mod test_set {
 
     use super::SmallIntSet;
 
-    use std::vec;
-
     #[test]
     fn test_disjoint() {
         let mut xs = SmallIntSet::new();
@@ -456,7 +454,7 @@ mod test_set {
         let mut i = 0;
         let expected = [3, 5, 11, 77];
         for a.intersection(&b) |x| {
-            assert!(vec::contains(expected, x));
+            assert!(expected.contains(x));
             i += 1
         }
         assert_eq!(i, expected.len());
@@ -479,7 +477,7 @@ mod test_set {
         let mut i = 0;
         let expected = [1, 5, 11];
         for a.difference(&b) |x| {
-            assert!(vec::contains(expected, x));
+            assert!(expected.contains(x));
             i += 1
         }
         assert_eq!(i, expected.len());
@@ -504,7 +502,7 @@ mod test_set {
         let mut i = 0;
         let expected = [1, 5, 11, 14, 22];
         for a.symmetric_difference(&b) |x| {
-            assert!(vec::contains(expected, x));
+            assert!(expected.contains(x));
             i += 1
         }
         assert_eq!(i, expected.len());
@@ -533,7 +531,7 @@ mod test_set {
         let mut i = 0;
         let expected = [1, 3, 5, 9, 11, 13, 16, 19, 24];
         for a.union(&b) |x| {
-            assert!(vec::contains(expected, x));
+            assert!(expected.contains(x));
             i += 1
         }
         assert_eq!(i, expected.len());

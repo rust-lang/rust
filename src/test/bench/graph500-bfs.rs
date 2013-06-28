@@ -341,7 +341,7 @@ fn validate(edges: ~[(node_id, node_id)],
         }
         else {
             while parent != root {
-                if vec::contains(path, &parent) {
+                if path.contains(&parent) {
                     status = false;
                 }
 

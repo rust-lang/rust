@@ -220,9 +220,9 @@ pub fn splitn<T:Copy>(v: &[T], n: uint, f: &fn(t: &T) -> bool) -> ~[~[T]] {
         match v.slice(start, ln).iter().position_(|t| f(t)) {
             None => break,
             Some(i) => {
-                result.push(v.slice(start, i).to_owned());
+                result.push(v.slice(start, start + i).to_owned());
                 // Make sure to skip the separator.
-                start = i + 1u;
+                start += i + 1u;
                 count -= 1u;
             }
         }
@@ -644,36 +644,6 @@ impl<'self, T:Copy> VectorVector<T> for &'self [&'self [T]] {
         }
         r
     }
-}
-
-/// Return true if a vector contains an element with the given value
-pub fn contains<T:Eq>(v: &[T], x: &T) -> bool {
-    for v.iter().advance |elt| { if *x == *elt { return true; } }
-    false
-}
-
-/// Find the first index containing a matching value
-pub fn position_elem<T:Eq>(v: &[T], x: &T) -> Option<uint> {
-    v.iter().position_(|y| *x == *y)
-}
-
-/// Find the last index containing a matching value
-pub fn rposition_elem<T:Eq>(v: &[T], x: &T) -> Option<uint> {
-    rposition(v, |y| *x == *y)
-}
-
-/**
- * Find the last index matching some predicate
- *
- * Apply function `f` to each element of `v` in reverse order.  When function
- * `f` returns true then an option containing the index is returned. If `f`
- * matches no elements then none is returned.
- */
-pub fn rposition<T>(v: &[T], f: &fn(t: &T) -> bool) -> Option<uint> {
-    for v.rev_iter().enumerate().advance |(i, t)| {
-        if f(t) { return Some(v.len() - i - 1); }
-    }
-    None
 }
 
 /**
@@ -1265,11 +1235,14 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
      *
      * Apply function `f` to each element of `v` in reverse order.  When
      * function `f` returns true then an option containing the index is
-     * returned. If `f` matches no elements then none is returned.
+     * returned. If `f` matches no elements then None is returned.
      */
     #[inline]
     fn rposition(&self, f: &fn(t: &T) -> bool) -> Option<uint> {
-        rposition(*self, f)
+        for self.rev_iter().enumerate().advance |(i, t)| {
+            if f(t) { return Some(self.len() - i - 1); }
+        }
+        None
     }
 
     /// Apply a function to each element of a vector and return the results
@@ -1327,19 +1300,26 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
 pub trait ImmutableEqVector<T:Eq> {
     fn position_elem(&self, t: &T) -> Option<uint>;
     fn rposition_elem(&self, t: &T) -> Option<uint>;
+    fn contains(&self, x: &T) -> bool;
 }
 
 impl<'self,T:Eq> ImmutableEqVector<T> for &'self [T] {
     /// Find the first index containing a matching value
     #[inline]
     fn position_elem(&self, x: &T) -> Option<uint> {
-        position_elem(*self, x)
+        self.iter().position_(|y| *x == *y)
     }
 
     /// Find the last index containing a matching value
     #[inline]
     fn rposition_elem(&self, t: &T) -> Option<uint> {
-        rposition_elem(*self, t)
+        self.rposition(|x| *x == *t)
+    }
+
+    /// Return true if a vector contains an element with the given value
+    fn contains(&self, x: &T) -> bool {
+        for self.iter().advance |elt| { if *x == *elt { return true; } }
+        false
     }
 }
 
@@ -2838,13 +2818,13 @@ mod tests {
 
     #[test]
     fn test_position_elem() {
-        assert!(position_elem([], &1).is_none());
+        assert!([].position_elem(&1).is_none());
 
         let v1 = ~[1, 2, 3, 3, 2, 5];
-        assert_eq!(position_elem(v1, &1), Some(0u));
-        assert_eq!(position_elem(v1, &2), Some(1u));
-        assert_eq!(position_elem(v1, &5), Some(5u));
-        assert!(position_elem(v1, &4).is_none());
+        assert_eq!(v1.position_elem(&1), Some(0u));
+        assert_eq!(v1.position_elem(&2), Some(1u));
+        assert_eq!(v1.position_elem(&5), Some(5u));
+        assert!(v1.position_elem(&4).is_none());
     }
 
     #[test]
@@ -2853,8 +2833,8 @@ mod tests {
         fn g(xy: &(int, char)) -> bool { let (_x, y) = *xy; y == 'd' }
         let v = ~[(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
 
-        assert_eq!(rposition(v, f), Some(3u));
-        assert!(rposition(v, g).is_none());
+        assert_eq!(v.rposition(f), Some(3u));
+        assert!(v.rposition(g).is_none());
     }
 
     #[test]
@@ -3417,7 +3397,7 @@ mod tests {
     fn test_rposition_fail() {
         let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
         let mut i = 0;
-        do rposition(v) |_elt| {
+        do v.rposition |_elt| {
             if i == 2 {
                 fail!()
             }
