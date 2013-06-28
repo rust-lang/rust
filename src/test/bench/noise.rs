@@ -118,10 +118,10 @@ fn main() {
         };
     };
 
-    /*for int::range(0, 256) |y| {
+    for int::range(0, 256) |y| {
         for int::range(0, 256) |x| {
-            io::print(symbols[pixels[y*256+x] / 0.2f32 as int]);
+            print(symbols[pixels[y*256+x] / 0.2f32 as int]);
         }
-        io::println("");
-    }*/
+        println("");
+    }
 }
