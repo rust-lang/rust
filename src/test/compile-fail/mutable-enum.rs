@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[mutable]
+#[no_freeze]
 enum Foo { A }
 
 fn bar<T: Freeze>(_: T) {}

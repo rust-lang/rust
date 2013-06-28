@@ -2204,7 +2204,7 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
     }
 
     fn apply_tc_attr(cx: ctxt, did: def_id, mut tc: TypeContents) -> TypeContents {
-        if has_attr(cx, did, "mutable") {
+        if has_attr(cx, did, "no_freeze") {
             tc = tc + TC_MUTABLE;
         }
         if has_attr(cx, did, "no_send") {
