@@ -13,7 +13,9 @@
 use std::os;
 
 fn start(n_tasks: int, token: int) {
-    let mut (p, ch1) = stream();
+    let (p, ch1) = stream();
+    let mut p = p;
+    let mut ch1 = ch1;
     ch1.send(token);
     //  XXX could not get this to work with a range closure
     let mut i = 2;
