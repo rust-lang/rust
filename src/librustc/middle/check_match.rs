@@ -228,7 +228,7 @@ pub fn is_useful(cx: &MatchCheckCtxt, m: &matrix, v: &[@pat]) -> useful {
                                           val(const_bool(false)),
                                           0u, left_ty)
                   }
-                  ref u => (/*bad*/copy *u)
+                  ref u => *u,
                 }
               }
               ty::ty_enum(eid, _) => {
@@ -236,7 +236,7 @@ pub fn is_useful(cx: &MatchCheckCtxt, m: &matrix, v: &[@pat]) -> useful {
                     match is_useful_specialized(cx, m, v, variant(va.id),
                                                 va.args.len(), left_ty) {
                       not_useful => (),
-                      ref u => return (/*bad*/copy *u)
+                      ref u => return *u,
                     }
                 }
                 not_useful
@@ -253,7 +253,7 @@ pub fn is_useful(cx: &MatchCheckCtxt, m: &matrix, v: &[@pat]) -> useful {
                 for uint::range(0, max_len + 1) |n| {
                   match is_useful_specialized(cx, m, v, vec(n), n, left_ty) {
                     not_useful => (),
-                    ref u => return (/*bad*/copy *u)
+                    ref u => return *u,
                   }
                 }
                 not_useful
@@ -268,15 +268,15 @@ pub fn is_useful(cx: &MatchCheckCtxt, m: &matrix, v: &[@pat]) -> useful {
             match is_useful(cx,
                             &m.filter_mapped(|r| default(cx, *r)),
                             v.tail()) {
-              useful_ => useful(left_ty, /*bad*/copy *ctor),
-              ref u => (/*bad*/copy *u)
+              useful_ => useful(left_ty, *ctor),
+              ref u => *u,
             }
           }
         }
       }
       Some(ref v0_ctor) => {
         let arity = ctor_arity(cx, v0_ctor, left_ty);
-        is_useful_specialized(cx, m, v, /*bad*/copy *v0_ctor, arity, left_ty)
+        is_useful_specialized(cx, m, v, *v0_ctor, arity, left_ty)
       }
     }
 }
@@ -293,7 +293,7 @@ pub fn is_useful_specialized(cx: &MatchCheckCtxt,
         cx, &ms, specialize(cx, v, &ctor, arity, lty).get());
     match could_be_useful {
       useful_ => useful(lty, ctor),
-      ref u => (/*bad*/copy *u)
+      ref u => *u,
     }
 }
 
@@ -365,7 +365,7 @@ pub fn missing_ctor(cx: &MatchCheckCtxt,
             let r = pat_ctor_id(cx, r[0]);
             for r.iter().advance |id| {
                 if !vec::contains(found, id) {
-                    found.push(/*bad*/copy *id);
+                    found.push(*id);
                 }
             }
         }
@@ -690,9 +690,8 @@ pub fn specialize(cx: &MatchCheckCtxt,
             }
             pat_range(lo, hi) => {
                 let (c_lo, c_hi) = match *ctor_id {
-                    val(ref v) => ((/*bad*/copy *v), (/*bad*/copy *v)),
-                    range(ref lo, ref hi) =>
-                        ((/*bad*/copy *lo), (/*bad*/copy *hi)),
+                    val(ref v) => (*v, *v),
+                    range(ref lo, ref hi) => (*lo, *hi),
                     single => return Some(vec::to_owned(r.tail())),
                     _ => fail!("type error")
                 };

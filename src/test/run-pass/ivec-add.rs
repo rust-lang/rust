@@ -10,7 +10,7 @@
 
 fn double<T:Copy>(a: T) -> ~[T] { return ~[copy a] + ~[a]; }
 
-fn double_int(a: int) -> ~[int] { return ~[copy a] + ~[a]; }
+fn double_int(a: int) -> ~[int] { return ~[a] + ~[a]; }
 
 pub fn main() {
     let mut d = double(1);

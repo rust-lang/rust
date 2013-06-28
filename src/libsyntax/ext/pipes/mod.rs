@@ -65,7 +65,7 @@ pub fn expand_proto(cx: @ExtCtxt, _sp: span, id: ast::ident,
                     tt: ~[ast::token_tree]) -> base::MacResult {
     let sess = cx.parse_sess();
     let cfg = cx.cfg();
-    let tt_rdr = new_tt_reader(copy cx.parse_sess().span_diagnostic,
+    let tt_rdr = new_tt_reader(cx.parse_sess().span_diagnostic,
                                None,
                                copy tt);
     let rdr = tt_rdr as @reader;

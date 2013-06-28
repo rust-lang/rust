@@ -285,7 +285,7 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
               }
               matched_seq(*) => {
                 r.sp_diag.span_fatal(
-                    copy r.cur_span, /* blame the macro writer */
+                    r.cur_span, /* blame the macro writer */
                     fmt!("variable '%s' is still repeating at this depth",
                          ident_to_str(&ident)));
               }

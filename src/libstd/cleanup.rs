@@ -130,9 +130,9 @@ unsafe fn each_live_alloc(read_next_before: bool,
 
     let task: *Task = transmute(rustrt::rust_get_task());
     let box = (*task).boxed_region.live_allocs;
-    let mut box: *mut BoxRepr = transmute(copy box);
+    let mut box: *mut BoxRepr = transmute(box);
     while box != mut_null() {
-        let next_before = transmute(copy (*box).header.next);
+        let next_before = transmute((*box).header.next);
         let uniq =
             (*box).header.ref_count == managed::raw::RC_MANAGED_UNIQUE;
 
@@ -143,7 +143,7 @@ unsafe fn each_live_alloc(read_next_before: bool,
         if read_next_before {
             box = next_before;
         } else {
-            box = transmute(copy (*box).header.next);
+            box = transmute((*box).header.next);
         }
     }
     return true;

@@ -259,7 +259,7 @@ impl ExtCtxt {
                     Some(@ExpandedFrom(CallInfo {
                         call_site: span {lo: cs.lo, hi: cs.hi,
                                          expn_info: *self.backtrace},
-                        callee: copy *callee}));
+                        callee: *callee}));
             }
         }
     }

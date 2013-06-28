@@ -18,17 +18,14 @@
 use core::prelude::*;
 use core::iterator::IteratorUtil;
 
-use middle::resolve;
 use middle::ty;
 use middle::typeck;
 
 use core::hashmap::HashSet;
 use syntax::ast::*;
-use syntax::ast;
 use syntax::ast_map;
 use syntax::ast_util::def_id_of_def;
 use syntax::attr;
-use syntax::codemap;
 use syntax::parse::token;
 use syntax::visit::Visitor;
 use syntax::visit;

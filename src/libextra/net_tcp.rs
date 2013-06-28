@@ -684,7 +684,7 @@ fn listen_common(host_ip: ip::IpAddr,
     // arg above.. this same pattern works w/o complaint in
     // tcp::connect (because the iotask::interact cb isn't
     // nested within a core::comm::listen block)
-    let loc_ip = copy(host_ip);
+    let loc_ip = host_ip;
     do iotask::interact(iotask) |loop_ptr| {
         unsafe {
             match uv::ll::tcp_init(loop_ptr, server_stream_ptr) {
