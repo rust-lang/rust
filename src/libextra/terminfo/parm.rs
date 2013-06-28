@@ -11,7 +11,7 @@
 //! Parameterized string expansion
 
 use std::{char, vec, util};
-use std::num::strconv::{SignNone,SignNeg,SignAll,DigAll,to_str_bytes_common};
+use std::num::strconv::{SignNone,SignNeg,SignAll,int_to_str_bytes_common};
 use std::iterator::IteratorUtil;
 
 #[deriving(Eq)]
@@ -469,14 +469,20 @@ priv fn format(val: Param, op: FormatOp, flags: Flags) -> Result<~[u8],~str> {
                         FormatHex|FormatHEX => 16,
                         FormatString => util::unreachable()
                     };
-                    let (s,_) = match op {
+                    let mut s = ~[];
+                    match op {
                         FormatDigit => {
                             let sign = if flags.sign { SignAll } else { SignNeg };
-                            to_str_bytes_common(&d, radix, false, sign, DigAll)
+                            do int_to_str_bytes_common(d, radix, sign) |c| {
+                                s.push(c);
+                            }
                         }
-                        _ => to_str_bytes_common(&(d as uint), radix, false, SignNone, DigAll)
+                        _ => {
+                            do int_to_str_bytes_common(d as uint, radix, SignNone) |c| {
+                                s.push(c);
+                            }
+                        }
                     };
-                    let mut s = s;
                     if flags.precision > s.len() {
                         let mut s_ = vec::with_capacity(flags.precision);
                         let n = flags.precision - s.len();
