@@ -10,8 +10,8 @@
 
 //! Utilities for manipulating the char type
 
-use container::Container;
 use option::{None, Option, Some};
+use int;
 use str::StrSlice;
 use unicode::{derived_property, general_category};
 

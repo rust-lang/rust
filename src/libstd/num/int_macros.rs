@@ -17,6 +17,7 @@ macro_rules! int_module (($T:ty, $bits:expr) => (mod generated {
 use num::{ToStrRadix, FromStrRadix};
 use num::{Zero, One, strconv};
 use prelude::*;
+use str;
 
 pub use cmp::{min, max};
 
@@ -529,25 +530,33 @@ impl FromStrRadix for $T {
 /// Convert to a string as a byte slice in a given base.
 #[inline]
 pub fn to_str_bytes<U>(n: $T, radix: uint, f: &fn(v: &[u8]) -> U) -> U {
-    let (buf, _) = strconv::to_str_bytes_common(&n, radix, false,
-                            strconv::SignNeg, strconv::DigAll);
-    f(buf)
+    // The radix can be as low as 2, so we need at least 64 characters for a
+    // base 2 number, and then we need another for a possible '-' character.
+    let mut buf = [0u8, ..65];
+    let mut cur = 0;
+    do strconv::int_to_str_bytes_common(n, radix, strconv::SignNeg) |i| {
+        buf[cur] = i;
+        cur += 1;
+    }
+    f(buf.slice(0, cur))
 }
 
 /// Convert to a string in base 10.
 #[inline]
 pub fn to_str(num: $T) -> ~str {
-    let (buf, _) = strconv::to_str_common(&num, 10u, false,
-                                      strconv::SignNeg, strconv::DigAll);
-    buf
+    to_str_radix(num, 10u)
 }
 
 /// Convert to a string in a given base.
 #[inline]
 pub fn to_str_radix(num: $T, radix: uint) -> ~str {
-    let (buf, _) = strconv::to_str_common(&num, radix, false,
-                                      strconv::SignNeg, strconv::DigAll);
-    buf
+    let mut buf: ~[u8] = ~[];
+    do strconv::int_to_str_bytes_common(num, radix, strconv::SignNeg) |i| {
+        buf.push(i);
+    }
+    // We know we generated valid utf-8, so we don't need to go through that
+    // check.
+    unsafe { str::raw::from_bytes_owned(buf) }
 }
 
 impl ToStr for $T {
