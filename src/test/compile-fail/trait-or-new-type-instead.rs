@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: implement a trait or new type instead
+// error-pattern: found value name used as a type
 impl<T> Option<T> {
     pub fn foo(&self) { }
 }

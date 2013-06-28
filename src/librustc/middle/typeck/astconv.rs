@@ -753,7 +753,7 @@ fn conv_builtin_bounds(tcx: ty::ctxt, ast_bounds: &Option<OptVec<ast::TyParamBou
     //! Converts a list of bounds from the AST into a `BuiltinBounds`
     //! struct. Reports an error if any of the bounds that appear
     //! in the AST refer to general traits and not the built-in traits
-    //! like `Copy` or `Owned`. Used to translate the bounds that
+    //! like `Copy` or `Send`. Used to translate the bounds that
     //! appear in closure and trait types, where only builtin bounds are
     //! legal.
     //! If no bounds were specified, we choose a "default" bound based on
@@ -788,9 +788,9 @@ fn conv_builtin_bounds(tcx: ty::ctxt, ast_bounds: &Option<OptVec<ast::TyParamBou
             }
             builtin_bounds
         },
-        // ~Trait is sugar for ~Trait:Owned.
+        // ~Trait is sugar for ~Trait:Send.
         (&None, ty::UniqTraitStore) => {
-            let mut set = ty::EmptyBuiltinBounds(); set.add(ty::BoundOwned); set
+            let mut set = ty::EmptyBuiltinBounds(); set.add(ty::BoundSend); set
         }
         // @Trait is sugar for @Trait:'static.
         // &'static Trait is sugar for &'static Trait:'static.
@@ -807,19 +807,19 @@ pub fn try_add_builtin_trait(tcx: ty::ctxt,
                              trait_def_id: ast::def_id,
                              builtin_bounds: &mut ty::BuiltinBounds) -> bool {
     //! Checks whether `trait_ref` refers to one of the builtin
-    //! traits, like `Copy` or `Owned`, and adds the corresponding
+    //! traits, like `Copy` or `Send`, and adds the corresponding
     //! bound to the set `builtin_bounds` if so. Returns true if `trait_ref`
     //! is a builtin trait.
 
     let li = &tcx.lang_items;
-    if trait_def_id == li.owned_trait() {
-        builtin_bounds.add(ty::BoundOwned);
+    if trait_def_id == li.send_trait() {
+        builtin_bounds.add(ty::BoundSend);
         true
     } else if trait_def_id == li.copy_trait() {
         builtin_bounds.add(ty::BoundCopy);
         true
-    } else if trait_def_id == li.const_trait() {
-        builtin_bounds.add(ty::BoundConst);
+    } else if trait_def_id == li.freeze_trait() {
+        builtin_bounds.add(ty::BoundFreeze);
         true
     } else if trait_def_id == li.sized_trait() {
         builtin_bounds.add(ty::BoundSized);

@@ -21,8 +21,8 @@ use cmp::Eq;
 use iterator::IteratorUtil;
 use libc;
 use option::{None, Option, Some};
+use str::{OwnedStr, Str, StrSlice, StrVector};
 use str;
-use str::{Str, StrSlice, StrVector};
 use to_str::ToStr;
 use ascii::{AsciiCast, AsciiStr};
 use vec::{OwnedVector, ImmutableVector};
@@ -335,8 +335,8 @@ mod stat {
     }
 }
 
-
-impl Path {
+#[cfg(target_os = "win32")]
+impl WindowsPath {
     pub fn stat(&self) -> Option<libc::stat> {
         unsafe {
              do str::as_c_str(self.to_str()) |buf| {
@@ -349,12 +349,35 @@ impl Path {
         }
     }
 
-    #[cfg(unix)]
-    pub fn lstat(&self) -> Option<libc::stat> {
+    pub fn exists(&self) -> bool {
+        match self.stat() {
+            None => false,
+            Some(_) => true,
+        }
+    }
+
+    pub fn get_size(&self) -> Option<i64> {
+        match self.stat() {
+            None => None,
+            Some(ref st) => Some(st.st_size as i64),
+        }
+    }
+
+    pub fn get_mode(&self) -> Option<uint> {
+        match self.stat() {
+            None => None,
+            Some(ref st) => Some(st.st_mode as uint),
+        }
+    }
+}
+
+#[cfg(not(target_os = "win32"))]
+impl PosixPath {
+    pub fn stat(&self) -> Option<libc::stat> {
         unsafe {
-            do str::as_c_str(self.to_str()) |buf| {
+             do str::as_c_str(self.to_str()) |buf| {
                 let mut st = stat::arch::default_stat();
-                match libc::lstat(buf, &mut st) {
+                match libc::stat(buf, &mut st) {
                     0 => Some(st),
                     _ => None,
                 }
@@ -396,7 +419,7 @@ impl Path {
 #[cfg(target_os = "freebsd")]
 #[cfg(target_os = "linux")]
 #[cfg(target_os = "macos")]
-impl Path {
+impl PosixPath {
     pub fn get_atime(&self) -> Option<(i64, int)> {
         match self.stat() {
             None => None,
@@ -428,9 +451,24 @@ impl Path {
     }
 }
 
+#[cfg(unix)]
+impl PosixPath {
+    pub fn lstat(&self) -> Option<libc::stat> {
+        unsafe {
+            do str::as_c_str(self.to_str()) |buf| {
+                let mut st = stat::arch::default_stat();
+                match libc::lstat(buf, &mut st) {
+                    0 => Some(st),
+                    _ => None,
+                }
+            }
+        }
+    }
+}
+
 #[cfg(target_os = "freebsd")]
 #[cfg(target_os = "macos")]
-impl Path {
+impl PosixPath {
     pub fn get_birthtime(&self) -> Option<(i64, int)> {
         match self.stat() {
             None => None,
@@ -443,7 +481,7 @@ impl Path {
 }
 
 #[cfg(target_os = "win32")]
-impl Path {
+impl WindowsPath {
     pub fn get_atime(&self) -> Option<(i64, int)> {
         match self.stat() {
             None => None,
@@ -470,13 +508,21 @@ impl Path {
             }
         }
     }
+
+    /// Execute a function on p as well as all of its ancestors
+    pub fn each_parent(&self, f: &fn(&Path)) {
+        if !self.components.is_empty() {
+            f(self);
+            self.pop().each_parent(f);
+        }
+    }
 }
 
 impl ToStr for PosixPath {
     fn to_str(&self) -> ~str {
         let mut s = ~"";
         if self.is_absolute {
-            s += "/";
+            s.push_str("/");
         }
         s + self.components.connect("/")
     }
@@ -655,15 +701,21 @@ impl ToStr for WindowsPath {
     fn to_str(&self) -> ~str {
         let mut s = ~"";
         match self.host {
-          Some(ref h) => { s += "\\\\"; s += *h; }
+          Some(ref h) => {
+            s.push_str("\\\\");
+            s.push_str(*h);
+          }
           None => { }
         }
         match self.device {
-          Some(ref d) => { s += *d; s += ":"; }
+          Some(ref d) => {
+            s.push_str(*d);
+            s.push_str(":");
+          }
           None => { }
         }
         if self.is_absolute {
-            s += "\\";
+            s.push_str("\\");
         }
         s + self.components.connect("\\")
     }

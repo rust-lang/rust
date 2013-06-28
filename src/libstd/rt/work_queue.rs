@@ -13,7 +13,7 @@ use option::*;
 use vec::OwnedVector;
 use unstable::sync::{Exclusive, exclusive};
 use cell::Cell;
-use kinds::Owned;
+use kinds::Send;
 use clone::Clone;
 
 pub struct WorkQueue<T> {
@@ -21,7 +21,7 @@ pub struct WorkQueue<T> {
     priv queue: ~Exclusive<~[T]>
 }
 
-impl<T: Owned> WorkQueue<T> {
+impl<T: Send> WorkQueue<T> {
     pub fn new() -> WorkQueue<T> {
         WorkQueue {
             queue: ~exclusive(~[])

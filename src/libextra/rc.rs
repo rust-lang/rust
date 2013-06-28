@@ -13,10 +13,10 @@
 /** Task-local reference counted smart pointers
 
 Task-local reference counted smart pointers are an alternative to managed boxes with deterministic
-destruction. They are restricted to containing types that are either `Owned` or `Const` (or both) to
+destruction. They are restricted to containing types that are either `Send` or `Freeze` (or both) to
 prevent cycles.
 
-Neither `Rc<T>` or `RcMut<T>` is ever `Owned` and `RcMut<T>` is never `Const`. If `T` is `Const`, a
+Neither `Rc<T>` or `RcMut<T>` is ever `Send` and `RcMut<T>` is never `Freeze`. If `T` is `Freeze`, a
 cycle cannot be created with `Rc<T>` because there is no way to modify it after creation.
 
 */
@@ -35,8 +35,8 @@ struct RcBox<T> {
 }
 
 /// Immutable reference counted pointer type
-#[non_owned]
 #[unsafe_no_drop_flag]
+#[non_sendable]
 pub struct Rc<T> {
     priv ptr: *mut RcBox<T>,
 }
@@ -51,12 +51,12 @@ impl<T> Rc<T> {
 }
 
 // FIXME: #6516: should be a static method
-pub fn rc_from_owned<T: Owned>(value: T) -> Rc<T> {
+pub fn rc_from_owned<T: Send>(value: T) -> Rc<T> {
     unsafe { Rc::new(value) }
 }
 
 // FIXME: #6516: should be a static method
-pub fn rc_from_const<T: Const>(value: T) -> Rc<T> {
+pub fn rc_from_const<T: Freeze>(value: T) -> Rc<T> {
     unsafe { Rc::new(value) }
 }
 
@@ -168,6 +168,7 @@ struct RcMutBox<T> {
 
 /// Mutable reference counted pointer type
 #[non_owned]
+#[non_sendable]
 #[mutable]
 #[unsafe_no_drop_flag]
 pub struct RcMut<T> {
@@ -184,12 +185,12 @@ impl<T> RcMut<T> {
 }
 
 // FIXME: #6516: should be a static method
-pub fn rc_mut_from_owned<T: Owned>(value: T) -> RcMut<T> {
+pub fn rc_mut_from_owned<T: Send>(value: T) -> RcMut<T> {
     unsafe { RcMut::new(value) }
 }
 
 // FIXME: #6516: should be a static method
-pub fn rc_mut_from_const<T: Const>(value: T) -> RcMut<T> {
+pub fn rc_mut_from_const<T: Freeze>(value: T) -> RcMut<T> {
     unsafe { RcMut::new(value) }
 }
 

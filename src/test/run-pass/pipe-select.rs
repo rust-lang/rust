@@ -29,12 +29,12 @@ proto! oneshot (
 )
 
 proto! stream (
-    Stream:send<T:Owned> {
+    Stream:send<T:Send> {
         send(T) -> Stream<T>
     }
 )
 
-pub fn spawn_service<T:Owned,Tb:Owned>(
+pub fn spawn_service<T:Send,Tb:Send>(
             init: extern fn() -> (RecvPacketBuffered<T, Tb>,
                                   SendPacketBuffered<T, Tb>),
             service: ~fn(v: RecvPacketBuffered<T, Tb>))

@@ -12,10 +12,10 @@
 
 pub fn main() {
     let mut v = ~[1];
-    v += ~[2];
-    v += ~[3];
-    v += ~[4];
-    v += ~[5];
+    v.push(2);
+    v.push(3);
+    v.push(4);
+    v.push(5);
     assert_eq!(v[0], 1);
     assert_eq!(v[1], 2);
     assert_eq!(v[2], 3);

@@ -368,14 +368,17 @@ impl tr for ast::def {
             ast::def_static_method(did.tr(xcx),
                                    did2_opt.map(|did2| did2.tr(xcx)),
                                    p)
-          },
-          ast::def_self_ty(nid) => ast::def_self_ty(xcx.tr_id(nid)),
-          ast::def_self(nid, i) => ast::def_self(xcx.tr_id(nid), i),
-          ast::def_mod(did) => ast::def_mod(did.tr(xcx)),
-          ast::def_foreign_mod(did) => ast::def_foreign_mod(did.tr(xcx)),
-          ast::def_static(did, m) => ast::def_static(did.tr(xcx), m),
-          ast::def_arg(nid, b) => ast::def_arg(xcx.tr_id(nid), b),
-          ast::def_local(nid, b) => ast::def_local(xcx.tr_id(nid), b),
+          }
+          ast::def_method(did0, did1) => {
+            ast::def_method(did0.tr(xcx), did1.map(|did1| did1.tr(xcx)))
+          }
+          ast::def_self_ty(nid) => { ast::def_self_ty(xcx.tr_id(nid)) }
+          ast::def_self(nid, i) => { ast::def_self(xcx.tr_id(nid), i) }
+          ast::def_mod(did) => { ast::def_mod(did.tr(xcx)) }
+          ast::def_foreign_mod(did) => { ast::def_foreign_mod(did.tr(xcx)) }
+          ast::def_static(did, m) => { ast::def_static(did.tr(xcx), m) }
+          ast::def_arg(nid, b) => { ast::def_arg(xcx.tr_id(nid), b) }
+          ast::def_local(nid, b) => { ast::def_local(xcx.tr_id(nid), b) }
           ast::def_variant(e_did, v_did) => {
             ast::def_variant(e_did.tr(xcx), v_did.tr(xcx))
           },
@@ -692,12 +695,12 @@ trait get_ty_str_ctxt {
 
 impl<'self> get_ty_str_ctxt for e::EncodeContext<'self> {
     fn ty_str_ctxt(&self) -> @tyencode::ctxt {
-        let r = self.reachable;
-        @tyencode::ctxt {diag: self.tcx.sess.diagnostic(),
-                        ds: e::def_to_str,
-                        tcx: self.tcx,
-                        reachable: |a| r.contains(&a),
-                        abbrevs: tyencode::ac_use_abbrevs(self.type_abbrevs)}
+        @tyencode::ctxt {
+            diag: self.tcx.sess.diagnostic(),
+            ds: e::def_to_str,
+            tcx: self.tcx,
+            abbrevs: tyencode::ac_use_abbrevs(self.type_abbrevs)
+        }
     }
 }
 

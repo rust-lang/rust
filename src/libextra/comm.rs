@@ -30,7 +30,7 @@ pub struct DuplexStream<T, U> {
 }
 
 // Allow these methods to be used without import:
-impl<T:Owned,U:Owned> DuplexStream<T, U> {
+impl<T:Send,U:Send> DuplexStream<T, U> {
     pub fn send(&self, x: T) {
         self.chan.send(x)
     }
@@ -48,19 +48,19 @@ impl<T:Owned,U:Owned> DuplexStream<T, U> {
     }
 }
 
-impl<T:Owned,U:Owned> GenericChan<T> for DuplexStream<T, U> {
+impl<T:Send,U:Send> GenericChan<T> for DuplexStream<T, U> {
     fn send(&self, x: T) {
         self.chan.send(x)
     }
 }
 
-impl<T:Owned,U:Owned> GenericSmartChan<T> for DuplexStream<T, U> {
+impl<T:Send,U:Send> GenericSmartChan<T> for DuplexStream<T, U> {
     fn try_send(&self, x: T) -> bool {
         self.chan.try_send(x)
     }
 }
 
-impl<T:Owned,U:Owned> GenericPort<U> for DuplexStream<T, U> {
+impl<T:Send,U:Send> GenericPort<U> for DuplexStream<T, U> {
     fn recv(&self) -> U {
         self.port.recv()
     }
@@ -70,20 +70,20 @@ impl<T:Owned,U:Owned> GenericPort<U> for DuplexStream<T, U> {
     }
 }
 
-impl<T:Owned,U:Owned> Peekable<U> for DuplexStream<T, U> {
+impl<T:Send,U:Send> Peekable<U> for DuplexStream<T, U> {
     fn peek(&self) -> bool {
         self.port.peek()
     }
 }
 
-impl<T:Owned,U:Owned> Selectable for DuplexStream<T, U> {
+impl<T:Send,U:Send> Selectable for DuplexStream<T, U> {
     fn header(&mut self) -> *mut pipes::PacketHeader {
         self.port.header()
     }
 }
 
 /// Creates a bidirectional stream.
-pub fn DuplexStream<T:Owned,U:Owned>()
+pub fn DuplexStream<T:Send,U:Send>()
     -> (DuplexStream<T, U>, DuplexStream<U, T>)
 {
     let (p1, c2) = comm::stream();

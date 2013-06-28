@@ -152,7 +152,7 @@ pub fn header_kind(doc: doc::ItemTag) -> ~str {
             ~"Function"
         }
         doc::ConstTag(_) => {
-            ~"Const"
+            ~"Freeze"
         }
         doc::EnumTag(_) => {
             ~"Enum"
@@ -192,11 +192,11 @@ pub fn header_name(doc: doc::ItemTag) -> ~str {
             let mut trait_part = ~"";
             for doc.trait_types.iter().enumerate().advance |(i, trait_type)| {
                 if i == 0 {
-                    trait_part += " of ";
+                    trait_part.push_str(" of ");
                 } else {
-                    trait_part += ", ";
+                    trait_part.push_str(", ");
                 }
-                trait_part += *trait_type;
+                trait_part.push_str(*trait_type);
             }
             fmt!("%s for %s%s", trait_part, *self_ty, bounds)
         }
@@ -786,7 +786,7 @@ mod test {
     #[test]
     fn should_write_const_header() {
         let markdown = render(~"static a: bool = true;");
-        assert!(markdown.contains("## Const `a`\n\n"));
+        assert!(markdown.contains("## Freeze `a`\n\n"));
     }
 
     #[test]

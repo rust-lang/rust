@@ -261,7 +261,9 @@ fn parse_opt<T>(st: &mut PState, f: &fn(&mut PState) -> T) -> Option<T> {
 fn parse_str(st: &mut PState, term: char) -> ~str {
     let mut result = ~"";
     while peek(st) != term {
-        result += str::from_byte(next_byte(st));
+        unsafe {
+            str::raw::push_byte(&mut result, next_byte(st));
+        }
     }
     next(st);
     return result;
@@ -554,13 +556,13 @@ fn parse_bounds(st: &mut PState, conv: conv_did) -> ty::ParamBounds {
     loop {
         match next(st) {
             'S' => {
-                param_bounds.builtin_bounds.add(ty::BoundOwned);
+                param_bounds.builtin_bounds.add(ty::BoundSend);
             }
             'C' => {
                 param_bounds.builtin_bounds.add(ty::BoundCopy);
             }
             'K' => {
-                param_bounds.builtin_bounds.add(ty::BoundConst);
+                param_bounds.builtin_bounds.add(ty::BoundFreeze);
             }
             'O' => {
                 param_bounds.builtin_bounds.add(ty::BoundStatic);

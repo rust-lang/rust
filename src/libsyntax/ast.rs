@@ -147,7 +147,7 @@ pub static crate_node_id: node_id = 0;
 // The AST represents all type param bounds as types.
 // typeck::collect::compute_bounds matches these against
 // the "special" built-in traits (see middle::lang_items) and
-// detects Copy, Send, Owned, and Const.
+// detects Copy, Send, Send, and Freeze.
 pub enum TyParamBound {
     TraitTyParamBound(@trait_ref),
     RegionTyParamBound
@@ -205,7 +205,8 @@ pub enum def {
     def_struct(def_id),
     def_typaram_binder(node_id), /* struct, impl or trait with ty params */
     def_region(node_id),
-    def_label(node_id)
+    def_label(node_id),
+    def_method(def_id /* method */, Option<def_id> /* trait */),
 }
 
 
@@ -1047,7 +1048,7 @@ pub struct trait_ref {
 pub enum visibility { public, private, inherited }
 
 impl visibility {
-    fn inherit_from(&self, parent_visibility: visibility) -> visibility {
+    pub fn inherit_from(&self, parent_visibility: visibility) -> visibility {
         match self {
             &inherited => parent_visibility,
             &public | &private => *self
