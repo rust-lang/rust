@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[non_sendable]
+#[no_send]
 enum Foo { A }
 
 fn bar<T: Send>(_: T) {}
