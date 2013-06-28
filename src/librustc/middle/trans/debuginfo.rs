@@ -56,7 +56,7 @@ use util::ppaux::ty_to_str;
 
 use core::hashmap::HashMap;
 use core::libc;
-use core::libc::c_uint;
+use core::libc::{c_uint, c_ulonglong};
 use core::cmp;
 use core::ptr;
 use core::str::as_c_str;
@@ -211,9 +211,17 @@ pub fn create_arg(bcx: block, arg: ast::arg, span: span) -> Option<DIVariable> {
             let ident = path.idents.last();
             let name: &str = cx.sess.str_of(*ident);
             let mdnode = do as_c_str(name) |name| { unsafe {
-                llvm::LLVMDIBuilderCreateLocalVariable(DIB(cx),
-                    ArgVariableTag as u32, context, name,
-                    filemd, loc.line as c_uint, tymd, false, 0, 0)
+                llvm::LLVMDIBuilderCreateLocalVariable(
+                    DIB(cx),
+                    ArgVariableTag as u32,
+                    context,
+                    name,
+                    filemd,
+                    loc.line as c_uint,
+                    tymd,
+                    false,
+                    0,
+                    0)
                     // XXX need to pass in a real argument number
             }};
 
@@ -290,16 +298,17 @@ pub fn create_function(fcx: fn_ctxt) -> DISubprogram {
     let ret_ty_md = if cx.sess.opts.extra_debuginfo {
         match ret_ty.node {
           ast::ty_nil => ptr::null(),
-          _ => create_ty(cx, ty::node_id_to_type(cx.tcx, id),
-                         ret_ty.span)
+          _ => create_ty(cx, ty::node_id_to_type(cx.tcx, id), ret_ty.span)
         }
     } else {
         ptr::null()
     };
 
     let fn_ty = unsafe {
-        llvm::LLVMDIBuilderCreateSubroutineType(DIB(cx),
-            file_md, create_DIArray(DIB(cx), [ret_ty_md]))
+        llvm::LLVMDIBuilderCreateSubroutineType(
+            DIB(cx),
+            file_md,
+            create_DIArray(DIB(cx), [ret_ty_md]))
     };
 
     let fn_md =
@@ -308,13 +317,19 @@ pub fn create_function(fcx: fn_ctxt) -> DISubprogram {
             llvm::LLVMDIBuilderCreateFunction(
                 DIB(cx),
                 file_md,
-                name, linkage,
-                file_md, loc.line as c_uint,
-                fn_ty, false, true,
+                name,
+                linkage,
+                file_md,
+                loc.line as c_uint,
+                fn_ty,
+                false,
+                true,
                 loc.line as c_uint,
                 FlagPrototyped as c_uint,
                 cx.sess.opts.optimize != session::No,
-                fcx.llfn, ptr::null(), ptr::null())
+                fcx.llfn,
+                ptr::null(),
+                ptr::null())
             }}};
 
     dbg_cx(cx).created_functions.insert(id, fn_md);
@@ -337,6 +352,9 @@ fn create_DIArray(builder: DIBuilderRef, arr: &[DIDescriptor]) -> DIArray {
 fn create_compile_unit(cx: @mut CrateContext) {
     let dcx = dbg_cx(cx);
     let crate_name: &str = dcx.crate_file;
+
+    debug!("create_compile_unit: %?", crate_name);
+
     let work_dir = cx.sess.working_dir.to_str();
     let producer = fmt!("rustc version %s", env!("CFG_VERSION"));
 
@@ -352,7 +370,7 @@ fn create_compile_unit(cx: @mut CrateContext) {
     }}}}}};
 }
 
-fn create_file(cx: @mut CrateContext, full_path: &str) -> DIFile {
+fn create_file(cx: &mut CrateContext, full_path: &str) -> DIFile {
     match dbg_cx(cx).created_files.find_equiv(&full_path) {
         Some(file_md) => return *file_md,
         None => ()
@@ -422,7 +440,7 @@ fn create_block(bcx: block) -> DILexicalBlock {
 
 
 
-fn create_basic_type(cx: @mut CrateContext, t: ty::t, _span: span) -> DIType {
+fn create_basic_type(cx: &mut CrateContext, t: ty::t, _span: span) -> DIType {
     let ty_id = ty::type_id(t);
     match dbg_cx(cx).created_types.find(&ty_id) {
         Some(ty_md) => return *ty_md,
@@ -460,8 +478,11 @@ fn create_basic_type(cx: @mut CrateContext, t: ty::t, _span: span) -> DIType {
     let (size, align) = size_and_align_of(cx, t);
     let ty_md = do as_c_str(name) |name| { unsafe {
             llvm::LLVMDIBuilderCreateBasicType(
-                DIB(cx), name,
-                size * 8 as u64, align * 8 as u64, encoding as c_uint)
+                DIB(cx),
+                name,
+                bytes_to_bits(size),
+                bytes_to_bits(align),
+                encoding as c_uint)
         }};
 
     // One could think that this call is not necessary, as the create_ty() function will insert the
@@ -471,12 +492,16 @@ fn create_basic_type(cx: @mut CrateContext, t: ty::t, _span: span) -> DIType {
     return ty_md;
 }
 
-fn create_pointer_type(cx: @mut CrateContext, t: ty::t, _span: span, pointee: DIType) -> DIType {
+fn create_pointer_type(cx: &mut CrateContext, t: ty::t, _span: span, pointee: DIType) -> DIType {
     let (size, align) = size_and_align_of(cx, t);
     let name = ty_to_str(cx.tcx, t);
     let ptr_md = do as_c_str(name) |name| { unsafe {
-        llvm::LLVMDIBuilderCreatePointerType(DIB(cx),
-                pointee, size * 8 as u64, align * 8 as u64, name)
+        llvm::LLVMDIBuilderCreatePointerType(
+            DIB(cx),
+            pointee,
+            bytes_to_bits(size),
+            bytes_to_bits(align),
+            name)
     }};
     return ptr_md;
 }
@@ -492,9 +517,9 @@ struct StructContext {
 }
 
 impl StructContext {
-    fn new(cx: &CrateContext, name: ~str, file: DIFile, line: uint) -> ~StructContext {
+    fn new(cx: &CrateContext, name: ~str, file: DIFile, line: uint) -> StructContext {
         debug!("StructContext::create: %s", name);
-        let scx = ~StructContext {
+        return StructContext {
             builder: DIB(cx),
             file: file,
             name: name,
@@ -503,18 +528,26 @@ impl StructContext {
             total_size: 0,
             align: 1
         };
-        return scx;
     }
 
     fn add_member(&mut self, name: &str, line: uint, size: uint, align: uint, ty: DIType) {
-        debug!("StructContext(%s)::add_member: %s, size=%u, align=%u",
-                self.name, name, size, align);
         let offset = roundup(self.total_size, align);
+
+        debug!("StructContext(%s)::add_member: %s, size=%u, align=%u, offset=%u",
+                self.name, name, size, align, offset);
+
         let mem_t = do as_c_str(name) |name| { unsafe {
             llvm::LLVMDIBuilderCreateMemberType(
-                self.builder, ptr::null(), name, self.file, line as c_uint,
-                size * 8 as u64, align * 8 as u64, offset * 8 as u64,
-                0, ty)
+                self.builder,
+                self.file,
+                name,
+                self.file,
+                line as c_uint,
+                bytes_to_bits(size),
+                bytes_to_bits(align),
+                bytes_to_bits(offset),
+                0,
+                ty)
             }};
         self.members.push(mem_t);
         self.total_size = offset + size;
@@ -522,29 +555,48 @@ impl StructContext {
         self.align = cmp::max(self.align, align);
     }
 
+    fn get_total_size_with_alignment(&self) -> uint {
+        roundup(self.total_size, self.align)
+    }
+
     fn finalize(&self) -> DICompositeType {
         debug!("StructContext(%s)::finalize: total_size=%u, align=%u",
                 self.name, self.total_size, self.align);
         let members_md = create_DIArray(self.builder, self.members);
 
+        // The size of the struct/tuple must be rounded to the next multiple of its alignment.
+        // Otherwise gdb has trouble reading the struct correctly when it is embedded into another
+        // data structure. This is also the value `sizeof` in C would give.
+        let actual_total_size = self.get_total_size_with_alignment();
+
         let struct_md =
             do as_c_str(self.name) |name| { unsafe {
                 llvm::LLVMDIBuilderCreateStructType(
-                    self.builder, self.file, name,
-                    self.file, self.line as c_uint,
-                    self.total_size * 8 as u64, self.align * 8 as u64, 0, ptr::null(),
-                    members_md, 0, ptr::null())
+                    self.builder,
+                    self.file,
+                    name,
+                    self.file,
+                    self.line as c_uint,
+                    bytes_to_bits(actual_total_size),
+                    bytes_to_bits(self.align),
+                    0,
+                    ptr::null(),
+                    members_md,
+                    0,
+                    ptr::null())
             }};
         return struct_md;
     }
 }
 
-fn create_struct(cx: @mut CrateContext, t: ty::t, fields: ~[ty::field], span: span)
+fn create_struct(cx: &mut CrateContext, struct_type: ty::t, fields: ~[ty::field], span: span)
                 -> DICompositeType {
+    debug!("create_struct: %?", ty::get(struct_type));
+
     let loc = span_start(cx, span);
     let file_md = create_file(cx, loc.file.name);
 
-    let mut scx = StructContext::new(cx, ty_to_str(cx.tcx, t), file_md, loc.line);
+    let mut scx = StructContext::new(cx, ty_to_str(cx.tcx, struct_type), file_md, loc.line);
     for fields.iter().advance |field| {
         let field_t = field.mt.ty;
         let ty_md = create_ty(cx, field_t, span);
@@ -555,18 +607,24 @@ fn create_struct(cx: @mut CrateContext, t: ty::t, fields: ~[ty::field], span: sp
 }
 
 // returns (void* type as a ValueRef, size in bytes, align in bytes)
-fn voidptr(cx: @mut CrateContext) -> (DIDerivedType, uint, uint) {
+fn voidptr(cx: &mut CrateContext) -> (DIDerivedType, uint, uint) {
     let size = sys::size_of::<ValueRef>();
     let align = sys::min_align_of::<ValueRef>();
     let vp = do as_c_str("*void") |name| { unsafe {
-            llvm::LLVMDIBuilderCreatePointerType(DIB(cx), ptr::null(),
-                size*8 as u64, align*8 as u64, name)
+            llvm::LLVMDIBuilderCreatePointerType(
+                DIB(cx),
+                ptr::null(),
+                bytes_to_bits(size),
+                bytes_to_bits(align),
+                name)
         }};
     return (vp, size, align);
 }
 
-fn create_tuple(cx: @mut CrateContext, _t: ty::t, elements: &[ty::t], span: span)
+fn create_tuple(cx: &mut CrateContext, tuple_type: ty::t, elements: &[ty::t], span: span)
                 -> DICompositeType {
+    debug!("create_tuple: %?", ty::get(tuple_type));
+
     let loc = span_start(cx, span);
     let file_md = create_file(cx, loc.file.name);
 
@@ -580,8 +638,10 @@ fn create_tuple(cx: @mut CrateContext, _t: ty::t, elements: &[ty::t], span: span
     return scx.finalize();
 }
 
-fn create_boxed_type(cx: @mut CrateContext, contents: ty::t,
+fn create_boxed_type(cx: &mut CrateContext, contents: ty::t,
                      span: span, boxed: DIType) -> DICompositeType {
+    debug!("create_boxed_type: %?", ty::get(contents));
+
     let loc = span_start(cx, span);
     let file_md = create_file(cx, loc.file.name);
     let int_t = ty::mk_int();
@@ -602,8 +662,10 @@ fn create_boxed_type(cx: @mut CrateContext, contents: ty::t,
     return scx.finalize();
 }
 
-fn create_fixed_vec(cx: @mut CrateContext, _vec_t: ty::t, elem_t: ty::t,
+fn create_fixed_vec(cx: &mut CrateContext, _vec_t: ty::t, elem_t: ty::t,
                     len: uint, span: span) -> DIType {
+    debug!("create_fixed_vec: %?", ty::get(_vec_t));
+
     let elem_ty_md = create_ty(cx, elem_t, span);
     let (size, align) = size_and_align_of(cx, elem_t);
 
@@ -613,23 +675,40 @@ fn create_fixed_vec(cx: @mut CrateContext, _vec_t: ty::t, elem_t: ty::t,
 
     let subscripts = create_DIArray(DIB(cx), [subrange]);
     return unsafe {
-        llvm::LLVMDIBuilderCreateArrayType(DIB(cx),
-            size * len * 8 as u64, align * 8 as u64, elem_ty_md, subscripts)
+        llvm::LLVMDIBuilderCreateArrayType(
+            DIB(cx),
+            bytes_to_bits(size * len),
+            bytes_to_bits(align),
+            elem_ty_md,
+            subscripts)
     };
 }
 
-fn create_boxed_vec(cx: @mut CrateContext, vec_t: ty::t, elem_t: ty::t,
+fn create_boxed_vec(cx: &mut CrateContext, vec_t: ty::t, elem_t: ty::t,
                     vec_ty_span: span) -> DICompositeType {
+    debug!("create_boxed_vec: %?", ty::get(vec_t));
+
     let loc = span_start(cx, vec_ty_span);
     let file_md = create_file(cx, loc.file.name);
     let elem_ty_md = create_ty(cx, elem_t, vec_ty_span);
 
     let mut vec_scx = StructContext::new(cx, ty_to_str(cx.tcx, vec_t), file_md, 0);
     let size_t_type = create_basic_type(cx, ty::mk_uint(), vec_ty_span);
-    vec_scx.add_member("fill", 0, sys::size_of::<libc::size_t>(),
-               sys::min_align_of::<libc::size_t>(), size_t_type);
-    vec_scx.add_member("alloc", 0, sys::size_of::<libc::size_t>(),
-               sys::min_align_of::<libc::size_t>(), size_t_type);
+
+    vec_scx.add_member(
+        "fill",
+        0,
+        sys::size_of::<libc::size_t>(),
+        sys::min_align_of::<libc::size_t>(),
+        size_t_type);
+
+    vec_scx.add_member(
+        "alloc",
+        0,
+        sys::size_of::<libc::size_t>(),
+        sys::min_align_of::<libc::size_t>(),
+        size_t_type);
+
     let subrange = unsafe {
         llvm::LLVMDIBuilderGetOrCreateSubrange(DIB(cx), 0_i64, 0_i64)
     };
@@ -638,18 +717,32 @@ fn create_boxed_vec(cx: @mut CrateContext, vec_t: ty::t, elem_t: ty::t,
 
     let subscripts = create_DIArray(DIB(cx), [subrange]);
     let data_ptr = unsafe {
-        llvm::LLVMDIBuilderCreateArrayType(DIB(cx),
-            arr_size * 8 as u64, arr_align * 8 as u64, elem_ty_md, subscripts)
+        llvm::LLVMDIBuilderCreateArrayType(
+            DIB(cx),
+            bytes_to_bits(arr_size),
+            bytes_to_bits(arr_align),
+            elem_ty_md,
+            subscripts)
     };
-    vec_scx.add_member("data", 0, 0, // clang says the size should be 0
-               sys::min_align_of::<u8>(), data_ptr);
+    vec_scx.add_member(
+        "data",
+        0,
+        0, // clang says the size should be 0
+        sys::min_align_of::<u8>(), data_ptr);
+
     let vec_md = vec_scx.finalize();
 
     let mut box_scx = StructContext::new(cx, fmt!("box<%s>", name), file_md, 0);
     let int_t = ty::mk_int();
     let refcount_type = create_basic_type(cx, int_t, vec_ty_span);
-    box_scx.add_member("refcnt", 0, sys::size_of::<uint>(),
-               sys::min_align_of::<uint>(), refcount_type);
+
+    box_scx.add_member(
+        "refcnt",
+        0,
+        sys::size_of::<uint>(),
+        sys::min_align_of::<uint>(),
+        refcount_type);
+
     let (vp, vpsize, vpalign) = voidptr(cx);
     box_scx.add_member("tydesc", 0, vpsize, vpalign, vp);
     box_scx.add_member("prev", 0, vpsize, vpalign, vp);
@@ -661,8 +754,10 @@ fn create_boxed_vec(cx: @mut CrateContext, vec_t: ty::t, elem_t: ty::t,
     return mdval;
 }
 
-fn create_vec_slice(cx: @mut CrateContext, vec_t: ty::t, elem_t: ty::t, span: span)
+fn create_vec_slice(cx: &mut CrateContext, vec_t: ty::t, elem_t: ty::t, span: span)
                     -> DICompositeType {
+    debug!("create_vec_slice: %?", ty::get(vec_t));
+
     let loc = span_start(cx, span);
     let file_md = create_file(cx, loc.file.name);
     let elem_ty_md = create_ty(cx, elem_t, span);
@@ -672,13 +767,14 @@ fn create_vec_slice(cx: @mut CrateContext, vec_t: ty::t, elem_t: ty::t, span: sp
     let mut scx = StructContext::new(cx, ty_to_str(cx.tcx, vec_t), file_md, 0);
     let (_, ptr_size, ptr_align) = voidptr(cx);
     scx.add_member("vec", 0, ptr_size, ptr_align, elem_ptr);
-    scx.add_member("length", 0, sys::size_of::<uint>(),
-                    sys::min_align_of::<uint>(), uint_type);
+    scx.add_member("length", 0, sys::size_of::<uint>(), sys::min_align_of::<uint>(), uint_type);
     return scx.finalize();
 }
 
-fn create_fn_ty(cx: @mut CrateContext, _fn_ty: ty::t, inputs: ~[ty::t], output: ty::t,
+fn create_fn_ty(cx: &mut CrateContext, _fn_ty: ty::t, inputs: ~[ty::t], output: ty::t,
                 span: span) -> DICompositeType {
+    debug!("create_fn_ty: %?", ty::get(_fn_ty));
+
     let loc = span_start(cx, span);
     let file_md = create_file(cx, loc.file.name);
     let (vp, _, _) = voidptr(cx);
@@ -688,22 +784,29 @@ fn create_fn_ty(cx: @mut CrateContext, _fn_ty: ty::t, inputs: ~[ty::t], output: 
     let members = ~[output_ptr_md, vp] + inputs_vals;
 
     return unsafe {
-        llvm::LLVMDIBuilderCreateSubroutineType(DIB(cx), file_md,
+        llvm::LLVMDIBuilderCreateSubroutineType(
+            DIB(cx),
+            file_md,
             create_DIArray(DIB(cx), members))
     };
 }
 
-fn create_unimpl_ty(cx: @mut CrateContext, t: ty::t) -> DIType {
+fn create_unimpl_ty(cx: &mut CrateContext, t: ty::t) -> DIType {
+    debug!("create_unimpl_ty: %?", ty::get(t));
+
     let name = ty_to_str(cx.tcx, t);
     let md = do as_c_str(fmt!("NYI<%s>", name)) |name| { unsafe {
         llvm::LLVMDIBuilderCreateBasicType(
-            DIB(cx), name,
-            0_u64, 8_u64, DW_ATE_unsigned as c_uint)
+            DIB(cx),
+            name,
+            0_u64,
+            8_u64,
+            DW_ATE_unsigned as c_uint)
         }};
     return md;
 }
 
-fn create_ty(cx: @mut CrateContext, t: ty::t, span: span) -> DIType {
+fn create_ty(cx: &mut CrateContext, t: ty::t, span: span) -> DIType {
     let ty_id = ty::type_id(t);
     match dbg_cx(cx).created_types.find(&ty_id) {
         Some(ty_md) => return *ty_md,
@@ -758,9 +861,9 @@ fn create_ty(cx: @mut CrateContext, t: ty::t, span: span) -> DIType {
             let pointee = create_ty(cx, mt.ty, span);
             create_pointer_type(cx, t, span, pointee)
         },
-        ty::ty_rptr(ref _region, ref _mt) => {
-            cx.sess.span_note(span, "debuginfo for rptr NYI");
-            create_unimpl_ty(cx, t)
+        ty::ty_rptr(_, ref mt) => {
+            let pointee = create_ty(cx, mt.ty, span);
+            create_pointer_type(cx, t, span, pointee)
         },
         ty::ty_bare_fn(ref barefnty) => {
             let inputs = barefnty.sig.inputs.map(|a| *a);
@@ -799,8 +902,10 @@ fn set_debug_location(cx: @mut CrateContext, scope: DIScope, line: uint, col: ui
     let elems = ~[C_i32(line as i32), C_i32(col as i32), scope, ptr::null()];
     unsafe {
         let dbg_loc = llvm::LLVMMDNodeInContext(
-                dbg_cx(cx).llcontext, vec::raw::to_ptr(elems),
-                elems.len() as libc::c_uint);
+                dbg_cx(cx).llcontext,
+                vec::raw::to_ptr(elems),
+                elems.len() as c_uint);
+
         llvm::LLVMSetCurrentDebugLocation(cx.builder.B, dbg_loc);
     }
 }
@@ -819,12 +924,16 @@ fn roundup(x: uint, a: uint) -> uint {
 
 /// Return codemap::Loc corresponding to the beginning of the span
 fn span_start(cx: &CrateContext, span: span) -> codemap::Loc {
-    return cx.sess.codemap.lookup_char_pos(span.lo);
+    cx.sess.codemap.lookup_char_pos(span.lo)
 }
 
-fn size_and_align_of(cx: @mut CrateContext, t: ty::t) -> (uint, uint) {
+fn size_and_align_of(cx: &mut CrateContext, t: ty::t) -> (uint, uint) {
     let llty = type_of::type_of(cx, t);
     (machine::llsize_of_real(cx, llty), machine::llalign_of_min(cx, llty))
+}
+
+fn bytes_to_bits(bytes: uint) -> c_ulonglong {
+    (bytes * 8) as c_ulonglong
 }
 
 #[inline]

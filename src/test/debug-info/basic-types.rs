@@ -26,8 +26,8 @@
 // check:$2 = -1
 // debugger:print c
 // check:$3 = 97
-// debugger:print i8
-// check:$4 = 68 'D'
+// debugger:print/d i8
+// check:$4 = 68
 // debugger:print i16
 // check:$5 = -16
 // debugger:print i32
@@ -36,8 +36,8 @@
 // check:$7 = -64
 // debugger:print u
 // check:$8 = 1
-// debugger:print u8
-// check:$9 = 100 'd'
+// debugger:print/d u8
+// check:$9 = 100
 // debugger:print u16
 // check:$10 = 16
 // debugger:print u32
