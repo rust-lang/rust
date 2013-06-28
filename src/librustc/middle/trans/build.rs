@@ -59,7 +59,7 @@ pub fn count_insn(cx: block, category: &str) {
         let len = v.len();
         let mut i = 0u;
         while i < len {
-            mm.insert(copy v[i], i);
+            mm.insert(v[i], i);
             i += 1u;
         }
 

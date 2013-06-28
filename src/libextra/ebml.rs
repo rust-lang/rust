@@ -318,8 +318,12 @@ pub mod reader {
             let TaggedDoc { tag: r_tag, doc: r_doc } =
                 doc_at(self.parent.data, self.pos);
             debug!("self.parent=%?-%? self.pos=%? r_tag=%? r_doc=%?-%?",
-                   copy self.parent.start, copy self.parent.end,
-                   copy self.pos, r_tag, r_doc.start, r_doc.end);
+                   self.parent.start,
+                   self.parent.end,
+                   self.pos,
+                   r_tag,
+                   r_doc.start,
+                   r_doc.end);
             if r_tag != (exp_tag as uint) {
                 fail!("expected EBML doc with tag %? but found tag %?", exp_tag, r_tag);
             }

@@ -50,7 +50,7 @@ struct A { a: @int }
 
 fn thing(x: A) -> thing {
     thing {
-        x: copy x
+        x: x
     }
 }
 

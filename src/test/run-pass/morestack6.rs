@@ -43,7 +43,7 @@ fn runtest2(f: extern fn(), frame_backoff: u32, last_stk: *u8) -> u32 {
             // We switched stacks, go back and try to hit the dynamic linker
             frame_backoff
         } else {
-            let frame_backoff = runtest2(copy f, frame_backoff, curr_stk);
+            let frame_backoff = runtest2(f, frame_backoff, curr_stk);
             if frame_backoff > 1u32 {
                 frame_backoff - 1u32
             } else if frame_backoff == 1u32 {

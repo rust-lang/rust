@@ -394,8 +394,8 @@ impl ImportResolution {
     pub fn target_for_namespace(&self, namespace: Namespace)
                                 -> Option<Target> {
         match namespace {
-            TypeNS      => return copy self.type_target,
-            ValueNS     => return copy self.value_target
+            TypeNS      => return self.type_target,
+            ValueNS     => return self.value_target,
         }
     }
 
@@ -795,7 +795,7 @@ pub fn Resolver(session: Session,
 
     let this = Resolver {
         session: @session,
-        lang_items: copy lang_items,
+        lang_items: lang_items,
         crate: crate,
 
         // The outermost module has def ID 0; this is not reflected in the
@@ -2477,9 +2477,9 @@ impl Resolver {
                     let new_import_resolution =
                         @mut ImportResolution(privacy, id);
                     new_import_resolution.value_target =
-                        copy target_import_resolution.value_target;
+                        target_import_resolution.value_target;
                     new_import_resolution.type_target =
-                        copy target_import_resolution.type_target;
+                        target_import_resolution.type_target;
 
                     module_.import_resolutions.insert
                         (*ident, new_import_resolution);
@@ -2531,7 +2531,7 @@ impl Resolver {
                    self.session.str_of(ident),
                    self.module_to_str(containing_module),
                    self.module_to_str(module_),
-                   copy dest_import_resolution.privacy);
+                   dest_import_resolution.privacy);
 
             // Merge the child item into the import resolution.
             if name_bindings.defined_in_public_namespace(ValueNS) {
@@ -2810,7 +2810,7 @@ impl Resolver {
                         debug!("(resolving item in lexical scope) using \
                                 import resolution");
                         self.used_imports.insert(import_resolution.id(namespace));
-                        return Success(copy target);
+                        return Success(target);
                     }
                 }
             }
@@ -2888,7 +2888,7 @@ impl Resolver {
                 }
                 Success(target) => {
                     // We found the module.
-                    return Success(copy target);
+                    return Success(target);
                 }
             }
         }
@@ -3079,7 +3079,7 @@ impl Resolver {
                         debug!("(resolving name in module) resolved to \
                                 import");
                         self.used_imports.insert(import_resolution.id(namespace));
-                        return Success(copy target);
+                        return Success(target);
                     }
                     Some(_) => {
                         debug!("(resolving name in module) name found, \
@@ -3204,7 +3204,7 @@ impl Resolver {
         let mut exports2 = ~[];
 
         self.add_exports_for_module(&mut exports2, module_);
-        match /*bad*/copy module_.def_id {
+        match module_.def_id {
             Some(def_id) => {
                 self.export_map2.insert(def_id.node, exports2);
                 debug!("(computing exports) writing exports for %d (some)",
