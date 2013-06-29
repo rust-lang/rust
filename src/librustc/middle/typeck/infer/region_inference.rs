@@ -1478,7 +1478,7 @@ impl RegionVarBindings {
         // overlapping locations.
         let mut dup_vec = graph.nodes.map(|_| uint::max_value);
 
-        graph.nodes.mapi(|idx, node| {
+        graph.nodes.iter().enumerate().transform(|(idx, node)| {
             match node.value {
                 Value(_) => {
                     /* Inference successful */
@@ -1528,7 +1528,7 @@ impl RegionVarBindings {
             }
 
             node.value
-        })
+        }).collect()
     }
 
     pub fn report_error_for_expanding_node(&mut self,

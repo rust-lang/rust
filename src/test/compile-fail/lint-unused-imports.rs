@@ -30,7 +30,7 @@ use std::io::WriterUtil;
 
 // Make sure this import is warned about when at least one of its imported names
 // is unused
-use std::vec::{filter, map};   //~ ERROR unused import
+use std::vec::{filter, from_elem};   //~ ERROR unused import
 
 mod foo {
     pub struct Point{x: int, y: int}
@@ -58,7 +58,5 @@ fn main() {
     let a = 3;
     ignore(a);
     io::stdout().write_str("a");
-    let _a = do map([2]) |&x| {
-      x + 2
-    };
+    let _a = from_elem(0, 0);
 }

@@ -15,7 +15,9 @@
 extern mod std;
 
 use std::str::StrVector;
-use std::{int, vec};
+use std::vec::ImmutableVector;
+use std::iterator::IteratorUtil;
+use std::int;
 
 trait to_str {
     fn to_str(&self) -> ~str;
@@ -27,7 +29,7 @@ impl to_str for int {
 
 impl<T:to_str> to_str for ~[T] {
     fn to_str(&self) -> ~str {
-        ~"[" + vec::map(*self, |e| e.to_str()).connect(", ") + "]"
+        fmt!("[%s]", self.iter().transform(|e| e.to_str()).collect::<~[~str]>().connect(", "))
     }
 }
 

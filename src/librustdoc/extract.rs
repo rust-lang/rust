@@ -186,7 +186,7 @@ fn enumdoc_from_enum(
 fn variantdocs_from_variants(
     variants: ~[ast::variant]
 ) -> ~[doc::VariantDoc] {
-    vec::map(variants, variantdoc_from_variant)
+    variants.iter().transform(variantdoc_from_variant).collect()
 }
 
 fn variantdoc_from_variant(variant: &ast::variant) -> doc::VariantDoc {
@@ -203,7 +203,7 @@ fn traitdoc_from_trait(
 ) -> doc::TraitDoc {
     doc::TraitDoc {
         item: itemdoc,
-        methods: do vec::map(methods) |method| {
+        methods: do methods.iter().transform |method| {
             match copy *method {
               ast::required(ty_m) => {
                 doc::MethodDoc {
@@ -226,7 +226,7 @@ fn traitdoc_from_trait(
                 }
               }
             }
-        }
+        }.collect()
     }
 }
 
@@ -239,7 +239,7 @@ fn impldoc_from_impl(
         bounds_str: None,
         trait_types: ~[],
         self_ty: None,
-        methods: do vec::map(methods) |method| {
+        methods: do methods.iter().transform |method| {
             doc::MethodDoc {
                 name: to_str(method.ident),
                 brief: None,
@@ -248,7 +248,7 @@ fn impldoc_from_impl(
                 sig: None,
                 implementation: doc::Provided,
             }
-        }
+        }.collect()
     }
 }
 

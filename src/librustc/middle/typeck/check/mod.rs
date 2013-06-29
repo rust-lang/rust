@@ -1781,7 +1781,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
             _ => ()
         }
 
-        let tps = vec::map(tys, |ty| fcx.to_ty(*ty));
+        let tps = tys.iter().transform(|ty| fcx.to_ty(*ty)).collect::<~[ty::t]>();
         match method::lookup(fcx,
                              expr,
                              base,
@@ -2766,7 +2766,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         let mut bot_field = false;
         let mut err_field = false;
 
-        let elt_ts = do elts.mapi |i, e| {
+        let elt_ts = do elts.iter().enumerate().transform |(i, e)| {
             let opt_hint = match flds {
                 Some(ref fs) if i < fs.len() => Some(fs[i]),
                 _ => None
@@ -2776,7 +2776,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
             err_field = err_field || ty::type_is_error(t);
             bot_field = bot_field || ty::type_is_bot(t);
             t
-        };
+        }.collect();
         if bot_field {
             fcx.write_bot(id);
         } else if err_field {
