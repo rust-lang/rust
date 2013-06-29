@@ -36,6 +36,8 @@ use core::cast;
 use core::hashmap::{HashMap};
 use core::libc::{c_uint, c_longlong, c_ulonglong};
 use core::to_bytes;
+use core::str;
+use core::vec::raw::to_ptr;
 use core::vec;
 use syntax::ast::ident;
 use syntax::ast_map::{path, path_elt};
@@ -860,7 +862,7 @@ pub fn is_null(val: ValueRef) -> bool {
 }
 
 // Used to identify cached monomorphized functions and vtables
-#[deriving(Eq)]
+#[deriving(Eq,IterBytes)]
 pub enum mono_param_id {
     mono_precise(ty::t, Option<@~[mono_id]>),
     mono_any,
@@ -870,7 +872,7 @@ pub enum mono_param_id {
               datum::DatumMode),
 }
 
-#[deriving(Eq)]
+#[deriving(Eq,IterBytes)]
 pub enum MonoDataClass {
     MonoBits,    // Anything not treated differently from arbitrary integer data
     MonoNonNull, // Non-null pointers (used for optional-pointer optimization)
@@ -895,7 +897,7 @@ pub fn mono_data_classify(t: ty::t) -> MonoDataClass {
 }
 
 
-#[deriving(Eq)]
+#[deriving(Eq,IterBytes)]
 pub struct mono_id_ {
     def: ast::def_id,
     params: ~[mono_param_id],
@@ -903,40 +905,6 @@ pub struct mono_id_ {
 }
 
 pub type mono_id = @mono_id_;
-
-impl to_bytes::IterBytes for mono_param_id {
-    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
-        match *self {
-            mono_precise(t, ref mids) => {
-                0u8.iter_bytes(lsb0, f) &&
-                ty::type_id(t).iter_bytes(lsb0, f) &&
-                mids.iter_bytes(lsb0, f)
-            }
-
-            mono_any => 1u8.iter_bytes(lsb0, f),
-
-            mono_repr(ref a, ref b, ref c, ref d) => {
-                2u8.iter_bytes(lsb0, f) &&
-                a.iter_bytes(lsb0, f) &&
-                b.iter_bytes(lsb0, f) &&
-                c.iter_bytes(lsb0, f) &&
-                d.iter_bytes(lsb0, f)
-            }
-        }
-    }
-}
-
-impl to_bytes::IterBytes for MonoDataClass {
-    fn iter_bytes(&self, lsb0: bool, f:to_bytes::Cb) -> bool {
-        (*self as u8).iter_bytes(lsb0, f)
-    }
-}
-
-impl to_bytes::IterBytes for mono_id_ {
-    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
-        self.def.iter_bytes(lsb0, f) && self.params.iter_bytes(lsb0, f)
-    }
-}
 
 pub fn umax(cx: block, a: ValueRef, b: ValueRef) -> ValueRef {
     let cond = build::ICmp(cx, lib::llvm::IntULT, a, b);

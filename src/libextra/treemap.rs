@@ -511,14 +511,14 @@ impl<K: TotalOrd, V> TreeNode<K, V> {
 
 fn each<'r, K: TotalOrd, V>(node: &'r Option<~TreeNode<K, V>>,
                             f: &fn(&'r K, &'r V) -> bool) -> bool {
-    node.iter().advance(|x| each(&x.left, f) && f(&x.key, &x.value) &&
-                            each(&x.right, f))
+    node.iter().advance(|x| each(&x.left,  |k,v| f(k,v)) && f(&x.key, &x.value) &&
+                            each(&x.right, |k,v| f(k,v)))
 }
 
 fn each_reverse<'r, K: TotalOrd, V>(node: &'r Option<~TreeNode<K, V>>,
                                     f: &fn(&'r K, &'r V) -> bool) -> bool {
-    node.iter().advance(|x| each_reverse(&x.right, f) && f(&x.key, &x.value) &&
-                            each_reverse(&x.left, f))
+    node.iter().advance(|x| each_reverse(&x.right, |k,v| f(k,v)) && f(&x.key, &x.value) &&
+                            each_reverse(&x.left,  |k,v| f(k,v)))
 }
 
 fn mutate_values<'r, K: TotalOrd, V>(node: &'r mut Option<~TreeNode<K, V>>,
@@ -527,9 +527,9 @@ fn mutate_values<'r, K: TotalOrd, V>(node: &'r mut Option<~TreeNode<K, V>>,
     match *node {
       Some(~TreeNode{key: ref key, value: ref mut value, left: ref mut left,
                      right: ref mut right, _}) => {
-        if !mutate_values(left, f) { return false }
+        if !mutate_values(left,  |k,v| f(k,v)) { return false }
         if !f(key, value) { return false }
-        if !mutate_values(right, f) { return false }
+        if !mutate_values(right, |k,v| f(k,v)) { return false }
       }
       None => return false
     }

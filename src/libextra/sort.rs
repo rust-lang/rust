@@ -42,7 +42,8 @@ pub fn merge_sort<T:Copy>(v: &[T], le: Le<T>) -> ~[T] {
         let mid = v_len / 2 + begin;
         let a = (begin, mid);
         let b = (mid, end);
-        return merge(le, merge_sort_(v, a, le), merge_sort_(v, b, le));
+        return merge(|x,y| le(x,y), merge_sort_(v, a, |x,y| le(x,y)),
+                                    merge_sort_(v, b, |x,y| le(x,y)));
     }
 
     fn merge<T:Copy>(le: Le<T>, a: &[T], b: &[T]) -> ~[T] {
@@ -83,10 +84,10 @@ fn qsort<T>(arr: &mut [T], left: uint,
             right: uint, compare_func: Le<T>) {
     if right > left {
         let pivot = (left + right) / 2u;
-        let new_pivot = part::<T>(arr, left, right, pivot, compare_func);
+        let new_pivot = part::<T>(arr, left, right, pivot, |x,y| compare_func(x,y));
         if new_pivot != 0u {
             // Need to do this check before recursing due to overflow
-            qsort::<T>(arr, left, new_pivot - 1u, compare_func);
+            qsort::<T>(arr, left, new_pivot - 1u, |x,y| compare_func(x,y));
         }
         qsort::<T>(arr, new_pivot + 1u, right, compare_func);
     }
@@ -1202,7 +1203,7 @@ mod big_tests {
 
     struct LVal<'self> {
         val: uint,
-        key: &'self fn(@uint),
+        key: &'self fn:Copy(@uint),
     }
 
     #[unsafe_destructor]

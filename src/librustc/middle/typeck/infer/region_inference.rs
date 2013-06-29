@@ -548,41 +548,16 @@ use util::ppaux::note_and_explain_region;
 
 use core::cell::Cell;
 use core::hashmap::{HashMap, HashSet};
-use core::to_bytes;
 use core::uint;
 use core::vec;
 use syntax::codemap::span;
 use syntax::ast;
 
-#[deriving(Eq)]
+#[deriving(Eq,IterBytes)]
 enum Constraint {
     ConstrainVarSubVar(RegionVid, RegionVid),
     ConstrainRegSubVar(Region, RegionVid),
     ConstrainVarSubReg(RegionVid, Region)
-}
-
-impl to_bytes::IterBytes for Constraint {
-   fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
-        match *self {
-            ConstrainVarSubVar(ref v0, ref v1) => {
-                0u8.iter_bytes(lsb0, f) &&
-                v0.iter_bytes(lsb0, f) &&
-                v1.iter_bytes(lsb0, f)
-            }
-
-            ConstrainRegSubVar(ref ra, ref va) => {
-                1u8.iter_bytes(lsb0, f) &&
-                ra.iter_bytes(lsb0, f) &&
-                va.iter_bytes(lsb0, f)
-            }
-
-            ConstrainVarSubReg(ref va, ref ra) => {
-                2u8.iter_bytes(lsb0, f) &&
-                va.iter_bytes(lsb0, f) &&
-                ra.iter_bytes(lsb0, f)
-            }
-        }
-    }
 }
 
 #[deriving(Eq, IterBytes)]

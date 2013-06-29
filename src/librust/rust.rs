@@ -57,13 +57,13 @@ impl ValidUsage {
 }
 
 enum Action<'self> {
-    Call(&'self fn(args: &[~str]) -> ValidUsage),
-    CallMain(&'static str, &'self fn()),
+    Call(&'self fn:Copy(args: &[~str]) -> ValidUsage),
+    CallMain(&'static str, &'self fn:Copy()),
 }
 
 enum UsageSource<'self> {
     UsgStr(&'self str),
-    UsgCall(&'self fn()),
+    UsgCall(&'self fn:Copy()),
 }
 
 struct Command<'self> {

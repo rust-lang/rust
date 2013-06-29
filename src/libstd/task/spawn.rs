@@ -230,11 +230,15 @@ fn each_ancestor(list:        &mut AncestorList,
         // 'do_continue'  - Did the forward_blk succeed at this point? (i.e.,
         //                  should we recurse? or should our callers unwind?)
 
+        let forward_blk = Cell::new(forward_blk);
+
         // The map defaults to None, because if ancestors is None, we're at
         // the end of the list, which doesn't make sense to coalesce.
         return do (**ancestors).map_default((None,false)) |ancestor_arc| {
             // NB: Takes a lock! (this ancestor node)
             do access_ancestors(ancestor_arc) |nobe| {
+                // Argh, but we couldn't give it to coalesce() otherwise.
+                let forward_blk = forward_blk.take();
                 // Check monotonicity
                 assert!(last_generation > nobe.generation);
                 /*##########################################################*
