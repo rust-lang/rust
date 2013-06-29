@@ -615,10 +615,7 @@ pub fn trans_call_inner(in_cx: block,
                 }
                 Method(d) => {
                     // Weird but true: we pass self in the *environment* slot!
-                    let llself = PointerCast(bcx,
-                                             d.llself,
-                                             Type::opaque_box(ccx).ptr_to());
-                    (d.llfn, llself)
+                    (d.llfn, d.llself)
                 }
                 Closure(d) => {
                     // Closures are represented as (llfn, llclosure) pair:
@@ -944,10 +941,6 @@ pub fn trans_arg_expr(bcx: block,
         if formal_arg_ty != arg_datum.ty {
             // this could happen due to e.g. subtyping
             let llformal_arg_ty = type_of::type_of_explicit_arg(ccx, &formal_arg_ty);
-            let llformal_arg_ty = match self_mode {
-                ty::ByRef => llformal_arg_ty.ptr_to(),
-                ty::ByCopy => llformal_arg_ty,
-            };
             debug!("casting actual type (%s) to match formal (%s)",
                    bcx.val_to_str(val), bcx.llty_str(llformal_arg_ty));
             val = PointerCast(bcx, val, llformal_arg_ty);
