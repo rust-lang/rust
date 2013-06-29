@@ -17,50 +17,61 @@
 
 extern mod extra;
 
-use extra::arc;
+use extra::sync::{RWArc, WaitQueue};
 use extra::future;
 use extra::time;
 use std::cell::Cell;
 use std::io;
 use std::os;
 use std::uint;
-use std::vec;
 
-// A poor man's pipe.
-type pipe = arc::RWARC<~[uint]>;
 
-fn send(p: &pipe, msg: uint) {
-    do p.write_cond |state, cond| {
-        state.push(msg);
-        cond.signal();
-    }
+#[deriving(Clone)]
+struct Pipe {
+    rwarc: RWArc<~[uint]>,
+    condition: WaitQueue
 }
-fn recv(p: &pipe) -> uint {
-    do p.write_cond |state, cond| {
-        while state.is_empty() {
-            cond.wait();
+
+fn send(p: &mut Pipe, msg: uint) {
+    do p.rwarc.write |queue| {
+        queue.push(msg)
+    }
+    p.condition.signal();
+}
+
+fn recv(p: &mut Pipe) -> uint {
+    loop {
+        let maybe_pop_count = do p.rwarc.write |queue| {
+            if queue.is_empty() { None } else {
+                Some(queue.pop())
+            }
+        };
+
+        match maybe_pop_count {
+            None => p.condition.wait(),
+            Some(pop_count) => return pop_count
         }
-        state.pop()
     }
 }
 
-fn init() -> (pipe,pipe) {
-    let x = arc::RWARC(~[]);
-    ((&x).clone(), x)
+fn init() -> (Pipe, Pipe) {
+    let x = Pipe { rwarc: RWArc::new(~[]), condition: WaitQueue::new() };
+    (x.clone(), x)
 }
 
-
-fn thread_ring(i: uint, count: uint, num_chan: pipe, num_port: pipe) {
+fn thread_ring(i: uint, count: uint, num_chan: Pipe, num_port: Pipe) {
     let mut num_chan = Some(num_chan);
     let mut num_port = Some(num_port);
     // Send/Receive lots of messages.
     for uint::range(0u, count) |j| {
         //error!("task %?, iter %?", i, j);
+
         let mut num_chan2 = num_chan.take_unwrap();
         let mut num_port2 = num_port.take_unwrap();
-        send(&num_chan2, i * j);
+        send(&mut num_chan2, i * j);
+
         num_chan = Some(num_chan2);
-        let _n = recv(&num_port2);
+        let _n = recv(&mut num_port2);
         //log(error, _n);
         num_port = Some(num_port2);
     };
@@ -68,7 +79,7 @@ fn thread_ring(i: uint, count: uint, num_chan: pipe, num_port: pipe) {
 
 fn main() {
     let args = os::args();
-    let args = if os::getenv(~"RUST_BENCH").is_some() {
+    let args = if os::getenv("RUST_BENCH").is_some() {
         ~[~"", ~"100", ~"10000"]
     } else if args.len() <= 1u {
         ~[~"", ~"10", ~"100"]
@@ -80,7 +91,7 @@ fn main() {
     let msg_per_task = uint::from_str(args[2]).get();
 
     let (num_chan, num_port) = init();
-    let mut num_chan = Cell::new(num_chan);
+    let num_chan = Cell::new(num_chan);
 
     let start = time::precise_time_s();
 

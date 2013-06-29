@@ -9,14 +9,12 @@
 // except according to those terms.
 
 extern mod extra;
-use extra::arc;
+use extra::sync::shared_mut::rwarc;
 fn main() {
-    let x = ~arc::RWARC(1);
-    let mut y = None; //~ ERROR lifetime of variable does not enclose its declaration
-    do x.write |one| {
-        y = Some(one);
-    }
-    *y.unwrap() = 2;
-    //~^ ERROR lifetime of return value does not outlive the function call
-    //~^^ ERROR dereference of reference outside its lifetime
+    let mut x = rwarc::RWArc::new(1);
+    let y = {
+        let mut write_locked = x.write_locked();
+        write_locked.get()      //~ ERROR borrowed value does not live long enough
+    };
+    *y = 2;
 }

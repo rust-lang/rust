@@ -13,7 +13,7 @@
 
 // compile-flags:-Z once-fns
 extern mod extra;
-use extra::arc;
+use extra::sync::arc::Arc;
 use std::util;
 
 fn foo(blk: &once fn()) {
@@ -22,7 +22,7 @@ fn foo(blk: &once fn()) {
 }
 
 fn main() {
-    let x = arc::ARC(true);
+    let x = Arc::new(true);
     do foo {
         assert!(*x.get());
         util::ignore(x);
