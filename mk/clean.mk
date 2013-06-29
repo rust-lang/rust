@@ -23,7 +23,7 @@ CLEAN_LLVM_RULES = 								\
  $(foreach target, $(CFG_TARGET_TRIPLES),		\
   clean-llvm$(target))
 
-.PHONY: clean clean-all clean-misc
+.PHONY: clean clean-all clean-misc clean-llvm
 
 clean-all: clean clean-llvm
 
