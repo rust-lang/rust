@@ -62,9 +62,9 @@ pub struct FnData {
 pub struct MethodData {
     llfn: ValueRef,
     llself: ValueRef,
+    temp_cleanup: Option<ValueRef>,
     self_ty: ty::t,
     self_mode: ty::SelfMode,
-    explicit_self: ast::explicit_self_
 }
 
 pub enum CalleeData {
@@ -615,10 +615,7 @@ pub fn trans_call_inner(in_cx: block,
                 }
                 Method(d) => {
                     // Weird but true: we pass self in the *environment* slot!
-                    let llself = PointerCast(bcx,
-                                             d.llself,
-                                             Type::opaque_box(ccx).ptr_to());
-                    (d.llfn, llself)
+                    (d.llfn, d.llself)
                 }
                 Closure(d) => {
                     // Closures are represented as (llfn, llclosure) pair:
@@ -647,11 +644,12 @@ pub fn trans_call_inner(in_cx: block,
 
 
         // Now that the arguments have finished evaluating, we need to revoke
-        // the cleanup for the self argument, if it exists
+        // the cleanup for the self argument
         match callee.data {
-            Method(d) if d.self_mode == ty::ByCopy ||
-                         d.explicit_self == ast::sty_value => {
-                revoke_clean(bcx, d.llself);
+            Method(d) => {
+                for d.temp_cleanup.iter().advance |&v| {
+                    revoke_clean(bcx, v);
+                }
             }
             _ => {}
         }
@@ -772,7 +770,6 @@ pub fn trans_args(cx: block,
                 trans_arg_expr(bcx,
                                arg_tys[i],
                                ty::ByCopy,
-                               ast::sty_static,
                                *arg_expr,
                                &mut temp_cleanups,
                                if i == last { ret_flag } else { None },
@@ -806,7 +803,6 @@ pub enum AutorefArg {
 pub fn trans_arg_expr(bcx: block,
                       formal_arg_ty: ty::t,
                       self_mode: ty::SelfMode,
-                      ex_self: ast::explicit_self_,
                       arg_expr: @ast::expr,
                       temp_cleanups: &mut ~[ValueRef],
                       ret_flag: Option<ValueRef>,
@@ -814,10 +810,9 @@ pub fn trans_arg_expr(bcx: block,
     let _icx = push_ctxt("trans_arg_expr");
     let ccx = bcx.ccx();
 
-    debug!("trans_arg_expr(formal_arg_ty=(%s), explicit_self=%? self_mode=%?, arg_expr=%s, \
+    debug!("trans_arg_expr(formal_arg_ty=(%s), self_mode=%?, arg_expr=%s, \
             ret_flag=%?)",
            formal_arg_ty.repr(bcx.tcx()),
-           ex_self,
            self_mode,
            arg_expr.repr(bcx.tcx()),
            ret_flag.map(|v| bcx.val_to_str(*v)));
@@ -877,9 +872,15 @@ pub fn trans_arg_expr(bcx: block,
                 val = arg_datum.to_ref_llval(bcx);
             }
             DontAutorefArg => {
-                match (self_mode, ex_self) {
-                    (ty::ByRef, ast::sty_value) => {
-                        debug!("by value self with type %s, storing to scratch",
+                match self_mode {
+                    ty::ByRef => {
+                        // This assertion should really be valid, but because
+                        // the explicit self code currently passes by-ref, it
+                        // does not hold.
+                        //
+                        //assert !bcx.ccx().maps.moves_map.contains_key(
+                        //    &arg_expr.id);
+                        debug!("by ref arg with type %s, storing to scratch",
                                bcx.ty_to_str(arg_datum.ty));
                         let scratch = scratch_datum(bcx, arg_datum.ty, false);
 
@@ -896,18 +897,7 @@ pub fn trans_arg_expr(bcx: block,
 
                         val = scratch.to_ref_llval(bcx);
                     }
-                    (ty::ByRef, _) => {
-                        // This assertion should really be valid, but because
-                        // the explicit self code currently passes by-ref, it
-                        // does not hold.
-                        //
-                        //assert !bcx.ccx().maps.moves_map.contains_key(
-                        //    &arg_expr.id);
-                        debug!("by ref arg with type %s",
-                               bcx.ty_to_str(arg_datum.ty));
-                        val = arg_datum.to_ref_llval(bcx);
-                    }
-                    (ty::ByCopy, _) => {
+                    ty::ByCopy => {
                         if ty::type_needs_drop(bcx.tcx(), arg_datum.ty) ||
                                 arg_datum.appropriate_mode().is_by_ref() {
                             debug!("by copy arg with type %s, storing to scratch",
@@ -930,7 +920,7 @@ pub fn trans_arg_expr(bcx: block,
                                 ByRef(_) => val = scratch.val,
                             }
                         } else {
-                            debug!("by copy arg with type %s");
+                            debug!("by copy arg with type %s", bcx.ty_to_str(arg_datum.ty));
                             match arg_datum.mode {
                                 ByRef(_) => val = Load(bcx, arg_datum.val),
                                 ByValue => val = arg_datum.val,
@@ -944,10 +934,6 @@ pub fn trans_arg_expr(bcx: block,
         if formal_arg_ty != arg_datum.ty {
             // this could happen due to e.g. subtyping
             let llformal_arg_ty = type_of::type_of_explicit_arg(ccx, &formal_arg_ty);
-            let llformal_arg_ty = match self_mode {
-                ty::ByRef => llformal_arg_ty.ptr_to(),
-                ty::ByCopy => llformal_arg_ty,
-            };
             debug!("casting actual type (%s) to match formal (%s)",
                    bcx.val_to_str(val), bcx.llty_str(llformal_arg_ty));
             val = PointerCast(bcx, val, llformal_arg_ty);
