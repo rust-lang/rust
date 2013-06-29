@@ -23,6 +23,7 @@ use iter::FromIter;
 use kinds::Copy;
 use libc;
 use num::Zero;
+use ops::Add;
 use option::{None, Option, Some};
 use ptr::to_unsafe_ptr;
 use ptr;
@@ -40,6 +41,7 @@ use util;
 
 #[cfg(not(test))] use cmp::Equiv;
 
+#[doc(hidden)]
 pub mod rustrt {
     use libc;
     use vec::raw;
@@ -1180,16 +1182,10 @@ impl<T:Ord> Ord for @[T] {
 }
 
 #[cfg(not(test))]
-pub mod traits {
-    use kinds::Copy;
-    use ops::Add;
-    use vec::append;
-
-    impl<'self,T:Copy> Add<&'self [T],~[T]> for ~[T] {
-        #[inline]
-        fn add(&self, rhs: & &'self [T]) -> ~[T] {
-            append(copy *self, (*rhs))
-        }
+impl<'self,T:Copy> Add<&'self [T], ~[T]> for ~[T] {
+    #[inline]
+    fn add(&self, rhs: & &'self [T]) -> ~[T] {
+        append(copy *self, (*rhs))
     }
 }
 
