@@ -538,7 +538,7 @@ impl<'self> EachItemContext<'self> {
 
     fn each_item_of_module(&mut self, def_id: ast::def_id) -> bool {
         // This item might not be in this crate. If it's not, look it up.
-        let (cdata, items) = if def_id.crate == self.cdata.cnum {
+        let (_cdata, items) = if def_id.crate == self.cdata.cnum {
             let items = reader::get_doc(reader::Doc(self.cdata.data),
                                         tag_items);
             (self.cdata, items)

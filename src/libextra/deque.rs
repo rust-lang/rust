@@ -255,7 +255,7 @@ mod tests {
     use super::*;
     use std::cmp::Eq;
     use std::kinds::Copy;
-    use core;
+    use std::int;
 
     #[test]
     fn test_simple() {
@@ -462,12 +462,12 @@ mod tests {
     #[test]
     fn test_iter() {
         let mut d = Deque::new();
-        for std::int::range(0,5) |i| {
+        for int::range(0,5) |i| {
             d.add_back(i);
         }
         assert_eq!(d.iter().collect::<~[&int]>(), ~[&0,&1,&2,&3,&4]);
 
-        for std::int::range(6,9) |i| {
+        for int::range(6,9) |i| {
             d.add_front(i);
         }
         assert_eq!(d.iter().collect::<~[&int]>(), ~[&8,&7,&6,&0,&1,&2,&3,&4]);
@@ -476,12 +476,12 @@ mod tests {
     #[test]
     fn test_rev_iter() {
         let mut d = Deque::new();
-        for std::int::range(0,5) |i| {
+        for int::range(0,5) |i| {
             d.add_back(i);
         }
         assert_eq!(d.rev_iter().collect::<~[&int]>(), ~[&4,&3,&2,&1,&0]);
 
-        for std::int::range(6,9) |i| {
+        for int::range(6,9) |i| {
             d.add_front(i);
         }
         assert_eq!(d.rev_iter().collect::<~[&int]>(), ~[&4,&3,&2,&1,&0,&6,&7,&8]);

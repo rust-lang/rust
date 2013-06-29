@@ -151,7 +151,6 @@ fn encode_trait_ref(ebml_w: &mut writer::Encoder,
                     ecx: &EncodeContext,
                     trait_ref: &ty::TraitRef,
                     tag: uint) {
-    let r = ecx.reachable;
     let ty_str_ctxt = @tyencode::ctxt {
         diag: ecx.diag,
         ds: def_to_str,
@@ -179,7 +178,6 @@ fn encode_ty_type_param_defs(ebml_w: &mut writer::Encoder,
                              ecx: &EncodeContext,
                              params: @~[ty::TypeParameterDef],
                              tag: uint) {
-    let r = ecx.reachable;
     let ty_str_ctxt = @tyencode::ctxt {
         diag: ecx.diag,
         ds: def_to_str,
@@ -212,7 +210,6 @@ fn encode_variant_id(ebml_w: &mut writer::Encoder, vid: def_id) {
 pub fn write_type(ecx: &EncodeContext,
                   ebml_w: &mut writer::Encoder,
                   typ: ty::t) {
-    let r = ecx.reachable;
     let ty_str_ctxt = @tyencode::ctxt {
         diag: ecx.diag,
         ds: def_to_str,
@@ -225,7 +222,6 @@ pub fn write_type(ecx: &EncodeContext,
 pub fn write_vstore(ecx: &EncodeContext,
                     ebml_w: &mut writer::Encoder,
                     vstore: ty::vstore) {
-    let r = ecx.reachable;
     let ty_str_ctxt = @tyencode::ctxt {
         diag: ecx.diag,
         ds: def_to_str,
@@ -258,7 +254,6 @@ fn encode_method_fty(ecx: &EncodeContext,
                      typ: &ty::BareFnTy) {
     ebml_w.start_tag(tag_item_method_fty);
 
-    let r = ecx.reachable;
     let ty_str_ctxt = @tyencode::ctxt {
         diag: ecx.diag,
         ds: def_to_str,

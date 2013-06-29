@@ -1307,7 +1307,7 @@ impl Resolver {
                 visit_item(item, (parent, visitor));
             }
 
-            item_impl(_, Some(_), ty, ref methods) => {
+            item_impl(_, Some(_), _ty, ref _methods) => {
                 visit_item(item, (parent, visitor));
             }
 

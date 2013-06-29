@@ -9,7 +9,6 @@
 // except according to those terms.
 
 /*!
- * 
  * Handles translation of callees as well as other call-related
  * things.  Callees are a superset of normal rust values and sometimes
  * have different representations.  In particular, top-level fn items
