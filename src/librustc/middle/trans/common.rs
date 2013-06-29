@@ -130,9 +130,9 @@ pub struct ValSelfData {
 // will only be set in the case of default methods.
 pub struct param_substs {
     tys: ~[ty::t],
+    self_ty: Option<ty::t>,
     vtables: Option<typeck::vtable_res>,
-    type_param_defs: @~[ty::TypeParameterDef],
-    self_ty: Option<ty::t>
+    self_vtable: Option<typeck::vtable_origin>
 }
 
 impl param_substs {
@@ -143,10 +143,9 @@ impl param_substs {
 }
 
 fn param_substs_to_str(this: &param_substs, tcx: ty::ctxt) -> ~str {
-    fmt!("param_substs {tys:%s, vtables:%s, type_param_defs:%s}",
+    fmt!("param_substs {tys:%s, vtables:%s}",
          this.tys.repr(tcx),
-         this.vtables.repr(tcx),
-         this.type_param_defs.repr(tcx))
+         this.vtables.repr(tcx))
 }
 
 impl Repr for param_substs {
@@ -222,9 +221,6 @@ pub struct fn_ctxt_ {
     // The node_id of the function, or -1 if it doesn't correspond to
     // a user-defined function.
     id: ast::node_id,
-
-    // The def_id of the impl we're inside, or None if we aren't inside one.
-    impl_id: Option<ast::def_id>,
 
     // If this function is being monomorphized, this contains the type
     // substitutions used.
@@ -981,7 +977,11 @@ pub fn monomorphize_type(bcx: block, t: ty::t) -> ty::t {
         Some(substs) => {
             ty::subst_tps(bcx.tcx(), substs.tys, substs.self_ty, t)
         }
-        _ => { assert!(!ty::type_has_params(t)); t }
+        _ => {
+            assert!(!ty::type_has_params(t));
+            assert!(!ty::type_has_self(t));
+            t
+        }
     }
 }
 
@@ -1030,17 +1030,37 @@ pub fn node_vtables(bcx: block, id: ast::node_id)
 
 pub fn resolve_vtables_in_fn_ctxt(fcx: fn_ctxt, vts: typeck::vtable_res)
     -> typeck::vtable_res {
-    @vec::map(*vts, |d| resolve_vtable_in_fn_ctxt(fcx, copy *d))
+    resolve_vtables_under_param_substs(fcx.ccx.tcx,
+                                       fcx.param_substs,
+                                       vts)
 }
+
+pub fn resolve_vtables_under_param_substs(tcx: ty::ctxt,
+                                          param_substs: Option<@param_substs>,
+                                          vts: typeck::vtable_res)
+    -> typeck::vtable_res {
+    @vec::map(*vts, |ds|
+      @vec::map(**ds, |d|
+                resolve_vtable_under_param_substs(tcx, param_substs, copy *d)))
+}
+
 
 // Apply the typaram substitutions in the fn_ctxt to a vtable. This should
 // eliminate any vtable_params.
 pub fn resolve_vtable_in_fn_ctxt(fcx: fn_ctxt, vt: typeck::vtable_origin)
     -> typeck::vtable_origin {
-    let tcx = fcx.ccx.tcx;
+    resolve_vtable_under_param_substs(fcx.ccx.tcx,
+                                      fcx.param_substs,
+                                      vt)
+}
+
+pub fn resolve_vtable_under_param_substs(tcx: ty::ctxt,
+                                         param_substs: Option<@param_substs>,
+                                         vt: typeck::vtable_origin)
+    -> typeck::vtable_origin {
     match vt {
         typeck::vtable_static(trait_id, tys, sub) => {
-            let tys = match fcx.param_substs {
+            let tys = match param_substs {
                 Some(substs) => {
                     do vec::map(tys) |t| {
                         ty::subst_tps(tcx, substs.tys, substs.self_ty, *t)
@@ -1048,11 +1068,12 @@ pub fn resolve_vtable_in_fn_ctxt(fcx: fn_ctxt, vt: typeck::vtable_origin)
                 }
                 _ => tys
             };
-            typeck::vtable_static(trait_id, tys,
-                                  resolve_vtables_in_fn_ctxt(fcx, sub))
+            typeck::vtable_static(
+                trait_id, tys,
+                resolve_vtables_under_param_substs(tcx, param_substs, sub))
         }
         typeck::vtable_param(n_param, n_bound) => {
-            match fcx.param_substs {
+            match param_substs {
                 Some(substs) => {
                     find_vtable(tcx, substs, n_param, n_bound)
                 }
@@ -1060,6 +1081,19 @@ pub fn resolve_vtable_in_fn_ctxt(fcx: fn_ctxt, vt: typeck::vtable_origin)
                     tcx.sess.bug(fmt!(
                         "resolve_vtable_in_fn_ctxt: asked to lookup but \
                          no vtables in the fn_ctxt!"))
+                }
+            }
+        }
+        typeck::vtable_self(_trait_id) => {
+            match param_substs {
+                Some(@param_substs
+                     {self_vtable: Some(ref self_vtable), _}) => {
+                    copy *self_vtable
+                }
+                _ => {
+                    tcx.sess.bug(fmt!(
+                        "resolve_vtable_in_fn_ctxt: asked to lookup but \
+                         no self_vtable in the fn_ctxt!"))
                 }
             }
         }
@@ -1072,13 +1106,7 @@ pub fn find_vtable(tcx: ty::ctxt, ps: &param_substs,
     debug!("find_vtable(n_param=%u, n_bound=%u, ps=%s)",
            n_param, n_bound, ps.repr(tcx));
 
-    // Vtables are stored in a flat array, finding the right one is
-    // somewhat awkward
-    let first_n_type_param_defs = ps.type_param_defs.slice(0, n_param);
-    let vtables_to_skip =
-        ty::count_traits_and_supertraits(tcx, first_n_type_param_defs);
-    let vtable_off = vtables_to_skip + n_bound;
-    /*bad*/ copy ps.vtables.get()[vtable_off]
+    /*bad*/ copy ps.vtables.get()[n_param][n_bound]
 }
 
 pub fn dummy_substs(tps: ~[ty::t]) -> ty::substs {
