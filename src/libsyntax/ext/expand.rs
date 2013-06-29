@@ -64,10 +64,10 @@ pub fn expand_expr(extsbox: @mut SyntaxEnv,
                                     span: exp_span,
                                 },
                             });
-
                             let fm = fresh_mark();
-                            let marked_tts = mark_tts(*tts,fm);
-                            let expanded = match expandfun(cx, mac.span, marked_tts) {
+                            // mark before:
+                            let marked_before = mark_tts(*tts,fm);
+                            let expanded = match expandfun(cx, mac.span, marked_before) {
                                 MRExpr(e) => e,
                                 MRAny(expr_maker,_,_) => expr_maker(),
                                 _ => {
@@ -80,10 +80,12 @@ pub fn expand_expr(extsbox: @mut SyntaxEnv,
                                     )
                                 }
                             };
+                            // mark after:
+                            let marked_after = mark_expr(expanded,fm);
 
                             //keep going, outside-in
                             let fully_expanded =
-                                fld.fold_expr(expanded).node.clone();
+                                fld.fold_expr(marked_after).node.clone();
                             cx.bt_pop();
 
                             (fully_expanded, s)
@@ -101,12 +103,6 @@ pub fn expand_expr(extsbox: @mut SyntaxEnv,
         _ => orig(e, s, fld)
     }
 }
-
-// apply a fresh mark to the given token trees. Used prior to expansion of a macro.
-fn mark_tts(tts : &[token_tree], m : Mrk) -> ~[token_tree] {
-    fold_tts(tts,new_ident_marker(m))
-}
-
 
 // This is a secondary mechanism for invoking syntax extensions on items:
 // "decorator" attributes, such as #[auto_encode]. These are invoked by an
@@ -154,7 +150,6 @@ pub fn expand_mod_items(extsbox: @mut SyntaxEnv,
 
     ast::_mod { items: new_items, ..module_ }
 }
-
 
 // eval $e with a new exts frame:
 macro_rules! with_exts_frame (
@@ -221,6 +216,7 @@ pub fn expand_item_mac(extsbox: @mut SyntaxEnv,
 
     let extname = &pth.idents[0];
     let extnamestr = ident_to_str(extname);
+    let fm = fresh_mark();
     let expanded = match (*extsbox).find(&extname.name) {
         None => cx.span_fatal(pth.span,
                               fmt!("macro undefined: '%s!'", extnamestr)),
@@ -239,7 +235,11 @@ pub fn expand_item_mac(extsbox: @mut SyntaxEnv,
                     span: span
                 }
             });
-             expander(cx, it.span, tts)
+            // mark before expansion:
+            let marked_tts = mark_tts(tts,fm);
+            // mark after expansion:
+            // RIGHT HERE: can't apply mark_item to MacResult ... :(
+            expander(cx, it.span, marked_tts)
         }
         Some(@SE(IdentTT(expander, span))) => {
             if it.ident.name == parse::token::special_idents::invalid.name {
@@ -254,18 +254,24 @@ pub fn expand_item_mac(extsbox: @mut SyntaxEnv,
                     span: span
                 }
             });
-            expander(cx, it.span, it.ident, tts)
+            let fm = fresh_mark();
+            // mark before expansion:
+            let marked_tts = mark_tts(tts,fm);
+        expander(cx, it.span, it.ident, marked_tts)
         }
         _ => cx.span_fatal(
             it.span, fmt!("%s! is not legal in item position", extnamestr))
     };
 
     let maybe_it = match expanded {
-        MRItem(it) => fld.fold_item(it),
+        MRItem(it) => mark_item(it,fm).chain(|i| {fld.fold_item(i)}),
         MRExpr(_) => cx.span_fatal(pth.span,
                                    fmt!("expr macro in item position: %s", extnamestr)),
-        MRAny(_, item_maker, _) => item_maker().chain(|i| {fld.fold_item(i)}),
+        MRAny(_, item_maker, _) => item_maker().chain(|i| {mark_item(i,fm)})
+                                      .chain(|i| {fld.fold_item(i)}),
         MRDef(ref mdef) => {
+            // yikes... no idea how to apply the mark to this. I'm afraid
+            // we're going to have to wait-and-see on this one.
             insert_macro(*extsbox,intern(mdef.name), @SE((*mdef).ext));
             None
         }
@@ -300,6 +306,8 @@ pub fn expand_stmt(extsbox: @mut SyntaxEnv,
                    orig: @fn(&stmt_, span, @ast_fold)
                              -> (Option<stmt_>, span))
                 -> (Option<stmt_>, span) {
+    // why the copying here and not in expand_expr?
+    // looks like classic changed-in-only-one-place
     let (mac, pth, tts, semi) = match *s {
         stmt_mac(ref mac, semi) => {
             match mac.node {
@@ -327,7 +335,10 @@ pub fn expand_stmt(extsbox: @mut SyntaxEnv,
                 call_site: sp,
                 callee: NameAndSpan { name: extnamestr, span: exp_span }
             });
-            let expanded = match expandfun(cx, mac.span, tts) {
+            let fm = fresh_mark();
+            // mark before expansion:
+            let marked_tts = mark_tts(tts,fm);
+            let expanded = match expandfun(cx, mac.span, marked_tts) {
                 MRExpr(e) =>
                     @codemap::spanned { node: stmt_expr(e, cx.next_id()),
                                     span: e.span},
@@ -336,9 +347,10 @@ pub fn expand_stmt(extsbox: @mut SyntaxEnv,
                     pth.span,
                     fmt!("non-stmt macro in stmt pos: %s", extnamestr))
             };
+            let marked_after = mark_stmt(expanded,fm);
 
             //keep going, outside-in
-            let fully_expanded = match fld.fold_stmt(expanded) {
+            let fully_expanded = match fld.fold_stmt(marked_after) {
                 Some(stmt) => {
                     let fully_expanded = &stmt.node;
                     cx.bt_pop();
@@ -401,6 +413,7 @@ fn expand_non_macro_stmt (exts: SyntaxEnv,
             // ... but that should be okay, as long as the new names are gensyms
             // for the old ones.
             let idents = @mut ~[];
+            // is this really the right way to call a visitor? it's so clunky!
             ((*name_finder).visit_pat) (expanded_pat,
                                         (idents,
                                          visit::mk_vt(name_finder)));
@@ -461,6 +474,27 @@ pub fn new_name_finder() -> @Visitor<@mut ~[ast::ident]> {
                 }
                 // use the default traversal for non-pat_idents
                 _ => visit::visit_pat(p,(ident_accum,v))
+            }
+        },
+        .. *default_visitor
+    }
+}
+
+// return a visitor that extracts the paths
+// from a given pattern and puts them in a mutable
+// array (passed in to the traversal)
+pub fn new_path_finder() -> @Visitor<@mut ~[@ast::Path]> {
+    let default_visitor = visit::default_visitor();
+    @Visitor{
+        visit_expr :
+            |e:@ast::expr,
+             (path_accum, v):(@mut ~[@ast::Path], visit::vt<@mut ~[@ast::Path]>)| {
+            match *e {
+                ast::expr{id:_,span:_,node:ast::expr_path(ref p)} => {
+                    path_accum.push(@p.clone());
+                    // not calling visit_path, should be fine.
+                }
+                _ => visit::visit_expr(e,(path_accum,v))
             }
         },
         .. *default_visitor
@@ -864,7 +898,6 @@ pub fn new_ident_renamer(from: ast::ident,
     }
 }
 
-
 // update the ctxts in a path to get a mark node
 pub fn new_ident_marker(mark: Mrk) ->
     @fn(ast::ident)->ast::ident {
@@ -888,20 +921,42 @@ pub fn new_ident_resolver() ->
     }
 }
 
+// apply a given mark to the given token trees. Used prior to expansion of a macro.
+fn mark_tts(tts : &[token_tree], m : Mrk) -> ~[token_tree] {
+    fold_tts(tts,new_ident_marker(m))
+}
+
+// apply a given mark to the given expr. Used following the expansion of a macro.
+fn mark_expr(expr : @ast::expr, m : Mrk) -> @ast::expr {
+    fun_to_ident_folder(new_ident_marker(m)).fold_expr(expr)
+}
+
+// apply a given mark to the given stmt. Used following the expansion of a macro.
+fn mark_stmt(expr : &ast::stmt, m : Mrk) -> @ast::stmt {
+    fun_to_ident_folder(new_ident_marker(m)).fold_stmt(expr).get()
+}
+
+// apply a given mark to the given item. Used following the expansion of a macro.
+fn mark_item(expr : @ast::item, m : Mrk) -> Option<@ast::item> {
+    fun_to_ident_folder(new_ident_marker(m)).fold_item(expr)
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
     use ast;
     use ast::{Attribute_, AttrOuter, MetaWord, empty_ctxt};
-    use ast_util::{get_sctable, new_ident, new_rename};
+    use ast_util::{get_sctable, mtwt_resolve, new_ident, new_rename};
     use codemap;
     use codemap::spanned;
     use parse;
     use parse::token::{gensym, intern, get_ident_interner};
     use print::pprust;
     use std;
+    use std::vec;
     use util::parser_testing::{string_to_crate_and_sess, string_to_item, string_to_pat, strs_to_idents};
     use visit::{mk_vt};
+    use visit;
 
     // make sure that fail! is present
     #[test] fn fail_exists_test () {
@@ -1047,30 +1102,107 @@ mod test {
         //pprust::to_str(&resolved_ast,fake_print_crate,get_ident_interner())
     //}
 
+    // renaming tests expand a crate and then check that the bindings match
+    // the right varrefs. The specification of the test case includes the
+    // text of the crate, and also an array of arrays.  Each element in the
+    // outer array corresponds to a binding in the traversal of the AST
+    // induced by visit.  Each of these arrays contains a list of indexes,
+    // interpreted as the varrefs in the varref traversal that this binding
+    // should match.  So, for instance, in a program with two bindings and
+    // three varrefs, the array ~[~[1,2],~[0]] would indicate that the first
+    // binding should match the second two varrefs, and the second binding
+    // should match the first varref.
+    //
+    // The comparisons are done post-mtwt-resolve, so we're comparing renamed
+    // names; differences in marks don't matter any more.
+    type renaming_test = (&'static str, ~[~[uint]]);
+
     #[test]
     fn automatic_renaming () {
         // need some other way to test these...
-        let teststrs =
+        let tests : ~[renaming_test] =
             ~[// b & c should get new names throughout, in the expr too:
-                @"fn a() -> int { let b = 13; let c = b; b+c }",
+                ("fn a() -> int { let b = 13; let c = b; b+c }",
+                 ~[~[0,1],~[2]]),
                 // both x's should be renamed (how is this causing a bug?)
-                @"fn main () {let x : int = 13;x;}",
-                // the use of b before the + should be renamed, the other one not:
-                @"macro_rules! f (($x:ident) => ($x + b)) fn a() -> int { let b = 13; f!(b)}",
+                ("fn main () {let x : int = 13;x;}",
+                 ~[~[0]]),
+                // the use of b after the + should be renamed, the other one not:
+                ("macro_rules! f (($x:ident) => (b + $x)) fn a() -> int { let b = 13; f!(b)}",
+                 ~[~[1]]),
                 // the b before the plus should not be renamed (requires marks)
-                @"macro_rules! f (($x:ident) => ({let b=9; ($x + b)})) fn a() -> int { f!(b)}",
+                ("macro_rules! f (($x:ident) => ({let b=9; ($x + b)})) fn a() -> int { f!(b)}",
+                 ~[~[1]]),
+                // the marks going in and out of letty should cancel, allowing that $x to
+                // capture the one following the semicolon.
+                // this was an awesome test case, and caught a *lot* of bugs.
+                ("macro_rules! letty(($x:ident) => (let $x = 15;))
+                  macro_rules! user(($x:ident) => ({letty!($x); $x}))
+                  fn main() -> int {user!(z)}",
+                 ~[~[0]])
                 // FIXME #6994: the next string exposes the bug referred to in issue 6994, so I'm
                 // commenting it out.
                 // the z flows into and out of two macros (g & f) along one path, and one (just g) along the
                 // other, so the result of the whole thing should be "let z_123 = 3; z_123"
-                //@"macro_rules! g (($x:ident) => ({macro_rules! f(($y:ident)=>({let $y=3;$x}));f!($x)}))
+                //"macro_rules! g (($x:ident) => ({macro_rules! f(($y:ident)=>({let $y=3;$x}));f!($x)}))
                 //   fn a(){g!(z)}"
                 // create a really evil test case where a $x appears inside a binding of $x but *shouldnt*
                 // bind because it was inserted by a different macro....
             ];
-        for teststrs.iter().advance |s| {
-            // we need regexps to test these!
-            //std::io::println(expand_and_resolve_and_pretty_print(*s));
+        for tests.iter().advance |s| {
+            run_renaming_test(s);
+        }
+    }
+
+
+    fn run_renaming_test(t : &renaming_test) {
+        let nv = new_name_finder();
+        let pv = new_path_finder();
+        let (teststr, bound_connections) = match *t {
+            (ref str,ref conns) => (str.to_managed(), conns.clone())
+        };
+        let cr = expand_crate_str(teststr.to_managed());
+        let bindings = @mut ~[];
+        visit::visit_crate(cr, (bindings, mk_vt(nv)));
+        let varrefs = @mut ~[];
+        visit::visit_crate(cr, (varrefs, mk_vt(pv)));
+        // must be one check clause for each binding:
+        assert_eq!(bindings.len(),bound_connections.len());
+        for bound_connections.iter().enumerate().advance |(binding_idx,shouldmatch)| {
+            let binding_name = mtwt_resolve(bindings[binding_idx]);
+            // shouldmatch can't name varrefs that don't exist:
+            assert!((shouldmatch.len() == 0) ||
+                    (varrefs.len() > *shouldmatch.iter().max().get()));
+            for varrefs.iter().enumerate().advance |(idx,varref)| {
+                if shouldmatch.contains(&idx) {
+                    // it should be a path of length 1, and it should
+                    // be free-identifier=? to the given binding
+                    assert_eq!(varref.idents.len(),1);
+                    let varref_name = mtwt_resolve(varref.idents[0]);
+                    if (!(varref_name==binding_name)){
+                        std::io::println("uh oh, should match but doesn't:");
+                        std::io::println(fmt!("varref: %?",varref));
+                        std::io::println(fmt!("binding: %?", bindings[binding_idx]));
+                        let table = get_sctable();
+                        std::io::println("SC table:");
+                        for table.table.iter().enumerate().advance |(idx,val)| {
+                            std::io::println(fmt!("%4u : %?",idx,val));
+                        }
+                    }
+                    assert_eq!(varref_name,binding_name);
+                } else {
+                    let fail = (varref.idents.len() == 1)
+                        && (mtwt_resolve(varref.idents[0]) == binding_name);
+                    // temp debugging:
+                    if (fail) {
+                        std::io::println("uh oh, matches but shouldn't:");
+                        std::io::println(fmt!("varref: %?",varref));
+                        std::io::println(fmt!("binding: %?", bindings[binding_idx]));
+                        std::io::println(fmt!("sc_table: %?",get_sctable()));
+                    }
+                    assert!(!fail);
+                }
+            }
         }
     }
 
