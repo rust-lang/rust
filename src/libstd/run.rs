@@ -943,12 +943,20 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(target_os="android"))]
     fn test_process_status() {
         assert_eq!(run::process_status("false", []), 1);
         assert_eq!(run::process_status("true", []), 0);
     }
+    #[test]
+    #[cfg(target_os="android")]
+    fn test_process_status() {
+        assert_eq!(run::process_status("/system/bin/sh", [~"-c",~"false"]), 1);
+        assert_eq!(run::process_status("/system/bin/sh", [~"-c",~"true"]), 0);
+    }
 
     #[test]
+    #[cfg(not(target_os="android"))]
     fn test_process_output_output() {
 
         let run::ProcessOutput {status, output, error}
@@ -962,14 +970,41 @@ mod tests {
             assert_eq!(error, ~[]);
         }
     }
+    #[test]
+    #[cfg(target_os="android")]
+    fn test_process_output_output() {
+
+        let run::ProcessOutput {status, output, error}
+             = run::process_output("/system/bin/sh", [~"-c",~"echo hello"]);
+        let output_str = str::from_bytes(output);
+
+        assert_eq!(status, 0);
+        assert_eq!(output_str.trim().to_owned(), ~"hello");
+        // FIXME #7224
+        if !running_on_valgrind() {
+            assert_eq!(error, ~[]);
+        }
+    }
 
     #[test]
+    #[cfg(not(target_os="android"))]
     fn test_process_output_error() {
 
         let run::ProcessOutput {status, output, error}
              = run::process_output("mkdir", [~"."]);
 
         assert_eq!(status, 1);
+        assert_eq!(output, ~[]);
+        assert!(!error.is_empty());
+    }
+    #[test]
+    #[cfg(target_os="android")]
+    fn test_process_output_error() {
+
+        let run::ProcessOutput {status, output, error}
+             = run::process_output("/system/bin/mkdir", [~"."]);
+
+        assert_eq!(status, 255);
         assert_eq!(output, ~[]);
         assert!(!error.is_empty());
     }
@@ -1023,19 +1058,37 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(target_os="android"))]
     fn test_finish_once() {
         let mut prog = run::Process::new("false", [], run::ProcessOptions::new());
         assert_eq!(prog.finish(), 1);
     }
+    #[test]
+    #[cfg(target_os="android")]
+    fn test_finish_once() {
+        let mut prog = run::Process::new("/system/bin/sh", [~"-c",~"false"],
+                                         run::ProcessOptions::new());
+        assert_eq!(prog.finish(), 1);
+    }
 
     #[test]
+    #[cfg(not(target_os="android"))]
     fn test_finish_twice() {
         let mut prog = run::Process::new("false", [], run::ProcessOptions::new());
         assert_eq!(prog.finish(), 1);
         assert_eq!(prog.finish(), 1);
     }
+    #[test]
+    #[cfg(target_os="android")]
+    fn test_finish_twice() {
+        let mut prog = run::Process::new("/system/bin/sh", [~"-c",~"false"],
+                                         run::ProcessOptions::new());
+        assert_eq!(prog.finish(), 1);
+        assert_eq!(prog.finish(), 1);
+    }
 
     #[test]
+    #[cfg(not(target_os="android"))]
     fn test_finish_with_output_once() {
 
         let mut prog = run::Process::new("echo", [~"hello"], run::ProcessOptions::new());
@@ -1050,8 +1103,26 @@ mod tests {
             assert_eq!(error, ~[]);
         }
     }
+    #[test]
+    #[cfg(target_os="android")]
+    fn test_finish_with_output_once() {
+
+        let mut prog = run::Process::new("/system/bin/sh", [~"-c",~"echo hello"],
+                                         run::ProcessOptions::new());
+        let run::ProcessOutput {status, output, error}
+            = prog.finish_with_output();
+        let output_str = str::from_bytes(output);
+
+        assert_eq!(status, 0);
+        assert_eq!(output_str.trim().to_owned(), ~"hello");
+        // FIXME #7224
+        if !running_on_valgrind() {
+            assert_eq!(error, ~[]);
+        }
+    }
 
     #[test]
+    #[cfg(not(target_os="android"))]
     fn test_finish_with_output_twice() {
 
         let mut prog = run::Process::new("echo", [~"hello"], run::ProcessOptions::new());
@@ -1077,10 +1148,38 @@ mod tests {
             assert_eq!(error, ~[]);
         }
     }
+    #[test]
+    #[cfg(target_os="android")]
+    fn test_finish_with_output_twice() {
+
+        let mut prog = run::Process::new("/system/bin/sh", [~"-c",~"echo hello"],
+                                         run::ProcessOptions::new());
+        let run::ProcessOutput {status, output, error}
+            = prog.finish_with_output();
+
+        let output_str = str::from_bytes(output);
+
+        assert_eq!(status, 0);
+        assert_eq!(output_str.trim().to_owned(), ~"hello");
+        // FIXME #7224
+        if !running_on_valgrind() {
+            assert_eq!(error, ~[]);
+        }
+
+        let run::ProcessOutput {status, output, error}
+            = prog.finish_with_output();
+
+        assert_eq!(status, 0);
+        assert_eq!(output, ~[]);
+        // FIXME #7224
+        if !running_on_valgrind() {
+            assert_eq!(error, ~[]);
+        }
+    }
 
     #[test]
     #[should_fail]
-    #[cfg(not(windows))]
+    #[cfg(not(windows),not(target_os="android"))]
     fn test_finish_with_output_redirected() {
         let mut prog = run::Process::new("echo", [~"hello"], run::ProcessOptions {
             env: None,
@@ -1092,10 +1191,32 @@ mod tests {
         // this should fail because it is not valid to read the output when it was redirected
         prog.finish_with_output();
     }
+    #[test]
+    #[should_fail]
+    #[cfg(not(windows),target_os="android")]
+    fn test_finish_with_output_redirected() {
+        let mut prog = run::Process::new("/system/bin/sh", [~"-c",~"echo hello"],
+                                         run::ProcessOptions {
+            env: None,
+            dir: None,
+            in_fd: Some(0),
+            out_fd: Some(1),
+            err_fd: Some(2)
+        });
+        // this should fail because it is not valid to read the output when it was redirected
+        prog.finish_with_output();
+    }
 
-    #[cfg(unix)]
+    #[cfg(unix,not(target_os="android"))]
     fn run_pwd(dir: Option<&Path>) -> run::Process {
         run::Process::new("pwd", [], run::ProcessOptions {
+            dir: dir,
+            .. run::ProcessOptions::new()
+        })
+    }
+    #[cfg(unix,target_os="android")]
+    fn run_pwd(dir: Option<&Path>) -> run::Process {
+        run::Process::new("/system/bin/sh", [~"-c",~"pwd"], run::ProcessOptions {
             dir: dir,
             .. run::ProcessOptions::new()
         })
@@ -1141,9 +1262,16 @@ mod tests {
         assert_eq!(parent_stat.st_ino, child_stat.st_ino);
     }
 
-    #[cfg(unix)]
+    #[cfg(unix,not(target_os="android"))]
     fn run_env(env: Option<&[(~str, ~str)]>) -> run::Process {
         run::Process::new("env", [], run::ProcessOptions {
+            env: env,
+            .. run::ProcessOptions::new()
+        })
+    }
+    #[cfg(unix,target_os="android")]
+    fn run_env(env: Option<&[(~str, ~str)]>) -> run::Process {
+        run::Process::new("/system/bin/sh", [~"-c",~"set"], run::ProcessOptions {
             env: env,
             .. run::ProcessOptions::new()
         })
@@ -1158,6 +1286,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(target_os="android"))]
     fn test_inherit_env() {
         if running_on_valgrind() { return; }
 
@@ -1168,6 +1297,23 @@ mod tests {
         for r.iter().advance |&(k, v)| {
             // don't check windows magical empty-named variables
             assert!(k.is_empty() || output.contains(fmt!("%s=%s", k, v)));
+        }
+    }
+    #[test]
+    #[cfg(target_os="android")]
+    fn test_inherit_env() {
+        if running_on_valgrind() { return; }
+
+        let mut prog = run_env(None);
+        let output = str::from_bytes(prog.finish_with_output().output);
+
+        let r = os::env();
+        for r.iter().advance |&(k, v)| {
+            // don't check android RANDOM variables
+            if k != ~"RANDOM" {
+                assert!(output.contains(fmt!("%s=%s", k, v)) ||
+                        output.contains(fmt!("%s=\'%s\'", k, v)));
+            }
         }
     }
 
