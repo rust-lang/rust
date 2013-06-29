@@ -133,8 +133,8 @@ pub fn trans_self_arg(bcx: block,
     let _icx = push_ctxt("impl::trans_self_arg");
     let mut temp_cleanups = ~[];
 
-    // Compute the type of self.
-    let self_ty = monomorphize_type(bcx, mentry.self_ty);
+    // self is passed as an opaque box in the environment slot
+    let self_ty = ty::mk_opaque_box(bcx.tcx());
     let result = trans_arg_expr(bcx,
                                 self_ty,
                                 mentry.self_mode,
@@ -576,7 +576,6 @@ pub fn trans_trait_callee_from_llval(bcx: block,
     let llbox = Load(bcx, GEPi(bcx, llpair, [0u, abi::trt_field_box]));
 
     // Munge `llself` appropriately for the type of `self` in the method.
-    let self_mode;
     match explicit_self {
         ast::sty_static => {
             bcx.tcx().sess.bug("shouldn't see static method here");
@@ -597,12 +596,6 @@ pub fn trans_trait_callee_from_llval(bcx: block,
                     llself = llbox;
                 }
             }
-
-            let llscratch = alloca(bcx, val_ty(llself));
-            Store(bcx, llself, llscratch);
-            llself = llscratch;
-
-            self_mode = ty::ByRef;
         }
         ast::sty_box(_) => {
             // Bump the reference count on the box.
@@ -615,12 +608,6 @@ pub fn trans_trait_callee_from_llval(bcx: block,
                 ty::BoxTraitStore => llself = llbox,
                 _ => bcx.tcx().sess.bug("@self receiver with non-@Trait")
             }
-
-            let llscratch = alloca(bcx, val_ty(llself));
-            Store(bcx, llself, llscratch);
-            llself = llscratch;
-
-            self_mode = ty::ByRef;
         }
         ast::sty_uniq(_) => {
             // Pass the unique pointer.
@@ -628,14 +615,12 @@ pub fn trans_trait_callee_from_llval(bcx: block,
                 ty::UniqTraitStore => llself = llbox,
                 _ => bcx.tcx().sess.bug("~self receiver with non-~Trait")
             }
-
-            let llscratch = alloca(bcx, val_ty(llself));
-            Store(bcx, llself, llscratch);
-            llself = llscratch;
-
-            self_mode = ty::ByRef;
         }
     }
+
+    let llscratch = alloca(bcx, val_ty(llself));
+    Store(bcx, llself, llscratch);
+    llself = PointerCast(bcx, llscratch, Type::opaque_box(ccx).ptr_to());
 
     // Load the function from the vtable and cast it to the expected type.
     debug!("(translating trait callee) loading method");
@@ -652,7 +637,7 @@ pub fn trans_trait_callee_from_llval(bcx: block,
             llfn: mptr,
             llself: llself,
             self_ty: ty::mk_opaque_box(bcx.tcx()),
-            self_mode: self_mode,
+            self_mode: ty::ByRef,
             explicit_self: explicit_self
             /* XXX: Some(llbox) */
         })
