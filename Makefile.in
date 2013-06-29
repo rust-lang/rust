@@ -540,9 +540,18 @@ ALL_TARGET_RULES = $(foreach target,$(CFG_TARGET_TRIPLES), \
 	$(foreach host,$(CFG_HOST_TRIPLES), \
  all-target-$(target)-host-$(host)))
 
-all: $(ALL_TARGET_RULES) $(GENERATED) docs
+all: rustllvm/llvm-auto-clean-stamp \
+     $(ALL_TARGET_RULES) $(GENERATED) docs
 
 endif
+
+# This is used to independently force an LLVM clean rebuild
+# when we changed something not otherwise captured by builtin
+# dependencies. In these cases, commit a change that touches
+# the stamp in the source dir.
+rustllvm/llvm-auto-clean-stamp: $(S)src/rustllvm/llvm-auto-clean-trigger
+	$(Q)$(MAKE) clean-llvm
+	touch $@
 
 
 ######################################################################
