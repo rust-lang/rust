@@ -18,7 +18,7 @@
 
 use std::vec::VecIterator;
 
-#[deriving(Encodable, Decodable)]
+#[deriving(Encodable, Decodable,IterBytes)]
 pub enum OptVec<T> {
     Empty,
     Vec(~[T])

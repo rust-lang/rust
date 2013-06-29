@@ -678,7 +678,7 @@ impl BenchHarness {
 
         // Initial bench run to get ballpark figure.
         let mut n = 1_u64;
-        self.bench_n(n, f);
+        self.bench_n(n, |x| f(x));
 
         while n < 1_000_000_000 &&
             self.ns_elapsed() < 1_000_000_000 {
@@ -694,7 +694,7 @@ impl BenchHarness {
 
             n = u64::max(u64::min(n+n/2, 100*last), last+1);
             n = round_up(n);
-            self.bench_n(n, f);
+            self.bench_n(n, |x| f(x));
         }
     }
 
@@ -714,7 +714,7 @@ impl BenchHarness {
                                             magnitude * 2);
 
             let samples = do vec::from_fn(n_samples) |_| {
-                self.bench_n(n_iter as u64, f);
+                self.bench_n(n_iter as u64, |x| f(x));
                 self.ns_per_iter() as f64
             };
 

@@ -674,7 +674,7 @@ pub fn iter_structural_ty(cx: block, av: ValueRef, t: ty::t,
                                     int::to_str(variant.disr_val));
                       let variant_cx =
                           iter_variant(variant_cx, repr, av, *variant,
-                                       substs.tps, f);
+                                       substs.tps, |x,y,z| f(x,y,z));
                       match adt::trans_case(cx, repr, variant.disr_val) {
                           _match::single_result(r) => {
                               AddCase(llswitch, r.val, variant_cx.llbb)

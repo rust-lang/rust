@@ -52,7 +52,7 @@ use syntax;
 
 // Data types
 
-#[deriving(Eq)]
+#[deriving(Eq, IterBytes)]
 pub struct field {
     ident: ast::ident,
     mt: mt
@@ -96,13 +96,13 @@ impl Method {
     }
 }
 
-#[deriving(Eq)]
+#[deriving(Eq, IterBytes)]
 pub struct mt {
     ty: t,
     mutbl: ast::mutability,
 }
 
-#[deriving(Eq, Encodable, Decodable)]
+#[deriving(Eq, Encodable, Decodable, IterBytes)]
 pub enum vstore {
     vstore_fixed(uint),
     vstore_uniq,
@@ -133,7 +133,7 @@ pub struct field_ty {
 
 // Contains information needed to resolve types and (in the future) look up
 // the types of AST nodes.
-#[deriving(Eq)]
+#[deriving(Eq,IterBytes)]
 pub struct creader_cache_key {
     cnum: int,
     pos: uint,
@@ -141,14 +141,6 @@ pub struct creader_cache_key {
 }
 
 type creader_cache = @mut HashMap<creader_cache_key, t>;
-
-impl to_bytes::IterBytes for creader_cache_key {
-    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
-        self.cnum.iter_bytes(lsb0, f) &&
-        self.pos.iter_bytes(lsb0, f) &&
-        self.len.iter_bytes(lsb0, f)
-    }
-}
 
 struct intern_key {
     sty: *sty,
@@ -168,6 +160,8 @@ impl cmp::Eq for intern_key {
     }
 }
 
+// NB: Do not replace this with #[deriving(IterBytes)], as above. (Figured
+// this out the hard way.)
 impl to_bytes::IterBytes for intern_key {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
         unsafe {
@@ -372,14 +366,14 @@ pub fn type_has_regions(t: t) -> bool {
 }
 pub fn type_id(t: t) -> uint { get(t).id }
 
-#[deriving(Eq)]
+#[deriving(Eq,IterBytes)]
 pub struct BareFnTy {
     purity: ast::purity,
     abis: AbiSet,
     sig: FnSig
 }
 
-#[deriving(Eq)]
+#[deriving(Eq,IterBytes)]
 pub struct ClosureTy {
     purity: ast::purity,
     sigil: ast::Sigil,
@@ -396,30 +390,11 @@ pub struct ClosureTy {
  * - `lifetimes` is the list of region names bound in this fn.
  * - `inputs` is the list of arguments and their modes.
  * - `output` is the return type. */
-#[deriving(Eq)]
+#[deriving(Eq, IterBytes)]
 pub struct FnSig {
     bound_lifetime_names: OptVec<ast::ident>,
     inputs: ~[t],
     output: t
-}
-
-impl to_bytes::IterBytes for BareFnTy {
-    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
-        self.purity.iter_bytes(lsb0, f) &&
-        self.abis.iter_bytes(lsb0, f) &&
-        self.sig.iter_bytes(lsb0, f)
-    }
-}
-
-impl to_bytes::IterBytes for ClosureTy {
-    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
-        self.purity.iter_bytes(lsb0, f) &&
-        self.sigil.iter_bytes(lsb0, f) &&
-        self.onceness.iter_bytes(lsb0, f) &&
-        self.region.iter_bytes(lsb0, f) &&
-        self.sig.iter_bytes(lsb0, f) &&
-        self.bounds.iter_bytes(lsb0, f)
-    }
 }
 
 #[deriving(Eq, IterBytes)]
@@ -526,7 +501,7 @@ type opt_region = Option<Region>;
  * - `self_ty` is the type to which `self` should be remapped, if any.  The
  *   `self` type is rather funny in that it can only appear on traits and is
  *   always substituted away to the implementing type for a trait. */
-#[deriving(Eq)]
+#[deriving(Eq, IterBytes)]
 pub struct substs {
     self_r: opt_region,
     self_ty: Option<ty::t>,
@@ -582,7 +557,7 @@ mod primitives {
 
 // NB: If you change this, you'll probably want to change the corresponding
 // AST structure in libsyntax/ast.rs as well.
-#[deriving(Eq)]
+#[deriving(Eq, IterBytes)]
 pub enum sty {
     ty_nil,
     ty_bot,
@@ -714,60 +689,31 @@ impl CLike for BuiltinBound {
     }
 }
 
-#[deriving(Eq)]
+#[deriving(Eq, IterBytes)]
 pub struct TyVid(uint);
 
-#[deriving(Eq)]
+#[deriving(Eq, IterBytes)]
 pub struct IntVid(uint);
 
-#[deriving(Eq)]
+#[deriving(Eq, IterBytes)]
 pub struct FloatVid(uint);
 
-#[deriving(Eq, Encodable, Decodable)]
+#[deriving(Eq, Encodable, Decodable, IterBytes)]
 pub struct RegionVid {
     id: uint
 }
 
-#[deriving(Eq)]
+#[deriving(Eq, IterBytes)]
 pub enum InferTy {
     TyVar(TyVid),
     IntVar(IntVid),
     FloatVar(FloatVid)
 }
 
-impl to_bytes::IterBytes for InferTy {
-    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
-        match *self {
-            TyVar(ref tv) => {
-                0u8.iter_bytes(lsb0, f) && tv.iter_bytes(lsb0, f)
-            }
-            IntVar(ref iv) => {
-                1u8.iter_bytes(lsb0, f) && iv.iter_bytes(lsb0, f)
-            }
-            FloatVar(ref fv) => {
-                2u8.iter_bytes(lsb0, f) && fv.iter_bytes(lsb0, f)
-            }
-        }
-    }
-}
-
-#[deriving(Encodable, Decodable)]
+#[deriving(Encodable, Decodable, IterBytes)]
 pub enum InferRegion {
     ReVar(RegionVid),
     ReSkolemized(uint, bound_region)
-}
-
-impl to_bytes::IterBytes for InferRegion {
-    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
-        match *self {
-            ReVar(ref rv) => {
-                0u8.iter_bytes(lsb0, f) && rv.iter_bytes(lsb0, f)
-            }
-            ReSkolemized(ref v, _) => {
-                1u8.iter_bytes(lsb0, f) && v.iter_bytes(lsb0, f)
-            }
-        }
-    }
 }
 
 impl cmp::Eq for InferRegion {
@@ -846,30 +792,6 @@ impl ToStr for IntVarValue {
             IntType(ref v) => v.to_str(),
             UintType(ref v) => v.to_str(),
         }
-    }
-}
-
-impl to_bytes::IterBytes for TyVid {
-    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
-        self.to_uint().iter_bytes(lsb0, f)
-    }
-}
-
-impl to_bytes::IterBytes for IntVid {
-    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
-        self.to_uint().iter_bytes(lsb0, f)
-    }
-}
-
-impl to_bytes::IterBytes for FloatVid {
-    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
-        self.to_uint().iter_bytes(lsb0, f)
-    }
-}
-
-impl to_bytes::IterBytes for RegionVid {
-    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
-        self.to_uint().iter_bytes(lsb0, f)
     }
 }
 
@@ -1319,15 +1241,15 @@ pub fn maybe_walk_ty(ty: t, f: &fn(t) -> bool) {
       }
       ty_enum(_, ref substs) | ty_struct(_, ref substs) |
       ty_trait(_, ref substs, _, _, _) => {
-        for (*substs).tps.iter().advance |subty| { maybe_walk_ty(*subty, f); }
+        for (*substs).tps.iter().advance |subty| { maybe_walk_ty(*subty, |x| f(x)); }
       }
-      ty_tup(ref ts) => { for ts.iter().advance |tt| { maybe_walk_ty(*tt, f); } }
+      ty_tup(ref ts) => { for ts.iter().advance |tt| { maybe_walk_ty(*tt, |x| f(x)); } }
       ty_bare_fn(ref ft) => {
-        for ft.sig.inputs.iter().advance |a| { maybe_walk_ty(*a, f); }
+        for ft.sig.inputs.iter().advance |a| { maybe_walk_ty(*a, |x| f(x)); }
         maybe_walk_ty(ft.sig.output, f);
       }
       ty_closure(ref ft) => {
-        for ft.sig.inputs.iter().advance |a| { maybe_walk_ty(*a, f); }
+        for ft.sig.inputs.iter().advance |a| { maybe_walk_ty(*a, |x| f(x)); }
         maybe_walk_ty(ft.sig.output, f);
       }
     }
@@ -1409,7 +1331,7 @@ fn fold_sty(sty: &sty, fldop: &fn(t) -> t) -> sty {
 
 // Folds types from the bottom up.
 pub fn fold_ty(cx: ctxt, t0: t, fldop: &fn(t) -> t) -> t {
-    let sty = fold_sty(&get(t0).sty, |t| fold_ty(cx, fldop(t), fldop));
+    let sty = fold_sty(&get(t0).sty, |t| fold_ty(cx, fldop(t), |t| fldop(t)));
     fldop(mk_t(cx, sty))
 }
 
@@ -1423,8 +1345,8 @@ pub fn walk_regions_and_ty(
         fold_regions_and_ty(
             cx, ty,
             |r| { walkr(r); r },
-            |t| { walk_regions_and_ty(cx, t, walkr, walkt); t },
-            |t| { walk_regions_and_ty(cx, t, walkr, walkt); t });
+            |t| { walk_regions_and_ty(cx, t, |r| walkr(r), |t| walkt(t)); t },
+            |t| { walk_regions_and_ty(cx, t, |r| walkr(r), |t| walkt(t)); t });
     }
 }
 
@@ -1504,8 +1426,8 @@ pub fn fold_regions(
         fold_regions_and_ty(
             cx, ty,
             |r| fldr(r, in_fn),
-            |t| do_fold(cx, t, true, fldr),
-            |t| do_fold(cx, t, in_fn, fldr))
+            |t| do_fold(cx, t, true,  |r,b| fldr(r,b)),
+            |t| do_fold(cx, t, in_fn, |r,b| fldr(r,b)))
     }
     do_fold(cx, ty, false, fldr)
 }
@@ -1906,7 +1828,9 @@ impl TypeContents {
             // Currently all noncopyable existentials are 2nd-class types
             // behind owned pointers. With dynamically-sized types, remove
             // this assertion.
-            assert!(self.intersects(TC_OWNED_POINTER));
+            assert!(self.intersects(TC_OWNED_POINTER) ||
+                    // (...or stack closures without a copy bound.)
+                    self.intersects(TC_BORROWED_POINTER));
         }
         let tc = TC_MANAGED + TC_DTOR + TypeContents::sendable(cx);
         self.intersects(tc)
@@ -2272,7 +2196,14 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
             ast::Once => TC_ONCE_CLOSURE,
             ast::Many => TC_NONE
         };
-        st + rt + ot
+        // Prevent noncopyable types captured in the environment from being copied.
+        let ct = if cty.bounds.contains_elem(BoundCopy) ||
+                    cty.sigil == ast::ManagedSigil {
+            TC_NONE
+        } else {
+            TC_NONCOPY_TRAIT
+        };
+        st + rt + ot + ct
     }
 
     fn trait_contents(store: TraitStore, mutbl: ast::mutability,
@@ -2452,7 +2383,7 @@ pub fn type_structurally_contains(cx: ctxt,
         for (*enum_variants(cx, did)).iter().advance |variant| {
             for variant.args.iter().advance |aty| {
                 let sty = subst(cx, substs, *aty);
-                if type_structurally_contains(cx, sty, test) { return true; }
+                if type_structurally_contains(cx, sty, |x| test(x)) { return true; }
             }
         }
         return false;
@@ -2461,14 +2392,14 @@ pub fn type_structurally_contains(cx: ctxt,
         let r = lookup_struct_fields(cx, did);
         for r.iter().advance |field| {
             let ft = lookup_field_type(cx, did, field.id, substs);
-            if type_structurally_contains(cx, ft, test) { return true; }
+            if type_structurally_contains(cx, ft, |x| test(x)) { return true; }
         }
         return false;
       }
 
       ty_tup(ref ts) => {
         for ts.iter().advance |tt| {
-            if type_structurally_contains(cx, *tt, test) { return true; }
+            if type_structurally_contains(cx, *tt, |x| test(x)) { return true; }
         }
         return false;
       }
@@ -2741,123 +2672,6 @@ impl cmp::TotalOrd for bound_region {
 impl cmp::TotalEq for bound_region {
     fn equals(&self, other: &bound_region) -> bool {
         *self == *other
-    }
-}
-
-impl to_bytes::IterBytes for vstore {
-    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
-        match *self {
-            vstore_fixed(ref u) => {
-                0u8.iter_bytes(lsb0, f) && u.iter_bytes(lsb0, f)
-            }
-            vstore_uniq => 1u8.iter_bytes(lsb0, f),
-            vstore_box => 2u8.iter_bytes(lsb0, f),
-
-            vstore_slice(ref r) => {
-                3u8.iter_bytes(lsb0, f) && r.iter_bytes(lsb0, f)
-            }
-        }
-    }
-}
-
-impl to_bytes::IterBytes for substs {
-    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
-        self.self_r.iter_bytes(lsb0, f) &&
-        self.self_ty.iter_bytes(lsb0, f) &&
-        self.tps.iter_bytes(lsb0, f)
-    }
-}
-
-impl to_bytes::IterBytes for mt {
-    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
-        self.ty.iter_bytes(lsb0, f) && self.mutbl.iter_bytes(lsb0, f)
-    }
-}
-
-impl to_bytes::IterBytes for field {
-    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
-        self.ident.iter_bytes(lsb0, f) && self.mt.iter_bytes(lsb0, f)
-    }
-}
-
-impl to_bytes::IterBytes for FnSig {
-    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
-        self.inputs.iter_bytes(lsb0, f) && self.output.iter_bytes(lsb0, f)
-    }
-}
-
-impl to_bytes::IterBytes for sty {
-    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
-        match *self {
-            ty_nil => 0u8.iter_bytes(lsb0, f),
-            ty_bool => 1u8.iter_bytes(lsb0, f),
-
-            ty_int(ref t) => 2u8.iter_bytes(lsb0, f) && t.iter_bytes(lsb0, f),
-
-            ty_uint(ref t) => 3u8.iter_bytes(lsb0, f) && t.iter_bytes(lsb0, f),
-
-            ty_float(ref t) => 4u8.iter_bytes(lsb0, f) && t.iter_bytes(lsb0, f),
-
-            ty_estr(ref v) => 5u8.iter_bytes(lsb0, f) && v.iter_bytes(lsb0, f),
-
-            ty_enum(ref did, ref substs) => {
-                6u8.iter_bytes(lsb0, f) &&
-                did.iter_bytes(lsb0, f) &&
-                substs.iter_bytes(lsb0, f)
-            }
-
-            ty_box(ref mt) => 7u8.iter_bytes(lsb0, f) && mt.iter_bytes(lsb0, f),
-
-            ty_evec(ref mt, ref v) => {
-                8u8.iter_bytes(lsb0, f) &&
-                mt.iter_bytes(lsb0, f) &&
-                v.iter_bytes(lsb0, f)
-            }
-
-            ty_unboxed_vec(ref mt) => 9u8.iter_bytes(lsb0, f) && mt.iter_bytes(lsb0, f),
-
-            ty_tup(ref ts) => 10u8.iter_bytes(lsb0, f) && ts.iter_bytes(lsb0, f),
-
-            ty_bare_fn(ref ft) => 12u8.iter_bytes(lsb0, f) && ft.iter_bytes(lsb0, f),
-
-            ty_self(ref did) => 13u8.iter_bytes(lsb0, f) && did.iter_bytes(lsb0, f),
-
-            ty_infer(ref v) => 14u8.iter_bytes(lsb0, f) && v.iter_bytes(lsb0, f),
-
-            ty_param(ref p) => 15u8.iter_bytes(lsb0, f) && p.iter_bytes(lsb0, f),
-
-            ty_type => 16u8.iter_bytes(lsb0, f),
-            ty_bot => 17u8.iter_bytes(lsb0, f),
-
-            ty_ptr(ref mt) => 18u8.iter_bytes(lsb0, f) && mt.iter_bytes(lsb0, f),
-
-            ty_uniq(ref mt) => 19u8.iter_bytes(lsb0, f) && mt.iter_bytes(lsb0, f),
-
-            ty_trait(ref did, ref substs, ref v, ref mutbl, bounds) => {
-                20u8.iter_bytes(lsb0, f) &&
-                did.iter_bytes(lsb0, f) &&
-                substs.iter_bytes(lsb0, f) &&
-                v.iter_bytes(lsb0, f) &&
-                mutbl.iter_bytes(lsb0, f) &&
-                bounds.iter_bytes(lsb0, f)
-            }
-
-            ty_opaque_closure_ptr(ref ck) => 21u8.iter_bytes(lsb0, f) && ck.iter_bytes(lsb0, f),
-
-            ty_opaque_box => 22u8.iter_bytes(lsb0, f),
-
-            ty_struct(ref did, ref substs) => {
-                23u8.iter_bytes(lsb0, f) && did.iter_bytes(lsb0, f) && substs.iter_bytes(lsb0, f)
-            }
-
-            ty_rptr(ref r, ref mt) => {
-                24u8.iter_bytes(lsb0, f) && r.iter_bytes(lsb0, f) && mt.iter_bytes(lsb0, f)
-            }
-
-            ty_err => 25u8.iter_bytes(lsb0, f),
-
-            ty_closure(ref ct) => 26u8.iter_bytes(lsb0, f) && ct.iter_bytes(lsb0, f),
-        }
     }
 }
 

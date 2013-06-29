@@ -171,7 +171,7 @@ fn with_appropriate_checker(cx: Context, id: node_id,
         // check that only immutable variables are implicitly copied in
         check_imm_free_var(cx, fv.def, fv.span);
 
-        check_freevar_bounds(cx, fv.span, var_t, bounds);
+        check_freevar_bounds(cx, fv.span, var_t, bounds, None);
     }
 
     fn check_for_box(cx: Context, fv: &freevar_entry, bounds: ty::BuiltinBounds) {
@@ -182,13 +182,18 @@ fn with_appropriate_checker(cx: Context, id: node_id,
         // check that only immutable variables are implicitly copied in
         check_imm_free_var(cx, fv.def, fv.span);
 
-        check_freevar_bounds(cx, fv.span, var_t, bounds);
+        check_freevar_bounds(cx, fv.span, var_t, bounds, None);
     }
 
-    fn check_for_block(cx: Context, fv: &freevar_entry, bounds: ty::BuiltinBounds) {
+    fn check_for_block(cx: Context, fv: &freevar_entry,
+                       bounds: ty::BuiltinBounds, region: ty::Region) {
         let id = ast_util::def_id_of_def(fv.def).node;
         let var_t = ty::node_id_to_type(cx.tcx, id);
-        check_freevar_bounds(cx, fv.span, var_t, bounds);
+        // FIXME(#3569): Figure out whether the implicit borrow is actually
+        // mutable. Currently we assume all upvars are referenced mutably.
+        let implicit_borrowed_type = ty::mk_mut_rptr(cx.tcx, region, var_t);
+        check_freevar_bounds(cx, fv.span, implicit_borrowed_type,
+                             bounds, Some(var_t));
     }
 
     fn check_for_bare(cx: Context, fv: @freevar_entry) {
@@ -205,8 +210,9 @@ fn with_appropriate_checker(cx: Context, id: node_id,
         ty::ty_closure(ty::ClosureTy {sigil: ManagedSigil, bounds: bounds, _}) => {
             b(|cx, fv| check_for_box(cx, fv, bounds))
         }
-        ty::ty_closure(ty::ClosureTy {sigil: BorrowedSigil, bounds: bounds, _}) => {
-            b(|cx, fv| check_for_block(cx, fv, bounds))
+        ty::ty_closure(ty::ClosureTy {sigil: BorrowedSigil, bounds: bounds,
+                                      region: region, _}) => {
+            b(|cx, fv| check_for_block(cx, fv, bounds, region))
         }
         ty::ty_bare_fn(_) => {
             b(check_for_bare)
@@ -366,14 +372,21 @@ pub fn check_typaram_bounds(cx: Context,
 }
 
 pub fn check_freevar_bounds(cx: Context, sp: span, ty: ty::t,
-                            bounds: ty::BuiltinBounds)
+                            bounds: ty::BuiltinBounds, referenced_ty: Option<ty::t>)
 {
     do check_builtin_bounds(cx, ty, bounds) |missing| {
-        cx.tcx.sess.span_err(
-            sp,
-            fmt!("cannot capture variable of type `%s`, which does not fulfill \
-                  `%s`, in a bounded closure",
-                 ty_to_str(cx.tcx, ty), missing.user_string(cx.tcx)));
+        // Will be Some if the freevar is implicitly borrowed (stack closure).
+        // Emit a less mysterious error message in this case.
+        match referenced_ty {
+            Some(rty) => cx.tcx.sess.span_err(sp,
+                fmt!("cannot implicitly borrow variable of type `%s` in a bounded \
+                      stack closure (implicit reference does not fulfill `%s`)",
+                     ty_to_str(cx.tcx, rty), missing.user_string(cx.tcx))),
+            None => cx.tcx.sess.span_err(sp,
+                fmt!("cannot capture variable of type `%s`, which does \
+                      not fulfill `%s`, in a bounded closure",
+                     ty_to_str(cx.tcx, ty), missing.user_string(cx.tcx))),
+        }
         cx.tcx.sess.span_note(
             sp,
             fmt!("this closure's environment must satisfy `%s`",
