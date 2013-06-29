@@ -40,7 +40,6 @@ static path_entry_separator: &'static str = ":";
 /// DIR/.rust for any DIR that's the current working directory
 /// or an ancestor of it
 pub fn rust_path() -> ~[Path] {
-    let env_path: ~str = os::getenv("RUST_PATH").get_or_default(~"");
     let mut env_rust_path: ~[Path] = match os::getenv("RUST_PATH") {
         Some(env_path) => {
             let env_path_components: ~[&str] =

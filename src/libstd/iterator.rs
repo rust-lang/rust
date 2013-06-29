@@ -983,7 +983,7 @@ impl<'self, A, St> UnfoldrIterator<'self, A, St> {
     /// Creates a new iterator with the specified closure as the "iterator
     /// function" and an initial state to eventually pass to the iterator
     #[inline]
-    pub fn new<'a>(f: &'a fn(&mut St) -> Option<A>, initial_state: St)
+    pub fn new<'a>(initial_state: St, f: &'a fn(&mut St) -> Option<A>)
         -> UnfoldrIterator<'a, A, St> {
         UnfoldrIterator {
             f: f,
@@ -1174,7 +1174,7 @@ mod tests {
             }
         }
 
-        let mut it = UnfoldrIterator::new(count, 0);
+        let mut it = UnfoldrIterator::new(0, count);
         let mut i = 0;
         for it.advance |counted| {
             assert_eq!(counted, i);

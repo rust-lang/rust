@@ -22,7 +22,8 @@ A dynamic, mutable location.
 Similar to a mutable option type, but friendlier.
 */
 
-#[mutable]
+#[mutable] // XXX remove after snap
+#[no_freeze]
 #[deriving(Clone, DeepClone, Eq)]
 #[allow(missing_doc)]
 pub struct Cell<T> {
