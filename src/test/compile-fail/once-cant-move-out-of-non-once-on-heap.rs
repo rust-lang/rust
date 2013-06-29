@@ -12,7 +12,7 @@
 // This program would segfault if it were legal.
 
 extern mod extra;
-use extra::arc;
+use extra::sync::arc::Arc;
 use std::util;
 
 fn foo(blk: ~fn()) {
@@ -21,7 +21,7 @@ fn foo(blk: ~fn()) {
 }
 
 fn main() {
-    let x = arc::ARC(true);
+    let x = Arc::new(true);
     do foo {
         assert!(*x.get());
         util::ignore(x); //~ ERROR cannot move out of captured outer variable
