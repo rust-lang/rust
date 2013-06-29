@@ -343,41 +343,6 @@ pub fn consume_reverse<T>(mut v: ~[T], f: &fn(uint, v: T)) {
     }
 }
 
-/**
- * Remove consecutive repeated elements from a vector; if the vector is
- * sorted, this removes all duplicates.
- */
-pub fn dedup<T:Eq>(v: &mut ~[T]) {
-    unsafe {
-        if v.len() < 1 { return; }
-        let mut last_written = 0;
-        let mut next_to_read = 1;
-        do as_mut_buf(*v) |p, ln| {
-            // last_written < next_to_read <= ln
-            while next_to_read < ln {
-                // last_written < next_to_read < ln
-                if *ptr::mut_offset(p, next_to_read) ==
-                    *ptr::mut_offset(p, last_written) {
-                    ptr::replace_ptr(ptr::mut_offset(p, next_to_read),
-                                     intrinsics::uninit());
-                } else {
-                    last_written += 1;
-                    // last_written <= next_to_read < ln
-                    if next_to_read != last_written {
-                        ptr::swap_ptr(ptr::mut_offset(p, last_written),
-                                      ptr::mut_offset(p, next_to_read));
-                    }
-                }
-                // last_written <= next_to_read < ln
-                next_to_read += 1;
-                // last_written < next_to_read <= ln
-            }
-        }
-        // last_written < next_to_read == ln
-        raw::set_len(v, last_written + 1);
-    }
-}
-
 // Appending
 
 /// Iterates over the `rhs` vector, copying each element and appending it to the
@@ -1734,14 +1699,44 @@ impl<T:Copy> OwnedCopyableVector<T> for ~[T] {
 }
 
 #[allow(missing_doc)]
-trait OwnedEqVector<T:Eq> {
+pub trait OwnedEqVector<T:Eq> {
     fn dedup(&mut self);
 }
 
 impl<T:Eq> OwnedEqVector<T> for ~[T] {
-    #[inline]
-    fn dedup(&mut self) {
-        dedup(self)
+    /**
+     * Remove consecutive repeated elements from a vector; if the vector is
+     * sorted, this removes all duplicates.
+     */
+    pub fn dedup(&mut self) {
+        unsafe {
+            if self.len() == 0 { return; }
+            let mut last_written = 0;
+            let mut next_to_read = 1;
+            do as_mut_buf(*self) |p, ln| {
+                // last_written < next_to_read <= ln
+                while next_to_read < ln {
+                    // last_written < next_to_read < ln
+                    if *ptr::mut_offset(p, next_to_read) ==
+                        *ptr::mut_offset(p, last_written) {
+                        ptr::replace_ptr(ptr::mut_offset(p, next_to_read),
+                                         intrinsics::uninit());
+                    } else {
+                        last_written += 1;
+                        // last_written <= next_to_read < ln
+                        if next_to_read != last_written {
+                            ptr::swap_ptr(ptr::mut_offset(p, last_written),
+                                          ptr::mut_offset(p, next_to_read));
+                        }
+                    }
+                    // last_written <= next_to_read < ln
+                    next_to_read += 1;
+                    // last_written < next_to_read <= ln
+                }
+            }
+            // last_written < next_to_read == ln
+            raw::set_len(self, last_written + 1);
+        }
     }
 }
 

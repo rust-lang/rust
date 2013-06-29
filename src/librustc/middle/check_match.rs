@@ -417,7 +417,7 @@ pub fn missing_ctor(cx: &MatchCheckCtxt,
                 }
             }
         );
-        vec::dedup(&mut sorted_vec_lens);
+        sorted_vec_lens.dedup();
 
         let mut found_slice = false;
         let mut next = 0;
