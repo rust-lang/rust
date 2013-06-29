@@ -363,63 +363,6 @@ pub fn append_one<T>(lhs: ~[T], x: T) -> ~[T] {
     v
 }
 
-/**
- * Expands a vector in place, initializing the new elements to a given value
- *
- * # Arguments
- *
- * * v - The vector to grow
- * * n - The number of elements to add
- * * initval - The value for the new elements
- */
-pub fn grow<T:Copy>(v: &mut ~[T], n: uint, initval: &T) {
-    let new_len = v.len() + n;
-    v.reserve_at_least(new_len);
-    let mut i: uint = 0u;
-
-    while i < n {
-        v.push(copy *initval);
-        i += 1u;
-    }
-}
-
-/**
- * Expands a vector in place, initializing the new elements to the result of
- * a function
- *
- * Function `init_op` is called `n` times with the values [0..`n`)
- *
- * # Arguments
- *
- * * v - The vector to grow
- * * n - The number of elements to add
- * * init_op - A function to call to retreive each appended element's
- *             value
- */
-pub fn grow_fn<T>(v: &mut ~[T], n: uint, op: &fn(uint) -> T) {
-    let new_len = v.len() + n;
-    v.reserve_at_least(new_len);
-    let mut i: uint = 0u;
-    while i < n {
-        v.push(op(i));
-        i += 1u;
-    }
-}
-
-/**
- * Sets the value of a vector element at a given index, growing the vector as
- * needed
- *
- * Sets the element at position `index` to `val`. If `index` is past the end
- * of the vector, expands the vector by replicating `initval` to fill the
- * intervening space.
- */
-pub fn grow_set<T:Copy>(v: &mut ~[T], index: uint, initval: &T, val: T) {
-    let l = v.len();
-    if index >= l { grow(&mut *v, index - l + 1u, initval); }
-    v[index] = val;
-}
-
 // Functional utilities
 
 /// Apply a function to each element of a vector and return the results
@@ -1648,9 +1591,26 @@ impl<T> OwnedVector<T> for ~[T] {
         (lefts, rights)
     }
 
-    #[inline]
+    /**
+     * Expands a vector in place, initializing the new elements to the result of
+     * a function
+     *
+     * Function `init_op` is called `n` times with the values [0..`n`)
+     *
+     * # Arguments
+     *
+     * * n - The number of elements to add
+     * * init_op - A function to call to retreive each appended element's
+     *             value
+     */
     fn grow_fn(&mut self, n: uint, op: &fn(uint) -> T) {
-        grow_fn(self, n, op);
+        let new_len = self.len() + n;
+        self.reserve_at_least(new_len);
+        let mut i: uint = 0u;
+        while i < n {
+            self.push(op(i));
+            i += 1u;
+        }
     }
 }
 
@@ -1687,14 +1647,37 @@ impl<T:Copy> OwnedCopyableVector<T> for ~[T] {
         }
     }
 
-    #[inline]
+    /**
+     * Expands a vector in place, initializing the new elements to a given value
+     *
+     * # Arguments
+     *
+     * * n - The number of elements to add
+     * * initval - The value for the new elements
+     */
     fn grow(&mut self, n: uint, initval: &T) {
-        grow(self, n, initval);
+        let new_len = self.len() + n;
+        self.reserve_at_least(new_len);
+        let mut i: uint = 0u;
+
+        while i < n {
+            self.push(copy *initval);
+            i += 1u;
+        }
     }
 
-    #[inline]
+    /**
+     * Sets the value of a vector element at a given index, growing the vector as
+     * needed
+     *
+     * Sets the element at position `index` to `val`. If `index` is past the end
+     * of the vector, expands the vector by replicating `initval` to fill the
+     * intervening space.
+     */
     fn grow_set(&mut self, index: uint, initval: &T, val: T) {
-        grow_set(self, index, initval, val);
+        let l = self.len();
+        if index >= l { self.grow(index - l + 1u, initval); }
+        self[index] = val;
     }
 }
 

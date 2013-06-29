@@ -69,9 +69,7 @@ fn AsciiArt(width: uint, height: uint, fill: char) -> AsciiArt {
     // blank characters for each position in our canvas.
     let mut lines = do vec::build_sized(height) |push| {
             for height.times {
-                let mut line = ~[];
-                vec::grow_set(&mut line, width-1, &'.', '.');
-                push(line);
+                push(vec::from_elem(width, '.'));
             }
         };
 

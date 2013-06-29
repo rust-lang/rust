@@ -20,7 +20,6 @@ use std::cmp;
 use std::container::{Container, Mutable, Map, Set};
 use std::uint;
 use std::util::replace;
-use std::vec;
 
 #[allow(missing_doc)]
 pub struct SmallIntMap<T> {
@@ -86,7 +85,7 @@ impl<V> Map<uint, V> for SmallIntMap<V> {
         let exists = self.contains_key(&key);
         let len = self.v.len();
         if len <= key {
-            vec::grow_fn(&mut self.v, key - len + 1, |_| None);
+            self.v.grow_fn(key - len + 1, |_| None);
         }
         self.v[key] = Some(value);
         !exists
