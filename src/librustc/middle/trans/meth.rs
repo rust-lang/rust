@@ -68,8 +68,7 @@ pub fn trans_impl(ccx: @mut CrateContext,
                          path,
                          *method,
                          None,
-                         llfn,
-                         ast_util::local_def(id));
+                         llfn);
         }
     }
 }
@@ -90,8 +89,7 @@ pub fn trans_method(ccx: @mut CrateContext,
                     path: path,
                     method: &ast::method,
                     param_substs: Option<@param_substs>,
-                    llfn: ValueRef,
-                    impl_id: ast::def_id) {
+                    llfn: ValueRef) {
     // figure out how self is being passed
     let self_arg = match method.explicit_self.node {
       ast::sty_static => {
@@ -127,7 +125,6 @@ pub fn trans_method(ccx: @mut CrateContext,
              self_arg,
              param_substs,
              method.id,
-             Some(impl_id),
              []);
 }
 
@@ -139,7 +136,6 @@ pub fn trans_self_arg(bcx: block,
 
     // Compute the type of self.
     let self_ty = monomorphize_type(bcx, mentry.self_ty);
-
     let result = trans_arg_expr(bcx,
                                 self_ty,
                                 mentry.self_mode,
@@ -174,21 +170,6 @@ pub fn trans_method_callee(bcx: block,
     // Replace method_self with method_static here.
     let mut origin = mentry.origin;
     match origin {
-        typeck::method_self(trait_id, method_index) => {
-            // Get the ID of the impl we're inside.
-            let impl_def_id = bcx.fcx.impl_id.get();
-
-            debug!("impl_def_id is %?", impl_def_id);
-
-            // Get the ID of the method we're calling.
-            let method_name =
-                ty::trait_method(tcx, trait_id, method_index).ident;
-            let method_id =
-                method_with_name_or_default(bcx.ccx(),
-                                            impl_def_id,
-                                            method_name);
-            origin = typeck::method_static(method_id);
-        }
         typeck::method_super(trait_id, method_index) => {
             // <self_ty> is the self type for this method call
             let self_ty = node_id_type(bcx, this.id);
@@ -213,6 +194,7 @@ pub fn trans_method_callee(bcx: block,
                                             impl_id,
                                             method_name));
         }
+        typeck::method_self(*) |
         typeck::method_static(*) | typeck::method_param(*) |
         typeck::method_trait(*) => {}
     }
@@ -250,6 +232,21 @@ pub fn trans_method_callee(bcx: block,
                 None => fail!("trans_method_callee: missing param_substs")
             }
         }
+
+        typeck::method_self(trait_id, method_index) => {
+            match bcx.fcx.param_substs {
+                Some(@param_substs
+                     {self_vtable: Some(ref vtbl), _}) => {
+                    trans_monomorphized_callee(bcx, callee_id, this, mentry,
+                                               trait_id, method_index,
+                                               copy *vtbl)
+                }
+                _ => {
+                    fail!("trans_method_callee: missing self_vtable")
+                }
+            }
+        }
+
         typeck::method_trait(_, off, store) => {
             trans_trait_callee(bcx,
                                callee_id,
@@ -258,9 +255,9 @@ pub fn trans_method_callee(bcx: block,
                                store,
                                mentry.explicit_self)
         }
-        typeck::method_self(*) | typeck::method_super(*) => {
-            fail!("method_self or method_super should have been handled \
-                above")
+            typeck::method_super(*) => {
+            fail!("method_super should have been handled \
+                   above")
         }
     }
 }
@@ -292,15 +289,9 @@ pub fn trans_static_method_callee(bcx: block,
     //
     // So when we see a call to this function foo, we have to figure
     // out which impl the `Trait<T1...Tn>` bound on the type `self` was
-    // bound to.  Due to the fact that we use a flattened list of
-    // impls, one per bound, this means we have to total up the bounds
-    // found on the type parametesr T1...Tn to find the index of the
-    // one we are interested in.
-    let bound_index = {
-        let trait_def = ty::lookup_trait_def(bcx.tcx(), trait_id);
-        ty::count_traits_and_supertraits(
-            bcx.tcx(), *trait_def.generics.type_param_defs)
-    };
+    // bound to.
+    let bound_index = ty::lookup_trait_def(bcx.tcx(), trait_id).
+        generics.type_param_defs.len();
 
     let mname = if method_id.crate == ast::local_crate {
         match bcx.tcx().items.get_copy(&method_id.node) {
@@ -322,17 +313,17 @@ pub fn trans_static_method_callee(bcx: block,
     let vtbls = resolve_vtables_in_fn_ctxt(
         bcx.fcx, ccx.maps.vtable_map.get_copy(&callee_id));
 
-    match vtbls[bound_index] {
+    match vtbls[bound_index][0] {
         typeck::vtable_static(impl_did, ref rcvr_substs, rcvr_origins) => {
             assert!(rcvr_substs.iter().all(|t| !ty::type_needs_infer(*t)));
 
             let mth_id = method_with_name_or_default(bcx.ccx(),
                                                      impl_did,
                                                      mname);
-            let callee_substs = combine_impl_and_methods_tps(
-                bcx, mth_id, impl_did, callee_id, *rcvr_substs);
-            let callee_origins = combine_impl_and_methods_origins(
-                bcx, mth_id, impl_did, callee_id, rcvr_origins);
+            let (callee_substs, callee_origins) =
+                combine_impl_and_methods_tps(
+                    bcx, mth_id, impl_did, callee_id,
+                    *rcvr_substs, rcvr_origins);
 
             let FnData {llfn: lval} =
                 trans_fn_ref_with_vtables(bcx,
@@ -428,10 +419,10 @@ pub fn trans_monomorphized_callee(bcx: block,
 
           // create a concatenated set of substitutions which includes
           // those from the impl and those from the method:
-          let callee_substs = combine_impl_and_methods_tps(
-              bcx, mth_id, impl_did, callee_id, *rcvr_substs);
-          let callee_origins = combine_impl_and_methods_origins(
-              bcx, mth_id, impl_did, callee_id, rcvr_origins);
+          let (callee_substs, callee_origins) =
+              combine_impl_and_methods_tps(
+                  bcx, mth_id, impl_did, callee_id,
+                  *rcvr_substs, rcvr_origins);
 
           // translate the function
           let callee = trans_fn_ref_with_vtables(bcx,
@@ -460,6 +451,9 @@ pub fn trans_monomorphized_callee(bcx: block,
       typeck::vtable_param(*) => {
           fail!("vtable_param left in monomorphized function's vtable substs");
       }
+      typeck::vtable_self(*) => {
+          fail!("vtable_self left in monomorphized function's vtable substs");
+      }
     };
 
 }
@@ -468,8 +462,9 @@ pub fn combine_impl_and_methods_tps(bcx: block,
                                     mth_did: ast::def_id,
                                     impl_did: ast::def_id,
                                     callee_id: ast::node_id,
-                                    rcvr_substs: &[ty::t])
-                                    -> ~[ty::t] {
+                                    rcvr_substs: &[ty::t],
+                                    rcvr_origins: typeck::vtable_res)
+                                    -> (~[ty::t], typeck::vtable_res) {
     /*!
     *
     * Creates a concatenated set of substitutions which includes
@@ -498,52 +493,18 @@ pub fn combine_impl_and_methods_tps(bcx: block,
     debug!("node_substs=%?", node_substs.map(|t| bcx.ty_to_str(*t)));
     debug!("ty_substs=%?", ty_substs.map(|t| bcx.ty_to_str(*t)));
 
-    return ty_substs;
-}
 
-pub fn combine_impl_and_methods_origins(bcx: block,
-                                        mth_did: ast::def_id,
-                                        impl_did: ast::def_id,
-                                        callee_id: ast::node_id,
-                                        rcvr_origins: typeck::vtable_res)
-                                     -> typeck::vtable_res {
-    /*!
-     *
-     * Similar to `combine_impl_and_methods_tps`, but for vtables.
-     * This is much messier because of the flattened layout we are
-     * currently using (for some reason that I fail to understand).
-     * The proper fix is described in #3446.
-     */
-
-
-    // Find the bounds for the method, which are the tail of the
-    // bounds found in the item type, as the item type combines the
-    // rcvr + method bounds.
-    let ccx = bcx.ccx();
-    let tcx = bcx.tcx();
-    let n_m_tps = method_ty_param_count(ccx, mth_did, impl_did);
-    let ty::ty_param_bounds_and_ty {
-        generics: r_m_generics,
-        _
-    } = ty::lookup_item_type(tcx, mth_did);
-    let n_r_m_tps = r_m_generics.type_param_defs.len(); // rcvr + method tps
-    let m_type_param_defs =
-        r_m_generics.type_param_defs.slice(n_r_m_tps - n_m_tps, n_r_m_tps);
-
-    // Flatten out to find the number of vtables the method expects.
-    let m_vtables = ty::count_traits_and_supertraits(tcx, m_type_param_defs);
-
-    // Find the vtables we computed at type check time and monomorphize them
+    // Now, do the same work for the vtables.  The vtables might not
+    // exist, in which case we need to make them.
     let r_m_origins = match node_vtables(bcx, callee_id) {
         Some(vt) => vt,
-        None => @~[]
+        None => @vec::from_elem(node_substs.len(), @~[])
     };
+    let vtables
+        = @vec::append(rcvr_origins.to_owned(),
+                       r_m_origins.tailn(r_m_origins.len() - n_m_tps));
 
-    // Extract those that belong to method:
-    let m_origins = r_m_origins.tailn(r_m_origins.len() - m_vtables);
-
-    // Combine rcvr + method to find the final result:
-    @vec::append(/*bad*/copy *rcvr_origins, m_origins)
+    return (ty_substs, vtables);
 }
 
 
@@ -842,7 +803,7 @@ pub fn trans_trait_cast(bcx: block,
     bcx = expr::trans_into(bcx, val, SaveIn(llboxdest));
 
     // Store the vtable into the pair or triple.
-    let orig = /*bad*/copy ccx.maps.vtable_map.get(&id)[0];
+    let orig = /*bad*/copy ccx.maps.vtable_map.get(&id)[0][0];
     let orig = resolve_vtable_in_fn_ctxt(bcx.fcx, orig);
     let vtable = get_vtable(bcx, v_ty, orig);
     Store(bcx, vtable, PointerCast(bcx,

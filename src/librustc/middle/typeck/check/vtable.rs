@@ -17,8 +17,8 @@ use middle::typeck::check::{structurally_resolved_type};
 use middle::typeck::infer::fixup_err_to_str;
 use middle::typeck::infer::{resolve_and_force_all_but_regions, resolve_type};
 use middle::typeck::infer;
-use middle::typeck::{CrateCtxt, vtable_origin, vtable_param, vtable_res};
-use middle::typeck::vtable_static;
+use middle::typeck::{CrateCtxt, vtable_origin, vtable_res};
+use middle::typeck::{vtable_static, vtable_param, vtable_self};
 use middle::subst::Subst;
 use util::common::indenter;
 use util::ppaux::tys_to_str;
@@ -90,6 +90,7 @@ fn lookup_vtables(vcx: &VtableContext,
     let mut i = 0u;
     for substs.tps.iter().advance |ty| {
         // ty is the value supplied for the type parameter A...
+        let mut param_result = ~[];
 
         for ty::each_bound_trait_and_supertraits(
             tcx, type_param_defs[i].bounds) |trait_ref|
@@ -106,7 +107,7 @@ fn lookup_vtables(vcx: &VtableContext,
             debug!("after subst: %s", trait_ref.repr(tcx));
 
             match lookup_vtable(vcx, location_info, *ty, &trait_ref, is_early) {
-                Some(vtable) => result.push(vtable),
+                Some(vtable) => param_result.push(vtable),
                 None => {
                     vcx.tcx().sess.span_fatal(
                         location_info.span,
@@ -117,6 +118,7 @@ fn lookup_vtables(vcx: &VtableContext,
                 }
             }
         }
+        result.push(@param_result);
         i += 1u;
     }
     debug!("lookup_vtables result(\
@@ -234,6 +236,17 @@ fn lookup_vtable(vcx: &VtableContext,
                 }
 
                 n_bound += 1;
+            }
+        }
+
+        ty::ty_self(trait_id) => {
+            debug!("trying to find %? vtable for type %?",
+                   trait_ref.def_id, trait_id);
+
+            if trait_id == trait_ref.def_id {
+                let vtable = vtable_self(trait_id);
+                debug!("found self vtable: %?", vtable);
+                return Some(vtable);
             }
         }
 
@@ -467,6 +480,12 @@ pub fn location_info_for_expr(expr: @ast::expr) -> LocationInfo {
         id: expr.id
     }
 }
+pub fn location_info_for_item(item: @ast::item) -> LocationInfo {
+    LocationInfo {
+        span: item.span,
+        id: item.id
+    }
+}
 
 pub fn early_resolve_expr(ex: @ast::expr,
                           fcx: @mut FnCtxt,
@@ -583,7 +602,8 @@ pub fn early_resolve_expr(ex: @ast::expr,
                                   // vtable (that is: "ex has vtable
                                   // <vtable>")
                                   if !is_early {
-                                      insert_vtables(fcx, ex.id, @~[vtable]);
+                                      insert_vtables(fcx, ex.id,
+                                                     @~[@~[vtable]]);
                                   }
                               }
                               None => {
@@ -648,6 +668,27 @@ fn resolve_expr(ex: @ast::expr,
                            visit::vt<@mut FnCtxt>)) {
     early_resolve_expr(ex, fcx, false);
     visit::visit_expr(ex, (fcx, v));
+}
+
+pub fn resolve_impl(ccx: @mut CrateCtxt, impl_item: @ast::item) {
+    let def_id = ast_util::local_def(impl_item.id);
+    match ty::impl_trait_ref(ccx.tcx, def_id) {
+        None => {},
+        Some(trait_ref) => {
+            let infcx = infer::new_infer_ctxt(ccx.tcx);
+            let vcx = VtableContext { ccx: ccx, infcx: infcx };
+            let trait_def = ty::lookup_trait_def(ccx.tcx, trait_ref.def_id);
+
+            let vtbls = lookup_vtables(&vcx,
+                                       &location_info_for_item(impl_item),
+                                       *trait_def.generics.type_param_defs,
+                                       &trait_ref.substs,
+                                       false);
+
+            // FIXME(#7450): Doesn't work cross crate
+            ccx.vtable_map.insert(impl_item.id, vtbls);
+        }
+    }
 }
 
 // Detect points where a trait-bounded type parameter is

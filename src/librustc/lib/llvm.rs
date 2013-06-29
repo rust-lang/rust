@@ -2149,10 +2149,15 @@ impl TypeNames {
         self.named_types.find_equiv(&s).map_consume(|x| Type::from_ref(*x))
     }
 
-    pub fn type_to_str(&self, ty: Type) -> ~str {
+    // We have a depth count, because we seem to make infinite types.
+    pub fn type_to_str_depth(&self, ty: Type, depth: int) -> ~str {
         match self.find_name(&ty) {
             option::Some(name) => return name.to_owned(),
             None => ()
+        }
+
+        if depth == 0 {
+            return ~"###";
         }
 
         unsafe {
@@ -2161,6 +2166,7 @@ impl TypeNames {
             match kind {
                 Void => ~"Void",
                 Half => ~"Half",
+                Float => ~"Float",
                 Double => ~"Double",
                 X86_FP80 => ~"X86_FP80",
                 FP128 => ~"FP128",
@@ -2175,29 +2181,34 @@ impl TypeNames {
                 Function => {
                     let out_ty = ty.return_type();
                     let args = ty.func_params();
-                    let args = args.map(|&ty| self.type_to_str(ty)).connect(", ");
-                    let out_ty = self.type_to_str(out_ty);
+                    let args =
+                        args.map(|&ty| self.type_to_str_depth(ty, depth-1)).connect(", ");
+                    let out_ty = self.type_to_str_depth(out_ty, depth-1);
                     fmt!("fn(%s) -> %s", args, out_ty)
                 }
                 Struct => {
                     let tys = ty.field_types();
-                    let tys = tys.map(|&ty| self.type_to_str(ty)).connect(", ");
+                    let tys = tys.map(|&ty| self.type_to_str_depth(ty, depth-1)).connect(", ");
                     fmt!("{%s}", tys)
                 }
                 Array => {
                     let el_ty = ty.element_type();
-                    let el_ty = self.type_to_str(el_ty);
+                    let el_ty = self.type_to_str_depth(el_ty, depth-1);
                     let len = ty.array_length();
                     fmt!("[%s x %u]", el_ty, len)
                 }
                 Pointer => {
                     let el_ty = ty.element_type();
-                    let el_ty = self.type_to_str(el_ty);
+                    let el_ty = self.type_to_str_depth(el_ty, depth-1);
                     fmt!("*%s", el_ty)
                 }
                 _ => fail!("Unknown Type Kind (%u)", kind as uint)
             }
         }
+    }
+
+    pub fn type_to_str(&self, ty: Type) -> ~str {
+        self.type_to_str_depth(ty, 30)
     }
 
     pub fn val_to_str(&self, val: ValueRef) -> ~str {
