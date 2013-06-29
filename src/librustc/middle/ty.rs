@@ -29,7 +29,6 @@ use util::enum_set::{EnumSet, CLike};
 use std::cast;
 use std::cmp;
 use std::hashmap::{HashMap, HashSet};
-use std::iter;
 use std::ops;
 use std::ptr::to_unsafe_ptr;
 use std::to_bytes;
@@ -1752,7 +1751,7 @@ pub struct TypeContents {
 
 impl TypeContents {
     pub fn meets_bounds(&self, cx: ctxt, bbs: BuiltinBounds) -> bool {
-        iter::all(|bb| self.meets_bound(cx, bb), |f| bbs.each(f))
+        bbs.iter().all(|bb| self.meets_bound(cx, bb))
     }
 
     pub fn meets_bound(&self, cx: ctxt, bb: BuiltinBound) -> bool {

@@ -135,7 +135,6 @@ impl<E:CLike> Iterator<E> for EnumSetIterator<E> {
 mod test {
 
     use std::cast;
-    use std::iter;
 
     use util::enum_set::*;
 
@@ -237,7 +236,7 @@ mod test {
     }
 
     ///////////////////////////////////////////////////////////////////////////
-    // iterator
+    // iter / each
 
     #[test]
     fn test_iterator() {
@@ -263,15 +262,6 @@ mod test {
         assert_eq!(~[A,B,C], elems)
     }
 
-    fn collect(e: EnumSet<Foo>) -> ~[Foo] {
-        let mut elems = ~[];
-        e.each(|elem| {
-           elems.push(elem);
-           true
-        });
-        elems
-    }
-
     #[test]
     fn test_each() {
         let mut e1: EnumSet<Foo> = EnumSet::empty();
@@ -289,6 +279,15 @@ mod test {
 
         e1.add(B);
         assert_eq!(~[A,B,C], collect(e1))
+    }
+
+    fn collect(e: EnumSet<Foo>) -> ~[Foo] {
+        let mut elems = ~[];
+        e.each(|elem| {
+           elems.push(elem);
+           true
+        });
+        elems
     }
 
     ///////////////////////////////////////////////////////////////////////////
