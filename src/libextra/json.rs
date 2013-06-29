@@ -1362,7 +1362,7 @@ mod tests {
     use std::io;
     use std::result;
 
-    use std::serialize::Decodable;
+    use extra::serialize::Decodable;
 
     #[deriving(Eq, Encodable, Decodable)]
     enum Animal {

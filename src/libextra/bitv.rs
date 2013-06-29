@@ -862,7 +862,7 @@ impl BitvSet {
 
 #[cfg(test)]
 mod tests {
-    use std::test::BenchHarness;
+    use extra::test::BenchHarness;
 
     use bitv::*;
     use bitv;
