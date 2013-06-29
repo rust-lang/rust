@@ -129,28 +129,20 @@ pub fn trans_method(ccx: @mut CrateContext,
 
 pub fn trans_self_arg(bcx: block,
                       base: @ast::expr,
+                      temp_cleanups: &mut ~[ValueRef],
                       mentry: typeck::method_map_entry) -> Result {
     let _icx = push_ctxt("impl::trans_self_arg");
-    let mut temp_cleanups = ~[];
 
     // self is passed as an opaque box in the environment slot
     let self_ty = ty::mk_opaque_box(bcx.tcx());
-    let result = trans_arg_expr(bcx,
-                                self_ty,
-                                mentry.self_mode,
-                                mentry.explicit_self,
-                                base,
-                                &mut temp_cleanups,
-                                None,
-                                DontAutorefArg);
-
-    // FIXME(#3446)---this is wrong, actually.  The temp_cleanups
-    // should be revoked only after all arguments have been passed.
-    for temp_cleanups.iter().advance |c| {
-        revoke_clean(bcx, *c)
-    }
-
-    return result;
+    trans_arg_expr(bcx,
+                   self_ty,
+                   mentry.self_mode,
+                   mentry.explicit_self,
+                   base,
+                   temp_cleanups,
+                   None,
+                   DontAutorefArg)
 }
 
 pub fn trans_method_callee(bcx: block,
@@ -203,12 +195,14 @@ pub fn trans_method_callee(bcx: block,
     match origin {
         typeck::method_static(did) => {
             let callee_fn = callee::trans_fn_ref(bcx, did, callee_id);
-            let Result {bcx, val} = trans_self_arg(bcx, this, mentry);
+            let mut temp_cleanups = ~[];
+            let Result {bcx, val} = trans_self_arg(bcx, this, &mut temp_cleanups, mentry);
             Callee {
                 bcx: bcx,
                 data: Method(MethodData {
                     llfn: callee_fn.llfn,
                     llself: val,
+                    temp_cleanup: temp_cleanups.head_opt().map(|&v| *v),
                     self_ty: node_id_type(bcx, this.id),
                     self_mode: mentry.self_mode,
                     explicit_self: mentry.explicit_self
@@ -254,9 +248,8 @@ pub fn trans_method_callee(bcx: block,
                                store,
                                mentry.explicit_self)
         }
-            typeck::method_super(*) => {
-            fail!("method_super should have been handled \
-                   above")
+        typeck::method_super(*) => {
+            fail!("method_super should have been handled above")
         }
     }
 }
@@ -413,8 +406,9 @@ pub fn trans_monomorphized_callee(bcx: block,
               bcx.ccx(), impl_did, mname);
 
           // obtain the `self` value:
+          let mut temp_cleanups = ~[];
           let Result {bcx, val: llself_val} =
-              trans_self_arg(bcx, base, mentry);
+              trans_self_arg(bcx, base, &mut temp_cleanups, mentry);
 
           // create a concatenated set of substitutions which includes
           // those from the impl and those from the method:
@@ -441,6 +435,7 @@ pub fn trans_monomorphized_callee(bcx: block,
               data: Method(MethodData {
                   llfn: llfn_val,
                   llself: llself_val,
+                  temp_cleanup: temp_cleanups.head_opt().map(|&v| *v),
                   self_ty: node_id_type(bcx, base.id),
                   self_mode: mentry.self_mode,
                   explicit_self: mentry.explicit_self
@@ -636,6 +631,7 @@ pub fn trans_trait_callee_from_llval(bcx: block,
         data: Method(MethodData {
             llfn: mptr,
             llself: llself,
+            temp_cleanup: None,
             self_ty: ty::mk_opaque_box(bcx.tcx()),
             self_mode: ty::ByRef,
             explicit_self: explicit_self

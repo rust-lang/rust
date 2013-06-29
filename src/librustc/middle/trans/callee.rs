@@ -62,6 +62,7 @@ pub struct FnData {
 pub struct MethodData {
     llfn: ValueRef,
     llself: ValueRef,
+    temp_cleanup: Option<ValueRef>,
     self_ty: ty::t,
     self_mode: ty::SelfMode,
     explicit_self: ast::explicit_self_
@@ -646,9 +647,10 @@ pub fn trans_call_inner(in_cx: block,
         // Now that the arguments have finished evaluating, we need to revoke
         // the cleanup for the self argument, if it exists
         match callee.data {
-            Method(d) if d.self_mode == ty::ByCopy ||
-                         d.explicit_self == ast::sty_value => {
-                revoke_clean(bcx, d.llself);
+            Method(d) => {
+                for d.temp_cleanup.iter().advance |&v| {
+                    revoke_clean(bcx, v);
+                }
             }
             _ => {}
         }
