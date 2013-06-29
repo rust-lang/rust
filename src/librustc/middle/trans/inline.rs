@@ -12,7 +12,7 @@ use core::prelude::*;
 
 use metadata::csearch;
 use middle::astencode;
-use middle::trans::base::{push_ctxt,impl_owned_self, impl_self, no_self};
+use middle::trans::base::{push_ctxt, impl_self, no_self};
 use middle::trans::base::{trans_item, get_item_val, trans_fn};
 use middle::trans::common::*;
 use middle::ty;
@@ -114,8 +114,8 @@ pub fn maybe_instantiate_inline(ccx: @mut CrateContext, fn_id: ast::def_id,
                       debug!("calling inline trans_fn with self_ty %s",
                              ty_to_str(ccx.tcx, self_ty));
                       match mth.explicit_self.node {
-                          ast::sty_value => impl_owned_self(self_ty),
-                          _ => impl_self(self_ty),
+                          ast::sty_value => impl_self(self_ty, ty::ByRef),
+                          _ => impl_self(self_ty, ty::ByCopy),
                       }
                   }
               };

@@ -425,12 +425,7 @@ pub fn trans_struct_drop_flag(bcx: block, t: ty::t, v0: ValueRef, dtor_did: ast:
         // just consist of the environment (self)
         assert_eq!(params.len(), 1);
 
-        // Take a reference to the class (because it's using the Drop trait),
-        // do so now.
-        let llval = alloca(bcx, val_ty(v0));
-        Store(bcx, v0, llval);
-
-        let self_arg = PointerCast(bcx, llval, params[0]);
+        let self_arg = PointerCast(bcx, v0, params[0]);
         let args = ~[self_arg];
 
         Call(bcx, dtor_addr, args);
@@ -465,12 +460,7 @@ pub fn trans_struct_drop(mut bcx: block, t: ty::t, v0: ValueRef, dtor_did: ast::
     // just consist of the environment (self)
     assert_eq!(params.len(), 1);
 
-    // Take a reference to the class (because it's using the Drop trait),
-    // do so now.
-    let llval = alloca(bcx, val_ty(v0));
-    Store(bcx, v0, llval);
-
-    let self_arg = PointerCast(bcx, llval, params[0]);
+    let self_arg = PointerCast(bcx, v0, params[0]);
     let args = ~[self_arg];
 
     Call(bcx, dtor_addr, args);
