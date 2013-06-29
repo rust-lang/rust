@@ -20,6 +20,7 @@ use middle::trans::build::*;
 use middle::trans::callee::*;
 use middle::trans::callee;
 use middle::trans::common::*;
+use middle::trans::datum::*;
 use middle::trans::expr::{SaveIn, Ignore};
 use middle::trans::expr;
 use middle::trans::glue;
@@ -107,10 +108,8 @@ pub fn trans_method(ccx: @mut CrateContext,
         debug!("calling trans_fn with self_ty %s",
                self_ty.repr(ccx.tcx));
         match method.explicit_self.node {
-          ast::sty_value => impl_owned_self(self_ty),
-          _ => {
-            impl_self(self_ty)
-          }
+          ast::sty_value => impl_self(self_ty, ty::ByRef),
+          _ => impl_self(self_ty, ty::ByCopy),
         }
       }
     };
@@ -129,28 +128,19 @@ pub fn trans_method(ccx: @mut CrateContext,
 
 pub fn trans_self_arg(bcx: block,
                       base: @ast::expr,
+                      temp_cleanups: &mut ~[ValueRef],
                       mentry: typeck::method_map_entry) -> Result {
     let _icx = push_ctxt("impl::trans_self_arg");
-    let mut temp_cleanups = ~[];
 
-    // Compute the type of self.
-    let self_ty = monomorphize_type(bcx, mentry.self_ty);
-    let result = trans_arg_expr(bcx,
-                                self_ty,
-                                mentry.self_mode,
-                                mentry.explicit_self,
-                                base,
-                                &mut temp_cleanups,
-                                None,
-                                DontAutorefArg);
-
-    // FIXME(#3446)---this is wrong, actually.  The temp_cleanups
-    // should be revoked only after all arguments have been passed.
-    for temp_cleanups.iter().advance |c| {
-        revoke_clean(bcx, *c)
-    }
-
-    return result;
+    // self is passed as an opaque box in the environment slot
+    let self_ty = ty::mk_opaque_box(bcx.tcx());
+    trans_arg_expr(bcx,
+                   self_ty,
+                   mentry.self_mode,
+                   base,
+                   temp_cleanups,
+                   None,
+                   DontAutorefArg)
 }
 
 pub fn trans_method_callee(bcx: block,
@@ -203,15 +193,16 @@ pub fn trans_method_callee(bcx: block,
     match origin {
         typeck::method_static(did) => {
             let callee_fn = callee::trans_fn_ref(bcx, did, callee_id);
-            let Result {bcx, val} = trans_self_arg(bcx, this, mentry);
+            let mut temp_cleanups = ~[];
+            let Result {bcx, val} = trans_self_arg(bcx, this, &mut temp_cleanups, mentry);
             Callee {
                 bcx: bcx,
                 data: Method(MethodData {
                     llfn: callee_fn.llfn,
                     llself: val,
+                    temp_cleanup: temp_cleanups.head_opt().map(|&v| *v),
                     self_ty: node_id_type(bcx, this.id),
                     self_mode: mentry.self_mode,
-                    explicit_self: mentry.explicit_self
                 })
             }
         }
@@ -254,9 +245,8 @@ pub fn trans_method_callee(bcx: block,
                                store,
                                mentry.explicit_self)
         }
-            typeck::method_super(*) => {
-            fail!("method_super should have been handled \
-                   above")
+        typeck::method_super(*) => {
+            fail!("method_super should have been handled above")
         }
     }
 }
@@ -413,8 +403,9 @@ pub fn trans_monomorphized_callee(bcx: block,
               bcx.ccx(), impl_did, mname);
 
           // obtain the `self` value:
+          let mut temp_cleanups = ~[];
           let Result {bcx, val: llself_val} =
-              trans_self_arg(bcx, base, mentry);
+              trans_self_arg(bcx, base, &mut temp_cleanups, mentry);
 
           // create a concatenated set of substitutions which includes
           // those from the impl and those from the method:
@@ -441,9 +432,9 @@ pub fn trans_monomorphized_callee(bcx: block,
               data: Method(MethodData {
                   llfn: llfn_val,
                   llself: llself_val,
+                  temp_cleanup: temp_cleanups.head_opt().map(|&v| *v),
                   self_ty: node_id_type(bcx, base.id),
                   self_mode: mentry.self_mode,
-                  explicit_self: mentry.explicit_self
               })
           }
       }
@@ -573,10 +564,10 @@ pub fn trans_trait_callee_from_llval(bcx: block,
     // necessary:
     let mut llself;
     debug!("(translating trait callee) loading second index from pair");
-    let llbox = Load(bcx, GEPi(bcx, llpair, [0u, abi::trt_field_box]));
+    let llboxptr = GEPi(bcx, llpair, [0u, abi::trt_field_box]);
+    let llbox = Load(bcx, llboxptr);
 
     // Munge `llself` appropriately for the type of `self` in the method.
-    let self_mode;
     match explicit_self {
         ast::sty_static => {
             bcx.tcx().sess.bug("shouldn't see static method here");
@@ -586,8 +577,6 @@ pub fn trans_trait_callee_from_llval(bcx: block,
                                 called on objects");
         }
         ast::sty_region(*) => {
-            // As before, we need to pass a pointer to a pointer to the
-            // payload.
             match store {
                 ty::BoxTraitStore |
                 ty::UniqTraitStore => {
@@ -597,30 +586,18 @@ pub fn trans_trait_callee_from_llval(bcx: block,
                     llself = llbox;
                 }
             }
-
-            let llscratch = alloca(bcx, val_ty(llself));
-            Store(bcx, llself, llscratch);
-            llself = llscratch;
-
-            self_mode = ty::ByRef;
         }
         ast::sty_box(_) => {
             // Bump the reference count on the box.
             debug!("(translating trait callee) callee type is `%s`",
                    bcx.ty_to_str(callee_ty));
-            bcx = glue::take_ty(bcx, llbox, callee_ty);
+            glue::incr_refcnt_of_boxed(bcx, llbox);
 
             // Pass a pointer to the box.
             match store {
                 ty::BoxTraitStore => llself = llbox,
                 _ => bcx.tcx().sess.bug("@self receiver with non-@Trait")
             }
-
-            let llscratch = alloca(bcx, val_ty(llself));
-            Store(bcx, llself, llscratch);
-            llself = llscratch;
-
-            self_mode = ty::ByRef;
         }
         ast::sty_uniq => {
             // Pass the unique pointer.
@@ -629,13 +606,14 @@ pub fn trans_trait_callee_from_llval(bcx: block,
                 _ => bcx.tcx().sess.bug("~self receiver with non-~Trait")
             }
 
-            let llscratch = alloca(bcx, val_ty(llself));
-            Store(bcx, llself, llscratch);
-            llself = llscratch;
-
-            self_mode = ty::ByRef;
+            zero_mem(bcx, llboxptr, ty::mk_opaque_box(bcx.tcx()));
         }
     }
+
+    llself = PointerCast(bcx, llself, Type::opaque_box(ccx).ptr_to());
+    let scratch = scratch_datum(bcx, ty::mk_opaque_box(bcx.tcx()), false);
+    Store(bcx, llself, scratch.val);
+    scratch.add_clean(bcx);
 
     // Load the function from the vtable and cast it to the expected type.
     debug!("(translating trait callee) loading method");
@@ -650,10 +628,10 @@ pub fn trans_trait_callee_from_llval(bcx: block,
         bcx: bcx,
         data: Method(MethodData {
             llfn: mptr,
-            llself: llself,
-            self_ty: ty::mk_opaque_box(bcx.tcx()),
-            self_mode: self_mode,
-            explicit_self: explicit_self
+            llself: scratch.to_value_llval(bcx),
+            temp_cleanup: Some(scratch.val),
+            self_ty: scratch.ty,
+            self_mode: ty::ByCopy,
             /* XXX: Some(llbox) */
         })
     };

@@ -1626,18 +1626,11 @@ pub fn create_llargs_for_fn_args(cx: fn_ctxt,
     let _icx = push_ctxt("create_llargs_for_fn_args");
 
     match self_arg {
-      impl_self(tt) => {
+      impl_self(tt, self_mode) => {
         cx.llself = Some(ValSelfData {
             v: cx.llenv,
             t: tt,
-            is_owned: false
-        });
-      }
-      impl_owned_self(tt) => {
-        cx.llself = Some(ValSelfData {
-            v: cx.llenv,
-            t: tt,
-            is_owned: true
+            is_copy: self_mode == ty::ByCopy
         });
       }
       no_self => ()
@@ -1676,12 +1669,18 @@ pub fn copy_args_to_allocas(fcx: fn_ctxt,
 
     match fcx.llself {
         Some(slf) => {
-            let self_val = PointerCast(bcx, slf.v, type_of(bcx.ccx(), slf.t).ptr_to());
-            fcx.llself = Some(ValSelfData {v: self_val, ..slf});
+            let self_val = if slf.is_copy
+                    && datum::appropriate_mode(slf.t).is_by_value() {
+                let tmp = BitCast(bcx, slf.v, type_of(bcx.ccx(), slf.t));
+                let alloc = alloc_ty(bcx, slf.t);
+                Store(bcx, tmp, alloc);
+                alloc
+            } else {
+                PointerCast(bcx, slf.v, type_of(bcx.ccx(), slf.t).ptr_to())
+            };
 
-            if slf.is_owned {
-                add_clean(bcx, slf.v, slf.t);
-            }
+            fcx.llself = Some(ValSelfData {v: self_val, ..slf});
+            add_clean(bcx, self_val, slf.t);
         }
         _ => {}
     }
@@ -1758,7 +1757,7 @@ pub fn tie_up_header_blocks(fcx: fn_ctxt, lltop: BasicBlockRef) {
     }
 }
 
-pub enum self_arg { impl_self(ty::t), impl_owned_self(ty::t), no_self, }
+pub enum self_arg { impl_self(ty::t, ty::SelfMode), no_self, }
 
 // trans_closure: Builds an LLVM function out of a source function.
 // If the function closes over its environment a closure will be
