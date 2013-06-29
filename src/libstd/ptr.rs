@@ -232,9 +232,9 @@ pub unsafe fn array_each<T>(arr: **T, cb: &fn(*T)) {
 
 #[allow(missing_doc)]
 pub trait RawPtr<T> {
-    fn is_null(&const self) -> bool;
-    fn is_not_null(&const self) -> bool;
-    unsafe fn to_option(&const self) -> Option<&T>;
+    fn is_null(&self) -> bool;
+    fn is_not_null(&self) -> bool;
+    unsafe fn to_option(&self) -> Option<&T>;
     fn offset(&self, count: uint) -> Self;
 }
 
@@ -242,11 +242,11 @@ pub trait RawPtr<T> {
 impl<T> RawPtr<T> for *T {
     /// Returns true if the pointer is equal to the null pointer.
     #[inline]
-    fn is_null(&const self) -> bool { is_null(*self) }
+    fn is_null(&self) -> bool { is_null(*self) }
 
     /// Returns true if the pointer is not equal to the null pointer.
     #[inline]
-    fn is_not_null(&const self) -> bool { is_not_null(*self) }
+    fn is_not_null(&self) -> bool { is_not_null(*self) }
 
     ///
     /// Returns `None` if the pointer is null, or else returns the value wrapped
@@ -259,7 +259,7 @@ impl<T> RawPtr<T> for *T {
     /// be pointing to invalid memory.
     ///
     #[inline]
-    unsafe fn to_option(&const self) -> Option<&T> {
+    unsafe fn to_option(&self) -> Option<&T> {
         if self.is_null() { None } else {
             Some(cast::transmute(*self))
         }
@@ -274,11 +274,11 @@ impl<T> RawPtr<T> for *T {
 impl<T> RawPtr<T> for *mut T {
     /// Returns true if the pointer is equal to the null pointer.
     #[inline]
-    fn is_null(&const self) -> bool { is_null(*self) }
+    fn is_null(&self) -> bool { is_null(*self) }
 
     /// Returns true if the pointer is not equal to the null pointer.
     #[inline]
-    fn is_not_null(&const self) -> bool { is_not_null(*self) }
+    fn is_not_null(&self) -> bool { is_not_null(*self) }
 
     ///
     /// Returns `None` if the pointer is null, or else returns the value wrapped
@@ -291,7 +291,7 @@ impl<T> RawPtr<T> for *mut T {
     /// be pointing to invalid memory.
     ///
     #[inline]
-    unsafe fn to_option(&const self) -> Option<&T> {
+    unsafe fn to_option(&self) -> Option<&T> {
         if self.is_null() { None } else {
             Some(cast::transmute(*self))
         }

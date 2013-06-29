@@ -569,7 +569,7 @@ Section: Misc
 */
 
 /// Determines if a vector of bytes contains valid UTF-8
-pub fn is_utf8(v: &const [u8]) -> bool {
+pub fn is_utf8(v: &[u8]) -> bool {
     let mut i = 0u;
     let total = v.len();
     while i < total {
@@ -815,7 +815,7 @@ pub mod raw {
     }
 
     /// Create a Rust string from a *u8 buffer of the given length
-    pub unsafe fn from_buf_len(buf: *const u8, len: uint) -> ~str {
+    pub unsafe fn from_buf_len(buf: *u8, len: uint) -> ~str {
         let mut v: ~[u8] = vec::with_capacity(len + 1);
         vec::as_mut_buf(v, |vbuf, _len| {
             ptr::copy_memory(vbuf, buf as *u8, len)
@@ -838,8 +838,8 @@ pub mod raw {
     }
 
     /// Converts a vector of bytes to a new owned string.
-    pub unsafe fn from_bytes(v: &const [u8]) -> ~str {
-        do vec::as_const_buf(v) |buf, len| {
+    pub unsafe fn from_bytes(v: &[u8]) -> ~str {
+        do vec::as_imm_buf(v) |buf, len| {
             from_buf_len(buf, len)
         }
     }

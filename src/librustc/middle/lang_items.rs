@@ -152,122 +152,122 @@ impl LanguageItems {
 
     // FIXME #4621: Method macros sure would be nice here.
 
-    pub fn freeze_trait(&const self) -> def_id {
+    pub fn freeze_trait(&self) -> def_id {
         self.items[FreezeTraitLangItem as uint].get()
     }
-    pub fn copy_trait(&const self) -> def_id {
+    pub fn copy_trait(&self) -> def_id {
         self.items[CopyTraitLangItem as uint].get()
     }
-    pub fn send_trait(&const self) -> def_id {
+    pub fn send_trait(&self) -> def_id {
         self.items[SendTraitLangItem as uint].get()
     }
-    pub fn sized_trait(&const self) -> def_id {
+    pub fn sized_trait(&self) -> def_id {
         self.items[SizedTraitLangItem as uint].get()
     }
 
-    pub fn drop_trait(&const self) -> def_id {
+    pub fn drop_trait(&self) -> def_id {
         self.items[DropTraitLangItem as uint].get()
     }
 
-    pub fn add_trait(&const self) -> def_id {
+    pub fn add_trait(&self) -> def_id {
         self.items[AddTraitLangItem as uint].get()
     }
-    pub fn sub_trait(&const self) -> def_id {
+    pub fn sub_trait(&self) -> def_id {
         self.items[SubTraitLangItem as uint].get()
     }
-    pub fn mul_trait(&const self) -> def_id {
+    pub fn mul_trait(&self) -> def_id {
         self.items[MulTraitLangItem as uint].get()
     }
-    pub fn div_trait(&const self) -> def_id {
+    pub fn div_trait(&self) -> def_id {
         self.items[DivTraitLangItem as uint].get()
     }
-    pub fn rem_trait(&const self) -> def_id {
+    pub fn rem_trait(&self) -> def_id {
         self.items[RemTraitLangItem as uint].get()
     }
-    pub fn neg_trait(&const self) -> def_id {
+    pub fn neg_trait(&self) -> def_id {
         self.items[NegTraitLangItem as uint].get()
     }
-    pub fn not_trait(&const self) -> def_id {
+    pub fn not_trait(&self) -> def_id {
         self.items[NotTraitLangItem as uint].get()
     }
-    pub fn bitxor_trait(&const self) -> def_id {
+    pub fn bitxor_trait(&self) -> def_id {
         self.items[BitXorTraitLangItem as uint].get()
     }
-    pub fn bitand_trait(&const self) -> def_id {
+    pub fn bitand_trait(&self) -> def_id {
         self.items[BitAndTraitLangItem as uint].get()
     }
-    pub fn bitor_trait(&const self) -> def_id {
+    pub fn bitor_trait(&self) -> def_id {
         self.items[BitOrTraitLangItem as uint].get()
     }
-    pub fn shl_trait(&const self) -> def_id {
+    pub fn shl_trait(&self) -> def_id {
         self.items[ShlTraitLangItem as uint].get()
     }
-    pub fn shr_trait(&const self) -> def_id {
+    pub fn shr_trait(&self) -> def_id {
         self.items[ShrTraitLangItem as uint].get()
     }
-    pub fn index_trait(&const self) -> def_id {
+    pub fn index_trait(&self) -> def_id {
         self.items[IndexTraitLangItem as uint].get()
     }
 
-    pub fn eq_trait(&const self) -> def_id {
+    pub fn eq_trait(&self) -> def_id {
         self.items[EqTraitLangItem as uint].get()
     }
-    pub fn ord_trait(&const self) -> def_id {
+    pub fn ord_trait(&self) -> def_id {
         self.items[OrdTraitLangItem as uint].get()
     }
 
-    pub fn str_eq_fn(&const self) -> def_id {
+    pub fn str_eq_fn(&self) -> def_id {
         self.items[StrEqFnLangItem as uint].get()
     }
-    pub fn uniq_str_eq_fn(&const self) -> def_id {
+    pub fn uniq_str_eq_fn(&self) -> def_id {
         self.items[UniqStrEqFnLangItem as uint].get()
     }
-    pub fn annihilate_fn(&const self) -> def_id {
+    pub fn annihilate_fn(&self) -> def_id {
         self.items[AnnihilateFnLangItem as uint].get()
     }
-    pub fn log_type_fn(&const self) -> def_id {
+    pub fn log_type_fn(&self) -> def_id {
         self.items[LogTypeFnLangItem as uint].get()
     }
-    pub fn fail_fn(&const self) -> def_id {
+    pub fn fail_fn(&self) -> def_id {
         self.items[FailFnLangItem as uint].get()
     }
-    pub fn fail_bounds_check_fn(&const self) -> def_id {
+    pub fn fail_bounds_check_fn(&self) -> def_id {
         self.items[FailBoundsCheckFnLangItem as uint].get()
     }
-    pub fn exchange_malloc_fn(&const self) -> def_id {
+    pub fn exchange_malloc_fn(&self) -> def_id {
         self.items[ExchangeMallocFnLangItem as uint].get()
     }
-    pub fn exchange_free_fn(&const self) -> def_id {
+    pub fn exchange_free_fn(&self) -> def_id {
         self.items[ExchangeFreeFnLangItem as uint].get()
     }
-    pub fn malloc_fn(&const self) -> def_id {
+    pub fn malloc_fn(&self) -> def_id {
         self.items[MallocFnLangItem as uint].get()
     }
-    pub fn free_fn(&const self) -> def_id {
+    pub fn free_fn(&self) -> def_id {
         self.items[FreeFnLangItem as uint].get()
     }
-    pub fn borrow_as_imm_fn(&const self) -> def_id {
+    pub fn borrow_as_imm_fn(&self) -> def_id {
         self.items[BorrowAsImmFnLangItem as uint].get()
     }
-    pub fn borrow_as_mut_fn(&const self) -> def_id {
+    pub fn borrow_as_mut_fn(&self) -> def_id {
         self.items[BorrowAsMutFnLangItem as uint].get()
     }
-    pub fn return_to_mut_fn(&const self) -> def_id {
+    pub fn return_to_mut_fn(&self) -> def_id {
         self.items[ReturnToMutFnLangItem as uint].get()
     }
-    pub fn check_not_borrowed_fn(&const self) -> def_id {
+    pub fn check_not_borrowed_fn(&self) -> def_id {
         self.items[CheckNotBorrowedFnLangItem as uint].get()
     }
-    pub fn strdup_uniq_fn(&const self) -> def_id {
+    pub fn strdup_uniq_fn(&self) -> def_id {
         self.items[StrDupUniqFnLangItem as uint].get()
     }
-    pub fn record_borrow_fn(&const self) -> def_id {
+    pub fn record_borrow_fn(&self) -> def_id {
         self.items[RecordBorrowFnLangItem as uint].get()
     }
-    pub fn unrecord_borrow_fn(&const self) -> def_id {
+    pub fn unrecord_borrow_fn(&self) -> def_id {
         self.items[UnrecordBorrowFnLangItem as uint].get()
     }
-    pub fn start_fn(&const self) -> def_id {
+    pub fn start_fn(&self) -> def_id {
         self.items[StartFnLangItem as uint].get()
     }
     pub fn ty_desc(&const self) -> def_id {

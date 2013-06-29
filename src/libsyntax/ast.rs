@@ -333,7 +333,7 @@ pub enum binop {
 #[deriving(Eq, Encodable, Decodable,IterBytes)]
 pub enum unop {
     box(mutability),
-    uniq(mutability),
+    uniq,
     deref,
     not,
     neg
@@ -805,7 +805,7 @@ pub enum explicit_self_ {
     sty_value,                                 // `self`
     sty_region(Option<@Lifetime>, mutability), // `&'lt self`
     sty_box(mutability),                       // `@self`
-    sty_uniq(mutability)                       // `~self`
+    sty_uniq                                   // `~self`
 }
 
 pub type explicit_self = spanned<explicit_self_>;
