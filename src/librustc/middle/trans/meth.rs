@@ -532,7 +532,7 @@ pub fn trans_trait_callee(bcx: block,
     let llpair = match explicit_self {
         ast::sty_region(*) => Load(bcx, llpair),
         ast::sty_static | ast::sty_value |
-        ast::sty_box(_) | ast::sty_uniq(_) => llpair
+        ast::sty_box(_) | ast::sty_uniq => llpair
     };
 
     let callee_ty = node_id_type(bcx, callee_id);
@@ -622,7 +622,7 @@ pub fn trans_trait_callee_from_llval(bcx: block,
 
             self_mode = ty::ByRef;
         }
-        ast::sty_uniq(_) => {
+        ast::sty_uniq => {
             // Pass the unique pointer.
             match store {
                 ty::UniqTraitStore => llself = llbox,

@@ -129,7 +129,7 @@ type TaskGroupInner<'self> = &'self mut Option<TaskGroupData>;
 
 // A taskgroup is 'dead' when nothing can cause it to fail; only members can.
 fn taskgroup_is_dead(tg: &TaskGroupData) -> bool {
-    (&const tg.members).is_empty()
+    tg.members.is_empty()
 }
 
 // A list-like structure by which taskgroups keep track of all ancestor groups

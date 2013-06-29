@@ -2071,9 +2071,8 @@ impl Parser {
             ex = match e.node {
               expr_vec(*) |
               expr_lit(@codemap::spanned { node: lit_str(_), span: _}) |
-              expr_repeat(*)
-              if m == m_imm => expr_vstore(e, expr_vstore_uniq),
-              _ => self.mk_unary(uniq(m), e)
+              expr_repeat(*) => expr_vstore(e, expr_vstore_uniq),
+              _ => self.mk_unary(uniq, e)
             };
           }
           _ => return self.parse_dot_or_call_expr()
@@ -3366,7 +3365,12 @@ impl Parser {
             maybe_parse_explicit_self(sty_box, self)
           }
           token::TILDE => {
-            maybe_parse_explicit_self(sty_uniq, self)
+            maybe_parse_explicit_self(|mutability| {
+                if mutability != m_imm {
+                    self.obsolete(*self.last_span, ObsoleteMutOwnedPointer);
+                }
+                sty_uniq
+            }, self)
           }
           token::IDENT(*) if self.is_self_ident() => {
             self.bump();

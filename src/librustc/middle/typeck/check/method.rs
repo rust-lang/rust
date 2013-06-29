@@ -1123,11 +1123,11 @@ impl<'self> LookupContext<'self> {
                 }
             }
 
-            sty_uniq(m) => {
+            sty_uniq => {
                 debug!("(is relevant?) explicit self is a unique pointer");
                 match ty::get(rcvr_ty).sty {
                     ty::ty_uniq(mt) => {
-                        mutability_matches(mt.mutbl, m) &&
+                        mutability_matches(mt.mutbl, ast::m_imm) &&
                         self.fcx.can_mk_subty(mt.ty, candidate.rcvr_ty).is_ok()
                     }
 

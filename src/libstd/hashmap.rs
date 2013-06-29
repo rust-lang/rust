@@ -282,10 +282,10 @@ impl<K:Hash + Eq,V> HashMap<K, V> {
 
 impl<K:Hash + Eq,V> Container for HashMap<K, V> {
     /// Return the number of elements in the map
-    fn len(&const self) -> uint { self.size }
+    fn len(&self) -> uint { self.size }
 
     /// Return true if the map contains no elements
-    fn is_empty(&const self) -> bool { self.len() == 0 }
+    fn is_empty(&self) -> bool { self.len() == 0 }
 }
 
 impl<K:Hash + Eq,V> Mutable for HashMap<K, V> {
@@ -623,10 +623,10 @@ impl<T:Hash + Eq> Eq for HashSet<T> {
 
 impl<T:Hash + Eq> Container for HashSet<T> {
     /// Return the number of elements in the set
-    fn len(&const self) -> uint { self.map.len() }
+    fn len(&self) -> uint { self.map.len() }
 
     /// Return true if the set contains no elements
-    fn is_empty(&const self) -> bool { self.map.is_empty() }
+    fn is_empty(&self) -> bool { self.map.is_empty() }
 }
 
 impl<T:Hash + Eq> Mutable for HashSet<T> {

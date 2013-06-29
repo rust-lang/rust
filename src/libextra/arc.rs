@@ -436,8 +436,8 @@ impl<T:Freeze + Send> RWARC<T> {
 // lock it. This wraps the unsafety, with the justification that the 'lock'
 // field is never overwritten; only 'failed' and 'data'.
 #[doc(hidden)]
-fn borrow_rwlock<T:Freeze + Send>(state: *const RWARCInner<T>) -> *RWlock {
-    unsafe { cast::transmute(&const (*state).lock) }
+fn borrow_rwlock<T:Freeze + Send>(state: *mut RWARCInner<T>) -> *RWlock {
+    unsafe { cast::transmute(&(*state).lock) }
 }
 
 /// The "write permission" token used for RWARC.write_downgrade().
