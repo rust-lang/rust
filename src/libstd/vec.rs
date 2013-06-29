@@ -365,15 +365,6 @@ pub fn append_one<T>(lhs: ~[T], x: T) -> ~[T] {
 
 // Functional utilities
 
-/// Apply a function to each element of a vector and return the results
-pub fn map<T, U>(v: &[T], f: &fn(t: &T) -> U) -> ~[U] {
-    let mut result = with_capacity(v.len());
-    for v.iter().advance |elem| {
-        result.push(f(elem));
-    }
-    result
-}
-
 /// Consumes a vector, mapping it into a different vector. This function takes
 /// ownership of the supplied vector `v`, moving each element into the closure
 /// provided to generate a new element. The vector of new elements is then
@@ -388,16 +379,6 @@ pub fn map_consume<T, U>(v: ~[T], f: &fn(v: T) -> U) -> ~[U] {
     }
     result
 }
-
-/// Apply a function to each element of a vector and return the results
-pub fn mapi<T, U>(v: &[T], f: &fn(uint, t: &T) -> U) -> ~[U] {
-    let mut i = 0;
-    do map(v) |e| {
-        i += 1;
-        f(i - 1, e)
-    }
-}
-
 /**
  * Apply a function to each element of a vector and return a concatenation
  * of each result vector
@@ -406,23 +387,6 @@ pub fn flat_map<T, U>(v: &[T], f: &fn(t: &T) -> ~[U]) -> ~[U] {
     let mut result = ~[];
     for v.iter().advance |elem| { result.push_all_move(f(elem)); }
     result
-}
-
-/**
- * Apply a function to each pair of elements and return the results.
- * Equivalent to `map(zip(v0, v1), f)`.
- */
-pub fn map_zip<T:Copy,U:Copy,V>(v0: &[T], v1: &[U],
-                                  f: &fn(t: &T, v: &U) -> V) -> ~[V] {
-    let v0_len = v0.len();
-    if v0_len != v1.len() { fail!(); }
-    let mut u: ~[V] = ~[];
-    let mut i = 0u;
-    while i < v0_len {
-        u.push(f(&v0[i], &v1[i]));
-        i += 1u;
-    }
-    u
 }
 
 pub fn filter_map<T, U>(
@@ -983,14 +947,13 @@ pub trait ImmutableVector<'self, T> {
     fn last(&self) -> &'self T;
     fn last_opt(&self) -> Option<&'self T>;
     fn rposition(&self, f: &fn(t: &T) -> bool) -> Option<uint>;
-    fn map<U>(&self, f: &fn(t: &T) -> U) -> ~[U];
-    fn mapi<U>(&self, f: &fn(uint, t: &T) -> U) -> ~[U];
-    fn map_r<U>(&self, f: &fn(x: &T) -> U) -> ~[U];
     fn flat_map<U>(&self, f: &fn(t: &T) -> ~[U]) -> ~[U];
     fn filter_mapped<U:Copy>(&self, f: &fn(t: &T) -> Option<U>) -> ~[U];
     unsafe fn unsafe_ref(&self, index: uint) -> *T;
 
     fn bsearch(&self, f: &fn(&T) -> Ordering) -> Option<uint>;
+
+    fn map<U>(&self, &fn(t: &T) -> U) -> ~[U];
 }
 
 /// Extension methods for vectors
@@ -1087,29 +1050,6 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
         None
     }
 
-    /// Apply a function to each element of a vector and return the results
-    #[inline]
-    fn map<U>(&self, f: &fn(t: &T) -> U) -> ~[U] { map(*self, f) }
-
-    /**
-     * Apply a function to the index and value of each element in the vector
-     * and return the results
-     */
-    fn mapi<U>(&self, f: &fn(uint, t: &T) -> U) -> ~[U] {
-        mapi(*self, f)
-    }
-
-    #[inline]
-    fn map_r<U>(&self, f: &fn(x: &T) -> U) -> ~[U] {
-        let mut r = ~[];
-        let mut i = 0;
-        while i < self.len() {
-            r.push(f(&self[i]));
-            i += 1;
-        }
-        r
-    }
-
     /**
      * Apply a function to each element of a vector and return a concatenation
      * of each result vector
@@ -1164,6 +1104,13 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
             lim >>= 1;
         }
         return None;
+    }
+
+    /// Deprecated, use iterators where possible
+    /// (`self.iter().transform(f)`). Apply a function to each element
+    /// of a vector and return the results.
+    fn map<U>(&self, f: &fn(t: &T) -> U) -> ~[U] {
+        self.iter().transform(f).collect()
     }
 }
 
@@ -2101,7 +2048,7 @@ pub mod bytes {
 impl<A:Clone> Clone for ~[A] {
     #[inline]
     fn clone(&self) -> ~[A] {
-        self.map(|item| item.clone())
+        self.iter().transform(|item| item.clone()).collect()
     }
 }
 
@@ -2648,33 +2595,22 @@ mod tests {
     #[test]
     fn test_map() {
         // Test on-stack map.
-        let mut v = ~[1u, 2u, 3u];
-        let mut w = map(v, square_ref);
+        let v = &[1u, 2u, 3u];
+        let mut w = v.map(square_ref);
         assert_eq!(w.len(), 3u);
         assert_eq!(w[0], 1u);
         assert_eq!(w[1], 4u);
         assert_eq!(w[2], 9u);
 
         // Test on-heap map.
-        v = ~[1u, 2u, 3u, 4u, 5u];
-        w = map(v, square_ref);
+        let v = ~[1u, 2u, 3u, 4u, 5u];
+        w = v.map(square_ref);
         assert_eq!(w.len(), 5u);
         assert_eq!(w[0], 1u);
         assert_eq!(w[1], 4u);
         assert_eq!(w[2], 9u);
         assert_eq!(w[3], 16u);
         assert_eq!(w[4], 25u);
-    }
-
-    #[test]
-    fn test_map_zip() {
-        fn times(x: &int, y: &int) -> int { *x * *y }
-        let f = times;
-        let v0 = ~[1, 2, 3, 4, 5];
-        let v1 = ~[5, 4, 3, 2, 1];
-        let u = map_zip::<int, int, int>(v0, v1, f);
-        let mut i = 0;
-        while i < 5 { assert!(v0[i] * v1[i] == u[i]); i += 1; }
     }
 
     #[test]
@@ -2708,7 +2644,7 @@ mod tests {
         let mix: ~[int] = ~[9, 2, 6, 7, 1, 0, 0, 3];
         let mix_dest: ~[int] = ~[1, 3, 0, 0];
         assert!(filter_mapped(all_even, halve) ==
-                     map(all_even, halve_for_sure));
+                     all_even.map(halve_for_sure));
         assert_eq!(filter_mapped(all_odd1, halve), ~[]);
         assert_eq!(filter_mapped(all_odd2, halve), ~[]);
         assert_eq!(filter_mapped(mix, halve), mix_dest);
@@ -2746,7 +2682,7 @@ mod tests {
         let mix: ~[int] = ~[9, 2, 6, 7, 1, 0, 0, 3];
         let mix_dest: ~[int] = ~[1, 3, 0, 0];
         assert!(filter_map(all_even, halve) ==
-                     map(all_even0, halve_for_sure));
+                     all_even0.map(halve_for_sure));
         assert_eq!(filter_map(all_odd1, halve), ~[]);
         assert_eq!(filter_map(all_odd2, halve), ~[]);
         assert_eq!(filter_map(mix, halve), mix_dest);
@@ -3278,7 +3214,7 @@ mod tests {
     fn test_map_fail() {
         let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
         let mut i = 0;
-        do map(v) |_elt| {
+        do v.map |_elt| {
             if i == 2 {
                 fail!()
             }
@@ -3305,41 +3241,10 @@ mod tests {
     #[test]
     #[ignore(windows)]
     #[should_fail]
-    fn test_mapi_fail() {
-        let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
-        let mut i = 0;
-        do mapi(v) |_i, _elt| {
-            if i == 2 {
-                fail!()
-            }
-            i += 0;
-            ~[(~0, @0)]
-        };
-    }
-
-    #[test]
-    #[ignore(windows)]
-    #[should_fail]
     fn test_flat_map_fail() {
         let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
         let mut i = 0;
-        do map(v) |_elt| {
-            if i == 2 {
-                fail!()
-            }
-            i += 0;
-            ~[(~0, @0)]
-        };
-    }
-
-    #[test]
-    #[ignore(windows)]
-    #[should_fail]
-    #[allow(non_implicitly_copyable_typarams)]
-    fn test_map_zip_fail() {
-        let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
-        let mut i = 0;
-        do map_zip(v, v) |_elt1, _elt2| {
+        do flat_map(v) |_elt| {
             if i == 2 {
                 fail!()
             }

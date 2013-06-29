@@ -52,7 +52,7 @@ fn get_sysroot_absolute_rt_lib(sess: session::Session) -> Path {
 }
 
 pub fn rpaths_to_flags(rpaths: &[Path]) -> ~[~str] {
-    vec::map(rpaths, |rpath| fmt!("-Wl,-rpath,%s",rpath.to_str()))
+    rpaths.iter().transform(|rpath| fmt!("-Wl,-rpath,%s",rpath.to_str())).collect()
 }
 
 fn get_rpaths(os: session::os,
@@ -103,9 +103,7 @@ fn get_rpaths(os: session::os,
 fn get_rpaths_relative_to_output(os: session::os,
                                  output: &Path,
                                  libs: &[Path]) -> ~[Path] {
-    vec::map(libs, |a| {
-        get_rpath_relative_to_output(os, output, a)
-    })
+    libs.iter().transform(|a| get_rpath_relative_to_output(os, output, a)).collect()
 }
 
 pub fn get_rpath_relative_to_output(os: session::os,
@@ -163,7 +161,7 @@ pub fn get_relative_to(abs1: &Path, abs2: &Path) -> Path {
 }
 
 fn get_absolute_rpaths(libs: &[Path]) -> ~[Path] {
-    vec::map(libs, |a| get_absolute_rpath(a) )
+    libs.iter().transform(|a| get_absolute_rpath(a)).collect()
 }
 
 pub fn get_absolute_rpath(lib: &Path) -> Path {

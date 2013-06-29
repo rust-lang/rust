@@ -20,7 +20,6 @@ use fold::Fold;
 use fold;
 use pass::Pass;
 
-use std::vec;
 use syntax::ast;
 use syntax::print::pprust;
 use syntax::parse::token;
@@ -114,7 +113,7 @@ fn fold_enum(
     let srv = fold.ctxt.clone();
 
     doc::EnumDoc {
-        variants: do vec::map(doc.variants) |variant| {
+        variants: do doc.variants.iter().transform |variant| {
             let sig = {
                 let variant = copy *variant;
                 do astsrv::exec(srv.clone()) |ctxt| {
@@ -139,7 +138,7 @@ fn fold_enum(
                 sig: Some(sig),
                 .. copy *variant
             }
-        },
+        }.collect(),
         .. doc
     }
 }
@@ -159,12 +158,12 @@ fn merge_methods(
     item_id: doc::AstId,
     docs: ~[doc::MethodDoc]
 ) -> ~[doc::MethodDoc] {
-    do vec::map(docs) |doc| {
+    do docs.iter().transform |doc| {
         doc::MethodDoc {
             sig: get_method_sig(srv.clone(), item_id, copy doc.name),
             .. copy *doc
         }
-    }
+    }.collect()
 }
 
 fn get_method_sig(

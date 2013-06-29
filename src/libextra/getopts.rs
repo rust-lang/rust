@@ -592,9 +592,9 @@ pub mod groups {
      */
     pub fn usage(brief: &str, opts: &[OptGroup]) -> ~str {
 
-        let desc_sep = ~"\n" + " ".repeat(24);
+        let desc_sep = "\n" + " ".repeat(24);
 
-        let rows = vec::map(opts, |optref| {
+        let mut rows = opts.iter().transform(|optref| {
             let OptGroup{short_name: short_name,
                          long_name: long_name,
                          hint: hint,
@@ -669,7 +669,7 @@ pub mod groups {
 
         return str::to_owned(brief) +
                "\n\nOptions:\n" +
-               rows.connect("\n") +
+               rows.collect::<~[~str]>().connect("\n") +
                "\n\n";
     }
 } // end groups module

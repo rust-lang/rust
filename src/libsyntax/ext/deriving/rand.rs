@@ -91,7 +91,7 @@ fn rand_substructure(cx: @ExtCtxt, span: span, substr: &Substructure) -> @expr {
             let rand_variant = cx.expr_binary(span, ast::rem,
                                               rv_call, variant_count);
 
-            let mut arms = do variants.mapi |i, id_sum| {
+            let mut arms = do variants.iter().enumerate().transform |(i, id_sum)| {
                 let i_expr = cx.expr_uint(span, i);
                 let pat = cx.pat_lit(span, i_expr);
 
@@ -102,7 +102,7 @@ fn rand_substructure(cx: @ExtCtxt, span: span, substr: &Substructure) -> @expr {
                                rand_thing(cx, span, ident, summary, || rand_call()))
                     }
                 }
-            };
+            }.collect::<~[ast::arm]>();
 
             // _ => {} at the end. Should never occur
             arms.push(cx.arm_unreachable(span));

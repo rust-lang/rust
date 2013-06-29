@@ -642,13 +642,13 @@ pub fn specialize(cx: &MatchCheckCtxt,
                                          ty_to_str(cx.tcx, left_ty)));
                             }
                         }
-                        let args = vec::map(class_fields, |class_field| {
+                        let args = class_fields.iter().transform(|class_field| {
                             match flds.iter().find_(|f|
                                             f.ident == class_field.ident) {
                                 Some(f) => f.pat,
                                 _ => wild()
                             }
-                        });
+                        }).collect();
                         Some(vec::append(args, vec::to_owned(r.tail())))
                     }
                 }
