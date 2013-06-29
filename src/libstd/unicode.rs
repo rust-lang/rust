@@ -1447,9 +1447,7 @@ pub mod general_category {
     }
 
 }
-
 pub mod derived_property {
-
 
     fn bsearch_range_table(c: char, r: &'static [(char,char)]) -> bool {
         use cmp::{Equal, Less, Greater};
@@ -2641,4 +2639,5 @@ pub mod derived_property {
     pub fn XID_Start(c: char) -> bool {
         bsearch_range_table(c, XID_Start_table)
     }
+
 }
