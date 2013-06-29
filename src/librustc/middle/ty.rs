@@ -1969,7 +1969,7 @@ static TC_ONCE_CLOSURE: TypeContents =     TypeContents{bits: 0b0001_0000_0000};
 /// An enum with no variants.
 static TC_EMPTY_ENUM: TypeContents =       TypeContents{bits: 0b0010_0000_0000};
 
-/// Contains a type marked with `#[non_sendable]`
+/// Contains a type marked with `#[no_send]`
 static TC_NON_SENDABLE: TypeContents =     TypeContents{bits: 0b0100_0000_0000};
 
 /// Is a bare vector, str, function, trait, etc (only relevant at top level).
@@ -2204,10 +2204,10 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
     }
 
     fn apply_tc_attr(cx: ctxt, did: def_id, mut tc: TypeContents) -> TypeContents {
-        if has_attr(cx, did, "mutable") {
+        if has_attr(cx, did, "no_freeze") {
             tc = tc + TC_MUTABLE;
         }
-        if has_attr(cx, did, "non_sendable") {
+        if has_attr(cx, did, "no_send") {
             tc = tc + TC_NON_SENDABLE;
         }
         tc
