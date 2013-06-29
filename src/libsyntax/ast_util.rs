@@ -135,7 +135,7 @@ pub fn is_shift_binop(b: binop) -> bool {
 pub fn unop_to_str(op: unop) -> ~str {
     match op {
       box(mt) => if mt == m_mutbl { ~"@mut " } else { ~"@" },
-      uniq(mt) => if mt == m_mutbl { ~"~mut " } else { ~"~" },
+      uniq => ~"~",
       deref => ~"*",
       not => ~"!",
       neg => ~"-"

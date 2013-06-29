@@ -121,13 +121,13 @@ impl<T> Option<T> {
 
     /// Returns true if the option equals `none`
     #[inline]
-    pub fn is_none(&const self) -> bool {
+    pub fn is_none(&self) -> bool {
         match *self { None => true, Some(_) => false }
     }
 
     /// Returns true if the option contains some value
     #[inline]
-    pub fn is_some(&const self) -> bool { !self.is_none() }
+    pub fn is_some(&self) -> bool { !self.is_none() }
 
     /// Update an optional value by optionally running its content through a
     /// function that returns an option.

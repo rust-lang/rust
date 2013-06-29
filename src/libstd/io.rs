@@ -1152,7 +1152,7 @@ impl<W:Writer,C> Writer for Wrapper<W, C> {
 impl Writer for *libc::FILE {
     fn write(&self, v: &[u8]) {
         unsafe {
-            do vec::as_const_buf(v) |vbuf, len| {
+            do vec::as_imm_buf(v) |vbuf, len| {
                 let nout = libc::fwrite(vbuf as *c_void,
                                         1,
                                         len as size_t,
@@ -1203,9 +1203,9 @@ impl Writer for fd_t {
     fn write(&self, v: &[u8]) {
         unsafe {
             let mut count = 0u;
-            do vec::as_const_buf(v) |vbuf, len| {
+            do vec::as_imm_buf(v) |vbuf, len| {
                 while count < len {
-                    let vb = ptr::const_offset(vbuf, count) as *c_void;
+                    let vb = ptr::offset(vbuf, count) as *c_void;
                     let nout = libc::write(*self, vb, len as size_t);
                     if nout < 0 as ssize_t {
                         error!("error writing buffer");

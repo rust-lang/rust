@@ -3696,14 +3696,14 @@ pub enum DtorKind {
 }
 
 impl DtorKind {
-    pub fn is_not_present(&const self) -> bool {
+    pub fn is_not_present(&self) -> bool {
         match *self {
             NoDtor => true,
             _ => false
         }
     }
 
-    pub fn is_present(&const self) -> bool {
+    pub fn is_present(&self) -> bool {
         !self.is_not_present()
     }
 
