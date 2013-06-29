@@ -29,36 +29,30 @@ _rustc_opts_switches=(
     --target'[Target triple cpu-manufacturer-kernel\[-os\] to compile]'
     --target-feature'[Target specific attributes (llc -mattr=help for detail)]'
     --android-cross-path'[The path to the Android NDK]'
-    {-W,--warn}'[Set lint warnings]'
-    {-A,--allow}'[Set lint allowed]'
-    {-D,--deny}'[Set lint denied]'
-    {-F,--forbid}'[Set lint forbidden]'
-    -Z'[Set internal debugging options]'
     {-v,--version}'[Print version info and exit]'
 )
-
 _rustc_opts_lint=(
-    'path-statement:path statements with no effect'
-    'deprecated-pattern:warn about deprecated uses of pattern bindings'
-    'non-implicitly-copyable-typarams:passing non implicitly copyable types as copy type params'
-    'missing-trait-doc:detects missing documentation for traits'
-    'missing-struct-doc:detects missing documentation for structs'
-    'ctypes:proper use of core::libc types in foreign modules'
-    'implicit-copies:implicit copies of non implicitly copyable data'
-    "unused-mut:detect mut variables which don't need to be mutable"
-    'unused-imports:imports that are never used'
-    'heap-memory:use of any (~ type or @ type) heap memory'
-    'default-methods:allow default methods'
-    'unused-variable:detect variables which are not used in any way'
-    'dead-assignment:detect assignments that will never be read'
-    'unrecognized-lint:unrecognized lint attribute'
-    'type-limits:comparisons made useless by limits of the types involved'
-    'unused-unsafe:unnecessary use of an `unsafe` block'
-    'while-true:suggest using loop { } instead of while(true) { }'
-    'non-camel-case-types:types, variants and traits should have camel case names'
-    'managed-heap-memory:use of managed (@ type) heap memory'
-    'unnecessary-allocation:detects unnecessary allocations that can be eliminated'
-    'owned-heap-memory:use of owned (~ type) heap memory'
+    'path-statement[path statements with no effect]'
+    'deprecated-pattern[warn about deprecated uses of pattern bindings]'
+    'non-implicitly-copyable-typarams[passing non implicitly copyable types as copy type params]'
+    'missing-trait-doc[detects missing documentation for traits]'
+    'missing-struct-doc[detects missing documentation for structs]'
+    'ctypes[proper use of core::libc types in foreign modules]'
+    'implicit-copies[implicit copies of non implicitly copyable data]'
+    "unused-mut[detect mut variables which don't need to be mutable]"
+    'unused-imports[imports that are never used]'
+    'heap-memory[use of any (~ type or @ type) heap memory]'
+    'default-methods[allow default methods]'
+    'unused-variable[detect variables which are not used in any way]'
+    'dead-assignment[detect assignments that will never be read]'
+    'unrecognized-lint[unrecognized lint attribute]'
+    'type-limits[comparisons made useless by limits of the types involved]'
+    'unused-unsafe[unnecessary use of an `unsafe` block]'
+    'while-true[suggest using loop { } instead of while(true) { }]'
+    'non-camel-case-types[types, variants and traits should have camel case names]'
+    'managed-heap-memory[use of managed (@ type) heap memory]'
+    'unnecessary-allocation[detects unnecessary allocations that can be eliminated]'
+    'owned-heap-memory[use of owned (~ type) heap memory]'
 )
 
 _rustc_opts_debug=(
@@ -90,13 +84,20 @@ _rustc_opts_debug=(
     'lint-llvm:Run the LLVM lint pass on the pre-optimization IR'
 )
 
-_rustc() {
-    case $words[2] in
-        -[WADF]) _describe 'options' _rustc_opts_lint ;;
-        -Z) _describe 'options' _rustc_opts_debug ;;
-        -)  _arguments -s -w : "$_rustc_opts_switches[@]" ;;
-        *) _files -g "*.rs" ;;
-  esac
+_rustc_opts_fun_lint(){
+    _values -s , 'options' \
+        "$_rustc_opts_lint[@]"
 }
 
-_rustc "$@"
+_rustc_opts_fun_debug(){
+    _describe 'options' _rustc_opts_debug
+}
+
+_arguments -s :  \
+    '(-W --warn)'{-W,--warn}'[Set lint warnings]:lint options:_rustc_opts_fun_lint' \
+    '(-A --allow)'{-A,--allow}'[Set lint allowed]:lint options:_rustc_opts_fun_lint' \
+    '(-D --deny)'{-D,--deny}'[Set lint denied]:lint options:_rustc_opts_fun_lint' \
+    '(-F --forbid)'{-F,--forbid}'[Set lint forbidden]:lint options:_rustc_opts_fun_lint' \
+    '*-Z[Set internal debugging options]:debug options:_rustc_opts_fun_debug' \
+    "$_rustc_opts_switches[@]" \
+    '*::files:_files -g "*.rs"'
