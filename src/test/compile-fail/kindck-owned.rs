@@ -29,6 +29,6 @@ fn main() {
     copy2(boxed);
     let owned: ~fn() = || {};
     copy2(owned);    //~ ERROR does not fulfill `Copy`
-    let borrowed: &fn() = || {};
+    let borrowed: &fn:Copy() = || {};
     copy2(borrowed); //~ ERROR does not fulfill `'static`
 }

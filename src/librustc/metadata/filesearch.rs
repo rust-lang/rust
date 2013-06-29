@@ -48,7 +48,7 @@ pub fn mk_filesearch(maybe_sysroot: &Option<@Path>,
             debug!("filesearch: searching additional lib search paths [%?]",
                    self.addl_lib_search_paths.len());
             // a little weird
-            self.addl_lib_search_paths.iter().advance(f);
+            self.addl_lib_search_paths.iter().advance(|path| f(path));
 
             debug!("filesearch: searching target lib path");
             if !f(&make_target_lib_path(self.sysroot,

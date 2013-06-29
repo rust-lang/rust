@@ -19,7 +19,6 @@ use visit;
 use std::hashmap::HashMap;
 use std::int;
 use std::option;
-use std::to_bytes;
 use std::cast;
 use std::local_data;
 
@@ -192,14 +191,6 @@ pub fn float_ty_to_str(t: float_ty) -> ~str {
 
 pub fn is_call_expr(e: @expr) -> bool {
     match e.node { expr_call(*) => true, _ => false }
-}
-
-// This makes def_id hashable
-impl to_bytes::IterBytes for def_id {
-    #[inline]
-    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
-        self.crate.iter_bytes(lsb0, f) && self.node.iter_bytes(lsb0, f)
-    }
 }
 
 pub fn block_from_expr(e: @expr) -> blk {
@@ -544,18 +535,18 @@ pub fn walk_pat(pat: @pat, it: &fn(@pat) -> bool) -> bool {
     match pat.node {
         pat_ident(_, _, Some(p)) => walk_pat(p, it),
         pat_struct(_, ref fields, _) => {
-            fields.iter().advance(|f| walk_pat(f.pat, it))
+            fields.iter().advance(|f| walk_pat(f.pat, |p| it(p)))
         }
         pat_enum(_, Some(ref s)) | pat_tup(ref s) => {
-            s.iter().advance(|&p| walk_pat(p, it))
+            s.iter().advance(|&p| walk_pat(p, |p| it(p)))
         }
         pat_box(s) | pat_uniq(s) | pat_region(s) => {
             walk_pat(s, it)
         }
         pat_vec(ref before, ref slice, ref after) => {
-            before.iter().advance(|&p| walk_pat(p, it)) &&
-                slice.iter().advance(|&p| walk_pat(p, it)) &&
-                after.iter().advance(|&p| walk_pat(p, it))
+            before.iter().advance(|&p| walk_pat(p, |p| it(p))) &&
+                slice.iter().advance(|&p| walk_pat(p, |p| it(p))) &&
+                after.iter().advance(|&p| walk_pat(p, |p| it(p)))
         }
         pat_wild | pat_lit(_) | pat_range(_, _) | pat_ident(_, _, _) |
         pat_enum(_, _) => {
@@ -704,7 +695,7 @@ pub fn new_sctable_internal() -> SCTable {
 pub fn get_sctable() -> @mut SCTable {
     unsafe {
         let sctable_key = (cast::transmute::<(uint, uint),
-                           &fn(v: @@mut SCTable)>(
+                           &fn:Copy(v: @@mut SCTable)>(
                                (-4 as uint, 0u)));
         match local_data::local_data_get(sctable_key) {
             None => {

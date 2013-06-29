@@ -671,7 +671,7 @@ impl<T:Hash + Eq> Set<T> for HashSet<T> {
     fn symmetric_difference(&self,
                             other: &HashSet<T>,
                             f: &fn(&T) -> bool) -> bool {
-        self.difference(other, f) && other.difference(self, f)
+        self.difference(other, |t| f(t)) && other.difference(self, |t| f(t))
     }
 
     /// Visit the values representing the intersection
@@ -681,7 +681,8 @@ impl<T:Hash + Eq> Set<T> for HashSet<T> {
 
     /// Visit the values representing the union
     fn union(&self, other: &HashSet<T>, f: &fn(&T) -> bool) -> bool {
-        self.iter().advance(f) && other.iter().advance(|v| self.contains(v) || f(v))
+        self.iter().advance(|t| f(t)) &&
+            other.iter().advance(|v| self.contains(v) || f(v))
     }
 }
 

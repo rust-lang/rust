@@ -595,7 +595,7 @@ pub fn walk_dir(p: &Path, f: &fn(&Path) -> bool) -> bool {
     let r = list_dir(p);
     r.iter().advance(|q| {
         let path = &p.push(*q);
-        f(path) && (!path_is_dir(path) || walk_dir(path, f))
+        f(path) && (!path_is_dir(path) || walk_dir(path, |p| f(p)))
     })
 }
 

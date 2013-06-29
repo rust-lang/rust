@@ -901,7 +901,7 @@ impl mem_categorization_ctxt {
                                 pat, downcast_cmt, subpat_ty,
                                 InteriorField(PositionalField(i)));
 
-                        self.cat_pattern(subcmt, subpat, op);
+                        self.cat_pattern(subcmt, subpat, |x,y| op(x,y));
                     }
                 }
                 Some(&ast::def_fn(*)) |
@@ -912,12 +912,12 @@ impl mem_categorization_ctxt {
                             self.cat_imm_interior(
                                 pat, cmt, subpat_ty,
                                 InteriorField(PositionalField(i)));
-                        self.cat_pattern(cmt_field, subpat, op);
+                        self.cat_pattern(cmt_field, subpat, |x,y| op(x,y));
                     }
                 }
                 Some(&ast::def_static(*)) => {
                     for subpats.iter().advance |&subpat| {
-                        self.cat_pattern(cmt, subpat, op);
+                        self.cat_pattern(cmt, subpat, |x,y| op(x,y));
                     }
                 }
                 _ => {
@@ -941,7 +941,7 @@ impl mem_categorization_ctxt {
             for field_pats.iter().advance |fp| {
                 let field_ty = self.pat_ty(fp.pat); // see (*)
                 let cmt_field = self.cat_field(pat, cmt, fp.ident, field_ty);
-                self.cat_pattern(cmt_field, fp.pat, op);
+                self.cat_pattern(cmt_field, fp.pat, |x,y| op(x,y));
             }
           }
 
@@ -953,7 +953,7 @@ impl mem_categorization_ctxt {
                     self.cat_imm_interior(
                         pat, cmt, subpat_ty,
                         InteriorField(PositionalField(i)));
-                self.cat_pattern(subcmt, subpat, op);
+                self.cat_pattern(subcmt, subpat, |x,y| op(x,y));
             }
           }
 
@@ -967,15 +967,15 @@ impl mem_categorization_ctxt {
           ast::pat_vec(ref before, slice, ref after) => {
               let elt_cmt = self.cat_index(pat, cmt, 0);
               for before.iter().advance |&before_pat| {
-                  self.cat_pattern(elt_cmt, before_pat, op);
+                  self.cat_pattern(elt_cmt, before_pat, |x,y| op(x,y));
               }
               for slice.iter().advance |&slice_pat| {
                   let slice_ty = self.pat_ty(slice_pat);
                   let slice_cmt = self.cat_rvalue(pat, slice_ty);
-                  self.cat_pattern(slice_cmt, slice_pat, op);
+                  self.cat_pattern(slice_cmt, slice_pat, |x,y| op(x,y));
               }
               for after.iter().advance |&after_pat| {
-                  self.cat_pattern(elt_cmt, after_pat, op);
+                  self.cat_pattern(elt_cmt, after_pat, |x,y| op(x,y));
               }
           }
 

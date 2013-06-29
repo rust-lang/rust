@@ -189,11 +189,11 @@ fn parse_trait_store(st: &mut PState) -> ty::TraitStore {
 fn parse_substs(st: &mut PState, conv: conv_did) -> ty::substs {
     let self_r = parse_opt(st, |st| parse_region(st) );
 
-    let self_ty = parse_opt(st, |st| parse_ty(st, conv) );
+    let self_ty = parse_opt(st, |st| parse_ty(st, |x,y| conv(x,y)) );
 
     assert_eq!(next(st), '[');
     let mut params: ~[ty::t] = ~[];
-    while peek(st) != ']' { params.push(parse_ty(st, conv)); }
+    while peek(st) != ']' { params.push(parse_ty(st, |x,y| conv(x,y))); }
     st.pos = st.pos + 1u;
 
     return ty::substs {
@@ -270,8 +270,8 @@ fn parse_str(st: &mut PState, term: char) -> ~str {
 }
 
 fn parse_trait_ref(st: &mut PState, conv: conv_did) -> ty::TraitRef {
-    let def = parse_def(st, NominalType, conv);
-    let substs = parse_substs(st, conv);
+    let def = parse_def(st, NominalType, |x,y| conv(x,y));
+    let substs = parse_substs(st, |x,y| conv(x,y));
     ty::TraitRef {def_id: def, substs: substs}
 }
 
@@ -301,18 +301,18 @@ fn parse_ty(st: &mut PState, conv: conv_did) -> ty::t {
       'c' => return ty::mk_char(),
       't' => {
         assert_eq!(next(st), '[');
-        let def = parse_def(st, NominalType, conv);
-        let substs = parse_substs(st, conv);
+        let def = parse_def(st, NominalType, |x,y| conv(x,y));
+        let substs = parse_substs(st, |x,y| conv(x,y));
         assert_eq!(next(st), ']');
         return ty::mk_enum(st.tcx, def, substs);
       }
       'x' => {
         assert_eq!(next(st), '[');
-        let def = parse_def(st, NominalType, conv);
-        let substs = parse_substs(st, conv);
+        let def = parse_def(st, NominalType, |x,y| conv(x,y));
+        let substs = parse_substs(st, |x,y| conv(x,y));
         let store = parse_trait_store(st);
         let mt = parse_mutability(st);
-        let bounds = parse_bounds(st, conv);
+        let bounds = parse_bounds(st, |x,y| conv(x,y));
         assert_eq!(next(st), ']');
         return ty::mk_trait(st.tcx, def, substs, store, mt, bounds.builtin_bounds);
       }
@@ -346,7 +346,7 @@ fn parse_ty(st: &mut PState, conv: conv_did) -> ty::t {
       'T' => {
         assert_eq!(next(st), '[');
         let mut params = ~[];
-        while peek(st) != ']' { params.push(parse_ty(st, conv)); }
+        while peek(st) != ']' { params.push(parse_ty(st, |x,y| conv(x,y))); }
         st.pos = st.pos + 1u;
         return ty::mk_tup(st.tcx, params);
       }
@@ -380,15 +380,15 @@ fn parse_ty(st: &mut PState, conv: conv_did) -> ty::t {
         }
       }
       '"' => {
-        let _ = parse_def(st, TypeWithId, conv);
-        let inner = parse_ty(st, conv);
+        let _ = parse_def(st, TypeWithId, |x,y| conv(x,y));
+        let inner = parse_ty(st, |x,y| conv(x,y));
         inner
       }
       'B' => ty::mk_opaque_box(st.tcx),
       'a' => {
           assert_eq!(next(st), '[');
-          let did = parse_def(st, NominalType, conv);
-          let substs = parse_substs(st, conv);
+          let did = parse_def(st, NominalType, |x,y| conv(x,y));
+          let substs = parse_substs(st, |x,y| conv(x,y));
           assert_eq!(next(st), ']');
           return ty::mk_struct(st.tcx, did, substs);
       }
@@ -473,8 +473,8 @@ fn parse_closure_ty(st: &mut PState, conv: conv_did) -> ty::ClosureTy {
     let purity = parse_purity(next(st));
     let onceness = parse_onceness(next(st));
     let region = parse_region(st);
-    let bounds = parse_bounds(st, conv);
-    let sig = parse_sig(st, conv);
+    let bounds = parse_bounds(st, |x,y| conv(x,y));
+    let sig = parse_sig(st, |x,y| conv(x,y));
     ty::ClosureTy {
         purity: purity,
         sigil: sigil,
@@ -500,7 +500,7 @@ fn parse_sig(st: &mut PState, conv: conv_did) -> ty::FnSig {
     assert_eq!(next(st), '[');
     let mut inputs = ~[];
     while peek(st) != ']' {
-        inputs.push(parse_ty(st, conv));
+        inputs.push(parse_ty(st, |x,y| conv(x,y)));
     }
     st.pos += 1u; // eat the ']'
     let ret_ty = parse_ty(st, conv);
@@ -544,8 +544,8 @@ pub fn parse_type_param_def_data(data: &[u8], start: uint,
 }
 
 fn parse_type_param_def(st: &mut PState, conv: conv_did) -> ty::TypeParameterDef {
-    ty::TypeParameterDef {def_id: parse_def(st, NominalType, conv),
-                          bounds: @parse_bounds(st, conv)}
+    ty::TypeParameterDef {def_id: parse_def(st, NominalType, |x,y| conv(x,y)),
+                          bounds: @parse_bounds(st, |x,y| conv(x,y))}
 }
 
 fn parse_bounds(st: &mut PState, conv: conv_did) -> ty::ParamBounds {
@@ -571,7 +571,7 @@ fn parse_bounds(st: &mut PState, conv: conv_did) -> ty::ParamBounds {
                 param_bounds.builtin_bounds.add(ty::BoundSized);
             }
             'I' => {
-                param_bounds.trait_bounds.push(@parse_trait_ref(st, conv));
+                param_bounds.trait_bounds.push(@parse_trait_ref(st, |x,y| conv(x,y)));
             }
             '.' => {
                 return param_bounds;

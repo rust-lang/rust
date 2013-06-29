@@ -22,7 +22,7 @@ use std::local_data;
 use std::rand;
 use std::rand::RngUtil;
 
-#[deriving(Encodable, Decodable, Eq)]
+#[deriving(Encodable, Decodable, Eq, IterBytes)]
 pub enum binop {
     PLUS,
     MINUS,
@@ -36,7 +36,7 @@ pub enum binop {
     SHR,
 }
 
-#[deriving(Encodable, Decodable, Eq)]
+#[deriving(Encodable, Decodable, Eq, IterBytes)]
 pub enum Token {
     /* Expression-operator symbols. */
     EQ,
@@ -97,7 +97,7 @@ pub enum Token {
     EOF,
 }
 
-#[deriving(Encodable, Decodable, Eq)]
+#[deriving(Encodable, Decodable, Eq, IterBytes)]
 /// For interpolation during macro expansion.
 pub enum nonterminal {
     nt_item(@ast::item),
@@ -484,7 +484,7 @@ pub fn get_ident_interner() -> @ident_interner {
     unsafe {
         let key =
             (cast::transmute::<(uint, uint),
-             &fn(v: @@::parse::token::ident_interner)>(
+             &fn:Copy(v: @@::parse::token::ident_interner)>(
                  (-3 as uint, 0u)));
         match local_data::local_data_get(key) {
             Some(interner) => *interner,

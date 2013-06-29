@@ -99,7 +99,7 @@ fn rand_substructure(cx: @ExtCtxt, span: span, substr: &Substructure) -> @expr {
                     (ident, ref summary) => {
                         cx.arm(span,
                                ~[ pat ],
-                               rand_thing(cx, span, ident, summary, rand_call))
+                               rand_thing(cx, span, ident, summary, || rand_call()))
                     }
                 }
             };

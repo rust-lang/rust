@@ -46,7 +46,7 @@ use task::local_data_priv::{local_get, local_pop, local_modify, local_set, Handl
  *
  * These two cases aside, the interface is safe.
  */
-pub type LocalDataKey<'self,T> = &'self fn(v: @T);
+pub type LocalDataKey<'self,T> = &'self fn:Copy(v: @T);
 
 /**
  * Remove a task-local data value from the table, returning the

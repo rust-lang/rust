@@ -463,7 +463,7 @@ pub fn each_split_within<'a>(ss: &'a str,
         cont
     };
 
-    ss.iter().enumerate().advance(machine);
+    ss.iter().enumerate().advance(|x| machine(x));
 
     // Let the automaton 'run out' by supplying trailing whitespace
     let mut fake_i = ss.len();
@@ -761,7 +761,7 @@ impl<'self> StrUtil for &'self str {
             // NB: len includes the trailing null.
             assert!(len > 0);
             if unsafe { *(ptr::offset(buf,len-1)) != 0 } {
-                to_owned(self).as_c_str(f)
+                to_owned(self).as_c_str(|s| f(s))
             } else {
                 f(buf as *libc::c_char)
             }

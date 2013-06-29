@@ -112,7 +112,7 @@ pub fn replace_bound_regions_in_fn_sig(
             // kinds of types.  This had already caused me several
             // bugs so I decided to switch over.
             do ty::fold_regions(tcx, *ty) |r, in_fn| {
-                if !in_fn { isr = append_isr(isr, to_r, r); }
+                if !in_fn { isr = append_isr(isr, |br| to_r(br), r); }
                 r
             };
 
@@ -211,18 +211,18 @@ pub fn relate_nested_regions(
         match ty::get(ty).sty {
             ty::ty_rptr(r, ref mt) |
             ty::ty_evec(ref mt, ty::vstore_slice(r)) => {
-                relate(*the_stack, r, relate_op);
+                relate(*the_stack, r, |x,y| relate_op(x,y));
                 the_stack.push(r);
-                walk_ty(tcx, the_stack, mt.ty, relate_op);
+                walk_ty(tcx, the_stack, mt.ty, |x,y| relate_op(x,y));
                 the_stack.pop();
             }
             _ => {
                 ty::fold_regions_and_ty(
                     tcx,
                     ty,
-                    |r| { relate(*the_stack, r, relate_op); r },
-                    |t| { walk_ty(tcx, the_stack, t, relate_op); t },
-                    |t| { walk_ty(tcx, the_stack, t, relate_op); t });
+                    |r| { relate(     *the_stack, r, |x,y| relate_op(x,y)); r },
+                    |t| { walk_ty(tcx, the_stack, t, |x,y| relate_op(x,y)); t },
+                    |t| { walk_ty(tcx, the_stack, t, |x,y| relate_op(x,y)); t });
             }
         }
     }
