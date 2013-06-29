@@ -135,8 +135,9 @@ pub struct method_map_entry {
 // of the method to be invoked
 pub type method_map = @mut HashMap<ast::node_id, method_map_entry>;
 
+pub type vtable_param_res = @~[vtable_origin];
 // Resolutions for bounds of all parameters, left to right, for a given path.
-pub type vtable_res = @~[vtable_origin];
+pub type vtable_res = @~[vtable_param_res];
 
 pub enum vtable_origin {
     /*
@@ -154,7 +155,12 @@ pub enum vtable_origin {
       The first uint is the param number (identifying T in the example),
       and the second is the bound number (identifying baz)
      */
-    vtable_param(uint, uint)
+    vtable_param(uint, uint),
+
+    /*
+     Dynamic vtable, comes from self.
+    */
+    vtable_self(ast::def_id)
 }
 
 impl Repr for vtable_origin {
@@ -170,6 +176,9 @@ impl Repr for vtable_origin {
 
             vtable_param(x, y) => {
                 fmt!("vtable_param(%?, %?)", x, y)
+            }
+            vtable_self(def_id) => {
+                fmt!("vtable_self(%?)", def_id)
             }
         }
     }

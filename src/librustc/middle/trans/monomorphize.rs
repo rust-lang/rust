@@ -43,6 +43,7 @@ pub fn monomorphic_fn(ccx: @mut CrateContext,
                       fn_id: ast::def_id,
                       real_substs: &ty::substs,
                       vtables: Option<typeck::vtable_res>,
+                      self_vtable: Option<typeck::vtable_origin>,
                       impl_did_opt: Option<ast::def_id>,
                       ref_id: Option<ast::node_id>)
     -> (ValueRef, bool)
@@ -165,6 +166,7 @@ pub fn monomorphic_fn(ccx: @mut CrateContext,
     let mut pt = /* bad */copy (*pt);
     pt.push(elt);
     let s = mangle_exported_name(ccx, /*bad*/copy pt, mono_ty);
+    debug!("monomorphize_fn mangled to %s", s);
 
     let mk_lldecl = || {
         let lldecl = decl_internal_cdecl_fn(ccx.llmod, /*bad*/copy s, llfty);
@@ -175,8 +177,8 @@ pub fn monomorphic_fn(ccx: @mut CrateContext,
     let psubsts = Some(@param_substs {
         tys: substs,
         vtables: vtables,
-        type_param_defs: tpt.generics.type_param_defs,
-        self_ty: real_substs.self_ty
+        self_ty: real_substs.self_ty,
+        self_vtable: self_vtable
     });
 
     let lldecl = match map_node {
@@ -194,7 +196,6 @@ pub fn monomorphic_fn(ccx: @mut CrateContext,
                  no_self,
                  psubsts,
                  fn_id.node,
-                 None,
                  []);
         d
       }
@@ -222,27 +223,17 @@ pub fn monomorphic_fn(ccx: @mut CrateContext,
         }
         d
       }
-      ast_map::node_method(mth, supplied_impl_did, _) => {
+      ast_map::node_method(mth, _, _) => {
         // XXX: What should the self type be here?
         let d = mk_lldecl();
         set_inline_hint_if_appr(/*bad*/copy mth.attrs, d);
-
-        // Override the impl def ID if necessary.
-        let impl_did;
-        match impl_did_opt {
-            None => impl_did = supplied_impl_did,
-            Some(override_impl_did) => impl_did = override_impl_did
-        }
-
-        meth::trans_method(ccx, pt, mth, psubsts, d, impl_did);
+        meth::trans_method(ccx, pt, mth, psubsts, d);
         d
       }
       ast_map::node_trait_method(@ast::provided(mth), _, pt) => {
         let d = mk_lldecl();
         set_inline_hint_if_appr(/*bad*/copy mth.attrs, d);
-        debug!("monomorphic_fn impl_did_opt is %?", impl_did_opt);
-        meth::trans_method(ccx, /*bad*/copy *pt, mth, psubsts, d,
-                           impl_did_opt.get());
+        meth::trans_method(ccx, /*bad*/copy *pt, mth, psubsts, d);
         d
       }
       ast_map::node_struct_ctor(struct_def, _, _) => {
@@ -337,14 +328,10 @@ pub fn make_mono_id(ccx: @mut CrateContext,
                     param_uses: Option<@~[type_use::type_uses]>) -> mono_id {
     let precise_param_ids = match vtables {
       Some(vts) => {
-        let item_ty = ty::lookup_item_type(ccx.tcx, item);
-        let mut i = 0;
-        vec::map_zip(*item_ty.generics.type_param_defs, substs, |type_param_def, subst| {
-            let mut v = ~[];
-            for type_param_def.bounds.trait_bounds.iter().advance |_bound| {
-                v.push(meth::vtable_id(ccx, &vts[i]));
-                i += 1;
-            }
+        debug!("make_mono_id vtables=%s substs=%s",
+               vts.repr(ccx.tcx), substs.repr(ccx.tcx));
+        vec::map_zip(*vts, substs, |vtable, subst| {
+            let v = vtable.map(|vt| meth::vtable_id(ccx, vt));
             (*subst, if !v.is_empty() { Some(@v) } else { None })
         })
       }

@@ -461,6 +461,7 @@ pub fn get_res_dtor(ccx: @mut CrateContext,
                                                     &tsubsts,
                                                     None,
                                                     None,
+                                                    None,
                                                     None);
 
         val
@@ -1544,17 +1545,15 @@ pub fn new_fn_ctxt_w_id(ccx: @mut CrateContext,
                         llfndecl: ValueRef,
                         id: ast::node_id,
                         output_type: ty::t,
-                        impl_id: Option<ast::def_id>,
                         param_substs: Option<@param_substs>,
                         sp: Option<span>)
                      -> fn_ctxt {
     for param_substs.iter().advance |p| { p.validate(); }
 
-    debug!("new_fn_ctxt_w_id(path=%s, id=%?, impl_id=%?, \
+    debug!("new_fn_ctxt_w_id(path=%s, id=%?, \
             param_substs=%s)",
            path_str(ccx.sess, path),
            id,
-           impl_id,
            param_substs.repr(ccx.tcx));
 
     let llbbs = mk_standard_basic_blocks(llfndecl);
@@ -1583,7 +1582,6 @@ pub fn new_fn_ctxt_w_id(ccx: @mut CrateContext,
           lllocals: @mut HashMap::new(),
           llupvars: @mut HashMap::new(),
           id: id,
-          impl_id: impl_id,
           param_substs: param_substs,
           span: sp,
           path: path,
@@ -1604,7 +1602,7 @@ pub fn new_fn_ctxt(ccx: @mut CrateContext,
                    output_type: ty::t,
                    sp: Option<span>)
                 -> fn_ctxt {
-    new_fn_ctxt_w_id(ccx, path, llfndecl, -1, output_type, None, None, sp)
+    new_fn_ctxt_w_id(ccx, path, llfndecl, -1, output_type, None, sp)
 }
 
 // NB: must keep 4 fns in sync:
@@ -1773,7 +1771,6 @@ pub fn trans_closure(ccx: @mut CrateContext,
                      self_arg: self_arg,
                      param_substs: Option<@param_substs>,
                      id: ast::node_id,
-                     impl_id: Option<ast::def_id>,
                      attributes: &[ast::attribute],
                      output_type: ty::t,
                      maybe_load_env: &fn(fn_ctxt),
@@ -1791,7 +1788,6 @@ pub fn trans_closure(ccx: @mut CrateContext,
                                llfndecl,
                                id,
                                output_type,
-                               impl_id,
                                param_substs,
                                Some(body.span));
     let raw_llargs = create_llargs_for_fn_args(fcx, self_arg, decl.inputs);
@@ -1850,7 +1846,6 @@ pub fn trans_fn(ccx: @mut CrateContext,
                 self_arg: self_arg,
                 param_substs: Option<@param_substs>,
                 id: ast::node_id,
-                impl_id: Option<ast::def_id>,
                 attrs: &[ast::attribute]) {
     let do_time = ccx.sess.trans_stats();
     let start = if do_time { time::get_time() }
@@ -1870,7 +1865,6 @@ pub fn trans_fn(ccx: @mut CrateContext,
                   self_arg,
                   param_substs,
                   id,
-                  impl_id,
                   attrs,
                   output_type,
                   |fcx| {
@@ -1920,7 +1914,6 @@ pub fn trans_enum_variant(ccx: @mut CrateContext,
                                llfndecl,
                                variant.node.id,
                                enum_ty,
-                               None,
                                param_substs,
                                None);
 
@@ -2000,7 +1993,6 @@ pub fn trans_tuple_struct(ccx: @mut CrateContext,
                                llfndecl,
                                ctor_id,
                                tup_ty,
-                               None,
                                param_substs,
                                None);
 
@@ -2080,7 +2072,6 @@ pub fn trans_item(ccx: @mut CrateContext, item: &ast::item) {
                      no_self,
                      None,
                      item.id,
-                     None,
                      item.attrs);
         } else {
             for body.node.stmts.iter().advance |stmt| {
