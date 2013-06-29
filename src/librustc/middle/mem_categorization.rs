@@ -78,7 +78,7 @@ pub enum categorization {
 }
 
 #[deriving(Eq)]
-struct CopiedUpvar {
+pub struct CopiedUpvar {
     upvar_id: ast::node_id,
     onceness: ast::Onceness,
 }
@@ -507,30 +507,41 @@ impl mem_categorization_ctxt {
               let ty = ty::node_id_to_type(self.tcx, fn_node_id);
               match ty::get(ty).sty {
                   ty::ty_closure(ref closure_ty) => {
-                      let sigil = closure_ty.sigil;
-                      match sigil {
-                          ast::BorrowedSigil => {
-                              let upvar_cmt =
-                                  self.cat_def(id, span, expr_ty, *inner);
-                              @cmt_ {
-                                  id:id,
-                                  span:span,
-                                  cat:cat_stack_upvar(upvar_cmt),
-                                  mutbl:upvar_cmt.mutbl.inherit(),
-                                  ty:upvar_cmt.ty
-                              }
+                      // Decide whether to use implicit reference or by copy/move
+                      // capture for the upvar. This, combined with the onceness,
+                      // determines whether the closure can move out of it.
+                      let var_is_refd = match (closure_ty.sigil, closure_ty.onceness) {
+                          // Many-shot stack closures can never move out.
+                          (ast::BorrowedSigil, ast::Many) => true,
+                          // 1-shot stack closures can move out with "-Z once-fns".
+                          (ast::BorrowedSigil, ast::Once)
+                              if self.tcx.sess.once_fns() => false,
+                          (ast::BorrowedSigil, ast::Once) => true,
+                          // Heap closures always capture by copy/move, and can
+                          // move out iff they are once.
+                          (ast::OwnedSigil, _) | (ast::ManagedSigil, _) => false,
+
+                      };
+                      if var_is_refd {
+                          let upvar_cmt =
+                              self.cat_def(id, span, expr_ty, *inner);
+                          @cmt_ {
+                              id:id,
+                              span:span,
+                              cat:cat_stack_upvar(upvar_cmt),
+                              mutbl:upvar_cmt.mutbl.inherit(),
+                              ty:upvar_cmt.ty
                           }
-                          ast::OwnedSigil | ast::ManagedSigil => {
-                              // FIXME #2152 allow mutation of moved upvars
-                              @cmt_ {
-                                  id:id,
-                                  span:span,
-                                  cat:cat_copied_upvar(CopiedUpvar {
-                                      upvar_id: upvar_id,
-                                      onceness: closure_ty.onceness}),
-                                  mutbl:McImmutable,
-                                  ty:expr_ty
-                              }
+                      } else {
+                          // FIXME #2152 allow mutation of moved upvars
+                          @cmt_ {
+                              id:id,
+                              span:span,
+                              cat:cat_copied_upvar(CopiedUpvar {
+                                  upvar_id: upvar_id,
+                                  onceness: closure_ty.onceness}),
+                              mutbl:McImmutable,
+                              ty:expr_ty
                           }
                       }
                   }
