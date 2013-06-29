@@ -10,6 +10,8 @@
 
 // Testing guarantees provided by once functions.
 
+// xfail-fast
+
 extern mod extra;
 use extra::arc;
 use std::util;
