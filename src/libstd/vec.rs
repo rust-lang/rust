@@ -646,44 +646,6 @@ impl<'self, T:Copy> VectorVector<T> for &'self [&'self [T]] {
     }
 }
 
-/**
- * Binary search a sorted vector with a comparator function.
- *
- * The comparator should implement an order consistent with the sort
- * order of the underlying vector, returning an order code that indicates
- * whether its argument is `Less`, `Equal` or `Greater` the desired target.
- *
- * Returns the index where the comparator returned `Equal`, or `None` if
- * not found.
- */
-pub fn bsearch<T>(v: &[T], f: &fn(&T) -> Ordering) -> Option<uint> {
-    let mut base : uint = 0;
-    let mut lim : uint = v.len();
-
-    while lim != 0 {
-        let ix = base + (lim >> 1);
-        match f(&v[ix]) {
-            Equal => return Some(ix),
-            Less => {
-                base = ix + 1;
-                lim -= 1;
-            }
-            Greater => ()
-        }
-        lim >>= 1;
-    }
-    return None;
-}
-
-/**
- * Binary search a sorted vector for a given element.
- *
- * Returns the index of the element or None if not found.
- */
-pub fn bsearch_elem<T:TotalOrd>(v: &[T], x: &T) -> Option<uint> {
-    bsearch(v, |p| p.cmp(x))
-}
-
 // FIXME: if issue #586 gets implemented, could have a postcondition
 // saying the two result lists have the same length -- or, could
 // return a nominal record with a constraint saying that, instead of
@@ -1119,6 +1081,8 @@ pub trait ImmutableVector<'self, T> {
     fn flat_map<U>(&self, f: &fn(t: &T) -> ~[U]) -> ~[U];
     fn filter_mapped<U:Copy>(&self, f: &fn(t: &T) -> Option<U>) -> ~[U];
     unsafe fn unsafe_ref(&self, index: uint) -> *T;
+
+    fn bsearch(&self, f: &fn(&T) -> Ordering) -> Option<uint>;
 }
 
 /// Extension methods for vectors
@@ -1264,6 +1228,35 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
         let (ptr, _): (*T, uint) = transmute(*self);
         ptr.offset(index)
     }
+
+    /**
+     * Binary search a sorted vector with a comparator function.
+     *
+     * The comparator should implement an order consistent with the sort
+     * order of the underlying vector, returning an order code that indicates
+     * whether its argument is `Less`, `Equal` or `Greater` the desired target.
+     *
+     * Returns the index where the comparator returned `Equal`, or `None` if
+     * not found.
+     */
+    fn bsearch(&self, f: &fn(&T) -> Ordering) -> Option<uint> {
+        let mut base : uint = 0;
+        let mut lim : uint = self.len();
+
+        while lim != 0 {
+            let ix = base + (lim >> 1);
+            match f(&self[ix]) {
+                Equal => return Some(ix),
+                Less => {
+                    base = ix + 1;
+                    lim -= 1;
+                }
+                Greater => ()
+            }
+            lim >>= 1;
+        }
+        return None;
+    }
 }
 
 #[allow(missing_doc)]
@@ -1290,6 +1283,22 @@ impl<'self,T:Eq> ImmutableEqVector<T> for &'self [T] {
     fn contains(&self, x: &T) -> bool {
         for self.iter().advance |elt| { if *x == *elt { return true; } }
         false
+    }
+}
+
+#[allow(missing_doc)]
+pub trait ImmutableTotalOrdVector<T: TotalOrd> {
+    fn bsearch_elem(&self, x: &T) -> Option<uint>;
+}
+
+impl<'self, T: TotalOrd> ImmutableTotalOrdVector<T> for &'self [T] {
+    /**
+     * Binary search a sorted vector for a given element.
+     *
+     * Returns the index of the element or None if not found.
+     */
+    fn bsearch_elem(&self, x: &T) -> Option<uint> {
+        self.bsearch(|p| p.cmp(x))
     }
 }
 
@@ -2841,47 +2850,47 @@ mod tests {
 
     #[test]
     fn test_bsearch_elem() {
-        assert_eq!(bsearch_elem([1,2,3,4,5], &5), Some(4));
-        assert_eq!(bsearch_elem([1,2,3,4,5], &4), Some(3));
-        assert_eq!(bsearch_elem([1,2,3,4,5], &3), Some(2));
-        assert_eq!(bsearch_elem([1,2,3,4,5], &2), Some(1));
-        assert_eq!(bsearch_elem([1,2,3,4,5], &1), Some(0));
+        assert_eq!([1,2,3,4,5].bsearch_elem(&5), Some(4));
+        assert_eq!([1,2,3,4,5].bsearch_elem(&4), Some(3));
+        assert_eq!([1,2,3,4,5].bsearch_elem(&3), Some(2));
+        assert_eq!([1,2,3,4,5].bsearch_elem(&2), Some(1));
+        assert_eq!([1,2,3,4,5].bsearch_elem(&1), Some(0));
 
-        assert_eq!(bsearch_elem([2,4,6,8,10], &1), None);
-        assert_eq!(bsearch_elem([2,4,6,8,10], &5), None);
-        assert_eq!(bsearch_elem([2,4,6,8,10], &4), Some(1));
-        assert_eq!(bsearch_elem([2,4,6,8,10], &10), Some(4));
+        assert_eq!([2,4,6,8,10].bsearch_elem(&1), None);
+        assert_eq!([2,4,6,8,10].bsearch_elem(&5), None);
+        assert_eq!([2,4,6,8,10].bsearch_elem(&4), Some(1));
+        assert_eq!([2,4,6,8,10].bsearch_elem(&10), Some(4));
 
-        assert_eq!(bsearch_elem([2,4,6,8], &1), None);
-        assert_eq!(bsearch_elem([2,4,6,8], &5), None);
-        assert_eq!(bsearch_elem([2,4,6,8], &4), Some(1));
-        assert_eq!(bsearch_elem([2,4,6,8], &8), Some(3));
+        assert_eq!([2,4,6,8].bsearch_elem(&1), None);
+        assert_eq!([2,4,6,8].bsearch_elem(&5), None);
+        assert_eq!([2,4,6,8].bsearch_elem(&4), Some(1));
+        assert_eq!([2,4,6,8].bsearch_elem(&8), Some(3));
 
-        assert_eq!(bsearch_elem([2,4,6], &1), None);
-        assert_eq!(bsearch_elem([2,4,6], &5), None);
-        assert_eq!(bsearch_elem([2,4,6], &4), Some(1));
-        assert_eq!(bsearch_elem([2,4,6], &6), Some(2));
+        assert_eq!([2,4,6].bsearch_elem(&1), None);
+        assert_eq!([2,4,6].bsearch_elem(&5), None);
+        assert_eq!([2,4,6].bsearch_elem(&4), Some(1));
+        assert_eq!([2,4,6].bsearch_elem(&6), Some(2));
 
-        assert_eq!(bsearch_elem([2,4], &1), None);
-        assert_eq!(bsearch_elem([2,4], &5), None);
-        assert_eq!(bsearch_elem([2,4], &2), Some(0));
-        assert_eq!(bsearch_elem([2,4], &4), Some(1));
+        assert_eq!([2,4].bsearch_elem(&1), None);
+        assert_eq!([2,4].bsearch_elem(&5), None);
+        assert_eq!([2,4].bsearch_elem(&2), Some(0));
+        assert_eq!([2,4].bsearch_elem(&4), Some(1));
 
-        assert_eq!(bsearch_elem([2], &1), None);
-        assert_eq!(bsearch_elem([2], &5), None);
-        assert_eq!(bsearch_elem([2], &2), Some(0));
+        assert_eq!([2].bsearch_elem(&1), None);
+        assert_eq!([2].bsearch_elem(&5), None);
+        assert_eq!([2].bsearch_elem(&2), Some(0));
 
-        assert_eq!(bsearch_elem([], &1), None);
-        assert_eq!(bsearch_elem([], &5), None);
+        assert_eq!([].bsearch_elem(&1), None);
+        assert_eq!([].bsearch_elem(&5), None);
 
-        assert!(bsearch_elem([1,1,1,1,1], &1) != None);
-        assert!(bsearch_elem([1,1,1,1,2], &1) != None);
-        assert!(bsearch_elem([1,1,1,2,2], &1) != None);
-        assert!(bsearch_elem([1,1,2,2,2], &1) != None);
-        assert_eq!(bsearch_elem([1,2,2,2,2], &1), Some(0));
+        assert!([1,1,1,1,1].bsearch_elem(&1) != None);
+        assert!([1,1,1,1,2].bsearch_elem(&1) != None);
+        assert!([1,1,1,2,2].bsearch_elem(&1) != None);
+        assert!([1,1,2,2,2].bsearch_elem(&1) != None);
+        assert_eq!([1,2,2,2,2].bsearch_elem(&1), Some(0));
 
-        assert_eq!(bsearch_elem([1,2,3,4,5], &6), None);
-        assert_eq!(bsearch_elem([1,2,3,4,5], &0), None);
+        assert_eq!([1,2,3,4,5].bsearch_elem(&6), None);
+        assert_eq!([1,2,3,4,5].bsearch_elem(&0), None);
     }
 
     #[test]
