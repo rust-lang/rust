@@ -356,20 +356,20 @@ pub trait IteratorUtil<A> {
     ///
     /// # Example
     ///
-    /// --- {.rust}
+    /// ~~~ {.rust}
     /// let xs = [-3, 0, 1, 5, -10];
     /// assert_eq!(*xs.iter().max_by(|x| x.abs()).unwrap(), -10);
-    /// ---
+    /// ~~~
     fn max_by<B: Ord>(&mut self, f: &fn(&A) -> B) -> Option<A>;
 
     /// Return the element that gives the minimum value from the specfied function
     ///
     /// # Example
     ///
-    /// --- {.rust}
+    /// ~~~ {.rust}
     /// let xs = [-3, 0, 1, 5, -10];
     /// assert_eq!(*xs.iter().min_by(|x| x.abs()).unwrap(), 0);
-    /// ---
+    /// ~~~
     fn min_by<B: Ord>(&mut self, f: &fn(&A) -> B) -> Option<A>;
 }
 
