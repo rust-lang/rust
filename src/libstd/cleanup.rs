@@ -14,7 +14,6 @@ use libc::{c_char, intptr_t, uintptr_t};
 use ptr::{mut_null};
 use repr::BoxRepr;
 use cast::transmute;
-use unstable::intrinsics::TyDesc;
 #[cfg(not(test))] use unstable::lang::clear_task_borrow_list;
 
 /**
