@@ -796,8 +796,8 @@ impl Float for f64 {
 ///
 #[inline]
 pub fn to_str(num: f64) -> ~str {
-    let (r, _) = strconv::to_str_common(
-        &num, 10u, true, strconv::SignNeg, strconv::DigAll);
+    let (r, _) = strconv::float_to_str_common(
+        num, 10u, true, strconv::SignNeg, strconv::DigAll);
     r
 }
 
@@ -810,8 +810,8 @@ pub fn to_str(num: f64) -> ~str {
 ///
 #[inline]
 pub fn to_str_hex(num: f64) -> ~str {
-    let (r, _) = strconv::to_str_common(
-        &num, 16u, true, strconv::SignNeg, strconv::DigAll);
+    let (r, _) = strconv::float_to_str_common(
+        num, 16u, true, strconv::SignNeg, strconv::DigAll);
     r
 }
 
@@ -831,8 +831,8 @@ pub fn to_str_hex(num: f64) -> ~str {
 ///
 #[inline]
 pub fn to_str_radix(num: f64, rdx: uint) -> ~str {
-    let (r, special) = strconv::to_str_common(
-        &num, rdx, true, strconv::SignNeg, strconv::DigAll);
+    let (r, special) = strconv::float_to_str_common(
+        num, rdx, true, strconv::SignNeg, strconv::DigAll);
     if special { fail!("number has a special value, \
                       try to_str_radix_special() if those are expected") }
     r
@@ -849,7 +849,7 @@ pub fn to_str_radix(num: f64, rdx: uint) -> ~str {
 ///
 #[inline]
 pub fn to_str_radix_special(num: f64, rdx: uint) -> (~str, bool) {
-    strconv::to_str_common(&num, rdx, true,
+    strconv::float_to_str_common(num, rdx, true,
                            strconv::SignNeg, strconv::DigAll)
 }
 
@@ -864,8 +864,8 @@ pub fn to_str_radix_special(num: f64, rdx: uint) -> (~str, bool) {
 ///
 #[inline]
 pub fn to_str_exact(num: f64, dig: uint) -> ~str {
-    let (r, _) = strconv::to_str_common(
-        &num, 10u, true, strconv::SignNeg, strconv::DigExact(dig));
+    let (r, _) = strconv::float_to_str_common(
+        num, 10u, true, strconv::SignNeg, strconv::DigExact(dig));
     r
 }
 
@@ -880,8 +880,8 @@ pub fn to_str_exact(num: f64, dig: uint) -> ~str {
 ///
 #[inline]
 pub fn to_str_digits(num: f64, dig: uint) -> ~str {
-    let (r, _) = strconv::to_str_common(
-        &num, 10u, true, strconv::SignNeg, strconv::DigMax(dig));
+    let (r, _) = strconv::float_to_str_common(
+        num, 10u, true, strconv::SignNeg, strconv::DigMax(dig));
     r
 }
 
