@@ -660,9 +660,9 @@ pub fn sanitize(s: &str) -> ~str {
             | '_' => result.push_char(c),
 
             _ => {
-                if c > 'z' && char::is_XID_continue(c) {
-                    result.push_char(c);
-                }
+                let tstr = char::escape_unicode(c);
+                result.push_char('$');
+                result.push_str(tstr.slice_from(1));
             }
         }
     }
