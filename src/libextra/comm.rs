@@ -16,12 +16,11 @@ Higher level communication abstractions.
 
 #[allow(missing_doc)];
 
-use core::prelude::*;
 
-use core::comm::{GenericChan, GenericSmartChan, GenericPort};
-use core::comm::{Chan, Port, Selectable, Peekable};
-use core::comm;
-use core::pipes;
+use std::comm::{GenericChan, GenericSmartChan, GenericPort};
+use std::comm::{Chan, Port, Selectable, Peekable};
+use std::comm;
+use std::pipes;
 
 /// An extension of `pipes::stream` that allows both sending and receiving.
 pub struct DuplexStream<T, U> {

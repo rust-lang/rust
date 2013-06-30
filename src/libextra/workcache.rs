@@ -10,7 +10,6 @@
 
 #[allow(missing_doc)];
 
-use core::prelude::*;
 
 use digest::DigestUtil;
 use json;
@@ -18,17 +17,17 @@ use sha1::Sha1;
 use serialize::{Encoder, Encodable, Decoder, Decodable};
 use sort;
 
-use core::cell::Cell;
-use core::cmp;
-use core::comm::{PortOne, oneshot, send_one, recv_one};
-use core::either::{Either, Left, Right};
-use core::hashmap::HashMap;
-use core::io;
-use core::result;
-use core::run;
-use core::task;
-use core::to_bytes;
-use core::util::replace;
+use std::cell::Cell;
+use std::cmp;
+use std::comm::{PortOne, oneshot, send_one, recv_one};
+use std::either::{Either, Left, Right};
+use std::hashmap::HashMap;
+use std::io;
+use std::result;
+use std::run;
+use std::task;
+use std::to_bytes;
+use std::util::replace;
 
 /**
 *
@@ -403,7 +402,7 @@ fn unwrap<T:Send +
 
 //#[test]
 fn test() {
-    use core::io::WriterUtil;
+    use std::io::WriterUtil;
 
     let db = @mut Database { db_filename: Path("db.json"),
                              db_cache: HashMap::new(),

@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
 
 use driver::session;
 use metadata::csearch;
@@ -27,16 +26,16 @@ use util::ppaux::{Repr, UserString};
 use util::common::{indenter};
 use util::enum_set::{EnumSet, CLike};
 
-use core::cast;
-use core::cmp;
-use core::hashmap::{HashMap, HashSet};
-use core::iter;
-use core::ops;
-use core::ptr::to_unsafe_ptr;
-use core::to_bytes;
-use core::u32;
-use core::uint;
-use core::vec;
+use std::cast;
+use std::cmp;
+use std::hashmap::{HashMap, HashSet};
+use std::iter;
+use std::ops;
+use std::ptr::to_unsafe_ptr;
+use std::to_bytes;
+use std::u32;
+use std::uint;
+use std::vec;
 use syntax::ast::*;
 use syntax::ast_util::is_local;
 use syntax::ast_util;

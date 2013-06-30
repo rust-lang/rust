@@ -8,12 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
 
-use core::option;
-use core::os;
-use core::result;
-use core::str;
+use std::option;
+use std::os;
+use std::result;
+use std::str;
 
 // A module for searching for libraries
 // FIXME (#2658): I'm not happy how this module turned out. Should

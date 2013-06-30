@@ -32,13 +32,9 @@ Rust extras are part of the standard Rust distribution.
 #[deny(non_camel_case_types)];
 #[deny(missing_doc)];
 
-#[no_std];
+use std::str::{StrSlice, OwnedStr};
 
-extern mod core(name = "std", vers = "0.7-pre");
-
-use core::str::{StrSlice, OwnedStr};
-
-pub use core::os;
+pub use std::os;
 
 pub mod uv_ll;
 
@@ -135,21 +131,16 @@ pub mod serialize;
 // 'extra' so that macro-expanded references to extra::serialize and such
 // can be resolved within libextra.
 #[doc(hidden)]
-pub mod std {
+pub mod extra {
     pub use serialize;
     pub use test;
 
     // For bootstrapping.
-    pub use core::clone;
-    pub use core::condition;
-    pub use core::cmp;
-    pub use core::sys;
-    pub use core::unstable;
-    pub use core::str;
-    pub use core::os;
-}
-#[doc(hidden)]
-pub mod extra {
-    pub use serialize;
-    pub use test;
+    pub use std::clone;
+    pub use std::condition;
+    pub use std::cmp;
+    pub use std::sys;
+    pub use std::unstable;
+    pub use std::str;
+    pub use std::os;
 }

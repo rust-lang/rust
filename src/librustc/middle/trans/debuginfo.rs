@@ -41,7 +41,6 @@ This file consists of three conceptual sections:
 
 */
 
-use core::prelude::*;
 
 use driver::session;
 use lib::llvm::llvm;
@@ -54,14 +53,14 @@ use middle::trans;
 use middle::ty;
 use util::ppaux::ty_to_str;
 
-use core::hashmap::HashMap;
-use core::libc;
-use core::libc::{c_uint, c_ulonglong};
-use core::cmp;
-use core::ptr;
-use core::str::as_c_str;
-use core::sys;
-use core::vec;
+use std::hashmap::HashMap;
+use std::libc;
+use std::libc::{c_uint, c_ulonglong};
+use std::cmp;
+use std::ptr;
+use std::str::as_c_str;
+use std::sys;
+use std::vec;
 use syntax::codemap::span;
 use syntax::{ast, codemap, ast_util, ast_map};
 use syntax::parse::token;

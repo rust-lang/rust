@@ -8,11 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
 
-use core::libc::c_uint;
-use core::uint;
-use core::vec;
+use std::libc::c_uint;
+use std::uint;
+use std::vec;
 use lib::llvm::{llvm, Integer, Pointer, Float, Double, Struct, Array};
 use lib::llvm::{Attribute, StructRetAttribute};
 use middle::trans::context::task_llcx;

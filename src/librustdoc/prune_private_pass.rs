@@ -10,7 +10,6 @@
 
 //! Prune things that are private
 
-use core::prelude::*;
 
 use extract;
 use syntax::ast;
@@ -21,7 +20,7 @@ use fold::Fold;
 use fold;
 use pass::Pass;
 
-use core::util;
+use std::util;
 
 pub fn mk_pass() -> Pass {
     Pass {

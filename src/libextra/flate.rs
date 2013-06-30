@@ -16,12 +16,12 @@ Simple compression
 
 #[allow(missing_doc)];
 
-use core::libc::{c_void, size_t, c_int};
-use core::libc;
-use core::vec;
+use std::libc::{c_void, size_t, c_int};
+use std::libc;
+use std::vec;
 
 pub mod rustrt {
-    use core::libc::{c_int, c_void, size_t};
+    use std::libc::{c_int, c_void, size_t};
 
     #[link_name = "rustrt"]
     pub extern {
@@ -83,9 +83,8 @@ pub fn inflate_bytes(bytes: &[u8]) -> ~[u8] {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use core::rand;
-    use core::rand::RngUtil;
-    use core::prelude::*;
+    use std::rand;
+    use std::rand::RngUtil;
 
     #[test]
     #[allow(non_implicitly_copyable_typarams)]

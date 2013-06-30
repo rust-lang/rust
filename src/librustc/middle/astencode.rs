@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
 
 use c = metadata::common;
 use cstore = metadata::cstore;
@@ -24,8 +23,8 @@ use middle::{ty, typeck, moves};
 use middle;
 use util::ppaux::ty_to_str;
 
-use core::at_vec;
-use core::uint;
+use std::at_vec;
+use std::uint;
 use extra::ebml::reader;
 use extra::ebml;
 use extra::serialize;
@@ -43,7 +42,7 @@ use syntax::parse::token;
 use syntax;
 use writer = extra::ebml::writer;
 
-use core::cast;
+use std::cast;
 
 #[cfg(test)] use syntax::parse;
 #[cfg(test)] use syntax::print::pprust;
@@ -1243,7 +1242,7 @@ fn mk_ctxt() -> @fake_ext_ctxt {
 
 #[cfg(test)]
 fn roundtrip(in_item: Option<@ast::item>) {
-    use core::io;
+    use std::io;
 
     let in_item = in_item.get();
     let bytes = do io::with_bytes_writer |wr| {

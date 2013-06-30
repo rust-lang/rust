@@ -10,7 +10,6 @@
 
 //! Pulls type information out of the AST and attaches it to the document
 
-use core::prelude::*;
 
 use astsrv;
 use doc::ItemUtils;
@@ -21,7 +20,7 @@ use fold::Fold;
 use fold;
 use pass::Pass;
 
-use core::vec;
+use std::vec;
 use syntax::ast;
 use syntax::print::pprust;
 use syntax::parse::token;
@@ -349,7 +348,6 @@ fn strip_struct_extra_stuff(item: @ast::item) -> @ast::item {
 
 #[cfg(test)]
 mod test {
-    use core::prelude::*;
 
     use astsrv;
     use doc;

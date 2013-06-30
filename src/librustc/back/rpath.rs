@@ -8,17 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
 
 use driver::session;
 use metadata::cstore;
 use metadata::filesearch;
 
-use core::hashmap::HashSet;
-use core::os;
-use core::uint;
-use core::util;
-use core::vec;
+use std::hashmap::HashSet;
+use std::os;
+use std::uint;
+use std::util;
+use std::vec;
 
 fn not_win32(os: session::os) -> bool {
   os != session::os_win32
@@ -113,7 +112,7 @@ pub fn get_rpath_relative_to_output(os: session::os,
                                     output: &Path,
                                     lib: &Path)
                                  -> Path {
-    use core::os;
+    use std::os;
 
     assert!(not_win32(os));
 
@@ -195,8 +194,7 @@ pub fn minimize_rpaths(rpaths: &[Path]) -> ~[Path] {
 
 #[cfg(unix, test)]
 mod test {
-    use core::prelude::*;
-    use core::os;
+    use std::os;
 
     // FIXME(#2119): the outer attribute should be #[cfg(unix, test)], then
     // these redundant #[cfg(test)] blocks can be removed

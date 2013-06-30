@@ -27,7 +27,6 @@ this point a bit better.
 
 */
 
-use core::prelude::*;
 
 use middle::freevars::get_freevars;
 use middle::ty::{re_scope};
@@ -39,8 +38,8 @@ use middle::typeck::infer::resolve_type;
 use util::ppaux::{note_and_explain_region, ty_to_str, region_to_str};
 use middle::pat_util;
 
-use core::result;
-use core::uint;
+use std::result;
+use std::uint;
 use syntax::ast::{ManagedSigil, OwnedSigil, BorrowedSigil};
 use syntax::ast::{def_arg, def_binding, def_local, def_self, def_upvar};
 use syntax::ast;
@@ -788,7 +787,6 @@ pub mod guarantor {
      * but more special purpose.
      */
 
-    use core::prelude::*;
 
     use middle::typeck::check::regionck::{Rcx, infallibly_mk_subr};
     use middle::typeck::check::regionck::mk_subregion_due_to_derefence;
@@ -797,7 +795,7 @@ pub mod guarantor {
     use syntax::codemap::span;
     use util::ppaux::{ty_to_str};
 
-    use core::uint;
+    use std::uint;
 
     pub fn for_addr_of(rcx: @mut Rcx, expr: @ast::expr, base: @ast::expr) {
         /*!

@@ -14,7 +14,6 @@
 // has at most one implementation for each type. Then we build a mapping from
 // each trait in the system to its implementations.
 
-use core::prelude::*;
 
 use metadata::csearch::{each_path, get_impl_trait};
 use metadata::csearch;
@@ -37,7 +36,7 @@ use middle::typeck::infer::combine::Combine;
 use middle::typeck::infer::InferCtxt;
 use middle::typeck::infer::{new_infer_ctxt, resolve_ivar};
 use middle::typeck::infer::{resolve_nested_tvar, resolve_type};
-use syntax::ast::{crate, def_id, def_mod, def_struct, def_ty};
+use syntax::ast::{crate, def_id, def_struct, def_ty};
 use syntax::ast::{item, item_enum, item_impl, item_mod, item_struct};
 use syntax::ast::{local_crate, method, trait_ref, ty_path};
 use syntax::ast;
@@ -52,10 +51,10 @@ use syntax::visit::{Visitor, SimpleVisitor};
 use syntax::visit::{visit_mod};
 use util::ppaux::ty_to_str;
 
-use core::hashmap::{HashMap, HashSet};
-use core::result::Ok;
-use core::uint;
-use core::vec;
+use std::hashmap::{HashMap, HashSet};
+use std::result::Ok;
+use std::uint;
+use std::vec;
 
 pub struct UniversalQuantificationResult {
     monotype: t,

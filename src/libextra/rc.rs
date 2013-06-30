@@ -21,13 +21,12 @@ cycle cannot be created with `Rc<T>` because there is no way to modify it after 
 
 */
 
-use core::prelude::*;
 
-use core::cast;
-use core::libc::{c_void, size_t, malloc, free};
-use core::ptr;
-use core::sys;
-use core::unstable::intrinsics;
+use std::cast;
+use std::libc::{c_void, size_t, malloc, free};
+use std::ptr;
+use std::sys;
+use std::unstable::intrinsics;
 
 struct RcBox<T> {
     value: T,
@@ -104,7 +103,7 @@ impl<T: DeepClone> DeepClone for Rc<T> {
 #[cfg(test)]
 mod test_rc {
     use super::*;
-    use core::cell::Cell;
+    use std::cell::Cell;
 
     #[test]
     fn test_clone() {

@@ -40,7 +40,7 @@ mod test {
 
     #[test]
     fn should_trim_text() {
-        use core::option::Some;
+        use std::option::Some;
 
         let doc = mk_doc(~"#[doc = \" desc \"] \
                                  mod m {

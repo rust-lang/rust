@@ -81,14 +81,13 @@
 
 #[allow(missing_doc)];
 
-use core::prelude::*;
 
-use core::cmp::Eq;
-use core::result::{Err, Ok};
-use core::result;
-use core::option::{Some, None};
-use core::str;
-use core::vec;
+use std::cmp::Eq;
+use std::result::{Err, Ok};
+use std::result;
+use std::option::{Some, None};
+use std::str;
+use std::vec;
 
 #[deriving(Eq)]
 pub enum Name {
@@ -466,8 +465,8 @@ pub mod groups {
     use getopts::{HasArg, Long, Maybe, Multi, No, Occur, Opt, Optional, Req};
     use getopts::{Short, Yes};
 
-    use core::str;
-    use core::vec;
+    use std::str;
+    use std::vec;
 
     /** one group of options, e.g., both -h and --help, along with
      * their shared description and properties
@@ -681,8 +680,8 @@ mod tests {
     use getopts::groups::OptGroup;
     use getopts::*;
 
-    use core::result::{Err, Ok};
-    use core::result;
+    use std::result::{Err, Ok};
+    use std::result;
 
     fn check_fail_type(f: Fail_, ft: FailType) {
         match f {

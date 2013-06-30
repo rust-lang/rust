@@ -14,7 +14,6 @@
 //! and for each in debugging (e.g., so you can use
 //! `RUST_LOG=rustc::middle::trans::write_guard`).
 
-use core::prelude::*;
 
 use lib::llvm::ValueRef;
 use middle::borrowck::{RootInfo, root_map_key, DynaImm, DynaMut};

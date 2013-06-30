@@ -25,13 +25,12 @@
 
 #[allow(missing_doc)];
 
-use core::prelude::*;
 
-use core::cast;
-use core::cell::Cell;
-use core::comm::{PortOne, oneshot, send_one, recv_one};
-use core::task;
-use core::util::replace;
+use std::cast;
+use std::cell::Cell;
+use std::comm::{PortOne, oneshot, send_one, recv_one};
+use std::task;
+use std::util::replace;
 
 #[doc = "The future type"]
 pub struct Future<A> {
@@ -151,9 +150,9 @@ pub fn spawn<A:Send>(blk: ~fn() -> A) -> Future<A> {
 mod test {
     use future::*;
 
-    use core::cell::Cell;
-    use core::comm::{oneshot, send_one};
-    use core::task;
+    use std::cell::Cell;
+    use std::comm::{oneshot, send_one};
+    use std::task;
 
     #[test]
     fn test_from_value() {

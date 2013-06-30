@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
 
 use metadata::csearch;
 use middle::astencode;
@@ -18,9 +17,9 @@ use middle;
 use syntax::{ast, ast_map, ast_util, visit};
 use syntax::ast::*;
 
-use core::float;
-use core::hashmap::{HashMap, HashSet};
-use core::vec;
+use std::float;
+use std::hashmap::{HashMap, HashSet};
+use std::vec;
 
 //
 // This pass classifies expressions by their constant-ness.

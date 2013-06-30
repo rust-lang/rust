@@ -10,13 +10,12 @@
 
 //! Converts the Rust AST to the rustdoc document model
 
-use core::prelude::*;
 
 use astsrv;
 use doc::ItemUtils;
 use doc;
 
-use core::vec;
+use std::vec;
 use syntax::ast;
 use syntax::parse::token::{ident_interner, ident_to_str};
 use syntax::parse::token;

@@ -9,8 +9,8 @@
 // except according to those terms.
 
 use extra::term;
-use core::io;
-use core::result::*;
+use std::io;
+use std::result::*;
 
 pub fn note(msg: &str) {
     pretty_message(msg, "note: ", term::color::green, io::stdout())

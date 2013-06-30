@@ -17,7 +17,6 @@ region parameterized.
 
 */
 
-use core::prelude::*;
 
 use driver::session::Session;
 use metadata::csearch;
@@ -26,7 +25,7 @@ use middle::ty::{region_variance, rv_covariant, rv_invariant};
 use middle::ty::{rv_contravariant, FreeRegion};
 use middle::ty;
 
-use core::hashmap::{HashMap, HashSet};
+use std::hashmap::{HashMap, HashSet};
 use syntax::ast_map;
 use syntax::codemap::span;
 use syntax::print::pprust;

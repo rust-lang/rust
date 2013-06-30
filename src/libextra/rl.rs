@@ -11,14 +11,13 @@
 // FIXME #3921. This is unsafe because linenoise uses global mutable
 // state without mutexes.
 
-use core::prelude::*;
 
-use core::libc::{c_char, c_int};
-use core::local_data;
-use core::str;
+use std::libc::{c_char, c_int};
+use std::local_data;
+use std::str;
 
 pub mod rustrt {
-    use core::libc::{c_char, c_int};
+    use std::libc::{c_char, c_int};
 
     pub extern {
         pub unsafe fn linenoise(prompt: *c_char) -> *c_char;

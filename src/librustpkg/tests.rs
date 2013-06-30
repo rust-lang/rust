@@ -11,11 +11,10 @@
 // rustpkg unit tests
 
 use context::Ctx;
-use core::hashmap::HashMap;
-use core::{io, libc, os, result, run, str, vec};
-use core::prelude::*;
+use std::hashmap::HashMap;
+use std::{io, libc, os, result, run, str, vec};
 use extra::tempfile::mkdtemp;
-use core::run::ProcessOutput;
+use std::run::ProcessOutput;
 use package_path::*;
 use package_id::{PkgId};
 use package_source::*;
@@ -110,7 +109,7 @@ fn mk_temp_workspace(short_name: &LocalPath, version: &Version) -> Path {
 }
 
 fn is_rwx(p: &Path) -> bool {
-    use core::libc::consts::os::posix88::{S_IRUSR, S_IWUSR, S_IXUSR};
+    use std::libc::consts::os::posix88::{S_IRUSR, S_IWUSR, S_IXUSR};
 
     match p.get_mode() {
         None => return false,

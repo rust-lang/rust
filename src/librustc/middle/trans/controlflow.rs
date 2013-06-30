@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
 
 use back::link;
 use lib;
@@ -26,8 +25,8 @@ use util::ppaux;
 
 use middle::trans::type_::Type;
 
-use core::str;
-use core::vec;
+use std::str;
+use std::vec;
 use syntax::ast;
 use syntax::ast::ident;
 use syntax::ast_map::path_mod;

@@ -10,7 +10,6 @@
 
 //! Generate markdown from a document tree
 
-use core::prelude::*;
 
 use astsrv;
 use doc::ItemUtils;
@@ -22,9 +21,9 @@ use markdown_writer::WriterFactory;
 use pass::Pass;
 use sort_pass;
 
-use core::cell::Cell;
-use core::str;
-use core::vec;
+use std::cell::Cell;
+use std::str;
+use std::vec;
 use syntax;
 
 pub fn mk_pass(writer_factory: WriterFactory) -> Pass {
@@ -518,7 +517,6 @@ fn put_struct(
 
 #[cfg(test)]
 mod test {
-    use core::prelude::*;
 
     use astsrv;
     use attr_pass;

@@ -29,7 +29,7 @@ use util::ppaux::ty_to_str;
 
 use middle::trans::type_::Type;
 
-use core::option::None;
+use std::option::None;
 use syntax::ast;
 use syntax::codemap;
 

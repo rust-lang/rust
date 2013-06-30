@@ -8,8 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
-use core::{libc, os, result, str};
+use std::{libc, os, result, str};
 use rustc::driver::{driver, session};
 use rustc::metadata::filesearch;
 use extra::getopts::groups::getopts;

@@ -7,8 +7,7 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-use core::prelude::*;
-use core::cast;
+use std::cast;
 
 // EBML enum definitions and utils shared by the encoder and decoder
 
