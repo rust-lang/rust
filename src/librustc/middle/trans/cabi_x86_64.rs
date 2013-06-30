@@ -126,11 +126,10 @@ fn classify_ty(ty: Type) -> ~[RegClass] {
             Float => 4,
             Double => 8,
             Struct => {
+                let str_tys = ty.field_types();
                 if ty.is_packed() {
-                    let str_tys = ty.field_types();
                     str_tys.iter().fold(0, |s, t| s + ty_size(*t))
                 } else {
-                    let str_tys = ty.field_types();
                     let size = str_tys.iter().fold(0, |s, t| align(s, *t) + ty_size(*t));
                     align(size, ty)
                 }
@@ -240,9 +239,7 @@ fn classify_ty(ty: Type) -> ~[RegClass] {
         let mut i = 0u;
         let ty_kind = ty.kind();
         let e = cls.len();
-        if cls.len() > 2u &&
-           (ty_kind == Struct ||
-            ty_kind == Array) {
+        if cls.len() > 2u && (ty_kind == Struct || ty_kind == Array) {
             if cls[i].is_sse() {
                 i += 1u;
                 while i < e {
@@ -269,7 +266,7 @@ fn classify_ty(ty: Type) -> ~[RegClass] {
                     return;
                 }
                 if cls[i] == SSEUp {
-                    cls[i] = SSEInt;
+                    cls[i] = SSEDv;
                 } else if cls[i].is_sse() {
                     i += 1;
                     while i != e && cls[i] == SSEUp { i += 1u; }
@@ -287,7 +284,6 @@ fn classify_ty(ty: Type) -> ~[RegClass] {
     let mut cls = vec::from_elem(words, NoClass);
     if words > 4 {
         all_mem(cls);
-        let cls = cls;
         return cls;
     }
     classify(ty, cls, 0, 0);
@@ -316,8 +312,8 @@ fn llreg_ty(cls: &[RegClass]) -> Type {
                 tys.push(Type::i64());
             }
             SSEFv => {
-                let vec_len = llvec_len(cls.tailn(i + 1u)) * 2u;
-                let vec_ty = Type::vector(&Type::f32(), vec_len as u64);
+                let vec_len = llvec_len(cls.tailn(i + 1u));
+                let vec_ty = Type::vector(&Type::f32(), (vec_len * 2u) as u64);
                 tys.push(vec_ty);
                 i += vec_len;
                 loop;
