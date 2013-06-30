@@ -11,7 +11,7 @@
 //! Rustdoc - The Rust documentation generator
 
 #[link(name = "rustdoc",
-       vers = "0.7-pre",
+       vers = "0.7",
        uuid = "f8abd014-b281-484d-a0c3-26e3de8e2412",
        url = "https://github.com/mozilla/rust/tree/master/src/rustdoc")];
 

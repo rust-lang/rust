@@ -49,7 +49,7 @@ they contained the following prologue:
 
 
 #[link(name = "std",
-       vers = "0.7-pre",
+       vers = "0.7",
        uuid = "c70c24a7-5551-4f73-8e37-380b11d80be8",
        url = "https://github.com/mozilla/rust/tree/master/src/libstd")];
 

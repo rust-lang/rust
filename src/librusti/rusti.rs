@@ -44,7 +44,7 @@
  */
 
 #[link(name = "rusti",
-       vers = "0.7-pre",
+       vers = "0.7",
        uuid = "7fb5bf52-7d45-4fee-8325-5ad3311149fc",
        url = "https://github.com/mozilla/rust/tree/master/src/rusti")];
 
