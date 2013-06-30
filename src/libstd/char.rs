@@ -10,13 +10,12 @@
 
 //! Utilities for manipulating the char type
 
-use container::Container;
 use option::{None, Option, Some};
-use str;
-use str::{StrSlice, OwnedStr};
-use u32;
-use uint;
+use int;
+use str::StrSlice;
 use unicode::{derived_property, general_category};
+
+#[cfg(test)] use str::OwnedStr;
 
 #[cfg(not(test))] use cmp::{Eq, Ord};
 #[cfg(not(test))] use num::Zero;
@@ -202,21 +201,21 @@ pub fn from_digit(num: uint, radix: uint) -> Option<char> {
 /// - chars in [0x100,0xffff] get 4-digit escapes: `\\uNNNN`
 /// - chars above 0x10000 get 8-digit escapes: `\\UNNNNNNNN`
 ///
-pub fn escape_unicode(c: char) -> ~str {
-    let s = u32::to_str_radix(c as u32, 16u);
-    let (c, pad) = cond!(
-        (c <= '\xff')   { ('x', 2u) }
-        (c <= '\uffff') { ('u', 4u) }
-        _               { ('U', 8u) }
+pub fn escape_unicode(c: char, f: &fn(char)) {
+    // avoid calling str::to_str_radix because we don't really need to allocate
+    // here.
+    f('\\');
+    let pad = cond!(
+        (c <= '\xff')   { f('x'); 2 }
+        (c <= '\uffff') { f('u'); 4 }
+        _               { f('U'); 8 }
     );
-    assert!(s.len() <= pad);
-    let mut out = ~"\\";
-    out.push_str(str::from_char(c));
-    for uint::range(s.len(), pad) |_| {
-        out.push_str("0");
+    for int::range_step(4 * (pad - 1), -1, -4) |offset| {
+        match ((c as u32) >> offset) & 0xf {
+            i @ 0 .. 9 => { f('0' + i as char); }
+            i => { f('a' + (i - 10) as char); }
+        }
     }
-    out.push_str(s);
-    out
 }
 
 ///
@@ -231,16 +230,16 @@ pub fn escape_unicode(c: char) -> ~str {
 /// - Any other chars in the range [0x20,0x7e] are not escaped.
 /// - Any other chars are given hex unicode escapes; see `escape_unicode`.
 ///
-pub fn escape_default(c: char) -> ~str {
+pub fn escape_default(c: char, f: &fn(char)) {
     match c {
-        '\t' => ~"\\t",
-        '\r' => ~"\\r",
-        '\n' => ~"\\n",
-        '\\' => ~"\\\\",
-        '\'' => ~"\\'",
-        '"'  => ~"\\\"",
-        '\x20' .. '\x7e' => str::from_char(c),
-        _ => c.escape_unicode(),
+        '\t' => { f('\\'); f('t'); }
+        '\r' => { f('\\'); f('r'); }
+        '\n' => { f('\\'); f('n'); }
+        '\\' => { f('\\'); f('\\'); }
+        '\'' => { f('\\'); f('\''); }
+        '"'  => { f('\\'); f('"'); }
+        '\x20' .. '\x7e' => { f(c); }
+        _ => c.escape_unicode(f),
     }
 }
 
@@ -274,8 +273,8 @@ pub trait Char {
     fn is_digit_radix(&self, radix: uint) -> bool;
     fn to_digit(&self, radix: uint) -> Option<uint>;
     fn from_digit(num: uint, radix: uint) -> Option<char>;
-    fn escape_unicode(&self) -> ~str;
-    fn escape_default(&self) -> ~str;
+    fn escape_unicode(&self, f: &fn(char));
+    fn escape_default(&self, f: &fn(char));
     fn len_utf8_bytes(&self) -> uint;
 }
 
@@ -302,9 +301,9 @@ impl Char for char {
 
     fn from_digit(num: uint, radix: uint) -> Option<char> { from_digit(num, radix) }
 
-    fn escape_unicode(&self) -> ~str { escape_unicode(*self) }
+    fn escape_unicode(&self, f: &fn(char)) { escape_unicode(*self, f) }
 
-    fn escape_default(&self) -> ~str { escape_default(*self) }
+    fn escape_default(&self, f: &fn(char)) { escape_default(*self, f) }
 
     fn len_utf8_bytes(&self) -> uint { len_utf8_bytes(*self) }
 }
@@ -392,27 +391,37 @@ fn test_is_digit() {
 
 #[test]
 fn test_escape_default() {
-    assert_eq!('\n'.escape_default(), ~"\\n");
-    assert_eq!('\r'.escape_default(), ~"\\r");
-    assert_eq!('\''.escape_default(), ~"\\'");
-    assert_eq!('"'.escape_default(), ~"\\\"");
-    assert_eq!(' '.escape_default(), ~" ");
-    assert_eq!('a'.escape_default(), ~"a");
-    assert_eq!('~'.escape_default(), ~"~");
-    assert_eq!('\x00'.escape_default(), ~"\\x00");
-    assert_eq!('\x1f'.escape_default(), ~"\\x1f");
-    assert_eq!('\x7f'.escape_default(), ~"\\x7f");
-    assert_eq!('\xff'.escape_default(), ~"\\xff");
-    assert_eq!('\u011b'.escape_default(), ~"\\u011b");
-    assert_eq!('\U0001d4b6'.escape_default(), ~"\\U0001d4b6");
+    fn string(c: char) -> ~str {
+        let mut result = ~"";
+        do escape_default(c) |c| { result.push_char(c); }
+        return result;
+    }
+    assert_eq!(string('\n'), ~"\\n");
+    assert_eq!(string('\r'), ~"\\r");
+    assert_eq!(string('\''), ~"\\'");
+    assert_eq!(string('"'), ~"\\\"");
+    assert_eq!(string(' '), ~" ");
+    assert_eq!(string('a'), ~"a");
+    assert_eq!(string('~'), ~"~");
+    assert_eq!(string('\x00'), ~"\\x00");
+    assert_eq!(string('\x1f'), ~"\\x1f");
+    assert_eq!(string('\x7f'), ~"\\x7f");
+    assert_eq!(string('\xff'), ~"\\xff");
+    assert_eq!(string('\u011b'), ~"\\u011b");
+    assert_eq!(string('\U0001d4b6'), ~"\\U0001d4b6");
 }
 
 #[test]
 fn test_escape_unicode() {
-    assert_eq!('\x00'.escape_unicode(), ~"\\x00");
-    assert_eq!('\n'.escape_unicode(), ~"\\x0a");
-    assert_eq!(' '.escape_unicode(), ~"\\x20");
-    assert_eq!('a'.escape_unicode(), ~"\\x61");
-    assert_eq!('\u011b'.escape_unicode(), ~"\\u011b");
-    assert_eq!('\U0001d4b6'.escape_unicode(), ~"\\U0001d4b6");
+    fn string(c: char) -> ~str {
+        let mut result = ~"";
+        do escape_unicode(c) |c| { result.push_char(c); }
+        return result;
+    }
+    assert_eq!(string('\x00'), ~"\\x00");
+    assert_eq!(string('\n'), ~"\\x0a");
+    assert_eq!(string(' '), ~"\\x20");
+    assert_eq!(string('a'), ~"\\x61");
+    assert_eq!(string('\u011b'), ~"\\u011b");
+    assert_eq!(string('\U0001d4b6'), ~"\\U0001d4b6");
 }

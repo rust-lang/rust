@@ -54,7 +54,6 @@ Section: Creating a string
  *
  * Raises the `not_utf8` condition if invalid UTF-8
  */
-
 pub fn from_bytes(vv: &[u8]) -> ~str {
     use str::not_utf8::cond;
 
@@ -65,6 +64,25 @@ pub fn from_bytes(vv: &[u8]) -> ~str {
     }
     else {
         return unsafe { raw::from_bytes(vv) }
+    }
+}
+
+/**
+ * Consumes a vector of bytes to create a new utf-8 string
+ *
+ * # Failure
+ *
+ * Raises the `not_utf8` condition if invalid UTF-8
+ */
+pub fn from_bytes_owned(vv: ~[u8]) -> ~str {
+    use str::not_utf8::cond;
+
+    if !is_utf8(vv) {
+        let first_bad_byte = *vv.iter().find_(|&b| !is_utf8([*b])).get();
+        cond.raise(fmt!("from_bytes: input is not UTF-8; first bad byte is %u",
+                        first_bad_byte as uint))
+    } else {
+        return unsafe { raw::from_bytes_owned(vv) }
     }
 }
 
@@ -850,6 +868,13 @@ pub mod raw {
         }
     }
 
+    /// Converts an owned vector of bytes to a new owned string. This assumes
+    /// that the utf-8-ness of the vector has already been validated
+    pub unsafe fn from_bytes_owned(mut v: ~[u8]) -> ~str {
+        v.push(0u8);
+        cast::transmute(v)
+    }
+
     /// Converts a vector of bytes to a string.
     /// The byte slice needs to contain valid utf8 and needs to be one byte longer than
     /// the string, if possible ending in a 0 byte.
@@ -1472,7 +1497,9 @@ impl<'self> StrSlice<'self> for &'self str {
         let mut out: ~str = ~"";
         out.reserve_at_least(self.len());
         for self.iter().advance |c| {
-            out.push_str(char::escape_default(c));
+            do c.escape_default |c| {
+                out.push_char(c);
+            }
         }
         out
     }
@@ -1482,7 +1509,9 @@ impl<'self> StrSlice<'self> for &'self str {
         let mut out: ~str = ~"";
         out.reserve_at_least(self.len());
         for self.iter().advance |c| {
-            out.push_str(char::escape_unicode(c));
+            do c.escape_unicode |c| {
+                out.push_char(c);
+            }
         }
         out
     }
