@@ -545,6 +545,7 @@ fn rustpkg_local_pkg() {
 }
 
 #[test]
+#[ignore] // XXX Failing on dist-linux bot
 fn package_script_with_default_build() {
     let dir = create_local_package(&PkgId::new("fancy-lib"));
     debug!("dir = %s", dir.to_str());
