@@ -52,13 +52,5 @@ pub fn duplicate(bcx: block, src_box: ValueRef, src_ty: ty::t) -> Result {
     } = malloc_unique(bcx, body_datum.ty);
     body_datum.copy_to(bcx, datum::INIT, dst_body);
 
-    // Copy the type descriptor
-    let src_tydesc_ptr = GEPi(bcx, src_box,
-                              [0u, back::abi::box_field_tydesc]);
-    let dst_tydesc_ptr = GEPi(bcx, dst_box,
-                              [0u, back::abi::box_field_tydesc]);
-    let td = Load(bcx, src_tydesc_ptr);
-    Store(bcx, td, dst_tydesc_ptr);
-
-    return rslt(bcx, dst_box);
+    rslt(bcx, dst_box)
 }

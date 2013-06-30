@@ -750,6 +750,12 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
                   C_bool(ty::type_needs_drop(ccx.tcx, tp_ty)),
                   fcx.llretptr.get());
         }
+        "contains_managed" => {
+            let tp_ty = substs.tys[0];
+            Store(bcx,
+                  C_bool(ty::type_contents(ccx.tcx, tp_ty).contains_managed()),
+                  fcx.llretptr.get());
+        }
         "visit_tydesc" => {
             let td = get_param(decl, first_real_arg);
             let visitor = get_param(decl, first_real_arg + 1u);
