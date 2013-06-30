@@ -17,7 +17,6 @@ use ptr::to_unsafe_ptr;
 pub mod raw {
     use std::unstable::intrinsics::TyDesc;
 
-    pub static RC_EXCHANGE_UNIQUE : uint = (-1) as uint;
     pub static RC_MANAGED_UNIQUE : uint = (-2) as uint;
     pub static RC_IMMORTAL : uint = 0x77777777;
 
