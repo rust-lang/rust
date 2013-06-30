@@ -402,7 +402,7 @@ fi
 step_msg "looking for build programs"
 
 probe_need CFG_PERL        perl
-probe_need CFG_CURL        curl
+probe_need CFG_CURLORWGET  curl wget
 probe_need CFG_PYTHON      python2.7 python2.6 python2 python
 
 python_version=$($CFG_PYTHON -V 2>&1)
