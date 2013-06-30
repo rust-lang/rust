@@ -211,7 +211,6 @@ rust_kernel::run() {
     assert(osmain_driver != NULL);
     osmain_driver->start_main_loop();
     sched_reaper.join();
-    rust_check_exchange_count_on_exit();
     return rval;
 }
 

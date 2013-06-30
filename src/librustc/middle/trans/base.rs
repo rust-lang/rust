@@ -253,6 +253,9 @@ pub fn malloc_raw_dyn(bcx: block,
         heap_exchange => {
             (ty::mk_imm_uniq, bcx.tcx().lang_items.exchange_malloc_fn())
         }
+        heap_exchange_closure => {
+            (ty::mk_imm_uniq, bcx.tcx().lang_items.closure_exchange_malloc_fn())
+        }
     };
 
     // Grab the TypeRef type of box_ptr_ty.
