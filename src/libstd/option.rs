@@ -161,7 +161,7 @@ impl<T> Option<T> {
 
     /// Filters an optional value using given function.
     #[inline(always)]
-    pub fn filtered<'a>(self, f: &fn(t: &'a T) -> bool) -> Option<T> {
+    pub fn filtered(self, f: &fn(t: &T) -> bool) -> Option<T> {
         match self {
             Some(x) => if(f(&x)) {Some(x)} else {None},
             None => None
@@ -170,8 +170,14 @@ impl<T> Option<T> {
 
     /// Maps a `some` value from one type to another by reference
     #[inline]
-    pub fn map<'a, U>(&self, f: &fn(&'a T) -> U) -> Option<U> {
+    pub fn map<'a, U>(&'a self, f: &fn(&'a T) -> U) -> Option<U> {
         match *self { Some(ref x) => Some(f(x)), None => None }
+    }
+
+    /// Maps a `some` value from one type to another by a mutable reference
+    #[inline]
+    pub fn map_mut<'a, U>(&'a mut self, f: &fn(&'a mut T) -> U) -> Option<U> {
+        match *self { Some(ref mut x) => Some(f(x)), None => None }
     }
 
     /// As `map`, but consumes the option and gives `f` ownership to avoid
