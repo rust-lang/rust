@@ -57,9 +57,9 @@ impl EscapedCharWriter for @Writer {
             '"' => self.write_str("\\\""),
             '\x20'..'\x7e' => self.write_char(ch),
             _ => {
-                // FIXME #4423: This is inefficient because it requires a
-                // malloc.
-                self.write_str(char::escape_unicode(ch))
+                do char::escape_unicode(ch) |c| {
+                    self.write_char(c);
+                }
             }
         }
     }
@@ -81,65 +81,35 @@ impl Repr for bool {
     }
 }
 
-impl Repr for int {
-    fn write_repr(&self, writer: @Writer) { writer.write_int(*self); }
-}
-impl Repr for i8 {
-    fn write_repr(&self, writer: @Writer) { writer.write_int(*self as int); }
-}
-impl Repr for i16 {
-    fn write_repr(&self, writer: @Writer) { writer.write_int(*self as int); }
-}
-impl Repr for i32 {
-    fn write_repr(&self, writer: @Writer) { writer.write_int(*self as int); }
-}
-impl Repr for i64 {
-    // FIXME #4424: This can lose precision.
-    fn write_repr(&self, writer: @Writer) { writer.write_int(*self as int); }
-}
-
-impl Repr for uint {
-    fn write_repr(&self, writer: @Writer) { writer.write_uint(*self); }
-}
-impl Repr for u8 {
+macro_rules! int_repr(($ty:ident) => (impl Repr for $ty {
     fn write_repr(&self, writer: @Writer) {
-        writer.write_uint(*self as uint);
+        do ::$ty::to_str_bytes(*self, 10u) |bits| {
+            writer.write(bits);
+        }
     }
-}
-impl Repr for u16 {
-    fn write_repr(&self, writer: @Writer) {
-        writer.write_uint(*self as uint);
-    }
-}
-impl Repr for u32 {
-    fn write_repr(&self, writer: @Writer) {
-        writer.write_uint(*self as uint);
-    }
-}
-impl Repr for u64 {
-    // FIXME #4424: This can lose precision.
-    fn write_repr(&self, writer: @Writer) {
-        writer.write_uint(*self as uint);
-    }
-}
+}))
 
-impl Repr for float {
-    // FIXME #4423: This mallocs.
-    fn write_repr(&self, writer: @Writer) { writer.write_str(self.to_str()); }
-}
-impl Repr for f32 {
-    // FIXME #4423 This mallocs.
-    fn write_repr(&self, writer: @Writer) { writer.write_str(self.to_str()); }
-}
-impl Repr for f64 {
-    // FIXME #4423: This mallocs.
-    fn write_repr(&self, writer: @Writer) { writer.write_str(self.to_str()); }
-}
+int_repr!(int)
+int_repr!(i8)
+int_repr!(i16)
+int_repr!(i32)
+int_repr!(i64)
+int_repr!(uint)
+int_repr!(u8)
+int_repr!(u16)
+int_repr!(u32)
+int_repr!(u64)
 
-impl Repr for char {
-    fn write_repr(&self, writer: @Writer) { writer.write_char(*self); }
-}
+macro_rules! num_repr(($ty:ident) => (impl Repr for $ty {
+    fn write_repr(&self, writer: @Writer) {
+        let s = self.to_str();
+        writer.write(s.as_bytes());
+    }
+}))
 
+num_repr!(float)
+num_repr!(f32)
+num_repr!(f64)
 
 // New implementation using reflect::MovePtr
 
