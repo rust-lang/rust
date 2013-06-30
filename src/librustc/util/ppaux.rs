@@ -32,8 +32,6 @@ use syntax::parse::token;
 use syntax::print::pprust;
 use syntax::{ast, ast_util};
 
-use core::vec;
-
 /// Produces a string suitable for debugging output.
 pub trait Repr {
     fn repr(&self, tcx: ctxt) -> ~str;

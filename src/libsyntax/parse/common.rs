@@ -8,16 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ast;
-use codemap::{BytePos, spanned};
-use parse::lexer::reader;
-use parse::parser::Parser;
-use parse::token::keywords;
 use parse::token;
 use parse::token::{get_ident_interner};
-
-use opt_vec;
-use opt_vec::OptVec;
 
 // SeqSep : a sequence separator (token)
 // and whether a trailing separator is allowed.

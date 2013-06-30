@@ -343,7 +343,7 @@ pub fn make_mono_id(ccx: @mut CrateContext,
       Some(ref uses) => {
         vec::map_zip(precise_param_ids, **uses, |id, uses| {
             if ccx.sess.no_monomorphic_collapse() {
-                match copy *id {
+                match *id {
                     (a, b) => mono_precise(a, b)
                 }
             } else {
@@ -382,7 +382,7 @@ pub fn make_mono_id(ccx: @mut CrateContext,
       }
       None => {
           precise_param_ids.map(|x| {
-              let (a, b) = copy *x;
+              let (a, b) = *x;
               mono_precise(a, b)
           })
       }

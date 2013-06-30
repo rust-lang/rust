@@ -1244,7 +1244,7 @@ pub mod node {
         }
 
         pub fn get_next_char_in_leaf(it: &mut T) -> Option<char> {
-            match copy it.leaf {
+            match it.leaf {
               None => return None,
               Some(aleaf) => {
                 if it.leaf_byte_pos >= aleaf.byte_len {
