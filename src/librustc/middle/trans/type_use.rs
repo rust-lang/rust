@@ -127,7 +127,7 @@ pub fn type_uses_for(ccx: @mut CrateContext, fn_id: def_id, n_tps: uint)
                     "uninit"   | "init" | "transmute" | "move_val" |
                     "move_val_init" => use_repr,
 
-                    "get_tydesc" | "needs_drop" => use_tydesc,
+                    "get_tydesc" | "needs_drop" | "contains_managed" => use_tydesc,
 
                     "visit_tydesc"  | "forget" | "frame_address" |
                     "morestack_addr" => 0,
