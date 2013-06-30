@@ -43,6 +43,7 @@ pub unsafe fn malloc_raw(size: uint) -> *c_void {
 }
 
 // FIXME #4942: Make these signatures agree with exchange_alloc's signatures
+#[cfg(stage0, not(test))]
 #[lang="exchange_malloc"]
 #[inline]
 pub unsafe fn exchange_malloc(td: *c_char, size: uintptr_t) -> *c_char {
@@ -55,7 +56,26 @@ pub unsafe fn exchange_malloc(td: *c_char, size: uintptr_t) -> *c_char {
     let p = malloc_raw(total_size as uint);
 
     let box: *mut BoxRepr = p as *mut BoxRepr;
-    (*box).header.ref_count = -1; // Exchange values not ref counted
+    (*box).header.ref_count = -1;
+    (*box).header.type_desc = td;
+
+    box as *c_char
+}
+
+// FIXME #4942: Make these signatures agree with exchange_alloc's signatures
+#[cfg(not(stage0), not(test))]
+#[lang="exchange_malloc"]
+#[inline]
+pub unsafe fn exchange_malloc(td: *c_char, size: uintptr_t) -> *c_char {
+    let td = td as *TyDesc;
+    let size = size as uint;
+
+    assert!(td.is_not_null());
+
+    let total_size = get_box_size(size, (*td).align);
+    let p = malloc_raw(total_size as uint);
+
+    let box: *mut BoxRepr = p as *mut BoxRepr;
     (*box).header.type_desc = td;
 
     box as *c_char
