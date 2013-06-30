@@ -486,6 +486,9 @@ pub fn make_closure_glue(
     }
 }
 
+// note: unique pointers no longer copy the type descriptor in the take glue,
+// so we cannot delegate to the unique box take glue here without copying it
+// ourselves
 pub fn make_opaque_cbox_take_glue(
     bcx: block,
     sigil: ast::Sigil,
