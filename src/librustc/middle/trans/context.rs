@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
 
 use back::{upcall};
 use driver::session;
@@ -26,10 +25,10 @@ use middle::ty;
 
 use middle::trans::type_::Type;
 
-use core::hash;
-use core::hashmap::{HashMap, HashSet};
-use core::str;
-use core::local_data;
+use std::hash;
+use std::hashmap::{HashMap, HashSet};
+use std::str;
+use std::local_data;
 use extra::time;
 use syntax::ast;
 

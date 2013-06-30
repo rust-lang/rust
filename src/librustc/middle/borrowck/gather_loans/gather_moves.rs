@@ -12,7 +12,6 @@
  * Computes moves.
  */
 
-use core::prelude::*;
 use mc = middle::mem_categorization;
 use middle::borrowck::*;
 use middle::borrowck::move_data::*;

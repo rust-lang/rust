@@ -10,18 +10,17 @@
 
 //! Utilities that leverage libuv's `uv_timer_*` API
 
-use core::prelude::*;
 
 use uv;
 use uv::iotask;
 use uv::iotask::IoTask;
 
-use core::cast::transmute;
-use core::cast;
-use core::comm::{stream, Chan, SharedChan, Port, select2i};
-use core::either;
-use core::libc::c_void;
-use core::libc;
+use std::cast::transmute;
+use std::cast;
+use std::comm::{stream, Chan, SharedChan, Port, select2i};
+use std::either;
+use std::libc::c_void;
+use std::libc;
 
 /**
  * Wait for timeout period then send provided value over a channel
@@ -111,7 +110,7 @@ pub fn sleep(iotask: &IoTask, msecs: uint) {
  *
  * * `iotask' - `uv::iotask` that the tcp request will run on
  * * msecs - an mount of time, in milliseconds, to wait to receive
- * * wait_port - a `core::comm::port<T>` to receive on
+ * * wait_port - a `std::comm::port<T>` to receive on
  *
  * # Returns
  *
@@ -176,16 +175,15 @@ extern fn delayed_send_close_cb(handle: *uv::ll::uv_timer_t) {
 
 #[cfg(test)]
 mod test {
-    use core::prelude::*;
 
     use timer::*;
     use uv;
 
-    use core::cell::Cell;
-    use core::pipes::{stream, SharedChan};
-    use core::rand::RngUtil;
-    use core::rand;
-    use core::task;
+    use std::cell::Cell;
+    use std::pipes::{stream, SharedChan};
+    use std::rand::RngUtil;
+    use std::rand;
+    use std::task;
 
     #[test]
     fn test_gl_timer_simple_sleep_test() {
@@ -223,7 +221,7 @@ mod test {
                 let ch = ch.clone();
                 let hl_loop_clone = hl_loop.clone();
                 do task::spawn {
-                    use core::rand::*;
+                    use std::rand::*;
                     let mut rng = rng();
                     for times.times {
                         sleep(&hl_loop_clone, rng.next() as uint % maxms);

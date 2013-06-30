@@ -11,7 +11,6 @@
 // A pass that checks to make sure private fields and methods aren't used
 // outside their scopes.
 
-use core::prelude::*;
 
 use metadata::csearch;
 use middle::ty::{ty_struct, ty_enum};
@@ -20,7 +19,7 @@ use middle::typeck::{method_map, method_origin, method_param, method_self};
 use middle::typeck::{method_super};
 use middle::typeck::{method_static, method_trait};
 
-use core::util::ignore;
+use std::util::ignore;
 use syntax::ast::{decl_item, def, def_fn, def_id, def_static_method};
 use syntax::ast::{def_variant, expr_field, expr_method_call, expr_path};
 use syntax::ast::{expr_struct, expr_unary, ident, inherited, item_enum};

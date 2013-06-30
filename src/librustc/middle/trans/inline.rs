@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
 
 use metadata::csearch;
 use middle::astencode;
@@ -18,7 +17,7 @@ use middle::trans::common::*;
 use middle::ty;
 use util::ppaux::ty_to_str;
 
-use core::vec;
+use std::vec;
 use syntax::ast;
 use syntax::ast_map::path_name;
 use syntax::ast_util::local_def;

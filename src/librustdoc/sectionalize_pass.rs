@@ -10,7 +10,6 @@
 
 //! Breaks rustdocs into sections according to their headers
 
-use core::prelude::*;
 
 use astsrv;
 use doc::ItemUtils;
@@ -19,7 +18,7 @@ use fold::Fold;
 use fold;
 use pass::Pass;
 
-use core::iterator::IteratorUtil;
+use std::iterator::IteratorUtil;
 
 pub fn mk_pass() -> Pass {
     Pass {
@@ -162,7 +161,6 @@ fn parse_header<'a>(line: &'a str) -> Option<&'a str> {
 
 #[cfg(test)]
 mod test {
-    use core::prelude::*;
 
     use astsrv;
     use attr_pass;

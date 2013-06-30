@@ -17,13 +17,12 @@ Core encoding and decoding interfaces.
 #[allow(missing_doc)];
 #[forbid(non_camel_case_types)];
 
-use core::prelude::*;
 
-use core::at_vec;
-use core::hashmap::{HashMap, HashSet};
-use core::trie::{TrieMap, TrieSet};
-use core::uint;
-use core::vec;
+use std::at_vec;
+use std::hashmap::{HashMap, HashSet};
+use std::trie::{TrieMap, TrieSet};
+use std::uint;
+use std::vec;
 use deque::Deque;
 use dlist::DList;
 use treemap::{TreeMap, TreeSet};

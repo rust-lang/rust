@@ -8,11 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
 
 use middle::resolve;
 
-use core::hashmap::HashMap;
+use std::hashmap::HashMap;
 use syntax::ast::*;
 use syntax::ast_util::{path_to_ident, walk_pat};
 use syntax::codemap::span;

@@ -119,7 +119,6 @@ lvalues are *never* stored by value.
 
 */
 
-use core::prelude::*;
 
 use back::abi;
 use lib::llvm::{ValueRef, llvm};
@@ -154,9 +153,9 @@ use util::ppaux::Repr;
 
 use middle::trans::type_::Type;
 
-use core::cast::transmute;
-use core::hashmap::HashMap;
-use core::vec;
+use std::cast::transmute;
+use std::hashmap::HashMap;
+use std::vec;
 use syntax::print::pprust::{expr_to_str};
 use syntax::ast;
 use syntax::codemap;
@@ -910,8 +909,6 @@ fn trans_lvalue_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
         let (bcx, base, len) =
             base_datum.get_vec_base_and_len(bcx, index_expr.span,
                                             index_expr.id, 0);
-        let mut bcx = bcx;
-        let mut base = base;
         let mut len = len;
 
         if ty::type_is_str(base_ty) {

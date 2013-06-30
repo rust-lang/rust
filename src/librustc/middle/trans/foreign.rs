@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
 
 use back::{link, abi};
 use lib::llvm::{ValueRef};
@@ -33,8 +32,8 @@ use middle::ty;
 use middle::ty::FnSig;
 use util::ppaux::ty_to_str;
 
-use core::uint;
-use core::vec;
+use std::uint;
+use std::vec;
 use syntax::codemap::span;
 use syntax::{ast, ast_util};
 use syntax::{attr, ast_map};

@@ -57,14 +57,14 @@ For more complicated uses (e.g. if one needs to pause iteration and
 resume it later), a `FileInput` instance can be constructed via the
 `from_vec`, `from_vec_raw` and `from_args` functions.
 
-Once created, the `each_line` (from the `core::io::ReaderUtil` trait)
+Once created, the `each_line` (from the `std::io::ReaderUtil` trait)
 and `each_line_state` methods allow one to iterate on the lines; the
 latter provides more information about the position within the
 iteration to the caller.
 
 It is possible (and safe) to skip lines and files using the
 `read_line` and `next_file` methods. Also, `FileInput` implements
-`core::io::Reader`, and the state will be updated correctly while
+`std::io::Reader`, and the state will be updated correctly while
 using any of those methods.
 
 E.g. the following program reads until an empty line, pauses for user
@@ -96,12 +96,11 @@ total line count).
 
 #[allow(missing_doc)];
 
-use core::prelude::*;
 
-use core::io::ReaderUtil;
-use core::io;
-use core::os;
-use core::vec;
+use std::io::ReaderUtil;
+use std::io;
+use std::os;
+use std::vec;
 
 /**
 A summary of the internal state of a `FileInput` object. `line_num`
@@ -410,13 +409,12 @@ pub fn input_vec_state(files: ~[Option<Path>],
 
 #[cfg(test)]
 mod test {
-    use core::prelude::*;
 
     use super::{FileInput, pathify, input_vec, input_vec_state};
 
-    use core::io;
-    use core::uint;
-    use core::vec;
+    use std::io;
+    use std::uint;
+    use std::vec;
 
     fn make_file(path : &Path, contents: &[~str]) {
         let file = io::file_writer(path, [io::Create, io::Truncate]).get();

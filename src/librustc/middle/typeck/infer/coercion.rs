@@ -64,7 +64,6 @@ we may want to adjust precisely when coercions occur.
 
 */
 
-use core::prelude::*;
 
 use middle::ty::{AutoPtr, AutoBorrowVec, AutoBorrowFn};
 use middle::ty::{AutoDerefRef};

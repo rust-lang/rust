@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
 
 use middle::ty::param_ty;
 use middle::ty;
@@ -24,8 +23,8 @@ use util::common::indenter;
 use util::ppaux::tys_to_str;
 use util::ppaux;
 
-use core::hashmap::HashSet;
-use core::result;
+use std::hashmap::HashSet;
+use std::result;
 use syntax::ast;
 use syntax::ast_util;
 use syntax::codemap::span;

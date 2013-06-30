@@ -18,9 +18,8 @@ Do not use ==, !=, <, etc on doubly-linked lists -- it may not terminate.
 
 */
 
-use core::prelude::*;
 
-use core::managed;
+use std::managed;
 
 pub type DListLink<T> = Option<@mut DListNode<T>>;
 
@@ -522,7 +521,6 @@ impl<T:Copy> DList<T> {
 
 #[cfg(test)]
 mod tests {
-    use core::prelude::*;
 
     use super::*;
 

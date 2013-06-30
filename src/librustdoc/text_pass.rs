@@ -10,7 +10,6 @@
 
 //! Generic pass for performing an operation on all descriptions
 
-use core::prelude::*;
 
 use astsrv;
 use doc::ItemUtils;
@@ -20,7 +19,7 @@ use fold;
 use pass::Pass;
 use util::NominalOp;
 
-use core::cell::Cell;
+use std::cell::Cell;
 
 pub fn mk_pass(name: ~str, op: @fn(&str) -> ~str) -> Pass {
     let op = Cell::new(op);
@@ -139,7 +138,6 @@ fn fold_impl(
 
 #[cfg(test)]
 mod test {
-    use core::prelude::*;
 
     use astsrv;
     use attr_pass;

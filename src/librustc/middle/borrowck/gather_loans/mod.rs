@@ -16,7 +16,6 @@
 // their associated scopes.  In phase two, checking loans, we will then make
 // sure that all of these loans are honored.
 
-use core::prelude::*;
 
 use middle::borrowck::*;
 use middle::borrowck::move_data::MoveData;

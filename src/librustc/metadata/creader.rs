@@ -10,14 +10,13 @@
 
 //! Validates all used crates and extern libraries and loads their metadata
 
-use core::prelude::*;
 
 use metadata::cstore;
 use metadata::decoder;
 use metadata::filesearch::FileSearch;
 use metadata::loader;
 
-use core::hashmap::HashMap;
+use std::hashmap::HashMap;
 use syntax::attr;
 use syntax::codemap::{span, dummy_sp};
 use syntax::diagnostic::span_handler;
@@ -75,7 +74,7 @@ fn dump_crates(crate_cache: &[cache_entry]) {
 fn warn_if_multiple_versions(e: @mut Env,
                              diag: @span_handler,
                              crate_cache: &[cache_entry]) {
-    use core::either::*;
+    use std::either::*;
 
     if crate_cache.len() != 0u {
         let name = loader::crate_name_from_metas(

@@ -126,7 +126,6 @@ and so on.
 
 */
 
-use core::prelude::*;
 
 use middle::pat_util::{pat_bindings};
 use middle::freevars;
@@ -136,8 +135,8 @@ use util::ppaux;
 use util::ppaux::Repr;
 use util::common::indenter;
 
-use core::at_vec;
-use core::hashmap::{HashSet, HashMap};
+use std::at_vec;
+use std::hashmap::{HashSet, HashMap};
 use syntax::ast::*;
 use syntax::ast_util;
 use syntax::visit;

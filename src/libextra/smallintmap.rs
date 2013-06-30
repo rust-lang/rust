@@ -15,13 +15,12 @@
 
 #[allow(missing_doc)];
 
-use core::prelude::*;
 
-use core::cmp;
-use core::container::{Container, Mutable, Map, Set};
-use core::uint;
-use core::util::replace;
-use core::vec;
+use std::cmp;
+use std::container::{Container, Mutable, Map, Set};
+use std::uint;
+use std::util::replace;
+use std::vec;
 
 #[allow(missing_doc)]
 pub struct SmallIntMap<T> {
@@ -287,7 +286,6 @@ impl SmallIntSet {
 
 #[cfg(test)]
 mod tests {
-    use core::prelude::*;
 
     use super::SmallIntMap;
 
@@ -382,11 +380,10 @@ mod tests {
 
 #[cfg(test)]
 mod test_set {
-    use core::prelude::*;
 
     use super::SmallIntSet;
 
-    use core::vec;
+    use std::vec;
 
     #[test]
     fn test_disjoint() {

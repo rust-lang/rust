@@ -19,10 +19,9 @@
  * of features.
  */
 
-use core::prelude::*;
 
-use core::cmp::{Eq, Ord};
-use core::option::{Some, None};
+use std::cmp::{Eq, Ord};
+use std::option::{Some, None};
 
 pub type Treemap<K, V> = @TreeNode<K, V>;
 

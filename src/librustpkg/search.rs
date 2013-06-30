@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use path_util::installed_library_in_workspace;
-use core::prelude::*;
 
 /// If a library with path `p` matching pkg_id's name exists under sroot_opt,
 /// return Some(p). Return None if there's no such path or if sroot_opt is None.

@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
 
 use back::link::mangle_exported_name;
 use driver::session;
@@ -31,7 +30,7 @@ use middle::ty::{FnSig};
 use middle::typeck;
 use util::ppaux::{Repr,ty_to_str};
 
-use core::vec;
+use std::vec;
 use syntax::ast;
 use syntax::ast_map;
 use syntax::ast_map::path_name;

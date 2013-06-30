@@ -8,13 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
 
 use doc;
 #[cfg(test)] use extract;
 #[cfg(test)] use parse;
 
-use core::vec;
+use std::vec;
 
 pub struct Fold<T> {
     ctxt: T,

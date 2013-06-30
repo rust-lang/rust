@@ -15,7 +15,6 @@ Each page corresponds is a logical section. There may be pages for
 individual modules, pages for the crate, indexes, etc.
 */
 
-use core::prelude::*;
 
 use astsrv;
 use config;
@@ -26,8 +25,8 @@ use fold;
 use pass::Pass;
 use util::NominalOp;
 
-use core::comm::*;
-use core::task;
+use std::comm::*;
+use std::task;
 use syntax::ast;
 
 #[cfg(test)] use doc::PageUtils;

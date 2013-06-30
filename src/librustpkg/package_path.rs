@@ -10,11 +10,11 @@
 
 // rustpkg utilities having to do with local and remote paths
 
-use core::path::Path;
-use core::option::Some;
-use core::hash;
-use core::rt::io::Writer;
-use core::hash::Streaming;
+use std::path::Path;
+use std::option::Some;
+use std::hash;
+use std::rt::io::Writer;
+use std::hash::Streaming;
 
 /// Wrappers to prevent local and remote paths from getting confused
 /// (These will go away after #6407)

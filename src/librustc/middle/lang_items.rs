@@ -19,7 +19,6 @@
 //
 // * Functions called by the compiler itself.
 
-use core::prelude::*;
 
 use driver::session::Session;
 use metadata::csearch::each_lang_item;
@@ -30,7 +29,7 @@ use syntax::ast_util::local_def;
 use syntax::visit::{default_simple_visitor, mk_simple_visitor, SimpleVisitor};
 use syntax::visit::visit_crate;
 
-use core::hashmap::HashMap;
+use std::hashmap::HashMap;
 
 pub enum LangItem {
     FreezeTraitLangItem,        // 0

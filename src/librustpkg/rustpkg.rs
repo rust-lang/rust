@@ -18,19 +18,19 @@
 #[license = "MIT/ASL2"];
 #[crate_type = "lib"];
 
-#[no_core];
-#[no_std];
-
-extern mod core(name = "std");
-extern mod extra(name = "extra");
-
+extern mod extra;
 extern mod rustc;
 extern mod syntax;
 
-use core::prelude::*;
-use core::*;
-pub use core::path::Path;
-use core::hashmap::HashMap;
+use std::result;
+use std::io;
+use std::os;
+use std::run;
+use std::str;
+
+pub use std::path::Path;
+use std::hashmap::HashMap;
+
 use rustc::driver::{driver, session};
 use rustc::metadata::filesearch;
 use extra::{getopts};
@@ -64,15 +64,6 @@ mod version;
 mod workspace;
 
 pub mod usage;
-
-mod std {
-    pub use core::cmp;
-    pub use core::condition;
-    pub use core::os;
-    pub use core::str;
-    pub use core::sys;
-    pub use core::unstable;
-}
 
 /// A PkgScript represents user-supplied custom logic for
 /// special build hooks. This only exists for packages with

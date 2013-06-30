@@ -8,16 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//!
-//
-// Handles translation of callees as well as other call-related
-// things.  Callees are a superset of normal rust values and sometimes
-// have different representations.  In particular, top-level fn items
-// and methods are represented as just a fn ptr and not a full
-// closure.
+/*!
+ * Handles translation of callees as well as other call-related
+ * things.  Callees are a superset of normal rust values and sometimes
+ * have different representations.  In particular, top-level fn items
+ * and methods are represented as just a fn ptr and not a full
+ * closure.
+ */
 
-use core::prelude::*;
-use core::vec;
+use std::vec;
 
 use back::abi;
 use driver::session;

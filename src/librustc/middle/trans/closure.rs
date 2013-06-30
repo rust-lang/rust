@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
 
 use back::abi;
 use back::link::{mangle_internal_name_by_path_and_seq};
@@ -28,8 +27,8 @@ use util::ppaux::ty_to_str;
 
 use middle::trans::type_::Type;
 
-use core::str;
-use core::vec;
+use std::str;
+use std::vec;
 use syntax::ast;
 use syntax::ast_map::path_name;
 use syntax::ast_util;

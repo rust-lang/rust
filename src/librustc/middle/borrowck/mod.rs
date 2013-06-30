@@ -10,7 +10,6 @@
 
 /*! See doc.rs for a thorough explanation of the borrow checker */
 
-use core::prelude::*;
 
 use mc = middle::mem_categorization;
 use middle::ty;
@@ -21,10 +20,10 @@ use middle::dataflow::DataFlowOperator;
 use util::common::stmt_set;
 use util::ppaux::{note_and_explain_region, Repr, UserString};
 
-use core::hashmap::{HashSet, HashMap};
-use core::io;
-use core::ops::{BitOr, BitAnd};
-use core::result::{Result};
+use std::hashmap::{HashSet, HashMap};
+use std::io;
+use std::ops::{BitOr, BitAnd};
+use std::result::{Result};
 use syntax::ast;
 use syntax::ast_map;
 use syntax::visit;
