@@ -434,9 +434,16 @@ pub fn each_split_within<'a>(ss: &'a str,
     let mut last_start = 0;
     let mut last_end = 0;
     let mut state = A;
+    let mut fake_i = ss.len();
+    let mut lim = lim;
 
     let mut cont = true;
     let slice: &fn() = || { cont = it(ss.slice(slice_start, last_end)) };
+
+    // if the limit is larger than the string, lower it to save cycles
+    if (lim >= fake_i) {
+        lim = fake_i;
+    }
 
     let machine: &fn((uint, char)) -> bool = |(i, c)| {
         let whitespace = if char::is_whitespace(c)       { Ws }       else { Cr };
@@ -466,7 +473,6 @@ pub fn each_split_within<'a>(ss: &'a str,
     ss.iter().enumerate().advance(|x| machine(x));
 
     // Let the automaton 'run out' by supplying trailing whitespace
-    let mut fake_i = ss.len();
     while cont && match state { B | C => true, A => false } {
         machine((fake_i, ' '));
         fake_i += 1;
@@ -2299,6 +2305,7 @@ mod tests {
     use libc;
     use ptr;
     use str::*;
+    use uint;
     use vec;
     use vec::{ImmutableVector, CopyableVector};
     use cmp::{TotalOrd, Less, Equal, Greater};
@@ -2444,6 +2451,8 @@ mod tests {
         t("hello", 15, [~"hello"]);
         t("\nMary had a little lamb\nLittle lamb\n", 15,
             [~"Mary had a", ~"little lamb", ~"Little lamb"]);
+        t("\nMary had a little lamb\nLittle lamb\n", uint::max_value,
+            [~"Mary had a little lamb\nLittle lamb"]);
     }
 
     #[test]
