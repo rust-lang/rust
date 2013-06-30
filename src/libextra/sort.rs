@@ -10,12 +10,11 @@
 
 //! Sorting methods
 
-use core::prelude::*;
 
-use core::cmp::{Eq, Ord};
-use core::uint;
-use core::util::swap;
-use core::vec;
+use std::cmp::{Eq, Ord};
+use std::uint;
+use std::util::swap;
+use std::vec;
 
 type Le<'self, T> = &'self fn(v1: &T, v2: &T) -> bool;
 
@@ -791,12 +790,11 @@ mod test_qsort3 {
 
 #[cfg(test)]
 mod test_qsort {
-    use core::prelude::*;
 
     use sort::*;
 
-    use core::int;
-    use core::vec;
+    use std::int;
+    use std::vec;
 
     fn check_sort(v1: &mut [int], v2: &mut [int]) {
         let len = v1.len();
@@ -857,7 +855,6 @@ mod test_qsort {
 
 #[cfg(test)]
 mod tests {
-    use core::prelude::*;
 
     use sort::*;
 
@@ -924,12 +921,11 @@ mod tests {
 
 #[cfg(test)]
 mod test_tim_sort {
-    use core::prelude::*;
 
     use sort::tim_sort;
-    use core::rand::RngUtil;
-    use core::rand;
-    use core::vec;
+    use std::rand::RngUtil;
+    use std::rand;
+    use std::vec;
 
     struct CVal {
         val: float,
@@ -1019,15 +1015,14 @@ mod test_tim_sort {
 
 #[cfg(test)]
 mod big_tests {
-    use core::prelude::*;
 
     use sort::*;
 
-    use core::local_data;
-    use core::rand::RngUtil;
-    use core::rand;
-    use core::uint;
-    use core::vec;
+    use std::local_data;
+    use std::rand::RngUtil;
+    use std::rand;
+    use std::uint;
+    use std::vec;
 
     #[test]
     fn test_unique() {

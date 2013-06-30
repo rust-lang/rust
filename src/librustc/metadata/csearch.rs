@@ -10,7 +10,6 @@
 
 // Searching for information from the cstore
 
-use core::prelude::*;
 
 use metadata::common::*;
 use metadata::cstore;
@@ -18,7 +17,7 @@ use metadata::decoder;
 use metadata;
 use middle::{ty, resolve};
 
-use core::vec;
+use std::vec;
 use reader = extra::ebml::reader;
 use syntax::ast;
 use syntax::ast_map;

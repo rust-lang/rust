@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
 
 use back::rpath;
 use driver::session::Session;
@@ -23,17 +22,17 @@ use middle::trans::common::gensym_name;
 use middle::ty;
 use util::ppaux;
 
-use core::char;
-use core::hash::Streaming;
-use core::hash;
-use core::libc::{c_int, c_uint};
-use core::os::consts::{macos, freebsd, linux, android, win32};
-use core::os;
-use core::ptr;
-use core::rt::io::Writer;
-use core::run;
-use core::str;
-use core::vec;
+use std::char;
+use std::hash::Streaming;
+use std::hash;
+use std::libc::{c_int, c_uint};
+use std::os::consts::{macos, freebsd, linux, android, win32};
+use std::os;
+use std::ptr;
+use std::rt::io::Writer;
+use std::run;
+use std::str;
+use std::vec;
 use syntax::ast;
 use syntax::ast_map::{path, path_mod, path_name};
 use syntax::attr;
@@ -98,7 +97,6 @@ pub fn WriteOutputFile(sess: Session,
 }
 
 pub mod jit {
-    use core::prelude::*;
 
     use back::link::llvm_err;
     use driver::session::Session;
@@ -106,11 +104,11 @@ pub mod jit {
     use lib::llvm::{ModuleRef, ContextRef};
     use metadata::cstore;
 
-    use core::cast;
-    use core::ptr;
-    use core::str;
-    use core::sys;
-    use core::unstable::intrinsics;
+    use std::cast;
+    use std::ptr;
+    use std::str;
+    use std::sys;
+    use std::unstable::intrinsics;
 
     pub fn exec(sess: Session,
                 c: ContextRef,
@@ -182,7 +180,6 @@ pub mod jit {
 }
 
 pub mod write {
-    use core::prelude::*;
 
     use back::link::jit;
     use back::link::{WriteOutputFile, output_type};
@@ -198,10 +195,10 @@ pub mod write {
 
     use back::passes;
 
-    use core::libc::{c_int, c_uint};
-    use core::path::Path;
-    use core::run;
-    use core::str;
+    use std::libc::{c_int, c_uint};
+    use std::path::Path;
+    use std::run;
+    use std::str;
 
     pub fn is_object_or_assembly_or_exe(ot: output_type) -> bool {
         match ot {
@@ -537,7 +534,7 @@ pub fn build_link_meta(sess: Session,
             write_string(symbol_hasher, len_and_str(*dh));
         }
 
-    // tjc: allocation is unfortunate; need to change core::hash
+    // tjc: allocation is unfortunate; need to change std::hash
         return truncated_hash_result(symbol_hasher).to_managed();
     }
 
@@ -618,7 +615,7 @@ pub fn symbol_hash(tcx: ty::ctxt,
     let mut hash = truncated_hash_result(symbol_hasher);
     // Prefix with _ so that it never blends into adjacent digits
     hash.unshift_char('_');
-    // tjc: allocation is unfortunate; need to change core::hash
+    // tjc: allocation is unfortunate; need to change std::hash
     hash.to_managed()
 }
 

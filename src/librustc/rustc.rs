@@ -21,16 +21,8 @@
 #[allow(non_camel_case_types)];
 #[deny(deprecated_pattern)];
 
-#[no_core];
-#[no_std];
-
-extern mod core(name = "std");
-extern mod extra(name = "extra");
+extern mod extra;
 extern mod syntax;
-
-extern mod std(name = "std", vers = "0.7-pre");
-
-use core::prelude::*;
 
 use driver::driver::{host_triple, optgroups, early_error};
 use driver::driver::{str_input, file_input, build_session_options};
@@ -40,13 +32,13 @@ use driver::driver::{compile_input};
 use driver::session;
 use middle::lint;
 
-use core::io;
-use core::os;
-use core::result;
-use core::str;
-use core::task;
-use core::uint;
-use core::vec;
+use std::io;
+use std::os;
+use std::result;
+use std::str;
+use std::task;
+use std::uint;
+use std::vec;
 use extra::getopts::{groups, opt_present};
 use extra::getopts;
 use syntax::codemap;
@@ -120,15 +112,17 @@ pub mod lib {
 
 // A curious inner module that allows ::std::foo to be available in here for
 // macros.
+/*
 mod std {
-    pub use core::cmp;
-    pub use core::os;
-    pub use core::str;
-    pub use core::sys;
-    pub use core::to_bytes;
-    pub use core::unstable;
+    pub use std::cmp;
+    pub use std::os;
+    pub use std::str;
+    pub use std::sys;
+    pub use std::to_bytes;
+    pub use std::unstable;
     pub use extra::serialize;
 }
+*/
 
 pub fn version(argv0: &str) {
     let mut vers = ~"unknown version";
@@ -193,7 +187,7 @@ pub fn describe_debug_flags() {
 
 pub fn run_compiler(args: &~[~str], demitter: diagnostic::Emitter) {
     // Don't display log spew by default. Can override with RUST_LOG.
-    ::core::logging::console_off();
+    ::std::logging::console_off();
 
     let mut args = /*bad*/copy *args;
     let binary = args.shift().to_managed();
@@ -305,7 +299,7 @@ fails without recording a fatal error then we've encountered a compiler
 bug and need to present an error.
 */
 pub fn monitor(f: ~fn(diagnostic::Emitter)) {
-    use core::comm::*;
+    use std::comm::*;
     let (p, ch) = stream();
     let ch = SharedChan::new(ch);
     let ch_capture = ch.clone();

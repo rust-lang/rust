@@ -79,7 +79,6 @@ obtained the type `Foo`, we would never match this method.
 
 */
 
-use core::prelude::*;
 
 use middle::resolve;
 use middle::ty::*;
@@ -95,10 +94,10 @@ use middle::typeck::{method_self, method_static, method_trait, method_super};
 use middle::typeck::check::regionmanip::replace_bound_regions_in_fn_sig;
 use util::common::indenter;
 
-use core::hashmap::HashSet;
-use core::result;
-use core::uint;
-use core::vec;
+use std::hashmap::HashSet;
+use std::result;
+use std::uint;
+use std::vec;
 use extra::list::Nil;
 use syntax::ast::{def_id, sty_value, sty_region, sty_box};
 use syntax::ast::{sty_uniq, sty_static, node_id};

@@ -10,7 +10,6 @@
 
 //! A standard, garbage-collected linked list.
 
-use core::prelude::*;
 
 
 #[deriving(Eq)]
@@ -181,7 +180,7 @@ mod tests {
     use list::*;
     use list;
 
-    use core::option;
+    use std::option;
 
     #[test]
     fn test_is_empty() {

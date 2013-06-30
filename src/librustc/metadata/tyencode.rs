@@ -10,15 +10,14 @@
 
 // Type encoding
 
-use core::prelude::*;
 
 use middle::ty::param_ty;
 use middle::ty;
 
-use core::hashmap::HashMap;
-use core::io::WriterUtil;
-use core::io;
-use core::uint;
+use std::hashmap::HashMap;
+use std::io::WriterUtil;
+use std::io;
+use std::uint;
 use syntax::abi::AbiSet;
 use syntax::ast;
 use syntax::ast::*;

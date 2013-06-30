@@ -34,22 +34,21 @@
 
 #[allow(missing_doc)];
 
-use core::prelude::*;
 
 use list::{MutList, MutCons, MutNil};
 
-use core::at_vec;
-use core::cast::{transmute, transmute_mut, transmute_mut_region};
-use core::cast;
-use core::ptr;
-use core::sys;
-use core::uint;
-use core::vec;
-use core::unstable::intrinsics;
-use core::unstable::intrinsics::{TyDesc};
+use std::at_vec;
+use std::cast::{transmute, transmute_mut, transmute_mut_region};
+use std::cast;
+use std::ptr;
+use std::sys;
+use std::uint;
+use std::vec;
+use std::unstable::intrinsics;
+use std::unstable::intrinsics::{TyDesc};
 
 #[cfg(not(stage0))]
-use core::unstable::intrinsics::{get_tydesc};
+use std::unstable::intrinsics::{get_tydesc};
 
 #[cfg(stage0)]
 unsafe fn get_tydesc<T>() -> *TyDesc {

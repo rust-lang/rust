@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
 
 #[deriving(Eq, IterBytes)]
 pub struct EnumSet<E> {
@@ -96,10 +95,9 @@ impl<E:CLike> BitAnd<EnumSet<E>, EnumSet<E>> for EnumSet<E> {
 
 #[cfg(test)]
 mod test {
-    use core::prelude::*;
 
-    use core::cast;
-    use core::iter;
+    use std::cast;
+    use std::iter;
 
     use util::enum_set::*;
 

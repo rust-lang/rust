@@ -10,7 +10,6 @@
 
 // Metadata encoding
 
-use core::prelude::*;
 
 use metadata::common::*;
 use metadata::cstore;
@@ -21,13 +20,13 @@ use middle::ty;
 use middle;
 use util::ppaux::ty_to_str;
 
-use core::hash::HashUtil;
-use core::hashmap::{HashMap, HashSet};
-use core::int;
-use core::io;
-use core::str;
-use core::uint;
-use core::vec;
+use std::hash::HashUtil;
+use std::hashmap::{HashMap, HashSet};
+use std::int;
+use std::io;
+use std::str;
+use std::uint;
+use std::vec;
 use extra::flate;
 use extra::serialize::Encodable;
 use extra;
@@ -46,7 +45,7 @@ use syntax::parse::token;
 use syntax;
 use writer = extra::ebml::writer;
 
-use core::cast;
+use std::cast;
 
 // used by astencode:
 type abbrev_map = @mut HashMap<ty::t, tyencode::ty_abbrev>;
@@ -152,7 +151,6 @@ fn encode_trait_ref(ebml_w: &mut writer::Encoder,
                     ecx: &EncodeContext,
                     trait_ref: &ty::TraitRef,
                     tag: uint) {
-    let r = ecx.reachable;
     let ty_str_ctxt = @tyencode::ctxt {
         diag: ecx.diag,
         ds: def_to_str,
@@ -180,7 +178,6 @@ fn encode_ty_type_param_defs(ebml_w: &mut writer::Encoder,
                              ecx: &EncodeContext,
                              params: @~[ty::TypeParameterDef],
                              tag: uint) {
-    let r = ecx.reachable;
     let ty_str_ctxt = @tyencode::ctxt {
         diag: ecx.diag,
         ds: def_to_str,
@@ -213,7 +210,6 @@ fn encode_variant_id(ebml_w: &mut writer::Encoder, vid: def_id) {
 pub fn write_type(ecx: &EncodeContext,
                   ebml_w: &mut writer::Encoder,
                   typ: ty::t) {
-    let r = ecx.reachable;
     let ty_str_ctxt = @tyencode::ctxt {
         diag: ecx.diag,
         ds: def_to_str,
@@ -226,7 +222,6 @@ pub fn write_type(ecx: &EncodeContext,
 pub fn write_vstore(ecx: &EncodeContext,
                     ebml_w: &mut writer::Encoder,
                     vstore: ty::vstore) {
-    let r = ecx.reachable;
     let ty_str_ctxt = @tyencode::ctxt {
         diag: ecx.diag,
         ds: def_to_str,
@@ -259,7 +254,6 @@ fn encode_method_fty(ecx: &EncodeContext,
                      typ: &ty::BareFnTy) {
     ebml_w.start_tag(tag_item_method_fty);
 
-    let r = ecx.reachable;
     let ty_str_ctxt = @tyencode::ctxt {
         diag: ecx.diag,
         ds: def_to_str,

@@ -8,15 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
 
-use core::cell::Cell;
-use core::os;
-use core::result::Result;
-use core::result;
-use core::run::ProcessOutput;
-use core::run;
-use core::vec;
+use std::cell::Cell;
+use std::os;
+use std::result::Result;
+use std::result;
+use std::run::ProcessOutput;
+use std::run;
+use std::vec;
 use extra::getopts;
 
 /// The type of document to output
@@ -72,7 +71,7 @@ fn opts() -> ~[(getopts::Opt, ~str)] {
 }
 
 pub fn usage() {
-    use core::io::println;
+    use std::io::println;
 
     println("Usage: rustdoc [options] <cratefile>\n");
     println("Options:\n");
@@ -245,11 +244,10 @@ pub fn maybe_find_pandoc(
 
 #[cfg(test)]
 mod test {
-    use core::prelude::*;
 
     use config::*;
-    use core::result;
-    use core::run::ProcessOutput;
+    use std::result;
+    use std::run::ProcessOutput;
 
     fn parse_config(args: &[~str]) -> Result<Config, ~str> {
         parse_config_(args, mock_process_output)

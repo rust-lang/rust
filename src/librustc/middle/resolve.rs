@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
 
 use driver::session::Session;
 use metadata::csearch::{each_path, get_trait_method_def_ids};
@@ -40,11 +39,11 @@ use syntax::visit::{visit_foreign_item, visit_item};
 use syntax::visit::{visit_mod, visit_ty, vt};
 use syntax::opt_vec::OptVec;
 
-use core::str;
-use core::uint;
-use core::vec;
-use core::hashmap::{HashMap, HashSet};
-use core::util;
+use std::str;
+use std::uint;
+use std::vec;
+use std::hashmap::{HashMap, HashSet};
+use std::util;
 
 // Definition mapping
 pub type DefMap = @mut HashMap<node_id,def>;
@@ -1308,7 +1307,7 @@ impl Resolver {
                 visit_item(item, (parent, visitor));
             }
 
-            item_impl(_, Some(_), ty, ref methods) => {
+            item_impl(_, Some(_), _ty, ref _methods) => {
                 visit_item(item, (parent, visitor));
             }
 

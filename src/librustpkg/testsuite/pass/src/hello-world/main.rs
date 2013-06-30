@@ -18,7 +18,7 @@ The test runner should check that, after `rustpkg build hello-world`:
   * testsuite/pass/hello-world/build is empty
 */
 
-use core::io;
+use std::io;
 
 fn main() {
     io::println(~"Hello world!");

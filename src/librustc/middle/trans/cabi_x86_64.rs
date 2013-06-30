@@ -18,10 +18,10 @@ use middle::trans::cabi::*;
 
 use middle::trans::type_::Type;
 
-use core::option;
-use core::option::Option;
-use core::uint;
-use core::vec;
+use std::option;
+use std::option::Option;
+use std::uint;
+use std::vec;
 
 #[deriving(Eq)]
 enum RegClass {

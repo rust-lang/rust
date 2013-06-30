@@ -8,10 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
 
-use core::uint;
-use core::vec;
+use std::uint;
+use std::vec;
 
 struct Quad {
     a: u32,

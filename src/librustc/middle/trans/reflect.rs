@@ -25,9 +25,9 @@ use middle::trans::type_of::*;
 use middle::ty;
 use util::ppaux::ty_to_str;
 
-use core::libc::c_uint;
-use core::option::None;
-use core::vec;
+use std::libc::c_uint;
+use std::option::None;
+use std::vec;
 use syntax::ast::def_id;
 use syntax::ast;
 use syntax::ast_map::path_name;

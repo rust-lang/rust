@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
 
 use back::abi;
 use lib::llvm::llvm;
@@ -33,7 +32,7 @@ use util::ppaux::Repr;
 
 use middle::trans::type_::Type;
 
-use core::vec;
+use std::vec;
 use syntax::ast_map::{path, path_mod, path_name};
 use syntax::ast_util;
 use syntax::{ast, ast_map};

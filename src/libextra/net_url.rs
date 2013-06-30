@@ -12,14 +12,13 @@
 
 #[allow(missing_doc)];
 
-use core::prelude::*;
 
-use core::cmp::Eq;
-use core::io::{Reader, ReaderUtil};
-use core::io;
-use core::hashmap::HashMap;
-use core::to_bytes;
-use core::uint;
+use std::cmp::Eq;
+use std::io::{Reader, ReaderUtil};
+use std::io;
+use std::hashmap::HashMap;
+use std::to_bytes;
+use std::uint;
 
 #[deriving(Clone, Eq)]
 struct Url {
@@ -803,7 +802,7 @@ mod tests {
 
     use net_url::*;
 
-    use core::hashmap::HashMap;
+    use std::hashmap::HashMap;
 
     #[test]
     fn test_url_parse() {

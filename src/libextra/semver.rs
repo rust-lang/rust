@@ -12,15 +12,14 @@
 
 #[allow(missing_doc)];
 
-use core::prelude::*;
 
-use core::char;
-use core::cmp;
-use core::io::{ReaderUtil};
-use core::io;
-use core::option::{Option, Some, None};
-use core::to_str::ToStr;
-use core::uint;
+use std::char;
+use std::cmp;
+use std::io::{ReaderUtil};
+use std::io;
+use std::option::{Option, Some, None};
+use std::to_str::ToStr;
+use std::uint;
 
 #[deriving(Eq)]
 pub enum Identifier {

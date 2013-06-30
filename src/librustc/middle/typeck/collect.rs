@@ -30,7 +30,6 @@ are represented as `ty_param()` instances.
 
 */
 
-use core::prelude::*;
 
 use metadata::csearch;
 use middle::ty::{substs, ty_param_bounds_and_ty};
@@ -47,8 +46,8 @@ use util::common::pluralize;
 use util::ppaux;
 use util::ppaux::UserString;
 
-use core::result;
-use core::vec;
+use std::result;
+use std::vec;
 use syntax::abi::AbiSet;
 use syntax::ast::{RegionTyParamBound, TraitTyParamBound};
 use syntax::ast;
