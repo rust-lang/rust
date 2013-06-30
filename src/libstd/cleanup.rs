@@ -159,19 +159,6 @@ fn debug_mem() -> bool {
     false
 }
 
-#[inline]
-#[cfg(not(stage0))]
-unsafe fn call_drop_glue(tydesc: *TyDesc, data: *i8) {
-    // This function should be inlined when stage0 is gone
-    ((*tydesc).drop_glue)(data);
-}
-
-#[inline]
-#[cfg(stage0)]
-unsafe fn call_drop_glue(tydesc: *TyDesc, data: *i8) {
-    ((*tydesc).drop_glue)(0 as **TyDesc, data);
-}
-
 /// Destroys all managed memory (i.e. @ boxes) held by the current task.
 #[cfg(not(test))]
 #[lang="annihilate"]
@@ -215,7 +202,7 @@ pub unsafe fn annihilate() {
         if !uniq {
             let tydesc = (*box).header.type_desc;
             let data = transmute(&(*box).data);
-            call_drop_glue(tydesc, data);
+            ((*tydesc).drop_glue)(data);
         }
     }
 

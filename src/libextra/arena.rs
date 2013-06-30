@@ -47,13 +47,7 @@ use std::vec;
 use std::unstable::intrinsics;
 use std::unstable::intrinsics::{TyDesc};
 
-#[cfg(not(stage0))]
 use std::unstable::intrinsics::{get_tydesc};
-
-#[cfg(stage0)]
-unsafe fn get_tydesc<T>() -> *TyDesc {
-    intrinsics::get_tydesc::<T>() as *TyDesc
-}
 
 // The way arena uses arrays is really deeply awful. The arrays are
 // allocated, and have capacities reserved, but the fill for the array
@@ -64,7 +58,6 @@ struct Chunk {
     is_pod: bool,
 }
 
-#[mutable] // XXX remove after snap
 #[no_freeze]
 pub struct Arena {
     // The head is separated out from the list as a unbenchmarked
@@ -117,16 +110,9 @@ fn round_up_to(base: uint, align: uint) -> uint {
 }
 
 #[inline]
-#[cfg(not(stage0))]
 unsafe fn call_drop_glue(tydesc: *TyDesc, data: *i8) {
     // This function should be inlined when stage0 is gone
     ((*tydesc).drop_glue)(data);
-}
-
-#[inline]
-#[cfg(stage0)]
-unsafe fn call_drop_glue(tydesc: *TyDesc, data: *i8) {
-    ((*tydesc).drop_glue)(0 as **TyDesc, data);
 }
 
 // Walk down a chunk, running the destructors for any objects stored

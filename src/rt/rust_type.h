@@ -25,11 +25,7 @@ typedef void (*CDECL spawn_fn)(rust_opaque_box*, void *);
 
 struct type_desc;
 
-typedef void CDECL (glue_fn)(void *,
-#ifdef _RUST_STAGE0
-                             const type_desc **,
-#endif
-                             void *);
+typedef void CDECL (glue_fn)(void *, void *);
 
 // Corresponds to the boxed data in the @ region.  The body follows the
 // header; you can obtain a ptr via box_body() below.
