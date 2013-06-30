@@ -32,63 +32,64 @@ use syntax::visit::visit_crate;
 use std::hashmap::HashMap;
 
 pub enum LangItem {
-    FreezeTraitLangItem,        // 0
-    CopyTraitLangItem,          // 1
-    SendTraitLangItem,          // 2
-    SizedTraitLangItem,         // 3
+    FreezeTraitLangItem,               // 0
+    CopyTraitLangItem,                 // 1
+    SendTraitLangItem,                 // 2
+    SizedTraitLangItem,                // 3
 
-    DropTraitLangItem,          // 4
+    DropTraitLangItem,                 // 4
 
-    AddTraitLangItem,           // 5
-    SubTraitLangItem,           // 6
-    MulTraitLangItem,           // 7
-    DivTraitLangItem,           // 8
-    RemTraitLangItem,           // 9
-    NegTraitLangItem,           // 10
-    NotTraitLangItem,           // 11
-    BitXorTraitLangItem,        // 11
-    BitAndTraitLangItem,        // 13
-    BitOrTraitLangItem,         // 14
-    ShlTraitLangItem,           // 15
-    ShrTraitLangItem,           // 16
-    IndexTraitLangItem,         // 17
+    AddTraitLangItem,                  // 5
+    SubTraitLangItem,                  // 6
+    MulTraitLangItem,                  // 7
+    DivTraitLangItem,                  // 8
+    RemTraitLangItem,                  // 9
+    NegTraitLangItem,                  // 10
+    NotTraitLangItem,                  // 11
+    BitXorTraitLangItem,               // 11
+    BitAndTraitLangItem,               // 13
+    BitOrTraitLangItem,                // 14
+    ShlTraitLangItem,                  // 15
+    ShrTraitLangItem,                  // 16
+    IndexTraitLangItem,                // 17
 
-    EqTraitLangItem,            // 18
-    OrdTraitLangItem,           // 19
+    EqTraitLangItem,                   // 18
+    OrdTraitLangItem,                  // 19
 
-    StrEqFnLangItem,            // 20
-    UniqStrEqFnLangItem,        // 21
-    AnnihilateFnLangItem,       // 22
-    LogTypeFnLangItem,          // 23
-    FailFnLangItem,             // 24
-    FailBoundsCheckFnLangItem,  // 25
-    ExchangeMallocFnLangItem,   // 26
-    ExchangeFreeFnLangItem,     // 27
-    MallocFnLangItem,           // 28
-    FreeFnLangItem,             // 29
-    BorrowAsImmFnLangItem,      // 30
-    BorrowAsMutFnLangItem,      // 31
-    ReturnToMutFnLangItem,      // 32
-    CheckNotBorrowedFnLangItem, // 33
-    StrDupUniqFnLangItem,       // 34
-    RecordBorrowFnLangItem,     // 35
-    UnrecordBorrowFnLangItem,   // 36
+    StrEqFnLangItem,                   // 20
+    UniqStrEqFnLangItem,               // 21
+    AnnihilateFnLangItem,              // 22
+    LogTypeFnLangItem,                 // 23
+    FailFnLangItem,                    // 24
+    FailBoundsCheckFnLangItem,         // 25
+    ExchangeMallocFnLangItem,          // 26
+    ClosureExchangeMallocFnLangItem,   // 27
+    ExchangeFreeFnLangItem,            // 28
+    MallocFnLangItem,                  // 29
+    FreeFnLangItem,                    // 30
+    BorrowAsImmFnLangItem,             // 31
+    BorrowAsMutFnLangItem,             // 32
+    ReturnToMutFnLangItem,             // 33
+    CheckNotBorrowedFnLangItem,        // 34
+    StrDupUniqFnLangItem,              // 35
+    RecordBorrowFnLangItem,            // 36
+    UnrecordBorrowFnLangItem,          // 37
 
-    StartFnLangItem,            // 37
+    StartFnLangItem,                   // 38
 
-    TyDescStructLangItem,       // 38
-    TyVisitorTraitLangItem,     // 39
-    OpaqueStructLangItem,       // 40
+    TyDescStructLangItem,              // 39
+    TyVisitorTraitLangItem,            // 40
+    OpaqueStructLangItem,              // 41
 }
 
 pub struct LanguageItems {
-    items: [Option<def_id>, ..41]
+    items: [Option<def_id>, ..42]
 }
 
 impl LanguageItems {
     pub fn new() -> LanguageItems {
         LanguageItems {
-            items: [ None, ..41 ]
+            items: [ None, ..42 ]
         }
     }
 
@@ -128,22 +129,23 @@ impl LanguageItems {
             24 => "fail_",
             25 => "fail_bounds_check",
             26 => "exchange_malloc",
-            27 => "exchange_free",
-            28 => "malloc",
-            29 => "free",
-            30 => "borrow_as_imm",
-            31 => "borrow_as_mut",
-            32 => "return_to_mut",
-            33 => "check_not_borrowed",
-            34 => "strdup_uniq",
-            35 => "record_borrow",
-            36 => "unrecord_borrow",
+            27 => "closure_exchange_malloc",
+            28 => "exchange_free",
+            29 => "malloc",
+            30 => "free",
+            31 => "borrow_as_imm",
+            32 => "borrow_as_mut",
+            33 => "return_to_mut",
+            34 => "check_not_borrowed",
+            35 => "strdup_uniq",
+            36 => "record_borrow",
+            37 => "unrecord_borrow",
 
-            37 => "start",
+            38 => "start",
 
-            38 => "ty_desc",
-            39 => "ty_visitor",
-            40 => "opaque",
+            39 => "ty_desc",
+            40 => "ty_visitor",
+            41 => "opaque",
 
             _ => "???"
         }
@@ -236,6 +238,9 @@ impl LanguageItems {
     pub fn exchange_malloc_fn(&self) -> def_id {
         self.items[ExchangeMallocFnLangItem as uint].get()
     }
+    pub fn closure_exchange_malloc_fn(&self) -> def_id {
+        self.items[ClosureExchangeMallocFnLangItem as uint].get()
+    }
     pub fn exchange_free_fn(&self) -> def_id {
         self.items[ExchangeFreeFnLangItem as uint].get()
     }
@@ -326,6 +331,7 @@ impl<'self> LanguageItemCollector<'self> {
         item_refs.insert(@"fail_bounds_check",
                          FailBoundsCheckFnLangItem as uint);
         item_refs.insert(@"exchange_malloc", ExchangeMallocFnLangItem as uint);
+        item_refs.insert(@"closure_exchange_malloc", ClosureExchangeMallocFnLangItem as uint);
         item_refs.insert(@"exchange_free", ExchangeFreeFnLangItem as uint);
         item_refs.insert(@"malloc", MallocFnLangItem as uint);
         item_refs.insert(@"free", FreeFnLangItem as uint);

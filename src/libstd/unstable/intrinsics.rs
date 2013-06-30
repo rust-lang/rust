@@ -308,6 +308,10 @@ pub extern "rust-intrinsic" {
     /// Returns `true` if a type requires drop glue.
     pub fn needs_drop<T>() -> bool;
 
+    /// Returns `true` if a type is managed (will be allocated on the local heap)
+    #[cfg(not(stage0))]
+    pub fn contains_managed<T>() -> bool;
+
     #[cfg(not(stage0))]
     pub fn visit_tydesc(td: *TyDesc, tv: @TyVisitor);
 

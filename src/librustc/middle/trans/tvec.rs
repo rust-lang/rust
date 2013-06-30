@@ -321,6 +321,7 @@ pub fn trans_uniq_or_managed_vstore(bcx: block, heap: heap, vstore_expr: @ast::e
                 _ => {}
             }
         }
+        heap_exchange_closure => fail!("vectors are not allocated with closure_exchange_alloc"),
         heap_managed | heap_managed_unique => {}
     }
 

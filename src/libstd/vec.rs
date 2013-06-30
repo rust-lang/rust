@@ -35,7 +35,7 @@ use unstable::intrinsics;
 #[cfg(stage0)]
 use intrinsic::{get_tydesc};
 #[cfg(not(stage0))]
-use unstable::intrinsics::{get_tydesc};
+use unstable::intrinsics::{get_tydesc, contains_managed};
 use vec;
 use util;
 
@@ -1517,6 +1517,7 @@ impl<T> OwnedVector<T> for ~[T] {
      * * n - The number of elements to reserve space for
      */
     #[inline]
+    #[cfg(stage0)]
     fn reserve(&mut self, n: uint) {
         // Only make the (slow) call into the runtime if we have to
         use managed;
@@ -1526,6 +1527,33 @@ impl<T> OwnedVector<T> for ~[T] {
                 let td = get_tydesc::<T>();
                 if ((**ptr).box_header.ref_count ==
                     managed::raw::RC_MANAGED_UNIQUE) {
+                    rustrt::vec_reserve_shared_actual(td, ptr, n as libc::size_t);
+                } else {
+                    rustrt::vec_reserve_shared(td, ptr, n as libc::size_t);
+                }
+            }
+        }
+    }
+
+    /**
+     * Reserves capacity for exactly `n` elements in the given vector.
+     *
+     * If the capacity for `self` is already equal to or greater than the requested
+     * capacity, then no action is taken.
+     *
+     * # Arguments
+     *
+     * * n - The number of elements to reserve space for
+     */
+    #[inline]
+    #[cfg(not(stage0))]
+    fn reserve(&mut self, n: uint) {
+        // Only make the (slow) call into the runtime if we have to
+        if self.capacity() < n {
+            unsafe {
+                let ptr: **raw::VecRepr = cast::transmute(self);
+                let td = get_tydesc::<T>();
+                if contains_managed::<T>() {
                     rustrt::vec_reserve_shared_actual(td, ptr, n as libc::size_t);
                 } else {
                     rustrt::vec_reserve_shared(td, ptr, n as libc::size_t);

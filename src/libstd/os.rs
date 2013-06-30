@@ -730,7 +730,7 @@ pub fn list_dir(p: &Path) -> ~[~str] {
         #[cfg(windows)]
         unsafe fn get_list(p: &Path) -> ~[~str] {
             use libc::consts::os::extra::INVALID_HANDLE_VALUE;
-            use libc::wcslen;
+            use libc::{wcslen, free};
             use libc::funcs::extra::kernel32::{
                 FindFirstFileW,
                 FindNextFileW,
@@ -739,7 +739,7 @@ pub fn list_dir(p: &Path) -> ~[~str] {
             use os::win32::{
                 as_utf16_p
             };
-            use rt::global_heap::{malloc_raw, free_raw};
+            use rt::global_heap::malloc_raw;
             #[nolink]
             extern {
                 unsafe fn rust_list_dir_wfd_size() -> libc::size_t;
@@ -772,7 +772,7 @@ pub fn list_dir(p: &Path) -> ~[~str] {
                             ::cast::transmute(wfd_ptr));
                     }
                     FindClose(find_handle);
-                    free_raw(wfd_ptr);
+                    free(wfd_ptr)
                 }
                 strings
             }
