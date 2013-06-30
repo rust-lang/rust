@@ -24,6 +24,7 @@ use prelude::*;
 use ptr;
 use task;
 use vec::ImmutableVector;
+use vec;
 
 /**
  * A value representing a child process.
@@ -690,46 +691,58 @@ fn spawn_process_os(prog: &str, args: &[~str],
 }
 
 #[cfg(unix)]
-fn with_argv<T>(prog: &str, args: &[~str],
-                cb: &fn(**libc::c_char) -> T) -> T {
-    let mut argptrs = ~[prog.as_c_str(|b| b)];
-    let mut tmps = ~[];
+fn with_argv<T>(prog: &str, args: &[~str], cb: &fn(**libc::c_char) -> T) -> T {
+    // We can't directly convert `str`s into `*char`s, as someone needs to hold
+    // a reference to the intermediary byte buffers. So first build an array to
+    // hold all the ~[u8] byte strings.
+    let mut tmps = vec::with_capacity(args.len() + 1);
+
+    tmps.push(prog.to_owned().to_c_str());
+
     foreach arg in args.iter() {
-        let t = @(*arg).clone();
-        tmps.push(t);
-        argptrs.push(t.as_c_str(|b| b));
+        tmps.push(arg.to_owned().to_c_str());
     }
-    argptrs.push(ptr::null());
-    argptrs.as_imm_buf(|buf, _len| cb(buf))
+
+    // Next, convert each of the byte strings into a pointer. This is
+    // technically unsafe as the caller could leak these pointers out of our
+    // scope.
+    let mut ptrs = do tmps.map |tmp| {
+        tmp.as_imm_buf(|buf, _| buf as *libc::c_char)
+    };
+
+    // Finally, make sure we add a null pointer.
+    ptrs.push(ptr::null());
+
+    ptrs.as_imm_buf(|buf, _| cb(buf))
 }
 
 #[cfg(unix)]
 fn with_envp<T>(env: Option<&[(~str, ~str)]>, cb: &fn(*c_void) -> T) -> T {
-    // On posixy systems we can pass a char** for envp, which is
-    // a null-terminated array of "k=v\n" strings.
+    // On posixy systems we can pass a char** for envp, which is a
+    // null-terminated array of "k=v\n" strings. Like `with_argv`, we have to
+    // have a temporary buffer to hold the intermediary `~[u8]` byte strings.
     match env {
-      Some(es) => {
-        let mut tmps = ~[];
-        let mut ptrs = ~[];
+        Some(env) => {
+            let mut tmps = vec::with_capacity(env.len());
 
-        foreach pair in es.iter() {
-            // Use of match here is just to workaround limitations
-            // in the stage0 irrefutable pattern impl.
-            match pair {
-                &(ref k, ref v) => {
-                    let kv = @fmt!("%s=%s", *k, *v);
-                    tmps.push(kv);
-                    ptrs.push(kv.as_c_str(|b| b));
-                }
+            foreach pair in env.iter() {
+                // Use of match here is just to workaround limitations
+                // in the stage0 irrefutable pattern impl.
+                let kv = fmt!("%s=%s", pair.first(), pair.second());
+                tmps.push(kv.to_c_str());
+            }
+
+            // Once again, this is unsafe.
+            let mut ptrs = do tmps.map |tmp| {
+                tmp.as_imm_buf(|buf, _| buf as *libc::c_char)
+            };
+            ptrs.push(ptr::null());
+
+            do ptrs.as_imm_buf |buf, _| {
+                unsafe { cb(cast::transmute(buf)) }
             }
         }
-
-        ptrs.push(ptr::null());
-        ptrs.as_imm_buf(|p, _len|
-            unsafe { cb(::cast::transmute(p)) }
-        )
-      }
-      _ => cb(ptr::null())
+        _ => cb(ptr::null())
     }
 }
 
@@ -739,23 +752,25 @@ fn with_envp<T>(env: Option<&[(~str, ~str)]>, cb: &fn(*mut c_void) -> T) -> T {
     // rather a concatenation of null-terminated k=v\0 sequences, with a final
     // \0 to terminate.
     match env {
-      Some(es) => {
-        let mut blk = ~[];
-        foreach pair in es.iter() {
-            let kv = fmt!("%s=%s", pair.first(), pair.second());
-            blk.push_all(kv.to_bytes_with_null());
+        Some(env) => {
+            let mut blk = ~[];
+
+            foreach pair in env.iter() {
+                let kv = fmt!("%s=%s", pair.first(), pair.second());
+                blk.push_all(kv.to_c_str());
+            }
+
+            blk.push(0);
+
+            do blk.as_imm_buf |p, _len| {
+                unsafe { cb(cast::transmute(p)) }
+            }
         }
-        blk.push(0);
-        blk.as_imm_buf(|p, _len|
-            unsafe { cb(::cast::transmute(p)) }
-        )
-      }
-      _ => cb(ptr::mut_null())
+        _ => cb(ptr::mut_null())
     }
 }
 
-fn with_dirp<T>(d: Option<&Path>,
-                cb: &fn(*libc::c_char) -> T) -> T {
+fn with_dirp<T>(d: Option<&Path>, cb: &fn(*libc::c_char) -> T) -> T {
     match d {
       Some(dir) => dir.to_str().as_c_str(cb),
       None => cb(ptr::null())
