@@ -3032,6 +3032,29 @@ mod tests {
         assert_eq!(s.to_c_str(), v);
     }
 
+    #[test]
+    fn test_as_c_str() {
+        let a = ~"";
+        do a.as_c_str |buf| {
+            unsafe {
+                assert_eq!(*ptr::offset(buf, 0), 0);
+            }
+        }
+
+        let a = ~"hello";
+        do a.as_c_str |buf| {
+            unsafe {
+                assert_eq!(*ptr::offset(buf, 0), 'h' as libc::c_char);
+                assert_eq!(*ptr::offset(buf, 1), 'e' as libc::c_char);
+                assert_eq!(*ptr::offset(buf, 2), 'l' as libc::c_char);
+                assert_eq!(*ptr::offset(buf, 3), 'l' as libc::c_char);
+                assert_eq!(*ptr::offset(buf, 4), 'o' as libc::c_char);
+                assert_eq!(*ptr::offset(buf, 5), 0);
+            }
+        }
+    }
+
+    #[test]
     fn test_subslice_offset() {
         let a = "kernelsprite";
         let b = a.slice(7, a.len());
