@@ -155,7 +155,7 @@ impl Scheduler {
 
         rtdebug!("run taking sched");
         let sched = Local::take::<Scheduler>();
-        // XXX: Reenable this once we're using a per-task queue. With a shared
+        // XXX: Reenable this once we're using a per-scheduler queue. With a shared
         // queue this is not true
         //assert!(sched.work_queue.is_empty());
         rtdebug!("scheduler metrics: %s\n", {
@@ -191,10 +191,10 @@ impl Scheduler {
         if sched.resume_task_from_queue() {
             // We performed a scheduling action. There may be other work
             // to do yet, so let's try again later.
-            let mut sched = Local::take::<Scheduler>();
-            sched.metrics.tasks_resumed_from_queue += 1;
-            sched.event_loop.callback(Scheduler::run_sched_once);
-            Local::put(sched);
+            do Local::borrow::<Scheduler, ()> |sched| {
+                sched.metrics.tasks_resumed_from_queue += 1;
+                sched.event_loop.callback(Scheduler::run_sched_once);
+            }
             return;
         }
 
@@ -202,18 +202,18 @@ impl Scheduler {
         // Generate a SchedHandle and push it to the sleeper list so
         // somebody can wake us up later.
         rtdebug!("no work to do");
-        let mut sched = Local::take::<Scheduler>();
-        sched.metrics.wasted_turns += 1;
-        if !sched.sleepy && !sched.no_sleep {
-            rtdebug!("sleeping");
-            sched.metrics.sleepy_times += 1;
-            sched.sleepy = true;
-            let handle = sched.make_handle();
-            sched.sleeper_list.push(handle);
-        } else {
-            rtdebug!("not sleeping");
+        do Local::borrow::<Scheduler, ()> |sched| {
+            sched.metrics.wasted_turns += 1;
+            if !sched.sleepy && !sched.no_sleep {
+                rtdebug!("sleeping");
+                sched.metrics.sleepy_times += 1;
+                sched.sleepy = true;
+                let handle = sched.make_handle();
+                sched.sleeper_list.push(handle);
+            } else {
+                rtdebug!("not sleeping");
+            }
         }
-        Local::put(sched);
     }
 
     pub fn make_handle(&mut self) -> SchedHandle {
@@ -441,8 +441,7 @@ impl Scheduler {
             // here we know we are home, execute now OR we know we
             // aren't homed, and that this sched doesn't care
             do this.switch_running_tasks_and_then(task) |sched, last_task| {
-                let last_task = Cell::new(last_task);
-                sched.enqueue_task(last_task.take());
+                sched.enqueue_task(last_task);
             }
         } else if !homed && !this.run_anything {
             // the task isn't homed, but it can't be run here
