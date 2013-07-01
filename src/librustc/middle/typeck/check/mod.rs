@@ -3476,29 +3476,31 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
 
         //We only care about the operation here
         match split[1] {
-            "cxchg" => (0, ~[ty::mk_mut_rptr(tcx,
-                                             ty::re_bound(ty::br_anon(0)),
-                                             ty::mk_int()),
-                        ty::mk_int(),
-                        ty::mk_int()
-                        ], ty::mk_int()),
-            "load" => (0,
-               ~[
-                  ty::mk_imm_rptr(tcx, ty::re_bound(ty::br_anon(0)), ty::mk_int())
-               ],
-              ty::mk_int()),
-            "store" => (0,
-               ~[
-                  ty::mk_mut_rptr(tcx, ty::re_bound(ty::br_anon(0)), ty::mk_int()),
-                  ty::mk_int()
-               ],
-               ty::mk_nil()),
+            "cxchg" => {
+                (0,
+                 ~[
+                     ty::mk_mut_ptr(tcx, ty::mk_int()),
+                     ty::mk_int(),
+                     ty::mk_int()
+                 ],
+                 ty::mk_int())
+            }
+            "load" => {
+                (0,
+                 ~[ty::mk_imm_ptr(tcx, ty::mk_int())],
+                 ty::mk_int())
+            }
+            "store" => {
+                (0,
+                 ~[ty::mk_mut_ptr(tcx, ty::mk_int()), ty::mk_int()],
+                 ty::mk_nil())
+            }
 
             "xchg" | "xadd" | "xsub" | "and"  | "nand" | "or"   | "xor"  | "max"  |
             "min"  | "umax" | "umin" => {
-                (0, ~[ty::mk_mut_rptr(tcx,
-                                      ty::re_bound(ty::br_anon(0)),
-                                      ty::mk_int()), ty::mk_int() ], ty::mk_int())
+                (0,
+                 ~[ty::mk_mut_ptr(tcx, ty::mk_int()), ty::mk_int()],
+                 ty::mk_int())
             }
 
             op => {
