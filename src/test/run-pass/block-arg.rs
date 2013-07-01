@@ -28,7 +28,7 @@ pub fn main() {
     assert!(any_negative);
 
     // Higher precedence than unary operations:
-    let abs_v = do vec::map(v) |e| { e.abs() };
+    let abs_v = do v.iter().transform |e| { e.abs() }.collect::<~[float]>();
     assert!(do abs_v.iter().all |e| { e.is_positive() });
     assert!(!do abs_v.iter().any_ |e| { e.is_negative() });
 

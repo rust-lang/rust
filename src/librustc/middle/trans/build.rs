@@ -615,12 +615,12 @@ pub fn GEPi(cx: block, base: ValueRef, ixs: &[uint]) -> ValueRef {
     // we care about.
     if ixs.len() < 16 {
         let mut small_vec = [ C_i32(0), ..16 ];
-        for ixs.iter().enumerate().advance |(i, &ix)| {
-            small_vec[i] = C_i32(ix as i32)
+        for small_vec.mut_iter().zip(ixs.iter()).advance |(small_vec_e, &ix)| {
+            *small_vec_e = C_i32(ix as i32);
         }
         InBoundsGEP(cx, base, small_vec.slice(0, ixs.len()))
     } else {
-        let v = do vec::map(ixs) |i| { C_i32(*i as i32) };
+        let v = do ixs.iter().transform |i| { C_i32(*i as i32) }.collect::<~[ValueRef]>();
         count_insn(cx, "gepi");
         InBoundsGEP(cx, base, v)
     }

@@ -283,13 +283,13 @@ impl Mul<BigUint, BigUint> for BigUint {
             if n == 1 { return copy *a; }
 
             let mut carry = 0;
-            let prod = do vec::map(a.data) |ai| {
+            let prod = do a.data.iter().transform |ai| {
                 let (hi, lo) = BigDigit::from_uint(
                     (*ai as uint) * (n as uint) + (carry as uint)
                 );
                 carry = hi;
                 lo
-            };
+            }.collect::<~[BigDigit]>();
             if carry == 0 { return BigUint::new(prod) };
             return BigUint::new(prod + [carry]);
         }
@@ -618,13 +618,13 @@ impl BigUint {
         if n_bits == 0 || self.is_zero() { return copy *self; }
 
         let mut carry = 0;
-        let shifted = do vec::map(self.data) |elem| {
+        let shifted = do self.data.iter().transform |elem| {
             let (hi, lo) = BigDigit::from_uint(
                 (*elem as uint) << n_bits | (carry as uint)
             );
             carry = hi;
             lo
-        };
+        }.collect::<~[BigDigit]>();
         if carry == 0 { return BigUint::new(shifted); }
         return BigUint::new(shifted + [carry]);
     }
@@ -1172,7 +1172,7 @@ mod biguint_tests {
 
     #[test]
     fn test_cmp() {
-        let data = [ &[], &[1], &[2], &[-1], &[0, 1], &[2, 1], &[1, 1, 1]  ]
+        let data: ~[BigUint] = [ &[], &[1], &[2], &[-1], &[0, 1], &[2, 1], &[1, 1, 1]  ]
             .map(|v| BigUint::from_slice(*v));
         for data.iter().enumerate().advance |(i, ni)| {
             for data.slice(i, data.len()).iter().enumerate().advance |(j0, nj)| {

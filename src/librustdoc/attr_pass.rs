@@ -26,7 +26,6 @@ use fold::Fold;
 use fold;
 use pass::Pass;
 
-use std::vec;
 use syntax::ast;
 use syntax::ast_map;
 
@@ -124,7 +123,7 @@ fn fold_enum(
     let doc = fold::default_seq_fold_enum(fold, doc);
 
     doc::EnumDoc {
-        variants: do vec::map(doc.variants) |variant| {
+        variants: do doc.variants.iter().transform |variant| {
             let variant = copy *variant;
             let desc = {
                 let variant = copy variant;
@@ -153,7 +152,7 @@ fn fold_enum(
                 desc: desc,
                 .. variant
             }
-        },
+        }.collect(),
         .. doc
     }
 }
@@ -183,7 +182,7 @@ fn merge_method_attrs(
             ast_map::node_item(@ast::item {
                 node: ast::item_trait(_, _, ref methods), _
             }, _) => {
-                vec::map(*methods, |method| {
+                methods.iter().transform(|method| {
                     match copy *method {
                         ast::required(ty_m) => {
                             (to_str(ty_m.ident),
@@ -193,21 +192,21 @@ fn merge_method_attrs(
                             (to_str(m.ident), attr_parser::parse_desc(copy m.attrs))
                         }
                     }
-                })
+                }).collect()
             }
             ast_map::node_item(@ast::item {
                 node: ast::item_impl(_, _, _, ref methods), _
             }, _) => {
-                vec::map(*methods, |method| {
+                methods.iter().transform(|method| {
                     (to_str(method.ident),
                      attr_parser::parse_desc(copy method.attrs))
-                })
+                }).collect()
             }
             _ => fail!("unexpected item")
         }
     };
 
-    do vec::map_zip(docs, attrs) |doc, attrs| {
+    do docs.iter().zip(attrs.iter()).transform |(doc, attrs)| {
         assert!(doc.name == attrs.first());
         let desc = attrs.second();
 
@@ -215,7 +214,7 @@ fn merge_method_attrs(
             desc: desc,
             .. copy *doc
         }
-    }
+    }.collect()
 }
 
 

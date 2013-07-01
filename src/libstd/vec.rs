@@ -193,11 +193,11 @@ pub fn split<T:Copy>(v: &[T], f: &fn(t: &T) -> bool) -> ~[~[T]] {
     let mut start = 0u;
     let mut result = ~[];
     while start < ln {
-        match position_between(v, start, ln, |t| f(t)) {
+        match v.slice(start, ln).iter().position_(|t| f(t)) {
             None => break,
             Some(i) => {
-                result.push(v.slice(start, i).to_owned());
-                start = i + 1u;
+                result.push(v.slice(start, start + i).to_owned());
+                start += i + 1u;
             }
         }
     }
@@ -217,12 +217,12 @@ pub fn splitn<T:Copy>(v: &[T], n: uint, f: &fn(t: &T) -> bool) -> ~[~[T]] {
     let mut count = n;
     let mut result = ~[];
     while start < ln && count > 0u {
-        match position_between(v, start, ln, |t| f(t)) {
+        match v.slice(start, ln).iter().position_(|t| f(t)) {
             None => break,
             Some(i) => {
-                result.push(v.slice(start, i).to_owned());
+                result.push(v.slice(start, start + i).to_owned());
                 // Make sure to skip the separator.
-                start = i + 1u;
+                start += i + 1u;
                 count -= 1u;
             }
         }
@@ -242,7 +242,7 @@ pub fn rsplit<T:Copy>(v: &[T], f: &fn(t: &T) -> bool) -> ~[~[T]] {
     let mut end = ln;
     let mut result = ~[];
     while end > 0 {
-        match rposition_between(v, 0, end, |t| f(t)) {
+        match v.slice(0, end).rposition(|t| f(t)) {
             None => break,
             Some(i) => {
                 result.push(v.slice(i + 1, end).to_owned());
@@ -251,7 +251,7 @@ pub fn rsplit<T:Copy>(v: &[T], f: &fn(t: &T) -> bool) -> ~[~[T]] {
         }
     }
     result.push(v.slice(0u, end).to_owned());
-    reverse(result);
+    result.reverse();
     result
 }
 
@@ -267,7 +267,7 @@ pub fn rsplitn<T:Copy>(v: &[T], n: uint, f: &fn(t: &T) -> bool) -> ~[~[T]] {
     let mut count = n;
     let mut result = ~[];
     while end > 0u && count > 0u {
-        match rposition_between(v, 0u, end, |t| f(t)) {
+        match v.slice(0, end).rposition(|t| f(t)) {
             None => break,
             Some(i) => {
                 result.push(v.slice(i + 1u, end).to_owned());
@@ -278,7 +278,7 @@ pub fn rsplitn<T:Copy>(v: &[T], n: uint, f: &fn(t: &T) -> bool) -> ~[~[T]] {
         }
     }
     result.push(v.slice(0u, end).to_owned());
-    reverse(result);
+    result.reverse();
     result
 }
 
@@ -343,41 +343,6 @@ pub fn consume_reverse<T>(mut v: ~[T], f: &fn(uint, v: T)) {
     }
 }
 
-/**
- * Remove consecutive repeated elements from a vector; if the vector is
- * sorted, this removes all duplicates.
- */
-pub fn dedup<T:Eq>(v: &mut ~[T]) {
-    unsafe {
-        if v.len() < 1 { return; }
-        let mut last_written = 0;
-        let mut next_to_read = 1;
-        do as_mut_buf(*v) |p, ln| {
-            // last_written < next_to_read <= ln
-            while next_to_read < ln {
-                // last_written < next_to_read < ln
-                if *ptr::mut_offset(p, next_to_read) ==
-                    *ptr::mut_offset(p, last_written) {
-                    ptr::replace_ptr(ptr::mut_offset(p, next_to_read),
-                                     intrinsics::uninit());
-                } else {
-                    last_written += 1;
-                    // last_written <= next_to_read < ln
-                    if next_to_read != last_written {
-                        ptr::swap_ptr(ptr::mut_offset(p, last_written),
-                                      ptr::mut_offset(p, next_to_read));
-                    }
-                }
-                // last_written <= next_to_read < ln
-                next_to_read += 1;
-                // last_written < next_to_read <= ln
-            }
-        }
-        // last_written < next_to_read == ln
-        raw::set_len(v, last_written + 1);
-    }
-}
-
 // Appending
 
 /// Iterates over the `rhs` vector, copying each element and appending it to the
@@ -398,73 +363,7 @@ pub fn append_one<T>(lhs: ~[T], x: T) -> ~[T] {
     v
 }
 
-/**
- * Expands a vector in place, initializing the new elements to a given value
- *
- * # Arguments
- *
- * * v - The vector to grow
- * * n - The number of elements to add
- * * initval - The value for the new elements
- */
-pub fn grow<T:Copy>(v: &mut ~[T], n: uint, initval: &T) {
-    let new_len = v.len() + n;
-    v.reserve_at_least(new_len);
-    let mut i: uint = 0u;
-
-    while i < n {
-        v.push(copy *initval);
-        i += 1u;
-    }
-}
-
-/**
- * Expands a vector in place, initializing the new elements to the result of
- * a function
- *
- * Function `init_op` is called `n` times with the values [0..`n`)
- *
- * # Arguments
- *
- * * v - The vector to grow
- * * n - The number of elements to add
- * * init_op - A function to call to retreive each appended element's
- *             value
- */
-pub fn grow_fn<T>(v: &mut ~[T], n: uint, op: &fn(uint) -> T) {
-    let new_len = v.len() + n;
-    v.reserve_at_least(new_len);
-    let mut i: uint = 0u;
-    while i < n {
-        v.push(op(i));
-        i += 1u;
-    }
-}
-
-/**
- * Sets the value of a vector element at a given index, growing the vector as
- * needed
- *
- * Sets the element at position `index` to `val`. If `index` is past the end
- * of the vector, expands the vector by replicating `initval` to fill the
- * intervening space.
- */
-pub fn grow_set<T:Copy>(v: &mut ~[T], index: uint, initval: &T, val: T) {
-    let l = v.len();
-    if index >= l { grow(&mut *v, index - l + 1u, initval); }
-    v[index] = val;
-}
-
 // Functional utilities
-
-/// Apply a function to each element of a vector and return the results
-pub fn map<T, U>(v: &[T], f: &fn(t: &T) -> U) -> ~[U] {
-    let mut result = with_capacity(v.len());
-    for v.iter().advance |elem| {
-        result.push(f(elem));
-    }
-    result
-}
 
 /// Consumes a vector, mapping it into a different vector. This function takes
 /// ownership of the supplied vector `v`, moving each element into the closure
@@ -480,16 +379,6 @@ pub fn map_consume<T, U>(v: ~[T], f: &fn(v: T) -> U) -> ~[U] {
     }
     result
 }
-
-/// Apply a function to each element of a vector and return the results
-pub fn mapi<T, U>(v: &[T], f: &fn(uint, t: &T) -> U) -> ~[U] {
-    let mut i = 0;
-    do map(v) |e| {
-        i += 1;
-        f(i - 1, e)
-    }
-}
-
 /**
  * Apply a function to each element of a vector and return a concatenation
  * of each result vector
@@ -498,23 +387,6 @@ pub fn flat_map<T, U>(v: &[T], f: &fn(t: &T) -> ~[U]) -> ~[U] {
     let mut result = ~[];
     for v.iter().advance |elem| { result.push_all_move(f(elem)); }
     result
-}
-
-/**
- * Apply a function to each pair of elements and return the results.
- * Equivalent to `map(zip(v0, v1), f)`.
- */
-pub fn map_zip<T:Copy,U:Copy,V>(v0: &[T], v1: &[U],
-                                  f: &fn(t: &T, v: &U) -> V) -> ~[V] {
-    let v0_len = v0.len();
-    if v0_len != v1.len() { fail!(); }
-    let mut u: ~[V] = ~[];
-    let mut i = 0u;
-    while i < v0_len {
-        u.push(f(&v0[i], &v1[i]));
-        i += 1u;
-    }
-    u
 }
 
 pub fn filter_map<T, U>(
@@ -646,150 +518,6 @@ impl<'self, T:Copy> VectorVector<T> for &'self [&'self [T]] {
     }
 }
 
-/// Return true if a vector contains an element with the given value
-pub fn contains<T:Eq>(v: &[T], x: &T) -> bool {
-    for v.iter().advance |elt| { if *x == *elt { return true; } }
-    false
-}
-
-/**
- * Search for the first element that matches a given predicate within a range
- *
- * Apply function `f` to each element of `v` within the range
- * [`start`, `end`). When function `f` returns true then an option containing
- * the element is returned. If `f` matches no elements then none is returned.
- */
-pub fn find_between<T:Copy>(v: &[T], start: uint, end: uint,
-                      f: &fn(t: &T) -> bool) -> Option<T> {
-    position_between(v, start, end, f).map(|i| copy v[*i])
-}
-
-/**
- * Search for the last element that matches a given predicate
- *
- * Apply function `f` to each element of `v` in reverse order. When function
- * `f` returns true then an option containing the element is returned. If `f`
- * matches no elements then none is returned.
- */
-pub fn rfind<T:Copy>(v: &[T], f: &fn(t: &T) -> bool) -> Option<T> {
-    rfind_between(v, 0u, v.len(), f)
-}
-
-/**
- * Search for the last element that matches a given predicate within a range
- *
- * Apply function `f` to each element of `v` in reverse order within the range
- * [`start`, `end`). When function `f` returns true then an option containing
- * the element is returned. If `f` matches no elements then none is return.
- */
-pub fn rfind_between<T:Copy>(v: &[T],
-                             start: uint,
-                             end: uint,
-                             f: &fn(t: &T) -> bool)
-                          -> Option<T> {
-    rposition_between(v, start, end, f).map(|i| copy v[*i])
-}
-
-/// Find the first index containing a matching value
-pub fn position_elem<T:Eq>(v: &[T], x: &T) -> Option<uint> {
-    v.iter().position_(|y| *x == *y)
-}
-
-/**
- * Find the first index matching some predicate within a range
- *
- * Apply function `f` to each element of `v` between the range
- * [`start`, `end`). When function `f` returns true then an option containing
- * the index is returned. If `f` matches no elements then none is returned.
- */
-pub fn position_between<T>(v: &[T],
-                           start: uint,
-                           end: uint,
-                           f: &fn(t: &T) -> bool)
-                        -> Option<uint> {
-    assert!(start <= end);
-    assert!(end <= v.len());
-    let mut i = start;
-    while i < end { if f(&v[i]) { return Some::<uint>(i); } i += 1u; }
-    None
-}
-
-/// Find the last index containing a matching value
-pub fn rposition_elem<T:Eq>(v: &[T], x: &T) -> Option<uint> {
-    rposition(v, |y| *x == *y)
-}
-
-/**
- * Find the last index matching some predicate
- *
- * Apply function `f` to each element of `v` in reverse order.  When function
- * `f` returns true then an option containing the index is returned. If `f`
- * matches no elements then none is returned.
- */
-pub fn rposition<T>(v: &[T], f: &fn(t: &T) -> bool) -> Option<uint> {
-    rposition_between(v, 0u, v.len(), f)
-}
-
-/**
- * Find the last index matching some predicate within a range
- *
- * Apply function `f` to each element of `v` in reverse order between the
- * range [`start`, `end`). When function `f` returns true then an option
- * containing the index is returned. If `f` matches no elements then none is
- * returned.
- */
-pub fn rposition_between<T>(v: &[T], start: uint, end: uint,
-                             f: &fn(t: &T) -> bool) -> Option<uint> {
-    assert!(start <= end);
-    assert!(end <= v.len());
-    let mut i = end;
-    while i > start {
-        if f(&v[i - 1u]) { return Some::<uint>(i - 1u); }
-        i -= 1u;
-    }
-    None
-}
-
-
-
-/**
- * Binary search a sorted vector with a comparator function.
- *
- * The comparator should implement an order consistent with the sort
- * order of the underlying vector, returning an order code that indicates
- * whether its argument is `Less`, `Equal` or `Greater` the desired target.
- *
- * Returns the index where the comparator returned `Equal`, or `None` if
- * not found.
- */
-pub fn bsearch<T>(v: &[T], f: &fn(&T) -> Ordering) -> Option<uint> {
-    let mut base : uint = 0;
-    let mut lim : uint = v.len();
-
-    while lim != 0 {
-        let ix = base + (lim >> 1);
-        match f(&v[ix]) {
-            Equal => return Some(ix),
-            Less => {
-                base = ix + 1;
-                lim -= 1;
-            }
-            Greater => ()
-        }
-        lim >>= 1;
-    }
-    return None;
-}
-
-/**
- * Binary search a sorted vector for a given element.
- *
- * Returns the index of the element or None if not found.
- */
-pub fn bsearch_elem<T:TotalOrd>(v: &[T], x: &T) -> Option<uint> {
-    bsearch(v, |p| p.cmp(x))
-}
-
 // FIXME: if issue #586 gets implemented, could have a postcondition
 // saying the two result lists have the same length -- or, could
 // return a nominal record with a constraint saying that, instead of
@@ -857,38 +585,8 @@ pub fn zip<T, U>(mut v: ~[T], mut u: ~[U]) -> ~[(T, U)] {
         w.push((v.pop(),u.pop()));
         i -= 1;
     }
-    reverse(w);
+    w.reverse();
     w
-}
-
-/**
- * Swaps two elements in a vector
- *
- * # Arguments
- *
- * * v  The input vector
- * * a - The index of the first element
- * * b - The index of the second element
- */
-#[inline]
-pub fn swap<T>(v: &mut [T], a: uint, b: uint) {
-    unsafe {
-        // Can't take two mutable loans from one vector, so instead just cast
-        // them to their raw pointers to do the swap
-        let pa: *mut T = &mut v[a];
-        let pb: *mut T = &mut v[b];
-        ptr::swap_ptr(pa, pb);
-    }
-}
-
-/// Reverse the order of elements in a vector, in place
-pub fn reverse<T>(v: &mut [T]) {
-    let mut i: uint = 0;
-    let ln = v.len();
-    while i < ln / 2 {
-        swap(v, i, ln - i - 1);
-        i += 1;
-    }
 }
 
 /// Returns a vector with the order of elements reversed
@@ -946,8 +644,8 @@ pub fn each_permutation<T:Copy>(values: &[T], fun: &fn(perm : &[T]) -> bool) -> 
         }
         // swap indices[k] and indices[l]; sort indices[k+1..]
         // (they're just reversed)
-        vec::swap(indices, k, l);
-        reverse(indices.mut_slice(k+1, length));
+        indices.swap(k, l);
+        indices.mut_slice(k+1, length).reverse();
         // fixup permutation based on indices
         for uint::range(k, length) |i| {
             permutation[i] = copy values[indices[i]];
@@ -1249,12 +947,13 @@ pub trait ImmutableVector<'self, T> {
     fn last(&self) -> &'self T;
     fn last_opt(&self) -> Option<&'self T>;
     fn rposition(&self, f: &fn(t: &T) -> bool) -> Option<uint>;
-    fn map<U>(&self, f: &fn(t: &T) -> U) -> ~[U];
-    fn mapi<U>(&self, f: &fn(uint, t: &T) -> U) -> ~[U];
-    fn map_r<U>(&self, f: &fn(x: &T) -> U) -> ~[U];
     fn flat_map<U>(&self, f: &fn(t: &T) -> ~[U]) -> ~[U];
     fn filter_mapped<U:Copy>(&self, f: &fn(t: &T) -> Option<U>) -> ~[U];
     unsafe fn unsafe_ref(&self, index: uint) -> *T;
+
+    fn bsearch(&self, f: &fn(&T) -> Ordering) -> Option<uint>;
+
+    fn map<U>(&self, &fn(t: &T) -> U) -> ~[U];
 }
 
 /// Extension methods for vectors
@@ -1341,34 +1040,14 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
      *
      * Apply function `f` to each element of `v` in reverse order.  When
      * function `f` returns true then an option containing the index is
-     * returned. If `f` matches no elements then none is returned.
+     * returned. If `f` matches no elements then None is returned.
      */
     #[inline]
     fn rposition(&self, f: &fn(t: &T) -> bool) -> Option<uint> {
-        rposition(*self, f)
-    }
-
-    /// Apply a function to each element of a vector and return the results
-    #[inline]
-    fn map<U>(&self, f: &fn(t: &T) -> U) -> ~[U] { map(*self, f) }
-
-    /**
-     * Apply a function to the index and value of each element in the vector
-     * and return the results
-     */
-    fn mapi<U>(&self, f: &fn(uint, t: &T) -> U) -> ~[U] {
-        mapi(*self, f)
-    }
-
-    #[inline]
-    fn map_r<U>(&self, f: &fn(x: &T) -> U) -> ~[U] {
-        let mut r = ~[];
-        let mut i = 0;
-        while i < self.len() {
-            r.push(f(&self[i]));
-            i += 1;
+        for self.rev_iter().enumerate().advance |(i, t)| {
+            if f(t) { return Some(self.len() - i - 1); }
         }
-        r
+        None
     }
 
     /**
@@ -1397,32 +1076,90 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
         let (ptr, _): (*T, uint) = transmute(*self);
         ptr.offset(index)
     }
+
+    /**
+     * Binary search a sorted vector with a comparator function.
+     *
+     * The comparator should implement an order consistent with the sort
+     * order of the underlying vector, returning an order code that indicates
+     * whether its argument is `Less`, `Equal` or `Greater` the desired target.
+     *
+     * Returns the index where the comparator returned `Equal`, or `None` if
+     * not found.
+     */
+    fn bsearch(&self, f: &fn(&T) -> Ordering) -> Option<uint> {
+        let mut base : uint = 0;
+        let mut lim : uint = self.len();
+
+        while lim != 0 {
+            let ix = base + (lim >> 1);
+            match f(&self[ix]) {
+                Equal => return Some(ix),
+                Less => {
+                    base = ix + 1;
+                    lim -= 1;
+                }
+                Greater => ()
+            }
+            lim >>= 1;
+        }
+        return None;
+    }
+
+    /// Deprecated, use iterators where possible
+    /// (`self.iter().transform(f)`). Apply a function to each element
+    /// of a vector and return the results.
+    fn map<U>(&self, f: &fn(t: &T) -> U) -> ~[U] {
+        self.iter().transform(f).collect()
+    }
 }
 
 #[allow(missing_doc)]
 pub trait ImmutableEqVector<T:Eq> {
     fn position_elem(&self, t: &T) -> Option<uint>;
     fn rposition_elem(&self, t: &T) -> Option<uint>;
+    fn contains(&self, x: &T) -> bool;
 }
 
 impl<'self,T:Eq> ImmutableEqVector<T> for &'self [T] {
     /// Find the first index containing a matching value
     #[inline]
     fn position_elem(&self, x: &T) -> Option<uint> {
-        position_elem(*self, x)
+        self.iter().position_(|y| *x == *y)
     }
 
     /// Find the last index containing a matching value
     #[inline]
     fn rposition_elem(&self, t: &T) -> Option<uint> {
-        rposition_elem(*self, t)
+        self.rposition(|x| *x == *t)
+    }
+
+    /// Return true if a vector contains an element with the given value
+    fn contains(&self, x: &T) -> bool {
+        for self.iter().advance |elt| { if *x == *elt { return true; } }
+        false
+    }
+}
+
+#[allow(missing_doc)]
+pub trait ImmutableTotalOrdVector<T: TotalOrd> {
+    fn bsearch_elem(&self, x: &T) -> Option<uint>;
+}
+
+impl<'self, T: TotalOrd> ImmutableTotalOrdVector<T> for &'self [T] {
+    /**
+     * Binary search a sorted vector for a given element.
+     *
+     * Returns the index of the element or None if not found.
+     */
+    fn bsearch_elem(&self, x: &T) -> Option<uint> {
+        self.bsearch(|p| p.cmp(x))
     }
 }
 
 #[allow(missing_doc)]
 pub trait ImmutableCopyableVector<T> {
     fn filtered(&self, f: &fn(&T) -> bool) -> ~[T];
-    fn rfind(&self, f: &fn(t: &T) -> bool) -> Option<T>;
     fn partitioned(&self, f: &fn(&T) -> bool) -> (~[T], ~[T]);
     unsafe fn unsafe_get(&self, elem: uint) -> T;
 }
@@ -1439,18 +1176,6 @@ impl<'self,T:Copy> ImmutableCopyableVector<T> for &'self [T] {
     #[inline]
     fn filtered(&self, f: &fn(t: &T) -> bool) -> ~[T] {
         filtered(*self, f)
-    }
-
-    /**
-     * Search for the last element that matches a given predicate
-     *
-     * Apply function `f` to each element of `v` in reverse order. When
-     * function `f` returns true then an option containing the element is
-     * returned. If `f` matches no elements then none is returned.
-     */
-    #[inline]
-    fn rfind(&self, f: &fn(t: &T) -> bool) -> Option<T> {
-        rfind(*self, f)
     }
 
     /**
@@ -1735,7 +1460,7 @@ impl<T> OwnedVector<T> for ~[T] {
         self.push(x);
         let mut j = len;
         while j > i {
-            swap(*self, j, j - 1);
+            self.swap(j, j - 1);
             j -= 1;
         }
     }
@@ -1748,7 +1473,7 @@ impl<T> OwnedVector<T> for ~[T] {
 
         let mut j = i;
         while j < len - 1 {
-            swap(*self, j, j + 1);
+            self.swap(j, j + 1);
             j += 1;
         }
         self.pop()
@@ -1766,7 +1491,7 @@ impl<T> OwnedVector<T> for ~[T] {
             fail!("vec::swap_remove - index %u >= length %u", index, ln);
         }
         if index < ln - 1 {
-            swap(*self, index, ln - 1);
+            self.swap(index, ln - 1);
         }
         self.pop()
     }
@@ -1797,7 +1522,7 @@ impl<T> OwnedVector<T> for ~[T] {
             if !f(&self[i]) {
                 deleted += 1;
             } else if deleted > 0 {
-                swap(*self, i - deleted, i);
+                self.swap(i - deleted, i);
             }
         }
 
@@ -1841,9 +1566,26 @@ impl<T> OwnedVector<T> for ~[T] {
         (lefts, rights)
     }
 
-    #[inline]
+    /**
+     * Expands a vector in place, initializing the new elements to the result of
+     * a function
+     *
+     * Function `init_op` is called `n` times with the values [0..`n`)
+     *
+     * # Arguments
+     *
+     * * n - The number of elements to add
+     * * init_op - A function to call to retreive each appended element's
+     *             value
+     */
     fn grow_fn(&mut self, n: uint, op: &fn(uint) -> T) {
-        grow_fn(self, n, op);
+        let new_len = self.len() + n;
+        self.reserve_at_least(new_len);
+        let mut i: uint = 0u;
+        while i < n {
+            self.push(op(i));
+            i += 1u;
+        }
     }
 }
 
@@ -1880,26 +1622,79 @@ impl<T:Copy> OwnedCopyableVector<T> for ~[T] {
         }
     }
 
-    #[inline]
+    /**
+     * Expands a vector in place, initializing the new elements to a given value
+     *
+     * # Arguments
+     *
+     * * n - The number of elements to add
+     * * initval - The value for the new elements
+     */
     fn grow(&mut self, n: uint, initval: &T) {
-        grow(self, n, initval);
+        let new_len = self.len() + n;
+        self.reserve_at_least(new_len);
+        let mut i: uint = 0u;
+
+        while i < n {
+            self.push(copy *initval);
+            i += 1u;
+        }
     }
 
-    #[inline]
+    /**
+     * Sets the value of a vector element at a given index, growing the vector as
+     * needed
+     *
+     * Sets the element at position `index` to `val`. If `index` is past the end
+     * of the vector, expands the vector by replicating `initval` to fill the
+     * intervening space.
+     */
     fn grow_set(&mut self, index: uint, initval: &T, val: T) {
-        grow_set(self, index, initval, val);
+        let l = self.len();
+        if index >= l { self.grow(index - l + 1u, initval); }
+        self[index] = val;
     }
 }
 
 #[allow(missing_doc)]
-trait OwnedEqVector<T:Eq> {
+pub trait OwnedEqVector<T:Eq> {
     fn dedup(&mut self);
 }
 
 impl<T:Eq> OwnedEqVector<T> for ~[T] {
-    #[inline]
-    fn dedup(&mut self) {
-        dedup(self)
+    /**
+     * Remove consecutive repeated elements from a vector; if the vector is
+     * sorted, this removes all duplicates.
+     */
+    pub fn dedup(&mut self) {
+        unsafe {
+            if self.len() == 0 { return; }
+            let mut last_written = 0;
+            let mut next_to_read = 1;
+            do as_mut_buf(*self) |p, ln| {
+                // last_written < next_to_read <= ln
+                while next_to_read < ln {
+                    // last_written < next_to_read < ln
+                    if *ptr::mut_offset(p, next_to_read) ==
+                        *ptr::mut_offset(p, last_written) {
+                        ptr::replace_ptr(ptr::mut_offset(p, next_to_read),
+                                         intrinsics::uninit());
+                    } else {
+                        last_written += 1;
+                        // last_written <= next_to_read < ln
+                        if next_to_read != last_written {
+                            ptr::swap_ptr(ptr::mut_offset(p, last_written),
+                                          ptr::mut_offset(p, next_to_read));
+                        }
+                    }
+                    // last_written <= next_to_read < ln
+                    next_to_read += 1;
+                    // last_written < next_to_read <= ln
+                }
+            }
+            // last_written < next_to_read == ln
+            raw::set_len(self, last_written + 1);
+        }
     }
 }
 
@@ -1908,6 +1703,10 @@ pub trait MutableVector<'self, T> {
     fn mut_slice(self, start: uint, end: uint) -> &'self mut [T];
     fn mut_iter(self) -> VecMutIterator<'self, T>;
     fn mut_rev_iter(self) -> VecMutRevIterator<'self, T>;
+
+    fn swap(self, a: uint, b: uint);
+
+    fn reverse(self);
 
     /**
      * Consumes `src` and moves as many elements as it can into `self`
@@ -1957,6 +1756,34 @@ impl<'self,T> MutableVector<'self, T> for &'self mut [T] {
             VecMutRevIterator{ptr: p.offset(self.len() - 1),
                               end: p.offset(-1),
                               lifetime: cast::transmute(p)}
+        }
+    }
+
+    /**
+     * Swaps two elements in a vector
+     *
+     * # Arguments
+     *
+     * * a - The index of the first element
+     * * b - The index of the second element
+     */
+    fn swap(self, a: uint, b: uint) {
+        unsafe {
+            // Can't take two mutable loans from one vector, so instead just cast
+            // them to their raw pointers to do the swap
+            let pa: *mut T = &mut self[a];
+            let pb: *mut T = &mut self[b];
+            ptr::swap_ptr(pa, pb);
+        }
+    }
+
+    /// Reverse the order of elements in a vector, in place
+    fn reverse(self) {
+        let mut i: uint = 0;
+        let ln = self.len();
+        while i < ln / 2 {
+            self.swap(i, ln - i - 1);
+            i += 1;
         }
     }
 
@@ -2249,7 +2076,7 @@ pub mod bytes {
 impl<A:Clone> Clone for ~[A] {
     #[inline]
     fn clone(&self) -> ~[A] {
-        self.map(|item| item.clone())
+        self.iter().transform(|item| item.clone()).collect()
     }
 }
 
@@ -2796,33 +2623,22 @@ mod tests {
     #[test]
     fn test_map() {
         // Test on-stack map.
-        let mut v = ~[1u, 2u, 3u];
-        let mut w = map(v, square_ref);
+        let v = &[1u, 2u, 3u];
+        let mut w = v.map(square_ref);
         assert_eq!(w.len(), 3u);
         assert_eq!(w[0], 1u);
         assert_eq!(w[1], 4u);
         assert_eq!(w[2], 9u);
 
         // Test on-heap map.
-        v = ~[1u, 2u, 3u, 4u, 5u];
-        w = map(v, square_ref);
+        let v = ~[1u, 2u, 3u, 4u, 5u];
+        w = v.map(square_ref);
         assert_eq!(w.len(), 5u);
         assert_eq!(w[0], 1u);
         assert_eq!(w[1], 4u);
         assert_eq!(w[2], 9u);
         assert_eq!(w[3], 16u);
         assert_eq!(w[4], 25u);
-    }
-
-    #[test]
-    fn test_map_zip() {
-        fn times(x: &int, y: &int) -> int { *x * *y }
-        let f = times;
-        let v0 = ~[1, 2, 3, 4, 5];
-        let v1 = ~[5, 4, 3, 2, 1];
-        let u = map_zip::<int, int, int>(v0, v1, f);
-        let mut i = 0;
-        while i < 5 { assert!(v0[i] * v1[i] == u[i]); i += 1; }
     }
 
     #[test]
@@ -2856,7 +2672,7 @@ mod tests {
         let mix: ~[int] = ~[9, 2, 6, 7, 1, 0, 0, 3];
         let mix_dest: ~[int] = ~[1, 3, 0, 0];
         assert!(filter_mapped(all_even, halve) ==
-                     map(all_even, halve_for_sure));
+                     all_even.map(halve_for_sure));
         assert_eq!(filter_mapped(all_odd1, halve), ~[]);
         assert_eq!(filter_mapped(all_odd2, halve), ~[]);
         assert_eq!(filter_mapped(mix, halve), mix_dest);
@@ -2894,7 +2710,7 @@ mod tests {
         let mix: ~[int] = ~[9, 2, 6, 7, 1, 0, 0, 3];
         let mix_dest: ~[int] = ~[1, 3, 0, 0];
         assert!(filter_map(all_even, halve) ==
-                     map(all_even0, halve_for_sure));
+                     all_even0.map(halve_for_sure));
         assert_eq!(filter_map(all_odd1, halve), ~[]);
         assert_eq!(filter_map(all_odd2, halve), ~[]);
         assert_eq!(filter_map(mix, halve), mix_dest);
@@ -2955,69 +2771,13 @@ mod tests {
 
     #[test]
     fn test_position_elem() {
-        assert!(position_elem([], &1).is_none());
+        assert!([].position_elem(&1).is_none());
 
         let v1 = ~[1, 2, 3, 3, 2, 5];
-        assert_eq!(position_elem(v1, &1), Some(0u));
-        assert_eq!(position_elem(v1, &2), Some(1u));
-        assert_eq!(position_elem(v1, &5), Some(5u));
-        assert!(position_elem(v1, &4).is_none());
-    }
-
-    #[test]
-    fn test_position_between() {
-        assert!(position_between([], 0u, 0u, f).is_none());
-
-        fn f(xy: &(int, char)) -> bool { let (_x, y) = *xy; y == 'b' }
-        let v = ~[(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
-
-        assert!(position_between(v, 0u, 0u, f).is_none());
-        assert!(position_between(v, 0u, 1u, f).is_none());
-        assert_eq!(position_between(v, 0u, 2u, f), Some(1u));
-        assert_eq!(position_between(v, 0u, 3u, f), Some(1u));
-        assert_eq!(position_between(v, 0u, 4u, f), Some(1u));
-
-        assert!(position_between(v, 1u, 1u, f).is_none());
-        assert_eq!(position_between(v, 1u, 2u, f), Some(1u));
-        assert_eq!(position_between(v, 1u, 3u, f), Some(1u));
-        assert_eq!(position_between(v, 1u, 4u, f), Some(1u));
-
-        assert!(position_between(v, 2u, 2u, f).is_none());
-        assert!(position_between(v, 2u, 3u, f).is_none());
-        assert_eq!(position_between(v, 2u, 4u, f), Some(3u));
-
-        assert!(position_between(v, 3u, 3u, f).is_none());
-        assert_eq!(position_between(v, 3u, 4u, f), Some(3u));
-
-        assert!(position_between(v, 4u, 4u, f).is_none());
-    }
-
-    #[test]
-    fn test_find_between() {
-        assert!(find_between([], 0u, 0u, f).is_none());
-
-        fn f(xy: &(int, char)) -> bool { let (_x, y) = *xy; y == 'b' }
-        let v = ~[(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
-
-        assert!(find_between(v, 0u, 0u, f).is_none());
-        assert!(find_between(v, 0u, 1u, f).is_none());
-        assert_eq!(find_between(v, 0u, 2u, f), Some((1, 'b')));
-        assert_eq!(find_between(v, 0u, 3u, f), Some((1, 'b')));
-        assert_eq!(find_between(v, 0u, 4u, f), Some((1, 'b')));
-
-        assert!(find_between(v, 1u, 1u, f).is_none());
-        assert_eq!(find_between(v, 1u, 2u, f), Some((1, 'b')));
-        assert_eq!(find_between(v, 1u, 3u, f), Some((1, 'b')));
-        assert_eq!(find_between(v, 1u, 4u, f), Some((1, 'b')));
-
-        assert!(find_between(v, 2u, 2u, f).is_none());
-        assert!(find_between(v, 2u, 3u, f).is_none());
-        assert_eq!(find_between(v, 2u, 4u, f), Some((3, 'b')));
-
-        assert!(find_between(v, 3u, 3u, f).is_none());
-        assert_eq!(find_between(v, 3u, 4u, f), Some((3, 'b')));
-
-        assert!(find_between(v, 4u, 4u, f).is_none());
+        assert_eq!(v1.position_elem(&1), Some(0u));
+        assert_eq!(v1.position_elem(&2), Some(1u));
+        assert_eq!(v1.position_elem(&5), Some(5u));
+        assert!(v1.position_elem(&4).is_none());
     }
 
     #[test]
@@ -3026,121 +2786,53 @@ mod tests {
         fn g(xy: &(int, char)) -> bool { let (_x, y) = *xy; y == 'd' }
         let v = ~[(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
 
-        assert_eq!(rposition(v, f), Some(3u));
-        assert!(rposition(v, g).is_none());
-    }
-
-    #[test]
-    fn test_rposition_between() {
-        assert!(rposition_between([], 0u, 0u, f).is_none());
-
-        fn f(xy: &(int, char)) -> bool { let (_x, y) = *xy; y == 'b' }
-        let v = ~[(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
-
-        assert!(rposition_between(v, 0u, 0u, f).is_none());
-        assert!(rposition_between(v, 0u, 1u, f).is_none());
-        assert_eq!(rposition_between(v, 0u, 2u, f), Some(1u));
-        assert_eq!(rposition_between(v, 0u, 3u, f), Some(1u));
-        assert_eq!(rposition_between(v, 0u, 4u, f), Some(3u));
-
-        assert!(rposition_between(v, 1u, 1u, f).is_none());
-        assert_eq!(rposition_between(v, 1u, 2u, f), Some(1u));
-        assert_eq!(rposition_between(v, 1u, 3u, f), Some(1u));
-        assert_eq!(rposition_between(v, 1u, 4u, f), Some(3u));
-
-        assert!(rposition_between(v, 2u, 2u, f).is_none());
-        assert!(rposition_between(v, 2u, 3u, f).is_none());
-        assert_eq!(rposition_between(v, 2u, 4u, f), Some(3u));
-
-        assert!(rposition_between(v, 3u, 3u, f).is_none());
-        assert_eq!(rposition_between(v, 3u, 4u, f), Some(3u));
-
-        assert!(rposition_between(v, 4u, 4u, f).is_none());
-    }
-
-    #[test]
-    fn test_rfind() {
-        assert!(rfind([], f).is_none());
-
-        fn f(xy: &(int, char)) -> bool { let (_x, y) = *xy; y == 'b' }
-        fn g(xy: &(int, char)) -> bool { let (_x, y) = *xy; y == 'd' }
-        let v = ~[(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
-
-        assert_eq!(rfind(v, f), Some((3, 'b')));
-        assert!(rfind(v, g).is_none());
-    }
-
-    #[test]
-    fn test_rfind_between() {
-        assert!(rfind_between([], 0u, 0u, f).is_none());
-
-        fn f(xy: &(int, char)) -> bool { let (_x, y) = *xy; y == 'b' }
-        let v = ~[(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
-
-        assert!(rfind_between(v, 0u, 0u, f).is_none());
-        assert!(rfind_between(v, 0u, 1u, f).is_none());
-        assert_eq!(rfind_between(v, 0u, 2u, f), Some((1, 'b')));
-        assert_eq!(rfind_between(v, 0u, 3u, f), Some((1, 'b')));
-        assert_eq!(rfind_between(v, 0u, 4u, f), Some((3, 'b')));
-
-        assert!(rfind_between(v, 1u, 1u, f).is_none());
-        assert_eq!(rfind_between(v, 1u, 2u, f), Some((1, 'b')));
-        assert_eq!(rfind_between(v, 1u, 3u, f), Some((1, 'b')));
-        assert_eq!(rfind_between(v, 1u, 4u, f), Some((3, 'b')));
-
-        assert!(rfind_between(v, 2u, 2u, f).is_none());
-        assert!(rfind_between(v, 2u, 3u, f).is_none());
-        assert_eq!(rfind_between(v, 2u, 4u, f), Some((3, 'b')));
-
-        assert!(rfind_between(v, 3u, 3u, f).is_none());
-        assert_eq!(rfind_between(v, 3u, 4u, f), Some((3, 'b')));
-
-        assert!(rfind_between(v, 4u, 4u, f).is_none());
+        assert_eq!(v.rposition(f), Some(3u));
+        assert!(v.rposition(g).is_none());
     }
 
     #[test]
     fn test_bsearch_elem() {
-        assert_eq!(bsearch_elem([1,2,3,4,5], &5), Some(4));
-        assert_eq!(bsearch_elem([1,2,3,4,5], &4), Some(3));
-        assert_eq!(bsearch_elem([1,2,3,4,5], &3), Some(2));
-        assert_eq!(bsearch_elem([1,2,3,4,5], &2), Some(1));
-        assert_eq!(bsearch_elem([1,2,3,4,5], &1), Some(0));
+        assert_eq!([1,2,3,4,5].bsearch_elem(&5), Some(4));
+        assert_eq!([1,2,3,4,5].bsearch_elem(&4), Some(3));
+        assert_eq!([1,2,3,4,5].bsearch_elem(&3), Some(2));
+        assert_eq!([1,2,3,4,5].bsearch_elem(&2), Some(1));
+        assert_eq!([1,2,3,4,5].bsearch_elem(&1), Some(0));
 
-        assert_eq!(bsearch_elem([2,4,6,8,10], &1), None);
-        assert_eq!(bsearch_elem([2,4,6,8,10], &5), None);
-        assert_eq!(bsearch_elem([2,4,6,8,10], &4), Some(1));
-        assert_eq!(bsearch_elem([2,4,6,8,10], &10), Some(4));
+        assert_eq!([2,4,6,8,10].bsearch_elem(&1), None);
+        assert_eq!([2,4,6,8,10].bsearch_elem(&5), None);
+        assert_eq!([2,4,6,8,10].bsearch_elem(&4), Some(1));
+        assert_eq!([2,4,6,8,10].bsearch_elem(&10), Some(4));
 
-        assert_eq!(bsearch_elem([2,4,6,8], &1), None);
-        assert_eq!(bsearch_elem([2,4,6,8], &5), None);
-        assert_eq!(bsearch_elem([2,4,6,8], &4), Some(1));
-        assert_eq!(bsearch_elem([2,4,6,8], &8), Some(3));
+        assert_eq!([2,4,6,8].bsearch_elem(&1), None);
+        assert_eq!([2,4,6,8].bsearch_elem(&5), None);
+        assert_eq!([2,4,6,8].bsearch_elem(&4), Some(1));
+        assert_eq!([2,4,6,8].bsearch_elem(&8), Some(3));
 
-        assert_eq!(bsearch_elem([2,4,6], &1), None);
-        assert_eq!(bsearch_elem([2,4,6], &5), None);
-        assert_eq!(bsearch_elem([2,4,6], &4), Some(1));
-        assert_eq!(bsearch_elem([2,4,6], &6), Some(2));
+        assert_eq!([2,4,6].bsearch_elem(&1), None);
+        assert_eq!([2,4,6].bsearch_elem(&5), None);
+        assert_eq!([2,4,6].bsearch_elem(&4), Some(1));
+        assert_eq!([2,4,6].bsearch_elem(&6), Some(2));
 
-        assert_eq!(bsearch_elem([2,4], &1), None);
-        assert_eq!(bsearch_elem([2,4], &5), None);
-        assert_eq!(bsearch_elem([2,4], &2), Some(0));
-        assert_eq!(bsearch_elem([2,4], &4), Some(1));
+        assert_eq!([2,4].bsearch_elem(&1), None);
+        assert_eq!([2,4].bsearch_elem(&5), None);
+        assert_eq!([2,4].bsearch_elem(&2), Some(0));
+        assert_eq!([2,4].bsearch_elem(&4), Some(1));
 
-        assert_eq!(bsearch_elem([2], &1), None);
-        assert_eq!(bsearch_elem([2], &5), None);
-        assert_eq!(bsearch_elem([2], &2), Some(0));
+        assert_eq!([2].bsearch_elem(&1), None);
+        assert_eq!([2].bsearch_elem(&5), None);
+        assert_eq!([2].bsearch_elem(&2), Some(0));
 
-        assert_eq!(bsearch_elem([], &1), None);
-        assert_eq!(bsearch_elem([], &5), None);
+        assert_eq!([].bsearch_elem(&1), None);
+        assert_eq!([].bsearch_elem(&5), None);
 
-        assert!(bsearch_elem([1,1,1,1,1], &1) != None);
-        assert!(bsearch_elem([1,1,1,1,2], &1) != None);
-        assert!(bsearch_elem([1,1,1,2,2], &1) != None);
-        assert!(bsearch_elem([1,1,2,2,2], &1) != None);
-        assert_eq!(bsearch_elem([1,2,2,2,2], &1), Some(0));
+        assert!([1,1,1,1,1].bsearch_elem(&1) != None);
+        assert!([1,1,1,1,2].bsearch_elem(&1) != None);
+        assert!([1,1,1,2,2].bsearch_elem(&1) != None);
+        assert!([1,1,2,2,2].bsearch_elem(&1) != None);
+        assert_eq!([1,2,2,2,2].bsearch_elem(&1), Some(0));
 
-        assert_eq!(bsearch_elem([1,2,3,4,5], &6), None);
-        assert_eq!(bsearch_elem([1,2,3,4,5], &0), None);
+        assert_eq!([1,2,3,4,5].bsearch_elem(&6), None);
+        assert_eq!([1,2,3,4,5].bsearch_elem(&0), None);
     }
 
     #[test]
@@ -3148,7 +2840,7 @@ mod tests {
         let mut v: ~[int] = ~[10, 20];
         assert_eq!(v[0], 10);
         assert_eq!(v[1], 20);
-        reverse(v);
+        v.reverse();
         assert_eq!(v[0], 20);
         assert_eq!(v[1], 10);
         let v2 = reversed::<int>([10, 20]);
@@ -3161,7 +2853,7 @@ mod tests {
         let v4 = reversed::<int>([]);
         assert_eq!(v4, ~[]);
         let mut v3: ~[int] = ~[];
-        reverse::<int>(v3);
+        v3.reverse();
     }
 
     #[test]
@@ -3550,7 +3242,7 @@ mod tests {
     fn test_map_fail() {
         let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
         let mut i = 0;
-        do map(v) |_elt| {
+        do v.map |_elt| {
             if i == 2 {
                 fail!()
             }
@@ -3577,41 +3269,10 @@ mod tests {
     #[test]
     #[ignore(windows)]
     #[should_fail]
-    fn test_mapi_fail() {
-        let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
-        let mut i = 0;
-        do mapi(v) |_i, _elt| {
-            if i == 2 {
-                fail!()
-            }
-            i += 0;
-            ~[(~0, @0)]
-        };
-    }
-
-    #[test]
-    #[ignore(windows)]
-    #[should_fail]
     fn test_flat_map_fail() {
         let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
         let mut i = 0;
-        do map(v) |_elt| {
-            if i == 2 {
-                fail!()
-            }
-            i += 0;
-            ~[(~0, @0)]
-        };
-    }
-
-    #[test]
-    #[ignore(windows)]
-    #[should_fail]
-    #[allow(non_implicitly_copyable_typarams)]
-    fn test_map_zip_fail() {
-        let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
-        let mut i = 0;
-        do map_zip(v, v) |_elt1, _elt2| {
+        do flat_map(v) |_elt| {
             if i == 2 {
                 fail!()
             }
@@ -3658,7 +3319,7 @@ mod tests {
     fn test_rposition_fail() {
         let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
         let mut i = 0;
-        do rposition(v) |_elt| {
+        do v.rposition |_elt| {
             if i == 2 {
                 fail!()
             }
@@ -3810,7 +3471,7 @@ mod tests {
     #[test]
     fn test_reverse_part() {
         let mut values = [1,2,3,4,5];
-        reverse(values.mut_slice(1, 4));
+        values.mut_slice(1, 4).reverse();
         assert_eq!(values, [1,4,3,2,5]);
     }
 

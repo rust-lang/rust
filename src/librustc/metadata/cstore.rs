@@ -17,7 +17,6 @@ use metadata::cstore;
 use metadata::decoder;
 
 use std::hashmap::HashMap;
-use std::vec;
 use extra;
 use syntax::ast;
 use syntax::parse::token::ident_interner;
@@ -91,7 +90,7 @@ pub fn iter_crate_data(cstore: &CStore,
 }
 
 pub fn add_used_crate_file(cstore: &mut CStore, lib: &Path) {
-    if !vec::contains(cstore.used_crate_files, lib) {
+    if !cstore.used_crate_files.contains(lib) {
         cstore.used_crate_files.push(copy *lib);
     }
 }

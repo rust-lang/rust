@@ -107,7 +107,7 @@ impl<T:Ord> PriorityQueue<T> {
         let mut end = q.len();
         while end > 1 {
             end -= 1;
-            vec::swap(q.data, 0, end);
+            q.data.swap(0, end);
             q.siftdown_range(0, end)
         }
         q.to_vec()

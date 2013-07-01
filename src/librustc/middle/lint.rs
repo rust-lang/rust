@@ -740,11 +740,10 @@ fn check_item_ctypes(cx: &Context, it: &ast::item) {
     }
 
     fn check_foreign_fn(cx: &Context, decl: &ast::fn_decl) {
-        let tys = vec::map(decl.inputs, |a| a.ty );
-        let r = vec::append_one(tys, decl.output);
-        for r.iter().advance |ty| {
-            check_ty(cx, *ty);
+        for decl.inputs.iter().advance |in| {
+            check_ty(cx, in.ty);
         }
+        check_ty(cx, decl.output)
     }
 
     match it.node {

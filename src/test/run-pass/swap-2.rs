@@ -9,11 +9,10 @@
 // except according to those terms.
 
 use std::util;
-use std::vec;
 
 pub fn main() {
     let mut a: ~[int] = ~[0, 1, 2, 3, 4, 5, 6];
-    vec::swap(a, 2, 4);
+    a.swap(2, 4);
     assert_eq!(a[2], 4);
     assert_eq!(a[4], 2);
     let mut n = 42;

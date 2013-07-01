@@ -100,7 +100,6 @@ total line count).
 use std::io::ReaderUtil;
 use std::io;
 use std::os;
-use std::vec;
 
 /**
 A summary of the internal state of a `FileInput` object. `line_num`
@@ -353,13 +352,13 @@ a literal `-`.
 */
 // XXX: stupid, unclear name
 pub fn pathify(vec: &[~str], stdin_hyphen : bool) -> ~[Option<Path>] {
-    vec::map(vec, |&str : & ~str| {
-        if stdin_hyphen && str == ~"-" {
+    vec.iter().transform(|str| {
+        if stdin_hyphen && "-" == *str {
             None
         } else {
-            Some(Path(str))
+            Some(Path(*str))
         }
-    })
+    }).collect()
 }
 
 /**

@@ -85,8 +85,7 @@ pub trait IteratorUtil<A> {
 
     // FIXME: #5898: should be called map
     /// Creates a new iterator which will apply the specified function to each
-    /// element returned by the first, yielding the mapped element instead. This
-    /// similar to the `vec::map` function.
+    /// element returned by the first, yielding the mapped element instead.
     ///
     /// # Example
     ///

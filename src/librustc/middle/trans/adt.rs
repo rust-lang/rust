@@ -519,10 +519,10 @@ pub fn trans_const(ccx: &mut CrateContext, r: &Repr, discr: int,
                 C_struct(build_const_struct(ccx, nonnull, vals))
             } else {
                 assert_eq!(vals.len(), 0);
-                let vals = do nonnull.fields.mapi |i, &ty| {
+                let vals = do nonnull.fields.iter().enumerate().transform |(i, &ty)| {
                     let llty = type_of::sizing_type_of(ccx, ty);
                     if i == ptrfield { C_null(llty) } else { C_undef(llty) }
-                };
+                }.collect::<~[ValueRef]>();
                 C_struct(build_const_struct(ccx, nonnull, vals))
             }
         }

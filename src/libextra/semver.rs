@@ -78,12 +78,12 @@ impl ToStr for Version {
         let s = if self.pre.is_empty() {
             s
         } else {
-            s + "-" + self.pre.map(|i| i.to_str()).connect(".")
+            fmt!("%s-%s", s, self.pre.map(|i| i.to_str()).connect("."))
         };
         if self.build.is_empty() {
             s
         } else {
-            s + "+" + self.build.map(|i| i.to_str()).connect(".")
+            fmt!("%s+%s", s, self.build.map(|i| i.to_str()).connect("."))
         }
     }
 }

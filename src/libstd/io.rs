@@ -1912,7 +1912,9 @@ mod tests {
                 if len <= ivals.len() {
                     assert_eq!(res.len(), len);
                 }
-                assert!(ivals.slice(0u, res.len()) == vec::map(res, |x| *x as int));
+                for ivals.iter().zip(res.iter()).advance |(iv, c)| {
+                    assert!(*iv == *c as int)
+                }
             }
         }
         let mut i = 0;
