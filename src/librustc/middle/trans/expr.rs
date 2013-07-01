@@ -1728,7 +1728,7 @@ fn trans_imm_cast(bcx: @mut Block, expr: &ast::Expr,
                 let repr = adt::represent_type(ccx, t_in);
                 let slot = Alloca(bcx, ll_t_in, "");
                 Store(bcx, llexpr, slot);
-                let lldiscrim_a = adt::trans_get_discr(bcx, repr, slot);
+                let lldiscrim_a = adt::trans_get_discr(bcx, repr, slot, Some(Type::i64()));
                 match k_out {
                     cast_integral => int_cast(bcx, ll_t_out,
                                               val_ty(lldiscrim_a),
