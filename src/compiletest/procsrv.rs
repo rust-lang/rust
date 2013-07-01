@@ -8,11 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
-
-use core::os;
-use core::run;
-use core::str;
+use std::os;
+use std::run;
+use std::str;
 
 #[cfg(target_os = "win32")]
 fn target_env(lib_path: &str, prog: &str) -> ~[(~str,~str)] {

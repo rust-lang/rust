@@ -10,7 +10,6 @@
 
 use extra::term;
 use std::io;
-use std::result::*;
 
 pub fn note(msg: &str) {
     pretty_message(msg, "note: ", term::color::GREEN, io::stdout())

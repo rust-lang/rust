@@ -667,8 +667,10 @@ mod tests {
             fn f() {}
             f()
         ");
+    }
 
-        debug!("simultaneous definitions + expressions are allowed");
+    #[test]
+    fn simultaneous_definition_and_expression() {
         run_program("
             let a = 3; a as u8
         ");
