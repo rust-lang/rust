@@ -633,7 +633,7 @@ pub fn trans_call_inner(in_cx: block,
 
         let mut llargs = ~[];
 
-        if !ty::type_is_immediate(ret_ty) {
+        if !ty::type_is_immediate(bcx.tcx(), ret_ty) {
             llargs.push(llretslot);
         }
 
@@ -680,7 +680,7 @@ pub fn trans_call_inner(in_cx: block,
                             // case to ignore instead of invoking the Store
                             // below into a scratch pointer of a mismatched
                             // type.
-                        } else if ty::type_is_immediate(ret_ty) {
+                        } else if ty::type_is_immediate(bcx.tcx(), ret_ty) {
                             let llscratchptr = alloc_ty(bcx, ret_ty);
                             Store(bcx, llresult, llscratchptr);
                             bcx = glue::drop_ty(bcx, llscratchptr, ret_ty);
@@ -694,7 +694,7 @@ pub fn trans_call_inner(in_cx: block,
                 // If this is an immediate, store into the result location.
                 // (If this was not an immediate, the result will already be
                 // directly written into the output slot.)
-                if ty::type_is_immediate(ret_ty) {
+                if ty::type_is_immediate(bcx.tcx(), ret_ty) {
                     Store(bcx, llresult, lldest);
                 }
             }
@@ -898,7 +898,7 @@ pub fn trans_arg_expr(bcx: block,
                     }
                     ty::ByCopy => {
                         if ty::type_needs_drop(bcx.tcx(), arg_datum.ty) ||
-                                arg_datum.appropriate_mode().is_by_ref() {
+                                arg_datum.appropriate_mode(bcx.tcx()).is_by_ref() {
                             debug!("by copy arg with type %s, storing to scratch",
                                    bcx.ty_to_str(arg_datum.ty));
                             let scratch = scratch_datum(bcx, arg_datum.ty, false);
@@ -914,7 +914,7 @@ pub fn trans_arg_expr(bcx: block,
                             scratch.add_clean(bcx);
                             temp_cleanups.push(scratch.val);
 
-                            match scratch.appropriate_mode() {
+                            match scratch.appropriate_mode(bcx.tcx()) {
                                 ByValue => val = Load(bcx, scratch.val),
                                 ByRef(_) => val = scratch.val,
                             }
