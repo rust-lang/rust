@@ -528,6 +528,9 @@ mod tests {
         }
     }
 
+    // FIXME: #7220 rusti on 32bit mac doesn't work.
+    #[cfg(not(target_word_size="32"))]
+    #[cfg(not(target_os="macos"))]
     fn run_program(prog: &str) {
         let mut r = repl();
         for prog.split_iter('\n').advance |cmd| {
@@ -536,54 +539,55 @@ mod tests {
             r = result.expect(fmt!("the command '%s' failed", cmd));
         }
     }
+    #[cfg(target_word_size="32", target_os="macos")]
+    fn run_program(_: &str) {}
 
     #[test]
-    // FIXME: #7220 rusti on 32bit mac doesn't work.
-    #[cfg(not(target_word_size="32",
-              target_os="macos"))]
-    fn run_all() {
-        // FIXME(#7071):
-        // By default, unit tests are run in parallel. Rusti, on the other hand,
-        // does not enjoy doing this. I suspect that it is because the LLVM
-        // bindings are not thread-safe (when running parallel tests, some tests
-        // were triggering assertions in LLVM (or segfaults). Hence, this
-        // function exists to run everything serially (sadface).
-        //
-        // To get some interesting output, run with RUST_LOG=rusti::tests
-
-        debug!("hopefully this runs");
+    fn super_basic() {
         run_program("");
+    }
 
-        debug!("regression test for #5937");
+    #[test]
+    fn regression_5937() {
         run_program("use std::hashmap;");
+    }
 
-        debug!("regression test for #5784");
+    #[test]
+    fn regression_5784() {
         run_program("let a = 3;");
+    }
 
+    #[test] #[ignore]
+    fn new_tasks() {
         // XXX: can't spawn new tasks because the JIT code is cleaned up
         //      after the main function is done.
-        // debug!("regression test for #5803");
-        // run_program("
-        //     spawn( || println(\"Please don't segfault\") );
-        //     do spawn { println(\"Please?\"); }
-        // ");
+        run_program("
+            spawn( || println(\"Please don't segfault\") );
+            do spawn { println(\"Please?\"); }
+        ");
+    }
 
-        debug!("inferred integers are usable");
+    #[test]
+    fn inferred_integers_usable() {
         run_program("let a = 2;\n()\n");
         run_program("
             let a = 3;
             let b = 4u;
             assert!((a as uint) + b == 7)
         ");
+    }
 
-        debug!("local variables can be shadowed");
+    #[test]
+    fn local_variables_allow_shadowing() {
         run_program("
             let a = 3;
             let a = 5;
             assert!(a == 5)
         ");
+    }
 
-        debug!("strings are usable");
+    #[test]
+    fn string_usable() {
         run_program("
             let a = ~\"\";
             let b = \"\";
@@ -591,8 +595,10 @@ mod tests {
             let d = a + b + c;
             assert!(d.len() == 0);
         ");
+    }
 
-        debug!("vectors are usable");
+    #[test]
+    fn vectors_usable() {
         run_program("
             let a = ~[1, 2, 3];
             let b = &[1, 2, 3];
@@ -601,15 +607,19 @@ mod tests {
             assert!(d.len() == 9);
             let e: &[int] = [];
         ");
+    }
 
-        debug!("structs are usable");
+    #[test]
+    fn structs_usable() {
         run_program("
             struct A{ a: int }
             let b = A{ a: 3 };
             assert!(b.a == 3)
         ");
+    }
 
-        debug!("mutable variables");
+    #[test]
+    fn mutable_variables_work() {
         run_program("
             let mut a = 3;
             a = 5;
@@ -618,29 +628,37 @@ mod tests {
             assert!(b.contains(&5))
             assert!(b.len() == 1)
         ");
+    }
 
-        debug!("functions are cached");
+    #[test]
+    fn functions_saved() {
         run_program("
             fn fib(x: int) -> int { if x < 2 {x} else { fib(x - 1) + fib(x - 2) } }
             let a = fib(3);
             let a = a + fib(4);
             assert!(a == 5)
         ");
+    }
 
-        debug!("modules are cached");
+    #[test]
+    fn modules_saved() {
         run_program("
             mod b { pub fn foo() -> uint { 3 } }
             assert!(b::foo() == 3)
         ");
+    }
 
-        debug!("multiple function definitions are allowed");
+    #[test]
+    fn multiple_functions() {
         run_program("
             fn f() {}
             fn f() {}
             f()
         ");
+    }
 
-        debug!("multiple item definitions are allowed");
+    #[test]
+    fn multiple_items_same_name() {
         run_program("
             fn f() {}
             mod f {}
@@ -657,9 +675,6 @@ mod tests {
     }
 
     #[test]
-    // FIXME: #7220 rusti on 32bit mac doesn't work.
-    #[cfg(not(target_word_size="32",
-              target_os="macos"))]
     fn exit_quits() {
         let mut r = repl();
         assert!(r.running);
