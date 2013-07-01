@@ -40,13 +40,13 @@ pub fn main() {
     // int and uint have same result for
     //   Sum{100 > i >= 2} == (Sum{1 <= i <= 99} - 1) == n*(n+1)/2 - 1 for n=99
     let mut sum = 0u;
-    for uint_range_rev(99, 1) |i| {
+    for uint_range_rev(100, 2) |i| {
         sum += i;
     }
     assert_eq!(sum, 4949);
 
     let mut sum = 0i;
-    for int_range_rev(99, 1) |i| {
+    for int_range_rev(100, 2) |i| {
         sum += i;
     }
     assert_eq!(sum, 4949);
@@ -55,17 +55,17 @@ pub fn main() {
     // elements are visited in correct order
     let primes = [2,3,5,7,11];
     let mut prod = 1i;
-    for uint_range_rev(4, 0) |i| {
+    for uint_range_rev(5, 0) |i| {
         println(fmt!("uint 4 downto 0: %u", i));
         prod *= int::pow(primes[i], i);
     }
-    assert_eq!(prod, 11*11*11*11*7*7*7*5*5*3);
+    assert_eq!(prod, 11*11*11*11*7*7*7*5*5*3*1);
     let mut prod = 1i;
-    for int_range_rev(4, 0) |i| {
+    for int_range_rev(5, 0) |i| {
         println(fmt!("int 4 downto 0: %d", i));
         prod *= int::pow(primes[i], i as uint);
     }
-    assert_eq!(prod, 11*11*11*11*7*7*7*5*5*3);
+    assert_eq!(prod, 11*11*11*11*7*7*7*5*5*3*1);
 
 
     // range and range_rev are symmetric.
@@ -74,7 +74,7 @@ pub fn main() {
         sum_up += i;
     }
     let mut sum_down = 0u;
-    for uint_range_rev(29, 9) |i| {
+    for uint_range_rev(30, 10) |i| {
         sum_down += i;
     }
     assert_eq!(sum_up, sum_down);
@@ -84,7 +84,7 @@ pub fn main() {
         sum_up += i;
     }
     let mut sum_down = 0;
-    for int_range_rev(9, -21) |i| {
+    for int_range_rev(10, -20) |i| {
         sum_down += i;
     }
     assert_eq!(sum_up, sum_down);
@@ -96,7 +96,7 @@ pub fn main() {
     }
 
     for uint_range_rev(0, 1) |_| {
-        // fail!("range should be empty when start-1 underflows");
+        fail!("range should be empty when start-1 underflows");
     }
 
     // range iterations do not wrap/underflow
