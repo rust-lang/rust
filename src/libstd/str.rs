@@ -1484,6 +1484,13 @@ impl<'self> StrSlice<'self> for &'self str {
         else if needle_len > self_len { false }
         else { match_at(*self, needle, 0u) }
     }
+    /// Returns true if `needle` is a prefix of the string, starting at `begin`.
+    fn starts_with_at<'a>(&self, needle: &'a str, begin: uint) -> bool {
+        let (self_len, needle_len) = (self.len(), needle.len());
+        if needle_len == 0u { true }
+        else if begin + needle_len > self_len { false }
+        else { match_at(*self, needle, begin) }
+    }
     /// Returns true if `needle` is a suffix of the string.
     fn ends_with(&self, needle: &str) -> bool {
         let (self_len, needle_len) = (self.len(), needle.len());
