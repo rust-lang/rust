@@ -3,9 +3,10 @@
 // or double-free, as we were wont to do in the past.
 
 use std::io;
+use std::os;
 
 fn parse_args() -> ~str {
-    let args = std::os::args();
+    let args = os::args();
     let mut n = 0;
 
     while n < args.len() {
