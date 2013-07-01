@@ -307,18 +307,10 @@ fn frob_source_file(workspace: &Path, pkgid: &PkgId) {
     }
 }
 
-#[test] #[ignore] //FIXME(#7249)
-fn test_all() {
-    // FIXME(#7071): these tests use rustc, so they can't be run in parallel
-    //               until this issue is resolved
-    test_make_dir_rwx();
-    test_install_valid();
-    test_install_invalid();
-    test_install_url();
-    test_package_ids_must_be_relative_path_like();
-    test_package_version();
-}
+// FIXME(#7249): these tests fail on multi-platform builds, so for now they're
+//               only run one x86
 
+#[test] #[ignore(cfg(target_arch = "x86"))]
 fn test_make_dir_rwx() {
     let temp = &os::tmpdir();
     let dir = temp.push("quux");
@@ -331,6 +323,7 @@ fn test_make_dir_rwx() {
     assert!(os::remove_dir_recursive(&dir));
 }
 
+#[test] #[ignore(cfg(target_arch = "x86"))]
 fn test_install_valid() {
     use path_util::installed_library_in_workspace;
 
@@ -360,6 +353,7 @@ fn test_install_valid() {
     assert!(!os::path_exists(&bench));
 }
 
+#[test] #[ignore(cfg(target_arch = "x86"))]
 fn test_install_invalid() {
     use conditions::nonexistent_package::cond;
     use cond1 = conditions::missing_pkg_files::cond;
@@ -382,6 +376,7 @@ fn test_install_invalid() {
     assert!(error_occurred && error1_occurred);
 }
 
+#[test] #[ignore(cfg(target_arch = "x86"))]
 fn test_install_url() {
     let workspace = mkdtemp(&os::tmpdir(), "test").expect("couldn't create temp dir");
     let sysroot = test_sysroot();
@@ -417,6 +412,7 @@ fn test_install_url() {
     assert!(!os::path_exists(&bench));
 }
 
+#[test] #[ignore(cfg(target_arch = "x86"))]
 fn test_package_ids_must_be_relative_path_like() {
     use conditions::bad_pkg_id::cond;
 
@@ -457,6 +453,7 @@ fn test_package_ids_must_be_relative_path_like() {
 
 }
 
+#[test] #[ignore(cfg(target_arch = "x86"))]
 fn test_package_version() {
     let temp_pkg_id = PkgId::new("github.com/catamorphism/test_pkg_version");
     match temp_pkg_id.version {
@@ -479,9 +476,8 @@ fn test_package_version() {
                     push("test_pkg_version")));
 }
 
-// FIXME #7006: Fails on linux for some reason
-#[test]
-#[ignore]
+// FIXME #7006: Fails on linux/mac for some reason
+#[test] #[ignore]
 fn test_package_request_version() {
     let temp_pkg_id = PkgId::new("github.com/catamorphism/test_pkg_version#0.3");
     let temp = mk_empty_workspace(&LocalPath(Path("test_pkg_version")), &ExactRevision(~"0.3"));

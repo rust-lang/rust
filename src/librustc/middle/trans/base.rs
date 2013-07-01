@@ -2901,6 +2901,10 @@ pub fn trans_crate(sess: session::Session,
                    reachable_map: @mut HashSet<ast::node_id>,
                    maps: astencode::Maps)
                    -> (ContextRef, ModuleRef, LinkMeta) {
+    // Before we touch LLVM, make sure that multithreading is enabled.
+    if unsafe { !llvm::LLVMRustStartMultithreading() } {
+        sess.bug("couldn't enable multi-threaded LLVM");
+    }
 
     let mut symbol_hasher = hash::default_state();
     let link_meta = link::build_link_meta(sess, crate, output, &mut symbol_hasher);
@@ -2914,12 +2918,6 @@ pub fn trans_crate(sess: session::Session,
     // such as a function name in the module.
     // 1. http://llvm.org/bugs/show_bug.cgi?id=11479
     let llmod_id = link_meta.name.to_owned() + ".rc";
-
-    // FIXME(#6511): get LLVM building with --enable-threads so this
-    //               function can be called
-    // if !llvm::LLVMRustStartMultithreading() {
-    //     sess.bug("couldn't enable multi-threaded LLVM");
-    // }
 
     let ccx = @mut CrateContext::new(sess,
                                      llmod_id,
