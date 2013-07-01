@@ -363,7 +363,7 @@ pub fn missing_ctor(cx: &MatchCheckCtxt,
         for m.iter().advance |r| {
             let r = pat_ctor_id(cx, r[0]);
             for r.iter().advance |id| {
-                if !vec::contains(found, id) {
+                if !found.contains(id) {
                     found.push(/*bad*/copy *id);
                 }
             }
@@ -417,7 +417,7 @@ pub fn missing_ctor(cx: &MatchCheckCtxt,
                 }
             }
         );
-        vec::dedup(&mut sorted_vec_lens);
+        sorted_vec_lens.dedup();
 
         let mut found_slice = false;
         let mut next = 0;
@@ -642,13 +642,13 @@ pub fn specialize(cx: &MatchCheckCtxt,
                                          ty_to_str(cx.tcx, left_ty)));
                             }
                         }
-                        let args = vec::map(class_fields, |class_field| {
+                        let args = class_fields.iter().transform(|class_field| {
                             match flds.iter().find_(|f|
                                             f.ident == class_field.ident) {
                                 Some(f) => f.pat,
                                 _ => wild()
                             }
-                        });
+                        }).collect();
                         Some(vec::append(args, vec::to_owned(r.tail())))
                     }
                 }

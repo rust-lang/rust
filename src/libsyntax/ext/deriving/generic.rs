@@ -591,14 +591,14 @@ impl<'self> MethodDef<'self> {
         // transpose raw_fields
         let fields = match raw_fields {
             [self_arg, .. rest] => {
-                do self_arg.mapi |i, &(opt_id, field)| {
+                do self_arg.iter().enumerate().transform |(i, &(opt_id, field))| {
                     let other_fields = do rest.map |l| {
                         match &l[i] {
                             &(_, ex) => ex
                         }
                     };
                     (opt_id, field, other_fields)
-                }
+                }.collect()
             }
             [] => { cx.span_bug(span, "No self arguments to non-static \
                                        method in generic `deriving`") }
@@ -745,10 +745,11 @@ impl<'self> MethodDef<'self> {
                         }
                     }
                     let field_tuples =
-                        do vec::map_zip(*self_vec,
-                                        enum_matching_fields) |&(id, self_f), &other| {
+                        do self_vec.iter()
+                           .zip(enum_matching_fields.iter())
+                           .transform |(&(id, self_f), &other)| {
                         (id, self_f, other)
-                    };
+                    }.collect();
                     substructure = EnumMatching(variant_index, variant, field_tuples);
                 }
                 None => {

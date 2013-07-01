@@ -54,8 +54,9 @@ impl gen_send for message {
             let next = this.proto.get_state(next_state.state);
             assert!(next_state.tys.len() ==
                 next.generics.ty_params.len());
-            let arg_names = tys.mapi(|i, _ty| cx.ident_of(~"x_"+i.to_str()));
-            let args_ast = vec::map_zip(arg_names, *tys, |n, t| cx.arg(span, *n, *t));
+            let arg_names = vec::from_fn(tys.len(), |i| cx.ident_of("x_"+i.to_str()));
+            let args_ast: ~[ast::arg] = arg_names.iter().zip(tys.iter())
+                .transform(|(n, t)| cx.arg(span, *n, *t)).collect();
 
             let pipe_ty = cx.ty_path(
                 path(~[this.data_name()], span)
@@ -133,11 +134,10 @@ impl gen_send for message {
 
             message(ref _id, span, ref tys, this, None) => {
                 debug!("pipec: no next state");
-                let arg_names = tys.mapi(|i, _ty| (~"x_" + i.to_str()));
+                let arg_names = vec::from_fn(tys.len(), |i| "x_" + i.to_str());
 
-                let args_ast = do vec::map_zip(arg_names, *tys) |n, t| {
-                    cx.arg(span, cx.ident_of(*n), *t)
-                };
+                let args_ast: ~[ast::arg] = arg_names.iter().zip(tys.iter())
+                    .transform(|(n, t)| cx.arg(span, cx.ident_of(*n), *t)).collect();
 
                 let args_ast = vec::append(
                     ~[cx.arg(span,

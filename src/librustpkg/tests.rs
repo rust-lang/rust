@@ -597,9 +597,9 @@ fn rust_path_contents() {
         let cwd = os::getcwd().push(".rust");
         let parent = cwd.pop().pop().push(".rust");
         let grandparent = cwd.pop().pop().pop().push(".rust");
-        assert!(vec::contains(p, &cwd));
-        assert!(vec::contains(p, &parent));
-        assert!(vec::contains(p, &grandparent));
+        assert!(p.contains(&cwd));
+        assert!(p.contains(&parent));
+        assert!(p.contains(&grandparent));
         for p.iter().advance() |a_path| {
             assert!(!a_path.components.is_empty());
         }
@@ -610,9 +610,9 @@ fn rust_path_contents() {
 fn rust_path_parse() {
     os::setenv("RUST_PATH", "/a/b/c:/d/e/f:/g/h/i");
     let paths = rust_path();
-    assert!(vec::contains(paths, &Path("/g/h/i")));
-    assert!(vec::contains(paths, &Path("/d/e/f")));
-    assert!(vec::contains(paths, &Path("/a/b/c")));
+    assert!(paths.contains(&Path("/g/h/i")));
+    assert!(paths.contains(&Path("/d/e/f")));
+    assert!(paths.contains(&Path("/a/b/c")));
     os::unsetenv("RUST_PATH");
 }
 

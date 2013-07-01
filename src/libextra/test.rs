@@ -449,7 +449,7 @@ fn run_tests(opts: &TestOpts,
     debug!("using %u test tasks", concurrency);
 
     let mut remaining = filtered_tests;
-    vec::reverse(remaining);
+    remaining.reverse();
     let mut pending = 0;
 
     let (p, ch) = stream();

@@ -18,8 +18,7 @@ use char;
 use str;
 use str::StrSlice;
 use kinds::Copy;
-use vec;
-use vec::{CopyableVector, ImmutableVector};
+use vec::{CopyableVector, ImmutableVector, MutableVector};
 use vec::OwnedVector;
 use num::{NumCast, Zero, One, cast, pow_with_uint, Integer};
 use num::{Round, Float, FPNaN, FPInfinite};
@@ -292,7 +291,7 @@ pub fn float_to_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Float+Round+
         _ => ()
     }
 
-    vec::reverse(buf);
+    buf.reverse();
 
     // Remember start of the fractional digits.
     // Points one beyond end of buf if none get generated,

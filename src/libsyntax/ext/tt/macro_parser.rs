@@ -326,8 +326,7 @@ pub fn parse(
                         cur_eis.push(new_ei);
                     }
 
-                    let matches = vec::map(ei.matches, // fresh, same size:
-                                           |_m| ~[]);
+                    let matches = vec::from_elem(ei.matches.len(), ~[]);
                     let ei_t = ei;
                     cur_eis.push(~MatcherPos {
                         elts: copy *matchers,

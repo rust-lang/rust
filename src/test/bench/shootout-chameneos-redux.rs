@@ -152,7 +152,7 @@ fn rendezvous(nn: uint, set: ~[color]) {
 
     // these channels will allow us to talk to each creature by 'name'/index
     let to_creature: ~[Chan<Option<CreatureInfo>>] =
-        vec::mapi(set, |ii, col| {
+        set.iter().enumerate().transform(|(ii, col)| {
             // create each creature as a listener with a port, and
             // give us a channel to talk to each
             let ii = ii;
@@ -166,7 +166,7 @@ fn rendezvous(nn: uint, set: ~[color]) {
                          to_rendezvous_log.clone());
             }
             to_creature
-        });
+        }).collect();
 
     let mut creatures_met = 0;
 

@@ -345,9 +345,9 @@ fn check_expected_errors(expected_errors: ~[errors::ExpectedError],
         fatal(~"process did not return an error status");
     }
 
-    let prefixes = vec::map(expected_errors, |ee| {
+    let prefixes = expected_errors.iter().transform(|ee| {
         fmt!("%s:%u:", testfile.to_str(), ee.line)
-    });
+    }).collect::<~[~str]>();
 
     // Scan and extract our error/warning messages,
     // which look like:

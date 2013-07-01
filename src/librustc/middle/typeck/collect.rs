@@ -712,7 +712,7 @@ pub fn convert_methods(ccx: &CrateCtxt,
                     -> ~[ConvertedMethod]
 {
     let tcx = ccx.tcx;
-    return vec::map(ms, |m| {
+    return ms.iter().transform(|m| {
         let num_rcvr_ty_params = rcvr_ty_generics.type_param_defs.len();
         let m_ty_generics =
             ty_generics(ccx, rcvr_ty_generics.region_param, &m.generics,
@@ -742,7 +742,7 @@ pub fn convert_methods(ccx: &CrateCtxt,
         tcx.methods.insert(mty.def_id, mty);
         ConvertedMethod {mty: mty, id: m.id,
                          span: m.span, body_id: m.body.node.id}
-    });
+    }).collect();
 
     fn ty_of_method(ccx: &CrateCtxt,
                     m: &ast::method,

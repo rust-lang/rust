@@ -1266,7 +1266,7 @@ pub fn cleanup_and_leave(bcx: block,
                     let mut skip = 0;
                     let mut dest = None;
                     {
-                        let r = vec::rfind((*inf).cleanup_paths, |cp| cp.target == leave);
+                        let r = (*inf).cleanup_paths.rev_iter().find_(|cp| cp.target == leave);
                         for r.iter().advance |cp| {
                             if cp.size == inf.cleanups.len() {
                                 Br(bcx, cp.dest);

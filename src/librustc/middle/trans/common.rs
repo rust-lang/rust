@@ -981,9 +981,9 @@ pub fn node_id_type_params(bcx: block, id: ast::node_id) -> ~[ty::t] {
 
     match bcx.fcx.param_substs {
       Some(substs) => {
-        do vec::map(params) |t| {
+        do params.iter().transform |t| {
             ty::subst_tps(tcx, substs.tys, substs.self_ty, *t)
-        }
+        }.collect()
       }
       _ => params
     }
@@ -1007,9 +1007,11 @@ pub fn resolve_vtables_under_param_substs(tcx: ty::ctxt,
                                           param_substs: Option<@param_substs>,
                                           vts: typeck::vtable_res)
     -> typeck::vtable_res {
-    @vec::map(*vts, |ds|
-      @vec::map(**ds, |d|
-                resolve_vtable_under_param_substs(tcx, param_substs, copy *d)))
+    @vts.iter().transform(|ds|
+      @ds.iter().transform(
+          |d| resolve_vtable_under_param_substs(tcx, param_substs, copy *d))
+                          .collect::<~[typeck::vtable_origin]>())
+        .collect::<~[typeck::vtable_param_res]>()
 }
 
 
@@ -1030,9 +1032,9 @@ pub fn resolve_vtable_under_param_substs(tcx: ty::ctxt,
         typeck::vtable_static(trait_id, tys, sub) => {
             let tys = match param_substs {
                 Some(substs) => {
-                    do vec::map(tys) |t| {
+                    do tys.iter().transform |t| {
                         ty::subst_tps(tcx, substs.tys, substs.self_ty, *t)
-                    }
+                    }.collect()
                 }
                 _ => tys
             };

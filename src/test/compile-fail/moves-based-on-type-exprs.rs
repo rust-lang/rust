@@ -1,8 +1,6 @@
 // Tests that references to move-by-default values trigger moves when
 // they occur as part of various kinds of expressions.
 
-use std::vec;
-
 struct Foo<A> { f: A }
 fn guard(_s: ~str) -> bool {fail!()}
 fn touch<A>(_a: &A) {}
@@ -92,7 +90,7 @@ fn f110() {
 
 fn f120() {
     let mut x = ~[~"hi", ~"ho"];
-    vec::swap(x, 0, 1);
+    x.swap(0, 1);
     touch(&x[0]);
     touch(&x[1]);
 }
