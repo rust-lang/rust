@@ -18,6 +18,7 @@ extern {
     fn abort();
 }
 
+#[inline]
 fn get_box_size(body_size: uint, body_align: uint) -> uint {
     let header_size = size_of::<BoxHeaderRepr>();
     // FIXME (#2699): This alignment calculation is suspicious. Is it right?
@@ -27,6 +28,7 @@ fn get_box_size(body_size: uint, body_align: uint) -> uint {
 
 // Rounds |size| to the nearest |alignment|. Invariant: |alignment| is a power
 // of two.
+#[inline]
 fn align_to(size: uint, align: uint) -> uint {
     assert!(align != 0);
     (size + align - 1) & !(align - 1)
