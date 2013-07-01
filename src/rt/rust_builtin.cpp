@@ -75,13 +75,6 @@ vec_reserve_shared_actual(type_desc* ty, rust_vec_box** vp,
     reserve_vec_exact_shared(task, vp, n_elts * ty->size);
 }
 
-// This is completely misnamed.
-extern "C" CDECL void
-vec_reserve_shared(type_desc* ty, rust_vec_box** vp,
-                   size_t n_elts) {
-    reserve_vec_exact(vp, n_elts * ty->size);
-}
-
 extern "C" CDECL size_t
 rand_seed_size() {
     return rng_seed_size();
