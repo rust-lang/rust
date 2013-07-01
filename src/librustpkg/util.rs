@@ -28,7 +28,7 @@ use search::find_library_in_search_path;
 use path_util::target_library_in_workspace;
 pub use target::{OutputType, Main, Lib, Bench, Test};
 
-static Commands: &'static [&'static str] =
+static COMMANDS: &'static [&'static str] =
     &["build", "clean", "do", "info", "install", "prefer", "test", "uninstall",
       "unprefer"];
 
@@ -55,7 +55,7 @@ pub fn root() -> Path {
 }
 
 pub fn is_cmd(cmd: &str) -> bool {
-    Commands.iter().any_(|&c| c == cmd)
+    COMMANDS.iter().any_(|&c| c == cmd)
 }
 
 struct ListenerFn {
@@ -417,4 +417,4 @@ mod test {
 
 // tjc: cheesy
 fn debug_flags() -> ~[~str] { ~[] }
-// static debug_flags: ~[~str] = ~[~"-Z", ~"time-passes"];
+// static DEBUG_FLAGS: ~[~str] = ~[~"-Z", ~"time-passes"];

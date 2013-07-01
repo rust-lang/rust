@@ -1107,11 +1107,11 @@ The derived types are borrowed pointers with the `'static` lifetime,
 fixed-size arrays, tuples, and structs.
 
 ~~~~
-static bit1: uint = 1 << 0;
-static bit2: uint = 1 << 1;
+static BIT1: uint = 1 << 0;
+static BIT2: uint = 1 << 1;
 
-static bits: [uint, ..2] = [bit1, bit2];
-static string: &'static str = "bitstring";
+static BITS: [uint, ..2] = [BIT1, BIT2];
+static STRING: &'static str = "bitstring";
 
 struct BitsNStrings<'self> {
     mybits: [uint, ..2],
@@ -1119,8 +1119,8 @@ struct BitsNStrings<'self> {
 }
 
 static bits_n_strings: BitsNStrings<'static> = BitsNStrings {
-    mybits: bits,
-    mystring: string
+    mybits: BITS,
+    mystring: STRING
 };
 ~~~~
 

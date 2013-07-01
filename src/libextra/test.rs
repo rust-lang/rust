@@ -331,19 +331,19 @@ pub fn run_tests_console(opts: &TestOpts,
     }
 
     fn write_ok(out: @io::Writer, use_color: bool) {
-        write_pretty(out, "ok", term::color::green, use_color);
+        write_pretty(out, "ok", term::color::GREEN, use_color);
     }
 
     fn write_failed(out: @io::Writer, use_color: bool) {
-        write_pretty(out, "FAILED", term::color::red, use_color);
+        write_pretty(out, "FAILED", term::color::RED, use_color);
     }
 
     fn write_ignored(out: @io::Writer, use_color: bool) {
-        write_pretty(out, "ignored", term::color::yellow, use_color);
+        write_pretty(out, "ignored", term::color::YELLOW, use_color);
     }
 
     fn write_bench(out: @io::Writer, use_color: bool) {
-        write_pretty(out, "bench", term::color::cyan, use_color);
+        write_pretty(out, "bench", term::color::CYAN, use_color);
     }
 
     fn write_pretty(out: @io::Writer,
@@ -487,16 +487,16 @@ fn run_tests(opts: &TestOpts,
 
 // Windows tends to dislike being overloaded with threads.
 #[cfg(windows)]
-static sched_overcommit : uint = 1;
+static SCHED_OVERCOMMIT : uint = 1;
 
 #[cfg(unix)]
-static sched_overcommit : uint = 4u;
+static SCHED_OVERCOMMIT : uint = 4u;
 
 fn get_concurrency() -> uint {
     unsafe {
         let threads = rustrt::rust_sched_threads() as uint;
         if threads == 1 { 1 }
-        else { threads * sched_overcommit }
+        else { threads * SCHED_OVERCOMMIT }
     }
 }
 
