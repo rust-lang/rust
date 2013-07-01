@@ -477,7 +477,7 @@ fn run_tests(opts: &TestOpts,
     }
 
     // All benchmarks run at the end, in serial.
-    do vec::consume(filtered_benchs) |_, b| {
+    for filtered_benchs.consume_iter().advance |b| {
         callback(TeWait(copy b.desc));
         run_test(!opts.run_benchmarks, b, ch.clone());
         let (test, result) = p.recv();

@@ -17,8 +17,7 @@ use kinds::Copy;
 use option::Option;
 use sys;
 use uint;
-use vec;
-use vec::ImmutableVector;
+use vec::{ImmutableVector, OwnedVector};
 
 /// Code for dealing with @-vectors. This is pretty incomplete, and
 /// contains a bunch of duplication from the code for ~-vectors.
@@ -159,7 +158,7 @@ pub fn to_managed_consume<T>(v: ~[T]) -> @[T] {
     let mut av = @[];
     unsafe {
         raw::reserve(&mut av, v.len());
-        do vec::consume(v) |_i, x| {
+        for v.consume_iter().advance |x| {
             raw::push(&mut av, x);
         }
         transmute(av)

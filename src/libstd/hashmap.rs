@@ -24,7 +24,7 @@ use rand::RngUtil;
 use rand;
 use uint;
 use vec;
-use vec::{ImmutableVector, MutableVector};
+use vec::{ImmutableVector, MutableVector, OwnedVector};
 use kinds::Copy;
 use util::{replace, unreachable};
 
@@ -175,7 +175,8 @@ impl<K:Hash + Eq,V> HashMap<K, V> {
                                   vec::from_fn(new_capacity, |_| None));
 
         self.size = 0;
-        do vec::consume(old_buckets) |_, bucket| {
+        // consume_rev_iter is more efficient
+        for old_buckets.consume_rev_iter().advance |bucket| {
             self.insert_opt_bucket(bucket);
         }
     }
@@ -441,7 +442,7 @@ impl<K: Hash + Eq, V> HashMap<K, V> {
                               vec::from_fn(INITIAL_CAPACITY, |_| None));
         self.size = 0;
 
-        do vec::consume(buckets) |_, bucket| {
+        for buckets.consume_iter().advance |bucket| {
             match bucket {
                 None => {},
                 Some(Bucket{key, value, _}) => {
