@@ -748,7 +748,7 @@ pub mod writer {
 
     // Set to true to generate more debugging in EBML code.
     // Totally lame approach.
-    static debug: bool = true;
+    static DEBUG: bool = true;
 
     impl Encoder {
         // used internally to emit things like the vector length and so on
@@ -764,7 +764,7 @@ pub mod writer {
             // efficiency.  When debugging, though, we can emit such
             // labels and then they will be checked by decoder to
             // try and check failures more quickly.
-            if debug { self.wr_tagged_str(EsLabel as uint, label) }
+            if DEBUG { self.wr_tagged_str(EsLabel as uint, label) }
         }
     }
 

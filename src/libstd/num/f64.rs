@@ -11,6 +11,7 @@
 //! Operations and constants for `f64`
 
 #[allow(missing_doc)];
+#[allow(non_uppercase_statics)];
 
 use libc::c_int;
 use num::{Zero, One, strconv};

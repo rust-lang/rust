@@ -101,12 +101,12 @@ impl_NumStrConv_Integer!(u64)
 
 
 // Special value strings as [u8] consts.
-static inf_buf:          [u8, ..3] = ['i' as u8, 'n' as u8, 'f' as u8];
-static positive_inf_buf: [u8, ..4] = ['+' as u8, 'i' as u8, 'n' as u8,
+static INF_BUF:          [u8, ..3] = ['i' as u8, 'n' as u8, 'f' as u8];
+static POS_INF_BUF: [u8, ..4] = ['+' as u8, 'i' as u8, 'n' as u8,
                                       'f' as u8];
-static negative_inf_buf: [u8, ..4] = ['-' as u8, 'i' as u8, 'n' as u8,
+static NEG_INF_BUF: [u8, ..4] = ['-' as u8, 'i' as u8, 'n' as u8,
                                       'f' as u8];
-static nan_buf:          [u8, ..3] = ['N' as u8, 'a' as u8, 'N' as u8];
+static NAN_BUF:          [u8, ..3] = ['N' as u8, 'a' as u8, 'N' as u8];
 
 /**
  * Converts an integral number to its string representation as a byte vector.
@@ -506,15 +506,15 @@ pub fn from_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Copy+Div<T,T>+
     }
 
     if special {
-        if buf == inf_buf || buf == positive_inf_buf {
+        if buf == INF_BUF || buf == POS_INF_BUF {
             return NumStrConv::inf();
-        } else if buf == negative_inf_buf {
+        } else if buf == NEG_INF_BUF {
             if negative {
                 return NumStrConv::neg_inf();
             } else {
                 return None;
             }
-        } else if buf == nan_buf {
+        } else if buf == NAN_BUF {
             return NumStrConv::NaN();
         }
     }

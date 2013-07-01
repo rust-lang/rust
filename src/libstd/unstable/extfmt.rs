@@ -472,6 +472,7 @@ pub mod ct {
 // conditions can be evaluated at compile-time. For now though it's cleaner to
 // implement it this way, I think.
 #[doc(hidden)]
+#[allow(non_uppercase_statics)]
 pub mod rt {
     use float;
     use str;
