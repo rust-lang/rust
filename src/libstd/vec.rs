@@ -22,12 +22,14 @@ use iterator::{FromIterator, Iterator, IteratorUtil};
 use iter::FromIter;
 use kinds::Copy;
 use libc;
+use libc::c_void;
 use num::Zero;
 use ops::Add;
 use option::{None, Option, Some};
 use ptr::to_unsafe_ptr;
 use ptr;
 use ptr::RawPtr;
+use rt::global_heap::realloc_raw;
 use sys;
 use sys::size_of;
 use uint;
@@ -52,12 +54,6 @@ pub mod rustrt {
 
     #[abi = "cdecl"]
     pub extern {
-        // These names are terrible. reserve_shared applies
-        // to ~[] and reserve_shared_actual applies to @[].
-        #[fast_ffi]
-        unsafe fn vec_reserve_shared(t: *TyDesc,
-                                     v: **raw::VecRepr,
-                                     n: libc::size_t);
         #[fast_ffi]
         unsafe fn vec_reserve_shared_actual(t: *TyDesc,
                                             v: **raw::VecRepr,
@@ -1248,13 +1244,16 @@ impl<T> OwnedVector<T> for ~[T] {
         use managed;
         if self.capacity() < n {
             unsafe {
-                let ptr: **raw::VecRepr = cast::transmute(self);
+                let ptr: *mut *mut raw::VecRepr = cast::transmute(self);
                 let td = get_tydesc::<T>();
                 if ((**ptr).box_header.ref_count ==
                     managed::raw::RC_MANAGED_UNIQUE) {
-                    rustrt::vec_reserve_shared_actual(td, ptr, n as libc::size_t);
+                    rustrt::vec_reserve_shared_actual(td, ptr as **raw::VecRepr, n as libc::size_t);
                 } else {
-                    rustrt::vec_reserve_shared(td, ptr, n as libc::size_t);
+                    let alloc = n * sys::nonzero_size_of::<T>();
+                    *ptr = realloc_raw(*ptr as *mut c_void, alloc + size_of::<raw::VecRepr>())
+                           as *mut raw::VecRepr;
+                    (**ptr).unboxed.alloc = alloc;
                 }
             }
         }
@@ -1276,12 +1275,15 @@ impl<T> OwnedVector<T> for ~[T] {
         // Only make the (slow) call into the runtime if we have to
         if self.capacity() < n {
             unsafe {
-                let ptr: **raw::VecRepr = cast::transmute(self);
+                let ptr: *mut *mut raw::VecRepr = cast::transmute(self);
                 let td = get_tydesc::<T>();
                 if contains_managed::<T>() {
-                    rustrt::vec_reserve_shared_actual(td, ptr, n as libc::size_t);
+                    rustrt::vec_reserve_shared_actual(td, ptr as **raw::VecRepr, n as libc::size_t);
                 } else {
-                    rustrt::vec_reserve_shared(td, ptr, n as libc::size_t);
+                    let alloc = n * sys::nonzero_size_of::<T>();
+                    *ptr = realloc_raw(*ptr as *mut c_void, alloc + size_of::<raw::VecRepr>())
+                           as *mut raw::VecRepr;
+                    (**ptr).unboxed.alloc = alloc;
                 }
             }
         }
