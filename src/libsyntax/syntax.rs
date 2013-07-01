@@ -14,7 +14,7 @@
  */
 
 #[link(name = "syntax",
-       vers = "0.7-pre",
+       vers = "0.7",
        uuid = "9311401b-d6ea-4cd9-a1d9-61f89499c645")];
 
 #[license = "MIT/ASL2"];

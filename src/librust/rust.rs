@@ -13,7 +13,7 @@
 // FIXME #2238 Make run only accept source that emits an executable
 
 #[link(name = "rust",
-       vers = "0.7-pre",
+       vers = "0.7",
        uuid = "4a24da33-5cc8-4037-9352-2cbe9bd9d27c",
        url = "https://github.com/mozilla/rust/tree/master/src/rust")];
 
