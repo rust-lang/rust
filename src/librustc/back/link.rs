@@ -660,7 +660,8 @@ pub fn sanitize(s: &str) -> ~str {
             | '_' => result.push_char(c),
 
             _ => {
-                let tstr = char::escape_unicode(c);
+                let mut tstr = ~"";
+                do char::escape_unicode(c) |c| { tstr.push_char(c); }
                 result.push_char('$');
                 result.push_str(tstr.slice_from(1));
             }
