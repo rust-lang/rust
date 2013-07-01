@@ -261,7 +261,7 @@ impl<T> TrieNode<T> {
 
     fn each_reverse<'a>(&'a self, f: &fn(&uint, &'a T) -> bool) -> bool {
         for uint::range_rev(self.children.len(), 0) |idx| {
-            match self.children[idx - 1] {
+            match self.children[idx] {
                 Internal(ref x) => if !x.each_reverse(|i,t| f(i,t)) { return false },
                 External(k, ref v) => if !f(&k, v) { return false },
                 Nothing => ()
