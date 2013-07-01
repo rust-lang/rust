@@ -11,7 +11,7 @@
 #[no_core];
 #[no_std];
 
-extern mod core(name = "std", vers = "0.7-pre");
+extern mod core(name = "std", vers = "0.7");
 
 #[cfg(rustpkg)]
 extern mod this(name = "rustpkg");

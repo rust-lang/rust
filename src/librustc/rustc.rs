@@ -9,7 +9,7 @@
 // except according to those terms.
 
 #[link(name = "rustc",
-       vers = "0.7-pre",
+       vers = "0.7",
        uuid = "0ce89b41-2f92-459e-bbc1-8f5fe32f16cf",
        url = "https://github.com/mozilla/rust/tree/master/src/rustc")];
 

@@ -15,8 +15,8 @@
 #[no_core]; // XXX: Remove after snapshot
 #[no_std];
 
-extern mod core(name = "std", vers = "0.7-pre");
-extern mod extra(name = "extra", vers = "0.7-pre");
+extern mod core(name = "std", vers = "0.7");
+extern mod extra(name = "extra", vers = "0.7");
 
 use core::prelude::*;
 use core::*;
