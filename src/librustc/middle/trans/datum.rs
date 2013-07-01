@@ -690,7 +690,14 @@ impl Datum {
                     }
                     ByValue => {
                         assert!(ty::type_is_immediate(bcx.tcx(), ty));
-                        (Some(Datum {ty: ty, ..*self}), bcx)
+                        (
+                            Some(Datum {
+                                val: ExtractValue(bcx, self.val, 0),
+                                ty: ty,
+                                mode: ByValue
+                            }),
+                            bcx
+                        )
                     }
                 }
             }
