@@ -3846,6 +3846,27 @@ impl Resolver {
                           generics: &Generics,
                           fields: &[@struct_field],
                           visitor: ResolveVisitor) {
+        let mut ident_map = HashMap::new::<ast::ident, @struct_field>();
+        for fields.iter().advance |&field| {
+            match field.node.kind {
+                named_field(ident, _) => {
+                    match ident_map.find(&ident) {
+                        Some(&prev_field) => {
+                            let ident_str = self.session.str_of(ident);
+                            self.session.span_err(field.span,
+                                fmt!("field `%s` is already declared", ident_str));
+                            self.session.span_note(prev_field.span,
+                                "Previously declared here");
+                        },
+                        None => {
+                            ident_map.insert(ident, field);
+                        }
+                    }
+                }
+                _ => ()
+            }
+        }
+
         // If applicable, create a rib for the type parameters.
         do self.with_type_parameter_rib(HasTypeParameters
                                         (generics, id, 0,
