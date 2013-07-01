@@ -10,28 +10,35 @@
 
 //! Base64 binary-to-text encoding
 
+/// Available encoding character sets
+pub enum CharacterSet {
+    /// The standard character set (uses '+' and '/')
+    Standard,
+    /// The URL safe character set (uses '-' and '_')
+    UrlSafe
+}
+
 /// Contains configuration parameters for to_base64
 pub struct Config {
-    /// True to use the url-safe encoding format ('-' and '_'), false to use
-    /// the standard encoding format ('+' and '/')
-    pub url_safe: bool,
+    /// Character set to use
+    char_set: CharacterSet,
     /// True to pad output with '=' characters
-    pub pad: bool,
+    pad: bool,
     /// Some(len) to wrap lines at len, None to disable line wrapping
-    pub line_length: Option<uint>
+    line_length: Option<uint>
 }
 
 /// Configuration for RFC 4648 standard base64 encoding
 pub static standard: Config =
-    Config {url_safe: false, pad: true, line_length: None};
+    Config {char_set: Standard, pad: true, line_length: None};
 
 /// Configuration for RFC 4648 base64url encoding
 pub static url_safe: Config =
-    Config {url_safe: true, pad: false, line_length: None};
+    Config {char_set: UrlSafe, pad: false, line_length: None};
 
 /// Configuration for RFC 2045 MIME base64 encoding
 pub static mime: Config =
-    Config {url_safe: false, pad: true, line_length: Some(76)};
+    Config {char_set: Standard, pad: true, line_length: Some(76)};
 
 static STANDARD_CHARS: [char, ..64] = [
     'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M',
@@ -63,7 +70,8 @@ impl<'self> ToBase64 for &'self [u8] {
      * # Example
      *
      * ~~~ {.rust}
-     * use std::base64::{ToBase64, standard};
+     * extern mod extra;
+     * use extra::base64::{ToBase64, standard};
      *
      * fn main () {
      *     let str = [52,32].to_base64(standard);
@@ -72,9 +80,9 @@ impl<'self> ToBase64 for &'self [u8] {
      * ~~~
      */
     fn to_base64(&self, config: Config) -> ~str {
-        let chars = match config.url_safe {
-            true => URLSAFE_CHARS,
-            false => STANDARD_CHARS
+        let chars = match config.char_set {
+            Standard => STANDARD_CHARS,
+            UrlSafe => URLSAFE_CHARS
         };
 
         let mut s = ~"";
@@ -151,7 +159,8 @@ impl<'self> ToBase64 for &'self str {
      * # Example
      *
      * ~~~ {.rust}
-     * use std::base64::{ToBase64, standard};
+     * extern mod extra;
+     * use extra::base64::{ToBase64, standard};
      *
      * fn main () {
      *     let str = "Hello, World".to_base64(standard);
@@ -169,7 +178,7 @@ impl<'self> ToBase64 for &'self str {
 pub trait FromBase64 {
     /// Converts the value of `self`, interpreted as base64 encoded data, into
     /// an owned vector of bytes, returning the vector.
-    fn from_base64(&self) -> ~[u8];
+    fn from_base64(&self) -> Result<~[u8], ~str>;
 }
 
 impl<'self> FromBase64 for &'self [u8] {
@@ -180,7 +189,8 @@ impl<'self> FromBase64 for &'self [u8] {
      * # Example
      *
      * ~~~ {.rust}
-     * use std::base64::{ToBase64, FromBase64, standard};
+     * extern mod extra;
+     * use extra::base64::{ToBase64, FromBase64, standard};
      *
      * fn main () {
      *     let str = [52,32].to_base64(standard);
@@ -190,7 +200,7 @@ impl<'self> FromBase64 for &'self [u8] {
      * }
      * ~~~
      */
-    fn from_base64(&self) -> ~[u8] {
+    fn from_base64(&self) -> Result<~[u8], ~str> {
         let mut r = ~[];
         let mut buf: u32 = 0;
         let mut modulus = 0;
@@ -208,7 +218,7 @@ impl<'self> FromBase64 for &'self [u8] {
                 '/'|'_'   => buf |= 0x3F,
                 '\r'|'\n' => loop,
                 '='       => break,
-                _         => fail!("Invalid Base64 character")
+                _         => return Err(~"Invalid Base64 character")
             }
 
             buf <<= 6;
@@ -222,7 +232,7 @@ impl<'self> FromBase64 for &'self [u8] {
         }
 
         if !it.all(|&byte| {byte as char == '='}) {
-            fail!("Invalid Base64 character");
+            return Err(~"Invalid Base64 character");
         }
 
         match modulus {
@@ -234,10 +244,10 @@ impl<'self> FromBase64 for &'self [u8] {
                 r.push((buf >> 8 ) as u8);
             }
             0 => (),
-            _ => fail!("Invalid Base64 length")
+            _ => return Err(~"Invalid Base64 length")
         }
 
-        r
+        Ok(r)
     }
 }
 
@@ -255,7 +265,8 @@ impl<'self> FromBase64 for &'self str {
      * This converts a string literal to base64 and back.
      *
      * ~~~ {.rust}
-     * use std::base64::{ToBase64, FromBase64, standard};
+     * extern mod extra;
+     * use extra::base64::{ToBase64, FromBase64, standard};
      * use std::str;
      *
      * fn main () {
@@ -268,7 +279,7 @@ impl<'self> FromBase64 for &'self str {
      * }
      * ~~~
      */
-    fn from_base64(&self) -> ~[u8] {
+    fn from_base64(&self) -> Result<~[u8], ~str> {
         self.as_bytes().from_base64()
     }
 }
@@ -306,36 +317,48 @@ fn test_to_base64_url_safe() {
 
 #[test]
 fn test_from_base64_basic() {
-    assert_eq!("".from_base64(), "".as_bytes().to_owned());
-    assert_eq!("Zg==".from_base64(), "f".as_bytes().to_owned());
-    assert_eq!("Zm8=".from_base64(), "fo".as_bytes().to_owned());
-    assert_eq!("Zm9v".from_base64(), "foo".as_bytes().to_owned());
-    assert_eq!("Zm9vYg==".from_base64(), "foob".as_bytes().to_owned());
-    assert_eq!("Zm9vYmE=".from_base64(), "fooba".as_bytes().to_owned());
-    assert_eq!("Zm9vYmFy".from_base64(), "foobar".as_bytes().to_owned());
+    assert_eq!("".from_base64().get(), "".as_bytes().to_owned());
+    assert_eq!("Zg==".from_base64().get(), "f".as_bytes().to_owned());
+    assert_eq!("Zm8=".from_base64().get(), "fo".as_bytes().to_owned());
+    assert_eq!("Zm9v".from_base64().get(), "foo".as_bytes().to_owned());
+    assert_eq!("Zm9vYg==".from_base64().get(), "foob".as_bytes().to_owned());
+    assert_eq!("Zm9vYmE=".from_base64().get(), "fooba".as_bytes().to_owned());
+    assert_eq!("Zm9vYmFy".from_base64().get(), "foobar".as_bytes().to_owned());
 }
 
 #[test]
 fn test_from_base64_newlines() {
-    assert_eq!("Zm9v\r\nYmFy".from_base64(), "foobar".as_bytes().to_owned());
+    assert_eq!("Zm9v\r\nYmFy".from_base64().get(),
+        "foobar".as_bytes().to_owned());
 }
 
 #[test]
 fn test_from_base64_urlsafe() {
-    assert_eq!("-_8".from_base64(), "+/8=".from_base64());
+    assert_eq!("-_8".from_base64().get(), "+/8=".from_base64().get());
+}
+
+#[test]
+fn test_from_base64_invalid_char() {
+    assert!("Zm$=".from_base64().is_err())
+    assert!("Zg==$".from_base64().is_err());
+}
+
+#[test]
+fn test_from_base64_invalid_padding() {
+    assert!("Z===".from_base64().is_err());
 }
 
 #[test]
 fn test_base64_random() {
-    use std::rand::random;
+    use std::rand::{task_rng, random, RngUtil};
     use std::vec;
 
     for 1000.times {
         let v: ~[u8] = do vec::build |push| {
-            for 100.times {
+            for task_rng().gen_uint_range(1, 100).times {
                 push(random());
             }
         };
-        assert_eq!(v.to_base64(standard).from_base64(), v);
+        assert_eq!(v.to_base64(standard).from_base64().get(), v);
     }
 }
