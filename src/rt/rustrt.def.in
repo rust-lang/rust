@@ -55,7 +55,6 @@ rust_get_c_stack
 rust_log_str
 start_task
 vec_reserve_shared_actual
-vec_reserve_shared
 task_clear_event_reject
 task_wait_event
 task_signal_event

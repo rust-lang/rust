@@ -1945,7 +1945,7 @@ pub mod funcs {
                 #[fast_ffi]
                 unsafe fn malloc(size: size_t) -> *c_void;
                 #[fast_ffi]
-                unsafe fn realloc(p: *c_void, size: size_t) -> *c_void;
+                unsafe fn realloc(p: *mut c_void, size: size_t) -> *mut c_void;
                 #[fast_ffi]
                 unsafe fn free(p: *c_void);
                 unsafe fn abort() -> !;
