@@ -13,15 +13,9 @@
 #[allow(missing_doc)];
 
 use std::cast::transmute;
-#[cfg(stage0)]
-use intrinsic::{get_tydesc};
-#[cfg(not(stage0))]
 use std::unstable::intrinsics::{get_tydesc};
 
 pub mod rustrt {
-    #[cfg(stage0)]
-    use intrinsic::{TyDesc};
-    #[cfg(not(stage0))]
     use std::unstable::intrinsics::{TyDesc};
 
     #[abi = "cdecl"]

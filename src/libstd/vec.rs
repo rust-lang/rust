@@ -34,10 +34,9 @@ use sys;
 use sys::size_of;
 use uint;
 use unstable::intrinsics;
-#[cfg(stage0)]
-use intrinsic::{get_tydesc};
+use unstable::intrinsics::{get_tydesc};
 #[cfg(not(stage0))]
-use unstable::intrinsics::{get_tydesc, contains_managed};
+use unstable::intrinsics::{contains_managed};
 use vec;
 use util;
 
@@ -47,9 +46,6 @@ use util;
 pub mod rustrt {
     use libc;
     use vec::raw;
-    #[cfg(stage0)]
-    use intrinsic::{TyDesc};
-    #[cfg(not(stage0))]
     use unstable::intrinsics::{TyDesc};
 
     #[abi = "cdecl"]
@@ -2177,19 +2173,6 @@ impl<T> FromIter<T> for ~[T]{
     }
 }
 
-#[cfg(stage0)]
-impl<A, T: Iterator<A>> FromIterator<A, T> for ~[A] {
-    pub fn from_iterator(iterator: &mut T) -> ~[A] {
-        let mut xs = ~[];
-        for iterator.advance |x| {
-            xs.push(x);
-        }
-        xs
-    }
-}
-
-
-#[cfg(not(stage0))]
 impl<A, T: Iterator<A>> FromIterator<A, T> for ~[A] {
     pub fn from_iterator(iterator: &mut T) -> ~[A] {
         let (lower, _) = iterator.size_hint();

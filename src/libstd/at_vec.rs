@@ -26,9 +26,6 @@ use vec::ImmutableVector;
 pub mod rustrt {
     use libc;
     use vec;
-    #[cfg(stage0)]
-    use intrinsic::{TyDesc};
-    #[cfg(not(stage0))]
     use unstable::intrinsics::{TyDesc};
 
     #[abi = "cdecl"]
@@ -200,9 +197,6 @@ pub mod raw {
     use uint;
     use unstable::intrinsics::{move_val_init};
     use vec;
-    #[cfg(stage0)]
-    use intrinsic::{get_tydesc};
-    #[cfg(not(stage0))]
     use unstable::intrinsics::{get_tydesc};
 
     pub type VecRepr = vec::raw::VecRepr;

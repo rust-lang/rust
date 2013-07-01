@@ -8,10 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
-// This causes memory corruption in stage0.
 enum thing<K> { some(K), }
 
 pub fn main() { let x = some(~"hi"); }
