@@ -210,7 +210,7 @@ impl<T> Peekable<T> for PortOne<T> {
     fn peek(&self) -> bool {
         unsafe {
             let packet: *mut Packet<T> = self.inner.packet();
-            let oldstate = atomic_load(&mut (*packet).state);
+            let oldstate = atomic_load(&(*packet).state);
             match oldstate {
                 STATE_BOTH => false,
                 STATE_ONE => (*packet).payload.is_some(),
