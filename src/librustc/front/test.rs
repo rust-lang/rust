@@ -117,7 +117,7 @@ fn fold_mod(cx: @mut TestCtxt,
 
     let mod_nomain = ast::_mod {
         view_items: /*bad*/copy m.view_items,
-        items: vec::map(m.items, |i| nomain(cx, *i)),
+        items: m.items.iter().transform(|i| nomain(cx, *i)).collect(),
     };
 
     fold::noop_fold_mod(&mod_nomain, fld)

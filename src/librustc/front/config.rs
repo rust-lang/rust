@@ -90,7 +90,7 @@ fn fold_foreign_mod(
     ast::foreign_mod {
         sort: nm.sort,
         abis: nm.abis,
-        view_items: vec::map(filtered_view_items, |x| fld.fold_view_item(*x)),
+        view_items: filtered_view_items.iter().transform(|x| fld.fold_view_item(*x)).collect(),
         items: filtered_items
     }
 }

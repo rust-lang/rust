@@ -1544,10 +1544,10 @@ mod tests {
 
         let mut e = env();
         setenv(n, "VALUE");
-        assert!(!vec::contains(e, &(copy n, ~"VALUE")));
+        assert!(!e.contains(&(copy n, ~"VALUE")));
 
         e = env();
-        assert!(vec::contains(e, &(n, ~"VALUE")));
+        assert!(e.contains(&(n, ~"VALUE")));
     }
 
     #[test]

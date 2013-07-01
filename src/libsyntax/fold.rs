@@ -699,7 +699,7 @@ pub fn noop_fold_ty(t: &ty_, fld: @ast_fold) -> ty_ {
 // ...nor do modules
 pub fn noop_fold_mod(m: &_mod, fld: @ast_fold) -> _mod {
     ast::_mod {
-        view_items: vec::map(m.view_items, |x| fld.fold_view_item(*x)),
+        view_items: m.view_items.iter().transform(|x| fld.fold_view_item(*x)).collect(),
         items: vec::filter_mapped(m.items, |x| fld.fold_item(*x)),
     }
 }
@@ -708,8 +708,8 @@ fn noop_fold_foreign_mod(nm: &foreign_mod, fld: @ast_fold) -> foreign_mod {
     ast::foreign_mod {
         sort: nm.sort,
         abis: nm.abis,
-        view_items: vec::map(nm.view_items, |x| fld.fold_view_item(*x)),
-        items: vec::map(nm.items, |x| fld.fold_foreign_item(*x)),
+        view_items: nm.view_items.iter().transform(|x| fld.fold_view_item(*x)).collect(),
+        items: nm.items.iter().transform(|x| fld.fold_foreign_item(*x)).collect(),
     }
 }
 
@@ -728,8 +728,8 @@ fn noop_fold_variant(v: &variant_, fld: @ast_fold) -> variant_ {
         }
         struct_variant_kind(struct_def) => {
             kind = struct_variant_kind(@ast::struct_def {
-                fields: vec::map(struct_def.fields,
-                                 |f| fld.fold_struct_field(*f)),
+                fields: struct_def.fields.iter()
+                    .transform(|f| fld.fold_struct_field(*f)).collect(),
                 ctor_id: struct_def.ctor_id.map(|c| fld.new_id(*c))
             })
         }
@@ -824,8 +824,7 @@ impl ast_fold for AstFoldFns {
        @view_item {
         @ast::view_item {
             node: (self.fold_view_item)(&x.node, self as @ast_fold),
-            attrs: vec::map(x.attrs, |a|
-                  fold_attribute_(*a, self as @ast_fold)),
+            attrs: x.attrs.iter().transform(|a| fold_attribute_(*a, self as @ast_fold)).collect(),
             vis: x.vis,
             span: (self.new_span)(x.span),
         }
