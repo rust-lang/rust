@@ -669,7 +669,7 @@ fn spawn_process_os(prog: &str, args: &[~str],
             fail!("failure in dup3(err_fd, 2): %s", os::last_os_error());
         }
         // close all other fds
-        for int::range_rev(getdtablesize() as int - 1, 2) |fd| {
+        for int::range_rev(getdtablesize() as int, 3) |fd| {
             close(fd as c_int);
         }
 

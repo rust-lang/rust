@@ -132,9 +132,10 @@ pub fn range(lo: $T, hi: $T, it: &fn($T) -> bool) -> bool {
 }
 
 #[inline]
-/// Iterate over the range [`hi`..`lo`)
+/// Iterate over the range (`hi`..`lo`]
 pub fn range_rev(hi: $T, lo: $T, it: &fn($T) -> bool) -> bool {
-    range_step(hi, lo, -1 as $T_SIGNED, it)
+    if hi == min_value { return true; }
+    range_step_inclusive(hi-1, lo, -1 as $T_SIGNED, it)
 }
 
 impl Num for $T {}
@@ -662,7 +663,7 @@ mod tests {
         for range(0,3) |i| {
             l.push(i);
         }
-        for range_rev(13,10) |i| {
+        for range_rev(14,11) |i| {
             l.push(i);
         }
         for range_step(20,26,2) |i| {
