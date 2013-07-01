@@ -62,9 +62,6 @@ use std::sys;
 use std::vec;
 use syntax::codemap::span;
 use syntax::{ast, codemap, ast_util, ast_map};
-use syntax::parse::token;
-
-
 
 static DW_LANG_RUST: int = 0x9000;
 
@@ -529,7 +526,7 @@ fn create_tuple(cx: &mut CrateContext,
                 span: span)
              -> DICompositeType {
 
-    let tuple_name = "tuple"; // TODO: better type name
+    let tuple_name = "tuple"; // this should have a better name
     let tuple_llvm_type = type_of::type_of(cx, tuple_type);
     // Create a vec of empty strings. A vec::build_n() function would be nice for this.
     let mut component_names : ~[~str] = vec::with_capacity(component_types.len());
@@ -566,7 +563,7 @@ fn create_composite_type(cx: &mut CrateContext,
     let composite_size = machine::llsize_of_alloc(cx, composite_llvm_type);
     let composite_align = machine::llalign_of_min(cx, composite_llvm_type);
 
-    let xxx : ~[DIDescriptor] = member_llvm_types
+    let member_metadata : ~[DIDescriptor] = member_llvm_types
         .iter()
         .enumerate()
         .transform(|(i, member_llvm_type)| {
@@ -587,32 +584,9 @@ fn create_composite_type(cx: &mut CrateContext,
                     bytes_to_bits(member_offset),
                     0,
                     member_type_metadata[i])
-            }}})
+            }}
+        })
         .collect();
-
-    let member_metadata = create_DIArray(DIB(cx), xxx);
-        // transform the ty::t array of components into an array of DIEs
-        // do vec::mapi(member_llvm_types) |i, member_llvm_type| {
-        // do member_llvm_types.iter().enumerate().transform |(i, member_llvm_type)| {
-        //     let member_size = machine::llsize_of_alloc(cx, *member_llvm_type);
-        //     let member_align = machine::llalign_of_min(cx, *member_llvm_type);
-        //     let member_offset = machine::llelement_offset(cx, composite_llvm_type, i);
-        //     let member_name : &str = member_names[i];
-
-        //     do member_name.as_c_str |member_name| { unsafe {
-        //         llvm::LLVMDIBuilderCreateMemberType(
-        //             DIB(cx),
-        //             file_metadata,
-        //             member_name,
-        //             file_metadata,
-        //             loc.line as c_uint,
-        //             bytes_to_bits(member_size),
-        //             bytes_to_bits(member_align),
-        //             bytes_to_bits(member_offset),
-        //             0,
-        //             member_type_metadata[i])
-        //     }}
-        // }.collect());
 
     return do composite_type_name.as_c_str |name| { unsafe {
         llvm::LLVMDIBuilderCreateStructType(
@@ -625,7 +599,7 @@ fn create_composite_type(cx: &mut CrateContext,
             bytes_to_bits(composite_align),
             0,
             ptr::null(),
-            member_metadata,
+            create_DIArray(DIB(cx), member_metadata),
             0,
             ptr::null())
     }};
@@ -873,7 +847,12 @@ fn get_or_create_ty(cx: &mut CrateContext, t: ty::t, span: span) -> DIType {
         ty::ty_uniq(ref mt) => {
             let content_llvm_type = type_of::type_of(cx, mt.ty);
             let content_type_metadata = get_or_create_ty(cx, mt.ty, span);
-            let box_metadata = create_boxed_type(cx, content_llvm_type, content_type_metadata, span);
+
+            let box_metadata = create_boxed_type(cx,
+                                                 content_llvm_type,
+                                                 content_type_metadata,
+                                                 span);
+
             create_pointer_type(cx, t, span, box_metadata)
         },
         ty::ty_evec(ref mt, ref vstore) => {
