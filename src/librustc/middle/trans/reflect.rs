@@ -25,7 +25,7 @@ use middle::ty;
 use util::ppaux::ty_to_str;
 
 use std::libc::c_uint;
-use std::option::None;
+use std::option::{Some,None};
 use std::vec;
 use syntax::ast::DefId;
 use syntax::ast;
@@ -308,7 +308,7 @@ impl Reflector {
                 };
                 let mut bcx = fcx.entry_bcx.unwrap();
                 let arg = BitCast(bcx, arg, llptrty);
-                let ret = adt::trans_get_discr(bcx, repr, arg);
+                let ret = adt::trans_get_discr(bcx, repr, arg, Some(ccx.int_type));
                 Store(bcx, ret, fcx.llretptr.unwrap());
                 match fcx.llreturn {
                     Some(llreturn) => cleanup_and_Br(bcx, bcx, llreturn),
