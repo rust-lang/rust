@@ -2885,8 +2885,6 @@ The kinds are:
     before any of the values it owns run their destructors. Only `Send` types
     that do not implement `Copy` can implement `Drop`.
 
-> **Note:** The `drop` method may be renamed in future versions of Rust.
-
 _Default_
   : Types with destructors, closure environments,
     and various other _non-first-class_ types,
