@@ -1,54 +1,56 @@
 Version 0.7 (July 2013)
 -----------------------
 
-   * ??? changes, numerous bugfixes
+   * ~2000 changes, numerous bugfixes
 
-   * Syntax changes
+   * Language
       * `impl`s no longer accept a visibility qualifier. Put them on methods
         instead.
-      * `use mod` is no longer valid.
-      * `fail!` and `assert!` accept `~str`, `&'static str` or `fmt!`-style
-        argument list.
-      * `Encodable`, `Decodable`, `Ord`, `TotalOrd`, `TotalEq`, `DeepClone`,
-        `Rand`, `Zero` and `ToStr` can all be automatically derived with
-        `#[deriving(...)]`.
-      * The `Durable` trait is replaced with the `'static` bounds.
-      * At long last, 'argument modes' no longer exist.
-      * The `bytes!` macro returns a vector of bytes for string, u8, char,
-        and unsuffixed integer literals.
-      * `#[static_assert]` makes compile-time assertions about static bools.
-
-   * Semantic changes
       * The borrow checker has been rewritten with flow-sensitivity, fixing
         many bugs and inconveniences.
       * The `self` parameter no longer implicitly means `&'self self`,
         and can be explicitly marked with a lifetime.
-      * Structs with the `#[packed]` attribute have byte alignment and
-        no padding between fields.
+      * Overloadable compound operators (`+=`, etc.) have been temporarily
+        removed due to bugs.
       * The `for` loop protocol now requires `for`-iterators to return `bool`
         so they compose better.
+      * The `Durable` trait is replaced with the `'static` bounds.
       * Trait default methods work more often.
+      * Structs with the `#[packed]` attribute have byte alignment and
+        no padding between fields.
       * Type parameters bound by `Copy` must now be copied explicitly with
         the `copy` keyword.
       * It is now illegal to move out of a dereferenced unsafe pointer.
       * `Option<~T>` is now represented as a nullable pointer.
       * `@mut` does dynamic borrow checks correctly.
-      * Macros TODO
       * The `main` function is only detected at the topmost level of the crate.
         The `#[main]` attribute is still valid anywhere.
       * Struct fields may no longer be mutable. Use inherited mutability.
-      * The `#[non_owned]` attribute makes a type that would otherwise be
-        `Owned`, not. TODO this may change to non_send before 0.7
-      * The `#[mutable]` attribute makes a type that would otherwise be
-        `Const`, note. TODO this may change to non_freeze before 0.7
+      * The `#[no_send]` attribute makes a type that would otherwise be
+        `Send`, not.
+      * The `#[no_freeze]` attribute makes a type that would otherwise be
+        `Freeze`, not.
       * Unbounded recursion will abort the process after reaching the limit
         specified by the `RUST_MAX_STACK` environment variable (default: 1GB).
       * The `vecs_implicitly_copyable` lint mode has been removed. Vectors
         are never implicitly copyable.
+      * `#[static_assert]` makes compile-time assertions about static bools.
+      * At long last, 'argument modes' no longer exist.
+      * The rarely used `use mod` statement no longer exists.
+
+   * Syntax extensions
+      * `fail!` and `assert!` accept `~str`, `&'static str` or `fmt!`-style
+        argument list.
+      * `Encodable`, `Decodable`, `Ord`, `TotalOrd`, `TotalEq`, `DeepClone`,
+        `Rand`, `Zero` and `ToStr` can all be automatically derived with
+        `#[deriving(...)]`.
+      * The `bytes!` macro returns a vector of bytes for string, u8, char,
+        and unsuffixed integer literals.
 
    * Libraries
       * The `core` crate was renamed to `std`.
       * The `std` crate was renamed to `extra`.
+      * More and improved documentation.
       * std: `iterator` module for external iterator objects.
       * Many old-style (internal, higher-order function) iterators replaced by
         implementations of `Iterator`.
@@ -91,8 +93,16 @@ Version 0.7 (July 2013)
       * extra: Implementation of fixed output size variations of SHA-2.
 
    * Tooling
-      * `unused_unsafe` lint mode for detecting unnecessary `unsafe` blocks.
-      * `unused_mut` lint mode for identifying unused `mut` qualifiers.
+      * `unused_variable`  lint mode for unused variables (default: warn).
+      * `unused_unsafe` lint mode for detecting unnecessary `unsafe` blocks
+        (default: warn).
+      * `unused_mut` lint mode for identifying unused `mut` qualifiers
+        (default: warn).
+      * `dead_assignment` lint mode for unread variables (default: warn).
+      * `unnecessary_allocation` lint mode detects some heap allocations that are
+        immediately borrowed so could be written without allocating (default: warn).
+      * `missing_doc` lint mode (default: allow).
+      * `unreachable_code` lint mode (default: warn).
       * The `rusti` command has been rewritten and a number of bugs addressed.
       * rustc outputs in color on more terminals.
       * rustc accepts a `--link-args` flag to pass arguments to the linker.
@@ -101,12 +111,7 @@ Version 0.7 (July 2013)
         dynamic borrowcheck failures for debugging.
       * rustdoc has a nicer stylesheet.
       * Various improvements to rustdoc.
-      * Improvements to rustpkg (see the detailed release notes)
-
-   * Other
-      * More and improved library documentation.
-      * Various improvements on ARM and Android.
-      * Various improvements to MIPS backend.
+      * Improvements to rustpkg (see the detailed release notes).
 
 Version 0.6 (April 2013)
 ------------------------

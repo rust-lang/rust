@@ -11,7 +11,7 @@
 // rustpkg - a package manager and build system for Rust
 
 #[link(name = "rustpkg",
-       vers = "0.7-pre",
+       vers = "0.7",
        uuid = "25de5e6e-279e-4a20-845c-4cabae92daaf",
        url = "https://github.com/mozilla/rust/tree/master/src/librustpkg")];
 
