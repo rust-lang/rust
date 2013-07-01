@@ -24,7 +24,6 @@ use std::io::{WriterUtil, ReaderUtil};
 use std::io;
 use std::str;
 use std::to_str;
-use std::vec;
 
 use serialize::Encodable;
 use serialize;
@@ -941,7 +940,7 @@ impl serialize::Decoder for Decoder {
         let name = match self.stack.pop() {
             String(s) => s,
             List(list) => {
-                do vec::consume_reverse(list) |_i, v| {
+                for list.consume_rev_iter().advance |v| {
                     self.stack.push(v);
                 }
                 match self.stack.pop() {
@@ -1059,7 +1058,7 @@ impl serialize::Decoder for Decoder {
         let len = match self.stack.pop() {
             List(list) => {
                 let len = list.len();
-                do vec::consume_reverse(list) |_i, v| {
+                for list.consume_rev_iter().advance |v| {
                     self.stack.push(v);
                 }
                 len

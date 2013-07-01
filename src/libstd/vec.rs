@@ -277,67 +277,6 @@ pub fn rsplitn<T:Copy>(v: &[T], n: uint, f: &fn(t: &T) -> bool) -> ~[~[T]] {
     result
 }
 
-/// Consumes all elements, in a vector, moving them out into the / closure
-/// provided. The vector is traversed from the start to the end.
-///
-/// This method does not impose any requirements on the type of the vector being
-/// consumed, but it prevents any usage of the vector after this function is
-/// called.
-///
-/// # Examples
-///
-/// ~~~ {.rust}
-/// let v = ~[~"a", ~"b"];
-/// do vec::consume(v) |i, s| {
-///   // s has type ~str, not &~str
-///   io::println(s + fmt!(" %d", i));
-/// }
-/// ~~~
-pub fn consume<T>(mut v: ~[T], f: &fn(uint, v: T)) {
-    unsafe {
-        do as_mut_buf(v) |p, ln| {
-            for uint::range(0, ln) |i| {
-                // NB: This unsafe operation counts on init writing 0s to the
-                // holes we create in the vector. That ensures that, if the
-                // iterator fails then we won't try to clean up the consumed
-                // elements during unwinding
-                let x = intrinsics::init();
-                let p = ptr::mut_offset(p, i);
-                f(i, ptr::replace_ptr(p, x));
-            }
-        }
-
-        raw::set_len(&mut v, 0);
-    }
-}
-
-/// Consumes all elements, in a vector, moving them out into the / closure
-/// provided. The vectors is traversed in reverse order (from end to start).
-///
-/// This method does not impose any requirements on the type of the vector being
-/// consumed, but it prevents any usage of the vector after this function is
-/// called.
-pub fn consume_reverse<T>(mut v: ~[T], f: &fn(uint, v: T)) {
-    unsafe {
-        do as_mut_buf(v) |p, ln| {
-            let mut i = ln;
-            while i > 0 {
-                i -= 1;
-
-                // NB: This unsafe operation counts on init writing 0s to the
-                // holes we create in the vector. That ensures that, if the
-                // iterator fails then we won't try to clean up the consumed
-                // elements during unwinding
-                let x = intrinsics::init();
-                let p = ptr::mut_offset(p, i);
-                f(i, ptr::replace_ptr(p, x));
-            }
-        }
-
-        raw::set_len(&mut v, 0);
-    }
-}
-
 // Appending
 
 /// Iterates over the `rhs` vector, copying each element and appending it to the
@@ -360,20 +299,6 @@ pub fn append_one<T>(lhs: ~[T], x: T) -> ~[T] {
 
 // Functional utilities
 
-/// Consumes a vector, mapping it into a different vector. This function takes
-/// ownership of the supplied vector `v`, moving each element into the closure
-/// provided to generate a new element. The vector of new elements is then
-/// returned.
-///
-/// The original vector `v` cannot be used after this function call (it is moved
-/// inside), but there are no restrictions on the type of the vector.
-pub fn map_consume<T, U>(v: ~[T], f: &fn(v: T) -> U) -> ~[U] {
-    let mut result = ~[];
-    do consume(v) |_i, x| {
-        result.push(f(x));
-    }
-    result
-}
 /**
  * Apply a function to each element of a vector and return a concatenation
  * of each result vector
@@ -396,7 +321,7 @@ pub fn filter_map<T, U>(
      */
 
     let mut result = ~[];
-    do consume(v) |_, elem| {
+    for v.consume_iter().advance |elem| {
         match f(elem) {
             None => {}
             Some(result_elem) => { result.push(result_elem); }
@@ -434,9 +359,7 @@ pub fn filter_mapped<T, U: Copy>(
  */
 pub fn filter<T>(v: ~[T], f: &fn(t: &T) -> bool) -> ~[T] {
     let mut result = ~[];
-    // FIXME (#4355 maybe): using v.consume here crashes
-    // do v.consume |_, elem| {
-    do consume(v) |_, elem| {
+    for v.consume_iter().advance |elem| {
         if f(&elem) { result.push(elem); }
     }
     result
@@ -542,7 +465,7 @@ pub fn unzip_slice<T:Copy,U:Copy>(v: &[(T, U)]) -> (~[T], ~[U]) {
 pub fn unzip<T,U>(v: ~[(T, U)]) -> (~[T], ~[U]) {
     let mut ts = ~[];
     let mut us = ~[];
-    do consume(v) |_i, p| {
+    for v.consume_iter().advance |p| {
         let (t, u) = p;
         ts.push(t);
         us.push(u);
@@ -1202,6 +1125,9 @@ impl<'self,T:Copy> ImmutableCopyableVector<T> for &'self [T] {
 
 #[allow(missing_doc)]
 pub trait OwnedVector<T> {
+    fn consume_iter(self) -> VecConsumeIterator<T>;
+    fn consume_rev_iter(self) -> VecConsumeRevIterator<T>;
+
     fn reserve(&mut self, n: uint);
     fn reserve_at_least(&mut self, n: uint);
     fn capacity(&self) -> uint;
@@ -1218,14 +1144,38 @@ pub trait OwnedVector<T> {
     fn swap_remove(&mut self, index: uint) -> T;
     fn truncate(&mut self, newlen: uint);
     fn retain(&mut self, f: &fn(t: &T) -> bool);
-    fn consume(self, f: &fn(uint, v: T));
-    fn consume_reverse(self, f: &fn(uint, v: T));
     fn filter(self, f: &fn(t: &T) -> bool) -> ~[T];
     fn partition(self, f: &fn(&T) -> bool) -> (~[T], ~[T]);
     fn grow_fn(&mut self, n: uint, op: &fn(uint) -> T);
 }
 
 impl<T> OwnedVector<T> for ~[T] {
+    /// Creates a consuming iterator, that is, one that moves each
+    /// value out of the vector (from start to end). The vector cannot
+    /// be used after calling this.
+    ///
+    /// Note that this performs O(n) swaps, and so `consume_rev_iter`
+    /// (which just calls `pop` repeatedly) is more efficient.
+    ///
+    /// # Examples
+    ///
+    /// ~~~ {.rust}
+    /// let v = ~[~"a", ~"b"];
+    /// for v.consume_iter().advance |s| {
+    ///   // s has type ~str, not &~str
+    ///   println(s);
+    /// }
+    /// ~~~
+    fn consume_iter(self) -> VecConsumeIterator<T> {
+        VecConsumeIterator { v: self, idx: 0 }
+    }
+    /// Creates a consuming iterator that moves out of the vector in
+    /// reverse order. Also see `consume_iter`, however note that this
+    /// is more efficient.
+    fn consume_rev_iter(self) -> VecConsumeRevIterator<T> {
+        VecConsumeRevIterator { v: self }
+    }
+
     /**
      * Reserves capacity for exactly `n` elements in the given vector.
      *
@@ -1533,16 +1483,6 @@ impl<T> OwnedVector<T> for ~[T] {
     }
 
     #[inline]
-    fn consume(self, f: &fn(uint, v: T)) {
-        consume(self, f)
-    }
-
-    #[inline]
-    fn consume_reverse(self, f: &fn(uint, v: T)) {
-        consume_reverse(self, f)
-    }
-
-    #[inline]
     fn filter(self, f: &fn(&T) -> bool) -> ~[T] {
         filter(self, f)
     }
@@ -1556,7 +1496,7 @@ impl<T> OwnedVector<T> for ~[T] {
         let mut lefts  = ~[];
         let mut rights = ~[];
 
-        do self.consume |_, elt| {
+        for self.consume_iter().advance |elt| {
             if f(&elt) {
                 lefts.push(elt);
             } else {
@@ -2132,7 +2072,7 @@ macro_rules! iterator {
 }
 
 //iterator!{struct VecIterator -> *T, &'self T}
-/// An iterator for iterating over a vector
+/// An iterator for iterating over a vector.
 pub struct VecIterator<'self, T> {
     priv ptr: *T,
     priv end: *T,
@@ -2141,7 +2081,7 @@ pub struct VecIterator<'self, T> {
 iterator!{impl VecIterator -> &'self T, 1}
 
 //iterator!{struct VecRevIterator -> *T, &'self T}
-/// An iterator for iterating over a vector in reverse
+/// An iterator for iterating over a vector in reverse.
 pub struct VecRevIterator<'self, T> {
     priv ptr: *T,
     priv end: *T,
@@ -2150,7 +2090,7 @@ pub struct VecRevIterator<'self, T> {
 iterator!{impl VecRevIterator -> &'self T, -1}
 
 //iterator!{struct VecMutIterator -> *mut T, &'self mut T}
-/// An iterator for mutating the elements of a vector
+/// An iterator for mutating the elements of a vector.
 pub struct VecMutIterator<'self, T> {
     priv ptr: *mut T,
     priv end: *mut T,
@@ -2159,13 +2099,56 @@ pub struct VecMutIterator<'self, T> {
 iterator!{impl VecMutIterator -> &'self mut T, 1}
 
 //iterator!{struct VecMutRevIterator -> *mut T, &'self mut T}
-/// An iterator for mutating the elements of a vector in reverse
+/// An iterator for mutating the elements of a vector in reverse.
 pub struct VecMutRevIterator<'self, T> {
     priv ptr: *mut T,
     priv end: *mut T,
     priv lifetime: &'self mut T // FIXME: #5922
 }
 iterator!{impl VecMutRevIterator -> &'self mut T, -1}
+
+/// An iterator that moves out of a vector.
+pub struct VecConsumeIterator<T> {
+    priv v: ~[T],
+    priv idx: uint,
+}
+
+impl<T> Iterator<T> for VecConsumeIterator<T> {
+    fn next(&mut self) -> Option<T> {
+        // this is peculiar, but is required for safety with respect
+        // to dtors. It traverses the first half of the vec, and
+        // removes them by swapping them with the last element (and
+        // popping), which results in the second half in reverse
+        // order, and so these can just be pop'd off. That is,
+        //
+        // [1,2,3,4,5] => 1, [5,2,3,4] => 2, [5,4,3] => 3, [5,4] => 4,
+        // [5] -> 5, []
+
+        if self.v.is_empty() {
+            None
+        } else {
+            let l = self.v.len();
+            if self.idx < l {
+                self.v.swap(self.idx, l - 1);
+                self.idx += 1;
+            }
+
+            Some(self.v.pop())
+        }
+    }
+}
+
+/// An iterator that moves out of a vector in reverse order.
+pub struct VecConsumeRevIterator<T> {
+    priv v: ~[T]
+}
+
+impl<T> Iterator<T> for VecConsumeRevIterator<T> {
+    fn next(&mut self) -> Option<T> {
+        if self.v.is_empty() { None }
+        else { Some(self.v.pop()) }
+    }
+}
 
 #[cfg(stage0)]
 impl<A, T: Iterator<A>> FromIterator<A, T> for ~[A] {
@@ -3203,20 +3186,6 @@ mod tests {
     #[test]
     #[ignore(windows)]
     #[should_fail]
-    fn test_consume_fail() {
-        let v = ~[(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
-        let mut i = 0;
-        do consume(v) |_i, _elt| {
-            if i == 2 {
-                fail!()
-            }
-            i += 1;
-        };
-    }
-
-    #[test]
-    #[ignore(windows)]
-    #[should_fail]
     #[allow(non_implicitly_copyable_typarams)]
     fn test_grow_fn_fail() {
         let mut v = ~[];
@@ -3235,21 +3204,6 @@ mod tests {
         let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
         let mut i = 0;
         do v.map |_elt| {
-            if i == 2 {
-                fail!()
-            }
-            i += 0;
-            ~[(~0, @0)]
-        };
-    }
-
-    #[test]
-    #[ignore(windows)]
-    #[should_fail]
-    fn test_map_consume_fail() {
-        let v = ~[(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
-        let mut i = 0;
-        do map_consume(v) |_elt| {
             if i == 2 {
                 fail!()
             }
@@ -3426,6 +3380,20 @@ mod tests {
             *x += i;
         }
         assert_eq!(xs, [5, 5, 5, 5, 5])
+    }
+
+    #[test]
+    fn test_consume_iterator() {
+        use iterator::*;
+        let xs = ~[1u,2,3,4,5];
+        assert_eq!(xs.consume_iter().fold(0, |a: uint, b: uint| 10*a + b), 12345);
+    }
+
+    #[test]
+    fn test_consume_rev_iterator() {
+        use iterator::*;
+        let xs = ~[1u,2,3,4,5];
+        assert_eq!(xs.consume_rev_iter().fold(0, |a: uint, b: uint| 10*a + b), 54321);
     }
 
     #[test]

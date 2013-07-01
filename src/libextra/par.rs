@@ -78,11 +78,10 @@ fn map_slices<A:Copy + Send,B:Copy + Send>(
         info!("num_tasks: %?", (num_tasks, futures.len()));
         assert_eq!(num_tasks, futures.len());
 
-        let r = do vec::map_consume(futures) |ys| {
+        do futures.consume_iter().transform |ys| {
             let mut ys = ys;
             ys.get()
-        };
-        r
+        }.collect()
     }
 }
 
