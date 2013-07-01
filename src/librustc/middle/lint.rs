@@ -854,7 +854,10 @@ fn check_item_non_camel_case_types(cx: &Context, it: &ast::item) {
         let ident = cx.sess.str_of(ident);
         assert!(!ident.is_empty());
         let ident = ident.trim_chars(&'_');
-        char::is_uppercase(ident.char_at(0)) &&
+
+        // start with a non-lowercase letter rather than non-uppercase
+        // ones (some scripts don't have a concept of upper/lowercase)
+        !ident.char_at(0).is_lowercase() &&
             !ident.contains_char('_')
     }
 
