@@ -258,25 +258,43 @@ pub fn malloc_raw_dyn(bcx: block,
         }
     };
 
-    // Grab the TypeRef type of box_ptr_ty.
-    let box_ptr_ty = mk_fn(bcx.tcx(), t);
-    let llty = type_of(ccx, box_ptr_ty);
+    if heap == heap_exchange {
+        // Grab the TypeRef type of box_ptr_ty.
+        let box_ptr_ty = mk_fn(bcx.tcx(), t);
+        let llty = type_of(ccx, box_ptr_ty);
 
-    // Get the tydesc for the body:
-    let static_ti = get_tydesc(ccx, t);
-    glue::lazily_emit_all_tydesc_glue(ccx, static_ti);
+        let llty_value = type_of::type_of(ccx, t);
+        let llalign = llalign_of_min(ccx, llty_value);
 
-    // Allocate space:
-    let tydesc = PointerCast(bcx, static_ti.tydesc, Type::i8p());
-    let rval = alloca(bcx, Type::i8p());
-    let bcx = callee::trans_lang_call(
-        bcx,
-        langcall,
-        [tydesc, size],
-        expr::SaveIn(rval));
-    let r = rslt(bcx, PointerCast(bcx, Load(bcx, rval), llty));
-    maybe_set_managed_unique_rc(r.bcx, r.val, heap);
-    r
+        // Allocate space:
+        let rval = alloca(bcx, Type::i8p());
+        let bcx = callee::trans_lang_call(
+            bcx,
+            langcall,
+            [C_i32(llalign as i32), size],
+            expr::SaveIn(rval));
+        rslt(bcx, PointerCast(bcx, Load(bcx, rval), llty))
+    } else {
+        // Grab the TypeRef type of box_ptr_ty.
+        let box_ptr_ty = mk_fn(bcx.tcx(), t);
+        let llty = type_of(ccx, box_ptr_ty);
+
+        // Get the tydesc for the body:
+        let static_ti = get_tydesc(ccx, t);
+        glue::lazily_emit_all_tydesc_glue(ccx, static_ti);
+
+        // Allocate space:
+        let tydesc = PointerCast(bcx, static_ti.tydesc, Type::i8p());
+        let rval = alloca(bcx, Type::i8p());
+        let bcx = callee::trans_lang_call(
+            bcx,
+            langcall,
+            [tydesc, size],
+            expr::SaveIn(rval));
+        let r = rslt(bcx, PointerCast(bcx, Load(bcx, rval), llty));
+        maybe_set_managed_unique_rc(r.bcx, r.val, heap);
+        r
+    }
 }
 
 // malloc_raw: expects an unboxed type and returns a pointer to
