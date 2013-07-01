@@ -11,7 +11,6 @@
 use option::*;
 use sys;
 use cast::transmute;
-use cell::Cell;
 use clone::Clone;
 
 use super::sleeper_list::SleeperList;
