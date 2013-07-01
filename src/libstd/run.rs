@@ -744,8 +744,8 @@ fn with_envp<T>(env: Option<&[(~str, ~str)]>, cb: &fn(*mut c_void) -> T) -> T {
     match env {
       Some(es) => {
         let mut blk = ~[];
-        for es.iter().advance |&(k, v)| {
-            let kv = fmt!("%s=%s", k, v);
+        for es.iter().advance |pair| {
+            let kv = fmt!("%s=%s", pair.first(), pair.second());
             blk.push_all(kv.as_bytes_with_null_consume());
         }
         blk.push(0);
