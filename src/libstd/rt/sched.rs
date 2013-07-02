@@ -1127,6 +1127,7 @@ mod test {
     // times.
 
     #[test]
+    #[ignore(reason = "iloopy")]
     fn test_stress_homed_tasks() {
         let n = stress_factor();
         for int::range(0,n as int) |_| {
