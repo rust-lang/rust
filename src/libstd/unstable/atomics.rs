@@ -272,6 +272,30 @@ impl<T> AtomicOption<T> {
             self.swap(cast::transmute(0), order)
         }
     }
+
+    /// A compare-and-swap. Succeeds if the option is 'None' and returns 'None'
+    /// if so. If the option was already 'Some', returns 'Some' of the rejected
+    /// value.
+    #[inline]
+    pub fn fill(&mut self, val: ~T, order: Ordering) -> Option<~T> {
+        unsafe {
+            let val = cast::transmute(val);
+            let expected = cast::transmute(0);
+            let oldval = atomic_compare_and_swap(&mut self.p, expected, val, order);
+            if oldval == expected {
+                None
+            } else {
+                Some(cast::transmute(val))
+            }
+        }
+    }
+
+    /// Be careful: The caller must have some external method of ensuring the
+    /// result does not get invalidated by another task after this returns.
+    #[inline]
+    pub fn is_empty(&mut self, order: Ordering) -> bool {
+        unsafe { atomic_load(&self.p, order) == cast::transmute(0) }
+    }
 }
 
 #[unsafe_destructor]
@@ -375,6 +399,11 @@ mod test {
     }
 
     #[test]
+    fn option_empty() {
+        assert!(AtomicOption::empty::<()>().is_empty(SeqCst));
+    }
+
+    #[test]
     fn option_swap() {
         let mut p = AtomicOption::new(~1);
         let a = ~2;
@@ -398,4 +427,13 @@ mod test {
         assert_eq!(p.take(SeqCst), Some(~2));
     }
 
+    #[test]
+    fn option_fill() {
+        let mut p = AtomicOption::new(~1);
+        assert!(p.fill(~2, SeqCst).is_some()); // should fail; shouldn't leak!
+        assert_eq!(p.take(SeqCst), Some(~1));
+
+        assert!(p.fill(~2, SeqCst).is_none()); // shouldn't fail
+        assert_eq!(p.take(SeqCst), Some(~2));
+    }
 }
