@@ -91,6 +91,7 @@ pub trait TyVisitor {
 
     fn visit_box(&self, mtbl: uint, inner: *TyDesc) -> bool;
     fn visit_uniq(&self, mtbl: uint, inner: *TyDesc) -> bool;
+    fn visit_uniq_managed(&self, mtbl: uint, inner: *TyDesc) -> bool;
     fn visit_ptr(&self, mtbl: uint, inner: *TyDesc) -> bool;
     fn visit_rptr(&self, mtbl: uint, inner: *TyDesc) -> bool;
 

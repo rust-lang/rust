@@ -33,6 +33,23 @@ use std::option::None;
 use syntax::ast;
 use syntax::codemap;
 
+pub fn make_uniq_free_glue(bcx: block, vptrptr: ValueRef, box_ty: ty::t)
+    -> block {
+    let box_datum = immediate_rvalue(Load(bcx, vptrptr), box_ty);
+
+    let not_null = IsNotNull(bcx, box_datum.val);
+    do with_cond(bcx, not_null) |bcx| {
+        let body_datum = box_datum.box_body(bcx);
+        let bcx = glue::drop_ty(bcx, body_datum.to_ref_llval(bcx),
+                                body_datum.ty);
+        if ty::type_contents(bcx.tcx(), box_ty).contains_managed() {
+            glue::trans_free(bcx, box_datum.val)
+        } else {
+            glue::trans_exchange_free(bcx, box_datum.val)
+        }
+    }
+}
+
 // Boxed vector types are in some sense currently a "shorthand" for a box
 // containing an unboxed vector. This expands a boxed vector type into such an
 // expanded type. It doesn't respect mutability, but that doesn't matter at
@@ -42,7 +59,7 @@ pub fn expand_boxed_vec_ty(tcx: ty::ctxt, t: ty::t) -> ty::t {
     let unboxed_vec_ty = ty::mk_mut_unboxed_vec(tcx, unit_ty);
     match ty::get(t).sty {
       ty::ty_estr(ty::vstore_uniq) | ty::ty_evec(_, ty::vstore_uniq) => {
-        ty::mk_imm_uniq(tcx, unboxed_vec_ty)
+        fail!("cannot treat vectors/strings as exchange allocations yet");
       }
       ty::ty_estr(ty::vstore_box) | ty::ty_evec(_, ty::vstore_box) => {
         ty::mk_imm_box(tcx, unboxed_vec_ty)
