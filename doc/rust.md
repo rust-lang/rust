@@ -2879,13 +2879,11 @@ The kinds are:
     Types with destructors (types that implement `Drop`) can not implement `Copy`.
 `Drop`
   : This is not strictly a kind, but its presence interacts with kinds: the `Drop`
-    trait provides a single method `finalize` that takes no parameters, and is run
+    trait provides a single method `drop` that takes no parameters, and is run
     when values of the type are dropped. Such a method is called a "destructor",
     and are always executed in "top-down" order: a value is completely destroyed
     before any of the values it owns run their destructors. Only `Send` types
     that do not implement `Copy` can implement `Drop`.
-
-> **Note:** The `finalize` method may be renamed in future versions of Rust.
 
 _Default_
   : Types with destructors, closure environments,
