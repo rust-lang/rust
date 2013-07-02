@@ -2097,8 +2097,25 @@ pub mod llvm {
             Val: ValueRef,
             VarInfo: DIVariable,
             InsertBefore: ValueRef) -> ValueRef;
-    }
-}
+
+        #[fast_ffi]
+        pub unsafe fn LLVMDIBuilderCreateEnumerator(
+            Builder: DIBuilderRef,
+            Name: *c_char,
+            Val: c_ulonglong) -> ValueRef;
+
+        #[fast_ffi]
+        pub unsafe fn LLVMDIBuilderCreateEnumerationType(
+            Builder: DIBuilderRef,
+            Scope: ValueRef,
+            Name: *c_char,
+            File: ValueRef,
+            LineNumber: c_uint,
+            SizeInBits: c_ulonglong,
+            AlignInBits: c_ulonglong,
+            Elements: ValueRef,
+            ClassType: ValueRef) -> ValueRef;
+}}
 
 pub fn SetInstructionCallConv(Instr: ValueRef, CC: CallConv) {
     unsafe {

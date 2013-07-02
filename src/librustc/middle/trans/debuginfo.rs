@@ -143,11 +143,11 @@ pub fn create_local_var(bcx: block, local: @ast::local) -> DIVariable {
 
     let loc = span_start(cx, local.span);
     let ty = node_id_type(bcx, local.node.id);
-    let tymd = get_or_create_ty(cx, ty, local.node.ty.span);
+    let tymd = get_or_create_type(cx, ty, local.node.ty.span);
     let filemd = get_or_create_file(cx, loc.file.name);
     let context = match bcx.parent {
         None => create_function(bcx.fcx),
-        Some(_) => create_block(bcx)
+        Some(_) => get_or_create_block(bcx)
     };
 
     let var_md = do as_c_str(name) |name| { unsafe {
@@ -167,7 +167,7 @@ pub fn create_local_var(bcx: block, local: @ast::local) -> DIVariable {
         }
     };
 
-    set_debug_location(cx, create_block(bcx), loc.line, loc.col.to_uint());
+    set_debug_location(cx, get_or_create_block(bcx), loc.line, loc.col.to_uint());
     unsafe {
         let instr = llvm::LLVMDIBuilderInsertDeclareAtEnd(DIB(cx), llptr, var_md, bcx.llbb);
         llvm::LLVMSetInstDebugLocation(trans::build::B(bcx), instr);
@@ -197,7 +197,7 @@ pub fn create_arg(bcx: block, arg: &ast::arg, span: span) -> Option<DIVariable> 
     }
 
     let ty = node_id_type(bcx, arg.id);
-    let tymd = get_or_create_ty(cx, ty, arg.ty.span);
+    let tymd = get_or_create_type(cx, ty, arg.ty.span);
     let filemd = get_or_create_file(cx, loc.file.name);
     let context = create_function(fcx);
 
@@ -222,7 +222,7 @@ pub fn create_arg(bcx: block, arg: &ast::arg, span: span) -> Option<DIVariable> 
             }};
 
             let llptr = fcx.llargs.get_copy(&arg.id);
-            set_debug_location(cx, create_block(bcx), loc.line, loc.col.to_uint());
+            set_debug_location(cx, get_or_create_block(bcx), loc.line, loc.col.to_uint());
             unsafe {
                 let instr = llvm::LLVMDIBuilderInsertDeclareAtEnd(
                         DIB(cx), llptr, mdnode, bcx.llbb);
@@ -245,7 +245,7 @@ pub fn update_source_pos(bcx: block, span: span) {
     }
     debug!("update_source_pos: %s", bcx.sess().codemap.span_to_str(span));
     let loc = span_start(bcx.ccx(), span);
-    set_debug_location(bcx.ccx(), create_block(bcx), loc.line, loc.col.to_uint())
+    set_debug_location(bcx.ccx(), get_or_create_block(bcx), loc.line, loc.col.to_uint())
 }
 
 /// Creates debug information for the given function.
@@ -297,7 +297,7 @@ pub fn create_function(fcx: fn_ctxt) -> DISubprogram {
     let ret_ty_md = if cx.sess.opts.extra_debuginfo {
         match ret_ty.node {
           ast::ty_nil => ptr::null(),
-          _ => get_or_create_ty(cx, ty::node_id_to_type(cx.tcx, id), ret_ty.span)
+          _ => get_or_create_type(cx, ty::node_id_to_type(cx.tcx, id), ret_ty.span)
         }
     } else {
         ptr::null()
@@ -397,7 +397,7 @@ fn get_or_create_file(cx: &mut CrateContext, full_path: &str) -> DIFile {
 
 
 
-fn create_block(bcx: block) -> DILexicalBlock {
+fn get_or_create_block(bcx: block) -> DILexicalBlock {
     let mut bcx = bcx;
     let cx = bcx.ccx();
 
@@ -415,11 +415,11 @@ fn create_block(bcx: block) -> DILexicalBlock {
         None => ()
     }
 
-    debug!("create_block: %s", bcx.sess().codemap.span_to_str(span));
+    debug!("get_or_create_block: %s", bcx.sess().codemap.span_to_str(span));
 
     let parent = match bcx.parent {
         None => create_function(bcx.fcx),
-        Some(b) => create_block(b)
+        Some(b) => get_or_create_block(b)
     };
     let cx = bcx.ccx();
     let loc = span_start(cx, span);
@@ -508,7 +508,7 @@ fn create_struct(cx: &mut CrateContext,
 
     let field_llvm_types = fields.map(|field| type_of::type_of(cx, field.mt.ty));
     let field_names = fields.map(|field| cx.sess.str_of(field.ident).to_owned());
-    let field_types_metadata = fields.map(|field| get_or_create_ty(cx, field.mt.ty, span));
+    let field_types_metadata = fields.map(|field| get_or_create_type(cx, field.mt.ty, span));
 
     return create_composite_type(
         cx,
@@ -533,7 +533,7 @@ fn create_tuple(cx: &mut CrateContext,
     component_names.grow_fn(component_types.len(), |_| ~"");
 
     let component_llvm_types = component_types.map(|it| type_of::type_of(cx, *it));
-    let component_types_metadata = component_types.map(|it| get_or_create_ty(cx, *it, span));
+    let component_types_metadata = component_types.map(|it| get_or_create_type(cx, *it, span));
 
     return create_composite_type(
         cx,
@@ -544,6 +544,66 @@ fn create_tuple(cx: &mut CrateContext,
         component_types_metadata,
         span);
 }
+
+fn create_enum_md(cx: &mut CrateContext,
+                  enum_type: ty::t,
+                  enum_def_id: ast::def_id,
+                  span: span) -> DIType {
+
+    let enum_name = ty_to_str(cx.tcx, enum_type);
+    let discriminator_llvm_type = Type::enum_discrim(cx);
+    let discriminator_size = machine::llsize_of_alloc(cx, discriminator_llvm_type);
+    let discriminator_align = machine::llalign_of_min(cx, discriminator_llvm_type);
+
+    assert!(Type::enum_discrim(cx) == cx.int_type);
+    let discriminator_type_md = get_or_create_type(cx, ty::mk_int(), span);
+
+    if ty::type_is_empty(cx.tcx, enum_type) {
+        // XXX: This should not "rename" the type to nil
+        return get_or_create_type(cx, ty::mk_nil(), span);
+    }
+
+    if ty::type_is_c_like_enum(cx.tcx, enum_type) {
+
+        let variants : &[ty::VariantInfo] = *ty::enum_variants(cx.tcx, enum_def_id);
+
+        let enumerators : ~[(~str, int)] = variants
+            .iter()
+            .transform(|v| (cx.sess.str_of(v.name).to_owned(), v.disr_val))
+            .collect();
+
+        let enumerators_md : ~[DIDescriptor] =
+            do enumerators.iter().transform |&(name,value)| {
+                do name.as_c_str |name| { unsafe {
+                    llvm::LLVMDIBuilderCreateEnumerator(
+                        DIB(cx),
+                        name,
+                        value as c_ulonglong)
+                }}
+            }.collect();
+
+        let loc = span_start(cx, span);
+        let file_metadata = get_or_create_file(cx, loc.file.name);
+
+        return do enum_name.as_c_str |enum_name| { unsafe {
+            llvm::LLVMDIBuilderCreateEnumerationType(
+                DIB(cx),
+                file_metadata,
+                enum_name,
+                file_metadata,
+                loc.line as c_uint,
+                bytes_to_bits(discriminator_size),
+                bytes_to_bits(discriminator_align),
+                create_DIArray(DIB(cx), enumerators_md),
+                discriminator_type_md)
+        }};
+    }
+
+    cx.sess.bug("");
+}
+
+
+
 
 /// Creates debug information for a composite type, that is, anything that results in a LLVM struct.
 ///
@@ -636,10 +696,10 @@ fn create_boxed_type(cx: &mut CrateContext,
     let nil_pointer_type = ty::mk_nil_ptr(cx.tcx);
 
     let member_types_metadata = [
-        get_or_create_ty(cx, int_type, span),
-        get_or_create_ty(cx, nil_pointer_type, span),
-        get_or_create_ty(cx, nil_pointer_type, span),
-        get_or_create_ty(cx, nil_pointer_type, span),
+        get_or_create_type(cx, int_type, span),
+        get_or_create_type(cx, nil_pointer_type, span),
+        get_or_create_type(cx, nil_pointer_type, span),
+        get_or_create_type(cx, nil_pointer_type, span),
         content_type_metadata
     ];
 
@@ -671,7 +731,7 @@ fn create_fixed_vec(cx: &mut CrateContext, _vec_t: ty::t, elem_t: ty::t,
                     len: uint, span: span) -> DIType {
     debug!("create_fixed_vec: %?", ty::get(_vec_t));
 
-    let elem_ty_md = get_or_create_ty(cx, elem_t, span);
+    let elem_ty_md = get_or_create_type(cx, elem_t, span);
     let (size, align) = size_and_align_of(cx, elem_t);
 
     let subrange = unsafe { llvm::LLVMDIBuilderGetOrCreateSubrange(
@@ -695,7 +755,7 @@ fn create_boxed_vec(cx: &mut CrateContext,
                     span: span)
                  -> DICompositeType {
 
-    let element_type_metadata = get_or_create_ty(cx, element_type, span);
+    let element_type_metadata = get_or_create_type(cx, element_type, span);
     let element_llvm_type = type_of::type_of(cx, element_type);
     let vec_llvm_type = Type::vec(cx.sess.targ_cfg.arch, &element_llvm_type);
     let vec_type_name = &"vec";
@@ -703,7 +763,7 @@ fn create_boxed_vec(cx: &mut CrateContext,
     let member_llvm_types = vec_llvm_type.field_types();
     let member_names = &[~"fill", ~"alloc", ~"elements"];
 
-    let int_type_md = get_or_create_ty(cx, ty::mk_int(), span);
+    let int_type_md = get_or_create_type(cx, ty::mk_int(), span);
     let array_type_md = unsafe { llvm::LLVMDIBuilderCreateArrayType(
         DIB(cx),
         bytes_to_bits(machine::llsize_of_alloc(cx, element_llvm_type)),
@@ -746,8 +806,8 @@ fn create_vec_slice(cx: &mut CrateContext,
     let data_ptr_type = ty::mk_ptr(cx.tcx, ty::mt { ty: element_type, mutbl: ast::m_const });
 
     let member_type_metadata = &[
-        get_or_create_ty(cx, data_ptr_type, span),
-        get_or_create_ty(cx, ty::mk_uint(), span)
+        get_or_create_type(cx, data_ptr_type, span),
+        get_or_create_type(cx, ty::mk_uint(), span)
         ];
 
     return create_composite_type(
@@ -776,9 +836,9 @@ fn create_fn_ty(cx: &mut CrateContext, _fn_ty: ty::t, inputs: ~[ty::t], output: 
     let loc = span_start(cx, span);
     let file_md = get_or_create_file(cx, loc.file.name);
     let (vp, _, _) = voidptr(cx);
-    let output_md = get_or_create_ty(cx, output, span);
+    let output_md = get_or_create_type(cx, output, span);
     let output_ptr_md = create_pointer_type(cx, output, span, output_md);
-    let inputs_vals = do inputs.map |arg| { get_or_create_ty(cx, *arg, span) };
+    let inputs_vals = do inputs.map |arg| { get_or_create_type(cx, *arg, span) };
     let members = ~[output_ptr_md, vp] + inputs_vals;
 
     return unsafe {
@@ -804,14 +864,14 @@ fn create_unimpl_ty(cx: &mut CrateContext, t: ty::t) -> DIType {
     return md;
 }
 
-fn get_or_create_ty(cx: &mut CrateContext, t: ty::t, span: span) -> DIType {
+fn get_or_create_type(cx: &mut CrateContext, t: ty::t, span: span) -> DIType {
     let ty_id = ty::type_id(t);
     match dbg_cx(cx).created_types.find(&ty_id) {
         Some(ty_md) => return *ty_md,
         None => ()
     }
 
-    debug!("get_or_create_ty: %?", ty::get(t));
+    debug!("get_or_create_type: %?", ty::get(t));
 
     let sty = copy ty::get(t).sty;
     let ty_md = match sty {
@@ -839,14 +899,15 @@ fn get_or_create_ty(cx: &mut CrateContext, t: ty::t, span: span) -> DIType {
                 }
             }
         },
-        ty::ty_enum(_did, ref _substs) => {
-            cx.sess.span_note(span, "debuginfo for enum NYI");
-            create_unimpl_ty(cx, t)
+        ty::ty_enum(def_id, ref _substs) => {
+            //cx.sess.span_note(span, "debuginfo for enum NYI");
+            //create_unimpl_ty(cx, t)
+            create_enum_md(cx, t, def_id, span)
         },
         ty::ty_box(ref mt) |
         ty::ty_uniq(ref mt) => {
             let content_llvm_type = type_of::type_of(cx, mt.ty);
-            let content_type_metadata = get_or_create_ty(cx, mt.ty, span);
+            let content_type_metadata = get_or_create_type(cx, mt.ty, span);
 
             let box_metadata = create_boxed_type(cx,
                                                  content_llvm_type,
@@ -872,7 +933,7 @@ fn get_or_create_ty(cx: &mut CrateContext, t: ty::t, span: span) -> DIType {
         },
         ty::ty_ptr(ref mt) |
         ty::ty_rptr(_, ref mt) => {
-            let pointee = get_or_create_ty(cx, mt.ty, span);
+            let pointee = get_or_create_type(cx, mt.ty, span);
             create_pointer_type(cx, t, span, pointee)
         },
         ty::ty_bare_fn(ref barefnty) => {
@@ -895,7 +956,7 @@ fn get_or_create_ty(cx: &mut CrateContext, t: ty::t, span: span) -> DIType {
         ty::ty_tup(ref elements) => {
             create_tuple(cx, t, *elements, span)
         },
-        _ => cx.sess.bug("debuginfo: unexpected type in get_or_create_ty")
+        _ => cx.sess.bug("debuginfo: unexpected type in get_or_create_type")
     };
 
     dbg_cx(cx).created_types.insert(ty_id, ty_md);

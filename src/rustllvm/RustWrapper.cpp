@@ -785,3 +785,33 @@ extern "C" LLVMValueRef LLVMDIBuilderInsertDeclareBefore(
         unwrapDI<DIVariable>(VarInfo), 
         unwrap<Instruction>(InsertBefore)));
 }
+
+extern "C" LLVMValueRef LLVMDIBuilderCreateEnumerator(
+    DIBuilderRef Builder,
+    const char* Name,
+    uint64_t Val)
+{
+    return wrap(Builder->createEnumerator(Name, Val));
+}
+
+extern "C" LLVMValueRef LLVMDIBuilderCreateEnumerationType(
+    DIBuilderRef Builder,
+    LLVMValueRef Scope,
+    const char* Name,
+    LLVMValueRef File,
+    unsigned LineNumber,
+    uint64_t SizeInBits,
+    uint64_t AlignInBits,
+    LLVMValueRef Elements,
+    LLVMValueRef ClassType)
+{
+    return wrap(Builder->createEnumerationType(
+        unwrapDI<DIDescriptor>(Scope),
+        Name,
+        unwrapDI<DIFile>(File),
+        LineNumber,
+        SizeInBits,
+        AlignInBits,
+        unwrapDI<DIArray>(Elements),
+        unwrapDI<DIType>(ClassType)));
+}
