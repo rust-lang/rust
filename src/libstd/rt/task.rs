@@ -212,7 +212,7 @@ impl Task {
     /// On a special scheduler?
     pub fn on_special() -> bool {
         do Local::borrow::<Scheduler,bool> |sched| {
-            sched.run_anything
+            !sched.run_anything
         }
     }
 
