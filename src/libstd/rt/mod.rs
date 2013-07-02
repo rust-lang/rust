@@ -280,7 +280,7 @@ pub fn run(main: ~fn()) -> int {
     let main_cell = Cell::new(main);
     let mut main_task = ~Task::new_root(&mut scheds[0].stack_pool,
                                     main_cell.take());
-    main_task.on_exit = Some(on_exit);
+    main_task.death.on_exit = Some(on_exit);
     scheds[0].enqueue_task(main_task);
 
     // Run each scheduler in a thread.
