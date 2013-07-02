@@ -219,12 +219,12 @@ impl<V> SmallIntMap<V> {
     }
 }
 
-impl<V:Copy> SmallIntMap<V> {
+impl<V:Clone> SmallIntMap<V> {
     pub fn update_with_key(&mut self, key: uint, val: V,
                            ff: &fn(uint, V, V) -> V) -> bool {
         let new_val = match self.find(&key) {
             None => val,
-            Some(orig) => ff(key, copy *orig, val)
+            Some(orig) => ff(key, (*orig).clone(), val)
         };
         self.insert(key, new_val)
     }

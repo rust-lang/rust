@@ -24,7 +24,7 @@ use pass::Pass;
 pub fn mk_pass(config: config::Config) -> Pass {
     Pass {
         name: ~"markdown_index",
-        f: |srv, doc| run(srv, doc, copy config)
+        f: |srv, doc| run(srv, doc, config.clone())
     }
 }
 
@@ -49,7 +49,7 @@ fn fold_mod(
     let doc = fold::default_any_fold_mod(fold, doc);
 
     doc::ModDoc {
-        index: Some(build_mod_index(copy doc, copy fold.ctxt)),
+        index: Some(build_mod_index(doc.clone(), fold.ctxt.clone())),
         .. doc
     }
 }
@@ -62,7 +62,7 @@ fn fold_nmod(
     let doc = fold::default_any_fold_nmod(fold, doc);
 
     doc::NmodDoc {
-        index: Some(build_nmod_index(copy doc, copy fold.ctxt)),
+        index: Some(build_nmod_index(doc.clone(), fold.ctxt.clone())),
         .. doc
     }
 }
@@ -73,7 +73,7 @@ fn build_mod_index(
 ) -> doc::Index {
     doc::Index {
         entries: doc.items.map(|doc| {
-            item_to_entry(copy *doc, &config)
+            item_to_entry((*doc).clone(), &config)
         })
     }
 }
@@ -84,7 +84,7 @@ fn build_nmod_index(
 ) -> doc::Index {
     doc::Index {
         entries: doc.fns.map(|doc| {
-            item_to_entry(doc::FnTag(copy *doc), &config)
+            item_to_entry(doc::FnTag((*doc).clone()), &config)
         })
     }
 }
@@ -97,16 +97,16 @@ fn item_to_entry(
       doc::ModTag(_) | doc::NmodTag(_)
       if config.output_style == config::DocPerMod => {
         markdown_writer::make_filename(config,
-                                       doc::ItemPage(copy doc)).to_str()
+                                       doc::ItemPage(doc.clone())).to_str()
       }
       _ => {
-        ~"#" + pandoc_header_id(markdown_pass::header_text(copy doc))
+        ~"#" + pandoc_header_id(markdown_pass::header_text(doc.clone()))
       }
     };
 
     doc::IndexEntry {
-        kind: markdown_pass::header_kind(copy doc),
-        name: markdown_pass::header_name(copy doc),
+        kind: markdown_pass::header_kind(doc.clone()),
+        name: markdown_pass::header_name(doc.clone()),
         brief: doc.brief(),
         link: link
     }

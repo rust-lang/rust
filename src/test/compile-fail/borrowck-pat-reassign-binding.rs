@@ -22,5 +22,5 @@ fn main() {
           x = Some(*i+1); //~ ERROR cannot assign to `x`
       }
     }
-    copy x; // just to prevent liveness warnings
+    x.clone(); // just to prevent liveness warnings
 }

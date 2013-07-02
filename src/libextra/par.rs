@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Cloneright 2012 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -32,7 +32,7 @@ static MIN_GRANULARITY : uint = 1024u;
  * This is used to build most of the other parallel vector functions,
  * like map or alli.
  */
-fn map_slices<A:Copy + Send,B:Copy + Send>(
+fn map_slices<A:Clone + Send,B:Clone + Send>(
     xs: &[A],
     f: &fn() -> ~fn(uint, v: &[A]) -> B)
     -> ~[B] {
@@ -42,8 +42,7 @@ fn map_slices<A:Copy + Send,B:Copy + Send>(
         info!("small slice");
         // This is a small vector, fall back on the normal map.
         ~[f()(0u, xs)]
-    }
-    else {
+    } else {
         let num_tasks = num::min(MAX_TASKS, len / MIN_GRANULARITY);
 
         let items_per_task = len / num_tasks;
@@ -86,7 +85,7 @@ fn map_slices<A:Copy + Send,B:Copy + Send>(
 }
 
 /// A parallel version of map.
-pub fn map<A:Copy + Send,B:Copy + Send>(
+pub fn map<A:Copy + Clone + Send,B:Copy + Clone + Send>(
     xs: &[A], fn_factory: &fn() -> ~fn(&A) -> B) -> ~[B] {
     vec::concat(map_slices(xs, || {
         let f = fn_factory();
@@ -97,7 +96,7 @@ pub fn map<A:Copy + Send,B:Copy + Send>(
 }
 
 /// A parallel version of mapi.
-pub fn mapi<A:Copy + Send,B:Copy + Send>(
+pub fn mapi<A:Copy + Clone + Send,B:Copy + Clone + Send>(
         xs: &[A],
         fn_factory: &fn() -> ~fn(uint, &A) -> B) -> ~[B] {
     let slices = map_slices(xs, || {
@@ -116,7 +115,7 @@ pub fn mapi<A:Copy + Send,B:Copy + Send>(
 }
 
 /// Returns true if the function holds for all elements in the vector.
-pub fn alli<A:Copy + Send>(
+pub fn alli<A:Clone + Send>(
     xs: &[A],
     fn_factory: &fn() -> ~fn(uint, &A) -> bool) -> bool
 {
@@ -131,7 +130,7 @@ pub fn alli<A:Copy + Send>(
 }
 
 /// Returns true if the function holds for any elements in the vector.
-pub fn any<A:Copy + Send>(
+pub fn any<A:Clone + Send>(
     xs: &[A],
     fn_factory: &fn() -> ~fn(&A) -> bool) -> bool {
     let mapped = map_slices(xs, || {

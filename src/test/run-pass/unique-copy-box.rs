@@ -15,7 +15,7 @@ pub fn main() {
         let i = ~@1;
         let j = ~@2;
         let rc1 = sys::refcount(*i);
-        let j = copy i;
+        let j = i.clone();
         let rc2 = sys::refcount(*i);
         error!("rc1: %u rc2: %u", rc1, rc2);
         assert_eq!(rc1 + 1u, rc2);

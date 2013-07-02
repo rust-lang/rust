@@ -83,7 +83,7 @@ pub fn type_uses_for(ccx: @mut CrateContext, fn_id: def_id, n_tps: uint)
 
     let cx = Context {
         ccx: ccx,
-        uses: @mut vec::from_elem(n_tps, 0)
+        uses: @mut vec::from_elem(n_tps, 0u)
     };
 
     // If the method is a default method, we mark all of the types as
@@ -99,10 +99,15 @@ pub fn type_uses_for(ccx: @mut CrateContext, fn_id: def_id, n_tps: uint)
     }
 
     let map_node = match ccx.tcx.items.find(&fn_id_loc.node) {
-        Some(x) => (/*bad*/copy *x),
-        None    => ccx.sess.bug(fmt!("type_uses_for: unbound item ID %?",
-                                     fn_id_loc))
+        Some(x) => {
+            (*x).clone()
+        }
+        None => {
+            ccx.sess.bug(fmt!("type_uses_for: unbound item ID %?",
+                              fn_id_loc))
+        }
     };
+
     match map_node {
       ast_map::node_item(@ast::item { node: item_fn(_, _, _, _, ref body),
                                       _ }, _) |
@@ -121,11 +126,13 @@ pub fn type_uses_for(ccx: @mut CrateContext, fn_id: def_id, n_tps: uint)
       ast_map::node_variant(_, _, _) => {
         for uint::range(0u, n_tps) |n| { cx.uses[n] |= use_repr;}
       }
-      ast_map::node_foreign_item(i@@foreign_item { node: foreign_item_fn(*),
-                                                   _ },
-                                 abi,
-                                 _,
-                                 _) => {
+      ast_map::node_foreign_item(i@@foreign_item {
+            node: foreign_item_fn(*),
+            _
+        },
+        abi,
+        _,
+        _) => {
         if abi.is_intrinsic() {
             let nm = cx.ccx.sess.str_of(i.ident);
             let name = nm.as_slice();
@@ -161,7 +168,8 @@ pub fn type_uses_for(ccx: @mut CrateContext, fn_id: def_id, n_tps: uint)
 
                     "bswap16" | "bswap32" | "bswap64" => 0,
 
-                    // would be cool to make these an enum instead of strings!
+                    // would be cool to make these an enum instead of
+                    // strings!
                     _ => fail!("unknown intrinsic in type_use")
                 }
             };
@@ -169,8 +177,8 @@ pub fn type_uses_for(ccx: @mut CrateContext, fn_id: def_id, n_tps: uint)
         }
       }
       ast_map::node_struct_ctor(*) => {
-        // Similarly to node_variant, this monomorphized function just uses
-        // the representations of all of its type parameters.
+        // Similarly to node_variant, this monomorphized function just
+        // uses the representations of all of its type parameters.
         for uint::range(0, n_tps) |n| { cx.uses[n] |= use_repr; }
       }
       _ => {

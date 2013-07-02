@@ -132,9 +132,12 @@ fn lookup_vtables(vcx: &VtableContext,
     @result
 }
 
-fn fixup_substs(vcx: &VtableContext, location_info: &LocationInfo,
-                id: ast::def_id, substs: ty::substs,
-                is_early: bool) -> Option<ty::substs> {
+fn fixup_substs(vcx: &VtableContext,
+                location_info: &LocationInfo,
+                id: ast::def_id,
+                substs: ty::substs,
+                is_early: bool)
+                -> Option<ty::substs> {
     let tcx = vcx.tcx();
     // use a dummy type just to package up the substs that need fixing up
     let t = ty::mk_trait(tcx,
@@ -144,7 +147,7 @@ fn fixup_substs(vcx: &VtableContext, location_info: &LocationInfo,
                          ty::EmptyBuiltinBounds());
     do fixup_ty(vcx, location_info, t, is_early).map |t_f| {
         match ty::get(*t_f).sty {
-          ty::ty_trait(_, ref substs_f, _, _, _) => (/*bad*/copy *substs_f),
+          ty::ty_trait(_, ref substs_f, _, _, _) => (*substs_f).clone(),
           _ => fail!("t_f should be a trait")
         }
     }
@@ -365,7 +368,7 @@ fn lookup_vtable(vcx: &VtableContext,
                                                               trait_ref.def_id,
                                                               substs,
                                                               is_early) {
-                                Some(ref substs) => (/*bad*/copy *substs),
+                                Some(ref substs) => (*substs).clone(),
                                 None => {
                                     assert!(is_early);
                                     // Bail out with a bogus answer
@@ -403,10 +406,9 @@ fn lookup_vtable(vcx: &VtableContext,
                             // the impl as well as the resolved list
                             // of type substitutions for the target
                             // trait.
-                            found.push(
-                                vtable_static(im.did,
-                                              /*bad*/copy substs_f.tps,
-                                              subres));
+                            found.push(vtable_static(im.did,
+                                                     substs_f.tps.clone(),
+                                                     subres));
                         }
                     }
                 }
@@ -414,14 +416,14 @@ fn lookup_vtable(vcx: &VtableContext,
 
             match found.len() {
                 0 => { /* fallthrough */ }
-                1 => { return Some(/*bad*/copy found[0]); }
+                1 => return Some(found[0].clone()),
                 _ => {
                     if !is_early {
                         vcx.tcx().sess.span_err(
                             location_info.span,
                             "multiple applicable methods in scope");
                     }
-                    return Some(/*bad*/copy found[0]);
+                    return Some(found[0].clone());
                 }
             }
         }
@@ -587,7 +589,7 @@ pub fn early_resolve_expr(ex: @ast::expr,
                           let target_trait_ref = @ty::TraitRef {
                               def_id: target_def_id,
                               substs: ty::substs {
-                                  tps: copy target_substs.tps,
+                                  tps: target_substs.tps.clone(),
                                   self_r: target_substs.self_r,
                                   self_ty: Some(mt.ty)
                               }

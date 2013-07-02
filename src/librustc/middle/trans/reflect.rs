@@ -92,7 +92,7 @@ impl Reflector {
             *self.visitor_methods).expect(fmt!("Couldn't find visit method \
                                                 for %s", ty_name));
         let mth_ty =
-            ty::mk_bare_fn(tcx, copy self.visitor_methods[mth_idx].fty);
+            ty::mk_bare_fn(tcx, self.visitor_methods[mth_idx].fty.clone());
         let v = self.visitor_val;
         debug!("passing %u args:", args.len());
         let mut bcx = self.bcx;

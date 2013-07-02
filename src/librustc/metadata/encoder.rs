@@ -128,6 +128,7 @@ fn encode_region_param(ecx: &EncodeContext,
     }
 }
 
+#[deriving(Clone)]
 struct entry<T> {
     val: T,
     pos: uint
@@ -662,7 +663,7 @@ fn encode_info_for_struct(ecx: &EncodeContext,
                           -> ~[entry<int>] {
     /* Each class has its own index, since different classes
        may have fields with the same name */
-    let index = @mut ~[];
+    let mut index = ~[];
     let tcx = ecx.tcx;
      /* We encode both private and public fields -- need to include
         private fields to get the offsets right */
@@ -685,7 +686,7 @@ fn encode_info_for_struct(ecx: &EncodeContext,
         encode_def_id(ebml_w, local_def(id));
         ebml_w.end_tag();
     }
-    /*bad*/copy *index
+    index
 }
 
 // This is for encoding info for ctors and dtors
@@ -781,10 +782,10 @@ fn encode_info_for_method(ecx: &EncodeContext,
 
     let mut combined_ty_params = opt_vec::Empty;
     for owner_generics.ty_params.iter().advance |x| {
-        combined_ty_params.push(copy *x)
+        combined_ty_params.push((*x).clone())
     }
     for method_generics.ty_params.iter().advance |x| {
-        combined_ty_params.push(copy *x)
+        combined_ty_params.push((*x).clone())
     }
     let len = combined_ty_params.len();
     encode_type_param_bounds(ebml_w, ecx, &combined_ty_params);
@@ -1151,7 +1152,7 @@ fn encode_info_for_foreign_item(ecx: &EncodeContext,
                                 ebml_w: &mut writer::Encoder,
                                 nitem: @foreign_item,
                                 index: @mut ~[entry<int>],
-                                path: ast_map::path,
+                                path: &ast_map::path,
                                 abi: AbiSet) {
     index.push(entry { val: nitem.id, pos: ebml_w.writer.tell() });
 
@@ -1164,11 +1165,11 @@ fn encode_info_for_foreign_item(ecx: &EncodeContext,
         encode_type(ecx, ebml_w, node_id_to_type(ecx.tcx, nitem.id));
         encode_name(ecx, ebml_w, nitem.ident);
         if abi.is_intrinsic() {
-            (ecx.encode_inlined_item)(ecx, ebml_w, path, ii_foreign(nitem));
+            (ecx.encode_inlined_item)(ecx, ebml_w, *path, ii_foreign(nitem));
         } else {
             encode_symbol(ecx, ebml_w, nitem.id);
         }
-        encode_path(ecx, ebml_w, path, ast_map::path_name(nitem.ident));
+        encode_path(ecx, ebml_w, *path, ast_map::path_name(nitem.ident));
       }
       foreign_item_static(_, mutbl) => {
         encode_def_id(ebml_w, local_def(nitem.id));
@@ -1180,7 +1181,7 @@ fn encode_info_for_foreign_item(ecx: &EncodeContext,
         encode_type(ecx, ebml_w, node_id_to_type(ecx.tcx, nitem.id));
         encode_symbol(ecx, ebml_w, nitem.id);
         encode_name(ecx, ebml_w, nitem.ident);
-        encode_path(ecx, ebml_w, path, ast_map::path_name(nitem.ident));
+        encode_path(ecx, ebml_w, *path, ast_map::path_name(nitem.ident));
       }
     }
     ebml_w.end_tag();
@@ -1208,12 +1209,12 @@ fn encode_info_for_items(ecx: &EncodeContext,
     visit::visit_crate(crate, ((), visit::mk_vt(@visit::Visitor {
         visit_expr: |_e, (_cx, _v)| { },
         visit_item: {
-            let ebml_w = copy *ebml_w;
+            let ebml_w = (*ebml_w).clone();
             |i, (cx, v)| {
                 visit::visit_item(i, (cx, v));
                 match items.get_copy(&i.id) {
                     ast_map::node_item(_, pt) => {
-                        let mut ebml_w = copy ebml_w;
+                        let mut ebml_w = ebml_w.clone();
                         // See above
                         let ecx : &EncodeContext = unsafe { cast::transmute(ecx_ptr) };
                         encode_info_for_item(ecx, &mut ebml_w, i, index, *pt);
@@ -1223,7 +1224,7 @@ fn encode_info_for_items(ecx: &EncodeContext,
             }
         },
         visit_foreign_item: {
-            let ebml_w = copy *ebml_w;
+            let ebml_w = (*ebml_w).clone();
             |ni, (cx, v)| {
                 visit::visit_foreign_item(ni, (cx, v));
                 match items.get_copy(&ni.id) {
@@ -1234,14 +1235,14 @@ fn encode_info_for_items(ecx: &EncodeContext,
                                 token::get_ident_interner()),
                                 token::ident_to_str(&ni.ident));
 
-                        let mut ebml_w = copy ebml_w;
+                        let mut ebml_w = ebml_w.clone();
                         // See above
                         let ecx : &EncodeContext = unsafe { cast::transmute(ecx_ptr) };
                         encode_info_for_foreign_item(ecx,
                                                      &mut ebml_w,
                                                      ni,
                                                      index,
-                                                     /*bad*/copy *pt,
+                                                     pt,
                                                      abi);
                     }
                     // case for separate item and foreign-item tables
@@ -1252,24 +1253,24 @@ fn encode_info_for_items(ecx: &EncodeContext,
         ..*visit::default_visitor()
     })));
     ebml_w.end_tag();
-    return /*bad*/copy *index;
+    return /*bad*/(*index).clone();
 }
 
 
 // Path and definition ID indexing
 
-fn create_index<T:Copy + Hash + IterBytes>(index: ~[entry<T>]) ->
-   ~[@~[entry<T>]] {
+fn create_index<T:Clone + Hash + IterBytes>(index: ~[entry<T>])
+                                            -> ~[@~[entry<T>]] {
     let mut buckets: ~[@mut ~[entry<T>]] = ~[];
     for uint::range(0u, 256u) |_i| { buckets.push(@mut ~[]); };
     for index.iter().advance |elt| {
         let h = elt.val.hash() as uint;
-        buckets[h % 256].push(copy *elt);
+        buckets[h % 256].push((*elt).clone());
     }
 
     let mut buckets_frozen = ~[];
     for buckets.iter().advance |bucket| {
-        buckets_frozen.push(@/*bad*/copy **bucket);
+        buckets_frozen.push(@/*bad*/(**bucket).clone());
     }
     return buckets_frozen;
 }
@@ -1401,7 +1402,7 @@ fn synthesize_crate_attrs(ecx: &EncodeContext,
                 match attr.node.value.node {
                   meta_list(_, ref l) => {
                     found_link_attr = true;;
-                    synthesize_link_attr(ecx, /*bad*/copy *l)
+                    synthesize_link_attr(ecx, (*l).clone())
                   }
                   _ => *attr
                 }

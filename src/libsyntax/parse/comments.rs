@@ -22,7 +22,7 @@ use std::io;
 use std::str;
 use std::uint;
 
-#[deriving(Eq)]
+#[deriving(Clone, Eq)]
 pub enum cmnt_style {
     isolated, // No code on either side of each line of the comment
     trailing, // Code exists to the left of the comment
@@ -30,6 +30,7 @@ pub enum cmnt_style {
     blank_line, // Just a manual blank line "\n\n", for layout
 }
 
+#[deriving(Clone)]
 pub struct cmnt {
     style: cmnt_style,
     lines: ~[~str],
@@ -324,6 +325,7 @@ fn consume_comment(rdr: @mut StringReader,
     debug!("<<< consume comment");
 }
 
+#[deriving(Clone)]
 pub struct lit {
     lit: ~str,
     pos: BytePos

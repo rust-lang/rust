@@ -31,7 +31,7 @@ pub trait Pos {
 }
 
 /// A byte offset
-#[deriving(Eq,IterBytes)]
+#[deriving(Clone, Eq, IterBytes)]
 pub struct BytePos(uint);
 /// A character offset. Because of multibyte utf8 characters, a byte offset
 /// is not equivalent to a character offset. The CodeMap will convert BytePos
@@ -96,15 +96,18 @@ are *absolute* positions from the beginning of the codemap, not positions
 relative to FileMaps. Methods on the CodeMap can be used to relate spans back
 to the original source.
 */
-#[deriving(IterBytes)]
+#[deriving(Clone, IterBytes)]
 pub struct span {
     lo: BytePos,
     hi: BytePos,
     expn_info: Option<@ExpnInfo>
 }
 
-#[deriving(Eq, Encodable, Decodable,IterBytes)]
-pub struct spanned<T> { node: T, span: span }
+#[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
+pub struct spanned<T> {
+    node: T,
+    span: span,
+}
 
 impl cmp::Eq for span {
     fn eq(&self, other: &span) -> bool {

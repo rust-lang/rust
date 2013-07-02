@@ -35,12 +35,14 @@ impl direction {
     }
 }
 
+#[deriving(Clone)]
 pub struct next_state {
     state: @str,
     tys: ~[ast::Ty],
 }
 
 // name, span, data, current state, next state
+#[deriving(Clone)]
 pub struct message(@str, span, ~[ast::Ty], state, Option<next_state>);
 
 impl message {
@@ -59,7 +61,7 @@ impl message {
     /// Return the type parameters actually used by this message
     pub fn get_generics(&self) -> ast::Generics {
         match *self {
-          message(_, _, _, this, _) => copy this.generics
+          message(_, _, _, this, _) => this.generics.clone()
         }
     }
 }
@@ -216,7 +218,7 @@ pub fn visit<Tproto, Tstate, Tmessage, V: visitor<Tproto, Tstate, Tmessage>>(
 
     let states: ~[Tstate] = do proto.states.iter().transform |&s| {
         let messages: ~[Tmessage] = do s.messages.iter().transform |m| {
-            let message(name, span, tys, this, next) = copy *m;
+            let message(name, span, tys, this, next) = (*m).clone();
             visitor.visit_message(name, span, tys, this, next)
         }.collect();
         visitor.visit_state(s, messages)

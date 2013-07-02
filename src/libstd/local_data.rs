@@ -135,9 +135,11 @@ pub fn modify<T: 'static>(key: Key<@T>, f: &fn(Option<@T>) -> Option<@T>) {
  */
 #[cfg(not(stage0))]
 pub fn modify<T: 'static>(key: Key<T>, f: &fn(Option<T>) -> Option<T>) {
-    match f(pop(key)) {
-        Some(next) => { set(key, next); }
-        None => {}
+    unsafe {
+        match f(pop(::cast::unsafe_copy(&key))) {
+            Some(next) => { set(key, next); }
+            None => {}
+        }
     }
 }
 

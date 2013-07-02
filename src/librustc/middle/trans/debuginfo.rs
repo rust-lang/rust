@@ -816,8 +816,8 @@ fn create_ty(cx: &mut CrateContext, t: ty::t, span: span) -> DIType {
 
     debug!("create_ty: %?", ty::get(t));
 
-    let sty = copy ty::get(t).sty;
-    let ty_md = match sty {
+    let sty = &ty::get(t).sty;
+    let ty_md = match *sty {
         ty::ty_nil | ty::ty_bot | ty::ty_bool | ty::ty_int(_) | ty::ty_uint(_)
         | ty::ty_float(_) => create_basic_type(cx, t, span),
         ty::ty_estr(ref vstore) => {

@@ -30,6 +30,7 @@ use middle::ty;
 use middle::typeck;
 use util::ppaux::Repr;
 
+#[deriving(Clone)]
 pub struct DataFlowContext<O> {
     priv tcx: ty::ctxt,
     priv method_map: typeck::method_map,
@@ -294,8 +295,8 @@ impl<O:DataFlowOperator> DataFlowContext<O> {
     }
 }
 
-impl<O:DataFlowOperator+Copy+'static> DataFlowContext<O> {
-//                      ^^^^^^^^^^^^ only needed for pretty printing
+impl<O:DataFlowOperator+Clone+'static> DataFlowContext<O> {
+//                      ^^^^^^^^^^^^^ only needed for pretty printing
     pub fn propagate(&mut self, blk: &ast::blk) {
         //! Performs the data flow analysis.
 
@@ -304,23 +305,25 @@ impl<O:DataFlowOperator+Copy+'static> DataFlowContext<O> {
             return;
         }
 
-        let mut propcx = PropagationContext {
-            dfcx: self,
-            changed: true
-        };
+        {
+            let mut propcx = PropagationContext {
+                dfcx: self,
+                changed: true
+            };
 
-        let mut temp = vec::from_elem(self.words_per_id, 0);
-        let mut loop_scopes = ~[];
+            let mut temp = vec::from_elem(self.words_per_id, 0u);
+            let mut loop_scopes = ~[];
 
-        while propcx.changed {
-            propcx.changed = false;
-            propcx.reset(temp);
-            propcx.walk_block(blk, temp, &mut loop_scopes);
+            while propcx.changed {
+                propcx.changed = false;
+                propcx.reset(temp);
+                propcx.walk_block(blk, temp, &mut loop_scopes);
+            }
         }
 
         debug!("Dataflow result:");
         debug!("%s", {
-            let this = @copy *self;
+            let this = @(*self).clone();
             this.pretty_print_to(io::stderr(), blk);
             ""
         });
@@ -897,7 +900,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
         // statement.
         let initial_state = reslice(in_out).to_owned();
         for pats.iter().advance |&pat| {
-            let mut temp = copy initial_state;
+            let mut temp = initial_state.clone();
             self.walk_pat(pat, temp, loop_scopes);
             join_bits(&self.dfcx.oper, temp, in_out);
         }

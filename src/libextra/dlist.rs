@@ -609,8 +609,8 @@ mod tests {
     }
 
     #[cfg(test)]
-    fn list_from<T: Copy>(v: &[T]) -> DList<T> {
-        v.iter().transform(|x| copy *x).collect()
+    fn list_from<T: Clone>(v: &[T]) -> DList<T> {
+        v.iter().transform(|x| (*x).clone()).collect()
     }
 
     #[test]

@@ -44,6 +44,7 @@ fn main () {
 */
 
 use cast;
+use clone::Clone;
 use cmp;
 use container::Container;
 use int;
@@ -355,9 +356,9 @@ pub trait RngUtil {
      * }
      * ~~~
      */
-    fn choose<T:Copy>(&mut self, values: &[T]) -> T;
+    fn choose<T:Copy + Clone>(&mut self, values: &[T]) -> T;
     /// Choose Some(item) randomly, returning None if values is empty
-    fn choose_option<T:Copy>(&mut self, values: &[T]) -> Option<T>;
+    fn choose_option<T:Clone>(&mut self, values: &[T]) -> Option<T>;
     /**
      * Choose an item respecting the relative weights, failing if the sum of
      * the weights is 0
@@ -378,7 +379,7 @@ pub trait RngUtil {
      * }
      * ~~~
      */
-    fn choose_weighted<T:Copy>(&mut self, v : &[Weighted<T>]) -> T;
+    fn choose_weighted<T:Copy + Clone>(&mut self, v : &[Weighted<T>]) -> T;
     /**
      * Choose Some(item) respecting the relative weights, returning none if
      * the sum of the weights is 0
@@ -399,7 +400,7 @@ pub trait RngUtil {
      * }
      * ~~~
      */
-    fn choose_weighted_option<T:Copy>(&mut self, v: &[Weighted<T>])
+    fn choose_weighted_option<T:Clone>(&mut self, v: &[Weighted<T>])
                                      -> Option<T>;
     /**
      * Return a vec containing copies of the items, in order, where
@@ -421,7 +422,7 @@ pub trait RngUtil {
      * }
      * ~~~
      */
-    fn weighted_vec<T:Copy>(&mut self, v: &[Weighted<T>]) -> ~[T];
+    fn weighted_vec<T:Clone>(&mut self, v: &[Weighted<T>]) -> ~[T];
     /**
      * Shuffle a vec
      *
@@ -438,7 +439,7 @@ pub trait RngUtil {
      * }
      * ~~~
      */
-    fn shuffle<T:Copy>(&mut self, values: &[T]) -> ~[T];
+    fn shuffle<T:Copy + Clone>(&mut self, values: &[T]) -> ~[T];
     /**
      * Shuffle a mutable vec in place
      *
@@ -531,23 +532,23 @@ impl<R: Rng> RngUtil for R {
     }
 
     /// Choose an item randomly, failing if values is empty
-    fn choose<T:Copy>(&mut self, values: &[T]) -> T {
+    fn choose<T:Copy + Clone>(&mut self, values: &[T]) -> T {
         self.choose_option(values).get()
     }
 
     /// Choose Some(item) randomly, returning None if values is empty
-    fn choose_option<T:Copy>(&mut self, values: &[T]) -> Option<T> {
+    fn choose_option<T:Clone>(&mut self, values: &[T]) -> Option<T> {
         if values.is_empty() {
             None
         } else {
-            Some(copy values[self.gen_uint_range(0u, values.len())])
+            Some(values[self.gen_uint_range(0u, values.len())].clone())
         }
     }
     /**
      * Choose an item respecting the relative weights, failing if the sum of
      * the weights is 0
      */
-    fn choose_weighted<T:Copy>(&mut self, v: &[Weighted<T>]) -> T {
+    fn choose_weighted<T:Copy + Clone>(&mut self, v: &[Weighted<T>]) -> T {
         self.choose_weighted_option(v).get()
     }
 
@@ -555,8 +556,8 @@ impl<R: Rng> RngUtil for R {
      * Choose Some(item) respecting the relative weights, returning none if
      * the sum of the weights is 0
      */
-    fn choose_weighted_option<T:Copy>(&mut self, v: &[Weighted<T>])
-                                     -> Option<T> {
+    fn choose_weighted_option<T:Clone>(&mut self, v: &[Weighted<T>])
+                                       -> Option<T> {
         let mut total = 0u;
         for v.iter().advance |item| {
             total += item.weight;
@@ -569,7 +570,7 @@ impl<R: Rng> RngUtil for R {
         for v.iter().advance |item| {
             so_far += item.weight;
             if so_far > chosen {
-                return Some(copy item.item);
+                return Some(item.item.clone());
             }
         }
         util::unreachable();
@@ -579,18 +580,18 @@ impl<R: Rng> RngUtil for R {
      * Return a vec containing copies of the items, in order, where
      * the weight of the item determines how many copies there are
      */
-    fn weighted_vec<T:Copy>(&mut self, v: &[Weighted<T>]) -> ~[T] {
+    fn weighted_vec<T:Clone>(&mut self, v: &[Weighted<T>]) -> ~[T] {
         let mut r = ~[];
         for v.iter().advance |item| {
             for uint::range(0u, item.weight) |_i| {
-                r.push(copy item.item);
+                r.push(item.item.clone());
             }
         }
         r
     }
 
     /// Shuffle a vec
-    fn shuffle<T:Copy>(&mut self, values: &[T]) -> ~[T] {
+    fn shuffle<T:Copy + Clone>(&mut self, values: &[T]) -> ~[T] {
         let mut m = values.to_owned();
         self.shuffle_mut(m);
         m

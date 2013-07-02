@@ -329,8 +329,8 @@ impl<A, T: Iterator<A>> FromIterator<A, T> for RingBuf<A> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::clone::Clone;
     use std::cmp::Eq;
-    use std::kinds::Copy;
     use std::{int, uint};
     use extra::test;
 
@@ -416,34 +416,34 @@ mod tests {
     }
 
     #[cfg(test)]
-    fn test_parameterized<T:Copy + Eq>(a: T, b: T, c: T, d: T) {
-        let mut deq = RingBuf::new();
+    fn test_parameterized<T:Clone + Eq>(a: T, b: T, c: T, d: T) {
+        let mut deq = Deque::new();
         assert_eq!(deq.len(), 0);
-        deq.push_front(copy a);
-        deq.push_front(copy b);
-        deq.push_back(copy c);
+        deq.add_front(a.clone());
+        deq.add_front(b.clone());
+        deq.add_back(c.clone());
         assert_eq!(deq.len(), 3);
-        deq.push_back(copy d);
+        deq.add_back(d.clone());
         assert_eq!(deq.len(), 4);
-        assert_eq!(deq.front(), Some(&b));
-        assert_eq!(deq.back(), Some(&d));
-        assert_eq!(deq.pop_front(), Some(copy b));
-        assert_eq!(deq.pop_back(), Some(copy d));
-        assert_eq!(deq.pop_back(), Some(copy c));
-        assert_eq!(deq.pop_back(), Some(copy a));
+        assert_eq!((*deq.peek_front()).clone(), b.clone());
+        assert_eq!((*deq.peek_back()).clone(), d.clone());
+        assert_eq!(deq.pop_front(), b.clone());
+        assert_eq!(deq.pop_back(), d.clone());
+        assert_eq!(deq.pop_back(), c.clone());
+        assert_eq!(deq.pop_back(), a.clone());
         assert_eq!(deq.len(), 0);
-        deq.push_back(copy c);
+        deq.add_back(c.clone());
         assert_eq!(deq.len(), 1);
-        deq.push_front(copy b);
+        deq.add_front(b.clone());
         assert_eq!(deq.len(), 2);
-        deq.push_back(copy d);
+        deq.add_back(d.clone());
         assert_eq!(deq.len(), 3);
-        deq.push_front(copy a);
+        deq.add_front(a.clone());
         assert_eq!(deq.len(), 4);
-        assert_eq!(copy *deq.get(0), copy a);
-        assert_eq!(copy *deq.get(1), copy b);
-        assert_eq!(copy *deq.get(2), copy c);
-        assert_eq!(copy *deq.get(3), copy d);
+        assert_eq!((*deq.get(0)).clone(), a.clone());
+        assert_eq!((*deq.get(1)).clone(), b.clone());
+        assert_eq!((*deq.get(2)).clone(), c.clone());
+        assert_eq!((*deq.get(3)).clone(), d.clone());
     }
 
     #[test]
@@ -501,15 +501,21 @@ mod tests {
         }
     }
 
-    #[deriving(Eq)]
-    enum Taggy { One(int), Two(int, int), Three(int, int, int), }
-
-    #[deriving(Eq)]
-    enum Taggypar<T> {
-        Onepar(int), Twopar(int, int), Threepar(int, int, int),
+    #[deriving(Clone, Eq)]
+    enum Taggy {
+        One(int),
+        Two(int, int),
+        Three(int, int, int),
     }
 
-    #[deriving(Eq)]
+    #[deriving(Clone, Eq)]
+    enum Taggypar<T> {
+        Onepar(int),
+        Twopar(int, int),
+        Threepar(int, int, int),
+    }
+
+    #[deriving(Clone, Eq)]
     struct RecCy {
         x: int,
         y: int,

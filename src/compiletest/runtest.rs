@@ -150,7 +150,7 @@ fn run_pretty_test(config: &config, props: &TestProps, testfile: &Path) {
     let mut round = 0;
     while round < rounds {
         logv(config, fmt!("pretty-printing round %d", round));
-        let ProcRes = print_source(config, testfile, copy srcs[round]);
+        let ProcRes = print_source(config, testfile, srcs[round].clone());
 
         if ProcRes.status != 0 {
             fatal_ProcRes(fmt!("pretty-printing failed in round %d", round),
@@ -168,9 +168,9 @@ fn run_pretty_test(config: &config, props: &TestProps, testfile: &Path) {
             let filepath = testfile.dir_path().push_rel(file);
             io::read_whole_file_str(&filepath).get()
           }
-          None => { copy srcs[srcs.len() - 2u] }
+          None => { srcs[srcs.len() - 2u].clone() }
         };
-    let mut actual = copy srcs[srcs.len() - 1u];
+    let mut actual = srcs[srcs.len() - 1u].clone();
 
     if props.pp_exact.is_some() {
         // Now we have to care about line endings
@@ -243,13 +243,13 @@ fn run_debuginfo_test(config: &config, props: &TestProps, testfile: &Path) {
     let mut config = match config.rustcflags {
         Some(ref flags) => config {
             rustcflags: Some(flags.replace("-O", "")),
-            .. copy *config
+            .. (*config).clone()
         },
-        None => copy *config
+        None => (*config).clone()
     };
     let config = &mut config;
     let cmds = props.debugger_cmds.connect("\n");
-    let check_lines = copy props.check_lines;
+    let check_lines = props.check_lines.clone();
 
     // compile test file (it shoud have 'compile-flags:-g' in the header)
     let mut ProcRes = compile_test(config, props, testfile);
@@ -498,7 +498,7 @@ fn exec_compiled_test(config: &config, props: &TestProps,
                       testfile: &Path) -> ProcRes {
 
     // If testing the new runtime then set the RUST_NEWRT env var
-    let env = copy props.exec_env;
+    let env = props.exec_env.clone();
     let env = if config.newrt { env + &[(~"RUST_NEWRT", ~"1")] } else { env };
 
     match config.target {
@@ -742,7 +742,7 @@ fn _arm_exec_compiled_test(config: &config, props: &TestProps,
 
     // copy to target
     let copy_result = procsrv::run("", config.adb_path,
-        [~"push", copy args.prog, copy config.adb_test_dir],
+        [~"push", args.prog.clone(), config.adb_test_dir.clone()],
         ~[(~"",~"")], Some(~""));
 
     if config.verbose {
@@ -832,7 +832,7 @@ fn _arm_push_aux_shared_library(config: &config, testfile: &Path) {
         if (file.filetype() == Some(~".so")) {
 
             let copy_result = procsrv::run("", config.adb_path,
-                [~"push", file.to_str(), copy config.adb_test_dir],
+                [~"push", file.to_str(), config.adb_test_dir.clone()],
                 ~[(~"",~"")], Some(~""));
 
             if config.verbose {

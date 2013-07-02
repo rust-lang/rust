@@ -17,14 +17,13 @@ use doc;
 use fold::Fold;
 use fold;
 use pass::Pass;
-use util::NominalOp;
 
 use std::cell::Cell;
 
 pub fn mk_pass(name: ~str, op: @fn(&str) -> ~str) -> Pass {
     let op = Cell::new(op);
     Pass {
-        name: copy name,
+        name: name.clone(),
         f: |srv: astsrv::Srv, doc: doc::Doc| -> doc::Doc {
             run(srv, doc, op.take())
         }
@@ -33,13 +32,25 @@ pub fn mk_pass(name: ~str, op: @fn(&str) -> ~str) -> Pass {
 
 type Op = @fn(&str) -> ~str;
 
+struct WrappedOp {
+    op: Op,
+}
+
+impl Clone for WrappedOp {
+    fn clone(&self) -> WrappedOp {
+        WrappedOp {
+            op: self.op,
+        }
+    }
+}
+
 #[allow(non_implicitly_copyable_typarams)]
 fn run(
     _srv: astsrv::Srv,
     doc: doc::Doc,
     op: Op
 ) -> doc::Doc {
-    let op = NominalOp {
+    let op = WrappedOp {
         op: op
     };
     let fold = Fold {
@@ -52,37 +63,32 @@ fn run(
     (fold.fold_doc)(&fold, doc)
 }
 
-fn maybe_apply_op(op: NominalOp<Op>, s: &Option<~str>) -> Option<~str> {
+fn maybe_apply_op(op: WrappedOp, s: &Option<~str>) -> Option<~str> {
     s.map(|s| (op.op)(*s) )
 }
 
-fn fold_item(
-    fold: &fold::Fold<NominalOp<Op>>,
-    doc: doc::ItemDoc
-) -> doc::ItemDoc {
+fn fold_item(fold: &fold::Fold<WrappedOp>, doc: doc::ItemDoc)
+             -> doc::ItemDoc {
     let doc = fold::default_seq_fold_item(fold, doc);
 
     doc::ItemDoc {
         brief: maybe_apply_op(fold.ctxt, &doc.brief),
         desc: maybe_apply_op(fold.ctxt, &doc.desc),
-        sections: apply_to_sections(fold.ctxt, copy doc.sections),
+        sections: apply_to_sections(fold.ctxt, doc.sections.clone()),
         .. doc
     }
 }
 
-fn apply_to_sections(
-    op: NominalOp<Op>,
-    sections: ~[doc::Section]
-) -> ~[doc::Section] {
+fn apply_to_sections(op: WrappedOp, sections: ~[doc::Section])
+                     -> ~[doc::Section] {
     sections.map(|section| doc::Section {
-        header: (op.op)(copy section.header),
-        body: (op.op)(copy section.body)
+        header: (op.op)(section.header.clone()),
+        body: (op.op)(section.body.clone())
     })
 }
 
-fn fold_enum(
-    fold: &fold::Fold<NominalOp<Op>>,
-    doc: doc::EnumDoc) -> doc::EnumDoc {
+fn fold_enum(fold: &fold::Fold<WrappedOp>, doc: doc::EnumDoc)
+             -> doc::EnumDoc {
     let doc = fold::default_seq_fold_enum(fold, doc);
     let fold_copy = *fold;
 
@@ -90,47 +96,41 @@ fn fold_enum(
         variants: do doc.variants.map |variant| {
             doc::VariantDoc {
                 desc: maybe_apply_op(fold_copy.ctxt, &variant.desc),
-                .. copy *variant
+                .. (*variant).clone()
             }
         },
         .. doc
     }
 }
 
-fn fold_trait(
-    fold: &fold::Fold<NominalOp<Op>>,
-    doc: doc::TraitDoc
-) -> doc::TraitDoc {
+fn fold_trait(fold: &fold::Fold<WrappedOp>, doc: doc::TraitDoc)
+              -> doc::TraitDoc {
     let doc = fold::default_seq_fold_trait(fold, doc);
 
     doc::TraitDoc {
-        methods: apply_to_methods(fold.ctxt, copy doc.methods),
+        methods: apply_to_methods(fold.ctxt, doc.methods.clone()),
         .. doc
     }
 }
 
-fn apply_to_methods(
-    op: NominalOp<Op>,
-    docs: ~[doc::MethodDoc]
-) -> ~[doc::MethodDoc] {
+fn apply_to_methods(op: WrappedOp, docs: ~[doc::MethodDoc])
+                    -> ~[doc::MethodDoc] {
     do docs.map |doc| {
         doc::MethodDoc {
             brief: maybe_apply_op(op, &doc.brief),
             desc: maybe_apply_op(op, &doc.desc),
-            sections: apply_to_sections(op, copy doc.sections),
-            .. copy *doc
+            sections: apply_to_sections(op, doc.sections.clone()),
+            .. (*doc).clone()
         }
     }
 }
 
-fn fold_impl(
-    fold: &fold::Fold<NominalOp<Op>>,
-    doc: doc::ImplDoc
-) -> doc::ImplDoc {
+fn fold_impl(fold: &fold::Fold<WrappedOp>, doc: doc::ImplDoc)
+             -> doc::ImplDoc {
     let doc = fold::default_seq_fold_impl(fold, doc);
 
     doc::ImplDoc {
-        methods: apply_to_methods(fold.ctxt, copy doc.methods),
+        methods: apply_to_methods(fold.ctxt, doc.methods.clone()),
         .. doc
     }
 }
@@ -147,7 +147,7 @@ mod test {
     use text_pass::mk_pass;
 
     fn mk_doc(source: ~str) -> doc::Doc {
-        do astsrv::from_str(copy source) |srv| {
+        do astsrv::from_str(source.clone()) |srv| {
             let doc = extract::from_srv(srv.clone(), ~"");
             let doc = (attr_pass::mk_pass().f)(srv.clone(), doc);
             let doc = (desc_to_brief_pass::mk_pass().f)(srv.clone(), doc);

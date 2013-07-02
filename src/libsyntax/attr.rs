@@ -116,7 +116,7 @@ pub fn get_meta_item_value_str(meta: @ast::meta_item) -> Option<@str> {
 pub fn get_meta_item_list(meta: @ast::meta_item)
                        -> Option<~[@ast::meta_item]> {
     match meta.node {
-        ast::meta_list(_, ref l) => Some(/* FIXME (#2543) */ copy *l),
+        ast::meta_list(_, ref l) => Some(/* FIXME (#2543) */ (*l).clone()),
         _ => None
     }
 }
@@ -266,7 +266,7 @@ pub fn sort_meta_items(items: &[@ast::meta_item]) -> ~[@ast::meta_item] {
             ast::meta_list(n, ref mis) => {
                 @spanned {
                     node: ast::meta_list(n, sort_meta_items(*mis)),
-                    .. /*bad*/ copy **m
+                    .. /*bad*/ (**m).clone()
                 }
             }
             _ => *m
@@ -286,7 +286,9 @@ pub fn remove_meta_items_by_name(items: ~[@ast::meta_item], name: &str) ->
 pub fn find_linkage_metas(attrs: &[ast::attribute]) -> ~[@ast::meta_item] {
     do find_attrs_by_name(attrs, "link").flat_map |attr| {
         match attr.node.value.node {
-            ast::meta_list(_, ref items) => /* FIXME (#2543) */ copy *items,
+            ast::meta_list(_, ref items) => {
+                /* FIXME (#2543) */ (*items).clone()
+            }
             _ => ~[]
         }
     }

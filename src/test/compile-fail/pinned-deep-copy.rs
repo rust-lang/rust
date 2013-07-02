@@ -27,13 +27,16 @@ fn r(i: @mut int) -> r {
     }
 }
 
+struct A {
+    y: r,
+}
+
 fn main() {
     let i = @mut 0;
     {
-        struct A { y: r }
         // Can't do this copy
         let x = ~~~A {y: r(i)};
-        let _z = copy x; //~ ERROR copying a value of non-copyable type
+        let _z = x.clone(); //~ ERROR failed to find an implementation
         info!(x);
     }
     error!(*i);

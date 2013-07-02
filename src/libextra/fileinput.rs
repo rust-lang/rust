@@ -107,6 +107,7 @@ and `line_num_file` represent the number of lines read in total and in
 the current file respectively. `current_path` is `None` if the current
 file is `stdin`.
 */
+#[deriving(Clone)]
 pub struct FileInputState {
     current_path: Option<Path>,
     line_num: uint,
@@ -223,7 +224,7 @@ impl FileInput {
         let path_option = self.fi.files.shift();
         let file = match path_option {
             None => io::stdin(),
-            Some(ref path) => io::file_reader(path).get()
+            Some(ref path) => io::file_reader(path).unwrap()
         };
 
         self.fi.current_reader = Some(file);
@@ -259,7 +260,7 @@ impl FileInput {
     */
     pub fn each_line_state(&self,
                             f: &fn(&str, FileInputState) -> bool) -> bool {
-         self.each_line(|line| f(line, copy self.fi.state))
+         self.each_line(|line| f(line, self.fi.state.clone()))
     }
 
 
@@ -267,7 +268,7 @@ impl FileInput {
     Retrieve the current `FileInputState` information.
     */
     pub fn state(&self) -> FileInputState {
-        copy self.fi.state
+        self.fi.state.clone()
     }
 }
 
@@ -431,7 +432,7 @@ mod test {
         let paths = ~[Some(Path("some/path")),
                       Some(Path("some/other/path"))];
 
-        assert_eq!(pathify(strs, true), copy paths);
+        assert_eq!(pathify(strs, true), paths.clone());
         assert_eq!(pathify(strs, false), paths);
 
         assert_eq!(pathify([~"-"], true), ~[None]);
@@ -449,7 +450,7 @@ mod test {
             make_file(filename.get_ref(), [fmt!("%u", i)]);
         }
 
-        let fi = FileInput::from_vec(copy filenames);
+        let fi = FileInput::from_vec(filenames.clone());
 
         for "012".iter().enumerate().advance |(line, c)| {
             assert_eq!(fi.read_byte(), c as int);
@@ -459,7 +460,7 @@ mod test {
             assert_eq!(fi.state().line_num, line + 1);
             assert_eq!(fi.state().line_num_file, 1);
 
-            assert_eq!(copy fi.state().current_path, copy filenames[line]);
+            assert_eq!(fi.state().current_path.clone(), filenames[line].clone());
         }
 
         assert_eq!(fi.read_byte(), -1);
@@ -542,13 +543,13 @@ mod test {
         make_file(filenames[2].get_ref(), [~"3", ~"4"]);
 
         let mut count = 0;
-        for input_vec_state(copy filenames) |line, state| {
+        for input_vec_state(filenames.clone()) |line, state| {
             let expected_path = match line {
-                "1" | "2" => copy filenames[0],
-                "3" | "4" => copy filenames[2],
+                "1" | "2" => filenames[0].clone(),
+                "3" | "4" => filenames[2].clone(),
                 _ => fail!("unexpected line")
             };
-            assert_eq!(copy state.current_path, expected_path);
+            assert_eq!(state.current_path.clone(), expected_path);
             count += 1;
         }
         assert_eq!(count, 4);

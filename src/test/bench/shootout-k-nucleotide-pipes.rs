@@ -34,22 +34,31 @@ fn sort_and_fmt(mm: &HashMap<~[u8], uint>, total: uint) -> ~str {
       return (xx as float) * 100f / (yy as float);
    }
 
-   fn le_by_val<TT:Copy,UU:Copy + Ord>(kv0: &(TT,UU),
-                                         kv1: &(TT,UU)) -> bool {
-      let (_, v0) = copy *kv0;
-      let (_, v1) = copy *kv1;
+   fn le_by_val<TT:Copy + Clone,
+                UU:Copy + Clone + Ord>(
+                kv0: &(TT,UU),
+                kv1: &(TT,UU))
+                -> bool {
+      let (_, v0) = (*kv0).clone();
+      let (_, v1) = (*kv1).clone();
       return v0 >= v1;
    }
 
-   fn le_by_key<TT:Copy + Ord,UU:Copy>(kv0: &(TT,UU),
-                                         kv1: &(TT,UU)) -> bool {
-      let (k0, _) = copy *kv0;
-      let (k1, _) = copy *kv1;
+   fn le_by_key<TT:Copy + Clone + Ord,
+                UU:Copy + Clone>(
+                kv0: &(TT,UU),
+                kv1: &(TT,UU))
+                -> bool {
+      let (k0, _) = (*kv0).clone();
+      let (k1, _) = (*kv1).clone();
       return k0 <= k1;
    }
 
    // sort by key, then by value
-   fn sortKV<TT:Copy + Ord,UU:Copy + Ord>(orig: ~[(TT,UU)]) -> ~[(TT,UU)] {
+   fn sortKV<TT:Copy + Clone + Ord,
+             UU:Copy + Clone + Ord>(
+             orig: ~[(TT,UU)])
+             -> ~[(TT,UU)] {
       return sort::merge_sort(sort::merge_sort(orig, le_by_key), le_by_val);
    }
 
@@ -65,7 +74,7 @@ fn sort_and_fmt(mm: &HashMap<~[u8], uint>, total: uint) -> ~str {
    let mut buffer = ~"";
 
    for pairs_sorted.iter().advance |kv| {
-       let (k,v) = copy *kv;
+       let (k,v) = (*kv).clone();
        unsafe {
            let b = str::raw::from_bytes(k);
            // FIXME: #4318 Instead of to_ascii and to_str_ascii, could use

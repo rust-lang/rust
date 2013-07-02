@@ -221,7 +221,7 @@ fn resolve_default_method_vtables(bcx: block,
     // Build up a param_substs that we are going to resolve the
     // trait_vtables under.
     let param_substs = Some(@param_substs {
-        tys: copy substs.tps,
+        tys: substs.tps.clone(),
         self_ty: substs.self_ty,
         vtables: impl_vtables,
         self_vtable: None

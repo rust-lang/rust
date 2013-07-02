@@ -74,10 +74,10 @@ pub fn new_tt_reader(sp_diag: @span_handler,
 
 fn dup_tt_frame(f: @mut TtFrame) -> @mut TtFrame {
     @mut TtFrame {
-        forest: @mut (copy *f.forest),
+        forest: @mut (*f.forest).clone(),
         idx: f.idx,
         dotdotdoted: f.dotdotdoted,
-        sep: copy f.sep,
+        sep: f.sep.clone(),
         up: match f.up {
             Some(up_frame) => Some(dup_tt_frame(up_frame)),
             None => None
@@ -89,11 +89,11 @@ pub fn dup_tt_reader(r: @mut TtReader) -> @mut TtReader {
     @mut TtReader {
         sp_diag: r.sp_diag,
         stack: dup_tt_frame(r.stack),
-        repeat_idx: copy r.repeat_idx,
-        repeat_len: copy r.repeat_len,
-        cur_tok: copy r.cur_tok,
+        repeat_idx: r.repeat_idx.clone(),
+        repeat_len: r.repeat_len.clone(),
+        cur_tok: r.cur_tok.clone(),
         cur_span: r.cur_span,
-        interpolations: copy r.interpolations,
+        interpolations: r.interpolations.clone(),
     }
 }
 
@@ -122,19 +122,23 @@ fn lookup_cur_matched(r: &mut TtReader, name: ident) -> @named_match {
         }
     }
 }
+
+#[deriving(Clone)]
 enum lis {
-    lis_unconstrained, lis_constraint(uint, ident), lis_contradiction(~str)
+    lis_unconstrained,
+    lis_constraint(uint, ident),
+    lis_contradiction(~str),
 }
 
 fn lockstep_iter_size(t: &token_tree, r: &mut TtReader) -> lis {
     fn lis_merge(lhs: lis, rhs: lis) -> lis {
         match lhs {
-          lis_unconstrained => copy rhs,
-          lis_contradiction(_) => copy lhs,
+          lis_unconstrained => rhs.clone(),
+          lis_contradiction(_) => lhs.clone(),
           lis_constraint(l_len, ref l_id) => match rhs {
-            lis_unconstrained => copy lhs,
-            lis_contradiction(_) => copy rhs,
-            lis_constraint(r_len, _) if l_len == r_len => copy lhs,
+            lis_unconstrained => lhs.clone(),
+            lis_contradiction(_) => rhs.clone(),
+            lis_constraint(r_len, _) if l_len == r_len => lhs.clone(),
             lis_constraint(r_len, ref r_id) => {
                 let l_n = ident_to_str(l_id);
                 let r_n = ident_to_str(r_id);
@@ -163,8 +167,9 @@ fn lockstep_iter_size(t: &token_tree, r: &mut TtReader) -> lis {
 // return the next token from the TtReader.
 // EFFECT: advances the reader's token field
 pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
+    // XXX(pcwalton): Bad copy?
     let ret_val = TokenAndSpan {
-        tok: copy r.cur_tok,
+        tok: r.cur_tok.clone(),
         sp: r.cur_span,
     };
     loop {
@@ -199,7 +204,7 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
         } else { /* repeat */
             r.stack.idx = 0u;
             r.repeat_idx[r.repeat_idx.len() - 1u] += 1u;
-            match copy r.stack.sep {
+            match r.stack.sep.clone() {
               Some(tk) => {
                 r.cur_tok = tk; /* repeat same span, I guess */
                 return ret_val;
@@ -210,7 +215,8 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
     }
     loop { /* because it's easiest, this handles `tt_delim` not starting
     with a `tt_tok`, even though it won't happen */
-        match copy r.stack.forest[r.stack.idx] {
+        // XXX(pcwalton): Bad copy.
+        match r.stack.forest[r.stack.idx].clone() {
           tt_delim(tts) => {
             r.stack = @mut TtFrame {
                 forest: @mut tts,
@@ -228,7 +234,8 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
             return ret_val;
           }
           tt_seq(sp, tts, sep, zerok) => {
-            let t = tt_seq(sp, copy tts, copy sep, zerok);
+            // XXX(pcwalton): Bad copy.
+            let t = tt_seq(sp, tts.clone(), sep.clone(), zerok);
             match lockstep_iter_size(&t, r) {
               lis_unconstrained => {
                 r.sp_diag.span_fatal(
@@ -278,8 +285,9 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
                 return ret_val;
               }
               matched_nonterminal(ref other_whole_nt) => {
+                // XXX(pcwalton): Bad copy.
                 r.cur_span = sp;
-                r.cur_tok = INTERPOLATED(copy *other_whole_nt);
+                r.cur_tok = INTERPOLATED((*other_whole_nt).clone());
                 r.stack.idx += 1u;
                 return ret_val;
               }

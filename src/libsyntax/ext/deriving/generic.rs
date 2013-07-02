@@ -335,7 +335,7 @@ impl<'self> TraitDef<'self> {
                     cx.typarambound(p.to_path(cx, span, type_ident, generics))
                 });
             // require the current trait
-            bounds.push(cx.typarambound(copy trait_path));
+            bounds.push(cx.typarambound(trait_path.clone()));
 
             trait_generics.ty_params.push(cx.typaram(ty_param.ident, bounds));
         }
@@ -751,7 +751,7 @@ impl<'self> MethodDef<'self> {
                         do self_vec.iter()
                            .zip(enum_matching_fields.iter())
                            .transform |(&(id, self_f), other)| {
-                        (id, self_f, copy *other)
+                        (id, self_f, (*other).clone())
                     }.collect();
                     substructure = EnumMatching(variant_index, variant, field_tuples);
                 }
@@ -789,7 +789,9 @@ impl<'self> MethodDef<'self> {
                                                                     current_match_str,
                                                                     ast::m_imm);
 
-                matches_so_far.push((index, /*bad*/ copy *variant, idents));
+                matches_so_far.push((index,
+                                     /*bad*/ (*variant).clone(),
+                                     idents));
                 let arm_expr = self.build_enum_match(cx, span,
                                                      enum_def,
                                                      type_ident,
@@ -818,7 +820,9 @@ impl<'self> MethodDef<'self> {
                                                                        current_match_str,
                                                                        ast::m_imm);
 
-                    matches_so_far.push((index, /*bad*/ copy *variant, idents));
+                    matches_so_far.push((index,
+                                         /*bad*/ (*variant).clone(),
+                                         idents));
                     let new_matching =
                         match matching {
                             _ if match_count == 0 => Some(index),
@@ -897,7 +901,8 @@ pub fn create_subpatterns(cx: @ExtCtxt,
                           mutbl: ast::mutability)
                    -> ~[@ast::pat] {
     do field_paths.map |path| {
-        cx.pat(span, ast::pat_ident(ast::bind_by_ref(mutbl), copy *path, None))
+        cx.pat(span,
+               ast::pat_ident(ast::bind_by_ref(mutbl), (*path).clone(), None))
     }
 }
 
@@ -944,7 +949,7 @@ fn create_struct_pattern(cx: @ExtCtxt,
         };
         let path = cx.path_ident(span,
                                  cx.ident_of(fmt!("%s_%u", prefix, i)));
-        paths.push(copy path);
+        paths.push(path.clone());
         ident_expr.push((opt_id, cx.expr_path(path)));
     }
 
@@ -990,7 +995,7 @@ fn create_enum_variant_pattern(cx: @ExtCtxt,
                 let path = cx.path_ident(span,
                                          cx.ident_of(fmt!("%s_%u", prefix, i)));
 
-                paths.push(copy path);
+                paths.push(path.clone());
                 ident_expr.push((None, cx.expr_path(path)));
             }
 
@@ -1029,12 +1034,12 @@ pub fn cs_fold(use_foldl: bool,
         EnumMatching(_, _, ref all_fields) | Struct(ref all_fields) => {
             if use_foldl {
                 do all_fields.iter().fold(base) |old, triple| {
-                    let (_, self_f, other_fs) = copy *triple;
+                    let (_, self_f, other_fs) = (*triple).clone();
                     f(cx, span, old, self_f, other_fs)
                 }
             } else {
                 do all_fields.rev_iter().fold(base) |old, triple| {
-                    let (_, self_f, other_fs) = copy *triple;
+                    let (_, self_f, other_fs) = (*triple).clone();
                     f(cx, span, old, self_f, other_fs)
                 }
             }
@@ -1067,7 +1072,7 @@ pub fn cs_same_method(f: &fn(@ExtCtxt, span, ~[@expr]) -> @expr,
         EnumMatching(_, _, ref all_fields) | Struct(ref all_fields) => {
             // call self_n.method(other_1_n, other_2_n, ...)
             let called = do all_fields.map |triple| {
-                let (_, self_field, other_fields) = copy *triple;
+                let (_, self_field, other_fields) = (*triple).clone();
                 cx.expr_method_call(span,
                                     self_field,
                                     substructure.method_ident,

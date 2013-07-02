@@ -109,10 +109,14 @@ pub fn build_configuration(sess: Session, argv0: @str, input: &input) ->
     // Combine the configuration requested by the session (command line) with
     // some default and generated configuration items
     let default_cfg = default_configuration(sess, argv0, input);
-    let user_cfg = /*bad*/copy sess.opts.cfg;
+    let user_cfg = sess.opts.cfg.clone();
     // If the user wants a test runner, then add the test cfg
-    let user_cfg = if sess.opts.test { append_configuration(user_cfg, @"test") }
-                   else { user_cfg };
+    let user_cfg = if sess.opts.test {
+        append_configuration(user_cfg, @"test")
+    } else {
+        user_cfg
+    };
+
     // If the user requested GC, then add the GC cfg
     let user_cfg = append_configuration(
         user_cfg,
@@ -202,7 +206,8 @@ pub fn compile_rest(sess: Session,
                      front::config::strip_unconfigured_items(crate));
 
         crate = time(time_passes, ~"expansion", ||
-                     syntax::ext::expand::expand_crate(sess.parse_sess, copy cfg,
+                     syntax::ext::expand::expand_crate(sess.parse_sess,
+                                                       cfg.clone(),
                                                        crate));
 
         // strip again, in case expansion added anything with a #[cfg].
@@ -213,7 +218,9 @@ pub fn compile_rest(sess: Session,
                      front::test::modify_for_testing(sess, crate));
     }
 
-    if phases.to == cu_expand { return (Some(crate), None); }
+    if phases.to == cu_expand {
+        return (Some(crate), None);
+    }
 
     assert!(phases.from != cu_no_trans);
 
@@ -371,17 +378,28 @@ pub fn compile_rest(sess: Session,
     return (None, None);
 }
 
-pub fn compile_upto(sess: Session, cfg: ast::crate_cfg,
-                input: &input, upto: compile_phase,
-                outputs: Option<@OutputFilenames>)
-    -> (Option<@ast::crate>, Option<ty::ctxt>) {
+pub fn compile_upto(sess: Session,
+                    cfg: ast::crate_cfg,
+                    input: &input,
+                    upto: compile_phase,
+                    outputs: Option<@OutputFilenames>)
+                    -> (Option<@ast::crate>, Option<ty::ctxt>) {
     let time_passes = sess.time_passes();
-    let crate = time(time_passes, ~"parsing",
-                         || parse_input(sess, copy cfg, input) );
-    if upto == cu_parse { return (Some(crate), None); }
+    let crate = time(time_passes,
+                     ~"parsing",
+                     || parse_input(sess, cfg.clone(), input) );
+    if upto == cu_parse {
+        return (Some(crate), None);
+    }
 
-    compile_rest(sess, cfg, compile_upto { from: cu_parse, to: upto },
-                 outputs, Some(crate))
+    compile_rest(sess,
+                 cfg,
+                 compile_upto {
+                    from: cu_parse,
+                    to: upto
+                 },
+                 outputs,
+                 Some(crate))
 }
 
 pub fn compile_input(sess: Session, cfg: ast::crate_cfg, input: &input,
@@ -877,7 +895,7 @@ pub fn build_output_filenames(input: &input,
           // have to make up a name
           // We want to toss everything after the final '.'
           let dirpath = match *odir {
-              Some(ref d) => (/*bad*/copy *d),
+              Some(ref d) => (*d).clone(),
               None => match *input {
                   str_input(_) => os::getcwd(),
                   file_input(ref ifile) => (*ifile).dir_path()
@@ -914,9 +932,9 @@ pub fn build_output_filenames(input: &input,
       }
 
       Some(ref out_file) => {
-        out_path = (/*bad*/copy *out_file);
+        out_path = (*out_file).clone();
         obj_path = if stop_after_codegen {
-            (/*bad*/copy *out_file)
+            (*out_file).clone()
         } else {
             (*out_file).with_filetype(obj_suffix)
         };

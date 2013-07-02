@@ -24,29 +24,10 @@ use std::cmp;
 use std::hashmap::HashMap;
 use std::vec;
 
+#[deriving(Clone, Eq)]
 pub enum path_elt {
     path_mod(ident),
     path_name(ident)
-}
-
-impl cmp::Eq for path_elt {
-    fn eq(&self, other: &path_elt) -> bool {
-        match (*self) {
-            path_mod(e0a) => {
-                match (*other) {
-                    path_mod(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            path_name(e0a) => {
-                match (*other) {
-                    path_name(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-        }
-    }
-    fn ne(&self, other: &path_elt) -> bool { !(*self).eq(other) }
 }
 
 pub type path = ~[path_elt];
@@ -64,7 +45,6 @@ pub fn path_to_str_with_sep(p: &[path_elt], sep: &str, itr: @ident_interner)
 
 pub fn path_ident_to_str(p: &path, i: ident, itr: @ident_interner) -> ~str {
     if p.is_empty() {
-        //FIXME /* FIXME (#2543) */ copy *i
         itr.get(i.name).to_owned()
     } else {
         fmt!("%s::%s", path_to_str(*p, itr), itr.get(i.name))
@@ -82,6 +62,7 @@ pub fn path_elt_to_str(pe: path_elt, itr: @ident_interner) -> ~str {
     }
 }
 
+#[deriving(Clone)]
 pub enum ast_node {
     node_item(@item, @path),
     node_foreign_item(@foreign_item, AbiSet, visibility, @path),
@@ -109,7 +90,7 @@ pub struct Ctx {
 pub type vt = visit::vt<@mut Ctx>;
 
 pub fn extend(cx: @mut Ctx, elt: ident) -> @path {
-    @(vec::append(copy cx.path, [path_name(elt)]))
+    @(vec::append(cx.path.clone(), [path_name(elt)]))
 }
 
 pub fn mk_ast_map_visitor() -> vt {
@@ -149,7 +130,7 @@ pub fn map_decoded_item(diag: @span_handler,
     // variables that are simultaneously in scope).
     let cx = @mut Ctx {
         map: map,
-        path: copy path,
+        path: path.clone(),
         diag: diag,
     };
     let v = mk_ast_map_visitor();
@@ -190,7 +171,7 @@ pub fn map_fn(
 }
 
 pub fn map_block(b: &blk, (cx,v): (@mut Ctx, visit::vt<@mut Ctx>)) {
-    cx.map.insert(b.id, node_block(/* FIXME (#2543) */ copy *b));
+    cx.map.insert(b.id, node_block(/* FIXME (#2543) */ (*b).clone()));
     visit::visit_block(b, (cx, v));
 }
 
@@ -216,7 +197,7 @@ pub fn map_method(impl_did: def_id, impl_path: @path,
 }
 
 pub fn map_item(i: @item, (cx, v): (@mut Ctx, visit::vt<@mut Ctx>)) {
-    let item_path = @/* FIXME (#2543) */ copy cx.path;
+    let item_path = @/* FIXME (#2543) */ cx.path.clone();
     cx.map.insert(i.id, node_item(i, item_path));
     match i.node {
         item_impl(_, _, _, ref ms) => {
@@ -228,7 +209,8 @@ pub fn map_item(i: @item, (cx, v): (@mut Ctx, visit::vt<@mut Ctx>)) {
         item_enum(ref enum_definition, _) => {
             for (*enum_definition).variants.iter().advance |v| {
                 cx.map.insert(v.node.id, node_variant(
-                    /* FIXME (#2543) */ copy *v, i,
+                    /* FIXME (#2543) */ (*v).clone(),
+                    i,
                     extend(cx, i.ident)));
             }
         }
@@ -251,7 +233,7 @@ pub fn map_item(i: @item, (cx, v): (@mut Ctx, visit::vt<@mut Ctx>)) {
                             extend(cx, i.ident)
                         } else {
                             // Anonymous extern mods go in the parent scope
-                            @copy cx.path
+                            @cx.path.clone()
                         }
                     )
                 );
@@ -275,7 +257,7 @@ pub fn map_item(i: @item, (cx, v): (@mut Ctx, visit::vt<@mut Ctx>)) {
                 let d_id = ast_util::local_def(i.id);
                 cx.map.insert(
                     id,
-                    node_trait_method(@copy *tm, d_id, item_path)
+                    node_trait_method(@(*tm).clone(), d_id, item_path)
                 );
             }
         }

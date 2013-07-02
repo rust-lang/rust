@@ -210,13 +210,13 @@ pub fn monomorphic_fn(ccx: @mut CrateContext,
     ccx.monomorphizing.insert(fn_id, depth + 1);
 
     let elt = path_name(gensym_name(ccx.sess.str_of(name)));
-    let mut pt = /* bad */copy (*pt);
+    let mut pt = (*pt).clone();
     pt.push(elt);
-    let s = mangle_exported_name(ccx, /*bad*/copy pt, mono_ty);
+    let s = mangle_exported_name(ccx, pt.clone(), mono_ty);
     debug!("monomorphize_fn mangled to %s", s);
 
     let mk_lldecl = || {
-        let lldecl = decl_internal_cdecl_fn(ccx.llmod, /*bad*/copy s, llfty);
+        let lldecl = decl_internal_cdecl_fn(ccx.llmod, s, llfty);
         ccx.monomorphized.insert(hash_id, lldecl);
         lldecl
     };
@@ -227,7 +227,7 @@ pub fn monomorphic_fn(ccx: @mut CrateContext,
                 _
             }, _) => {
         let d = mk_lldecl();
-        set_inline_hint_if_appr(/*bad*/copy i.attrs, d);
+        set_inline_hint_if_appr(i.attrs, d);
         trans_fn(ccx,
                  pt,
                  decl,
@@ -255,8 +255,13 @@ pub fn monomorphic_fn(ccx: @mut CrateContext,
         set_inline_hint(d);
         match v.node.kind {
             ast::tuple_variant_kind(ref args) => {
-                trans_enum_variant(ccx, enum_item.id, v, /*bad*/copy *args,
-                                   this_tv.disr_val, Some(psubsts), d);
+                trans_enum_variant(ccx,
+                                   enum_item.id,
+                                   v,
+                                   (*args).clone(),
+                                   this_tv.disr_val,
+                                   Some(psubsts),
+                                   d);
             }
             ast::struct_variant_kind(_) =>
                 ccx.tcx.sess.bug("can't monomorphize struct variants"),
@@ -266,21 +271,21 @@ pub fn monomorphic_fn(ccx: @mut CrateContext,
       ast_map::node_method(mth, _, _) => {
         // XXX: What should the self type be here?
         let d = mk_lldecl();
-        set_inline_hint_if_appr(/*bad*/copy mth.attrs, d);
+        set_inline_hint_if_appr(mth.attrs.clone(), d);
         meth::trans_method(ccx, pt, mth, Some(psubsts), d);
         d
       }
       ast_map::node_trait_method(@ast::provided(mth), _, pt) => {
         let d = mk_lldecl();
-        set_inline_hint_if_appr(/*bad*/copy mth.attrs, d);
-        meth::trans_method(ccx, /*bad*/copy *pt, mth, Some(psubsts), d);
+        set_inline_hint_if_appr(mth.attrs.clone(), d);
+        meth::trans_method(ccx, (*pt).clone(), mth, Some(psubsts), d);
         d
       }
       ast_map::node_struct_ctor(struct_def, _, _) => {
         let d = mk_lldecl();
         set_inline_hint(d);
         base::trans_tuple_struct(ccx,
-                                 /*bad*/copy struct_def.fields,
+                                 struct_def.fields,
                                  struct_def.ctor_id.expect("ast-mapped tuple struct \
                                                             didn't have a ctor id"),
                                  Some(psubsts),
@@ -372,7 +377,7 @@ pub fn make_mono_id(ccx: @mut CrateContext,
       Some(vts) => {
         debug!("make_mono_id vtables=%s substs=%s",
                vts.repr(ccx.tcx), substs.tys.repr(ccx.tcx));
-        let self_vtables = substs.self_vtable.map(|vtbl| @~[copy *vtbl]);
+        let self_vtables = substs.self_vtable.map(|vtbl| @~[(*vtbl).clone()]);
         let vts_iter = self_vtables.iter().chain_(vts.iter());
         vts_iter.zip(substs_iter).transform(|(vtable, subst)| {
             let v = vtable.map(|vt| meth::vtable_id(ccx, vt));

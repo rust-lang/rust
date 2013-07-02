@@ -37,6 +37,7 @@ fn myrandom_next(r: @mut MyRandom, mx: u32) -> u32 {
     mx * r.last / 139968u32
 }
 
+#[deriving(Clone)]
 struct AminoAcids {
     ch: char,
     prob: u32
@@ -59,10 +60,14 @@ fn select_random(r: u32, genelist: ~[AminoAcids]) -> char {
             let mid: uint = lo + (hi - lo) / 2u;
             if target < v[mid].prob {
                 return bisect(v, lo, mid, target);
-            } else { return bisect(v, mid, hi, target); }
-        } else { return v[hi].ch; }
+            } else {
+                return bisect(v, mid, hi, target);
+            }
+        } else {
+            return v[hi].ch;
+        }
     }
-    bisect(copy genelist, 0, genelist.len() - 1, r)
+    bisect(genelist.clone(), 0, genelist.len() - 1, r)
 }
 
 fn make_random_fasta(wr: @io::Writer,
@@ -78,7 +83,7 @@ fn make_random_fasta(wr: @io::Writer,
     let mut op: ~str = ~"";
     for uint::range(0u, n as uint) |_i| {
         op.push_char(select_random(myrandom_next(rng, 100u32),
-                                              copy genelist));
+                                   genelist.clone()));
         if op.len() >= LINE_LENGTH {
             wr.write_line(op);
             op = ~"";

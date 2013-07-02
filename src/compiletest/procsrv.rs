@@ -22,7 +22,7 @@ fn target_env(lib_path: &str, prog: &str) -> ~[(~str,~str)] {
     let aux_path = prog.slice(0u, prog.len() - 4u).to_owned() + ".libaux";
 
     env = do env.map() |pair| {
-        let (k,v) = copy *pair;
+        let (k,v) = (*pair).clone();
         if k == ~"PATH" { (~"PATH", v + ";" + lib_path + ";" + aux_path) }
         else { (k,v) }
     };

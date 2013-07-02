@@ -36,6 +36,14 @@ pub unsafe fn transmute_copy<T, U>(src: &T) -> U {
 }
 
 /**
+ * Forces a copy of a value, even if that value is considered noncopyable.
+ */
+#[inline]
+pub unsafe fn unsafe_copy<T>(thing: &T) -> T {
+    transmute_copy(thing)
+}
+
+/**
  * Move a thing into the void
  *
  * The forget function will take ownership of the provided value but neglect
