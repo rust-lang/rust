@@ -121,11 +121,15 @@ pub fn print_crate(cm: @CodeMap,
         s: pp::mk_printer(out, default_columns),
         cm: Some(cm),
         intr: intr,
-        comments: Some(copy cmnts),
+        comments: Some(cmnts),
         // If the code is post expansion, don't use the table of
         // literals, since it doesn't correspond with the literals
         // in the AST anymore.
-        literals: if is_expanded { None } else { Some(copy lits) },
+        literals: if is_expanded {
+            None
+        } else {
+            Some(lits)
+        },
         cur_cmnt_and_lit: @mut CurrentCommentAndLiteral {
             cur_cmnt: 0,
             cur_lit: 0
@@ -405,15 +409,19 @@ pub fn print_type(s: @ps, ty: &ast::Ty) {
         pclose(s);
       }
       ast::ty_bare_fn(f) => {
-          let generics = ast::Generics {lifetimes: copy f.lifetimes,
-                                        ty_params: opt_vec::Empty};
+          let generics = ast::Generics {
+            lifetimes: f.lifetimes.clone(),
+            ty_params: opt_vec::Empty
+          };
           print_ty_fn(s, Some(f.abis), None, &None,
                       f.purity, ast::Many, &f.decl, None, &None,
                       Some(&generics), None);
       }
       ast::ty_closure(f) => {
-          let generics = ast::Generics {lifetimes: copy f.lifetimes,
-                                        ty_params: opt_vec::Empty};
+          let generics = ast::Generics {
+            lifetimes: f.lifetimes.clone(),
+            ty_params: opt_vec::Empty
+          };
           print_ty_fn(s, None, Some(f.sigil), &f.region,
                       f.purity, f.onceness, &f.decl, None, &f.bounds,
                       Some(&generics), None);
@@ -1167,13 +1175,13 @@ pub fn print_expr(s: @ps, expr: &ast::expr) {
         pclose(s);
       }
       ast::expr_call(func, ref args, sugar) => {
-        let mut base_args = copy *args;
+        let mut base_args = (*args).clone();
         let blk = print_call_pre(s, sugar, &mut base_args);
         print_expr(s, func);
         print_call_post(s, sugar, &blk, &mut base_args);
       }
       ast::expr_method_call(_, func, ident, ref tys, ref args, sugar) => {
-        let mut base_args = copy *args;
+        let mut base_args = (*args).clone();
         let blk = print_call_pre(s, sugar, &mut base_args);
         print_expr(s, func);
         word(s.s, ".");
@@ -1798,12 +1806,10 @@ pub fn print_meta_item(s: @ps, item: &ast::meta_item) {
       ast::meta_list(name, ref items) => {
         word(s.s, name);
         popen(s);
-        commasep(
-            s,
-            consistent,
-            items.as_slice(),
-            |p, &i| print_meta_item(p, i)
-        );
+        commasep(s,
+                 consistent,
+                 items.as_slice(),
+                 |p, &i| print_meta_item(p, i));
         pclose(s);
       }
     }
@@ -2061,7 +2067,7 @@ pub fn next_lit(s: @ps, pos: BytePos) -> Option<comments::lit> {
     match s.literals {
       Some(ref lits) => {
         while s.cur_cmnt_and_lit.cur_lit < lits.len() {
-            let ltrl = /*bad*/ copy (*lits)[s.cur_cmnt_and_lit.cur_lit];
+            let ltrl = (*lits)[s.cur_cmnt_and_lit.cur_lit].clone();
             if ltrl.pos > pos { return None; }
             s.cur_cmnt_and_lit.cur_lit += 1u;
             if ltrl.pos == pos { return Some(ltrl); }
@@ -2148,8 +2154,10 @@ pub fn next_comment(s: @ps) -> Option<comments::cmnt> {
     match s.comments {
       Some(ref cmnts) => {
         if s.cur_cmnt_and_lit.cur_cmnt < cmnts.len() {
-            return Some(copy cmnts[s.cur_cmnt_and_lit.cur_cmnt]);
-        } else { return None::<comments::cmnt>; }
+            return Some(cmnts[s.cur_cmnt_and_lit.cur_cmnt].clone());
+        } else {
+            return None::<comments::cmnt>;
+        }
       }
       _ => return None::<comments::cmnt>
     }

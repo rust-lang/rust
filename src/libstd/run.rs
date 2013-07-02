@@ -13,6 +13,7 @@
 #[allow(missing_doc)];
 
 use cast;
+use clone::Clone;
 use comm::{stream, SharedChan, GenericChan, GenericPort};
 use io;
 use iterator::IteratorUtil;
@@ -698,7 +699,7 @@ fn with_argv<T>(prog: &str, args: &[~str],
     let mut argptrs = ~[str::as_c_str(prog, |b| b)];
     let mut tmps = ~[];
     for args.iter().advance |arg| {
-        let t = @copy *arg;
+        let t = @(*arg).clone();
         tmps.push(t);
         argptrs.push(str::as_c_str(*t, |b| b));
     }

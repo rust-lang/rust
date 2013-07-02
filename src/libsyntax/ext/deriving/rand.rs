@@ -61,7 +61,7 @@ fn rand_substructure(cx: @ExtCtxt, span: span, substr: &Substructure) -> @expr {
     ];
     let rand_call = || {
         cx.expr_call_global(span,
-                            copy rand_ident,
+                            rand_ident.clone(),
                             ~[ rng[0].duplicate(cx) ])
     };
 
@@ -79,7 +79,11 @@ fn rand_substructure(cx: @ExtCtxt, span: span, substr: &Substructure) -> @expr {
             // need to specify the uint-ness of the random number
             let uint_ty = cx.ty_ident(span, cx.ident_of("uint"));
             let r_ty = cx.ty_ident(span, cx.ident_of("R"));
-            let rand_name = cx.path_all(span, true, copy rand_ident, None, ~[ uint_ty, r_ty ]);
+            let rand_name = cx.path_all(span,
+                                        true,
+                                        rand_ident.clone(),
+                                        None,
+                                        ~[ uint_ty, r_ty ]);
             let rand_name = cx.expr_path(rand_name);
 
             // ::std::rand::Rand::rand::<uint>(rng)

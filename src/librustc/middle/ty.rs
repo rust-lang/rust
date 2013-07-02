@@ -94,13 +94,13 @@ impl Method {
     }
 }
 
-#[deriving(Eq, IterBytes)]
+#[deriving(Clone, Eq, IterBytes)]
 pub struct mt {
     ty: t,
     mutbl: ast::mutability,
 }
 
-#[deriving(Eq, Encodable, Decodable, IterBytes)]
+#[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub enum vstore {
     vstore_fixed(uint),
     vstore_uniq,
@@ -108,7 +108,7 @@ pub enum vstore {
     vstore_slice(Region)
 }
 
-#[deriving(Eq, IterBytes, Encodable, Decodable)]
+#[deriving(Clone, Eq, IterBytes, Encodable, Decodable)]
 pub enum TraitStore {
     BoxTraitStore,              // @Trait
     UniqTraitStore,             // ~Trait
@@ -117,7 +117,7 @@ pub enum TraitStore {
 
 // XXX: This should probably go away at some point. Maybe after destructors
 // do?
-#[deriving(Eq, Encodable, Decodable)]
+#[deriving(Clone, Eq, Encodable, Decodable)]
 pub enum SelfMode {
     ByCopy,
     ByRef,
@@ -175,8 +175,12 @@ pub enum ast_ty_to_ty_cache_entry {
 
 pub type opt_region_variance = Option<region_variance>;
 
-#[deriving(Eq, Decodable, Encodable)]
-pub enum region_variance { rv_covariant, rv_invariant, rv_contravariant }
+#[deriving(Clone, Eq, Decodable, Encodable)]
+pub enum region_variance {
+    rv_covariant,
+    rv_invariant,
+    rv_contravariant,
+}
 
 #[deriving(Decodable, Encodable)]
 pub enum AutoAdjustment {
@@ -364,14 +368,14 @@ pub fn type_has_regions(t: t) -> bool {
 }
 pub fn type_id(t: t) -> uint { get(t).id }
 
-#[deriving(Eq,IterBytes)]
+#[deriving(Clone, Eq, IterBytes)]
 pub struct BareFnTy {
     purity: ast::purity,
     abis: AbiSet,
     sig: FnSig
 }
 
-#[deriving(Eq,IterBytes)]
+#[deriving(Clone, Eq, IterBytes)]
 pub struct ClosureTy {
     purity: ast::purity,
     sigil: ast::Sigil,
@@ -388,21 +392,21 @@ pub struct ClosureTy {
  * - `lifetimes` is the list of region names bound in this fn.
  * - `inputs` is the list of arguments and their modes.
  * - `output` is the return type. */
-#[deriving(Eq, IterBytes)]
+#[deriving(Clone, Eq, IterBytes)]
 pub struct FnSig {
     bound_lifetime_names: OptVec<ast::ident>,
     inputs: ~[t],
     output: t
 }
 
-#[deriving(Eq, IterBytes)]
+#[deriving(Clone, Eq, IterBytes)]
 pub struct param_ty {
     idx: uint,
     def_id: def_id
 }
 
 /// Representation of regions:
-#[deriving(Eq, IterBytes, Encodable, Decodable)]
+#[deriving(Clone, Eq, IterBytes, Encodable, Decodable)]
 pub enum Region {
     /// Bound regions are found (primarily) in function types.  They indicate
     /// region parameters that have yet to be replaced with actual regions
@@ -448,13 +452,13 @@ impl Region {
     }
 }
 
-#[deriving(Eq, IterBytes, Encodable, Decodable)]
+#[deriving(Clone, Eq, IterBytes, Encodable, Decodable)]
 pub struct FreeRegion {
     scope_id: node_id,
     bound_region: bound_region
 }
 
-#[deriving(Eq, IterBytes, Encodable, Decodable)]
+#[deriving(Clone, Eq, IterBytes, Encodable, Decodable)]
 pub enum bound_region {
     /// The self region for structs, impls (&T in a type defn or &'self T)
     br_self,
@@ -499,7 +503,7 @@ type opt_region = Option<Region>;
  * - `self_ty` is the type to which `self` should be remapped, if any.  The
  *   `self` type is rather funny in that it can only appear on traits and is
  *   always substituted away to the implementing type for a trait. */
-#[deriving(Eq, IterBytes)]
+#[deriving(Clone, Eq, IterBytes)]
 pub struct substs {
     self_r: opt_region,
     self_ty: Option<ty::t>,
@@ -555,7 +559,7 @@ mod primitives {
 
 // NB: If you change this, you'll probably want to change the corresponding
 // AST structure in libsyntax/ast.rs as well.
-#[deriving(Eq, IterBytes)]
+#[deriving(Clone, Eq, IterBytes)]
 pub enum sty {
     ty_nil,
     ty_bot,
@@ -598,22 +602,25 @@ pub struct TraitRef {
     substs: substs
 }
 
-#[deriving(Eq)]
+#[deriving(Clone, Eq)]
 pub enum IntVarValue {
     IntType(ast::int_ty),
     UintType(ast::uint_ty),
 }
 
+#[deriving(Clone)]
 pub enum terr_vstore_kind {
     terr_vec, terr_str, terr_fn, terr_trait
 }
 
+#[deriving(Clone)]
 pub struct expected_found<T> {
     expected: T,
     found: T
 }
 
 // Data structures used in type unification
+#[deriving(Clone)]
 pub enum type_err {
     terr_mismatch,
     terr_purity_mismatch(expected_found<purity>),
@@ -655,7 +662,7 @@ pub struct ParamBounds {
 
 pub type BuiltinBounds = EnumSet<BuiltinBound>;
 
-#[deriving(Eq, IterBytes)]
+#[deriving(Clone, Eq, IterBytes)]
 pub enum BuiltinBound {
     BoundCopy,
     BoundStatic,
@@ -687,28 +694,28 @@ impl CLike for BuiltinBound {
     }
 }
 
-#[deriving(Eq, IterBytes)]
+#[deriving(Clone, Eq, IterBytes)]
 pub struct TyVid(uint);
 
-#[deriving(Eq, IterBytes)]
+#[deriving(Clone, Eq, IterBytes)]
 pub struct IntVid(uint);
 
-#[deriving(Eq, IterBytes)]
+#[deriving(Clone, Eq, IterBytes)]
 pub struct FloatVid(uint);
 
-#[deriving(Eq, Encodable, Decodable, IterBytes)]
+#[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub struct RegionVid {
     id: uint
 }
 
-#[deriving(Eq, IterBytes)]
+#[deriving(Clone, Eq, IterBytes)]
 pub enum InferTy {
     TyVar(TyVid),
     IntVar(IntVid),
     FloatVar(FloatVid)
 }
 
-#[deriving(Encodable, Decodable, IterBytes)]
+#[deriving(Clone, Encodable, Decodable, IterBytes)]
 pub enum InferRegion {
     ReVar(RegionVid),
     ReSkolemized(uint, bound_region)
@@ -793,6 +800,7 @@ impl ToStr for IntVarValue {
     }
 }
 
+#[deriving(Clone)]
 pub struct TypeParameterDef {
     ident: ast::ident,
     def_id: ast::def_id,
@@ -801,6 +809,7 @@ pub struct TypeParameterDef {
 
 /// Information about the type/lifetime parametesr associated with an item.
 /// Analogous to ast::Generics.
+#[deriving(Clone)]
 pub struct Generics {
     type_param_defs: @~[TypeParameterDef],
     region_param: Option<region_variance>,
@@ -822,6 +831,7 @@ impl Generics {
 ///
 /// - `ty`: the base type.  May have reference to the (unsubstituted) bound
 ///   region `&self` or to (unsubstituted) ty_param types
+#[deriving(Clone)]
 pub struct ty_param_bounds_and_ty {
     generics: Generics,
     ty: t
@@ -1262,7 +1272,7 @@ pub fn fold_sig(sig: &FnSig, fldop: &fn(t) -> t) -> FnSig {
     let args = sig.inputs.map(|arg| fldop(*arg));
 
     FnSig {
-        bound_lifetime_names: copy sig.bound_lifetime_names,
+        bound_lifetime_names: sig.bound_lifetime_names.clone(),
         inputs: args,
         output: fldop(sig.output)
     }
@@ -1312,7 +1322,14 @@ fn fold_sty(sty: &sty, fldop: &fn(t) -> t) -> sty {
         }
         ty_closure(ref f) => {
             let sig = fold_sig(&f.sig, fldop);
-            ty_closure(ClosureTy {sig: sig, ..copy *f})
+            ty_closure(ClosureTy {
+                sig: sig,
+                purity: f.purity,
+                sigil: f.sigil,
+                onceness: f.onceness,
+                region: f.region,
+                bounds: f.bounds,
+            })
         }
         ty_rptr(r, ref tm) => {
             ty_rptr(r, mt {ty: fldop(tm.ty), mutbl: tm.mutbl})
@@ -1323,7 +1340,7 @@ fn fold_sty(sty: &sty, fldop: &fn(t) -> t) -> sty {
         ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
         ty_estr(_) | ty_type | ty_opaque_closure_ptr(_) | ty_err |
         ty_opaque_box | ty_infer(_) | ty_param(*) | ty_self(_) => {
-            /*bad*/copy *sty
+            (*sty).clone()
         }
     }
 }
@@ -1398,13 +1415,21 @@ pub fn fold_regions_and_ty(
         ty::mk_trait(cx, def_id, fold_substs(substs, fldr, fldt), st, mutbl, bounds)
       }
       ty_bare_fn(ref f) => {
-          ty::mk_bare_fn(cx, BareFnTy {sig: fold_sig(&f.sig, fldfnt),
-                                       ..copy *f})
+          ty::mk_bare_fn(cx, BareFnTy {
+            sig: fold_sig(&f.sig, fldfnt),
+            purity: f.purity,
+            abis: f.abis.clone(),
+          })
       }
       ty_closure(ref f) => {
-          ty::mk_closure(cx, ClosureTy {region: fldr(f.region),
-                                        sig: fold_sig(&f.sig, fldfnt),
-                                        ..copy *f})
+          ty::mk_closure(cx, ClosureTy {
+            region: fldr(f.region),
+            sig: fold_sig(&f.sig, fldfnt),
+            purity: f.purity,
+            sigil: f.sigil,
+            onceness: f.onceness,
+            bounds: f.bounds,
+          })
       }
       ref sty => {
         fold_sty_to_ty(cx, sty, |t| fldt(t))
@@ -2491,9 +2516,11 @@ pub fn type_is_pod(cx: ctxt, ty: t) -> bool {
       ty_enum(did, ref substs) => {
         let variants = enum_variants(cx, did);
         for (*variants).iter().advance |variant| {
-            let tup_ty = mk_tup(cx, /*bad*/copy variant.args);
-
+            // XXX(pcwalton): This is an inefficient way to do this. Don't
+            // synthesize a tuple!
+            //
             // Perform any type parameter substitutions.
+            let tup_ty = mk_tup(cx, variant.args.clone());
             let tup_ty = subst(cx, substs, tup_ty);
             if !type_is_pod(cx, tup_ty) { result = false; }
         }
@@ -2709,10 +2736,11 @@ pub fn node_id_to_type(cx: ctxt, id: ast::node_id) -> t {
     }
 }
 
+// XXX(pcwalton): Makes a copy, bleh. Probably better to not do that.
 pub fn node_id_to_type_params(cx: ctxt, id: ast::node_id) -> ~[t] {
     match cx.node_type_substs.find(&id) {
       None => return ~[],
-      Some(ts) => return /*bad*/ copy *ts
+      Some(ts) => return (*ts).clone(),
     }
 }
 
@@ -2722,8 +2750,8 @@ fn node_id_has_type_params(cx: ctxt, id: ast::node_id) -> bool {
 
 pub fn ty_fn_sig(fty: t) -> FnSig {
     match get(fty).sty {
-        ty_bare_fn(ref f) => copy f.sig,
-        ty_closure(ref f) => copy f.sig,
+        ty_bare_fn(ref f) => f.sig.clone(),
+        ty_closure(ref f) => f.sig.clone(),
         ref s => {
             fail!("ty_fn_sig() called on non-fn type: %?", s)
         }
@@ -2733,8 +2761,8 @@ pub fn ty_fn_sig(fty: t) -> FnSig {
 // Type accessors for substructures of types
 pub fn ty_fn_args(fty: t) -> ~[t] {
     match get(fty).sty {
-        ty_bare_fn(ref f) => copy f.sig.inputs,
-        ty_closure(ref f) => copy f.sig.inputs,
+        ty_bare_fn(ref f) => f.sig.inputs.clone(),
+        ty_closure(ref f) => f.sig.inputs.clone(),
         ref s => {
             fail!("ty_fn_args() called on non-fn type: %?", s)
         }
@@ -2821,8 +2849,8 @@ pub fn replace_closure_return_type(tcx: ctxt, fn_type: t, ret_type: t) -> t {
     match ty::get(fn_type).sty {
         ty::ty_closure(ref fty) => {
             ty::mk_closure(tcx, ClosureTy {
-                sig: FnSig {output: ret_type, ..copy fty.sig},
-                ..copy *fty
+                sig: FnSig {output: ret_type, ..fty.sig.clone()},
+                ..(*fty).clone()
             })
         }
         _ => {
@@ -2904,7 +2932,7 @@ pub fn adjust_ty(cx: ctxt,
                                        onceness: ast::Many,
                                        region: r,
                                        bounds: ty::AllBuiltinBounds(),
-                                       sig: copy b.sig})
+                                       sig: b.sig.clone()})
                 }
                 ref b => {
                     cx.sess.bug(
@@ -2988,7 +3016,7 @@ pub fn adjust_ty(cx: ctxt,
                 ty::mk_closure(cx, ClosureTy {
                     sigil: BorrowedSigil,
                     region: r,
-                    ..copy *fty
+                    ..(*fty).clone()
                 })
             }
 
@@ -3032,11 +3060,10 @@ pub fn expr_has_ty_params(cx: ctxt, expr: &ast::expr) -> bool {
     return node_id_has_type_params(cx, expr.id);
 }
 
-pub fn method_call_type_param_defs(
-    tcx: ctxt,
-    method_map: typeck::method_map,
-    id: ast::node_id) -> Option<@~[TypeParameterDef]>
-{
+pub fn method_call_type_param_defs(tcx: ctxt,
+                                   method_map: typeck::method_map,
+                                   id: ast::node_id)
+                                   -> Option<@~[TypeParameterDef]> {
     do method_map.find(&id).map |method| {
         match method.origin {
           typeck::method_static(did) => {
@@ -3057,8 +3084,10 @@ pub fn method_call_type_param_defs(
             let trait_type_param_defs =
                 ty::lookup_trait_def(tcx, trt_id).generics.type_param_defs;
             @vec::append(
-                copy *trait_type_param_defs,
-                *ty::trait_method(tcx, trt_id, n_mth).generics.type_param_defs)
+                (*trait_type_param_defs).clone(),
+                *ty::trait_method(tcx,
+                                  trt_id,
+                                  n_mth).generics.type_param_defs)
           }
         }
     }
@@ -3546,7 +3575,7 @@ pub fn trait_ref_supertraits(cx: ctxt, trait_ref: &ty::TraitRef) -> ~[@TraitRef]
         |supertrait_ref| supertrait_ref.subst(cx, &trait_ref.substs))
 }
 
-fn lookup_locally_or_in_crate_store<V:Copy>(
+fn lookup_locally_or_in_crate_store<V:Clone>(
     descr: &str,
     def_id: ast::def_id,
     map: &mut HashMap<ast::def_id, V>,
@@ -3564,7 +3593,7 @@ fn lookup_locally_or_in_crate_store<V:Copy>(
      */
 
     match map.find(&def_id) {
-        Some(&ref v) => { return copy *v; }
+        Some(&ref v) => { return (*v).clone(); }
         None => { }
     }
 
@@ -3572,8 +3601,8 @@ fn lookup_locally_or_in_crate_store<V:Copy>(
         fail!("No def'n found for %? in tcx.%s", def_id, descr);
     }
     let v = load_external();
-    map.insert(def_id, copy v);
-    return copy v;
+    map.insert(def_id, v.clone());
+    v
 }
 
 pub fn trait_method(cx: ctxt, trait_did: ast::def_id, idx: uint) -> @Method {
@@ -3673,6 +3702,7 @@ fn struct_ctor_id(cx: ctxt, struct_did: ast::def_id) -> Option<ast::def_id> {
 }
 
 // Enum information
+#[deriving(Clone)]
 pub struct VariantInfo_ {
     args: ~[t],
     ctor_ty: t,
@@ -3694,8 +3724,11 @@ pub fn substd_enum_variants(cx: ctxt,
 
         let substd_ctor_ty = subst(cx, substs, variant_info.ctor_ty);
 
-        @VariantInfo_{args: substd_args, ctor_ty: substd_ctor_ty,
-                      ../*bad*/copy **variant_info}
+        @VariantInfo_ {
+            args: substd_args,
+            ctor_ty: substd_ctor_ty,
+            ..(**variant_info).clone()
+        }
     }.collect()
 }
 
@@ -3764,21 +3797,21 @@ pub fn item_path(cx: ctxt, id: ast::def_id) -> ast_map::path {
                 ast_map::path_name(item.ident)
               }
             };
-            vec::append_one(/*bad*/copy *path, item_elt)
+            vec::append_one((*path).clone(), item_elt)
           }
 
           ast_map::node_foreign_item(nitem, _, _, path) => {
-            vec::append_one(/*bad*/copy *path,
+            vec::append_one((*path).clone(),
                             ast_map::path_name(nitem.ident))
           }
 
           ast_map::node_method(method, _, path) => {
-            vec::append_one(/*bad*/copy *path,
+            vec::append_one((*path).clone(),
                             ast_map::path_name(method.ident))
           }
           ast_map::node_trait_method(trait_method, _, path) => {
             let method = ast_util::trait_method_to_ty_method(&*trait_method);
-            vec::append_one(/*bad*/copy *path,
+            vec::append_one((*path).clone(),
                             ast_map::path_name(method.ident))
           }
 
@@ -3788,7 +3821,7 @@ pub fn item_path(cx: ctxt, id: ast::def_id) -> ast_map::path {
           }
 
           ast_map::node_struct_ctor(_, item, path) => {
-            vec::append_one(/*bad*/copy *path, ast_map::path_name(item.ident))
+            vec::append_one((*path).clone(), ast_map::path_name(item.ident))
           }
 
           ref node => {
@@ -4187,7 +4220,7 @@ pub fn normalize_ty(cx: ctxt, t: t) -> t {
         ty_closure(ref closure_ty) => {
             mk_closure(cx, ClosureTy {
                 region: ty::re_static,
-                ..copy *closure_ty
+                ..(*closure_ty).clone()
             })
         }
 
@@ -4199,7 +4232,7 @@ pub fn normalize_ty(cx: ctxt, t: t) -> t {
                      substs {
                         self_r: Some(ty::re_static),
                         self_ty: None,
-                        tps: /*bad*/copy (*r).tps
+                        tps: (*r).tps.clone()
                      }),
                 None =>
                     t
@@ -4211,7 +4244,7 @@ pub fn normalize_ty(cx: ctxt, t: t) -> t {
                 // Ditto.
                 mk_struct(cx, did, substs {self_r: Some(ty::re_static),
                                            self_ty: None,
-                                           tps: /*bad*/copy (*r).tps}),
+                                           tps: (*r).tps.clone()}),
               None =>
                 t
             },
@@ -4377,6 +4410,10 @@ pub fn visitor_object_ty(tcx: ctxt) -> (@TraitRef, t) {
     let mut static_trait_bound = EmptyBuiltinBounds();
     static_trait_bound.add(BoundStatic);
     (trait_ref,
-     mk_trait(tcx, trait_ref.def_id, copy trait_ref.substs,
-              BoxTraitStore, ast::m_imm, static_trait_bound))
+     mk_trait(tcx,
+              trait_ref.def_id,
+              trait_ref.substs.clone(),
+              BoxTraitStore,
+              ast::m_imm,
+              static_trait_bound))
 }

@@ -30,6 +30,7 @@ pub trait region_scope {
                       -> Result<ty::Region, RegionError>;
 }
 
+#[deriving(Clone)]
 pub enum empty_rscope { empty_rscope }
 impl region_scope for empty_rscope {
     fn anon_region(&self, _span: span) -> Result<ty::Region, RegionError> {
@@ -48,6 +49,7 @@ impl region_scope for empty_rscope {
     }
 }
 
+#[deriving(Clone)]
 pub struct RegionParamNames(OptVec<ast::ident>);
 
 impl RegionParamNames {
@@ -121,6 +123,7 @@ impl RegionParamNames {
     }
 }
 
+#[deriving(Clone)]
 struct RegionParameterization {
     variance: ty::region_variance,
     region_param_names: RegionParamNames,
@@ -143,6 +146,7 @@ impl RegionParameterization {
     }
 }
 
+#[deriving(Clone)]
 pub struct MethodRscope {
     explicit_self: ast::explicit_self_,
     variance: Option<ty::region_variance>,
@@ -166,7 +170,7 @@ impl MethodRscope {
     }
 
     pub fn region_param_names(&self) -> RegionParamNames {
-        copy self.region_param_names
+        self.region_param_names.clone()
     }
 }
 
@@ -206,6 +210,7 @@ impl region_scope for MethodRscope {
     }
 }
 
+#[deriving(Clone)]
 pub struct type_rscope(Option<RegionParameterization>);
 
 impl type_rscope {
@@ -268,11 +273,21 @@ pub struct binding_rscope {
     region_param_names: RegionParamNames,
 }
 
-pub fn in_binding_rscope<RS:region_scope + Copy + 'static>(
+impl Clone for binding_rscope {
+    fn clone(&self) -> binding_rscope {
+        binding_rscope {
+            base: self.base,
+            anon_bindings: self.anon_bindings,
+            region_param_names: self.region_param_names.clone(),
+        }
+    }
+}
+
+pub fn in_binding_rscope<RS:region_scope + Clone + 'static>(
         this: &RS,
         region_param_names: RegionParamNames)
      -> binding_rscope {
-    let base = @copy *this;
+    let base = @(*this).clone();
     let base = base as @region_scope;
     binding_rscope {
         base: base,

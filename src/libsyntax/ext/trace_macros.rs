@@ -28,11 +28,7 @@ pub fn expand_trace_macros(cx: @ExtCtxt,
                                None,
                                vec::to_owned(tt));
     let rdr = tt_rdr as @reader;
-    let rust_parser = Parser(
-        sess,
-        copy cfg,
-        rdr.dup()
-    );
+    let rust_parser = Parser(sess, cfg.clone(), rdr.dup());
 
     if rust_parser.is_keyword(keywords::True) {
         cx.set_trace_macros(true);

@@ -71,6 +71,12 @@ pub struct FlowedMoveData {
 #[deriving(Eq)]
 pub struct MovePathIndex(uint);
 
+impl Clone for MovePathIndex {
+    fn clone(&self) -> MovePathIndex {
+        MovePathIndex(**self)
+    }
+}
+
 static InvalidMovePathIndex: MovePathIndex =
     MovePathIndex(uint::max_value);
 
@@ -133,9 +139,27 @@ pub struct Assignment {
 }
 
 pub struct MoveDataFlowOperator;
+
+/// XXX(pcwalton): Should just be #[deriving(Clone)], but that doesn't work
+/// yet on unit structs.
+impl Clone for MoveDataFlowOperator {
+    fn clone(&self) -> MoveDataFlowOperator {
+        MoveDataFlowOperator
+    }
+}
+
 pub type MoveDataFlow = DataFlowContext<MoveDataFlowOperator>;
 
 pub struct AssignDataFlowOperator;
+
+/// XXX(pcwalton): Should just be #[deriving(Clone)], but that doesn't work
+/// yet on unit structs.
+impl Clone for AssignDataFlowOperator {
+    fn clone(&self) -> AssignDataFlowOperator {
+        AssignDataFlowOperator
+    }
+}
+
 pub type AssignDataFlow = DataFlowContext<AssignDataFlowOperator>;
 
 impl MoveData {

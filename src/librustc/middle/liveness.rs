@@ -128,6 +128,12 @@ struct Variable(uint);
 #[deriving(Eq)]
 struct LiveNode(uint);
 
+impl Clone for LiveNode {
+    fn clone(&self) -> LiveNode {
+        LiveNode(**self)
+    }
+}
+
 #[deriving(Eq)]
 enum LiveNodeKind {
     FreeVarNode(span),
@@ -522,6 +528,7 @@ fn visit_expr(expr: @expr, (this, vt): (@mut IrMaps, vt<@mut IrMaps>)) {
 // Actually we compute just a bit more than just liveness, but we use
 // the same basic propagation framework in all cases.
 
+#[deriving(Clone)]
 struct Users {
     reader: LiveNode,
     writer: LiveNode,

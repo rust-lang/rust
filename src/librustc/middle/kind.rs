@@ -53,6 +53,7 @@ use syntax::{visit, ast_util};
 
 pub static try_adding: &'static str = "Try adding a move";
 
+#[deriving(Clone)]
 pub struct Context {
     tcx: ty::ctxt,
     method_map: typeck::method_map,

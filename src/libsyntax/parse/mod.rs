@@ -79,7 +79,7 @@ pub fn parse_crate_from_file(
     cfg: ast::crate_cfg,
     sess: @mut ParseSess
 ) -> @ast::crate {
-    new_parser_from_file(sess, /*bad*/ copy cfg, input).parse_crate_mod()
+    new_parser_from_file(sess, /*bad*/ cfg.clone(), input).parse_crate_mod()
     // why is there no p.abort_if_errors here?
 }
 
@@ -89,12 +89,10 @@ pub fn parse_crate_from_source_str(
     cfg: ast::crate_cfg,
     sess: @mut ParseSess
 ) -> @ast::crate {
-    let p = new_parser_from_source_str(
-        sess,
-        /*bad*/ copy cfg,
-        name,
-        source
-    );
+    let p = new_parser_from_source_str(sess,
+                                       /*bad*/ cfg.clone(),
+                                       name,
+                                       source);
     maybe_aborted(p.parse_crate_mod(),p)
 }
 
@@ -457,7 +455,7 @@ mod test {
     }
 
     fn parser_done(p: Parser){
-        assert_eq!(copy *p.token,token::EOF);
+        assert_eq!((*p.token).clone(), token::EOF);
     }
 
     #[test] fn parse_ident_pat () {

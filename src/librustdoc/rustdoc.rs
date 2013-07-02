@@ -59,7 +59,6 @@ pub mod page_pass;
 pub mod sectionalize_pass;
 pub mod escape_pass;
 pub mod prune_private_pass;
-pub mod util;
 
 pub fn main() {
     let args = os::args();
@@ -83,7 +82,7 @@ pub fn main() {
 /// Runs rustdoc over the given file
 fn run(config: Config) {
 
-    let source_file = copy config.input_crate;
+    let source_file = config.input_crate.clone();
 
     // Create an AST service from the source code
     do astsrv::from_file(source_file.to_str()) |srv| {
@@ -96,7 +95,7 @@ fn run(config: Config) {
         // Extract the initial doc tree from the AST. This contains
         // just names and node ids.
         let doc = time(~"extract", || {
-            let default_name = copy source_file;
+            let default_name = source_file.clone();
             extract::from_srv(srv.clone(), default_name.to_str())
         });
 
@@ -127,13 +126,13 @@ fn run(config: Config) {
             // Sort items again by kind
             sort_item_type_pass::mk_pass(),
             // Create indexes appropriate for markdown
-            markdown_index_pass::mk_pass(copy config),
+            markdown_index_pass::mk_pass(config.clone()),
             // Break the document into pages if required by the
             // output format
             page_pass::mk_pass(config.output_style),
             // Render
             markdown_pass::mk_pass(
-                markdown_writer::make_writer_factory(copy config)
+                markdown_writer::make_writer_factory(config.clone())
             )
         ]);
     }

@@ -18,25 +18,25 @@ fn f05() {
 
 fn f10() {
     let x = ~"hi";
-    let _y = Foo { f:copy x };
+    let _y = Foo { f:x.clone() };
     touch(&x);
 }
 
 fn f20() {
     let x = ~"hi";
-    let _y = Foo { f:copy (x) };
+    let _y = Foo { f:(x).clone() };
     touch(&x);
 }
 
 fn f30() {
     let x = ~"hi";
-    let _y = Foo { f:copy ((x)) };
+    let _y = Foo { f:((x)).clone() };
     touch(&x);
 }
 
 fn f40() {
     let x = ~"hi";
-    let _y = Foo { f:(((((copy ((x))))))) };
+    let _y = Foo { f:(((((((x)).clone()))))) };
     touch(&x);
 }
 

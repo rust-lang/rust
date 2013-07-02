@@ -241,13 +241,14 @@ pub fn super_substs<C:Combine>(
 
     do this.tps(a.tps, b.tps).chain |tps| {
         do this.self_tys(a.self_ty, b.self_ty).chain |self_ty| {
-            do relate_region_param(this, generics,
-                                   a.self_r, b.self_r).chain |self_r|
-            {
+            do relate_region_param(this,
+                                   generics,
+                                   a.self_r,
+                                   b.self_r).chain |self_r| {
                 Ok(substs {
                     self_r: self_r,
                     self_ty: self_ty,
-                    tps: /*bad*/copy tps
+                    tps: tps.clone()
                 })
             }
         }
@@ -425,7 +426,7 @@ pub fn super_fn_sigs<C:Combine>(
             .chain |inputs| {
         do this.tys(a_f.output, b_f.output).chain |output| {
             Ok(FnSig {bound_lifetime_names: opt_vec::Empty, // FIXME(#4846)
-                      inputs: /*bad*/copy inputs,
+                      inputs: inputs.clone(),
                       output: output})
         }
     }
@@ -515,7 +516,12 @@ pub fn super_tys<C:Combine>(
           do this.substs(&trait_def.generics, a_substs, b_substs).chain |substs| {
               do this.trait_stores(ty::terr_trait, a_store, b_store).chain |s| {
                   do this.bounds(a_bounds, b_bounds).chain |bounds| {
-                    Ok(ty::mk_trait(tcx, a_id, /*bad*/copy substs, s, a_mutbl, bounds))
+                    Ok(ty::mk_trait(tcx,
+                                    a_id,
+                                    substs.clone(),
+                                    s,
+                                    a_mutbl,
+                                    bounds))
                   }
               }
           }

@@ -29,6 +29,7 @@ struct EbmlState {
     data_pos: uint,
 }
 
+#[deriving(Clone)]
 pub struct Doc {
     data: @~[u8],
     start: uint,
@@ -615,12 +616,22 @@ pub mod writer {
     use super::*;
 
     use std::cast;
+    use std::clone::Clone;
     use std::io;
 
     // ebml writing
     pub struct Encoder {
         writer: @io::Writer,
         priv size_positions: ~[uint],
+    }
+
+    impl Clone for Encoder {
+        fn clone(&self) -> Encoder {
+            Encoder {
+                writer: self.writer,
+                size_positions: self.size_positions.clone(),
+            }
+        }
     }
 
     fn write_sized_vuint(w: @io::Writer, n: uint, size: uint) {

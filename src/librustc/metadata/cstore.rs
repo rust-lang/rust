@@ -91,12 +91,13 @@ pub fn iter_crate_data(cstore: &CStore,
 
 pub fn add_used_crate_file(cstore: &mut CStore, lib: &Path) {
     if !cstore.used_crate_files.contains(lib) {
-        cstore.used_crate_files.push(copy *lib);
+        cstore.used_crate_files.push((*lib).clone());
     }
 }
 
 pub fn get_used_crate_files(cstore: &CStore) -> ~[Path] {
-    return /*bad*/copy cstore.used_crate_files;
+    // XXX(pcwalton): Bad copy.
+    return cstore.used_crate_files.clone();
 }
 
 pub fn add_used_library(cstore: &mut CStore, lib: @str) -> bool {
@@ -135,10 +136,16 @@ pub fn find_extern_mod_stmt_cnum(cstore: &CStore,
     cstore.extern_mod_crate_map.find(&emod_id).map_consume(|x| *x)
 }
 
+#[deriving(Clone)]
+struct crate_hash {
+    name: @str,
+    vers: @str,
+    hash: @str,
+}
+
 // returns hashes of crates directly used by this crate. Hashes are sorted by
 // (crate name, crate version, crate hash) in lexicographic order (not semver)
 pub fn get_dep_hashes(cstore: &CStore) -> ~[@str] {
-    struct crate_hash { name: @str, vers: @str, hash: @str }
     let mut result = ~[];
 
     for cstore.extern_mod_crate_map.each_value |&cnum| {

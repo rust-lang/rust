@@ -176,12 +176,19 @@ pub mod v4 {
     pub fn parse_addr(ip: &str) -> IpAddr {
         match try_parse_addr(ip) {
           result::Ok(addr) => addr,
-          result::Err(ref err_data) => fail!(copy err_data.err_msg)
+          result::Err(ref err_data) => fail!(err_data.err_msg.clone())
         }
     }
+
     // the simple, old style numberic representation of
     // ipv4
-    pub struct Ipv4Rep { a: u8, b: u8, c: u8, d: u8 }
+    #[deriving(Clone)]
+    pub struct Ipv4Rep {
+        a: u8,
+        b: u8,
+        c: u8,
+        d: u8,
+    }
 
     pub trait AsUnsafeU32 {
         unsafe fn as_u32(&self) -> u32;
@@ -271,7 +278,7 @@ pub mod v6 {
     pub fn parse_addr(ip: &str) -> IpAddr {
         match try_parse_addr(ip) {
           result::Ok(addr) => addr,
-          result::Err(err_data) => fail!(copy err_data.err_msg)
+          result::Err(err_data) => fail!(err_data.err_msg.clone())
         }
     }
     pub fn try_parse_addr(ip: &str) -> result::Result<IpAddr,ParseAddrErr> {

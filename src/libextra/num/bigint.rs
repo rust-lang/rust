@@ -282,7 +282,7 @@ impl Mul<BigUint, BigUint> for BigUint {
 
         fn mul_digit(a: &BigUint, n: BigDigit) -> BigUint {
             if n == 0 { return Zero::zero(); }
-            if n == 1 { return copy *a; }
+            if n == 1 { return (*a).clone(); }
 
             let mut carry = 0;
             let mut prod = do a.data.iter().transform |ai| {
@@ -357,10 +357,10 @@ impl Integer for BigUint {
     fn div_mod_floor(&self, other: &BigUint) -> (BigUint, BigUint) {
         if other.is_zero() { fail!() }
         if self.is_zero() { return (Zero::zero(), Zero::zero()); }
-        if *other == One::one() { return (copy *self, Zero::zero()); }
+        if *other == One::one() { return ((*self).clone(), Zero::zero()); }
 
         match self.cmp(other) {
-            Less    => return (Zero::zero(), copy *self),
+            Less    => return (Zero::zero(), (*self).clone()),
             Equal   => return (One::one(), Zero::zero()),
             Greater => {} // Do nothing
         }
@@ -411,7 +411,7 @@ impl Integer for BigUint {
         fn div_estimate(a: &BigUint, b: &BigUint, n: uint)
             -> (BigUint, BigUint, BigUint) {
             if a.data.len() < n {
-                return (Zero::zero(), Zero::zero(), copy *a);
+                return (Zero::zero(), Zero::zero(), (*a).clone());
             }
 
             let an = a.data.slice(a.data.len() - n, a.data.len());
@@ -428,7 +428,7 @@ impl Integer for BigUint {
 
             let shift = (a.data.len() - an.len()) - (b.data.len() - 1);
             if shift == 0 {
-                return (BigUint::new(d), One::one(), copy *b);
+                return (BigUint::new(d), One::one(), (*b).clone());
             }
             return (BigUint::from_slice(d).shl_unit(shift),
                     One::one::<BigUint>().shl_unit(shift),
@@ -444,8 +444,8 @@ impl Integer for BigUint {
 
     fn gcd(&self, other: &BigUint) -> BigUint {
         // Use Euclid's algorithm
-        let mut m = copy *self;
-        let mut n = copy *other;
+        let mut m = (*self).clone();
+        let mut n = (*other).clone();
         while !m.is_zero() {
             let temp = m;
             m = n % temp;
@@ -500,7 +500,7 @@ impl ToStrRadix for BigUint {
         if base == BigDigit::base {
             return fill_concat(self.data, radix, max_len)
         }
-        return fill_concat(convert_base(copy *self, base), radix, max_len);
+        return fill_concat(convert_base((*self).clone(), base), radix, max_len);
 
 
         fn convert_base(n: BigUint, base: uint) -> ~[BigDigit] {
@@ -612,14 +612,14 @@ impl BigUint {
 
 
     priv fn shl_unit(&self, n_unit: uint) -> BigUint {
-        if n_unit == 0 || self.is_zero() { return copy *self; }
+        if n_unit == 0 || self.is_zero() { return (*self).clone(); }
 
-        return BigUint::new(vec::from_elem(n_unit, 0) + self.data);
+        return BigUint::new(vec::from_elem(n_unit, 0u32) + self.data);
     }
 
 
     priv fn shl_bits(&self, n_bits: uint) -> BigUint {
-        if n_bits == 0 || self.is_zero() { return copy *self; }
+        if n_bits == 0 || self.is_zero() { return (*self).clone(); }
 
         let mut carry = 0;
         let mut shifted = do self.data.iter().transform |elem| {
@@ -635,7 +635,7 @@ impl BigUint {
 
 
     priv fn shr_unit(&self, n_unit: uint) -> BigUint {
-        if n_unit == 0 { return copy *self; }
+        if n_unit == 0 { return (*self).clone(); }
         if self.data.len() < n_unit { return Zero::zero(); }
         return BigUint::from_slice(
             self.data.slice(n_unit, self.data.len())
@@ -644,7 +644,7 @@ impl BigUint {
 
 
     priv fn shr_bits(&self, n_bits: uint) -> BigUint {
-        if n_bits == 0 || self.data.is_empty() { return copy *self; }
+        if n_bits == 0 || self.data.is_empty() { return (*self).clone(); }
 
         let mut borrow = 0;
         let mut shifted = ~[];

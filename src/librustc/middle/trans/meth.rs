@@ -60,7 +60,7 @@ pub fn trans_impl(ccx: @mut CrateContext,
     for methods.iter().advance |method| {
         if method.generics.ty_params.len() == 0u {
             let llfn = get_item_val(ccx, method.id);
-            let path = vec::append_one(/*bad*/copy sub_path,
+            let path = vec::append_one(sub_path.clone(),
                                        path_name(method.ident));
 
             trans_method(ccx,
@@ -72,18 +72,17 @@ pub fn trans_impl(ccx: @mut CrateContext,
     }
 }
 
-/**
-Translates a (possibly monomorphized) method body.
-
-# Parameters
-
-- `path`: the path to the method
-- `method`: the AST node for the method
-- `param_substs`: if this is a generic method, the current values for
-  type parameters and so forth, else none
-- `llfn`: the LLVM ValueRef for the method
-- `impl_id`: the node ID of the impl this method is inside
-*/
+/// Translates a (possibly monomorphized) method body.
+///
+/// Parameters:
+/// * `path`: the path to the method
+/// * `method`: the AST node for the method
+/// * `param_substs`: if this is a generic method, the current values for
+///   type parameters and so forth, else none
+/// * `llfn`: the LLVM ValueRef for the method
+/// * `impl_id`: the node ID of the impl this method is inside
+///
+/// XXX(pcwalton) Can we take `path` by reference?
 pub fn trans_method(ccx: @mut CrateContext,
                     path: path,
                     method: &ast::method,
@@ -226,9 +225,13 @@ pub fn trans_method_callee(bcx: block,
             match bcx.fcx.param_substs {
                 Some(@param_substs
                      {self_vtable: Some(ref vtbl), _}) => {
-                    trans_monomorphized_callee(bcx, callee_id, this, mentry,
-                                               trait_id, method_index,
-                                               copy *vtbl)
+                    trans_monomorphized_callee(bcx,
+                                               callee_id,
+                                               this,
+                                               mentry,
+                                               trait_id,
+                                               method_index,
+                                               (*vtbl).clone())
                 }
                 _ => {
                     fail!("trans_method_callee: missing self_vtable")
@@ -503,7 +506,7 @@ pub fn trans_trait_callee(bcx: block,
                           self_expr: @ast::expr,
                           store: ty::TraitStore,
                           explicit_self: ast::explicit_self_)
-                       -> Callee {
+                          -> Callee {
     //!
     //
     // Create a method callee where the method is coming from a trait
@@ -646,7 +649,7 @@ pub fn vtable_id(ccx: @mut CrateContext,
     match origin {
         &typeck::vtable_static(impl_id, ref substs, sub_vtables) => {
             let psubsts = param_substs {
-                tys: copy *substs,
+                tys: (*substs).clone(),
                 vtables: Some(sub_vtables),
                 self_ty: None,
                 self_vtable: None
@@ -733,7 +736,7 @@ pub fn make_impl_vtable(bcx: block,
         let fty = ty::subst_tps(tcx,
                                 substs,
                                 None,
-                                ty::mk_bare_fn(tcx, copy im.fty));
+                                ty::mk_bare_fn(tcx, im.fty.clone()));
         if im.generics.has_type_params() || ty::type_has_self(fty) {
             debug!("(making impl vtable) method has self or type params: %s",
                    tcx.sess.str_of(im.ident));
@@ -784,8 +787,8 @@ pub fn trans_trait_cast(bcx: block,
     bcx = expr::trans_into(bcx, val, SaveIn(llboxdest));
 
     // Store the vtable into the pair or triple.
-    let orig = /*bad*/copy ccx.maps.vtable_map.get(&id)[0][0];
-    let orig = resolve_vtable_in_fn_ctxt(bcx.fcx, orig);
+    let orig = ccx.maps.vtable_map.get(&id)[0][0].clone();
+    let orig = resolve_vtable_in_fn_ctxt(bcx.fcx, &orig);
     let vtable = get_vtable(bcx, v_ty, orig);
     Store(bcx, vtable, PointerCast(bcx,
                                    GEPi(bcx, lldest, [0u, abi::trt_field_vtable]),

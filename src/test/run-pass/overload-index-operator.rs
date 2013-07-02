@@ -17,6 +17,7 @@ struct AssociationList<K,V> {
     pairs: ~[AssociationPair<K,V>]
 }
 
+#[deriving(Clone)]
 struct AssociationPair<K,V> {
     key: K,
     value: V
@@ -28,11 +29,11 @@ impl<K,V> AssociationList<K,V> {
     }
 }
 
-impl<K:Eq,V:Copy> Index<K,V> for AssociationList<K,V> {
+impl<K:Eq,V:Clone> Index<K,V> for AssociationList<K,V> {
     fn index(&self, index: &K) -> V {
         for self.pairs.iter().advance |pair| {
             if pair.key == *index {
-                return copy pair.value;
+                return pair.value.clone();
             }
         }
         fail!("No value found for key: %?", index);
@@ -44,8 +45,8 @@ pub fn main() {
     let bar = ~"bar";
 
     let mut list = AssociationList {pairs: ~[]};
-    list.push(copy foo, 22);
-    list.push(copy bar, 44);
+    list.push(foo.clone(), 22);
+    list.push(bar.clone(), 44);
 
     assert!(list[foo] == 22)
     assert!(list[bar] == 44)

@@ -21,7 +21,7 @@ use std::local_data;
 use std::rand;
 use std::rand::RngUtil;
 
-#[deriving(Encodable, Decodable, Eq, IterBytes)]
+#[deriving(Clone, Encodable, Decodable, Eq, IterBytes)]
 pub enum binop {
     PLUS,
     MINUS,
@@ -35,7 +35,7 @@ pub enum binop {
     SHR,
 }
 
-#[deriving(Encodable, Decodable, Eq, IterBytes)]
+#[deriving(Clone, Encodable, Decodable, Eq, IterBytes)]
 pub enum Token {
     /* Expression-operator symbols. */
     EQ,
@@ -96,7 +96,7 @@ pub enum Token {
     EOF,
 }
 
-#[deriving(Encodable, Decodable, Eq, IterBytes)]
+#[deriving(Clone, Encodable, Decodable, Eq, IterBytes)]
 /// For interpolation during macro expansion.
 pub enum nonterminal {
     nt_item(@ast::item),
@@ -351,8 +351,8 @@ pub mod special_idents {
  * Maps a token to a record specifying the corresponding binary
  * operator
  */
-pub fn token_to_binop(tok: Token) -> Option<ast::binop> {
-  match tok {
+pub fn token_to_binop(tok: &Token) -> Option<ast::binop> {
+  match *tok {
       BINOP(STAR)    => Some(ast::mul),
       BINOP(SLASH)   => Some(ast::div),
       BINOP(PERCENT) => Some(ast::rem),
@@ -490,7 +490,7 @@ pub fn get_ident_interner() -> @ident_interner {
             (cast::transmute::<(uint, uint),
              &fn:Copy(v: @@::parse::token::ident_interner)>(
                  (-3 as uint, 0u)));
-        match local_data::get(key, |k| k.map(|&k| *k)) {
+        match local_data::get(unsafe_copy(&key), |k| k.map(|&k| *k)) {
             Some(interner) => *interner,
             None => {
                 let interner = mk_fresh_ident_interner();

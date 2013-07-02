@@ -10,9 +10,9 @@
 
 fn test() {
     let v: int = 1; //~ NOTE prior assignment occurs here
-    copy v;
+    v.clone();
     v = 2; //~ ERROR re-assignment of immutable variable
-    copy v;
+    v.clone();
 }
 
 fn main() {

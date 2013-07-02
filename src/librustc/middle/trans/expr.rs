@@ -570,8 +570,7 @@ fn trans_rvalue_dps_unadjusted(bcx: block, expr: @ast::expr,
             return controlflow::trans_if(bcx, cond, thn, els, dest);
         }
         ast::expr_match(discr, ref arms) => {
-            return _match::trans_match(bcx, expr, discr, /*bad*/copy *arms,
-                                       dest);
+            return _match::trans_match(bcx, expr, discr, *arms, dest);
         }
         ast::expr_block(ref blk) => {
             return do base::with_scope(bcx, blk.info(),

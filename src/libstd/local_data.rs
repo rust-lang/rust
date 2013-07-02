@@ -130,7 +130,7 @@ pub unsafe fn modify<T: 'static>(key: Key<@T>,
 pub unsafe fn modify<T: 'static>(key: Key<T>,
                                  f: &fn(Option<T>) -> Option<T>) {
     match f(pop(key)) {
-        Some(next) => { set(key, next); }
+        Some(next) => { set(::cast::unsafe_copy(key), next); }
         None => {}
     }
 }

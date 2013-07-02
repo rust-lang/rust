@@ -118,7 +118,7 @@ static COMMANDS: &'static [Command<'static>] = &[
 ];
 
 fn rustc_help() {
-    rustc::usage(copy os::args()[0])
+    rustc::usage(os::args()[0].clone())
 }
 
 fn find_cmd(command_string: &str) -> Option<Command> {
@@ -148,7 +148,7 @@ fn cmd_help(args: &[~str]) -> ValidUsage {
     }
 
     match args {
-        [ref command_string] => print_usage(copy *command_string),
+        [ref command_string] => print_usage((*command_string).clone()),
         _                    => Invalid
     }
 }

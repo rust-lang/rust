@@ -10,6 +10,7 @@
 
 #[allow(missing_doc)];
 
+use clone::Clone;
 use container::Container;
 use core::cmp::{Ord, Eq};
 use ops::{Add, Sub, Mul, Div, Rem, Neg};
@@ -467,7 +468,7 @@ priv static DIGIT_E_RADIX: uint = ('e' as uint) - ('a' as uint) + 11u;
  */
 pub fn from_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Copy+Div<T,T>+
                                     Mul<T,T>+Sub<T,T>+Neg<T>+Add<T,T>+
-                                    NumStrConv>(
+                                    NumStrConv+Clone>(
         buf: &[u8], radix: uint, negative: bool, fractional: bool,
         special: bool, exponent: ExponentFormat, empty_zero: bool,
         ignore_underscores: bool
@@ -528,8 +529,8 @@ pub fn from_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Copy+Div<T,T>+
 
     // Initialize accumulator with signed zero for floating point parsing to
     // work
-    let mut accum      = if accum_positive { copy _0 } else { -_1 * _0};
-    let mut last_accum = copy accum; // Necessary to detect overflow
+    let mut accum      = if accum_positive { _0.clone() } else { -_1 * _0};
+    let mut last_accum = accum.clone(); // Necessary to detect overflow
     let mut i          = start;
     let mut exp_found  = false;
 
@@ -540,7 +541,7 @@ pub fn from_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Copy+Div<T,T>+
         match char::to_digit(c, radix) {
             Some(digit) => {
                 // shift accum one digit left
-                accum = accum * copy radix_gen;
+                accum = accum * radix_gen.clone();
 
                 // add/subtract current digit depending on sign
                 if accum_positive {
@@ -555,7 +556,7 @@ pub fn from_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Copy+Div<T,T>+
                     if accum_positive && accum <= last_accum { return None; }
                     if !accum_positive && accum >= last_accum { return None; }
                 }
-                last_accum = copy accum;
+                last_accum = accum.clone();
             }
             None => match c {
                 '_' if ignore_underscores => {}
@@ -577,7 +578,7 @@ pub fn from_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Copy+Div<T,T>+
     // Parse fractional part of number
     // Skip if already reached start of exponent
     if !exp_found {
-        let mut power = copy _1;
+        let mut power = _1.clone();
 
         while i < len {
             let c = buf[i] as char;
@@ -599,7 +600,7 @@ pub fn from_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Copy+Div<T,T>+
                     // Detect overflow by comparing to last value
                     if accum_positive && accum < last_accum { return None; }
                     if !accum_positive && accum > last_accum { return None; }
-                    last_accum = copy accum;
+                    last_accum = accum.clone();
                 }
                 None => match c {
                     '_' if ignore_underscores => {}
@@ -625,7 +626,7 @@ pub fn from_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Copy+Div<T,T>+
         }
     }
 
-    let mut multiplier = copy _1;
+    let mut multiplier = _1.clone();
 
     if exp_found {
         let c = buf[i] as char;
@@ -663,7 +664,7 @@ pub fn from_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Copy+Div<T,T>+
  */
 #[inline]
 pub fn from_str_common<T:NumCast+Zero+One+Eq+Ord+Copy+Div<T,T>+Mul<T,T>+
-                              Sub<T,T>+Neg<T>+Add<T,T>+NumStrConv>(
+                              Sub<T,T>+Neg<T>+Add<T,T>+NumStrConv+Clone>(
         buf: &str, radix: uint, negative: bool, fractional: bool,
         special: bool, exponent: ExponentFormat, empty_zero: bool,
         ignore_underscores: bool

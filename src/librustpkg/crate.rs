@@ -12,6 +12,7 @@ use std::path::Path;
 use std::vec;
 
 /// A crate is a unit of Rust code to be compiled into a binary or library
+#[deriving(Clone)]
 pub struct Crate {
     file: Path,
     flags: ~[~str],
@@ -22,7 +23,7 @@ impl Crate {
 
     pub fn new(p: &Path) -> Crate {
         Crate {
-            file: copy *p,
+            file: (*p).clone(),
             flags: ~[],
             cfgs: ~[]
         }
@@ -30,29 +31,29 @@ impl Crate {
 
     fn flag(&self, flag: ~str) -> Crate {
         Crate {
-            flags: vec::append(copy self.flags, [flag]),
-            .. copy *self
+            flags: vec::append(self.flags.clone(), [flag]),
+            .. (*self).clone()
         }
     }
 
     fn flags(&self, flags: ~[~str]) -> Crate {
         Crate {
-            flags: vec::append(copy self.flags, flags),
-            .. copy *self
+            flags: vec::append(self.flags.clone(), flags),
+            .. (*self).clone()
         }
     }
 
     fn cfg(&self, cfg: ~str) -> Crate {
         Crate {
-            cfgs: vec::append(copy self.cfgs, [cfg]),
-            .. copy *self
+            cfgs: vec::append(self.cfgs.clone(), [cfg]),
+            .. (*self).clone()
         }
     }
 
     fn cfgs(&self, cfgs: ~[~str]) -> Crate {
         Crate {
-            cfgs: vec::append(copy self.cfgs, cfgs),
-            .. copy *self
+            cfgs: vec::append(self.cfgs.clone(), cfgs),
+            .. (*self).clone()
         }
     }
 }

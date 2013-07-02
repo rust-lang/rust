@@ -75,6 +75,7 @@ pub mod utils;
  * A structure shared across REPL instances for storing history
  * such as statements and view items. I wish the AST was sendable.
  */
+#[deriving(Clone)]
 pub struct Repl {
     prompt: ~str,
     binary: ~str,
@@ -99,7 +100,7 @@ fn run(mut repl: Repl, input: ~str) -> Repl {
         binary: binary,
         addl_lib_search_paths: @mut repl.lib_search_paths.map(|p| Path(*p)),
         jit: true,
-        .. copy *session::basic_options()
+        .. (*session::basic_options()).clone()
     };
     // Because we assume that everything is encodable (and assert so), add some
     // extra helpful information if the error crops up. Otherwise people are
@@ -205,7 +206,7 @@ fn run(mut repl: Repl, input: ~str) -> Repl {
     let dinput = driver::str_input(test.to_managed());
     let cfg = driver::build_configuration(sess, binary, &dinput);
     let outputs = driver::build_output_filenames(&dinput, &None, &None, [], sess);
-    let (crate, tcx) = driver::compile_upto(sess, copy cfg, &dinput,
+    let (crate, tcx) = driver::compile_upto(sess, cfg.clone(), &dinput,
                                             driver::cu_typeck, Some(outputs));
     // Once we're typechecked, record the types of all local variables defined
     // in this input
@@ -275,9 +276,9 @@ fn compile_crate(src_filename: ~str, binary: ~str) -> Option<bool> {
         let options = @session::options {
             binary: binary,
             addl_lib_search_paths: @mut ~[os::getcwd()],
-            .. copy *session::basic_options()
+            .. (*session::basic_options()).clone()
         };
-        let input = driver::file_input(copy src_path);
+        let input = driver::file_input(src_path.clone());
         let sess = driver::build_session(options, diagnostic::emit);
         *sess.building_library = true;
         let cfg = driver::build_configuration(sess, binary, &input);
@@ -368,11 +369,11 @@ fn run_cmd(repl: &mut Repl, _in: @io::Reader, _out: @io::Writer,
             for args.iter().advance |arg| {
                 let (crate, filename) =
                     if arg.ends_with(".rs") || arg.ends_with(".rc") {
-                    (arg.slice_to(arg.len() - 3).to_owned(), copy *arg)
+                    (arg.slice_to(arg.len() - 3).to_owned(), (*arg).clone())
                 } else {
-                    (copy *arg, *arg + ".rs")
+                    ((*arg).clone(), *arg + ".rs")
                 };
-                match compile_crate(filename, copy repl.binary) {
+                match compile_crate(filename, repl.binary.clone()) {
                     Some(_) => loaded_crates.push(crate),
                     None => { }
                 }
@@ -427,7 +428,7 @@ pub fn run_line(repl: &mut Repl, in: @io::Reader, out: @io::Writer, line: ~str,
         let len = split.len();
 
         if len > 0 {
-            let cmd = copy split[0];
+            let cmd = split[0].clone();
 
             if !cmd.is_empty() {
                 let args = if len > 1 {
@@ -448,7 +449,7 @@ pub fn run_line(repl: &mut Repl, in: @io::Reader, out: @io::Writer, line: ~str,
     }
 
     let line = Cell::new(line);
-    let r = Cell::new(copy *repl);
+    let r = Cell::new((*repl).clone());
     let result = do task::try {
         run(r.take(), line.take())
     };
@@ -465,7 +466,7 @@ pub fn main() {
     let out = io::stdout();
     let mut repl = Repl {
         prompt: ~"rusti> ",
-        binary: copy args[0],
+        binary: args[0].clone(),
         running: true,
         lib_search_paths: ~[],
 

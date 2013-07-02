@@ -208,9 +208,10 @@ impl CoherenceChecker {
 
                 match item.node {
                     item_impl(_, ref opt_trait, _, _) => {
-                        let opt_trait : ~[trait_ref] = opt_trait.iter()
-                                                                .transform(|x| copy *x)
-                                                                .collect();
+                        let opt_trait : ~[trait_ref] =
+                            opt_trait.iter()
+                                     .transform(|x| (*x).clone())
+                                     .collect();
                         self.check_implementation(item, opt_trait);
                     }
                     _ => {
@@ -358,14 +359,14 @@ impl CoherenceChecker {
             let new_generics = ty::Generics {
                 type_param_defs:
                     @vec::append(
-                        copy *impl_poly_type.generics.type_param_defs,
+                        (*impl_poly_type.generics.type_param_defs).clone(),
                         *new_method_ty.generics.type_param_defs),
                 region_param:
                     impl_poly_type.generics.region_param
             };
             let new_polytype = ty::ty_param_bounds_and_ty {
                 generics: new_generics,
-                ty: ty::mk_bare_fn(tcx, copy new_method_ty.fty)
+                ty: ty::mk_bare_fn(tcx, new_method_ty.fty.clone())
             };
             debug!("new_polytype=%s", new_polytype.repr(tcx));
 
@@ -901,7 +902,7 @@ impl CoherenceChecker {
 
             // XXX(sully): We could probably avoid this copy if there are no
             // default methods.
-            let mut methods = copy implementation.methods;
+            let mut methods = implementation.methods.clone();
             self.add_provided_methods_to_impl(&mut methods,
                                               &trait_ref.def_id,
                                               &implementation.did);

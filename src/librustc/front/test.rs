@@ -66,7 +66,7 @@ fn generate_test_harness(sess: session::Session,
     let cx: @mut TestCtxt = @mut TestCtxt {
         sess: sess,
         crate: crate,
-        ext_cx: ExtCtxt::new(sess.parse_sess, copy sess.opts.cfg),
+        ext_cx: ExtCtxt::new(sess.parse_sess, sess.opts.cfg.clone()),
         path: ~[],
         testfns: ~[]
     };
@@ -109,26 +109,31 @@ fn fold_mod(cx: @mut TestCtxt,
 
     fn nomain(cx: @mut TestCtxt, item: @ast::item) -> @ast::item {
         if !*cx.sess.building_library {
-            @ast::item{
+            @ast::item {
                 attrs: do item.attrs.iter().filter_map |attr| {
-                    if "main" != attr::get_attr_name(attr) {Some(*attr)} else {None}
+                    if "main" != attr::get_attr_name(attr) {
+                        Some(*attr)
+                    } else {
+                        None
+                    }
                 }.collect(),
-                .. copy *item}
-        } else { item }
+                .. (*item).clone()
+            }
+        } else {
+            item
+        }
     }
 
     let mod_nomain = ast::_mod {
-        view_items: /*bad*/copy m.view_items,
+        view_items: m.view_items.clone(),
         items: m.items.iter().transform(|i| nomain(cx, *i)).collect(),
     };
 
     fold::noop_fold_mod(&mod_nomain, fld)
 }
 
-fn fold_crate(cx: @mut TestCtxt,
-              c: &ast::crate_,
-              fld: @fold::ast_fold)
-           -> ast::crate_ {
+fn fold_crate(cx: @mut TestCtxt, c: &ast::crate_, fld: @fold::ast_fold)
+              -> ast::crate_ {
     let folded = fold::noop_fold_crate(c, fld);
 
     // Add a special __test module to the crate that will contain code
@@ -144,7 +149,7 @@ fn fold_item(cx: @mut TestCtxt, i: @ast::item, fld: @fold::ast_fold)
           -> Option<@ast::item> {
     cx.path.push(i.ident);
     debug!("current path: %s",
-           ast_util::path_name_i(copy cx.path));
+           ast_util::path_name_i(cx.path.clone()));
 
     if is_test_fn(cx, i) || is_bench_fn(i) {
         match i.node {
@@ -158,7 +163,7 @@ fn fold_item(cx: @mut TestCtxt, i: @ast::item, fld: @fold::ast_fold)
             debug!("this is a test function");
             let test = Test {
                 span: i.span,
-                path: /*bad*/copy cx.path,
+                path: cx.path.clone(),
                 bench: is_bench_fn(i),
                 ignore: is_ignored(cx, i),
                 should_fail: should_fail(i)
@@ -235,7 +240,7 @@ fn is_ignored(cx: @mut TestCtxt, i: @ast::item) -> bool {
             .filter_map(|i| attr::get_meta_item_list(i))
             .collect::<~[~[@ast::meta_item]]>()
             .concat_vec();
-        config::metas_in_cfg(/*bad*/copy cx.crate.node.config, cfg_metas)
+        config::metas_in_cfg(cx.crate.node.config.clone(), cfg_metas)
     } else {
         false
     }
@@ -248,8 +253,8 @@ fn should_fail(i: @ast::item) -> bool {
 fn add_test_module(cx: &TestCtxt, m: &ast::_mod) -> ast::_mod {
     let testmod = mk_test_module(cx);
     ast::_mod {
-        items: vec::append_one(/*bad*/copy m.items, testmod),
-        .. /*bad*/ copy *m
+        items: vec::append_one(m.items.clone(), testmod),
+        ..(*m).clone()
     }
 }
 
@@ -333,7 +338,7 @@ fn mk_test_module(cx: &TestCtxt) -> @ast::item {
      };
 
     debug!("Synthetic test module:\n%s\n",
-           pprust::item_to_str(@copy item, cx.sess.intr()));
+           pprust::item_to_str(@item.clone(), cx.sess.intr()));
 
     return @item;
 }
@@ -406,7 +411,7 @@ fn mk_test_descs(cx: &TestCtxt) -> @ast::expr {
 
 fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: &Test) -> @ast::expr {
     let span = test.span;
-    let path = /*bad*/copy test.path;
+    let path = test.path.clone();
 
     let ext_cx = cx.ext_cx;
 

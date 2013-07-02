@@ -16,6 +16,7 @@ trait noisy {
   fn speak(&mut self);
 }
 
+#[deriving(Clone)]
 struct cat {
     priv meows : uint,
 
@@ -68,6 +69,6 @@ pub fn main() {
   nyan.eat();
   assert!((!nyan.eat()));
   for uint::range(1u, 10u) |_i| {
-    make_speak(copy nyan);
+    make_speak(nyan.clone());
   }
 }

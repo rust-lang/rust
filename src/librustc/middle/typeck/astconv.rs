@@ -105,7 +105,7 @@ pub fn get_region_reporting_err(
     }
 }
 
-pub fn ast_region_to_region<AC:AstConv,RS:region_scope + Copy + 'static>(
+pub fn ast_region_to_region<AC:AstConv,RS:region_scope + Clone + 'static>(
     this: &AC,
     rscope: &RS,
     default_span: span,
@@ -130,7 +130,7 @@ pub fn ast_region_to_region<AC:AstConv,RS:region_scope + Copy + 'static>(
     get_region_reporting_err(this.tcx(), span, opt_lifetime, res)
 }
 
-fn ast_path_substs<AC:AstConv,RS:region_scope + Copy + 'static>(
+fn ast_path_substs<AC:AstConv,RS:region_scope + Clone + 'static>(
     this: &AC,
     rscope: &RS,
     def_id: ast::def_id,
@@ -184,12 +184,13 @@ fn ast_path_substs<AC:AstConv,RS:region_scope + Copy + 'static>(
     substs {self_r:self_r, self_ty:self_ty, tps:tps}
 }
 
-pub fn ast_path_to_substs_and_ty<AC:AstConv,RS:region_scope + Copy + 'static>(
-    this: &AC,
-    rscope: &RS,
-    did: ast::def_id,
-    path: &ast::Path) -> ty_param_substs_and_ty
-{
+pub fn ast_path_to_substs_and_ty<AC:AstConv,
+                                 RS:region_scope + Clone + 'static>(
+                                 this: &AC,
+                                 rscope: &RS,
+                                 did: ast::def_id,
+                                 path: &ast::Path)
+                                 -> ty_param_substs_and_ty {
     let tcx = this.tcx();
     let ty::ty_param_bounds_and_ty {
         generics: generics,
@@ -201,7 +202,7 @@ pub fn ast_path_to_substs_and_ty<AC:AstConv,RS:region_scope + Copy + 'static>(
     ty_param_substs_and_ty { substs: substs, ty: ty }
 }
 
-pub fn ast_path_to_trait_ref<AC:AstConv,RS:region_scope + Copy + 'static>(
+pub fn ast_path_to_trait_ref<AC:AstConv,RS:region_scope + Clone + 'static>(
     this: &AC,
     rscope: &RS,
     trait_def_id: ast::def_id,
@@ -224,7 +225,7 @@ pub fn ast_path_to_trait_ref<AC:AstConv,RS:region_scope + Copy + 'static>(
     return trait_ref;
 }
 
-pub fn ast_path_to_ty<AC:AstConv,RS:region_scope + Copy + 'static>(
+pub fn ast_path_to_ty<AC:AstConv,RS:region_scope + Clone + 'static>(
         this: &AC,
         rscope: &RS,
         did: ast::def_id,
@@ -246,10 +247,10 @@ pub static NO_TPS: uint = 2;
 // Parses the programmer's textual representation of a type into our
 // internal notion of a type. `getter` is a function that returns the type
 // corresponding to a definition ID:
-pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Copy + 'static>(
+pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Clone + 'static>(
     this: &AC, rscope: &RS, ast_ty: &ast::Ty) -> ty::t {
 
-    fn ast_mt_to_mt<AC:AstConv, RS:region_scope + Copy + 'static>(
+    fn ast_mt_to_mt<AC:AstConv, RS:region_scope + Clone + 'static>(
         this: &AC, rscope: &RS, mt: &ast::mt) -> ty::mt {
 
         ty::mt {ty: ast_ty_to_ty(this, rscope, mt.ty), mutbl: mt.mutbl}
@@ -258,7 +259,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Copy + 'static>(
     // Handle @, ~, and & being able to mean estrs and evecs.
     // If a_seq_ty is a str or a vec, make it an estr/evec.
     // Also handle first-class trait types.
-    fn mk_pointer<AC:AstConv,RS:region_scope + Copy + 'static>(
+    fn mk_pointer<AC:AstConv,RS:region_scope + Clone + 'static>(
         this: &AC,
         rscope: &RS,
         a_seq_ty: &ast::mt,
@@ -305,7 +306,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Copy + 'static>(
                         let bounds = conv_builtin_bounds(this.tcx(), bounds, trait_store);
                         return ty::mk_trait(tcx,
                                             result.def_id,
-                                            copy result.substs,
+                                            result.substs.clone(),
                                             trait_store,
                                             a_seq_ty.mutbl,
                                             bounds);
@@ -522,7 +523,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Copy + 'static>(
 }
 
 pub fn ty_of_arg<AC:AstConv,
-                 RS:region_scope + Copy + 'static>(
+                 RS:region_scope + Clone + 'static>(
                  this: &AC,
                  rscope: &RS,
                  a: &ast::arg,
@@ -570,7 +571,7 @@ struct SelfInfo {
     explicit_self: ast::explicit_self
 }
 
-pub fn ty_of_method<AC:AstConv,RS:region_scope + Copy + 'static>(
+pub fn ty_of_method<AC:AstConv,RS:region_scope + Clone + 'static>(
     this: &AC,
     rscope: &RS,
     purity: ast::purity,
@@ -588,7 +589,7 @@ pub fn ty_of_method<AC:AstConv,RS:region_scope + Copy + 'static>(
     (a.get(), b)
 }
 
-pub fn ty_of_bare_fn<AC:AstConv,RS:region_scope + Copy + 'static>(
+pub fn ty_of_bare_fn<AC:AstConv,RS:region_scope + Clone + 'static>(
     this: &AC,
     rscope: &RS,
     purity: ast::purity,
@@ -601,7 +602,7 @@ pub fn ty_of_bare_fn<AC:AstConv,RS:region_scope + Copy + 'static>(
     b
 }
 
-fn ty_of_method_or_bare_fn<AC:AstConv,RS:region_scope + Copy + 'static>(
+fn ty_of_method_or_bare_fn<AC:AstConv,RS:region_scope + Clone + 'static>(
     this: &AC,
     rscope: &RS,
     purity: ast::purity,
@@ -615,7 +616,9 @@ fn ty_of_method_or_bare_fn<AC:AstConv,RS:region_scope + Copy + 'static>(
     // new region names that appear inside of the fn decl are bound to
     // that function type
     let bound_lifetime_names = bound_lifetimes(this, lifetimes);
-    let rb = in_binding_rscope(rscope, RegionParamNames(copy bound_lifetime_names));
+    let rb =
+        in_binding_rscope(rscope,
+                          RegionParamNames(bound_lifetime_names.clone()));
 
     let opt_transformed_self_ty = opt_self_info.map(|&self_info| {
         transform_self_ty(this, &rb, self_info)
@@ -637,7 +640,7 @@ fn ty_of_method_or_bare_fn<AC:AstConv,RS:region_scope + Copy + 'static>(
                                 output: output_ty}
             });
 
-    fn transform_self_ty<AC:AstConv,RS:region_scope + Copy + 'static>(
+    fn transform_self_ty<AC:AstConv,RS:region_scope + Clone + 'static>(
         this: &AC,
         rscope: &RS,
         self_info: &SelfInfo) -> Option<ty::t>
@@ -670,7 +673,7 @@ fn ty_of_method_or_bare_fn<AC:AstConv,RS:region_scope + Copy + 'static>(
     }
 }
 
-pub fn ty_of_closure<AC:AstConv,RS:region_scope + Copy + 'static>(
+pub fn ty_of_closure<AC:AstConv,RS:region_scope + Clone + 'static>(
     this: &AC,
     rscope: &RS,
     sigil: ast::Sigil,
@@ -716,7 +719,9 @@ pub fn ty_of_closure<AC:AstConv,RS:region_scope + Copy + 'static>(
     // new region names that appear inside of the fn decl are bound to
     // that function type
     let bound_lifetime_names = bound_lifetimes(this, lifetimes);
-    let rb = in_binding_rscope(rscope, RegionParamNames(copy bound_lifetime_names));
+    let rb =
+        in_binding_rscope(rscope,
+                          RegionParamNames(bound_lifetime_names.clone()));
 
     let input_tys = do decl.inputs.iter().enumerate().transform |(i, a)| {
         let expected_arg_ty = do expected_sig.chain_ref |e| {

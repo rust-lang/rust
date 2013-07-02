@@ -9,11 +9,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-struct point {x: int, y: int}
+#[deriving(Clone)]
+struct point {
+    x: int,
+    y: int,
+}
 
 fn main() {
     let mut origin: point;
     origin = point {x: 10,.. origin}; //~ ERROR use of possibly uninitialized variable: `origin`
-    copy origin;
+    origin.clone();
 }

@@ -56,7 +56,8 @@ impl gen_send for message {
                 next.generics.ty_params.len());
             let arg_names = vec::from_fn(tys.len(), |i| cx.ident_of("x_"+i.to_str()));
             let args_ast: ~[ast::arg] = arg_names.iter().zip(tys.iter())
-                .transform(|(n, t)| cx.arg(span, copy *n, copy *t)).collect();
+                .transform(|(n, t)|
+                    cx.arg(span, (*n).clone(), (*t).clone())).collect();
 
             let pipe_ty = cx.ty_path(
                 path(~[this.data_name()], span)
@@ -117,7 +118,7 @@ impl gen_send for message {
 
             let mut rty = cx.ty_path(path(~[next.data_name()],
                                           span)
-                                     .add_tys(copy next_state.tys), None);
+                                     .add_tys(next_state.tys.clone()), None);
             if try {
                 rty = cx.ty_option(rty);
             }
@@ -137,7 +138,8 @@ impl gen_send for message {
                 let arg_names = vec::from_fn(tys.len(), |i| "x_" + i.to_str());
 
                 let args_ast: ~[ast::arg] = arg_names.iter().zip(tys.iter())
-                    .transform(|(n, t)| cx.arg(span, cx.ident_of(*n), copy *t)).collect();
+                    .transform(|(n, t)|
+                        cx.arg(span, cx.ident_of(*n), (*t).clone())).collect();
 
                 let args_ast = vec::append(
                     ~[cx.arg(span,
@@ -152,7 +154,7 @@ impl gen_send for message {
                     ~""
                 }
                 else {
-                    ~"(" + arg_names.map(|x| copy *x).connect(", ") + ")"
+                    ~"(" + arg_names.map(|x| (*x).clone()).connect(", ") + ")"
                 };
 
                 let mut body = ~"{ ";
@@ -209,7 +211,7 @@ impl to_type_decls for state {
         let mut items_msg = ~[];
 
         for self.messages.iter().advance |m| {
-            let message(name, span, tys, this, next) = copy *m;
+            let message(name, span, tys, this, next) = (*m).clone();
 
             let tys = match next {
               Some(ref next_state) => {
@@ -225,7 +227,7 @@ impl to_type_decls for state {
                                 cx.ty_path(
                                     path(~[cx.ident_of(dir),
                                            cx.ident_of(next_name)], span)
-                                    .add_tys(copy next_state.tys), None))
+                                    .add_tys(next_state.tys.clone()), None))
               }
               None => tys
             };
@@ -374,7 +376,7 @@ impl gen_init for protocol {
         for self.states.iter().advance |s| {
             for s.generics.ty_params.iter().advance |tp| {
                 match params.iter().find_(|tpp| tp.ident == tpp.ident) {
-                  None => params.push(copy *tp),
+                  None => params.push((*tp).clone()),
                   _ => ()
                 }
             }
@@ -392,7 +394,7 @@ impl gen_init for protocol {
         let fields = do self.states.iter().transform |s| {
             for s.generics.ty_params.iter().advance |tp| {
                 match params.iter().find_(|tpp| tp.ident == tpp.ident) {
-                  None => params.push(copy *tp),
+                  None => params.push((*tp).clone()),
                   _ => ()
                 }
             }

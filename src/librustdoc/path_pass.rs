@@ -38,7 +38,7 @@ impl Clone for Ctxt {
     fn clone(&self) -> Ctxt {
         Ctxt {
             srv: self.srv.clone(),
-            path: @mut copy *self.path
+            path: @mut (*self.path).clone()
         }
     }
 }
@@ -61,7 +61,7 @@ fn run(srv: astsrv::Srv, doc: doc::Doc) -> doc::Doc {
 
 fn fold_item(fold: &fold::Fold<Ctxt>, doc: doc::ItemDoc) -> doc::ItemDoc {
     doc::ItemDoc {
-        path: copy *fold.ctxt.path,
+        path: (*fold.ctxt.path).clone(),
         .. doc
     }
 }
@@ -75,7 +75,7 @@ fn fold_mod(fold: &fold::Fold<Ctxt>, doc: doc::ModDoc) -> doc::ModDoc {
     if !is_topmod { fold.ctxt.path.pop(); }
 
     doc::ModDoc {
-        item: (fold.fold_item)(fold, copy doc.item),
+        item: (fold.fold_item)(fold, doc.item.clone()),
         .. doc
     }
 }
@@ -86,7 +86,7 @@ fn fold_nmod(fold: &fold::Fold<Ctxt>, doc: doc::NmodDoc) -> doc::NmodDoc {
     fold.ctxt.path.pop();
 
     doc::NmodDoc {
-        item: (fold.fold_item)(fold, copy doc.item),
+        item: (fold.fold_item)(fold, doc.item.clone()),
         .. doc
     }
 }

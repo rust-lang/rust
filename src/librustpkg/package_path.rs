@@ -10,16 +10,30 @@
 
 // rustpkg utilities having to do with local and remote paths
 
-use std::path::Path;
-use std::option::Some;
-use std::hash;
-use std::rt::io::Writer;
+use std::clone::Clone;
 use std::hash::Streaming;
+use std::hash;
+use std::option::Some;
+use std::path::Path;
+use std::rt::io::Writer;
 
 /// Wrappers to prevent local and remote paths from getting confused
 /// (These will go away after #6407)
 pub struct RemotePath (Path);
+
+impl Clone for RemotePath {
+    fn clone(&self) -> RemotePath {
+        RemotePath((**self).clone())
+    }
+}
+
 pub struct LocalPath (Path);
+
+impl Clone for LocalPath {
+    fn clone(&self) -> LocalPath {
+        LocalPath((**self).clone())
+    }
+}
 
 
 // normalize should be the only way to construct a LocalPath

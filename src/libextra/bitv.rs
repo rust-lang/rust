@@ -266,7 +266,7 @@ impl Bitv {
         else {
             let nelems = nbits/uint::bits +
                          if nbits % uint::bits == 0 {0} else {1};
-            let elem = if init {!0} else {0};
+            let elem = if init {!0u} else {0u};
             let s = vec::from_elem(nelems, elem);
             Big(~BigBitv::new(s))
         };
@@ -518,7 +518,7 @@ impl Clone for Bitv {
             Bitv{nbits: self.nbits, rep: Small(~SmallBitv{bits: b.bits})}
           }
           Big(ref b) => {
-            let mut st = vec::from_elem(self.nbits / uint::bits + 1, 0);
+            let mut st = vec::from_elem(self.nbits / uint::bits + 1, 0u);
             let len = st.len();
             for uint::range(0, len) |i| { st[i] = b.storage[i]; };
             Bitv{nbits: self.nbits, rep: Big(~BigBitv{storage: st})}

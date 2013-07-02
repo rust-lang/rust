@@ -211,14 +211,14 @@ impl<'self> FromBase64 for &'self [u8] {
             let val = byte as u32;
 
             match ch {
-                'A'..'Z'  => buf |= val - 0x41,
-                'a'..'z'  => buf |= val - 0x47,
-                '0'..'9'  => buf |= val + 0x04,
-                '+'|'-'   => buf |= 0x3E,
-                '/'|'_'   => buf |= 0x3F,
+                'A'..'Z' => buf |= val - 0x41,
+                'a'..'z' => buf |= val - 0x47,
+                '0'..'9' => buf |= val + 0x04,
+                '+'|'-' => buf |= 0x3E,
+                '/'|'_' => buf |= 0x3F,
                 '\r'|'\n' => loop,
-                '='       => break,
-                _         => return Err(~"Invalid Base64 character")
+                '=' => break,
+                _ => return Err(~"Invalid Base64 character")
             }
 
             buf <<= 6;

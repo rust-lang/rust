@@ -63,7 +63,7 @@ fn zero_substructure(cx: @ExtCtxt, span: span, substr: &Substructure) -> @expr {
         cx.ident_of("zero")
     ];
     let zero_call = || {
-        cx.expr_call_global(span, copy zero_ident, ~[])
+        cx.expr_call_global(span, zero_ident.clone(), ~[])
     };
 
     return match *substr.fields {
