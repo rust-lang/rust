@@ -17,7 +17,7 @@ use iterator::IteratorUtil;
 use vec::{OwnedVector, MutableVector};
 use result::{Result, Ok, Err};
 use unstable::run_in_bare_thread;
-use super::io::net::ip::{IpAddr, Ipv4};
+use super::io::net::ip::{IpAddr, Ipv4, Ipv6};
 use rt::comm::oneshot;
 use rt::task::Task;
 use rt::thread::Thread;
@@ -405,9 +405,14 @@ pub fn next_test_port() -> u16 {
     }
 }
 
-/// Get a unique localhost:port pair starting at 9600
+/// Get a unique IPv4 localhost:port pair starting at 9600
 pub fn next_test_ip4() -> IpAddr {
     Ipv4(127, 0, 0, 1, next_test_port())
+}
+
+/// Get a unique IPv6 localhost:port pair starting at 9600
+pub fn next_test_ip6() -> IpAddr {
+    Ipv6(0, 0, 0, 0, 0, 0, 0, 1, next_test_port())
 }
 
 /// Get a constant that represents the number of times to repeat stress tests. Default 1.

@@ -23,6 +23,7 @@ pub type IoFactoryObject = uvio::UvIoFactory;
 pub type RtioTcpStreamObject = uvio::UvTcpStream;
 pub type RtioTcpListenerObject = uvio::UvTcpListener;
 pub type RtioUdpSocketObject = uvio::UvUdpSocket;
+pub type RtioTcpSocketObject = (); // TODO
 
 pub trait EventLoop {
     fn run(&mut self);
@@ -48,16 +49,39 @@ pub trait IoFactory {
     fn udp_bind(&mut self, addr: IpAddr) -> Result<~RtioUdpSocketObject, IoError>;
 }
 
-pub trait RtioTcpListener {
+pub trait RtioTcpListener : RtioSocket {
     fn accept(&mut self) -> Result<~RtioTcpStreamObject, IoError>;
+    fn accept_simultaneously(&self);
+    fn dont_accept_simultaneously(&self);
 }
 
-pub trait RtioTcpStream {
+pub trait RtioTcpStream : RtioSocket {
     fn read(&self, buf: &mut [u8]) -> Result<uint, IoError>;
     fn write(&self, buf: &[u8]) -> Result<(), IoError>;
+    fn peer_name(&self) -> IpAddr;
+    fn control_congestion(&self);
+    fn nodelay(&self);
+    fn keepalive(&self, delay_in_seconds: uint);
+    fn letdie(&self);
 }
 
-pub trait RtioUdpSocket {
+pub trait RtioSocket {
+    fn socket_name(&self) -> IpAddr;
+}
+
+pub trait RtioUdpSocket : RtioSocket {
     fn recvfrom(&self, buf: &mut [u8]) -> Result<(uint, IpAddr), IoError>;
     fn sendto(&self, buf: &[u8], dst: IpAddr) -> Result<(), IoError>;
+
+    fn join_multicast(&self, multi: IpAddr);
+    fn leave_multicast(&self, multi: IpAddr);
+
+    fn loop_multicast_locally(&self);
+    fn dont_loop_multicast_locally(&self);
+
+    fn multicast_time_to_live(&self, ttl: int);
+    fn time_to_live(&self, ttl: int);
+
+    fn hear_broadcasts(&self);
+    fn ignore_broadcasts(&self);
 }

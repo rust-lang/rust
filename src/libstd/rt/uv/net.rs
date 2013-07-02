@@ -15,48 +15,144 @@ use rt::uv::uvll::*;
 use rt::uv::{AllocCallback, ConnectionCallback, ReadCallback, UdpReceiveCallback, UdpSendCallback};
 use rt::uv::{Loop, Watcher, Request, UvError, Buf, NativeHandle, NullCallback,
              status_to_maybe_uv_error};
-use rt::io::net::ip::{IpAddr, Ipv4};
+use rt::io::net::ip::{IpAddr, Ipv4, Ipv6};
 use rt::uv::last_uv_error;
 use vec;
 use str;
 use from_str::{FromStr};
+use num;
 
-pub fn ip4_as_uv_ip4<T>(addr: IpAddr, f: &fn(*sockaddr_in) -> T) -> T {
-    match addr {
-        Ipv4(a, b, c, d, p) => {
-            unsafe {
-                let addr = malloc_ip4_addr(fmt!("%u.%u.%u.%u",
-                                                a as uint,
-                                                b as uint,
-                                                c as uint,
-                                                d as uint), p as int);
-                do (|| {
-                    f(addr)
-                }).finally {
-                    free_ip4_addr(addr);
-                }
-            }
+enum UvIpAddr {
+    UvIpv4(*sockaddr_in),
+    UvIpv6(*sockaddr_in6),
+}
+
+fn sockaddr_to_UvIpAddr(addr: *uvll::sockaddr) -> UvIpAddr {
+    unsafe {
+        assert!((is_ip4_addr(addr) || is_ip6_addr(addr)));
+        assert!(!(is_ip4_addr(addr) && is_ip6_addr(addr)));
+        match addr {
+            _ if is_ip4_addr(addr) => UvIpv4(as_sockaddr_in(addr)),
+            _ if is_ip6_addr(addr) => UvIpv6(as_sockaddr_in6(addr)),
+            _ => fail!(),
         }
-        _ => fail!() // TODO ipv6
     }
 }
 
-pub fn uv_ip4_to_ip4(addr: *sockaddr_in) -> IpAddr {
-    let ip4_size = 16;
-    let buf = vec::from_elem(ip4_size + 1 /*null terminated*/, 0u8);
-    unsafe { uvll::ip4_name(addr, vec::raw::to_ptr(buf), ip4_size as u64) };
-    let port = unsafe { uvll::ip4_port(addr) };
-    let ip_str = str::from_bytes_slice(buf).trim_right_chars(&'\x00');
-    let ip: ~[u8] = ip_str.split_iter('.')
-                          .transform(|s: &str| -> u8 {
-                                        let x = FromStr::from_str(s);
-                                        assert!(x.is_some());
-                                        x.unwrap() })
-                          .collect();
-    assert!(ip.len() >= 4);
-    Ipv4(ip[0], ip[1], ip[2], ip[3], port as u16)
+fn ip_as_uv_ip<T>(addr: IpAddr, f: &fn(UvIpAddr) -> T) -> T {
+    let malloc = match addr {
+        Ipv4(*) => malloc_ip4_addr,
+        Ipv6(*) => malloc_ip6_addr,
+    };
+    let wrap = match addr {
+        Ipv4(*) => UvIpv4,
+        Ipv6(*) => UvIpv6,
+    };
+    let ip_str = match addr {
+        Ipv4(x1, x2, x3, x4, _) =>
+            fmt!("%u.%u.%u.%u", x1 as uint, x2 as uint, x3 as uint, x4 as uint),
+        Ipv6(x1, x2, x3, x4, x5, x6, x7, x8, _) =>
+            fmt!("%x:%x:%x:%x:%x:%x:%x:%x",
+                  x1 as uint, x2 as uint, x3 as uint, x4 as uint,
+                  x5 as uint, x6 as uint, x7 as uint, x8 as uint),
+    };
+    let port = match addr {
+        Ipv4(_, _, _, _, p) | Ipv6(_, _, _, _, _, _, _, _, p) => p as int
+    };
+    let free = match addr {
+        Ipv4(*) => free_ip4_addr,
+        Ipv6(*) => free_ip6_addr,
+    };
+
+    let addr = unsafe { malloc(ip_str, port) };
+    do (|| {
+        f(wrap(addr))
+    }).finally {
+        unsafe { free(addr) };
+    }
 }
 
+fn uv_ip_as_ip<T>(addr: UvIpAddr, f: &fn(IpAddr) -> T) -> T {
+    let ip_size = match addr {
+        UvIpv4(*) => 4/*groups of*/ * 3/*digits separated by*/ + 3/*periods*/,
+        UvIpv6(*) => 8/*groups of*/ * 4/*hex digits separated by*/ + 7 /*colons*/,
+    };
+    let ip_name = {
+        let buf = vec::from_elem(ip_size + 1 /*null terminated*/, 0u8);
+        unsafe {
+            match addr {
+                UvIpv4(addr) => uvll::ip4_name(addr, vec::raw::to_ptr(buf), ip_size as u64),
+                UvIpv6(addr) => uvll::ip6_name(addr, vec::raw::to_ptr(buf), ip_size as u64),
+            }
+        };
+        buf
+    };
+    let ip_port = unsafe {
+        let port = match addr {
+            UvIpv4(addr) => uvll::ip4_port(addr),
+            UvIpv6(addr) => uvll::ip6_port(addr),
+        };
+        port as u16
+    };
+    let ip_str = str::from_bytes_slice(ip_name).trim_right_chars(&'\x00');
+    let ip = match addr {
+        UvIpv4(*) => {
+            let ip: ~[u8] = 
+                ip_str.split_iter('.')
+                      .transform(|s: &str| -> u8 { FromStr::from_str(s).unwrap() })
+                      .collect();
+            assert_eq!(ip.len(), 4);
+            Ipv4(ip[0], ip[1], ip[2], ip[3], ip_port)
+        },
+        UvIpv6(*) => {
+            let ip: ~[u16] = {
+                let read_hex_segment = |s: &str| -> u16 {
+                    num::FromStrRadix::from_str_radix(s, 16u).unwrap()
+                };
+                let convert_each_segment = |s: &str| -> ~[u16] {
+                    match s {
+                        "" => ~[],
+                        s => s.split_iter(':').transform(read_hex_segment).collect(),
+                    }
+                };
+                let expand_shorthand_and_convert = |s: &str| -> ~[~[u16]] {
+                    s.split_str_iter("::").transform(convert_each_segment).collect()
+                };
+                match expand_shorthand_and_convert(ip_str) {
+                    [x] => x, // no shorthand found
+                    [l, r] => l + vec::from_elem(8 - l.len() - r.len(), 0u16) + r, // fill the gap
+                    _ => fail!(), // impossible. only one shorthand allowed.
+                }
+            };
+            assert_eq!(ip.len(), 8);
+            Ipv6(ip[0], ip[1], ip[2], ip[3], ip[4], ip[5], ip[6], ip[7], ip_port)
+        },
+    };
+
+    // finally run the closure
+    f(ip)
+}
+
+fn uv_ip_to_ip(addr: UvIpAddr) -> IpAddr {
+    use util;
+    uv_ip_as_ip(addr, util::id)
+}
+
+#[cfg(test)]
+#[test]
+fn test_ip4_conversion() {
+    use rt;
+    let ip4 = rt::test::next_test_ip4();
+    assert_eq!(ip4, ip_as_uv_ip(ip4, uv_ip_to_ip));
+}
+
+#[cfg(test)]
+#[test]
+fn test_ip6_conversion() {
+    use rt;
+    let ip6 = rt::test::next_test_ip6();
+    assert_eq!(ip6, ip_as_uv_ip(ip6, uv_ip_to_ip));
+}
 
 // uv_stream t is the parent class of uv_tcp_t, uv_pipe_t, uv_tty_t
 // and uv_file_t
@@ -169,18 +265,17 @@ impl TcpWatcher {
     }
 
     pub fn bind(&mut self, address: IpAddr) -> Result<(), UvError> {
-        match address {
-            Ipv4(*) => {
-                do ip4_as_uv_ip4(address) |addr| {
-                    let result = unsafe { uvll::tcp_bind(self.native_handle(), addr) };
-                    if result == 0 {
-                        Ok(())
-                    } else {
-                        Err(last_uv_error(self))
-                    }
+        do ip_as_uv_ip(address) |addr| {
+            let result = unsafe {
+                match addr {
+                    UvIpv4(addr) => uvll::tcp_bind(self.native_handle(), addr),
+                    UvIpv6(addr) => uvll::tcp_bind6(self.native_handle(), addr),
                 }
+            };
+            match result {
+                0 => Ok(()),
+                _ => Err(last_uv_error(self)),
             }
-            _ => fail!()
         }
     }
 
@@ -190,16 +285,13 @@ impl TcpWatcher {
             self.get_watcher_data().connect_cb = Some(cb);
 
             let connect_handle = ConnectRequest::new().native_handle();
-            match address {
-                Ipv4(*) => {
-                    do ip4_as_uv_ip4(address) |addr| {
-                        rtdebug!("connect_t: %x", connect_handle as uint);
-                        assert_eq!(0, 
-                                   uvll::tcp_connect(connect_handle, self.native_handle(),
-                                                    addr, connect_cb));
-                    }
-                }
-                _ => fail!()
+            rtdebug!("connect_t: %x", connect_handle as uint);
+            do ip_as_uv_ip(address) |addr| {
+                let result = match addr {
+                    UvIpv4(addr) => uvll::tcp_connect(connect_handle, self.native_handle(), addr, connect_cb),
+                    UvIpv6(addr) => uvll::tcp_connect6(connect_handle, self.native_handle(), addr, connect_cb),
+                };
+                assert_eq!(0, result);
             }
 
             extern fn connect_cb(req: *uvll::uv_connect_t, status: c_int) {
@@ -266,20 +358,17 @@ impl UdpWatcher {
     }
 
     pub fn bind(&self, address: IpAddr) -> Result<(), UvError> {
-        match address {
-            Ipv4(*) => {
-                do ip4_as_uv_ip4(address) |addr| {
-                    let result = unsafe {
-                        uvll::udp_bind(self.native_handle(), addr, 0u32)
-                    };
-                    if result == 0 {
-                        Ok(())
-                    } else {
-                        Err(last_uv_error(self))
-                    }
+        do ip_as_uv_ip(address) |addr| {
+            let result = unsafe {
+                match addr {
+                    UvIpv4(addr) => uvll::udp_bind(self.native_handle(), addr, 0u32),
+                    UvIpv6(addr) => uvll::udp_bind6(self.native_handle(), addr, 0u32),
                 }
+            };
+            match result {
+                0 => Ok(()),
+                _ => Err(last_uv_error(self)),
             }
-            _ => fail!() // TODO ipv6
         }
     }
 
@@ -299,17 +388,15 @@ impl UdpWatcher {
             return (*alloc_cb)(suggested_size as uint);
         }
 
-        /* TODO the socket address should actually be a pointer to
-           either a sockaddr_in or sockaddr_in6.
-           In libuv, the udp_recv callback takes a struct *sockaddr */
         extern fn recv_cb(handle: *uvll::uv_udp_t, nread: ssize_t, buf: Buf,
-                          addr: *uvll::sockaddr_in, flags: c_uint) {
+                          addr: *uvll::sockaddr, flags: c_uint) {
             rtdebug!("buf addr: %x", buf.base as uint);
             rtdebug!("buf len: %d", buf.len as int);
             let mut udp_watcher: UdpWatcher = NativeHandle::from_native_handle(handle);
             let cb = udp_watcher.get_watcher_data().udp_recv_cb.get_ref();
             let status = status_to_maybe_uv_error(handle, nread as c_int);
-            (*cb)(udp_watcher, nread as int, buf, uv_ip4_to_ip4(addr), flags as uint, status);
+            let addr = uv_ip_to_ip(sockaddr_to_UvIpAddr(addr));
+            (*cb)(udp_watcher, nread as int, buf, addr, flags as uint, status);
         }
     }
 
@@ -326,17 +413,14 @@ impl UdpWatcher {
         }
 
         let req = UdpSendRequest::new();
-        match address {
-            Ipv4(*) => {
-                do ip4_as_uv_ip4(address) |addr| {
-                    unsafe {
-                        assert_eq!(0, uvll::udp_send(req.native_handle(),
-                                                    self.native_handle(),
-                                                    [buf], addr, send_cb));
-                    }
+        do ip_as_uv_ip(address) |addr| {
+            let result = unsafe {
+                match addr {
+                    UvIpv4(addr) => uvll::udp_send(req.native_handle(), self.native_handle(), [buf], addr, send_cb),
+                    UvIpv6(addr) => uvll::udp_send6(req.native_handle(), self.native_handle(), [buf], addr, send_cb),
                 }
-            }
-            _ => fail!() // TODO ipv6
+            };
+            assert_eq!(0, result);
         }
 
         extern fn send_cb(req: *uvll::uv_udp_send_t, status: c_int) {
@@ -486,13 +570,7 @@ mod test {
     use rt::uv::{vec_from_uv_buf, vec_to_uv_buf, slice_to_uv_buf};
 
     #[test]
-    fn test_ip4_conversion() {
-        let ip4 = next_test_ip4();
-        assert_eq!(ip4, ip4_as_uv_ip4(ip4, uv_ip4_to_ip4));
-    }
-
-    #[test]
-    fn connect_close() {
+    fn connect_close_ip4() {
         do run_in_bare_thread() {
             let mut loop_ = Loop::new();
             let mut tcp_watcher = { TcpWatcher::new(&mut loop_) };
@@ -510,7 +588,25 @@ mod test {
     }
 
     #[test]
-    fn udp_bind_close() {
+    fn connect_close_ip6() {
+        do run_in_bare_thread() {
+            let mut loop_ = Loop::new();
+            let mut tcp_watcher = { TcpWatcher::new(&mut loop_) };
+            // Connect to a port where nobody is listening
+            let addr = next_test_ip6();
+            do tcp_watcher.connect(addr) |stream_watcher, status| {
+                rtdebug!("tcp_watcher.connect!");
+                assert!(status.is_some());
+                assert_eq!(status.get().name(), ~"ECONNREFUSED");
+                stream_watcher.close(||());
+            }
+            loop_.run();
+            loop_.close();
+        }
+    }
+
+    #[test]
+    fn udp_bind_close_ip4() {
         do run_in_bare_thread() {
             let mut loop_ = Loop::new();
             let udp_watcher = { UdpWatcher::new(&mut loop_) };
@@ -523,7 +619,20 @@ mod test {
     }
 
     #[test]
-    fn listen() {
+    fn udp_bind_close_ip6() {
+        do run_in_bare_thread() {
+            let mut loop_ = Loop::new();
+            let udp_watcher = { UdpWatcher::new(&mut loop_) };
+            let addr = next_test_ip6();
+            udp_watcher.bind(addr);
+            udp_watcher.close(||());
+            loop_.run();
+            loop_.close();
+        }
+    }
+
+    #[test]
+    fn listen_ip4() {
         do run_in_bare_thread() {
             static MAX: int = 10;
             let mut loop_ = Loop::new();
@@ -532,10 +641,82 @@ mod test {
             server_tcp_watcher.bind(addr);
             let loop_ = loop_;
             rtdebug!("listening");
-            do server_tcp_watcher.listen |server_stream_watcher, status| {
+            do server_tcp_watcher.listen |mut server_stream_watcher, status| {
                 rtdebug!("listened!");
                 assert!(status.is_none());
-                let mut server_stream_watcher = server_stream_watcher;
+                let mut loop_ = loop_;
+                let client_tcp_watcher = TcpWatcher::new(&mut loop_);
+                let mut client_tcp_watcher = client_tcp_watcher.as_stream();
+                server_stream_watcher.accept(client_tcp_watcher);
+                let count_cell = Cell::new(0);
+                let server_stream_watcher = server_stream_watcher;
+                rtdebug!("starting read");
+                let alloc: AllocCallback = |size| {
+                    vec_to_uv_buf(vec::from_elem(size, 0))
+                };
+                do client_tcp_watcher.read_start(alloc) |stream_watcher, nread, buf, status| {
+
+                    rtdebug!("i'm reading!");
+                    let buf = vec_from_uv_buf(buf);
+                    let mut count = count_cell.take();
+                    if status.is_none() {
+                        rtdebug!("got %d bytes", nread);
+                        let buf = buf.unwrap();
+                        for buf.slice(0, nread as uint).each |byte| {
+                            assert!(*byte == count as u8);
+                            rtdebug!("%u", *byte as uint);
+                            count += 1;
+                        }
+                    } else {
+                        assert_eq!(count, MAX);
+                        do stream_watcher.close {
+                            server_stream_watcher.close(||());
+                        }
+                    }
+                    count_cell.put_back(count);
+                }
+            }
+
+            let _client_thread = do Thread::start {
+                rtdebug!("starting client thread");
+                let mut loop_ = Loop::new();
+                let mut tcp_watcher = { TcpWatcher::new(&mut loop_) };
+                do tcp_watcher.connect(addr) |mut stream_watcher, status| {
+                    rtdebug!("connecting");
+                    assert!(status.is_none());
+                    let msg = ~[0, 1, 2, 3, 4, 5, 6 ,7 ,8, 9];
+                    let buf = slice_to_uv_buf(msg);
+                    let msg_cell = Cell::new(msg);
+                    do stream_watcher.write(buf) |stream_watcher, status| {
+                        rtdebug!("writing");
+                        assert!(status.is_none());
+                        let msg_cell = Cell::new(msg_cell.take());
+                        stream_watcher.close(||ignore(msg_cell.take()));
+                    }
+                }
+                loop_.run();
+                loop_.close();
+            };
+
+            let mut loop_ = loop_;
+            loop_.run();
+            loop_.close();
+        }
+    }
+
+    #[test]
+    fn listen_ip6() {
+        do run_in_bare_thread() {
+            static MAX: int = 10;
+            let mut loop_ = Loop::new();
+            let mut server_tcp_watcher = { TcpWatcher::new(&mut loop_) };
+            let addr = next_test_ip6();
+            server_tcp_watcher.bind(addr);
+            let loop_ = loop_;
+            rtdebug!("listening");
+            do server_tcp_watcher.listen |mut server_stream_watcher, status| {
+                rtdebug!("listened!");
+                assert!(status.is_none());
                 let mut loop_ = loop_;
                 let client_tcp_watcher = TcpWatcher::new(&mut loop_);
                 let mut client_tcp_watcher = client_tcp_watcher.as_stream();
@@ -574,10 +755,9 @@ mod test {
                 rtdebug!("starting client thread");
                 let mut loop_ = Loop::new();
                 let mut tcp_watcher = { TcpWatcher::new(&mut loop_) };
-                do tcp_watcher.connect(addr) |stream_watcher, status| {
+                do tcp_watcher.connect(addr) |mut stream_watcher, status| {
                     rtdebug!("connecting");
                     assert!(status.is_none());
-                    let mut stream_watcher = stream_watcher;
                     let msg = ~[0, 1, 2, 3, 4, 5, 6 ,7 ,8, 9];
                     let buf = slice_to_uv_buf(msg);
                     let msg_cell = Cell::new(msg);
@@ -599,12 +779,71 @@ mod test {
     }
 
     #[test]
-    fn udp_recv() {
+    fn udp_recv_ip4() {
         do run_in_bare_thread() {
             static MAX: int = 10;
             let mut loop_ = Loop::new();
             let server_addr = next_test_ip4();
             let client_addr = next_test_ip4();
+
+            let server = UdpWatcher::new(&loop_);
+            assert!(server.bind(server_addr).is_ok());
+
+            rtdebug!("starting read");
+            let alloc: AllocCallback = |size| {
+                vec_to_uv_buf(vec::from_elem(size, 0))
+            };
+
+            do server.recv_start(alloc) |server, nread, buf, src, flags, status| {
+                server.recv_stop();
+                rtdebug!("i'm reading!");
+                assert!(status.is_none());
+                assert_eq!(flags, 0);
+                assert_eq!(src, client_addr);
+
+                let buf = vec_from_uv_buf(buf);
+                let mut count = 0;
+                rtdebug!("got %d bytes", nread);
+
+                let buf = buf.unwrap();
+                for buf.slice(0, nread as uint).iter().advance() |&byte| {
+                    assert!(byte == count as u8);
+                    rtdebug!("%u", byte as uint);
+                    count += 1;
+                }
+                assert_eq!(count, MAX);
+
+                server.close(||{});
+            }
+
+            do Thread::start {
+                let mut loop_ = Loop::new();
+                let client = UdpWatcher::new(&loop_);
+                assert!(client.bind(client_addr).is_ok());
+                let msg = ~[0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+                let buf = slice_to_uv_buf(msg);
+                do client.send(buf, server_addr) |client, status| {
+                    rtdebug!("writing");
+                    assert!(status.is_none());
+                    client.close(||{});
+                }
+
+                loop_.run();
+                loop_.close();
+            };
+
+            loop_.run();
+            loop_.close();
+        }
+    }
+
+    #[test]
+    fn udp_recv_ip6() {
+        do run_in_bare_thread() {
+            static MAX: int = 10;
+            let mut loop_ = Loop::new();
+            let server_addr = next_test_ip6();
+            let client_addr = next_test_ip6();
 
             let server = UdpWatcher::new(&loop_);
             assert!(server.bind(server_addr).is_ok());
