@@ -302,6 +302,15 @@ impl TyVisitor for ReprVisitor {
     fn visit_uniq(&self, mtbl: uint, inner: *TyDesc) -> bool {
         self.writer.write_char('~');
         self.write_mut_qualifier(mtbl);
+        do self.get::<*c_void> |b| {
+            self.visit_ptr_inner(*b, inner);
+        }
+    }
+
+    #[cfg(not(stage0))]
+    fn visit_uniq_managed(&self, mtbl: uint, inner: *TyDesc) -> bool {
+        self.writer.write_char('~');
+        self.write_mut_qualifier(mtbl);
         do self.get::<&managed::raw::BoxRepr> |b| {
             let p = ptr::to_unsafe_ptr(&b.data) as *c_void;
             self.visit_ptr_inner(p, inner);
