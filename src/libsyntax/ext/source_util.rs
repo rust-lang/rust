@@ -10,8 +10,8 @@
 
 use ast;
 use codemap;
-use codemap::{Pos, ExpandedFrom, span};
-use codemap::{CallInfo, NameAndSpan};
+use codemap::{Pos, span};
+use codemap::{ExpnInfo, NameAndSpan};
 use ext::base::*;
 use ext::base;
 use ext::build::AstBuilder;
@@ -117,14 +117,14 @@ pub fn expand_include_bin(cx: @ExtCtxt, sp: span, tts: &[ast::token_tree])
 // recur along an ExpnInfo chain to find the original expression
 fn topmost_expn_info(expn_info: @codemap::ExpnInfo) -> @codemap::ExpnInfo {
     match *expn_info {
-        ExpandedFrom(CallInfo { call_site: ref call_site, _ }) => {
+        ExpnInfo { call_site: ref call_site, _ } => {
             match call_site.expn_info {
                 Some(next_expn_info) => {
                     match *next_expn_info {
-                        ExpandedFrom(CallInfo {
+                        ExpnInfo {
                             callee: NameAndSpan { name: ref name, _ },
                             _
-                        }) => {
+                        } => {
                             // Don't recurse into file using "include!"
                             if "include" == *name  {
                                 expn_info

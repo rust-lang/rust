@@ -16,7 +16,7 @@ use ast;
 use ast_util::{new_rename, new_mark, resolve};
 use attr;
 use codemap;
-use codemap::{span, CallInfo, ExpandedFrom, NameAndSpan, spanned};
+use codemap::{span, ExpnInfo, NameAndSpan, spanned};
 use ext::base::*;
 use fold::*;
 use parse;
@@ -60,13 +60,13 @@ pub fn expand_expr(extsbox: @mut SyntaxEnv,
                             expander: exp,
                             span: exp_sp
                         }))) => {
-                            cx.bt_push(ExpandedFrom(CallInfo {
+                            cx.bt_push(ExpnInfo {
                                 call_site: s,
                                 callee: NameAndSpan {
                                     name: extnamestr,
                                     span: exp_sp,
                                 },
-                            }));
+                            });
 
                             let expanded = match exp(cx, mac.span, *tts) {
                                 MRExpr(e) => e,
@@ -131,13 +131,13 @@ pub fn expand_mod_items(extsbox: @mut SyntaxEnv,
 
             match (*extsbox).find(&intern(mname)) {
               Some(@SE(ItemDecorator(dec_fn))) => {
-                  cx.bt_push(ExpandedFrom(CallInfo {
+                  cx.bt_push(ExpnInfo {
                       call_site: attr.span,
                       callee: NameAndSpan {
                           name: mname,
                           span: None
                       }
-                  }));
+                  });
                   let r = dec_fn(cx, attr.span, attr.node.value, items);
                   cx.bt_pop();
                   r
@@ -227,13 +227,13 @@ pub fn expand_item_mac(extsbox: @mut SyntaxEnv,
                                     given '%s'", extnamestr,
                                    ident_to_str(&it.ident)));
             }
-            cx.bt_push(ExpandedFrom(CallInfo {
+            cx.bt_push(ExpnInfo {
                 call_site: it.span,
                 callee: NameAndSpan {
                     name: extnamestr,
                     span: expand.span
                 }
-            }));
+            });
             ((*expand).expander)(cx, it.span, tts)
         }
         Some(@SE(IdentTT(ref expand))) => {
@@ -242,13 +242,13 @@ pub fn expand_item_mac(extsbox: @mut SyntaxEnv,
                               fmt!("macro %s! expects an ident argument",
                                    extnamestr));
             }
-            cx.bt_push(ExpandedFrom(CallInfo {
+            cx.bt_push(ExpnInfo {
                 call_site: it.span,
                 callee: NameAndSpan {
                     name: extnamestr,
                     span: expand.span
                 }
-            }));
+            });
             ((*expand).expander)(cx, it.span, it.ident, tts)
         }
         _ => cx.span_fatal(
@@ -319,10 +319,10 @@ pub fn expand_stmt(extsbox: @mut SyntaxEnv,
 
         Some(@SE(NormalTT(
             SyntaxExpanderTT{expander: exp, span: exp_sp}))) => {
-            cx.bt_push(ExpandedFrom(CallInfo {
+            cx.bt_push(ExpnInfo {
                 call_site: sp,
                 callee: NameAndSpan { name: extnamestr, span: exp_sp }
-            }));
+            });
             let expanded = match exp(cx, mac.span, tts) {
                 MRExpr(e) =>
                     @codemap::spanned { node: stmt_expr(e, cx.next_id()),
