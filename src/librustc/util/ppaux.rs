@@ -608,6 +608,12 @@ impl Repr for @ast::pat {
     }
 }
 
+impl Repr for ty::bound_region {
+    fn repr(&self, tcx: ctxt) -> ~str {
+        bound_region_ptr_to_str(tcx, *self)
+    }
+}
+
 impl Repr for ty::Region {
     fn repr(&self, tcx: ctxt) -> ~str {
         region_to_str(tcx, "", false, *self)
@@ -790,6 +796,19 @@ impl UserString for ty::BuiltinBound {
 impl Repr for ty::BuiltinBounds {
     fn repr(&self, tcx: ctxt) -> ~str {
         self.user_string(tcx)
+    }
+}
+
+impl Repr for span {
+    fn repr(&self, tcx: ctxt) -> ~str {
+        tcx.sess.codemap.span_to_str(*self)
+    }
+}
+
+impl<A:UserString> UserString for @A {
+    fn user_string(&self, tcx: ctxt) -> ~str {
+        let this: &A = &**self;
+        this.user_string(tcx)
     }
 }
 
