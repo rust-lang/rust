@@ -616,7 +616,7 @@ fn spawn_raw_newsched(mut opts: TaskOpts, f: ~fn()) {
                 if success { Success } else { Failure }
             )
         };
-        task.on_exit = Some(on_exit);
+        task.death.on_exit = Some(on_exit);
     }
 
     rtdebug!("spawn about to take scheduler");

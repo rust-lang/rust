@@ -20,6 +20,7 @@ use libc::{c_void, uintptr_t};
 use ptr;
 use prelude::*;
 use option::{Option, Some, None};
+use rt::kill::Death;
 use rt::local::Local;
 use rt::logging::StdErrLogger;
 use super::local_heap::LocalHeap;
@@ -36,8 +37,8 @@ pub struct Task {
     logger: StdErrLogger,
     unwinder: Unwinder,
     home: Option<SchedHome>,
-    join_latch: Option<~JoinLatch>,
-    on_exit: Option<~fn(bool)>,
+    death: Death,
+    join_latch: Option<~JoinLatch>, // FIXME(#7544) remove
     destroyed: bool,
     coroutine: Option<~Coroutine>
 }
@@ -86,8 +87,8 @@ impl Task {
             logger: StdErrLogger,
             unwinder: Unwinder { unwinding: false },
             home: Some(home),
+            death: Death::new(),
             join_latch: Some(JoinLatch::new_root()),
-            on_exit: None,
             destroyed: false,
             coroutine: Some(~Coroutine::new(stack_pool, start))
         }
@@ -104,8 +105,9 @@ impl Task {
             logger: StdErrLogger,
             home: Some(home),
             unwinder: Unwinder { unwinding: false },
+            // FIXME(#7544) make watching optional
+            death: self.death.new_child(),
             join_latch: Some(self.join_latch.get_mut_ref().new_child()),
-            on_exit: None,
             destroyed: false,
             coroutine: Some(~Coroutine::new(stack_pool, start))
         }
@@ -123,20 +125,8 @@ impl Task {
         }
 
         self.unwinder.try(f);
+        self.death.collect_failure(!self.unwinder.unwinding);
         self.destroy();
-
-        // Wait for children. Possibly report the exit status.
-        let local_success = !self.unwinder.unwinding;
-        let join_latch = self.join_latch.take_unwrap();
-        match self.on_exit {
-            Some(ref on_exit) => {
-                let success = join_latch.wait(local_success);
-                (*on_exit)(success);
-            }
-            None => {
-                join_latch.release(local_success);
-            }
-        }
     }
 
     /// must be called manually before finalization to clean up

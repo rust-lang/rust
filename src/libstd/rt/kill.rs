@@ -37,6 +37,18 @@ struct KillHandleInner {
 #[deriving(Clone)]
 pub struct KillHandle(UnsafeAtomicRcBox<KillHandleInner>);
 
+/// Per-task state related to task death, killing, failure, etc.
+pub struct Death {
+    // Shared among this task, its watched children, and any linked tasks who
+    // might kill it. This is optional so we can take it by-value at exit time.
+    kill_handle:     Option<KillHandle>,
+    // Handle to a watching parent, if we have one, for exit code propagation.
+    watching_parent: Option<KillHandle>,
+    // Action to be done with the exit code. If set, also makes the task wait
+    // until all its watched children exit before collecting the status.
+    on_exit:         Option<~fn(bool)>,
+}
+
 impl KillHandle {
     pub fn new() -> KillHandle {
         KillHandle(UnsafeAtomicRcBox::new(KillHandleInner {
@@ -126,3 +138,58 @@ impl KillHandle {
     }
 }
 
+impl Death {
+    pub fn new() -> Death {
+        Death {
+            kill_handle:     Some(KillHandle::new()),
+            watching_parent: None,
+            on_exit:         None,
+        }
+    }
+
+    pub fn new_child(&self) -> Death {
+        // FIXME(#7327)
+        Death {
+            kill_handle:     Some(KillHandle::new()),
+            watching_parent: self.kill_handle.clone(),
+            on_exit:         None,
+        }
+    }
+
+    /// Collect failure exit codes from children and propagate them to a parent.
+    pub fn collect_failure(&mut self, mut success: bool) {
+        // Step 1. Decide if we need to collect child failures synchronously.
+        do self.on_exit.take_map |on_exit| {
+            if success {
+                // We succeeded, but our children might not. Need to wait for them.
+                let mut inner = unsafe { self.kill_handle.take_unwrap().unwrap() };
+                if inner.any_child_failed {
+                    success = false;
+                } else {
+                    // Lockless access to tombstones protected by unwrap barrier.
+                    success = inner.child_tombstones.take_map_default(true, |f| f());
+                }
+            }
+            on_exit(success);
+        };
+
+        // Step 2. Possibly alert possibly-watching parent to failure status.
+        // Note that as soon as parent_handle goes out of scope, the parent
+        // can successfully unwrap its handle and collect our reported status.
+        do self.watching_parent.take_map |mut parent_handle| {
+            if success {
+                // Our handle might be None if we had an exit callback, and
+                // already unwrapped it. But 'success' being true means no
+                // child failed, so there's nothing to do (see below case).
+                do self.kill_handle.take_map |own_handle| {
+                    own_handle.reparent_children_to(&mut parent_handle);
+                };
+            } else {
+                // Can inform watching parent immediately that we failed.
+                // (Note the importance of non-failing tasks NOT writing
+                // 'false', which could obscure another task's failure.)
+                parent_handle.notify_immediate_failure();
+            }
+        };
+    }
+}

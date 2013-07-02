@@ -51,7 +51,7 @@ pub fn run_in_newsched_task(f: ~fn()) {
         let mut task = ~Task::new_root(&mut sched.stack_pool,
                                        f.take());
         rtdebug!("newsched_task: %x", to_uint(task));
-        task.on_exit = Some(on_exit);
+        task.death.on_exit = Some(on_exit);
         sched.enqueue_task(task);
         sched.run();
     }
@@ -109,7 +109,7 @@ pub fn run_in_mt_newsched_task(f: ~fn()) {
         };
         let mut main_task = ~Task::new_root(&mut scheds[0].stack_pool,
                                         f_cell.take());
-        main_task.on_exit = Some(on_exit);
+        main_task.death.on_exit = Some(on_exit);
         scheds[0].enqueue_task(main_task);
 
         let mut threads = ~[];
@@ -280,7 +280,7 @@ pub fn spawntask_try(f: ~fn()) -> Result<(), ()> {
                            f.take())
         }
     };
-    new_task.on_exit = Some(on_exit);
+    new_task.death.on_exit = Some(on_exit);
 
     let sched = Local::take::<Scheduler>();
     do sched.switch_running_tasks_and_then(new_task) |sched, old_task| {
