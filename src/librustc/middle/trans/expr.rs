@@ -119,7 +119,6 @@ lvalues are *never* stored by value.
 
 */
 
-use core::prelude::*;
 
 use back::abi;
 use lib::llvm::{ValueRef, llvm};
@@ -154,9 +153,9 @@ use util::ppaux::Repr;
 
 use middle::trans::type_::Type;
 
-use core::cast::transmute;
-use core::hashmap::HashMap;
-use core::vec;
+use std::cast::transmute;
+use std::hashmap::HashMap;
+use std::vec;
 use syntax::print::pprust::{expr_to_str};
 use syntax::ast;
 use syntax::codemap;
@@ -589,8 +588,9 @@ fn trans_rvalue_dps_unadjusted(bcx: block, expr: @ast::expr,
         }
         ast::expr_tup(ref args) => {
             let repr = adt::represent_type(bcx.ccx(), expr_ty(bcx, expr));
-            return trans_adt(bcx, repr, 0, args.mapi(|i, arg| (i, *arg)),
-                             None, dest);
+            let numbered_fields: ~[(uint, @ast::expr)] =
+                args.iter().enumerate().transform(|(i, arg)| (i, *arg)).collect();
+            return trans_adt(bcx, repr, 0, numbered_fields, None, dest);
         }
         ast::expr_lit(@codemap::spanned {node: ast::lit_str(s), _}) => {
             return tvec::trans_lit_str(bcx, expr, s, dest);
@@ -910,8 +910,6 @@ fn trans_lvalue_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
         let (bcx, base, len) =
             base_datum.get_vec_base_and_len(bcx, index_expr.span,
                                             index_expr.id, 0);
-        let mut bcx = bcx;
-        let mut base = base;
         let mut len = len;
 
         if ty::type_is_str(base_ty) {

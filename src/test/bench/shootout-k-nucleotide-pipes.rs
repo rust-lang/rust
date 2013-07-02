@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-pretty (extra blank line is inserted in vec::mapi call)
+// xfail-pretty the `let to_child` line gets an extra newline
 // multi tasking k-nucleotide
 
 extern mod extra;
@@ -163,14 +163,13 @@ fn main() {
 
 
 
-   // initialize each sequence sorter
-   let sizes = ~[1,2,3,4,6,12,18];
-    let streams = vec::map(sizes, |_sz| Some(stream()));
-    let mut streams = streams;
+    // initialize each sequence sorter
+    let sizes = ~[1u,2,3,4,6,12,18];
+    let mut streams = vec::from_fn(sizes.len(), |_| Some(stream::<~str>()));
     let mut from_child = ~[];
-    let to_child   = vec::mapi(sizes, |ii, sz| {
+    let to_child   = do sizes.iter().zip(streams.mut_iter()).transform |(sz, stream_ref)| {
         let sz = *sz;
-        let stream = util::replace(&mut streams[ii], None);
+        let stream = util::replace(stream_ref, None);
         let (from_child_, to_parent_) = stream.unwrap();
 
         from_child.push(from_child_);
@@ -182,7 +181,7 @@ fn main() {
         };
 
         to_child
-    });
+    }.collect::<~[Chan<~[u8]>]>();
 
 
    // latch stores true after we've started

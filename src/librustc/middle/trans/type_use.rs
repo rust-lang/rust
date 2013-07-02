@@ -33,9 +33,9 @@ use middle::trans::inline;
 use middle::ty;
 use middle::typeck;
 
-use core::option::{Some, None};
-use core::uint;
-use core::vec;
+use std::option::{Some, None};
+use std::uint;
+use std::vec;
 use extra::list::{List, Cons, Nil};
 use extra::list;
 use syntax::ast;
@@ -127,7 +127,7 @@ pub fn type_uses_for(ccx: @mut CrateContext, fn_id: def_id, n_tps: uint)
                     "uninit"   | "init" | "transmute" | "move_val" |
                     "move_val_init" => use_repr,
 
-                    "get_tydesc" | "needs_drop" => use_tydesc,
+                    "get_tydesc" | "needs_drop" | "contains_managed" => use_tydesc,
 
                     "visit_tydesc"  | "forget" | "frame_address" |
                     "morestack_addr" => 0,

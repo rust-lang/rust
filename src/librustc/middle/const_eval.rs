@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
 
 use metadata::csearch;
 use middle::astencode;
@@ -18,9 +17,8 @@ use middle;
 use syntax::{ast, ast_map, ast_util, visit};
 use syntax::ast::*;
 
-use core::float;
-use core::hashmap::{HashMap, HashSet};
-use core::vec;
+use std::float;
+use std::hashmap::{HashMap, HashSet};
 
 //
 // This pass classifies expressions by their constant-ness.
@@ -71,8 +69,8 @@ pub fn join(a: constness, b: constness) -> constness {
     }
 }
 
-pub fn join_all(cs: &[constness]) -> constness {
-    cs.iter().fold(integral_const, |a, b| join(a, *b))
+pub fn join_all<It: Iterator<constness>>(mut cs: It) -> constness {
+    cs.fold(integral_const, |a, b| join(a, b))
 }
 
 pub fn classify(e: &expr,
@@ -105,7 +103,7 @@ pub fn classify(e: &expr,
 
               ast::expr_tup(ref es) |
               ast::expr_vec(ref es, ast::m_imm) => {
-                join_all(vec::map(*es, |e| classify(*e, tcx)))
+                join_all(es.iter().transform(|e| classify(*e, tcx)))
               }
 
               ast::expr_vstore(e, vstore) => {
@@ -119,7 +117,7 @@ pub fn classify(e: &expr,
               }
 
               ast::expr_struct(_, ref fs, None) => {
-                let cs = do vec::map((*fs)) |f| {
+                let cs = do fs.iter().transform |f| {
                     classify(f.node.expr, tcx)
                 };
                 join_all(cs)

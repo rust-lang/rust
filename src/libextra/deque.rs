@@ -9,12 +9,11 @@
 // except according to those terms.
 
 //! A double-ended queue implemented as a circular buffer
-use core::prelude::*;
 
-use core::uint;
-use core::util::replace;
-use core::vec;
-use core::cast::transmute;
+use std::uint;
+use std::util::replace;
+use std::vec;
+use std::cast::transmute;
 
 static initial_capacity: uint = 32u; // 2^5
 
@@ -254,9 +253,9 @@ fn get<'r, T>(elts: &'r [Option<T>], i: uint) -> &'r T {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use core::cmp::Eq;
-    use core::kinds::Copy;
-    use core;
+    use std::cmp::Eq;
+    use std::kinds::Copy;
+    use std::int;
 
     #[test]
     fn test_simple() {
@@ -463,12 +462,12 @@ mod tests {
     #[test]
     fn test_iter() {
         let mut d = Deque::new();
-        for core::int::range(0,5) |i| {
+        for int::range(0,5) |i| {
             d.add_back(i);
         }
         assert_eq!(d.iter().collect::<~[&int]>(), ~[&0,&1,&2,&3,&4]);
 
-        for core::int::range(6,9) |i| {
+        for int::range(6,9) |i| {
             d.add_front(i);
         }
         assert_eq!(d.iter().collect::<~[&int]>(), ~[&8,&7,&6,&0,&1,&2,&3,&4]);
@@ -477,12 +476,12 @@ mod tests {
     #[test]
     fn test_rev_iter() {
         let mut d = Deque::new();
-        for core::int::range(0,5) |i| {
+        for int::range(0,5) |i| {
             d.add_back(i);
         }
         assert_eq!(d.rev_iter().collect::<~[&int]>(), ~[&4,&3,&2,&1,&0]);
 
-        for core::int::range(6,9) |i| {
+        for int::range(6,9) |i| {
             d.add_front(i);
         }
         assert_eq!(d.rev_iter().collect::<~[&int]>(), ~[&4,&3,&2,&1,&0,&6,&7,&8]);

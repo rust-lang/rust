@@ -13,35 +13,22 @@
 // FIXME #2238 Make run only accept source that emits an executable
 
 #[link(name = "rust",
-       vers = "0.7-pre",
+       vers = "0.7",
        uuid = "4a24da33-5cc8-4037-9352-2cbe9bd9d27c",
        url = "https://github.com/mozilla/rust/tree/master/src/rust")];
 
 #[license = "MIT/ASL2"];
 #[crate_type = "lib"];
 
-#[no_std];
-
-extern mod core(name = "std");
-
 extern mod rustpkg;
 extern mod rustdoc;
 extern mod rusti;
 extern mod rustc;
 
-use core::prelude::*;
-
-use core::io;
-use core::os;
-use core::run;
-use core::libc::exit;
-
-// For bootstrapping.
-mod std {
-    pub use core::os;
-    pub use core::str;
-    pub use core::unstable;
-}
+use std::io;
+use std::os;
+use std::run;
+use std::libc::exit;
 
 enum ValidUsage {
     Valid(int), Invalid
@@ -238,6 +225,12 @@ fn usage() {
 
 pub fn main() {
     let os_args = os::args();
+
+    if (os_args.len() > 1 && (os_args[1] == ~"-v" || os_args[1] == ~"--version")) {
+        rustc::version(os_args[0]);
+        unsafe { exit(0); }
+    }
+
     let args = os_args.tail();
 
     if !args.is_empty() {

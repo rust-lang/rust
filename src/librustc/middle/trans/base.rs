@@ -23,7 +23,6 @@
 //     but many TypeRefs correspond to one ty::t; for instance, tup(int, int,
 //     int) and rec(x=int, y=int, z=int) will have the same TypeRef.
 
-use core::prelude::*;
 
 use back::link::{mangle_exported_name};
 use back::{link, abi};
@@ -63,15 +62,15 @@ use util::ppaux::{Repr, ty_to_str};
 
 use middle::trans::type_::Type;
 
-use core::hash;
-use core::hashmap::{HashMap, HashSet};
-use core::int;
-use core::io;
-use core::libc::c_uint;
-use core::str;
-use core::uint;
-use core::vec;
-use core::local_data;
+use std::hash;
+use std::hashmap::{HashMap, HashSet};
+use std::int;
+use std::io;
+use std::libc::c_uint;
+use std::str;
+use std::uint;
+use std::vec;
+use std::local_data;
 use extra::time;
 use syntax::ast::ident;
 use syntax::ast_map::{path, path_elt_to_str, path_name};
@@ -254,27 +253,48 @@ pub fn malloc_raw_dyn(bcx: block,
         heap_exchange => {
             (ty::mk_imm_uniq, bcx.tcx().lang_items.exchange_malloc_fn())
         }
+        heap_exchange_closure => {
+            (ty::mk_imm_uniq, bcx.tcx().lang_items.closure_exchange_malloc_fn())
+        }
     };
 
-    // Grab the TypeRef type of box_ptr_ty.
-    let box_ptr_ty = mk_fn(bcx.tcx(), t);
-    let llty = type_of(ccx, box_ptr_ty);
+    if heap == heap_exchange {
+        // Grab the TypeRef type of box_ptr_ty.
+        let box_ptr_ty = mk_fn(bcx.tcx(), t);
+        let llty = type_of(ccx, box_ptr_ty);
 
-    // Get the tydesc for the body:
-    let static_ti = get_tydesc(ccx, t);
-    glue::lazily_emit_all_tydesc_glue(ccx, static_ti);
+        let llty_value = type_of::type_of(ccx, t);
+        let llalign = llalign_of_min(ccx, llty_value);
 
-    // Allocate space:
-    let tydesc = PointerCast(bcx, static_ti.tydesc, Type::i8p());
-    let rval = alloca(bcx, Type::i8p());
-    let bcx = callee::trans_lang_call(
-        bcx,
-        langcall,
-        [tydesc, size],
-        expr::SaveIn(rval));
-    let r = rslt(bcx, PointerCast(bcx, Load(bcx, rval), llty));
-    maybe_set_managed_unique_rc(r.bcx, r.val, heap);
-    r
+        // Allocate space:
+        let rval = alloca(bcx, Type::i8p());
+        let bcx = callee::trans_lang_call(
+            bcx,
+            langcall,
+            [C_i32(llalign as i32), size],
+            expr::SaveIn(rval));
+        rslt(bcx, PointerCast(bcx, Load(bcx, rval), llty))
+    } else {
+        // Grab the TypeRef type of box_ptr_ty.
+        let box_ptr_ty = mk_fn(bcx.tcx(), t);
+        let llty = type_of(ccx, box_ptr_ty);
+
+        // Get the tydesc for the body:
+        let static_ti = get_tydesc(ccx, t);
+        glue::lazily_emit_all_tydesc_glue(ccx, static_ti);
+
+        // Allocate space:
+        let tydesc = PointerCast(bcx, static_ti.tydesc, Type::i8p());
+        let rval = alloca(bcx, Type::i8p());
+        let bcx = callee::trans_lang_call(
+            bcx,
+            langcall,
+            [tydesc, size],
+            expr::SaveIn(rval));
+        let r = rslt(bcx, PointerCast(bcx, Load(bcx, rval), llty));
+        maybe_set_managed_unique_rc(r.bcx, r.val, heap);
+        r
+    }
 }
 
 // malloc_raw: expects an unboxed type and returns a pointer to
@@ -800,10 +820,10 @@ pub fn invoke(bcx: block, llfn: ValueRef, llargs: ~[ValueRef])
     if need_invoke(bcx) {
         unsafe {
             debug!("invoking %x at %x",
-                   ::core::cast::transmute(llfn),
-                   ::core::cast::transmute(bcx.llbb));
+                   ::std::cast::transmute(llfn),
+                   ::std::cast::transmute(bcx.llbb));
             for llargs.iter().advance |&llarg| {
-                debug!("arg: %x", ::core::cast::transmute(llarg));
+                debug!("arg: %x", ::std::cast::transmute(llarg));
             }
         }
         let normal_bcx = sub_block(bcx, "normal return");
@@ -816,10 +836,10 @@ pub fn invoke(bcx: block, llfn: ValueRef, llargs: ~[ValueRef])
     } else {
         unsafe {
             debug!("calling %x at %x",
-                   ::core::cast::transmute(llfn),
-                   ::core::cast::transmute(bcx.llbb));
+                   ::std::cast::transmute(llfn),
+                   ::std::cast::transmute(bcx.llbb));
             for llargs.iter().advance |&llarg| {
-                debug!("arg: %x", ::core::cast::transmute(llarg));
+                debug!("arg: %x", ::std::cast::transmute(llarg));
             }
         }
         let llresult = Call(bcx, llfn, llargs);
@@ -1264,7 +1284,7 @@ pub fn cleanup_and_leave(bcx: block,
                     let mut skip = 0;
                     let mut dest = None;
                     {
-                        let r = vec::rfind((*inf).cleanup_paths, |cp| cp.target == leave);
+                        let r = (*inf).cleanup_paths.rev_iter().find_(|cp| cp.target == leave);
                         for r.iter().advance |cp| {
                             if cp.size == inf.cleanups.len() {
                                 Br(bcx, cp.dest);
@@ -2881,6 +2901,10 @@ pub fn trans_crate(sess: session::Session,
                    reachable_map: @mut HashSet<ast::node_id>,
                    maps: astencode::Maps)
                    -> (ContextRef, ModuleRef, LinkMeta) {
+    // Before we touch LLVM, make sure that multithreading is enabled.
+    if unsafe { !llvm::LLVMRustStartMultithreading() } {
+        sess.bug("couldn't enable multi-threaded LLVM");
+    }
 
     let mut symbol_hasher = hash::default_state();
     let link_meta = link::build_link_meta(sess, crate, output, &mut symbol_hasher);
@@ -2894,12 +2918,6 @@ pub fn trans_crate(sess: session::Session,
     // such as a function name in the module.
     // 1. http://llvm.org/bugs/show_bug.cgi?id=11479
     let llmod_id = link_meta.name.to_owned() + ".rc";
-
-    // FIXME(#6511): get LLVM building with --enable-threads so this
-    //               function can be called
-    // if !llvm::LLVMRustStartMultithreading() {
-    //     sess.bug("couldn't enable multi-threaded LLVM");
-    // }
 
     let ccx = @mut CrateContext::new(sess,
                                      llmod_id,

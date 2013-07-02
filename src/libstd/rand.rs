@@ -590,7 +590,7 @@ impl<R: Rng> RngUtil for R {
             // invariant: elements with index >= i have been locked in place.
             i -= 1u;
             // lock element i in place.
-            vec::swap(values, i, self.gen_uint_range(0u, i + 1u));
+            values.swap(i, self.gen_uint_range(0u, i + 1u));
         }
     }
 }

@@ -16,16 +16,15 @@
 
 //! json serialization
 
-use core::prelude::*;
 
-use core::char;
-use core::float;
-use core::hashmap::HashMap;
-use core::io::{WriterUtil, ReaderUtil};
-use core::io;
-use core::str;
-use core::to_str;
-use core::vec;
+use std::char;
+use std::float;
+use std::hashmap::HashMap;
+use std::io::{WriterUtil, ReaderUtil};
+use std::io;
+use std::str;
+use std::to_str;
+use std::vec;
 
 use serialize::Encodable;
 use serialize;
@@ -1356,15 +1355,14 @@ impl to_str::ToStr for Error {
 
 #[cfg(test)]
 mod tests {
-    use core::prelude::*;
 
     use super::*;
 
-    use core::hashmap::HashMap;
-    use core::io;
-    use core::result;
+    use std::hashmap::HashMap;
+    use std::io;
+    use std::result;
 
-    use std::serialize::Decodable;
+    use extra::serialize::Decodable;
 
     #[deriving(Eq, Encodable, Decodable)]
     enum Animal {

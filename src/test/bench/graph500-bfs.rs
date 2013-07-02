@@ -191,13 +191,13 @@ fn bfs2(graph: graph, key: node_id) -> bfs_result {
         // Do the BFS.
         info!("PBFS iteration %?", i);
         i += 1;
-        colors = do colors.mapi() |i, c| {
+        colors = do colors.iter().enumerate().transform |(i, c)| {
             let c : color = *c;
             match c {
               white => {
                 let i = i as node_id;
 
-                let neighbors = copy graph[i];
+                let neighbors = &graph[i];
 
                 let mut color = white;
 
@@ -214,17 +214,17 @@ fn bfs2(graph: graph, key: node_id) -> bfs_result {
               gray(parent) => { black(parent) }
               black(parent) => { black(parent) }
             }
-        }
+        }.collect()
     }
 
     // Convert the results.
-    do vec::map(colors) |c| {
+    do colors.iter().transform |c| {
         match *c {
           white => { -1i64 }
           black(parent) => { parent }
           _ => { fail!("Found remaining gray nodes in BFS") }
         }
-    }
+    }.collect()
 }
 
 /// A parallel version of the bfs function.
@@ -341,7 +341,7 @@ fn validate(edges: ~[(node_id, node_id)],
         }
         else {
             while parent != root {
-                if vec::contains(path, &parent) {
+                if path.contains(&parent) {
                     status = false;
                 }
 

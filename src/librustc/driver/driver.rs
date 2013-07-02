@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
 
 use back::link;
 use back::{arm, x86, x86_64, mips};
@@ -24,11 +23,11 @@ use middle;
 use util::common::time;
 use util::ppaux;
 
-use core::hashmap::HashMap;
-use core::int;
-use core::io;
-use core::os;
-use core::vec;
+use std::hashmap::HashMap;
+use std::int;
+use std::io;
+use std::os;
+use std::vec;
 use extra::getopts::groups::{optopt, optmulti, optflag, optflagopt};
 use extra::getopts::{opt_present};
 use extra::getopts;
@@ -951,7 +950,6 @@ pub fn list_metadata(sess: Session, path: &Path, out: @io::Writer) {
 
 #[cfg(test)]
 mod test {
-    use core::prelude::*;
 
     use driver::driver::{build_configuration, build_session};
     use driver::driver::{build_session_options, optgroups, str_input};

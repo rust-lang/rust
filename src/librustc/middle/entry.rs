@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
 
 use driver::session;
 use driver::session::Session;
@@ -18,7 +17,7 @@ use syntax::codemap::span;
 use syntax::visit::{default_visitor, mk_vt, vt, Visitor, visit_crate, visit_item};
 use syntax::attr::{attrs_contains_name};
 use syntax::ast_map;
-use core::util;
+use std::util;
 
 struct EntryContext {
     session: Session,

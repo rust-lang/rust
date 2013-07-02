@@ -8,13 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
 
-use core::cast;
-use core::ptr;
-use core::sys;
-use core::uint;
-use core::vec;
+use std::cast;
+use std::ptr;
+use std::sys;
+use std::uint;
+use std::vec;
 use future_spawn = future::spawn;
 
 /**
@@ -93,7 +92,7 @@ pub fn map<A:Copy + Send,B:Copy + Send>(
     vec::concat(map_slices(xs, || {
         let f = fn_factory();
         let result: ~fn(uint, &[A]) -> ~[B] =
-            |_, slice| vec::map(slice, |x| f(x));
+            |_, slice| slice.iter().transform(|x| f(x)).collect();
         result
     }))
 }
@@ -105,9 +104,9 @@ pub fn mapi<A:Copy + Send,B:Copy + Send>(
     let slices = map_slices(xs, || {
         let f = fn_factory();
         let result: ~fn(uint, &[A]) -> ~[B] = |base, slice| {
-            vec::mapi(slice, |i, x| {
+            slice.iter().enumerate().transform(|(i, x)| {
                 f(i + base, x)
-            })
+            }).collect()
         };
         result
     });

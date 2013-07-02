@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
 
 use lib::llvm::{llvm, TypeRef, Bool, False, True, TypeKind};
 use lib::llvm::{Float, Double, X86_FP80, PPC_FP128, FP128};
@@ -21,10 +20,10 @@ use middle::trans::base;
 use syntax::ast;
 use syntax::abi::{Architecture, X86, X86_64, Arm, Mips};
 
-use core::vec;
-use core::cast;
+use std::vec;
+use std::cast;
 
-use core::libc::{c_uint};
+use std::libc::{c_uint};
 
 #[deriving(Eq)]
 pub struct Type {

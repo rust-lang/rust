@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
 
 use driver::session;
 use metadata::csearch;
@@ -27,16 +26,16 @@ use util::ppaux::{Repr, UserString};
 use util::common::{indenter};
 use util::enum_set::{EnumSet, CLike};
 
-use core::cast;
-use core::cmp;
-use core::hashmap::{HashMap, HashSet};
-use core::iter;
-use core::ops;
-use core::ptr::to_unsafe_ptr;
-use core::to_bytes;
-use core::u32;
-use core::uint;
-use core::vec;
+use std::cast;
+use std::cmp;
+use std::hashmap::{HashMap, HashSet};
+use std::iter;
+use std::ops;
+use std::ptr::to_unsafe_ptr;
+use std::to_bytes;
+use std::u32;
+use std::uint;
+use std::vec;
 use syntax::ast::*;
 use syntax::ast_util::is_local;
 use syntax::ast_util;
@@ -2324,7 +2323,7 @@ pub fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
                 false
             }
 
-            ty_struct(ref did, _) if vec::contains(*seen, did) => {
+            ty_struct(ref did, _) if seen.contains(did) => {
                 false
             }
 
@@ -2340,7 +2339,7 @@ pub fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
                 ts.iter().any_(|t| type_requires(cx, seen, r_ty, *t))
             }
 
-            ty_enum(ref did, _) if vec::contains(*seen, did) => {
+            ty_enum(ref did, _) if seen.contains(did) => {
                 false
             }
 
@@ -3267,7 +3266,7 @@ pub fn occurs_check(tcx: ctxt, sp: span, vid: TyVid, rt: t) {
     if !type_needs_infer(rt) { return; }
 
     // Occurs check!
-    if vec::contains(vars_in_type(rt), &vid) {
+    if vars_in_type(rt).contains(&vid) {
             // Maybe this should be span_err -- however, there's an
             // assertion later on that the type doesn't contain
             // variables, so in this case we have to be sure to die.
@@ -3675,15 +3674,15 @@ pub fn substd_enum_variants(cx: ctxt,
                             id: ast::def_id,
                             substs: &substs)
                          -> ~[VariantInfo] {
-    do vec::map(*enum_variants(cx, id)) |variant_info| {
-        let substd_args = vec::map(variant_info.args,
-                                   |aty| subst(cx, substs, *aty));
+    do enum_variants(cx, id).iter().transform |variant_info| {
+        let substd_args = variant_info.args.iter()
+            .transform(|aty| subst(cx, substs, *aty)).collect();
 
         let substd_ctor_ty = subst(cx, substs, variant_info.ctor_ty);
 
         @VariantInfo_{args: substd_args, ctor_ty: substd_ctor_ty,
                       ../*bad*/copy **variant_info}
-    }
+    }.collect()
 }
 
 pub fn item_path_str(cx: ctxt, id: ast::def_id) -> ~str {
@@ -3816,7 +3815,7 @@ pub fn enum_variants(cx: ctxt, id: ast::def_id) -> @~[VariantInfo] {
                     _
                 }, _) => {
             let mut disr_val = -1;
-            @vec::map(enum_definition.variants, |variant| {
+            @enum_definition.variants.iter().transform(|variant| {
                 match variant.node.kind {
                     ast::tuple_variant_kind(ref args) => {
                         let ctor_ty = node_id_to_type(cx, variant.node.id);
@@ -3849,7 +3848,7 @@ pub fn enum_variants(cx: ctxt, id: ast::def_id) -> @~[VariantInfo] {
                         fail!("struct variant kinds unimpl in enum_variants")
                     }
                 }
-            })
+            }).collect()
           }
           _ => cx.sess.bug("tag_variants: id not bound to an enum")
         }

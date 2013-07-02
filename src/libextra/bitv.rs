@@ -10,12 +10,11 @@
 
 #[allow(missing_doc)];
 
-use core::prelude::*;
 
-use core::cmp;
-use core::ops;
-use core::uint;
-use core::vec;
+use std::cmp;
+use std::ops;
+use std::uint;
+use std::vec;
 
 struct SmallBitv {
     /// only the lowest nbits of this value are used. the rest is undefined.
@@ -863,15 +862,15 @@ impl BitvSet {
 
 #[cfg(test)]
 mod tests {
-    use std::test::BenchHarness;
+    use extra::test::BenchHarness;
 
     use bitv::*;
     use bitv;
 
-    use core::uint;
-    use core::vec;
-    use core::rand;
-    use core::rand::Rng;
+    use std::uint;
+    use std::vec;
+    use std::rand;
+    use std::rand::Rng;
 
     static bench_bits : uint = 1 << 14;
 

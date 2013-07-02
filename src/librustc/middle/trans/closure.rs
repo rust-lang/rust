@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
 
 use back::abi;
 use back::link::{mangle_internal_name_by_path_and_seq};
@@ -28,8 +27,8 @@ use util::ppaux::ty_to_str;
 
 use middle::trans::type_::Type;
 
-use core::str;
-use core::vec;
+use std::str;
+use std::vec;
 use syntax::ast;
 use syntax::ast_map::path_name;
 use syntax::ast_util;
@@ -160,6 +159,14 @@ pub fn mk_closure_tys(tcx: ty::ctxt,
     return cdata_ty;
 }
 
+fn heap_for_unique_closure(bcx: block, t: ty::t) -> heap {
+    if ty::type_contents(bcx.tcx(), t).contains_managed() {
+        heap_managed_unique
+    } else {
+        heap_exchange_closure
+    }
+}
+
 pub fn allocate_cbox(bcx: block, sigil: ast::Sigil, cdata_ty: ty::t)
                   -> Result {
     let _icx = push_ctxt("closure::allocate_cbox");
@@ -182,7 +189,7 @@ pub fn allocate_cbox(bcx: block, sigil: ast::Sigil, cdata_ty: ty::t)
             malloc_raw(bcx, cdata_ty, heap_managed)
         }
         ast::OwnedSigil => {
-            malloc_raw(bcx, cdata_ty, heap_for_unique(bcx, cdata_ty))
+            malloc_raw(bcx, cdata_ty, heap_for_unique_closure(bcx, cdata_ty))
         }
         ast::BorrowedSigil => {
             let cbox_ty = tuplify_box_ty(tcx, cdata_ty);
@@ -527,7 +534,7 @@ pub fn make_opaque_cbox_take_glue(
         let rval = alloca(bcx, Type::i8p());
         let bcx = callee::trans_lang_call(
             bcx,
-            bcx.tcx().lang_items.exchange_malloc_fn(),
+            bcx.tcx().lang_items.closure_exchange_malloc_fn(),
             [opaque_tydesc, sz],
             expr::SaveIn(rval));
         let cbox_out = PointerCast(bcx, Load(bcx, rval), llopaquecboxty);

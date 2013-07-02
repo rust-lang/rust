@@ -8,17 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
 
 use driver::session;
 use metadata::cstore;
 use metadata::filesearch;
 
-use core::hashmap::HashSet;
-use core::os;
-use core::uint;
-use core::util;
-use core::vec;
+use std::hashmap::HashSet;
+use std::os;
+use std::uint;
+use std::util;
+use std::vec;
 
 fn not_win32(os: session::os) -> bool {
   os != session::os_win32
@@ -53,7 +52,7 @@ fn get_sysroot_absolute_rt_lib(sess: session::Session) -> Path {
 }
 
 pub fn rpaths_to_flags(rpaths: &[Path]) -> ~[~str] {
-    vec::map(rpaths, |rpath| fmt!("-Wl,-rpath,%s",rpath.to_str()))
+    rpaths.iter().transform(|rpath| fmt!("-Wl,-rpath,%s",rpath.to_str())).collect()
 }
 
 fn get_rpaths(os: session::os,
@@ -104,16 +103,14 @@ fn get_rpaths(os: session::os,
 fn get_rpaths_relative_to_output(os: session::os,
                                  output: &Path,
                                  libs: &[Path]) -> ~[Path] {
-    vec::map(libs, |a| {
-        get_rpath_relative_to_output(os, output, a)
-    })
+    libs.iter().transform(|a| get_rpath_relative_to_output(os, output, a)).collect()
 }
 
 pub fn get_rpath_relative_to_output(os: session::os,
                                     output: &Path,
                                     lib: &Path)
                                  -> Path {
-    use core::os;
+    use std::os;
 
     assert!(not_win32(os));
 
@@ -164,7 +161,7 @@ pub fn get_relative_to(abs1: &Path, abs2: &Path) -> Path {
 }
 
 fn get_absolute_rpaths(libs: &[Path]) -> ~[Path] {
-    vec::map(libs, |a| get_absolute_rpath(a) )
+    libs.iter().transform(|a| get_absolute_rpath(a)).collect()
 }
 
 pub fn get_absolute_rpath(lib: &Path) -> Path {
@@ -195,8 +192,7 @@ pub fn minimize_rpaths(rpaths: &[Path]) -> ~[Path] {
 
 #[cfg(unix, test)]
 mod test {
-    use core::prelude::*;
-    use core::os;
+    use std::os;
 
     // FIXME(#2119): the outer attribute should be #[cfg(unix, test)], then
     // these redundant #[cfg(test)] blocks can be removed

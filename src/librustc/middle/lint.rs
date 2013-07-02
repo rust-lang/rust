@@ -8,25 +8,24 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
 
 use driver::session;
 use middle::ty;
 use middle::pat_util;
 use util::ppaux::{ty_to_str};
 
-use core::char;
-use core::cmp;
-use core::hashmap::HashMap;
-use core::i16;
-use core::i32;
-use core::i64;
-use core::i8;
-use core::u16;
-use core::u32;
-use core::u64;
-use core::u8;
-use core::vec;
+use std::char;
+use std::cmp;
+use std::hashmap::HashMap;
+use std::i16;
+use std::i32;
+use std::i64;
+use std::i8;
+use std::u16;
+use std::u32;
+use std::u64;
+use std::u8;
+use std::vec;
 use extra::smallintmap::SmallIntMap;
 use syntax::attr;
 use syntax::codemap::span;
@@ -139,7 +138,7 @@ static lint_table: &'static [(&'static str, LintSpec)] = &[
     ("ctypes",
      LintSpec {
         lint: ctypes,
-        desc: "proper use of core::libc types in foreign modules",
+        desc: "proper use of std::libc types in foreign modules",
         default: warn
      }),
 
@@ -741,11 +740,10 @@ fn check_item_ctypes(cx: &Context, it: &ast::item) {
     }
 
     fn check_foreign_fn(cx: &Context, decl: &ast::fn_decl) {
-        let tys = vec::map(decl.inputs, |a| a.ty );
-        let r = vec::append_one(tys, decl.output);
-        for r.iter().advance |ty| {
-            check_ty(cx, *ty);
+        for decl.inputs.iter().advance |in| {
+            check_ty(cx, in.ty);
         }
+        check_ty(cx, decl.output)
     }
 
     match it.node {

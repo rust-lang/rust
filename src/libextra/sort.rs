@@ -10,12 +10,11 @@
 
 //! Sorting methods
 
-use core::prelude::*;
 
-use core::cmp::{Eq, Ord};
-use core::uint;
-use core::util::swap;
-use core::vec;
+use std::cmp::{Eq, Ord};
+use std::uint;
+use std::util::swap;
+use std::vec;
 
 type Le<'self, T> = &'self fn(v1: &T, v2: &T) -> bool;
 
@@ -66,17 +65,17 @@ pub fn merge_sort<T:Copy>(v: &[T], le: Le<T>) -> ~[T] {
 
 fn part<T>(arr: &mut [T], left: uint,
            right: uint, pivot: uint, compare_func: Le<T>) -> uint {
-    vec::swap(arr, pivot, right);
+    arr.swap(pivot, right);
     let mut storage_index: uint = left;
     let mut i: uint = left;
     while i < right {
         if compare_func(&arr[i], &arr[right]) {
-            vec::swap(arr, i, storage_index);
+            arr.swap(i, storage_index);
             storage_index += 1;
         }
         i += 1;
     }
-    vec::swap(arr, storage_index, right);
+    arr.swap(storage_index, right);
     return storage_index;
 }
 
@@ -121,29 +120,29 @@ fn qsort3<T:Copy + Ord + Eq>(arr: &mut [T], left: int, right: int) {
             j -= 1;
         }
         if i >= j { break; }
-        vec::swap(arr, i as uint, j as uint);
+        arr.swap(i as uint, j as uint);
         if arr[i] == v {
             p += 1;
-            vec::swap(arr, p as uint, i as uint);
+            arr.swap(p as uint, i as uint);
         }
         if v == arr[j] {
             q -= 1;
-            vec::swap(arr, j as uint, q as uint);
+            arr.swap(j as uint, q as uint);
         }
     }
-    vec::swap(arr, i as uint, right as uint);
+    arr.swap(i as uint, right as uint);
     j = i - 1;
     i += 1;
     let mut k: int = left;
     while k < p {
-        vec::swap(arr, k as uint, j as uint);
+        arr.swap(k as uint, j as uint);
         k += 1;
         j -= 1;
         if k == arr.len() as int { break; }
     }
     k = right - 1;
     while k > q {
-        vec::swap(arr, i as uint, k as uint);
+        arr.swap(i as uint, k as uint);
         k -= 1;
         i += 1;
         if k == 0 { break; }
@@ -260,7 +259,7 @@ fn binarysort<T:Copy + Ord>(array: &mut [T], start: uint) {
 fn reverse_slice<T>(v: &mut [T], start: uint, end:uint) {
     let mut i = start;
     while i < end / 2 {
-        vec::swap(v, i, end - i - 1);
+        v.swap(i, end - i - 1);
         i += 1;
     }
 }
@@ -480,7 +479,7 @@ impl<T:Copy + Ord> MergeState<T> {
         let mut len1 = len1;
         let mut len2 = len2;
 
-        vec::swap(array, dest, c2);
+        array.swap(dest, c2);
         dest += 1; c2 += 1; len2 -= 1;
 
         if len2 == 0 {
@@ -502,7 +501,7 @@ impl<T:Copy + Ord> MergeState<T> {
             loop {
                 assert!(len1 > 1 && len2 != 0);
                 if array[c2] < tmp[c1] {
-                    vec::swap(array, dest, c2);
+                    array.swap(dest, c2);
                     dest += 1; c2 += 1; len2 -= 1;
                     count2 += 1; count1 = 0;
                     if len2 == 0 {
@@ -535,7 +534,7 @@ impl<T:Copy + Ord> MergeState<T> {
                     dest += count1; c1 += count1; len1 -= count1;
                     if len1 <= 1 { break_outer = true; break; }
                 }
-                vec::swap(array, dest, c2);
+                array.swap(dest, c2);
                 dest += 1; c2 += 1; len2 -= 1;
                 if len2 == 0 { break_outer = true; break; }
 
@@ -590,7 +589,7 @@ impl<T:Copy + Ord> MergeState<T> {
         let mut len1 = len1;
         let mut len2 = len2;
 
-        vec::swap(array, dest, c1);
+        array.swap(dest, c1);
         dest -= 1; c1 -= 1; len1 -= 1;
 
         if len1 == 0 {
@@ -614,7 +613,7 @@ impl<T:Copy + Ord> MergeState<T> {
             loop {
                 assert!(len1 != 0 && len2 > 1);
                 if tmp[c2] < array[c1] {
-                    vec::swap(array, dest, c1);
+                    array.swap(dest, c1);
                     dest -= 1; c1 -= 1; len1 -= 1;
                     count1 += 1; count2 = 0;
                     if len1 == 0 {
@@ -667,7 +666,7 @@ impl<T:Copy + Ord> MergeState<T> {
                     copy_vec(array, dest+1, tmp.slice(c2+1, c2+1+count2));
                     if len2 <= 1 { break_outer = true; break; }
                 }
-                vec::swap(array, dest, c1);
+                array.swap(dest, c1);
                 dest -= 1; c1 -= 1; len1 -= 1;
                 if len1 == 0 { break_outer = true; break; }
                 min_gallop -= 1;
@@ -791,12 +790,11 @@ mod test_qsort3 {
 
 #[cfg(test)]
 mod test_qsort {
-    use core::prelude::*;
 
     use sort::*;
 
-    use core::int;
-    use core::vec;
+    use std::int;
+    use std::vec;
 
     fn check_sort(v1: &mut [int], v2: &mut [int]) {
         let len = v1.len();
@@ -857,7 +855,6 @@ mod test_qsort {
 
 #[cfg(test)]
 mod tests {
-    use core::prelude::*;
 
     use sort::*;
 
@@ -924,12 +921,11 @@ mod tests {
 
 #[cfg(test)]
 mod test_tim_sort {
-    use core::prelude::*;
 
     use sort::tim_sort;
-    use core::rand::RngUtil;
-    use core::rand;
-    use core::vec;
+    use std::rand::RngUtil;
+    use std::rand;
+    use std::vec;
 
     struct CVal {
         val: float,
@@ -1019,15 +1015,14 @@ mod test_tim_sort {
 
 #[cfg(test)]
 mod big_tests {
-    use core::prelude::*;
 
     use sort::*;
 
-    use core::local_data;
-    use core::rand::RngUtil;
-    use core::rand;
-    use core::uint;
-    use core::vec;
+    use std::local_data;
+    use std::rand::RngUtil;
+    use std::rand;
+    use std::uint;
+    use std::vec;
 
     #[test]
     fn test_unique() {
@@ -1054,7 +1049,7 @@ mod big_tests {
     fn makeRange(n: uint) -> ~[uint] {
         let one = do vec::from_fn(n) |i| { i };
         let mut two = copy one;
-        vec::reverse(two);
+        two.reverse();
         vec::append(two, one)
     }
 
@@ -1078,7 +1073,7 @@ mod big_tests {
             tim_sort(arr); // *sort
             isSorted(arr);
 
-            vec::reverse(arr);
+            arr.reverse();
             tim_sort(arr); // \sort
             isSorted(arr);
 
@@ -1088,7 +1083,7 @@ mod big_tests {
             for 3.times {
                 let i1 = rng.gen_uint_range(0, n);
                 let i2 = rng.gen_uint_range(0, n);
-                vec::swap(arr, i1, i2);
+                arr.swap(i1, i2);
             }
             tim_sort(arr); // 3sort
             isSorted(arr);
@@ -1150,7 +1145,7 @@ mod big_tests {
             tim_sort(arr); // *sort
             isSorted(arr);
 
-            vec::reverse(arr);
+            arr.reverse();
             tim_sort(arr); // \sort
             isSorted(arr);
 
@@ -1160,7 +1155,7 @@ mod big_tests {
             for 3.times {
                 let i1 = rng.gen_uint_range(0, n);
                 let i2 = rng.gen_uint_range(0, n);
-                vec::swap(arr, i1, i2);
+                arr.swap(i1, i2);
             }
             tim_sort(arr); // 3sort
             isSorted(arr);

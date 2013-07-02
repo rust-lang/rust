@@ -73,8 +73,8 @@ pub use tuple::{ImmutableTuple2, ImmutableTuple3, ImmutableTuple4, ImmutableTupl
 pub use tuple::{ImmutableTuple6, ImmutableTuple7, ImmutableTuple8, ImmutableTuple9};
 pub use tuple::{ImmutableTuple10, ImmutableTuple11, ImmutableTuple12};
 pub use vec::{VectorVector, CopyableVector, ImmutableVector};
-pub use vec::{ImmutableEqVector, ImmutableCopyableVector};
-pub use vec::{OwnedVector, OwnedCopyableVector, MutableVector};
+pub use vec::{ImmutableEqVector, ImmutableTotalOrdVector, ImmutableCopyableVector};
+pub use vec::{OwnedVector, OwnedCopyableVector,OwnedEqVector, MutableVector};
 pub use io::{Reader, ReaderUtil, Writer, WriterUtil};
 
 // Reexported runtime types

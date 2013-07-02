@@ -18,13 +18,12 @@ A BigInt is a combination of BigUint and Sign.
 
 #[allow(missing_doc)];
 
-use core::prelude::*;
-use core::cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering, Less, Equal, Greater};
-use core::int;
-use core::num::{IntConvertible, Zero, One, ToStrRadix, FromStrRadix, Orderable};
-use core::str;
-use core::uint;
-use core::vec;
+use std::cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering, Less, Equal, Greater};
+use std::int;
+use std::num::{IntConvertible, Zero, One, ToStrRadix, FromStrRadix, Orderable};
+use std::str;
+use std::uint;
+use std::vec;
 
 /**
 A BigDigit is a BigUint's composing element.
@@ -284,13 +283,13 @@ impl Mul<BigUint, BigUint> for BigUint {
             if n == 1 { return copy *a; }
 
             let mut carry = 0;
-            let prod = do vec::map(a.data) |ai| {
+            let prod = do a.data.iter().transform |ai| {
                 let (hi, lo) = BigDigit::from_uint(
                     (*ai as uint) * (n as uint) + (carry as uint)
                 );
                 carry = hi;
                 lo
-            };
+            }.collect::<~[BigDigit]>();
             if carry == 0 { return BigUint::new(prod) };
             return BigUint::new(prod + [carry]);
         }
@@ -619,13 +618,13 @@ impl BigUint {
         if n_bits == 0 || self.is_zero() { return copy *self; }
 
         let mut carry = 0;
-        let shifted = do vec::map(self.data) |elem| {
+        let shifted = do self.data.iter().transform |elem| {
             let (hi, lo) = BigDigit::from_uint(
                 (*elem as uint) << n_bits | (carry as uint)
             );
             carry = hi;
             lo
-        };
+        }.collect::<~[BigDigit]>();
         if carry == 0 { return BigUint::new(shifted); }
         return BigUint::new(shifted + [carry]);
     }
@@ -1148,16 +1147,15 @@ impl BigInt {
 
 #[cfg(test)]
 mod biguint_tests {
-    use core::prelude::*;
 
     use super::*;
 
-    use core::cmp::{Less, Equal, Greater};
-    use core::int;
-    use core::num::{IntConvertible, Zero, One, FromStrRadix};
-    use core::str;
-    use core::uint;
-    use core::vec;
+    use std::cmp::{Less, Equal, Greater};
+    use std::int;
+    use std::num::{IntConvertible, Zero, One, FromStrRadix};
+    use std::str;
+    use std::uint;
+    use std::vec;
 
     #[test]
     fn test_from_slice() {
@@ -1174,7 +1172,7 @@ mod biguint_tests {
 
     #[test]
     fn test_cmp() {
-        let data = [ &[], &[1], &[2], &[-1], &[0, 1], &[2, 1], &[1, 1, 1]  ]
+        let data: ~[BigUint] = [ &[], &[1], &[2], &[-1], &[0, 1], &[2, 1], &[1, 1, 1]  ]
             .map(|v| BigUint::from_slice(*v));
         for data.iter().enumerate().advance |(i, ni)| {
             for data.slice(i, data.len()).iter().enumerate().advance |(j0, nj)| {
@@ -1623,15 +1621,14 @@ mod biguint_tests {
 
 #[cfg(test)]
 mod bigint_tests {
-    use core::prelude::*;
 
     use super::*;
 
-    use core::cmp::{Less, Equal, Greater};
-    use core::int;
-    use core::num::{IntConvertible, Zero, One, FromStrRadix};
-    use core::uint;
-    use core::vec;
+    use std::cmp::{Less, Equal, Greater};
+    use std::int;
+    use std::num::{IntConvertible, Zero, One, FromStrRadix};
+    use std::uint;
+    use std::vec;
 
     #[test]
     fn test_from_biguint() {

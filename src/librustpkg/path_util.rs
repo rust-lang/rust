@@ -10,15 +10,14 @@
 
 // rustpkg utilities having to do with paths and directories
 
-use core::prelude::*;
 pub use package_path::{RemotePath, LocalPath, normalize};
 pub use package_id::PkgId;
 pub use target::{OutputType, Main, Lib, Test, Bench, Target, Build, Install};
 pub use version::{Version, NoVersion, split_version_general};
-use core::libc::consts::os::posix88::{S_IRUSR, S_IWUSR, S_IXUSR};
-use core::os::mkdir_recursive;
-use core::os;
-use core::iterator::IteratorUtil;
+use std::libc::consts::os::posix88::{S_IRUSR, S_IWUSR, S_IXUSR};
+use std::os::mkdir_recursive;
+use std::os;
+use std::iterator::IteratorUtil;
 use messages::*;
 use package_id::*;
 

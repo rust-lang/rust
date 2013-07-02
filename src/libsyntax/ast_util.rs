@@ -814,7 +814,7 @@ mod test {
     // convert a list of uints to an @[ident]
     // (ignores the interner completely)
     fn uints_to_idents (uints: &~[uint]) -> @~[ident] {
-        @uints.map(|u|{ ident {name:*u, ctxt: empty_ctxt} })
+        @uints.map(|u| ident {name:*u, ctxt: empty_ctxt})
     }
 
     fn id (u : uint, s: SyntaxContext) -> ident {

@@ -21,7 +21,6 @@ use print::pprust;
 
 use std::io;
 use std::result;
-use std::vec;
 
 // These macros all relate to the file system; they either return
 // the column/row/filename of the expression, or they include
@@ -106,9 +105,7 @@ pub fn expand_include_bin(cx: @ExtCtxt, sp: span, tts: &[ast::token_tree])
     let file = get_single_str_from_tts(cx, sp, tts, "include_bin!");
     match io::read_whole_file(&res_rel_file(cx, sp, &Path(file))) {
       result::Ok(src) => {
-        let u8_exprs = vec::map(src, |char| {
-            cx.expr_u8(sp, *char)
-        });
+        let u8_exprs: ~[@ast::expr] = src.iter().transform(|char| cx.expr_u8(sp, *char)).collect();
         base::MRExpr(cx.expr_vec(sp, u8_exprs))
       }
       result::Err(ref e) => {

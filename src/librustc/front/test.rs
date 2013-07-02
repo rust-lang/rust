@@ -10,12 +10,11 @@
 
 // Code that generates a test runner to run all the tests in a crate
 
-use core::prelude::*;
 
 use driver::session;
 use front::config;
 
-use core::vec;
+use std::vec;
 use syntax::ast_util::*;
 use syntax::attr;
 use syntax::codemap::{dummy_sp, span, ExpandedFrom, CallInfo, NameAndSpan};
@@ -118,7 +117,7 @@ fn fold_mod(cx: @mut TestCtxt,
 
     let mod_nomain = ast::_mod {
         view_items: /*bad*/copy m.view_items,
-        items: vec::map(m.items, |i| nomain(cx, *i)),
+        items: m.items.iter().transform(|i| nomain(cx, *i)).collect(),
     };
 
     fold::noop_fold_mod(&mod_nomain, fld)
@@ -272,7 +271,7 @@ mod __test {
 */
 
 fn mk_std(cx: &TestCtxt) -> @ast::view_item {
-    let vers = ast::lit_str(@"0.7-pre");
+    let vers = ast::lit_str(@"0.7");
     let vers = nospan(vers);
     let mi = ast::meta_name_value(@"vers", vers);
     let mi = nospan(mi);

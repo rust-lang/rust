@@ -52,7 +52,6 @@
  * an rptr (`&r.T`) use the region `r` that appears in the rptr.
  */
 
-use core::prelude::*;
 
 use middle::const_eval;
 use middle::ty::{substs};
@@ -63,8 +62,8 @@ use middle::typeck::rscope::{region_scope, RegionError};
 use middle::typeck::rscope::RegionParamNames;
 use middle::typeck::lookup_def_tcx;
 
-use core::result;
-use core::vec;
+use std::result;
+use std::vec;
 use syntax::abi::AbiSet;
 use syntax::{ast, ast_util};
 use syntax::codemap::span;
@@ -719,14 +718,14 @@ pub fn ty_of_closure<AC:AstConv,RS:region_scope + Copy + 'static>(
     let bound_lifetime_names = bound_lifetimes(this, lifetimes);
     let rb = in_binding_rscope(rscope, RegionParamNames(copy bound_lifetime_names));
 
-    let input_tys = do decl.inputs.mapi |i, a| {
+    let input_tys = do decl.inputs.iter().enumerate().transform |(i, a)| {
         let expected_arg_ty = do expected_sig.chain_ref |e| {
             // no guarantee that the correct number of expected args
             // were supplied
             if i < e.inputs.len() {Some(e.inputs[i])} else {None}
         };
         ty_of_arg(this, &rb, *a, expected_arg_ty)
-    };
+    }.collect();
 
     let expected_ret_ty = expected_sig.map(|e| e.output);
     let output_ty = match decl.output.node {

@@ -10,7 +10,6 @@
 
 //! Code that is useful in various trans modules.
 
-use core::prelude::*;
 
 use driver::session;
 use driver::session::Session;
@@ -31,14 +30,14 @@ use util::ppaux::{Repr};
 
 use middle::trans::type_::Type;
 
-use core::cast::transmute;
-use core::cast;
-use core::hashmap::{HashMap};
-use core::libc::{c_uint, c_longlong, c_ulonglong};
-use core::to_bytes;
-use core::str;
-use core::vec::raw::to_ptr;
-use core::vec;
+use std::cast::transmute;
+use std::cast;
+use std::hashmap::{HashMap};
+use std::libc::{c_uint, c_longlong, c_ulonglong};
+use std::to_bytes;
+use std::str;
+use std::vec::raw::to_ptr;
+use std::vec;
 use syntax::ast::ident;
 use syntax::ast_map::{path, path_elt};
 use syntax::codemap::span;
@@ -276,6 +275,7 @@ pub enum heap {
     heap_managed,
     heap_managed_unique,
     heap_exchange,
+    heap_exchange_closure
 }
 
 #[deriving(Eq)]
@@ -385,7 +385,7 @@ pub fn add_clean_free(cx: block, ptr: ValueRef, heap: heap) {
         let f: @fn(block) -> block = |a| glue::trans_free(a, ptr);
         f
       }
-      heap_exchange => {
+      heap_exchange | heap_exchange_closure => {
         let f: @fn(block) -> block = |a| glue::trans_exchange_free(a, ptr);
         f
       }
@@ -981,9 +981,9 @@ pub fn node_id_type_params(bcx: block, id: ast::node_id) -> ~[ty::t] {
 
     match bcx.fcx.param_substs {
       Some(substs) => {
-        do vec::map(params) |t| {
+        do params.iter().transform |t| {
             ty::subst_tps(tcx, substs.tys, substs.self_ty, *t)
-        }
+        }.collect()
       }
       _ => params
     }
@@ -1007,9 +1007,11 @@ pub fn resolve_vtables_under_param_substs(tcx: ty::ctxt,
                                           param_substs: Option<@param_substs>,
                                           vts: typeck::vtable_res)
     -> typeck::vtable_res {
-    @vec::map(*vts, |ds|
-      @vec::map(**ds, |d|
-                resolve_vtable_under_param_substs(tcx, param_substs, copy *d)))
+    @vts.iter().transform(|ds|
+      @ds.iter().transform(
+          |d| resolve_vtable_under_param_substs(tcx, param_substs, copy *d))
+                          .collect::<~[typeck::vtable_origin]>())
+        .collect::<~[typeck::vtable_param_res]>()
 }
 
 
@@ -1030,9 +1032,9 @@ pub fn resolve_vtable_under_param_substs(tcx: ty::ctxt,
         typeck::vtable_static(trait_id, tys, sub) => {
             let tys = match param_substs {
                 Some(substs) => {
-                    do vec::map(tys) |t| {
+                    do tys.iter().transform |t| {
                         ty::subst_tps(tcx, substs.tys, substs.self_ty, *t)
-                    }
+                    }.collect()
                 }
                 _ => tys
             };

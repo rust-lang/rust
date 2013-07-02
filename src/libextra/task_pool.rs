@@ -13,15 +13,14 @@
 /// A task pool abstraction. Useful for achieving predictable CPU
 /// parallelism.
 
-use core::prelude::*;
 
-use core::comm::Chan;
-use core::comm;
-use core::task::SchedMode;
-use core::task;
-use core::vec;
+use std::comm::Chan;
+use std::comm;
+use std::task::SchedMode;
+use std::task;
+use std::vec;
 
-#[cfg(test)] use core::task::SingleThreaded;
+#[cfg(test)] use std::task::SingleThreaded;
 
 enum Msg<T> {
     Execute(~fn(&T)),

@@ -11,7 +11,7 @@
 //! Rustdoc - The Rust documentation generator
 
 #[link(name = "rustdoc",
-       vers = "0.7-pre",
+       vers = "0.7",
        uuid = "f8abd014-b281-484d-a0c3-26e3de8e2412",
        url = "https://github.com/mozilla/rust/tree/master/src/rustdoc")];
 
@@ -21,21 +21,16 @@
 
 #[allow(non_implicitly_copyable_typarams)];
 
-#[no_std];
-
-extern mod core(name = "std");
-extern mod extra(name = "extra");
-
+extern mod extra;
 extern mod rustc;
 extern mod syntax;
 
-use core::prelude::*;
+use std::io;
+use std::os;
 
 use config::Config;
 use doc::Item;
 use doc::ItemUtils;
-
-use core::*;
 
 pub mod pass;
 pub mod config;
@@ -65,15 +60,6 @@ pub mod sectionalize_pass;
 pub mod escape_pass;
 pub mod prune_private_pass;
 pub mod util;
-
-mod std {
-    pub use core::clone;
-    pub use core::cmp;
-    pub use core::os;
-    pub use core::str;
-    pub use core::sys;
-    pub use core::unstable;
-}
 
 pub fn main() {
     let args = os::args();

@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
 
 use back::link;
 use back::target_strs;
@@ -29,7 +28,7 @@ use syntax::abi;
 use syntax::parse::token;
 use syntax;
 
-use core::hashmap::HashMap;
+use std::hashmap::HashMap;
 
 #[deriving(Eq)]
 pub enum os { os_win32, os_macos, os_linux, os_android, os_freebsd, }

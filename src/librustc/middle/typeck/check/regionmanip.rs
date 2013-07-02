@@ -10,7 +10,6 @@
 
 // #[warn(deprecated_mode)];
 
-use core::prelude::*;
 
 use middle::ty;
 

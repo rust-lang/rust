@@ -44,10 +44,10 @@
  *   taken to it, implementing them for Rust seems difficult.
  */
 
-use core::container::Map;
-use core::libc::c_ulonglong;
-use core::option::{Option, Some, None};
-use core::vec;
+use std::container::Map;
+use std::libc::c_ulonglong;
+use std::option::{Option, Some, None};
+use std::vec;
 
 use lib::llvm::{ValueRef, True, IntEQ, IntNE};
 use middle::trans::_match;
@@ -86,7 +86,7 @@ pub enum Repr {
      * it represents the other case, which is inhabited by at most one value
      * (and all other fields are undefined/unused).
      *
-     * For example, `core::option::Option` instantiated at a safe pointer type
+     * For example, `std::option::Option` instantiated at a safe pointer type
      * is represented such that `None` is a null pointer and `Some` is the
      * identity function.
      */
@@ -519,10 +519,10 @@ pub fn trans_const(ccx: &mut CrateContext, r: &Repr, discr: int,
                 C_struct(build_const_struct(ccx, nonnull, vals))
             } else {
                 assert_eq!(vals.len(), 0);
-                let vals = do nonnull.fields.mapi |i, &ty| {
+                let vals = do nonnull.fields.iter().enumerate().transform |(i, &ty)| {
                     let llty = type_of::sizing_type_of(ccx, ty);
                     if i == ptrfield { C_null(llty) } else { C_undef(llty) }
-                };
+                }.collect::<~[ValueRef]>();
                 C_struct(build_const_struct(ccx, nonnull, vals))
             }
         }

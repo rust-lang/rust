@@ -54,7 +54,6 @@
 // terms of error reporting, although we do not do that properly right
 // now.
 
-use core::prelude::*;
 
 use middle::ty::{FloatVar, FnSig, IntVar, TyVar};
 use middle::ty::{IntType, UintType, substs};
@@ -64,12 +63,12 @@ use middle::typeck::infer::glb::Glb;
 use middle::typeck::infer::lub::Lub;
 use middle::typeck::infer::sub::Sub;
 use middle::typeck::infer::to_str::InferStr;
-use middle::typeck::infer::unify::{InferCtxtMethods, UnifyInferCtxtMethods};
+use middle::typeck::infer::unify::{InferCtxtMethods};
 use middle::typeck::infer::{InferCtxt, cres, ures};
 use util::common::indent;
 
-use core::result::{iter_vec2, map_vec2};
-use core::vec;
+use std::result::{iter_vec2, map_vec2};
+use std::vec;
 use syntax::ast::{Onceness, purity};
 use syntax::ast;
 use syntax::opt_vec;

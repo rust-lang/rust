@@ -76,7 +76,6 @@ type parameter).
 
 */
 
-use core::prelude::*;
 
 use middle::const_eval;
 use middle::pat_util::pat_id_map;
@@ -111,11 +110,11 @@ use util::ppaux::{bound_region_ptr_to_str};
 use util::ppaux;
 
 
-use core::cast::transmute;
-use core::hashmap::HashMap;
-use core::result;
-use core::util::replace;
-use core::vec;
+use std::cast::transmute;
+use std::hashmap::HashMap;
+use std::result;
+use std::util::replace;
+use std::vec;
 use extra::list::Nil;
 use syntax::abi::AbiSet;
 use syntax::ast::{provided, required};
@@ -986,7 +985,7 @@ pub fn do_autoderef(fcx: @mut FnCtxt, sp: span, t: ty::t) -> (ty::t, uint) {
                 // concerned with this, as an error will be reported
                 // on the enum definition as well because the enum is
                 // not instantiable.
-                if vec::contains(enum_dids, did) {
+                if enum_dids.contains(did) {
                     return (t1, autoderefs);
                 }
                 enum_dids.push(*did);
@@ -1782,7 +1781,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
             _ => ()
         }
 
-        let tps = vec::map(tys, |ty| fcx.to_ty(*ty));
+        let tps = tys.iter().transform(|ty| fcx.to_ty(*ty)).collect::<~[ty::t]>();
         match method::lookup(fcx,
                              expr,
                              base,
@@ -2767,7 +2766,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         let mut bot_field = false;
         let mut err_field = false;
 
-        let elt_ts = do elts.mapi |i, e| {
+        let elt_ts = do elts.iter().enumerate().transform |(i, e)| {
             let opt_hint = match flds {
                 Some(ref fs) if i < fs.len() => Some(fs[i]),
                 _ => None
@@ -2777,7 +2776,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
             err_field = err_field || ty::type_is_error(t);
             bot_field = bot_field || ty::type_is_bot(t);
             t
-        };
+        }.collect();
         if bot_field {
             fcx.write_bot(id);
         } else if err_field {
@@ -3157,7 +3156,7 @@ pub fn check_enum_variants(ccx: @mut CrateCtxt,
                   }
                 }
             }
-            if vec::contains(*disr_vals, &*disr_val) {
+            if disr_vals.contains(&*disr_val) {
                 ccx.tcx.sess.span_err(v.span,
                                       "discriminator value already exists");
             }
@@ -3540,7 +3539,7 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
                ty::mk_nil())
             }
             "needs_drop" => (1u, ~[], ty::mk_bool()),
-
+            "contains_managed" => (1u, ~[], ty::mk_bool()),
             "atomic_xchg"     | "atomic_xadd"     | "atomic_xsub"     |
             "atomic_xchg_acq" | "atomic_xadd_acq" | "atomic_xsub_acq" |
             "atomic_xchg_rel" | "atomic_xadd_rel" | "atomic_xsub_rel" => {

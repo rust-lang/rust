@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
 
 use back::{link, abi};
 use lib::llvm::{ValueRef};
@@ -33,8 +32,8 @@ use middle::ty;
 use middle::ty::FnSig;
 use util::ppaux::ty_to_str;
 
-use core::uint;
-use core::vec;
+use std::uint;
+use std::vec;
 use syntax::codemap::span;
 use syntax::{ast, ast_util};
 use syntax::{attr, ast_map};
@@ -749,6 +748,12 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
             let tp_ty = substs.tys[0];
             Store(bcx,
                   C_bool(ty::type_needs_drop(ccx.tcx, tp_ty)),
+                  fcx.llretptr.get());
+        }
+        "contains_managed" => {
+            let tp_ty = substs.tys[0];
+            Store(bcx,
+                  C_bool(ty::type_contents(ccx.tcx, tp_ty).contains_managed()),
                   fcx.llretptr.get());
         }
         "visit_tydesc" => {

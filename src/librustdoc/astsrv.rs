@@ -17,13 +17,12 @@ query AST-related information, shielding the rest of Rustdoc from its
 non-sendableness.
 */
 
-use core::prelude::*;
 
 use parse;
 
-use core::cell::Cell;
-use core::comm::{stream, SharedChan, Port};
-use core::task;
+use std::cell::Cell;
+use std::comm::{stream, SharedChan, Port};
+use std::task;
 use rustc::driver::driver;
 use rustc::driver::session::Session;
 use rustc::driver::session::{basic_options, options};

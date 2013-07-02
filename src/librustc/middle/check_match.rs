@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
 
 use middle::const_eval::{compare_const_vals, lookup_const_by_id};
 use middle::const_eval::{eval_const_expr, const_val, const_bool};
@@ -19,8 +18,8 @@ use middle::typeck::method_map;
 use middle::moves;
 use util::ppaux::ty_to_str;
 
-use core::uint;
-use core::vec;
+use std::uint;
+use std::vec;
 use extra::sort;
 use syntax::ast::*;
 use syntax::ast_util::{unguarded_pat, walk_pat};
@@ -364,7 +363,7 @@ pub fn missing_ctor(cx: &MatchCheckCtxt,
         for m.iter().advance |r| {
             let r = pat_ctor_id(cx, r[0]);
             for r.iter().advance |id| {
-                if !vec::contains(found, id) {
+                if !found.contains(id) {
                     found.push(/*bad*/copy *id);
                 }
             }
@@ -418,7 +417,7 @@ pub fn missing_ctor(cx: &MatchCheckCtxt,
                 }
             }
         );
-        vec::dedup(&mut sorted_vec_lens);
+        sorted_vec_lens.dedup();
 
         let mut found_slice = false;
         let mut next = 0;
@@ -643,13 +642,13 @@ pub fn specialize(cx: &MatchCheckCtxt,
                                          ty_to_str(cx.tcx, left_ty)));
                             }
                         }
-                        let args = vec::map(class_fields, |class_field| {
+                        let args = class_fields.iter().transform(|class_field| {
                             match flds.iter().find_(|f|
                                             f.ident == class_field.ident) {
                                 Some(f) => f.pat,
                                 _ => wild()
                             }
-                        });
+                        }).collect();
                         Some(vec::append(args, vec::to_owned(r.tail())))
                     }
                 }

@@ -11,11 +11,10 @@
 /// Implement ncurses-compatible database discovery
 /// Does not support hashed database, only filesystem!
 
-use core::prelude::*;
-use core::{os, str};
-use core::os::getenv;
-use core::io::{file_reader, Reader};
-use path = core::path::Path;
+use std::{os, str};
+use std::os::getenv;
+use std::io::{file_reader, Reader};
+use path = std::path::Path;
 
 /// Return path to database entry for `term`
 pub fn get_dbpath_for_term(term: &str) -> Option<~path> {

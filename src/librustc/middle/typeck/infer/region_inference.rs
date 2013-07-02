@@ -536,7 +536,6 @@ more convincing in the future.
 
 */
 
-use core::prelude::*;
 
 use middle::ty;
 use middle::ty::{FreeRegion, Region, RegionVid};
@@ -546,10 +545,10 @@ use middle::typeck::infer::cres;
 use util::common::indenter;
 use util::ppaux::note_and_explain_region;
 
-use core::cell::Cell;
-use core::hashmap::{HashMap, HashSet};
-use core::uint;
-use core::vec;
+use std::cell::Cell;
+use std::hashmap::{HashMap, HashSet};
+use std::uint;
+use std::vec;
 use syntax::codemap::span;
 use syntax::ast;
 
@@ -1479,7 +1478,7 @@ impl RegionVarBindings {
         // overlapping locations.
         let mut dup_vec = graph.nodes.map(|_| uint::max_value);
 
-        graph.nodes.mapi(|idx, node| {
+        graph.nodes.iter().enumerate().transform(|(idx, node)| {
             match node.value {
                 Value(_) => {
                     /* Inference successful */
@@ -1529,7 +1528,7 @@ impl RegionVarBindings {
             }
 
             node.value
-        })
+        }).collect()
     }
 
     pub fn report_error_for_expanding_node(&mut self,

@@ -14,10 +14,10 @@ use package_id::*;
 use package_source::*;
 use version::Version;
 
-use core::option::*;
-use core::os;
-use core::hashmap::*;
-use core::path::*;
+use std::option::*;
+use std::os;
+use std::hashmap::*;
+use std::path::*;
 
 /// Convenience functions intended for calling from pkg.rs
 

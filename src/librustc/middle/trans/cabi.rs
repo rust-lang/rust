@@ -15,9 +15,8 @@ use middle::trans::common::*;
 
 use middle::trans::type_::Type;
 
-use core::libc::c_uint;
-use core::option;
-use core::vec;
+use std::libc::c_uint;
+use std::option;
 
 pub trait ABIInfo {
     fn compute_info(&self, atys: &[Type], rty: Type, ret_def: bool) -> FnType;
@@ -37,7 +36,7 @@ pub struct FnType {
 
 impl FnType {
     pub fn decl_fn(&self, decl: &fn(fnty: Type) -> ValueRef) -> ValueRef {
-        let atys = vec::map(self.arg_tys, |t| t.ty);
+        let atys = self.arg_tys.iter().transform(|t| t.ty).collect::<~[Type]>();
         let rty = self.ret_ty.ty;
         let fnty = Type::func(atys, &rty);
         let llfn = decl(fnty);

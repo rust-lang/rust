@@ -12,11 +12,10 @@
 
 #[allow(missing_doc)];
 
-use core::prelude::*;
 
-use core::unstable::intrinsics::{move_val_init, init};
-use core::util::{replace, swap};
-use core::vec;
+use std::unstable::intrinsics::{move_val_init, init};
+use std::util::{replace, swap};
+use std::vec;
 
 /// A priority queue implemented with a binary heap
 pub struct PriorityQueue<T> {
@@ -108,7 +107,7 @@ impl<T:Ord> PriorityQueue<T> {
         let mut end = q.len();
         while end > 1 {
             end -= 1;
-            vec::swap(q.data, 0, end);
+            q.data.swap(0, end);
             q.siftdown_range(0, end)
         }
         q.to_vec()

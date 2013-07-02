@@ -16,13 +16,12 @@
  * GEN and KILL bits for each expression.
  */
 
-use core::prelude::*;
 
-use core::cast;
-use core::io;
-use core::uint;
-use core::vec;
-use core::hashmap::HashMap;
+use std::cast;
+use std::io;
+use std::uint;
+use std::vec;
+use std::hashmap::HashMap;
 use syntax::ast;
 use syntax::ast_util;
 use syntax::ast_util::id_range;

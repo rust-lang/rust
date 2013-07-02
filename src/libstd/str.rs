@@ -54,7 +54,6 @@ Section: Creating a string
  *
  * Raises the `not_utf8` condition if invalid UTF-8
  */
-
 pub fn from_bytes(vv: &[u8]) -> ~str {
     use str::not_utf8::cond;
 
@@ -65,6 +64,25 @@ pub fn from_bytes(vv: &[u8]) -> ~str {
     }
     else {
         return unsafe { raw::from_bytes(vv) }
+    }
+}
+
+/**
+ * Consumes a vector of bytes to create a new utf-8 string
+ *
+ * # Failure
+ *
+ * Raises the `not_utf8` condition if invalid UTF-8
+ */
+pub fn from_bytes_owned(vv: ~[u8]) -> ~str {
+    use str::not_utf8::cond;
+
+    if !is_utf8(vv) {
+        let first_bad_byte = *vv.iter().find_(|&b| !is_utf8([*b])).get();
+        cond.raise(fmt!("from_bytes: input is not UTF-8; first bad byte is %u",
+                        first_bad_byte as uint))
+    } else {
+        return unsafe { raw::from_bytes_owned(vv) }
     }
 }
 
@@ -434,9 +452,16 @@ pub fn each_split_within<'a>(ss: &'a str,
     let mut last_start = 0;
     let mut last_end = 0;
     let mut state = A;
+    let mut fake_i = ss.len();
+    let mut lim = lim;
 
     let mut cont = true;
     let slice: &fn() = || { cont = it(ss.slice(slice_start, last_end)) };
+
+    // if the limit is larger than the string, lower it to save cycles
+    if (lim >= fake_i) {
+        lim = fake_i;
+    }
 
     let machine: &fn((uint, char)) -> bool = |(i, c)| {
         let whitespace = if char::is_whitespace(c)       { Ws }       else { Cr };
@@ -466,7 +491,6 @@ pub fn each_split_within<'a>(ss: &'a str,
     ss.iter().enumerate().advance(|x| machine(x));
 
     // Let the automaton 'run out' by supplying trailing whitespace
-    let mut fake_i = ss.len();
     while cont && match state { B | C => true, A => false } {
         machine((fake_i, ' '));
         fake_i += 1;
@@ -842,6 +866,13 @@ pub mod raw {
         do vec::as_imm_buf(v) |buf, len| {
             from_buf_len(buf, len)
         }
+    }
+
+    /// Converts an owned vector of bytes to a new owned string. This assumes
+    /// that the utf-8-ness of the vector has already been validated
+    pub unsafe fn from_bytes_owned(mut v: ~[u8]) -> ~str {
+        v.push(0u8);
+        cast::transmute(v)
     }
 
     /// Converts a vector of bytes to a string.
@@ -1466,7 +1497,9 @@ impl<'self> StrSlice<'self> for &'self str {
         let mut out: ~str = ~"";
         out.reserve_at_least(self.len());
         for self.iter().advance |c| {
-            out.push_str(char::escape_default(c));
+            do c.escape_default |c| {
+                out.push_char(c);
+            }
         }
         out
     }
@@ -1476,7 +1509,9 @@ impl<'self> StrSlice<'self> for &'self str {
         let mut out: ~str = ~"";
         out.reserve_at_least(self.len());
         for self.iter().advance |c| {
-            out.push_str(char::escape_unicode(c));
+            do c.escape_unicode |c| {
+                out.push_char(c);
+            }
         }
         out
     }
@@ -2299,6 +2334,7 @@ mod tests {
     use libc;
     use ptr;
     use str::*;
+    use uint;
     use vec;
     use vec::{ImmutableVector, CopyableVector};
     use cmp::{TotalOrd, Less, Equal, Greater};
@@ -2444,6 +2480,8 @@ mod tests {
         t("hello", 15, [~"hello"]);
         t("\nMary had a little lamb\nLittle lamb\n", 15,
             [~"Mary had a", ~"little lamb", ~"Little lamb"]);
+        t("\nMary had a little lamb\nLittle lamb\n", uint::max_value,
+            [~"Mary had a little lamb\nLittle lamb"]);
     }
 
     #[test]

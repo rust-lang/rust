@@ -147,7 +147,6 @@
  *
  */
 
-use core::prelude::*;
 
 use back::abi;
 use lib::llvm::{llvm, ValueRef, BasicBlockRef};
@@ -172,8 +171,8 @@ use middle::trans::type_of;
 use middle::ty;
 use util::common::indenter;
 
-use core::hashmap::HashMap;
-use core::vec;
+use std::hashmap::HashMap;
+use std::vec;
 use syntax::ast;
 use syntax::ast::ident;
 use syntax::ast_util::path_to_ident;
@@ -304,7 +303,7 @@ pub fn variant_opt(bcx: block, pat_id: ast::node_id)
                                adt::represent_node(bcx, pat_id))
                 }
             }
-            ::core::util::unreachable();
+            ::std::util::unreachable();
         }
         ast::def_fn(*) |
         ast::def_struct(_) => {

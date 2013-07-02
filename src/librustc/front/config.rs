@@ -8,10 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
 
-use core::option;
-use core::vec;
+use std::option;
+use std::vec;
 use syntax::{ast, fold, attr};
 
 type in_cfg_pred = @fn(attrs: ~[ast::attribute]) -> bool;
@@ -91,7 +90,7 @@ fn fold_foreign_mod(
     ast::foreign_mod {
         sort: nm.sort,
         abis: nm.abis,
-        view_items: vec::map(filtered_view_items, |x| fld.fold_view_item(*x)),
+        view_items: filtered_view_items.iter().transform(|x| fld.fold_view_item(*x)).collect(),
         items: filtered_items
     }
 }

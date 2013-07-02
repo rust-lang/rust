@@ -55,7 +55,6 @@ rust_get_c_stack
 rust_log_str
 start_task
 vec_reserve_shared_actual
-vec_reserve_shared
 task_clear_event_reject
 task_wait_event
 task_signal_event
@@ -196,7 +195,6 @@ rust_register_exit_function
 rust_get_global_data_ptr
 rust_inc_kernel_live_count
 rust_dec_kernel_live_count
-rust_exchange_count
 rust_get_rt_tls_key
 swap_registers
 rust_readdir

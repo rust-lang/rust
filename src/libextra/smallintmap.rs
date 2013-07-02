@@ -15,13 +15,11 @@
 
 #[allow(missing_doc)];
 
-use core::prelude::*;
 
-use core::cmp;
-use core::container::{Container, Mutable, Map, Set};
-use core::uint;
-use core::util::replace;
-use core::vec;
+use std::cmp;
+use std::container::{Container, Mutable, Map, Set};
+use std::uint;
+use std::util::replace;
 
 #[allow(missing_doc)]
 pub struct SmallIntMap<T> {
@@ -87,7 +85,7 @@ impl<V> Map<uint, V> for SmallIntMap<V> {
         let exists = self.contains_key(&key);
         let len = self.v.len();
         if len <= key {
-            vec::grow_fn(&mut self.v, key - len + 1, |_| None);
+            self.v.grow_fn(key - len + 1, |_| None);
         }
         self.v[key] = Some(value);
         !exists
@@ -287,7 +285,6 @@ impl SmallIntSet {
 
 #[cfg(test)]
 mod tests {
-    use core::prelude::*;
 
     use super::SmallIntMap;
 
@@ -382,11 +379,8 @@ mod tests {
 
 #[cfg(test)]
 mod test_set {
-    use core::prelude::*;
 
     use super::SmallIntSet;
-
-    use core::vec;
 
     #[test]
     fn test_disjoint() {
@@ -459,7 +453,7 @@ mod test_set {
         let mut i = 0;
         let expected = [3, 5, 11, 77];
         for a.intersection(&b) |x| {
-            assert!(vec::contains(expected, x));
+            assert!(expected.contains(x));
             i += 1
         }
         assert_eq!(i, expected.len());
@@ -482,7 +476,7 @@ mod test_set {
         let mut i = 0;
         let expected = [1, 5, 11];
         for a.difference(&b) |x| {
-            assert!(vec::contains(expected, x));
+            assert!(expected.contains(x));
             i += 1
         }
         assert_eq!(i, expected.len());
@@ -507,7 +501,7 @@ mod test_set {
         let mut i = 0;
         let expected = [1, 5, 11, 14, 22];
         for a.symmetric_difference(&b) |x| {
-            assert!(vec::contains(expected, x));
+            assert!(expected.contains(x));
             i += 1
         }
         assert_eq!(i, expected.len());
@@ -536,7 +530,7 @@ mod test_set {
         let mut i = 0;
         let expected = [1, 3, 5, 9, 11, 13, 16, 19, 24];
         for a.union(&b) |x| {
-            assert!(vec::contains(expected, x));
+            assert!(expected.contains(x));
             i += 1
         }
         assert_eq!(i, expected.len());
