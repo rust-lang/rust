@@ -200,6 +200,20 @@ impl<T> Option<T> {
         match self { None => def, Some(v) => f(v) }
     }
 
+    /// As `map_consume`, but swaps a None into the original option rather
+    /// than consuming it by-value.
+    #[inline]
+    pub fn take_map<U>(&mut self, blk: &fn(T) -> U) -> Option<U> {
+        util::replace(self, None).map_consume(blk)
+    }
+
+    /// As `map_consume_default`, but swaps a None into the original option
+    /// rather than consuming it by-value.
+    #[inline]
+    pub fn take_map_default<U> (&mut self, def: U, blk: &fn(T) -> U) -> U {
+        util::replace(self, None).map_consume_default(def, blk)
+    }
+
     /// Apply a function to the contained value or do nothing
     pub fn mutate(&mut self, f: &fn(T) -> T) {
         if self.is_some() {
