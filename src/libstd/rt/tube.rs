@@ -16,14 +16,15 @@
 use option::*;
 use clone::Clone;
 use super::rc::RC;
-use rt::sched::{Scheduler, Coroutine};
+use rt::sched::Scheduler;
 use rt::{context, TaskContext, SchedulerContext};
 use rt::local::Local;
+use rt::task::Task;
 use vec::OwnedVector;
 use container::Container;
 
 struct TubeState<T> {
-    blocked_task: Option<~Coroutine>,
+    blocked_task: Option<~Task>,
     buf: ~[T]
 }
 
