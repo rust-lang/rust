@@ -581,13 +581,20 @@ pub fn spawn_raw(opts: TaskOpts, f: ~fn()) {
 fn spawn_raw_newsched(mut opts: TaskOpts, f: ~fn()) {
     use rt::sched::*;
 
-    let mut task = if opts.linked {
-        do Local::borrow::<Task, ~Task>() |running_task| {
-            ~running_task.new_child()
+    let f = Cell::new(f);
+
+    let mut task = unsafe {
+        let sched = Local::unsafe_borrow::<Scheduler>();
+        rtdebug!("unsafe borrowed sched");
+
+        if opts.linked {
+            do Local::borrow::<Task, ~Task>() |running_task| {
+                ~running_task.new_child(&mut (*sched).stack_pool, f.take())
+            }
+        } else {
+            // An unlinked task is a new root in the task tree
+            ~Task::new_root(&mut (*sched).stack_pool, f.take())
         }
-    } else {
-        // An unlinked task is a new root in the task tree
-        ~Task::new_root()
     };
 
     if opts.notify_chan.is_some() {
@@ -601,9 +608,13 @@ fn spawn_raw_newsched(mut opts: TaskOpts, f: ~fn()) {
         task.on_exit = Some(on_exit);
     }
 
+    rtdebug!("spawn about to take scheduler");
+
     let mut sched = Local::take::<Scheduler>();
-    let task = ~Coroutine::with_task(&mut sched.stack_pool,
-                                     task, f);
+    rtdebug!("took sched in spawn");
+//    let task = ~Coroutine::with_task(&mut sched.stack_pool,
+//                                     task, f);
+//    let task = ~Task::new_root(&mut sched.stack_pool, f);
     sched.schedule_task(task);
 }
 

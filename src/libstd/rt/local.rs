@@ -13,6 +13,7 @@ use rt::sched::Scheduler;
 use rt::task::Task;
 use rt::local_ptr;
 use rt::rtio::{EventLoop, IoFactoryObject};
+//use borrow::to_uint;
 
 pub trait Local {
     fn put(value: ~Self);
@@ -32,6 +33,7 @@ impl Local for Scheduler {
         let res_ptr: *mut Option<T> = &mut res;
         unsafe {
             do local_ptr::borrow |sched| {
+//                rtdebug!("successfully unsafe borrowed sched pointer");
                 let result = f(sched);
                 *res_ptr = Some(result);
             }
@@ -51,9 +53,12 @@ impl Local for Task {
     fn exists() -> bool { rtabort!("unimpl") }
     fn borrow<T>(f: &fn(&mut Task) -> T) -> T {
         do Local::borrow::<Scheduler, T> |sched| {
+//            rtdebug!("sched about to grab current_task");
             match sched.current_task {
                 Some(~ref mut task) => {
-                    f(&mut *task.task)
+//                    rtdebug!("current task pointer: %x", to_uint(task));
+//                    rtdebug!("current task heap pointer: %x", to_uint(&task.heap));
+                    f(task)
                 }
                 None => {
                     rtabort!("no scheduler")
@@ -64,7 +69,7 @@ impl Local for Task {
     unsafe fn unsafe_borrow() -> *mut Task {
         match (*Local::unsafe_borrow::<Scheduler>()).current_task {
             Some(~ref mut task) => {
-                let s: *mut Task = &mut *task.task;
+                let s: *mut Task = &mut *task;
                 return s;
             }
             None => {

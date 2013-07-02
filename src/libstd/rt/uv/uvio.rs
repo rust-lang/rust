@@ -29,7 +29,10 @@ use unstable::sync::{Exclusive, exclusive};
 #[cfg(test)] use container::Container;
 #[cfg(test)] use uint;
 #[cfg(test)] use unstable::run_in_bare_thread;
-#[cfg(test)] use rt::test::*;
+#[cfg(test)] use rt::test::{spawntask_immediately,
+                            next_test_ip4,
+                            run_in_newsched_task};
+
 
 pub struct UvEventLoop {
     uvio: UvIoFactory
