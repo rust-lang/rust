@@ -511,8 +511,7 @@ pub fn main() {
     }
 }
 
-//#[cfg(test)]
-#[cfg(ignore)] // FIXME #7541 doesn't work under cross-compile
+#[cfg(test)]
 mod tests {
     use std::io;
     use std::iterator::IteratorUtil;
@@ -530,8 +529,8 @@ mod tests {
     }
 
     // FIXME: #7220 rusti on 32bit mac doesn't work.
+    // FIXME: #7641 rusti on 32bit linux cross compile doesn't work
     #[cfg(not(target_word_size="32"))]
-    #[cfg(not(target_os="macos"))]
     fn run_program(prog: &str) {
         let mut r = repl();
         for prog.split_iter('\n').advance |cmd| {
@@ -540,7 +539,7 @@ mod tests {
             r = result.expect(fmt!("the command '%s' failed", cmd));
         }
     }
-    #[cfg(target_word_size="32", target_os="macos")]
+    #[cfg(target_word_size="32")]
     fn run_program(_: &str) {}
 
     #[test]
