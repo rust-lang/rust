@@ -520,10 +520,12 @@ impl ToStrRadix for BigUint {
 
         fn fill_concat(v: &[BigDigit], radix: uint, l: uint) -> ~str {
             if v.is_empty() { return ~"0" }
-            let s = vec::reversed(v).map(|n| {
-                let s = uint::to_str_radix(*n as uint, radix);
-                str::from_chars(vec::from_elem(l - s.len(), '0')) + s
-            }).concat();
+            let mut s = str::with_capacity(v.len() * l);
+            for v.rev_iter().advance |n| {
+                let ss = uint::to_str_radix(*n as uint, radix);
+                s.push_str("0".repeat(l - ss.len()));
+                s.push_str(ss);
+            }
             s.trim_left_chars(&'0').to_owned()
         }
     }
@@ -1629,7 +1631,6 @@ mod bigint_tests {
     use std::int;
     use std::num::{IntConvertible, Zero, One, FromStrRadix};
     use std::uint;
-    use std::vec;
 
     #[test]
     fn test_from_biguint() {
@@ -1646,9 +1647,11 @@ mod bigint_tests {
 
     #[test]
     fn test_cmp() {
-        let vs = [ &[2], &[1, 1], &[2, 1], &[1, 1, 1] ];
-        let mut nums = vec::reversed(vs)
-            .map(|s| BigInt::from_slice(Minus, *s));
+        let vs = [ &[2 as BigDigit], &[1, 1], &[2, 1], &[1, 1, 1] ];
+        let mut nums = ~[];
+        for vs.rev_iter().advance |s| {
+            nums.push(BigInt::from_slice(Minus, *s));
+        }
         nums.push(Zero::zero());
         nums.push_all_move(vs.map(|s| BigInt::from_slice(Plus, *s)));
 
