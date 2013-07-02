@@ -18,6 +18,8 @@ fn with<'a, R>(f: &fn(x: &'a int) -> R) -> R {
 
 fn return_it<'a>() -> &'a int {
     with(|o| o) //~ ERROR mismatched types
+        //~^ ERROR lifetime of return value does not outlive the function call
+        //~^^ ERROR cannot infer an appropriate lifetime
 }
 
 fn main() {

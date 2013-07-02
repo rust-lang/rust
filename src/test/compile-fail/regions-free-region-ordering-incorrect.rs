@@ -8,16 +8,23 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Test that free regions ordering only goes one way. That is,
+// we have `&'a Node<'self, T>`, which implies that `'a <= 'self`,
+// but not `'self <= 'a`. Hence returning `&self.val` (which has lifetime
+// `'a`) where `'self` is expected yields an error.
+//
+// This test began its life as a test for issue #4325.
+
 struct Node<'self, T> {
   val: T,
   next: Option<&'self Node<'self, T>>
 }
 
 impl<'self, T> Node<'self, T> {
-  fn get(&self) -> &'self T {
+  fn get<'a>(&'a self) -> &'self T {
     match self.next {
       Some(ref next) => next.get(),
-      None => &self.val
+      None => &self.val //~ ERROR cannot infer an appropriate lifetime
     }
   }
 }
