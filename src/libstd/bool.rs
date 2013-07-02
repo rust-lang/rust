@@ -122,6 +122,7 @@ pub fn xor(a: bool, b: bool) -> bool { (a && !b) || (!a && b) }
 * ~~~ {.rust}
 * rusti> std::bool::implies(true, true)
 * true
+* ~~~
 *
 * ~~~ {.rust}
 * rusti> std::bool::implies(true, false)
