@@ -610,7 +610,7 @@ impl Repr for @ast::pat {
 
 impl Repr for ty::bound_region {
     fn repr(&self, tcx: ctxt) -> ~str {
-        bound_region_to_str(tcx, *self)
+        bound_region_ptr_to_str(tcx, *self)
     }
 }
 

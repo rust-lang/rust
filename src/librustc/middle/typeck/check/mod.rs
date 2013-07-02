@@ -686,7 +686,7 @@ impl FnCtxt {
                     result::Err(RegionError {
                         msg: {
                             fmt!("named region `%s` not in scope here",
-                                 bound_region_to_str(self.tcx(), br))
+                                 bound_region_ptr_to_str(self.tcx(), br))
                         },
                         replacement: {
                             self.infcx().next_region_var(

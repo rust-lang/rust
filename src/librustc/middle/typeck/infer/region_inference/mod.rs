@@ -36,7 +36,8 @@ mod doc;
 enum Constraint {
     ConstrainVarSubVar(RegionVid, RegionVid),
     ConstrainRegSubVar(Region, RegionVid),
-    ConstrainVarSubReg(RegionVid, Region)
+    ConstrainVarSubReg(RegionVid, Region),
+    ConstrainRegSubReg(Region, Region),
 }
 
 #[deriving(Eq, IterBytes)]
@@ -454,7 +455,7 @@ impl RegionVarBindings {
         {
             let mut result_set = result_set;
             if r == r1 { // Clearly, this is potentially inefficient.
-                if !result_set.iter().any_(|x| x == r2) {
+                if !result_set.iter().any_(|x| *x == r2) {
                     result_set.push(r2);
                 }
             }

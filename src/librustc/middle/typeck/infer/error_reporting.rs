@@ -59,7 +59,7 @@ time of error detection.
 
 */
 
-use core::prelude::*;
+use std::prelude::*;
 use middle::ty;
 use middle::ty::Region;
 use middle::typeck::infer;
@@ -80,10 +80,46 @@ use syntax::opt_vec::OptVec;
 use util::ppaux::UserString;
 use util::ppaux::note_and_explain_region;
 
-impl InferCtxt {
+pub trait ErrorReporting {
+    pub fn report_region_errors(@mut self,
+                                errors: &OptVec<RegionResolutionError>);
+
+    pub fn report_and_explain_type_error(@mut self,
+                                         trace: TypeTrace,
+                                         terr: &ty::type_err);
+
+    fn values_str(@mut self, values: &ValuePairs) -> Option<~str>;
+
+    fn expected_found_str<T:UserString+Resolvable>(
+        @mut self,
+        exp_found: &ty::expected_found<T>)
+        -> Option<~str>;
+
+    fn report_concrete_failure(@mut self,
+                               origin: SubregionOrigin,
+                               sub: Region,
+                               sup: Region);
+
+    fn report_sub_sup_conflict(@mut self,
+                               var_origin: RegionVariableOrigin,
+                               sub_origin: SubregionOrigin,
+                               sub_region: Region,
+                               sup_origin: SubregionOrigin,
+                               sup_region: Region);
+
+    fn report_sup_sup_conflict(@mut self,
+                               var_origin: RegionVariableOrigin,
+                               origin1: SubregionOrigin,
+                               region1: Region,
+                               origin2: SubregionOrigin,
+                               region2: Region);
+}
+
+
+impl ErrorReporting for InferCtxt {
     pub fn report_region_errors(@mut self,
                                 errors: &OptVec<RegionResolutionError>) {
-        for errors.each |error| {
+        for errors.iter().advance |error| {
             match *error {
                 ConcreteFailure(origin, sub, sup) => {
                     self.report_concrete_failure(origin, sub, sup);
