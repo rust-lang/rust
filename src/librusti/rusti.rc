@@ -511,7 +511,8 @@ pub fn main() {
     }
 }
 
-#[cfg(test)]
+//#[cfg(test)]
+#[cfg(ignore)] // FIXME #7541 doesn't work under cross-compile
 mod tests {
     use std::io;
     use std::iterator::IteratorUtil;
