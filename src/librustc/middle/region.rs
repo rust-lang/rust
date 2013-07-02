@@ -15,6 +15,9 @@ pass builds up the `scope_map`, which describes the parent links in
 the region hierarchy.  The second pass infers which types must be
 region parameterized.
 
+Most of the documentation on regions can be found in
+`middle/typeck/infer/region_inference.rs`
+
 */
 
 

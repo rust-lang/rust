@@ -530,7 +530,7 @@ pub fn var_ids<T:Combine>(this: &T, isr: isr_alist) -> ~[RegionVid] {
             ty::re_infer(ty::ReVar(r)) => { result.push(r); }
             r => {
                 this.infcx().tcx.sess.span_bug(
-                    this.span(),
+                    this.trace().origin.span(),
                     fmt!("Found non-region-vid: %?", r));
             }
         }

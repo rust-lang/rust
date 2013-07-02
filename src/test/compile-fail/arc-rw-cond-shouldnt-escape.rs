@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: reference is not valid outside of its lifetime
+// error-pattern: lifetime of return value does not outlive the function call
 extern mod extra;
 use extra::arc;
 fn main() {

@@ -1,6 +1,4 @@
-extern mod extra;
-
-fn main() {
+pub fn main() {
     let foo = ~3;
     let _pfoo = &foo;
     let _f: @fn() -> int = || *foo + 5;

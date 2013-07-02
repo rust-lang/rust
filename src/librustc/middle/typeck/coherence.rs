@@ -36,6 +36,7 @@ use middle::typeck::infer::combine::Combine;
 use middle::typeck::infer::InferCtxt;
 use middle::typeck::infer::{new_infer_ctxt, resolve_ivar};
 use middle::typeck::infer::{resolve_nested_tvar, resolve_type};
+use middle::typeck::infer;
 use syntax::ast::{crate, def_id, def_struct, def_ty};
 use syntax::ast::{item, item_enum, item_impl, item_mod, item_struct};
 use syntax::ast::{local_crate, method, trait_ref, ty_path};
@@ -546,10 +547,10 @@ impl CoherenceChecker {
     pub fn universally_quantify_polytype(&self,
                                          polytype: ty_param_bounds_and_ty)
                                          -> UniversalQuantificationResult {
-        // NDM--this span is bogus.
         let self_region =
             polytype.generics.region_param.map(
-                |_r| self.inference_context.next_region_var_nb(dummy_sp()));
+                |_| self.inference_context.next_region_var(
+                    infer::BoundRegionInCoherence));
 
         let bounds_count = polytype.generics.type_param_defs.len();
         let type_parameters = self.inference_context.next_ty_vars(bounds_count);
@@ -580,11 +581,9 @@ impl CoherenceChecker {
                                                 b: &'a
                                                 UniversalQuantificationResult)
                                                 -> bool {
-        let mut might_unify = true;
-        let _ = do self.inference_context.probe {
-            let result = self.inference_context.sub(true, dummy_sp())
-                                               .tys(a.monotype, b.monotype);
-            if result.is_ok() {
+        match infer::can_mk_subty(self.inference_context,
+                                  a.monotype, b.monotype) {
+            Ok(_) => {
                 // Check to ensure that each parameter binding respected its
                 // kind bounds.
                 let xs = [a, b];
@@ -604,8 +603,7 @@ impl CoherenceChecker {
                                         self.inference_context.tcx,
                                         resolved_ty)
                                     {
-                                        might_unify = false;
-                                        break;
+                                        return false;
                                     }
                                 }
                                 Err(*) => {
@@ -615,13 +613,13 @@ impl CoherenceChecker {
                         }
                     }
                 }
-            } else {
-                might_unify = false;
+                true
             }
 
-            result
-        };
-        might_unify
+            Err(_) => {
+                false
+            }
+        }
     }
 
     pub fn get_self_type_for_implementation(&self, implementation: @Impl)

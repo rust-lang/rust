@@ -20,6 +20,7 @@ use middle::typeck::infer::InferCtxt;
 use middle::typeck::infer::lattice::CombineFieldsLatticeMethods;
 use middle::typeck::infer::lub::Lub;
 use middle::typeck::infer::to_str::InferStr;
+use middle::typeck::infer::{TypeTrace, Subtype};
 use util::common::{indent, indenter};
 use util::ppaux::bound_region_to_str;
 
@@ -36,7 +37,7 @@ impl Combine for Sub {
     fn infcx(&self) -> @mut InferCtxt { self.infcx }
     fn tag(&self) -> ~str { ~"sub" }
     fn a_is_expected(&self) -> bool { self.a_is_expected }
-    fn span(&self) -> span { self.span }
+    fn trace(&self) -> TypeTrace { self.trace }
 
     fn sub(&self) -> Sub { Sub(**self) }
     fn lub(&self) -> Lub { Lub(**self) }
@@ -62,12 +63,8 @@ impl Combine for Sub {
                self.tag(),
                a.inf_str(self.infcx),
                b.inf_str(self.infcx));
-        do indent {
-            match self.infcx.region_vars.make_subregion(self.span, a, b) {
-              Ok(()) => Ok(a),
-              Err(ref e) => Err((*e))
-            }
-        }
+        self.infcx.region_vars.make_subregion(Subtype(self.trace), a, b);
+        Ok(a)
     }
 
     fn mts(&self, a: &ty::mt, b: &ty::mt) -> cres<ty::mt> {
@@ -170,7 +167,7 @@ impl Combine for Sub {
         // region variable.
         let (a_sig, _) =
             self.infcx.replace_bound_regions_with_fresh_regions(
-                self.span, a);
+                self.trace, a);
 
         // Second, we instantiate each bound region in the supertype with a
         // fresh concrete region.

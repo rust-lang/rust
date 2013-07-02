@@ -17,10 +17,12 @@ struct a_class<'self> { x:&'self int }
 
 fn a_fn1<'a,'b>(e: an_enum<'a>) -> an_enum<'b> {
     return e; //~ ERROR mismatched types: expected `an_enum<'b>` but found `an_enum<'a>`
+    //~^ ERROR cannot infer an appropriate lifetime
 }
 
 fn a_fn3<'a,'b>(e: a_class<'a>) -> a_class<'b> {
     return e; //~ ERROR mismatched types: expected `a_class<'b>` but found `a_class<'a>`
+    //~^ ERROR cannot infer an appropriate lifetime
 }
 
 fn a_fn4<'a,'b>() {
