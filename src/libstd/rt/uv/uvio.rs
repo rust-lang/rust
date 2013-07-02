@@ -60,9 +60,8 @@ impl EventLoop for UvEventLoop {
 
     fn callback(&mut self, f: ~fn()) {
         let mut idle_watcher =  IdleWatcher::new(self.uvio.uv_loop());
-        do idle_watcher.start |idle_watcher, status| {
+        do idle_watcher.start |mut idle_watcher, status| {
             assert!(status.is_none());
-            let mut idle_watcher = idle_watcher;
             idle_watcher.stop();
             idle_watcher.close(||());
             f();
@@ -218,7 +217,7 @@ impl IoFactory for UvIoFactory {
                 rtdebug!("connect: in connect callback");
                 if status.is_none() {
                     rtdebug!("status is none");
-                    let res = Ok(~UvTcpStream { watcher: stream_watcher });
+                    let res = Ok(~UvTcpStream(stream_watcher));
 
                     // Store the stream in the task's stack
                     unsafe { (*result_cell_ptr).put_back(res); }
@@ -313,6 +312,11 @@ impl Drop for UvTcpListener {
     }
 }
 
+impl RtioSocket for UvTcpListener {
+    // TODO
+    fn socket_name(&self) -> IpAddr { fail!(); }
+}
+
 impl RtioTcpListener for UvTcpListener {
 
     fn accept(&mut self) -> Result<~RtioTcpStreamObject, IoError> {
@@ -329,15 +333,14 @@ impl RtioTcpListener for UvTcpListener {
 
         let incoming_streams_cell = Cell::new(incoming_streams_cell.take());
         let mut server_tcp_watcher = server_tcp_watcher;
-        do server_tcp_watcher.listen |server_stream_watcher, status| {
+        do server_tcp_watcher.listen |mut server_stream_watcher, status| {
             let maybe_stream = if status.is_none() {
-                let mut server_stream_watcher = server_stream_watcher;
                 let mut loop_ = server_stream_watcher.event_loop();
                 let client_tcp_watcher = TcpWatcher::new(&mut loop_);
                 let client_tcp_watcher = client_tcp_watcher.as_stream();
                 // XXX: Need's to be surfaced in interface
                 server_stream_watcher.accept(client_tcp_watcher);
-                Ok(~UvTcpStream { watcher: client_tcp_watcher })
+                Ok(~UvTcpStream(client_tcp_watcher))
             } else {
                 Err(standard_error(OtherIoError))
             };
@@ -349,30 +352,32 @@ impl RtioTcpListener for UvTcpListener {
 
         return self.incoming_streams.recv();
     }
+
+    // TODO
+    fn accept_simultaneously(&self) { fail!(); }
+    fn dont_accept_simultaneously(&self) { fail!(); }
 }
 
 // FIXME #6090: Prefer newtype structs but Drop doesn't work
-pub struct UvTcpStream {
-    watcher: StreamWatcher
-}
-
-impl UvTcpStream {
-    fn watcher(&self) -> StreamWatcher { self.watcher }
-}
+pub struct UvTcpStream(StreamWatcher);
 
 impl Drop for UvTcpStream {
     fn finalize(&self) {
         rtdebug!("closing tcp stream");
-        let watcher = self.watcher();
         let scheduler = Local::take::<Scheduler>();
         do scheduler.deschedule_running_task_and_then |_, task| {
             let task_cell = Cell::new(task);
-            do watcher.close {
+            do self.close {
                 let scheduler = Local::take::<Scheduler>();
                 scheduler.resume_task_immediately(task_cell.take());
             }
         }
     }
+}
+
+impl RtioSocket for UvTcpStream {
+    // TODO
+    fn socket_name(&self) -> IpAddr { fail!(); }
 }
 
 impl RtioTcpStream for UvTcpStream {
@@ -382,25 +387,23 @@ impl RtioTcpStream for UvTcpStream {
 
         let scheduler = Local::take::<Scheduler>();
         assert!(scheduler.in_task_context());
-        let watcher = self.watcher();
         let buf_ptr: *&mut [u8] = &buf;
         do scheduler.deschedule_running_task_and_then |sched, task| {
             rtdebug!("read: entered scheduler context");
             assert!(!sched.in_task_context());
-            let mut watcher = watcher;
             let task_cell = Cell::new(task);
             // XXX: We shouldn't reallocate these callbacks every
             // call to read
             let alloc: AllocCallback = |_| unsafe {
                 slice_to_uv_buf(*buf_ptr)
             };
-            do watcher.read_start(alloc) |watcher, nread, _buf, status| {
+            let mut watcher = **self;
+            do watcher.read_start(alloc) |mut watcher, nread, _buf, status| {
 
                 // Stop reading so that no read callbacks are
                 // triggered before the user calls `read` again.
                 // XXX: Is there a performance impact to calling
                 // stop here?
-                let mut watcher = watcher;
                 watcher.read_stop();
 
                 let result = if status.is_none() {
@@ -426,12 +429,11 @@ impl RtioTcpStream for UvTcpStream {
         let result_cell_ptr: *Cell<Result<(), IoError>> = &result_cell;
         let scheduler = Local::take::<Scheduler>();
         assert!(scheduler.in_task_context());
-        let watcher = self.watcher();
         let buf_ptr: *&[u8] = &buf;
         do scheduler.deschedule_running_task_and_then |_, task| {
-            let mut watcher = watcher;
             let task_cell = Cell::new(task);
             let buf = unsafe { slice_to_uv_buf(*buf_ptr) };
+            let mut watcher = **self;
             do watcher.write(buf) |_watcher, status| {
                 let result = if status.is_none() {
                     Ok(())
@@ -449,6 +451,13 @@ impl RtioTcpStream for UvTcpStream {
         assert!(!result_cell.is_empty());
         return result_cell.take();
     }
+
+    // TODO
+    fn peer_name(&self) -> IpAddr { fail!(); }
+    fn control_congestion(&self) { fail!(); }
+    fn nodelay(&self) { fail!(); }
+    fn keepalive(&self, _delay_in_seconds: uint) { fail!(); }
+    fn letdie(&self) { fail!(); }
 }
 
 pub struct UvUdpSocket(UdpWatcher);
@@ -465,6 +474,11 @@ impl Drop for UvUdpSocket {
             }
         }
     }
+}
+
+impl RtioSocket for UvUdpSocket {
+    // TODO
+    fn socket_name(&self) -> IpAddr { fail!(); }
 }
 
 impl RtioUdpSocket for UvUdpSocket {
@@ -530,6 +544,19 @@ impl RtioUdpSocket for UvUdpSocket {
         assert!(!result_cell.is_empty());
         return result_cell.take();
     }
+
+    // TODO
+    fn join_multicast(&self, _multi: IpAddr) { fail!(); }
+    fn leave_multicast(&self, _multi: IpAddr) { fail!(); }
+
+    fn loop_multicast_locally(&self) { fail!(); }
+    fn dont_loop_multicast_locally(&self) { fail!(); }
+
+    fn multicast_time_to_live(&self, _ttl: int) { fail!(); }
+    fn time_to_live(&self, _ttl: int) { fail!(); }
+
+    fn hear_broadcasts(&self) { fail!(); }
+    fn ignore_broadcasts(&self) { fail!(); }
 }
 
 #[test]
