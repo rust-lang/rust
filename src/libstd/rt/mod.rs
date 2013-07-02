@@ -152,9 +152,6 @@ pub mod local_ptr;
 /// Bindings to pthread/windows thread-local storage.
 pub mod thread_local_storage;
 
-/// For waiting on child tasks.
-pub mod join_latch;
-
 pub mod metrics;
 
 // FIXME #5248 shouldn't be pub

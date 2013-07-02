@@ -25,7 +25,6 @@ use rt::local::Local;
 use rt::logging::StdErrLogger;
 use super::local_heap::LocalHeap;
 use rt::sched::{Scheduler, SchedHandle};
-use rt::join_latch::JoinLatch;
 use rt::stack::{StackSegment, StackPool};
 use rt::context::Context;
 use cell::Cell;
@@ -38,7 +37,6 @@ pub struct Task {
     unwinder: Unwinder,
     home: Option<SchedHome>,
     death: Death,
-    join_latch: Option<~JoinLatch>, // FIXME(#7544) remove
     destroyed: bool,
     coroutine: Option<~Coroutine>
 }
@@ -88,7 +86,6 @@ impl Task {
             unwinder: Unwinder { unwinding: false },
             home: Some(home),
             death: Death::new(),
-            join_latch: Some(JoinLatch::new_root()),
             destroyed: false,
             coroutine: Some(~Coroutine::new(stack_pool, start))
         }
@@ -107,7 +104,6 @@ impl Task {
             unwinder: Unwinder { unwinding: false },
             // FIXME(#7544) make watching optional
             death: self.death.new_child(),
-            join_latch: Some(self.join_latch.get_mut_ref().new_child()),
             destroyed: false,
             coroutine: Some(~Coroutine::new(stack_pool, start))
         }
