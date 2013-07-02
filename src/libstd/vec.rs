@@ -436,16 +436,6 @@ pub fn zip<T, U>(mut v: ~[T], mut u: ~[U]) -> ~[(T, U)] {
     w
 }
 
-/// Returns a vector with the order of elements reversed
-pub fn reversed<T:Copy>(v: &[T]) -> ~[T] {
-    let mut rs: ~[T] = ~[];
-    let mut i = v.len();
-    if i == 0 { return (rs); } else { i -= 1; }
-    while i != 0 { rs.push(copy v[i]); i -= 1; }
-    rs.push(copy v[0]);
-    rs
-}
-
 /**
  * Iterate over all permutations of vector `v`.
  *
@@ -2628,31 +2618,17 @@ mod tests {
     }
 
     #[test]
-    fn reverse_and_reversed() {
+    fn test_reverse() {
         let mut v: ~[int] = ~[10, 20];
         assert_eq!(v[0], 10);
         assert_eq!(v[1], 20);
         v.reverse();
         assert_eq!(v[0], 20);
         assert_eq!(v[1], 10);
-        let v2 = reversed::<int>([10, 20]);
-        assert_eq!(v2[0], 20);
-        assert_eq!(v2[1], 10);
-        v[0] = 30;
-        assert_eq!(v2[0], 20);
-        // Make sure they work with 0-length vectors too.
 
-        let v4 = reversed::<int>([]);
-        assert_eq!(v4, ~[]);
         let mut v3: ~[int] = ~[];
         v3.reverse();
-    }
-
-    #[test]
-    fn reversed_mut() {
-        let v2 = reversed::<int>([10, 20]);
-        assert_eq!(v2[0], 20);
-        assert_eq!(v2[1], 10);
+        assert!(v3.is_empty());
     }
 
     #[test]
