@@ -2869,9 +2869,6 @@ The kinds are:
   : Types of this kind can be safely sent between tasks.
     This kind includes scalars, owning pointers, owned closures, and
     structural types containing only other owned types. All `Send` types are `Static`.
-`Static`
-  : Types of this kind do not contain any borrowed pointers;
-    this can be a useful guarantee for code that breaks borrowing assumptions using [`unsafe` operations](#unsafe-functions).
 `Copy`
   : This kind includes all types that can be copied. All types with
     sendable kind are copyable, as are managed boxes, managed closures,
