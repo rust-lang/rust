@@ -77,9 +77,9 @@ fn fold_mod(_ctx: @mut ReadyCtx,
             fold: @fold::ast_fold) -> ast::_mod {
     fn strip_main(item: @ast::item) -> @ast::item {
         @ast::item {
-            attrs: do item.attrs.filtered |attr| {
-                "main" != attr::get_attr_name(attr)
-            },
+            attrs: do item.attrs.iter().filter_map |attr| {
+                if "main" != attr::get_attr_name(attr) {Some(*attr)} else {None}
+            }.collect(),
             .. copy *item
         }
     }

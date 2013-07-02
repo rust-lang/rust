@@ -26,7 +26,6 @@ use util::ppaux;
 use middle::trans::type_::Type;
 
 use std::str;
-use std::vec;
 use syntax::ast;
 use syntax::ast::ident;
 use syntax::ast_map::path_mod;
@@ -190,9 +189,13 @@ pub fn trans_log(log_ex: &ast::expr,
 
     let (modpath, modname) = {
         let path = &mut bcx.fcx.path;
-        let modpath = vec::append(
-            ~[path_mod(ccx.sess.ident_of(ccx.link_meta.name))],
-            path.filtered(|e| match *e { path_mod(_) => true, _ => false }));
+        let mut modpath = ~[path_mod(ccx.sess.ident_of(ccx.link_meta.name))];
+        for path.iter().advance |e| {
+            match *e {
+                path_mod(_) => { modpath.push(*e) }
+                _ => {}
+            }
+        }
         let modname = path_str(ccx.sess, modpath);
         (modpath, modname)
     };
