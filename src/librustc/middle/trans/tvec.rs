@@ -95,9 +95,17 @@ pub fn alloc_raw(bcx: block, unit_ty: ty::t,
     return rslt(bcx, bx);
 }
 
+pub fn heap_for_unique_vector(bcx: block, t: ty::t) -> heap {
+    if ty::type_contents(bcx.tcx(), t).contains_managed() {
+        heap_managed_unique
+    } else {
+        heap_exchange_vector
+    }
+}
+
 pub fn alloc_uniq_raw(bcx: block, unit_ty: ty::t,
                       fill: ValueRef, alloc: ValueRef) -> Result {
-    alloc_raw(bcx, unit_ty, fill, alloc, base::heap_for_unique(bcx, unit_ty))
+    alloc_raw(bcx, unit_ty, fill, alloc, heap_for_unique_vector(bcx, unit_ty))
 }
 
 pub fn alloc_vec(bcx: block,
@@ -298,7 +306,7 @@ pub fn trans_uniq_or_managed_vstore(bcx: block, heap: heap, vstore_expr: @ast::e
 
     // Handle ~"".
     match heap {
-        heap_exchange => {
+        heap_exchange_vector => {
             match content_expr.node {
                 ast::expr_lit(@codemap::spanned {
                     node: ast::lit_str(s), _
@@ -321,7 +329,7 @@ pub fn trans_uniq_or_managed_vstore(bcx: block, heap: heap, vstore_expr: @ast::e
                 _ => {}
             }
         }
-        heap_exchange_closure => fail!("vectors are not allocated with closure_exchange_alloc"),
+        heap_exchange | heap_exchange_closure => fail!("vectors use vector_exchange_alloc"),
         heap_managed | heap_managed_unique => {}
     }
 
