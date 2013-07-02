@@ -20,7 +20,8 @@ use cast;
 use util;
 use ops::Drop;
 use kinds::Owned;
-use rt::sched::{Scheduler, Coroutine};
+use rt::sched::{Scheduler};
+use rt::task::Task;
 use rt::local::Local;
 use unstable::atomics::{AtomicUint, AtomicOption, SeqCst};
 use unstable::sync::UnsafeAtomicRcBox;
@@ -136,7 +137,7 @@ impl<T> ChanOne<T> {
                 }
                 task_as_state => {
                     // Port is blocked. Wake it up.
-                    let recvr: ~Coroutine = cast::transmute(task_as_state);
+                    let recvr: ~Task = cast::transmute(task_as_state);
                     let mut sched = Local::take::<Scheduler>();
                     rtdebug!("rendezvous send");
                     sched.metrics.rendezvous_sends += 1;
@@ -192,7 +193,7 @@ impl<T> PortOne<T> {
                         // NB: We have to drop back into the scheduler event loop here
                         // instead of switching immediately back or we could end up
                         // triggering infinite recursion on the scheduler's stack.
-                        let task: ~Coroutine = cast::transmute(task_as_state);
+                        let task: ~Task = cast::transmute(task_as_state);
                         sched.enqueue_task(task);
                     }
                     _ => util::unreachable()
@@ -257,7 +258,7 @@ impl<T> Drop for ChanOneHack<T> {
                 task_as_state => {
                     // The port is blocked waiting for a message we will never send. Wake it.
                     assert!((*this.packet()).payload.is_none());
-                    let recvr: ~Coroutine = cast::transmute(task_as_state);
+                    let recvr: ~Task = cast::transmute(task_as_state);
                     let sched = Local::take::<Scheduler>();
                     sched.schedule_task(recvr);
                 }
@@ -554,6 +555,8 @@ mod test {
                 { let _c = chan; }
                 port.recv();
             };
+            // What is our res?
+            rtdebug!("res is: %?", res.is_err());
             assert!(res.is_err());
         }
     }
@@ -905,4 +908,5 @@ mod test {
             }
         }
     }
+
 }

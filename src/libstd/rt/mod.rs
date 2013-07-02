@@ -67,7 +67,7 @@ use iter::Times;
 use iterator::IteratorUtil;
 use option::Some;
 use ptr::RawPtr;
-use rt::sched::{Scheduler, Coroutine, Shutdown};
+use rt::sched::{Scheduler, Shutdown};
 use rt::sleeper_list::SleeperList;
 use rt::task::Task;
 use rt::thread::Thread;
@@ -268,10 +268,9 @@ pub fn run(main: ~fn()) -> int {
 
     // Create and enqueue the main task.
     let main_cell = Cell::new(main);
-    let mut new_task = ~Task::new_root();
-    new_task.on_exit = Some(on_exit);
-    let main_task = ~Coroutine::with_task(&mut scheds[0].stack_pool,
-                                          new_task, main_cell.take());
+    let mut main_task = ~Task::new_root(&mut scheds[0].stack_pool,
+                                    main_cell.take());
+    main_task.on_exit = Some(on_exit);
     scheds[0].enqueue_task(main_task);
 
     // Run each scheduler in a thread.
@@ -348,7 +347,7 @@ pub fn context() -> RuntimeContext {
 #[test]
 fn test_context() {
     use unstable::run_in_bare_thread;
-    use self::sched::{Scheduler, Coroutine};
+    use self::sched::{Scheduler};
     use rt::local::Local;
     use rt::test::new_test_uv_sched;
 
@@ -356,7 +355,7 @@ fn test_context() {
     do run_in_bare_thread {
         assert_eq!(context(), GlobalContext);
         let mut sched = ~new_test_uv_sched();
-        let task = ~do Coroutine::new_root(&mut sched.stack_pool) {
+        let task = ~do Task::new_root(&mut sched.stack_pool) {
             assert_eq!(context(), TaskContext);
             let sched = Local::take::<Scheduler>();
             do sched.deschedule_running_task_and_then() |sched, task| {
