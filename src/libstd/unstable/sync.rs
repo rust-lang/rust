@@ -14,6 +14,7 @@ use comm;
 use libc;
 use ptr;
 use option::*;
+use either::{Either, Left, Right};
 use task;
 use task::atomically;
 use unstable::atomics::{AtomicOption,AtomicUint,Acquire,Release,SeqCst};
@@ -135,6 +136,31 @@ impl<T: Send> UnsafeAtomicRcBox<T> {
                 cast::forget(data);
                 fail!("Another task is already unwrapping this ARC!");
             }
+        }
+    }
+
+    /// As unwrap above, but without blocking. Returns 'Left(self)' if this is
+    /// not the last reference; 'Right(unwrapped_data)' if so.
+    pub unsafe fn try_unwrap(self) -> Either<UnsafeAtomicRcBox<T>, T> {
+        let mut this = self; // FIXME(#4330) mutable self
+        let mut data: ~AtomicRcBoxData<T> = cast::transmute(this.data);
+        // This can of course race with anybody else who has a handle, but in
+        // such a case, the returned count will always be at least 2. If we
+        // see 1, no race was possible. All that matters is 1 or not-1.
+        let count = data.count.load(Acquire);
+        assert!(count >= 1);
+        // The more interesting race is one with an unwrapper. They may have
+        // already dropped their count -- but if so, the unwrapper pointer
+        // will have been set first, which the barriers ensure we will see.
+        // (Note: using is_empty(), not take(), to not free the unwrapper.)
+        if count == 1 && data.unwrapper.is_empty(Acquire) {
+            // Tell this handle's destructor not to run (we are now it).
+            this.data = ptr::mut_null();
+            // FIXME(#3224) as above
+            Right(data.data.take_unwrap())
+        } else {
+            cast::forget(data);
+            Left(this)
         }
     }
 }
@@ -380,10 +406,51 @@ mod tests {
     }
 
     #[test]
-    fn unsafe_unwrap_basic() {
+    fn arclike_unwrap_basic() {
         unsafe {
             let x = UnsafeAtomicRcBox::new(~~"hello");
             assert!(x.unwrap() == ~~"hello");
+        }
+    }
+
+    #[test]
+    fn arclike_try_unwrap() {
+        unsafe {
+            let x = UnsafeAtomicRcBox::new(~~"hello");
+            assert!(x.try_unwrap().expect_right("try_unwrap failed") == ~~"hello");
+        }
+    }
+
+    #[test]
+    fn arclike_try_unwrap_fail() {
+        unsafe {
+            let x = UnsafeAtomicRcBox::new(~~"hello");
+            let x2 = x.clone();
+            let left_x = x.try_unwrap();
+            assert!(left_x.is_left());
+            util::ignore(left_x);
+            assert!(x2.try_unwrap().expect_right("try_unwrap none") == ~~"hello");
+        }
+    }
+
+    #[test]
+    fn arclike_try_unwrap_unwrap_race() {
+        // When an unwrap and a try_unwrap race, the unwrapper should always win.
+        unsafe {
+            let x = UnsafeAtomicRcBox::new(~~"hello");
+            let x2 = Cell::new(x.clone());
+            let (p,c) = comm::stream();
+            do task::spawn {
+                c.send(());
+                assert!(x2.take().unwrap() == ~~"hello");
+                c.send(());
+            }
+            p.recv();
+            task::yield(); // Try to make the unwrapper get blocked first.
+            let left_x = x.try_unwrap();
+            assert!(left_x.is_left());
+            util::ignore(left_x);
+            p.recv();
         }
     }
 
