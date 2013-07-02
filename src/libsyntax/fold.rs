@@ -14,8 +14,6 @@ use codemap::{span, spanned};
 use parse::token;
 use opt_vec::OptVec;
 
-use std::vec;
-
 pub trait ast_fold {
     fn fold_crate(@self, &crate) -> crate;
     fn fold_view_item(@self, @view_item) -> @view_item;
@@ -700,7 +698,7 @@ pub fn noop_fold_ty(t: &ty_, fld: @ast_fold) -> ty_ {
 pub fn noop_fold_mod(m: &_mod, fld: @ast_fold) -> _mod {
     ast::_mod {
         view_items: m.view_items.iter().transform(|x| fld.fold_view_item(*x)).collect(),
-        items: vec::filter_mapped(m.items, |x| fld.fold_item(*x)),
+        items: m.items.iter().filter_map(|x| fld.fold_item(*x)).collect(),
     }
 }
 

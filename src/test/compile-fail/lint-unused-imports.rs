@@ -30,7 +30,7 @@ use std::io::WriterUtil;
 
 // Make sure this import is warned about when at least one of its imported names
 // is unused
-use std::vec::{filter, from_elem};   //~ ERROR unused import
+use std::vec::{from_fn, from_elem};   //~ ERROR unused import
 
 mod foo {
     pub struct Point{x: int, y: int}

@@ -95,7 +95,7 @@ pub fn check_expr(cx: @MatchCheckCtxt, ex: @expr, (s, v): ((), visit::vt<()>)) {
           }
           _ => { /* We assume only enum types can be uninhabited */ }
        }
-       let arms = vec::concat(arms.filter_mapped(unguarded_pat));
+       let arms = arms.iter().filter_map(unguarded_pat).collect::<~[~[@pat]]>().concat_vec();
        if arms.is_empty() {
            cx.tcx.sess.span_err(ex.span, "non-exhaustive patterns");
        } else {
@@ -265,7 +265,7 @@ pub fn is_useful(cx: &MatchCheckCtxt, m: &matrix, v: &[@pat]) -> useful {
           }
           Some(ref ctor) => {
             match is_useful(cx,
-                            &m.filter_mapped(|r| default(cx, *r)),
+                            &m.iter().filter_map(|r| default(cx, *r)).collect::<matrix>(),
                             v.tail()) {
               useful_ => useful(left_ty, /*bad*/copy *ctor),
               ref u => (/*bad*/copy *u)
@@ -287,7 +287,7 @@ pub fn is_useful_specialized(cx: &MatchCheckCtxt,
                              arity: uint,
                              lty: ty::t)
                           -> useful {
-    let ms = m.filter_mapped(|r| specialize(cx, *r, &ctor, arity, lty));
+    let ms = m.iter().filter_map(|r| specialize(cx, *r, &ctor, arity, lty)).collect::<matrix>();
     let could_be_useful = is_useful(
         cx, &ms, specialize(cx, v, &ctor, arity, lty).get());
     match could_be_useful {
@@ -397,14 +397,14 @@ pub fn missing_ctor(cx: &MatchCheckCtxt,
       ty::ty_unboxed_vec(*) | ty::ty_evec(*) => {
 
         // Find the lengths and slices of all vector patterns.
-        let vec_pat_lens = do m.filter_mapped |r| {
+        let vec_pat_lens = do m.iter().filter_map |r| {
             match r[0].node {
                 pat_vec(ref before, ref slice, ref after) => {
                     Some((before.len() + after.len(), slice.is_some()))
                 }
                 _ => None
             }
-        };
+        }.collect::<~[(uint, bool)]>();
 
         // Sort them by length such that for patterns of the same length,
         // those with a destructured slice come first.
