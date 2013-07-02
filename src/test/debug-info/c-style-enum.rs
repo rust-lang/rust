@@ -31,17 +31,23 @@
 // debugger:print manual_one_million
 // check:$6 = OneMillion
 
+// debugger:print single_variant
+// check:$7 = TheOnlyVariant
 
-enum AutoDiscriminator {
+enum AutoDiscriminant {
     One,
     Two,
     Three
 }
 
-enum ManualDiscriminator {
+enum ManualDiscriminant {
     OneHundred = 100,
     OneThousand = 1000,
     OneMillion = 1000000
+}
+
+enum SingleVariant {
+    TheOnlyVariant
 }
 
 fn main() {
@@ -53,6 +59,8 @@ fn main() {
     let manual_one_hundred = OneHundred;
     let manual_one_thousand = OneThousand;
     let manual_one_million = OneMillion;
+
+    let single_variant = TheOnlyVariant;
 
     zzz();
 }

@@ -501,9 +501,9 @@ fn create_struct(cx: &mut CrateContext,
                  fields: ~[ty::field],
                  span: span)
               -> DICompositeType {
-    debug!("create_struct: %?", ty::get(struct_type));
-
     let struct_name = ty_to_str(cx.tcx, struct_type);
+    debug!("create_struct: %s", struct_name);
+
     let struct_llvm_type = type_of::type_of(cx, struct_type);
 
     let field_llvm_types = fields.map(|field| type_of::type_of(cx, field.mt.ty));
@@ -526,7 +526,7 @@ fn create_tuple(cx: &mut CrateContext,
                 span: span)
              -> DICompositeType {
 
-    let tuple_name = "tuple"; // this should have a better name
+    let tuple_name = ty_to_str(cx.tcx, tuple_type);
     let tuple_llvm_type = type_of::type_of(cx, tuple_type);
     // Create a vec of empty strings. A vec::build_n() function would be nice for this.
     let mut component_names : ~[~str] = vec::with_capacity(component_types.len());
@@ -548,61 +548,117 @@ fn create_tuple(cx: &mut CrateContext,
 fn create_enum_md(cx: &mut CrateContext,
                   enum_type: ty::t,
                   enum_def_id: ast::def_id,
-                  span: span) -> DIType {
+                  substs: &ty::substs,
+                  span: span)
+               -> DIType {
 
     let enum_name = ty_to_str(cx.tcx, enum_type);
-    let discriminator_llvm_type = Type::enum_discrim(cx);
-    let discriminator_size = machine::llsize_of_alloc(cx, discriminator_llvm_type);
-    let discriminator_align = machine::llalign_of_min(cx, discriminator_llvm_type);
 
-    assert!(Type::enum_discrim(cx) == cx.int_type);
-    let discriminator_type_md = get_or_create_type(cx, ty::mk_int(), span);
-
+    // For empty enums there is an early exit. Just describe it as an empty struct with the
+    // appropriate name
     if ty::type_is_empty(cx.tcx, enum_type) {
-        // XXX: This should not "rename" the type to nil
-        return get_or_create_type(cx, ty::mk_nil(), span);
+        return create_composite_type(cx, Type::nil(), enum_name, &[], &[], &[], span);
     }
+
+    // Prepare some data (llvm type, size, align, ...) about the discriminant. This data will be
+    // needed in all of the following cases.
+    let discriminant_llvm_type = Type::enum_discrim(cx);
+    let discriminant_size = machine::llsize_of_alloc(cx, discriminant_llvm_type);
+    let discriminant_align = machine::llalign_of_min(cx, discriminant_llvm_type);
+    assert!(Type::enum_discrim(cx) == cx.int_type);
+    let discriminant_type_md = get_or_create_type(cx, ty::mk_int(), span);
+
+
+    let variants : &[ty::VariantInfo] = *ty::enum_variants(cx.tcx, enum_def_id);
+
+    let enumerators : ~[(~str, int)] = variants
+        .iter()
+        .transform(|v| (cx.sess.str_of(v.name).to_owned(), v.disr_val))
+        .collect();
+
+    let enumerators_md : ~[DIDescriptor] =
+        do enumerators.iter().transform |&(name,value)| {
+            do name.as_c_str |name| { unsafe {
+                llvm::LLVMDIBuilderCreateEnumerator(
+                    DIB(cx),
+                    name,
+                    value as c_ulonglong)
+            }}
+        }.collect();
+
+    let loc = span_start(cx, span);
+    let file_metadata = get_or_create_file(cx, loc.file.name);
+
+    let discriminant_type_md = do enum_name.as_c_str |enum_name| { unsafe {
+        llvm::LLVMDIBuilderCreateEnumerationType(
+            DIB(cx),
+            file_metadata,
+            enum_name,
+            file_metadata,
+            loc.line as c_uint,
+            bytes_to_bits(discriminant_size),
+            bytes_to_bits(discriminant_align),
+            create_DIArray(DIB(cx), enumerators_md),
+            discriminant_type_md)
+    }};
 
     if ty::type_is_c_like_enum(cx.tcx, enum_type) {
-
-        let variants : &[ty::VariantInfo] = *ty::enum_variants(cx.tcx, enum_def_id);
-
-        let enumerators : ~[(~str, int)] = variants
-            .iter()
-            .transform(|v| (cx.sess.str_of(v.name).to_owned(), v.disr_val))
-            .collect();
-
-        let enumerators_md : ~[DIDescriptor] =
-            do enumerators.iter().transform |&(name,value)| {
-                do name.as_c_str |name| { unsafe {
-                    llvm::LLVMDIBuilderCreateEnumerator(
-                        DIB(cx),
-                        name,
-                        value as c_ulonglong)
-                }}
-            }.collect();
-
-        let loc = span_start(cx, span);
-        let file_metadata = get_or_create_file(cx, loc.file.name);
-
-        return do enum_name.as_c_str |enum_name| { unsafe {
-            llvm::LLVMDIBuilderCreateEnumerationType(
-                DIB(cx),
-                file_metadata,
-                enum_name,
-                file_metadata,
-                loc.line as c_uint,
-                bytes_to_bits(discriminator_size),
-                bytes_to_bits(discriminator_align),
-                create_DIArray(DIB(cx), enumerators_md),
-                discriminator_type_md)
-        }};
+        return discriminant_type_md;
     }
 
-    cx.sess.bug("");
+    let variants_md = do variants.map |&vi| {
+
+        let raw_types : &[ty::t] = vi.args;
+        let arg_types = do raw_types.map |&raw_type| { ty::subst(cx.tcx, substs, raw_type) };
+        let arg_llvm_types = ~[discriminant_llvm_type] + do arg_types.map |&ty| { type_of::type_of(cx, ty) };
+        let arg_names = ~[~""] + arg_types.map(|_| ~"");
+        let arg_md = ~[discriminant_type_md] + do arg_types.map |&ty| { get_or_create_type(cx, ty, span) };
+
+        let variant_llvm_type = Type::struct_(arg_llvm_types, false);
+        let variant_type_size = machine::llsize_of_alloc(cx, variant_llvm_type);
+        let variant_type_align = machine::llalign_of_min(cx, variant_llvm_type);
+
+        let variant_type_md = create_composite_type(
+            cx,
+            variant_llvm_type,
+            &"",
+            arg_llvm_types,
+            arg_names,
+            arg_md,
+            span);
+
+        do "".as_c_str |name| { unsafe {
+            llvm::LLVMDIBuilderCreateMemberType(
+                DIB(cx),
+                file_metadata,
+                name,
+                file_metadata,
+                loc.line as c_uint,
+                bytes_to_bits(variant_type_size),
+                bytes_to_bits(variant_type_align),
+                bytes_to_bits(0),
+                0,
+                variant_type_md)
+        }}
+    };
+
+    let enum_llvm_type = type_of::type_of(cx, enum_type);
+    let enum_type_size = machine::llsize_of_alloc(cx, enum_llvm_type);
+    let enum_type_align = machine::llalign_of_min(cx, enum_llvm_type);
+
+    return do "".as_c_str |enum_name| { unsafe { llvm::LLVMDIBuilderCreateUnionType(
+        DIB(cx),
+        file_metadata,
+        enum_name,
+        file_metadata,
+        loc.line as c_uint,
+        bytes_to_bits(enum_type_size),
+        bytes_to_bits(enum_type_align),
+        0, // Flags
+        create_DIArray(DIB(cx), variants_md),
+        0) // RuntimeLang
+    }};
 }
-
-
 
 
 /// Creates debug information for a composite type, that is, anything that results in a LLVM struct.
@@ -899,10 +955,8 @@ fn get_or_create_type(cx: &mut CrateContext, t: ty::t, span: span) -> DIType {
                 }
             }
         },
-        ty::ty_enum(def_id, ref _substs) => {
-            //cx.sess.span_note(span, "debuginfo for enum NYI");
-            //create_unimpl_ty(cx, t)
-            create_enum_md(cx, t, def_id, span)
+        ty::ty_enum(def_id, ref substs) => {
+            create_enum_md(cx, t, def_id, substs, span)
         },
         ty::ty_box(ref mt) |
         ty::ty_uniq(ref mt) => {

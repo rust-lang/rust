@@ -2115,7 +2115,21 @@ pub mod llvm {
             AlignInBits: c_ulonglong,
             Elements: ValueRef,
             ClassType: ValueRef) -> ValueRef;
-}}
+
+        #[fast_ffi]
+        pub unsafe fn LLVMDIBuilderCreateUnionType(
+            Builder: DIBuilderRef,
+            Scope: ValueRef,
+            Name: *c_char,
+            File: ValueRef,
+            LineNumber: c_uint,
+            SizeInBits: c_ulonglong,
+            AlignInBits: c_ulonglong,
+            Flags: c_uint ,
+            Elements: ValueRef,
+            RunTimeLang : c_uint) -> ValueRef;
+    }
+}
 
 pub fn SetInstructionCallConv(Instr: ValueRef, CC: CallConv) {
     unsafe {
