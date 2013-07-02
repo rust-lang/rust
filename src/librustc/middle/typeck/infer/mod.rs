@@ -31,6 +31,7 @@ use middle::typeck::infer::sub::Sub;
 use middle::typeck::infer::lub::Lub;
 use middle::typeck::infer::to_str::InferStr;
 use middle::typeck::infer::unify::{ValsAndBindings, Root};
+use middle::typeck::infer::error_reporting::ErrorReporting;
 use middle::typeck::isr_alist;
 use util::common::indent;
 use util::ppaux::{bound_region_to_str, ty_to_str, trait_ref_to_str, Repr,
