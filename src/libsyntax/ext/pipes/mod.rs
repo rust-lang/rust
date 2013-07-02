@@ -67,7 +67,7 @@ pub fn expand_proto(cx: @ExtCtxt, _sp: span, id: ast::ident,
     let cfg = cx.cfg();
     let tt_rdr = new_tt_reader(cx.parse_sess().span_diagnostic,
                                None,
-                               copy tt);
+                               tt.clone());
     let rdr = tt_rdr as @reader;
     let rust_parser = Parser(sess, cfg, rdr.dup());
 

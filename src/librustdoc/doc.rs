@@ -15,18 +15,18 @@ use doc;
 
 pub type AstId = int;
 
-#[deriving(Eq)]
+#[deriving(Clone, Eq)]
 pub struct Doc {
     pages: ~[Page]
 }
 
-#[deriving(Eq)]
+#[deriving(Clone, Eq)]
 pub enum Page {
     CratePage(CrateDoc),
     ItemPage(ItemTag)
 }
 
-#[deriving(Eq)]
+#[deriving(Clone, Eq)]
 pub enum Implementation {
     Required,
     Provided,
@@ -36,7 +36,7 @@ pub enum Implementation {
  * Most rustdocs can be parsed into 'sections' according to their markdown
  * headers
  */
-#[deriving(Eq)]
+#[deriving(Clone, Eq)]
 pub struct Section {
     header: ~str,
     body: ~str
@@ -45,12 +45,12 @@ pub struct Section {
 // FIXME (#2596): We currently give topmod the name of the crate.  There
 // would probably be fewer special cases if the crate had its own name
 // and topmod's name was the empty string.
-#[deriving(Eq)]
+#[deriving(Clone, Eq)]
 pub struct CrateDoc {
     topmod: ModDoc
 }
 
-#[deriving(Eq)]
+#[deriving(Clone, Eq)]
 pub enum ItemTag {
     ModTag(ModDoc),
     NmodTag(NmodDoc),
@@ -63,7 +63,7 @@ pub enum ItemTag {
     StructTag(StructDoc)
 }
 
-#[deriving(Eq)]
+#[deriving(Clone, Eq)]
 pub struct ItemDoc {
     id: AstId,
     name: ~str,
@@ -75,20 +75,20 @@ pub struct ItemDoc {
     reexport: bool
 }
 
-#[deriving(Eq)]
+#[deriving(Clone, Eq)]
 pub struct SimpleItemDoc {
     item: ItemDoc,
     sig: Option<~str>
 }
 
-#[deriving(Eq)]
+#[deriving(Clone, Eq)]
 pub struct ModDoc {
     item: ItemDoc,
     items: ~[ItemTag],
     index: Option<Index>
 }
 
-#[deriving(Eq)]
+#[deriving(Clone, Eq)]
 pub struct NmodDoc {
     item: ItemDoc,
     fns: ~[FnDoc],
@@ -99,26 +99,26 @@ pub type ConstDoc = SimpleItemDoc;
 
 pub type FnDoc = SimpleItemDoc;
 
-#[deriving(Eq)]
+#[deriving(Clone, Eq)]
 pub struct EnumDoc {
     item: ItemDoc,
     variants: ~[VariantDoc]
 }
 
-#[deriving(Eq)]
+#[deriving(Clone, Eq)]
 pub struct VariantDoc {
     name: ~str,
     desc: Option<~str>,
     sig: Option<~str>
 }
 
-#[deriving(Eq)]
+#[deriving(Clone, Eq)]
 pub struct TraitDoc {
     item: ItemDoc,
     methods: ~[MethodDoc]
 }
 
-#[deriving(Eq)]
+#[deriving(Clone, Eq)]
 pub struct MethodDoc {
     name: ~str,
     brief: Option<~str>,
@@ -128,7 +128,7 @@ pub struct MethodDoc {
     implementation: Implementation,
 }
 
-#[deriving(Eq)]
+#[deriving(Clone, Eq)]
 pub struct ImplDoc {
     item: ItemDoc,
     bounds_str: Option<~str>,
@@ -139,14 +139,14 @@ pub struct ImplDoc {
 
 pub type TyDoc = SimpleItemDoc;
 
-#[deriving(Eq)]
+#[deriving(Clone, Eq)]
 pub struct StructDoc {
     item: ItemDoc,
     fields: ~[~str],
     sig: Option<~str>
 }
 
-#[deriving(Eq)]
+#[deriving(Clone, Eq)]
 pub struct Index {
     entries: ~[IndexEntry]
 }
@@ -161,7 +161,7 @@ pub struct Index {
  * * brief - The brief description
  * * link - A format-specific string representing the link target
  */
-#[deriving(Eq)]
+#[deriving(Clone, Eq)]
 pub struct IndexEntry {
     kind: ~str,
     name: ~str,
@@ -172,7 +172,7 @@ pub struct IndexEntry {
 impl Doc {
     pub fn CrateDoc(&self) -> CrateDoc {
         self.pages.iter().fold(None, |_m, page| {
-            match copy *page {
+            match (*page).clone() {
               doc::CratePage(doc) => Some(doc),
               _ => None
             }
@@ -180,7 +180,7 @@ impl Doc {
     }
 
     pub fn cratemod(&self) -> ModDoc {
-        copy self.CrateDoc().topmod
+        self.CrateDoc().topmod.clone()
     }
 }
 
@@ -188,7 +188,7 @@ macro_rules! filt_mapper {
     ($vec:expr, $pat:pat) => {
         do ($vec).iter().filter_map |thing| {
             match thing {
-                &$pat => Some(copy *x),
+                &$pat => Some((*x).clone()),
                 _ => None
             }
         }.collect()
@@ -298,45 +298,59 @@ pub trait Item {
 impl Item for ItemTag {
     fn item(&self) -> ItemDoc {
         match self {
-          &doc::ModTag(ref doc) => copy doc.item,
-          &doc::NmodTag(ref doc) => copy doc.item,
-          &doc::FnTag(ref doc) => copy doc.item,
-          &doc::ConstTag(ref doc) => copy doc.item,
-          &doc::EnumTag(ref doc) => copy doc.item,
-          &doc::TraitTag(ref doc) => copy doc.item,
-          &doc::ImplTag(ref doc) => copy doc.item,
-          &doc::TyTag(ref doc) => copy doc.item,
-          &doc::StructTag(ref doc) => copy doc.item
+          &doc::ModTag(ref doc) => doc.item.clone(),
+          &doc::NmodTag(ref doc) => doc.item.clone(),
+          &doc::FnTag(ref doc) => doc.item.clone(),
+          &doc::ConstTag(ref doc) => doc.item.clone(),
+          &doc::EnumTag(ref doc) => doc.item.clone(),
+          &doc::TraitTag(ref doc) => doc.item.clone(),
+          &doc::ImplTag(ref doc) => doc.item.clone(),
+          &doc::TyTag(ref doc) => doc.item.clone(),
+          &doc::StructTag(ref doc) => doc.item.clone(),
         }
     }
 }
 
 impl Item for SimpleItemDoc {
-    fn item(&self) -> ItemDoc { copy self.item }
+    fn item(&self) -> ItemDoc {
+        self.item.clone()
+    }
 }
 
 impl Item for ModDoc {
-    fn item(&self) -> ItemDoc { copy self.item }
+    fn item(&self) -> ItemDoc {
+        self.item.clone()
+    }
 }
 
 impl Item for NmodDoc {
-    fn item(&self) -> ItemDoc { copy self.item }
+    fn item(&self) -> ItemDoc {
+        self.item.clone()
+    }
 }
 
 impl Item for EnumDoc {
-    fn item(&self) -> ItemDoc { copy self.item }
+    fn item(&self) -> ItemDoc {
+        self.item.clone()
+    }
 }
 
 impl Item for TraitDoc {
-    fn item(&self) -> ItemDoc { copy self.item }
+    fn item(&self) -> ItemDoc {
+        self.item.clone()
+    }
 }
 
 impl Item for ImplDoc {
-    fn item(&self) -> ItemDoc { copy self.item }
+    fn item(&self) -> ItemDoc {
+        self.item.clone()
+    }
 }
 
 impl Item for StructDoc {
-    fn item(&self) -> ItemDoc { copy self.item }
+    fn item(&self) -> ItemDoc {
+        self.item.clone()
+    }
 }
 
 pub trait ItemUtils {
@@ -354,22 +368,22 @@ impl<A:Item> ItemUtils for A {
     }
 
     fn name(&self) -> ~str {
-        copy self.item().name
+        self.item().name.clone()
     }
 
     fn path(&self) -> ~[~str] {
-        copy self.item().path
+        self.item().path.clone()
     }
 
     fn brief(&self) -> Option<~str> {
-        copy self.item().brief
+        self.item().brief.clone()
     }
 
     fn desc(&self) -> Option<~str> {
-        copy self.item().desc
+        self.item().desc.clone()
     }
 
     fn sections(&self) -> ~[Section] {
-        copy self.item().sections
+        self.item().sections.clone()
     }
 }

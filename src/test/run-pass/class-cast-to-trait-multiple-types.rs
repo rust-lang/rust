@@ -46,6 +46,7 @@ fn dog() -> dog {
     }
 }
 
+#[deriving(Clone)]
 struct cat {
   priv meows : @mut uint,
 
@@ -88,7 +89,7 @@ fn annoy_neighbors(critter: @noisy) {
 pub fn main() {
   let nyan : cat  = cat(0u, 2, ~"nyan");
   let whitefang : dog = dog();
-  annoy_neighbors(@(copy nyan) as @noisy);
+  annoy_neighbors(@nyan.clone() as @noisy);
   annoy_neighbors(@whitefang as @noisy);
   assert_eq!(nyan.meow_count(), 10u);
   assert_eq!(*whitefang.volume, 1);

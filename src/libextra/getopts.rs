@@ -52,7 +52,7 @@
  *    fn main() {
  *        let args = os::args();
  *
- *        let program = copy args[0];
+ *        let program = args[0].clone();
  *
  *        let opts = ~[
  *            optopt("o"),
@@ -69,7 +69,7 @@
  *        }
  *        let output = opt_maybe_str(&matches, "o");
  *        let input: &str = if !matches.free.is_empty() {
- *            copy matches.free[0]
+ *            matches.free[0].clone()
  *        } else {
  *            print_usage(program, opts);
  *            return;
@@ -89,20 +89,28 @@ use std::option::{Some, None};
 use std::str;
 use std::vec;
 
-#[deriving(Eq)]
+#[deriving(Clone, Eq)]
 pub enum Name {
     Long(~str),
     Short(char),
 }
 
-#[deriving(Eq)]
-pub enum HasArg { Yes, No, Maybe, }
+#[deriving(Clone, Eq)]
+pub enum HasArg {
+    Yes,
+    No,
+    Maybe,
+}
 
-#[deriving(Eq)]
-pub enum Occur { Req, Optional, Multi, }
+#[deriving(Clone, Eq)]
+pub enum Occur {
+    Req,
+    Optional,
+    Multi,
+}
 
 /// A description of a possible option
-#[deriving(Eq)]
+#[deriving(Clone, Eq)]
 pub struct Opt {
     name: Name,
     hasarg: HasArg,
@@ -150,14 +158,17 @@ pub fn optmulti(name: &str) -> Opt {
     return Opt {name: mkname(name), hasarg: Yes, occur: Multi};
 }
 
-#[deriving(Eq)]
-enum Optval { Val(~str), Given, }
+#[deriving(Clone, Eq)]
+enum Optval {
+    Val(~str),
+    Given,
+}
 
 /**
  * The result of checking command line arguments. Contains a vector
  * of matches and a vector of free strings.
  */
-#[deriving(Eq)]
+#[deriving(Clone, Eq)]
 pub struct Matches {
     opts: ~[Opt],
     vals: ~[~[Optval]],
@@ -171,7 +182,7 @@ fn is_arg(arg: &str) -> bool {
 fn name_str(nm: &Name) -> ~str {
     return match *nm {
       Short(ch) => str::from_char(ch),
-      Long(ref s) => copy *s
+      Long(ref s) => (*s).clone()
     };
 }
 
@@ -183,7 +194,7 @@ fn find_opt(opts: &[Opt], nm: Name) -> Option<uint> {
  * The type returned when the command line does not conform to the
  * expected format. Pass this value to <fail_str> to get an error message.
  */
-#[deriving(Eq)]
+#[deriving(Clone, Eq)]
 pub enum Fail_ {
     ArgumentMissing(~str),
     UnrecognizedOption(~str),
@@ -234,13 +245,13 @@ pub fn getopts(args: &[~str], opts: &[Opt]) -> Result {
     let l = args.len();
     let mut i = 0;
     while i < l {
-        let cur = copy args[i];
+        let cur = args[i].clone();
         let curlen = cur.len();
         if !is_arg(cur) {
             free.push(cur);
         } else if cur == ~"--" {
             let mut j = i + 1;
-            while j < l { free.push(copy args[j]); j += 1; }
+            while j < l { free.push(args[j].clone()); j += 1; }
             break;
         } else {
             let mut names;
@@ -270,7 +281,7 @@ pub fn getopts(args: &[~str], opts: &[Opt]) -> Result {
                        interpreted correctly
                     */
 
-                    match find_opt(opts, copy opt) {
+                    match find_opt(opts, opt.clone()) {
                       Some(id) => last_valid_opt_id = Some(id),
                       None => {
                         let arg_follows =
@@ -296,7 +307,7 @@ pub fn getopts(args: &[~str], opts: &[Opt]) -> Result {
             let mut name_pos = 0;
             for names.iter().advance() |nm| {
                 name_pos += 1;
-                let optid = match find_opt(opts, copy *nm) {
+                let optid = match find_opt(opts, (*nm).clone()) {
                   Some(id) => id,
                   None => return Err(UnrecognizedOption(name_str(nm)))
                 };
@@ -309,18 +320,18 @@ pub fn getopts(args: &[~str], opts: &[Opt]) -> Result {
                   }
                   Maybe => {
                     if !i_arg.is_none() {
-                        vals[optid].push(Val((copy i_arg).get()));
+                        vals[optid].push(Val((i_arg.clone()).get()));
                     } else if name_pos < names.len() ||
                                   i + 1 == l || is_arg(args[i + 1]) {
                         vals[optid].push(Given);
-                    } else { i += 1; vals[optid].push(Val(copy args[i])); }
+                    } else { i += 1; vals[optid].push(Val(args[i].clone())); }
                   }
                   Yes => {
                     if !i_arg.is_none() {
-                        vals[optid].push(Val((copy i_arg).get()));
+                        vals[optid].push(Val(i_arg.clone().get()));
                     } else if i + 1 == l {
                         return Err(ArgumentMissing(name_str(nm)));
-                    } else { i += 1; vals[optid].push(Val(copy args[i])); }
+                    } else { i += 1; vals[optid].push(Val(args[i].clone())); }
                   }
                 }
             }
@@ -350,7 +361,7 @@ pub fn getopts(args: &[~str], opts: &[Opt]) -> Result {
 
 fn opt_vals(mm: &Matches, nm: &str) -> ~[Optval] {
     return match find_opt(mm.opts, mkname(nm)) {
-      Some(id) => copy mm.vals[id],
+      Some(id) => mm.vals[id].clone(),
       None => {
         error!("No option '%s' defined", nm);
         fail!()
@@ -358,7 +369,7 @@ fn opt_vals(mm: &Matches, nm: &str) -> ~[Optval] {
     };
 }
 
-fn opt_val(mm: &Matches, nm: &str) -> Optval { copy opt_vals(mm, nm)[0] }
+fn opt_val(mm: &Matches, nm: &str) -> Optval { opt_vals(mm, nm)[0].clone() }
 
 /// Returns true if an option was matched
 pub fn opt_present(mm: &Matches, nm: &str) -> bool {
@@ -401,7 +412,7 @@ pub fn opt_str(mm: &Matches, nm: &str) -> ~str {
 pub fn opts_str(mm: &Matches, names: &[~str]) -> ~str {
     for names.iter().advance |nm| {
         match opt_val(mm, *nm) {
-          Val(ref s) => return copy *s,
+          Val(ref s) => return (*s).clone(),
           _ => ()
         }
     }
@@ -419,7 +430,7 @@ pub fn opt_strs(mm: &Matches, nm: &str) -> ~[~str] {
     let mut acc: ~[~str] = ~[];
     let r = opt_vals(mm, nm);
     for r.iter().advance |v| {
-        match *v { Val(ref s) => acc.push(copy *s), _ => () }
+        match *v { Val(ref s) => acc.push((*s).clone()), _ => () }
     }
     acc
 }
@@ -429,7 +440,7 @@ pub fn opt_maybe_str(mm: &Matches, nm: &str) -> Option<~str> {
     let vals = opt_vals(mm, nm);
     if vals.is_empty() { return None::<~str>; }
     return match vals[0] {
-        Val(ref s) => Some(copy *s),
+        Val(ref s) => Some((*s).clone()),
         _ => None
     };
 }
@@ -445,7 +456,7 @@ pub fn opt_maybe_str(mm: &Matches, nm: &str) -> Option<~str> {
 pub fn opt_default(mm: &Matches, nm: &str, def: &str) -> Option<~str> {
     let vals = opt_vals(mm, nm);
     if vals.is_empty() { return None::<~str>; }
-    return match vals[0] { Val(ref s) => Some::<~str>(copy *s),
+    return match vals[0] { Val(ref s) => Some::<~str>((*s).clone()),
                            _      => Some::<~str>(str::to_owned(def)) }
 }
 
@@ -471,7 +482,7 @@ pub mod groups {
     /** one group of options, e.g., both -h and --help, along with
      * their shared description and properties
      */
-    #[deriving(Eq)]
+    #[deriving(Clone, Eq)]
     pub struct OptGroup {
         short_name: ~str,
         long_name: ~str,
@@ -556,7 +567,7 @@ pub mod groups {
                      long_name: long_name,
                      hasarg: hasarg,
                      occur: occur,
-                     _} = copy *lopt;
+                     _} = (*lopt).clone();
 
         match (short_name.len(), long_name.len()) {
            (0,0) => fail!("this long-format option was given no name"),
@@ -600,7 +611,7 @@ pub mod groups {
                          hint: hint,
                          desc: desc,
                          hasarg: hasarg,
-                         _} = copy *optref;
+                         _} = (*optref).clone();
 
             let mut row = " ".repeat(4);
 
@@ -916,7 +927,7 @@ mod tests {
         let rs = getopts(args, opts);
         match rs {
           Err(f) => {
-            error!(fail_str(copy f));
+            error!(fail_str(f.clone()));
             check_fail_type(f, UnexpectedArgument_);
           }
           _ => fail!()

@@ -265,7 +265,7 @@ fn highlight_lines(cm: @codemap::CodeMap,
     // arbitrarily only print up to six lines of the error
     let max_lines = 6u;
     let mut elided = false;
-    let mut display_lines = /* FIXME (#2543) */ copy lines.lines;
+    let mut display_lines = /* FIXME (#2543) */ lines.lines.clone();
     if display_lines.len() > max_lines {
         display_lines = display_lines.slice(0u, max_lines).to_owned();
         elided = true;
@@ -345,11 +345,11 @@ fn print_macro_backtrace(cm: @codemap::CodeMap, sp: span) {
     }
 }
 
-pub fn expect<T:Copy>(diag: @span_handler,
+pub fn expect<T:Clone>(diag: @span_handler,
                        opt: Option<T>,
                        msg: &fn() -> ~str) -> T {
     match opt {
-       Some(ref t) => copy *t,
-       None => diag.handler().bug(msg())
+       Some(ref t) => (*t).clone(),
+       None => diag.handler().bug(msg()),
     }
 }

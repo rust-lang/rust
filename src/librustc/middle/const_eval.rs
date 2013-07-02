@@ -238,7 +238,7 @@ pub fn lookup_const_by_id(tcx: ty::ctxt,
             capture_map: @mut HashMap::new()
         };
         match csearch::maybe_get_item_ast(tcx, def_id,
-            |a, b, c, d| astencode::decode_inlined_item(a, b, maps, /*bar*/ copy c, d)) {
+            |a, b, c, d| astencode::decode_inlined_item(a, b, maps, c, d)) {
             csearch::found(ast::ii_item(item)) => match item.node {
                 item_static(_, ast::m_imm, const_expr) => Some(const_expr),
                 _ => None
@@ -275,7 +275,7 @@ pub fn process_crate(crate: &ast::crate,
 
 // FIXME (#33): this doesn't handle big integer/float literals correctly
 // (nor does the rest of our literal handling).
-#[deriving(Eq)]
+#[deriving(Clone, Eq)]
 pub enum const_val {
     const_float(f64),
     const_int(i64),
@@ -303,7 +303,7 @@ pub fn eval_const_expr_partial<T: ty::ExprTyProvider>(tcx: &T, e: &expr)
           Ok(const_uint(i)) => Ok(const_uint(-i)),
           Ok(const_str(_)) => Err(~"Negate on string"),
           Ok(const_bool(_)) => Err(~"Negate on boolean"),
-          ref err => (/*bad*/copy *err)
+          ref err => ((*err).clone())
         }
       }
       expr_unary(_, not, inner) => {
@@ -410,28 +410,34 @@ pub fn eval_const_expr_partial<T: ty::ExprTyProvider>(tcx: &T, e: &expr)
       expr_cast(base, _) => {
         let ety = tcx.expr_ty(e);
         let base = eval_const_expr_partial(tcx, base);
-        match /*bad*/copy base {
+        match base {
             Err(_) => base,
             Ok(val) => {
                 match ty::get(ety).sty {
-                    ty::ty_float(_) => match val {
-                        const_uint(u) => Ok(const_float(u as f64)),
-                        const_int(i) => Ok(const_float(i as f64)),
-                        const_float(_) => base,
-                        _ => Err(~"Can't cast float to str"),
-                    },
-                    ty::ty_uint(_) => match val {
-                        const_uint(_) => base,
-                        const_int(i) => Ok(const_uint(i as u64)),
-                        const_float(f) => Ok(const_uint(f as u64)),
-                        _ => Err(~"Can't cast str to uint"),
-                    },
-                    ty::ty_int(_) | ty::ty_bool => match val {
-                        const_uint(u) => Ok(const_int(u as i64)),
-                        const_int(_) => base,
-                        const_float(f) => Ok(const_int(f as i64)),
-                        _ => Err(~"Can't cast str to int"),
-                    },
+                    ty::ty_float(_) => {
+                        match val {
+                            const_uint(u) => Ok(const_float(u as f64)),
+                            const_int(i) => Ok(const_float(i as f64)),
+                            const_float(f) => Ok(const_float(f)),
+                            _ => Err(~"Can't cast float to str"),
+                        }
+                    }
+                    ty::ty_uint(_) => {
+                        match val {
+                            const_uint(u) => Ok(const_uint(u)),
+                            const_int(i) => Ok(const_uint(i as u64)),
+                            const_float(f) => Ok(const_uint(f as u64)),
+                            _ => Err(~"Can't cast str to uint"),
+                        }
+                    }
+                    ty::ty_int(_) | ty::ty_bool => {
+                        match val {
+                            const_uint(u) => Ok(const_int(u as i64)),
+                            const_int(i) => Ok(const_int(i)),
+                            const_float(f) => Ok(const_int(f as i64)),
+                            _ => Err(~"Can't cast str to int"),
+                        }
+                    }
                     _ => Err(~"Can't cast this type")
                 }
             }

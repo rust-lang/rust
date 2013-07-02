@@ -117,9 +117,11 @@ pub fn parse_config(args: ~[~str]) -> config {
         mode: str_mode(getopts::opt_str(matches, "mode")),
         run_ignored: getopts::opt_present(matches, "ignored"),
         filter:
-             if !matches.free.is_empty() {
-                 Some(copy matches.free[0])
-             } else { None },
+            if !matches.free.is_empty() {
+                 Some(matches.free[0].clone())
+            } else {
+                None
+            },
         logfile: getopts::opt_maybe_str(matches, "logfile").map(|s| Path(*s)),
         save_metrics: getopts::opt_maybe_str(matches, "save-metrics").map(|s| Path(*s)),
         ratchet_metrics:
@@ -223,9 +225,9 @@ pub fn run_tests(config: &config) {
 
 pub fn test_opts(config: &config) -> test::TestOpts {
     test::TestOpts {
-        filter: copy config.filter,
+        filter: config.filter.clone(),
         run_ignored: config.run_ignored,
-        logfile: copy config.logfile,
+        logfile: config.logfile.clone(),
         run_tests: true,
         run_benchmarks: true,
         ratchet_metrics: copy config.ratchet_metrics,
@@ -240,7 +242,7 @@ pub fn make_tests(config: &config) -> ~[test::TestDescAndFn] {
     let mut tests = ~[];
     let dirs = os::list_dir_path(&config.src_base);
     for dirs.iter().advance |file| {
-        let file = copy *file;
+        let file = (*file).clone();
         debug!("inspecting file %s", file.to_str());
         if is_test(config, file) {
             let t = do make_test(config, file) {
@@ -306,7 +308,7 @@ pub fn make_test_name(config: &config, testfile: &Path) -> test::TestName {
 
 pub fn make_test_closure(config: &config, testfile: &Path) -> test::TestFn {
     use std::cell::Cell;
-    let config = Cell::new(copy *config);
+    let config = Cell::new((*config).clone());
     let testfile = Cell::new(testfile.to_str());
     test::DynTestFn(|| { runtest::run(config.take(), testfile.take()) })
 }

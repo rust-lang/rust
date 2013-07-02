@@ -11,10 +11,10 @@
 use std::comm::*;
 use std::task;
 
-pub fn foo<T:Send + Copy>(x: T) -> Port<T> {
+pub fn foo<T:Send + Clone>(x: T) -> Port<T> {
     let (p, c) = stream();
     do task::spawn() {
-        c.send(copy x);
+        c.send(x.clone());
     }
     p
 }

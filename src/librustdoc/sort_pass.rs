@@ -15,20 +15,30 @@ use doc;
 use fold::Fold;
 use fold;
 use pass::Pass;
-use util::NominalOp;
 
 #[cfg(test)] use extract;
 
 use extra::sort;
+use std::clone::Clone;
 
 pub type ItemLtEqOp = @fn(v1: &doc::ItemTag, v2:  &doc::ItemTag) -> bool;
 
-type ItemLtEq = NominalOp<ItemLtEqOp>;
+struct ItemLtEq {
+    op: ItemLtEqOp,
+}
+
+impl Clone for ItemLtEq {
+    fn clone(&self) -> ItemLtEq {
+        ItemLtEq {
+            op: self.op,
+        }
+    }
+}
 
 pub fn mk_pass(name: ~str, lteq: ItemLtEqOp) -> Pass {
     Pass {
-        name: copy name,
-        f: |srv, doc| run(srv, doc, NominalOp { op: lteq })
+        name: name.clone(),
+        f: |srv, doc| run(srv, doc, ItemLtEq { op: lteq })
     }
 }
 

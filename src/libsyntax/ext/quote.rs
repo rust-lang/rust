@@ -45,7 +45,7 @@ pub mod rt {
 
     impl ToTokens for ~[token_tree] {
         pub fn to_tokens(&self, _cx: @ExtCtxt) -> ~[token_tree] {
-            copy *self
+            (*self).clone()
         }
     }
 

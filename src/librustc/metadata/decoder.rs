@@ -714,7 +714,7 @@ pub fn maybe_get_item_ast(cdata: cmd, tcx: ty::ctxt,
         let item_path = item_path(item_doc);
         item_path.init().to_owned()
     };
-    match decode_inlined_item(cdata, tcx, copy path, item_doc) {
+    match decode_inlined_item(cdata, tcx, /*bad*/path.clone(), item_doc) {
       Some(ref ii) => csearch::found(*ii),
       None => {
         match item_parent_item(item_doc) {
@@ -746,7 +746,7 @@ pub fn get_enum_variants(intr: @ident_interner, cdata: cmd, id: ast::node_id,
                                 item, tcx, cdata);
         let name = item_name(intr, item);
         let arg_tys = match ty::get(ctor_ty).sty {
-          ty::ty_bare_fn(ref f) => copy f.sig.inputs,
+          ty::ty_bare_fn(ref f) => f.sig.inputs.clone(),
           _ => ~[], // Nullary enum variant.
         };
         match variant_disr_val(item) {
@@ -1149,6 +1149,7 @@ pub fn get_crate_attributes(data: @~[u8]) -> ~[ast::attribute] {
     return get_attributes(reader::Doc(data));
 }
 
+#[deriving(Clone)]
 pub struct crate_dep {
     cnum: ast::crate_num,
     name: ast::ident,

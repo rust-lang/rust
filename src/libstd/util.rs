@@ -127,6 +127,8 @@ pub fn unreachable() -> ! {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    use clone::Clone;
     use option::{None, Some};
     use either::{Either, Left, Right};
     use sys::size_of;
@@ -136,8 +138,8 @@ mod tests {
     fn identity_crisis() {
         // Writing a test for the identity function. How did it come to this?
         let x = ~[(5, false)];
-        //FIXME #3387 assert!(x.eq(id(copy x)));
-        let y = copy x;
+        //FIXME #3387 assert!(x.eq(id(x.clone())));
+        let y = x.clone();
         assert!(x.eq(&id(y)));
     }
 

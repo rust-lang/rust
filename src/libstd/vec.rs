@@ -14,12 +14,11 @@
 
 use cast::transmute;
 use cast;
-use container::{Container, Mutable};
-use cmp;
-use cmp::{Eq, TotalEq, TotalOrd, Ordering, Less, Equal, Greater};
 use clone::Clone;
+use container::{Container, Mutable};
+use cmp::{Eq, TotalEq, TotalOrd, Ordering, Less, Equal, Greater};
+use cmp;
 use iterator::*;
-use kinds::Copy;
 use libc::c_void;
 use num::Zero;
 use option::{None, Option, Some};
@@ -72,7 +71,7 @@ pub fn from_fn<T>(n_elts: uint, op: &fn(uint) -> T) -> ~[T] {
  * Creates an owned vector of size `n_elts` and initializes the elements
  * to the value `t`.
  */
-pub fn from_elem<T:Copy>(n_elts: uint, t: T) -> ~[T] {
+pub fn from_elem<T:Clone>(n_elts: uint, t: T) -> ~[T] {
     // FIXME (#7136): manually inline from_fn for 2x plus speedup (sadly very
     // important, from_elem is a bottleneck in borrowck!). Unfortunately it
     // still is substantially slower than using the unsafe
@@ -82,7 +81,7 @@ pub fn from_elem<T:Copy>(n_elts: uint, t: T) -> ~[T] {
         do v.as_mut_buf |p, _len| {
             let mut i = 0u;
             while i < n_elts {
-                intrinsics::move_val_init(&mut(*ptr::mut_offset(p, i)), copy t);
+                intrinsics::move_val_init(&mut(*ptr::mut_offset(p, i)), t.clone());
                 i += 1u;
             }
         }
@@ -241,7 +240,7 @@ impl<'self, T> Iterator<&'self [T]> for VecRSplitIterator<'self, T> {
 /// Iterates over the `rhs` vector, copying each element and appending it to the
 /// `lhs`. Afterwards, the `lhs` is then returned for use again.
 #[inline]
-pub fn append<T:Copy>(lhs: ~[T], rhs: &[T]) -> ~[T] {
+pub fn append<T:Clone>(lhs: ~[T], rhs: &[T]) -> ~[T] {
     let mut v = lhs;
     v.push_all(rhs);
     v
@@ -269,16 +268,16 @@ pub fn flat_map<T, U>(v: &[T], f: &fn(t: &T) -> ~[U]) -> ~[U] {
 }
 
 /// Flattens a vector of vectors of T into a single vector of T.
-pub fn concat<T:Copy>(v: &[~[T]]) -> ~[T] { v.concat_vec() }
+pub fn concat<T:Clone>(v: &[~[T]]) -> ~[T] { v.concat_vec() }
 
 /// Concatenate a vector of vectors, placing a given separator between each
-pub fn connect<T:Copy>(v: &[~[T]], sep: &T) -> ~[T] { v.connect_vec(sep) }
+pub fn connect<T:Clone>(v: &[~[T]], sep: &T) -> ~[T] { v.connect_vec(sep) }
 
 /// Flattens a vector of vectors of T into a single vector of T.
-pub fn concat_slices<T:Copy>(v: &[&[T]]) -> ~[T] { v.concat_vec() }
+pub fn concat_slices<T:Clone>(v: &[&[T]]) -> ~[T] { v.concat_vec() }
 
 /// Concatenate a vector of vectors, placing a given separator between each
-pub fn connect_slices<T:Copy>(v: &[&[T]], sep: &T) -> ~[T] { v.connect_vec(sep) }
+pub fn connect_slices<T:Clone>(v: &[&[T]], sep: &T) -> ~[T] { v.connect_vec(sep) }
 
 #[allow(missing_doc)]
 pub trait VectorVector<T> {
@@ -288,10 +287,10 @@ pub trait VectorVector<T> {
     pub fn connect_vec(&self, sep: &T) -> ~[T];
 }
 
-impl<'self, T:Copy> VectorVector<T> for &'self [~[T]] {
+impl<'self, T:Clone> VectorVector<T> for &'self [~[T]] {
     /// Flattens a vector of slices of T into a single vector of T.
     pub fn concat_vec(&self) -> ~[T] {
-        self.flat_map(|inner| copy *inner)
+        self.flat_map(|inner| (*inner).clone())
     }
 
     /// Concatenate a vector of vectors, placing a given separator between each.
@@ -299,14 +298,14 @@ impl<'self, T:Copy> VectorVector<T> for &'self [~[T]] {
         let mut r = ~[];
         let mut first = true;
         for self.iter().advance |inner| {
-            if first { first = false; } else { r.push(copy *sep); }
-            r.push_all(copy *inner);
+            if first { first = false; } else { r.push((*sep).clone()); }
+            r.push_all((*inner).clone());
         }
         r
     }
 }
 
-impl<'self, T:Copy> VectorVector<T> for &'self [&'self [T]] {
+impl<'self,T:Clone> VectorVector<T> for &'self [&'self [T]] {
     /// Flattens a vector of slices of T into a single vector of T.
     pub fn concat_vec(&self) -> ~[T] {
         self.flat_map(|&inner| inner.to_owned())
@@ -317,7 +316,7 @@ impl<'self, T:Copy> VectorVector<T> for &'self [&'self [T]] {
         let mut r = ~[];
         let mut first = true;
         for self.iter().advance |&inner| {
-            if first { first = false; } else { r.push(copy *sep); }
+            if first { first = false; } else { r.push((*sep).clone()); }
             r.push_all(inner);
         }
         r
@@ -331,11 +330,11 @@ impl<'self, T:Copy> VectorVector<T> for &'self [&'self [T]] {
 /**
  * Convert a vector of pairs into a pair of vectors, by reference. As unzip().
  */
-pub fn unzip_slice<T:Copy,U:Copy>(v: &[(T, U)]) -> (~[T], ~[U]) {
+pub fn unzip_slice<T:Clone,U:Clone>(v: &[(T, U)]) -> (~[T], ~[U]) {
     let mut ts = ~[];
     let mut us = ~[];
     for v.iter().advance |p| {
-        let (t, u) = copy *p;
+        let (t, u) = (*p).clone();
         ts.push(t);
         us.push(u);
     }
@@ -364,14 +363,13 @@ pub fn unzip<T,U>(v: ~[(T, U)]) -> (~[T], ~[U]) {
 /**
  * Convert two vectors to a vector of pairs, by reference. As zip().
  */
-pub fn zip_slice<T:Copy,U:Copy>(v: &[T], u: &[U])
-        -> ~[(T, U)] {
+pub fn zip_slice<T:Clone,U:Clone>(v: &[T], u: &[U]) -> ~[(T, U)] {
     let mut zipped = ~[];
     let sz = v.len();
     let mut i = 0u;
     assert_eq!(sz, u.len());
     while i < sz {
-        zipped.push((copy v[i], copy u[i]));
+        zipped.push((v[i].clone(), u[i].clone()));
         i += 1u;
     }
     zipped
@@ -415,9 +413,9 @@ pub fn zip<T, U>(mut v: ~[T], mut u: ~[U]) -> ~[(T, U)] {
  *
  *  * `fun` - The function to iterate over the combinations
  */
-pub fn each_permutation<T:Copy>(values: &[T], fun: &fn(perm : &[T]) -> bool) -> bool {
+pub fn each_permutation<T:Clone>(values: &[T], fun: &fn(perm : &[T]) -> bool) -> bool {
     let length = values.len();
-    let mut permutation = vec::from_fn(length, |i| copy values[i]);
+    let mut permutation = vec::from_fn(length, |i| values[i].clone());
     if length <= 1 {
         fun(permutation);
         return true;
@@ -444,7 +442,7 @@ pub fn each_permutation<T:Copy>(values: &[T], fun: &fn(perm : &[T]) -> bool) -> 
         indices.mut_slice(k+1, length).reverse();
         // fixup permutation based on indices
         for uint::range(k, length) |i| {
-            permutation[i] = copy values[indices[i]];
+            permutation[i] = values[indices[i]].clone();
         }
     }
 }
@@ -496,7 +494,8 @@ impl<'self, T> Iterator<&'self [T]> for VecChunkIter<'self, T> {
 #[cfg(not(test))]
 pub mod traits {
     use super::Vector;
-    use kinds::Copy;
+
+    use clone::Clone;
     use cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering, Equal, Equiv};
     use ops::Add;
 
@@ -615,7 +614,7 @@ pub mod traits {
         fn gt(&self, other: &@[T]) -> bool { self.as_slice() > other.as_slice() }
     }
 
-    impl<'self,T:Copy, V: Vector<T>> Add<V, ~[T]> for &'self [T] {
+    impl<'self,T:Clone, V: Vector<T>> Add<V, ~[T]> for &'self [T] {
         #[inline]
         fn add(&self, rhs: &V) -> ~[T] {
             let mut res = self.to_owned();
@@ -623,7 +622,7 @@ pub mod traits {
             res
         }
     }
-    impl<T:Copy, V: Vector<T>> Add<V, ~[T]> for ~[T] {
+    impl<T:Clone, V: Vector<T>> Add<V, ~[T]> for ~[T] {
         #[inline]
         fn add(&self, rhs: &V) -> ~[T] {
             let mut res = self.to_owned();
@@ -688,13 +687,13 @@ pub trait CopyableVector<T> {
 }
 
 /// Extension methods for vectors
-impl<'self,T:Copy> CopyableVector<T> for &'self [T] {
+impl<'self,T:Clone> CopyableVector<T> for &'self [T] {
     /// Returns a copy of `v`.
     #[inline]
     fn to_owned(&self) -> ~[T] {
         let mut result = with_capacity(self.len());
         for self.iter().advance |e| {
-            result.push(copy *e);
+            result.push((*e).clone());
         }
         result
     }
@@ -927,6 +926,7 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
     fn flat_map<U>(&self, f: &fn(t: &T) -> ~[U]) -> ~[U] {
         flat_map(*self, f)
     }
+
     /// Returns a pointer to the element at the given index, without doing
     /// bounds checking.
     #[inline]
@@ -1044,7 +1044,7 @@ pub trait ImmutableCopyableVector<T> {
 }
 
 /// Extension methods for vectors
-impl<'self,T:Copy> ImmutableCopyableVector<T> for &'self [T] {
+impl<'self,T:Clone> ImmutableCopyableVector<T> for &'self [T] {
     /**
      * Partitions the vector into those that satisfies the predicate, and
      * those that do not.
@@ -1056,9 +1056,9 @@ impl<'self,T:Copy> ImmutableCopyableVector<T> for &'self [T] {
 
         for self.iter().advance |elt| {
             if f(elt) {
-                lefts.push(copy *elt);
+                lefts.push((*elt).clone());
             } else {
-                rights.push(copy *elt);
+                rights.push((*elt).clone());
             }
         }
 
@@ -1068,7 +1068,7 @@ impl<'self,T:Copy> ImmutableCopyableVector<T> for &'self [T] {
     /// Returns the element at the given index, without doing bounds checking.
     #[inline]
     unsafe fn unsafe_get(&self, index: uint) -> T {
-        copy *self.unsafe_ref(index)
+        (*self.unsafe_ref(index)).clone()
     }
 }
 
@@ -1555,13 +1555,13 @@ impl<T> Mutable for ~[T] {
 }
 
 #[allow(missing_doc)]
-pub trait OwnedCopyableVector<T:Copy> {
+pub trait OwnedCopyableVector<T:Clone> {
     fn push_all(&mut self, rhs: &[T]);
     fn grow(&mut self, n: uint, initval: &T);
     fn grow_set(&mut self, index: uint, initval: &T, val: T);
 }
 
-impl<T:Copy> OwnedCopyableVector<T> for ~[T] {
+impl<T:Clone> OwnedCopyableVector<T> for ~[T] {
     /// Iterates over the slice `rhs`, copies each element, and then appends it to
     /// the vector provided `v`. The `rhs` vector is traversed in-order.
     ///
@@ -1596,7 +1596,7 @@ impl<T:Copy> OwnedCopyableVector<T> for ~[T] {
         let mut i: uint = 0u;
 
         while i < n {
-            self.push(copy *initval);
+            self.push((*initval).clone());
             i += 1u;
         }
     }
@@ -1894,7 +1894,7 @@ pub struct UnboxedVecRepr {
 /// Unsafe operations
 pub mod raw {
     use cast::transmute;
-    use kinds::Copy;
+    use clone::Clone;
     use managed;
     use option::{None, Some};
     use ptr;
@@ -2009,8 +2009,8 @@ pub mod raw {
      * Unchecked vector indexing.
      */
     #[inline]
-    pub unsafe fn get<T:Copy>(v: &[T], i: uint) -> T {
-        v.as_imm_buf(|p, _len| copy *ptr::offset(p, i))
+    pub unsafe fn get<T:Clone>(v: &[T], i: uint) -> T {
+        v.as_imm_buf(|p, _len| (*ptr::offset(p, i)).clone())
     }
 
     /**

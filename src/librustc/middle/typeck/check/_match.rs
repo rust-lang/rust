@@ -120,7 +120,7 @@ pub fn check_pat_variant(pcx: &pat_ctxt, pat: @ast::pat, path: &ast::Path,
     // contains type variables.
 
     // Check to see whether this is an enum or a struct.
-    match structure_of(pcx.fcx, pat.span, expected) {
+    match *structure_of(pcx.fcx, pat.span, expected) {
         ty::ty_enum(_, ref expected_substs) => {
             // Lookup the enum and variant def ids:
             let v_def = lookup_def(pcx.fcx, pat.span, pat.id);
@@ -165,8 +165,9 @@ pub fn check_pat_variant(pcx: &pat_ctxt, pat: @ast::pat, path: &ast::Path,
                              None);
                     fcx.write_error(pat.id);
                     kind_name = "[error]";
-                    arg_types = (copy *subpats).get_or_default(~[]).map(|_|
-                                                                        ty::mk_err());
+                    arg_types = (*subpats).clone()
+                                          .get_or_default(~[])
+                                          .map(|_| ty::mk_err());
                 }
             }
         }
@@ -207,8 +208,9 @@ pub fn check_pat_variant(pcx: &pat_ctxt, pat: @ast::pat, path: &ast::Path,
                     None);
             fcx.write_error(pat.id);
             kind_name = "[error]";
-            arg_types = (copy *subpats).get_or_default(~[]).map(|_|
-                                                                ty::mk_err());
+            arg_types = (*subpats).clone()
+                                  .get_or_default(~[])
+                                  .map(|_| ty::mk_err());
         }
     }
 
@@ -486,7 +488,7 @@ pub fn check_pat(pcx: &pat_ctxt, pat: @ast::pat, expected: ty::t) {
         // Grab the class data that we care about.
         let structure = structure_of(fcx, pat.span, expected);
         let mut error_happened = false;
-        match structure {
+        match *structure {
             ty::ty_struct(cid, ref substs) => {
                 check_struct_pat(pcx, pat.id, pat.span, expected, path,
                                  *fields, etc, cid, substs);
@@ -507,15 +509,14 @@ pub fn check_pat(pcx: &pat_ctxt, pat: @ast::pat, expected: ty::t) {
         // Finally, write in the type.
         if error_happened {
             fcx.write_error(pat.id);
-        }
-        else {
+        } else {
             fcx.write_ty(pat.id, expected);
         }
       }
       ast::pat_tup(ref elts) => {
         let s = structure_of(fcx, pat.span, expected);
         let e_count = elts.len();
-        match s {
+        match *s {
             ty::ty_tup(ref ex_elts) if e_count == ex_elts.len() => {
                 for elts.iter().enumerate().advance |(i, elt)| {
                     check_pat(pcx, *elt, ex_elts[i]);
@@ -527,7 +528,7 @@ pub fn check_pat(pcx: &pat_ctxt, pat: @ast::pat, expected: ty::t) {
                     check_pat(pcx, *elt, ty::mk_err());
                 }
                 // use terr_tuple_size if both types are tuples
-                let type_error = match s {
+                let type_error = match *s {
                     ty::ty_tup(ref ex_elts) =>
                         ty::terr_tuple_size(ty::expected_found{expected: ex_elts.len(),
                                                            found: e_count}),
@@ -555,9 +556,9 @@ pub fn check_pat(pcx: &pat_ctxt, pat: @ast::pat, expected: ty::t) {
             fcx.infcx().next_region_var(
                 infer::PatternRegion(pat.span));
 
-        let (elt_type, region_var) = match structure_of(
-          fcx, pat.span, expected
-        ) {
+        let (elt_type, region_var) = match *structure_of(fcx,
+                                                         pat.span,
+                                                         expected) {
           ty::ty_evec(mt, vstore) => {
             let region_var = match vstore {
                 ty::vstore_slice(r) => r,
@@ -626,7 +627,7 @@ pub fn check_pointer_pat(pcx: &pat_ctxt,
         check_pat(pcx, inner, e_inner.ty);
         fcx.write_ty(pat_id, expected);
     };
-    match structure_of(fcx, span, expected) {
+    match *structure_of(fcx, span, expected) {
         ty::ty_box(e_inner) if pointer_kind == Managed => {
             check_inner(e_inner);
         }

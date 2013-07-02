@@ -238,7 +238,7 @@ impl ExtCtxt {
 
     pub fn codemap(&self) -> @CodeMap { self.parse_sess.cm }
     pub fn parse_sess(&self) -> @mut parse::ParseSess { self.parse_sess }
-    pub fn cfg(&self) -> ast::crate_cfg { copy self.cfg }
+    pub fn cfg(&self) -> ast::crate_cfg { self.cfg.clone() }
     pub fn call_site(&self) -> span {
         match *self.backtrace {
             Some(@ExpnInfo {call_site: cs, _}) => cs,
@@ -249,7 +249,7 @@ impl ExtCtxt {
     pub fn backtrace(&self) -> Option<@ExpnInfo> { *self.backtrace }
     pub fn mod_push(&self, i: ast::ident) { self.mod_path.push(i); }
     pub fn mod_pop(&self) { self.mod_path.pop(); }
-    pub fn mod_path(&self) -> ~[ast::ident] { copy *self.mod_path }
+    pub fn mod_path(&self) -> ~[ast::ident] { (*self.mod_path).clone() }
     pub fn bt_push(&self, ei: codemap::ExpnInfo) {
         match ei {
             ExpnInfo {call_site: cs, callee: ref callee} => {

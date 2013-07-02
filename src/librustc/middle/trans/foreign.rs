@@ -109,7 +109,7 @@ fn foreign_signature(ccx: &mut CrateContext, fn_sig: &ty::FnSig)
 
 fn shim_types(ccx: @mut CrateContext, id: ast::node_id) -> ShimTypes {
     let fn_sig = match ty::get(ty::node_id_to_type(ccx.tcx, id)).sty {
-        ty::ty_bare_fn(ref fn_ty) => copy fn_ty.sig,
+        ty::ty_bare_fn(ref fn_ty) => fn_ty.sig.clone(),
         _ => ccx.sess.bug("c_arg_and_ret_lltys called on non-function type")
     };
     let llsig = foreign_signature(ccx, &fn_sig);
@@ -1163,7 +1163,7 @@ pub fn trans_foreign_fn(ccx: @mut CrateContext,
     let _icx = push_ctxt("foreign::build_foreign_fn");
 
     fn build_rust_fn(ccx: @mut CrateContext,
-                     path: ast_map::path,
+                     path: &ast_map::path,
                      decl: &ast::fn_decl,
                      body: &ast::blk,
                      id: ast::node_id)
@@ -1172,13 +1172,14 @@ pub fn trans_foreign_fn(ccx: @mut CrateContext,
         let t = ty::node_id_to_type(ccx.tcx, id);
         // XXX: Bad copy.
         let ps = link::mangle_internal_name_by_path(
-            ccx, vec::append_one(copy path, ast_map::path_name(
-                special_idents::clownshoe_abi
-            )));
+                            ccx,
+                            vec::append_one((*path).clone(),
+                                            ast_map::path_name(
+                                            special_idents::clownshoe_abi)));
         let llty = type_of_fn_from_ty(ccx, t);
         let llfndecl = decl_internal_cdecl_fn(ccx.llmod, ps, llty);
         trans_fn(ccx,
-                 path,
+                 (*path).clone(),
                  decl,
                  body,
                  llfndecl,
@@ -1318,7 +1319,7 @@ pub fn trans_foreign_fn(ccx: @mut CrateContext,
     let tys = shim_types(ccx, id);
     // The internal Rust ABI function - runs on the Rust stack
     // XXX: Bad copy.
-    let llrustfn = build_rust_fn(ccx, copy path, decl, body, id);
+    let llrustfn = build_rust_fn(ccx, &path, decl, body, id);
     // The internal shim function - runs on the Rust stack
     let llshimfn = build_shim_fn(ccx, path, llrustfn, &tys);
     // The foreign C function - runs on the C stack
@@ -1337,9 +1338,10 @@ pub fn register_foreign_fn(ccx: @mut CrateContext,
 
     let tys = shim_types(ccx, node_id);
     do tys.fn_ty.decl_fn |fnty| {
+        // XXX(pcwalton): We should not copy the path.
         register_fn_fuller(ccx,
                            sp,
-                           /*bad*/copy path,
+                           path.clone(),
                            node_id,
                            attrs,
                            t,

@@ -351,7 +351,7 @@ impl AstBuilder for @ExtCtxt {
         };
         Generics {
             ty_params: new_params,
-            .. copy *generics
+            .. (*generics).clone()
         }
     }
 
@@ -611,13 +611,13 @@ impl AstBuilder for @ExtCtxt {
     }
     fn lambda0(&self, _span: span, blk: ast::blk) -> @ast::expr {
         let ext_cx = *self;
-        let blk_e = self.expr(blk.span, ast::expr_block(copy blk));
+        let blk_e = self.expr(blk.span, ast::expr_block(blk.clone()));
         quote_expr!(|| $blk_e )
     }
 
     fn lambda1(&self, _span: span, blk: ast::blk, ident: ast::ident) -> @ast::expr {
         let ext_cx = *self;
-        let blk_e = self.expr(blk.span, ast::expr_block(copy blk));
+        let blk_e = self.expr(blk.span, ast::expr_block(blk.clone()));
         quote_expr!(|$ident| $blk_e )
     }
 

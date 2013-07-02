@@ -25,10 +25,9 @@ use option::{None, Option, Some};
 use rand::RngUtil;
 use rand;
 use uint;
-use vec;
-use vec::{ImmutableVector, MutableVector, OwnedVector};
-use kinds::Copy;
 use util::{replace, unreachable};
+use vec::{ImmutableVector, MutableVector, OwnedVector};
+use vec;
 
 static INITIAL_CAPACITY: uint = 32u; // 2^5
 
@@ -525,15 +524,15 @@ impl<K: Hash + Eq, V> HashMap<K, V> {
     }
 }
 
-impl<K: Hash + Eq, V: Copy> HashMap<K, V> {
+impl<K: Hash + Eq, V: Clone> HashMap<K, V> {
     /// Like `find`, but returns a copy of the value.
     pub fn find_copy(&self, k: &K) -> Option<V> {
-        self.find(k).map_consume(|v| copy *v)
+        self.find(k).map_consume(|v| (*v).clone())
     }
 
     /// Like `get`, but returns a copy of the value.
     pub fn get_copy(&self, k: &K) -> V {
-        copy *self.get(k)
+        (*self.get(k)).clone()
     }
 }
 
@@ -552,6 +551,16 @@ impl<K:Hash + Eq,V:Eq> Eq for HashMap<K, V> {
     }
 
     fn ne(&self, other: &HashMap<K, V>) -> bool { !self.eq(other) }
+}
+
+impl<K:Hash + Eq + Clone,V:Clone> Clone for HashMap<K,V> {
+    fn clone(&self) -> HashMap<K,V> {
+        let mut new_map = HashMap::with_capacity(self.len());
+        for self.iter().advance |(key, value)| {
+            new_map.insert((*key).clone(), (*value).clone());
+        }
+        new_map
+    }
 }
 
 /// HashMap iterator

@@ -97,7 +97,7 @@ use std::util::replace;
 *
 */
 
-#[deriving(Eq, Encodable, Decodable)]
+#[deriving(Clone, Eq, Encodable, Decodable)]
 struct WorkKey {
     kind: ~str,
     name: ~str
@@ -138,6 +138,12 @@ impl WorkKey {
 
 struct WorkMap(HashMap<WorkKey, ~str>);
 
+impl Clone for WorkMap {
+    fn clone(&self) -> WorkMap {
+        WorkMap((**self).clone())
+    }
+}
+
 impl WorkMap {
     fn new() -> WorkMap { WorkMap(HashMap::new()) }
 }
@@ -146,7 +152,7 @@ impl<S:Encoder> Encodable<S> for WorkMap {
     fn encode(&self, s: &mut S) {
         let mut d = ~[];
         for self.iter().advance |(k, v)| {
-            d.push((copy *k, copy *v))
+            d.push(((*k).clone(), (*v).clone()))
         }
         sort::tim_sort(d);
         d.encode(s)
@@ -215,6 +221,7 @@ struct Context {
     freshness: HashMap<~str,@fn(&str,&str)->bool>
 }
 
+#[deriving(Clone)]
 struct Prep {
     ctxt: @Context,
     fn_name: ~str,
@@ -341,7 +348,7 @@ impl TPrep for Prep {
                               &self.declared_inputs) &&
             self.all_fresh("discovered input", disc_in) &&
             self.all_fresh("discovered output", disc_out) => {
-                Work::new(@mut copy *self, Left(json_decode(*res)))
+                Work::new(@mut (*self).clone(), Left(json_decode(*res)))
             }
 
             _ => {
@@ -358,7 +365,7 @@ impl TPrep for Prep {
                     let v = blk(&exe);
                     send_one(chan, (exe, v));
                 }
-                Work::new(@mut copy *self, Right(port))
+                Work::new(@mut (*self).clone(), Right(port))
             }
         }
     }
@@ -413,7 +420,7 @@ fn test() {
     let w:Work<~str> = do cx.prep("test1") |prep| {
         let pth = Path("foo.c");
         {
-            let file = io::file_writer(&pth, [io::Create]).get();
+            let file = io::file_writer(&pth, [io::Create]).unwrap();
             file.write_str("int main() { return 0; }");
         }
 

@@ -82,8 +82,7 @@ fn warn_if_multiple_versions(e: @mut Env,
         );
 
         let vec: ~[Either<cache_entry, cache_entry>] = crate_cache.iter().transform(|&entry| {
-            let othername = loader::crate_name_from_metas(
-                copy *entry.metas);
+            let othername = loader::crate_name_from_metas(*entry.metas);
             if name == othername {
                 Left(entry)
             } else {
@@ -100,8 +99,8 @@ fn warn_if_multiple_versions(e: @mut Env,
             for matches.iter().advance |match_| {
                 diag.span_note(match_.span, "used here");
                 let attrs = ~[
-                    attr::mk_attr(attr::mk_list_item(
-                        @"link", /*bad*/copy *match_.metas))
+                    attr::mk_attr(attr::mk_list_item(@"link",
+                                                     (*match_.metas).clone()))
                 ];
                 loader::note_linkage_attrs(e.intr, diag, attrs);
             }
@@ -141,7 +140,11 @@ fn visit_view_item(e: @mut Env, i: &ast::view_item) {
       ast::view_item_extern_mod(ident, ref meta_items, id) => {
         debug!("resolving extern mod stmt. ident: %?, meta: %?",
                ident, *meta_items);
-        let cnum = resolve_crate(e, ident, copy *meta_items, @"", i.span);
+        let cnum = resolve_crate(e,
+                                 ident,
+                                 (*meta_items).clone(),
+                                 @"",
+                                 i.span);
         cstore::add_extern_mod_stmt_cnum(e.cstore, id, cnum);
       }
       _ => ()
@@ -306,8 +309,8 @@ fn resolve_crate_deps(e: @mut Env, cdata: @~[u8]) -> cstore::cnum_map {
         let cmetas = metas_with(dep.vers, @"vers", ~[]);
         debug!("resolving dep crate %s ver: %s hash: %s",
                cname_str, dep.vers, dep.hash);
-        match existing_match(e, metas_with_ident(cname_str,
-                                                 copy cmetas),
+        match existing_match(e,
+                             metas_with_ident(cname_str, cmetas.clone()),
                              dep.hash) {
           Some(local_cnum) => {
             debug!("already have it");

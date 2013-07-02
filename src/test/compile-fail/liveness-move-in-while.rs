@@ -14,7 +14,7 @@ fn main() {
     let mut x: ~int;
     loop {
         info!(y); //~ ERROR use of moved value: `y`
-        while true { while true { while true { x = y; copy x; } } }
+        while true { while true { while true { x = y; x.clone(); } } }
         //~^ ERROR use of moved value: `y`
     }
 }

@@ -144,17 +144,17 @@ fn fold_tts(tts : &[token_tree], fld: @ast_fold) -> ~[token_tree] {
 }
 
 // apply ident folder if it's an ident, otherwise leave it alone
-fn maybe_fold_ident(t : &token::Token, fld: @ast_fold) -> token::Token {
+fn maybe_fold_ident(t: &token::Token, fld: @ast_fold) -> token::Token {
     match *t {
         token::IDENT(id,followed_by_colons) =>
         token::IDENT(fld.fold_ident(id),followed_by_colons),
-        _ => copy *t
+        _ => (*t).clone()
     }
 }
 
 pub fn fold_fn_decl(decl: &ast::fn_decl, fld: @ast_fold) -> ast::fn_decl {
     ast::fn_decl {
-        inputs: decl.inputs.map(|x| fold_arg_(/*bad*/ copy *x, fld)),
+        inputs: decl.inputs.map(|x| fold_arg_(/*bad*/ (*x).clone(), fld)),
         output: fld.fold_ty(&decl.output),
         cf: decl.cf,
     }
@@ -176,7 +176,7 @@ pub fn fold_ty_param(tp: TyParam,
 
 pub fn fold_ty_params(tps: &OptVec<TyParam>,
                       fld: @ast_fold) -> OptVec<TyParam> {
-    let tps = /*bad*/ copy *tps;
+    let tps = /*bad*/ (*tps).clone();
     tps.map_consume(|tp| fold_ty_param(tp, fld))
 }
 
@@ -209,7 +209,7 @@ pub fn noop_fold_crate(c: &crate_, fld: @ast_fold) -> crate_ {
 }
 
 fn noop_fold_view_item(vi: &view_item_, _fld: @ast_fold) -> view_item_ {
-    return /* FIXME (#2543) */ copy *vi;
+    return /* FIXME (#2543) */ (*vi).clone();
 }
 
 
@@ -226,7 +226,8 @@ fn noop_fold_foreign_item(ni: @foreign_item, fld: @ast_fold)
                 foreign_item_fn(ref fdec, purity, ref generics) => {
                     foreign_item_fn(
                         ast::fn_decl {
-                            inputs: fdec.inputs.map(|a| fold_arg(/*bad*/copy *a)),
+                            inputs: fdec.inputs.map(|a|
+                                fold_arg(/*bad*/(*a).clone())),
                             output: fld.fold_ty(&fdec.output),
                             cf: fdec.cf,
                         },
@@ -299,7 +300,7 @@ pub fn noop_fold_item_underscore(i: &item_, fld: @ast_fold) -> item_ {
         }
         item_struct(ref struct_def, ref generics) => {
             let struct_def = fold_struct_def(*struct_def, fld);
-            item_struct(struct_def, /* FIXME (#2543) */ copy *generics)
+            item_struct(struct_def, /* FIXME (#2543) */ (*generics).clone())
         }
         item_impl(ref generics, ref ifce, ref ty, ref methods) => {
             item_impl(
@@ -312,7 +313,7 @@ pub fn noop_fold_item_underscore(i: &item_, fld: @ast_fold) -> item_ {
         item_trait(ref generics, ref traits, ref methods) => {
             let methods = do methods.map |method| {
                 match *method {
-                    required(*) => copy *method,
+                    required(*) => (*method).clone(),
                     provided(method) => provided(fld.fold_method(method))
                 }
             };
@@ -353,7 +354,7 @@ fn fold_struct_field(f: @struct_field, fld: @ast_fold) -> @struct_field {
             kind: f.node.kind,
             id: fld.new_id(f.node.id),
             ty: fld.fold_ty(&f.node.ty),
-            attrs: /* FIXME (#2543) */ copy f.node.attrs,
+            attrs: /* FIXME (#2543) */ f.node.attrs.clone(),
         },
         span: fld.new_span(f.span),
     }
@@ -362,7 +363,7 @@ fn fold_struct_field(f: @struct_field, fld: @ast_fold) -> @struct_field {
 fn noop_fold_method(m: @method, fld: @ast_fold) -> @method {
     @ast::method {
         ident: fld.fold_ident(m.ident),
-        attrs: /* FIXME (#2543) */ copy m.attrs,
+        attrs: /* FIXME (#2543) */ m.attrs.clone(),
         generics: fold_generics(&m.generics, fld),
         explicit_self: m.explicit_self,
         purity: m.purity,
@@ -545,8 +546,10 @@ pub fn noop_fold_expr(e: &expr_, fld: @ast_fold) -> expr_ {
         }
         expr_loop_body(f) => expr_loop_body(fld.fold_expr(f)),
         expr_do_body(f) => expr_do_body(fld.fold_expr(f)),
-        expr_lit(_) => copy *e,
-        expr_cast(expr, ref ty) => expr_cast(fld.fold_expr(expr), copy *ty),
+        expr_lit(_) => (*e).clone(),
+        expr_cast(expr, ref ty) => {
+            expr_cast(fld.fold_expr(expr), (*ty).clone())
+        }
         expr_addr_of(m, ohs) => expr_addr_of(m, fld.fold_expr(ohs)),
         expr_if(cond, ref tr, fl) => {
             expr_if(
@@ -623,7 +626,7 @@ pub fn noop_fold_expr(e: &expr_, fld: @ast_fold) -> expr_ {
             expr_inline_asm(inline_asm {
                 inputs: a.inputs.map(|&(c, in)| (c, fld.fold_expr(in))),
                 outputs: a.outputs.map(|&(c, out)| (c, fld.fold_expr(out))),
-                .. copy *a
+                .. (*a).clone()
             })
         }
         expr_mac(ref mac) => expr_mac(fold_mac(mac)),
@@ -662,7 +665,7 @@ pub fn noop_fold_ty(t: &ty_, fld: @ast_fold) -> ty_ {
         }
     }
     match *t {
-        ty_nil | ty_bot | ty_infer => copy *t,
+        ty_nil | ty_bot | ty_infer => (*t).clone(),
         ty_box(ref mt) => ty_box(fold_mt(mt, fld)),
         ty_uniq(ref mt) => ty_uniq(fold_mt(mt, fld)),
         ty_vec(ref mt) => ty_vec(fold_mt(mt, fld)),
@@ -676,12 +679,12 @@ pub fn noop_fold_ty(t: &ty_, fld: @ast_fold) -> ty_ {
                 onceness: f.onceness,
                 bounds: fold_opt_bounds(&f.bounds, fld),
                 decl: fold_fn_decl(&f.decl, fld),
-                lifetimes: copy f.lifetimes,
+                lifetimes: f.lifetimes.clone(),
             })
         }
         ty_bare_fn(ref f) => {
             ty_bare_fn(@TyBareFn {
-                lifetimes: copy f.lifetimes,
+                lifetimes: f.lifetimes.clone(),
                 purity: f.purity,
                 abis: f.abis,
                 decl: fold_fn_decl(&f.decl, fld)
@@ -727,7 +730,7 @@ fn noop_fold_variant(v: &variant_, fld: @ast_fold) -> variant_ {
     match v.kind {
         tuple_variant_kind(ref variant_args) => {
             kind = tuple_variant_kind(do variant_args.map |x| {
-                fold_variant_arg(/*bad*/ copy *x)
+                fold_variant_arg(/*bad*/ (*x).clone())
             })
         }
         struct_variant_kind(struct_def) => {
@@ -844,7 +847,7 @@ impl ast_fold for AstFoldFns {
                 kind: sf.node.kind,
                 id: sf.node.id,
                 ty: self.fold_ty(&sf.node.ty),
-                attrs: copy sf.node.attrs,
+                attrs: sf.node.attrs.clone(),
             },
             span: (self.new_span)(sf.span),
         }

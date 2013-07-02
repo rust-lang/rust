@@ -43,7 +43,7 @@ fn fold_mod(
     doc::ModDoc {
         items: do doc.items.iter().filter |item_tag| {
             !is_hidden(fold.ctxt.clone(), item_tag.item())
-        }.transform(|x| copy *x).collect(),
+        }.transform(|x| (*x).clone()).collect(),
         .. doc
     }
 }
@@ -54,7 +54,7 @@ fn is_hidden(srv: astsrv::Srv, doc: doc::ItemDoc) -> bool {
     let id = doc.id;
     do astsrv::exec(srv) |ctxt| {
         let attrs = match ctxt.ast_map.get_copy(&id) {
-          ast_map::node_item(item, _) => copy item.attrs,
+          ast_map::node_item(item, _) => item.attrs.clone(),
           _ => ~[]
         };
         attr_parser::parse_hidden(attrs)
@@ -69,7 +69,7 @@ mod test {
     use prune_hidden_pass::run;
 
     fn mk_doc(source: ~str) -> doc::Doc {
-        do astsrv::from_str(copy source) |srv| {
+        do astsrv::from_str(source.clone()) |srv| {
             let doc = extract::from_srv(srv.clone(), ~"");
             run(srv.clone(), doc)
         }

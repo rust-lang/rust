@@ -154,7 +154,7 @@ pub fn default_par_fold<T:Clone>(ctxt: T) -> Fold<T> {
 pub fn default_seq_fold_doc<T>(fold: &Fold<T>, doc: doc::Doc) -> doc::Doc {
     doc::Doc {
         pages: do doc.pages.iter().transform |page| {
-            match copy *page {
+            match (*page).clone() {
               doc::CratePage(doc) => {
                 doc::CratePage((fold.fold_crate)(fold, doc))
               }
@@ -172,7 +172,7 @@ pub fn default_seq_fold_crate<T>(
     doc: doc::CrateDoc
 ) -> doc::CrateDoc {
     doc::CrateDoc {
-        topmod: (fold.fold_mod)(fold, copy doc.topmod)
+        topmod: (fold.fold_mod)(fold, doc.topmod.clone())
     }
 }
 
@@ -188,9 +188,9 @@ pub fn default_any_fold_mod<T:Clone>(
     doc: doc::ModDoc
 ) -> doc::ModDoc {
     doc::ModDoc {
-        item: (fold.fold_item)(fold, copy doc.item),
+        item: (fold.fold_item)(fold, doc.item.clone()),
         items: doc.items.iter().transform(|ItemTag| {
-            fold_ItemTag(fold, copy *ItemTag)
+            fold_ItemTag(fold, (*ItemTag).clone())
         }).collect(),
         .. doc
     }
@@ -201,9 +201,9 @@ pub fn default_seq_fold_mod<T>(
     doc: doc::ModDoc
 ) -> doc::ModDoc {
     doc::ModDoc {
-        item: (fold.fold_item)(fold, copy doc.item),
+        item: (fold.fold_item)(fold, doc.item.clone()),
         items: doc.items.iter().transform(|ItemTag| {
-            fold_ItemTag(fold, copy *ItemTag)
+            fold_ItemTag(fold, (*ItemTag).clone())
         }).collect(),
         .. doc
     }
@@ -214,9 +214,9 @@ pub fn default_par_fold_mod<T:Clone>(
     doc: doc::ModDoc
 ) -> doc::ModDoc {
     doc::ModDoc {
-        item: (fold.fold_item)(fold, copy doc.item),
+        item: (fold.fold_item)(fold, doc.item.clone()),
         items: doc.items.iter().transform(|ItemTag| {
-            fold_ItemTag(fold, copy *ItemTag)
+            fold_ItemTag(fold, (*ItemTag).clone())
         }).collect(),
         .. doc
     }
@@ -227,9 +227,9 @@ pub fn default_any_fold_nmod<T:Clone>(
     doc: doc::NmodDoc
 ) -> doc::NmodDoc {
     doc::NmodDoc {
-        item: (fold.fold_item)(fold, copy doc.item),
+        item: (fold.fold_item)(fold, doc.item.clone()),
         fns: doc.fns.iter().transform(|FnDoc| {
-            (fold.fold_fn)(fold, copy *FnDoc)
+            (fold.fold_fn)(fold, (*FnDoc).clone())
         }).collect(),
         .. doc
     }
@@ -240,9 +240,9 @@ pub fn default_seq_fold_nmod<T>(
     doc: doc::NmodDoc
 ) -> doc::NmodDoc {
     doc::NmodDoc {
-        item: (fold.fold_item)(fold, copy doc.item),
+        item: (fold.fold_item)(fold, doc.item.clone()),
         fns: doc.fns.iter().transform(|FnDoc| {
-            (fold.fold_fn)(fold, copy *FnDoc)
+            (fold.fold_fn)(fold, (*FnDoc).clone())
         }).collect(),
         .. doc
     }
@@ -253,9 +253,9 @@ pub fn default_par_fold_nmod<T:Clone>(
     doc: doc::NmodDoc
 ) -> doc::NmodDoc {
     doc::NmodDoc {
-        item: (fold.fold_item)(fold, copy doc.item),
+        item: (fold.fold_item)(fold, doc.item.clone()),
         fns: doc.fns.iter().transform(|FnDoc| {
-            (fold.fold_fn)(fold, copy *FnDoc)
+            (fold.fold_fn)(fold, (*FnDoc).clone())
         }).collect(),
         .. doc
     }
@@ -298,7 +298,7 @@ pub fn default_seq_fold_fn<T>(
     doc: doc::FnDoc
 ) -> doc::FnDoc {
     doc::SimpleItemDoc {
-        item: (fold.fold_item)(fold, copy doc.item),
+        item: (fold.fold_item)(fold, doc.item.clone()),
         .. doc
     }
 }
@@ -308,7 +308,7 @@ pub fn default_seq_fold_const<T>(
     doc: doc::ConstDoc
 ) -> doc::ConstDoc {
     doc::SimpleItemDoc {
-        item: (fold.fold_item)(fold, copy doc.item),
+        item: (fold.fold_item)(fold, doc.item.clone()),
         .. doc
     }
 }
@@ -318,7 +318,7 @@ pub fn default_seq_fold_enum<T>(
     doc: doc::EnumDoc
 ) -> doc::EnumDoc {
     doc::EnumDoc {
-        item: (fold.fold_item)(fold, copy doc.item),
+        item: (fold.fold_item)(fold, doc.item.clone()),
         .. doc
     }
 }
@@ -328,7 +328,7 @@ pub fn default_seq_fold_trait<T>(
     doc: doc::TraitDoc
 ) -> doc::TraitDoc {
     doc::TraitDoc {
-        item: (fold.fold_item)(fold, copy doc.item),
+        item: (fold.fold_item)(fold, doc.item.clone()),
         .. doc
     }
 }
@@ -338,7 +338,7 @@ pub fn default_seq_fold_impl<T>(
     doc: doc::ImplDoc
 ) -> doc::ImplDoc {
     doc::ImplDoc {
-        item: (fold.fold_item)(fold, copy doc.item),
+        item: (fold.fold_item)(fold, doc.item.clone()),
         .. doc
     }
 }
@@ -348,7 +348,7 @@ pub fn default_seq_fold_type<T>(
     doc: doc::TyDoc
 ) -> doc::TyDoc {
     doc::SimpleItemDoc {
-        item: (fold.fold_item)(fold, copy doc.item),
+        item: (fold.fold_item)(fold, doc.item.clone()),
         .. doc
     }
 }
@@ -358,7 +358,7 @@ pub fn default_seq_fold_struct<T>(
     doc: doc::StructDoc
 ) -> doc::StructDoc {
     doc::StructDoc {
-        item: (fold.fold_item)(fold, copy doc.item),
+        item: (fold.fold_item)(fold, doc.item.clone()),
         .. doc
     }
 }
@@ -369,7 +369,7 @@ fn default_fold_should_produce_same_doc() {
     let ast = parse::from_str(source);
     let doc = extract::extract(ast, ~"");
     let fld = default_seq_fold(());
-    let folded = (fld.fold_doc)(&fld, copy doc);
+    let folded = (fld.fold_doc)(&fld, doc.clone());
     assert_eq!(doc, folded);
 }
 
@@ -379,7 +379,7 @@ fn default_fold_should_produce_same_consts() {
     let ast = parse::from_str(source);
     let doc = extract::extract(ast, ~"");
     let fld = default_seq_fold(());
-    let folded = (fld.fold_doc)(&fld, copy doc);
+    let folded = (fld.fold_doc)(&fld, doc.clone());
     assert_eq!(doc, folded);
 }
 
@@ -389,7 +389,7 @@ fn default_fold_should_produce_same_enums() {
     let ast = parse::from_str(source);
     let doc = extract::extract(ast, ~"");
     let fld = default_seq_fold(());
-    let folded = (fld.fold_doc)(&fld, copy doc);
+    let folded = (fld.fold_doc)(&fld, doc.clone());
     assert_eq!(doc, folded);
 }
 
@@ -399,6 +399,6 @@ fn default_parallel_fold_should_produce_same_doc() {
     let ast = parse::from_str(source);
     let doc = extract::extract(ast, ~"");
     let fld = default_par_fold(());
-    let folded = (fld.fold_doc)(&fld, copy doc);
+    let folded = (fld.fold_doc)(&fld, doc.clone());
     assert_eq!(doc, folded);
 }

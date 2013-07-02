@@ -791,8 +791,8 @@ mod test_treemap {
         let v1 = "baz".as_bytes();
         let v2 = "foobar".as_bytes();
 
-        m.insert(copy k1, copy v1);
-        m.insert(copy k2, copy v2);
+        m.insert(k1.clone(), v1.clone());
+        m.insert(k2.clone(), v2.clone());
 
         assert_eq!(m.find(&k2), Some(&v2));
         assert_eq!(m.find(&k1), Some(&v1));

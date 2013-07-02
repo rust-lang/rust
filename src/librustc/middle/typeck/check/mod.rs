@@ -168,6 +168,7 @@ pub struct inherited {
     vtable_map: vtable_map,
 }
 
+#[deriving(Clone)]
 pub enum FnKind {
     // This is a for-closure.  The ty::t is the return type of the
     // enclosing function.
@@ -180,6 +181,7 @@ pub enum FnKind {
     Vanilla
 }
 
+#[deriving(Clone)]
 pub struct PurityState {
     def: ast::node_id,
     purity: ast::purity,
@@ -219,6 +221,7 @@ enum AllowOverloadedOperatorsFlag {
     DontAllowOverloadedOperators,
 }
 
+#[deriving(Clone)]
 pub struct FnCtxt {
     // Number of errors that had been reported when we started
     // checking this function. On exit, if we find that *more* errors
@@ -833,7 +836,7 @@ impl FnCtxt {
 
     pub fn node_ty_substs(&self, id: ast::node_id) -> ty::substs {
         match self.inh.node_type_substs.find(&id) {
-            Some(ts) => (/*bad*/copy *ts),
+            Some(ts) => (*ts).clone(),
             None => {
                 self.tcx().sess.bug(
                     fmt!("no type substs for node %d: %s in fcx %s",
@@ -986,7 +989,7 @@ pub fn do_autoderef(fcx: @mut FnCtxt, sp: span, t: ty::t) -> (ty::t, uint) {
         let sty = structure_of(fcx, sp, t1);
 
         // Some extra checks to detect weird cycles and so forth:
-        match sty {
+        match *sty {
             ty::ty_box(inner) | ty::ty_uniq(inner) |
             ty::ty_rptr(_, inner) => {
                 match ty::get(t1).sty {
@@ -1014,7 +1017,7 @@ pub fn do_autoderef(fcx: @mut FnCtxt, sp: span, t: ty::t) -> (ty::t, uint) {
         }
 
         // Otherwise, deref if type is derefable:
-        match ty::deref_sty(fcx.ccx.tcx, &sty, false) {
+        match ty::deref_sty(fcx.ccx.tcx, sty, false) {
             None => {
                 return (t1, autoderefs);
             }
@@ -1352,28 +1355,35 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         // Extract the function signature from `in_fty`.
         let fn_sty = structure_of(fcx, f.span, fn_ty);
 
-        let fn_sig = match fn_sty {
-            ty::ty_bare_fn(ty::BareFnTy {sig: sig, _}) |
-            ty::ty_closure(ty::ClosureTy {sig: sig, _}) => sig,
+        // This is the "default" function signature, used in case of error.
+        // In that case, we check each argument against "error" in order to
+        // set up all the node type bindings.
+        let error_fn_sig = FnSig {
+            bound_lifetime_names: opt_vec::Empty,
+            inputs: err_args(args.len()),
+            output: ty::mk_err()
+        };
+
+        let fn_sig = match *fn_sty {
+            ty::ty_bare_fn(ty::BareFnTy {sig: ref sig, _}) |
+            ty::ty_closure(ty::ClosureTy {sig: ref sig, _}) => sig,
             _ => {
                 fcx.type_error_message(call_expr.span, |actual| {
                     fmt!("expected function but \
                           found `%s`", actual) }, fn_ty, None);
-
-                // check each arg against "error", in order to set up
-                // all the node type bindings
-                FnSig {bound_lifetime_names: opt_vec::Empty,
-                       inputs: err_args(args.len()),
-                       output: ty::mk_err()}
+                &error_fn_sig
             }
         };
 
         // Replace any bound regions that appear in the function
         // signature with region variables
         let (_, _, fn_sig) =
-            replace_bound_regions_in_fn_sig(
-                fcx.tcx(), @Nil, None, &fn_sig,
-                |br| fcx.infcx().next_region_var(
+            replace_bound_regions_in_fn_sig(fcx.tcx(),
+                                            @Nil,
+                                            None,
+                                            fn_sig,
+                                            |br| fcx.infcx()
+                                                    .next_region_var(
                     infer::BoundRegionInFnCall(call_expr.span, br)));
 
         // Call the generic checker.
@@ -1708,7 +1718,9 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         // to impure and block. Note that we only will use those for
         // block syntax lambdas; that is, lambdas without explicit
         // sigils.
-        let expected_sty = unpack_expected(fcx, expected, |x| Some(copy *x));
+        let expected_sty = unpack_expected(fcx,
+                                           expected,
+                                           |x| Some((*x).clone()));
         let error_happened = false;
         let (expected_sig,
              expected_purity,
@@ -1761,10 +1773,9 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                 output: ty::mk_err()
             };
             ty::mk_err()
-        }
-        else {
-            let fn_ty_copy = copy fn_ty;
-            fty_sig = copy fn_ty.sig;
+        } else {
+            let fn_ty_copy = fn_ty.clone();
+            fty_sig = fn_ty.sig.clone();
             ty::mk_closure(tcx, fn_ty_copy)
         };
 
@@ -1795,7 +1806,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                                                 fcx.expr_ty(base));
         let (base_t, derefs) = do_autoderef(fcx, expr.span, expr_t);
 
-        match structure_of(fcx, expr.span, base_t) {
+        match *structure_of(fcx, expr.span, base_t) {
             ty::ty_struct(base_id, ref substs) => {
                 // This is just for fields -- the same code handles
                 // methods in both classes and traits
@@ -2119,16 +2130,20 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         // 2. the closure that was given returns unit
         let tcx = fcx.tcx();
         let mut err_happened = false;
-        let expected_sty = unpack_expected(fcx, expected, |x| Some(copy *x));
+        let expected_sty = unpack_expected(fcx,
+                                           expected,
+                                           |x| Some((*x).clone()));
         let inner_ty = match expected_sty {
             Some(ty::ty_closure(ref fty)) => {
                 match fcx.mk_subty(false, infer::Misc(expr.span),
                                    fty.sig.output, ty::mk_bool()) {
                     result::Ok(_) => {
                         ty::mk_closure(tcx, ty::ClosureTy {
-                            sig: FnSig {output: ty::mk_nil(),
-                                        ..copy fty.sig},
-                            ..copy *fty
+                            sig: FnSig {
+                                output: ty::mk_nil(),
+                                ..fty.sig.clone()
+                            },
+                            ..(*fty).clone()
                         })
                     }
                     result::Err(_) => {
@@ -2361,13 +2376,13 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                 }
                 ast::deref => {
                     let sty = structure_of(fcx, expr.span, oprnd_t);
-                    let operand_ty = ty::deref_sty(tcx, &sty, true);
+                    let operand_ty = ty::deref_sty(tcx, sty, true);
                     match operand_ty {
                         Some(mt) => {
                             oprnd_t = mt.ty
                         }
                         None => {
-                            match sty {
+                            match *sty {
                                 ty::ty_enum(*) => {
                                     tcx.sess.span_err(
                                         expr.span,
@@ -2564,7 +2579,9 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
           check_loop_body(fcx, expr, expected, loop_body);
       }
       ast::expr_do_body(b) => {
-        let expected_sty = unpack_expected(fcx, expected, |x| Some(copy *x));
+        let expected_sty = unpack_expected(fcx,
+                                           expected,
+                                           |x| Some((*x).clone()));
         let inner_ty = match expected_sty {
             Some(ty::ty_closure(_)) => expected.get(),
             _ => match expected {
@@ -2759,7 +2776,10 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
       }
       ast::expr_tup(ref elts) => {
         let flds = unpack_expected(fcx, expected, |sty| {
-            match *sty { ty::ty_tup(ref flds) => Some(copy *flds), _ => None }
+            match *sty {
+                ty::ty_tup(ref flds) => Some((*flds).clone()),
+                _ => None
+            }
         });
         let mut bot_field = false;
         let mut err_field = false;
@@ -2816,7 +2836,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
           } else {
               let (base_t, derefs) = do_autoderef(fcx, expr.span, raw_base_t);
               let base_sty = structure_of(fcx, expr.span, base_t);
-              match ty::index_sty(&base_sty) {
+              match ty::index_sty(base_sty) {
                   Some(mt) => {
                       require_integral(fcx, idx.span, idx_t);
                       fcx.write_ty(id, mt.ty);
@@ -3374,8 +3394,9 @@ pub fn structurally_resolved_type(fcx: @mut FnCtxt, sp: span, tp: ty::t)
 }
 
 // Returns the one-level-deep structure of the given type.
-pub fn structure_of(fcx: @mut FnCtxt, sp: span, typ: ty::t) -> ty::sty {
-    /*bad*/copy ty::get(structurally_resolved_type(fcx, sp, typ)).sty
+pub fn structure_of<'a>(fcx: @mut FnCtxt, sp: span, typ: ty::t)
+                        -> &'a ty::sty {
+    &ty::get(structurally_resolved_type(fcx, sp, typ)).sty
 }
 
 pub fn type_is_integral(fcx: @mut FnCtxt, sp: span, typ: ty::t) -> bool {

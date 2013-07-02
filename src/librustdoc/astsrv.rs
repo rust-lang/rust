@@ -51,11 +51,11 @@ pub struct Srv {
 }
 
 pub fn from_str<T>(source: ~str, owner: SrvOwner<T>) -> T {
-    run(owner, copy source, parse::from_str_sess)
+    run(owner, source.clone(), parse::from_str_sess)
 }
 
 pub fn from_file<T>(file: ~str, owner: SrvOwner<T>) -> T {
-    run(owner, copy file, |sess, f| parse::from_file_sess(sess, &Path(f)))
+    run(owner, file.clone(), |sess, f| parse::from_file_sess(sess, &Path(f)))
 }
 
 fn run<T>(owner: SrvOwner<T>, source: ~str, parse: Parser) -> T {
@@ -117,7 +117,8 @@ fn build_ctxt(sess: Session,
                                                      copy sess.opts.cfg, ast);
     let ast = config::strip_unconfigured_items(ast);
     let ast = syntax::ext::expand::expand_crate(sess.parse_sess,
-                                                copy sess.opts.cfg, ast);
+                                                sess.opts.cfg.clone(),
+                                                ast);
     let ast = front::test::modify_for_testing(sess, ast);
     let ast_map = ast_map::map_crate(sess.diagnostic(), ast);
 

@@ -44,7 +44,7 @@ fn fake_pkg() -> PkgId {
     let sn = ~"bogus";
     let remote = RemotePath(Path(sn));
     PkgId {
-        local_path: normalize(copy remote),
+        local_path: normalize(remote.clone()),
         remote_path: remote,
         short_name: sn,
         version: NoVersion
@@ -54,7 +54,7 @@ fn fake_pkg() -> PkgId {
 fn git_repo_pkg() -> PkgId {
     let remote = RemotePath(Path("mockgithub.com/catamorphism/test-pkg"));
     PkgId {
-        local_path: normalize(copy remote),
+        local_path: normalize(remote.clone()),
         remote_path: remote,
         short_name: ~"test_pkg",
         version: NoVersion
@@ -218,7 +218,7 @@ fn command_line_test(args: &[~str], cwd: &Path) -> ProcessOutput {
 fn command_line_test_with_env(args: &[~str], cwd: &Path, env: Option<~[(~str, ~str)]>)
     -> ProcessOutput {
     let cmd = test_sysroot().push("bin").push("rustpkg").to_str();
-    let cwd = normalize(RemotePath(copy *cwd));
+    let cwd = normalize(RemotePath((*cwd).clone()));
     debug!("About to run command: %? %? in %s", cmd, args, cwd.to_str());
     assert!(os::path_is_dir(&*cwd));
     let cwd = cwd.clone();
@@ -365,7 +365,7 @@ fn touch_source_file(workspace: &Path, pkgid: &PkgId) {
         if p.filetype() == Some(~".rs") {
             // should be able to do this w/o a process
             if run::process_output("touch", [p.to_str()]).status != 0 {
-                let _ = cond.raise((copy pkg_src_dir, ~"Bad path"));
+                let _ = cond.raise((pkg_src_dir.clone(), ~"Bad path"));
             }
             break;
         }
@@ -388,7 +388,7 @@ fn frob_source_file(workspace: &Path, pkgid: &PkgId) {
         Some(p) => {
             let w = io::file_writer(*p, &[io::Append]);
             match w {
-                Err(s) => { let _ = cond.raise((copy **p, fmt!("Bad path: %s", s))); }
+                Err(s) => { let _ = cond.raise(((**p).clone(), fmt!("Bad path: %s", s))); }
                 Ok(w)  => w.write_line("")
             }
         }
@@ -458,7 +458,7 @@ fn test_install_invalid() {
     }).in {
         do cond.trap(|_| {
             error_occurred = true;
-            copy temp_workspace
+            temp_workspace.clone()
         }).in {
             ctxt.install(&temp_workspace, &pkgid);
         }
@@ -542,7 +542,7 @@ fn test_package_ids_must_be_relative_path_like() {
     do cond.trap(|(p, e)| {
         assert!("" == p.to_str());
         assert!("0-length pkgid" == e);
-        copy whatever
+        whatever.clone()
     }).in {
         let x = PkgId::new("", &os::getcwd());
         assert_eq!(~"foo-0.1", x.to_str());
@@ -551,7 +551,7 @@ fn test_package_ids_must_be_relative_path_like() {
     do cond.trap(|(p, e)| {
         assert_eq!(p.to_str(), os::make_absolute(&Path("foo/bar/quux")).to_str());
         assert!("absolute pkgid" == e);
-        copy whatever
+        whatever.clone()
     }).in {
         let z = PkgId::new(os::make_absolute(&Path("foo/bar/quux")).to_str(),
                            &os::getcwd());

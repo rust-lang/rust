@@ -106,7 +106,7 @@ pub fn encode_inlined_item(ecx: &e::EncodeContext,
 pub fn decode_inlined_item(cdata: @cstore::crate_metadata,
                            tcx: ty::ctxt,
                            maps: Maps,
-                           path: ast_map::path,
+                           path: &[ast_map::path_elt],
                            par_doc: ebml::Doc)
                         -> Option<ast::inlined_item> {
     let dcx = @DecodeContext {
@@ -134,7 +134,9 @@ pub fn decode_inlined_item(cdata: @cstore::crate_metadata,
                ast_map::path_to_str(path, token::get_ident_interner()),
                tcx.sess.str_of(ii.ident()));
         ast_map::map_decoded_item(tcx.sess.diagnostic(),
-                                  dcx.tcx.items, path, &ii);
+                                  dcx.tcx.items,
+                                  path.to_owned(),
+                                  &ii);
         decode_side_tables(xcx, ast_doc);
         match ii {
           ast::ii_item(i) => {
@@ -618,7 +620,7 @@ fn encode_vtable_origin(ecx: &e::EncodeContext,
                     ebml_w.emit_def_id(def_id)
                 }
                 do ebml_w.emit_enum_variant_arg(1u) |ebml_w| {
-                    ebml_w.emit_tys(ecx, /*bad*/copy *tys);
+                    ebml_w.emit_tys(ecx, *tys);
                 }
                 do ebml_w.emit_enum_variant_arg(2u) |ebml_w| {
                     encode_vtable_res(ecx, ebml_w, vtable_res);
@@ -814,7 +816,7 @@ fn encode_side_tables_for_ii(ecx: &e::EncodeContext,
                              ebml_w: &mut writer::Encoder,
                              ii: &ast::inlined_item) {
     ebml_w.start_tag(c::tag_table as uint);
-    let new_ebml_w = copy *ebml_w;
+    let new_ebml_w = (*ebml_w).clone();
 
     // Because the ast visitor uses @fn, I can't pass in
     // ecx directly, but /I/ know that it'll be fine since
@@ -827,7 +829,7 @@ fn encode_side_tables_for_ii(ecx: &e::EncodeContext,
             // Note: this will cause a copy of ebml_w, which is bad as
             // it is mutable. But I believe it's harmless since we generate
             // balanced EBML.
-            let mut new_ebml_w = copy new_ebml_w;
+            let mut new_ebml_w = new_ebml_w.clone();
             // See above
             let ecx : &e::EncodeContext = unsafe { cast::transmute(ecx_ptr) };
             encode_side_tables_for_id(ecx, maps, &mut new_ebml_w, id)

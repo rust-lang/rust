@@ -1476,7 +1476,7 @@ mod test {
                 let client_data = get_data_for_uv_handle(
                     client_stream_ptr as *libc::c_void) as *tcp_server_data;
 
-                let server_kill_msg = copy (*client_data).server_kill_msg;
+                let server_kill_msg = (*client_data).server_kill_msg.clone();
                 let write_req = (*client_data).server_write_req;
                 if request_str.contains(server_kill_msg) {
                     debug!(~"SERVER: client req contains kill_msg!");
@@ -1726,12 +1726,12 @@ mod test {
         let (continue_port, continue_chan) = stream::<bool>();
         let continue_chan = SharedChan::new(continue_chan);
 
-        let kill_server_msg_copy = copy kill_server_msg;
-        let server_resp_msg_copy = copy server_resp_msg;
+        let kill_server_msg_copy = kill_server_msg.clone();
+        let server_resp_msg_copy = server_resp_msg.clone();
         do task::spawn_sched(task::ManualThreads(1)) {
             impl_uv_tcp_server(bind_ip, port,
-                               copy kill_server_msg_copy,
-                               copy server_resp_msg_copy,
+                               kill_server_msg_copy.clone(),
+                               server_resp_msg_copy.clone(),
                                server_chan.clone(),
                                continue_chan.clone());
         };
@@ -1741,7 +1741,7 @@ mod test {
         continue_port.recv();
         debug!(~"received on continue port, set up tcp client");
 
-        let kill_server_msg_copy = copy kill_server_msg;
+        let kill_server_msg_copy = kill_server_msg.clone();
         do task::spawn_sched(task::ManualThreads(1u)) {
             impl_uv_tcp_request(request_ip, port,
                                kill_server_msg_copy,

@@ -99,7 +99,7 @@ pub trait Stats {
 }
 
 /// Extracted collection of all the summary statistics of a sample set.
-#[deriving(Eq)]
+#[deriving(Clone, Eq)]
 struct Summary {
     sum: f64,
     min: f64,

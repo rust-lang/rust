@@ -426,7 +426,7 @@ pub fn trans_struct_drop_flag(bcx: block, t: ty::t, v0: ValueRef, dtor_did: ast:
 
         // Find and call the actual destructor
         let dtor_addr = get_res_dtor(bcx.ccx(), dtor_did,
-                                     class_did, /*bad*/copy substs.tps);
+                                     class_did, substs.tps.clone());
 
         // The second argument is the "self" argument for drop
         let params = unsafe {
@@ -461,7 +461,7 @@ pub fn trans_struct_drop(mut bcx: block, t: ty::t, v0: ValueRef, dtor_did: ast::
 
     // Find and call the actual destructor
     let dtor_addr = get_res_dtor(bcx.ccx(), dtor_did,
-                                 class_did, /*bad*/copy substs.tps);
+                                 class_did, substs.tps.clone());
 
     // The second argument is the "self" argument for drop
     let params = unsafe {

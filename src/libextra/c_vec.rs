@@ -119,9 +119,11 @@ pub unsafe fn c_vec_with_dtor<T>(base: *mut T, len: uint, dtor: @fn())
  *
  * Fails if `ofs` is greater or equal to the length of the vector
  */
-pub fn get<T:Copy>(t: CVec<T>, ofs: uint) -> T {
+pub fn get<T:Clone>(t: CVec<T>, ofs: uint) -> T {
     assert!(ofs < len(t));
-    return unsafe { copy *ptr::mut_offset(t.base, ofs) };
+    return unsafe {
+        (*ptr::mut_offset(t.base, ofs)).clone()
+    };
 }
 
 /**
@@ -129,7 +131,7 @@ pub fn get<T:Copy>(t: CVec<T>, ofs: uint) -> T {
  *
  * Fails if `ofs` is greater or equal to the length of the vector
  */
-pub fn set<T:Copy>(t: CVec<T>, ofs: uint, v: T) {
+pub fn set<T>(t: CVec<T>, ofs: uint, v: T) {
     assert!(ofs < len(t));
     unsafe { *ptr::mut_offset(t.base, ofs) = v };
 }

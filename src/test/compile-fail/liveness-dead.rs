@@ -15,14 +15,14 @@ fn f1(x: &mut int) {
 }
 
 fn f2() {
-    let mut x = 3; //~ ERROR: value assigned to `x` is never read
+    let mut x: int = 3; //~ ERROR: value assigned to `x` is never read
     x = 4;
-    copy x;
+    x.clone();
 }
 
 fn f3() {
-    let mut x = 3;
-    copy x;
+    let mut x: int = 3;
+    x.clone();
     x = 4; //~ ERROR: value assigned to `x` is never read
 }
 

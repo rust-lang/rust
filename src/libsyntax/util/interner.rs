@@ -21,7 +21,7 @@ pub struct Interner<T> {
 }
 
 // when traits can extend traits, we should extend index<uint,T> to get []
-impl<T:Eq + IterBytes + Hash + Freeze + Copy> Interner<T> {
+impl<T:Eq + IterBytes + Hash + Freeze + Clone> Interner<T> {
     pub fn new() -> Interner<T> {
         Interner {
             map: @mut HashMap::new(),
@@ -31,7 +31,9 @@ impl<T:Eq + IterBytes + Hash + Freeze + Copy> Interner<T> {
 
     pub fn prefill(init: &[T]) -> Interner<T> {
         let rv = Interner::new();
-        for init.iter().advance |v| { rv.intern(copy *v); }
+        for init.iter().advance |v| {
+            rv.intern((*v).clone());
+        }
         rv
     }
 
@@ -43,7 +45,7 @@ impl<T:Eq + IterBytes + Hash + Freeze + Copy> Interner<T> {
 
         let vect = &mut *self.vect;
         let new_idx = vect.len();
-        self.map.insert(copy val, new_idx);
+        self.map.insert(val.clone(), new_idx);
         vect.push(val);
         new_idx
     }
@@ -58,7 +60,9 @@ impl<T:Eq + IterBytes + Hash + Freeze + Copy> Interner<T> {
         new_idx
     }
 
-    pub fn get(&self, idx: uint) -> T { copy self.vect[idx] }
+    pub fn get(&self, idx: uint) -> T {
+        self.vect[idx].clone()
+    }
 
     pub fn len(&self) -> uint { let vect = &*self.vect; vect.len() }
 

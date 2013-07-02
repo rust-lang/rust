@@ -20,6 +20,7 @@ use parse::token::{str_to_ident};
 use std::char;
 use std::either;
 use std::u64;
+use std::util;
 
 pub use ext::tt::transcribe::{TtReader, new_tt_reader};
 
@@ -93,7 +94,7 @@ fn dup_string_reader(r: @mut StringReader) -> @mut StringReader {
         col: r.col,
         curr: r.curr,
         filemap: r.filemap,
-        peek_tok: copy r.peek_tok,
+        peek_tok: r.peek_tok.clone(),
         peek_span: r.peek_span
     }
 }
@@ -103,7 +104,7 @@ impl reader for StringReader {
     // return the next token. EFFECT: advances the string_reader.
     fn next_token(@mut self) -> TokenAndSpan {
         let ret_val = TokenAndSpan {
-            tok: /*bad*/copy self.peek_tok,
+            tok: util::replace(&mut self.peek_tok, token::UNDERSCORE),
             sp: self.peek_span,
         };
         string_advance_token(self);
@@ -114,8 +115,9 @@ impl reader for StringReader {
     }
     fn span_diag(@mut self) -> @span_handler { self.span_diagnostic }
     fn peek(@mut self) -> TokenAndSpan {
+        // XXX(pcwalton): Bad copy!
         TokenAndSpan {
-            tok: /*bad*/copy self.peek_tok,
+            tok: self.peek_tok.clone(),
             sp: self.peek_span,
         }
     }
@@ -131,7 +133,7 @@ impl reader for TtReader {
     fn span_diag(@mut self) -> @span_handler { self.sp_diag }
     fn peek(@mut self) -> TokenAndSpan {
         TokenAndSpan {
-            tok: copy self.cur_tok,
+            tok: self.cur_tok.clone(),
             sp: self.cur_span,
         }
     }
@@ -143,8 +145,8 @@ impl reader for TtReader {
 fn string_advance_token(r: @mut StringReader) {
     match (consume_whitespace_and_comments(r)) {
         Some(comment) => {
-            r.peek_tok = copy comment.tok;
             r.peek_span = comment.sp;
+            r.peek_tok = comment.tok;
         },
         None => {
             if is_eof(r) {
@@ -818,7 +820,7 @@ mod test {
             sp:span {lo:BytePos(21),hi:BytePos(23),expn_info: None}};
         assert_eq!(tok1,tok2);
         // the 'main' id is already read:
-        assert_eq!(copy string_reader.last_pos,BytePos(28));
+        assert_eq!(string_reader.last_pos.clone(), BytePos(28));
         // read another token:
         let tok3 = string_reader.next_token();
         let tok4 = TokenAndSpan{
@@ -826,7 +828,7 @@ mod test {
             sp:span {lo:BytePos(24),hi:BytePos(28),expn_info: None}};
         assert_eq!(tok3,tok4);
         // the lparen is already read:
-        assert_eq!(copy string_reader.last_pos,BytePos(29))
+        assert_eq!(string_reader.last_pos.clone(), BytePos(29))
     }
 
     // check that the given reader produces the desired stream

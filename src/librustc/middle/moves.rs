@@ -170,12 +170,14 @@ pub type MovesMap = @mut HashSet<node_id>;
 pub type MovedVariablesSet = @mut HashSet<node_id>;
 
 /** See the section Output on the module comment for explanation. */
+#[deriving(Clone)]
 pub struct MoveMaps {
     moves_map: MovesMap,
     moved_variables_set: MovedVariablesSet,
     capture_map: CaptureMap
 }
 
+#[deriving(Clone)]
 struct VisitContext {
     tcx: ty::ctxt,
     method_map: method_map,

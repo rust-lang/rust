@@ -32,7 +32,7 @@ mod test {
     use trim_pass::mk_pass;
 
     fn mk_doc(source: ~str) -> doc::Doc {
-        do astsrv::from_str(copy source) |srv| {
+        do astsrv::from_str(source.clone()) |srv| {
             let doc = extract::from_srv(srv.clone(), ~"");
             let doc = (attr_pass::mk_pass().f)(srv.clone(), doc);
             let doc = (prune_hidden_pass::mk_pass().f)(srv.clone(), doc);

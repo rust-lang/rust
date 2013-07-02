@@ -90,7 +90,7 @@ fn fold_const(
 
     doc::SimpleItemDoc {
         sig: Some({
-            let doc = copy doc;
+            let doc = doc.clone();
             do astsrv::exec(srv) |ctxt| {
                 match ctxt.ast_map.get_copy(&doc.id()) {
                     ast_map::node_item(@ast::item {
@@ -115,16 +115,16 @@ fn fold_enum(
     doc::EnumDoc {
         variants: do doc.variants.iter().transform |variant| {
             let sig = {
-                let variant = copy *variant;
+                let variant = (*variant).clone();
                 do astsrv::exec(srv.clone()) |ctxt| {
                     match ctxt.ast_map.get_copy(&doc_id) {
                         ast_map::node_item(@ast::item {
                             node: ast::item_enum(ref enum_definition, _), _
                         }, _) => {
                             let ast_variant =
-                                copy *do enum_definition.variants.iter().find_ |v| {
+                                (*do enum_definition.variants.iter().find_ |v| {
                                 to_str(v.node.name) == variant.name
-                            }.get();
+                            }.get()).clone();
 
                             pprust::variant_to_str(
                                 &ast_variant, extract::interner())
@@ -136,7 +136,7 @@ fn fold_enum(
 
             doc::VariantDoc {
                 sig: Some(sig),
-                .. copy *variant
+                .. (*variant).clone()
             }
         }.collect(),
         .. doc
@@ -148,7 +148,7 @@ fn fold_trait(
     doc: doc::TraitDoc
 ) -> doc::TraitDoc {
     doc::TraitDoc {
-        methods: merge_methods(fold.ctxt.clone(), doc.id(), copy doc.methods),
+        methods: merge_methods(fold.ctxt.clone(), doc.id(), doc.methods.clone()),
         .. doc
     }
 }
@@ -160,8 +160,8 @@ fn merge_methods(
 ) -> ~[doc::MethodDoc] {
     do docs.iter().transform |doc| {
         doc::MethodDoc {
-            sig: get_method_sig(srv.clone(), item_id, copy doc.name),
-            .. copy *doc
+            sig: get_method_sig(srv.clone(), item_id, doc.name.clone()),
+            .. (*doc).clone()
         }
     }.collect()
 }
@@ -177,13 +177,13 @@ fn get_method_sig(
                 node: ast::item_trait(_, _, ref methods), _
             }, _) => {
                 match methods.iter().find_(|&method| {
-                    match copy *method {
+                    match (*method).clone() {
                         ast::required(ty_m) => to_str(ty_m.ident) == method_name,
                         ast::provided(m) => to_str(m.ident) == method_name,
                     }
                 }) {
                     Some(method) => {
-                        match copy *method {
+                        match (*method).clone() {
                             ast::required(ty_m) => {
                                 Some(pprust::fun_to_str(
                                     &ty_m.decl,
@@ -241,7 +241,7 @@ fn fold_impl(
     let srv = fold.ctxt.clone();
 
     let (bounds, trait_types, self_ty) = {
-        let doc = copy doc;
+        let doc = doc.clone();
         do astsrv::exec(srv) |ctxt| {
             match ctxt.ast_map.get_copy(&doc.id()) {
                 ast_map::node_item(@ast::item {
@@ -266,7 +266,7 @@ fn fold_impl(
         bounds_str: bounds,
         trait_types: trait_types,
         self_ty: self_ty,
-        methods: merge_methods(fold.ctxt.clone(), doc.id(), copy doc.methods),
+        methods: merge_methods(fold.ctxt.clone(), doc.id(), doc.methods.clone()),
         .. doc
     }
 }
@@ -280,7 +280,7 @@ fn fold_type(
 
     doc::SimpleItemDoc {
         sig: {
-            let doc = copy doc;
+            let doc = doc.clone();
             do astsrv::exec(srv) |ctxt| {
                 match ctxt.ast_map.get_copy(&doc.id()) {
                     ast_map::node_item(@ast::item {
@@ -311,7 +311,7 @@ fn fold_struct(
 
     doc::StructDoc {
         sig: {
-            let doc = copy doc;
+            let doc = doc.clone();
             do astsrv::exec(srv) |ctxt| {
                 match ctxt.ast_map.get_copy(&doc.id()) {
                     ast_map::node_item(item, _) => {
@@ -332,7 +332,7 @@ fn fold_struct(
 /// should be a simple pprust::struct_to_str function that does
 /// what I actually want
 fn strip_struct_extra_stuff(item: @ast::item) -> @ast::item {
-    let node = match copy item.node {
+    let node = match item.node.clone() {
         ast::item_struct(def, tys) => ast::item_struct(def, tys),
         _ => fail!("not a struct")
     };
@@ -340,7 +340,7 @@ fn strip_struct_extra_stuff(item: @ast::item) -> @ast::item {
     @ast::item {
         attrs: ~[], // Remove the attributes
         node: node,
-        .. copy *item
+        .. (*item).clone()
     }
 }
 
@@ -353,7 +353,7 @@ mod test {
     use tystr_pass::run;
 
     fn mk_doc(source: ~str) -> doc::Doc {
-        do astsrv::from_str(copy source) |srv| {
+        do astsrv::from_str(source.clone()) |srv| {
             let doc = extract::from_srv(srv.clone(), ~"");
             run(srv.clone(), doc)
         }

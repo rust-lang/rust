@@ -39,6 +39,7 @@ enum FormatState {
 }
 
 /// Types of parameters a capability can use
+#[deriving(Clone)]
 pub enum Param {
     String(~str),
     Number(int)
@@ -82,7 +83,7 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
     // Copy parameters into a local vector for mutability
     let mut mparams = [Number(0), ..9];
     for mparams.mut_iter().zip(params.iter()).advance |(dst, src)| {
-        *dst = copy *src;
+        *dst = (*src).clone();
     }
 
     for cap.iter().transform(|&x| x).advance |c| {
@@ -214,7 +215,7 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
                             _         => return Err(~"non-number on stack with %~")
                         }
                     } else { return Err(~"stack is empty") },
-                    'i' => match (copy mparams[0], copy mparams[1]) {
+                    'i' => match (mparams[0].clone(), mparams[1].clone()) {
                         (Number(x), Number(y)) => {
                             mparams[0] = Number(x+1);
                             mparams[1] = Number(y+1);
@@ -263,10 +264,10 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
             },
             PushParam => {
                 // params are 1-indexed
-                stack.push(copy mparams[match char::to_digit(cur, 10) {
+                stack.push(mparams[match char::to_digit(cur, 10) {
                     Some(d) => d - 1,
                     None => return Err(~"bad param number")
-                }]);
+                }].clone());
             },
             SetVar => {
                 if cur >= 'A' && cur <= 'Z' {
@@ -286,10 +287,10 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
             GetVar => {
                 if cur >= 'A' && cur <= 'Z' {
                     let idx = (cur as u8) - ('A' as u8);
-                    stack.push(copy vars.sta[idx]);
+                    stack.push(vars.sta[idx].clone());
                 } else if cur >= 'a' && cur <= 'z' {
                     let idx = (cur as u8) - ('a' as u8);
-                    stack.push(copy vars.dyn[idx]);
+                    stack.push(vars.dyn[idx].clone());
                 } else {
                     return Err(~"bad variable name in %g");
                 }

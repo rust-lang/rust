@@ -191,9 +191,11 @@ fn represent_type_uncached(cx: &mut CrateContext, t: ty::t) -> Repr {
                             Some(ptrfield) => {
                                 return NullablePointer {
                                     nndiscr: discr,
-                                    nonnull: mk_struct(cx, cases[discr].tys, false),
+                                    nonnull: mk_struct(cx,
+                                                       cases[discr].tys,
+                                                       false),
                                     ptrfield: ptrfield,
-                                    nullfields: copy cases[1 - discr].tys
+                                    nullfields: cases[1 - discr].tys.clone()
                                 }
                             }
                             None => { }

@@ -25,7 +25,7 @@ use std::cast;
 
 use std::libc::{c_uint};
 
-#[deriving(Eq)]
+#[deriving(Clone, Eq)]
 pub struct Type {
     priv rf: TypeRef
 }

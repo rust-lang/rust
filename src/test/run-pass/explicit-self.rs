@@ -41,12 +41,15 @@ fn select_based_on_unit_circle<'r, T>(
     shape.select(threshold, a, b)
 }
 
-
+#[deriving(Clone)]
 struct thing {
     x: A
 }
 
-struct A { a: @int }
+#[deriving(Clone)]
+struct A {
+    a: @int
+}
 
 fn thing(x: A) -> thing {
     thing {
@@ -72,7 +75,7 @@ pub fn main() {
     assert_eq!(x.quux(), 10);
 
     let y = ~thing(A {a: @10});
-    assert_eq!((copy y).bar(), 10);
+    assert_eq!(y.clone().bar(), 10);
     assert_eq!(y.quux(), 10);
 
     let z = thing(A {a: @11});

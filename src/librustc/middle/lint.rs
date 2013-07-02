@@ -67,7 +67,7 @@ use syntax::{ast, visit, ast_util};
  * item that's being warned about.
  */
 
-#[deriving(Eq)]
+#[deriving(Clone, Eq)]
 pub enum lint {
     ctypes,
     unused_imports,
@@ -109,7 +109,7 @@ pub fn level_to_str(lv: level) -> &'static str {
     }
 }
 
-#[deriving(Eq, Ord)]
+#[deriving(Clone, Eq, Ord)]
 pub enum level {
     allow, warn, deny, forbid
 }
@@ -652,8 +652,11 @@ fn lint_type_limits() -> visit::vt<@mut Context> {
         }
     }
 
-    fn check_limits(cx: &Context, binop: ast::binop, l: &ast::expr,
-                    r: &ast::expr) -> bool {
+    fn check_limits(cx: &Context,
+                    binop: ast::binop,
+                    l: @ast::expr,
+                    r: @ast::expr)
+                    -> bool {
         let (lit, expr, swap) = match (&l.node, &r.node) {
             (&ast::expr_lit(_), _) => (l, r, true),
             (_, &ast::expr_lit(_)) => (r, l, false),
@@ -666,7 +669,7 @@ fn lint_type_limits() -> visit::vt<@mut Context> {
         } else {
             binop
         };
-        match ty::get(ty::expr_ty(cx.tcx, @/*bad*/copy *expr)).sty {
+        match ty::get(ty::expr_ty(cx.tcx, expr)).sty {
             ty::ty_int(int_ty) => {
                 let (min, max) = int_ty_range(int_ty);
                 let lit_val: i64 = match lit.node {
@@ -708,7 +711,7 @@ fn lint_type_limits() -> visit::vt<@mut Context> {
     visit::mk_vt(@visit::Visitor {
         visit_expr: |e, (cx, vt): (@mut Context, visit::vt<@mut Context>)| {
             match e.node {
-                ast::expr_binary(_, ref binop, @ref l, @ref r) => {
+                ast::expr_binary(_, ref binop, l, r) => {
                     if is_comparison(*binop)
                         && !check_limits(cx, *binop, l, r) {
                         cx.span_lint(type_limits, e.span,

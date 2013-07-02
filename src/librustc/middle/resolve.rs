@@ -158,6 +158,7 @@ pub enum ImportDirectiveSubclass {
 }
 
 /// The context that we thread through while building the reduced graph.
+#[deriving(Clone)]
 pub enum ReducedGraphParent {
     ModuleReducedGraphParent(@mut Module)
 }
@@ -1483,12 +1484,13 @@ impl Resolver {
                             for source_idents.iter().advance |source_ident| {
                                 let name = source_ident.node.name;
                                 let subclass = @SingleImport(name, name);
-                                self.build_import_directive(privacy,
-                                                            module_,
-                                                            copy module_path,
-                                                            subclass,
-                                                            source_ident.span,
-                                                            source_ident.node.id);
+                                self.build_import_directive(
+                                    privacy,
+                                    module_,
+                                    module_path.clone(),
+                                    subclass,
+                                    source_ident.span,
+                                    source_ident.node.id);
                             }
                         }
                         view_path_glob(_, id) => {
@@ -5165,13 +5167,13 @@ impl Resolver {
         match self.method_map.find(&name) {
             Some(candidate_traits) => loop {
                 // Look for the current trait.
-                match /*bad*/copy self.current_trait_refs {
-                    Some(trait_def_ids) => {
+                match self.current_trait_refs {
+                    Some(ref trait_def_ids) => {
                         for trait_def_ids.iter().advance |trait_def_id| {
                             if candidate_traits.contains(trait_def_id) {
-                                self.add_trait_info(
-                                    &mut found_traits,
-                                    *trait_def_id, name);
+                                self.add_trait_info(&mut found_traits,
+                                                    *trait_def_id,
+                                                    name);
                             }
                         }
                     }
@@ -5428,10 +5430,9 @@ pub fn resolve_crate(session: Session,
                   -> CrateMap {
     let resolver = @mut Resolver(session, lang_items, crate);
     resolver.resolve();
-    let Resolver { def_map, export_map2, trait_map, _ } = copy *resolver;
     CrateMap {
-        def_map: def_map,
-        exp_map2: export_map2,
-        trait_map: trait_map
+        def_map: resolver.def_map,
+        exp_map2: resolver.export_map2,
+        trait_map: resolver.trait_map.clone(),
     }
 }

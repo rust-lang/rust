@@ -60,6 +60,7 @@ pub struct RegionMaps {
     priv cleanup_scopes: HashSet<ast::node_id>
 }
 
+#[deriving(Clone)]
 pub struct Context {
     sess: Session,
     def_map: resolve::DefMap,

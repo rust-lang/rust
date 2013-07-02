@@ -27,7 +27,7 @@ pub fn main() {
                argument");
     }
 
-    let sysroot_arg = copy args[1];
+    let sysroot_arg = args[1].clone();
     let sysroot = Path(sysroot_arg);
     if !os::path_exists(&sysroot) {
         fail!("Package script requires a sysroot that exists; %s doesn't", sysroot.to_str());

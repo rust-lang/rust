@@ -2260,6 +2260,13 @@ impl Clone for ~str {
     }
 }
 
+impl Clone for @str {
+    #[inline]
+    fn clone(&self) -> @str {
+        *self
+    }
+}
+
 /// External iterator for a string's characters. Use with the `std::iterator`
 /// module.
 pub struct StrCharIterator<'self> {
@@ -3210,7 +3217,7 @@ mod tests {
                 0x000a_u16 ]) ];
 
         for pairs.iter().advance |p| {
-            let (s, u) = copy *p;
+            let (s, u) = (*p).clone();
             assert!(s.to_utf16() == u);
             assert!(from_utf16(u) == s);
             assert!(from_utf16(s.to_utf16()) == s);

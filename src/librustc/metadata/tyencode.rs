@@ -61,7 +61,7 @@ pub fn enc_ty(w: @io::Writer, cx: @ctxt, t: ty::t) {
             Some(&s) => s,
             None => {
                 let s = do io::with_str_writer |wr| {
-                    enc_sty(wr, cx, /*bad*/copy ty::get(t).sty);
+                    enc_sty(wr, cx, &ty::get(t).sty);
                 }.to_managed();
                 cx.tcx.short_names_cache.insert(t, s);
                 s
@@ -75,7 +75,7 @@ pub fn enc_ty(w: @io::Writer, cx: @ctxt, t: ty::t) {
               None => {}
           }
           let pos = w.tell();
-          enc_sty(w, cx, /*bad*/copy ty::get(t).sty);
+          enc_sty(w, cx, &ty::get(t).sty);
           let end = w.tell();
           let len = end - pos;
           fn estimate_sz(u: uint) -> uint {
@@ -221,8 +221,8 @@ pub fn enc_trait_store(w: @io::Writer, cx: @ctxt, s: ty::TraitStore) {
     }
 }
 
-fn enc_sty(w: @io::Writer, cx: @ctxt, st: ty::sty) {
-    match st {
+fn enc_sty(w: @io::Writer, cx: @ctxt, st: &ty::sty) {
+    match *st {
       ty::ty_nil => w.write_char('n'),
       ty::ty_bot => w.write_char('z'),
       ty::ty_bool => w.write_char('b'),
@@ -271,7 +271,7 @@ fn enc_sty(w: @io::Writer, cx: @ctxt, st: ty::sty) {
         enc_bounds(w, cx, &bounds);
         w.write_char(']');
       }
-      ty::ty_tup(ts) => {
+      ty::ty_tup(ref ts) => {
         w.write_str(&"T[");
         for ts.iter().advance |t| { enc_ty(w, cx, *t); }
         w.write_char(']');

@@ -22,6 +22,7 @@ use utils::*;
 
 /// This structure keeps track of the state of the world for the code being
 /// executed in rusti.
+#[deriving(Clone)]
 struct Program {
     /// All known local variables
     local_vars: HashMap<~str, LocalVariable>,
@@ -41,6 +42,7 @@ struct Program {
 }
 
 /// Represents a local variable that the program is currently using.
+#[deriving(Clone)]
 struct LocalVariable {
     /// Should this variable be locally declared as mutable?
     mutable: bool,
@@ -218,7 +220,7 @@ impl Program {
     pub fn set_cache(&self) {
         let map = @mut HashMap::new();
         for self.local_vars.iter().advance |(name, value)| {
-            map.insert(copy *name, @copy value.data);
+            map.insert((*name).clone(), @(value.data).clone());
         }
         local_data::set(tls_key, map);
     }
@@ -230,7 +232,7 @@ impl Program {
         let map = local_data::pop(tls_key).expect("tls is empty");
         do map.consume |name, value| {
             match self.local_vars.find_mut(&name) {
-                Some(v) => { v.data = copy *value; }
+                Some(v) => { v.data = (*value).clone(); }
                 None => { fail!("unknown variable %s", name) }
             }
         }
@@ -303,7 +305,7 @@ impl Program {
                         ty::ty_evec(mt, ty::vstore_slice(*)) |
                         ty::ty_evec(mt, ty::vstore_fixed(*)) => {
                             let vty = ppaux::ty_to_str(tcx, mt.ty);
-                            let derefs = copy tystr;
+                            let derefs = tystr.clone();
                             lvar.ty = tystr + "~[" + vty + "]";
                             lvar.alterations = Some((tystr + "&[" + vty + "]",
                                                      derefs));
@@ -312,7 +314,7 @@ impl Program {
                         // Similar to vectors, &str serializes to ~str, so a
                         // borrow must be taken
                         ty::ty_estr(ty::vstore_slice(*)) => {
-                            let derefs = copy tystr;
+                            let derefs = tystr.clone();
                             lvar.ty = tystr + "~str";
                             lvar.alterations = Some((tystr + "&str", derefs));
                             break;
@@ -326,7 +328,7 @@ impl Program {
                         // If we're just borrowing (no vectors or strings), then
                         // we just need to record how many borrows there were.
                         _ => {
-                            let derefs = copy tystr;
+                            let derefs = tystr.clone();
                             let tmptystr = ppaux::ty_to_str(tcx, t);
                             lvar.alterations = Some((tystr + tmptystr, derefs));
                             lvar.ty = tmptystr;

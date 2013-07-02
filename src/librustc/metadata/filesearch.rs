@@ -21,8 +21,11 @@ use std::str;
 pub type pick<'self, T> = &'self fn(path: &Path) -> Option<T>;
 
 pub fn pick_file(file: Path, path: &Path) -> Option<Path> {
-    if path.file_path() == file { option::Some(copy *path) }
-    else { option::None }
+    if path.file_path() == file {
+        option::Some((*path).clone())
+    } else {
+        option::None
+    }
 }
 
 pub trait FileSearch {

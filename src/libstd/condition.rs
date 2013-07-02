@@ -86,7 +86,7 @@ impl<'self, T, U> Condition<'self, T, U> {
 
     pub fn raise(&self, t: T) -> U {
         let msg = fmt!("Unhandled condition: %s: %?", self.name, t);
-        self.raise_default(t, || fail!(copy msg))
+        self.raise_default(t, || fail!(msg.clone()))
     }
 
     pub fn raise_default(&self, t: T, default: &fn() -> U) -> U {
