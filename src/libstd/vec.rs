@@ -16,14 +16,13 @@ use cast::transmute;
 use cast;
 use container::{Container, Mutable};
 use cmp;
-use cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering, Less, Equal, Greater};
+use cmp::{Eq, TotalEq, TotalOrd, Ordering, Less, Equal, Greater};
 use clone::Clone;
 use iterator::{FromIterator, Iterator, IteratorUtil};
 use kinds::Copy;
 use libc;
 use libc::c_void;
 use num::Zero;
-use ops::Add;
 use option::{None, Option, Some};
 use ptr::to_unsafe_ptr;
 use ptr;
@@ -39,8 +38,6 @@ use intrinsic::{get_tydesc};
 use unstable::intrinsics::{get_tydesc, contains_managed};
 use vec;
 use util;
-
-#[cfg(not(test))] use cmp::Equiv;
 
 #[doc(hidden)]
 pub mod rustrt {
@@ -549,179 +546,165 @@ pub fn as_mut_buf<T,U>(s: &mut [T], f: &fn(*mut T, uint) -> U) -> U {
 
 // Equality
 
-/// Tests whether two slices are equal to one another. This is only true if both
-/// slices are of the same length, and each of the corresponding elements return
-/// true when queried via the `eq` function.
-fn eq<T: Eq>(a: &[T], b: &[T]) -> bool {
-    let (a_len, b_len) = (a.len(), b.len());
-    if a_len != b_len { return false; }
+#[cfg(not(test))]
+pub mod traits {
+    use super::Vector;
+    use kinds::Copy;
+    use cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering, Equal, Equiv};
+    use ops::Add;
 
-    let mut i = 0;
-    while i < a_len {
-        if a[i] != b[i] { return false; }
-        i += 1;
+    impl<'self,T:Eq> Eq for &'self [T] {
+        fn eq(&self, other: & &'self [T]) -> bool {
+            self.len() == other.len() &&
+                self.iter().zip(other.iter()).all(|(s,o)| *s == *o)
+        }
+        #[inline]
+        fn ne(&self, other: & &'self [T]) -> bool { !self.eq(other) }
     }
-    true
-}
 
-/// Similar to the `vec::eq` function, but this is defined for types which
-/// implement `TotalEq` as opposed to types which implement `Eq`. Equality
-/// comparisons are done via the `equals` function instead of `eq`.
-fn equals<T: TotalEq>(a: &[T], b: &[T]) -> bool {
-    let (a_len, b_len) = (a.len(), b.len());
-    if a_len != b_len { return false; }
-
-    let mut i = 0;
-    while i < a_len {
-        if !a[i].equals(&b[i]) { return false; }
-        i += 1;
+    impl<T:Eq> Eq for ~[T] {
+        #[inline]
+        fn eq(&self, other: &~[T]) -> bool { self.as_slice() == *other }
+        #[inline]
+        fn ne(&self, other: &~[T]) -> bool { !self.eq(other) }
     }
-    true
-}
 
-#[cfg(not(test))]
-impl<'self,T:Eq> Eq for &'self [T] {
-    #[inline]
-    fn eq(&self, other: & &'self [T]) -> bool { eq(*self, *other) }
-    #[inline]
-    fn ne(&self, other: & &'self [T]) -> bool { !self.eq(other) }
-}
+    impl<T:Eq> Eq for @[T] {
+        #[inline]
+        fn eq(&self, other: &@[T]) -> bool { self.as_slice() == *other }
+        #[inline]
+        fn ne(&self, other: &@[T]) -> bool { !self.eq(other) }
+    }
 
-#[cfg(not(test))]
-impl<T:Eq> Eq for ~[T] {
-    #[inline]
-    fn eq(&self, other: &~[T]) -> bool { eq(*self, *other) }
-    #[inline]
-    fn ne(&self, other: &~[T]) -> bool { !self.eq(other) }
-}
-
-#[cfg(not(test))]
-impl<T:Eq> Eq for @[T] {
-    #[inline]
-    fn eq(&self, other: &@[T]) -> bool { eq(*self, *other) }
-    #[inline]
-    fn ne(&self, other: &@[T]) -> bool { !self.eq(other) }
-}
-
-#[cfg(not(test))]
-impl<'self,T:TotalEq> TotalEq for &'self [T] {
-    #[inline]
-    fn equals(&self, other: & &'self [T]) -> bool { equals(*self, *other) }
-}
-
-#[cfg(not(test))]
-impl<T:TotalEq> TotalEq for ~[T] {
-    #[inline]
-    fn equals(&self, other: &~[T]) -> bool { equals(*self, *other) }
-}
-
-#[cfg(not(test))]
-impl<T:TotalEq> TotalEq for @[T] {
-    #[inline]
-    fn equals(&self, other: &@[T]) -> bool { equals(*self, *other) }
-}
-
-#[cfg(not(test))]
-impl<'self,T:Eq> Equiv<~[T]> for &'self [T] {
-    #[inline]
-    fn equiv(&self, other: &~[T]) -> bool { eq(*self, *other) }
-}
-
-// Lexicographical comparison
-
-fn cmp<T: TotalOrd>(a: &[T], b: &[T]) -> Ordering {
-    let low = uint::min(a.len(), b.len());
-
-    for uint::range(0, low) |idx| {
-        match a[idx].cmp(&b[idx]) {
-          Greater => return Greater,
-          Less => return Less,
-          Equal => ()
+    impl<'self,T:TotalEq> TotalEq for &'self [T] {
+        fn equals(&self, other: & &'self [T]) -> bool {
+            self.len() == other.len() &&
+                self.iter().zip(other.iter()).all(|(s,o)| s.equals(o))
         }
     }
 
-    a.len().cmp(&b.len())
-}
-
-#[cfg(not(test))]
-impl<'self,T:TotalOrd> TotalOrd for &'self [T] {
-    #[inline]
-    fn cmp(&self, other: & &'self [T]) -> Ordering { cmp(*self, *other) }
-}
-
-#[cfg(not(test))]
-impl<T: TotalOrd> TotalOrd for ~[T] {
-    #[inline]
-    fn cmp(&self, other: &~[T]) -> Ordering { cmp(*self, *other) }
-}
-
-#[cfg(not(test))]
-impl<T: TotalOrd> TotalOrd for @[T] {
-    #[inline]
-    fn cmp(&self, other: &@[T]) -> Ordering { cmp(*self, *other) }
-}
-
-fn lt<T:Ord>(a: &[T], b: &[T]) -> bool {
-    let (a_len, b_len) = (a.len(), b.len());
-    let end = uint::min(a_len, b_len);
-
-    let mut i = 0;
-    while i < end {
-        let (c_a, c_b) = (&a[i], &b[i]);
-        if *c_a < *c_b { return true; }
-        if *c_a > *c_b { return false; }
-        i += 1;
+    impl<T:TotalEq> TotalEq for ~[T] {
+        #[inline]
+        fn equals(&self, other: &~[T]) -> bool { self.as_slice().equals(&other.as_slice()) }
     }
 
-    a_len < b_len
-}
-
-fn le<T:Ord>(a: &[T], b: &[T]) -> bool { !lt(b, a) }
-fn ge<T:Ord>(a: &[T], b: &[T]) -> bool { !lt(a, b) }
-fn gt<T:Ord>(a: &[T], b: &[T]) -> bool { lt(b, a)  }
-
-#[cfg(not(test))]
-impl<'self,T:Ord> Ord for &'self [T] {
-    #[inline]
-    fn lt(&self, other: & &'self [T]) -> bool { lt((*self), (*other)) }
-    #[inline]
-    fn le(&self, other: & &'self [T]) -> bool { le((*self), (*other)) }
-    #[inline]
-    fn ge(&self, other: & &'self [T]) -> bool { ge((*self), (*other)) }
-    #[inline]
-    fn gt(&self, other: & &'self [T]) -> bool { gt((*self), (*other)) }
-}
-
-#[cfg(not(test))]
-impl<T:Ord> Ord for ~[T] {
-    #[inline]
-    fn lt(&self, other: &~[T]) -> bool { lt((*self), (*other)) }
-    #[inline]
-    fn le(&self, other: &~[T]) -> bool { le((*self), (*other)) }
-    #[inline]
-    fn ge(&self, other: &~[T]) -> bool { ge((*self), (*other)) }
-    #[inline]
-    fn gt(&self, other: &~[T]) -> bool { gt((*self), (*other)) }
-}
-
-#[cfg(not(test))]
-impl<T:Ord> Ord for @[T] {
-    #[inline]
-    fn lt(&self, other: &@[T]) -> bool { lt((*self), (*other)) }
-    #[inline]
-    fn le(&self, other: &@[T]) -> bool { le((*self), (*other)) }
-    #[inline]
-    fn ge(&self, other: &@[T]) -> bool { ge((*self), (*other)) }
-    #[inline]
-    fn gt(&self, other: &@[T]) -> bool { gt((*self), (*other)) }
-}
-
-#[cfg(not(test))]
-impl<'self,T:Copy> Add<&'self [T], ~[T]> for ~[T] {
-    #[inline]
-    fn add(&self, rhs: & &'self [T]) -> ~[T] {
-        append(copy *self, (*rhs))
+    impl<T:TotalEq> TotalEq for @[T] {
+        #[inline]
+        fn equals(&self, other: &@[T]) -> bool { self.as_slice().equals(&other.as_slice()) }
     }
+
+    impl<'self,T:Eq, V: Vector<T>> Equiv<V> for &'self [T] {
+        #[inline]
+        fn equiv(&self, other: &V) -> bool { self.as_slice() == other.as_slice() }
+    }
+
+    impl<'self,T:Eq, V: Vector<T>> Equiv<V> for ~[T] {
+        #[inline]
+        fn equiv(&self, other: &V) -> bool { self.as_slice() == other.as_slice() }
+    }
+
+    impl<'self,T:Eq, V: Vector<T>> Equiv<V> for @[T] {
+        #[inline]
+        fn equiv(&self, other: &V) -> bool { self.as_slice() == other.as_slice() }
+    }
+
+    impl<'self,T:TotalOrd> TotalOrd for &'self [T] {
+        fn cmp(&self, other: & &'self [T]) -> Ordering {
+            for self.iter().zip(other.iter()).advance |(s,o)| {
+                match s.cmp(o) {
+                    Equal => {},
+                    non_eq => { return non_eq; }
+                }
+            }
+            self.len().cmp(&other.len())
+        }
+    }
+
+    impl<T: TotalOrd> TotalOrd for ~[T] {
+        #[inline]
+        fn cmp(&self, other: &~[T]) -> Ordering { self.as_slice().cmp(&other.as_slice()) }
+    }
+
+    impl<T: TotalOrd> TotalOrd for @[T] {
+        #[inline]
+        fn cmp(&self, other: &@[T]) -> Ordering { self.as_slice().cmp(&other.as_slice()) }
+    }
+
+    impl<'self,T:Ord> Ord for &'self [T] {
+        fn lt(&self, other: & &'self [T]) -> bool {
+            for self.iter().zip(other.iter()).advance |(s,o)| {
+                if *s < *o { return true; }
+                if *s > *o { return false; }
+            }
+            self.len() < other.len()
+        }
+        #[inline]
+        fn le(&self, other: & &'self [T]) -> bool { !(*other < *self) }
+        #[inline]
+        fn ge(&self, other: & &'self [T]) -> bool { !(*self < *other) }
+        #[inline]
+        fn gt(&self, other: & &'self [T]) -> bool { *other < *self }
+    }
+
+    impl<T:Ord> Ord for ~[T] {
+        #[inline]
+        fn lt(&self, other: &~[T]) -> bool { self.as_slice() < other.as_slice() }
+        #[inline]
+        fn le(&self, other: &~[T]) -> bool { self.as_slice() <= other.as_slice() }
+        #[inline]
+        fn ge(&self, other: &~[T]) -> bool { self.as_slice() >= other.as_slice() }
+        #[inline]
+        fn gt(&self, other: &~[T]) -> bool { self.as_slice() > other.as_slice() }
+    }
+
+    impl<T:Ord> Ord for @[T] {
+        #[inline]
+        fn lt(&self, other: &@[T]) -> bool { self.as_slice() < other.as_slice() }
+        #[inline]
+        fn le(&self, other: &@[T]) -> bool { self.as_slice() <= other.as_slice() }
+        #[inline]
+        fn ge(&self, other: &@[T]) -> bool { self.as_slice() >= other.as_slice() }
+        #[inline]
+        fn gt(&self, other: &@[T]) -> bool { self.as_slice() > other.as_slice() }
+    }
+
+    impl<'self,T:Copy, V: Vector<T>> Add<V, ~[T]> for &'self [T] {
+        #[inline]
+        fn add(&self, rhs: &V) -> ~[T] {
+            let mut res = self.to_owned();
+            res.push_all(rhs.as_slice());
+            res
+        }
+    }
+    impl<T:Copy, V: Vector<T>> Add<V, ~[T]> for ~[T] {
+        #[inline]
+        fn add(&self, rhs: &V) -> ~[T] {
+            let mut res = self.to_owned();
+            res.push_all(rhs.as_slice());
+            res
+        }
+    }
+}
+
+#[cfg(test)]
+pub mod traits {}
+
+/// Any vector that can be represented as a slice.
+pub trait Vector<T> {
+    /// Work with `self` as a slice.
+    fn as_slice<'a>(&'a self) -> &'a [T];
+}
+impl<'self,T> Vector<T> for &'self [T] {
+    #[inline(always)]
+    fn as_slice<'a>(&'a self) -> &'a [T] { *self }
+}
+impl<T> Vector<T> for ~[T] {
+    #[inline(always)]
+    fn as_slice<'a>(&'a self) -> &'a [T] { let v: &'a [T] = *self; v }
+}
+impl<T> Vector<T> for @[T] {
+    #[inline(always)]
+    fn as_slice<'a>(&'a self) -> &'a [T] { let v: &'a [T] = *self; v }
 }
 
 impl<'self, T> Container for &'self [T] {

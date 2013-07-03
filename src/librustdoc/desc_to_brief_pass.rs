@@ -141,7 +141,7 @@ fn first_sentence_(s: &str) -> ~str {
 pub fn paragraphs(s: &str) -> ~[~str] {
     let mut whitespace_lines = 0;
     let mut accum = ~"";
-    let paras = do s.any_line_iter().fold(~[]) |paras, line| {
+    let mut paras = do s.any_line_iter().fold(~[]) |paras, line| {
         let mut res = paras;
 
         if line.is_whitespace() {
@@ -166,11 +166,8 @@ pub fn paragraphs(s: &str) -> ~[~str] {
         res
     };
 
-    if !accum.is_empty() {
-        paras + [accum]
-    } else {
-        paras
-    }
+    if !accum.is_empty() { paras.push(accum); }
+    paras
 }
 
 #[cfg(test)]
