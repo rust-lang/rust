@@ -146,4 +146,12 @@ impl<'self, T> Iterator<&'self T> for OptVecIterator<'self, T> {
             None => None
         }
     }
+
+    #[inline]
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        match self.iter {
+            Some(ref x) => x.size_hint(),
+            None => (0, Some(0))
+        }
+    }
 }
