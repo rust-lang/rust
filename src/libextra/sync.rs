@@ -15,14 +15,13 @@
  * in std.
  */
 
-use core::prelude::*;
 
-use core::borrow;
-use core::comm;
-use core::task;
-use core::unstable::sync::{Exclusive, exclusive, UnsafeAtomicRcBox};
-use core::unstable::atomics;
-use core::util;
+use std::borrow;
+use std::comm;
+use std::task;
+use std::unstable::sync::{Exclusive, exclusive, UnsafeAtomicRcBox};
+use std::unstable::atomics;
+use std::util;
 
 /****************************************************************************
  * Internals
@@ -86,7 +85,7 @@ struct SemInner<Q> {
 struct Sem<Q>(Exclusive<SemInner<Q>>);
 
 #[doc(hidden)]
-fn new_sem<Q:Owned>(count: int, q: Q) -> Sem<Q> {
+fn new_sem<Q:Send>(count: int, q: Q) -> Sem<Q> {
     Sem(exclusive(SemInner {
         count: count, waiters: new_waitqueue(), blocked: q }))
 }
@@ -101,7 +100,7 @@ fn new_sem_and_signal(count: int, num_condvars: uint)
 }
 
 #[doc(hidden)]
-impl<Q:Owned> Sem<Q> {
+impl<Q:Send> Sem<Q> {
     pub fn acquire(&self) {
         unsafe {
             let mut waiter_nobe = None;
@@ -153,7 +152,7 @@ impl Sem<()> {
 
 #[doc(hidden)]
 impl Sem<~[Waitqueue]> {
-    pub fn access<U>(&self, blk: &fn() -> U) -> U {
+    pub fn access_waitqueue<U>(&self, blk: &fn() -> U) -> U {
         let mut release = None;
         unsafe {
             do task::unkillable {
@@ -175,8 +174,8 @@ struct SemReleaseGeneric<'self, Q> { sem: &'self Sem<Q> }
 
 #[doc(hidden)]
 #[unsafe_destructor]
-impl<'self, Q:Owned> Drop for SemReleaseGeneric<'self, Q> {
-    fn finalize(&self) {
+impl<'self, Q:Send> Drop for SemReleaseGeneric<'self, Q> {
+    fn drop(&self) {
         self.sem.release();
     }
 }
@@ -219,7 +218,7 @@ pub struct Condvar<'self> {
 }
 
 #[unsafe_destructor]
-impl<'self> Drop for Condvar<'self> { fn finalize(&self) {} }
+impl<'self> Drop for Condvar<'self> { fn drop(&self) {} }
 
 impl<'self> Condvar<'self> {
     /**
@@ -295,7 +294,7 @@ impl<'self> Condvar<'self> {
 
         #[unsafe_destructor]
         impl<'self> Drop for CondvarReacquire<'self> {
-            fn finalize(&self) {
+            fn drop(&self) {
                 unsafe {
                     // Needs to succeed, instead of itself dying.
                     do task::unkillable {
@@ -381,7 +380,7 @@ impl Sem<~[Waitqueue]> {
     // The only other places that condvars get built are rwlock.write_cond()
     // and rwlock_write_mode.
     pub fn access_cond<U>(&self, blk: &fn(c: &Condvar) -> U) -> U {
-        do self.access {
+        do self.access_waitqueue {
             blk(&Condvar { sem: self, order: Nothing })
         }
     }
@@ -456,7 +455,9 @@ impl Clone for Mutex {
 
 impl Mutex {
     /// Run a function with ownership of the mutex.
-    pub fn lock<U>(&self, blk: &fn() -> U) -> U { (&self.sem).access(blk) }
+    pub fn lock<U>(&self, blk: &fn() -> U) -> U {
+        (&self.sem).access_waitqueue(blk)
+    }
 
     /// Run a function with ownership of the mutex and a handle to a condvar.
     pub fn lock_cond<U>(&self, blk: &fn(c: &Condvar) -> U) -> U {
@@ -559,9 +560,11 @@ impl RWlock {
         unsafe {
             do task::unkillable {
                 (&self.order_lock).acquire();
-                do (&self.access_lock).access {
+                do (&self.access_lock).access_waitqueue {
                     (&self.order_lock).release();
-                    task::rekillable(blk)
+                    do task::rekillable {
+                        blk()
+                    }
                 }
             }
         }
@@ -689,7 +692,7 @@ struct RWlockReleaseRead<'self> {
 #[doc(hidden)]
 #[unsafe_destructor]
 impl<'self> Drop for RWlockReleaseRead<'self> {
-    fn finalize(&self) {
+    fn drop(&self) {
         unsafe {
             do task::unkillable {
                 let state = &mut *self.lock.state.get();
@@ -726,7 +729,7 @@ struct RWlockReleaseDowngrade<'self> {
 #[doc(hidden)]
 #[unsafe_destructor]
 impl<'self> Drop for RWlockReleaseDowngrade<'self> {
-    fn finalize(&self) {
+    fn drop(&self) {
         unsafe {
             do task::unkillable {
                 let writer_or_last_reader;
@@ -769,12 +772,12 @@ fn RWlockReleaseDowngrade<'r>(lock: &'r RWlock)
 /// The "write permission" token used for rwlock.write_downgrade().
 pub struct RWlockWriteMode<'self> { priv lock: &'self RWlock }
 #[unsafe_destructor]
-impl<'self> Drop for RWlockWriteMode<'self> { fn finalize(&self) {} }
+impl<'self> Drop for RWlockWriteMode<'self> { fn drop(&self) {} }
 
 /// The "read permission" token used for rwlock.write_downgrade().
 pub struct RWlockReadMode<'self> { priv lock: &'self RWlock }
 #[unsafe_destructor]
-impl<'self> Drop for RWlockReadMode<'self> { fn finalize(&self) {} }
+impl<'self> Drop for RWlockReadMode<'self> { fn drop(&self) {} }
 
 impl<'self> RWlockWriteMode<'self> {
     /// Access the pre-downgrade rwlock in write mode.
@@ -799,16 +802,14 @@ impl<'self> RWlockReadMode<'self> {
 
 #[cfg(test)]
 mod tests {
-    use core::prelude::*;
 
     use sync::*;
 
-    use core::cast;
-    use core::cell::Cell;
-    use core::comm;
-    use core::result;
-    use core::task;
-    use core::vec;
+    use std::cast;
+    use std::cell::Cell;
+    use std::comm;
+    use std::result;
+    use std::task;
 
     /************************************************************************
      * Semaphore tests
@@ -994,13 +995,13 @@ mod tests {
         }
 
         // wait until all children get in the mutex
-        for ports.each |port| { let _ = port.recv(); }
+        for ports.iter().advance |port| { let _ = port.recv(); }
         do m.lock_cond |cond| {
             let num_woken = cond.broadcast();
             assert_eq!(num_woken, num_waiters);
         }
         // wait until all children wake up
-        for ports.each |port| { let _ = port.recv(); }
+        for ports.iter().advance |port| { let _ = port.recv(); }
     }
     #[test]
     fn test_mutex_cond_broadcast() {
@@ -1085,7 +1086,7 @@ mod tests {
                     }
                 }
             }
-            for sibling_convos.each |p| {
+            for sibling_convos.iter().advance |p| {
                 let _ = p.recv(); // wait for sibling to get in the mutex
             }
             do m2.lock { }
@@ -1094,7 +1095,8 @@ mod tests {
         };
         assert!(result.is_err());
         // child task must have finished by the time try returns
-        for vec::each(p.recv()) |p| { p.recv(); } // wait on all its siblings
+        let r = p.recv();
+        for r.iter().advance |p| { p.recv(); } // wait on all its siblings
         do m.lock_cond |cond| {
             let woken = cond.broadcast();
             assert_eq!(woken, 0);
@@ -1104,7 +1106,7 @@ mod tests {
         }
 
         impl Drop for SendOnFailure {
-            fn finalize(&self) {
+            fn drop(&self) {
                 self.c.send(());
             }
         }
@@ -1180,12 +1182,12 @@ mod tests {
             Write => x.write(blk),
             Downgrade =>
                 do x.write_downgrade |mode| {
-                    (&mode).write(blk);
+                    do mode.write { blk() };
                 },
             DowngradeRead =>
                 do x.write_downgrade |mode| {
                     let mode = x.downgrade(mode);
-                    (&mode).read(blk);
+                    do mode.read { blk() };
                 },
         }
     }
@@ -1338,10 +1340,10 @@ mod tests {
         fn lock_cond(x: &RWlock, downgrade: bool, blk: &fn(c: &Condvar)) {
             if downgrade {
                 do x.write_downgrade |mode| {
-                    (&mode).write_cond(blk)
+                    do mode.write_cond |c| { blk(c) }
                 }
             } else {
-                x.write_cond(blk)
+                do x.write_cond |c| { blk(c) }
             }
         }
         let x = ~RWlock();
@@ -1361,13 +1363,13 @@ mod tests {
         }
 
         // wait until all children get in the mutex
-        for ports.each |port| { let _ = port.recv(); }
+        for ports.iter().advance |port| { let _ = port.recv(); }
         do lock_cond(x, dg2) |cond| {
             let num_woken = cond.broadcast();
             assert_eq!(num_woken, num_waiters);
         }
         // wait until all children wake up
-        for ports.each |port| { let _ = port.recv(); }
+        for ports.iter().advance |port| { let _ = port.recv(); }
     }
     #[test]
     fn test_rwlock_cond_broadcast() {

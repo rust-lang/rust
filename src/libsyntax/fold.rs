@@ -8,15 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
-
 use ast::*;
 use ast;
 use codemap::{span, spanned};
 use parse::token;
 use opt_vec::OptVec;
 
-use core::vec;
+use std::vec;
 
 pub trait ast_fold {
     fn fold_crate(@self, &crate) -> crate;
@@ -236,8 +234,8 @@ fn noop_fold_foreign_item(ni: @foreign_item, fld: @ast_fold)
                         purity,
                         fold_generics(generics, fld))
                 }
-                foreign_item_const(t) => {
-                    foreign_item_const(fld.fold_ty(t))
+                foreign_item_static(t, m) => {
+                    foreign_item_static(fld.fold_ty(t), m)
                 }
             },
         id: fld.new_id(ni.id),
@@ -270,7 +268,7 @@ fn noop_fold_struct_field(sf: @struct_field, fld: @ast_fold)
 
 pub fn noop_fold_item_underscore(i: &item_, fld: @ast_fold) -> item_ {
     match *i {
-        item_const(t, e) => item_const(fld.fold_ty(t), fld.fold_expr(e)),
+        item_static(t, m, e) => item_static(fld.fold_ty(t), m, fld.fold_expr(e)),
         item_fn(ref decl, purity, abi, ref generics, ref body) => {
             item_fn(
                 fold_fn_decl(decl, fld),
@@ -378,7 +376,7 @@ fn noop_fold_method(m: @method, fld: @ast_fold) -> @method {
 pub fn noop_fold_block(b: &blk_, fld: @ast_fold) -> blk_ {
     let view_items = b.view_items.map(|x| fld.fold_view_item(*x));
     let mut stmts = ~[];
-    for b.stmts.each |stmt| {
+    for b.stmts.iter().advance |stmt| {
         match fld.fold_stmt(*stmt) {
             None => {}
             Some(stmt) => stmts.push(stmt)
@@ -653,6 +651,12 @@ pub fn noop_fold_ty(t: &ty_, fld: @ast_fold) -> ty_ {
             span: fld.new_span(f.span),
         }
     }
+    fn fold_opt_bounds(b: &Option<OptVec<TyParamBound>>, fld: @ast_fold)
+                        -> Option<OptVec<TyParamBound>> {
+        do b.map |bounds| {
+            do bounds.map |bound| { fold_ty_param_bound(bound, fld) }
+        }
+    }
     match *t {
         ty_nil | ty_bot | ty_infer => copy *t,
         ty_box(ref mt) => ty_box(fold_mt(mt, fld)),
@@ -666,7 +670,7 @@ pub fn noop_fold_ty(t: &ty_, fld: @ast_fold) -> ty_ {
                 purity: f.purity,
                 region: f.region,
                 onceness: f.onceness,
-                bounds: f.bounds.map(|x| fold_ty_param_bound(x, fld)),
+                bounds: fold_opt_bounds(&f.bounds, fld),
                 decl: fold_fn_decl(&f.decl, fld),
                 lifetimes: copy f.lifetimes,
             })
@@ -680,7 +684,8 @@ pub fn noop_fold_ty(t: &ty_, fld: @ast_fold) -> ty_ {
             })
         }
         ty_tup(ref tys) => ty_tup(tys.map(|ty| fld.fold_ty(*ty))),
-        ty_path(path, id) => ty_path(fld.fold_path(path), fld.new_id(id)),
+        ty_path(path, bounds, id) =>
+            ty_path(fld.fold_path(path), @fold_opt_bounds(bounds, fld), fld.new_id(id)),
         ty_fixed_length_vec(ref mt, e) => {
             ty_fixed_length_vec(
                 fold_mt(mt, fld),
@@ -694,7 +699,7 @@ pub fn noop_fold_ty(t: &ty_, fld: @ast_fold) -> ty_ {
 // ...nor do modules
 pub fn noop_fold_mod(m: &_mod, fld: @ast_fold) -> _mod {
     ast::_mod {
-        view_items: vec::map(m.view_items, |x| fld.fold_view_item(*x)),
+        view_items: m.view_items.iter().transform(|x| fld.fold_view_item(*x)).collect(),
         items: vec::filter_mapped(m.items, |x| fld.fold_item(*x)),
     }
 }
@@ -703,8 +708,8 @@ fn noop_fold_foreign_mod(nm: &foreign_mod, fld: @ast_fold) -> foreign_mod {
     ast::foreign_mod {
         sort: nm.sort,
         abis: nm.abis,
-        view_items: vec::map(nm.view_items, |x| fld.fold_view_item(*x)),
-        items: vec::map(nm.items, |x| fld.fold_foreign_item(*x)),
+        view_items: nm.view_items.iter().transform(|x| fld.fold_view_item(*x)).collect(),
+        items: nm.items.iter().transform(|x| fld.fold_foreign_item(*x)).collect(),
     }
 }
 
@@ -723,8 +728,8 @@ fn noop_fold_variant(v: &variant_, fld: @ast_fold) -> variant_ {
         }
         struct_variant_kind(struct_def) => {
             kind = struct_variant_kind(@ast::struct_def {
-                fields: vec::map(struct_def.fields,
-                                 |f| fld.fold_struct_field(*f)),
+                fields: struct_def.fields.iter()
+                    .transform(|f| fld.fold_struct_field(*f)).collect(),
                 ctor_id: struct_def.ctor_id.map(|c| fld.new_id(*c))
             })
         }
@@ -819,8 +824,7 @@ impl ast_fold for AstFoldFns {
        @view_item {
         @ast::view_item {
             node: (self.fold_view_item)(&x.node, self as @ast_fold),
-            attrs: vec::map(x.attrs, |a|
-                  fold_attribute_(*a, self as @ast_fold)),
+            attrs: x.attrs.iter().transform(|a| fold_attribute_(*a, self as @ast_fold)).collect(),
             vis: x.vis,
             span: (self.new_span)(x.span),
         }
@@ -1009,5 +1013,4 @@ mod test {
                                     token::get_ident_interner()),
                      ~"zz!zz((zz$zz:zz$(zz $zz:zz)zz+=>(zz$(zz$zz$zz)+)))");
     }
-
 }

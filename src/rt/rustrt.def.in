@@ -7,6 +7,8 @@ debug_tydesc
 debug_get_stk_seg
 debug_abi_1
 debug_abi_2
+debug_static_mut
+debug_static_mut_check_four
 get_task_id
 get_time
 rust_tzset
@@ -54,7 +56,6 @@ rust_get_c_stack
 rust_log_str
 start_task
 rust_local_realloc
-vec_reserve_shared
 task_clear_event_reject
 task_wait_event
 task_signal_event
@@ -175,7 +176,6 @@ rust_set_task_local_data
 rust_task_local_data_atexit
 rust_task_ref
 rust_task_deref
-rust_call_tydesc_glue
 tdefl_compress_mem_to_heap
 tinfl_decompress_mem_to_heap
 rust_gc_metadata
@@ -197,7 +197,6 @@ rust_register_exit_function
 rust_get_global_data_ptr
 rust_inc_kernel_live_count
 rust_dec_kernel_live_count
-rust_exchange_count
 rust_get_rt_tls_key
 swap_registers
 rust_readdir

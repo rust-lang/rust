@@ -10,23 +10,50 @@
 
 // rustpkg utilities having to do with paths and directories
 
-use core::prelude::*;
 pub use package_path::{RemotePath, LocalPath, normalize};
 pub use package_id::PkgId;
 pub use target::{OutputType, Main, Lib, Test, Bench, Target, Build, Install};
 pub use version::{Version, NoVersion, split_version_general};
-use core::libc::consts::os::posix88::{S_IRUSR, S_IWUSR, S_IXUSR};
-use core::os::mkdir_recursive;
-use core::os;
-use core::iterator::IteratorUtil;
+use std::libc::consts::os::posix88::{S_IRUSR, S_IWUSR, S_IXUSR};
+use std::os::mkdir_recursive;
+use std::os;
+use std::iterator::IteratorUtil;
 use messages::*;
 use package_id::*;
 
+fn push_if_exists(vec: &mut ~[Path], p: &Path) {
+    let maybe_dir = p.push(".rust");
+    if os::path_exists(&maybe_dir) {
+        vec.push(maybe_dir);
+    }
+}
+
+#[cfg(windows)]
+static path_entry_separator: &'static str = ";";
+#[cfg(not(windows))]
+static path_entry_separator: &'static str = ":";
+
 /// Returns the value of RUST_PATH, as a list
-/// of Paths. In general this should be read from the
-/// environment; for now, it's hard-wired to just be "."
+/// of Paths. Includes default entries for, if they exist:
+/// $HOME/.rust
+/// DIR/.rust for any DIR that's the current working directory
+/// or an ancestor of it
 pub fn rust_path() -> ~[Path] {
-    ~[Path(".")]
+    let mut env_rust_path: ~[Path] = match os::getenv("RUST_PATH") {
+        Some(env_path) => {
+            let env_path_components: ~[&str] =
+                env_path.split_str_iter(path_entry_separator).collect();
+            env_path_components.map(|&s| Path(s))
+        }
+        None => ~[]
+    };
+    let cwd = os::getcwd();
+    // now add in default entries
+    env_rust_path.push(copy cwd);
+    do cwd.each_parent() |p| { push_if_exists(&mut env_rust_path, p) };
+    let h = os::homedir();
+    for h.iter().advance |h| { push_if_exists(&mut env_rust_path, h); }
+    env_rust_path
 }
 
 pub static u_rwx: i32 = (S_IRUSR | S_IWUSR | S_IXUSR) as i32;
@@ -43,7 +70,8 @@ pub fn make_dir_rwx(p: &Path) -> bool { os::make_dir(p, u_rwx) }
 /// pkgid's short name
 pub fn workspace_contains_package_id(pkgid: &PkgId, workspace: &Path) -> bool {
     let src_dir = workspace.push("src");
-    for os::list_dir(&src_dir).each |&p| {
+    let dirs = os::list_dir(&src_dir);
+    for dirs.iter().advance |&p| {
         let p = Path(p);
         debug!("=> p = %s", p.to_str());
         if !os::path_is_dir(&src_dir.push_rel(&p)) {
@@ -93,7 +121,7 @@ pub fn pkgid_src_in_workspace(pkgid: &PkgId, workspace: &Path) -> ~[Path] {
 /// Returns a src for pkgid that does exist -- None if none of them do
 pub fn first_pkgid_src_in_workspace(pkgid: &PkgId, workspace: &Path) -> Option<Path> {
     let rs = pkgid_src_in_workspace(pkgid, workspace);
-    for rs.each |p| {
+    for rs.iter().advance |p| {
         if os::path_exists(p) {
             return Some(copy *p);
         }
@@ -189,7 +217,7 @@ pub fn library_in_workspace(path: &LocalPath, short_name: &str, where: Target,
     debug!("lib_prefix = %s and lib_filetype = %s", lib_prefix, lib_filetype);
 
     let mut result_filename = None;
-    for dir_contents.each |&p| {
+    for dir_contents.iter().advance |&p| {
         let mut which = 0;
         let mut hash = None;
         let p_path = Path(p);

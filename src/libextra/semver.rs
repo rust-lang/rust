@@ -12,15 +12,14 @@
 
 #[allow(missing_doc)];
 
-use core::prelude::*;
 
-use core::char;
-use core::cmp;
-use core::io::{ReaderUtil};
-use core::io;
-use core::option::{Option, Some, None};
-use core::to_str::ToStr;
-use core::uint;
+use std::char;
+use std::cmp;
+use std::io::{ReaderUtil};
+use std::io;
+use std::option::{Option, Some, None};
+use std::to_str::ToStr;
+use std::uint;
 
 #[deriving(Eq)]
 pub enum Identifier {
@@ -79,12 +78,12 @@ impl ToStr for Version {
         let s = if self.pre.is_empty() {
             s
         } else {
-            s + "-" + self.pre.map(|i| i.to_str()).connect(".")
+            fmt!("%s-%s", s, self.pre.map(|i| i.to_str()).connect("."))
         };
         if self.build.is_empty() {
             s
         } else {
-            s + "+" + self.build.map(|i| i.to_str()).connect(".")
+            fmt!("%s+%s", s, self.build.map(|i| i.to_str()).connect("."))
         }
     }
 }

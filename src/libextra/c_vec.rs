@@ -36,10 +36,9 @@
  * still held if needed.
  */
 
-use core::prelude::*;
 
-use core::option;
-use core::ptr;
+use std::option;
+use std::ptr;
 
 /**
  * The type representing a foreign chunk of memory
@@ -57,7 +56,7 @@ struct DtorRes {
 
 #[unsafe_destructor]
 impl Drop for DtorRes {
-    fn finalize(&self) {
+    fn drop(&self) {
         match self.dtor {
             option::None => (),
             option::Some(f) => f()
@@ -150,8 +149,8 @@ mod tests {
 
     use c_vec::*;
 
-    use core::libc::*;
-    use core::libc;
+    use std::libc::*;
+    use std::libc;
 
     fn malloc(n: size_t) -> CVec<u8> {
         unsafe {
@@ -159,8 +158,7 @@ mod tests {
 
             assert!(mem as int != 0);
 
-            return c_vec_with_dtor(mem as *mut u8, n as uint,
-                                   || unsafe { free(mem) });
+            c_vec_with_dtor(mem as *mut u8, n as uint, || free(mem))
         }
     }
 

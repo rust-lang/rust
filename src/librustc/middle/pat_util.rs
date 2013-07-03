@@ -8,11 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
 
 use middle::resolve;
 
-use core::hashmap::HashMap;
+use std::hashmap::HashMap;
 use syntax::ast::*;
 use syntax::ast_util::{path_to_ident, walk_pat};
 use syntax::codemap::span;
@@ -29,7 +28,7 @@ pub fn pat_id_map(dm: resolve::DefMap, pat: @pat) -> PatIdMap {
     map
 }
 
-pub fn pat_is_variant_or_struct(dm: resolve::DefMap, pat: @pat) -> bool {
+pub fn pat_is_variant_or_struct(dm: resolve::DefMap, pat: &pat) -> bool {
     match pat.node {
         pat_enum(_, _) | pat_ident(_, _, None) | pat_struct(*) => {
             match dm.find(&pat.id) {
@@ -45,7 +44,7 @@ pub fn pat_is_const(dm: resolve::DefMap, pat: &pat) -> bool {
     match pat.node {
         pat_ident(_, _, None) | pat_enum(*) => {
             match dm.find(&pat.id) {
-                Some(&def_const(*)) => true,
+                Some(&def_static(_, false)) => true,
                 _ => false
             }
         }

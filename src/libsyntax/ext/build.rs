@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
-
 use abi::AbiSet;
 use ast::ident;
 use ast;
@@ -48,7 +46,7 @@ pub trait AstBuilder {
     fn ty_mt(&self, ty: @ast::Ty, mutbl: ast::mutability) -> ast::mt;
 
     fn ty(&self, span: span, ty: ast::ty_) -> @ast::Ty;
-    fn ty_path(&self, @ast::Path) -> @ast::Ty;
+    fn ty_path(&self, @ast::Path, @Option<OptVec<ast::TyParamBound>>) -> @ast::Ty;
     fn ty_ident(&self, span: span, idents: ast::ident) -> @ast::Ty;
 
     fn ty_rptr(&self, span: span,
@@ -267,14 +265,17 @@ impl AstBuilder for @ExtCtxt {
         }
     }
 
-    fn ty_path(&self, path: @ast::Path) -> @ast::Ty {
+    fn ty_path(&self, path: @ast::Path, bounds: @Option<OptVec<ast::TyParamBound>>)
+              -> @ast::Ty {
         self.ty(path.span,
-                ast::ty_path(path, self.next_id()))
+                ast::ty_path(path, bounds, self.next_id()))
     }
 
+    // Might need to take bounds as an argument in the future, if you ever want
+    // to generate a bounded existential trait type.
     fn ty_ident(&self, span: span, ident: ast::ident)
         -> @ast::Ty {
-        self.ty_path(self.path_ident(span, ident))
+        self.ty_path(self.path_ident(span, ident), @None)
     }
 
     fn ty_rptr(&self,
@@ -304,7 +305,8 @@ impl AstBuilder for @ExtCtxt {
                               self.ident_of("Option")
                           ],
                           None,
-                          ~[ ty ]))
+                          ~[ ty ]),
+            @None)
     }
 
     fn ty_field_imm(&self, span: span, name: ident, ty: @ast::Ty) -> ast::ty_field {
@@ -342,7 +344,7 @@ impl AstBuilder for @ExtCtxt {
     fn ty_vars_global(&self, ty_params: &OptVec<ast::TyParam>) -> ~[@ast::Ty] {
         opt_vec::take_vec(
             ty_params.map(|p| self.ty_path(
-                self.path_global(dummy_sp(), ~[p.ident]))))
+                self.path_global(dummy_sp(), ~[p.ident]), @None)))
     }
 
     fn strip_bounds(&self, generics: &Generics) -> Generics {

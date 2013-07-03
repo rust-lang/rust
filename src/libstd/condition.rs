@@ -90,7 +90,7 @@ struct Guard<'self, T, U> {
 
 #[unsafe_destructor]
 impl<'self, T, U> Drop for Guard<'self, T, U> {
-    fn finalize(&self) {
+    fn drop(&self) {
         unsafe {
             debug!("Guard: popping handler from TLS");
             let curr = local_data_pop(self.cond.key);

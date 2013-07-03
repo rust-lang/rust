@@ -52,7 +52,6 @@ use ext::pipes::pipec::gen_init;
 use ext::pipes::proto::visit;
 use parse::lexer::{new_tt_reader, reader};
 use parse::parser::Parser;
-use core::option::None;
 
 pub mod ast_builder;
 pub mod parse_proto;

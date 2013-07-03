@@ -10,12 +10,11 @@
 
 #[allow(missing_doc)];
 
-use core::prelude::*;
 
-use core::i32;
-use core::int;
-use core::io;
-use core::str;
+use std::i32;
+use std::int;
+use std::io;
+use std::str;
 
 static NSEC_PER_SEC: i32 = 1_000_000_000_i32;
 
@@ -849,7 +848,7 @@ priv fn do_strftime(format: &str, tm: &Tm) -> ~str {
     do io::with_str_reader(format) |rdr| {
         while !rdr.eof() {
             match rdr.read_char() {
-                '%' => buf += parse_type(rdr.read_char(), tm),
+                '%' => buf.push_str(parse_type(rdr.read_char(), tm)),
                 ch => buf.push_char(ch)
             }
         }
@@ -862,11 +861,11 @@ priv fn do_strftime(format: &str, tm: &Tm) -> ~str {
 mod tests {
     use time::*;
 
-    use core::float;
-    use core::os;
-    use core::result;
-    use core::result::{Err, Ok};
-    use core::str;
+    use std::float;
+    use std::os;
+    use std::result;
+    use std::result::{Err, Ok};
+    use std::str;
 
     fn test_get_time() {
         static some_recent_date: i64 = 1325376000i64; // 2012-01-01T00:00:00Z
@@ -1033,7 +1032,7 @@ mod tests {
             }
         }
 
-        for [
+        let days = [
             ~"Sunday",
             ~"Monday",
             ~"Tuesday",
@@ -1041,11 +1040,12 @@ mod tests {
             ~"Thursday",
             ~"Friday",
             ~"Saturday"
-        ].each |day| {
+        ];
+        for days.iter().advance |day| {
             assert!(test(*day, "%A"));
         }
 
-        for [
+        let days = [
             ~"Sun",
             ~"Mon",
             ~"Tue",
@@ -1053,11 +1053,12 @@ mod tests {
             ~"Thu",
             ~"Fri",
             ~"Sat"
-        ].each |day| {
+        ];
+        for days.iter().advance |day| {
             assert!(test(*day, "%a"));
         }
 
-        for [
+        let months = [
             ~"January",
             ~"February",
             ~"March",
@@ -1070,11 +1071,12 @@ mod tests {
             ~"October",
             ~"November",
             ~"December"
-        ].each |day| {
+        ];
+        for months.iter().advance |day| {
             assert!(test(*day, "%B"));
         }
 
-        for [
+        let months = [
             ~"Jan",
             ~"Feb",
             ~"Mar",
@@ -1087,7 +1089,8 @@ mod tests {
             ~"Oct",
             ~"Nov",
             ~"Dec"
-        ].each |day| {
+        ];
+        for months.iter().advance |day| {
             assert!(test(*day, "%b"));
         }
 
@@ -1138,6 +1141,9 @@ mod tests {
         assert!(result::unwrap(strptime("-0800", "%z")).tm_gmtoff ==
             0);
         assert!(test("%", "%%"));
+
+        // Test for #7256
+        assert_eq!(strptime("360", "%Y-%m-%d"), Err(~"Invalid year"))
     }
 
     fn test_ctime() {

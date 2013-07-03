@@ -19,10 +19,9 @@
  * of features.
  */
 
-use core::prelude::*;
 
-use core::cmp::{Eq, Ord};
-use core::option::{Some, None};
+use std::cmp::{Eq, Ord};
+use std::option::{Some, None};
 
 pub type Treemap<K, V> = @TreeNode<K, V>;
 
@@ -66,9 +65,9 @@ pub fn traverse<K, V: Copy>(m: Treemap<K, V>, f: &fn(&K, &V)) {
         // matches to me, so I changed it. but that may be a
         // de-optimization -- tjc
         Node(@ref k, @ref v, left, right) => {
-            traverse(left, f);
+            traverse(left, |k,v| f(k,v));
             f(k, v);
-            traverse(right, f);
+            traverse(right, |k,v| f(k,v));
         }
     }
 }

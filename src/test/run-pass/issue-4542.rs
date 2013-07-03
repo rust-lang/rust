@@ -8,9 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-test
+use std::os;
+
 pub fn main() {
-    for os::args().each |arg| {
+    let x = os::args();
+    for x.iter().advance |arg| {
         match arg.clone() {
             s => { }
         }

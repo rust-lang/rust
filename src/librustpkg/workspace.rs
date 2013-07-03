@@ -12,7 +12,7 @@
 
 use path_util::{rust_path, workspace_contains_package_id};
 use package_id::PkgId;
-use core::path::Path;
+use std::path::Path;
 
 pub fn each_pkg_parent_workspace(pkgid: &PkgId, action: &fn(&Path) -> bool) -> bool {
     // Using the RUST_PATH, find workspaces that contain
@@ -25,7 +25,7 @@ pub fn each_pkg_parent_workspace(pkgid: &PkgId, action: &fn(&Path) -> bool) -> b
                    pkgid.remote_path.to_str(),
                    rust_path().to_str());
     }
-    for workspaces.each |ws| {
+    for workspaces.iter().advance |ws| {
         if action(ws) {
             break;
         }

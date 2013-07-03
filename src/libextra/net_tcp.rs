@@ -13,7 +13,6 @@
 
 #[allow(missing_doc)];
 
-use core::prelude::*;
 
 use future;
 use future_spawn = future::spawn;
@@ -22,18 +21,18 @@ use uv;
 use uv::iotask;
 use uv::iotask::IoTask;
 
-use core::io;
-use core::libc::size_t;
-use core::libc;
-use core::comm::{stream, Port, SharedChan};
-use core::ptr;
-use core::result::{Result};
-use core::result;
-use core::uint;
-use core::vec;
+use std::io;
+use std::libc::size_t;
+use std::libc;
+use std::comm::{stream, Port, SharedChan};
+use std::ptr;
+use std::result::{Result};
+use std::result;
+use std::uint;
+use std::vec;
 
 pub mod rustrt {
-    use core::libc;
+    use std::libc;
 
     #[nolink]
     pub extern {
@@ -57,7 +56,7 @@ pub struct TcpSocket {
 
 #[unsafe_destructor]
 impl Drop for TcpSocket {
-    fn finalize(&self) {
+    fn drop(&self) {
         tear_down_socket_data(self.socket_data)
     }
 }
@@ -360,7 +359,7 @@ pub fn write_future(sock: &TcpSocket, raw_write_data: ~[u8])
  * # Returns
  *
  * * A `Result` instance that will either contain a
- * `core::comm::Port<Result<~[u8], TcpErrData>>` that the user can read
+ * `std::comm::Port<Result<~[u8], TcpErrData>>` that the user can read
  * (and * optionally, loop on) from until `read_stop` is called, or a
  * `TcpErrData` record
  */
@@ -619,7 +618,7 @@ pub fn accept(new_conn: TcpNewConnection)
  * callback's arguments are:
  *     * `new_conn` - an opaque type that can be passed to
  *     `net::tcp::accept` in order to be converted to a `TcpSocket`.
- *     * `kill_ch` - channel of type `core::comm::Chan<Option<tcp_err_data>>`.
+ *     * `kill_ch` - channel of type `std::comm::Chan<Option<tcp_err_data>>`.
  *     this channel can be used to send a message to cause `listen` to begin
  *     closing the underlying libuv data structures.
  *
@@ -683,7 +682,7 @@ fn listen_common(host_ip: ip::IpAddr,
     // will defeat a move sigil, as is done to the host_ip
     // arg above.. this same pattern works w/o complaint in
     // tcp::connect (because the iotask::interact cb isn't
-    // nested within a core::comm::listen block)
+    // nested within a std::comm::listen block)
     let loc_ip = copy(host_ip);
     do iotask::interact(iotask) |loop_ptr| {
         unsafe {
@@ -976,9 +975,7 @@ impl io::Writer for TcpSocketBuf {
         let socket_data_ptr: *TcpSocketData =
             &(*((*(self.data)).sock).socket_data);
         let w_result = write_common_impl(socket_data_ptr,
-                                         vec::slice(data,
-                                                    0,
-                                                    data.len()).to_vec());
+                                         data.slice(0, data.len()).to_owned());
         if w_result.is_err() {
             let err_data = w_result.get_err();
             debug!(
@@ -1431,7 +1428,6 @@ struct TcpBufferedSocketData {
 
 #[cfg(test)]
 mod test {
-    use core::prelude::*;
 
     use net::ip;
     use net::tcp::{GenericListenErr, TcpConnectErrData, TcpListenErrData};
@@ -1440,12 +1436,12 @@ mod test {
     use uv::iotask::IoTask;
     use uv;
 
-    use core::cell::Cell;
-    use core::comm::{stream, SharedChan};
-    use core::io;
-    use core::result;
-    use core::str;
-    use core::task;
+    use std::cell::Cell;
+    use std::comm::{stream, SharedChan};
+    use std::io;
+    use std::result;
+    use std::str;
+    use std::task;
 
     // FIXME don't run on fbsd or linux 32 bit (#2064)
     #[cfg(target_os="win32")]
@@ -1459,33 +1455,23 @@ mod test {
 
             #[test]
             fn test_gl_tcp_server_and_client_ipv4() {
-                unsafe {
-                    impl_gl_tcp_ipv4_server_and_client();
-                }
+                impl_gl_tcp_ipv4_server_and_client();
             }
             #[test]
             fn test_gl_tcp_get_peer_addr() {
-                unsafe {
-                    impl_gl_tcp_ipv4_get_peer_addr();
-                }
+                impl_gl_tcp_ipv4_get_peer_addr();
             }
             #[test]
             fn test_gl_tcp_ipv4_client_error_connection_refused() {
-                unsafe {
-                    impl_gl_tcp_ipv4_client_error_connection_refused();
-                }
+                impl_gl_tcp_ipv4_client_error_connection_refused();
             }
             #[test]
             fn test_gl_tcp_server_address_in_use() {
-                unsafe {
-                    impl_gl_tcp_ipv4_server_address_in_use();
-                }
+                impl_gl_tcp_ipv4_server_address_in_use();
             }
             #[test]
             fn test_gl_tcp_server_access_denied() {
-                unsafe {
-                    impl_gl_tcp_ipv4_server_access_denied();
-                }
+                impl_gl_tcp_ipv4_server_access_denied();
             }
             // Strange failure on Windows. --pcwalton
             #[test]
@@ -1757,7 +1743,7 @@ mod test {
     }
 
     pub fn impl_tcp_socket_impl_reader_handles_eof() {
-        use core::io::{Reader,ReaderUtil};
+        use std::io::{Reader,ReaderUtil};
 
         let hl_loop = &uv::global_loop::get();
         let server_ip = "127.0.0.1";

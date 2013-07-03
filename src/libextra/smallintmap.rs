@@ -15,15 +15,11 @@
 
 #[allow(missing_doc)];
 
-use core::prelude::*;
 
-use core::cmp;
-use core::container::{Container, Mutable, Map, Set};
-use core::old_iter::BaseIter;
-use core::old_iter;
-use core::uint;
-use core::util::replace;
-use core::vec;
+use std::cmp;
+use std::container::{Container, Mutable, Map, Set};
+use std::uint;
+use std::util::replace;
 
 #[allow(missing_doc)]
 pub struct SmallIntMap<T> {
@@ -58,38 +54,6 @@ impl<V> Map<uint, V> for SmallIntMap<V> {
         self.find(key).is_some()
     }
 
-    /// Visit all key-value pairs in order
-    fn each<'a>(&'a self, it: &fn(&uint, &'a V) -> bool) -> bool {
-        for uint::range(0, self.v.len()) |i| {
-            match self.v[i] {
-              Some(ref elt) => if !it(&i, elt) { return false; },
-              None => ()
-            }
-        }
-        return true;
-    }
-
-    /// Visit all keys in order
-    fn each_key(&self, blk: &fn(key: &uint) -> bool) -> bool {
-        self.each(|k, _| blk(k))
-    }
-
-    /// Visit all values in order
-    fn each_value<'a>(&'a self, blk: &fn(value: &'a V) -> bool) -> bool {
-        self.each(|_, v| blk(v))
-    }
-
-    /// Iterate over the map and mutate the contained values
-    fn mutate_values(&mut self, it: &fn(&uint, &mut V) -> bool) -> bool {
-        for uint::range(0, self.v.len()) |i| {
-            match self.v[i] {
-              Some(ref mut elt) => if !it(&i, elt) { return false; },
-              None => ()
-            }
-        }
-        return true;
-    }
-
     /// Return a reference to the value corresponding to the key
     fn find<'a>(&'a self, key: &uint) -> Option<&'a V> {
         if *key < self.v.len() {
@@ -121,7 +85,7 @@ impl<V> Map<uint, V> for SmallIntMap<V> {
         let exists = self.contains_key(&key);
         let len = self.v.len();
         if len <= key {
-            vec::grow_fn(&mut self.v, key - len + 1, |_| None);
+            self.v.grow_fn(key - len + 1, |_| None);
         }
         self.v[key] = Some(value);
         !exists
@@ -157,6 +121,38 @@ impl<V> Map<uint, V> for SmallIntMap<V> {
 impl<V> SmallIntMap<V> {
     /// Create an empty SmallIntMap
     pub fn new() -> SmallIntMap<V> { SmallIntMap{v: ~[]} }
+
+    /// Visit all key-value pairs in order
+    pub fn each<'a>(&'a self, it: &fn(&uint, &'a V) -> bool) -> bool {
+        for uint::range(0, self.v.len()) |i| {
+            match self.v[i] {
+              Some(ref elt) => if !it(&i, elt) { return false; },
+              None => ()
+            }
+        }
+        return true;
+    }
+
+    /// Visit all keys in order
+    pub fn each_key(&self, blk: &fn(key: &uint) -> bool) -> bool {
+        self.each(|k, _| blk(k))
+    }
+
+    /// Visit all values in order
+    pub fn each_value<'a>(&'a self, blk: &fn(value: &'a V) -> bool) -> bool {
+        self.each(|_, v| blk(v))
+    }
+
+    /// Iterate over the map and mutate the contained values
+    pub fn mutate_values(&mut self, it: &fn(&uint, &mut V) -> bool) -> bool {
+        for uint::range(0, self.v.len()) |i| {
+            match self.v[i] {
+              Some(ref mut elt) => if !it(&i, elt) { return false; },
+              None => ()
+            }
+        }
+        return true;
+    }
 
     /// Visit all key-value pairs in reverse order
     pub fn each_reverse<'a>(&'a self, it: &fn(uint, &'a V) -> bool) -> bool {
@@ -212,12 +208,6 @@ impl Mutable for SmallIntSet {
     fn clear(&mut self) { self.map.clear() }
 }
 
-impl BaseIter<uint> for SmallIntSet {
-    /// Visit all values in order
-    fn each(&self, f: &fn(&uint) -> bool) -> bool { self.map.each_key(f) }
-    fn size_hint(&self) -> Option<uint> { Some(self.len()) }
-}
-
 impl Set<uint> for SmallIntSet {
     /// Return true if the set contains a value
     fn contains(&self, value: &uint) -> bool { self.map.contains_key(value) }
@@ -233,12 +223,14 @@ impl Set<uint> for SmallIntSet {
     /// Return true if the set has no elements in common with `other`.
     /// This is equivalent to checking for an empty uintersection.
     fn is_disjoint(&self, other: &SmallIntSet) -> bool {
-        old_iter::all(self, |v| !other.contains(v))
+        for self.each |v| { if other.contains(v) { return false } }
+        true
     }
 
     /// Return true if the set is a subset of another
     fn is_subset(&self, other: &SmallIntSet) -> bool {
-        old_iter::all(self, |v| other.contains(v))
+        for self.each |v| { if !other.contains(v) { return false } }
+        true
     }
 
     /// Return true if the set is a superset of another
@@ -286,11 +278,13 @@ impl Set<uint> for SmallIntSet {
 impl SmallIntSet {
     /// Create an empty SmallIntSet
     pub fn new() -> SmallIntSet { SmallIntSet{map: SmallIntMap::new()} }
+
+    /// Visit all values in order
+    pub fn each(&self, f: &fn(&uint) -> bool) -> bool { self.map.each_key(f) }
 }
 
 #[cfg(test)]
 mod tests {
-    use core::prelude::*;
 
     use super::SmallIntMap;
 
@@ -385,11 +379,8 @@ mod tests {
 
 #[cfg(test)]
 mod test_set {
-    use core::prelude::*;
 
     use super::SmallIntSet;
-
-    use core::vec;
 
     #[test]
     fn test_disjoint() {
@@ -462,7 +453,7 @@ mod test_set {
         let mut i = 0;
         let expected = [3, 5, 11, 77];
         for a.intersection(&b) |x| {
-            assert!(vec::contains(expected, x));
+            assert!(expected.contains(x));
             i += 1
         }
         assert_eq!(i, expected.len());
@@ -485,7 +476,7 @@ mod test_set {
         let mut i = 0;
         let expected = [1, 5, 11];
         for a.difference(&b) |x| {
-            assert!(vec::contains(expected, x));
+            assert!(expected.contains(x));
             i += 1
         }
         assert_eq!(i, expected.len());
@@ -510,7 +501,7 @@ mod test_set {
         let mut i = 0;
         let expected = [1, 5, 11, 14, 22];
         for a.symmetric_difference(&b) |x| {
-            assert!(vec::contains(expected, x));
+            assert!(expected.contains(x));
             i += 1
         }
         assert_eq!(i, expected.len());
@@ -539,7 +530,7 @@ mod test_set {
         let mut i = 0;
         let expected = [1, 3, 5, 9, 11, 13, 16, 19, 24];
         for a.union(&b) |x| {
-            assert!(vec::contains(expected, x));
+            assert!(expected.contains(x));
             i += 1
         }
         assert_eq!(i, expected.len());

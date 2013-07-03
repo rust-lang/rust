@@ -1074,7 +1074,8 @@ mod test {
             let n_tasks = 10;
             let token = 2000;
 
-            let mut (p, ch1) = stream();
+            let (p, ch1) = stream();
+            let mut p = p;
             ch1.send((token, end_chan));
             let mut i = 2;
             while i <= n_tasks {
@@ -1127,7 +1128,7 @@ mod test {
             struct S { field: () }
 
             impl Drop for S {
-                fn finalize(&self) {
+                fn drop(&self) {
                     let _foo = @0;
                 }
             }

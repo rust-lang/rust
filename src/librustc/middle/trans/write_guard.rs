@@ -14,7 +14,6 @@
 //! and for each in debugging (e.g., so you can use
 //! `RUST_LOG=rustc::middle::trans::write_guard`).
 
-use core::prelude::*;
 
 use lib::llvm::ValueRef;
 use middle::borrowck::{RootInfo, root_map_key, DynaImm, DynaMut};
@@ -27,6 +26,8 @@ use middle::trans::expr;
 use middle::ty;
 use syntax::codemap::span;
 use syntax::ast;
+
+use middle::trans::type_::Type;
 
 pub fn root_and_write_guard(datum: &Datum,
                             mut bcx: block,
@@ -64,20 +65,15 @@ pub fn return_to_mut(mut bcx: block,
     debug!("write_guard::return_to_mut(root_key=%?, %s, %s, %s)",
            root_key,
            bcx.to_str(),
-           val_str(bcx.ccx().tn, frozen_val_ref),
-           val_str(bcx.ccx().tn, bits_val_ref));
+           bcx.val_to_str(frozen_val_ref),
+           bcx.val_to_str(bits_val_ref));
 
-    let box_ptr =
-        Load(bcx, PointerCast(bcx,
-                              frozen_val_ref,
-                              T_ptr(T_ptr(T_i8()))));
+    let box_ptr = Load(bcx, PointerCast(bcx, frozen_val_ref, Type::i8p().ptr_to()));
 
-    let bits_val =
-        Load(bcx, bits_val_ref);
+    let bits_val = Load(bcx, bits_val_ref);
 
     if bcx.tcx().sess.debug_borrows() {
-        bcx = callee::trans_lang_call(
-            bcx,
+        bcx = callee::trans_lang_call( bcx,
             bcx.tcx().lang_items.unrecord_borrow_fn(),
             [
                 box_ptr,
@@ -146,10 +142,7 @@ fn root(datum: &Datum,
                 DynaMut => bcx.tcx().lang_items.borrow_as_mut_fn(),
             };
 
-            let box_ptr = Load(bcx,
-                               PointerCast(bcx,
-                                           scratch.val,
-                                           T_ptr(T_ptr(T_i8()))));
+            let box_ptr = Load(bcx, PointerCast(bcx, scratch.val, Type::i8p().ptr_to()));
 
             bcx = callee::trans_lang_call(
                 bcx,
@@ -194,6 +187,6 @@ fn perform_write_guard(datum: &Datum,
     callee::trans_lang_call(
         bcx,
         bcx.tcx().lang_items.check_not_borrowed_fn(),
-        [PointerCast(bcx, llval, T_ptr(T_i8())), filename, line],
+        [PointerCast(bcx, llval, Type::i8p()), filename, line],
         expr::Ignore)
 }

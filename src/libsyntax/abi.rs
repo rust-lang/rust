@@ -8,9 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
-
-use core::to_bytes;
+use std::to_bytes;
 
 #[deriving(Eq)]
 pub enum Abi {
@@ -87,7 +85,7 @@ fn each_abi(op: &fn(abi: Abi) -> bool) -> bool {
      * Iterates through each of the defined ABIs.
      */
 
-    AbiDatas.each(|abi_data| op(abi_data.abi))
+    AbiDatas.iter().advance(|abi_data| op(abi_data.abi))
 }
 
 pub fn lookup(name: &str) -> Option<Abi> {
@@ -211,9 +209,9 @@ impl AbiSet {
         let mut abis = ~[];
         for self.each |abi| { abis.push(abi); }
 
-        for abis.eachi |i, abi| {
+        for abis.iter().enumerate().advance |(i, abi)| {
             let data = abi.data();
-            for abis.slice(0, i).each |other_abi| {
+            for abis.slice(0, i).iter().advance |other_abi| {
                 let other_data = other_abi.data();
                 debug!("abis=(%?,%?) datas=(%?,%?)",
                        abi, data.abi_arch,
@@ -374,7 +372,7 @@ fn abi_to_str_rust() {
 
 #[test]
 fn indices_are_correct() {
-    for AbiDatas.eachi |i, abi_data| {
+    for AbiDatas.iter().enumerate().advance |(i, abi_data)| {
         assert!(i == abi_data.abi.index());
     }
 
@@ -389,7 +387,7 @@ fn indices_are_correct() {
 #[cfg(test)]
 fn check_arch(abis: &[Abi], arch: Architecture, expect: Option<Abi>) {
     let mut set = AbiSet::empty();
-    for abis.each |&abi| {
+    for abis.iter().advance |&abi| {
         set.add(abi);
     }
     let r = set.for_arch(arch);

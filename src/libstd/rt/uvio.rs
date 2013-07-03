@@ -15,7 +15,6 @@ use super::io::net::ip::IpAddr;
 use super::uv::*;
 use super::rtio::*;
 use ops::Drop;
-use old_iter::CopyableIter;
 use cell::Cell;
 use cast::transmute;
 use super::sched::{Scheduler, local_sched};
@@ -43,7 +42,7 @@ impl UvEventLoop {
 }
 
 impl Drop for UvEventLoop {
-    fn finalize(&self) {
+    fn drop(&self) {
         // XXX: Need mutable finalizer
         let this = unsafe {
             transmute::<&UvEventLoop, &mut UvEventLoop>(self)
@@ -165,7 +164,7 @@ impl UvTcpListener {
 }
 
 impl Drop for UvTcpListener {
-    fn finalize(&self) {
+    fn drop(&self) {
         // XXX: Again, this never gets called. Use .close() instead
         //self.watcher().as_stream().close(||());
     }
@@ -231,7 +230,7 @@ impl UvStream {
 }
 
 impl Drop for UvStream {
-    fn finalize(&self) {
+    fn drop(&self) {
         rtdebug!("closing stream");
         //self.watcher().close(||());
     }

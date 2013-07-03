@@ -8,12 +8,37 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::run;
+extern mod rustpkg;
+extern mod rustc;
+
+use std::{io, os};
+use rustpkg::api;
+use rustpkg::version::NoVersion;
+
+use rustc::metadata::filesearch;
 
 pub fn main() {
-    use core::libc::consts::os::posix88::{S_IRUSR, S_IWUSR, S_IXUSR};
+    use std::libc::consts::os::posix88::{S_IRUSR, S_IWUSR, S_IXUSR};
+    let args = os::args();
 
-    let out_path = Path(~"build/fancy_lib");
+// by convention, first arg is sysroot
+    if args.len() < 2 {
+        fail!("Package script requires a directory where rustc libraries live as the first \
+               argument");
+    }
+
+    let sysroot_arg = copy args[1];
+    let sysroot = Path(sysroot_arg);
+    if !os::path_exists(&sysroot) {
+        fail!("Package script requires a sysroot that exists; %s doesn't", sysroot.to_str());
+    }
+
+    if args[2] != ~"install" {
+        io::println(fmt!("Warning: I don't know how to %s", args[2]));
+        return;
+    }
+
+    let out_path = Path("build/fancy_lib");
     if !os::path_exists(&out_path) {
         assert!(os::make_dir(&out_path, (S_IRUSR | S_IWUSR | S_IXUSR) as i32));
     }
@@ -22,7 +47,10 @@ pub fn main() {
                                [io::Create]).get();
     file.write_str("pub fn wheeeee() { for [1, 2, 3].each() |_| { assert!(true); } }");
 
-    // now compile the crate itself
-    run::process_status("rustc", [~"src/fancy-lib/fancy-lib.rs", ~"--lib", ~"-o",
-                        out_path.push(~"fancy_lib").to_str()]);
+
+    debug!("api_____install_____lib, my sysroot:");
+    debug!(sysroot.to_str());
+
+    api::install_lib(@sysroot, os::getcwd(), ~"fancy-lib", Path("lib.rs"),
+                     NoVersion);
 }

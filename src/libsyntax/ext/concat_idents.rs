@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
-
 use ast;
 use codemap::span;
 use ext::base::*;
@@ -20,7 +18,7 @@ use parse::token::{str_to_ident};
 pub fn expand_syntax_ext(cx: @ExtCtxt, sp: span, tts: &[ast::token_tree])
     -> base::MacResult {
     let mut res_str = ~"";
-    for tts.eachi |i, e| {
+    for tts.iter().enumerate().advance |(i, e)| {
         if i & 1 == 1 {
             match *e {
                 ast::tt_tok(_, token::COMMA) => (),
@@ -28,8 +26,7 @@ pub fn expand_syntax_ext(cx: @ExtCtxt, sp: span, tts: &[ast::token_tree])
             }
         } else {
             match *e {
-                ast::tt_tok(_, token::IDENT(ident,_)) =>
-                res_str += cx.str_of(ident),
+                ast::tt_tok(_, token::IDENT(ident,_)) => res_str.push_str(cx.str_of(ident)),
                 _ => cx.span_fatal(sp, "concat_idents! requires ident args.")
             }
         }

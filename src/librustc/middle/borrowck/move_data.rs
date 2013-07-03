@@ -15,10 +15,9 @@ comments in the section "Moves and initialization" and in `doc.rs`.
 
 */
 
-use core::prelude::*;
 
-use core::hashmap::{HashMap, HashSet};
-use core::uint;
+use std::hashmap::{HashMap, HashSet};
+use std::uint;
 use middle::borrowck::*;
 use middle::dataflow::DataFlowContext;
 use middle::dataflow::DataFlowOperator;
@@ -348,22 +347,22 @@ impl MoveData {
          * killed by scoping. See `doc.rs` for more details.
          */
 
-        for self.moves.eachi |i, move| {
+        for self.moves.iter().enumerate().advance |(i, move)| {
             dfcx_moves.add_gen(move.id, i);
         }
 
-        for self.var_assignments.eachi |i, assignment| {
+        for self.var_assignments.iter().enumerate().advance |(i, assignment)| {
             dfcx_assign.add_gen(assignment.id, i);
             self.kill_moves(assignment.path, assignment.id, dfcx_moves);
         }
 
-        for self.path_assignments.each |assignment| {
+        for self.path_assignments.iter().advance |assignment| {
             self.kill_moves(assignment.path, assignment.id, dfcx_moves);
         }
 
         // Kill all moves related to a variable `x` when it goes out
         // of scope:
-        for self.paths.each |path| {
+        for self.paths.iter().advance |path| {
             match *path.loan_path {
                 LpVar(id) => {
                     let kill_id = tcx.region_maps.encl_scope(id);
@@ -375,7 +374,7 @@ impl MoveData {
         }
 
         // Kill all assignments when the variable goes out of scope:
-        for self.var_assignments.eachi |assignment_index, assignment| {
+        for self.var_assignments.iter().enumerate().advance |(assignment_index, assignment)| {
             match *self.path(assignment.path).loan_path {
                 LpVar(id) => {
                     let kill_id = tcx.region_maps.encl_scope(id);
@@ -411,7 +410,7 @@ impl MoveData {
 
         let mut p = self.path(index).first_child;
         while p != InvalidMovePathIndex {
-            if !self.each_extending_path(p, f) {
+            if !self.each_extending_path(p, |x| f(x)) {
                 return false;
             }
             p = self.path(p).next_sibling;
@@ -507,7 +506,7 @@ impl FlowedMoveData {
         for self.dfcx_moves.each_bit_on_entry_frozen(id) |index| {
             let move = &self.move_data.moves[index];
             let moved_path = move.path;
-            if base_indices.contains(&moved_path) {
+            if base_indices.iter().any_(|x| x == &moved_path) {
                 // Scenario 1 or 2: `loan_path` or some base path of
                 // `loan_path` was moved.
                 if !f(move, self.move_data.path(moved_path).loan_path) {
@@ -536,7 +535,7 @@ impl FlowedMoveData {
                        -> bool {
         //! True if `id` is the id of the LHS of an assignment
 
-        self.move_data.assignee_ids.contains(&id)
+        self.move_data.assignee_ids.iter().any_(|x| x == &id)
     }
 
     pub fn each_assignment_of(&self,

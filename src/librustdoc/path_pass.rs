@@ -10,7 +10,6 @@
 
 //! Records the full path to items
 
-use core::prelude::*;
 
 use astsrv;
 use doc::ItemUtils;

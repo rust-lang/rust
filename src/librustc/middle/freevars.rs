@@ -11,12 +11,11 @@
 // A pass that annotates for each loops and functions with the free
 // variables that they contain.
 
-use core::prelude::*;
 
 use middle::resolve;
 use middle::ty;
 
-use core::hashmap::HashMap;
+use std::hashmap::HashMap;
 use syntax::codemap::span;
 use syntax::{ast, ast_util, visit};
 
@@ -88,7 +87,7 @@ fn collect_freevars(def_map: resolve::DefMap, blk: &ast::blk)
 // efficient as it fully recomputes the free variables at every
 // node of interest rather than building up the free variables in
 // one pass. This could be improved upon if it turns out to matter.
-pub fn annotate_freevars(def_map: resolve::DefMap, crate: @ast::crate) ->
+pub fn annotate_freevars(def_map: resolve::DefMap, crate: &ast::crate) ->
    freevar_map {
     let freevars = @mut HashMap::new();
 

@@ -15,7 +15,6 @@ If the first paragraph of a long description is short enough then it
 is interpreted as the brief description.
 */
 
-use core::prelude::*;
 
 use astsrv;
 use doc::ItemUtils;
@@ -24,7 +23,7 @@ use fold::Fold;
 use fold;
 use pass::Pass;
 
-use core::util;
+use std::util;
 
 pub fn mk_pass() -> Pass {
     Pass {
@@ -176,7 +175,6 @@ pub fn paragraphs(s: &str) -> ~[~str] {
 
 #[cfg(test)]
 mod test {
-    use core::prelude::*;
 
     use astsrv;
     use attr_pass;

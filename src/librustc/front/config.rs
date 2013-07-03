@@ -8,10 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
 
-use core::option;
-use core::vec;
+use std::option;
+use std::vec;
 use syntax::{ast, fold, attr};
 
 type in_cfg_pred = @fn(attrs: ~[ast::attribute]) -> bool;
@@ -24,11 +23,11 @@ struct Context {
 // any items that do not belong in the current configuration
 pub fn strip_unconfigured_items(crate: @ast::crate) -> @ast::crate {
     do strip_items(crate) |attrs| {
-        in_cfg(/*bad*/copy crate.node.config, attrs)
+        in_cfg(crate.node.config, attrs)
     }
 }
 
-pub fn strip_items(crate: @ast::crate, in_cfg: in_cfg_pred)
+pub fn strip_items(crate: &ast::crate, in_cfg: in_cfg_pred)
     -> @ast::crate {
 
     let ctxt = @Context { in_cfg: in_cfg };
@@ -44,8 +43,7 @@ pub fn strip_items(crate: @ast::crate, in_cfg: in_cfg_pred)
           .. *fold::default_ast_fold()};
 
     let fold = fold::make_fold(precursor);
-    let res = @fold.fold_crate(&*crate);
-    return res;
+    @fold.fold_crate(crate)
 }
 
 fn filter_item(cx: @Context, item: @ast::item) ->
@@ -92,7 +90,7 @@ fn fold_foreign_mod(
     ast::foreign_mod {
         sort: nm.sort,
         abis: nm.abis,
-        view_items: vec::map(filtered_view_items, |x| fld.fold_view_item(*x)),
+        view_items: filtered_view_items.iter().transform(|x| fld.fold_view_item(*x)).collect(),
         items: filtered_items
     }
 }
@@ -143,7 +141,7 @@ fn fold_block(
     let filtered_view_items =
         filtered_view_items.map(|x| fld.fold_view_item(*x));
     let mut resulting_stmts = ~[];
-    for filtered_stmts.each |stmt| {
+    for filtered_stmts.iter().advance |stmt| {
         match fld.fold_stmt(*stmt) {
             None => {}
             Some(stmt) => resulting_stmts.push(stmt),
@@ -183,12 +181,12 @@ fn trait_method_in_cfg(cx: @Context, meth: &ast::trait_method) -> bool {
 
 // Determine if an item should be translated in the current crate
 // configuration based on the item's attributes
-fn in_cfg(cfg: ast::crate_cfg, attrs: ~[ast::attribute]) -> bool {
+fn in_cfg(cfg: &[@ast::meta_item], attrs: &[ast::attribute]) -> bool {
     metas_in_cfg(cfg, attr::attr_metas(attrs))
 }
 
-pub fn metas_in_cfg(cfg: ast::crate_cfg,
-                    metas: ~[@ast::meta_item]) -> bool {
+pub fn metas_in_cfg(cfg: &[@ast::meta_item],
+                    metas: &[@ast::meta_item]) -> bool {
     // The "cfg" attributes on the item
     let cfg_metas = attr::find_meta_items_by_name(metas, "cfg");
 
@@ -197,13 +195,13 @@ pub fn metas_in_cfg(cfg: ast::crate_cfg,
     // which the item is valid
     let cfg_metas = vec::filter_map(cfg_metas, |i| attr::get_meta_item_list(i));
 
-    if cfg_metas.all(|c| c.is_empty()) { return true; }
+    if cfg_metas.iter().all(|c| c.is_empty()) { return true; }
 
-    cfg_metas.any(|cfg_meta| {
-        cfg_meta.all(|cfg_mi| {
+    cfg_metas.iter().any_(|cfg_meta| {
+        cfg_meta.iter().all(|cfg_mi| {
             match cfg_mi.node {
                 ast::meta_list(s, ref it) if "not" == s
-                    => it.all(|mi| !attr::contains(cfg, *mi)),
+                    => it.iter().all(|mi| !attr::contains(cfg, *mi)),
                 _ => attr::contains(cfg, *cfg_mi)
             }
         })

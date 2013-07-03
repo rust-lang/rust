@@ -1,7 +1,5 @@
-use std::libc;
-
 extern {
-    pub unsafe fn debug_get_stk_seg() -> *libc::c_void;
+    pub unsafe fn free(p: *u8);
 }
 
 pub fn main() {

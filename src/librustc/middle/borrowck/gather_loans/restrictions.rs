@@ -10,9 +10,8 @@
 
 //! Computes the restrictions that result from a borrow.
 
-use core::prelude::*;
 
-use core::vec;
+use std::vec;
 use middle::borrowck::*;
 use mc = middle::mem_categorization;
 use middle::ty;
@@ -103,7 +102,7 @@ impl RestrictionsContext {
             }
 
             mc::cat_deref(cmt_base, _, mc::uniq_ptr(*)) => {
-                // R-Deref-Owned-Pointer
+                // R-Deref-Send-Pointer
                 //
                 // When we borrow the interior of an owned pointer, we
                 // cannot permit the base to be mutated, because that
@@ -125,7 +124,7 @@ impl RestrictionsContext {
 
             mc::cat_deref(_, _, mc::region_ptr(m_const, _)) |
             mc::cat_deref(_, _, mc::gc_ptr(m_const)) => {
-                // R-Deref-Const-Borrowed
+                // R-Deref-Freeze-Borrowed
                 self.check_no_mutability_control(cmt, restrictions);
                 Safe
             }
@@ -140,7 +139,7 @@ impl RestrictionsContext {
                 // static errors. For example, if there is code like
                 //
                 //    let v = @mut ~[1, 2, 3];
-                //    for v.each |e| {
+                //    for v.iter().advance |e| {
                 //        v.push(e + 1);
                 //    }
                 //
@@ -152,7 +151,7 @@ impl RestrictionsContext {
                 //
                 //    let v = @mut ~[1, 2, 3];
                 //    let w = v;
-                //    for v.each |e| {
+                //    for v.iter().advance |e| {
                 //        w.push(e + 1);
                 //    }
                 //
@@ -165,7 +164,7 @@ impl RestrictionsContext {
                 //    }
                 //    ...
                 //    let v: &V = ...;
-                //    for v.get_list().each |e| {
+                //    for v.get_list().iter().advance |e| {
                 //        v.get_list().push(e + 1);
                 //    }
                 match opt_loan_path(cmt_base) {

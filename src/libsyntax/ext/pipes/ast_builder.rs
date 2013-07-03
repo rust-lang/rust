@@ -13,13 +13,11 @@
 // To start with, it will be use dummy spans, but it might someday do
 // something smarter.
 
-use core::prelude::*;
-
 use ast::ident;
 use ast;
 use codemap::span;
 
-use core::vec;
+use std::vec;
 
 // Transitional reexports so qquote can find the paths it is looking for
 mod syntax {

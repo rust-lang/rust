@@ -35,11 +35,10 @@
 
 #[allow(missing_doc)];
 
-use core::prelude::*;
 
-use core::uint;
-use core::vec;
-use core::str;
+use std::uint;
+use std::vec;
+use std::str;
 
 /// The type of ropes.
 pub type Rope = node::Root;
@@ -447,7 +446,6 @@ pub fn loop_leaves(rope: Rope, it: &fn(node::Leaf) -> bool) -> bool{
 
 pub mod iterator {
     pub mod leaf {
-        use core::prelude::*;
 
         use rope::{Rope, node};
 
@@ -462,7 +460,6 @@ pub mod iterator {
         }
     }
     pub mod char {
-        use core::prelude::*;
 
         use rope::{Rope, node};
 
@@ -558,13 +555,12 @@ pub fn char_at(rope: Rope, pos: uint) -> char {
  Section: Implementation
 */
 pub mod node {
-    use core::prelude::*;
 
     use rope::node;
 
-    use core::cast;
-    use core::uint;
-    use core::vec;
+    use std::cast;
+    use std::uint;
+    use std::vec;
 
     /// Implementation of type `rope`
     pub enum Root {
@@ -1078,7 +1074,7 @@ pub mod node {
 
     pub fn loop_chars(node: @Node, it: &fn(c: char) -> bool) -> bool {
         return loop_leaves(node,|leaf| {
-            leaf.content.slice(leaf.byte_offset, leaf.byte_len).iter().all(it)
+            leaf.content.slice(leaf.byte_offset, leaf.byte_len).iter().all(|c| it(c))
         });
     }
 
@@ -1101,7 +1097,7 @@ pub mod node {
         loop {
             match (*current) {
               Leaf(x) => return it(x),
-              Concat(ref x) => if loop_leaves(x.left, it) { //non tail call
+              Concat(ref x) => if loop_leaves(x.left, |l| it(l)) { //non tail call
                 current = x.right;       //tail call
               } else {
                 return false;
@@ -1141,11 +1137,10 @@ pub mod node {
     }
 
     pub mod leaf_iterator {
-        use core::prelude::*;
 
         use rope::node::{Concat, Leaf, Node, height};
 
-        use core::vec;
+        use std::vec;
 
         pub struct T {
             stack: ~[@Node],
@@ -1184,7 +1179,6 @@ pub mod node {
     }
 
     pub mod char_iterator {
-        use core::prelude::*;
 
         use rope::node::{Leaf, Node};
         use rope::node::leaf_iterator;
@@ -1267,12 +1261,11 @@ pub mod node {
 
 #[cfg(test)]
 mod tests {
-    use core::prelude::*;
 
     use rope::*;
 
-    use core::uint;
-    use core::vec;
+    use std::uint;
+    use std::vec;
 
     //Utility function, used for sanity check
     fn rope_to_string(r: Rope) -> ~str {

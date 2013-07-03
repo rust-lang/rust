@@ -17,7 +17,7 @@
  * ~~~ {.rust}
  * # fn fib(n: uint) -> uint {42};
  * # fn make_a_sandwich() {};
- * let mut delayed_fib = std::future::spawn (|| fib(5000) );
+ * let mut delayed_fib = extra::future::spawn (|| fib(5000) );
  * make_a_sandwich();
  * println(fmt!("fib(5000) = %?", delayed_fib.get()))
  * ~~~
@@ -25,13 +25,12 @@
 
 #[allow(missing_doc)];
 
-use core::prelude::*;
 
-use core::cast;
-use core::cell::Cell;
-use core::comm::{PortOne, oneshot, send_one, recv_one};
-use core::task;
-use core::util::replace;
+use std::cast;
+use std::cell::Cell;
+use std::comm::{PortOne, oneshot, send_one, recv_one};
+use std::task;
+use std::util::replace;
 
 #[doc = "The future type"]
 pub struct Future<A> {
@@ -44,7 +43,7 @@ pub struct Future<A> {
 // over ~fn's that have pipes and so forth within!
 #[unsafe_destructor]
 impl<A> Drop for Future<A> {
-    fn finalize(&self) {}
+    fn drop(&self) {}
 }
 
 priv enum FutureState<A> {
@@ -101,7 +100,7 @@ pub fn from_value<A>(val: A) -> Future<A> {
     Future {state: Forced(val)}
 }
 
-pub fn from_port<A:Owned>(port: PortOne<A>) -> Future<A> {
+pub fn from_port<A:Send>(port: PortOne<A>) -> Future<A> {
     /*!
      * Create a future from a port
      *
@@ -127,7 +126,7 @@ pub fn from_fn<A>(f: ~fn() -> A) -> Future<A> {
     Future {state: Pending(f)}
 }
 
-pub fn spawn<A:Owned>(blk: ~fn() -> A) -> Future<A> {
+pub fn spawn<A:Send>(blk: ~fn() -> A) -> Future<A> {
     /*!
      * Create a future from a unique closure.
      *
@@ -151,9 +150,9 @@ pub fn spawn<A:Owned>(blk: ~fn() -> A) -> Future<A> {
 mod test {
     use future::*;
 
-    use core::cell::Cell;
-    use core::comm::{oneshot, send_one};
-    use core::task;
+    use std::cell::Cell;
+    use std::comm::{oneshot, send_one};
+    use std::task;
 
     #[test]
     fn test_from_value() {

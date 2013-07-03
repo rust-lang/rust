@@ -8,3 +8,4 @@
 --regex-rust=/[ \t]*static[ \t]+([a-zA-Z0-9_]+)/\1/m,consts/
 --regex-rust=/[ \t]*trait[ \t]+([a-zA-Z0-9_]+)/\1/m,traits/
 --regex-rust=/[ \t]*impl[ \t]+([a-zA-Z0-9_]+)/\1/m,impls/
+--regex-rust=/[ \t]*macro_rules![ \t]+([a-zA-Z0-9_]+)/\1/m,macros/

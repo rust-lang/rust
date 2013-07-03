@@ -8,50 +8,45 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
 
 use back::{upcall};
 use driver::session;
-use lib::llvm::{ContextRef, ModuleRef, ValueRef, TypeRef};
+use lib::llvm::{ContextRef, ModuleRef, ValueRef};
 use lib::llvm::{llvm, TargetData, TypeNames};
-use lib::llvm::{mk_target_data, mk_type_names};
-use lib;
+use lib::llvm::{mk_target_data};
 use metadata::common::LinkMeta;
 use middle::astencode;
 use middle::resolve;
 use middle::trans::adt;
 use middle::trans::base;
 use middle::trans::debuginfo;
-use middle::trans::reachable;
-use middle::trans::shape;
 use middle::trans::type_use;
 use middle::ty;
 
-use core::hash;
-use core::hashmap::{HashMap, HashSet};
-use core::str;
-use core::local_data;
+use middle::trans::type_::Type;
+
+use std::hash;
+use std::hashmap::{HashMap, HashSet};
+use std::str;
+use std::local_data;
+use extra::time;
 use syntax::ast;
 
-use middle::trans::common::{ExternMap,tydesc_info,BuilderRef_res,Stats,namegen,addrspace_gen};
-use middle::trans::common::{mono_id,T_int,T_float,T_tydesc,T_opaque_vec};
-use middle::trans::common::{new_namegen,new_addrspace_gen};
+use middle::trans::common::{mono_id,ExternMap,tydesc_info,BuilderRef_res,Stats};
 
 use middle::trans::base::{decl_crate_map};
-
-use middle::trans::shape::{mk_ctxt};
 
 pub struct CrateContext {
      sess: session::Session,
      llmod: ModuleRef,
      llcx: ContextRef,
      td: TargetData,
-     tn: @TypeNames,
+     tn: TypeNames,
      externs: ExternMap,
      intrinsics: HashMap<&'static str, ValueRef>,
      item_vals: HashMap<ast::node_id, ValueRef>,
      exp_map2: resolve::ExportMap2,
-     reachable: reachable::map,
+     reachable: @mut HashSet<ast::node_id>,
      item_symbols: HashMap<ast::node_id, ~str>,
      link_meta: LinkMeta,
      enum_sizes: HashMap<ty::t, uint>,
@@ -92,11 +87,9 @@ pub struct CrateContext {
      impl_method_cache: HashMap<(ast::def_id, ast::ident), ast::def_id>,
 
      module_data: HashMap<~str, ValueRef>,
-     lltypes: HashMap<ty::t, TypeRef>,
-     llsizingtypes: HashMap<ty::t, TypeRef>,
+     lltypes: HashMap<ty::t, Type>,
+     llsizingtypes: HashMap<ty::t, Type>,
      adt_reprs: HashMap<ty::t, @adt::Repr>,
-     names: namegen,
-     next_addrspace: addrspace_gen,
      symbol_hasher: hash::State,
      type_hashcodes: HashMap<ty::t, @str>,
      type_short_names: HashMap<ty::t, ~str>,
@@ -105,12 +98,11 @@ pub struct CrateContext {
      maps: astencode::Maps,
      stats: Stats,
      upcalls: @upcall::Upcalls,
-     tydesc_type: TypeRef,
-     int_type: TypeRef,
-     float_type: TypeRef,
-     opaque_vec_type: TypeRef,
+     tydesc_type: Type,
+     int_type: Type,
+     float_type: Type,
+     opaque_vec_type: Type,
      builder: BuilderRef_res,
-     shape_cx: shape::Ctxt,
      crate_map: ValueRef,
      // Set when at least one function uses GC. Needed so that
      // decl_gc_metadata knows whether to link to the module metadata, which
@@ -121,10 +113,15 @@ pub struct CrateContext {
 }
 
 impl CrateContext {
-    pub fn new(sess: session::Session, name: &str, tcx: ty::ctxt,
-               emap2: resolve::ExportMap2, maps: astencode::Maps,
-               symbol_hasher: hash::State, link_meta: LinkMeta,
-               reachable: reachable::map) -> CrateContext {
+    pub fn new(sess: session::Session,
+               name: &str,
+               tcx: ty::ctxt,
+               emap2: resolve::ExportMap2,
+               maps: astencode::Maps,
+               symbol_hasher: hash::State,
+               link_meta: LinkMeta,
+               reachable: @mut HashSet<ast::node_id>)
+               -> CrateContext {
         unsafe {
             let llcx = llvm::LLVMContextCreate();
             set_task_llcx(llcx);
@@ -136,22 +133,35 @@ impl CrateContext {
             str::as_c_str(data_layout, |buf| llvm::LLVMSetDataLayout(llmod, buf));
             str::as_c_str(targ_triple, |buf| llvm::LLVMSetTarget(llmod, buf));
             let targ_cfg = sess.targ_cfg;
+
             let td = mk_target_data(sess.targ_cfg.target_strs.data_layout);
-            let tn = mk_type_names();
+            let mut tn = TypeNames::new();
+
             let mut intrinsics = base::declare_intrinsics(llmod);
             if sess.opts.extra_debuginfo {
                 base::declare_dbg_intrinsics(llmod, &mut intrinsics);
             }
-            let int_type = T_int(targ_cfg);
-            let float_type = T_float(targ_cfg);
-            let tydesc_type = T_tydesc(targ_cfg);
-            lib::llvm::associate_type(tn, @"tydesc", tydesc_type);
+            let int_type = Type::int(targ_cfg.arch);
+            let float_type = Type::float(targ_cfg.arch);
+            let tydesc_type = Type::tydesc(targ_cfg.arch);
+            let opaque_vec_type = Type::opaque_vec(targ_cfg.arch);
+
+            let mut str_slice_ty = Type::named_struct("str_slice");
+            str_slice_ty.set_struct_body([Type::i8p(), int_type], false);
+
+            tn.associate_type("tydesc", &tydesc_type);
+            tn.associate_type("str_slice", &str_slice_ty);
+
             let crate_map = decl_crate_map(sess, link_meta, llmod);
             let dbg_cx = if sess.opts.debuginfo {
                 Some(debuginfo::DebugContext::new(llmod, name.to_owned()))
             } else {
                 None
             };
+
+            if sess.count_llvm_insns() {
+                base::init_insn_ctxt()
+            }
 
             CrateContext {
                   sess: sess,
@@ -185,8 +195,6 @@ impl CrateContext {
                   lltypes: HashMap::new(),
                   llsizingtypes: HashMap::new(),
                   adt_reprs: HashMap::new(),
-                  names: new_namegen(),
-                  next_addrspace: new_addrspace_gen(),
                   symbol_hasher: symbol_hasher,
                   type_hashcodes: HashMap::new(),
                   type_short_names: HashMap::new(),
@@ -202,7 +210,6 @@ impl CrateContext {
                     n_monos: 0u,
                     n_inlines: 0u,
                     n_closures: 0u,
-                    llvm_insn_ctxt: ~[],
                     llvm_insns: HashMap::new(),
                     fn_times: ~[]
                   },
@@ -210,9 +217,8 @@ impl CrateContext {
                   tydesc_type: tydesc_type,
                   int_type: int_type,
                   float_type: float_type,
-                  opaque_vec_type: T_opaque_vec(targ_cfg),
+                  opaque_vec_type: opaque_vec_type,
                   builder: BuilderRef_res(llvm::LLVMCreateBuilderInContext(llcx)),
-                  shape_cx: mk_ctxt(llmod),
                   crate_map: crate_map,
                   uses_gc: false,
                   dbg_cx: dbg_cx,
@@ -220,11 +226,17 @@ impl CrateContext {
             }
         }
     }
+
+    pub fn log_fn_time(&mut self, name: ~str, start: time::Timespec, end: time::Timespec) {
+        let elapsed = 1000 * ((end.sec - start.sec) as int) +
+            ((end.nsec as int) - (start.nsec as int)) / 1000000;
+        self.stats.fn_times.push((name, elapsed));
+    }
 }
 
 #[unsafe_destructor]
 impl Drop for CrateContext {
-    fn finalize(&self) {
+    fn drop(&self) {
         unsafe {
             unset_task_llcx();
         }
@@ -232,7 +244,6 @@ impl Drop for CrateContext {
 }
 
 fn task_local_llcx_key(_v: @ContextRef) {}
-
 pub fn task_llcx() -> ContextRef {
     let opt = unsafe { local_data::local_data_get(task_local_llcx_key) };
     *opt.expect("task-local LLVMContextRef wasn't ever set!")

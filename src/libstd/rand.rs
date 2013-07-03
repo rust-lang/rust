@@ -42,6 +42,7 @@ fn main () {
 
 use cast;
 use cmp;
+use container::Container;
 use int;
 use iterator::IteratorUtil;
 use local_data;
@@ -544,7 +545,7 @@ impl<R: Rng> RngUtil for R {
     fn choose_weighted_option<T:Copy>(&mut self, v: &[Weighted<T>])
                                      -> Option<T> {
         let mut total = 0u;
-        for v.each |item| {
+        for v.iter().advance |item| {
             total += item.weight;
         }
         if total == 0u {
@@ -552,7 +553,7 @@ impl<R: Rng> RngUtil for R {
         }
         let chosen = self.gen_uint_range(0u, total);
         let mut so_far = 0u;
-        for v.each |item| {
+        for v.iter().advance |item| {
             so_far += item.weight;
             if so_far > chosen {
                 return Some(copy item.item);
@@ -567,7 +568,7 @@ impl<R: Rng> RngUtil for R {
      */
     fn weighted_vec<T:Copy>(&mut self, v: &[Weighted<T>]) -> ~[T] {
         let mut r = ~[];
-        for v.each |item| {
+        for v.iter().advance |item| {
             for uint::range(0u, item.weight) |_i| {
                 r.push(copy item.item);
             }
@@ -589,7 +590,7 @@ impl<R: Rng> RngUtil for R {
             // invariant: elements with index >= i have been locked in place.
             i -= 1u;
             // lock element i in place.
-            vec::swap(values, i, self.gen_uint_range(0u, i + 1u));
+            values.swap(i, self.gen_uint_range(0u, i + 1u));
         }
     }
 }
@@ -720,7 +721,8 @@ impl IsaacRng {
     fn isaac(&mut self) {
         self.c += 1;
         // abbreviations
-        let mut (a, b) = (self.a, self.b + self.c);
+        let mut a = self.a;
+        let mut b = self.b + self.c;
 
         static midpoint: uint = RAND_SIZE as uint / 2;
 
@@ -746,7 +748,8 @@ impl IsaacRng {
             }}
         );
 
-        for [(0, midpoint), (midpoint, 0)].each |&(mr_offset, m2_offset)| {
+        let r = [(0, midpoint), (midpoint, 0)];
+        for r.iter().advance |&(mr_offset, m2_offset)| {
             for uint::range_step(0, midpoint, 4) |base| {
                 rngstep!(0, 13);
                 rngstep!(1, -6);
@@ -843,7 +846,7 @@ fn tls_rng_state(_v: @@mut IsaacRng) {}
  * `task_rng().gen::<int>()`.
  */
 #[inline]
-pub fn task_rng() -> @@mut IsaacRng {
+pub fn task_rng() -> @mut IsaacRng {
     let r : Option<@@mut IsaacRng>;
     unsafe {
         r = local_data::local_data_get(tls_rng_state);
@@ -853,20 +856,18 @@ pub fn task_rng() -> @@mut IsaacRng {
             unsafe {
                 let rng = @@mut IsaacRng::new_seeded(seed());
                 local_data::local_data_set(tls_rng_state, rng);
-                rng
+                *rng
             }
         }
-        Some(rng) => rng
+        Some(rng) => *rng
     }
 }
 
 // Allow direct chaining with `task_rng`
-impl<R: Rng> Rng for @@mut R {
+impl<R: Rng> Rng for @mut R {
     #[inline]
     fn next(&mut self) -> u32 {
-        match *self {
-            @@ref mut r => r.next()
-        }
+        (**self).next()
     }
 }
 
@@ -876,9 +877,7 @@ impl<R: Rng> Rng for @@mut R {
  */
 #[inline]
 pub fn random<T: Rand>() -> T {
-    match *task_rng() {
-        @ref mut r => r.gen()
-    }
+    task_rng().gen()
 }
 
 #[cfg(test)]

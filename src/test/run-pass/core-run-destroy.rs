@@ -42,10 +42,16 @@ fn test_destroy_actually_kills(force: bool) {
     #[cfg(windows)]
     static BLOCK_COMMAND: &'static str = "cmd";
 
-    #[cfg(unix)]
+    #[cfg(unix,not(target_os="android"))]
     fn process_exists(pid: libc::pid_t) -> bool {
         let run::ProcessOutput {output, _} = run::process_output("ps", [~"-p", pid.to_str()]);
         str::from_bytes(output).contains(pid.to_str())
+    }
+
+    #[cfg(unix,target_os="android")]
+    fn process_exists(pid: libc::pid_t) -> bool {
+        let run::ProcessOutput {output, _} = run::process_output("/system/bin/ps", [pid.to_str()]);
+        str::from_bytes(output).contains(~"root")
     }
 
     #[cfg(windows)]

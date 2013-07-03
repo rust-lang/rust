@@ -102,7 +102,6 @@
  *   to return explicitly.
  */
 
-use core::prelude::*;
 
 use middle::lint::{unused_variable, dead_assignment};
 use middle::pat_util;
@@ -110,12 +109,12 @@ use middle::ty;
 use middle::typeck;
 use middle::moves;
 
-use core::cast::transmute;
-use core::hashmap::HashMap;
-use core::io;
-use core::to_str;
-use core::uint;
-use core::vec;
+use std::cast::transmute;
+use std::hashmap::HashMap;
+use std::io;
+use std::to_str;
+use std::uint;
+use std::vec;
 use syntax::ast::*;
 use syntax::codemap::span;
 use syntax::parse::token::special_idents;
@@ -150,7 +149,7 @@ fn live_node_kind_to_str(lnk: LiveNodeKind, cx: ty::ctxt) -> ~str {
 pub fn check_crate(tcx: ty::ctxt,
                    method_map: typeck::method_map,
                    capture_map: moves::CaptureMap,
-                   crate: @crate) {
+                   crate: &crate) {
     let visitor = visit::mk_vt(@visit::Visitor {
         visit_fn: visit_fn,
         visit_local: visit_local,
@@ -322,7 +321,7 @@ impl IrMaps {
         self.capture_info_map.insert(node_id, @cs);
     }
 
-    pub fn captures(&mut self, expr: @expr) -> @~[CaptureInfo] {
+    pub fn captures(&mut self, expr: &expr) -> @~[CaptureInfo] {
         match self.capture_info_map.find(&expr.id) {
           Some(&caps) => caps,
           None => {
@@ -355,7 +354,7 @@ fn visit_fn(fk: &visit::fn_kind,
         debug!("creating fn_maps: %x", transmute(&*fn_maps));
     }
 
-    for decl.inputs.each |arg| {
+    for decl.inputs.iter().advance |arg| {
         do pat_util::pat_bindings(this.tcx.def_map, arg.pat)
                 |_bm, arg_id, _x, path| {
             debug!("adding argument %d", arg_id);
@@ -368,7 +367,7 @@ fn visit_fn(fk: &visit::fn_kind,
     match *fk {
         fk_method(_, _, method) => {
             match method.explicit_self.node {
-                sty_value | sty_region(*) | sty_box(_) | sty_uniq(_) => {
+                sty_value | sty_region(*) | sty_box(_) | sty_uniq => {
                     fn_maps.add_variable(Arg(method.self_id,
                                              special_idents::self_));
                 }
@@ -431,7 +430,7 @@ fn visit_local(local: @local, (this, vt): (@mut IrMaps, vt<@mut IrMaps>)) {
 
 fn visit_arm(arm: &arm, (this, vt): (@mut IrMaps, vt<@mut IrMaps>)) {
     let def_map = this.tcx.def_map;
-    for arm.pats.each |pat| {
+    for arm.pats.iter().advance |pat| {
         do pat_util::pat_bindings(def_map, *pat) |bm, p_id, sp, path| {
             debug!("adding local variable %d from match with bm %?",
                    p_id, bm);
@@ -470,7 +469,7 @@ fn visit_expr(expr: @expr, (this, vt): (@mut IrMaps, vt<@mut IrMaps>)) {
         // construction site.
         let cvs = this.capture_map.get(&expr.id);
         let mut call_caps = ~[];
-        for cvs.each |cv| {
+        for cvs.iter().advance |cv| {
             match moves::moved_variable_node_id_from_def(cv.def) {
               Some(rv) => {
                 let cv_ln = this.add_live_node(FreeVarNode(cv.span));
@@ -596,7 +595,7 @@ impl Liveness {
         }
     }
 
-    pub fn variable_from_path(&self, expr: @expr) -> Option<Variable> {
+    pub fn variable_from_path(&self, expr: &expr) -> Option<Variable> {
         match expr.node {
           expr_path(_) => {
             let def = self.tcx.def_map.get_copy(&expr.id);
@@ -923,7 +922,7 @@ impl Liveness {
         }
     }
 
-    pub fn propagate_through_stmt(&self, stmt: @stmt, succ: LiveNode)
+    pub fn propagate_through_stmt(&self, stmt: &stmt, succ: LiveNode)
                                   -> LiveNode {
         match stmt.node {
           stmt_decl(decl, _) => {
@@ -940,7 +939,7 @@ impl Liveness {
         }
     }
 
-    pub fn propagate_through_decl(&self, decl: @decl, succ: LiveNode)
+    pub fn propagate_through_decl(&self, decl: &decl, succ: LiveNode)
                                   -> LiveNode {
         match decl.node {
             decl_local(ref local) => {
@@ -950,7 +949,7 @@ impl Liveness {
         }
     }
 
-    pub fn propagate_through_local(&self, local: @local, succ: LiveNode)
+    pub fn propagate_through_local(&self, local: &local, succ: LiveNode)
                                    -> LiveNode {
         // Note: we mark the variable as defined regardless of whether
         // there is an initializer.  Initially I had thought to only mark
@@ -1075,7 +1074,7 @@ impl Liveness {
             let ln = self.live_node(expr.id, expr.span);
             self.init_empty(ln, succ);
             let mut first_merge = true;
-            for arms.each |arm| {
+            for arms.iter().advance |arm| {
                 let body_succ =
                     self.propagate_through_block(&arm.body, succ);
                 let guard_succ =
@@ -1293,7 +1292,7 @@ impl Liveness {
     }
 
     // see comment on propagate_through_lvalue()
-    pub fn write_lvalue(&self, expr: @expr, succ: LiveNode, acc: uint)
+    pub fn write_lvalue(&self, expr: &expr, succ: LiveNode, acc: uint)
                         -> LiveNode {
         match expr.node {
           expr_path(_) => self.access_path(expr, succ, acc),
@@ -1306,7 +1305,7 @@ impl Liveness {
         }
     }
 
-    pub fn access_path(&self, expr: @expr, succ: LiveNode, acc: uint)
+    pub fn access_path(&self, expr: &expr, succ: LiveNode, acc: uint)
                        -> LiveNode {
         let def = self.tcx.def_map.get_copy(&expr.id);
         match moves::moved_variable_node_id_from_def(def) {
@@ -1324,7 +1323,7 @@ impl Liveness {
     }
 
     pub fn propagate_through_loop(&self,
-                                  expr: @expr,
+                                  expr: &expr,
                                   cond: Option<@expr>,
                                   body: &blk,
                                   succ: LiveNode)
@@ -1453,12 +1452,12 @@ fn check_expr(expr: @expr, (this, vt): (@Liveness, vt<@Liveness>)) {
       }
 
       expr_inline_asm(ref ia) => {
-        for ia.inputs.each |&(_, in)| {
+        for ia.inputs.iter().advance |&(_, in)| {
           (vt.visit_expr)(in, (this, vt));
         }
 
         // Output operands must be lvalues
-        for ia.outputs.each |&(_, out)| {
+        for ia.outputs.iter().advance |&(_, out)| {
           match out.node {
             expr_addr_of(_, inner) => {
               this.check_lvalue(inner, vt);
@@ -1594,7 +1593,7 @@ impl Liveness {
     }
 
     pub fn warn_about_unused_args(&self, decl: &fn_decl, entry_ln: LiveNode) {
-        for decl.inputs.each |arg| {
+        for decl.inputs.iter().advance |arg| {
             do pat_util::pat_bindings(self.tcx.def_map, arg.pat)
                     |_bm, p_id, sp, _n| {
                 let var = self.variable(p_id, sp);

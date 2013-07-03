@@ -16,16 +16,15 @@
 
 //! json serialization
 
-use core::prelude::*;
 
-use core::char;
-use core::float;
-use core::hashmap::HashMap;
-use core::io::{WriterUtil, ReaderUtil};
-use core::io;
-use core::str;
-use core::to_str;
-use core::vec;
+use std::char;
+use std::float;
+use std::hashmap::HashMap;
+use std::io::{WriterUtil, ReaderUtil};
+use std::io;
+use std::str;
+use std::to_str;
+use std::vec;
 
 use serialize::Encodable;
 use serialize;
@@ -60,25 +59,27 @@ fn escape_str(s: &str) -> ~str {
     let mut escaped = ~"\"";
     for s.iter().advance |c| {
         match c {
-          '"' => escaped += "\\\"",
-          '\\' => escaped += "\\\\",
-          '\x08' => escaped += "\\b",
-          '\x0c' => escaped += "\\f",
-          '\n' => escaped += "\\n",
-          '\r' => escaped += "\\r",
-          '\t' => escaped += "\\t",
-          _ => escaped += str::from_char(c)
+          '"' => escaped.push_str("\\\""),
+          '\\' => escaped.push_str("\\\\"),
+          '\x08' => escaped.push_str("\\b"),
+          '\x0c' => escaped.push_str("\\f"),
+          '\n' => escaped.push_str("\\n"),
+          '\r' => escaped.push_str("\\r"),
+          '\t' => escaped.push_str("\\t"),
+          _ => escaped.push_char(c),
         }
     };
 
-    escaped += "\"";
+    escaped.push_char('"');
 
     escaped
 }
 
 fn spaces(n: uint) -> ~str {
     let mut ss = ~"";
-    for n.times { ss.push_str(" "); }
+    for n.times {
+        ss.push_str(" ");
+    }
     return ss;
 }
 
@@ -950,7 +951,7 @@ impl serialize::Decoder for Decoder {
             }
             ref json => fail!("invalid variant: %?", *json),
         };
-        let idx = match vec::position(names, |n| str::eq_slice(*n, name)) {
+        let idx = match names.iter().position_(|n| str::eq_slice(*n, name)) {
             Some(idx) => idx,
             None => fail!("Unknown variant name: %?", name),
         };
@@ -1123,7 +1124,7 @@ impl Eq for Json {
                     &Object(ref d1) => {
                         if d0.len() == d1.len() {
                             let mut equal = true;
-                            for d0.each |k, v0| {
+                            for d0.iter().advance |(k, v0)| {
                                 match d1.find(k) {
                                     Some(v1) if v0 == v1 => { },
                                     _ => { equal = false; break }
@@ -1186,12 +1187,12 @@ impl Ord for Json {
                         let mut d1_flat = ~[];
 
                         // FIXME #4430: this is horribly inefficient...
-                        for d0.each |k, v| {
+                        for d0.iter().advance |(k, v)| {
                              d0_flat.push((@copy *k, @copy *v));
                         }
                         d0_flat.qsort();
 
-                        for d1.each |k, v| {
+                        for d1.iter().advance |(k, v)| {
                             d1_flat.push((@copy *k, @copy *v));
                         }
                         d1_flat.qsort();
@@ -1326,7 +1327,7 @@ impl<A:ToJson> ToJson for ~[A] {
 impl<A:ToJson + Copy> ToJson for HashMap<~str, A> {
     fn to_json(&self) -> Json {
         let mut d = HashMap::new();
-        for self.each |key, value| {
+        for self.iter().advance |(key, value)| {
             d.insert(copy *key, value.to_json());
         }
         Object(~d)
@@ -1354,15 +1355,14 @@ impl to_str::ToStr for Error {
 
 #[cfg(test)]
 mod tests {
-    use core::prelude::*;
 
     use super::*;
 
-    use core::hashmap::HashMap;
-    use core::io;
-    use core::result;
+    use std::hashmap::HashMap;
+    use std::io;
+    use std::result;
 
-    use std::serialize::Decodable;
+    use extra::serialize::Decodable;
 
     #[deriving(Eq, Encodable, Decodable)]
     enum Animal {
@@ -1385,7 +1385,7 @@ mod tests {
     fn mk_object(items: &[(~str, Json)]) -> Json {
         let mut d = ~HashMap::new();
 
-        for items.each |item| {
+        for items.iter().advance |item| {
             match *item {
                 (ref key, ref value) => { d.insert(copy *key, copy *value); },
             }

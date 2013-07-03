@@ -8,9 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-test
+use std::io;
+
 fn parse_args() -> ~str {
-    let args = std::os::args();
+    let args = ::std::os::args();
     let mut n = 0;
 
     while n < args.len() {

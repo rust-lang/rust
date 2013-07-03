@@ -10,12 +10,11 @@
 
 #[allow(missing_doc)];
 
-use core::prelude::*;
 
-use core::cmp;
-use core::ops;
-use core::uint;
-use core::vec;
+use std::cmp;
+use std::ops;
+use std::uint;
+use std::vec;
 
 struct SmallBitv {
     /// only the lowest nbits of this value are used. the rest is undefined.
@@ -476,9 +475,15 @@ impl Bitv {
      * character is either '0' or '1'.
      */
      pub fn to_str(&self) -> ~str {
-       let mut rs = ~"";
-       for self.each() |i| { if i { rs += "1"; } else { rs += "0"; } };
-       rs
+        let mut rs = ~"";
+        for self.each() |i| {
+            if i {
+                rs.push_char('1');
+            } else {
+                rs.push_char('0');
+            }
+        };
+        rs
      }
 
 
@@ -639,7 +644,7 @@ impl BitvSet {
         if self.capacity() < other.capacity() {
             self.bitv.storage.grow(other.capacity() / uint::bits, &0);
         }
-        for other.bitv.storage.eachi |i, &w| {
+        for other.bitv.storage.iter().enumerate().advance |(i, &w)| {
             let old = self.bitv.storage[i];
             let new = f(old, w);
             self.bitv.storage[i] = new;
@@ -666,13 +671,9 @@ impl BitvSet {
     pub fn symmetric_difference_with(&mut self, other: &BitvSet) {
         self.other_op(other, |w1, w2| w1 ^ w2);
     }
-}
 
-impl BaseIter<uint> for BitvSet {
-    fn size_hint(&self) -> Option<uint> { Some(self.len()) }
-
-    fn each(&self, blk: &fn(v: &uint) -> bool) -> bool {
-        for self.bitv.storage.eachi |i, &w| {
+    pub fn each(&self, blk: &fn(v: &uint) -> bool) -> bool {
+        for self.bitv.storage.iter().enumerate().advance |(i, &w)| {
             if !iterate_bits(i * uint::bits, w, |b| blk(&b)) {
                 return false;
             }
@@ -703,8 +704,8 @@ impl cmp::Eq for BitvSet {
 }
 
 impl Container for BitvSet {
-    fn len(&const self) -> uint { self.size }
-    fn is_empty(&const self) -> bool { self.size == 0 }
+    fn len(&self) -> uint { self.size }
+    fn is_empty(&self) -> bool { self.size == 0 }
 }
 
 impl Mutable for BitvSet {
@@ -826,7 +827,7 @@ impl BitvSet {
                    f: &fn(uint, uint, uint) -> bool) -> bool {
         let min = uint::min(self.bitv.storage.len(),
                             other.bitv.storage.len());
-        self.bitv.storage.slice(0, min).eachi(|i, &w| {
+        self.bitv.storage.slice(0, min).iter().enumerate().advance(|(i, &w)| {
             f(i * uint::bits, w, other.bitv.storage[i])
         })
     }
@@ -845,12 +846,12 @@ impl BitvSet {
         let min = uint::min(len1, len2);
 
         /* only one of these loops will execute and that's the point */
-        for self.bitv.storage.slice(min, len1).eachi |i, &w| {
+        for self.bitv.storage.slice(min, len1).iter().enumerate().advance |(i, &w)| {
             if !f(true, (i + min) * uint::bits, w) {
                 return false;
             }
         }
-        for other.bitv.storage.slice(min, len2).eachi |i, &w| {
+        for other.bitv.storage.slice(min, len2).iter().enumerate().advance |(i, &w)| {
             if !f(false, (i + min) * uint::bits, w) {
                 return false;
             }
@@ -861,15 +862,15 @@ impl BitvSet {
 
 #[cfg(test)]
 mod tests {
-    use std::test::BenchHarness;
+    use extra::test::BenchHarness;
 
     use bitv::*;
     use bitv;
 
-    use core::uint;
-    use core::vec;
-    use core::rand;
-    use core::rand::Rng;
+    use std::uint;
+    use std::vec;
+    use std::rand;
+    use std::rand::Rng;
 
     static bench_bits : uint = 1 << 14;
 

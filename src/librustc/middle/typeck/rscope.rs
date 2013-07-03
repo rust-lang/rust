@@ -8,11 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
 
 use middle::ty;
 
-use core::result;
+use std::result;
 use syntax::ast;
 use syntax::codemap::span;
 use syntax::opt_vec::OptVec;
@@ -57,7 +56,7 @@ impl RegionParamNames {
     }
 
     fn has_ident(&self, ident: ast::ident) -> bool {
-        for self.each |region_param_name| {
+        for self.iter().advance |region_param_name| {
             if *region_param_name == ident {
                 return true;
             }
@@ -75,7 +74,7 @@ impl RegionParamNames {
                             opt_vec::Vec(new_lifetimes.map(|lt| lt.ident)));
                     }
                     opt_vec::Vec(ref mut existing_lifetimes) => {
-                        for new_lifetimes.each |new_lifetime| {
+                        for new_lifetimes.iter().advance |new_lifetime| {
                             existing_lifetimes.push(new_lifetime.ident);
                         }
                     }

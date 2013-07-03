@@ -8,25 +8,24 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
 
 use driver::session;
 use middle::ty;
 use middle::pat_util;
 use util::ppaux::{ty_to_str};
 
-use core::char;
-use core::cmp;
-use core::hashmap::HashMap;
-use core::i16;
-use core::i32;
-use core::i64;
-use core::i8;
-use core::u16;
-use core::u32;
-use core::u64;
-use core::u8;
-use core::vec;
+use std::char;
+use std::cmp;
+use std::hashmap::HashMap;
+use std::i16;
+use std::i32;
+use std::i64;
+use std::i8;
+use std::u16;
+use std::u32;
+use std::u64;
+use std::u8;
+use std::vec;
 use extra::smallintmap::SmallIntMap;
 use syntax::attr;
 use syntax::codemap::span;
@@ -96,6 +95,8 @@ pub enum lint {
 
     missing_doc,
     unreachable_code,
+
+    warnings,
 }
 
 pub fn level_to_str(lv: level) -> &'static str {
@@ -137,7 +138,7 @@ static lint_table: &'static [(&'static str, LintSpec)] = &[
     ("ctypes",
      LintSpec {
         lint: ctypes,
-        desc: "proper use of core::libc types in foreign modules",
+        desc: "proper use of std::libc types in foreign modules",
         default: warn
      }),
 
@@ -280,6 +281,13 @@ static lint_table: &'static [(&'static str, LintSpec)] = &[
         desc: "detects unreachable code",
         default: warn
     }),
+
+    ("warnings",
+     LintSpec {
+        lint: warnings,
+        desc: "mass-change the level for lints which produce warnings",
+        default: warn
+    }),
 ];
 
 /*
@@ -288,7 +296,7 @@ static lint_table: &'static [(&'static str, LintSpec)] = &[
  */
 pub fn get_lint_dict() -> LintDict {
     let mut map = HashMap::new();
-    for lint_table.each|&(k, v)| {
+    for lint_table.iter().advance |&(k, v)| {
         map.insert(k, v);
     }
     return map;
@@ -352,7 +360,7 @@ impl Context {
     }
 
     fn lint_to_str(&self, lint: lint) -> &'static str {
-        for self.dict.each |k, v| {
+        for self.dict.iter().advance |(k, v)| {
             if v.lint == lint {
                 return *k;
             }
@@ -362,10 +370,11 @@ impl Context {
 
     fn span_lint(&self, lint: lint, span: span, msg: &str) {
         let (level, src) = match self.curr.find(&(lint as uint)) {
+            None => { return }
+            Some(&(warn, src)) => (self.get_level(warnings), src),
             Some(&pair) => pair,
-            None => { return; }
         };
-        if level == allow { return; }
+        if level == allow { return }
 
         let mut note = None;
         let msg = match src {
@@ -435,7 +444,8 @@ impl Context {
 
         // detect doc(hidden)
         let mut doc_hidden = false;
-        for attr::find_attrs_by_name(attrs, "doc").each |attr| {
+        let r = attr::find_attrs_by_name(attrs, "doc");
+        for r.iter().advance |attr| {
             match attr::get_meta_item_list(attr.node.value) {
                 Some(s) => {
                     if attr::find_meta_items_by_name(s, "hidden").len() > 0 {
@@ -472,12 +482,12 @@ impl Context {
         // pair instead of just one visitor.
         match n {
             Item(it) => {
-                for self.visitors.each |&(orig, stopping)| {
+                for self.visitors.iter().advance |&(orig, stopping)| {
                     (orig.visit_item)(it, (self, stopping));
                 }
             }
             Crate(c) => {
-                for self.visitors.each |&(_, stopping)| {
+                for self.visitors.iter().advance |&(_, stopping)| {
                     visit::visit_crate(c, (self, stopping));
                 }
             }
@@ -486,7 +496,7 @@ impl Context {
             // to be a no-op, so manually invoke visit_fn.
             Method(m) => {
                 let fk = visit::fk_method(copy m.ident, &m.generics, m);
-                for self.visitors.each |&(orig, stopping)| {
+                for self.visitors.iter().advance |&(orig, stopping)| {
                     (orig.visit_fn)(&fk, &m.decl, &m.body, m.span, m.id,
                                     (self, stopping));
                 }
@@ -497,12 +507,12 @@ impl Context {
 
 pub fn each_lint(sess: session::Session,
                  attrs: &[ast::attribute],
-                 f: &fn(@ast::meta_item, level, @str) -> bool) -> bool
-{
-    for [allow, warn, deny, forbid].each |&level| {
+                 f: &fn(@ast::meta_item, level, @str) -> bool) -> bool {
+    let xs = [allow, warn, deny, forbid];
+    for xs.iter().advance |&level| {
         let level_name = level_to_str(level);
         let attrs = attr::find_attrs_by_name(attrs, level_name);
-        for attrs.each |attr| {
+        for attrs.iter().advance |attr| {
             let meta = attr.node.value;
             let metas = match meta.node {
                 ast::meta_list(_, ref metas) => metas,
@@ -511,7 +521,7 @@ pub fn each_lint(sess: session::Session,
                     loop;
                 }
             };
-            for metas.each |meta| {
+            for metas.iter().advance |meta| {
                 match meta.node {
                     ast::meta_word(lintname) => {
                         if !f(*meta, level, lintname) {
@@ -525,7 +535,7 @@ pub fn each_lint(sess: session::Session,
             }
         }
     }
-    return true;
+    true
 }
 
 // Take a visitor, and modify it so that it will not proceed past subitems.
@@ -690,10 +700,10 @@ fn lint_type_limits() -> visit::vt<@mut Context> {
     })
 }
 
-fn check_item_default_methods(cx: &Context, item: @ast::item) {
+fn check_item_default_methods(cx: &Context, item: &ast::item) {
     match item.node {
         ast::item_trait(_, _, ref methods) => {
-            for methods.each |method| {
+            for methods.iter().advance |method| {
                 match *method {
                     ast::required(*) => {}
                     ast::provided(*) => {
@@ -707,41 +717,43 @@ fn check_item_default_methods(cx: &Context, item: @ast::item) {
     }
 }
 
-fn check_item_ctypes(cx: &Context, it: @ast::item) {
+fn check_item_ctypes(cx: &Context, it: &ast::item) {
+    fn check_ty(cx: &Context, ty: &ast::Ty) {
+        match ty.node {
+            ast::ty_path(_, _, id) => {
+                match cx.tcx.def_map.get_copy(&id) {
+                    ast::def_prim_ty(ast::ty_int(ast::ty_i)) => {
+                        cx.span_lint(ctypes, ty.span,
+                                "found rust type `int` in foreign module, while \
+                                libc::c_int or libc::c_long should be used");
+                    }
+                    ast::def_prim_ty(ast::ty_uint(ast::ty_u)) => {
+                        cx.span_lint(ctypes, ty.span,
+                                "found rust type `uint` in foreign module, while \
+                                libc::c_uint or libc::c_ulong should be used");
+                    }
+                    _ => ()
+                }
+            }
+            _ => ()
+        }
+    }
 
     fn check_foreign_fn(cx: &Context, decl: &ast::fn_decl) {
-        let tys = vec::map(decl.inputs, |a| a.ty );
-        for vec::each(vec::append_one(tys, decl.output)) |ty| {
-            match ty.node {
-              ast::ty_path(_, id) => {
-                match cx.tcx.def_map.get_copy(&id) {
-                  ast::def_prim_ty(ast::ty_int(ast::ty_i)) => {
-                    cx.span_lint(ctypes, ty.span,
-                        "found rust type `int` in foreign module, while \
-                         libc::c_int or libc::c_long should be used");
-                  }
-                  ast::def_prim_ty(ast::ty_uint(ast::ty_u)) => {
-                    cx.span_lint(ctypes, ty.span,
-                        "found rust type `uint` in foreign module, while \
-                         libc::c_uint or libc::c_ulong should be used");
-                  }
-                  _ => ()
-                }
-              }
-              _ => ()
-            }
+        for decl.inputs.iter().advance |in| {
+            check_ty(cx, in.ty);
         }
+        check_ty(cx, decl.output)
     }
 
     match it.node {
       ast::item_foreign_mod(ref nmod) if !nmod.abis.is_intrinsic() => {
-        for nmod.items.each |ni| {
+        for nmod.items.iter().advance |ni| {
             match ni.node {
-              ast::foreign_item_fn(ref decl, _, _) => {
-                check_foreign_fn(cx, decl);
-              }
-              // FIXME #4622: Not implemented.
-              ast::foreign_item_const(*) => {}
+                ast::foreign_item_fn(ref decl, _, _) => {
+                    check_foreign_fn(cx, decl);
+                }
+                ast::foreign_item_static(t, _) => { check_ty(cx, t); }
             }
         }
       }
@@ -777,12 +789,13 @@ fn check_type_for_lint(cx: &Context, lint: lint, span: span, ty: ty::t) {
 }
 
 fn check_type(cx: &Context, span: span, ty: ty::t) {
-    for [managed_heap_memory, owned_heap_memory, heap_memory].each |lint| {
+    let xs = [managed_heap_memory, owned_heap_memory, heap_memory];
+    for xs.iter().advance |lint| {
         check_type_for_lint(cx, *lint, span, ty);
     }
 }
 
-fn check_item_heap(cx: &Context, it: @ast::item) {
+fn check_item_heap(cx: &Context, it: &ast::item) {
     match it.node {
       ast::item_fn(*) |
       ast::item_ty(*) |
@@ -796,7 +809,7 @@ fn check_item_heap(cx: &Context, it: @ast::item) {
     // If it's a struct, we also have to check the fields' types
     match it.node {
         ast::item_struct(struct_def, _) => {
-            for struct_def.fields.each |struct_field| {
+            for struct_def.fields.iter().advance |struct_field| {
                 check_type(cx, struct_field.span,
                            ty::node_id_to_type(cx.tcx,
                                                struct_field.node.id));
@@ -836,7 +849,7 @@ fn lint_path_statement() -> visit::vt<@mut Context> {
     })
 }
 
-fn check_item_non_camel_case_types(cx: &Context, it: @ast::item) {
+fn check_item_non_camel_case_types(cx: &Context, it: &ast::item) {
     fn is_camel_case(cx: ty::ctxt, ident: ast::ident) -> bool {
         let ident = cx.sess.str_of(ident);
         assert!(!ident.is_empty());
@@ -860,7 +873,7 @@ fn check_item_non_camel_case_types(cx: &Context, it: @ast::item) {
         }
         ast::item_enum(ref enum_definition, _) => {
             check_case(cx, it.ident, it.span);
-            for enum_definition.variants.each |variant| {
+            for enum_definition.variants.iter().advance |variant| {
                 check_case(cx, variant.node.name, variant.span);
             }
         }
@@ -905,7 +918,7 @@ fn lint_unused_mut() -> visit::vt<@mut Context> {
     }
 
     fn visit_fn_decl(cx: &Context, fd: &ast::fn_decl) {
-        for fd.inputs.each |arg| {
+        for fd.inputs.iter().advance |arg| {
             if arg.is_mutbl {
                 check_pat(cx, arg.pat);
             }
@@ -958,7 +971,7 @@ fn lint_session() -> visit::vt<@mut Context> {
 fn lint_unnecessary_allocations() -> visit::vt<@mut Context> {
     // Warn if string and vector literals with sigils are immediately borrowed.
     // Those can have the sigil removed.
-    fn check(cx: &Context, e: @ast::expr) {
+    fn check(cx: &Context, e: &ast::expr) {
         match e.node {
             ast::expr_vstore(e2, ast::expr_vstore_uniq) |
             ast::expr_vstore(e2, ast::expr_vstore_box) => {
@@ -1003,7 +1016,7 @@ fn lint_missing_doc() -> visit::vt<@mut Context> {
         // If we have doc(hidden), nothing to do
         if cx.doc_hidden { return }
         // If we're documented, nothing to do
-        if attrs.any(|a| a.node.is_sugared_doc) { return }
+        if attrs.iter().any_(|a| a.node.is_sugared_doc) { return }
 
         // otherwise, warn!
         cx.span_lint(missing_doc, sp, msg);
@@ -1052,7 +1065,7 @@ fn lint_missing_doc() -> visit::vt<@mut Context> {
                 ast::item_struct(sdef, _) if it.vis == ast::public => {
                     check_attrs(cx, it.attrs, it.span,
                                 "missing documentation for a struct");
-                    for sdef.fields.each |field| {
+                    for sdef.fields.iter().advance |field| {
                         match field.node.kind {
                             ast::named_field(_, vis) if vis != ast::private => {
                                 check_attrs(cx, field.node.attrs, field.span,
@@ -1100,7 +1113,7 @@ pub fn check_crate(tcx: ty::ctxt, crate: @ast::crate) {
     }
 
     // Install command-line options, overriding defaults.
-    for tcx.sess.opts.lint_opts.each |&(lint, level)| {
+    for tcx.sess.opts.lint_opts.iter().advance |&(lint, level)| {
         cx.set_level(lint, level, CommandLine);
     }
 
@@ -1157,8 +1170,8 @@ pub fn check_crate(tcx: ty::ctxt, crate: @ast::crate) {
 
     // If we missed any lints added to the session, then there's a bug somewhere
     // in the iteration code.
-    for tcx.sess.lints.each |_, v| {
-        for v.each |t| {
+    for tcx.sess.lints.iter().advance |(_, v)| {
+        for v.iter().advance |t| {
             match *t {
                 (lint, span, ref msg) =>
                     tcx.sess.span_bug(span, fmt!("unprocessed lint %?: %s",

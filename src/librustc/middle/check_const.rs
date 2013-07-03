@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
 
 use driver::session::Session;
 use middle::resolve;
@@ -21,7 +20,7 @@ use syntax::codemap;
 use syntax::{visit, ast_util, ast_map};
 
 pub fn check_crate(sess: Session,
-                   crate: @crate,
+                   crate: &crate,
                    ast_map: ast_map::map,
                    def_map: resolve::DefMap,
                    method_map: typeck::method_map,
@@ -43,12 +42,12 @@ pub fn check_item(sess: Session,
                   (_is_const, v): (bool,
                                    visit::vt<bool>)) {
     match it.node {
-      item_const(_, ex) => {
+      item_static(_, _, ex) => {
         (v.visit_expr)(ex, (true, v));
         check_item_recursion(sess, ast_map, def_map, it);
       }
       item_enum(ref enum_definition, _) => {
-        for (*enum_definition).variants.each |var| {
+        for (*enum_definition).variants.iter().advance |var| {
             for var.node.disr_expr.iter().advance |ex| {
                 (v.visit_expr)(*ex, (true, v));
             }
@@ -92,7 +91,7 @@ pub fn check_expr(sess: Session,
     if is_const {
         match e.node {
           expr_unary(_, deref, _) => { }
-          expr_unary(_, box(_), _) | expr_unary(_, uniq(_), _) => {
+          expr_unary(_, box(_), _) | expr_unary(_, uniq, _) => {
             sess.span_err(e.span,
                           "disallowed operator in constant expression");
             return;
@@ -124,7 +123,7 @@ pub fn check_expr(sess: Session,
                              items without type parameters");
             }
             match def_map.find(&e.id) {
-              Some(&def_const(_)) |
+              Some(&def_static(*)) |
               Some(&def_fn(_, _)) |
               Some(&def_variant(_, _)) |
               Some(&def_struct(_)) => { }
@@ -225,7 +224,7 @@ pub fn check_item_recursion(sess: Session,
     (visitor.visit_item)(it, (env, visitor));
 
     fn visit_item(it: @item, (env, v): (env, visit::vt<env>)) {
-        if env.idstack.contains(&(it.id)) {
+        if env.idstack.iter().any_(|x| x == &(it.id)) {
             env.sess.span_fatal(env.root_it.span, "recursive constant");
         }
         env.idstack.push(it.id);
@@ -235,22 +234,17 @@ pub fn check_item_recursion(sess: Session,
 
     fn visit_expr(e: @expr, (env, v): (env, visit::vt<env>)) {
         match e.node {
-          expr_path(*) => {
-            match env.def_map.find(&e.id) {
-              Some(&def_const(def_id)) => {
-                if ast_util::is_local(def_id) {
-                  match env.ast_map.get_copy(&def_id.node) {
-                    ast_map::node_item(it, _) => {
-                      (v.visit_item)(it, (env, v));
-                    }
-                    _ => fail!("const not bound to an item")
-                  }
-                }
-              }
-              _ => ()
-            }
-          }
-          _ => ()
+            expr_path(*) => match env.def_map.find(&e.id) {
+                Some(&def_static(def_id, _)) if ast_util::is_local(def_id) =>
+                    match env.ast_map.get_copy(&def_id.node) {
+                        ast_map::node_item(it, _) => {
+                            (v.visit_item)(it, (env, v));
+                        }
+                        _ => fail!("const not bound to an item")
+                    },
+                _ => ()
+            },
+            _ => ()
         }
         visit::visit_expr(e, (env, v));
     }

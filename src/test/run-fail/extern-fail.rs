@@ -13,7 +13,6 @@
 // Instead the failure will be delivered after the callbacks return.
 
 use std::libc;
-use std::old_iter;
 use std::task;
 
 mod rustrt {

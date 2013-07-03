@@ -37,7 +37,7 @@ fn main() {
              ('c', 'd'),
              ('e', 'f')];
 
-    for v.each |&(x,y)| {} // should be OK
+    for v.iter().advance |&(x,y)| {} // should be OK
 
     // Make sure none of the errors above were fatal
     let x: char = true; //~ ERROR expected `char` but found `bool`

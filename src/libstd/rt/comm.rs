@@ -19,9 +19,9 @@ use option::*;
 use cast;
 use util;
 use ops::Drop;
-use kinds::Owned;
-use rt::sched::{Scheduler};
 use rt::task::Task;
+use kinds::Send;
+use rt::sched::Scheduler;
 use rt::local::Local;
 use unstable::atomics::{AtomicUint, AtomicOption, SeqCst};
 use unstable::sync::UnsafeAtomicRcBox;
@@ -71,7 +71,7 @@ pub struct PortOneHack<T> {
     suppress_finalize: bool
 }
 
-pub fn oneshot<T: Owned>() -> (PortOne<T>, ChanOne<T>) {
+pub fn oneshot<T: Send>() -> (PortOne<T>, ChanOne<T>) {
     let packet: ~Packet<T> = ~Packet {
         state: AtomicUint::new(STATE_BOTH),
         payload: None
@@ -242,7 +242,7 @@ impl<T> Peekable<T> for PortOne<T> {
 
 #[unsafe_destructor]
 impl<T> Drop for ChanOneHack<T> {
-    fn finalize(&self) {
+    fn drop(&self) {
         if self.suppress_finalize { return }
 
         unsafe {
@@ -269,7 +269,7 @@ impl<T> Drop for ChanOneHack<T> {
 
 #[unsafe_destructor]
 impl<T> Drop for PortOneHack<T> {
-    fn finalize(&self) {
+    fn drop(&self) {
         if self.suppress_finalize { return }
 
         unsafe {
@@ -330,20 +330,20 @@ pub struct Port<T> {
     next: Cell<StreamPortOne<T>>
 }
 
-pub fn stream<T: Owned>() -> (Port<T>, Chan<T>) {
+pub fn stream<T: Send>() -> (Port<T>, Chan<T>) {
     let (pone, cone) = oneshot();
     let port = Port { next: Cell::new(pone) };
     let chan = Chan { next: Cell::new(cone) };
     return (port, chan);
 }
 
-impl<T: Owned> GenericChan<T> for Chan<T> {
+impl<T: Send> GenericChan<T> for Chan<T> {
     fn send(&self, val: T) {
         self.try_send(val);
     }
 }
 
-impl<T: Owned> GenericSmartChan<T> for Chan<T> {
+impl<T: Send> GenericSmartChan<T> for Chan<T> {
     fn try_send(&self, val: T) -> bool {
         let (next_pone, next_cone) = oneshot();
         let cone = self.next.take();
@@ -393,13 +393,13 @@ impl<T> SharedChan<T> {
     }
 }
 
-impl<T: Owned> GenericChan<T> for SharedChan<T> {
+impl<T: Send> GenericChan<T> for SharedChan<T> {
     fn send(&self, val: T) {
         self.try_send(val);
     }
 }
 
-impl<T: Owned> GenericSmartChan<T> for SharedChan<T> {
+impl<T: Send> GenericSmartChan<T> for SharedChan<T> {
     fn try_send(&self, val: T) -> bool {
         unsafe {
             let (next_pone, next_cone) = oneshot();
@@ -433,7 +433,7 @@ impl<T> SharedPort<T> {
     }
 }
 
-impl<T: Owned> GenericPort<T> for SharedPort<T> {
+impl<T: Send> GenericPort<T> for SharedPort<T> {
     fn recv(&self) -> T {
         match self.try_recv() {
             Some(val) => val,
@@ -475,12 +475,12 @@ impl<T> Clone for SharedPort<T> {
 // XXX: Need better name
 type MegaPipe<T> = (SharedPort<T>, SharedChan<T>);
 
-pub fn megapipe<T: Owned>() -> MegaPipe<T> {
+pub fn megapipe<T: Send>() -> MegaPipe<T> {
     let (port, chan) = stream();
     (SharedPort::new(port), SharedChan::new(chan))
 }
 
-impl<T: Owned> GenericChan<T> for MegaPipe<T> {
+impl<T: Send> GenericChan<T> for MegaPipe<T> {
     fn send(&self, val: T) {
         match *self {
             (_, ref c) => c.send(val)
@@ -488,7 +488,7 @@ impl<T: Owned> GenericChan<T> for MegaPipe<T> {
     }
 }
 
-impl<T: Owned> GenericSmartChan<T> for MegaPipe<T> {
+impl<T: Send> GenericSmartChan<T> for MegaPipe<T> {
     fn try_send(&self, val: T) -> bool {
         match *self {
             (_, ref c) => c.try_send(val)
@@ -496,7 +496,7 @@ impl<T: Owned> GenericSmartChan<T> for MegaPipe<T> {
     }
 }
 
-impl<T: Owned> GenericPort<T> for MegaPipe<T> {
+impl<T: Send> GenericPort<T> for MegaPipe<T> {
     fn recv(&self) -> T {
         match *self {
             (ref p, _) => p.recv()

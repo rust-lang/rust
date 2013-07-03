@@ -23,7 +23,7 @@ struct r {
 }
 
 impl Drop for r {
-    fn finalize(&self) {
+    fn drop(&self) {
         unsafe {
             let v2: ~int = cast::transmute(self.v.c);
         }

@@ -29,7 +29,8 @@ Rust's prelude has three main parts:
 
 // Reexported core operators
 pub use either::{Either, Left, Right};
-pub use kinds::{Const, Copy, Owned, Sized};
+pub use kinds::{Copy, Sized};
+pub use kinds::{Freeze, Send};
 pub use ops::{Add, Sub, Mul, Div, Rem, Neg, Not};
 pub use ops::{BitAnd, BitOr, BitXor};
 pub use ops::{Drop};
@@ -46,8 +47,6 @@ pub use cmp::{Eq, ApproxEq, Ord, TotalEq, TotalOrd, Ordering, Less, Equal, Great
 pub use char::Char;
 pub use container::{Container, Mutable, Map, Set};
 pub use hash::Hash;
-pub use old_iter::{BaseIter, ReverseIter, ExtendedIter, EqIter};
-pub use old_iter::CopyableIter;
 pub use iter::{Times, FromIter};
 pub use iterator::{Iterator, IteratorUtil, OrdIterator};
 pub use num::{Num, NumCast};
@@ -74,8 +73,8 @@ pub use tuple::{ImmutableTuple2, ImmutableTuple3, ImmutableTuple4, ImmutableTupl
 pub use tuple::{ImmutableTuple6, ImmutableTuple7, ImmutableTuple8, ImmutableTuple9};
 pub use tuple::{ImmutableTuple10, ImmutableTuple11, ImmutableTuple12};
 pub use vec::{VectorVector, CopyableVector, ImmutableVector};
-pub use vec::{ImmutableEqVector, ImmutableCopyableVector};
-pub use vec::{OwnedVector, OwnedCopyableVector, MutableVector};
+pub use vec::{ImmutableEqVector, ImmutableTotalOrdVector, ImmutableCopyableVector};
+pub use vec::{OwnedVector, OwnedCopyableVector,OwnedEqVector, MutableVector};
 pub use io::{Reader, ReaderUtil, Writer, WriterUtil};
 
 // Reexported runtime types

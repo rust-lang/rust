@@ -15,7 +15,6 @@ The attribute parser provides methods for pulling documentation out of
 an AST's attributes.
 */
 
-use core::prelude::*;
 
 use syntax::ast;
 use syntax::attr;
@@ -57,7 +56,8 @@ pub fn parse_desc(attrs: ~[ast::attribute]) -> Option<~str> {
 }
 
 pub fn parse_hidden(attrs: ~[ast::attribute]) -> bool {
-    do doc_metas(attrs).find |meta| {
+    let r = doc_metas(attrs);
+    do r.iter().any_ |meta| {
         match attr::get_meta_item_list(*meta) {
             Some(metas) => {
                 let hiddens = attr::find_meta_items_by_name(metas, "hidden");
@@ -65,12 +65,11 @@ pub fn parse_hidden(attrs: ~[ast::attribute]) -> bool {
             }
             None => false
         }
-    }.is_some()
+    }
 }
 
 #[cfg(test)]
 mod test {
-    use core::prelude::*;
     use syntax::ast;
     use syntax;
     use super::{parse_hidden, parse_crate, parse_desc};

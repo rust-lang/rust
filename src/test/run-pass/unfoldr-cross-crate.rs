@@ -24,7 +24,7 @@ fn main() {
         }
     }
 
-    let mut it = UnfoldrIterator::new(count, 0);
+    let mut it = UnfoldrIterator::new(0, count);
     let mut i = 0;
     for it.advance |counted| {
         assert_eq!(counted, i);
