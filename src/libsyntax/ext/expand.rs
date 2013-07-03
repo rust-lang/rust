@@ -226,7 +226,7 @@ pub fn expand_item_mac(extsbox: @mut SyntaxEnv,
                               fmt!("macro undefined: '%s!'", extnamestr)),
 
         Some(@SE(NormalTT(expander, span))) => {
-            if it.ident != parse::token::special_idents::invalid {
+            if it.ident.name != parse::token::special_idents::invalid.name {
                 cx.span_fatal(pth.span,
                               fmt!("macro %s! expects no ident argument, \
                                     given '%s'", extnamestr,
@@ -242,7 +242,7 @@ pub fn expand_item_mac(extsbox: @mut SyntaxEnv,
              expander(cx, it.span, tts)
         }
         Some(@SE(IdentTT(expander, span))) => {
-            if it.ident == parse::token::special_idents::invalid {
+            if it.ident.name == parse::token::special_idents::invalid.name {
                 cx.span_fatal(pth.span,
                               fmt!("macro %s! expects an ident argument",
                                    extnamestr));
