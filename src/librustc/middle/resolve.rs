@@ -3831,9 +3831,9 @@ impl Resolver {
                                    visitor: ResolveVisitor) {
         match self.resolve_path(trait_reference.path, TypeNS, true, visitor) {
             None => {
+                let idents = self.idents_to_str(trait_reference.path.idents);
                 self.session.span_err(trait_reference.path.span,
-                                      "attempt to implement an \
-                                       unknown trait");
+                                      fmt!("attempt to implement an unknown trait `%s`", idents));
             }
             Some(def) => {
                 self.record_def(trait_reference.ref_id, def);
