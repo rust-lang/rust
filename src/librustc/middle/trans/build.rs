@@ -565,7 +565,7 @@ pub fn LoadRangeAssert(cx: block, PointerVal: ValueRef, lo: c_ulonglong,
         let min = llvm::LLVMConstInt(t, lo, signed);
         let max = llvm::LLVMConstInt(t, hi, signed);
 
-        do vec::as_imm_buf([min, max]) |ptr, len| {
+        do [min, max].as_imm_buf |ptr, len| {
             llvm::LLVMSetMetadata(value, lib::llvm::MD_range as c_uint,
                                   llvm::LLVMMDNodeInContext(cx.fcx.ccx.llcx,
                                                             ptr, len as c_uint));
@@ -942,7 +942,7 @@ pub fn Call(cx: block, Fn: ValueRef, Args: &[ValueRef]) -> ValueRef {
                cx.val_to_str(Fn),
                Args.map(|arg| cx.val_to_str(*arg)));
 
-        do vec::as_imm_buf(Args) |ptr, len| {
+        do Args.as_imm_buf |ptr, len| {
             llvm::LLVMBuildCall(B(cx), Fn, ptr, len as c_uint, noname())
         }
     }

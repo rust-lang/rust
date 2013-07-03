@@ -40,6 +40,7 @@ use str::raw::from_c_str;
 use to_str::ToStr;
 use ptr::RawPtr;
 use vec;
+use vec::ImmutableVector;
 use ptr;
 use str;
 use libc::{c_void, c_int, size_t, malloc, free};
@@ -300,7 +301,7 @@ pub fn vec_to_uv_buf(v: ~[u8]) -> Buf {
     unsafe {
         let data = malloc(v.len() as size_t) as *u8;
         assert!(data.is_not_null());
-        do vec::as_imm_buf(v) |b, l| {
+        do v.as_imm_buf |b, l| {
             let data = data as *mut u8;
             ptr::copy_memory(data, b, l)
         }

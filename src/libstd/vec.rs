@@ -71,7 +71,7 @@ pub fn same_length<T, U>(xs: &[T], ys: &[U]) -> bool {
 pub fn from_fn<T>(n_elts: uint, op: &fn(uint) -> T) -> ~[T] {
     unsafe {
         let mut v = with_capacity(n_elts);
-        do as_mut_buf(v) |p, _len| {
+        do v.as_mut_buf |p, _len| {
             let mut i: uint = 0u;
             while i < n_elts {
                 intrinsics::move_val_init(&mut(*ptr::mut_offset(p, i)), op(i));
@@ -96,7 +96,7 @@ pub fn from_elem<T:Copy>(n_elts: uint, t: T) -> ~[T] {
     // vec::with_capacity/ptr::set_memory for primitive types.
     unsafe {
         let mut v = with_capacity(n_elts);
-        do as_mut_buf(v) |p, _len| {
+        do v.as_mut_buf |p, _len| {
             let mut i = 0u;
             while i < n_elts {
                 intrinsics::move_val_init(&mut(*ptr::mut_offset(p, i)), copy t);
@@ -494,40 +494,6 @@ impl<'self, T> Iterator<&'self [T]> for VecChunkIter<'self, T> {
     }
 }
 
-/**
- * Work with the buffer of a vector.
- *
- * Allows for unsafe manipulation of vector contents, which is useful for
- * foreign interop.
- */
-#[inline]
-pub fn as_imm_buf<T,U>(s: &[T],
-                       /* NB---this CANNOT be const, see below */
-                       f: &fn(*T, uint) -> U) -> U {
-
-    // NB---Do not change the type of s to `&const [T]`.  This is
-    // unsound.  The reason is that we are going to create immutable pointers
-    // into `s` and pass them to `f()`, but in fact they are potentially
-    // pointing at *mutable memory*.  Use `as_const_buf` or `as_mut_buf`
-    // instead!
-
-    unsafe {
-        let v : *(*T,uint) = transmute(&s);
-        let (buf,len) = *v;
-        f(buf, len / sys::nonzero_size_of::<T>())
-    }
-}
-
-/// Similar to `as_imm_buf` but passing a `*mut T`
-#[inline]
-pub fn as_mut_buf<T,U>(s: &mut [T], f: &fn(*mut T, uint) -> U) -> U {
-    unsafe {
-        let v : *(*mut T,uint) = transmute(&s);
-        let (buf,len) = *v;
-        f(buf, len / sys::nonzero_size_of::<T>())
-    }
-}
-
 // Equality
 
 #[cfg(not(test))]
@@ -695,13 +661,13 @@ impl<'self, T> Container for &'self [T] {
     /// Returns true if a vector contains no elements
     #[inline]
     fn is_empty(&self) -> bool {
-        as_imm_buf(*self, |_p, len| len == 0u)
+        self.as_imm_buf(|_p, len| len == 0u)
     }
 
     /// Returns the length of a vector
     #[inline]
     fn len(&self) -> uint {
-        as_imm_buf(*self, |_p, len| len)
+        self.as_imm_buf(|_p, len| len)
     }
 }
 
@@ -709,13 +675,13 @@ impl<T> Container for ~[T] {
     /// Returns true if a vector contains no elements
     #[inline]
     fn is_empty(&self) -> bool {
-        as_imm_buf(*self, |_p, len| len == 0u)
+        self.as_imm_buf(|_p, len| len == 0u)
     }
 
     /// Returns the length of a vector
     #[inline]
     fn len(&self) -> uint {
-        as_imm_buf(*self, |_p, len| len)
+        self.as_imm_buf(|_p, len| len)
     }
 }
 
@@ -765,6 +731,8 @@ pub trait ImmutableVector<'self, T> {
     fn bsearch(&self, f: &fn(&T) -> Ordering) -> Option<uint>;
 
     fn map<U>(&self, &fn(t: &T) -> U) -> ~[U];
+
+    fn as_imm_buf<U>(&self, f: &fn(*T, uint) -> U) -> U;
 }
 
 /// Extension methods for vectors
@@ -774,7 +742,7 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
     fn slice(&self, start: uint, end: uint) -> &'self [T] {
     assert!(start <= end);
     assert!(end <= self.len());
-        do as_imm_buf(*self) |p, _len| {
+        do self.as_imm_buf |p, _len| {
             unsafe {
                 transmute((ptr::offset(p, start),
                            (end - start) * sys::nonzero_size_of::<T>()))
@@ -1006,6 +974,28 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
     /// of a vector and return the results.
     fn map<U>(&self, f: &fn(t: &T) -> U) -> ~[U] {
         self.iter().transform(f).collect()
+    }
+
+    /**
+     * Work with the buffer of a vector.
+     *
+     * Allows for unsafe manipulation of vector contents, which is useful for
+     * foreign interop.
+     */
+    #[inline]
+    fn as_imm_buf<U>(&self,
+                     /* NB---this CANNOT be const, see below */
+                     f: &fn(*T, uint) -> U) -> U {
+        // NB---Do not change the type of s to `&const [T]`.  This is
+        // unsound.  The reason is that we are going to create immutable pointers
+        // into `s` and pass them to `f()`, but in fact they are potentially
+        // pointing at *mutable memory*.  Use `as_mut_buf` instead!
+
+        unsafe {
+            let v : *(*T,uint) = transmute(self);
+            let (buf,len) = *v;
+            f(buf, len / sys::nonzero_size_of::<T>())
+        }
     }
 }
 
@@ -1280,7 +1270,7 @@ impl<T> OwnedVector<T> for ~[T] {
         let new_len = self.len() + rhs.len();
         self.reserve(new_len);
         unsafe {
-            do as_mut_buf(rhs) |p, len| {
+            do rhs.as_mut_buf |p, len| {
                 for uint::range(0, len) |i| {
                     let x = ptr::replace_ptr(ptr::mut_offset(p, i),
                                              intrinsics::uninit());
@@ -1412,7 +1402,7 @@ impl<T> OwnedVector<T> for ~[T] {
 
     /// Shorten a vector, dropping excess elements.
     fn truncate(&mut self, newlen: uint) {
-        do as_mut_buf(*self) |p, oldlen| {
+        do self.as_mut_buf |p, oldlen| {
             assert!(newlen <= oldlen);
             unsafe {
                 // This loop is optimized out for non-drop types.
@@ -1570,7 +1560,7 @@ impl<T:Eq> OwnedEqVector<T> for ~[T] {
             if self.len() == 0 { return; }
             let mut last_written = 0;
             let mut next_to_read = 1;
-            do as_mut_buf(*self) |p, ln| {
+            do self.as_mut_buf |p, ln| {
                 // last_written < next_to_read <= ln
                 while next_to_read < ln {
                     // last_written < next_to_read < ln
@@ -1624,6 +1614,8 @@ pub trait MutableVector<'self, T> {
 
     unsafe fn unsafe_mut_ref(&self, index: uint) -> *mut T;
     unsafe fn unsafe_set(&self, index: uint, val: T);
+
+    fn as_mut_buf<U>(&self, f: &fn(*mut T, uint) -> U) -> U;
 }
 
 impl<'self,T> MutableVector<'self, T> for &'self mut [T] {
@@ -1632,7 +1624,7 @@ impl<'self,T> MutableVector<'self, T> for &'self mut [T] {
     fn mut_slice(self, start: uint, end: uint) -> &'self mut [T] {
         assert!(start <= end);
         assert!(end <= self.len());
-        do as_mut_buf(self) |p, _len| {
+        do self.as_mut_buf |p, _len| {
             unsafe {
                 transmute((ptr::mut_offset(p, start),
                            (end - start) * sys::nonzero_size_of::<T>()))
@@ -1705,6 +1697,17 @@ impl<'self,T> MutableVector<'self, T> for &'self mut [T] {
     unsafe fn unsafe_set(&self, index: uint, val: T) {
         *self.unsafe_mut_ref(index) = val;
     }
+
+    /// Similar to `as_imm_buf` but passing a `*mut T`
+    #[inline]
+    fn as_mut_buf<U>(&self, f: &fn(*mut T, uint) -> U) -> U {
+        unsafe {
+            let v : *(*mut T,uint) = transmute(self);
+            let (buf,len) = *v;
+            f(buf, len / sys::nonzero_size_of::<T>())
+        }
+    }
+
 }
 
 /// Trait for ~[T] where T is Cloneable
@@ -1754,7 +1757,7 @@ pub mod raw {
     use ptr;
     use sys;
     use unstable::intrinsics;
-    use vec::{UnboxedVecRepr, as_imm_buf, as_mut_buf, with_capacity};
+    use vec::{UnboxedVecRepr, with_capacity, ImmutableVector, MutableVector};
     use util;
 
     /// The internal representation of a (boxed) vector
@@ -1842,7 +1845,7 @@ pub mod raw {
      */
     #[inline]
     pub unsafe fn get<T:Copy>(v: &[T], i: uint) -> T {
-        as_imm_buf(v, |p, _len| copy *ptr::offset(p, i))
+        v.as_imm_buf(|p, _len| copy *ptr::offset(p, i))
     }
 
     /**
@@ -1853,7 +1856,7 @@ pub mod raw {
     #[inline]
     pub unsafe fn init_elem<T>(v: &mut [T], i: uint, val: T) {
         let mut box = Some(val);
-        do as_mut_buf(v) |p, _len| {
+        do v.as_mut_buf |p, _len| {
             let box2 = util::replace(&mut box, None);
             intrinsics::move_val_init(&mut(*ptr::mut_offset(p, i)),
                                       box2.unwrap());
@@ -1873,7 +1876,7 @@ pub mod raw {
     pub unsafe fn from_buf_raw<T>(ptr: *T, elts: uint) -> ~[T] {
         let mut dst = with_capacity(elts);
         set_len(&mut dst, elts);
-        as_mut_buf(dst, |p_dst, _len_dst| ptr::copy_memory(p_dst, ptr, elts));
+        dst.as_mut_buf(|p_dst, _len_dst| ptr::copy_memory(p_dst, ptr, elts));
         dst
     }
 
@@ -1889,8 +1892,8 @@ pub mod raw {
         assert!(dst.len() >= count);
         assert!(src.len() >= count);
 
-        do as_mut_buf(dst) |p_dst, _len_dst| {
-            do as_imm_buf(src) |p_src, _len_src| {
+        do dst.as_mut_buf |p_dst, _len_dst| {
+            do src.as_imm_buf |p_src, _len_src| {
                 ptr::copy_memory(p_dst, p_src, count)
             }
         }
@@ -1914,7 +1917,7 @@ pub mod bytes {
     impl<'self> MutableByteVector for &'self mut [u8] {
         #[inline]
         fn set_memory(self, value: u8) {
-            do vec::as_mut_buf(self) |p, len| {
+            do self.as_mut_buf |p, len| {
                 unsafe { ptr::set_memory(p, value, len) };
             }
         }
@@ -2920,7 +2923,7 @@ mod tests {
     #[should_fail]
     fn test_as_imm_buf_fail() {
         let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
-        do as_imm_buf(v) |_buf, _i| {
+        do v.as_imm_buf |_buf, _i| {
             fail!()
         }
     }
@@ -2930,7 +2933,7 @@ mod tests {
     #[should_fail]
     fn test_as_mut_buf_fail() {
         let mut v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
-        do as_mut_buf(v) |_buf, _i| {
+        do v.as_mut_buf |_buf, _i| {
             fail!()
         }
     }
