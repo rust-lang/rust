@@ -16,5 +16,5 @@ impl SomeNonExistentTrait for int {}
 //~^ ERROR attempt to implement a nonexistent trait `SomeNonExistentTrait`
 
 fn f<T:SomeNonExistentTrait>() {}
-//~^ ERROR attempt to bound type parameter to a nonexistent trait `SomeNonExistentTrait`
+//~^ ERROR attempt to bound type parameter with a nonexistent trait `SomeNonExistentTrait`
 
