@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::iterator::Iterator;
 
 #[deriving(Eq, IterBytes)]
 pub struct EnumSet<E> {
@@ -73,6 +74,10 @@ impl<E:CLike> EnumSet<E> {
         }
         return true;
     }
+
+    pub fn iter(&self) -> EnumSetIterator<E> {
+        EnumSetIterator::new(self.bits)
+    }
 }
 
 impl<E:CLike> Sub<EnumSet<E>, EnumSet<E>> for EnumSet<E> {
@@ -93,11 +98,43 @@ impl<E:CLike> BitAnd<EnumSet<E>, EnumSet<E>> for EnumSet<E> {
     }
 }
 
+pub struct EnumSetIterator<E> {
+    priv index: uint,
+    priv bits: uint,
+}
+
+impl<E:CLike> EnumSetIterator<E> {
+    fn new(bits: uint) -> EnumSetIterator<E> {
+        EnumSetIterator { index: 0, bits: bits }
+    }
+}
+
+impl<E:CLike> Iterator<E> for EnumSetIterator<E> {
+    fn next(&mut self) -> Option<E> {
+        if (self.bits == 0) {
+            return None;
+        }
+
+        while (self.bits & 1) == 0 {
+            self.index += 1;
+            self.bits >>= 1;
+        }
+        let elem = CLike::from_uint(self.index);
+        self.index += 1;
+        self.bits >>= 1;
+        Some(elem)
+    }
+
+    fn size_hint(&self) -> (Option<uint>, Option<uint>) {
+        let exact = Some(self.bits.population_count());
+        (exact, exact)
+    }
+}
+
 #[cfg(test)]
 mod test {
 
     use std::cast;
-    use std::iter;
 
     use util::enum_set::*;
 
@@ -199,25 +236,58 @@ mod test {
     }
 
     ///////////////////////////////////////////////////////////////////////////
-    // each
+    // iter / each
+
+    #[test]
+    fn test_iterator() {
+        let mut e1: EnumSet<Foo> = EnumSet::empty();
+
+        let elems: ~[Foo] = e1.iter().collect();
+        assert_eq!(~[], elems)
+
+        e1.add(A);
+        let elems: ~[Foo] = e1.iter().collect();
+        assert_eq!(~[A], elems)
+
+        e1.add(C);
+        let elems: ~[Foo] = e1.iter().collect();
+        assert_eq!(~[A,C], elems)
+
+        e1.add(C);
+        let elems: ~[Foo] = e1.iter().collect();
+        assert_eq!(~[A,C], elems)
+
+        e1.add(B);
+        let elems: ~[Foo] = e1.iter().collect();
+        assert_eq!(~[A,B,C], elems)
+    }
 
     #[test]
     fn test_each() {
         let mut e1: EnumSet<Foo> = EnumSet::empty();
 
-        assert_eq!(~[], iter::FromIter::from_iter::<Foo, ~[Foo]>(|f| e1.each(f)))
+        assert_eq!(~[], collect(e1))
 
         e1.add(A);
-        assert_eq!(~[A], iter::FromIter::from_iter::<Foo, ~[Foo]>(|f| e1.each(f)))
+        assert_eq!(~[A], collect(e1))
 
         e1.add(C);
-        assert_eq!(~[A,C], iter::FromIter::from_iter::<Foo, ~[Foo]>(|f| e1.each(f)))
+        assert_eq!(~[A,C], collect(e1))
 
         e1.add(C);
-        assert_eq!(~[A,C], iter::FromIter::from_iter::<Foo, ~[Foo]>(|f| e1.each(f)))
+        assert_eq!(~[A,C], collect(e1))
 
         e1.add(B);
-        assert_eq!(~[A,B,C], iter::FromIter::from_iter::<Foo, ~[Foo]>(|f| e1.each(f)))
+        assert_eq!(~[A,B,C], collect(e1))
+    }
+
+    fn collect(e: EnumSet<Foo>) -> ~[Foo] {
+        let mut elems = ~[];
+        e.each(|elem| {
+           elems.push(elem);
+           true
+        });
+        elems
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -234,12 +304,15 @@ mod test {
         e2.add(C);
 
         let e_union = e1 | e2;
-        assert_eq!(~[A,B,C], iter::FromIter::from_iter::<Foo, ~[Foo]>(|f| e_union.each(f)))
+        let elems: ~[Foo] = e_union.iter().collect();
+        assert_eq!(~[A,B,C], elems)
 
         let e_intersection = e1 & e2;
-        assert_eq!(~[C], iter::FromIter::from_iter::<Foo, ~[Foo]>(|f| e_intersection.each(f)))
+        let elems: ~[Foo] = e_intersection.iter().collect();
+        assert_eq!(~[C], elems)
 
         let e_subtract = e1 - e2;
-        assert_eq!(~[A], iter::FromIter::from_iter::<Foo, ~[Foo]>(|f| e_subtract.each(f)))
+        let elems: ~[Foo] = e_subtract.iter().collect();
+        assert_eq!(~[A], elems)
     }
 }

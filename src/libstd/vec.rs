@@ -19,7 +19,6 @@ use cmp;
 use cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering, Less, Equal, Greater};
 use clone::Clone;
 use iterator::{FromIterator, Iterator, IteratorUtil};
-use iter::FromIter;
 use kinds::Copy;
 use libc;
 use libc::c_void;
@@ -2167,15 +2166,6 @@ pub struct VecMutRevIterator<'self, T> {
     priv lifetime: &'self mut T // FIXME: #5922
 }
 iterator!{impl VecMutRevIterator -> &'self mut T, -1}
-
-impl<T> FromIter<T> for ~[T]{
-    #[inline]
-    pub fn from_iter(iter: &fn(f: &fn(T) -> bool) -> bool) -> ~[T] {
-        let mut v = ~[];
-        for iter |x| { v.push(x) }
-        v
-    }
-}
 
 #[cfg(stage0)]
 impl<A, T: Iterator<A>> FromIterator<A, T> for ~[A] {
