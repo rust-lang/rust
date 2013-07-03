@@ -3827,7 +3827,7 @@ impl Resolver {
                 let path_str = self.idents_to_str(trait_reference.path.idents);
 
                 let usage_str = match reference_type {
-                    TraitBoundingTypeParameter => "bound type parameter to",
+                    TraitBoundingTypeParameter => "bound type parameter with",
                     TraitImplementation        => "implement",
                     TraitDerivation            => "derive"
                 };
