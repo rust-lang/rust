@@ -9,7 +9,6 @@
 // except according to those terms.
 
 pub use package_path::{RemotePath, LocalPath, normalize, hash};
-use core::prelude::*;
 use version::{try_getting_version, Version, NoVersion, split_version};
 
 /// Path-fragment identifier of a package such as

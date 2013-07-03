@@ -122,9 +122,7 @@ CFG_ADB_TEST_DIR=/data/tmp
 $(info check: android device test dir $(CFG_ADB_TEST_DIR) ready \
  $(shell adb remount 1>/dev/null) \
  $(shell adb shell mkdir $(CFG_ADB_TEST_DIR) 1>/dev/null) \
- $(shell adb shell rm $(CFG_ADB_TEST_DIR)/*.so 1>/dev/null) \
- $(shell adb shell rm $(CFG_ADB_TEST_DIR)/*-arm-linux-androideabi 1>/dev/null) \
- $(shell adb shell rm $(CFG_ADB_TEST_DIR)/*-arm-linux-androideabi.* 1>/dev/null) \
+ $(shell adb shell rm -rf $(CFG_ADB_TEST_DIR)/* 1>/dev/null) \
  $(shell adb push $(S)src/etc/adb_run_wrapper.sh $(CFG_ADB_TEST_DIR) 1>/dev/null) \
  $(shell adb push $(CFG_ANDROID_CROSS_PATH)/arm-linux-androideabi/lib/armv7-a/libgnustl_shared.so \
                   $(CFG_ADB_TEST_DIR) 1>/dev/null) \

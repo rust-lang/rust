@@ -10,7 +10,6 @@
 
 // #[warn(deprecated_mode)];
 
-use core::prelude::*;
 
 use middle::ty;
 
@@ -103,8 +102,8 @@ pub fn replace_bound_regions_in_fn_sig(
         }
 
         // For each type `ty` in `tys`...
-        do tys.foldl(isr) |isr, ty| {
-            let mut isr = *isr;
+        do tys.iter().fold(isr) |isr, ty| {
+            let mut isr = isr;
 
             // Using fold_regions is inefficient, because it
             // constructs new types, but it avoids code duplication in
@@ -112,7 +111,7 @@ pub fn replace_bound_regions_in_fn_sig(
             // kinds of types.  This had already caused me several
             // bugs so I decided to switch over.
             do ty::fold_regions(tcx, *ty) |r, in_fn| {
-                if !in_fn { isr = append_isr(isr, to_r, r); }
+                if !in_fn { isr = append_isr(isr, |br| to_r(br), r); }
                 r
             };
 
@@ -149,7 +148,7 @@ pub fn replace_bound_regions_in_fn_sig(
                     tcx.sess.bug(
                         fmt!("Bound region not found in \
                               in_scope_regions list: %s",
-                             region_to_str(tcx, r)));
+                             region_to_str(tcx, "", false, r)));
                   }
                 }
               }
@@ -211,18 +210,18 @@ pub fn relate_nested_regions(
         match ty::get(ty).sty {
             ty::ty_rptr(r, ref mt) |
             ty::ty_evec(ref mt, ty::vstore_slice(r)) => {
-                relate(*the_stack, r, relate_op);
+                relate(*the_stack, r, |x,y| relate_op(x,y));
                 the_stack.push(r);
-                walk_ty(tcx, the_stack, mt.ty, relate_op);
+                walk_ty(tcx, the_stack, mt.ty, |x,y| relate_op(x,y));
                 the_stack.pop();
             }
             _ => {
                 ty::fold_regions_and_ty(
                     tcx,
                     ty,
-                    |r| { relate(*the_stack, r, relate_op); r },
-                    |t| { walk_ty(tcx, the_stack, t, relate_op); t },
-                    |t| { walk_ty(tcx, the_stack, t, relate_op); t });
+                    |r| { relate(     *the_stack, r, |x,y| relate_op(x,y)); r },
+                    |t| { walk_ty(tcx, the_stack, t, |x,y| relate_op(x,y)); t },
+                    |t| { walk_ty(tcx, the_stack, t, |x,y| relate_op(x,y)); t });
             }
         }
     }
@@ -231,7 +230,7 @@ pub fn relate_nested_regions(
               r_sub: ty::Region,
               relate_op: &fn(ty::Region, ty::Region))
     {
-        for the_stack.each |&r| {
+        for the_stack.iter().advance |&r| {
             if !r.is_bound() && !r_sub.is_bound() {
                 relate_op(r, r_sub);
             }
@@ -259,14 +258,14 @@ pub fn relate_free_regions(
     debug!("relate_free_regions >>");
 
     let mut all_tys = ~[];
-    for fn_sig.inputs.each |arg| {
+    for fn_sig.inputs.iter().advance |arg| {
         all_tys.push(*arg);
     }
     for self_ty.iter().advance |&t| {
         all_tys.push(t);
     }
 
-    for all_tys.each |&t| {
+    for all_tys.iter().advance |&t| {
         debug!("relate_free_regions(t=%s)", ppaux::ty_to_str(tcx, t));
         relate_nested_regions(tcx, None, t, |a, b| {
             match (&a, &b) {

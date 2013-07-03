@@ -8,23 +8,23 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-test
+// xfail-test FIXME #2190
 mod a {
-fn foo(f: &fn()) { f() }
-fn bar() {}
-pub fn main() { foo(||bar()); }
+    fn foo(f: &fn()) { f() }
+    fn bar() {}
+    pub fn main() { foo(||bar()); }
 }
 
 mod b {
-fn foo(f: Option<&fn()>) { f.iter(|x|x()) }
-fn bar() {}
-pub fn main() { foo(Some(bar)); }
+    fn foo(f: Option<&fn()>) { f.iter(|x|x()) }
+    fn bar() {}
+    pub fn main() { foo(Some(bar)); }
 }
 
 mod c {
-fn foo(f: Option<&fn()>) { f.iter(|x|x()) }
-fn bar() {}
-pub fn main() { foo(Some(||bar())); }
+    fn foo(f: Option<&fn()>) { f.iter(|x|x()) }
+    fn bar() {}
+    pub fn main() { foo(Some(||bar())); }
 }
 
 pub fn main() {

@@ -16,8 +16,10 @@ Runtime type reflection
 
 #[allow(missing_doc)];
 
-use intrinsic::{TyDesc, TyVisitor};
-use intrinsic::Opaque;
+#[cfg(stage0)]
+use intrinsic::{Opaque, TyDesc, TyVisitor};
+#[cfg(not(stage0))]
+use unstable::intrinsics::{Opaque, TyDesc, TyVisitor};
 use libc::c_void;
 use sys;
 use vec;

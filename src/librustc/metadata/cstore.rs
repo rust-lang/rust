@@ -12,13 +12,11 @@
 // The crate store - a central repo for information collected about external
 // crates and libraries
 
-use core::prelude::*;
 
 use metadata::cstore;
 use metadata::decoder;
 
-use core::hashmap::HashMap;
-use core::vec;
+use std::hashmap::HashMap;
 use extra;
 use syntax::ast;
 use syntax::parse::token::ident_interner;
@@ -86,13 +84,13 @@ pub fn have_crate_data(cstore: &CStore, cnum: ast::crate_num) -> bool {
 
 pub fn iter_crate_data(cstore: &CStore,
                        i: &fn(ast::crate_num, @crate_metadata)) {
-    for cstore.metas.each |&k, &v| {
+    for cstore.metas.iter().advance |(&k, &v)| {
         i(k, v);
     }
 }
 
 pub fn add_used_crate_file(cstore: &mut CStore, lib: &Path) {
-    if !vec::contains(cstore.used_crate_files, lib) {
+    if !cstore.used_crate_files.contains(lib) {
         cstore.used_crate_files.push(copy *lib);
     }
 }
@@ -104,7 +102,7 @@ pub fn get_used_crate_files(cstore: &CStore) -> ~[Path] {
 pub fn add_used_library(cstore: &mut CStore, lib: @str) -> bool {
     assert!(!lib.is_empty());
 
-    if cstore.used_libraries.contains(&lib) { return false; }
+    if cstore.used_libraries.iter().any_(|x| x == &lib) { return false; }
     cstore.used_libraries.push(lib);
     true
 }
@@ -160,7 +158,7 @@ pub fn get_dep_hashes(cstore: &CStore) -> ~[@str] {
     };
 
     debug!("sorted:");
-    for sorted.each |x| {
+    for sorted.iter().advance |x| {
         debug!("  hash[%s]: %s", x.name, x.hash);
     }
 

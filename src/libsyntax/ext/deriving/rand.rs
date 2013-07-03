@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
-
 use ast;
 use ast::{meta_item, item, expr, ident};
 use codemap::span;
@@ -17,7 +15,7 @@ use ext::base::ExtCtxt;
 use ext::build::{AstBuilder, Duplicate};
 use ext::deriving::generic::*;
 
-use core::vec;
+use std::vec;
 
 pub fn expand_deriving_rand(cx: @ExtCtxt,
                             span: span,
@@ -93,7 +91,7 @@ fn rand_substructure(cx: @ExtCtxt, span: span, substr: &Substructure) -> @expr {
             let rand_variant = cx.expr_binary(span, ast::rem,
                                               rv_call, variant_count);
 
-            let mut arms = do variants.mapi |i, id_sum| {
+            let mut arms = do variants.iter().enumerate().transform |(i, id_sum)| {
                 let i_expr = cx.expr_uint(span, i);
                 let pat = cx.pat_lit(span, i_expr);
 
@@ -101,10 +99,10 @@ fn rand_substructure(cx: @ExtCtxt, span: span, substr: &Substructure) -> @expr {
                     (ident, ref summary) => {
                         cx.arm(span,
                                ~[ pat ],
-                               rand_thing(cx, span, ident, summary, rand_call))
+                               rand_thing(cx, span, ident, summary, || rand_call()))
                     }
                 }
-            };
+            }.collect::<~[ast::arm]>();
 
             // _ => {} at the end. Should never occur
             arms.push(cx.arm_unreachable(span));

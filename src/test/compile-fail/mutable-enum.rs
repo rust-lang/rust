@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[mutable]
+#[no_freeze]
 enum Foo { A }
 
-fn bar<T: Const>(_: T) {}
+fn bar<T: Freeze>(_: T) {}
 
 fn main() {
     let x = A;
-    bar(x); //~ ERROR instantiating a type parameter with an incompatible type `Foo`, which does not fulfill `Const`
+    bar(x); //~ ERROR instantiating a type parameter with an incompatible type `Foo`, which does not fulfill `Freeze`
 }

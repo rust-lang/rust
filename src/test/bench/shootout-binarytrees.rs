@@ -1,8 +1,4 @@
-// xfail-test
-
-// Broken due to arena API problems.
-
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -15,33 +11,35 @@
 extern mod extra;
 use extra::arena;
 
-enum tree<'self> {
-    nil,
-    node(&'self tree<'self>, &'self tree<'self>, int),
+enum Tree<'self> {
+    Nil,
+    Node(&'self Tree<'self>, &'self Tree<'self>, int),
 }
 
-fn item_check(t: &tree) -> int {
+fn item_check(t: &Tree) -> int {
     match *t {
-      nil => { return 0; }
-      node(left, right, item) => {
+      Nil => { return 0; }
+      Node(left, right, item) => {
         return item + item_check(left) - item_check(right);
       }
     }
 }
 
-fn bottom_up_tree<'r>(arena: &'r mut arena::Arena, item: int, depth: int)
-                   -> &'r tree<'r> {
+fn bottom_up_tree<'r>(arena: &'r arena::Arena, item: int, depth: int)
+                   -> &'r Tree<'r> {
     if depth > 0 {
         return arena.alloc(
-            || node(bottom_up_tree(arena, 2 * item - 1, depth - 1),
+            || Node(bottom_up_tree(arena, 2 * item - 1, depth - 1),
                     bottom_up_tree(arena, 2 * item, depth - 1),
                     item));
     }
-    return arena.alloc(|| nil);
+    return arena.alloc(|| Nil);
 }
 
 fn main() {
-    let args = os::args();
+    use std::os;
+    use std::int;
+    let args = std::os::args();
     let args = if os::getenv(~"RUST_BENCH").is_some() {
         ~[~"", ~"17"]
     } else if args.len() <= 1u {
@@ -59,34 +57,34 @@ fn main() {
         max_depth = n;
     }
 
-    let mut stretch_arena = arena::Arena();
+    let stretch_arena = arena::Arena();
     let stretch_depth = max_depth + 1;
-    let stretch_tree = bottom_up_tree(&mut stretch_arena, 0, stretch_depth);
+    let stretch_tree = bottom_up_tree(&stretch_arena, 0, stretch_depth);
 
-    io::println(fmt!("stretch tree of depth %d\t check: %d",
+    println(fmt!("stretch tree of depth %d\t check: %d",
                           stretch_depth,
                           item_check(stretch_tree)));
 
-    let mut long_lived_arena = arena::Arena();
-    let long_lived_tree = bottom_up_tree(&mut long_lived_arena, 0, max_depth);
+    let long_lived_arena = arena::Arena();
+    let long_lived_tree = bottom_up_tree(&long_lived_arena, 0, max_depth);
     let mut depth = min_depth;
     while depth <= max_depth {
         let iterations = int::pow(2, (max_depth - depth + min_depth) as uint);
         let mut chk = 0;
         let mut i = 1;
         while i <= iterations {
-            let mut temp_tree = bottom_up_tree(&mut long_lived_arena, i, depth);
+            let mut temp_tree = bottom_up_tree(&long_lived_arena, i, depth);
             chk += item_check(temp_tree);
-            temp_tree = bottom_up_tree(&mut long_lived_arena, -i, depth);
+            temp_tree = bottom_up_tree(&long_lived_arena, -i, depth);
             chk += item_check(temp_tree);
             i += 1;
         }
-        io::println(fmt!("%d\t trees of depth %d\t check: %d",
+        println(fmt!("%d\t trees of depth %d\t check: %d",
                          iterations * 2, depth,
                          chk));
         depth += 2;
     }
-    io::println(fmt!("long lived trees of depth %d\t check: %d",
+    println(fmt!("long lived tree of depth %d\t check: %d",
                      max_depth,
                      item_check(long_lived_tree)));
 }

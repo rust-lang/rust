@@ -10,12 +10,11 @@
 
 // Code that generates a test runner to run all the tests in a crate
 
-use core::prelude::*;
 
 use driver::session;
 use front::config;
 
-use core::vec;
+use std::vec;
 use syntax::ast_util::*;
 use syntax::attr;
 use syntax::codemap::{dummy_sp, span, ExpandedFrom, CallInfo, NameAndSpan};
@@ -92,7 +91,7 @@ fn generate_test_harness(sess: session::Session,
     return res;
 }
 
-fn strip_test_functions(crate: @ast::crate) -> @ast::crate {
+fn strip_test_functions(crate: &ast::crate) -> @ast::crate {
     // When not compiling with --test we should not compile the
     // #[test] functions
     do config::strip_items(crate) |attrs| {
@@ -118,7 +117,7 @@ fn fold_mod(cx: @mut TestCtxt,
 
     let mod_nomain = ast::_mod {
         view_items: /*bad*/copy m.view_items,
-        items: vec::map(m.items, |i| nomain(cx, *i)),
+        items: m.items.iter().transform(|i| nomain(cx, *i)).collect(),
     };
 
     fold::noop_fold_mod(&mod_nomain, fld)
@@ -272,7 +271,7 @@ mod __test {
 */
 
 fn mk_std(cx: &TestCtxt) -> @ast::view_item {
-    let vers = ast::lit_str(@"0.7-pre");
+    let vers = ast::lit_str(@"0.7");
     let vers = nospan(vers);
     let mi = ast::meta_name_value(@"vers", vers);
     let mi = nospan(mi);
@@ -386,7 +385,7 @@ fn is_std(cx: &TestCtxt) -> bool {
 fn mk_test_descs(cx: &TestCtxt) -> @ast::expr {
     debug!("building test vector from %u tests", cx.testfns.len());
     let mut descs = ~[];
-    for cx.testfns.each |test| {
+    for cx.testfns.iter().advance |test| {
         descs.push(mk_test_desc_and_fn_rec(cx, test));
     }
 

@@ -85,7 +85,7 @@ pub struct Buffer {
 }
 
 impl Drop for Buffer {
-    fn finalize(&self) {}
+    fn drop(&self) {}
 }
 
 proto! double_buffer (

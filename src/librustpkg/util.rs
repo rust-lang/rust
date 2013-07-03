@@ -8,8 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
-use core::{libc, os, result, str};
+use std::{libc, os, result, str};
 use rustc::driver::{driver, session};
 use rustc::metadata::filesearch;
 use extra::getopts::groups::getopts;
@@ -56,7 +55,7 @@ pub fn root() -> Path {
 }
 
 pub fn is_cmd(cmd: &str) -> bool {
-    Commands.any(|&c| c == cmd)
+    Commands.iter().any_(|&c| c == cmd)
 }
 
 struct ListenerFn {
@@ -103,10 +102,10 @@ fn fold_item(ctx: @mut ReadyCtx,
     if attrs.len() > 0 {
         let mut cmds = ~[];
 
-        for attrs.each |attr| {
+        for attrs.iter().advance |attr| {
             match attr.node.value.node {
                 ast::meta_list(_, ref mis) => {
-                    for mis.each |mi| {
+                    for mis.iter().advance |mi| {
                         match mi.node {
                             ast::meta_word(cmd) => cmds.push(cmd.to_owned()),
                             _ => {}
@@ -187,7 +186,7 @@ pub fn compile_input(ctxt: &Ctx,
         Lib => lib_crate,
         Test | Bench | Main => bin_crate
     };
-    let matches = getopts(~[~"-Z", ~"time-passes"]
+    let matches = getopts(debug_flags()
                           + match what {
                               Lib => ~[~"--lib"],
                               // --test compiles both #[test] and #[bench] fns
@@ -211,7 +210,7 @@ pub fn compile_input(ctxt: &Ctx,
     let addl_lib_search_paths = @mut options.addl_lib_search_paths;
     // Make sure all the library directories actually exist, since the linker will complain
     // otherwise
-    for addl_lib_search_paths.each() |p| {
+    for addl_lib_search_paths.iter().advance |p| {
         assert!(os::path_is_dir(p));
     }
 
@@ -257,7 +256,7 @@ pub fn compile_input(ctxt: &Ctx,
 
     debug!("calling compile_crate_from_input, out_dir = %s,
            building_library = %?", out_dir.to_str(), sess.building_library);
-    compile_crate_from_input(&input, out_dir, sess, crate, copy cfg);
+    compile_crate_from_input(&input, out_dir, sess, crate, copy cfg, driver::cu_expand);
     true
 }
 
@@ -270,7 +269,8 @@ pub fn compile_crate_from_input(input: &driver::input,
                                 build_dir: &Path,
                                 sess: session::Session,
                                 crate: @ast::crate,
-                                cfg: ast::crate_cfg) {
+                                cfg: ast::crate_cfg,
+                                compile_from: driver::compile_phase) {
     debug!("Calling build_output_filenames with %s, building library? %?",
            build_dir.to_str(), sess.building_library);
 
@@ -280,14 +280,14 @@ pub fn compile_crate_from_input(input: &driver::input,
 
     debug!("Outputs are %? and output type = %?", outputs, sess.opts.output_type);
     debug!("additional libraries:");
-    for sess.opts.addl_lib_search_paths.each |lib| {
+    for sess.opts.addl_lib_search_paths.iter().advance |lib| {
         debug!("an additional library: %s", lib.to_str());
     }
 
     driver::compile_rest(sess,
                          cfg,
                          compile_upto {
-                             from: driver::cu_expand,
+                             from: compile_from,
                              to: driver::cu_everything
                          },
                          Some(outputs),
@@ -311,7 +311,7 @@ pub fn compile_crate(ctxt: &Ctx, pkg_id: &PkgId,
                      what: OutputType) -> bool {
     debug!("compile_crate: crate=%s, dir=%s", crate.to_str(), dir.to_str());
     debug!("compile_crate: short_name = %s, flags =...", pkg_id.to_str());
-    for flags.each |&fl| {
+    for flags.iter().advance |&fl| {
         debug!("+++ %s", fl);
     }
     compile_input(ctxt, pkg_id, crate, dir, flags, cfgs, opt, what)
@@ -331,7 +331,7 @@ pub fn find_and_install_dependencies(ctxt: &Ctx,
     debug!("In find_and_install_dependencies...");
     let my_workspace = copy *workspace;
     let my_ctxt      = copy *ctxt;
-    for c.each_view_item() |vi: @ast::view_item| {
+    for c.each_view_item() |vi: &ast::view_item| {
         debug!("A view item!");
         match vi.node {
             // ignore metadata, I guess
@@ -414,3 +414,7 @@ mod test {
     }
 
 }
+
+// tjc: cheesy
+fn debug_flags() -> ~[~str] { ~[] }
+// static debug_flags: ~[~str] = ~[~"-Z", ~"time-passes"];

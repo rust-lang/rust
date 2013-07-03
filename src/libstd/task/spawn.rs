@@ -91,8 +91,8 @@ use uint;
 use util;
 use unstable::sync::{Exclusive, exclusive};
 use rt::local::Local;
-use iterator::{IteratorUtil};
 use rt::task::Task;
+use iterator::IteratorUtil;
 
 #[cfg(test)] use task::default_task_opts;
 #[cfg(test)] use comm;
@@ -112,7 +112,7 @@ fn taskset_remove(tasks: &mut TaskSet, task: *rust_task) {
     assert!(was_present);
 }
 pub fn taskset_each(tasks: &TaskSet, blk: &fn(v: *rust_task) -> bool) -> bool {
-    tasks.each(|k| blk(*k))
+    tasks.iter().advance(|k| blk(*k))
 }
 
 // One of these per group of linked-failure tasks.
@@ -130,7 +130,7 @@ type TaskGroupInner<'self> = &'self mut Option<TaskGroupData>;
 
 // A taskgroup is 'dead' when nothing can cause it to fail; only members can.
 fn taskgroup_is_dead(tg: &TaskGroupData) -> bool {
-    (&const tg.members).is_empty()
+    tg.members.is_empty()
 }
 
 // A list-like structure by which taskgroups keep track of all ancestor groups
@@ -231,11 +231,15 @@ fn each_ancestor(list:        &mut AncestorList,
         // 'do_continue'  - Did the forward_blk succeed at this point? (i.e.,
         //                  should we recurse? or should our callers unwind?)
 
+        let forward_blk = Cell::new(forward_blk);
+
         // The map defaults to None, because if ancestors is None, we're at
         // the end of the list, which doesn't make sense to coalesce.
         return do (**ancestors).map_default((None,false)) |ancestor_arc| {
             // NB: Takes a lock! (this ancestor node)
             do access_ancestors(ancestor_arc) |nobe| {
+                // Argh, but we couldn't give it to coalesce() otherwise.
+                let forward_blk = forward_blk.take();
                 // Check monotonicity
                 assert!(last_generation > nobe.generation);
                 /*##########################################################*
@@ -318,7 +322,7 @@ struct TCB {
 
 impl Drop for TCB {
     // Runs on task exit.
-    fn finalize(&self) {
+    fn drop(&self) {
         unsafe {
             // FIXME(#4330) Need self by value to get mutability.
             let this: &mut TCB = transmute(self);
@@ -373,7 +377,7 @@ struct AutoNotify {
 }
 
 impl Drop for AutoNotify {
-    fn finalize(&self) {
+    fn drop(&self) {
         let result = if self.failed { Failure } else { Success };
         self.notify_chan.send(result);
     }
@@ -610,11 +614,8 @@ fn spawn_raw_newsched(mut opts: TaskOpts, f: ~fn()) {
 
     rtdebug!("spawn about to take scheduler");
 
-    let mut sched = Local::take::<Scheduler>();
+    let sched = Local::take::<Scheduler>();
     rtdebug!("took sched in spawn");
-//    let task = ~Coroutine::with_task(&mut sched.stack_pool,
-//                                     task, f);
-//    let task = ~Task::new_root(&mut sched.stack_pool, f);
     sched.schedule_task(task);
 }
 
@@ -669,7 +670,8 @@ fn spawn_raw_oldsched(mut opts: TaskOpts, f: ~fn()) {
         let child_data = Cell::new((notify_chan, child_arc, ancestors));
         let result: ~fn() = || {
             // Agh. Get move-mode items into the closure. FIXME (#2829)
-            let mut (notify_chan, child_arc, ancestors) = child_data.take();
+            let (notify_chan, child_arc, ancestors) = child_data.take();
+            let mut ancestors = ancestors;
             // Child task runs this code.
 
             // Even if the below code fails to kick the child off, we must

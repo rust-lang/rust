@@ -10,12 +10,11 @@
 
 #[allow(missing_doc)];
 
-use core::prelude::*;
 
-use core::f64;
-use core::cmp;
-use core::num;
-use core::vec;
+use std::f64;
+use std::cmp;
+use std::num;
+use std::vec;
 use sort;
 
 // NB: this can probably be rewritten in terms of num::Num
@@ -72,7 +71,7 @@ impl<'self> Stats for &'self [f64] {
         } else {
             let mean = self.mean();
             let mut v = 0.0;
-            for self.each |s| {
+            for self.iter().advance |s| {
                 let x = *s - mean;
                 v += x*x;
             }

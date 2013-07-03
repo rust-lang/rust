@@ -34,18 +34,6 @@ pub trait Map<K, V>: Mutable {
     /// Return true if the map contains a value for the specified key
     fn contains_key(&self, key: &K) -> bool;
 
-    /// Visits all keys and values
-    fn each<'a>(&'a self, f: &fn(&K, &'a V) -> bool) -> bool;
-
-    /// Visit all keys
-    fn each_key(&self, f: &fn(&K) -> bool) -> bool;
-
-    /// Visit all values
-    fn each_value<'a>(&'a self, f: &fn(&'a V) -> bool) -> bool;
-
-    /// Iterate over the map and mutate the contained values
-    fn mutate_values(&mut self, f: &fn(&K, &mut V) -> bool) -> bool;
-
     /// Return a reference to the value corresponding to the key
     fn find<'a>(&'a self, key: &K) -> Option<&'a V>;
 

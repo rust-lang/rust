@@ -86,7 +86,7 @@ fn make_graph(N: uint, edges: ~[(node_id, node_id)]) -> graph {
         HashSet::new()
     };
 
-    for vec::each(edges) |e| {
+    for edges.iter().advance |e| {
         match *e {
             (i, j) => {
                 graph[i].insert(j);
@@ -141,7 +141,7 @@ fn bfs(graph: graph, key: node_id) -> bfs_result {
     while !q.is_empty() {
         let t = q.pop_front();
 
-        do graph[t].each() |k| {
+        do graph[t].iter().advance |k| {
             if marks[*k] == -1i64 {
                 marks[*k] = t;
                 q.add_back(*k);
@@ -191,17 +191,17 @@ fn bfs2(graph: graph, key: node_id) -> bfs_result {
         // Do the BFS.
         info!("PBFS iteration %?", i);
         i += 1;
-        colors = do colors.mapi() |i, c| {
+        colors = do colors.iter().enumerate().transform |(i, c)| {
             let c : color = *c;
             match c {
               white => {
                 let i = i as node_id;
 
-                let neighbors = copy graph[i];
+                let neighbors = &graph[i];
 
                 let mut color = white;
 
-                do neighbors.each() |k| {
+                do neighbors.iter().advance |k| {
                     if is_gray(&colors[*k]) {
                         color = gray(*k);
                         false
@@ -214,17 +214,17 @@ fn bfs2(graph: graph, key: node_id) -> bfs_result {
               gray(parent) => { black(parent) }
               black(parent) => { black(parent) }
             }
-        }
+        }.collect()
     }
 
     // Convert the results.
-    do vec::map(colors) |c| {
+    do colors.iter().transform |c| {
         match *c {
           white => { -1i64 }
           black(parent) => { parent }
           _ => { fail!("Found remaining gray nodes in BFS") }
         }
-    }
+    }.collect()
 }
 
 /// A parallel version of the bfs function.
@@ -286,7 +286,7 @@ fn pbfs(graph: &arc::ARC<graph>, key: node_id) -> bfs_result {
 
                     let mut color = white;
 
-                    do neighbors.each() |k| {
+                    do neighbors.iter().advance |k| {
                         if is_gray(&colors[*k]) {
                             color = gray(*k);
                             false
@@ -341,7 +341,7 @@ fn validate(edges: ~[(node_id, node_id)],
         }
         else {
             while parent != root {
-                if vec::contains(path, &parent) {
+                if path.contains(&parent) {
                     status = false;
                 }
 
@@ -378,7 +378,7 @@ fn validate(edges: ~[(node_id, node_id)],
 
     info!(~"Verifying graph edges...");
 
-    let status = do edges.all() |e| {
+    let status = do edges.iter().all |e| {
         let (u, v) = *e;
 
         abs(level[u] - level[v]) <= 1
@@ -402,7 +402,7 @@ fn validate(edges: ~[(node_id, node_id)],
             if *v == -1i64 || u == root {
                 true
             } else {
-                edges.contains(&(u, *v)) || edges.contains(&(*v, u))
+                edges.iter().any_(|x| x == &(u, *v)) || edges.iter().any_(|x| x == &(*v, u))
             }
         };
         result
@@ -441,7 +441,7 @@ fn main() {
     let stop = time::precise_time_s();
 
     let mut total_edges = 0;
-    vec::each(graph, |edges| { total_edges += edges.len(); true });
+    for graph.iter().advance |edges| { total_edges += edges.len(); }
 
     io::stdout().write_line(fmt!("Generated graph with %? edges in %? seconds.",
                                  total_edges / 2,

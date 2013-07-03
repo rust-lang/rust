@@ -19,8 +19,8 @@ pub fn main() {
     // in order for both Ord and TotalOrd
     let tss = [ts1, ts2];
 
-    for tss.eachi |i, ts1| {
-        for tss.eachi |j, ts2| {
+    for tss.iter().enumerate().advance |(i, ts1)| {
+        for tss.iter().enumerate().advance |(j, ts2)| {
             let ord = i.cmp(&j);
 
             let eq = i == j;

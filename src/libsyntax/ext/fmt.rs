@@ -14,17 +14,15 @@
  * compiler syntax extension plugin interface.
  */
 
-use core::prelude::*;
-
 use ast;
 use codemap::span;
 use ext::base::*;
 use ext::base;
 use ext::build::AstBuilder;
 
-use core::option;
-use core::unstable::extfmt::ct::*;
-use core::vec;
+use std::option;
+use std::unstable::extfmt::ct::*;
+use std::vec;
 use parse::token::{str_to_ident};
 
 pub fn expand_syntax_ext(cx: @ExtCtxt, sp: span, tts: &[ast::token_tree])
@@ -70,7 +68,7 @@ fn pieces_to_expr(cx: @ExtCtxt, sp: span,
     fn make_rt_conv_expr(cx: @ExtCtxt, sp: span, cnv: &Conv) -> @ast::expr {
         fn make_flags(cx: @ExtCtxt, sp: span, flags: &[Flag]) -> @ast::expr {
             let mut tmp_expr = make_rt_path_expr(cx, sp, "flag_none");
-            for flags.each |f| {
+            for flags.iter().advance |f| {
                 let fstr = match *f {
                   FlagLeftJustify => "flag_left_justify",
                   FlagLeftZeroPad => "flag_left_zero_pad",
@@ -156,7 +154,7 @@ fn pieces_to_expr(cx: @ExtCtxt, sp: span,
           option::None => (),
           _ => cx.span_unimpl(sp, unsupported)
         }
-        for cnv.flags.each |f| {
+        for cnv.flags.iter().advance |f| {
             match *f {
               FlagLeftJustify => (),
               FlagSignAlways => {
@@ -205,7 +203,7 @@ fn pieces_to_expr(cx: @ExtCtxt, sp: span,
           Some(p) => { debug!("param: %s", p.to_str()); }
           _ => debug!("param: none")
         }
-        for c.flags.each |f| {
+        for c.flags.iter().advance |f| {
             match *f {
               FlagLeftJustify => debug!("flag: left justify"),
               FlagLeftZeroPad => debug!("flag: left zero pad"),
@@ -249,6 +247,11 @@ fn pieces_to_expr(cx: @ExtCtxt, sp: span,
         }
     }
 
+    /* Short circuit an easy case up front (won't work otherwise) */
+    if pieces.len() == 0 {
+        return cx.expr_str_uniq(args[0].span, @"");
+    }
+
     let fmt_sp = args[0].span;
     let mut n = 0u;
     let nargs = args.len();
@@ -262,7 +265,7 @@ fn pieces_to_expr(cx: @ExtCtxt, sp: span,
     let mut stms = ~[];
 
     /* Translate each piece (portion of the fmt expression) by invoking the
-       corresponding function in core::unstable::extfmt. Each function takes a
+       corresponding function in std::unstable::extfmt. Each function takes a
        buffer to insert data into along with the data being formatted. */
     let npieces = pieces.len();
     do vec::consume(pieces) |i, pc| {

@@ -17,5 +17,5 @@ fn main() {
     let x: @Map<~str, ~str> = @HashMap::new::<~str, ~str>() as
         @Map<~str, ~str>;
     let y: @Map<uint, ~str> = @x;
-    //~^ ERROR mismatched types: expected `@std::container::Map<uint,~str>`
+    //~^ ERROR expected trait std::container::Map but found @-ptr
 }

@@ -15,6 +15,6 @@ fn with_int(f: &fn(x: &int)) {
 
 fn main() {
     let mut x = None;
-         //~^ ERROR reference is not valid outside of its lifetime
+         //~^ ERROR lifetime of variable does not enclose its declaration
     with_int(|y| x = Some(y));
 }

@@ -10,7 +10,6 @@
 
 //! Prune things that are private
 
-use core::prelude::*;
 
 use extract;
 use syntax::ast;
@@ -21,7 +20,7 @@ use fold::Fold;
 use fold;
 use pass::Pass;
 
-use core::util;
+use std::util;
 
 pub fn mk_pass() -> Pass {
     Pass {
@@ -82,7 +81,7 @@ fn strip_priv_methods(
     item_vis: ast::visibility
 ) -> doc::ImplDoc {
     let methods = do (&doc.methods).filtered |method| {
-        let ast_method = do methods.find |m| {
+        let ast_method = do methods.iter().find_ |m| {
             extract::to_str(m.ident) == method.name
         };
         assert!(ast_method.is_some());

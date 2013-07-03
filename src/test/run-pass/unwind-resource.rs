@@ -19,7 +19,7 @@ struct complainer {
 }
 
 impl Drop for complainer {
-    fn finalize(&self) {
+    fn drop(&self) {
         error!("About to send!");
         self.c.send(true);
         error!("Sent!");

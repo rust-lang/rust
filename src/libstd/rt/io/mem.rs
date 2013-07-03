@@ -86,7 +86,7 @@ impl Reader for MemReader {
         let write_len = min(buf.len(), self.buf.len() - self.pos);
         {
             let input = self.buf.slice(self.pos, self.pos + write_len);
-            let output = vec::mut_slice(buf, 0, write_len);
+            let output = buf.mut_slice(0, write_len);
             assert_eq!(input.len(), output.len());
             vec::bytes::copy_memory(output, input, write_len);
         }

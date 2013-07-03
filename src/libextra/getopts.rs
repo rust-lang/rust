@@ -81,14 +81,13 @@
 
 #[allow(missing_doc)];
 
-use core::prelude::*;
 
-use core::cmp::Eq;
-use core::result::{Err, Ok};
-use core::result;
-use core::option::{Some, None};
-use core::str;
-use core::vec;
+use std::cmp::Eq;
+use std::result::{Err, Ok};
+use std::result;
+use std::option::{Some, None};
+use std::str;
+use std::vec;
 
 #[deriving(Eq)]
 pub enum Name {
@@ -177,7 +176,7 @@ fn name_str(nm: &Name) -> ~str {
 }
 
 fn find_opt(opts: &[Opt], nm: Name) -> Option<uint> {
-    vec::position(opts, |opt| opt.name == nm)
+    opts.iter().position_(|opt| opt.name == nm)
 }
 
 /**
@@ -295,7 +294,7 @@ pub fn getopts(args: &[~str], opts: &[Opt]) -> Result {
                 }
             }
             let mut name_pos = 0;
-            for names.each() |nm| {
+            for names.iter().advance() |nm| {
                 name_pos += 1;
                 let optid = match find_opt(opts, copy *nm) {
                   Some(id) => id,
@@ -373,7 +372,7 @@ pub fn opt_count(mm: &Matches, nm: &str) -> uint {
 
 /// Returns true if any of several options were matched
 pub fn opts_present(mm: &Matches, names: &[~str]) -> bool {
-    for names.each |nm| {
+    for names.iter().advance |nm| {
         match find_opt(mm.opts, mkname(*nm)) {
             Some(id) if !mm.vals[id].is_empty() => return true,
             _ => (),
@@ -400,7 +399,7 @@ pub fn opt_str(mm: &Matches, nm: &str) -> ~str {
  * option took an argument
  */
 pub fn opts_str(mm: &Matches, names: &[~str]) -> ~str {
-    for names.each |nm| {
+    for names.iter().advance |nm| {
         match opt_val(mm, *nm) {
           Val(ref s) => return copy *s,
           _ => ()
@@ -418,10 +417,11 @@ pub fn opts_str(mm: &Matches, names: &[~str]) -> ~str {
  */
 pub fn opt_strs(mm: &Matches, nm: &str) -> ~[~str] {
     let mut acc: ~[~str] = ~[];
-    for vec::each(opt_vals(mm, nm)) |v| {
+    let r = opt_vals(mm, nm);
+    for r.iter().advance |v| {
         match *v { Val(ref s) => acc.push(copy *s), _ => () }
     }
-    return acc;
+    acc
 }
 
 /// Returns the string argument supplied to a matching option or none
@@ -465,8 +465,8 @@ pub mod groups {
     use getopts::{HasArg, Long, Maybe, Multi, No, Occur, Opt, Optional, Req};
     use getopts::{Short, Yes};
 
-    use core::str;
-    use core::vec;
+    use std::str;
+    use std::vec;
 
     /** one group of options, e.g., both -h and --help, along with
      * their shared description and properties
@@ -592,9 +592,9 @@ pub mod groups {
      */
     pub fn usage(brief: &str, opts: &[OptGroup]) -> ~str {
 
-        let desc_sep = ~"\n" + " ".repeat(24);
+        let desc_sep = "\n" + " ".repeat(24);
 
-        let rows = vec::map(opts, |optref| {
+        let mut rows = opts.iter().transform(|optref| {
             let OptGroup{short_name: short_name,
                          long_name: long_name,
                          hint: hint,
@@ -605,33 +605,47 @@ pub mod groups {
             let mut row = " ".repeat(4);
 
             // short option
-            row += match short_name.len() {
-                0 => ~"",
-                1 => ~"-" + short_name + " ",
+            match short_name.len() {
+                0 => {}
+                1 => {
+                    row.push_char('-');
+                    row.push_str(short_name);
+                    row.push_char(' ');
+                }
                 _ => fail!("the short name should only be 1 ascii char long"),
-            };
+            }
 
             // long option
-            row += match long_name.len() {
-                0 => ~"",
-                _ => ~"--" + long_name + " ",
-            };
+            match long_name.len() {
+                0 => {}
+                _ => {
+                    row.push_str("--");
+                    row.push_str(long_name);
+                    row.push_char(' ');
+                }
+            }
 
             // arg
-            row += match hasarg {
-                No    => ~"",
-                Yes   => hint,
-                Maybe => ~"[" + hint + "]",
-            };
+            match hasarg {
+                No => {}
+                Yes => row.push_str(hint),
+                Maybe => {
+                    row.push_char('[');
+                    row.push_str(hint);
+                    row.push_char(']');
+                }
+            }
 
             // FIXME: #5516
             // here we just need to indent the start of the description
             let rowlen = row.len();
-            row += if rowlen < 24 {
-                " ".repeat(24 - rowlen)
+            if rowlen < 24 {
+                for (24 - rowlen).times {
+                    row.push_char(' ')
+                }
             } else {
-                copy desc_sep
-            };
+                row.push_str(desc_sep)
+            }
 
             // Normalize desc to contain words separated by one space character
             let mut desc_normalized_whitespace = ~"";
@@ -648,14 +662,14 @@ pub mod groups {
 
             // FIXME: #5516
             // wrapped description
-            row += desc_rows.connect(desc_sep);
+            row.push_str(desc_rows.connect(desc_sep));
 
             row
         });
 
         return str::to_owned(brief) +
                "\n\nOptions:\n" +
-               rows.connect("\n") +
+               rows.collect::<~[~str]>().connect("\n") +
                "\n\n";
     }
 } // end groups module
@@ -666,8 +680,8 @@ mod tests {
     use getopts::groups::OptGroup;
     use getopts::*;
 
-    use core::result::{Err, Ok};
-    use core::result;
+    use std::result::{Err, Ok};
+    use std::result;
 
     fn check_fail_type(f: Fail_, ft: FailType) {
         match f {

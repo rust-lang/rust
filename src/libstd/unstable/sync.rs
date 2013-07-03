@@ -17,7 +17,7 @@ use unstable::finally::Finally;
 use unstable::intrinsics;
 use ops::Drop;
 use clone::Clone;
-use kinds::Owned;
+use kinds::Send;
 
 /// An atomically reference counted pointer.
 ///
@@ -31,7 +31,7 @@ struct AtomicRcBoxData<T> {
     data: Option<T>,
 }
 
-impl<T: Owned> UnsafeAtomicRcBox<T> {
+impl<T: Send> UnsafeAtomicRcBox<T> {
     pub fn new(data: T) -> UnsafeAtomicRcBox<T> {
         unsafe {
             let data = ~AtomicRcBoxData { count: 1, data: Some(data) };
@@ -61,7 +61,7 @@ impl<T: Owned> UnsafeAtomicRcBox<T> {
     }
 }
 
-impl<T: Owned> Clone for UnsafeAtomicRcBox<T> {
+impl<T: Send> Clone for UnsafeAtomicRcBox<T> {
     fn clone(&self) -> UnsafeAtomicRcBox<T> {
         unsafe {
             let mut data: ~AtomicRcBoxData<T> = cast::transmute(self.data);
@@ -75,7 +75,7 @@ impl<T: Owned> Clone for UnsafeAtomicRcBox<T> {
 
 #[unsafe_destructor]
 impl<T> Drop for UnsafeAtomicRcBox<T>{
-    fn finalize(&self) {
+    fn drop(&self) {
         unsafe {
             do task::unkillable {
                 let mut data: ~AtomicRcBoxData<T> = cast::transmute(self.data);
@@ -102,7 +102,7 @@ struct LittleLock {
 }
 
 impl Drop for LittleLock {
-    fn finalize(&self) {
+    fn drop(&self) {
         unsafe {
             rust_destroy_little_lock(self.l);
         }
@@ -144,7 +144,7 @@ pub struct Exclusive<T> {
     x: UnsafeAtomicRcBox<ExData<T>>
 }
 
-pub fn exclusive<T:Owned>(user_data: T) -> Exclusive<T> {
+pub fn exclusive<T:Send>(user_data: T) -> Exclusive<T> {
     let data = ExData {
         lock: LittleLock(),
         failed: false,
@@ -155,14 +155,14 @@ pub fn exclusive<T:Owned>(user_data: T) -> Exclusive<T> {
     }
 }
 
-impl<T:Owned> Clone for Exclusive<T> {
+impl<T:Send> Clone for Exclusive<T> {
     // Duplicate an exclusive ARC, as std::arc::clone.
     fn clone(&self) -> Exclusive<T> {
         Exclusive { x: self.x.clone() }
     }
 }
 
-impl<T:Owned> Exclusive<T> {
+impl<T:Send> Exclusive<T> {
     // Exactly like std::arc::mutex_arc,access(), but with the little_lock
     // instead of a proper mutex. Same reason for being unsafe.
     //
@@ -282,7 +282,7 @@ mod tests {
                 }
             };
 
-            for futures.each |f| { f.recv() }
+            for futures.iter().advance |f| { f.recv() }
 
             do total.with |total| {
                 assert!(**total == num_tasks * count)

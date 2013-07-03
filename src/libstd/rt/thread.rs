@@ -33,7 +33,7 @@ impl Thread {
 }
 
 impl Drop for Thread {
-    fn finalize(&self) {
+    fn drop(&self) {
         unsafe { rust_raw_thread_join_delete(self.raw_thread) }
     }
 }

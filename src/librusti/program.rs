@@ -96,7 +96,7 @@ impl Program {
 
         code.push_str("fn main() {\n");
         // It's easy to initialize things if we don't run things...
-        for self.local_vars.each |name, var| {
+        for self.local_vars.iter().advance |(name, var)| {
             let mt = var.mt();
             code.push_str(fmt!("let%s %s: %s = fail!();\n", mt, *name, var.ty));
             var.alter(*name, &mut code);
@@ -107,12 +107,12 @@ impl Program {
         match *to_print {
             Some(ref s) => {
                 code.push_str(*s);
-                code.push_char('\n');
+                code.push_str(";\n");
             }
             None => {}
         }
 
-        for new_locals.each |p| {
+        for new_locals.iter().advance |p| {
             code.push_str(fmt!("assert_encodable(&%s);\n", *p.first_ref()));
         }
         code.push_str("};}");
@@ -149,7 +149,7 @@ impl Program {
 
         // Using this __tls_map handle, deserialize each variable binding that
         // we know about
-        for self.local_vars.each |name, var| {
+        for self.local_vars.iter().advance |(name, var)| {
             let mt = var.mt();
             code.push_str(fmt!("let%s %s: %s = {
                 let data = __tls_map.get_copy(&~\"%s\");
@@ -175,7 +175,7 @@ impl Program {
 
         // After the input code is run, we can re-serialize everything back out
         // into tls map (to be read later on by this task)
-        for self.local_vars.each |name, var| {
+        for self.local_vars.iter().advance |(name, var)| {
             code.push_str(fmt!("{
                 let local: %s = %s;
                 let bytes = do ::std::io::with_bytes_writer |io| {
@@ -237,7 +237,7 @@ impl Program {
     /// program starts
     pub fn set_cache(&self) {
         let map = @mut HashMap::new();
-        for self.local_vars.each |name, value| {
+        for self.local_vars.iter().advance |(name, value)| {
             map.insert(copy *name, @copy value.data);
         }
         unsafe {
@@ -370,7 +370,7 @@ impl Program {
         // helper functions to perform ast iteration
         fn each_user_local(blk: &ast::blk, f: &fn(@ast::local)) {
             do find_user_block(blk) |blk| {
-                for blk.node.stmts.each |stmt| {
+                for blk.node.stmts.iter().advance |stmt| {
                     match stmt.node {
                         ast::stmt_decl(d, _) => {
                             match d.node {
@@ -385,7 +385,7 @@ impl Program {
         }
 
         fn find_user_block(blk: &ast::blk, f: &fn(&ast::blk)) {
-            for blk.node.stmts.each |stmt| {
+            for blk.node.stmts.iter().advance |stmt| {
                 match stmt.node {
                     ast::stmt_semi(e, _) => {
                         match e.node {

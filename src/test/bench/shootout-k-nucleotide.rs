@@ -8,7 +8,7 @@ use std::libc::{STDIN_FILENO, c_int, fdopen, fgets, fileno, fopen, fstat};
 use std::libc::{stat, strlen};
 use std::ptr::null;
 use std::unstable::intrinsics::init;
-use std::vec::{reverse, slice};
+use std::vec::{reverse};
 use extra::sort::quick_sort3;
 
 static LINE_LEN: uint = 80;
@@ -194,7 +194,7 @@ fn unpack_symbol(c: u8) -> u8 {
 
 fn next_char<'a>(mut buf: &'a [u8]) -> &'a [u8] {
     loop {
-        buf = slice(buf, 1, buf.len());
+        buf = buf.slice(1, buf.len());
         if buf.len() == 0 {
             break;
         }
@@ -226,7 +226,7 @@ fn read_stdin() -> ~[u8] {
                 fgets(transmute(&mut window[0]), LINE_LEN as c_int, stdin);
 
                 {
-                    if vec::slice(window, 0, 6) == header {
+                    if window.slice(0, 6) == header {
                         break;
                     }
                 }
@@ -235,9 +235,7 @@ fn read_stdin() -> ~[u8] {
             while fgets(transmute(&mut window[0]),
                         LINE_LEN as c_int,
                         stdin) != null() {
-                window = vec::mut_slice(window,
-                                        strlen(transmute(&window[0])) as uint,
-                                        window.len());
+                window = window.mut_slice(strlen(transmute(&window[0])) as uint, window.len());
             }
         }
 

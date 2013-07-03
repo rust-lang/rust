@@ -21,10 +21,4 @@ class rust_exchange_alloc {
     void free(void *mem);
 };
 
-extern "C" uintptr_t *
-rust_get_exchange_count_ptr();
-
-void
-rust_check_exchange_count_on_exit();
-
 #endif

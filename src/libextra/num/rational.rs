@@ -10,11 +10,10 @@
 
 //! Rational numbers
 
-use core::prelude::*;
 
-use core::cmp;
-use core::from_str::FromStr;
-use core::num::{Zero,One,ToStrRadix,FromStrRadix,Round};
+use std::cmp;
+use std::from_str::FromStr;
+use std::num::{Zero,One,ToStrRadix,FromStrRadix,Round};
 use super::bigint::BigInt;
 
 /// Represents the ratio between 2 numbers.
@@ -277,11 +276,10 @@ impl<T: FromStrRadix + Clone + Integer + Ord>
 
 #[cfg(test)]
 mod test {
-    use core::prelude::*;
 
     use super::*;
-    use core::num::{Zero,One,FromStrRadix,IntConvertible};
-    use core::from_str::FromStr;
+    use std::num::{Zero,One,FromStrRadix,IntConvertible};
+    use std::from_str::FromStr;
 
     pub static _0 : Rational = Ratio { numer: 0, denom: 1};
     pub static _1 : Rational = Ratio { numer: 1, denom: 1};
@@ -482,7 +480,8 @@ mod test {
             assert_eq!(FromStr::from_str::<Rational>(s), None);
         }
 
-        for ["0 /1", "abc", "", "1/", "--1/2","3/2/1"].each |&s| {
+        let xs = ["0 /1", "abc", "", "1/", "--1/2","3/2/1"];
+        for xs.iter().advance |&s| {
             test(s);
         }
     }
@@ -521,7 +520,8 @@ mod test {
             assert_eq!(FromStrRadix::from_str_radix::<Rational>(s, 3), None);
         }
 
-        for ["0 /1", "abc", "", "1/", "--1/2","3/2/1", "3/2"].each |&s| {
+        let xs = ["0 /1", "abc", "", "1/", "--1/2","3/2/1", "3/2"];
+        for xs.iter().advance |&s| {
             test(s);
         }
     }

@@ -44,12 +44,12 @@
  *   taken to it, implementing them for Rust seems difficult.
  */
 
-use core::container::Map;
-use core::libc::c_ulonglong;
-use core::option::{Option, Some, None};
-use core::vec;
+use std::container::Map;
+use std::libc::c_ulonglong;
+use std::option::{Option, Some, None};
+use std::vec;
 
-use lib::llvm::{ValueRef, TypeRef, True, IntEQ, IntNE};
+use lib::llvm::{ValueRef, True, IntEQ, IntNE};
 use middle::trans::_match;
 use middle::trans::build::*;
 use middle::trans::common::*;
@@ -58,6 +58,8 @@ use middle::trans::type_of;
 use middle::ty;
 use syntax::ast;
 use util::ppaux::ty_to_str;
+
+use middle::trans::type_::Type;
 
 
 /// Representations.
@@ -84,7 +86,7 @@ pub enum Repr {
      * it represents the other case, which is inhabited by at most one value
      * (and all other fields are undefined/unused).
      *
-     * For example, `core::option::Option` instantiated at a safe pointer type
+     * For example, `std::option::Option` instantiated at a safe pointer type
      * is represented such that `None` is a null pointer and `Some` is the
      * identity function.
      */
@@ -133,7 +135,7 @@ fn represent_type_uncached(cx: &mut CrateContext, t: ty::t) -> Repr {
                 ty::lookup_field_type(cx.tcx, def_id, field.id, substs)
             };
             let packed = ty::lookup_packed(cx.tcx, def_id);
-            let dtor = ty::ty_dtor(cx.tcx, def_id).is_present();
+            let dtor = ty::ty_dtor(cx.tcx, def_id).has_drop_flag();
             let ftys =
                 if dtor { ftys + [ty::mk_bool()] } else { ftys };
             return Univariant(mk_struct(cx, ftys, packed), dtor)
@@ -145,7 +147,7 @@ fn represent_type_uncached(cx: &mut CrateContext, t: ty::t) -> Repr {
                     mk_struct(cx, self.tys, false).size == 0
                 }
                 fn find_ptr(&self) -> Option<uint> {
-                    self.tys.position(|&ty| mono_data_classify(ty) == MonoNonNull)
+                    self.tys.iter().position_(|&ty| mono_data_classify(ty) == MonoNonNull)
                 }
             }
 
@@ -161,7 +163,7 @@ fn represent_type_uncached(cx: &mut CrateContext, t: ty::t) -> Repr {
                 return Univariant(mk_struct(cx, [], false), false);
             }
 
-            if cases.all(|c| c.tys.len() == 0) {
+            if cases.iter().all(|c| c.tys.len() == 0) {
                 // All bodies empty -> intlike
                 let discrs = cases.map(|c| c.discr);
                 return CEnum(*discrs.iter().min().unwrap(), *discrs.iter().max().unwrap());
@@ -212,7 +214,7 @@ fn represent_type_uncached(cx: &mut CrateContext, t: ty::t) -> Repr {
 
 fn mk_struct(cx: &mut CrateContext, tys: &[ty::t], packed: bool) -> Struct {
     let lltys = tys.map(|&ty| type_of::sizing_type_of(cx, ty));
-    let llty_rec = T_struct(lltys, packed);
+    let llty_rec = Type::struct_(lltys, packed);
     Struct {
         size: machine::llsize_of_alloc(cx, llty_rec) /*bad*/as u64,
         align: machine::llalign_of_min(cx, llty_rec) /*bad*/as u64,
@@ -226,17 +228,16 @@ fn mk_struct(cx: &mut CrateContext, tys: &[ty::t], packed: bool) -> Struct {
  * All nominal types are LLVM structs, in order to be able to use
  * forward-declared opaque types to prevent circularity in `type_of`.
  */
-pub fn fields_of(cx: &mut CrateContext, r: &Repr) -> ~[TypeRef] {
+pub fn fields_of(cx: &mut CrateContext, r: &Repr) -> ~[Type] {
     generic_fields_of(cx, r, false)
 }
 /// Like `fields_of`, but for `type_of::sizing_type_of` (q.v.).
-pub fn sizing_fields_of(cx: &mut CrateContext, r: &Repr) -> ~[TypeRef] {
+pub fn sizing_fields_of(cx: &mut CrateContext, r: &Repr) -> ~[Type] {
     generic_fields_of(cx, r, true)
 }
-fn generic_fields_of(cx: &mut CrateContext, r: &Repr, sizing: bool)
-    -> ~[TypeRef] {
+fn generic_fields_of(cx: &mut CrateContext, r: &Repr, sizing: bool) -> ~[Type] {
     match *r {
-        CEnum(*) => ~[T_enum_discrim(cx)],
+        CEnum(*) => ~[Type::enum_discrim(cx)],
         Univariant(ref st, _dtor) => struct_llfields(cx, st, sizing),
         NullablePointer{ nonnull: ref st, _ } => struct_llfields(cx, st, sizing),
         General(ref sts) => {
@@ -247,7 +248,7 @@ fn generic_fields_of(cx: &mut CrateContext, r: &Repr, sizing: bool)
             let mut most_aligned = None;
             let mut largest_align = 0;
             let mut largest_size = 0;
-            for sts.each |st| {
+            for sts.iter().advance |st| {
                 if largest_size < st.size {
                     largest_size = st.size;
                 }
@@ -262,13 +263,12 @@ fn generic_fields_of(cx: &mut CrateContext, r: &Repr, sizing: bool)
             let padding = largest_size - most_aligned.size;
 
             struct_llfields(cx, most_aligned, sizing)
-                + [T_array(T_i8(), padding /*bad*/as uint)]
+                + [Type::array(&Type::i8(), padding)]
         }
     }
 }
 
-fn struct_llfields(cx: &mut CrateContext, st: &Struct, sizing: bool)
-    -> ~[TypeRef] {
+fn struct_llfields(cx: &mut CrateContext, st: &Struct, sizing: bool) -> ~[Type] {
     if sizing {
         st.fields.map(|&ty| type_of::sizing_type_of(cx, ty))
     } else {
@@ -309,7 +309,7 @@ pub fn trans_get_discr(bcx: block, r: &Repr, scrutinee: ValueRef)
                                          (cases.len() - 1) as int),
         NullablePointer{ nonnull: ref nonnull, nndiscr, ptrfield, _ } => {
             ZExt(bcx, nullable_bitdiscr(bcx, nonnull, nndiscr, ptrfield, scrutinee),
-                 T_enum_discrim(bcx.ccx()))
+                 Type::enum_discrim(bcx.ccx()))
         }
     }
 }
@@ -438,11 +438,11 @@ pub fn trans_field_ptr(bcx: block, r: &Repr, val: ValueRef, discr: int,
             } else {
                 // The unit-like case might have a nonzero number of unit-like fields.
                 // (e.g., Result or Either with () as one side.)
-                let llty = type_of::type_of(bcx.ccx(), nullfields[ix]);
-                assert_eq!(machine::llsize_of_alloc(bcx.ccx(), llty), 0);
+                let ty = type_of::type_of(bcx.ccx(), nullfields[ix]);
+                assert_eq!(machine::llsize_of_alloc(bcx.ccx(), ty), 0);
                 // The contents of memory at this pointer can't matter, but use
                 // the value that's "reasonable" in case of pointer comparison.
-                PointerCast(bcx, val, T_ptr(llty))
+                PointerCast(bcx, val, ty.ptr_to())
             }
         }
     }
@@ -456,8 +456,8 @@ fn struct_field_ptr(bcx: block, st: &Struct, val: ValueRef, ix: uint,
         let fields = do st.fields.map |&ty| {
             type_of::type_of(ccx, ty)
         };
-        let real_llty = T_struct(fields, st.packed);
-        PointerCast(bcx, val, T_ptr(real_llty))
+        let real_ty = Type::struct_(fields, st.packed);
+        PointerCast(bcx, val, real_ty.ptr_to())
     } else {
         val
     };
@@ -519,10 +519,10 @@ pub fn trans_const(ccx: &mut CrateContext, r: &Repr, discr: int,
                 C_struct(build_const_struct(ccx, nonnull, vals))
             } else {
                 assert_eq!(vals.len(), 0);
-                let vals = do nonnull.fields.mapi |i, &ty| {
+                let vals = do nonnull.fields.iter().enumerate().transform |(i, &ty)| {
                     let llty = type_of::sizing_type_of(ccx, ty);
                     if i == ptrfield { C_null(llty) } else { C_undef(llty) }
-                };
+                }.collect::<~[ValueRef]>();
                 C_struct(build_const_struct(ccx, nonnull, vals))
             }
         }
@@ -545,7 +545,7 @@ fn build_const_struct(ccx: &mut CrateContext, st: &Struct, vals: &[ValueRef])
 
     let mut offset = 0;
     let mut cfields = ~[];
-    for st.fields.eachi |i, &ty| {
+    for st.fields.iter().enumerate().advance |(i, &ty)| {
         let llty = type_of::sizing_type_of(ccx, ty);
         let type_align = machine::llalign_of_min(ccx, llty)
             /*bad*/as u64;
@@ -572,7 +572,7 @@ fn build_const_struct(ccx: &mut CrateContext, st: &Struct, vals: &[ValueRef])
 }
 
 fn padding(size: u64) -> ValueRef {
-    C_undef(T_array(T_i8(), size /*bad*/as uint))
+    C_undef(Type::array(&Type::i8(), size))
 }
 
 // XXX this utility routine should be somewhere more general

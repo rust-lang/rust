@@ -321,7 +321,7 @@ impl JoinLatch {
 }
 
 impl Drop for JoinLatch {
-    fn finalize(&self) {
+    fn drop(&self) {
         rtdebug!("DESTROYING %x", self.id());
         rtassert!(self.closed);
     }
@@ -333,7 +333,6 @@ mod test {
     use cell::Cell;
     use container::Container;
     use iter::Times;
-    use old_iter::BaseIter;
     use rt::test::*;
     use rand;
     use rand::RngUtil;
@@ -552,7 +551,7 @@ mod test {
                     rtdebug!("depth: %u", depth);
                     let mut remaining_orders = remaining_orders;
                     let mut num = 0;
-                    for my_orders.each |&order| {
+                    for my_orders.iter().advance |&order| {
                         let child_latch = latch.new_child();
                         let child_latch = Cell::new(child_latch);
                         let (child_orders, remaining) = split_orders(remaining_orders);
@@ -592,7 +591,7 @@ mod test {
             orders: ~[Order]
         }
         fn next(latch: &mut JoinLatch, orders: ~[Order]) {
-            for orders.each |order| {
+            for orders.iter().advance |order| {
                 let suborders = copy order.orders;
                 let child_latch = Cell::new(latch.new_child());
                 let succeed = order.succeed;

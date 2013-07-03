@@ -12,7 +12,7 @@
 //! single consumer.
 
 use container::Container;
-use kinds::Owned;
+use kinds::Send;
 use vec::OwnedVector;
 use cell::Cell;
 use option::*;
@@ -24,7 +24,7 @@ pub struct MessageQueue<T> {
     priv queue: ~Exclusive<~[T]>
 }
 
-impl<T: Owned> MessageQueue<T> {
+impl<T: Send> MessageQueue<T> {
     pub fn new() -> MessageQueue<T> {
         MessageQueue {
             queue: ~exclusive(~[])

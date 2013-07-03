@@ -8,12 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-test
-
-extern mod extra;
+use std::sys;
 
 pub fn main() {
     // Bare functions should just be a pointer
-    assert!(sys::rustrt::size_of::<fn()>() ==
-        sys::rustrt::size_of::<int>());
+    assert_eq!(sys::size_of::<extern "Rust" fn()>(), sys::size_of::<int>());
 }

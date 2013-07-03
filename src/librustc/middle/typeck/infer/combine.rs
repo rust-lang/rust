@@ -54,7 +54,6 @@
 // terms of error reporting, although we do not do that properly right
 // now.
 
-use core::prelude::*;
 
 use middle::ty::{FloatVar, FnSig, IntVar, TyVar};
 use middle::ty::{IntType, UintType, substs};
@@ -64,11 +63,13 @@ use middle::typeck::infer::glb::Glb;
 use middle::typeck::infer::lub::Lub;
 use middle::typeck::infer::sub::Sub;
 use middle::typeck::infer::to_str::InferStr;
-use middle::typeck::infer::{cres, InferCtxt, ures};
+use middle::typeck::infer::unify::{InferCtxtMethods};
+use middle::typeck::infer::{InferCtxt, cres, ures};
+use middle::typeck::infer::{TypeOrigin, TypeTrace};
 use util::common::indent;
 
-use core::result::{iter_vec2, map_vec2};
-use core::vec;
+use std::result::{iter_vec2, map_vec2};
+use std::vec;
 use syntax::ast::{Onceness, purity};
 use syntax::ast;
 use syntax::opt_vec;
@@ -79,7 +80,7 @@ pub trait Combine {
     fn infcx(&self) -> @mut InferCtxt;
     fn tag(&self) -> ~str;
     fn a_is_expected(&self) -> bool;
-    fn span(&self) -> span;
+    fn trace(&self) -> TypeTrace;
 
     fn sub(&self) -> Sub;
     fn lub(&self) -> Lub;
@@ -121,7 +122,7 @@ pub trait Combine {
 pub struct CombineFields {
     infcx: @mut InferCtxt,
     a_is_expected: bool,
-    span: span,
+    trace: TypeTrace,
 }
 
 pub fn expected_found<C:Combine,T>(
@@ -265,7 +266,7 @@ pub fn super_tps<C:Combine>(
     if vec::same_length(as_, bs) {
         iter_vec2(as_, bs, |a, b| {
             eq_tys(this, *a, *b)
-        }).then(|| Ok(as_.to_vec()) )
+        }).then(|| Ok(as_.to_owned()) )
     } else {
         Err(ty::terr_ty_param_size(
             expected_found(this, as_.len(), bs.len())))
@@ -508,13 +509,15 @@ pub fn super_tys<C:Combine>(
           }
       }
 
-      (&ty::ty_trait(a_id, ref a_substs, a_store, a_mutbl),
-       &ty::ty_trait(b_id, ref b_substs, b_store, b_mutbl))
+      (&ty::ty_trait(a_id, ref a_substs, a_store, a_mutbl, a_bounds),
+       &ty::ty_trait(b_id, ref b_substs, b_store, b_mutbl, b_bounds))
       if a_id == b_id && a_mutbl == b_mutbl => {
           let trait_def = ty::lookup_trait_def(tcx, a_id);
           do this.substs(&trait_def.generics, a_substs, b_substs).chain |substs| {
               do this.trait_stores(ty::terr_trait, a_store, b_store).chain |s| {
-                  Ok(ty::mk_trait(tcx, a_id, /*bad*/copy substs, s, a_mutbl))
+                  do this.bounds(a_bounds, b_bounds).chain |bounds| {
+                    Ok(ty::mk_trait(tcx, a_id, /*bad*/copy substs, s, a_mutbl, bounds))
+                  }
               }
           }
       }

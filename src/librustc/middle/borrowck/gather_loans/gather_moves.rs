@@ -12,7 +12,6 @@
  * Computes moves.
  */
 
-use core::prelude::*;
 use mc = middle::mem_categorization;
 use middle::borrowck::*;
 use middle::borrowck::move_data::*;
@@ -71,7 +70,7 @@ pub fn gather_captures(bccx: @BorrowckCtxt,
                        move_data: &mut MoveData,
                        closure_expr: @ast::expr) {
     let captured_vars = bccx.capture_map.get(&closure_expr.id);
-    for captured_vars.each |captured_var| {
+    for captured_vars.iter().advance |captured_var| {
         match captured_var.mode {
             moves::CapMove => {
                 let fvar_id = ast_util::def_id_of_def(captured_var.def).node;
@@ -101,9 +100,7 @@ fn check_is_legal_to_move_from(bccx: @BorrowckCtxt,
                                cmt0: mc::cmt,
                                cmt: mc::cmt) -> bool {
     match cmt.cat {
-        mc::cat_stack_upvar(*) |
         mc::cat_implicit_self(*) |
-        mc::cat_copied_upvar(*) |
         mc::cat_deref(_, _, mc::region_ptr(*)) |
         mc::cat_deref(_, _, mc::gc_ptr(*)) |
         mc::cat_deref(_, _, mc::unsafe_ptr(*)) => {
@@ -112,6 +109,27 @@ fn check_is_legal_to_move_from(bccx: @BorrowckCtxt,
                 fmt!("cannot move out of %s",
                      bccx.cmt_to_str(cmt)));
             false
+        }
+
+        // These are separate from the above cases for a better error message.
+        mc::cat_stack_upvar(*) |
+        mc::cat_copied_upvar(mc::CopiedUpvar { onceness: ast::Many, _ }) => {
+            let once_hint = if bccx.tcx.sess.once_fns() {
+                " (unless the destination closure type is `once fn')"
+            } else {
+                ""
+            };
+            bccx.span_err(
+                cmt0.span,
+                fmt!("cannot move out of %s%s", bccx.cmt_to_str(cmt), once_hint));
+            false
+        }
+
+        // Can move out of captured upvars only if the destination closure
+        // type is 'once'. 1-shot stack closures emit the copied_upvar form
+        // (see mem_categorization.rs).
+        mc::cat_copied_upvar(mc::CopiedUpvar { onceness: ast::Once, _ }) => {
+            true
         }
 
         // It seems strange to allow a move out of a static item,

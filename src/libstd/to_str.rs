@@ -17,10 +17,10 @@ The `ToStr` trait for converting to strings
 use str::OwnedStr;
 use hashmap::HashMap;
 use hashmap::HashSet;
-use container::Map;
 use hash::Hash;
+use iterator::IteratorUtil;
 use cmp::Eq;
-use old_iter::BaseIter;
+use vec::ImmutableVector;
 
 /// A generic trait for converting a value to a string
 pub trait ToStr {
@@ -53,8 +53,9 @@ impl<A:ToStr> ToStr for (A,) {
 impl<A:ToStr+Hash+Eq, B:ToStr+Hash+Eq> ToStr for HashMap<A, B> {
     #[inline]
     fn to_str(&self) -> ~str {
-        let mut (acc, first) = (~"{", true);
-        for self.each |key, value| {
+        let mut acc = ~"{";
+        let mut first = true;
+        for self.iter().advance |(key, value)| {
             if first {
                 first = false;
             }
@@ -73,8 +74,9 @@ impl<A:ToStr+Hash+Eq, B:ToStr+Hash+Eq> ToStr for HashMap<A, B> {
 impl<A:ToStr+Hash+Eq> ToStr for HashSet<A> {
     #[inline]
     fn to_str(&self) -> ~str {
-        let mut (acc, first) = (~"{", true);
-        for self.each |element| {
+        let mut acc = ~"{";
+        let mut first = true;
+        for self.iter().advance |element| {
             if first {
                 first = false;
             }
@@ -121,8 +123,9 @@ impl<A:ToStr,B:ToStr,C:ToStr> ToStr for (A, B, C) {
 impl<'self,A:ToStr> ToStr for &'self [A] {
     #[inline]
     fn to_str(&self) -> ~str {
-        let mut (acc, first) = (~"[", true);
-        for self.each |elt| {
+        let mut acc = ~"[";
+        let mut first = true;
+        for self.iter().advance |elt| {
             if first {
                 first = false;
             }
@@ -139,8 +142,9 @@ impl<'self,A:ToStr> ToStr for &'self [A] {
 impl<A:ToStr> ToStr for ~[A] {
     #[inline]
     fn to_str(&self) -> ~str {
-        let mut (acc, first) = (~"[", true);
-        for self.each |elt| {
+        let mut acc = ~"[";
+        let mut first = true;
+        for self.iter().advance |elt| {
             if first {
                 first = false;
             }
@@ -157,8 +161,9 @@ impl<A:ToStr> ToStr for ~[A] {
 impl<A:ToStr> ToStr for @[A] {
     #[inline]
     fn to_str(&self) -> ~str {
-        let mut (acc, first) = (~"[", true);
-        for self.each |elt| {
+        let mut acc = ~"[";
+        let mut first = true;
+        for self.iter().advance |elt| {
             if first {
                 first = false;
             }
@@ -177,7 +182,7 @@ impl<A:ToStr> ToStr for @[A] {
 mod tests {
     use hashmap::HashMap;
     use hashmap::HashSet;
-    use container::Set;
+    use container::{Set, Map};
     #[test]
     fn test_simple_types() {
         assert_eq!(1i.to_str(), ~"1");

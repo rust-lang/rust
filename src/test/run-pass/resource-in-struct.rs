@@ -20,7 +20,7 @@ struct close_res {
 
 #[unsafe_destructor]
 impl Drop for close_res {
-    fn finalize(&self) {
+    fn drop(&self) {
         unsafe {
             *(self.i) = false;
         }

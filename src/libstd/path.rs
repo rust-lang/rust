@@ -21,12 +21,11 @@ use cmp::Eq;
 use iterator::IteratorUtil;
 use libc;
 use option::{None, Option, Some};
+use str::{OwnedStr, Str, StrSlice, StrVector};
 use str;
-use str::{Str, StrSlice, StrVector};
 use to_str::ToStr;
 use ascii::{AsciiCast, AsciiStr};
-use old_iter::BaseIter;
-use vec::OwnedVector;
+use vec::{OwnedVector, ImmutableVector};
 
 #[cfg(windows)]
 pub use Path = self::WindowsPath;
@@ -128,7 +127,6 @@ pub trait GenericPath {
 #[cfg(target_os = "android")]
 mod stat {
     #[cfg(target_arch = "x86")]
-    #[cfg(target_arch = "arm")]
     pub mod arch {
         use libc;
 
@@ -154,6 +152,35 @@ mod stat {
                 st_ctime_nsec: 0,
                 __unused4: 0,
                 __unused5: 0,
+            }
+        }
+    }
+
+    #[cfg(target_arch = "arm")]
+    pub mod arch {
+        use libc;
+
+        pub fn default_stat() -> libc::stat {
+            libc::stat {
+                st_dev: 0,
+                __pad0: [0, ..4],
+                __st_ino: 0,
+                st_mode: 0,
+                st_nlink: 0,
+                st_uid: 0,
+                st_gid: 0,
+                st_rdev: 0,
+                __pad3: [0, ..4],
+                st_size: 0,
+                st_blksize: 0,
+                st_blocks: 0,
+                st_atime: 0,
+                st_atime_nsec: 0,
+                st_mtime: 0,
+                st_mtime_nsec: 0,
+                st_ctime: 0,
+                st_ctime_nsec: 0,
+                st_ino: 0
             }
         }
     }
@@ -308,26 +335,13 @@ mod stat {
     }
 }
 
-
-impl Path {
+#[cfg(target_os = "win32")]
+impl WindowsPath {
     pub fn stat(&self) -> Option<libc::stat> {
         unsafe {
              do str::as_c_str(self.to_str()) |buf| {
                 let mut st = stat::arch::default_stat();
                 match libc::stat(buf, &mut st) {
-                    0 => Some(st),
-                    _ => None,
-                }
-            }
-        }
-    }
-
-    #[cfg(unix)]
-    pub fn lstat(&self) -> Option<libc::stat> {
-        unsafe {
-            do str::as_c_str(self.to_str()) |buf| {
-                let mut st = stat::arch::default_stat();
-                match libc::lstat(buf, &mut st) {
                     0 => Some(st),
                     _ => None,
                 }
@@ -357,10 +371,55 @@ impl Path {
     }
 }
 
+#[cfg(not(target_os = "win32"))]
+impl PosixPath {
+    pub fn stat(&self) -> Option<libc::stat> {
+        unsafe {
+             do str::as_c_str(self.to_str()) |buf| {
+                let mut st = stat::arch::default_stat();
+                match libc::stat(buf, &mut st) {
+                    0 => Some(st),
+                    _ => None,
+                }
+            }
+        }
+    }
+
+    pub fn exists(&self) -> bool {
+        match self.stat() {
+            None => false,
+            Some(_) => true,
+        }
+    }
+
+    pub fn get_size(&self) -> Option<i64> {
+        match self.stat() {
+            None => None,
+            Some(ref st) => Some(st.st_size as i64),
+        }
+    }
+
+    pub fn get_mode(&self) -> Option<uint> {
+        match self.stat() {
+            None => None,
+            Some(ref st) => Some(st.st_mode as uint),
+        }
+    }
+
+    /// Execute a function on p as well as all of its ancestors
+    pub fn each_parent(&self, f: &fn(&Path)) {
+        if !self.components.is_empty() {
+            f(self);
+            self.pop().each_parent(f);
+        }
+    }
+
+}
+
 #[cfg(target_os = "freebsd")]
 #[cfg(target_os = "linux")]
 #[cfg(target_os = "macos")]
-impl Path {
+impl PosixPath {
     pub fn get_atime(&self) -> Option<(i64, int)> {
         match self.stat() {
             None => None,
@@ -392,9 +451,24 @@ impl Path {
     }
 }
 
+#[cfg(unix)]
+impl PosixPath {
+    pub fn lstat(&self) -> Option<libc::stat> {
+        unsafe {
+            do str::as_c_str(self.to_str()) |buf| {
+                let mut st = stat::arch::default_stat();
+                match libc::lstat(buf, &mut st) {
+                    0 => Some(st),
+                    _ => None,
+                }
+            }
+        }
+    }
+}
+
 #[cfg(target_os = "freebsd")]
 #[cfg(target_os = "macos")]
-impl Path {
+impl PosixPath {
     pub fn get_birthtime(&self) -> Option<(i64, int)> {
         match self.stat() {
             None => None,
@@ -407,7 +481,7 @@ impl Path {
 }
 
 #[cfg(target_os = "win32")]
-impl Path {
+impl WindowsPath {
     pub fn get_atime(&self) -> Option<(i64, int)> {
         match self.stat() {
             None => None,
@@ -434,13 +508,21 @@ impl Path {
             }
         }
     }
+
+    /// Execute a function on p as well as all of its ancestors
+    pub fn each_parent(&self, f: &fn(&Path)) {
+        if !self.components.is_empty() {
+            f(self);
+            self.pop().each_parent(f);
+        }
+    }
 }
 
 impl ToStr for PosixPath {
     fn to_str(&self) -> ~str {
         let mut s = ~"";
         if self.is_absolute {
-            s += "/";
+            s.push_str("/");
         }
         s + self.components.connect("/")
     }
@@ -568,7 +650,7 @@ impl GenericPath for PosixPath {
 
     fn push_many<S: Str>(&self, cs: &[S]) -> PosixPath {
         let mut v = copy self.components;
-        for cs.each |e| {
+        for cs.iter().advance |e| {
             for e.as_slice().split_iter(windows::is_sep).advance |s| {
                 if !s.is_empty() {
                     v.push(s.to_owned())
@@ -619,15 +701,21 @@ impl ToStr for WindowsPath {
     fn to_str(&self) -> ~str {
         let mut s = ~"";
         match self.host {
-          Some(ref h) => { s += "\\\\"; s += *h; }
+          Some(ref h) => {
+            s.push_str("\\\\");
+            s.push_str(*h);
+          }
           None => { }
         }
         match self.device {
-          Some(ref d) => { s += *d; s += ":"; }
+          Some(ref d) => {
+            s.push_str(*d);
+            s.push_str(":");
+          }
           None => { }
         }
         if self.is_absolute {
-            s += "\\";
+            s.push_str("\\");
         }
         s + self.components.connect("\\")
     }
@@ -825,7 +913,7 @@ impl GenericPath for WindowsPath {
 
     fn push_many<S: Str>(&self, cs: &[S]) -> WindowsPath {
         let mut v = copy self.components;
-        for cs.each |e| {
+        for cs.iter().advance |e| {
             for e.as_slice().split_iter(windows::is_sep).advance |s| {
                 if !s.is_empty() {
                     v.push(s.to_owned())
@@ -887,7 +975,7 @@ impl GenericPath for WindowsPath {
 
 pub fn normalize(components: &[~str]) -> ~[~str] {
     let mut cs = ~[];
-    for components.each |c| {
+    for components.iter().advance |c| {
         if *c == ~"." && components.len() > 1 { loop; }
         if *c == ~"" { loop; }
         if *c == ~".." && cs.len() != 0 {

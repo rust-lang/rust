@@ -126,7 +126,6 @@ and so on.
 
 */
 
-use core::prelude::*;
 
 use middle::pat_util::{pat_bindings};
 use middle::freevars;
@@ -136,8 +135,8 @@ use util::ppaux;
 use util::ppaux::Repr;
 use util::common::indenter;
 
-use core::at_vec;
-use core::hashmap::{HashSet, HashMap};
+use std::at_vec;
+use std::hashmap::{HashSet, HashMap};
 use syntax::ast::*;
 use syntax::ast_util;
 use syntax::visit;
@@ -183,6 +182,7 @@ struct VisitContext {
     move_maps: MoveMaps
 }
 
+#[deriving(Eq)]
 enum UseMode {
     Move,        // This value or something owned by it is moved.
     Read         // Read no matter what the type.
@@ -190,7 +190,7 @@ enum UseMode {
 
 pub fn compute_moves(tcx: ty::ctxt,
                      method_map: method_map,
-                     crate: @crate) -> MoveMaps
+                     crate: &crate) -> MoveMaps
 {
     let visitor = visit::mk_vt(@visit::Visitor {
         visit_expr: compute_modes_for_expr,
@@ -232,7 +232,7 @@ fn compute_modes_for_expr(expr: @expr,
 
 impl VisitContext {
     pub fn consume_exprs(&self, exprs: &[@expr], visitor: vt<VisitContext>) {
-        for exprs.each |expr| {
+        for exprs.iter().advance |expr| {
             self.consume_expr(*expr, visitor);
         }
     }
@@ -263,7 +263,7 @@ impl VisitContext {
 
         debug!("consume_block(blk.id=%?)", blk.node.id);
 
-        for blk.node.stmts.each |stmt| {
+        for blk.node.stmts.iter().advance |stmt| {
             (visitor.visit_stmt)(*stmt, (*self, visitor));
         }
 
@@ -335,7 +335,27 @@ impl VisitContext {
             }
 
             expr_call(callee, ref args, _) => {    // callee(args)
-                self.use_expr(callee, Read, visitor);
+                // Figure out whether the called function is consumed.
+                let mode = match ty::get(ty::expr_ty(self.tcx, callee)).sty {
+                    ty::ty_closure(ref cty) => {
+                        match cty.onceness {
+                        Once => Move,
+                        Many => Read,
+                        }
+                    },
+                    ty::ty_bare_fn(*) => Read,
+                    ref x =>
+                        self.tcx.sess.span_bug(callee.span,
+                            fmt!("non-function type in moves for expr_call: %?", x)),
+                };
+                // Note we're not using consume_expr, which uses type_moves_by_default
+                // to determine the mode, for this. The reason is that while stack
+                // closures should be noncopyable, they shouldn't move by default;
+                // calling a closure should only consume it if it's once.
+                if mode == Move {
+                    self.move_maps.moves_map.insert(callee.id);
+                }
+                self.use_expr(callee, mode, visitor);
                 self.use_fn_args(callee.id, *args, visitor);
             }
 
@@ -347,7 +367,7 @@ impl VisitContext {
             }
 
             expr_struct(_, ref fields, opt_with) => {
-                for fields.each |field| {
+                for fields.iter().advance |field| {
                     self.consume_expr(field.node.expr, visitor);
                 }
 
@@ -370,8 +390,8 @@ impl VisitContext {
                     // any fields which (1) were not explicitly
                     // specified and (2) have a type that
                     // moves-by-default:
-                    let consume_with = with_fields.any(|tf| {
-                        !fields.any(|f| f.node.ident == tf.ident) &&
+                    let consume_with = with_fields.iter().any_(|tf| {
+                        !fields.iter().any_(|f| f.node.ident == tf.ident) &&
                             ty::type_moves_by_default(self.tcx, tf.mt.ty)
                     });
 
@@ -398,7 +418,7 @@ impl VisitContext {
             expr_match(discr, ref arms) => {
                 // We must do this first so that `arms_have_by_move_bindings`
                 // below knows which bindings are moves.
-                for arms.each |arm| {
+                for arms.iter().advance |arm| {
                     self.consume_arm(arm, visitor);
                 }
 
@@ -521,7 +541,7 @@ impl VisitContext {
     }
 
     pub fn use_overloaded_operator(&self,
-                                   expr: @expr,
+                                   expr: &expr,
                                    receiver_expr: @expr,
                                    arg_exprs: &[@expr],
                                    visitor: vt<VisitContext>)
@@ -534,7 +554,7 @@ impl VisitContext {
 
         // for overloaded operatrs, we are always passing in a
         // borrowed pointer, so it's always read mode:
-        for arg_exprs.each |arg_expr| {
+        for arg_exprs.iter().advance |arg_expr| {
             self.use_expr(*arg_expr, Read, visitor);
         }
 
@@ -591,7 +611,7 @@ impl VisitContext {
                        arg_exprs: &[@expr],
                        visitor: vt<VisitContext>) {
         //! Uses the argument expressions.
-        for arg_exprs.each |arg_expr| {
+        for arg_exprs.iter().advance |arg_expr| {
             self.use_fn_arg(*arg_expr, visitor);
         }
     }
@@ -605,8 +625,8 @@ impl VisitContext {
                                       moves_map: MovesMap,
                                       arms: &[arm])
                                       -> Option<@pat> {
-        for arms.each |arm| {
-            for arm.pats.each |&pat| {
+        for arms.iter().advance |arm| {
+            for arm.pats.iter().advance |&pat| {
                 for ast_util::walk_pat(pat) |p| {
                     if moves_map.contains(&p.id) {
                         return Some(p);

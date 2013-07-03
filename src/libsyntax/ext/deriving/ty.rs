@@ -13,8 +13,6 @@ A mini version of ast::Ty, which is easier to use, and features an
 explicit `Self` type to use when specifying impls to be derived.
 */
 
-use core::prelude::*;
-
 use ast;
 use ast::{expr,Generics,ident};
 use ext::base::ExtCtxt;
@@ -24,12 +22,12 @@ use opt_vec;
 
 /// The types of pointers
 pub enum PtrTy<'self> {
-    Owned, // ~
+    Send, // ~
     Managed(ast::mutability), // @[mut]
     Borrowed(Option<&'self str>, ast::mutability), // &['lifetime] [mut]
 }
 
-/// A path, e.g. `::core::option::Option::<int>` (global). Has support
+/// A path, e.g. `::std::option::Option::<int>` (global). Has support
 /// for type parameters and a lifetime.
 pub struct Path<'self> {
     path: ~[&'self str],
@@ -65,7 +63,7 @@ impl<'self> Path<'self> {
                  self_generics: &Generics)
                  -> @ast::Ty {
         cx.ty_path(self.to_path(cx, span,
-                                self_ty, self_generics))
+                                self_ty, self_generics), @None)
     }
     pub fn to_path(&self,
                    cx: @ExtCtxt,
@@ -130,7 +128,7 @@ impl<'self> Ty<'self> {
             Ptr(ref ty, ref ptr) => {
                 let raw_ty = ty.to_ty(cx, span, self_ty, self_generics);
                 match *ptr {
-                    Owned => {
+                    Send => {
                         cx.ty_uniq(span, raw_ty)
                     }
                     Managed(mutbl) => {
@@ -144,7 +142,8 @@ impl<'self> Ty<'self> {
             }
             Literal(ref p) => { p.to_ty(cx, span, self_ty, self_generics) }
             Self  => {
-                cx.ty_path(self.to_path(cx, span, self_ty, self_generics))
+                cx.ty_path(self.to_path(cx, span, self_ty, self_generics),
+                           @None)
             }
             Tuple(ref fields) => {
                 let ty = if fields.is_empty() {
@@ -249,7 +248,7 @@ pub fn get_explicit_self(cx: @ExtCtxt, span: span, self_ptr: &Option<PtrTy>)
             let self_ty = respan(
                 span,
                 match *ptr {
-                    Owned => ast::sty_uniq(ast::m_imm),
+                    Send => ast::sty_uniq,
                     Managed(mutbl) => ast::sty_box(mutbl),
                     Borrowed(ref lt, mutbl) => {
                         let lt = lt.map(|s| @cx.lifetime(span,

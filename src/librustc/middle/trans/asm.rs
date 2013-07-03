@@ -12,7 +12,6 @@
 # Translation of inline assembly.
 */
 
-use core::prelude::*;
 
 use lib;
 use middle::trans::build::*;
@@ -20,7 +19,9 @@ use middle::trans::callee;
 use middle::trans::common::*;
 use middle::ty;
 
-use core::str;
+use middle::trans::type_::Type;
+
+use std::str;
 use syntax::ast;
 
 // Take an inline assembly expression and splat it out via LLVM
@@ -62,7 +63,7 @@ pub fn trans_inline_asm(bcx: block, ia: &ast::inline_asm) -> block {
 
     };
 
-    for cleanups.each |c| {
+    for cleanups.iter().advance |c| {
         revoke_clean(bcx, *c);
     }
     cleanups.clear();
@@ -83,7 +84,7 @@ pub fn trans_inline_asm(bcx: block, ia: &ast::inline_asm) -> block {
 
     };
 
-    for cleanups.each |c| {
+    for cleanups.iter().advance |c| {
         revoke_clean(bcx, *c);
     }
 
@@ -93,15 +94,15 @@ pub fn trans_inline_asm(bcx: block, ia: &ast::inline_asm) -> block {
     if !ia.clobbers.is_empty() && !clobbers.is_empty() {
         clobbers = fmt!("%s,%s", ia.clobbers, clobbers);
     } else {
-        clobbers += ia.clobbers;
+        clobbers.push_str(ia.clobbers);
     };
 
     // Add the clobbers to our constraints list
-    if !clobbers.is_empty() && !constraints.is_empty() {
-        constraints += ",";
-        constraints += clobbers;
+    if clobbers.len() != 0 && constraints.len() != 0 {
+        constraints.push_char(',');
+        constraints.push_str(clobbers);
     } else {
-        constraints += clobbers;
+        constraints.push_str(clobbers);
     }
 
     debug!("Asm Constraints: %?", constraints);
@@ -110,11 +111,11 @@ pub fn trans_inline_asm(bcx: block, ia: &ast::inline_asm) -> block {
 
     // Depending on how many outputs we have, the return type is different
     let output = if numOutputs == 0 {
-        T_void()
+        Type::void()
     } else if numOutputs == 1 {
         val_ty(outputs[0])
     } else {
-        T_struct(outputs.map(|o| val_ty(*o)), false)
+        Type::struct_(outputs.map(|o| val_ty(*o)), false)
     };
 
     let dialect = match ia.dialect {
@@ -130,12 +131,12 @@ pub fn trans_inline_asm(bcx: block, ia: &ast::inline_asm) -> block {
 
     // Again, based on how many outputs we have
     if numOutputs == 1 {
-        let op = PointerCast(bcx, aoutputs[0], T_ptr(val_ty(outputs[0])));
+        let op = PointerCast(bcx, aoutputs[0], val_ty(outputs[0]).ptr_to());
         Store(bcx, r, op);
     } else {
-        for aoutputs.eachi |i, o| {
+        for aoutputs.iter().enumerate().advance |(i, o)| {
             let v = ExtractValue(bcx, r, i);
-            let op = PointerCast(bcx, *o, T_ptr(val_ty(outputs[i])));
+            let op = PointerCast(bcx, *o, val_ty(outputs[i]).ptr_to());
             Store(bcx, v, op);
         }
     }

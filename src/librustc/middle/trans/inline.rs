@@ -8,18 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
 
 use metadata::csearch;
 use middle::astencode;
-use middle::trans::base::{get_insn_ctxt};
-use middle::trans::base::{impl_owned_self, impl_self, no_self};
+use middle::trans::base::{push_ctxt, impl_self, no_self};
 use middle::trans::base::{trans_item, get_item_val, trans_fn};
 use middle::trans::common::*;
 use middle::ty;
 use util::ppaux::ty_to_str;
 
-use core::vec;
+use std::vec;
 use syntax::ast;
 use syntax::ast_map::path_name;
 use syntax::ast_util::local_def;
@@ -30,7 +28,7 @@ use syntax::ast_util::local_def;
 pub fn maybe_instantiate_inline(ccx: @mut CrateContext, fn_id: ast::def_id,
                                 translate: bool)
     -> ast::def_id {
-    let _icx = ccx.insn_ctxt("maybe_instantiate_inline");
+    let _icx = push_ctxt("maybe_instantiate_inline");
     match ccx.external.find(&fn_id) {
         Some(&Some(node_id)) => {
             // Already inline
@@ -93,11 +91,16 @@ pub fn maybe_instantiate_inline(ccx: @mut CrateContext, fn_id: ast::def_id,
         csearch::found(ast::ii_method(impl_did, mth)) => {
           ccx.stats.n_inlines += 1;
           ccx.external.insert(fn_id, Some(mth.id));
-          let impl_tpt = ty::lookup_item_type(ccx.tcx, impl_did);
-          let num_type_params =
-              impl_tpt.generics.type_param_defs.len() +
-              mth.generics.ty_params.len();
-          if translate && num_type_params == 0 {
+          // If this is a default method, we can't look up the
+          // impl type. But we aren't going to translate anyways, so don't.
+          if !translate { return local_def(mth.id); }
+
+            let impl_tpt = ty::lookup_item_type(ccx.tcx, impl_did);
+            let num_type_params =
+                impl_tpt.generics.type_param_defs.len() +
+                mth.generics.ty_params.len();
+
+          if num_type_params == 0 {
               let llfn = get_item_val(ccx, mth.id);
               let path = vec::append(
                   ty::item_path(ccx.tcx, impl_did),
@@ -110,8 +113,8 @@ pub fn maybe_instantiate_inline(ccx: @mut CrateContext, fn_id: ast::def_id,
                       debug!("calling inline trans_fn with self_ty %s",
                              ty_to_str(ccx.tcx, self_ty));
                       match mth.explicit_self.node {
-                          ast::sty_value => impl_owned_self(self_ty),
-                          _ => impl_self(self_ty),
+                          ast::sty_value => impl_self(self_ty, ty::ByRef),
+                          _ => impl_self(self_ty, ty::ByCopy),
                       }
                   }
               };
@@ -123,7 +126,6 @@ pub fn maybe_instantiate_inline(ccx: @mut CrateContext, fn_id: ast::def_id,
                        self_kind,
                        None,
                        mth.id,
-                       Some(impl_did),
                        []);
           }
           local_def(mth.id)

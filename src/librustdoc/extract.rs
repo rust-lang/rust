@@ -10,13 +10,12 @@
 
 //! Converts the Rust AST to the rustdoc document model
 
-use core::prelude::*;
 
 use astsrv;
 use doc::ItemUtils;
 use doc;
 
-use core::vec;
+use std::vec;
 use syntax::ast;
 use syntax::parse::token::{ident_interner, ident_to_str};
 use syntax::parse::token;
@@ -102,7 +101,7 @@ fn moddoc_from_mod(
                     fndoc_from_fn(ItemDoc)
                 ))
               }
-              ast::item_const(_, _) => {
+              ast::item_static(*) => {
                 Some(doc::ConstTag(
                     constdoc_from_const(ItemDoc)
                 ))
@@ -144,13 +143,13 @@ fn nmoddoc_from_mod(
     module_: ast::foreign_mod
 ) -> doc::NmodDoc {
     let mut fns = ~[];
-    for module_.items.each |item| {
+    for module_.items.iter().advance |item| {
         let ItemDoc = mk_itemdoc(item.id, to_str(item.ident));
         match item.node {
           ast::foreign_item_fn(*) => {
             fns.push(fndoc_from_fn(ItemDoc));
           }
-          ast::foreign_item_const(*) => {} // XXX: Not implemented.
+          ast::foreign_item_static(*) => {} // XXX: Not implemented.
         }
     }
     doc::NmodDoc {
@@ -187,7 +186,7 @@ fn enumdoc_from_enum(
 fn variantdocs_from_variants(
     variants: ~[ast::variant]
 ) -> ~[doc::VariantDoc] {
-    vec::map(variants, variantdoc_from_variant)
+    variants.iter().transform(variantdoc_from_variant).collect()
 }
 
 fn variantdoc_from_variant(variant: &ast::variant) -> doc::VariantDoc {
@@ -204,7 +203,7 @@ fn traitdoc_from_trait(
 ) -> doc::TraitDoc {
     doc::TraitDoc {
         item: itemdoc,
-        methods: do vec::map(methods) |method| {
+        methods: do methods.iter().transform |method| {
             match copy *method {
               ast::required(ty_m) => {
                 doc::MethodDoc {
@@ -227,7 +226,7 @@ fn traitdoc_from_trait(
                 }
               }
             }
-        }
+        }.collect()
     }
 }
 
@@ -240,7 +239,7 @@ fn impldoc_from_impl(
         bounds_str: None,
         trait_types: ~[],
         self_ty: None,
-        methods: do vec::map(methods) |method| {
+        methods: do methods.iter().transform |method| {
             doc::MethodDoc {
                 name: to_str(method.ident),
                 brief: None,
@@ -249,7 +248,7 @@ fn impldoc_from_impl(
                 sig: None,
                 implementation: doc::Provided,
             }
-        }
+        }.collect()
     }
 }
 

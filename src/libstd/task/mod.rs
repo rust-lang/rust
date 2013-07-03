@@ -353,7 +353,7 @@ impl TaskBuilder {
     }
 
     /// Runs a task, while transfering ownership of one argument to the child.
-    pub fn spawn_with<A:Owned>(&mut self, arg: A, f: ~fn(v: A)) {
+    pub fn spawn_with<A:Send>(&mut self, arg: A, f: ~fn(v: A)) {
         let arg = Cell::new(arg);
         do self.spawn {
             f(arg.take());
@@ -373,7 +373,7 @@ impl TaskBuilder {
      * # Failure
      * Fails if a future_result was already set for this task.
      */
-    pub fn try<T:Owned>(&mut self, f: ~fn() -> T) -> Result<T,()> {
+    pub fn try<T:Send>(&mut self, f: ~fn() -> T) -> Result<T,()> {
         let (po, ch) = stream::<T>();
         let mut result = None;
 
@@ -445,7 +445,7 @@ pub fn spawn_supervised(f: ~fn()) {
     task.spawn(f)
 }
 
-pub fn spawn_with<A:Owned>(arg: A, f: ~fn(v: A)) {
+pub fn spawn_with<A:Send>(arg: A, f: ~fn(v: A)) {
     /*!
      * Runs a task, while transfering ownership of one argument to the
      * child.
@@ -478,7 +478,7 @@ pub fn spawn_sched(mode: SchedMode, f: ~fn()) {
     task.spawn(f)
 }
 
-pub fn try<T:Owned>(f: ~fn() -> T) -> Result<T,()> {
+pub fn try<T:Send>(f: ~fn() -> T) -> Result<T,()> {
     /*!
      * Execute a function in another task and return either the return value
      * of the function or result::err.
@@ -923,17 +923,15 @@ fn test_spawn_sched_blocking() {
             let lock = testrt::rust_dbg_lock_create();
 
             do spawn_sched(SingleThreaded) {
-                unsafe {
-                    testrt::rust_dbg_lock_lock(lock);
+                testrt::rust_dbg_lock_lock(lock);
 
-                    start_ch.send(());
+                start_ch.send(());
 
-                    // Block the scheduler thread
-                    testrt::rust_dbg_lock_wait(lock);
-                    testrt::rust_dbg_lock_unlock(lock);
+                // Block the scheduler thread
+                testrt::rust_dbg_lock_wait(lock);
+                testrt::rust_dbg_lock_unlock(lock);
 
-                    fin_ch.send(());
-                }
+                fin_ch.send(());
             };
 
             // Wait until the other task has its lock

@@ -8,19 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
 
 use config;
 use doc::ItemUtils;
 use doc;
 
-use core::comm::*;
-use core::comm;
-use core::io;
-use core::result;
-use core::run;
-use core::str;
-use core::task;
+use std::comm::*;
+use std::comm;
+use std::io;
+use std::result;
+use std::run;
+use std::str;
+use std::task;
 use extra::future;
 
 pub enum WriteInstr {
@@ -104,7 +103,7 @@ fn pandoc_writer(
     ];
 
     do generic_writer |markdown| {
-        use core::io::WriterUtil;
+        use std::io::WriterUtil;
 
         debug!("pandoc cmd: %s", pandoc_cmd);
         debug!("pandoc args: %s", pandoc_args.connect(" "));
@@ -130,7 +129,7 @@ fn generic_writer(process: ~fn(markdown: ~str)) -> Writer {
         let mut keep_going = true;
         while keep_going {
             match po.recv() {
-              Write(s) => markdown += s,
+              Write(s) => markdown.push_str(s),
               Done => keep_going = false
             }
         }
@@ -177,7 +176,7 @@ pub fn make_filename(
 }
 
 fn write_file(path: &Path, s: ~str) {
-    use core::io::WriterUtil;
+    use std::io::WriterUtil;
 
     match io::file_writer(path, [io::Create, io::Truncate]) {
       result::Ok(writer) => {
@@ -214,7 +213,7 @@ fn future_writer() -> (Writer, future::Future<~str>) {
         let mut res = ~"";
         loop {
             match port.recv() {
-              Write(s) => res += s,
+              Write(s) => res.push_str(s),
               Done => break
             }
         }
@@ -225,7 +224,6 @@ fn future_writer() -> (Writer, future::Future<~str>) {
 
 #[cfg(test)]
 mod test {
-    use core::prelude::*;
 
     use astsrv;
     use doc;

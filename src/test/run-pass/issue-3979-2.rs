@@ -9,16 +9,17 @@
 // except according to those terms.
 
 // xfail-test
+
 trait A {
-    fn a_method();
+    fn a_method(&self);
 }
 
 trait B: A {
-    fn b_method();
+    fn b_method(&self);
 }
 
 trait C: B {
-    fn c_method() {
+    fn c_method(&self) {
         self.a_method();
     }
 }

@@ -219,7 +219,7 @@ impl Task {
 }
 
 impl Drop for Task {
-    fn finalize(&self) { assert!(self.destroyed) }
+    fn drop(&self) { assert!(self.destroyed) }
 }
 
 // Coroutines represent nothing more than a context and a stack

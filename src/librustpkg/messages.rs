@@ -9,22 +9,22 @@
 // except according to those terms.
 
 use extra::term;
-use core::io;
-use core::result::*;
+use std::io;
+use std::result::*;
 
 pub fn note(msg: &str) {
-    pretty_message(msg, "note: ", term::color_green, io::stdout())
+    pretty_message(msg, "note: ", term::color::green, io::stdout())
 }
 
 pub fn warn(msg: &str) {
-    pretty_message(msg, "warning: ", term::color_yellow, io::stdout())
+    pretty_message(msg, "warning: ", term::color::yellow, io::stdout())
 }
 
 pub fn error(msg: &str) {
-    pretty_message(msg, "error: ", term::color_red, io::stdout())
+    pretty_message(msg, "error: ", term::color::red, io::stdout())
 }
 
-fn pretty_message<'a>(msg: &'a str, prefix: &'a str, color: u8, out: @io::Writer) {
+fn pretty_message<'a>(msg: &'a str, prefix: &'a str, color: term::color::Color, out: @io::Writer) {
     let term = term::Terminal::new(out);
     match term {
         Ok(ref t) => {

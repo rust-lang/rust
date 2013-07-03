@@ -8,22 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
-
 use ast::*;
 use ast;
 use ast_util;
 use codemap::{span, spanned};
-use core::cast;
-use core::local_data;
 use opt_vec;
 use parse::token;
 use visit;
 
-use core::hashmap::HashMap;
-use core::int;
-use core::option;
-use core::to_bytes;
+use std::hashmap::HashMap;
+use std::int;
+use std::option;
+use std::cast;
+use std::local_data;
 
 pub fn path_name_i(idents: &[ident]) -> ~str {
     // FIXME: Bad copies (#2543 -- same for everything else that says "bad")
@@ -59,9 +56,9 @@ pub fn variant_def_ids(d: def) -> Option<(def_id, def_id)> {
 pub fn def_id_of_def(d: def) -> def_id {
     match d {
       def_fn(id, _) | def_static_method(id, _, _) | def_mod(id) |
-      def_foreign_mod(id) | def_const(id) |
+      def_foreign_mod(id) | def_static(id, _) |
       def_variant(_, id) | def_ty(id) | def_ty_param(id, _) |
-      def_use(id) | def_struct(id) | def_trait(id) => {
+      def_use(id) | def_struct(id) | def_trait(id) | def_method(id, _) => {
         id
       }
       def_arg(id, _) | def_local(id, _) | def_self(id, _) | def_self_ty(id)
@@ -138,7 +135,7 @@ pub fn is_shift_binop(b: binop) -> bool {
 pub fn unop_to_str(op: unop) -> ~str {
     match op {
       box(mt) => if mt == m_mutbl { ~"@mut " } else { ~"@" },
-      uniq(mt) => if mt == m_mutbl { ~"~mut " } else { ~"~" },
+      uniq => ~"~",
       deref => ~"*",
       not => ~"!",
       neg => ~"-"
@@ -194,14 +191,6 @@ pub fn float_ty_to_str(t: float_ty) -> ~str {
 
 pub fn is_call_expr(e: @expr) -> bool {
     match e.node { expr_call(*) => true, _ => false }
-}
-
-// This makes def_id hashable
-impl to_bytes::IterBytes for def_id {
-    #[inline]
-    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
-        self.crate.iter_bytes(lsb0, f) && self.node.iter_bytes(lsb0, f)
-    }
 }
 
 pub fn block_from_expr(e: @expr) -> blk {
@@ -281,7 +270,7 @@ pub fn split_trait_methods(trait_methods: &[trait_method])
     -> (~[ty_method], ~[@method]) {
     let mut reqd = ~[];
     let mut provd = ~[];
-    for trait_methods.each |trt_method| {
+    for trait_methods.iter().advance |trt_method| {
         match *trt_method {
           required(ref tm) => reqd.push(copy *tm),
           provided(m) => provd.push(m)
@@ -394,10 +383,10 @@ impl id_range {
 
 pub fn id_visitor<T: Copy>(vfn: @fn(node_id, T)) -> visit::vt<T> {
     let visit_generics: @fn(&Generics, T) = |generics, t| {
-        for generics.ty_params.each |p| {
+        for generics.ty_params.iter().advance |p| {
             vfn(p.id, copy t);
         }
-        for generics.lifetimes.each |p| {
+        for generics.lifetimes.iter().advance |p| {
             vfn(p.id, copy t);
         }
     };
@@ -411,13 +400,13 @@ pub fn id_visitor<T: Copy>(vfn: @fn(node_id, T)) -> visit::vt<T> {
             match vi.node {
               view_item_extern_mod(_, _, id) => vfn(id, copy t),
               view_item_use(ref vps) => {
-                  for vps.each |vp| {
+                  for vps.iter().advance |vp| {
                       match vp.node {
                           view_path_simple(_, _, id) => vfn(id, copy t),
                           view_path_glob(_, id) => vfn(id, copy t),
                           view_path_list(_, ref paths, id) => {
                               vfn(id, copy t);
-                              for paths.each |p| {
+                              for paths.iter().advance |p| {
                                   vfn(p.node.id, copy t);
                               }
                           }
@@ -437,7 +426,7 @@ pub fn id_visitor<T: Copy>(vfn: @fn(node_id, T)) -> visit::vt<T> {
             vfn(i.id, copy t);
             match i.node {
               item_enum(ref enum_definition, _) =>
-                for (*enum_definition).variants.each |v| { vfn(v.node.id, copy t); },
+                for (*enum_definition).variants.iter().advance |v| { vfn(v.node.id, copy t); },
               _ => ()
             }
             visit::visit_item(i, (t, vt));
@@ -473,7 +462,7 @@ pub fn id_visitor<T: Copy>(vfn: @fn(node_id, T)) -> visit::vt<T> {
 
         visit_ty: |ty, (t, vt)| {
             match ty.node {
-              ty_path(_, id) => vfn(id, copy t),
+              ty_path(_, _, id) => vfn(id, copy t),
               _ => { /* fall through */ }
             }
             visit::visit_ty(ty, (t, vt));
@@ -500,7 +489,7 @@ pub fn id_visitor<T: Copy>(vfn: @fn(node_id, T)) -> visit::vt<T> {
                 }
             }
 
-            for d.inputs.each |arg| {
+            for d.inputs.iter().advance |arg| {
                 vfn(arg.id, copy t)
             }
             visit::visit_fn(fk, d, a, b, id, (copy t, vt));
@@ -546,18 +535,18 @@ pub fn walk_pat(pat: @pat, it: &fn(@pat) -> bool) -> bool {
     match pat.node {
         pat_ident(_, _, Some(p)) => walk_pat(p, it),
         pat_struct(_, ref fields, _) => {
-            fields.each(|f| walk_pat(f.pat, it))
+            fields.iter().advance(|f| walk_pat(f.pat, |p| it(p)))
         }
         pat_enum(_, Some(ref s)) | pat_tup(ref s) => {
-            s.each(|&p| walk_pat(p, it))
+            s.iter().advance(|&p| walk_pat(p, |p| it(p)))
         }
         pat_box(s) | pat_uniq(s) | pat_region(s) => {
             walk_pat(s, it)
         }
         pat_vec(ref before, ref slice, ref after) => {
-            before.each(|&p| walk_pat(p, it)) &&
-                slice.iter().advance(|&p| walk_pat(p, it)) &&
-                after.iter().advance(|&p| walk_pat(p, it))
+            before.iter().advance(|&p| walk_pat(p, |p| it(p))) &&
+                slice.iter().advance(|&p| walk_pat(p, |p| it(p))) &&
+                after.iter().advance(|&p| walk_pat(p, |p| it(p)))
         }
         pat_wild | pat_lit(_) | pat_range(_, _) | pat_ident(_, _, _) |
         pat_enum(_, _) => {
@@ -567,11 +556,11 @@ pub fn walk_pat(pat: @pat, it: &fn(@pat) -> bool) -> bool {
 }
 
 pub trait EachViewItem {
-    pub fn each_view_item(&self, f: @fn(@ast::view_item) -> bool) -> bool;
+    pub fn each_view_item(&self, f: @fn(&ast::view_item) -> bool) -> bool;
 }
 
 impl EachViewItem for ast::crate {
-    fn each_view_item(&self, f: @fn(@ast::view_item) -> bool) -> bool {
+    fn each_view_item(&self, f: @fn(&ast::view_item) -> bool) -> bool {
         let broke = @mut false;
         let vtor: visit::vt<()> = visit::mk_simple_visitor(@visit::SimpleVisitor {
             visit_view_item: |vi| { *broke = f(vi); }, ..*visit::default_simple_visitor()
@@ -581,7 +570,7 @@ impl EachViewItem for ast::crate {
     }
 }
 
-pub fn view_path_id(p: @view_path) -> node_id {
+pub fn view_path_id(p: &view_path) -> node_id {
     match p.node {
       view_path_simple(_, _, id) |
       view_path_glob(_, id) |
@@ -619,6 +608,15 @@ pub fn variant_visibility_to_privacy(visibility: visibility,
 pub enum Privacy {
     Private,
     Public
+}
+
+/// Returns true if the given pattern consists solely of an identifier
+/// and false otherwise.
+pub fn pat_is_ident(pat: @ast::pat) -> bool {
+    match pat.node {
+        ast::pat_ident(*) => true,
+        _ => false,
+    }
 }
 
 // HYGIENE FUNCTIONS
@@ -697,7 +695,7 @@ pub fn new_sctable_internal() -> SCTable {
 pub fn get_sctable() -> @mut SCTable {
     unsafe {
         let sctable_key = (cast::transmute::<(uint, uint),
-                           &fn(v: @@mut SCTable)>(
+                           &fn:Copy(v: @@mut SCTable)>(
                                (-4 as uint, 0u)));
         match local_data::local_data_get(sctable_key) {
             None => {
@@ -793,7 +791,7 @@ pub fn getLast(arr: &~[Mrk]) -> uint {
 mod test {
     use ast::*;
     use super::*;
-    use core::io;
+    use std::io;
 
     #[test] fn xorpush_test () {
         let mut s = ~[];
@@ -816,7 +814,7 @@ mod test {
     // convert a list of uints to an @[ident]
     // (ignores the interner completely)
     fn uints_to_idents (uints: &~[uint]) -> @~[ident] {
-        @uints.map(|u|{ ident {name:*u, ctxt: empty_ctxt} })
+        @uints.map(|u| ident {name:*u, ctxt: empty_ctxt})
     }
 
     fn id (u : uint, s: SyntaxContext) -> ident {

@@ -162,8 +162,6 @@ StaticEnum(<ast::enum_def of C>, ~[(<ident of C0>, Left(1)),
 
 */
 
-use core::prelude::*;
-
 use ast;
 use ast::{enum_def, expr, ident, Generics, struct_def};
 
@@ -172,8 +170,8 @@ use ext::build::AstBuilder;
 use codemap::{span,respan};
 use opt_vec;
 
-use core::uint;
-use core::vec;
+use std::uint;
+use std::vec;
 
 pub use self::ty::*;
 mod ty;
@@ -195,7 +193,7 @@ pub struct TraitDef<'self> {
 pub struct MethodDef<'self> {
     /// name of the method
     name: &'self str,
-    /// List of generics, e.g. `R: core::rand::Rng`
+    /// List of generics, e.g. `R: std::rand::Rng`
     generics: LifetimeBounds<'self>,
 
     /// Whether there is a self argument (outer Option) i.e. whether
@@ -286,7 +284,7 @@ impl<'self> TraitDef<'self> {
                   _mitem: @ast::meta_item,
                   in_items: ~[@ast::item]) -> ~[@ast::item] {
         let mut result = ~[];
-        for in_items.each |item| {
+        for in_items.iter().advance |item| {
             result.push(*item);
             match item.node {
                 ast::item_struct(struct_def, ref generics) => {
@@ -324,11 +322,11 @@ impl<'self> TraitDef<'self> {
 
         let mut trait_generics = self.generics.to_generics(cx, span, type_ident, generics);
         // Copy the lifetimes
-        for generics.lifetimes.each |l| {
+        for generics.lifetimes.iter().advance |l| {
             trait_generics.lifetimes.push(copy *l)
         };
         // Create the type parameters.
-        for generics.ty_params.each |ty_param| {
+        for generics.ty_params.iter().advance |ty_param| {
             // I don't think this can be moved out of the loop, since
             // a TyParamBound requires an ast id
             let mut bounds = opt_vec::from(
@@ -358,7 +356,8 @@ impl<'self> TraitDef<'self> {
 
         // Create the type of `self`.
         let self_type = cx.ty_path(cx.path_all(span, false, ~[ type_ident ], self_lifetime,
-                                               opt_vec::take_vec(self_ty_params)));
+                                               opt_vec::take_vec(self_ty_params)),
+                                   @None);
 
         let doc_attr = cx.attribute(
             span,
@@ -487,7 +486,7 @@ impl<'self> MethodDef<'self> {
             None => respan(span, ast::sty_static),
         };
 
-        for self.args.eachi |i, ty| {
+        for self.args.iter().enumerate().advance |(i, ty)| {
             let ast_ty = ty.to_ty(cx, span, type_ident, generics);
             let ident = cx.ident_of(fmt!("__arg_%u", i));
             arg_tys.push((ident, ast_ty));
@@ -592,14 +591,14 @@ impl<'self> MethodDef<'self> {
         // transpose raw_fields
         let fields = match raw_fields {
             [self_arg, .. rest] => {
-                do self_arg.mapi |i, &(opt_id, field)| {
+                do self_arg.iter().enumerate().transform |(i, &(opt_id, field))| {
                     let other_fields = do rest.map |l| {
                         match &l[i] {
                             &(_, ex) => ex
                         }
                     };
                     (opt_id, field, other_fields)
-                }
+                }.collect()
             }
             [] => { cx.span_bug(span, "No self arguments to non-static \
                                        method in generic `deriving`") }
@@ -740,16 +739,17 @@ impl<'self> MethodDef<'self> {
 
                     let mut enum_matching_fields = vec::from_elem(self_vec.len(), ~[]);
 
-                    for matches_so_far.tail().each |&(_, _, other_fields)| {
-                        for other_fields.eachi |i, &(_, other_field)| {
+                    for matches_so_far.tail().iter().advance |&(_, _, other_fields)| {
+                        for other_fields.iter().enumerate().advance |(i, &(_, other_field))| {
                             enum_matching_fields[i].push(other_field);
                         }
                     }
                     let field_tuples =
-                        do vec::map_zip(*self_vec,
-                                        enum_matching_fields) |&(id, self_f), &other| {
+                        do self_vec.iter()
+                           .zip(enum_matching_fields.iter())
+                           .transform |(&(id, self_f), &other)| {
                         (id, self_f, other)
-                    };
+                    }.collect();
                     substructure = EnumMatching(variant_index, variant, field_tuples);
                 }
                 None => {
@@ -809,7 +809,7 @@ impl<'self> MethodDef<'self> {
                 }
             } else {
                 // create an arm matching on each variant
-                for enum_def.variants.eachi |index, variant| {
+                for enum_def.variants.iter().enumerate().advance |(index, variant)| {
                     let (pattern, idents) = create_enum_variant_pattern(cx, span,
                                                                        variant,
                                                                        current_match_str,
@@ -870,7 +870,7 @@ fn summarise_struct(cx: @ExtCtxt, span: span,
                     struct_def: &struct_def) -> Either<uint, ~[ident]> {
     let mut named_idents = ~[];
     let mut unnamed_count = 0;
-    for struct_def.fields.each |field| {
+    for struct_def.fields.iter().advance |field| {
         match field.node.kind {
             ast::named_field(ident, _) => named_idents.push(ident),
             ast::unnamed_field => unnamed_count += 1,
@@ -923,7 +923,7 @@ fn create_struct_pattern(cx: @ExtCtxt,
     let mut ident_expr = ~[];
     let mut struct_type = Unknown;
 
-    for struct_def.fields.eachi |i, struct_field| {
+    for struct_def.fields.iter().enumerate().advance |(i, struct_field)| {
         let opt_id = match struct_field.node.kind {
             ast::named_field(ident, _) if (struct_type == Unknown ||
                                            struct_type == Record) => {

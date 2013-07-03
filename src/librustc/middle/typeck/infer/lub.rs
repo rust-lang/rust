@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
 
 use middle::ty::{BuiltinBounds};
 use middle::ty::RegionVid;
@@ -20,6 +19,7 @@ use middle::typeck::infer::sub::Sub;
 use middle::typeck::infer::to_str::InferStr;
 use middle::typeck::infer::{cres, InferCtxt};
 use middle::typeck::infer::fold_regions_in_sig;
+use middle::typeck::infer::{TypeTrace, Subtype};
 use middle::typeck::isr_alist;
 use util::common::indent;
 use util::ppaux::mt_to_str;
@@ -28,7 +28,7 @@ use extra::list;
 use syntax::abi::AbiSet;
 use syntax::ast;
 use syntax::ast::{Many, Once, extern_fn, m_const, impure_fn};
-use syntax::ast::{pure_fn, unsafe_fn};
+use syntax::ast::{unsafe_fn};
 use syntax::ast::{Onceness, purity};
 use syntax::codemap::span;
 
@@ -45,7 +45,7 @@ impl Combine for Lub {
     fn infcx(&self) -> @mut InferCtxt { self.infcx }
     fn tag(&self) -> ~str { ~"lub" }
     fn a_is_expected(&self) -> bool { self.a_is_expected }
-    fn span(&self) -> span { self.span }
+    fn trace(&self) -> TypeTrace { self.trace }
 
     fn sub(&self) -> Sub { Sub(**self) }
     fn lub(&self) -> Lub { Lub(**self) }
@@ -92,8 +92,7 @@ impl Combine for Lub {
         match (a, b) {
           (unsafe_fn, _) | (_, unsafe_fn) => Ok(unsafe_fn),
           (impure_fn, _) | (_, impure_fn) => Ok(impure_fn),
-          (extern_fn, _) | (_, extern_fn) => Ok(extern_fn),
-          (pure_fn, pure_fn) => Ok(pure_fn)
+          (extern_fn, extern_fn) => Ok(extern_fn),
         }
     }
 
@@ -121,9 +120,7 @@ impl Combine for Lub {
                a.inf_str(self.infcx),
                b.inf_str(self.infcx));
 
-        do indent {
-            self.infcx.region_vars.lub_regions(self.span, a, b)
-        }
+        Ok(self.infcx.region_vars.lub_regions(Subtype(self.trace), a, b))
     }
 
     fn fn_sigs(&self, a: &ty::FnSig, b: &ty::FnSig) -> cres<ty::FnSig> {
@@ -139,10 +136,10 @@ impl Combine for Lub {
         // Instantiate each bound region with a fresh region variable.
         let (a_with_fresh, a_isr) =
             self.infcx.replace_bound_regions_with_fresh_regions(
-                self.span, a);
+                self.trace, a);
         let (b_with_fresh, _) =
             self.infcx.replace_bound_regions_with_fresh_regions(
-                self.span, b);
+                self.trace, b);
 
         // Collect constraints.
         let sig0 = if_ok!(super_fn_sigs(self, &a_with_fresh, &b_with_fresh));
@@ -175,7 +172,7 @@ impl Combine for Lub {
             // Variables created during LUB computation which are
             // *related* to regions that pre-date the LUB computation
             // stay as they are.
-            if !tainted.all(|r| is_var_in_set(new_vars, *r)) {
+            if !tainted.iter().all(|r| is_var_in_set(new_vars, *r)) {
                 debug!("generalize_region(r0=%?): \
                         non-new-variables found in %?",
                        r0, tainted);
@@ -189,7 +186,7 @@ impl Combine for Lub {
             // with.
             for list::each(a_isr) |pair| {
                 let (a_br, a_r) = *pair;
-                if tainted.contains(&a_r) {
+                if tainted.iter().any_(|x| x == &a_r) {
                     debug!("generalize_region(r0=%?): \
                             replacing with %?, tainted=%?",
                            r0, a_br, tainted);
@@ -198,7 +195,7 @@ impl Combine for Lub {
             }
 
             this.infcx.tcx.sess.span_bug(
-                this.span,
+                this.trace.origin.span(),
                 fmt!("Region %? is not associated with \
                       any bound region from A!", r0));
         }

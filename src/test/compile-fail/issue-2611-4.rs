@@ -20,7 +20,7 @@ struct E {
 }
 
 impl A for E {
-  fn b<F:Copy + Const,G>(_x: F) -> F { fail!() } //~ ERROR type parameter 0 requires `Const`
+  fn b<F:Copy + Freeze,G>(_x: F) -> F { fail!() } //~ ERROR type parameter 0 requires `Freeze`
 }
 
 fn main() {}

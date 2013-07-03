@@ -18,7 +18,7 @@ trait sum {
 impl<'self> sum for &'self [int] {
     fn sum(self) -> int {
         let mut sum = 0;
-        for vec::each(self) |e| { sum += *e; }
+        for self.iter().advance |e| { sum += *e; }
         return sum;
     }
 }
