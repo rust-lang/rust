@@ -24,7 +24,7 @@ use prelude::*;
 use ptr;
 use str;
 use task;
-use vec;
+use vec::ImmutableVector;
 
 /**
  * A value representing a child process.
@@ -703,7 +703,7 @@ fn with_argv<T>(prog: &str, args: &[~str],
         argptrs.push(str::as_c_str(*t, |b| b));
     }
     argptrs.push(ptr::null());
-    vec::as_imm_buf(argptrs, |buf, _len| cb(buf))
+    argptrs.as_imm_buf(|buf, _len| cb(buf))
 }
 
 #[cfg(unix)]
@@ -722,7 +722,7 @@ fn with_envp<T>(env: Option<&[(~str, ~str)]>, cb: &fn(*c_void) -> T) -> T {
         }
 
         ptrs.push(ptr::null());
-        vec::as_imm_buf(ptrs, |p, _len|
+        ptrs.as_imm_buf(|p, _len|
             unsafe { cb(::cast::transmute(p)) }
         )
       }
@@ -743,7 +743,7 @@ fn with_envp<T>(env: Option<&[(~str, ~str)]>, cb: &fn(*mut c_void) -> T) -> T {
             blk.push_all(kv.as_bytes_with_null_consume());
         }
         blk.push(0);
-        vec::as_imm_buf(blk, |p, _len|
+        blk.as_imm_buf(|p, _len|
             unsafe { cb(::cast::transmute(p)) }
         )
       }

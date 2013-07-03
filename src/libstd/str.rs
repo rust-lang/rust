@@ -826,6 +826,7 @@ pub mod raw {
     use str::raw;
     use str::{as_buf, is_utf8};
     use vec;
+    use vec::MutableVector;
 
     /// Create a Rust string from a null-terminated *u8 buffer
     pub unsafe fn from_buf(buf: *u8) -> ~str {
@@ -841,7 +842,7 @@ pub mod raw {
     /// Create a Rust string from a *u8 buffer of the given length
     pub unsafe fn from_buf_len(buf: *u8, len: uint) -> ~str {
         let mut v: ~[u8] = vec::with_capacity(len + 1);
-        vec::as_mut_buf(v, |vbuf, _len| {
+        v.as_mut_buf(|vbuf, _len| {
             ptr::copy_memory(vbuf, buf as *u8, len)
         });
         vec::raw::set_len(&mut v, len);
@@ -863,7 +864,7 @@ pub mod raw {
 
     /// Converts a vector of bytes to a new owned string.
     pub unsafe fn from_bytes(v: &[u8]) -> ~str {
-        do vec::as_imm_buf(v) |buf, len| {
+        do v.as_imm_buf |buf, len| {
             from_buf_len(buf, len)
         }
     }
@@ -917,7 +918,7 @@ pub mod raw {
             assert!((end <= n));
 
             let mut v = vec::with_capacity(end - begin + 1u);
-            do vec::as_imm_buf(v) |vbuf, _vlen| {
+            do v.as_imm_buf |vbuf, _vlen| {
                 let vbuf = ::cast::transmute_mut_unsafe(vbuf);
                 let src = ptr::offset(sbuf, begin);
                 ptr::copy_memory(vbuf, src, end - begin);

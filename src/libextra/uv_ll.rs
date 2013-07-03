@@ -1046,7 +1046,7 @@ pub unsafe fn ip4_name(src: &sockaddr_in) -> ~str {
     // ipv4 addr max size: 15 + 1 trailing null byte
     let dst: ~[u8] = ~[0u8,0u8,0u8,0u8,0u8,0u8,0u8,0u8,
                      0u8,0u8,0u8,0u8,0u8,0u8,0u8,0u8];
-    do vec::as_imm_buf(dst) |dst_buf, size| {
+    do dst.as_imm_buf |dst_buf, size| {
         rust_uv_ip4_name(to_unsafe_ptr(src),
                                  dst_buf, size as libc::size_t);
         // seems that checking the result of uv_ip4_name
@@ -1066,7 +1066,7 @@ pub unsafe fn ip6_name(src: &sockaddr_in6) -> ~str {
                        0u8,0u8,0u8,0u8,0u8,0u8,0u8,0u8,
                        0u8,0u8,0u8,0u8,0u8,0u8,0u8,0u8,
                        0u8,0u8,0u8,0u8,0u8,0u8];
-    do vec::as_imm_buf(dst) |dst_buf, size| {
+    do dst.as_imm_buf |dst_buf, size| {
         let src_unsafe_ptr = to_unsafe_ptr(src);
         let result = rust_uv_ip6_name(src_unsafe_ptr,
                                               dst_buf, size as libc::size_t);
