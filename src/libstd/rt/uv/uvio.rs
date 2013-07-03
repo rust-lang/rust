@@ -316,7 +316,7 @@ impl Drop for UvTcpListener {
 }
 
 impl RtioSocket for UvTcpListener {
-    // TODO
+    // XXX implement
     fn socket_name(&self) -> IpAddr { fail!(); }
 }
 
@@ -356,7 +356,7 @@ impl RtioTcpListener for UvTcpListener {
         return self.incoming_streams.recv();
     }
 
-    // TODO
+    // XXX implement
     fn accept_simultaneously(&self) { fail!(); }
     fn dont_accept_simultaneously(&self) { fail!(); }
 }
@@ -379,7 +379,7 @@ impl Drop for UvTcpStream {
 }
 
 impl RtioSocket for UvTcpStream {
-    // TODO
+    // XXX implement
     fn socket_name(&self) -> IpAddr { fail!(); }
 }
 
@@ -455,7 +455,7 @@ impl RtioTcpStream for UvTcpStream {
         return result_cell.take();
     }
 
-    // TODO
+    // XXX implement
     fn peer_name(&self) -> IpAddr { fail!(); }
     fn control_congestion(&self) { fail!(); }
     fn nodelay(&self) { fail!(); }
@@ -480,7 +480,7 @@ impl Drop for UvUdpSocket {
 }
 
 impl RtioSocket for UvUdpSocket {
-    // TODO
+    // XXX implement
     fn socket_name(&self) -> IpAddr { fail!(); }
 }
 
@@ -498,7 +498,7 @@ impl RtioUdpSocket for UvUdpSocket {
             let task_cell = Cell::new(task);
             let alloc: AllocCallback = |_| unsafe { slice_to_uv_buf(*buf_ptr) };
             do self.recv_start(alloc) |watcher, nread, _buf, addr, flags, status| {
-                let _ = flags; // TODO add handling for partials?
+                let _ = flags; // XXX add handling for partials?
 
                 watcher.recv_stop();
 
@@ -548,7 +548,7 @@ impl RtioUdpSocket for UvUdpSocket {
         return result_cell.take();
     }
 
-    // TODO
+    // XXX implement
     fn join_multicast(&self, _multi: IpAddr) { fail!(); }
     fn leave_multicast(&self, _multi: IpAddr) { fail!(); }
 

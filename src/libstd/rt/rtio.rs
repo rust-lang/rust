@@ -23,7 +23,6 @@ pub type IoFactoryObject = uvio::UvIoFactory;
 pub type RtioTcpStreamObject = uvio::UvTcpStream;
 pub type RtioTcpListenerObject = uvio::UvTcpListener;
 pub type RtioUdpSocketObject = uvio::UvUdpSocket;
-pub type RtioTcpSocketObject = (); // TODO
 
 pub trait EventLoop {
     fn run(&mut self);
