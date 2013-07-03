@@ -186,6 +186,9 @@ pub struct PriorityQueueIterator <'self, T> {
 impl<'self, T> Iterator<&'self T> for PriorityQueueIterator<'self, T> {
     #[inline]
     fn next(&mut self) -> Option<(&'self T)> { self.iter.next() }
+
+    #[inline]
+    fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
 }
 
 #[cfg(test)]
