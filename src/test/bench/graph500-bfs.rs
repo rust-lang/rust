@@ -95,13 +95,13 @@ fn make_graph(N: uint, edges: ~[(node_id, node_id)]) -> graph {
         }
     }
 
-    do vec::map_consume(graph) |mut v| {
+    do graph.consume_iter().transform |mut v| {
         let mut vec = ~[];
         do v.consume |i| {
             vec.push(i);
         }
         vec
-    }
+    }.collect()
 }
 
 fn gen_search_keys(graph: &[~[node_id]], n: uint) -> ~[node_id] {

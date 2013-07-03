@@ -73,7 +73,7 @@ pub fn rights<T, U: Copy>(eithers: &[Either<T, U>]) -> ~[U] {
 pub fn partition<T, U>(eithers: ~[Either<T, U>]) -> (~[T], ~[U]) {
     let mut lefts: ~[T] = ~[];
     let mut rights: ~[U] = ~[];
-    do vec::consume(eithers) |_i, elt| {
+    for eithers.consume_iter().advance |elt| {
         match elt {
             Left(l) => lefts.push(l),
             Right(r) => rights.push(r)

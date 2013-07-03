@@ -601,9 +601,8 @@ fn make_run_args(config: &config, _props: &TestProps, testfile: &Path) ->
    ProcArgs {
     // If we've got another tool to run under (valgrind),
     // then split apart its command
-    let toolargs = split_maybe_args(&config.runtool);
-
-    let mut args = toolargs + [make_exe_name(config, testfile).to_str()];
+    let mut args = split_maybe_args(&config.runtool);
+    args.push(make_exe_name(config, testfile).to_str());
     let prog = args.shift();
     return ProcArgs {prog: prog, args: args};
 }

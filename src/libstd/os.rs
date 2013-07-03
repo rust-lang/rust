@@ -92,7 +92,7 @@ pub fn as_c_charp<T>(s: &str, f: &fn(*c_char) -> T) -> T {
 pub fn fill_charp_buf(f: &fn(*mut c_char, size_t) -> bool)
     -> Option<~str> {
     let mut buf = vec::from_elem(TMPBUF_SZ, 0u8 as c_char);
-    do vec::as_mut_buf(buf) |b, sz| {
+    do buf.as_mut_buf |b, sz| {
         if f(b, sz as size_t) {
             unsafe {
                 Some(str::raw::from_buf(b as *u8))
@@ -122,7 +122,7 @@ pub mod win32 {
             while !done {
                 let mut k: DWORD = 0;
                 let mut buf = vec::from_elem(n as uint, 0u16);
-                do vec::as_mut_buf(buf) |b, _sz| {
+                do buf.as_mut_buf |b, _sz| {
                     k = f(b, TMPBUF_SZ as DWORD);
                     if k == (0 as DWORD) {
                         done = true;
@@ -147,7 +147,7 @@ pub mod win32 {
         let mut t = s.to_utf16();
         // Null terminate before passing on.
         t.push(0u16);
-        vec::as_imm_buf(t, |buf, _len| f(buf))
+        t.as_imm_buf(|buf, _len| f(buf))
     }
 }
 
@@ -777,9 +777,9 @@ pub fn list_dir(p: &Path) -> ~[~str] {
                 strings
             }
         }
-        do get_list(p).filtered |filename| {
-            *filename != ~"." && *filename != ~".."
-        }
+        do get_list(p).consume_iter().filter |filename| {
+            "." != *filename && ".." != *filename
+        }.collect()
     }
 }
 
@@ -937,7 +937,7 @@ pub fn copy_file(from: &Path, to: &Path) -> bool {
             let mut done = false;
             let mut ok = true;
             while !done {
-                do vec::as_mut_buf(buf) |b, _sz| {
+                do buf.as_mut_buf |b, _sz| {
                   let nread = libc::fread(b as *mut c_void, 1u as size_t,
                                           bufsize as size_t,
                                           istream);
@@ -1683,7 +1683,7 @@ mod tests {
           let s = ~"hello";
           let mut buf = s.as_bytes_with_null().to_owned();
           let len = buf.len();
-          do vec::as_mut_buf(buf) |b, _len| {
+          do buf.as_mut_buf |b, _len| {
               assert_eq!(libc::fwrite(b as *c_void, 1u as size_t,
                                       (s.len() + 1u) as size_t, ostream),
                          len as size_t)

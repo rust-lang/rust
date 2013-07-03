@@ -24,7 +24,6 @@ use std::u16;
 use std::u32;
 use std::u64;
 use std::u8;
-use std::vec;
 use extra::smallintmap::SmallIntMap;
 use syntax::attr;
 use syntax::codemap::span;
@@ -987,7 +986,7 @@ fn lint_session() -> visit::vt<@mut Context> {
         match cx.tcx.sess.lints.pop(&id) {
             None => {},
             Some(l) => {
-                do vec::consume(l) |_, (lint, span, msg)| {
+                for l.consume_iter().advance |(lint, span, msg)| {
                     cx.span_lint(lint, span, msg)
                 }
             }

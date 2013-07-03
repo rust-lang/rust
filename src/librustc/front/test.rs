@@ -109,9 +109,11 @@ fn fold_mod(cx: @mut TestCtxt,
 
     fn nomain(cx: @mut TestCtxt, item: @ast::item) -> @ast::item {
         if !*cx.sess.building_library {
-            @ast::item{attrs: item.attrs.filtered(|attr| {
-                               "main" != attr::get_attr_name(attr)
-                           }),.. copy *item}
+            @ast::item{
+                attrs: do item.attrs.iter().filter_map |attr| {
+                    if "main" != attr::get_attr_name(attr) {Some(*attr)} else {None}
+                }.collect(),
+                .. copy *item}
         } else { item }
     }
 
@@ -229,10 +231,10 @@ fn is_ignored(cx: @mut TestCtxt, i: @ast::item) -> bool {
     let ignoreattrs = attr::find_attrs_by_name(i.attrs, "ignore");
     let ignoreitems = attr::attr_metas(ignoreattrs);
     return if !ignoreitems.is_empty() {
-        let cfg_metas =
-            vec::concat(
-                vec::filter_map(ignoreitems,
-                                |i| attr::get_meta_item_list(i)));
+        let cfg_metas = ignoreitems.consume_iter()
+            .filter_map(|i| attr::get_meta_item_list(i))
+            .collect::<~[~[@ast::meta_item]]>()
+            .concat_vec();
         config::metas_in_cfg(/*bad*/copy cx.crate.node.config, cfg_metas)
     } else {
         false

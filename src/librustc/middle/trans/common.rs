@@ -774,7 +774,7 @@ pub fn C_zero_byte_arr(size: uint) -> ValueRef {
 
 pub fn C_struct(elts: &[ValueRef]) -> ValueRef {
     unsafe {
-        do vec::as_imm_buf(elts) |ptr, len| {
+        do elts.as_imm_buf |ptr, len| {
             llvm::LLVMConstStructInContext(base::task_llcx(), ptr, len as c_uint, False)
         }
     }
@@ -782,7 +782,7 @@ pub fn C_struct(elts: &[ValueRef]) -> ValueRef {
 
 pub fn C_packed_struct(elts: &[ValueRef]) -> ValueRef {
     unsafe {
-        do vec::as_imm_buf(elts) |ptr, len| {
+        do elts.as_imm_buf |ptr, len| {
             llvm::LLVMConstStructInContext(base::task_llcx(), ptr, len as c_uint, True)
         }
     }
@@ -790,7 +790,7 @@ pub fn C_packed_struct(elts: &[ValueRef]) -> ValueRef {
 
 pub fn C_named_struct(T: Type, elts: &[ValueRef]) -> ValueRef {
     unsafe {
-        do vec::as_imm_buf(elts) |ptr, len| {
+        do elts.as_imm_buf |ptr, len| {
             llvm::LLVMConstNamedStruct(T.to_ref(), ptr, len as c_uint)
         }
     }
@@ -826,7 +826,7 @@ pub fn get_param(fndecl: ValueRef, param: uint) -> ValueRef {
 pub fn const_get_elt(cx: &CrateContext, v: ValueRef, us: &[c_uint])
                   -> ValueRef {
     unsafe {
-        let r = do vec::as_imm_buf(us) |p, len| {
+        let r = do us.as_imm_buf |p, len| {
             llvm::LLVMConstExtractValue(v, p, len as c_uint)
         };
 

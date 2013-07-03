@@ -41,7 +41,6 @@ use syntax::opt_vec::OptVec;
 
 use std::str;
 use std::uint;
-use std::vec;
 use std::hashmap::{HashMap, HashSet};
 use std::util;
 
@@ -5362,7 +5361,7 @@ impl Resolver {
         if idents.len() == 0 {
             return ~"???";
         }
-        return self.idents_to_str(vec::reversed(idents));
+        return self.idents_to_str(idents.consume_rev_iter().collect::<~[ast::ident]>());
     }
 
     pub fn dump_module(@mut self, module_: @mut Module) {

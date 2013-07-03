@@ -207,7 +207,7 @@ impl Add<BigUint, BigUint> for BigUint {
         let new_len = uint::max(self.data.len(), other.data.len());
 
         let mut carry = 0;
-        let sum = do vec::from_fn(new_len) |i| {
+        let mut sum = do vec::from_fn(new_len) |i| {
             let ai = if i < self.data.len()  { self.data[i]  } else { 0 };
             let bi = if i < other.data.len() { other.data[i] } else { 0 };
             let (hi, lo) = BigDigit::from_uint(
@@ -216,8 +216,8 @@ impl Add<BigUint, BigUint> for BigUint {
             carry = hi;
             lo
         };
-        if carry == 0 { return BigUint::new(sum) };
-        return BigUint::new(sum + [carry]);
+        if carry != 0 { sum.push(carry); }
+        return BigUint::new(sum);
     }
 }
 
@@ -284,15 +284,15 @@ impl Mul<BigUint, BigUint> for BigUint {
             if n == 1 { return copy *a; }
 
             let mut carry = 0;
-            let prod = do a.data.iter().transform |ai| {
+            let mut prod = do a.data.iter().transform |ai| {
                 let (hi, lo) = BigDigit::from_uint(
                     (*ai as uint) * (n as uint) + (carry as uint)
                 );
                 carry = hi;
                 lo
             }.collect::<~[BigDigit]>();
-            if carry == 0 { return BigUint::new(prod) };
-            return BigUint::new(prod + [carry]);
+            if carry != 0 { prod.push(carry); }
+            return BigUint::new(prod);
         }
 
 
@@ -520,10 +520,12 @@ impl ToStrRadix for BigUint {
 
         fn fill_concat(v: &[BigDigit], radix: uint, l: uint) -> ~str {
             if v.is_empty() { return ~"0" }
-            let s = vec::reversed(v).map(|n| {
-                let s = uint::to_str_radix(*n as uint, radix);
-                str::from_chars(vec::from_elem(l - s.len(), '0')) + s
-            }).concat();
+            let mut s = str::with_capacity(v.len() * l);
+            for v.rev_iter().advance |n| {
+                let ss = uint::to_str_radix(*n as uint, radix);
+                s.push_str("0".repeat(l - ss.len()));
+                s.push_str(ss);
+            }
             s.trim_left_chars(&'0').to_owned()
         }
     }
@@ -619,15 +621,15 @@ impl BigUint {
         if n_bits == 0 || self.is_zero() { return copy *self; }
 
         let mut carry = 0;
-        let shifted = do self.data.iter().transform |elem| {
+        let mut shifted = do self.data.iter().transform |elem| {
             let (hi, lo) = BigDigit::from_uint(
                 (*elem as uint) << n_bits | (carry as uint)
             );
             carry = hi;
             lo
         }.collect::<~[BigDigit]>();
-        if carry == 0 { return BigUint::new(shifted); }
-        return BigUint::new(shifted + [carry]);
+        if carry != 0 { shifted.push(carry); }
+        return BigUint::new(shifted);
     }
 
 
@@ -1629,7 +1631,6 @@ mod bigint_tests {
     use std::int;
     use std::num::{IntConvertible, Zero, One, FromStrRadix};
     use std::uint;
-    use std::vec;
 
     #[test]
     fn test_from_biguint() {
@@ -1646,9 +1647,11 @@ mod bigint_tests {
 
     #[test]
     fn test_cmp() {
-        let vs = [ &[2], &[1, 1], &[2, 1], &[1, 1, 1] ];
-        let mut nums = vec::reversed(vs)
-            .map(|s| BigInt::from_slice(Minus, *s));
+        let vs = [ &[2 as BigDigit], &[1, 1], &[2, 1], &[1, 1, 1] ];
+        let mut nums = ~[];
+        for vs.rev_iter().advance |s| {
+            nums.push(BigInt::from_slice(Minus, *s));
+        }
         nums.push(Zero::zero());
         nums.push_all_move(vs.map(|s| BigInt::from_slice(Plus, *s)));
 
