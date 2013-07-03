@@ -1,6 +1,6 @@
 # xfail-license
 
-import re, os, sys, glob, tarfile, shutil, subprocess, tempfile
+import re, os, sys, glob, tarfile, shutil, subprocess, tempfile, distutils.spawn
 
 try:
   import hashlib
@@ -132,7 +132,13 @@ def local_rev_committer_date():
 def get_url_to_file(u,f):
     # no security issue, just to stop partial download leaving a stale file
     tmpf = f + '.tmp'
-    returncode = subprocess.call(["curl", "-o", tmpf, u])
+
+    returncode = -1
+    if distutils.spawn.find_executable("curl"):
+        returncode = subprocess.call(["curl", "-o", tmpf, u])
+    elif distutils.spawn.find_executable("wget"):
+        returncode = subprocess.call(["wget", "-O", tmpf, u])
+
     if returncode != 0:
         os.unlink(tmpf)
         raise
