@@ -173,105 +173,70 @@ pub fn build_sized_opt<A>(size: Option<uint>,
     build_sized(size.get_or_default(4), builder)
 }
 
-// Accessors
-
-/// Copies
-
-/// Split the vector `v` by applying each element against the predicate `f`.
-pub fn split<T:Copy>(v: &[T], f: &fn(t: &T) -> bool) -> ~[~[T]] {
-    let ln = v.len();
-    if (ln == 0u) { return ~[] }
-
-    let mut start = 0u;
-    let mut result = ~[];
-    while start < ln {
-        match v.slice(start, ln).iter().position_(|t| f(t)) {
-            None => break,
-            Some(i) => {
-                result.push(v.slice(start, start + i).to_owned());
-                start += i + 1u;
-            }
-        }
-    }
-    result.push(v.slice(start, ln).to_owned());
-    result
+/// An iterator over the slices of a vector separated by elements that
+/// match a predicate function.
+pub struct VecSplitIterator<'self, T> {
+    priv v: &'self [T],
+    priv n: uint,
+    priv pred: &'self fn(t: &T) -> bool,
+    priv finished: bool
 }
 
-/**
- * Split the vector `v` by applying each element against the predicate `f` up
- * to `n` times.
- */
-pub fn splitn<T:Copy>(v: &[T], n: uint, f: &fn(t: &T) -> bool) -> ~[~[T]] {
-    let ln = v.len();
-    if (ln == 0u) { return ~[] }
+impl<'self, T> Iterator<&'self [T]> for VecSplitIterator<'self, T> {
+    fn next(&mut self) -> Option<&'self [T]> {
+        if self.finished { return None; }
 
-    let mut start = 0u;
-    let mut count = n;
-    let mut result = ~[];
-    while start < ln && count > 0u {
-        match v.slice(start, ln).iter().position_(|t| f(t)) {
-            None => break,
-            Some(i) => {
-                result.push(v.slice(start, start + i).to_owned());
-                // Make sure to skip the separator.
-                start += i + 1u;
-                count -= 1u;
+        if self.n == 0 {
+            self.finished = true;
+            return Some(self.v);
+        }
+
+        match self.v.iter().position_(|x| (self.pred)(x)) {
+            None => {
+                self.finished = true;
+                Some(self.v)
+            }
+            Some(idx) => {
+                let ret = Some(self.v.slice(0, idx));
+                self.v = self.v.slice(idx + 1, self.v.len());
+                self.n -= 1;
+                ret
             }
         }
     }
-    result.push(v.slice(start, ln).to_owned());
-    result
 }
 
-/**
- * Reverse split the vector `v` by applying each element against the predicate
- * `f`.
- */
-pub fn rsplit<T:Copy>(v: &[T], f: &fn(t: &T) -> bool) -> ~[~[T]] {
-    let ln = v.len();
-    if (ln == 0) { return ~[] }
-
-    let mut end = ln;
-    let mut result = ~[];
-    while end > 0 {
-        match v.slice(0, end).rposition(|t| f(t)) {
-            None => break,
-            Some(i) => {
-                result.push(v.slice(i + 1, end).to_owned());
-                end = i;
-            }
-        }
-    }
-    result.push(v.slice(0u, end).to_owned());
-    result.reverse();
-    result
+/// An iterator over the slices of a vector separated by elements that
+/// match a predicate function, from back to front.
+pub struct VecRSplitIterator<'self, T> {
+    priv v: &'self [T],
+    priv n: uint,
+    priv pred: &'self fn(t: &T) -> bool,
+    priv finished: bool
 }
 
-/**
- * Reverse split the vector `v` by applying each element against the predicate
- * `f` up to `n times.
- */
-pub fn rsplitn<T:Copy>(v: &[T], n: uint, f: &fn(t: &T) -> bool) -> ~[~[T]] {
-    let ln = v.len();
-    if (ln == 0u) { return ~[] }
+impl<'self, T> Iterator<&'self [T]> for VecRSplitIterator<'self, T> {
+    fn next(&mut self) -> Option<&'self [T]> {
+        if self.finished { return None; }
 
-    let mut end = ln;
-    let mut count = n;
-    let mut result = ~[];
-    while end > 0u && count > 0u {
-        match v.slice(0, end).rposition(|t| f(t)) {
-            None => break,
-            Some(i) => {
-                result.push(v.slice(i + 1u, end).to_owned());
-                // Make sure to skip the separator.
-                end = i;
-                count -= 1u;
+        if self.n == 0 {
+            self.finished = true;
+            return Some(self.v);
+        }
+
+        match self.v.rposition(|x| (self.pred)(x)) {
+            None => {
+                self.finished = true;
+                Some(self.v)
+            }
+            Some(idx) => {
+                let ret = Some(self.v.slice(idx + 1, self.v.len()));
+                self.v = self.v.slice(0, idx);
+                self.n -= 1;
+                ret
             }
         }
     }
-    result.push(v.slice(0u, end).to_owned());
-    result.reverse();
-    result
 }
 
 // Appending
@@ -758,6 +723,11 @@ pub trait ImmutableVector<'self, T> {
     fn slice(&self, start: uint, end: uint) -> &'self [T];
     fn iter(self) -> VecIterator<'self, T>;
     fn rev_iter(self) -> VecRevIterator<'self, T>;
+    fn split_iter(self, pred: &'self fn(&T) -> bool) -> VecSplitIterator<'self, T>;
+    fn splitn_iter(self, n: uint, pred: &'self fn(&T) -> bool) -> VecSplitIterator<'self, T>;
+    fn rsplit_iter(self, pred: &'self fn(&T) -> bool) -> VecRSplitIterator<'self, T>;
+    fn rsplitn_iter(self,  n: uint, pred: &'self fn(&T) -> bool) -> VecRSplitIterator<'self, T>;
+
     fn head(&self) -> &'self T;
     fn head_opt(&self) -> Option<&'self T>;
     fn tail(&self) -> &'self [T];
@@ -805,6 +775,45 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
             VecRevIterator{ptr: p.offset(self.len() - 1),
                            end: p.offset(-1),
                            lifetime: cast::transmute(p)}
+        }
+    }
+
+    /// Returns an iterator over the subslices of the vector which are
+    /// separated by elements that match `pred`.
+    #[inline]
+    fn split_iter(self, pred: &'self fn(&T) -> bool) -> VecSplitIterator<'self, T> {
+        self.splitn_iter(uint::max_value, pred)
+    }
+    /// Returns an iterator over the subslices of the vector which are
+    /// separated by elements that match `pred`, limited to splitting
+    /// at most `n` times.
+    #[inline]
+    fn splitn_iter(self, n: uint, pred: &'self fn(&T) -> bool) -> VecSplitIterator<'self, T> {
+        VecSplitIterator {
+            v: self,
+            n: n,
+            pred: pred,
+            finished: false
+        }
+    }
+    /// Returns an iterator over the subslices of the vector which are
+    /// separated by elements that match `pred`. This starts at the
+    /// end of the vector and works backwards.
+    #[inline]
+    fn rsplit_iter(self, pred: &'self fn(&T) -> bool) -> VecRSplitIterator<'self, T> {
+        self.rsplitn_iter(uint::max_value, pred)
+    }
+    /// Returns an iterator over the subslices of the vector which are
+    /// separated by elements that match `pred` limited to splitting
+    /// at most `n` times. This starts at the end of the vector and
+    /// works backwards.
+    #[inline]
+    fn rsplitn_iter(self, n: uint, pred: &'self fn(&T) -> bool) -> VecRSplitIterator<'self, T> {
+        VecRSplitIterator {
+            v: self,
+            n: n,
+            pred: pred,
+            finished: false
         }
     }
 
@@ -2615,50 +2624,6 @@ mod tests {
     }
 
     #[test]
-    fn test_split() {
-        fn f(x: &int) -> bool { *x == 3 }
-
-        assert_eq!(split([], f), ~[]);
-        assert_eq!(split([1, 2], f), ~[~[1, 2]]);
-        assert_eq!(split([3, 1, 2], f), ~[~[], ~[1, 2]]);
-        assert_eq!(split([1, 2, 3], f), ~[~[1, 2], ~[]]);
-        assert_eq!(split([1, 2, 3, 4, 3, 5], f), ~[~[1, 2], ~[4], ~[5]]);
-    }
-
-    #[test]
-    fn test_splitn() {
-        fn f(x: &int) -> bool { *x == 3 }
-
-        assert_eq!(splitn([], 1u, f), ~[]);
-        assert_eq!(splitn([1, 2], 1u, f), ~[~[1, 2]]);
-        assert_eq!(splitn([3, 1, 2], 1u, f), ~[~[], ~[1, 2]]);
-        assert_eq!(splitn([1, 2, 3], 1u, f), ~[~[1, 2], ~[]]);
-        assert!(splitn([1, 2, 3, 4, 3, 5], 1u, f) ==
-                      ~[~[1, 2], ~[4, 3, 5]]);
-    }
-
-    #[test]
-    fn test_rsplit() {
-        fn f(x: &int) -> bool { *x == 3 }
-
-        assert_eq!(rsplit([], f), ~[]);
-        assert_eq!(rsplit([1, 2], f), ~[~[1, 2]]);
-        assert_eq!(rsplit([1, 2, 3], f), ~[~[1, 2], ~[]]);
-        assert!(rsplit([1, 2, 3, 4, 3, 5], f) ==
-            ~[~[1, 2], ~[4], ~[5]]);
-    }
-
-    #[test]
-    fn test_rsplitn() {
-        fn f(x: &int) -> bool { *x == 3 }
-
-        assert_eq!(rsplitn([], 1u, f), ~[]);
-        assert_eq!(rsplitn([1, 2], 1u, f), ~[~[1, 2]]);
-        assert_eq!(rsplitn([1, 2, 3], 1u, f), ~[~[1, 2], ~[]]);
-        assert_eq!(rsplitn([1, 2, 3, 4, 3, 5], 1u, f), ~[~[1, 2, 3, 4], ~[5]]);
-    }
-
-    #[test]
     fn test_partition() {
         assert_eq!((~[]).partition(|x: &int| *x < 3), (~[], ~[]));
         assert_eq!((~[1, 2, 3]).partition(|x: &int| *x < 4), (~[1, 2, 3], ~[]));
@@ -2820,142 +2785,6 @@ mod tests {
             push((~0, @0));
             push((~0, @0));
             fail!();
-        };
-    }
-
-    #[test]
-    #[ignore(windows)]
-    #[should_fail]
-    #[allow(non_implicitly_copyable_typarams)]
-    fn test_split_fail_ret_true() {
-        let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
-        let mut i = 0;
-        do split(v) |_elt| {
-            if i == 2 {
-                fail!()
-            }
-            i += 1;
-
-            true
-        };
-    }
-
-    #[test]
-    #[ignore(windows)]
-    #[should_fail]
-    #[allow(non_implicitly_copyable_typarams)]
-    fn test_split_fail_ret_false() {
-        let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
-        let mut i = 0;
-        do split(v) |_elt| {
-            if i == 2 {
-                fail!()
-            }
-            i += 1;
-
-            false
-        };
-    }
-
-    #[test]
-    #[ignore(windows)]
-    #[should_fail]
-    #[allow(non_implicitly_copyable_typarams)]
-    fn test_splitn_fail_ret_true() {
-        let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
-        let mut i = 0;
-        do splitn(v, 100) |_elt| {
-            if i == 2 {
-                fail!()
-            }
-            i += 1;
-
-            true
-        };
-    }
-
-    #[test]
-    #[ignore(windows)]
-    #[should_fail]
-    #[allow(non_implicitly_copyable_typarams)]
-    fn test_splitn_fail_ret_false() {
-        let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
-        let mut i = 0;
-        do split(v) |_elt| {
-            if i == 2 {
-                fail!()
-            }
-            i += 1;
-
-            false
-        };
-    }
-
-    #[test]
-    #[ignore(windows)]
-    #[should_fail]
-    #[allow(non_implicitly_copyable_typarams)]
-    fn test_rsplit_fail_ret_true() {
-        let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
-        let mut i = 0;
-        do rsplit(v) |_elt| {
-            if i == 2 {
-                fail!()
-            }
-            i += 1;
-
-            true
-        };
-    }
-
-    #[test]
-    #[ignore(windows)]
-    #[should_fail]
-    #[allow(non_implicitly_copyable_typarams)]
-    fn test_rsplit_fail_ret_false() {
-        let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
-        let mut i = 0;
-        do rsplit(v) |_elt| {
-            if i == 2 {
-                fail!()
-            }
-            i += 1;
-
-            false
-        };
-    }
-
-    #[test]
-    #[ignore(windows)]
-    #[should_fail]
-    #[allow(non_implicitly_copyable_typarams)]
-    fn test_rsplitn_fail_ret_true() {
-        let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
-        let mut i = 0;
-        do rsplitn(v, 100) |_elt| {
-            if i == 2 {
-                fail!()
-            }
-            i += 1;
-
-            true
-        };
-    }
-
-    #[test]
-    #[ignore(windows)]
-    #[should_fail]
-    #[allow(non_implicitly_copyable_typarams)]
-    fn test_rsplitn_fail_ret_false() {
-        let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
-        let mut i = 0;
-        do rsplitn(v, 100) |_elt| {
-            if i == 2 {
-                fail!()
-            }
-            i += 1;
-
-            false
         };
     }
 
@@ -3138,6 +2967,72 @@ mod tests {
         use iterator::*;
         let xs = ~[1u,2,3,4,5];
         assert_eq!(xs.consume_rev_iter().fold(0, |a: uint, b: uint| 10*a + b), 54321);
+    }
+
+    #[test]
+    fn test_split_iterator() {
+        let xs = &[1i,2,3,4,5];
+
+        assert_eq!(xs.split_iter(|x| *x % 2 == 0).collect::<~[&[int]]>(),
+                   ~[&[1], &[3], &[5]]);
+        assert_eq!(xs.split_iter(|x| *x == 1).collect::<~[&[int]]>(),
+                   ~[&[], &[2,3,4,5]]);
+        assert_eq!(xs.split_iter(|x| *x == 5).collect::<~[&[int]]>(),
+                   ~[&[1,2,3,4], &[]]);
+        assert_eq!(xs.split_iter(|x| *x == 10).collect::<~[&[int]]>(),
+                   ~[&[1,2,3,4,5]]);
+        assert_eq!(xs.split_iter(|_| true).collect::<~[&[int]]>(),
+                   ~[&[], &[], &[], &[], &[], &[]]);
+
+        let xs: &[int] = &[];
+        assert_eq!(xs.split_iter(|x| *x == 5).collect::<~[&[int]]>(), ~[&[]]);
+    }
+
+    #[test]
+    fn test_splitn_iterator() {
+        let xs = &[1i,2,3,4,5];
+
+        assert_eq!(xs.splitn_iter(0, |x| *x % 2 == 0).collect::<~[&[int]]>(),
+                   ~[&[1,2,3,4,5]]);
+        assert_eq!(xs.splitn_iter(1, |x| *x % 2 == 0).collect::<~[&[int]]>(),
+                   ~[&[1], &[3,4,5]]);
+        assert_eq!(xs.splitn_iter(3, |_| true).collect::<~[&[int]]>(),
+                   ~[&[], &[], &[], &[4,5]]);
+
+        let xs: &[int] = &[];
+        assert_eq!(xs.splitn_iter(1, |x| *x == 5).collect::<~[&[int]]>(), ~[&[]]);
+    }
+
+    #[test]
+    fn test_rsplit_iterator() {
+        let xs = &[1i,2,3,4,5];
+
+        assert_eq!(xs.rsplit_iter(|x| *x % 2 == 0).collect::<~[&[int]]>(),
+                   ~[&[5], &[3], &[1]]);
+        assert_eq!(xs.rsplit_iter(|x| *x == 1).collect::<~[&[int]]>(),
+                   ~[&[2,3,4,5], &[]]);
+        assert_eq!(xs.rsplit_iter(|x| *x == 5).collect::<~[&[int]]>(),
+                   ~[&[], &[1,2,3,4]]);
+        assert_eq!(xs.rsplit_iter(|x| *x == 10).collect::<~[&[int]]>(),
+                   ~[&[1,2,3,4,5]]);
+
+        let xs: &[int] = &[];
+        assert_eq!(xs.rsplit_iter(|x| *x == 5).collect::<~[&[int]]>(), ~[&[]]);
+    }
+
+    #[test]
+    fn test_rsplitn_iterator() {
+        let xs = &[1,2,3,4,5];
+
+        assert_eq!(xs.rsplitn_iter(0, |x| *x % 2 == 0).collect::<~[&[int]]>(),
+                   ~[&[1,2,3,4,5]]);
+        assert_eq!(xs.rsplitn_iter(1, |x| *x % 2 == 0).collect::<~[&[int]]>(),
+                   ~[&[5], &[1,2,3]]);
+        assert_eq!(xs.rsplitn_iter(3, |_| true).collect::<~[&[int]]>(),
+                   ~[&[], &[], &[], &[1,2]]);
+
+        let xs: &[int] = &[];
+        assert_eq!(xs.rsplitn_iter(1, |x| *x == 5).collect::<~[&[int]]>(), ~[&[]]);
     }
 
     #[test]
