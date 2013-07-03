@@ -116,9 +116,10 @@ fn fold_arg_(a: arg, fld: @ast_fold) -> arg {
 fn fold_mac_(m: &mac, fld: @ast_fold) -> mac {
     Spanned {
         node: match m.node {
-            mac_invoc_tt(ref p,ref tts) =>
+            mac_invoc_tt(ref p,ref tts,ctxt) =>
             mac_invoc_tt(fld.fold_path(p),
-                         fold_tts(*tts,|id|{fld.fold_ident(id)}))
+                         fold_tts(*tts,|id|{fld.fold_ident(id)}),
+                         ctxt)
         },
         span: fld.new_span(m.span)
     }

@@ -43,7 +43,7 @@ pub fn expand_expr(extsbox: @mut SyntaxEnv,
         ExprMac(ref mac) => {
             match (*mac).node {
                 // Token-tree macros:
-                mac_invoc_tt(ref pth, ref tts) => {
+                mac_invoc_tt(ref pth, ref tts, ctxt) => {
                     if (pth.segments.len() > 1u) {
                         cx.span_fatal(
                             pth.span,
@@ -368,7 +368,7 @@ pub fn expand_item_mac(extsbox: @mut SyntaxEnv,
                        fld: @ast_fold)
                     -> Option<@ast::item> {
     let (pth, tts) = match it.node {
-        item_mac(codemap::Spanned { node: mac_invoc_tt(ref pth, ref tts), _}) => {
+        item_mac(codemap::Spanned { node: mac_invoc_tt(ref pth, ref tts, ctxt), _}) => {
             (pth, (*tts).clone())
         }
         _ => cx.span_bug(it.span, "invalid item macro invocation")
@@ -471,7 +471,7 @@ pub fn expand_stmt(extsbox: @mut SyntaxEnv,
     let (mac, pth, tts, semi) = match *s {
         StmtMac(ref mac, semi) => {
             match mac.node {
-                mac_invoc_tt(ref pth, ref tts) => {
+                mac_invoc_tt(ref pth, ref tts, ctxt) => {
                     ((*mac).clone(), pth, (*tts).clone(), semi)
                 }
             }
