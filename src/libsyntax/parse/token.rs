@@ -310,22 +310,23 @@ pub fn is_bar(t: &Token) -> bool {
     match *t { BINOP(OR) | OROR => true, _ => false }
 }
 
-
 pub mod special_idents {
     use ast::Ident;
 
-    pub static underscore : Ident = Ident { name: 0, ctxt: 0};
+    pub static underscore : Ident = Ident { name: 0, ctxt: 0}; // apparently unused?
     pub static anon : Ident = Ident { name: 1, ctxt: 0};
     pub static invalid : Ident = Ident { name: 2, ctxt: 0}; // ''
-    pub static unary : Ident = Ident { name: 3, ctxt: 0};
-    pub static not_fn : Ident = Ident { name: 4, ctxt: 0};
-    pub static idx_fn : Ident = Ident { name: 5, ctxt: 0};
-    pub static unary_minus_fn : Ident = Ident { name: 6, ctxt: 0};
+    pub static unary : Ident = Ident { name: 3, ctxt: 0}; // apparently unused?
+    pub static not_fn : Ident = Ident { name: 4, ctxt: 0}; // apparently unused?
+    pub static idx_fn : Ident = Ident { name: 5, ctxt: 0}; // apparently unused?
+    pub static unary_minus_fn : Ident = Ident { name: 6, ctxt: 0}; // apparently unused?
     pub static clownshoes_extensions : Ident = Ident { name: 7, ctxt: 0};
 
     pub static self_ : Ident = Ident { name: 8, ctxt: 0}; // 'self'
 
     /* for matcher NTs */
+    // none of these appear to be used, but perhaps references to
+    // these are artificially fabricated by the macro system....
     pub static item : Ident = Ident { name: 9, ctxt: 0};
     pub static block : Ident = Ident { name: 10, ctxt: 0};
     pub static stmt : Ident = Ident { name: 11, ctxt: 0};
@@ -337,7 +338,7 @@ pub mod special_idents {
     pub static tt : Ident = Ident { name: 17, ctxt: 0};
     pub static matchers : Ident = Ident { name: 18, ctxt: 0};
 
-    pub static str : Ident = Ident { name: 19, ctxt: 0}; // for the type
+    pub static str : Ident = Ident { name: 19, ctxt: 0}; // for the type // apparently unused?
 
     /* outside of libsyntax */
     pub static arg : Ident = Ident { name: 20, ctxt: 0};
@@ -350,9 +351,31 @@ pub mod special_idents {
     pub static statik : Ident = Ident { name: 27, ctxt: 0};
     pub static clownshoes_foreign_mod: Ident = Ident { name: 28, ctxt: 0};
     pub static unnamed_field: Ident = Ident { name: 29, ctxt: 0};
-    pub static c_abi: Ident = Ident { name: 30, ctxt: 0};
+    pub static c_abi: Ident = Ident { name: 30, ctxt: 0}; // apparently unused?
     pub static type_self: Ident = Ident { name: 31, ctxt: 0};    // `Self`
 }
+
+// here are the ones that actually occur in the source. Maybe the rest
+// should be removed?
+/*
+special_idents::anon
+special_idents::arg
+special_idents::blk
+special_idents::clownshoe_abi
+special_idents::clownshoe_stack_shim
+special_idents::clownshoes_extensions
+special_idents::clownshoes_foreign_mod
+special_idents::descrim
+special_idents::invalid
+special_idents::main
+special_idents::matchers
+special_idents::opaque
+special_idents::self_
+special_idents::statik
+special_idents::tt
+special_idents::type_self
+special_idents::unnamed_field
+*/
 
 /**
  * Maps a token to a record specifying the corresponding binary
