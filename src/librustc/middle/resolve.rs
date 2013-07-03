@@ -3382,7 +3382,8 @@ impl Resolver {
 
                         self.session.span_err(
                             span,
-                            "attempted dynamic environment-capture");
+                            "can't capture dynamic environment in a fn item; \
+                            use the || { ... } closure form instead");
                     } else {
                         // This was an attempt to use a type parameter outside
                         // its scope.
@@ -3404,7 +3405,8 @@ impl Resolver {
 
                         self.session.span_err(
                             span,
-                            "attempted dynamic environment-capture");
+                            "can't capture dynamic environment in a fn item; \
+                            use the || { ... } closure form instead");
                     } else {
                         // This was an attempt to use a type parameter outside
                         // its scope.
