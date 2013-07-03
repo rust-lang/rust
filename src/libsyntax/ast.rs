@@ -635,7 +635,7 @@ pub type mac = spanned<mac_>;
 // There's only one flavor, now, so this could presumably be simplified.
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub enum mac_ {
-    mac_invoc_tt(Path,~[token_tree]),   // new macro-invocation
+    mac_invoc_tt(Path,~[token_tree],SyntaxContext),   // new macro-invocation
 }
 
 pub type lit = spanned<lit_>;
