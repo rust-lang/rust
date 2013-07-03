@@ -207,7 +207,7 @@ impl Add<BigUint, BigUint> for BigUint {
         let new_len = uint::max(self.data.len(), other.data.len());
 
         let mut carry = 0;
-        let sum = do vec::from_fn(new_len) |i| {
+        let mut sum = do vec::from_fn(new_len) |i| {
             let ai = if i < self.data.len()  { self.data[i]  } else { 0 };
             let bi = if i < other.data.len() { other.data[i] } else { 0 };
             let (hi, lo) = BigDigit::from_uint(
@@ -216,8 +216,8 @@ impl Add<BigUint, BigUint> for BigUint {
             carry = hi;
             lo
         };
-        if carry == 0 { return BigUint::new(sum) };
-        return BigUint::new(sum + [carry]);
+        if carry != 0 { sum.push(carry); }
+        return BigUint::new(sum);
     }
 }
 
@@ -284,15 +284,15 @@ impl Mul<BigUint, BigUint> for BigUint {
             if n == 1 { return copy *a; }
 
             let mut carry = 0;
-            let prod = do a.data.iter().transform |ai| {
+            let mut prod = do a.data.iter().transform |ai| {
                 let (hi, lo) = BigDigit::from_uint(
                     (*ai as uint) * (n as uint) + (carry as uint)
                 );
                 carry = hi;
                 lo
             }.collect::<~[BigDigit]>();
-            if carry == 0 { return BigUint::new(prod) };
-            return BigUint::new(prod + [carry]);
+            if carry != 0 { prod.push(carry); }
+            return BigUint::new(prod);
         }
 
 
@@ -621,15 +621,15 @@ impl BigUint {
         if n_bits == 0 || self.is_zero() { return copy *self; }
 
         let mut carry = 0;
-        let shifted = do self.data.iter().transform |elem| {
+        let mut shifted = do self.data.iter().transform |elem| {
             let (hi, lo) = BigDigit::from_uint(
                 (*elem as uint) << n_bits | (carry as uint)
             );
             carry = hi;
             lo
         }.collect::<~[BigDigit]>();
-        if carry == 0 { return BigUint::new(shifted); }
-        return BigUint::new(shifted + [carry]);
+        if carry != 0 { shifted.push(carry); }
+        return BigUint::new(shifted);
     }
 
 

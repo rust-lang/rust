@@ -113,7 +113,7 @@ fn shim_types(ccx: @mut CrateContext, id: ast::node_id) -> ShimTypes {
         _ => ccx.sess.bug("c_arg_and_ret_lltys called on non-function type")
     };
     let llsig = foreign_signature(ccx, &fn_sig);
-    let bundle_ty = Type::struct_(llsig.llarg_tys + [llsig.llret_ty.ptr_to()], false);
+    let bundle_ty = Type::struct_(llsig.llarg_tys + &[llsig.llret_ty.ptr_to()], false);
     let ret_def = !ty::type_is_bot(fn_sig.output) &&
                   !ty::type_is_nil(fn_sig.output);
     let fn_ty = abi_info(ccx).compute_info(llsig.llarg_tys, llsig.llret_ty, ret_def);

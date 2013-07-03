@@ -163,7 +163,7 @@ pub fn make_filename(
             }
           }
           doc::ItemPage(doc) => {
-            (doc.path() + [doc.name()]).connect("_")
+            (doc.path() + &[doc.name()]).connect("_")
           }
         }
     };
