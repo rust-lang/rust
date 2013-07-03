@@ -10,6 +10,8 @@
 
 //! Operations and constants for `int`
 
+#[allow(non_uppercase_statics)];
+
 use num::BitCount;
 
 pub use self::generated::*;

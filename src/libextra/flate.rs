@@ -39,10 +39,10 @@ pub mod rustrt {
     }
 }
 
-static lz_none : c_int = 0x0;   // Huffman-coding only.
-static lz_fast : c_int = 0x1;   // LZ with only one probe
-static lz_norm : c_int = 0x80;  // LZ with 128 probes, "normal"
-static lz_best : c_int = 0xfff; // LZ with 4095 probes, "best"
+static LZ_NONE : c_int = 0x0;   // Huffman-coding only.
+static LZ_FAST : c_int = 0x1;   // LZ with only one probe
+static LZ_NORM : c_int = 0x80;  // LZ with 128 probes, "normal"
+static LZ_BEST : c_int = 0xfff; // LZ with 4095 probes, "best"
 
 pub fn deflate_bytes(bytes: &[u8]) -> ~[u8] {
     do vec::as_imm_buf(bytes) |b, len| {
@@ -52,7 +52,7 @@ pub fn deflate_bytes(bytes: &[u8]) -> ~[u8] {
                 rustrt::tdefl_compress_mem_to_heap(b as *c_void,
                                                    len as size_t,
                                                    &mut outsz,
-                                                   lz_norm);
+                                                   LZ_NORM);
             assert!(res as int != 0);
             let out = vec::raw::from_buf_raw(res as *u8,
                                              outsz as uint);

@@ -14,6 +14,8 @@
 
 macro_rules! int_module (($T:ty, $bits:expr) => (mod generated {
 
+#[allow(non_uppercase_statics)];
+
 use num::{ToStrRadix, FromStrRadix};
 use num::{Zero, One, strconv};
 use prelude::*;

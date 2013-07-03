@@ -29,9 +29,9 @@ fn push_if_exists(vec: &mut ~[Path], p: &Path) {
 }
 
 #[cfg(windows)]
-static path_entry_separator: &'static str = ";";
+static PATH_ENTRY_SEPARATOR: &'static str = ";";
 #[cfg(not(windows))]
-static path_entry_separator: &'static str = ":";
+static PATH_ENTRY_SEPARATOR: &'static str = ":";
 
 /// Returns the value of RUST_PATH, as a list
 /// of Paths. Includes default entries for, if they exist:
@@ -42,7 +42,7 @@ pub fn rust_path() -> ~[Path] {
     let mut env_rust_path: ~[Path] = match os::getenv("RUST_PATH") {
         Some(env_path) => {
             let env_path_components: ~[&str] =
-                env_path.split_str_iter(path_entry_separator).collect();
+                env_path.split_str_iter(PATH_ENTRY_SEPARATOR).collect();
             env_path_components.map(|&s| Path(s))
         }
         None => ~[]
@@ -56,12 +56,12 @@ pub fn rust_path() -> ~[Path] {
     env_rust_path
 }
 
-pub static u_rwx: i32 = (S_IRUSR | S_IWUSR | S_IXUSR) as i32;
+pub static U_RWX: i32 = (S_IRUSR | S_IWUSR | S_IXUSR) as i32;
 
 /// Creates a directory that is readable, writeable,
 /// and executable by the user. Returns true iff creation
 /// succeeded.
-pub fn make_dir_rwx(p: &Path) -> bool { os::make_dir(p, u_rwx) }
+pub fn make_dir_rwx(p: &Path) -> bool { os::make_dir(p, U_RWX) }
 
 // n.b. The next three functions ignore the package version right
 // now. Should fix that.
@@ -318,7 +318,7 @@ fn target_file_in_workspace(pkgid: &PkgId, workspace: &Path,
         Lib => "lib", Main | Test | Bench => "bin"
     };
     let result = workspace.push(subdir);
-    if !os::path_exists(&result) && !mkdir_recursive(&result, u_rwx) {
+    if !os::path_exists(&result) && !mkdir_recursive(&result, U_RWX) {
         cond.raise((copy result, fmt!("target_file_in_workspace couldn't \
             create the %s dir (pkgid=%s, workspace=%s, what=%?, where=%?",
             subdir, pkgid.to_str(), workspace.to_str(), what, where)));
@@ -335,7 +335,7 @@ pub fn build_pkg_id_in_workspace(pkgid: &PkgId, workspace: &Path) -> Path {
     // n.b. Should actually use a target-specific
     // subdirectory of build/
     result = result.push_rel(&*pkgid.local_path);
-    if os::path_exists(&result) || os::mkdir_recursive(&result, u_rwx) {
+    if os::path_exists(&result) || os::mkdir_recursive(&result, U_RWX) {
         result
     }
     else {

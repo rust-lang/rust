@@ -17,6 +17,7 @@ A BigInt is a combination of BigUint and Sign.
 */
 
 #[allow(missing_doc)];
+#[allow(non_uppercase_statics)];
 
 use std::cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering, Less, Equal, Greater};
 use std::int;

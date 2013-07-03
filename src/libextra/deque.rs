@@ -15,7 +15,7 @@ use std::util::replace;
 use std::vec;
 use std::cast::transmute;
 
-static initial_capacity: uint = 32u; // 2^5
+static INITIAL_CAPACITY: uint = 32u; // 2^5
 
 #[allow(missing_doc)]
 pub struct Deque<T> {
@@ -47,7 +47,7 @@ impl<T> Deque<T> {
     /// Create an empty Deque
     pub fn new() -> Deque<T> {
         Deque{nelts: 0, lo: 0, hi: 0,
-              elts: vec::from_fn(initial_capacity, |_| None)}
+              elts: vec::from_fn(INITIAL_CAPACITY, |_| None)}
     }
 
     /// Return a reference to the first element in the deque

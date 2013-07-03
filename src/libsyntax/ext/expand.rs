@@ -580,6 +580,7 @@ pub fn core_macros() -> @str {
             pub mod $c {
                 fn key(_x: @::std::condition::Handler<$in,$out>) { }
 
+                #[allow(non_uppercase_statics)]
                 pub static cond :
                     ::std::condition::Condition<'static,$in,$out> =
                     ::std::condition::Condition {
@@ -595,6 +596,7 @@ pub fn core_macros() -> @str {
             pub mod $c {
                 fn key(_x: @::std::condition::Handler<$in,$out>) { }
 
+                #[allow(non_uppercase_statics)]
                 pub static cond :
                     ::std::condition::Condition<'static,$in,$out> =
                     ::std::condition::Condition {

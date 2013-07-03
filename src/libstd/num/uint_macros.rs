@@ -14,6 +14,8 @@
 
 macro_rules! uint_module (($T:ty, $T_SIGNED:ty, $bits:expr) => (mod generated {
 
+#[allow(non_uppercase_statics)];
+
 use num::BitCount;
 use num::{ToStrRadix, FromStrRadix};
 use num::{Zero, One, strconv};

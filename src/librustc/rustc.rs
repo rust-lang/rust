@@ -19,6 +19,7 @@
 
 #[allow(non_implicitly_copyable_typarams)];
 #[allow(non_camel_case_types)];
+#[allow(non_uppercase_statics)];
 #[deny(deprecated_pattern)];
 
 extern mod extra;
