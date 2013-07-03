@@ -452,27 +452,46 @@ pub fn each_permutation<T:Copy>(values: &[T], fun: &fn(perm : &[T]) -> bool) -> 
     }
 }
 
-/**
- * Iterate over all contiguous windows of length `n` of the vector `v`.
- *
- * # Example
- *
- * Print the adjacent pairs of a vector (i.e. `[1,2]`, `[2,3]`, `[3,4]`)
- *
- * ~~~ {.rust}
- * for windowed(2, &[1,2,3,4]) |v| {
- *     io::println(fmt!("%?", v));
- * }
- * ~~~
- *
- */
-pub fn windowed<'r, T>(n: uint, v: &'r [T], it: &fn(&'r [T]) -> bool) -> bool {
-    assert!(1u <= n);
-    if n > v.len() { return true; }
-    for uint::range(0, v.len() - n + 1) |i| {
-        if !it(v.slice(i, i + n)) { return false; }
+/// An iterator over the (overlapping) slices of length `size` within
+/// a vector.
+pub struct VecWindowIter<'self, T> {
+    priv v: &'self [T],
+    priv size: uint
+}
+
+impl<'self, T> Iterator<&'self [T]> for VecWindowIter<'self, T> {
+    fn next(&mut self) -> Option<&'self [T]> {
+        if self.size > self.v.len() {
+            None
+        } else {
+            let ret = Some(self.v.slice(0, self.size));
+            self.v = self.v.slice(1, self.v.len());
+            ret
+        }
     }
-    return true;
+}
+
+/// An iterator over a vector in (non-overlapping) chunks (`size`
+/// elements at a time).
+pub struct VecChunkIter<'self, T> {
+    priv v: &'self [T],
+    priv size: uint
+}
+
+impl<'self, T> Iterator<&'self [T]> for VecChunkIter<'self, T> {
+    fn next(&mut self) -> Option<&'self [T]> {
+        if self.size == 0 {
+            None
+        } else if self.size >= self.v.len() {
+            // finished
+            self.size = 0;
+            Some(self.v)
+        } else {
+            let ret = Some(self.v.slice(0, self.size));
+            self.v = self.v.slice(self.size, self.v.len());
+            ret
+        }
+    }
 }
 
 /**
@@ -728,6 +747,9 @@ pub trait ImmutableVector<'self, T> {
     fn rsplit_iter(self, pred: &'self fn(&T) -> bool) -> VecRSplitIterator<'self, T>;
     fn rsplitn_iter(self,  n: uint, pred: &'self fn(&T) -> bool) -> VecRSplitIterator<'self, T>;
 
+    fn window_iter(self, size: uint) -> VecWindowIter<'self, T>;
+    fn chunk_iter(self, size: uint) -> VecChunkIter<'self, T>;
+
     fn head(&self) -> &'self T;
     fn head_opt(&self) -> Option<&'self T>;
     fn tail(&self) -> &'self [T];
@@ -815,6 +837,62 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
             pred: pred,
             finished: false
         }
+    }
+
+    /**
+     * Returns an iterator over all contiguous windows of length
+     * `size`. The windows overlap. If the vector is shorter than
+     * `size`, the iterator returns no values.
+     *
+     * # Failure
+     *
+     * Fails if `size` is 0.
+     *
+     * # Example
+     *
+     * Print the adjacent pairs of a vector (i.e. `[1,2]`, `[2,3]`,
+     * `[3,4]`):
+     *
+     * ~~~ {.rust}
+     * let v = &[1,2,3,4];
+     * for v.window_iter().advance |win| {
+     *     io::println(fmt!("%?", win));
+     * }
+     * ~~~
+     *
+     */
+    fn window_iter(self, size: uint) -> VecWindowIter<'self, T> {
+        assert!(size != 0);
+        VecWindowIter { v: self, size: size }
+    }
+
+    /**
+     *
+     * Returns an iterator over `size` elements of the vector at a
+     * time. The chunks do not overlap. If `size` does not divide the
+     * length of the vector, then the last chunk will not have length
+     * `size`.
+     *
+     * # Failure
+     *
+     * Fails if `size` is 0.
+     *
+     * # Example
+     *
+     * Print the vector two elements at a time (i.e. `[1,2]`,
+     * `[3,4]`, `[5]`):
+     *
+     * ~~~ {.rust}
+     * let v = &[1,2,3,4,5];
+     * for v.chunk_iter().advance |win| {
+     *     io::println(fmt!("%?", win));
+     * }
+     * ~~~
+     *
+     */
+    fn chunk_iter(self, size: uint) -> VecChunkIter<'self, T> {
+        assert!(size != 0);
+        VecChunkIter { v: self, size: size }
     }
 
     /// Returns the first element of a vector, failing if the vector is empty.
@@ -2664,31 +2742,6 @@ mod tests {
     }
 
     #[test]
-    fn test_windowed () {
-        fn t(n: uint, expected: &[&[int]]) {
-            let mut i = 0;
-            for windowed(n, [1,2,3,4,5,6]) |v| {
-                assert_eq!(v, expected[i]);
-                i += 1;
-            }
-
-            // check that we actually iterated the right number of times
-            assert_eq!(i, expected.len());
-        }
-        t(3, &[&[1,2,3],&[2,3,4],&[3,4,5],&[4,5,6]]);
-        t(4, &[&[1,2,3,4],&[2,3,4,5],&[3,4,5,6]]);
-        t(7, &[]);
-        t(8, &[]);
-    }
-
-    #[test]
-    #[should_fail]
-    #[ignore(cfg(windows))]
-    fn test_windowed_() {
-        for windowed (0u, [1u,2u,3u,4u,5u,6u]) |_v| {}
-    }
-
-    #[test]
     fn test_unshift() {
         let mut x = ~[1, 2, 3];
         x.unshift(0);
@@ -3033,6 +3086,40 @@ mod tests {
 
         let xs: &[int] = &[];
         assert_eq!(xs.rsplitn_iter(1, |x| *x == 5).collect::<~[&[int]]>(), ~[&[]]);
+    }
+
+    #[test]
+    fn test_window_iterator() {
+        let v = &[1i,2,3,4];
+
+        assert_eq!(v.window_iter(2).collect::<~[&[int]]>(), ~[&[1,2], &[2,3], &[3,4]]);
+        assert_eq!(v.window_iter(3).collect::<~[&[int]]>(), ~[&[1i,2,3], &[2,3,4]]);
+        assert!(v.window_iter(6).next().is_none());
+    }
+
+    #[test]
+    #[should_fail]
+    #[ignore(cfg(windows))]
+    fn test_window_iterator_0() {
+        let v = &[1i,2,3,4];
+        let _it = v.window_iter(0);
+    }
+
+    #[test]
+    fn test_chunk_iterator() {
+        let v = &[1i,2,3,4,5];
+
+        assert_eq!(v.chunk_iter(2).collect::<~[&[int]]>(), ~[&[1i,2], &[3,4], &[5]]);
+        assert_eq!(v.chunk_iter(3).collect::<~[&[int]]>(), ~[&[1i,2,3], &[4,5]]);
+        assert_eq!(v.chunk_iter(6).collect::<~[&[int]]>(), ~[&[1i,2,3,4,5]]);
+    }
+
+    #[test]
+    #[should_fail]
+    #[ignore(cfg(windows))]
+    fn test_chunk_iterator_0() {
+        let v = &[1i,2,3,4];
+        let _it = v.chunk_iter(0);
     }
 
     #[test]
