@@ -193,3 +193,143 @@ impl Death {
         };
     }
 }
+
+#[cfg(test)]
+mod test {
+    #[allow(unused_mut)];
+    use rt::test::*;
+    use super::*;
+    use util;
+
+    #[test]
+    fn no_tombstone_success() {
+        do run_in_newsched_task {
+            // Tests case 4 of the 4-way match in reparent_children.
+            let mut parent = KillHandle::new();
+            let mut child  = KillHandle::new();
+
+            // Without another handle to child, the try unwrap should succeed.
+            child.reparent_children_to(&mut parent);
+            let mut parent_inner = unsafe { parent.unwrap() };
+            assert!(parent_inner.child_tombstones.is_none());
+            assert!(parent_inner.any_child_failed == false);
+        }
+    }
+    #[test]
+    fn no_tombstone_failure() {
+        do run_in_newsched_task {
+            // Tests case 2 of the 4-way match in reparent_children.
+            let mut parent = KillHandle::new();
+            let mut child  = KillHandle::new();
+
+            child.notify_immediate_failure();
+            // Without another handle to child, the try unwrap should succeed.
+            child.reparent_children_to(&mut parent);
+            let mut parent_inner = unsafe { parent.unwrap() };
+            assert!(parent_inner.child_tombstones.is_none());
+            // Immediate failure should have been propagated.
+            assert!(parent_inner.any_child_failed);
+        }
+    }
+    #[test]
+    fn no_tombstone_because_sibling_already_failed() {
+        do run_in_newsched_task {
+            // Tests "case 0, the optimistic path in reparent_children.
+            let mut parent = KillHandle::new();
+            let mut child1 = KillHandle::new();
+            let mut child2 = KillHandle::new();
+            let mut link   = child2.clone();
+
+            // Should set parent's child_failed flag
+            child1.notify_immediate_failure();
+            child1.reparent_children_to(&mut parent);
+            // Should bypass trying to unwrap child2 entirely.
+            // Otherwise, due to 'link', it would try to tombstone.
+            child2.reparent_children_to(&mut parent);
+            // Should successfully unwrap even though 'link' is still alive.
+            let mut parent_inner = unsafe { parent.unwrap() };
+            assert!(parent_inner.child_tombstones.is_none());
+            // Immediate failure should have been propagated by first child.
+            assert!(parent_inner.any_child_failed);
+            util::ignore(link);
+        }
+    }
+    #[test]
+    fn one_tombstone_success() {
+        do run_in_newsched_task {
+            let mut parent = KillHandle::new();
+            let mut child  = KillHandle::new();
+            let mut link   = child.clone();
+
+            // Creates 1 tombstone. Existence of 'link' makes try-unwrap fail.
+            child.reparent_children_to(&mut parent);
+            // Let parent collect tombstones.
+            util::ignore(link);
+            // Must have created a tombstone
+            let mut parent_inner = unsafe { parent.unwrap() };
+            assert!(parent_inner.child_tombstones.take_unwrap()());
+            assert!(parent_inner.any_child_failed == false);
+        }
+    }
+    #[test]
+    fn one_tombstone_failure() {
+        do run_in_newsched_task {
+            let mut parent = KillHandle::new();
+            let mut child  = KillHandle::new();
+            let mut link   = child.clone();
+
+            // Creates 1 tombstone. Existence of 'link' makes try-unwrap fail.
+            child.reparent_children_to(&mut parent);
+            // Must happen after tombstone to not be immediately propagated.
+            link.notify_immediate_failure();
+            // Let parent collect tombstones.
+            util::ignore(link);
+            // Must have created a tombstone
+            let mut parent_inner = unsafe { parent.unwrap() };
+            // Failure must be seen in the tombstone.
+            assert!(parent_inner.child_tombstones.take_unwrap()() == false);
+            assert!(parent_inner.any_child_failed == false);
+        }
+    }
+    #[test]
+    fn two_tombstones_success() {
+        do run_in_newsched_task {
+            let mut parent = KillHandle::new();
+            let mut middle = KillHandle::new();
+            let mut child  = KillHandle::new();
+            let mut link   = child.clone();
+
+            child.reparent_children_to(&mut middle); // case 1 tombstone
+            // 'middle' should try-unwrap okay, but still have to reparent.
+            middle.reparent_children_to(&mut parent); // case 3 tombston
+            // Let parent collect tombstones.
+            util::ignore(link);
+            // Must have created a tombstone
+            let mut parent_inner = unsafe { parent.unwrap() };
+            assert!(parent_inner.child_tombstones.take_unwrap()());
+            assert!(parent_inner.any_child_failed == false);
+        }
+    }
+    #[test]
+    fn two_tombstones_failure() {
+        do run_in_newsched_task {
+            let mut parent = KillHandle::new();
+            let mut middle = KillHandle::new();
+            let mut child  = KillHandle::new();
+            let mut link   = child.clone();
+
+            child.reparent_children_to(&mut middle); // case 1 tombstone
+            // Must happen after tombstone to not be immediately propagated.
+            link.notify_immediate_failure();
+            // 'middle' should try-unwrap okay, but still have to reparent.
+            middle.reparent_children_to(&mut parent); // case 3 tombstone
+            // Let parent collect tombstones.
+            util::ignore(link);
+            // Must have created a tombstone
+            let mut parent_inner = unsafe { parent.unwrap() };
+            // Failure must be seen in the tombstone.
+            assert!(parent_inner.child_tombstones.take_unwrap()() == false);
+            assert!(parent_inner.any_child_failed == false);
+        }
+    }
+}
