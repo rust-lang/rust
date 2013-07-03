@@ -538,12 +538,13 @@ impl BorrowckCtxt {
 
             move_data::MoveExpr(expr) => {
                 let expr_ty = ty::expr_ty_adjusted(self.tcx, expr);
+                let suggestion = move_suggestion(self.tcx, expr_ty,
+                        "moved by default (use `copy` to override)");
                 self.tcx.sess.span_note(
                     expr.span,
-                    fmt!("`%s` moved here because it has type `%s`, \
-                          which is moved by default (use `copy` to override)",
+                    fmt!("`%s` moved here because it has type `%s`, which is %s",
                          self.loan_path_to_str(moved_lp),
-                         expr_ty.user_string(self.tcx)));
+                         expr_ty.user_string(self.tcx), suggestion));
             }
 
             move_data::MovePat(pat) => {
@@ -557,12 +558,28 @@ impl BorrowckCtxt {
             }
 
             move_data::Captured(expr) => {
+                let expr_ty = ty::expr_ty_adjusted(self.tcx, expr);
+                let suggestion = move_suggestion(self.tcx, expr_ty,
+                        "moved by default (make a copy and \
+                         capture that instead to override)");
                 self.tcx.sess.span_note(
                     expr.span,
-                    fmt!("`%s` moved into closure environment here \
-                          because its type is moved by default \
-                          (make a copy and capture that instead to override)",
-                         self.loan_path_to_str(moved_lp)));
+                    fmt!("`%s` moved into closure environment here because it \
+                          has type `%s`, which is %s",
+                         self.loan_path_to_str(moved_lp),
+                         expr_ty.user_string(self.tcx), suggestion));
+            }
+        }
+
+        fn move_suggestion(tcx: ty::ctxt, ty: ty::t, default_msg: &'static str)
+                          -> &'static str {
+            match ty::get(ty).sty {
+                ty::ty_closure(ref cty) if cty.sigil == ast::BorrowedSigil =>
+                    "a non-copyable stack closure (capture it in a new closure, \
+                     e.g. `|x| f(x)`, to override)",
+                _ if !ty::type_is_copyable(tcx, ty) =>
+                    "non-copyable (perhaps you meant to use clone()?)",
+                _ => default_msg,
             }
         }
     }
