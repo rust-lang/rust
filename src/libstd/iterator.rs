@@ -43,7 +43,7 @@ pub trait Iterator<A> {
     /// Return a lower bound and upper bound on the remaining length of the iterator.
     ///
     /// The common use case for the estimate is pre-allocating space to store the results.
-    fn size_hint(&self) -> (Option<uint>, Option<uint>) { (None, None) }
+    fn size_hint(&self) -> (uint, Option<uint>) { (0, None) }
 }
 
 /// Iterator adaptors provided for every `Iterator` implementation. The adaptor objects are also
@@ -684,16 +684,11 @@ impl<A, T: Iterator<A>, U: Iterator<A>> Iterator<A> for ChainIterator<A, T, U> {
     }
 
     #[inline]
-    fn size_hint(&self) -> (Option<uint>, Option<uint>) {
+    fn size_hint(&self) -> (uint, Option<uint>) {
         let (a_lower, a_upper) = self.a.size_hint();
         let (b_lower, b_upper) = self.b.size_hint();
 
-        let lower = match (a_lower, b_lower) {
-            (Some(x), Some(y)) => Some(x + y),
-            (Some(x), None) => Some(x),
-            (None, Some(y)) => Some(y),
-            (None, None) => None
-        };
+        let lower = a_lower + b_lower;
 
         let upper = match (a_upper, b_upper) {
             (Some(x), Some(y)) => Some(x + y),
@@ -737,7 +732,7 @@ impl<'self, A, B, T: Iterator<A>> Iterator<B> for MapIterator<'self, A, B, T> {
     }
 
     #[inline]
-    fn size_hint(&self) -> (Option<uint>, Option<uint>) {
+    fn size_hint(&self) -> (uint, Option<uint>) {
         self.iter.size_hint()
     }
 }
@@ -762,9 +757,9 @@ impl<'self, A, T: Iterator<A>> Iterator<A> for FilterIterator<'self, A, T> {
     }
 
     #[inline]
-    fn size_hint(&self) -> (Option<uint>, Option<uint>) {
+    fn size_hint(&self) -> (uint, Option<uint>) {
         let (_, upper) = self.iter.size_hint();
-        (None, upper) // can't know a lower bound, due to the predicate
+        (0, upper) // can't know a lower bound, due to the predicate
     }
 }
 
@@ -787,9 +782,9 @@ impl<'self, A, B, T: Iterator<A>> Iterator<B> for FilterMapIterator<'self, A, B,
     }
 
     #[inline]
-    fn size_hint(&self) -> (Option<uint>, Option<uint>) {
+    fn size_hint(&self) -> (uint, Option<uint>) {
         let (_, upper) = self.iter.size_hint();
-        (None, upper) // can't know a lower bound, due to the predicate
+        (0, upper) // can't know a lower bound, due to the predicate
     }
 }
 

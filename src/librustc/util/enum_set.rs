@@ -125,9 +125,9 @@ impl<E:CLike> Iterator<E> for EnumSetIterator<E> {
         Some(elem)
     }
 
-    fn size_hint(&self) -> (Option<uint>, Option<uint>) {
-        let exact = Some(self.bits.population_count());
-        (exact, exact)
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        let exact = self.bits.population_count();
+        (exact, Some(exact))
     }
 }
 
