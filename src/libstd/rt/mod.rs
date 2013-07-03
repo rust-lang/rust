@@ -83,6 +83,9 @@ pub mod global_heap;
 /// Implementations of language-critical runtime features like @.
 pub mod task;
 
+/// Facilities related to task failure, killing, and death.
+mod kill;
+
 /// The coroutine task scheduler, built on the `io` event loop.
 mod sched;
 
