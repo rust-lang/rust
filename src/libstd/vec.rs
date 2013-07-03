@@ -2024,14 +2024,14 @@ macro_rules! iterator {
             }
 
             #[inline]
-            fn size_hint(&self) -> (Option<uint>, Option<uint>) {
+            fn size_hint(&self) -> (uint, Option<uint>) {
                 let diff = if $step > 0 {
                     (self.end as uint) - (self.ptr as uint)
                 } else {
                     (self.ptr as uint) - (self.end as uint)
                 };
-                let exact = Some(diff / size_of::<$elem>());
-                (exact, exact)
+                let exact = diff / size_of::<$elem>();
+                (exact, Some(exact))
             }
         }
     }
@@ -2132,7 +2132,7 @@ impl<A, T: Iterator<A>> FromIterator<A, T> for ~[A] {
 impl<A, T: Iterator<A>> FromIterator<A, T> for ~[A] {
     pub fn from_iterator(iterator: &mut T) -> ~[A] {
         let (lower, _) = iterator.size_hint();
-        let mut xs = with_capacity(lower.get_or_zero());
+        let mut xs = with_capacity(lower);
         for iterator.advance |x| {
             xs.push(x);
         }
@@ -2968,17 +2968,17 @@ mod tests {
         use iterator::*;
         let xs = [1, 2, 5, 10, 11];
         let mut it = xs.iter();
-        assert_eq!(it.size_hint(), (Some(5), Some(5)));
+        assert_eq!(it.size_hint(), (5, Some(5)));
         assert_eq!(it.next().unwrap(), &1);
-        assert_eq!(it.size_hint(), (Some(4), Some(4)));
+        assert_eq!(it.size_hint(), (4, Some(4)));
         assert_eq!(it.next().unwrap(), &2);
-        assert_eq!(it.size_hint(), (Some(3), Some(3)));
+        assert_eq!(it.size_hint(), (3, Some(3)));
         assert_eq!(it.next().unwrap(), &5);
-        assert_eq!(it.size_hint(), (Some(2), Some(2)));
+        assert_eq!(it.size_hint(), (2, Some(2)));
         assert_eq!(it.next().unwrap(), &10);
-        assert_eq!(it.size_hint(), (Some(1), Some(1)));
+        assert_eq!(it.size_hint(), (1, Some(1)));
         assert_eq!(it.next().unwrap(), &11);
-        assert_eq!(it.size_hint(), (Some(0), Some(0)));
+        assert_eq!(it.size_hint(), (0, Some(0)));
         assert!(it.next().is_none());
     }
 
@@ -2986,10 +2986,10 @@ mod tests {
     fn test_iter_size_hints() {
         use iterator::*;
         let mut xs = [1, 2, 5, 10, 11];
-        assert_eq!(xs.iter().size_hint(), (Some(5), Some(5)));
-        assert_eq!(xs.rev_iter().size_hint(), (Some(5), Some(5)));
-        assert_eq!(xs.mut_iter().size_hint(), (Some(5), Some(5)));
-        assert_eq!(xs.mut_rev_iter().size_hint(), (Some(5), Some(5)));
+        assert_eq!(xs.iter().size_hint(), (5, Some(5)));
+        assert_eq!(xs.rev_iter().size_hint(), (5, Some(5)));
+        assert_eq!(xs.mut_iter().size_hint(), (5, Some(5)));
+        assert_eq!(xs.mut_rev_iter().size_hint(), (5, Some(5)));
     }
 
     #[test]
