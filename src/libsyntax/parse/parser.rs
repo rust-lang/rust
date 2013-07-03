@@ -19,7 +19,7 @@ use ast::{_mod, add, arg, arm, Attribute, bind_by_ref, bind_infer};
 use ast::{bitand, bitor, bitxor, Block};
 use ast::{blk_check_mode, box};
 use ast::{Crate, CrateConfig, decl, decl_item};
-use ast::{decl_local, default_blk, deref, div, enum_def, explicit_self};
+use ast::{decl_local, default_blk, deref, div, empty_ctxt, enum_def, explicit_self};
 use ast::{expr, expr_, expr_addr_of, expr_match, expr_again};
 use ast::{expr_assign, expr_assign_op, expr_binary, expr_block};
 use ast::{expr_break, expr_call, expr_cast, expr_do_body};
@@ -1730,7 +1730,7 @@ impl Parser {
                                                 |p| p.parse_token_tree());
                 let hi = self.span.hi;
 
-                return self.mk_mac_expr(lo, hi, mac_invoc_tt(pth, tts));
+                return self.mk_mac_expr(lo, hi, mac_invoc_tt(pth, tts, empty_ctxt));
             } else if *self.token == token::LBRACE {
                 // This might be a struct literal.
                 if self.looking_at_record_literal() {
@@ -3039,14 +3039,14 @@ impl Parser {
 
             if id == token::special_idents::invalid {
                 return @spanned(lo, hi, stmt_mac(
-                    spanned(lo, hi, mac_invoc_tt(pth, tts)), false));
+                    spanned(lo, hi, mac_invoc_tt(pth, tts, empty_ctxt)), false));
             } else {
                 // if it has a special ident, it's definitely an item
                 return @spanned(lo, hi, stmt_decl(
                     @spanned(lo, hi, decl_item(
                         self.mk_item(
                             lo, hi, id /*id is good here*/,
-                            item_mac(spanned(lo, hi, mac_invoc_tt(pth, tts))),
+                            item_mac(spanned(lo, hi, mac_invoc_tt(pth, tts, empty_ctxt))),
                             inherited, ~[/*no attrs*/]))),
                     self.get_id()));
             }
@@ -4639,7 +4639,7 @@ impl Parser {
                 _ => self.fatal("expected open delimiter")
             };
             // single-variant-enum... :
-            let m = ast::mac_invoc_tt(pth, tts);
+            let m = ast::mac_invoc_tt(pth, tts, empty_ctxt);
             let m: ast::mac = codemap::spanned { node: m,
                                              span: mk_sp(self.span.lo,
                                                          self.span.hi) };
