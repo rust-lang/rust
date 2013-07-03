@@ -17,8 +17,7 @@ use kinds::Copy;
 use option::Option;
 use sys;
 use uint;
-use vec;
-use vec::ImmutableVector;
+use vec::{ImmutableVector, OwnedVector};
 
 /// Code for dealing with @-vectors. This is pretty incomplete, and
 /// contains a bunch of duplication from the code for ~-vectors.
@@ -159,7 +158,7 @@ pub fn to_managed_consume<T>(v: ~[T]) -> @[T] {
     let mut av = @[];
     unsafe {
         raw::reserve(&mut av, v.len());
-        do vec::consume(v) |_i, x| {
+        for v.consume_iter().advance |x| {
             raw::push(&mut av, x);
         }
         transmute(av)
@@ -177,13 +176,14 @@ pub fn to_managed<T:Copy>(v: &[T]) -> @[T] {
 #[cfg(not(test))]
 pub mod traits {
     use at_vec::append;
+    use vec::Vector;
     use kinds::Copy;
     use ops::Add;
 
-    impl<'self,T:Copy> Add<&'self [T],@[T]> for @[T] {
+    impl<'self,T:Copy, V: Vector<T>> Add<V,@[T]> for @[T] {
         #[inline]
-        fn add(&self, rhs: & &'self [T]) -> @[T] {
-            append(*self, (*rhs))
+        fn add(&self, rhs: &V) -> @[T] {
+            append(*self, rhs.as_slice())
         }
     }
 }
@@ -313,7 +313,7 @@ mod test {
 
     #[test]
     fn append_test() {
-        assert_eq!(@[1,2,3] + [4,5,6], @[1,2,3,4,5,6]);
+        assert_eq!(@[1,2,3] + &[4,5,6], @[1,2,3,4,5,6]);
     }
 
     #[test]

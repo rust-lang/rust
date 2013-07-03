@@ -278,7 +278,7 @@ impl Reflector {
             let opaqueptrty = ty::mk_ptr(ccx.tcx, ty::mt { ty: opaquety, mutbl: ast::m_imm });
 
             let make_get_disr = || {
-                let sub_path = bcx.fcx.path + [path_name(special_idents::anon)];
+                let sub_path = bcx.fcx.path + &[path_name(special_idents::anon)];
                 let sym = mangle_internal_name_by_path_and_seq(ccx,
                                                                sub_path,
                                                                "get_disr");

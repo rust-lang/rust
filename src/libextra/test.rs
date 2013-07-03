@@ -477,7 +477,7 @@ fn run_tests(opts: &TestOpts,
     }
 
     // All benchmarks run at the end, in serial.
-    do vec::consume(filtered_benchs) |_, b| {
+    for filtered_benchs.consume_iter().advance |b| {
         callback(TeWait(copy b.desc));
         run_test(!opts.run_benchmarks, b, ch.clone());
         let (test, result) = p.recv();
@@ -523,7 +523,7 @@ pub fn filter_tests(
             } else { return option::None; }
         }
 
-        vec::filter_map(filtered, |x| filter_fn(x, filter_str))
+        filtered.consume_iter().filter_map(|x| filter_fn(x, filter_str)).collect()
     };
 
     // Maybe pull out the ignored test and unignore them
@@ -541,7 +541,7 @@ pub fn filter_tests(
                 None
             }
         };
-        vec::filter_map(filtered, |x| filter(x))
+        filtered.consume_iter().filter_map(|x| filter(x)).collect()
     };
 
     // Sort the tests alphabetically
@@ -720,9 +720,9 @@ impl BenchHarness {
             // Eliminate outliers
             let med = samples.median();
             let mad = samples.median_abs_dev();
-            let samples = do vec::filter(samples) |f| {
+            let samples = do samples.consume_iter().filter |f| {
                 num::abs(*f - med) <= 3.0 * mad
-            };
+            }.collect::<~[f64]>();
 
             debug!("%u samples, median %f, MAD=%f, %u survived filter",
                    n_samples, med as float, mad as float,

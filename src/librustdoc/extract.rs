@@ -15,7 +15,6 @@ use astsrv;
 use doc::ItemUtils;
 use doc;
 
-use std::vec;
 use syntax::ast;
 use syntax::parse::token::{ident_interner, ident_to_str};
 use syntax::parse::token;
@@ -83,7 +82,7 @@ fn moddoc_from_mod(
 ) -> doc::ModDoc {
     doc::ModDoc {
         item: itemdoc,
-        items: do vec::filter_mapped(module_.items) |item| {
+        items: do module_.items.iter().filter_map |item| {
             let ItemDoc = mk_itemdoc(item.id, to_str(item.ident));
             match copy item.node {
               ast::item_mod(m) => {
@@ -133,7 +132,7 @@ fn moddoc_from_mod(
               }
               _ => None
             }
-        },
+        }.collect(),
         index: None
     }
 }
