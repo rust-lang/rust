@@ -38,7 +38,7 @@ use syntax::{ast, diagnostic};
 use util::*;
 use messages::*;
 use path_util::{build_pkg_id_in_workspace, first_pkgid_src_in_workspace};
-use path_util::{u_rwx, rust_path};
+use path_util::{U_RWX, rust_path};
 use path_util::{built_executable_in_workspace, built_library_in_workspace};
 use path_util::{target_executable_in_workspace, target_library_in_workspace};
 use workspace::{each_pkg_parent_workspace, pkg_parent_workspaces};
@@ -374,7 +374,7 @@ impl CtxMethods for Ctx {
 
         for maybe_executable.iter().advance |exec| {
             debug!("Copying: %s -> %s", exec.to_str(), target_exec.to_str());
-            if !(os::mkdir_recursive(&target_exec.dir_path(), u_rwx) &&
+            if !(os::mkdir_recursive(&target_exec.dir_path(), U_RWX) &&
                  os::copy_file(exec, &target_exec)) {
                 cond.raise((copy *exec, copy target_exec));
             }
@@ -383,7 +383,7 @@ impl CtxMethods for Ctx {
             let target_lib = (copy target_lib).expect(fmt!("I built %s but apparently \
                                                 didn't install it!", lib.to_str()));
             debug!("Copying: %s -> %s", lib.to_str(), target_lib.to_str());
-            if !(os::mkdir_recursive(&target_lib.dir_path(), u_rwx) &&
+            if !(os::mkdir_recursive(&target_lib.dir_path(), U_RWX) &&
                  os::copy_file(lib, &target_lib)) {
                 cond.raise((copy *lib, copy target_lib));
             }

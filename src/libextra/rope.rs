@@ -632,14 +632,14 @@ pub mod node {
      *
      * This is not a strict value
      */
-    pub static hint_max_leaf_char_len: uint = 256u;
+    pub static HINT_MAX_LEAF_CHAR_LEN: uint = 256u;
 
     /**
      * The maximal height that _should_ be permitted in a tree.
      *
      * This is not a strict value
      */
-    pub static hint_max_node_height:   uint = 16u;
+    pub static HINT_MAX_NODE_HEIGHT:   uint = 16u;
 
     /**
      * Adopt a string as a node.
@@ -707,26 +707,26 @@ pub mod node {
             char_len: char_len,
             content: str,
         });
-        if char_len <= hint_max_leaf_char_len {
+        if char_len <= HINT_MAX_LEAF_CHAR_LEN {
             return candidate;
         } else {
-            //Firstly, split `str` in slices of hint_max_leaf_char_len
-            let mut leaves = uint::div_ceil(char_len, hint_max_leaf_char_len);
+            //Firstly, split `str` in slices of HINT_MAX_LEAF_CHAR_LEN
+            let mut leaves = uint::div_ceil(char_len, HINT_MAX_LEAF_CHAR_LEN);
             //Number of leaves
             let mut nodes  = vec::from_elem(leaves, candidate);
 
             let mut i = 0u;
             let mut offset = byte_start;
             let first_leaf_char_len =
-                if char_len%hint_max_leaf_char_len == 0u {
-                  hint_max_leaf_char_len
+                if char_len%HINT_MAX_LEAF_CHAR_LEN == 0u {
+                  HINT_MAX_LEAF_CHAR_LEN
                 } else {
-                char_len%hint_max_leaf_char_len
+                char_len%HINT_MAX_LEAF_CHAR_LEN
                };
             while i < leaves {
                 let chunk_char_len: uint =
                     if i == 0u  { first_leaf_char_len }
-                    else { hint_max_leaf_char_len };
+                    else { HINT_MAX_LEAF_CHAR_LEN };
                 let chunk_byte_len =
                     str.slice_from(offset).slice_chars(0, chunk_char_len).len();
                 nodes[i] = @Leaf(Leaf {
@@ -792,22 +792,22 @@ pub mod node {
                 let right_len= char_len(right);
                 let mut left_height= height(left);
                 let mut right_height=height(right);
-                if left_len + right_len > hint_max_leaf_char_len {
-                    if left_len <= hint_max_leaf_char_len {
+                if left_len + right_len > HINT_MAX_LEAF_CHAR_LEN {
+                    if left_len <= HINT_MAX_LEAF_CHAR_LEN {
                         left = flatten(left);
                         left_height = height(left);
                     }
-                    if right_len <= hint_max_leaf_char_len {
+                    if right_len <= HINT_MAX_LEAF_CHAR_LEN {
                         right = flatten(right);
                         right_height = height(right);
                     }
                 }
-                if left_height >= hint_max_node_height {
+                if left_height >= HINT_MAX_NODE_HEIGHT {
                     left = of_substr_unsafer(@serialize_node(left),
                                              0u,byte_len(left),
                                              left_len);
                 }
-                if right_height >= hint_max_node_height {
+                if right_height >= HINT_MAX_NODE_HEIGHT {
                     right = of_substr_unsafer(@serialize_node(right),
                                              0u,byte_len(right),
                                              right_len);
@@ -875,7 +875,7 @@ pub mod node {
      *
      * # Algorithm
      *
-     * * if the node height is smaller than `hint_max_node_height`, do nothing
+     * * if the node height is smaller than `HINT_MAX_NODE_HEIGHT`, do nothing
      * * otherwise, gather all leaves as a forest, rebuild a balanced node,
      *   concatenating small leaves along the way
      *
@@ -886,7 +886,7 @@ pub mod node {
      *    as `node` bot lower height and/or fragmentation.
      */
     pub fn bal(node: @Node) -> Option<@Node> {
-        if height(node) < hint_max_node_height { return None; }
+        if height(node) < HINT_MAX_NODE_HEIGHT { return None; }
         //1. Gather all leaves as a forest
         let mut forest = ~[];
         let mut it = leaf_iterator::start(node);

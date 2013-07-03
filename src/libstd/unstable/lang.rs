@@ -197,15 +197,15 @@ impl DebugPrints for io::fd_t {
     fn write_hex(&self, mut i: uint) {
         let letters = ['0', '1', '2', '3', '4', '5', '6', '7', '8',
                        '9', 'a', 'b', 'c', 'd', 'e', 'f'];
-        static uint_nibbles: uint = ::uint::bytes << 1;
-        let mut buffer = [0_u8, ..uint_nibbles+1];
-        let mut c = uint_nibbles;
+        static UINT_NIBBLES: uint = ::uint::bytes << 1;
+        let mut buffer = [0_u8, ..UINT_NIBBLES+1];
+        let mut c = UINT_NIBBLES;
         while c > 0 {
             c -= 1;
             buffer[c] = letters[i & 0xF] as u8;
             i >>= 4;
         }
-        self.write(buffer.slice(0, uint_nibbles));
+        self.write(buffer.slice(0, UINT_NIBBLES));
     }
 
     unsafe fn write_cstr(&self, p: *c_char) {
