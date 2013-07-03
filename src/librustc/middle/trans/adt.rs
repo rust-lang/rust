@@ -131,13 +131,13 @@ fn represent_type_uncached(cx: &mut CrateContext, t: ty::t) -> Repr {
         }
         ty::ty_struct(def_id, ref substs) => {
             let fields = ty::lookup_struct_fields(cx.tcx, def_id);
-            let ftys = do fields.map |field| {
+            let mut ftys = do fields.map |field| {
                 ty::lookup_field_type(cx.tcx, def_id, field.id, substs)
             };
             let packed = ty::lookup_packed(cx.tcx, def_id);
             let dtor = ty::ty_dtor(cx.tcx, def_id).has_drop_flag();
-            let ftys =
-                if dtor { ftys + [ty::mk_bool()] } else { ftys };
+            if dtor { ftys.push(ty::mk_bool()); }
+
             return Univariant(mk_struct(cx, ftys, packed), dtor)
         }
         ty::ty_enum(def_id, ref substs) => {
@@ -263,7 +263,7 @@ fn generic_fields_of(cx: &mut CrateContext, r: &Repr, sizing: bool) -> ~[Type] {
             let padding = largest_size - most_aligned.size;
 
             struct_llfields(cx, most_aligned, sizing)
-                + [Type::array(&Type::i8(), padding)]
+                + &[Type::array(&Type::i8(), padding)]
         }
     }
 }
@@ -512,7 +512,7 @@ pub fn trans_const(ccx: &mut CrateContext, r: &Repr, discr: int,
             let discr_ty = C_int(ccx, discr);
             let contents = build_const_struct(ccx, case,
                                               ~[discr_ty] + vals);
-            C_struct(contents + [padding(max_sz - case.size)])
+            C_struct(contents + &[padding(max_sz - case.size)])
         }
         NullablePointer{ nonnull: ref nonnull, nndiscr, ptrfield, _ } => {
             if discr == nndiscr {

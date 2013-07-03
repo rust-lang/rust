@@ -22,7 +22,6 @@ use ext::build::AstBuilder;
 
 use std::option;
 use std::unstable::extfmt::ct::*;
-use std::vec;
 use parse::token::{str_to_ident};
 
 pub fn expand_syntax_ext(cx: @ExtCtxt, sp: span, tts: &[ast::token_tree])
@@ -268,7 +267,7 @@ fn pieces_to_expr(cx: @ExtCtxt, sp: span,
        corresponding function in std::unstable::extfmt. Each function takes a
        buffer to insert data into along with the data being formatted. */
     let npieces = pieces.len();
-    do vec::consume(pieces) |i, pc| {
+    for pieces.consume_iter().enumerate().advance |(i, pc)| {
         match pc {
             /* Raw strings get appended via str::push_str */
             PieceString(s) => {

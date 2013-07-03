@@ -240,7 +240,6 @@ impl Digest for Sha1 {
 
 #[cfg(test)]
 mod tests {
-    use std::vec;
 
     use digest::{Digest, DigestUtil};
     use sha1::Sha1;
@@ -337,7 +336,7 @@ mod tests {
         for tests.iter().advance |t| {
             (*sh).input_str(t.input);
             sh.result(out);
-            assert!(vec::eq(t.output, out));
+            assert!(t.output.as_slice() == out);
 
             let out_str = (*sh).result_str();
             assert_eq!(out_str.len(), 40);
@@ -357,7 +356,7 @@ mod tests {
                 left = left - take;
             }
             sh.result(out);
-            assert!(vec::eq(t.output, out));
+            assert!(t.output.as_slice() == out);
 
             let out_str = (*sh).result_str();
             assert_eq!(out_str.len(), 40);

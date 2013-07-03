@@ -53,7 +53,7 @@ fn map_slices<A:Copy + Send,B:Copy + Send>(
         info!("spawning tasks");
         while base < len {
             let end = uint::min(len, base + items_per_task);
-            do vec::as_imm_buf(xs) |p, _len| {
+            do xs.as_imm_buf |p, _len| {
                 let f = f();
                 let base = base;
                 let f = do future_spawn() || {
@@ -78,11 +78,10 @@ fn map_slices<A:Copy + Send,B:Copy + Send>(
         info!("num_tasks: %?", (num_tasks, futures.len()));
         assert_eq!(num_tasks, futures.len());
 
-        let r = do vec::map_consume(futures) |ys| {
+        do futures.consume_iter().transform |ys| {
             let mut ys = ys;
             ys.get()
-        };
-        r
+        }.collect()
     }
 }
 

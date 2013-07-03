@@ -10,7 +10,6 @@
 
 
 use std::option;
-use std::vec;
 use syntax::{ast, fold, attr};
 
 type in_cfg_pred = @fn(attrs: ~[ast::attribute]) -> bool;
@@ -61,13 +60,15 @@ fn filter_view_item(cx: @Context, view_item: @ast::view_item
 }
 
 fn fold_mod(cx: @Context, m: &ast::_mod, fld: @fold::ast_fold) -> ast::_mod {
-    let filtered_items =
-        m.items.filter_mapped(|a| filter_item(cx, *a));
-    let filtered_view_items =
-        m.view_items.filter_mapped(|a| filter_view_item(cx, *a));
+    let filtered_items = do  m.items.iter().filter_map |a| {
+        filter_item(cx, *a).chain(|x| fld.fold_item(x))
+    }.collect();
+    let filtered_view_items = do m.view_items.iter().filter_map |a| {
+        filter_view_item(cx, *a).map(|x| fld.fold_view_item(*x))
+    }.collect();
     ast::_mod {
-        view_items: filtered_view_items.map(|x| fld.fold_view_item(*x)),
-        items: vec::filter_map(filtered_items, |x| fld.fold_item(x))
+        view_items: filtered_view_items,
+        items: filtered_items
     }
 }
 
@@ -83,14 +84,14 @@ fn fold_foreign_mod(
     nm: &ast::foreign_mod,
     fld: @fold::ast_fold
 ) -> ast::foreign_mod {
-    let filtered_items =
-        nm.items.filter_mapped(|a| filter_foreign_item(cx, *a));
-    let filtered_view_items =
-        nm.view_items.filter_mapped(|a| filter_view_item(cx, *a));
+    let filtered_items = nm.items.iter().filter_map(|a| filter_foreign_item(cx, *a)).collect();
+    let filtered_view_items = do nm.view_items.iter().filter_map |a| {
+        filter_view_item(cx, *a).map(|x| fld.fold_view_item(*x))
+    }.collect();
     ast::foreign_mod {
         sort: nm.sort,
         abis: nm.abis,
-        view_items: filtered_view_items.iter().transform(|x| fld.fold_view_item(*x)).collect(),
+        view_items: filtered_view_items,
         items: filtered_items
     }
 }
@@ -99,11 +100,13 @@ fn fold_item_underscore(cx: @Context, item: &ast::item_,
                         fld: @fold::ast_fold) -> ast::item_ {
     let item = match *item {
         ast::item_impl(ref a, b, c, ref methods) => {
-            let methods = methods.filtered(|m| method_in_cfg(cx, *m) );
+            let methods = methods.iter().filter(|m| method_in_cfg(cx, **m))
+                .transform(|x| *x).collect();
             ast::item_impl(/*bad*/ copy *a, b, c, methods)
         }
         ast::item_trait(ref a, ref b, ref methods) => {
-            let methods = methods.filtered(|m| trait_method_in_cfg(cx, m) );
+            let methods = methods.iter().filter(|m| trait_method_in_cfg(cx, *m) )
+                .transform(|x| /* bad */copy *x).collect();
             ast::item_trait(/*bad*/copy *a, /*bad*/copy *b, methods)
         }
         ref item => /*bad*/ copy *item
@@ -134,19 +137,12 @@ fn fold_block(
     b: &ast::blk_,
     fld: @fold::ast_fold
 ) -> ast::blk_ {
-    let filtered_stmts =
-        b.stmts.filter_mapped(|a| filter_stmt(cx, *a));
-    let filtered_view_items =
-        b.view_items.filter_mapped(|a| filter_view_item(cx, *a));
-    let filtered_view_items =
-        filtered_view_items.map(|x| fld.fold_view_item(*x));
-    let mut resulting_stmts = ~[];
-    for filtered_stmts.iter().advance |stmt| {
-        match fld.fold_stmt(*stmt) {
-            None => {}
-            Some(stmt) => resulting_stmts.push(stmt),
-        }
-    }
+    let resulting_stmts = do b.stmts.iter().filter_map |a| {
+        filter_stmt(cx, *a).chain(|stmt| fld.fold_stmt(stmt))
+    }.collect();
+    let filtered_view_items = do b.view_items.iter().filter_map |a| {
+        filter_view_item(cx, *a).map(|x| fld.fold_view_item(*x))
+    }.collect();
     ast::blk_ {
         view_items: filtered_view_items,
         stmts: resulting_stmts,
@@ -193,7 +189,9 @@ pub fn metas_in_cfg(cfg: &[@ast::meta_item],
     // Pull the inner meta_items from the #[cfg(meta_item, ...)]  attributes,
     // so we can match against them. This is the list of configurations for
     // which the item is valid
-    let cfg_metas = vec::filter_map(cfg_metas, |i| attr::get_meta_item_list(i));
+    let cfg_metas = cfg_metas.consume_iter()
+        .filter_map(|i| attr::get_meta_item_list(i))
+        .collect::<~[~[@ast::meta_item]]>();
 
     if cfg_metas.iter().all(|c| c.is_empty()) { return true; }
 
