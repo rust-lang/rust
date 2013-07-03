@@ -87,11 +87,11 @@ pub fn extract(desc: Option<~str>) -> Option<~str> {
 }
 
 fn parse_desc(desc: ~str) -> Option<~str> {
-    static max_brief_len: uint = 120u;
+    static MAX_BRIEF_LEN: uint = 120u;
 
     match first_sentence(copy desc) {
       Some(first_sentence) => {
-        if first_sentence.len() <= max_brief_len {
+        if first_sentence.len() <= MAX_BRIEF_LEN {
             Some(first_sentence)
         } else {
             None

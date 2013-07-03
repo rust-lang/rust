@@ -13,15 +13,15 @@ use std::io;
 use std::result::*;
 
 pub fn note(msg: &str) {
-    pretty_message(msg, "note: ", term::color::green, io::stdout())
+    pretty_message(msg, "note: ", term::color::GREEN, io::stdout())
 }
 
 pub fn warn(msg: &str) {
-    pretty_message(msg, "warning: ", term::color::yellow, io::stdout())
+    pretty_message(msg, "warning: ", term::color::YELLOW, io::stdout())
 }
 
 pub fn error(msg: &str) {
-    pretty_message(msg, "error: ", term::color::red, io::stdout())
+    pretty_message(msg, "error: ", term::color::RED, io::stdout())
 }
 
 fn pretty_message<'a>(msg: &'a str, prefix: &'a str, color: term::color::Color, out: @io::Writer) {

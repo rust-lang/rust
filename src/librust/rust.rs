@@ -60,7 +60,7 @@ struct Command<'self> {
     usage_full: UsageSource<'self>,
 }
 
-static commands: &'static [Command<'static>] = &[
+static COMMANDS: &'static [Command<'static>] = &[
     Command{
         cmd: "build",
         action: CallMain("rustc", rustc::main),
@@ -122,7 +122,7 @@ fn rustc_help() {
 }
 
 fn find_cmd(command_string: &str) -> Option<Command> {
-    do commands.iter().find_ |command| {
+    do COMMANDS.iter().find_ |command| {
         command.cmd == command_string
     }.map_consume(|x| copy *x)
 }
@@ -197,7 +197,7 @@ fn do_command(command: &Command, args: &[~str]) -> ValidUsage {
 }
 
 fn usage() {
-    static indent: uint = 8;
+    static INDENT: uint = 8;
 
     io::print(
         "The rust tool is a convenience for managing rust source code.\n\
@@ -209,8 +209,8 @@ fn usage() {
         \n"
     );
 
-    for commands.iter().advance |command| {
-        let padding = " ".repeat(indent - command.cmd.len());
+    for COMMANDS.iter().advance |command| {
+        let padding = " ".repeat(INDENT - command.cmd.len());
         io::println(fmt!("    %s%s%s",
                          command.cmd, padding, command.usage_line));
     }
