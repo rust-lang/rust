@@ -18,6 +18,7 @@ use middle::typeck::infer::lub::Lub;
 use middle::typeck::infer::sub::Sub;
 use middle::typeck::infer::to_str::InferStr;
 use middle::typeck::infer::{cres, InferCtxt};
+use middle::typeck::infer::{TypeTrace, Subtype};
 use middle::typeck::infer::fold_regions_in_sig;
 use middle::typeck::isr_alist;
 use syntax::ast;
@@ -37,7 +38,7 @@ impl Combine for Glb {
     fn infcx(&self) -> @mut InferCtxt { self.infcx }
     fn tag(&self) -> ~str { ~"glb" }
     fn a_is_expected(&self) -> bool { self.a_is_expected }
-    fn span(&self) -> span { self.span }
+    fn trace(&self) -> TypeTrace { self.trace }
 
     fn sub(&self) -> Sub { Sub(**self) }
     fn lub(&self) -> Lub { Lub(**self) }
@@ -127,9 +128,7 @@ impl Combine for Glb {
                a.inf_str(self.infcx),
                b.inf_str(self.infcx));
 
-        do indent {
-            self.infcx.region_vars.glb_regions(self.span, a, b)
-        }
+        Ok(self.infcx.region_vars.glb_regions(Subtype(self.trace), a, b))
     }
 
     fn contraregions(&self, a: ty::Region, b: ty::Region)
@@ -181,11 +180,11 @@ impl Combine for Glb {
         // Instantiate each bound region with a fresh region variable.
         let (a_with_fresh, a_isr) =
             self.infcx.replace_bound_regions_with_fresh_regions(
-                self.span, a);
+                self.trace, a);
         let a_vars = var_ids(self, a_isr);
         let (b_with_fresh, b_isr) =
             self.infcx.replace_bound_regions_with_fresh_regions(
-                self.span, b);
+                self.trace, b);
         let b_vars = var_ids(self, b_isr);
 
         // Collect constraints.
@@ -277,7 +276,7 @@ impl Combine for Glb {
             }
 
             this.infcx.tcx.sess.span_bug(
-                this.span,
+                this.trace.origin.span(),
                 fmt!("could not find original bound region for %?", r));
         }
 
