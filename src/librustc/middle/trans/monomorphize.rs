@@ -50,11 +50,13 @@ pub fn monomorphic_fn(ccx: @mut CrateContext,
             fn_id=%s, \
             real_substs=%s, \
             vtables=%s, \
+            self_vtable=%s, \
             impl_did_opt=%s, \
             ref_id=%?)",
            fn_id.repr(ccx.tcx),
            real_substs.repr(ccx.tcx),
            vtables.repr(ccx.tcx),
+           self_vtable.repr(ccx.tcx),
            impl_did_opt.repr(ccx.tcx),
            ref_id);
 
@@ -71,7 +73,16 @@ pub fn monomorphic_fn(ccx: @mut CrateContext,
     for real_substs.tps.iter().advance |s| { assert!(!ty::type_has_params(*s)); }
     for substs.iter().advance |s| { assert!(!ty::type_has_params(*s)); }
     let param_uses = type_use::type_uses_for(ccx, fn_id, substs.len());
-    let hash_id = make_mono_id(ccx, fn_id, substs, vtables, impl_did_opt,
+
+    let psubsts = @param_substs {
+        tys: substs,
+        vtables: vtables,
+        self_ty: real_substs.self_ty,
+        self_vtable: self_vtable
+    };
+
+    let hash_id = make_mono_id(ccx, fn_id, impl_did_opt,
+                               &*psubsts,
                                Some(param_uses));
     if hash_id.params.iter().any_(
                 |p| match *p { mono_precise(_, _) => false, _ => true }) {
@@ -80,12 +91,10 @@ pub fn monomorphic_fn(ccx: @mut CrateContext,
 
     debug!("monomorphic_fn(\
             fn_id=%s, \
-            vtables=%s, \
-            substs=%s, \
+            psubsts=%s, \
             hash_id=%?)",
            fn_id.repr(ccx.tcx),
-           vtables.repr(ccx.tcx),
-           substs.repr(ccx.tcx),
+           psubsts.repr(ccx.tcx),
            hash_id);
 
     match ccx.monomorphized.find(&hash_id) {
@@ -142,8 +151,8 @@ pub fn monomorphic_fn(ccx: @mut CrateContext,
       ast_map::node_struct_ctor(_, i, pt) => (pt, i.ident, i.span)
     };
 
-    let mono_ty = ty::subst_tps(ccx.tcx, substs,
-                                real_substs.self_ty, llitem_ty);
+    let mono_ty = ty::subst_tps(ccx.tcx, psubsts.tys,
+                                psubsts.self_ty, llitem_ty);
     let llfty = type_of_fn_from_ty(ccx, mono_ty);
 
     ccx.stats.n_monos += 1;
@@ -172,13 +181,6 @@ pub fn monomorphic_fn(ccx: @mut CrateContext,
         lldecl
     };
 
-    let psubsts = Some(@param_substs {
-        tys: substs,
-        vtables: vtables,
-        self_ty: real_substs.self_ty,
-        self_vtable: self_vtable
-    });
-
     let lldecl = match map_node {
       ast_map::node_item(i@@ast::item {
                 node: ast::item_fn(ref decl, _, _, _, ref body),
@@ -192,7 +194,7 @@ pub fn monomorphic_fn(ccx: @mut CrateContext,
                  body,
                  d,
                  no_self,
-                 psubsts,
+                 Some(psubsts),
                  fn_id.node,
                  []);
         d
@@ -202,7 +204,7 @@ pub fn monomorphic_fn(ccx: @mut CrateContext,
       }
       ast_map::node_foreign_item(i, _, _, _) => {
           let d = mk_lldecl();
-          foreign::trans_intrinsic(ccx, d, i, pt, psubsts.get(), i.attrs,
+          foreign::trans_intrinsic(ccx, d, i, pt, psubsts, i.attrs,
                                 ref_id);
           d
       }
@@ -214,7 +216,7 @@ pub fn monomorphic_fn(ccx: @mut CrateContext,
         match v.node.kind {
             ast::tuple_variant_kind(ref args) => {
                 trans_enum_variant(ccx, enum_item.id, v, /*bad*/copy *args,
-                                   this_tv.disr_val, psubsts, d);
+                                   this_tv.disr_val, Some(psubsts), d);
             }
             ast::struct_variant_kind(_) =>
                 ccx.tcx.sess.bug("can't monomorphize struct variants"),
@@ -225,13 +227,13 @@ pub fn monomorphic_fn(ccx: @mut CrateContext,
         // XXX: What should the self type be here?
         let d = mk_lldecl();
         set_inline_hint_if_appr(/*bad*/copy mth.attrs, d);
-        meth::trans_method(ccx, pt, mth, psubsts, d);
+        meth::trans_method(ccx, pt, mth, Some(psubsts), d);
         d
       }
       ast_map::node_trait_method(@ast::provided(mth), _, pt) => {
         let d = mk_lldecl();
         set_inline_hint_if_appr(/*bad*/copy mth.attrs, d);
-        meth::trans_method(ccx, /*bad*/copy *pt, mth, psubsts, d);
+        meth::trans_method(ccx, /*bad*/copy *pt, mth, Some(psubsts), d);
         d
       }
       ast_map::node_struct_ctor(struct_def, _, _) => {
@@ -241,7 +243,7 @@ pub fn monomorphic_fn(ccx: @mut CrateContext,
                                  /*bad*/copy struct_def.fields,
                                  struct_def.ctor_id.expect("ast-mapped tuple struct \
                                                             didn't have a ctor id"),
-                                 psubsts,
+                                 Some(psubsts),
                                  d);
         d
       }
@@ -320,26 +322,36 @@ pub fn normalize_for_monomorphization(tcx: ty::ctxt,
 
 pub fn make_mono_id(ccx: @mut CrateContext,
                     item: ast::def_id,
-                    substs: &[ty::t],
-                    vtables: Option<typeck::vtable_res>,
                     impl_did_opt: Option<ast::def_id>,
+                    substs: &param_substs,
                     param_uses: Option<@~[type_use::type_uses]>) -> mono_id {
     // FIXME (possibly #5801): Need a lot of type hints to get
     // .collect() to work.
-    let precise_param_ids: ~[(ty::t, Option<@~[mono_id]>)] = match vtables {
+    let substs_iter = substs.self_ty.iter().chain_(substs.tys.iter());
+    let precise_param_ids: ~[(ty::t, Option<@~[mono_id]>)] = match substs.vtables {
       Some(vts) => {
         debug!("make_mono_id vtables=%s substs=%s",
-               vts.repr(ccx.tcx), substs.repr(ccx.tcx));
-        vts.iter().zip(substs.iter()).transform(|(vtable, subst)| {
+               vts.repr(ccx.tcx), substs.tys.repr(ccx.tcx));
+        let self_vtables = substs.self_vtable.map(|vtbl| @~[copy *vtbl]);
+        let vts_iter = self_vtables.iter().chain_(vts.iter());
+        vts_iter.zip(substs_iter).transform(|(vtable, subst)| {
             let v = vtable.map(|vt| meth::vtable_id(ccx, vt));
             (*subst, if !v.is_empty() { Some(@v) } else { None })
         }).collect()
       }
-      None => substs.iter().transform(|subst| (*subst, None::<@~[mono_id]>)).collect()
+      None => substs_iter.transform(|subst| (*subst, None::<@~[mono_id]>)).collect()
     };
+
+
     let param_ids = match param_uses {
       Some(ref uses) => {
-        precise_param_ids.iter().zip(uses.iter()).transform(|(id, uses)| {
+        // param_uses doesn't include a use for the self type.
+        // We just say it is fully used.
+        let self_use =
+            substs.self_ty.map(|_| type_use::use_repr|type_use::use_tydesc);
+        let uses_iter = self_use.iter().chain_(uses.iter());
+
+        precise_param_ids.iter().zip(uses_iter).transform(|(id, uses)| {
             if ccx.sess.no_monomorphic_collapse() {
                 match copy *id {
                     (a, b) => mono_precise(a, b)

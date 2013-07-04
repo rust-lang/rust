@@ -641,16 +641,18 @@ pub fn vtable_id(ccx: @mut CrateContext,
               -> mono_id {
     match origin {
         &typeck::vtable_static(impl_id, ref substs, sub_vtables) => {
+            let psubsts = param_substs {
+                tys: copy *substs,
+                vtables: Some(sub_vtables),
+                self_ty: None,
+                self_vtable: None
+            };
+
             monomorphize::make_mono_id(
                 ccx,
                 impl_id,
-                *substs,
-                if sub_vtables.is_empty() {
-                    None
-                } else {
-                    Some(sub_vtables)
-                },
                 None,
+                &psubsts,
                 None)
         }
 
