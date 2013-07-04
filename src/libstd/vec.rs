@@ -2025,7 +2025,12 @@ macro_rules! iterator {
 
             #[inline]
             fn size_hint(&self) -> (Option<uint>, Option<uint>) {
-                let exact = Some(((self.end as uint) - (self.ptr as uint)) / size_of::<$elem>());
+                let diff = if $step > 0 {
+                    (self.end as uint) - (self.ptr as uint)
+                } else {
+                    (self.ptr as uint) - (self.end as uint)
+                };
+                let exact = Some(diff / size_of::<$elem>());
                 (exact, exact)
             }
         }
@@ -2975,6 +2980,16 @@ mod tests {
         assert_eq!(it.next().unwrap(), &11);
         assert_eq!(it.size_hint(), (Some(0), Some(0)));
         assert!(it.next().is_none());
+    }
+
+    #[test]
+    fn test_iter_size_hints() {
+        use iterator::*;
+        let mut xs = [1, 2, 5, 10, 11];
+        assert_eq!(xs.iter().size_hint(), (Some(5), Some(5)));
+        assert_eq!(xs.rev_iter().size_hint(), (Some(5), Some(5)));
+        assert_eq!(xs.mut_iter().size_hint(), (Some(5), Some(5)));
+        assert_eq!(xs.mut_rev_iter().size_hint(), (Some(5), Some(5)));
     }
 
     #[test]
