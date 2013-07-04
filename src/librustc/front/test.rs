@@ -309,7 +309,7 @@ fn mk_test_module(cx: &TestCtxt) -> @ast::item {
     let mainfn = (quote_item!(
         pub fn main() {
             #[main];
-            extra::test::test_main_static(::std::os::args(), tests);
+            extra::test::test_main_static(::std::os::args(), TESTS);
         }
     )).get();
 
@@ -366,7 +366,7 @@ fn mk_tests(cx: &TestCtxt) -> @ast::item {
     let test_descs = mk_test_descs(cx);
 
     (quote_item!(
-        pub static tests : &'static [self::extra::test::TestDescAndFn] =
+        pub static TESTS : &'static [self::extra::test::TestDescAndFn] =
             $test_descs
         ;
     )).get()

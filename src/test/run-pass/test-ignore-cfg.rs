@@ -26,7 +26,7 @@ fn shouldnotignore() {
 #[test]
 fn checktests() {
     // Pull the tests out of the secreturn test module
-    let tests = __test::tests;
+    let tests = __test::TESTS;
 
     assert!(
         tests.iter().any_(|t| t.desc.name.to_str() == ~"shouldignore" && t.desc.ignore));
