@@ -103,7 +103,7 @@ fn foreign_signature(ccx: &mut CrateContext, fn_sig: &ty::FnSig)
     LlvmSignature {
         llarg_tys: llarg_tys,
         llret_ty: llret_ty,
-        sret: !ty::type_is_immediate(fn_sig.output),
+        sret: !ty::type_is_immediate(ccx.tcx, fn_sig.output),
     }
 }
 
@@ -192,7 +192,7 @@ fn build_wrap_fn_(ccx: @mut CrateContext,
 
     // Patch up the return type if it's not immediate and we're returning via
     // the C ABI.
-    if needs_c_return && !ty::type_is_immediate(tys.fn_sig.output) {
+    if needs_c_return && !ty::type_is_immediate(ccx.tcx, tys.fn_sig.output) {
         let lloutputtype = type_of::type_of(fcx.ccx, tys.fn_sig.output);
         fcx.llretptr = Some(alloca(raw_block(fcx, false, fcx.llstaticallocas),
                                    lloutputtype));
@@ -648,7 +648,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
             // intrinsics, there are no argument cleanups to
             // concern ourselves with.
             let tp_ty = substs.tys[0];
-            let mode = appropriate_mode(tp_ty);
+            let mode = appropriate_mode(ccx.tcx, tp_ty);
             let src = Datum {val: get_param(decl, first_real_arg + 1u),
                              ty: tp_ty, mode: mode};
             bcx = src.move_to(bcx, DROP_EXISTING,
@@ -657,7 +657,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
         "move_val_init" => {
             // See comments for `"move_val"`.
             let tp_ty = substs.tys[0];
-            let mode = appropriate_mode(tp_ty);
+            let mode = appropriate_mode(ccx.tcx, tp_ty);
             let src = Datum {val: get_param(decl, first_real_arg + 1u),
                              ty: tp_ty, mode: mode};
             bcx = src.move_to(bcx, INIT, get_param(decl, first_real_arg));
@@ -731,7 +731,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
                 let lldestptr = PointerCast(bcx, lldestptr, Type::i8p());
 
                 let llsrcval = get_param(decl, first_real_arg);
-                let llsrcptr = if ty::type_is_immediate(in_type) {
+                let llsrcptr = if ty::type_is_immediate(ccx.tcx, in_type) {
                     let llsrcptr = alloca(bcx, llintype);
                     Store(bcx, llsrcval, llsrcptr);
                     llsrcptr
@@ -1221,7 +1221,7 @@ pub fn trans_foreign_fn(ccx: @mut CrateContext,
             let mut i = 0u;
             let n = tys.fn_sig.inputs.len();
 
-            if !ty::type_is_immediate(tys.fn_sig.output) {
+            if !ty::type_is_immediate(bcx.tcx(), tys.fn_sig.output) {
                 let llretptr = load_inbounds(bcx, llargbundle, [0u, n]);
                 llargvals.push(llretptr);
             }
@@ -1247,7 +1247,8 @@ pub fn trans_foreign_fn(ccx: @mut CrateContext,
                      shim_types: &ShimTypes,
                      llargbundle: ValueRef,
                      llretval: ValueRef) {
-            if bcx.fcx.llretptr.is_some() && ty::type_is_immediate(shim_types.fn_sig.output) {
+            if bcx.fcx.llretptr.is_some() &&
+                ty::type_is_immediate(bcx.tcx(), shim_types.fn_sig.output) {
                 // Write the value into the argument bundle.
                 let arg_count = shim_types.fn_sig.inputs.len();
                 let llretptr = load_inbounds(bcx,
