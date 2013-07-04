@@ -1549,10 +1549,10 @@ impl Parser {
         } else if self.eat_keyword(keywords::If) {
             return self.parse_if_expr();
         } else if self.eat_keyword(keywords::For) {
-            return self.parse_sugary_call_expr(~"for", ForSugar,
+            return self.parse_sugary_call_expr(lo, ~"for", ForSugar,
                                                expr_loop_body);
         } else if self.eat_keyword(keywords::Do) {
-            return self.parse_sugary_call_expr(~"do", DoSugar,
+            return self.parse_sugary_call_expr(lo, ~"do", DoSugar,
                                                expr_do_body);
         } else if self.eat_keyword(keywords::While) {
             return self.parse_while_expr();
@@ -2264,12 +2264,11 @@ impl Parser {
     // parse a 'for' or 'do'.
     // the 'for' and 'do' expressions parse as calls, but look like
     // function calls followed by a closure expression.
-    pub fn parse_sugary_call_expr(&self,
+    pub fn parse_sugary_call_expr(&self, lo: BytePos,
                                   keyword: ~str,
                                   sugar: CallSugar,
                                   ctor: &fn(v: @expr) -> expr_)
                                   -> @expr {
-        let lo = self.last_span;
         // Parse the callee `foo` in
         //    for foo || {
         //    for foo.bar || {
@@ -2286,21 +2285,21 @@ impl Parser {
                 let last_arg = self.mk_expr(block.span.lo, block.span.hi,
                                             ctor(block));
                 let args = vec::append(copy *args, [last_arg]);
-                self.mk_expr(lo.lo, block.span.hi, expr_call(f, args, sugar))
+                self.mk_expr(lo, block.span.hi, expr_call(f, args, sugar))
             }
             expr_method_call(_, f, i, ref tps, ref args, NoSugar) => {
                 let block = self.parse_lambda_block_expr();
                 let last_arg = self.mk_expr(block.span.lo, block.span.hi,
                                             ctor(block));
                 let args = vec::append(copy *args, [last_arg]);
-                self.mk_expr(lo.lo, block.span.hi,
+                self.mk_expr(lo, block.span.hi,
                              self.mk_method_call(f, i, copy *tps, args, sugar))
             }
             expr_field(f, i, ref tps) => {
                 let block = self.parse_lambda_block_expr();
                 let last_arg = self.mk_expr(block.span.lo, block.span.hi,
                                             ctor(block));
-                self.mk_expr(lo.lo, block.span.hi,
+                self.mk_expr(lo, block.span.hi,
                              self.mk_method_call(f, i, copy *tps, ~[last_arg], sugar))
             }
             expr_path(*) | expr_call(*) | expr_method_call(*) |
@@ -2309,7 +2308,7 @@ impl Parser {
                 let last_arg = self.mk_expr(block.span.lo, block.span.hi,
                                             ctor(block));
                 self.mk_expr(
-                    lo.lo,
+                    lo,
                     last_arg.span.hi,
                     self.mk_call(e, ~[last_arg], sugar))
             }
@@ -2319,7 +2318,7 @@ impl Parser {
                 // but they aren't represented by tests
                 debug!("sugary call on %?", e.node);
                 self.span_fatal(
-                    *lo,
+                    e.span,
                     fmt!("`%s` must be followed by a block call", keyword));
             }
         }
