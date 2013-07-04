@@ -16,12 +16,20 @@
 # destination directory as arg 2, and filename/libname-glob as arg 3
 ifdef VERBOSE
  INSTALL = install -m755 $(1)/$(3) $(2)/$(3)
- INSTALL_LIB = install -m644 `ls -drt1 $(1)/$(3) | tail -1` $(2)/
+ DO_INSTALL_LIB = install -m644 `ls -drt1 $(1)/$(3) | tail -1` $(2)/
 else
  INSTALL = $(Q)$(call E, install: $(2)/$(3)) && install -m755 $(1)/$(3) $(2)/$(3)
- INSTALL_LIB = $(Q)$(call E, install_lib: $(2)/$(3)) &&                    \
+ DO_INSTALL_LIB = $(Q)$(call E, install_lib: $(2)/$(3)) &&                    \
 	       install -m644 `ls -drt1 $(1)/$(3) | tail -1` $(2)/
 endif
+
+# $(1) is the source dirctory
+# $(2) is the destination directory
+# $(3) is the filename/libname-glob
+define INSTALL_LIB
+  LIB_NAME=`ls -drt1 $(1)/$(3) | tail -1 | xargs basename` ; ( ls -drt1 $(2)/$(3) 2>/dev/null || true ) | grep -v $$LIB_NAME >/dev/null 2>&1 && echo "Warning, one or more libraries matching Rust library '$(3)'" && echo "  (other than '$$LIB_NAME' itself) already present" && echo "  at destination $(2):" && ( ls -drt1 $(2)/$(3) 2>/dev/null || true ) | grep -v $$LIB_NAME || true
+  $(call DO_INSTALL_LIB,$(1),$(2),$(3))
+endef
 
 # The stage we install from
 ISTAGE = 2
