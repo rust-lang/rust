@@ -245,6 +245,14 @@ pub fn check_crate<'mm>(tcx: ty::ctxt,
                                  method_id: def_id,
                                  name: &ident) =
             |span, method_id, name| {
+        // If the method is a default method, we need to use the def_id of
+        // the default implementation.
+        // Having to do this this is really unfortunate.
+        let method_id = match tcx.provided_method_sources.find(&method_id) {
+            None => method_id,
+            Some(source) => source.method_id
+        };
+
         if method_id.crate == local_crate {
             let is_private = method_is_private(span, method_id.node);
             let container_id = local_method_container_id(span,
