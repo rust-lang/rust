@@ -83,21 +83,6 @@ pub fn from_bytes_owned(vv: ~[u8]) -> ~str {
     }
 }
 
-/// Convert a vector of bytes to a UTF-8 string.
-/// The vector needs to be one byte longer than the string, and end with a 0 byte.
-///
-/// Compared to `from_bytes()`, this fn doesn't need to allocate a new owned str.
-///
-/// # Failure
-///
-/// Fails if invalid UTF-8
-/// Fails if not null terminated
-pub fn from_bytes_with_null<'a>(vv: &'a [u8]) -> &'a str {
-    assert_eq!(vv[vv.len() - 1], 0);
-    assert!(is_utf8(vv));
-    return unsafe { raw::from_bytes_with_null(vv) };
-}
-
 /// Converts a vector to a string slice without performing any allocations.
 ///
 /// Once the slice has been validated as utf-8, it is transmuted in-place and
@@ -823,13 +808,6 @@ pub mod raw {
     /// that the utf-8-ness of the vector has already been validated
     pub unsafe fn from_bytes_owned(mut v: ~[u8]) -> ~str {
         v.push(0u8);
-        cast::transmute(v)
-    }
-
-    /// Converts a vector of bytes to a string.
-    /// The byte slice needs to contain valid utf8 and needs to be one byte longer than
-    /// the string, if possible ending in a 0 byte.
-    pub unsafe fn from_bytes_with_null<'a>(v: &'a [u8]) -> &'a str {
         cast::transmute(v)
     }
 
@@ -2865,66 +2843,6 @@ mod tests {
             from_bytes(bb)
         };
         assert!(error_happened);
-    }
-
-    #[test]
-    fn test_unsafe_from_bytes_with_null() {
-        let a = [65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 0u8];
-        let b = unsafe { raw::from_bytes_with_null(a) };
-        assert_eq!(b, "AAAAAAA");
-    }
-
-    #[test]
-    fn test_from_bytes_with_null() {
-        let ss = "ศไทย中华Việt Nam";
-        let bb = [0xe0_u8, 0xb8_u8, 0xa8_u8,
-                  0xe0_u8, 0xb9_u8, 0x84_u8,
-                  0xe0_u8, 0xb8_u8, 0x97_u8,
-                  0xe0_u8, 0xb8_u8, 0xa2_u8,
-                  0xe4_u8, 0xb8_u8, 0xad_u8,
-                  0xe5_u8, 0x8d_u8, 0x8e_u8,
-                  0x56_u8, 0x69_u8, 0xe1_u8,
-                  0xbb_u8, 0x87_u8, 0x74_u8,
-                  0x20_u8, 0x4e_u8, 0x61_u8,
-                  0x6d_u8, 0x0_u8];
-
-        assert_eq!(ss, from_bytes_with_null(bb));
-    }
-
-    #[test]
-    #[should_fail]
-    #[ignore(cfg(windows))]
-    fn test_from_bytes_with_null_fail() {
-        let bb = [0xff_u8, 0xb8_u8, 0xa8_u8,
-                  0xe0_u8, 0xb9_u8, 0x84_u8,
-                  0xe0_u8, 0xb8_u8, 0x97_u8,
-                  0xe0_u8, 0xb8_u8, 0xa2_u8,
-                  0xe4_u8, 0xb8_u8, 0xad_u8,
-                  0xe5_u8, 0x8d_u8, 0x8e_u8,
-                  0x56_u8, 0x69_u8, 0xe1_u8,
-                  0xbb_u8, 0x87_u8, 0x74_u8,
-                  0x20_u8, 0x4e_u8, 0x61_u8,
-                  0x6d_u8, 0x0_u8];
-
-         let _x = from_bytes_with_null(bb);
-    }
-
-    #[test]
-    #[should_fail]
-    #[ignore(cfg(windows))]
-    fn test_from_bytes_with_null_fail_2() {
-        let bb = [0xff_u8, 0xb8_u8, 0xa8_u8,
-                  0xe0_u8, 0xb9_u8, 0x84_u8,
-                  0xe0_u8, 0xb8_u8, 0x97_u8,
-                  0xe0_u8, 0xb8_u8, 0xa2_u8,
-                  0xe4_u8, 0xb8_u8, 0xad_u8,
-                  0xe5_u8, 0x8d_u8, 0x8e_u8,
-                  0x56_u8, 0x69_u8, 0xe1_u8,
-                  0xbb_u8, 0x87_u8, 0x74_u8,
-                  0x20_u8, 0x4e_u8, 0x61_u8,
-                  0x6d_u8, 0x60_u8];
-
-         let _x = from_bytes_with_null(bb);
     }
 
     #[test]
