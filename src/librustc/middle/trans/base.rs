@@ -1014,13 +1014,13 @@ pub fn do_spill_noroot(cx: block, v: ValueRef) -> ValueRef {
 
 pub fn spill_if_immediate(cx: block, v: ValueRef, t: ty::t) -> ValueRef {
     let _icx = push_ctxt("spill_if_immediate");
-    if ty::type_is_immediate(t) { return do_spill(cx, v, t); }
+    if ty::type_is_immediate(cx.tcx(), t) { return do_spill(cx, v, t); }
     return v;
 }
 
 pub fn load_if_immediate(cx: block, v: ValueRef, t: ty::t) -> ValueRef {
     let _icx = push_ctxt("load_if_immediate");
-    if ty::type_is_immediate(t) { return Load(cx, v); }
+    if ty::type_is_immediate(cx.tcx(), t) { return Load(cx, v); }
     return v;
 }
 
@@ -1545,7 +1545,7 @@ pub fn mk_standard_basic_blocks(llfn: ValueRef) -> BasicBlocks {
 // slot where the return value of the function must go.
 pub fn make_return_pointer(fcx: fn_ctxt, output_type: ty::t) -> ValueRef {
     unsafe {
-        if !ty::type_is_immediate(output_type) {
+        if !ty::type_is_immediate(fcx.ccx.tcx, output_type) {
             llvm::LLVMGetParam(fcx.llfn, 0)
         } else {
             let lloutputtype = type_of::type_of(fcx.ccx, output_type);
@@ -1584,7 +1584,7 @@ pub fn new_fn_ctxt_w_id(ccx: @mut CrateContext,
             ty::subst_tps(ccx.tcx, substs.tys, substs.self_ty, output_type)
         }
     };
-    let is_immediate = ty::type_is_immediate(substd_output_type);
+    let is_immediate = ty::type_is_immediate(ccx.tcx, substd_output_type);
     let fcx = @mut fn_ctxt_ {
           llfn: llfndecl,
           llenv: unsafe {
@@ -1690,7 +1690,7 @@ pub fn copy_args_to_allocas(fcx: fn_ctxt,
     match fcx.llself {
         Some(slf) => {
             let self_val = if slf.is_copy
-                    && datum::appropriate_mode(slf.t).is_by_value() {
+                    && datum::appropriate_mode(bcx.tcx(), slf.t).is_by_value() {
                 let tmp = BitCast(bcx, slf.v, type_of(bcx.ccx(), slf.t));
                 let alloc = alloc_ty(bcx, slf.t);
                 Store(bcx, tmp, alloc);
@@ -1718,7 +1718,7 @@ pub fn copy_args_to_allocas(fcx: fn_ctxt,
         // This alloca should be optimized away by LLVM's mem-to-reg pass in
         // the event it's not truly needed.
         // only by value if immediate:
-        let llarg = if datum::appropriate_mode(arg_ty).is_by_value() {
+        let llarg = if datum::appropriate_mode(bcx.tcx(), arg_ty).is_by_value() {
             let alloc = alloc_ty(bcx, arg_ty);
             Store(bcx, raw_llarg, alloc);
             alloc
