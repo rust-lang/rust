@@ -20,10 +20,10 @@ use future_spawn = future::spawn;
  * The maximum number of tasks this module will spawn for a single
  * operation.
  */
-static max_tasks : uint = 32u;
+static MAX_TASKS : uint = 32u;
 
 /// The minimum number of elements each task will process.
-static min_granularity : uint = 1024u;
+static MIN_GRANULARITY : uint = 1024u;
 
 /**
  * An internal helper to map a function over a large vector and
@@ -38,13 +38,13 @@ fn map_slices<A:Copy + Send,B:Copy + Send>(
     -> ~[B] {
 
     let len = xs.len();
-    if len < min_granularity {
+    if len < MIN_GRANULARITY {
         info!("small slice");
         // This is a small vector, fall back on the normal map.
         ~[f()(0u, xs)]
     }
     else {
-        let num_tasks = uint::min(max_tasks, len / min_granularity);
+        let num_tasks = uint::min(MAX_TASKS, len / MIN_GRANULARITY);
 
         let items_per_task = len / num_tasks;
 
@@ -53,7 +53,7 @@ fn map_slices<A:Copy + Send,B:Copy + Send>(
         info!("spawning tasks");
         while base < len {
             let end = uint::min(len, base + items_per_task);
-            do vec::as_imm_buf(xs) |p, _len| {
+            do xs.as_imm_buf |p, _len| {
                 let f = f();
                 let base = base;
                 let f = do future_spawn() || {
@@ -78,11 +78,10 @@ fn map_slices<A:Copy + Send,B:Copy + Send>(
         info!("num_tasks: %?", (num_tasks, futures.len()));
         assert_eq!(num_tasks, futures.len());
 
-        let r = do vec::map_consume(futures) |ys| {
+        do futures.consume_iter().transform |ys| {
             let mut ys = ys;
             ys.get()
-        };
-        r
+        }.collect()
     }
 }
 

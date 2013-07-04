@@ -41,7 +41,6 @@ use syntax::opt_vec::OptVec;
 
 use std::str;
 use std::uint;
-use std::vec;
 use std::hashmap::{HashMap, HashSet};
 use std::util;
 
@@ -3382,7 +3381,8 @@ impl Resolver {
 
                         self.session.span_err(
                             span,
-                            "attempted dynamic environment-capture");
+                            "can't capture dynamic environment in a fn item; \
+                            use the || { ... } closure form instead");
                     } else {
                         // This was an attempt to use a type parameter outside
                         // its scope.
@@ -3404,7 +3404,8 @@ impl Resolver {
 
                         self.session.span_err(
                             span,
-                            "attempted dynamic environment-capture");
+                            "can't capture dynamic environment in a fn item; \
+                            use the || { ... } closure form instead");
                     } else {
                         // This was an attempt to use a type parameter outside
                         // its scope.
@@ -3831,9 +3832,9 @@ impl Resolver {
                                    visitor: ResolveVisitor) {
         match self.resolve_path(trait_reference.path, TypeNS, true, visitor) {
             None => {
+                let idents = self.idents_to_str(trait_reference.path.idents);
                 self.session.span_err(trait_reference.path.span,
-                                      "attempt to implement an \
-                                       unknown trait");
+                                      fmt!("attempt to implement an unknown trait `%s`", idents));
             }
             Some(def) => {
                 self.record_def(trait_reference.ref_id, def);
@@ -5360,7 +5361,7 @@ impl Resolver {
         if idents.len() == 0 {
             return ~"???";
         }
-        return self.idents_to_str(vec::reversed(idents));
+        return self.idents_to_str(idents.consume_rev_iter().collect::<~[ast::ident]>());
     }
 
     pub fn dump_module(@mut self, module_: @mut Module) {

@@ -157,7 +157,7 @@ impl Rand for f32 {
     }
 }
 
-static scale : f64 = (u32::max_value as f64) + 1.0f64;
+static SCALE : f64 = (u32::max_value as f64) + 1.0f64;
 impl Rand for f64 {
     #[inline]
     fn rand<R: Rng>(rng: &mut R) -> f64 {
@@ -165,7 +165,7 @@ impl Rand for f64 {
         let u2 = rng.next() as f64;
         let u3 = rng.next() as f64;
 
-        ((u1 / scale + u2) / scale + u3) / scale
+        ((u1 / SCALE + u2) / SCALE + u3) / SCALE
     }
 }
 
@@ -724,7 +724,7 @@ impl IsaacRng {
         let mut a = self.a;
         let mut b = self.b + self.c;
 
-        static midpoint: uint = RAND_SIZE as uint / 2;
+        static MIDPOINT: uint = RAND_SIZE as uint / 2;
 
         macro_rules! ind (($x:expr) => {
             self.mem[($x >> 2) & (RAND_SIZE - 1)]
@@ -748,9 +748,9 @@ impl IsaacRng {
             }}
         );
 
-        let r = [(0, midpoint), (midpoint, 0)];
+        let r = [(0, MIDPOINT), (MIDPOINT, 0)];
         for r.iter().advance |&(mr_offset, m2_offset)| {
-            for uint::range_step(0, midpoint, 4) |base| {
+            for uint::range_step(0, MIDPOINT, 4) |base| {
                 rngstep!(0, 13);
                 rngstep!(1, -6);
                 rngstep!(2, 2);
@@ -830,7 +830,7 @@ pub fn seed() -> ~[u8] {
     unsafe {
         let n = rustrt::rand_seed_size() as uint;
         let mut s = vec::from_elem(n, 0_u8);
-        do vec::as_mut_buf(s) |p, sz| {
+        do s.as_mut_buf |p, sz| {
             rustrt::rand_gen_seed(p, sz as size_t)
         }
         s
@@ -1087,7 +1087,7 @@ mod tests {
         for 10.times {
             unsafe {
                 let seed = super::seed();
-                let rt_rng = do vec::as_imm_buf(seed) |p, sz| {
+                let rt_rng = do seed.as_imm_buf |p, sz| {
                     rustrt::rand_new_seeded(p, sz as size_t)
                 };
                 let mut rng = IsaacRng::new_seeded(seed);

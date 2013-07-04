@@ -79,8 +79,8 @@ fn run_rfail_test(config: &config, props: &TestProps, testfile: &Path) {
     };
 
     // The value our Makefile configures valgrind to return on failure
-    static valgrind_err: int = 100;
-    if ProcRes.status == valgrind_err {
+    static VALGRIND_ERR: int = 100;
+    if ProcRes.status == VALGRIND_ERR {
         fatal_ProcRes(~"run-fail test isn't valgrind-clean!", &ProcRes);
     }
 
@@ -102,8 +102,8 @@ fn run_rfail_test(config: &config, props: &TestProps, testfile: &Path) {
 
 fn check_correct_failure_status(ProcRes: &ProcRes) {
     // The value the rust runtime returns on failure
-    static rust_err: int = 101;
-    if ProcRes.status != rust_err {
+    static RUST_ERR: int = 101;
+    if ProcRes.status != RUST_ERR {
         fatal_ProcRes(
             fmt!("failure produced the wrong error code: %d",
                  ProcRes.status),
@@ -601,9 +601,8 @@ fn make_run_args(config: &config, _props: &TestProps, testfile: &Path) ->
    ProcArgs {
     // If we've got another tool to run under (valgrind),
     // then split apart its command
-    let toolargs = split_maybe_args(&config.runtool);
-
-    let mut args = toolargs + [make_exe_name(config, testfile).to_str()];
+    let mut args = split_maybe_args(&config.runtool);
+    args.push(make_exe_name(config, testfile).to_str());
     let prog = args.shift();
     return ProcArgs {prog: prog, args: args};
 }

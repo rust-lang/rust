@@ -128,13 +128,12 @@ fn fold_mod(
 
 fn strip_mod(doc: doc::ModDoc) -> doc::ModDoc {
     doc::ModDoc {
-        items: do doc.items.filtered |item| {
-            match *item {
-              doc::ModTag(_) => false,
-              doc::NmodTag(_) => false,
+        items: do doc.items.iter().filter |item| {
+            match **item {
+              doc::ModTag(_) | doc::NmodTag(_) => false,
               _ => true
             }
-        },
+        }.transform(|x| copy *x).collect::<~[doc::ItemTag]>(),
         .. copy doc
     }
 }

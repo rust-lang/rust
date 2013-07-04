@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,19 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*! Times trait
+#[forbid(non_uppercase_statics)];
 
-~~~ {.rust}
-use iter::Times;
-let ten = 10 as uint;
-let mut accum = 0;
-for ten.times { accum += 1; }
-~~~
+static foo: int = 1; //~ ERROR static constant should have an uppercase identifier
 
-*/
-
-#[allow(missing_doc)]
-pub trait Times {
-    fn times(&self, it: &fn() -> bool) -> bool;
-}
-
+fn main() { }

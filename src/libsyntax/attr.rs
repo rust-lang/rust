@@ -143,13 +143,13 @@ pub fn get_name_value_str_pair(item: @ast::meta_item)
 /// Search a list of attributes and return only those with a specific name
 pub fn find_attrs_by_name(attrs: &[ast::attribute], name: &str) ->
    ~[ast::attribute] {
-    do vec::filter_mapped(attrs) |a| {
+    do attrs.iter().filter_map |a| {
         if name == get_attr_name(a) {
             Some(*a)
         } else {
             None
         }
-    }
+    }.collect()
 }
 
 /// Search a list of meta items and return only those with a specific name
@@ -277,14 +277,7 @@ pub fn sort_meta_items(items: &[@ast::meta_item]) -> ~[@ast::meta_item] {
 
 pub fn remove_meta_items_by_name(items: ~[@ast::meta_item], name: &str) ->
    ~[@ast::meta_item] {
-
-    return vec::filter_mapped(items, |item| {
-        if name != get_meta_item_name(*item) {
-            Some(*item)
-        } else {
-            None
-        }
-    });
+    items.consume_iter().filter(|item| name != get_meta_item_name(*item)).collect()
 }
 
 /**

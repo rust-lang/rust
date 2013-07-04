@@ -179,10 +179,10 @@ fn diagnosticstr(lvl: level) -> ~str {
 
 fn diagnosticcolor(lvl: level) -> term::color::Color {
     match lvl {
-        fatal => term::color::bright_red,
-        error => term::color::bright_red,
-        warning => term::color::bright_yellow,
-        note => term::color::bright_green
+        fatal => term::color::BRIGHT_RED,
+        error => term::color::BRIGHT_RED,
+        warning => term::color::BRIGHT_YELLOW,
+        note => term::color::BRIGHT_GREEN
     }
 }
 

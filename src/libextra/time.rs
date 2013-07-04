@@ -868,20 +868,20 @@ mod tests {
     use std::str;
 
     fn test_get_time() {
-        static some_recent_date: i64 = 1325376000i64; // 2012-01-01T00:00:00Z
-        static some_future_date: i64 = 1577836800i64; // 2020-01-01T00:00:00Z
+        static SOME_RECENT_DATE: i64 = 1325376000i64; // 2012-01-01T00:00:00Z
+        static SOME_FUTURE_DATE: i64 = 1577836800i64; // 2020-01-01T00:00:00Z
 
         let tv1 = get_time();
         debug!("tv1=%? sec + %? nsec", tv1.sec as uint, tv1.nsec as uint);
 
-        assert!(tv1.sec > some_recent_date);
+        assert!(tv1.sec > SOME_RECENT_DATE);
         assert!(tv1.nsec < 1000000000i32);
 
         let tv2 = get_time();
         debug!("tv2=%? sec + %? nsec", tv2.sec as uint, tv2.nsec as uint);
 
         assert!(tv2.sec >= tv1.sec);
-        assert!(tv2.sec < some_future_date);
+        assert!(tv2.sec < SOME_FUTURE_DATE);
         assert!(tv2.nsec < 1000000000i32);
         if tv2.sec == tv1.sec {
             assert!(tv2.nsec >= tv1.nsec);

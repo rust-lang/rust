@@ -198,8 +198,9 @@ fn with_appropriate_checker(cx: Context, id: node_id,
     fn check_for_bare(cx: Context, fv: @freevar_entry) {
         cx.tcx.sess.span_err(
             fv.span,
-            "attempted dynamic environment capture");
-    }
+            "can't capture dynamic environment in a fn item; \
+            use the || { ... } closure form instead");
+    } // same check is done in resolve.rs, but shouldn't be done
 
     let fty = ty::node_id_to_type(cx.tcx, id);
     match ty::get(fty).sty {

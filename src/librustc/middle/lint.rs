@@ -14,7 +14,6 @@ use middle::ty;
 use middle::pat_util;
 use util::ppaux::{ty_to_str};
 
-use std::char;
 use std::cmp;
 use std::hashmap::HashMap;
 use std::i16;
@@ -25,7 +24,6 @@ use std::u16;
 use std::u32;
 use std::u64;
 use std::u8;
-use std::vec;
 use extra::smallintmap::SmallIntMap;
 use syntax::attr;
 use syntax::codemap::span;
@@ -80,6 +78,7 @@ pub enum lint {
     non_implicitly_copyable_typarams,
     deprecated_pattern,
     non_camel_case_types,
+    non_uppercase_statics,
     type_limits,
     default_methods,
     unused_unsafe,
@@ -196,6 +195,13 @@ static lint_table: &'static [(&'static str, LintSpec)] = &[
         lint: non_camel_case_types,
         desc: "types, variants and traits should have camel case names",
         default: allow
+     }),
+
+    ("non_uppercase_statics",
+     LintSpec {
+         lint: non_uppercase_statics,
+         desc: "static constants should have uppercase identifiers",
+         default: warn
      }),
 
     ("managed_heap_memory",
@@ -854,7 +860,10 @@ fn check_item_non_camel_case_types(cx: &Context, it: &ast::item) {
         let ident = cx.sess.str_of(ident);
         assert!(!ident.is_empty());
         let ident = ident.trim_chars(&'_');
-        char::is_uppercase(ident.char_at(0)) &&
+
+        // start with a non-lowercase letter rather than non-uppercase
+        // ones (some scripts don't have a concept of upper/lowercase)
+        !ident.char_at(0).is_lowercase() &&
             !ident.contains_char('_')
     }
 
@@ -878,6 +887,23 @@ fn check_item_non_camel_case_types(cx: &Context, it: &ast::item) {
             }
         }
         _ => ()
+    }
+}
+
+fn check_item_non_uppercase_statics(cx: &Context, it: &ast::item) {
+    match it.node {
+        // only check static constants
+        ast::item_static(_, ast::m_imm, _) => {
+            let s = cx.tcx.sess.str_of(it.ident);
+            // check for lowercase letters rather than non-uppercase
+            // ones (some scripts don't have a concept of
+            // upper/lowercase)
+            if s.iter().any_(|c| c.is_lowercase()) {
+                cx.span_lint(non_uppercase_statics, it.span,
+                             "static constant should have an uppercase identifier");
+            }
+        }
+        _ => {}
     }
 }
 
@@ -960,7 +986,7 @@ fn lint_session() -> visit::vt<@mut Context> {
         match cx.tcx.sess.lints.pop(&id) {
             None => {},
             Some(l) => {
-                do vec::consume(l) |_, (lint, span, msg)| {
+                for l.consume_iter().advance |(lint, span, msg)| {
                     cx.span_lint(lint, span, msg)
                 }
             }
@@ -1143,6 +1169,7 @@ pub fn check_crate(tcx: ty::ctxt, crate: @ast::crate) {
                     }
                     check_item_ctypes(cx, it);
                     check_item_non_camel_case_types(cx, it);
+                    check_item_non_uppercase_statics(cx, it);
                     check_item_default_methods(cx, it);
                     check_item_heap(cx, it);
 

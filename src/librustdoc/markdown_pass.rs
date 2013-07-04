@@ -172,7 +172,7 @@ pub fn header_kind(doc: doc::ItemTag) -> ~str {
 }
 
 pub fn header_name(doc: doc::ItemTag) -> ~str {
-    let fullpath = (doc.path() + [doc.name()]).connect("::");
+    let fullpath = (doc.path() + &[doc.name()]).connect("::");
     match &doc {
         &doc::ModTag(_) if doc.id() != syntax::ast::crate_node_id => {
             fullpath
