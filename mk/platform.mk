@@ -323,9 +323,9 @@ AR_i686-pc-mingw32=$(AR)
 CFG_LIB_NAME_i686-pc-mingw32=$(1).dll
 CFG_LIB_GLOB_i686-pc-mingw32=$(1)-*.dll
 CFG_LIB_DSYM_GLOB_i686-pc-mingw32=$(1)-*.dylib.dSYM
-CFG_GCCISH_CFLAGS_i686-pc-mingw32 := -Wall -Werror -g -march=i686
+CFG_GCCISH_CFLAGS_i686-pc-mingw32 := -Wall -Werror -g -m32 -march=i686 -D_WIN32_WINNT=0x0600
 CFG_GCCISH_CXXFLAGS_i686-pc-mingw32 := -fno-rtti
-CFG_GCCISH_LINK_FLAGS_i686-pc-mingw32 := -shared -fPIC -g
+CFG_GCCISH_LINK_FLAGS_i686-pc-mingw32 := -shared -fPIC -g -m32
 CFG_GCCISH_DEF_FLAG_i686-pc-mingw32 :=
 CFG_GCCISH_PRE_LIB_FLAGS_i686-pc-mingw32 :=
 CFG_GCCISH_POST_LIB_FLAGS_i686-pc-mingw32 :=
@@ -366,6 +366,31 @@ CFG_PATH_MUNGE_i586-mingw32msvc := $(strip perl -i.bak -p   \
 CFG_LDPATH_i586-mingw32msvc :=
 CFG_RUN_i586-mingw32msvc=
 CFG_RUN_TARG_i586-mingw32msvc=
+
+# x86_64-w64-mingw32 configuration
+CC_x86_64-w64-mingw32=$(CC)
+CXX_x86_64-w64-mingw32=$(CXX)
+CPP_x86_64-w64-mingw32=$(CPP)
+AR_x86_64-w64-mingw32=$(AR)
+CFG_LIB_NAME_x86_64-w64-mingw32=$(1).dll
+CFG_LIB_GLOB_x86_64-w64-mingw32=$(1)-*.dll
+CFG_LIB_DSYM_GLOB_x86_64-w64-mingw32=$(1)-*.dylib.dSYM
+CFG_GCCISH_CFLAGS_x86_64-w64-mingw32 := -Wall -Werror -g -m64 -D_WIN32_WINNT=0x0600
+CFG_GCCISH_CXXFLAGS_x86_64-w64-mingw32 := -fno-rtti
+CFG_GCCISH_LINK_FLAGS_x86_64-w64-mingw32 := -shared -fPIC -g -m64
+CFG_GCCISH_DEF_FLAG_x86_64-w64-mingw32 :=
+CFG_GCCISH_PRE_LIB_FLAGS_x86_64-w64-mingw32 :=
+CFG_GCCISH_POST_LIB_FLAGS_x86_64-w64-mingw32 :=
+CFG_DEF_SUFFIX_x86_64-w64-mingw32 := .mingw32.def
+CFG_INSTALL_NAME_x86_64-w64-mingw32 =
+CFG_LIBUV_LINK_FLAGS_x86_64-w64-mingw32 := -lWs2_32 -lpsapi -liphlpapi
+CFG_EXE_SUFFIX_x86_64-w64-mingw32 := .exe
+CFG_WINDOWSY_x86_64-w64-mingw32 := 1
+CFG_UNIXY_x86_64-w64-mingw32 :=
+CFG_PATH_MUNGE_x86_64-w64-mingw32 :=
+CFG_LDPATH_x86_64-w64-mingw32 :=$(CFG_LDPATH_x86_64-w64-mingw32):$(PATH)
+CFG_RUN_x86_64-w64-mingw32=PATH="$(CFG_LDPATH_x86_64-w64-mingw32):$(1)" $(2)
+CFG_RUN_TARG_x86_64-w64-mingw32=$(call CFG_RUN_x86_64-w64-mingw32,$(HLIB$(1)_H_$(CFG_BUILD_TRIPLE)),$(2))
 
 # x86_64-unknown-freebsd configuration
 CC_x86_64-unknown-freebsd=$(CC)
