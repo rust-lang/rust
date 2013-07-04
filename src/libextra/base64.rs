@@ -29,15 +29,15 @@ pub struct Config {
 }
 
 /// Configuration for RFC 4648 standard base64 encoding
-pub static standard: Config =
+pub static STANDARD: Config =
     Config {char_set: Standard, pad: true, line_length: None};
 
 /// Configuration for RFC 4648 base64url encoding
-pub static url_safe: Config =
+pub static URL_SAFE: Config =
     Config {char_set: UrlSafe, pad: false, line_length: None};
 
 /// Configuration for RFC 2045 MIME base64 encoding
-pub static mime: Config =
+pub static MIME: Config =
     Config {char_set: Standard, pad: true, line_length: Some(76)};
 
 static STANDARD_CHARS: [char, ..64] = [
@@ -286,33 +286,33 @@ impl<'self> FromBase64 for &'self str {
 
 #[test]
 fn test_to_base64_basic() {
-    assert_eq!("".to_base64(standard), ~"");
-    assert_eq!("f".to_base64(standard), ~"Zg==");
-    assert_eq!("fo".to_base64(standard), ~"Zm8=");
-    assert_eq!("foo".to_base64(standard), ~"Zm9v");
-    assert_eq!("foob".to_base64(standard), ~"Zm9vYg==");
-    assert_eq!("fooba".to_base64(standard), ~"Zm9vYmE=");
-    assert_eq!("foobar".to_base64(standard), ~"Zm9vYmFy");
+    assert_eq!("".to_base64(STANDARD), ~"");
+    assert_eq!("f".to_base64(STANDARD), ~"Zg==");
+    assert_eq!("fo".to_base64(STANDARD), ~"Zm8=");
+    assert_eq!("foo".to_base64(STANDARD), ~"Zm9v");
+    assert_eq!("foob".to_base64(STANDARD), ~"Zm9vYg==");
+    assert_eq!("fooba".to_base64(STANDARD), ~"Zm9vYmE=");
+    assert_eq!("foobar".to_base64(STANDARD), ~"Zm9vYmFy");
 }
 
 #[test]
 fn test_to_base64_line_break() {
-    assert!(![0u8, 1000].to_base64(Config {line_length: None, ..standard})
+    assert!(![0u8, 1000].to_base64(Config {line_length: None, ..STANDARD})
         .contains("\r\n"));
-    assert_eq!("foobar".to_base64(Config {line_length: Some(4), ..standard}),
+    assert_eq!("foobar".to_base64(Config {line_length: Some(4), ..STANDARD}),
         ~"Zm9v\r\nYmFy");
 }
 
 #[test]
 fn test_to_base64_padding() {
-    assert_eq!("f".to_base64(Config {pad: false, ..standard}), ~"Zg");
-    assert_eq!("fo".to_base64(Config {pad: false, ..standard}), ~"Zm8");
+    assert_eq!("f".to_base64(Config {pad: false, ..STANDARD}), ~"Zg");
+    assert_eq!("fo".to_base64(Config {pad: false, ..STANDARD}), ~"Zm8");
 }
 
 #[test]
 fn test_to_base64_url_safe() {
-    assert_eq!([251, 255].to_base64(url_safe), ~"-_8");
-    assert_eq!([251, 255].to_base64(standard), ~"+/8=");
+    assert_eq!([251, 255].to_base64(URL_SAFE), ~"-_8");
+    assert_eq!([251, 255].to_base64(STANDARD), ~"+/8=");
 }
 
 #[test]
@@ -359,6 +359,6 @@ fn test_base64_random() {
                 push(random());
             }
         };
-        assert_eq!(v.to_base64(standard).from_base64().get(), v);
+        assert_eq!(v.to_base64(STANDARD).from_base64().get(), v);
     }
 }
