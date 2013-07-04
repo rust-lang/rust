@@ -235,6 +235,33 @@ LIBRUST_DSYM_GLOB_$(1) :=$(call CFG_LIB_DSYM_GLOB_$(1),rust)
 
 endef
 
+# $(1) is the path for directory to match against
+# $(2) is the glob to use in the match
+# $(3) is filename (usually the target being created) to filter out from match
+#      (i.e. filename is not out-of-date artifact from prior Rust version/build)
+# The glob denoted by $(2) often is constructed with a space character prefix,
+# which is why we cannot just do `ls` on $(1)/$(2).
+define CHECK_FOR_OLD_GLOB_MATCHES_EXCEPT
+  $(Q)( cd $(1) && ( ls $(2) 2>/dev/null || true ) | grep -v $(3) > /dev/null && echo "Warning: there are previous" '$(2)' "libraries:" || true )
+  $(Q)( cd $(1) && ( ls $(2) 2>/dev/null || true ) | grep -v $(3) || true )
+endef
+
+# Same interface as above, but deletes rather than just listing the files.
+define REMOVE_ALL_OLD_GLOB_MATCHES_EXCEPT
+  $(Q)( cd $(1) && ( ls $(2) 2>/dev/null || true ) | grep -v $(3) > /dev/null && echo "Warning: removing previous" '$(2)' "libraries:" || true )
+  $(Q)( cd $(1) && ( ls $(2) 2>/dev/null || true ) | grep -v $(3) | xargs rm -v )
+endef
+
+ifdef VERBOSE
+define LIST_ALL_OLD_GLOB_MATCHES_EXCEPT
+  @echo "Info: now are following matches for" '$(2)' "libraries:"
+  @( cd $(1) && ( ls $(2) 2>/dev/null || true ) | grep -v $(3) || true )
+endef
+else
+define LIST_ALL_OLD_GLOB_MATCHES_EXCEPT
+endef
+endif
+
 $(foreach target,$(CFG_TARGET_TRIPLES),\
   $(eval $(call DEF_LIBS,$(target))))
 
