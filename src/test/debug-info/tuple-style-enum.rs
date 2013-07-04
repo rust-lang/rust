@@ -14,18 +14,28 @@
 // debugger:run
 // debugger:finish
 
-// debugger:print case2
-// check:$1 = {Case1, 0, 1}
+// d ebugger:print case2
+// c heck:$1 = {Case1, 0, 1}
 
-enum Test {
+// debugger:print univariant
+// check:$1 = {{-1}}
+
+
+enum Regular {
     Case1(i32, i64),
     Case2(bool, i16, i32)
+}
+
+enum Univariant {
+	TheOnlyCase(i64)
 }
 
 fn main() {
 
     let case1 = Case1(110, 220);
     let case2 = Case2(false, 2, 3);
+
+    let univariant = TheOnlyCase(-1);
 
     zzz();
 }

@@ -606,13 +606,22 @@ fn create_enum_md(cx: &mut CrateContext,
         return discriminant_type_md;
     }
 
+    let is_univariant = variants.len() == 1;
+
     let variants_md = do variants.map |&vi| {
 
         let raw_types : &[ty::t] = vi.args;
         let arg_types = do raw_types.map |&raw_type| { ty::subst(cx.tcx, substs, raw_type) };
-        let arg_llvm_types = ~[discriminant_llvm_type] + do arg_types.map |&ty| { type_of::type_of(cx, ty) };
-        let arg_names = ~[~""] + arg_types.map(|_| ~"");
-        let arg_md = ~[discriminant_type_md] + do arg_types.map |&ty| { get_or_create_type(cx, ty, span) };
+        
+        let mut arg_llvm_types = do arg_types.map |&ty| { type_of::type_of(cx, ty) };
+        let mut arg_names = arg_types.map(|_| ~"");
+        let mut arg_md = do arg_types.map |&ty| { get_or_create_type(cx, ty, span) };
+
+        if !is_univariant {
+            arg_llvm_types.insert(0, discriminant_llvm_type);
+            arg_names.insert(0, ~"");
+            arg_md.insert(0, discriminant_type_md);
+        }
 
         let variant_llvm_type = Type::struct_(arg_llvm_types, false);
         let variant_type_size = machine::llsize_of_alloc(cx, variant_llvm_type);
@@ -646,7 +655,7 @@ fn create_enum_md(cx: &mut CrateContext,
     let enum_type_size = machine::llsize_of_alloc(cx, enum_llvm_type);
     let enum_type_align = machine::llalign_of_min(cx, enum_llvm_type);
 
-    return do "".as_c_str |enum_name| { unsafe { llvm::LLVMDIBuilderCreateUnionType(
+    return do enum_name.as_c_str |enum_name| { unsafe { llvm::LLVMDIBuilderCreateUnionType(
         DIB(cx),
         file_metadata,
         enum_name,
