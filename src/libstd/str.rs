@@ -1982,35 +1982,6 @@ impl<'self> StrSlice<'self> for &'self str {
 }
 
 #[allow(missing_doc)]
-pub trait NullTerminatedStr {
-    fn as_bytes_with_null<'a>(&'a self) -> &'a [u8];
-}
-
-impl NullTerminatedStr for ~str {
-    /// Work with the byte buffer of a string as a byte slice.
-    ///
-    /// The byte slice does include the null terminator.
-    #[inline]
-    fn as_bytes_with_null<'a>(&'a self) -> &'a [u8] {
-        let ptr: &'a ~[u8] = unsafe { cast::transmute(self) };
-        let slice: &'a [u8] = *ptr;
-        slice
-    }
-}
-
-impl NullTerminatedStr for @str {
-    /// Work with the byte buffer of a string as a byte slice.
-    ///
-    /// The byte slice does include the null terminator.
-    #[inline]
-    fn as_bytes_with_null<'a>(&'a self) -> &'a [u8] {
-        let ptr: &'a @[u8] = unsafe { cast::transmute(self) };
-        let slice: &'a [u8] = *ptr;
-        slice
-    }
-}
-
-#[allow(missing_doc)]
 pub trait OwnedStr {
     fn push_str_no_overallocate(&mut self, rhs: &str);
     fn push_str(&mut self, rhs: &str);
@@ -2980,30 +2951,6 @@ mod tests {
     }
 
     #[test]
-    fn test_as_bytes_with_null() {
-        // has null
-        let v = [
-            224, 184, 168, 224, 185, 132, 224, 184, 151, 224, 184, 162, 228,
-            184, 173, 229, 141, 142, 86, 105, 225, 187, 135, 116, 32, 78, 97,
-            109, 0
-        ];
-
-        let s1 = @"";
-        let s2 = @"abc";
-        let s3 = @"ศไทย中华Việt Nam";
-        assert_eq!(s1.as_bytes_with_null(), &[0]);
-        assert_eq!(s2.as_bytes_with_null(), &['a' as u8, 'b' as u8, 'c' as u8, 0]);
-        assert_eq!(s3.as_bytes_with_null(), v);
-
-        let s1 = ~"";
-        let s2 = ~"abc";
-        let s3 = ~"ศไทย中华Việt Nam";
-        assert_eq!(s1.as_bytes_with_null(), &[0]);
-        assert_eq!(s2.as_bytes_with_null(), &['a' as u8, 'b' as u8, 'c' as u8, 0]);
-        assert_eq!(s3.as_bytes_with_null(), v);
-    }
-
-    #[test]
     fn test_to_bytes_with_null() {
         let s = ~"ศไทย中华Việt Nam";
         let v = ~[
@@ -3024,7 +2971,7 @@ mod tests {
         // Don't double free. (I'm not sure if this exercises the
         // original problem code path anymore.)
         let s = ~"";
-        let _bytes = s.as_bytes_with_null();
+        let _bytes = s.as_bytes();
         fail!();
     }
 
