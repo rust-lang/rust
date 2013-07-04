@@ -13,10 +13,11 @@
 #include <malloc.h>
 #endif
 
+#include "uv.h"
+
 #include "rust_globals.h"
 #include "rust_task.h"
 #include "rust_log.h"
-#include "uv.h"
 
 // extern fn pointers
 typedef void (*extern_async_op_cb)(uv_loop_t* loop, void* data,
