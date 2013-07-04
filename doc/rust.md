@@ -207,7 +207,7 @@ The keywords are the following strings:
 as
 break
 copy
-do drop
+do
 else enum extern
 false fn for
 if impl
