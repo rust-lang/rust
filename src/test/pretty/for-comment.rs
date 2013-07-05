@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
-    let needlesArr: ~[char] = ~['a', 'f'];
-    do needlesArr.iter().fold() |x, y| {
+// pp-exact
+
+fn f(v: &[int]) {
+    let mut n = 0;
+    for v.iter().advance |e| {
+        n = *e; // This comment once triggered pretty printer bug
     }
-    //~^^ ERROR 1 parameter was supplied (including the closure passed by the `do` keyword)
-    //
-    // the first error is, um, non-ideal.
 }

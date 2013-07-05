@@ -104,6 +104,6 @@ fn main() {
          '\u2028', '\u2029', '\u202F', '\u205F', '\u3000'];
     for chars.iter().advance |c| {
         let ws = c.is_whitespace();
-        println(fmt!("%? %?", c , ws)); // <= bugs in pretty-printer?
+        println(fmt!("%? %?", c , ws));
     }
 }
