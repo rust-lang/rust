@@ -72,7 +72,7 @@ pub fn generics_of_fn(fk: &fn_kind) -> Generics {
 
 pub struct Visitor<E> {
     visit_mod: @fn(&_mod, span, node_id, (E, vt<E>)),
-    visit_view_item: @fn(@view_item, (E, vt<E>)),
+    visit_view_item: @fn(&view_item, (E, vt<E>)),
     visit_foreign_item: @fn(@foreign_item, (E, vt<E>)),
     visit_item: @fn(@item, (E, vt<E>)),
     visit_local: @fn(@local, (E, vt<E>)),
@@ -123,7 +123,7 @@ pub fn visit_crate<E: Copy>(c: &crate, (e, v): (E, vt<E>)) {
 }
 
 pub fn visit_mod<E: Copy>(m: &_mod, _sp: span, _id: node_id, (e, v): (E, vt<E>)) {
-    for m.view_items.iter().advance |vi| { (v.visit_view_item)(*vi, (copy e, v)); }
+    for m.view_items.iter().advance |vi| { (v.visit_view_item)(vi, (copy e, v)); }
     for m.items.iter().advance |i| { (v.visit_item)(*i, (copy e, v)); }
 }
 
@@ -166,7 +166,7 @@ pub fn visit_item<E: Copy>(i: &item, (e, v): (E, vt<E>)) {
         }
         item_mod(ref m) => (v.visit_mod)(m, i.span, i.id, (e, v)),
         item_foreign_mod(ref nm) => {
-            for nm.view_items.iter().advance |vi| { (v.visit_view_item)(*vi, (copy e, v)); }
+            for nm.view_items.iter().advance |vi| { (v.visit_view_item)(vi, (copy e, v)); }
             for nm.items.iter().advance |ni| { (v.visit_foreign_item)(*ni, (copy e, v)); }
         }
         item_ty(t, ref tps) => {
@@ -414,7 +414,7 @@ pub fn visit_struct_field<E: Copy>(sf: &struct_field, (e, v): (E, vt<E>)) {
 
 pub fn visit_block<E: Copy>(b: &blk, (e, v): (E, vt<E>)) {
     for b.node.view_items.iter().advance |vi| {
-        (v.visit_view_item)(*vi, (copy e, v));
+        (v.visit_view_item)(vi, (copy e, v));
     }
     for b.node.stmts.iter().advance |s| {
         (v.visit_stmt)(*s, (copy e, v));
@@ -568,7 +568,7 @@ pub fn visit_arm<E: Copy>(a: &arm, (e, v): (E, vt<E>)) {
 
 pub struct SimpleVisitor {
     visit_mod: @fn(&_mod, span, node_id),
-    visit_view_item: @fn(@view_item),
+    visit_view_item: @fn(&view_item),
     visit_foreign_item: @fn(@foreign_item),
     visit_item: @fn(@item),
     visit_local: @fn(@local),
@@ -629,7 +629,7 @@ pub fn mk_simple_visitor(v: simple_visitor) -> vt<()> {
         f(m, sp, id);
         visit_mod(m, sp, id, (e, v));
     }
-    fn v_view_item(f: @fn(@view_item), vi: @view_item, (e, v): ((), vt<()>)) {
+    fn v_view_item(f: @fn(&view_item), vi: &view_item, (e, v): ((), vt<()>)) {
         f(vi);
         visit_view_item(vi, (e, v));
     }

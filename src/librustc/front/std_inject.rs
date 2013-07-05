@@ -41,7 +41,7 @@ fn inject_libstd_ref(sess: Session, crate: &ast::crate) -> @ast::crate {
     let precursor = @fold::AstFoldFns {
         fold_crate: |crate, span, fld| {
             let n1 = sess.next_node_id();
-            let vi1 = @ast::view_item {
+            let vi1 = ast::view_item {
                 node: ast::view_item_extern_mod(
                         sess.ident_of("std"), ~[], n1),
                 attrs: ~[
@@ -87,7 +87,7 @@ fn inject_libstd_ref(sess: Session, crate: &ast::crate) -> @ast::crate {
             };
 
             let vp = @spanned(ast::view_path_glob(prelude_path, n2));
-            let vi2 = @ast::view_item { node: ast::view_item_use(~[vp]),
+            let vi2 = ast::view_item { node: ast::view_item_use(~[vp]),
                                         attrs: ~[],
                                         vis: ast::private,
                                         span: dummy_sp() };

@@ -16,7 +16,7 @@ use opt_vec::OptVec;
 
 pub trait ast_fold {
     fn fold_crate(@self, &crate) -> crate;
-    fn fold_view_item(@self, @view_item) -> @view_item;
+    fn fold_view_item(@self, &view_item) -> view_item;
     fn fold_foreign_item(@self, @foreign_item) -> @foreign_item;
     fn fold_item(@self, @item) -> Option<@item>;
     fn fold_struct_field(@self, @struct_field) -> @struct_field;
@@ -372,7 +372,7 @@ fn noop_fold_method(m: @method, fld: @ast_fold) -> @method {
 
 
 pub fn noop_fold_block(b: &blk_, fld: @ast_fold) -> blk_ {
-    let view_items = b.view_items.map(|x| fld.fold_view_item(*x));
+    let view_items = b.view_items.map(|x| fld.fold_view_item(x));
     let mut stmts = ~[];
     for b.stmts.iter().advance |stmt| {
         match fld.fold_stmt(*stmt) {
@@ -697,7 +697,7 @@ pub fn noop_fold_ty(t: &ty_, fld: @ast_fold) -> ty_ {
 // ...nor do modules
 pub fn noop_fold_mod(m: &_mod, fld: @ast_fold) -> _mod {
     ast::_mod {
-        view_items: m.view_items.iter().transform(|x| fld.fold_view_item(*x)).collect(),
+        view_items: m.view_items.iter().transform(|x| fld.fold_view_item(x)).collect(),
         items: m.items.iter().filter_map(|x| fld.fold_item(*x)).collect(),
     }
 }
@@ -706,7 +706,7 @@ fn noop_fold_foreign_mod(nm: &foreign_mod, fld: @ast_fold) -> foreign_mod {
     ast::foreign_mod {
         sort: nm.sort,
         abis: nm.abis,
-        view_items: nm.view_items.iter().transform(|x| fld.fold_view_item(*x)).collect(),
+        view_items: nm.view_items.iter().transform(|x| fld.fold_view_item(x)).collect(),
         items: nm.items.iter().transform(|x| fld.fold_foreign_item(*x)).collect(),
     }
 }
@@ -818,9 +818,8 @@ impl ast_fold for AstFoldFns {
         let (n, s) = (self.fold_crate)(&c.node, c.span, self as @ast_fold);
         spanned { node: n, span: (self.new_span)(s) }
     }
-    fn fold_view_item(@self, x: @view_item) ->
-       @view_item {
-        @ast::view_item {
+    fn fold_view_item(@self, x: &view_item) -> view_item {
+        ast::view_item {
             node: (self.fold_view_item)(&x.node, self as @ast_fold),
             attrs: x.attrs.iter().transform(|a| fold_attribute_(*a, self as @ast_fold)).collect(),
             vis: x.vis,

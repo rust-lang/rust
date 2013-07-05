@@ -352,7 +352,7 @@ pub fn commasep_exprs(s: @ps, b: breaks, exprs: &[@ast::expr]) {
 pub fn print_mod(s: @ps, _mod: &ast::_mod, attrs: &[ast::attribute]) {
     print_inner_attributes(s, attrs);
     for _mod.view_items.iter().advance |vitem| {
-        print_view_item(s, *vitem);
+        print_view_item(s, vitem);
     }
     for _mod.items.iter().advance |item| { print_item(s, *item); }
 }
@@ -361,7 +361,7 @@ pub fn print_foreign_mod(s: @ps, nmod: &ast::foreign_mod,
                          attrs: &[ast::attribute]) {
     print_inner_attributes(s, attrs);
     for nmod.view_items.iter().advance |vitem| {
-        print_view_item(s, *vitem);
+        print_view_item(s, vitem);
     }
     for nmod.items.iter().advance |item| { print_foreign_item(s, *item); }
 }
@@ -947,7 +947,7 @@ pub fn print_possibly_embedded_block_(s: @ps,
 
     print_inner_attributes(s, attrs);
 
-    for blk.node.view_items.iter().advance |vi| { print_view_item(s, *vi); }
+    for blk.node.view_items.iter().advance |vi| { print_view_item(s, vi); }
     for blk.node.stmts.iter().advance |st| {
         print_stmt(s, *st);
     }
@@ -1844,7 +1844,7 @@ pub fn print_view_paths(s: @ps, vps: &[@ast::view_path]) {
     commasep(s, inconsistent, vps, print_view_path);
 }
 
-pub fn print_view_item(s: @ps, item: @ast::view_item) {
+pub fn print_view_item(s: @ps, item: &ast::view_item) {
     hardbreak_if_not_bol(s);
     maybe_print_comment(s, item.span.lo);
     print_outer_attributes(s, item.attrs);

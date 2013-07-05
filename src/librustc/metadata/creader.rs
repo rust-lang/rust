@@ -136,7 +136,7 @@ fn visit_crate(e: &Env, c: &ast::crate) {
     }
 }
 
-fn visit_view_item(e: @mut Env, i: @ast::view_item) {
+fn visit_view_item(e: @mut Env, i: &ast::view_item) {
     match i.node {
       ast::view_item_extern_mod(ident, ref meta_items, id) => {
         debug!("resolving extern mod stmt. ident: %?, meta: %?",
