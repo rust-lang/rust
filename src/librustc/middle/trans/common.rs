@@ -413,7 +413,7 @@ pub fn add_clean_free(cx: block, ptr: ValueRef, heap: heap) {
 // drop glue checks whether it is zero.
 pub fn revoke_clean(cx: block, val: ValueRef) {
     do in_scope_cx(cx, None) |scope_info| {
-        let cleanup_pos = scope_info.cleanups.iter().position_(
+        let cleanup_pos = scope_info.cleanups.iter().position(
             |cu| match *cu {
                 clean_temp(v, _, _) if v == val => true,
                 _ => false

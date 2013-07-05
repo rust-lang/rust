@@ -111,7 +111,7 @@ fn gen_search_keys(graph: &[~[node_id]], n: uint) -> ~[node_id] {
     while keys.len() < n {
         let k = r.gen_uint_range(0u, graph.len());
 
-        if graph[k].len() > 0u && graph[k].iter().any_(|i| {
+        if graph[k].len() > 0u && graph[k].iter().any(|i| {
             *i != k as node_id
         }) {
             keys.insert(k as node_id);
@@ -187,7 +187,7 @@ fn bfs2(graph: graph, key: node_id) -> bfs_result {
     }
 
     let mut i = 0;
-    while colors.iter().any_(is_gray) {
+    while colors.iter().any(is_gray) {
         // Do the BFS.
         info!("PBFS iteration %?", i);
         i += 1;
@@ -402,7 +402,7 @@ fn validate(edges: ~[(node_id, node_id)],
             if *v == -1i64 || u == root {
                 true
             } else {
-                edges.iter().any_(|x| x == &(u, *v)) || edges.iter().any_(|x| x == &(*v, u))
+                edges.iter().any(|x| x == &(u, *v)) || edges.iter().any(|x| x == &(*v, u))
             }
         };
         result

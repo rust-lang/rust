@@ -184,7 +184,7 @@ impl Combine for Lub {
             // with.
             for list::each(a_isr) |pair| {
                 let (a_br, a_r) = *pair;
-                if tainted.iter().any_(|x| x == &a_r) {
+                if tainted.iter().any(|x| x == &a_r) {
                     debug!("generalize_region(r0=%?): \
                             replacing with %?, tainted=%?",
                            r0, a_br, tainted);

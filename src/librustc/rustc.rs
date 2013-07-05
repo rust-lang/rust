@@ -212,7 +212,7 @@ pub fn run_compiler(args: &~[~str], demitter: diagnostic::Emitter) {
     let lint_flags = vec::append(getopts::opt_strs(matches, "W"),
                                  getopts::opt_strs(matches, "warn"));
 
-    let show_lint_options = lint_flags.iter().any_(|x| x == &~"help") ||
+    let show_lint_options = lint_flags.iter().any(|x| x == &~"help") ||
         (opt_present(matches, "W") && lint_flags.is_empty());
 
     if show_lint_options {
@@ -221,7 +221,7 @@ pub fn run_compiler(args: &~[~str], demitter: diagnostic::Emitter) {
     }
 
     let r = getopts::opt_strs(matches, "Z");
-    if r.iter().any_(|x| x == &~"help") {
+    if r.iter().any(|x| x == &~"help") {
         describe_debug_flags();
         return;
     }

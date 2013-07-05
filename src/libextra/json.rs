@@ -950,7 +950,7 @@ impl serialize::Decoder for Decoder {
             }
             ref json => fail!("invalid variant: %?", *json),
         };
-        let idx = match names.iter().position_(|n| str::eq_slice(*n, name)) {
+        let idx = match names.iter().position(|n| str::eq_slice(*n, name)) {
             Some(idx) => idx,
             None => fail!("Unknown variant name: %?", name),
         };

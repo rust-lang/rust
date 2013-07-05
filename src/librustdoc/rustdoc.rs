@@ -64,7 +64,7 @@ pub mod util;
 pub fn main() {
     let args = os::args();
 
-    if args.iter().any_(|x| "-h" == *x) || args.iter().any_(|x| "--help" == *x) {
+    if args.iter().any(|x| "-h" == *x) || args.iter().any(|x| "--help" == *x) {
         config::usage();
         return;
     }

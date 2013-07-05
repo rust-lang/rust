@@ -57,7 +57,7 @@ pub fn parse_desc(attrs: ~[ast::attribute]) -> Option<~str> {
 
 pub fn parse_hidden(attrs: ~[ast::attribute]) -> bool {
     let r = doc_metas(attrs);
-    do r.iter().any_ |meta| {
+    do r.iter().any |meta| {
         match attr::get_meta_item_list(*meta) {
             Some(metas) => {
                 let hiddens = attr::find_meta_items_by_name(metas, "hidden");

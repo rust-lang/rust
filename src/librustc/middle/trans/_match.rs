@@ -796,7 +796,7 @@ pub fn enter_region<'r>(bcx: block,
 pub fn get_options(bcx: block, m: &[@Match], col: uint) -> ~[Opt] {
     let ccx = bcx.ccx();
     fn add_to_set(tcx: ty::ctxt, set: &mut ~[Opt], val: Opt) {
-        if set.iter().any_(|l| opt_eq(tcx, l, &val)) {return;}
+        if set.iter().any(|l| opt_eq(tcx, l, &val)) {return;}
         set.push(val);
     }
 
@@ -963,7 +963,7 @@ pub fn collect_record_or_struct_fields(bcx: block,
     fn extend(idents: &mut ~[ast::ident], field_pats: &[ast::field_pat]) {
         for field_pats.iter().advance |field_pat| {
             let field_ident = field_pat.ident;
-            if !idents.iter().any_(|x| *x == field_ident) {
+            if !idents.iter().any(|x| *x == field_ident) {
                 idents.push(field_ident);
             }
         }
@@ -974,7 +974,7 @@ pub fn pats_require_rooting(bcx: block,
                             m: &[@Match],
                             col: uint)
                          -> bool {
-    do m.iter().any_ |br| {
+    do m.iter().any |br| {
         let pat_id = br.pats[col].id;
         let key = root_map_key {id: pat_id, derefs: 0u };
         bcx.ccx().maps.root_map.contains_key(&key)
@@ -1003,7 +1003,7 @@ pub fn root_pats_as_necessary(mut bcx: block,
 // matches may be wildcards like _ or identifiers).
 macro_rules! any_pat (
     ($m:expr, $pattern:pat) => (
-        do ($m).iter().any_ |br| {
+        do ($m).iter().any |br| {
             match br.pats[col].node {
                 $pattern => true,
                 _ => false
@@ -1029,7 +1029,7 @@ pub fn any_tup_pat(m: &[@Match], col: uint) -> bool {
 }
 
 pub fn any_tuple_struct_pat(bcx: block, m: &[@Match], col: uint) -> bool {
-    do m.iter().any_ |br| {
+    do m.iter().any |br| {
         let pat = br.pats[col];
         match pat.node {
             ast::pat_enum(_, Some(_)) => {
