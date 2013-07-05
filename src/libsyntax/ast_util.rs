@@ -27,7 +27,7 @@ pub fn path_name_i(idents: &[ident]) -> ~str {
     idents.map(|i| token::interner_get(i.name)).connect("::")
 }
 
-pub fn path_to_ident(p: @Path) -> ident { copy *p.idents.last() }
+pub fn path_to_ident(p: &Path) -> ident { copy *p.idents.last() }
 
 pub fn local_def(id: node_id) -> def_id {
     ast::def_id { crate: local_crate, node: id }
@@ -212,8 +212,8 @@ pub fn default_block(
     }
 }
 
-pub fn ident_to_path(s: span, i: ident) -> @Path {
-    @ast::Path { span: s,
+pub fn ident_to_path(s: span, i: ident) -> Path {
+    ast::Path { span: s,
                  global: false,
                  idents: ~[i],
                  rp: None,

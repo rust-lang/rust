@@ -1399,7 +1399,7 @@ pub fn alloc_local(cx: block, local: &ast::local) -> block {
     let _icx = push_ctxt("alloc_local");
     let t = node_id_type(cx, local.node.id);
     let simple_name = match local.node.pat.node {
-      ast::pat_ident(_, pth, None) => Some(path_to_ident(pth)),
+      ast::pat_ident(_, ref pth, None) => Some(path_to_ident(pth)),
       _ => None
     };
     let val = alloc_ty(cx, t);

@@ -671,7 +671,7 @@ pub fn check_methods_against_trait(ccx: &CrateCtxt,
                     impl_m.span,
                     fmt!("method `%s` is not a member of trait `%s`",
                          tcx.sess.str_of(impl_m.mty.ident),
-                         path_to_str(a_trait_ty.path, tcx.sess.intr())));
+                         path_to_str(&a_trait_ty.path, tcx.sess.intr())));
             }
         }
     }
@@ -966,7 +966,7 @@ pub fn instantiate_trait_ref(ccx: &CrateCtxt,
         ast::def_trait(trait_did) => {
             let trait_ref =
                 astconv::ast_path_to_trait_ref(
-                    ccx, &rscope, trait_did, Some(self_ty), ast_trait_ref.path);
+                    ccx, &rscope, trait_did, Some(self_ty), &ast_trait_ref.path);
             ccx.tcx.trait_refs.insert(
                 ast_trait_ref.ref_id, trait_ref);
             return trait_ref;
@@ -975,7 +975,7 @@ pub fn instantiate_trait_ref(ccx: &CrateCtxt,
             ccx.tcx.sess.span_fatal(
                 ast_trait_ref.path.span,
                 fmt!("%s is not a trait",
-                    path_to_str(ast_trait_ref.path,
+                    path_to_str(&ast_trait_ref.path,
                                 ccx.tcx.sess.intr())));
         }
     }

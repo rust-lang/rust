@@ -276,7 +276,7 @@ pub fn check_crate<'mm>(tcx: ty::ctxt,
     };
 
     // Checks that a private path is in scope.
-    let check_path: @fn(span: span, def: def, path: @Path) =
+    let check_path: @fn(span: span, def: def, path: &Path) =
             |span, def, path| {
         debug!("checking path");
         match def {
@@ -449,7 +449,7 @@ pub fn check_crate<'mm>(tcx: ty::ctxt,
                         _ => {}
                     }
                 }
-                expr_path(path) => {
+                expr_path(ref path) => {
                     check_path(expr.span, tcx.def_map.get_copy(&expr.id), path);
                 }
                 expr_struct(_, ref fields, _) => {

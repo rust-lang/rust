@@ -385,7 +385,7 @@ pub fn expand_nested_bindings<'r>(bcx: block,
 
     do m.map |br| {
         match br.pats[col].node {
-            ast::pat_ident(_, path, Some(inner)) => {
+            ast::pat_ident(_, ref path, Some(inner)) => {
                 let pats = vec::append(
                     br.pats.slice(0u, col).to_owned(),
                     vec::append(~[inner],
@@ -441,7 +441,7 @@ pub fn enter_match<'r>(bcx: block,
 
                 let this = br.pats[col];
                 match this.node {
-                    ast::pat_ident(_, path, None) => {
+                    ast::pat_ident(_, ref path, None) => {
                         if pat_is_binding(dm, this) {
                             let binding_info =
                                 br.data.bindings_map.get(

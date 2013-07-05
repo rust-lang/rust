@@ -335,7 +335,7 @@ impl<'self> TraitDef<'self> {
                     cx.typarambound(p.to_path(cx, span, type_ident, generics))
                 });
             // require the current trait
-            bounds.push(cx.typarambound(trait_path));
+            bounds.push(cx.typarambound(copy trait_path));
 
             trait_generics.ty_params.push(cx.typaram(ty_param.ident, @bounds));
         }
@@ -890,7 +890,7 @@ fn summarise_struct(cx: @ExtCtxt, span: span,
 
 pub fn create_subpatterns(cx: @ExtCtxt,
                           span: span,
-                          field_paths: ~[@ast::Path],
+                          field_paths: ~[ast::Path],
                           mutbl: ast::mutability)
                    -> ~[@ast::pat] {
     do field_paths.map |&path| {
@@ -941,7 +941,7 @@ fn create_struct_pattern(cx: @ExtCtxt,
         };
         let path = cx.path_ident(span,
                                  cx.ident_of(fmt!("%s_%u", prefix, i)));
-        paths.push(path);
+        paths.push(copy path);
         ident_expr.push((opt_id, cx.expr_path(path)));
     }
 
@@ -987,7 +987,7 @@ fn create_enum_variant_pattern(cx: @ExtCtxt,
                 let path = cx.path_ident(span,
                                          cx.ident_of(fmt!("%s_%u", prefix, i)));
 
-                paths.push(path);
+                paths.push(copy path);
                 ident_expr.push((None, cx.expr_path(path)));
             }
 

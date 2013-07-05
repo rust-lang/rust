@@ -133,7 +133,7 @@ pub fn create_local_var(bcx: block, local: @ast::local) -> DIVariable {
     let cx = bcx.ccx();
 
     let ident = match local.node.pat.node {
-      ast::pat_ident(_, pth, _) => ast_util::path_to_ident(pth),
+      ast::pat_ident(_, ref pth, _) => ast_util::path_to_ident(pth),
       // FIXME this should be handled (#2533)
       _ => {
         bcx.sess().span_note(local.span, "debuginfo for pattern bindings NYI");
@@ -204,7 +204,7 @@ pub fn create_arg(bcx: block, arg: ast::arg, span: span) -> Option<DIVariable> {
     let context = create_function(fcx);
 
     match arg.pat.node {
-        ast::pat_ident(_, path, _) => {
+        ast::pat_ident(_, ref path, _) => {
             // XXX: This is wrong; it should work for multiple bindings.
             let ident = path.idents.last();
             let name: &str = cx.sess.str_of(*ident);

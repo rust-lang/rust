@@ -1245,7 +1245,7 @@ impl Resolver {
                 // Create the module and add all methods.
                 match *ty {
                     Ty {
-                        node: ty_path(path, _, _),
+                        node: ty_path(ref path, _, _),
                         _
                     } if path.idents.len() == 1 => {
                         let name = path_to_ident(path);
@@ -1446,7 +1446,7 @@ impl Resolver {
 
                     let mut module_path = ~[];
                     match view_path.node {
-                        view_path_simple(_, full_path, _) => {
+                        view_path_simple(_, ref full_path, _) => {
                             let path_len = full_path.idents.len();
                             assert!(path_len != 0);
 
@@ -1457,8 +1457,8 @@ impl Resolver {
                             }
                         }
 
-                        view_path_glob(module_ident_path, _) |
-                        view_path_list(module_ident_path, _, _) => {
+                        view_path_glob(ref module_ident_path, _) |
+                        view_path_list(ref module_ident_path, _, _) => {
                             for module_ident_path.idents.iter().advance |ident| {
                                 module_path.push(*ident);
                             }
@@ -1468,7 +1468,7 @@ impl Resolver {
                     // Build up the import directives.
                     let module_ = self.get_module_from_parent(parent);
                     match view_path.node {
-                        view_path_simple(binding, full_path, id) => {
+                        view_path_simple(binding, ref full_path, id) => {
                             let source_ident = *full_path.idents.last();
                             let subclass = @SingleImport(binding,
                                                          source_ident);
@@ -3561,7 +3561,7 @@ impl Resolver {
 
                     // Resolve derived traits.
                     for traits.iter().advance |trt| {
-                        self.resolve_trait_reference(*trt, visitor, TraitDerivation);
+                        self.resolve_trait_reference(trt, visitor, TraitDerivation);
                     }
 
                     for (*methods).iter().advance |method| {
@@ -4117,7 +4117,7 @@ impl Resolver {
             // Like path expressions, the interpretation of path types depends
             // on whether the path has multiple elements in it or not.
 
-            ty_path(path, bounds, path_id) => {
+            ty_path(ref path, bounds, path_id) => {
                 // This is a path in the type namespace. Walk through scopes
                 // scopes looking for it.
                 let mut result_def = None;
@@ -4211,7 +4211,7 @@ impl Resolver {
         let pat_id = pattern.id;
         for walk_pat(pattern) |pattern| {
             match pattern.node {
-                pat_ident(binding_mode, path, _)
+                pat_ident(binding_mode, ref path, _)
                         if !path.global && path.idents.len() == 1 => {
 
                     // The meaning of pat_ident with no type parameters
@@ -4338,7 +4338,7 @@ impl Resolver {
                     }
                 }
 
-                pat_ident(binding_mode, path, _) => {
+                pat_ident(binding_mode, ref path, _) => {
                     // This must be an enum variant, struct, or constant.
                     match self.resolve_path(path, ValueNS, false, visitor) {
                         Some(def @ def_variant(*)) |
@@ -4371,7 +4371,7 @@ impl Resolver {
                     }
                 }
 
-                pat_enum(path, _) => {
+                pat_enum(ref path, _) => {
                     // This must be an enum variant, struct or const.
                     match self.resolve_path(path, ValueNS, false, visitor) {
                         Some(def @ def_fn(*))      |
@@ -4409,7 +4409,7 @@ impl Resolver {
                     self.resolve_expr(last_expr, visitor);
                 }
 
-                pat_struct(path, _, _) => {
+                pat_struct(ref path, _, _) => {
                     match self.resolve_path(path, TypeNS, false, visitor) {
                         Some(def_ty(class_id))
                                 if self.structs.contains(&class_id) => {
@@ -4484,7 +4484,7 @@ impl Resolver {
     /// If `check_ribs` is true, checks the local definitions first; i.e.
     /// doesn't skip straight to the containing module.
     pub fn resolve_path(@mut self,
-                        path: @Path,
+                        path: &Path,
                         namespace: Namespace,
                         check_ribs: bool,
                         visitor: ResolveVisitor)
@@ -4610,7 +4610,7 @@ impl Resolver {
         return NoNameDefinition;
     }
 
-    pub fn intern_module_part_of_path(@mut self, path: @Path) -> ~[ident] {
+    pub fn intern_module_part_of_path(@mut self, path: &Path) -> ~[ident] {
         let mut module_path_idents = ~[];
         for path.idents.iter().enumerate().advance |(index, ident)| {
             if index == path.idents.len() - 1 {
@@ -4624,7 +4624,7 @@ impl Resolver {
     }
 
     pub fn resolve_module_relative_path(@mut self,
-                                        path: @Path,
+                                        path: &Path,
                                         xray: XrayFlag,
                                         namespace: Namespace)
                                         -> Option<def> {
@@ -4690,7 +4690,7 @@ impl Resolver {
     /// Invariant: This must be called only during main resolution, not during
     /// import resolution.
     pub fn resolve_crate_relative_path(@mut self,
-                                       path: @Path,
+                                       path: &Path,
                                        xray: XrayFlag,
                                        namespace: Namespace)
                                        -> Option<def> {
@@ -4916,7 +4916,7 @@ impl Resolver {
             // The interpretation of paths depends on whether the path has
             // multiple elements in it or not.
 
-            expr_path(path) => {
+            expr_path(ref path) => {
                 // This is a local path in the value namespace. Walk through
                 // scopes looking for it.
 
@@ -4985,7 +4985,7 @@ impl Resolver {
                                       visitor);
             }
 
-            expr_struct(path, _, _) => {
+            expr_struct(ref path, _, _) => {
                 // Resolve the path to the structure it goes to.
                 match self.resolve_path(path, TypeNS, false, visitor) {
                     Some(def_ty(class_id)) | Some(def_struct(class_id))
