@@ -1728,6 +1728,171 @@ impl<'self, T:Clone> MutableCloneableVector<T> for &'self mut [T] {
 }
 
 /**
+ * A VecRef is a vector that can hold either an owned vector,
+ * ~[T] or a static slice, &'static [T]. This can be useful as
+ * an optimization when allocation is sometimes needed, but the
+ * common case is statically known.
+ */
+#[deriving(Eq,Ord,Clone)]
+pub enum VecRef<T> {
+    Own(~[T]),
+    Static(&'static [T])
+}
+
+impl<T> VecRef<T> {
+    /**
+     * Construct a VecRef from an owned vector
+     */
+    pub fn from_owned(val: ~[T]) -> VecRef<T> {
+        Own(val)
+    }
+
+    /**
+     * Construct a VecRef from a static vector
+     */
+    pub fn from_static(val: &'static [T]) -> VecRef<T> {
+        Static(val)
+    }
+
+    // I can't impl ImmutableVector because that has methods
+    // on self-by-value, which means VecRef would move into
+    // it. So I'm just gonna re-impl here
+
+    #[inline]
+    pub fn iter<'r>(&'r self) -> VecIterator<'r, T> {
+        self.as_slice().iter()
+    }
+
+    #[inline]
+    pub fn rev_iter<'r>(&'r self) -> VecRevIterator<'r, T> {
+        self.as_slice().rev_iter()
+    }
+
+    #[inline]
+    pub fn split_iter<'r>(&'r self, pred: &'r fn(&T) -> bool) -> VecSplitIterator<'r, T> {
+        self.as_slice().split_iter(pred)
+    }
+
+    #[inline]
+    pub fn splitn_iter<'r>(&'r self, n: uint, pred: &'r fn(&T) -> bool) -> VecSplitIterator<'r, T> {
+        self.as_slice().split_iter(n, pred)
+    }
+
+    #[inline]
+    pub fn rsplit_iter<'r>(&'r self, pred: &'r fn(&T) -> bool) -> VecRSplitIterator<'r, T> {
+        self.as_slice().rsplit_iter(pred)
+    }
+
+    #[inline]
+    pub fn rsplitn_iter<'r>(&'r self, pred: &'r fn(&T) -> bool) -> VecRSplitIterator<'r, T> {
+        self.as_slice().rsplit_iter(pred)
+    }
+
+    #[inline]
+    pub fn window_iter<'r>(&'r self, size: uint) -> VecWindowIter<'r, T> {
+        self.as_slice().window_iter(size)
+    }
+
+    #[inline]
+    pub fn chunk_iter<'r>(&'r self, size: uint) -> VecChunkIter<'r, T> {
+        self.as_slice().window_iter(size)
+    }
+
+    #[inline]
+    pub fn as_imm_buf<U>(&self, f: &fn(*T, uint) -> U) -> U {
+        self.as_slice().as_imm_buf(f)
+    }
+}
+
+impl<T:Copy> VecRef<T> {
+
+    /**
+     * Converts this type into a standard owned vector, consuming it in the process.
+     * 
+     * If the VecRef holds a static vector, it is converted to an owned one, otherwise the held
+     * owned vector is returned.
+     */
+    pub fn to_owned_consume(self) -> ~[T] {
+        match self {
+            Own(v) => v,
+            Static(v) => v.to_owned()
+        }
+    }
+
+}
+
+impl<T> Vector<T> for VecRef<T> {
+    #[inline(always)]
+    fn as_slice<'a>(&'a self) -> &'a [T] {
+        match *self {
+            Own(ref v) => v.as_slice(),
+            Static(slice) => slice
+        }
+    }
+}
+
+impl<T> Container for VecRef<T> {
+    #[inline]
+    fn is_empty(&self) -> bool {
+        self.as_slice().is_empty()
+    }
+
+    #[inline]
+    fn len(&self) -> uint {
+        self.as_slice().len()
+    }
+}
+
+impl<T:Copy> CopyableVector<T> for VecRef<T> {
+    #[inline]
+    fn to_owned(&self) -> ~[T] {
+        self.as_slice().to_owned()
+    }
+}
+
+impl<T:Eq> ImmutableEqVector<T> for VecRef<T> {
+    #[inline]
+    fn position_elem(&self, x: &T) -> Option<uint> {
+        self.as_slice().position_elem(x)
+    }
+
+    #[inline]
+    fn rposition_elem(&self, t: &T) -> Option<uint> {
+        self.as_slice().rposition(t)
+    }
+
+    #[inline]
+    fn contains(&self, x: &T) -> bool {
+        self.as_slice().contains(x)
+    }
+}
+
+impl<T: TotalOrd> ImmutableTotalOrdVector<T> for VecRef<T> {
+    #[inline]
+    fn bsearch_elem(&self, x: &T) -> Option<uint> {
+        self.as_slice().bsearch_elem(x)
+    }
+}
+
+impl<T:Copy> ImmutableCopyableVector<T> for VecRef<T> {
+    #[inline]
+    fn partitioned(&self, f: &fn(&T) -> bool) -> (~[T], ~[T]) {
+        self.as_slice().partitioned(f)
+    }
+
+    #[inline]
+    unsafe fn unsafe_get(&self, elem: uint) -> T {
+        self.as_slice().unsafe_get(elem)
+    }
+}
+
+impl<T:Copy> Index<uint, T> for VecRef<T> {
+    fn index(&self, index: uint) -> T {
+        copy self.as_slice()[index]
+    }
+}
+
+/**
 * Constructs a vector from an unsafe pointer to a buffer
 *
 * # Arguments
@@ -2139,6 +2304,31 @@ impl<A, T: Iterator<A>> FromIterator<A, T> for ~[A] {
         xs
     }
 }
+
+#[cfg(stage0)]
+impl<A, T: Iterator<A>> FromIterator<A, T> for VecRef<A> {
+    pub fn from_iterator(iterator: &mut T) -> VecRef<A> {
+        let mut xs = ~[];
+        for iterator.advance |x| {
+            xs.push(x);
+        }
+        VecRef::from_owned(xs)
+    }
+}
+
+
+#[cfg(not(stage0))]
+impl<A, T: Iterator<A>> FromIterator<A, T> for VecRef<A> {
+    pub fn from_iterator(iterator: &mut T) -> VecRef<A> {
+        let (lower, _) = iterator.size_hint();
+        let mut xs = with_capacity(lower.get_or_zero());
+        for iterator.advance |x| {
+            xs.push(x);
+        }
+        VecRef::from_owned(xs)
+    }
+}
+
 
 
 #[cfg(test)]
@@ -3243,5 +3433,31 @@ mod tests {
         assert_eq!(values, [0xAB, 0xAB, 0xAB, 0xAB, 0xAB]);
         values.mut_slice(2,4).set_memory(0xFF);
         assert_eq!(values, [0xAB, 0xAB, 0xFF, 0xFF, 0xAB]);
+    }
+
+    #[test]
+    fn test_vec_ref() {
+        let v : VecRef<int> = VecRef::from_owned(~[]);
+        assert!(v.is_empty());
+
+        let v = VecRef::from_owned(~[1, 2, 3]);
+        assert_eq!(v.len(), 3);
+
+        let v : VecRef<int> = VecRef::from_static([]);
+        assert!(v.is_empty());
+
+        let v : VecRef<int> = VecRef::from_static([1, 2, 3, 4]);
+        assert_eq!(v.len(), 4);
+    }
+
+    #[test]
+    fn test_vec_ref_consume() {
+        let v = VecRef::from_owned(~[1, 2, 3, 4]);
+        let vec = v.to_owned_consume();
+        assert_eq!(vec, ~[1, 2, 3, 4]);
+
+        let v = VecRef::from_static([1, 2, 3, 4]);
+        let vec = v.to_owned_consume();
+        assert_eq!(vec, ~[1, 2, 3, 4]);
     }
 }
