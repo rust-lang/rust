@@ -472,7 +472,7 @@ pub enum BlockCheckMode {
     UnsafeBlock,
 }
 
-#[deriving(Eq, Encodable, Decodable,IterBytes)]
+#[deriving(Clone, Eq, Encodable, Decodable,IterBytes)]
 pub struct Expr {
     id: NodeId,
     node: Expr_,
