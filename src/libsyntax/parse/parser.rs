@@ -115,7 +115,7 @@ pub enum item_or_view_item {
     iovi_none,
     iovi_item(@item),
     iovi_foreign_item(@foreign_item),
-    iovi_view_item(@view_item)
+    iovi_view_item(view_item)
 }
 
 #[deriving(Eq)]
@@ -208,7 +208,7 @@ fn maybe_append(lhs: ~[attribute], rhs: Option<~[attribute]>)
 
 struct ParsedItemsAndViewItems {
     attrs_remaining: ~[attribute],
-    view_items: ~[@view_item],
+    view_items: ~[view_item],
     items: ~[@item],
     foreign_items: ~[@foreign_item]
 }
@@ -4074,7 +4074,7 @@ impl Parser {
         // extern mod foo;
         let metadata = self.parse_optional_meta();
         self.expect(&token::SEMI);
-        iovi_view_item(@ast::view_item {
+        iovi_view_item(ast::view_item {
             node: view_item_extern_mod(ident, metadata, self.get_id()),
             attrs: copy attrs,
             vis: visibility,
@@ -4308,7 +4308,7 @@ impl Parser {
             // USE ITEM (iovi_view_item)
             let view_item = self.parse_use();
             self.expect(&token::SEMI);
-            return iovi_view_item(@ast::view_item {
+            return iovi_view_item(ast::view_item {
                 node: view_item,
                 attrs: attrs,
                 vis: visibility,
@@ -4656,7 +4656,7 @@ impl Parser {
         &self,
         attrs: ~[attribute],
         vis: visibility
-    ) -> @view_item {
+    ) -> view_item {
         let lo = self.span.lo;
         let node = if self.eat_keyword(keywords::Use) {
             self.parse_use()
@@ -4669,7 +4669,7 @@ impl Parser {
             self.bug("expected view item");
         };
         self.expect(&token::SEMI);
-        @ast::view_item { node: node,
+        ast::view_item { node: node,
                           attrs: attrs,
                           vis: vis,
                           span: mk_sp(lo, self.last_span.hi) }
@@ -4687,7 +4687,7 @@ impl Parser {
         let mut attrs = vec::append(first_item_attrs,
                                     self.parse_outer_attributes());
         // First, parse view items.
-        let mut view_items = ~[];
+        let mut view_items : ~[ast::view_item] = ~[];
         let mut items = ~[];
         let mut done = false;
         // I think this code would probably read better as a single

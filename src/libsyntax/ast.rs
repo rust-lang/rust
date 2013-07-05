@@ -219,7 +219,7 @@ pub type blk = spanned<blk_>;
 
 #[deriving(Eq, Encodable, Decodable,IterBytes)]
 pub struct blk_ {
-    view_items: ~[@view_item],
+    view_items: ~[view_item],
     stmts: ~[@stmt],
     expr: Option<@expr>,
     id: node_id,
@@ -827,7 +827,7 @@ pub struct method {
 
 #[deriving(Eq, Encodable, Decodable,IterBytes)]
 pub struct _mod {
-    view_items: ~[@view_item],
+    view_items: ~[view_item],
     items: ~[@item],
 }
 
@@ -839,7 +839,7 @@ pub enum foreign_mod_sort { named, anonymous }
 pub struct foreign_mod {
     sort: foreign_mod_sort,
     abis: AbiSet,
-    view_items: ~[@view_item],
+    view_items: ~[view_item],
     items: ~[@foreign_item],
 }
 

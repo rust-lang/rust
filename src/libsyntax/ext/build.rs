@@ -80,7 +80,7 @@ pub trait AstBuilder {
     fn blk(&self, span: span, stmts: ~[@ast::stmt], expr: Option<@ast::expr>) -> ast::blk;
     fn blk_expr(&self, expr: @ast::expr) -> ast::blk;
     fn blk_all(&self, span: span,
-               view_items: ~[@ast::view_item],
+               view_items: ~[ast::view_item],
                stmts: ~[@ast::stmt],
                expr: Option<@ast::expr>) -> ast::blk;
 
@@ -202,7 +202,7 @@ pub trait AstBuilder {
 
     fn item_mod(&self, span: span,
                 name: ident, attrs: ~[ast::attribute],
-                vi: ~[@ast::view_item], items: ~[@ast::item]) -> @ast::item;
+                vi: ~[ast::view_item], items: ~[@ast::item]) -> @ast::item;
 
     fn item_ty_poly(&self,
                     span: span,
@@ -218,11 +218,11 @@ pub trait AstBuilder {
     fn meta_name_value(&self, sp: span, name: @str, value: ast::lit_) -> @ast::meta_item;
 
     fn view_use(&self, sp: span,
-                vis: ast::visibility, vp: ~[@ast::view_path]) -> @ast::view_item;
+                vis: ast::visibility, vp: ~[@ast::view_path]) -> ast::view_item;
     fn view_use_list(&self, sp: span, vis: ast::visibility,
-                     path: ~[ast::ident], imports: &[ast::ident]) -> @ast::view_item;
+                     path: ~[ast::ident], imports: &[ast::ident]) -> ast::view_item;
     fn view_use_glob(&self, sp: span,
-                     vis: ast::visibility, path: ~[ast::ident]) -> @ast::view_item;
+                     vis: ast::visibility, path: ~[ast::ident]) -> ast::view_item;
 }
 
 impl AstBuilder for @ExtCtxt {
@@ -400,7 +400,7 @@ impl AstBuilder for @ExtCtxt {
     }
     fn blk_all(&self,
                span: span,
-               view_items: ~[@ast::view_item],
+               view_items: ~[ast::view_item],
                stmts: ~[@ast::stmt],
                expr: Option<@ast::expr>) -> ast::blk {
         respan(span,
@@ -762,7 +762,7 @@ impl AstBuilder for @ExtCtxt {
 
     fn item_mod(&self, span: span, name: ident,
                 attrs: ~[ast::attribute],
-                vi: ~[@ast::view_item],
+                vi: ~[ast::view_item],
                 items: ~[@ast::item]) -> @ast::item {
         self.item(
             span,
@@ -804,8 +804,8 @@ impl AstBuilder for @ExtCtxt {
     }
 
     fn view_use(&self, sp: span,
-                vis: ast::visibility, vp: ~[@ast::view_path]) -> @ast::view_item {
-        @ast::view_item {
+                vis: ast::visibility, vp: ~[@ast::view_path]) -> ast::view_item {
+        ast::view_item {
             node: ast::view_item_use(vp),
             attrs: ~[],
             vis: vis,
@@ -814,7 +814,7 @@ impl AstBuilder for @ExtCtxt {
     }
 
     fn view_use_list(&self, sp: span, vis: ast::visibility,
-                     path: ~[ast::ident], imports: &[ast::ident]) -> @ast::view_item {
+                     path: ~[ast::ident], imports: &[ast::ident]) -> ast::view_item {
         let imports = do imports.map |id| {
             respan(sp, ast::path_list_ident_ { name: *id, id: self.next_id() })
         };
@@ -827,7 +827,7 @@ impl AstBuilder for @ExtCtxt {
     }
 
     fn view_use_glob(&self, sp: span,
-                     vis: ast::visibility, path: ~[ast::ident]) -> @ast::view_item {
+                     vis: ast::visibility, path: ~[ast::ident]) -> ast::view_item {
         self.view_use(sp, vis,
                       ~[@respan(sp,
                                 ast::view_path_glob(self.path(sp, path), self.next_id()))])

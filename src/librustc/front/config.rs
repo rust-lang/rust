@@ -12,7 +12,7 @@
 use std::option;
 use syntax::{ast, fold, attr};
 
-type in_cfg_pred = @fn(attrs: ~[ast::attribute]) -> bool;
+type in_cfg_pred = @fn(attrs: &[ast::attribute]) -> bool;
 
 struct Context {
     in_cfg: in_cfg_pred
@@ -50,8 +50,7 @@ fn filter_item(cx: @Context, item: @ast::item) ->
     if item_in_cfg(cx, item) { option::Some(item) } else { option::None }
 }
 
-fn filter_view_item(cx: @Context, view_item: @ast::view_item
-                   )-> Option<@ast::view_item> {
+fn filter_view_item<'r>(cx: @Context, view_item: &'r ast::view_item)-> Option<&'r ast::view_item> {
     if view_item_in_cfg(cx, view_item) {
         option::Some(view_item)
     } else {
@@ -64,7 +63,7 @@ fn fold_mod(cx: @Context, m: &ast::_mod, fld: @fold::ast_fold) -> ast::_mod {
         filter_item(cx, *a).chain(|x| fld.fold_item(x))
     }.collect();
     let filtered_view_items = do m.view_items.iter().filter_map |a| {
-        filter_view_item(cx, *a).map(|x| fld.fold_view_item(*x))
+        filter_view_item(cx, a).map(|&x| fld.fold_view_item(x))
     }.collect();
     ast::_mod {
         view_items: filtered_view_items,
@@ -86,7 +85,7 @@ fn fold_foreign_mod(
 ) -> ast::foreign_mod {
     let filtered_items = nm.items.iter().filter_map(|a| filter_foreign_item(cx, *a)).collect();
     let filtered_view_items = do nm.view_items.iter().filter_map |a| {
-        filter_view_item(cx, *a).map(|x| fld.fold_view_item(*x))
+        filter_view_item(cx, a).map(|&x| fld.fold_view_item(x))
     }.collect();
     ast::foreign_mod {
         sort: nm.sort,
@@ -141,7 +140,7 @@ fn fold_block(
         filter_stmt(cx, *a).chain(|stmt| fld.fold_stmt(stmt))
     }.collect();
     let filtered_view_items = do b.view_items.iter().filter_map |a| {
-        filter_view_item(cx, *a).map(|x| fld.fold_view_item(*x))
+        filter_view_item(cx, a).map(|&x| fld.fold_view_item(x))
     }.collect();
     ast::blk_ {
         view_items: filtered_view_items,
@@ -160,8 +159,8 @@ fn foreign_item_in_cfg(cx: @Context, item: @ast::foreign_item) -> bool {
     return (cx.in_cfg)(/*bad*/copy item.attrs);
 }
 
-fn view_item_in_cfg(cx: @Context, item: @ast::view_item) -> bool {
-    return (cx.in_cfg)(/*bad*/copy item.attrs);
+fn view_item_in_cfg(cx: @Context, item: &ast::view_item) -> bool {
+    return (cx.in_cfg)(item.attrs);
 }
 
 fn method_in_cfg(cx: @Context, meth: @ast::method) -> bool {

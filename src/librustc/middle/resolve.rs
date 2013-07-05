@@ -1432,7 +1432,7 @@ impl Resolver {
     /// Constructs the reduced graph for one 'view item'. View items consist
     /// of imports and use directives.
     pub fn build_reduced_graph_for_view_item(@mut self,
-                                             view_item: @view_item,
+                                             view_item: &view_item,
                                              (parent, _):
                                              (ReducedGraphParent,
                                               vt<ReducedGraphParent>)) {
@@ -5295,7 +5295,7 @@ impl Resolver {
         visit_crate(self.crate, ((), vt));
     }
 
-    pub fn check_for_item_unused_imports(&mut self, vi: @view_item) {
+    pub fn check_for_item_unused_imports(&mut self, vi: &view_item) {
         // Ignore public import statements because there's no way to be sure
         // whether they're used or not. Also ignore imports with a dummy span
         // because this means that they were generated in some fashion by the
