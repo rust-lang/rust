@@ -1091,6 +1091,7 @@ pub trait OwnedVector<T> {
 
     fn push_all_move(&mut self, rhs: ~[T]);
     fn pop(&mut self) -> T;
+    fn pop_opt(&mut self) -> Option<T>;
     fn shift(&mut self) -> T;
     fn unshift(&mut self, x: T);
     fn insert(&mut self, i: uint, x:T);
@@ -1281,18 +1282,26 @@ impl<T> OwnedVector<T> for ~[T] {
         }
     }
 
-    /// Remove the last element from a vector and return it
+    /// Remove the last element from a vector and return it, or `None` if it is empty
+    fn pop_opt(&mut self) -> Option<T> {
+        match self.len() {
+            0  => None,
+            ln => {
+                let valptr = ptr::to_mut_unsafe_ptr(&mut self[ln - 1u]);
+                unsafe {
+                    let val = ptr::replace_ptr(valptr, intrinsics::init());
+                    raw::set_len(self, ln - 1u);
+                    Some(val)
+                }
+            }
+        }
+    }
+
+
+    /// Remove the last element from a vector and return it, failing if it is empty
+    #[inline]
     fn pop(&mut self) -> T {
-        let ln = self.len();
-        if ln == 0 {
-            fail!("sorry, cannot pop an empty vector")
-        }
-        let valptr = ptr::to_mut_unsafe_ptr(&mut self[ln - 1u]);
-        unsafe {
-            let val = ptr::replace_ptr(valptr, intrinsics::init());
-            raw::set_len(self, ln - 1u);
-            val
-        }
+        self.pop_opt().expect("pop: empty vector")
     }
 
     /// Removes the first element from a vector and return it
@@ -2089,18 +2098,13 @@ impl<T> Iterator<T> for VecConsumeIterator<T> {
         //
         // [1,2,3,4,5] => 1, [5,2,3,4] => 2, [5,4,3] => 3, [5,4] => 4,
         // [5] -> 5, []
-
-        if self.v.is_empty() {
-            None
-        } else {
-            let l = self.v.len();
-            if self.idx < l {
-                self.v.swap(self.idx, l - 1);
-                self.idx += 1;
-            }
-
-            Some(self.v.pop())
+        let l = self.v.len();
+        if self.idx < l {
+            self.v.swap(self.idx, l - 1);
+            self.idx += 1;
         }
+
+        self.v.pop_opt()
     }
 }
 
@@ -2111,8 +2115,7 @@ pub struct VecConsumeRevIterator<T> {
 
 impl<T> Iterator<T> for VecConsumeRevIterator<T> {
     fn next(&mut self) -> Option<T> {
-        if self.v.is_empty() { None }
-        else { Some(self.v.pop()) }
+        self.v.pop_opt()
     }
 }
 
@@ -2415,6 +2418,17 @@ mod tests {
     }
 
     #[test]
+    fn test_pop_opt() {
+        let mut v = ~[5];
+        let e = v.pop_opt();
+        assert_eq!(v.len(), 0);
+        assert_eq!(e, Some(5));
+        let f = v.pop_opt();
+        assert_eq!(f, None);
+        let g = v.pop_opt();
+        assert_eq!(g, None);
+    }
+
     fn test_swap_remove() {
         let mut v = ~[1, 2, 3, 4, 5];
         let mut e = v.swap_remove(0);
