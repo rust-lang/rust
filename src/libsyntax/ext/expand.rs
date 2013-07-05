@@ -603,7 +603,7 @@ fn expand_non_macro_stmt (exts: SyntaxEnv,
 }
 
 // a visitor that extracts the pat_ident paths
-// from a given pattern and puts them in a mutable
+// from a given thingy and puts them in a mutable
 // array (passed in to the traversal)
 #[deriving(Clone)]
 struct NewNameFinderContext {
@@ -748,14 +748,13 @@ impl Visitor<()> for NewNameFinderContext {
     }
 }
 
-// a visitor that extracts the path exprs from
-// a crate/expression/whatever and puts them in a mutable
+// a visitor that extracts the paths
+// from a given thingy and puts them in a mutable
 // array (passed in to the traversal)
 #[deriving(Clone)]
 struct NewPathExprFinderContext {
     path_accumulator: @mut ~[ast::Path],
 }
-
 
 // XXX : YIKES a lot of boilerplate again....
 impl Visitor<()> for NewPathExprFinderContext {
@@ -875,7 +874,7 @@ impl Visitor<()> for NewPathExprFinderContext {
 }
 
 // return a visitor that extracts the pat_ident paths
-// from a given pattern and puts them in a mutable
+// from a given thingy and puts them in a mutable
 // array (passed in to the traversal)
 pub fn new_name_finder(idents: @mut ~[ast::Ident]) -> @mut Visitor<()> {
     let context = @mut NewNameFinderContext {
@@ -913,6 +912,7 @@ pub fn renames_to_fold(renames : @mut ~[(ast::Ident,ast::Name)]) -> @ast_fold {
     make_fold(f_pre)
 }
 
+// expand a block. pushes a new exts_frame, then calls expand_block_elts
 pub fn expand_block(extsbox: @mut SyntaxEnv,
                     _cx: @ExtCtxt,
                     blk: &Block,
@@ -924,7 +924,7 @@ pub fn expand_block(extsbox: @mut SyntaxEnv,
                      expand_block_elts(*extsbox, blk, fld))
 }
 
-
+// expand the elements of a block.
 pub fn expand_block_elts(exts: SyntaxEnv, b: &Block, fld: @ast_fold) -> Block {
     let block_info = get_block_info(exts);
     let pending_renames = block_info.pending_renames;
@@ -949,6 +949,7 @@ pub fn expand_block_elts(exts: SyntaxEnv, b: &Block, fld: @ast_fold) -> Block {
 }
 
 // rename_fold should never return "None".
+// (basically, just .get() with a better message...)
 fn mustbesome<T>(val : Option<T>) -> T {
     match val {
         Some(v) => v,
@@ -971,8 +972,8 @@ pub fn new_span(cx: @ExtCtxt, sp: Span) -> Span {
 }
 
 // FIXME (#2247): this is a moderately bad kludge to inject some macros into
-// the default compilation environment. It would be much nicer to use
-// a mechanism like syntax_quote to ensure hygiene.
+// the default compilation environment in that it injects strings, rather than
+// syntax elements.
 
 pub fn std_macros() -> @str {
     return
@@ -1453,6 +1454,10 @@ pub fn fun_to_ctxt_folder<T : 'static + CtxtFn>(cf: @T) -> @AstFoldFns {
         |ast::Ident{name, ctxt}, _| {
         ast::Ident{name:name,ctxt:cf.f(ctxt)}
     };
+    // we've also got to pick up macro invocations; they can
+    // appear as exprs, stmts, items, and types. urg, it's going
+    // to be easier just to add a fold_mac, I think.
+    //let fold_ex : @
     @AstFoldFns{
         fold_ident : fi,
         // check that it works, then add the fold_expr clause....
@@ -1631,6 +1636,7 @@ mod test {
 
         // try a double-rename, with pending_renames.
         let a3_name = gensym("a3");
+        // a context that renames from ("a",empty) to "a2" :
         let ctxt2 = new_rename(ast::Ident::new(a_name),a2_name,EMPTY_CTXT);
         let pending_renames = @mut ~[(ast::Ident::new(a_name),a2_name),
                                      (ast::Ident{name:a_name,ctxt:ctxt2},a3_name)];
@@ -1638,7 +1644,7 @@ mod test {
         let varrefs = @mut ~[];
         visit::walk_crate(&mut new_path_finder(varrefs), &double_renamed, ());
         match varrefs {
-            @[Path{segments:[ref seg],_}] => assert_eq!(mtwt_resolve(seg.identifier),a2_name),
+            @[Path{segments:[ref seg],_}] => assert_eq!(mtwt_resolve(seg.identifier),a3_name),
             _ => assert_eq!(0,1)
         }
     }
