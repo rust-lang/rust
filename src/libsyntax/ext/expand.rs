@@ -40,7 +40,7 @@ pub fn expand_expr(extsbox: @mut SyntaxEnv,
         expr_mac(ref mac) => {
             match (*mac).node {
                 // Token-tree macros:
-                mac_invoc_tt(pth, ref tts) => {
+                mac_invoc_tt(ref pth, ref tts) => {
                     if (pth.idents.len() > 1u) {
                         cx.span_fatal(
                             pth.span,
@@ -208,7 +208,7 @@ pub fn expand_item_mac(extsbox: @mut SyntaxEnv,
                        fld: @ast_fold)
                     -> Option<@ast::item> {
     let (pth, tts) = match it.node {
-        item_mac(codemap::spanned { node: mac_invoc_tt(pth, ref tts), _}) => {
+        item_mac(codemap::spanned { node: mac_invoc_tt(ref pth, ref tts), _}) => {
             (pth, copy *tts)
         }
         _ => cx.span_bug(it.span, "invalid item macro invocation")
@@ -298,7 +298,7 @@ pub fn expand_stmt(extsbox: @mut SyntaxEnv,
     let (mac, pth, tts, semi) = match *s {
         stmt_mac(ref mac, semi) => {
             match mac.node {
-                mac_invoc_tt(pth, ref tts) => {
+                mac_invoc_tt(ref pth, ref tts) => {
                     (copy *mac, pth, copy *tts, semi)
                 }
             }
@@ -372,10 +372,10 @@ pub fn new_name_finder() -> @Visitor<@mut ~[ast::ident]> {
                      (ident_accum, v): (@mut ~[ast::ident], visit::vt<@mut ~[ast::ident]>)| {
             match *p {
                 // we found a pat_ident!
-                ast::pat{id:_, node: ast::pat_ident(_,path,ref inner), span:_} => {
+                ast::pat{id:_, node: ast::pat_ident(_,ref path,ref inner), span:_} => {
                     match path {
                         // a path of length one:
-                        @ast::Path{global: false,idents: [id], span:_,rp:_,types:_} =>
+                        &ast::Path{global: false,idents: [id], span:_,rp:_,types:_} =>
                         ident_accum.push(id),
                         // I believe these must be enums...
                         _ => ()

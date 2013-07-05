@@ -326,7 +326,7 @@ pub fn expr_to_ident(cx: @ExtCtxt,
                      expr: @ast::expr,
                      err_msg: &str) -> ast::ident {
     match expr.node {
-      ast::expr_path(p) => {
+      ast::expr_path(ref p) => {
         if p.types.len() > 0u || p.idents.len() != 1u {
             cx.span_fatal(expr.span, err_msg);
         }

@@ -342,16 +342,16 @@ fn nospan<T:Copy>(t: T) -> codemap::spanned<T> {
     codemap::spanned { node: t, span: dummy_sp() }
 }
 
-fn path_node(ids: ~[ast::ident]) -> @ast::Path {
-    @ast::Path { span: dummy_sp(),
+fn path_node(ids: ~[ast::ident]) -> ast::Path {
+    ast::Path { span: dummy_sp(),
                 global: false,
                 idents: ids,
                 rp: None,
                 types: ~[] }
 }
 
-fn path_node_global(ids: ~[ast::ident]) -> @ast::Path {
-    @ast::Path { span: dummy_sp(),
+fn path_node_global(ids: ~[ast::ident]) -> ast::Path {
+    ast::Path { span: dummy_sp(),
                  global: true,
                  idents: ids,
                  rp: None,

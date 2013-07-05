@@ -525,7 +525,7 @@ fn const_expr_unadjusted(cx: @mut CrateContext, e: &ast::expr) -> ValueRef {
               _ => cx.sess.span_bug(e.span, "bad const-slice expr")
             }
           }
-          ast::expr_path(pth) => {
+          ast::expr_path(ref pth) => {
             assert_eq!(pth.types.len(), 0);
             let tcx = cx.tcx;
             match tcx.def_map.find(&e.id) {

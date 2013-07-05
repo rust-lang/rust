@@ -139,7 +139,7 @@ pub fn visit_local<E: Copy>(loc: &local, (e, v): (E, vt<E>)) {
 }
 
 fn visit_trait_ref<E: Copy>(tref: &ast::trait_ref, (e, v): (E, vt<E>)) {
-    visit_path(tref.path, (e, v));
+    visit_path(&tref.path, (e, v));
 }
 
 pub fn visit_item<E: Copy>(i: &item, (e, v): (E, vt<E>)) {
@@ -197,7 +197,7 @@ pub fn visit_item<E: Copy>(i: &item, (e, v): (E, vt<E>)) {
         }
         item_trait(ref generics, ref traits, ref methods) => {
             (v.visit_generics)(generics, (copy e, v));
-            for traits.iter().advance |p| { visit_path(p.path, (copy e, v)); }
+            for traits.iter().advance |p| { visit_path(&p.path, (copy e, v)); }
             for methods.iter().advance |m| {
                 (v.visit_trait_method)(m, (copy e, v));
             }
@@ -252,7 +252,7 @@ pub fn visit_ty<E: Copy>(t: &Ty, (e, v): (E, vt<E>)) {
             for f.decl.inputs.iter().advance |a| { (v.visit_ty)(a.ty, (copy e, v)); }
             (v.visit_ty)(f.decl.output, (e, v));
         },
-        ty_path(p, bounds, _) => {
+        ty_path(ref p, bounds, _) => {
             visit_path(p, (copy e, v));
             do bounds.map |bounds| {
                 visit_ty_param_bounds(bounds, (copy e, v));
@@ -272,7 +272,7 @@ pub fn visit_path<E: Copy>(p: &Path, (e, v): (E, vt<E>)) {
 
 pub fn visit_pat<E: Copy>(p: &pat, (e, v): (E, vt<E>)) {
     match p.node {
-        pat_enum(path, ref children) => {
+        pat_enum(ref path, ref children) => {
             visit_path(path, (copy e, v));
             for children.iter().advance |children| {
                 for children.iter().advance |child| {
@@ -280,7 +280,7 @@ pub fn visit_pat<E: Copy>(p: &pat, (e, v): (E, vt<E>)) {
                 }
             }
         }
-        pat_struct(path, ref fields, _) => {
+        pat_struct(ref path, ref fields, _) => {
             visit_path(path, (copy e, v));
             for fields.iter().advance |f| {
                 (v.visit_pat)(f.pat, (copy e, v));
@@ -294,7 +294,7 @@ pub fn visit_pat<E: Copy>(p: &pat, (e, v): (E, vt<E>)) {
         pat_box(inner) | pat_uniq(inner) | pat_region(inner) => {
             (v.visit_pat)(inner, (e, v))
         },
-        pat_ident(_, path, ref inner) => {
+        pat_ident(_, ref path, ref inner) => {
             visit_path(path, (copy e, v));
             for inner.iter().advance |subpat| {
                 (v.visit_pat)(*subpat, (copy e, v))
@@ -458,7 +458,7 @@ pub fn visit_expr<E: Copy>(ex: @expr, (e, v): (E, vt<E>)) {
             (v.visit_expr)(element, (copy e, v));
             (v.visit_expr)(count, (copy e, v));
         }
-        expr_struct(p, ref flds, base) => {
+        expr_struct(ref p, ref flds, base) => {
             visit_path(p, (copy e, v));
             for flds.iter().advance |f| {
                 (v.visit_expr)(f.node.expr, (copy e, v));
@@ -534,7 +534,7 @@ pub fn visit_expr<E: Copy>(ex: @expr, (e, v): (E, vt<E>)) {
             (v.visit_expr)(a, (copy e, v));
             (v.visit_expr)(b, (copy e, v));
         }
-        expr_path(p) => visit_path(p, (copy e, v)),
+        expr_path(ref p) => visit_path(p, (copy e, v)),
         expr_self => (),
         expr_break(_) => (),
         expr_again(_) => (),

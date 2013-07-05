@@ -33,7 +33,7 @@ pub trait ast_fold {
     fn fold_foreign_mod(@self, &foreign_mod) -> foreign_mod;
     fn fold_variant(@self, &variant) -> variant;
     fn fold_ident(@self, ident) -> ident;
-    fn fold_path(@self, @Path) -> @Path;
+    fn fold_path(@self, &Path) -> Path;
     fn fold_local(@self, @local) -> @local;
     fn map_exprs(@self, @fn(@expr) -> @expr, &[@expr]) -> ~[@expr];
     fn new_id(@self, node_id) -> node_id;
@@ -62,7 +62,7 @@ pub struct AstFoldFns {
     fold_foreign_mod: @fn(&foreign_mod, @ast_fold) -> foreign_mod,
     fold_variant: @fn(&variant_, span, @ast_fold) -> (variant_, span),
     fold_ident: @fn(ident, @ast_fold) -> ident,
-    fold_path: @fn(@Path, @ast_fold) -> Path,
+    fold_path: @fn(&Path, @ast_fold) -> Path,
     fold_local: @fn(&local_, span, @ast_fold) -> (local_, span),
     map_exprs: @fn(@fn(@expr) -> @expr, &[@expr]) -> ~[@expr],
     new_id: @fn(node_id) -> node_id,
@@ -117,7 +117,7 @@ fn fold_arg_(a: arg, fld: @ast_fold) -> arg {
 fn fold_mac_(m: &mac, fld: @ast_fold) -> mac {
     spanned {
         node: match m.node {
-            mac_invoc_tt(p,ref tts) =>
+            mac_invoc_tt(ref p,ref tts) =>
             mac_invoc_tt(fld.fold_path(p),
                          fold_tts(*tts,fld))
         },
@@ -337,7 +337,7 @@ fn fold_struct_def(struct_def: @ast::struct_def, fld: @ast_fold)
 
 fn fold_trait_ref(p: @trait_ref, fld: @ast_fold) -> @trait_ref {
     @ast::trait_ref {
-        path: fld.fold_path(p.path),
+        path: fld.fold_path(&p.path),
         ref_id: fld.new_id(p.ref_id),
     }
 }
@@ -419,7 +419,7 @@ fn noop_fold_arm(a: &arm, fld: @ast_fold) -> arm {
 pub fn noop_fold_pat(p: &pat_, fld: @ast_fold) -> pat_ {
     match *p {
         pat_wild => pat_wild,
-        pat_ident(binding_mode, pth, ref sub) => {
+        pat_ident(binding_mode, ref pth, ref sub) => {
             pat_ident(
                 binding_mode,
                 fld.fold_path(pth),
@@ -427,13 +427,13 @@ pub fn noop_fold_pat(p: &pat_, fld: @ast_fold) -> pat_ {
             )
         }
         pat_lit(e) => pat_lit(fld.fold_expr(e)),
-        pat_enum(pth, ref pats) => {
+        pat_enum(ref pth, ref pats) => {
             pat_enum(
                 fld.fold_path(pth),
                 pats.map(|pats| pats.map(|x| fld.fold_pat(*x)))
             )
         }
-        pat_struct(pth, ref fields, etc) => {
+        pat_struct(ref pth, ref fields, etc) => {
             let pth_ = fld.fold_path(pth);
             let fs = do fields.map |f| {
                 ast::field_pat {
@@ -596,7 +596,7 @@ pub fn noop_fold_expr(e: &expr_, fld: @ast_fold) -> expr_ {
                 fld.fold_expr(er)
             )
         }
-        expr_path(pth) => expr_path(fld.fold_path(pth)),
+        expr_path(ref pth) => expr_path(fld.fold_path(pth)),
         expr_self => expr_self,
         expr_break(ref opt_ident) => {
             expr_break(opt_ident.map(|x| fld.fold_ident(*x)))
@@ -621,7 +621,7 @@ pub fn noop_fold_expr(e: &expr_, fld: @ast_fold) -> expr_ {
             })
         }
         expr_mac(ref mac) => expr_mac(fold_mac(mac)),
-        expr_struct(path, ref fields, maybe_expr) => {
+        expr_struct(ref path, ref fields, maybe_expr) => {
             expr_struct(
                 fld.fold_path(path),
                 fields.map(|x| fold_field(*x)),
@@ -682,7 +682,7 @@ pub fn noop_fold_ty(t: &ty_, fld: @ast_fold) -> ty_ {
             })
         }
         ty_tup(ref tys) => ty_tup(tys.map(|ty| fld.fold_ty(*ty))),
-        ty_path(path, bounds, id) =>
+        ty_path(ref path, bounds, id) =>
             ty_path(fld.fold_path(path), @fold_opt_bounds(bounds, fld), fld.new_id(id)),
         ty_fixed_length_vec(ref mt, e) => {
             ty_fixed_length_vec(
@@ -754,7 +754,7 @@ fn noop_fold_ident(i: ident, _fld: @ast_fold) -> ident {
     /* FIXME (#2543) */ copy i
 }
 
-fn noop_fold_path(p: @Path, fld: @ast_fold) -> Path {
+fn noop_fold_path(p: &Path, fld: @ast_fold) -> Path {
     ast::Path {
         span: fld.new_span(p.span),
         global: p.global,
@@ -907,8 +907,8 @@ impl ast_fold for AstFoldFns {
     fn fold_ident(@self, x: ident) -> ident {
         (self.fold_ident)(x, self as @ast_fold)
     }
-    fn fold_path(@self, x: @Path) -> @Path {
-        @(self.fold_path)(x, self as @ast_fold)
+    fn fold_path(@self, x: &Path) -> Path {
+        (self.fold_path)(x, self as @ast_fold)
     }
     fn fold_local(@self, x: @local) -> @local {
         let (n, s) = (self.fold_local)(&x.node, x.span, self as @ast_fold);

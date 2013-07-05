@@ -75,7 +75,7 @@ fn inject_libstd_ref(sess: Session, crate: &ast::crate) -> @ast::crate {
         fold_mod: |module, fld| {
             let n2 = sess.next_node_id();
 
-            let prelude_path = @ast::Path {
+            let prelude_path = ast::Path {
                 span: dummy_sp(),
                 global: false,
                 idents: ~[

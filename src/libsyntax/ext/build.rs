@@ -32,21 +32,21 @@ mod syntax {
 
 pub trait AstBuilder {
     // paths
-    fn path(&self, span: span, strs: ~[ast::ident]) -> @ast::Path;
-    fn path_ident(&self, span: span, id: ast::ident) -> @ast::Path;
-    fn path_global(&self, span: span, strs: ~[ast::ident]) -> @ast::Path;
+    fn path(&self, span: span, strs: ~[ast::ident]) -> ast::Path;
+    fn path_ident(&self, span: span, id: ast::ident) -> ast::Path;
+    fn path_global(&self, span: span, strs: ~[ast::ident]) -> ast::Path;
     fn path_all(&self, sp: span,
                 global: bool,
                 idents: ~[ast::ident],
                 rp: Option<@ast::Lifetime>,
                 types: ~[@ast::Ty])
-        -> @ast::Path;
+        -> ast::Path;
 
     // types
     fn ty_mt(&self, ty: @ast::Ty, mutbl: ast::mutability) -> ast::mt;
 
     fn ty(&self, span: span, ty: ast::ty_) -> @ast::Ty;
-    fn ty_path(&self, @ast::Path, @Option<OptVec<ast::TyParamBound>>) -> @ast::Ty;
+    fn ty_path(&self, ast::Path, @Option<OptVec<ast::TyParamBound>>) -> @ast::Ty;
     fn ty_ident(&self, span: span, idents: ast::ident) -> @ast::Ty;
 
     fn ty_rptr(&self, span: span,
@@ -68,8 +68,8 @@ pub trait AstBuilder {
 
     fn typaram(&self, id: ast::ident, bounds: @OptVec<ast::TyParamBound>) -> ast::TyParam;
 
-    fn trait_ref(&self, path: @ast::Path) -> @ast::trait_ref;
-    fn typarambound(&self, path: @ast::Path) -> ast::TyParamBound;
+    fn trait_ref(&self, path: ast::Path) -> @ast::trait_ref;
+    fn typarambound(&self, path: ast::Path) -> ast::TyParamBound;
     fn lifetime(&self, span: span, ident: ast::ident) -> ast::Lifetime;
 
     // statements
@@ -86,7 +86,7 @@ pub trait AstBuilder {
 
     // expressions
     fn expr(&self, span: span, node: ast::expr_) -> @ast::expr;
-    fn expr_path(&self, path: @ast::Path) -> @ast::expr;
+    fn expr_path(&self, path: ast::Path) -> @ast::expr;
     fn expr_ident(&self, span: span, id: ast::ident) -> @ast::expr;
 
     fn expr_self(&self, span: span) -> @ast::expr;
@@ -110,7 +110,7 @@ pub trait AstBuilder {
     fn expr_blk(&self, b: ast::blk) -> @ast::expr;
 
     fn field_imm(&self, span: span, name: ident, e: @ast::expr) -> ast::field;
-    fn expr_struct(&self, span: span, path: @ast::Path, fields: ~[ast::field]) -> @ast::expr;
+    fn expr_struct(&self, span: span, path: ast::Path, fields: ~[ast::field]) -> @ast::expr;
     fn expr_struct_ident(&self, span: span, id: ast::ident, fields: ~[ast::field]) -> @ast::expr;
 
     fn expr_lit(&self, sp: span, lit: ast::lit_) -> @ast::expr;
@@ -138,9 +138,9 @@ pub trait AstBuilder {
                               span: span,
                               ident: ast::ident,
                               bm: ast::binding_mode) -> @ast::pat;
-    fn pat_enum(&self, span: span, path: @ast::Path, subpats: ~[@ast::pat]) -> @ast::pat;
+    fn pat_enum(&self, span: span, path: ast::Path, subpats: ~[@ast::pat]) -> @ast::pat;
     fn pat_struct(&self, span: span,
-                  path: @ast::Path, field_pats: ~[ast::field_pat]) -> @ast::pat;
+                  path: ast::Path, field_pats: ~[ast::field_pat]) -> @ast::pat;
 
     fn arm(&self, span: span, pats: ~[@ast::pat], expr: @ast::expr) -> ast::arm;
     fn arm_unreachable(&self, span: span) -> ast::arm;
@@ -226,13 +226,13 @@ pub trait AstBuilder {
 }
 
 impl AstBuilder for @ExtCtxt {
-    fn path(&self, span: span, strs: ~[ast::ident]) -> @ast::Path {
+    fn path(&self, span: span, strs: ~[ast::ident]) -> ast::Path {
         self.path_all(span, false, strs, None, ~[])
     }
-    fn path_ident(&self, span: span, id: ast::ident) -> @ast::Path {
+    fn path_ident(&self, span: span, id: ast::ident) -> ast::Path {
         self.path(span, ~[id])
     }
-    fn path_global(&self, span: span, strs: ~[ast::ident]) -> @ast::Path {
+    fn path_global(&self, span: span, strs: ~[ast::ident]) -> ast::Path {
         self.path_all(span, true, strs, None, ~[])
     }
     fn path_all(&self, sp: span,
@@ -240,8 +240,8 @@ impl AstBuilder for @ExtCtxt {
                 idents: ~[ast::ident],
                 rp: Option<@ast::Lifetime>,
                 types: ~[@ast::Ty])
-        -> @ast::Path {
-        @ast::Path {
+        -> ast::Path {
+        ast::Path {
             span: sp,
             global: global,
             idents: idents,
@@ -265,7 +265,7 @@ impl AstBuilder for @ExtCtxt {
         }
     }
 
-    fn ty_path(&self, path: @ast::Path, bounds: @Option<OptVec<ast::TyParamBound>>)
+    fn ty_path(&self, path: ast::Path, bounds: @Option<OptVec<ast::TyParamBound>>)
               -> @ast::Ty {
         self.ty(path.span,
                 ast::ty_path(path, bounds, self.next_id()))
@@ -358,14 +358,14 @@ impl AstBuilder for @ExtCtxt {
         }
     }
 
-    fn trait_ref(&self, path: @ast::Path) -> @ast::trait_ref {
+    fn trait_ref(&self, path: ast::Path) -> @ast::trait_ref {
         @ast::trait_ref {
             path: path,
             ref_id: self.next_id()
         }
     }
 
-    fn typarambound(&self, path: @ast::Path) -> ast::TyParamBound {
+    fn typarambound(&self, path: ast::Path) -> ast::TyParamBound {
         ast::TraitTyParamBound(self.trait_ref(path))
     }
 
@@ -421,7 +421,7 @@ impl AstBuilder for @ExtCtxt {
         }
     }
 
-    fn expr_path(&self, path: @ast::Path) -> @ast::expr {
+    fn expr_path(&self, path: ast::Path) -> @ast::expr {
         self.expr(path.span, ast::expr_path(path))
     }
 
@@ -487,7 +487,7 @@ impl AstBuilder for @ExtCtxt {
     fn field_imm(&self, span: span, name: ident, e: @ast::expr) -> ast::field {
         respan(span, ast::field_ { ident: name, expr: e })
     }
-    fn expr_struct(&self, span: span, path: @ast::Path, fields: ~[ast::field]) -> @ast::expr {
+    fn expr_struct(&self, span: span, path: ast::Path, fields: ~[ast::field]) -> @ast::expr {
         self.expr(span, ast::expr_struct(path, fields, None))
     }
     fn expr_struct_ident(&self, span: span,
@@ -570,12 +570,12 @@ impl AstBuilder for @ExtCtxt {
         let pat = ast::pat_ident(bm, path, None);
         self.pat(span, pat)
     }
-    fn pat_enum(&self, span: span, path: @ast::Path, subpats: ~[@ast::pat]) -> @ast::pat {
+    fn pat_enum(&self, span: span, path: ast::Path, subpats: ~[@ast::pat]) -> @ast::pat {
         let pat = ast::pat_enum(path, Some(subpats));
         self.pat(span, pat)
     }
     fn pat_struct(&self, span: span,
-                  path: @ast::Path, field_pats: ~[ast::field_pat]) -> @ast::pat {
+                  path: ast::Path, field_pats: ~[ast::field_pat]) -> @ast::pat {
         let pat = ast::pat_struct(path, field_pats, false);
         self.pat(span, pat)
     }

@@ -255,10 +255,10 @@ pub enum pat_ {
     // which it is. The resolver determines this, and
     // records this pattern's node_id in an auxiliary
     // set (of "pat_idents that refer to nullary enums")
-    pat_ident(binding_mode, @Path, Option<@pat>),
-    pat_enum(@Path, Option<~[@pat]>), /* "none" means a * pattern where
+    pat_ident(binding_mode, Path, Option<@pat>),
+    pat_enum(Path, Option<~[@pat]>), /* "none" means a * pattern where
                                        * we don't bind the fields to names */
-    pat_struct(@Path, ~[field_pat], bool),
+    pat_struct(Path, ~[field_pat], bool),
     pat_tup(~[@pat]),
     pat_box(@pat),
     pat_uniq(@pat),
@@ -456,7 +456,7 @@ pub enum expr_ {
     expr_assign_op(node_id, binop, @expr, @expr),
     expr_field(@expr, ident, ~[@Ty]),
     expr_index(node_id, @expr, @expr),
-    expr_path(@Path),
+    expr_path(Path),
 
     /// The special identifier `self`.
     expr_self,
@@ -471,7 +471,7 @@ pub enum expr_ {
     expr_mac(mac),
 
     // A struct literal expression.
-    expr_struct(@Path, ~[field], Option<@expr>),
+    expr_struct(Path, ~[field], Option<@expr>),
 
     // A vector literal constructed from one repeated element.
     expr_repeat(@expr /* element */, @expr /* count */, mutability),
@@ -583,7 +583,7 @@ pub type mac = spanned<mac_>;
 
 #[deriving(Eq, Encodable, Decodable,IterBytes)]
 pub enum mac_ {
-    mac_invoc_tt(@Path,~[token_tree]),   // new macro-invocation
+    mac_invoc_tt(Path,~[token_tree]),   // new macro-invocation
 }
 
 pub type lit = spanned<lit_>;
@@ -734,7 +734,7 @@ pub enum ty_ {
     ty_closure(@TyClosure),
     ty_bare_fn(@TyBareFn),
     ty_tup(~[@Ty]),
-    ty_path(@Path, @Option<OptVec<TyParamBound>>, node_id), // for #7264; see above
+    ty_path(Path, @Option<OptVec<TyParamBound>>, node_id), // for #7264; see above
     ty_mac(mac),
     // ty_infer means the type should be inferred instead of it having been
     // specified. This should only appear at the "top level" of a type and not
@@ -890,13 +890,13 @@ pub enum view_path_ {
     // or just
     //
     // foo::bar::baz  (with 'baz =' implicitly on the left)
-    view_path_simple(ident, @Path, node_id),
+    view_path_simple(ident, Path, node_id),
 
     // foo::bar::*
-    view_path_glob(@Path, node_id),
+    view_path_glob(Path, node_id),
 
     // foo::bar::{a,b,c}
-    view_path_list(@Path, ~[path_list_ident], node_id)
+    view_path_list(Path, ~[path_list_ident], node_id)
 }
 
 #[deriving(Eq, Encodable, Decodable,IterBytes)]
@@ -939,7 +939,7 @@ pub struct attribute_ {
  */
 #[deriving(Eq, Encodable, Decodable,IterBytes)]
 pub struct trait_ref {
-    path: @Path,
+    path: Path,
     ref_id: node_id,
 }
 

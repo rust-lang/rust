@@ -366,7 +366,7 @@ mod test {
     #[test] fn path_exprs_1 () {
         assert_eq!(string_to_expr(@"a"),
                    @ast::expr{id:1,
-                              node:ast::expr_path(@ast::Path {span:sp(0,1),
+                              node:ast::expr_path(ast::Path {span:sp(0,1),
                                                               global:false,
                                                               idents:~[str_to_ident("a")],
                                                               rp:None,
@@ -378,7 +378,7 @@ mod test {
         assert_eq!(string_to_expr(@"::a::b"),
                    @ast::expr{id:1,
                                node:ast::expr_path(
-                                   @ast::Path {span:sp(0,6),
+                                    ast::Path {span:sp(0,6),
                                                global:true,
                                                idents:strs_to_idents(~["a","b"]),
                                                rp:None,
@@ -428,7 +428,7 @@ mod test {
                               node:ast::expr_ret(
                                   Some(@ast::expr{id:1,
                                                   node:ast::expr_path(
-                                                      @ast::Path{span:sp(7,8),
+                                                       ast::Path{span:sp(7,8),
                                                                  global:false,
                                                                  idents:~[str_to_ident("d")],
                                                                  rp:None,
@@ -444,7 +444,7 @@ mod test {
                        node: ast::stmt_expr(@ast::expr{
                            id: 1,
                            node: ast::expr_path(
-                               @ast::Path{
+                                ast::Path{
                                    span:sp(0,1),
                                    global:false,
                                    idents:~[str_to_ident("b")],
@@ -465,7 +465,7 @@ mod test {
         assert_eq!(parser.parse_pat(),
                    @ast::pat{id:1, // fixme
                              node: ast::pat_ident(ast::bind_infer,
-                                                  @ast::Path{
+                                                   ast::Path{
                                                       span:sp(0,1),
                                                       global:false,
                                                       idents:~[str_to_ident("b")],
@@ -483,7 +483,7 @@ mod test {
                    ast::arg{
                        is_mutbl: false,
                        ty: @ast::Ty{id:3, // fixme
-                                    node: ast::ty_path(@ast::Path{
+                                    node: ast::ty_path(ast::Path{
                                         span:sp(4,4), // this is bizarre...
                                         // check this in the original parser?
                                         global:false,
@@ -494,7 +494,7 @@ mod test {
                                     span:sp(4,7)},
                        pat: @ast::pat{id:1,
                                       node: ast::pat_ident(ast::bind_infer,
-                                                           @ast::Path{
+                                                            ast::Path{
                                                                span:sp(0,1),
                                                                global:false,
                                                                idents:~[str_to_ident("b")],
@@ -520,7 +520,7 @@ mod test {
                                 inputs: ~[ast::arg{
                                     is_mutbl: false,
                                     ty: @ast::Ty{id:3, // fixme
-                                                node: ast::ty_path(@ast::Path{
+                                                node: ast::ty_path(ast::Path{
                                         span:sp(10,13),
                                         global:false,
                                         idents:~[str_to_ident("int")],
@@ -531,7 +531,7 @@ mod test {
                                     pat: @ast::pat{id:1, // fixme
                                                    node: ast::pat_ident(
                                                        ast::bind_infer,
-                                                       @ast::Path{
+                                                       ast::Path{
                                                            span:sp(6,7),
                                                            global:false,
                                                            idents:~[str_to_ident("b")],
@@ -561,7 +561,7 @@ mod test {
                                                 node: ast::stmt_semi(@ast::expr{
                                                     id: 6,
                                                     node: ast::expr_path(
-                                                        @ast::Path{
+                                                          ast::Path{
                                                             span:sp(17,18),
                                                             global:false,
                                                             idents:~[str_to_ident("b")],

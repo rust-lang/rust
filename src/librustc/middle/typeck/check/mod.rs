@@ -489,7 +489,7 @@ pub fn check_fn(ccx: @mut CrateCtxt,
         // Add pattern bindings.
         let visit_pat: @fn(@ast::pat, ((), visit::vt<()>)) = |p, (e, v)| {
             match p.node {
-              ast::pat_ident(_, path, _)
+              ast::pat_ident(_, ref path, _)
                   if pat_util::pat_is_binding(fcx.ccx.tcx.def_map, p) => {
                 assign(p.id, None);
                 debug!("Pattern binding %s is assigned to %s",
@@ -2437,7 +2437,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         };
         fcx.write_ty(id, oprnd_t);
       }
-      ast::expr_path(pth) => {
+      ast::expr_path(ref pth) => {
         let defn = lookup_def(fcx, pth.span, id);
 
         let tpt = ty_param_bounds_and_ty_for_def(fcx, expr.span, defn);
@@ -2775,7 +2775,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
             fcx.write_ty(id, typ);
         }
       }
-      ast::expr_struct(path, ref fields, base_expr) => {
+      ast::expr_struct(ref path, ref fields, base_expr) => {
         // Resolve the path.
         match tcx.def_map.find(&id) {
             Some(&ast::def_struct(type_def_id)) => {
@@ -3286,7 +3286,7 @@ pub fn ty_param_bounds_and_ty_for_def(fcx: @mut FnCtxt,
 // Instantiates the given path, which must refer to an item with the given
 // number of type parameters and type.
 pub fn instantiate_path(fcx: @mut FnCtxt,
-                        pth: @ast::Path,
+                        pth: &ast::Path,
                         tpt: ty_param_bounds_and_ty,
                         span: span,
                         node_id: ast::node_id) {

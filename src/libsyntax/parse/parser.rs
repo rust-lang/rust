@@ -130,20 +130,28 @@ The important thing is to make sure that lookahead doesn't balk
 at INTERPOLATED tokens */
 macro_rules! maybe_whole_expr (
     ($p:expr) => (
-        match *($p).token {
-            INTERPOLATED(token::nt_expr(e)) => {
-                $p.bump();
-                return e;
+        {
+            // This horrible convolution is brought to you by
+            // @mut, have a terrible day
+            let ret = match *($p).token {
+                INTERPOLATED(token::nt_expr(e)) => {
+                    Some(e)
+                }
+                INTERPOLATED(token::nt_path(ref pt)) => {
+                    Some($p.mk_expr(
+                        ($p).span.lo,
+                        ($p).span.hi,
+                        expr_path(/* bad */ copy *pt)))
+                }
+                _ => None
+            };
+            match ret {
+                Some(e) => {
+                    $p.bump();
+                    return e;
+                }
+                None => ()
             }
-            INTERPOLATED(token::nt_path(pt)) => {
-                $p.bump();
-                return $p.mk_expr(
-                    ($p).span.lo,
-                    ($p).span.hi,
-                    expr_path(pt)
-                );
-            }
-            _ => ()
         }
     )
 )
@@ -1218,10 +1226,10 @@ impl Parser {
     }
 
     // parse a path that doesn't have type parameters attached
-    pub fn parse_path_without_tps(&self) -> @ast::Path {
+    pub fn parse_path_without_tps(&self) -> ast::Path {
         maybe_whole!(self, nt_path);
         let (ids,is_global,sp) = self.parse_path();
-        @ast::Path { span: sp,
+        ast::Path { span: sp,
                      global: is_global,
                      idents: ids,
                      rp: None,
@@ -1229,7 +1237,7 @@ impl Parser {
     }
 
     pub fn parse_bounded_path_with_tps(&self, colons: bool,
-                                        before_tps: Option<&fn()>) -> @ast::Path {
+                                        before_tps: Option<&fn()>) -> ast::Path {
         debug!("parse_path_with_tps(colons=%b)", colons);
 
         maybe_whole!(self, nt_path);
@@ -1288,22 +1296,22 @@ impl Parser {
             }
         };
 
-        @ast::Path { span: mk_sp(lo, hi),
+        ast::Path { span: mk_sp(lo, hi),
                      rp: rp,
                      types: tps,
-                     .. copy *path }
+                     .. path }
     }
 
     // parse a path optionally with type parameters. If 'colons'
     // is true, then type parameters must be preceded by colons,
     // as in a::t::<t1,t2>
-    pub fn parse_path_with_tps(&self, colons: bool) -> @ast::Path {
+    pub fn parse_path_with_tps(&self, colons: bool) -> ast::Path {
         self.parse_bounded_path_with_tps(colons, None)
     }
 
     // Like the above, but can also parse kind bounds in the case of a
     // path to be used as a type that might be a trait.
-    pub fn parse_type_path(&self) -> (@ast::Path, Option<OptVec<TyParamBound>>) {
+    pub fn parse_type_path(&self) -> (ast::Path, Option<OptVec<TyParamBound>>) {
         let mut bounds = None;
         let path = self.parse_bounded_path_with_tps(false, Some(|| {
             // Note: this closure might not even get called in the case of a
@@ -3557,9 +3565,9 @@ impl Parser {
         let opt_trait = if could_be_trait && self.eat_keyword(keywords::For) {
             // New-style trait. Reinterpret the type as a trait.
             let opt_trait_ref = match ty.node {
-                ty_path(path, @None, node_id) => {
+                ty_path(ref path, @None, node_id) => {
                     Some(@trait_ref {
-                        path: path,
+                        path: /* bad */ copy *path,
                         ref_id: node_id
                     })
                 }
@@ -4558,7 +4566,7 @@ impl Parser {
                 let id = self.parse_ident();
                 path.push(id);
             }
-            let path = @ast::Path { span: mk_sp(lo, self.span.hi),
+            let path = ast::Path { span: mk_sp(lo, self.span.hi),
                                     global: false,
                                     idents: path,
                                     rp: None,
@@ -4588,7 +4596,7 @@ impl Parser {
                         seq_sep_trailing_allowed(token::COMMA),
                         |p| p.parse_path_list_ident()
                     );
-                    let path = @ast::Path { span: mk_sp(lo, self.span.hi),
+                    let path = ast::Path { span: mk_sp(lo, self.span.hi),
                                             global: false,
                                             idents: path,
                                             rp: None,
@@ -4600,7 +4608,7 @@ impl Parser {
                   // foo::bar::*
                   token::BINOP(token::STAR) => {
                     self.bump();
-                    let path = @ast::Path { span: mk_sp(lo, self.span.hi),
+                    let path = ast::Path { span: mk_sp(lo, self.span.hi),
                                             global: false,
                                             idents: path,
                                             rp: None,
@@ -4616,7 +4624,7 @@ impl Parser {
           _ => ()
         }
         let last = path[path.len() - 1u];
-        let path = @ast::Path { span: mk_sp(lo, self.span.hi),
+        let path = ast::Path { span: mk_sp(lo, self.span.hi),
                                 global: false,
                                 idents: path,
                                 rp: None,

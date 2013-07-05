@@ -136,7 +136,7 @@ fn ast_path_substs<AC:AstConv,RS:region_scope + Copy + 'static>(
     def_id: ast::def_id,
     decl_generics: &ty::Generics,
     self_ty: Option<ty::t>,
-    path: @ast::Path) -> ty::substs
+    path: &ast::Path) -> ty::substs
 {
     /*!
      *
@@ -188,7 +188,7 @@ pub fn ast_path_to_substs_and_ty<AC:AstConv,RS:region_scope + Copy + 'static>(
     this: &AC,
     rscope: &RS,
     did: ast::def_id,
-    path: @ast::Path) -> ty_param_substs_and_ty
+    path: &ast::Path) -> ty_param_substs_and_ty
 {
     let tcx = this.tcx();
     let ty::ty_param_bounds_and_ty {
@@ -206,7 +206,7 @@ pub fn ast_path_to_trait_ref<AC:AstConv,RS:region_scope + Copy + 'static>(
     rscope: &RS,
     trait_def_id: ast::def_id,
     self_ty: Option<ty::t>,
-    path: @ast::Path) -> @ty::TraitRef
+    path: &ast::Path) -> @ty::TraitRef
 {
     let trait_def =
         this.get_trait_def(trait_def_id);
@@ -228,7 +228,7 @@ pub fn ast_path_to_ty<AC:AstConv,RS:region_scope + Copy + 'static>(
         this: &AC,
         rscope: &RS,
         did: ast::def_id,
-        path: @ast::Path)
+        path: &ast::Path)
      -> ty_param_substs_and_ty
 {
     // Look up the polytype of the item and then substitute the provided types
@@ -276,7 +276,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Copy + 'static>(
                 }
                 return ty::mk_evec(tcx, mt, vst);
             }
-            ast::ty_path(path, bounds, id) => {
+            ast::ty_path(ref path, bounds, id) => {
                 // Note that the "bounds must be empty if path is not a trait"
                 // restriction is enforced in the below case for ty_path, which
                 // will run after this as long as the path isn't a trait.
@@ -321,7 +321,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Copy + 'static>(
     }
 
     fn check_path_args(tcx: ty::ctxt,
-                       path: @ast::Path,
+                       path: &ast::Path,
                        flags: uint) {
         if (flags & NO_TPS) != 0u {
             if path.types.len() > 0u {
@@ -405,7 +405,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Copy + 'static>(
                                       ast_ty.span);
           ty::mk_closure(tcx, fn_decl)
       }
-      ast::ty_path(path, bounds, id) => {
+      ast::ty_path(ref path, bounds, id) => {
         let a_def = match tcx.def_map.find(&id) {
           None => tcx.sess.span_fatal(
               ast_ty.span, fmt!("unbound path %s",

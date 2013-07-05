@@ -179,7 +179,7 @@ pub fn generics_to_str(generics: &ast::Generics,
     to_str(generics, print_generics, intr)
 }
 
-pub fn path_to_str(p: @ast::Path, intr: @ident_interner) -> ~str {
+pub fn path_to_str(p: &ast::Path, intr: @ident_interner) -> ~str {
     to_str(p, |a,b| print_path(a, b, false), intr)
 }
 
@@ -419,7 +419,7 @@ pub fn print_type(s: @ps, ty: @ast::Ty) {
                       f.purity, f.onceness, &f.decl, None, &f.bounds,
                       Some(&generics), None);
       }
-      ast::ty_path(path, bounds, _) => print_bounded_path(s, path, bounds),
+      ast::ty_path(ref path, bounds, _) => print_bounded_path(s, path, bounds),
       ast::ty_fixed_length_vec(ref mt, v) => {
         word(s.s, "[");
         match mt.mutbl {
@@ -600,7 +600,7 @@ pub fn print_item(s: @ps, item: @ast::item) {
                 if i != 0 {
                     word_space(s, "+");
                 }
-                print_path(s, trait_.path, false);
+                print_path(s, &trait_.path, false);
             }
         }
         word(s.s, " ");
@@ -610,7 +610,7 @@ pub fn print_item(s: @ps, item: @ast::item) {
         }
         bclose(s, item.span);
       }
-      ast::item_mac(codemap::spanned { node: ast::mac_invoc_tt(pth, ref tts),
+      ast::item_mac(codemap::spanned { node: ast::mac_invoc_tt(ref pth, ref tts),
                                    _}) => {
         print_visibility(s, item.vis);
         print_path(s, pth, false);
@@ -627,7 +627,7 @@ pub fn print_item(s: @ps, item: @ast::item) {
 }
 
 fn print_trait_ref(s: @ps, t: &ast::trait_ref) {
-    print_path(s, t.path, false);
+    print_path(s, &t.path, false);
 }
 
 pub fn print_enum_def(s: @ps, enum_definition: &ast::enum_def,
@@ -1005,7 +1005,7 @@ pub fn print_if(s: @ps, test: @ast::expr, blk: &ast::blk,
 
 pub fn print_mac(s: @ps, m: &ast::mac) {
     match m.node {
-      ast::mac_invoc_tt(pth, ref tts) => {
+      ast::mac_invoc_tt(ref pth, ref tts) => {
         print_path(s, pth, false);
         word(s.s, "!");
         popen(s);
@@ -1134,7 +1134,7 @@ pub fn print_expr(s: @ps, expr: @ast::expr) {
         end(s);
       }
 
-      ast::expr_struct(path, ref fields, wth) => {
+      ast::expr_struct(ref path, ref fields, wth) => {
         print_path(s, path, true);
         word(s.s, "{");
         commasep_cmnt(s, consistent, (*fields), print_field, get_span);
@@ -1359,7 +1359,7 @@ pub fn print_expr(s: @ps, expr: @ast::expr) {
         print_expr(s, index);
         word(s.s, "]");
       }
-      ast::expr_path(path) => print_path(s, path, true),
+      ast::expr_path(ref path) => print_path(s, path, true),
       ast::expr_self => word(s.s, "self"),
       ast::expr_break(opt_ident) => {
         word(s.s, "break");
@@ -1486,7 +1486,7 @@ pub fn print_for_decl(s: @ps, loc: @ast::local, coll: @ast::expr) {
     print_expr(s, coll);
 }
 
-fn print_path_(s: @ps, path: @ast::Path, colons_before_params: bool,
+fn print_path_(s: @ps, path: &ast::Path, colons_before_params: bool,
                opt_bounds: &Option<OptVec<ast::TyParamBound>>) {
     maybe_print_comment(s, path.span.lo);
     if path.global { word(s.s, "::"); }
@@ -1518,11 +1518,11 @@ fn print_path_(s: @ps, path: @ast::Path, colons_before_params: bool,
     }
 }
 
-pub fn print_path(s: @ps, path: @ast::Path, colons_before_params: bool) {
+pub fn print_path(s: @ps, path: &ast::Path, colons_before_params: bool) {
     print_path_(s, path, colons_before_params, &None)
 }
 
-pub fn print_bounded_path(s: @ps, path: @ast::Path,
+pub fn print_bounded_path(s: @ps, path: &ast::Path,
                           bounds: &Option<OptVec<ast::TyParamBound>>) {
     print_path_(s, path, false, bounds)
 }
@@ -1543,7 +1543,7 @@ pub fn print_pat(s: @ps, pat: @ast::pat, refutable: bool) {
      is that it doesn't matter */
     match pat.node {
       ast::pat_wild => word(s.s, "_"),
-      ast::pat_ident(binding_mode, path, sub) => {
+      ast::pat_ident(binding_mode, ref path, sub) => {
           if refutable {
               match binding_mode {
                   ast::bind_by_ref(mutbl) => {
@@ -1562,7 +1562,7 @@ pub fn print_pat(s: @ps, pat: @ast::pat, refutable: bool) {
               None => ()
           }
       }
-      ast::pat_enum(path, ref args_) => {
+      ast::pat_enum(ref path, ref args_) => {
         print_path(s, path, true);
         match *args_ {
           None => word(s.s, "(*)"),
@@ -1576,7 +1576,7 @@ pub fn print_pat(s: @ps, pat: @ast::pat, refutable: bool) {
           }
         }
       }
-      ast::pat_struct(path, ref fields, etc) => {
+      ast::pat_struct(ref path, ref fields, etc) => {
         print_path(s, path, true);
         word(s.s, "{");
         fn print_field(s: @ps, f: ast::field_pat, refutable: bool) {
@@ -1815,7 +1815,7 @@ pub fn print_meta_item(s: @ps, item: @ast::meta_item) {
 
 pub fn print_view_path(s: @ps, vp: @ast::view_path) {
     match vp.node {
-      ast::view_path_simple(ident, path, _) => {
+      ast::view_path_simple(ident, ref path, _) => {
         if path.idents[path.idents.len()-1u] != ident {
             print_ident(s, ident);
             space(s.s);
@@ -1824,12 +1824,12 @@ pub fn print_view_path(s: @ps, vp: @ast::view_path) {
         print_path(s, path, false);
       }
 
-      ast::view_path_glob(path, _) => {
+      ast::view_path_glob(ref path, _) => {
         print_path(s, path, false);
         word(s.s, "::*");
       }
 
-      ast::view_path_list(path, ref idents, _) => {
+      ast::view_path_list(ref path, ref idents, _) => {
         print_path(s, path, false);
         word(s.s, "::{");
         do commasep(s, inconsistent, (*idents)) |s, w| {
@@ -1892,7 +1892,7 @@ pub fn print_arg(s: @ps, input: ast::arg) {
       ast::ty_infer => print_irrefutable_pat(s, input.pat),
       _ => {
         match input.pat.node {
-            ast::pat_ident(_, path, _) if
+            ast::pat_ident(_, ref path, _) if
                 path.idents.len() == 1 &&
                 path.idents[0] == parse::token::special_idents::invalid => {
                 // Do nothing.
