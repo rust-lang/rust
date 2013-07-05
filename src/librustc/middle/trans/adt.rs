@@ -147,7 +147,7 @@ fn represent_type_uncached(cx: &mut CrateContext, t: ty::t) -> Repr {
                     mk_struct(cx, self.tys, false).size == 0
                 }
                 fn find_ptr(&self) -> Option<uint> {
-                    self.tys.iter().position_(|&ty| mono_data_classify(ty) == MonoNonNull)
+                    self.tys.iter().position(|&ty| mono_data_classify(ty) == MonoNonNull)
                 }
             }
 

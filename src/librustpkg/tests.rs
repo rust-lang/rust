@@ -626,14 +626,14 @@ fn install_remove() {
     command_line_test([~"install", ~"bar"], &dir);
     command_line_test([~"install", ~"quux"], &dir);
     let list_output = command_line_test_output([~"list"]);
-    assert!(list_output.iter().any_(|x| x == &~"foo"));
-    assert!(list_output.iter().any_(|x| x == &~"bar"));
-    assert!(list_output.iter().any_(|x| x == &~"quux"));
+    assert!(list_output.iter().any(|x| x == &~"foo"));
+    assert!(list_output.iter().any(|x| x == &~"bar"));
+    assert!(list_output.iter().any(|x| x == &~"quux"));
     command_line_test([~"remove", ~"foo"], &dir);
     let list_output = command_line_test_output([~"list"]);
-    assert!(!list_output.iter().any_(|x| x == &~"foo"));
-    assert!(list_output.iter().any_(|x| x == &~"bar"));
-    assert!(list_output.iter().any_(|x| x == &~"quux"));
+    assert!(!list_output.iter().any(|x| x == &~"foo"));
+    assert!(list_output.iter().any(|x| x == &~"bar"));
+    assert!(list_output.iter().any(|x| x == &~"quux"));
 }
 
 #[test]
@@ -699,7 +699,7 @@ fn test_versions() {
     command_line_test([~"install", ~"foo#0.1"], &workspace);
     let output = command_line_test_output([~"list"]);
     // make sure output includes versions
-    assert!(!output.iter().any_(|x| x == &~"foo#0.2"));
+    assert!(!output.iter().any(|x| x == &~"foo#0.2"));
 }
 
 #[test]

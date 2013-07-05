@@ -55,7 +55,7 @@ pub fn root() -> Path {
 }
 
 pub fn is_cmd(cmd: &str) -> bool {
-    COMMANDS.iter().any_(|&c| c == cmd)
+    COMMANDS.iter().any(|&c| c == cmd)
 }
 
 struct ListenerFn {

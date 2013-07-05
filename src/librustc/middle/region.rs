@@ -78,7 +78,7 @@ impl RegionMaps {
     pub fn relate_free_regions(&mut self, sub: FreeRegion, sup: FreeRegion) {
         match self.free_region_map.find_mut(&sub) {
             Some(sups) => {
-                if !sups.iter().any_(|x| x == &sup) {
+                if !sups.iter().any(|x| x == &sup) {
                     sups.push(sup);
                 }
                 return;
@@ -202,7 +202,7 @@ impl RegionMaps {
                             return true;
                         }
 
-                        if !queue.iter().any_(|x| x == parent) {
+                        if !queue.iter().any(|x| x == parent) {
                             queue.push(*parent);
                         }
                     }
@@ -612,7 +612,7 @@ impl DetermineRpCtxt {
             ambient_variance: self.ambient_variance,
             id: self.item_id
         };
-        if !vec.iter().any_(|x| x == &dep) { vec.push(dep); }
+        if !vec.iter().any(|x| x == &dep) { vec.push(dep); }
     }
 
     // Determines whether a reference to a region that appears in the

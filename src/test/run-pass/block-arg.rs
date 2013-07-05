@@ -20,20 +20,20 @@ pub fn main() {
     }
 
     // Usable at all:
-    let mut any_negative = do v.iter().any_ |e| { e.is_negative() };
+    let mut any_negative = do v.iter().any |e| { e.is_negative() };
     assert!(any_negative);
 
     // Higher precedence than assignments:
-    any_negative = do v.iter().any_ |e| { e.is_negative() };
+    any_negative = do v.iter().any |e| { e.is_negative() };
     assert!(any_negative);
 
     // Higher precedence than unary operations:
     let abs_v = do v.iter().transform |e| { e.abs() }.collect::<~[float]>();
     assert!(do abs_v.iter().all |e| { e.is_positive() });
-    assert!(!do abs_v.iter().any_ |e| { e.is_negative() });
+    assert!(!do abs_v.iter().any |e| { e.is_negative() });
 
     // Usable in funny statement-like forms:
-    if !do v.iter().any_ |e| { e.is_positive() } {
+    if !do v.iter().any |e| { e.is_positive() } {
         assert!(false);
     }
     match do v.iter().all |e| { e.is_negative() } {
@@ -41,7 +41,7 @@ pub fn main() {
         false => { }
     }
     match 3 {
-      _ if do v.iter().any_ |e| { e.is_negative() } => {
+      _ if do v.iter().any |e| { e.is_negative() } => {
       }
       _ => {
         fail!("wrong answer.");
@@ -58,7 +58,7 @@ pub fn main() {
 
     // In the tail of a block
     let w =
-        if true { do abs_v.iter().any_ |e| { e.is_positive() } }
+        if true { do abs_v.iter().any |e| { e.is_positive() } }
       else { false };
     assert!(w);
 }
