@@ -604,7 +604,7 @@ fn expand_non_macro_stmt (exts: SyntaxEnv,
 
 
 // return a visitor that extracts the pat_ident paths
-// from a given pattern and puts them in a mutable
+// from a given thingy and puts them in a mutable
 // array (passed in to the traversal)
 pub fn new_name_finder() -> @Visitor<@mut ~[ast::ident]> {
     let default_visitor = visit::default_visitor();
@@ -635,7 +635,7 @@ pub fn new_name_finder() -> @Visitor<@mut ~[ast::ident]> {
 }
 
 // return a visitor that extracts the paths
-// from a given pattern and puts them in a mutable
+// from a given thingy and puts them in a mutable
 // array (passed in to the traversal)
 pub fn new_path_finder() -> @Visitor<@mut ~[@ast::Path]> {
     let default_visitor = visit::default_visitor();
@@ -654,6 +654,24 @@ pub fn new_path_finder() -> @Visitor<@mut ~[@ast::Path]> {
         .. *default_visitor
     }
 }
+
+// return a visitor that extracts the exprs
+// from a given thingy and puts them in a mutable
+// array. Maybe it's time for some abstraction, here....
+pub fn new_expr_finder() -> @Visitor<@mut ~[@ast::expr]> {
+    let default_visitor = visit::default_visitor();
+    @Visitor{
+        visit_expr :
+            |e:@ast::expr,
+             (path_accum, v):(@mut ~[@ast::expr], visit::vt<@mut ~[@ast::expr]>)| {
+            path_accum.push(e);
+            // call the built-in one as well to recur:
+            visit::visit_expr(e,(path_accum,v))
+        },
+        .. *default_visitor
+    }
+}
+
 
 // given a mutable list of renames, return a tree-folder that applies those
 // renames.
@@ -675,6 +693,7 @@ pub fn renames_to_fold(renames : @mut ~[(ast::ident,ast::Name)]) -> @ast_fold {
 }
 
 
+// expand a block. pushes a new exts_frame, then calls expand_block_elts
 pub fn expand_block(extsbox: @mut SyntaxEnv,
                     _cx: @ExtCtxt,
                     blk: &Block,
@@ -686,7 +705,7 @@ pub fn expand_block(extsbox: @mut SyntaxEnv,
                      expand_block_elts(*extsbox, blk, fld))
 }
 
-
+// expand the elements of a block.
 pub fn expand_block_elts(exts: SyntaxEnv, b: &Block, fld: @ast_fold) -> Block {
     let block_info = get_block_info(exts);
     let pending_renames = block_info.pending_renames;
@@ -711,6 +730,7 @@ pub fn expand_block_elts(exts: SyntaxEnv, b: &Block, fld: @ast_fold) -> Block {
 }
 
 // rename_fold should never return "None".
+// (basically, just .get() with a better message...)
 fn mustbesome<T>(val : Option<T>) -> T {
     match val {
         Some(v) => v,
@@ -733,8 +753,8 @@ pub fn new_span(cx: @ExtCtxt, sp: span) -> span {
 }
 
 // FIXME (#2247): this is a moderately bad kludge to inject some macros into
-// the default compilation environment. It would be much nicer to use
-// a mechanism like syntax_quote to ensure hygiene.
+// the default compilation environment in that it injects strings, rather than
+// syntax elements.
 
 pub fn std_macros() -> @str {
     return
@@ -1062,6 +1082,10 @@ pub fn fun_to_ctxt_folder<T : 'static + CtxtFn>(cf: @T) -> @AstFoldFns {
         |ast::ident{name, ctxt}, _| {
         ast::ident{name:name,ctxt:cf.f(ctxt)}
     };
+    // we've also got to pick up macro invocations; they can
+    // appear as exprs, stmts, items, and types. urg, it's going
+    // to be easier just to add a fold_mac, I think.
+    //let fold_ex : @
     @AstFoldFns{
         fold_ident : fi,
         // check that it works, then add the fold_expr clause....
@@ -1241,6 +1265,7 @@ mod test {
 
         // try a double-rename, with pending_renames.
         let a3_name = gensym("a3");
+        // a context that renames from ("a",empty) to "a2" :
         let ctxt2 = new_rename(new_ident(a_name),a2_name,empty_ctxt);
         let pending_renames = @mut ~[(new_ident(a_name),a2_name),
                                      (ast::ident{name:a_name,ctxt:ctxt2},a3_name)];
@@ -1248,7 +1273,7 @@ mod test {
         let varrefs = @mut ~[];
         visit::visit_crate(&double_renamed, (varrefs, mk_vt(pv)));
         match varrefs {
-            @[@Path{idents:[id],_}] => assert_eq!(mtwt_resolve(id),a2_name),
+            @[@Path{idents:[id],_}] => assert_eq!(mtwt_resolve(id),a3_name),
             _ => assert_eq!(0,1)
         }
     }
