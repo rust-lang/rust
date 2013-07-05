@@ -57,23 +57,25 @@ impl<K: Eq + TotalOrd, V: Eq> Eq for TreeMap<K, V> {
 }
 
 // Lexicographical comparison
-fn lt<K: Ord + TotalOrd, V>(a: &TreeMap<K, V>,
+fn lt<K: Ord + TotalOrd, V: Ord>(a: &TreeMap<K, V>,
                                  b: &TreeMap<K, V>) -> bool {
     let mut x = a.iter();
     let mut y = b.iter();
 
     let (a_len, b_len) = (a.len(), b.len());
     for uint::min(a_len, b_len).times {
-        let (key_a,_) = x.next().unwrap();
-        let (key_b,_) = y.next().unwrap();
+        let (key_a, value_a) = x.next().unwrap();
+        let (key_b, value_b) = y.next().unwrap();
         if *key_a < *key_b { return true; }
         if *key_a > *key_b { return false; }
-    };
+        if *value_a < *value_b { return true; }
+        if *value_a > *value_b { return false; }
+    }
 
     a_len < b_len
 }
 
-impl<K: Ord + TotalOrd, V> Ord for TreeMap<K, V> {
+impl<K: Ord + TotalOrd, V: Ord> Ord for TreeMap<K, V> {
     #[inline]
     fn lt(&self, other: &TreeMap<K, V>) -> bool { lt(self, other) }
     #[inline]
@@ -935,7 +937,7 @@ mod test_treemap {
         assert!(b.insert(0, 5));
         assert!(a < b);
         assert!(a.insert(0, 7));
-        assert!(!(a < b) && !(b < a));
+        assert!(!(a < b) && b < a);
         assert!(b.insert(-2, 0));
         assert!(b < a);
         assert!(a.insert(-5, 2));
