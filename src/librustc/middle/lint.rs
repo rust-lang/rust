@@ -966,10 +966,6 @@ fn lint_unused_mut() -> visit::vt<@mut Context> {
             visit_fn_decl(cx, &tm.decl);
             visit::visit_ty_method(tm, (cx, vt));
         },
-        visit_struct_method: |sm, (cx, vt)| {
-            visit_fn_decl(cx, &sm.decl);
-            visit::visit_struct_method(sm, (cx, vt));
-        },
         visit_trait_method: |tm, (cx, vt)| {
             match *tm {
                 ast::required(ref tm) => visit_fn_decl(cx, &tm.decl),
@@ -1049,14 +1045,6 @@ fn lint_missing_doc() -> visit::vt<@mut Context> {
     }
 
     visit::mk_vt(@visit::Visitor {
-        visit_struct_method: |m, (cx, vt)| {
-            if m.vis == ast::public {
-                check_attrs(cx, m.attrs, m.span,
-                            "missing documentation for a method");
-            }
-            visit::visit_struct_method(m, (cx, vt));
-        },
-
         visit_ty_method: |m, (cx, vt)| {
             // All ty_method objects are linted about because they're part of a
             // trait (no visibility)
