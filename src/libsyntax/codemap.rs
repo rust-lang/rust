@@ -174,16 +174,11 @@ pub struct FileMapAndBytePos {fm: @FileMap, pos: BytePos}
 #[deriving(IterBytes)]
 pub struct NameAndSpan {name: @str, span: Option<span>}
 
-#[deriving(IterBytes)]
-pub struct CallInfo {
-    call_site: span,
-    callee: NameAndSpan
-}
-
 /// Extra information for tracking macro expansion of spans
 #[deriving(IterBytes)]
-pub enum ExpnInfo {
-    ExpandedFrom(CallInfo)
+pub struct ExpnInfo {
+    call_site: span,
+    callee: NameAndSpan
 }
 
 pub type FileName = @str;

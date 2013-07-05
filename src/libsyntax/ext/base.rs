@@ -11,8 +11,7 @@
 use ast;
 use ast::Name;
 use codemap;
-use codemap::{CodeMap, span, ExpnInfo, ExpandedFrom};
-use codemap::CallInfo;
+use codemap::{CodeMap, span, ExpnInfo};
 use diagnostic::span_handler;
 use ext;
 use parse;
@@ -243,7 +242,7 @@ impl ExtCtxt {
     pub fn cfg(&self) -> ast::crate_cfg { copy self.cfg }
     pub fn call_site(&self) -> span {
         match *self.backtrace {
-            Some(@ExpandedFrom(CallInfo {call_site: cs, _})) => cs,
+            Some(@ExpnInfo {call_site: cs, _}) => cs,
             None => self.bug("missing top span")
         }
     }
@@ -254,21 +253,19 @@ impl ExtCtxt {
     pub fn mod_path(&self) -> ~[ast::ident] { copy *self.mod_path }
     pub fn bt_push(&self, ei: codemap::ExpnInfo) {
         match ei {
-            ExpandedFrom(CallInfo {call_site: cs, callee: ref callee}) => {
+            ExpnInfo {call_site: cs, callee: ref callee} => {
                 *self.backtrace =
-                    Some(@ExpandedFrom(CallInfo {
+                    Some(@ExpnInfo {
                         call_site: span {lo: cs.lo, hi: cs.hi,
                                          expn_info: *self.backtrace},
-                        callee: copy *callee}));
+                        callee: copy *callee});
             }
         }
     }
     pub fn bt_pop(&self) {
         match *self.backtrace {
-            Some(@ExpandedFrom(
-                CallInfo {
-                    call_site: span {expn_info: prev, _}, _
-                })) => {
+            Some(@ExpnInfo {
+                call_site: span {expn_info: prev, _}, _}) => {
                 *self.backtrace = prev
             }
             _ => self.bug("tried to pop without a push")
