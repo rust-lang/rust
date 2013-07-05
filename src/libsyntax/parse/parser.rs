@@ -646,7 +646,7 @@ impl Parser {
     // parse a ty_closure type
     pub fn parse_ty_closure(&self,
                             sigil: ast::Sigil,
-                            region: Option<@ast::Lifetime>)
+                            region: Option<ast::Lifetime>)
                             -> ty_ {
         /*
 
@@ -985,7 +985,7 @@ impl Parser {
         // @'foo fn() or @foo/fn() or @fn() are parsed directly as fn types:
         match *self.token {
             token::LIFETIME(*) => {
-                let lifetime = @self.parse_lifetime();
+                let lifetime = self.parse_lifetime();
                 self.bump();
                 return self.parse_ty_closure(sigil, Some(lifetime));
             }
@@ -994,7 +994,7 @@ impl Parser {
                 if self.look_ahead(1u) == token::BINOP(token::SLASH) &&
                     self.token_is_closure_keyword(&self.look_ahead(2u))
                 {
-                    let lifetime = @self.parse_lifetime();
+                    let lifetime = self.parse_lifetime();
                     self.obsolete(*self.last_span, ObsoleteLifetimeNotation);
                     return self.parse_ty_closure(sigil, Some(lifetime));
                 } else if self.token_is_closure_keyword(&copy *self.token) {
@@ -1263,7 +1263,7 @@ impl Parser {
                     token::IDENT(sid, _) => {
                         let span = copy self.span;
                         self.bump();
-                        Some(@ast::Lifetime {
+                        Some(ast::Lifetime {
                             id: self.get_id(),
                             span: *span,
                             ident: sid
@@ -1288,7 +1288,7 @@ impl Parser {
                 if v.len() == 0 {
                     None
                 } else if v.len() == 1 {
-                    Some(@*v.get(0))
+                    Some(*v.get(0))
                 } else {
                     self.fatal(fmt!("Expected at most one \
                                      lifetime name (for now)"));
@@ -1322,17 +1322,17 @@ impl Parser {
     }
 
     /// parses 0 or 1 lifetime
-    pub fn parse_opt_lifetime(&self) -> Option<@ast::Lifetime> {
+    pub fn parse_opt_lifetime(&self) -> Option<ast::Lifetime> {
         match *self.token {
             token::LIFETIME(*) => {
-                Some(@self.parse_lifetime())
+                Some(self.parse_lifetime())
             }
 
             // Also accept the (obsolete) syntax `foo/`
             token::IDENT(*) => {
                 if self.look_ahead(1u) == token::BINOP(token::SLASH) {
                     self.obsolete(*self.last_span, ObsoleteLifetimeNotation);
-                    Some(@self.parse_lifetime())
+                    Some(self.parse_lifetime())
                 } else {
                     None
                 }
@@ -3343,14 +3343,14 @@ impl Parser {
             } else if (this.token_is_lifetime(&this.look_ahead(1)) &&
                        token::is_keyword(keywords::Self, &this.look_ahead(2))) {
                 this.bump();
-                let lifetime = @this.parse_lifetime();
+                let lifetime = this.parse_lifetime();
                 this.expect_self_ident();
                 sty_region(Some(lifetime), m_imm)
             } else if (this.token_is_lifetime(&this.look_ahead(1)) &&
                        this.token_is_mutability(&this.look_ahead(2)) &&
                        token::is_keyword(keywords::Self, &this.look_ahead(3))) {
                 this.bump();
-                let lifetime = @this.parse_lifetime();
+                let lifetime = this.parse_lifetime();
                 let mutability = this.parse_mutability();
                 this.expect_self_ident();
                 sty_region(Some(lifetime), mutability)

@@ -651,18 +651,18 @@ impl DetermineRpCtxt {
     // with &self type, &self is also bound.  We detect those last two
     // cases via flags (anon_implies_rp and self_implies_rp) that are
     // true when the anon or self region implies RP.
-    pub fn region_is_relevant(&self, r: Option<@ast::Lifetime>) -> bool {
+    pub fn region_is_relevant(&self, r: &Option<ast::Lifetime>) -> bool {
         match r {
-            None => {
+            &None => {
                 self.anon_implies_rp
             }
-            Some(ref l) if l.ident == special_idents::statik => {
+            &Some(ref l) if l.ident == special_idents::statik => {
                 false
             }
-            Some(ref l) if l.ident == special_idents::self_ => {
+            &Some(ref l) if l.ident == special_idents::self_ => {
                 true
             }
-            Some(_) => {
+            &Some(_) => {
                 false
             }
         }
@@ -747,7 +747,7 @@ fn determine_rp_in_ty(ty: @ast::Ty,
     // locations)
     let sess = cx.sess;
     match ty.node {
-        ast::ty_rptr(r, _) => {
+        ast::ty_rptr(ref r, _) => {
             debug!("referenced rptr type %s",
                    pprust::ty_to_str(ty, sess.intr()));
 
@@ -762,7 +762,7 @@ fn determine_rp_in_ty(ty: @ast::Ty,
                    pprust::ty_to_str(ty, sess.intr()));
             match f.region {
                 Some(_) => {
-                    if cx.region_is_relevant(f.region) {
+                    if cx.region_is_relevant(&f.region) {
                         let rv = cx.add_variance(rv_contravariant);
                         cx.add_rp(cx.item_id, rv)
                     }
@@ -790,7 +790,7 @@ fn determine_rp_in_ty(ty: @ast::Ty,
           Some(&ast::def_trait(did)) |
           Some(&ast::def_struct(did)) => {
             if did.crate == ast::local_crate {
-                if cx.region_is_relevant(path.rp) {
+                if cx.region_is_relevant(&path.rp) {
                     cx.add_dep(did.node);
                 }
             } else {
@@ -800,7 +800,7 @@ fn determine_rp_in_ty(ty: @ast::Ty,
                   Some(variance) => {
                     debug!("reference to external, rp'd type %s",
                            pprust::ty_to_str(ty, sess.intr()));
-                    if cx.region_is_relevant(path.rp) {
+                    if cx.region_is_relevant(&path.rp) {
                         let rv = cx.add_variance(variance);
                         cx.add_rp(cx.item_id, rv)
                     }

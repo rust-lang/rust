@@ -38,7 +38,7 @@ pub trait AstBuilder {
     fn path_all(&self, sp: span,
                 global: bool,
                 idents: ~[ast::ident],
-                rp: Option<@ast::Lifetime>,
+                rp: Option<ast::Lifetime>,
                 types: ~[@ast::Ty])
         -> ast::Path;
 
@@ -51,7 +51,7 @@ pub trait AstBuilder {
 
     fn ty_rptr(&self, span: span,
                ty: @ast::Ty,
-               lifetime: Option<@ast::Lifetime>,
+               lifetime: Option<ast::Lifetime>,
                mutbl: ast::mutability)
         -> @ast::Ty;
     fn ty_uniq(&self, span: span, ty: @ast::Ty) -> @ast::Ty;
@@ -238,7 +238,7 @@ impl AstBuilder for @ExtCtxt {
     fn path_all(&self, sp: span,
                 global: bool,
                 idents: ~[ast::ident],
-                rp: Option<@ast::Lifetime>,
+                rp: Option<ast::Lifetime>,
                 types: ~[@ast::Ty])
         -> ast::Path {
         ast::Path {
@@ -281,7 +281,7 @@ impl AstBuilder for @ExtCtxt {
     fn ty_rptr(&self,
                span: span,
                ty: @ast::Ty,
-               lifetime: Option<@ast::Lifetime>,
+               lifetime: Option<ast::Lifetime>,
                mutbl: ast::mutability)
         -> @ast::Ty {
         self.ty(span,

@@ -110,9 +110,9 @@ pub fn nil_ty() -> Ty<'static> {
     Tuple(~[])
 }
 
-fn mk_lifetime(cx: @ExtCtxt, span: span, lt: &Option<&str>) -> Option<@ast::Lifetime> {
+fn mk_lifetime(cx: @ExtCtxt, span: span, lt: &Option<&str>) -> Option<ast::Lifetime> {
     match *lt {
-        Some(ref s) => Some(@cx.lifetime(span, cx.ident_of(*s))),
+        Some(ref s) => Some(cx.lifetime(span, cx.ident_of(*s))),
         None => None
     }
 }
@@ -171,7 +171,7 @@ impl<'self> Ty<'self> {
                 let lifetime = if self_generics.lifetimes.is_empty() {
                     None
                 } else {
-                    Some(@*self_generics.lifetimes.get(0))
+                    Some(*self_generics.lifetimes.get(0))
                 };
 
                 cx.path_all(span, false, ~[self_ty], lifetime,
@@ -251,8 +251,7 @@ pub fn get_explicit_self(cx: @ExtCtxt, span: span, self_ptr: &Option<PtrTy>)
                     Send => ast::sty_uniq,
                     Managed(mutbl) => ast::sty_box(mutbl),
                     Borrowed(ref lt, mutbl) => {
-                        let lt = lt.map(|s| @cx.lifetime(span,
-                                                         cx.ident_of(*s)));
+                        let lt = lt.map(|s| cx.lifetime(span, cx.ident_of(*s)));
                         ast::sty_region(lt, mutbl)
                     }
                 });

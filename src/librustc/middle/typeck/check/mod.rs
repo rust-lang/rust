@@ -1738,7 +1738,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                                            purity,
                                            expected_onceness,
                                            expected_bounds,
-                                           None,
+                                           &None,
                                            decl,
                                            expected_sig,
                                            &opt_vec::Empty,
@@ -3310,7 +3310,7 @@ pub fn instantiate_path(fcx: @mut FnCtxt,
             None
           }
           Some(_) => { // ...and the type is lifetime parameterized, ok.
-            Some(ast_region_to_region(fcx, fcx, span, pth.rp))
+            Some(ast_region_to_region(fcx, fcx, span, &pth.rp))
           }
         }
       }
