@@ -18,7 +18,7 @@ intrinsic properties of the type. These classifications, often called
 They cannot be implemented by user code, but are instead implemented
 by the compiler automatically for the types to which they apply.
 
-The 4 kinds are
+The 3 kinds are
 
 * Copy - types that may be copied without allocation. This includes
   scalar types and managed pointers, and exludes owned pointers. It
