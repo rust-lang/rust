@@ -17,6 +17,7 @@ use cast;
 use container::{Container, Mutable};
 use cmp;
 use cmp::{Eq, TotalEq, TotalOrd, Ordering, Less, Equal, Greater};
+use ops::Index;
 use clone::Clone;
 use iterator::{FromIterator, Iterator, IteratorUtil};
 use kinds::Copy;
@@ -1758,47 +1759,47 @@ impl<T> VecRef<T> {
     // on self-by-value, which means VecRef would move into
     // it. So I'm just gonna re-impl here
 
-    #[inline]
+    #[inline] #[allow(missing_doc)]
     pub fn iter<'r>(&'r self) -> VecIterator<'r, T> {
         self.as_slice().iter()
     }
 
-    #[inline]
+    #[inline] #[allow(missing_doc)]
     pub fn rev_iter<'r>(&'r self) -> VecRevIterator<'r, T> {
         self.as_slice().rev_iter()
     }
 
-    #[inline]
+    #[inline] #[allow(missing_doc)]
     pub fn split_iter<'r>(&'r self, pred: &'r fn(&T) -> bool) -> VecSplitIterator<'r, T> {
         self.as_slice().split_iter(pred)
     }
 
-    #[inline]
+    #[inline] #[allow(missing_doc)]
     pub fn splitn_iter<'r>(&'r self, n: uint, pred: &'r fn(&T) -> bool) -> VecSplitIterator<'r, T> {
-        self.as_slice().split_iter(n, pred)
+        self.as_slice().splitn_iter(n, pred)
     }
 
-    #[inline]
+    #[inline] #[allow(missing_doc)]
     pub fn rsplit_iter<'r>(&'r self, pred: &'r fn(&T) -> bool) -> VecRSplitIterator<'r, T> {
         self.as_slice().rsplit_iter(pred)
     }
 
-    #[inline]
-    pub fn rsplitn_iter<'r>(&'r self, pred: &'r fn(&T) -> bool) -> VecRSplitIterator<'r, T> {
-        self.as_slice().rsplit_iter(pred)
+    #[inline] #[allow(missing_doc)]
+    pub fn rsplitn_iter<'r>(&'r self, n: uint, pred: &'r fn(&T) -> bool) -> VecRSplitIterator<'r, T> {
+        self.as_slice().rsplitn_iter(n, pred)
     }
 
-    #[inline]
+    #[inline] #[allow(missing_doc)]
     pub fn window_iter<'r>(&'r self, size: uint) -> VecWindowIter<'r, T> {
         self.as_slice().window_iter(size)
     }
 
-    #[inline]
+    #[inline] #[allow(missing_doc)]
     pub fn chunk_iter<'r>(&'r self, size: uint) -> VecChunkIter<'r, T> {
-        self.as_slice().window_iter(size)
+        self.as_slice().chunk_iter(size)
     }
 
-    #[inline]
+    #[inline] #[allow(missing_doc)]
     pub fn as_imm_buf<U>(&self, f: &fn(*T, uint) -> U) -> U {
         self.as_slice().as_imm_buf(f)
     }
@@ -1809,7 +1810,7 @@ impl<T:Copy> VecRef<T> {
     /**
      * Converts this type into a standard owned vector, consuming it in the process.
      * 
-     * If the VecRef holds a static vector, it is converted to an owned one, otherwise the held
+     * If the VecRef holds a static vector, it is copied to an owned one, otherwise the held
      * owned vector is returned.
      */
     pub fn to_owned_consume(self) -> ~[T] {
@@ -1858,7 +1859,7 @@ impl<T:Eq> ImmutableEqVector<T> for VecRef<T> {
 
     #[inline]
     fn rposition_elem(&self, t: &T) -> Option<uint> {
-        self.as_slice().rposition(t)
+        self.as_slice().rposition_elem(t)
     }
 
     #[inline]
@@ -1887,8 +1888,8 @@ impl<T:Copy> ImmutableCopyableVector<T> for VecRef<T> {
 }
 
 impl<T:Copy> Index<uint, T> for VecRef<T> {
-    fn index(&self, index: uint) -> T {
-        copy self.as_slice()[index]
+    fn index(&self, index: &uint) -> T {
+        copy self.as_slice()[*index]
     }
 }
 
@@ -3443,10 +3444,10 @@ mod tests {
         let v = VecRef::from_owned(~[1, 2, 3]);
         assert_eq!(v.len(), 3);
 
-        let v : VecRef<int> = VecRef::from_static([]);
+        let v : VecRef<int> = VecRef::from_static(&[]);
         assert!(v.is_empty());
 
-        let v : VecRef<int> = VecRef::from_static([1, 2, 3, 4]);
+        let v : VecRef<int> = VecRef::from_static(&[1, 2, 3, 4]);
         assert_eq!(v.len(), 4);
     }
 
@@ -3456,8 +3457,21 @@ mod tests {
         let vec = v.to_owned_consume();
         assert_eq!(vec, ~[1, 2, 3, 4]);
 
-        let v = VecRef::from_static([1, 2, 3, 4]);
+        let v = VecRef::from_static(&[1, 2, 3, 4]);
         let vec = v.to_owned_consume();
         assert_eq!(vec, ~[1, 2, 3, 4]);
+    }
+
+    #[test]
+    fn test_vec_iter() {
+        let v = VecRef::from_static(&[1, 2, 3, 4]);
+
+        let mut iter = v.iter().transform(|&x| x);
+
+        assert_eq!(iter.next(), Some(1));
+        assert_eq!(iter.next(), Some(2));
+        assert_eq!(iter.next(), Some(3));
+        assert_eq!(iter.next(), Some(4));
+        assert_eq!(iter.next(), None);
     }
 }

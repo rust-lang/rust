@@ -34,7 +34,7 @@ use ptr::RawPtr;
 use to_str::ToStr;
 use uint;
 use vec;
-use vec::{OwnedVector, OwnedCopyableVector, ImmutableVector};
+use vec::{OwnedVector, OwnedCopyableVector, ImmutableVector, Vector};
 
 /*
 Section: Conditions
@@ -2238,6 +2238,82 @@ impl OwnedStr for ~str {
     }
 }
 
+/**
+ * A StringRef is a string that can hold either a ~str or a &'static str.
+ * This can be useful as an optimization when an allocation is sometimes
+ * needed but the common case is statically known.
+ */
+#[deriving(Eq,Ord,Clone)]
+pub struct StringRef {
+    priv r: ::vec::VecRef<u8>
+}
+
+impl StringRef {
+
+    /**
+     * Constructs a StringRef from an owned string
+     */
+    #[inline]
+    pub fn from_owned(s: ~str) -> StringRef {
+        StringRef {
+            r: ::vec::VecRef::from_owned(s.as_bytes_with_null_consume())
+        }
+    }
+
+    /**
+     * Constructs a StringRef from a static string
+     */
+    #[inline]
+    pub fn from_static(s: &'static str) -> StringRef {
+        unsafe {
+            StringRef {
+                r: ::vec::VecRef::from_static(::cast::transmute(s))
+            }
+        }
+    }
+
+    /**
+     * Converts this type into a standard owned string, consuming it in the process.
+     *
+     * If the StringRef holds a static string, it is copied to an owned one, otherwise the held
+     * owned vector is returned
+     */
+    #[inline]
+    pub fn to_owned_consume(self) -> ~str {
+        unsafe {
+            ::cast::transmute(self.r.to_owned_consume())
+        }
+    }
+
+    /**
+     * Returns the backing VecRef for this StringRef
+     */
+    #[inline]
+    pub fn as_vec_ref<'r>(&'r self) -> &'r vec::VecRef<u8> {
+        &self.r
+    }
+}
+
+impl Str for StringRef {
+    #[inline(always)]
+    pub fn as_slice<'r>(&'r self) -> &'r str {
+        unsafe {
+            ::cast::transmute(self.r.as_slice())
+        }
+    }
+}
+
+impl Container for StringRef {
+    #[inline]
+    fn len(&self) -> uint {
+        self.as_slice().len()
+    }
+    #[inline]
+    fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+}
+
 impl Clone for ~str {
     #[inline]
     fn clone(&self) -> ~str {
@@ -3447,5 +3523,16 @@ mod tests {
         t::<&str>();
         t::<@str>();
         t::<~str>();
+    }
+
+    #[test]
+    fn test_str_ref() {
+        let r = StringRef::from_static("abcde");
+        assert_eq!(r.len(), 5);
+        assert_eq!(r.as_slice(), "abcde")
+
+        let r = StringRef::from_owned(~"abcde");
+        assert_eq!(r.len(), 5);
+        assert_eq!(r.as_slice(), "abcde")
     }
 }
