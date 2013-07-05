@@ -351,7 +351,7 @@ impl<'self> TraitDef<'self> {
         let self_lifetime = if generics.lifetimes.is_empty() {
             None
         } else {
-            Some(@*generics.lifetimes.get(0))
+            Some(*generics.lifetimes.get(0))
         };
 
         // Create the type of `self`.

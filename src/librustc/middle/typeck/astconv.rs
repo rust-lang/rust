@@ -85,15 +85,15 @@ pub trait AstConv {
 pub fn get_region_reporting_err(
     tcx: ty::ctxt,
     span: span,
-    a_r: Option<@ast::Lifetime>,
+    a_r: &Option<ast::Lifetime>,
     res: Result<ty::Region, RegionError>) -> ty::Region
 {
     match res {
         result::Ok(r) => r,
         result::Err(ref e) => {
             let descr = match a_r {
-                None => ~"anonymous lifetime",
-                Some(a) => fmt!("lifetime %s",
+                &None => ~"anonymous lifetime",
+                &Some(ref a) => fmt!("lifetime %s",
                                 lifetime_to_str(a, tcx.sess.intr()))
             };
             tcx.sess.span_err(
@@ -109,19 +109,19 @@ pub fn ast_region_to_region<AC:AstConv,RS:region_scope + Copy + 'static>(
     this: &AC,
     rscope: &RS,
     default_span: span,
-    opt_lifetime: Option<@ast::Lifetime>) -> ty::Region
+    opt_lifetime: &Option<ast::Lifetime>) -> ty::Region
 {
     let (span, res) = match opt_lifetime {
-        None => {
+        &None => {
             (default_span, rscope.anon_region(default_span))
         }
-        Some(ref lifetime) if lifetime.ident == special_idents::statik => {
+        &Some(ref lifetime) if lifetime.ident == special_idents::statik => {
             (lifetime.span, Ok(ty::re_static))
         }
-        Some(ref lifetime) if lifetime.ident == special_idents::self_ => {
+        &Some(ref lifetime) if lifetime.ident == special_idents::self_ => {
             (lifetime.span, rscope.self_region(lifetime.span))
         }
-        Some(ref lifetime) => {
+        &Some(ref lifetime) => {
             (lifetime.span, rscope.named_region(lifetime.span,
                                                 lifetime.ident))
         }
@@ -164,11 +164,11 @@ fn ast_path_substs<AC:AstConv,RS:region_scope + Copy + 'static>(
       }
       (&Some(_), &None) => {
         let res = rscope.anon_region(path.span);
-        let r = get_region_reporting_err(this.tcx(), path.span, None, res);
+        let r = get_region_reporting_err(this.tcx(), path.span, &None, res);
         Some(r)
       }
       (&Some(_), &Some(_)) => {
-        Some(ast_region_to_region(this, rscope, path.span, path.rp))
+        Some(ast_region_to_region(this, rscope, path.span, &path.rp))
       }
     };
 
@@ -371,7 +371,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Copy + 'static>(
       ast::ty_ptr(ref mt) => {
         ty::mk_ptr(tcx, ast_mt_to_mt(this, rscope, mt))
       }
-      ast::ty_rptr(region, ref mt) => {
+      ast::ty_rptr(ref region, ref mt) => {
         let r = ast_region_to_region(this, rscope, ast_ty.span, region);
         mk_pointer(this, rscope, mt, ty::vstore_slice(r),
                    |tmt| ty::mk_rptr(tcx, r, tmt))
@@ -398,7 +398,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Copy + 'static>(
                                       f.purity,
                                       f.onceness,
                                       bounds,
-                                      f.region,
+                                      &f.region,
                                       &f.decl,
                                       None,
                                       &f.lifetimes,
@@ -647,7 +647,7 @@ fn ty_of_method_or_bare_fn<AC:AstConv,RS:region_scope + Copy + 'static>(
             ast::sty_value => {
                 Some(self_info.untransformed_self_ty)
             }
-            ast::sty_region(lifetime, mutability) => {
+            ast::sty_region(ref lifetime, mutability) => {
                 let region =
                     ast_region_to_region(this, rscope,
                                          self_info.explicit_self.span,
@@ -677,7 +677,7 @@ pub fn ty_of_closure<AC:AstConv,RS:region_scope + Copy + 'static>(
     purity: ast::purity,
     onceness: ast::Onceness,
     bounds: ty::BuiltinBounds,
-    opt_lifetime: Option<@ast::Lifetime>,
+    opt_lifetime: &Option<ast::Lifetime>,
     decl: &ast::fn_decl,
     expected_sig: Option<ty::FnSig>,
     lifetimes: &OptVec<ast::Lifetime>,
@@ -695,10 +695,10 @@ pub fn ty_of_closure<AC:AstConv,RS:region_scope + Copy + 'static>(
     // resolve the function bound region in the original region
     // scope `rscope`, not the scope of the function parameters
     let bound_region = match opt_lifetime {
-        Some(_) => {
+        &Some(_) => {
             ast_region_to_region(this, rscope, span, opt_lifetime)
         }
-        None => {
+        &None => {
             match sigil {
                 ast::OwnedSigil | ast::ManagedSigil => {
                     // @fn(), ~fn() default to static as the bound

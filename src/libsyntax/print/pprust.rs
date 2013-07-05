@@ -366,9 +366,9 @@ pub fn print_foreign_mod(s: @ps, nmod: &ast::foreign_mod,
     for nmod.items.iter().advance |item| { print_foreign_item(s, *item); }
 }
 
-pub fn print_opt_lifetime(s: @ps, lifetime: Option<@ast::Lifetime>) {
+pub fn print_opt_lifetime(s: @ps, lifetime: &Option<ast::Lifetime>) {
     for lifetime.iter().advance |l| {
-        print_lifetime(s, *l);
+        print_lifetime(s, l);
         nbsp(s);
     }
 }
@@ -392,7 +392,7 @@ pub fn print_type(s: @ps, ty: @ast::Ty) {
         word(s.s, "]");
       }
       ast::ty_ptr(ref mt) => { word(s.s, "*"); print_mt(s, mt); }
-      ast::ty_rptr(lifetime, ref mt) => {
+      ast::ty_rptr(ref lifetime, ref mt) => {
           word(s.s, "&");
           print_opt_lifetime(s, lifetime);
           print_mt(s, mt);
@@ -408,14 +408,14 @@ pub fn print_type(s: @ps, ty: @ast::Ty) {
       ast::ty_bare_fn(f) => {
           let generics = ast::Generics {lifetimes: copy f.lifetimes,
                                         ty_params: opt_vec::Empty};
-          print_ty_fn(s, Some(f.abis), None, None,
+          print_ty_fn(s, Some(f.abis), None, &None,
                       f.purity, ast::Many, &f.decl, None, &None,
                       Some(&generics), None);
       }
       ast::ty_closure(f) => {
           let generics = ast::Generics {lifetimes: copy f.lifetimes,
                                         ty_params: opt_vec::Empty};
-          print_ty_fn(s, None, Some(f.sigil), f.region,
+          print_ty_fn(s, None, Some(f.sigil), &f.region,
                       f.purity, f.onceness, &f.decl, None, &f.bounds,
                       Some(&generics), None);
       }
@@ -804,7 +804,7 @@ pub fn print_ty_method(s: @ps, m: &ast::ty_method) {
     hardbreak_if_not_bol(s);
     maybe_print_comment(s, m.span.lo);
     print_outer_attributes(s, m.attrs);
-    print_ty_fn(s, None, None, None, m.purity, ast::Many,
+    print_ty_fn(s, None, None, &None, m.purity, ast::Many,
                 &m.decl, Some(m.ident), &None, Some(&m.generics),
                 Some(/*bad*/ copy m.explicit_self.node));
     word(s.s, ";");
@@ -1021,7 +1021,7 @@ pub fn print_vstore(s: @ps, t: ast::vstore) {
         ast::vstore_fixed(None) => word(s.s, "_"),
         ast::vstore_uniq => word(s.s, "~"),
         ast::vstore_box => word(s.s, "@"),
-        ast::vstore_slice(r) => {
+        ast::vstore_slice(ref r) => {
             word(s.s, "&");
             print_opt_lifetime(s, r);
         }
@@ -1505,7 +1505,7 @@ fn print_path_(s: @ps, path: &ast::Path, colons_before_params: bool,
             word(s.s, "<");
 
             for path.rp.iter().advance |r| {
-                print_lifetime(s, *r);
+                print_lifetime(s, r);
                 if !path.types.is_empty() {
                     word_space(s, ",");
                 }
@@ -1653,7 +1653,7 @@ pub fn print_explicit_self(s: @ps, explicit_self: ast::explicit_self_) -> bool {
         ast::sty_static => { return false; }
         ast::sty_value => { word(s.s, "self"); }
         ast::sty_uniq => { word(s.s, "~self"); }
-        ast::sty_region(lt, m) => {
+        ast::sty_region(ref lt, m) => {
             word(s.s, "&");
             print_opt_lifetime(s, lt);
             print_mutability(s, m);
@@ -1912,7 +1912,7 @@ pub fn print_arg(s: @ps, input: ast::arg) {
 pub fn print_ty_fn(s: @ps,
                    opt_abis: Option<AbiSet>,
                    opt_sigil: Option<ast::Sigil>,
-                   opt_region: Option<@ast::Lifetime>,
+                   opt_region: &Option<ast::Lifetime>,
                    purity: ast::purity,
                    onceness: ast::Onceness,
                    decl: &ast::fn_decl,

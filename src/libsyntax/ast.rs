@@ -109,7 +109,7 @@ pub struct Path {
     span: span,
     global: bool,
     idents: ~[ident],
-    rp: Option<@Lifetime>,
+    rp: Option<Lifetime>,
     types: ~[@Ty],
 }
 
@@ -296,7 +296,7 @@ pub enum vstore {
     vstore_fixed(Option<uint>),     // [1,2,3,4]
     vstore_uniq,                    // ~[1,2,3,4]
     vstore_box,                     // @[1,2,3,4]
-    vstore_slice(Option<@Lifetime>) // &'foo? [1,2,3,4]
+    vstore_slice(Option<Lifetime>) // &'foo? [1,2,3,4]
 }
 
 #[deriving(Eq, Encodable, Decodable,IterBytes)]
@@ -701,7 +701,7 @@ impl ToStr for Onceness {
 #[deriving(Eq, Encodable, Decodable,IterBytes)]
 pub struct TyClosure {
     sigil: Sigil,
-    region: Option<@Lifetime>,
+    region: Option<Lifetime>,
     lifetimes: OptVec<Lifetime>,
     purity: purity,
     onceness: Onceness,
@@ -730,7 +730,7 @@ pub enum ty_ {
     ty_vec(mt),
     ty_fixed_length_vec(mt, @expr),
     ty_ptr(mt),
-    ty_rptr(Option<@Lifetime>, mt),
+    ty_rptr(Option<Lifetime>, mt),
     ty_closure(@TyClosure),
     ty_bare_fn(@TyBareFn),
     ty_tup(~[@Ty]),
@@ -803,7 +803,7 @@ pub enum ret_style {
 pub enum explicit_self_ {
     sty_static,                                // no self
     sty_value,                                 // `self`
-    sty_region(Option<@Lifetime>, mutability), // `&'lt self`
+    sty_region(Option<Lifetime>, mutability), // `&'lt self`
     sty_box(mutability),                       // `@self`
     sty_uniq                                   // `~self`
 }
