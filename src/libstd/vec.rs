@@ -1093,6 +1093,7 @@ pub trait OwnedVector<T> {
     fn pop(&mut self) -> T;
     fn pop_opt(&mut self) -> Option<T>;
     fn shift(&mut self) -> T;
+    fn shift_opt(&mut self) -> Option<T>;
     fn unshift(&mut self, x: T);
     fn insert(&mut self, i: uint, x:T);
     fn remove(&mut self, i: uint) -> T;
@@ -1305,20 +1306,26 @@ impl<T> OwnedVector<T> for ~[T] {
     }
 
     /// Removes the first element from a vector and return it
+    #[inline]
     fn shift(&mut self) -> T {
+        self.shift_opt().expect("shift: empty vector")
+    }
+
+    /// Removes the first element from a vector and return it, or `None` if it is empty
+    fn shift_opt(&mut self) -> Option<T> {
         unsafe {
-            assert!(!self.is_empty());
+            let ln = match self.len() {
+                0 => return None,
+                1 => return self.pop_opt(),
+                2 =>  {
+                    let last = self.pop();
+                    let first = self.pop_opt();
+                    self.push(last);
+                    return first;
+                }
+                x => x
+            };
 
-            if self.len() == 1 { return self.pop() }
-
-            if self.len() == 2 {
-                let last = self.pop();
-                let first = self.pop();
-                self.push(last);
-                return first;
-            }
-
-            let ln = self.len();
             let next_ln = self.len() - 1;
 
             // Save the last element. We're going to overwrite its position
@@ -1354,7 +1361,7 @@ impl<T> OwnedVector<T> for ~[T] {
             let vp = raw::to_mut_ptr(*self);
             let vp = ptr::mut_offset(vp, next_ln - 1);
 
-            ptr::replace_ptr(vp, work_elt)
+            Some(ptr::replace_ptr(vp, work_elt))
         }
     }
 
@@ -2761,6 +2768,27 @@ mod tests {
         assert_eq!(connect_slices([&[1], &[2], &[3]], &0), ~[1, 0, 2, 0, 3]);
         assert_eq!([&[1], &[2, 3]].connect_vec(&0), ~[1, 0, 2, 3]);
         assert_eq!([&[1], &[2], &[3]].connect_vec(&0), ~[1, 0, 2, 0, 3]);
+    }
+
+    #[test]
+    fn test_shift() {
+        let mut x = ~[1, 2, 3];
+        assert_eq!(x.shift(), 1);
+        assert_eq!(&x, &~[2, 3]);
+        assert_eq!(x.shift(), 2);
+        assert_eq!(x.shift(), 3);
+        assert_eq!(x.len(), 0);
+    }
+
+    #[test]
+    fn test_shift_opt() {
+        let mut x = ~[1, 2, 3];
+        assert_eq!(x.shift_opt(), Some(1));
+        assert_eq!(&x, &~[2, 3]);
+        assert_eq!(x.shift_opt(), Some(2));
+        assert_eq!(x.shift_opt(), Some(3));
+        assert_eq!(x.shift_opt(), None);
+        assert_eq!(x.len(), 0);
     }
 
     #[test]
