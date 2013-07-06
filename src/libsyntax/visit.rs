@@ -90,7 +90,6 @@ pub struct Visitor<E> {
     visit_trait_method: @fn(&trait_method, (E, vt<E>)),
     visit_struct_def: @fn(@struct_def, ident, &Generics, node_id, (E, vt<E>)),
     visit_struct_field: @fn(@struct_field, (E, vt<E>)),
-    visit_struct_method: @fn(@method, (E, vt<E>))
 }
 
 pub type visitor<E> = @Visitor<E>;
@@ -116,7 +115,6 @@ pub fn default_visitor<E: Copy>() -> visitor<E> {
         visit_trait_method: |a,b|visit_trait_method::<E>(a, b),
         visit_struct_def: |a,b,c,d,e|visit_struct_def::<E>(a, b, c, d, e),
         visit_struct_field: |a,b|visit_struct_field::<E>(a, b),
-        visit_struct_method: |a,b|visit_struct_method::<E>(a, b)
     };
 }
 
@@ -412,10 +410,6 @@ pub fn visit_struct_def<E: Copy>(
 
 pub fn visit_struct_field<E: Copy>(sf: &struct_field, (e, v): (E, vt<E>)) {
     (v.visit_ty)(sf.node.ty, (e, v));
-}
-
-pub fn visit_struct_method<E: Copy>(m: &method, (e, v): (E, vt<E>)) {
-    visit_method_helper(m, (e, v));
 }
 
 pub fn visit_block<E: Copy>(b: &blk, (e, v): (E, vt<E>)) {
@@ -729,10 +723,6 @@ pub fn mk_simple_visitor(v: simple_visitor) -> vt<()> {
         f(sf);
         visit_struct_field(sf, (e, v));
     }
-    fn v_struct_method(f: @fn(@method), m: @method, (e, v): ((), vt<()>)) {
-        f(m);
-        visit_struct_method(m, (e, v));
-    }
     return mk_vt(@Visitor {
         visit_mod: |a,b,c,d|v_mod(v.visit_mod, a, b, c, d),
         visit_view_item: |a,b| v_view_item(v.visit_view_item, a, b),
@@ -760,7 +750,5 @@ pub fn mk_simple_visitor(v: simple_visitor) -> vt<()> {
             v_struct_def(v.visit_struct_def, a, b, c, d, e),
         visit_struct_field: |a,b|
             v_struct_field(v.visit_struct_field, a, b),
-        visit_struct_method: |a,b|
-            v_struct_method(v.visit_struct_method, a, b)
     });
 }
