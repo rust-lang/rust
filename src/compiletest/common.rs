@@ -15,6 +15,7 @@ pub enum mode {
     mode_run_pass,
     mode_pretty,
     mode_debug_info,
+    mode_codegen
 }
 
 pub struct config {
@@ -26,6 +27,12 @@ pub struct config {
 
     // The rustc executable
     rustc_path: Path,
+
+    // The clang executable
+    clang_path: Option<Path>,
+
+    // The llvm binaries path
+    llvm_bin_path: Option<Path>,
 
     // The directory containing the tests to run
     src_base: Path,
