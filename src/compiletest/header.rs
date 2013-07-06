@@ -8,13 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
-
 use common::config;
 use common;
 
-use core::io;
-use core::os;
+use std::io;
+use std::os;
 
 pub struct TestProps {
     // Lines that should be expected, in order, on standard out
