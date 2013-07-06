@@ -125,7 +125,7 @@ fn check_item(item: @item, (cx, visitor): (Context, visit::vt<Context>)) {
                         if cx.tcx.lang_items.drop_trait() == trait_def_id {
                             // Yes, it's a destructor.
                             match self_type.node {
-                                ty_path(_, bounds, path_node_id) => {
+                                ty_path(_, ref bounds, path_node_id) => {
                                     assert!(bounds.is_none());
                                     let struct_def = cx.tcx.def_map.get_copy(
                                         &path_node_id);

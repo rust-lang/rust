@@ -99,7 +99,7 @@ impl state_ {
     pub fn to_ty(&self, cx: @ExtCtxt) -> @ast::Ty {
         cx.ty_path
             (path(~[cx.ident_of(self.name)],self.span).add_tys(
-                cx.ty_vars(&self.generics.ty_params)), @None)
+                cx.ty_vars(&self.generics.ty_params)), None)
     }
 
     /// Iterate over the states that can be reached in one message

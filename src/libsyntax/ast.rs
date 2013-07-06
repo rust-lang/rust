@@ -140,7 +140,7 @@ pub enum TyParamBound {
 pub struct TyParam {
     ident: ident,
     id: node_id,
-    bounds: @OptVec<TyParamBound>
+    bounds: OptVec<TyParamBound>
 }
 
 #[deriving(Eq, Encodable, Decodable,IterBytes)]
@@ -734,7 +734,7 @@ pub enum ty_ {
     ty_closure(@TyClosure),
     ty_bare_fn(@TyBareFn),
     ty_tup(~[@Ty]),
-    ty_path(Path, @Option<OptVec<TyParamBound>>, node_id), // for #7264; see above
+    ty_path(Path, Option<OptVec<TyParamBound>>, node_id), // for #7264; see above
     ty_mac(mac),
     // ty_infer means the type should be inferred instead of it having been
     // specified. This should only appear at the "top level" of a type and not

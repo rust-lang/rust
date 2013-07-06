@@ -4117,7 +4117,7 @@ impl Resolver {
             // Like path expressions, the interpretation of path types depends
             // on whether the path has multiple elements in it or not.
 
-            ty_path(ref path, bounds, path_id) => {
+            ty_path(ref path, ref bounds, path_id) => {
                 // This is a path in the type namespace. Walk through scopes
                 // scopes looking for it.
                 let mut result_def = None;

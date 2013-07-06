@@ -418,7 +418,7 @@ pub fn print_type(s: @ps, ty: &ast::Ty) {
                       f.purity, f.onceness, &f.decl, None, &f.bounds,
                       Some(&generics), None);
       }
-      ast::ty_path(ref path, bounds, _) => print_bounded_path(s, path, bounds),
+      ast::ty_path(ref path, ref bounds, _) => print_bounded_path(s, path, bounds),
       ast::ty_fixed_length_vec(ref mt, v) => {
         word(s.s, "[");
         match mt.mutbl {
@@ -1773,7 +1773,7 @@ pub fn print_generics(s: @ps, generics: &ast::Generics) {
                 let idx = idx - generics.lifetimes.len();
                 let param = generics.ty_params.get(idx);
                 print_ident(s, param.ident);
-                print_bounds(s, param.bounds, false);
+                print_bounds(s, &param.bounds, false);
             }
         }
 

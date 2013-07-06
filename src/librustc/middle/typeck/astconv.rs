@@ -276,7 +276,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Copy + 'static>(
                 }
                 return ty::mk_evec(tcx, mt, vst);
             }
-            ast::ty_path(ref path, bounds, id) => {
+            ast::ty_path(ref path, ref bounds, id) => {
                 // Note that the "bounds must be empty if path is not a trait"
                 // restriction is enforced in the below case for ty_path, which
                 // will run after this as long as the path isn't a trait.
@@ -405,7 +405,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Copy + 'static>(
                                       ast_ty.span);
           ty::mk_closure(tcx, fn_decl)
       }
-      ast::ty_path(ref path, bounds, id) => {
+      ast::ty_path(ref path, ref bounds, id) => {
         let a_def = match tcx.def_map.find(&id) {
           None => tcx.sess.span_fatal(
               ast_ty.span, fmt!("unbound path %s",

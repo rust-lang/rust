@@ -62,8 +62,7 @@ impl<'self> Path<'self> {
                  self_ty: ident,
                  self_generics: &Generics)
                  -> @ast::Ty {
-        cx.ty_path(self.to_path(cx, span,
-                                self_ty, self_generics), @None)
+        cx.ty_path(self.to_path(cx, span, self_ty, self_generics), None)
     }
     pub fn to_path(&self,
                    cx: @ExtCtxt,
@@ -142,8 +141,7 @@ impl<'self> Ty<'self> {
             }
             Literal(ref p) => { p.to_ty(cx, span, self_ty, self_generics) }
             Self  => {
-                cx.ty_path(self.to_path(cx, span, self_ty, self_generics),
-                           @None)
+                cx.ty_path(self.to_path(cx, span, self_ty, self_generics), None)
             }
             Tuple(ref fields) => {
                 let ty = if fields.is_empty() {
@@ -194,7 +192,7 @@ fn mk_ty_param(cx: @ExtCtxt, span: span, name: &str, bounds: &[Path],
             let path = b.to_path(cx, span, self_ident, self_generics);
             cx.typarambound(path)
         });
-    cx.typaram(cx.ident_of(name), @bounds)
+    cx.typaram(cx.ident_of(name), bounds)
 }
 
 fn mk_generics(lifetimes: ~[ast::Lifetime],  ty_params: ~[ast::TyParam]) -> Generics {

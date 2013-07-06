@@ -968,7 +968,7 @@ impl Parser {
             || is_ident_or_path(self.token) {
             // NAMED TYPE
             let (path, bounds) = self.parse_type_path();
-            ty_path(path, @bounds, self.get_id())
+            ty_path(path, bounds, self.get_id())
         } else {
             self.fatal(fmt!("expected type, found token %?",
                             *self.token));
@@ -3213,7 +3213,7 @@ impl Parser {
         let ident = self.parse_ident();
         let opt_bounds = self.parse_optional_ty_param_bounds();
         // For typarams we don't care about the difference b/w "<T>" and "<T:>".
-        let bounds = @opt_bounds.get_or_default(opt_vec::Empty);
+        let bounds = opt_bounds.get_or_default(opt_vec::Empty);
         ast::TyParam { ident: ident, id: self.get_id(), bounds: bounds }
     }
 
@@ -3565,7 +3565,7 @@ impl Parser {
         let opt_trait = if could_be_trait && self.eat_keyword(keywords::For) {
             // New-style trait. Reinterpret the type as a trait.
             let opt_trait_ref = match ty.node {
-                ty_path(ref path, @None, node_id) => {
+                ty_path(ref path, None, node_id) => {
                     Some(trait_ref {
                         path: /* bad */ copy *path,
                         ref_id: node_id
