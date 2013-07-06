@@ -179,7 +179,7 @@ fn ast_path_substs<AC:AstConv,RS:region_scope + Copy + 'static>(
             fmt!("wrong number of type arguments: expected %u but found %u",
                  decl_generics.type_param_defs.len(), path.types.len()));
     }
-    let tps = path.types.map(|a_t| ast_ty_to_ty(this, rscope, *a_t));
+    let tps = path.types.map(|a_t| ast_ty_to_ty(this, rscope, a_t));
 
     substs {self_r:self_r, self_ty:self_ty, tps:tps}
 }
@@ -377,7 +377,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Copy + 'static>(
                    |tmt| ty::mk_rptr(tcx, r, tmt))
       }
       ast::ty_tup(ref fields) => {
-        let flds = fields.map(|t| ast_ty_to_ty(this, rscope, *t));
+        let flds = fields.map(|t| ast_ty_to_ty(this, rscope, t));
         ty::mk_tup(tcx, flds)
       }
       ast::ty_bare_fn(ref bf) => {
@@ -525,13 +525,13 @@ pub fn ty_of_arg<AC:AstConv,
                  RS:region_scope + Copy + 'static>(
                  this: &AC,
                  rscope: &RS,
-                 a: ast::arg,
+                 a: &ast::arg,
                  expected_ty: Option<ty::t>)
                  -> ty::t {
     match a.ty.node {
         ast::ty_infer if expected_ty.is_some() => expected_ty.get(),
         ast::ty_infer => this.ty_infer(a.ty.span),
-        _ => ast_ty_to_ty(this, rscope, a.ty),
+        _ => ast_ty_to_ty(this, rscope, &a.ty),
     }
 }
 
@@ -621,11 +621,11 @@ fn ty_of_method_or_bare_fn<AC:AstConv,RS:region_scope + Copy + 'static>(
         transform_self_ty(this, &rb, self_info)
     });
 
-    let input_tys = decl.inputs.map(|a| ty_of_arg(this, &rb, *a, None));
+    let input_tys = decl.inputs.map(|a| ty_of_arg(this, &rb, a, None));
 
     let output_ty = match decl.output.node {
         ast::ty_infer => this.ty_infer(decl.output.span),
-        _ => ast_ty_to_ty(this, &rb, decl.output)
+        _ => ast_ty_to_ty(this, &rb, &decl.output)
     };
 
     return (opt_transformed_self_ty,
@@ -724,14 +724,14 @@ pub fn ty_of_closure<AC:AstConv,RS:region_scope + Copy + 'static>(
             // were supplied
             if i < e.inputs.len() {Some(e.inputs[i])} else {None}
         };
-        ty_of_arg(this, &rb, *a, expected_arg_ty)
+        ty_of_arg(this, &rb, a, expected_arg_ty)
     }.collect();
 
     let expected_ret_ty = expected_sig.map(|e| e.output);
     let output_ty = match decl.output.node {
         ast::ty_infer if expected_ret_ty.is_some() => expected_ret_ty.get(),
         ast::ty_infer => this.ty_infer(decl.output.span),
-        _ => ast_ty_to_ty(this, &rb, decl.output)
+        _ => ast_ty_to_ty(this, &rb, &decl.output)
     };
 
     ty::ClosureTy {

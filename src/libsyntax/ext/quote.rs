@@ -88,13 +88,13 @@ pub mod rt {
         }
     }
 
-    impl ToSource for @ast::Ty {
+    impl ToSource for ast::Ty {
         fn to_source(&self) -> @str {
-            pprust::ty_to_str(*self, get_ident_interner()).to_managed()
+            pprust::ty_to_str(self, get_ident_interner()).to_managed()
         }
     }
 
-    impl<'self> ToSource for &'self [@ast::Ty] {
+    impl<'self> ToSource for &'self [ast::Ty] {
         fn to_source(&self) -> @str {
             self.map(|i| i.to_source()).connect(", ").to_managed()
         }
@@ -216,13 +216,13 @@ pub mod rt {
         }
     }
 
-    impl ToTokens for @ast::Ty {
+    impl ToTokens for ast::Ty {
         fn to_tokens(&self, cx: @ExtCtxt) -> ~[token_tree] {
             cx.parse_tts(self.to_source())
         }
     }
 
-    impl<'self> ToTokens for &'self [@ast::Ty] {
+    impl<'self> ToTokens for &'self [ast::Ty] {
         fn to_tokens(&self, cx: @ExtCtxt) -> ~[token_tree] {
             cx.parse_tts(self.to_source())
         }

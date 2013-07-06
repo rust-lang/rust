@@ -398,7 +398,7 @@ pub fn print_type(s: @ps, ty: &ast::Ty) {
       }
       ast::ty_tup(ref elts) => {
         popen(s);
-        commasep(s, inconsistent, *elts, |p, &t| print_type(p, t));
+        commasep(s, inconsistent, *elts, print_type);
         if elts.len() == 1 {
             word(s.s, ",");
         }
@@ -454,7 +454,7 @@ pub fn print_foreign_item(s: @ps, item: &ast::foreign_item) {
         word(s.s, ";");
         end(s); // end the outer fn box
       }
-      ast::foreign_item_static(t, m) => {
+      ast::foreign_item_static(ref t, m) => {
         head(s, "static");
         if m {
             word_space(s, "mut");
@@ -476,7 +476,7 @@ pub fn print_item(s: @ps, item: &ast::item) {
     let ann_node = node_item(s, item);
     (s.ann.pre)(ann_node);
     match item.node {
-      ast::item_static(ty, m, expr) => {
+      ast::item_static(ref ty, m, expr) => {
         head(s, visibility_qualified(item.vis, "static"));
         if m == ast::m_mutbl {
             word_space(s, "mut");
@@ -530,7 +530,7 @@ pub fn print_item(s: @ps, item: &ast::item) {
         print_foreign_mod(s, nmod, item.attrs);
         bclose(s, item.span);
       }
-      ast::item_ty(ty, ref params) => {
+      ast::item_ty(ref ty, ref params) => {
         ibox(s, indent_unit);
         ibox(s, 0u);
         word_nbsp(s, visibility_qualified(item.vis, "type"));
@@ -559,7 +559,7 @@ pub fn print_item(s: @ps, item: &ast::item) {
           print_struct(s, struct_def, generics, item.ident, item.span);
       }
 
-      ast::item_impl(ref generics, ref opt_trait, ty, ref methods) => {
+      ast::item_impl(ref generics, ref opt_trait, ref ty, ref methods) => {
         head(s, visibility_qualified(item.vis, "impl"));
         if generics.is_parameterized() {
             print_generics(s, generics);
@@ -694,7 +694,7 @@ pub fn print_struct(s: @ps,
                     ast::named_field(*) => fail!("unexpected named field"),
                     ast::unnamed_field => {
                         maybe_print_comment(s, field.span.lo);
-                        print_type(s, field.node.ty);
+                        print_type(s, &field.node.ty);
                     }
                 }
             }
@@ -718,7 +718,7 @@ pub fn print_struct(s: @ps,
                     print_visibility(s, visibility);
                     print_ident(s, ident);
                     word_nbsp(s, ":");
-                    print_type(s, field.node.ty);
+                    print_type(s, &field.node.ty);
                     word(s.s, ",");
                 }
             }
@@ -777,7 +777,7 @@ pub fn print_variant(s: @ps, v: &ast::variant) {
             if !args.is_empty() {
                 popen(s);
                 fn print_variant_arg(s: @ps, arg: &ast::variant_arg) {
-                    print_type(s, arg.ty);
+                    print_type(s, &arg.ty);
                 }
                 commasep(s, consistent, *args, print_variant_arg);
                 pclose(s);
@@ -1172,7 +1172,7 @@ pub fn print_expr(s: @ps, expr: &ast::expr) {
         print_ident(s, ident);
         if tys.len() > 0u {
             word(s.s, "::<");
-            commasep(s, inconsistent, *tys, |p, &e| print_type(p, e));
+            commasep(s, inconsistent, *tys, print_type);
             word(s.s, ">");
         }
         print_call_post(s, sugar, &blk, &mut base_args);
@@ -1198,7 +1198,7 @@ pub fn print_expr(s: @ps, expr: &ast::expr) {
         print_expr(s, expr);
       }
       ast::expr_lit(lit) => print_literal(s, lit),
-      ast::expr_cast(expr, ty) => {
+      ast::expr_cast(expr, ref ty) => {
         print_expr(s, expr);
         space(s.s);
         word_space(s, "as");
@@ -1348,7 +1348,7 @@ pub fn print_expr(s: @ps, expr: &ast::expr) {
         print_ident(s, id);
         if tys.len() > 0u {
             word(s.s, "::<");
-            commasep(s, inconsistent, *tys, |p, &e| print_type(p, e));
+            commasep(s, inconsistent, *tys, print_type);
             word(s.s, ">");
         }
       }
@@ -1437,7 +1437,7 @@ pub fn print_local_decl(s: @ps, loc: &ast::local) {
     print_irrefutable_pat(s, loc.node.pat);
     match loc.node.ty.node {
       ast::ty_infer => (),
-      _ => { word_space(s, ":"); print_type(s, loc.node.ty); }
+      _ => { word_space(s, ":"); print_type(s, &loc.node.ty); }
     }
 }
 
@@ -1510,7 +1510,7 @@ fn print_path_(s: @ps, path: &ast::Path, colons_before_params: bool,
                 }
             }
 
-            commasep(s, inconsistent, path.types, |p, &e| print_type(p, e));
+            commasep(s, inconsistent, path.types, print_type);
 
             word(s.s, ">");
         }
@@ -1693,7 +1693,7 @@ pub fn print_fn_args(s: @ps, decl: &ast::fn_decl,
 
     for decl.inputs.iter().advance |arg| {
         if first { first = false; } else { word_space(s, ","); }
-        print_arg(s, *arg);
+        print_arg(s, arg);
     }
 
     end(s);
@@ -1711,7 +1711,7 @@ pub fn print_fn_args_and_ret(s: @ps, decl: &ast::fn_decl,
         _ => {
             space_if_not_bol(s);
             word_space(s, "->");
-            print_type(s, decl.output);
+            print_type(s, &decl.output);
         }
     }
 }
@@ -1726,7 +1726,7 @@ pub fn print_fn_block_args(s: @ps, decl: &ast::fn_decl) {
         _ => {
             space_if_not_bol(s);
             word_space(s, "->");
-            print_type(s, decl.output);
+            print_type(s, &decl.output);
         }
     }
 
@@ -1882,7 +1882,7 @@ pub fn print_mt(s: @ps, mt: &ast::mt) {
     print_type(s, mt.ty);
 }
 
-pub fn print_arg(s: @ps, input: ast::arg) {
+pub fn print_arg(s: @ps, input: &ast::arg) {
     ibox(s, indent_unit);
     if input.is_mutbl {
         word_space(s, "mut");
@@ -1902,7 +1902,7 @@ pub fn print_arg(s: @ps, input: ast::arg) {
                 space(s.s);
             }
         }
-        print_type(s, input.ty);
+        print_type(s, &input.ty);
       }
     }
     end(s);
@@ -1944,7 +1944,7 @@ pub fn print_ty_fn(s: @ps,
     }
     for decl.inputs.iter().advance |arg| {
         if first { first = false; } else { word_space(s, ","); }
-        print_arg(s, *arg);
+        print_arg(s, arg);
     }
     end(s);
     pclose(s);
@@ -1958,7 +1958,7 @@ pub fn print_ty_fn(s: @ps,
             ibox(s, indent_unit);
             word_space(s, "->");
             if decl.cf == ast::noreturn { word_nbsp(s, "!"); }
-            else { print_type(s, decl.output); }
+            else { print_type(s, &decl.output); }
             end(s);
         }
     }
