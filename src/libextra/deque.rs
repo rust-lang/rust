@@ -11,7 +11,6 @@
 //! A double-ended queue implemented as a circular buffer
 
 use std::uint;
-use std::util::replace;
 use std::vec;
 use std::cast::transmute;
 
@@ -103,15 +102,13 @@ impl<T> Deque<T> {
 
     /// Prepend an element to the deque
     pub fn add_front(&mut self, t: T) {
-        let oldlo = self.lo;
+        if self.nelts == self.elts.len() {
+            grow(self.nelts, self.lo, &mut self.elts);
+            self.hi = self.lo + self.nelts;
+        }
         if self.lo == 0u {
             self.lo = self.elts.len() - 1u;
         } else { self.lo -= 1u; }
-        if self.nelts == self.elts.len() {
-            self.elts = grow(self.nelts, oldlo, self.elts);
-            self.lo = self.elts.len() - 1u;
-            self.hi = self.nelts;
-        }
         self.elts[self.lo] = Some(t);
         self.nelts += 1u;
     }
@@ -119,12 +116,14 @@ impl<T> Deque<T> {
     /// Append an element to the deque
     pub fn add_back(&mut self, t: T) {
         if self.lo == self.hi && self.nelts != 0u {
-            self.elts = grow(self.nelts, self.lo, self.elts);
-            self.lo = 0u;
-            self.hi = self.nelts;
+            grow(self.nelts, self.lo, &mut self.elts);
+            self.hi = self.lo + self.nelts;
         }
         self.elts[self.hi] = Some(t);
-        self.hi = (self.hi + 1u) % self.elts.len();
+        self.hi += 1;
+        if self.hi == self.elts.len() {
+            self.hi = 0;
+        }
         self.nelts += 1u;
     }
 
@@ -235,15 +234,19 @@ iterator!{impl DequeMutRevIterator -> &'self mut T, -1}
 
 /// Grow is only called on full elts, so nelts is also len(elts), unlike
 /// elsewhere.
-fn grow<T>(nelts: uint, lo: uint, elts: &mut [Option<T>]) -> ~[Option<T>] {
+fn grow<T>(nelts: uint, lo: uint, elts: &mut ~[Option<T>]) {
     assert_eq!(nelts, elts.len());
-    let mut rv = ~[];
+    let newlen = elts.capacity() * 2;
+    elts.reserve(newlen);
 
-    do rv.grow_fn(nelts + 1) |i| {
-        replace(&mut elts[(lo + i) % nelts], None)
+    /* fill with None */
+    for uint::range(elts.len(), elts.capacity()) |_| {
+        elts.push(None);
     }
-
-    rv
+    /* move the former wraparound to the new half */
+    for uint::range(0, lo) |i| {
+        elts.swap(i, nelts + i);
+    }
 }
 
 fn get<'r, T>(elts: &'r [Option<T>], i: uint) -> &'r T {
