@@ -273,7 +273,7 @@ mod tests {
     use super::*;
     use std::cmp::Eq;
     use std::kinds::Copy;
-    use std::int;
+    use std::{int, uint};
     use extra::test;
 
     #[test]
@@ -536,6 +536,8 @@ mod tests {
     #[test]
     fn test_iter() {
         let mut d = Deque::new();
+        assert_eq!(d.iter().next(), None);
+
         for int::range(0,5) |i| {
             d.add_back(i);
         }
@@ -550,6 +552,8 @@ mod tests {
     #[test]
     fn test_rev_iter() {
         let mut d = Deque::new();
+        assert_eq!(d.rev_iter().next(), None);
+
         for int::range(0,5) |i| {
             d.add_back(i);
         }
@@ -559,6 +563,52 @@ mod tests {
             d.add_front(i);
         }
         assert_eq!(d.rev_iter().collect::<~[&int]>(), ~[&4,&3,&2,&1,&0,&6,&7,&8]);
+    }
+
+    #[test]
+    fn test_mut_iter() {
+        let mut d = Deque::new();
+        assert!(d.mut_iter().next().is_none());
+
+        for uint::range(0,3) |i| {
+            d.add_front(i);
+        }
+
+        for d.mut_iter().enumerate().advance |(i, elt)| {
+            assert_eq!(*elt, 2 - i);
+            *elt = i;
+        }
+
+        {
+            let mut it = d.mut_iter();
+            assert_eq!(*it.next().unwrap(), 0);
+            assert_eq!(*it.next().unwrap(), 1);
+            assert_eq!(*it.next().unwrap(), 2);
+            assert!(it.next().is_none());
+        }
+    }
+
+    #[test]
+    fn test_mut_rev_iter() {
+        let mut d = Deque::new();
+        assert!(d.mut_rev_iter().next().is_none());
+
+        for uint::range(0,3) |i| {
+            d.add_front(i);
+        }
+
+        for d.mut_rev_iter().enumerate().advance |(i, elt)| {
+            assert_eq!(*elt, i);
+            *elt = i;
+        }
+
+        {
+            let mut it = d.mut_rev_iter();
+            assert_eq!(*it.next().unwrap(), 0);
+            assert_eq!(*it.next().unwrap(), 1);
+            assert_eq!(*it.next().unwrap(), 2);
+            assert!(it.next().is_none());
+        }
     }
 
     #[test]
