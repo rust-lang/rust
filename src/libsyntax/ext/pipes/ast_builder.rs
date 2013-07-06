@@ -42,19 +42,19 @@ pub fn path_global(ids: ~[ident], span: span) -> ast::Path {
 }
 
 pub trait append_types {
-    fn add_ty(&self, ty: @ast::Ty) -> ast::Path;
-    fn add_tys(&self, tys: ~[@ast::Ty]) -> ast::Path;
+    fn add_ty(&self, ty: ast::Ty) -> ast::Path;
+    fn add_tys(&self, tys: ~[ast::Ty]) -> ast::Path;
 }
 
 impl append_types for ast::Path {
-    fn add_ty(&self, ty: @ast::Ty) -> ast::Path {
+    fn add_ty(&self, ty: ast::Ty) -> ast::Path {
         ast::Path {
             types: vec::append_one(copy self.types, ty),
             .. copy *self
         }
     }
 
-    fn add_tys(&self, tys: ~[@ast::Ty]) -> ast::Path {
+    fn add_tys(&self, tys: ~[ast::Ty]) -> ast::Path {
         ast::Path {
             types: vec::append(copy self.types, tys),
             .. copy *self

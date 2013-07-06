@@ -476,7 +476,7 @@ pub fn check_fn(ccx: @mut CrateCtxt,
                 |local, (e, v)| {
             let o_ty = match local.node.ty.node {
               ast::ty_infer => None,
-              _ => Some(fcx.to_ty(local.node.ty))
+              _ => Some(fcx.to_ty(&local.node.ty))
             };
             assign(local.node.id, o_ty);
             debug!("Local variable %s is assigned type %s",
@@ -624,7 +624,7 @@ pub fn check_item(ccx: @mut CrateCtxt, it: @ast::item) {
       ast::item_struct(*) => {
         check_struct(ccx, it.id, it.span);
       }
-      ast::item_ty(t, ref generics) => {
+      ast::item_ty(ref t, ref generics) => {
         let tpt_ty = ty::node_id_to_type(ccx.tcx, it.id);
         check_bounds_are_used(ccx, t.span, &generics.ty_params, tpt_ty);
       }
@@ -790,7 +790,7 @@ impl FnCtxt {
         self.write_ty(node_id, ty::mk_err());
     }
 
-    pub fn to_ty(&self, ast_t: @ast::Ty) -> ty::t {
+    pub fn to_ty(&self, ast_t: &ast::Ty) -> ty::t {
         ast_ty_to_ty(self, self, ast_t)
     }
 
@@ -1381,7 +1381,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                          rcvr: @ast::expr,
                          method_name: ast::ident,
                          args: &[@ast::expr],
-                         tps: &[@ast::Ty],
+                         tps: &[ast::Ty],
                          sugar: ast::CallSugar) {
         check_expr(fcx, rcvr);
 
@@ -1390,7 +1390,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                                                 expr.span,
                                                 fcx.expr_ty(rcvr));
 
-        let tps = tps.map(|ast_ty| fcx.to_ty(*ast_ty));
+        let tps = tps.map(|ast_ty| fcx.to_ty(ast_ty));
         match method::lookup(fcx,
                              expr,
                              rcvr,
@@ -1779,7 +1779,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                    expr: @ast::expr,
                    base: @ast::expr,
                    field: ast::ident,
-                   tys: &[@ast::Ty]) {
+                   tys: &[ast::Ty]) {
         let tcx = fcx.ccx.tcx;
         let bot = check_expr(fcx, base);
         let expr_t = structurally_resolved_type(fcx, expr.span,
@@ -1809,7 +1809,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
             _ => ()
         }
 
-        let tps = tys.iter().transform(|ty| fcx.to_ty(*ty)).collect::<~[ty::t]>();
+        let tps : ~[ty::t] = tys.iter().transform(|ty| fcx.to_ty(ty)).collect();
         match method::lookup(fcx,
                              expr,
                              base,
@@ -2622,7 +2622,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
             fcx.write_bot(id);
         }
       }
-      ast::expr_cast(e, t) => {
+      ast::expr_cast(e, ref t) => {
         check_expr(fcx, e);
         let t_1 = fcx.to_ty(t);
         let t_e = fcx.expr_ty(e);
@@ -3336,7 +3336,7 @@ pub fn instantiate_path(fcx: @mut FnCtxt,
             (span, "not enough type parameters provided for this item");
         fcx.infcx().next_ty_vars(ty_param_count)
     } else {
-        pth.types.map(|aty| fcx.to_ty(*aty))
+        pth.types.map(|aty| fcx.to_ty(aty))
     };
 
     let substs = substs { self_r: self_r, self_ty: None, tps: tps };

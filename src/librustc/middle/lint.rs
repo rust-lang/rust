@@ -747,9 +747,9 @@ fn check_item_ctypes(cx: &Context, it: &ast::item) {
 
     fn check_foreign_fn(cx: &Context, decl: &ast::fn_decl) {
         for decl.inputs.iter().advance |in| {
-            check_ty(cx, in.ty);
+            check_ty(cx, &in.ty);
         }
-        check_ty(cx, decl.output)
+        check_ty(cx, &decl.output)
     }
 
     match it.node {
@@ -759,7 +759,7 @@ fn check_item_ctypes(cx: &Context, it: &ast::item) {
                 ast::foreign_item_fn(ref decl, _, _) => {
                     check_foreign_fn(cx, decl);
                 }
-                ast::foreign_item_static(t, _) => { check_ty(cx, t); }
+                ast::foreign_item_static(ref t, _) => { check_ty(cx, t); }
             }
         }
       }

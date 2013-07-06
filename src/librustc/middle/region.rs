@@ -713,10 +713,10 @@ fn determine_rp_in_fn(fk: &visit::fn_kind,
     do cx.with(cx.item_id, false) {
         do cx.with_ambient_variance(rv_contravariant) {
             for decl.inputs.iter().advance |a| {
-                (visitor.visit_ty)(a.ty, (cx, visitor));
+                (visitor.visit_ty)(&a.ty, (cx, visitor));
             }
         }
-        (visitor.visit_ty)(decl.output, (cx, visitor));
+        (visitor.visit_ty)(&decl.output, (cx, visitor));
         let generics = visit::generics_of_fn(fk);
         (visitor.visit_generics)(&generics, (cx, visitor));
         (visitor.visit_block)(body, (cx, visitor));
@@ -731,7 +731,7 @@ fn determine_rp_in_ty_method(ty_m: &ast::ty_method,
     }
 }
 
-fn determine_rp_in_ty(ty: @ast::Ty,
+fn determine_rp_in_ty(ty: &ast::Ty,
                       (cx, visitor): (@mut DetermineRpCtxt,
                                       visit::vt<@mut DetermineRpCtxt>)) {
     // we are only interested in types that will require an item to
@@ -815,8 +815,8 @@ fn determine_rp_in_ty(ty: @ast::Ty,
     }
 
     match ty.node {
-      ast::ty_box(mt) | ast::ty_uniq(mt) | ast::ty_vec(mt) |
-      ast::ty_rptr(_, mt) | ast::ty_ptr(mt) => {
+      ast::ty_box(ref mt) | ast::ty_uniq(ref mt) | ast::ty_vec(ref mt) |
+      ast::ty_rptr(_, ref mt) | ast::ty_ptr(ref mt) => {
         visit_mt(mt, (cx, visitor));
       }
 
@@ -824,7 +824,7 @@ fn determine_rp_in_ty(ty: @ast::Ty,
         // type parameters are---for now, anyway---always invariant
         do cx.with_ambient_variance(rv_invariant) {
             for path.types.iter().advance |tp| {
-                (visitor.visit_ty)(*tp, (cx, visitor));
+                (visitor.visit_ty)(tp, (cx, visitor));
             }
         }
       }
@@ -837,10 +837,10 @@ fn determine_rp_in_ty(ty: @ast::Ty,
             // parameters are contravariant
             do cx.with_ambient_variance(rv_contravariant) {
                 for decl.inputs.iter().advance |a| {
-                    (visitor.visit_ty)(a.ty, (cx, visitor));
+                    (visitor.visit_ty)(&a.ty, (cx, visitor));
                 }
             }
-            (visitor.visit_ty)(decl.output, (cx, visitor));
+            (visitor.visit_ty)(&decl.output, (cx, visitor));
         }
       }
 
@@ -849,7 +849,7 @@ fn determine_rp_in_ty(ty: @ast::Ty,
       }
     }
 
-    fn visit_mt(mt: ast::mt,
+    fn visit_mt(mt: &ast::mt,
                 (cx, visitor): (@mut DetermineRpCtxt,
                                 visit::vt<@mut DetermineRpCtxt>)) {
         // mutability is invariant

@@ -39,31 +39,30 @@ pub trait AstBuilder {
                 global: bool,
                 idents: ~[ast::ident],
                 rp: Option<ast::Lifetime>,
-                types: ~[@ast::Ty])
+                types: ~[ast::Ty])
         -> ast::Path;
 
     // types
-    fn ty_mt(&self, ty: @ast::Ty, mutbl: ast::mutability) -> ast::mt;
+    fn ty_mt(&self, ty: ast::Ty, mutbl: ast::mutability) -> ast::mt;
 
-    fn ty(&self, span: span, ty: ast::ty_) -> @ast::Ty;
-    fn ty_path(&self, ast::Path, Option<OptVec<ast::TyParamBound>>) -> @ast::Ty;
-    fn ty_ident(&self, span: span, idents: ast::ident) -> @ast::Ty;
+    fn ty(&self, span: span, ty: ast::ty_) -> ast::Ty;
+    fn ty_path(&self, ast::Path, Option<OptVec<ast::TyParamBound>>) -> ast::Ty;
+    fn ty_ident(&self, span: span, idents: ast::ident) -> ast::Ty;
 
     fn ty_rptr(&self, span: span,
-               ty: @ast::Ty,
+               ty: ast::Ty,
                lifetime: Option<ast::Lifetime>,
-               mutbl: ast::mutability)
-        -> @ast::Ty;
-    fn ty_uniq(&self, span: span, ty: @ast::Ty) -> @ast::Ty;
-    fn ty_box(&self, span: span, ty: @ast::Ty, mutbl: ast::mutability) -> @ast::Ty;
+               mutbl: ast::mutability) -> ast::Ty;
+    fn ty_uniq(&self, span: span, ty: ast::Ty) -> ast::Ty;
+    fn ty_box(&self, span: span, ty: ast::Ty, mutbl: ast::mutability) -> ast::Ty;
 
-    fn ty_option(&self, ty: @ast::Ty) -> @ast::Ty;
-    fn ty_infer(&self, sp: span) -> @ast::Ty;
-    fn ty_nil(&self) -> @ast::Ty;
+    fn ty_option(&self, ty: ast::Ty) -> ast::Ty;
+    fn ty_infer(&self, sp: span) -> ast::Ty;
+    fn ty_nil(&self) -> ast::Ty;
 
-    fn ty_vars(&self, ty_params: &OptVec<ast::TyParam>) -> ~[@ast::Ty];
-    fn ty_vars_global(&self, ty_params: &OptVec<ast::TyParam>) -> ~[@ast::Ty];
-    fn ty_field_imm(&self, span: span, name: ident, ty: @ast::Ty) -> ast::ty_field;
+    fn ty_vars(&self, ty_params: &OptVec<ast::TyParam>) -> ~[ast::Ty];
+    fn ty_vars_global(&self, ty_params: &OptVec<ast::TyParam>) -> ~[ast::Ty];
+    fn ty_field_imm(&self, span: span, name: ident, ty: ast::Ty) -> ast::ty_field;
     fn strip_bounds(&self, bounds: &Generics) -> Generics;
 
     fn typaram(&self, id: ast::ident, bounds: OptVec<ast::TyParamBound>) -> ast::TyParam;
@@ -167,25 +166,25 @@ pub trait AstBuilder {
     fn item(&self, span: span,
             name: ident, attrs: ~[ast::attribute], node: ast::item_) -> @ast::item;
 
-    fn arg(&self, span: span, name: ident, ty: @ast::Ty) -> ast::arg;
+    fn arg(&self, span: span, name: ident, ty: ast::Ty) -> ast::arg;
     // XXX unused self
-    fn fn_decl(&self, inputs: ~[ast::arg], output: @ast::Ty) -> ast::fn_decl;
+    fn fn_decl(&self, inputs: ~[ast::arg], output: ast::Ty) -> ast::fn_decl;
 
     fn item_fn_poly(&self,
                     span: span,
                     name: ident,
                     inputs: ~[ast::arg],
-                    output: @ast::Ty,
+                    output: ast::Ty,
                     generics: Generics,
                     body: ast::blk) -> @ast::item;
     fn item_fn(&self,
                span: span,
                name: ident,
                inputs: ~[ast::arg],
-               output: @ast::Ty,
+               output: ast::Ty,
                body: ast::blk) -> @ast::item;
 
-    fn variant(&self, span: span, name: ident, tys: ~[@ast::Ty]) -> ast::variant;
+    fn variant(&self, span: span, name: ident, tys: ~[ast::Ty]) -> ast::variant;
     fn item_enum_poly(&self,
                       span: span,
                       name: ident,
@@ -207,9 +206,9 @@ pub trait AstBuilder {
     fn item_ty_poly(&self,
                     span: span,
                     name: ident,
-                    ty: @ast::Ty,
+                    ty: ast::Ty,
                     generics: Generics) -> @ast::item;
-    fn item_ty(&self, span: span, name: ident, ty: @ast::Ty) -> @ast::item;
+    fn item_ty(&self, span: span, name: ident, ty: ast::Ty) -> @ast::item;
 
     fn attribute(&self, sp: span, mi: @ast::meta_item) -> ast::attribute;
 
@@ -239,7 +238,7 @@ impl AstBuilder for @ExtCtxt {
                 global: bool,
                 idents: ~[ast::ident],
                 rp: Option<ast::Lifetime>,
-                types: ~[@ast::Ty])
+                types: ~[ast::Ty])
         -> ast::Path {
         ast::Path {
             span: sp,
@@ -250,15 +249,15 @@ impl AstBuilder for @ExtCtxt {
         }
     }
 
-    fn ty_mt(&self, ty: @ast::Ty, mutbl: ast::mutability) -> ast::mt {
+    fn ty_mt(&self, ty: ast::Ty, mutbl: ast::mutability) -> ast::mt {
         ast::mt {
-            ty: ty,
+            ty: ~ty,
             mutbl: mutbl
         }
     }
 
-    fn ty(&self, span: span, ty: ast::ty_) -> @ast::Ty {
-        @ast::Ty {
+    fn ty(&self, span: span, ty: ast::ty_) -> ast::Ty {
+        ast::Ty {
             id: self.next_id(),
             span: span,
             node: ty
@@ -266,7 +265,7 @@ impl AstBuilder for @ExtCtxt {
     }
 
     fn ty_path(&self, path: ast::Path, bounds: Option<OptVec<ast::TyParamBound>>)
-              -> @ast::Ty {
+              -> ast::Ty {
         self.ty(path.span,
                 ast::ty_path(path, bounds, self.next_id()))
     }
@@ -274,28 +273,28 @@ impl AstBuilder for @ExtCtxt {
     // Might need to take bounds as an argument in the future, if you ever want
     // to generate a bounded existential trait type.
     fn ty_ident(&self, span: span, ident: ast::ident)
-        -> @ast::Ty {
+        -> ast::Ty {
         self.ty_path(self.path_ident(span, ident), None)
     }
 
     fn ty_rptr(&self,
                span: span,
-               ty: @ast::Ty,
+               ty: ast::Ty,
                lifetime: Option<ast::Lifetime>,
                mutbl: ast::mutability)
-        -> @ast::Ty {
+        -> ast::Ty {
         self.ty(span,
                 ast::ty_rptr(lifetime, self.ty_mt(ty, mutbl)))
     }
-    fn ty_uniq(&self, span: span, ty: @ast::Ty) -> @ast::Ty {
+    fn ty_uniq(&self, span: span, ty: ast::Ty) -> ast::Ty {
         self.ty(span, ast::ty_uniq(self.ty_mt(ty, ast::m_imm)))
     }
     fn ty_box(&self, span: span,
-                 ty: @ast::Ty, mutbl: ast::mutability) -> @ast::Ty {
+                 ty: ast::Ty, mutbl: ast::mutability) -> ast::Ty {
         self.ty(span, ast::ty_box(self.ty_mt(ty, mutbl)))
     }
 
-    fn ty_option(&self, ty: @ast::Ty) -> @ast::Ty {
+    fn ty_option(&self, ty: ast::Ty) -> ast::Ty {
         self.ty_path(
             self.path_all(dummy_sp(),
                           true,
@@ -308,20 +307,20 @@ impl AstBuilder for @ExtCtxt {
                           ~[ ty ]), None)
     }
 
-    fn ty_field_imm(&self, span: span, name: ident, ty: @ast::Ty) -> ast::ty_field {
+    fn ty_field_imm(&self, span: span, name: ident, ty: ast::Ty) -> ast::ty_field {
         respan(span,
                ast::ty_field_ {
                    ident: name,
-                   mt: ast::mt { ty: ty, mutbl: ast::m_imm },
+                   mt: ast::mt { ty: ~ty, mutbl: ast::m_imm },
                })
     }
 
-    fn ty_infer(&self, span: span) -> @ast::Ty {
+    fn ty_infer(&self, span: span) -> ast::Ty {
         self.ty(span, ast::ty_infer)
     }
 
-    fn ty_nil(&self) -> @ast::Ty {
-        @ast::Ty {
+    fn ty_nil(&self) -> ast::Ty {
+        ast::Ty {
             id: self.next_id(),
             node: ast::ty_nil,
             span: dummy_sp(),
@@ -335,12 +334,12 @@ impl AstBuilder for @ExtCtxt {
     // these are strange, and probably shouldn't be used outside of
     // pipes. Specifically, the global version possible generates
     // incorrect code.
-    fn ty_vars(&self, ty_params: &OptVec<ast::TyParam>) -> ~[@ast::Ty] {
+    fn ty_vars(&self, ty_params: &OptVec<ast::TyParam>) -> ~[ast::Ty] {
         opt_vec::take_vec(
             ty_params.map(|p| self.ty_ident(dummy_sp(), p.ident)))
     }
 
-    fn ty_vars_global(&self, ty_params: &OptVec<ast::TyParam>) -> ~[@ast::Ty] {
+    fn ty_vars_global(&self, ty_params: &OptVec<ast::TyParam>) -> ~[ast::Ty] {
         opt_vec::take_vec(
             ty_params.map(|p| self.ty_path(
                 self.path_global(dummy_sp(), ~[p.ident]), None)))
@@ -642,7 +641,7 @@ impl AstBuilder for @ExtCtxt {
         self.lambda1(span, self.blk(span, stmts, None), ident)
     }
 
-    fn arg(&self, span: span, ident: ast::ident, ty: @ast::Ty) -> ast::arg {
+    fn arg(&self, span: span, ident: ast::ident, ty: ast::Ty) -> ast::arg {
         let arg_pat = self.pat_ident(span, ident);
         ast::arg {
             is_mutbl: false,
@@ -653,7 +652,7 @@ impl AstBuilder for @ExtCtxt {
     }
 
     // XXX unused self
-    fn fn_decl(&self, inputs: ~[ast::arg], output: @ast::Ty) -> ast::fn_decl {
+    fn fn_decl(&self, inputs: ~[ast::arg], output: ast::Ty) -> ast::fn_decl {
         ast::fn_decl {
             inputs: inputs,
             output: output,
@@ -677,7 +676,7 @@ impl AstBuilder for @ExtCtxt {
                     span: span,
                     name: ident,
                     inputs: ~[ast::arg],
-                    output: @ast::Ty,
+                    output: ast::Ty,
                     generics: Generics,
                     body: ast::blk) -> @ast::item {
         self.item(span,
@@ -694,7 +693,7 @@ impl AstBuilder for @ExtCtxt {
                span: span,
                name: ident,
                inputs: ~[ast::arg],
-               output: @ast::Ty,
+               output: ast::Ty,
                body: ast::blk
               ) -> @ast::item {
         self.item_fn_poly(
@@ -706,10 +705,10 @@ impl AstBuilder for @ExtCtxt {
             body)
     }
 
-    fn variant(&self, span: span, name: ident, tys: ~[@ast::Ty]) -> ast::variant {
-        let args = do tys.map |ty| {
-            ast::variant_arg { ty: *ty, id: self.next_id() }
-        };
+    fn variant(&self, span: span, name: ident, tys: ~[ast::Ty]) -> ast::variant {
+        let args = tys.consume_iter().transform(|ty| {
+            ast::variant_arg { ty: ty, id: self.next_id() }
+        }).collect();
 
         respan(span,
                ast::variant_ {
@@ -773,12 +772,12 @@ impl AstBuilder for @ExtCtxt {
         )
     }
 
-    fn item_ty_poly(&self, span: span, name: ident, ty: @ast::Ty,
+    fn item_ty_poly(&self, span: span, name: ident, ty: ast::Ty,
                     generics: Generics) -> @ast::item {
         self.item(span, name, ~[], ast::item_ty(ty, generics))
     }
 
-    fn item_ty(&self, span: span, name: ident, ty: @ast::Ty) -> @ast::item {
+    fn item_ty(&self, span: span, name: ident, ty: ast::Ty) -> @ast::item {
         self.item_ty_poly(span, name, ty, ast_util::empty_generics())
     }
 

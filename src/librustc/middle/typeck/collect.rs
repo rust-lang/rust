@@ -148,7 +148,7 @@ pub fn get_enum_variant_types(ccx: &CrateCtxt,
         match variant.node.kind {
             ast::tuple_variant_kind(ref args) if args.len() > 0 => {
                 let rs = type_rscope(region_parameterization);
-                let input_tys = args.map(|va| ccx.to_ty(&rs, va.ty));
+                let input_tys = args.map(|va| ccx.to_ty(&rs, &va.ty));
                 result_ty = Some(ty::mk_ctor_fn(tcx, input_tys, enum_ty));
             }
 
@@ -684,7 +684,7 @@ pub fn convert_field(ccx: &CrateCtxt,
                      generics: &ast::Generics) {
     let region_parameterization =
         RegionParameterization::from_variance_and_generics(rp, generics);
-    let tt = ccx.to_ty(&type_rscope(region_parameterization), v.node.ty);
+    let tt = ccx.to_ty(&type_rscope(region_parameterization), &v.node.ty);
     write_ty_to_tcx(ccx.tcx, v.node.id, tt);
     /* add the field to the tcache */
     ccx.tcx.tcache.insert(local_def(v.node.id),
@@ -813,7 +813,7 @@ pub fn convert(ccx: &CrateCtxt, it: &ast::item) {
                                generics,
                                rp);
       }
-      ast::item_impl(ref generics, ref opt_trait_ref, selfty, ref ms) => {
+      ast::item_impl(ref generics, ref opt_trait_ref, ref selfty, ref ms) => {
         let i_ty_generics = ty_generics(ccx, rp, generics, 0);
         let region_parameterization =
             RegionParameterization::from_variance_and_generics(rp, generics);
@@ -1031,7 +1031,7 @@ pub fn ty_of_item(ccx: &CrateCtxt, it: &ast::item)
     }
     let rp = tcx.region_paramd_items.find(&it.id).map_consume(|x| *x);
     match it.node {
-      ast::item_static(t, _, _) => {
+      ast::item_static(ref t, _, _) => {
         let typ = ccx.to_ty(&empty_rscope, t);
         let tpt = no_params(typ);
         tcx.tcache.insert(local_def(it.id), tpt);
@@ -1060,7 +1060,7 @@ pub fn ty_of_item(ccx: &CrateCtxt, it: &ast::item)
         ccx.tcx.tcache.insert(local_def(it.id), tpt);
         return tpt;
       }
-      ast::item_ty(t, ref generics) => {
+      ast::item_ty(ref t, ref generics) => {
         match tcx.tcache.find(&local_def(it.id)) {
           Some(&tpt) => return tpt,
           None => { }
@@ -1124,7 +1124,7 @@ pub fn ty_of_foreign_item(ccx: &CrateCtxt,
                                   generics,
                                   abis)
         }
-        ast::foreign_item_static(t, _) => {
+        ast::foreign_item_static(ref t, _) => {
             ty::ty_param_bounds_and_ty {
                 generics: ty::Generics {
                     type_param_defs: @~[],
@@ -1215,8 +1215,8 @@ pub fn ty_of_foreign_fn_decl(ccx: &CrateCtxt,
     let ty_generics = ty_generics(ccx, None, ast_generics, 0);
     let region_param_names = RegionParamNames::from_generics(ast_generics);
     let rb = in_binding_rscope(&empty_rscope, region_param_names);
-    let input_tys = decl.inputs.map(|a| ty_of_arg(ccx, &rb, *a, None) );
-    let output_ty = ast_ty_to_ty(ccx, &rb, decl.output);
+    let input_tys = decl.inputs.map(|a| ty_of_arg(ccx, &rb, a, None) );
+    let output_ty = ast_ty_to_ty(ccx, &rb, &decl.output);
 
     let t_fn = ty::mk_bare_fn(
         ccx.tcx,
