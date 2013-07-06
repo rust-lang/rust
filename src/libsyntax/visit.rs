@@ -252,7 +252,7 @@ pub fn visit_ty<E: Copy>(t: &Ty, (e, v): (E, vt<E>)) {
             for f.decl.inputs.iter().advance |a| { (v.visit_ty)(a.ty, (copy e, v)); }
             (v.visit_ty)(f.decl.output, (e, v));
         },
-        ty_path(ref p, bounds, _) => {
+        ty_path(ref p, ref bounds, _) => {
             visit_path(p, (copy e, v));
             do bounds.map |bounds| {
                 visit_ty_param_bounds(bounds, (copy e, v));
@@ -344,7 +344,7 @@ pub fn visit_ty_param_bounds<E: Copy>(bounds: &OptVec<TyParamBound>,
 
 pub fn visit_generics<E: Copy>(generics: &Generics, (e, v): (E, vt<E>)) {
     for generics.ty_params.iter().advance |tp| {
-        visit_ty_param_bounds(tp.bounds, (copy e, v));
+        visit_ty_param_bounds(&tp.bounds, (copy e, v));
     }
 }
 

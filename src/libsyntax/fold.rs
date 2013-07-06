@@ -171,12 +171,13 @@ pub fn fold_ty_param(tp: TyParam,
                      fld: @ast_fold) -> TyParam {
     TyParam {ident: tp.ident,
              id: fld.new_id(tp.id),
-             bounds: @tp.bounds.map(|x| fold_ty_param_bound(x, fld))}
+             bounds: tp.bounds.map(|x| fold_ty_param_bound(x, fld))}
 }
 
 pub fn fold_ty_params(tps: &OptVec<TyParam>,
                       fld: @ast_fold) -> OptVec<TyParam> {
-    tps.map(|tp| fold_ty_param(*tp, fld))
+    let tps = /*bad*/ copy *tps;
+    tps.map_consume(|tp| fold_ty_param(tp, fld))
 }
 
 pub fn fold_lifetime(l: &Lifetime,
@@ -682,8 +683,8 @@ pub fn noop_fold_ty(t: &ty_, fld: @ast_fold) -> ty_ {
             })
         }
         ty_tup(ref tys) => ty_tup(tys.map(|ty| fld.fold_ty(*ty))),
-        ty_path(ref path, bounds, id) =>
-            ty_path(fld.fold_path(path), @fold_opt_bounds(bounds, fld), fld.new_id(id)),
+        ty_path(ref path, ref bounds, id) =>
+            ty_path(fld.fold_path(path), fold_opt_bounds(bounds, fld), fld.new_id(id)),
         ty_fixed_length_vec(ref mt, e) => {
             ty_fixed_length_vec(
                 fold_mt(mt, fld),

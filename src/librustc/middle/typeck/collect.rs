@@ -1149,7 +1149,7 @@ pub fn ty_generics(ccx: &CrateCtxt,
                     let param_ty = ty::param_ty {idx: base_index + offset,
                                                  def_id: local_def(param.id)};
                     let bounds = @compute_bounds(ccx, rp, generics,
-                                                 param_ty, param.bounds);
+                                                 param_ty, &param.bounds);
                     let def = ty::TypeParameterDef {
                         def_id: local_def(param.id),
                         bounds: bounds
@@ -1167,7 +1167,7 @@ pub fn ty_generics(ccx: &CrateCtxt,
         rp: Option<ty::region_variance>,
         generics: &ast::Generics,
         param_ty: ty::param_ty,
-        ast_bounds: @OptVec<ast::TyParamBound>) -> ty::ParamBounds
+        ast_bounds: &OptVec<ast::TyParamBound>) -> ty::ParamBounds
     {
         /*!
          *

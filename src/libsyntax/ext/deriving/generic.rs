@@ -337,7 +337,7 @@ impl<'self> TraitDef<'self> {
             // require the current trait
             bounds.push(cx.typarambound(copy trait_path));
 
-            trait_generics.ty_params.push(cx.typaram(ty_param.ident, @bounds));
+            trait_generics.ty_params.push(cx.typaram(ty_param.ident, bounds));
         }
 
         // Create the reference to the trait.
@@ -356,8 +356,7 @@ impl<'self> TraitDef<'self> {
 
         // Create the type of `self`.
         let self_type = cx.ty_path(cx.path_all(span, false, ~[ type_ident ], self_lifetime,
-                                               opt_vec::take_vec(self_ty_params)),
-                                   @None);
+                                               opt_vec::take_vec(self_ty_params)), None);
 
         let doc_attr = cx.attribute(
             span,
