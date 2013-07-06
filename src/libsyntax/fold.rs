@@ -964,7 +964,7 @@ mod test {
     }
 
     // this version doesn't care about getting comments or docstrings in.
-    fn fake_print_crate(s: @pprust::ps, crate: ast::crate) {
+    fn fake_print_crate(s: @pprust::ps, crate: &ast::crate) {
         pprust::print_mod(s, &crate.node.module, crate.node.attrs);
     }
 
@@ -995,7 +995,7 @@ mod test {
         let ast = string_to_crate(@"#[a] mod b {fn c (d : e, f : g) {h!(i,j,k);l;m}}");
         assert_pred!(matches_codepattern,
                      "matches_codepattern",
-                     pprust::to_str(zz_fold.fold_crate(ast),fake_print_crate,
+                     pprust::to_str(&zz_fold.fold_crate(ast),fake_print_crate,
                                     token::get_ident_interner()),
                      ~"#[a]mod zz{fn zz(zz:zz,zz:zz){zz!(zz,zz,zz);zz;zz}}");
     }
@@ -1007,7 +1007,7 @@ mod test {
 => (g $(d $d $e)+))} ");
         assert_pred!(matches_codepattern,
                      "matches_codepattern",
-                     pprust::to_str(zz_fold.fold_crate(ast),fake_print_crate,
+                     pprust::to_str(&zz_fold.fold_crate(ast),fake_print_crate,
                                     token::get_ident_interner()),
                      ~"zz!zz((zz$zz:zz$(zz $zz:zz)zz+=>(zz$(zz$zz$zz)+)))");
     }

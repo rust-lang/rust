@@ -482,7 +482,7 @@ mod test {
         assert_eq!(parser.parse_arg_general(true),
                    ast::arg{
                        is_mutbl: false,
-                       ty: @ast::Ty{id:3, // fixme
+                       ty: ast::Ty{id:3, // fixme
                                     node: ast::ty_path(ast::Path{
                                         span:sp(4,4), // this is bizarre...
                                         // check this in the original parser?
@@ -490,7 +490,7 @@ mod test {
                                         idents:~[str_to_ident("int")],
                                         rp: None,
                                         types: ~[]},
-                                                       @None, 2),
+                                                       None, 2),
                                     span:sp(4,7)},
                        pat: @ast::pat{id:1,
                                       node: ast::pat_ident(ast::bind_infer,
@@ -519,14 +519,14 @@ mod test {
                             node: ast::item_fn(ast::fn_decl{
                                 inputs: ~[ast::arg{
                                     is_mutbl: false,
-                                    ty: @ast::Ty{id:3, // fixme
+                                    ty: ast::Ty{id:3, // fixme
                                                 node: ast::ty_path(ast::Path{
                                         span:sp(10,13),
                                         global:false,
                                         idents:~[str_to_ident("int")],
                                         rp: None,
                                         types: ~[]},
-                                                       @None, 2),
+                                                       None, 2),
                                                 span:sp(10,13)},
                                     pat: @ast::pat{id:1, // fixme
                                                    node: ast::pat_ident(
@@ -542,7 +542,7 @@ mod test {
                                                   span: sp(6,7)},
                                     id: 4 // fixme
                                 }],
-                                output: @ast::Ty{id:5, // fixme
+                                output: ast::Ty{id:5, // fixme
                                                  node: ast::ty_nil,
                                                  span:sp(15,15)}, // not sure
                                 cf: ast::return_val
