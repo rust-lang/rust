@@ -198,14 +198,15 @@ impl<K: TotalOrd, V> TreeMap<K, V> {
     /// Get a lazy iterator over the key-value pairs in the map.
     /// Requires that it be frozen (immutable).
     pub fn iter<'a>(&'a self) -> TreeMapIterator<'a, K, V> {
-        TreeMapIterator{stack: ~[], node: &self.root}
+        TreeMapIterator{stack: ~[], node: &self.root, remaining: self.length}
     }
 }
 
 /// Lazy forward iterator over a map
 pub struct TreeMapIterator<'self, K, V> {
     priv stack: ~[&'self ~TreeNode<K, V>],
-    priv node: &'self Option<~TreeNode<K, V>>
+    priv node: &'self Option<~TreeNode<K, V>>,
+    priv remaining: uint
 }
 
 impl<'self, K, V> Iterator<(&'self K, &'self V)> for TreeMapIterator<'self, K, V> {
@@ -222,11 +223,17 @@ impl<'self, K, V> Iterator<(&'self K, &'self V)> for TreeMapIterator<'self, K, V
               None => {
                 let res = self.stack.pop();
                 self.node = &res.right;
+                self.remaining -= 1;
                 return Some((&res.key, &res.value));
               }
             }
         }
         None
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        (self.remaining, Some(self.remaining))
     }
 }
 
