@@ -21,7 +21,6 @@ static INITIAL_CAPACITY: uint = 32u; // 2^5
 pub struct Deque<T> {
     priv nelts: uint,
     priv lo: uint,
-    priv hi: uint,
     priv elts: ~[Option<T>]
 }
 
@@ -39,26 +38,31 @@ impl<T> Mutable for Deque<T> {
         for self.elts.mut_iter().advance |x| { *x = None }
         self.nelts = 0;
         self.lo = 0;
-        self.hi = 0;
     }
 }
 
 impl<T> Deque<T> {
     /// Create an empty Deque
     pub fn new() -> Deque<T> {
-        Deque{nelts: 0, lo: 0, hi: 0,
+        Deque{nelts: 0, lo: 0,
               elts: vec::from_fn(INITIAL_CAPACITY, |_| None)}
     }
 
     /// Return a reference to the first element in the deque
     ///
     /// Fails if the deque is empty
-    pub fn peek_front<'a>(&'a self) -> &'a T { get(self.elts, self.lo) }
+    pub fn peek_front<'a>(&'a self) -> &'a T { get(self.elts, self.raw_index(0)) }
 
     /// Return a reference to the last element in the deque
     ///
     /// Fails if the deque is empty
-    pub fn peek_back<'a>(&'a self) -> &'a T { get(self.elts, self.hi - 1u) }
+    pub fn peek_back<'a>(&'a self) -> &'a T {
+        if self.nelts > 0 {
+            get(self.elts, self.raw_index(self.nelts - 1))
+        } else {
+            fail!("peek_back: empty deque");
+        }
+    }
 
     /// Retrieve an element in the deque by index
     ///
@@ -88,24 +92,28 @@ impl<T> Deque<T> {
         result
     }
 
+    /// Return index in underlying vec for element index
+    fn raw_index(&self, idx: uint) -> uint {
+        if self.lo >= self.elts.len() - idx {
+            (self.lo + idx) - self.elts.len()
+        } else {
+            (self.lo + idx)
+        }
+    }
+
     /// Remove and return the last element in the deque
     ///
     /// Fails if the deque is empty
     pub fn pop_back(&mut self) -> T {
-        if self.hi == 0u {
-            self.hi = self.elts.len() - 1u;
-        } else { self.hi -= 1u; }
-        let result = self.elts[self.hi].swap_unwrap();
-        self.elts[self.hi] = None;
-        self.nelts -= 1u;
-        result
+        self.nelts -= 1;
+        let hi = self.raw_index(self.nelts);
+        self.elts[hi].swap_unwrap()
     }
 
     /// Prepend an element to the deque
     pub fn add_front(&mut self, t: T) {
         if self.nelts == self.elts.len() {
             grow(self.nelts, self.lo, &mut self.elts);
-            self.hi = self.lo + self.nelts;
         }
         if self.lo == 0u {
             self.lo = self.elts.len() - 1u;
@@ -116,15 +124,11 @@ impl<T> Deque<T> {
 
     /// Append an element to the deque
     pub fn add_back(&mut self, t: T) {
-        if self.lo == self.hi && self.nelts != 0u {
+        if self.nelts == self.elts.len() {
             grow(self.nelts, self.lo, &mut self.elts);
-            self.hi = self.lo + self.nelts;
         }
-        self.elts[self.hi] = Some(t);
-        self.hi += 1;
-        if self.hi == self.elts.len() {
-            self.hi = 0;
-        }
+        let hi = self.raw_index(self.nelts);
+        self.elts[hi] = Some(t);
         self.nelts += 1u;
     }
 
@@ -165,12 +169,12 @@ impl<T> Deque<T> {
 
     /// Back-to-front iterator.
     pub fn rev_iter<'a>(&'a self) -> DequeRevIterator<'a, T> {
-    DequeRevIterator { idx: self.hi - 1u, nelts: self.nelts, used: 0, vec: self.elts }
+    DequeRevIterator { idx: self.raw_index(self.nelts-1), nelts: self.nelts, used: 0, vec: self.elts }
     }
 
     /// Back-to-front iterator which returns mutable values.
     pub fn mut_rev_iter<'a>(&'a mut self) -> DequeMutRevIterator<'a, T> {
-    DequeMutRevIterator { idx: self.hi - 1u, nelts: self.nelts, used: 0, vec: self.elts }
+    DequeMutRevIterator { idx: self.raw_index(self.nelts-1), nelts: self.nelts, used: 0, vec: self.elts }
     }
 }
 
