@@ -11,20 +11,15 @@
 #[crate_type = "bin"];
 
 #[allow(non_camel_case_types)];
+#[allow(unrecognized_lint)]; // NOTE: remove after snapshot
+#[deny(warnings)];
 
-#[no_core]; // XXX: Remove after snapshot
-#[no_std];
+extern mod extra;
 
-extern mod core(name = "std", vers = "0.7");
-extern mod extra(name = "extra", vers = "0.7");
-
-use core::prelude::*;
-use core::*;
+use std::os;
 
 use extra::getopts;
 use extra::test;
-
-use core::result::{Ok, Err};
 
 use common::config;
 use common::mode_run_pass;
@@ -41,13 +36,6 @@ pub mod header;
 pub mod runtest;
 pub mod common;
 pub mod errors;
-
-mod std {
-    pub use core::cmp;
-    pub use core::str;
-    pub use core::sys;
-    pub use core::unstable;
-}
 
 pub fn main() {
     let args = os::args();
@@ -98,8 +86,8 @@ pub fn parse_config(args: ~[~str]) -> config {
         run_ignored: getopts::opt_present(matches, "ignored"),
         filter:
              if !matches.free.is_empty() {
-                 option::Some(copy matches.free[0])
-             } else { option::None },
+                 Some(copy matches.free[0])
+             } else { None },
         logfile: getopts::opt_maybe_str(matches, "logfile").map(|s| Path(*s)),
         runtool: getopts::opt_maybe_str(matches, "runtool"),
         rustcflags: getopts::opt_maybe_str(matches, "rustcflags"),
@@ -148,8 +136,8 @@ pub fn log_config(config: &config) {
 
 pub fn opt_str<'a>(maybestr: &'a Option<~str>) -> &'a str {
     match *maybestr {
-        option::None => "(none)",
-        option::Some(ref s) => {
+        None => "(none)",
+        Some(ref s) => {
             let s: &'a str = *s;
             s
         }
@@ -161,7 +149,7 @@ pub fn opt_str2(maybestr: Option<~str>) -> ~str {
 }
 
 pub fn str_opt(maybestr: ~str) -> Option<~str> {
-    if maybestr != ~"(none)" { option::Some(maybestr) } else { option::None }
+    if maybestr != ~"(none)" { Some(maybestr) } else { None }
 }
 
 pub fn str_mode(s: ~str) -> mode {
@@ -199,8 +187,8 @@ pub fn test_opts(config: &config) -> test::TestOpts {
         logfile: copy config.logfile,
         run_tests: true,
         run_benchmarks: false,
-        save_results: option::None,
-        compare_results: option::None
+        save_results: None,
+        compare_results: None
     }
 }
 
@@ -268,7 +256,7 @@ pub fn make_test_name(config: &config, testfile: &Path) -> test::TestName {
 }
 
 pub fn make_test_closure(config: &config, testfile: &Path) -> test::TestFn {
-    use core::cell::Cell;
+    use std::cell::Cell;
     let config = Cell::new(copy *config);
     let testfile = Cell::new(testfile.to_str());
     test::DynTestFn(|| { runtest::run(config.take(), testfile.take()) })

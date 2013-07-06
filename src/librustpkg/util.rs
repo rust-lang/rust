@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::{libc, os, result, str};
+use std::{os, result};
 use rustc::driver::{driver, session};
 use rustc::metadata::filesearch;
 use extra::getopts::groups::getopts;
@@ -379,6 +379,7 @@ pub fn link_exe(_src: &Path, _dest: &Path) -> bool {
 #[cfg(target_os = "freebsd")]
 #[cfg(target_os = "macos")]
 pub fn link_exe(src: &Path, dest: &Path) -> bool {
+    use std::{libc, str};
     unsafe {
         do str::as_c_str(src.to_str()) |src_buf| {
             do str::as_c_str(dest.to_str()) |dest_buf| {

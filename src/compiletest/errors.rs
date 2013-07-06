@@ -8,9 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
-
-use core::io;
+use std::io;
 
 pub struct ExpectedError { line: uint, kind: ~str, msg: ~str }
 
