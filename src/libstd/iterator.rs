@@ -26,6 +26,7 @@ use option::{Option, Some, None};
 use ops::{Add, Mul};
 use cmp::Ord;
 use clone::Clone;
+use uint;
 
 /// Conversion from an `Iterator`
 pub trait FromIterator<A, T: Iterator<A>> {
@@ -43,7 +44,7 @@ pub trait Iterator<A> {
     /// Return a lower bound and upper bound on the remaining length of the iterator.
     ///
     /// The common use case for the estimate is pre-allocating space to store the results.
-    fn size_hint(&self) -> (Option<uint>, Option<uint>) { (None, None) }
+    fn size_hint(&self) -> (uint, Option<uint>) { (0, None) }
 }
 
 /// Iterator adaptors provided for every `Iterator` implementation. The adaptor objects are also
@@ -684,18 +685,18 @@ impl<A, T: Iterator<A>, U: Iterator<A>> Iterator<A> for ChainIterator<A, T, U> {
     }
 
     #[inline]
-    fn size_hint(&self) -> (Option<uint>, Option<uint>) {
+    fn size_hint(&self) -> (uint, Option<uint>) {
         let (a_lower, a_upper) = self.a.size_hint();
         let (b_lower, b_upper) = self.b.size_hint();
 
-        let lower = match (a_lower, b_lower) {
-            (Some(x), Some(y)) => Some(x + y),
-            (Some(x), None) => Some(x),
-            (None, Some(y)) => Some(y),
-            (None, None) => None
+        let lower = if uint::max_value - a_lower < b_lower {
+            uint::max_value
+        } else {
+            a_lower + b_lower
         };
 
         let upper = match (a_upper, b_upper) {
+            (Some(x), Some(y)) if uint::max_value - x < y => Some(uint::max_value),
             (Some(x), Some(y)) => Some(x + y),
             _ => None
         };
@@ -719,6 +720,23 @@ impl<A, B, T: Iterator<A>, U: Iterator<B>> Iterator<(A, B)> for ZipIterator<A, T
             _ => None
         }
     }
+
+    #[inline]
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        let (a_lower, a_upper) = self.a.size_hint();
+        let (b_lower, b_upper) = self.b.size_hint();
+
+        let lower = cmp::min(a_lower, b_lower);
+
+        let upper = match (a_upper, b_upper) {
+            (Some(x), Some(y)) => Some(cmp::min(x,y)),
+            (Some(x), None) => Some(x),
+            (None, Some(y)) => Some(y),
+            (None, None) => None
+        };
+
+        (lower, upper)
+    }
 }
 
 /// An iterator which maps the values of `iter` with `f`
@@ -737,7 +755,7 @@ impl<'self, A, B, T: Iterator<A>> Iterator<B> for MapIterator<'self, A, B, T> {
     }
 
     #[inline]
-    fn size_hint(&self) -> (Option<uint>, Option<uint>) {
+    fn size_hint(&self) -> (uint, Option<uint>) {
         self.iter.size_hint()
     }
 }
@@ -762,9 +780,9 @@ impl<'self, A, T: Iterator<A>> Iterator<A> for FilterIterator<'self, A, T> {
     }
 
     #[inline]
-    fn size_hint(&self) -> (Option<uint>, Option<uint>) {
+    fn size_hint(&self) -> (uint, Option<uint>) {
         let (_, upper) = self.iter.size_hint();
-        (None, upper) // can't know a lower bound, due to the predicate
+        (0, upper) // can't know a lower bound, due to the predicate
     }
 }
 
@@ -787,9 +805,9 @@ impl<'self, A, B, T: Iterator<A>> Iterator<B> for FilterMapIterator<'self, A, B,
     }
 
     #[inline]
-    fn size_hint(&self) -> (Option<uint>, Option<uint>) {
+    fn size_hint(&self) -> (uint, Option<uint>) {
         let (_, upper) = self.iter.size_hint();
-        (None, upper) // can't know a lower bound, due to the predicate
+        (0, upper) // can't know a lower bound, due to the predicate
     }
 }
 
@@ -811,6 +829,11 @@ impl<A, T: Iterator<A>> Iterator<(uint, A)> for EnumerateIterator<A, T> {
             }
             _ => None
         }
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        self.iter.size_hint()
     }
 }
 
@@ -844,6 +867,12 @@ impl<'self, A, T: Iterator<A>> Iterator<A> for SkipWhileIterator<'self, A, T> {
             }
         }
     }
+
+    #[inline]
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        let (_, upper) = self.iter.size_hint();
+        (0, upper) // can't know a lower bound, due to the predicate
+    }
 }
 
 /// An iterator which only accepts elements while `predicate` is true
@@ -871,6 +900,12 @@ impl<'self, A, T: Iterator<A>> Iterator<A> for TakeWhileIterator<'self, A, T> {
                 None => None
             }
         }
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        let (_, upper) = self.iter.size_hint();
+        (0, upper) // can't know a lower bound, due to the predicate
     }
 }
 
@@ -905,6 +940,21 @@ impl<A, T: Iterator<A>> Iterator<A> for SkipIterator<A, T> {
             next
         }
     }
+
+    #[inline]
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        let (lower, upper) = self.iter.size_hint();
+
+        let lower = if lower >= self.n { lower - self.n } else { 0 };
+
+        let upper = match upper {
+            Some(x) if x >= self.n => Some(x - self.n),
+            Some(_) => Some(0),
+            None => None
+        };
+
+        (lower, upper)
+    }
 }
 
 /// An iterator which only iterates over the first `n` iterations of `iter`.
@@ -925,6 +975,20 @@ impl<A, T: Iterator<A>> Iterator<A> for TakeIterator<A, T> {
             None
         }
     }
+
+    #[inline]
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        let (lower, upper) = self.iter.size_hint();
+
+        let lower = cmp::min(lower, self.n);
+
+        let upper = match upper {
+            Some(x) if x < self.n => Some(x),
+            _ => Some(self.n)
+        };
+
+        (lower, upper)
+    }
 }
 
 /// An iterator to maintain state while iterating another iterator
@@ -940,6 +1004,12 @@ impl<'self, A, B, T: Iterator<A>, St> Iterator<B> for ScanIterator<'self, A, B, 
     #[inline]
     fn next(&mut self) -> Option<B> {
         self.iter.next().chain(|a| (self.f)(&mut self.state, a))
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        let (_, upper) = self.iter.size_hint();
+        (0, upper) // can't know a lower bound, due to the scan function
     }
 }
 
@@ -1021,6 +1091,11 @@ impl<A: Add<A, A> + Clone> Iterator<A> for Counter<A> {
         let result = self.state.clone();
         self.state = self.state.add(&self.step); // FIXME: #6050
         Some(result)
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        (uint::max_value, None) // Too bad we can't specify an infinite lower bound
     }
 }
 
@@ -1235,6 +1310,43 @@ mod tests {
         assert_eq!(v.slice(0, 4).iter().transform(|&x| x).min(), Some(0));
         assert_eq!(v.iter().transform(|&x| x).min(), Some(0));
         assert_eq!(v.slice(0, 0).iter().transform(|&x| x).min(), None);
+    }
+
+    #[test]
+    fn test_iterator_size_hint() {
+        let c = Counter::new(0, 1);
+        let v = &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+        let v2 = &[10, 11, 12];
+        let vi = v.iter();
+
+        assert_eq!(c.size_hint(), (uint::max_value, None));
+        assert_eq!(vi.size_hint(), (10, Some(10)));
+
+        assert_eq!(c.take_(5).size_hint(), (5, Some(5)));
+        assert_eq!(c.skip(5).size_hint().second(), None);
+        assert_eq!(c.take_while(|_| false).size_hint(), (0, None));
+        assert_eq!(c.skip_while(|_| false).size_hint(), (0, None));
+        assert_eq!(c.enumerate().size_hint(), (uint::max_value, None));
+        assert_eq!(c.chain_(vi.transform(|&i| i)).size_hint(), (uint::max_value, None));
+        assert_eq!(c.zip(vi).size_hint(), (10, Some(10)));
+        assert_eq!(c.scan(0, |_,_| Some(0)).size_hint(), (0, None));
+        assert_eq!(c.filter(|_| false).size_hint(), (0, None));
+        assert_eq!(c.transform(|_| 0).size_hint(), (uint::max_value, None));
+        assert_eq!(c.filter_map(|_| Some(0)).size_hint(), (0, None));
+
+        assert_eq!(vi.take_(5).size_hint(), (5, Some(5)));
+        assert_eq!(vi.take_(12).size_hint(), (10, Some(10)));
+        assert_eq!(vi.skip(3).size_hint(), (7, Some(7)));
+        assert_eq!(vi.skip(12).size_hint(), (0, Some(0)));
+        assert_eq!(vi.take_while(|_| false).size_hint(), (0, Some(10)));
+        assert_eq!(vi.skip_while(|_| false).size_hint(), (0, Some(10)));
+        assert_eq!(vi.enumerate().size_hint(), (10, Some(10)));
+        assert_eq!(vi.chain_(v2.iter()).size_hint(), (13, Some(13)));
+        assert_eq!(vi.zip(v2.iter()).size_hint(), (3, Some(3)));
+        assert_eq!(vi.scan(0, |_,_| Some(0)).size_hint(), (0, Some(10)));
+        assert_eq!(vi.filter(|_| false).size_hint(), (0, Some(10)));
+        assert_eq!(vi.transform(|i| i+1).size_hint(), (10, Some(10)));
+        assert_eq!(vi.filter_map(|_| Some(0)).size_hint(), (0, Some(10)));
     }
 
     #[test]
