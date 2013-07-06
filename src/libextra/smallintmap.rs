@@ -18,12 +18,36 @@
 
 use std::cmp;
 use std::container::{Container, Mutable, Map, Set};
+use std::iterator::{Iterator, EnumerateIterator};
 use std::uint;
 use std::util::replace;
+use std::vec;
 
 #[allow(missing_doc)]
 pub struct SmallIntMap<T> {
     priv v: ~[Option<T>],
+}
+
+#[allow(missing_doc)]
+pub struct SmallIntMapIterator<'self, V> {
+    priv iter: EnumerateIterator<&'self Option<V>, vec::VecIterator<'self, Option<V>>>
+}
+
+#[allow(missing_doc)]
+pub struct SmallIntMapRevIterator<'self, V> {
+    priv iter: EnumerateIterator<&'self Option<V>, vec::VecRevIterator<'self, Option<V>>>,
+    priv len: uint
+}
+
+#[allow(missing_doc)]
+pub struct SmallIntMapMutIterator<'self, V> {
+    priv iter: EnumerateIterator<&'self mut Option<V>, vec::VecMutIterator<'self, Option<V>>>
+}
+
+#[allow(missing_doc)]
+pub struct SmallIntMapMutRevIterator<'self, V> {
+    priv iter: EnumerateIterator<&'self mut Option<V>, vec::VecMutRevIterator<'self, Option<V>>>,
+    priv len: uint
 }
 
 impl<V> Container for SmallIntMap<V> {
@@ -133,6 +157,27 @@ impl<V> SmallIntMap<V> {
         return true;
     }
 
+    /// Immutable external iterator
+    pub fn iter<'a>(&'a self) -> SmallIntMapIterator<'a,V> {
+        SmallIntMapIterator{iter: self.v.iter().enumerate()}
+    }
+
+    /// Reversed immutable external iterator
+    pub fn rev_iter<'a>(&'a self) -> SmallIntMapRevIterator<'a,V> {
+        SmallIntMapRevIterator{iter: self.v.rev_iter().enumerate(), len: self.v.len() - 1}
+    }
+
+    /// Mutable external iterator
+    pub fn mut_iter<'a>(&'a mut self) -> SmallIntMapMutIterator<'a,V> {
+        SmallIntMapMutIterator{iter: self.v.mut_iter().enumerate()}
+    }
+
+    /// Reversed mutable external iterator
+    pub fn mut_rev_iter<'a>(&'a mut self) -> SmallIntMapMutRevIterator<'a,V> {
+        let len = self.v.len();
+        SmallIntMapMutRevIterator{iter: self.v.mut_rev_iter().enumerate(), len: len - 1}
+    }
+
     /// Visit all keys in order
     pub fn each_key(&self, blk: &fn(key: &uint) -> bool) -> bool {
         self.each(|k, _| blk(k))
@@ -186,11 +231,77 @@ impl<V:Copy> SmallIntMap<V> {
     }
 }
 
+/// Implementation of immutable external iterator
+impl<'self, V> Iterator<(uint, &'self V)> for SmallIntMapIterator<'self, V> {
+    #[inline]
+    fn next(&mut self) -> Option<(uint, &'self V)> {
+        for self.iter.advance |pair| {
+            match pair {
+                (key, &Some(ref p)) => return Some((key, p)),
+                _ => {}
+            }
+        }
+        None
+    }
+}
+
+/// Implementation of reversed immutable external iterator
+impl<'self, V> Iterator<(uint, &'self V)> for SmallIntMapRevIterator<'self, V> {
+    #[inline]
+    fn next(&mut self) -> Option<(uint, &'self V)> {
+        for self.iter.advance |pair| {
+            match pair {
+                (idx, &Some(ref p)) => return Some((self.len - idx, p)),
+                _ => {}
+            }
+        }
+        None
+    }
+}
+
+/// Implementation of mutable external iterator
+impl<'self, V> Iterator<(uint, &'self mut V)> for SmallIntMapMutIterator<'self, V> {
+    #[inline]
+    fn next(&mut self) -> Option<(uint, &'self mut V)> {
+        for self.iter.advance |pair| {
+            match pair {
+                (key, &Some(ref mut p)) => return Some((key, p)),
+                _ => {}
+            }
+        }
+        None
+    }
+}
+
+/// Implementation of reversed mutable external iterator
+impl<'self, V> Iterator<(uint, &'self mut V)> for SmallIntMapMutRevIterator<'self, V> {
+    #[inline]
+    fn next(&mut self) -> Option<(uint, &'self mut V)> {
+        for self.iter.advance |pair| {
+            match pair {
+                (idx, &Some(ref mut p)) => return Some((self.len - idx, p)),
+                _ => {}
+            }
+        }
+        None
+    }
+}
+
 /// A set implemented on top of the SmallIntMap type. This set is always a set
 /// of integers, and the space requirements are on the order of the highest
 /// valued integer in the set.
 pub struct SmallIntSet {
     priv map: SmallIntMap<()>
+}
+
+#[allow(missing_doc)]
+pub struct SmallIntSetIterator<'self> {
+    priv iter: SmallIntMapIterator<'self, ()>,
+}
+
+#[allow(missing_doc)]
+pub struct SmallIntSetRevIterator<'self> {
+    priv iter: SmallIntMapRevIterator<'self, ()>,
 }
 
 impl Container for SmallIntSet {
@@ -281,12 +392,39 @@ impl SmallIntSet {
 
     /// Visit all values in order
     pub fn each(&self, f: &fn(&uint) -> bool) -> bool { self.map.each_key(f) }
+
+    /// Immutable external iterator
+    pub fn iter<'a>(&'a self) -> SmallIntSetIterator<'a> {
+        SmallIntSetIterator{iter: self.map.iter()}
+    }
+
+    /// Reversed immutable external iterator
+    pub fn rev_iter<'a>(&'a self) -> SmallIntSetRevIterator<'a> {
+        SmallIntSetRevIterator{iter: self.map.rev_iter()}
+    }
+}
+
+/// Implementation of immutable external iterator
+impl<'self> Iterator<uint> for SmallIntSetIterator<'self> {
+    #[inline]
+    fn next(&mut self) -> Option<uint> {
+        self.iter.next().map(|&(k,_)| k)
+    }
+}
+
+/// Implementation of reversed immutable external iterator
+impl<'self> Iterator<uint> for SmallIntSetRevIterator<'self> {
+    #[inline]
+    fn next(&mut self) -> Option<uint> {
+        self.iter.next().map(|&(k,_)| k)
+    }
 }
 
 #[cfg(test)]
 mod tests {
 
     use super::SmallIntMap;
+    use std::iterator::FromIterator;
 
     #[test]
     fn test_find_mut() {
@@ -375,12 +513,33 @@ mod tests {
         assert_eq!(m.pop(&1), Some(2));
         assert_eq!(m.pop(&1), None);
     }
+
+    #[test]
+    fn test_iter() {
+        let mut a = SmallIntMap::new();
+        assert!(a.insert(1,1));
+        assert!(a.insert(3,3));
+        assert!(a.insert(5,5));
+        let b: ~[(uint,&int)] = FromIterator::from_iterator(&mut a.iter());
+        assert_eq!(b, ~[(1,&1),(3,&3),(5,&5)]);
+    }
+
+    #[test]
+    fn test_rev_iter() {
+        let mut a = SmallIntMap::new();
+        assert!(a.insert(1,1));
+        assert!(a.insert(3,3));
+        assert!(a.insert(5,5));
+        let b: ~[(uint,&int)] = FromIterator::from_iterator(&mut a.rev_iter());
+        assert_eq!(b, ~[(5,&5),(3,&3),(1,&1)]);
+    }
 }
 
 #[cfg(test)]
 mod test_set {
 
     use super::SmallIntSet;
+    use std::iterator::FromIterator;
 
     #[test]
     fn test_disjoint() {
@@ -534,5 +693,25 @@ mod test_set {
             i += 1
         }
         assert_eq!(i, expected.len());
+    }
+
+    #[test]
+    fn test_iter() {
+        let mut a = SmallIntSet::new();
+        assert!(a.insert(1));
+        assert!(a.insert(3));
+        assert!(a.insert(5));
+        let b: ~[uint] = FromIterator::from_iterator(&mut a.iter());
+        assert_eq!(b, ~[1,3,5]);
+    }
+
+    #[test]
+    fn test_rev_iter() {
+        let mut a = SmallIntSet::new();
+        assert!(a.insert(1));
+        assert!(a.insert(3));
+        assert!(a.insert(5));
+        let b: ~[uint] = FromIterator::from_iterator(&mut a.rev_iter());
+        assert_eq!(b, ~[5,3,1]);
     }
 }
