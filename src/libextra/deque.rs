@@ -107,7 +107,7 @@ impl<T> Deque<T> {
         if self.lo == 0u {
             self.lo = self.elts.len() - 1u;
         } else { self.lo -= 1u; }
-        if self.lo == self.hi {
+        if self.nelts == self.elts.len() {
             self.elts = grow(self.nelts, oldlo, self.elts);
             self.lo = self.elts.len() - 1u;
             self.hi = self.nelts;
