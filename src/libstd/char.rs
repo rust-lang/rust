@@ -82,7 +82,8 @@ pub fn is_uppercase(c: char) -> bool { general_category::Lu(c) }
 ///
 #[inline]
 pub fn is_whitespace(c: char) -> bool {
-    ('\x09' <= c && c <= '\x0d')
+    c == ' '
+        || ('\x09' <= c && c <= '\x0d')
         || general_category::Zs(c)
         || general_category::Zl(c)
         || general_category::Zp(c)
