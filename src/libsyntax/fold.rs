@@ -162,7 +162,7 @@ pub fn fold_fn_decl(decl: &ast::fn_decl, fld: @ast_fold) -> ast::fn_decl {
 
 fn fold_ty_param_bound(tpb: &TyParamBound, fld: @ast_fold) -> TyParamBound {
     match *tpb {
-        TraitTyParamBound(ty) => TraitTyParamBound(fold_trait_ref(ty, fld)),
+        TraitTyParamBound(ref ty) => TraitTyParamBound(fold_trait_ref(ty, fld)),
         RegionTyParamBound => RegionTyParamBound
     }
 }
@@ -296,10 +296,10 @@ pub fn noop_fold_item_underscore(i: &item_, fld: @ast_fold) -> item_ {
             let struct_def = fold_struct_def(*struct_def, fld);
             item_struct(struct_def, /* FIXME (#2543) */ copy *generics)
         }
-        item_impl(ref generics, ifce, ty, ref methods) => {
+        item_impl(ref generics, ref ifce, ty, ref methods) => {
             item_impl(
                 fold_generics(generics, fld),
-                ifce.map(|p| fold_trait_ref(*p, fld)),
+                ifce.map(|p| fold_trait_ref(p, fld)),
                 fld.fold_ty(ty),
                 methods.map(|x| fld.fold_method(*x))
             )
@@ -313,7 +313,7 @@ pub fn noop_fold_item_underscore(i: &item_, fld: @ast_fold) -> item_ {
             };
             item_trait(
                 fold_generics(generics, fld),
-                traits.map(|p| fold_trait_ref(*p, fld)),
+                traits.map(|p| fold_trait_ref(p, fld)),
                 methods
             )
         }
@@ -335,8 +335,8 @@ fn fold_struct_def(struct_def: @ast::struct_def, fld: @ast_fold)
     }
 }
 
-fn fold_trait_ref(p: @trait_ref, fld: @ast_fold) -> @trait_ref {
-    @ast::trait_ref {
+fn fold_trait_ref(p: &trait_ref, fld: @ast_fold) -> trait_ref {
+    ast::trait_ref {
         path: fld.fold_path(&p.path),
         ref_id: fld.new_id(p.ref_id),
     }

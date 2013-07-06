@@ -3566,7 +3566,7 @@ impl Parser {
             // New-style trait. Reinterpret the type as a trait.
             let opt_trait_ref = match ty.node {
                 ty_path(ref path, @None, node_id) => {
-                    Some(@trait_ref {
+                    Some(trait_ref {
                         path: /* bad */ copy *path,
                         ref_id: node_id
                     })
@@ -3608,15 +3608,15 @@ impl Parser {
     }
 
     // parse a::B<~str,int>
-    fn parse_trait_ref(&self) -> @trait_ref {
-        @ast::trait_ref {
+    fn parse_trait_ref(&self) -> trait_ref {
+        ast::trait_ref {
             path: self.parse_path_with_tps(false),
             ref_id: self.get_id(),
         }
     }
 
     // parse B + C<~str,int> + D
-    fn parse_trait_ref_list(&self, ket: &token::Token) -> ~[@trait_ref] {
+    fn parse_trait_ref_list(&self, ket: &token::Token) -> ~[trait_ref] {
         self.parse_seq_to_before_end(
             ket,
             seq_sep_trailing_disallowed(token::BINOP(token::PLUS)),

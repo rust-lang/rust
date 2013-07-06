@@ -117,7 +117,7 @@ fn check_item(item: @item, (cx, visitor): (Context, visit::vt<Context>)) {
     // If this is a destructor, check kinds.
     if !attrs_contains_name(item.attrs, "unsafe_destructor") {
         match item.node {
-            item_impl(_, Some(trait_ref), self_type, _) => {
+            item_impl(_, Some(ref trait_ref), self_type, _) => {
                 match cx.tcx.def_map.find(&trait_ref.ref_id) {
                     None => cx.tcx.sess.bug("trait ref not in def map!"),
                     Some(&trait_def) => {

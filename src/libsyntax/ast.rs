@@ -132,7 +132,7 @@ pub static crate_node_id: node_id = 0;
 // the "special" built-in traits (see middle::lang_items) and
 // detects Copy, Send, Send, and Freeze.
 pub enum TyParamBound {
-    TraitTyParamBound(@trait_ref),
+    TraitTyParamBound(trait_ref),
     RegionTyParamBound
 }
 
@@ -1002,9 +1002,9 @@ pub enum item_ {
     item_ty(@Ty, Generics),
     item_enum(enum_def, Generics),
     item_struct(@struct_def, Generics),
-    item_trait(Generics, ~[@trait_ref], ~[trait_method]),
+    item_trait(Generics, ~[trait_ref], ~[trait_method]),
     item_impl(Generics,
-              Option<@trait_ref>, // (optional) trait this impl implements
+              Option<trait_ref>, // (optional) trait this impl implements
               @Ty, // self
               ~[@method]),
     // a macro invocation (which includes macro definition)

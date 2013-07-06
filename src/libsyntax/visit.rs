@@ -183,7 +183,7 @@ pub fn visit_item<E: Copy>(i: &item, (e, v): (E, vt<E>)) {
         }
         item_impl(ref tps, ref traits, ty, ref methods) => {
             (v.visit_generics)(tps, (copy e, v));
-            for traits.iter().advance |&p| {
+            for traits.iter().advance |p| {
                 visit_trait_ref(p, (copy e, v));
             }
             (v.visit_ty)(ty, (copy e, v));
@@ -336,7 +336,7 @@ pub fn visit_ty_param_bounds<E: Copy>(bounds: &OptVec<TyParamBound>,
                                       (e, v): (E, vt<E>)) {
     for bounds.iter().advance |bound| {
         match *bound {
-            TraitTyParamBound(ty) => visit_trait_ref(ty, (copy e, v)),
+            TraitTyParamBound(ref ty) => visit_trait_ref(ty, (copy e, v)),
             RegionTyParamBound => {}
         }
     }
