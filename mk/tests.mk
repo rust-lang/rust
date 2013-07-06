@@ -15,7 +15,7 @@
 
 # The names of crates that must be tested
 TEST_TARGET_CRATES = std extra
-TEST_HOST_CRATES = syntax rustc rustdoc rusti rust rustpkg
+TEST_HOST_CRATES = syntax rustc rustdoc rust rustpkg
 TEST_CRATES = $(TEST_TARGET_CRATES) $(TEST_HOST_CRATES)
 
 # Markdown files under doc/ that should have their code extracted and run
