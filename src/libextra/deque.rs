@@ -11,17 +11,17 @@
 //! A double-ended queue implemented as a circular buffer
 
 use std::uint;
-use std::util::replace;
 use std::vec;
-use std::cast::transmute;
+use std::iterator::FromIterator;
 
-static INITIAL_CAPACITY: uint = 32u; // 2^5
+static INITIAL_CAPACITY: uint = 8u; // 2^3
+static MINIMUM_CAPACITY: uint = 2u;
 
 #[allow(missing_doc)]
+#[deriving(Clone)]
 pub struct Deque<T> {
     priv nelts: uint,
     priv lo: uint,
-    priv hi: uint,
     priv elts: ~[Option<T>]
 }
 
@@ -39,26 +39,36 @@ impl<T> Mutable for Deque<T> {
         for self.elts.mut_iter().advance |x| { *x = None }
         self.nelts = 0;
         self.lo = 0;
-        self.hi = 0;
     }
 }
 
 impl<T> Deque<T> {
     /// Create an empty Deque
     pub fn new() -> Deque<T> {
-        Deque{nelts: 0, lo: 0, hi: 0,
-              elts: vec::from_fn(INITIAL_CAPACITY, |_| None)}
+        Deque::with_capacity(INITIAL_CAPACITY)
+    }
+
+    /// Create an empty Deque with space for at least `n` elements.
+    pub fn with_capacity(n: uint) -> Deque<T> {
+        Deque{nelts: 0, lo: 0,
+              elts: vec::from_fn(uint::max(MINIMUM_CAPACITY, n), |_| None)}
     }
 
     /// Return a reference to the first element in the deque
     ///
     /// Fails if the deque is empty
-    pub fn peek_front<'a>(&'a self) -> &'a T { get(self.elts, self.lo) }
+    pub fn peek_front<'a>(&'a self) -> &'a T { get(self.elts, self.raw_index(0)) }
 
     /// Return a reference to the last element in the deque
     ///
     /// Fails if the deque is empty
-    pub fn peek_back<'a>(&'a self) -> &'a T { get(self.elts, self.hi - 1u) }
+    pub fn peek_back<'a>(&'a self) -> &'a T {
+        if self.nelts > 0 {
+            get(self.elts, self.raw_index(self.nelts - 1))
+        } else {
+            fail!("peek_back: empty deque");
+        }
+    }
 
     /// Retrieve an element in the deque by index
     ///
@@ -66,16 +76,6 @@ impl<T> Deque<T> {
     pub fn get<'a>(&'a self, i: int) -> &'a T {
         let idx = (self.lo + (i as uint)) % self.elts.len();
         get(self.elts, idx)
-    }
-
-    /// Iterate over the elements in the deque
-    pub fn each(&self, f: &fn(&T) -> bool) -> bool {
-        self.eachi(|_i, e| f(e))
-    }
-
-    /// Iterate over the elements in the deque by index
-    pub fn eachi(&self, f: &fn(uint, &T) -> bool) -> bool {
-        uint::range(0, self.nelts, |i| f(i, self.get(i as int)))
     }
 
     /// Remove and return the first element in the deque
@@ -88,43 +88,39 @@ impl<T> Deque<T> {
         result
     }
 
+    /// Return index in underlying vec for a given logical element index
+    fn raw_index(&self, idx: uint) -> uint {
+        raw_index(self.lo, self.elts.len(), idx)
+    }
+
     /// Remove and return the last element in the deque
     ///
     /// Fails if the deque is empty
     pub fn pop_back(&mut self) -> T {
-        if self.hi == 0u {
-            self.hi = self.elts.len() - 1u;
-        } else { self.hi -= 1u; }
-        let result = self.elts[self.hi].swap_unwrap();
-        self.elts[self.hi] = None;
-        self.nelts -= 1u;
-        result
+        self.nelts -= 1;
+        let hi = self.raw_index(self.nelts);
+        self.elts[hi].swap_unwrap()
     }
 
     /// Prepend an element to the deque
     pub fn add_front(&mut self, t: T) {
-        let oldlo = self.lo;
+        if self.nelts == self.elts.len() {
+            grow(self.nelts, &mut self.lo, &mut self.elts);
+        }
         if self.lo == 0u {
             self.lo = self.elts.len() - 1u;
         } else { self.lo -= 1u; }
-        if self.lo == self.hi {
-            self.elts = grow(self.nelts, oldlo, self.elts);
-            self.lo = self.elts.len() - 1u;
-            self.hi = self.nelts;
-        }
         self.elts[self.lo] = Some(t);
         self.nelts += 1u;
     }
 
     /// Append an element to the deque
     pub fn add_back(&mut self, t: T) {
-        if self.lo == self.hi && self.nelts != 0u {
-            self.elts = grow(self.nelts, self.lo, self.elts);
-            self.lo = 0u;
-            self.hi = self.nelts;
+        if self.nelts == self.elts.len() {
+            grow(self.nelts, &mut self.lo, &mut self.elts);
         }
-        self.elts[self.hi] = Some(t);
-        self.hi = (self.hi + 1u) % self.elts.len();
+        let hi = self.raw_index(self.nelts);
+        self.elts[hi] = Some(t);
         self.nelts += 1u;
     }
 
@@ -155,42 +151,39 @@ impl<T> Deque<T> {
 
     /// Front-to-back iterator.
     pub fn iter<'a>(&'a self) -> DequeIterator<'a, T> {
-    DequeIterator { idx: self.lo, nelts: self.nelts, used: 0, vec: self.elts }
+        DequeIterator{index: 0, nelts: self.nelts, elts: self.elts, lo: self.lo}
     }
 
     /// Front-to-back iterator which returns mutable values.
     pub fn mut_iter<'a>(&'a mut self) -> DequeMutIterator<'a, T> {
-    DequeMutIterator { idx: self.lo, nelts: self.nelts, used: 0, vec: self.elts }
+        DequeMutIterator{index: 0, nelts: self.nelts, elts: self.elts, lo: self.lo}
     }
 
     /// Back-to-front iterator.
     pub fn rev_iter<'a>(&'a self) -> DequeRevIterator<'a, T> {
-    DequeRevIterator { idx: self.hi - 1u, nelts: self.nelts, used: 0, vec: self.elts }
+        DequeRevIterator{index: self.nelts-1, nelts: self.nelts, elts: self.elts,
+                         lo: self.lo}
     }
 
     /// Back-to-front iterator which returns mutable values.
     pub fn mut_rev_iter<'a>(&'a mut self) -> DequeMutRevIterator<'a, T> {
-    DequeMutRevIterator { idx: self.hi - 1u, nelts: self.nelts, used: 0, vec: self.elts }
+        DequeMutRevIterator{index: self.nelts-1, nelts: self.nelts, elts: self.elts,
+                            lo: self.lo}
     }
 }
 
 macro_rules! iterator {
-    (impl $name:ident -> $elem:ty, $step:expr) => {
+    (impl $name:ident -> $elem:ty, $getter:ident, $step:expr) => {
         impl<'self, T> Iterator<$elem> for $name<'self, T> {
             #[inline]
             fn next(&mut self) -> Option<$elem> {
-                if self.used >= self.nelts {
+                if self.nelts == 0 {
                     return None;
                 }
-                let ret = unsafe {
-                    match self.vec[self.idx % self.vec.len()] {
-                        Some(ref e) => Some(transmute(e)),
-                        None => None
-                    }
-                };
-                self.idx += $step;
-                self.used += 1;
-                ret
+                let raw_index = raw_index(self.lo, self.elts.len(), self.index);
+                self.index += $step;
+                self.nelts -= 1;
+                Some(self.elts[raw_index]. $getter ())
             }
         }
     }
@@ -198,56 +191,106 @@ macro_rules! iterator {
 
 /// Deque iterator
 pub struct DequeIterator<'self, T> {
-    priv idx: uint,
+    priv lo: uint,
     priv nelts: uint,
-    priv used: uint,
-    priv vec: &'self [Option<T>]
+    priv index: uint,
+    priv elts: &'self [Option<T>],
 }
-iterator!{impl DequeIterator -> &'self T, 1}
+iterator!{impl DequeIterator -> &'self T, get_ref, 1}
 
 /// Deque reverse iterator
 pub struct DequeRevIterator<'self, T> {
-    priv idx: uint,
+    priv lo: uint,
     priv nelts: uint,
-    priv used: uint,
-    priv vec: &'self [Option<T>]
+    priv index: uint,
+    priv elts: &'self [Option<T>],
 }
-iterator!{impl DequeRevIterator -> &'self T, -1}
+iterator!{impl DequeRevIterator -> &'self T, get_ref, -1}
 
 /// Deque mutable iterator
 pub struct DequeMutIterator<'self, T> {
-    priv idx: uint,
+    priv lo: uint,
     priv nelts: uint,
-    priv used: uint,
-    priv vec: &'self mut [Option<T>]
-
+    priv index: uint,
+    priv elts: &'self mut [Option<T>],
 }
-iterator!{impl DequeMutIterator -> &'self mut T, 1}
+iterator!{impl DequeMutIterator -> &'self mut T, get_mut_ref, 1}
 
 /// Deque mutable reverse iterator
 pub struct DequeMutRevIterator<'self, T> {
-    priv idx: uint,
+    priv lo: uint,
     priv nelts: uint,
-    priv used: uint,
-    priv vec: &'self mut [Option<T>]
+    priv index: uint,
+    priv elts: &'self mut [Option<T>],
 }
-iterator!{impl DequeMutRevIterator -> &'self mut T, -1}
+iterator!{impl DequeMutRevIterator -> &'self mut T, get_mut_ref, -1}
 
 /// Grow is only called on full elts, so nelts is also len(elts), unlike
 /// elsewhere.
-fn grow<T>(nelts: uint, lo: uint, elts: &mut [Option<T>]) -> ~[Option<T>] {
+fn grow<T>(nelts: uint, loptr: &mut uint, elts: &mut ~[Option<T>]) {
     assert_eq!(nelts, elts.len());
-    let mut rv = ~[];
+    let lo = *loptr;
+    let newlen = nelts * 2;
+    elts.reserve(newlen);
 
-    do rv.grow_fn(nelts + 1) |i| {
-        replace(&mut elts[(lo + i) % nelts], None)
+    /* fill with None */
+    for uint::range(elts.len(), elts.capacity()) |_| {
+        elts.push(None);
     }
 
-    rv
+    /*
+      Move the shortest half into the newly reserved area.
+      lo ---->|
+      nelts ----------->|
+        [o o o|o o o o o]
+      A [. . .|o o o o o o o o|. . . . .]
+      B [o o o|. . . . . . . .|o o o o o]
+     */
+
+    assert!(newlen - nelts/2 >= nelts);
+    if lo <= (nelts - lo) { // A
+        for uint::range(0, lo) |i| {
+            elts.swap(i, nelts + i);
+        }
+    } else {                // B
+        for uint::range(lo, nelts) |i| {
+            elts.swap(i, newlen - nelts + i);
+        }
+        *loptr += newlen - nelts;
+    }
 }
 
 fn get<'r, T>(elts: &'r [Option<T>], i: uint) -> &'r T {
     match elts[i] { Some(ref t) => t, _ => fail!() }
+}
+
+/// Return index in underlying vec for a given logical element index
+fn raw_index(lo: uint, len: uint, index: uint) -> uint {
+    if lo >= len - index {
+        lo + index - len
+    } else {
+        lo + index
+    }
+}
+
+impl<A: Eq> Eq for Deque<A> {
+    fn eq(&self, other: &Deque<A>) -> bool {
+        self.nelts == other.nelts &&
+            self.iter().zip(other.iter()).all(|(a, b)| a.eq(b))
+    }
+    fn ne(&self, other: &Deque<A>) -> bool {
+        !self.eq(other)
+    }
+}
+
+impl<A, T: Iterator<A>> FromIterator<A, T> for Deque<A> {
+    fn from_iterator(iterator: &mut T) -> Deque<A> {
+        let mut deq = Deque::new();
+        for iterator.advance |elt| {
+            deq.add_back(elt);
+        }
+        deq
+    }
 }
 
 #[cfg(test)]
@@ -255,7 +298,8 @@ mod tests {
     use super::*;
     use std::cmp::Eq;
     use std::kinds::Copy;
-    use std::int;
+    use std::{int, uint};
+    use extra::test;
 
     #[test]
     fn test_simple() {
@@ -369,6 +413,61 @@ mod tests {
         assert_eq!(copy *deq.get(3), copy d);
     }
 
+    #[test]
+    fn test_add_front_grow() {
+        let mut deq = Deque::new();
+        for int::range(0, 66) |i| {
+            deq.add_front(i);
+        }
+        assert_eq!(deq.len(), 66);
+
+        for int::range(0, 66) |i| {
+            assert_eq!(*deq.get(i), 65 - i);
+        }
+
+        let mut deq = Deque::new();
+        for int::range(0, 66) |i| {
+            deq.add_back(i);
+        }
+
+        for int::range(0, 66) |i| {
+            assert_eq!(*deq.get(i), i);
+        }
+    }
+
+    #[bench]
+    fn bench_new(b: &mut test::BenchHarness) {
+        do b.iter {
+            let _ = Deque::new::<u64>();
+        }
+    }
+
+    #[bench]
+    fn bench_add_back(b: &mut test::BenchHarness) {
+        let mut deq = Deque::new();
+        do b.iter {
+            deq.add_back(0);
+        }
+    }
+
+    #[bench]
+    fn bench_add_front(b: &mut test::BenchHarness) {
+        let mut deq = Deque::new();
+        do b.iter {
+            deq.add_front(0);
+        }
+    }
+
+    #[bench]
+    fn bench_grow(b: &mut test::BenchHarness) {
+        let mut deq = Deque::new();
+        do b.iter {
+            for 65.times {
+                deq.add_front(1);
+            }
+        }
+    }
+
     #[deriving(Eq)]
     enum Taggy { One(int), Two(int, int), Three(int, int, int), }
 
@@ -417,22 +516,13 @@ mod tests {
     }
 
     #[test]
-    fn test_eachi() {
-        let mut deq = Deque::new();
-        deq.add_back(1);
-        deq.add_back(2);
-        deq.add_back(3);
-
-        for deq.eachi |i, e| {
-            assert_eq!(*e, i + 1);
-        }
-
-        deq.pop_front();
-
-        for deq.eachi |i, e| {
-            assert_eq!(*e, i + 2);
-        }
-
+    fn test_with_capacity() {
+        let mut d = Deque::with_capacity(0);
+        d.add_back(1);
+        assert_eq!(d.len(), 1);
+        let mut d = Deque::with_capacity(50);
+        d.add_back(1);
+        assert_eq!(d.len(), 1);
     }
 
     #[test]
@@ -462,6 +552,8 @@ mod tests {
     #[test]
     fn test_iter() {
         let mut d = Deque::new();
+        assert_eq!(d.iter().next(), None);
+
         for int::range(0,5) |i| {
             d.add_back(i);
         }
@@ -476,6 +568,8 @@ mod tests {
     #[test]
     fn test_rev_iter() {
         let mut d = Deque::new();
+        assert_eq!(d.rev_iter().next(), None);
+
         for int::range(0,5) |i| {
             d.add_back(i);
         }
@@ -485,5 +579,105 @@ mod tests {
             d.add_front(i);
         }
         assert_eq!(d.rev_iter().collect::<~[&int]>(), ~[&4,&3,&2,&1,&0,&6,&7,&8]);
+    }
+
+    #[test]
+    fn test_mut_iter() {
+        let mut d = Deque::new();
+        assert!(d.mut_iter().next().is_none());
+
+        for uint::range(0,3) |i| {
+            d.add_front(i);
+        }
+
+        for d.mut_iter().enumerate().advance |(i, elt)| {
+            assert_eq!(*elt, 2 - i);
+            *elt = i;
+        }
+
+        {
+            let mut it = d.mut_iter();
+            assert_eq!(*it.next().unwrap(), 0);
+            assert_eq!(*it.next().unwrap(), 1);
+            assert_eq!(*it.next().unwrap(), 2);
+            assert!(it.next().is_none());
+        }
+    }
+
+    #[test]
+    fn test_mut_rev_iter() {
+        let mut d = Deque::new();
+        assert!(d.mut_rev_iter().next().is_none());
+
+        for uint::range(0,3) |i| {
+            d.add_front(i);
+        }
+
+        for d.mut_rev_iter().enumerate().advance |(i, elt)| {
+            assert_eq!(*elt, i);
+            *elt = i;
+        }
+
+        {
+            let mut it = d.mut_rev_iter();
+            assert_eq!(*it.next().unwrap(), 0);
+            assert_eq!(*it.next().unwrap(), 1);
+            assert_eq!(*it.next().unwrap(), 2);
+            assert!(it.next().is_none());
+        }
+    }
+
+    #[test]
+    fn test_from_iterator() {
+        use std::iterator;
+        let v = ~[1,2,3,4,5,6,7];
+        let deq: Deque<int> = v.iter().transform(|&x| x).collect();
+        let u: ~[int] = deq.iter().transform(|&x| x).collect();
+        assert_eq!(u, v);
+
+        let mut seq = iterator::Counter::new(0u, 2).take_(256);
+        let deq: Deque<uint> = seq.collect();
+        for deq.iter().enumerate().advance |(i, &x)| {
+            assert_eq!(2*i, x);
+        }
+        assert_eq!(deq.len(), 256);
+    }
+
+    #[test]
+    fn test_clone() {
+        let mut d = Deque::new();
+        d.add_front(17);
+        d.add_front(42);
+        d.add_back(137);
+        d.add_back(137);
+        assert_eq!(d.len(), 4u);
+        let mut e = d.clone();
+        assert_eq!(e.len(), 4u);
+        while !d.is_empty() {
+            assert_eq!(d.pop_back(), e.pop_back());
+        }
+        assert_eq!(d.len(), 0u);
+        assert_eq!(e.len(), 0u);
+    }
+
+    #[test]
+    fn test_eq() {
+        let mut d = Deque::new();
+        assert_eq!(&d, &Deque::with_capacity(0));
+        d.add_front(137);
+        d.add_front(17);
+        d.add_front(42);
+        d.add_back(137);
+        let mut e = Deque::with_capacity(0);
+        e.add_back(42);
+        e.add_back(17);
+        e.add_back(137);
+        e.add_back(137);
+        assert_eq!(&e, &d);
+        e.pop_back();
+        e.add_back(0);
+        assert!(e != d);
+        e.clear();
+        assert_eq!(e, Deque::new());
     }
 }
