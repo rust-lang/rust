@@ -132,7 +132,7 @@ fn run(mut repl: Repl, input: ~str) -> Repl {
         // differently beause they must appear before all 'use' statements
         for blk.node.view_items.iter().advance |vi| {
             let s = do with_pp(intr) |pp, _| {
-                pprust::print_view_item(pp, *vi);
+                pprust::print_view_item(pp, vi);
             };
             match vi.node {
                 ast::view_item_extern_mod(*) => {
