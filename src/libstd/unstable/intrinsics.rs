@@ -417,3 +417,17 @@ pub extern "rust-intrinsic" {
     pub fn bswap32(x: i32) -> i32;
     pub fn bswap64(x: i64) -> i64;
 }
+
+#[cfg(target_endian = "little")] pub fn to_le16(x: i16) -> i16 { x }
+#[cfg(target_endian = "big")]    pub fn to_le16(x: i16) -> i16 { unsafe { bswap16(x) } }
+#[cfg(target_endian = "little")] pub fn to_le32(x: i32) -> i32 { x }
+#[cfg(target_endian = "big")]    pub fn to_le32(x: i32) -> i32 { unsafe { bswap32(x) } }
+#[cfg(target_endian = "little")] pub fn to_le64(x: i64) -> i64 { x }
+#[cfg(target_endian = "big")]    pub fn to_le64(x: i64) -> i64 { unsafe { bswap64(x) } }
+
+#[cfg(target_endian = "little")] pub fn to_be16(x: i16) -> i16 { unsafe { bswap16(x) } }
+#[cfg(target_endian = "big")]    pub fn to_be16(x: i16) -> i16 { x }
+#[cfg(target_endian = "little")] pub fn to_be32(x: i32) -> i32 { unsafe { bswap32(x) } }
+#[cfg(target_endian = "big")]    pub fn to_be32(x: i32) -> i32 { x }
+#[cfg(target_endian = "little")] pub fn to_be64(x: i64) -> i64 { unsafe { bswap64(x) } }
+#[cfg(target_endian = "big")]    pub fn to_be64(x: i64) -> i64 { x }
