@@ -18,6 +18,7 @@ static INITIAL_CAPACITY: uint = 8u; // 2^3
 static MINIMUM_CAPACITY: uint = 2u;
 
 #[allow(missing_doc)]
+#[deriving(Clone)]
 pub struct Deque<T> {
     priv nelts: uint,
     priv lo: uint,
@@ -269,6 +270,16 @@ fn raw_index(lo: uint, len: uint, index: uint) -> uint {
         lo + index - len
     } else {
         lo + index
+    }
+}
+
+impl<A: Eq> Eq for Deque<A> {
+    fn eq(&self, other: &Deque<A>) -> bool {
+        self.nelts == other.nelts &&
+            self.iter().zip(other.iter()).all(|(a, b)| a.eq(b))
+    }
+    fn ne(&self, other: &Deque<A>) -> bool {
+        !self.eq(other)
     }
 }
 
@@ -630,5 +641,43 @@ mod tests {
             assert_eq!(2*i, x);
         }
         assert_eq!(deq.len(), 256);
+    }
+
+    #[test]
+    fn test_clone() {
+        let mut d = Deque::new();
+        d.add_front(17);
+        d.add_front(42);
+        d.add_back(137);
+        d.add_back(137);
+        assert_eq!(d.len(), 4u);
+        let mut e = d.clone();
+        assert_eq!(e.len(), 4u);
+        while !d.is_empty() {
+            assert_eq!(d.pop_back(), e.pop_back());
+        }
+        assert_eq!(d.len(), 0u);
+        assert_eq!(e.len(), 0u);
+    }
+
+    #[test]
+    fn test_eq() {
+        let mut d = Deque::new();
+        assert_eq!(&d, &Deque::with_capacity(0));
+        d.add_front(137);
+        d.add_front(17);
+        d.add_front(42);
+        d.add_back(137);
+        let mut e = Deque::with_capacity(0);
+        e.add_back(42);
+        e.add_back(17);
+        e.add_back(137);
+        e.add_back(137);
+        assert_eq!(&e, &d);
+        e.pop_back();
+        e.add_back(0);
+        assert!(e != d);
+        e.clear();
+        assert_eq!(e, Deque::new());
     }
 }
