@@ -12,7 +12,6 @@
 
 use std::uint;
 use std::vec;
-use std::cast::transmute;
 use std::iterator::FromIterator;
 
 static INITIAL_CAPACITY: uint = 32u; // 2^5
@@ -92,13 +91,9 @@ impl<T> Deque<T> {
         result
     }
 
-    /// Return index in underlying vec for element index
+    /// Return index in underlying vec for a given logical element index
     fn raw_index(&self, idx: uint) -> uint {
-        if self.lo >= self.elts.len() - idx {
-            (self.lo + idx) - self.elts.len()
-        } else {
-            (self.lo + idx)
-        }
+        raw_index(self.lo, self.elts.len(), idx)
     }
 
     /// Remove and return the last element in the deque
@@ -159,42 +154,39 @@ impl<T> Deque<T> {
 
     /// Front-to-back iterator.
     pub fn iter<'a>(&'a self) -> DequeIterator<'a, T> {
-    DequeIterator { idx: self.lo, nelts: self.nelts, used: 0, vec: self.elts }
+        DequeIterator{index: 0, nelts: self.nelts, elts: self.elts, lo: self.lo}
     }
 
     /// Front-to-back iterator which returns mutable values.
     pub fn mut_iter<'a>(&'a mut self) -> DequeMutIterator<'a, T> {
-    DequeMutIterator { idx: self.lo, nelts: self.nelts, used: 0, vec: self.elts }
+        DequeMutIterator{index: 0, nelts: self.nelts, elts: self.elts, lo: self.lo}
     }
 
     /// Back-to-front iterator.
     pub fn rev_iter<'a>(&'a self) -> DequeRevIterator<'a, T> {
-    DequeRevIterator { idx: self.raw_index(self.nelts-1), nelts: self.nelts, used: 0, vec: self.elts }
+        DequeRevIterator{index: self.nelts-1, nelts: self.nelts, elts: self.elts,
+                         lo: self.lo}
     }
 
     /// Back-to-front iterator which returns mutable values.
     pub fn mut_rev_iter<'a>(&'a mut self) -> DequeMutRevIterator<'a, T> {
-    DequeMutRevIterator { idx: self.raw_index(self.nelts-1), nelts: self.nelts, used: 0, vec: self.elts }
+        DequeMutRevIterator{index: self.nelts-1, nelts: self.nelts, elts: self.elts,
+                            lo: self.lo}
     }
 }
 
 macro_rules! iterator {
-    (impl $name:ident -> $elem:ty, $step:expr) => {
+    (impl $name:ident -> $elem:ty, $getter:ident, $step:expr) => {
         impl<'self, T> Iterator<$elem> for $name<'self, T> {
             #[inline]
             fn next(&mut self) -> Option<$elem> {
-                if self.used >= self.nelts {
+                if self.nelts == 0 {
                     return None;
                 }
-                let ret = unsafe {
-                    match self.vec[self.idx % self.vec.len()] {
-                        Some(ref e) => Some(transmute(e)),
-                        None => None
-                    }
-                };
-                self.idx += $step;
-                self.used += 1;
-                ret
+                let raw_index = raw_index(self.lo, self.elts.len(), self.index);
+                self.index += $step;
+                self.nelts -= 1;
+                Some(self.elts[raw_index]. $getter ())
             }
         }
     }
@@ -202,40 +194,39 @@ macro_rules! iterator {
 
 /// Deque iterator
 pub struct DequeIterator<'self, T> {
-    priv idx: uint,
+    priv lo: uint,
     priv nelts: uint,
-    priv used: uint,
-    priv vec: &'self [Option<T>]
+    priv index: uint,
+    priv elts: &'self [Option<T>],
 }
-iterator!{impl DequeIterator -> &'self T, 1}
+iterator!{impl DequeIterator -> &'self T, get_ref, 1}
 
 /// Deque reverse iterator
 pub struct DequeRevIterator<'self, T> {
-    priv idx: uint,
+    priv lo: uint,
     priv nelts: uint,
-    priv used: uint,
-    priv vec: &'self [Option<T>]
+    priv index: uint,
+    priv elts: &'self [Option<T>],
 }
-iterator!{impl DequeRevIterator -> &'self T, -1}
+iterator!{impl DequeRevIterator -> &'self T, get_ref, -1}
 
 /// Deque mutable iterator
 pub struct DequeMutIterator<'self, T> {
-    priv idx: uint,
+    priv lo: uint,
     priv nelts: uint,
-    priv used: uint,
-    priv vec: &'self mut [Option<T>]
-
+    priv index: uint,
+    priv elts: &'self mut [Option<T>],
 }
-iterator!{impl DequeMutIterator -> &'self mut T, 1}
+iterator!{impl DequeMutIterator -> &'self mut T, get_mut_ref, 1}
 
 /// Deque mutable reverse iterator
 pub struct DequeMutRevIterator<'self, T> {
-    priv idx: uint,
+    priv lo: uint,
     priv nelts: uint,
-    priv used: uint,
-    priv vec: &'self mut [Option<T>]
+    priv index: uint,
+    priv elts: &'self mut [Option<T>],
 }
-iterator!{impl DequeMutRevIterator -> &'self mut T, -1}
+iterator!{impl DequeMutRevIterator -> &'self mut T, get_mut_ref, -1}
 
 /// Grow is only called on full elts, so nelts is also len(elts), unlike
 /// elsewhere.
@@ -256,6 +247,15 @@ fn grow<T>(nelts: uint, lo: uint, elts: &mut ~[Option<T>]) {
 
 fn get<'r, T>(elts: &'r [Option<T>], i: uint) -> &'r T {
     match elts[i] { Some(ref t) => t, _ => fail!() }
+}
+
+/// Return index in underlying vec for a given logical element index
+fn raw_index(lo: uint, len: uint, index: uint) -> uint {
+    if lo >= len - index {
+        lo + index - len
+    } else {
+        lo + index
+    }
 }
 
 impl<A, T: Iterator<A>> FromIterator<A, T> for Deque<A> {
