@@ -108,7 +108,7 @@ impl<T> Deque<T> {
     /// Prepend an element to the deque
     pub fn add_front(&mut self, t: T) {
         if self.nelts == self.elts.len() {
-            grow(self.nelts, self.lo, &mut self.elts);
+            grow(self.nelts, &mut self.lo, &mut self.elts);
         }
         if self.lo == 0u {
             self.lo = self.elts.len() - 1u;
@@ -120,7 +120,7 @@ impl<T> Deque<T> {
     /// Append an element to the deque
     pub fn add_back(&mut self, t: T) {
         if self.nelts == self.elts.len() {
-            grow(self.nelts, self.lo, &mut self.elts);
+            grow(self.nelts, &mut self.lo, &mut self.elts);
         }
         let hi = self.raw_index(self.nelts);
         self.elts[hi] = Some(t);
@@ -230,18 +230,36 @@ iterator!{impl DequeMutRevIterator -> &'self mut T, get_mut_ref, -1}
 
 /// Grow is only called on full elts, so nelts is also len(elts), unlike
 /// elsewhere.
-fn grow<T>(nelts: uint, lo: uint, elts: &mut ~[Option<T>]) {
+fn grow<T>(nelts: uint, loptr: &mut uint, elts: &mut ~[Option<T>]) {
     assert_eq!(nelts, elts.len());
-    let newlen = elts.capacity() * 2;
+    let lo = *loptr;
+    let newlen = nelts * 2;
     elts.reserve(newlen);
 
     /* fill with None */
     for uint::range(elts.len(), elts.capacity()) |_| {
         elts.push(None);
     }
-    /* move the former wraparound to the new half */
-    for uint::range(0, lo) |i| {
-        elts.swap(i, nelts + i);
+
+    /*
+      Move the shortest half into the newly reserved area.
+      lo ---->|
+      nelts ----------->|
+        [o o o|o o o o o]
+      A [. . .|o o o o o o o o|. . . . .]
+      B [o o o|. . . . . . . .|o o o o o]
+     */
+
+    assert!(newlen - nelts/2 >= nelts);
+    if lo <= (nelts - lo) { // A
+        for uint::range(0, lo) |i| {
+            elts.swap(i, nelts + i);
+        }
+    } else {                // B
+        for uint::range(lo, nelts) |i| {
+            elts.swap(i, newlen - nelts + i);
+        }
+        *loptr += newlen - nelts;
     }
 }
 
