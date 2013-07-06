@@ -14,7 +14,8 @@ use std::uint;
 use std::vec;
 use std::iterator::FromIterator;
 
-static INITIAL_CAPACITY: uint = 32u; // 2^5
+static INITIAL_CAPACITY: uint = 8u; // 2^3
+static MINIMUM_CAPACITY: uint = 2u;
 
 #[allow(missing_doc)]
 pub struct Deque<T> {
@@ -43,8 +44,13 @@ impl<T> Mutable for Deque<T> {
 impl<T> Deque<T> {
     /// Create an empty Deque
     pub fn new() -> Deque<T> {
+        Deque::with_capacity(INITIAL_CAPACITY)
+    }
+
+    /// Create an empty Deque with space for at least `n` elements.
+    pub fn with_capacity(n: uint) -> Deque<T> {
         Deque{nelts: 0, lo: 0,
-              elts: vec::from_fn(INITIAL_CAPACITY, |_| None)}
+              elts: vec::from_fn(uint::max(MINIMUM_CAPACITY, n), |_| None)}
     }
 
     /// Return a reference to the first element in the deque
@@ -525,6 +531,16 @@ mod tests {
             assert_eq!(*e, i + 2);
         }
 
+    }
+
+    #[test]
+    fn test_with_capacity() {
+        let mut d = Deque::with_capacity(0);
+        d.add_back(1);
+        assert_eq!(d.len(), 1);
+        let mut d = Deque::with_capacity(50);
+        d.add_back(1);
+        assert_eq!(d.len(), 1);
     }
 
     #[test]
