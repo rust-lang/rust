@@ -764,7 +764,7 @@ fn conv_builtin_bounds(tcx: ty::ctxt, ast_bounds: &Option<OptVec<ast::TyParamBou
             let mut builtin_bounds = ty::EmptyBuiltinBounds();
             for bound_vec.iter().advance |ast_bound| {
                 match *ast_bound {
-                    ast::TraitTyParamBound(b) => {
+                    ast::TraitTyParamBound(ref b) => {
                         match lookup_def_tcx(tcx, b.path.span, b.ref_id) {
                             ast::def_trait(trait_did) => {
                                 if try_add_builtin_trait(tcx,

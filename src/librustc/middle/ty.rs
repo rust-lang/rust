@@ -3624,12 +3624,12 @@ pub fn impl_trait_ref(cx: ctxt, id: ast::def_id) -> Option<@TraitRef> {
             debug!("(impl_trait_ref) searching for trait impl %?", id);
             match cx.items.find(&id.node) {
                 Some(&ast_map::node_item(@ast::item {
-                                         node: ast::item_impl(_, opt_trait, _, _),
+                                         node: ast::item_impl(_, ref opt_trait, _, _),
                                          _},
                                          _)) => {
                     match opt_trait {
-                        Some(t) => Some(ty::node_id_to_trait_ref(cx, t.ref_id)),
-                        None => None
+                        &Some(ref t) => Some(ty::node_id_to_trait_ref(cx, t.ref_id)),
+                        &None => None
                     }
                 }
                 _ => None

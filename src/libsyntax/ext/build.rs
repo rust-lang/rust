@@ -68,7 +68,7 @@ pub trait AstBuilder {
 
     fn typaram(&self, id: ast::ident, bounds: @OptVec<ast::TyParamBound>) -> ast::TyParam;
 
-    fn trait_ref(&self, path: ast::Path) -> @ast::trait_ref;
+    fn trait_ref(&self, path: ast::Path) -> ast::trait_ref;
     fn typarambound(&self, path: ast::Path) -> ast::TyParamBound;
     fn lifetime(&self, span: span, ident: ast::ident) -> ast::Lifetime;
 
@@ -358,8 +358,8 @@ impl AstBuilder for @ExtCtxt {
         }
     }
 
-    fn trait_ref(&self, path: ast::Path) -> @ast::trait_ref {
-        @ast::trait_ref {
+    fn trait_ref(&self, path: ast::Path) -> ast::trait_ref {
+        ast::trait_ref {
             path: path,
             ref_id: self.next_id()
         }

@@ -3533,7 +3533,7 @@ impl Resolver {
             }
 
             item_impl(ref generics,
-                      implemented_traits,
+                      ref implemented_traits,
                       self_type,
                       ref methods) => {
                 self.resolve_implementation(item.id,
@@ -3811,7 +3811,7 @@ impl Resolver {
                                         type_parameter_bound: &TyParamBound,
                                         visitor: ResolveVisitor) {
         match *type_parameter_bound {
-            TraitTyParamBound(tref) => {
+            TraitTyParamBound(ref tref) => {
                 self.resolve_trait_reference(tref, visitor, TraitBoundingTypeParameter)
             }
             RegionTyParamBound => {}
@@ -3913,7 +3913,7 @@ impl Resolver {
     pub fn resolve_implementation(@mut self,
                                   id: node_id,
                                   generics: &Generics,
-                                  opt_trait_reference: Option<@trait_ref>,
+                                  opt_trait_reference: &Option<trait_ref>,
                                   self_type: @Ty,
                                   methods: &[@method],
                                   visitor: ResolveVisitor) {
@@ -3929,7 +3929,7 @@ impl Resolver {
             // Resolve the trait reference, if necessary.
             let original_trait_refs;
             match opt_trait_reference {
-                Some(trait_reference) => {
+                &Some(ref trait_reference) => {
                     self.resolve_trait_reference(trait_reference, visitor, TraitImplementation);
 
                     // Record the current set of trait references.
@@ -3944,7 +3944,7 @@ impl Resolver {
                         &mut self.current_trait_refs,
                         Some(new_trait_refs)));
                 }
-                None => {
+                &None => {
                     original_trait_refs = None;
                 }
             }

@@ -378,7 +378,7 @@ pub fn ensure_supertraits(ccx: &CrateCtxt,
                           id: ast::node_id,
                           sp: codemap::span,
                           rp: Option<ty::region_variance>,
-                          ast_trait_refs: &[@ast::trait_ref],
+                          ast_trait_refs: &[ast::trait_ref],
                           generics: &ast::Generics)
 {
     let tcx = ccx.tcx;
@@ -386,7 +386,7 @@ pub fn ensure_supertraits(ccx: &CrateCtxt,
 
     let self_ty = ty::mk_self(ccx.tcx, local_def(id));
     let mut ty_trait_refs: ~[@ty::TraitRef] = ~[];
-    for ast_trait_refs.iter().advance |&ast_trait_ref| {
+    for ast_trait_refs.iter().advance |ast_trait_ref| {
         let trait_ref = instantiate_trait_ref(ccx, ast_trait_ref, rp,
                                               generics, self_ty);
 
@@ -441,7 +441,7 @@ pub fn compare_impl_method(tcx: ty::ctxt,
                 fmt!("method `%s` has a `%s` declaration in the impl, \
                       but not in the trait",
                      tcx.sess.str_of(trait_m.ident),
-                     explicit_self_to_str(impl_m.explicit_self, tcx.sess.intr())));
+                     explicit_self_to_str(&impl_m.explicit_self, tcx.sess.intr())));
             return;
         }
         (_, &ast::sty_static) => {
@@ -450,7 +450,7 @@ pub fn compare_impl_method(tcx: ty::ctxt,
                 fmt!("method `%s` has a `%s` declaration in the trait, \
                       but not in the impl",
                      tcx.sess.str_of(trait_m.ident),
-                     explicit_self_to_str(trait_m.explicit_self, tcx.sess.intr())));
+                     explicit_self_to_str(&trait_m.explicit_self, tcx.sess.intr())));
             return;
         }
         _ => {
@@ -813,7 +813,7 @@ pub fn convert(ccx: &CrateCtxt, it: &ast::item) {
                                generics,
                                rp);
       }
-      ast::item_impl(ref generics, opt_trait_ref, selfty, ref ms) => {
+      ast::item_impl(ref generics, ref opt_trait_ref, selfty, ref ms) => {
         let i_ty_generics = ty_generics(ccx, rp, generics, 0);
         let region_parameterization =
             RegionParameterization::from_variance_and_generics(rp, generics);
@@ -839,7 +839,7 @@ pub fn convert(ccx: &CrateCtxt, it: &ast::item) {
                                   &i_ty_generics, generics,
                                   parent_visibility);
         for opt_trait_ref.iter().advance |t| {
-            check_methods_against_trait(ccx, generics, rp, selfty, *t, cms);
+            check_methods_against_trait(ccx, generics, rp, selfty, t, cms);
         }
       }
       ast::item_trait(ref generics, ref supertraits, ref trait_methods) => {
@@ -1184,7 +1184,7 @@ pub fn ty_generics(ccx: &CrateCtxt,
         };
         for ast_bounds.iter().advance |ast_bound| {
             match *ast_bound {
-                TraitTyParamBound(b) => {
+                TraitTyParamBound(ref b) => {
                     let ty = ty::mk_param(ccx.tcx, param_ty.idx, param_ty.def_id);
                     let trait_ref = instantiate_trait_ref(ccx, b, rp, generics, ty);
                     if !astconv::try_add_builtin_trait(

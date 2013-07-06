@@ -141,7 +141,7 @@ impl ReachableContext {
                             }
                         }
                     }
-                    item_impl(ref generics, trait_ref, _, ref methods) => {
+                    item_impl(ref generics, ref trait_ref, _, ref methods) => {
                         // XXX(pcwalton): We conservatively assume any methods
                         // on a trait implementation are reachable, when this
                         // is not the case. We could be more precise by only
