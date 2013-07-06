@@ -2272,7 +2272,7 @@ mod test {
 
         let decl = ast::fn_decl {
             inputs: ~[],
-            output: @ast::Ty {id: 0,
+            output: ast::Ty {id: 0,
                               node: ast::ty_nil,
                               span: codemap::dummy_sp()},
             cf: ast::return_val
