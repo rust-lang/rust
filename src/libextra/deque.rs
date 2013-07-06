@@ -256,6 +256,7 @@ mod tests {
     use std::cmp::Eq;
     use std::kinds::Copy;
     use std::int;
+    use extra::test;
 
     #[test]
     fn test_simple() {
@@ -367,6 +368,61 @@ mod tests {
         assert_eq!(copy *deq.get(1), copy b);
         assert_eq!(copy *deq.get(2), copy c);
         assert_eq!(copy *deq.get(3), copy d);
+    }
+
+    #[test]
+    fn test_add_front_grow() {
+        let mut deq = Deque::new();
+        for int::range(0, 66) |i| {
+            deq.add_front(i);
+        }
+        assert_eq!(deq.len(), 66);
+
+        for int::range(0, 66) |i| {
+            assert_eq!(*deq.get(i), 65 - i);
+        }
+
+        let mut deq = Deque::new();
+        for int::range(0, 66) |i| {
+            deq.add_back(i);
+        }
+
+        for int::range(0, 66) |i| {
+            assert_eq!(*deq.get(i), i);
+        }
+    }
+
+    #[bench]
+    fn bench_new(b: &mut test::BenchHarness) {
+        do b.iter {
+            let _ = Deque::new::<u64>();
+        }
+    }
+
+    #[bench]
+    fn bench_add_back(b: &mut test::BenchHarness) {
+        let mut deq = Deque::new();
+        do b.iter {
+            deq.add_back(0);
+        }
+    }
+
+    #[bench]
+    fn bench_add_front(b: &mut test::BenchHarness) {
+        let mut deq = Deque::new();
+        do b.iter {
+            deq.add_front(0);
+        }
+    }
+
+    #[bench]
+    fn bench_grow(b: &mut test::BenchHarness) {
+        let mut deq = Deque::new();
+        do b.iter {
+            for 65.times {
+                deq.add_front(1);
+            }
+        }
     }
 
     #[deriving(Eq)]
