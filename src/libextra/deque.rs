@@ -13,6 +13,7 @@
 use std::uint;
 use std::vec;
 use std::cast::transmute;
+use std::iterator::FromIterator;
 
 static INITIAL_CAPACITY: uint = 32u; // 2^5
 
@@ -251,6 +252,16 @@ fn grow<T>(nelts: uint, lo: uint, elts: &mut ~[Option<T>]) {
 
 fn get<'r, T>(elts: &'r [Option<T>], i: uint) -> &'r T {
     match elts[i] { Some(ref t) => t, _ => fail!() }
+}
+
+impl<A, T: Iterator<A>> FromIterator<A, T> for Deque<A> {
+    fn from_iterator(iterator: &mut T) -> Deque<A> {
+        let mut deq = Deque::new();
+        for iterator.advance |elt| {
+            deq.add_back(elt);
+        }
+        deq
+    }
 }
 
 #[cfg(test)]
@@ -544,5 +555,21 @@ mod tests {
             d.add_front(i);
         }
         assert_eq!(d.rev_iter().collect::<~[&int]>(), ~[&4,&3,&2,&1,&0,&6,&7,&8]);
+    }
+
+    #[test]
+    fn test_from_iterator() {
+        use std::iterator;
+        let v = ~[1,2,3,4,5,6,7];
+        let deq: Deque<int> = v.iter().transform(|&x| x).collect();
+        let u: ~[int] = deq.iter().transform(|&x| x).collect();
+        assert_eq!(u, v);
+
+        let mut seq = iterator::Counter::new(0u, 2).take_(256);
+        let deq: Deque<uint> = seq.collect();
+        for deq.iter().enumerate().advance |(i, &x)| {
+            assert_eq!(2*i, x);
+        }
+        assert_eq!(deq.len(), 256);
     }
 }
