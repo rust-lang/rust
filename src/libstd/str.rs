@@ -13,8 +13,7 @@
  *
  * Strings are a packed UTF-8 representation of text, stored as null
  * terminated buffers of u8 bytes.  Strings should be indexed in bytes,
- * for efficiency, but UTF-8 unsafe operations should be avoided.  For
- * some heavy-duty uses, try extra::rope.
+ * for efficiency, but UTF-8 unsafe operations should be avoided.
  */
 
 use at_vec;
