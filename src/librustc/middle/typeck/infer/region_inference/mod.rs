@@ -19,13 +19,12 @@ use middle::typeck::infer::cres;
 use middle::typeck::infer::{RegionVariableOrigin, SubregionOrigin};
 use middle::typeck::infer;
 use util::common::indenter;
-use util::ppaux::{note_and_explain_region, Repr, UserString};
+use util::ppaux::{Repr};
 
 use std::cell::Cell;
 use std::hashmap::{HashMap, HashSet};
 use std::uint;
 use std::vec;
-use syntax::codemap::span;
 use syntax::ast;
 use syntax::opt_vec;
 use syntax::opt_vec::OptVec;

@@ -463,7 +463,6 @@ pub fn check_fn(ccx: @mut CrateCtxt,
             }
 
             // Check the pattern.
-            let region = fcx.block_region();
             let pcx = pat_ctxt {
                 fcx: fcx,
                 map: pat_id_map(tcx.def_map, input.pat),
@@ -2892,7 +2891,6 @@ pub fn check_decl_local(fcx: @mut FnCtxt, local: @ast::local)  {
         _ => {}
     }
 
-    let region = tcx.region_maps.encl_region(local.node.id);
     let pcx = pat_ctxt {
         fcx: fcx,
         map: pat_id_map(tcx.def_map, local.node.pat),

@@ -21,7 +21,7 @@ use middle::typeck::infer::lattice::CombineFieldsLatticeMethods;
 use middle::typeck::infer::lub::Lub;
 use middle::typeck::infer::to_str::InferStr;
 use middle::typeck::infer::{TypeTrace, Subtype};
-use util::common::{indent, indenter};
+use util::common::{indenter};
 use util::ppaux::bound_region_to_str;
 
 use extra::list::Nil;
@@ -29,7 +29,6 @@ use extra::list;
 use syntax::abi::AbiSet;
 use syntax::ast;
 use syntax::ast::{Onceness, m_const, purity};
-use syntax::codemap::span;
 
 pub struct Sub(CombineFields);  // "subtype", "subregion" etc
 

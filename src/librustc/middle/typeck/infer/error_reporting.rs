@@ -59,23 +59,18 @@ time of error detection.
 
 */
 
-use std::prelude::*;
 use middle::ty;
 use middle::ty::Region;
 use middle::typeck::infer;
 use middle::typeck::infer::InferCtxt;
 use middle::typeck::infer::TypeTrace;
-use middle::typeck::infer::TypeOrigin;
 use middle::typeck::infer::SubregionOrigin;
 use middle::typeck::infer::RegionVariableOrigin;
-use middle::typeck::infer::Types;
-use middle::typeck::infer::TraitRefs;
 use middle::typeck::infer::ValuePairs;
 use middle::typeck::infer::region_inference::RegionResolutionError;
 use middle::typeck::infer::region_inference::ConcreteFailure;
 use middle::typeck::infer::region_inference::SubSupConflict;
 use middle::typeck::infer::region_inference::SupSupConflict;
-use syntax::opt_vec;
 use syntax::opt_vec::OptVec;
 use util::ppaux::UserString;
 use util::ppaux::note_and_explain_region;
@@ -362,7 +357,7 @@ impl ErrorReporting for InferCtxt {
                     sup,
                     "");
             }
-            infer::ReferenceOutlivesReferent(ty, span) => {
+            infer::ReferenceOutlivesReferent(ty, _) => {
                 self.tcx.sess.span_err(
                     origin.span(),
                     fmt!("in type `%s`, pointer has a longer lifetime than \
