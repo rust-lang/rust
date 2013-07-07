@@ -287,10 +287,14 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
     fn match_digits(ss: &str, pos: uint, digits: uint, ws: bool)
       -> Option<(i32, uint)> {
         let mut pos = pos;
+        let len = ss.len();
         let mut value = 0_i32;
 
         let mut i = 0u;
         while i < digits {
+            if pos >= len {
+                return None;
+            }
             let range = ss.char_range_at(pos);
             pos = range.next;
 
@@ -856,7 +860,7 @@ priv fn do_strftime(format: &str, tm: &Tm) -> ~str {
 
 #[cfg(test)]
 mod tests {
-    use time::*;
+    use super::*;
 
     use std::float;
     use std::os;
@@ -904,7 +908,7 @@ mod tests {
         os::setenv("TZ", "America/Los_Angeles");
         tzset();
 
-        let time = ::time::Timespec::new(1234567890, 54321);
+        let time = Timespec::new(1234567890, 54321);
         let utc = at_utc(time);
 
         assert!(utc.tm_sec == 30_i32);
@@ -925,7 +929,7 @@ mod tests {
         os::setenv("TZ", "America/Los_Angeles");
         tzset();
 
-        let time = ::time::Timespec::new(1234567890, 54321);
+        let time = Timespec::new(1234567890, 54321);
         let local = at(time);
 
         error!("time_at: %?", local);
@@ -953,7 +957,7 @@ mod tests {
         os::setenv("TZ", "America/Los_Angeles");
         tzset();
 
-        let time = ::time::Timespec::new(1234567890, 54321);
+        let time = Timespec::new(1234567890, 54321);
         let utc = at_utc(time);
 
         assert_eq!(utc.to_timespec(), time);
@@ -964,7 +968,7 @@ mod tests {
         os::setenv("TZ", "America/Los_Angeles");
         tzset();
 
-        let time = ::time::Timespec::new(1234567890, 54321);
+        let time = Timespec::new(1234567890, 54321);
         let utc = at_utc(time);
         let local = at(time);
 
@@ -1145,7 +1149,7 @@ mod tests {
         os::setenv("TZ", "America/Los_Angeles");
         tzset();
 
-        let time = ::time::Timespec::new(1234567890, 54321);
+        let time = Timespec::new(1234567890, 54321);
         let utc   = at_utc(time);
         let local = at(time);
 
@@ -1159,7 +1163,7 @@ mod tests {
         os::setenv("TZ", "America/Los_Angeles");
         tzset();
 
-        let time = ::time::Timespec::new(1234567890, 54321);
+        let time = Timespec::new(1234567890, 54321);
         let utc = at_utc(time);
         let local = at(time);
 
