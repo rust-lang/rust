@@ -3828,41 +3828,62 @@ pub fn enum_variants(cx: ctxt, id: ast::def_id) -> @~[VariantInfo] {
                 }, _) => {
             let mut disr_val = -1;
             @enum_definition.variants.iter().transform(|variant| {
+
+                let ctor_ty = node_id_to_type(cx, variant.node.id);
+
                 match variant.node.kind {
                     ast::tuple_variant_kind(ref args) => {
-                        let ctor_ty = node_id_to_type(cx, variant.node.id);
-                        let arg_tys = {
-                            if args.len() > 0u {
-                                ty_fn_args(ctor_ty).map(|a| *a)
-                            } else {
+                        let arg_tys = if args.len() > 0u {
+                                ty_fn_args(ctor_ty).map(|a| *a) }
+                            else {
                                 ~[]
-                            }
-                        };
+                            };
+
                         match variant.node.disr_expr {
                           Some (ex) => {
                             disr_val = match const_eval::eval_const_expr(cx,
                                                                          ex) {
                               const_eval::const_int(val) => val as int,
-                              _ => cx.sess.bug("tag_variants: bad disr expr")
+                              _ => cx.sess.bug("enum_variants: bad disr expr")
                             }
                           }
                           _ => disr_val += 1
                         }
-                        @VariantInfo_{args: arg_tys,
-                          ctor_ty: ctor_ty,
-                          name: variant.node.name,
-                          id: ast_util::local_def(variant.node.id),
-                          disr_val: disr_val,
-                          vis: variant.node.vis
+                        @VariantInfo_{
+                            args: arg_tys,
+                            ctor_ty: ctor_ty,
+                            name: variant.node.name,
+                            id: ast_util::local_def(variant.node.id),
+                            disr_val: disr_val,
+                            vis: variant.node.vis
                          }
-                    }
-                    ast::struct_variant_kind(_) => {
-                        fail!("struct variant kinds unimpl in enum_variants")
+                    },
+                    ast::struct_variant_kind(struct_def) => {
+                        let arg_tys =
+                            // Is this check needed for structs too, or are they always guaranteed
+                            // to have a valid constructor function?
+                            if struct_def.fields.len() > 0 {
+                                ty_fn_args(ctor_ty).map(|a| *a)
+                            } else {
+                                ~[]
+                            };
+
+                        assert!(variant.node.disr_expr.is_none());
+                        disr_val += 1;
+
+                        @VariantInfo_{
+                            args: arg_tys,
+                            ctor_ty: ctor_ty,
+                            name: variant.node.name,
+                            id: ast_util::local_def(variant.node.id),
+                            disr_val: disr_val,
+                            vis: variant.node.vis
+                        }
                     }
                 }
             }).collect()
           }
-          _ => cx.sess.bug("tag_variants: id not bound to an enum")
+          _ => cx.sess.bug("enum_variants: id not bound to an enum")
         }
     };
     cx.enum_var_cache.insert(id, result);
