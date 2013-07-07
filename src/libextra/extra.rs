@@ -72,7 +72,6 @@ pub mod deque;
 pub mod fun_treemap;
 pub mod list;
 pub mod priority_queue;
-pub mod rope;
 pub mod smallintmap;
 
 pub mod sort;
