@@ -249,42 +249,48 @@ pub fn trans_break_cont(bcx: block,
     let _icx = push_ctxt("trans_break_cont");
     // Locate closest loop block, outputting cleanup as we go.
     let mut unwind = bcx;
-    let mut target;
+    let mut cur_scope = unwind.scope;
+    let mut target = unwind;
+    let mut quit = false;
     loop {
-        match unwind.kind {
-          block_scope(@scope_info {
-            loop_break: Some(brk),
-            loop_label: l,
-            _
-          }) => {
-              // If we're looking for a labeled loop, check the label...
-              target = if to_end {
-                  brk
-              } else {
-                  unwind
-              };
-              match opt_label {
-                  Some(desired) => match l {
-                      Some(actual) if actual == desired => break,
-                      // If it doesn't match the one we want,
-                      // don't break
-                      _ => ()
-                  },
-                  None => break
-              }
-          }
-          _ => ()
+        cur_scope = match cur_scope {
+            Some(@scope_info {
+                loop_break: Some(brk),
+                loop_label: l,
+                parent,
+                _
+            }) => {
+                // If we're looking for a labeled loop, check the label...
+                target = if to_end {
+                    brk
+                } else {
+                    unwind
+                };
+                match opt_label {
+                    Some(desired) => match l {
+                        Some(actual) if actual == desired => break,
+                        // If it doesn't match the one we want,
+                        // don't break
+                        _ => parent,
+                    },
+                    None => break,
+                }
+            }
+            Some(inf) => inf.parent,
+            None => {
+                unwind = match unwind.parent {
+                    Some(bcx) => bcx,
+                        // This is a return from a loop body block
+                        None => {
+                            Store(bcx, C_bool(!to_end), bcx.fcx.llretptr.get());
+                            cleanup_and_leave(bcx, None, Some(bcx.fcx.llreturn));
+                            Unreachable(bcx);
+                            return bcx;
+                        }
+                };
+                unwind.scope
+            }
         }
-        unwind = match unwind.parent {
-          Some(bcx) => bcx,
-          // This is a return from a loop body block
-          None => {
-            Store(bcx, C_bool(!to_end), bcx.fcx.llretptr.get());
-            cleanup_and_leave(bcx, None, Some(bcx.fcx.llreturn));
-            Unreachable(bcx);
-            return bcx;
-          }
-        };
     }
     cleanup_and_Br(bcx, unwind, target.llbb);
     Unreachable(bcx);
