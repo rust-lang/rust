@@ -18,6 +18,7 @@
 
 use getopts;
 use sort;
+use stats;
 use stats::Stats;
 use term;
 use time::precise_time_ns;
@@ -25,16 +26,12 @@ use time::precise_time_ns;
 use std::comm::{stream, SharedChan};
 use std::either;
 use std::io;
-use std::num;
 use std::option;
-use std::rand::RngUtil;
-use std::rand;
 use std::result;
 use std::task;
 use std::to_str::ToStr;
 use std::u64;
 use std::uint;
-use std::vec;
 
 
 // The name of a test. By convention this follows the rules for rust
@@ -184,7 +181,7 @@ pub fn parse_opts(args: &[~str]) -> OptRes {
 
 #[deriving(Eq)]
 pub struct BenchSamples {
-    ns_iter_samples: ~[f64],
+    ns_iter_summ: stats::Summary,
     mb_s: uint
 }
 
@@ -299,16 +296,15 @@ pub fn run_tests_console(opts: &TestOpts,
     return success;
 
     fn fmt_bench_samples(bs: &BenchSamples) -> ~str {
-        use stats::Stats;
         if bs.mb_s != 0 {
             fmt!("%u ns/iter (+/- %u) = %u MB/s",
-                 bs.ns_iter_samples.median() as uint,
-                 3 * (bs.ns_iter_samples.median_abs_dev() as uint),
+                 bs.ns_iter_summ.median as uint,
+                 (bs.ns_iter_summ.max - bs.ns_iter_summ.min) as uint,
                  bs.mb_s)
         } else {
             fmt!("%u ns/iter (+/- %u)",
-                 bs.ns_iter_samples.median() as uint,
-                 3 * (bs.ns_iter_samples.median_abs_dev() as uint))
+                 bs.ns_iter_summ.median as uint,
+                 (bs.ns_iter_summ.max - bs.ns_iter_summ.min) as uint)
         }
     }
 
@@ -688,54 +684,48 @@ impl BenchHarness {
         }
     }
 
-    // This is a more statistics-driven benchmark algorithm.
-    // It stops as quickly as 50ms, so long as the statistical
-    // properties are satisfactory. If those properties are
-    // not met, it may run as long as the Go algorithm.
-    pub fn auto_bench(&mut self, f: &fn(&mut BenchHarness)) -> ~[f64] {
+    // This is a more statistics-driven benchmark algorithm.  It stops as
+    // quickly as 100ms, so long as the statistical properties are
+    // satisfactory. If those properties are not met, it may run as long as
+    // the Go algorithm.
+    pub fn auto_bench(&mut self, f: &fn(&mut BenchHarness)) -> stats::Summary {
 
-        let mut rng = rand::rng();
-        let mut magnitude = 10;
-        let mut prev_madp = 0.0;
+        let mut magnitude = 1000;
 
+        let samples : &mut [f64] = [0.0_f64, ..100];
         loop {
-            let n_samples = rng.gen_uint_range(50, 60);
-            let n_iter = rng.gen_uint_range(magnitude,
-                                            magnitude * 2);
+            let loop_start = precise_time_ns();
 
-            let samples = do vec::from_fn(n_samples) |_| {
-                self.bench_n(n_iter as u64, |x| f(x));
-                self.ns_per_iter() as f64
+            for samples.mut_iter().advance() |p| {
+                self.bench_n(magnitude as u64, |x| f(x));
+                *p = self.ns_per_iter() as f64;
             };
 
-            // Eliminate outliers
-            let med = samples.median();
-            let mad = samples.median_abs_dev();
-            let samples = do samples.consume_iter().filter |f| {
-                num::abs(*f - med) <= 3.0 * mad
-            }.collect::<~[f64]>();
+            // Clip top 10% and bottom 10% of outliers
+            stats::winsorize(samples, 10.0);
+            let summ = stats::Summary::new(samples);
 
-            debug!("%u samples, median %f, MAD=%f, %u survived filter",
-                   n_samples, med as float, mad as float,
-                   samples.len());
+            debug!("%u samples, median %f, MAD=%f, MADP=%f",
+                   samples.len(),
+                   summ.median as float,
+                   summ.median_abs_dev as float,
+                   summ.median_abs_dev_pct as float);
 
-            if samples.len() != 0 {
-                // If we have _any_ cluster of signal...
-                let curr_madp = samples.median_abs_dev_pct();
-                if self.ns_elapsed() > 1_000_000 &&
-                    (curr_madp < 1.0 ||
-                     num::abs(curr_madp - prev_madp) < 0.1) {
-                    return samples;
-                }
-                prev_madp = curr_madp;
+            let now = precise_time_ns();
+            let loop_run = now - loop_start;
 
-                if n_iter > 20_000_000 ||
-                    self.ns_elapsed() > 20_000_000 {
-                    return samples;
-                }
+            // Stop early if we have a good signal after a 100ms loop.
+            if loop_run > 100_000_000 && summ.median_abs_dev_pct < 5.0 {
+                return summ;
             }
 
-            magnitude *= 2;
+            // Longest we ever run for is 1s.
+            if loop_run > 1_000_000_000 {
+                return summ;
+            }
+
+            magnitude *= 3;
+            magnitude /= 2;
         }
     }
 }
@@ -752,13 +742,13 @@ pub mod bench {
             bytes: 0
         };
 
-        let ns_iter_samples = bs.auto_bench(f);
+        let ns_iter_summ = bs.auto_bench(f);
 
-        let iter_s = 1_000_000_000 / (ns_iter_samples.median() as u64);
+        let iter_s = 1_000_000_000 / (ns_iter_summ.median as u64);
         let mb_s = (bs.bytes * iter_s) / 1_000_000;
 
         BenchSamples {
-            ns_iter_samples: ns_iter_samples,
+            ns_iter_summ: ns_iter_summ,
             mb_s: mb_s as uint
         }
     }
