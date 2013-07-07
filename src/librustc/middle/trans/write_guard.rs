@@ -123,7 +123,7 @@ fn root(datum: &Datum,
     let scratch = scratch_datum(bcx, datum.ty, true);
     datum.copy_to_datum(bcx, INIT, scratch);
     let cleanup_bcx = find_bcx_for_scope(bcx, root_info.scope);
-    add_clean_temp_mem(cleanup_bcx, scratch.val, scratch.ty);
+    add_clean_temp_mem_in_scope(cleanup_bcx, root_info.scope, scratch.val, scratch.ty);
 
     // Now, consider also freezing it.
     match root_info.freeze {
@@ -168,7 +168,7 @@ fn root(datum: &Datum,
             }
 
             add_clean_return_to_mut(
-                cleanup_bcx, root_key, scratch.val, scratch_bits.val,
+                cleanup_bcx, root_info.scope, root_key, scratch.val, scratch_bits.val,
                 filename, line);
         }
     }

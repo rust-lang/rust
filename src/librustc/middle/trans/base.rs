@@ -863,10 +863,10 @@ pub fn need_invoke(bcx: block) -> bool {
 
     // Walk the scopes to look for cleanups
     let mut cur = bcx;
+    let mut cur_scope = cur.scope;
     loop {
-        match cur.kind {
-            block_scope(inf) => {
-                let inf = &mut *inf; // FIXME(#5074) workaround old borrowck
+        cur_scope = match cur_scope {
+            Some(inf) => {
                 for inf.cleanups.iter().advance |cleanup| {
                     match *cleanup {
                         clean(_, cleanup_type) | clean_temp(_, _, cleanup_type) => {
@@ -876,12 +876,15 @@ pub fn need_invoke(bcx: block) -> bool {
                         }
                     }
                 }
+                inf.parent
             }
-            _ => ()
-        }
-        cur = match cur.parent {
-          Some(next) => next,
-          None => return false
+            None => {
+                cur = match cur.parent {
+                    Some(next) => next,
+                    None => return false
+                };
+                cur.scope
+            }
         }
     }
 }
@@ -899,23 +902,21 @@ pub fn have_cached_lpad(bcx: block) -> bool {
 
 pub fn in_lpad_scope_cx(bcx: block, f: &fn(si: &mut scope_info)) {
     let mut bcx = bcx;
+    let mut cur_scope = bcx.scope;
     loop {
-        {
-            match bcx.kind {
-                block_scope(inf) => {
-                    let len = { // FIXME(#5074) workaround old borrowck
-                        let inf = &mut *inf;
-                        inf.cleanups.len()
-                    };
-                    if len > 0u || bcx.parent.is_none() {
-                        f(inf);
-                        return;
-                    }
+        cur_scope = match cur_scope {
+            Some(inf) => {
+                if !inf.empty_cleanups() || (inf.parent.is_none() && bcx.parent.is_none()) {
+                    f(inf);
+                    return;
                 }
-                _ => ()
+                inf.parent
+            }
+            None => {
+                bcx = block_parent(bcx);
+                bcx.scope
             }
         }
-        bcx = block_parent(bcx);
     }
 }
 
@@ -972,27 +973,31 @@ pub fn get_landing_pad(bcx: block) -> BasicBlockRef {
 
 pub fn find_bcx_for_scope(bcx: block, scope_id: ast::node_id) -> block {
     let mut bcx_sid = bcx;
+    let mut cur_scope = bcx_sid.scope;
     loop {
-        bcx_sid = match bcx_sid.node_info {
-            Some(NodeInfo { id, _ }) if id == scope_id => {
-                return bcx_sid
-              }
-
-                // FIXME(#6268, #6248) hacky cleanup for nested method calls
-                Some(NodeInfo { callee_id: Some(id), _ }) if id == scope_id => {
-                    return bcx_sid
-                }
-
-                _ => {
-                    match bcx_sid.parent {
-                        None => bcx.tcx().sess.bug(
-                            fmt!("no enclosing scope with id %d", scope_id)),
-                        Some(bcx_par) => bcx_par
+        cur_scope = match cur_scope {
+            Some(inf) => {
+                match inf.node_info {
+                    Some(NodeInfo { id, _ }) if id == scope_id => {
+                        return bcx_sid
                     }
+                    // FIXME(#6268, #6248) hacky cleanup for nested method calls
+                    Some(NodeInfo { callee_id: Some(id), _ }) if id == scope_id => {
+                        return bcx_sid
+                    }
+                    _ => inf.parent
                 }
+            }
+            None => {
+                bcx_sid = match bcx_sid.parent {
+                    None => bcx.tcx().sess.bug(fmt!("no enclosing scope with id %d", scope_id)),
+                    Some(bcx_par) => bcx_par
+                };
+                bcx_sid.scope
             }
         }
     }
+}
 
 
 pub fn do_spill(bcx: block, v: ValueRef, t: ty::t) -> ValueRef {
@@ -1145,7 +1150,7 @@ pub fn trans_stmt(cx: block, s: &ast::stmt) -> block {
 
 // You probably don't want to use this one. See the
 // next three functions instead.
-pub fn new_block(cx: fn_ctxt, parent: Option<block>, kind: block_kind,
+pub fn new_block(cx: fn_ctxt, parent: Option<block>, scope: Option<@mut scope_info>,
                  is_lpad: bool, name: &str, opt_node_info: Option<NodeInfo>)
     -> block {
 
@@ -1155,10 +1160,10 @@ pub fn new_block(cx: fn_ctxt, parent: Option<block>, kind: block_kind,
         };
         let bcx = mk_block(llbb,
                            parent,
-                           kind,
                            is_lpad,
                            opt_node_info,
                            cx);
+        bcx.scope = scope;
         for parent.iter().advance |cx| {
             if cx.unreachable {
                 Unreachable(bcx);
@@ -1169,27 +1174,30 @@ pub fn new_block(cx: fn_ctxt, parent: Option<block>, kind: block_kind,
     }
 }
 
-pub fn simple_block_scope() -> block_kind {
-    block_scope(@mut scope_info {
+pub fn simple_block_scope(parent: Option<@mut scope_info>,
+                          node_info: Option<NodeInfo>) -> @mut scope_info {
+    @mut scope_info {
+        parent: parent,
         loop_break: None,
         loop_label: None,
         cleanups: ~[],
         cleanup_paths: ~[],
-        landing_pad: None
-    })
+        landing_pad: None,
+        node_info: node_info,
+    }
 }
 
 // Use this when you're at the top block of a function or the like.
 pub fn top_scope_block(fcx: fn_ctxt, opt_node_info: Option<NodeInfo>)
                     -> block {
-    return new_block(fcx, None, simple_block_scope(), false,
+    return new_block(fcx, None, Some(simple_block_scope(None, opt_node_info)), false,
                   "function top level", opt_node_info);
 }
 
 pub fn scope_block(bcx: block,
                    opt_node_info: Option<NodeInfo>,
                    n: &str) -> block {
-    return new_block(bcx.fcx, Some(bcx), simple_block_scope(), bcx.is_lpad,
+    return new_block(bcx.fcx, Some(bcx), Some(simple_block_scope(None, opt_node_info)), bcx.is_lpad,
                   n, opt_node_info);
 }
 
@@ -1198,27 +1206,29 @@ pub fn loop_scope_block(bcx: block,
                         loop_label: Option<ident>,
                         n: &str,
                         opt_node_info: Option<NodeInfo>) -> block {
-    return new_block(bcx.fcx, Some(bcx), block_scope(@mut scope_info {
+    return new_block(bcx.fcx, Some(bcx), Some(@mut scope_info {
+        parent: None,
         loop_break: Some(loop_break),
         loop_label: loop_label,
         cleanups: ~[],
         cleanup_paths: ~[],
-        landing_pad: None
+        landing_pad: None,
+        node_info: opt_node_info,
     }), bcx.is_lpad, n, opt_node_info);
 }
 
 // Use this when creating a block for the inside of a landing pad.
 pub fn lpad_block(bcx: block, n: &str) -> block {
-    new_block(bcx.fcx, Some(bcx), block_non_scope, true, n, None)
+    new_block(bcx.fcx, Some(bcx), None, true, n, None)
 }
 
 // Use this when you're making a general CFG BB within a scope.
 pub fn sub_block(bcx: block, n: &str) -> block {
-    new_block(bcx.fcx, Some(bcx), block_non_scope, bcx.is_lpad, n, None)
+    new_block(bcx.fcx, Some(bcx), None, bcx.is_lpad, n, None)
 }
 
 pub fn raw_block(fcx: fn_ctxt, is_lpad: bool, llbb: BasicBlockRef) -> block {
-    mk_block(llbb, None, block_non_scope, is_lpad, None, fcx)
+    mk_block(llbb, None, is_lpad, None, fcx)
 }
 
 
@@ -1277,42 +1287,47 @@ pub fn cleanup_and_leave(bcx: block,
                 (fmt!("cleanup_and_leave(%s)", cur.to_str())).to_managed());
         }
 
-        match cur.kind {
-            block_scope(inf) if !inf.empty_cleanups() => {
-                let (sub_cx, dest, inf_cleanups) = {
-                    let inf = &mut *inf;
-                    let mut skip = 0;
-                    let mut dest = None;
-                    {
-                        let r = (*inf).cleanup_paths.rev_iter().find_(|cp| cp.target == leave);
-                        for r.iter().advance |cp| {
-                            if cp.size == inf.cleanups.len() {
-                                Br(bcx, cp.dest);
-                                return;
-                            }
+        let mut cur_scope = cur.scope;
+        loop {
+            cur_scope = match cur_scope {
+                Some (inf) if !inf.empty_cleanups() => {
+                    let (sub_cx, dest, inf_cleanups) = {
+                        let inf = &mut *inf;
+                        let mut skip = 0;
+                        let mut dest = None;
+                        {
+                            let r = (*inf).cleanup_paths.rev_iter().find_(|cp| cp.target == leave);
+                            for r.iter().advance |cp| {
+                                if cp.size == inf.cleanups.len() {
+                                    Br(bcx, cp.dest);
+                                    return;
+                                }
 
-                            skip = cp.size;
-                            dest = Some(cp.dest);
+                                skip = cp.size;
+                                dest = Some(cp.dest);
+                            }
                         }
+                        let sub_cx = sub_block(bcx, "cleanup");
+                        Br(bcx, sub_cx.llbb);
+                        inf.cleanup_paths.push(cleanup_path {
+                            target: leave,
+                            size: inf.cleanups.len(),
+                            dest: sub_cx.llbb
+                        });
+                        (sub_cx, dest, inf.cleanups.tailn(skip).to_owned())
+                    };
+                    bcx = trans_block_cleanups_(sub_cx,
+                                                inf_cleanups,
+                                                is_lpad);
+                    for dest.iter().advance |&dest| {
+                        Br(bcx, dest);
+                        return;
                     }
-                    let sub_cx = sub_block(bcx, "cleanup");
-                    Br(bcx, sub_cx.llbb);
-                    inf.cleanup_paths.push(cleanup_path {
-                        target: leave,
-                        size: inf.cleanups.len(),
-                        dest: sub_cx.llbb
-                    });
-                    (sub_cx, dest, inf.cleanups.tailn(skip).to_owned())
-                };
-                bcx = trans_block_cleanups_(sub_cx,
-                                            inf_cleanups,
-                                            is_lpad);
-                for dest.iter().advance |&dest| {
-                    Br(bcx, dest);
-                    return;
+                    inf.parent
                 }
+                Some(inf) => inf.parent,
+                None => break
             }
-            _ => ()
         }
 
         match upto {
@@ -1353,9 +1368,12 @@ pub fn with_scope(bcx: block,
            bcx.to_str(), opt_node_info, name);
     let _indenter = indenter();
 
-    let scope_cx = scope_block(bcx, opt_node_info, name);
-    Br(bcx, scope_cx.llbb);
-    leave_block(f(scope_cx), scope_cx)
+    let scope = simple_block_scope(bcx.scope, opt_node_info);
+    bcx.scope = Some(scope);
+    let ret = f(bcx);
+    let ret = trans_block_cleanups_(ret, /*bad*/copy scope.cleanups, false);
+    bcx.scope = scope.parent;
+    ret
 }
 
 pub fn with_scope_result(bcx: block,
@@ -1363,10 +1381,14 @@ pub fn with_scope_result(bcx: block,
                          name: &str,
                          f: &fn(block) -> Result) -> Result {
     let _icx = push_ctxt("with_scope_result");
-    let scope_cx = scope_block(bcx, opt_node_info, name);
-    Br(bcx, scope_cx.llbb);
-    let Result {bcx, val} = f(scope_cx);
-    rslt(leave_block(bcx, scope_cx), val)
+
+    let scope = simple_block_scope(bcx.scope, opt_node_info);
+    bcx.scope = Some(scope);
+    let Result { bcx: out_bcx, val } = f(bcx);
+    let out_bcx = trans_block_cleanups_(out_bcx, /*bad*/copy scope.cleanups, false);
+    bcx.scope = scope.parent;
+
+    rslt(out_bcx, val)
 }
 
 pub fn with_scope_datumblock(bcx: block, opt_node_info: Option<NodeInfo>,

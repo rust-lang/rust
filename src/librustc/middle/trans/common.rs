@@ -318,7 +318,7 @@ pub fn add_clean(bcx: block, val: ValueRef, t: ty::t) {
     debug!("add_clean(%s, %s, %s)", bcx.to_str(), bcx.val_to_str(val), t.repr(bcx.tcx()));
 
     let cleanup_type = cleanup_type(bcx.tcx(), t);
-    do in_scope_cx(bcx) |scope_info| {
+    do in_scope_cx(bcx, None) |scope_info| {
         scope_info.cleanups.push(clean(|a| glue::drop_ty(a, val, t), cleanup_type));
         grow_scope_clean(scope_info);
     }
@@ -330,25 +330,36 @@ pub fn add_clean_temp_immediate(cx: block, val: ValueRef, ty: ty::t) {
            cx.to_str(), cx.val_to_str(val),
            ty.repr(cx.tcx()));
     let cleanup_type = cleanup_type(cx.tcx(), ty);
-    do in_scope_cx(cx) |scope_info| {
+    do in_scope_cx(cx, None) |scope_info| {
         scope_info.cleanups.push(
             clean_temp(val, |a| glue::drop_ty_immediate(a, val, ty),
                        cleanup_type));
         grow_scope_clean(scope_info);
     }
 }
+
 pub fn add_clean_temp_mem(bcx: block, val: ValueRef, t: ty::t) {
+    add_clean_temp_mem_in_scope_(bcx, None, val, t);
+}
+
+pub fn add_clean_temp_mem_in_scope(bcx: block, scope_id: ast::node_id, val: ValueRef, t: ty::t) {
+    add_clean_temp_mem_in_scope_(bcx, Some(scope_id), val, t);
+}
+
+pub fn add_clean_temp_mem_in_scope_(bcx: block, scope_id: Option<ast::node_id>,
+                                    val: ValueRef, t: ty::t) {
     if !ty::type_needs_drop(bcx.tcx(), t) { return; }
     debug!("add_clean_temp_mem(%s, %s, %s)",
            bcx.to_str(), bcx.val_to_str(val),
            t.repr(bcx.tcx()));
     let cleanup_type = cleanup_type(bcx.tcx(), t);
-    do in_scope_cx(bcx) |scope_info| {
+    do in_scope_cx(bcx, scope_id) |scope_info| {
         scope_info.cleanups.push(clean_temp(val, |a| glue::drop_ty(a, val, t), cleanup_type));
         grow_scope_clean(scope_info);
     }
 }
 pub fn add_clean_return_to_mut(bcx: block,
+                               scope_id: ast::node_id,
                                root_key: root_map_key,
                                frozen_val_ref: ValueRef,
                                bits_val_ref: ValueRef,
@@ -366,7 +377,7 @@ pub fn add_clean_return_to_mut(bcx: block,
            bcx.to_str(),
            bcx.val_to_str(frozen_val_ref),
            bcx.val_to_str(bits_val_ref));
-    do in_scope_cx(bcx) |scope_info| {
+    do in_scope_cx(bcx, Some(scope_id)) |scope_info| {
         scope_info.cleanups.push(
             clean_temp(
                 frozen_val_ref,
@@ -387,7 +398,7 @@ pub fn add_clean_free(cx: block, ptr: ValueRef, heap: heap) {
         f
       }
     };
-    do in_scope_cx(cx) |scope_info| {
+    do in_scope_cx(cx, None) |scope_info| {
         scope_info.cleanups.push(clean_temp(ptr, free_fn,
                                       normal_exit_and_unwind));
         grow_scope_clean(scope_info);
@@ -399,7 +410,7 @@ pub fn add_clean_free(cx: block, ptr: ValueRef, heap: heap) {
 // this will be more involved. For now, we simply zero out the local, and the
 // drop glue checks whether it is zero.
 pub fn revoke_clean(cx: block, val: ValueRef) {
-    do in_scope_cx(cx) |scope_info| {
+    do in_scope_cx(cx, None) |scope_info| {
         let cleanup_pos = scope_info.cleanups.iter().position_(
             |cu| match *cu {
                 clean_temp(v, _, _) if v == val => true,
@@ -416,27 +427,14 @@ pub fn revoke_clean(cx: block, val: ValueRef) {
 }
 
 pub fn block_cleanups(bcx: block) -> ~[cleanup] {
-    match bcx.kind {
-       block_non_scope  => ~[],
-       block_scope(inf) => /*bad*/copy inf.cleanups
+    match bcx.scope {
+       None  => ~[],
+       Some(inf) => /*bad*/copy inf.cleanups
     }
 }
 
-pub enum block_kind {
-    // A scope at the end of which temporary values created inside of it are
-    // cleaned up. May correspond to an actual block in the language, but also
-    // to an implicit scope, for example, calls introduce an implicit scope in
-    // which the arguments are evaluated and cleaned up.
-    block_scope(@mut scope_info),
-
-    // A non-scope block is a basic block created as a translation artifact
-    // from translating code that expresses conditional logic rather than by
-    // explicit { ... } block structure in the source language.  It's called a
-    // non-scope block because it doesn't introduce a new variable scope.
-    block_non_scope,
-}
-
 pub struct scope_info {
+    parent: Option<@mut scope_info>,
     loop_break: Option<block>,
     loop_label: Option<ident>,
     // A list of functions that must be run at when leaving this
@@ -448,6 +446,8 @@ pub struct scope_info {
     cleanup_paths: ~[cleanup_path],
     // Unwinding landing pad. Also cleared when cleanups change.
     landing_pad: Option<BasicBlockRef>,
+    // info about the AST node this scope originated from, if any
+    node_info: Option<NodeInfo>,
 }
 
 impl scope_info {
@@ -503,8 +503,8 @@ pub struct block_ {
     terminated: bool,
     unreachable: bool,
     parent: Option<block>,
-    // The 'kind' of basic block this is.
-    kind: block_kind,
+    // The current scope within this basic block
+    scope: Option<@mut scope_info>,
     // Is this block part of a landing pad?
     is_lpad: bool,
     // info about the AST node this block originated from, if any
@@ -514,7 +514,7 @@ pub struct block_ {
     fcx: fn_ctxt
 }
 
-pub fn block_(llbb: BasicBlockRef, parent: Option<block>, kind: block_kind,
+pub fn block_(llbb: BasicBlockRef, parent: Option<block>,
               is_lpad: bool, node_info: Option<NodeInfo>, fcx: fn_ctxt)
     -> block_ {
 
@@ -523,7 +523,7 @@ pub fn block_(llbb: BasicBlockRef, parent: Option<block>, kind: block_kind,
         terminated: false,
         unreachable: false,
         parent: parent,
-        kind: kind,
+        scope: None,
         is_lpad: is_lpad,
         node_info: node_info,
         fcx: fcx
@@ -532,10 +532,10 @@ pub fn block_(llbb: BasicBlockRef, parent: Option<block>, kind: block_kind,
 
 pub type block = @mut block_;
 
-pub fn mk_block(llbb: BasicBlockRef, parent: Option<block>, kind: block_kind,
+pub fn mk_block(llbb: BasicBlockRef, parent: Option<block>,
             is_lpad: bool, node_info: Option<NodeInfo>, fcx: fn_ctxt)
     -> block {
-    @mut block_(llbb, parent, kind, is_lpad, node_info, fcx)
+    @mut block_(llbb, parent, is_lpad, node_info, fcx)
 }
 
 pub struct Result {
@@ -560,19 +560,33 @@ pub fn val_ty(v: ValueRef) -> Type {
     }
 }
 
-pub fn in_scope_cx(cx: block, f: &fn(si: &mut scope_info)) {
+pub fn in_scope_cx(cx: block, scope_id: Option<ast::node_id>, f: &fn(si: &mut scope_info)) {
     let mut cur = cx;
+    let mut cur_scope = cur.scope;
     loop {
-        match cur.kind {
-            block_scope(inf) => {
-                debug!("in_scope_cx: selected cur=%s (cx=%s)",
-                       cur.to_str(), cx.to_str());
-                f(inf);
-                return;
+        cur_scope = match cur_scope {
+            Some(inf) => match scope_id {
+                Some(wanted) => match inf.node_info {
+                    Some(NodeInfo { id: actual, _ }) if wanted == actual => {
+                        debug!("in_scope_cx: selected cur=%s (cx=%s)",
+                               cur.to_str(), cx.to_str());
+                        f(inf);
+                        return;
+                    },
+                    _ => inf.parent,
+                },
+                None => {
+                    debug!("in_scope_cx: selected cur=%s (cx=%s)",
+                           cur.to_str(), cx.to_str());
+                    f(inf);
+                    return;
+                }
+            },
+            None => {
+                cur = block_parent(cur);
+                cur.scope
             }
-            _ => ()
         }
-        cur = block_parent(cur);
     }
 }
 
