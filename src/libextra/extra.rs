@@ -40,10 +40,8 @@ pub mod uv_ll;
 
 // General io and system-services modules
 
+#[path = "net/mod.rs"]
 pub mod net;
-pub mod net_ip;
-pub mod net_tcp;
-pub mod net_url;
 
 // libuv modules
 pub mod uv;
