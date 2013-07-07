@@ -3822,7 +3822,7 @@ impl Resolver {
                                    trait_reference: &trait_ref,
                                    visitor: ResolveVisitor,
                                    reference_type: TraitReferenceType) {
-        match self.resolve_path(trait_reference.path, TypeNS, true, visitor) {
+        match self.resolve_path(&trait_reference.path, TypeNS, true, visitor) {
             None => {
                 let path_str = self.idents_to_str(trait_reference.path.idents);
 
