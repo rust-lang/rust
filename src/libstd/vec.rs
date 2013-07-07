@@ -1091,7 +1091,9 @@ pub trait OwnedVector<T> {
 
     fn push_all_move(&mut self, rhs: ~[T]);
     fn pop(&mut self) -> T;
+    fn pop_opt(&mut self) -> Option<T>;
     fn shift(&mut self) -> T;
+    fn shift_opt(&mut self) -> Option<T>;
     fn unshift(&mut self, x: T);
     fn insert(&mut self, i: uint, x:T);
     fn remove(&mut self, i: uint) -> T;
@@ -1281,35 +1283,49 @@ impl<T> OwnedVector<T> for ~[T] {
         }
     }
 
-    /// Remove the last element from a vector and return it
-    fn pop(&mut self) -> T {
-        let ln = self.len();
-        if ln == 0 {
-            fail!("sorry, cannot pop an empty vector")
-        }
-        let valptr = ptr::to_mut_unsafe_ptr(&mut self[ln - 1u]);
-        unsafe {
-            let val = ptr::replace_ptr(valptr, intrinsics::init());
-            raw::set_len(self, ln - 1u);
-            val
+    /// Remove the last element from a vector and return it, or `None` if it is empty
+    fn pop_opt(&mut self) -> Option<T> {
+        match self.len() {
+            0  => None,
+            ln => {
+                let valptr = ptr::to_mut_unsafe_ptr(&mut self[ln - 1u]);
+                unsafe {
+                    let val = ptr::replace_ptr(valptr, intrinsics::init());
+                    raw::set_len(self, ln - 1u);
+                    Some(val)
+                }
+            }
         }
     }
 
+
+    /// Remove the last element from a vector and return it, failing if it is empty
+    #[inline]
+    fn pop(&mut self) -> T {
+        self.pop_opt().expect("pop: empty vector")
+    }
+
     /// Removes the first element from a vector and return it
+    #[inline]
     fn shift(&mut self) -> T {
+        self.shift_opt().expect("shift: empty vector")
+    }
+
+    /// Removes the first element from a vector and return it, or `None` if it is empty
+    fn shift_opt(&mut self) -> Option<T> {
         unsafe {
-            assert!(!self.is_empty());
+            let ln = match self.len() {
+                0 => return None,
+                1 => return self.pop_opt(),
+                2 =>  {
+                    let last = self.pop();
+                    let first = self.pop_opt();
+                    self.push(last);
+                    return first;
+                }
+                x => x
+            };
 
-            if self.len() == 1 { return self.pop() }
-
-            if self.len() == 2 {
-                let last = self.pop();
-                let first = self.pop();
-                self.push(last);
-                return first;
-            }
-
-            let ln = self.len();
             let next_ln = self.len() - 1;
 
             // Save the last element. We're going to overwrite its position
@@ -1345,7 +1361,7 @@ impl<T> OwnedVector<T> for ~[T] {
             let vp = raw::to_mut_ptr(*self);
             let vp = ptr::mut_offset(vp, next_ln - 1);
 
-            ptr::replace_ptr(vp, work_elt)
+            Some(ptr::replace_ptr(vp, work_elt))
         }
     }
 
@@ -2089,18 +2105,13 @@ impl<T> Iterator<T> for VecConsumeIterator<T> {
         //
         // [1,2,3,4,5] => 1, [5,2,3,4] => 2, [5,4,3] => 3, [5,4] => 4,
         // [5] -> 5, []
-
-        if self.v.is_empty() {
-            None
-        } else {
-            let l = self.v.len();
-            if self.idx < l {
-                self.v.swap(self.idx, l - 1);
-                self.idx += 1;
-            }
-
-            Some(self.v.pop())
+        let l = self.v.len();
+        if self.idx < l {
+            self.v.swap(self.idx, l - 1);
+            self.idx += 1;
         }
+
+        self.v.pop_opt()
     }
 }
 
@@ -2111,8 +2122,7 @@ pub struct VecConsumeRevIterator<T> {
 
 impl<T> Iterator<T> for VecConsumeRevIterator<T> {
     fn next(&mut self) -> Option<T> {
-        if self.v.is_empty() { None }
-        else { Some(self.v.pop()) }
+        self.v.pop_opt()
     }
 }
 
@@ -2415,6 +2425,17 @@ mod tests {
     }
 
     #[test]
+    fn test_pop_opt() {
+        let mut v = ~[5];
+        let e = v.pop_opt();
+        assert_eq!(v.len(), 0);
+        assert_eq!(e, Some(5));
+        let f = v.pop_opt();
+        assert_eq!(f, None);
+        let g = v.pop_opt();
+        assert_eq!(g, None);
+    }
+
     fn test_swap_remove() {
         let mut v = ~[1, 2, 3, 4, 5];
         let mut e = v.swap_remove(0);
@@ -2747,6 +2768,27 @@ mod tests {
         assert_eq!(connect_slices([&[1], &[2], &[3]], &0), ~[1, 0, 2, 0, 3]);
         assert_eq!([&[1], &[2, 3]].connect_vec(&0), ~[1, 0, 2, 3]);
         assert_eq!([&[1], &[2], &[3]].connect_vec(&0), ~[1, 0, 2, 0, 3]);
+    }
+
+    #[test]
+    fn test_shift() {
+        let mut x = ~[1, 2, 3];
+        assert_eq!(x.shift(), 1);
+        assert_eq!(&x, &~[2, 3]);
+        assert_eq!(x.shift(), 2);
+        assert_eq!(x.shift(), 3);
+        assert_eq!(x.len(), 0);
+    }
+
+    #[test]
+    fn test_shift_opt() {
+        let mut x = ~[1, 2, 3];
+        assert_eq!(x.shift_opt(), Some(1));
+        assert_eq!(&x, &~[2, 3]);
+        assert_eq!(x.shift_opt(), Some(2));
+        assert_eq!(x.shift_opt(), Some(3));
+        assert_eq!(x.shift_opt(), None);
+        assert_eq!(x.len(), 0);
     }
 
     #[test]
