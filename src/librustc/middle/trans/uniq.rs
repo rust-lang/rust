@@ -9,7 +9,6 @@
 // except according to those terms.
 
 
-use back;
 use lib::llvm::ValueRef;
 use middle::trans::base::*;
 use middle::trans::build::*;

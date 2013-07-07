@@ -109,8 +109,8 @@ pub struct Path {
     span: span,
     global: bool,
     idents: ~[ident],
-    rp: Option<@Lifetime>,
-    types: ~[@Ty],
+    rp: Option<Lifetime>,
+    types: ~[Ty],
 }
 
 pub type crate_num = int;
@@ -132,7 +132,7 @@ pub static crate_node_id: node_id = 0;
 // the "special" built-in traits (see middle::lang_items) and
 // detects Copy, Send, Send, and Freeze.
 pub enum TyParamBound {
-    TraitTyParamBound(@trait_ref),
+    TraitTyParamBound(trait_ref),
     RegionTyParamBound
 }
 
@@ -140,7 +140,7 @@ pub enum TyParamBound {
 pub struct TyParam {
     ident: ident,
     id: node_id,
-    bounds: @OptVec<TyParamBound>
+    bounds: OptVec<TyParamBound>
 }
 
 #[deriving(Eq, Encodable, Decodable,IterBytes)]
@@ -219,7 +219,7 @@ pub type blk = spanned<blk_>;
 
 #[deriving(Eq, Encodable, Decodable,IterBytes)]
 pub struct blk_ {
-    view_items: ~[@view_item],
+    view_items: ~[view_item],
     stmts: ~[@stmt],
     expr: Option<@expr>,
     id: node_id,
@@ -255,10 +255,10 @@ pub enum pat_ {
     // which it is. The resolver determines this, and
     // records this pattern's node_id in an auxiliary
     // set (of "pat_idents that refer to nullary enums")
-    pat_ident(binding_mode, @Path, Option<@pat>),
-    pat_enum(@Path, Option<~[@pat]>), /* "none" means a * pattern where
+    pat_ident(binding_mode, Path, Option<@pat>),
+    pat_enum(Path, Option<~[@pat]>), /* "none" means a * pattern where
                                        * we don't bind the fields to names */
-    pat_struct(@Path, ~[field_pat], bool),
+    pat_struct(Path, ~[field_pat], bool),
     pat_tup(~[@pat]),
     pat_box(@pat),
     pat_uniq(@pat),
@@ -296,7 +296,7 @@ pub enum vstore {
     vstore_fixed(Option<uint>),     // [1,2,3,4]
     vstore_uniq,                    // ~[1,2,3,4]
     vstore_box,                     // @[1,2,3,4]
-    vstore_slice(Option<@Lifetime>) // &'foo? [1,2,3,4]
+    vstore_slice(Option<Lifetime>) // &'foo? [1,2,3,4]
 }
 
 #[deriving(Eq, Encodable, Decodable,IterBytes)]
@@ -361,7 +361,7 @@ pub enum stmt_ {
 #[deriving(Eq, Encodable, Decodable,IterBytes)]
 pub struct local_ {
     is_mutbl: bool,
-    ty: @Ty,
+    ty: Ty,
     pat: @pat,
     init: Option<@expr>,
     id: node_id,
@@ -429,12 +429,12 @@ pub enum expr_ {
     expr_vstore(@expr, expr_vstore),
     expr_vec(~[@expr], mutability),
     expr_call(@expr, ~[@expr], CallSugar),
-    expr_method_call(node_id, @expr, ident, ~[@Ty], ~[@expr], CallSugar),
+    expr_method_call(node_id, @expr, ident, ~[Ty], ~[@expr], CallSugar),
     expr_tup(~[@expr]),
     expr_binary(node_id, binop, @expr, @expr),
     expr_unary(node_id, unop, @expr),
     expr_lit(@lit),
-    expr_cast(@expr, @Ty),
+    expr_cast(@expr, Ty),
     expr_if(@expr, blk, Option<@expr>),
     expr_while(@expr, blk),
     /* Conditionless loop (can be exited with break, cont, or ret)
@@ -454,9 +454,9 @@ pub enum expr_ {
     expr_copy(@expr),
     expr_assign(@expr, @expr),
     expr_assign_op(node_id, binop, @expr, @expr),
-    expr_field(@expr, ident, ~[@Ty]),
+    expr_field(@expr, ident, ~[Ty]),
     expr_index(node_id, @expr, @expr),
-    expr_path(@Path),
+    expr_path(Path),
 
     /// The special identifier `self`.
     expr_self,
@@ -471,7 +471,7 @@ pub enum expr_ {
     expr_mac(mac),
 
     // A struct literal expression.
-    expr_struct(@Path, ~[field], Option<@expr>),
+    expr_struct(Path, ~[field], Option<@expr>),
 
     // A vector literal constructed from one repeated element.
     expr_repeat(@expr /* element */, @expr /* count */, mutability),
@@ -583,7 +583,7 @@ pub type mac = spanned<mac_>;
 
 #[deriving(Eq, Encodable, Decodable,IterBytes)]
 pub enum mac_ {
-    mac_invoc_tt(@Path,~[token_tree]),   // new macro-invocation
+    mac_invoc_tt(Path,~[token_tree]),   // new macro-invocation
 }
 
 pub type lit = spanned<lit_>;
@@ -604,7 +604,7 @@ pub enum lit_ {
 // type structure in middle/ty.rs as well.
 #[deriving(Eq, Encodable, Decodable,IterBytes)]
 pub struct mt {
-    ty: @Ty,
+    ty: ~Ty,
     mutbl: mutability,
 }
 
@@ -701,7 +701,7 @@ impl ToStr for Onceness {
 #[deriving(Eq, Encodable, Decodable,IterBytes)]
 pub struct TyClosure {
     sigil: Sigil,
-    region: Option<@Lifetime>,
+    region: Option<Lifetime>,
     lifetimes: OptVec<Lifetime>,
     purity: purity,
     onceness: Onceness,
@@ -730,11 +730,11 @@ pub enum ty_ {
     ty_vec(mt),
     ty_fixed_length_vec(mt, @expr),
     ty_ptr(mt),
-    ty_rptr(Option<@Lifetime>, mt),
+    ty_rptr(Option<Lifetime>, mt),
     ty_closure(@TyClosure),
     ty_bare_fn(@TyBareFn),
-    ty_tup(~[@Ty]),
-    ty_path(@Path, @Option<OptVec<TyParamBound>>, node_id), // for #7264; see above
+    ty_tup(~[Ty]),
+    ty_path(Path, Option<OptVec<TyParamBound>>, node_id), // for #7264; see above
     ty_mac(mac),
     // ty_infer means the type should be inferred instead of it having been
     // specified. This should only appear at the "top level" of a type and not
@@ -762,7 +762,7 @@ pub struct inline_asm {
 #[deriving(Eq, Encodable, Decodable,IterBytes)]
 pub struct arg {
     is_mutbl: bool,
-    ty: @Ty,
+    ty: Ty,
     pat: @pat,
     id: node_id,
 }
@@ -770,7 +770,7 @@ pub struct arg {
 #[deriving(Eq, Encodable, Decodable,IterBytes)]
 pub struct fn_decl {
     inputs: ~[arg],
-    output: @Ty,
+    output: Ty,
     cf: ret_style,
 }
 
@@ -803,7 +803,7 @@ pub enum ret_style {
 pub enum explicit_self_ {
     sty_static,                                // no self
     sty_value,                                 // `self`
-    sty_region(Option<@Lifetime>, mutability), // `&'lt self`
+    sty_region(Option<Lifetime>, mutability), // `&'lt self`
     sty_box(mutability),                       // `@self`
     sty_uniq                                   // `~self`
 }
@@ -827,7 +827,7 @@ pub struct method {
 
 #[deriving(Eq, Encodable, Decodable,IterBytes)]
 pub struct _mod {
-    view_items: ~[@view_item],
+    view_items: ~[view_item],
     items: ~[@item],
 }
 
@@ -839,13 +839,13 @@ pub enum foreign_mod_sort { named, anonymous }
 pub struct foreign_mod {
     sort: foreign_mod_sort,
     abis: AbiSet,
-    view_items: ~[@view_item],
+    view_items: ~[view_item],
     items: ~[@foreign_item],
 }
 
 #[deriving(Eq, Encodable, Decodable,IterBytes)]
 pub struct variant_arg {
-    ty: @Ty,
+    ty: Ty,
     id: node_id,
 }
 
@@ -890,13 +890,13 @@ pub enum view_path_ {
     // or just
     //
     // foo::bar::baz  (with 'baz =' implicitly on the left)
-    view_path_simple(ident, @Path, node_id),
+    view_path_simple(ident, Path, node_id),
 
     // foo::bar::*
-    view_path_glob(@Path, node_id),
+    view_path_glob(Path, node_id),
 
     // foo::bar::{a,b,c}
-    view_path_list(@Path, ~[path_list_ident], node_id)
+    view_path_list(Path, ~[path_list_ident], node_id)
 }
 
 #[deriving(Eq, Encodable, Decodable,IterBytes)]
@@ -939,7 +939,7 @@ pub struct attribute_ {
  */
 #[deriving(Eq, Encodable, Decodable,IterBytes)]
 pub struct trait_ref {
-    path: @Path,
+    path: Path,
     ref_id: node_id,
 }
 
@@ -959,7 +959,7 @@ impl visibility {
 pub struct struct_field_ {
     kind: struct_field_kind,
     id: node_id,
-    ty: @Ty,
+    ty: Ty,
     attrs: ~[attribute],
 }
 
@@ -995,17 +995,17 @@ pub struct item {
 
 #[deriving(Eq, Encodable, Decodable,IterBytes)]
 pub enum item_ {
-    item_static(@Ty, mutability, @expr),
+    item_static(Ty, mutability, @expr),
     item_fn(fn_decl, purity, AbiSet, Generics, blk),
     item_mod(_mod),
     item_foreign_mod(foreign_mod),
-    item_ty(@Ty, Generics),
+    item_ty(Ty, Generics),
     item_enum(enum_def, Generics),
     item_struct(@struct_def, Generics),
-    item_trait(Generics, ~[@trait_ref], ~[trait_method]),
+    item_trait(Generics, ~[trait_ref], ~[trait_method]),
     item_impl(Generics,
-              Option<@trait_ref>, // (optional) trait this impl implements
-              @Ty, // self
+              Option<trait_ref>, // (optional) trait this impl implements
+              Ty, // self
               ~[@method]),
     // a macro invocation (which includes macro definition)
     item_mac(mac),
@@ -1024,7 +1024,7 @@ pub struct foreign_item {
 #[deriving(Eq, Encodable, Decodable,IterBytes)]
 pub enum foreign_item_ {
     foreign_item_fn(fn_decl, purity, Generics),
-    foreign_item_static(@Ty, /* is_mutbl */ bool),
+    foreign_item_static(Ty, /* is_mutbl */ bool),
 }
 
 // The data we save and restore about an inlined item or method.  This is not

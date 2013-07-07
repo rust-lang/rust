@@ -112,7 +112,7 @@ pub fn check_expr(sess: Session,
                               "` in a constant expression");
             }
           }
-          expr_path(pth) => {
+          expr_path(ref pth) => {
             // NB: In the future you might wish to relax this slightly
             // to handle on-demand instantiation of functions via
             // foo::<bar> in a const. Currently that is only done on

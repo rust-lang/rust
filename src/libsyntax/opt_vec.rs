@@ -16,7 +16,7 @@
  * other useful things like `push()` and `len()`.
  */
 
-use std::vec::VecIterator;
+use std::vec::{VecIterator};
 
 #[deriving(Encodable, Decodable,IterBytes)]
 pub enum OptVec<T> {
@@ -55,6 +55,13 @@ impl<T> OptVec<T> {
         match *self {
             Empty => Empty,
             Vec(ref v) => Vec(v.map(op))
+        }
+    }
+
+    fn map_consume<U>(self, op: &fn(T) -> U) -> OptVec<U> {
+        match self {
+            Empty => Empty,
+            Vec(v) => Vec(v.consume_iter().transform(op).collect())
         }
     }
 
