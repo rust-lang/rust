@@ -510,6 +510,13 @@ pub struct NameBindings {
     value_def: Option<ValueNsDef>,  //< Meaning in value namespace.
 }
 
+/// Ways in which a trait can be referenced
+enum TraitReferenceType {
+    TraitImplementation,             // impl SomeTrait for T { ... }
+    TraitDerivation,                 // trait T : SomeTrait { ... }
+    TraitBoundingTypeParameter,      // fn f<T:SomeTrait>() { ... }
+}
+
 impl NameBindings {
     /// Creates a new module in this set of name bindings.
     pub fn define_module(@mut self,
@@ -3554,23 +3561,7 @@ impl Resolver {
 
                     // Resolve derived traits.
                     for traits.iter().advance |trt| {
-                        match self.resolve_path(trt.path, TypeNS, true,
-                                                visitor) {
-                            None =>
-                                self.session.span_err(trt.path.span,
-                                                      "attempt to derive a \
-                                                      nonexistent trait"),
-                            Some(def) => {
-                                // Write a mapping from the trait ID to the
-                                // definition of the trait into the definition
-                                // map.
-
-                                debug!("(resolving trait) found trait def: \
-                                       %?", def);
-
-                                self.record_def(trt.ref_id, def);
-                            }
-                        }
+                        self.resolve_trait_reference(*trt, visitor, TraitDerivation);
                     }
 
                     for (*methods).iter().advance |method| {
@@ -3821,7 +3812,7 @@ impl Resolver {
                                         visitor: ResolveVisitor) {
         match *type_parameter_bound {
             TraitTyParamBound(tref) => {
-                self.resolve_trait_reference(tref, visitor)
+                self.resolve_trait_reference(tref, visitor, TraitBoundingTypeParameter)
             }
             RegionTyParamBound => {}
         }
@@ -3829,14 +3820,23 @@ impl Resolver {
 
     pub fn resolve_trait_reference(@mut self,
                                    trait_reference: &trait_ref,
-                                   visitor: ResolveVisitor) {
+                                   visitor: ResolveVisitor,
+                                   reference_type: TraitReferenceType) {
         match self.resolve_path(trait_reference.path, TypeNS, true, visitor) {
             None => {
-                let idents = self.idents_to_str(trait_reference.path.idents);
-                self.session.span_err(trait_reference.path.span,
-                                      fmt!("attempt to implement an unknown trait `%s`", idents));
+                let path_str = self.idents_to_str(trait_reference.path.idents);
+
+                let usage_str = match reference_type {
+                    TraitBoundingTypeParameter => "bound type parameter with",
+                    TraitImplementation        => "implement",
+                    TraitDerivation            => "derive"
+                };
+
+                let msg = fmt!("attempt to %s a nonexistent trait `%s`", usage_str, path_str);
+                self.session.span_err(trait_reference.path.span, msg);
             }
             Some(def) => {
+                debug!("(resolving trait) found trait def: %?", def);
                 self.record_def(trait_reference.ref_id, def);
             }
         }
@@ -3930,7 +3930,7 @@ impl Resolver {
             let original_trait_refs;
             match opt_trait_reference {
                 Some(trait_reference) => {
-                    self.resolve_trait_reference(trait_reference, visitor);
+                    self.resolve_trait_reference(trait_reference, visitor, TraitImplementation);
 
                     // Record the current set of trait references.
                     let mut new_trait_refs = ~[];
