@@ -213,7 +213,7 @@ fn print_diagnostic(topic: &str, lvl: level, msg: &str) {
     }
 
     print_maybe_colored(fmt!("%s: ", diagnosticstr(lvl)), diagnosticcolor(lvl));
-    stderr.write_str(fmt!("%s\n", msg));
+    print_maybe_colored(fmt!("%s\n", msg), term::color::BRIGHT_WHITE);
 }
 
 pub fn collect(messages: @mut ~[~str])
