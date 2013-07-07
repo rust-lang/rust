@@ -22,20 +22,20 @@ use std::str;
 use iotask = uv::iotask::IoTask;
 use interact = uv::iotask::interact;
 
-use sockaddr_in = super::uv_ll::sockaddr_in;
-use sockaddr_in6 = super::uv_ll::sockaddr_in6;
-use addrinfo = super::uv_ll::addrinfo;
-use uv_getaddrinfo_t = super::uv_ll::uv_getaddrinfo_t;
-use uv_ip4_name = super::uv_ll::ip4_name;
-use uv_ip4_port = super::uv_ll::ip4_port;
-use uv_ip6_name = super::uv_ll::ip6_name;
-use uv_ip6_port = super::uv_ll::ip6_port;
-use uv_getaddrinfo = super::uv_ll::getaddrinfo;
-use uv_freeaddrinfo = super::uv_ll::freeaddrinfo;
-use create_uv_getaddrinfo_t = super::uv_ll::getaddrinfo_t;
-use set_data_for_req = super::uv_ll::set_data_for_req;
-use get_data_for_req = super::uv_ll::get_data_for_req;
-use ll = super::uv_ll;
+use sockaddr_in = uv_ll::sockaddr_in;
+use sockaddr_in6 = uv_ll::sockaddr_in6;
+use addrinfo = uv_ll::addrinfo;
+use uv_getaddrinfo_t = uv_ll::uv_getaddrinfo_t;
+use uv_ip4_name = uv_ll::ip4_name;
+use uv_ip4_port = uv_ll::ip4_port;
+use uv_ip6_name = uv_ll::ip6_name;
+use uv_ip6_port = uv_ll::ip6_port;
+use uv_getaddrinfo = uv_ll::getaddrinfo;
+use uv_freeaddrinfo = uv_ll::freeaddrinfo;
+use create_uv_getaddrinfo_t = uv_ll::getaddrinfo_t;
+use set_data_for_req = uv_ll::set_data_for_req;
+use get_data_for_req = uv_ll::get_data_for_req;
+use ll = uv_ll;
 
 /// An IP address
 pub enum IpAddr {
@@ -363,9 +363,9 @@ extern fn get_addr_cb(handle: *uv_getaddrinfo_t,
 #[cfg(test)]
 mod test {
 
-    use net_ip::*;
-    use net_ip::v4;
-    use net_ip::v6;
+    use net::ip::*;
+    use net::ip::v4;
+    use net::ip::v6;
     use uv;
 
     use std::result;
