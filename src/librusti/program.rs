@@ -196,21 +196,7 @@ impl Program {
         // up front, disable lots of annoying lints, then include all global
         // state such as items, view items, and extern mods.
         let mut code = fmt!("
-            #[allow(ctypes)];
-            #[allow(heap_memory)];
-            #[allow(implicit_copies)];
-            #[allow(managed_heap_memory)];
-            #[allow(non_camel_case_types)];
-            #[allow(owned_heap_memory)];
-            #[allow(path_statement)];
-            #[allow(unrecognized_lint)];
-            #[allow(unused_imports)];
-            #[allow(while_true)];
-            #[allow(unused_variable)];
-            #[allow(dead_assignment)];
-            #[allow(unused_unsafe)];
-            #[allow(unused_mut)];
-            #[allow(unreachable_code)];
+            #[allow(warnings)];
 
             extern mod extra;
             %s // extern mods
