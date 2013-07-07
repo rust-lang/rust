@@ -44,6 +44,8 @@ pub struct ParseSess {
     cm: @codemap::CodeMap, // better be the same as the one in the reader!
     next_id: node_id,
     span_diagnostic: @span_handler, // better be the same as the one in the reader!
+    /// Used to determine and report recursive mod inclusions
+    included_mod_stack: ~[Path],
 }
 
 pub fn new_parse_sess(demitter: Option<Emitter>) -> @mut ParseSess {
@@ -52,6 +54,7 @@ pub fn new_parse_sess(demitter: Option<Emitter>) -> @mut ParseSess {
         cm: cm,
         next_id: 1,
         span_diagnostic: mk_span_handler(mk_handler(demitter), cm),
+        included_mod_stack: ~[],
     }
 }
 
@@ -62,6 +65,7 @@ pub fn new_parse_sess_special_handler(sh: @span_handler,
         cm: cm,
         next_id: 1,
         span_diagnostic: sh,
+        included_mod_stack: ~[],
     }
 }
 
