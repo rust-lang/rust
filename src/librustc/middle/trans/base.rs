@@ -72,6 +72,7 @@ use std::uint;
 use std::vec;
 use std::local_data;
 use extra::time;
+use extra::sort;
 use syntax::ast::ident;
 use syntax::ast_map::{path, path_elt_to_str, path_name};
 use syntax::ast_util::{local_def, path_to_ident};
@@ -138,6 +139,48 @@ fn fcx_has_nonzero_span(fcx: fn_ctxt) -> bool {
     match fcx.span {
         None => true,
         Some(span) => *span.lo != 0 || *span.hi != 0
+    }
+}
+
+struct StatRecorder<'self> {
+    ccx: @mut CrateContext,
+    name: &'self str,
+    start: u64,
+    istart: uint,
+}
+
+impl<'self> StatRecorder<'self> {
+    pub fn new(ccx: @mut CrateContext,
+               name: &'self str) -> StatRecorder<'self> {
+        let start = if ccx.sess.trans_stats() {
+            time::precise_time_ns()
+        } else {
+            0
+        };
+        let istart = ccx.stats.n_llvm_insns;
+        StatRecorder {
+            ccx: ccx,
+            name: name,
+            start: start,
+            istart: istart,
+        }
+    }
+}
+
+#[unsafe_destructor]
+impl<'self> Drop for StatRecorder<'self> {
+    pub fn drop(&self) {
+        if self.ccx.sess.trans_stats() {
+            let end = time::precise_time_ns();
+            let elapsed = ((end - self.start) / 1_000_000) as uint;
+            let iend = self.ccx.stats.n_llvm_insns;
+            self.ccx.stats.fn_stats.push((self.name.to_owned(),
+                                          elapsed,
+                                          iend - self.istart));
+            self.ccx.stats.n_fns += 1;
+            // Reset LLVM insn count to avoid compound costs.
+            self.ccx.stats.n_llvm_insns = self.istart;
+        }
     }
 }
 
@@ -1888,18 +1931,16 @@ pub fn trans_fn(ccx: @mut CrateContext,
                 param_substs: Option<@param_substs>,
                 id: ast::node_id,
                 attrs: &[ast::attribute]) {
-    let do_time = ccx.sess.trans_stats();
-    let start = if do_time { time::get_time() }
-                else { time::Timespec::new(0, 0) };
+
+    let the_path_str = path_str(ccx.sess, path);
+    let _s = StatRecorder::new(ccx, the_path_str);
     debug!("trans_fn(self_arg=%?, param_substs=%s)",
            self_arg,
            param_substs.repr(ccx.tcx));
     let _icx = push_ctxt("trans_fn");
-    ccx.stats.n_fns += 1;
-    let the_path_str = path_str(ccx.sess, path);
     let output_type = ty::ty_fn_ret(ty::node_id_to_type(ccx.tcx, id));
     trans_closure(ccx,
-                  path,
+                  copy path,
                   decl,
                   body,
                   llfndecl,
@@ -1915,10 +1956,6 @@ pub fn trans_fn(ccx: @mut CrateContext,
                       }
                   },
                   |_bcx| { });
-    if do_time {
-        let end = time::get_time();
-        ccx.log_fn_time(the_path_str, start, end);
-    }
 }
 
 pub fn trans_enum_variant(ccx: @mut CrateContext,
@@ -2983,8 +3020,14 @@ pub fn trans_crate(sess: session::Session,
         io::println(fmt!("n_monos: %u", ccx.stats.n_monos));
         io::println(fmt!("n_inlines: %u", ccx.stats.n_inlines));
         io::println(fmt!("n_closures: %u", ccx.stats.n_closures));
+        io::println("fn stats:");
+        do sort::quick_sort(ccx.stats.fn_stats) |&(_, _, insns_a), &(_, _, insns_b)| {
+            insns_a > insns_b
+        }
+        for ccx.stats.fn_stats.iter().advance |&(name, ms, insns)| {
+            io::println(fmt!("%u insns, %u ms, %s", insns, ms, name));
+        }
     }
-
     if ccx.sess.count_llvm_insns() {
         for ccx.stats.llvm_insns.iter().advance |(&k, &v)| {
             io::println(fmt!("%-7u %s", v, k));

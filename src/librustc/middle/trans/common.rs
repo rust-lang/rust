@@ -93,8 +93,10 @@ pub struct Stats {
     n_monos: uint,
     n_inlines: uint,
     n_closures: uint,
+    n_llvm_insns: uint,
+    llvm_insn_ctxt: ~[~str],
     llvm_insns: HashMap<~str, uint>,
-    fn_times: ~[(~str, int)] // (ident, time)
+    fn_stats: ~[(~str, uint, uint)] // (ident, time-in-ms, llvm-instructions)
 }
 
 pub struct BuilderRef_res {
