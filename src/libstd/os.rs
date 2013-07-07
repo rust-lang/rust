@@ -29,7 +29,6 @@
 #[allow(missing_doc)];
 
 use c_str::ToCStr;
-use cast;
 use clone::Clone;
 use container::Container;
 use io;
@@ -246,10 +245,10 @@ pub fn getenv(n: &str) -> Option<~str> {
             let s = do n.to_c_str().with_ref |buf| {
                 libc::getenv(buf)
             };
-            if ptr::null::<u8>() == cast::transmute(s) {
+            if s.is_null() {
                 None
             } else {
-                Some(str::raw::from_buf(cast::transmute(s)))
+                Some(str::raw::from_c_str(s))
             }
         }
     }
@@ -643,8 +642,7 @@ pub fn make_dir(p: &Path, mode: c_int) -> bool {
             use os::win32::as_utf16_p;
             // FIXME: turn mode into something useful? #2623
             do as_utf16_p(p.to_str()) |buf| {
-                libc::CreateDirectoryW(buf, cast::transmute(0))
-                    != (0 as libc::BOOL)
+                libc::CreateDirectoryW(buf, ptr::null()) != (0 as libc::BOOL)
             }
         }
     }
@@ -748,10 +746,7 @@ pub fn list_dir(p: &Path) -> ~[~str] {
             do as_utf16_p(star(p).to_str()) |path_ptr| {
                 let mut strings = ~[];
                 let wfd_ptr = malloc_raw(rust_list_dir_wfd_size() as uint);
-                let find_handle =
-                    FindFirstFileW(
-                        path_ptr,
-                        ::cast::transmute(wfd_ptr));
+                let find_handle = FindFirstFileW(path_ptr, wfd_ptr as HANDLE);
                 if find_handle as libc::c_int != INVALID_HANDLE_VALUE {
                     let mut more_files = 1 as libc::c_int;
                     while more_files != 0 {
@@ -765,9 +760,7 @@ pub fn list_dir(p: &Path) -> ~[~str] {
                             let fp_str = str::from_utf16(fp_vec);
                             strings.push(fp_str);
                         }
-                        more_files = FindNextFileW(
-                            find_handle,
-                            ::cast::transmute(wfd_ptr));
+                        more_files = FindNextFileW(find_handle, wfd_ptr as HANDLE);
                     }
                     FindClose(find_handle);
                     free(wfd_ptr)
@@ -1195,7 +1188,7 @@ pub fn real_args() -> ~[~str] {
     }
 
     unsafe {
-        LocalFree(cast::transmute(szArgList));
+        LocalFree(szArgList as *c_void);
     }
 
     return args;
