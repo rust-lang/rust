@@ -210,8 +210,10 @@ impl CrateContext {
                     n_monos: 0u,
                     n_inlines: 0u,
                     n_closures: 0u,
+                    n_llvm_insns: 0u,
+                    llvm_insn_ctxt: ~[],
                     llvm_insns: HashMap::new(),
-                    fn_times: ~[]
+                    fn_stats: ~[]
                   },
                   upcalls: upcall::declare_upcalls(targ_cfg, llmod),
                   tydesc_type: tydesc_type,
@@ -225,12 +227,6 @@ impl CrateContext {
                   do_not_commit_warning_issued: false
             }
         }
-    }
-
-    pub fn log_fn_time(&mut self, name: ~str, start: time::Timespec, end: time::Timespec) {
-        let elapsed = 1000 * ((end.sec - start.sec) as int) +
-            ((end.nsec as int) - (start.nsec as int)) / 1000000;
-        self.stats.fn_times.push((name, elapsed));
     }
 }
 
