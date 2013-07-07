@@ -21,7 +21,6 @@ use middle::typeck::infer::{cres, InferCtxt};
 use middle::typeck::infer::fold_regions_in_sig;
 use middle::typeck::infer::{TypeTrace, Subtype};
 use middle::typeck::isr_alist;
-use util::common::indent;
 use util::ppaux::mt_to_str;
 
 use extra::list;
@@ -30,7 +29,6 @@ use syntax::ast;
 use syntax::ast::{Many, Once, extern_fn, m_const, impure_fn};
 use syntax::ast::{unsafe_fn};
 use syntax::ast::{Onceness, purity};
-use syntax::codemap::span;
 
 pub struct Lub(CombineFields);  // least-upper-bound: common supertype
 

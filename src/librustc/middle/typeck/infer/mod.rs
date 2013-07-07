@@ -328,7 +328,7 @@ pub fn can_mk_subty(cx: @mut InferCtxt, a: ty::t, b: ty::t) -> ures {
 }
 
 pub fn mk_subr(cx: @mut InferCtxt,
-               a_is_expected: bool,
+               _a_is_expected: bool,
                origin: SubregionOrigin,
                a: ty::Region,
                b: ty::Region) {

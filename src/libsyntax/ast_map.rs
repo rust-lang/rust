@@ -196,7 +196,7 @@ pub fn map_block(b: &blk, (cx,v): (@mut Ctx, visit::vt<@mut Ctx>)) {
 
 pub fn map_pat(pat: @pat, (cx,v): (@mut Ctx, visit::vt<@mut Ctx>)) {
     match pat.node {
-        pat_ident(_, path, _) => {
+        pat_ident(_, ref path, _) => {
             // Note: this is at least *potentially* a pattern...
             cx.map.insert(pat.id, node_local(ast_util::path_to_ident(path)));
         }

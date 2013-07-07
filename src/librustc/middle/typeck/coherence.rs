@@ -207,9 +207,11 @@ impl CoherenceChecker {
 //                       self.crate_context.tcx.sess.str_of(item.ident));
 
                 match item.node {
-                    item_impl(_, opt_trait, _, _) => {
-                        self.check_implementation(item,
-                                                  opt_trait.iter().transform(|&x| x).collect());
+                    item_impl(_, ref opt_trait, _, _) => {
+                        let opt_trait : ~[trait_ref] = opt_trait.iter()
+                                                                .transform(|&x| x)
+                                                                .collect();
+                        self.check_implementation(item, opt_trait);
                     }
                     _ => {
                         // Nothing to do.
@@ -238,7 +240,7 @@ impl CoherenceChecker {
 
     pub fn check_implementation(&self,
                                 item: @item,
-                                associated_traits: ~[@trait_ref]) {
+                                associated_traits: &[trait_ref]) {
         let tcx = self.crate_context.tcx;
         let self_type = ty::lookup_item_type(tcx, local_def(item.id));
 
@@ -636,7 +638,7 @@ impl CoherenceChecker {
                         // Then visit the module items.
                         visit_mod(module_, item.span, item.id, ((), visitor));
                     }
-                    item_impl(_, None, ast_ty, _) => {
+                    item_impl(_, None, ref ast_ty, _) => {
                         if !self.ast_type_is_defined_in_local_crate(ast_ty) {
                             // This is an error.
                             let session = self.crate_context.tcx.sess;
@@ -646,7 +648,7 @@ impl CoherenceChecker {
                                               a trait or new type instead");
                         }
                     }
-                    item_impl(_, Some(trait_ref), _, _) => {
+                    item_impl(_, Some(ref trait_ref), _, _) => {
                         // `for_ty` is `Type` in `impl Trait for Type`
                         let for_ty =
                             ty::node_id_to_type(self.crate_context.tcx,
@@ -678,7 +680,7 @@ impl CoherenceChecker {
         })));
     }
 
-    pub fn trait_ref_to_trait_def_id(&self, trait_ref: @trait_ref) -> def_id {
+    pub fn trait_ref_to_trait_def_id(&self, trait_ref: &trait_ref) -> def_id {
         let def_map = self.crate_context.tcx.def_map;
         let trait_def = def_map.get_copy(&trait_ref.ref_id);
         let trait_id = def_id_of_def(trait_def);
@@ -723,7 +725,7 @@ impl CoherenceChecker {
     /// For coherence, when we have `impl Type`, we need to guarantee that
     /// `Type` is "local" to the crate. For our purposes, this means that it
     /// must precisely name some nominal type defined in this crate.
-    pub fn ast_type_is_defined_in_local_crate(&self, original_type: @ast::Ty)
+    pub fn ast_type_is_defined_in_local_crate(&self, original_type: &ast::Ty)
                                               -> bool {
         match original_type.node {
             ty_path(_, _, path_id) => {
@@ -805,7 +807,7 @@ impl CoherenceChecker {
                 // Check that we have implementations of every trait method
                 for trait_refs.iter().advance |trait_ref| {
                     let trait_did =
-                        self.trait_ref_to_trait_def_id(*trait_ref);
+                        self.trait_ref_to_trait_def_id(trait_ref);
                     self.please_check_that_trait_methods_are_implemented(
                         &mut methods,
                         trait_did,
@@ -817,7 +819,7 @@ impl CoherenceChecker {
                 // if a method of that name is not inherent to the
                 // impl, use the provided definition in the trait.
                 for trait_refs.iter().advance |trait_ref| {
-                    let trait_did = self.trait_ref_to_trait_def_id(*trait_ref);
+                    let trait_did = self.trait_ref_to_trait_def_id(trait_ref);
                     self.add_provided_methods_to_impl(
                         &mut methods,
                         &trait_did,

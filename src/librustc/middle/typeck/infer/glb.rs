@@ -26,8 +26,7 @@ use syntax::ast::{Many, Once, extern_fn, impure_fn, m_const, m_imm, m_mutbl};
 use syntax::ast::{unsafe_fn};
 use syntax::ast::{Onceness, purity};
 use syntax::abi::AbiSet;
-use syntax::codemap::span;
-use util::common::{indent, indenter};
+use util::common::{indenter};
 use util::ppaux::mt_to_str;
 
 use extra::list;

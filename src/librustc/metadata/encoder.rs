@@ -1003,7 +1003,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
                                         index);
         }
       }
-      item_impl(ref generics, opt_trait, ty, ref methods) => {
+      item_impl(ref generics, ref opt_trait, ref ty, ref methods) => {
         add_to_index();
         ebml_w.start_tag(tag_items_data_item);
         encode_def_id(ebml_w, local_def(item.id));
@@ -1014,7 +1014,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_name(ecx, ebml_w, item.ident);
         encode_attributes(ebml_w, item.attrs);
         match ty.node {
-            ast::ty_path(path, bounds, _) if path.idents.len() == 1 => {
+            ast::ty_path(ref path, ref bounds, _) if path.idents.len() == 1 => {
                 assert!(bounds.is_none());
                 encode_impl_type_basename(ecx, ebml_w,
                                           ast_util::path_to_ident(path));
