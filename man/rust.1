@@ -1,0 +1,111 @@
+.TH RUST "1" "July 2013" "rust 0.7" "User Commands"
+.SH NAME
+rust \- a front-end to the Rust toolchain
+.SH SYNOPSIS
+.B rust
+[\fICOMMAND\fR] [\fIOPTIONS\fR] \fIINPUT\fR
+
+.SH DESCRIPTION
+This tool is a front-end for the Rust language, available at
+<\fBhttps://www.rust-lang.org\fR>. It provides commands to
+run, test and package Rust programs.
+
+.SH COMMANDS
+
+.TP
+\fBbuild\fR
+compile rust source files
+.TP
+\fBrun\fR
+build an executable, and run it
+.TP
+\fBtest\fR
+build a test executable, and run it
+.TP
+\fBdoc\fR
+generate documentation from doc comments
+.TP
+\fBpkg\fR
+download, build, install rust packages
+.TP
+\fBsketch\fR
+run a rust interpreter
+.TP
+\fBhelp\fR
+show detailed usage of a command
+
+The build, run and test commands take the same parameters
+as the rustc command.
+
+.SS "BUILD COMMAND"
+
+The \fBbuild\fR command is a shortcut for the \fBrustc\fR command line.
+All options will be passed to the compiler verbatim. For example, to build
+an optimised version:
+
+    $ rust build -O <filename>
+
+.SS "RUN COMMAND"
+
+The \fBrun\fR command is a shortcut for the \fBrustc\fR command line.
+All options will be passed to the compiler verbatim, and if the compilation
+is successful, the resultant executable will be invoked. For example, to
+build and run an optimised version:
+
+    $ rust run -O <filename>
+
+.SS "TEST COMMAND"
+
+The \fBtest\fR command is a shortcut for the command line:
+
+    $ rustc --test <filename> -o <filestem>test~ && ./<filestem>test~
+
+.SS "DOC COMMAND"
+
+The \fBdoc\fR command is an alias for the rustdoc program. It is equivalent to:
+
+    $ rustdoc [options] <cratefile>
+
+.SS "PKG COMMAND"
+
+The \fBpkg\fR command is an alias for the rustpkg program. It is equivalent to:
+
+    $ rustpkg [options] <cratefile>
+
+.SS "SKETCH COMMAND"
+
+The \fBsketch\fR command launches the \fBrusti\fR interactive shell.
+
+.SS "HELP COMMAND"
+
+The \fBhelp\fR command displays a summary of available commands (ie. this text).
+
+.SH "EXAMPLES"
+
+To build an executable (with a main function):
+    $ rust build hello.rs
+
+To build a library from a source file:
+    $ rust build --lib hello-lib.rs
+
+To build and run an executable:
+    $ rust run hello.rs
+
+To build an executable with unit tests and execute the tests:
+    $ rust test hello.rs
+
+To create a package 
+
+.SH "SEE ALSO"
+rustc, rustdoc, rustpkg, rusti
+
+.SH "BUGS"
+See <\fBhttps://github.com/mozilla/rust/issues\fR> for issues.
+
+.SH "AUTHOR"
+See \fBAUTHORS.txt\fR in the rust source distribution. Graydon Hoare
+<\fIgraydon@mozilla.com\fR> is the project leader.
+
+.SH "COPYRIGHT"
+This work is dual-licensed under Apache 2.0 and MIT terms.  See \fBCOPYRIGHT\fR
+file in the rust source distribution.
