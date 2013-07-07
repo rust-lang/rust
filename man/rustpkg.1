@@ -1,0 +1,172 @@
+.TH RUSTPKG "1" "July 2013" "rustpkg 0.7" "User Commands"
+.SH NAME
+rustpkg \- package manager for Rust applications
+.SH SYNOPSIS
+.B rustpkg
+[\fICOMMAND\fR] [\fIOPTIONS\fR] \fIINPUT\fR
+
+.SH DESCRIPTION
+
+This tool is a package manager for applications written in the Rust language,
+available at <\fBhttps://www.rust-lang.org\fR>. It provides commands to build,
+install and test Rust programs.
+
+.SH COMMANDS
+
+.TP
+\fBbuild\fR
+Build all targets described in the package script in the current
+directory.
+.TP
+\fBclean\fR
+Remove all build files in the work cache for the package in the current
+directory.
+.TP
+\fBdo\fR
+Runs a command in the package script.
+.TP
+\fBinfo\fR
+Probe the package script in the current directory for information.
+.TP
+\fBinstall\fR
+Install a package given a local archive or a remote URI or VCS.
+.TP
+\fBprefer\fR
+Specify which version of a binary to use.
+.TP
+\fBtest\fR
+Build all targets described in the package script in the current directory
+with the test flag.
+.TP
+\fBuninstall\fR
+Remove a package by id or name and optionally version.
+.TP
+\fBunprefer\fR
+Remove links to the versioned binary.
+.TP
+\fBhelp\fR
+show detailed usage of a command
+
+.SH "BUILD COMMAND"
+
+The \fBbuild\fR command builds all targets described in the package script in
+the current directory.
+
+.TP
+-c, --cfg
+Pass a cfg flag to the package script
+
+.SH "DO COMMAND"
+
+The \fBdo\fR command runs a command in the package script. You can listen to a
+command by tagging a function with the attribute `#[pkg_do(cmd)]`.
+
+.SH "TEST COMMAND"
+
+The test command is an shortcut for the command line:
+
+    $ rustc --test <filename> -o <filestem>test~ && ./<filestem>test~
+
+Note the trailing tilde on the output filename, which should ensure the
+file does not clash with a user-generated files.
+
+.SH "INFO COMMAND"
+
+Probe the package script in the current directory for information.
+
+Options:
+
+.TP
+-j, --json
+Output the result as JSON
+
+.SH "INSTALL COMMAND"
+
+    rustpkg [options..] install [url] [target]
+
+Install a package from a URL by Git or cURL (FTP, HTTP, etc.).  If target is
+provided, Git will checkout the branch or tag before continuing. If the URL
+is a TAR file (with or without compression), extract it before
+installing. If a URL isn't provided, the package will be built and installed
+from the current directory (which is functionally the same as `rustpkg
+build` and installing the result).
+
+Examples:
+
+    rustpkg install
+    rustpkg install git://github.com/mozilla/servo.git
+    rustpkg install git://github.com/mozilla/servo.git v0.1.2
+    rustpkg install http://rust-lang.org/servo-0.1.2.tar.gz
+
+Options:
+
+.TP
+-c, --cfg
+Pass a cfg flag to the package script
+
+.SH "PREFER COMMAND"
+
+By default all binaries are given a unique name so that multiple versions
+can coexist. The prefer command will symlink the uniquely named binary to
+the binary directory under its bare name. If version is not supplied, the
+latest version of the package will be preferred.
+
+Example:
+
+    export PATH=$PATH:/home/user/.rustpkg/bin
+    rustpkg prefer machine@1.2.4
+    machine -v
+    ==> v1.2.4
+    rustpkg prefer machine@0.4.6
+    machine -v
+    ==> v0.4.6
+
+.SH "TEST COMMAND"
+
+Build all targets described in the package script in the current directory
+with the test flag. The test bootstraps will be run afterwards and the output
+and exit code will be redirected.
+
+Options:
+
+.TP
+-c, --cfg
+Pass a cfg flag to the package script
+
+.SH "UNINSTALL COMMAND"
+
+Remove a package by id or name and optionally version. If the package(s)
+is/are depended on by another package then they cannot be removed.
+
+.SH "UNPREFER COMMAND"
+
+    $ rustpkg [options..] unprefer <id|name>[@version]
+
+Remove all symlinks from the store to the binary directory for a package
+name and optionally version. If version is not supplied, the latest version
+of the package will be unpreferred. See `rustpkg prefer -h` for more
+information.
+
+.SH "EXAMPLES"
+
+To clone, build and install a specific version of the Servo engine from
+its git repository on Github:
+    $ rustpkg install git://github.com/mozilla/servo.git v0.1.2
+
+To download the archive and install Servo from a tarball:
+    $ rustpkg install http://rust-lang.org/servo-0.1.2.tar.gz
+
+.SH "SEE ALSO"
+
+rust, rustc, rustdoc, rusti
+
+.SH "BUGS"
+See <\fBhttps://github.com/mozilla/rust/issues\fR> for issues.
+
+.SH "AUTHOR"
+See \fBAUTHORS.txt\fR in the rust source distribution. Graydon Hoare
+<\fIgraydon@mozilla.com\fR> is the project leader.
+
+.SH "COPYRIGHT"
+This work is dual-licensed under Apache 2.0 and MIT terms.  See \fBCOPYRIGHT\fR
+file in the rust source distribution.
