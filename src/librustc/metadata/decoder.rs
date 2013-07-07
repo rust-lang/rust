@@ -1141,7 +1141,7 @@ fn list_crate_attributes(intr: @ident_interner, md: ebml::Doc, hash: &str,
 
     let r = get_attributes(md);
     for r.iter().advance |attr| {
-        out.write_str(fmt!("%s\n", pprust::attribute_to_str(*attr, intr)));
+        out.write_str(fmt!("%s\n", pprust::attribute_to_str(attr, intr)));
     }
 
     out.write_str("\n\n");

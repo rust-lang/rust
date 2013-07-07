@@ -272,7 +272,7 @@ mod __test {
 
 */
 
-fn mk_std(cx: &TestCtxt) -> @ast::view_item {
+fn mk_std(cx: &TestCtxt) -> ast::view_item {
     let vers = ast::lit_str(@"0.7");
     let vers = nospan(vers);
     let mi = ast::meta_name_value(@"vers", vers);
@@ -287,13 +287,12 @@ fn mk_std(cx: &TestCtxt) -> @ast::view_item {
         ast::view_item_extern_mod(id_std, ~[@mi],
                            cx.sess.next_node_id())
     };
-    let vi = ast::view_item {
+    ast::view_item {
         node: vi,
         attrs: ~[],
         vis: ast::public,
         span: dummy_sp()
-    };
-    return @vi;
+    }
 }
 
 fn mk_test_module(cx: &TestCtxt) -> @ast::item {
@@ -343,16 +342,16 @@ fn nospan<T:Copy>(t: T) -> codemap::spanned<T> {
     codemap::spanned { node: t, span: dummy_sp() }
 }
 
-fn path_node(ids: ~[ast::ident]) -> @ast::Path {
-    @ast::Path { span: dummy_sp(),
+fn path_node(ids: ~[ast::ident]) -> ast::Path {
+    ast::Path { span: dummy_sp(),
                 global: false,
                 idents: ids,
                 rp: None,
                 types: ~[] }
 }
 
-fn path_node_global(ids: ~[ast::ident]) -> @ast::Path {
-    @ast::Path { span: dummy_sp(),
+fn path_node_global(ids: ~[ast::ident]) -> ast::Path {
+    ast::Path { span: dummy_sp(),
                  global: true,
                  idents: ids,
                  rp: None,

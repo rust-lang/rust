@@ -26,7 +26,7 @@ pub fn expand_syntax_ext(cx: @ExtCtxt,
     cx.print_backtrace();
     io::stdout().write_line(
         print::pprust::tt_to_str(
-            ast::tt_delim(vec::to_owned(tt)),
+            &ast::tt_delim(vec::to_owned(tt)),
             get_ident_interner()));
 
     //trivial expression

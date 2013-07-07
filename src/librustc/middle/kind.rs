@@ -117,7 +117,7 @@ fn check_item(item: @item, (cx, visitor): (Context, visit::vt<Context>)) {
     // If this is a destructor, check kinds.
     if !attrs_contains_name(item.attrs, "unsafe_destructor") {
         match item.node {
-            item_impl(_, Some(trait_ref), self_type, _) => {
+            item_impl(_, Some(ref trait_ref), ref self_type, _) => {
                 match cx.tcx.def_map.find(&trait_ref.ref_id) {
                     None => cx.tcx.sess.bug("trait ref not in def map!"),
                     Some(&trait_def) => {
@@ -125,7 +125,7 @@ fn check_item(item: @item, (cx, visitor): (Context, visit::vt<Context>)) {
                         if cx.tcx.lang_items.drop_trait() == trait_def_id {
                             // Yes, it's a destructor.
                             match self_type.node {
-                                ty_path(_, bounds, path_node_id) => {
+                                ty_path(_, ref bounds, path_node_id) => {
                                     assert!(bounds.is_none());
                                     let struct_def = cx.tcx.def_map.get_copy(
                                         &path_node_id);
@@ -321,7 +321,7 @@ pub fn check_expr(e: @expr, (cx, v): (Context, visit::vt<Context>)) {
     visit::visit_expr(e, (cx, v));
 }
 
-fn check_ty(aty: @Ty, (cx, v): (Context, visit::vt<Context>)) {
+fn check_ty(aty: &Ty, (cx, v): (Context, visit::vt<Context>)) {
     match aty.node {
       ty_path(_, _, id) => {
           let r = cx.tcx.node_type_substs.find(&id);

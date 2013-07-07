@@ -651,18 +651,18 @@ impl DetermineRpCtxt {
     // with &self type, &self is also bound.  We detect those last two
     // cases via flags (anon_implies_rp and self_implies_rp) that are
     // true when the anon or self region implies RP.
-    pub fn region_is_relevant(&self, r: Option<@ast::Lifetime>) -> bool {
+    pub fn region_is_relevant(&self, r: &Option<ast::Lifetime>) -> bool {
         match r {
-            None => {
+            &None => {
                 self.anon_implies_rp
             }
-            Some(ref l) if l.ident == special_idents::statik => {
+            &Some(ref l) if l.ident == special_idents::statik => {
                 false
             }
-            Some(ref l) if l.ident == special_idents::self_ => {
+            &Some(ref l) if l.ident == special_idents::self_ => {
                 true
             }
-            Some(_) => {
+            &Some(_) => {
                 false
             }
         }
@@ -713,10 +713,10 @@ fn determine_rp_in_fn(fk: &visit::fn_kind,
     do cx.with(cx.item_id, false) {
         do cx.with_ambient_variance(rv_contravariant) {
             for decl.inputs.iter().advance |a| {
-                (visitor.visit_ty)(a.ty, (cx, visitor));
+                (visitor.visit_ty)(&a.ty, (cx, visitor));
             }
         }
-        (visitor.visit_ty)(decl.output, (cx, visitor));
+        (visitor.visit_ty)(&decl.output, (cx, visitor));
         let generics = visit::generics_of_fn(fk);
         (visitor.visit_generics)(&generics, (cx, visitor));
         (visitor.visit_block)(body, (cx, visitor));
@@ -731,7 +731,7 @@ fn determine_rp_in_ty_method(ty_m: &ast::ty_method,
     }
 }
 
-fn determine_rp_in_ty(ty: @ast::Ty,
+fn determine_rp_in_ty(ty: &ast::Ty,
                       (cx, visitor): (@mut DetermineRpCtxt,
                                       visit::vt<@mut DetermineRpCtxt>)) {
     // we are only interested in types that will require an item to
@@ -747,7 +747,7 @@ fn determine_rp_in_ty(ty: @ast::Ty,
     // locations)
     let sess = cx.sess;
     match ty.node {
-        ast::ty_rptr(r, _) => {
+        ast::ty_rptr(ref r, _) => {
             debug!("referenced rptr type %s",
                    pprust::ty_to_str(ty, sess.intr()));
 
@@ -762,7 +762,7 @@ fn determine_rp_in_ty(ty: @ast::Ty,
                    pprust::ty_to_str(ty, sess.intr()));
             match f.region {
                 Some(_) => {
-                    if cx.region_is_relevant(f.region) {
+                    if cx.region_is_relevant(&f.region) {
                         let rv = cx.add_variance(rv_contravariant);
                         cx.add_rp(cx.item_id, rv)
                     }
@@ -784,13 +784,13 @@ fn determine_rp_in_ty(ty: @ast::Ty,
     // then check whether it is region-parameterized and consider
     // that as a direct dependency.
     match ty.node {
-      ast::ty_path(path, _bounds, id) => {
+      ast::ty_path(ref path, _, id) => {
         match cx.def_map.find(&id) {
           Some(&ast::def_ty(did)) |
           Some(&ast::def_trait(did)) |
           Some(&ast::def_struct(did)) => {
             if did.crate == ast::local_crate {
-                if cx.region_is_relevant(path.rp) {
+                if cx.region_is_relevant(&path.rp) {
                     cx.add_dep(did.node);
                 }
             } else {
@@ -800,7 +800,7 @@ fn determine_rp_in_ty(ty: @ast::Ty,
                   Some(variance) => {
                     debug!("reference to external, rp'd type %s",
                            pprust::ty_to_str(ty, sess.intr()));
-                    if cx.region_is_relevant(path.rp) {
+                    if cx.region_is_relevant(&path.rp) {
                         let rv = cx.add_variance(variance);
                         cx.add_rp(cx.item_id, rv)
                     }
@@ -815,16 +815,16 @@ fn determine_rp_in_ty(ty: @ast::Ty,
     }
 
     match ty.node {
-      ast::ty_box(mt) | ast::ty_uniq(mt) | ast::ty_vec(mt) |
-      ast::ty_rptr(_, mt) | ast::ty_ptr(mt) => {
+      ast::ty_box(ref mt) | ast::ty_uniq(ref mt) | ast::ty_vec(ref mt) |
+      ast::ty_rptr(_, ref mt) | ast::ty_ptr(ref mt) => {
         visit_mt(mt, (cx, visitor));
       }
 
-      ast::ty_path(path, _bounds, _) => {
+      ast::ty_path(ref path, _, _) => {
         // type parameters are---for now, anyway---always invariant
         do cx.with_ambient_variance(rv_invariant) {
             for path.types.iter().advance |tp| {
-                (visitor.visit_ty)(*tp, (cx, visitor));
+                (visitor.visit_ty)(tp, (cx, visitor));
             }
         }
       }
@@ -837,10 +837,10 @@ fn determine_rp_in_ty(ty: @ast::Ty,
             // parameters are contravariant
             do cx.with_ambient_variance(rv_contravariant) {
                 for decl.inputs.iter().advance |a| {
-                    (visitor.visit_ty)(a.ty, (cx, visitor));
+                    (visitor.visit_ty)(&a.ty, (cx, visitor));
                 }
             }
-            (visitor.visit_ty)(decl.output, (cx, visitor));
+            (visitor.visit_ty)(&decl.output, (cx, visitor));
         }
       }
 
@@ -849,7 +849,7 @@ fn determine_rp_in_ty(ty: @ast::Ty,
       }
     }
 
-    fn visit_mt(mt: ast::mt,
+    fn visit_mt(mt: &ast::mt,
                 (cx, visitor): (@mut DetermineRpCtxt,
                                 visit::vt<@mut DetermineRpCtxt>)) {
         // mutability is invariant

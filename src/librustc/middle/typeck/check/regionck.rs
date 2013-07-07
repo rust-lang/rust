@@ -36,11 +36,9 @@ use middle::typeck::check::regionmanip::relate_nested_regions;
 use middle::typeck::infer::resolve_and_force_all_but_regions;
 use middle::typeck::infer::resolve_type;
 use middle::typeck::infer;
-use util::ppaux::{note_and_explain_region, ty_to_str,
-                  region_to_str};
+use util::ppaux::{ty_to_str, region_to_str};
 use middle::pat_util;
 
-use std::result;
 use std::uint;
 use syntax::ast::{ManagedSigil, OwnedSigil, BorrowedSigil};
 use syntax::ast::{def_arg, def_binding, def_local, def_self, def_upvar};
@@ -419,8 +417,6 @@ fn constrain_callee(rcx: @mut Rcx,
                     call_expr: @ast::expr,
                     callee_expr: @ast::expr)
 {
-    let tcx = rcx.fcx.tcx();
-
     let call_region = ty::re_scope(call_expr.id);
 
     let callee_ty = rcx.resolve_node_type(callee_id);
@@ -558,8 +554,6 @@ fn constrain_index(rcx: @mut Rcx,
      * this is a slice being indexed, the lifetime of the pointer
      * includes the deref expr.
      */
-
-    let tcx = rcx.fcx.tcx();
 
     debug!("constrain_index(index_expr=?, indexed_ty=%s",
            rcx.fcx.infcx().ty_to_str(indexed_ty));

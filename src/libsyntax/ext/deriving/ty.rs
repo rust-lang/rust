@@ -61,16 +61,15 @@ impl<'self> Path<'self> {
                  span: span,
                  self_ty: ident,
                  self_generics: &Generics)
-                 -> @ast::Ty {
-        cx.ty_path(self.to_path(cx, span,
-                                self_ty, self_generics), @None)
+                 -> ast::Ty {
+        cx.ty_path(self.to_path(cx, span, self_ty, self_generics), None)
     }
     pub fn to_path(&self,
                    cx: @ExtCtxt,
                    span: span,
                    self_ty: ident,
                    self_generics: &Generics)
-                   -> @ast::Path {
+                   -> ast::Path {
         let idents = self.path.map(|s| cx.ident_of(*s) );
         let lt = mk_lifetime(cx, span, &self.lifetime);
         let tys = self.params.map(|t| t.to_ty(cx, span, self_ty, self_generics));
@@ -110,9 +109,9 @@ pub fn nil_ty() -> Ty<'static> {
     Tuple(~[])
 }
 
-fn mk_lifetime(cx: @ExtCtxt, span: span, lt: &Option<&str>) -> Option<@ast::Lifetime> {
+fn mk_lifetime(cx: @ExtCtxt, span: span, lt: &Option<&str>) -> Option<ast::Lifetime> {
     match *lt {
-        Some(ref s) => Some(@cx.lifetime(span, cx.ident_of(*s))),
+        Some(ref s) => Some(cx.lifetime(span, cx.ident_of(*s))),
         None => None
     }
 }
@@ -123,7 +122,7 @@ impl<'self> Ty<'self> {
                  span: span,
                  self_ty: ident,
                  self_generics: &Generics)
-                 -> @ast::Ty {
+                 -> ast::Ty {
         match *self {
             Ptr(ref ty, ref ptr) => {
                 let raw_ty = ty.to_ty(cx, span, self_ty, self_generics);
@@ -142,8 +141,7 @@ impl<'self> Ty<'self> {
             }
             Literal(ref p) => { p.to_ty(cx, span, self_ty, self_generics) }
             Self  => {
-                cx.ty_path(self.to_path(cx, span, self_ty, self_generics),
-                           @None)
+                cx.ty_path(self.to_path(cx, span, self_ty, self_generics), None)
             }
             Tuple(ref fields) => {
                 let ty = if fields.is_empty() {
@@ -162,7 +160,7 @@ impl<'self> Ty<'self> {
                    span: span,
                    self_ty: ident,
                    self_generics: &Generics)
-                   -> @ast::Path {
+                   -> ast::Path {
         match *self {
             Self => {
                 let self_params = do self_generics.ty_params.map |ty_param| {
@@ -171,7 +169,7 @@ impl<'self> Ty<'self> {
                 let lifetime = if self_generics.lifetimes.is_empty() {
                     None
                 } else {
-                    Some(@*self_generics.lifetimes.get(0))
+                    Some(*self_generics.lifetimes.get(0))
                 };
 
                 cx.path_all(span, false, ~[self_ty], lifetime,
@@ -194,7 +192,7 @@ fn mk_ty_param(cx: @ExtCtxt, span: span, name: &str, bounds: &[Path],
             let path = b.to_path(cx, span, self_ident, self_generics);
             cx.typarambound(path)
         });
-    cx.typaram(cx.ident_of(name), @bounds)
+    cx.typaram(cx.ident_of(name), bounds)
 }
 
 fn mk_generics(lifetimes: ~[ast::Lifetime],  ty_params: ~[ast::TyParam]) -> Generics {
@@ -251,8 +249,7 @@ pub fn get_explicit_self(cx: @ExtCtxt, span: span, self_ptr: &Option<PtrTy>)
                     Send => ast::sty_uniq,
                     Managed(mutbl) => ast::sty_box(mutbl),
                     Borrowed(ref lt, mutbl) => {
-                        let lt = lt.map(|s| @cx.lifetime(span,
-                                                         cx.ident_of(*s)));
+                        let lt = lt.map(|s| cx.lifetime(span, cx.ident_of(*s)));
                         ast::sty_region(lt, mutbl)
                     }
                 });
