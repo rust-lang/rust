@@ -264,7 +264,6 @@ pub struct Parser {
     obsolete_set: @mut HashSet<ObsoleteSyntax>,
     /// Used to determine the path to externally loaded source files
     mod_path_stack: @mut ~[@str],
-
 }
 
 #[unsafe_destructor]
@@ -3833,7 +3832,7 @@ impl Parser {
         (id, item_static(ty, m, e), None)
     }
 
-    // parse a mod { ...}  item
+    // parse a `mod <foo> { ... }` or `mod <foo>;` item
     fn parse_item_mod(&self, outer_attrs: ~[ast::attribute]) -> item_info {
         let id_span = *self.span;
         let id = self.parse_ident();
@@ -3906,6 +3905,23 @@ impl Parser {
             prefix.push_many(path.components)
         };
         let full_path = full_path.normalize();
+
+        let maybe_i = do self.sess.included_mod_stack.iter().position_ |&p| { p == full_path };
+        match maybe_i {
+            Some(i) => {
+                let stack = &self.sess.included_mod_stack;
+                let mut err = ~"circular modules: ";
+                for stack.slice(i, stack.len()).iter().advance |p| {
+                    err.push_str(p.to_str());
+                    err.push_str(" -> ");
+                }
+                err.push_str(full_path.to_str());
+                self.span_fatal(id_sp, err);
+            }
+            None => ()
+        }
+        self.sess.included_mod_stack.push(full_path.clone());
+
         let p0 =
             new_sub_parser_from_file(self.sess, copy self.cfg,
                                      &full_path, id_sp);
@@ -3913,6 +3929,7 @@ impl Parser {
         let mod_attrs = vec::append(outer_attrs, inner);
         let first_item_outer_attrs = next;
         let m0 = p0.parse_mod_items(token::EOF, first_item_outer_attrs);
+        self.sess.included_mod_stack.pop();
         return (ast::item_mod(m0), mod_attrs);
 
         fn cdir_path_opt(default: @str, attrs: ~[ast::attribute]) -> @str {
