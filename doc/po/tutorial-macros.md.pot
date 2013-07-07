@@ -1,0 +1,683 @@
+# SOME DESCRIPTIVE TITLE
+# Copyright (C) YEAR Free Software Foundation, Inc.
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"POT-Creation-Date: 2013-07-07 21:10+0300\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=CHARSET\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#. type: Plain text
+#: doc/rust.md:4 doc/rustpkg.md:4 doc/tutorial.md:4
+#: doc/tutorial-borrowed-ptr.md:4 doc/tutorial-ffi.md:4
+#: doc/tutorial-macros.md:4 doc/tutorial-tasks.md:4 doc/tut.md:4
+msgid "# Introduction"
+msgstr ""
+
+#. type: Plain text
+#: doc/rust.md:2033 doc/rust.md:2174 doc/tutorial-macros.md:323
+msgid "~~~~"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-macros.md:2
+msgid "% Rust Macros Tutorial"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-macros.md:12
+msgid ""
+"Functions are the primary tool that programmers can use to build "
+"abstractions.  Sometimes, however, programmers want to abstract over compile-"
+"time syntax rather than run-time values.  Macros provide syntactic "
+"abstraction.  For an example of how this can be useful, consider the "
+"following two code fragments, which both pattern-match on their input and "
+"both return early in one case, doing nothing otherwise:"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-macros.md:30
+#, no-wrap
+msgid ""
+"~~~~\n"
+"# enum t { special_a(uint), special_b(uint) };\n"
+"# fn f() -> uint {\n"
+"# let input_1 = special_a(0);\n"
+"# let input_2 = special_a(0);\n"
+"match input_1 {\n"
+"    special_a(x) => { return x; }\n"
+"    _ => {}\n"
+"}\n"
+"// ...\n"
+"match input_2 {\n"
+"    special_b(x) => { return x; }\n"
+"    _ => {}\n"
+"}\n"
+"# return 0u;\n"
+"# }\n"
+"~~~~\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-macros.md:38
+msgid ""
+"This code could become tiresome if repeated many times.  However, no "
+"function can capture its functionality to make it possible to abstract the "
+"repetition away.  Rust's macro system, however, can eliminate the "
+"repetition. Macros are lightweight custom syntax extensions, themselves "
+"defined using the `macro_rules!` syntax extension. The following "
+"`early_return` macro captures the pattern in the above code:"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-macros.md:59
+#, no-wrap
+msgid ""
+"~~~~\n"
+"# enum t { special_a(uint), special_b(uint) };\n"
+"# fn f() -> uint {\n"
+"# let input_1 = special_a(0);\n"
+"# let input_2 = special_a(0);\n"
+"macro_rules! early_return(\n"
+"    ($inp:expr $sp:ident) => ( // invoke it like `(input_5 special_e)`\n"
+"        match $inp {\n"
+"            $sp(x) => { return x; }\n"
+"            _ => {}\n"
+"        }\n"
+"    );\n"
+")\n"
+"// ...\n"
+"early_return!(input_1 special_a);\n"
+"// ...\n"
+"early_return!(input_2 special_b);\n"
+"# return 0;\n"
+"# }\n"
+"~~~~\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-macros.md:65
+msgid ""
+"Macros are defined in pattern-matching style: in the above example, the text "
+"`($inp:expr $sp:ident)` that appears on the left-hand side of the `=>` is "
+"the *macro invocation syntax*, a pattern denoting how to write a call to the "
+"macro. The text on the right-hand side of the `=>`, beginning with `match "
+"$inp`, is the *macro transcription syntax*: what the macro expands to."
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-macros.md:67
+msgid "# Invocation syntax"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-macros.md:71
+msgid ""
+"The macro invocation syntax specifies the syntax for the arguments to the "
+"macro. It appears on the left-hand side of the `=>` in a macro definition. "
+"It conforms to the following rules:"
+msgstr ""
+
+#. type: Bullet: '1. '
+#: doc/tutorial-macros.md:76
+msgid "It must be surrounded by parentheses."
+msgstr ""
+
+#. type: Bullet: '2. '
+#: doc/tutorial-macros.md:76
+msgid "`$` has special meaning (described below)."
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-macros.md:76
+#, no-wrap
+msgid ""
+"3. The `()`s, `[]`s, and `{}`s it contains must balance. For example, `([)` is\n"
+"forbidden.\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-macros.md:78
+msgid "Otherwise, the invocation syntax is free-form."
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-macros.md:83
+#, no-wrap
+msgid ""
+"To take as an argument a fragment of Rust code, write `$` followed by a name\n"
+" (for use on the right-hand side), followed by a `:`, followed by a *fragment\n"
+" specifier*. The fragment specifier denotes the sort of fragment to match. The\n"
+" most common fragment specifiers are:\n"
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/tutorial-macros.md:92
+msgid ""
+"`ident` (an identifier, referring to a variable or item. Examples: `f`, `x`, "
+"`foo`.)"
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/tutorial-macros.md:92
+msgid ""
+"`expr` (an expression. Examples: `2 + 2`; `if true then { 1 } else { 2 }`; "
+"`f(42)`.)"
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/tutorial-macros.md:92
+msgid "`ty` (a type. Examples: `int`, `~[(char, ~str)]`, `&T`.)"
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/tutorial-macros.md:92
+msgid ""
+"`pat` (a pattern, usually appearing in a `match` or on the left-hand side of "
+"a declaration. Examples: `Some(t)`; `(17, 'a')`; `_`.)"
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/tutorial-macros.md:92
+msgid ""
+"`block` (a sequence of actions. Example: `{ log(error, \"hi\"); return 12; }"
+"`)"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-macros.md:95
+msgid ""
+"The parser interprets any token that's not preceded by a `$` literally. "
+"Rust's usual rules of tokenization apply,"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-macros.md:98
+msgid ""
+"So `($x:ident -> (($e:expr)))`, though excessively fancy, would designate a "
+"macro that could be invoked like: `my_macro!(i->(( 2+2 )))`."
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-macros.md:100
+msgid "## Invocation location"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-macros.md:105
+msgid ""
+"A macro invocation may take the place of (and therefore expand to)  an "
+"expression, an item, or a statement.  The Rust parser will parse the macro "
+"invocation as a \"placeholder\" for whichever of those three nonterminals is "
+"appropriate for the location."
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-macros.md:112
+msgid ""
+"At expansion time, the output of the macro will be parsed as whichever of "
+"the three nonterminals it stands in for. This means that a single macro "
+"might, for example, expand to an item or an expression, depending on its "
+"arguments (and cause a syntax error if it is called with the wrong argument "
+"for its location). Although this behavior sounds excessively dynamic, it is "
+"known to be useful under some circumstances."
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-macros.md:115
+msgid "# Transcription syntax"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-macros.md:119
+msgid ""
+"The right-hand side of the `=>` follows the same rules as the left-hand "
+"side, except that a `$` need only be followed by the name of the syntactic "
+"fragment to transcribe into the macro expansion; its type need not be "
+"repeated."
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-macros.md:126
+msgid ""
+"The right-hand side must be enclosed by delimiters, which the transcriber "
+"ignores.  Therefore `() => ((1,2,3))` is a macro that expands to a tuple "
+"expression, `() => (let $x=$val)` is a macro that expands to a statement, "
+"and `() => (1,2,3)` is a macro that expands to a syntax error (since the "
+"transcriber interprets the parentheses on the right-hand-size as delimiters, "
+"and `1,2,3` is not a valid Rust expression on its own)."
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-macros.md:133
+msgid ""
+"Except for permissibility of `$name` (and `$(...)*`, discussed below), the "
+"right-hand side of a macro definition is ordinary Rust syntax. In "
+"particular, macro invocations (including invocations of the macro currently "
+"being defined)  are permitted in expression, statement, and item locations. "
+"However, nothing else about the code is examined or executed by the macro "
+"system; execution still has to wait until run-time."
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-macros.md:135
+msgid "## Interpolation location"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-macros.md:139
+msgid ""
+"The interpolation `$argument_name` may appear in any location consistent "
+"with its fragment specifier (i.e., if it is specified as `ident`, it may be "
+"used anywhere an identifier is permitted)."
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-macros.md:141
+msgid "# Multiplicity"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-macros.md:143
+msgid "## Invocation"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-macros.md:150
+msgid ""
+"Going back to the motivating example, recall that `early_return` expanded "
+"into a `match` that would `return` if the `match`'s scrutinee matched the "
+"\"special case\" identifier provided as the second argument to "
+"`early_return`, and do nothing otherwise. Now suppose that we wanted to "
+"write a version of `early_return` that could handle a variable number of "
+"\"special\" cases."
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-macros.md:156
+msgid ""
+"The syntax `$(...)*` on the left-hand side of the `=>` in a macro definition "
+"accepts zero or more occurrences of its contents. It works much like the `*` "
+"operator in regular expressions. It also supports a separator token (a comma-"
+"separated list could be written `$(...),*`), and `+` instead of `*` to mean "
+"\"at least one\"."
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-macros.md:179
+#, no-wrap
+msgid ""
+"~~~~\n"
+"# enum t { special_a(uint),special_b(uint),special_c(uint),special_d(uint)};\n"
+"# fn f() -> uint {\n"
+"# let input_1 = special_a(0);\n"
+"# let input_2 = special_a(0);\n"
+"macro_rules! early_return(\n"
+"    ($inp:expr, [ $($sp:ident)|+ ]) => (\n"
+"        match $inp {\n"
+"            $(\n"
+"                $sp(x) => { return x; }\n"
+"            )+\n"
+"            _ => {}\n"
+"        }\n"
+"    );\n"
+")\n"
+"// ...\n"
+"early_return!(input_1, [special_a|special_c|special_d]);\n"
+"// ...\n"
+"early_return!(input_2, [special_b]);\n"
+"# return 0;\n"
+"# }\n"
+"~~~~\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-macros.md:181
+msgid "### Transcription"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-macros.md:191
+msgid ""
+"As the above example demonstrates, `$(...)*` is also valid on the right-hand "
+"side of a macro definition. The behavior of `*` in transcription, especially "
+"in cases where multiple `*`s are nested, and multiple different names are "
+"involved, can seem somewhat magical and intuitive at first. The system that "
+"interprets them is called \"Macro By Example\". The two rules to keep in "
+"mind are (1) the behavior of `$(...)*` is to walk through one \"layer\" of "
+"repetitions for all of the `$name`s it contains in lockstep, and (2) each `"
+"$name` must be under at least as many `$(...)*`s as it was matched against.  "
+"If it is under more, it'll be repeated, as appropriate."
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-macros.md:193
+msgid "## Parsing limitations"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-macros.md:197
+msgid ""
+"For technical reasons, there are two limitations to the treatment of syntax "
+"fragments by the macro parser:"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-macros.md:210
+#, no-wrap
+msgid ""
+"1. The parser will always parse as much as possible of a Rust syntactic\n"
+"fragment. For example, if the comma were omitted from the syntax of\n"
+"`early_return!` above, `input_1 [` would've been interpreted as the beginning\n"
+"of an array index. In fact, invoking the macro would have been impossible.\n"
+"2. The parser must have eliminated all ambiguity by the time it reaches a\n"
+"`$name:fragment_specifier` declaration. This limitation can result in parse\n"
+"errors when declarations occur at the beginning of, or immediately after,\n"
+"a `$(...)*`. For example, the grammar `$($t:ty)* $e:expr` will always fail to\n"
+"parse because the parser would be forced to choose between parsing `t` and\n"
+"parsing `e`. Changing the invocation syntax to require a distinctive token in\n"
+"front can solve the problem. In the above example, `$(T $t:ty)* E $e:exp`\n"
+"solves the problem.\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-macros.md:212
+msgid "# Macro argument pattern matching"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-macros.md:214
+msgid "Now consider code like the following:"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-macros.md:216
+msgid "## Motivation"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-macros.md:236
+#, no-wrap
+msgid ""
+"~~~~\n"
+"# enum t1 { good_1(t2, uint), bad_1 };\n"
+"# pub struct t2 { body: t3 }\n"
+"# enum t3 { good_2(uint), bad_2};\n"
+"# fn f(x: t1) -> uint {\n"
+"match x {\n"
+"    good_1(g1, val) => {\n"
+"        match g1.body {\n"
+"            good_2(result) => {\n"
+"                // complicated stuff goes here\n"
+"                return result + val;\n"
+"            },\n"
+"            _ => fail!(\"Didn't get good_2\")\n"
+"        }\n"
+"    }\n"
+"    _ => return 0 // default value\n"
+"}\n"
+"# }\n"
+"~~~~\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-macros.md:241
+msgid ""
+"All the complicated stuff is deeply indented, and the error-handling code is "
+"separated from matches that fail. We'd like to write a macro that performs a "
+"match, but with a syntax that suits the problem better. The following macro "
+"can solve the problem:"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-macros.md:263
+#, no-wrap
+msgid ""
+"~~~~\n"
+"macro_rules! biased_match (\n"
+"    // special case: `let (x) = ...` is illegal, so use `let x = ...` instead\n"
+"    ( ($e:expr) ~ ($p:pat) else $err:stmt ;\n"
+"      binds $bind_res:ident\n"
+"    ) => (\n"
+"        let $bind_res = match $e {\n"
+"            $p => ( $bind_res ),\n"
+"            _ => { $err }\n"
+"        };\n"
+"    );\n"
+"    // more than one name; use a tuple\n"
+"    ( ($e:expr) ~ ($p:pat) else $err:stmt ;\n"
+"      binds $( $bind_res:ident ),*\n"
+"    ) => (\n"
+"        let ( $( $bind_res ),* ) = match $e {\n"
+"            $p => ( $( $bind_res ),* ),\n"
+"            _ => { $err }\n"
+"        };\n"
+"    )\n"
+")\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-macros.md:277
+#, no-wrap
+msgid ""
+"# enum t1 { good_1(t2, uint), bad_1 };\n"
+"# pub struct t2 { body: t3 }\n"
+"# enum t3 { good_2(uint), bad_2};\n"
+"# fn f(x: t1) -> uint {\n"
+"biased_match!((x)       ~ (good_1(g1, val)) else { return 0 };\n"
+"              binds g1, val )\n"
+"biased_match!((g1.body) ~ (good_2(result) )\n"
+"                  else { fail!(\"Didn't get good_2\") };\n"
+"              binds result )\n"
+"// complicated stuff goes here\n"
+"return result + val;\n"
+"# }\n"
+"~~~~\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-macros.md:288
+#, no-wrap
+msgid ""
+"This solves the indentation problem. But if we have a lot of chained matches\n"
+"like this, we might prefer to write a single macro invocation. The input\n"
+"pattern we want is clear:\n"
+"~~~~\n"
+"# macro_rules! b(\n"
+"    ( $( ($e:expr) ~ ($p:pat) else $err:stmt ; )*\n"
+"      binds $( $bind_res:ident ),*\n"
+"    )\n"
+"# => (0))\n"
+"~~~~\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-macros.md:291
+msgid ""
+"However, it's not possible to directly expand to nested match statements. "
+"But there is a solution."
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-macros.md:293
+msgid "## The recursive approach to macro writing"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-macros.md:297
+msgid ""
+"A macro may accept multiple different input grammars. The first one to "
+"successfully match the actual argument to a macro invocation is the one that "
+"\"wins\"."
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-macros.md:301
+msgid ""
+"In the case of the example above, we want to write a recursive macro to "
+"process the semicolon-terminated lines, one-by-one. So, we want the "
+"following input patterns:"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-macros.md:308
+#, no-wrap
+msgid ""
+"~~~~\n"
+"# macro_rules! b(\n"
+"    ( binds $( $bind_res:ident ),* )\n"
+"# => (0))\n"
+"~~~~\n"
+"...and:\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-macros.md:317
+#, no-wrap
+msgid ""
+"~~~~\n"
+"# macro_rules! b(\n"
+"    (    ($e     :expr) ~ ($p     :pat) else $err     :stmt ;\n"
+"      $( ($e_rest:expr) ~ ($p_rest:pat) else $err_rest:stmt ; )*\n"
+"      binds  $( $bind_res:ident ),*\n"
+"    )\n"
+"# => (0))\n"
+"~~~~\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-macros.md:321
+msgid ""
+"The resulting macro looks like this. Note that the separation into "
+"`biased_match!` and `biased_match_rec!` occurs only because we have an outer "
+"piece of syntax (the `let`) which we only want to transcribe once."
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-macros.md:342
+#, no-wrap
+msgid ""
+"macro_rules! biased_match_rec (\n"
+"    // Handle the first layer\n"
+"    (   ($e     :expr) ~ ($p     :pat) else $err     :stmt ;\n"
+"     $( ($e_rest:expr) ~ ($p_rest:pat) else $err_rest:stmt ; )*\n"
+"     binds $( $bind_res:ident ),*\n"
+"    ) => (\n"
+"        match $e {\n"
+"            $p => {\n"
+"                // Recursively handle the next layer\n"
+"                biased_match_rec!($( ($e_rest) ~ ($p_rest) else $err_rest ; )*\n"
+"                                  binds $( $bind_res ),*\n"
+"                )\n"
+"            }\n"
+"            _ => { $err }\n"
+"        }\n"
+"    );\n"
+"    ( binds $( $bind_res:ident ),* ) => ( ($( $bind_res ),*) )\n"
+")\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-macros.md:364
+#, no-wrap
+msgid ""
+"// Wrap the whole thing in a `let`.\n"
+"macro_rules! biased_match (\n"
+"    // special case: `let (x) = ...` is illegal, so use `let x = ...` instead\n"
+"    ( $( ($e:expr) ~ ($p:pat) else $err:stmt ; )*\n"
+"      binds $bind_res:ident\n"
+"    ) => (\n"
+"        let ( $( $bind_res ),* ) = biased_match_rec!(\n"
+"            $( ($e) ~ ($p) else $err ; )*\n"
+"            binds $bind_res\n"
+"        );\n"
+"    );\n"
+"    // more than one name: use a tuple\n"
+"    ( $( ($e:expr) ~ ($p:pat) else $err:stmt ; )*\n"
+"      binds  $( $bind_res:ident ),*\n"
+"    ) => (\n"
+"        let ( $( $bind_res ),* ) = biased_match_rec!(\n"
+"            $( ($e) ~ ($p) else $err ; )*\n"
+"            binds $( $bind_res ),*\n"
+"        );\n"
+"    )\n"
+")\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-macros.md:378
+#, no-wrap
+msgid ""
+"# enum t1 { good_1(t2, uint), bad_1 };\n"
+"# pub struct t2 { body: t3 }\n"
+"# enum t3 { good_2(uint), bad_2};\n"
+"# fn f(x: t1) -> uint {\n"
+"biased_match!(\n"
+"    (x)       ~ (good_1(g1, val)) else { return 0 };\n"
+"    (g1.body) ~ (good_2(result) ) else { fail!(\"Didn't get good_2\") };\n"
+"    binds val, result )\n"
+"// complicated stuff goes here\n"
+"return result + val;\n"
+"# }\n"
+"~~~~\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-macros.md:382
+msgid ""
+"This technique applies to many cases where transcribing a result all at once "
+"is not possible.  The resulting code resembles ordinary functional "
+"programming in some respects, but has some important differences from "
+"functional programming."
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-macros.md:390
+msgid ""
+"The first difference is important, but also easy to forget: the "
+"transcription (right-hand) side of a `macro_rules!` rule is literal syntax, "
+"which can only be executed at run-time. If a piece of transcription syntax "
+"does not itself appear inside another macro invocation, it will become part "
+"of the final program. If it is inside a macro invocation (for example, the "
+"recursive invocation of `biased_match_rec!`), it does have the opportunity "
+"to affect transcription, but only through the process of attempted pattern "
+"matching."
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-macros.md:398
+msgid ""
+"The second, related, difference is that the evaluation order of macros feels "
+"\"backwards\" compared to ordinary programming. Given an invocation `m1!(m2!"
+"())`, the expander first expands `m1!`, giving it as input the literal "
+"syntax `m2!()`. If it transcribes its argument unchanged into an appropriate "
+"position (in particular, not as an argument to yet another macro "
+"invocation), the expander will then proceed to evaluate `m2!()` (along with "
+"any other macro invocations `m1!(m2!())` produced)."
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-macros.md:400
+msgid "# A final note"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-macros.md:407
+msgid ""
+"Macros, as currently implemented, are not for the faint of heart. Even "
+"ordinary syntax errors can be more difficult to debug when they occur inside "
+"a macro, and errors caused by parse problems in generated code can be very "
+"tricky. Invoking the `log_syntax!` macro can help elucidate intermediate "
+"states, invoking `trace_macros!(true)` will automatically print those "
+"intermediate states out, and passing the flag `--pretty expanded` as a "
+"command-line argument to the compiler will show the result of expansion."
+msgstr ""
