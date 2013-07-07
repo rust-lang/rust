@@ -2400,11 +2400,10 @@ pub fn create_entry_wrapper(ccx: @mut CrateContext,
                 (rust_main, args)
             };
 
-            let result = llvm::LLVMBuildCall(bld,
-                                             start_fn,
-                                             &args[0],
-                                             args.len() as c_uint,
-                                             noname());
+            let result = do args.as_imm_buf |buf, len| {
+                llvm::LLVMBuildCall(bld, start_fn, buf, len as c_uint, noname())
+            };
+
             llvm::LLVMBuildRet(bld, result);
         }
     }

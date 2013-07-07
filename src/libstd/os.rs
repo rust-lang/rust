@@ -74,14 +74,15 @@ pub static TMPBUF_SZ : uint = 1000u;
 static BUF_BYTES : uint = 2048u;
 
 pub fn getcwd() -> Path {
-    let buf = [0 as libc::c_char, ..BUF_BYTES];
-    unsafe {
-        if(0 as *libc::c_char == libc::getcwd(
-            &buf[0],
-            BUF_BYTES as libc::size_t)) {
-            fail!();
+    let mut buf = [0 as libc::c_char, ..BUF_BYTES];
+    do buf.as_mut_buf |buf, len| {
+        unsafe {
+            if libc::getcwd(buf, len as size_t).is_null() {
+                fail!()
+            }
+
+            Path(str::raw::from_c_str(buf as *c_char))
         }
-        Path(str::raw::from_c_str(&buf[0]))
     }
 }
 
@@ -464,18 +465,18 @@ pub fn self_exe_path() -> Option<Path> {
         unsafe {
             use libc::funcs::posix01::unistd::readlink;
 
-            let mut path_str = str::with_capacity(TMPBUF_SZ);
-            let len = do path_str.to_c_str().with_ref |buf| {
-                let buf = buf as *mut c_char;
-                do "/proc/self/exe".to_c_str().with_ref |proc_self_buf| {
-                    readlink(proc_self_buf, buf, TMPBUF_SZ as size_t)
+            let mut path = [0 as c_char, .. TMPBUF_SZ];
+
+            do path.as_mut_buf |buf, len| {
+                let len = do "/proc/self/exe".to_c_str.with_ref |proc_self_buf| {
+                    readlink(proc_self_buf, buf, len as size_t) as uint
+                };
+
+                if len == -1 {
+                    None
+                } else {
+                    Some(str::raw::from_buf_len(buf as *u8, len))
                 }
-            };
-            if len == -1 {
-                None
-            } else {
-                str::raw::set_len(&mut path_str, len as uint);
-                Some(path_str)
             }
         }
     }
@@ -699,13 +700,15 @@ pub fn list_dir(p: &Path) -> ~[~str] {
             extern {
                 fn rust_list_dir_val(ptr: *dirent_t) -> *libc::c_char;
             }
-            let input = p.to_str();
             let mut strings = ~[];
-            let input_ptr = ::cast::transmute(&input[0]);
             debug!("os::list_dir -- BEFORE OPENDIR");
-            let dir_ptr = opendir(input_ptr);
+
+            let dir_ptr = do p.to_c_str().with_ref |buf| {
+                opendir(buf)
+            };
+
             if (dir_ptr as uint != 0) {
-        debug!("os::list_dir -- opendir() SUCCESS");
+                debug!("os::list_dir -- opendir() SUCCESS");
                 let mut entry_ptr = readdir(dir_ptr);
                 while (entry_ptr as uint != 0) {
                     strings.push(str::raw::from_c_str(rust_list_dir_val(
@@ -715,7 +718,7 @@ pub fn list_dir(p: &Path) -> ~[~str] {
                 closedir(dir_ptr);
             }
             else {
-        debug!("os::list_dir -- opendir() FAILURE");
+                debug!("os::list_dir -- opendir() FAILURE");
             }
             debug!(
                 "os::list_dir -- AFTER -- #: %?",
@@ -1043,14 +1046,15 @@ pub fn last_os_error() -> ~str {
         }
 
         let mut buf = [0 as c_char, ..TMPBUF_SZ];
-        unsafe {
-            let err = strerror_r(errno() as c_int, &mut buf[0],
-                                 TMPBUF_SZ as size_t);
-            if err < 0 {
-                fail!("strerror_r failure");
-            }
 
-            str::raw::from_c_str(&buf[0])
+        do buf.as_mut_buf |buf, len| {
+            unsafe {
+                if strerror_r(errno() as c_int, buf, len as size_t) < 0 {
+                    fail!("strerror_r failure");
+                }
+
+                str::raw::from_c_str(buf as *c_char)
+            }
         }
     }
 
@@ -1076,23 +1080,29 @@ pub fn last_os_error() -> ~str {
         static FORMAT_MESSAGE_FROM_SYSTEM: DWORD = 0x00001000;
         static FORMAT_MESSAGE_IGNORE_INSERTS: DWORD = 0x00000200;
 
-        let mut buf = [0 as c_char, ..TMPBUF_SZ];
-
         // This value is calculated from the macro
         // MAKELANGID(LANG_SYSTEM_DEFAULT, SUBLANG_SYS_DEFAULT)
         let langId = 0x0800 as DWORD;
         let err = errno() as DWORD;
-        unsafe {
-            let res = FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM |
-                                     FORMAT_MESSAGE_IGNORE_INSERTS,
-                                     ptr::mut_null(), err, langId,
-                                     &mut buf[0], TMPBUF_SZ as DWORD,
-                                     ptr::null());
-            if res == 0 {
-                fail!("[%?] FormatMessage failure", errno());
-            }
 
-            str::raw::from_c_str(&buf[0])
+        let mut buf = [0 as c_char, ..TMPBUF_SZ];
+
+        do buf.as_imm_buf |buf, len| {
+            unsafe {
+                let res = FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM |
+                                         FORMAT_MESSAGE_IGNORE_INSERTS,
+                                         ptr::mut_null(),
+                                         err,
+                                         langId,
+                                         buf,
+                                         len as DWORD,
+                                         ptr::null());
+                if res == 0 {
+                    fail!("[%?] FormatMessage failure", errno());
+                }
+
+                str::raw::from_c_str(buf)
+            }
         }
     }
 
