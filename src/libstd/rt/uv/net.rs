@@ -106,16 +106,16 @@ fn uv_ip_as_ip<T>(addr: UvIpAddr, f: &fn(IpAddr) -> T) -> T {
         },
         UvIpv6(*) => {
             let ip: ~[u16] = {
-                let read_hex_segment = |s: &str| -> u16 {
-                    num::FromStrRadix::from_str_radix(s, 16u).unwrap()
-                };
-                let convert_each_segment = |s: &str| -> ~[u16] {
-                    match s {
-                        "" => ~[],
-                        s => s.split_iter(':').transform(read_hex_segment).collect(),
-                    }
-                };
                 let expand_shorthand_and_convert = |s: &str| -> ~[~[u16]] {
+                    let convert_each_segment = |s: &str| -> ~[u16] {
+                        let read_hex_segment = |s: &str| -> u16 {
+                            num::FromStrRadix::from_str_radix(s, 16u).unwrap()
+                        };
+                        match s {
+                            "" => ~[],
+                            s => s.split_iter(':').transform(read_hex_segment).collect(),
+                        }
+                    };
                     s.split_str_iter("::").transform(convert_each_segment).collect()
                 };
                 match expand_shorthand_and_convert(ip_str) {
@@ -662,7 +662,7 @@ mod test {
                     if status.is_none() {
                         rtdebug!("got %d bytes", nread);
                         let buf = buf.unwrap();
-                        for buf.slice(0, nread as uint).each |byte| {
+                        for buf.slice(0, nread as uint).iter().advance() |byte| {
                             assert!(*byte == count as u8);
                             rtdebug!("%u", *byte as uint);
                             count += 1;
