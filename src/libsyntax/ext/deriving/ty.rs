@@ -61,7 +61,7 @@ impl<'self> Path<'self> {
                  span: span,
                  self_ty: ident,
                  self_generics: &Generics)
-                 -> ast::Ty {
+                 -> @ast::Ty {
         cx.ty_path(self.to_path(cx, span, self_ty, self_generics), None)
     }
     pub fn to_path(&self,
@@ -122,7 +122,7 @@ impl<'self> Ty<'self> {
                  span: span,
                  self_ty: ident,
                  self_generics: &Generics)
-                 -> ast::Ty {
+                 -> @ast::Ty {
         match *self {
             Ptr(ref ty, ref ptr) => {
                 let raw_ty = ty.to_ty(cx, span, self_ty, self_generics);
