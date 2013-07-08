@@ -15,7 +15,7 @@ use cell::Cell;
 use option::{Option, Some, None};
 use prelude::*;
 use rt::task::Task;
-use unstable::atomics::{AtomicUint, SeqCst};
+use unstable::atomics::{AtomicUint, Acquire, SeqCst};
 use unstable::sync::{UnsafeAtomicRcBox, LittleLock};
 use util;
 
@@ -135,6 +135,16 @@ impl KillHandle {
             // else was here first who will deal with the kill signal.
             None
         }
+    }
+
+    #[inline]
+    pub fn killed(&self) -> bool {
+        // Called every context switch, so shouldn't report true if the task
+        // is unkillable with a kill signal pending.
+        let inner = unsafe { &*self.get() };
+        let flag  = unsafe { &*inner.killed.get() };
+        // FIXME(#6598): can use relaxed ordering (i think)
+        flag.load(Acquire) == KILL_KILLED
     }
 
     pub fn notify_immediate_failure(&mut self) {
@@ -285,6 +295,22 @@ impl Death {
         // Can't use allow_kill directly; that would require the kill handle.
         rtassert!(self.unkillable == 1);
         self.unkillable = 0;
+    }
+
+    /// Fails if a kill signal was received.
+    #[inline]
+    pub fn check_killed(&self) {
+        match self.kill_handle {
+            Some(ref kill_handle) =>
+                // The task may be both unkillable and killed if it does some
+                // synchronization during unwinding or cleanup (for example,
+                // sending on a notify port). In that case failing won't help.
+                if self.unkillable == 0 && kill_handle.killed() {
+                    fail!(KILLED_MSG);
+                },
+            // This may happen during task death (see comments in collect_failure).
+            None => rtassert!(self.unkillable > 0),
+        }
     }
 
     /// Enter a possibly-nested unkillable section of code.
