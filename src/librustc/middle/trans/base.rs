@@ -292,13 +292,12 @@ pub fn malloc_raw_dyn(bcx: block,
 
     if heap == heap_exchange {
         let llty_value = type_of::type_of(ccx, t);
-        let llalign = llalign_of_min(ccx, llty_value);
 
         // Allocate space:
         let r = callee::trans_lang_call(
             bcx,
             bcx.tcx().lang_items.exchange_malloc_fn(),
-            [C_i32(llalign as i32), size],
+            [size],
             None);
         rslt(r.bcx, PointerCast(r.bcx, r.val, llty_value.ptr_to()))
     } else if heap == heap_exchange_vector {
