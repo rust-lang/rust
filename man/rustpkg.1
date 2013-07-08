@@ -15,146 +15,168 @@ install and test Rust programs.
 
 .TP
 \fBbuild\fR
-Build all targets described in the package script in the current
-directory.
+Searches for a package with the specified name and builds it in the workspace in
+which it is found.
 .TP
 \fBclean\fR
-Remove all build files in the work cache for the package in the current
-directory.
-.TP
-\fBdo\fR
-Runs a command in the package script.
-.TP
-\fBinfo\fR
-Probe the package script in the current directory for information.
+Remove all generated files from the \fIbuild\fR directory in the target's workspace.
 .TP
 \fBinstall\fR
-Install a package given a local archive or a remote URI or VCS.
-.TP
-\fBprefer\fR
-Specify which version of a binary to use.
+Builds the specified target, and all its dependencies, and then installs the
+build products into the \fIlib\fR and \fIbin\fR directories of their respective
+workspaces.
 .TP
 \fBtest\fR
-Build all targets described in the package script in the current directory
-with the test flag.
-.TP
-\fBuninstall\fR
-Remove a package by id or name and optionally version.
-.TP
-\fBunprefer\fR
-Remove links to the versioned binary.
-.TP
-\fBhelp\fR
-show detailed usage of a command
+Builds the module called \fItest.rs\fR in the specified workspace, and then runs
+the resulting executable in test mode.
 
-.SH "BUILD COMMAND"
+.SS "BUILD COMMAND"
 
-The \fBbuild\fR command builds all targets described in the package script in
-the current directory.
+    rustpkg build \fI[pkgname]\fR
 
-.TP
--c, --cfg
-Pass a cfg flag to the package script
+The \fBbuild\fR command searches for a package with specified package name and
+builds it in any workspace(s) where it finds one. Any dependent packages are
+also built. The output files produced by the build phase are stored in the
+\fIbuild\fR subdirectories of each package. The executables and libraries are
+not copied to the 'bin' or 'lib' directories; that is the purpose of the
+\fBinstall\fR command.
 
-.SH "DO COMMAND"
+.SS "CLEAN COMMAND"
 
-The \fBdo\fR command runs a command in the package script. You can listen to a
-command by tagging a function with the attribute `#[pkg_do(cmd)]`.
+    rustpkg clean \fI[pkgname]\fR
 
-.SH "TEST COMMAND"
+deletes the contents of package's build directory.
 
-The test command is an shortcut for the command line:
+.SS "INSTALL COMMAND"
 
-    $ rustc --test <filename> -o <filestem>test~ && ./<filestem>test~
+    rustpkg install \fI[url]\fR
 
-Note the trailing tilde on the output filename, which should ensure the
-file does not clash with a user-generated files.
-
-.SH "INFO COMMAND"
-
-Probe the package script in the current directory for information.
-
-Options:
-
-.TP
--j, --json
-Output the result as JSON
-
-.SH "INSTALL COMMAND"
-
-    rustpkg [options..] install [url] [target]
-
-Install a package from a URL by Git or cURL (FTP, HTTP, etc.).  If target is
-provided, Git will checkout the branch or tag before continuing. If the URL
-is a TAR file (with or without compression), extract it before
-installing. If a URL isn't provided, the package will be built and installed
-from the current directory (which is functionally the same as `rustpkg
-build` and installing the result).
+builds the libraries and/or executables that are targets for the specified
+package name or URL, and then installs them either into package's \fIlib\fR
+and \fIbin\fR directories, or into the \fIlib\fR and \fIbin\fR subdirectories
+of the first entry in RUST_PATH.
 
 Examples:
 
-    rustpkg install
-    rustpkg install git://github.com/mozilla/servo.git
-    rustpkg install git://github.com/mozilla/servo.git v0.1.2
-    rustpkg install http://rust-lang.org/servo-0.1.2.tar.gz
+    $ rustpkg install git://github.com/mozilla/servo.git#1.2
+    $ rustpkg install rust-glfw
 
-Options:
+.SS "TEST COMMAND"
 
-.TP
--c, --cfg
-Pass a cfg flag to the package script
+    rustpkg test \fI[pkgname]\fR
 
-.SH "PREFER COMMAND"
+The test command is a shortcut for the command line:
 
-By default all binaries are given a unique name so that multiple versions
-can coexist. The prefer command will symlink the uniquely named binary to
-the binary directory under its bare name. If version is not supplied, the
-latest version of the package will be preferred.
+    $ rustc --test <filename> -o <filestem>test~ && ./<filestem>test~
 
-Example:
+Note the suffix on the output filename (the word "test" followed by a tilde),
+which should ensure the file does not clash with a user-generated files.
 
-    export PATH=$PATH:/home/user/.rustpkg/bin
-    rustpkg prefer machine@1.2.4
-    machine -v
-    ==> v1.2.4
-    rustpkg prefer machine@0.4.6
-    machine -v
-    ==> v0.4.6
-
-.SH "TEST COMMAND"
-
-Build all targets described in the package script in the current directory
-with the test flag. The test bootstraps will be run afterwards and the output
-and exit code will be redirected.
-
-Options:
+.SH "ENVIRONMENT"
 
 .TP
--c, --cfg
-Pass a cfg flag to the package script
+RUST_PATH
+A colon-separated (semicolon-separated) list of paths denoting workspaces
+to search for Rust source files. See the section \fBPATHS\fR for full details.
 
-.SH "UNINSTALL COMMAND"
+.SH "PATHS"
 
-Remove a package by id or name and optionally version. If the package(s)
-is/are depended on by another package then they cannot be removed.
+The \fBrustpkg\fR tool searches for packages in the folders specified by the
+\fBRUST_PATH\fR environment variable. Each folder constitutes a
+\fIworkspace\fR, which contains one or more modules available to import.
 
-.SH "UNPREFER COMMAND"
+In addition to the RUST_PATH settings, the following implicit paths are
+\fIalways\fR searched, in the following order:
 
-    $ rustpkg [options..] unprefer <id|name>[@version]
+1. Any folders named ".rust" in the current directory, \fIand every parent\fR
+of the curent directory, up to the filesystem root;
 
-Remove all symlinks from the store to the binary directory for a package
-name and optionally version. If version is not supplied, the latest version
-of the package will be unpreferred. See `rustpkg prefer -h` for more
-information.
+2. The system path "/usr/local" on Unix-style systems, or the equivalent on
+Windows; and
 
-.SH "EXAMPLES"
+3. A folder named ".rust" in the user's home directory (ie. "~/.rust" on Unix-
+style systems or the equivalent on Windows).
 
-To clone, build and install a specific version of the Servo engine from
-its git repository on Github:
-    $ rustpkg install git://github.com/mozilla/servo.git v0.1.2
+.SH "PACKAGE STRUCTURE"
 
-To download the archive and install Servo from a tarball:
-    $ rustpkg install http://rust-lang.org/servo-0.1.2.tar.gz
+A valid workspace must contain each of the following subdirectories:
+
+.TP
+\fBsrc/\fR
+Contains the Rust source code, with one subdirectory per package. Each
+subdirectory contains source files for a given package.
+.TP
+\fBlib/\fR
+"rustpkg install" installs libraries into a target-specific subdirectory of this directory.
+.TP
+\fBbin/\fR
+"rustpkg install" installs executable binaries into a target-specific subdirectory of this directory.
+.TP
+\fBbuild/\fR
+"rustpkg build" stores temporary build artifacts in a target-specific subdirectory of this directory.
+
+For example, if "foo" is a workspace containing the package "bar", then
+"foo/src/bar/main.rs" would be the "main" entry point for building a "bar"
+executable.
+
+.SH "PACKAGE IDENTIFIERS"
+
+A package identifier uniquely identifies a package. A package can be stored in
+a workspace on the local file system, or on a remote Web server, in which case
+the package ID resembles a URL.
+
+For example, \fIgithub.com/mozilla/rust\fR is a package ID
+that would refer to the git repository browsable at \fIhttp://github.com/mozilla/rust\fR.
+
+A package ID can also specify a version, like:
+\fIgithub.com/mozilla/rust#0.3\fR. In this case, \fBrustpkg\fR will check that
+the repository \fIgithub.com/mozilla/rust\fR has a tag named \fI0.3\fR, and
+report an error otherwise.
+
+.SH "SPECIAL MODULES"
+
+\fBrustpkg\fR searches for four different known filenames in the src directory
+in order to determine which crates to build:
+
+.TP
+\fBmain.rs\fR
+Assumed to be a main entry point for building an executable (install destination is 'bin' directory).
+.TP
+\fBlib.rs\fR
+Assumed to be a library crate (install destination is 'lib' directory).
+.TP
+\fBtest.rs\fR
+Assumed to contain tests declared with the \fI#[test]\fR attribute.
+.TP
+\fBbench.rs\fR
+Assumed to contain benchmarks declared with the \fI#[bench]\fR attribute.
+
+.SH "CRATE VERSIONS"
+
+\fBrustpkg\fR packages do not need to declare their versions with an attribute
+inside one of the source files, because rustpkg infers it from the version
+control system. When building a package that is in a git repository,
+rustpkg assumes that the most recent tag specifies the current version. When
+building a package that is not under version control, or that has no tags,
+rustpkg defaults the version to 0.1.
+
+.SH "DEPENDENCIES"
+
+rustpkg infers dependencies from "extern mod" directives. Thus, there should
+be no need to pass a "-L" flag to rustpkg to tell it where to find a library.
+(In the future, it will also be possible to write an "extern mod" directive
+referring to a remote package.)
+
+.SH "CUSTOM BUILD SCRIPTS"
+
+A file called \fIpkg.rs\fR at the root level in a workspace is called a \fIpackage
+script\fR. If a package script exists, rustpkg executes it to build the
+package rather than inferring crates as described previously.
+
+Inside \fIpkg.rs\fR, it's possible to call back into rustpkg to finish up the
+build. The \fIrustpkg::api\fR module contains functions to build, install, or
+clean libraries and executables in the way rustpkg normally would without
+custom build logic.
 
 .SH "SEE ALSO"
 
