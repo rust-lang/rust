@@ -10,7 +10,8 @@
 
 #[allow(missing_doc)];
 
-use core::prelude::*;
+
+use std::str;
 
 // Simple Extensible Binary Markup Language (ebml) reader and writer on a
 // cursor model. See the specification here:
@@ -32,6 +33,20 @@ pub struct Doc {
     data: @~[u8],
     start: uint,
     end: uint,
+}
+
+impl Doc {
+    pub fn get(&self, tag: uint) -> Doc {
+        reader::get_doc(*self, tag)
+    }
+
+    pub fn as_str_slice<'a>(&'a self) -> &'a str {
+        str::from_bytes_slice(self.data.slice(self.start, self.end))
+    }
+
+    pub fn as_str(&self) -> ~str {
+        self.as_str_slice().to_owned()
+    }
 }
 
 pub struct TaggedDoc {
@@ -78,30 +93,20 @@ pub mod reader {
 
     use serialize;
 
-    use core::prelude::*;
-    use core::cast::transmute;
-    use core::int;
-    use core::io;
-    use core::ptr::offset;
-    use core::str;
-    use core::unstable::intrinsics::bswap32;
-    use core::vec;
+    use std::cast::transmute;
+    use std::int;
+    use std::io;
+    use std::option::{None, Option, Some};
+
+    #[cfg(target_arch = "x86")]
+    #[cfg(target_arch = "x86_64")]
+    use std::ptr::offset;
+
+    #[cfg(target_arch = "x86")]
+    #[cfg(target_arch = "x86_64")]
+    use std::unstable::intrinsics::bswap32;
 
     // ebml reading
-
-    impl Doc {
-        pub fn get(&self, tag: uint) -> Doc {
-            get_doc(*self, tag)
-        }
-
-        pub fn as_str_slice<'a>(&'a self) -> &'a str {
-            str::from_bytes_slice(self.data.slice(self.start, self.end))
-        }
-
-        pub fn as_str(&self) -> ~str {
-            self.as_str_slice().to_owned()
-        }
-    }
 
     struct Res {
         val: uint,
@@ -248,7 +253,7 @@ pub mod reader {
     }
 
     pub fn with_doc_data<T>(d: Doc, f: &fn(x: &[u8]) -> T) -> T {
-        f(vec::slice(*d.data, d.start, d.end))
+        f(d.data.slice(d.start, d.end))
     }
 
 
@@ -372,7 +377,7 @@ pub mod reader {
         fn read_u8 (&mut self) -> u8  { doc_as_u8 (self.next_doc(EsU8 )) }
         fn read_uint(&mut self) -> uint {
             let v = doc_as_u64(self.next_doc(EsUint));
-            if v > (::core::uint::max_value as u64) {
+            if v > (::std::uint::max_value as u64) {
                 fail!("uint %? too large for this architecture", v);
             }
             v as uint
@@ -605,8 +610,8 @@ pub mod reader {
 pub mod writer {
     use super::*;
 
-    use core::cast;
-    use core::io;
+    use std::cast;
+    use std::io;
 
     // ebml writing
     pub struct Encoder {
@@ -951,8 +956,8 @@ mod tests {
     use serialize::Encodable;
     use serialize;
 
-    use core::io;
-    use core::option::{None, Option, Some};
+    use std::io;
+    use std::option::{None, Option, Some};
 
     #[test]
     fn test_option_int() {

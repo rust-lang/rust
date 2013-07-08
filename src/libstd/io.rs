@@ -57,7 +57,7 @@ use os;
 use cast;
 use path::Path;
 use ops::Drop;
-use old_iter::{BaseIter, CopyableIter};
+use iterator::IteratorUtil;
 use ptr;
 use result;
 use str;
@@ -65,7 +65,7 @@ use str::StrSlice;
 use to_str::ToStr;
 use uint;
 use vec;
-use vec::{OwnedVector, OwnedCopyableVector};
+use vec::{MutableVector, ImmutableVector, OwnedVector, OwnedCopyableVector, CopyableVector};
 
 #[allow(non_camel_case_types)] // not sure what to do about this
 pub type fd_t = c_int;
@@ -698,7 +698,7 @@ impl<T:Reader> ReaderUtil for T {
             // over-read by reading 1-byte per char needed
             nbread = if ncreq > nbreq { ncreq } else { nbreq };
             if nbread > 0 {
-                bytes = vec::slice(bytes, offset, bytes.len()).to_vec();
+                bytes = bytes.slice(offset, bytes.len()).to_owned();
             }
         }
         chars
@@ -771,7 +771,9 @@ impl<T:Reader> ReaderUtil for T {
     fn read_le_uint_n(&self, nbytes: uint) -> u64 {
         assert!(nbytes > 0 && nbytes <= 8);
 
-        let mut (val, pos, i) = (0u64, 0, nbytes);
+        let mut val = 0u64;
+        let mut pos = 0;
+        let mut i = nbytes;
         while i > 0 {
             val += (self.read_u8() as u64) << pos;
             pos += 8;
@@ -787,7 +789,8 @@ impl<T:Reader> ReaderUtil for T {
     fn read_be_uint_n(&self, nbytes: uint) -> u64 {
         assert!(nbytes > 0 && nbytes <= 8);
 
-        let mut (val, i) = (0u64, nbytes);
+        let mut val = 0u64;
+        let mut i = nbytes;
         while i > 0 {
             i -= 1;
             val += (self.read_u8() as u64) << i * 8;
@@ -989,7 +992,7 @@ impl FILERes {
 }
 
 impl Drop for FILERes {
-    fn finalize(&self) {
+    fn drop(&self) {
         unsafe {
             libc::fclose(self.f);
         }
@@ -1042,16 +1045,18 @@ pub fn file_reader(path: &Path) -> Result<@Reader, ~str> {
 
 
 // Byte readers
-pub struct BytesReader<'self> {
-    bytes: &'self [u8],
+pub struct BytesReader {
+    // FIXME(#5723) see other FIXME below
+    // FIXME(#7268) this should also be parameterized over <'self>
+    bytes: &'static [u8],
     pos: @mut uint
 }
 
-impl<'self> Reader for BytesReader<'self> {
+impl Reader for BytesReader {
     fn read(&self, bytes: &mut [u8], len: uint) -> uint {
         let count = uint::min(len, self.bytes.len() - *self.pos);
 
-        let view = vec::slice(self.bytes, *self.pos, self.bytes.len());
+        let view = self.bytes.slice(*self.pos, self.bytes.len());
         vec::bytes::copy_memory(bytes, view, count);
 
         *self.pos += count;
@@ -1084,6 +1089,10 @@ impl<'self> Reader for BytesReader<'self> {
 }
 
 pub fn with_bytes_reader<T>(bytes: &[u8], f: &fn(@Reader) -> T) -> T {
+    // XXX XXX XXX this is glaringly unsound
+    // FIXME(#5723) Use a &Reader for the callback's argument. Should be:
+    // fn with_bytes_reader<'r, T>(bytes: &'r [u8], f: &fn(&'r Reader) -> T) -> T
+    let bytes: &'static [u8] = unsafe { cast::transmute(bytes) };
     f(@BytesReader {
         bytes: bytes,
         pos: @mut 0
@@ -1091,6 +1100,7 @@ pub fn with_bytes_reader<T>(bytes: &[u8], f: &fn(@Reader) -> T) -> T {
 }
 
 pub fn with_str_reader<T>(s: &str, f: &fn(@Reader) -> T) -> T {
+    // FIXME(#5723): As above.
     with_bytes_reader(s.as_bytes(), f)
 }
 
@@ -1142,7 +1152,7 @@ impl<W:Writer,C> Writer for Wrapper<W, C> {
 impl Writer for *libc::FILE {
     fn write(&self, v: &[u8]) {
         unsafe {
-            do vec::as_const_buf(v) |vbuf, len| {
+            do vec::as_imm_buf(v) |vbuf, len| {
                 let nout = libc::fwrite(vbuf as *c_void,
                                         1,
                                         len as size_t,
@@ -1193,9 +1203,9 @@ impl Writer for fd_t {
     fn write(&self, v: &[u8]) {
         unsafe {
             let mut count = 0u;
-            do vec::as_const_buf(v) |vbuf, len| {
+            do vec::as_imm_buf(v) |vbuf, len| {
                 while count < len {
-                    let vb = ptr::const_offset(vbuf, count) as *c_void;
+                    let vb = ptr::offset(vbuf, count) as *c_void;
                     let nout = libc::write(*self, vb, len as size_t);
                     if nout < 0 as ssize_t {
                         error!("error writing buffer");
@@ -1234,7 +1244,7 @@ impl FdRes {
 }
 
 impl Drop for FdRes {
-    fn finalize(&self) {
+    fn drop(&self) {
         unsafe {
             libc::close(self.fd);
         }
@@ -1261,7 +1271,7 @@ pub fn mk_file_writer(path: &Path, flags: &[FileFlag])
     fn wb() -> c_int { O_WRONLY as c_int }
 
     let mut fflags: c_int = wb();
-    for flags.each |f| {
+    for flags.iter().advance |f| {
         match *f {
           Append => fflags |= O_APPEND as c_int,
           Create => fflags |= O_CREAT as c_int,
@@ -1651,12 +1661,12 @@ impl Writer for BytesWriter {
 
         let bytes = &mut *self.bytes;
         let count = uint::max(bytes.len(), *self.pos + v_len);
-        vec::reserve(bytes, count);
+        bytes.reserve(count);
 
         unsafe {
             vec::raw::set_len(bytes, count);
 
-            let view = vec::mut_slice(*bytes, *self.pos, count);
+            let view = bytes.mut_slice(*self.pos, count);
             vec::bytes::copy_memory(view, v, v_len);
         }
 
@@ -1772,7 +1782,7 @@ pub mod fsync {
 
     #[unsafe_destructor]
     impl<T:Copy> Drop for Res<T> {
-        fn finalize(&self) {
+        fn drop(&self) {
             match self.arg.opt_level {
                 None => (),
                 Some(level) => {
@@ -1902,8 +1912,9 @@ mod tests {
                 if len <= ivals.len() {
                     assert_eq!(res.len(), len);
                 }
-                assert!(vec::slice(ivals, 0u, res.len()) ==
-                             vec::map(res, |x| *x as int));
+                for ivals.iter().zip(res.iter()).advance |(iv, c)| {
+                    assert!(*iv == *c as int)
+                }
             }
         }
         let mut i = 0;
@@ -2015,7 +2026,7 @@ mod tests {
         // write the ints to the file
         {
             let file = io::file_writer(&path, [io::Create]).get();
-            for uints.each |i| {
+            for uints.iter().advance |i| {
                 file.write_le_u64(*i);
             }
         }
@@ -2023,7 +2034,7 @@ mod tests {
         // then read them back and check that they are the same
         {
             let file = io::file_reader(&path).get();
-            for uints.each |i| {
+            for uints.iter().advance |i| {
                 assert_eq!(file.read_le_u64(), *i);
             }
         }
@@ -2037,7 +2048,7 @@ mod tests {
         // write the ints to the file
         {
             let file = io::file_writer(&path, [io::Create]).get();
-            for uints.each |i| {
+            for uints.iter().advance |i| {
                 file.write_be_u64(*i);
             }
         }
@@ -2045,7 +2056,7 @@ mod tests {
         // then read them back and check that they are the same
         {
             let file = io::file_reader(&path).get();
-            for uints.each |i| {
+            for uints.iter().advance |i| {
                 assert_eq!(file.read_be_u64(), *i);
             }
         }
@@ -2059,7 +2070,7 @@ mod tests {
         // write the ints to the file
         {
             let file = io::file_writer(&path, [io::Create]).get();
-            for ints.each |i| {
+            for ints.iter().advance |i| {
                 file.write_be_i32(*i);
             }
         }
@@ -2067,7 +2078,7 @@ mod tests {
         // then read them back and check that they are the same
         {
             let file = io::file_reader(&path).get();
-            for ints.each |i| {
+            for ints.iter().advance |i| {
                 // this tests that the sign extension is working
                 // (comparing the values as i32 would not test this)
                 assert_eq!(file.read_be_int_n(4), *i as i64);

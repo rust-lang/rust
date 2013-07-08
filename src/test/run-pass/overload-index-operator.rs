@@ -30,7 +30,7 @@ impl<K,V> AssociationList<K,V> {
 
 impl<K:Eq,V:Copy> Index<K,V> for AssociationList<K,V> {
     fn index(&self, index: &K) -> V {
-        for self.pairs.each |pair| {
+        for self.pairs.iter().advance |pair| {
             if pair.key == *index {
                 return copy pair.value;
             }

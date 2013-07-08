@@ -52,7 +52,6 @@
  * an rptr (`&r.T`) use the region `r` that appears in the rptr.
  */
 
-use core::prelude::*;
 
 use middle::const_eval;
 use middle::ty::{substs};
@@ -63,8 +62,8 @@ use middle::typeck::rscope::{region_scope, RegionError};
 use middle::typeck::rscope::RegionParamNames;
 use middle::typeck::lookup_def_tcx;
 
-use core::result;
-use core::vec;
+use std::result;
+use std::vec;
 use syntax::abi::AbiSet;
 use syntax::{ast, ast_util};
 use syntax::codemap::span;
@@ -248,7 +247,7 @@ pub static NO_TPS: uint = 2;
 // internal notion of a type. `getter` is a function that returns the type
 // corresponding to a definition ID:
 pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Copy + 'static>(
-    this: &AC, rscope: &RS, ast_ty: @ast::Ty) -> ty::t {
+    this: &AC, rscope: &RS, ast_ty: &ast::Ty) -> ty::t {
 
     fn ast_mt_to_mt<AC:AstConv, RS:region_scope + Copy + 'static>(
         this: &AC, rscope: &RS, mt: &ast::mt) -> ty::mt {
@@ -277,7 +276,10 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Copy + 'static>(
                 }
                 return ty::mk_evec(tcx, mt, vst);
             }
-            ast::ty_path(path, id) => {
+            ast::ty_path(path, bounds, id) => {
+                // Note that the "bounds must be empty if path is not a trait"
+                // restriction is enforced in the below case for ty_path, which
+                // will run after this as long as the path isn't a trait.
                 match tcx.def_map.find(&id) {
                     Some(&ast::def_prim_ty(ast::ty_str)) if a_seq_ty.mutbl == ast::m_imm => {
                         check_path_args(tcx, path, NO_TPS | NO_REGIONS);
@@ -300,11 +302,13 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Copy + 'static>(
                                 ty::BoxTraitStore
                             }
                         };
+                        let bounds = conv_builtin_bounds(this.tcx(), bounds, trait_store);
                         return ty::mk_trait(tcx,
                                             result.def_id,
                                             copy result.substs,
                                             trait_store,
-                                            a_seq_ty.mutbl);
+                                            a_seq_ty.mutbl,
+                                            bounds);
                     }
                     _ => {}
                 }
@@ -381,7 +385,13 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Copy + 'static>(
                                             bf.abis, &bf.lifetimes, &bf.decl))
       }
       ast::ty_closure(ref f) => {
-          let bounds = conv_builtin_bounds(this.tcx(), &f.bounds);
+          let bounds = conv_builtin_bounds(this.tcx(), &f.bounds, match f.sigil {
+              // Use corresponding trait store to figure out default bounds
+              // if none were specified.
+              ast::BorrowedSigil => ty::RegionTraitStore(ty::re_empty), // dummy region
+              ast::OwnedSigil    => ty::UniqTraitStore,
+              ast::ManagedSigil  => ty::BoxTraitStore,
+          });
           let fn_decl = ty_of_closure(this,
                                       rscope,
                                       f.sigil,
@@ -395,13 +405,22 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Copy + 'static>(
                                       ast_ty.span);
           ty::mk_closure(tcx, fn_decl)
       }
-      ast::ty_path(path, id) => {
+      ast::ty_path(path, bounds, id) => {
         let a_def = match tcx.def_map.find(&id) {
           None => tcx.sess.span_fatal(
               ast_ty.span, fmt!("unbound path %s",
                                 path_to_str(path, tcx.sess.intr()))),
           Some(&d) => d
         };
+        // Kind bounds on path types are only supported for traits.
+        match a_def {
+            // But don't emit the error if the user meant to do a trait anyway.
+            ast::def_trait(*) => { },
+            _ if bounds.is_some() =>
+                tcx.sess.span_err(ast_ty.span,
+                    "kind bounds can only be used on trait types"),
+            _ => { },
+        }
         match a_def {
           ast::def_trait(_) => {
               let path_str = path_to_str(path, tcx.sess.intr());
@@ -534,7 +553,7 @@ pub fn bound_lifetimes<AC:AstConv>(
     let special_idents = [special_idents::statik, special_idents::self_];
     let mut bound_lifetime_names = opt_vec::Empty;
     ast_lifetimes.map_to_vec(|ast_lifetime| {
-        if special_idents.any(|&i| i == ast_lifetime.ident) {
+        if special_idents.iter().any_(|&i| i == ast_lifetime.ident) {
             this.tcx().sess.span_err(
                 ast_lifetime.span,
                 fmt!("illegal lifetime parameter name: `%s`",
@@ -642,10 +661,10 @@ fn ty_of_method_or_bare_fn<AC:AstConv,RS:region_scope + Copy + 'static>(
                                 ty::mt {ty: self_info.untransformed_self_ty,
                                         mutbl: mutability}))
             }
-            ast::sty_uniq(mutability) => {
+            ast::sty_uniq => {
                 Some(ty::mk_uniq(this.tcx(),
                                  ty::mt {ty: self_info.untransformed_self_ty,
-                                         mutbl: mutability}))
+                                         mutbl: ast::m_imm}))
             }
         }
     }
@@ -699,14 +718,14 @@ pub fn ty_of_closure<AC:AstConv,RS:region_scope + Copy + 'static>(
     let bound_lifetime_names = bound_lifetimes(this, lifetimes);
     let rb = in_binding_rscope(rscope, RegionParamNames(copy bound_lifetime_names));
 
-    let input_tys = do decl.inputs.mapi |i, a| {
+    let input_tys = do decl.inputs.iter().enumerate().transform |(i, a)| {
         let expected_arg_ty = do expected_sig.chain_ref |e| {
             // no guarantee that the correct number of expected args
             // were supplied
             if i < e.inputs.len() {Some(e.inputs[i])} else {None}
         };
         ty_of_arg(this, &rb, *a, expected_arg_ty)
-    };
+    }.collect();
 
     let expected_ret_ty = expected_sig.map(|e| e.output);
     let output_ty = match decl.output.node {
@@ -727,60 +746,79 @@ pub fn ty_of_closure<AC:AstConv,RS:region_scope + Copy + 'static>(
     }
 }
 
-fn conv_builtin_bounds(tcx: ty::ctxt,
-                       ast_bounds: &OptVec<ast::TyParamBound>)
+fn conv_builtin_bounds(tcx: ty::ctxt, ast_bounds: &Option<OptVec<ast::TyParamBound>>,
+                       store: ty::TraitStore)
                        -> ty::BuiltinBounds {
     //! Converts a list of bounds from the AST into a `BuiltinBounds`
     //! struct. Reports an error if any of the bounds that appear
     //! in the AST refer to general traits and not the built-in traits
-    //! like `Copy` or `Owned`. Used to translate the bounds that
+    //! like `Copy` or `Send`. Used to translate the bounds that
     //! appear in closure and trait types, where only builtin bounds are
     //! legal.
+    //! If no bounds were specified, we choose a "default" bound based on
+    //! the allocation type of the fn/trait, as per issue #7264. The user can
+    //! override this with an empty bounds list, e.g. "~fn:()" or "~Trait:".
 
-    let mut builtin_bounds = ty::EmptyBuiltinBounds();
-    for ast_bounds.each |ast_bound| {
-        match *ast_bound {
-            ast::TraitTyParamBound(b) => {
-                match lookup_def_tcx(tcx, b.path.span, b.ref_id) {
-                    ast::def_trait(trait_did) => {
-                        if try_add_builtin_trait(tcx,
-                                                 trait_did,
-                                                 &mut builtin_bounds) {
-                            loop; // success
+    match (ast_bounds, store) {
+        (&Some(ref bound_vec), _) => {
+            let mut builtin_bounds = ty::EmptyBuiltinBounds();
+            for bound_vec.iter().advance |ast_bound| {
+                match *ast_bound {
+                    ast::TraitTyParamBound(b) => {
+                        match lookup_def_tcx(tcx, b.path.span, b.ref_id) {
+                            ast::def_trait(trait_did) => {
+                                if try_add_builtin_trait(tcx,
+                                                         trait_did,
+                                                         &mut builtin_bounds) {
+                                    loop; // success
+                                }
+                            }
+                            _ => { }
                         }
+                        tcx.sess.span_fatal(
+                            b.path.span,
+                            fmt!("only the builtin traits can be used \
+                                  as closure or object bounds"));
                     }
-                    _ => { }
+                    ast::RegionTyParamBound => {
+                        builtin_bounds.add(ty::BoundStatic);
+                    }
                 }
-                tcx.sess.span_fatal(
-                    b.path.span,
-                    fmt!("only the builtin traits can be used \
-                          as closure or object bounds"));
             }
-            ast::RegionTyParamBound => {
-                builtin_bounds.add(ty::BoundStatic);
-            }
+            builtin_bounds
+        },
+        // ~Trait is sugar for ~Trait:Send.
+        (&None, ty::UniqTraitStore) => {
+            let mut set = ty::EmptyBuiltinBounds(); set.add(ty::BoundSend); set
         }
+        // @Trait is sugar for @Trait:'static.
+        // &'static Trait is sugar for &'static Trait:'static.
+        (&None, ty::BoxTraitStore) |
+        (&None, ty::RegionTraitStore(ty::re_static)) => {
+            let mut set = ty::EmptyBuiltinBounds(); set.add(ty::BoundStatic); set
+        }
+        // &'r Trait is sugar for &'r Trait:<no-bounds>.
+        (&None, ty::RegionTraitStore(*)) => ty::EmptyBuiltinBounds(),
     }
-    builtin_bounds
 }
 
 pub fn try_add_builtin_trait(tcx: ty::ctxt,
                              trait_def_id: ast::def_id,
                              builtin_bounds: &mut ty::BuiltinBounds) -> bool {
     //! Checks whether `trait_ref` refers to one of the builtin
-    //! traits, like `Copy` or `Owned`, and adds the corresponding
+    //! traits, like `Copy` or `Send`, and adds the corresponding
     //! bound to the set `builtin_bounds` if so. Returns true if `trait_ref`
     //! is a builtin trait.
 
     let li = &tcx.lang_items;
-    if trait_def_id == li.owned_trait() {
-        builtin_bounds.add(ty::BoundOwned);
+    if trait_def_id == li.send_trait() {
+        builtin_bounds.add(ty::BoundSend);
         true
     } else if trait_def_id == li.copy_trait() {
         builtin_bounds.add(ty::BoundCopy);
         true
-    } else if trait_def_id == li.const_trait() {
-        builtin_bounds.add(ty::BoundConst);
+    } else if trait_def_id == li.freeze_trait() {
+        builtin_bounds.add(ty::BoundFreeze);
         true
     } else if trait_def_id == li.sized_trait() {
         builtin_bounds.add(ty::BoundSized);

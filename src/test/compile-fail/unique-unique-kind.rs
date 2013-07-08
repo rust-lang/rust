@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn f<T:Owned>(_i: T) {
+fn f<T:Send>(_i: T) {
 }
 
 fn main() {
     let i = ~@100;
-    f(i); //~ ERROR does not fulfill `Owned`
+    f(i); //~ ERROR does not fulfill `Send`
 }

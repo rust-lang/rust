@@ -49,7 +49,7 @@ impl StackSegment {
 }
 
 impl Drop for StackSegment {
-    fn finalize(&self) {
+    fn drop(&self) {
         unsafe {
             // XXX: Using the FFI to call a C macro. Slow
             rust_valgrind_stack_deregister(self.valgrind_id);

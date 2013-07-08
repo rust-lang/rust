@@ -12,13 +12,13 @@
 
 use cast::transmute;
 use container::Container;
+use iterator::IteratorUtil;
 use kinds::Copy;
-use old_iter;
-use old_iter::BaseIter;
 use option::Option;
 use sys;
 use uint;
 use vec;
+use vec::ImmutableVector;
 
 /// Code for dealing with @-vectors. This is pretty incomplete, and
 /// contains a bunch of duplication from the code for ~-vectors.
@@ -91,9 +91,9 @@ pub fn build_sized_opt<A>(size: Option<uint>,
 /// Iterates over the `rhs` vector, copying each element and appending it to the
 /// `lhs`. Afterwards, the `lhs` is then returned for use again.
 #[inline]
-pub fn append<T:Copy>(lhs: @[T], rhs: &const [T]) -> @[T] {
+pub fn append<T:Copy>(lhs: @[T], rhs: &[T]) -> @[T] {
     do build_sized(lhs.len() + rhs.len()) |push| {
-        for lhs.each |x| { push(copy *x); }
+        for lhs.iter().advance |x| { push(copy *x); }
         for uint::range(0, rhs.len()) |i| { push(copy rhs[i]); }
     }
 }
@@ -102,7 +102,7 @@ pub fn append<T:Copy>(lhs: @[T], rhs: &const [T]) -> @[T] {
 /// Apply a function to each element of a vector and return the results
 pub fn map<T, U>(v: &[T], f: &fn(x: &T) -> U) -> @[U] {
     do build_sized(v.len()) |push| {
-        for v.each |elem| {
+        for v.iter().advance |elem| {
             push(f(elem));
         }
     }
@@ -114,7 +114,7 @@ pub fn map<T, U>(v: &[T], f: &fn(x: &T) -> U) -> @[U] {
  * Creates an immutable vector of size `n_elts` and initializes the elements
  * to the value returned by the function `op`.
  */
-pub fn from_fn<T>(n_elts: uint, op: old_iter::InitOp<T>) -> @[T] {
+pub fn from_fn<T>(n_elts: uint, op: &fn(uint) -> T) -> @[T] {
     do build_sized(n_elts) |push| {
         let mut i: uint = 0u;
         while i < n_elts { push(op(i)); i += 1u; }
@@ -163,9 +163,9 @@ pub mod traits {
     use kinds::Copy;
     use ops::Add;
 
-    impl<'self,T:Copy> Add<&'self const [T],@[T]> for @[T] {
+    impl<'self,T:Copy> Add<&'self [T],@[T]> for @[T] {
         #[inline]
-        fn add(&self, rhs: & &'self const [T]) -> @[T] {
+        fn add(&self, rhs: & &'self [T]) -> @[T] {
             append(*self, (*rhs))
         }
     }
@@ -176,15 +176,16 @@ pub mod traits {}
 
 pub mod raw {
     use at_vec::capacity;
+    use cast;
     use cast::{transmute, transmute_copy};
     use libc;
     use ptr;
     use sys;
     use uint;
-    use unstable::intrinsics::{move_val_init};
+    use unstable::intrinsics;
+    use unstable::intrinsics::{move_val_init, TyDesc};
     use vec;
     use vec::UnboxedVecRepr;
-    use sys::TypeDesc;
 
     pub type VecRepr = vec::raw::VecRepr;
     pub type SliceRepr = vec::raw::SliceRepr;
@@ -246,14 +247,16 @@ pub mod raw {
         // Only make the (slow) call into the runtime if we have to
         if capacity(*v) < n {
             let ptr: *mut *mut VecRepr = transmute(v);
-            let ty = sys::get_type_desc::<T>();
+            let ty = intrinsics::get_tydesc::<T>();
+            // XXX transmute shouldn't be necessary
+            let ty = cast::transmute(ty);
             return reserve_raw(ty, ptr, n);
         }
     }
 
     // Implementation detail. Shouldn't be public
     #[allow(missing_doc)]
-    pub fn reserve_raw(ty: *TypeDesc, ptr: *mut *mut VecRepr, n: uint) {
+    pub fn reserve_raw(ty: *TyDesc, ptr: *mut *mut VecRepr, n: uint) {
 
         unsafe {
             let size_in_bytes = n * (*ty).size;

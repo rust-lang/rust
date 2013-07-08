@@ -29,7 +29,7 @@ macro_rules! bench (
 
 fn main() {
     let argv = os::args();
-    let tests = vec::slice(argv, 1, argv.len());
+    let tests = argv.slice(1, argv.len());
 
     bench!(shift_push);
     bench!(read_line);
@@ -44,7 +44,7 @@ fn maybe_run_test(argv: &[~str], name: ~str, test: &fn()) {
     if os::getenv(~"RUST_BENCH").is_some() {
         run_test = true
     } else if argv.len() > 0 {
-        run_test = argv.contains(&~"all") || argv.contains(&name)
+        run_test = argv.iter().any_(|x| x == &~"all") || argv.iter().any_(|x| x == &name)
     }
 
     if !run_test {
@@ -87,9 +87,8 @@ fn vec_plus() {
     while i < 1500 {
         let rv = vec::from_elem(r.gen_uint_range(0, i + 1), i);
         if r.gen() {
-            v += rv;
-        }
-        else {
+            v.push_all_move(rv);
+        } else {
             v = rv + v;
         }
         i += 1;

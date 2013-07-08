@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
 
 use driver::session;
 use driver::session::Session;
@@ -18,7 +17,7 @@ use syntax::codemap::span;
 use syntax::visit::{default_visitor, mk_vt, vt, Visitor, visit_crate, visit_item};
 use syntax::attr::{attrs_contains_name};
 use syntax::ast_map;
-use core::util;
+use std::util;
 
 struct EntryContext {
     session: Session,
@@ -41,7 +40,7 @@ struct EntryContext {
 
 type EntryVisitor = vt<@mut EntryContext>;
 
-pub fn find_entry_point(session: Session, crate: @crate, ast_map: ast_map::map) {
+pub fn find_entry_point(session: Session, crate: &crate, ast_map: ast_map::map) {
 
     // FIXME #4404 android JNI hacks
     if *session.building_library &&
@@ -138,7 +137,7 @@ fn configure_main(ctxt: @mut EntryContext) {
                                    but you have one or more functions named 'main' that are not \
                                    defined at the crate level. Either move the definition or \
                                    attach the `#[main]` attribute to override this behavior.");
-                for this.non_main_fns.each |&(_, span)| {
+                for this.non_main_fns.iter().advance |&(_, span)| {
                     this.session.span_note(span, "here is a function named 'main'");
                 }
             }

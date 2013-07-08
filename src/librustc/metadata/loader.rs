@@ -10,7 +10,6 @@
 
 //! Finds crate binaries and loads their metadata
 
-use core::prelude::*;
 
 use lib::llvm::{False, llvm, mk_object_file, mk_section_iter};
 use metadata::decoder;
@@ -24,14 +23,14 @@ use syntax::parse::token::ident_interner;
 use syntax::print::pprust;
 use syntax::{ast, attr};
 
-use core::cast;
-use core::io;
-use core::option;
-use core::os::consts::{macos, freebsd, linux, android, win32};
-use core::ptr;
-use core::str;
-use core::uint;
-use core::vec;
+use std::cast;
+use std::io;
+use std::option;
+use std::os::consts::{macos, freebsd, linux, android, win32};
+use std::ptr;
+use std::str;
+use std::uint;
+use std::vec;
 use extra::flate;
 
 pub enum os {
@@ -89,78 +88,76 @@ fn find_library_crate_aux(
     filesearch: @filesearch::FileSearch
 ) -> Option<(~str, @~[u8])> {
     let crate_name = crate_name_from_metas(cx.metas);
-    let prefix: ~str = prefix + crate_name + "-";
-    let suffix: ~str = /*bad*/copy suffix;
+    let prefix = prefix + crate_name + "-";
 
     let mut matches = ~[];
-    filesearch::search(filesearch, |path| {
+    filesearch::search(filesearch, |path| -> Option<()> {
         debug!("inspecting file %s", path.to_str());
-        let f: ~str = path.filename().get();
-        if !(f.starts_with(prefix) && f.ends_with(suffix)) {
-            debug!("skipping %s, doesn't look like %s*%s", path.to_str(),
-                   prefix, suffix);
-            option::None::<()>
-        } else {
-            debug!("%s is a candidate", path.to_str());
-            match get_metadata_section(cx.os, path) {
-              option::Some(cvec) => {
-                if !crate_matches(cvec, cx.metas, cx.hash) {
-                    debug!("skipping %s, metadata doesn't match",
-                           path.to_str());
-                    option::None::<()>
-                } else {
-                    debug!("found %s with matching metadata", path.to_str());
-                    matches.push((path.to_str(), cvec));
-                    option::None::<()>
+        match path.filename() {
+            Some(ref f) if f.starts_with(prefix) && f.ends_with(suffix) => {
+                debug!("%s is a candidate", path.to_str());
+                match get_metadata_section(cx.os, path) {
+                    Some(cvec) =>
+                        if !crate_matches(cvec, cx.metas, cx.hash) {
+                            debug!("skipping %s, metadata doesn't match",
+                                   path.to_str());
+                            None
+                        } else {
+                            debug!("found %s with matching metadata", path.to_str());
+                            matches.push((path.to_str(), cvec));
+                            None
+                        },
+                    _ => {
+                        debug!("could not load metadata for %s", path.to_str());
+                        None
+                    }
                 }
-              }
-              _ => {
-                debug!("could not load metadata for %s", path.to_str());
-                option::None::<()>
-              }
+            }
+            _ => {
+                debug!("skipping %s, doesn't look like %s*%s", path.to_str(),
+                       prefix, suffix);
+                None
+            }
+        }});
+
+    match matches.len() {
+        0 => None,
+        1 => Some(matches[0]),
+        _ => {
+            cx.diag.span_err(
+                    cx.span, fmt!("multiple matching crates for `%s`", crate_name));
+                cx.diag.handler().note("candidates:");
+                for matches.iter().advance |&(ident, data)| {
+                    cx.diag.handler().note(fmt!("path: %s", ident));
+                    let attrs = decoder::get_crate_attributes(data);
+                    note_linkage_attrs(cx.intr, cx.diag, attrs);
+                }
+                cx.diag.handler().abort_if_errors();
+                None
             }
         }
-    });
-
-    if matches.is_empty() {
-        None
-    } else if matches.len() == 1u {
-        Some(/*bad*/copy matches[0])
-    } else {
-        cx.diag.span_err(
-            cx.span, fmt!("multiple matching crates for `%s`", crate_name));
-        cx.diag.handler().note("candidates:");
-        for matches.each |&(ident, data)| {
-            cx.diag.handler().note(fmt!("path: %s", ident));
-            let attrs = decoder::get_crate_attributes(data);
-            note_linkage_attrs(cx.intr, cx.diag, attrs);
-        }
-        cx.diag.handler().abort_if_errors();
-        None
-    }
 }
 
 pub fn crate_name_from_metas(metas: &[@ast::meta_item]) -> @str {
-    let name_items = attr::find_meta_items_by_name(metas, "name");
-    match name_items.last_opt() {
-        Some(i) => {
-            match attr::get_meta_item_value_str(*i) {
-                Some(n) => n,
-                // FIXME (#2406): Probably want a warning here since the user
-                // is using the wrong type of meta item.
-                _ => fail!()
-            }
+    for metas.iter().advance |m| {
+        match m.node {
+            ast::meta_name_value(s, ref l) if s == @"name" =>
+                match l.node {
+                    ast::lit_str(s) => return s,
+                    _ => ()
+                },
+            _ => ()
         }
-        None => fail!("expected to find the crate name")
     }
+    fail!("expected to find the crate name")
 }
 
 pub fn note_linkage_attrs(intr: @ident_interner,
                           diag: @span_handler,
                           attrs: ~[ast::attribute]) {
-    for attr::find_linkage_metas(attrs).each |mi| {
-        diag.handler().note(fmt!("meta: %s",
-              pprust::meta_item_to_str(*mi,intr)));
+    let r = attr::find_linkage_metas(attrs);
+    for r.iter().advance |mi| {
+        diag.handler().note(fmt!("meta: %s", pprust::meta_item_to_str(*mi,intr)));
     }
 }
 
@@ -182,7 +179,7 @@ pub fn metadata_matches(extern_metas: &[@ast::meta_item],
     debug!("matching %u metadata requirements against %u items",
            local_metas.len(), extern_metas.len());
 
-    for local_metas.each |needed| {
+    for local_metas.iter().advance |needed| {
         if !attr::contains(extern_metas, *needed) {
             return false;
         }

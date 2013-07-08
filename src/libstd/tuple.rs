@@ -14,6 +14,8 @@
 
 use kinds::Copy;
 use vec;
+use vec::ImmutableVector;
+use iterator::IteratorUtil;
 
 pub use self::inner::*;
 
@@ -96,7 +98,7 @@ impl<'self,A:Copy,B:Copy> ExtendedTupleOps<A,B> for (&'self [A], &'self [B]) {
     fn map<C>(&self, f: &fn(a: &A, b: &B) -> C) -> ~[C] {
         match *self {
             (ref a, ref b) => {
-                vec::map_zip(*a, *b, f)
+                a.iter().zip(b.iter()).transform(|(aa, bb)| f(aa, bb)).collect()
             }
         }
     }
@@ -116,7 +118,7 @@ impl<A:Copy,B:Copy> ExtendedTupleOps<A,B> for (~[A], ~[B]) {
     fn map<C>(&self, f: &fn(a: &A, b: &B) -> C) -> ~[C] {
         match *self {
             (ref a, ref b) => {
-                vec::map_zip(*a, *b, f)
+                a.iter().zip(b.iter()).transform(|(aa, bb)| f(aa, bb)).collect()
             }
         }
     }

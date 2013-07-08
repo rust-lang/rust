@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
 
 use middle::ty::{FnSig, Vid};
 use middle::ty::IntVarValue;
@@ -18,7 +17,7 @@ use middle::typeck::infer::InferCtxt;
 use middle::typeck::infer::unify::{Redirect, Root, VarValue};
 use util::ppaux::{mt_to_str, ty_to_str, trait_ref_to_str};
 
-use core::uint;
+use std::uint;
 use syntax::ast;
 
 pub trait InferStr {

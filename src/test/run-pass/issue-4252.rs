@@ -26,7 +26,7 @@ impl X for Y {
 }
 
 impl<T: X> Drop for Z<T> {
-    fn finalize(&self) {
+    fn drop(&self) {
         self.x.call(); // Adding this statement causes an ICE.
     }
 }

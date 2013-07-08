@@ -29,19 +29,17 @@
 #[allow(missing_doc)];
 
 use cast;
+use container::Container;
 use io;
 use iterator::IteratorUtil;
 use libc;
 use libc::{c_char, c_void, c_int, size_t};
-use libc::{mode_t, FILE};
+use libc::FILE;
 use local_data;
-use option;
 use option::{Some, None};
 use os;
 use prelude::*;
 use ptr;
-use rt;
-use rt::TaskContext;
 use str;
 use uint;
 use unstable::finally::Finally;
@@ -137,7 +135,7 @@ pub mod win32 {
                     }
                 }
                 if k != 0 && done {
-                    let sub = vec::slice(buf, 0u, k as uint);
+                    let sub = buf.slice(0, k as uint);
                     res = option::Some(str::from_utf16(sub));
                 }
             }
@@ -148,7 +146,7 @@ pub mod win32 {
     pub fn as_utf16_p<T>(s: &str, f: &fn(*u16) -> T) -> T {
         let mut t = s.to_utf16();
         // Null terminate before passing on.
-        t += [0u16];
+        t.push(0u16);
         vec::as_imm_buf(t, |buf, _len| f(buf))
     }
 }
@@ -183,7 +181,6 @@ pub fn env() -> ~[(~str,~str)] {
     unsafe {
         #[cfg(windows)]
         unsafe fn get_env_pairs() -> ~[~str] {
-            use libc::types::os::arch::extra::LPTCH;
             use libc::funcs::extra::kernel32::{
                 GetEnvironmentStringsA,
                 FreeEnvironmentStringsA
@@ -226,7 +223,7 @@ pub fn env() -> ~[(~str,~str)] {
 
         fn env_convert(input: ~[~str]) -> ~[(~str, ~str)] {
             let mut pairs = ~[];
-            for input.each |p| {
+            for input.iter().advance |p| {
                 let vs: ~[&str] = p.splitn_iter('=', 1).collect();
                 debug!("splitting: len: %u",
                     vs.len());
@@ -250,10 +247,10 @@ pub fn getenv(n: &str) -> Option<~str> {
         do with_env_lock {
             let s = str::as_c_str(n, |s| libc::getenv(s));
             if ptr::null::<u8>() == cast::transmute(s) {
-                option::None::<~str>
+                None::<~str>
             } else {
                 let s = cast::transmute(s);
-                option::Some::<~str>(str::raw::from_buf(s))
+                Some::<~str>(str::raw::from_buf(s))
             }
         }
     }
@@ -542,7 +539,7 @@ pub fn homedir() -> Option<Path> {
 
     #[cfg(windows)]
     fn secondary() -> Option<Path> {
-        do getenv(~"USERPROFILE").chain |p| {
+        do getenv("USERPROFILE").chain |p| {
             if !p.is_empty() {
                 Some(Path(p))
             } else {
@@ -595,9 +592,10 @@ pub fn tmpdir() -> Path {
 
 /// Recursively walk a directory structure
 pub fn walk_dir(p: &Path, f: &fn(&Path) -> bool) -> bool {
-    list_dir(p).each(|q| {
+    let r = list_dir(p);
+    r.iter().advance(|q| {
         let path = &p.push(*q);
-        f(path) && (!path_is_dir(path) || walk_dir(path, f))
+        f(path) && (!path_is_dir(path) || walk_dir(path, |p| f(p)))
     })
 }
 
@@ -648,9 +646,7 @@ pub fn make_dir(p: &Path, mode: c_int) -> bool {
             use os::win32::as_utf16_p;
             // FIXME: turn mode into something useful? #2623
             do as_utf16_p(p.to_str()) |buf| {
-                libc::CreateDirectoryW(buf, unsafe {
-                    cast::transmute(0)
-                })
+                libc::CreateDirectoryW(buf, cast::transmute(0))
                     != (0 as libc::BOOL)
             }
         }
@@ -660,7 +656,7 @@ pub fn make_dir(p: &Path, mode: c_int) -> bool {
     fn mkdir(p: &Path, mode: c_int) -> bool {
         unsafe {
             do as_c_charp(p.to_str()) |c| {
-                libc::mkdir(c, mode as mode_t) == (0 as c_int)
+                libc::mkdir(c, mode as libc::mode_t) == (0 as c_int)
             }
         }
     }
@@ -733,9 +729,8 @@ pub fn list_dir(p: &Path) -> ~[~str] {
         }
         #[cfg(windows)]
         unsafe fn get_list(p: &Path) -> ~[~str] {
-            use libc::types::os::arch::extra::{LPCTSTR, HANDLE, BOOL};
             use libc::consts::os::extra::INVALID_HANDLE_VALUE;
-            use libc::wcslen;
+            use libc::{wcslen, free};
             use libc::funcs::extra::kernel32::{
                 FindFirstFileW,
                 FindNextFileW,
@@ -744,7 +739,8 @@ pub fn list_dir(p: &Path) -> ~[~str] {
             use os::win32::{
                 as_utf16_p
             };
-            use rt::global_heap::{malloc_raw, free_raw};
+            use rt::global_heap::malloc_raw;
+
             #[nolink]
             extern {
                 unsafe fn rust_list_dir_wfd_size() -> libc::size_t;
@@ -759,7 +755,7 @@ pub fn list_dir(p: &Path) -> ~[~str] {
                     FindFirstFileW(
                         path_ptr,
                         ::cast::transmute(wfd_ptr));
-                if find_handle as int != INVALID_HANDLE_VALUE {
+                if find_handle as libc::c_int != INVALID_HANDLE_VALUE {
                     let mut more_files = 1 as libc::c_int;
                     while more_files != 0 {
                         let fp_buf = rust_list_dir_wfd_fp_buf(wfd_ptr);
@@ -777,7 +773,7 @@ pub fn list_dir(p: &Path) -> ~[~str] {
                             ::cast::transmute(wfd_ptr));
                     }
                     FindClose(find_handle);
-                    free_raw(wfd_ptr);
+                    free(wfd_ptr)
                 }
                 strings
             }
@@ -962,7 +958,7 @@ pub fn copy_file(from: &Path, to: &Path) -> bool {
 
             // Give the new file the old file's permissions
             if do str::as_c_str(to.to_str()) |to_buf| {
-                libc::chmod(to_buf, from_mode as mode_t)
+                libc::chmod(to_buf, from_mode as libc::mode_t)
             } != 0 {
                 return false; // should be a condition...
             }
@@ -1146,7 +1142,7 @@ pub fn set_exit_status(code: int) {
 unsafe fn load_argc_and_argv(argc: c_int, argv: **c_char) -> ~[~str] {
     let mut args = ~[];
     for uint::range(0, argc as uint) |i| {
-        vec::push(&mut args, str::raw::from_c_str(*argv.offset(i)));
+        args.push(str::raw::from_c_str(*argv.offset(i)));
     }
     args
 }
@@ -1169,6 +1165,9 @@ pub fn real_args() -> ~[~str] {
 #[cfg(target_os = "android")]
 #[cfg(target_os = "freebsd")]
 pub fn real_args() -> ~[~str] {
+    use rt;
+    use rt::TaskContext;
+
     if rt::context() == TaskContext {
         match rt::args::clone() {
             Some(args) => args,
@@ -1199,8 +1198,7 @@ pub fn real_args() -> ~[~str] {
             while *ptr.offset(len) != 0 { len += 1; }
 
             // Push it onto the list.
-            vec::push(&mut args,
-                      vec::raw::buf_as_slice(ptr, len,
+            args.push(vec::raw::buf_as_slice(ptr, len,
                                              str::from_utf16));
         }
     }
@@ -1337,7 +1335,7 @@ pub fn glob(pattern: &str) -> ~[Path] {
 
 /// Returns a vector of Path objects that match the given glob pattern
 #[cfg(target_os = "win32")]
-pub fn glob(pattern: &str) -> ~[Path] {
+pub fn glob(_pattern: &str) -> ~[Path] {
     fail!("glob() is unimplemented on Windows")
 }
 
@@ -1514,7 +1512,10 @@ mod tests {
     fn test_getenv_big() {
         let mut s = ~"";
         let mut i = 0;
-        while i < 100 { s += "aaaaaaaaaa"; i += 1; }
+        while i < 100 {
+            s = s + "aaaaaaaaaa";
+            i += 1;
+        }
         let n = make_rand_name();
         setenv(n, s);
         debug!(copy s);
@@ -1537,7 +1538,7 @@ mod tests {
     fn test_env_getenv() {
         let e = env();
         assert!(e.len() > 0u);
-        for e.each |p| {
+        for e.iter().advance |p| {
             let (n, v) = copy *p;
             debug!(copy n);
             let v2 = getenv(n);
@@ -1554,10 +1555,10 @@ mod tests {
 
         let mut e = env();
         setenv(n, "VALUE");
-        assert!(!vec::contains(e, &(copy n, ~"VALUE")));
+        assert!(!e.contains(&(copy n, ~"VALUE")));
 
         e = env();
-        assert!(vec::contains(e, &(n, ~"VALUE")));
+        assert!(e.contains(&(n, ~"VALUE")));
     }
 
     #[test]
@@ -1608,8 +1609,8 @@ mod tests {
         setenv("USERPROFILE", "/home/PaloAlto");
         assert_eq!(os::homedir(), Some(Path("/home/MountainView")));
 
-        oldhome.each(|s| { setenv("HOME", *s); true });
-        olduserprofile.each(|s| { setenv("USERPROFILE", *s); true });
+        oldhome.iter().advance(|s| { setenv("HOME", *s); true });
+        olduserprofile.iter().advance(|s| { setenv("USERPROFILE", *s); true });
     }
 
     #[test]
@@ -1629,7 +1630,7 @@ mod tests {
         // Just assuming that we've got some contents in the current directory
         assert!(dirs.len() > 0u);
 
-        for dirs.each |dir| {
+        for dirs.iter().advance |dir| {
             debug!(copy *dir);
         }
     }
@@ -1725,5 +1726,5 @@ mod tests {
         assert!(!os::mkdir_recursive(&path, (S_IRUSR | S_IWUSR | S_IXUSR) as i32));
     }
 
-    // More recursive_mkdir tests are in std::tempfile
+    // More recursive_mkdir tests are in extra::tempfile
 }

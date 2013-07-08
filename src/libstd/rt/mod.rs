@@ -209,7 +209,6 @@ pub fn init(argc: int, argv: **u8, crate_map: *u8) {
 /// One-time runtime cleanup.
 pub fn cleanup() {
     args::cleanup();
-    global_heap::cleanup();
 }
 
 /// Execute the main function in a scheduler.

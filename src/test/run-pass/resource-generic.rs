@@ -18,7 +18,7 @@ struct finish<T> {
 
 #[unsafe_destructor]
 impl<T:Copy> Drop for finish<T> {
-    fn finalize(&self) {
+    fn drop(&self) {
         unsafe {
             (self.arg.fin)(copy self.arg.val);
         }

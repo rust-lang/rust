@@ -121,13 +121,13 @@ impl<T> Option<T> {
 
     /// Returns true if the option equals `none`
     #[inline]
-    pub fn is_none(&const self) -> bool {
+    pub fn is_none(&self) -> bool {
         match *self { None => true, Some(_) => false }
     }
 
     /// Returns true if the option contains some value
     #[inline]
-    pub fn is_some(&const self) -> bool { !self.is_none() }
+    pub fn is_some(&self) -> bool { !self.is_none() }
 
     /// Update an optional value by optionally running its content through a
     /// function that returns an option.
@@ -155,6 +155,15 @@ impl<T> Option<T> {
                             -> Option<U> {
         match *self {
             Some(ref x) => f(x),
+            None => None
+        }
+    }
+
+    /// Filters an optional value using given function.
+    #[inline(always)]
+    pub fn filtered<'a>(self, f: &fn(t: &'a T) -> bool) -> Option<T> {
+        match self {
+            Some(x) => if(f(&x)) {Some(x)} else {None},
             None => None
         }
     }
@@ -407,7 +416,7 @@ fn test_unwrap_resource() {
 
     #[unsafe_destructor]
     impl ::ops::Drop for R {
-       fn finalize(&self) { *(self.i) += 1; }
+       fn drop(&self) { *(self.i) += 1; }
     }
 
     fn R(i: @mut int) -> R {
@@ -438,7 +447,7 @@ fn test_option_dance() {
 }
 #[test] #[should_fail] #[ignore(cfg(windows))]
 fn test_option_too_much_dance() {
-    let mut y = Some(util::NonCopyable::new());
+    let mut y = Some(util::NonCopyable);
     let _y2 = y.swap_unwrap();
     let _y3 = y.swap_unwrap();
 }
@@ -463,4 +472,12 @@ fn test_get_or_zero() {
     assert_eq!(some_stuff.get_or_zero(), 42);
     let no_stuff: Option<int> = None;
     assert_eq!(no_stuff.get_or_zero(), 0);
+}
+
+#[test]
+fn test_filtered() {
+    let some_stuff = Some(42);
+    let modified_stuff = some_stuff.filtered(|&x| {x < 10});
+    assert_eq!(some_stuff.get(), 42);
+    assert!(modified_stuff.is_none());
 }

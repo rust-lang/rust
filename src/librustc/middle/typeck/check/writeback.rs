@@ -12,7 +12,6 @@
 // unresolved type variables and replaces "ty_var" types with their
 // substitutions.
 
-use core::prelude::*;
 
 use middle::pat_util;
 use middle::ty;
@@ -20,7 +19,8 @@ use middle::typeck::check::{FnCtxt, SelfInfo};
 use middle::typeck::infer::{force_all, resolve_all, resolve_region};
 use middle::typeck::infer::resolve_type;
 use middle::typeck::infer;
-use middle::typeck::{vtable_origin, vtable_static, vtable_param};
+use middle::typeck::{vtable_res, vtable_origin};
+use middle::typeck::{vtable_static, vtable_param, vtable_self};
 use middle::typeck::method_map_entry;
 use middle::typeck::write_substs_to_tcx;
 use middle::typeck::write_ty_to_tcx;
@@ -84,12 +84,17 @@ fn resolve_vtable_map_entry(fcx: @mut FnCtxt, sp: span, id: ast::node_id) {
     match fcx.inh.vtable_map.find(&id) {
         None => {}
         Some(origins) => {
-            let r_origins = @origins.map(|o| resolve_origin(fcx, sp, o));
+            let r_origins = resolve_origins(fcx, sp, *origins);
             let vtable_map = fcx.ccx.vtable_map;
             vtable_map.insert(id, r_origins);
             debug!("writeback::resolve_vtable_map_entry(id=%d, vtables=%?)",
                    id, r_origins.repr(fcx.tcx()));
         }
+    }
+
+    fn resolve_origins(fcx: @mut FnCtxt, sp: span,
+                       vtbls: vtable_res) -> vtable_res {
+        @vtbls.map(|os| @os.map(|o| resolve_origin(fcx, sp, o)))
     }
 
     fn resolve_origin(fcx: @mut FnCtxt,
@@ -98,11 +103,14 @@ fn resolve_vtable_map_entry(fcx: @mut FnCtxt, sp: span, id: ast::node_id) {
         match origin {
             &vtable_static(def_id, ref tys, origins) => {
                 let r_tys = resolve_type_vars_in_types(fcx, sp, *tys);
-                let r_origins = @origins.map(|o| resolve_origin(fcx, sp, o));
+                let r_origins = resolve_origins(fcx, sp, origins);
                 vtable_static(def_id, r_tys, r_origins)
             }
             &vtable_param(n, b) => {
                 vtable_param(n, b)
+            }
+            &vtable_self(def_id) => {
+                vtable_self(def_id)
             }
         }
     }
@@ -175,7 +183,7 @@ fn resolve_type_vars_for_node(wbcx: @mut WbCtxt, sp: span, id: ast::node_id)
         write_ty_to_tcx(tcx, id, t);
         for fcx.opt_node_ty_substs(id) |substs| {
           let mut new_tps = ~[];
-          for substs.tps.each |subst| {
+          for substs.tps.iter().advance |subst| {
               match resolve_type_vars_in_type(fcx, sp, *subst) {
                 Some(t) => new_tps.push(t),
                 None => { wbcx.success = false; return None; }
@@ -240,7 +248,7 @@ fn visit_expr(e: @ast::expr, (wbcx, v): (@mut WbCtxt, wb_vt)) {
 
     match e.node {
         ast::expr_fn_block(ref decl, _) => {
-            for decl.inputs.each |input| {
+            for decl.inputs.iter().advance |input| {
                 let _ = resolve_type_vars_for_node(wbcx, e.span, input.id);
             }
         }
@@ -341,7 +349,7 @@ pub fn resolve_type_vars_in_fn(fcx: @mut FnCtxt,
                                    self_info.span,
                                    self_info.self_id);
     }
-    for decl.inputs.each |arg| {
+    for decl.inputs.iter().advance |arg| {
         do pat_util::pat_bindings(fcx.tcx().def_map, arg.pat)
                 |_bm, pat_id, span, _path| {
             resolve_type_vars_for_node(wbcx, span, pat_id);

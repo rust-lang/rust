@@ -14,7 +14,7 @@ struct socket {
 }
 
 impl Drop for socket {
-    fn finalize(&self) {}
+    fn drop(&self) {}
 }
 
 impl socket {

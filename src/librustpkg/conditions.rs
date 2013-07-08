@@ -10,7 +10,7 @@
 
 // Useful conditions
 
-pub use core::path::Path;
+pub use std::path::Path;
 pub use package_id::PkgId;
 
 condition! {

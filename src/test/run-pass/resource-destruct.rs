@@ -14,7 +14,7 @@ struct shrinky_pointer {
 
 #[unsafe_destructor]
 impl Drop for shrinky_pointer {
-    fn finalize(&self) {
+    fn drop(&self) {
         unsafe {
             error!(~"Hello!"); **(self.i) -= 1;
         }

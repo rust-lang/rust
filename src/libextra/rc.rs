@@ -13,21 +13,20 @@
 /** Task-local reference counted smart pointers
 
 Task-local reference counted smart pointers are an alternative to managed boxes with deterministic
-destruction. They are restricted to containing types that are either `Owned` or `Const` (or both) to
+destruction. They are restricted to containing types that are either `Send` or `Freeze` (or both) to
 prevent cycles.
 
-Neither `Rc<T>` or `RcMut<T>` is ever `Owned` and `RcMut<T>` is never `Const`. If `T` is `Const`, a
+Neither `Rc<T>` or `RcMut<T>` is ever `Send` and `RcMut<T>` is never `Freeze`. If `T` is `Freeze`, a
 cycle cannot be created with `Rc<T>` because there is no way to modify it after creation.
 
 */
 
-use core::prelude::*;
 
-use core::cast;
-use core::libc::{c_void, size_t, malloc, free};
-use core::ptr;
-use core::sys;
-use core::unstable::intrinsics;
+use std::cast;
+use std::libc::{c_void, size_t, malloc, free};
+use std::ptr;
+use std::sys;
+use std::unstable::intrinsics;
 
 struct RcBox<T> {
     value: T,
@@ -35,7 +34,8 @@ struct RcBox<T> {
 }
 
 /// Immutable reference counted pointer type
-#[non_owned]
+#[unsafe_no_drop_flag]
+#[no_send]
 pub struct Rc<T> {
     priv ptr: *mut RcBox<T>,
 }
@@ -50,12 +50,12 @@ impl<T> Rc<T> {
 }
 
 // FIXME: #6516: should be a static method
-pub fn rc_from_owned<T: Owned>(value: T) -> Rc<T> {
+pub fn rc_from_owned<T: Send>(value: T) -> Rc<T> {
     unsafe { Rc::new(value) }
 }
 
 // FIXME: #6516: should be a static method
-pub fn rc_from_const<T: Const>(value: T) -> Rc<T> {
+pub fn rc_from_const<T: Freeze>(value: T) -> Rc<T> {
     unsafe { Rc::new(value) }
 }
 
@@ -68,12 +68,14 @@ impl<T> Rc<T> {
 
 #[unsafe_destructor]
 impl<T> Drop for Rc<T> {
-    fn finalize(&self) {
+    fn drop(&self) {
         unsafe {
-            (*self.ptr).count -= 1;
-            if (*self.ptr).count == 0 {
-                ptr::replace_ptr(self.ptr, intrinsics::uninit());
-                free(self.ptr as *c_void)
+            if self.ptr.is_not_null() {
+                (*self.ptr).count -= 1;
+                if (*self.ptr).count == 0 {
+                    ptr::replace_ptr(self.ptr, intrinsics::uninit());
+                    free(self.ptr as *c_void)
+                }
             }
         }
     }
@@ -101,7 +103,7 @@ impl<T: DeepClone> DeepClone for Rc<T> {
 #[cfg(test)]
 mod test_rc {
     use super::*;
-    use core::cell::Cell;
+    use std::cell::Cell;
 
     #[test]
     fn test_clone() {
@@ -165,7 +167,10 @@ struct RcMutBox<T> {
 
 /// Mutable reference counted pointer type
 #[non_owned]
-#[mutable]
+#[no_send]
+#[mutable] // XXX remove after snap
+#[no_freeze]
+#[unsafe_no_drop_flag]
 pub struct RcMut<T> {
     priv ptr: *mut RcMutBox<T>,
 }
@@ -180,12 +185,12 @@ impl<T> RcMut<T> {
 }
 
 // FIXME: #6516: should be a static method
-pub fn rc_mut_from_owned<T: Owned>(value: T) -> RcMut<T> {
+pub fn rc_mut_from_owned<T: Send>(value: T) -> RcMut<T> {
     unsafe { RcMut::new(value) }
 }
 
 // FIXME: #6516: should be a static method
-pub fn rc_mut_from_const<T: Const>(value: T) -> RcMut<T> {
+pub fn rc_mut_from_const<T: Freeze>(value: T) -> RcMut<T> {
     unsafe { RcMut::new(value) }
 }
 
@@ -218,12 +223,14 @@ impl<T> RcMut<T> {
 
 #[unsafe_destructor]
 impl<T> Drop for RcMut<T> {
-    fn finalize(&self) {
+    fn drop(&self) {
         unsafe {
-            (*self.ptr).count -= 1;
-            if (*self.ptr).count == 0 {
-                ptr::replace_ptr(self.ptr, uninit());
-                free(self.ptr as *c_void)
+            if self.ptr.is_not_null() {
+                (*self.ptr).count -= 1;
+                if (*self.ptr).count == 0 {
+                    ptr::replace_ptr(self.ptr, uninit());
+                    free(self.ptr as *c_void)
+                }
             }
         }
     }

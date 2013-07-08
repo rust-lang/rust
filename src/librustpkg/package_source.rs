@@ -10,9 +10,9 @@
 
 use target::*;
 use package_id::PkgId;
-use core::path::Path;
-use core::option::*;
-use core::{os, run, str, vec};
+use std::path::Path;
+use std::option::*;
+use std::{os, run, str};
 use context::*;
 use crate::Crate;
 use messages::*;
@@ -60,9 +60,9 @@ impl PkgSrc {
         let dir;
         let dirs = pkgid_src_in_workspace(&self.id, &self.root);
         debug!("Checking dirs: %?", dirs);
-        let path = dirs.find(|d| os::path_exists(d));
+        let path = dirs.iter().find_(|&d| os::path_exists(d));
         match path {
-            Some(d) => dir = d,
+            Some(d) => dir = copy *d,
             None => dir = match self.fetch_git() {
                 None => cond.raise((copy self.id, ~"supplied path for package dir does not \
                                       exist, and couldn't interpret it as a URL fragment")),
@@ -146,8 +146,7 @@ impl PkgSrc {
     fn push_crate(cs: &mut ~[Crate], prefix: uint, p: &Path) {
         assert!(p.components.len() > prefix);
         let mut sub = Path("");
-        for vec::slice(p.components, prefix,
-                       p.components.len()).each |c| {
+        for p.components.slice(prefix, p.components.len()).iter().advance |c| {
             sub = sub.push(*c);
         }
         debug!("found crate %s", sub.to_str());
@@ -204,7 +203,7 @@ impl PkgSrc {
                     crates: &[Crate],
                     cfgs: &[~str],
                     what: OutputType) {
-        for crates.each |&crate| {
+        for crates.iter().advance |&crate| {
             let path = &src_dir.push_rel(&crate.file).normalize();
             note(fmt!("build_crates: compiling %s", path.to_str()));
             note(fmt!("build_crates: destination dir is %s", dst_dir.to_str()));

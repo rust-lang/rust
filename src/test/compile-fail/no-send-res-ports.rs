@@ -20,7 +20,7 @@ fn main() {
 
     #[unsafe_destructor]
     impl Drop for foo {
-        fn finalize(&self) {}
+        fn drop(&self) {}
     }
 
     fn foo(x: Port<()>) -> foo {
@@ -32,7 +32,7 @@ fn main() {
     let x = Cell::new(foo(Port(@())));
 
     do task::spawn {
-        let y = x.take();   //~ ERROR value has non-owned type
+        let y = x.take();   //~ ERROR does not fulfill `Send`
         error!(y);
     }
 }

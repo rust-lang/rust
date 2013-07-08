@@ -44,19 +44,19 @@ fn test_heap_add() {
 
 fn test_append() {
     let mut s = ~"";
-    s += ~"a";
+    s.push_str(~"a");
     assert_eq!(s, ~"a");
 
     let mut s = ~"a";
-    s += ~"b";
+    s.push_str(~"b");
     debug!(s.clone());
     assert_eq!(s, ~"ab");
 
     let mut s = ~"c";
-    s += ~"offee";
+    s.push_str(~"offee");
     assert!(s == ~"coffee");
 
-    s += ~"&tea";
+    s.push_str(~"&tea");
     assert!(s == ~"coffee&tea");
 }
 

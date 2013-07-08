@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
 
 use middle::freevars::freevar_entry;
 use middle::freevars;
@@ -17,7 +16,6 @@ use middle::typeck;
 use util::ppaux::{Repr, ty_to_str};
 use util::ppaux::UserString;
 
-use core::vec;
 use syntax::ast::*;
 use syntax::attr::attrs_contains_name;
 use syntax::codemap::span;
@@ -32,21 +30,21 @@ use syntax::{visit, ast_util};
 //
 //  send: Things that can be sent on channels or included in spawned closures.
 //  copy: Things that can be copied.
-//  const: Things thare are deeply immutable. They are guaranteed never to
+//  freeze: Things thare are deeply immutable. They are guaranteed never to
 //    change, and can be safely shared without copying between tasks.
-//  owned: Things that do not contain borrowed pointers.
+//  'static: Things that do not contain borrowed pointers.
 //
 // Send includes scalar types as well as classes and unique types containing
 // only sendable types.
 //
 // Copy includes boxes, closure and unique types containing copyable types.
 //
-// Const include scalar types, things without non-const fields, and pointers
-// to const things.
+// Freeze include scalar types, things without non-const fields, and pointers
+// to freezable things.
 //
 // This pass ensures that type parameters are only instantiated with types
 // whose kinds are equal or less general than the way the type parameter was
-// annotated (with the `send`, `copy` or `const` keyword).
+// annotated (with the `Send`, `Copy` or `Freeze` bound).
 //
 // It also verifies that noncopyable kinds are not copied. Sendability is not
 // applied, since none of our language primitives send. Instead, the sending
@@ -63,7 +61,7 @@ pub struct Context {
 
 pub fn check_crate(tcx: ty::ctxt,
                    method_map: typeck::method_map,
-                   crate: @crate) {
+                   crate: &crate) {
     let ctx = Context {
         tcx: tcx,
         method_map: method_map,
@@ -81,8 +79,6 @@ pub fn check_crate(tcx: ty::ctxt,
     tcx.sess.abort_if_errors();
 }
 
-type check_fn = @fn(Context, @freevar_entry);
-
 fn check_struct_safe_for_destructor(cx: Context,
                                     span: span,
                                     struct_did: def_id) {
@@ -93,10 +89,10 @@ fn check_struct_safe_for_destructor(cx: Context,
             self_ty: None,
             tps: ~[]
         });
-        if !ty::type_is_owned(cx.tcx, struct_ty) {
+        if !ty::type_is_sendable(cx.tcx, struct_ty) {
             cx.tcx.sess.span_err(span,
-                                 "cannot implement a destructor on a struct \
-                                  that is not Owned");
+                                 "cannot implement a destructor on a \
+                                  structure that does not satisfy Send");
             cx.tcx.sess.span_note(span,
                                   "use \"#[unsafe_destructor]\" on the \
                                    implementation to force the compiler to \
@@ -104,7 +100,7 @@ fn check_struct_safe_for_destructor(cx: Context,
         }
     } else {
         cx.tcx.sess.span_err(span,
-                             "cannot implement a destructor on a struct \
+                             "cannot implement a destructor on a structure \
                               with type parameters");
         cx.tcx.sess.span_note(span,
                               "use \"#[unsafe_destructor]\" on the \
@@ -129,7 +125,8 @@ fn check_item(item: @item, (cx, visitor): (Context, visit::vt<Context>)) {
                         if cx.tcx.lang_items.drop_trait() == trait_def_id {
                             // Yes, it's a destructor.
                             match self_type.node {
-                                ty_path(_, path_node_id) => {
+                                ty_path(_, bounds, path_node_id) => {
+                                    assert!(bounds.is_none());
                                     let struct_def = cx.tcx.def_map.get_copy(
                                         &path_node_id);
                                     let struct_did =
@@ -162,30 +159,40 @@ fn check_item(item: @item, (cx, visitor): (Context, visit::vt<Context>)) {
 // Yields the appropriate function to check the kind of closed over
 // variables. `id` is the node_id for some expression that creates the
 // closure.
-fn with_appropriate_checker(cx: Context, id: node_id, b: &fn(check_fn)) {
-    fn check_for_uniq(cx: Context, fv: @freevar_entry) {
+fn with_appropriate_checker(cx: Context, id: node_id,
+                            b: &fn(checker: &fn(Context, @freevar_entry))) {
+    fn check_for_uniq(cx: Context, fv: &freevar_entry, bounds: ty::BuiltinBounds) {
         // all captured data must be owned, regardless of whether it is
         // moved in or copied in.
         let id = ast_util::def_id_of_def(fv.def).node;
         let var_t = ty::node_id_to_type(cx.tcx, id);
-        if !check_owned(cx, var_t, fv.span) { return; }
 
         // check that only immutable variables are implicitly copied in
         check_imm_free_var(cx, fv.def, fv.span);
+
+        check_freevar_bounds(cx, fv.span, var_t, bounds, None);
     }
 
-    fn check_for_box(cx: Context, fv: @freevar_entry) {
+    fn check_for_box(cx: Context, fv: &freevar_entry, bounds: ty::BuiltinBounds) {
         // all captured data must be owned
         let id = ast_util::def_id_of_def(fv.def).node;
         let var_t = ty::node_id_to_type(cx.tcx, id);
-        if !check_durable(cx.tcx, var_t, fv.span) { return; }
 
         // check that only immutable variables are implicitly copied in
         check_imm_free_var(cx, fv.def, fv.span);
+
+        check_freevar_bounds(cx, fv.span, var_t, bounds, None);
     }
 
-    fn check_for_block(_cx: Context, _fv: @freevar_entry) {
-        // no restrictions
+    fn check_for_block(cx: Context, fv: &freevar_entry,
+                       bounds: ty::BuiltinBounds, region: ty::Region) {
+        let id = ast_util::def_id_of_def(fv.def).node;
+        let var_t = ty::node_id_to_type(cx.tcx, id);
+        // FIXME(#3569): Figure out whether the implicit borrow is actually
+        // mutable. Currently we assume all upvars are referenced mutably.
+        let implicit_borrowed_type = ty::mk_mut_rptr(cx.tcx, region, var_t);
+        check_freevar_bounds(cx, fv.span, implicit_borrowed_type,
+                             bounds, Some(var_t));
     }
 
     fn check_for_bare(cx: Context, fv: @freevar_entry) {
@@ -196,14 +203,15 @@ fn with_appropriate_checker(cx: Context, id: node_id, b: &fn(check_fn)) {
 
     let fty = ty::node_id_to_type(cx.tcx, id);
     match ty::get(fty).sty {
-        ty::ty_closure(ty::ClosureTy {sigil: OwnedSigil, _}) => {
-            b(check_for_uniq)
+        ty::ty_closure(ty::ClosureTy {sigil: OwnedSigil, bounds: bounds, _}) => {
+            b(|cx, fv| check_for_uniq(cx, fv, bounds))
         }
-        ty::ty_closure(ty::ClosureTy {sigil: ManagedSigil, _}) => {
-            b(check_for_box)
+        ty::ty_closure(ty::ClosureTy {sigil: ManagedSigil, bounds: bounds, _}) => {
+            b(|cx, fv| check_for_box(cx, fv, bounds))
         }
-        ty::ty_closure(ty::ClosureTy {sigil: BorrowedSigil, _}) => {
-            b(check_for_block)
+        ty::ty_closure(ty::ClosureTy {sigil: BorrowedSigil, bounds: bounds,
+                                      region: region, _}) => {
+            b(|cx, fv| check_for_block(cx, fv, bounds, region))
         }
         ty::ty_bare_fn(_) => {
             b(check_for_bare)
@@ -228,7 +236,8 @@ fn check_fn(
 
     // Check kinds on free variables:
     do with_appropriate_checker(cx, fn_id) |chk| {
-        for vec::each(*freevars::get_freevars(cx.tcx, fn_id)) |fv| {
+        let r = freevars::get_freevars(cx.tcx, fn_id);
+        for r.iter().advance |fv| {
             chk(cx, *fv);
         }
     }
@@ -271,7 +280,7 @@ pub fn check_expr(e: @expr, (cx, v): (Context, visit::vt<Context>)) {
                       type_param_defs.repr(cx.tcx));
             }
             for ts.iter().zip(type_param_defs.iter()).advance |(&ty, type_param_def)| {
-                check_bounds(cx, type_parameter_id, e.span, ty, type_param_def)
+                check_typaram_bounds(cx, type_parameter_id, e.span, ty, type_param_def)
             }
         }
     }
@@ -279,7 +288,13 @@ pub fn check_expr(e: @expr, (cx, v): (Context, visit::vt<Context>)) {
     match e.node {
         expr_cast(source, _) => {
             check_cast_for_escaping_regions(cx, source, e);
-            check_kind_bounds_of_cast(cx, source, e);
+            match ty::get(ty::expr_ty(cx.tcx, e)).sty {
+                ty::ty_trait(_, _, _, _, bounds) => {
+                    let source_ty = ty::expr_ty(cx.tcx, source);
+                    check_trait_cast_bounds(cx, e.span, source_ty, bounds)
+                }
+                _ => { }
+            }
         }
         expr_copy(expr) => {
             // Note: This is the only place where we must check whether the
@@ -307,14 +322,14 @@ pub fn check_expr(e: @expr, (cx, v): (Context, visit::vt<Context>)) {
 
 fn check_ty(aty: @Ty, (cx, v): (Context, visit::vt<Context>)) {
     match aty.node {
-      ty_path(_, id) => {
+      ty_path(_, _, id) => {
           let r = cx.tcx.node_type_substs.find(&id);
           for r.iter().advance |ts| {
               let did = ast_util::def_id_of_def(cx.tcx.def_map.get_copy(&id));
               let type_param_defs =
                   ty::lookup_item_type(cx.tcx, did).generics.type_param_defs;
               for ts.iter().zip(type_param_defs.iter()).advance |(&ty, type_param_def)| {
-                  check_bounds(cx, aty.id, aty.span, ty, type_param_def)
+                  check_typaram_bounds(cx, aty.id, aty.span, ty, type_param_def)
               }
           }
       }
@@ -323,26 +338,69 @@ fn check_ty(aty: @Ty, (cx, v): (Context, visit::vt<Context>)) {
     visit::visit_ty(aty, (cx, v));
 }
 
-pub fn check_bounds(cx: Context,
-                    _type_parameter_id: node_id,
-                    sp: span,
-                    ty: ty::t,
-                    type_param_def: &ty::TypeParameterDef)
+// Calls "any_missing" if any bounds were missing.
+pub fn check_builtin_bounds(cx: Context, ty: ty::t, bounds: ty::BuiltinBounds,
+                            any_missing: &fn(ty::BuiltinBounds))
 {
     let kind = ty::type_contents(cx.tcx, ty);
     let mut missing = ty::EmptyBuiltinBounds();
-    for type_param_def.bounds.builtin_bounds.each |bound| {
+    for bounds.each |bound| {
         if !kind.meets_bound(cx.tcx, bound) {
             missing.add(bound);
         }
     }
     if !missing.is_empty() {
+        any_missing(missing);
+    }
+}
+
+pub fn check_typaram_bounds(cx: Context,
+                    _type_parameter_id: node_id,
+                    sp: span,
+                    ty: ty::t,
+                    type_param_def: &ty::TypeParameterDef)
+{
+    do check_builtin_bounds(cx, ty, type_param_def.bounds.builtin_bounds) |missing| {
         cx.tcx.sess.span_err(
             sp,
             fmt!("instantiating a type parameter with an incompatible type \
                   `%s`, which does not fulfill `%s`",
                  ty_to_str(cx.tcx, ty),
                  missing.user_string(cx.tcx)));
+    }
+}
+
+pub fn check_freevar_bounds(cx: Context, sp: span, ty: ty::t,
+                            bounds: ty::BuiltinBounds, referenced_ty: Option<ty::t>)
+{
+    do check_builtin_bounds(cx, ty, bounds) |missing| {
+        // Will be Some if the freevar is implicitly borrowed (stack closure).
+        // Emit a less mysterious error message in this case.
+        match referenced_ty {
+            Some(rty) => cx.tcx.sess.span_err(sp,
+                fmt!("cannot implicitly borrow variable of type `%s` in a bounded \
+                      stack closure (implicit reference does not fulfill `%s`)",
+                     ty_to_str(cx.tcx, rty), missing.user_string(cx.tcx))),
+            None => cx.tcx.sess.span_err(sp,
+                fmt!("cannot capture variable of type `%s`, which does \
+                      not fulfill `%s`, in a bounded closure",
+                     ty_to_str(cx.tcx, ty), missing.user_string(cx.tcx))),
+        }
+        cx.tcx.sess.span_note(
+            sp,
+            fmt!("this closure's environment must satisfy `%s`",
+                 bounds.user_string(cx.tcx)));
+    }
+}
+
+pub fn check_trait_cast_bounds(cx: Context, sp: span, ty: ty::t,
+                               bounds: ty::BuiltinBounds) {
+    do check_builtin_bounds(cx, ty, bounds) |missing| {
+        cx.tcx.sess.span_err(sp,
+            fmt!("cannot pack type `%s`, which does not fulfill \
+                  `%s`, as a trait bounded by %s",
+                 ty_to_str(cx.tcx, ty), missing.user_string(cx.tcx),
+                 bounds.user_string(cx.tcx)));
     }
 }
 
@@ -392,10 +450,10 @@ fn check_copy(cx: Context, ty: ty::t, sp: span, reason: &str) {
     }
 }
 
-pub fn check_owned(cx: Context, ty: ty::t, sp: span) -> bool {
-    if !ty::type_is_owned(cx.tcx, ty) {
+pub fn check_send(cx: Context, ty: ty::t, sp: span) -> bool {
+    if !ty::type_is_sendable(cx.tcx, ty) {
         cx.tcx.sess.span_err(
-            sp, fmt!("value has non-owned type `%s`",
+            sp, fmt!("value has non-sendable type `%s`",
                      ty_to_str(cx.tcx, ty)));
         false
     } else {
@@ -443,14 +501,14 @@ pub fn check_durable(tcx: ty::ctxt, ty: ty::t, sp: span) -> bool {
 /// `deque<T>`, then whatever borrowed ptrs may appear in `T` also
 /// appear in `deque<T>`.
 ///
-/// (3) The type parameter is owned (and therefore does not contain
+/// (3) The type parameter is sendable (and therefore does not contain
 /// borrowed ptrs).
 ///
 /// FIXME(#5723)---This code should probably move into regionck.
 pub fn check_cast_for_escaping_regions(
     cx: Context,
-    source: @expr,
-    target: @expr)
+    source: &expr,
+    target: &expr)
 {
     // Determine what type we are casting to; if it is not an trait, then no
     // worries.
@@ -477,12 +535,12 @@ pub fn check_cast_for_escaping_regions(
     // Check, based on the region associated with the trait, whether it can
     // possibly escape the enclosing fn item (note that all type parameters
     // must have been declared on the enclosing fn item).
-    if target_regions.any(|r| is_re_scope(*r)) {
+    if target_regions.iter().any_(|r| is_re_scope(*r)) {
         return; /* case (1) */
     }
 
     // Assuming the trait instance can escape, then ensure that each parameter
-    // either appears in the trait type or is owned.
+    // either appears in the trait type or is sendable.
     let target_params = ty::param_tys_in_type(target_ty);
     let source_ty = ty::expr_ty(cx.tcx, source);
     ty::walk_regions_and_ty(
@@ -492,7 +550,7 @@ pub fn check_cast_for_escaping_regions(
         |_r| {
             // FIXME(#5723) --- turn this check on once &Objects are usable
             //
-            // if !target_regions.any(|t_r| is_subregion_of(cx, *t_r, r)) {
+            // if !target_regions.iter().any_(|t_r| is_subregion_of(cx, *t_r, r)) {
             //     cx.tcx.sess.span_err(
             //         source.span,
             //         fmt!("source contains borrowed pointer with lifetime \
@@ -506,7 +564,7 @@ pub fn check_cast_for_escaping_regions(
         |ty| {
             match ty::get(ty).sty {
                 ty::ty_param(source_param) => {
-                    if target_params.contains(&source_param) {
+                    if target_params.iter().any_(|x| x == &source_param) {
                         /* case (2) */
                     } else {
                         check_durable(cx.tcx, ty, source.span); /* case (3) */
@@ -529,18 +587,3 @@ pub fn check_cast_for_escaping_regions(
     }
 }
 
-/// Ensures that values placed into a ~Trait are copyable and sendable.
-pub fn check_kind_bounds_of_cast(cx: Context, source: @expr, target: @expr) {
-    let target_ty = ty::expr_ty(cx.tcx, target);
-    match ty::get(target_ty).sty {
-        ty::ty_trait(_, _, ty::UniqTraitStore, _) => {
-            let source_ty = ty::expr_ty(cx.tcx, source);
-            if !ty::type_is_owned(cx.tcx, source_ty) {
-                cx.tcx.sess.span_err(
-                    target.span,
-                    "uniquely-owned trait objects must be sendable");
-            }
-        }
-        _ => {} // Nothing to do.
-    }
-}

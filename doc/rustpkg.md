@@ -95,11 +95,21 @@ When building a package that is in a `git` repository,
 When building a package that is not under version control,
 or that has no tags, `rustpkg` assumes the intended version is 0.1.
 
+# Dependencies
+
+rustpkg infers dependencies from `extern mod` directives.
+Thus, there should be no need to pass a `-L` flag to rustpkg to tell it where to find a library.
+(In the future, it will also be possible to write an `extern mod` directive referring to a remote package.)
+
 # Custom build scripts
 
 A file called `pkg.rs` at the root level in a workspace is called a *package script*.
 If a package script exists, rustpkg executes it to build the package
 rather than inferring crates as described previously.
+
+Inside `pkg.rs`, it's possible to call back into rustpkg to finish up the build.
+`rustpkg::api` contains functions to build, install, or clean libraries and executables
+in the way rustpkg normally would without custom build logic.
 
 # Command reference
 

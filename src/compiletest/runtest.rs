@@ -226,8 +226,8 @@ actual:\n\
                          ~"-L", config.build_base.to_str(),
                          ~"-L",
                          aux_output_dir_name(config, testfile).to_str()];
-        args += split_maybe_args(&config.rustcflags);
-        args += split_maybe_args(&props.compile_flags);
+        args.push_all_move(split_maybe_args(&config.rustcflags));
+        args.push_all_move(split_maybe_args(&props.compile_flags));
         return ProcArgs {prog: config.rustc_path.to_str(), args: args};
     }
 }
@@ -321,13 +321,12 @@ fn check_error_patterns(props: &TestProps,
     if done { return; }
 
     let missing_patterns =
-        vec::slice(props.error_patterns, next_err_idx,
-                   props.error_patterns.len());
+        props.error_patterns.slice(next_err_idx, props.error_patterns.len());
     if missing_patterns.len() == 1u {
         fatal_ProcRes(fmt!("error pattern '%s' not found!",
                            missing_patterns[0]), ProcRes);
     } else {
-        for missing_patterns.each |pattern| {
+        for missing_patterns.iter().advance |pattern| {
             error(fmt!("error pattern '%s' not found!", *pattern));
         }
         fatal_ProcRes(~"multiple error patterns not found", ProcRes);
@@ -346,9 +345,9 @@ fn check_expected_errors(expected_errors: ~[errors::ExpectedError],
         fatal(~"process did not return an error status");
     }
 
-    let prefixes = vec::map(expected_errors, |ee| {
+    let prefixes = expected_errors.iter().transform(|ee| {
         fmt!("%s:%u:", testfile.to_str(), ee.line)
-    });
+    }).collect::<~[~str]>();
 
     // Scan and extract our error/warning messages,
     // which look like:
@@ -358,7 +357,7 @@ fn check_expected_errors(expected_errors: ~[errors::ExpectedError],
     // is the ending point, and * represents ANSI color codes.
     for ProcRes.stderr.line_iter().advance |line| {
         let mut was_expected = false;
-        for vec::eachi(expected_errors) |i, ee| {
+        for expected_errors.iter().enumerate().advance |(i, ee)| {
             if !found_flags[i] {
                 debug!("prefix=%s ee.kind=%s ee.msg=%s line=%s",
                        prefixes[i], ee.kind, ee.msg, line);
@@ -529,7 +528,7 @@ fn compose_and_run_compiler(
     let extra_link_args = ~[~"-L",
                             aux_output_dir_name(config, testfile).to_str()];
 
-    for vec::each(props.aux_builds) |rel_ab| {
+    for props.aux_builds.iter().advance |rel_ab| {
         let abs_ab = config.aux_base.push_rel(&Path(*rel_ab));
         let aux_args =
             make_compile_args(config, props, ~[~"--lib"] + extra_link_args,
@@ -582,8 +581,8 @@ fn make_compile_args(config: &config, props: &TestProps, extras: ~[~str],
                      ~"-o", xform(config, testfile).to_str(),
                      ~"-L", config.build_base.to_str()]
         + extras;
-    args += split_maybe_args(&config.rustcflags);
-    args += split_maybe_args(&props.compile_flags);
+    args.push_all_move(split_maybe_args(&config.rustcflags));
+    args.push_all_move(split_maybe_args(&props.compile_flags));
     return ProcArgs {prog: config.rustc_path.to_str(), args: args};
 }
 
@@ -757,7 +756,7 @@ fn _arm_exec_compiled_test(config: &config, props: &TestProps,
     runargs.push(fmt!("%s", config.adb_test_dir));
     runargs.push(fmt!("%s", prog_short));
 
-    for args.args.each |tv| {
+    for args.args.iter().advance |tv| {
         runargs.push(tv.to_owned());
     }
 
@@ -822,7 +821,8 @@ fn _dummy_exec_compiled_test(config: &config, props: &TestProps,
 fn _arm_push_aux_shared_library(config: &config, testfile: &Path) {
     let tstr = aux_output_dir_name(config, testfile).to_str();
 
-    for os::list_dir_path(&Path(tstr)).each |file| {
+    let dirs = os::list_dir_path(&Path(tstr));
+    for dirs.iter().advance |file| {
 
         if (file.filetype() == Some(~".so")) {
 

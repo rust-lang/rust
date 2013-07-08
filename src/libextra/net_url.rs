@@ -12,14 +12,13 @@
 
 #[allow(missing_doc)];
 
-use core::prelude::*;
 
-use core::cmp::Eq;
-use core::io::{Reader, ReaderUtil};
-use core::io;
-use core::hashmap::HashMap;
-use core::to_bytes;
-use core::uint;
+use std::cmp::Eq;
+use std::io::{Reader, ReaderUtil};
+use std::io;
+use std::hashmap::HashMap;
+use std::to_bytes;
+use std::uint;
 
 #[deriving(Clone, Eq)]
 struct Url {
@@ -93,10 +92,10 @@ fn encode_inner(s: &str, full_url: bool) -> ~str {
                         out.push_char(ch);
                       }
 
-                      _ => out += fmt!("%%%X", ch as uint)
+                      _ => out.push_str(fmt!("%%%X", ch as uint))
                     }
                 } else {
-                    out += fmt!("%%%X", ch as uint);
+                    out.push_str(fmt!("%%%X", ch as uint));
                 }
               }
             }
@@ -192,7 +191,7 @@ fn encode_plus(s: &str) -> ~str {
                 out.push_char(ch);
               }
               ' ' => out.push_char('+'),
-              _ => out += fmt!("%%%X", ch as uint)
+              _ => out.push_str(fmt!("%%%X", ch as uint))
             }
         }
 
@@ -207,10 +206,10 @@ pub fn encode_form_urlencoded(m: &HashMap<~str, ~[~str]>) -> ~str {
     let mut out = ~"";
     let mut first = true;
 
-    for m.each |key, values| {
+    for m.iter().advance |(key, values)| {
         let key = encode_plus(*key);
 
-        for values.each |value| {
+        for values.iter().advance |value| {
             if first {
                 first = false;
             } else {
@@ -218,7 +217,7 @@ pub fn encode_form_urlencoded(m: &HashMap<~str, ~[~str]>) -> ~str {
                 first = false;
             }
 
-            out += fmt!("%s=%s", key, encode_plus(*value));
+            out.push_str(fmt!("%s=%s", key, encode_plus(*value)));
         }
     }
 
@@ -342,7 +341,7 @@ fn query_from_str(rawquery: &str) -> Query {
 
 pub fn query_to_str(query: &Query) -> ~str {
     let mut strvec = ~[];
-    for query.each |kv| {
+    for query.iter().advance |kv| {
         match kv {
             &(ref k, ref v) => {
                 strvec.push(fmt!("%s=%s",
@@ -415,7 +414,9 @@ fn get_authority(rawurl: &str) ->
     let mut port = None;
 
     let mut colon_count = 0;
-    let mut (pos, begin, end) = (0, 2, len);
+    let mut pos = 0;
+    let mut begin = 2;
+    let mut end = len;
 
     for rawurl.iter().enumerate().advance |(i,c)| {
         if i < 2 { loop; } // ignore the leading //
@@ -519,8 +520,9 @@ fn get_authority(rawurl: &str) ->
     let end = end; // make end immutable so it can be captured
 
     let host_is_end_plus_one: &fn() -> bool = || {
+        let xs = ['?', '#', '/'];
         end+1 == len
-            && !['?', '#', '/'].contains(&(rawurl[end] as char))
+            && !xs.iter().any_(|x| *x == (rawurl[end] as char))
     };
 
     // finish up
@@ -800,7 +802,7 @@ mod tests {
 
     use net_url::*;
 
-    use core::hashmap::HashMap;
+    use std::hashmap::HashMap;
 
     #[test]
     fn test_url_parse() {

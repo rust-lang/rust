@@ -48,7 +48,6 @@ independently:
 
 */
 
-use core::prelude::*;
 
 use driver::session;
 
@@ -58,8 +57,8 @@ use util::common::time;
 use util::ppaux::Repr;
 use util::ppaux;
 
-use core::hashmap::HashMap;
-use core::result;
+use std::hashmap::HashMap;
+use std::result;
 use extra::list::List;
 use extra::list;
 use syntax::codemap::span;
@@ -135,8 +134,9 @@ pub struct method_map_entry {
 // of the method to be invoked
 pub type method_map = @mut HashMap<ast::node_id, method_map_entry>;
 
+pub type vtable_param_res = @~[vtable_origin];
 // Resolutions for bounds of all parameters, left to right, for a given path.
-pub type vtable_res = @~[vtable_origin];
+pub type vtable_res = @~[vtable_param_res];
 
 pub enum vtable_origin {
     /*
@@ -154,7 +154,12 @@ pub enum vtable_origin {
       The first uint is the param number (identifying T in the example),
       and the second is the bound number (identifying baz)
      */
-    vtable_param(uint, uint)
+    vtable_param(uint, uint),
+
+    /*
+     Dynamic vtable, comes from self.
+    */
+    vtable_self(ast::def_id)
 }
 
 impl Repr for vtable_origin {
@@ -171,6 +176,9 @@ impl Repr for vtable_origin {
             vtable_param(x, y) => {
                 fmt!("vtable_param(%?, %?)", x, y)
             }
+            vtable_self(def_id) => {
+                fmt!("vtable_self(%?)", def_id)
+            }
         }
     }
 }
@@ -182,7 +190,7 @@ pub struct CrateCtxt {
     trait_map: resolve::TraitMap,
     method_map: method_map,
     vtable_map: vtable_map,
-    coherence_info: @coherence::CoherenceInfo,
+    coherence_info: coherence::CoherenceInfo,
     tcx: ty::ctxt
 }
 
@@ -198,7 +206,7 @@ pub fn write_substs_to_tcx(tcx: ty::ctxt,
     if substs.len() > 0u {
         debug!("write_substs_to_tcx(%d, %?)", node_id,
                substs.map(|t| ppaux::ty_to_str(tcx, *t)));
-        assert!(substs.all(|t| !ty::type_needs_infer(*t)));
+        assert!(substs.iter().all(|t| !ty::type_needs_infer(*t)));
         tcx.node_type_substs.insert(node_id, substs);
     }
 }
@@ -220,7 +228,7 @@ pub fn lookup_def_tcx(tcx: ty::ctxt, sp: span, id: ast::node_id) -> ast::def {
     }
 }
 
-pub fn lookup_def_ccx(ccx: @mut CrateCtxt, sp: span, id: ast::node_id)
+pub fn lookup_def_ccx(ccx: &CrateCtxt, sp: span, id: ast::node_id)
                    -> ast::def {
     lookup_def_tcx(ccx.tcx, sp, id)
 }
@@ -255,7 +263,7 @@ pub fn require_same_types(
       }
     }
 
-    match infer::mk_eqty(l_infcx, t1_is_expected, span, t1, t2) {
+    match infer::mk_eqty(l_infcx, t1_is_expected, infer::Misc(span), t1, t2) {
         result::Ok(()) => true,
         result::Err(ref terr) => {
             l_tcx.sess.span_err(span, msg() + ": " +
@@ -276,11 +284,11 @@ trait get_and_find_region {
 }
 
 impl get_and_find_region for isr_alist {
-    fn get(&self, br: ty::bound_region) -> ty::Region {
+    pub fn get(&self, br: ty::bound_region) -> ty::Region {
         self.find(br).get()
     }
 
-    fn find(&self, br: ty::bound_region) -> Option<ty::Region> {
+    pub fn find(&self, br: ty::bound_region) -> Option<ty::Region> {
         for list::each(*self) |isr| {
             let (isr_br, isr_r) = *isr;
             if isr_br == br { return Some(isr_r); }
@@ -289,7 +297,7 @@ impl get_and_find_region for isr_alist {
     }
 }
 
-fn check_main_fn_ty(ccx: @mut CrateCtxt,
+fn check_main_fn_ty(ccx: &CrateCtxt,
                     main_id: ast::node_id,
                     main_span: span) {
     let tcx = ccx.tcx;
@@ -330,7 +338,7 @@ fn check_main_fn_ty(ccx: @mut CrateCtxt,
     }
 }
 
-fn check_start_fn_ty(ccx: @mut CrateCtxt,
+fn check_start_fn_ty(ccx: &CrateCtxt,
                      start_id: ast::node_id,
                      start_span: span) {
     let tcx = ccx.tcx;
@@ -379,7 +387,7 @@ fn check_start_fn_ty(ccx: @mut CrateCtxt,
     }
 }
 
-fn check_for_entry_fn(ccx: @mut CrateCtxt) {
+fn check_for_entry_fn(ccx: &CrateCtxt) {
     let tcx = ccx.tcx;
     if !*tcx.sess.building_library {
         match *tcx.sess.entry_fn {
@@ -395,14 +403,14 @@ fn check_for_entry_fn(ccx: @mut CrateCtxt) {
 
 pub fn check_crate(tcx: ty::ctxt,
                    trait_map: resolve::TraitMap,
-                   crate: @ast::crate)
+                   crate: &ast::crate)
                 -> (method_map, vtable_map) {
     let time_passes = tcx.sess.time_passes();
     let ccx = @mut CrateCtxt {
         trait_map: trait_map,
         method_map: @mut HashMap::new(),
         vtable_map: @mut HashMap::new(),
-        coherence_info: @coherence::CoherenceInfo(),
+        coherence_info: coherence::CoherenceInfo(),
         tcx: tcx
     };
 

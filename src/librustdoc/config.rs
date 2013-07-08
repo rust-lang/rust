@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,15 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
 
-use core::cell::Cell;
-use core::os;
-use core::result::Result;
-use core::result;
-use core::run::ProcessOutput;
-use core::run;
-use core::vec;
+use std::cell::Cell;
+use std::os;
+use std::result::Result;
+use std::result;
+use std::run::ProcessOutput;
+use std::run;
+use std::vec;
 use extra::getopts;
 
 /// The type of document to output
@@ -59,24 +58,25 @@ fn opt_help() -> ~str { ~"h" }
 fn opts() -> ~[(getopts::Opt, ~str)] {
     ~[
         (getopts::optopt(opt_output_dir()),
-         ~"--output-dir <val>     put documents here"),
+         ~"--output-dir <val>     Put documents here (default: .)"),
         (getopts::optopt(opt_output_format()),
-         ~"--output-format <val>  either 'markdown' or 'html'"),
+         ~"--output-format <val>  'markdown' or 'html' (default)"),
         (getopts::optopt(opt_output_style()),
-         ~"--output-style <val>   either 'doc-per-crate' or 'doc-per-mod'"),
+         ~"--output-style <val>   'doc-per-crate' or 'doc-per-mod' (default)"),
         (getopts::optopt(opt_pandoc_cmd()),
-         ~"--pandoc-cmd <val>     the command for running pandoc"),
+         ~"--pandoc-cmd <val>     Command for running pandoc"),
         (getopts::optflag(opt_help()),
-         ~"-h                     print help")
+         ~"-h, --help             Print help")
     ]
 }
 
 pub fn usage() {
-    use core::io::println;
+    use std::io::println;
 
     println("Usage: rustdoc [options] <cratefile>\n");
     println("Options:\n");
-    for opts().each |opt| {
+    let r = opts();
+    for r.iter().advance |opt| {
         println(fmt!("    %s", opt.second()));
     }
     println("");
@@ -230,26 +230,24 @@ pub fn maybe_find_pandoc(
       }
     };
 
-    let pandoc = do vec::find(possible_pandocs) |pandoc| {
+    let pandoc = do possible_pandocs.iter().find_ |&pandoc| {
         let output = process_output(*pandoc, [~"--version"]);
         debug!("testing pandoc cmd %s: %?", *pandoc, output);
         output.status == 0
     };
 
-    if pandoc.is_some() {
-        result::Ok(pandoc)
-    } else {
-        result::Err(~"couldn't find pandoc")
+    match pandoc {
+        Some(x) => Ok(Some(copy *x)), // ugly, shouldn't be doubly wrapped
+        None => Err(~"couldn't find pandoc")
     }
 }
 
 #[cfg(test)]
 mod test {
-    use core::prelude::*;
 
     use config::*;
-    use core::result;
-    use core::run::ProcessOutput;
+    use std::result;
+    use std::run::ProcessOutput;
 
     fn parse_config(args: &[~str]) -> Result<Config, ~str> {
         parse_config_(args, mock_process_output)

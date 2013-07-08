@@ -8,13 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
 
 use doc;
 #[cfg(test)] use extract;
 #[cfg(test)] use parse;
-
-use core::vec;
 
 pub struct Fold<T> {
     ctxt: T,
@@ -156,7 +153,7 @@ pub fn default_par_fold<T:Clone>(ctxt: T) -> Fold<T> {
 
 pub fn default_seq_fold_doc<T>(fold: &Fold<T>, doc: doc::Doc) -> doc::Doc {
     doc::Doc {
-        pages: do vec::map(doc.pages) |page| {
+        pages: do doc.pages.iter().transform |page| {
             match copy *page {
               doc::CratePage(doc) => {
                 doc::CratePage((fold.fold_crate)(fold, doc))
@@ -165,7 +162,7 @@ pub fn default_seq_fold_doc<T>(fold: &Fold<T>, doc: doc::Doc) -> doc::Doc {
                 doc::ItemPage(fold_ItemTag(fold, doc))
               }
             }
-        },
+        }.collect(),
         .. doc
     }
 }
@@ -192,9 +189,9 @@ pub fn default_any_fold_mod<T:Clone>(
 ) -> doc::ModDoc {
     doc::ModDoc {
         item: (fold.fold_item)(fold, copy doc.item),
-        items: vec::map(doc.items, |ItemTag| {
+        items: doc.items.iter().transform(|ItemTag| {
             fold_ItemTag(fold, copy *ItemTag)
-        }),
+        }).collect(),
         .. doc
     }
 }
@@ -205,9 +202,9 @@ pub fn default_seq_fold_mod<T>(
 ) -> doc::ModDoc {
     doc::ModDoc {
         item: (fold.fold_item)(fold, copy doc.item),
-        items: vec::map(doc.items, |ItemTag| {
+        items: doc.items.iter().transform(|ItemTag| {
             fold_ItemTag(fold, copy *ItemTag)
-        }),
+        }).collect(),
         .. doc
     }
 }
@@ -218,9 +215,9 @@ pub fn default_par_fold_mod<T:Clone>(
 ) -> doc::ModDoc {
     doc::ModDoc {
         item: (fold.fold_item)(fold, copy doc.item),
-        items: vec::map(doc.items, |ItemTag| {
+        items: doc.items.iter().transform(|ItemTag| {
             fold_ItemTag(fold, copy *ItemTag)
-        }),
+        }).collect(),
         .. doc
     }
 }
@@ -231,9 +228,9 @@ pub fn default_any_fold_nmod<T:Clone>(
 ) -> doc::NmodDoc {
     doc::NmodDoc {
         item: (fold.fold_item)(fold, copy doc.item),
-        fns: vec::map(doc.fns, |FnDoc| {
+        fns: doc.fns.iter().transform(|FnDoc| {
             (fold.fold_fn)(fold, copy *FnDoc)
-        }),
+        }).collect(),
         .. doc
     }
 }
@@ -244,9 +241,9 @@ pub fn default_seq_fold_nmod<T>(
 ) -> doc::NmodDoc {
     doc::NmodDoc {
         item: (fold.fold_item)(fold, copy doc.item),
-        fns: vec::map(doc.fns, |FnDoc| {
+        fns: doc.fns.iter().transform(|FnDoc| {
             (fold.fold_fn)(fold, copy *FnDoc)
-        }),
+        }).collect(),
         .. doc
     }
 }
@@ -257,9 +254,9 @@ pub fn default_par_fold_nmod<T:Clone>(
 ) -> doc::NmodDoc {
     doc::NmodDoc {
         item: (fold.fold_item)(fold, copy doc.item),
-        fns: vec::map(doc.fns, |FnDoc| {
+        fns: doc.fns.iter().transform(|FnDoc| {
             (fold.fold_fn)(fold, copy *FnDoc)
-        }),
+        }).collect(),
         .. doc
     }
 }

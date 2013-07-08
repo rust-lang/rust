@@ -1,15 +1,3 @@
-use std::vec;
-
-trait Reverser {
-    fn reverse(self);
-}
-
-impl<'self> Reverser for &'self mut [uint] {
-    fn reverse(self) {
-        vec::reverse(self);
-    }
-}
-
 fn bar(v: &mut [uint]) {
     v.reverse();
     v.reverse();

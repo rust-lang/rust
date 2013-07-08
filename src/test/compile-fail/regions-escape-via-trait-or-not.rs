@@ -23,7 +23,7 @@ fn with<R:deref>(f: &fn(x: &int) -> R) -> int {
 }
 
 fn return_it() -> int {
-    with(|o| o) //~ ERROR reference is not valid outside of its lifetime
+    with(|o| o) //~ ERROR lifetime of function argument does not outlive the function call
 }
 
 fn main() {

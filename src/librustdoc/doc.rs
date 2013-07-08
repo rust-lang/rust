@@ -10,11 +10,10 @@
 
 //! The document model
 
-use core::prelude::*;
 
 use doc;
 
-use core::vec;
+use std::vec;
 
 pub type AstId = int;
 

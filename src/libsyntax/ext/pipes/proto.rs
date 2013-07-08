@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
-
 use ast;
 use codemap::span;
 use ext::base::ExtCtxt;
@@ -101,13 +99,13 @@ impl state_ {
     pub fn to_ty(&self, cx: @ExtCtxt) -> @ast::Ty {
         cx.ty_path
             (path(~[cx.ident_of(self.name)],self.span).add_tys(
-                cx.ty_vars(&self.generics.ty_params)))
+                cx.ty_vars(&self.generics.ty_params)), @None)
     }
 
     /// Iterate over the states that can be reached in one message
     /// from this state.
     pub fn reachable(&self, f: &fn(state) -> bool) -> bool {
-        for self.messages.each |m| {
+        for self.messages.iter().advance |m| {
             match *m {
               message(_, _, _, _, Some(next_state { state: ref id, _ })) => {
                 let state = self.proto.get_state((*id));
@@ -146,13 +144,13 @@ pub struct protocol_ {
 impl protocol_ {
     /// Get a state.
     pub fn get_state(&self, name: &str) -> state {
-        self.states.find(|i| name == i.name).get()
+        *self.states.iter().find_(|i| name == i.name).get()
     }
 
     pub fn get_state_by_id(&self, id: uint) -> state { self.states[id] }
 
     pub fn has_state(&self, name: &str) -> bool {
-        self.states.find(|i| name == i.name).is_some()
+        self.states.iter().find_(|i| name == i.name).is_some()
     }
 
     pub fn filename(&self) -> ~str {
@@ -165,7 +163,7 @@ impl protocol_ {
     }
 
     pub fn has_ty_params(&self) -> bool {
-        for self.states.each |s| {
+        for self.states.iter().advance |s| {
             if s.generics.ty_params.len() > 0 {
                 return true;
             }
@@ -216,12 +214,12 @@ pub fn visit<Tproto, Tstate, Tmessage, V: visitor<Tproto, Tstate, Tmessage>>(
     proto: protocol, visitor: V) -> Tproto {
 
     // the copy keywords prevent recursive use of dvec
-    let states = do (copy proto.states).map_to_vec |&s| {
-        let messages = do (copy s.messages).map_to_vec |&m| {
+    let states: ~[Tstate] = do (copy proto.states).iter().transform |&s| {
+        let messages: ~[Tmessage] = do (copy s.messages).iter().transform |&m| {
             let message(name, span, tys, this, next) = m;
             visitor.visit_message(name, span, tys, this, next)
-        };
+        }.collect();
         visitor.visit_state(s, messages)
-    };
+    }.collect();
     visitor.visit_proto(proto, states)
 }

@@ -57,7 +57,7 @@ LICENSE.txt: $(S)COPYRIGHT $(S)LICENSE-APACHE $(S)LICENSE-MIT
 	cp $< $@
 
 $(PKG_EXE): rust.iss modpath.iss LICENSE.txt rust-logo.ico \
-            $(PKG_FILES) all rustc-stage3
+            $(PKG_FILES) $(CSREQ3_T_$(CFG_BUILD_TRIPLE)_H_$(CFG_BUILD_TRIPLE))
 	@$(call E, ISCC: $@)
 	$(Q)"$(CFG_ISCC)" $<
 endif

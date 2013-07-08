@@ -33,9 +33,9 @@ use middle::trans::inline;
 use middle::ty;
 use middle::typeck;
 
-use core::option::{Some, None};
-use core::uint;
-use core::vec;
+use std::option::{Some, None};
+use std::uint;
+use std::vec;
 use extra::list::{List, Cons, Nil};
 use extra::list;
 use syntax::ast;
@@ -78,8 +78,8 @@ pub fn type_uses_for(ccx: @mut CrateContext, fn_id: def_id, n_tps: uint)
     match ty::get(ty::lookup_item_type(cx.ccx.tcx, fn_id).ty).sty {
         ty::ty_bare_fn(ty::BareFnTy {sig: ref sig, _}) |
         ty::ty_closure(ty::ClosureTy {sig: ref sig, _}) => {
-            for sig.inputs.each |arg| {
-                type_needs(cx, use_repr, *arg);
+            for sig.inputs.iter().advance |arg| {
+                type_needs(&cx, use_repr, *arg);
             }
         }
         _ => ()
@@ -100,7 +100,7 @@ pub fn type_uses_for(ccx: @mut CrateContext, fn_id: def_id, n_tps: uint)
       ast_map::node_item(@ast::item { node: item_fn(_, _, _, _, ref body),
                                       _ }, _) |
       ast_map::node_method(@ast::method {body: ref body, _}, _, _) => {
-        handle_body(cx, body);
+        handle_body(&cx, body);
       }
       ast_map::node_trait_method(*) => {
         // This will be a static trait method. For now, we just assume
@@ -117,46 +117,43 @@ pub fn type_uses_for(ccx: @mut CrateContext, fn_id: def_id, n_tps: uint)
                                  _,
                                  _) => {
         if abi.is_intrinsic() {
-            let flags = match cx.ccx.sess.str_of(i.ident).as_slice() {
-                "size_of"  | "pref_align_of" | "min_align_of" |
-                "uninit"   | "init" | "transmute" | "move_val" |
-                "move_val_init" => use_repr,
+            let nm = cx.ccx.sess.str_of(i.ident);
+            let name = nm.as_slice();
+            let flags = if name.starts_with("atomic_") {
+                0
+            } else {
+                match name {
+                    "size_of"  | "pref_align_of" | "min_align_of" |
+                    "uninit"   | "init" | "transmute" | "move_val" |
+                    "move_val_init" => use_repr,
 
-                "get_tydesc" | "needs_drop" => use_tydesc,
+                    "get_tydesc" | "needs_drop" | "contains_managed" => use_tydesc,
 
-                "atomic_cxchg"    | "atomic_cxchg_acq"|
-                "atomic_cxchg_rel"| "atomic_load"     |
-                "atomic_load_acq" | "atomic_store"    |
-                "atomic_store_rel"| "atomic_xchg"     |
-                "atomic_xadd"     | "atomic_xsub"     |
-                "atomic_xchg_acq" | "atomic_xadd_acq" |
-                "atomic_xsub_acq" | "atomic_xchg_rel" |
-                "atomic_xadd_rel" | "atomic_xsub_rel" => 0,
+                    "visit_tydesc"  | "forget" | "frame_address" |
+                    "morestack_addr" => 0,
 
-                "visit_tydesc"  | "forget" | "frame_address" |
-                "morestack_addr" => 0,
+                    "memcpy32" | "memcpy64" | "memmove32" | "memmove64" |
+                    "memset32" | "memset64" => use_repr,
 
-                "memcpy32" | "memcpy64" | "memmove32" | "memmove64" |
-                "memset32" | "memset64" => use_repr,
+                    "sqrtf32" | "sqrtf64" | "powif32" | "powif64" |
+                    "sinf32"  | "sinf64"  | "cosf32"  | "cosf64"  |
+                    "powf32"  | "powf64"  | "expf32"  | "expf64"  |
+                    "exp2f32" | "exp2f64" | "logf32"  | "logf64"  |
+                    "log10f32"| "log10f64"| "log2f32" | "log2f64" |
+                    "fmaf32"  | "fmaf64"  | "fabsf32" | "fabsf64" |
+                    "floorf32"| "floorf64"| "ceilf32" | "ceilf64" |
+                    "truncf32"| "truncf64" => 0,
 
-                "sqrtf32" | "sqrtf64" | "powif32" | "powif64" |
-                "sinf32"  | "sinf64"  | "cosf32"  | "cosf64"  |
-                "powf32"  | "powf64"  | "expf32"  | "expf64"  |
-                "exp2f32" | "exp2f64" | "logf32"  | "logf64"  |
-                "log10f32"| "log10f64"| "log2f32" | "log2f64" |
-                "fmaf32"  | "fmaf64"  | "fabsf32" | "fabsf64" |
-                "floorf32"| "floorf64"| "ceilf32" | "ceilf64" |
-                "truncf32"| "truncf64" => 0,
+                    "ctpop8" | "ctpop16" | "ctpop32" | "ctpop64" => 0,
 
-                "ctpop8" | "ctpop16" | "ctpop32" | "ctpop64" => 0,
+                    "ctlz8" | "ctlz16" | "ctlz32" | "ctlz64" => 0,
+                    "cttz8" | "cttz16" | "cttz32" | "cttz64" => 0,
 
-                "ctlz8" | "ctlz16" | "ctlz32" | "ctlz64" => 0,
-                "cttz8" | "cttz16" | "cttz32" | "cttz64" => 0,
+                    "bswap16" | "bswap32" | "bswap64" => 0,
 
-                "bswap16" | "bswap32" | "bswap64" => 0,
-
-                // would be cool to make these an enum instead of strings!
-                _ => fail!("unknown intrinsic in type_use")
+                    // would be cool to make these an enum instead of strings!
+                    _ => fail!("unknown intrinsic in type_use")
+                }
             };
             for uint::range(0u, n_tps) |n| { cx.uses[n] |= flags;}
         }
@@ -180,7 +177,7 @@ pub fn type_uses_for(ccx: @mut CrateContext, fn_id: def_id, n_tps: uint)
     uses
 }
 
-pub fn type_needs(cx: Context, use_: uint, ty: ty::t) {
+pub fn type_needs(cx: &Context, use_: uint, ty: ty::t) {
     // Optimization -- don't descend type if all params already have this use
     let len = {
         let uses = &*cx.uses;
@@ -194,7 +191,7 @@ pub fn type_needs(cx: Context, use_: uint, ty: ty::t) {
     }
 }
 
-pub fn type_needs_inner(cx: Context,
+pub fn type_needs_inner(cx: &Context,
                         use_: uint,
                         ty: ty::t,
                         enums_seen: @List<def_id>) {
@@ -211,13 +208,14 @@ pub fn type_needs_inner(cx: Context,
                 ty::ty_bare_fn(*) |
                 ty::ty_ptr(_) |
                 ty::ty_rptr(_, _) |
-                ty::ty_trait(_, _, _, _) => false,
+                ty::ty_trait(*) => false,
 
               ty::ty_enum(did, ref substs) => {
                 if list::find(enums_seen, |id| *id == did).is_none() {
                     let seen = @Cons(did, enums_seen);
-                    for vec::each(*ty::enum_variants(cx.ccx.tcx, did)) |v| {
-                        for v.args.each |aty| {
+                    let r = ty::enum_variants(cx.ccx.tcx, did);
+                    for r.iter().advance |v| {
+                        for v.args.iter().advance |aty| {
                             let t = ty::subst(cx.ccx.tcx, &(*substs), *aty);
                             type_needs_inner(cx, use_, t, seen);
                         }
@@ -235,11 +233,11 @@ pub fn type_needs_inner(cx: Context,
     }
 }
 
-pub fn node_type_needs(cx: Context, use_: uint, id: node_id) {
+pub fn node_type_needs(cx: &Context, use_: uint, id: node_id) {
     type_needs(cx, use_, ty::node_id_to_type(cx.ccx.tcx, id));
 }
 
-pub fn mark_for_method_call(cx: Context, e_id: node_id, callee_id: node_id) {
+pub fn mark_for_method_call(cx: &Context, e_id: node_id, callee_id: node_id) {
     let mut opt_static_did = None;
     {
         let r = cx.ccx.maps.method_map.find(&e_id);
@@ -277,10 +275,10 @@ pub fn mark_for_method_call(cx: Context, e_id: node_id, callee_id: node_id) {
     }
 }
 
-pub fn mark_for_expr(cx: Context, e: @expr) {
+pub fn mark_for_expr(cx: &Context, e: &expr) {
     match e.node {
       expr_vstore(_, _) | expr_vec(_, _) | expr_struct(*) | expr_tup(_) |
-      expr_unary(_, box(_), _) | expr_unary(_, uniq(_), _) |
+      expr_unary(_, box(_), _) | expr_unary(_, uniq, _) |
       expr_binary(_, add, _, _) | expr_copy(_) | expr_repeat(*) => {
         node_type_needs(cx, use_repr, e.id);
       }
@@ -317,7 +315,7 @@ pub fn mark_for_expr(cx: Context, e: @expr) {
           match ty::ty_closure_sigil(ty::expr_ty(cx.ccx.tcx, e)) {
               ast::OwnedSigil => {}
               ast::BorrowedSigil | ast::ManagedSigil => {
-                  for freevars::get_freevars(cx.ccx.tcx, e.id).each |fv| {
+                  for freevars::get_freevars(cx.ccx.tcx, e.id).iter().advance |fv| {
                       let node_id = ast_util::def_id_of_def(fv.def).node;
                       node_type_needs(cx, use_repr, node_id);
                   }
@@ -347,7 +345,8 @@ pub fn mark_for_expr(cx: Context, e: @expr) {
         node_type_needs(cx, use_tydesc, val.id);
       }
       expr_call(f, _, _) => {
-          for ty::ty_fn_args(ty::node_id_to_type(cx.ccx.tcx, f.id)).each |a| {
+          let r = ty::ty_fn_args(ty::node_id_to_type(cx.ccx.tcx, f.id));
+          for r.iter().advance |a| {
               type_needs(cx, use_repr, *a);
           }
       }
@@ -355,17 +354,18 @@ pub fn mark_for_expr(cx: Context, e: @expr) {
         let base_ty = ty::node_id_to_type(cx.ccx.tcx, rcvr.id);
         type_needs(cx, use_repr, ty::type_autoderef(cx.ccx.tcx, base_ty));
 
-        for ty::ty_fn_args(ty::node_id_to_type(cx.ccx.tcx, callee_id)).each |a| {
+        let r = ty::ty_fn_args(ty::node_id_to_type(cx.ccx.tcx, callee_id));
+        for r.iter().advance |a| {
             type_needs(cx, use_repr, *a);
         }
         mark_for_method_call(cx, e.id, callee_id);
       }
 
       expr_inline_asm(ref ia) => {
-        for ia.inputs.each |&(_, in)| {
+        for ia.inputs.iter().advance |&(_, in)| {
           node_type_needs(cx, use_repr, in.id);
         }
-        for ia.outputs.each |&(_, out)| {
+        for ia.outputs.iter().advance |&(_, out)| {
           node_type_needs(cx, use_repr, out.id);
         }
       }
@@ -379,7 +379,7 @@ pub fn mark_for_expr(cx: Context, e: @expr) {
     }
 }
 
-pub fn handle_body(cx: Context, body: &blk) {
+pub fn handle_body(cx: &Context, body: &blk) {
     let v = visit::mk_vt(@visit::Visitor {
         visit_expr: |e, (cx, v)| {
             visit::visit_expr(e, (cx, v));

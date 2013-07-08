@@ -12,27 +12,14 @@
 
 #[allow(missing_doc)];
 
-use option::{Some, None};
 use cast;
 use gc;
 use io;
 use libc;
-use libc::{c_void, c_char, size_t};
+use libc::{c_char, size_t};
 use repr;
 use str;
 use unstable::intrinsics;
-
-pub type FreeGlue<'self> = &'self fn(*TypeDesc, *c_void);
-
-// Corresponds to runtime type_desc type
-pub struct TypeDesc {
-    size: uint,
-    align: uint,
-    take_glue: uint,
-    drop_glue: uint,
-    free_glue: uint
-    // Remaining fields not listed
-}
 
 /// The representation of a Rust closure
 pub struct Closure {
@@ -49,23 +36,6 @@ pub mod rustrt {
                                    file: *c_char,
                                    line: size_t);
     }
-}
-
-/**
- * Returns a pointer to a type descriptor.
- *
- * Useful for calling certain function in the Rust runtime or otherwise
- * performing dark magick.
- */
-#[inline]
-pub fn get_type_desc<T>() -> *TypeDesc {
-    unsafe { intrinsics::get_tydesc::<T>() as *TypeDesc }
-}
-
-/// Returns a pointer to a type descriptor.
-#[inline]
-pub fn get_type_desc_val<T>(_val: &T) -> *TypeDesc {
-    get_type_desc::<T>()
 }
 
 /// Returns the size of a type
@@ -181,10 +151,9 @@ impl FailWithCause for &'static str {
 // FIXME #4427: Temporary until rt::rt_fail_ goes away
 pub fn begin_unwind_(msg: *c_char, file: *c_char, line: size_t) -> ! {
     use cell::Cell;
-    use option::Option;
     use either::Left;
     use rt::{context, OldTaskContext, TaskContext};
-    use rt::task::{Task, Unwinder};
+    use rt::task::Task;
     use rt::local::Local;
     use rt::logging::Logger;
 

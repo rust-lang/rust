@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-test
+// xfail-test FIXME #3874
 enum PureCounter { PureCounter(uint) }
 
 fn each(self: PureCounter, blk: &fn(v: &uint)) {

@@ -8,12 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
 
-use core::option;
-use core::os;
-use core::result;
-use core::str;
+use std::option;
+use std::os;
+use std::result;
+use std::str;
 
 // A module for searching for libraries
 // FIXME (#2658): I'm not happy how this module turned out. Should
@@ -48,7 +47,7 @@ pub fn mk_filesearch(maybe_sysroot: &Option<@Path>,
             debug!("filesearch: searching additional lib search paths [%?]",
                    self.addl_lib_search_paths.len());
             // a little weird
-            self.addl_lib_search_paths.each(f);
+            self.addl_lib_search_paths.iter().advance(|path| f(path));
 
             debug!("filesearch: searching target lib path");
             if !f(&make_target_lib_path(self.sysroot,
@@ -89,7 +88,8 @@ pub fn search<T:Copy>(filesearch: @FileSearch, pick: pick<T>) -> Option<T> {
     let mut rslt = None;
     for filesearch.for_each_lib_search_path() |lib_search_path| {
         debug!("searching %s", lib_search_path.to_str());
-        for os::list_dir_path(lib_search_path).each |path| {
+        let r = os::list_dir_path(lib_search_path);
+        for r.iter().advance |path| {
             debug!("testing %s", path.to_str());
             let maybe_picked = pick(*path);
             if maybe_picked.is_some() {

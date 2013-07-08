@@ -1,3 +1,13 @@
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// file at the top-level directory of this distribution and at
+// http://rust-lang.org/COPYRIGHT.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+
 use std::f64;
 use std::from_str::FromStr;
 use std::os;
@@ -10,7 +20,7 @@ fn A(i: i32, j: i32) -> i32 {
 
 fn dot(v: &[f64], u: &[f64]) -> f64 {
     let mut sum = 0.0;
-    for v.eachi |i, &v_i| {
+    for v.iter().enumerate().advance |(i, &v_i)| {
         sum += v_i * u[i];
     }
     sum

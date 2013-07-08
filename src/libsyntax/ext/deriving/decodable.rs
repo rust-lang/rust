@@ -13,9 +13,8 @@ The compiler code necessary for #[deriving(Decodable)]. See
 encodable.rs for more.
 */
 
-use core::prelude::*;
-use core::vec;
-use core::uint;
+use std::vec;
+use std::uint;
 
 use ast::{meta_item, item, expr, m_mutbl};
 use codemap::span;
@@ -92,9 +91,9 @@ fn decodable_substructure(cx: @ExtCtxt, span: span,
                     }
                 }
                 Right(ref fields) => {
-                    let fields = do fields.mapi |i, f| {
+                    let fields = do fields.iter().enumerate().transform |(i, f)| {
                         cx.field_imm(span, *f, getarg(cx.str_of(*f), i))
-                    };
+                    }.collect();
                     cx.expr_struct_ident(span, substr.type_ident, fields)
                 }
             };
@@ -111,7 +110,7 @@ fn decodable_substructure(cx: @ExtCtxt, span: span,
             let mut variants = ~[];
             let rvariant_arg = cx.ident_of("read_enum_variant_arg");
 
-            for fields.eachi |i, f| {
+            for fields.iter().enumerate().advance |(i, f)| {
                 let (name, parts) = match *f { (i, ref p) => (i, p) };
                 variants.push(cx.expr_str(span, cx.str_of(name)));
 
@@ -134,9 +133,9 @@ fn decodable_substructure(cx: @ExtCtxt, span: span,
                         }
                     }
                     Right(ref fields) => {
-                        let fields = do fields.mapi |i, f| {
+                        let fields = do fields.iter().enumerate().transform |(i, f)| {
                             cx.field_imm(span, *f, getarg(i))
-                        };
+                        }.collect();
                         cx.expr_struct_ident(span, name, fields)
                     }
                 };

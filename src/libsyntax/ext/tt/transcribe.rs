@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
-
 use ast;
 use ast::{token_tree, tt_delim, tt_tok, tt_seq, tt_nonterminal,ident};
 use codemap::{span, dummy_sp};
@@ -19,8 +17,8 @@ use parse::token::{EOF, INTERPOLATED, IDENT, Token, nt_ident};
 use parse::token::{ident_to_str};
 use parse::lexer::TokenAndSpan;
 
-use core::hashmap::HashMap;
-use core::option;
+use std::hashmap::HashMap;
+use std::option;
 
 ///an unzipping of `token_tree`s
 struct TtFrame {

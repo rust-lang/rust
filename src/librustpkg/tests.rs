@@ -11,11 +11,10 @@
 // rustpkg unit tests
 
 use context::Ctx;
-use core::hashmap::HashMap;
-use core::{io, libc, os, result, run, str};
-use core::prelude::*;
+use std::hashmap::HashMap;
+use std::{io, libc, os, result, run, str, vec};
 use extra::tempfile::mkdtemp;
-use core::run::ProcessOutput;
+use std::run::ProcessOutput;
 use package_path::*;
 use package_id::{PkgId};
 use package_source::*;
@@ -25,7 +24,7 @@ use path_util::{target_executable_in_workspace, target_library_in_workspace,
                make_dir_rwx, u_rwx, library_in_workspace,
                built_bench_in_workspace, built_test_in_workspace,
                built_library_in_workspace, built_executable_in_workspace,
-                installed_library_in_workspace};
+                installed_library_in_workspace, rust_path};
 use target::*;
 
 /// Returns the last-modified date as an Option
@@ -110,7 +109,7 @@ fn mk_temp_workspace(short_name: &LocalPath, version: &Version) -> Path {
 }
 
 fn is_rwx(p: &Path) -> bool {
-    use core::libc::consts::os::posix88::{S_IRUSR, S_IWUSR, S_IXUSR};
+    use std::libc::consts::os::posix88::{S_IRUSR, S_IWUSR, S_IXUSR};
 
     match p.get_mode() {
         None => return false,
@@ -144,10 +143,10 @@ fn command_line_test(args: &[~str], cwd: &Path) -> ProcessOutput {
                                                            err_fd: None
                                                           });
     let output = prog.finish_with_output();
-    io::println(fmt!("Output from command %s with args %? was %s {%s}[%?]",
+    debug!("Output from command %s with args %? was %s {%s}[%?]",
                     cmd, args, str::from_bytes(output.output),
                    str::from_bytes(output.error),
-                   output.status));
+                   output.status);
 /*
 By the way, rustpkg *won't* return a nonzero exit code if it fails --
 see #4547
@@ -248,7 +247,7 @@ fn command_line_test_output(args: &[~str]) -> ~[~str] {
     let p_output = command_line_test(args, &os::getcwd());
     let test_output = str::from_bytes(p_output.output);
     for test_output.split_iter('\n').advance |s| {
-        result += [s.to_owned()];
+        result.push(s.to_owned());
     }
     result
 }
@@ -268,12 +267,12 @@ fn output_file_name(workspace: &Path, short_name: &str) -> Path {
     workspace.push(fmt!("%s%s", short_name, os::EXE_SUFFIX))
 }
 
-fn touch_source_file(workspace: &Path, short_name: &str) {
+fn touch_source_file(workspace: &Path, pkgid: &PkgId) {
     use conditions::bad_path::cond;
-    let pkg_src_dir = workspace.push("src").push(short_name);
-    let contents = os::list_dir(&pkg_src_dir);
-    for contents.each() |p| {
-        if Path(copy *p).filetype() == Some(~".rs") {
+    let pkg_src_dir = workspace.push("src").push(pkgid.to_str());
+    let contents = os::list_dir_path(&pkg_src_dir);
+    for contents.iter().advance |p| {
+        if p.filetype() == Some(~".rs") {
             // should be able to do this w/o a process
             if run::process_output("touch", [p.to_str()]).status != 0 {
                 let _ = cond.raise((copy pkg_src_dir, ~"Bad path"));
@@ -287,20 +286,19 @@ fn touch_source_file(workspace: &Path, short_name: &str) {
 fn frob_source_file(workspace: &Path, pkgid: &PkgId) {
     use conditions::bad_path::cond;
     let pkg_src_dir = workspace.push("src").push(pkgid.to_str());
-    let contents = os::list_dir(&pkg_src_dir);
+    let contents = os::list_dir_path(&pkg_src_dir);
     let mut maybe_p = None;
-    for contents.each() |p| {
-        if Path(copy *p).filetype() == Some(~".rs") {
+    for contents.iter().advance |p| {
+        if p.filetype() == Some(~".rs") {
             maybe_p = Some(p);
             break;
         }
     }
     match maybe_p {
         Some(p) => {
-            let p = Path(copy *p);
-            let w = io::buffered_file_writer(&p);
+            let w = io::file_writer(*p, &[io::Append]);
             match w {
-                Err(s) => { let _ = cond.raise((p, fmt!("Bad path: %s", s))); }
+                Err(s) => { let _ = cond.raise((copy **p, fmt!("Bad path: %s", s))); }
                 Ok(w)  => w.write_line("")
             }
         }
@@ -309,18 +307,10 @@ fn frob_source_file(workspace: &Path, pkgid: &PkgId) {
     }
 }
 
-#[test] #[ignore] //FIXME(#7249)
-fn test_all() {
-    // FIXME(#7071): these tests use rustc, so they can't be run in parallel
-    //               until this issue is resolved
-    test_make_dir_rwx();
-    test_install_valid();
-    test_install_invalid();
-    test_install_url();
-    test_package_ids_must_be_relative_path_like();
-    test_package_version();
-}
+// FIXME(#7249): these tests fail on multi-platform builds, so for now they're
+//               only run one x86
 
+#[test] #[ignore(cfg(target_arch = "x86"))]
 fn test_make_dir_rwx() {
     let temp = &os::tmpdir();
     let dir = temp.push("quux");
@@ -333,6 +323,7 @@ fn test_make_dir_rwx() {
     assert!(os::remove_dir_recursive(&dir));
 }
 
+#[test] #[ignore(cfg(target_arch = "x86"))]
 fn test_install_valid() {
     use path_util::installed_library_in_workspace;
 
@@ -362,6 +353,7 @@ fn test_install_valid() {
     assert!(!os::path_exists(&bench));
 }
 
+#[test] #[ignore(cfg(target_arch = "x86"))]
 fn test_install_invalid() {
     use conditions::nonexistent_package::cond;
     use cond1 = conditions::missing_pkg_files::cond;
@@ -384,6 +376,7 @@ fn test_install_invalid() {
     assert!(error_occurred && error1_occurred);
 }
 
+#[test] #[ignore(cfg(target_arch = "x86"))]
 fn test_install_url() {
     let workspace = mkdtemp(&os::tmpdir(), "test").expect("couldn't create temp dir");
     let sysroot = test_sysroot();
@@ -419,6 +412,7 @@ fn test_install_url() {
     assert!(!os::path_exists(&bench));
 }
 
+#[test] #[ignore(cfg(target_arch = "x86"))]
 fn test_package_ids_must_be_relative_path_like() {
     use conditions::bad_pkg_id::cond;
 
@@ -459,6 +453,7 @@ fn test_package_ids_must_be_relative_path_like() {
 
 }
 
+#[test] #[ignore(cfg(target_arch = "x86"))]
 fn test_package_version() {
     let temp_pkg_id = PkgId::new("github.com/catamorphism/test_pkg_version");
     match temp_pkg_id.version {
@@ -481,9 +476,8 @@ fn test_package_version() {
                     push("test_pkg_version")));
 }
 
-// FIXME #7006: Fails on linux for some reason
-#[test]
-#[ignore]
+// FIXME #7006: Fails on linux/mac for some reason
+#[test] #[ignore]
 fn test_package_request_version() {
     let temp_pkg_id = PkgId::new("github.com/catamorphism/test_pkg_version#0.3");
     let temp = mk_empty_workspace(&LocalPath(Path("test_pkg_version")), &ExactRevision(~"0.3"));
@@ -547,13 +541,75 @@ fn rustpkg_local_pkg() {
 }
 
 #[test]
-#[ignore (reason = "RUST_PATH not yet implemented -- #5682")]
+#[ignore] // XXX Failing on dist-linux bot
+fn package_script_with_default_build() {
+    let dir = create_local_package(&PkgId::new("fancy-lib"));
+    debug!("dir = %s", dir.to_str());
+    let source = test_sysroot().pop().pop().pop().push("src").push("librustpkg").
+        push("testsuite").push("pass").push("src").push("fancy-lib").push("pkg.rs");
+    debug!("package_script_with_default_build: %s", source.to_str());
+    if !os::copy_file(&source,
+                      & dir.push("src").push("fancy_lib-0.1").push("pkg.rs")) {
+        fail!("Couldn't copy file");
+    }
+    command_line_test([~"install", ~"fancy-lib"], &dir);
+    assert_lib_exists(&dir, "fancy-lib");
+    assert!(os::path_exists(&dir.push("build").push("fancy_lib").push("generated.rs")));
+}
+
+#[test]
+#[ignore (reason = "Un-ignore when #7071 is fixed")]
 fn rust_path_test() {
-    let dir = mk_workspace(&Path("/home/more_rust"),
-                           &normalize(RemotePath(Path("foo"))),
-                           &NoVersion);
-  //  command_line_test("RUST_PATH=/home/rust:/home/more_rust rustpkg install foo");
-    command_line_test([~"install", ~"foo"], &dir);
+    let dir_for_path = mkdtemp(&os::tmpdir(), "more_rust").expect("rust_path_test failed");
+    let dir = mk_workspace(&dir_for_path, &normalize(RemotePath(Path("foo"))), &NoVersion);
+    debug!("dir = %s", dir.to_str());
+    writeFile(&Path("/Users/tjc/more_rust/src/foo-0.1/main.rs"),
+              "fn main() { let _x = (); }");
+
+    let cwd = os::getcwd();
+    debug!("cwd = %s", cwd.to_str());
+    let mut prog = run::Process::new("rustpkg",
+                                     [~"install", ~"foo"],
+                                     run::ProcessOptions { env: Some(&[(~"RUST_PATH",
+                                                                       dir_for_path.to_str())]),
+                                                          dir: Some(&cwd),
+                                                          in_fd: None,
+                                                          out_fd: None,
+                                                          err_fd: None
+                                                         });
+    prog.finish_with_output();
+    assert_executable_exists(&dir_for_path, "foo");
+}
+
+#[test]
+fn rust_path_contents() {
+    let dir = mkdtemp(&os::tmpdir(), "rust_path").expect("rust_path_contents failed");
+    let abc = &dir.push("A").push("B").push("C");
+    assert!(os::mkdir_recursive(&abc.push(".rust"), u_rwx));
+    assert!(os::mkdir_recursive(&abc.pop().push(".rust"), u_rwx));
+    assert!(os::mkdir_recursive(&abc.pop().pop().push(".rust"), u_rwx));
+    assert!(do os::change_dir_locked(&dir.push("A").push("B").push("C")) {
+        let p = rust_path();
+        let cwd = os::getcwd().push(".rust");
+        let parent = cwd.pop().pop().push(".rust");
+        let grandparent = cwd.pop().pop().pop().push(".rust");
+        assert!(p.contains(&cwd));
+        assert!(p.contains(&parent));
+        assert!(p.contains(&grandparent));
+        for p.iter().advance() |a_path| {
+            assert!(!a_path.components.is_empty());
+        }
+    });
+}
+
+#[test]
+fn rust_path_parse() {
+    os::setenv("RUST_PATH", "/a/b/c:/d/e/f:/g/h/i");
+    let paths = rust_path();
+    assert!(paths.contains(&Path("/g/h/i")));
+    assert!(paths.contains(&Path("/d/e/f")));
+    assert!(paths.contains(&Path("/a/b/c")));
+    os::unsetenv("RUST_PATH");
 }
 
 #[test]
@@ -570,14 +626,14 @@ fn install_remove() {
     command_line_test([~"install", ~"bar"], &dir);
     command_line_test([~"install", ~"quux"], &dir);
     let list_output = command_line_test_output([~"list"]);
-    assert!(list_output.contains(&~"foo"));
-    assert!(list_output.contains(&~"bar"));
-    assert!(list_output.contains(&~"quux"));
+    assert!(list_output.iter().any_(|x| x == &~"foo"));
+    assert!(list_output.iter().any_(|x| x == &~"bar"));
+    assert!(list_output.iter().any_(|x| x == &~"quux"));
     command_line_test([~"remove", ~"foo"], &dir);
     let list_output = command_line_test_output([~"list"]);
-    assert!(!list_output.contains(&~"foo"));
-    assert!(list_output.contains(&~"bar"));
-    assert!(list_output.contains(&~"quux"));
+    assert!(!list_output.iter().any_(|x| x == &~"foo"));
+    assert!(list_output.iter().any_(|x| x == &~"bar"));
+    assert!(list_output.iter().any_(|x| x == &~"quux"));
 }
 
 #[test]
@@ -615,7 +671,7 @@ fn do_rebuild_dep_dates_change() {
     let workspace = create_local_package_with_dep(&p_id, &dep_id);
     command_line_test([~"build", ~"foo"], &workspace);
     let bar_date = datestamp(&lib_output_file_name(&workspace, "build", "bar"));
-    touch_source_file(&workspace, "bar");
+    touch_source_file(&workspace, &dep_id);
     command_line_test([~"build", ~"foo"], &workspace);
     let new_bar_date = datestamp(&lib_output_file_name(&workspace, "build", "bar"));
     assert!(new_bar_date > bar_date);
@@ -643,7 +699,7 @@ fn test_versions() {
     command_line_test([~"install", ~"foo#0.1"], &workspace);
     let output = command_line_test_output([~"list"]);
     // make sure output includes versions
-    assert!(!output.contains(&~"foo#0.2"));
+    assert!(!output.iter().any_(|x| x == &~"foo#0.2"));
 }
 
 #[test]

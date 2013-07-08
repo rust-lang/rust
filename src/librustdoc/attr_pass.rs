@@ -16,7 +16,6 @@ corresponding AST nodes. The information gathered here is the basis
 of the natural-language documentation for a crate.
 */
 
-use core::prelude::*;
 
 use astsrv;
 use attr_parser;
@@ -27,7 +26,6 @@ use fold::Fold;
 use fold;
 use pass::Pass;
 
-use core::vec;
 use syntax::ast;
 use syntax::ast_map;
 
@@ -101,7 +99,7 @@ fn fold_item(
     }
 }
 
-fn parse_item_attrs<T:Owned>(
+fn parse_item_attrs<T:Send>(
     srv: astsrv::Srv,
     id: doc::AstId,
     parse_attrs: ~fn(a: ~[ast::attribute]) -> T) -> T {
@@ -125,7 +123,7 @@ fn fold_enum(
     let doc = fold::default_seq_fold_enum(fold, doc);
 
     doc::EnumDoc {
-        variants: do vec::map(doc.variants) |variant| {
+        variants: do doc.variants.iter().transform |variant| {
             let variant = copy *variant;
             let desc = {
                 let variant = copy variant;
@@ -135,7 +133,7 @@ fn fold_enum(
                             node: ast::item_enum(ref enum_definition, _), _
                         }, _) => {
                             let ast_variant =
-                                vec::find(enum_definition.variants, |v| {
+                                copy *enum_definition.variants.iter().find_(|v| {
                                     to_str(v.node.name) == variant.name
                                 }).get();
 
@@ -154,7 +152,7 @@ fn fold_enum(
                 desc: desc,
                 .. variant
             }
-        },
+        }.collect(),
         .. doc
     }
 }
@@ -184,7 +182,7 @@ fn merge_method_attrs(
             ast_map::node_item(@ast::item {
                 node: ast::item_trait(_, _, ref methods), _
             }, _) => {
-                vec::map(*methods, |method| {
+                methods.iter().transform(|method| {
                     match copy *method {
                         ast::required(ty_m) => {
                             (to_str(ty_m.ident),
@@ -194,21 +192,21 @@ fn merge_method_attrs(
                             (to_str(m.ident), attr_parser::parse_desc(copy m.attrs))
                         }
                     }
-                })
+                }).collect()
             }
             ast_map::node_item(@ast::item {
                 node: ast::item_impl(_, _, _, ref methods), _
             }, _) => {
-                vec::map(*methods, |method| {
+                methods.iter().transform(|method| {
                     (to_str(method.ident),
                      attr_parser::parse_desc(copy method.attrs))
-                })
+                }).collect()
             }
             _ => fail!("unexpected item")
         }
     };
 
-    do vec::map_zip(docs, attrs) |doc, attrs| {
+    do docs.iter().zip(attrs.iter()).transform |(doc, attrs)| {
         assert!(doc.name == attrs.first());
         let desc = attrs.second();
 
@@ -216,7 +214,7 @@ fn merge_method_attrs(
             desc: desc,
             .. copy *doc
         }
-    }
+    }.collect()
 }
 
 
@@ -235,7 +233,6 @@ fn fold_impl(
 
 #[cfg(test)]
 mod test {
-    use core::prelude::*;
 
     use astsrv;
     use attr_pass::run;

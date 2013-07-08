@@ -44,7 +44,7 @@
  */
 
 #[link(name = "rusti",
-       vers = "0.7-pre",
+       vers = "0.7",
        uuid = "7fb5bf52-7d45-4fee-8325-5ad3311149fc",
        url = "https://github.com/mozilla/rust/tree/master/src/rusti")];
 
@@ -130,7 +130,7 @@ fn run(mut repl: Repl, input: ~str) -> Repl {
     do find_main(crate, sess) |blk| {
         // Fish out all the view items, be sure to record 'extern mod' items
         // differently beause they must appear before all 'use' statements
-        for blk.node.view_items.each |vi| {
+        for blk.node.view_items.iter().advance |vi| {
             let s = do with_pp(intr) |pp, _| {
                 pprust::print_view_item(pp, *vi);
             };
@@ -144,7 +144,7 @@ fn run(mut repl: Repl, input: ~str) -> Repl {
 
         // Iterate through all of the block's statements, inserting them into
         // the correct portions of the program
-        for blk.node.stmts.each |stmt| {
+        for blk.node.stmts.iter().advance |stmt| {
             let s = do with_pp(intr) |pp, _| { pprust::print_stmt(pp, *stmt); };
             match stmt.node {
                 ast::stmt_decl(d, _) => {
@@ -248,7 +248,7 @@ fn run(mut repl: Repl, input: ~str) -> Repl {
 
     fn find_main(crate: @ast::crate, sess: session::Session,
                  f: &fn(&ast::blk)) {
-        for crate.node.module.items.each |item| {
+        for crate.node.module.items.iter().advance |item| {
             match item.node {
                 ast::item_fn(_, _, _, _, ref blk) => {
                     if item.ident == sess.ident_of("main") {
@@ -287,7 +287,7 @@ fn compile_crate(src_filename: ~str, binary: ~str) -> Option<bool> {
         // file, skip compilation and return None.
         let mut should_compile = true;
         let dir = os::list_dir_path(&Path(outputs.out_filename.dirname()));
-        let maybe_lib_path = do dir.find |file| {
+        let maybe_lib_path = do dir.iter().find_ |file| {
             // The actual file's name has a hash value and version
             // number in it which is unknown at this time, so looking
             // for a file that matches out_filename won't work,
@@ -365,7 +365,7 @@ fn run_cmd(repl: &mut Repl, _in: @io::Reader, _out: @io::Writer,
         }
         ~"load" => {
             let mut loaded_crates: ~[~str] = ~[];
-            for args.each |arg| {
+            for args.iter().advance |arg| {
                 let (crate, filename) =
                     if arg.ends_with(".rs") || arg.ends_with(".rc") {
                     (arg.slice_to(arg.len() - 3).to_owned(), copy *arg)
@@ -377,11 +377,11 @@ fn run_cmd(repl: &mut Repl, _in: @io::Reader, _out: @io::Writer,
                     None => { }
                 }
             }
-            for loaded_crates.each |crate| {
+            for loaded_crates.iter().advance |crate| {
                 let crate_path = Path(*crate);
                 let crate_dir = crate_path.dirname();
                 repl.program.record_extern(fmt!("extern mod %s;", *crate));
-                if !repl.lib_search_paths.contains(&crate_dir) {
+                if !repl.lib_search_paths.iter().any_(|x| x == &crate_dir) {
                     repl.lib_search_paths.push(crate_dir);
                 }
             }
@@ -402,7 +402,8 @@ fn run_cmd(repl: &mut Repl, _in: @io::Reader, _out: @io::Writer,
                         if line.trim() == ":}" {
                             end_multiline = true;
                         } else {
-                            multiline_cmd += line + "\n";
+                            multiline_cmd.push_str(line);
+                            multiline_cmd.push_char('\n');
                         }
                     }
                 }
@@ -430,7 +431,7 @@ pub fn run_line(repl: &mut Repl, in: @io::Reader, out: @io::Writer, line: ~str,
 
             if !cmd.is_empty() {
                 let args = if len > 1 {
-                    vec::slice(split, 1, len).to_vec()
+                    vec::slice(split, 1, len).to_owned()
                 } else { ~[] };
 
                 match run_cmd(repl, in, out, cmd, args, use_rl) {
@@ -510,7 +511,8 @@ pub fn main() {
     }
 }
 
-#[cfg(test)]
+//#[cfg(test)]
+#[cfg(ignore)] // FIXME #7541 doesn't work under cross-compile
 mod tests {
     use std::io;
     use std::iterator::IteratorUtil;
