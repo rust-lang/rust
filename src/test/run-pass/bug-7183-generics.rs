@@ -39,7 +39,6 @@ fn main() {
     assert_eq!(Some(Some(3)).hi(), ~"something!something!hello: 3");
     assert_eq!(None::<int>.hi(), ~"hello - none");
 
-    // These fail because of a bug in monomorphization's ID generation.
-    //assert_eq!(Some(None::<int>).hi(), ~"something!hello - none");
-    //assert_eq!(Some(3).hi(), ~"something!hello: 3");
+    assert_eq!(Some(None::<int>).hi(), ~"something!hello - none");
+    assert_eq!(Some(3).hi(), ~"something!hello: 3");
 }

@@ -87,11 +87,11 @@ pub fn extract(desc: Option<~str>) -> Option<~str> {
 }
 
 fn parse_desc(desc: ~str) -> Option<~str> {
-    static max_brief_len: uint = 120u;
+    static MAX_BRIEF_LEN: uint = 120u;
 
     match first_sentence(copy desc) {
       Some(first_sentence) => {
-        if first_sentence.len() <= max_brief_len {
+        if first_sentence.len() <= MAX_BRIEF_LEN {
             Some(first_sentence)
         } else {
             None
@@ -141,7 +141,7 @@ fn first_sentence_(s: &str) -> ~str {
 pub fn paragraphs(s: &str) -> ~[~str] {
     let mut whitespace_lines = 0;
     let mut accum = ~"";
-    let paras = do s.any_line_iter().fold(~[]) |paras, line| {
+    let mut paras = do s.any_line_iter().fold(~[]) |paras, line| {
         let mut res = paras;
 
         if line.is_whitespace() {
@@ -166,11 +166,8 @@ pub fn paragraphs(s: &str) -> ~[~str] {
         res
     };
 
-    if !accum.is_empty() {
-        paras + [accum]
-    } else {
-        paras
-    }
+    if !accum.is_empty() { paras.push(accum); }
+    paras
 }
 
 #[cfg(test)]

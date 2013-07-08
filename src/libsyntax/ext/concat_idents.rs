@@ -36,7 +36,7 @@ pub fn expand_syntax_ext(cx: @ExtCtxt, sp: span, tts: &[ast::token_tree])
     let e = @ast::expr {
         id: cx.next_id(),
         node: ast::expr_path(
-            @ast::Path {
+            ast::Path {
                  span: sp,
                  global: false,
                  idents: ~[res],

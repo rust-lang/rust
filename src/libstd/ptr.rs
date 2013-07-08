@@ -406,7 +406,7 @@ pub mod ptr_tests {
             do str::as_c_str(s1) |p1| {
                 do str::as_c_str(s2) |p2| {
                     let v = ~[p0, p1, p2, null()];
-                    do vec::as_imm_buf(v) |vp, len| {
+                    do v.as_imm_buf |vp, len| {
                         assert_eq!(unsafe { buf_len(vp) }, 3u);
                         assert_eq!(len, 4u);
                     }

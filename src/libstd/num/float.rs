@@ -21,6 +21,7 @@
 // PORT this must match in width according to architecture
 
 #[allow(missing_doc)];
+#[allow(non_uppercase_statics)];
 
 use f64;
 use libc::c_int;

@@ -117,7 +117,7 @@ fn check_item(item: @item, (cx, visitor): (Context, visit::vt<Context>)) {
     // If this is a destructor, check kinds.
     if !attrs_contains_name(item.attrs, "unsafe_destructor") {
         match item.node {
-            item_impl(_, Some(trait_ref), self_type, _) => {
+            item_impl(_, Some(ref trait_ref), ref self_type, _) => {
                 match cx.tcx.def_map.find(&trait_ref.ref_id) {
                     None => cx.tcx.sess.bug("trait ref not in def map!"),
                     Some(&trait_def) => {
@@ -125,7 +125,7 @@ fn check_item(item: @item, (cx, visitor): (Context, visit::vt<Context>)) {
                         if cx.tcx.lang_items.drop_trait() == trait_def_id {
                             // Yes, it's a destructor.
                             match self_type.node {
-                                ty_path(_, bounds, path_node_id) => {
+                                ty_path(_, ref bounds, path_node_id) => {
                                     assert!(bounds.is_none());
                                     let struct_def = cx.tcx.def_map.get_copy(
                                         &path_node_id);
@@ -198,8 +198,9 @@ fn with_appropriate_checker(cx: Context, id: node_id,
     fn check_for_bare(cx: Context, fv: @freevar_entry) {
         cx.tcx.sess.span_err(
             fv.span,
-            "attempted dynamic environment capture");
-    }
+            "can't capture dynamic environment in a fn item; \
+            use the || { ... } closure form instead");
+    } // same check is done in resolve.rs, but shouldn't be done
 
     let fty = ty::node_id_to_type(cx.tcx, id);
     match ty::get(fty).sty {
@@ -320,7 +321,7 @@ pub fn check_expr(e: @expr, (cx, v): (Context, visit::vt<Context>)) {
     visit::visit_expr(e, (cx, v));
 }
 
-fn check_ty(aty: @Ty, (cx, v): (Context, visit::vt<Context>)) {
+fn check_ty(aty: &Ty, (cx, v): (Context, visit::vt<Context>)) {
     match aty.node {
       ty_path(_, _, id) => {
           let r = cx.tcx.node_type_substs.find(&id);
@@ -535,7 +536,7 @@ pub fn check_cast_for_escaping_regions(
     // Check, based on the region associated with the trait, whether it can
     // possibly escape the enclosing fn item (note that all type parameters
     // must have been declared on the enclosing fn item).
-    if target_regions.iter().any_(|r| is_re_scope(*r)) {
+    if target_regions.iter().any(|r| is_re_scope(*r)) {
         return; /* case (1) */
     }
 
@@ -550,7 +551,7 @@ pub fn check_cast_for_escaping_regions(
         |_r| {
             // FIXME(#5723) --- turn this check on once &Objects are usable
             //
-            // if !target_regions.iter().any_(|t_r| is_subregion_of(cx, *t_r, r)) {
+            // if !target_regions.iter().any(|t_r| is_subregion_of(cx, *t_r, r)) {
             //     cx.tcx.sess.span_err(
             //         source.span,
             //         fmt!("source contains borrowed pointer with lifetime \
@@ -564,7 +565,7 @@ pub fn check_cast_for_escaping_regions(
         |ty| {
             match ty::get(ty).sty {
                 ty::ty_param(source_param) => {
-                    if target_params.iter().any_(|x| x == &source_param) {
+                    if target_params.iter().any(|x| x == &source_param) {
                         /* case (2) */
                     } else {
                         check_durable(cx.tcx, ty, source.span); /* case (3) */

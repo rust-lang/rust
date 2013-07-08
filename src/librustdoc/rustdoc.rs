@@ -11,7 +11,7 @@
 //! Rustdoc - The Rust documentation generator
 
 #[link(name = "rustdoc",
-       vers = "0.7",
+       vers = "0.8-pre",
        uuid = "f8abd014-b281-484d-a0c3-26e3de8e2412",
        url = "https://github.com/mozilla/rust/tree/master/src/rustdoc")];
 
@@ -64,7 +64,7 @@ pub mod util;
 pub fn main() {
     let args = os::args();
 
-    if args.iter().any_(|x| "-h" == *x) || args.iter().any_(|x| "--help" == *x) {
+    if args.iter().any(|x| "-h" == *x) || args.iter().any(|x| "--help" == *x) {
         config::usage();
         return;
     }

@@ -19,13 +19,12 @@ use middle::typeck::infer::cres;
 use middle::typeck::infer::{RegionVariableOrigin, SubregionOrigin};
 use middle::typeck::infer;
 use util::common::indenter;
-use util::ppaux::{note_and_explain_region, Repr, UserString};
+use util::ppaux::{Repr};
 
 use std::cell::Cell;
 use std::hashmap::{HashMap, HashSet};
 use std::uint;
 use std::vec;
-use syntax::codemap::span;
 use syntax::ast;
 use syntax::opt_vec;
 use syntax::opt_vec::OptVec;
@@ -455,7 +454,7 @@ impl RegionVarBindings {
         {
             let mut result_set = result_set;
             if r == r1 { // Clearly, this is potentially inefficient.
-                if !result_set.iter().any_(|x| *x == r2) {
+                if !result_set.iter().any(|x| *x == r2) {
                     result_set.push(r2);
                 }
             }

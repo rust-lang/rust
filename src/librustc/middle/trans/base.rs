@@ -72,6 +72,7 @@ use std::uint;
 use std::vec;
 use std::local_data;
 use extra::time;
+use extra::sort;
 use syntax::ast::ident;
 use syntax::ast_map::{path, path_elt_to_str, path_name};
 use syntax::ast_util::{local_def, path_to_ident};
@@ -138,6 +139,48 @@ fn fcx_has_nonzero_span(fcx: fn_ctxt) -> bool {
     match fcx.span {
         None => true,
         Some(span) => *span.lo != 0 || *span.hi != 0
+    }
+}
+
+struct StatRecorder<'self> {
+    ccx: @mut CrateContext,
+    name: &'self str,
+    start: u64,
+    istart: uint,
+}
+
+impl<'self> StatRecorder<'self> {
+    pub fn new(ccx: @mut CrateContext,
+               name: &'self str) -> StatRecorder<'self> {
+        let start = if ccx.sess.trans_stats() {
+            time::precise_time_ns()
+        } else {
+            0
+        };
+        let istart = ccx.stats.n_llvm_insns;
+        StatRecorder {
+            ccx: ccx,
+            name: name,
+            start: start,
+            istart: istart,
+        }
+    }
+}
+
+#[unsafe_destructor]
+impl<'self> Drop for StatRecorder<'self> {
+    pub fn drop(&self) {
+        if self.ccx.sess.trans_stats() {
+            let end = time::precise_time_ns();
+            let elapsed = ((end - self.start) / 1_000_000) as uint;
+            let iend = self.ccx.stats.n_llvm_insns;
+            self.ccx.stats.fn_stats.push((self.name.to_owned(),
+                                          elapsed,
+                                          iend - self.istart));
+            self.ccx.stats.n_fns += 1;
+            // Reset LLVM insn count to avoid compound costs.
+            self.ccx.stats.n_llvm_insns = self.istart;
+        }
     }
 }
 
@@ -246,35 +289,48 @@ pub fn malloc_raw_dyn(bcx: block,
     let _icx = push_ctxt("malloc_raw");
     let ccx = bcx.ccx();
 
-    let (mk_fn, langcall) = match heap {
-        heap_managed | heap_managed_unique => {
-            (ty::mk_imm_box, bcx.tcx().lang_items.malloc_fn())
-        }
-        heap_exchange => {
-            (ty::mk_imm_uniq, bcx.tcx().lang_items.exchange_malloc_fn())
-        }
-        heap_exchange_closure => {
-            (ty::mk_imm_uniq, bcx.tcx().lang_items.closure_exchange_malloc_fn())
-        }
-    };
-
     if heap == heap_exchange {
+        let llty_value = type_of::type_of(ccx, t);
+        let llalign = llalign_of_min(ccx, llty_value);
+
+        // Allocate space:
+        let r = callee::trans_lang_call(
+            bcx,
+            bcx.tcx().lang_items.exchange_malloc_fn(),
+            [C_i32(llalign as i32), size],
+            None);
+        rslt(r.bcx, PointerCast(r.bcx, r.val, llty_value.ptr_to()))
+    } else if heap == heap_exchange_vector {
         // Grab the TypeRef type of box_ptr_ty.
-        let box_ptr_ty = mk_fn(bcx.tcx(), t);
+        let element_type = match ty::get(t).sty {
+            ty::ty_unboxed_vec(e) => e,
+            _ => fail!("not a vector body")
+        };
+        let box_ptr_ty = ty::mk_evec(bcx.tcx(), element_type, ty::vstore_uniq);
         let llty = type_of(ccx, box_ptr_ty);
 
         let llty_value = type_of::type_of(ccx, t);
         let llalign = llalign_of_min(ccx, llty_value);
 
         // Allocate space:
-        let rval = alloca(bcx, Type::i8p());
-        let bcx = callee::trans_lang_call(
+        let r = callee::trans_lang_call(
             bcx,
-            langcall,
+            bcx.tcx().lang_items.vector_exchange_malloc_fn(),
             [C_i32(llalign as i32), size],
-            expr::SaveIn(rval));
-        rslt(bcx, PointerCast(bcx, Load(bcx, rval), llty))
+            None);
+        rslt(r.bcx, PointerCast(r.bcx, r.val, llty))
     } else {
+        // we treat ~fn, @fn and @[] as @ here, which isn't ideal
+        let (mk_fn, langcall) = match heap {
+            heap_managed | heap_managed_unique => {
+                (ty::mk_imm_box, bcx.tcx().lang_items.malloc_fn())
+            }
+            heap_exchange_closure => {
+                (ty::mk_imm_box, bcx.tcx().lang_items.closure_exchange_malloc_fn())
+            }
+            _ => fail!("heap_exchange/heap_exchange_vector already handled")
+        };
+
         // Grab the TypeRef type of box_ptr_ty.
         let box_ptr_ty = mk_fn(bcx.tcx(), t);
         let llty = type_of(ccx, box_ptr_ty);
@@ -285,13 +341,12 @@ pub fn malloc_raw_dyn(bcx: block,
 
         // Allocate space:
         let tydesc = PointerCast(bcx, static_ti.tydesc, Type::i8p());
-        let rval = alloca(bcx, Type::i8p());
-        let bcx = callee::trans_lang_call(
+        let r = callee::trans_lang_call(
             bcx,
             langcall,
             [tydesc, size],
-            expr::SaveIn(rval));
-        let r = rslt(bcx, PointerCast(bcx, Load(bcx, rval), llty));
+            None);
+        let r = rslt(r.bcx, PointerCast(r.bcx, r.val, llty));
         maybe_set_managed_unique_rc(r.bcx, r.val, heap);
         r
     }
@@ -316,6 +371,7 @@ pub struct MallocResult {
 // and pulls out the body
 pub fn malloc_general_dyn(bcx: block, t: ty::t, heap: heap, size: ValueRef)
     -> MallocResult {
+    assert!(heap != heap_exchange);
     let _icx = push_ctxt("malloc_general");
     let Result {bcx: bcx, val: llbox} = malloc_raw_dyn(bcx, t, heap, size);
     let body = GEPi(bcx, llbox, [0u, abi::box_field_body]);
@@ -323,9 +379,9 @@ pub fn malloc_general_dyn(bcx: block, t: ty::t, heap: heap, size: ValueRef)
     MallocResult { bcx: bcx, box: llbox, body: body }
 }
 
-pub fn malloc_general(bcx: block, t: ty::t, heap: heap)
-    -> MallocResult {
-        let ty = type_of(bcx.ccx(), t);
+pub fn malloc_general(bcx: block, t: ty::t, heap: heap) -> MallocResult {
+    let ty = type_of(bcx.ccx(), t);
+    assert!(heap != heap_exchange);
     malloc_general_dyn(bcx, t, heap, llsize_of(bcx.ccx(), ty))
 }
 pub fn malloc_boxed(bcx: block, t: ty::t)
@@ -342,6 +398,7 @@ pub fn heap_for_unique(bcx: block, t: ty::t) -> heap {
 }
 
 pub fn maybe_set_managed_unique_rc(bcx: block, bx: ValueRef, heap: heap) {
+    assert!(heap != heap_exchange);
     if heap == heap_managed_unique {
         // In cases where we are looking at a unique-typed allocation in the
         // managed heap (thus have refcount 1 from the managed allocator),
@@ -351,11 +408,6 @@ pub fn maybe_set_managed_unique_rc(bcx: block, bx: ValueRef, heap: heap) {
         let rc_val = C_int(bcx.ccx(), -2);
         Store(bcx, rc_val, rc);
     }
-}
-
-pub fn malloc_unique(bcx: block, t: ty::t)
-    -> MallocResult {
-    malloc_general(bcx, t, heap_for_unique(bcx, t))
 }
 
 // Type descriptor and type glue stuff
@@ -863,10 +915,10 @@ pub fn need_invoke(bcx: block) -> bool {
 
     // Walk the scopes to look for cleanups
     let mut cur = bcx;
+    let mut cur_scope = cur.scope;
     loop {
-        match cur.kind {
-            block_scope(inf) => {
-                let inf = &mut *inf; // FIXME(#5074) workaround old borrowck
+        cur_scope = match cur_scope {
+            Some(inf) => {
                 for inf.cleanups.iter().advance |cleanup| {
                     match *cleanup {
                         clean(_, cleanup_type) | clean_temp(_, _, cleanup_type) => {
@@ -876,12 +928,15 @@ pub fn need_invoke(bcx: block) -> bool {
                         }
                     }
                 }
+                inf.parent
             }
-            _ => ()
-        }
-        cur = match cur.parent {
-          Some(next) => next,
-          None => return false
+            None => {
+                cur = match cur.parent {
+                    Some(next) => next,
+                    None => return false
+                };
+                cur.scope
+            }
         }
     }
 }
@@ -899,23 +954,21 @@ pub fn have_cached_lpad(bcx: block) -> bool {
 
 pub fn in_lpad_scope_cx(bcx: block, f: &fn(si: &mut scope_info)) {
     let mut bcx = bcx;
+    let mut cur_scope = bcx.scope;
     loop {
-        {
-            match bcx.kind {
-                block_scope(inf) => {
-                    let len = { // FIXME(#5074) workaround old borrowck
-                        let inf = &mut *inf;
-                        inf.cleanups.len()
-                    };
-                    if len > 0u || bcx.parent.is_none() {
-                        f(inf);
-                        return;
-                    }
+        cur_scope = match cur_scope {
+            Some(inf) => {
+                if !inf.empty_cleanups() || (inf.parent.is_none() && bcx.parent.is_none()) {
+                    f(inf);
+                    return;
                 }
-                _ => ()
+                inf.parent
+            }
+            None => {
+                bcx = block_parent(bcx);
+                bcx.scope
             }
         }
-        bcx = block_parent(bcx);
     }
 }
 
@@ -972,27 +1025,31 @@ pub fn get_landing_pad(bcx: block) -> BasicBlockRef {
 
 pub fn find_bcx_for_scope(bcx: block, scope_id: ast::node_id) -> block {
     let mut bcx_sid = bcx;
+    let mut cur_scope = bcx_sid.scope;
     loop {
-        bcx_sid = match bcx_sid.node_info {
-            Some(NodeInfo { id, _ }) if id == scope_id => {
-                return bcx_sid
-              }
-
-                // FIXME(#6268, #6248) hacky cleanup for nested method calls
-                Some(NodeInfo { callee_id: Some(id), _ }) if id == scope_id => {
-                    return bcx_sid
-                }
-
-                _ => {
-                    match bcx_sid.parent {
-                        None => bcx.tcx().sess.bug(
-                            fmt!("no enclosing scope with id %d", scope_id)),
-                        Some(bcx_par) => bcx_par
+        cur_scope = match cur_scope {
+            Some(inf) => {
+                match inf.node_info {
+                    Some(NodeInfo { id, _ }) if id == scope_id => {
+                        return bcx_sid
                     }
+                    // FIXME(#6268, #6248) hacky cleanup for nested method calls
+                    Some(NodeInfo { callee_id: Some(id), _ }) if id == scope_id => {
+                        return bcx_sid
+                    }
+                    _ => inf.parent
                 }
+            }
+            None => {
+                bcx_sid = match bcx_sid.parent {
+                    None => bcx.tcx().sess.bug(fmt!("no enclosing scope with id %d", scope_id)),
+                    Some(bcx_par) => bcx_par
+                };
+                bcx_sid.scope
             }
         }
     }
+}
 
 
 pub fn do_spill(bcx: block, v: ValueRef, t: ty::t) -> ValueRef {
@@ -1014,13 +1071,13 @@ pub fn do_spill_noroot(cx: block, v: ValueRef) -> ValueRef {
 
 pub fn spill_if_immediate(cx: block, v: ValueRef, t: ty::t) -> ValueRef {
     let _icx = push_ctxt("spill_if_immediate");
-    if ty::type_is_immediate(t) { return do_spill(cx, v, t); }
+    if ty::type_is_immediate(cx.tcx(), t) { return do_spill(cx, v, t); }
     return v;
 }
 
 pub fn load_if_immediate(cx: block, v: ValueRef, t: ty::t) -> ValueRef {
     let _icx = push_ctxt("load_if_immediate");
-    if ty::type_is_immediate(t) { return Load(cx, v); }
+    if ty::type_is_immediate(cx.tcx(), t) { return Load(cx, v); }
     return v;
 }
 
@@ -1145,7 +1202,7 @@ pub fn trans_stmt(cx: block, s: &ast::stmt) -> block {
 
 // You probably don't want to use this one. See the
 // next three functions instead.
-pub fn new_block(cx: fn_ctxt, parent: Option<block>, kind: block_kind,
+pub fn new_block(cx: fn_ctxt, parent: Option<block>, scope: Option<@mut scope_info>,
                  is_lpad: bool, name: &str, opt_node_info: Option<NodeInfo>)
     -> block {
 
@@ -1155,10 +1212,10 @@ pub fn new_block(cx: fn_ctxt, parent: Option<block>, kind: block_kind,
         };
         let bcx = mk_block(llbb,
                            parent,
-                           kind,
                            is_lpad,
                            opt_node_info,
                            cx);
+        bcx.scope = scope;
         for parent.iter().advance |cx| {
             if cx.unreachable {
                 Unreachable(bcx);
@@ -1169,27 +1226,30 @@ pub fn new_block(cx: fn_ctxt, parent: Option<block>, kind: block_kind,
     }
 }
 
-pub fn simple_block_scope() -> block_kind {
-    block_scope(@mut scope_info {
+pub fn simple_block_scope(parent: Option<@mut scope_info>,
+                          node_info: Option<NodeInfo>) -> @mut scope_info {
+    @mut scope_info {
+        parent: parent,
         loop_break: None,
         loop_label: None,
         cleanups: ~[],
         cleanup_paths: ~[],
-        landing_pad: None
-    })
+        landing_pad: None,
+        node_info: node_info,
+    }
 }
 
 // Use this when you're at the top block of a function or the like.
 pub fn top_scope_block(fcx: fn_ctxt, opt_node_info: Option<NodeInfo>)
                     -> block {
-    return new_block(fcx, None, simple_block_scope(), false,
+    return new_block(fcx, None, Some(simple_block_scope(None, opt_node_info)), false,
                   "function top level", opt_node_info);
 }
 
 pub fn scope_block(bcx: block,
                    opt_node_info: Option<NodeInfo>,
                    n: &str) -> block {
-    return new_block(bcx.fcx, Some(bcx), simple_block_scope(), bcx.is_lpad,
+    return new_block(bcx.fcx, Some(bcx), Some(simple_block_scope(None, opt_node_info)), bcx.is_lpad,
                   n, opt_node_info);
 }
 
@@ -1198,27 +1258,29 @@ pub fn loop_scope_block(bcx: block,
                         loop_label: Option<ident>,
                         n: &str,
                         opt_node_info: Option<NodeInfo>) -> block {
-    return new_block(bcx.fcx, Some(bcx), block_scope(@mut scope_info {
+    return new_block(bcx.fcx, Some(bcx), Some(@mut scope_info {
+        parent: None,
         loop_break: Some(loop_break),
         loop_label: loop_label,
         cleanups: ~[],
         cleanup_paths: ~[],
-        landing_pad: None
+        landing_pad: None,
+        node_info: opt_node_info,
     }), bcx.is_lpad, n, opt_node_info);
 }
 
 // Use this when creating a block for the inside of a landing pad.
 pub fn lpad_block(bcx: block, n: &str) -> block {
-    new_block(bcx.fcx, Some(bcx), block_non_scope, true, n, None)
+    new_block(bcx.fcx, Some(bcx), None, true, n, None)
 }
 
 // Use this when you're making a general CFG BB within a scope.
 pub fn sub_block(bcx: block, n: &str) -> block {
-    new_block(bcx.fcx, Some(bcx), block_non_scope, bcx.is_lpad, n, None)
+    new_block(bcx.fcx, Some(bcx), None, bcx.is_lpad, n, None)
 }
 
 pub fn raw_block(fcx: fn_ctxt, is_lpad: bool, llbb: BasicBlockRef) -> block {
-    mk_block(llbb, None, block_non_scope, is_lpad, None, fcx)
+    mk_block(llbb, None, is_lpad, None, fcx)
 }
 
 
@@ -1277,42 +1339,47 @@ pub fn cleanup_and_leave(bcx: block,
                 (fmt!("cleanup_and_leave(%s)", cur.to_str())).to_managed());
         }
 
-        match cur.kind {
-            block_scope(inf) if !inf.empty_cleanups() => {
-                let (sub_cx, dest, inf_cleanups) = {
-                    let inf = &mut *inf;
-                    let mut skip = 0;
-                    let mut dest = None;
-                    {
-                        let r = (*inf).cleanup_paths.rev_iter().find_(|cp| cp.target == leave);
-                        for r.iter().advance |cp| {
-                            if cp.size == inf.cleanups.len() {
-                                Br(bcx, cp.dest);
-                                return;
-                            }
+        let mut cur_scope = cur.scope;
+        loop {
+            cur_scope = match cur_scope {
+                Some (inf) if !inf.empty_cleanups() => {
+                    let (sub_cx, dest, inf_cleanups) = {
+                        let inf = &mut *inf;
+                        let mut skip = 0;
+                        let mut dest = None;
+                        {
+                            let r = (*inf).cleanup_paths.rev_iter().find_(|cp| cp.target == leave);
+                            for r.iter().advance |cp| {
+                                if cp.size == inf.cleanups.len() {
+                                    Br(bcx, cp.dest);
+                                    return;
+                                }
 
-                            skip = cp.size;
-                            dest = Some(cp.dest);
+                                skip = cp.size;
+                                dest = Some(cp.dest);
+                            }
                         }
+                        let sub_cx = sub_block(bcx, "cleanup");
+                        Br(bcx, sub_cx.llbb);
+                        inf.cleanup_paths.push(cleanup_path {
+                            target: leave,
+                            size: inf.cleanups.len(),
+                            dest: sub_cx.llbb
+                        });
+                        (sub_cx, dest, inf.cleanups.tailn(skip).to_owned())
+                    };
+                    bcx = trans_block_cleanups_(sub_cx,
+                                                inf_cleanups,
+                                                is_lpad);
+                    for dest.iter().advance |&dest| {
+                        Br(bcx, dest);
+                        return;
                     }
-                    let sub_cx = sub_block(bcx, "cleanup");
-                    Br(bcx, sub_cx.llbb);
-                    inf.cleanup_paths.push(cleanup_path {
-                        target: leave,
-                        size: inf.cleanups.len(),
-                        dest: sub_cx.llbb
-                    });
-                    (sub_cx, dest, inf.cleanups.tailn(skip).to_owned())
-                };
-                bcx = trans_block_cleanups_(sub_cx,
-                                            inf_cleanups,
-                                            is_lpad);
-                for dest.iter().advance |&dest| {
-                    Br(bcx, dest);
-                    return;
+                    inf.parent
                 }
+                Some(inf) => inf.parent,
+                None => break
             }
-            _ => ()
         }
 
         match upto {
@@ -1353,9 +1420,12 @@ pub fn with_scope(bcx: block,
            bcx.to_str(), opt_node_info, name);
     let _indenter = indenter();
 
-    let scope_cx = scope_block(bcx, opt_node_info, name);
-    Br(bcx, scope_cx.llbb);
-    leave_block(f(scope_cx), scope_cx)
+    let scope = simple_block_scope(bcx.scope, opt_node_info);
+    bcx.scope = Some(scope);
+    let ret = f(bcx);
+    let ret = trans_block_cleanups_(ret, /*bad*/copy scope.cleanups, false);
+    bcx.scope = scope.parent;
+    ret
 }
 
 pub fn with_scope_result(bcx: block,
@@ -1363,10 +1433,14 @@ pub fn with_scope_result(bcx: block,
                          name: &str,
                          f: &fn(block) -> Result) -> Result {
     let _icx = push_ctxt("with_scope_result");
-    let scope_cx = scope_block(bcx, opt_node_info, name);
-    Br(bcx, scope_cx.llbb);
-    let Result {bcx, val} = f(scope_cx);
-    rslt(leave_block(bcx, scope_cx), val)
+
+    let scope = simple_block_scope(bcx.scope, opt_node_info);
+    bcx.scope = Some(scope);
+    let Result { bcx: out_bcx, val } = f(bcx);
+    let out_bcx = trans_block_cleanups_(out_bcx, /*bad*/copy scope.cleanups, false);
+    bcx.scope = scope.parent;
+
+    rslt(out_bcx, val)
 }
 
 pub fn with_scope_datumblock(bcx: block, opt_node_info: Option<NodeInfo>,
@@ -1399,7 +1473,7 @@ pub fn alloc_local(cx: block, local: &ast::local) -> block {
     let _icx = push_ctxt("alloc_local");
     let t = node_id_type(cx, local.node.id);
     let simple_name = match local.node.pat.node {
-      ast::pat_ident(_, pth, None) => Some(path_to_ident(pth)),
+      ast::pat_ident(_, ref pth, None) => Some(path_to_ident(pth)),
       _ => None
     };
     let val = alloc_ty(cx, t);
@@ -1545,7 +1619,7 @@ pub fn mk_standard_basic_blocks(llfn: ValueRef) -> BasicBlocks {
 // slot where the return value of the function must go.
 pub fn make_return_pointer(fcx: fn_ctxt, output_type: ty::t) -> ValueRef {
     unsafe {
-        if !ty::type_is_immediate(output_type) {
+        if !ty::type_is_immediate(fcx.ccx.tcx, output_type) {
             llvm::LLVMGetParam(fcx.llfn, 0)
         } else {
             let lloutputtype = type_of::type_of(fcx.ccx, output_type);
@@ -1584,7 +1658,7 @@ pub fn new_fn_ctxt_w_id(ccx: @mut CrateContext,
             ty::subst_tps(ccx.tcx, substs.tys, substs.self_ty, output_type)
         }
     };
-    let is_immediate = ty::type_is_immediate(substd_output_type);
+    let is_immediate = ty::type_is_immediate(ccx.tcx, substd_output_type);
     let fcx = @mut fn_ctxt_ {
           llfn: llfndecl,
           llenv: unsafe {
@@ -1690,7 +1764,7 @@ pub fn copy_args_to_allocas(fcx: fn_ctxt,
     match fcx.llself {
         Some(slf) => {
             let self_val = if slf.is_copy
-                    && datum::appropriate_mode(slf.t).is_by_value() {
+                    && datum::appropriate_mode(bcx.tcx(), slf.t).is_by_value() {
                 let tmp = BitCast(bcx, slf.v, type_of(bcx.ccx(), slf.t));
                 let alloc = alloc_ty(bcx, slf.t);
                 Store(bcx, tmp, alloc);
@@ -1718,7 +1792,7 @@ pub fn copy_args_to_allocas(fcx: fn_ctxt,
         // This alloca should be optimized away by LLVM's mem-to-reg pass in
         // the event it's not truly needed.
         // only by value if immediate:
-        let llarg = if datum::appropriate_mode(arg_ty).is_by_value() {
+        let llarg = if datum::appropriate_mode(bcx.tcx(), arg_ty).is_by_value() {
             let alloc = alloc_ty(bcx, arg_ty);
             Store(bcx, raw_llarg, alloc);
             alloc
@@ -1737,7 +1811,7 @@ pub fn copy_args_to_allocas(fcx: fn_ctxt,
         fcx.llargs.insert(arg_id, llarg);
 
         if fcx.ccx.sess.opts.extra_debuginfo && fcx_has_nonzero_span(fcx) {
-            debuginfo::create_arg(bcx, args[arg_n], args[arg_n].ty.span);
+            debuginfo::create_arg(bcx, &args[arg_n], args[arg_n].ty.span);
         }
     }
 
@@ -1866,18 +1940,16 @@ pub fn trans_fn(ccx: @mut CrateContext,
                 param_substs: Option<@param_substs>,
                 id: ast::node_id,
                 attrs: &[ast::attribute]) {
-    let do_time = ccx.sess.trans_stats();
-    let start = if do_time { time::get_time() }
-                else { time::Timespec::new(0, 0) };
+
+    let the_path_str = path_str(ccx.sess, path);
+    let _s = StatRecorder::new(ccx, the_path_str);
     debug!("trans_fn(self_arg=%?, param_substs=%s)",
            self_arg,
            param_substs.repr(ccx.tcx));
     let _icx = push_ctxt("trans_fn");
-    ccx.stats.n_fns += 1;
-    let the_path_str = path_str(ccx.sess, path);
     let output_type = ty::ty_fn_ret(ty::node_id_to_type(ccx.tcx, id));
     trans_closure(ccx,
-                  path,
+                  copy path,
                   decl,
                   body,
                   llfndecl,
@@ -1893,10 +1965,6 @@ pub fn trans_fn(ccx: @mut CrateContext,
                       }
                   },
                   |_bcx| { });
-    if do_time {
-        let end = time::get_time();
-        ccx.log_fn_time(the_path_str, start, end);
-    }
 }
 
 pub fn trans_enum_variant(ccx: @mut CrateContext,
@@ -1911,7 +1979,7 @@ pub fn trans_enum_variant(ccx: @mut CrateContext,
     let fn_args = do args.map |varg| {
         ast::arg {
             is_mutbl: false,
-            ty: varg.ty,
+            ty: copy varg.ty,
             pat: ast_util::ident_to_pat(
                 ccx.tcx.sess.next_node_id(),
                 codemap::dummy_sp(),
@@ -1985,7 +2053,7 @@ pub fn trans_tuple_struct(ccx: @mut CrateContext,
     let fn_args = do fields.map |field| {
         ast::arg {
             is_mutbl: false,
-            ty: field.node.ty,
+            ty: copy field.node.ty,
             pat: ast_util::ident_to_pat(ccx.tcx.sess.next_node_id(),
                                         codemap::dummy_sp(),
                                         special_idents::arg),
@@ -2961,8 +3029,14 @@ pub fn trans_crate(sess: session::Session,
         io::println(fmt!("n_monos: %u", ccx.stats.n_monos));
         io::println(fmt!("n_inlines: %u", ccx.stats.n_inlines));
         io::println(fmt!("n_closures: %u", ccx.stats.n_closures));
+        io::println("fn stats:");
+        do sort::quick_sort(ccx.stats.fn_stats) |&(_, _, insns_a), &(_, _, insns_b)| {
+            insns_a > insns_b
+        }
+        for ccx.stats.fn_stats.iter().advance |&(name, ms, insns)| {
+            io::println(fmt!("%u insns, %u ms, %s", insns, ms, name));
+        }
     }
-
     if ccx.sess.count_llvm_insns() {
         for ccx.stats.llvm_insns.iter().advance |(&k, &v)| {
             io::println(fmt!("%-7u %s", v, k));

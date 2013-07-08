@@ -237,8 +237,8 @@ can specify a variable's type by following it with a colon, then the type
 name. Static items, on the other hand, always require a type annotation.
 
 ~~~~
-static monster_factor: float = 57.8;
-let monster_size = monster_factor * 10.0;
+static MONSTER_FACTOR: float = 57.8;
+let monster_size = MONSTER_FACTOR * 10.0;
 let monster_size: int = 50;
 ~~~~
 

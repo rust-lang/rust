@@ -682,7 +682,7 @@ impl<
 > Encodable<S> for Deque<T> {
     fn encode(&self, s: &mut S) {
         do s.emit_seq(self.len()) |s| {
-            for self.eachi |i, e| {
+            for self.iter().enumerate().advance |(i, e)| {
                 s.emit_seq_elt(i, |s| e.encode(s));
             }
         }

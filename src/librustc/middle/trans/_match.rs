@@ -385,7 +385,7 @@ pub fn expand_nested_bindings<'r>(bcx: block,
 
     do m.map |br| {
         match br.pats[col].node {
-            ast::pat_ident(_, path, Some(inner)) => {
+            ast::pat_ident(_, ref path, Some(inner)) => {
                 let pats = vec::append(
                     br.pats.slice(0u, col).to_owned(),
                     vec::append(~[inner],
@@ -441,7 +441,7 @@ pub fn enter_match<'r>(bcx: block,
 
                 let this = br.pats[col];
                 match this.node {
-                    ast::pat_ident(_, path, None) => {
+                    ast::pat_ident(_, ref path, None) => {
                         if pat_is_binding(dm, this) {
                             let binding_info =
                                 br.data.bindings_map.get(
@@ -796,7 +796,7 @@ pub fn enter_region<'r>(bcx: block,
 pub fn get_options(bcx: block, m: &[@Match], col: uint) -> ~[Opt] {
     let ccx = bcx.ccx();
     fn add_to_set(tcx: ty::ctxt, set: &mut ~[Opt], val: Opt) {
-        if set.iter().any_(|l| opt_eq(tcx, l, &val)) {return;}
+        if set.iter().any(|l| opt_eq(tcx, l, &val)) {return;}
         set.push(val);
     }
 
@@ -963,7 +963,7 @@ pub fn collect_record_or_struct_fields(bcx: block,
     fn extend(idents: &mut ~[ast::ident], field_pats: &[ast::field_pat]) {
         for field_pats.iter().advance |field_pat| {
             let field_ident = field_pat.ident;
-            if !idents.iter().any_(|x| *x == field_ident) {
+            if !idents.iter().any(|x| *x == field_ident) {
                 idents.push(field_ident);
             }
         }
@@ -974,7 +974,7 @@ pub fn pats_require_rooting(bcx: block,
                             m: &[@Match],
                             col: uint)
                          -> bool {
-    do m.iter().any_ |br| {
+    do m.iter().any |br| {
         let pat_id = br.pats[col].id;
         let key = root_map_key {id: pat_id, derefs: 0u };
         bcx.ccx().maps.root_map.contains_key(&key)
@@ -1003,7 +1003,7 @@ pub fn root_pats_as_necessary(mut bcx: block,
 // matches may be wildcards like _ or identifiers).
 macro_rules! any_pat (
     ($m:expr, $pattern:pat) => (
-        do ($m).iter().any_ |br| {
+        do ($m).iter().any |br| {
             match br.pats[col].node {
                 $pattern => true,
                 _ => false
@@ -1029,7 +1029,7 @@ pub fn any_tup_pat(m: &[@Match], col: uint) -> bool {
 }
 
 pub fn any_tuple_struct_pat(bcx: block, m: &[@Match], col: uint) -> bool {
-    do m.iter().any_ |br| {
+    do m.iter().any |br| {
         let pat = br.pats[col];
         match pat.node {
             ast::pat_enum(_, Some(_)) => {
@@ -1095,26 +1095,20 @@ pub fn compare_values(cx: block,
 
     match ty::get(rhs_t).sty {
         ty::ty_estr(ty::vstore_uniq) => {
-            let scratch_result = scratch_datum(cx, ty::mk_bool(), false);
             let scratch_lhs = alloca(cx, val_ty(lhs));
             Store(cx, lhs, scratch_lhs);
             let scratch_rhs = alloca(cx, val_ty(rhs));
             Store(cx, rhs, scratch_rhs);
             let did = cx.tcx().lang_items.uniq_str_eq_fn();
-            let bcx = callee::trans_lang_call(cx, did, [scratch_lhs, scratch_rhs],
-                                              expr::SaveIn(scratch_result.val));
-            let result = scratch_result.to_result(bcx);
+            let result = callee::trans_lang_call(cx, did, [scratch_lhs, scratch_rhs], None);
             Result {
                 bcx: result.bcx,
                 val: bool_to_i1(result.bcx, result.val)
             }
         }
         ty::ty_estr(_) => {
-            let scratch_result = scratch_datum(cx, ty::mk_bool(), false);
             let did = cx.tcx().lang_items.str_eq_fn();
-            let bcx = callee::trans_lang_call(cx, did, [lhs, rhs],
-                                              expr::SaveIn(scratch_result.val));
-            let result = scratch_result.to_result(bcx);
+            let result = callee::trans_lang_call(cx, did, [lhs, rhs], None);
             Result {
                 bcx: result.bcx,
                 val: bool_to_i1(result.bcx, result.val)
@@ -1395,8 +1389,12 @@ pub fn compile_submatch(bcx: block,
     }
 
     if any_uniq_pat(m, col) {
+        let pat_ty = node_id_type(bcx, pat_id);
         let llbox = Load(bcx, val);
-        let unboxed = GEPi(bcx, llbox, [0u, abi::box_field_body]);
+        let unboxed = match ty::get(pat_ty).sty {
+            ty::ty_uniq(*) if !ty::type_contents(bcx.tcx(), pat_ty).contains_managed() => llbox,
+            _ => GEPi(bcx, llbox, [0u, abi::box_field_body])
+        };
         compile_submatch(bcx, enter_uniq(bcx, dm, m, col, val),
                          vec::append(~[unboxed], vals_left), chk);
         return;
@@ -1868,8 +1866,12 @@ pub fn bind_irrefutable_pat(bcx: block,
             }
         }
         ast::pat_box(inner) | ast::pat_uniq(inner) => {
+            let pat_ty = node_id_type(bcx, pat.id);
             let llbox = Load(bcx, val);
-            let unboxed = GEPi(bcx, llbox, [0u, abi::box_field_body]);
+            let unboxed = match ty::get(pat_ty).sty {
+                ty::ty_uniq(*) if !ty::type_contents(bcx.tcx(), pat_ty).contains_managed() => llbox,
+                    _ => GEPi(bcx, llbox, [0u, abi::box_field_body])
+            };
             bcx = bind_irrefutable_pat(bcx,
                                        inner,
                                        unboxed,

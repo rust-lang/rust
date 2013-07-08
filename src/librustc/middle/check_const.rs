@@ -112,7 +112,7 @@ pub fn check_expr(sess: Session,
                               "` in a constant expression");
             }
           }
-          expr_path(pth) => {
+          expr_path(ref pth) => {
             // NB: In the future you might wish to relax this slightly
             // to handle on-demand instantiation of functions via
             // foo::<bar> in a const. Currently that is only done on
@@ -224,7 +224,7 @@ pub fn check_item_recursion(sess: Session,
     (visitor.visit_item)(it, (env, visitor));
 
     fn visit_item(it: @item, (env, v): (env, visit::vt<env>)) {
-        if env.idstack.iter().any_(|x| x == &(it.id)) {
+        if env.idstack.iter().any(|x| x == &(it.id)) {
             env.sess.span_fatal(env.root_it.span, "recursive constant");
         }
         env.idstack.push(it.id);

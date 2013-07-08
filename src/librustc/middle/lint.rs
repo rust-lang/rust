@@ -14,7 +14,6 @@ use middle::ty;
 use middle::pat_util;
 use util::ppaux::{ty_to_str};
 
-use std::char;
 use std::cmp;
 use std::hashmap::HashMap;
 use std::i16;
@@ -25,7 +24,6 @@ use std::u16;
 use std::u32;
 use std::u64;
 use std::u8;
-use std::vec;
 use extra::smallintmap::SmallIntMap;
 use syntax::attr;
 use syntax::codemap::span;
@@ -80,6 +78,7 @@ pub enum lint {
     non_implicitly_copyable_typarams,
     deprecated_pattern,
     non_camel_case_types,
+    non_uppercase_statics,
     type_limits,
     default_methods,
     unused_unsafe,
@@ -196,6 +195,13 @@ static lint_table: &'static [(&'static str, LintSpec)] = &[
         lint: non_camel_case_types,
         desc: "types, variants and traits should have camel case names",
         default: allow
+     }),
+
+    ("non_uppercase_statics",
+     LintSpec {
+         lint: non_uppercase_statics,
+         desc: "static constants should have uppercase identifiers",
+         default: warn
      }),
 
     ("managed_heap_memory",
@@ -741,9 +747,9 @@ fn check_item_ctypes(cx: &Context, it: &ast::item) {
 
     fn check_foreign_fn(cx: &Context, decl: &ast::fn_decl) {
         for decl.inputs.iter().advance |in| {
-            check_ty(cx, in.ty);
+            check_ty(cx, &in.ty);
         }
-        check_ty(cx, decl.output)
+        check_ty(cx, &decl.output)
     }
 
     match it.node {
@@ -753,7 +759,7 @@ fn check_item_ctypes(cx: &Context, it: &ast::item) {
                 ast::foreign_item_fn(ref decl, _, _) => {
                     check_foreign_fn(cx, decl);
                 }
-                ast::foreign_item_static(t, _) => { check_ty(cx, t); }
+                ast::foreign_item_static(ref t, _) => { check_ty(cx, t); }
             }
         }
       }
@@ -854,7 +860,10 @@ fn check_item_non_camel_case_types(cx: &Context, it: &ast::item) {
         let ident = cx.sess.str_of(ident);
         assert!(!ident.is_empty());
         let ident = ident.trim_chars(&'_');
-        char::is_uppercase(ident.char_at(0)) &&
+
+        // start with a non-lowercase letter rather than non-uppercase
+        // ones (some scripts don't have a concept of upper/lowercase)
+        !ident.char_at(0).is_lowercase() &&
             !ident.contains_char('_')
     }
 
@@ -878,6 +887,23 @@ fn check_item_non_camel_case_types(cx: &Context, it: &ast::item) {
             }
         }
         _ => ()
+    }
+}
+
+fn check_item_non_uppercase_statics(cx: &Context, it: &ast::item) {
+    match it.node {
+        // only check static constants
+        ast::item_static(_, ast::m_imm, _) => {
+            let s = cx.tcx.sess.str_of(it.ident);
+            // check for lowercase letters rather than non-uppercase
+            // ones (some scripts don't have a concept of
+            // upper/lowercase)
+            if s.iter().any(|c| c.is_lowercase()) {
+                cx.span_lint(non_uppercase_statics, it.span,
+                             "static constant should have an uppercase identifier");
+            }
+        }
+        _ => {}
     }
 }
 
@@ -940,10 +966,6 @@ fn lint_unused_mut() -> visit::vt<@mut Context> {
             visit_fn_decl(cx, &tm.decl);
             visit::visit_ty_method(tm, (cx, vt));
         },
-        visit_struct_method: |sm, (cx, vt)| {
-            visit_fn_decl(cx, &sm.decl);
-            visit::visit_struct_method(sm, (cx, vt));
-        },
         visit_trait_method: |tm, (cx, vt)| {
             match *tm {
                 ast::required(ref tm) => visit_fn_decl(cx, &tm.decl),
@@ -960,7 +982,7 @@ fn lint_session() -> visit::vt<@mut Context> {
         match cx.tcx.sess.lints.pop(&id) {
             None => {},
             Some(l) => {
-                do vec::consume(l) |_, (lint, span, msg)| {
+                for l.consume_iter().advance |(lint, span, msg)| {
                     cx.span_lint(lint, span, msg)
                 }
             }
@@ -1016,21 +1038,13 @@ fn lint_missing_doc() -> visit::vt<@mut Context> {
         // If we have doc(hidden), nothing to do
         if cx.doc_hidden { return }
         // If we're documented, nothing to do
-        if attrs.iter().any_(|a| a.node.is_sugared_doc) { return }
+        if attrs.iter().any(|a| a.node.is_sugared_doc) { return }
 
         // otherwise, warn!
         cx.span_lint(missing_doc, sp, msg);
     }
 
     visit::mk_vt(@visit::Visitor {
-        visit_struct_method: |m, (cx, vt)| {
-            if m.vis == ast::public {
-                check_attrs(cx, m.attrs, m.span,
-                            "missing documentation for a method");
-            }
-            visit::visit_struct_method(m, (cx, vt));
-        },
-
         visit_ty_method: |m, (cx, vt)| {
             // All ty_method objects are linted about because they're part of a
             // trait (no visibility)
@@ -1143,6 +1157,7 @@ pub fn check_crate(tcx: ty::ctxt, crate: @ast::crate) {
                     }
                     check_item_ctypes(cx, it);
                     check_item_non_camel_case_types(cx, it);
+                    check_item_non_uppercase_statics(cx, it);
                     check_item_default_methods(cx, it);
                     check_item_heap(cx, it);
 

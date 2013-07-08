@@ -323,19 +323,19 @@ pub fn run_tests_console(opts: &TestOpts,
     }
 
     fn write_ok(out: @io::Writer, use_color: bool) {
-        write_pretty(out, "ok", term::color::green, use_color);
+        write_pretty(out, "ok", term::color::GREEN, use_color);
     }
 
     fn write_failed(out: @io::Writer, use_color: bool) {
-        write_pretty(out, "FAILED", term::color::red, use_color);
+        write_pretty(out, "FAILED", term::color::RED, use_color);
     }
 
     fn write_ignored(out: @io::Writer, use_color: bool) {
-        write_pretty(out, "ignored", term::color::yellow, use_color);
+        write_pretty(out, "ignored", term::color::YELLOW, use_color);
     }
 
     fn write_bench(out: @io::Writer, use_color: bool) {
-        write_pretty(out, "bench", term::color::cyan, use_color);
+        write_pretty(out, "bench", term::color::CYAN, use_color);
     }
 
     fn write_pretty(out: @io::Writer,
@@ -469,7 +469,7 @@ fn run_tests(opts: &TestOpts,
     }
 
     // All benchmarks run at the end, in serial.
-    do vec::consume(filtered_benchs) |_, b| {
+    for filtered_benchs.consume_iter().advance |b| {
         callback(TeWait(copy b.desc));
         run_test(!opts.run_benchmarks, b, ch.clone());
         let (test, result) = p.recv();
@@ -479,16 +479,16 @@ fn run_tests(opts: &TestOpts,
 
 // Windows tends to dislike being overloaded with threads.
 #[cfg(windows)]
-static sched_overcommit : uint = 1;
+static SCHED_OVERCOMMIT : uint = 1;
 
 #[cfg(unix)]
-static sched_overcommit : uint = 4u;
+static SCHED_OVERCOMMIT : uint = 4u;
 
 fn get_concurrency() -> uint {
     use std::rt;
     let threads = rt::util::default_sched_threads();
     if threads == 1 { 1 }
-    else { threads * sched_overcommit }
+    else { threads * SCHED_OVERCOMMIT }
 }
 
 #[allow(non_implicitly_copyable_typarams)]
@@ -514,7 +514,7 @@ pub fn filter_tests(
             } else { return option::None; }
         }
 
-        vec::filter_map(filtered, |x| filter_fn(x, filter_str))
+        filtered.consume_iter().filter_map(|x| filter_fn(x, filter_str)).collect()
     };
 
     // Maybe pull out the ignored test and unignore them
@@ -532,7 +532,7 @@ pub fn filter_tests(
                 None
             }
         };
-        vec::filter_map(filtered, |x| filter(x))
+        filtered.consume_iter().filter_map(|x| filter(x)).collect()
     };
 
     // Sort the tests alphabetically
@@ -711,9 +711,9 @@ impl BenchHarness {
             // Eliminate outliers
             let med = samples.median();
             let mad = samples.median_abs_dev();
-            let samples = do vec::filter(samples) |f| {
+            let samples = do samples.consume_iter().filter |f| {
                 num::abs(*f - med) <= 3.0 * mad
-            };
+            }.collect::<~[f64]>();
 
             debug!("%u samples, median %f, MAD=%f, %u survived filter",
                    n_samples, med as float, mad as float,

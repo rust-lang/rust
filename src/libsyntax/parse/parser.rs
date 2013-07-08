@@ -115,7 +115,7 @@ pub enum item_or_view_item {
     iovi_none,
     iovi_item(@item),
     iovi_foreign_item(@foreign_item),
-    iovi_view_item(@view_item)
+    iovi_view_item(view_item)
 }
 
 #[deriving(Eq)]
@@ -130,20 +130,28 @@ The important thing is to make sure that lookahead doesn't balk
 at INTERPOLATED tokens */
 macro_rules! maybe_whole_expr (
     ($p:expr) => (
-        match *($p).token {
-            INTERPOLATED(token::nt_expr(e)) => {
-                $p.bump();
-                return e;
+        {
+            // This horrible convolution is brought to you by
+            // @mut, have a terrible day
+            let ret = match *($p).token {
+                INTERPOLATED(token::nt_expr(e)) => {
+                    Some(e)
+                }
+                INTERPOLATED(token::nt_path(ref pt)) => {
+                    Some($p.mk_expr(
+                        ($p).span.lo,
+                        ($p).span.hi,
+                        expr_path(/* bad */ copy *pt)))
+                }
+                _ => None
+            };
+            match ret {
+                Some(e) => {
+                    $p.bump();
+                    return e;
+                }
+                None => ()
             }
-            INTERPOLATED(token::nt_path(pt)) => {
-                $p.bump();
-                return $p.mk_expr(
-                    ($p).span.lo,
-                    ($p).span.hi,
-                    expr_path(pt)
-                );
-            }
-            _ => ()
         }
     )
 )
@@ -208,7 +216,7 @@ fn maybe_append(lhs: ~[attribute], rhs: Option<~[attribute]>)
 
 struct ParsedItemsAndViewItems {
     attrs_remaining: ~[attribute],
-    view_items: ~[@view_item],
+    view_items: ~[view_item],
     items: ~[@item],
     foreign_items: ~[@foreign_item]
 }
@@ -264,7 +272,6 @@ pub struct Parser {
     obsolete_set: @mut HashSet<ObsoleteSyntax>,
     /// Used to determine the path to externally loaded source files
     mod_path_stack: @mut ~[@str],
-
 }
 
 #[unsafe_destructor]
@@ -638,7 +645,7 @@ impl Parser {
     // parse a ty_closure type
     pub fn parse_ty_closure(&self,
                             sigil: ast::Sigil,
-                            region: Option<@ast::Lifetime>)
+                            region: Option<ast::Lifetime>)
                             -> ty_ {
         /*
 
@@ -816,7 +823,7 @@ impl Parser {
     // parse a possibly mutable type
     pub fn parse_mt(&self) -> mt {
         let mutbl = self.parse_mutability();
-        let t = self.parse_ty(false);
+        let t = ~self.parse_ty(false);
         mt { ty: t, mutbl: mutbl }
     }
 
@@ -827,7 +834,7 @@ impl Parser {
         let mutbl = self.parse_mutability();
         let id = self.parse_ident();
         self.expect(&token::COLON);
-        let ty = self.parse_ty(false);
+        let ty = ~self.parse_ty(false);
         spanned(
             lo,
             ty.span.hi,
@@ -839,13 +846,13 @@ impl Parser {
     }
 
     // parse optional return type [ -> TY ] in function decl
-    pub fn parse_ret_ty(&self) -> (ret_style, @Ty) {
+    pub fn parse_ret_ty(&self) -> (ret_style, Ty) {
         return if self.eat(&token::RARROW) {
             let lo = self.span.lo;
             if self.eat(&token::NOT) {
                 (
                     noreturn,
-                    @Ty {
+                    Ty {
                         id: self.get_id(),
                         node: ty_bot,
                         span: mk_sp(lo, self.last_span.hi)
@@ -858,7 +865,7 @@ impl Parser {
             let pos = self.span.lo;
             (
                 return_val,
-                @Ty {
+                Ty {
                     id: self.get_id(),
                     node: ty_nil,
                     span: mk_sp(pos, pos),
@@ -870,7 +877,7 @@ impl Parser {
     // parse a type.
     // Useless second parameter for compatibility with quasiquote macros.
     // Bleh!
-    pub fn parse_ty(&self, _: bool) -> @Ty {
+    pub fn parse_ty(&self, _: bool) -> Ty {
         maybe_whole!(self, nt_ty);
 
         let lo = self.span.lo;
@@ -960,14 +967,14 @@ impl Parser {
             || is_ident_or_path(self.token) {
             // NAMED TYPE
             let (path, bounds) = self.parse_type_path();
-            ty_path(path, @bounds, self.get_id())
+            ty_path(path, bounds, self.get_id())
         } else {
             self.fatal(fmt!("expected type, found token %?",
                             *self.token));
         };
 
         let sp = mk_sp(lo, self.last_span.hi);
-        @Ty {id: self.get_id(), node: t, span: sp}
+        Ty {id: self.get_id(), node: t, span: sp}
     }
 
     // parse the type following a @ or a ~
@@ -977,7 +984,7 @@ impl Parser {
         // @'foo fn() or @foo/fn() or @fn() are parsed directly as fn types:
         match *self.token {
             token::LIFETIME(*) => {
-                let lifetime = @self.parse_lifetime();
+                let lifetime = self.parse_lifetime();
                 self.bump();
                 return self.parse_ty_closure(sigil, Some(lifetime));
             }
@@ -986,7 +993,7 @@ impl Parser {
                 if self.look_ahead(1u) == token::BINOP(token::SLASH) &&
                     self.token_is_closure_keyword(&self.look_ahead(2u))
                 {
-                    let lifetime = @self.parse_lifetime();
+                    let lifetime = self.parse_lifetime();
                     self.obsolete(*self.last_span, ObsoleteLifetimeNotation);
                     return self.parse_ty_closure(sigil, Some(lifetime));
                 } else if self.token_is_closure_keyword(&copy *self.token) {
@@ -1108,7 +1115,7 @@ impl Parser {
         let t = if self.eat(&token::COLON) {
             self.parse_ty(false)
         } else {
-            @Ty {
+            Ty {
                 id: self.get_id(),
                 node: ty_infer,
                 span: mk_sp(self.span.lo, self.span.hi),
@@ -1218,10 +1225,10 @@ impl Parser {
     }
 
     // parse a path that doesn't have type parameters attached
-    pub fn parse_path_without_tps(&self) -> @ast::Path {
+    pub fn parse_path_without_tps(&self) -> ast::Path {
         maybe_whole!(self, nt_path);
         let (ids,is_global,sp) = self.parse_path();
-        @ast::Path { span: sp,
+        ast::Path { span: sp,
                      global: is_global,
                      idents: ids,
                      rp: None,
@@ -1229,7 +1236,7 @@ impl Parser {
     }
 
     pub fn parse_bounded_path_with_tps(&self, colons: bool,
-                                        before_tps: Option<&fn()>) -> @ast::Path {
+                                        before_tps: Option<&fn()>) -> ast::Path {
         debug!("parse_path_with_tps(colons=%b)", colons);
 
         maybe_whole!(self, nt_path);
@@ -1255,7 +1262,7 @@ impl Parser {
                     token::IDENT(sid, _) => {
                         let span = copy self.span;
                         self.bump();
-                        Some(@ast::Lifetime {
+                        Some(ast::Lifetime {
                             id: self.get_id(),
                             span: *span,
                             ident: sid
@@ -1280,7 +1287,7 @@ impl Parser {
                 if v.len() == 0 {
                     None
                 } else if v.len() == 1 {
-                    Some(@*v.get(0))
+                    Some(*v.get(0))
                 } else {
                     self.fatal(fmt!("Expected at most one \
                                      lifetime name (for now)"));
@@ -1288,22 +1295,22 @@ impl Parser {
             }
         };
 
-        @ast::Path { span: mk_sp(lo, hi),
+        ast::Path { span: mk_sp(lo, hi),
                      rp: rp,
                      types: tps,
-                     .. copy *path }
+                     .. path }
     }
 
     // parse a path optionally with type parameters. If 'colons'
     // is true, then type parameters must be preceded by colons,
     // as in a::t::<t1,t2>
-    pub fn parse_path_with_tps(&self, colons: bool) -> @ast::Path {
+    pub fn parse_path_with_tps(&self, colons: bool) -> ast::Path {
         self.parse_bounded_path_with_tps(colons, None)
     }
 
     // Like the above, but can also parse kind bounds in the case of a
     // path to be used as a type that might be a trait.
-    pub fn parse_type_path(&self) -> (@ast::Path, Option<OptVec<TyParamBound>>) {
+    pub fn parse_type_path(&self) -> (ast::Path, Option<OptVec<TyParamBound>>) {
         let mut bounds = None;
         let path = self.parse_bounded_path_with_tps(false, Some(|| {
             // Note: this closure might not even get called in the case of a
@@ -1314,17 +1321,17 @@ impl Parser {
     }
 
     /// parses 0 or 1 lifetime
-    pub fn parse_opt_lifetime(&self) -> Option<@ast::Lifetime> {
+    pub fn parse_opt_lifetime(&self) -> Option<ast::Lifetime> {
         match *self.token {
             token::LIFETIME(*) => {
-                Some(@self.parse_lifetime())
+                Some(self.parse_lifetime())
             }
 
             // Also accept the (obsolete) syntax `foo/`
             token::IDENT(*) => {
                 if self.look_ahead(1u) == token::BINOP(token::SLASH) {
                     self.obsolete(*self.last_span, ObsoleteLifetimeNotation);
-                    Some(@self.parse_lifetime())
+                    Some(self.parse_lifetime())
                 } else {
                     None
                 }
@@ -1455,7 +1462,7 @@ impl Parser {
     pub fn mk_method_call(&self,
                       rcvr: @expr,
                       ident: ident,
-                      tps: ~[@Ty],
+                      tps: ~[Ty],
                       args: ~[@expr],
                       sugar: CallSugar) -> ast::expr_ {
         expr_method_call(self.get_id(), rcvr, ident, tps, args, sugar)
@@ -1465,7 +1472,7 @@ impl Parser {
         expr_index(self.get_id(), expr, idx)
     }
 
-    pub fn mk_field(&self, expr: @expr, ident: ident, tys: ~[@Ty]) -> ast::expr_ {
+    pub fn mk_field(&self, expr: @expr, ident: ident, tys: ~[Ty]) -> ast::expr_ {
         expr_field(expr, ident, tys)
     }
 
@@ -1549,10 +1556,10 @@ impl Parser {
         } else if self.eat_keyword(keywords::If) {
             return self.parse_if_expr();
         } else if self.eat_keyword(keywords::For) {
-            return self.parse_sugary_call_expr(~"for", ForSugar,
+            return self.parse_sugary_call_expr(lo, ~"for", ForSugar,
                                                expr_loop_body);
         } else if self.eat_keyword(keywords::Do) {
-            return self.parse_sugary_call_expr(~"do", DoSugar,
+            return self.parse_sugary_call_expr(lo, ~"do", DoSugar,
                                                expr_do_body);
         } else if self.eat_keyword(keywords::While) {
             return self.parse_while_expr();
@@ -2207,7 +2214,7 @@ impl Parser {
                     // No argument list - `do foo {`
                       ast::fn_decl {
                           inputs: ~[],
-                          output: @Ty {
+                          output: Ty {
                               id: self.get_id(),
                               node: ty_infer,
                               span: *self.span
@@ -2264,12 +2271,11 @@ impl Parser {
     // parse a 'for' or 'do'.
     // the 'for' and 'do' expressions parse as calls, but look like
     // function calls followed by a closure expression.
-    pub fn parse_sugary_call_expr(&self,
+    pub fn parse_sugary_call_expr(&self, lo: BytePos,
                                   keyword: ~str,
                                   sugar: CallSugar,
                                   ctor: &fn(v: @expr) -> expr_)
                                   -> @expr {
-        let lo = self.last_span;
         // Parse the callee `foo` in
         //    for foo || {
         //    for foo.bar || {
@@ -2286,21 +2292,21 @@ impl Parser {
                 let last_arg = self.mk_expr(block.span.lo, block.span.hi,
                                             ctor(block));
                 let args = vec::append(copy *args, [last_arg]);
-                self.mk_expr(lo.lo, block.span.hi, expr_call(f, args, sugar))
+                self.mk_expr(lo, block.span.hi, expr_call(f, args, sugar))
             }
             expr_method_call(_, f, i, ref tps, ref args, NoSugar) => {
                 let block = self.parse_lambda_block_expr();
                 let last_arg = self.mk_expr(block.span.lo, block.span.hi,
                                             ctor(block));
                 let args = vec::append(copy *args, [last_arg]);
-                self.mk_expr(lo.lo, block.span.hi,
+                self.mk_expr(lo, block.span.hi,
                              self.mk_method_call(f, i, copy *tps, args, sugar))
             }
             expr_field(f, i, ref tps) => {
                 let block = self.parse_lambda_block_expr();
                 let last_arg = self.mk_expr(block.span.lo, block.span.hi,
                                             ctor(block));
-                self.mk_expr(lo.lo, block.span.hi,
+                self.mk_expr(lo, block.span.hi,
                              self.mk_method_call(f, i, copy *tps, ~[last_arg], sugar))
             }
             expr_path(*) | expr_call(*) | expr_method_call(*) |
@@ -2309,7 +2315,7 @@ impl Parser {
                 let last_arg = self.mk_expr(block.span.lo, block.span.hi,
                                             ctor(block));
                 self.mk_expr(
-                    lo.lo,
+                    lo,
                     last_arg.span.hi,
                     self.mk_call(e, ~[last_arg], sugar))
             }
@@ -2319,7 +2325,7 @@ impl Parser {
                 // but they aren't represented by tests
                 debug!("sugary call on %?", e.node);
                 self.span_fatal(
-                    *lo,
+                    e.span,
                     fmt!("`%s` must be followed by a block call", keyword));
             }
         }
@@ -2819,7 +2825,7 @@ impl Parser {
             self.obsolete(*self.span, ObsoleteMutWithMultipleBindings)
         }
 
-        let mut ty = @Ty {
+        let mut ty = Ty {
             id: self.get_id(),
             node: ty_infer,
             span: mk_sp(lo, lo),
@@ -3206,7 +3212,7 @@ impl Parser {
         let ident = self.parse_ident();
         let opt_bounds = self.parse_optional_ty_param_bounds();
         // For typarams we don't care about the difference b/w "<T>" and "<T:>".
-        let bounds = @opt_bounds.get_or_default(opt_vec::Empty);
+        let bounds = opt_bounds.get_or_default(opt_vec::Empty);
         ast::TyParam { ident: ident, id: self.get_id(), bounds: bounds }
     }
 
@@ -3228,7 +3234,7 @@ impl Parser {
 
     // parse a generic use site
     fn parse_generic_values(
-        &self) -> (OptVec<ast::Lifetime>, ~[@Ty])
+        &self) -> (OptVec<ast::Lifetime>, ~[Ty])
     {
         if !self.eat(&token::LT) {
             (opt_vec::Empty, ~[])
@@ -3238,7 +3244,7 @@ impl Parser {
     }
 
     fn parse_generic_values_after_lt(
-        &self) -> (OptVec<ast::Lifetime>, ~[@Ty])
+        &self) -> (OptVec<ast::Lifetime>, ~[Ty])
     {
         let lifetimes = self.parse_lifetimes();
         let result = self.parse_seq_to_gt(
@@ -3336,14 +3342,14 @@ impl Parser {
             } else if (this.token_is_lifetime(&this.look_ahead(1)) &&
                        token::is_keyword(keywords::Self, &this.look_ahead(2))) {
                 this.bump();
-                let lifetime = @this.parse_lifetime();
+                let lifetime = this.parse_lifetime();
                 this.expect_self_ident();
                 sty_region(Some(lifetime), m_imm)
             } else if (this.token_is_lifetime(&this.look_ahead(1)) &&
                        this.token_is_mutability(&this.look_ahead(2)) &&
                        token::is_keyword(keywords::Self, &this.look_ahead(3))) {
                 this.bump();
-                let lifetime = @this.parse_lifetime();
+                let lifetime = this.parse_lifetime();
                 let mutability = this.parse_mutability();
                 this.expect_self_ident();
                 sty_region(Some(lifetime), mutability)
@@ -3448,7 +3454,7 @@ impl Parser {
         let output = if self.eat(&token::RARROW) {
             self.parse_ty(false)
         } else {
-            @Ty { id: self.get_id(), node: ty_infer, span: *self.span }
+            Ty { id: self.get_id(), node: ty_infer, span: *self.span }
         };
 
         ast::fn_decl {
@@ -3558,9 +3564,9 @@ impl Parser {
         let opt_trait = if could_be_trait && self.eat_keyword(keywords::For) {
             // New-style trait. Reinterpret the type as a trait.
             let opt_trait_ref = match ty.node {
-                ty_path(path, @None, node_id) => {
-                    Some(@trait_ref {
-                        path: path,
+                ty_path(ref path, None, node_id) => {
+                    Some(trait_ref {
+                        path: /* bad */ copy *path,
                         ref_id: node_id
                     })
                 }
@@ -3601,15 +3607,15 @@ impl Parser {
     }
 
     // parse a::B<~str,int>
-    fn parse_trait_ref(&self) -> @trait_ref {
-        @ast::trait_ref {
+    fn parse_trait_ref(&self) -> trait_ref {
+        ast::trait_ref {
             path: self.parse_path_with_tps(false),
             ref_id: self.get_id(),
         }
     }
 
     // parse B + C<~str,int> + D
-    fn parse_trait_ref_list(&self, ket: &token::Token) -> ~[@trait_ref] {
+    fn parse_trait_ref_list(&self, ket: &token::Token) -> ~[trait_ref] {
         self.parse_seq_to_before_end(
             ket,
             seq_sep_trailing_disallowed(token::BINOP(token::PLUS)),
@@ -3834,7 +3840,7 @@ impl Parser {
         (id, item_static(ty, m, e), None)
     }
 
-    // parse a mod { ...}  item
+    // parse a `mod <foo> { ... }` or `mod <foo>;` item
     fn parse_item_mod(&self, outer_attrs: ~[ast::attribute]) -> item_info {
         let id_span = *self.span;
         let id = self.parse_ident();
@@ -3907,6 +3913,23 @@ impl Parser {
             prefix.push_many(path.components)
         };
         let full_path = full_path.normalize();
+
+        let maybe_i = do self.sess.included_mod_stack.iter().position |&p| { p == full_path };
+        match maybe_i {
+            Some(i) => {
+                let stack = &self.sess.included_mod_stack;
+                let mut err = ~"circular modules: ";
+                for stack.slice(i, stack.len()).iter().advance |p| {
+                    err.push_str(p.to_str());
+                    err.push_str(" -> ");
+                }
+                err.push_str(full_path.to_str());
+                self.span_fatal(id_sp, err);
+            }
+            None => ()
+        }
+        self.sess.included_mod_stack.push(full_path.clone());
+
         let p0 =
             new_sub_parser_from_file(self.sess, copy self.cfg,
                                      &full_path, id_sp);
@@ -3914,6 +3937,7 @@ impl Parser {
         let mod_attrs = vec::append(outer_attrs, inner);
         let first_item_outer_attrs = next;
         let m0 = p0.parse_mod_items(token::EOF, first_item_outer_attrs);
+        self.sess.included_mod_stack.pop();
         return (ast::item_mod(m0), mod_attrs);
 
         fn cdir_path_opt(default: @str, attrs: ~[ast::attribute]) -> @str {
@@ -4075,7 +4099,7 @@ impl Parser {
         // extern mod foo;
         let metadata = self.parse_optional_meta();
         self.expect(&token::SEMI);
-        iovi_view_item(@ast::view_item {
+        iovi_view_item(ast::view_item {
             node: view_item_extern_mod(ident, metadata, self.get_id()),
             attrs: copy attrs,
             vis: visibility,
@@ -4148,9 +4172,9 @@ impl Parser {
                     seq_sep_trailing_disallowed(token::COMMA),
                     |p| p.parse_ty(false)
                 );
-                for arg_tys.iter().advance |ty| {
+                for arg_tys.consume_iter().advance |ty| {
                     args.push(ast::variant_arg {
-                        ty: *ty,
+                        ty: ty,
                         id: self.get_id(),
                     });
                 }
@@ -4309,7 +4333,7 @@ impl Parser {
             // USE ITEM (iovi_view_item)
             let view_item = self.parse_use();
             self.expect(&token::SEMI);
-            return iovi_view_item(@ast::view_item {
+            return iovi_view_item(ast::view_item {
                 node: view_item,
                 attrs: attrs,
                 vis: visibility,
@@ -4559,7 +4583,7 @@ impl Parser {
                 let id = self.parse_ident();
                 path.push(id);
             }
-            let path = @ast::Path { span: mk_sp(lo, self.span.hi),
+            let path = ast::Path { span: mk_sp(lo, self.span.hi),
                                     global: false,
                                     idents: path,
                                     rp: None,
@@ -4589,7 +4613,7 @@ impl Parser {
                         seq_sep_trailing_allowed(token::COMMA),
                         |p| p.parse_path_list_ident()
                     );
-                    let path = @ast::Path { span: mk_sp(lo, self.span.hi),
+                    let path = ast::Path { span: mk_sp(lo, self.span.hi),
                                             global: false,
                                             idents: path,
                                             rp: None,
@@ -4601,7 +4625,7 @@ impl Parser {
                   // foo::bar::*
                   token::BINOP(token::STAR) => {
                     self.bump();
-                    let path = @ast::Path { span: mk_sp(lo, self.span.hi),
+                    let path = ast::Path { span: mk_sp(lo, self.span.hi),
                                             global: false,
                                             idents: path,
                                             rp: None,
@@ -4617,7 +4641,7 @@ impl Parser {
           _ => ()
         }
         let last = path[path.len() - 1u];
-        let path = @ast::Path { span: mk_sp(lo, self.span.hi),
+        let path = ast::Path { span: mk_sp(lo, self.span.hi),
                                 global: false,
                                 idents: path,
                                 rp: None,
@@ -4657,7 +4681,7 @@ impl Parser {
         &self,
         attrs: ~[attribute],
         vis: visibility
-    ) -> @view_item {
+    ) -> view_item {
         let lo = self.span.lo;
         let node = if self.eat_keyword(keywords::Use) {
             self.parse_use()
@@ -4670,7 +4694,7 @@ impl Parser {
             self.bug("expected view item");
         };
         self.expect(&token::SEMI);
-        @ast::view_item { node: node,
+        ast::view_item { node: node,
                           attrs: attrs,
                           vis: vis,
                           span: mk_sp(lo, self.last_span.hi) }
@@ -4688,7 +4712,7 @@ impl Parser {
         let mut attrs = vec::append(first_item_attrs,
                                     self.parse_outer_attributes());
         // First, parse view items.
-        let mut view_items = ~[];
+        let mut view_items : ~[ast::view_item] = ~[];
         let mut items = ~[];
         let mut done = false;
         // I think this code would probably read better as a single

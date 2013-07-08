@@ -94,7 +94,7 @@ fn fold_const(
             do astsrv::exec(srv) |ctxt| {
                 match ctxt.ast_map.get_copy(&doc.id()) {
                     ast_map::node_item(@ast::item {
-                        node: ast::item_static(ty, _, _), _
+                        node: ast::item_static(ref ty, _, _), _
                     }, _) => {
                         pprust::ty_to_str(ty, extract::interner())
                     }
@@ -245,12 +245,12 @@ fn fold_impl(
         do astsrv::exec(srv) |ctxt| {
             match ctxt.ast_map.get_copy(&doc.id()) {
                 ast_map::node_item(@ast::item {
-                    node: ast::item_impl(ref generics, opt_trait_type, self_ty, _), _
+                    node: ast::item_impl(ref generics, ref opt_trait_type, ref self_ty, _), _
                 }, _) => {
                     let bounds = pprust::generics_to_str(generics, extract::interner());
                     let bounds = if bounds.is_empty() { None } else { Some(bounds) };
                     let trait_types = opt_trait_type.map_default(~[], |p| {
-                        ~[pprust::path_to_str(p.path, extract::interner())]
+                        ~[pprust::path_to_str(&p.path, extract::interner())]
                     });
                     (bounds,
                      trait_types,
@@ -285,15 +285,14 @@ fn fold_type(
                 match ctxt.ast_map.get_copy(&doc.id()) {
                     ast_map::node_item(@ast::item {
                         ident: ident,
-                        node: ast::item_ty(ty, ref params), _
+                        node: ast::item_ty(ref ty, ref params), _
                     }, _) => {
                         Some(fmt!(
                             "type %s%s = %s",
                             to_str(ident),
                             pprust::generics_to_str(params,
                                                     extract::interner()),
-                            pprust::ty_to_str(ty,
-                                              extract::interner())
+                            pprust::ty_to_str(ty, extract::interner())
                         ))
                     }
                     _ => fail!("expected type")

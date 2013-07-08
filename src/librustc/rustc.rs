@@ -9,7 +9,7 @@
 // except according to those terms.
 
 #[link(name = "rustc",
-       vers = "0.7",
+       vers = "0.8-pre",
        uuid = "0ce89b41-2f92-459e-bbc1-8f5fe32f16cf",
        url = "https://github.com/mozilla/rust/tree/master/src/rustc")];
 
@@ -19,6 +19,7 @@
 
 #[allow(non_implicitly_copyable_typarams)];
 #[allow(non_camel_case_types)];
+#[allow(non_uppercase_statics)];
 #[deny(deprecated_pattern)];
 
 extern mod extra;
@@ -211,7 +212,7 @@ pub fn run_compiler(args: &~[~str], demitter: diagnostic::Emitter) {
     let lint_flags = vec::append(getopts::opt_strs(matches, "W"),
                                  getopts::opt_strs(matches, "warn"));
 
-    let show_lint_options = lint_flags.iter().any_(|x| x == &~"help") ||
+    let show_lint_options = lint_flags.iter().any(|x| x == &~"help") ||
         (opt_present(matches, "W") && lint_flags.is_empty());
 
     if show_lint_options {
@@ -220,7 +221,7 @@ pub fn run_compiler(args: &~[~str], demitter: diagnostic::Emitter) {
     }
 
     let r = getopts::opt_strs(matches, "Z");
-    if r.iter().any_(|x| x == &~"help") {
+    if r.iter().any(|x| x == &~"help") {
         describe_debug_flags();
         return;
     }

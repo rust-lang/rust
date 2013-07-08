@@ -23,7 +23,7 @@
 
 
 /// The base price of a muffin on a non-holiday
-static price_of_a_muffin: float = 70f;
+static PRICE_OF_A_MUFFIN: float = 70f;
 
 struct WaitPerson {
     hair_color: ~str

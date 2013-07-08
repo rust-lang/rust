@@ -21,7 +21,7 @@ use package_source::*;
 use version::{ExactRevision, NoVersion, Version};
 use path_util::{target_executable_in_workspace, target_library_in_workspace,
                target_test_in_workspace, target_bench_in_workspace,
-               make_dir_rwx, u_rwx, library_in_workspace,
+               make_dir_rwx, U_RWX, library_in_workspace,
                built_bench_in_workspace, built_test_in_workspace,
                built_library_in_workspace, built_executable_in_workspace,
                 installed_library_in_workspace, rust_path};
@@ -78,7 +78,7 @@ fn mk_workspace(workspace: &Path, short_name: &LocalPath, version: &Version) -> 
     // include version number in directory name
     let package_dir = workspace.push("src").push(fmt!("%s-%s",
                                                       short_name.to_str(), version.to_str()));
-    assert!(os::mkdir_recursive(&package_dir, u_rwx));
+    assert!(os::mkdir_recursive(&package_dir, U_RWX));
     package_dir
 }
 
@@ -92,7 +92,7 @@ fn mk_temp_workspace(short_name: &LocalPath, version: &Version) -> Path {
           os::path_is_dir(&package_dir));
     // Create main, lib, test, and bench files
     debug!("mk_workspace: creating %s", package_dir.to_str());
-    assert!(os::mkdir_recursive(&package_dir, u_rwx));
+    assert!(os::mkdir_recursive(&package_dir, U_RWX));
     debug!("Created %s and does it exist? %?", package_dir.to_str(),
           os::path_is_dir(&package_dir));
     // Create main, lib, test, and bench files
@@ -181,7 +181,7 @@ fn create_local_package_in(pkgid: &PkgId, pkgdir: &Path) -> Path {
     let package_dir = pkgdir.push("src").push(pkgid.to_str());
 
     // Create main, lib, test, and bench files
-    assert!(os::mkdir_recursive(&package_dir, u_rwx));
+    assert!(os::mkdir_recursive(&package_dir, U_RWX));
     debug!("Created %s and does it exist? %?", package_dir.to_str(),
           os::path_is_dir(&package_dir));
     // Create main, lib, test, and bench files
@@ -585,9 +585,9 @@ fn rust_path_test() {
 fn rust_path_contents() {
     let dir = mkdtemp(&os::tmpdir(), "rust_path").expect("rust_path_contents failed");
     let abc = &dir.push("A").push("B").push("C");
-    assert!(os::mkdir_recursive(&abc.push(".rust"), u_rwx));
-    assert!(os::mkdir_recursive(&abc.pop().push(".rust"), u_rwx));
-    assert!(os::mkdir_recursive(&abc.pop().pop().push(".rust"), u_rwx));
+    assert!(os::mkdir_recursive(&abc.push(".rust"), U_RWX));
+    assert!(os::mkdir_recursive(&abc.pop().push(".rust"), U_RWX));
+    assert!(os::mkdir_recursive(&abc.pop().pop().push(".rust"), U_RWX));
     assert!(do os::change_dir_locked(&dir.push("A").push("B").push("C")) {
         let p = rust_path();
         let cwd = os::getcwd().push(".rust");
@@ -626,14 +626,14 @@ fn install_remove() {
     command_line_test([~"install", ~"bar"], &dir);
     command_line_test([~"install", ~"quux"], &dir);
     let list_output = command_line_test_output([~"list"]);
-    assert!(list_output.iter().any_(|x| x == &~"foo"));
-    assert!(list_output.iter().any_(|x| x == &~"bar"));
-    assert!(list_output.iter().any_(|x| x == &~"quux"));
+    assert!(list_output.iter().any(|x| x == &~"foo"));
+    assert!(list_output.iter().any(|x| x == &~"bar"));
+    assert!(list_output.iter().any(|x| x == &~"quux"));
     command_line_test([~"remove", ~"foo"], &dir);
     let list_output = command_line_test_output([~"list"]);
-    assert!(!list_output.iter().any_(|x| x == &~"foo"));
-    assert!(list_output.iter().any_(|x| x == &~"bar"));
-    assert!(list_output.iter().any_(|x| x == &~"quux"));
+    assert!(!list_output.iter().any(|x| x == &~"foo"));
+    assert!(list_output.iter().any(|x| x == &~"bar"));
+    assert!(list_output.iter().any(|x| x == &~"quux"));
 }
 
 #[test]
@@ -699,7 +699,7 @@ fn test_versions() {
     command_line_test([~"install", ~"foo#0.1"], &workspace);
     let output = command_line_test_output([~"list"]);
     // make sure output includes versions
-    assert!(!output.iter().any_(|x| x == &~"foo#0.2"));
+    assert!(!output.iter().any(|x| x == &~"foo#0.2"));
 }
 
 #[test]

@@ -142,7 +142,7 @@ unsafe fn local_data_lookup<T: 'static>(
     -> Option<(uint, *libc::c_void)> {
 
     let key_value = key_to_key_value(key);
-    let map_pos = (*map).iter().position_(|entry|
+    let map_pos = (*map).iter().position(|entry|
         match *entry {
             Some((k,_,_)) => k == key_value,
             None => false
@@ -215,7 +215,7 @@ pub unsafe fn local_set<T: 'static>(
         }
         None => {
             // Find an empty slot. If not, grow the vector.
-            match (*map).iter().position_(|x| x.is_none()) {
+            match (*map).iter().position(|x| x.is_none()) {
                 Some(empty_index) => { map[empty_index] = new_entry; }
                 None => { map.push(new_entry); }
             }

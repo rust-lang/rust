@@ -105,7 +105,7 @@ pub struct pat_ctxt {
     map: PatIdMap,
 }
 
-pub fn check_pat_variant(pcx: &pat_ctxt, pat: @ast::pat, path: @ast::Path,
+pub fn check_pat_variant(pcx: &pat_ctxt, pat: @ast::pat, path: &ast::Path,
                          subpats: &Option<~[@ast::pat]>, expected: ty::t) {
 
     // Typecheck the path.
@@ -271,7 +271,7 @@ pub fn check_pat_variant(pcx: &pat_ctxt, pat: @ast::pat, path: @ast::Path,
 /// `etc` is true if the pattern said '...' and false otherwise.
 pub fn check_struct_pat_fields(pcx: &pat_ctxt,
                                span: span,
-                               path: @ast::Path,
+                               path: &ast::Path,
                                fields: &[ast::field_pat],
                                class_fields: ~[ty::field_ty],
                                class_id: ast::def_id,
@@ -322,7 +322,7 @@ pub fn check_struct_pat_fields(pcx: &pat_ctxt,
 }
 
 pub fn check_struct_pat(pcx: &pat_ctxt, pat_id: ast::node_id, span: span,
-                        expected: ty::t, path: @ast::Path,
+                        expected: ty::t, path: &ast::Path,
                         fields: &[ast::field_pat], etc: bool,
                         class_id: ast::def_id, substitutions: &ty::substs) {
     let fcx = pcx.fcx;
@@ -356,7 +356,7 @@ pub fn check_struct_like_enum_variant_pat(pcx: &pat_ctxt,
                                           pat_id: ast::node_id,
                                           span: span,
                                           expected: ty::t,
-                                          path: @ast::Path,
+                                          path: &ast::Path,
                                           fields: &[ast::field_pat],
                                           etc: bool,
                                           enum_id: ast::def_id,
@@ -440,7 +440,7 @@ pub fn check_pat(pcx: &pat_ctxt, pat: @ast::pat, expected: ty::t) {
         demand::suptype(fcx, pat.span, expected, const_tpt.ty);
         fcx.write_ty(pat.id, const_tpt.ty);
       }
-      ast::pat_ident(bm, name, sub) if pat_is_binding(tcx.def_map, pat) => {
+      ast::pat_ident(bm, ref name, sub) if pat_is_binding(tcx.def_map, pat) => {
         let typ = fcx.local_ty(pat.span, pat.id);
 
         match bm {
@@ -476,13 +476,13 @@ pub fn check_pat(pcx: &pat_ctxt, pat: @ast::pat, expected: ty::t) {
           _ => ()
         }
       }
-      ast::pat_ident(_, path, _) => {
+      ast::pat_ident(_, ref path, _) => {
         check_pat_variant(pcx, pat, path, &Some(~[]), expected);
       }
-      ast::pat_enum(path, ref subpats) => {
+      ast::pat_enum(ref path, ref subpats) => {
         check_pat_variant(pcx, pat, path, subpats, expected);
       }
-      ast::pat_struct(path, ref fields, etc) => {
+      ast::pat_struct(ref path, ref fields, etc) => {
         // Grab the class data that we care about.
         let structure = structure_of(fcx, pat.span, expected);
         let mut error_happened = false;

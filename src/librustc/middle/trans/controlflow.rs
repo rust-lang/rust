@@ -26,7 +26,6 @@ use util::ppaux;
 use middle::trans::type_::Type;
 
 use std::str;
-use std::vec;
 use syntax::ast;
 use syntax::ast::ident;
 use syntax::ast_map::path_mod;
@@ -190,9 +189,13 @@ pub fn trans_log(log_ex: &ast::expr,
 
     let (modpath, modname) = {
         let path = &mut bcx.fcx.path;
-        let modpath = vec::append(
-            ~[path_mod(ccx.sess.ident_of(ccx.link_meta.name))],
-            path.filtered(|e| match *e { path_mod(_) => true, _ => false }));
+        let mut modpath = ~[path_mod(ccx.sess.ident_of(ccx.link_meta.name))];
+        for path.iter().advance |e| {
+            match *e {
+                path_mod(_) => { modpath.push(*e) }
+                _ => {}
+            }
+        }
         let modname = path_str(ccx.sess, modpath);
         (modpath, modname)
     };
@@ -246,42 +249,48 @@ pub fn trans_break_cont(bcx: block,
     let _icx = push_ctxt("trans_break_cont");
     // Locate closest loop block, outputting cleanup as we go.
     let mut unwind = bcx;
-    let mut target;
+    let mut cur_scope = unwind.scope;
+    let mut target = unwind;
+    let mut quit = false;
     loop {
-        match unwind.kind {
-          block_scope(@scope_info {
-            loop_break: Some(brk),
-            loop_label: l,
-            _
-          }) => {
-              // If we're looking for a labeled loop, check the label...
-              target = if to_end {
-                  brk
-              } else {
-                  unwind
-              };
-              match opt_label {
-                  Some(desired) => match l {
-                      Some(actual) if actual == desired => break,
-                      // If it doesn't match the one we want,
-                      // don't break
-                      _ => ()
-                  },
-                  None => break
-              }
-          }
-          _ => ()
+        cur_scope = match cur_scope {
+            Some(@scope_info {
+                loop_break: Some(brk),
+                loop_label: l,
+                parent,
+                _
+            }) => {
+                // If we're looking for a labeled loop, check the label...
+                target = if to_end {
+                    brk
+                } else {
+                    unwind
+                };
+                match opt_label {
+                    Some(desired) => match l {
+                        Some(actual) if actual == desired => break,
+                        // If it doesn't match the one we want,
+                        // don't break
+                        _ => parent,
+                    },
+                    None => break,
+                }
+            }
+            Some(inf) => inf.parent,
+            None => {
+                unwind = match unwind.parent {
+                    Some(bcx) => bcx,
+                        // This is a return from a loop body block
+                        None => {
+                            Store(bcx, C_bool(!to_end), bcx.fcx.llretptr.get());
+                            cleanup_and_leave(bcx, None, Some(bcx.fcx.llreturn));
+                            Unreachable(bcx);
+                            return bcx;
+                        }
+                };
+                unwind.scope
+            }
         }
-        unwind = match unwind.parent {
-          Some(bcx) => bcx,
-          // This is a return from a loop body block
-          None => {
-            Store(bcx, C_bool(!to_end), bcx.fcx.llretptr.get());
-            cleanup_and_leave(bcx, None, Some(bcx.fcx.llreturn));
-            Unreachable(bcx);
-            return bcx;
-          }
-        };
     }
     cleanup_and_Br(bcx, unwind, target.llbb);
     Unreachable(bcx);
@@ -386,7 +395,7 @@ fn trans_fail_value(bcx: block,
     let V_filename = PointerCast(bcx, V_filename, Type::i8p());
     let args = ~[V_str, V_filename, C_int(ccx, V_line)];
     let bcx = callee::trans_lang_call(
-        bcx, bcx.tcx().lang_items.fail_fn(), args, expr::Ignore);
+        bcx, bcx.tcx().lang_items.fail_fn(), args, Some(expr::Ignore)).bcx;
     Unreachable(bcx);
     return bcx;
 }
@@ -397,7 +406,7 @@ pub fn trans_fail_bounds_check(bcx: block, sp: span,
     let (filename, line) = filename_and_line_num_from_span(bcx, sp);
     let args = ~[filename, line, index, len];
     let bcx = callee::trans_lang_call(
-        bcx, bcx.tcx().lang_items.fail_bounds_check_fn(), args, expr::Ignore);
+        bcx, bcx.tcx().lang_items.fail_bounds_check_fn(), args, Some(expr::Ignore)).bcx;
     Unreachable(bcx);
     return bcx;
 }

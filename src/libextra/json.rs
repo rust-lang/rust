@@ -24,7 +24,6 @@ use std::io::{WriterUtil, ReaderUtil};
 use std::io;
 use std::str;
 use std::to_str;
-use std::vec;
 
 use serialize::Encodable;
 use serialize;
@@ -482,9 +481,13 @@ pub fn to_pretty_str(json: &Json) -> ~str {
     io::with_str_writer(|wr| to_pretty_writer(wr, json))
 }
 
+static BUF_SIZE : uint = 64000;
+
 #[allow(missing_doc)]
 pub struct Parser {
     priv rdr: @io::Reader,
+    priv buf: ~[char],
+    priv buf_idx: uint,
     priv ch: char,
     priv line: uint,
     priv col: uint,
@@ -492,12 +495,16 @@ pub struct Parser {
 
 /// Decode a json value from an io::reader
 pub fn Parser(rdr: @io::Reader) -> Parser {
-    Parser {
+    let mut p = Parser {
         rdr: rdr,
-        ch: rdr.read_char(),
+        buf: rdr.read_chars(BUF_SIZE),
+        buf_idx: 0,
+        ch: 0 as char,
         line: 1,
-        col: 1,
-    }
+        col: 0,
+    };
+    p.bump();
+    p
 }
 
 impl Parser {
@@ -522,13 +529,26 @@ impl Parser {
     fn eof(&self) -> bool { self.ch == -1 as char }
 
     fn bump(&mut self) {
-        self.ch = self.rdr.read_char();
+        if self.eof() {
+            return;
+        }
+
+        self.col += 1u;
+
+        if self.buf_idx >= self.buf.len() {
+            self.buf = self.rdr.read_chars(BUF_SIZE);
+            if self.buf.len() == 0 {
+                self.ch = -1 as char;
+                return;
+            }
+            self.buf_idx = 0;
+        }
+        self.ch = self.buf[self.buf_idx];
+        self.buf_idx += 1;
 
         if self.ch == '\n' {
             self.line += 1u;
             self.col = 1u;
-        } else {
-            self.col += 1u;
         }
     }
 
@@ -941,7 +961,7 @@ impl serialize::Decoder for Decoder {
         let name = match self.stack.pop() {
             String(s) => s,
             List(list) => {
-                do vec::consume_reverse(list) |_i, v| {
+                for list.consume_rev_iter().advance |v| {
                     self.stack.push(v);
                 }
                 match self.stack.pop() {
@@ -951,7 +971,7 @@ impl serialize::Decoder for Decoder {
             }
             ref json => fail!("invalid variant: %?", *json),
         };
-        let idx = match names.iter().position_(|n| str::eq_slice(*n, name)) {
+        let idx = match names.iter().position(|n| str::eq_slice(*n, name)) {
             Some(idx) => idx,
             None => fail!("Unknown variant name: %?", name),
         };
@@ -1059,7 +1079,7 @@ impl serialize::Decoder for Decoder {
         let len = match self.stack.pop() {
             List(list) => {
                 let len = list.len();
-                do vec::consume_reverse(list) |_i, v| {
+                for list.consume_rev_iter().advance |v| {
                     self.stack.push(v);
                 }
                 len

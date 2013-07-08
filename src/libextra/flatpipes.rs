@@ -55,7 +55,6 @@ use std::io;
 use std::comm::GenericChan;
 use std::comm::GenericPort;
 use std::sys::size_of;
-use std::vec;
 
 /**
 A FlatPort, consisting of a `BytePort` that receives byte vectors,
@@ -274,7 +273,7 @@ impl<T,U:Unflattener<T>,P:BytePort> GenericPort<T> for FlatPort<T, U, P> {
             }
         };
 
-        if vec::eq(command, CONTINUE) {
+        if CONTINUE.as_slice() == command {
             let msg_len = match self.byte_port.try_recv(size_of::<u64>()) {
                 Some(bytes) => {
                     io::u64_from_be_bytes(bytes, 0, size_of::<u64>())
@@ -931,7 +930,7 @@ mod test {
         fn test_try_recv_none3<P:BytePort>(loader: PortLoader<P>) {
             static CONTINUE: [u8, ..4] = [0xAA, 0xBB, 0xCC, 0xDD];
             // The control word is followed by garbage
-            let bytes = CONTINUE.to_owned() + [0];
+            let bytes = CONTINUE.to_owned() + &[0u8];
             let port = loader(bytes);
             let res: Option<int> = port.try_recv();
             assert!(res.is_none());
@@ -955,7 +954,7 @@ mod test {
                     1, sys::size_of::<u64>()) |len_bytes| {
                     len_bytes.to_owned()
                 };
-                let bytes = CONTINUE.to_owned() + len_bytes + [0, 0, 0, 0];
+                let bytes = CONTINUE.to_owned() + len_bytes + &[0u8, 0, 0, 0];
 
                 let port = loader(bytes);
 

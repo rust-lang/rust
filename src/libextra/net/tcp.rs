@@ -16,7 +16,7 @@
 
 use future;
 use future_spawn = future::spawn;
-use ip = net_ip;
+use ip = net::ip;
 use uv;
 use uv::iotask;
 use uv::iotask::IoTask;
