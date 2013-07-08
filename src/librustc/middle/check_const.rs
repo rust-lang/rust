@@ -224,7 +224,7 @@ pub fn check_item_recursion(sess: Session,
     (visitor.visit_item)(it, (env, visitor));
 
     fn visit_item(it: @item, (env, v): (env, visit::vt<env>)) {
-        if env.idstack.iter().any_(|x| x == &(it.id)) {
+        if env.idstack.iter().any(|x| x == &(it.id)) {
             env.sess.span_fatal(env.root_it.span, "recursive constant");
         }
         env.idstack.push(it.id);

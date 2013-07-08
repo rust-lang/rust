@@ -391,7 +391,7 @@ pub fn ensure_supertraits(ccx: &CrateCtxt,
                                               generics, self_ty);
 
         // FIXME(#5527) Could have same trait multiple times
-        if ty_trait_refs.iter().any_(|other_trait| other_trait.def_id == trait_ref.def_id) {
+        if ty_trait_refs.iter().any(|other_trait| other_trait.def_id == trait_ref.def_id) {
             // This means a trait inherited from the same supertrait more
             // than once.
             tcx.sess.span_err(sp, "Duplicate supertrait in trait declaration");

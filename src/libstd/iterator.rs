@@ -338,16 +338,16 @@ pub trait IteratorUtil<A> {
     /// ~~~ {.rust}
     /// let a = [1, 2, 3, 4, 5];
     /// let mut it = a.iter();
-    /// assert!(it.any_(|&x| *x == 3));
-    /// assert!(!it.any_(|&x| *x == 3));
+    /// assert!(it.any(|&x| *x == 3));
+    /// assert!(!it.any(|&x| *x == 3));
     /// ~~~
-    fn any_(&mut self, f: &fn(A) -> bool) -> bool;
+    fn any(&mut self, f: &fn(A) -> bool) -> bool;
 
     /// Return the first element satisfying the specified predicate
     fn find_(&mut self, predicate: &fn(&A) -> bool) -> Option<A>;
 
     /// Return the index of the first element satisfying the specified predicate
-    fn position_(&mut self, predicate: &fn(A) -> bool) -> Option<uint>;
+    fn position(&mut self, predicate: &fn(A) -> bool) -> Option<uint>;
 
     /// Count the number of elements satisfying the specified predicate
     fn count(&mut self, predicate: &fn(A) -> bool) -> uint;
@@ -504,7 +504,7 @@ impl<A, T: Iterator<A>> IteratorUtil<A> for T {
     }
 
     #[inline]
-    fn any_(&mut self, f: &fn(A) -> bool) -> bool {
+    fn any(&mut self, f: &fn(A) -> bool) -> bool {
         for self.advance |x| { if f(x) { return true; } }
         false
     }
@@ -520,7 +520,7 @@ impl<A, T: Iterator<A>> IteratorUtil<A> for T {
 
     /// Return the index of the first element satisfying the specified predicate
     #[inline]
-    fn position_(&mut self, predicate: &fn(A) -> bool) -> Option<uint> {
+    fn position(&mut self, predicate: &fn(A) -> bool) -> Option<uint> {
         let mut i = 0;
         for self.advance |x| {
             if predicate(x) {
@@ -1368,10 +1368,10 @@ mod tests {
     #[test]
     fn test_any() {
         let v = ~&[1, 2, 3, 4, 5];
-        assert!(v.iter().any_(|&x| x < 10));
-        assert!(v.iter().any_(|&x| x.is_even()));
-        assert!(!v.iter().any_(|&x| x > 100));
-        assert!(!v.slice(0, 0).iter().any_(|_| fail!()));
+        assert!(v.iter().any(|&x| x < 10));
+        assert!(v.iter().any(|&x| x.is_even()));
+        assert!(!v.iter().any(|&x| x > 100));
+        assert!(!v.slice(0, 0).iter().any(|_| fail!()));
     }
 
     #[test]
@@ -1385,9 +1385,9 @@ mod tests {
     #[test]
     fn test_position() {
         let v = &[1, 3, 9, 27, 103, 14, 11];
-        assert_eq!(v.iter().position_(|x| *x & 1 == 0).unwrap(), 5);
-        assert_eq!(v.iter().position_(|x| *x % 3 == 0).unwrap(), 1);
-        assert!(v.iter().position_(|x| *x % 12 == 0).is_none());
+        assert_eq!(v.iter().position(|x| *x & 1 == 0).unwrap(), 5);
+        assert_eq!(v.iter().position(|x| *x % 3 == 0).unwrap(), 1);
+        assert!(v.iter().position(|x| *x % 12 == 0).is_none());
     }
 
     #[test]
