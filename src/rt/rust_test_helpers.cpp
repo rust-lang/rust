@@ -168,11 +168,11 @@ rust_dbg_extern_identity_TwoDoubles(TwoDoubles u) {
 
 // Generates increasing port numbers for network testing
 extern "C" CDECL uintptr_t
-rust_dbg_next_port() {
+rust_dbg_next_port(uintptr_t base_port) {
   static lock_and_signal dbg_port_lock;
-  static uintptr_t next_port = 9600;
+  static uintptr_t next_offset = 0;
   scoped_lock with(dbg_port_lock);
-  uintptr_t this_port = next_port;
-  next_port += 1;
+  uintptr_t this_port = base_port + next_offset;
+  next_offset += 1;
   return this_port;
 }
