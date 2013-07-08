@@ -530,7 +530,8 @@ mod tests {
 
     // FIXME: #7220 rusti on 32bit mac doesn't work.
     // FIXME: #7641 rusti on 32bit linux cross compile doesn't work
-    #[cfg(not(target_word_size="32"))]
+    // FIXME: #7115 re-enable once LLVM has been upgraded
+    #[cfg(thiswillneverbeacfgflag)]
     fn run_program(prog: &str) {
         let mut r = repl();
         for prog.split_iter('\n').advance |cmd| {
@@ -539,7 +540,6 @@ mod tests {
             r = result.expect(fmt!("the command '%s' failed", cmd));
         }
     }
-    #[cfg(target_word_size="32")]
     fn run_program(_: &str) {}
 
     #[test]
