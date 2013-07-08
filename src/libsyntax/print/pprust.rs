@@ -378,20 +378,20 @@ pub fn print_type(s: @ps, ty: &ast::Ty) {
     match ty.node {
       ast::ty_nil => word(s.s, "()"),
       ast::ty_bot => word(s.s, "!"),
-      ast::ty_box(ref mt) => { word(s.s, "@"); print_mt(s, mt); }
-      ast::ty_uniq(ref mt) => { word(s.s, "~"); print_mt(s, mt); }
-      ast::ty_vec(ref mt) => {
+      ast::ty_box(~ref mt) => { word(s.s, "@"); print_mt(s, mt); }
+      ast::ty_uniq(~ref mt) => { word(s.s, "~"); print_mt(s, mt); }
+      ast::ty_vec(~ref mt) => {
         word(s.s, "[");
         match mt.mutbl {
           ast::m_mutbl => word_space(s, "mut"),
           ast::m_const => word_space(s, "const"),
           ast::m_imm => ()
         }
-        print_type(s, mt.ty);
+        print_type(s, &mt.ty);
         word(s.s, "]");
       }
-      ast::ty_ptr(ref mt) => { word(s.s, "*"); print_mt(s, mt); }
-      ast::ty_rptr(ref lifetime, ref mt) => {
+      ast::ty_ptr(~ref mt) => { word(s.s, "*"); print_mt(s, mt); }
+      ast::ty_rptr(ref lifetime, ~ref mt) => {
           word(s.s, "&");
           print_opt_lifetime(s, lifetime);
           print_mt(s, mt);
@@ -418,15 +418,15 @@ pub fn print_type(s: @ps, ty: &ast::Ty) {
                       f.purity, f.onceness, &f.decl, None, &f.bounds,
                       Some(&generics), None);
       }
-      ast::ty_path(ref path, ref bounds, _) => print_bounded_path(s, path, bounds),
-      ast::ty_fixed_length_vec(ref mt, v) => {
+      ast::ty_path(~ref path, ref bounds, _) => print_bounded_path(s, path, bounds),
+      ast::ty_fixed_length_vec(~ref mt, v) => {
         word(s.s, "[");
         match mt.mutbl {
             ast::m_mutbl => word_space(s, "mut"),
             ast::m_const => word_space(s, "const"),
             ast::m_imm => ()
         }
-        print_type(s, mt.ty);
+        print_type(s, &mt.ty);
         word(s.s, ", ..");
         print_expr(s, v);
         word(s.s, "]");
@@ -476,7 +476,7 @@ pub fn print_item(s: @ps, item: &ast::item) {
     let ann_node = node_item(s, item);
     (s.ann.pre)(ann_node);
     match item.node {
-      ast::item_static(ref ty, m, expr) => {
+      ast::item_static(~ref ty, m, expr) => {
         head(s, visibility_qualified(item.vis, "static"));
         if m == ast::m_mutbl {
             word_space(s, "mut");
@@ -493,7 +493,7 @@ pub fn print_item(s: @ps, item: &ast::item) {
         end(s); // end the outer cbox
 
       }
-      ast::item_fn(ref decl, purity, abi, ref typarams, ref body) => {
+      ast::item_fn(~ref decl, purity, abi, ref typarams, ref body) => {
         print_fn(
             s,
             decl,
@@ -609,7 +609,7 @@ pub fn print_item(s: @ps, item: &ast::item) {
         }
         bclose(s, item.span);
       }
-      ast::item_mac(codemap::spanned { node: ast::mac_invoc_tt(ref pth, ref tts),
+      ast::item_mac(codemap::spanned { node: ast::mac_invoc_tt(~ref pth, ref tts),
                                    _}) => {
         print_visibility(s, item.vis);
         print_path(s, pth, false);
@@ -811,7 +811,7 @@ pub fn print_ty_method(s: @ps, m: &ast::ty_method) {
 
 pub fn print_trait_method(s: @ps, m: &ast::trait_method) {
     match *m {
-        required(ref ty_m) => print_ty_method(s, ty_m),
+        required(~ref ty_m) => print_ty_method(s, ty_m),
         provided(m) => print_method(s, m)
     }
 }
@@ -1004,7 +1004,7 @@ pub fn print_if(s: @ps, test: &ast::expr, blk: &ast::blk,
 
 pub fn print_mac(s: @ps, m: &ast::mac) {
     match m.node {
-      ast::mac_invoc_tt(ref pth, ref tts) => {
+      ast::mac_invoc_tt(~ref pth, ref tts) => {
         print_path(s, pth, false);
         word(s.s, "!");
         popen(s);
@@ -1133,7 +1133,7 @@ pub fn print_expr(s: @ps, expr: &ast::expr) {
         end(s);
       }
 
-      ast::expr_struct(ref path, ref fields, wth) => {
+      ast::expr_struct(~ref path, ref fields, wth) => {
         print_path(s, path, true);
         word(s.s, "{");
         commasep_cmnt(s, consistent, (*fields), print_field, get_span);
@@ -1198,7 +1198,7 @@ pub fn print_expr(s: @ps, expr: &ast::expr) {
         print_expr(s, expr);
       }
       ast::expr_lit(lit) => print_literal(s, lit),
-      ast::expr_cast(expr, ref ty) => {
+      ast::expr_cast(expr, ~ref ty) => {
         print_expr(s, expr);
         space(s.s);
         word_space(s, "as");
@@ -1288,7 +1288,7 @@ pub fn print_expr(s: @ps, expr: &ast::expr) {
         }
         bclose_(s, expr.span, indent_unit);
       }
-      ast::expr_fn_block(ref decl, ref body) => {
+      ast::expr_fn_block(~ref decl, ref body) => {
         // in do/for blocks we don't want to show an empty
         // argument list, but at this point we don't know which
         // we are inside.
@@ -1358,7 +1358,7 @@ pub fn print_expr(s: @ps, expr: &ast::expr) {
         print_expr(s, index);
         word(s.s, "]");
       }
-      ast::expr_path(ref path) => print_path(s, path, true),
+      ast::expr_path(~ref path) => print_path(s, path, true),
       ast::expr_self => word(s.s, "self"),
       ast::expr_break(opt_ident) => {
         word(s.s, "break");
@@ -1747,7 +1747,7 @@ pub fn print_bounds(s: @ps, bounds: &OptVec<ast::TyParamBound>,
             }
 
             match *bound {
-                TraitTyParamBound(ref tref) => print_trait_ref(s, tref),
+                TraitTyParamBound(~ref tref) => print_trait_ref(s, tref),
                 RegionTyParamBound => word(s.s, "'static"),
             }
         }
@@ -1879,7 +1879,7 @@ pub fn print_mutability(s: @ps, mutbl: ast::mutability) {
 
 pub fn print_mt(s: @ps, mt: &ast::mt) {
     print_mutability(s, mt.mutbl);
-    print_type(s, mt.ty);
+    print_type(s, &mt.ty);
 }
 
 pub fn print_arg(s: @ps, input: &ast::arg) {

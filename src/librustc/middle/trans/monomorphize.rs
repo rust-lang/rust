@@ -183,7 +183,7 @@ pub fn monomorphic_fn(ccx: @mut CrateContext,
 
     let lldecl = match map_node {
       ast_map::node_item(i@@ast::item {
-                node: ast::item_fn(ref decl, _, _, _, ref body),
+                node: ast::item_fn(~ref decl, _, _, _, ref body),
                 _
             }, _) => {
         let d = mk_lldecl();

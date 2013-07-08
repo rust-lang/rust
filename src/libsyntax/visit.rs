@@ -144,11 +144,11 @@ fn visit_trait_ref<E: Copy>(tref: &ast::trait_ref, (e, v): (E, vt<E>)) {
 
 pub fn visit_item<E: Copy>(i: &item, (e, v): (E, vt<E>)) {
     match i.node {
-        item_static(ref t, _, ex) => {
+        item_static(~ref t, _, ex) => {
             (v.visit_ty)(t, (copy e, v));
             (v.visit_expr)(ex, (copy e, v));
         }
-        item_fn(ref decl, purity, abi, ref generics, ref body) => {
+        item_fn(~ref decl, purity, abi, ref generics, ref body) => {
             (v.visit_fn)(
                 &fk_item_fn(
                     i.ident,
@@ -232,9 +232,9 @@ pub fn skip_ty<E>(_t: &Ty, (_e,_v): (E, vt<E>)) {}
 
 pub fn visit_ty<E: Copy>(t: &Ty, (e, v): (E, vt<E>)) {
     match t.node {
-        ty_box(ref mt) | ty_uniq(ref mt) |
-        ty_vec(ref mt) | ty_ptr(ref mt) | ty_rptr(_, ref mt) => {
-            (v.visit_ty)(mt.ty, (e, v));
+        ty_box(~ref mt) | ty_uniq(~ref mt) |
+        ty_vec(~ref mt) | ty_ptr(~ref mt) | ty_rptr(_, ~ref mt) => {
+            (v.visit_ty)(&mt.ty, (e, v));
         },
         ty_tup(ref ts) => {
             for ts.iter().advance |tt| {
@@ -252,14 +252,14 @@ pub fn visit_ty<E: Copy>(t: &Ty, (e, v): (E, vt<E>)) {
             for f.decl.inputs.iter().advance |a| { (v.visit_ty)(&a.ty, (copy e, v)); }
             (v.visit_ty)(&f.decl.output, (e, v));
         },
-        ty_path(ref p, ref bounds, _) => {
+        ty_path(~ref p, ref bounds, _) => {
             visit_path(p, (copy e, v));
             do bounds.map |bounds| {
                 visit_ty_param_bounds(bounds, (copy e, v));
             };
         },
-        ty_fixed_length_vec(ref mt, ex) => {
-            (v.visit_ty)(mt.ty, (copy e, v));
+        ty_fixed_length_vec(~ref mt, ex) => {
+            (v.visit_ty)(&mt.ty, (copy e, v));
             (v.visit_expr)(ex, (copy e, v));
         },
         ty_nil | ty_bot | ty_mac(_) | ty_infer => ()
@@ -336,7 +336,7 @@ pub fn visit_ty_param_bounds<E: Copy>(bounds: &OptVec<TyParamBound>,
                                       (e, v): (E, vt<E>)) {
     for bounds.iter().advance |bound| {
         match *bound {
-            TraitTyParamBound(ref ty) => visit_trait_ref(ty, (copy e, v)),
+            TraitTyParamBound(~ref ty) => visit_trait_ref(ty, (copy e, v)),
             RegionTyParamBound => {}
         }
     }
@@ -391,7 +391,7 @@ pub fn visit_ty_method<E: Copy>(m: &ty_method, (e, v): (E, vt<E>)) {
 
 pub fn visit_trait_method<E: Copy>(m: &trait_method, (e, v): (E, vt<E>)) {
     match *m {
-      required(ref ty_m) => (v.visit_ty_method)(ty_m, (e, v)),
+      required(~ref ty_m) => (v.visit_ty_method)(ty_m, (e, v)),
       provided(m) => visit_method_helper(m, (e, v))
     }
 }
@@ -458,7 +458,7 @@ pub fn visit_expr<E: Copy>(ex: @expr, (e, v): (E, vt<E>)) {
             (v.visit_expr)(element, (copy e, v));
             (v.visit_expr)(count, (copy e, v));
         }
-        expr_struct(ref p, ref flds, base) => {
+        expr_struct(~ref p, ref flds, base) => {
             visit_path(p, (copy e, v));
             for flds.iter().advance |f| {
                 (v.visit_expr)(f.node.expr, (copy e, v));
@@ -486,7 +486,7 @@ pub fn visit_expr<E: Copy>(ex: @expr, (e, v): (E, vt<E>)) {
         expr_addr_of(_, x) | expr_unary(_, _, x) |
         expr_loop_body(x) | expr_do_body(x) => (v.visit_expr)(x, (copy e, v)),
         expr_lit(_) => (),
-        expr_cast(x, ref t) => {
+        expr_cast(x, ~ref t) => {
             (v.visit_expr)(x, (copy e, v));
             (v.visit_ty)(t, (copy e, v));
         }
@@ -504,7 +504,7 @@ pub fn visit_expr<E: Copy>(ex: @expr, (e, v): (E, vt<E>)) {
             (v.visit_expr)(x, (copy e, v));
             for arms.iter().advance |a| { (v.visit_arm)(a, (copy e, v)); }
         }
-        expr_fn_block(ref decl, ref body) => {
+        expr_fn_block(~ref decl, ref body) => {
             (v.visit_fn)(
                 &fk_fn_block,
                 decl,
@@ -534,7 +534,7 @@ pub fn visit_expr<E: Copy>(ex: @expr, (e, v): (E, vt<E>)) {
             (v.visit_expr)(a, (copy e, v));
             (v.visit_expr)(b, (copy e, v));
         }
-        expr_path(ref p) => visit_path(p, (copy e, v)),
+        expr_path(~ref p) => visit_path(p, (copy e, v)),
         expr_self => (),
         expr_break(_) => (),
         expr_again(_) => (),

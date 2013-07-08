@@ -252,7 +252,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Copy + 'static>(
     fn ast_mt_to_mt<AC:AstConv, RS:region_scope + Copy + 'static>(
         this: &AC, rscope: &RS, mt: &ast::mt) -> ty::mt {
 
-        ty::mt {ty: ast_ty_to_ty(this, rscope, mt.ty), mutbl: mt.mutbl}
+        ty::mt {ty: ast_ty_to_ty(this, rscope, &mt.ty), mutbl: mt.mutbl}
     }
 
     // Handle @, ~, and & being able to mean estrs and evecs.
@@ -268,7 +268,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Copy + 'static>(
         let tcx = this.tcx();
 
         match a_seq_ty.ty.node {
-            ast::ty_vec(ref mt) => {
+            ast::ty_vec(~ref mt) => {
                 let mut mt = ast_mt_to_mt(this, rscope, mt);
                 if a_seq_ty.mutbl == ast::m_mutbl ||
                         a_seq_ty.mutbl == ast::m_const {
@@ -276,7 +276,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Copy + 'static>(
                 }
                 return ty::mk_evec(tcx, mt, vst);
             }
-            ast::ty_path(ref path, ref bounds, id) => {
+            ast::ty_path(~ref path, ref bounds, id) => {
                 // Note that the "bounds must be empty if path is not a trait"
                 // restriction is enforced in the below case for ty_path, which
                 // will run after this as long as the path isn't a trait.
@@ -355,23 +355,23 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Copy + 'static>(
     let typ = match ast_ty.node {
       ast::ty_nil => ty::mk_nil(),
       ast::ty_bot => ty::mk_bot(),
-      ast::ty_box(ref mt) => {
+      ast::ty_box(~ref mt) => {
         mk_pointer(this, rscope, mt, ty::vstore_box,
                    |tmt| ty::mk_box(tcx, tmt))
       }
-      ast::ty_uniq(ref mt) => {
+      ast::ty_uniq(~ref mt) => {
         mk_pointer(this, rscope, mt, ty::vstore_uniq,
                    |tmt| ty::mk_uniq(tcx, tmt))
       }
-      ast::ty_vec(ref mt) => {
+      ast::ty_vec(~ref mt) => {
         tcx.sess.span_err(ast_ty.span, "bare `[]` is not a type");
         // return /something/ so they can at least get more errors
         ty::mk_evec(tcx, ast_mt_to_mt(this, rscope, mt), ty::vstore_uniq)
       }
-      ast::ty_ptr(ref mt) => {
+      ast::ty_ptr(~ref mt) => {
         ty::mk_ptr(tcx, ast_mt_to_mt(this, rscope, mt))
       }
-      ast::ty_rptr(ref region, ref mt) => {
+      ast::ty_rptr(ref region, ~ref mt) => {
         let r = ast_region_to_region(this, rscope, ast_ty.span, region);
         mk_pointer(this, rscope, mt, ty::vstore_slice(r),
                    |tmt| ty::mk_rptr(tcx, r, tmt))
@@ -405,7 +405,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Copy + 'static>(
                                       ast_ty.span);
           ty::mk_closure(tcx, fn_decl)
       }
-      ast::ty_path(ref path, ref bounds, id) => {
+      ast::ty_path(~ref path, ref bounds, id) => {
         let a_def = match tcx.def_map.find(&id) {
           None => tcx.sess.span_fatal(
               ast_ty.span, fmt!("unbound path %s",
@@ -478,7 +478,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Copy + 'static>(
           }
         }
       }
-      ast::ty_fixed_length_vec(ref a_mt, e) => {
+      ast::ty_fixed_length_vec(~ref a_mt, e) => {
         match const_eval::eval_const_expr_partial(tcx, e) {
           Ok(ref r) => {
             match *r {

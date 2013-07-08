@@ -595,7 +595,7 @@ pub fn check_item(ccx: @mut CrateCtxt, it: @ast::item) {
                             enum_definition.variants,
                             it.id);
       }
-      ast::item_fn(ref decl, _, _, _, ref body) => {
+      ast::item_fn(~ref decl, _, _, _, ref body) => {
         check_bare_fn(ccx, decl, body, it.id, None);
       }
       ast::item_impl(_, _, _, ref ms) => {
@@ -2171,7 +2171,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         };
 
         match loop_body.node {
-            ast::expr_fn_block(ref decl, ref body) => {
+            ast::expr_fn_block(~ref decl, ref body) => {
                 // If an error occurred, we pretend this isn't a for
                 // loop, so as to assign types to all nodes while also
                 // propagating ty_err throughout so as to suppress
@@ -2436,7 +2436,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         };
         fcx.write_ty(id, oprnd_t);
       }
-      ast::expr_path(ref pth) => {
+      ast::expr_path(~ref pth) => {
         let defn = lookup_def(fcx, pth.span, id);
 
         let tpt = ty_param_bounds_and_ty_for_def(fcx, expr.span, defn);
@@ -2546,7 +2546,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
       ast::expr_match(discrim, ref arms) => {
         _match::check_match(fcx, expr, discrim, *arms);
       }
-      ast::expr_fn_block(ref decl, ref body) => {
+      ast::expr_fn_block(~ref decl, ref body) => {
         check_expr_fn(fcx, expr, None,
                       decl, body, Vanilla, expected);
       }
@@ -2576,7 +2576,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
             }
         };
         match b.node {
-          ast::expr_fn_block(ref decl, ref body) => {
+          ast::expr_fn_block(~ref decl, ref body) => {
             check_expr_fn(fcx, b, None,
                           decl, body, DoBlock, Some(inner_ty));
             demand::suptype(fcx, b.span, inner_ty, fcx.expr_ty(b));
@@ -2621,7 +2621,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
             fcx.write_bot(id);
         }
       }
-      ast::expr_cast(e, ref t) => {
+      ast::expr_cast(e, ~ref t) => {
         check_expr(fcx, e);
         let t_1 = fcx.to_ty(t);
         let t_e = fcx.expr_ty(e);

@@ -263,7 +263,7 @@ pub fn create_function(fcx: fn_ctxt) -> DISubprogram {
     let (ident, ret_ty, id) = match fnitem {
       ast_map::node_item(ref item, _) => {
         match item.node {
-          ast::item_fn(ast::fn_decl { output: ref ty, _}, _, _, _, _) => {
+          ast::item_fn(~ast::fn_decl { output: ref ty, _}, _, _, _, _) => {
             (item.ident, ty, item.id)
           }
           _ => fcx.ccx.sess.span_bug(item.span, "create_function: item bound to non-function")

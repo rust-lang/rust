@@ -132,7 +132,7 @@ pub static crate_node_id: node_id = 0;
 // the "special" built-in traits (see middle::lang_items) and
 // detects Copy, Send, Send, and Freeze.
 pub enum TyParamBound {
-    TraitTyParamBound(trait_ref),
+    TraitTyParamBound(~trait_ref),
     RegionTyParamBound
 }
 
@@ -434,7 +434,7 @@ pub enum expr_ {
     expr_binary(node_id, binop, @expr, @expr),
     expr_unary(node_id, unop, @expr),
     expr_lit(@lit),
-    expr_cast(@expr, Ty),
+    expr_cast(@expr, ~Ty),
     expr_if(@expr, blk, Option<@expr>),
     expr_while(@expr, blk),
     /* Conditionless loop (can be exited with break, cont, or ret)
@@ -442,7 +442,7 @@ pub enum expr_ {
        (implicit) condition is always true. */
     expr_loop(blk, Option<ident>),
     expr_match(@expr, ~[arm]),
-    expr_fn_block(fn_decl, blk),
+    expr_fn_block(~fn_decl, blk),
     // Inner expr is always an expr_fn_block. We need the wrapping node to
     // easily type this (a function returning nil on the inside but bool on
     // the outside).
@@ -456,7 +456,7 @@ pub enum expr_ {
     expr_assign_op(node_id, binop, @expr, @expr),
     expr_field(@expr, ident, ~[Ty]),
     expr_index(node_id, @expr, @expr),
-    expr_path(Path),
+    expr_path(~Path),
 
     /// The special identifier `self`.
     expr_self,
@@ -471,7 +471,7 @@ pub enum expr_ {
     expr_mac(mac),
 
     // A struct literal expression.
-    expr_struct(Path, ~[field], Option<@expr>),
+    expr_struct(~Path, ~[field], Option<@expr>),
 
     // A vector literal constructed from one repeated element.
     expr_repeat(@expr /* element */, @expr /* count */, mutability),
@@ -583,7 +583,7 @@ pub type mac = spanned<mac_>;
 
 #[deriving(Eq, Encodable, Decodable,IterBytes)]
 pub enum mac_ {
-    mac_invoc_tt(Path,~[token_tree]),   // new macro-invocation
+    mac_invoc_tt(~Path,~[token_tree]),   // new macro-invocation
 }
 
 pub type lit = spanned<lit_>;
@@ -604,7 +604,7 @@ pub enum lit_ {
 // type structure in middle/ty.rs as well.
 #[deriving(Eq, Encodable, Decodable,IterBytes)]
 pub struct mt {
-    ty: ~Ty,
+    ty: Ty,
     mutbl: mutability,
 }
 
@@ -633,7 +633,7 @@ pub struct ty_method {
 // implementation, just a signature) or provided (meaning it has a default
 // implementation).
 pub enum trait_method {
-    required(ty_method),
+    required(~ty_method),
     provided(@method),
 }
 
@@ -725,16 +725,16 @@ pub struct TyBareFn {
 pub enum ty_ {
     ty_nil,
     ty_bot, /* bottom type */
-    ty_box(mt),
-    ty_uniq(mt),
-    ty_vec(mt),
-    ty_fixed_length_vec(mt, @expr),
-    ty_ptr(mt),
-    ty_rptr(Option<Lifetime>, mt),
+    ty_box(~mt),
+    ty_uniq(~mt),
+    ty_vec(~mt),
+    ty_fixed_length_vec(~mt, @expr),
+    ty_ptr(~mt),
+    ty_rptr(Option<Lifetime>, ~mt),
     ty_closure(@TyClosure),
     ty_bare_fn(@TyBareFn),
     ty_tup(~[Ty]),
-    ty_path(Path, Option<OptVec<TyParamBound>>, node_id), // for #7264; see above
+    ty_path(~Path, Option<OptVec<TyParamBound>>, node_id), // for #7264; see above
     ty_mac(mac),
     // ty_infer means the type should be inferred instead of it having been
     // specified. This should only appear at the "top level" of a type and not
@@ -995,8 +995,8 @@ pub struct item {
 
 #[deriving(Eq, Encodable, Decodable,IterBytes)]
 pub enum item_ {
-    item_static(Ty, mutability, @expr),
-    item_fn(fn_decl, purity, AbiSet, Generics, blk),
+    item_static(~Ty, mutability, @expr),
+    item_fn(~fn_decl, purity, AbiSet, Generics, blk),
     item_mod(_mod),
     item_foreign_mod(foreign_mod),
     item_ty(Ty, Generics),

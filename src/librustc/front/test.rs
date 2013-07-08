@@ -421,7 +421,7 @@ fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: &Test) -> @ast::expr {
           span: span
     };
 
-    let fn_path = path_node_global(path);
+    let fn_path = ~path_node_global(path);
 
     let fn_expr = @ast::expr {
         id: cx.sess.next_node_id(),

@@ -1031,13 +1031,13 @@ pub fn ty_of_item(ccx: &CrateCtxt, it: &ast::item)
     }
     let rp = tcx.region_paramd_items.find(&it.id).map_consume(|x| *x);
     match it.node {
-      ast::item_static(ref t, _, _) => {
+      ast::item_static(~ref t, _, _) => {
         let typ = ccx.to_ty(&empty_rscope, t);
         let tpt = no_params(typ);
         tcx.tcache.insert(local_def(it.id), tpt);
         return tpt;
       }
-      ast::item_fn(ref decl, purity, _, ref generics, _) => {
+      ast::item_fn(~ref decl, purity, _, ref generics, _) => {
         assert!(rp.is_none());
         let ty_generics = ty_generics(ccx, None, generics, 0);
         let tofd = astconv::ty_of_bare_fn(ccx,
@@ -1184,7 +1184,7 @@ pub fn ty_generics(ccx: &CrateCtxt,
         };
         for ast_bounds.iter().advance |ast_bound| {
             match *ast_bound {
-                TraitTyParamBound(ref b) => {
+                TraitTyParamBound(~ref b) => {
                     let ty = ty::mk_param(ccx.tcx, param_ty.idx, param_ty.def_id);
                     let trait_ref = instantiate_trait_ref(ccx, b, rp, generics, ty);
                     if !astconv::try_add_builtin_trait(

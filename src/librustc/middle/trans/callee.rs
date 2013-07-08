@@ -825,7 +825,7 @@ pub fn trans_arg_expr(bcx: block,
             match arg_expr.node {
                 ast::expr_loop_body(
                     blk @ @ast::expr {
-                        node: ast::expr_fn_block(ref decl, ref body),
+                        node: ast::expr_fn_block(~ref decl, ref body),
                         _
                     }) => {
                     let scratch_ty = expr_ty(bcx, arg_expr);

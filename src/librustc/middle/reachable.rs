@@ -68,7 +68,7 @@ fn ty_method_might_be_inlined(ty_method: &ty_method) -> bool {
 // monomorphized or it was marked with `#[inline]`.
 fn trait_method_might_be_inlined(trait_method: &trait_method) -> bool {
     match *trait_method {
-        required(ref ty_method) => ty_method_might_be_inlined(ty_method),
+        required(~ref ty_method) => ty_method_might_be_inlined(ty_method),
         provided(_) => true
     }
 }

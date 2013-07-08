@@ -1245,7 +1245,7 @@ impl Resolver {
                 // Create the module and add all methods.
                 match ty {
                     &Ty {
-                        node: ty_path(ref path, _, _),
+                        node: ty_path(~ref path, _, _),
                         _
                     } if path.idents.len() == 1 => {
                         let name = path_to_ident(path);
@@ -3640,7 +3640,7 @@ impl Resolver {
                 }
             }
 
-            item_fn(ref fn_decl, _, _, ref generics, ref block) => {
+            item_fn(~ref fn_decl, _, _, ref generics, ref block) => {
                 self.resolve_function(OpaqueFunctionRibKind,
                                       Some(fn_decl),
                                       HasTypeParameters
@@ -3811,7 +3811,7 @@ impl Resolver {
                                         type_parameter_bound: &TyParamBound,
                                         visitor: ResolveVisitor) {
         match *type_parameter_bound {
-            TraitTyParamBound(ref tref) => {
+            TraitTyParamBound(~ref tref) => {
                 self.resolve_trait_reference(tref, visitor, TraitBoundingTypeParameter)
             }
             RegionTyParamBound => {}
@@ -4117,7 +4117,7 @@ impl Resolver {
             // Like path expressions, the interpretation of path types depends
             // on whether the path has multiple elements in it or not.
 
-            ty_path(ref path, ref bounds, path_id) => {
+            ty_path(~ref path, ref bounds, path_id) => {
                 // This is a path in the type namespace. Walk through scopes
                 // scopes looking for it.
                 let mut result_def = None;
@@ -4916,7 +4916,7 @@ impl Resolver {
             // The interpretation of paths depends on whether the path has
             // multiple elements in it or not.
 
-            expr_path(ref path) => {
+            expr_path(~ref path) => {
                 // This is a local path in the value namespace. Walk through
                 // scopes looking for it.
 
@@ -4976,7 +4976,7 @@ impl Resolver {
                 visit_expr(expr, ((), visitor));
             }
 
-            expr_fn_block(ref fn_decl, ref block) => {
+            expr_fn_block(~ref fn_decl, ref block) => {
                 self.resolve_function(FunctionRibKind(expr.id, block.node.id),
                                       Some(fn_decl),
                                       NoTypeParameters,
@@ -4985,7 +4985,7 @@ impl Resolver {
                                       visitor);
             }
 
-            expr_struct(ref path, _, _) => {
+            expr_struct(~ref path, _, _) => {
                 // Resolve the path to the structure it goes to.
                 match self.resolve_path(path, TypeNS, false, visitor) {
                     Some(def_ty(class_id)) | Some(def_struct(class_id))
