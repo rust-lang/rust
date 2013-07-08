@@ -100,6 +100,7 @@ use middle::trans::glue;
 use middle::trans::tvec;
 use middle::trans::type_of;
 use middle::trans::write_guard;
+use middle::trans::type_::Type;
 use middle::ty;
 use util::common::indenter;
 use util::ppaux::ty_to_str;
@@ -567,8 +568,14 @@ impl Datum {
          * This datum must represent an @T or ~T box.  Returns a new
          * by-ref datum of type T, pointing at the contents. */
 
-        let content_ty = match ty::get(self.ty).sty {
-            ty::ty_box(mt) | ty::ty_uniq(mt) => mt.ty,
+        let (content_ty, header) = match ty::get(self.ty).sty {
+            ty::ty_box(mt) => (mt.ty, true),
+            ty::ty_uniq(mt) => (mt.ty, false),
+            ty::ty_evec(_, ty::vstore_uniq) | ty::ty_estr(ty::vstore_uniq) => {
+                let unit_ty = ty::sequence_element_type(bcx.tcx(), self.ty);
+                let unboxed_vec_ty = ty::mk_mut_unboxed_vec(bcx.tcx(), unit_ty);
+                (unboxed_vec_ty, true)
+            }
             _ => {
                 bcx.tcx().sess.bug(fmt!(
                     "box_body() invoked on non-box type %s",
@@ -576,9 +583,16 @@ impl Datum {
             }
         };
 
-        let ptr = self.to_value_llval(bcx);
-        let body = opaque_box_body(bcx, content_ty, ptr);
-        Datum {val: body, ty: content_ty, mode: ByRef(ZeroMem)}
+        if !header && !ty::type_contents(bcx.tcx(), content_ty).contains_managed() {
+            let ptr = self.to_value_llval(bcx);
+            let ty = type_of(bcx.ccx(), content_ty);
+            let body = PointerCast(bcx, ptr, ty.ptr_to());
+            Datum {val: body, ty: content_ty, mode: ByRef(ZeroMem)}
+        } else { // has a header
+            let ptr = self.to_value_llval(bcx);
+            let body = opaque_box_body(bcx, content_ty, ptr);
+            Datum {val: body, ty: content_ty, mode: ByRef(ZeroMem)}
+        }
     }
 
     pub fn to_rptr(&self, bcx: block) -> Datum {

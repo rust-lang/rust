@@ -232,6 +232,13 @@ impl<V:TyVisitor + movable_ptr> TyVisitor for ptr_visit_adaptor<V> {
         true
     }
 
+    fn visit_uniq_managed(&self, mtbl: uint, inner: *TyDesc) -> bool {
+        self.align_to::<~u8>();
+        if ! self.inner.visit_uniq_managed(mtbl, inner) { return false; }
+        self.bump_past::<~u8>();
+        true
+    }
+
     fn visit_ptr(&self, mtbl: uint, inner: *TyDesc) -> bool {
         self.align_to::<*u8>();
         if ! self.inner.visit_ptr(mtbl, inner) { return false; }
@@ -552,6 +559,7 @@ impl TyVisitor for my_visitor {
 
     fn visit_box(&self, _mtbl: uint, _inner: *TyDesc) -> bool { true }
     fn visit_uniq(&self, _mtbl: uint, _inner: *TyDesc) -> bool { true }
+    fn visit_uniq_managed(&self, _mtbl: uint, _inner: *TyDesc) -> bool { true }
     fn visit_ptr(&self, _mtbl: uint, _inner: *TyDesc) -> bool { true }
     fn visit_rptr(&self, _mtbl: uint, _inner: *TyDesc) -> bool { true }
 

@@ -150,6 +150,7 @@ use middle::ty::{AutoPtr, AutoBorrowVec, AutoBorrowVecRef, AutoBorrowFn,
 use middle::ty;
 use util::common::indenter;
 use util::ppaux::Repr;
+use middle::trans::machine::llsize_of;
 
 use middle::trans::type_::Type;
 
@@ -464,7 +465,7 @@ fn trans_rvalue_datum_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
                                                       expr, contents);
         }
         ast::expr_vstore(contents, ast::expr_vstore_uniq) => {
-            let heap = heap_for_unique(bcx, expr_ty(bcx, contents));
+            let heap = tvec::heap_for_unique_vector(bcx, expr_ty(bcx, contents));
             return tvec::trans_uniq_or_managed_vstore(bcx, heap,
                                                       expr, contents);
         }
@@ -1329,12 +1330,23 @@ fn trans_unary_datum(bcx: block,
                         contents_ty: ty::t,
                         heap: heap) -> DatumBlock {
         let _icx = push_ctxt("trans_boxed_expr");
-        let base::MallocResult { bcx, box: bx, body } =
-            base::malloc_general(bcx, contents_ty, heap);
-        add_clean_free(bcx, bx, heap);
-        let bcx = trans_into(bcx, contents, SaveIn(body));
-        revoke_clean(bcx, bx);
-        return immediate_rvalue_bcx(bcx, bx, box_ty);
+        if heap == heap_exchange {
+            let llty = type_of(bcx.ccx(), contents_ty);
+            let size = llsize_of(bcx.ccx(), llty);
+            let Result { bcx: bcx, val: val } = malloc_raw_dyn(bcx, contents_ty,
+                                                               heap_exchange, size);
+            add_clean_free(bcx, val, heap_exchange);
+            let bcx = trans_into(bcx, contents, SaveIn(val));
+            revoke_clean(bcx, val);
+            return immediate_rvalue_bcx(bcx, val, box_ty);
+        } else {
+            let base::MallocResult { bcx, box: bx, body } =
+                base::malloc_general(bcx, contents_ty, heap);
+            add_clean_free(bcx, bx, heap);
+            let bcx = trans_into(bcx, contents, SaveIn(body));
+            revoke_clean(bcx, bx);
+            return immediate_rvalue_bcx(bcx, bx, box_ty);
+        }
     }
 }
 

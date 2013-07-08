@@ -548,6 +548,7 @@ pub fn trans_trait_callee_from_llval(bcx: block,
 
     let _icx = push_ctxt("impl::trans_trait_callee");
     let ccx = bcx.ccx();
+    let mut bcx = bcx;
 
     // Load the vtable from the @Trait pair
     debug!("(translating trait callee) loading vtable from pair %s",
@@ -576,6 +577,10 @@ pub fn trans_trait_callee_from_llval(bcx: block,
         }
         ast::sty_region(*) => {
             match store {
+                ty::UniqTraitStore
+                    if !ty::type_contents(bcx.tcx(), callee_ty).contains_managed() => {
+                    llself = llbox;
+                }
                 ty::BoxTraitStore |
                 ty::UniqTraitStore => {
                     llself = GEPi(bcx, llbox, [0u, abi::box_field_body]);
