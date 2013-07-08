@@ -750,10 +750,6 @@ static MAX_TWO_B: uint = 2048u;
 static TAG_THREE_B: uint = 224u;
 static MAX_THREE_B: uint = 65536u;
 static TAG_FOUR_B: uint = 240u;
-static MAX_FOUR_B: uint = 2097152u;
-static TAG_FIVE_B: uint = 248u;
-static MAX_FIVE_B: uint = 67108864u;
-static TAG_SIX_B: uint = 252u;
 
 /**
  * A dummy trait to hold all the utility methods that we implement on strings.
@@ -2069,14 +2065,13 @@ impl OwnedStr for ~str {
     /// Appends a character to the back of a string
     #[inline]
     fn push_char(&mut self, c: char) {
+        assert!(c as uint <= 0x10ffff); // FIXME: #7609: should be enforced on all `char`
         unsafe {
             let code = c as uint;
             let nb = if code < MAX_ONE_B { 1u }
             else if code < MAX_TWO_B { 2u }
             else if code < MAX_THREE_B { 3u }
-            else if code < MAX_FOUR_B { 4u }
-            else if code < MAX_FIVE_B { 5u }
-            else { 6u };
+            else { 4u };
             let len = self.len();
             let new_len = len + nb;
             self.reserve_at_least(new_len);
@@ -2101,21 +2096,6 @@ impl OwnedStr for ~str {
                         *ptr::mut_offset(buf, off + 1u) = (code >> 12u & 63u | TAG_CONT) as u8;
                         *ptr::mut_offset(buf, off + 2u) = (code >> 6u & 63u | TAG_CONT) as u8;
                         *ptr::mut_offset(buf, off + 3u) = (code & 63u | TAG_CONT) as u8;
-                    }
-                    5u => {
-                        *ptr::mut_offset(buf, off) = (code >> 24u & 3u | TAG_FIVE_B) as u8;
-                        *ptr::mut_offset(buf, off + 1u) = (code >> 18u & 63u | TAG_CONT) as u8;
-                        *ptr::mut_offset(buf, off + 2u) = (code >> 12u & 63u | TAG_CONT) as u8;
-                        *ptr::mut_offset(buf, off + 3u) = (code >> 6u & 63u | TAG_CONT) as u8;
-                        *ptr::mut_offset(buf, off + 4u) = (code & 63u | TAG_CONT) as u8;
-                    }
-                    6u => {
-                        *ptr::mut_offset(buf, off) = (code >> 30u & 1u | TAG_SIX_B) as u8;
-                        *ptr::mut_offset(buf, off + 1u) = (code >> 24u & 63u | TAG_CONT) as u8;
-                        *ptr::mut_offset(buf, off + 2u) = (code >> 18u & 63u | TAG_CONT) as u8;
-                        *ptr::mut_offset(buf, off + 3u) = (code >> 12u & 63u | TAG_CONT) as u8;
-                        *ptr::mut_offset(buf, off + 4u) = (code >> 6u & 63u | TAG_CONT) as u8;
-                        *ptr::mut_offset(buf, off + 5u) = (code & 63u | TAG_CONT) as u8;
                     }
                     _ => {}
                 }
