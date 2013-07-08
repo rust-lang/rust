@@ -15,7 +15,7 @@
 
 # The names of crates that must be tested
 TEST_TARGET_CRATES = std extra
-TEST_HOST_CRATES = syntax rustc rustdoc rust rustpkg
+TEST_HOST_CRATES = syntax rustc rustdoc rust rustpkg rusti
 TEST_CRATES = $(TEST_TARGET_CRATES) $(TEST_HOST_CRATES)
 
 # Markdown files under doc/ that should have their code extracted and run
@@ -157,6 +157,7 @@ check-test: cleantestlibs cleantmptestlogs all check-stage2-rfail
 
 check-lite: cleantestlibs cleantmptestlogs \
 	check-stage2-std check-stage2-extra check-stage2-rpass \
+	check-stage2-rustpkg check-stage2-rusti \
 	check-stage2-rfail check-stage2-cfail
 	$(Q)$(CFG_PYTHON) $(S)src/etc/check-summary.py tmp/*.log
 
