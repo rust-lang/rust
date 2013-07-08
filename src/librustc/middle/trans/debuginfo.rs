@@ -612,9 +612,13 @@ fn create_enum_md(cx: &mut CrateContext,
 
         let raw_types : &[ty::t] = vi.args;
         let arg_types = do raw_types.map |&raw_type| { ty::subst(cx.tcx, substs, raw_type) };
-        
+
         let mut arg_llvm_types = do arg_types.map |&ty| { type_of::type_of(cx, ty) };
-        let mut arg_names = arg_types.map(|_| ~"");
+        let mut arg_names = match vi.arg_names {
+            Some(ref names) => do names.map |ident| { cx.sess.str_of(*ident).to_owned() },
+            None => do arg_types.map |_| { ~"" }
+        };
+
         let mut arg_md = do arg_types.map |&ty| { get_or_create_type(cx, ty, span) };
 
         if !is_univariant {

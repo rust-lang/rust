@@ -3177,29 +3177,34 @@ pub fn check_enum_variants(ccx: @mut CrateCtxt,
             let this_disr_val = *disr_val;
             *disr_val += 1;
 
-            let arg_tys = match v.node.kind {
+            let (arg_tys, arg_names) = match v.node.kind {
                 ast::tuple_variant_kind(ref args) if args.len() > 0u => {
-                    Some(ty::ty_fn_args(ctor_ty).map(|a| *a))
+                    (ty::ty_fn_args(ctor_ty).map(|a| *a), None)
                 }
                 ast::tuple_variant_kind(_) => {
-                    Some(~[])
+                    (~[], None)
                 }
-                ast::struct_variant_kind(_) => {
-                    Some(ty::lookup_struct_fields(
-                        ccx.tcx, local_def(v.node.id)).map(|cf|
-                            ty::node_id_to_type(ccx.tcx, cf.id.node)))
+                ast::struct_variant_kind(struct_def) => {
+                    let tys = ty::ty_fn_args(ctor_ty).map(|a| *a);
+                    let names = do struct_def.fields.map |field| { match field.node.kind {
+                        ast::named_field(ident, _visibility) => ident,
+                        ast::unnamed_field => ccx.tcx.sess.bug(
+                            "enum_variants: all fields in struct must have a name")
+                    }};
+
+                    (tys, Some(names))
                 }
             };
 
-            match arg_tys {
-                None => {}
-                Some(arg_tys) => {
-                    variants.push(
-                        @VariantInfo_{args: arg_tys, ctor_ty: ctor_ty,
-                          name: v.node.name, id: local_def(v.node.id),
-                          disr_val: this_disr_val, vis: v.node.vis});
-                }
-            }
+            variants.push(@VariantInfo_{
+                    args: arg_tys,
+                    arg_names: arg_names,
+                    ctor_ty: ctor_ty,
+                    name: v.node.name,
+                    id: local_def(v.node.id),
+                    disr_val: this_disr_val,
+                    vis: v.node.vis
+            });
         }
     }
 

@@ -753,11 +753,16 @@ pub fn get_enum_variants(intr: @ident_interner, cdata: cmd, id: ast::node_id,
           Some(val) => { disr_val = val; }
           _         => { /* empty */ }
         }
-        infos.push(@ty::VariantInfo_{args: arg_tys,
-                       ctor_ty: ctor_ty, name: name,
-                  // I'm not even sure if we encode visibility
-                  // for variants -- TEST -- tjc
-                  id: *did, disr_val: disr_val, vis: ast::inherited});
+        infos.push(@ty::VariantInfo_{
+            args: arg_tys,
+            arg_names: None,
+            ctor_ty: ctor_ty,
+            name: name,
+            // I'm not even sure if we encode visibility
+            // for variants -- TEST -- tjc
+            id: *did,
+            disr_val: disr_val,
+            vis: ast::inherited});
         disr_val += 1;
     }
     return infos;
