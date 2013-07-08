@@ -483,6 +483,11 @@ impl Scheduler {
 
             // Running tasks may have asked us to do some cleanup
             (*sched).run_cleanup_job();
+
+            // Must happen after running the cleanup job (of course).
+            // Might not be running in task context; if not, a later call to
+            // resume_task_immediately will take care of this.
+            (*sched).current_task.map(|t| t.death.check_killed());
         }
     }
 
@@ -524,6 +529,9 @@ impl Scheduler {
             // We could be executing in a different thread now
             let sched = Local::unsafe_borrow::<Scheduler>();
             (*sched).run_cleanup_job();
+
+            // As above, must happen after running the cleanup job.
+            (*sched).current_task.map(|t| t.death.check_killed());
         }
     }
 
@@ -559,6 +567,9 @@ impl Scheduler {
             // We could be executing in a different thread now
             let sched = Local::unsafe_borrow::<Scheduler>();
             (*sched).run_cleanup_job();
+
+            // As above, must happen after running the cleanup job.
+            (*sched).current_task.map(|t| t.death.check_killed());
         }
     }
 
