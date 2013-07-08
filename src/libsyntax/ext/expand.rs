@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use ast::{Block, Crate, decl_local, empty_ctxt, expr_, expr_mac, Local, mac_invoc_tt};
-use ast::{item_mac, Mrk, stmt_, stmt_decl, stmt_mac, stmt_expr, stmt_semi};
+use ast::{item_mac, Mrk, stmt_, stmt_decl, stmt_mac, stmt_expr, stmt_semi, SyntaxContext};
 use ast::{SCTable, token_tree, illegal_ctxt};
 use ast;
 use ast_util::{new_rename, new_mark, mtwt_resolve};
@@ -40,6 +40,11 @@ pub fn expand_expr(extsbox: @mut SyntaxEnv,
         // entry-point for all syntax extensions.
         expr_mac(ref mac) => {
             match (*mac).node {
+                // it would almost certainly be cleaner to pass the whole
+                // macro invocation in, rather than pulling it apart and
+                // marking the tts and the ctxt separately. This also goes
+                // for the other three macro invocation chunks of code
+                // in this file.
                 // Token-tree macros:
                 mac_invoc_tt(ref pth, ref tts, ctxt) => {
                     if (pth.idents.len() > 1u) {
@@ -68,7 +73,8 @@ pub fn expand_expr(extsbox: @mut SyntaxEnv,
                             let fm = fresh_mark();
                             // mark before:
                             let marked_before = mark_tts(*tts,fm);
-                            let expanded = match expandfun(cx, mac.span, marked_before) {
+                            let marked_ctxt = new_mark(fm, ctxt);
+                            let expanded = match expandfun(cx, mac.span, marked_before, marked_ctxt) {
                                 MRExpr(e) => e,
                                 MRAny(expr_maker,_,_) => expr_maker(),
                                 _ => {
@@ -361,9 +367,9 @@ pub fn expand_item_mac(extsbox: @mut SyntaxEnv,
                        cx: @ExtCtxt, it: @ast::item,
                        fld: @ast_fold)
                     -> Option<@ast::item> {
-    let (pth, tts) = match it.node {
+    let (pth, tts, ctxt) = match it.node {
         item_mac(codemap::spanned { node: mac_invoc_tt(ref pth, ref tts, ctxt), _}) => {
-            (pth, (*tts).clone())
+            (pth, (*tts).clone(), ctxt)
         }
         _ => cx.span_bug(it.span, "invalid item macro invocation")
     };
@@ -390,10 +396,9 @@ pub fn expand_item_mac(extsbox: @mut SyntaxEnv,
                 }
             });
             // mark before expansion:
-            let marked_tts = mark_tts(tts,fm);
-            // mark after expansion:
-            // RIGHT HERE: can't apply mark_item to MacResult ... :(
-            expander(cx, it.span, marked_tts)
+            let marked_before = mark_tts(tts,fm);
+            let marked_ctxt = new_mark(fm,ctxt);
+            expander(cx, it.span, marked_before, marked_ctxt)
         }
         Some(@SE(IdentTT(expander, span))) => {
             if it.ident.name == parse::token::special_idents::invalid.name {
@@ -411,7 +416,8 @@ pub fn expand_item_mac(extsbox: @mut SyntaxEnv,
             let fm = fresh_mark();
             // mark before expansion:
             let marked_tts = mark_tts(tts,fm);
-        expander(cx, it.span, it.ident, marked_tts)
+            let marked_ctxt = new_mark(fm,ctxt);
+            expander(cx, it.span, it.ident, marked_tts, marked_ctxt)
         }
         _ => cx.span_fatal(
             it.span, fmt!("%s! is not legal in item position", extnamestr))
@@ -462,11 +468,11 @@ pub fn expand_stmt(extsbox: @mut SyntaxEnv,
                 -> (Option<stmt_>, span) {
     // why the copying here and not in expand_expr?
     // looks like classic changed-in-only-one-place
-    let (mac, pth, tts, semi) = match *s {
+    let (mac, pth, tts, semi, ctxt) = match *s {
         stmt_mac(ref mac, semi) => {
             match mac.node {
                 mac_invoc_tt(ref pth, ref tts, ctxt) => {
-                    ((*mac).clone(), pth, (*tts).clone(), semi)
+                    ((*mac).clone(), pth, (*tts).clone(), semi, ctxt)
                 }
             }
         }
@@ -492,7 +498,8 @@ pub fn expand_stmt(extsbox: @mut SyntaxEnv,
             let fm = fresh_mark();
             // mark before expansion:
             let marked_tts = mark_tts(tts,fm);
-            let expanded = match expandfun(cx, mac.span, marked_tts) {
+            let marked_ctxt = new_mark(fm,ctxt);
+            let expanded = match expandfun(cx, mac.span, marked_tts, marked_ctxt) {
                 MRExpr(e) =>
                     @codemap::spanned { node: stmt_expr(e, cx.next_id()),
                                     span: e.span},
@@ -671,27 +678,6 @@ pub fn new_expr_finder() -> @Visitor<@mut ~[@ast::expr]> {
         .. *default_visitor
     }
 }
-
-
-// given a mutable list of renames, return a tree-folder that applies those
-// renames.
-// FIXME #4536: currently pub to allow testing
-pub fn renames_to_fold(renames : @mut ~[(ast::ident,ast::Name)]) -> @ast_fold {
-    let afp = default_ast_fold();
-    let f_pre = @AstFoldFns {
-        fold_ident: |id,_| {
-            // the individual elements are memoized... it would
-            // also be possible to memoize on the whole list at once.
-            let new_ctxt = renames.iter().fold(id.ctxt,|ctxt,&(from,to)| {
-                new_rename(from,to,ctxt)
-            });
-            ast::ident{name:id.name,ctxt:new_ctxt}
-        },
-        .. *afp
-    };
-    make_fold(f_pre)
-}
-
 
 // expand a block. pushes a new exts_frame, then calls expand_block_elts
 pub fn expand_block(extsbox: @mut SyntaxEnv,
@@ -1055,6 +1041,7 @@ pub trait CtxtFn{
     pub fn f(&self, ast::SyntaxContext) -> ast::SyntaxContext;
 }
 
+// a renamer adds a rename to the syntax context
 pub struct Renamer {
     from : ast::ident,
     to : ast::Name
@@ -1066,11 +1053,36 @@ impl CtxtFn for Renamer {
     }
 }
 
+// a renamer that performs a whole bunch of renames
+pub struct MultiRenamer {
+    renames : @mut ~[(ast::ident,ast::Name)]
+}
+
+impl CtxtFn for MultiRenamer {
+    pub fn f(&self, starting_ctxt : ast::SyntaxContext) -> ast::SyntaxContext {
+        // the individual elements are memoized... it would
+        // also be possible to memoize on the whole list at once.
+        self.renames.iter().fold(starting_ctxt,|ctxt,&(from,to)| {
+            new_rename(from,to,ctxt)
+        })
+    }
+}
+
+// a marker adds the given mark to the syntax context
 pub struct Marker { mark : Mrk }
 
 impl CtxtFn for Marker {
     pub fn f(&self, ctxt : ast::SyntaxContext) -> ast::SyntaxContext {
         new_mark(self.mark,ctxt)
+    }
+}
+
+// a repainter just replaces the given context with the one it's closed over
+pub struct Repainter { ctxt : SyntaxContext }
+
+impl CtxtFn for Repainter {
+    pub fn f(&self, ctxt : ast::SyntaxContext) -> ast::SyntaxContext {
+        self.ctxt
     }
 }
 
@@ -1098,6 +1110,15 @@ pub fn fun_to_ctxt_folder<T : 'static + CtxtFn>(cf: @T) -> @AstFoldFns {
         fold_mac : fm,
         .. *afp
     }
+}
+
+
+
+// given a mutable list of renames, return a tree-folder that applies those
+// renames.
+// FIXME #4536: currently pub to allow testing
+pub fn renames_to_fold(renames : @mut ~[(ast::ident,ast::Name)]) -> @AstFoldFns {
+    fun_to_ctxt_folder(@MultiRenamer{renames : renames})
 }
 
 // just a convenience:
@@ -1141,6 +1162,12 @@ fn mark_item(expr : @ast::item, m : Mrk) -> Option<@ast::item> {
     new_mark_folder(m).fold_item(expr)
 }
 
+// replace all contexts in a given expr with the given mark. Used
+// for capturing macros
+pub fn replace_ctxts(expr : @ast::expr, ctxt : SyntaxContext) -> @ast::expr {
+    fun_to_ctxt_folder(@Repainter{ctxt:ctxt}).fold_expr(expr)
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -1150,7 +1177,7 @@ mod test {
     use codemap;
     use codemap::spanned;
     use parse;
-    use parse::token::{gensym, intern, get_ident_interner};
+    use parse::token::{gensym, intern, get_ident_interner, ident_to_str};
     use print::pprust;
     use std;
     use std::vec;
@@ -1285,8 +1312,9 @@ mod test {
         }
     }
 
-    fn fake_print_crate(s: @pprust::ps, crate: &ast::Crate) {
-        pprust::print_mod(s, &crate.module, crate.attrs);
+    fn fake_print_crate(crate: @ast::Crate) {
+        let s = pprust::rust_printer(std::io::stderr(),get_ident_interner());
+        pprust::print_crate_(s, crate);
     }
 
     fn expand_crate_str(crate_str: @str) -> @ast::Crate {
@@ -1411,6 +1439,59 @@ mod test {
                 }
             }
         }
+    }
+
+    #[test] fn quote_expr_test() {
+        quote_ext_cx_test(@"fn main(){let ext_cx = 13; quote_expr!(dontcare);}");
+    }
+    #[test] fn quote_item_test() {
+        quote_ext_cx_test(@"fn main(){let ext_cx = 13; quote_item!(dontcare);}");
+    }
+    #[test] fn quote_pat_test() {
+        quote_ext_cx_test(@"fn main(){let ext_cx = 13; quote_pat!(dontcare);}");
+    }
+    #[test] fn quote_ty_test() {
+        quote_ext_cx_test(@"fn main(){let ext_cx = 13; quote_ty!(dontcare);}");
+    }
+    #[test] fn quote_tokens_test() {
+        quote_ext_cx_test(@"fn main(){let ext_cx = 13; quote_tokens!(dontcare);}");
+    }
+
+    fn quote_ext_cx_test(crate_str : @str) {
+        let crate = expand_crate_str(crate_str);
+        let nv = new_name_finder();
+        let pv = new_path_finder();
+        // find the ext_cx binding
+        let bindings = @mut ~[];
+        visit::visit_crate(crate, (bindings, mk_vt(nv)));
+        let cxbinds : ~[&ast::ident] = bindings.iter().filter(|b|{@"ext_cx" == (ident_to_str(*b))}).collect();
+        let cxbind = match cxbinds {
+            [b] => b,
+            _ => fail!("expected just one binding for ext_cx")
+        };
+        let resolved_binding = mtwt_resolve(*cxbind);
+        // find all the ext_cx varrefs:
+        let varrefs = @mut ~[];
+        visit::visit_crate(crate, (varrefs, mk_vt(pv)));
+        // the ext_cx binding should bind all of the ext_cx varrefs:
+        for varrefs.iter().filter(|p|{ p.idents.len() == 1
+                                          && (@"ext_cx" == (ident_to_str(&p.idents[0])))
+                                     }).enumerate().advance |(idx,v)| {
+            if (mtwt_resolve(v.idents[0]) != resolved_binding) {
+                std::io::println("uh oh, ext_cx binding didn't match ext_cx varref:");
+                std::io::println(fmt!("this is varref # %?",idx));
+                std::io::println(fmt!("binding: %?",cxbind));
+                std::io::println(fmt!("resolves to: %?",resolved_binding));
+                std::io::println(fmt!("varref: %?",v.idents[0]));
+                std::io::println(fmt!("resolves to: %?",mtwt_resolve(v.idents[0])));
+                let table = get_sctable();
+                std::io::println("SC table:");
+                for table.table.iter().enumerate().advance |(idx,val)| {
+                    std::io::println(fmt!("%4u : %?",idx,val));
+                }
+            }
+            assert_eq!(mtwt_resolve(v.idents[0]),resolved_binding);
+        };
     }
 
     #[test]

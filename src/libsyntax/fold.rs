@@ -209,6 +209,7 @@ pub fn noop_fold_crate(c: &Crate, fld: @ast_fold) -> Crate {
 }
 
 fn noop_fold_view_item(vi: &view_item_, _fld: @ast_fold) -> view_item_ {
+    // FIXME #7654: doesn't iterate over idents in a view_item_use
     return /* FIXME (#2543) */ (*vi).clone();
 }
 
