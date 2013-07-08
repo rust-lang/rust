@@ -16,7 +16,7 @@ use ast;
 use ast_util::{new_rename, new_mark, resolve};
 use attr;
 use codemap;
-use codemap::{span, CallInfo, ExpandedFrom, NameAndSpan, spanned};
+use codemap::{span, ExpnInfo, NameAndSpan, spanned};
 use ext::base::*;
 use fold::*;
 use parse;
@@ -40,7 +40,7 @@ pub fn expand_expr(extsbox: @mut SyntaxEnv,
         expr_mac(ref mac) => {
             match (*mac).node {
                 // Token-tree macros:
-                mac_invoc_tt(pth, ref tts) => {
+                mac_invoc_tt(ref pth, ref tts) => {
                     if (pth.idents.len() > 1u) {
                         cx.span_fatal(
                             pth.span,
@@ -60,13 +60,13 @@ pub fn expand_expr(extsbox: @mut SyntaxEnv,
                             expander: exp,
                             span: exp_sp
                         }))) => {
-                            cx.bt_push(ExpandedFrom(CallInfo {
+                            cx.bt_push(ExpnInfo {
                                 call_site: s,
                                 callee: NameAndSpan {
                                     name: extnamestr,
                                     span: exp_sp,
                                 },
-                            }));
+                            });
 
                             let expanded = match exp(cx, mac.span, *tts) {
                                 MRExpr(e) => e,
@@ -131,13 +131,13 @@ pub fn expand_mod_items(extsbox: @mut SyntaxEnv,
 
             match (*extsbox).find(&intern(mname)) {
               Some(@SE(ItemDecorator(dec_fn))) => {
-                  cx.bt_push(ExpandedFrom(CallInfo {
+                  cx.bt_push(ExpnInfo {
                       call_site: attr.span,
                       callee: NameAndSpan {
                           name: mname,
                           span: None
                       }
-                  }));
+                  });
                   let r = dec_fn(cx, attr.span, attr.node.value, items);
                   cx.bt_pop();
                   r
@@ -198,7 +198,7 @@ pub fn expand_item(extsbox: @mut SyntaxEnv,
 
 // does this attribute list contain "macro_escape" ?
 pub fn contains_macro_escape (attrs: &[ast::attribute]) -> bool {
-    attrs.iter().any_(|attr| "macro_escape" == attr::get_attr_name(attr))
+    attrs.iter().any(|attr| "macro_escape" == attr::get_attr_name(attr))
 }
 
 // Support for item-position macro invocations, exactly the same
@@ -208,7 +208,7 @@ pub fn expand_item_mac(extsbox: @mut SyntaxEnv,
                        fld: @ast_fold)
                     -> Option<@ast::item> {
     let (pth, tts) = match it.node {
-        item_mac(codemap::spanned { node: mac_invoc_tt(pth, ref tts), _}) => {
+        item_mac(codemap::spanned { node: mac_invoc_tt(ref pth, ref tts), _}) => {
             (pth, copy *tts)
         }
         _ => cx.span_bug(it.span, "invalid item macro invocation")
@@ -227,13 +227,13 @@ pub fn expand_item_mac(extsbox: @mut SyntaxEnv,
                                     given '%s'", extnamestr,
                                    ident_to_str(&it.ident)));
             }
-            cx.bt_push(ExpandedFrom(CallInfo {
+            cx.bt_push(ExpnInfo {
                 call_site: it.span,
                 callee: NameAndSpan {
                     name: extnamestr,
                     span: expand.span
                 }
-            }));
+            });
             ((*expand).expander)(cx, it.span, tts)
         }
         Some(@SE(IdentTT(ref expand))) => {
@@ -242,13 +242,13 @@ pub fn expand_item_mac(extsbox: @mut SyntaxEnv,
                               fmt!("macro %s! expects an ident argument",
                                    extnamestr));
             }
-            cx.bt_push(ExpandedFrom(CallInfo {
+            cx.bt_push(ExpnInfo {
                 call_site: it.span,
                 callee: NameAndSpan {
                     name: extnamestr,
                     span: expand.span
                 }
-            }));
+            });
             ((*expand).expander)(cx, it.span, it.ident, tts)
         }
         _ => cx.span_fatal(
@@ -298,7 +298,7 @@ pub fn expand_stmt(extsbox: @mut SyntaxEnv,
     let (mac, pth, tts, semi) = match *s {
         stmt_mac(ref mac, semi) => {
             match mac.node {
-                mac_invoc_tt(pth, ref tts) => {
+                mac_invoc_tt(ref pth, ref tts) => {
                     (copy *mac, pth, copy *tts, semi)
                 }
             }
@@ -319,10 +319,10 @@ pub fn expand_stmt(extsbox: @mut SyntaxEnv,
 
         Some(@SE(NormalTT(
             SyntaxExpanderTT{expander: exp, span: exp_sp}))) => {
-            cx.bt_push(ExpandedFrom(CallInfo {
+            cx.bt_push(ExpnInfo {
                 call_site: sp,
                 callee: NameAndSpan { name: extnamestr, span: exp_sp }
-            }));
+            });
             let expanded = match exp(cx, mac.span, tts) {
                 MRExpr(e) =>
                     @codemap::spanned { node: stmt_expr(e, cx.next_id()),
@@ -372,10 +372,10 @@ pub fn new_name_finder() -> @Visitor<@mut ~[ast::ident]> {
                      (ident_accum, v): (@mut ~[ast::ident], visit::vt<@mut ~[ast::ident]>)| {
             match *p {
                 // we found a pat_ident!
-                ast::pat{id:_, node: ast::pat_ident(_,path,ref inner), span:_} => {
+                ast::pat{id:_, node: ast::pat_ident(_,ref path,ref inner), span:_} => {
                     match path {
                         // a path of length one:
-                        @ast::Path{global: false,idents: [id], span:_,rp:_,types:_} =>
+                        &ast::Path{global: false,idents: [id], span:_,rp:_,types:_} =>
                         ident_accum.push(id),
                         // I believe these must be enums...
                         _ => ()
@@ -580,6 +580,7 @@ pub fn core_macros() -> @str {
             pub mod $c {
                 fn key(_x: @::std::condition::Handler<$in,$out>) { }
 
+                #[allow(non_uppercase_statics)]
                 pub static cond :
                     ::std::condition::Condition<'static,$in,$out> =
                     ::std::condition::Condition {
@@ -595,6 +596,7 @@ pub fn core_macros() -> @str {
             pub mod $c {
                 fn key(_x: @::std::condition::Handler<$in,$out>) { }
 
+                #[allow(non_uppercase_statics)]
                 pub static cond :
                     ::std::condition::Condition<'static,$in,$out> =
                     ::std::condition::Condition {

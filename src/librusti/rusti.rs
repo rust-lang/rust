@@ -44,7 +44,7 @@
  */
 
 #[link(name = "rusti",
-       vers = "0.7",
+       vers = "0.8-pre",
        uuid = "7fb5bf52-7d45-4fee-8325-5ad3311149fc",
        url = "https://github.com/mozilla/rust/tree/master/src/rusti")];
 
@@ -132,7 +132,7 @@ fn run(mut repl: Repl, input: ~str) -> Repl {
         // differently beause they must appear before all 'use' statements
         for blk.node.view_items.iter().advance |vi| {
             let s = do with_pp(intr) |pp, _| {
-                pprust::print_view_item(pp, *vi);
+                pprust::print_view_item(pp, vi);
             };
             match vi.node {
                 ast::view_item_extern_mod(*) => {
@@ -381,7 +381,7 @@ fn run_cmd(repl: &mut Repl, _in: @io::Reader, _out: @io::Writer,
                 let crate_path = Path(*crate);
                 let crate_dir = crate_path.dirname();
                 repl.program.record_extern(fmt!("extern mod %s;", *crate));
-                if !repl.lib_search_paths.iter().any_(|x| x == &crate_dir) {
+                if !repl.lib_search_paths.iter().any(|x| x == &crate_dir) {
                     repl.lib_search_paths.push(crate_dir);
                 }
             }
@@ -511,8 +511,7 @@ pub fn main() {
     }
 }
 
-//#[cfg(test)]
-#[cfg(ignore)] // FIXME #7541 doesn't work under cross-compile
+#[cfg(test)]
 mod tests {
     use std::io;
     use std::iterator::IteratorUtil;
@@ -530,8 +529,9 @@ mod tests {
     }
 
     // FIXME: #7220 rusti on 32bit mac doesn't work.
-    #[cfg(not(target_word_size="32"))]
-    #[cfg(not(target_os="macos"))]
+    // FIXME: #7641 rusti on 32bit linux cross compile doesn't work
+    // FIXME: #7115 re-enable once LLVM has been upgraded
+    #[cfg(thiswillneverbeacfgflag)]
     fn run_program(prog: &str) {
         let mut r = repl();
         for prog.split_iter('\n').advance |cmd| {
@@ -540,7 +540,6 @@ mod tests {
             r = result.expect(fmt!("the command '%s' failed", cmd));
         }
     }
-    #[cfg(target_word_size="32", target_os="macos")]
     fn run_program(_: &str) {}
 
     #[test]
@@ -668,8 +667,10 @@ mod tests {
             fn f() {}
             f()
         ");
+    }
 
-        debug!("simultaneous definitions + expressions are allowed");
+    #[test]
+    fn simultaneous_definition_and_expression() {
         run_program("
             let a = 3; a as u8
         ");

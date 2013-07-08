@@ -25,16 +25,16 @@ mod syntax {
     pub use parse;
 }
 
-pub fn path(ids: ~[ident], span: span) -> @ast::Path {
-    @ast::Path { span: span,
+pub fn path(ids: ~[ident], span: span) -> ast::Path {
+    ast::Path { span: span,
                  global: false,
                  idents: ids,
                  rp: None,
                  types: ~[] }
 }
 
-pub fn path_global(ids: ~[ident], span: span) -> @ast::Path {
-    @ast::Path { span: span,
+pub fn path_global(ids: ~[ident], span: span) -> ast::Path {
+    ast::Path { span: span,
                  global: true,
                  idents: ids,
                  rp: None,
@@ -42,22 +42,22 @@ pub fn path_global(ids: ~[ident], span: span) -> @ast::Path {
 }
 
 pub trait append_types {
-    fn add_ty(&self, ty: @ast::Ty) -> @ast::Path;
-    fn add_tys(&self, tys: ~[@ast::Ty]) -> @ast::Path;
+    fn add_ty(&self, ty: ast::Ty) -> ast::Path;
+    fn add_tys(&self, tys: ~[ast::Ty]) -> ast::Path;
 }
 
-impl append_types for @ast::Path {
-    fn add_ty(&self, ty: @ast::Ty) -> @ast::Path {
-        @ast::Path {
+impl append_types for ast::Path {
+    fn add_ty(&self, ty: ast::Ty) -> ast::Path {
+        ast::Path {
             types: vec::append_one(copy self.types, ty),
-            .. copy **self
+            .. copy *self
         }
     }
 
-    fn add_tys(&self, tys: ~[@ast::Ty]) -> @ast::Path {
-        @ast::Path {
+    fn add_tys(&self, tys: ~[ast::Ty]) -> ast::Path {
+        ast::Path {
             types: vec::append(copy self.types, tys),
-            .. copy **self
+            .. copy *self
         }
     }
 }

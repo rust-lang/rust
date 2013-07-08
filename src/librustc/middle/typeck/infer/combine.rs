@@ -65,7 +65,7 @@ use middle::typeck::infer::sub::Sub;
 use middle::typeck::infer::to_str::InferStr;
 use middle::typeck::infer::unify::{InferCtxtMethods};
 use middle::typeck::infer::{InferCtxt, cres, ures};
-use middle::typeck::infer::{TypeOrigin, TypeTrace};
+use middle::typeck::infer::{TypeTrace};
 use util::common::indent;
 
 use std::result::{iter_vec2, map_vec2};
@@ -73,7 +73,6 @@ use std::vec;
 use syntax::ast::{Onceness, purity};
 use syntax::ast;
 use syntax::opt_vec;
-use syntax::codemap::span;
 use syntax::abi::AbiSet;
 
 pub trait Combine {

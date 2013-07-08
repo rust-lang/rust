@@ -41,9 +41,9 @@ fn fold_mod(
     let doc = fold::default_any_fold_mod(fold, doc);
 
     doc::ModDoc {
-        items: do doc.items.filtered |ItemTag| {
-            !is_hidden(fold.ctxt.clone(), ItemTag.item())
-        },
+        items: do doc.items.iter().filter |item_tag| {
+            !is_hidden(fold.ctxt.clone(), item_tag.item())
+        }.transform(|x| copy *x).collect(),
         .. doc
     }
 }

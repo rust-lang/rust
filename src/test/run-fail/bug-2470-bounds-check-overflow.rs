@@ -11,7 +11,6 @@
 // error-pattern:index out of bounds
 
 use std::sys;
-use std::vec;
 
 fn main() {
 
@@ -22,7 +21,7 @@ fn main() {
     // huge).
 
     let x = ~[1u,2u,3u];
-    do vec::as_imm_buf(x) |p, _len| {
+    do x.as_imm_buf |p, _len| {
         let base = p as uint;
         let idx = base / sys::size_of::<uint>();
         error!("ov1 base = 0x%x", base);

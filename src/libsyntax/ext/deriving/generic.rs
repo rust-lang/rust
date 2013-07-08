@@ -335,9 +335,9 @@ impl<'self> TraitDef<'self> {
                     cx.typarambound(p.to_path(cx, span, type_ident, generics))
                 });
             // require the current trait
-            bounds.push(cx.typarambound(trait_path));
+            bounds.push(cx.typarambound(copy trait_path));
 
-            trait_generics.ty_params.push(cx.typaram(ty_param.ident, @bounds));
+            trait_generics.ty_params.push(cx.typaram(ty_param.ident, bounds));
         }
 
         // Create the reference to the trait.
@@ -351,13 +351,12 @@ impl<'self> TraitDef<'self> {
         let self_lifetime = if generics.lifetimes.is_empty() {
             None
         } else {
-            Some(@*generics.lifetimes.get(0))
+            Some(*generics.lifetimes.get(0))
         };
 
         // Create the type of `self`.
         let self_type = cx.ty_path(cx.path_all(span, false, ~[ type_ident ], self_lifetime,
-                                               opt_vec::take_vec(self_ty_params)),
-                                   @None);
+                                               opt_vec::take_vec(self_ty_params)), None);
 
         let doc_attr = cx.attribute(
             span,
@@ -457,7 +456,7 @@ impl<'self> MethodDef<'self> {
     }
 
     fn get_ret_ty(&self, cx: @ExtCtxt, span: span,
-                     generics: &Generics, type_ident: ident) -> @ast::Ty {
+                     generics: &Generics, type_ident: ident) -> ast::Ty {
         self.ret_ty.to_ty(cx, span, type_ident, generics)
     }
 
@@ -467,7 +466,7 @@ impl<'self> MethodDef<'self> {
 
     fn split_self_nonself_args(&self, cx: @ExtCtxt, span: span,
                              type_ident: ident, generics: &Generics)
-        -> (ast::explicit_self, ~[@expr], ~[@expr], ~[(ident, @ast::Ty)]) {
+        -> (ast::explicit_self, ~[@expr], ~[@expr], ~[(ident, ast::Ty)]) {
 
         let mut self_args = ~[];
         let mut nonself_args = ~[];
@@ -515,7 +514,7 @@ impl<'self> MethodDef<'self> {
                      type_ident: ident,
                      generics: &Generics,
                      explicit_self: ast::explicit_self,
-                     arg_types: ~[(ident, @ast::Ty)],
+                     arg_types: ~[(ident, ast::Ty)],
                      body: @expr) -> @ast::method {
         // create the generics that aren't for Self
         let fn_generics = self.generics.to_generics(cx, span, type_ident, generics);
@@ -890,7 +889,7 @@ fn summarise_struct(cx: @ExtCtxt, span: span,
 
 pub fn create_subpatterns(cx: @ExtCtxt,
                           span: span,
-                          field_paths: ~[@ast::Path],
+                          field_paths: ~[ast::Path],
                           mutbl: ast::mutability)
                    -> ~[@ast::pat] {
     do field_paths.map |&path| {
@@ -941,7 +940,7 @@ fn create_struct_pattern(cx: @ExtCtxt,
         };
         let path = cx.path_ident(span,
                                  cx.ident_of(fmt!("%s_%u", prefix, i)));
-        paths.push(path);
+        paths.push(copy path);
         ident_expr.push((opt_id, cx.expr_path(path)));
     }
 
@@ -987,7 +986,7 @@ fn create_enum_variant_pattern(cx: @ExtCtxt,
                 let path = cx.path_ident(span,
                                          cx.ident_of(fmt!("%s_%u", prefix, i)));
 
-                paths.push(path);
+                paths.push(copy path);
                 ident_expr.push((None, cx.expr_path(path)));
             }
 

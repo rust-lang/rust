@@ -21,7 +21,7 @@ fn siphash(k0 : u64) -> SipHash {
 
     impl SipHash for SipState {
         fn reset(&self) {
-           self.v0 = k0 ^ 0x736f6d6570736575; //~ ERROR attempted dynamic environment-capture
+           self.v0 = k0 ^ 0x736f6d6570736575; //~ ERROR can't capture dynamic environment
            //~^ ERROR unresolved name `k0`.
         }
     }

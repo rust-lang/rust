@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::{libc, os, result, str};
+use std::{os, result};
 use rustc::driver::{driver, session};
 use rustc::metadata::filesearch;
 use extra::getopts::groups::getopts;
@@ -28,7 +28,7 @@ use search::find_library_in_search_path;
 use path_util::target_library_in_workspace;
 pub use target::{OutputType, Main, Lib, Bench, Test};
 
-static Commands: &'static [&'static str] =
+static COMMANDS: &'static [&'static str] =
     &["build", "clean", "do", "info", "install", "prefer", "test", "uninstall",
       "unprefer"];
 
@@ -55,7 +55,7 @@ pub fn root() -> Path {
 }
 
 pub fn is_cmd(cmd: &str) -> bool {
-    Commands.iter().any_(|&c| c == cmd)
+    COMMANDS.iter().any(|&c| c == cmd)
 }
 
 struct ListenerFn {
@@ -77,9 +77,9 @@ fn fold_mod(_ctx: @mut ReadyCtx,
             fold: @fold::ast_fold) -> ast::_mod {
     fn strip_main(item: @ast::item) -> @ast::item {
         @ast::item {
-            attrs: do item.attrs.filtered |attr| {
-                "main" != attr::get_attr_name(attr)
-            },
+            attrs: do item.attrs.iter().filter_map |attr| {
+                if "main" != attr::get_attr_name(attr) {Some(*attr)} else {None}
+            }.collect(),
             .. copy *item
         }
     }
@@ -379,6 +379,7 @@ pub fn link_exe(_src: &Path, _dest: &Path) -> bool {
 #[cfg(target_os = "freebsd")]
 #[cfg(target_os = "macos")]
 pub fn link_exe(src: &Path, dest: &Path) -> bool {
+    use std::{libc, str};
     unsafe {
         do str::as_c_str(src.to_str()) |src_buf| {
             do str::as_c_str(dest.to_str()) |dest_buf| {
@@ -417,4 +418,4 @@ mod test {
 
 // tjc: cheesy
 fn debug_flags() -> ~[~str] { ~[] }
-// static debug_flags: ~[~str] = ~[~"-Z", ~"time-passes"];
+// static DEBUG_FLAGS: ~[~str] = ~[~"-Z", ~"time-passes"];

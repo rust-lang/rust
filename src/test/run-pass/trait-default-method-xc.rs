@@ -4,16 +4,18 @@
 #[allow(default_methods)];
 
 extern mod aux(name = "trait_default_method_xc_aux");
-use aux::{A, B, TestEquality};
+use aux::{A, B, TestEquality, Something};
 
 
 fn f<T: aux::A>(i: T) {
     assert_eq!(i.g(), 10);
 }
 
+mod stuff {
+    pub struct thing { x: int }
+}
 
-pub struct thing { x: int }
-impl A for thing {
+impl A for stuff::thing {
     fn f(&self) -> int { 10 }
 }
 
@@ -29,8 +31,8 @@ fn neq<T: TestEquality>(lhs: &T, rhs: &T) -> bool {
 }
 
 
-impl TestEquality for thing {
-    fn test_eq(&self, rhs: &thing) -> bool {
+impl TestEquality for stuff::thing {
+    fn test_eq(&self, rhs: &stuff::thing) -> bool {
         //self.x.test_eq(&rhs.x)
         eq(&self.x, &rhs.x)
     }
@@ -41,15 +43,17 @@ fn main () {
     // Some tests of random things
     f(0);
 
-    let a = thing { x: 0 };
-    let b = thing { x: 1 };
+    let a = stuff::thing { x: 0 };
+    let b = stuff::thing { x: 1 };
+    let c = Something { x: 1 };
 
-    //assert_eq!(0i.g(), 10);
+    assert_eq!(0i.g(), 10);
     assert_eq!(a.g(), 10);
     assert_eq!(a.h(), 10);
+    assert_eq!(c.h(), 10);
 
-
-    //assert_eq!(0i.thing(3.14, 1), (3.14, 1));
+    0i.thing(3.14, 1);
+    assert_eq!(0i.thing(3.14, 1), (3.14, 1));
 
     assert_eq!(g(0i, 3.14, 1), (3.14, 1));
     assert_eq!(g(false, 3.14, 1), (3.14, 1));
@@ -59,8 +63,8 @@ fn main () {
 
 
     // Trying out a real one
-    //assert!(12.test_neq(&10));
-    //assert!(!10.test_neq(&10));
+    assert!(12.test_neq(&10));
+    assert!(!10.test_neq(&10));
     assert!(a.test_neq(&b));
     assert!(!a.test_neq(&a));
 

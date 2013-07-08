@@ -17,7 +17,6 @@ use middle::trans::callee::{ArgVals, DontAutorefArg};
 use middle::trans::callee;
 use middle::trans::common::*;
 use middle::trans::datum::*;
-use middle::trans::expr::SaveIn;
 use middle::trans::glue;
 use middle::trans::machine;
 use middle::trans::meth;
@@ -96,14 +95,13 @@ impl Reflector {
             ty::mk_bare_fn(tcx, copy self.visitor_methods[mth_idx].fty);
         let v = self.visitor_val;
         debug!("passing %u args:", args.len());
-        let bcx = self.bcx;
+        let mut bcx = self.bcx;
         for args.iter().enumerate().advance |(i, a)| {
             debug!("arg %u: %s", i, bcx.val_to_str(*a));
         }
         let bool_ty = ty::mk_bool();
-        let scratch = scratch_datum(bcx, bool_ty, false);
         // XXX: Should not be BoxTraitStore!
-        let bcx = callee::trans_call_inner(
+        let result = unpack_result!(bcx, callee::trans_call_inner(
             self.bcx, None, mth_ty, bool_ty,
             |bcx| meth::trans_trait_callee_from_llval(bcx,
                                                       mth_ty,
@@ -113,8 +111,7 @@ impl Reflector {
                                                       ast::sty_region(
                                                         None,
                                                         ast::m_imm)),
-            ArgVals(args), SaveIn(scratch.val), DontAutorefArg);
-        let result = scratch.to_value_llval(bcx);
+            ArgVals(args), None, DontAutorefArg));
         let result = bool_to_i1(bcx, result);
         let next_bcx = sub_block(bcx, "next");
         CondBr(bcx, result, next_bcx.llbb, self.final_bcx.llbb);
@@ -194,7 +191,11 @@ impl Reflector {
           }
           ty::ty_uniq(ref mt) => {
               let extra = self.c_mt(mt);
-              self.visit("uniq", extra)
+              if ty::type_contents(bcx.tcx(), t).contains_managed() {
+                  self.visit("uniq_managed", extra)
+              } else {
+                  self.visit("uniq", extra)
+              }
           }
           ty::ty_ptr(ref mt) => {
               let extra = self.c_mt(mt);
@@ -278,7 +279,7 @@ impl Reflector {
             let opaqueptrty = ty::mk_ptr(ccx.tcx, ty::mt { ty: opaquety, mutbl: ast::m_imm });
 
             let make_get_disr = || {
-                let sub_path = bcx.fcx.path + [path_name(special_idents::anon)];
+                let sub_path = bcx.fcx.path + &[path_name(special_idents::anon)];
                 let sym = mangle_internal_name_by_path_and_seq(ccx,
                                                                sub_path,
                                                                "get_disr");

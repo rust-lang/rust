@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #[doc(hidden)];
+#[allow(non_uppercase_statics)];
 
 /*! Precise garbage collector
 

@@ -872,7 +872,7 @@ mod tests {
     use std::rand;
     use std::rand::Rng;
 
-    static bench_bits : uint = 1 << 14;
+    static BENCH_BITS : uint = 1 << 14;
 
     #[test]
     fn test_to_str() {
@@ -1452,19 +1452,19 @@ mod tests {
     fn bench_big_bitv_big(b: &mut BenchHarness) {
         let mut r = rng();
         let mut storage = ~[];
-        storage.grow(bench_bits / uint::bits, &0);
+        storage.grow(BENCH_BITS / uint::bits, &0);
         let mut bitv = BigBitv::new(storage);
         do b.iter {
-            bitv.set((r.next() as uint) % bench_bits, true);
+            bitv.set((r.next() as uint) % BENCH_BITS, true);
         }
     }
 
     #[bench]
     fn bench_bitv_big(b: &mut BenchHarness) {
         let mut r = rng();
-        let mut bitv = Bitv::new(bench_bits, false);
+        let mut bitv = Bitv::new(BENCH_BITS, false);
         do b.iter {
-            bitv.set((r.next() as uint) % bench_bits, true);
+            bitv.set((r.next() as uint) % BENCH_BITS, true);
         }
     }
 
@@ -1491,14 +1491,14 @@ mod tests {
         let mut r = rng();
         let mut bitv = BitvSet::new();
         do b.iter {
-            bitv.insert((r.next() as uint) % bench_bits);
+            bitv.insert((r.next() as uint) % BENCH_BITS);
         }
     }
 
     #[bench]
     fn bench_bitv_big_union(b: &mut BenchHarness) {
-        let mut b1 = Bitv::new(bench_bits, false);
-        let b2 = Bitv::new(bench_bits, false);
+        let mut b1 = Bitv::new(BENCH_BITS, false);
+        let b2 = Bitv::new(BENCH_BITS, false);
         do b.iter {
             b1.union(&b2);
         }

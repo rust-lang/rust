@@ -291,16 +291,16 @@ fn encode_ast(ebml_w: &mut writer::Encoder, item: ast::inlined_item) {
 // inlined items.
 fn simplify_ast(ii: &ast::inlined_item) -> ast::inlined_item {
     fn drop_nested_items(blk: &ast::blk_, fld: @fold::ast_fold) -> ast::blk_ {
-        let stmts_sans_items = do blk.stmts.filtered |stmt| {
+        let stmts_sans_items = do blk.stmts.iter().filter_map |stmt| {
             match stmt.node {
               ast::stmt_expr(_, _) | ast::stmt_semi(_, _) |
-              ast::stmt_decl(@codemap::spanned { node: ast::decl_local(_),
-                                             span: _}, _) => true,
-              ast::stmt_decl(@codemap::spanned { node: ast::decl_item(_),
-                                             span: _}, _) => false,
+              ast::stmt_decl(@codemap::spanned { node: ast::decl_local(_), span: _}, _)
+                => Some(*stmt),
+              ast::stmt_decl(@codemap::spanned { node: ast::decl_item(_), span: _}, _)
+                => None,
               ast::stmt_mac(*) => fail!("unexpanded macro in astencode")
             }
-        };
+        }.collect();
         let blk_sans_items = ast::blk_ {
             view_items: ~[], // I don't know if we need the view_items here,
                              // but it doesn't break tests!

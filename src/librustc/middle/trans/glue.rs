@@ -47,7 +47,7 @@ pub fn trans_free(cx: block, v: ValueRef) -> block {
     callee::trans_lang_call(cx,
         cx.tcx().lang_items.free_fn(),
         [PointerCast(cx, v, Type::i8p())],
-        expr::Ignore)
+        Some(expr::Ignore)).bcx
 }
 
 pub fn trans_exchange_free(cx: block, v: ValueRef) -> block {
@@ -55,7 +55,7 @@ pub fn trans_exchange_free(cx: block, v: ValueRef) -> block {
     callee::trans_lang_call(cx,
         cx.tcx().lang_items.exchange_free_fn(),
         [PointerCast(cx, v, Type::i8p())],
-        expr::Ignore)
+        Some(expr::Ignore)).bcx
 }
 
 pub fn take_ty(cx: block, v: ValueRef, t: ty::t) -> block {
@@ -386,7 +386,9 @@ pub fn make_free_glue(bcx: block, v: ValueRef, t: ty::t) {
       ty::ty_uniq(*) => {
         uniq::make_free_glue(bcx, v, t)
       }
-      ty::ty_evec(_, ty::vstore_uniq) | ty::ty_estr(ty::vstore_uniq) |
+      ty::ty_evec(_, ty::vstore_uniq) | ty::ty_estr(ty::vstore_uniq) => {
+        tvec::make_uniq_free_glue(bcx, v, t)
+      }
       ty::ty_evec(_, ty::vstore_box) | ty::ty_estr(ty::vstore_box) => {
         make_free_glue(bcx, v,
                        tvec::expand_boxed_vec_ty(bcx.tcx(), t));
@@ -738,15 +740,9 @@ pub fn make_generic_glue(ccx: @mut CrateContext,
                          name: &str)
                       -> ValueRef {
     let _icx = push_ctxt("make_generic_glue");
-    if !ccx.sess.trans_stats() {
-        return make_generic_glue_inner(ccx, t, llfn, helper);
-    }
-
-    let start = time::get_time();
-    let llval = make_generic_glue_inner(ccx, t, llfn, helper);
-    let end = time::get_time();
-    ccx.log_fn_time(fmt!("glue %s %s", name, ty_to_short_str(ccx.tcx, t)), start, end);
-    return llval;
+    let glue_name = fmt!("glue %s %s", name, ty_to_short_str(ccx.tcx, t));
+    let _s = StatRecorder::new(ccx, glue_name);
+    make_generic_glue_inner(ccx, t, llfn, helper)
 }
 
 pub fn emit_tydescs(ccx: &mut CrateContext) {

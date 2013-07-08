@@ -245,7 +245,7 @@ impl Type {
     }
 
     pub fn box(ctx: &CrateContext, ty: &Type) -> Type {
-        Type::struct_(Type::box_header_fields(ctx) + [*ty], false)
+        Type::struct_(Type::box_header_fields(ctx) + &[*ty], false)
     }
 
     pub fn opaque_box(ctx: &CrateContext) -> Type {

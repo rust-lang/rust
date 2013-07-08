@@ -917,7 +917,7 @@ fn convert_whence(whence: SeekStyle) -> i32 {
 impl Reader for *libc::FILE {
     fn read(&self, bytes: &mut [u8], len: uint) -> uint {
         unsafe {
-            do vec::as_mut_buf(bytes) |buf_p, buf_len| {
+            do bytes.as_mut_buf |buf_p, buf_len| {
                 assert!(buf_len >= len);
 
                 let count = libc::fread(buf_p as *mut c_void, 1u as size_t,
@@ -1152,7 +1152,7 @@ impl<W:Writer,C> Writer for Wrapper<W, C> {
 impl Writer for *libc::FILE {
     fn write(&self, v: &[u8]) {
         unsafe {
-            do vec::as_imm_buf(v) |vbuf, len| {
+            do v.as_imm_buf |vbuf, len| {
                 let nout = libc::fwrite(vbuf as *c_void,
                                         1,
                                         len as size_t,
@@ -1203,7 +1203,7 @@ impl Writer for fd_t {
     fn write(&self, v: &[u8]) {
         unsafe {
             let mut count = 0u;
-            do vec::as_imm_buf(v) |vbuf, len| {
+            do v.as_imm_buf |vbuf, len| {
                 while count < len {
                     let vb = ptr::offset(vbuf, count) as *c_void;
                     let nout = libc::write(*self, vb, len as size_t);

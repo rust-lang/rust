@@ -150,6 +150,7 @@ use middle::ty::{AutoPtr, AutoBorrowVec, AutoBorrowVecRef, AutoBorrowFn,
 use middle::ty;
 use util::common::indenter;
 use util::ppaux::Repr;
+use middle::trans::machine::llsize_of;
 
 use middle::trans::type_::Type;
 
@@ -291,7 +292,7 @@ pub fn trans_to_datum(bcx: block, expr: @ast::expr) -> DatumBlock {
         debug!("add_env(closure_ty=%s)", closure_ty.repr(tcx));
         let scratch = scratch_datum(bcx, closure_ty, false);
         let llfn = GEPi(bcx, scratch.val, [0u, abi::fn_field_code]);
-        assert_eq!(datum.appropriate_mode(), ByValue);
+        assert_eq!(datum.appropriate_mode(tcx), ByValue);
         Store(bcx, datum.to_appropriate_llval(bcx), llfn);
         let llenv = GEPi(bcx, scratch.val, [0u, abi::fn_field_box]);
         Store(bcx, base::null_env_ptr(bcx), llenv);
@@ -464,7 +465,7 @@ fn trans_rvalue_datum_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
                                                       expr, contents);
         }
         ast::expr_vstore(contents, ast::expr_vstore_uniq) => {
-            let heap = heap_for_unique(bcx, expr_ty(bcx, contents));
+            let heap = tvec::heap_for_unique_vector(bcx, expr_ty(bcx, contents));
             return tvec::trans_uniq_or_managed_vstore(bcx, heap,
                                                       expr, contents);
         }
@@ -1147,7 +1148,7 @@ fn trans_rec_or_struct(bcx: block,
         let mut need_base = vec::from_elem(field_tys.len(), true);
 
         let numbered_fields = do fields.map |field| {
-            let opt_pos = field_tys.iter().position_(|field_ty| field_ty.ident == field.node.ident);
+            let opt_pos = field_tys.iter().position(|field_ty| field_ty.ident == field.node.ident);
             match opt_pos {
                 Some(i) => {
                     need_base[i] = false;
@@ -1171,7 +1172,7 @@ fn trans_rec_or_struct(bcx: block,
                                      fields: leftovers })
             }
             None => {
-                if need_base.iter().any_(|b| *b) {
+                if need_base.iter().any(|b| *b) {
                     tcx.sess.span_bug(expr_span, "missing fields and no base expr")
                 }
                 None
@@ -1329,12 +1330,23 @@ fn trans_unary_datum(bcx: block,
                         contents_ty: ty::t,
                         heap: heap) -> DatumBlock {
         let _icx = push_ctxt("trans_boxed_expr");
-        let base::MallocResult { bcx, box: bx, body } =
-            base::malloc_general(bcx, contents_ty, heap);
-        add_clean_free(bcx, bx, heap);
-        let bcx = trans_into(bcx, contents, SaveIn(body));
-        revoke_clean(bcx, bx);
-        return immediate_rvalue_bcx(bcx, bx, box_ty);
+        if heap == heap_exchange {
+            let llty = type_of(bcx.ccx(), contents_ty);
+            let size = llsize_of(bcx.ccx(), llty);
+            let Result { bcx: bcx, val: val } = malloc_raw_dyn(bcx, contents_ty,
+                                                               heap_exchange, size);
+            add_clean_free(bcx, val, heap_exchange);
+            let bcx = trans_into(bcx, contents, SaveIn(val));
+            revoke_clean(bcx, val);
+            return immediate_rvalue_bcx(bcx, val, box_ty);
+        } else {
+            let base::MallocResult { bcx, box: bx, body } =
+                base::malloc_general(bcx, contents_ty, heap);
+            add_clean_free(bcx, bx, heap);
+            let bcx = trans_into(bcx, contents, SaveIn(body));
+            revoke_clean(bcx, bx);
+            return immediate_rvalue_bcx(bcx, bx, box_ty);
+        }
     }
 }
 
@@ -1539,8 +1551,8 @@ fn trans_overloaded_op(bcx: block,
                                                           origin)
                              },
                              callee::ArgExprs(args),
-                             dest,
-                             DoAutorefArg)
+                             Some(dest),
+                             DoAutorefArg).bcx
 }
 
 fn int_cast(bcx: block, lldsttype: Type, llsrctype: Type,

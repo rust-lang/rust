@@ -531,13 +531,13 @@ pub fn make_opaque_cbox_take_glue(
 
         // Allocate memory, update original ptr, and copy existing data
         let opaque_tydesc = PointerCast(bcx, tydesc, Type::i8p());
-        let rval = alloca(bcx, Type::i8p());
-        let bcx = callee::trans_lang_call(
+        let mut bcx = bcx;
+        let llresult = unpack_result!(bcx, callee::trans_lang_call(
             bcx,
             bcx.tcx().lang_items.closure_exchange_malloc_fn(),
             [opaque_tydesc, sz],
-            expr::SaveIn(rval));
-        let cbox_out = PointerCast(bcx, Load(bcx, rval), llopaquecboxty);
+            None));
+        let cbox_out = PointerCast(bcx, llresult, llopaquecboxty);
         call_memcpy(bcx, cbox_out, cbox_in, sz, 1);
         Store(bcx, cbox_out, cboxptr);
 

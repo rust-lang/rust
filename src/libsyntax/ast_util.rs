@@ -27,7 +27,7 @@ pub fn path_name_i(idents: &[ident]) -> ~str {
     idents.map(|i| token::interner_get(i.name)).connect("::")
 }
 
-pub fn path_to_ident(p: @Path) -> ident { copy *p.idents.last() }
+pub fn path_to_ident(p: &Path) -> ident { copy *p.idents.last() }
 
 pub fn local_def(id: node_id) -> def_id {
     ast::def_id { crate: local_crate, node: id }
@@ -212,8 +212,8 @@ pub fn default_block(
     }
 }
 
-pub fn ident_to_path(s: span, i: ident) -> @Path {
-    @ast::Path { span: s,
+pub fn ident_to_path(s: span, i: ident) -> Path {
+    ast::Path { span: s,
                  global: false,
                  idents: ~[i],
                  rp: None,
@@ -238,12 +238,12 @@ pub fn unguarded_pat(a: &arm) -> Option<~[@pat]> {
 }
 
 pub fn public_methods(ms: ~[@method]) -> ~[@method] {
-    do ms.filtered |m| {
+    do ms.consume_iter().filter |m| {
         match m.vis {
             public => true,
             _   => false
         }
-    }
+    }.collect()
 }
 
 // extract a ty_method from a trait_method. if the trait_method is
@@ -580,7 +580,7 @@ pub fn view_path_id(p: &view_path) -> node_id {
 
 /// Returns true if the given struct def is tuple-like; i.e. that its fields
 /// are unnamed.
-pub fn struct_def_is_tuple_like(struct_def: @ast::struct_def) -> bool {
+pub fn struct_def_is_tuple_like(struct_def: &ast::struct_def) -> bool {
     struct_def.ctor_id.is_some()
 }
 

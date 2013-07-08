@@ -47,7 +47,7 @@ pub use cmp::{Eq, ApproxEq, Ord, TotalEq, TotalOrd, Ordering, Less, Equal, Great
 pub use char::Char;
 pub use container::{Container, Mutable, Map, Set};
 pub use hash::Hash;
-pub use iter::{Times, FromIter};
+pub use iter::{Times};
 pub use iterator::{Iterator, IteratorUtil, OrdIterator};
 pub use num::{Num, NumCast};
 pub use num::{Orderable, Signed, Unsigned, Round};
@@ -72,7 +72,7 @@ pub use tuple::{CloneableTuple10, CloneableTuple11, CloneableTuple12};
 pub use tuple::{ImmutableTuple2, ImmutableTuple3, ImmutableTuple4, ImmutableTuple5};
 pub use tuple::{ImmutableTuple6, ImmutableTuple7, ImmutableTuple8, ImmutableTuple9};
 pub use tuple::{ImmutableTuple10, ImmutableTuple11, ImmutableTuple12};
-pub use vec::{VectorVector, CopyableVector, ImmutableVector};
+pub use vec::{Vector, VectorVector, CopyableVector, ImmutableVector};
 pub use vec::{ImmutableEqVector, ImmutableTotalOrdVector, ImmutableCopyableVector};
 pub use vec::{OwnedVector, OwnedCopyableVector,OwnedEqVector, MutableVector};
 pub use io::{Reader, ReaderUtil, Writer, WriterUtil};

@@ -81,7 +81,7 @@ pub fn return_to_mut(mut bcx: block,
                 filename_val,
                 line_val
             ],
-            expr::Ignore);
+            Some(expr::Ignore)).bcx;
     }
 
     callee::trans_lang_call(
@@ -93,8 +93,8 @@ pub fn return_to_mut(mut bcx: block,
             filename_val,
             line_val
         ],
-        expr::Ignore
-    )
+        Some(expr::Ignore)
+    ).bcx
 }
 
 fn root(datum: &Datum,
@@ -123,7 +123,7 @@ fn root(datum: &Datum,
     let scratch = scratch_datum(bcx, datum.ty, true);
     datum.copy_to_datum(bcx, INIT, scratch);
     let cleanup_bcx = find_bcx_for_scope(bcx, root_info.scope);
-    add_clean_temp_mem(cleanup_bcx, scratch.val, scratch.ty);
+    add_clean_temp_mem_in_scope(cleanup_bcx, root_info.scope, scratch.val, scratch.ty);
 
     // Now, consider also freezing it.
     match root_info.freeze {
@@ -144,7 +144,7 @@ fn root(datum: &Datum,
 
             let box_ptr = Load(bcx, PointerCast(bcx, scratch.val, Type::i8p().ptr_to()));
 
-            bcx = callee::trans_lang_call(
+            let llresult = unpack_result!(bcx, callee::trans_lang_call(
                 bcx,
                 freeze_did,
                 [
@@ -152,7 +152,7 @@ fn root(datum: &Datum,
                     filename,
                     line
                 ],
-                expr::SaveIn(scratch_bits.val));
+                Some(expr::SaveIn(scratch_bits.val))));
 
             if bcx.tcx().sess.debug_borrows() {
                 bcx = callee::trans_lang_call(
@@ -160,15 +160,15 @@ fn root(datum: &Datum,
                     bcx.tcx().lang_items.record_borrow_fn(),
                     [
                         box_ptr,
-                        Load(bcx, scratch_bits.val),
+                        llresult,
                         filename,
                         line
                     ],
-                    expr::Ignore);
+                    Some(expr::Ignore)).bcx;
             }
 
             add_clean_return_to_mut(
-                cleanup_bcx, root_key, scratch.val, scratch_bits.val,
+                cleanup_bcx, root_info.scope, root_key, scratch.val, scratch_bits.val,
                 filename, line);
         }
     }
@@ -188,5 +188,5 @@ fn perform_write_guard(datum: &Datum,
         bcx,
         bcx.tcx().lang_items.check_not_borrowed_fn(),
         [PointerCast(bcx, llval, Type::i8p()), filename, line],
-        expr::Ignore)
+        Some(expr::Ignore)).bcx
 }

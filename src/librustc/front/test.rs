@@ -17,7 +17,7 @@ use front::config;
 use std::vec;
 use syntax::ast_util::*;
 use syntax::attr;
-use syntax::codemap::{dummy_sp, span, ExpandedFrom, CallInfo, NameAndSpan};
+use syntax::codemap::{dummy_sp, span, ExpnInfo, NameAndSpan};
 use syntax::codemap;
 use syntax::ext::base::ExtCtxt;
 use syntax::fold;
@@ -72,13 +72,13 @@ fn generate_test_harness(sess: session::Session,
     };
 
     let ext_cx = cx.ext_cx;
-    ext_cx.bt_push(ExpandedFrom(CallInfo {
+    ext_cx.bt_push(ExpnInfo {
         call_site: dummy_sp(),
         callee: NameAndSpan {
             name: @"test",
             span: None
         }
-    }));
+    });
 
     let precursor = @fold::AstFoldFns {
         fold_crate: fold::wrap(|a,b| fold_crate(cx, a, b) ),
@@ -109,9 +109,11 @@ fn fold_mod(cx: @mut TestCtxt,
 
     fn nomain(cx: @mut TestCtxt, item: @ast::item) -> @ast::item {
         if !*cx.sess.building_library {
-            @ast::item{attrs: item.attrs.filtered(|attr| {
-                               "main" != attr::get_attr_name(attr)
-                           }),.. copy *item}
+            @ast::item{
+                attrs: do item.attrs.iter().filter_map |attr| {
+                    if "main" != attr::get_attr_name(attr) {Some(*attr)} else {None}
+                }.collect(),
+                .. copy *item}
         } else { item }
     }
 
@@ -229,10 +231,10 @@ fn is_ignored(cx: @mut TestCtxt, i: @ast::item) -> bool {
     let ignoreattrs = attr::find_attrs_by_name(i.attrs, "ignore");
     let ignoreitems = attr::attr_metas(ignoreattrs);
     return if !ignoreitems.is_empty() {
-        let cfg_metas =
-            vec::concat(
-                vec::filter_map(ignoreitems,
-                                |i| attr::get_meta_item_list(i)));
+        let cfg_metas = ignoreitems.consume_iter()
+            .filter_map(|i| attr::get_meta_item_list(i))
+            .collect::<~[~[@ast::meta_item]]>()
+            .concat_vec();
         config::metas_in_cfg(/*bad*/copy cx.crate.node.config, cfg_metas)
     } else {
         false
@@ -270,8 +272,8 @@ mod __test {
 
 */
 
-fn mk_std(cx: &TestCtxt) -> @ast::view_item {
-    let vers = ast::lit_str(@"0.7");
+fn mk_std(cx: &TestCtxt) -> ast::view_item {
+    let vers = ast::lit_str(@"0.8-pre");
     let vers = nospan(vers);
     let mi = ast::meta_name_value(@"vers", vers);
     let mi = nospan(mi);
@@ -285,13 +287,12 @@ fn mk_std(cx: &TestCtxt) -> @ast::view_item {
         ast::view_item_extern_mod(id_std, ~[@mi],
                            cx.sess.next_node_id())
     };
-    let vi = ast::view_item {
+    ast::view_item {
         node: vi,
         attrs: ~[],
         vis: ast::public,
         span: dummy_sp()
-    };
-    return @vi;
+    }
 }
 
 fn mk_test_module(cx: &TestCtxt) -> @ast::item {
@@ -308,7 +309,7 @@ fn mk_test_module(cx: &TestCtxt) -> @ast::item {
     let mainfn = (quote_item!(
         pub fn main() {
             #[main];
-            extra::test::test_main_static(::std::os::args(), tests);
+            extra::test::test_main_static(::std::os::args(), TESTS);
         }
     )).get();
 
@@ -341,16 +342,16 @@ fn nospan<T:Copy>(t: T) -> codemap::spanned<T> {
     codemap::spanned { node: t, span: dummy_sp() }
 }
 
-fn path_node(ids: ~[ast::ident]) -> @ast::Path {
-    @ast::Path { span: dummy_sp(),
+fn path_node(ids: ~[ast::ident]) -> ast::Path {
+    ast::Path { span: dummy_sp(),
                 global: false,
                 idents: ids,
                 rp: None,
                 types: ~[] }
 }
 
-fn path_node_global(ids: ~[ast::ident]) -> @ast::Path {
-    @ast::Path { span: dummy_sp(),
+fn path_node_global(ids: ~[ast::ident]) -> ast::Path {
+    ast::Path { span: dummy_sp(),
                  global: true,
                  idents: ids,
                  rp: None,
@@ -365,7 +366,7 @@ fn mk_tests(cx: &TestCtxt) -> @ast::item {
     let test_descs = mk_test_descs(cx);
 
     (quote_item!(
-        pub static tests : &'static [self::extra::test::TestDescAndFn] =
+        pub static TESTS : &'static [self::extra::test::TestDescAndFn] =
             $test_descs
         ;
     )).get()

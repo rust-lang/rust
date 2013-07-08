@@ -14,13 +14,14 @@
  */
 
 #[link(name = "syntax",
-       vers = "0.7",
+       vers = "0.8-pre",
        uuid = "9311401b-d6ea-4cd9-a1d9-61f89499c645")];
 
 #[license = "MIT/ASL2"];
 #[crate_type = "lib"];
 
 #[allow(non_camel_case_types)];
+#[allow(non_uppercase_statics)];
 #[deny(deprecated_pattern)];
 
 extern mod extra;

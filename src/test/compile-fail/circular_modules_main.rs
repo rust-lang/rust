@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,18 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
-Top-level module for network-related functionality.
 
-Basically, including this module gives you:
+mod circular_modules_hello; //~ERROR: circular modules
 
-* `net_tcp`
-* `net_ip`
-* `net_url`
+pub fn hi_str() -> ~str {
+  ~"Hi!"
+}
 
-See each of those three modules for documentation on what they do.
-*/
-
-pub use tcp = net_tcp;
-pub use ip = net_ip;
-pub use url = net_url;
+fn main() {
+    circular_modules_hello::say_hello();
+}

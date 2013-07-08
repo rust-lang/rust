@@ -18,8 +18,8 @@ use middle::trans::type_::Type;
 
 use syntax::ast;
 
-pub fn arg_is_indirect(_: &CrateContext, arg_ty: &ty::t) -> bool {
-    !ty::type_is_immediate(*arg_ty)
+pub fn arg_is_indirect(ccx: &CrateContext, arg_ty: &ty::t) -> bool {
+    !ty::type_is_immediate(ccx.tcx, *arg_ty)
 }
 
 pub fn type_of_explicit_arg(ccx: &mut CrateContext, arg_ty: &ty::t) -> Type {
@@ -41,7 +41,7 @@ pub fn type_of_fn(cx: &mut CrateContext, inputs: &[ty::t], output: ty::t) -> Typ
 
     // Arg 0: Output pointer.
     // (if the output type is non-immediate)
-    let output_is_immediate = ty::type_is_immediate(output);
+    let output_is_immediate = ty::type_is_immediate(cx.tcx, output);
     let lloutputtype = type_of(cx, output);
     if !output_is_immediate {
         atys.push(lloutputtype.ptr_to());
@@ -72,29 +72,6 @@ pub fn type_of_fn_from_ty(cx: &mut CrateContext, fty: ty::t) -> Type {
     }
 }
 
-pub fn type_of_non_gc_box(cx: &mut CrateContext, t: ty::t) -> Type {
-    assert!(!ty::type_needs_infer(t));
-
-    let t_norm = ty::normalize_ty(cx.tcx, t);
-    if t != t_norm {
-        type_of_non_gc_box(cx, t_norm)
-    } else {
-        match ty::get(t).sty {
-          ty::ty_box(mt) => {
-              let ty = type_of(cx, mt.ty);
-              Type::box(cx, &ty).ptr_to()
-          }
-          ty::ty_uniq(mt) => {
-              let ty = type_of(cx, mt.ty);
-              Type::unique(cx, &ty).ptr_to()
-          }
-          _ => {
-            cx.sess.bug("non-box in type_of_non_gc_box");
-          }
-        }
-    }
-}
-
 // A "sizing type" is an LLVM type, the size and alignment of which are
 // guaranteed to be equivalent to what you would get out of `type_of()`. It's
 // useful because:
@@ -104,8 +81,7 @@ pub fn type_of_non_gc_box(cx: &mut CrateContext, t: ty::t) -> Type {
 //
 // (2) It won't make any recursive calls to determine the structure of the
 //     type behind pointers. This can help prevent infinite loops for
-//     recursive types. For example, `static_size_of_enum()` relies on this
-//     behavior.
+//     recursive types. For example, enum types rely on this behavior.
 
 pub fn sizing_type_of(cx: &mut CrateContext, t: ty::t) -> Type {
     match cx.llsizingtypes.find_copy(&t) {
@@ -232,7 +208,11 @@ pub fn type_of(cx: &mut CrateContext, t: ty::t) -> Type {
       ty::ty_opaque_box => Type::opaque_box(cx).ptr_to(),
       ty::ty_uniq(ref mt) => {
           let ty = type_of(cx, mt.ty);
-          Type::unique(cx, &ty).ptr_to()
+          if ty::type_contents(cx.tcx, mt.ty).contains_managed() {
+              Type::unique(cx, &ty).ptr_to()
+          } else {
+              ty.ptr_to()
+          }
       }
       ty::ty_evec(ref mt, ty::vstore_uniq) => {
           let ty = type_of(cx, mt.ty);

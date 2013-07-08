@@ -29,7 +29,6 @@ use util::enum_set::{EnumSet, CLike};
 use std::cast;
 use std::cmp;
 use std::hashmap::{HashMap, HashSet};
-use std::iter;
 use std::ops;
 use std::ptr::to_unsafe_ptr;
 use std::to_bytes;
@@ -1486,8 +1485,8 @@ pub fn type_needs_subst(ty: t) -> bool {
 }
 
 pub fn trait_ref_contains_error(tref: &ty::TraitRef) -> bool {
-    tref.substs.self_ty.iter().any_(|&t| type_is_error(t)) ||
-        tref.substs.tps.iter().any_(|&t| type_is_error(t))
+    tref.substs.self_ty.iter().any(|&t| type_is_error(t)) ||
+        tref.substs.tps.iter().any(|&t| type_is_error(t))
 }
 
 pub fn type_is_ty_var(ty: t) -> bool {
@@ -1647,9 +1646,22 @@ pub fn type_is_scalar(ty: t) -> bool {
     }
 }
 
-pub fn type_is_immediate(ty: t) -> bool {
+fn type_is_newtype_immediate(cx: ctxt, ty: t) -> bool {
+    match get(ty).sty {
+        ty_struct(def_id, ref substs) => {
+            let fields = struct_fields(cx, def_id, substs);
+            fields.len() == 1 &&
+                fields[0].ident == token::special_idents::unnamed_field &&
+                type_is_immediate(cx, fields[0].mt.ty)
+        }
+        _ => false
+    }
+}
+
+pub fn type_is_immediate(cx: ctxt, ty: t) -> bool {
     return type_is_scalar(ty) || type_is_boxed(ty) ||
-        type_is_unique(ty) || type_is_region_ptr(ty);
+        type_is_unique(ty) || type_is_region_ptr(ty) ||
+        type_is_newtype_immediate(cx, ty);
 }
 
 pub fn type_needs_drop(cx: ctxt, ty: t) -> bool {
@@ -1752,7 +1764,7 @@ pub struct TypeContents {
 
 impl TypeContents {
     pub fn meets_bounds(&self, cx: ctxt, bbs: BuiltinBounds) -> bool {
-        iter::all(|bb| self.meets_bound(cx, bb), |f| bbs.each(f))
+        bbs.iter().all(|bb| self.meets_bound(cx, bb))
     }
 
     pub fn meets_bound(&self, cx: ctxt, bb: BuiltinBound) -> bool {
@@ -2330,13 +2342,13 @@ pub fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
             ty_struct(did, ref substs) => {
                 seen.push(did);
                 let fields = struct_fields(cx, did, substs);
-                let r = fields.iter().any_(|f| type_requires(cx, seen, r_ty, f.mt.ty));
+                let r = fields.iter().any(|f| type_requires(cx, seen, r_ty, f.mt.ty));
                 seen.pop();
                 r
             }
 
             ty_tup(ref ts) => {
-                ts.iter().any_(|t| type_requires(cx, seen, r_ty, *t))
+                ts.iter().any(|t| type_requires(cx, seen, r_ty, *t))
             }
 
             ty_enum(ref did, _) if seen.contains(did) => {
@@ -2347,7 +2359,7 @@ pub fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
                 seen.push(did);
                 let vs = enum_variants(cx, did);
                 let r = !vs.is_empty() && do vs.iter().all |variant| {
-                    do variant.args.iter().any_ |aty| {
+                    do variant.args.iter().any |aty| {
                         let sty = subst(cx, substs, *aty);
                         type_requires(cx, seen, r_ty, sty)
                     }
@@ -3148,7 +3160,7 @@ pub fn expr_kind(tcx: ctxt,
         ast::expr_cast(*) => {
             match tcx.node_types.find(&(expr.id as uint)) {
                 Some(&t) => {
-                    if ty::type_is_immediate(t) {
+                    if ty::type_is_immediate(tcx, t) {
                         RvalueDatumExpr
                     } else {
                         RvalueDpsExpr
@@ -3229,7 +3241,7 @@ pub fn field_idx_strict(tcx: ty::ctxt, id: ast::ident, fields: &[field])
 }
 
 pub fn method_idx(id: ast::ident, meths: &[@Method]) -> Option<uint> {
-    meths.iter().position_(|m| m.ident == id)
+    meths.iter().position(|m| m.ident == id)
 }
 
 /// Returns a vector containing the indices of all type parameters that appear
@@ -3612,12 +3624,12 @@ pub fn impl_trait_ref(cx: ctxt, id: ast::def_id) -> Option<@TraitRef> {
             debug!("(impl_trait_ref) searching for trait impl %?", id);
             match cx.items.find(&id.node) {
                 Some(&ast_map::node_item(@ast::item {
-                                         node: ast::item_impl(_, opt_trait, _, _),
+                                         node: ast::item_impl(_, ref opt_trait, _, _),
                                          _},
                                          _)) => {
                     match opt_trait {
-                        Some(t) => Some(ty::node_id_to_trait_ref(cx, t.ref_id)),
-                        None => None
+                        &Some(ref t) => Some(ty::node_id_to_trait_ref(cx, t.ref_id)),
+                        &None => None
                     }
                 }
                 _ => None
@@ -3816,41 +3828,62 @@ pub fn enum_variants(cx: ctxt, id: ast::def_id) -> @~[VariantInfo] {
                 }, _) => {
             let mut disr_val = -1;
             @enum_definition.variants.iter().transform(|variant| {
+
+                let ctor_ty = node_id_to_type(cx, variant.node.id);
+
                 match variant.node.kind {
                     ast::tuple_variant_kind(ref args) => {
-                        let ctor_ty = node_id_to_type(cx, variant.node.id);
-                        let arg_tys = {
-                            if args.len() > 0u {
-                                ty_fn_args(ctor_ty).map(|a| *a)
-                            } else {
+                        let arg_tys = if args.len() > 0u {
+                                ty_fn_args(ctor_ty).map(|a| *a) }
+                            else {
                                 ~[]
-                            }
-                        };
+                            };
+
                         match variant.node.disr_expr {
                           Some (ex) => {
                             disr_val = match const_eval::eval_const_expr(cx,
                                                                          ex) {
                               const_eval::const_int(val) => val as int,
-                              _ => cx.sess.bug("tag_variants: bad disr expr")
+                              _ => cx.sess.bug("enum_variants: bad disr expr")
                             }
                           }
                           _ => disr_val += 1
                         }
-                        @VariantInfo_{args: arg_tys,
-                          ctor_ty: ctor_ty,
-                          name: variant.node.name,
-                          id: ast_util::local_def(variant.node.id),
-                          disr_val: disr_val,
-                          vis: variant.node.vis
+                        @VariantInfo_{
+                            args: arg_tys,
+                            ctor_ty: ctor_ty,
+                            name: variant.node.name,
+                            id: ast_util::local_def(variant.node.id),
+                            disr_val: disr_val,
+                            vis: variant.node.vis
                          }
-                    }
-                    ast::struct_variant_kind(_) => {
-                        fail!("struct variant kinds unimpl in enum_variants")
+                    },
+                    ast::struct_variant_kind(struct_def) => {
+                        let arg_tys =
+                            // Is this check needed for structs too, or are they always guaranteed
+                            // to have a valid constructor function?
+                            if struct_def.fields.len() > 0 {
+                                ty_fn_args(ctor_ty).map(|a| *a)
+                            } else {
+                                ~[]
+                            };
+
+                        assert!(variant.node.disr_expr.is_none());
+                        disr_val += 1;
+
+                        @VariantInfo_{
+                            args: arg_tys,
+                            ctor_ty: ctor_ty,
+                            name: variant.node.name,
+                            id: ast_util::local_def(variant.node.id),
+                            disr_val: disr_val,
+                            vis: variant.node.vis
+                        }
                     }
                 }
             }).collect()
           }
-          _ => cx.sess.bug("tag_variants: id not bound to an enum")
+          _ => cx.sess.bug("enum_variants: id not bound to an enum")
         }
     };
     cx.enum_var_cache.insert(id, result);

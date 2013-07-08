@@ -540,7 +540,7 @@ pub fn var_ids<T:Combine>(this: &T, isr: isr_alist) -> ~[RegionVid] {
 
 pub fn is_var_in_set(new_vars: &[RegionVid], r: ty::Region) -> bool {
     match r {
-        ty::re_infer(ty::ReVar(ref v)) => new_vars.iter().any_(|x| x == v),
+        ty::re_infer(ty::ReVar(ref v)) => new_vars.iter().any(|x| x == v),
         _ => false
     }
 }

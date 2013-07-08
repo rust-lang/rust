@@ -341,14 +341,14 @@ impl<O:DataFlowOperator+Copy+'static> DataFlowContext<O> {
                 let entry_str = bits_to_str(on_entry);
 
                 let gens = self.gens.slice(start, end);
-                let gens_str = if gens.iter().any_(|&u| u != 0) {
+                let gens_str = if gens.iter().any(|&u| u != 0) {
                     fmt!(" gen: %s", bits_to_str(gens))
                 } else {
                     ~""
                 };
 
                 let kills = self.kills.slice(start, end);
-                let kills_str = if kills.iter().any_(|&u| u != 0) {
+                let kills_str = if kills.iter().any(|&u| u != 0) {
                     fmt!(" kill: %s", bits_to_str(kills))
                 } else {
                     ~""
@@ -643,7 +643,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
                 self.walk_opt_expr(o_e, in_out, loop_scopes);
 
                 // is this a return from a `for`-loop closure?
-                match loop_scopes.iter().position_(|s| s.loop_kind == ForLoop) {
+                match loop_scopes.iter().position(|s| s.loop_kind == ForLoop) {
                     Some(i) => {
                         // if so, add the in_out bits to the state
                         // upon exit. Remember that we cannot count
@@ -916,7 +916,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
             Some(_) => {
                 match self.tcx().def_map.find(&expr.id) {
                     Some(&ast::def_label(loop_id)) => {
-                        match loop_scopes.iter().position_(|l| l.loop_id == loop_id) {
+                        match loop_scopes.iter().position(|l| l.loop_id == loop_id) {
                             Some(i) => i,
                             None => {
                                 self.tcx().sess.span_bug(

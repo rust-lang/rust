@@ -50,7 +50,7 @@ $$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_LIBRUSTPKG_$(4)):		\
 		$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_EXTRALIB_$(4))	\
 		$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_LIBRUSTC_$(4))
 	@$$(call E, compile_and_link: $$@)
-	$$(STAGE$(1)_T_$(4)_H_$(3)) -o $$@ $$< && touch $$@
+	$$(STAGE$(1)_T_$(4)_H_$(3)) $$(WFLAGS_ST$(1)) -o $$@ $$< && touch $$@
 
 $$(TBIN$(1)_T_$(4)_H_$(3))/rustpkg$$(X_$(4)):				\
 		$$(DRIVER_CRATE) 							\

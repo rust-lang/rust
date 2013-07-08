@@ -446,8 +446,8 @@ pub fn trans_call(in_cx: block,
                      node_id_type(in_cx, id),
                      |cx| trans(cx, f),
                      args,
-                     dest,
-                     DontAutorefArg)
+                     Some(dest),
+                     DontAutorefArg).bcx
 }
 
 pub fn trans_method_call(in_cx: block,
@@ -484,15 +484,15 @@ pub fn trans_method_call(in_cx: block,
             }
         },
         args,
-        dest,
-        DontAutorefArg)
+        Some(dest),
+        DontAutorefArg).bcx
 }
 
 pub fn trans_lang_call(bcx: block,
                        did: ast::def_id,
                        args: &[ValueRef],
-                       dest: expr::Dest)
-    -> block {
+                       dest: Option<expr::Dest>)
+    -> Result {
     let fty = if did.crate == ast::local_crate {
         ty::node_id_to_type(bcx.ccx().tcx, did.node)
     } else {
@@ -552,7 +552,7 @@ pub fn trans_lang_call_with_type_params(bcx: block,
             }
             Callee { bcx: callee.bcx, data: Fn(FnData { llfn: new_llval }) }
         },
-        ArgVals(args), dest, DontAutorefArg);
+        ArgVals(args), Some(dest), DontAutorefArg).bcx;
 }
 
 pub fn body_contains_ret(body: &ast::blk) -> bool {
@@ -579,10 +579,10 @@ pub fn trans_call_inner(in_cx: block,
                         ret_ty: ty::t,
                         get_callee: &fn(block) -> Callee,
                         args: CallArgs,
-                        dest: expr::Dest,
+                        dest: Option<expr::Dest>,
                         autoref_arg: AutorefArg)
-                        -> block {
-    do base::with_scope(in_cx, call_info, "call") |cx| {
+                        -> Result {
+    do base::with_scope_result(in_cx, call_info, "call") |cx| {
         let ret_in_loop = match args {
           ArgExprs(args) => {
             args.len() > 0u && match args.last().node {
@@ -633,7 +633,7 @@ pub fn trans_call_inner(in_cx: block,
 
         let mut llargs = ~[];
 
-        if !ty::type_is_immediate(ret_ty) {
+        if !ty::type_is_immediate(bcx.tcx(), ret_ty) {
             llargs.push(llretslot);
         }
 
@@ -669,18 +669,12 @@ pub fn trans_call_inner(in_cx: block,
         bcx = new_bcx;
 
         match dest {
-            expr::Ignore => {
+            None => { assert!(ty::type_is_immediate(bcx.tcx(), ret_ty)) }
+            Some(expr::Ignore) => {
                 // drop the value if it is not being saved.
                 unsafe {
-                    if llvm::LLVMIsUndef(llretslot) != lib::llvm::True {
-                        if ty::type_is_nil(ret_ty) {
-                            // When implementing the for-loop sugar syntax, the
-                            // type of the for-loop is nil, but the function
-                            // it's invoking returns a bool. This is a special
-                            // case to ignore instead of invoking the Store
-                            // below into a scratch pointer of a mismatched
-                            // type.
-                        } else if ty::type_is_immediate(ret_ty) {
+                    if ty::type_needs_drop(bcx.tcx(), ret_ty) {
+                        if ty::type_is_immediate(bcx.tcx(), ret_ty) {
                             let llscratchptr = alloc_ty(bcx, ret_ty);
                             Store(bcx, llresult, llscratchptr);
                             bcx = glue::drop_ty(bcx, llscratchptr, ret_ty);
@@ -690,11 +684,11 @@ pub fn trans_call_inner(in_cx: block,
                     }
                 }
             }
-            expr::SaveIn(lldest) => {
+            Some(expr::SaveIn(lldest)) => {
                 // If this is an immediate, store into the result location.
                 // (If this was not an immediate, the result will already be
                 // directly written into the output slot.)
-                if ty::type_is_immediate(ret_ty) {
+                if ty::type_is_immediate(bcx.tcx(), ret_ty) {
                     Store(bcx, llresult, lldest);
                 }
             }
@@ -717,7 +711,7 @@ pub fn trans_call_inner(in_cx: block,
                 bcx
             }
         }
-        bcx
+        rslt(bcx, llresult)
     }
 }
 
@@ -727,14 +721,14 @@ pub enum CallArgs<'self> {
     ArgVals(&'self [ValueRef])
 }
 
-pub fn trans_ret_slot(bcx: block, fn_ty: ty::t, dest: expr::Dest)
+pub fn trans_ret_slot(bcx: block, fn_ty: ty::t, dest: Option<expr::Dest>)
                       -> ValueRef {
     let retty = ty::ty_fn_ret(fn_ty);
 
     match dest {
-        expr::SaveIn(dst) => dst,
-        expr::Ignore => {
-            if ty::type_is_nil(retty) {
+        Some(expr::SaveIn(dst)) => dst,
+        _ => {
+            if ty::type_is_immediate(bcx.tcx(), retty) {
                 unsafe {
                     llvm::LLVMGetUndef(Type::nil().ptr_to().to_ref())
                 }
@@ -898,7 +892,7 @@ pub fn trans_arg_expr(bcx: block,
                     }
                     ty::ByCopy => {
                         if ty::type_needs_drop(bcx.tcx(), arg_datum.ty) ||
-                                arg_datum.appropriate_mode().is_by_ref() {
+                                arg_datum.appropriate_mode(bcx.tcx()).is_by_ref() {
                             debug!("by copy arg with type %s, storing to scratch",
                                    bcx.ty_to_str(arg_datum.ty));
                             let scratch = scratch_datum(bcx, arg_datum.ty, false);
@@ -914,7 +908,7 @@ pub fn trans_arg_expr(bcx: block,
                             scratch.add_clean(bcx);
                             temp_cleanups.push(scratch.val);
 
-                            match scratch.appropriate_mode() {
+                            match scratch.appropriate_mode(bcx.tcx()) {
                                 ByValue => val = Load(bcx, scratch.val),
                                 ByRef(_) => val = scratch.val,
                             }
