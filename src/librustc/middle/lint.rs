@@ -898,7 +898,7 @@ fn check_item_non_uppercase_statics(cx: &Context, it: &ast::item) {
             // check for lowercase letters rather than non-uppercase
             // ones (some scripts don't have a concept of
             // upper/lowercase)
-            if s.iter().any_(|c| c.is_lowercase()) {
+            if s.iter().any(|c| c.is_lowercase()) {
                 cx.span_lint(non_uppercase_statics, it.span,
                              "static constant should have an uppercase identifier");
             }
@@ -1038,7 +1038,7 @@ fn lint_missing_doc() -> visit::vt<@mut Context> {
         // If we have doc(hidden), nothing to do
         if cx.doc_hidden { return }
         // If we're documented, nothing to do
-        if attrs.iter().any_(|a| a.node.is_sugared_doc) { return }
+        if attrs.iter().any(|a| a.node.is_sugared_doc) { return }
 
         // otherwise, warn!
         cx.span_lint(missing_doc, sp, msg);

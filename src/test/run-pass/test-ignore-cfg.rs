@@ -29,8 +29,8 @@ fn checktests() {
     let tests = __test::TESTS;
 
     assert!(
-        tests.iter().any_(|t| t.desc.name.to_str() == ~"shouldignore" && t.desc.ignore));
+        tests.iter().any(|t| t.desc.name.to_str() == ~"shouldignore" && t.desc.ignore));
 
     assert!(
-        tests.iter().any_(|t| t.desc.name.to_str() == ~"shouldnotignore" && !t.desc.ignore));
+        tests.iter().any(|t| t.desc.name.to_str() == ~"shouldnotignore" && !t.desc.ignore));
 }

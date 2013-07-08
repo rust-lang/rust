@@ -192,7 +192,7 @@ fn eq(a: @ast::meta_item, b: @ast::meta_item) -> bool {
             ast::meta_list(ref nb, ref misb) => {
                 if na != nb { return false; }
                 for misa.iter().advance |mi| {
-                    if !misb.iter().any_(|x| x == mi) { return false; }
+                    if !misb.iter().any(|x| x == mi) { return false; }
                 }
                 true
             }

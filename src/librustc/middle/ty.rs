@@ -1485,8 +1485,8 @@ pub fn type_needs_subst(ty: t) -> bool {
 }
 
 pub fn trait_ref_contains_error(tref: &ty::TraitRef) -> bool {
-    tref.substs.self_ty.iter().any_(|&t| type_is_error(t)) ||
-        tref.substs.tps.iter().any_(|&t| type_is_error(t))
+    tref.substs.self_ty.iter().any(|&t| type_is_error(t)) ||
+        tref.substs.tps.iter().any(|&t| type_is_error(t))
 }
 
 pub fn type_is_ty_var(ty: t) -> bool {
@@ -2342,13 +2342,13 @@ pub fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
             ty_struct(did, ref substs) => {
                 seen.push(did);
                 let fields = struct_fields(cx, did, substs);
-                let r = fields.iter().any_(|f| type_requires(cx, seen, r_ty, f.mt.ty));
+                let r = fields.iter().any(|f| type_requires(cx, seen, r_ty, f.mt.ty));
                 seen.pop();
                 r
             }
 
             ty_tup(ref ts) => {
-                ts.iter().any_(|t| type_requires(cx, seen, r_ty, *t))
+                ts.iter().any(|t| type_requires(cx, seen, r_ty, *t))
             }
 
             ty_enum(ref did, _) if seen.contains(did) => {
@@ -2359,7 +2359,7 @@ pub fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
                 seen.push(did);
                 let vs = enum_variants(cx, did);
                 let r = !vs.is_empty() && do vs.iter().all |variant| {
-                    do variant.args.iter().any_ |aty| {
+                    do variant.args.iter().any |aty| {
                         let sty = subst(cx, substs, *aty);
                         type_requires(cx, seen, r_ty, sty)
                     }
@@ -3241,7 +3241,7 @@ pub fn field_idx_strict(tcx: ty::ctxt, id: ast::ident, fields: &[field])
 }
 
 pub fn method_idx(id: ast::ident, meths: &[@Method]) -> Option<uint> {
-    meths.iter().position_(|m| m.ident == id)
+    meths.iter().position(|m| m.ident == id)
 }
 
 /// Returns a vector containing the indices of all type parameters that appear

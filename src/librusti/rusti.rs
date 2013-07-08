@@ -381,7 +381,7 @@ fn run_cmd(repl: &mut Repl, _in: @io::Reader, _out: @io::Writer,
                 let crate_path = Path(*crate);
                 let crate_dir = crate_path.dirname();
                 repl.program.record_extern(fmt!("extern mod %s;", *crate));
-                if !repl.lib_search_paths.iter().any_(|x| x == &crate_dir) {
+                if !repl.lib_search_paths.iter().any(|x| x == &crate_dir) {
                     repl.lib_search_paths.push(crate_dir);
                 }
             }

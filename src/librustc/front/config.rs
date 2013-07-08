@@ -194,7 +194,7 @@ pub fn metas_in_cfg(cfg: &[@ast::meta_item],
 
     if cfg_metas.iter().all(|c| c.is_empty()) { return true; }
 
-    cfg_metas.iter().any_(|cfg_meta| {
+    cfg_metas.iter().any(|cfg_meta| {
         cfg_meta.iter().all(|cfg_mi| {
             match cfg_mi.node {
                 ast::meta_list(s, ref it) if "not" == s
