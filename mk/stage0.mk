@@ -81,25 +81,25 @@ $$(HLIB0_H_$(1))/$(CFG_STDLIB_$(1)): \
 		$$(TLIB$(2)_T_$(1)_H_$(3))/$(CFG_STDLIB_$(1)) \
 		| $(HLIB0_H_$(1))/
 	@$$(call E, cp: $$@)
-	$$(call CHECK_FOR_OLD_GLOB_MATCHES_EXCEPT, `dirname $$@`, $(EXTRALIB_GLOB_$(4)), `basename $$@`)
+	$$(call CHECK_FOR_OLD_GLOB_MATCHES_EXCEPT,$$(dir $$@),$(EXTRALIB_GLOB_$(4)),$$(notdir $$@))
 	$$(Q)cp $$(TLIB$(2)_T_$(1)_H_$(3))/$(STDLIB_GLOB_$(1)) $$@
-	$$(call LIST_ALL_OLD_GLOB_MATCHES_EXCEPT, `dirname $$@`, $(EXTRALIB_GLOB_$(4)), `basename $$@`)
+	$$(call LIST_ALL_OLD_GLOB_MATCHES_EXCEPT,$$(dir $$@),$(EXTRALIB_GLOB_$(4)),$$(notdir $$@))
 
 $$(HLIB0_H_$(1))/$(CFG_EXTRALIB_$(1)): \
 		$$(TLIB$(2)_T_$(1)_H_$(3))/$(CFG_EXTRALIB_$(1)) \
 		| $(HLIB0_H_$(1))/
 	@$$(call E, cp: $$@)
-	$$(call CHECK_FOR_OLD_GLOB_MATCHES_EXCEPT, `dirname $$@`, $(EXTRALIB_GLOB_$(4)), `basename $$@`)
+	$$(call CHECK_FOR_OLD_GLOB_MATCHES_EXCEPT,$$(dir $$@),$(EXTRALIB_GLOB_$(4)),$$(notdir $$@))
 	$$(Q)cp $$(TLIB$(2)_T_$(1)_H_$(3))/$(EXTRALIB_GLOB_$(1)) $$@
-	$$(call LIST_ALL_OLD_GLOB_MATCHES_EXCEPT, `dirname $$@`, $(EXTRALIB_GLOB_$(4)), `basename $$@`)
+	$$(call LIST_ALL_OLD_GLOB_MATCHES_EXCEPT,$$(dir $$@),$(EXTRALIB_GLOB_$(4)),$$(notdir $$@))
 
 $$(HLIB0_H_$(1))/$(CFG_LIBRUSTC_$(1)): \
 		$$(TLIB$(2)_T_$(1)_H_$(3))/$(CFG_LIBRUSTC_$(1)) \
 		| $(HLIB0_H_$(1))/
 	@$$(call E, cp: $$@)
-	$$(call CHECK_FOR_OLD_GLOB_MATCHES_EXCEPT, `dirname $$@`, $(LIBRUSTC_GLOB_$(4)), `basename $$@`)
+	$$(call CHECK_FOR_OLD_GLOB_MATCHES_EXCEPT,$$(dir $$@),$(LIBRUSTC_GLOB_$(4)),$$(notdir $$@))
 	$$(Q)cp $$(TLIB$(2)_T_$(1)_H_$(3))/$(LIBRUSTC_GLOB_$(1)) $$@
-	$$(call LIST_ALL_OLD_GLOB_MATCHES_EXCEPT, `dirname $$@`, $(LIBRUSTC_GLOB_$(4)), `basename $$@`)
+	$$(call LIST_ALL_OLD_GLOB_MATCHES_EXCEPT,$$(dir $$@),$(LIBRUSTC_GLOB_$(4)),$$(notdir $$@))
 
 $$(HLIB0_H_$(1))/$(CFG_RUSTLLVM_$(1)): \
 		$$(TLIB$(2)_T_$(1)_H_$(3))/$(CFG_RUSTLLVM_$(1)) \
