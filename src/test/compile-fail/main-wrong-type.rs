@@ -14,5 +14,5 @@ struct S {
 }
 
 fn main(foo: S) {
-//~^ ERROR Wrong type in main function: found `extern "Rust" fn(S)`
+//~^ ERROR: main function expects type
 }
