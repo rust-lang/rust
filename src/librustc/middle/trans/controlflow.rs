@@ -395,7 +395,7 @@ fn trans_fail_value(bcx: block,
     let V_filename = PointerCast(bcx, V_filename, Type::i8p());
     let args = ~[V_str, V_filename, C_int(ccx, V_line)];
     let bcx = callee::trans_lang_call(
-        bcx, bcx.tcx().lang_items.fail_fn(), args, expr::Ignore);
+        bcx, bcx.tcx().lang_items.fail_fn(), args, Some(expr::Ignore)).bcx;
     Unreachable(bcx);
     return bcx;
 }
@@ -406,7 +406,7 @@ pub fn trans_fail_bounds_check(bcx: block, sp: span,
     let (filename, line) = filename_and_line_num_from_span(bcx, sp);
     let args = ~[filename, line, index, len];
     let bcx = callee::trans_lang_call(
-        bcx, bcx.tcx().lang_items.fail_bounds_check_fn(), args, expr::Ignore);
+        bcx, bcx.tcx().lang_items.fail_bounds_check_fn(), args, Some(expr::Ignore)).bcx;
     Unreachable(bcx);
     return bcx;
 }

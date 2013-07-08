@@ -17,7 +17,6 @@ use middle::trans::callee::{ArgVals, DontAutorefArg};
 use middle::trans::callee;
 use middle::trans::common::*;
 use middle::trans::datum::*;
-use middle::trans::expr::SaveIn;
 use middle::trans::glue;
 use middle::trans::machine;
 use middle::trans::meth;
@@ -96,14 +95,13 @@ impl Reflector {
             ty::mk_bare_fn(tcx, copy self.visitor_methods[mth_idx].fty);
         let v = self.visitor_val;
         debug!("passing %u args:", args.len());
-        let bcx = self.bcx;
+        let mut bcx = self.bcx;
         for args.iter().enumerate().advance |(i, a)| {
             debug!("arg %u: %s", i, bcx.val_to_str(*a));
         }
         let bool_ty = ty::mk_bool();
-        let scratch = scratch_datum(bcx, bool_ty, false);
         // XXX: Should not be BoxTraitStore!
-        let bcx = callee::trans_call_inner(
+        let result = unpack_result!(bcx, callee::trans_call_inner(
             self.bcx, None, mth_ty, bool_ty,
             |bcx| meth::trans_trait_callee_from_llval(bcx,
                                                       mth_ty,
@@ -113,8 +111,7 @@ impl Reflector {
                                                       ast::sty_region(
                                                         None,
                                                         ast::m_imm)),
-            ArgVals(args), SaveIn(scratch.val), DontAutorefArg);
-        let result = scratch.to_value_llval(bcx);
+            ArgVals(args), None, DontAutorefArg));
         let result = bool_to_i1(bcx, result);
         let next_bcx = sub_block(bcx, "next");
         CondBr(bcx, result, next_bcx.llbb, self.final_bcx.llbb);

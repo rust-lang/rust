@@ -1095,26 +1095,20 @@ pub fn compare_values(cx: block,
 
     match ty::get(rhs_t).sty {
         ty::ty_estr(ty::vstore_uniq) => {
-            let scratch_result = scratch_datum(cx, ty::mk_bool(), false);
             let scratch_lhs = alloca(cx, val_ty(lhs));
             Store(cx, lhs, scratch_lhs);
             let scratch_rhs = alloca(cx, val_ty(rhs));
             Store(cx, rhs, scratch_rhs);
             let did = cx.tcx().lang_items.uniq_str_eq_fn();
-            let bcx = callee::trans_lang_call(cx, did, [scratch_lhs, scratch_rhs],
-                                              expr::SaveIn(scratch_result.val));
-            let result = scratch_result.to_result(bcx);
+            let result = callee::trans_lang_call(cx, did, [scratch_lhs, scratch_rhs], None);
             Result {
                 bcx: result.bcx,
                 val: bool_to_i1(result.bcx, result.val)
             }
         }
         ty::ty_estr(_) => {
-            let scratch_result = scratch_datum(cx, ty::mk_bool(), false);
             let did = cx.tcx().lang_items.str_eq_fn();
-            let bcx = callee::trans_lang_call(cx, did, [lhs, rhs],
-                                              expr::SaveIn(scratch_result.val));
-            let result = scratch_result.to_result(bcx);
+            let result = callee::trans_lang_call(cx, did, [lhs, rhs], None);
             Result {
                 bcx: result.bcx,
                 val: bool_to_i1(result.bcx, result.val)
