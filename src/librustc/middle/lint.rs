@@ -71,6 +71,7 @@ use syntax::{ast, visit, ast_util};
 pub enum lint {
     ctypes,
     unused_imports,
+    unnecessary_qualification,
     while_true,
     path_statement,
     implicit_copies,
@@ -146,6 +147,13 @@ static lint_table: &'static [(&'static str, LintSpec)] = &[
         lint: unused_imports,
         desc: "imports that are never used",
         default: warn
+     }),
+
+    ("unnecessary_qualification",
+     LintSpec {
+        lint: unnecessary_qualification,
+        desc: "detects unnecessarily qualified names",
+        default: allow
      }),
 
     ("while_true",
@@ -557,11 +565,7 @@ fn item_stopping_visitor<E: Copy>(outer: visit::vt<E>) -> visit::vt<E> {
                 _ => (outer.visit_fn)(fk, fd, b, s, id, (e, v))
             }
         },
-    .. **(ty_stopping_visitor(outer))})
-}
-
-fn ty_stopping_visitor<E>(v: visit::vt<E>) -> visit::vt<E> {
-    visit::mk_vt(@visit::Visitor {visit_ty: |_t, (_e, _v)| { },.. **v})
+    .. **outer})
 }
 
 fn lint_while_true() -> visit::vt<@mut Context> {
