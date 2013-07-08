@@ -22,7 +22,7 @@ use extra::time;
 use extra::deque::Deque;
 use extra::par;
 use std::hashmap::HashSet;
-use std::int::abs;
+use std::num::abs;
 use std::io;
 use std::os;
 use std::rand::RngUtil;
