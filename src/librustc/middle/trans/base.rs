@@ -289,21 +289,25 @@ pub fn malloc_raw_dyn(bcx: block,
     let _icx = push_ctxt("malloc_raw");
     let ccx = bcx.ccx();
 
-    let (mk_fn, langcall) = match heap {
-        heap_managed | heap_managed_unique => {
-            (ty::mk_imm_box, bcx.tcx().lang_items.malloc_fn())
-        }
-        heap_exchange => {
-            (ty::mk_imm_uniq, bcx.tcx().lang_items.exchange_malloc_fn())
-        }
-        heap_exchange_closure => {
-            (ty::mk_imm_uniq, bcx.tcx().lang_items.closure_exchange_malloc_fn())
-        }
-    };
-
     if heap == heap_exchange {
+        let llty_value = type_of::type_of(ccx, t);
+        let llalign = llalign_of_min(ccx, llty_value);
+
+        // Allocate space:
+        let rval = alloca(bcx, Type::i8p());
+        let bcx = callee::trans_lang_call(
+            bcx,
+            bcx.tcx().lang_items.exchange_malloc_fn(),
+            [C_i32(llalign as i32), size],
+            expr::SaveIn(rval));
+        rslt(bcx, PointerCast(bcx, Load(bcx, rval), llty_value.ptr_to()))
+    } else if heap == heap_exchange_vector {
         // Grab the TypeRef type of box_ptr_ty.
-        let box_ptr_ty = mk_fn(bcx.tcx(), t);
+        let element_type = match ty::get(t).sty {
+            ty::ty_unboxed_vec(e) => e,
+            _ => fail!("not a vector body")
+        };
+        let box_ptr_ty = ty::mk_evec(bcx.tcx(), element_type, ty::vstore_uniq);
         let llty = type_of(ccx, box_ptr_ty);
 
         let llty_value = type_of::type_of(ccx, t);
@@ -313,11 +317,22 @@ pub fn malloc_raw_dyn(bcx: block,
         let rval = alloca(bcx, Type::i8p());
         let bcx = callee::trans_lang_call(
             bcx,
-            langcall,
+            bcx.tcx().lang_items.vector_exchange_malloc_fn(),
             [C_i32(llalign as i32), size],
             expr::SaveIn(rval));
         rslt(bcx, PointerCast(bcx, Load(bcx, rval), llty))
     } else {
+        // we treat ~fn, @fn and @[] as @ here, which isn't ideal
+        let (mk_fn, langcall) = match heap {
+            heap_managed | heap_managed_unique => {
+                (ty::mk_imm_box, bcx.tcx().lang_items.malloc_fn())
+            }
+            heap_exchange_closure => {
+                (ty::mk_imm_box, bcx.tcx().lang_items.closure_exchange_malloc_fn())
+            }
+            _ => fail!("heap_exchange/heap_exchange_vector already handled")
+        };
+
         // Grab the TypeRef type of box_ptr_ty.
         let box_ptr_ty = mk_fn(bcx.tcx(), t);
         let llty = type_of(ccx, box_ptr_ty);
@@ -359,6 +374,7 @@ pub struct MallocResult {
 // and pulls out the body
 pub fn malloc_general_dyn(bcx: block, t: ty::t, heap: heap, size: ValueRef)
     -> MallocResult {
+    assert!(heap != heap_exchange);
     let _icx = push_ctxt("malloc_general");
     let Result {bcx: bcx, val: llbox} = malloc_raw_dyn(bcx, t, heap, size);
     let body = GEPi(bcx, llbox, [0u, abi::box_field_body]);
@@ -366,9 +382,9 @@ pub fn malloc_general_dyn(bcx: block, t: ty::t, heap: heap, size: ValueRef)
     MallocResult { bcx: bcx, box: llbox, body: body }
 }
 
-pub fn malloc_general(bcx: block, t: ty::t, heap: heap)
-    -> MallocResult {
-        let ty = type_of(bcx.ccx(), t);
+pub fn malloc_general(bcx: block, t: ty::t, heap: heap) -> MallocResult {
+    let ty = type_of(bcx.ccx(), t);
+    assert!(heap != heap_exchange);
     malloc_general_dyn(bcx, t, heap, llsize_of(bcx.ccx(), ty))
 }
 pub fn malloc_boxed(bcx: block, t: ty::t)
@@ -385,6 +401,7 @@ pub fn heap_for_unique(bcx: block, t: ty::t) -> heap {
 }
 
 pub fn maybe_set_managed_unique_rc(bcx: block, bx: ValueRef, heap: heap) {
+    assert!(heap != heap_exchange);
     if heap == heap_managed_unique {
         // In cases where we are looking at a unique-typed allocation in the
         // managed heap (thus have refcount 1 from the managed allocator),
@@ -394,11 +411,6 @@ pub fn maybe_set_managed_unique_rc(bcx: block, bx: ValueRef, heap: heap) {
         let rc_val = C_int(bcx.ccx(), -2);
         Store(bcx, rc_val, rc);
     }
-}
-
-pub fn malloc_unique(bcx: block, t: ty::t)
-    -> MallocResult {
-    malloc_general(bcx, t, heap_for_unique(bcx, t))
 }
 
 // Type descriptor and type glue stuff

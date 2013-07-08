@@ -386,7 +386,9 @@ pub fn make_free_glue(bcx: block, v: ValueRef, t: ty::t) {
       ty::ty_uniq(*) => {
         uniq::make_free_glue(bcx, v, t)
       }
-      ty::ty_evec(_, ty::vstore_uniq) | ty::ty_estr(ty::vstore_uniq) |
+      ty::ty_evec(_, ty::vstore_uniq) | ty::ty_estr(ty::vstore_uniq) => {
+        tvec::make_uniq_free_glue(bcx, v, t)
+      }
       ty::ty_evec(_, ty::vstore_box) | ty::ty_estr(ty::vstore_box) => {
         make_free_glue(bcx, v,
                        tvec::expand_boxed_vec_ty(bcx.tcx(), t));

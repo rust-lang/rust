@@ -33,28 +33,15 @@ use sys::size_of;
 use uint;
 use unstable::intrinsics;
 #[cfg(stage0)]
-use intrinsic::{get_tydesc};
+use intrinsic::{get_tydesc, TyDesc};
 #[cfg(not(stage0))]
-use unstable::intrinsics::{get_tydesc, contains_managed};
+use unstable::intrinsics::{get_tydesc, contains_managed, TyDesc};
 use vec;
 use util;
 
-#[doc(hidden)]
-pub mod rustrt {
-    use libc;
-    use vec::raw;
-    #[cfg(stage0)]
-    use intrinsic::{TyDesc};
-    #[cfg(not(stage0))]
-    use unstable::intrinsics::{TyDesc};
-
-    #[abi = "cdecl"]
-    pub extern {
-        #[fast_ffi]
-        unsafe fn vec_reserve_shared_actual(t: *TyDesc,
-                                            v: **raw::VecRepr,
-                                            n: libc::size_t);
-    }
+extern {
+    #[fast_ffi]
+    unsafe fn vec_reserve_shared_actual(t: *TyDesc, v: **raw::VecRepr, n: libc::size_t);
 }
 
 /// Returns true if two vectors have the same length
@@ -1152,7 +1139,7 @@ impl<T> OwnedVector<T> for ~[T] {
                 let td = get_tydesc::<T>();
                 if ((**ptr).box_header.ref_count ==
                     managed::raw::RC_MANAGED_UNIQUE) {
-                    rustrt::vec_reserve_shared_actual(td, ptr as **raw::VecRepr, n as libc::size_t);
+                    vec_reserve_shared_actual(td, ptr as **raw::VecRepr, n as libc::size_t);
                 } else {
                     let alloc = n * sys::nonzero_size_of::<T>();
                     *ptr = realloc_raw(*ptr as *mut c_void, alloc + size_of::<raw::VecRepr>())
@@ -1182,7 +1169,7 @@ impl<T> OwnedVector<T> for ~[T] {
                 let ptr: *mut *mut raw::VecRepr = cast::transmute(self);
                 let td = get_tydesc::<T>();
                 if contains_managed::<T>() {
-                    rustrt::vec_reserve_shared_actual(td, ptr as **raw::VecRepr, n as libc::size_t);
+                    vec_reserve_shared_actual(td, ptr as **raw::VecRepr, n as libc::size_t);
                 } else {
                     let alloc = n * sys::nonzero_size_of::<T>();
                     *ptr = realloc_raw(*ptr as *mut c_void, alloc + size_of::<raw::VecRepr>())

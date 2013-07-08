@@ -80,7 +80,14 @@ pub unsafe fn exchange_malloc(td: *c_char, size: uintptr_t) -> *c_char {
 #[cfg(not(stage0), not(test))]
 #[lang="exchange_malloc"]
 #[inline]
-pub unsafe fn exchange_malloc(align: u32, size: uintptr_t) -> *c_char {
+pub unsafe fn exchange_malloc(_align: u32, size: uintptr_t) -> *c_char {
+    malloc_raw(size as uint) as *c_char
+}
+
+#[cfg(not(test))]
+#[lang="vector_exchange_malloc"]
+#[inline]
+pub unsafe fn vector_exchange_malloc(align: u32, size: uintptr_t) -> *c_char {
     let total_size = get_box_size(size as uint, align as uint);
     malloc_raw(total_size as uint) as *c_char
 }

@@ -194,7 +194,11 @@ impl Reflector {
           }
           ty::ty_uniq(ref mt) => {
               let extra = self.c_mt(mt);
-              self.visit("uniq", extra)
+              if ty::type_contents(bcx.tcx(), t).contains_managed() {
+                  self.visit("uniq_managed", extra)
+              } else {
+                  self.visit("uniq", extra)
+              }
           }
           ty::ty_ptr(ref mt) => {
               let extra = self.c_mt(mt);
