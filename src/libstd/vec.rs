@@ -1713,7 +1713,7 @@ impl<'self,T> MutableVector<'self, T> for &'self mut [T] {
 
 }
 
-/// Trait for ~[T] where T is Cloneable
+/// Trait for &[T] where T is Cloneable
 pub trait MutableCloneableVector<T> {
     /// Copies as many elements from `src` as it can into `self`
     /// (the shorter of self.len() and src.len()). Returns the number of elements copied.
