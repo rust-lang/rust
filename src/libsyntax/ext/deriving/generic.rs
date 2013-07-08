@@ -519,8 +519,8 @@ impl<'self> MethodDef<'self> {
         // create the generics that aren't for Self
         let fn_generics = self.generics.to_generics(cx, span, type_ident, generics);
 
-        let args = do arg_types.map |&(id, ty)| {
-            cx.arg(span, id, ty)
+        let args = do arg_types.map |pair| {
+            cx.arg(span, pair.first(), pair.second())
         };
 
         let ret_type = self.get_ret_ty(cx, span, generics, type_ident);
@@ -896,8 +896,8 @@ pub fn create_subpatterns(cx: @ExtCtxt,
                           field_paths: ~[ast::Path],
                           mutbl: ast::mutability)
                    -> ~[@ast::pat] {
-    do field_paths.map |&path| {
-        cx.pat(span, ast::pat_ident(ast::bind_by_ref(mutbl), path, None))
+    do field_paths.map |path| {
+        cx.pat(span, ast::pat_ident(ast::bind_by_ref(mutbl), copy *path, None))
     }
 }
 

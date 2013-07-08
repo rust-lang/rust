@@ -1526,7 +1526,7 @@ pub fn print_bounded_path(s: @ps, path: &ast::Path,
     print_path_(s, path, false, bounds)
 }
 
-pub fn print_pat(s: @ps, pat: @ast::pat) {
+pub fn print_pat(s: @ps, pat: &ast::pat) {
     maybe_print_comment(s, pat.span.lo);
     let ann_node = node_pat(s, pat);
     (s.ann.pre)(ann_node);
