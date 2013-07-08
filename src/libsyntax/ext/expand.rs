@@ -1454,13 +1454,20 @@ pub fn fun_to_ctxt_folder<T : 'static + CtxtFn>(cf: @T) -> @AstFoldFns {
         |ast::Ident{name, ctxt}, _| {
         ast::Ident{name:name,ctxt:cf.f(ctxt)}
     };
-    // we've also got to pick up macro invocations; they can
-    // appear as exprs, stmts, items, and types. urg, it's going
-    // to be easier just to add a fold_mac, I think.
-    //let fold_ex : @
+    let fm : @fn(&ast::mac_, span, @ast_fold) -> (ast::mac_,span) =
+        |m, sp, fld| {
+        match *m {
+            mac_invoc_tt(ref path, ref tts, ctxt) =>
+            (mac_invoc_tt(fld.fold_path(path),
+                         fold_tts(*tts,fld),
+                         cf.f(ctxt)),
+            sp)
+        }
+
+    };
     @AstFoldFns{
         fold_ident : fi,
-        // check that it works, then add the fold_expr clause....
+        fold_mac : fm,
         .. *afp
     }
 }
