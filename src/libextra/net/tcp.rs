@@ -28,7 +28,7 @@ use std::comm::{stream, Port, SharedChan};
 use std::ptr;
 use std::result::{Result};
 use std::result;
-use std::uint;
+use std::num;
 use std::vec;
 
 pub mod rustrt {
@@ -880,7 +880,7 @@ impl io::Reader for TcpSocketBuf {
           let needed = len - count;
             if nbuffered > 0 {
                 unsafe {
-                    let ncopy = uint::min(nbuffered, needed);
+                    let ncopy = num::min(nbuffered, needed);
                     let dst = ptr::mut_offset(
                         vec::raw::to_mut_ptr(buf), count);
                     let src = ptr::offset(

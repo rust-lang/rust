@@ -46,6 +46,9 @@ pub trait Orderable: Ord {
     fn clamp(&self, mn: &Self, mx: &Self) -> Self;
 }
 
+#[inline(always)] pub fn min<T: Orderable>(a: T, b: T) -> T { a.min(&b) }
+#[inline(always)] pub fn max<T: Orderable>(a: T, b: T) -> T { a.max(&b) }
+
 pub trait Zero {
     fn zero() -> Self;      // FIXME (#5527): This should be an associated constant
     fn is_zero(&self) -> bool;
@@ -65,12 +68,10 @@ pub trait Signed: Num
     fn is_negative(&self) -> bool;
 }
 
-pub trait Unsigned: Num {}
+#[inline(always)] pub fn abs<T: Signed>(value: T) -> T { value.abs() }
+#[inline(always)] pub fn signum<T: Signed>(value: T) -> T { value.signum() }
 
-// This should be moved into the default implementation for Signed::abs
-pub fn abs<T:Ord + Zero + Neg<T>>(v: T) -> T {
-    if v < Zero::zero() { v.neg() } else { v }
-}
+pub trait Unsigned: Num {}
 
 pub trait Integer: Num
                  + Orderable
@@ -113,6 +114,8 @@ pub trait Algebraic {
     fn hypot(&self, other: &Self) -> Self;
 }
 
+#[inline(always)] pub fn sqrt<T: Algebraic>(value: T) -> T { value.sqrt() }
+
 pub trait Trigonometric {
     fn sin(&self) -> Self;
     fn cos(&self) -> Self;
@@ -124,6 +127,16 @@ pub trait Trigonometric {
     fn sin_cos(&self) -> (Self, Self);
 }
 
+#[inline(always)] pub fn sin<T: Trigonometric>(value: T) -> T { value.sin() }
+#[inline(always)] pub fn cos<T: Trigonometric>(value: T) -> T { value.cos() }
+#[inline(always)] pub fn tan<T: Trigonometric>(value: T) -> T { value.tan() }
+
+#[inline(always)] pub fn asin<T: Trigonometric>(value: T) -> T { value.asin() }
+#[inline(always)] pub fn acos<T: Trigonometric>(value: T) -> T { value.acos() }
+#[inline(always)] pub fn atan<T: Trigonometric>(value: T) -> T { value.atan() }
+
+#[inline(always)] pub fn atan2<T: Trigonometric>(x: T, y: T) -> T { x.atan2(&y) }
+
 pub trait Exponential {
     fn exp(&self) -> Self;
     fn exp2(&self) -> Self;
@@ -133,6 +146,14 @@ pub trait Exponential {
     fn log10(&self) -> Self;
 }
 
+#[inline(always)] pub fn exp<T: Exponential>(value: T) -> T { value.exp() }
+#[inline(always)] pub fn exp2<T: Exponential>(value: T) -> T { value.exp2() }
+
+#[inline(always)] pub fn ln<T: Exponential>(value: T) -> T { value.ln() }
+#[inline(always)] pub fn log<T: Exponential>(value: T, base: T) -> T { value.log(&base) }
+#[inline(always)] pub fn log2<T: Exponential>(value: T) -> T { value.log2() }
+#[inline(always)] pub fn log10<T: Exponential>(value: T) -> T { value.log10() }
+
 pub trait Hyperbolic: Exponential {
     fn sinh(&self) -> Self;
     fn cosh(&self) -> Self;
@@ -141,6 +162,14 @@ pub trait Hyperbolic: Exponential {
     fn acosh(&self) -> Self;
     fn atanh(&self) -> Self;
 }
+
+#[inline(always)] pub fn sinh<T: Hyperbolic>(value: T) -> T { value.sinh() }
+#[inline(always)] pub fn cosh<T: Hyperbolic>(value: T) -> T { value.cosh() }
+#[inline(always)] pub fn tanh<T: Hyperbolic>(value: T) -> T { value.tanh() }
+
+#[inline(always)] pub fn asinh<T: Hyperbolic>(value: T) -> T { value.asinh() }
+#[inline(always)] pub fn acosh<T: Hyperbolic>(value: T) -> T { value.acosh() }
+#[inline(always)] pub fn atanh<T: Hyperbolic>(value: T) -> T { value.atanh() }
 
 ///
 /// Defines constants and methods common to real numbers

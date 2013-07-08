@@ -53,6 +53,7 @@ use int;
 use libc;
 use libc::{c_int, c_long, c_void, size_t, ssize_t};
 use libc::consts::os::posix88::*;
+use num;
 use os;
 use cast;
 use path::Path;
@@ -1054,7 +1055,7 @@ pub struct BytesReader {
 
 impl Reader for BytesReader {
     fn read(&self, bytes: &mut [u8], len: uint) -> uint {
-        let count = uint::min(len, self.bytes.len() - *self.pos);
+        let count = num::min(len, self.bytes.len() - *self.pos);
 
         let view = self.bytes.slice(*self.pos, self.bytes.len());
         vec::bytes::copy_memory(bytes, view, count);
@@ -1660,7 +1661,7 @@ impl Writer for BytesWriter {
         let v_len = v.len();
 
         let bytes = &mut *self.bytes;
-        let count = uint::max(bytes.len(), *self.pos + v_len);
+        let count = num::max(bytes.len(), *self.pos + v_len);
         bytes.reserve(count);
 
         unsafe {
