@@ -21,7 +21,7 @@ Rust extras are part of the standard Rust distribution.
 */
 
 #[link(name = "extra",
-       vers = "0.7",
+       vers = "0.8-pre",
        uuid = "122bed0b-c19b-4b82-b0b7-7ae8aead7297",
        url = "https://github.com/mozilla/rust/tree/master/src/libextra")];
 
