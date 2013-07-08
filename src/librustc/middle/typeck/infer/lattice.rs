@@ -32,7 +32,6 @@
  * a lattice.
  */
 
-use core::prelude::*;
 
 use middle::ty::{RegionVid, TyVar, Vid};
 use middle::ty;
@@ -71,15 +70,53 @@ impl LatticeValue for ty::t {
     }
 }
 
-impl CombineFields {
-    pub fn var_sub_var<T:Copy + InferStr + LatticeValue,
-                       V:Copy + Eq + ToStr + Vid + UnifyVid<Bounds<T>>>(&self,
-                                                                        a_id:
-                                                                        V,
-                                                                        b_id:
-                                                                        V)
-                                                                        ->
-                                                                        ures {
+pub trait CombineFieldsLatticeMethods {
+    fn var_sub_var<T:Copy + InferStr + LatticeValue,
+                   V:Copy + Eq + ToStr + Vid + UnifyVid<Bounds<T>>>(&self,
+                                                                    a_id: V,
+                                                                    b_id: V)
+                                                                    -> ures;
+    /// make variable a subtype of T
+    fn var_sub_t<T:Copy + InferStr + LatticeValue,
+                 V:Copy + Eq + ToStr + Vid + UnifyVid<Bounds<T>>>(
+                 &self,
+                 a_id: V,
+                 b: T)
+                 -> ures;
+    fn t_sub_var<T:Copy + InferStr + LatticeValue,
+                 V:Copy + Eq + ToStr + Vid + UnifyVid<Bounds<T>>>(
+                 &self,
+                 a: T,
+                 b_id: V)
+                 -> ures;
+    fn merge_bnd<T:Copy + InferStr + LatticeValue>(
+                 &self,
+                 a: &Bound<T>,
+                 b: &Bound<T>,
+                 lattice_op: LatticeOp<T>)
+                 -> cres<Bound<T>>;
+    fn set_var_to_merged_bounds<T:Copy + InferStr + LatticeValue,
+                                V:Copy+Eq+ToStr+Vid+UnifyVid<Bounds<T>>>(
+                                &self,
+                                v_id: V,
+                                a: &Bounds<T>,
+                                b: &Bounds<T>,
+                                rank: uint)
+                                -> ures;
+    fn bnds<T:Copy + InferStr + LatticeValue>(
+            &self,
+            a: &Bound<T>,
+            b: &Bound<T>)
+            -> ures;
+}
+
+impl CombineFieldsLatticeMethods for CombineFields {
+    fn var_sub_var<T:Copy + InferStr + LatticeValue,
+                   V:Copy + Eq + ToStr + Vid + UnifyVid<Bounds<T>>>(
+                   &self,
+                   a_id: V,
+                   b_id: V)
+                   -> ures {
         /*!
          *
          * Make one variable a subtype of another variable.  This is a
@@ -127,12 +164,12 @@ impl CombineFields {
     }
 
     /// make variable a subtype of T
-    pub fn var_sub_t<T:Copy + InferStr + LatticeValue,
-                     V:Copy + Eq + ToStr + Vid + UnifyVid<Bounds<T>>>(&self,
-                                                                      a_id: V,
-                                                                      b: T)
-                                                                      -> ures
-                                                                      {
+    fn var_sub_t<T:Copy + InferStr + LatticeValue,
+                 V:Copy + Eq + ToStr + Vid + UnifyVid<Bounds<T>>>(
+                 &self,
+                 a_id: V,
+                 b: T)
+                 -> ures {
         /*!
          *
          * Make a variable (`a_id`) a subtype of the concrete type `b` */
@@ -151,12 +188,12 @@ impl CombineFields {
             a_id, a_bounds, b_bounds, node_a.rank)
     }
 
-    pub fn t_sub_var<T:Copy + InferStr + LatticeValue,
-                     V:Copy + Eq + ToStr + Vid + UnifyVid<Bounds<T>>>(&self,
-                                                                      a: T,
-                                                                      b_id: V)
-                                                                      -> ures
-                                                                      {
+    fn t_sub_var<T:Copy + InferStr + LatticeValue,
+                 V:Copy + Eq + ToStr + Vid + UnifyVid<Bounds<T>>>(
+                 &self,
+                 a: T,
+                 b_id: V)
+                 -> ures {
         /*!
          *
          * Make a concrete type (`a`) a subtype of the variable `b_id` */
@@ -175,12 +212,12 @@ impl CombineFields {
             b_id, a_bounds, b_bounds, node_b.rank)
     }
 
-    pub fn merge_bnd<T:Copy + InferStr + LatticeValue>(&self,
-                                                       a: &Bound<T>,
-                                                       b: &Bound<T>,
-                                                       lattice_op:
-                                                       LatticeOp<T>)
-                                                       -> cres<Bound<T>> {
+    fn merge_bnd<T:Copy + InferStr + LatticeValue>(
+                 &self,
+                 a: &Bound<T>,
+                 b: &Bound<T>,
+                 lattice_op: LatticeOp<T>)
+                 -> cres<Bound<T>> {
         /*!
          *
          * Combines two bounds into a more general bound. */
@@ -202,14 +239,14 @@ impl CombineFields {
         }
     }
 
-    pub fn set_var_to_merged_bounds<T:Copy + InferStr + LatticeValue,
-                                    V:Copy+Eq+ToStr+Vid+UnifyVid<Bounds<T>>>(
-                                    &self,
-                                    v_id: V,
-                                    a: &Bounds<T>,
-                                    b: &Bounds<T>,
-                                    rank: uint)
-                                    -> ures {
+    fn set_var_to_merged_bounds<T:Copy + InferStr + LatticeValue,
+                                V:Copy+Eq+ToStr+Vid+UnifyVid<Bounds<T>>>(
+                                &self,
+                                v_id: V,
+                                a: &Bounds<T>,
+                                b: &Bounds<T>,
+                                rank: uint)
+                                -> ures {
         /*!
          *
          * Updates the bounds for the variable `v_id` to be the intersection
@@ -264,10 +301,10 @@ impl CombineFields {
         uok()
     }
 
-    pub fn bnds<T:Copy + InferStr + LatticeValue>(&self,
-                                                  a: &Bound<T>,
-                                                  b: &Bound<T>)
-                                                  -> ures {
+    fn bnds<T:Copy + InferStr + LatticeValue>(&self,
+                                              a: &Bound<T>,
+                                              b: &Bound<T>)
+                                              -> ures {
         debug!("bnds(%s <: %s)", a.inf_str(self.infcx),
                b.inf_str(self.infcx));
         let _r = indenter();
@@ -493,7 +530,7 @@ pub fn var_ids<T:Combine>(this: &T, isr: isr_alist) -> ~[RegionVid] {
             ty::re_infer(ty::ReVar(r)) => { result.push(r); }
             r => {
                 this.infcx().tcx.sess.span_bug(
-                    this.span(),
+                    this.trace().origin.span(),
                     fmt!("Found non-region-vid: %?", r));
             }
         }
@@ -503,7 +540,7 @@ pub fn var_ids<T:Combine>(this: &T, isr: isr_alist) -> ~[RegionVid] {
 
 pub fn is_var_in_set(new_vars: &[RegionVid], r: ty::Region) -> bool {
     match r {
-        ty::re_infer(ty::ReVar(ref v)) => new_vars.contains(v),
+        ty::re_infer(ty::ReVar(ref v)) => new_vars.iter().any_(|x| x == v),
         _ => false
     }
 }

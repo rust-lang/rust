@@ -1,6 +1,3 @@
-// xfail-test
-// xfail'd due to segfaults with by-value self.
-
 // Copyright 2012 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
@@ -15,26 +12,24 @@ trait get {
     fn get(self) -> int;
 }
 
-// Note: impl on a slice
-impl get for &'self int {
+// FIXME #7302: Note: impl on a slice
+impl<'self> get for &'self int {
     fn get(self) -> int {
-        return **self;
+        return *self;
     }
 }
 
 pub fn main() {
-    /*
     let x = @mut 6;
     let y = x.get();
     assert_eq!(y, 6);
-    */
 
     let x = @6;
     let y = x.get();
     debug!("y=%d", y);
     assert_eq!(y, 6);
 
-    let mut x = ~6;
+    let x = ~6;
     let y = x.get();
     debug!("y=%d", y);
     assert_eq!(y, 6);

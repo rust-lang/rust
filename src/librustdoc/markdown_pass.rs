@@ -10,7 +10,6 @@
 
 //! Generate markdown from a document tree
 
-use core::prelude::*;
 
 use astsrv;
 use doc::ItemUtils;
@@ -22,9 +21,9 @@ use markdown_writer::WriterFactory;
 use pass::Pass;
 use sort_pass;
 
-use core::cell::Cell;
-use core::str;
-use core::vec;
+use std::cell::Cell;
+use std::str;
+use std::vec;
 use syntax;
 
 pub fn mk_pass(writer_factory: WriterFactory) -> Pass {
@@ -152,7 +151,7 @@ pub fn header_kind(doc: doc::ItemTag) -> ~str {
             ~"Function"
         }
         doc::ConstTag(_) => {
-            ~"Const"
+            ~"Freeze"
         }
         doc::EnumTag(_) => {
             ~"Enum"
@@ -190,13 +189,13 @@ pub fn header_name(doc: doc::ItemTag) -> ~str {
             };
             let self_ty = doc.self_ty.get_ref();
             let mut trait_part = ~"";
-            for doc.trait_types.eachi |i, trait_type| {
+            for doc.trait_types.iter().enumerate().advance |(i, trait_type)| {
                 if i == 0 {
-                    trait_part += " of ";
+                    trait_part.push_str(" of ");
                 } else {
-                    trait_part += ", ";
+                    trait_part.push_str(", ");
                 }
-                trait_part += *trait_type;
+                trait_part.push_str(*trait_type);
             }
             fmt!("%s for %s%s", trait_part, *self_ty, bounds)
         }
@@ -280,7 +279,7 @@ fn write_desc(
 }
 
 fn write_sections(ctxt: &Ctxt, sections: &[doc::Section]) {
-    for sections.each |section| {
+    for sections.iter().advance |section| {
         write_section(ctxt, copy *section);
     }
 }
@@ -300,7 +299,7 @@ fn write_mod_contents(
         write_index(ctxt, doc.index.get_ref());
     }
 
-    for doc.items.each |itemTag| {
+    for doc.items.iter().advance |itemTag| {
         write_item(ctxt, copy *itemTag);
     }
 }
@@ -350,7 +349,7 @@ fn write_index(ctxt: &Ctxt, index: &doc::Index) {
     ctxt.w.put_line(~"<div class='index'>");
     ctxt.w.put_line(~"");
 
-    for index.entries.each |entry| {
+    for index.entries.iter().advance |entry| {
         let header = header_text_(entry.kind, entry.name);
         let id = copy entry.link;
         if entry.brief.is_some() {
@@ -371,7 +370,7 @@ fn write_nmod(ctxt: &Ctxt, doc: doc::NmodDoc) {
         write_index(ctxt, doc.index.get_ref());
     }
 
-    for doc.fns.each |FnDoc| {
+    for doc.fns.iter().advance |FnDoc| {
         write_item_header(ctxt, doc::FnTag(copy *FnDoc));
         write_fn(ctxt, copy *FnDoc);
     }
@@ -441,7 +440,7 @@ fn write_variants(
 
     write_header_(ctxt, H4, ~"Variants");
 
-    for docs.each |variant| {
+    for docs.iter().advance |variant| {
         write_variant(ctxt, copy *variant);
     }
 
@@ -480,7 +479,7 @@ fn write_trait(ctxt: &Ctxt, doc: doc::TraitDoc) {
 }
 
 fn write_methods(ctxt: &Ctxt, docs: &[doc::MethodDoc]) {
-    for docs.each |doc| {
+    for docs.iter().advance |doc| {
         write_method(ctxt, copy *doc);
     }
 }
@@ -518,7 +517,6 @@ fn put_struct(
 
 #[cfg(test)]
 mod test {
-    use core::prelude::*;
 
     use astsrv;
     use attr_pass;
@@ -786,7 +784,7 @@ mod test {
     #[test]
     fn should_write_const_header() {
         let markdown = render(~"static a: bool = true;");
-        assert!(markdown.contains("## Const `a`\n\n"));
+        assert!(markdown.contains("## Freeze `a`\n\n"));
     }
 
     #[test]

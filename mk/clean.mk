@@ -20,10 +20,10 @@ CLEAN_STAGE_RULES =								\
     clean$(stage)_T_$(target)_H_$(host))))
 
 CLEAN_LLVM_RULES = 								\
- $(foreach target, $(CFG_TARGET_TRIPLES),		\
+ $(foreach target, $(CFG_HOST_TRIPLES),		\
   clean-llvm$(target))
 
-.PHONY: clean clean-all clean-misc
+.PHONY: clean clean-all clean-misc clean-llvm
 
 clean-all: clean clean-llvm
 

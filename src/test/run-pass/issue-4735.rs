@@ -15,7 +15,7 @@ use std::libc::c_void;
 struct NonCopyable(*c_void);
 
 impl Drop for NonCopyable {
-    fn finalize(&self) {
+    fn drop(&self) {
         let p = **self;
         let v = unsafe { transmute::<*c_void, ~int>(p) };
     }

@@ -8,14 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
 
 use syntax::ast;
 use syntax::codemap::{span};
 use syntax::visit;
 
-use core::hashmap::HashSet;
-use core::io;
+use std::hashmap::HashSet;
+use std::io;
 use extra;
 
 pub fn time<T>(do_it: bool, what: ~str, thunk: &fn() -> T) -> T {
@@ -41,7 +40,7 @@ pub struct _indenter {
 }
 
 impl Drop for _indenter {
-    fn finalize(&self) { debug!("<<"); }
+    fn drop(&self) { debug!("<<"); }
 }
 
 pub fn _indenter(_i: ()) -> _indenter {

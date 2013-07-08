@@ -17,7 +17,7 @@ struct Foo {
 }
 
 impl Drop for Foo {
-    fn finalize(&self) {
+    fn drop(&self) {
         println("Goodbye!");
     }
 }

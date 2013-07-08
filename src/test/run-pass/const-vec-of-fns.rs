@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// xfail-test
+// FIXME: #7385: hits a codegen bug on OS X x86_64
+
 /*!
  * Try to double-check that static fns have the right size (with or
  * without dummy env ptr, as appropriate) by iterating a size-2 array.
@@ -21,6 +24,6 @@ struct S<'self>(&'self fn());
 static closures: &'static [S<'static>] = &[S(f), S(f)];
 
 pub fn main() {
-    for bare_fns.each |&bare_fn| { bare_fn() }
-    for closures.each |&closure| { (*closure)() }
+    for bare_fns.iter().advance |&bare_fn| { bare_fn() }
+    for closures.iter().advance |&closure| { (*closure)() }
 }

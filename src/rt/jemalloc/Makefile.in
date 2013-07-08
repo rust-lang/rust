@@ -9,6 +9,7 @@ vpath % .
 SHELL := /bin/sh
 
 CC := @CC@
+AR := @AR@
 
 # Configuration parameters.
 DESTDIR =

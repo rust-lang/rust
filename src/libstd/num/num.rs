@@ -412,7 +412,7 @@ pub fn pow_with_uint<T:NumCast+One+Zero+Copy+Div<T,T>+Mul<T,T>>(radix: uint, pow
         if my_pow % 2u == 1u {
             total = total * multiplier;
         }
-        my_pow     = my_pow / 2u;
+        my_pow = my_pow / 2u;
         multiplier = multiplier * multiplier;
     }
     total

@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
-
 use ast::{blk_, attribute_, attr_outer, meta_word};
 use ast::{crate, expr_, expr_mac, mac_invoc_tt};
 use ast::{item_mac, stmt_, stmt_mac, stmt_expr, stmt_semi};
@@ -27,7 +25,7 @@ use parse::token::{ident_to_str, intern};
 use visit;
 use visit::Visitor;
 
-use core::vec;
+use std::vec;
 
 pub fn expand_expr(extsbox: @mut SyntaxEnv,
                    cx: @ExtCtxt,
@@ -200,7 +198,7 @@ pub fn expand_item(extsbox: @mut SyntaxEnv,
 
 // does this attribute list contain "macro_escape" ?
 pub fn contains_macro_escape (attrs: &[ast::attribute]) -> bool {
-    attrs.any(|attr| "macro_escape" == attr::get_attr_name(attr))
+    attrs.iter().any_(|attr| "macro_escape" == attr::get_attr_name(attr))
 }
 
 // Support for item-position macro invocations, exactly the same
@@ -425,8 +423,8 @@ fn renames_to_fold(renames : @mut ~[(ast::ident,ast::Name)]) -> @ast_fold {
         fold_ident: |id,_| {
             // the individual elements are memoized... it would
             // also be possible to memoize on the whole list at once.
-            let new_ctxt = renames.foldl(id.ctxt,|ctxt,&(from,to)| {
-                new_rename(from,to,*ctxt)
+            let new_ctxt = renames.iter().fold(id.ctxt,|ctxt,&(from,to)| {
+                new_rename(from,to,ctxt)
             });
             ast::ident{name:id.name,ctxt:new_ctxt}
         },
@@ -646,7 +644,7 @@ pub fn core_macros() -> @str {
 }
 
 pub fn expand_crate(parse_sess: @mut parse::ParseSess,
-                    cfg: ast::crate_cfg, c: @crate) -> @crate {
+                    cfg: ast::crate_cfg, c: &crate) -> @crate {
     // adding *another* layer of indirection here so that the block
     // visitor can swap out one exts table for another for the duration
     // of the block.  The cleaner alternative would be to thread the
@@ -697,7 +695,7 @@ pub fn expand_crate(parse_sess: @mut parse::ParseSess,
     // as it registers all the core macros as expanders.
     f.fold_item(cm);
 
-    @f.fold_crate(&*c)
+    @f.fold_crate(c)
 }
 
 // given a function from idents to idents, produce
@@ -757,8 +755,6 @@ mod test {
     use print::pprust;
     use util::parser_testing::{string_to_item, string_to_pat, strs_to_idents};
     use visit::{mk_vt};
-
-    use core::option::{None, Some};
 
     // make sure that fail! is present
     #[test] fn fail_exists_test () {

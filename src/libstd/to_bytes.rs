@@ -17,9 +17,10 @@ The `ToBytes` and `IterBytes` traits
 use cast;
 use io;
 use io::Writer;
+use iterator::IteratorUtil;
 use option::{None, Option, Some};
-use old_iter::BaseIter;
 use str::StrSlice;
+use vec::ImmutableVector;
 
 pub type Cb<'self> = &'self fn(buf: &[u8]) -> bool;
 
@@ -223,7 +224,7 @@ impl IterBytes for f64 {
 impl<'self,A:IterBytes> IterBytes for &'self [A] {
     #[inline]
     fn iter_bytes(&self, lsb0: bool, f: Cb) -> bool {
-        self.each(|elt| elt.iter_bytes(lsb0, |b| f(b)))
+        self.iter().advance(|elt| elt.iter_bytes(lsb0, |b| f(b)))
     }
 }
 
@@ -231,7 +232,8 @@ impl<A:IterBytes,B:IterBytes> IterBytes for (A,B) {
   #[inline]
   fn iter_bytes(&self, lsb0: bool, f: Cb) -> bool {
     match *self {
-      (ref a, ref b) => { a.iter_bytes(lsb0, f) && b.iter_bytes(lsb0, f) }
+      (ref a, ref b) => { a.iter_bytes(lsb0, |b| f(b)) &&
+                          b.iter_bytes(lsb0, |b| f(b)) }
     }
   }
 }
@@ -241,7 +243,9 @@ impl<A:IterBytes,B:IterBytes,C:IterBytes> IterBytes for (A,B,C) {
   fn iter_bytes(&self, lsb0: bool, f: Cb) -> bool {
     match *self {
       (ref a, ref b, ref c) => {
-        a.iter_bytes(lsb0, f) && b.iter_bytes(lsb0, f) && c.iter_bytes(lsb0, f)
+        a.iter_bytes(lsb0, |b| f(b)) &&
+        b.iter_bytes(lsb0, |b| f(b)) &&
+        c.iter_bytes(lsb0, |b| f(b))
       }
     }
   }
@@ -295,7 +299,7 @@ impl<A:IterBytes> IterBytes for Option<A> {
     #[inline]
     fn iter_bytes(&self, lsb0: bool, f: Cb) -> bool {
         match *self {
-          Some(ref a) => 0u8.iter_bytes(lsb0, f) && a.iter_bytes(lsb0, f),
+          Some(ref a) => 0u8.iter_bytes(lsb0, |b| f(b)) && a.iter_bytes(lsb0, |b| f(b)),
           None => 1u8.iter_bytes(lsb0, f)
         }
     }

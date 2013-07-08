@@ -35,11 +35,11 @@ pub struct TrieMap<T> {
 impl<T> Container for TrieMap<T> {
     /// Return the number of elements in the map
     #[inline]
-    fn len(&const self) -> uint { self.length }
+    fn len(&self) -> uint { self.length }
 
     /// Return true if the map contains no elements
     #[inline]
-    fn is_empty(&const self) -> bool { self.len() == 0 }
+    fn is_empty(&self) -> bool { self.len() == 0 }
 }
 
 impl<T> Mutable for TrieMap<T> {
@@ -56,30 +56,6 @@ impl<T> Map<uint, T> for TrieMap<T> {
     #[inline]
     fn contains_key(&self, key: &uint) -> bool {
         self.find(key).is_some()
-    }
-
-    /// Visit all key-value pairs in order
-    #[inline]
-    fn each<'a>(&'a self, f: &fn(&uint, &'a T) -> bool) -> bool {
-        self.root.each(f)
-    }
-
-    /// Visit all keys in order
-    #[inline]
-    fn each_key(&self, f: &fn(&uint) -> bool) -> bool {
-        self.each(|k, _| f(k))
-    }
-
-    /// Visit all values in order
-    #[inline]
-    fn each_value<'a>(&'a self, f: &fn(&'a T) -> bool) -> bool {
-        self.each(|_, v| f(v))
-    }
-
-    /// Iterate over the map and mutate the contained values
-    #[inline]
-    fn mutate_values(&mut self, f: &fn(&uint, &mut T) -> bool) -> bool {
-        self.root.mutate_values(f)
     }
 
     /// Return a reference to the value corresponding to the key
@@ -158,6 +134,30 @@ impl<T> TrieMap<T> {
         self.root.each_reverse(f)
     }
 
+    /// Visit all key-value pairs in order
+    #[inline]
+    pub fn each<'a>(&'a self, f: &fn(&uint, &'a T) -> bool) -> bool {
+        self.root.each(f)
+    }
+
+    /// Visit all keys in order
+    #[inline]
+    pub fn each_key(&self, f: &fn(&uint) -> bool) -> bool {
+        self.each(|k, _| f(k))
+    }
+
+    /// Visit all values in order
+    #[inline]
+    pub fn each_value<'a>(&'a self, f: &fn(&'a T) -> bool) -> bool {
+        self.each(|_, v| f(v))
+    }
+
+    /// Iterate over the map and mutate the contained values
+    #[inline]
+    pub fn mutate_values(&mut self, f: &fn(&uint, &mut T) -> bool) -> bool {
+        self.root.mutate_values(f)
+    }
+
     /// Visit all keys in reverse order
     #[inline]
     pub fn each_key_reverse(&self, f: &fn(&uint) -> bool) -> bool {
@@ -176,30 +176,14 @@ pub struct TrieSet {
     priv map: TrieMap<()>
 }
 
-impl BaseIter<uint> for TrieSet {
-    /// Visit all values in order
-    #[inline]
-    fn each(&self, f: &fn(&uint) -> bool) -> bool { self.map.each_key(f) }
-    #[inline]
-    fn size_hint(&self) -> Option<uint> { Some(self.len()) }
-}
-
-impl ReverseIter<uint> for TrieSet {
-    /// Visit all values in reverse order
-    #[inline]
-    fn each_reverse(&self, f: &fn(&uint) -> bool) -> bool {
-        self.map.each_key_reverse(f)
-    }
-}
-
 impl Container for TrieSet {
     /// Return the number of elements in the set
     #[inline]
-    fn len(&const self) -> uint { self.map.len() }
+    fn len(&self) -> uint { self.map.len() }
 
     /// Return true if the set contains no elements
     #[inline]
-    fn is_empty(&const self) -> bool { self.map.is_empty() }
+    fn is_empty(&self) -> bool { self.map.is_empty() }
 }
 
 impl Mutable for TrieSet {
@@ -234,6 +218,16 @@ impl TrieSet {
     pub fn remove(&mut self, value: &uint) -> bool {
         self.map.remove(value)
     }
+
+    /// Visit all values in order
+    #[inline]
+    pub fn each(&self, f: &fn(&uint) -> bool) -> bool { self.map.each_key(f) }
+
+    /// Visit all values in reverse order
+    #[inline]
+    pub fn each_reverse(&self, f: &fn(&uint) -> bool) -> bool {
+        self.map.each_key_reverse(f)
+    }
 }
 
 struct TrieNode<T> {
@@ -257,7 +251,7 @@ impl<T> TrieNode<T> {
     fn each<'a>(&'a self, f: &fn(&uint, &'a T) -> bool) -> bool {
         for uint::range(0, self.children.len()) |idx| {
             match self.children[idx] {
-                Internal(ref x) => if !x.each(f) { return false },
+                Internal(ref x) => if !x.each(|i,t| f(i,t)) { return false },
                 External(k, ref v) => if !f(&k, v) { return false },
                 Nothing => ()
             }
@@ -268,7 +262,7 @@ impl<T> TrieNode<T> {
     fn each_reverse<'a>(&'a self, f: &fn(&uint, &'a T) -> bool) -> bool {
         for uint::range_rev(self.children.len(), 0) |idx| {
             match self.children[idx - 1] {
-                Internal(ref x) => if !x.each_reverse(f) { return false },
+                Internal(ref x) => if !x.each_reverse(|i,t| f(i,t)) { return false },
                 External(k, ref v) => if !f(&k, v) { return false },
                 Nothing => ()
             }
@@ -279,7 +273,7 @@ impl<T> TrieNode<T> {
     fn mutate_values<'a>(&'a mut self, f: &fn(&uint, &mut T) -> bool) -> bool {
         for self.children.mut_iter().advance |child| {
             match *child {
-                Internal(ref mut x) => if !x.mutate_values(f) {
+                Internal(ref mut x) => if !x.mutate_values(|i,t| f(i,t)) {
                     return false
                 },
                 External(k, ref mut v) => if !f(&k, v) { return false },
@@ -373,7 +367,7 @@ pub fn check_integrity<T>(trie: &TrieNode<T>) {
 
     let mut sum = 0;
 
-    for trie.children.each |x| {
+    for trie.children.iter().advance |x| {
         match *x {
           Nothing => (),
           Internal(ref y) => {

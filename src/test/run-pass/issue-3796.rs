@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-test
+// xfail-test FIXME #3796
 #[deny(dead_assignment)];
 fn main() {
     let mut x = 1;

@@ -14,7 +14,7 @@ struct X {
 }
 
 impl Drop for X {
-    fn finalize(&self) {
+    fn drop(&self) {
         error!("value: %s", self.x);
     }
 }

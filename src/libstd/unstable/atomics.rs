@@ -62,6 +62,7 @@ pub struct AtomicPtr<T> {
 /**
  * An owned atomic pointer. Ensures that only a single reference to the data is held at any time.
  */
+#[unsafe_no_drop_flag]
 pub struct AtomicOption<T> {
     priv p: *mut c_void
 }
@@ -275,7 +276,7 @@ impl<T> AtomicOption<T> {
 
 #[unsafe_destructor]
 impl<T> Drop for AtomicOption<T> {
-    fn finalize(&self) {
+    fn drop(&self) {
         // This will ensure that the contained data is
         // destroyed, unless it's null.
         unsafe {

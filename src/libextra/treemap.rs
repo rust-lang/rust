@@ -12,10 +12,9 @@
 //! trees. The only requirement for the types is that the key implements
 //! `TotalOrd`.
 
-use core::prelude::*;
 
-use core::uint;
-use core::util::{swap, replace};
+use std::uint;
+use std::util::{swap, replace};
 
 // This is implemented as an AA tree, which is a simplified variation of
 // a red-black tree where red (horizontal) nodes can only be added
@@ -87,10 +86,10 @@ impl<K: Ord + TotalOrd, V> Ord for TreeMap<K, V> {
 
 impl<K: TotalOrd, V> Container for TreeMap<K, V> {
     /// Return the number of elements in the map
-    fn len(&const self) -> uint { self.length }
+    fn len(&self) -> uint { self.length }
 
     /// Return true if the map contains no elements
-    fn is_empty(&const self) -> bool { self.root.is_none() }
+    fn is_empty(&self) -> bool { self.root.is_none() }
 }
 
 impl<K: TotalOrd, V> Mutable for TreeMap<K, V> {
@@ -105,26 +104,6 @@ impl<K: TotalOrd, V> Map<K, V> for TreeMap<K, V> {
     /// Return true if the map contains a value for the specified key
     fn contains_key(&self, key: &K) -> bool {
         self.find(key).is_some()
-    }
-
-    /// Visit all key-value pairs in order
-    fn each<'a>(&'a self, f: &fn(&'a K, &'a V) -> bool) -> bool {
-        each(&self.root, f)
-    }
-
-    /// Visit all keys in order
-    fn each_key(&self, f: &fn(&K) -> bool) -> bool {
-        self.each(|k, _| f(k))
-    }
-
-    /// Visit all values in order
-    fn each_value<'a>(&'a self, f: &fn(&'a V) -> bool) -> bool {
-        self.each(|_, v| f(v))
-    }
-
-    /// Iterate over the map and mutate the contained values
-    fn mutate_values(&mut self, f: &fn(&K, &mut V) -> bool) -> bool {
-        mutate_values(&mut self.root, f)
     }
 
     /// Return a reference to the value corresponding to the key
@@ -183,6 +162,21 @@ impl<K: TotalOrd, V> Map<K, V> for TreeMap<K, V> {
 impl<K: TotalOrd, V> TreeMap<K, V> {
     /// Create an empty TreeMap
     pub fn new() -> TreeMap<K, V> { TreeMap{root: None, length: 0} }
+
+    /// Visit all keys in order
+    pub fn each_key(&self, f: &fn(&K) -> bool) -> bool {
+        self.iter().advance(|(k, _)| f(k))
+    }
+
+    /// Visit all values in order
+    pub fn each_value<'a>(&'a self, f: &fn(&'a V) -> bool) -> bool {
+        self.iter().advance(|(_, v)| f(v))
+    }
+
+    /// Iterate over the map and mutate the contained values
+    pub fn mutate_values(&mut self, f: &fn(&K, &mut V) -> bool) -> bool {
+        mutate_values(&mut self.root, f)
+    }
 
     /// Visit all key-value pairs in reverse order
     pub fn each_reverse<'a>(&'a self, f: &fn(&'a K, &'a V) -> bool) -> bool {
@@ -249,22 +243,6 @@ pub struct TreeSet<T> {
     priv map: TreeMap<T, ()>
 }
 
-impl<T: TotalOrd> BaseIter<T> for TreeSet<T> {
-    /// Visit all values in order
-    #[inline]
-    fn each(&self, f: &fn(&T) -> bool) -> bool { self.map.each_key(f) }
-    #[inline]
-    fn size_hint(&self) -> Option<uint> { Some(self.len()) }
-}
-
-impl<T: TotalOrd> ReverseIter<T> for TreeSet<T> {
-    /// Visit all values in reverse order
-    #[inline]
-    fn each_reverse(&self, f: &fn(&T) -> bool) -> bool {
-        self.map.each_key_reverse(f)
-    }
-}
-
 impl<T: Eq + TotalOrd> Eq for TreeSet<T> {
     #[inline]
     fn eq(&self, other: &TreeSet<T>) -> bool { self.map == other.map }
@@ -286,11 +264,11 @@ impl<T: Ord + TotalOrd> Ord for TreeSet<T> {
 impl<T: TotalOrd> Container for TreeSet<T> {
     /// Return the number of elements in the set
     #[inline]
-    fn len(&const self) -> uint { self.map.len() }
+    fn len(&self) -> uint { self.map.len() }
 
     /// Return true if the set contains no elements
     #[inline]
-    fn is_empty(&const self) -> bool { self.map.is_empty() }
+    fn is_empty(&self) -> bool { self.map.is_empty() }
 }
 
 impl<T: TotalOrd> Mutable for TreeSet<T> {
@@ -499,6 +477,12 @@ impl<T: TotalOrd> TreeSet<T> {
     pub fn iter<'a>(&'a self) -> TreeSetIterator<'a, T> {
         TreeSetIterator{iter: self.map.iter()}
     }
+
+    /// Visit all values in reverse order
+    #[inline]
+    pub fn each_reverse(&self, f: &fn(&T) -> bool) -> bool {
+        self.map.each_key_reverse(f)
+    }
 }
 
 /// Lazy forward iterator over a set
@@ -526,14 +510,14 @@ impl<K: TotalOrd, V> TreeNode<K, V> {
 
 fn each<'r, K: TotalOrd, V>(node: &'r Option<~TreeNode<K, V>>,
                             f: &fn(&'r K, &'r V) -> bool) -> bool {
-    node.iter().advance(|x| each(&x.left, f) && f(&x.key, &x.value) &&
-                            each(&x.right, f))
+    node.iter().advance(|x| each(&x.left,  |k,v| f(k,v)) && f(&x.key, &x.value) &&
+                            each(&x.right, |k,v| f(k,v)))
 }
 
 fn each_reverse<'r, K: TotalOrd, V>(node: &'r Option<~TreeNode<K, V>>,
                                     f: &fn(&'r K, &'r V) -> bool) -> bool {
-    node.iter().advance(|x| each_reverse(&x.right, f) && f(&x.key, &x.value) &&
-                            each_reverse(&x.left, f))
+    node.iter().advance(|x| each_reverse(&x.right, |k,v| f(k,v)) && f(&x.key, &x.value) &&
+                            each_reverse(&x.left,  |k,v| f(k,v)))
 }
 
 fn mutate_values<'r, K: TotalOrd, V>(node: &'r mut Option<~TreeNode<K, V>>,
@@ -542,9 +526,9 @@ fn mutate_values<'r, K: TotalOrd, V>(node: &'r mut Option<~TreeNode<K, V>>,
     match *node {
       Some(~TreeNode{key: ref key, value: ref mut value, left: ref mut left,
                      right: ref mut right, _}) => {
-        if !mutate_values(left, f) { return false }
+        if !mutate_values(left,  |k,v| f(k,v)) { return false }
         if !f(key, value) { return false }
-        if !mutate_values(right, f) { return false }
+        if !mutate_values(right, |k,v| f(k,v)) { return false }
       }
       None => return false
     }
@@ -704,13 +688,11 @@ fn remove<K: TotalOrd, V>(node: &mut Option<~TreeNode<K, V>>,
 
 #[cfg(test)]
 mod test_treemap {
-    use core::prelude::*;
 
     use super::*;
 
-    use core::rand::RngUtil;
-    use core::rand;
-    use core::vec;
+    use std::rand::RngUtil;
+    use std::rand;
 
     #[test]
     fn find_empty() {
@@ -781,13 +763,13 @@ mod test_treemap {
     fn check_equal<K: Eq + TotalOrd, V: Eq>(ctrl: &[(K, V)],
                                             map: &TreeMap<K, V>) {
         assert_eq!(ctrl.is_empty(), map.is_empty());
-        for ctrl.each |x| {
+        for ctrl.iter().advance |x| {
             let &(k, v) = x;
             assert!(map.find(&k).unwrap() == &v)
         }
-        for map.each |map_k, map_v| {
+        for map.iter().advance |(map_k, map_v)| {
             let mut found = false;
-            for ctrl.each |x| {
+            for ctrl.iter().advance |x| {
                 let &(ctrl_k, ctrl_v) = x;
                 if *map_k == ctrl_k {
                     assert!(*map_v == ctrl_v);
@@ -853,7 +835,7 @@ mod test_treemap {
             for 90.times {
                 let k = rng.gen();
                 let v = rng.gen();
-                if !ctrl.contains(&(k, v)) {
+                if !ctrl.iter().any_(|x| x == &(k, v)) {
                     assert!(map.insert(k, v));
                     ctrl.push((k, v));
                     check_structure(&map);
@@ -863,7 +845,7 @@ mod test_treemap {
 
             for 30.times {
                 let r = rng.gen_uint_range(0, ctrl.len());
-                let (key, _) = vec::remove(&mut ctrl, r);
+                let (key, _) = ctrl.remove(r);
                 assert!(map.remove(&key));
                 check_structure(&map);
                 check_equal(ctrl, &map);
@@ -891,7 +873,7 @@ mod test_treemap {
     }
 
     #[test]
-    fn test_each() {
+    fn test_iterator() {
         let mut m = TreeMap::new();
 
         assert!(m.insert(3, 6));
@@ -901,7 +883,7 @@ mod test_treemap {
         assert!(m.insert(1, 2));
 
         let mut n = 0;
-        for m.each |k, v| {
+        for m.iter().advance |(k, v)| {
             assert_eq!(*k, n);
             assert_eq!(*v, n * 2);
             n += 1;
@@ -1026,7 +1008,6 @@ mod test_treemap {
 
 #[cfg(test)]
 mod test_set {
-    use core::prelude::*;
 
     use super::*;
 
@@ -1096,7 +1077,7 @@ mod test_set {
     }
 
     #[test]
-    fn test_each() {
+    fn test_iterator() {
         let mut m = TreeSet::new();
 
         assert!(m.insert(3));
@@ -1106,7 +1087,7 @@ mod test_set {
         assert!(m.insert(1));
 
         let mut n = 0;
-        for m.each |x| {
+        for m.iter().advance |x| {
             println(fmt!("%?", x));
             assert_eq!(*x, n);
             n += 1
@@ -1135,8 +1116,8 @@ mod test_set {
         let mut set_a = TreeSet::new();
         let mut set_b = TreeSet::new();
 
-        for a.each |x| { assert!(set_a.insert(*x)) }
-        for b.each |y| { assert!(set_b.insert(*y)) }
+        for a.iter().advance |x| { assert!(set_a.insert(*x)) }
+        for b.iter().advance |y| { assert!(set_b.insert(*y)) }
 
         let mut i = 0;
         for f(&set_a, &set_b) |x| {

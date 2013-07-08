@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
 
 use back::rpath;
 use driver::session::Session;
@@ -19,24 +18,26 @@ use lib;
 use metadata::common::LinkMeta;
 use metadata::{encoder, csearch, cstore};
 use middle::trans::context::CrateContext;
+use middle::trans::common::gensym_name;
 use middle::ty;
 use util::ppaux;
 
-use core::char;
-use core::hash::Streaming;
-use core::hash;
-use core::libc::{c_int, c_uint};
-use core::os::consts::{macos, freebsd, linux, android, win32};
-use core::os;
-use core::ptr;
-use core::rt::io::Writer;
-use core::run;
-use core::str;
-use core::vec;
+use std::char;
+use std::hash::Streaming;
+use std::hash;
+use std::libc::{c_int, c_uint};
+use std::os::consts::{macos, freebsd, linux, android, win32};
+use std::os;
+use std::ptr;
+use std::rt::io::Writer;
+use std::run;
+use std::str;
+use std::vec;
 use syntax::ast;
 use syntax::ast_map::{path, path_mod, path_name};
 use syntax::attr;
 use syntax::print::pprust;
+use syntax::parse::token;
 
 #[deriving(Eq)]
 pub enum output_type {
@@ -96,7 +97,6 @@ pub fn WriteOutputFile(sess: Session,
 }
 
 pub mod jit {
-    use core::prelude::*;
 
     use back::link::llvm_err;
     use driver::session::Session;
@@ -104,11 +104,11 @@ pub mod jit {
     use lib::llvm::{ModuleRef, ContextRef};
     use metadata::cstore;
 
-    use core::cast;
-    use core::ptr;
-    use core::str;
-    use core::sys;
-    use core::unstable::intrinsics;
+    use std::cast;
+    use std::ptr;
+    use std::str;
+    use std::sys;
+    use std::unstable::intrinsics;
 
     pub fn exec(sess: Session,
                 c: ContextRef,
@@ -124,19 +124,18 @@ pub mod jit {
             // incase the user wants to use an older extra library.
 
             let cstore = sess.cstore;
-            for cstore::get_used_crate_files(cstore).each |cratepath| {
+            let r = cstore::get_used_crate_files(cstore);
+            for r.iter().advance |cratepath| {
                 let path = cratepath.to_str();
 
                 debug!("linking: %s", path);
 
-                let _: () = str::as_c_str(
-                    path,
-                    |buf_t| {
-                        if !llvm::LLVMRustLoadCrate(manager, buf_t) {
-                            llvm_err(sess, ~"Could not link");
-                        }
-                        debug!("linked: %s", path);
-                    });
+                do str::as_c_str(path) |buf_t| {
+                    if !llvm::LLVMRustLoadCrate(manager, buf_t) {
+                        llvm_err(sess, ~"Could not link");
+                    }
+                    debug!("linked: %s", path);
+                }
             }
 
             // We custom-build a JIT execution engine via some rust wrappers
@@ -181,7 +180,6 @@ pub mod jit {
 }
 
 pub mod write {
-    use core::prelude::*;
 
     use back::link::jit;
     use back::link::{WriteOutputFile, output_type};
@@ -197,17 +195,16 @@ pub mod write {
 
     use back::passes;
 
-    use core::libc::{c_int, c_uint};
-    use core::path::Path;
-    use core::run;
-    use core::str;
+    use std::libc::{c_int, c_uint};
+    use std::path::Path;
+    use std::run;
+    use std::str;
 
     pub fn is_object_or_assembly_or_exe(ot: output_type) -> bool {
-        if ot == output_type_assembly || ot == output_type_object ||
-               ot == output_type_exe {
-            return true;
+        match ot {
+            output_type_assembly | output_type_object | output_type_exe => true,
+            _ => false
         }
-        return false;
     }
 
     pub fn run_passes(sess: Session,
@@ -290,11 +287,11 @@ pub mod write {
                   session::Aggressive => LLVMOptAggressive
                 };
 
-                let FileType;
-                if output_type == output_type_object ||
-                       output_type == output_type_exe {
-                   FileType = lib::llvm::ObjectFile;
-                } else { FileType = lib::llvm::AssemblyFile; }
+                let FileType = match output_type {
+                    output_type_object | output_type_exe => lib::llvm::ObjectFile,
+                    _ => lib::llvm::AssemblyFile
+                };
+
                 // Write optimized bitcode if --save-temps was on.
 
                 if opts.save_temps {
@@ -384,11 +381,11 @@ pub mod write {
                             (--android-cross-path)")
             }
         };
-        let mut cc_args = ~[];
-        cc_args.push(~"-c");
-        cc_args.push(~"-o");
-        cc_args.push(object.to_str());
-        cc_args.push(assembly.to_str());
+
+        let cc_args = ~[
+            ~"-c",
+            ~"-o", object.to_str(),
+            assembly.to_str()];
 
         let prog = run::process_output(cc_prog, cc_args);
 
@@ -473,20 +470,20 @@ pub fn build_link_meta(sess: Session,
         let mut cmh_items = ~[];
         let linkage_metas = attr::find_linkage_metas(c.node.attrs);
         attr::require_unique_names(sess.diagnostic(), linkage_metas);
-        for linkage_metas.each |meta| {
-            if "name" == attr::get_meta_item_name(*meta) {
-                match attr::get_meta_item_value_str(*meta) {
-                  // Changing attr would avoid the need for the copy
-                  // here
-                  Some(v) => { name = Some(v); }
-                  None => cmh_items.push(*meta)
-                }
-            } else if "vers" == attr::get_meta_item_name(*meta) {
-                match attr::get_meta_item_value_str(*meta) {
-                  Some(v) => { vers = Some(v); }
-                  None => cmh_items.push(*meta)
-                }
-            } else { cmh_items.push(*meta); }
+        for linkage_metas.iter().advance |meta| {
+            match attr::get_meta_item_value_str(*meta) {
+                Some(value) => {
+                    let item_name : &str = attr::get_meta_item_name(*meta);
+                    match item_name {
+                        // Changing attr would avoid the need for the copy
+                        // here
+                        "name" => name = Some(value),
+                        "vers" => vers = Some(value),
+                        _ => cmh_items.push(*meta)
+                    }
+                },
+                None => cmh_items.push(*meta)
+            }
         }
 
         ProvidedMetas {
@@ -521,7 +518,7 @@ pub fn build_link_meta(sess: Session,
               }
               ast::meta_list(name, ref mis) => {
                 write_string(symbol_hasher, len_and_str(name));
-                for mis.each |m_| {
+                for mis.iter().advance |m_| {
                     hash(symbol_hasher, m_);
                 }
               }
@@ -529,15 +526,15 @@ pub fn build_link_meta(sess: Session,
         }
 
         symbol_hasher.reset();
-        for cmh_items.each |m| {
+        for cmh_items.iter().advance |m| {
             hash(symbol_hasher, m);
         }
 
-        for dep_hashes.each |dh| {
+        for dep_hashes.iter().advance |dh| {
             write_string(symbol_hasher, len_and_str(*dh));
         }
 
-    // tjc: allocation is unfortunate; need to change core::hash
+    // tjc: allocation is unfortunate; need to change std::hash
         return truncated_hash_result(symbol_hasher).to_managed();
     }
 
@@ -548,32 +545,32 @@ pub fn build_link_meta(sess: Session,
     }
 
     fn crate_meta_name(sess: Session, output: &Path, opt_name: Option<@str>)
-                    -> @str {
-        return match opt_name {
-              Some(v) => v,
-              None => {
+        -> @str {
+        match opt_name {
+            Some(v) => v,
+            None => {
                 // to_managed could go away if there was a version of
                 // filestem that returned an @str
                 let name = session::expect(sess,
-                                  output.filestem(),
-                                  || fmt!("output file name `%s` doesn't\
-                                           appear to have a stem",
-                                          output.to_str())).to_managed();
+                                           output.filestem(),
+                                           || fmt!("output file name `%s` doesn't\
+                                                    appear to have a stem",
+                                                   output.to_str())).to_managed();
                 warn_missing(sess, "name", name);
                 name
-              }
-            };
+            }
+        }
     }
 
     fn crate_meta_vers(sess: Session, opt_vers: Option<@str>) -> @str {
-        return match opt_vers {
-              Some(v) => v,
-              None => {
+        match opt_vers {
+            Some(v) => v,
+            None => {
                 let vers = @"0.0";
                 warn_missing(sess, "vers", vers);
                 vers
-              }
-            };
+            }
+        }
     }
 
     let ProvidedMetas {
@@ -618,7 +615,7 @@ pub fn symbol_hash(tcx: ty::ctxt,
     let mut hash = truncated_hash_result(symbol_hasher);
     // Prefix with _ so that it never blends into adjacent digits
     hash.unshift_char('_');
-    // tjc: allocation is unfortunate; need to change core::hash
+    // tjc: allocation is unfortunate; need to change std::hash
     hash.to_managed()
 }
 
@@ -642,15 +639,15 @@ pub fn sanitize(s: &str) -> ~str {
     for s.iter().advance |c| {
         match c {
             // Escape these with $ sequences
-            '@' => result += "$SP$",
-            '~' => result += "$UP$",
-            '*' => result += "$RP$",
-            '&' => result += "$BP$",
-            '<' => result += "$LT$",
-            '>' => result += "$GT$",
-            '(' => result += "$LP$",
-            ')' => result += "$RP$",
-            ',' => result += "$C$",
+            '@' => result.push_str("$SP$"),
+            '~' => result.push_str("$UP$"),
+            '*' => result.push_str("$RP$"),
+            '&' => result.push_str("$BP$"),
+            '<' => result.push_str("$LT$"),
+            '>' => result.push_str("$GT$"),
+            '(' => result.push_str("$LP$"),
+            ')' => result.push_str("$RP$"),
+            ',' => result.push_str("$C$"),
 
             // '.' doesn't occur in types and functions, so reuse it
             // for ':'
@@ -663,9 +660,10 @@ pub fn sanitize(s: &str) -> ~str {
             | '_' => result.push_char(c),
 
             _ => {
-                if c > 'z' && char::is_XID_continue(c) {
-                    result.push_char(c);
-                }
+                let mut tstr = ~"";
+                do char::escape_unicode(c) |c| { tstr.push_char(c); }
+                result.push_char('$');
+                result.push_str(tstr.slice_from(1));
             }
         }
     }
@@ -685,13 +683,15 @@ pub fn mangle(sess: Session, ss: path) -> ~str {
 
     let mut n = ~"_ZN"; // Begin name-sequence.
 
-    for ss.each |s| {
-        match *s { path_name(s) | path_mod(s) => {
-          let sani = sanitize(sess.str_of(s));
-          n += fmt!("%u%s", sani.len(), sani);
-        } }
+    for ss.iter().advance |s| {
+        match *s {
+            path_name(s) | path_mod(s) => {
+                let sani = sanitize(sess.str_of(s));
+                n.push_str(fmt!("%u%s", sani.len(), sani));
+            }
+        }
     }
-    n += "E"; // End name-sequence.
+    n.push_char('E'); // End name-sequence.
     n
 }
 
@@ -699,10 +699,10 @@ pub fn exported_name(sess: Session,
                      path: path,
                      hash: &str,
                      vers: &str) -> ~str {
-    return mangle(sess,
-            vec::append_one(
-            vec::append_one(path, path_name(sess.ident_of(hash))),
-            path_name(sess.ident_of(vers))));
+    mangle(sess,
+           vec::append_one(
+               vec::append_one(path, path_name(sess.ident_of(hash))),
+               path_name(sess.ident_of(vers))))
 }
 
 pub fn mangle_exported_name(ccx: &mut CrateContext,
@@ -733,22 +733,22 @@ pub fn mangle_internal_name_by_type_and_seq(ccx: &mut CrateContext,
     return mangle(ccx.sess,
         ~[path_name(ccx.sess.ident_of(s)),
           path_name(ccx.sess.ident_of(hash)),
-          path_name((ccx.names)(name))]);
+          path_name(gensym_name(name))]);
 }
 
 pub fn mangle_internal_name_by_path_and_seq(ccx: &mut CrateContext,
-                                            path: path,
+                                            mut path: path,
                                             flav: &str) -> ~str {
-    return mangle(ccx.sess,
-                  vec::append_one(path, path_name((ccx.names)(flav))));
+    path.push(path_name(gensym_name(flav)));
+    mangle(ccx.sess, path)
 }
 
 pub fn mangle_internal_name_by_path(ccx: &mut CrateContext, path: path) -> ~str {
-    return mangle(ccx.sess, path);
+    mangle(ccx.sess, path)
 }
 
-pub fn mangle_internal_name_by_seq(ccx: &mut CrateContext, flav: &str) -> ~str {
-    return fmt!("%s_%u", flav, (ccx.names)(flav).name);
+pub fn mangle_internal_name_by_seq(_ccx: &mut CrateContext, flav: &str) -> ~str {
+    return fmt!("%s_%u", flav, token::gensym(flav));
 }
 
 
@@ -776,8 +776,8 @@ pub fn link_binary(sess: Session,
     // so we add a condition to make it use gcc.
     let cc_prog: ~str = match sess.opts.linker {
         Some(ref linker) => copy *linker,
-        None => {
-            if sess.targ_cfg.os == session::os_android {
+        None => match sess.targ_cfg.os {
+            session::os_android =>
                 match &sess.opts.android_cross_path {
                     &Some(ref path) => {
                         fmt!("%s/bin/arm-linux-androideabi-gcc", *path)
@@ -786,12 +786,9 @@ pub fn link_binary(sess: Session,
                         sess.fatal("need Android NDK path for linking \
                                     (--android-cross-path)")
                     }
-                }
-            } else if sess.targ_cfg.os == session::os_win32 {
-                ~"gcc"
-            } else {
-                ~"cc"
-            }
+                },
+            session::os_win32 => ~"gcc",
+            _ => ~"cc"
         }
     };
     // The invocations of cc share some flags across platforms
@@ -866,22 +863,20 @@ pub fn link_args(sess: Session,
 
     let mut args = vec::append(~[stage], sess.targ_cfg.target_strs.cc_args);
 
-    args.push(~"-o");
-    args.push(output.to_str());
-    args.push(obj_filename.to_str());
+    args.push_all([
+        ~"-o", output.to_str(),
+        obj_filename.to_str()]);
 
-    let lib_cmd;
-    let os = sess.targ_cfg.os;
-    if os == session::os_macos {
-        lib_cmd = ~"-dynamiclib";
-    } else {
-        lib_cmd = ~"-shared";
-    }
+    let lib_cmd = match sess.targ_cfg.os {
+        session::os_macos => ~"-dynamiclib",
+        _ => ~"-shared"
+    };
 
     // # Crate linking
 
     let cstore = sess.cstore;
-    for cstore::get_used_crate_files(cstore).each |cratepath| {
+    let r = cstore::get_used_crate_files(cstore);
+    for r.iter().advance |cratepath| {
         if cratepath.filetype() == Some(~".rlib") {
             args.push(cratepath.to_str());
             loop;
@@ -893,7 +888,7 @@ pub fn link_args(sess: Session,
     }
 
     let ula = cstore::get_used_link_args(cstore);
-    for ula.each |arg| { args.push(arg.to_owned()); }
+    for ula.iter().advance |arg| { args.push(arg.to_owned()); }
 
     // Add all the link args for external crates.
     do cstore::iter_crate_data(cstore) |crate_num, _| {
@@ -911,13 +906,13 @@ pub fn link_args(sess: Session,
     // to be found at compile time so it is still entirely up to outside
     // forces to make sure that library can be found at runtime.
 
-    for sess.opts.addl_lib_search_paths.each |path| {
+    for sess.opts.addl_lib_search_paths.iter().advance |path| {
         args.push(~"-L" + path.to_str());
     }
 
     // The names of the extern libraries
     let used_libs = cstore::get_used_libraries(cstore);
-    for used_libs.each |l| { args.push(~"-l" + *l); }
+    for used_libs.iter().advance |l| { args.push(~"-l" + *l); }
 
     if *sess.building_library {
         args.push(lib_cmd);

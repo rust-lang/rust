@@ -10,7 +10,6 @@
 
 //! Pulls type information out of the AST and attaches it to the document
 
-use core::prelude::*;
 
 use astsrv;
 use doc::ItemUtils;
@@ -21,7 +20,6 @@ use fold::Fold;
 use fold;
 use pass::Pass;
 
-use core::vec;
 use syntax::ast;
 use syntax::print::pprust;
 use syntax::parse::token;
@@ -96,7 +94,7 @@ fn fold_const(
             do astsrv::exec(srv) |ctxt| {
                 match ctxt.ast_map.get_copy(&doc.id()) {
                     ast_map::node_item(@ast::item {
-                        node: ast::item_const(ty, _), _
+                        node: ast::item_static(ty, _, _), _
                     }, _) => {
                         pprust::ty_to_str(ty, extract::interner())
                     }
@@ -115,7 +113,7 @@ fn fold_enum(
     let srv = fold.ctxt.clone();
 
     doc::EnumDoc {
-        variants: do vec::map(doc.variants) |variant| {
+        variants: do doc.variants.iter().transform |variant| {
             let sig = {
                 let variant = copy *variant;
                 do astsrv::exec(srv.clone()) |ctxt| {
@@ -124,7 +122,7 @@ fn fold_enum(
                             node: ast::item_enum(ref enum_definition, _), _
                         }, _) => {
                             let ast_variant =
-                                do vec::find(enum_definition.variants) |v| {
+                                copy *do enum_definition.variants.iter().find_ |v| {
                                 to_str(v.node.name) == variant.name
                             }.get();
 
@@ -140,7 +138,7 @@ fn fold_enum(
                 sig: Some(sig),
                 .. copy *variant
             }
-        },
+        }.collect(),
         .. doc
     }
 }
@@ -160,12 +158,12 @@ fn merge_methods(
     item_id: doc::AstId,
     docs: ~[doc::MethodDoc]
 ) -> ~[doc::MethodDoc] {
-    do vec::map(docs) |doc| {
+    do docs.iter().transform |doc| {
         doc::MethodDoc {
             sig: get_method_sig(srv.clone(), item_id, copy doc.name),
             .. copy *doc
         }
-    }
+    }.collect()
 }
 
 fn get_method_sig(
@@ -178,14 +176,14 @@ fn get_method_sig(
             ast_map::node_item(@ast::item {
                 node: ast::item_trait(_, _, ref methods), _
             }, _) => {
-                match vec::find(*methods, |method| {
+                match methods.iter().find_(|&method| {
                     match copy *method {
                         ast::required(ty_m) => to_str(ty_m.ident) == method_name,
                         ast::provided(m) => to_str(m.ident) == method_name,
                     }
                 }) {
                     Some(method) => {
-                        match method {
+                        match copy *method {
                             ast::required(ty_m) => {
                                 Some(pprust::fun_to_str(
                                     &ty_m.decl,
@@ -214,7 +212,7 @@ fn get_method_sig(
             ast_map::node_item(@ast::item {
                 node: ast::item_impl(_, _, _, ref methods), _
             }, _) => {
-                match vec::find(*methods, |method| {
+                match methods.iter().find_(|method| {
                     to_str(method.ident) == method_name
                 }) {
                     Some(method) => {
@@ -349,7 +347,6 @@ fn strip_struct_extra_stuff(item: @ast::item) -> @ast::item {
 
 #[cfg(test)]
 mod test {
-    use core::prelude::*;
 
     use astsrv;
     use doc;

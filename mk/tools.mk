@@ -12,23 +12,23 @@
 # and host architectures
 
 # The test runner that runs the cfail/rfail/rpass and bxench tests
-COMPILETEST_CRATE := $(S)src/compiletest/compiletest.rc
-COMPILETEST_INPUTS := $(wildcard $(S)src/compiletest/*rs)
+COMPILETEST_CRATE := $(S)src/compiletest/compiletest.rs
+COMPILETEST_INPUTS := $(wildcard $(S)src/compiletest/*.rs)
 
 # Rustpkg, the package manager and build system
-RUSTPKG_LIB := $(S)src/librustpkg/rustpkg.rc
-RUSTPKG_INPUTS := $(wildcard $(S)src/librustpkg/*rs)
+RUSTPKG_LIB := $(S)src/librustpkg/rustpkg.rs
+RUSTPKG_INPUTS := $(wildcard $(S)src/librustpkg/*.rs)
 
 # Rustdoc, the documentation tool
-RUSTDOC_LIB := $(S)src/librustdoc/rustdoc.rc
+RUSTDOC_LIB := $(S)src/librustdoc/rustdoc.rs
 RUSTDOC_INPUTS := $(wildcard $(S)src/librustdoc/*.rs)
 
 # Rusti, the JIT REPL
-RUSTI_LIB := $(S)src/librusti/rusti.rc
+RUSTI_LIB := $(S)src/librusti/rusti.rs
 RUSTI_INPUTS := $(wildcard $(S)src/librusti/*.rs)
 
 # Rust, the convenience tool
-RUST_LIB := $(S)src/librust/rust.rc
+RUST_LIB := $(S)src/librust/rust.rs
 RUST_INPUTS := $(wildcard $(S)src/librust/*.rs)
 
 # FIXME: These are only built for the host arch. Eventually we'll
@@ -191,7 +191,8 @@ $(foreach host,$(CFG_HOST_TRIPLES),				\
 $(foreach target,$(CFG_TARGET_TRIPLES),				\
  $(eval $(call TOOLS_STAGE_N_TARGET,0,1,$(host),$(target)))	\
  $(eval $(call TOOLS_STAGE_N_TARGET,1,2,$(host),$(target)))	\
- $(eval $(call TOOLS_STAGE_N_TARGET,2,3,$(host),$(target)))))
+ $(eval $(call TOOLS_STAGE_N_TARGET,2,3,$(host),$(target)))	\
+ $(eval $(call TOOLS_STAGE_N_TARGET,3,bogus,$(host),$(target)))))
 
 $(foreach host,$(CFG_HOST_TRIPLES),				\
  $(eval $(call TOOLS_STAGE_N_HOST,0,1,$(host),$(host)))	\

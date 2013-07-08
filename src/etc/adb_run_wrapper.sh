@@ -17,16 +17,17 @@ then
 
         L_RET=1
         L_COUNT=0
+        cd $PATH
         while [ $L_RET -eq 1 ]
         do
-            LD_LIBRARY_PATH=$PATH $PATH/$RUN $@ 1>$PATH/$RUN.stdout 2>$PATH/$RUN.stderr
+            TEST_EXEC_ENV=22 LD_LIBRARY_PATH=$PATH $PATH/$RUN $@ 1>$PATH/$RUN.stdout 2>$PATH/$RUN.stderr
             L_RET=$?
             if [ $L_COUNT -gt 0 ]
             then
                /system/bin/sleep $WAIT
                /system/bin/sync
             fi
-            L_COUNT=`expr $L_COUNT+1`
+            L_COUNT=$((L_COUNT+1))
         done
 
         echo $L_RET > $PATH/$RUN.exitcode

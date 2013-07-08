@@ -87,7 +87,6 @@
  * methods themselves.  Most are only suitable for some types of
  * values. */
 
-use core::prelude::*;
 
 use lib;
 use lib::llvm::ValueRef;
@@ -105,7 +104,7 @@ use middle::ty;
 use util::common::indenter;
 use util::ppaux::ty_to_str;
 
-use core::uint;
+use std::uint;
 use syntax::ast;
 use syntax::codemap::span;
 use syntax::parse::token::special_idents;
@@ -273,14 +272,14 @@ impl Datum {
          * `store_to()` instead, which will move if possible but copy if
          * neccessary. */
 
-        let _icx = bcx.insn_ctxt("copy_to");
+        let _icx = push_ctxt("copy_to");
 
         if ty::type_is_nil(self.ty) || ty::type_is_bot(self.ty) {
             return bcx;
         }
 
         debug!("copy_to(self=%s, action=%?, dst=%s)",
-               self.to_str(bcx.ccx()), action, bcx.val_str(dst));
+               self.to_str(bcx.ccx()), action, bcx.val_to_str(dst));
 
         // Watch out for the case where we are writing the copying the
         // value into the same location we read it out from.  We want
@@ -317,7 +316,7 @@ impl Datum {
          * A helper for `copy_to()` which does not check to see if we
          * are copying to/from the same value. */
 
-        let _icx = bcx.insn_ctxt("copy_to_no_check");
+        let _icx = push_ctxt("copy_to_no_check");
         let mut bcx = bcx;
 
         if action == DROP_EXISTING {
@@ -341,11 +340,11 @@ impl Datum {
     //
     pub fn move_to(&self, bcx: block, action: CopyAction, dst: ValueRef)
                    -> block {
-        let _icx = bcx.insn_ctxt("move_to");
+        let _icx = push_ctxt("move_to");
         let mut bcx = bcx;
 
         debug!("move_to(self=%s, action=%?, dst=%s)",
-               self.to_str(bcx.ccx()), action, bcx.val_str(dst));
+               self.to_str(bcx.ccx()), action, bcx.val_to_str(dst));
 
         if ty::type_is_nil(self.ty) || ty::type_is_bot(self.ty) {
             return bcx;
@@ -409,7 +408,7 @@ impl Datum {
 
     pub fn to_str(&self, ccx: &CrateContext) -> ~str {
         fmt!("Datum { val=%s, ty=%s, mode=%? }",
-             val_str(ccx.tn, self.val),
+             ccx.tn.val_to_str(self.val),
              ty_to_str(ccx.tcx, self.ty),
              self.mode)
     }
@@ -474,7 +473,7 @@ impl Datum {
             ByRef(_) => self.val,
             ByValue => {
                 if ty::type_is_nil(self.ty) || ty::type_is_bot(self.ty) {
-                    C_null(T_ptr(type_of::type_of(bcx.ccx(), self.ty)))
+                    C_null(type_of::type_of(bcx.ccx(), self.ty).ptr_to())
                 } else {
                     let slot = alloc_ty(bcx, self.ty);
                     Store(bcx, self.val, slot);
@@ -723,7 +722,7 @@ impl Datum {
     }
 
     /// expr: The deref expression.
-    pub fn deref(&self, bcx: block, expr: @ast::expr, derefs: uint)
+    pub fn deref(&self, bcx: block, expr: &ast::expr, derefs: uint)
                  -> DatumBlock {
         match self.try_deref(bcx, expr.span, expr.id, derefs, false) {
             (Some(lvres), bcx) => DatumBlock { bcx: bcx, datum: lvres },
@@ -740,7 +739,7 @@ impl Datum {
                      expr_id: ast::node_id,
                      max: uint)
                      -> DatumBlock {
-        let _icx = bcx.insn_ctxt("autoderef");
+        let _icx = push_ctxt("autoderef");
 
         debug!("autoderef(expr_id=%d, max=%?, self=%?)",
                expr_id, max, self.to_str(bcx.ccx()));

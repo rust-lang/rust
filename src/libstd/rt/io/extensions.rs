@@ -292,13 +292,13 @@ impl<T: Reader> ReaderUtil for T {
             let start_len = buf.len();
             let mut total_read = 0;
 
-            vec::reserve_at_least(buf, start_len + len);
+            buf.reserve_at_least(start_len + len);
             vec::raw::set_len(buf, start_len + len);
 
             do (|| {
                 while total_read < len {
                     let len = buf.len();
-                    let slice = vec::mut_slice(*buf, start_len + total_read, len);
+                    let slice = buf.mut_slice(start_len + total_read, len);
                     match self.read(slice) {
                         Some(nread) => {
                             total_read += nread;
@@ -343,7 +343,9 @@ impl<T: Reader> ReaderByteConversions for T {
     fn read_le_uint_n(&mut self, nbytes: uint) -> u64 {
         assert!(nbytes > 0 && nbytes <= 8);
 
-        let mut (val, pos, i) = (0u64, 0, nbytes);
+        let mut val = 0u64;
+        let mut pos = 0;
+        let mut i = nbytes;
         while i > 0 {
             val += (self.read_u8() as u64) << pos;
             pos += 8;
@@ -359,7 +361,8 @@ impl<T: Reader> ReaderByteConversions for T {
     fn read_be_uint_n(&mut self, nbytes: uint) -> u64 {
         assert!(nbytes > 0 && nbytes <= 8);
 
-        let mut (val, i) = (0u64, nbytes);
+        let mut val = 0u64;
+        let mut i = nbytes;
         while i > 0 {
             i -= 1;
             val += (self.read_u8() as u64) << i * 8;

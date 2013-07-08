@@ -46,7 +46,6 @@
 // future).  If you want to resolve everything but one type, you are
 // probably better off writing `resolve_all - resolve_ivar`.
 
-use core::prelude::*;
 
 use middle::ty::{FloatVar, FloatVid, IntVar, IntVid, RegionVid, TyVar, TyVid};
 use middle::ty::{type_is_bot, IntType, UintType};
@@ -54,11 +53,10 @@ use middle::ty;
 use middle::typeck::infer::{Bounds, cyclic_ty, fixup_err, fres, InferCtxt};
 use middle::typeck::infer::{region_var_bound_by_region_var, unresolved_ty};
 use middle::typeck::infer::to_str::InferStr;
-use middle::typeck::infer::unify::Root;
+use middle::typeck::infer::unify::{Root, UnifyInferCtxtMethods};
 use util::common::{indent, indenter};
 use util::ppaux::ty_to_str;
 
-use core::vec;
 use syntax::ast;
 
 pub static resolve_nested_tvar: uint = 0b0000000001;
@@ -205,7 +203,7 @@ impl ResolveState {
     }
 
     pub fn resolve_ty_var(&mut self, vid: TyVid) -> ty::t {
-        if vec::contains(self.v_seen, &vid) {
+        if self.v_seen.contains(&vid) {
             self.err = Some(cyclic_ty(vid));
             return ty::mk_var(self.infcx.tcx, vid);
         } else {

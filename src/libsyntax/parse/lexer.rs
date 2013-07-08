@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
-
 use ast;
 use codemap::{BytePos, CharPos, CodeMap, Pos, span};
 use codemap;
@@ -19,9 +17,9 @@ use ext::tt::transcribe::{dup_tt_reader};
 use parse::token;
 use parse::token::{str_to_ident};
 
-use core::char;
-use core::either;
-use core::u64;
+use std::char;
+use std::either;
+use std::u64;
 
 pub use ext::tt::transcribe::{TtReader, new_tt_reader};
 
@@ -182,7 +180,7 @@ pub fn bump(rdr: &mut StringReader) {
         let byte_offset_diff = next.next - current_byte_offset;
         rdr.pos = rdr.pos + BytePos(byte_offset_diff);
         rdr.curr = next.ch;
-        rdr.col += CharPos(1u);
+        rdr.col = rdr.col + CharPos(1u);
         if last_char == '\n' {
             rdr.filemap.next_line(rdr.last_pos);
             rdr.col = CharPos(0u);
@@ -450,8 +448,8 @@ fn scan_number(c: char, rdr: @mut StringReader) -> token::Token {
         is_float = true;
         bump(rdr);
         let dec_part = scan_digits(rdr, 10u);
-        num_str += ".";
-        num_str += dec_part;
+        num_str.push_char('.');
+        num_str.push_str(dec_part);
     }
     if is_float {
         match base {
@@ -463,7 +461,7 @@ fn scan_number(c: char, rdr: @mut StringReader) -> token::Token {
     match scan_exponent(rdr) {
       Some(ref s) => {
         is_float = true;
-        num_str += (*s);
+        num_str.push_str(*s);
       }
       None => ()
     }
@@ -789,7 +787,6 @@ mod test {
 
     use ast;
     use codemap::{BytePos, CodeMap, span};
-    use core::option::None;
     use diagnostic;
     use parse::token;
     use parse::token::{str_to_ident};
@@ -835,7 +832,7 @@ mod test {
     // check that the given reader produces the desired stream
     // of tokens (stop checking after exhausting the expected vec)
     fn check_tokenization (env: Env, expected: ~[token::Token]) {
-        for expected.each |expected_tok| {
+        for expected.iter().advance |expected_tok| {
             let TokenAndSpan {tok:actual_tok, sp: _} =
                 env.string_reader.next_token();
             assert_eq!(&actual_tok,expected_tok);

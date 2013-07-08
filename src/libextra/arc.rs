@@ -19,7 +19,7 @@
  *
  * ~~~ {.rust}
  * extern mod std;
- * use std::arc;
+ * use extra::arc;
  * let numbers=vec::from_fn(100, |ind| (ind as float)*rand::random());
  * let shared_numbers=arc::ARC(numbers);
  *
@@ -39,15 +39,14 @@
 
 #[allow(missing_doc)];
 
-use core::prelude::*;
 
 use sync;
 use sync::{Mutex, mutex_with_condvars, RWlock, rwlock_with_condvars};
 
-use core::cast;
-use core::unstable::sync::UnsafeAtomicRcBox;
-use core::task;
-use core::borrow;
+use std::cast;
+use std::unstable::sync::UnsafeAtomicRcBox;
+use std::task;
+use std::borrow;
 
 /// As sync::condvar, a mechanism for unlock-and-descheduling and signaling.
 pub struct Condvar<'self> {
@@ -112,7 +111,7 @@ impl<'self> Condvar<'self> {
 pub struct ARC<T> { x: UnsafeAtomicRcBox<T> }
 
 /// Create an atomically reference counted wrapper.
-pub fn ARC<T:Const + Owned>(data: T) -> ARC<T> {
+pub fn ARC<T:Freeze + Send>(data: T) -> ARC<T> {
     ARC { x: UnsafeAtomicRcBox::new(data) }
 }
 
@@ -120,7 +119,7 @@ pub fn ARC<T:Const + Owned>(data: T) -> ARC<T> {
  * Access the underlying data in an atomically reference counted
  * wrapper.
  */
-impl<T:Const+Owned> ARC<T> {
+impl<T:Freeze+Send> ARC<T> {
     pub fn get<'a>(&'a self) -> &'a T {
         unsafe { &*self.x.get_immut() }
     }
@@ -133,7 +132,7 @@ impl<T:Const+Owned> ARC<T> {
  * object. However, one of the `arc` objects can be sent to another task,
  * allowing them to share the underlying data.
  */
-impl<T:Const + Owned> Clone for ARC<T> {
+impl<T:Freeze + Send> Clone for ARC<T> {
     fn clone(&self) -> ARC<T> {
         ARC { x: self.x.clone() }
     }
@@ -149,14 +148,14 @@ struct MutexARCInner<T> { lock: Mutex, failed: bool, data: T }
 struct MutexARC<T> { x: UnsafeAtomicRcBox<MutexARCInner<T>> }
 
 /// Create a mutex-protected ARC with the supplied data.
-pub fn MutexARC<T:Owned>(user_data: T) -> MutexARC<T> {
+pub fn MutexARC<T:Send>(user_data: T) -> MutexARC<T> {
     mutex_arc_with_condvars(user_data, 1)
 }
 /**
  * Create a mutex-protected ARC with the supplied data and a specified number
  * of condvars (as sync::mutex_with_condvars).
  */
-pub fn mutex_arc_with_condvars<T:Owned>(user_data: T,
+pub fn mutex_arc_with_condvars<T:Send>(user_data: T,
                                     num_condvars: uint) -> MutexARC<T> {
     let data =
         MutexARCInner { lock: mutex_with_condvars(num_condvars),
@@ -164,7 +163,7 @@ pub fn mutex_arc_with_condvars<T:Owned>(user_data: T,
     MutexARC { x: UnsafeAtomicRcBox::new(data) }
 }
 
-impl<T:Owned> Clone for MutexARC<T> {
+impl<T:Send> Clone for MutexARC<T> {
     /// Duplicate a mutex-protected ARC, as arc::clone.
     fn clone(&self) -> MutexARC<T> {
         // NB: Cloning the underlying mutex is not necessary. Its reference
@@ -173,7 +172,7 @@ impl<T:Owned> Clone for MutexARC<T> {
     }
 }
 
-impl<T:Owned> MutexARC<T> {
+impl<T:Send> MutexARC<T> {
 
     /**
      * Access the underlying mutable data with mutual exclusion from other
@@ -247,7 +246,7 @@ struct PoisonOnFail {
 }
 
 impl Drop for PoisonOnFail {
-    fn finalize(&self) {
+    fn drop(&self) {
         unsafe {
             /* assert!(!*self.failed);
                -- might be false in case of cond.wait() */
@@ -276,20 +275,21 @@ struct RWARCInner<T> { lock: RWlock, failed: bool, data: T }
  *
  * Unlike mutex_arcs, rw_arcs are safe, because they cannot be nested.
  */
-#[mutable]
+#[mutable] // XXX remove after snap
+#[no_freeze]
 struct RWARC<T> {
     x: UnsafeAtomicRcBox<RWARCInner<T>>,
 }
 
 /// Create a reader/writer ARC with the supplied data.
-pub fn RWARC<T:Const + Owned>(user_data: T) -> RWARC<T> {
+pub fn RWARC<T:Freeze + Send>(user_data: T) -> RWARC<T> {
     rw_arc_with_condvars(user_data, 1)
 }
 /**
  * Create a reader/writer ARC with the supplied data and a specified number
  * of condvars (as sync::rwlock_with_condvars).
  */
-pub fn rw_arc_with_condvars<T:Const + Owned>(
+pub fn rw_arc_with_condvars<T:Freeze + Send>(
     user_data: T,
     num_condvars: uint) -> RWARC<T>
 {
@@ -299,7 +299,7 @@ pub fn rw_arc_with_condvars<T:Const + Owned>(
     RWARC { x: UnsafeAtomicRcBox::new(data), }
 }
 
-impl<T:Const + Owned> RWARC<T> {
+impl<T:Freeze + Send> RWARC<T> {
     /// Duplicate a rwlock-protected ARC, as arc::clone.
     pub fn clone(&self) -> RWARC<T> {
         RWARC {
@@ -309,7 +309,7 @@ impl<T:Const + Owned> RWARC<T> {
 
 }
 
-impl<T:Const + Owned> RWARC<T> {
+impl<T:Freeze + Send> RWARC<T> {
     /**
      * Access the underlying data mutably. Locks the rwlock in write mode;
      * other readers and writers will block.
@@ -435,8 +435,8 @@ impl<T:Const + Owned> RWARC<T> {
 // lock it. This wraps the unsafety, with the justification that the 'lock'
 // field is never overwritten; only 'failed' and 'data'.
 #[doc(hidden)]
-fn borrow_rwlock<T:Const + Owned>(state: *const RWARCInner<T>) -> *RWlock {
-    unsafe { cast::transmute(&const (*state).lock) }
+fn borrow_rwlock<T:Freeze + Send>(state: *mut RWARCInner<T>) -> *RWlock {
+    unsafe { cast::transmute(&(*state).lock) }
 }
 
 /// The "write permission" token used for RWARC.write_downgrade().
@@ -452,7 +452,7 @@ pub struct RWReadMode<'self, T> {
     token: sync::RWlockReadMode<'self>,
 }
 
-impl<'self, T:Const + Owned> RWWriteMode<'self, T> {
+impl<'self, T:Freeze + Send> RWWriteMode<'self, T> {
     /// Access the pre-downgrade RWARC in write mode.
     pub fn write<U>(&mut self, blk: &fn(x: &mut T) -> U) -> U {
         match *self {
@@ -493,7 +493,7 @@ impl<'self, T:Const + Owned> RWWriteMode<'self, T> {
     }
 }
 
-impl<'self, T:Const + Owned> RWReadMode<'self, T> {
+impl<'self, T:Freeze + Send> RWReadMode<'self, T> {
     /// Access the post-downgrade rwlock in read mode.
     pub fn read<U>(&self, blk: &fn(x: &T) -> U) -> U {
         match *self {
@@ -513,13 +513,13 @@ impl<'self, T:Const + Owned> RWReadMode<'self, T> {
 
 #[cfg(test)]
 mod tests {
-    use core::prelude::*;
 
     use arc::*;
 
-    use core::cell::Cell;
-    use core::comm;
-    use core::task;
+    use std::cell::Cell;
+    use std::comm;
+    use std::task;
+    use std::uint;
 
     #[test]
     fn manually_share_arc() {
@@ -725,7 +725,7 @@ mod tests {
         }
 
         // Wait for children to pass their asserts
-        for children.each |r| {
+        for children.iter().advance |r| {
             r.recv();
         }
 
@@ -789,18 +789,20 @@ mod tests {
                 }
                 assert_eq!(*state, 42);
                 *state = 31337;
+                // FIXME: #7372: hits type inference bug with iterators
                 // send to other readers
-                for reader_convos.each |x| {
-                    match *x {
+                for uint::range(0, reader_convos.len()) |i| {
+                    match reader_convos[i] {
                         (ref rc, _) => rc.send(()),
                     }
                 }
             }
             let read_mode = arc.downgrade(write_mode);
             do (&read_mode).read |state| {
+                // FIXME: #7372: hits type inference bug with iterators
                 // complete handshake with other readers
-                for reader_convos.each |x| {
-                    match *x {
+                for uint::range(0, reader_convos.len()) |i| {
+                    match reader_convos[i] {
                         (_, ref rp) => rp.recv(),
                     }
                 }

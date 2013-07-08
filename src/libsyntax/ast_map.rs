@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
-
 use abi::AbiSet;
 use ast::*;
 use ast;
@@ -22,9 +20,9 @@ use print::pprust;
 use visit;
 use syntax::parse::token::special_idents;
 
-use core::cmp;
-use core::hashmap::HashMap;
-use core::vec;
+use std::cmp;
+use std::hashmap::HashMap;
+use std::vec;
 
 pub enum path_elt {
     path_mod(ident),
@@ -126,7 +124,7 @@ pub fn mk_ast_map_visitor() -> vt {
     });
 }
 
-pub fn map_crate(diag: @span_handler, c: @crate) -> map {
+pub fn map_crate(diag: @span_handler, c: &crate) -> map {
     let cx = @mut Ctx {
         map: @mut HashMap::new(),
         path: ~[],
@@ -185,7 +183,7 @@ pub fn map_fn(
     (cx,v): (@mut Ctx,
              visit::vt<@mut Ctx>)
 ) {
-    for decl.inputs.each |a| {
+    for decl.inputs.iter().advance |a| {
         cx.map.insert(a.id, node_arg);
     }
     visit::visit_fn(fk, decl, body, sp, id, (cx, v));
@@ -220,19 +218,19 @@ pub fn map_item(i: @item, (cx, v): (@mut Ctx, visit::vt<@mut Ctx>)) {
     match i.node {
         item_impl(_, _, _, ref ms) => {
             let impl_did = ast_util::local_def(i.id);
-            for ms.each |m| {
+            for ms.iter().advance |m| {
                 map_method(impl_did, extend(cx, i.ident), *m, cx);
             }
         }
         item_enum(ref enum_definition, _) => {
-            for (*enum_definition).variants.each |v| {
+            for (*enum_definition).variants.iter().advance |v| {
                 cx.map.insert(v.node.id, node_variant(
                     /* FIXME (#2543) */ copy *v, i,
                     extend(cx, i.ident)));
             }
         }
         item_foreign_mod(ref nm) => {
-            for nm.items.each |nitem| {
+            for nm.items.iter().advance |nitem| {
                 // Compute the visibility for this native item.
                 let visibility = match nitem.vis {
                     public => public,
@@ -266,10 +264,10 @@ pub fn map_item(i: @item, (cx, v): (@mut Ctx, visit::vt<@mut Ctx>)) {
             );
         }
         item_trait(_, ref traits, ref methods) => {
-            for traits.each |p| {
+            for traits.iter().advance |p| {
                 cx.map.insert(p.ref_id, node_item(i, item_path));
             }
-            for methods.each |tm| {
+            for methods.iter().advance |tm| {
                 let id = ast_util::trait_method_to_ty_method(tm).id;
                 let d_id = ast_util::local_def(i.id);
                 cx.map.insert(
@@ -339,7 +337,7 @@ pub fn node_id_to_str(map: map, id: node_id, itr: @ident_interner) -> ~str {
       Some(&node_item(item, path)) => {
         let path_str = path_ident_to_str(path, item.ident, itr);
         let item_str = match item.node {
-          item_const(*) => ~"const",
+          item_static(*) => ~"static",
           item_fn(*) => ~"fn",
           item_mod(*) => ~"mod",
           item_foreign_mod(*) => ~"foreign mod",

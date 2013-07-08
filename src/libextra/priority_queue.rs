@@ -12,25 +12,14 @@
 
 #[allow(missing_doc)];
 
-use core::prelude::*;
 
-use core::old_iter::BaseIter;
-use core::unstable::intrinsics::{move_val_init, init};
-use core::util::{replace, swap};
-use core::vec;
+use std::unstable::intrinsics::{move_val_init, init};
+use std::util::{replace, swap};
+use std::vec;
 
-#[allow(missing_doc)]
+/// A priority queue implemented with a binary heap
 pub struct PriorityQueue<T> {
     priv data: ~[T],
-}
-
-impl<T:Ord> BaseIter<T> for PriorityQueue<T> {
-    /// Visit all values in the underlying vector.
-    ///
-    /// The values are **not** visited in order.
-    fn each(&self, f: &fn(&T) -> bool) -> bool { self.data.each(f) }
-
-    fn size_hint(&self) -> Option<uint> { self.data.size_hint() }
 }
 
 impl<T:Ord> Container for PriorityQueue<T> {
@@ -47,6 +36,12 @@ impl<T:Ord> Mutable for PriorityQueue<T> {
 }
 
 impl<T:Ord> PriorityQueue<T> {
+    /// An iterator visiting all values in underlying vector, in
+    /// arbitrary order.
+    pub fn iter<'a>(&'a self) -> PriorityQueueIterator<'a, T> {
+        PriorityQueueIterator { iter: self.data.iter() }
+    }
+
     /// Returns the greatest item in the queue - fails if empty
     pub fn top<'a>(&'a self) -> &'a T { &self.data[0] }
 
@@ -56,12 +51,12 @@ impl<T:Ord> PriorityQueue<T> {
     }
 
     /// Returns the number of elements the queue can hold without reallocating
-    pub fn capacity(&self) -> uint { vec::capacity(&self.data) }
+    pub fn capacity(&self) -> uint { self.data.capacity() }
 
-    pub fn reserve(&mut self, n: uint) { vec::reserve(&mut self.data, n) }
+    pub fn reserve(&mut self, n: uint) { self.data.reserve(n) }
 
     pub fn reserve_at_least(&mut self, n: uint) {
-        vec::reserve_at_least(&mut self.data, n)
+        self.data.reserve_at_least(n)
     }
 
     /// Pop the greatest item from the queue - fails if empty
@@ -112,7 +107,7 @@ impl<T:Ord> PriorityQueue<T> {
         let mut end = q.len();
         while end > 1 {
             end -= 1;
-            vec::swap(q.data, 0, end);
+            q.data.swap(0, end);
             q.siftdown_range(0, end)
         }
         q.to_vec()
@@ -183,10 +178,32 @@ impl<T:Ord> PriorityQueue<T> {
     }
 }
 
+/// PriorityQueue iterator
+pub struct PriorityQueueIterator <'self, T> {
+    priv iter: vec::VecIterator<'self, T>,
+}
+
+impl<'self, T> Iterator<&'self T> for PriorityQueueIterator<'self, T> {
+    #[inline]
+    fn next(&mut self) -> Option<(&'self T)> { self.iter.next() }
+}
+
 #[cfg(test)]
 mod tests {
     use sort::merge_sort;
     use priority_queue::PriorityQueue;
+
+    #[test]
+    fn test_iterator() {
+        let data = ~[5, 9, 3];
+        let iterout = ~[9, 5, 3];
+        let pq = PriorityQueue::from_vec(data);
+        let mut i = 0;
+        for pq.iter().advance |el| {
+            assert_eq!(*el, iterout[i]);
+            i += 1;
+        }
+    }
 
     #[test]
     fn test_top_and_pop() {

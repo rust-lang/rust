@@ -99,9 +99,9 @@ If you've fulfilled those prerequisites, something along these lines
 should work.
 
 ~~~~ {.notrust}
-$ curl -O http://static.rust-lang.org/dist/rust-0.6.tar.gz
-$ tar -xzf rust-0.6.tar.gz
-$ cd rust-0.6
+$ curl -O http://static.rust-lang.org/dist/rust-0.7.tar.gz
+$ tar -xzf rust-0.7.tar.gz
+$ cd rust-0.7
 $ ./configure
 $ make && make install
 ~~~~
@@ -119,8 +119,8 @@ API-documentation tool; `rustpkg`, the Rust package manager;
 interface for them, and for a few common command line scenarios.
 
 [wiki-start]: https://github.com/mozilla/rust/wiki/Note-getting-started-developing-Rust
-[tarball]: http://static.rust-lang.org/dist/rust-0.6.tar.gz
-[win-exe]: http://static.rust-lang.org/dist/rust-0.6-install.exe
+[tarball]: http://static.rust-lang.org/dist/rust-0.7.tar.gz
+[win-exe]: http://static.rust-lang.org/dist/rust-0.7-install.exe
 
 ## Compiling your first program
 
@@ -1084,8 +1084,8 @@ let managed_box  : @Point = @Point { x: 5.0, y: 1.0 };
 let owned_box    : ~Point = ~Point { x: 7.0, y: 9.0 };
 ~~~
 
-Suppose we wanted to write a procedure that computed the distance
-between any two points, no matter where they were stored. For example,
+Suppose we want to write a procedure that computes the distance
+between any two points, no matter where they are stored. For example,
 we might like to compute the distance between `on_the_stack` and
 `managed_box`, or between `managed_box` and `owned_box`. One option is
 to define a function that takes two arguments of type point—that is,
@@ -1230,7 +1230,7 @@ let area = rect.area();
 ~~~
 
 You can write an expression that dereferences any number of pointers
-automatically. For example, if you felt inclined, you could write
+automatically. For example, if you feel inclined, you could write
 something silly like
 
 ~~~
@@ -1281,9 +1281,9 @@ let your_crayons = ~[BananaMania, Beaver, Bittersweet];
 // Add two vectors to create a new one
 let our_crayons = my_crayons + your_crayons;
 
-// += will append to a vector, provided it lives in a mutable slot
+// .push_all() will append to a vector, provided it lives in a mutable slot
 let mut my_crayons = my_crayons;
-my_crayons += your_crayons;
+my_crayons.push_all(your_crayons);
 ~~~~
 
 > ***Note:*** The above examples of vector addition use owned
@@ -1396,7 +1396,7 @@ assert!(!crayons.is_empty());
 
 // Iterate over a vector, obtaining a pointer to each element
 // (`for` is explained in the next section)
-for crayons.each |crayon| {
+for crayons.iter().advance |crayon| {
     let delicious_crayon_wax = unwrap_crayon(*crayon);
     eat_crayon_wax(delicious_crayon_wax);
 }
@@ -1552,13 +1552,6 @@ fn each(v: &[int], op: &fn(v: &int)) {
 }
 ~~~~
 
-As an aside, the reason we pass in a *pointer* to an integer rather
-than the integer itself is that this is how the actual `each()`
-function for vectors works. `vec::each` though is a
-[generic](#generics) function, so must be efficient to use for all
-types. Passing the elements by pointer avoids copying potentially
-large objects.
-
 As a caller, if we use a closure to provide the final operator
 argument, we can write it in a way that has a pleasant, block-like
 structure.
@@ -1613,93 +1606,6 @@ do spawn {
 
 If you want to see the output of `debug!` statements, you will need to turn on `debug!` logging.
 To enable `debug!` logging, set the RUST_LOG environment variable to the name of your crate, which, for a file named `foo.rs`, will be `foo` (e.g., with bash, `export RUST_LOG=foo`).
-
-## For loops
-
-The most common way to express iteration in Rust is with a `for`
-loop. Like `do`, `for` is a nice syntax for describing control flow
-with closures.  Additionally, within a `for` loop, `break`, `loop`,
-and `return` work just as they do with `while` and `loop`.
-
-Consider again our `each` function, this time improved to return
-immediately when the iteratee returns `false`:
-
-~~~~
-fn each(v: &[int], op: &fn(v: &int) -> bool) -> bool {
-   let mut n = 0;
-   while n < v.len() {
-       if !op(&v[n]) {
-           return false;
-       }
-       n += 1;
-   }
-   return true;
-}
-~~~~
-
-And using this function to iterate over a vector:
-
-~~~~
-# use each = std::vec::each;
-each([2, 4, 8, 5, 16], |n| {
-    if *n % 2 != 0 {
-        println("found odd number!");
-        false
-    } else { true }
-});
-~~~~
-
-With `for`, functions like `each` can be treated more
-like built-in looping structures. When calling `each`
-in a `for` loop, instead of returning `false` to break
-out of the loop, you just write `break`. To skip ahead
-to the next iteration, write `loop`.
-
-~~~~
-# use each = std::vec::each;
-for each([2, 4, 8, 5, 16]) |n| {
-    if *n % 2 != 0 {
-        println("found odd number!");
-        break;
-    }
-}
-~~~~
-
-As an added bonus, you can use the `return` keyword, which is not
-normally allowed in closures, in a block that appears as the body of a
-`for` loop: the meaning of `return` in such a block is to return from
-the enclosing function, not just the loop body.
-
-~~~~
-# use each = std::vec::each;
-fn contains(v: &[int], elt: int) -> bool {
-    for each(v) |x| {
-        if (*x == elt) { return true; }
-    }
-    false
-}
-~~~~
-
-Notice that, because `each` passes each value by borrowed pointer,
-the iteratee needs to dereference it before using it.
-In these situations it can be convenient to lean on Rust's
-argument patterns to bind `x` to the actual value, not the pointer.
-
-~~~~
-# use each = std::vec::each;
-# fn contains(v: &[int], elt: int) -> bool {
-    for each(v) |&x| {
-        if (x == elt) { return true; }
-    }
-#    false
-# }
-~~~~
-
-`for` syntax only works with stack closures.
-
-> ***Note:*** This is, essentially, a special loop protocol:
-> the keywords `break`, `loop`, and `return` work, in varying degree,
-> with `while`, `loop`, `do`, and `for` constructs.
 
 # Methods
 
@@ -1808,7 +1714,7 @@ s.draw_borrowed();
 ~~~
 
 Implementations may also define standalone (sometimes called "static")
-methods. The absence of a `self` paramater distinguishes such methods.
+methods. The absence of a `self` parameter distinguishes such methods.
 These methods are the preferred way to define constructor functions.
 
 ~~~~ {.xfail-test}
@@ -1841,10 +1747,9 @@ vector consisting of the result of applying `function` to each element
 of `vector`:
 
 ~~~~
-# use std::vec;
 fn map<T, U>(vector: &[T], function: &fn(v: &T) -> U) -> ~[U] {
     let mut accumulator = ~[];
-    for vec::each(vector) |element| {
+    for vector.iter().advance |element| {
         accumulator.push(function(element));
     }
     return accumulator;
@@ -1979,7 +1884,7 @@ types by the compiler, and may not be overridden:
 > iterations of the language, and often still are.
 
 Additionally, the `Drop` trait is used to define destructors. This
-trait defines one method called `finalize`, which is automatically
+trait defines one method called `drop`, which is automatically
 called when a value of the type that implements this trait is
 destroyed, either because the value went out of scope or because the
 garbage collector reclaimed it.
@@ -1990,7 +1895,7 @@ struct TimeBomb {
 }
 
 impl Drop for TimeBomb {
-    fn finalize(&self) {
+    fn drop(&self) {
         for self.explosivity.times {
             println("blam!");
         }
@@ -1998,7 +1903,7 @@ impl Drop for TimeBomb {
 }
 ~~~
 
-It is illegal to call `finalize` directly. Only code inserted by the compiler
+It is illegal to call `drop` directly. Only code inserted by the compiler
 may call it.
 
 ## Declaring and implementing traits
@@ -2119,7 +2024,7 @@ generic types.
 ~~~~
 # trait Printable { fn print(&self); }
 fn print_all<T: Printable>(printable_things: ~[T]) {
-    for printable_things.each |thing| {
+    for printable_things.iter().advance |thing| {
         thing.print();
     }
 }
@@ -2165,7 +2070,7 @@ However, consider this function:
 trait Drawable { fn draw(&self); }
 
 fn draw_all<T: Drawable>(shapes: ~[T]) {
-    for shapes.each |shape| { shape.draw(); }
+    for shapes.iter().advance |shape| { shape.draw(); }
 }
 # let c: Circle = new_circle();
 # draw_all(~[c]);
@@ -2180,7 +2085,7 @@ an _object_.
 ~~~~
 # trait Drawable { fn draw(&self); }
 fn draw_all(shapes: &[@Drawable]) {
-    for shapes.each |shape| { shape.draw(); }
+    for shapes.iter().advance |shape| { shape.draw(); }
 }
 ~~~~
 
@@ -2319,7 +2224,7 @@ enum ABC { A, B, C }
 
 The full list of derivable traits is `Eq`, `TotalEq`, `Ord`,
 `TotalOrd`, `Encodable` `Decodable`, `Clone`, `DeepClone`,
-`IterBytes`, `Rand` and `ToStr`.
+`IterBytes`, `Rand`, `Zero`, and `ToStr`.
 
 # Modules and crates
 
@@ -2522,7 +2427,7 @@ will not be compiled successfully.
 
 ## A minimal example
 
-Now for something that you can actually compile yourself. We have
+Now for something that you can actually compile yourself, we have
 these two files:
 
 ~~~~
@@ -2622,6 +2527,7 @@ tutorials on individual topics.
 * [Tasks and communication][tasks]
 * [Macros][macros]
 * [The foreign function interface][ffi]
+* [Containers and iterators](tutorial-container.html)
 
 There is further documentation on the [wiki].
 

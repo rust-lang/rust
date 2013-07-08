@@ -16,7 +16,7 @@ pub struct rsrc {
 }
 
 impl Drop for rsrc {
-    fn finalize(&self) {
+    fn drop(&self) {
         foo(self.x);
     }
 }

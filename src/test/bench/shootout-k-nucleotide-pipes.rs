@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-pretty (extra blank line is inserted in vec::mapi call)
+// xfail-pretty the `let to_child` line gets an extra newline
 // multi tasking k-nucleotide
 
 extern mod extra;
@@ -56,7 +56,7 @@ fn sort_and_fmt(mm: &HashMap<~[u8], uint>, total: uint) -> ~str {
    let mut pairs = ~[];
 
    // map -> [(k,%)]
-   for mm.each |&key, &val| {
+   for mm.iter().advance |(&key, &val)| {
       pairs.push((key, pct(val, total)));
    }
 
@@ -64,13 +64,13 @@ fn sort_and_fmt(mm: &HashMap<~[u8], uint>, total: uint) -> ~str {
 
    let mut buffer = ~"";
 
-   for pairs_sorted.each |kv| {
+   for pairs_sorted.iter().advance |kv| {
        let (k,v) = copy *kv;
        unsafe {
            let b = str::raw::from_bytes(k);
            // FIXME: #4318 Instead of to_ascii and to_str_ascii, could use
            // to_ascii_consume and to_str_consume to not do a unnecessary copy.
-           buffer += (fmt!("%s %0.3f\n", b.to_ascii().to_upper().to_str_ascii(), v));
+           buffer.push_str(fmt!("%s %0.3f\n", b.to_ascii().to_upper().to_str_ascii(), v));
        }
    }
 
@@ -90,7 +90,7 @@ fn find(mm: &HashMap<~[u8], uint>, key: ~str) -> uint {
 
 // given a map, increment the counter for a key
 fn update_freq(mm: &mut HashMap<~[u8], uint>, key: &[u8]) {
-    let key = vec::slice(key, 0, key.len()).to_vec();
+    let key = key.to_owned();
     let newval = match mm.pop(&key) {
         Some(v) => v + 1,
         None => 1
@@ -107,11 +107,11 @@ fn windows_with_carry(bb: &[u8], nn: uint,
 
    let len = bb.len();
    while ii < len - (nn - 1u) {
-      it(vec::slice(bb, ii, ii+nn));
+      it(bb.slice(ii, ii+nn));
       ii += 1u;
    }
 
-   return vec::slice(bb, len - (nn - 1u), len).to_vec();
+   return bb.slice(len - (nn - 1u), len).to_owned();
 }
 
 fn make_sequence_processor(sz: uint,
@@ -163,14 +163,13 @@ fn main() {
 
 
 
-   // initialize each sequence sorter
-   let sizes = ~[1,2,3,4,6,12,18];
-    let streams = vec::map(sizes, |_sz| Some(stream()));
-    let mut streams = streams;
+    // initialize each sequence sorter
+    let sizes = ~[1u,2,3,4,6,12,18];
+    let mut streams = vec::from_fn(sizes.len(), |_| Some(stream::<~str>()));
     let mut from_child = ~[];
-    let to_child   = vec::mapi(sizes, |ii, sz| {
+    let to_child   = do sizes.iter().zip(streams.mut_iter()).transform |(sz, stream_ref)| {
         let sz = *sz;
-        let stream = util::replace(&mut streams[ii], None);
+        let stream = util::replace(stream_ref, None);
         let (from_child_, to_parent_) = stream.unwrap();
 
         from_child.push(from_child_);
@@ -182,7 +181,7 @@ fn main() {
         };
 
         to_child
-    });
+    }.collect::<~[Chan<~[u8]>]>();
 
 
    // latch stores true after we've started
@@ -211,7 +210,7 @@ fn main() {
          (_, true) => {
             let line_bytes = line.as_bytes();
 
-           for sizes.eachi |ii, _sz| {
+           for sizes.iter().enumerate().advance |(ii, _sz)| {
                let mut lb = line_bytes.to_owned();
                to_child[ii].send(lb);
             }
@@ -223,12 +222,12 @@ fn main() {
    }
 
    // finish...
-    for sizes.eachi |ii, _sz| {
+    for sizes.iter().enumerate().advance |(ii, _sz)| {
       to_child[ii].send(~[]);
    }
 
    // now fetch and print result messages
-    for sizes.eachi |ii, _sz| {
+    for sizes.iter().enumerate().advance |(ii, _sz)| {
       io::println(from_child[ii].recv());
    }
 }

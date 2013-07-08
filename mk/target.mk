@@ -13,6 +13,15 @@
 # this exists can be found on issue #2400
 export CFG_COMPILER_TRIPLE
 
+# The standard libraries should be held up to a higher standard than any old
+# code, make sure that these common warnings are denied by default. These can
+# be overridden during development temporarily. For stage0, we allow all these
+# to suppress warnings which may be bugs in stage0 (should be fixed in stage1+)
+# NOTE: add "-A warnings" after snapshot to WFLAGS_ST0
+WFLAGS_ST0 = -A unrecognized-lint
+WFLAGS_ST1 = -D warnings
+WFLAGS_ST2 = -D warnings
+
 # TARGET_STAGE_N template: This defines how target artifacts are built
 # for all stage/target architecture combinations. The arguments:
 # $(1) is the stage
@@ -39,7 +48,7 @@ $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_STDLIB_$(2)): \
 		$$(TSREQ$(1)_T_$(2)_H_$(3)) \
 		| $$(TLIB$(1)_T_$(2)_H_$(3))/
 	@$$(call E, compile_and_link: $$@)
-	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< && touch $$@
+	$$(STAGE$(1)_T_$(2)_H_$(3)) $$(WFLAGS_ST$(1)) -o $$@ $$< && touch $$@
 
 $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_EXTRALIB_$(2)): \
 		$$(EXTRALIB_CRATE) $$(EXTRALIB_INPUTS) \
@@ -47,7 +56,7 @@ $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_EXTRALIB_$(2)): \
 		$$(TSREQ$(1)_T_$(2)_H_$(3)) \
 		| $$(TLIB$(1)_T_$(2)_H_$(3))/
 	@$$(call E, compile_and_link: $$@)
-	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< && touch $$@
+	$$(STAGE$(1)_T_$(2)_H_$(3)) $$(WFLAGS_ST$(1)) -o $$@ $$< && touch $$@
 
 $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBSYNTAX_$(3)): \
                 $$(LIBSYNTAX_CRATE) $$(LIBSYNTAX_INPUTS) \

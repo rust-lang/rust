@@ -882,11 +882,11 @@ the function name.
 
 ~~~~ {.xfail-test}
 fn iter<T>(seq: &[T], f: &fn(T)) {
-    for seq.each |elt| { f(elt); }
+    for seq.iter().advance |elt| { f(elt); }
 }
 fn map<T, U>(seq: &[T], f: &fn(T) -> U) -> ~[U] {
     let mut acc = ~[];
-    for seq.each |elt| { acc.push(f(elt)); }
+    for seq.iter().advance |elt| { acc.push(f(elt)); }
     acc
 }
 ~~~~
@@ -1561,8 +1561,11 @@ Supported traits for `deriving` are:
 * `Clone` and `DeepClone`, to perform (deep) copies.
 * `IterBytes`, to iterate over the bytes in a data type.
 * `Rand`, to create a random instance of a data type.
+* `Zero`, to create an zero (or empty) instance of a data type.
 * `ToStr`, to convert to a string. For a type with this instance,
-  `obj.to_str()` has the same output as `fmt!("%?", obj)`.
+  `obj.to_str()` has similar output as `fmt!("%?", obj)`, but it differs in that
+  each constituent field of the type must also implement `ToStr` and will have
+  `field.to_str()` invoked to build up the result.
 
 # Statements and expressions
 
@@ -2326,7 +2329,7 @@ An example of a for loop over the contents of a vector:
 
 let v: &[foo] = &[a, b, c];
 
-for v.each |e| {
+for v.iter().advance |e| {
     bar(*e);
 }
 ~~~~
@@ -2617,7 +2620,7 @@ assert!(b != "world");
 
 The vector type constructor represents a homogeneous array of values of a given type.
 A vector has a fixed size.
-(Operations like `vec::push` operate solely on owned vectors.)
+(Operations like `vec.push` operate solely on owned vectors.)
 A vector type can be annotated with a _definite_ size,
 written with a trailing asterisk and integer literal, such as `[int * 10]`.
 Such a definite-sized vector type is a first-class type, since its size is known statically.
@@ -2859,13 +2862,13 @@ call to the method `make_string`.
 Types in Rust are categorized into kinds, based on various properties of the components of the type.
 The kinds are:
 
-`Const`
+`Freeze`
   : Types of this kind are deeply immutable;
     they contain no mutable memory locations directly or indirectly via pointers.
-`Owned`
+`Send`
   : Types of this kind can be safely sent between tasks.
     This kind includes scalars, owning pointers, owned closures, and
-    structural types containing only other owned types. All `Owned` types are `Static`.
+    structural types containing only other owned types. All `Send` types are `Static`.
 `Static`
   : Types of this kind do not contain any borrowed pointers;
     this can be a useful guarantee for code that breaks borrowing assumptions using [`unsafe` operations](#unsafe-functions).
@@ -2879,7 +2882,7 @@ The kinds are:
     trait provides a single method `finalize` that takes no parameters, and is run
     when values of the type are dropped. Such a method is called a "destructor",
     and are always executed in "top-down" order: a value is completely destroyed
-    before any of the values it owns run their destructors. Only `Owned` types
+    before any of the values it owns run their destructors. Only `Send` types
     that do not implement `Copy` can implement `Drop`.
 
 > **Note:** The `finalize` method may be renamed in future versions of Rust.
@@ -2965,10 +2968,10 @@ frame they are allocated within.
 A task owns all memory it can *safely* reach through local variables,
 as well as managed, owning and borrowed pointers.
 
-When a task sends a value that has the `Owned` trait to another task,
+When a task sends a value that has the `Send` trait to another task,
 it loses ownership of the value sent and can no longer refer to it.
 This is statically guaranteed by the combined use of "move semantics",
-and the compiler-checked _meaning_ of the `Owned` trait:
+and the compiler-checked _meaning_ of the `Send` trait:
 it is only instantiated for (transitively) sendable kinds of data constructor and pointers,
 never including managed or borrowed pointers.
 
@@ -3113,7 +3116,7 @@ These include:
   - read-only and read-write shared variables with various safe mutual exclusion patterns
   - simple locks and semaphores
 
-When such facilities carry values, the values are restricted to the [`Owned` type-kind](#type-kinds).
+When such facilities carry values, the values are restricted to the [`Send` type-kind](#type-kinds).
 Restricting communication interfaces to this kind ensures that no borrowed or managed pointers move between tasks.
 Thus access to an entire data structure can be mediated through its owning "root" value;
 no further locking or copying is required to avoid data races within the substructure of such a value.

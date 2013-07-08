@@ -10,17 +10,13 @@
 
 #[doc(hidden)];
 
-use libc::{c_char, c_void, intptr_t, uintptr_t};
-use ptr::mut_null;
+use libc::c_void;
+use ptr::{mut_null};
 use repr::BoxRepr;
-use rt;
-use rt::OldTaskContext;
-use sys::TypeDesc;
 use cast::transmute;
+use unstable::intrinsics::TyDesc;
 
-#[cfg(not(test))] use ptr::to_unsafe_ptr;
-
-type DropGlue<'self> = &'self fn(**TypeDesc, *c_void);
+type DropGlue<'self> = &'self fn(**TyDesc, *c_void);
 
 /*
  * Box annihilation
@@ -63,6 +59,8 @@ unsafe fn each_live_alloc(read_next_before: bool,
 
 #[cfg(unix)]
 fn debug_mem() -> bool {
+    use rt;
+    use rt::OldTaskContext;
     // XXX: Need to port the environment struct to newsched
     match rt::context() {
         OldTaskContext => ::rt::env::get().debug_mem,
@@ -73,6 +71,19 @@ fn debug_mem() -> bool {
 #[cfg(windows)]
 fn debug_mem() -> bool {
     false
+}
+
+#[inline]
+#[cfg(not(stage0))]
+unsafe fn call_drop_glue(tydesc: *TyDesc, data: *i8) {
+    // This function should be inlined when stage0 is gone
+    ((*tydesc).drop_glue)(data);
+}
+
+#[inline]
+#[cfg(stage0)]
+unsafe fn call_drop_glue(tydesc: *TyDesc, data: *i8) {
+    ((*tydesc).drop_glue)(0 as **TyDesc, data);
 }
 
 /// Destroys all managed memory (i.e. @ boxes) held by the current task.
@@ -115,9 +126,9 @@ pub unsafe fn annihilate() {
     // callback, as the original value may have been freed.
     for each_live_alloc(false) |box, uniq| {
         if !uniq {
-            let tydesc: *TypeDesc = transmute(copy (*box).header.type_desc);
-            let drop_glue: DropGlue = transmute(((*tydesc).drop_glue, 0));
-            drop_glue(&tydesc, transmute(&(*box).data));
+            let tydesc: *TyDesc = transmute(copy (*box).header.type_desc);
+            let data = transmute(&(*box).data);
+            call_drop_glue(tydesc, data);
         }
     }
 

@@ -15,7 +15,7 @@ struct defer {
 
 #[unsafe_destructor]
 impl Drop for defer {
-    fn finalize(&self) {
+    fn drop(&self) {
         *self.b = true;
     }
 }

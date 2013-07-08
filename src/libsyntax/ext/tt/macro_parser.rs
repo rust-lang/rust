@@ -10,8 +10,6 @@
 
 // Earley-like parser for macros.
 
-use core::prelude::*;
-
 use ast;
 use ast::{matcher, match_tok, match_seq, match_nonterminal, ident};
 use codemap::{BytePos, mk_sp};
@@ -22,9 +20,9 @@ use parse::parser::Parser;
 use parse::token::{Token, EOF, to_str, nonterminal, get_ident_interner, ident_to_str};
 use parse::token;
 
-use core::hashmap::HashMap;
-use core::uint;
-use core::vec;
+use std::hashmap::HashMap;
+use std::uint;
+use std::vec;
 
 /* This is an Earley-like parser, without support for in-grammar nonterminals,
 only by calling out to the main rust parser for named nonterminals (which it
@@ -138,7 +136,7 @@ pub fn count_names(ms: &[matcher]) -> uint {
 pub fn initial_matcher_pos(ms: ~[matcher], sep: Option<Token>, lo: BytePos)
                         -> ~MatcherPos {
     let mut match_idx_hi = 0u;
-    for ms.each |elt| {
+    for ms.iter().advance |elt| {
         match elt.node {
           match_tok(_) => (),
           match_seq(_,_,_,_,hi) => {
@@ -195,7 +193,7 @@ pub fn nameize(p_s: @mut ParseSess, ms: &[matcher], res: &[@named_match])
         match *m {
           codemap::spanned {node: match_tok(_), _} => (),
           codemap::spanned {node: match_seq(ref more_ms, _, _, _, _), _} => {
-            for more_ms.each |next_m| {
+            for more_ms.iter().advance |next_m| {
                 n_rec(p_s, next_m, res, ret_val)
             };
           }
@@ -211,8 +209,8 @@ pub fn nameize(p_s: @mut ParseSess, ms: &[matcher], res: &[@named_match])
         }
     }
     let mut ret_val = HashMap::new();
-    for ms.each |m| { n_rec(p_s, m, res, &mut ret_val) }
-    return ret_val;
+    for ms.iter().advance |m| { n_rec(p_s, m, res, &mut ret_val) }
+    ret_val
 }
 
 pub enum parse_result {
@@ -328,8 +326,7 @@ pub fn parse(
                         cur_eis.push(new_ei);
                     }
 
-                    let matches = vec::map(ei.matches, // fresh, same size:
-                                           |_m| ~[]);
+                    let matches = vec::from_elem(ei.matches.len(), ~[]);
                     let ei_t = ei;
                     cur_eis.push(~MatcherPos {
                         elts: copy *matchers,

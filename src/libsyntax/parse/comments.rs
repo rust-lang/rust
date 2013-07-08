@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
-
 use ast;
 use codemap::{BytePos, CharPos, CodeMap, Pos};
 use diagnostic;
@@ -20,9 +18,9 @@ use parse::lexer;
 use parse::token;
 use parse::token::{get_ident_interner};
 
-use core::io;
-use core::str;
-use core::uint;
+use std::io;
+use std::str;
+use std::uint;
 
 #[deriving(Eq)]
 pub enum cmnt_style {
@@ -256,7 +254,7 @@ fn read_block_comment(rdr: @mut StringReader,
             bump(rdr);
         }
         if !is_eof(rdr) {
-            curr_line += "*/";
+            curr_line.push_str("*/");
             bump(rdr);
             bump(rdr);
         }
@@ -280,13 +278,13 @@ fn read_block_comment(rdr: @mut StringReader,
                 if rdr.curr == '/' && nextch(rdr) == '*' {
                     bump(rdr);
                     bump(rdr);
-                    curr_line += "*";
+                    curr_line.push_char('*');
                     level += 1;
                 } else {
                     if rdr.curr == '*' && nextch(rdr) == '/' {
                         bump(rdr);
                         bump(rdr);
-                        curr_line += "/";
+                        curr_line.push_char('/');
                         level -= 1;
                     } else { bump(rdr); }
                 }

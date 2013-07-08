@@ -17,14 +17,14 @@ trait Bar : Drop {
 }
 
 impl Drop for Foo {
-    fn finalize(&self) {
+    fn drop(&self) {
         println("kaboom");
     }
 }
 
 impl Bar for Foo {
     fn blah(&self) {
-        self.finalize();    //~ ERROR explicit call to destructor
+        self.drop();    //~ ERROR explicit call to destructor
     }
 }
 

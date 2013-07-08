@@ -18,13 +18,12 @@ A BigInt is a combination of BigUint and Sign.
 
 #[allow(missing_doc)];
 
-use core::prelude::*;
-use core::cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering, Less, Equal, Greater};
-use core::int;
-use core::num::{IntConvertible, Zero, One, ToStrRadix, FromStrRadix, Orderable};
-use core::str;
-use core::uint;
-use core::vec;
+use std::cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering, Less, Equal, Greater};
+use std::int;
+use std::num::{IntConvertible, Zero, One, ToStrRadix, FromStrRadix, Orderable};
+use std::str;
+use std::uint;
+use std::vec;
 
 /**
 A BigDigit is a BigUint's composing element.
@@ -284,13 +283,13 @@ impl Mul<BigUint, BigUint> for BigUint {
             if n == 1 { return copy *a; }
 
             let mut carry = 0;
-            let prod = do vec::map(a.data) |ai| {
+            let prod = do a.data.iter().transform |ai| {
                 let (hi, lo) = BigDigit::from_uint(
                     (*ai as uint) * (n as uint) + (carry as uint)
                 );
                 carry = hi;
                 lo
-            };
+            }.collect::<~[BigDigit]>();
             if carry == 0 { return BigUint::new(prod) };
             return BigUint::new(prod + [carry]);
         }
@@ -298,9 +297,8 @@ impl Mul<BigUint, BigUint> for BigUint {
 
         fn cut_at(a: &BigUint, n: uint) -> (BigUint, BigUint) {
             let mid = uint::min(a.data.len(), n);
-            return (BigUint::from_slice(vec::slice(a.data, mid,
-                                                   a.data.len())),
-                    BigUint::from_slice(vec::slice(a.data, 0, mid)));
+            return (BigUint::from_slice(a.data.slice(mid, a.data.len())),
+                    BigUint::from_slice(a.data.slice(0, mid)));
         }
 
 
@@ -381,7 +379,8 @@ impl Integer for BigUint {
             let mut d = Zero::zero::<BigUint>();
             let mut n = 1;
             while m >= b {
-                let mut (d0, d_unit, b_unit) = div_estimate(&m, &b, n);
+                let (d0, d_unit, b_unit) = div_estimate(&m, &b, n);
+                let mut d0 = d0;
                 let mut prod = b * d0;
                 while prod > m {
                     // FIXME(#6050): overloaded operators force moves with generic types
@@ -413,7 +412,7 @@ impl Integer for BigUint {
                 return (Zero::zero(), Zero::zero(), copy *a);
             }
 
-            let an = vec::slice(a.data, a.data.len() - n, a.data.len());
+            let an = a.data.slice(a.data.len() - n, a.data.len());
             let bn = *b.data.last();
             let mut d = ~[];
             let mut carry = 0;
@@ -443,7 +442,8 @@ impl Integer for BigUint {
 
     fn gcd(&self, other: &BigUint) -> BigUint {
         // Use Euclid's algorithm
-        let mut (m, n) = (copy *self, copy *other);
+        let mut m = copy *self;
+        let mut n = copy *other;
         while !m.is_zero() {
             let temp = m;
             m = n % temp;
@@ -507,11 +507,11 @@ impl ToStrRadix for BigUint {
             let mut m      = n;
             while m > divider {
                 let (d, m0) = m.div_mod_floor(&divider);
-                result += [m0.to_uint() as BigDigit];
+                result.push(m0.to_uint() as BigDigit);
                 m = d;
             }
             if !m.is_zero() {
-                result += [m.to_uint() as BigDigit];
+                result.push(m.to_uint() as BigDigit);
             }
             return result;
         }
@@ -578,7 +578,7 @@ impl BigUint {
         let mut power: BigUint  = One::one();
         loop {
             let start = uint::max(end, unit_len) - unit_len;
-            match uint::parse_bytes(vec::slice(buf, start, end), radix) {
+            match uint::parse_bytes(buf.slice(start, end), radix) {
                 // FIXME(#6102): Assignment operator for BigInt causes ICE
                 // Some(d) => n += BigUint::from_uint(d) * power,
                 Some(d) => n = n + BigUint::from_uint(d) * power,
@@ -618,13 +618,13 @@ impl BigUint {
         if n_bits == 0 || self.is_zero() { return copy *self; }
 
         let mut carry = 0;
-        let shifted = do vec::map(self.data) |elem| {
+        let shifted = do self.data.iter().transform |elem| {
             let (hi, lo) = BigDigit::from_uint(
                 (*elem as uint) << n_bits | (carry as uint)
             );
             carry = hi;
             lo
-        };
+        }.collect::<~[BigDigit]>();
         if carry == 0 { return BigUint::new(shifted); }
         return BigUint::new(shifted + [carry]);
     }
@@ -634,7 +634,7 @@ impl BigUint {
         if n_unit == 0 { return copy *self; }
         if self.data.len() < n_unit { return Zero::zero(); }
         return BigUint::from_slice(
-            vec::slice(self.data, n_unit, self.data.len())
+            self.data.slice(n_unit, self.data.len())
         );
     }
 
@@ -1132,7 +1132,7 @@ impl BigInt {
             sign  = Minus;
             start = 1;
         }
-        return BigUint::parse_bytes(vec::slice(buf, start, buf.len()), radix)
+        return BigUint::parse_bytes(buf.slice(start, buf.len()), radix)
             .map_consume(|bu| BigInt::from_biguint(sign, bu));
     }
 
@@ -1147,16 +1147,15 @@ impl BigInt {
 
 #[cfg(test)]
 mod biguint_tests {
-    use core::prelude::*;
 
     use super::*;
 
-    use core::cmp::{Less, Equal, Greater};
-    use core::int;
-    use core::num::{IntConvertible, Zero, One, FromStrRadix};
-    use core::str;
-    use core::uint;
-    use core::vec;
+    use std::cmp::{Less, Equal, Greater};
+    use std::int;
+    use std::num::{IntConvertible, Zero, One, FromStrRadix};
+    use std::str;
+    use std::uint;
+    use std::vec;
 
     #[test]
     fn test_from_slice() {
@@ -1173,10 +1172,10 @@ mod biguint_tests {
 
     #[test]
     fn test_cmp() {
-        let data = [ &[], &[1], &[2], &[-1], &[0, 1], &[2, 1], &[1, 1, 1]  ]
+        let data: ~[BigUint] = [ &[], &[1], &[2], &[-1], &[0, 1], &[2, 1], &[1, 1, 1]  ]
             .map(|v| BigUint::from_slice(*v));
-        for data.eachi |i, ni| {
-            for vec::slice(data, i, data.len()).eachi |j0, nj| {
+        for data.iter().enumerate().advance |(i, ni)| {
+            for data.slice(i, data.len()).iter().enumerate().advance |(j0, nj)| {
                 let j = j0 + i;
                 if i == j {
                     assert_eq!(ni.cmp(nj), Equal);
@@ -1349,7 +1348,7 @@ mod biguint_tests {
 
     #[test]
     fn test_add() {
-        for sum_triples.each |elm| {
+        for sum_triples.iter().advance |elm| {
             let (aVec, bVec, cVec) = *elm;
             let a = BigUint::from_slice(aVec);
             let b = BigUint::from_slice(bVec);
@@ -1362,7 +1361,7 @@ mod biguint_tests {
 
     #[test]
     fn test_sub() {
-        for sum_triples.each |elm| {
+        for sum_triples.iter().advance |elm| {
             let (aVec, bVec, cVec) = *elm;
             let a = BigUint::from_slice(aVec);
             let b = BigUint::from_slice(bVec);
@@ -1413,7 +1412,7 @@ mod biguint_tests {
 
     #[test]
     fn test_mul() {
-        for mul_triples.each |elm| {
+        for mul_triples.iter().advance |elm| {
             let (aVec, bVec, cVec) = *elm;
             let a = BigUint::from_slice(aVec);
             let b = BigUint::from_slice(bVec);
@@ -1423,7 +1422,7 @@ mod biguint_tests {
             assert!(b * a == c);
         }
 
-        for div_rem_quadruples.each |elm| {
+        for div_rem_quadruples.iter().advance |elm| {
             let (aVec, bVec, cVec, dVec) = *elm;
             let a = BigUint::from_slice(aVec);
             let b = BigUint::from_slice(bVec);
@@ -1437,7 +1436,7 @@ mod biguint_tests {
 
     #[test]
     fn test_div_rem() {
-        for mul_triples.each |elm| {
+        for mul_triples.iter().advance |elm| {
             let (aVec, bVec, cVec) = *elm;
             let a = BigUint::from_slice(aVec);
             let b = BigUint::from_slice(bVec);
@@ -1451,7 +1450,7 @@ mod biguint_tests {
             }
         }
 
-        for div_rem_quadruples.each |elm| {
+        for div_rem_quadruples.iter().advance |elm| {
             let (aVec, bVec, cVec, dVec) = *elm;
             let a = BigUint::from_slice(aVec);
             let b = BigUint::from_slice(bVec);
@@ -1567,9 +1566,10 @@ mod biguint_tests {
 
     #[test]
     fn test_to_str_radix() {
-        for to_str_pairs().each |num_pair| {
+        let r = to_str_pairs();
+        for r.iter().advance |num_pair| {
             let &(n, rs) = num_pair;
-            for rs.each |str_pair| {
+            for rs.iter().advance |str_pair| {
                 let &(radix, str) = str_pair;
                 assert_eq!(n.to_str_radix(radix), str);
             }
@@ -1578,9 +1578,10 @@ mod biguint_tests {
 
     #[test]
     fn test_from_str_radix() {
-        for to_str_pairs().each |num_pair| {
+        let r = to_str_pairs();
+        for r.iter().advance |num_pair| {
             let &(n, rs) = num_pair;
-            for rs.each |str_pair| {
+            for rs.iter().advance |str_pair| {
                 let &(radix, str) = str_pair;
                 assert_eq!(&n, &FromStrRadix::from_str_radix(str, radix).get());
             }
@@ -1620,15 +1621,14 @@ mod biguint_tests {
 
 #[cfg(test)]
 mod bigint_tests {
-    use core::prelude::*;
 
     use super::*;
 
-    use core::cmp::{Less, Equal, Greater};
-    use core::int;
-    use core::num::{IntConvertible, Zero, One, FromStrRadix};
-    use core::uint;
-    use core::vec;
+    use std::cmp::{Less, Equal, Greater};
+    use std::int;
+    use std::num::{IntConvertible, Zero, One, FromStrRadix};
+    use std::uint;
+    use std::vec;
 
     #[test]
     fn test_from_biguint() {
@@ -1651,8 +1651,8 @@ mod bigint_tests {
         nums.push(Zero::zero());
         nums.push_all_move(vs.map(|s| BigInt::from_slice(Plus, *s)));
 
-        for nums.eachi |i, ni| {
-            for vec::slice(nums, i, nums.len()).eachi |j0, nj| {
+        for nums.iter().enumerate().advance |(i, ni)| {
+            for nums.slice(i, nums.len()).iter().enumerate().advance |(j0, nj)| {
                 let j = i + j0;
                 if i == j {
                     assert_eq!(ni.cmp(nj), Equal);
@@ -1756,7 +1756,7 @@ mod bigint_tests {
 
     #[test]
     fn test_add() {
-        for sum_triples.each |elm| {
+        for sum_triples.iter().advance |elm| {
             let (aVec, bVec, cVec) = *elm;
             let a = BigInt::from_slice(Plus, aVec);
             let b = BigInt::from_slice(Plus, bVec);
@@ -1775,7 +1775,7 @@ mod bigint_tests {
 
     #[test]
     fn test_sub() {
-        for sum_triples.each |elm| {
+        for sum_triples.iter().advance |elm| {
             let (aVec, bVec, cVec) = *elm;
             let a = BigInt::from_slice(Plus, aVec);
             let b = BigInt::from_slice(Plus, bVec);
@@ -1832,7 +1832,7 @@ mod bigint_tests {
 
     #[test]
     fn test_mul() {
-        for mul_triples.each |elm| {
+        for mul_triples.iter().advance |elm| {
             let (aVec, bVec, cVec) = *elm;
             let a = BigInt::from_slice(Plus, aVec);
             let b = BigInt::from_slice(Plus, bVec);
@@ -1845,7 +1845,7 @@ mod bigint_tests {
             assert!((-b) * a == -c);
         }
 
-        for div_rem_quadruples.each |elm| {
+        for div_rem_quadruples.iter().advance |elm| {
             let (aVec, bVec, cVec, dVec) = *elm;
             let a = BigInt::from_slice(Plus, aVec);
             let b = BigInt::from_slice(Plus, bVec);
@@ -1884,7 +1884,7 @@ mod bigint_tests {
             }
         }
 
-        for mul_triples.each |elm| {
+        for mul_triples.iter().advance |elm| {
             let (aVec, bVec, cVec) = *elm;
             let a = BigInt::from_slice(Plus, aVec);
             let b = BigInt::from_slice(Plus, bVec);
@@ -1894,7 +1894,7 @@ mod bigint_tests {
             if !b.is_zero() { check(&c, &b, &a, &Zero::zero()); }
         }
 
-        for div_rem_quadruples.each |elm| {
+        for div_rem_quadruples.iter().advance |elm| {
             let (aVec, bVec, cVec, dVec) = *elm;
             let a = BigInt::from_slice(Plus, aVec);
             let b = BigInt::from_slice(Plus, bVec);
@@ -1927,7 +1927,7 @@ mod bigint_tests {
             check_sub(&a.neg(), b, &q.neg(), &r.neg());
             check_sub(&a.neg(), &b.neg(), q, &r.neg());
         }
-        for mul_triples.each |elm| {
+        for mul_triples.iter().advance |elm| {
             let (aVec, bVec, cVec) = *elm;
             let a = BigInt::from_slice(Plus, aVec);
             let b = BigInt::from_slice(Plus, bVec);
@@ -1937,7 +1937,7 @@ mod bigint_tests {
             if !b.is_zero() { check(&c, &b, &a, &Zero::zero()); }
         }
 
-        for div_rem_quadruples.each |elm| {
+        for div_rem_quadruples.iter().advance |elm| {
             let (aVec, bVec, cVec, dVec) = *elm;
             let a = BigInt::from_slice(Plus, aVec);
             let b = BigInt::from_slice(Plus, bVec);

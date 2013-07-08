@@ -10,7 +10,6 @@
 
 /*! See doc.rs for a thorough explanation of the borrow checker */
 
-use core::prelude::*;
 
 use mc = middle::mem_categorization;
 use middle::ty;
@@ -21,10 +20,10 @@ use middle::dataflow::DataFlowOperator;
 use util::common::stmt_set;
 use util::ppaux::{note_and_explain_region, Repr, UserString};
 
-use core::hashmap::{HashSet, HashMap};
-use core::io;
-use core::ops::{BitOr, BitAnd};
-use core::result::{Result};
+use std::hashmap::{HashSet, HashMap};
+use std::io;
+use std::ops::{BitOr, BitAnd};
+use std::result::{Result};
 use syntax::ast;
 use syntax::ast_map;
 use syntax::visit;
@@ -58,7 +57,7 @@ pub fn check_crate(
     moves_map: moves::MovesMap,
     moved_variables_set: moves::MovedVariablesSet,
     capture_map: moves::CaptureMap,
-    crate: @ast::crate) -> (root_map, write_guard_map)
+    crate: &ast::crate) -> (root_map, write_guard_map)
 {
     let bccx = @BorrowckCtxt {
         tcx: tcx,
@@ -132,7 +131,7 @@ fn borrowck_fn(fk: &visit::fn_kind,
                                      LoanDataFlowOperator,
                                      id_range,
                                      all_loans.len());
-            for all_loans.eachi |loan_idx, loan| {
+            for all_loans.iter().enumerate().advance |(loan_idx, loan)| {
                 loan_dfcx.add_gen(loan.gen_scope, loan_idx);
                 loan_dfcx.add_kill(loan.kill_scope, loan_idx);
             }
@@ -507,7 +506,7 @@ impl BorrowckCtxt {
     pub fn report_use_of_moved_value(&self,
                                      use_span: span,
                                      use_kind: MovedValueUseKind,
-                                     lp: @LoanPath,
+                                     lp: &LoanPath,
                                      move: &move_data::Move,
                                      moved_lp: @LoanPath) {
         let verb = match use_kind {
@@ -570,7 +569,7 @@ impl BorrowckCtxt {
 
     pub fn report_reassigned_immutable_variable(&self,
                                                 span: span,
-                                                lp: @LoanPath,
+                                                lp: &LoanPath,
                                                 assign:
                                                 &move_data::Assignment) {
         self.tcx.sess.span_err(

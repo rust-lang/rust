@@ -12,7 +12,7 @@ use std::vec;
 
 fn main() {
     let a: ~[int] = ~[];
-    vec::each(a, |_| -> bool {
+    a.iter().advance(|_| -> bool {
         //~^ ERROR mismatched types
     });
 }

@@ -17,7 +17,7 @@ fn make(i: int) -> t {
     let mut s = ~"hello";
     // Ensure s is non-const.
 
-    s += ~"there";
+    s.push_str("there");
     return b(s);
 }
 

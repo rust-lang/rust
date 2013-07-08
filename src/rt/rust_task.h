@@ -278,9 +278,6 @@ private:
     uintptr_t next_c_sp;
     uintptr_t next_rust_sp;
 
-    // The big stack.
-    stk_seg *big_stack;
-
     // Called when the atomic refcount reaches zero
     void delete_this();
 
@@ -607,7 +604,21 @@ rust_task::prev_stack() {
     // require switching to the C stack and be costly. Instead we'll just move
     // up the link list and clean up later, either in new_stack or after our
     // turn ends on the scheduler.
-    stk = stk->prev;
+    if (stk->is_big) {
+        stk_seg *ss = stk;
+        stk = stk->prev;
+
+        // Unlink the big stack.
+        if (ss->next)
+            ss->next->prev = ss->prev;
+        if (ss->prev)
+            ss->prev->next = ss->next;
+
+        sched_loop->return_big_stack(ss);
+    } else {
+        stk = stk->prev;
+    }
+
     record_stack_limit();
 }
 

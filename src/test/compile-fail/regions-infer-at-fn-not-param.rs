@@ -20,7 +20,10 @@ struct not_parameterized2 {
     g: @fn()
 }
 
-fn take1(p: parameterized1) -> parameterized1 { p } //~ ERROR mismatched types
+fn take1(p: parameterized1) -> parameterized1 { p }
+//~^ ERROR mismatched types
+//~^^ ERROR cannot infer an appropriate lifetime
+
 fn take3(p: not_parameterized1) -> not_parameterized1 { p }
 fn take4(p: not_parameterized2) -> not_parameterized2 { p }
 

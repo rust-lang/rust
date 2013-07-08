@@ -10,24 +10,24 @@
 
 #[allow(missing_doc)];
 
-use core::prelude::*;
 
+use digest::DigestUtil;
 use json;
-use sha1;
+use sha1::Sha1;
 use serialize::{Encoder, Encodable, Decoder, Decodable};
 use sort;
 
-use core::cell::Cell;
-use core::cmp;
-use core::comm::{PortOne, oneshot, send_one, recv_one};
-use core::either::{Either, Left, Right};
-use core::hashmap::HashMap;
-use core::io;
-use core::result;
-use core::run;
-use core::task;
-use core::to_bytes;
-use core::util::replace;
+use std::cell::Cell;
+use std::cmp;
+use std::comm::{PortOne, oneshot, send_one, recv_one};
+use std::either::{Either, Left, Right};
+use std::hashmap::HashMap;
+use std::io;
+use std::result;
+use std::run;
+use std::task;
+use std::to_bytes;
+use std::util::replace;
 
 /**
 *
@@ -106,7 +106,7 @@ struct WorkKey {
 impl to_bytes::IterBytes for WorkKey {
     #[inline]
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
-        self.kind.iter_bytes(lsb0, f) && self.name.iter_bytes(lsb0, f)
+        self.kind.iter_bytes(lsb0, |b| f(b)) && self.name.iter_bytes(lsb0, |b| f(b))
     }
 }
 
@@ -145,7 +145,7 @@ impl WorkMap {
 impl<S:Encoder> Encodable<S> for WorkMap {
     fn encode(&self, s: &mut S) {
         let mut d = ~[];
-        for self.each |k, v| {
+        for self.iter().advance |(k, v)| {
             d.push((copy *k, copy *v))
         }
         sort::tim_sort(d);
@@ -157,7 +157,7 @@ impl<D:Decoder> Decodable<D> for WorkMap {
     fn decode(d: &mut D) -> WorkMap {
         let v : ~[(WorkKey,~str)] = Decodable::decode(d);
         let mut w = WorkMap::new();
-        for v.each |&(k, v)| {
+        for v.iter().advance |&(k, v)| {
             w.insert(copy k, copy v);
         }
         w
@@ -248,16 +248,16 @@ fn json_decode<T:Decodable<json::Decoder>>(s: &str) -> T {
 }
 
 fn digest<T:Encodable<json::Encoder>>(t: &T) -> ~str {
-    let mut sha = sha1::sha1();
-    sha.input_str(json_encode(t));
-    sha.result_str()
+    let mut sha = ~Sha1::new();
+    (*sha).input_str(json_encode(t));
+    (*sha).result_str()
 }
 
 fn digest_file(path: &Path) -> ~str {
-    let mut sha = sha1::sha1();
+    let mut sha = ~Sha1::new();
     let s = io::read_whole_file_str(path);
-    sha.input_str(*s.get_ref());
-    sha.result_str()
+    (*sha).input_str(*s.get_ref());
+    (*sha).result_str()
 }
 
 impl Context {
@@ -271,7 +271,7 @@ impl Context {
         }
     }
 
-    pub fn prep<T:Owned +
+    pub fn prep<T:Send +
                   Encodable<json::Encoder> +
                   Decodable<json::Decoder>>(@self, // FIXME(#5121)
                                             fn_name:&str,
@@ -291,7 +291,7 @@ trait TPrep {
     fn declare_input(&mut self, kind:&str, name:&str, val:&str);
     fn is_fresh(&self, cat:&str, kind:&str, name:&str, val:&str) -> bool;
     fn all_fresh(&self, cat:&str, map:&WorkMap) -> bool;
-    fn exec<T:Owned +
+    fn exec<T:Send +
               Encodable<json::Encoder> +
               Decodable<json::Decoder>>( // FIXME(#5121)
         &self, blk: ~fn(&Exec) -> T) -> Work<T>;
@@ -319,7 +319,7 @@ impl TPrep for Prep {
     }
 
     fn all_fresh(&self, cat: &str, map: &WorkMap) -> bool {
-        for map.each |k, v| {
+        for map.iter().advance |(k, v)| {
             if ! self.is_fresh(cat, k.kind, k.name, *v) {
                 return false;
             }
@@ -327,7 +327,7 @@ impl TPrep for Prep {
         return true;
     }
 
-    fn exec<T:Owned +
+    fn exec<T:Send +
               Encodable<json::Encoder> +
               Decodable<json::Decoder>>( // FIXME(#5121)
             &self, blk: ~fn(&Exec) -> T) -> Work<T> {
@@ -364,7 +364,7 @@ impl TPrep for Prep {
     }
 }
 
-impl<T:Owned +
+impl<T:Send +
        Encodable<json::Encoder> +
        Decodable<json::Decoder>> Work<T> { // FIXME(#5121)
     pub fn new(p: @mut Prep, e: Either<T,PortOne<(Exec,T)>>) -> Work<T> {
@@ -373,7 +373,7 @@ impl<T:Owned +
 }
 
 // FIXME (#3724): movable self. This should be in impl Work.
-fn unwrap<T:Owned +
+fn unwrap<T:Send +
             Encodable<json::Encoder> +
             Decodable<json::Decoder>>( // FIXME(#5121)
         w: Work<T>) -> T {
@@ -402,7 +402,7 @@ fn unwrap<T:Owned +
 
 //#[test]
 fn test() {
-    use core::io::WriterUtil;
+    use std::io::WriterUtil;
 
     let db = @mut Database { db_filename: Path("db.json"),
                              db_cache: HashMap::new(),

@@ -46,14 +46,13 @@
  * then an index to jump forward to the relevant item.
  */
 
-use core::prelude::*;
 
 use middle::ty;
 use middle::typeck;
-use util::ppaux::{ty_to_str, region_to_str, Repr};
+use util::ppaux::{ty_to_str, region_ptr_to_str, Repr};
 use util::common::indenter;
 
-use core::uint;
+use std::uint;
 use syntax::ast::{m_imm, m_const, m_mutbl};
 use syntax::ast;
 use syntax::codemap::span;
@@ -78,7 +77,7 @@ pub enum categorization {
 }
 
 #[deriving(Eq)]
-struct CopiedUpvar {
+pub struct CopiedUpvar {
     upvar_id: ast::node_id,
     onceness: ast::Onceness,
 }
@@ -447,19 +446,29 @@ impl mem_categorization_ctxt {
                    -> cmt {
         match def {
           ast::def_fn(*) | ast::def_static_method(*) | ast::def_mod(_) |
-          ast::def_foreign_mod(_) | ast::def_const(_) |
+          ast::def_foreign_mod(_) | ast::def_static(_, false) |
           ast::def_use(_) | ast::def_variant(*) |
           ast::def_trait(_) | ast::def_ty(_) | ast::def_prim_ty(_) |
           ast::def_ty_param(*) | ast::def_struct(*) |
           ast::def_typaram_binder(*) | ast::def_region(_) |
-          ast::def_label(_) | ast::def_self_ty(*) => {
-            @cmt_ {
-                id:id,
-                span:span,
-                cat:cat_static_item,
-                mutbl: McImmutable,
-                ty:expr_ty
-            }
+          ast::def_label(_) | ast::def_self_ty(*) | ast::def_method(*) => {
+              @cmt_ {
+                  id:id,
+                  span:span,
+                  cat:cat_static_item,
+                  mutbl: McImmutable,
+                  ty:expr_ty
+              }
+          }
+
+          ast::def_static(_, true) => {
+              @cmt_ {
+                  id:id,
+                  span:span,
+                  cat:cat_static_item,
+                  mutbl: McDeclared,
+                  ty:expr_ty
+              }
           }
 
           ast::def_arg(vid, mutbl) => {
@@ -497,30 +506,41 @@ impl mem_categorization_ctxt {
               let ty = ty::node_id_to_type(self.tcx, fn_node_id);
               match ty::get(ty).sty {
                   ty::ty_closure(ref closure_ty) => {
-                      let sigil = closure_ty.sigil;
-                      match sigil {
-                          ast::BorrowedSigil => {
-                              let upvar_cmt =
-                                  self.cat_def(id, span, expr_ty, *inner);
-                              @cmt_ {
-                                  id:id,
-                                  span:span,
-                                  cat:cat_stack_upvar(upvar_cmt),
-                                  mutbl:upvar_cmt.mutbl.inherit(),
-                                  ty:upvar_cmt.ty
-                              }
+                      // Decide whether to use implicit reference or by copy/move
+                      // capture for the upvar. This, combined with the onceness,
+                      // determines whether the closure can move out of it.
+                      let var_is_refd = match (closure_ty.sigil, closure_ty.onceness) {
+                          // Many-shot stack closures can never move out.
+                          (ast::BorrowedSigil, ast::Many) => true,
+                          // 1-shot stack closures can move out with "-Z once-fns".
+                          (ast::BorrowedSigil, ast::Once)
+                              if self.tcx.sess.once_fns() => false,
+                          (ast::BorrowedSigil, ast::Once) => true,
+                          // Heap closures always capture by copy/move, and can
+                          // move out iff they are once.
+                          (ast::OwnedSigil, _) | (ast::ManagedSigil, _) => false,
+
+                      };
+                      if var_is_refd {
+                          let upvar_cmt =
+                              self.cat_def(id, span, expr_ty, *inner);
+                          @cmt_ {
+                              id:id,
+                              span:span,
+                              cat:cat_stack_upvar(upvar_cmt),
+                              mutbl:upvar_cmt.mutbl.inherit(),
+                              ty:upvar_cmt.ty
                           }
-                          ast::OwnedSigil | ast::ManagedSigil => {
-                              // FIXME #2152 allow mutation of moved upvars
-                              @cmt_ {
-                                  id:id,
-                                  span:span,
-                                  cat:cat_copied_upvar(CopiedUpvar {
-                                      upvar_id: upvar_id,
-                                      onceness: closure_ty.onceness}),
-                                  mutbl:McImmutable,
-                                  ty:expr_ty
-                              }
+                      } else {
+                          // FIXME #2152 allow mutation of moved upvars
+                          @cmt_ {
+                              id:id,
+                              span:span,
+                              cat:cat_copied_upvar(CopiedUpvar {
+                                  upvar_id: upvar_id,
+                                  onceness: closure_ty.onceness}),
+                              mutbl:McImmutable,
+                              ty:expr_ty
                           }
                       }
                   }
@@ -872,7 +892,7 @@ impl mem_categorization_ctxt {
                         }
                     };
 
-                    for subpats.eachi |i, &subpat| {
+                    for subpats.iter().enumerate().advance |(i, &subpat)| {
                         let subpat_ty = self.pat_ty(subpat); // see (*)
 
                         let subcmt =
@@ -880,23 +900,23 @@ impl mem_categorization_ctxt {
                                 pat, downcast_cmt, subpat_ty,
                                 InteriorField(PositionalField(i)));
 
-                        self.cat_pattern(subcmt, subpat, op);
+                        self.cat_pattern(subcmt, subpat, |x,y| op(x,y));
                     }
                 }
                 Some(&ast::def_fn(*)) |
                 Some(&ast::def_struct(*)) => {
-                    for subpats.eachi |i, &subpat| {
+                    for subpats.iter().enumerate().advance |(i, &subpat)| {
                         let subpat_ty = self.pat_ty(subpat); // see (*)
                         let cmt_field =
                             self.cat_imm_interior(
                                 pat, cmt, subpat_ty,
                                 InteriorField(PositionalField(i)));
-                        self.cat_pattern(cmt_field, subpat, op);
+                        self.cat_pattern(cmt_field, subpat, |x,y| op(x,y));
                     }
                 }
-                Some(&ast::def_const(*)) => {
-                    for subpats.each |&subpat| {
-                        self.cat_pattern(cmt, subpat, op);
+                Some(&ast::def_static(*)) => {
+                    for subpats.iter().advance |&subpat| {
+                        self.cat_pattern(cmt, subpat, |x,y| op(x,y));
                     }
                 }
                 _ => {
@@ -917,22 +937,22 @@ impl mem_categorization_ctxt {
 
           ast::pat_struct(_, ref field_pats, _) => {
             // {f1: p1, ..., fN: pN}
-            for field_pats.each |fp| {
+            for field_pats.iter().advance |fp| {
                 let field_ty = self.pat_ty(fp.pat); // see (*)
                 let cmt_field = self.cat_field(pat, cmt, fp.ident, field_ty);
-                self.cat_pattern(cmt_field, fp.pat, op);
+                self.cat_pattern(cmt_field, fp.pat, |x,y| op(x,y));
             }
           }
 
           ast::pat_tup(ref subpats) => {
             // (p1, ..., pN)
-            for subpats.eachi |i, &subpat| {
+            for subpats.iter().enumerate().advance |(i, &subpat)| {
                 let subpat_ty = self.pat_ty(subpat); // see (*)
                 let subcmt =
                     self.cat_imm_interior(
                         pat, cmt, subpat_ty,
                         InteriorField(PositionalField(i)));
-                self.cat_pattern(subcmt, subpat, op);
+                self.cat_pattern(subcmt, subpat, |x,y| op(x,y));
             }
           }
 
@@ -945,16 +965,16 @@ impl mem_categorization_ctxt {
 
           ast::pat_vec(ref before, slice, ref after) => {
               let elt_cmt = self.cat_index(pat, cmt, 0);
-              for before.each |&before_pat| {
-                  self.cat_pattern(elt_cmt, before_pat, op);
+              for before.iter().advance |&before_pat| {
+                  self.cat_pattern(elt_cmt, before_pat, |x,y| op(x,y));
               }
               for slice.iter().advance |&slice_pat| {
                   let slice_ty = self.pat_ty(slice_pat);
                   let slice_cmt = self.cat_rvalue(pat, slice_ty);
-                  self.cat_pattern(slice_cmt, slice_pat, op);
+                  self.cat_pattern(slice_cmt, slice_pat, |x,y| op(x,y));
               }
-              for after.each |&after_pat| {
-                  self.cat_pattern(elt_cmt, after_pat, op);
+              for after.iter().advance |&after_pat| {
+                  self.cat_pattern(elt_cmt, after_pat, |x,y| op(x,y));
               }
           }
 
@@ -1026,7 +1046,7 @@ impl mem_categorization_ctxt {
     }
 
     pub fn region_to_str(&self, r: ty::Region) -> ~str {
-        region_to_str(self.tcx, r)
+        region_ptr_to_str(self.tcx, r)
     }
 }
 
@@ -1041,7 +1061,8 @@ pub fn field_mutbl(tcx: ty::ctxt,
     // Need to refactor so that struct/enum fields can be treated uniformly.
     match ty::get(base_ty).sty {
       ty::ty_struct(did, _) => {
-        for ty::lookup_struct_fields(tcx, did).each |fld| {
+        let r = ty::lookup_struct_fields(tcx, did);
+        for r.iter().advance |fld| {
             if fld.ident == f_name {
                 return Some(ast::m_imm);
             }
@@ -1050,7 +1071,8 @@ pub fn field_mutbl(tcx: ty::ctxt,
       ty::ty_enum(*) => {
         match tcx.def_map.get_copy(&node_id) {
           ast::def_variant(_, variant_id) => {
-            for ty::lookup_struct_fields(tcx, variant_id).each |fld| {
+            let r = ty::lookup_struct_fields(tcx, variant_id);
+            for r.iter().advance |fld| {
                 if fld.ident == f_name {
                     return Some(ast::m_imm);
                 }

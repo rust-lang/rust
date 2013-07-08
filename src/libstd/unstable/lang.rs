@@ -10,27 +10,21 @@
 
 //! Runtime calls emitted by the compiler.
 
-use iterator::IteratorUtil;
-use uint;
 use cast::transmute;
-use libc::{c_char, c_uchar, c_void, size_t, uintptr_t, c_int, STDERR_FILENO};
+use libc::{c_char, c_uchar, c_void, size_t, uintptr_t, c_int};
 use str;
 use sys;
 use rt::{context, OldTaskContext};
 use rt::task::Task;
 use rt::local::Local;
-use option::{Option, Some, None};
-use io;
-use rt::global_heap;
 use rt::borrowck;
-use borrow::to_uint;
 
 #[allow(non_camel_case_types)]
 pub type rust_task = c_void;
 
 pub mod rustrt {
     use unstable::lang::rust_task;
-    use libc::{c_void, c_char, uintptr_t};
+    use libc::{c_char, uintptr_t};
 
     pub extern {
         #[rust_stack]
@@ -64,22 +58,6 @@ pub fn fail_bounds_check(file: *c_char, line: size_t,
     do str::as_buf(msg) |p, _len| {
         fail_(p as *c_char, file, line);
     }
-}
-
-// FIXME #4942: Make these signatures agree with exchange_alloc's signatures
-#[lang="exchange_malloc"]
-#[inline]
-pub unsafe fn exchange_malloc(td: *c_char, size: uintptr_t) -> *c_char {
-    transmute(global_heap::malloc(transmute(td), transmute(size)))
-}
-
-// NB: Calls to free CANNOT be allowed to fail, as throwing an exception from
-// inside a landing pad may corrupt the state of the exception handler. If a
-// problem occurs, call exit instead.
-#[lang="exchange_free"]
-#[inline]
-pub unsafe fn exchange_free(ptr: *c_char) {
-    global_heap::free(transmute(ptr))
 }
 
 #[lang="malloc"]

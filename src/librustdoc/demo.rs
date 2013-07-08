@@ -21,7 +21,6 @@
  * tests on this file
  */
 
-use core::prelude::*;
 
 /// The base price of a muffin on a non-holiday
 static price_of_a_muffin: float = 70f;
@@ -128,7 +127,7 @@ struct Bored {
 }
 
 impl Drop for Bored {
-  fn finalize(&self) { }
+  fn drop(&self) { }
 }
 
 /**

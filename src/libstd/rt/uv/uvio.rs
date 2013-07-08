@@ -47,7 +47,7 @@ impl UvEventLoop {
 }
 
 impl Drop for UvEventLoop {
-    fn finalize(&self) {
+    fn drop(&self) {
         // XXX: Need mutable finalizer
         let this = unsafe {
             transmute::<&UvEventLoop, &mut UvEventLoop>(self)
@@ -138,7 +138,7 @@ impl RemoteCallback for UvRemoteCallback {
 }
 
 impl Drop for UvRemoteCallback {
-    fn finalize(&self) {
+    fn drop(&self) {
         unsafe {
             let this: &mut UvRemoteCallback = cast::transmute_mut(self);
             do this.exit_flag.with |should_exit| {
@@ -302,7 +302,7 @@ impl UvTcpListener {
 }
 
 impl Drop for UvTcpListener {
-    fn finalize(&self) {
+    fn drop(&self) {
         let watcher = self.watcher();
         let scheduler = Local::take::<Scheduler>();
         do scheduler.deschedule_running_task_and_then |_, task| {
@@ -365,7 +365,7 @@ impl RtioTcpListener for UvTcpListener {
 pub struct UvTcpStream(StreamWatcher);
 
 impl Drop for UvTcpStream {
-    fn finalize(&self) {
+    fn drop(&self) {
         rtdebug!("closing tcp stream");
         let scheduler = Local::take::<Scheduler>();
         do scheduler.deschedule_running_task_and_then |_, task| {
