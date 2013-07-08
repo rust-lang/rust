@@ -789,7 +789,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
             bcx = trans_call_inner(
                 bcx, None, fty, ty::mk_nil(),
                 |bcx| Callee {bcx: bcx, data: Closure(datum)},
-                ArgVals(arg_vals), Ignore, DontAutorefArg);
+                ArgVals(arg_vals), Some(Ignore), DontAutorefArg).bcx;
         }
         "morestack_addr" => {
             // XXX This is a hack to grab the address of this particular
