@@ -102,7 +102,7 @@ pub fn get_used_crate_files(cstore: &CStore) -> ~[Path] {
 pub fn add_used_library(cstore: &mut CStore, lib: @str) -> bool {
     assert!(!lib.is_empty());
 
-    if cstore.used_libraries.iter().any_(|x| x == &lib) { return false; }
+    if cstore.used_libraries.iter().any(|x| x == &lib) { return false; }
     cstore.used_libraries.push(lib);
     true
 }

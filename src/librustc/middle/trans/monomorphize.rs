@@ -84,7 +84,7 @@ pub fn monomorphic_fn(ccx: @mut CrateContext,
     let hash_id = make_mono_id(ccx, fn_id, impl_did_opt,
                                &*psubsts,
                                Some(param_uses));
-    if hash_id.params.iter().any_(
+    if hash_id.params.iter().any(
                 |p| match *p { mono_precise(_, _) => false, _ => true }) {
         must_cast = true;
     }

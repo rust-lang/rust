@@ -278,7 +278,7 @@ impl CharEq for extern "Rust" fn(char) -> bool {
 impl<'self, C: CharEq> CharEq for &'self [C] {
     #[inline]
     fn matches(&self, c: char) -> bool {
-        self.iter().any_(|m| m.matches(c))
+        self.iter().any(|m| m.matches(c))
     }
 
     fn only_ascii(&self) -> bool {

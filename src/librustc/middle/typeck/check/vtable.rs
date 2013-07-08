@@ -67,7 +67,7 @@ impl VtableContext {
 }
 
 fn has_trait_bounds(type_param_defs: &[ty::TypeParameterDef]) -> bool {
-    type_param_defs.iter().any_(
+    type_param_defs.iter().any(
         |type_param_def| !type_param_def.bounds.trait_bounds.is_empty())
 }
 

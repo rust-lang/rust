@@ -371,7 +371,7 @@ pub fn missing_ctor(cx: &MatchCheckCtxt,
         let variants = ty::enum_variants(cx.tcx, eid);
         if found.len() != (*variants).len() {
             for (*variants).iter().advance |v| {
-                if !found.iter().any_(|x| x == &(variant(v.id))) {
+                if !found.iter().any(|x| x == &(variant(v.id))) {
                     return Some(variant(v.id));
                 }
             }
@@ -805,13 +805,13 @@ pub fn is_refutable(cx: &MatchCheckCtxt, pat: &pat) -> bool {
       }
       pat_lit(_) | pat_range(_, _) => { true }
       pat_struct(_, ref fields, _) => {
-        fields.iter().any_(|f| is_refutable(cx, f.pat))
+        fields.iter().any(|f| is_refutable(cx, f.pat))
       }
       pat_tup(ref elts) => {
-        elts.iter().any_(|elt| is_refutable(cx, *elt))
+        elts.iter().any(|elt| is_refutable(cx, *elt))
       }
       pat_enum(_, Some(ref args)) => {
-        args.iter().any_(|a| is_refutable(cx, *a))
+        args.iter().any(|a| is_refutable(cx, *a))
       }
       pat_enum(_,_) => { false }
       pat_vec(*) => { true }

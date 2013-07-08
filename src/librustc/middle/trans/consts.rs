@@ -91,7 +91,7 @@ pub fn const_vec(cx: @mut CrateContext, e: &ast::expr, es: &[@ast::expr])
         let sz = llvm::LLVMConstMul(C_uint(cx, es.len()), unit_sz);
         let vs = es.map(|e| const_expr(cx, *e));
         // If the vector contains enums, an LLVM array won't work.
-        let v = if vs.iter().any_(|vi| val_ty(*vi) != llunitty) {
+        let v = if vs.iter().any(|vi| val_ty(*vi) != llunitty) {
             C_struct(vs)
         } else {
             C_array(llunitty, vs)

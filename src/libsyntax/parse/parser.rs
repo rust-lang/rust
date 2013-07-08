@@ -3914,7 +3914,7 @@ impl Parser {
         };
         let full_path = full_path.normalize();
 
-        let maybe_i = do self.sess.included_mod_stack.iter().position_ |&p| { p == full_path };
+        let maybe_i = do self.sess.included_mod_stack.iter().position |&p| { p == full_path };
         match maybe_i {
             Some(i) => {
                 let stack = &self.sess.included_mod_stack;

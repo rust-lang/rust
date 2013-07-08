@@ -191,7 +191,7 @@ impl<'self, T> Iterator<&'self [T]> for VecSplitIterator<'self, T> {
             return Some(self.v);
         }
 
-        match self.v.iter().position_(|x| (self.pred)(x)) {
+        match self.v.iter().position(|x| (self.pred)(x)) {
             None => {
                 self.finished = true;
                 Some(self.v)
@@ -1010,7 +1010,7 @@ impl<'self,T:Eq> ImmutableEqVector<T> for &'self [T] {
     /// Find the first index containing a matching value
     #[inline]
     fn position_elem(&self, x: &T) -> Option<uint> {
-        self.iter().position_(|y| *x == *y)
+        self.iter().position(|y| *x == *y)
     }
 
     /// Find the last index containing a matching value
