@@ -1,6 +1,5 @@
 // Perlin noise benchmark from https://gist.github.com/1170424
 
-use std::f32;
 use std::float;
 use std::int;
 use std::rand::{Rng, RngUtil};
@@ -20,8 +19,8 @@ fn smooth(v: f32) -> f32 { v * v * (3.0 - 2.0 * v) }
 fn random_gradient<R:Rng>(r: &mut R) -> Vec2 {
     let v = 2.0 * float::consts::pi * r.gen();
     Vec2 {
-        x: float::cos(v) as f32,
-        y: float::sin(v) as f32,
+        x: v.cos() as f32,
+        y: v.sin() as f32,
     }
 }
 
@@ -66,8 +65,8 @@ impl Noise2DContext {
                          origins: &mut [Vec2, ..4],
                          x: f32,
                          y: f32) {
-        let x0f = f32::floor(x);
-        let y0f = f32::floor(y);
+        let x0f = x.floor();
+        let y0f = y.floor();
         let x0 = x0f as int;
         let y0 = y0f as int;
         let x1 = x0 + 1;
