@@ -337,7 +337,7 @@ pub fn trans_uniq_or_managed_vstore(bcx: block, heap: heap, vstore_expr: @ast::e
                         bcx,
                         bcx.tcx().lang_items.strdup_uniq_fn(),
                         [ llptrval, llsizeval ],
-                        expr::SaveIn(lldestval.to_ref_llval(bcx)));
+                        Some(expr::SaveIn(lldestval.to_ref_llval(bcx)))).bcx;
                     return DatumBlock {
                         bcx: bcx,
                         datum: lldestval

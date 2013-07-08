@@ -1551,8 +1551,8 @@ fn trans_overloaded_op(bcx: block,
                                                           origin)
                              },
                              callee::ArgExprs(args),
-                             dest,
-                             DoAutorefArg)
+                             Some(dest),
+                             DoAutorefArg).bcx
 }
 
 fn int_cast(bcx: block, lldsttype: Type, llsrctype: Type,
