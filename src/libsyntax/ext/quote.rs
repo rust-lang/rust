@@ -12,6 +12,7 @@ use ast;
 use codemap::{BytePos, Pos, Span};
 use ext::base::ExtCtxt;
 use ext::base;
+use ext::expand;
 use ext::build::AstBuilder;
 use parse::token::*;
 use parse::token;
@@ -291,47 +292,73 @@ pub mod rt {
 
 pub fn expand_quote_tokens(cx: @ExtCtxt,
                            sp: Span,
-                           tts: &[ast::token_tree]) -> base::MacResult {
+                           tts: &[ast::token_tree],
+                           ctxt: ast::SyntaxContext) -> base::MacResult {
     let (cx_expr, expr) = expand_tts(cx, sp, tts);
-    base::MRExpr(expand_wrapper(cx, sp, cx_expr, expr))
+    let expanded = expand_wrapper(cx, sp, cx_expr, expr);
+    // repaint the expanded code so it's as though it was the original text.
+    let repainted = expand::replace_ctxts(expanded,ctxt);
+    base::MRExpr(repainted)
 }
 
 pub fn expand_quote_expr(cx: @ExtCtxt,
                          sp: Span,
-                         tts: &[ast::token_tree]) -> base::MacResult {
-    base::MRExpr(expand_parse_call(cx, sp, "parse_expr", ~[], tts))
+                         tts: &[ast::token_tree],
+                         ctxt: ast::SyntaxContext) -> base::MacResult {
+    let expanded = expand_parse_call(cx, sp, "parse_expr", ~[], tts);
+    // repaint the expanded code so it's as though it was the original text.
+    let repainted = expand::replace_ctxts(expanded,ctxt);
+    base::MRExpr(repainted)
 }
+
+// these probably need to be capturing, too...
 
 pub fn expand_quote_item(cx: @ExtCtxt,
                          sp: Span,
-                         tts: &[ast::token_tree]) -> base::MacResult {
+                         tts: &[ast::token_tree],
+                         ctxt: ast::SyntaxContext) -> base::MacResult {
     let e_attrs = cx.expr_vec_uniq(sp, ~[]);
-    base::MRExpr(expand_parse_call(cx, sp, "parse_item",
-                                    ~[e_attrs], tts))
+    let expanded = expand_parse_call(cx, sp, "parse_item",
+                                    ~[e_attrs], tts);
+    // repaint the expanded code so it's as though it was the original text.
+    let repainted = expand::replace_ctxts(expanded,ctxt);
+    base::MRExpr(repainted)
 }
 
 pub fn expand_quote_pat(cx: @ExtCtxt,
                         sp: Span,
-                        tts: &[ast::token_tree]) -> base::MacResult {
+                        tts: &[ast::token_tree],
+                        ctxt: ast::SyntaxContext) -> base::MacResult {
     let e_refutable = cx.expr_lit(sp, ast::lit_bool(true));
-    base::MRExpr(expand_parse_call(cx, sp, "parse_pat",
-                                    ~[e_refutable], tts))
+    let expanded = expand_parse_call(cx, sp, "parse_pat",
+                                    ~[e_refutable], tts);
+    // repaint the expanded code so it's as though it was the original text.
+    let repainted = expand::replace_ctxts(expanded,ctxt);
+    base::MRExpr(repainted)
 }
 
 pub fn expand_quote_ty(cx: @ExtCtxt,
                        sp: Span,
-                       tts: &[ast::token_tree]) -> base::MacResult {
+                       tts: &[ast::token_tree],
+                       ctxt: ast::SyntaxContext) -> base::MacResult {
     let e_param_colons = cx.expr_lit(sp, ast::lit_bool(false));
-    base::MRExpr(expand_parse_call(cx, sp, "parse_ty",
-                                    ~[e_param_colons], tts))
+    let expanded = expand_parse_call(cx, sp, "parse_ty",
+                                     ~[e_param_colons], tts);
+    // repaint the expanded code so it's as though it was the original text.
+    let repainted = expand::replace_ctxts(expanded,ctxt);
+    base::MRExpr(repainted)
 }
 
 pub fn expand_quote_stmt(cx: @ExtCtxt,
                          sp: Span,
-                         tts: &[ast::token_tree]) -> base::MacResult {
+                         tts: &[ast::token_tree],
+                         ctxt: ast::SyntaxContext) -> base::MacResult {
     let e_attrs = cx.expr_vec_uniq(sp, ~[]);
-    base::MRExpr(expand_parse_call(cx, sp, "parse_stmt",
-                                    ~[e_attrs], tts))
+    let expanded = expand_parse_call(cx, sp, "parse_stmt",
+                                    ~[e_attrs], tts);
+    // repaint the expanded code so it's as though it was the original text.
+    let repainted = expand::replace_ctxts(expanded,ctxt);
+    base::MRExpr(repainted)
 }
 
 fn ids_ext(strs: ~[~str]) -> ~[ast::Ident] {

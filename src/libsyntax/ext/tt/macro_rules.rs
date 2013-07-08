@@ -150,8 +150,8 @@ pub fn add_new_extension(cx: @ExtCtxt,
         cx.span_fatal(best_fail_spot, best_fail_msg);
     }
 
-    let exp: @fn(@ExtCtxt, Span, &[ast::token_tree]) -> MacResult =
-        |cx, sp, arg| generic_extension(cx, sp, name, arg, *lhses, *rhses);
+    let exp: @fn(@ExtCtxt, Span, &[ast::token_tree], ctxt: ast::SyntaxContext) -> MacResult =
+        |cx, sp, arg, _ctxt| generic_extension(cx, sp, name, arg, *lhses, *rhses);
 
     return MRDef(MacroDef{
         name: ident_to_str(&name),
