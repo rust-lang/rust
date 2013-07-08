@@ -1842,7 +1842,7 @@ pub fn store_arg(mut bcx: block,
 
 fn mk_binding_alloca(mut bcx: block,
                      p_id: ast::node_id,
-                     path: @ast::Path,
+                     path: &ast::Path,
                      binding_mode: IrrefutablePatternBindingMode,
                      populate: &fn(block, ty::t, ValueRef) -> block) -> block {
     let var_ty = node_id_type(bcx, p_id);
@@ -1899,7 +1899,7 @@ fn bind_irrefutable_pat(bcx: block,
     let tcx = bcx.tcx();
     let ccx = bcx.ccx();
     match pat.node {
-        ast::pat_ident(pat_binding_mode, path, inner) => {
+        ast::pat_ident(pat_binding_mode, ref path, inner) => {
             if pat_is_binding(tcx.def_map, pat) {
                 // Allocate the stack slot where the value of this
                 // binding will live and place it into the appropriate
@@ -2017,9 +2017,9 @@ fn bind_irrefutable_pat(bcx: block,
     return bcx;
 }
 
-fn simple_identifier(pat: @ast::pat) -> Option<@ast::Path> {
+fn simple_identifier<'a>(pat: &'a ast::pat) -> Option<&'a ast::Path> {
     match pat.node {
-        ast::pat_ident(ast::bind_infer, path, None) => {
+        ast::pat_ident(ast::bind_infer, ref path, None) => {
             Some(path)
         }
         _ => {

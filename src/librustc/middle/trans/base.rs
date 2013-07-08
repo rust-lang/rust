@@ -1969,17 +1969,17 @@ pub fn trans_tuple_struct(ccx: @mut CrateContext,
 
 trait IdAndTy {
     fn id(&self) -> ast::node_id;
-    fn ty(&self) -> @ast::Ty;
+    fn ty<'a>(&'a self) -> &'a ast::Ty;
 }
 
 impl IdAndTy for ast::variant_arg {
     fn id(&self) -> ast::node_id { self.id }
-    fn ty(&self) -> @ast::Ty { self.ty }
+    fn ty<'a>(&'a self) -> &'a ast::Ty { &self.ty }
 }
 
 impl IdAndTy for @ast::struct_field {
     fn id(&self) -> ast::node_id { self.node.id }
-    fn ty(&self) -> @ast::Ty { self.node.ty }
+    fn ty<'a>(&'a self) -> &'a ast::Ty { &self.node.ty }
 }
 
 pub fn trans_enum_variant_or_tuple_like_struct<A:IdAndTy>(
@@ -1994,7 +1994,7 @@ pub fn trans_enum_variant_or_tuple_like_struct<A:IdAndTy>(
     let fn_args = do args.map |varg| {
         ast::arg {
             is_mutbl: false,
-            ty: varg.ty(),
+            ty: copy *varg.ty(),
             pat: ast_util::ident_to_pat(
                 ccx.tcx.sess.next_node_id(),
                 codemap::dummy_sp(),
@@ -2977,8 +2977,12 @@ pub fn trans_crate(sess: session::Session,
         do sort::quick_sort(ccx.stats.fn_stats) |&(_, _, insns_a), &(_, _, insns_b)| {
             insns_a > insns_b
         }
-        for ccx.stats.fn_stats.iter().advance |&(name, ms, insns)| {
-            io::println(fmt!("%u insns, %u ms, %s", insns, ms, name));
+        for ccx.stats.fn_stats.iter().advance |tuple| {
+            match *tuple {
+                (ref name, ms, insns) => {
+                    io::println(fmt!("%u insns, %u ms, %s", insns, ms, *name));
+                }
+            }
         }
     }
     if ccx.sess.count_llvm_insns() {
