@@ -512,9 +512,6 @@ impl<T:Repr> Repr for Option<T> {
     }
 }
 
-/*
-Annoyingly, these conflict with @ast::expr.
-
 impl<T:Repr> Repr for @T {
     fn repr(&self, tcx: ctxt) -> ~str {
         (&**self).repr(tcx)
@@ -526,7 +523,6 @@ impl<T:Repr> Repr for ~T {
         (&**self).repr(tcx)
     }
 }
-*/
 
 fn repr_vec<T:Repr>(tcx: ctxt, v: &[T]) -> ~str {
     fmt!("[%s]", v.map(|t| t.repr(tcx)).connect(","))
@@ -538,11 +534,11 @@ impl<'self, T:Repr> Repr for &'self [T] {
     }
 }
 
-// This is necessary to handle types like Option<@~[T]>, for which
+// This is necessary to handle types like Option<~[T]>, for which
 // autoderef cannot convert the &[T] handler
-impl<T:Repr> Repr for @~[T] {
+impl<T:Repr> Repr for ~[T] {
     fn repr(&self, tcx: ctxt) -> ~str {
-        repr_vec(tcx, **self)
+        repr_vec(tcx, *self)
     }
 }
 
@@ -593,19 +589,19 @@ impl Repr for ty::TraitRef {
     }
 }
 
-impl Repr for @ast::expr {
+impl Repr for ast::expr {
     fn repr(&self, tcx: ctxt) -> ~str {
         fmt!("expr(%d: %s)",
              self.id,
-             pprust::expr_to_str(*self, tcx.sess.intr()))
+             pprust::expr_to_str(self, tcx.sess.intr()))
     }
 }
 
-impl Repr for @ast::pat {
+impl Repr for ast::pat {
     fn repr(&self, tcx: ctxt) -> ~str {
         fmt!("pat(%d: %s)",
              self.id,
-             pprust::pat_to_str(*self, tcx.sess.intr()))
+             pprust::pat_to_str(self, tcx.sess.intr()))
     }
 }
 
