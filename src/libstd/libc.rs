@@ -1107,7 +1107,7 @@ pub mod consts {
             pub static MAP_SHARED : c_int = 0x0001;
             pub static MAP_PRIVATE : c_int = 0x0002;
             pub static MAP_FIXED : c_int = 0x0010;
-            pub static MAP_ANON : c_int = 0x1000;
+            pub static MAP_ANON : c_int = 0x0020;
 
             pub static MAP_FAILED : *c_void = -1 as *c_void;
 
@@ -1175,7 +1175,7 @@ pub mod consts {
             pub static MAP_SHARED : c_int = 0x0001;
             pub static MAP_PRIVATE : c_int = 0x0002;
             pub static MAP_FIXED : c_int = 0x0010;
-            pub static MAP_ANON : c_int = 0x1000;
+            pub static MAP_ANON : c_int = 0x0020;
 
             pub static MAP_FAILED : *c_void = -1 as *c_void;
 
@@ -1326,7 +1326,7 @@ pub mod consts {
             pub static PROT_GROWSUP : c_int = 0x020000000;
 
             pub static MAP_TYPE : c_int = 0x000f;
-            pub static MAP_ANONONYMOUS : c_int = 0x1000;
+            pub static MAP_ANONONYMOUS : c_int = 0x0020;
             pub static MAP_32BIT : c_int = 0x0040;
             pub static MAP_GROWSDOWN : c_int = 0x0100;
             pub static MAP_DENYWRITE : c_int = 0x0800;
@@ -1349,7 +1349,7 @@ pub mod consts {
             pub static PROT_GROWSUP : c_int = 0x020000000;
 
             pub static MAP_TYPE : c_int = 0x000f;
-            pub static MAP_ANONONYMOUS : c_int = 0x1000;
+            pub static MAP_ANONONYMOUS : c_int = 0x0020;
             pub static MAP_32BIT : c_int = 0x0040;
             pub static MAP_GROWSDOWN : c_int = 0x0100;
             pub static MAP_DENYWRITE : c_int = 0x0800;
