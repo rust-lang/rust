@@ -25,7 +25,7 @@ use std::vec;
 
 pub trait gen_send {
     fn gen_send(&mut self, cx: @ExtCtxt, try: bool) -> @ast::item;
-    fn to_ty(&mut self, cx: @ExtCtxt) -> ast::Ty;
+    fn to_ty(&mut self, cx: @ExtCtxt) -> @ast::Ty;
 }
 
 pub trait to_type_decls {
@@ -37,7 +37,7 @@ pub trait to_type_decls {
 pub trait gen_init {
     fn gen_init(&self, cx: @ExtCtxt) -> @ast::item;
     fn compile(&self, cx: @ExtCtxt) -> @ast::item;
-    fn buffer_ty_path(&self, cx: @ExtCtxt) -> ast::Ty;
+    fn buffer_ty_path(&self, cx: @ExtCtxt) -> @ast::Ty;
     fn gen_buffer_type(&self, cx: @ExtCtxt) -> @ast::item;
     fn gen_buffer_init(&self, ext_cx: @ExtCtxt) -> @ast::expr;
     fn gen_init_bounded(&self, ext_cx: @ExtCtxt) -> @ast::expr;
@@ -56,7 +56,7 @@ impl gen_send for message {
                 next.generics.ty_params.len());
             let arg_names = vec::from_fn(tys.len(), |i| cx.ident_of("x_"+i.to_str()));
             let args_ast: ~[ast::arg] = arg_names.iter().zip(tys.iter())
-                .transform(|(n, t)| cx.arg(span, copy *n, copy *t)).collect();
+                .transform(|(n, t)| cx.arg(span, *n, *t)).collect();
 
             let pipe_ty = cx.ty_path(
                 path(~[this.data_name()], span)
@@ -137,7 +137,7 @@ impl gen_send for message {
                 let arg_names = vec::from_fn(tys.len(), |i| "x_" + i.to_str());
 
                 let args_ast: ~[ast::arg] = arg_names.iter().zip(tys.iter())
-                    .transform(|(&n, t)| cx.arg(span, cx.ident_of(n), copy *t)).collect();
+                    .transform(|(n, t)| cx.arg(span, cx.ident_of(*n), *t)).collect();
 
                 let args_ast = vec::append(
                     ~[cx.arg(span,
@@ -189,7 +189,7 @@ impl gen_send for message {
           }
         }
 
-    fn to_ty(&mut self, cx: @ExtCtxt) -> ast::Ty {
+    fn to_ty(&mut self, cx: @ExtCtxt) -> @ast::Ty {
         cx.ty_path(path(~[cx.ident_of(self.name())], self.span())
           .add_tys(cx.ty_vars(&self.get_generics().ty_params)), None)
     }
@@ -369,7 +369,7 @@ impl gen_init for protocol {
         })
     }
 
-    fn buffer_ty_path(&self, cx: @ExtCtxt) -> ast::Ty {
+    fn buffer_ty_path(&self, cx: @ExtCtxt) -> @ast::Ty {
         let mut params: OptVec<ast::TyParam> = opt_vec::Empty;
         for self.states.iter().advance |s| {
             for s.generics.ty_params.iter().advance |tp| {
