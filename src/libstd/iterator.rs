@@ -245,6 +245,25 @@ pub trait IteratorUtil<A> {
     fn flat_map_<'r, B, U: Iterator<B>>(self, f: &'r fn(A) -> U)
         -> FlatMapIterator<'r, A, B, Self, U>;
 
+    /// Creates an iterator that calls a function with a reference to each
+    /// element before yielding it. This is often useful for debugging an
+    /// iterator pipeline.
+    ///
+    /// # Example
+    ///
+    /// ~~~ {.rust}
+    ///let xs = [1u, 4, 2, 3, 8, 9, 6];
+    ///let sum = xs.iter()
+    ///            .transform(|&x| x)
+    ///            .peek_(|&x| debug!("filtering %u", x))
+    ///            .filter(|&x| x % 2 == 0)
+    ///            .peek_(|&x| debug!("%u made it through", x))
+    ///            .sum();
+    ///println(sum.to_str());
+    /// ~~~
+    // FIXME: #5898: should be called `peek`
+    fn peek_<'r>(self, f: &'r fn(&A)) -> PeekIterator<'r, A, Self>;
+
     /// An adaptation of an external iterator to the for-loop protocol of rust.
     ///
     /// # Example
@@ -440,6 +459,12 @@ impl<A, T: Iterator<A>> IteratorUtil<A> for T {
     fn flat_map_<'r, B, U: Iterator<B>>(self, f: &'r fn(A) -> U)
         -> FlatMapIterator<'r, A, B, T, U> {
         FlatMapIterator{iter: self, f: f, subiter: None }
+    }
+
+    // FIXME: #5898: should be called `peek`
+    #[inline]
+    fn peek_<'r>(self, f: &'r fn(&A)) -> PeekIterator<'r, A, T> {
+        PeekIterator{iter: self, f: f}
     }
 
     /// A shim implementing the `for` loop iteration protocol for iterator objects
@@ -1041,6 +1066,32 @@ impl<'self, A, T: Iterator<A>, B, U: Iterator<B>> Iterator<B> for
     }
 }
 
+/// An iterator that calls a function with a reference to each
+/// element before yielding it.
+pub struct PeekIterator<'self, A, T> {
+    priv iter: T,
+    priv f: &'self fn(&A)
+}
+
+impl<'self, A, T: Iterator<A>> Iterator<A> for PeekIterator<'self, A, T> {
+    #[inline]
+    fn next(&mut self) -> Option<A> {
+        let next = self.iter.next();
+
+        match next {
+            Some(ref a) => (self.f)(a),
+            None => ()
+        }
+
+        next
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        self.iter.size_hint()
+    }
+}
+
 /// An iterator which just modifies the contained state throughout iteration.
 pub struct UnfoldrIterator<'self, A, St> {
     priv f: &'self fn(&mut St) -> Option<A>,
@@ -1234,6 +1285,20 @@ mod tests {
             i += 1;
         }
         assert_eq!(i, ys.len());
+    }
+
+    #[test]
+    fn test_peek() {
+        let xs = [1u, 2, 3, 4];
+        let mut n = 0;
+
+        let ys = xs.iter()
+                   .transform(|&x| x)
+                   .peek_(|_| n += 1)
+                   .collect::<~[uint]>();
+
+        assert_eq!(n, xs.len());
+        assert_eq!(xs, ys.as_slice());
     }
 
     #[test]
