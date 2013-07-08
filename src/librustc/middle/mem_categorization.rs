@@ -1185,7 +1185,7 @@ impl cmt_ {
     }
 }
 
-impl Repr for cmt {
+impl Repr for cmt_ {
     fn repr(&self, tcx: ty::ctxt) -> ~str {
         fmt!("{%s id:%d m:%? ty:%s}",
              self.cat.repr(tcx),
