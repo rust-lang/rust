@@ -42,7 +42,8 @@ use cmp::Eq;
 use comm::{stream, Chan, GenericChan, GenericPort, Port};
 use result::Result;
 use result;
-use rt::{context, OldTaskContext};
+use rt::{context, OldTaskContext, TaskContext};
+use rt::local::Local;
 use task::rt::{task_id, sched_id};
 use unstable::finally::Finally;
 use util::replace;
@@ -526,8 +527,6 @@ pub fn yield() {
 pub fn failing() -> bool {
     //! True if the running task has failed
 
-    use rt::{context, OldTaskContext};
-    use rt::local::Local;
     use rt::task::Task;
 
     match context() {
@@ -572,33 +571,59 @@ pub fn get_scheduler() -> Scheduler {
  * ~~~
  */
 pub unsafe fn unkillable<U>(f: &fn() -> U) -> U {
-    if context() == OldTaskContext {
-        let t = rt::rust_get_task();
-        do (|| {
-            rt::rust_task_inhibit_kill(t);
-            f()
-        }).finally {
-            rt::rust_task_allow_kill(t);
+    use rt::task::Task;
+
+    match context() {
+        OldTaskContext => {
+            let t = rt::rust_get_task();
+            do (|| {
+                rt::rust_task_inhibit_kill(t);
+                f()
+            }).finally {
+                rt::rust_task_allow_kill(t);
+            }
         }
-    } else {
-        // FIXME #6377
-        f()
+        TaskContext => {
+            // The inhibits/allows might fail and need to borrow the task.
+            let t = Local::unsafe_borrow::<Task>();
+            do (|| {
+                (*t).death.inhibit_kill((*t).unwinder.unwinding);
+                f()
+            }).finally {
+                (*t).death.allow_kill((*t).unwinder.unwinding);
+            }
+        }
+        // FIXME(#3095): This should be an rtabort as soon as the scheduler
+        // no longer uses a workqueue implemented with an Exclusive.
+        _ => f()
     }
 }
 
 /// The inverse of unkillable. Only ever to be used nested in unkillable().
 pub unsafe fn rekillable<U>(f: &fn() -> U) -> U {
-    if context() == OldTaskContext {
-        let t = rt::rust_get_task();
-        do (|| {
-            rt::rust_task_allow_kill(t);
-            f()
-        }).finally {
-            rt::rust_task_inhibit_kill(t);
+    use rt::task::Task;
+
+    match context() {
+        OldTaskContext => {
+            let t = rt::rust_get_task();
+            do (|| {
+                rt::rust_task_allow_kill(t);
+                f()
+            }).finally {
+                rt::rust_task_inhibit_kill(t);
+            }
         }
-    } else {
-        // FIXME #6377
-        f()
+        TaskContext => {
+            let t = Local::unsafe_borrow::<Task>();
+            do (|| {
+                (*t).death.allow_kill((*t).unwinder.unwinding);
+                f()
+            }).finally {
+                (*t).death.inhibit_kill((*t).unwinder.unwinding);
+            }
+        }
+        // FIXME(#3095): As in unkillable().
+        _ => f()
     }
 }
 
@@ -607,19 +632,36 @@ pub unsafe fn rekillable<U>(f: &fn() -> U) -> U {
  * For use with exclusive ARCs, which use pthread mutexes directly.
  */
 pub unsafe fn atomically<U>(f: &fn() -> U) -> U {
-    if context() == OldTaskContext {
-        let t = rt::rust_get_task();
-        do (|| {
-            rt::rust_task_inhibit_kill(t);
-            rt::rust_task_inhibit_yield(t);
-            f()
-        }).finally {
-            rt::rust_task_allow_yield(t);
-            rt::rust_task_allow_kill(t);
+    use rt::task::Task;
+
+    match context() {
+        OldTaskContext => {
+            let t = rt::rust_get_task();
+            do (|| {
+                rt::rust_task_inhibit_kill(t);
+                rt::rust_task_inhibit_yield(t);
+                f()
+            }).finally {
+                rt::rust_task_allow_yield(t);
+                rt::rust_task_allow_kill(t);
+            }
         }
-    } else {
-        // FIXME #6377
-        f()
+        TaskContext => {
+            let t = Local::unsafe_borrow::<Task>();
+            do (|| {
+                // It's important to inhibit kill after inhibiting yield, because
+                // inhibit-kill might fail if we were already killed, and the
+                // inhibit-yield must happen to match the finally's allow-yield.
+                (*t).death.inhibit_yield();
+                (*t).death.inhibit_kill((*t).unwinder.unwinding);
+                f()
+            }).finally {
+                (*t).death.allow_kill((*t).unwinder.unwinding);
+                (*t).death.allow_yield();
+            }
+        }
+        // FIXME(#3095): As in unkillable().
+        _ => f()
     }
 }
 
