@@ -33,6 +33,23 @@ use std::option::None;
 use syntax::ast;
 use syntax::codemap;
 
+pub fn make_uniq_free_glue(bcx: block, vptrptr: ValueRef, box_ty: ty::t)
+    -> block {
+    let box_datum = immediate_rvalue(Load(bcx, vptrptr), box_ty);
+
+    let not_null = IsNotNull(bcx, box_datum.val);
+    do with_cond(bcx, not_null) |bcx| {
+        let body_datum = box_datum.box_body(bcx);
+        let bcx = glue::drop_ty(bcx, body_datum.to_ref_llval(bcx),
+                                body_datum.ty);
+        if ty::type_contents(bcx.tcx(), box_ty).contains_managed() {
+            glue::trans_free(bcx, box_datum.val)
+        } else {
+            glue::trans_exchange_free(bcx, box_datum.val)
+        }
+    }
+}
+
 // Boxed vector types are in some sense currently a "shorthand" for a box
 // containing an unboxed vector. This expands a boxed vector type into such an
 // expanded type. It doesn't respect mutability, but that doesn't matter at
@@ -42,7 +59,7 @@ pub fn expand_boxed_vec_ty(tcx: ty::ctxt, t: ty::t) -> ty::t {
     let unboxed_vec_ty = ty::mk_mut_unboxed_vec(tcx, unit_ty);
     match ty::get(t).sty {
       ty::ty_estr(ty::vstore_uniq) | ty::ty_evec(_, ty::vstore_uniq) => {
-        ty::mk_imm_uniq(tcx, unboxed_vec_ty)
+        fail!("cannot treat vectors/strings as exchange allocations yet");
       }
       ty::ty_estr(ty::vstore_box) | ty::ty_evec(_, ty::vstore_box) => {
         ty::mk_imm_box(tcx, unboxed_vec_ty)
@@ -95,9 +112,17 @@ pub fn alloc_raw(bcx: block, unit_ty: ty::t,
     return rslt(bcx, bx);
 }
 
+pub fn heap_for_unique_vector(bcx: block, t: ty::t) -> heap {
+    if ty::type_contents(bcx.tcx(), t).contains_managed() {
+        heap_managed_unique
+    } else {
+        heap_exchange_vector
+    }
+}
+
 pub fn alloc_uniq_raw(bcx: block, unit_ty: ty::t,
                       fill: ValueRef, alloc: ValueRef) -> Result {
-    alloc_raw(bcx, unit_ty, fill, alloc, base::heap_for_unique(bcx, unit_ty))
+    alloc_raw(bcx, unit_ty, fill, alloc, heap_for_unique_vector(bcx, unit_ty))
 }
 
 pub fn alloc_vec(bcx: block,
@@ -298,7 +323,7 @@ pub fn trans_uniq_or_managed_vstore(bcx: block, heap: heap, vstore_expr: @ast::e
 
     // Handle ~"".
     match heap {
-        heap_exchange => {
+        heap_exchange_vector => {
             match content_expr.node {
                 ast::expr_lit(@codemap::spanned {
                     node: ast::lit_str(s), _
@@ -321,7 +346,7 @@ pub fn trans_uniq_or_managed_vstore(bcx: block, heap: heap, vstore_expr: @ast::e
                 _ => {}
             }
         }
-        heap_exchange_closure => fail!("vectors are not allocated with closure_exchange_alloc"),
+        heap_exchange | heap_exchange_closure => fail!("vectors use vector_exchange_alloc"),
         heap_managed | heap_managed_unique => {}
     }
 
