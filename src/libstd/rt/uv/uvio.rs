@@ -466,7 +466,7 @@ impl RtioTcpStream for UvTcpStream {
 pub struct UvUdpSocket(UdpWatcher);
 
 impl Drop for UvUdpSocket {
-    fn finalize(&self) {
+    fn drop(&self) {
         rtdebug!("closing udp socket");
         let scheduler = Local::take::<Scheduler>();
         do scheduler.deschedule_running_task_and_then |_, task| {
