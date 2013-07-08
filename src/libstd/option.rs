@@ -379,6 +379,13 @@ impl<'self, A> Iterator<&'self A> for OptionIterator<'self, A> {
     fn next(&mut self) -> Option<&'self A> {
         util::replace(&mut self.opt, None)
     }
+
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        match self.opt {
+            Some(_) => (1, Some(1)),
+            None => (0, Some(0)),
+        }
+    }
 }
 
 /// Mutable iterator over an `Option<A>`
@@ -389,6 +396,13 @@ pub struct OptionMutIterator<'self, A> {
 impl<'self, A> Iterator<&'self mut A> for OptionMutIterator<'self, A> {
     fn next(&mut self) -> Option<&'self mut A> {
         util::replace(&mut self.opt, None)
+    }
+
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        match self.opt {
+            Some(_) => (1, Some(1)),
+            None => (0, Some(0)),
+        }
     }
 }
 
@@ -486,4 +500,40 @@ fn test_filtered() {
     let modified_stuff = some_stuff.filtered(|&x| {x < 10});
     assert_eq!(some_stuff.get(), 42);
     assert!(modified_stuff.is_none());
+}
+
+#[test]
+fn test_iter() {
+    let val = 5;
+
+    let x = Some(val);
+    let mut it = x.iter();
+
+    assert_eq!(it.size_hint(), (1, Some(1)));
+    assert_eq!(it.next(), Some(&val));
+    assert_eq!(it.size_hint(), (0, Some(0)));
+    assert!(it.next().is_none());
+}
+
+#[test]
+fn test_mut_iter() {
+    let val = 5;
+    let new_val = 11;
+
+    let mut x = Some(val);
+    let mut it = x.mut_iter();
+
+    assert_eq!(it.size_hint(), (1, Some(1)));
+
+    match it.next() {
+        Some(interior) => {
+            assert_eq!(*interior, val);
+            *interior = new_val;
+            assert_eq!(x, Some(new_val));
+        }
+        None => assert!(false),
+    }
+
+    assert_eq!(it.size_hint(), (0, Some(0)));
+    assert!(it.next().is_none());
 }
