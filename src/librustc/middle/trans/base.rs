@@ -294,13 +294,12 @@ pub fn malloc_raw_dyn(bcx: block,
         let llalign = llalign_of_min(ccx, llty_value);
 
         // Allocate space:
-        let rval = alloca(bcx, Type::i8p());
-        let bcx = callee::trans_lang_call(
+        let r = callee::trans_lang_call(
             bcx,
             bcx.tcx().lang_items.exchange_malloc_fn(),
             [C_i32(llalign as i32), size],
-            expr::SaveIn(rval));
-        rslt(bcx, PointerCast(bcx, Load(bcx, rval), llty_value.ptr_to()))
+            None);
+        rslt(r.bcx, PointerCast(r.bcx, r.val, llty_value.ptr_to()))
     } else if heap == heap_exchange_vector {
         // Grab the TypeRef type of box_ptr_ty.
         let element_type = match ty::get(t).sty {
@@ -314,13 +313,12 @@ pub fn malloc_raw_dyn(bcx: block,
         let llalign = llalign_of_min(ccx, llty_value);
 
         // Allocate space:
-        let rval = alloca(bcx, Type::i8p());
-        let bcx = callee::trans_lang_call(
+        let r = callee::trans_lang_call(
             bcx,
             bcx.tcx().lang_items.vector_exchange_malloc_fn(),
             [C_i32(llalign as i32), size],
-            expr::SaveIn(rval));
-        rslt(bcx, PointerCast(bcx, Load(bcx, rval), llty))
+            None);
+        rslt(r.bcx, PointerCast(r.bcx, r.val, llty))
     } else {
         // we treat ~fn, @fn and @[] as @ here, which isn't ideal
         let (mk_fn, langcall) = match heap {
@@ -343,13 +341,12 @@ pub fn malloc_raw_dyn(bcx: block,
 
         // Allocate space:
         let tydesc = PointerCast(bcx, static_ti.tydesc, Type::i8p());
-        let rval = alloca(bcx, Type::i8p());
-        let bcx = callee::trans_lang_call(
+        let r = callee::trans_lang_call(
             bcx,
             langcall,
             [tydesc, size],
-            expr::SaveIn(rval));
-        let r = rslt(bcx, PointerCast(bcx, Load(bcx, rval), llty));
+            None);
+        let r = rslt(r.bcx, PointerCast(r.bcx, r.val, llty));
         maybe_set_managed_unique_rc(r.bcx, r.val, heap);
         r
     }
