@@ -68,7 +68,7 @@ fn get_fn_sig(srv: astsrv::Srv, fn_id: doc::AstId) -> Option<~str> {
         match ctxt.ast_map.get_copy(&fn_id) {
             ast_map::node_item(@ast::item {
                 ident: ident,
-                node: ast::item_fn(ref decl, purity, _, ref tys, _), _
+                node: ast::item_fn(~ref decl, purity, _, ref tys, _), _
             }, _) |
             ast_map::node_foreign_item(@ast::foreign_item {
                 ident: ident,
@@ -94,7 +94,7 @@ fn fold_const(
             do astsrv::exec(srv) |ctxt| {
                 match ctxt.ast_map.get_copy(&doc.id()) {
                     ast_map::node_item(@ast::item {
-                        node: ast::item_static(ref ty, _, _), _
+                        node: ast::item_static(~ref ty, _, _), _
                     }, _) => {
                         pprust::ty_to_str(ty, extract::interner())
                     }

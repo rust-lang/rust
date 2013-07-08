@@ -250,7 +250,7 @@ pub fn public_methods(ms: ~[@method]) -> ~[@method] {
 // a default, pull out the useful fields to make a ty_method
 pub fn trait_method_to_ty_method(method: &trait_method) -> ty_method {
     match *method {
-        required(ref m) => copy *m,
+        required(~ref m) => copy *m,
         provided(ref m) => {
             ty_method {
                 ident: m.ident,
@@ -272,7 +272,7 @@ pub fn split_trait_methods(trait_methods: &[trait_method])
     let mut provd = ~[];
     for trait_methods.iter().advance |trt_method| {
         match *trt_method {
-          required(ref tm) => reqd.push(copy *tm),
+          required(~ref tm) => reqd.push(copy *tm),
           provided(m) => provd.push(m)
         }
     };

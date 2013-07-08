@@ -2130,7 +2130,7 @@ pub fn trans_item(ccx: @mut CrateContext, item: &ast::item) {
         _ => fail!("trans_item"),
     };
     match item.node {
-      ast::item_fn(ref decl, purity, _abis, ref generics, ref body) => {
+      ast::item_fn(~ref decl, purity, _abis, ref generics, ref body) => {
         if purity == ast::extern_fn  {
             let llfndecl = get_item_val(ccx, item.id);
             foreign::trans_foreign_fn(ccx,

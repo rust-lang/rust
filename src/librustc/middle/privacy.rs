@@ -449,7 +449,7 @@ pub fn check_crate<'mm>(tcx: ty::ctxt,
                         _ => {}
                     }
                 }
-                expr_path(ref path) => {
+                expr_path(~ref path) => {
                     check_path(expr.span, tcx.def_map.get_copy(&expr.id), path);
                 }
                 expr_struct(_, ref fields, _) => {

@@ -815,8 +815,8 @@ fn determine_rp_in_ty(ty: &ast::Ty,
     }
 
     match ty.node {
-      ast::ty_box(ref mt) | ast::ty_uniq(ref mt) | ast::ty_vec(ref mt) |
-      ast::ty_rptr(_, ref mt) | ast::ty_ptr(ref mt) => {
+      ast::ty_box(~ref mt) | ast::ty_uniq(~ref mt) | ast::ty_vec(~ref mt) |
+      ast::ty_rptr(_, ~ref mt) | ast::ty_ptr(~ref mt) => {
         visit_mt(mt, (cx, visitor));
       }
 
@@ -855,10 +855,10 @@ fn determine_rp_in_ty(ty: &ast::Ty,
         // mutability is invariant
         if mt.mutbl == ast::m_mutbl {
             do cx.with_ambient_variance(rv_invariant) {
-                (visitor.visit_ty)(mt.ty, (cx, visitor));
+                (visitor.visit_ty)(&mt.ty, (cx, visitor));
             }
         } else {
-            (visitor.visit_ty)(mt.ty, (cx, visitor));
+            (visitor.visit_ty)(&mt.ty, (cx, visitor));
         }
     }
 }

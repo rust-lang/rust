@@ -117,8 +117,8 @@ fn fold_arg_(a: arg, fld: @ast_fold) -> arg {
 fn fold_mac_(m: &mac, fld: @ast_fold) -> mac {
     spanned {
         node: match m.node {
-            mac_invoc_tt(ref p,ref tts) =>
-            mac_invoc_tt(fld.fold_path(p),
+            mac_invoc_tt(~ref p,ref tts) =>
+            mac_invoc_tt(~fld.fold_path(p),
                          fold_tts(*tts,fld))
         },
         span: fld.new_span(m.span)
@@ -162,7 +162,7 @@ pub fn fold_fn_decl(decl: &ast::fn_decl, fld: @ast_fold) -> ast::fn_decl {
 
 fn fold_ty_param_bound(tpb: &TyParamBound, fld: @ast_fold) -> TyParamBound {
     match *tpb {
-        TraitTyParamBound(ref ty) => TraitTyParamBound(fold_trait_ref(ty, fld)),
+        TraitTyParamBound(~ref ty) => TraitTyParamBound(~fold_trait_ref(ty, fld)),
         RegionTyParamBound => RegionTyParamBound
     }
 }
@@ -267,10 +267,10 @@ fn noop_fold_struct_field(sf: @struct_field, fld: @ast_fold)
 
 pub fn noop_fold_item_underscore(i: &item_, fld: @ast_fold) -> item_ {
     match *i {
-        item_static(ref t, m, e) => item_static(fld.fold_ty(t), m, fld.fold_expr(e)),
-        item_fn(ref decl, purity, abi, ref generics, ref body) => {
+        item_static(~ref t, m, e) => item_static(~fld.fold_ty(t), m, fld.fold_expr(e)),
+        item_fn(~ref decl, purity, abi, ref generics, ref body) => {
             item_fn(
-                fold_fn_decl(decl, fld),
+                ~fold_fn_decl(decl, fld),
                 purity,
                 abi,
                 fold_generics(generics, fld),
@@ -565,9 +565,9 @@ pub fn noop_fold_expr(e: &expr_, fld: @ast_fold) -> expr_ {
                 arms.map(|x| fld.fold_arm(x))
             )
         }
-        expr_fn_block(ref decl, ref body) => {
+        expr_fn_block(~ref decl, ref body) => {
             expr_fn_block(
-                fold_fn_decl(decl, fld),
+                ~fold_fn_decl(decl, fld),
                 fld.fold_block(body)
             )
         }
@@ -597,7 +597,7 @@ pub fn noop_fold_expr(e: &expr_, fld: @ast_fold) -> expr_ {
                 fld.fold_expr(er)
             )
         }
-        expr_path(ref pth) => expr_path(fld.fold_path(pth)),
+        expr_path(~ref pth) => expr_path(~fld.fold_path(pth)),
         expr_self => expr_self,
         expr_break(ref opt_ident) => {
             expr_break(opt_ident.map(|x| fld.fold_ident(*x)))
@@ -622,9 +622,9 @@ pub fn noop_fold_expr(e: &expr_, fld: @ast_fold) -> expr_ {
             })
         }
         expr_mac(ref mac) => expr_mac(fold_mac(mac)),
-        expr_struct(ref path, ref fields, maybe_expr) => {
+        expr_struct(~ref path, ref fields, maybe_expr) => {
             expr_struct(
-                fld.fold_path(path),
+                ~fld.fold_path(path),
                 fields.map(|x| fold_field(*x)),
                 maybe_expr.map(|x| fld.fold_expr(*x))
             )
@@ -637,7 +637,7 @@ pub fn noop_fold_ty(t: &ty_, fld: @ast_fold) -> ty_ {
     let fold_mac = |x| fold_mac_(x, fld);
     fn fold_mt(mt: &mt, fld: @ast_fold) -> mt {
         mt {
-            ty: ~fld.fold_ty(mt.ty),
+            ty: fld.fold_ty(&mt.ty),
             mutbl: mt.mutbl,
         }
     }
@@ -658,11 +658,11 @@ pub fn noop_fold_ty(t: &ty_, fld: @ast_fold) -> ty_ {
     }
     match *t {
         ty_nil | ty_bot | ty_infer => copy *t,
-        ty_box(ref mt) => ty_box(fold_mt(mt, fld)),
-        ty_uniq(ref mt) => ty_uniq(fold_mt(mt, fld)),
-        ty_vec(ref mt) => ty_vec(fold_mt(mt, fld)),
-        ty_ptr(ref mt) => ty_ptr(fold_mt(mt, fld)),
-        ty_rptr(region, ref mt) => ty_rptr(region, fold_mt(mt, fld)),
+        ty_box(~ref mt) => ty_box(~fold_mt(mt, fld)),
+        ty_uniq(~ref mt) => ty_uniq(~fold_mt(mt, fld)),
+        ty_vec(~ref mt) => ty_vec(~fold_mt(mt, fld)),
+        ty_ptr(~ref mt) => ty_ptr(~fold_mt(mt, fld)),
+        ty_rptr(region, ~ref mt) => ty_rptr(region, ~fold_mt(mt, fld)),
         ty_closure(ref f) => {
             ty_closure(@TyClosure {
                 sigil: f.sigil,
@@ -683,11 +683,11 @@ pub fn noop_fold_ty(t: &ty_, fld: @ast_fold) -> ty_ {
             })
         }
         ty_tup(ref tys) => ty_tup(tys.map(|ty| fld.fold_ty(ty))),
-        ty_path(ref path, ref bounds, id) =>
-            ty_path(fld.fold_path(path), fold_opt_bounds(bounds, fld), fld.new_id(id)),
-        ty_fixed_length_vec(ref mt, e) => {
+        ty_path(~ref path, ref bounds, id) =>
+            ty_path(~fld.fold_path(path), fold_opt_bounds(bounds, fld), fld.new_id(id)),
+        ty_fixed_length_vec(~ref mt, e) => {
             ty_fixed_length_vec(
-                fold_mt(mt, fld),
+                ~fold_mt(mt, fld),
                 fld.fold_expr(e)
             )
         }

@@ -251,7 +251,7 @@ impl AstBuilder for @ExtCtxt {
 
     fn ty_mt(&self, ty: ast::Ty, mutbl: ast::mutability) -> ast::mt {
         ast::mt {
-            ty: ~ty,
+            ty: ty,
             mutbl: mutbl
         }
     }
@@ -267,7 +267,7 @@ impl AstBuilder for @ExtCtxt {
     fn ty_path(&self, path: ast::Path, bounds: Option<OptVec<ast::TyParamBound>>)
               -> ast::Ty {
         self.ty(path.span,
-                ast::ty_path(path, bounds, self.next_id()))
+                ast::ty_path(~path, bounds, self.next_id()))
     }
 
     // Might need to take bounds as an argument in the future, if you ever want
@@ -284,14 +284,14 @@ impl AstBuilder for @ExtCtxt {
                mutbl: ast::mutability)
         -> ast::Ty {
         self.ty(span,
-                ast::ty_rptr(lifetime, self.ty_mt(ty, mutbl)))
+                ast::ty_rptr(lifetime, ~self.ty_mt(ty, mutbl)))
     }
     fn ty_uniq(&self, span: span, ty: ast::Ty) -> ast::Ty {
-        self.ty(span, ast::ty_uniq(self.ty_mt(ty, ast::m_imm)))
+        self.ty(span, ast::ty_uniq(~self.ty_mt(ty, ast::m_imm)))
     }
     fn ty_box(&self, span: span,
                  ty: ast::Ty, mutbl: ast::mutability) -> ast::Ty {
-        self.ty(span, ast::ty_box(self.ty_mt(ty, mutbl)))
+        self.ty(span, ast::ty_box(~self.ty_mt(ty, mutbl)))
     }
 
     fn ty_option(&self, ty: ast::Ty) -> ast::Ty {
@@ -311,7 +311,7 @@ impl AstBuilder for @ExtCtxt {
         respan(span,
                ast::ty_field_ {
                    ident: name,
-                   mt: ast::mt { ty: ~ty, mutbl: ast::m_imm },
+                   mt: ast::mt { ty: ty, mutbl: ast::m_imm },
                })
     }
 
@@ -363,7 +363,7 @@ impl AstBuilder for @ExtCtxt {
     }
 
     fn typarambound(&self, path: ast::Path) -> ast::TyParamBound {
-        ast::TraitTyParamBound(self.trait_ref(path))
+        ast::TraitTyParamBound(~self.trait_ref(path))
     }
 
     fn lifetime(&self, span: span, ident: ast::ident) -> ast::Lifetime {
@@ -419,7 +419,7 @@ impl AstBuilder for @ExtCtxt {
     }
 
     fn expr_path(&self, path: ast::Path) -> @ast::expr {
-        self.expr(path.span, ast::expr_path(path))
+        self.expr(path.span, ast::expr_path(~path))
     }
 
     fn expr_ident(&self, span: span, id: ast::ident) -> @ast::expr {
@@ -485,7 +485,7 @@ impl AstBuilder for @ExtCtxt {
         respan(span, ast::field_ { ident: name, expr: e })
     }
     fn expr_struct(&self, span: span, path: ast::Path, fields: ~[ast::field]) -> @ast::expr {
-        self.expr(span, ast::expr_struct(path, fields, None))
+        self.expr(span, ast::expr_struct(~path, fields, None))
     }
     fn expr_struct_ident(&self, span: span,
                          id: ast::ident, fields: ~[ast::field]) -> @ast::expr {
@@ -600,10 +600,10 @@ impl AstBuilder for @ExtCtxt {
     }
 
     fn lambda_fn_decl(&self, span: span, fn_decl: ast::fn_decl, blk: ast::blk) -> @ast::expr {
-        self.expr(span, ast::expr_fn_block(fn_decl, blk))
+        self.expr(span, ast::expr_fn_block(~fn_decl, blk))
     }
     fn lambda(&self, span: span, ids: ~[ast::ident], blk: ast::blk) -> @ast::expr {
-        let fn_decl = self.fn_decl(
+        let fn_decl = ~self.fn_decl(
             ids.map(|id| self.arg(span, *id, self.ty_infer(span))),
             self.ty_infer(span));
 
@@ -682,7 +682,7 @@ impl AstBuilder for @ExtCtxt {
         self.item(span,
                   name,
                   ~[],
-                  ast::item_fn(self.fn_decl(inputs, output),
+                  ast::item_fn(~self.fn_decl(inputs, output),
                                ast::impure_fn,
                                AbiSet::Rust(),
                                generics,
