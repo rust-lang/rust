@@ -24,7 +24,7 @@ use std::trie::{TrieMap, TrieSet};
 use std::uint;
 use std::vec;
 use deque::Deque;
-use dlist::DList;
+use dlist::List;
 use treemap::{TreeMap, TreeSet};
 
 pub trait Encoder {
@@ -652,11 +652,11 @@ impl<
 impl<
     S: Encoder,
     T: Encodable<S> + Copy
-> Encodable<S> for @mut DList<T> {
+> Encodable<S> for List<T> {
     fn encode(&self, s: &mut S) {
-        do s.emit_seq(self.size) |s| {
+        do s.emit_seq(self.len()) |s| {
             let mut i = 0;
-            for self.each |e| {
+            for self.iter().advance |e| {
                 s.emit_seq_elt(i, |s| e.encode(s));
                 i += 1;
             }
@@ -664,12 +664,12 @@ impl<
     }
 }
 
-impl<D:Decoder,T:Decodable<D>> Decodable<D> for @mut DList<T> {
-    fn decode(d: &mut D) -> @mut DList<T> {
-        let list = DList();
+impl<D:Decoder,T:Decodable<D>> Decodable<D> for List<T> {
+    fn decode(d: &mut D) -> List<T> {
+        let mut list = List::new();
         do d.read_seq |d, len| {
             for uint::range(0, len) |i| {
-                list.push(d.read_seq_elt(i, |d| Decodable::decode(d)));
+                list.push_back(d.read_seq_elt(i, |d| Decodable::decode(d)));
             }
         }
         list
