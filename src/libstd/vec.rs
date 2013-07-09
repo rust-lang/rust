@@ -32,13 +32,11 @@ use sys::size_of;
 use uint;
 use unstable::intrinsics;
 #[cfg(stage0)]
-use intrinsic::{get_tydesc, TyDesc};
+use intrinsic::{get_tydesc};
 #[cfg(not(stage0))]
-use unstable::intrinsics::{get_tydesc, contains_managed, TyDesc};
+use unstable::intrinsics::{get_tydesc, contains_managed};
 use vec;
 use util;
-
-#[cfg(not(test))] use cmp::Equiv;
 
 /// Returns true if two vectors have the same length
 pub fn same_length<T, U>(xs: &[T], ys: &[U]) -> bool {
