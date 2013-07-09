@@ -497,11 +497,26 @@ pub fn try<T:Send>(f: ~fn() -> T) -> Result<T,()> {
 pub fn yield() {
     //! Yield control to the task scheduler
 
+    use rt::{context, OldTaskContext};
+    use rt::local::Local;
+    use rt::sched::Scheduler;
+
     unsafe {
-        let task_ = rt::rust_get_task();
-        let killed = rt::rust_task_yield(task_);
-        if killed && !failing() {
-            fail!("killed");
+        match context() {
+            OldTaskContext => {
+                let task_ = rt::rust_get_task();
+                let killed = rt::rust_task_yield(task_);
+                if killed && !failing() {
+                    fail!("killed");
+                }
+            }
+            _ => {
+                // XXX: What does yield really mean in newsched?
+                let sched = Local::take::<Scheduler>();
+                do sched.deschedule_running_task_and_then |sched, task| {
+                    sched.enqueue_task(task);
+                }
+            }
         }
     }
 }
