@@ -11,7 +11,6 @@
 // xfail-fast
 
 use std::int;
-use std::libc::c_void;
 use std::ptr;
 use std::sys;
 use std::vec::UnboxedVecRepr;
@@ -21,7 +20,7 @@ use std::unstable::intrinsics::{TyDesc, get_tydesc, visit_tydesc, TyVisitor, Opa
 
 /// Trait for visitor that wishes to reflect on data.
 trait movable_ptr {
-    fn move_ptr(&self, adjustment: &fn(*c_void) -> *c_void);
+    fn move_ptr(&self, adjustment: &fn(*Void) -> *Void);
 }
 
 /// Helper function for alignment calculation.
@@ -37,14 +36,14 @@ impl<V:TyVisitor + movable_ptr> ptr_visit_adaptor<V> {
     #[inline(always)]
     pub fn bump(&self, sz: uint) {
       do self.inner.move_ptr() |p| {
-            ((p as uint) + sz) as *c_void
+            ((p as uint) + sz) as *Void
       };
     }
 
     #[inline(always)]
     pub fn align(&self, a: uint) {
       do self.inner.move_ptr() |p| {
-            align(p as uint, a) as *c_void
+            align(p as uint, a) as *Void
       };
     }
 
@@ -486,8 +485,8 @@ impl<V:TyVisitor + movable_ptr> TyVisitor for ptr_visit_adaptor<V> {
 struct my_visitor(@mut Stuff);
 
 struct Stuff {
-    ptr1: *c_void,
-    ptr2: *c_void,
+    ptr1: *Void,
+    ptr2: *Void,
     vals: ~[~str]
 }
 
@@ -511,7 +510,7 @@ impl my_visitor {
 struct Inner<V> { inner: V }
 
 impl movable_ptr for my_visitor {
-    fn move_ptr(&self, adjustment: &fn(*c_void) -> *c_void) {
+    fn move_ptr(&self, adjustment: &fn(*Void) -> *Void) {
         self.ptr1 = adjustment(self.ptr1);
         self.ptr2 = adjustment(self.ptr2);
     }
@@ -654,7 +653,7 @@ struct Triple { x: int, y: int, z: int }
 pub fn main() {
     unsafe {
         let r = (1,2,3,true,false, Triple {x:5,y:4,z:3}, (12,));
-        let p = ptr::to_unsafe_ptr(&r) as *c_void;
+        let p = ptr::to_unsafe_ptr(&r) as *Void;
         let u = my_visitor(@mut Stuff {ptr1: p,
                                        ptr2: p,
                                        vals: ~[]});

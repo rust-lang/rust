@@ -21,7 +21,6 @@ use clone::Clone;
 use iterator::{FromIterator, Iterator, IteratorUtil};
 use kinds::Copy;
 use libc;
-use libc::c_void;
 use num::Zero;
 use option::{None, Option, Some};
 use ptr::to_unsafe_ptr;
@@ -38,6 +37,7 @@ use intrinsic::{get_tydesc, TyDesc};
 use unstable::intrinsics::{get_tydesc, contains_managed, TyDesc};
 use vec;
 use util;
+use util::Void;
 
 extern {
     #[fast_ffi]
@@ -1142,7 +1142,7 @@ impl<T> OwnedVector<T> for ~[T] {
                     vec_reserve_shared_actual(td, ptr as **raw::VecRepr, n as libc::size_t);
                 } else {
                     let alloc = n * sys::nonzero_size_of::<T>();
-                    *ptr = realloc_raw(*ptr as *mut c_void, alloc + size_of::<raw::VecRepr>())
+                    *ptr = realloc_raw(*ptr as *mut Void, alloc + size_of::<raw::VecRepr>())
                            as *mut raw::VecRepr;
                     (**ptr).unboxed.alloc = alloc;
                 }
@@ -1176,7 +1176,7 @@ impl<T> OwnedVector<T> for ~[T] {
                     if alloc / sys::nonzero_size_of::<T>() != n || size < alloc {
                         fail!("vector size is too large: %u", n);
                     }
-                    *ptr = realloc_raw(*ptr as *mut c_void, size)
+                    *ptr = realloc_raw(*ptr as *mut Void, size)
                            as *mut raw::VecRepr;
                     (**ptr).unboxed.alloc = alloc;
                 }
@@ -1968,6 +1968,7 @@ pub mod bytes {
     use vec::raw;
     use vec;
     use ptr;
+    use util::Void;
 
     /// A trait for operations on mutable operations on `[u8]`
     pub trait MutableByteVector {
@@ -1990,8 +1991,8 @@ pub mod bytes {
         let b_len = b.len();
         let n = num::min(a_len, b_len) as libc::size_t;
         let r = unsafe {
-            libc::memcmp(raw::to_ptr(*a) as *libc::c_void,
-                         raw::to_ptr(*b) as *libc::c_void, n) as int
+            libc::memcmp(raw::to_ptr(*a) as *Void,
+                         raw::to_ptr(*b) as *Void, n) as int
         };
 
         if r != 0 { r } else {

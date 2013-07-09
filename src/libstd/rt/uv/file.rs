@@ -10,7 +10,6 @@
 
 use prelude::*;
 use ptr::null;
-use libc::c_void;
 use rt::uv::{Request, NativeHandle, Loop, FsCallback};
 use rt::uv::uvll;
 use rt::uv::uvll::*;
@@ -28,7 +27,7 @@ impl FsRequest {
     }
 
     fn delete(self) {
-        unsafe { free_req(self.native_handle() as *c_void) }
+        unsafe { free_req(self.native_handle() as *Void) }
     }
 
     fn open(&mut self, _loop_: &Loop, _cb: FsCallback) {

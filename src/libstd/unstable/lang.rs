@@ -13,7 +13,7 @@
 use iterator::IteratorUtil;
 use uint;
 use cast::transmute;
-use libc::{c_char, c_uchar, c_void, size_t, uintptr_t, c_int, STDERR_FILENO};
+use libc::{c_char, c_uchar, size_t, uintptr_t, c_int, STDERR_FILENO};
 use managed::raw::BoxRepr;
 use str;
 use sys;
@@ -22,9 +22,10 @@ use rt::task::Task;
 use rt::local::Local;
 use option::{Option, Some, None};
 use io;
+use util::Void;
 
 #[allow(non_camel_case_types)]
-pub type rust_task = c_void;
+pub type rust_task = Void;
 
 pub static FROZEN_BIT: uint = 1 << (uint::bits - 1);
 pub static MUT_BIT: uint = 1 << (uint::bits - 2);
@@ -32,7 +33,8 @@ static ALL_BITS: uint = FROZEN_BIT | MUT_BIT;
 
 pub mod rustrt {
     use unstable::lang::rust_task;
-    use libc::{c_void, c_char, uintptr_t};
+    use libc::{c_char, uintptr_t};
+    use util::Void;
 
     pub extern {
         #[rust_stack]
@@ -50,10 +52,10 @@ pub mod rustrt {
         unsafe fn rust_upcall_free_noswitch(ptr: *c_char);
 
         #[rust_stack]
-        fn rust_take_task_borrow_list(task: *rust_task) -> *c_void;
+        fn rust_take_task_borrow_list(task: *rust_task) -> *Void;
 
         #[rust_stack]
-        fn rust_set_task_borrow_list(task: *rust_task, map: *c_void);
+        fn rust_set_task_borrow_list(task: *rust_task, map: *Void);
 
         #[rust_stack]
         fn rust_try_get_task() -> *rust_task;
@@ -229,7 +231,7 @@ pub unsafe fn local_malloc(td: *c_char, size: uintptr_t) -> *c_char {
         _ => {
             let mut alloc = ::ptr::null();
             do Local::borrow::<Task> |task| {
-                alloc = task.heap.alloc(td as *c_void, size as uint) as *c_char;
+                alloc = task.heap.alloc(td as *Void, size as uint) as *c_char;
             }
             return alloc;
         }
@@ -247,7 +249,7 @@ pub unsafe fn local_free(ptr: *c_char) {
         }
         _ => {
             do Local::borrow::<Task> |task| {
-                task.heap.free(ptr as *c_void);
+                task.heap.free(ptr as *Void);
             }
         }
     }
@@ -375,8 +377,8 @@ pub fn start(main: *u8, argc: int, argv: **c_char,
     unsafe {
         let use_old_rt = os::getenv("RUST_NEWRT").is_none();
         if use_old_rt {
-            return rust_start(main as *c_void, argc as c_int, argv,
-                              crate_map as *c_void) as int;
+            return rust_start(main as *Void, argc as c_int, argv,
+                              crate_map as *Void) as int;
         } else {
             return do rt::start(argc, argv as **u8, crate_map) {
                 let main: extern "Rust" fn() = transmute(main);
@@ -386,7 +388,7 @@ pub fn start(main: *u8, argc: int, argv: **c_char,
     }
 
     extern {
-        fn rust_start(main: *c_void, argc: c_int, argv: **c_char,
-                      crate_map: *c_void) -> c_int;
+        fn rust_start(main: *Void, argc: c_int, argv: **c_char,
+                      crate_map: *Void) -> c_int;
     }
 }

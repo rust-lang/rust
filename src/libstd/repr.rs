@@ -21,13 +21,13 @@ use char;
 use container::Container;
 use io::{Writer, WriterUtil};
 use iterator::IteratorUtil;
-use libc::c_void;
 use managed;
 use ptr;
 use reflect;
 use reflect::{MovePtr, align};
 use str::StrSlice;
 use to_str::ToStr;
+use util::Void;
 use vec::raw::{VecRepr, SliceRepr};
 use vec;
 use vec::{OwnedVector, UnboxedVecRepr};
@@ -120,12 +120,12 @@ enum VariantState {
 }
 
 pub struct ReprVisitor {
-    ptr: @mut *c_void,
-    ptr_stk: @mut ~[*c_void],
+    ptr: @mut *Void,
+    ptr_stk: @mut ~[*Void],
     var_stk: @mut ~[VariantState],
     writer: @Writer
 }
-pub fn ReprVisitor(ptr: *c_void, writer: @Writer) -> ReprVisitor {
+pub fn ReprVisitor(ptr: *Void, writer: @Writer) -> ReprVisitor {
     ReprVisitor {
         ptr: @mut ptr,
         ptr_stk: @mut ~[],
@@ -136,7 +136,7 @@ pub fn ReprVisitor(ptr: *c_void, writer: @Writer) -> ReprVisitor {
 
 impl MovePtr for ReprVisitor {
     #[inline]
-    fn move_ptr(&self, adjustment: &fn(*c_void) -> *c_void) {
+    fn move_ptr(&self, adjustment: &fn(*Void) -> *Void) {
         *self.ptr = adjustment(*self.ptr);
     }
     fn push_ptr(&self) {
@@ -153,7 +153,7 @@ impl ReprVisitor {
     #[inline]
     pub fn get<T>(&self, f: &fn(&T)) -> bool {
         unsafe {
-            f(transmute::<*c_void,&T>(*self.ptr));
+            f(transmute::<*Void,&T>(*self.ptr));
         }
         true
     }
@@ -164,7 +164,7 @@ impl ReprVisitor {
     }
 
     #[inline]
-    pub fn visit_ptr_inner(&self, ptr: *c_void, inner: *TyDesc) -> bool {
+    pub fn visit_ptr_inner(&self, ptr: *Void, inner: *TyDesc) -> bool {
         unsafe {
             let u = ReprVisitor(ptr, self.writer);
             let v = reflect::MovePtrAdaptor(u);
@@ -217,7 +217,7 @@ impl ReprVisitor {
                 self.writer.write_str(", ");
             }
             self.write_mut_qualifier(mtbl);
-            self.visit_ptr_inner(p as *c_void, inner);
+            self.visit_ptr_inner(p as *Void, inner);
             p = align(ptr::offset(p, sz) as uint, al) as *u8;
         }
         self.writer.write_char(']');
@@ -294,7 +294,7 @@ impl TyVisitor for ReprVisitor {
         self.writer.write_char('@');
         self.write_mut_qualifier(mtbl);
         do self.get::<&managed::raw::BoxRepr> |b| {
-            let p = ptr::to_unsafe_ptr(&b.data) as *c_void;
+            let p = ptr::to_unsafe_ptr(&b.data) as *Void;
             self.visit_ptr_inner(p, inner);
         }
     }
@@ -302,7 +302,7 @@ impl TyVisitor for ReprVisitor {
     fn visit_uniq(&self, mtbl: uint, inner: *TyDesc) -> bool {
         self.writer.write_char('~');
         self.write_mut_qualifier(mtbl);
-        do self.get::<*c_void> |b| {
+        do self.get::<*Void> |b| {
             self.visit_ptr_inner(*b, inner);
         }
     }
@@ -312,13 +312,13 @@ impl TyVisitor for ReprVisitor {
         self.writer.write_char('~');
         self.write_mut_qualifier(mtbl);
         do self.get::<&managed::raw::BoxRepr> |b| {
-            let p = ptr::to_unsafe_ptr(&b.data) as *c_void;
+            let p = ptr::to_unsafe_ptr(&b.data) as *Void;
             self.visit_ptr_inner(p, inner);
         }
     }
 
     fn visit_ptr(&self, _mtbl: uint, _inner: *TyDesc) -> bool {
-        do self.get::<*c_void> |p| {
+        do self.get::<*Void> |p| {
             self.writer.write_str(fmt!("(0x%x as *())",
                                        *p as uint));
         }
@@ -327,7 +327,7 @@ impl TyVisitor for ReprVisitor {
     fn visit_rptr(&self, mtbl: uint, inner: *TyDesc) -> bool {
         self.writer.write_char('&');
         self.write_mut_qualifier(mtbl);
-        do self.get::<*c_void> |p| {
+        do self.get::<*Void> |p| {
             self.visit_ptr_inner(*p, inner);
         }
     }
@@ -548,7 +548,7 @@ impl TyVisitor for ReprVisitor {
     fn visit_opaque_box(&self) -> bool {
         self.writer.write_char('@');
         do self.get::<&managed::raw::BoxRepr> |b| {
-            let p = ptr::to_unsafe_ptr(&b.data) as *c_void;
+            let p = ptr::to_unsafe_ptr(&b.data) as *Void;
             self.visit_ptr_inner(p, b.header.type_desc);
         }
     }
@@ -556,7 +556,7 @@ impl TyVisitor for ReprVisitor {
     fn visit_opaque_box(&self) -> bool {
         self.writer.write_char('@');
         do self.get::<&managed::raw::BoxRepr> |b| {
-            let p = ptr::to_unsafe_ptr(&b.data) as *c_void;
+            let p = ptr::to_unsafe_ptr(&b.data) as *Void;
             unsafe {
                 self.visit_ptr_inner(p, transmute(b.header.type_desc));
             }
@@ -571,7 +571,7 @@ impl TyVisitor for ReprVisitor {
 
 pub fn write_repr<T>(writer: @Writer, object: &T) {
     unsafe {
-        let ptr = ptr::to_unsafe_ptr(object) as *c_void;
+        let ptr = ptr::to_unsafe_ptr(object) as *Void;
         let tydesc = get_tydesc::<T>();
         let u = ReprVisitor(ptr, writer);
         let v = reflect::MovePtrAdaptor(u);

@@ -94,7 +94,6 @@
     <context id="ctypes" style-ref="type">
 		<keyword>c_float</keyword>
 		<keyword>c_double</keyword>
-		<keyword>c_void</keyword>
 		<keyword>FILE</keyword>
 		<keyword>fpos_t</keyword>
 		<keyword>DIR</keyword>

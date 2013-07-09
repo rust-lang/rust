@@ -8,13 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use libc::c_void;
 #[cfg(unix)]
 use libc::c_int;
 #[cfg(unix)]
 use ptr::null;
 #[cfg(windows)]
 use libc::types::os::arch::extra::{DWORD, LPVOID, BOOL};
+use util::Void;
 
 #[cfg(unix)]
 pub type Key = pthread_key_t;
@@ -25,12 +25,12 @@ pub unsafe fn create(key: &mut Key) {
 }
 
 #[cfg(unix)]
-pub unsafe fn set(key: Key, value: *mut c_void) {
+pub unsafe fn set(key: Key, value: *mut Void) {
     assert_eq!(0, pthread_setspecific(key, value));
 }
 
 #[cfg(unix)]
-pub unsafe fn get(key: Key) -> *mut c_void {
+pub unsafe fn get(key: Key) -> *mut Void {
     pthread_getspecific(key)
 }
 
@@ -49,9 +49,9 @@ extern {
     #[fast_ffi]
     fn pthread_key_create(key: *mut pthread_key_t, dtor: *u8) -> c_int;
     #[fast_ffi]
-    fn pthread_setspecific(key: pthread_key_t, value: *mut c_void) -> c_int;
+    fn pthread_setspecific(key: pthread_key_t, value: *mut Void) -> c_int;
     #[fast_ffi]
-    fn pthread_getspecific(key: pthread_key_t) -> *mut c_void;
+    fn pthread_getspecific(key: pthread_key_t) -> *mut Void;
 }
 
 #[cfg(windows)]
@@ -65,12 +65,12 @@ pub unsafe fn create(key: &mut Key) {
 }
 
 #[cfg(windows)]
-pub unsafe fn set(key: Key, value: *mut c_void) {
+pub unsafe fn set(key: Key, value: *mut Void) {
     assert!(0 != TlsSetValue(key, value))
 }
 
 #[cfg(windows)]
-pub unsafe fn get(key: Key) -> *mut c_void {
+pub unsafe fn get(key: Key) -> *mut Void {
     TlsGetValue(key)
 }
 

@@ -10,9 +10,9 @@
 
 use option::*;
 use super::stack::StackSegment;
-use libc::c_void;
 use cast::{transmute, transmute_mut_unsafe,
            transmute_region, transmute_mut_region};
+use util::Void;
 
 // XXX: Registers is boxed so that it is 16-byte aligned, for storing
 // SSE regs.  It would be marginally better not to do this. In C++ we
@@ -45,8 +45,8 @@ impl Context {
         // The C-ABI function that is the task entry point
         extern fn task_start_wrapper(f: &~fn()) { (*f)() }
 
-        let fp: *c_void = task_start_wrapper as *c_void;
-        let argp: *c_void = unsafe { transmute::<&~fn(), *c_void>(&*start) };
+        let fp: *Void = task_start_wrapper as *Void;
+        let argp: *Void = unsafe { transmute::<&~fn(), *Void>(&*start) };
         let sp: *uint = stack.end();
         let sp: *mut uint = unsafe { transmute_mut_unsafe(sp) };
 
@@ -107,7 +107,7 @@ fn new_regs() -> ~Registers {
 }
 
 #[cfg(target_arch = "x86")]
-fn initialize_call_frame(regs: &mut Registers, fptr: *c_void, arg: *c_void, sp: *mut uint) {
+fn initialize_call_frame(regs: &mut Registers, fptr: *Void, arg: *Void, sp: *mut uint) {
 
     let sp = align_down(sp);
     let sp = mut_offset(sp, -4);
@@ -130,7 +130,7 @@ type Registers = [uint, ..22];
 fn new_regs() -> ~Registers { ~([0, .. 22]) }
 
 #[cfg(target_arch = "x86_64")]
-fn initialize_call_frame(regs: &mut Registers, fptr: *c_void, arg: *c_void, sp: *mut uint) {
+fn initialize_call_frame(regs: &mut Registers, fptr: *Void, arg: *Void, sp: *mut uint) {
 
     // Redefinitions from regs.h
     static RUSTRT_ARG0: uint = 3;
@@ -164,7 +164,7 @@ type Registers = [uint, ..32];
 fn new_regs() -> ~Registers { ~([0, .. 32]) }
 
 #[cfg(target_arch = "arm")]
-fn initialize_call_frame(regs: &mut Registers, fptr: *c_void, arg: *c_void, sp: *mut uint) {
+fn initialize_call_frame(regs: &mut Registers, fptr: *Void, arg: *Void, sp: *mut uint) {
     let sp = align_down(sp);
     // sp of arm eabi is 8-byte aligned
     let sp = mut_offset(sp, -2);
@@ -184,7 +184,7 @@ type Registers = [uint, ..32];
 fn new_regs() -> ~Registers { ~([0, .. 32]) }
 
 #[cfg(target_arch = "mips")]
-fn initialize_call_frame(regs: &mut Registers, fptr: *c_void, arg: *c_void, sp: *mut uint) {
+fn initialize_call_frame(regs: &mut Registers, fptr: *Void, arg: *Void, sp: *mut uint) {
     let sp = align_down(sp);
     // sp of mips o32 is 8-byte aligned
     let sp = mut_offset(sp, -2);

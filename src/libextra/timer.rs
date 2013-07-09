@@ -19,7 +19,6 @@ use std::cast::transmute;
 use std::cast;
 use std::comm::{stream, Chan, SharedChan, Port, select2i};
 use std::either;
-use std::libc::c_void;
 use std::libc;
 
 /**
@@ -54,10 +53,10 @@ pub fn delayed_send<T:Send>(iotask: &IoTask,
                     timer_ptr, delayed_send_cb, msecs, 0u);
                 if (start_result == 0i32) {
                     // Note: putting the channel into a ~
-                    // to cast to *c_void
+                    // to cast to *Void
                     let timer_done_ch_clone = ~timer_done_ch.clone();
                     let timer_done_ch_ptr = transmute::<
-                        ~SharedChan<()>, *c_void>(
+                        ~SharedChan<()>, *Void>(
                         timer_done_ch_clone);
                     uv::ll::set_data_for_uv_handle(
                         timer_ptr,
@@ -147,9 +146,9 @@ extern fn delayed_send_cb(handle: *uv::ll::uv_timer_t, status: libc::c_int) {
         debug!(
             "delayed_send_cb handle %? status %?", handle, status);
         // Faking a borrowed pointer to our ~SharedChan
-        let timer_done_ch_ptr: &*c_void = &uv::ll::get_data_for_uv_handle(
+        let timer_done_ch_ptr: &*Void = &uv::ll::get_data_for_uv_handle(
             handle);
-        let timer_done_ch_ptr = transmute::<&*c_void, &~SharedChan<()>>(
+        let timer_done_ch_ptr = transmute::<&*Void, &~SharedChan<()>>(
             timer_done_ch_ptr);
         let stop_result = uv::ll::timer_stop(handle);
         if (stop_result == 0i32) {
@@ -167,7 +166,7 @@ extern fn delayed_send_close_cb(handle: *uv::ll::uv_timer_t) {
     unsafe {
         debug!("delayed_send_close_cb handle %?", handle);
         let timer_done_ch_ptr = uv::ll::get_data_for_uv_handle(handle);
-        let timer_done_ch = transmute::<*c_void, ~SharedChan<()>>(
+        let timer_done_ch = transmute::<*Void, ~SharedChan<()>>(
             timer_done_ch_ptr);
         timer_done_ch.send(());
     }

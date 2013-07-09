@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use cast;
-use libc;
 use option::*;
 use task;
 use task::atomically;
@@ -18,12 +17,13 @@ use unstable::intrinsics;
 use ops::Drop;
 use clone::Clone;
 use kinds::Send;
+use util::Void;
 
 /// An atomically reference counted pointer.
 ///
 /// Enforces no shared-memory safety.
 pub struct UnsafeAtomicRcBox<T> {
-    data: *mut libc::c_void,
+    data: *mut Void,
 }
 
 struct AtomicRcBoxData<T> {
@@ -95,7 +95,7 @@ impl<T> Drop for UnsafeAtomicRcBox<T>{
 /****************************************************************************/
 
 #[allow(non_camel_case_types)] // runtime type
-pub type rust_little_lock = *libc::c_void;
+pub type rust_little_lock = *Void;
 
 struct LittleLock {
     l: rust_little_lock,

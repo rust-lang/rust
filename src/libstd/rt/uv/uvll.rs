@@ -29,12 +29,13 @@
 
 #[allow(non_camel_case_types)]; // C types
 
-use libc::{size_t, c_int, c_uint, c_void, c_char, uintptr_t};
+use libc::{size_t, c_int, c_uint, c_char, uintptr_t};
 use libc::{malloc, free};
 use libc;
 use prelude::*;
 use ptr;
 use str;
+use util::Void;
 use vec;
 
 pub static UNKNOWN: c_int = -1;
@@ -56,21 +57,21 @@ pub struct uv_buf_t {
     len: libc::size_t,
 }
 
-pub type uv_handle_t = c_void;
-pub type uv_loop_t = c_void;
-pub type uv_idle_t = c_void;
-pub type uv_tcp_t = c_void;
-pub type uv_connect_t = c_void;
-pub type uv_write_t = c_void;
-pub type uv_async_t = c_void;
-pub type uv_timer_t = c_void;
-pub type uv_stream_t = c_void;
-pub type uv_fs_t = c_void;
+pub type uv_handle_t = Void;
+pub type uv_loop_t = Void;
+pub type uv_idle_t = Void;
+pub type uv_tcp_t = Void;
+pub type uv_connect_t = Void;
+pub type uv_write_t = Void;
+pub type uv_async_t = Void;
+pub type uv_timer_t = Void;
+pub type uv_stream_t = Void;
+pub type uv_fs_t = Void;
 
 pub type uv_idle_cb = *u8;
 
-pub type sockaddr_in = c_void;
-pub type sockaddr_in6 = c_void;
+pub type sockaddr_in = Void;
+pub type sockaddr_in6 = Void;
 
 #[deriving(Eq)]
 pub enum uv_handle_type {
@@ -109,7 +110,7 @@ pub enum uv_req_type {
     UV_REQ_TYPE_MAX
 }
 
-pub unsafe fn malloc_handle(handle: uv_handle_type) -> *c_void {
+pub unsafe fn malloc_handle(handle: uv_handle_type) -> *Void {
     assert!(handle != UV_UNKNOWN_HANDLE && handle != UV_HANDLE_TYPE_MAX);
     let size = rust_uv_handle_size(handle as uint);
     let p = malloc(size);
@@ -117,11 +118,11 @@ pub unsafe fn malloc_handle(handle: uv_handle_type) -> *c_void {
     return p;
 }
 
-pub unsafe fn free_handle(v: *c_void) {
+pub unsafe fn free_handle(v: *Void) {
     free(v)
 }
 
-pub unsafe fn malloc_req(req: uv_req_type) -> *c_void {
+pub unsafe fn malloc_req(req: uv_req_type) -> *Void {
     assert!(req != UV_UNKNOWN_REQ && req != UV_REQ_TYPE_MAX);
     let size = rust_uv_req_size(req as uint);
     let p = malloc(size);
@@ -129,7 +130,7 @@ pub unsafe fn malloc_req(req: uv_req_type) -> *c_void {
     return p;
 }
 
-pub unsafe fn free_req(v: *c_void) {
+pub unsafe fn free_req(v: *Void) {
     free(v)
 }
 
@@ -147,23 +148,23 @@ fn request_sanity_check() {
     }
 }
 
-pub unsafe fn loop_new() -> *c_void {
+pub unsafe fn loop_new() -> *Void {
     return rust_uv_loop_new();
 }
 
-pub unsafe fn loop_delete(loop_handle: *c_void) {
+pub unsafe fn loop_delete(loop_handle: *Void) {
     rust_uv_loop_delete(loop_handle);
 }
 
-pub unsafe fn run(loop_handle: *c_void) {
+pub unsafe fn run(loop_handle: *Void) {
     rust_uv_run(loop_handle);
 }
 
 pub unsafe fn close<T>(handle: *T, cb: *u8) {
-    rust_uv_close(handle as *c_void, cb);
+    rust_uv_close(handle as *Void, cb);
 }
 
-pub unsafe fn walk(loop_handle: *c_void, cb: *u8, arg: *c_void) {
+pub unsafe fn walk(loop_handle: *Void, cb: *u8, arg: *Void) {
     rust_uv_walk(loop_handle, cb, arg);
 }
 
@@ -187,7 +188,7 @@ pub unsafe fn idle_stop(handle: *uv_idle_t) -> c_int {
     rust_uv_idle_stop(handle)
 }
 
-pub unsafe fn tcp_init(loop_handle: *c_void, handle: *uv_tcp_t) -> c_int {
+pub unsafe fn tcp_init(loop_handle: *Void, handle: *uv_tcp_t) -> c_int {
     return rust_uv_tcp_init(loop_handle, handle);
 }
 
@@ -225,27 +226,27 @@ pub unsafe fn tcp_getpeername6(tcp_handle_ptr: *uv_tcp_t, name: *sockaddr_in6) -
 }
 
 pub unsafe fn listen<T>(stream: *T, backlog: c_int, cb: *u8) -> c_int {
-    return rust_uv_listen(stream as *c_void, backlog, cb);
+    return rust_uv_listen(stream as *Void, backlog, cb);
 }
 
-pub unsafe fn accept(server: *c_void, client: *c_void) -> c_int {
-    return rust_uv_accept(server as *c_void, client as *c_void);
+pub unsafe fn accept(server: *Void, client: *Void) -> c_int {
+    return rust_uv_accept(server as *Void, client as *Void);
 }
 
 pub unsafe fn write<T>(req: *uv_write_t, stream: *T, buf_in: &[uv_buf_t], cb: *u8) -> c_int {
     let buf_ptr = vec::raw::to_ptr(buf_in);
     let buf_cnt = buf_in.len() as i32;
-    return rust_uv_write(req as *c_void, stream as *c_void, buf_ptr, buf_cnt, cb);
+    return rust_uv_write(req as *Void, stream as *Void, buf_ptr, buf_cnt, cb);
 }
 pub unsafe fn read_start(stream: *uv_stream_t, on_alloc: *u8, on_read: *u8) -> c_int {
-    return rust_uv_read_start(stream as *c_void, on_alloc, on_read);
+    return rust_uv_read_start(stream as *Void, on_alloc, on_read);
 }
 
 pub unsafe fn read_stop(stream: *uv_stream_t) -> c_int {
-    return rust_uv_read_stop(stream as *c_void);
+    return rust_uv_read_stop(stream as *Void);
 }
 
-pub unsafe fn last_error(loop_handle: *c_void) -> uv_err_t {
+pub unsafe fn last_error(loop_handle: *Void) -> uv_err_t {
     return rust_uv_last_error(loop_handle);
 }
 
@@ -256,7 +257,7 @@ pub unsafe fn err_name(err: *uv_err_t) -> *c_char {
     return rust_uv_err_name(err);
 }
 
-pub unsafe fn async_init(loop_handle: *c_void, async_handle: *uv_async_t, cb: *u8) -> c_int {
+pub unsafe fn async_init(loop_handle: *Void, async_handle: *uv_async_t, cb: *u8) -> c_int {
     return rust_uv_async_init(loop_handle, async_handle, cb);
 }
 
@@ -270,7 +271,7 @@ pub unsafe fn buf_init(input: *u8, len: uint) -> uv_buf_t {
     return out_buf;
 }
 
-pub unsafe fn timer_init(loop_ptr: *c_void, timer_ptr: *uv_timer_t) -> c_int {
+pub unsafe fn timer_init(loop_ptr: *Void, timer_ptr: *uv_timer_t) -> c_int {
     return rust_uv_timer_init(loop_ptr, timer_ptr);
 }
 pub unsafe fn timer_start(timer_ptr: *uv_timer_t, cb: *u8, timeout: u64,
@@ -301,8 +302,8 @@ pub unsafe fn free_ip6_addr(addr: *sockaddr_in6) {
 }
 
 // data access helpers
-pub unsafe fn get_loop_for_uv_handle<T>(handle: *T) -> *c_void {
-    return rust_uv_get_loop_for_uv_handle(handle as *c_void);
+pub unsafe fn get_loop_for_uv_handle<T>(handle: *T) -> *Void {
+    return rust_uv_get_loop_for_uv_handle(handle as *Void);
 }
 pub unsafe fn get_stream_handle_from_connect_req(connect: *uv_connect_t) -> *uv_stream_t {
     return rust_uv_get_stream_handle_from_connect_req(connect);
@@ -310,23 +311,23 @@ pub unsafe fn get_stream_handle_from_connect_req(connect: *uv_connect_t) -> *uv_
 pub unsafe fn get_stream_handle_from_write_req(write_req: *uv_write_t) -> *uv_stream_t {
     return rust_uv_get_stream_handle_from_write_req(write_req);
 }
-pub unsafe fn get_data_for_uv_loop(loop_ptr: *c_void) -> *c_void {
+pub unsafe fn get_data_for_uv_loop(loop_ptr: *Void) -> *Void {
     rust_uv_get_data_for_uv_loop(loop_ptr)
 }
-pub unsafe fn set_data_for_uv_loop(loop_ptr: *c_void, data: *c_void) {
+pub unsafe fn set_data_for_uv_loop(loop_ptr: *Void, data: *Void) {
     rust_uv_set_data_for_uv_loop(loop_ptr, data);
 }
-pub unsafe fn get_data_for_uv_handle<T>(handle: *T) -> *c_void {
-    return rust_uv_get_data_for_uv_handle(handle as *c_void);
+pub unsafe fn get_data_for_uv_handle<T>(handle: *T) -> *Void {
+    return rust_uv_get_data_for_uv_handle(handle as *Void);
 }
 pub unsafe fn set_data_for_uv_handle<T, U>(handle: *T, data: *U) {
-    rust_uv_set_data_for_uv_handle(handle as *c_void, data as *c_void);
+    rust_uv_set_data_for_uv_handle(handle as *Void, data as *Void);
 }
-pub unsafe fn get_data_for_req<T>(req: *T) -> *c_void {
-    return rust_uv_get_data_for_req(req as *c_void);
+pub unsafe fn get_data_for_req<T>(req: *T) -> *Void {
+    return rust_uv_get_data_for_req(req as *Void);
 }
 pub unsafe fn set_data_for_req<T, U>(req: *T, data: *U) {
-    rust_uv_set_data_for_req(req as *c_void, data as *c_void);
+    rust_uv_set_data_for_req(req as *Void, data as *Void);
 }
 pub unsafe fn get_base_from_buf(buf: uv_buf_t) -> *u8 {
     return rust_uv_get_base_from_buf(buf);
@@ -341,7 +342,7 @@ pub unsafe fn free_base_of_buf(buf: uv_buf_t) {
     rust_uv_free_base_of_buf(buf);
 }
 
-pub unsafe fn get_last_err_info(uv_loop: *c_void) -> ~str {
+pub unsafe fn get_last_err_info(uv_loop: *Void) -> ~str {
     let err = last_error(uv_loop);
     let err_ptr = ptr::to_unsafe_ptr(&err);
     let err_name = str::raw::from_c_str(err_name(err_ptr));
@@ -350,7 +351,7 @@ pub unsafe fn get_last_err_info(uv_loop: *c_void) -> ~str {
                     err_name, err_msg);
 }
 
-pub unsafe fn get_last_err_data(uv_loop: *c_void) -> uv_err_data {
+pub unsafe fn get_last_err_data(uv_loop: *Void) -> uv_err_data {
     let err = last_error(uv_loop);
     let err_ptr = ptr::to_unsafe_ptr(&err);
     let err_name = str::raw::from_c_str(err_name(err_ptr));
@@ -371,11 +372,11 @@ extern {
     fn rust_uv_req_type_max() -> uintptr_t;
 
     // libuv public API
-    fn rust_uv_loop_new() -> *c_void;
-    fn rust_uv_loop_delete(lp: *c_void);
-    fn rust_uv_run(loop_handle: *c_void);
-    fn rust_uv_close(handle: *c_void, cb: *u8);
-    fn rust_uv_walk(loop_handle: *c_void, cb: *u8, arg: *c_void);
+    fn rust_uv_loop_new() -> *Void;
+    fn rust_uv_loop_delete(lp: *Void);
+    fn rust_uv_run(loop_handle: *Void);
+    fn rust_uv_close(handle: *Void, cb: *u8);
+    fn rust_uv_walk(loop_handle: *Void, cb: *u8, arg: *Void);
 
     fn rust_uv_idle_new() -> *uv_idle_t;
     fn rust_uv_idle_delete(handle: *uv_idle_t);
@@ -384,13 +385,13 @@ extern {
     fn rust_uv_idle_stop(handle: *uv_idle_t) -> c_int;
 
     fn rust_uv_async_send(handle: *uv_async_t);
-    fn rust_uv_async_init(loop_handle: *c_void,
+    fn rust_uv_async_init(loop_handle: *Void,
                           async_handle: *uv_async_t,
                           cb: *u8) -> c_int;
-    fn rust_uv_tcp_init(loop_handle: *c_void, handle_ptr: *uv_tcp_t) -> c_int;
+    fn rust_uv_tcp_init(loop_handle: *Void, handle_ptr: *uv_tcp_t) -> c_int;
     // FIXME ref #2604 .. ?
     fn rust_uv_buf_init(out_buf: *uv_buf_t, base: *u8, len: size_t);
-    fn rust_uv_last_error(loop_handle: *c_void) -> uv_err_t;
+    fn rust_uv_last_error(loop_handle: *Void) -> uv_err_t;
     // FIXME ref #2064
     fn rust_uv_strerror(err: *uv_err_t) -> *c_char;
     // FIXME ref #2064
@@ -421,36 +422,36 @@ extern {
                                name: *sockaddr_in) -> c_int;
     fn rust_uv_tcp_getpeername6(tcp_handle_ptr: *uv_tcp_t,
                                 name: *sockaddr_in6) ->c_int;
-    fn rust_uv_listen(stream: *c_void, backlog: c_int, cb: *u8) -> c_int;
-    fn rust_uv_accept(server: *c_void, client: *c_void) -> c_int;
-    fn rust_uv_write(req: *c_void,
-                     stream: *c_void,
+    fn rust_uv_listen(stream: *Void, backlog: c_int, cb: *u8) -> c_int;
+    fn rust_uv_accept(server: *Void, client: *Void) -> c_int;
+    fn rust_uv_write(req: *Void,
+                     stream: *Void,
                      buf_in: *uv_buf_t,
                      buf_cnt: c_int,
                      cb: *u8) -> c_int;
-    fn rust_uv_read_start(stream: *c_void,
+    fn rust_uv_read_start(stream: *Void,
                           on_alloc: *u8,
                           on_read: *u8) -> c_int;
-    fn rust_uv_read_stop(stream: *c_void) -> c_int;
-    fn rust_uv_timer_init(loop_handle: *c_void,
+    fn rust_uv_read_stop(stream: *Void) -> c_int;
+    fn rust_uv_timer_init(loop_handle: *Void,
                           timer_handle: *uv_timer_t) -> c_int;
     fn rust_uv_timer_start(timer_handle: *uv_timer_t,
                            cb: *u8,
-                           timeout: libc::uint64_t,
-                           repeat: libc::uint64_t) -> c_int;
+                           timeout: u64,
+                           repeat: u64) -> c_int;
     fn rust_uv_timer_stop(handle: *uv_timer_t) -> c_int;
 
     fn rust_uv_malloc_buf_base_of(sug_size: size_t) -> *u8;
     fn rust_uv_free_base_of_buf(buf: uv_buf_t);
     fn rust_uv_get_stream_handle_from_connect_req(connect_req: *uv_connect_t) -> *uv_stream_t;
     fn rust_uv_get_stream_handle_from_write_req(write_req: *uv_write_t) -> *uv_stream_t;
-    fn rust_uv_get_loop_for_uv_handle(handle: *c_void) -> *c_void;
-    fn rust_uv_get_data_for_uv_loop(loop_ptr: *c_void) -> *c_void;
-    fn rust_uv_set_data_for_uv_loop(loop_ptr: *c_void, data: *c_void);
-    fn rust_uv_get_data_for_uv_handle(handle: *c_void) -> *c_void;
-    fn rust_uv_set_data_for_uv_handle(handle: *c_void, data: *c_void);
-    fn rust_uv_get_data_for_req(req: *c_void) -> *c_void;
-    fn rust_uv_set_data_for_req(req: *c_void, data: *c_void);
+    fn rust_uv_get_loop_for_uv_handle(handle: *Void) -> *Void;
+    fn rust_uv_get_data_for_uv_loop(loop_ptr: *Void) -> *Void;
+    fn rust_uv_set_data_for_uv_loop(loop_ptr: *Void, data: *Void);
+    fn rust_uv_get_data_for_uv_handle(handle: *Void) -> *Void;
+    fn rust_uv_set_data_for_uv_handle(handle: *Void, data: *Void);
+    fn rust_uv_get_data_for_req(req: *Void) -> *Void;
+    fn rust_uv_set_data_for_req(req: *Void, data: *Void);
     fn rust_uv_get_base_from_buf(buf: uv_buf_t) -> *u8;
     fn rust_uv_get_len_from_buf(buf: uv_buf_t) -> size_t;
 }

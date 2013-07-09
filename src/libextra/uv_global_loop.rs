@@ -128,14 +128,13 @@ mod test {
     use std::libc;
     use std::task;
     use std::cast::transmute;
-    use std::libc::c_void;
     use std::comm::{stream, SharedChan, Chan};
 
     extern fn simple_timer_close_cb(timer_ptr: *ll::uv_timer_t) {
         unsafe {
             let exit_ch_ptr = ll::get_data_for_uv_handle(
-                timer_ptr as *libc::c_void);
-            let exit_ch = transmute::<*c_void, ~Chan<bool>>(exit_ch_ptr);
+                timer_ptr as *Void);
+            let exit_ch = transmute::<*Void, ~Chan<bool>>(exit_ch_ptr);
             exit_ch.send(true);
             debug!("EXIT_CH_PTR simple_timer_close_cb exit_ch_ptr: %?",
                      exit_ch_ptr);
@@ -160,7 +159,7 @@ mod test {
     fn impl_uv_hl_simple_timer(iotask: &IoTask) {
         unsafe {
             let (exit_po, exit_ch) = stream::<bool>();
-            let exit_ch_ptr: *libc::c_void = transmute(~exit_ch);
+            let exit_ch_ptr: *Void = transmute(~exit_ch);
             debug!("EXIT_CH_PTR newly created exit_ch_ptr: %?",
                             exit_ch_ptr);
             let timer_handle = ll::timer_t();
@@ -170,7 +169,7 @@ mod test {
                 let init_status = ll::timer_init(loop_ptr, timer_ptr);
                 if(init_status == 0i32) {
                     ll::set_data_for_uv_handle(
-                        timer_ptr as *libc::c_void,
+                        timer_ptr as *Void,
                         exit_ch_ptr);
                     let start_status = ll::timer_start(timer_ptr,
                                                        simple_timer_cb,

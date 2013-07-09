@@ -94,7 +94,6 @@
 	<list name="ctypes">
 		<item> c_float </item>
 		<item> c_double </item>
-		<item> c_void </item>
 		<item> FILE </item>
 		<item> fpos_t </item>
 		<item> DIR </item>

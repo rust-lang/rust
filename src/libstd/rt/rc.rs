@@ -20,18 +20,18 @@
 
 use ops::Drop;
 use clone::Clone;
-use libc::c_void;
 use cast;
+use util::Void;
 
 pub struct RC<T> {
-    p: *c_void // ~(uint, T)
+    p: *Void // ~(uint, T)
 }
 
 impl<T> RC<T> {
     pub fn new(val: T) -> RC<T> {
         unsafe {
             let v = ~(1, val);
-            let p: *c_void = cast::transmute(v);
+            let p: *Void = cast::transmute(v);
             RC { p: p }
         }
     }

@@ -34,16 +34,16 @@
 #[allow(missing_doc)];
 
 
-use std::libc::{c_void, size_t};
+use std::libc::size_t;
 use std::libc;
 use std::ptr::to_unsafe_ptr;
 use std::ptr;
 use std::str;
 use std::vec;
 
-pub type uv_handle_t = c_void;
-pub type uv_loop_t = c_void;
-pub type uv_idle_t = c_void;
+pub type uv_handle_t = Void;
+pub type uv_loop_t = Void;
+pub type uv_idle_t = Void;
 pub type uv_idle_cb = *u8;
 
 // libuv struct mappings
@@ -74,10 +74,10 @@ pub enum uv_handle_type {
 pub type handle_type = libc::c_uint;
 
 pub struct uv_handle_fields {
-   loop_handle: *libc::c_void,
+   loop_handle: *Void,
    type_: handle_type,
    close_cb: *u8,
-   data: *libc::c_void,
+   data: *Void,
 }
 
 // unix size: 8
@@ -737,12 +737,12 @@ pub mod uv_ll_struct_stubgen {
 #[nolink]
 extern {
     // libuv public API
-    unsafe fn rust_uv_loop_new() -> *libc::c_void;
-    unsafe fn rust_uv_loop_delete(lp: *libc::c_void);
-    unsafe fn rust_uv_run(loop_handle: *libc::c_void);
-    unsafe fn rust_uv_close(handle: *libc::c_void, cb: *u8);
-    unsafe fn rust_uv_walk(loop_handle: *libc::c_void, cb: *u8,
-                           arg: *libc::c_void);
+    unsafe fn rust_uv_loop_new() -> *Void;
+    unsafe fn rust_uv_loop_delete(lp: *Void);
+    unsafe fn rust_uv_run(loop_handle: *Void);
+    unsafe fn rust_uv_close(handle: *Void, cb: *u8);
+    unsafe fn rust_uv_walk(loop_handle: *Void, cb: *u8,
+                           arg: *Void);
 
     unsafe fn rust_uv_idle_new() -> *uv_idle_t;
     unsafe fn rust_uv_idle_delete(handle: *uv_idle_t);
@@ -753,16 +753,16 @@ extern {
     unsafe fn rust_uv_idle_stop(handle: *uv_idle_t) -> libc::c_int;
 
     unsafe fn rust_uv_async_send(handle: *uv_async_t);
-    unsafe fn rust_uv_async_init(loop_handle: *libc::c_void,
+    unsafe fn rust_uv_async_init(loop_handle: *Void,
                           async_handle: *uv_async_t,
                           cb: *u8) -> libc::c_int;
     unsafe fn rust_uv_tcp_init(
-        loop_handle: *libc::c_void,
+        loop_handle: *Void,
         handle_ptr: *uv_tcp_t) -> libc::c_int;
     // FIXME ref #2604 .. ?
     unsafe fn rust_uv_buf_init(out_buf: *uv_buf_t, base: *u8,
                         len: libc::size_t);
-    unsafe fn rust_uv_last_error(loop_handle: *libc::c_void) -> uv_err_t;
+    unsafe fn rust_uv_last_error(loop_handle: *Void) -> uv_err_t;
     // FIXME ref #2064
     unsafe fn rust_uv_strerror(err: *uv_err_t) -> *libc::c_char;
     // FIXME ref #2064
@@ -802,33 +802,33 @@ extern {
                                       name: *sockaddr_in) -> libc::c_int;
     unsafe fn rust_uv_tcp_getpeername6(tcp_handle_ptr: *uv_tcp_t,
                                        name: *sockaddr_in6) ->libc::c_int;
-    unsafe fn rust_uv_listen(stream: *libc::c_void,
+    unsafe fn rust_uv_listen(stream: *Void,
                              backlog: libc::c_int,
                              cb: *u8) -> libc::c_int;
-    unsafe fn rust_uv_accept(server: *libc::c_void, client: *libc::c_void)
+    unsafe fn rust_uv_accept(server: *Void, client: *Void)
                           -> libc::c_int;
-    unsafe fn rust_uv_write(req: *libc::c_void,
-                            stream: *libc::c_void,
+    unsafe fn rust_uv_write(req: *Void,
+                            stream: *Void,
                             buf_in: *uv_buf_t,
                             buf_cnt: libc::c_int,
                             cb: *u8)
         -> libc::c_int;
-    unsafe fn rust_uv_read_start(stream: *libc::c_void,
+    unsafe fn rust_uv_read_start(stream: *Void,
                                  on_alloc: *u8,
                                  on_read: *u8)
         -> libc::c_int;
-    unsafe fn rust_uv_read_stop(stream: *libc::c_void) -> libc::c_int;
-    unsafe fn rust_uv_timer_init(loop_handle: *libc::c_void,
+    unsafe fn rust_uv_read_stop(stream: *Void) -> libc::c_int;
+    unsafe fn rust_uv_timer_init(loop_handle: *Void,
                                  timer_handle: *uv_timer_t)
         -> libc::c_int;
     unsafe fn rust_uv_timer_start(
         timer_handle: *uv_timer_t,
         cb: *u8,
-        timeout: libc::uint64_t,
-        repeat: libc::uint64_t) -> libc::c_int;
+        timeout: u64,
+        repeat: u64) -> libc::c_int;
     unsafe fn rust_uv_timer_stop(handle: *uv_timer_t) -> libc::c_int;
 
-    unsafe fn rust_uv_getaddrinfo(loop_ptr: *libc::c_void,
+    unsafe fn rust_uv_getaddrinfo(loop_ptr: *Void,
                                   handle: *uv_getaddrinfo_t,
                                   cb: *u8,
                                   node_name_ptr: *u8,
@@ -855,20 +855,20 @@ extern {
     unsafe fn rust_uv_get_stream_handle_from_write_req(
         write_req: *uv_write_t)
         -> *uv_stream_t;
-    unsafe fn rust_uv_get_loop_for_uv_handle(handle: *libc::c_void)
-        -> *libc::c_void;
-    unsafe fn rust_uv_get_data_for_uv_loop(loop_ptr: *libc::c_void)
-        -> *libc::c_void;
-    unsafe fn rust_uv_set_data_for_uv_loop(loop_ptr: *libc::c_void,
-                                           data: *libc::c_void);
-    unsafe fn rust_uv_get_data_for_uv_handle(handle: *libc::c_void)
-        -> *libc::c_void;
-    unsafe fn rust_uv_set_data_for_uv_handle(handle: *libc::c_void,
-                                             data: *libc::c_void);
-    unsafe fn rust_uv_get_data_for_req(req: *libc::c_void)
-        -> *libc::c_void;
-    unsafe fn rust_uv_set_data_for_req(req: *libc::c_void,
-                                       data: *libc::c_void);
+    unsafe fn rust_uv_get_loop_for_uv_handle(handle: *Void)
+        -> *Void;
+    unsafe fn rust_uv_get_data_for_uv_loop(loop_ptr: *Void)
+        -> *Void;
+    unsafe fn rust_uv_set_data_for_uv_loop(loop_ptr: *Void,
+                                           data: *Void);
+    unsafe fn rust_uv_get_data_for_uv_handle(handle: *Void)
+        -> *Void;
+    unsafe fn rust_uv_set_data_for_uv_handle(handle: *Void,
+                                             data: *Void);
+    unsafe fn rust_uv_get_data_for_req(req: *Void)
+        -> *Void;
+    unsafe fn rust_uv_set_data_for_req(req: *Void,
+                                       data: *Void);
     unsafe fn rust_uv_get_base_from_buf(buf: uv_buf_t) -> *u8;
     unsafe fn rust_uv_get_len_from_buf(buf: uv_buf_t) -> libc::size_t;
 
@@ -887,23 +887,23 @@ extern {
     unsafe fn rust_uv_helper_addr_in_size() -> libc::c_uint;
 }
 
-pub unsafe fn loop_new() -> *libc::c_void {
+pub unsafe fn loop_new() -> *Void {
     return rust_uv_loop_new();
 }
 
-pub unsafe fn loop_delete(loop_handle: *libc::c_void) {
+pub unsafe fn loop_delete(loop_handle: *Void) {
     rust_uv_loop_delete(loop_handle);
 }
 
-pub unsafe fn run(loop_handle: *libc::c_void) {
+pub unsafe fn run(loop_handle: *Void) {
     rust_uv_run(loop_handle);
 }
 
 pub unsafe fn close<T>(handle: *T, cb: *u8) {
-    rust_uv_close(handle as *libc::c_void, cb);
+    rust_uv_close(handle as *Void, cb);
 }
 
-pub unsafe fn walk(loop_handle: *libc::c_void, cb: *u8, arg: *libc::c_void) {
+pub unsafe fn walk(loop_handle: *Void, cb: *u8, arg: *Void) {
     rust_uv_walk(loop_handle, cb, arg);
 }
 
@@ -928,7 +928,7 @@ pub unsafe fn idle_stop(handle: *uv_idle_t) -> libc::c_int {
     rust_uv_idle_stop(handle)
 }
 
-pub unsafe fn tcp_init(loop_handle: *libc::c_void, handle: *uv_tcp_t)
+pub unsafe fn tcp_init(loop_handle: *Void, handle: *uv_tcp_t)
     -> libc::c_int {
     return rust_uv_tcp_init(loop_handle, handle);
 }
@@ -975,34 +975,34 @@ pub unsafe fn tcp_getpeername6(tcp_handle_ptr: *uv_tcp_t,
 
 pub unsafe fn listen<T>(stream: *T, backlog: libc::c_int,
                  cb: *u8) -> libc::c_int {
-    return rust_uv_listen(stream as *libc::c_void, backlog, cb);
+    return rust_uv_listen(stream as *Void, backlog, cb);
 }
 
-pub unsafe fn accept(server: *libc::c_void, client: *libc::c_void)
+pub unsafe fn accept(server: *Void, client: *Void)
     -> libc::c_int {
-    return rust_uv_accept(server as *libc::c_void,
-                               client as *libc::c_void);
+    return rust_uv_accept(server as *Void,
+                               client as *Void);
 }
 
 pub unsafe fn write<T>(req: *uv_write_t, stream: *T,
          buf_in: *~[uv_buf_t], cb: *u8) -> libc::c_int {
     let buf_ptr = vec::raw::to_ptr(*buf_in);
     let buf_cnt = (*buf_in).len() as i32;
-    return rust_uv_write(req as *libc::c_void,
-                              stream as *libc::c_void,
+    return rust_uv_write(req as *Void,
+                              stream as *Void,
                               buf_ptr, buf_cnt, cb);
 }
 pub unsafe fn read_start(stream: *uv_stream_t, on_alloc: *u8,
                      on_read: *u8) -> libc::c_int {
-    return rust_uv_read_start(stream as *libc::c_void,
+    return rust_uv_read_start(stream as *Void,
                                    on_alloc, on_read);
 }
 
 pub unsafe fn read_stop(stream: *uv_stream_t) -> libc::c_int {
-    return rust_uv_read_stop(stream as *libc::c_void);
+    return rust_uv_read_stop(stream as *Void);
 }
 
-pub unsafe fn last_error(loop_handle: *libc::c_void) -> uv_err_t {
+pub unsafe fn last_error(loop_handle: *Void) -> uv_err_t {
     return rust_uv_last_error(loop_handle);
 }
 
@@ -1013,7 +1013,7 @@ pub unsafe fn err_name(err: *uv_err_t) -> *libc::c_char {
     return rust_uv_err_name(err);
 }
 
-pub unsafe fn async_init(loop_handle: *libc::c_void,
+pub unsafe fn async_init(loop_handle: *Void,
                      async_handle: *uv_async_t,
                      cb: *u8) -> libc::c_int {
     return rust_uv_async_init(loop_handle,
@@ -1083,19 +1083,19 @@ pub unsafe fn ip6_port(src: &sockaddr_in6) -> uint {
     rust_uv_ip6_port(to_unsafe_ptr(src)) as uint
 }
 
-pub unsafe fn timer_init(loop_ptr: *libc::c_void,
+pub unsafe fn timer_init(loop_ptr: *Void,
                      timer_ptr: *uv_timer_t) -> libc::c_int {
     return rust_uv_timer_init(loop_ptr, timer_ptr);
 }
 pub unsafe fn timer_start(timer_ptr: *uv_timer_t, cb: *u8, timeout: uint,
                       repeat: uint) -> libc::c_int {
-    return rust_uv_timer_start(timer_ptr, cb, timeout as libc::uint64_t,
-                               repeat as libc::uint64_t);
+    return rust_uv_timer_start(timer_ptr, cb, timeout as u64,
+                               repeat as u64);
 }
 pub unsafe fn timer_stop(timer_ptr: *uv_timer_t) -> libc::c_int {
     return rust_uv_timer_stop(timer_ptr);
 }
-pub unsafe fn getaddrinfo(loop_ptr: *libc::c_void,
+pub unsafe fn getaddrinfo(loop_ptr: *Void,
                            handle: *uv_getaddrinfo_t,
                            cb: *u8,
                            node_name_ptr: *u8,
@@ -1134,8 +1134,8 @@ pub fn getaddrinfo_t() -> uv_getaddrinfo_t {
 
 // data access helpers
 pub unsafe fn get_loop_for_uv_handle<T>(handle: *T)
-    -> *libc::c_void {
-    return rust_uv_get_loop_for_uv_handle(handle as *libc::c_void);
+    -> *Void {
+    return rust_uv_get_loop_for_uv_handle(handle as *Void);
 }
 pub unsafe fn get_stream_handle_from_connect_req(connect: *uv_connect_t)
     -> *uv_stream_t {
@@ -1148,27 +1148,27 @@ pub unsafe fn get_stream_handle_from_write_req(
     return rust_uv_get_stream_handle_from_write_req(
         write_req);
 }
-pub unsafe fn get_data_for_uv_loop(loop_ptr: *libc::c_void) -> *libc::c_void {
+pub unsafe fn get_data_for_uv_loop(loop_ptr: *Void) -> *Void {
     rust_uv_get_data_for_uv_loop(loop_ptr)
 }
-pub unsafe fn set_data_for_uv_loop(loop_ptr: *libc::c_void,
-                                   data: *libc::c_void) {
+pub unsafe fn set_data_for_uv_loop(loop_ptr: *Void,
+                                   data: *Void) {
     rust_uv_set_data_for_uv_loop(loop_ptr, data);
 }
-pub unsafe fn get_data_for_uv_handle<T>(handle: *T) -> *libc::c_void {
-    return rust_uv_get_data_for_uv_handle(handle as *libc::c_void);
+pub unsafe fn get_data_for_uv_handle<T>(handle: *T) -> *Void {
+    return rust_uv_get_data_for_uv_handle(handle as *Void);
 }
 pub unsafe fn set_data_for_uv_handle<T, U>(handle: *T, data: *U) {
-    rust_uv_set_data_for_uv_handle(handle as *libc::c_void,
-                                           data as *libc::c_void);
+    rust_uv_set_data_for_uv_handle(handle as *Void,
+                                           data as *Void);
 }
-pub unsafe fn get_data_for_req<T>(req: *T) -> *libc::c_void {
-    return rust_uv_get_data_for_req(req as *libc::c_void);
+pub unsafe fn get_data_for_req<T>(req: *T) -> *Void {
+    return rust_uv_get_data_for_req(req as *Void);
 }
 pub unsafe fn set_data_for_req<T, U>(req: *T,
                     data: *U) {
-    rust_uv_set_data_for_req(req as *libc::c_void,
-                                     data as *libc::c_void);
+    rust_uv_set_data_for_req(req as *Void,
+                                     data as *Void);
 }
 pub unsafe fn get_base_from_buf(buf: uv_buf_t) -> *u8 {
     return rust_uv_get_base_from_buf(buf);
@@ -1184,7 +1184,7 @@ pub unsafe fn free_base_of_buf(buf: uv_buf_t) {
     rust_uv_free_base_of_buf(buf);
 }
 
-pub unsafe fn get_last_err_info(uv_loop: *libc::c_void) -> ~str {
+pub unsafe fn get_last_err_info(uv_loop: *Void) -> ~str {
     let err = last_error(uv_loop);
     let err_ptr: *uv_err_t = &err;
     let err_name = str::raw::from_c_str(err_name(err_ptr));
@@ -1193,7 +1193,7 @@ pub unsafe fn get_last_err_info(uv_loop: *libc::c_void) -> ~str {
                     err_name, err_msg);
 }
 
-pub unsafe fn get_last_err_data(uv_loop: *libc::c_void) -> uv_err_data {
+pub unsafe fn get_last_err_data(uv_loop: *Void) -> uv_err_data {
     let err = last_error(uv_loop);
     let err_ptr: *uv_err_t = &err;
     let err_name = str::raw::from_c_str(err_name(err_ptr));
@@ -1249,12 +1249,12 @@ mod test {
         read_chan: SharedChan<~str>,
     }
 
-    extern fn after_close_cb(handle: *libc::c_void) {
+    extern fn after_close_cb(handle: *Void) {
         debug!("after uv_close! handle ptr: %?",
                         handle);
     }
 
-    extern fn on_alloc_cb(handle: *libc::c_void,
+    extern fn on_alloc_cb(handle: *Void,
                          suggested_size: libc::size_t)
         -> uv_buf_t {
         unsafe {
@@ -1280,14 +1280,14 @@ mod test {
                 debug!("CLIENT read: data! nread: %d", nread);
                 read_stop(stream);
                 let client_data =
-                    get_data_for_uv_handle(stream as *libc::c_void)
+                    get_data_for_uv_handle(stream as *Void)
                       as *request_wrapper;
                 let buf_base = get_base_from_buf(buf);
                 let bytes = vec::from_buf(buf_base, nread as uint);
                 let read_chan = (*client_data).read_chan.clone();
                 let msg_from_server = str::from_bytes(bytes);
                 read_chan.send(msg_from_server);
-                close(stream as *libc::c_void, after_close_cb)
+                close(stream as *Void, after_close_cb)
             }
             else if (nread == -1) {
                 // err .. possibly EOF
@@ -1329,13 +1329,13 @@ mod test {
             if (status == 0i32) {
                 debug!(~"on_connect_cb: in status=0 if..");
                 let client_data = get_data_for_req(
-                    connect_req_ptr as *libc::c_void)
+                    connect_req_ptr as *Void)
                     as *request_wrapper;
                 let write_handle = (*client_data).write_req;
                 debug!("on_connect_cb: tcp: %d write_hdl: %d",
                                 stream as int, write_handle as int);
                 let write_result = write(write_handle,
-                                  stream as *libc::c_void,
+                                  stream as *Void,
                                   (*client_data).req_buf,
                                   on_write_complete_cb);
                 debug!("on_connect_cb: write() status: %d",
@@ -1343,7 +1343,7 @@ mod test {
             }
             else {
                 let test_loop = get_loop_for_uv_handle(
-                    stream as *libc::c_void);
+                    stream as *Void);
                 let err_msg = get_last_err_info(test_loop);
                 debug!(err_msg);
                 assert!(false);
@@ -1385,7 +1385,7 @@ mod test {
                 read_chan: client_chan
             };
 
-            let tcp_init_result = tcp_init(test_loop as *libc::c_void,
+            let tcp_init_result = tcp_init(test_loop as *Void,
                                            tcp_handle_ptr);
             if (tcp_init_result == 0) {
                 debug!(~"successful tcp_init_result");
@@ -1407,9 +1407,9 @@ mod test {
                 if (tcp_connect_result == 0) {
                     // not set the data on the connect_req
                     // until its initialized
-                    set_data_for_req(connect_req_ptr as *libc::c_void,
+                    set_data_for_req(connect_req_ptr as *Void,
                                      &client_data);
-                    set_data_for_uv_handle(tcp_handle_ptr as *libc::c_void,
+                    set_data_for_uv_handle(tcp_handle_ptr as *Void,
                                            &client_data);
                     debug!(~"before run tcp req loop");
                     run(test_loop);
@@ -1428,18 +1428,18 @@ mod test {
         }
     }
 
-    extern fn server_after_close_cb(handle: *libc::c_void) {
+    extern fn server_after_close_cb(handle: *Void) {
         debug!("SERVER server stream closed, should exit. h: %?",
                    handle);
     }
 
-    extern fn client_stream_after_close_cb(handle: *libc::c_void) {
+    extern fn client_stream_after_close_cb(handle: *Void) {
         unsafe {
             debug!(~"SERVER: closed client stream, now closing server stream");
             let client_data = get_data_for_uv_handle(
                 handle) as
                 *tcp_server_data;
-            close((*client_data).server as *libc::c_void,
+            close((*client_data).server as *Void,
                           server_after_close_cb);
         }
     }
@@ -1449,7 +1449,7 @@ mod test {
             let client_stream_ptr =
                 get_stream_handle_from_write_req(req);
             debug!(~"SERVER: resp sent... closing client stream");
-            close(client_stream_ptr as *libc::c_void,
+            close(client_stream_ptr as *Void,
                           client_stream_after_close_cb)
         }
     }
@@ -1474,7 +1474,7 @@ mod test {
                 let request_str = str::from_bytes(bytes);
 
                 let client_data = get_data_for_uv_handle(
-                    client_stream_ptr as *libc::c_void) as *tcp_server_data;
+                    client_stream_ptr as *Void) as *tcp_server_data;
 
                 let server_kill_msg = copy (*client_data).server_kill_msg;
                 let write_req = (*client_data).server_write_req;
@@ -1486,7 +1486,7 @@ mod test {
                     server_chan.send(request_str);
                     let write_result = write(
                         write_req,
-                        client_stream_ptr as *libc::c_void,
+                        client_stream_ptr as *Void,
                         (*client_data).server_resp_buf,
                         after_server_resp_write);
                     debug!("SERVER: resp write result: %d",
@@ -1495,7 +1495,7 @@ mod test {
                         debug!(~"bad result for server resp write()");
                         debug!(get_last_err_info(
                             get_loop_for_uv_handle(client_stream_ptr
-                                as *libc::c_void)));
+                                as *Void)));
                         assert!(false);
                     }
                 }
@@ -1523,7 +1523,7 @@ mod test {
         unsafe {
             debug!(~"client connecting!");
             let test_loop = get_loop_for_uv_handle(
-                                   server_stream_ptr as *libc::c_void);
+                                   server_stream_ptr as *Void);
             if status != 0i32 {
                 let err_msg = get_last_err_info(test_loop);
                 debug!("server_connect_cb: non-zero status: %?",
@@ -1531,19 +1531,19 @@ mod test {
                 return;
             }
             let server_data = get_data_for_uv_handle(
-                server_stream_ptr as *libc::c_void) as *tcp_server_data;
+                server_stream_ptr as *Void) as *tcp_server_data;
             let client_stream_ptr = (*server_data).client;
             let client_init_result = tcp_init(test_loop,
                                                       client_stream_ptr);
             set_data_for_uv_handle(
-                client_stream_ptr as *libc::c_void,
-                server_data as *libc::c_void);
+                client_stream_ptr as *Void,
+                server_data as *Void);
             if (client_init_result == 0i32) {
                 debug!(~"successfully initialized client stream");
                 let accept_result = accept(server_stream_ptr as
-                                                     *libc::c_void,
+                                                     *Void,
                                                    client_stream_ptr as
-                                                     *libc::c_void);
+                                                     *Void);
                 if (accept_result == 0i32) {
                     // start reading
                     let read_result = read_start(
@@ -1586,7 +1586,7 @@ mod test {
         continue_chan: SharedChan<bool>,
     }
 
-    extern fn async_close_cb(handle: *libc::c_void) {
+    extern fn async_close_cb(handle: *Void) {
         debug!("SERVER: closing async cb... h: %?",
                    handle);
     }
@@ -1599,11 +1599,11 @@ mod test {
             // can continue on to let the tcp client
             // do its thang
             let data = get_data_for_uv_handle(
-                async_handle as *libc::c_void) as *async_handle_data;
+                async_handle as *Void) as *async_handle_data;
             let continue_chan = (*data).continue_chan.clone();
             let should_continue = status == 0i32;
             continue_chan.send(should_continue);
-            close(async_handle as *libc::c_void, async_close_cb);
+            close(async_handle as *Void, async_close_cb);
         }
     }
 
@@ -1647,12 +1647,12 @@ mod test {
                 server_write_req: server_write_req_ptr
             };
             let server_data_ptr: *tcp_server_data = &server_data;
-            set_data_for_uv_handle(tcp_server_ptr as *libc::c_void,
-                                           server_data_ptr as *libc::c_void);
+            set_data_for_uv_handle(tcp_server_ptr as *Void,
+                                           server_data_ptr as *Void);
 
             // uv_tcp_init()
             let tcp_init_result = tcp_init(
-                test_loop as *libc::c_void, tcp_server_ptr);
+                test_loop as *Void, tcp_server_ptr);
             if (tcp_init_result == 0i32) {
                 let server_addr = ip4_addr(server_ip, server_port);
                 // FIXME ref #2064
@@ -1665,7 +1665,7 @@ mod test {
 
                     // uv_listen()
                     let listen_result = listen(tcp_server_ptr as
-                                                         *libc::c_void,
+                                                         *Void,
                                                        128i32,
                                                        server_connection_cb);
                     if (listen_result == 0i32) {
@@ -1676,8 +1676,8 @@ mod test {
                                            continue_async_cb);
                         if (async_result == 0i32) {
                             set_data_for_uv_handle(
-                                continue_async_handle_ptr as *libc::c_void,
-                                async_data_ptr as *libc::c_void);
+                                continue_async_handle_ptr as *Void,
+                                async_data_ptr as *Void);
                             async_send(continue_async_handle_ptr);
                             // uv_run()
                             run(test_loop);

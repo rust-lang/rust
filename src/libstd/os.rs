@@ -33,7 +33,7 @@ use container::Container;
 use io;
 use iterator::IteratorUtil;
 use libc;
-use libc::{c_char, c_void, c_int, size_t};
+use libc::{c_char, c_int, size_t};
 use libc::FILE;
 use local_data;
 use option::{Some, None};
@@ -44,6 +44,7 @@ use str;
 use to_str;
 use uint;
 use unstable::finally::Finally;
+use util::Void;
 use vec;
 
 pub use libc::fclose;
@@ -455,7 +456,7 @@ pub fn self_exe_path() -> Option<Path> {
                            KERN_PROC_PATHNAME as c_int, -1 as c_int];
                 let mut sz = sz;
                 sysctl(vec::raw::to_ptr(mib), mib.len() as ::libc::c_uint,
-                       buf as *mut c_void, &mut sz, ptr::null(),
+                       buf as *mut Void, &mut sz, ptr::null(),
                        0u as size_t) == (0 as c_int)
             }
         }
@@ -744,7 +745,7 @@ pub fn list_dir(p: &Path) -> ~[~str] {
             #[nolink]
             extern {
                 unsafe fn rust_list_dir_wfd_size() -> libc::size_t;
-                unsafe fn rust_list_dir_wfd_fp_buf(wfd: *libc::c_void)
+                unsafe fn rust_list_dir_wfd_fp_buf(wfd: *libc::Void)
                     -> *u16;
             }
             fn star(p: &Path) -> Path { p.push("*") }
@@ -939,11 +940,11 @@ pub fn copy_file(from: &Path, to: &Path) -> bool {
             let mut ok = true;
             while !done {
                 do buf.as_mut_buf |b, _sz| {
-                  let nread = libc::fread(b as *mut c_void, 1u as size_t,
+                  let nread = libc::fread(b as *mut Void, 1u as size_t,
                                           bufsize as size_t,
                                           istream);
                   if nread > 0 as size_t {
-                      if libc::fwrite(b as *c_void, 1u as size_t, nread,
+                      if libc::fwrite(b as *Void, 1u as size_t, nread,
                                       ostream) != nread {
                           ok = false;
                           done = true;
@@ -1096,7 +1097,7 @@ pub fn last_os_error() -> ~str {
             unsafe fn FormatMessageA(flags: DWORD, lpSrc: LPVOID,
                                      msgId: DWORD, langId: DWORD,
                                      buf: LPSTR, nsize: DWORD,
-                                     args: *c_void) -> DWORD;
+                                     args: *Void) -> DWORD;
         }
 
         static FORMAT_MESSAGE_FROM_SYSTEM: DWORD = 0x00001000;
@@ -1207,7 +1208,7 @@ type LPCWSTR = *u16;
 #[abi="stdcall"]
 extern "stdcall" {
     fn GetCommandLineW() -> LPCWSTR;
-    fn LocalFree(ptr: *c_void);
+    fn LocalFree(ptr: *Void);
 }
 
 #[cfg(windows)]
@@ -1374,7 +1375,7 @@ pub struct MemoryMap {
 }
 
 pub enum MemoryMapKind {
-    MapFile(*c_void),
+    MapFile(*Void),
     MapVirtual
 }
 
@@ -1382,7 +1383,7 @@ pub enum MapOption {
     MapReadable,
     MapWritable,
     MapExecutable,
-    MapAddr(*c_void),
+    MapAddr(*Void),
     MapFd(c_int),
     MapOffset(uint)
 }
@@ -1432,7 +1433,7 @@ impl MemoryMap {
     pub fn new(min_len: uint, options: ~[MapOption]) -> Result<~MemoryMap, MapError> {
         use libc::off_t;
 
-        let mut addr: *c_void = ptr::null();
+        let mut addr: *Void = ptr::null();
         let mut prot: c_int = 0;
         let mut flags: c_int = libc::MAP_PRIVATE;
         let mut fd: c_int = -1;
@@ -1487,7 +1488,7 @@ impl MemoryMap {
 impl Drop for MemoryMap {
     fn drop(&self) {
         unsafe {
-            match libc::munmap(self.data as *c_void, self.len) {
+            match libc::munmap(self.data as *Void, self.len) {
                 0 => (),
                 -1 => error!(match errno() as c_int {
                     libc::EINVAL => ~"invalid addr or len",
@@ -1584,7 +1585,7 @@ impl MemoryMap {
                     _ => Ok(~MemoryMap {
                        data: r as *mut u8,
                        len: len,
-                       kind: MapFile(mapping as *c_void)
+                       kind: MapFile(mapping as *Void)
                     })
                 }
             }
@@ -1599,7 +1600,7 @@ impl Drop for MemoryMap {
 
         unsafe {
             match self.kind {
-                MapVirtual => match libc::VirtualFree(self.data as *mut c_void,
+                MapVirtual => match libc::VirtualFree(self.data as *mut Void,
                                                       self.len,
                                                       libc::MEM_RELEASE) {
                     0 => error!(fmt!("VirtualFree failed: %?", errno())),
@@ -1714,7 +1715,6 @@ pub mod consts {
 #[cfg(test)]
 #[allow(non_implicitly_copyable_typarams)]
 mod tests {
-    use libc::{c_int, c_void, size_t};
     use libc;
     use option::Some;
     use option;
@@ -1726,6 +1726,7 @@ mod tests {
     use rand;
     use run;
     use str::StrSlice;
+    use util::Void;
     use vec;
     use vec::CopyableVector;
     use libc::consts::os::posix88::{S_IRUSR, S_IWUSR, S_IXUSR};
@@ -1967,7 +1968,7 @@ mod tests {
           let mut buf = s.as_bytes_with_null().to_owned();
           let len = buf.len();
           do buf.as_mut_buf |b, _len| {
-              assert_eq!(libc::fwrite(b as *c_void, 1u as size_t,
+              assert_eq!(libc::fwrite(b as *Void, 1u as size_t,
                                       (s.len() + 1u) as size_t, ostream),
                          len as size_t)
           }
@@ -2046,7 +2047,7 @@ mod tests {
             };
             lseek_(fd, size);
             do as_c_charp("x") |x| {
-                assert!(write(fd, x as *c_void, 1) == 1);
+                assert!(write(fd, x as *Void, 1) == 1);
             }
             fd
         };

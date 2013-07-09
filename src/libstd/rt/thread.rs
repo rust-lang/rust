@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use libc;
 use ops::Drop;
+use util::Void;
 
 #[allow(non_camel_case_types)] // runtime type
-type raw_thread = libc::c_void;
+type raw_thread = Void;
 
 pub struct Thread {
     main: ~fn(),

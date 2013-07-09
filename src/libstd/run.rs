@@ -16,7 +16,7 @@ use cast;
 use comm::{stream, SharedChan, GenericChan, GenericPort};
 use io;
 use iterator::IteratorUtil;
-use libc::{pid_t, c_void, c_int};
+use libc::{pid_t, c_int};
 use libc;
 use option::{Some, None};
 use os;
@@ -24,6 +24,7 @@ use prelude::*;
 use ptr;
 use str;
 use task;
+use util::Void;
 use vec::ImmutableVector;
 
 /**
@@ -639,12 +640,12 @@ fn spawn_process_os(prog: &str, args: &[~str],
     use int;
 
     mod rustrt {
-        use libc::c_void;
+        use util::Void;
 
         #[abi = "cdecl"]
         pub extern {
             unsafe fn rust_unset_sigprocmask();
-            unsafe fn rust_set_environ(envp: *c_void);
+            unsafe fn rust_set_environ(envp: *Void);
         }
     }
 
@@ -707,7 +708,7 @@ fn with_argv<T>(prog: &str, args: &[~str],
 }
 
 #[cfg(unix)]
-fn with_envp<T>(env: Option<&[(~str, ~str)]>, cb: &fn(*c_void) -> T) -> T {
+fn with_envp<T>(env: Option<&[(~str, ~str)]>, cb: &fn(*Void) -> T) -> T {
     // On posixy systems we can pass a char** for envp, which is
     // a null-terminated array of "k=v\n" strings.
     match env {
@@ -737,7 +738,7 @@ fn with_envp<T>(env: Option<&[(~str, ~str)]>, cb: &fn(*c_void) -> T) -> T {
 }
 
 #[cfg(windows)]
-fn with_envp<T>(env: Option<&[(~str, ~str)]>, cb: &fn(*mut c_void) -> T) -> T {
+fn with_envp<T>(env: Option<&[(~str, ~str)]>, cb: &fn(*mut Void) -> T) -> T {
     // On win32 we pass an "environment block" which is not a char**, but
     // rather a concatenation of null-terminated k=v\0 sequences, with a final
     // \0 to terminate.

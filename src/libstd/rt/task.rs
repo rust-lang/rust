@@ -15,12 +15,13 @@
 
 use borrow;
 use cast::transmute;
-use libc::{c_void, uintptr_t};
+use libc::uintptr_t;
 use ptr;
 use prelude::*;
 use rt::local::Local;
 use rt::logging::StdErrLogger;
 use super::local_heap::LocalHeap;
+use util::Void;
 
 pub struct Task {
     heap: LocalHeap,
@@ -32,7 +33,7 @@ pub struct Task {
 }
 
 pub struct GarbageCollector;
-pub struct LocalStorage(*c_void, Option<~fn(*c_void)>);
+pub struct LocalStorage(*Void, Option<~fn(*Void)>);
 
 pub struct Unwinder {
     unwinding: bool,
@@ -122,7 +123,7 @@ impl Unwinder {
             assert!(token == 0 || token == UNWIND_TOKEN);
         }
 
-        extern fn try_fn(code: *c_void, env: *c_void) {
+        extern fn try_fn(code: *Void, env: *Void) {
             unsafe {
                 let closure: Closure = Closure {
                     code: transmute(code),
@@ -135,7 +136,7 @@ impl Unwinder {
 
         extern {
             #[rust_stack]
-            fn rust_try(f: *u8, code: *c_void, data: *c_void) -> uintptr_t;
+            fn rust_try(f: *u8, code: *Void, data: *Void) -> uintptr_t;
         }
     }
 

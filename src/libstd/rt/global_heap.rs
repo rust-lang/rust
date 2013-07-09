@@ -8,10 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use libc::{c_char, c_void, size_t, uintptr_t, free, malloc, realloc};
+use libc::{c_char, size_t, uintptr_t, free, malloc, realloc};
 use managed::raw::{BoxHeaderRepr, BoxRepr};
 use unstable::intrinsics::TyDesc;
 use sys::size_of;
+use util::Void;
 
 extern {
     #[rust_stack]
@@ -36,7 +37,7 @@ fn align_to(size: uint, align: uint) -> uint {
 
 /// A wrapper around libc::malloc, aborting on out-of-memory
 #[inline]
-pub unsafe fn malloc_raw(size: uint) -> *c_void {
+pub unsafe fn malloc_raw(size: uint) -> *Void {
     let p = malloc(size as size_t);
     if p.is_null() {
         // we need a non-allocating way to print an error here
@@ -47,7 +48,7 @@ pub unsafe fn malloc_raw(size: uint) -> *c_void {
 
 /// A wrapper around libc::realloc, aborting on out-of-memory
 #[inline]
-pub unsafe fn realloc_raw(ptr: *mut c_void, size: uint) -> *mut c_void {
+pub unsafe fn realloc_raw(ptr: *mut Void, size: uint) -> *mut Void {
     let p = realloc(ptr, size as size_t);
     if p.is_null() {
         // we need a non-allocating way to print an error here
@@ -117,5 +118,5 @@ pub unsafe fn closure_exchange_malloc(td: *c_char, size: uintptr_t) -> *c_char {
 #[lang="exchange_free"]
 #[inline]
 pub unsafe fn exchange_free(ptr: *c_char) {
-    free(ptr as *c_void);
+    free(ptr as *Void);
 }

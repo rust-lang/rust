@@ -12,10 +12,10 @@
 
 use cast;
 use cmp::Eq;
-use libc;
 use prelude::*;
 use task::rt;
 use local_data::LocalDataKey;
+use util::Void;
 
 use super::rt::rust_task;
 use rt::task::{Task, LocalStorage};
@@ -59,11 +59,11 @@ impl Eq for @LocalData {
 
 // If TLS is used heavily in future, this could be made more efficient with a
 // proper map.
-type TaskLocalElement = (*libc::c_void, *libc::c_void, @LocalData);
+type TaskLocalElement = (*Void, *Void, @LocalData);
 // Has to be a pointer at outermost layer; the foreign call returns void *.
 type TaskLocalMap = @mut ~[Option<TaskLocalElement>];
 
-fn cleanup_task_local_map(map_ptr: *libc::c_void) {
+fn cleanup_task_local_map(map_ptr: *Void) {
     unsafe {
         assert!(!map_ptr.is_null());
         // Get and keep the single reference that was created at the
@@ -83,7 +83,7 @@ unsafe fn get_local_map(handle: Handle) -> TaskLocalMap {
 
 unsafe fn get_task_local_map(task: *rust_task) -> TaskLocalMap {
 
-    extern fn cleanup_task_local_map_extern_cb(map_ptr: *libc::c_void) {
+    extern fn cleanup_task_local_map_extern_cb(map_ptr: *Void) {
         cleanup_task_local_map(map_ptr);
     }
 
@@ -122,24 +122,24 @@ unsafe fn get_newsched_local_map(local: *mut LocalStorage) -> TaskLocalMap {
             assert!((*map_ptr).is_null());
             let map: TaskLocalMap = @mut ~[];
             *map_ptr = cast::transmute(map);
-            let at_exit_fn: ~fn(*libc::c_void) = |p|cleanup_task_local_map(p);
+            let at_exit_fn: ~fn(*Void) = |p|cleanup_task_local_map(p);
             *at_exit = Some(at_exit_fn);
             return map;
         }
     }
 }
 
-unsafe fn key_to_key_value<T: 'static>(key: LocalDataKey<T>) -> *libc::c_void {
+unsafe fn key_to_key_value<T: 'static>(key: LocalDataKey<T>) -> *Void {
     // Keys are closures, which are (fnptr,envptr) pairs. Use fnptr.
     // Use reinterpret_cast -- transmute would leak (forget) the closure.
-    let pair: (*libc::c_void, *libc::c_void) = cast::transmute_copy(&key);
+    let pair: (*Void, *Void) = cast::transmute_copy(&key);
     pair.first()
 }
 
 // If returning Some(..), returns with @T with the map's reference. Careful!
 unsafe fn local_data_lookup<T: 'static>(
     map: TaskLocalMap, key: LocalDataKey<T>)
-    -> Option<(uint, *libc::c_void)> {
+    -> Option<(uint, *Void)> {
 
     let key_value = key_to_key_value(key);
     let map_pos = (*map).iter().position(|entry|
@@ -202,7 +202,7 @@ pub unsafe fn local_set<T: 'static>(
     // own on it can be dropped when the box is destroyed. The unsafe pointer
     // does not have a reference associated with it, so it may become invalid
     // when the box is destroyed.
-    let data_ptr = *cast::transmute::<&@T, &*libc::c_void>(&data);
+    let data_ptr = *cast::transmute::<&@T, &*Void>(&data);
     let data_box = @data as @LocalData;
     // Construct new entry to store in the map.
     let new_entry = Some((keyval, data_ptr, data_box));

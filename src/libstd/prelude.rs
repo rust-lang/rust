@@ -28,26 +28,29 @@ Rust's prelude has three main parts:
 
 
 // Reexported core operators
-pub use either::{Either, Left, Right};
 pub use kinds::{Copy, Sized};
 pub use kinds::{Freeze, Send};
 pub use ops::{Add, Sub, Mul, Div, Rem, Neg, Not};
 pub use ops::{BitAnd, BitOr, BitXor};
 pub use ops::{Drop};
 pub use ops::{Shl, Shr, Index};
-pub use option::{Option, Some, None};
-pub use result::{Result, Ok, Err};
 
 // Reexported functions
 pub use io::{print, println};
 
-// Reexported types and traits
+// Reexported types and variants
+pub use either::{Either, Left, Right};
+pub use option::{Option, Some, None};
+pub use result::{Result, Ok, Err};
+pub use util::Void;
+
+// Reexported traits
 pub use clone::{Clone, DeepClone};
 pub use cmp::{Eq, ApproxEq, Ord, TotalEq, TotalOrd, Ordering, Less, Equal, Greater, Equiv};
 pub use char::Char;
 pub use container::{Container, Mutable, Map, Set};
 pub use hash::Hash;
-pub use iter::{Times};
+pub use iter::Times;
 pub use iterator::{Iterator, IteratorUtil, OrdIterator};
 pub use num::{Num, NumCast};
 pub use num::{Orderable, Signed, Unsigned, Round};
@@ -62,7 +65,7 @@ pub use path::WindowsPath;
 pub use ptr::RawPtr;
 pub use ascii::{Ascii, AsciiCast, OwnedAsciiCast, AsciiStr, ToBytesConsume};
 pub use str::{Str, StrVector, StrSlice, OwnedStr, StrUtil, NullTerminatedStr};
-pub use from_str::{FromStr};
+pub use from_str::FromStr;
 pub use to_bytes::IterBytes;
 pub use to_str::{ToStr, ToStrConsume};
 pub use tuple::{CopyableTuple, ImmutableTuple, ExtendedTupleOps};

@@ -43,10 +43,11 @@ use vec;
 use vec::ImmutableVector;
 use ptr;
 use str;
-use libc::{c_void, c_int, size_t, malloc, free};
+use libc::{c_int, size_t, malloc, free};
 use cast::transmute;
 use ptr::null;
 use unstable::finally::Finally;
+use util::Void;
 
 use rt::io::IoError;
 
@@ -165,7 +166,7 @@ impl<H, W: Watcher + NativeHandle<*H>> WatcherInterop for W {
                 idle_cb: None,
                 timer_cb: None
             };
-            let data = transmute::<~WatcherData, *c_void>(data);
+            let data = transmute::<~WatcherData, *Void>(data);
             uvll::set_data_for_uv_handle(self.native_handle(), data);
         }
     }
@@ -173,7 +174,7 @@ impl<H, W: Watcher + NativeHandle<*H>> WatcherInterop for W {
     pub fn get_watcher_data<'r>(&'r mut self) -> &'r mut WatcherData {
         unsafe {
             let data = uvll::get_data_for_uv_handle(self.native_handle());
-            let data = transmute::<&*c_void, &mut ~WatcherData>(&data);
+            let data = transmute::<&*Void, &mut ~WatcherData>(&data);
             return &mut **data;
         }
     }
@@ -181,7 +182,7 @@ impl<H, W: Watcher + NativeHandle<*H>> WatcherInterop for W {
     pub fn drop_watcher_data(&mut self) {
         unsafe {
             let data = uvll::get_data_for_uv_handle(self.native_handle());
-            let _data = transmute::<*c_void, ~WatcherData>(data);
+            let _data = transmute::<*Void, ~WatcherData>(data);
             uvll::set_data_for_uv_handle(self.native_handle(), null::<()>());
         }
     }
@@ -313,7 +314,7 @@ pub fn vec_to_uv_buf(v: ~[u8]) -> Buf {
 pub fn vec_from_uv_buf(buf: Buf) -> Option<~[u8]> {
     if !(buf.len == 0 && buf.base.is_null()) {
         let v = unsafe { vec::from_buf(buf.base, buf.len as uint) };
-        unsafe { free(buf.base as *c_void) };
+        unsafe { free(buf.base as *Void) };
         return Some(v);
     } else {
         // No buffer

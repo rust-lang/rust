@@ -32,6 +32,7 @@ use ptr;
 use ptr::RawPtr;
 use to_str::ToStr;
 use uint;
+use util::Void;
 use vec;
 use vec::{OwnedVector, OwnedCopyableVector, ImmutableVector};
 
@@ -536,8 +537,8 @@ pub fn eq_slice(a: &str, b: &str) -> bool {
             if (alen != blen) { false }
             else {
                 unsafe {
-                    libc::memcmp(ap as *libc::c_void,
-                                 bp as *libc::c_void,
+                    libc::memcmp(ap as *Void,
+                                 bp as *Void,
                                  (alen - 1) as libc::size_t) == 0
                 }
             }
@@ -553,8 +554,8 @@ pub fn eq_slice(a: &str, b: &str) -> bool {
             if (alen != blen) { false }
             else {
                 unsafe {
-                    libc::memcmp(ap as *libc::c_void,
-                                 bp as *libc::c_void,
+                    libc::memcmp(ap as *Void,
+                                 bp as *Void,
                                  (alen - 1) as libc::size_t) == 0
                 }
             }

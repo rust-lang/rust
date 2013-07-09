@@ -16,26 +16,26 @@ Simple compression
 
 #[allow(missing_doc)];
 
-use std::libc::{c_void, size_t, c_int};
+use std::libc::{size_t, c_int};
 use std::libc;
 use std::vec;
 
 pub mod rustrt {
-    use std::libc::{c_int, c_void, size_t};
+    use std::libc::{c_int, size_t};
 
     #[link_name = "rustrt"]
     pub extern {
-        unsafe fn tdefl_compress_mem_to_heap(psrc_buf: *const c_void,
+        unsafe fn tdefl_compress_mem_to_heap(psrc_buf: *const Void,
                                              src_buf_len: size_t,
                                              pout_len: *mut size_t,
                                              flags: c_int)
-                                          -> *c_void;
+                                          -> *Void;
 
-        unsafe fn tinfl_decompress_mem_to_heap(psrc_buf: *const c_void,
+        unsafe fn tinfl_decompress_mem_to_heap(psrc_buf: *const Void,
                                                src_buf_len: size_t,
                                                pout_len: *mut size_t,
                                                flags: c_int)
-                                            -> *c_void;
+                                            -> *Void;
     }
 }
 
@@ -49,7 +49,7 @@ pub fn deflate_bytes(bytes: &[u8]) -> ~[u8] {
         unsafe {
             let mut outsz : size_t = 0;
             let res =
-                rustrt::tdefl_compress_mem_to_heap(b as *c_void,
+                rustrt::tdefl_compress_mem_to_heap(b as *Void,
                                                    len as size_t,
                                                    &mut outsz,
                                                    LZ_NORM);
@@ -67,7 +67,7 @@ pub fn inflate_bytes(bytes: &[u8]) -> ~[u8] {
         unsafe {
             let mut outsz : size_t = 0;
             let res =
-                rustrt::tinfl_decompress_mem_to_heap(b as *c_void,
+                rustrt::tinfl_decompress_mem_to_heap(b as *Void,
                                                      len as size_t,
                                                      &mut outsz,
                                                      0);

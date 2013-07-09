@@ -89,7 +89,6 @@ use cast::{forget, transmute, transmute_copy, transmute_mut};
 use either::{Either, Left, Right};
 use iterator::IteratorUtil;
 use kinds::Send;
-use libc;
 use ops::Drop;
 use option::{None, Option, Some};
 use unstable::finally::Finally;
@@ -98,7 +97,7 @@ use ptr;
 use ptr::RawPtr;
 use task;
 use vec::{OwnedVector, MutableVector};
-use util::replace;
+use util::{replace, Void};
 
 static SPIN_COUNT: uint = 0;
 
@@ -137,7 +136,7 @@ pub struct PacketHeader {
 
     // This is a transmute_copy of a ~buffer, that can also be cast
     // to a buffer_header if need be.
-    buffer: *libc::c_void,
+    buffer: *Void,
 }
 
 pub fn PacketHeader() -> PacketHeader {
@@ -190,11 +189,11 @@ pub struct Packet<T> {
 }
 
 pub trait HasBuffer {
-    fn set_buffer(&mut self, b: *libc::c_void);
+    fn set_buffer(&mut self, b: *Void);
 }
 
 impl<T:Send> HasBuffer for Packet<T> {
-    fn set_buffer(&mut self, b: *libc::c_void) {
+    fn set_buffer(&mut self, b: *Void) {
         self.header.buffer = b;
     }
 }
@@ -232,7 +231,7 @@ pub fn packet<T>() -> *mut Packet<T> {
 
 pub fn entangle_buffer<T:Send,Tstart:Send>(
     mut buffer: ~Buffer<T>,
-    init: &fn(*libc::c_void, x: &mut T) -> *mut Packet<Tstart>)
+    init: &fn(*Void, x: &mut T) -> *mut Packet<Tstart>)
     -> (RecvPacketBuffered<Tstart, T>, SendPacketBuffered<Tstart, T>) {
     unsafe {
         let p = init(transmute_copy(&buffer), &mut buffer.data);
@@ -250,11 +249,11 @@ pub fn swap_task(dst: &mut *rust_task, src: *rust_task) -> *rust_task {
 }
 
 #[allow(non_camel_case_types)]
-pub type rust_task = libc::c_void;
+pub type rust_task = Void;
 
 pub mod rustrt {
-    use libc;
     use super::rust_task;
+    use util::Void;
 
     pub extern {
         #[rust_stack]
@@ -267,13 +266,13 @@ pub mod rustrt {
         unsafe fn task_clear_event_reject(task: *rust_task);
 
         unsafe fn task_wait_event(this: *rust_task,
-                                  killed: &mut *libc::c_void)
+                                  killed: &mut *Void)
                                -> bool;
-        unsafe fn task_signal_event(target: *rust_task, event: *libc::c_void);
+        unsafe fn task_signal_event(target: *rust_task, event: *Void);
     }
 }
 
-fn wait_event(this: *rust_task) -> *libc::c_void {
+fn wait_event(this: *rust_task) -> *Void {
     unsafe {
         let mut event = ptr::null();
 
@@ -374,7 +373,7 @@ pub fn send<T,Tbuffer>(mut p: SendPacketBuffered<T,Tbuffer>,
                 unsafe {
                     rustrt::task_signal_event(
                         old_task,
-                        ptr::to_unsafe_ptr(&(p.header)) as *libc::c_void);
+                        ptr::to_unsafe_ptr(&(p.header)) as *Void);
                     rustrt::rust_task_deref(old_task);
                 }
             }
@@ -536,7 +535,7 @@ fn sender_terminate<T:Send>(p: *mut Packet<T>) {
             unsafe {
                 rustrt::task_signal_event(
                     old_task,
-                    ptr::to_unsafe_ptr(&(p.header)) as *libc::c_void);
+                    ptr::to_unsafe_ptr(&(p.header)) as *Void);
                 rustrt::rust_task_deref(old_task);
             }
         }

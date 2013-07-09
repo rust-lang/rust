@@ -37,8 +37,8 @@ pub mod rustrt {
     #[nolink]
     pub extern {
         unsafe fn rust_uv_current_kernel_malloc(size: libc::c_uint)
-                                             -> *libc::c_void;
-        unsafe fn rust_uv_current_kernel_free(mem: *libc::c_void);
+                                             -> *Void;
+        unsafe fn rust_uv_current_kernel_free(mem: *Void);
         unsafe fn rust_uv_helper_uv_tcp_t_size() -> libc::c_uint;
     }
 }
@@ -231,7 +231,7 @@ pub fn connect(input_ip: ip::IpAddr, port: uint,
                             uv::ll::set_data_for_uv_handle(
                                 stream_handle_ptr,
                                 socket_data_ptr as
-                                *libc::c_void);
+                                *Void);
                             // just so the connect_cb can send the
                             // outcome..
                             uv::ll::set_data_for_req(connect_req_ptr,
@@ -275,7 +275,7 @@ pub fn connect(input_ip: ip::IpAddr, port: uint,
                 debug!("tcp::connect - received failure on result_po");
                 // still have to free the malloc'd stream handle..
                 rustrt::rust_uv_current_kernel_free(stream_handle_ptr
-                                                    as *libc::c_void);
+                                                    as *Void);
                 let tcp_conn_err = match err_data.err_name {
                     ~"ECONNREFUSED" => ConnectionRefused,
                     _ => GenericConnectErr(copy err_data.err_name,
@@ -555,8 +555,8 @@ pub fn accept(new_conn: TcpNewConnection)
                         debug!("uv_tcp_init successful for \
                                      client stream");
                         match uv::ll::accept(
-                            server_handle_ptr as *libc::c_void,
-                            client_stream_handle_ptr as *libc::c_void) {
+                            server_handle_ptr as *Void,
+                            client_stream_handle_ptr as *Void) {
                             0i32 => {
                                 debug!("successfully accepted client \
                                         connection: \
@@ -567,7 +567,7 @@ pub fn accept(new_conn: TcpNewConnection)
                                 uv::ll::set_data_for_uv_handle(
                                     client_stream_handle_ptr,
                                     client_socket_data_ptr
-                                    as *libc::c_void);
+                                    as *Void);
                                 let ptr = uv::ll::get_data_for_uv_handle(
                                     client_stream_handle_ptr);
                                 debug!("ptrs: %x %x",
@@ -1021,7 +1021,7 @@ fn tear_down_socket_data(socket_data: @TcpSocketData) {
         //the line below will most likely crash
         //log(debug, fmt!("about to free socket_data at %?", socket_data));
         rustrt::rust_uv_current_kernel_free(stream_handle_ptr
-                                            as *libc::c_void);
+                                            as *Void);
         debug!("exiting dtor for tcp_socket");
     }
 }
@@ -1303,7 +1303,7 @@ extern fn on_tcp_read_cb(stream: *uv::ll::uv_stream_t,
     }
 }
 
-extern fn on_alloc_cb(handle: *libc::c_void,
+extern fn on_alloc_cb(handle: *Void,
                       suggested_size: size_t)
     -> uv::ll::uv_buf_t {
     unsafe {
