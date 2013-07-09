@@ -1421,38 +1421,52 @@ pub fn expand_crate(parse_sess: @mut parse::ParseSess,
     return ret;
 }
 
-// given a function from idents to idents, produce
-// an ast_fold that applies that function:
-pub fn fun_to_ident_folder(f: @fn(ast::Ident)->ast::Ident) -> @ast_fold{
+// a function in SyntaxContext -> SyntaxContext
+pub trait CtxtFn{
+    fn f(&self, ast::SyntaxContext) -> ast::SyntaxContext;
+}
+
+pub struct Renamer {
+    from : ast::Ident,
+    to : ast::Name
+}
+
+impl CtxtFn for Renamer {
+    fn f(&self, ctxt : ast::SyntaxContext) -> ast::SyntaxContext {
+        new_rename(self.from,self.to,ctxt)
+    }
+}
+
+pub struct Marker { mark : Mrk }
+
+impl CtxtFn for Marker {
+    fn f(&self, ctxt : ast::SyntaxContext) -> ast::SyntaxContext {
+        new_mark(self.mark,ctxt)
+    }
+}
+
+// given a function from ctxts to ctxts, produce
+// an ast_fold that applies that function to all ctxts:
+pub fn fun_to_ctxt_folder<T : 'static + CtxtFn>(cf: @T) -> @AstFoldFns {
     let afp = default_ast_fold();
-    let f_pre = @AstFoldFns{
-        fold_ident : |id, _| f(id),
-        .. *afp
+    let fi : @fn(ast::Ident, @ast_fold) -> ast::Ident =
+        |ast::Ident{name, ctxt}, _| {
+        ast::Ident{name:name,ctxt:cf.f(ctxt)}
     };
-    make_fold(f_pre)
-}
-
-// update the ctxts in a path to get a rename node
-pub fn new_ident_renamer(from: ast::Ident,
-                      to: ast::Name) ->
-    @fn(ast::Ident)->ast::Ident {
-    |id : ast::Ident|
-    ast::Ident{
-        name: id.name,
-        ctxt: new_rename(from,to,id.ctxt)
+    @AstFoldFns{
+        fold_ident : fi,
+        // check that it works, then add the fold_expr clause....
+        .. *afp
     }
 }
 
-// update the ctxts in a path to get a mark node
-pub fn new_ident_marker(mark: Mrk) ->
-    @fn(ast::Ident)->ast::Ident {
-    |id : ast::Ident|
-    ast::Ident{
-        name: id.name,
-        ctxt: new_mark(mark,id.ctxt)
-    }
+// just a convenience:
+pub fn new_mark_folder(m : Mrk) -> @AstFoldFns { fun_to_ctxt_folder(@Marker{mark:m}) }
+pub fn new_rename_folder(from : ast::Ident, to : ast::Name) -> @AstFoldFns {
+    fun_to_ctxt_folder(@Renamer{from:from,to:to})
 }
 
+/*
 // perform resolution (in the MTWT sense) on all of the
 // idents in the tree. This is the final step in expansion.
 // FIXME #6993: this function could go away, along with
@@ -1465,25 +1479,26 @@ pub fn new_ident_resolver() ->
         ctxt : EMPTY_CTXT
     }
 }
+*/
 
 // apply a given mark to the given token trees. Used prior to expansion of a macro.
 fn mark_tts(tts : &[token_tree], m : Mrk) -> ~[token_tree] {
-    fold_tts(tts,new_ident_marker(m))
+    fold_tts(tts,new_mark_folder(m) as @ast_fold)
 }
 
 // apply a given mark to the given expr. Used following the expansion of a macro.
 fn mark_expr(expr : @ast::Expr, m : Mrk) -> @ast::Expr {
-    fun_to_ident_folder(new_ident_marker(m)).fold_expr(expr)
+    new_mark_folder(m).fold_expr(expr)
 }
 
 // apply a given mark to the given stmt. Used following the expansion of a macro.
 fn mark_stmt(expr : &ast::Stmt, m : Mrk) -> @ast::Stmt {
-    fun_to_ident_folder(new_ident_marker(m)).fold_stmt(expr).unwrap()
+    new_mark_folder(m).fold_stmt(expr).unwrap()
 }
 
 // apply a given mark to the given item. Used following the expansion of a macro.
 fn mark_item(expr : @ast::item, m : Mrk) -> Option<@ast::item> {
-    fun_to_ident_folder(new_ident_marker(m)).fold_item(expr)
+    new_mark_folder(m).fold_item(expr)
 }
 
 #[cfg(test)]
@@ -1499,8 +1514,8 @@ mod test {
     use print::pprust;
     use std;
     use std::vec;
-    use util::parser_testing::{string_to_crate_and_sess, string_to_item, string_to_pat};
-    use util::parser_testing::{strs_to_idents};
+    use util::parser_testing::{string_to_crate, string_to_crate_and_sess, string_to_item};
+    use util::parser_testing::{string_to_pat, strs_to_idents};
     use visit;
 
     // make sure that fail! is present
@@ -1601,30 +1616,31 @@ mod test {
 
     #[test]
     fn renaming () {
-        let item_ast = string_to_item(@"fn a() -> int { let b = 13; b }").unwrap();
+        let item_ast = string_to_crate(@"fn f() -> int { a }");
         let a_name = intern("a");
         let a2_name = gensym("a2");
-        let renamer = new_ident_renamer(ast::Ident{name:a_name,ctxt:EMPTY_CTXT},
+        let renamer = new_rename_folder(ast::Ident{name:a_name,ctxt:EMPTY_CTXT},
                                         a2_name);
-        let renamed_ast = fun_to_ident_folder(renamer).fold_item(item_ast).unwrap();
-        let resolver = new_ident_resolver();
-        let resolver_fold = fun_to_ident_folder(resolver);
-        let resolved_ast = resolver_fold.fold_item(renamed_ast).unwrap();
-        let resolved_as_str = pprust::item_to_str(resolved_ast,
-                                                  get_ident_interner());
-        assert_eq!(resolved_as_str,~"fn a2() -> int { let b = 13; b }");
+        let renamed_ast = renamer.fold_crate(item_ast);
+        let varrefs = @mut ~[];
+        visit::walk_crate(&mut new_path_finder(varrefs), &renamed_ast, ());
+        match varrefs {
+            @[Path{segments:[ref seg],_}] => assert_eq!(mtwt_resolve(seg.identifier),a2_name),
+            _ => assert_eq!(0,1)
+        }
 
         // try a double-rename, with pending_renames.
         let a3_name = gensym("a3");
         let ctxt2 = new_rename(ast::Ident::new(a_name),a2_name,EMPTY_CTXT);
         let pending_renames = @mut ~[(ast::Ident::new(a_name),a2_name),
                                      (ast::Ident{name:a_name,ctxt:ctxt2},a3_name)];
-        let double_renamed = renames_to_fold(pending_renames).fold_item(item_ast).unwrap();
-        let resolved_again = resolver_fold.fold_item(double_renamed).unwrap();
-        let double_renamed_as_str = pprust::item_to_str(resolved_again,
-                                                        get_ident_interner());
-        assert_eq!(double_renamed_as_str,~"fn a3() -> int { let b = 13; b }");
-
+        let double_renamed = renames_to_fold(pending_renames).fold_crate(item_ast);
+        let varrefs = @mut ~[];
+        visit::walk_crate(&mut new_path_finder(varrefs), &double_renamed, ());
+        match varrefs {
+            @[Path{segments:[ref seg],_}] => assert_eq!(mtwt_resolve(seg.identifier),a2_name),
+            _ => assert_eq!(0,1)
+        }
     }
 
     fn fake_print_crate(s: @pprust::ps, crate: &ast::Crate) {
