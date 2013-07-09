@@ -28,7 +28,7 @@ magic.
 
 use prelude::*;
 
-use task::local_data_priv::{local_get, local_pop, local_modify, local_set, Handle};
+use task::local_data_priv::{local_get, local_pop, local_set, Handle};
 
 #[cfg(test)] use task;
 
@@ -83,7 +83,11 @@ pub unsafe fn local_data_modify<T: 'static>(
     key: LocalDataKey<T>,
     modify_fn: &fn(Option<@T>) -> Option<@T>) {
 
-    local_modify(Handle::new(), key, modify_fn)
+    let cur = local_data_pop(key);
+    match modify_fn(cur) {
+        Some(next) => { local_data_set(key, next); }
+        None => {}
+    }
 }
 
 #[test]

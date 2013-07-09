@@ -32,7 +32,7 @@ pub struct Task {
 }
 
 pub struct GarbageCollector;
-pub struct LocalStorage(*c_void, Option<~fn(*c_void)>);
+pub struct LocalStorage(*c_void, Option<extern "Rust" fn(*c_void)>);
 
 pub struct Unwinder {
     unwinding: bool,
