@@ -13,9 +13,9 @@
 // debugger:break _zzz
 // debugger:run
 // debugger:finish
-// debugger:print a->val
+// debugger:print *a
 // check:$1 = 1
-// debugger:print b->val
+// debugger:print *b
 // check:$2 = {2, 3.5}
 // debugger:print c->val
 // check:$3 = 4
