@@ -63,23 +63,25 @@ pub fn monomorphic_fn(ccx: @mut CrateContext,
     assert!(real_substs.tps.iter().all(|t| !ty::type_needs_infer(*t)));
     let _icx = push_ctxt("monomorphic_fn");
     let mut must_cast = false;
-    let substs = real_substs.tps.iter().transform(|t| {
+
+    let do_normalize = |t: &ty::t| {
         match normalize_for_monomorphization(ccx.tcx, *t) {
           Some(t) => { must_cast = true; t }
           None => *t
         }
-    }).collect::<~[ty::t]>();
-
-    for real_substs.tps.iter().advance |s| { assert!(!ty::type_has_params(*s)); }
-    for substs.iter().advance |s| { assert!(!ty::type_has_params(*s)); }
-    let param_uses = type_use::type_uses_for(ccx, fn_id, substs.len());
+    };
 
     let psubsts = @param_substs {
-        tys: substs,
+        tys: real_substs.tps.map(|x| do_normalize(x)),
         vtables: vtables,
-        self_ty: real_substs.self_ty,
+        self_ty: real_substs.self_ty.map(|x| do_normalize(x)),
         self_vtable: self_vtable
     };
+
+    for real_substs.tps.iter().advance |s| { assert!(!ty::type_has_params(*s)); }
+    for psubsts.tys.iter().advance |s| { assert!(!ty::type_has_params(*s)); }
+    let param_uses = type_use::type_uses_for(ccx, fn_id, psubsts.tys.len());
+
 
     let hash_id = make_mono_id(ccx, fn_id, impl_did_opt,
                                &*psubsts,
