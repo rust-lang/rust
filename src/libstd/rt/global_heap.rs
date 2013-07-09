@@ -76,11 +76,11 @@ pub unsafe fn exchange_malloc(td: *c_char, size: uintptr_t) -> *c_char {
     box as *c_char
 }
 
-// FIXME #4942: Make these signatures agree with exchange_alloc's signatures
+/// The allocator for unique pointers without contained managed pointers.
 #[cfg(not(stage0), not(test))]
 #[lang="exchange_malloc"]
 #[inline]
-pub unsafe fn exchange_malloc(_align: u32, size: uintptr_t) -> *c_char {
+pub unsafe fn exchange_malloc(size: uintptr_t) -> *c_char {
     malloc_raw(size as uint) as *c_char
 }
 

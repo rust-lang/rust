@@ -8,6 +8,4 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:expected `fn()
-
-fn main(x: int) { }
+fn main(x: int) { } //~ ERROR: main function expects type
