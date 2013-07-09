@@ -1134,8 +1134,15 @@ pub fn last_os_error() -> ~str {
  * ignored and the process exits with the default failure status
  */
 pub fn set_exit_status(code: int) {
-    unsafe {
-        rustrt::rust_set_exit_status(code as libc::intptr_t);
+    use rt;
+    use rt::OldTaskContext;
+
+    if rt::context() == OldTaskContext {
+        unsafe {
+            rustrt::rust_set_exit_status(code as libc::intptr_t);
+        }
+    } else {
+        rt::util::set_exit_status(code);
     }
 }
 
