@@ -1571,10 +1571,10 @@ mod biguint_tests {
     fn test_to_str_radix() {
         let r = to_str_pairs();
         for r.iter().advance |num_pair| {
-            let &(n, rs) = num_pair;
+            let &(ref n, ref rs) = num_pair;
             for rs.iter().advance |str_pair| {
-                let &(radix, str) = str_pair;
-                assert_eq!(n.to_str_radix(radix), str);
+                let &(ref radix, ref str) = str_pair;
+                assert_eq!(&n.to_str_radix(*radix), str);
             }
         }
     }
@@ -1583,10 +1583,10 @@ mod biguint_tests {
     fn test_from_str_radix() {
         let r = to_str_pairs();
         for r.iter().advance |num_pair| {
-            let &(n, rs) = num_pair;
+            let &(ref n, ref rs) = num_pair;
             for rs.iter().advance |str_pair| {
-                let &(radix, str) = str_pair;
-                assert_eq!(&n, &FromStrRadix::from_str_radix(str, radix).get());
+                let &(ref radix, ref str) = str_pair;
+                assert_eq!(n, &FromStrRadix::from_str_radix(*str, *radix).get());
             }
         }
 

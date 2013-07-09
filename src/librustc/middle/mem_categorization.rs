@@ -60,7 +60,7 @@ use syntax::print::pprust;
 
 #[deriving(Eq)]
 pub enum categorization {
-    cat_rvalue,                        // result of eval'ing some misc expr
+    cat_rvalue(ast::node_id),          // temporary val, argument is its scope
     cat_static_item,
     cat_implicit_self,
     cat_copied_upvar(CopiedUpvar),     // upvar copied into @fn or ~fn env
@@ -350,7 +350,7 @@ impl mem_categorization_ctxt {
                 // Convert a bare fn to a closure by adding NULL env.
                 // Result is an rvalue.
                 let expr_ty = ty::expr_ty_adjusted(self.tcx, expr);
-                self.cat_rvalue(expr, expr_ty)
+                self.cat_rvalue_node(expr, expr_ty)
             }
 
             Some(
@@ -360,7 +360,7 @@ impl mem_categorization_ctxt {
                 // Equivalent to &*expr or something similar.
                 // Result is an rvalue.
                 let expr_ty = ty::expr_ty_adjusted(self.tcx, expr);
-                self.cat_rvalue(expr, expr_ty)
+                self.cat_rvalue_node(expr, expr_ty)
             }
 
             Some(
@@ -390,7 +390,7 @@ impl mem_categorization_ctxt {
         match expr.node {
           ast::expr_unary(_, ast::deref, e_base) => {
             if self.method_map.contains_key(&expr.id) {
-                return self.cat_rvalue(expr, expr_ty);
+                return self.cat_rvalue_node(expr, expr_ty);
             }
 
             let base_cmt = self.cat_expr(e_base);
@@ -408,7 +408,7 @@ impl mem_categorization_ctxt {
 
           ast::expr_index(_, base, _) => {
             if self.method_map.contains_key(&expr.id) {
-                return self.cat_rvalue(expr, expr_ty);
+                return self.cat_rvalue_node(expr, expr_ty);
             }
 
             let base_cmt = self.cat_expr(base);
@@ -433,7 +433,7 @@ impl mem_categorization_ctxt {
           ast::expr_match(*) | ast::expr_lit(*) | ast::expr_break(*) |
           ast::expr_mac(*) | ast::expr_again(*) | ast::expr_struct(*) |
           ast::expr_repeat(*) | ast::expr_inline_asm(*) => {
-            return self.cat_rvalue(expr, expr_ty);
+            return self.cat_rvalue_node(expr, expr_ty);
           }
         }
     }
@@ -577,11 +577,24 @@ impl mem_categorization_ctxt {
         }
     }
 
-    pub fn cat_rvalue<N:ast_node>(&self, elt: N, expr_ty: ty::t) -> cmt {
+    pub fn cat_rvalue_node<N:ast_node>(&self,
+                                       node: N,
+                                       expr_ty: ty::t) -> cmt {
+        self.cat_rvalue(node.id(),
+                        node.span(),
+                        self.tcx.region_maps.cleanup_scope(node.id()),
+                        expr_ty)
+    }
+
+    pub fn cat_rvalue(&self,
+                      cmt_id: ast::node_id,
+                      span: span,
+                      cleanup_scope_id: ast::node_id,
+                      expr_ty: ty::t) -> cmt {
         @cmt_ {
-            id:elt.id(),
-            span:elt.span(),
-            cat:cat_rvalue,
+            id:cmt_id,
+            span:span,
+            cat:cat_rvalue(cleanup_scope_id),
             mutbl:McDeclared,
             ty:expr_ty
         }
@@ -970,7 +983,7 @@ impl mem_categorization_ctxt {
               }
               for slice.iter().advance |&slice_pat| {
                   let slice_ty = self.pat_ty(slice_pat);
-                  let slice_cmt = self.cat_rvalue(pat, slice_ty);
+                  let slice_cmt = self.cat_rvalue_node(pat, slice_ty);
                   self.cat_pattern(slice_cmt, slice_pat, |x,y| op(x,y));
               }
               for after.iter().advance |&after_pat| {
@@ -1003,7 +1016,7 @@ impl mem_categorization_ctxt {
           cat_copied_upvar(_) => {
               ~"captured outer variable in a heap closure"
           }
-          cat_rvalue => {
+          cat_rvalue(*) => {
               ~"non-lvalue"
           }
           cat_local(_) => {
@@ -1100,7 +1113,7 @@ impl cmt_ {
         //! determines how long the value in `self` remains live.
 
         match self.cat {
-            cat_rvalue |
+            cat_rvalue(*) |
             cat_static_item |
             cat_implicit_self |
             cat_copied_upvar(*) |
@@ -1187,11 +1200,13 @@ impl Repr for categorization {
         match *self {
             cat_static_item |
             cat_implicit_self |
-            cat_rvalue |
+            cat_rvalue(*) |
             cat_copied_upvar(*) |
             cat_local(*) |
             cat_self(*) |
-            cat_arg(*) => fmt!("%?", *self),
+            cat_arg(*) => {
+                fmt!("%?", *self)
+            }
             cat_deref(cmt, derefs, ptr) => {
                 fmt!("%s->(%s, %u)", cmt.cat.repr(tcx),
                      ptr_sigil(ptr), derefs)
@@ -1205,7 +1220,9 @@ impl Repr for categorization {
                 fmt!("%s->(enum)", cmt.cat.repr(tcx))
             }
             cat_stack_upvar(cmt) |
-            cat_discr(cmt, _) => cmt.cat.repr(tcx)
+            cat_discr(cmt, _) => {
+                cmt.cat.repr(tcx)
+            }
         }
     }
 }

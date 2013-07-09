@@ -59,6 +59,7 @@ use middle::trans::type_of::*;
 use middle::ty;
 use util::common::indenter;
 use util::ppaux::{Repr, ty_to_str};
+use middle::pat_util;
 
 use middle::trans::type_::Type;
 
@@ -75,7 +76,7 @@ use extra::time;
 use extra::sort;
 use syntax::ast::ident;
 use syntax::ast_map::{path, path_elt_to_str, path_name};
-use syntax::ast_util::{local_def, path_to_ident};
+use syntax::ast_util::{local_def};
 use syntax::attr;
 use syntax::codemap::span;
 use syntax::parse::token;
@@ -111,8 +112,8 @@ impl Drop for _InsnCtxt {
     fn drop(&self) {
         unsafe {
             do local_data::local_data_modify(task_local_insn_key) |c| {
-                do c.map_consume |@ctx| {
-                    let mut ctx = ctx;
+                do c.map_consume |ctx| {
+                    let mut ctx = copy *ctx;
                     ctx.pop();
                     @ctx
                 }
@@ -125,8 +126,8 @@ pub fn push_ctxt(s: &'static str) -> _InsnCtxt {
     debug!("new InsnCtxt: %s", s);
     unsafe {
         do local_data::local_data_modify(task_local_insn_key) |c| {
-            do c.map_consume |@ctx| {
-                let mut ctx = ctx;
+            do c.map_consume |ctx| {
+                let mut ctx = copy *ctx;
                 ctx.push(s);
                 @ctx
             }
@@ -1012,7 +1013,7 @@ pub fn get_landing_pad(bcx: block) -> BasicBlockRef {
     match bcx.fcx.personality {
       Some(addr) => Store(pad_bcx, llretval, addr),
       None => {
-        let addr = alloca(pad_bcx, val_ty(llretval));
+        let addr = alloca(pad_bcx, val_ty(llretval), "");
         bcx.fcx.personality = Some(addr);
         Store(pad_bcx, llretval, addr);
       }
@@ -1056,7 +1057,7 @@ pub fn do_spill(bcx: block, v: ValueRef, t: ty::t) -> ValueRef {
     if ty::type_is_bot(t) {
         return C_null(Type::i8p());
     }
-    let llptr = alloc_ty(bcx, t);
+    let llptr = alloc_ty(bcx, t, "");
     Store(bcx, v, llptr);
     return llptr;
 }
@@ -1064,7 +1065,7 @@ pub fn do_spill(bcx: block, v: ValueRef, t: ty::t) -> ValueRef {
 // Since this function does *not* root, it is the caller's responsibility to
 // ensure that the referent is pointed to by a root.
 pub fn do_spill_noroot(cx: block, v: ValueRef) -> ValueRef {
-    let llptr = alloca(cx, val_ty(v));
+    let llptr = alloca(cx, val_ty(v), "");
     Store(cx, v, llptr);
     return llptr;
 }
@@ -1121,9 +1122,6 @@ pub fn init_local(bcx: block, local: &ast::local) -> block {
     let _indenter = indenter();
 
     let _icx = push_ctxt("init_local");
-    let ty = node_id_type(bcx, local.node.id);
-
-    debug!("ty=%s", bcx.ty_to_str(ty));
 
     if ignore_lhs(bcx, local) {
         // Handle let _ = e; just like e;
@@ -1135,36 +1133,7 @@ pub fn init_local(bcx: block, local: &ast::local) -> block {
         }
     }
 
-    let llptr = match bcx.fcx.lllocals.find_copy(&local.node.id) {
-        Some(v) => v,
-        _ => {
-            bcx.tcx().sess.span_bug(local.span,
-                                    "init_local: Someone forgot to document why it's\
-                                     safe to assume local.node.init must be local_mem!");
-        }
-    };
-
-    let mut bcx = bcx;
-    match local.node.init {
-        Some(init) => {
-            bcx = expr::trans_into(bcx, init, expr::SaveIn(llptr));
-        }
-        _ => {
-            zero_mem(bcx, llptr, ty);
-        }
-    }
-
-    // Make a note to drop this slot on the way out.
-    debug!("adding clean for %?/%s to bcx=%s",
-           local.node.id, bcx.ty_to_str(ty),
-           bcx.to_str());
-    add_clean(bcx, llptr, ty);
-
-    return _match::bind_irrefutable_pat(bcx,
-                                       local.node.pat,
-                                       llptr,
-                                       false,
-                                       _match::BindLocal);
+    _match::store_local(bcx, local.node.pat, local.node.init)
 }
 
 pub fn trans_stmt(cx: block, s: &ast::stmt) -> block {
@@ -1469,28 +1438,6 @@ pub fn block_locals(b: &ast::blk, it: &fn(@ast::local)) {
     }
 }
 
-pub fn alloc_local(cx: block, local: &ast::local) -> block {
-    let _icx = push_ctxt("alloc_local");
-    let t = node_id_type(cx, local.node.id);
-    let simple_name = match local.node.pat.node {
-      ast::pat_ident(_, ref pth, None) => Some(path_to_ident(pth)),
-      _ => None
-    };
-    let val = alloc_ty(cx, t);
-    if cx.sess().opts.debuginfo {
-        for simple_name.iter().advance |name| {
-            str::as_c_str(cx.ccx().sess.str_of(*name), |buf| {
-                unsafe {
-                    llvm::LLVMSetValueName(val, buf)
-                }
-            });
-        }
-    }
-    cx.fcx.lllocals.insert(local.node.id, val);
-    cx
-}
-
-
 pub fn with_cond(bcx: block, val: ValueRef, f: &fn(block) -> block) -> block {
     let _icx = push_ctxt("with_cond");
     let next_cx = base::sub_block(bcx, "next");
@@ -1561,20 +1508,20 @@ pub fn memzero(cx: block, llptr: ValueRef, ty: Type) {
     Call(cx, llintrinsicfn, [llptr, llzeroval, size, align, volatile]);
 }
 
-pub fn alloc_ty(bcx: block, t: ty::t) -> ValueRef {
+pub fn alloc_ty(bcx: block, t: ty::t, name: &str) -> ValueRef {
     let _icx = push_ctxt("alloc_ty");
     let ccx = bcx.ccx();
     let ty = type_of::type_of(ccx, t);
     assert!(!ty::type_has_params(t), "Type has params: %s", ty_to_str(ccx.tcx, t));
-    let val = alloca(bcx, ty);
+    let val = alloca(bcx, ty, name);
     return val;
 }
 
-pub fn alloca(cx: block, ty: Type) -> ValueRef {
-    alloca_maybe_zeroed(cx, ty, false)
+pub fn alloca(cx: block, ty: Type, name: &str) -> ValueRef {
+    alloca_maybe_zeroed(cx, ty, name, false)
 }
 
-pub fn alloca_maybe_zeroed(cx: block, ty: Type, zero: bool) -> ValueRef {
+pub fn alloca_maybe_zeroed(cx: block, ty: Type, name: &str, zero: bool) -> ValueRef {
     let _icx = push_ctxt("alloca");
     if cx.unreachable {
         unsafe {
@@ -1582,7 +1529,7 @@ pub fn alloca_maybe_zeroed(cx: block, ty: Type, zero: bool) -> ValueRef {
         }
     }
     let initcx = base::raw_block(cx.fcx, false, cx.fcx.llstaticallocas);
-    let p = Alloca(initcx, ty);
+    let p = Alloca(initcx, ty, name);
     if zero { memzero(initcx, p, ty); }
     p
 }
@@ -1623,7 +1570,8 @@ pub fn make_return_pointer(fcx: fn_ctxt, output_type: ty::t) -> ValueRef {
             llvm::LLVMGetParam(fcx.llfn, 0)
         } else {
             let lloutputtype = type_of::type_of(fcx.ccx, output_type);
-            alloca(raw_block(fcx, false, fcx.llstaticallocas), lloutputtype)
+            alloca(raw_block(fcx, false, fcx.llstaticallocas), lloutputtype,
+                   "__make_return_pointer")
         }
     }
 }
@@ -1738,6 +1686,7 @@ pub fn create_llargs_for_fn_args(cx: fn_ctxt,
             let arg = &args[i];
             let llarg = llvm::LLVMGetParam(cx.llfn, arg_n as c_uint);
 
+            // FIXME #7260: aliasing should be determined by monomorphized ty::t
             match arg.ty.node {
                 // `~` pointers never alias other parameters, because ownership was transferred
                 ast::ty_uniq(_) => {
@@ -1766,7 +1715,7 @@ pub fn copy_args_to_allocas(fcx: fn_ctxt,
             let self_val = if slf.is_copy
                     && datum::appropriate_mode(bcx.tcx(), slf.t).is_by_value() {
                 let tmp = BitCast(bcx, slf.v, type_of(bcx.ccx(), slf.t));
-                let alloc = alloc_ty(bcx, slf.t);
+                let alloc = alloc_ty(bcx, slf.t, "__self");
                 Store(bcx, tmp, alloc);
                 alloc
             } else {
@@ -1782,7 +1731,6 @@ pub fn copy_args_to_allocas(fcx: fn_ctxt,
     for uint::range(0, arg_tys.len()) |arg_n| {
         let arg_ty = arg_tys[arg_n];
         let raw_llarg = raw_llargs[arg_n];
-        let arg_id = args[arg_n].id;
 
         // For certain mode/type combinations, the raw llarg values are passed
         // by value.  However, within the fn body itself, we want to always
@@ -1793,22 +1741,13 @@ pub fn copy_args_to_allocas(fcx: fn_ctxt,
         // the event it's not truly needed.
         // only by value if immediate:
         let llarg = if datum::appropriate_mode(bcx.tcx(), arg_ty).is_by_value() {
-            let alloc = alloc_ty(bcx, arg_ty);
+            let alloc = alloc_ty(bcx, arg_ty, "__arg");
             Store(bcx, raw_llarg, alloc);
             alloc
         } else {
             raw_llarg
         };
-
-        add_clean(bcx, llarg, arg_ty);
-
-        bcx = _match::bind_irrefutable_pat(bcx,
-                                          args[arg_n].pat,
-                                          llarg,
-                                          false,
-                                          _match::BindArgument);
-
-        fcx.llargs.insert(arg_id, llarg);
+        bcx = _match::store_arg(bcx, args[arg_n].pat, llarg);
 
         if fcx.ccx.sess.opts.extra_debuginfo && fcx_has_nonzero_span(fcx) {
             debuginfo::create_arg(bcx, &args[arg_n], args[arg_n].ty.span);
@@ -1967,81 +1906,51 @@ pub fn trans_fn(ccx: @mut CrateContext,
                   |_bcx| { });
 }
 
+fn insert_synthetic_type_entries(bcx: block,
+                                 fn_args: &[ast::arg],
+                                 arg_tys: &[ty::t])
+{
+    /*!
+     * For tuple-like structs and enum-variants, we generate
+     * synthetic AST nodes for the arguments.  These have no types
+     * in the type table and no entries in the moves table,
+     * so the code in `copy_args_to_allocas` and `bind_irrefutable_pat`
+     * gets upset. This hack of a function bridges the gap by inserting types.
+     *
+     * This feels horrible. I think we should just have a special path
+     * for these functions and not try to use the generic code, but
+     * that's not the problem I'm trying to solve right now. - nmatsakis
+     */
+
+    let tcx = bcx.tcx();
+    for uint::range(0, fn_args.len()) |i| {
+        debug!("setting type of argument %u (pat node %d) to %s",
+               i, fn_args[i].pat.id, bcx.ty_to_str(arg_tys[i]));
+
+        let pat_id = fn_args[i].pat.id;
+        let arg_ty = arg_tys[i];
+        tcx.node_types.insert(pat_id as uint, arg_ty);
+    }
+}
+
 pub fn trans_enum_variant(ccx: @mut CrateContext,
-                          enum_id: ast::node_id,
+                          _enum_id: ast::node_id,
                           variant: &ast::variant,
                           args: &[ast::variant_arg],
                           disr: int,
                           param_substs: Option<@param_substs>,
                           llfndecl: ValueRef) {
     let _icx = push_ctxt("trans_enum_variant");
-    // Translate variant arguments to function arguments.
-    let fn_args = do args.map |varg| {
-        ast::arg {
-            is_mutbl: false,
-            ty: copy varg.ty,
-            pat: ast_util::ident_to_pat(
-                ccx.tcx.sess.next_node_id(),
-                codemap::dummy_sp(),
-                special_idents::arg),
-            id: varg.id,
-        }
-    };
 
-    let ty_param_substs = match param_substs {
-        Some(ref substs) => { copy substs.tys }
-        None => ~[]
-    };
-    let enum_ty = ty::subst_tps(ccx.tcx,
-                                ty_param_substs,
-                                None,
-                                ty::node_id_to_type(ccx.tcx, enum_id));
-    let fcx = new_fn_ctxt_w_id(ccx,
-                               ~[],
-                               llfndecl,
-                               variant.node.id,
-                               enum_ty,
-                               param_substs,
-                               None);
-
-    let raw_llargs = create_llargs_for_fn_args(fcx, no_self, fn_args);
-    let bcx = top_scope_block(fcx, None);
-    let lltop = bcx.llbb;
-    let arg_tys = ty::ty_fn_args(node_id_type(bcx, variant.node.id));
-    let bcx = copy_args_to_allocas(fcx, bcx, fn_args, raw_llargs, arg_tys);
-
-    // XXX is there a better way to reconstruct the ty::t?
-    let repr = adt::represent_type(ccx, enum_ty);
-
-    debug!("trans_enum_variant: name=%s tps=%s repr=%? enum_ty=%s",
-           unsafe { str::raw::from_c_str(llvm::LLVMGetValueName(llfndecl)) },
-           ~"[" + ty_param_substs.map(|&t| ty_to_str(ccx.tcx, t)).connect(", ") + "]",
-           repr, ty_to_str(ccx.tcx, enum_ty));
-
-    adt::trans_start_init(bcx, repr, fcx.llretptr.get(), disr);
-    for args.iter().enumerate().advance |(i, va)| {
-        let lldestptr = adt::trans_field_ptr(bcx,
-                                             repr,
-                                             fcx.llretptr.get(),
-                                             disr,
-                                             i);
-
-        // If this argument to this function is a enum, it'll have come in to
-        // this function as an opaque blob due to the way that type_of()
-        // works. So we have to cast to the destination's view of the type.
-        let llarg = match fcx.llargs.find(&va.id) {
-            Some(&x) => x,
-            _ => fail!("trans_enum_variant: how do we know this works?"),
-        };
-        let arg_ty = arg_tys[i];
-        memcpy_ty(bcx, lldestptr, llarg, arg_ty);
-    }
-    build_return(bcx);
-    finish_fn(fcx, lltop);
+    trans_enum_variant_or_tuple_like_struct(
+        ccx,
+        variant.node.id,
+        args,
+        disr,
+        param_substs,
+        llfndecl);
 }
 
-// NB: In theory this should be merged with the function above. But the AST
-// structures are completely different, so very little code would be shared.
 pub fn trans_tuple_struct(ccx: @mut CrateContext,
                           fields: &[@ast::struct_field],
                           ctor_id: ast::node_id,
@@ -2049,37 +1958,72 @@ pub fn trans_tuple_struct(ccx: @mut CrateContext,
                           llfndecl: ValueRef) {
     let _icx = push_ctxt("trans_tuple_struct");
 
-    // Translate struct fields to function arguments.
-    let fn_args = do fields.map |field| {
+    trans_enum_variant_or_tuple_like_struct(
+        ccx,
+        ctor_id,
+        fields,
+        0,
+        param_substs,
+        llfndecl);
+}
+
+trait IdAndTy {
+    fn id(&self) -> ast::node_id;
+    fn ty<'a>(&'a self) -> &'a ast::Ty;
+}
+
+impl IdAndTy for ast::variant_arg {
+    fn id(&self) -> ast::node_id { self.id }
+    fn ty<'a>(&'a self) -> &'a ast::Ty { &self.ty }
+}
+
+impl IdAndTy for @ast::struct_field {
+    fn id(&self) -> ast::node_id { self.node.id }
+    fn ty<'a>(&'a self) -> &'a ast::Ty { &self.node.ty }
+}
+
+pub fn trans_enum_variant_or_tuple_like_struct<A:IdAndTy>(
+    ccx: @mut CrateContext,
+    ctor_id: ast::node_id,
+    args: &[A],
+    disr: int,
+    param_substs: Option<@param_substs>,
+    llfndecl: ValueRef)
+{
+    // Translate variant arguments to function arguments.
+    let fn_args = do args.map |varg| {
         ast::arg {
             is_mutbl: false,
-            ty: copy field.node.ty,
-            pat: ast_util::ident_to_pat(ccx.tcx.sess.next_node_id(),
-                                        codemap::dummy_sp(),
-                                        special_idents::arg),
-            id: field.node.id
+            ty: copy *varg.ty(),
+            pat: ast_util::ident_to_pat(
+                ccx.tcx.sess.next_node_id(),
+                codemap::dummy_sp(),
+                special_idents::arg),
+            id: varg.id(),
         }
     };
 
-    // XXX is there a better way to reconstruct the ty::t?
     let ty_param_substs = match param_substs {
         Some(ref substs) => { copy substs.tys }
         None => ~[]
     };
+
     let ctor_ty = ty::subst_tps(ccx.tcx, ty_param_substs, None,
                                 ty::node_id_to_type(ccx.tcx, ctor_id));
-    let tup_ty = match ty::get(ctor_ty).sty {
+
+    let result_ty = match ty::get(ctor_ty).sty {
         ty::ty_bare_fn(ref bft) => bft.sig.output,
-        _ => ccx.sess.bug(fmt!("trans_tuple_struct: unexpected ctor \
-                                return type %s",
-                               ty_to_str(ccx.tcx, ctor_ty)))
+        _ => ccx.sess.bug(
+            fmt!("trans_enum_variant_or_tuple_like_struct: \
+                  unexpected ctor return type %s",
+                 ty_to_str(ccx.tcx, ctor_ty)))
     };
 
     let fcx = new_fn_ctxt_w_id(ccx,
                                ~[],
                                llfndecl,
                                ctor_id,
-                               tup_ty,
+                               result_ty,
                                param_substs,
                                None);
 
@@ -2087,23 +2031,23 @@ pub fn trans_tuple_struct(ccx: @mut CrateContext,
 
     let bcx = top_scope_block(fcx, None);
     let lltop = bcx.llbb;
-    let arg_tys = ty::ty_fn_args(node_id_type(bcx, ctor_id));
+    let arg_tys = ty::ty_fn_args(ctor_ty);
+
+    insert_synthetic_type_entries(bcx, fn_args, arg_tys);
     let bcx = copy_args_to_allocas(fcx, bcx, fn_args, raw_llargs, arg_tys);
 
-    let repr = adt::represent_type(ccx, tup_ty);
-    adt::trans_start_init(bcx, repr, fcx.llretptr.get(), 0);
-
-    for fields.iter().enumerate().advance |(i, field)| {
+    let repr = adt::represent_type(ccx, result_ty);
+    adt::trans_start_init(bcx, repr, fcx.llretptr.get(), disr);
+    for fn_args.iter().enumerate().advance |(i, fn_arg)| {
         let lldestptr = adt::trans_field_ptr(bcx,
                                              repr,
                                              fcx.llretptr.get(),
-                                             0,
+                                             disr,
                                              i);
-        let llarg = fcx.llargs.get_copy(&field.node.id);
+        let llarg = fcx.llargs.get_copy(&fn_arg.pat.id);
         let arg_ty = arg_tys[i];
         memcpy_ty(bcx, lldestptr, llarg, arg_ty);
     }
-
     build_return(bcx);
     finish_fn(fcx, lltop);
 }
@@ -3033,13 +2977,17 @@ pub fn trans_crate(sess: session::Session,
         do sort::quick_sort(ccx.stats.fn_stats) |&(_, _, insns_a), &(_, _, insns_b)| {
             insns_a > insns_b
         }
-        for ccx.stats.fn_stats.iter().advance |&(name, ms, insns)| {
-            io::println(fmt!("%u insns, %u ms, %s", insns, ms, name));
+        for ccx.stats.fn_stats.iter().advance |tuple| {
+            match *tuple {
+                (ref name, ms, insns) => {
+                    io::println(fmt!("%u insns, %u ms, %s", insns, ms, *name));
+                }
+            }
         }
     }
     if ccx.sess.count_llvm_insns() {
-        for ccx.stats.llvm_insns.iter().advance |(&k, &v)| {
-            io::println(fmt!("%-7u %s", v, k));
+        for ccx.stats.llvm_insns.iter().advance |(k, v)| {
+            io::println(fmt!("%-7u %s", *v, *k));
         }
     }
 

@@ -120,7 +120,7 @@ fn root(datum: &Datum,
     // First, root the datum. Note that we must zero this value,
     // because sometimes we root on one path but not another.
     // See e.g. #4904.
-    let scratch = scratch_datum(bcx, datum.ty, true);
+    let scratch = scratch_datum(bcx, datum.ty, "__write_guard", true);
     datum.copy_to_datum(bcx, INIT, scratch);
     let cleanup_bcx = find_bcx_for_scope(bcx, root_info.scope);
     add_clean_temp_mem_in_scope(cleanup_bcx, root_info.scope, scratch.val, scratch.ty);
@@ -135,7 +135,8 @@ fn root(datum: &Datum,
             // scratch.val will be NULL should the cleanup get
             // called without the freezing actually occurring, and
             // return_to_mut checks for this condition.
-            let scratch_bits = scratch_datum(bcx, ty::mk_uint(), false);
+            let scratch_bits = scratch_datum(bcx, ty::mk_uint(),
+                                             "__write_guard_bits", false);
 
             let freeze_did = match freeze_kind {
                 DynaImm => bcx.tcx().lang_items.borrow_as_imm_fn(),

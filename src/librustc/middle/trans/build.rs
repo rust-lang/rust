@@ -505,11 +505,17 @@ pub fn ArrayMalloc(cx: block, Ty: Type, Val: ValueRef) -> ValueRef {
     }
 }
 
-pub fn Alloca(cx: block, Ty: Type) -> ValueRef {
+pub fn Alloca(cx: block, Ty: Type, name: &str) -> ValueRef {
     unsafe {
         if cx.unreachable { return llvm::LLVMGetUndef(Ty.ptr_to().to_ref()); }
         count_insn(cx, "alloca");
-        return llvm::LLVMBuildAlloca(B(cx), Ty.to_ref(), noname());
+        if name.is_empty() {
+            llvm::LLVMBuildAlloca(B(cx), Ty.to_ref(), noname())
+        } else {
+            str::as_c_str(
+                name,
+                |c| llvm::LLVMBuildAlloca(B(cx), Ty.to_ref(), c))
+        }
     }
 }
 

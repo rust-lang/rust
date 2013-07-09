@@ -70,8 +70,8 @@
  *   This is a "shallow" clone.  After `move_to()`, the current datum
  *   is invalid and should no longer be used.
  *
- * - `store_to()` either performs a copy or a move by consulting the
- *   moves_map computed by `middle::moves`.
+ * - `store_to()` either performs a copy or a move depending on the
+ *   Rust type of the datum.
  *
  * # Scratch datum
  *
@@ -173,19 +173,19 @@ pub fn immediate_rvalue_bcx(bcx: block,
     return DatumBlock {bcx: bcx, datum: immediate_rvalue(val, ty)};
 }
 
-pub fn scratch_datum(bcx: block, ty: ty::t, zero: bool) -> Datum {
+pub fn scratch_datum(bcx: block, ty: ty::t, name: &str, zero: bool) -> Datum {
     /*!
-     *
      * Allocates temporary space on the stack using alloca() and
      * returns a by-ref Datum pointing to it.  If `zero` is true, the
      * space will be zeroed when it is allocated; this is normally not
      * necessary, but in the case of automatic rooting in match
      * statements it is possible to have temporaries that may not get
      * initialized if a certain arm is not taken, so we must zero
-     * them. You must arrange any cleanups etc yourself! */
+     * them. You must arrange any cleanups etc yourself!
+     */
 
     let llty = type_of::type_of(bcx.ccx(), ty);
-    let scratch = alloca_maybe_zeroed(bcx, llty, zero);
+    let scratch = alloca_maybe_zeroed(bcx, llty, name, zero);
     Datum { val: scratch, ty: ty, mode: ByRef(RevokeClean) }
 }
 
@@ -208,7 +208,6 @@ pub fn appropriate_mode(tcx: ty::ctxt, ty: ty::t) -> DatumMode {
 impl Datum {
     pub fn store_to(&self,
                     bcx: block,
-                    id: ast::node_id,
                     action: CopyAction,
                     dst: ValueRef)
                     -> block {
@@ -218,7 +217,7 @@ impl Datum {
          * `id` is located in the move table, but copies otherwise.
          */
 
-        if bcx.ccx().maps.moves_map.contains(&id) {
+        if ty::type_moves_by_default(bcx.tcx(), self.ty) {
             self.move_to(bcx, action, dst)
         } else {
             self.copy_to(bcx, action, dst)
@@ -227,7 +226,6 @@ impl Datum {
 
     pub fn store_to_dest(&self,
                          bcx: block,
-                         id: ast::node_id,
                          dest: expr::Dest)
                          -> block {
         match dest {
@@ -235,21 +233,20 @@ impl Datum {
                 return bcx;
             }
             expr::SaveIn(addr) => {
-                return self.store_to(bcx, id, INIT, addr);
+                return self.store_to(bcx, INIT, addr);
             }
         }
     }
 
     pub fn store_to_datum(&self,
                           bcx: block,
-                          id: ast::node_id,
                           action: CopyAction,
                           datum: Datum)
                           -> block {
         debug!("store_to_datum(self=%s, action=%?, datum=%s)",
                self.to_str(bcx.ccx()), action, datum.to_str(bcx.ccx()));
         assert!(datum.mode.is_by_ref());
-        self.store_to(bcx, id, action, datum.val)
+        self.store_to(bcx, action, datum.val)
     }
 
     pub fn move_to_datum(&self, bcx: block, action: CopyAction, datum: Datum)
@@ -476,7 +473,7 @@ impl Datum {
                 if ty::type_is_nil(self.ty) || ty::type_is_bot(self.ty) {
                     C_null(type_of::type_of(bcx.ccx(), self.ty).ptr_to())
                 } else {
-                    let slot = alloc_ty(bcx, self.ty);
+                    let slot = alloc_ty(bcx, self.ty, "");
                     Store(bcx, self.val, slot);
                     slot
                 }
@@ -828,11 +825,10 @@ impl DatumBlock {
     }
 
     pub fn store_to(&self,
-                    id: ast::node_id,
                     action: CopyAction,
                     dst: ValueRef)
                     -> block {
-        self.datum.store_to(self.bcx, id, action, dst)
+        self.datum.store_to(self.bcx, action, dst)
     }
 
     pub fn copy_to(&self, action: CopyAction, dst: ValueRef) -> block {

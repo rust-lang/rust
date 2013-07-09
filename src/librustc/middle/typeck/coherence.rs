@@ -209,7 +209,7 @@ impl CoherenceChecker {
                 match item.node {
                     item_impl(_, ref opt_trait, _, _) => {
                         let opt_trait : ~[trait_ref] = opt_trait.iter()
-                                                                .transform(|&x| x)
+                                                                .transform(|x| copy *x)
                                                                 .collect();
                         self.check_implementation(item, opt_trait);
                     }
@@ -270,7 +270,7 @@ impl CoherenceChecker {
         // We only want to generate one Impl structure. When we generate one,
         // we store it here so that we don't recreate it.
         let mut implementation_opt = None;
-        for associated_traits.iter().advance |&associated_trait| {
+        for associated_traits.iter().advance |associated_trait| {
             let trait_ref =
                 ty::node_id_to_trait_ref(
                     self.crate_context.tcx,
