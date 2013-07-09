@@ -1172,7 +1172,11 @@ impl<T> OwnedVector<T> for ~[T] {
                     vec_reserve_shared_actual(td, ptr as **raw::VecRepr, n as libc::size_t);
                 } else {
                     let alloc = n * sys::nonzero_size_of::<T>();
-                    *ptr = realloc_raw(*ptr as *mut c_void, alloc + size_of::<raw::VecRepr>())
+                    let size = alloc + size_of::<raw::VecRepr>();
+                    if alloc / sys::nonzero_size_of::<T>() != n || size < alloc {
+                        fail!("vector size is too large: %u", n);
+                    }
+                    *ptr = realloc_raw(*ptr as *mut c_void, size)
                            as *mut raw::VecRepr;
                     (**ptr).unboxed.alloc = alloc;
                 }
@@ -3326,5 +3330,14 @@ mod tests {
         assert_eq!(values, [0xAB, 0xAB, 0xAB, 0xAB, 0xAB]);
         values.mut_slice(2,4).set_memory(0xFF);
         assert_eq!(values, [0xAB, 0xAB, 0xFF, 0xFF, 0xAB]);
+    }
+
+    #[test]
+    #[should_fail]
+    fn test_overflow_does_not_cause_segfault() {
+        let mut v = ~[];
+        v.reserve(-1);
+        v.push(1);
+        v.push(2);
     }
 }
