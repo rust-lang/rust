@@ -86,15 +86,10 @@ rand_gen_seed(uint8_t* dest, size_t size) {
 
 extern "C" CDECL void *
 rand_new_seeded(uint8_t* seed, size_t seed_size) {
-    rust_task *task = rust_get_current_task();
-    rust_rng *rng = (rust_rng *) task->malloc(sizeof(rust_rng),
-                                              "rand_new_seeded");
-    if (!rng) {
-        task->fail();
-        return NULL;
-    }
-    char *env_seed = task->kernel->env->rust_seed;
-    rng_init(rng, env_seed, seed, seed_size);
+    assert(seed != NULL);
+    rust_rng *rng = (rust_rng *) malloc(sizeof(rust_rng));
+    assert(rng != NULL && "rng alloc failed");
+    rng_init(rng, NULL, seed, seed_size);
     return rng;
 }
 
@@ -105,8 +100,7 @@ rand_next(rust_rng *rng) {
 
 extern "C" CDECL void
 rand_free(rust_rng *rng) {
-    rust_task *task = rust_get_current_task();
-    task->free(rng);
+    free(rng);
 }
 
 
