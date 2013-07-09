@@ -712,6 +712,7 @@ pub fn is_reserved_keyword(tok: &Token) -> bool {
     }
 }
 
+// not currently used anywhere...
 pub fn mtwt_token_eq(t1 : &Token, t2 : &Token) -> bool {
     if (*t1 == *t2) {
         true
