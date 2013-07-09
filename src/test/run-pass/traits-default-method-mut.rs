@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -11,7 +11,7 @@
 #[allow(default_methods)];
 
 trait Foo {
-    fn foo(mut v: int) { v = 1; }
+    fn foo(&self, mut v: int) { v = 1; }
 }
 
 fn main() {}

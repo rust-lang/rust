@@ -1086,7 +1086,6 @@ impl Parser {
             self.expect(&token::COLON);
             pat
         } else {
-            is_mutbl = false;
             ast_util::ident_to_pat(self.get_id(),
                                    *self.last_span,
                                    special_idents::invalid)
