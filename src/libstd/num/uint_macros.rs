@@ -703,7 +703,7 @@ mod tests {
         for range(0,3) |i| {
             l.push(i);
         }
-        for range_rev(13,10) |i| {
+        for range_rev(14,11) |i| {
             l.push(i);
         }
         for range_step(20,26,2) |i| {
