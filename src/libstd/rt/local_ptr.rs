@@ -15,13 +15,13 @@
 //! XXX: Add runtime checks for usage of inconsistent pointer types.
 //! and for overwriting an existing pointer.
 
-use libc::c_void;
 use cast;
 use ptr;
 use cell::Cell;
 use option::{Option, Some, None};
 use unstable::finally::Finally;
 use tls = rt::thread_local_storage;
+use util::Void;
 
 /// Initialize the TLS key. Other ops will fail if this isn't executed first.
 pub fn init_tls_key() {
@@ -40,7 +40,7 @@ pub fn init_tls_key() {
 /// Does not validate the pointer type.
 pub unsafe fn put<T>(sched: ~T) {
     let key = tls_key();
-    let void_ptr: *mut c_void = cast::transmute(sched);
+    let void_ptr: *mut Void = cast::transmute(sched);
     tls::set(key, void_ptr);
 }
 
@@ -51,7 +51,7 @@ pub unsafe fn put<T>(sched: ~T) {
 /// Does not validate the pointer type.
 pub unsafe fn take<T>() -> ~T {
     let key = tls_key();
-    let void_ptr: *mut c_void = tls::get(key);
+    let void_ptr: *mut Void = tls::get(key);
     rtassert!(void_ptr.is_not_null());
     let ptr: ~T = cast::transmute(void_ptr);
     tls::set(key, ptr::mut_null());
@@ -96,10 +96,10 @@ pub unsafe fn borrow<T>(f: &fn(&mut T)) {
 /// For the Scheduler pointer to be aliased
 pub unsafe fn unsafe_borrow<T>() -> *mut T {
     let key = tls_key();
-    let mut void_sched: *mut c_void = tls::get(key);
+    let mut void_sched: *mut Void = tls::get(key);
     rtassert!(void_sched.is_not_null());
     {
-        let sched: *mut *mut c_void = &mut void_sched;
+        let sched: *mut *mut Void = &mut void_sched;
         let sched: *mut ~T = sched as *mut ~T;
         let sched: *mut T = &mut **sched;
         return sched;
@@ -115,7 +115,7 @@ fn tls_key() -> tls::Key {
 
 fn maybe_tls_key() -> Option<tls::Key> {
     unsafe {
-        let key: *mut c_void = rust_get_rt_tls_key();
+        let key: *mut Void = rust_get_rt_tls_key();
         let key: &mut tls::Key = cast::transmute(key);
         let key = *key;
         // Check that the key has been initialized.
@@ -139,7 +139,7 @@ fn maybe_tls_key() -> Option<tls::Key> {
 
     extern {
         #[fast_ffi]
-        fn rust_get_rt_tls_key() -> *mut c_void;
+        fn rust_get_rt_tls_key() -> *mut Void;
     }
 
 }

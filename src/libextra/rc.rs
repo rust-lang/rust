@@ -23,7 +23,7 @@ cycle cannot be created with `Rc<T>` because there is no way to modify it after 
 
 
 use std::cast;
-use std::libc::{c_void, size_t, malloc, free};
+use std::libc::{size_t, malloc, free};
 use std::ptr;
 use std::sys;
 use std::unstable::intrinsics;
@@ -74,7 +74,7 @@ impl<T> Drop for Rc<T> {
                 (*self.ptr).count -= 1;
                 if (*self.ptr).count == 0 {
                     ptr::read_ptr(self.ptr);
-                    free(self.ptr as *c_void)
+                    free(self.ptr as *Void)
                 }
             }
         }
@@ -229,7 +229,7 @@ impl<T> Drop for RcMut<T> {
                 (*self.ptr).count -= 1;
                 if (*self.ptr).count == 0 {
                     ptr::replace_ptr(self.ptr, uninit());
-                    free(self.ptr as *c_void)
+                    free(self.ptr as *Void)
                 }
             }
         }

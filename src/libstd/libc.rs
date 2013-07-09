@@ -123,7 +123,7 @@ pub use libc::funcs::extra::msvcrt::*;
 // you can write more-platform-agnostic code if you stick to just these
 // symbols.
 
-pub use libc::types::common::c95::{FILE, c_void, fpos_t};
+pub use libc::types::common::c95::{FILE, fpos_t};
 pub use libc::types::common::posix88::{DIR, dirent_t};
 pub use libc::types::os::arch::c95::{c_char, c_double, c_float, c_int};
 pub use libc::types::os::arch::c95::{c_long, c_short, c_uchar, c_ulong};
@@ -186,7 +186,7 @@ pub mod types {
     // Standard types that are opaque or common, so are not per-target.
     pub mod common {
         pub mod c95 {
-            pub enum c_void {}
+            // Omitted: `void`, exists as `util::Void`
             pub enum FILE {}
             pub enum fpos_t {}
         }
@@ -209,18 +209,18 @@ pub mod types {
     pub mod os {
         pub mod common {
             pub mod posix01 {
-                use libc::types::common::c95::{c_void};
+                use util::Void;
                 use libc::types::os::arch::c95::{c_char, size_t};
                 pub struct glob_t {
                     gl_pathc: size_t,
                     gl_pathv: **c_char,
                     gl_offs:  size_t,
 
-                    __unused1: *c_void,
-                    __unused2: *c_void,
-                    __unused3: *c_void,
-                    __unused4: *c_void,
-                    __unused5: *c_void,
+                    __unused1: *Void,
+                    __unused2: *Void,
+                    __unused3: *Void,
+                    __unused4: *Void,
+                    __unused5: *Void,
                 }
             }
         }
@@ -455,7 +455,7 @@ pub mod types {
     pub mod os {
         pub mod common {
             pub mod posix01 {
-                use libc::types::common::c95::{c_void};
+                use util::Void;
                 use libc::types::os::arch::c95::{c_char, c_int, size_t};
                 pub struct glob_t {
                     gl_pathc:  size_t,
@@ -464,13 +464,13 @@ pub mod types {
                     __unused2: c_int,
                     gl_pathv:  **c_char,
 
-                    __unused3: *c_void,
+                    __unused3: *Void,
 
-                    __unused4: *c_void,
-                    __unused5: *c_void,
-                    __unused6: *c_void,
-                    __unused7: *c_void,
-                    __unused8: *c_void,
+                    __unused4: *Void,
+                    __unused5: *Void,
+                    __unused6: *Void,
+                    __unused7: *Void,
+                    __unused8: *Void,
                 }
             }
         }
@@ -626,7 +626,7 @@ pub mod types {
             }
             pub mod extra {
                 use ptr;
-                use libc::types::common::c95::c_void;
+                use util::Void;
                 use libc::types::os::arch::c95::{c_char, c_int, c_uint, size_t};
                 use libc::types::os::arch::c95::{c_long, c_ulong};
                 use libc::types::os::arch::c95::{wchar_t};
@@ -657,8 +657,8 @@ pub mod types {
                 // Not really, but opaque to us.
                 pub type LPSECURITY_ATTRIBUTES = LPVOID;
 
-                pub type LPVOID = *mut c_void;
-                pub type LPCVOID = *c_void;
+                pub type LPVOID = *mut Void;
+                pub type LPCVOID = *Void;
                 pub type LPBYTE = *mut BYTE;
                 pub type LPWORD = *mut WORD;
                 pub type LPDWORD = *mut DWORD;
@@ -753,7 +753,7 @@ pub mod types {
     pub mod os {
         pub mod common {
             pub mod posix01 {
-                use libc::types::common::c95::{c_void};
+                use util::Void;
                 use libc::types::os::arch::c95::{c_char, c_int, size_t};
                 pub struct glob_t {
                     gl_pathc:  size_t,
@@ -762,13 +762,13 @@ pub mod types {
                     __unused2: c_int,
                     gl_pathv:  **c_char,
 
-                    __unused3: *c_void,
+                    __unused3: *Void,
 
-                    __unused4: *c_void,
-                    __unused5: *c_void,
-                    __unused6: *c_void,
-                    __unused7: *c_void,
-                    __unused8: *c_void,
+                    __unused4: *Void,
+                    __unused5: *Void,
+                    __unused6: *Void,
+                    __unused7: *Void,
+                    __unused8: *Void,
                 }
             }
         }
@@ -1136,7 +1136,7 @@ pub mod consts {
         #[cfg(target_arch = "arm")]
         pub mod posix88 {
             use libc::types::os::arch::c95::c_int;
-            use libc::types::common::c95::c_void;
+            use util::Void;
 
             pub static O_RDONLY : c_int = 0;
             pub static O_WRONLY : c_int = 1;
@@ -1192,7 +1192,7 @@ pub mod consts {
             pub static MAP_FIXED : c_int = 0x0010;
             pub static MAP_ANON : c_int = 0x0020;
 
-            pub static MAP_FAILED : *c_void = -1 as *c_void;
+            pub static MAP_FAILED : *Void = -1 as *Void;
 
             pub static MCL_CURRENT : c_int = 0x0001;
             pub static MCL_FUTURE : c_int = 0x0002;
@@ -1296,7 +1296,7 @@ pub mod consts {
         #[cfg(target_arch = "mips")]
         pub mod posix88 {
             use libc::types::os::arch::c95::c_int;
-            use libc::types::common::c95::c_void;
+            use util::Void;
 
             pub static O_RDONLY : c_int = 0;
             pub static O_WRONLY : c_int = 1;
@@ -1352,7 +1352,7 @@ pub mod consts {
             pub static MAP_FIXED : c_int = 0x0010;
             pub static MAP_ANON : c_int = 0x0020;
 
-            pub static MAP_FAILED : *c_void = -1 as *c_void;
+            pub static MAP_FAILED : *Void = -1 as *Void;
 
             pub static MCL_CURRENT : c_int = 0x0001;
             pub static MCL_FUTURE : c_int = 0x0002;
@@ -1596,7 +1596,7 @@ pub mod consts {
         pub mod c99 {
         }
         pub mod posix88 {
-            use libc::types::common::c95::c_void;
+            use util::Void;
             use libc::types::os::arch::c95::c_int;
 
             pub static O_RDONLY : c_int = 0;
@@ -1653,7 +1653,7 @@ pub mod consts {
             pub static MAP_FIXED : c_int = 0x0010;
             pub static MAP_ANON : c_int = 0x1000;
 
-            pub static MAP_FAILED : *c_void = -1 as *c_void;
+            pub static MAP_FAILED : *Void = -1 as *Void;
 
             pub static MCL_CURRENT : c_int = 0x0001;
             pub static MCL_FUTURE : c_int = 0x0002;
@@ -1935,7 +1935,7 @@ pub mod consts {
         pub mod c99 {
         }
         pub mod posix88 {
-            use libc::types::common::c95::c_void;
+            use util::Void;
             use libc::types::os::arch::c95::c_int;
 
             pub static O_RDONLY : c_int = 0;
@@ -1992,7 +1992,7 @@ pub mod consts {
             pub static MAP_FIXED : c_int = 0x0010;
             pub static MAP_ANON : c_int = 0x1000;
 
-            pub static MAP_FAILED : *c_void = -1 as *c_void;
+            pub static MAP_FAILED : *Void = -1 as *Void;
 
             pub static MCL_CURRENT : c_int = 0x0001;
             pub static MCL_FUTURE : c_int = 0x0002;
@@ -2293,7 +2293,8 @@ pub mod funcs {
         #[nolink]
         #[abi = "cdecl"]
         pub mod stdio {
-            use libc::types::common::c95::{FILE, c_void, fpos_t};
+            use util::Void;
+            use libc::types::common::c95::{FILE, fpos_t};
             use libc::types::os::arch::c95::{c_char, c_int, c_long, size_t};
 
             pub extern {
@@ -2326,10 +2327,10 @@ pub mod funcs {
                 unsafe fn puts(s: *c_char) -> c_int;
                 unsafe fn ungetc(c: c_int, stream: *FILE) -> c_int;
                 #[fast_ffi]
-                unsafe fn fread(ptr: *mut c_void, size: size_t,
+                unsafe fn fread(ptr: *mut Void, size: size_t,
                          nobj: size_t, stream: *FILE) -> size_t;
                 #[fast_ffi]
-                unsafe fn fwrite(ptr: *c_void, size: size_t,
+                unsafe fn fwrite(ptr: *Void, size: size_t,
                           nobj: size_t, stream: *FILE) -> size_t;
                 unsafe fn fseek(stream: *FILE, offset: c_long,
                          whence: c_int) -> c_int;
@@ -2346,7 +2347,7 @@ pub mod funcs {
         #[nolink]
         #[abi = "cdecl"]
         pub mod stdlib {
-            use libc::types::common::c95::c_void;
+            use util::Void;
             use libc::types::os::arch::c95::{c_char, c_double, c_int};
             use libc::types::os::arch::c95::{c_long, c_uint, c_ulong};
             use libc::types::os::arch::c95::{size_t};
@@ -2363,13 +2364,13 @@ pub mod funcs {
                 unsafe fn strtoul(s: *c_char, endp: **c_char, base: c_int)
                                -> c_ulong;
                 #[fast_ffi]
-                unsafe fn calloc(nobj: size_t, size: size_t) -> *c_void;
+                unsafe fn calloc(nobj: size_t, size: size_t) -> *Void;
                 #[fast_ffi]
-                unsafe fn malloc(size: size_t) -> *c_void;
+                unsafe fn malloc(size: size_t) -> *Void;
                 #[fast_ffi]
-                unsafe fn realloc(p: *mut c_void, size: size_t) -> *mut c_void;
+                unsafe fn realloc(p: *mut Void, size: size_t) -> *mut Void;
                 #[fast_ffi]
-                unsafe fn free(p: *c_void);
+                unsafe fn free(p: *Void);
                 unsafe fn abort() -> !;
                 unsafe fn exit(status: c_int) -> !;
                 // Omitted: atexit.
@@ -2384,7 +2385,7 @@ pub mod funcs {
         #[nolink]
         #[abi = "cdecl"]
         pub mod string {
-            use libc::types::common::c95::c_void;
+            use util::Void;
             use libc::types::os::arch::c95::{c_char, c_int, size_t};
             use libc::types::os::arch::c95::{wchar_t};
 
@@ -2418,11 +2419,11 @@ pub mod funcs {
                 // in fact, because LLVM generates calls to them!
                 #[rust_stack]
                 #[inline]
-                unsafe fn memcmp(cx: *c_void, ct: *c_void, n: size_t)
+                unsafe fn memcmp(cx: *Void, ct: *Void, n: size_t)
                               -> c_int;
                 #[rust_stack]
                 #[inline]
-                unsafe fn memchr(cx: *c_void, c: c_int, n: size_t) -> *c_void;
+                unsafe fn memchr(cx: *Void, c: c_int, n: size_t) -> *Void;
             }
         }
     }
@@ -2501,7 +2502,7 @@ pub mod funcs {
         #[nolink]
         #[abi = "cdecl"]
         pub mod unistd {
-            use libc::types::common::c95::c_void;
+            use util::Void;
             use libc::types::os::arch::c95::{c_int, c_uint, c_char,
                                              c_long, size_t};
             use libc::types::os::arch::c99::intptr_t;
@@ -2555,7 +2556,7 @@ pub mod funcs {
 
                 #[link_name = "_read"]
                 #[fast_ffi]
-                unsafe fn read(fd: c_int, buf: *mut c_void, count: c_uint)
+                unsafe fn read(fd: c_int, buf: *mut Void, count: c_uint)
                             -> c_int;
 
                 #[link_name = "_rmdir"]
@@ -2566,7 +2567,7 @@ pub mod funcs {
 
                 #[link_name = "_write"]
                 #[fast_ffi]
-                unsafe fn write(fd: c_int, buf: *c_void, count: c_uint)
+                unsafe fn write(fd: c_int, buf: *Void, count: c_uint)
                              -> c_int;
             }
         }
@@ -2678,7 +2679,7 @@ pub mod funcs {
         #[nolink]
         #[abi = "cdecl"]
         pub mod unistd {
-            use libc::types::common::c95::c_void;
+            use util::Void;
             use libc::types::os::arch::c95::{c_char, c_int, c_long, c_uint};
             use libc::types::os::arch::c95::{size_t};
             use libc::types::os::arch::posix88::{gid_t, off_t, pid_t};
@@ -2722,7 +2723,7 @@ pub mod funcs {
                 unsafe fn pause() -> c_int;
                 unsafe fn pipe(fds: *mut c_int) -> c_int;
                 #[fast_ffi]
-                unsafe fn read(fd: c_int, buf: *mut c_void,
+                unsafe fn read(fd: c_int, buf: *mut Void,
                         count: size_t) -> ssize_t;
                 unsafe fn rmdir(path: *c_char) -> c_int;
                 unsafe fn setgid(gid: gid_t) -> c_int;
@@ -2735,7 +2736,7 @@ pub mod funcs {
                 unsafe fn ttyname(fd: c_int) -> *c_char;
                 unsafe fn unlink(c: *c_char) -> c_int;
                 #[fast_ffi]
-                unsafe fn write(fd: c_int, buf: *c_void, count: size_t)
+                unsafe fn write(fd: c_int, buf: *Void, count: size_t)
                              -> ssize_t;
             }
         }
@@ -2754,28 +2755,28 @@ pub mod funcs {
         #[nolink]
         #[abi = "cdecl"]
         pub mod mman {
-            use libc::types::common::c95::{c_void};
+            use util::Void;
             use libc::types::os::arch::c95::{size_t, c_int, c_char};
             use libc::types::os::arch::posix88::{mode_t, off_t};
 
             pub extern {
-                unsafe fn mlock(addr: *c_void, len: size_t) -> c_int;
-                unsafe fn munlock(addr: *c_void, len: size_t) -> c_int;
+                unsafe fn mlock(addr: *Void, len: size_t) -> c_int;
+                unsafe fn munlock(addr: *Void, len: size_t) -> c_int;
                 unsafe fn mlockall(flags: c_int) -> c_int;
                 unsafe fn munlockall() -> c_int;
 
-                unsafe fn mmap(addr: *c_void,
+                unsafe fn mmap(addr: *Void,
                                len: size_t,
                                prot: c_int,
                                flags: c_int,
                                fd: c_int,
-                               offset: off_t) -> *mut c_void;
-                unsafe fn munmap(addr: *c_void, len: size_t) -> c_int;
+                               offset: off_t) -> *mut Void;
+                unsafe fn munmap(addr: *Void, len: size_t) -> c_int;
 
-                unsafe fn mprotect(addr: *c_void, len: size_t, prot: c_int)
+                unsafe fn mprotect(addr: *Void, len: size_t, prot: c_int)
                     -> c_int;
 
-                unsafe fn msync(addr: *c_void, len: size_t, flags: c_int)
+                unsafe fn msync(addr: *Void, len: size_t, flags: c_int)
                     -> c_int;
                 unsafe fn shm_open(name: *c_char, oflag: c_int, mode: mode_t)
                     -> c_int;
@@ -2849,13 +2850,13 @@ pub mod funcs {
         #[nolink]
         #[abi = "cdecl"]
         pub mod glob {
-            use libc::types::common::c95::{c_void};
+            use util::Void;
             use libc::types::os::arch::c95::{c_char, c_int};
             use libc::types::os::common::posix01::{glob_t};
 
             pub extern {
                 unsafe fn glob(pattern: *c_char, flags: c_int,
-                               errfunc: *c_void, // XXX callback
+                               errfunc: *Void, // XXX callback
                                pglob: *mut glob_t);
                 unsafe fn globfree(pglob: *mut glob_t);
             }
@@ -2864,11 +2865,11 @@ pub mod funcs {
         #[nolink]
         #[abi = "cdecl"]
         pub mod mman {
-            use libc::types::common::c95::{c_void};
+            use util::Void;
             use libc::types::os::arch::c95::{c_int, size_t};
 
             pub extern {
-                unsafe fn posix_madvise(addr: *c_void,
+                unsafe fn posix_madvise(addr: *Void,
                                         len: size_t,
                                         advice: c_int) -> c_int;
             }
@@ -2905,29 +2906,29 @@ pub mod funcs {
     #[cfg(target_os = "macos")]
     #[cfg(target_os = "freebsd")]
     pub mod bsd44 {
-        use libc::types::common::c95::{c_void};
+        use util::Void;
         use libc::types::os::arch::c95::{c_char, c_uchar, c_int, c_uint,
                                          size_t};
 
         #[abi = "cdecl"]
         pub extern {
             unsafe fn sysctl(name: *c_int, namelen: c_uint,
-                      oldp: *mut c_void, oldlenp: *mut size_t,
-                      newp: *c_void, newlen: size_t) -> c_int;
+                      oldp: *mut Void, oldlenp: *mut size_t,
+                      newp: *Void, newlen: size_t) -> c_int;
 
             unsafe fn sysctlbyname(name: *c_char,
-                            oldp: *mut c_void, oldlenp: *mut size_t,
-                            newp: *c_void, newlen: size_t) -> c_int;
+                            oldp: *mut Void, oldlenp: *mut size_t,
+                            newp: *Void, newlen: size_t) -> c_int;
 
             unsafe fn sysctlnametomib(name: *c_char, mibp: *mut c_int,
                                sizep: *mut size_t) -> c_int;
 
             unsafe fn getdtablesize() -> c_int;
 
-            unsafe fn madvise(addr: *c_void, len: size_t, advice: c_int)
+            unsafe fn madvise(addr: *Void, len: size_t, advice: c_int)
                 -> c_int;
 
-            unsafe fn mincore(addr: *c_void, len: size_t, vec: *c_uchar)
+            unsafe fn mincore(addr: *Void, len: size_t, vec: *c_uchar)
                 -> c_int;
         }
     }
@@ -2936,17 +2937,17 @@ pub mod funcs {
     #[cfg(target_os = "linux")]
     #[cfg(target_os = "android")]
     pub mod bsd44 {
-        use libc::types::common::c95::{c_void};
+        use util::Void;
         use libc::types::os::arch::c95::{c_uchar, c_int, size_t};
 
         #[abi = "cdecl"]
         pub extern {
             unsafe fn getdtablesize() -> c_int;
 
-            unsafe fn madvise(addr: *c_void, len: size_t, advice: c_int)
+            unsafe fn madvise(addr: *Void, len: size_t, advice: c_int)
                 -> c_int;
 
-            unsafe fn mincore(addr: *c_void, len: size_t, vec: *c_uchar)
+            unsafe fn mincore(addr: *Void, len: size_t, vec: *c_uchar)
                 -> c_int;
         }
     }

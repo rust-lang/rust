@@ -21,8 +21,6 @@
 use ll = uv_ll;
 
 use std::comm::{stream, Port, Chan, SharedChan};
-use std::libc::c_void;
-use std::libc;
 use std::task;
 
 /// Used to abstract-away direct interaction with a libuv loop.
@@ -76,7 +74,7 @@ pub fn spawn_iotask(mut task: task::TaskBuilder) -> IoTask {
  * module. It is not safe to send the `loop_ptr` param to this callback out
  * via ports/chans.
  */
-pub fn interact(iotask: &IoTask, cb: ~fn(*c_void)) {
+pub fn interact(iotask: &IoTask, cb: ~fn(*Void)) {
     send_msg(iotask, Interaction(cb));
 }
 
@@ -95,7 +93,7 @@ pub fn exit(iotask: &IoTask) {
 // INTERNAL API
 
 enum IoTaskMsg {
-    Interaction(~fn(*libc::c_void)),
+    Interaction(~fn(*Void)),
     TeardownLoop
 }
 
@@ -179,10 +177,10 @@ fn begin_teardown(data: *IoTaskLoopData) {
     unsafe {
         debug!("iotask begin_teardown() called, close async_handle");
         let async_handle = (*data).async_handle;
-        ll::close(async_handle as *c_void, tear_down_close_cb);
+        ll::close(async_handle as *Void, tear_down_close_cb);
     }
 }
-extern fn tear_down_walk_cb(handle: *libc::c_void, arg: *libc::c_void) {
+extern fn tear_down_walk_cb(handle: *Void, arg: *Void) {
     debug!("IN TEARDOWN WALK CB");
     // pretty much, if we still have an active handle and it is *not*
     // the async handle that facilities global loop communication, we
@@ -194,7 +192,7 @@ extern fn tear_down_close_cb(handle: *ll::uv_async_t) {
     unsafe {
         let loop_ptr = ll::get_loop_for_uv_handle(handle);
         debug!("in tear_down_close_cb");
-        ll::walk(loop_ptr, tear_down_walk_cb, handle as *libc::c_void);
+        ll::walk(loop_ptr, tear_down_walk_cb, handle as *Void);
     }
 }
 
@@ -241,7 +239,7 @@ fn impl_uv_iotask_async(iotask: &IoTask) {
             debug!("interacting");
             ll::async_init(loop_ptr, ah_ptr, async_handle_cb);
             ll::set_data_for_uv_handle(
-                ah_ptr, ah_data_ptr as *libc::c_void);
+                ah_ptr, ah_data_ptr as *Void);
             ll::async_send(ah_ptr);
         }
     };
@@ -263,12 +261,12 @@ fn spawn_test_loop(exit_ch: ~Chan<()>) -> IoTask {
 }
 
 #[cfg(test)]
-extern fn lifetime_handle_close(handle: *libc::c_void) {
+extern fn lifetime_handle_close(handle: *Void) {
     debug!("lifetime_handle_close ptr %?", handle);
 }
 
 #[cfg(test)]
-extern fn lifetime_async_callback(handle: *libc::c_void,
+extern fn lifetime_async_callback(handle: *Void,
                                  status: libc::c_int) {
     debug!("lifetime_handle_close ptr %? status %?",
                     handle, status);

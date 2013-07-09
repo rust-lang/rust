@@ -150,7 +150,7 @@ wrapping `malloc` and `free`:
 
 ~~~~
 use std::cast;
-use std::libc::{c_void, size_t, malloc, free};
+use std::libc::{size_t, malloc, free};
 use std::ptr;
 use std::unstable::intrinsics;
 
@@ -188,7 +188,7 @@ impl<T: Send> Drop for Unique<T> {
             let x = intrinsics::init(); // dummy value to swap in
             // moving the object out is needed to call the destructor
             ptr::replace_ptr(self.ptr, x);
-            free(self.ptr as *c_void)
+            free(self.ptr as *Void)
         }
     }
 }

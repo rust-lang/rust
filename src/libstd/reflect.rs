@@ -20,8 +20,8 @@ Runtime type reflection
 use intrinsic::{Opaque, TyDesc, TyVisitor};
 #[cfg(not(stage0))]
 use unstable::intrinsics::{Opaque, TyDesc, TyVisitor};
-use libc::c_void;
 use sys;
+use util::Void;
 use vec;
 
 /**
@@ -31,7 +31,7 @@ use vec;
  * then build a MovePtrAdaptor wrapped around your struct.
  */
 pub trait MovePtr {
-    fn move_ptr(&self, adjustment: &fn(*c_void) -> *c_void);
+    fn move_ptr(&self, adjustment: &fn(*Void) -> *Void);
     fn push_ptr(&self);
     fn pop_ptr(&self);
 }
@@ -54,14 +54,14 @@ impl<V:TyVisitor + MovePtr> MovePtrAdaptor<V> {
     #[inline]
     pub fn bump(&self, sz: uint) {
         do self.inner.move_ptr() |p| {
-            ((p as uint) + sz) as *c_void
+            ((p as uint) + sz) as *Void
         };
     }
 
     #[inline]
     pub fn align(&self, a: uint) {
         do self.inner.move_ptr() |p| {
-            align(p as uint, a) as *c_void
+            align(p as uint, a) as *Void
         };
     }
 

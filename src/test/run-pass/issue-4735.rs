@@ -10,19 +10,18 @@
 
 
 use std::cast::transmute;
-use std::libc::c_void;
 
-struct NonCopyable(*c_void);
+struct NonCopyable(*Void);
 
 impl Drop for NonCopyable {
     fn drop(&self) {
         let p = **self;
-        let v = unsafe { transmute::<*c_void, ~int>(p) };
+        let v = unsafe { transmute::<*Void, ~int>(p) };
     }
 }
 
 fn main() {
     let t = ~0;
-    let p = unsafe { transmute::<~int, *c_void>(t) };
+    let p = unsafe { transmute::<~int, *Void>(t) };
     let z = NonCopyable(p);
 }

@@ -8,11 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use libc::{c_void, c_int};
+use libc::c_int;
 use option::Some;
 use rt::uv::uvll;
 use rt::uv::{Watcher, Loop, NativeHandle, TimerCallback, NullCallback};
 use rt::uv::status_to_maybe_uv_error;
+use util::Void;
 
 pub struct TimerWatcher(*uvll::uv_timer_t);
 impl Watcher for TimerWatcher { }
@@ -74,7 +75,7 @@ impl TimerWatcher {
             }
             watcher.drop_watcher_data();
             unsafe {
-                uvll::free_handle(handle as *c_void);
+                uvll::free_handle(handle as *Void);
             }
         }
     }

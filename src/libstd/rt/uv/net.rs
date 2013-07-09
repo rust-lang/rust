@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use prelude::*;
-use libc::{size_t, ssize_t, c_int, c_void};
+use libc::{size_t, ssize_t, c_int};
 use rt::uv::uvll;
 use rt::uv::uvll::*;
 use rt::uv::{AllocCallback, ConnectionCallback, ReadCallback};
@@ -110,8 +110,8 @@ impl StreamWatcher {
     }
 
     pub fn accept(&mut self, stream: StreamWatcher) {
-        let self_handle = self.native_handle() as *c_void;
-        let stream_handle = stream.native_handle() as *c_void;
+        let self_handle = self.native_handle() as *Void;
+        let stream_handle = stream.native_handle() as *Void;
         unsafe {
             assert_eq!(0, uvll::accept(self_handle, stream_handle));
         }
@@ -134,7 +134,7 @@ impl StreamWatcher {
                 data.close_cb.swap_unwrap()();
             }
             stream_watcher.drop_watcher_data();
-            unsafe { free_handle(handle as *c_void) }
+            unsafe { free_handle(handle as *Void) }
         }
     }
 }
@@ -276,7 +276,7 @@ impl ConnectRequest {
     }
 
     fn delete(self) {
-        unsafe { free_req(self.native_handle() as *c_void) }
+        unsafe { free_req(self.native_handle() as *Void) }
     }
 }
 
@@ -312,7 +312,7 @@ impl WriteRequest {
     }
 
     pub fn delete(self) {
-        unsafe { free_req(self.native_handle() as *c_void) }
+        unsafe { free_req(self.native_handle() as *Void) }
     }
 }
 

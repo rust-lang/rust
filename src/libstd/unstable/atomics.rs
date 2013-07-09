@@ -21,8 +21,8 @@
 use unstable::intrinsics;
 use cast;
 use option::{Option,Some,None};
-use libc::c_void;
 use ops::Drop;
+use util::Void;
 
 /**
  * A simple atomic flag, that can be set and cleared. The most basic atomic type.
@@ -64,7 +64,7 @@ pub struct AtomicPtr<T> {
  */
 #[unsafe_no_drop_flag]
 pub struct AtomicOption<T> {
-    priv p: *mut c_void
+    priv p: *mut Void
 }
 
 pub enum Ordering {

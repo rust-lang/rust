@@ -51,7 +51,7 @@ use result::Result;
 use container::Container;
 use int;
 use libc;
-use libc::{c_int, c_long, c_void, size_t, ssize_t};
+use libc::{c_int, c_long, size_t, ssize_t};
 use libc::consts::os::posix88::*;
 use os;
 use cast;
@@ -64,6 +64,7 @@ use str;
 use str::StrSlice;
 use to_str::ToStr;
 use uint;
+use util::Void;
 use vec;
 use vec::{MutableVector, ImmutableVector, OwnedVector, OwnedCopyableVector, CopyableVector};
 
@@ -920,7 +921,7 @@ impl Reader for *libc::FILE {
             do bytes.as_mut_buf |buf_p, buf_len| {
                 assert!(buf_len >= len);
 
-                let count = libc::fread(buf_p as *mut c_void, 1u as size_t,
+                let count = libc::fread(buf_p as *mut Void, 1u as size_t,
                                         len as size_t, *self) as uint;
                 if count < len {
                   match libc::ferror(*self) {
@@ -1153,7 +1154,7 @@ impl Writer for *libc::FILE {
     fn write(&self, v: &[u8]) {
         unsafe {
             do v.as_imm_buf |vbuf, len| {
-                let nout = libc::fwrite(vbuf as *c_void,
+                let nout = libc::fwrite(vbuf as *Void,
                                         1,
                                         len as size_t,
                                         *self);
@@ -1205,7 +1206,7 @@ impl Writer for fd_t {
             let mut count = 0u;
             do v.as_imm_buf |vbuf, len| {
                 while count < len {
-                    let vb = ptr::offset(vbuf, count) as *c_void;
+                    let vb = ptr::offset(vbuf, count) as *Void;
                     let nout = libc::write(*self, vb, len as size_t);
                     if nout < 0 as ssize_t {
                         error!("error writing buffer");

@@ -13,11 +13,11 @@ use std::libc;
 extern fn foo() {}
 
 static x: *u8 = foo;
-static y: *libc::c_void = x as *libc::c_void;
+static y: *Void = x as *Void;
 static a: &'static int = &10;
 static b: *int = a as *int;
 
 pub fn main() {
-    assert_eq!(x as *libc::c_void, y);
+    assert_eq!(x as *Void, y);
     assert_eq!(a as *int, b);
 }

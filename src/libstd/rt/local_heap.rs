@@ -10,14 +10,15 @@
 
 //! The local, garbage collected heap
 
-use libc::{c_void, uintptr_t, size_t};
+use libc::{uintptr_t, size_t};
 use ops::Drop;
+use util::Void;
 
-type MemoryRegion = c_void;
-type BoxedRegion = c_void;
+type MemoryRegion = Void;
+type BoxedRegion = Void;
 
-pub type OpaqueBox = c_void;
-pub type TypeDesc = c_void;
+pub type OpaqueBox = Void;
+pub type TypeDesc = Void;
 
 pub struct LocalHeap {
     memory_region: *MemoryRegion,

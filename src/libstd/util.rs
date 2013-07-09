@@ -11,8 +11,8 @@
 //! Miscellaneous helpers for common patterns.
 
 use cast;
+use ops::Drop;
 use ptr;
-use prelude::*;
 use unstable::intrinsics;
 
 /// The identity function.

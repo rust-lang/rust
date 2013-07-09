@@ -2,14 +2,14 @@
 
 use std::cast::transmute;
 use std::from_str::FromStr;
-use std::libc::{STDOUT_FILENO, c_char, c_int, c_uint, c_void, fdopen, fputc};
+use std::libc::{STDOUT_FILENO, c_char, c_int, c_uint, fdopen, fputc};
 use std::libc::{fputs};
 use std::ptr::null;
 
 struct mpz_t {
     _mp_alloc: c_int,
     _mp_size: c_int,
-    _mp_limb_t: *c_void,
+    _mp_limb_t: *Void,
 }
 
 impl mpz_t {

@@ -37,10 +37,10 @@ syn keyword   rustKeyword     be
 
 syn keyword   rustType        int uint float char bool u8 u16 u32 u64 f32
 syn keyword   rustType        f64 i8 i16 i32 i64 str Self
-syn keyword   rustType        Option Either
+syn keyword   rustType        Option Either Void
 
 " Types from libc
-syn keyword   rustType        c_float c_double c_void FILE fpos_t
+syn keyword   rustType        c_float c_double FILE fpos_t
 syn keyword   rustType        DIR dirent
 syn keyword   rustType        c_char c_schar c_uchar
 syn keyword   rustType        c_short c_ushort c_int c_uint c_long c_ulong

@@ -12,7 +12,6 @@
 
 use comm::{GenericChan, GenericPort};
 use comm;
-use libc;
 use prelude::*;
 use task;
 
@@ -74,7 +73,7 @@ fn test_run_in_bare_thread_exchange() {
 }
 
 #[allow(non_camel_case_types)] // runtime type
-pub type raw_thread = libc::c_void;
+pub type raw_thread = Void;
 
 extern {
     fn rust_raw_thread_start(f: &(&fn())) -> *raw_thread;

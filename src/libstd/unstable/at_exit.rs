@@ -39,10 +39,10 @@ pub fn at_exit(f: ~fn()) {
 // pointer and due to FFI problems I am more comfortable making the
 // interface use a normal pointer
 mod rustrt {
-    use libc::c_void;
+    use util::Void;
 
     pub extern {
-        fn rust_register_exit_function(runner: *c_void, f: ~~fn());
+        fn rust_register_exit_function(runner: *Void, f: ~~fn());
     }
 }
 

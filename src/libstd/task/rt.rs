@@ -17,6 +17,7 @@ The task interface to the runtime
 #[doc(hidden)];
 
 use libc;
+use util::Void;
 
 #[allow(non_camel_case_types)] // runtime type
 pub type sched_id = int;
@@ -26,9 +27,9 @@ pub type task_id = int;
 // These are both opaque runtime/compiler types that we don't know the
 // structure of and should only deal with via unsafe pointer
 #[allow(non_camel_case_types)] // runtime type
-pub type rust_task = libc::c_void;
+pub type rust_task = Void;
 #[allow(non_camel_case_types)] // runtime type
-pub type rust_closure = libc::c_void;
+pub type rust_closure = Void;
 
 pub extern {
     #[rust_stack]
@@ -63,9 +64,9 @@ pub extern {
     fn rust_task_kill_all(task: *rust_task);
 
     #[rust_stack]
-    fn rust_get_task_local_data(task: *rust_task) -> *libc::c_void;
+    fn rust_get_task_local_data(task: *rust_task) -> *Void;
     #[rust_stack]
-    fn rust_set_task_local_data(task: *rust_task, map: *libc::c_void);
+    fn rust_set_task_local_data(task: *rust_task, map: *Void);
     #[rust_stack]
     fn rust_task_local_data_atexit(task: *rust_task, cleanup_fn: *u8);
 }

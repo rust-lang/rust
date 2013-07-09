@@ -28,7 +28,6 @@ avoid hitting the mutex.
 use cast::{transmute};
 use clone::Clone;
 use kinds::Send;
-use libc::{c_void};
 use option::{Option, Some, None};
 use ops::Drop;
 use unstable::sync::{Exclusive, exclusive};
@@ -36,6 +35,7 @@ use unstable::at_exit::at_exit;
 use unstable::intrinsics::atomic_cxchg;
 use hashmap::HashMap;
 use sys::Closure;
+use util::Void;
 
 #[cfg(test)] use unstable::sync::{UnsafeAtomicRcBox};
 #[cfg(test)] use task::spawn;
@@ -101,7 +101,7 @@ unsafe fn global_data_modify_<T:Send>(
         };
         match maybe_new_value {
             Some(value) => {
-                let data: *c_void = transmute(value);
+                let data: *Void = transmute(value);
                 let dtor: ~fn() = match maybe_dtor {
                     Some(dtor) => dtor,
                     None => {
@@ -143,7 +143,7 @@ pub unsafe fn global_data_clone<T:Send + Clone>(
 // destructor. Keys are pointers derived from the type of the
 // global value.  There is a single GlobalState instance per runtime.
 struct GlobalState {
-    map: HashMap<uint, (*c_void, ~fn())>
+    map: HashMap<uint, (*Void, ~fn())>
 }
 
 impl Drop for GlobalState {
