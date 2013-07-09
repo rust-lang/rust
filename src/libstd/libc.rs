@@ -633,8 +633,9 @@ pub mod types {
             pub mod bsd44 {
             }
             pub mod extra {
+                use ptr;
                 use libc::types::common::c95::c_void;
-                use libc::types::os::arch::c95::{c_char, c_int, c_uint};
+                use libc::types::os::arch::c95::{c_char, c_int, c_uint, size_t};
                 use libc::types::os::arch::c95::{c_long, c_ulong};
                 use libc::types::os::arch::c95::{wchar_t};
                 use libc::types::os::arch::c99::{c_ulonglong};
@@ -665,6 +666,7 @@ pub mod types {
                 pub type LPSECURITY_ATTRIBUTES = LPVOID;
 
                 pub type LPVOID = *mut c_void;
+                pub type LPCVOID = *c_void;
                 pub type LPBYTE = *mut BYTE;
                 pub type LPWORD = *mut WORD;
                 pub type LPDWORD = *mut DWORD;
@@ -674,6 +676,7 @@ pub mod types {
                 pub type PBOOL = *mut BOOL;
                 pub type WCHAR = wchar_t;
                 pub type WORD = u16;
+                pub type SIZE_T = size_t;
 
                 pub type time64_t = i64;
                 pub type int64 = i64;
@@ -707,6 +710,50 @@ pub mod types {
                     dwThreadId: DWORD
                 }
                 pub type LPPROCESS_INFORMATION = *mut PROCESS_INFORMATION;
+
+                pub struct SYSTEM_INFO {
+                    wProcessorArchitecture: WORD,
+                    wReserved: WORD,
+                    dwPageSize: DWORD,
+                    lpMinimumApplicationAddress: LPVOID,
+                    lpMaximumApplicationAddress: LPVOID,
+                    dwActiveProcessorMask: DWORD,
+                    dwNumberOfProcessors: DWORD,
+                    dwProcessorType: DWORD,
+                    dwAllocationGranularity: DWORD,
+                    wProcessorLevel: WORD,
+                    wProcessorRevision: WORD
+                }
+                pub type LPSYSTEM_INFO = *mut SYSTEM_INFO;
+
+                impl SYSTEM_INFO {
+                    pub fn new() -> SYSTEM_INFO {
+                        SYSTEM_INFO {
+                            wProcessorArchitecture: 0,
+                            wReserved: 0,
+                            dwPageSize: 0,
+                            lpMinimumApplicationAddress: ptr::mut_null(),
+                            lpMaximumApplicationAddress: ptr::mut_null(),
+                            dwActiveProcessorMask: 0,
+                            dwNumberOfProcessors: 0,
+                            dwProcessorType: 0,
+                            dwAllocationGranularity: 0,
+                            wProcessorLevel: 0,
+                            wProcessorRevision: 0
+                        }
+                    }
+                }
+
+                pub struct MEMORY_BASIC_INFORMATION {
+                    BaseAddress: LPVOID,
+                    AllocationBase: LPVOID,
+                    AllocationProtect: DWORD,
+                    RegionSize: SIZE_T,
+                    State: DWORD,
+                    Protect: DWORD,
+                    Type: DWORD
+                }
+                pub type LPMEMORY_BASIC_INFORMATION = *mut MEMORY_BASIC_INFORMATION;
             }
         }
     }
@@ -964,7 +1011,7 @@ pub mod consts {
         }
         pub mod extra {
             use libc::types::os::arch::c95::c_int;
-            use libc::types::os::arch::extra::{DWORD, BOOL};
+            use libc::types::os::arch::extra::{WORD, DWORD, BOOL};
 
             pub static TRUE : BOOL = 1;
             pub static FALSE : BOOL = 0;
@@ -974,7 +1021,12 @@ pub mod consts {
             pub static O_NOINHERIT: c_int = 128;
 
             pub static ERROR_SUCCESS : c_int = 0;
+            pub static ERROR_INVALID_HANDLE : c_int = 6;
+            pub static ERROR_DISK_FULL : c_int = 112;
             pub static ERROR_INSUFFICIENT_BUFFER : c_int = 122;
+            pub static ERROR_ALREADY_EXISTS : c_int = 183;
+            pub static ERROR_INVALID_ADDRESS : c_int = 487;
+            pub static ERROR_FILE_INVALID : c_int = 1006;
             pub static INVALID_HANDLE_VALUE: c_int = -1;
 
             pub static DELETE : DWORD = 0x00010000;
@@ -1020,6 +1072,49 @@ pub mod consts {
 
             pub static INFINITE : DWORD = -1;
             pub static STILL_ACTIVE : DWORD = 259;
+
+            pub static MEM_COMMIT : DWORD = 0x00001000;
+            pub static MEM_RESERVE : DWORD = 0x00002000;
+            pub static MEM_DECOMMIT : DWORD = 0x00004000;
+            pub static MEM_RELEASE : DWORD = 0x00008000;
+            pub static MEM_RESET : DWORD = 0x00080000;
+            pub static MEM_RESET_UNDO : DWORD = 0x1000000;
+            pub static MEM_LARGE_PAGES : DWORD = 0x20000000;
+            pub static MEM_PHYSICAL : DWORD = 0x00400000;
+            pub static MEM_TOP_DOWN : DWORD = 0x00100000;
+            pub static MEM_WRITE_WATCH : DWORD = 0x00200000;
+
+            pub static PAGE_EXECUTE : DWORD = 0x10;
+            pub static PAGE_EXECUTE_READ : DWORD = 0x20;
+            pub static PAGE_EXECUTE_READWRITE : DWORD = 0x40;
+            pub static PAGE_EXECUTE_WRITECOPY : DWORD = 0x80;
+            pub static PAGE_NOACCESS : DWORD = 0x01;
+            pub static PAGE_READONLY : DWORD = 0x02;
+            pub static PAGE_READWRITE : DWORD = 0x04;
+            pub static PAGE_WRITECOPY : DWORD = 0x08;
+            pub static PAGE_GUARD : DWORD = 0x100;
+            pub static PAGE_NOCACHE : DWORD = 0x200;
+            pub static PAGE_WRITECOMBINE : DWORD = 0x400;
+
+            pub static SEC_COMMIT : DWORD = 0x8000000;
+            pub static SEC_IMAGE : DWORD = 0x1000000;
+            pub static SEC_IMAGE_NO_EXECUTE : DWORD = 0x11000000;
+            pub static SEC_LARGE_PAGES : DWORD = 0x80000000;
+            pub static SEC_NOCACHE : DWORD = 0x10000000;
+            pub static SEC_RESERVE : DWORD = 0x4000000;
+            pub static SEC_WRITECOMBINE : DWORD = 0x40000000;
+
+            pub static FILE_MAP_ALL_ACCESS : DWORD = 0xf001f;
+            pub static FILE_MAP_READ : DWORD = 0x4;
+            pub static FILE_MAP_WRITE : DWORD = 0x2;
+            pub static FILE_MAP_COPY : DWORD = 0x1;
+            pub static FILE_MAP_EXECUTE : DWORD = 0x20;
+
+            pub static PROCESSOR_ARCHITECTURE_INTEL : WORD = 0;
+            pub static PROCESSOR_ARCHITECTURE_ARM : WORD = 5;
+            pub static PROCESSOR_ARCHITECTURE_IA64 : WORD = 6;
+            pub static PROCESSOR_ARCHITECTURE_AMD64 : WORD = 9;
+            pub static PROCESSOR_ARCHITECTURE_UNKNOWN : WORD = 0xffff;
         }
     }
 
@@ -1107,75 +1202,7 @@ pub mod consts {
             pub static MAP_SHARED : c_int = 0x0001;
             pub static MAP_PRIVATE : c_int = 0x0002;
             pub static MAP_FIXED : c_int = 0x0010;
-            pub static MAP_ANON : c_int = 0x1000;
-
-            pub static MAP_FAILED : *c_void = -1 as *c_void;
-
-            pub static MCL_CURRENT : c_int = 0x0001;
-            pub static MCL_FUTURE : c_int = 0x0002;
-
-            pub static MS_ASYNC : c_int = 0x0001;
-            pub static MS_INVALIDATE : c_int = 0x0002;
-            pub static MS_SYNC : c_int = 0x0004;
-        }
-        #[cfg(target_arch = "mips")]
-        pub mod posix88 {
-            use libc::types::os::arch::c95::c_int;
-            use libc::types::common::c95::c_void;
-
-            pub static O_RDONLY : c_int = 0;
-            pub static O_WRONLY : c_int = 1;
-            pub static O_RDWR : c_int = 2;
-            pub static O_APPEND : c_int = 8;
-            pub static O_CREAT : c_int = 256;
-            pub static O_EXCL : c_int = 1024;
-            pub static O_TRUNC : c_int = 512;
-            pub static S_IFIFO : c_int = 4096;
-            pub static S_IFCHR : c_int = 8192;
-            pub static S_IFBLK : c_int = 24576;
-            pub static S_IFDIR : c_int = 16384;
-            pub static S_IFREG : c_int = 32768;
-            pub static S_IFMT : c_int = 61440;
-            pub static S_IEXEC : c_int = 64;
-            pub static S_IWRITE : c_int = 128;
-            pub static S_IREAD : c_int = 256;
-            pub static S_IRWXU : c_int = 448;
-            pub static S_IXUSR : c_int = 64;
-            pub static S_IWUSR : c_int = 128;
-            pub static S_IRUSR : c_int = 256;
-            pub static F_OK : c_int = 0;
-            pub static R_OK : c_int = 4;
-            pub static W_OK : c_int = 2;
-            pub static X_OK : c_int = 1;
-            pub static STDIN_FILENO : c_int = 0;
-            pub static STDOUT_FILENO : c_int = 1;
-            pub static STDERR_FILENO : c_int = 2;
-            pub static F_LOCK : c_int = 1;
-            pub static F_TEST : c_int = 3;
-            pub static F_TLOCK : c_int = 2;
-            pub static F_ULOCK : c_int = 0;
-            pub static SIGHUP : c_int = 1;
-            pub static SIGINT : c_int = 2;
-            pub static SIGQUIT : c_int = 3;
-            pub static SIGILL : c_int = 4;
-            pub static SIGABRT : c_int = 6;
-            pub static SIGFPE : c_int = 8;
-            pub static SIGKILL : c_int = 9;
-            pub static SIGSEGV : c_int = 11;
-            pub static SIGPIPE : c_int = 13;
-            pub static SIGALRM : c_int = 14;
-            pub static SIGTERM : c_int = 15;
-
-            pub static PROT_NONE : c_int = 0;
-            pub static PROT_READ : c_int = 1;
-            pub static PROT_WRITE : c_int = 2;
-            pub static PROT_EXEC : c_int = 4;
-
-            pub static MAP_FILE : c_int = 0x0000;
-            pub static MAP_SHARED : c_int = 0x0001;
-            pub static MAP_PRIVATE : c_int = 0x0002;
-            pub static MAP_FIXED : c_int = 0x0010;
-            pub static MAP_ANON : c_int = 0x1000;
+            pub static MAP_ANON : c_int = 0x0020;
 
             pub static MAP_FAILED : *c_void = -1 as *c_void;
 
@@ -1242,6 +1269,201 @@ pub mod consts {
             pub static _SC_XBS5_ILP32_OFF32 : c_int = 125;
             pub static _SC_XBS5_ILP32_OFFBIG : c_int = 126;
             pub static _SC_XBS5_LPBIG_OFFBIG : c_int = 128;
+
+            pub static EPERM : c_int = 1;
+            pub static ENOENT : c_int = 2;
+            pub static ESRCH : c_int = 3;
+            pub static EINTR : c_int = 4;
+            pub static EIO : c_int = 5;
+            pub static ENXIO : c_int = 6;
+            pub static E2BIG : c_int = 7;
+            pub static ENOEXEC : c_int = 8;
+            pub static EBADF : c_int = 9;
+            pub static ECHILD : c_int = 10;
+            pub static EAGAIN : c_int = 11;
+            pub static ENOMEM : c_int = 12;
+            pub static EACCES : c_int = 13;
+            pub static EFAULT : c_int = 14;
+            pub static ENOTBLK : c_int = 15;
+            pub static EBUSY : c_int = 16;
+            pub static EEXIST : c_int = 17;
+            pub static EXDEV : c_int = 18;
+            pub static ENODEV : c_int = 19;
+            pub static ENOTDIR : c_int = 20;
+            pub static EISDIR : c_int = 21;
+            pub static EINVAL : c_int = 22;
+            pub static ENFILE : c_int = 23;
+            pub static EMFILE : c_int = 24;
+            pub static ENOTTY : c_int = 25;
+            pub static ETXTBSY : c_int = 26;
+            pub static EFBIG : c_int = 27;
+            pub static ENOSPC : c_int = 28;
+            pub static ESPIPE : c_int = 29;
+            pub static EROFS : c_int = 30;
+            pub static EMLINK : c_int = 31;
+            pub static EPIPE : c_int = 32;
+            pub static EDOM : c_int = 33;
+            pub static ERANGE : c_int = 34;
+        }
+        #[cfg(target_arch = "mips")]
+        pub mod posix88 {
+            use libc::types::os::arch::c95::c_int;
+            use libc::types::common::c95::c_void;
+
+            pub static O_RDONLY : c_int = 0;
+            pub static O_WRONLY : c_int = 1;
+            pub static O_RDWR : c_int = 2;
+            pub static O_APPEND : c_int = 8;
+            pub static O_CREAT : c_int = 256;
+            pub static O_EXCL : c_int = 1024;
+            pub static O_TRUNC : c_int = 512;
+            pub static S_IFIFO : c_int = 4096;
+            pub static S_IFCHR : c_int = 8192;
+            pub static S_IFBLK : c_int = 24576;
+            pub static S_IFDIR : c_int = 16384;
+            pub static S_IFREG : c_int = 32768;
+            pub static S_IFMT : c_int = 61440;
+            pub static S_IEXEC : c_int = 64;
+            pub static S_IWRITE : c_int = 128;
+            pub static S_IREAD : c_int = 256;
+            pub static S_IRWXU : c_int = 448;
+            pub static S_IXUSR : c_int = 64;
+            pub static S_IWUSR : c_int = 128;
+            pub static S_IRUSR : c_int = 256;
+            pub static F_OK : c_int = 0;
+            pub static R_OK : c_int = 4;
+            pub static W_OK : c_int = 2;
+            pub static X_OK : c_int = 1;
+            pub static STDIN_FILENO : c_int = 0;
+            pub static STDOUT_FILENO : c_int = 1;
+            pub static STDERR_FILENO : c_int = 2;
+            pub static F_LOCK : c_int = 1;
+            pub static F_TEST : c_int = 3;
+            pub static F_TLOCK : c_int = 2;
+            pub static F_ULOCK : c_int = 0;
+            pub static SIGHUP : c_int = 1;
+            pub static SIGINT : c_int = 2;
+            pub static SIGQUIT : c_int = 3;
+            pub static SIGILL : c_int = 4;
+            pub static SIGABRT : c_int = 6;
+            pub static SIGFPE : c_int = 8;
+            pub static SIGKILL : c_int = 9;
+            pub static SIGSEGV : c_int = 11;
+            pub static SIGPIPE : c_int = 13;
+            pub static SIGALRM : c_int = 14;
+            pub static SIGTERM : c_int = 15;
+
+            pub static PROT_NONE : c_int = 0;
+            pub static PROT_READ : c_int = 1;
+            pub static PROT_WRITE : c_int = 2;
+            pub static PROT_EXEC : c_int = 4;
+
+            pub static MAP_FILE : c_int = 0x0000;
+            pub static MAP_SHARED : c_int = 0x0001;
+            pub static MAP_PRIVATE : c_int = 0x0002;
+            pub static MAP_FIXED : c_int = 0x0010;
+            pub static MAP_ANON : c_int = 0x0020;
+
+            pub static MAP_FAILED : *c_void = -1 as *c_void;
+
+            pub static MCL_CURRENT : c_int = 0x0001;
+            pub static MCL_FUTURE : c_int = 0x0002;
+
+            pub static MS_ASYNC : c_int = 0x0001;
+            pub static MS_INVALIDATE : c_int = 0x0002;
+            pub static MS_SYNC : c_int = 0x0004;
+
+            pub static _SC_ARG_MAX : c_int = 0;
+            pub static _SC_CHILD_MAX : c_int = 1;
+            pub static _SC_CLK_TCK : c_int = 2;
+            pub static _SC_NGROUPS_MAX : c_int = 3;
+            pub static _SC_OPEN_MAX : c_int = 4;
+            pub static _SC_STREAM_MAX : c_int = 5;
+            pub static _SC_TZNAME_MAX : c_int = 6;
+            pub static _SC_JOB_CONTROL : c_int = 7;
+            pub static _SC_SAVED_IDS : c_int = 8;
+            pub static _SC_REALTIME_SIGNALS : c_int = 9;
+            pub static _SC_PRIORITY_SCHEDULING : c_int = 10;
+            pub static _SC_TIMERS : c_int = 11;
+            pub static _SC_ASYNCHRONOUS_IO : c_int = 12;
+            pub static _SC_PRIORITIZED_IO : c_int = 13;
+            pub static _SC_SYNCHRONIZED_IO : c_int = 14;
+            pub static _SC_FSYNC : c_int = 15;
+            pub static _SC_MAPPED_FILES : c_int = 16;
+            pub static _SC_MEMLOCK : c_int = 17;
+            pub static _SC_MEMLOCK_RANGE : c_int = 18;
+            pub static _SC_MEMORY_PROTECTION : c_int = 19;
+            pub static _SC_MESSAGE_PASSING : c_int = 20;
+            pub static _SC_SEMAPHORES : c_int = 21;
+            pub static _SC_SHARED_MEMORY_OBJECTS : c_int = 22;
+            pub static _SC_AIO_LISTIO_MAX : c_int = 23;
+            pub static _SC_AIO_MAX : c_int = 24;
+            pub static _SC_AIO_PRIO_DELTA_MAX : c_int = 25;
+            pub static _SC_DELAYTIMER_MAX : c_int = 26;
+            pub static _SC_MQ_OPEN_MAX : c_int = 27;
+            pub static _SC_VERSION : c_int = 29;
+            pub static _SC_PAGESIZE : c_int = 30;
+            pub static _SC_RTSIG_MAX : c_int = 31;
+            pub static _SC_SEM_NSEMS_MAX : c_int = 32;
+            pub static _SC_SEM_VALUE_MAX : c_int = 33;
+            pub static _SC_SIGQUEUE_MAX : c_int = 34;
+            pub static _SC_TIMER_MAX : c_int = 35;
+            pub static _SC_BC_BASE_MAX : c_int = 36;
+            pub static _SC_BC_DIM_MAX : c_int = 37;
+            pub static _SC_BC_SCALE_MAX : c_int = 38;
+            pub static _SC_BC_STRING_MAX : c_int = 39;
+            pub static _SC_COLL_WEIGHTS_MAX : c_int = 40;
+            pub static _SC_EXPR_NEST_MAX : c_int = 42;
+            pub static _SC_LINE_MAX : c_int = 43;
+            pub static _SC_RE_DUP_MAX : c_int = 44;
+            pub static _SC_2_VERSION : c_int = 46;
+            pub static _SC_2_C_BIND : c_int = 47;
+            pub static _SC_2_C_DEV : c_int = 48;
+            pub static _SC_2_FORT_DEV : c_int = 49;
+            pub static _SC_2_FORT_RUN : c_int = 50;
+            pub static _SC_2_SW_DEV : c_int = 51;
+            pub static _SC_2_LOCALEDEF : c_int = 52;
+            pub static _SC_2_CHAR_TERM : c_int = 95;
+            pub static _SC_2_C_VERSION : c_int = 96;
+            pub static _SC_2_UPE : c_int = 97;
+            pub static _SC_XBS5_ILP32_OFF32 : c_int = 125;
+            pub static _SC_XBS5_ILP32_OFFBIG : c_int = 126;
+            pub static _SC_XBS5_LPBIG_OFFBIG : c_int = 128;
+
+            pub static EPERM : c_int = 1;
+            pub static ENOENT : c_int = 2;
+            pub static ESRCH : c_int = 3;
+            pub static EINTR : c_int = 4;
+            pub static EIO : c_int = 5;
+            pub static ENXIO : c_int = 6;
+            pub static E2BIG : c_int = 7;
+            pub static ENOEXEC : c_int = 8;
+            pub static EBADF : c_int = 9;
+            pub static ECHILD : c_int = 10;
+            pub static EAGAIN : c_int = 11;
+            pub static ENOMEM : c_int = 12;
+            pub static EACCES : c_int = 13;
+            pub static EFAULT : c_int = 14;
+            pub static ENOTBLK : c_int = 15;
+            pub static EBUSY : c_int = 16;
+            pub static EEXIST : c_int = 17;
+            pub static EXDEV : c_int = 18;
+            pub static ENODEV : c_int = 19;
+            pub static ENOTDIR : c_int = 20;
+            pub static EISDIR : c_int = 21;
+            pub static EINVAL : c_int = 22;
+            pub static ENFILE : c_int = 23;
+            pub static EMFILE : c_int = 24;
+            pub static ENOTTY : c_int = 25;
+            pub static ETXTBSY : c_int = 26;
+            pub static EFBIG : c_int = 27;
+            pub static ENOSPC : c_int = 28;
+            pub static ESPIPE : c_int = 29;
+            pub static EROFS : c_int = 30;
+            pub static EMLINK : c_int = 31;
+            pub static EPIPE : c_int = 32;
+            pub static EDOM : c_int = 33;
+            pub static ERANGE : c_int = 34;
         }
         pub mod posix01 {
             use libc::types::os::arch::c95::c_int;
@@ -1326,7 +1548,7 @@ pub mod consts {
             pub static PROT_GROWSUP : c_int = 0x020000000;
 
             pub static MAP_TYPE : c_int = 0x000f;
-            pub static MAP_ANONONYMOUS : c_int = 0x1000;
+            pub static MAP_ANONONYMOUS : c_int = 0x0020;
             pub static MAP_32BIT : c_int = 0x0040;
             pub static MAP_GROWSDOWN : c_int = 0x0100;
             pub static MAP_DENYWRITE : c_int = 0x0800;
@@ -1349,7 +1571,7 @@ pub mod consts {
             pub static PROT_GROWSUP : c_int = 0x020000000;
 
             pub static MAP_TYPE : c_int = 0x000f;
-            pub static MAP_ANONONYMOUS : c_int = 0x1000;
+            pub static MAP_ANONONYMOUS : c_int = 0x0020;
             pub static MAP_32BIT : c_int = 0x0040;
             pub static MAP_GROWSDOWN : c_int = 0x0100;
             pub static MAP_DENYWRITE : c_int = 0x0800;
@@ -1504,6 +1726,108 @@ pub mod consts {
             pub static _SC_SEM_VALUE_MAX : c_int = 50;
             pub static _SC_SIGQUEUE_MAX : c_int = 51;
             pub static _SC_TIMER_MAX : c_int = 52;
+
+            pub static EPERM : c_int = 1;
+            pub static ENOENT : c_int = 2;
+            pub static ESRCH : c_int = 3;
+            pub static EINTR : c_int = 4;
+            pub static EIO : c_int = 5;
+            pub static ENXIO : c_int = 6;
+            pub static E2BIG : c_int = 7;
+            pub static ENOEXEC : c_int = 8;
+            pub static EBADF : c_int = 9;
+            pub static ECHILD : c_int = 10;
+            pub static EDEADLK : c_int = 11;
+            pub static ENOMEM : c_int = 12;
+            pub static EACCES : c_int = 13;
+            pub static EFAULT : c_int = 14;
+            pub static ENOTBLK : c_int = 15;
+            pub static EBUSY : c_int = 16;
+            pub static EEXIST : c_int = 17;
+            pub static EXDEV : c_int = 18;
+            pub static ENODEV : c_int = 19;
+            pub static ENOTDIR : c_int = 20;
+            pub static EISDIR : c_int = 21;
+            pub static EINVAL : c_int = 22;
+            pub static ENFILE : c_int = 23;
+            pub static EMFILE : c_int = 24;
+            pub static ENOTTY : c_int = 25;
+            pub static ETXTBSY : c_int = 26;
+            pub static EFBIG : c_int = 27;
+            pub static ENOSPC : c_int = 28;
+            pub static ESPIPE : c_int = 29;
+            pub static EROFS : c_int = 30;
+            pub static EMLINK : c_int = 31;
+            pub static EPIPE : c_int = 32;
+            pub static EDOM : c_int = 33;
+            pub static ERANGE : c_int = 34;
+            pub static EAGAIN : c_int = 35;
+            pub static EWOULDBLOCK : c_int = 35;
+            pub static EINPROGRESS : c_int = 36;
+            pub static EALREADY : c_int = 37;
+            pub static ENOTSOCK : c_int = 38;
+            pub static EDESTADDRREQ : c_int = 39;
+            pub static EMSGSIZE : c_int = 40;
+            pub static EPROTOTYPE : c_int = 41;
+            pub static ENOPROTOOPT : c_int = 42;
+            pub static EPROTONOSUPPORT : c_int = 43;
+            pub static ESOCKTNOSUPPORT : c_int = 44;
+            pub static EOPNOTSUPP : c_int = 45;
+            pub static EPFNOSUPPORT : c_int = 46;
+            pub static EAFNOSUPPORT : c_int = 47;
+            pub static EADDRINUSE : c_int = 48;
+            pub static EADDRNOTAVAIL : c_int = 49;
+            pub static ENETDOWN : c_int = 50;
+            pub static ENETUNREACH : c_int = 51;
+            pub static ENETRESET : c_int = 52;
+            pub static ECONNABORTED : c_int = 53;
+            pub static ECONNRESET : c_int = 54;
+            pub static ENOBUFS : c_int = 55;
+            pub static EISCONN : c_int = 56;
+            pub static ENOTCONN : c_int = 57;
+            pub static ESHUTDOWN : c_int = 58;
+            pub static ETOOMANYREFS : c_int = 59;
+            pub static ETIMEDOUT : c_int = 60;
+            pub static ECONNREFUSED : c_int = 61;
+            pub static ELOOP : c_int = 62;
+            pub static ENAMETOOLONG : c_int = 63;
+            pub static EHOSTDOWN : c_int = 64;
+            pub static EHOSTUNREACH : c_int = 65;
+            pub static ENOTEMPTY : c_int = 66;
+            pub static EPROCLIM : c_int = 67;
+            pub static EUSERS : c_int = 68;
+            pub static EDQUOT : c_int = 69;
+            pub static ESTALE : c_int = 70;
+            pub static EREMOTE : c_int = 71;
+            pub static EBADRPC : c_int = 72;
+            pub static ERPCMISMATCH : c_int = 73;
+            pub static EPROGUNAVAIL : c_int = 74;
+            pub static EPROGMISMATCH : c_int = 75;
+            pub static EPROCUNAVAIL : c_int = 76;
+            pub static ENOLCK : c_int = 77;
+            pub static ENOSYS : c_int = 78;
+            pub static EFTYPE : c_int = 79;
+            pub static EAUTH : c_int = 80;
+            pub static ENEEDAUTH : c_int = 81;
+            pub static EIDRM : c_int = 82;
+            pub static ENOMSG : c_int = 83;
+            pub static EOVERFLOW : c_int = 84;
+            pub static ECANCELED : c_int = 85;
+            pub static EILSEQ : c_int = 86;
+            pub static ENOATTR : c_int = 87;
+            pub static EDOOFUS : c_int = 88;
+            pub static EBADMSG : c_int = 89;
+            pub static EMULTIHOP : c_int = 90;
+            pub static ENOLINK : c_int = 91;
+            pub static EPROTO : c_int = 92;
+            pub static ENOMEDIUM : c_int = 93;
+            pub static EUNUSED94 : c_int = 94;
+            pub static EUNUSED95 : c_int = 95;
+            pub static EUNUSED96 : c_int = 96;
+            pub static EUNUSED97 : c_int = 97;
+            pub static EUNUSED98 : c_int = 98;
+            pub static EASYNC : c_int = 99;
+            pub static ELAST : c_int = 99;
         }
         pub mod posix01 {
             use libc::types::os::arch::c95::c_int;
@@ -1748,6 +2072,115 @@ pub mod consts {
             pub static _SC_XBS5_ILP32_OFFBIG : c_int = 123;
             pub static _SC_XBS5_LP64_OFF64 : c_int = 124;
             pub static _SC_XBS5_LPBIG_OFFBIG : c_int = 125;
+
+            pub static EPERM : c_int = 1;
+            pub static ENOENT : c_int = 2;
+            pub static ESRCH : c_int = 3;
+            pub static EINTR : c_int = 4;
+            pub static EIO : c_int = 5;
+            pub static ENXIO : c_int = 6;
+            pub static E2BIG : c_int = 7;
+            pub static ENOEXEC : c_int = 8;
+            pub static EBADF : c_int = 9;
+            pub static ECHILD : c_int = 10;
+            pub static EDEADLK : c_int = 11;
+            pub static ENOMEM : c_int = 12;
+            pub static EACCES : c_int = 13;
+            pub static EFAULT : c_int = 14;
+            pub static ENOTBLK : c_int = 15;
+            pub static EBUSY : c_int = 16;
+            pub static EEXIST : c_int = 17;
+            pub static EXDEV : c_int = 18;
+            pub static ENODEV : c_int = 19;
+            pub static ENOTDIR : c_int = 20;
+            pub static EISDIR : c_int = 21;
+            pub static EINVAL : c_int = 22;
+            pub static ENFILE : c_int = 23;
+            pub static EMFILE : c_int = 24;
+            pub static ENOTTY : c_int = 25;
+            pub static ETXTBSY : c_int = 26;
+            pub static EFBIG : c_int = 27;
+            pub static ENOSPC : c_int = 28;
+            pub static ESPIPE : c_int = 29;
+            pub static EROFS : c_int = 30;
+            pub static EMLINK : c_int = 31;
+            pub static EPIPE : c_int = 32;
+            pub static EDOM : c_int = 33;
+            pub static ERANGE : c_int = 34;
+            pub static EAGAIN : c_int = 35;
+            pub static EWOULDBLOCK : c_int = EAGAIN;
+            pub static EINPROGRESS : c_int = 36;
+            pub static EALREADY : c_int = 37;
+            pub static ENOTSOCK : c_int = 38;
+            pub static EDESTADDRREQ : c_int = 39;
+            pub static EMSGSIZE : c_int = 40;
+            pub static EPROTOTYPE : c_int = 41;
+            pub static ENOPROTOOPT : c_int = 42;
+            pub static EPROTONOSUPPORT : c_int = 43;
+            pub static ESOCKTNOSUPPORT : c_int = 44;
+            pub static ENOTSUP : c_int = 45;
+            pub static EPFNOSUPPORT : c_int = 46;
+            pub static EAFNOSUPPORT : c_int = 47;
+            pub static EADDRINUSE : c_int = 48;
+            pub static EADDRNOTAVAIL : c_int = 49;
+            pub static ENETDOWN : c_int = 50;
+            pub static ENETUNREACH : c_int = 51;
+            pub static ENETRESET : c_int = 52;
+            pub static ECONNABORTED : c_int = 53;
+            pub static ECONNRESET : c_int = 54;
+            pub static ENOBUFS : c_int = 55;
+            pub static EISCONN : c_int = 56;
+            pub static ENOTCONN : c_int = 57;
+            pub static ESHUTDOWN : c_int = 58;
+            pub static ETOOMANYREFS : c_int = 59;
+            pub static ETIMEDOUT : c_int = 60;
+            pub static ECONNREFUSED : c_int = 61;
+            pub static ELOOP : c_int = 62;
+            pub static ENAMETOOLONG : c_int = 63;
+            pub static EHOSTDOWN : c_int = 64;
+            pub static EHOSTUNREACH : c_int = 65;
+            pub static ENOTEMPTY : c_int = 66;
+            pub static EPROCLIM : c_int = 67;
+            pub static EUSERS : c_int = 68;
+            pub static EDQUOT : c_int = 69;
+            pub static ESTALE : c_int = 70;
+            pub static EREMOTE : c_int = 71;
+            pub static EBADRPC : c_int = 72;
+            pub static ERPCMISMATCH : c_int = 73;
+            pub static EPROGUNAVAIL : c_int = 74;
+            pub static EPROGMISMATCH : c_int = 75;
+            pub static EPROCUNAVAIL : c_int = 76;
+            pub static ENOLCK : c_int = 77;
+            pub static ENOSYS : c_int = 78;
+            pub static EFTYPE : c_int = 79;
+            pub static EAUTH : c_int = 80;
+            pub static ENEEDAUTH : c_int = 81;
+            pub static EPWROFF : c_int = 82;
+            pub static EDEVERR : c_int = 83;
+            pub static EOVERFLOW : c_int = 84;
+            pub static EBADEXEC : c_int = 85;
+            pub static EBADARCH : c_int = 86;
+            pub static ESHLIBVERS : c_int = 87;
+            pub static EBADMACHO : c_int = 88;
+            pub static ECANCELED : c_int = 89;
+            pub static EIDRM : c_int = 90;
+            pub static ENOMSG : c_int = 91;
+            pub static EILSEQ : c_int = 92;
+            pub static ENOATTR : c_int = 93;
+            pub static EBADMSG : c_int = 94;
+            pub static EMULTIHOP : c_int = 95;
+            pub static ENODATA : c_int = 96;
+            pub static ENOLINK : c_int = 97;
+            pub static ENOSR : c_int = 98;
+            pub static ENOSTR : c_int = 99;
+            pub static EPROTO : c_int = 100;
+            pub static ETIME : c_int = 101;
+            pub static EOPNOTSUPP : c_int = 102;
+            pub static ENOPOLICY : c_int = 103;
+            pub static ENOTRECOVERABLE : c_int = 104;
+            pub static EOWNERDEAD : c_int = 105;
+            pub static EQFULL : c_int = 106;
+            pub static ELAST : c_int = 106;
         }
         pub mod posix01 {
             use libc::types::os::arch::c95::c_int;
@@ -2563,11 +2996,14 @@ pub mod funcs {
 
         pub mod kernel32 {
             use libc::types::os::arch::c95::{c_uint};
-            use libc::types::os::arch::extra::{BOOL, DWORD, HMODULE};
+            use libc::types::os::arch::extra::{BOOL, DWORD, SIZE_T, HMODULE};
             use libc::types::os::arch::extra::{LPCWSTR, LPWSTR, LPCTSTR,
-                                               LPTSTR, LPTCH, LPDWORD, LPVOID};
+                                               LPTSTR, LPTCH, LPDWORD, LPVOID,
+                                               LPCVOID};
             use libc::types::os::arch::extra::{LPSECURITY_ATTRIBUTES, LPSTARTUPINFO,
-                                               LPPROCESS_INFORMATION};
+                                               LPPROCESS_INFORMATION,
+                                               LPMEMORY_BASIC_INFORMATION,
+                                               LPSYSTEM_INFO};
             use libc::types::os::arch::extra::{HANDLE, LPHANDLE};
 
             #[abi = "stdcall"]
@@ -2630,6 +3066,37 @@ pub mod funcs {
                 unsafe fn WaitForSingleObject(hHandle: HANDLE, dwMilliseconds: DWORD) -> DWORD;
                 unsafe fn TerminateProcess(hProcess: HANDLE, uExitCode: c_uint) -> BOOL;
                 unsafe fn GetExitCodeProcess(hProcess: HANDLE, lpExitCode: LPDWORD) -> BOOL;
+
+                unsafe fn GetSystemInfo(lpSystemInfo: LPSYSTEM_INFO);
+                unsafe fn VirtualAlloc(lpAddress: LPVOID,
+                                       dwSize: SIZE_T,
+                                       flAllocationType: DWORD,
+                                       flProtect: DWORD) -> LPVOID;
+                unsafe fn VirtualFree(lpAddress: LPVOID,
+                                      dwSize: SIZE_T,
+                                      dwFreeType: DWORD) -> BOOL;
+                unsafe fn VirtualLock(lpAddress: LPVOID, dwSize: SIZE_T) -> BOOL;
+                unsafe fn VirtualUnlock(lpAddress: LPVOID, dwSize: SIZE_T) -> BOOL;
+                unsafe fn VirtualProtect(lpAddress: LPVOID,
+                                         dwSize: SIZE_T,
+                                         flNewProtect: DWORD,
+                                         lpflOldProtect: LPDWORD) -> BOOL;
+                unsafe fn VirtualQuery(lpAddress: LPCVOID,
+                                       lpBuffer: LPMEMORY_BASIC_INFORMATION,
+                                       dwLength: SIZE_T) -> SIZE_T;
+
+                unsafe fn CreateFileMappingW(hFile: HANDLE,
+                                             lpAttributes: LPSECURITY_ATTRIBUTES,
+                                             flProtect: DWORD,
+                                             dwMaximumSizeHigh: DWORD,
+                                             dwMaximumSizeLow: DWORD,
+                                             lpName: LPCTSTR) -> HANDLE;
+                unsafe fn MapViewOfFile(hFileMappingObject: HANDLE,
+                                        dwDesiredAccess: DWORD,
+                                        dwFileOffsetHigh: DWORD,
+                                        dwFileOffsetLow: DWORD,
+                                        dwNumberOfBytesToMap: SIZE_T) -> LPVOID;
+                unsafe fn UnmapViewOfFile(lpBaseAddress: LPCVOID) -> BOOL;
             }
         }
 
