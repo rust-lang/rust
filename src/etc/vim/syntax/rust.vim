@@ -117,9 +117,9 @@ syn match     rustFloat       display "\<[0-9][0-9_]*\.[0-9_]\+\%([eE][+-]\=[0-9
 syn match     rustLifetime    display "\'\%([^[:cntrl:][:space:][:punct:][:digit:]]\|_\)\%([^[:cntrl:][:punct:][:space:]]\|_\)*"
 syn match   rustCharacter   "'\([^'\\]\|\\\(['nrt\\\"]\|x\x\{2}\|u\x\{4}\|U\x\{8}\)\)'"
 
-syn region    rustComment     start="/\*" end="\*/" contains=rustTodo
+syn region    rustCommentML   start="/\*" end="\*/" contains=rustTodo
 syn region    rustComment     start="//" skip="\\$" end="$" contains=rustTodo keepend
-syn region    rustCommentDoc  start="/\*\%(!\|\*/\@!\)" end="\*/" contains=rustTodo
+syn region    rustCommentMLDoc start="/\*\%(!\|\*/\@!\)" end="\*/" contains=rustTodo
 syn region    rustCommentDoc  start="//[/!]" skip="\\$" end="$" contains=rustTodo keepend
 
 syn keyword rustTodo contained TODO FIXME XXX NB NOTE
@@ -151,7 +151,9 @@ hi def link rustModPath       Include
 hi def link rustModPathSep    Delimiter
 hi def link rustFuncName      Function
 hi def link rustFuncCall      Function
+hi def link rustCommentMLDoc  rustCommentDoc
 hi def link rustCommentDoc    SpecialComment
+hi def link rustCommentML     rustComment
 hi def link rustComment       Comment
 hi def link rustAssert        PreCondit
 hi def link rustFail          PreCondit
