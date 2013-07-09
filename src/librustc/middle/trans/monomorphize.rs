@@ -111,6 +111,10 @@ pub fn monomorphic_fn(ccx: @mut CrateContext,
     let tpt = ty::lookup_item_type(ccx.tcx, fn_id);
     let llitem_ty = tpt.ty;
 
+    // We need to do special handling of the substitutions if we are
+    // calling a static provided method. This is sort of unfortunate.
+    let mut is_static_provided = None;
+
     let map_node = session::expect(
         ccx.sess,
         ccx.tcx.items.find_copy(&fn_id.node),
@@ -129,6 +133,12 @@ pub fn monomorphic_fn(ccx: @mut CrateContext,
         return (get_item_val(ccx, fn_id.node), true);
       }
       ast_map::node_trait_method(@ast::provided(m), _, pt) => {
+        // If this is a static provided method, indicate that
+        // and stash the number of params on the method.
+        if m.explicit_self.node == ast::sty_static {
+            is_static_provided = Some(m.generics.ty_params.len());
+        }
+
         (pt, m.ident, m.span)
       }
       ast_map::node_trait_method(@ast::required(_), _, _) => {
@@ -153,8 +163,36 @@ pub fn monomorphic_fn(ccx: @mut CrateContext,
       ast_map::node_struct_ctor(_, i, pt) => (pt, i.ident, i.span)
     };
 
-    let mono_ty = ty::subst_tps(ccx.tcx, psubsts.tys,
-                                psubsts.self_ty, llitem_ty);
+    debug!("monomorphic_fn about to subst into %s", llitem_ty.repr(ccx.tcx));
+    let mono_ty = match is_static_provided {
+        None => ty::subst_tps(ccx.tcx, psubsts.tys,
+                              psubsts.self_ty, llitem_ty),
+        Some(num_method_ty_params) => {
+            // Static default methods are a little unfortunate, in
+            // that the "internal" and "external" type of them differ.
+            // Internally, the method body can refer to Self, but the
+            // externally visable type of the method has a type param
+            // inserted in between the trait type params and the
+            // method type params. The substs that we are given are
+            // the proper substs *internally* to the method body, so
+            // we have to use those when compiling it.
+            //
+            // In order to get the proper substitution to use on the
+            // type of the method, we pull apart the substitution and
+            // stick a substitution for the self type in.
+            // This is a bit unfortunate.
+
+            let idx = psubsts.tys.len() - num_method_ty_params;
+            let substs =
+                (psubsts.tys.slice(0, idx) +
+                 &[psubsts.self_ty.get()] +
+                 psubsts.tys.tailn(idx));
+            debug!("static default: changed substitution to %s",
+                   substs.repr(ccx.tcx));
+
+            ty::subst_tps(ccx.tcx, substs, None, llitem_ty)
+        }
+    };
     let llfty = type_of_fn_from_ty(ccx, mono_ty);
 
     ccx.stats.n_monos += 1;
