@@ -194,7 +194,7 @@ pub fn compile_input(ctxt: &Ctx,
                               Main => ~[]
                           }
                           + flags
-                          + cfgs.flat_map(|&c| { ~[~"--cfg", c] }),
+                          + cfgs.flat_map(|c| { ~[~"--cfg", copy *c] }),
                           driver::optgroups()).get();
     let options = @session::options {
         crate_type: crate_type,
@@ -311,8 +311,8 @@ pub fn compile_crate(ctxt: &Ctx, pkg_id: &PkgId,
                      what: OutputType) -> bool {
     debug!("compile_crate: crate=%s, dir=%s", crate.to_str(), dir.to_str());
     debug!("compile_crate: short_name = %s, flags =...", pkg_id.to_str());
-    for flags.iter().advance |&fl| {
-        debug!("+++ %s", fl);
+    for flags.iter().advance |fl| {
+        debug!("+++ %s", *fl);
     }
     compile_input(ctxt, pkg_id, crate, dir, flags, cfgs, opt, what)
 }

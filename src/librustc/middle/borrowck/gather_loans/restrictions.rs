@@ -64,7 +64,7 @@ impl RestrictionsContext {
         }
 
         match cmt.cat {
-            mc::cat_rvalue => {
+            mc::cat_rvalue(*) => {
                 // Effectively, rvalues are stored into a
                 // non-aliasable temporary on the stack. Since they
                 // are inherently non-aliasable, they can only be

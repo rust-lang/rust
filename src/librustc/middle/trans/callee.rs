@@ -600,7 +600,7 @@ pub fn trans_call_inner(in_cx: block,
         let mut bcx = callee.bcx;
         let ccx = cx.ccx();
         let ret_flag = if ret_in_loop {
-            let flag = alloca(bcx, Type::bool());
+            let flag = alloca(bcx, Type::bool(), "__ret_flag");
             Store(bcx, C_bool(false), flag);
             Some(flag)
         } else {
@@ -675,7 +675,7 @@ pub fn trans_call_inner(in_cx: block,
                 unsafe {
                     if ty::type_needs_drop(bcx.tcx(), ret_ty) {
                         if ty::type_is_immediate(bcx.tcx(), ret_ty) {
-                            let llscratchptr = alloc_ty(bcx, ret_ty);
+                            let llscratchptr = alloc_ty(bcx, ret_ty, "__ret");
                             Store(bcx, llresult, llscratchptr);
                             bcx = glue::drop_ty(bcx, llscratchptr, ret_ty);
                         } else {
@@ -733,7 +733,7 @@ pub fn trans_ret_slot(bcx: block, fn_ty: ty::t, dest: Option<expr::Dest>)
                     llvm::LLVMGetUndef(Type::nil().ptr_to().to_ref())
                 }
             } else {
-                alloc_ty(bcx, retty)
+                alloc_ty(bcx, retty, "__trans_ret_slot")
             }
         }
     }
@@ -823,7 +823,7 @@ pub fn trans_arg_expr(bcx: block,
                         _
                     }) => {
                     let scratch_ty = expr_ty(bcx, arg_expr);
-                    let scratch = alloc_ty(bcx, scratch_ty);
+                    let scratch = alloc_ty(bcx, scratch_ty, "__ret_flag");
                     let arg_ty = expr_ty(bcx, arg_expr);
                     let sigil = ty::ty_closure_sigil(arg_ty);
                     let bcx = closure::trans_expr_fn(
@@ -860,8 +860,6 @@ pub fn trans_arg_expr(bcx: block,
         // FIXME(#3548) use the adjustments table
         match autoref_arg {
             DoAutorefArg => {
-                assert!(!
-                    bcx.ccx().maps.moves_map.contains(&arg_expr.id));
                 val = arg_datum.to_ref_llval(bcx);
             }
             DontAutorefArg => {
@@ -875,10 +873,10 @@ pub fn trans_arg_expr(bcx: block,
                         //    &arg_expr.id);
                         debug!("by ref arg with type %s, storing to scratch",
                                bcx.ty_to_str(arg_datum.ty));
-                        let scratch = scratch_datum(bcx, arg_datum.ty, false);
+                        let scratch = scratch_datum(bcx, arg_datum.ty,
+                                                    "__self", false);
 
                         arg_datum.store_to_datum(bcx,
-                                                 arg_expr.id,
                                                  INIT,
                                                  scratch);
 
@@ -895,10 +893,10 @@ pub fn trans_arg_expr(bcx: block,
                                 arg_datum.appropriate_mode(bcx.tcx()).is_by_ref() {
                             debug!("by copy arg with type %s, storing to scratch",
                                    bcx.ty_to_str(arg_datum.ty));
-                            let scratch = scratch_datum(bcx, arg_datum.ty, false);
+                            let scratch = scratch_datum(bcx, arg_datum.ty,
+                                                        "__arg", false);
 
                             arg_datum.store_to_datum(bcx,
-                                                     arg_expr.id,
                                                      INIT,
                                                      scratch);
 

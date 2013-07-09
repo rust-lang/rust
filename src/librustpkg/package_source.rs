@@ -202,7 +202,7 @@ impl PkgSrc {
                     crates: &[Crate],
                     cfgs: &[~str],
                     what: OutputType) {
-        for crates.iter().advance |&crate| {
+        for crates.iter().advance |crate| {
             let path = &src_dir.push_rel(&crate.file).normalize();
             note(fmt!("build_crates: compiling %s", path.to_str()));
             note(fmt!("build_crates: destination dir is %s", dst_dir.to_str()));

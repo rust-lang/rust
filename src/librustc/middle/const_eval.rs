@@ -187,7 +187,6 @@ pub fn lookup_const_by_id(tcx: ty::ctxt,
             method_map: @mut HashMap::new(),
             vtable_map: @mut HashMap::new(),
             write_guard_map: @mut HashSet::new(),
-            moves_map: @mut HashSet::new(),
             capture_map: @mut HashMap::new()
         };
         match csearch::maybe_get_item_ast(tcx, def_id,

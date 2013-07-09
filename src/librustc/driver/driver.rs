@@ -314,7 +314,6 @@ pub fn compile_rest(sess: Session,
             method_map: method_map,
             vtable_map: vtable_map,
             write_guard_map: write_guard_map,
-            moves_map: moves_map,
             capture_map: capture_map
         };
 

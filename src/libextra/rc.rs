@@ -73,7 +73,7 @@ impl<T> Drop for Rc<T> {
             if self.ptr.is_not_null() {
                 (*self.ptr).count -= 1;
                 if (*self.ptr).count == 0 {
-                    ptr::replace_ptr(self.ptr, intrinsics::uninit());
+                    ptr::read_ptr(self.ptr);
                     free(self.ptr as *c_void)
                 }
             }

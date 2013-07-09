@@ -49,23 +49,13 @@ pub fn check_crate(tcx: ty::ctxt,
     tcx.sess.abort_if_errors();
 }
 
-pub fn expr_is_non_moving_lvalue(cx: &MatchCheckCtxt, expr: &expr) -> bool {
-    if !ty::expr_is_lval(cx.tcx, cx.method_map, expr) {
-        return false;
-    }
-
-    !cx.moves_map.contains(&expr.id)
-}
-
 pub fn check_expr(cx: @MatchCheckCtxt, ex: @expr, (s, v): ((), visit::vt<()>)) {
     visit::visit_expr(ex, (s, v));
     match ex.node {
       expr_match(scrut, ref arms) => {
         // First, check legality of move bindings.
-        let is_non_moving_lvalue = expr_is_non_moving_lvalue(cx, ex);
         for arms.iter().advance |arm| {
             check_legality_of_move_bindings(cx,
-                                            is_non_moving_lvalue,
                                             arm.guard.is_some(),
                                             arm.pats);
         }
@@ -758,11 +748,7 @@ pub fn check_local(cx: &MatchCheckCtxt,
     }
 
     // Check legality of move bindings.
-    let is_lvalue = match loc.node.init {
-        Some(init) => expr_is_non_moving_lvalue(cx, init),
-        None => true
-    };
-    check_legality_of_move_bindings(cx, is_lvalue, false, [ loc.node.pat ]);
+    check_legality_of_move_bindings(cx, false, [ loc.node.pat ]);
 }
 
 pub fn check_fn(cx: &MatchCheckCtxt,
@@ -821,7 +807,6 @@ pub fn is_refutable(cx: &MatchCheckCtxt, pat: &pat) -> bool {
 // Legality of move bindings checking
 
 pub fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
-                                       is_lvalue: bool,
                                        has_guard: bool,
                                        pats: &[@pat]) {
     let tcx = cx.tcx;
@@ -861,11 +846,6 @@ pub fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
             tcx.sess.span_note(
                 by_ref_span.get(),
                 "by-ref binding occurs here");
-        } else if is_lvalue {
-            tcx.sess.span_err(
-                p.span,
-                "cannot bind by-move when \
-                 matching an lvalue");
         }
     };
 

@@ -193,7 +193,9 @@ pub fn compute_moves(tcx: ty::ctxt,
                      crate: &crate) -> MoveMaps
 {
     let visitor = visit::mk_vt(@visit::Visitor {
+        visit_fn: compute_modes_for_fn,
         visit_expr: compute_modes_for_expr,
+        visit_local: compute_modes_for_local,
         .. *visit::default_visitor()
     });
     let visit_cx = VisitContext {
@@ -220,8 +222,30 @@ pub fn moved_variable_node_id_from_def(def: def) -> Option<node_id> {
     }
 }
 
-// ______________________________________________________________________
+///////////////////////////////////////////////////////////////////////////
 // Expressions
+
+fn compute_modes_for_local<'a>(local: @local,
+                               (cx, v): (VisitContext,
+                                         vt<VisitContext>)) {
+    cx.use_pat(local.node.pat);
+    for local.node.init.iter().advance |&init| {
+        cx.use_expr(init, Read, v);
+    }
+}
+
+fn compute_modes_for_fn(fk: &visit::fn_kind,
+                        decl: &fn_decl,
+                        body: &blk,
+                        span: span,
+                        id: node_id,
+                        (cx, v): (VisitContext,
+                                  vt<VisitContext>)) {
+    for decl.inputs.iter().advance |a| {
+        cx.use_pat(a.pat);
+    }
+    visit::visit_fn(fk, decl, body, span, id, (cx, v));
+}
 
 fn compute_modes_for_expr(expr: @expr,
                           (cx, v): (VisitContext,
@@ -522,7 +546,10 @@ impl VisitContext {
                 self.use_expr(base, comp_mode, visitor);
             }
 
-            expr_fn_block(_, ref body) => {
+            expr_fn_block(ref decl, ref body) => {
+                for decl.inputs.iter().advance |a| {
+                    self.use_pat(a.pat);
+                }
                 let cap_vars = self.compute_captures(expr.id);
                 self.move_maps.capture_map.insert(expr.id, cap_vars);
                 self.consume_block(body, visitor);
@@ -580,13 +607,15 @@ impl VisitContext {
          * into itself or not based on its type and annotation.
          */
 
-        do pat_bindings(self.tcx.def_map, pat) |bm, id, _span, _path| {
+        do pat_bindings(self.tcx.def_map, pat) |bm, id, _span, path| {
             let binding_moves = match bm {
                 bind_by_ref(_) => false,
                 bind_infer => {
                     let pat_ty = ty::node_id_to_type(self.tcx, id);
-                    debug!("pattern %? type is %s",
-                           id, pat_ty.repr(self.tcx));
+                    debug!("pattern %? %s type is %s",
+                           id,
+                           ast_util::path_to_ident(path).repr(self.tcx),
+                           pat_ty.repr(self.tcx));
                     ty::type_moves_by_default(self.tcx, pat_ty)
                 }
             };

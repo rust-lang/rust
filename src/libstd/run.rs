@@ -715,10 +715,16 @@ fn with_envp<T>(env: Option<&[(~str, ~str)]>, cb: &fn(*c_void) -> T) -> T {
         let mut tmps = ~[];
         let mut ptrs = ~[];
 
-        for es.iter().advance |&(k, v)| {
-            let kv = @fmt!("%s=%s", k, v);
-            tmps.push(kv);
-            ptrs.push(str::as_c_str(*kv, |b| b));
+        for es.iter().advance |pair| {
+            // Use of match here is just to workaround limitations
+            // in the stage0 irrefutable pattern impl.
+            match pair {
+                &(ref k, ref v) => {
+                    let kv = @fmt!("%s=%s", *k, *v);
+                    tmps.push(kv);
+                    ptrs.push(str::as_c_str(*kv, |b| b));
+                }
+            }
         }
 
         ptrs.push(ptr::null());
@@ -738,8 +744,8 @@ fn with_envp<T>(env: Option<&[(~str, ~str)]>, cb: &fn(*mut c_void) -> T) -> T {
     match env {
       Some(es) => {
         let mut blk = ~[];
-        for es.iter().advance |&(k, v)| {
-            let kv = fmt!("%s=%s", k, v);
+        for es.iter().advance |pair| {
+            let kv = fmt!("%s=%s", pair.first(), pair.second());
             blk.push_all(kv.as_bytes_with_null_consume());
         }
         blk.push(0);
@@ -1294,9 +1300,9 @@ mod tests {
         let output = str::from_bytes(prog.finish_with_output().output);
 
         let r = os::env();
-        for r.iter().advance |&(k, v)| {
+        for r.iter().advance |&(ref k, ref v)| {
             // don't check windows magical empty-named variables
-            assert!(k.is_empty() || output.contains(fmt!("%s=%s", k, v)));
+            assert!(k.is_empty() || output.contains(fmt!("%s=%s", *k, *v)));
         }
     }
     #[test]

@@ -157,8 +157,8 @@ impl<D:Decoder> Decodable<D> for WorkMap {
     fn decode(d: &mut D) -> WorkMap {
         let v : ~[(WorkKey,~str)] = Decodable::decode(d);
         let mut w = WorkMap::new();
-        for v.iter().advance |&(k, v)| {
-            w.insert(copy k, copy v);
+        for v.iter().advance |pair| {
+            w.insert(pair.first(), pair.second());
         }
         w
     }
