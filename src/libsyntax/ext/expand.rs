@@ -1256,6 +1256,10 @@ mod test {
         //pprust::to_str(&resolved_ast,fake_print_crate,get_ident_interner())
     //}
 
+    #[test] fn macro_tokens_should_match(){
+        expand_crate_str(@"macro_rules! m((a)=>(13)) fn main(){m!(a);}");
+    }
+
     // renaming tests expand a crate and then check that the bindings match
     // the right varrefs. The specification of the test case includes the
     // text of the crate, and also an array of arrays.  Each element in the
