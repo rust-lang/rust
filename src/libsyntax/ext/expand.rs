@@ -12,7 +12,7 @@ use ast::{Block, Crate, NodeId, Expr_, ExprMac, Ident, mac_invoc_tt};
 use ast::{item_mac, Stmt_, StmtMac, StmtExpr, StmtSemi};
 use ast::{ILLEGAL_CTXT};
 use ast;
-use ast_util::{new_rename, new_mark, resolve};
+use ast_util::{new_rename, new_mark, mtwt_resolve};
 use attr;
 use attr::AttrMetaMethods;
 use codemap;
@@ -1218,11 +1218,10 @@ pub fn new_ident_resolver() ->
     @fn(ast::Ident)->ast::Ident {
     |id : ast::Ident|
     ast::Ident {
-        name : resolve(id),
+        name : mtwt_resolve(id),
         ctxt : ILLEGAL_CTXT
     }
 }
-
 
 #[cfg(test)]
 mod test {
