@@ -973,21 +973,6 @@ pub fn new_rename_folder(from : ast::ident, to : ast::Name) -> @AstFoldFns {
     fun_to_ctxt_folder(@Renamer{from:from,to:to})
 }
 
-/*
-// perform resolution (in the MTWT sense) on all of the
-// idents in the tree. This is the final step in expansion.
-// FIXME #6993: this function could go away, along with
-// the separate mtwt_resolution pass
-pub fn new_ident_resolver() ->
-    @fn(ast::ident)->ast::ident {
-    |id : ast::ident|
-    ast::ident {
-        name : mtwt_resolve(id),
-        ctxt : empty_ctxt
-    }
-}
-*/
-
 // apply a given mark to the given token trees. Used prior to expansion of a macro.
 fn mark_tts(tts : &[token_tree], m : Mrk) -> ~[token_tree] {
     fold_tts(tts,new_mark_folder(m) as @ast_fold)
