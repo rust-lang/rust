@@ -110,7 +110,7 @@ pub struct Path {
     global: bool,
     idents: ~[ident],
     rp: Option<Lifetime>,
-    types: ~[Ty],
+    types: ~[@Ty],
 }
 
 pub type crate_num = int;
@@ -361,7 +361,7 @@ pub enum stmt_ {
 #[deriving(Eq, Encodable, Decodable,IterBytes)]
 pub struct local_ {
     is_mutbl: bool,
-    ty: Ty,
+    ty: @Ty,
     pat: @pat,
     init: Option<@expr>,
     id: node_id,
@@ -429,12 +429,12 @@ pub enum expr_ {
     expr_vstore(@expr, expr_vstore),
     expr_vec(~[@expr], mutability),
     expr_call(@expr, ~[@expr], CallSugar),
-    expr_method_call(node_id, @expr, ident, ~[Ty], ~[@expr], CallSugar),
+    expr_method_call(node_id, @expr, ident, ~[@Ty], ~[@expr], CallSugar),
     expr_tup(~[@expr]),
     expr_binary(node_id, binop, @expr, @expr),
     expr_unary(node_id, unop, @expr),
     expr_lit(@lit),
-    expr_cast(@expr, Ty),
+    expr_cast(@expr, @Ty),
     expr_if(@expr, blk, Option<@expr>),
     expr_while(@expr, blk),
     /* Conditionless loop (can be exited with break, cont, or ret)
@@ -454,7 +454,7 @@ pub enum expr_ {
     expr_copy(@expr),
     expr_assign(@expr, @expr),
     expr_assign_op(node_id, binop, @expr, @expr),
-    expr_field(@expr, ident, ~[Ty]),
+    expr_field(@expr, ident, ~[@Ty]),
     expr_index(node_id, @expr, @expr),
     expr_path(Path),
 
@@ -604,7 +604,7 @@ pub enum lit_ {
 // type structure in middle/ty.rs as well.
 #[deriving(Eq, Encodable, Decodable,IterBytes)]
 pub struct mt {
-    ty: ~Ty,
+    ty: @Ty,
     mutbl: mutability,
 }
 
@@ -733,7 +733,7 @@ pub enum ty_ {
     ty_rptr(Option<Lifetime>, mt),
     ty_closure(@TyClosure),
     ty_bare_fn(@TyBareFn),
-    ty_tup(~[Ty]),
+    ty_tup(~[@Ty]),
     ty_path(Path, Option<OptVec<TyParamBound>>, node_id), // for #7264; see above
     ty_mac(mac),
     // ty_infer means the type should be inferred instead of it having been
@@ -762,7 +762,7 @@ pub struct inline_asm {
 #[deriving(Eq, Encodable, Decodable,IterBytes)]
 pub struct arg {
     is_mutbl: bool,
-    ty: Ty,
+    ty: @Ty,
     pat: @pat,
     id: node_id,
 }
@@ -770,7 +770,7 @@ pub struct arg {
 #[deriving(Eq, Encodable, Decodable,IterBytes)]
 pub struct fn_decl {
     inputs: ~[arg],
-    output: Ty,
+    output: @Ty,
     cf: ret_style,
 }
 
@@ -845,7 +845,7 @@ pub struct foreign_mod {
 
 #[deriving(Eq, Encodable, Decodable,IterBytes)]
 pub struct variant_arg {
-    ty: Ty,
+    ty: @Ty,
     id: node_id,
 }
 
@@ -959,7 +959,7 @@ impl visibility {
 pub struct struct_field_ {
     kind: struct_field_kind,
     id: node_id,
-    ty: Ty,
+    ty: @Ty,
     attrs: ~[attribute],
 }
 
@@ -995,17 +995,17 @@ pub struct item {
 
 #[deriving(Eq, Encodable, Decodable,IterBytes)]
 pub enum item_ {
-    item_static(Ty, mutability, @expr),
+    item_static(@Ty, mutability, @expr),
     item_fn(fn_decl, purity, AbiSet, Generics, blk),
     item_mod(_mod),
     item_foreign_mod(foreign_mod),
-    item_ty(Ty, Generics),
+    item_ty(@Ty, Generics),
     item_enum(enum_def, Generics),
     item_struct(@struct_def, Generics),
     item_trait(Generics, ~[trait_ref], ~[trait_method]),
     item_impl(Generics,
               Option<trait_ref>, // (optional) trait this impl implements
-              Ty, // self
+              @Ty, // self
               ~[@method]),
     // a macro invocation (which includes macro definition)
     item_mac(mac),
@@ -1024,7 +1024,7 @@ pub struct foreign_item {
 #[deriving(Eq, Encodable, Decodable,IterBytes)]
 pub enum foreign_item_ {
     foreign_item_fn(fn_decl, purity, Generics),
-    foreign_item_static(Ty, /* is_mutbl */ bool),
+    foreign_item_static(@Ty, /* is_mutbl */ bool),
 }
 
 // The data we save and restore about an inlined item or method.  This is not

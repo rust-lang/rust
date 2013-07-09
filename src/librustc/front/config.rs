@@ -98,10 +98,10 @@ fn fold_foreign_mod(
 fn fold_item_underscore(cx: @Context, item: &ast::item_,
                         fld: @fold::ast_fold) -> ast::item_ {
     let item = match *item {
-        ast::item_impl(ref a, ref b, ref c, ref methods) => {
+        ast::item_impl(ref a, ref b, c, ref methods) => {
             let methods = methods.iter().filter(|m| method_in_cfg(cx, **m))
                 .transform(|x| *x).collect();
-            ast::item_impl(/*bad*/ copy *a, /*bad*/ copy *b, /*bad*/ copy *c, methods)
+            ast::item_impl(/*bad*/ copy *a, /*bad*/ copy *b, c, methods)
         }
         ast::item_trait(ref a, ref b, ref methods) => {
             let methods = methods.iter().filter(|m| trait_method_in_cfg(cx, *m) )

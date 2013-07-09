@@ -1811,7 +1811,7 @@ pub fn copy_args_to_allocas(fcx: fn_ctxt,
         fcx.llargs.insert(arg_id, llarg);
 
         if fcx.ccx.sess.opts.extra_debuginfo && fcx_has_nonzero_span(fcx) {
-            debuginfo::create_arg(bcx, &args[arg_n], args[arg_n].ty.span);
+            debuginfo::create_arg(bcx, args[arg_n], args[arg_n].ty.span);
         }
     }
 
@@ -1979,7 +1979,7 @@ pub fn trans_enum_variant(ccx: @mut CrateContext,
     let fn_args = do args.map |varg| {
         ast::arg {
             is_mutbl: false,
-            ty: copy varg.ty,
+            ty: varg.ty,
             pat: ast_util::ident_to_pat(
                 ccx.tcx.sess.next_node_id(),
                 codemap::dummy_sp(),
@@ -2053,7 +2053,7 @@ pub fn trans_tuple_struct(ccx: @mut CrateContext,
     let fn_args = do fields.map |field| {
         ast::arg {
             is_mutbl: false,
-            ty: copy field.node.ty,
+            ty: field.node.ty,
             pat: ast_util::ident_to_pat(ccx.tcx.sess.next_node_id(),
                                         codemap::dummy_sp(),
                                         special_idents::arg),
