@@ -13,9 +13,10 @@
 use cast;
 use cmp::Eq;
 use libc;
-use prelude::*;
-use task::rt;
 use local_data::LocalDataKey;
+use prelude::*;
+use sys;
+use task::rt;
 
 use super::rt::rust_task;
 use rt::task::{Task, LocalStorage};
@@ -61,7 +62,7 @@ impl Eq for @LocalData {
 // proper map.
 type TaskLocalElement = (*libc::c_void, *libc::c_void, @LocalData);
 // Has to be a pointer at outermost layer; the foreign call returns void *.
-type TaskLocalMap = @mut ~[Option<TaskLocalElement>];
+type TaskLocalMap = ~[Option<TaskLocalElement>];
 
 fn cleanup_task_local_map(map_ptr: *libc::c_void) {
     unsafe {
@@ -74,85 +75,75 @@ fn cleanup_task_local_map(map_ptr: *libc::c_void) {
 }
 
 // Gets the map from the runtime. Lazily initialises if not done so already.
-unsafe fn get_local_map(handle: Handle) -> TaskLocalMap {
+unsafe fn get_local_map(handle: Handle) -> &mut TaskLocalMap {
     match handle {
         OldHandle(task) => get_task_local_map(task),
         NewHandle(local_storage) => get_newsched_local_map(local_storage)
     }
 }
 
-unsafe fn get_task_local_map(task: *rust_task) -> TaskLocalMap {
+unsafe fn get_task_local_map(task: *rust_task) -> &mut TaskLocalMap {
 
     extern fn cleanup_task_local_map_extern_cb(map_ptr: *libc::c_void) {
         cleanup_task_local_map(map_ptr);
     }
 
     // Relies on the runtime initialising the pointer to null.
-    // Note: The map's box lives in TLS invisibly referenced once. Each time
-    // we retrieve it for get/set, we make another reference, which get/set
-    // drop when they finish. No "re-storing after modifying" is needed.
+    // Note: the map is an owned pointer and is "owned" by TLS. It is moved
+    // into the tls slot for this task, and then mutable loans are taken from
+    // this slot to modify the map.
     let map_ptr = rt::rust_get_task_local_data(task);
-    if map_ptr.is_null() {
-        let map: TaskLocalMap = @mut ~[];
-        // NB: This bumps the ref count before converting to an unsafe pointer,
-        // keeping the map alive until TLS is destroyed
-        rt::rust_set_task_local_data(task, cast::transmute(map));
+    if (*map_ptr).is_null() {
+        // First time TLS is used, create a new map and set up the necessary
+        // TLS information for its safe destruction
+        let map: TaskLocalMap = ~[];
+        *map_ptr = cast::transmute(map);
         rt::rust_task_local_data_atexit(task, cleanup_task_local_map_extern_cb);
-        map
-    } else {
-        let map = cast::transmute(map_ptr);
-        let nonmut = cast::transmute::<TaskLocalMap,
-                                       @~[Option<TaskLocalElement>]>(map);
-        cast::bump_box_refcount(nonmut);
-        map
     }
+    return cast::transmute(map_ptr);
 }
 
-unsafe fn get_newsched_local_map(local: *mut LocalStorage) -> TaskLocalMap {
+unsafe fn get_newsched_local_map(local: *mut LocalStorage) -> &mut TaskLocalMap {
+    // This is based on the same idea as the oldsched code above.
     match &mut *local {
-        &LocalStorage(map_ptr, Some(_)) => {
+        // If the at_exit function is already set, then we just need to take a
+        // loan out on the TLS map stored inside
+        &LocalStorage(ref mut map_ptr, Some(_)) => {
             assert!(map_ptr.is_not_null());
-            let map = cast::transmute(map_ptr);
-            let nonmut = cast::transmute::<TaskLocalMap,
-            @~[Option<TaskLocalElement>]>(map);
-            cast::bump_box_refcount(nonmut);
-            return map;
+            return cast::transmute(map_ptr);
         }
+        // If this is the first time we've accessed TLS, perform similar
+        // actions to the oldsched way of doing things.
         &LocalStorage(ref mut map_ptr, ref mut at_exit) => {
-            assert!((*map_ptr).is_null());
-            let map: TaskLocalMap = @mut ~[];
+            assert!(map_ptr.is_null());
+            assert!(at_exit.is_none());
+            let map: TaskLocalMap = ~[];
             *map_ptr = cast::transmute(map);
-            let at_exit_fn: ~fn(*libc::c_void) = |p|cleanup_task_local_map(p);
+            let at_exit_fn: ~fn(*libc::c_void) = |p| cleanup_task_local_map(p);
             *at_exit = Some(at_exit_fn);
-            return map;
+            return cast::transmute(map_ptr);
         }
     }
 }
 
 unsafe fn key_to_key_value<T: 'static>(key: LocalDataKey<T>) -> *libc::c_void {
-    // Keys are closures, which are (fnptr,envptr) pairs. Use fnptr.
-    // Use reinterpret_cast -- transmute would leak (forget) the closure.
-    let pair: (*libc::c_void, *libc::c_void) = cast::transmute_copy(&key);
-    pair.first()
+    let pair: sys::Closure = cast::transmute(key);
+    return pair.code as *libc::c_void;
 }
 
 // If returning Some(..), returns with @T with the map's reference. Careful!
 unsafe fn local_data_lookup<T: 'static>(
-    map: TaskLocalMap, key: LocalDataKey<T>)
+    map: &mut TaskLocalMap, key: LocalDataKey<T>)
     -> Option<(uint, *libc::c_void)> {
 
     let key_value = key_to_key_value(key);
-    let map_pos = (*map).iter().position(|entry|
+    for map.iter().enumerate().advance |(i, entry)| {
         match *entry {
-            Some((k,_,_)) => k == key_value,
-            None => false
+            Some((k, data, _)) if k == key_value => { return Some((i, data)); }
+            _ => {}
         }
-    );
-    do map_pos.map |index| {
-        // .get() is guaranteed because of "None { false }" above.
-        let (_, data_ptr, _) = (*map)[*index].get();
-        (*index, data_ptr)
     }
+    return None;
 }
 
 unsafe fn local_get_helper<T: 'static>(
@@ -215,7 +206,7 @@ pub unsafe fn local_set<T: 'static>(
         }
         None => {
             // Find an empty slot. If not, grow the vector.
-            match (*map).iter().position(|x| x.is_none()) {
+            match map.iter().position(|x| x.is_none()) {
                 Some(empty_index) => { map[empty_index] = new_entry; }
                 None => { map.push(new_entry); }
             }
