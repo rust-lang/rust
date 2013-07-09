@@ -26,7 +26,7 @@ pub struct Handler<T, U> {
 
 pub struct Condition<'self, T, U> {
     name: &'static str,
-    key: local_data::LocalDataKey<'self, Handler<T, U>>
+    key: local_data::LocalDataKey<'self, @Handler<T, U>>
 }
 
 impl<'self, T, U> Condition<'self, T, U> {
