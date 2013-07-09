@@ -46,33 +46,27 @@ use task::local_data_priv::{local_get, local_pop, local_set, Handle};
  *
  * These two cases aside, the interface is safe.
  */
-pub type LocalDataKey<'self,T> = &'self fn:Copy(v: @T);
+pub type LocalDataKey<'self,T> = &'self fn:Copy(v: T);
 
 /**
  * Remove a task-local data value from the table, returning the
  * reference that was originally created to insert it.
  */
-pub unsafe fn local_data_pop<T: 'static>(
-    key: LocalDataKey<T>) -> Option<@T> {
-
+pub unsafe fn local_data_pop<T: 'static>(key: LocalDataKey<T>) -> Option<T> {
     local_pop(Handle::new(), key)
 }
 /**
  * Retrieve a task-local data value. It will also be kept alive in the
  * table until explicitly removed.
  */
-pub unsafe fn local_data_get<T: 'static>(
-    key: LocalDataKey<T>) -> Option<@T> {
-
-    local_get(Handle::new(), key)
+pub unsafe fn local_data_get<T: 'static>(key: LocalDataKey<@T>) -> Option<@T> {
+    local_get(Handle::new(), key, |loc| loc.map(|&x| *x))
 }
 /**
  * Store a value in task-local data. If this key already has a value,
  * that value is overwritten (and its destructor is run).
  */
-pub unsafe fn local_data_set<T: 'static>(
-    key: LocalDataKey<T>, data: @T) {
-
+pub unsafe fn local_data_set<T: 'static>(key: LocalDataKey<@T>, data: @T) {
     local_set(Handle::new(), key, data)
 }
 /**
@@ -80,7 +74,7 @@ pub unsafe fn local_data_set<T: 'static>(
  * data is removed (and its reference dropped).
  */
 pub unsafe fn local_data_modify<T: 'static>(
-    key: LocalDataKey<T>,
+    key: LocalDataKey<@T>,
     modify_fn: &fn(Option<@T>) -> Option<@T>) {
 
     let cur = local_data_pop(key);
