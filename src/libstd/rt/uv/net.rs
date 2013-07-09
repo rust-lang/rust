@@ -392,6 +392,13 @@ impl UdpWatcher {
 
         extern fn recv_cb(handle: *uvll::uv_udp_t, nread: ssize_t, buf: Buf,
                           addr: *uvll::sockaddr, flags: c_uint) {
+            // When there's no data to read the recv callback can be a no-op.
+            // This can happen if read returns EAGAIN/EWOULDBLOCK. By ignoring
+            // this we just drop back to kqueue and wait for the next callback.
+            if nread == 0 {
+                return;
+            }
+
             rtdebug!("buf addr: %x", buf.base as uint);
             rtdebug!("buf len: %d", buf.len as int);
             let mut udp_watcher: UdpWatcher = NativeHandle::from_native_handle(handle);
