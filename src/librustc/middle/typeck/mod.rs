@@ -319,16 +319,19 @@ fn check_main_fn_ty(ccx: &CrateCtxt,
                 }
                 _ => ()
             }
-            let mut ok = ty::type_is_nil(fn_ty.sig.output);
-            let num_args = fn_ty.sig.inputs.len();
-            ok &= num_args == 0u;
-            if !ok {
-                tcx.sess.span_err(
-                    main_span,
-                    fmt!("Wrong type in main function: found `%s`, \
-                          expected `fn() -> ()`",
-                         ppaux::ty_to_str(tcx, main_t)));
-            }
+            let se_ty = ty::mk_bare_fn(tcx, ty::BareFnTy {
+                purity: ast::impure_fn,
+                abis: abi::AbiSet::Rust(),
+                sig: ty::FnSig {
+                    bound_lifetime_names: opt_vec::Empty,
+                    inputs: ~[],
+                    output: ty::mk_nil()
+                }
+            });
+
+            require_same_types(tcx, None, false, main_span, main_t, se_ty,
+                || fmt!("main function expects type: `%s`",
+                        ppaux::ty_to_str(ccx.tcx, se_ty)));
         }
         _ => {
             tcx.sess.span_bug(main_span,
