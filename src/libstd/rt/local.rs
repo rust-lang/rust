@@ -103,46 +103,55 @@ impl Local for IoFactoryObject {
 
 #[cfg(test)]
 mod test {
+    use unstable::run_in_bare_thread;
     use rt::test::*;
     use rt::sched::Scheduler;
     use super::*;
 
     #[test]
     fn thread_local_scheduler_smoke_test() {
-        let scheduler = ~new_test_uv_sched();
-        Local::put(scheduler);
-        let _scheduler: ~Scheduler = Local::take();
+        do run_in_bare_thread {
+            let scheduler = ~new_test_uv_sched();
+            Local::put(scheduler);
+            let _scheduler: ~Scheduler = Local::take();
+        }
     }
 
     #[test]
     fn thread_local_scheduler_two_instances() {
-        let scheduler = ~new_test_uv_sched();
-        Local::put(scheduler);
-        let _scheduler: ~Scheduler = Local::take();
-        let scheduler = ~new_test_uv_sched();
-        Local::put(scheduler);
-        let _scheduler: ~Scheduler = Local::take();
+        do run_in_bare_thread {
+            let scheduler = ~new_test_uv_sched();
+            Local::put(scheduler);
+            let _scheduler: ~Scheduler = Local::take();
+            let scheduler = ~new_test_uv_sched();
+            Local::put(scheduler);
+            let _scheduler: ~Scheduler = Local::take();
+        }
     }
 
     #[test]
     fn borrow_smoke_test() {
-        let scheduler = ~new_test_uv_sched();
-        Local::put(scheduler);
-        unsafe {
-            let _scheduler: *mut Scheduler = Local::unsafe_borrow();
+        do run_in_bare_thread {
+            let scheduler = ~new_test_uv_sched();
+            Local::put(scheduler);
+            unsafe {
+                let _scheduler: *mut Scheduler = Local::unsafe_borrow();
+            }
+            let _scheduler: ~Scheduler = Local::take();
         }
-        let _scheduler: ~Scheduler = Local::take();
     }
 
     #[test]
     fn borrow_with_return() {
-        let scheduler = ~new_test_uv_sched();
-        Local::put(scheduler);
-        let res = do Local::borrow::<Scheduler,bool> |_sched| {
-            true
-        };
-        assert!(res)
-        let _scheduler: ~Scheduler = Local::take();
+        do run_in_bare_thread {
+            let scheduler = ~new_test_uv_sched();
+            Local::put(scheduler);
+            let res = do Local::borrow::<Scheduler,bool> |_sched| {
+                true
+            };
+            assert!(res);
+            let _scheduler: ~Scheduler = Local::take();
+        }
     }
 
 }
