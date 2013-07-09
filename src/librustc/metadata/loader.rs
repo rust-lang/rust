@@ -25,11 +25,11 @@ use syntax::{ast, attr};
 
 use std::cast;
 use std::io;
+use std::num;
 use std::option;
 use std::os::consts::{macos, freebsd, linux, android, win32};
 use std::ptr;
 use std::str;
-use std::uint;
 use std::vec;
 use extra::flate;
 
@@ -213,7 +213,7 @@ fn get_metadata_section(os: os,
                 let vlen = encoder::metadata_encoding_version.len();
                 debug!("checking %u bytes of metadata-version stamp",
                        vlen);
-                let minsz = uint::min(vlen, csz);
+                let minsz = num::min(vlen, csz);
                 let mut version_ok = false;
                 do vec::raw::buf_as_slice(cvbuf, minsz) |buf0| {
                     version_ok = (buf0 ==

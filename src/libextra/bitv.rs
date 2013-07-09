@@ -12,6 +12,7 @@
 
 
 use std::cmp;
+use std::num;
 use std::ops;
 use std::uint;
 use std::vec;
@@ -726,7 +727,7 @@ impl Set<uint> for BitvSet {
         }
         let nbits = self.capacity();
         if value >= nbits {
-            let newsize = uint::max(value, nbits * 2) / uint::bits + 1;
+            let newsize = num::max(value, nbits * 2) / uint::bits + 1;
             assert!(newsize > self.bitv.storage.len());
             self.bitv.storage.grow(newsize, &0);
         }
@@ -825,7 +826,7 @@ impl BitvSet {
     /// and w1/w2 are the words coming from the two vectors self, other.
     fn each_common(&self, other: &BitvSet,
                    f: &fn(uint, uint, uint) -> bool) -> bool {
-        let min = uint::min(self.bitv.storage.len(),
+        let min = num::min(self.bitv.storage.len(),
                             other.bitv.storage.len());
         self.bitv.storage.slice(0, min).iter().enumerate().advance(|(i, &w)| {
             f(i * uint::bits, w, other.bitv.storage[i])
@@ -843,7 +844,7 @@ impl BitvSet {
                     f: &fn(bool, uint, uint) -> bool) -> bool {
         let len1 = self.bitv.storage.len();
         let len2 = other.bitv.storage.len();
-        let min = uint::min(len1, len2);
+        let min = num::min(len1, len2);
 
         /* only one of these loops will execute and that's the point */
         for self.bitv.storage.slice(min, len1).iter().enumerate().advance |(i, &w)| {

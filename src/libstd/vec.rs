@@ -1964,7 +1964,7 @@ pub mod raw {
 /// Operations on `[u8]`
 pub mod bytes {
     use libc;
-    use uint;
+    use num;
     use vec::raw;
     use vec;
     use ptr;
@@ -1988,7 +1988,7 @@ pub mod bytes {
     pub fn memcmp(a: &~[u8], b: &~[u8]) -> int {
         let a_len = a.len();
         let b_len = b.len();
-        let n = uint::min(a_len, b_len) as libc::size_t;
+        let n = num::min(a_len, b_len) as libc::size_t;
         let r = unsafe {
             libc::memcmp(raw::to_ptr(*a) as *libc::c_void,
                          raw::to_ptr(*b) as *libc::c_void, n) as int

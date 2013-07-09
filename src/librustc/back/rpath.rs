@@ -14,6 +14,7 @@ use metadata::cstore;
 use metadata::filesearch;
 
 use std::hashmap::HashSet;
+use std::num;
 use std::os;
 use std::uint;
 use std::util;
@@ -141,7 +142,7 @@ pub fn get_relative_to(abs1: &Path, abs2: &Path) -> Path {
     assert!(len1 > 0);
     assert!(len2 > 0);
 
-    let max_common_path = uint::min(len1, len2) - 1;
+    let max_common_path = num::min(len1, len2) - 1;
     let mut start_idx = 0;
     while start_idx < max_common_path
         && split1[start_idx] == split2[start_idx] {

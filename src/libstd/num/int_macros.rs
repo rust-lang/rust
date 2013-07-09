@@ -29,62 +29,6 @@ pub static bytes : uint = ($bits / 8);
 pub static min_value: $T = (-1 as $T) << (bits - 1);
 pub static max_value: $T = min_value - 1 as $T;
 
-/// Calculates the sum of two numbers
-#[inline]
-pub fn add(x: $T, y: $T) -> $T { x + y }
-/// Subtracts the second number from the first
-#[inline]
-pub fn sub(x: $T, y: $T) -> $T { x - y }
-/// Multiplies two numbers together
-#[inline]
-pub fn mul(x: $T, y: $T) -> $T { x * y }
-/// Divides the first argument by the second argument (using integer division)
-/// Divides the first argument by the second argument (using integer division)
-#[inline]
-pub fn div(x: $T, y: $T) -> $T { x / y }
-
-///
-/// Returns the remainder of y / x.
-///
-/// # Examples
-/// ~~~
-/// assert!(int::rem(5 / 2) == 1);
-/// ~~~
-///
-/// When faced with negative numbers, the result copies the sign of the
-/// dividend.
-///
-/// ~~~
-/// assert!(int::rem(2 / -3) ==  2);
-/// ~~~
-///
-/// ~~~
-/// assert!(int::rem(-2 / 3) ==  -2);
-/// ~~~
-///
-///
-#[inline]
-pub fn rem(x: $T, y: $T) -> $T { x % y }
-
-/// Returns true iff `x < y`
-#[inline]
-pub fn lt(x: $T, y: $T) -> bool { x < y }
-/// Returns true iff `x <= y`
-#[inline]
-pub fn le(x: $T, y: $T) -> bool { x <= y }
-/// Returns true iff `x == y`
-#[inline]
-pub fn eq(x: $T, y: $T) -> bool { x == y }
-/// Returns true iff `x != y`
-#[inline]
-pub fn ne(x: $T, y: $T) -> bool { x != y }
-/// Returns true iff `x >= y`
-#[inline]
-pub fn ge(x: $T, y: $T) -> bool { x >= y }
-/// Returns true iff `x > y`
-#[inline]
-pub fn gt(x: $T, y: $T) -> bool { x > y }
-
 ///
 /// Iterate over the range [`lo`..`hi`)
 ///
@@ -136,16 +80,6 @@ pub fn range(lo: $T, hi: $T, it: &fn($T) -> bool) -> bool {
 pub fn range_rev(hi: $T, lo: $T, it: &fn($T) -> bool) -> bool {
     range_step(hi, lo, -1 as $T, it)
 }
-
-/// Computes the bitwise complement
-#[inline]
-pub fn compl(i: $T) -> $T {
-    -1 as $T ^ i
-}
-
-/// Computes the absolute value
-#[inline]
-pub fn abs(i: $T) -> $T { i.abs() }
 
 impl Num for $T {}
 

@@ -13,7 +13,7 @@
 //! `TotalOrd`.
 
 
-use std::uint;
+use std::num;
 use std::util::{swap, replace};
 
 // This is implemented as an AA tree, which is a simplified variation of
@@ -63,7 +63,7 @@ fn lt<K: Ord + TotalOrd, V: Ord>(a: &TreeMap<K, V>,
     let mut y = b.iter();
 
     let (a_len, b_len) = (a.len(), b.len());
-    for uint::min(a_len, b_len).times {
+    for num::min(a_len, b_len).times {
         let (key_a, value_a) = x.next().unwrap();
         let (key_b, value_b) = y.next().unwrap();
         if *key_a < *key_b { return true; }

@@ -503,12 +503,13 @@ types.
 
 ~~~~
 # use std::float;
+# use std::num::atan;
 fn angle(vector: (float, float)) -> float {
     let pi = float::consts::pi;
     match vector {
       (0f, y) if y < 0f => 1.5 * pi,
       (0f, y) => 0.5 * pi,
-      (x, y) => float::atan(y / x)
+      (x, y) => atan(y / x)
     }
 }
 ~~~~
@@ -1728,10 +1729,9 @@ To call such a method, just prefix it with the type name and a double colon:
 
 ~~~~
 # use std::float::consts::pi;
-# use std::float::sqrt;
 struct Circle { radius: float }
 impl Circle {
-    fn new(area: float) -> Circle { Circle { radius: sqrt(area / pi) } }
+    fn new(area: float) -> Circle { Circle { radius: (area / pi).sqrt() } }
 }
 let c = Circle::new(42.5);
 ~~~~
@@ -1997,16 +1997,15 @@ implementation to use.
 
 ~~~~
 # use std::float::consts::pi;
-# use std::float::sqrt;
 trait Shape { fn new(area: float) -> Self; }
 struct Circle { radius: float }
 struct Square { length: float }
 
 impl Shape for Circle {
-    fn new(area: float) -> Circle { Circle { radius: sqrt(area / pi) } }
+    fn new(area: float) -> Circle { Circle { radius: (area / pi).sqrt() } }
 }
 impl Shape for Square {
-    fn new(area: float) -> Square { Square { length: sqrt(area) } }
+    fn new(area: float) -> Square { Square { length: (area).sqrt() } }
 }
 
 let area = 42.5;
@@ -2154,14 +2153,13 @@ Now, we can implement `Circle` on a type only if we also implement `Shape`.
 
 ~~~~
 # use std::float::consts::pi;
-# use std::float::sqrt;
 # trait Shape { fn area(&self) -> float; }
 # trait Circle : Shape { fn radius(&self) -> float; }
 # struct Point { x: float, y: float }
 # fn square(x: float) -> float { x * x }
 struct CircleStruct { center: Point, radius: float }
 impl Circle for CircleStruct {
-    fn radius(&self) -> float { sqrt(self.area() / pi) }
+    fn radius(&self) -> float { (self.area() / pi).sqrt() }
 }
 impl Shape for CircleStruct {
     fn area(&self) -> float { pi * square(self.radius) }
@@ -2190,12 +2188,11 @@ Likewise, supertrait methods may also be called on trait objects.
 
 ~~~ {.xfail-test}
 # use std::float::consts::pi;
-# use std::float::sqrt;
 # trait Shape { fn area(&self) -> float; }
 # trait Circle : Shape { fn radius(&self) -> float; }
 # struct Point { x: float, y: float }
 # struct CircleStruct { center: Point, radius: float }
-# impl Circle for CircleStruct { fn radius(&self) -> float { sqrt(self.area() / pi) } }
+# impl Circle for CircleStruct { fn radius(&self) -> float { (self.area() / pi).sqrt() } }
 # impl Shape for CircleStruct { fn area(&self) -> float { pi * square(self.radius) } }
 
 let concrete = @CircleStruct{center:Point{x:3f,y:4f},radius:5f};

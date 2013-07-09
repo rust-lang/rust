@@ -10,9 +10,9 @@
 
 
 use std::cast;
+use std::num;
 use std::ptr;
 use std::sys;
-use std::uint;
 use std::vec;
 use future_spawn = future::spawn;
 
@@ -44,7 +44,7 @@ fn map_slices<A:Copy + Send,B:Copy + Send>(
         ~[f()(0u, xs)]
     }
     else {
-        let num_tasks = uint::min(MAX_TASKS, len / MIN_GRANULARITY);
+        let num_tasks = num::min(MAX_TASKS, len / MIN_GRANULARITY);
 
         let items_per_task = len / num_tasks;
 
@@ -52,7 +52,7 @@ fn map_slices<A:Copy + Send,B:Copy + Send>(
         let mut base = 0u;
         info!("spawning tasks");
         while base < len {
-            let end = uint::min(len, base + items_per_task);
+            let end = num::min(len, base + items_per_task);
             do xs.as_imm_buf |p, _len| {
                 let f = f();
                 let base = base;
