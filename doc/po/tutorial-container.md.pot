@@ -1,0 +1,445 @@
+# SOME DESCRIPTIVE TITLE
+# Copyright (C) YEAR Free Software Foundation, Inc.
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"POT-Creation-Date: 2013-07-07 21:10+0300\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=CHARSET\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#. type: Plain text
+#: doc/tutorial-container.md:2
+msgid "% Containers and iterators"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-container.md:4
+msgid "# Containers"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-container.md:6
+msgid "The container traits are defined in the `std::container` module."
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-container.md:8
+msgid "## Unique and managed vectors"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-container.md:12
+msgid ""
+"Vectors have `O(1)` indexing and removal from the end, along with `O(1)` "
+"amortized insertion. Vectors are the most common container in Rust, and are "
+"flexible enough to fit many use cases."
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-container.md:16
+msgid ""
+"Vectors can also be sorted and used as efficient lookup tables with the "
+"`std::vec::bsearch` function, if all the elements are inserted at one time "
+"and deletions are unnecessary."
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-container.md:18
+msgid "## Maps and sets"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-container.md:22
+msgid ""
+"Maps are collections of unique keys with corresponding values, and sets are "
+"just unique keys without a corresponding value. The `Map` and `Set` traits "
+"in `std::container` define the basic interface."
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-container.md:24
+msgid "The standard library provides three owned map/set types:"
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/tutorial-container.md:30
+msgid ""
+"`std::hashmap::HashMap` and `std::hashmap::HashSet`, requiring the keys to "
+"implement `Eq` and `Hash`"
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/tutorial-container.md:30
+msgid ""
+"`std::trie::TrieMap` and `std::trie::TrieSet`, requiring the keys to be "
+"`uint`"
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/tutorial-container.md:30
+msgid ""
+"`extra::treemap::TreeMap` and `extra::treemap::TreeSet`, requiring the keys "
+"to implement `TotalOrd`"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-container.md:34
+msgid ""
+"These maps do not use managed pointers so they can be sent between tasks as "
+"long as the key and value types are sendable. Neither the key or value type "
+"has to be copyable."
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-container.md:37
+msgid ""
+"The `TrieMap` and `TreeMap` maps are ordered, while `HashMap` uses an "
+"arbitrary order."
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-container.md:42
+msgid ""
+"Each `HashMap` instance has a random 128-bit key to use with a keyed hash, "
+"making the order of a set of keys in a given hash table randomized. Rust "
+"provides a [SipHash](https://131002.net/siphash/) implementation for any "
+"type implementing the `IterBytes` trait."
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-container.md:44
+msgid "## Double-ended queues"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-container.md:49
+msgid ""
+"The `extra::deque` module implements a double-ended queue with `O(1)` "
+"amortized inserts and removals from both ends of the container. It also has "
+"`O(1)` indexing like a vector. The contained elements are not required to be "
+"copyable, and the queue will be sendable if the contained type is sendable."
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-container.md:51
+msgid "## Priority queues"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-container.md:55
+msgid ""
+"The `extra::priority_queue` module implements a queue ordered by a key.  The "
+"contained elements are not required to be copyable, and the queue will be "
+"sendable if the contained type is sendable."
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-container.md:61
+msgid ""
+"Insertions have `O(log n)` time complexity and checking or popping the "
+"largest element is `O(1)`. Converting a vector to a priority queue can be "
+"done in-place, and has `O(n)` complexity. A priority queue can also be "
+"converted to a sorted vector in-place, allowing it to be used for an `O(n "
+"log n)` in-place heapsort."
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-container.md:63
+msgid "# Iterators"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-container.md:65
+msgid "## Iteration protocol"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-container.md:69
+msgid ""
+"The iteration protocol is defined by the `Iterator` trait in the `std::"
+"iterator` module. The minimal implementation of the trait is a `next` "
+"method, yielding the next element from an iterator object:"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-container.md:73
+msgid "~~~ /// An infinite stream of zeroes struct ZeroStream;"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-container.md:80
+#, no-wrap
+msgid ""
+"impl Iterator<int> for ZeroStream {\n"
+"    fn next(&mut self) -> Option<int> {\n"
+"        Some(0)\n"
+"    }\n"
+"}\n"
+"~~~~\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-container.md:83
+msgid ""
+"Reaching the end of the iterator is signalled by returning `None` instead of "
+"`Some(item)`:"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-container.md:89
+#, no-wrap
+msgid ""
+"~~~\n"
+"/// A stream of N zeroes\n"
+"struct ZeroStream {\n"
+"    priv remaining: uint\n"
+"}\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-container.md:95
+#, no-wrap
+msgid ""
+"impl ZeroStream {\n"
+"    fn new(n: uint) -> ZeroStream {\n"
+"        ZeroStream { remaining: n }\n"
+"    }\n"
+"}\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-container.md:107
+#, no-wrap
+msgid ""
+"impl Iterator<int> for ZeroStream {\n"
+"    fn next(&mut self) -> Option<int> {\n"
+"        if self.remaining == 0 {\n"
+"            None\n"
+"        } else {\n"
+"            self.remaining -= 1;\n"
+"            Some(0)\n"
+"        }\n"
+"    }\n"
+"}\n"
+"~~~\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-container.md:109
+msgid "## Container iterators"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-container.md:112
+msgid ""
+"Containers implement iteration over the contained elements by returning an "
+"iterator object. For example, vector slices have four iterators available:"
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/tutorial-container.md:117
+msgid "`vector.iter()`, for immutable references to the elements"
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/tutorial-container.md:117
+msgid "`vector.mut_iter()`, for mutable references to the elements"
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/tutorial-container.md:117
+msgid ""
+"`vector.rev_iter()`, for immutable references to the elements in reverse "
+"order"
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/tutorial-container.md:117
+msgid ""
+"`vector.mut_rev_iter()`, for mutable references to the elements in reverse "
+"order"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-container.md:119
+msgid "### Freezing"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-container.md:123
+msgid ""
+"Unlike most other languages with external iterators, Rust has no *iterator "
+"invalidation*. As long an iterator is still in scope, the compiler will "
+"prevent modification of the container through another handle."
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-container.md:128
+#, no-wrap
+msgid ""
+"~~~\n"
+"let mut xs = [1, 2, 3];\n"
+"{\n"
+"    let _it = xs.iter();\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-container.md:134
+#, no-wrap
+msgid ""
+"    // the vector is frozen for this scope, the compiler will statically\n"
+"    // prevent modification\n"
+"}\n"
+"// the vector becomes unfrozen again at the end of the scope\n"
+"~~~\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-container.md:137
+msgid ""
+"These semantics are due to most container iterators being implemented with "
+"`&` and `&mut`."
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-container.md:139
+msgid "## Iterator adaptors"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-container.md:143
+msgid ""
+"The `IteratorUtil` trait implements common algorithms as methods extending "
+"every `Iterator` implementation. For example, the `fold` method will "
+"accumulate the items yielded by an `Iterator` into a single value:"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-container.md:149
+msgid ""
+"~~~ let xs = [1, 9, 2, 3, 14, 12]; let result = xs.iter().fold(0, |"
+"accumulator, item| accumulator - *item); assert_eq!(result, -41); ~~~"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-container.md:151
+msgid ""
+"Some adaptors return an adaptor object implementing the `Iterator` trait "
+"itself:"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-container.md:158
+msgid ""
+"~~~ let xs = [1, 9, 2, 3, 14, 12]; let ys = [5, 2, 1, 8]; let sum = xs."
+"iter().chain_(ys.iter()).fold(0, |a, b| a + *b); assert_eq!(sum, 57); ~~~"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-container.md:162
+msgid ""
+"Note that some adaptors like the `chain_` method above use a trailing "
+"underscore to work around an issue with method resolve. The underscores will "
+"be dropped when they become unnecessary."
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-container.md:164
+msgid "## For loops"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-container.md:168
+msgid ""
+"The `for` loop syntax is currently in transition, and will switch from the "
+"old closure-based iteration protocol to iterator objects. For now, the "
+"`advance` adaptor is required as a compatibility shim to use iterators with "
+"for loops."
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-container.md:171
+msgid "~~~ let xs = [2, 3, 5, 7, 11, 13, 17];"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-container.md:176
+#, no-wrap
+msgid ""
+"// print out all the elements in the vector\n"
+"for xs.iter().advance |x| {\n"
+"    println(x.to_str())\n"
+"}\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-container.md:182
+#, no-wrap
+msgid ""
+"// print out all but the first 3 elements in the vector\n"
+"for xs.iter().skip(3).advance |x| {\n"
+"    println(x.to_str())\n"
+"}\n"
+"~~~\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-container.md:185
+msgid ""
+"For loops are *often* used with a temporary iterator object, as above. They "
+"can also advance the state of an iterator in a mutable location:"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-container.md:189
+msgid ""
+"~~~ let xs = [1, 2, 3, 4, 5]; let ys = [\"foo\", \"bar\", \"baz\", \"foobar"
+"\"];"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-container.md:192
+msgid ""
+"// create an iterator yielding tuples of elements from both vectors let mut "
+"it = xs.iter().zip(ys.iter());"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-container.md:196
+#, no-wrap
+msgid ""
+"// print out the pairs of elements up to (&3, &\"baz\")\n"
+"for it.advance |(x, y)| {\n"
+"    println(fmt!(\"%d %s\", *x, *y));\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-container.md:201
+#, no-wrap
+msgid ""
+"    if *x == 3 {\n"
+"        break;\n"
+"    }\n"
+"}\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-container.md:204
+msgid ""
+"// yield and print the last pair from the iterator println(fmt!(\"last: %?"
+"\", it.next()));"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-container.md:207
+msgid "// the iterator is now fully consumed assert!(it.next().is_none()); ~~~"
+msgstr ""

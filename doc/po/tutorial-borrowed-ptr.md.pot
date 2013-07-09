@@ -1,0 +1,1070 @@
+# SOME DESCRIPTIVE TITLE
+# Copyright (C) YEAR Free Software Foundation, Inc.
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"POT-Creation-Date: 2013-07-07 21:10+0300\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=CHARSET\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#. type: Plain text
+#: doc/rust.md:4 doc/rustpkg.md:4 doc/tutorial.md:4
+#: doc/tutorial-borrowed-ptr.md:4 doc/tutorial-ffi.md:4
+#: doc/tutorial-macros.md:4 doc/tutorial-tasks.md:4 doc/tut.md:4
+msgid "# Introduction"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial.md:1110 doc/tutorial-borrowed-ptr.md:72
+msgid "Now we can call `compute_distance()` in various ways:"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:2
+msgid "% Rust Borrowed Pointers Tutorial"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:14
+msgid ""
+"Borrowed pointers are one of the more flexible and powerful tools available "
+"in Rust. A borrowed pointer can point anywhere: into the managed or exchange "
+"heap, into the stack, and even into the interior of another data structure. "
+"A borrowed pointer is as flexible as a C pointer or C++ reference. However, "
+"unlike C and C++ compilers, the Rust compiler includes special static checks "
+"that ensure that programs use borrowed pointers safely. Another advantage of "
+"borrowed pointers is that they are invisible to the garbage collector, so "
+"working with borrowed pointers helps reduce the overhead of automatic memory "
+"management."
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:18
+msgid ""
+"Despite their complete safety, a borrowed pointer's representation at "
+"runtime is the same as that of an ordinary pointer in a C program. They "
+"introduce zero overhead. The compiler does all safety checks at compile time."
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:24
+msgid ""
+"Although borrowed pointers have rather elaborate theoretical underpinnings "
+"(region pointers), the core concepts will be familiar to anyone who has "
+"worked with C or C++. Therefore, the best way to explain how they are "
+"usedand their limitationsis probably just to work through several examples."
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:26
+msgid "# By example"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:31
+msgid ""
+"Borrowed pointers are called *borrowed* because they are only valid for a "
+"limited duration. Borrowed pointers never claim any kind of ownership over "
+"the data that they point to: instead, they are used for cases where you "
+"would like to use data for a short time."
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:33
+msgid "As an example, consider a simple struct type `Point`:"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:37
+msgid "~~~ struct Point {x: float, y: float} ~~~"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:41
+msgid ""
+"We can use this simple definition to allocate points in many different ways. "
+"For example, in this code, each of these three local variables contains a "
+"point, but allocated in a different place:"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:48
+#, no-wrap
+msgid ""
+"~~~\n"
+"# struct Point {x: float, y: float}\n"
+"let on_the_stack :  Point =  Point {x: 3.0, y: 4.0};\n"
+"let managed_box  : @Point = @Point {x: 5.0, y: 1.0};\n"
+"let owned_box    : ~Point = ~Point {x: 7.0, y: 9.0};\n"
+"~~~\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:60
+msgid ""
+"Suppose we wanted to write a procedure that computed the distance between "
+"any two points, no matter where they were stored. For example, we might like "
+"to compute the distance between `on_the_stack` and `managed_box`, or between "
+"`managed_box` and `owned_box`. One option is to define a function that takes "
+"two arguments of type `Point`that is, it takes the points by value. But if "
+"we define it this way, calling the function will cause the points to be "
+"copied. For points, this is probably not so bad, but often copies are "
+"expensive. Worse, if the data type contains mutable fields, copying can "
+"change the semantics of your program in unexpected ways. So we'd like to "
+"define a function that takes the points by pointer. We can use borrowed "
+"pointers to do this:"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:70
+#, no-wrap
+msgid ""
+"~~~\n"
+"# struct Point {x: float, y: float}\n"
+"# fn sqrt(f: float) -> float { 0f }\n"
+"fn compute_distance(p1: &Point, p2: &Point) -> float {\n"
+"    let x_d = p1.x - p2.x;\n"
+"    let y_d = p1.y - p2.y;\n"
+"    sqrt(x_d * x_d + y_d * y_d)\n"
+"}\n"
+"~~~\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:82
+#, no-wrap
+msgid ""
+"~~~\n"
+"# struct Point {x: float, y: float}\n"
+"# let on_the_stack :  Point =  Point{x: 3.0, y: 4.0};\n"
+"# let managed_box  : @Point = @Point{x: 5.0, y: 1.0};\n"
+"# let owned_box    : ~Point = ~Point{x: 7.0, y: 9.0};\n"
+"# fn compute_distance(p1: &Point, p2: &Point) -> float { 0f }\n"
+"compute_distance(&on_the_stack, managed_box);\n"
+"compute_distance(managed_box, owned_box);\n"
+"~~~\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:89
+msgid ""
+"Here, the `&` operator takes the address of the variable `on_the_stack`; "
+"this is because `on_the_stack` has the type `Point` (that is, a struct "
+"value) and we have to take its address to get a value. We also call this "
+"_borrowing_ the local variable `on_the_stack`, because we have created an "
+"alias: that is, another name for the same data."
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:95
+msgid ""
+"In contrast, we can pass the boxes `managed_box` and `owned_box` to "
+"`compute_distance` directly. The compiler automatically converts a box like "
+"`@Point` or `~Point` to a borrowed pointer like `&Point`. This is another "
+"form of borrowing: in this case, the caller lends the contents of the "
+"managed or owned box to the callee."
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:105
+msgid ""
+"Whenever a caller lends data to a callee, there are some limitations on what "
+"the caller can do with the original. For example, if the contents of a "
+"variable have been lent out, you cannot send that variable to another task. "
+"In addition, the compiler will reject any code that might cause the borrowed "
+"value to be freed or overwrite its component fields with values of different "
+"types (I'll get into what kinds of actions those are shortly). This rule "
+"should make intuitive sense: you must wait for a borrower to return the "
+"value that you lent it (that is, wait for the borrowed pointer to go out of "
+"scope)  before you can make full use of it again."
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:107
+msgid "# Other uses for the & operator"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:109
+msgid "In the previous example, the value `on_the_stack` was defined like so:"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:114
+msgid ""
+"~~~ # struct Point {x: float, y: float} let on_the_stack: Point = Point {x: "
+"3.0, y: 4.0}; ~~~"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:119
+msgid ""
+"This declaration means that code can only pass `Point` by value to other "
+"functions. As a consequence, we had to explicitly take the address of "
+"`on_the_stack` to get a borrowed pointer. Sometimes however it is more "
+"convenient to move the & operator into the definition of `on_the_stack`:"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:124
+msgid ""
+"~~~ # struct Point {x: float, y: float} let on_the_stack2: &Point = &Point "
+"{x: 3.0, y: 4.0}; ~~~"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:128
+msgid ""
+"Applying `&` to an rvalue (non-assignable location) is just a convenient "
+"shorthand for creating a temporary and taking its address. A more verbose "
+"way to write the same code is:"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:134
+msgid ""
+"~~~ # struct Point {x: float, y: float} let tmp = Point {x: 3.0, y: 4.0}; "
+"let on_the_stack2 : &Point = &tmp; ~~~"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:136
+msgid "# Taking the address of fields"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:141
+msgid ""
+"As in C, the `&` operator is not limited to taking the address of local "
+"variables. It can also take the address of fields or individual array "
+"elements. For example, consider this type definition for `rectangle`:"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:147
+msgid ""
+"~~~ struct Point {x: float, y: float} // as before struct Size {w: float, h: "
+"float} // as before struct Rectangle {origin: Point, size: Size} ~~~"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:149
+msgid "Now, as before, we can define rectangles in a few different ways:"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:161
+#, no-wrap
+msgid ""
+"~~~\n"
+"# struct Point {x: float, y: float}\n"
+"# struct Size {w: float, h: float} // as before\n"
+"# struct Rectangle {origin: Point, size: Size}\n"
+"let rect_stack   = &Rectangle {origin: Point {x: 1f, y: 2f},\n"
+"                               size: Size {w: 3f, h: 4f}};\n"
+"let rect_managed = @Rectangle {origin: Point {x: 3f, y: 4f},\n"
+"                               size: Size {w: 3f, h: 4f}};\n"
+"let rect_owned   = ~Rectangle {origin: Point {x: 5f, y: 6f},\n"
+"                               size: Size {w: 3f, h: 4f}};\n"
+"~~~\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:164
+msgid ""
+"In each case, we can extract out individual subcomponents with the `&` "
+"operator. For example, I could write:"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:175
+msgid ""
+"~~~ # struct Point {x: float, y: float} // as before # struct Size {w: "
+"float, h: float} // as before # struct Rectangle {origin: Point, size: Size} "
+"# let rect_stack = &Rectangle {origin: Point {x: 1f, y: 2f}, size: Size {w: "
+"3f, h: 4f}}; # let rect_managed = @Rectangle {origin: Point {x: 3f, y: 4f}, "
+"size: Size {w: 3f, h: 4f}}; # let rect_owned = ~Rectangle {origin: Point {x: "
+"5f, y: 6f}, size: Size {w: 3f, h: 4f}}; # fn compute_distance(p1: &Point, "
+"p2: &Point) -> float { 0f } compute_distance(&rect_stack.origin, "
+"&rect_managed.origin); ~~~"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:178
+msgid ""
+"which would borrow the field `origin` from the rectangle on the stack as "
+"well as from the managed box, and then compute the distance between them."
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:180
+msgid "# Borrowing managed boxes and rooting"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:186
+msgid ""
+"Weve seen a few examples so far of borrowing heap boxes, both managed and "
+"owned. Up till this point, weve glossed over issues of safety. As stated in "
+"the introduction, at runtime a borrowed pointer is simply a pointer, nothing "
+"more. Therefore, avoiding C's problems with dangling pointers requires a "
+"compile-time safety check."
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:197
+msgid ""
+"The basis for the check is the notion of _lifetimes_. A lifetime is a static "
+"approximation of the span of execution during which the pointer is valid: it "
+"always corresponds to some expression or block within the program. Code "
+"inside that expression can use the pointer without restrictions. But if the "
+"pointer escapes from that expression (for example, if the expression "
+"contains an assignment expression that assigns the pointer to a mutable "
+"field of a data structure with a broader scope than the pointer itself), the "
+"compiler reports an error. We'll be discussing lifetimes more in the "
+"examples to come, and a more thorough introduction is also available."
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:202
+msgid ""
+"When the `&` operator creates a borrowed pointer, the compiler must ensure "
+"that the pointer remains valid for its entire lifetime. Sometimes this is "
+"relatively easy, such as when taking the address of a local variable or a "
+"field that is stored on the stack:"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:211
+#, no-wrap
+msgid ""
+"~~~\n"
+"struct X { f: int }\n"
+"fn example1() {\n"
+"    let mut x = X { f: 3 };\n"
+"    let y = &mut x.f;  // -+ L\n"
+"    ...                //  |\n"
+"}                      // -+\n"
+"~~~\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:216
+msgid ""
+"Here, the lifetime of the borrowed pointer `y` is simply L, the remainder of "
+"the function body. The compiler need not do any other work to prove that "
+"code will not free `x.f`. This is true even if the code mutates `x`."
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:218
+msgid "The situation gets more complex when borrowing data inside heap boxes:"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:227
+#, no-wrap
+msgid ""
+"~~~\n"
+"# struct X { f: int }\n"
+"fn example2() {\n"
+"    let mut x = @X { f: 3 };\n"
+"    let y = &x.f;      // -+ L\n"
+"    ...                //  |\n"
+"}                      // -+\n"
+"~~~\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:238
+msgid ""
+"In this example, the value `x` is a heap box, and `y` is therefore a pointer "
+"into that heap box. Again the lifetime of `y` is L, the remainder of the "
+"function body. But there is a crucial difference: suppose `x` were to be "
+"reassigned during the lifetime L? If the compiler isn't careful, the managed "
+"box could become *unrooted*, and would therefore be subject to garbage "
+"collection. A heap box that is unrooted is one such that no pointer values "
+"in the heap point to it. It would violate memory safety for the box that was "
+"originally assigned to `x` to be garbage-collected, since a non-heap pointer "
+"*`y`* still points into it."
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:241
+msgid ""
+"> ***Note:*** Our current implementation implements the garbage collector > "
+"using reference counting and cycle detection."
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:247
+msgid ""
+"For this reason, whenever an `&` expression borrows the interior of a "
+"managed box stored in a mutable location, the compiler inserts a temporary "
+"that ensures that the managed box remains live for the entire lifetime. So, "
+"the above example would be compiled as if it were written"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:257
+#, no-wrap
+msgid ""
+"~~~\n"
+"# struct X { f: int }\n"
+"fn example2() {\n"
+"    let mut x = @X {f: 3};\n"
+"    let x1 = x;\n"
+"    let y = &x1.f;     // -+ L\n"
+"    ...                //  |\n"
+"}                      // -+\n"
+"~~~\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:260
+msgid ""
+"Now if `x` is reassigned, the pointer `y` will still remain valid. This "
+"process is called *rooting*."
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:262
+msgid "# Borrowing owned boxes"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:268
+msgid ""
+"The previous example demonstrated *rooting*, the process by which the "
+"compiler ensures that managed boxes remain live for the duration of a "
+"borrow. Unfortunately, rooting does not work for borrows of owned boxes, "
+"because it is not possible to have two references to a owned box."
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:274
+msgid ""
+"For owned boxes, therefore, the compiler will only allow a borrow *if the "
+"compiler can guarantee that the owned box will not be reassigned or moved "
+"for the lifetime of the pointer*. This does not necessarily mean that the "
+"owned box is stored in immutable memory. For example, the following function "
+"is legal:"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:289
+#, no-wrap
+msgid ""
+"~~~\n"
+"# fn some_condition() -> bool { true }\n"
+"# struct Foo { f: int }\n"
+"fn example3() -> int {\n"
+"    let mut x = ~Foo {f: 3};\n"
+"    if some_condition() {\n"
+"        let y = &x.f;      // -+ L\n"
+"        return *y;         //  |\n"
+"    }                      // -+\n"
+"    x = ~Foo {f: 4};\n"
+"    ...\n"
+"# return 0;\n"
+"}\n"
+"~~~\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:295
+msgid ""
+"Here, as before, the interior of the variable `x` is being borrowed and `x` "
+"is declared as mutable. However, the compiler can prove that `x` is not "
+"assigned anywhere in the lifetime L of the variable `y`. Therefore, it "
+"accepts the function, even though `x` is mutable and in fact is mutated "
+"later in the function."
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:301
+msgid ""
+"It may not be clear why we are so concerned about mutating a borrowed "
+"variable. The reason is that the runtime system frees any owned box _as soon "
+"as its owning reference changes or goes out of scope_. Therefore, a program "
+"like this is illegal (and would be rejected by the compiler):"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:310
+#, no-wrap
+msgid ""
+"~~~ {.xfail-test}\n"
+"fn example3() -> int {\n"
+"    let mut x = ~X {f: 3};\n"
+"    let y = &x.f;\n"
+"    x = ~X {f: 4};  // Error reported here.\n"
+"    *y\n"
+"}\n"
+"~~~\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:313
+msgid ""
+"To make this clearer, consider this diagram showing the state of memory "
+"immediately before the re-assignment of `x`:"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:316 doc/tutorial-borrowed-ptr.md:330
+#, no-wrap
+msgid ""
+"~~~ {.notrust}\n"
+"    Stack               Exchange Heap\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:325
+#, no-wrap
+msgid ""
+"  x +----------+\n"
+"    | ~{f:int} | ----+\n"
+"  y +----------+     |\n"
+"    | &int     | ----+\n"
+"    +----------+     |    +---------+\n"
+"                     +--> |  f: 3   |\n"
+"                          +---------+\n"
+"~~~\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:327
+msgid "Once the reassignment occurs, the memory will look like this:"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:339
+#, no-wrap
+msgid ""
+"  x +----------+          +---------+\n"
+"    | ~{f:int} | -------> |  f: 4   |\n"
+"  y +----------+          +---------+\n"
+"    | &int     | ----+\n"
+"    +----------+     |    +---------+\n"
+"                     +--> | (freed) |\n"
+"                          +---------+\n"
+"~~~\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:342
+msgid ""
+"Here you can see that the variable `y` still points at the old box, which "
+"has been freed."
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:348
+msgid ""
+"In fact, the compiler can apply the same kind of reasoning to any memory "
+"that is _(uniquely) owned by the stack frame_. So we could modify the "
+"previous example to introduce additional owned pointers and structs, and the "
+"compiler will still be able to detect possible mutations:"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:353
+#, no-wrap
+msgid ""
+"~~~ {.xfail-test}\n"
+"fn example3() -> int {\n"
+"    struct R { g: int }\n"
+"    struct S { f: ~R }\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:361
+#, no-wrap
+msgid ""
+"    let mut x = ~S {f: ~R {g: 3}};\n"
+"    let y = &x.f.g;\n"
+"    x = ~S {f: ~R {g: 4}};  // Error reported here.\n"
+"    x.f = ~R {g: 5};        // Error reported here.\n"
+"    *y\n"
+"}\n"
+"~~~\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:365
+msgid ""
+"In this case, two errors are reported, one when the variable `x` is modified "
+"and another when `x.f` is modified. Either modification would invalidate the "
+"pointer `y`."
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:367
+msgid "# Borrowing and enums"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:373
+msgid ""
+"The previous example showed that the type system forbids any borrowing of "
+"owned boxes found in aliasable, mutable memory. This restriction prevents "
+"pointers from pointing into freed memory. There is one other case where the "
+"compiler must be very careful to ensure that pointers remain valid: pointers "
+"into the interior of an `enum`."
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:376
+msgid ""
+"As an example, lets look at the following `shape` type that can represent "
+"both rectangles and circles:"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:385
+#, no-wrap
+msgid ""
+"~~~\n"
+"struct Point {x: float, y: float}; // as before\n"
+"struct Size {w: float, h: float}; // as before\n"
+"enum Shape {\n"
+"    Circle(Point, float),   // origin, radius\n"
+"    Rectangle(Point, Size)  // upper-left, dimensions\n"
+"}\n"
+"~~~\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:389
+msgid ""
+"Now we might write a function to compute the area of a shape. This function "
+"takes a borrowed pointer to a shape, to avoid the need for copying."
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:405
+#, no-wrap
+msgid ""
+"~~~\n"
+"# struct Point {x: float, y: float}; // as before\n"
+"# struct Size {w: float, h: float}; // as before\n"
+"# enum Shape {\n"
+"#     Circle(Point, float),   // origin, radius\n"
+"#     Rectangle(Point, Size)  // upper-left, dimensions\n"
+"# }\n"
+"# static tau: float = 6.28f;\n"
+"fn compute_area(shape: &Shape) -> float {\n"
+"    match *shape {\n"
+"        Circle(_, radius) => 0.5 * tau * radius * radius,\n"
+"        Rectangle(_, ref size) => size.w * size.h\n"
+"    }\n"
+"}\n"
+"~~~\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:410
+msgid ""
+"The first case matches against circles. Here, the pattern extracts the "
+"radius from the shape variant and the action uses it to compute the area of "
+"the circle. (Like any up-to-date engineer, we use the [tau circle constant]"
+"[tau] and not that dreadfully outdated notion of pi)."
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:412
+msgid "[tau]: http://www.math.utah.edu/~palais/pi.html"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:418
+msgid ""
+"The second match is more interesting. Here we match against a rectangle and "
+"extract its size: but rather than copy the `size` struct, we use a by-"
+"reference binding to create a pointer to it. In other words, a pattern "
+"binding like `ref size` binds the name `size` to a pointer of type `&size` "
+"into the _interior of the enum_."
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:421
+msgid ""
+"To make this more clear, let's look at a diagram of memory layout in the "
+"case where `shape` points at a rectangle:"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:424 doc/tutorial-borrowed-ptr.md:449
+#, no-wrap
+msgid ""
+"~~~ {.notrust}\n"
+"Stack             Memory\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:433
+#, no-wrap
+msgid ""
+"+-------+         +---------------+\n"
+"| shape | ------> | rectangle(    |\n"
+"+-------+         |   {x: float,  |\n"
+"| size  | -+      |    y: float}, |\n"
+"+-------+  +----> |   {w: float,  |\n"
+"                  |    h: float}) |\n"
+"                  +---------------+\n"
+"~~~\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:440
+msgid ""
+"Here you can see that rectangular shapes are composed of five words of "
+"memory. The first is a tag indicating which variant this enum is "
+"(`rectangle`, in this case). The next two words are the `x` and `y` fields "
+"for the point and the remaining two are the `w` and `h` fields for the size. "
+"The binding `size` is then a pointer into the inside of the shape."
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:446
+msgid ""
+"Perhaps you can see where the danger lies: if the shape were somehow to be "
+"reassigned, perhaps to a circle, then although the memory used to store that "
+"shape value would still be valid, _it would have a different type_! The "
+"following diagram shows what memory would look like if code overwrote "
+"`shape` with a circle:"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:458
+#, no-wrap
+msgid ""
+"+-------+         +---------------+\n"
+"| shape | ------> | circle(       |\n"
+"+-------+         |   {x: float,  |\n"
+"| size  | -+      |    y: float}, |\n"
+"+-------+  +----> |   float)      |\n"
+"                  |               |\n"
+"                  +---------------+\n"
+"~~~\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:463
+msgid ""
+"As you can see, the `size` pointer would be pointing at a `float` instead of "
+"a struct. This is not good: dereferencing the second field of a `float` as "
+"if it were a struct with two fields would be a memory safety violation."
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:475
+msgid ""
+"So, in fact, for every `ref` binding, the compiler will impose the same "
+"rules as the ones we saw for borrowing the interior of a owned box: it must "
+"be able to guarantee that the `enum` will not be overwritten for the "
+"duration of the borrow.  In fact, the compiler would accept the example we "
+"gave earlier. The example is safe because the shape pointer has type "
+"`&Shape`, which means \"borrowed pointer to immutable memory containing a "
+"`shape`\". If, however, the type of that pointer were `&mut Shape`, then the "
+"ref binding would be ill-typed.  Just as with owned boxes, the compiler will "
+"permit `ref` bindings into data owned by the stack frame even if the data "
+"are mutable, but otherwise it requires that the data reside in immutable "
+"memory."
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:477
+msgid "# Returning borrowed pointers"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:483
+msgid ""
+"So far, all of the examples we have looked at, use borrowed pointers in a "
+"downward direction. That is, a method or code block creates a borrowed "
+"pointer, then uses it within the same scope. It is also possible to return "
+"borrowed pointers as the result of a function, but as we'll see, doing so "
+"requires some explicit annotation."
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:485
+msgid "For example, we could write a subroutine like this:"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:490
+msgid ""
+"~~~ struct Point {x: float, y: float} fn get_x<'r>(p: &'r Point) -> &'r "
+"float { &p.x } ~~~"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:498
+msgid ""
+"Here, the function `get_x()` returns a pointer into the structure it was "
+"given. The type of the parameter (`&'r Point`) and return type (`&'r float`) "
+"both use a new syntactic form that we have not seen so far.  Here the "
+"identifier `r` names the lifetime of the pointer explicitly. So in effect, "
+"this function declares that it takes a pointer with lifetime `r` and returns "
+"a pointer with that same lifetime."
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:504
+msgid ""
+"In general, it is only possible to return borrowed pointers if they are "
+"derived from a parameter to the procedure. In that case, the pointer result "
+"will always have the same lifetime as one of the parameters; named lifetimes "
+"indicate which parameter that is."
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:510
+msgid ""
+"In the previous examples, function parameter types did not include a "
+"lifetime name. In those examples, the compiler simply creates a fresh name "
+"for the lifetime automatically: that is, the lifetime name is guaranteed to "
+"refer to a distinct lifetime from the lifetimes of all other parameters."
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:518
+msgid ""
+"Named lifetimes that appear in function signatures are conceptually the same "
+"as the other lifetimes we have seen before, but they are a bit abstract: "
+"they dont refer to a specific expression within `get_x()`, but rather to "
+"some expression within the *caller of `get_x()`*.  The lifetime `r` is "
+"actually a kind of *lifetime parameter*: it is defined by the caller to "
+"`get_x()`, just as the value for the parameter `p` is defined by that caller."
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:523
+msgid ""
+"In any case, whatever the lifetime of `r` is, the pointer produced by `&p.x` "
+"always has the same lifetime as `p` itself: a pointer to a field of a struct "
+"is valid as long as the struct is valid. Therefore, the compiler accepts the "
+"function `get_x()`."
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:526
+msgid ""
+"To emphasize this point, lets look at a variation on the example, this time "
+"one that does not compile:"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:533
+#, no-wrap
+msgid ""
+"~~~ {.xfail-test}\n"
+"struct Point {x: float, y: float}\n"
+"fn get_x_sh(p: @Point) -> &float {\n"
+"    &p.x // Error reported here\n"
+"}\n"
+"~~~\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:541
+msgid ""
+"Here, the function `get_x_sh()` takes a managed box as input and returns a "
+"borrowed pointer. As before, the lifetime of the borrowed pointer that will "
+"be returned is a parameter (specified by the caller). That means that "
+"`get_x_sh()` promises to return a borrowed pointer that is valid for as long "
+"as the caller would like: this is subtly different from the first example, "
+"which promised to return a pointer that was valid for as long as its pointer "
+"argument was valid."
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:552
+msgid ""
+"Within `get_x_sh()`, we see the expression `&p.x` which takes the address of "
+"a field of a managed box. The presence of this expression implies that the "
+"compiler must guarantee that, so long as the resulting pointer is valid, the "
+"managed box will not be reclaimed by the garbage collector. But recall that "
+"`get_x_sh()` also promised to return a pointer that was valid for as long as "
+"the caller wanted it to be. Clearly, `get_x_sh()` is not in a position to "
+"make both of these guarantees; in fact, it cannot guarantee that the pointer "
+"will remain valid at all once it returns, as the parameter `p` may or may "
+"not be live in the caller. Therefore, the compiler will report an error here."
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:559
+msgid ""
+"In general, if you borrow a managed (or owned) box to create a borrowed "
+"pointer, the pointer will only be valid within the function and cannot be "
+"returned. This is why the typical way to return borrowed pointers is to take "
+"borrowed pointers as input (the only other case in which it can be legal to "
+"return a borrowed pointer is if the pointer points at a static constant)."
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:561
+msgid "# Named lifetimes"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:565
+msgid ""
+"Let's look at named lifetimes in more detail. Named lifetimes allow for "
+"grouping of parameters by lifetime. For example, consider this function:"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:579
+#, no-wrap
+msgid ""
+"~~~\n"
+"# struct Point {x: float, y: float}; // as before\n"
+"# struct Size {w: float, h: float}; // as before\n"
+"# enum Shape {\n"
+"#     Circle(Point, float),   // origin, radius\n"
+"#     Rectangle(Point, Size)  // upper-left, dimensions\n"
+"# }\n"
+"# fn compute_area(shape: &Shape) -> float { 0f }\n"
+"fn select<'r, T>(shape: &'r Shape, threshold: float,\n"
+"                 a: &'r T, b: &'r T) -> &'r T {\n"
+"    if compute_area(shape) > threshold {a} else {b}\n"
+"}\n"
+"~~~\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:585
+msgid ""
+"This function takes three borrowed pointers and assigns each the same "
+"lifetime `r`.  In practice, this means that, in the caller, the lifetime `r` "
+"will be the *intersection of the lifetime of the three region parameters*. "
+"This may be overly conservative, as in this example:"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:607
+#, no-wrap
+msgid ""
+"~~~\n"
+"# struct Point {x: float, y: float}; // as before\n"
+"# struct Size {w: float, h: float}; // as before\n"
+"# enum Shape {\n"
+"#     Circle(Point, float),   // origin, radius\n"
+"#     Rectangle(Point, Size)  // upper-left, dimensions\n"
+"# }\n"
+"# fn compute_area(shape: &Shape) -> float { 0f }\n"
+"# fn select<'r, T>(shape: &Shape, threshold: float,\n"
+"#                  a: &'r T, b: &'r T) -> &'r T {\n"
+"#     if compute_area(shape) > threshold {a} else {b}\n"
+"# }\n"
+"                                                     // -+ r\n"
+"fn select_based_on_unit_circle<'r, T>(               //  |-+ B\n"
+"    threshold: float, a: &'r T, b: &'r T) -> &'r T { //  | |\n"
+"                                                     //  | |\n"
+"    let shape = Circle(Point {x: 0., y: 0.}, 1.);    //  | |\n"
+"    select(&shape, threshold, a, b)                  //  | |\n"
+"}                                                    //  |-+\n"
+"                                                     // -+\n"
+"~~~\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:617
+msgid ""
+"In this call to `select()`, the lifetime of the first parameter shape is B, "
+"the function body. Both of the second two parameters `a` and `b` share the "
+"same lifetime, `r`, which is a lifetime parameter of "
+"`select_based_on_unit_circle()`. The caller will infer the intersection of "
+"these two lifetimes as the lifetime of the returned value, and hence the "
+"return value of `select()` will be assigned a lifetime of B. This will in "
+"turn lead to a compilation error, because `select_based_on_unit_circle()` is "
+"supposed to return a value with the lifetime `r`."
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:622
+msgid ""
+"To address this, we can modify the definition of `select()` to distinguish "
+"the lifetime of the first parameter from the lifetime of the latter two. "
+"After all, the first parameter is not being returned. Here is how the new "
+"`select()` might look:"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:636
+#, no-wrap
+msgid ""
+"~~~\n"
+"# struct Point {x: float, y: float}; // as before\n"
+"# struct Size {w: float, h: float}; // as before\n"
+"# enum Shape {\n"
+"#     Circle(Point, float),   // origin, radius\n"
+"#     Rectangle(Point, Size)  // upper-left, dimensions\n"
+"# }\n"
+"# fn compute_area(shape: &Shape) -> float { 0f }\n"
+"fn select<'r, 'tmp, T>(shape: &'tmp Shape, threshold: float,\n"
+"                       a: &'r T, b: &'r T) -> &'r T {\n"
+"    if compute_area(shape) > threshold {a} else {b}\n"
+"}\n"
+"~~~\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:641
+msgid ""
+"Here you can see that `shape`'s lifetime is now named `tmp`. The parameters "
+"`a`, `b`, and the return value all have the lifetime `r`.  However, since "
+"the lifetime `tmp` is not returned, it would be more concise to just omit "
+"the named lifetime for `shape` altogether:"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:655
+#, no-wrap
+msgid ""
+"~~~\n"
+"# struct Point {x: float, y: float}; // as before\n"
+"# struct Size {w: float, h: float}; // as before\n"
+"# enum Shape {\n"
+"#     Circle(Point, float),   // origin, radius\n"
+"#     Rectangle(Point, Size)  // upper-left, dimensions\n"
+"# }\n"
+"# fn compute_area(shape: &Shape) -> float { 0f }\n"
+"fn select<'r, T>(shape: &Shape, threshold: float,\n"
+"                 a: &'r T, b: &'r T) -> &'r T {\n"
+"    if compute_area(shape) > threshold {a} else {b}\n"
+"}\n"
+"~~~\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:657
+msgid "This is equivalent to the previous definition."
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:659
+msgid "# Conclusion"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-borrowed-ptr.md:663
+msgid ""
+"So there you have it: a (relatively) brief tour of the borrowed pointer "
+"system. For more details, we refer to the (yet to be written) reference "
+"document on borrowed pointers, which will explain the full notation and give "
+"more examples."
+msgstr ""
