@@ -119,8 +119,8 @@ impl Terminal {
     pub fn reset(&self) {
         let mut vars = Variables::new();
         let s = do self.ti.strings.find_equiv(&("op"))
-                       .map_consume_default(Err(~"can't find terminfo capability `op`")) |&op| {
-                           expand(op, [], &mut vars)
+                       .map_consume_default(Err(~"can't find terminfo capability `op`")) |op| {
+                           expand(copy *op, [], &mut vars)
                        };
         if s.is_ok() {
             self.out.write(s.unwrap());

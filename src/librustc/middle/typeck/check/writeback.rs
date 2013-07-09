@@ -350,10 +350,7 @@ pub fn resolve_type_vars_in_fn(fcx: @mut FnCtxt,
                                    self_info.self_id);
     }
     for decl.inputs.iter().advance |arg| {
-        do pat_util::pat_bindings(fcx.tcx().def_map, arg.pat)
-                |_bm, pat_id, span, _path| {
-            resolve_type_vars_for_node(wbcx, span, pat_id);
-        }
+        (visit.visit_pat)(arg.pat, (wbcx, visit));
         // Privacy needs the type for the whole pattern, not just each binding
         if !pat_util::pat_is_binding(fcx.tcx().def_map, arg.pat) {
             resolve_type_vars_for_node(wbcx, arg.pat.span, arg.pat.id);

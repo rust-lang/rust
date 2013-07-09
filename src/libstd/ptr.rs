@@ -143,6 +143,30 @@ pub unsafe fn set_memory<T>(dst: *mut T, c: u8, count: uint) {
 }
 
 /**
+ * Zeroes out `count * size_of::<T>` bytes of memory at `dst`
+ */
+#[inline]
+#[cfg(not(stage0))]
+pub unsafe fn zero_memory<T>(dst: *mut T, count: uint) {
+    set_memory(dst, 0, count);
+}
+
+/**
+ * Zeroes out `count * size_of::<T>` bytes of memory at `dst`
+ */
+#[inline]
+#[cfg(stage0)]
+pub unsafe fn zero_memory<T>(dst: *mut T, count: uint) {
+    let mut count = count * sys::size_of::<T>();
+    let mut dst = dst as *mut u8;
+    while count > 0 {
+        *dst = 0;
+        dst = mut_offset(dst, 1);
+        count -= 1;
+    }
+}
+
+/**
  * Swap the values at two mutable locations of the same type, without
  * deinitialising or copying either one.
  */
@@ -170,6 +194,32 @@ pub unsafe fn swap_ptr<T>(x: *mut T, y: *mut T) {
 pub unsafe fn replace_ptr<T>(dest: *mut T, mut src: T) -> T {
     swap_ptr(dest, &mut src);
     src
+}
+
+/**
+ * Reads the value from `*src` and returns it. Does not copy `*src`.
+ */
+#[inline(always)]
+pub unsafe fn read_ptr<T>(src: *mut T) -> T {
+    let mut tmp: T = intrinsics::uninit();
+    let t: *mut T = &mut tmp;
+    copy_memory(t, src, 1);
+    tmp
+}
+
+/**
+ * Reads the value from `*src` and nulls it out.
+ * This currently prevents destructors from executing.
+ */
+#[inline(always)]
+pub unsafe fn read_and_zero_ptr<T>(dest: *mut T) -> T {
+    // Copy the data out from `dest`:
+    let tmp = read_ptr(dest);
+
+    // Now zero out `dest`:
+    zero_memory(dest, 1);
+
+    tmp
 }
 
 /// Transform a region pointer - &T - to an unsafe pointer - *T.

@@ -132,7 +132,7 @@ pub fn free_ty_immediate(bcx: block, v: ValueRef, t: ty::t) -> block {
       ty::ty_evec(_, ty::vstore_box) |
       ty::ty_estr(ty::vstore_box) |
       ty::ty_opaque_closure_ptr(_) => {
-        let vp = alloca(bcx, type_of(bcx.ccx(), t));
+        let vp = alloca(bcx, type_of(bcx.ccx(), t), "");
         Store(bcx, v, vp);
         free_ty(bcx, vp, t)
       }

@@ -281,16 +281,16 @@ pub trait VectorVector<T> {
 impl<'self, T:Copy> VectorVector<T> for &'self [~[T]] {
     /// Flattens a vector of slices of T into a single vector of T.
     pub fn concat_vec(&self) -> ~[T] {
-        self.flat_map(|&inner| inner)
+        self.flat_map(|inner| copy *inner)
     }
 
     /// Concatenate a vector of vectors, placing a given separator between each.
     pub fn connect_vec(&self, sep: &T) -> ~[T] {
         let mut r = ~[];
         let mut first = true;
-        for self.iter().advance |&inner| {
+        for self.iter().advance |inner| {
             if first { first = false; } else { r.push(copy *sep); }
-            r.push_all(inner);
+            r.push_all(copy *inner);
         }
         r
     }
@@ -1256,16 +1256,15 @@ impl<T> OwnedVector<T> for ~[T] {
     /// ~~~
     #[inline]
     fn push_all_move(&mut self, mut rhs: ~[T]) {
-        let new_len = self.len() + rhs.len();
+        let self_len = self.len();
+        let rhs_len = rhs.len();
+        let new_len = self_len + rhs_len;
         self.reserve(new_len);
-        unsafe {
-            do rhs.as_mut_buf |p, len| {
-                for uint::range(0, len) |i| {
-                    let x = ptr::replace_ptr(ptr::mut_offset(p, i),
-                                             intrinsics::uninit());
-                    self.push(x);
-                }
-            }
+        unsafe { // Note: infallible.
+            let self_p = vec::raw::to_mut_ptr(*self);
+            let rhs_p = vec::raw::to_ptr(rhs);
+            ptr::copy_memory(ptr::mut_offset(self_p, self_len), rhs_p, rhs_len);
+            raw::set_len(self, new_len);
             raw::set_len(&mut rhs, 0);
         }
     }
@@ -1277,9 +1276,8 @@ impl<T> OwnedVector<T> for ~[T] {
             ln => {
                 let valptr = ptr::to_mut_unsafe_ptr(&mut self[ln - 1u]);
                 unsafe {
-                    let val = ptr::replace_ptr(valptr, intrinsics::init());
                     raw::set_len(self, ln - 1u);
-                    Some(val)
+                    Some(ptr::read_ptr(valptr))
                 }
             }
         }
@@ -1410,7 +1408,7 @@ impl<T> OwnedVector<T> for ~[T] {
             unsafe {
                 // This loop is optimized out for non-drop types.
                 for uint::range(newlen, oldlen) |i| {
-                    ptr::replace_ptr(ptr::mut_offset(p, i), intrinsics::uninit());
+                    ptr::read_and_zero_ptr(ptr::mut_offset(p, i));
                 }
             }
         }
@@ -1555,37 +1553,93 @@ pub trait OwnedEqVector<T:Eq> {
 
 impl<T:Eq> OwnedEqVector<T> for ~[T] {
     /**
-     * Remove consecutive repeated elements from a vector; if the vector is
-     * sorted, this removes all duplicates.
-     */
+    * Remove consecutive repeated elements from a vector; if the vector is
+    * sorted, this removes all duplicates.
+    */
     pub fn dedup(&mut self) {
         unsafe {
-            if self.len() == 0 { return; }
-            let mut last_written = 0;
-            let mut next_to_read = 1;
-            do self.as_mut_buf |p, ln| {
-                // last_written < next_to_read <= ln
-                while next_to_read < ln {
-                    // last_written < next_to_read < ln
-                    if *ptr::mut_offset(p, next_to_read) ==
-                        *ptr::mut_offset(p, last_written) {
-                        ptr::replace_ptr(ptr::mut_offset(p, next_to_read),
-                                         intrinsics::uninit());
-                    } else {
-                        last_written += 1;
-                        // last_written <= next_to_read < ln
-                        if next_to_read != last_written {
-                            ptr::swap_ptr(ptr::mut_offset(p, last_written),
-                                          ptr::mut_offset(p, next_to_read));
-                        }
+            // Although we have a mutable reference to `self`, we cannot make
+            // *arbitrary* changes. There exists the possibility that this
+            // vector is contained with an `@mut` box and hence is still
+            // readable by the outside world during the `Eq` comparisons.
+            // Moreover, those comparisons could fail, so we must ensure
+            // that the vector is in a valid state at all time.
+            //
+            // The way that we handle this is by using swaps; we iterate
+            // over all the elements, swapping as we go so that at the end
+            // the elements we wish to keep are in the front, and those we
+            // wish to reject are at the back. We can then truncate the
+            // vector. This operation is still O(n).
+            //
+            // Example: We start in this state, where `r` represents "next
+            // read" and `w` represents "next_write`.
+            //
+            //           r
+            //     +---+---+---+---+---+---+
+            //     | 0 | 1 | 1 | 2 | 3 | 3 |
+            //     +---+---+---+---+---+---+
+            //           w
+            //
+            // Comparing self[r] against self[w-1], tis is not a duplicate, so
+            // we swap self[r] and self[w] (no effect as r==w) and then increment both
+            // r and w, leaving us with:
+            //
+            //               r
+            //     +---+---+---+---+---+---+
+            //     | 0 | 1 | 1 | 2 | 3 | 3 |
+            //     +---+---+---+---+---+---+
+            //               w
+            //
+            // Comparing self[r] against self[w-1], this value is a duplicate,
+            // so we increment `r` but leave everything else unchanged:
+            //
+            //                   r
+            //     +---+---+---+---+---+---+
+            //     | 0 | 1 | 1 | 2 | 3 | 3 |
+            //     +---+---+---+---+---+---+
+            //               w
+            //
+            // Comparing self[r] against self[w-1], this is not a duplicate,
+            // so swap self[r] and self[w] and advance r and w:
+            //
+            //                       r
+            //     +---+---+---+---+---+---+
+            //     | 0 | 1 | 2 | 1 | 3 | 3 |
+            //     +---+---+---+---+---+---+
+            //                   w
+            //
+            // Not a duplicate, repeat:
+            //
+            //                           r
+            //     +---+---+---+---+---+---+
+            //     | 0 | 1 | 2 | 3 | 1 | 3 |
+            //     +---+---+---+---+---+---+
+            //                       w
+            //
+            // Duplicate, advance r. End of vec. Truncate to w.
+
+            let ln = self.len();
+            if ln < 1 { return; }
+
+            // Avoid bounds checks by using unsafe pointers.
+            let p = vec::raw::to_mut_ptr(*self);
+            let mut r = 1;
+            let mut w = 1;
+
+            while r < ln {
+                let p_r = ptr::mut_offset(p, r);
+                let p_wm1 = ptr::mut_offset(p, w - 1);
+                if *p_r != *p_wm1 {
+                    if r != w {
+                        let p_w = ptr::mut_offset(p_wm1, 1);
+                        util::swap(&mut *p_r, &mut *p_w);
                     }
-                    // last_written <= next_to_read < ln
-                    next_to_read += 1;
-                    // last_written < next_to_read <= ln
+                    w += 1;
                 }
+                r += 1;
             }
-            // last_written < next_to_read == ln
-            raw::set_len(self, last_written + 1);
+
+            self.truncate(w);
         }
     }
 }

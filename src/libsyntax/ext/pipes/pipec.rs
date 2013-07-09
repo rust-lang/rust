@@ -137,7 +137,7 @@ impl gen_send for message {
                 let arg_names = vec::from_fn(tys.len(), |i| "x_" + i.to_str());
 
                 let args_ast: ~[ast::arg] = arg_names.iter().zip(tys.iter())
-                    .transform(|(&n, t)| cx.arg(span, cx.ident_of(n), copy *t)).collect();
+                    .transform(|(n, t)| cx.arg(span, cx.ident_of(*n), copy *t)).collect();
 
                 let args_ast = vec::append(
                     ~[cx.arg(span,

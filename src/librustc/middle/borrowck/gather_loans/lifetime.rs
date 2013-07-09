@@ -67,7 +67,7 @@ impl GuaranteeLifetimeContext {
         //! Main routine. Walks down `cmt` until we find the "guarantor".
 
         match cmt.cat {
-            mc::cat_rvalue |
+            mc::cat_rvalue(*) |
             mc::cat_implicit_self |
             mc::cat_copied_upvar(*) |                  // L-Local
             mc::cat_local(*) |                         // L-Local
@@ -179,7 +179,7 @@ impl GuaranteeLifetimeContext {
         //! lvalue.
 
         cmt.mutbl.is_immutable() || match cmt.guarantor().cat {
-            mc::cat_rvalue => true,
+            mc::cat_rvalue(*) => true,
             _ => false
         }
     }
@@ -299,7 +299,7 @@ impl GuaranteeLifetimeContext {
             mc::cat_arg(id) => {
                 self.bccx.moved_variables_set.contains(&id)
             }
-            mc::cat_rvalue |
+            mc::cat_rvalue(*) |
             mc::cat_static_item |
             mc::cat_implicit_self |
             mc::cat_copied_upvar(*) |
@@ -325,8 +325,8 @@ impl GuaranteeLifetimeContext {
         // See the SCOPE(LV) function in doc.rs
 
         match cmt.cat {
-            mc::cat_rvalue => {
-                ty::re_scope(self.bccx.tcx.region_maps.cleanup_scope(cmt.id))
+            mc::cat_rvalue(cleanup_scope_id) => {
+                ty::re_scope(cleanup_scope_id)
             }
             mc::cat_implicit_self |
             mc::cat_copied_upvar(_) => {

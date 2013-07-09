@@ -73,6 +73,7 @@ struct GatherLoanCtxt {
 }
 
 pub fn gather_loans(bccx: @BorrowckCtxt,
+                    decl: &ast::fn_decl,
                     body: &ast::blk)
                     -> (id_range, @mut ~[Loan], @mut move_data::MoveData) {
     let glcx = @mut GatherLoanCtxt {
@@ -83,6 +84,7 @@ pub fn gather_loans(bccx: @BorrowckCtxt,
         repeating_ids: ~[body.node.id],
         move_data: @mut MoveData::new()
     };
+    glcx.gather_fn_arg_patterns(decl, body);
     let v = visit::mk_vt(@visit::Visitor {visit_expr: gather_loans_in_expr,
                                           visit_block: gather_loans_in_block,
                                           visit_fn: gather_loans_in_fn,
@@ -124,6 +126,7 @@ fn gather_loans_in_fn(fk: &visit::fn_kind,
             this.push_repeating_id(body.node.id);
             visit::visit_fn(fk, decl, body, sp, id, (this, v));
             this.pop_repeating_id(body.node.id);
+            this.gather_fn_arg_patterns(decl, body);
         }
     }
 }
@@ -138,26 +141,33 @@ fn gather_loans_in_block(blk: &ast::blk,
 fn gather_loans_in_local(local: @ast::local,
                          (this, vt): (@mut GatherLoanCtxt,
                                       visit::vt<@mut GatherLoanCtxt>)) {
-    if local.node.init.is_none() {
-        // Variable declarations without initializers are considered "moves":
-        let tcx = this.bccx.tcx;
-        do pat_util::pat_bindings(tcx.def_map, local.node.pat) |_, id, span, _| {
-            gather_moves::gather_decl(this.bccx,
-                                      this.move_data,
-                                      id,
-                                      span,
-                                      id);
+    match local.node.init {
+        None => {
+            // Variable declarations without initializers are considered "moves":
+            let tcx = this.bccx.tcx;
+            do pat_util::pat_bindings(tcx.def_map, local.node.pat)
+                |_, id, span, _| {
+                gather_moves::gather_decl(this.bccx,
+                                          this.move_data,
+                                          id,
+                                          span,
+                                          id);
+            }
         }
-    } else {
-        // Variable declarations with initializers are considered "assigns":
-        let tcx = this.bccx.tcx;
-        do pat_util::pat_bindings(tcx.def_map, local.node.pat) |_, id, span, _| {
-            gather_moves::gather_assignment(this.bccx,
-                                            this.move_data,
-                                            id,
-                                            span,
-                                            @LpVar(id),
-                                            id);
+        Some(init) => {
+            // Variable declarations with initializers are considered "assigns":
+            let tcx = this.bccx.tcx;
+            do pat_util::pat_bindings(tcx.def_map, local.node.pat)
+                |_, id, span, _| {
+                gather_moves::gather_assignment(this.bccx,
+                                                this.move_data,
+                                                id,
+                                                span,
+                                                @LpVar(id),
+                                                id);
+            }
+            let init_cmt = this.bccx.cat_expr(init);
+            this.gather_pat(init_cmt, local.node.pat, None);
         }
     }
 
@@ -230,7 +240,7 @@ fn gather_loans_in_expr(ex: @ast::expr,
         let cmt = this.bccx.cat_expr(ex_v);
         for arms.iter().advance |arm| {
             for arm.pats.iter().advance |pat| {
-                this.gather_pat(cmt, *pat, arm.body.node.id, ex.id);
+                this.gather_pat(cmt, *pat, Some((arm.body.node.id, ex.id)));
             }
         }
         visit::visit_expr(ex, (this, vt));
@@ -596,11 +606,40 @@ impl GatherLoanCtxt {
         }
     }
 
-    pub fn gather_pat(&mut self,
-                      discr_cmt: mc::cmt,
-                      root_pat: @ast::pat,
-                      arm_body_id: ast::node_id,
-                      match_id: ast::node_id) {
+    fn gather_fn_arg_patterns(&mut self,
+                              decl: &ast::fn_decl,
+                              body: &ast::blk) {
+        /*!
+         * Walks the patterns for fn arguments, checking that they
+         * do not attempt illegal moves or create refs that outlive
+         * the arguments themselves. Just a shallow wrapper around
+         * `gather_pat()`.
+         */
+
+        let mc_ctxt = self.bccx.mc_ctxt();
+        for decl.inputs.iter().advance |arg| {
+            let arg_ty = ty::node_id_to_type(self.tcx(), arg.pat.id);
+
+            let arg_cmt = mc_ctxt.cat_rvalue(
+                arg.id,
+                arg.pat.span,
+                body.node.id, // Arguments live only as long as the fn body.
+                arg_ty);
+
+            self.gather_pat(arg_cmt, arg.pat, None);
+        }
+    }
+
+    fn gather_pat(&mut self,
+                  discr_cmt: mc::cmt,
+                  root_pat: @ast::pat,
+                  arm_match_ids: Option<(ast::node_id, ast::node_id)>) {
+        /*!
+         * Walks patterns, examining the bindings to determine if they
+         * cause borrows (`ref` bindings, vector patterns) or
+         * moves (non-`ref` bindings with linear type).
+         */
+
         do self.bccx.cat_pattern(discr_cmt, root_pat) |cmt, pat| {
             match pat.node {
               ast::pat_ident(bm, _, _) if self.pat_is_binding(pat) => {
@@ -621,15 +660,19 @@ impl GatherLoanCtxt {
                     // with a cat_discr() node.  There is a detailed
                     // discussion of the function of this node in
                     // `lifetime.rs`:
-                    let arm_scope = ty::re_scope(arm_body_id);
-                    if self.bccx.is_subregion_of(scope_r, arm_scope) {
-                        let cmt_discr = self.bccx.cat_discr(cmt, match_id);
-                        self.guarantee_valid(pat.id, pat.span,
-                                             cmt_discr, mutbl, scope_r);
-                    } else {
-                        self.guarantee_valid(pat.id, pat.span,
-                                             cmt, mutbl, scope_r);
-                    }
+                    let cmt_discr = match arm_match_ids {
+                        None => cmt,
+                        Some((arm_id, match_id)) => {
+                            let arm_scope = ty::re_scope(arm_id);
+                            if self.bccx.is_subregion_of(scope_r, arm_scope) {
+                                self.bccx.cat_discr(cmt, match_id)
+                            } else {
+                                cmt
+                            }
+                        }
+                    };
+                    self.guarantee_valid(pat.id, pat.span,
+                                         cmt_discr, mutbl, scope_r);
                   }
                   ast::bind_infer => {
                       // No borrows here, but there may be moves
@@ -652,6 +695,24 @@ impl GatherLoanCtxt {
                       self.vec_slice_info(slice_pat, slice_ty);
                   let mcx = self.bccx.mc_ctxt();
                   let cmt_index = mcx.cat_index(slice_pat, cmt, 0);
+
+                  // Note: We declare here that the borrow occurs upon
+                  // entering the `[...]` pattern. This implies that
+                  // something like `[a, ..b]` where `a` is a move is
+                  // illegal, because the borrow is already in effect.
+                  // In fact such a move would be safe-ish, but it
+                  // effectively *requires* that we use the nulling
+                  // out semantics to indicate when a value has been
+                  // moved, which we are trying to move away from.
+                  // Otherwise, how can we indicate that the first
+                  // element in the vector has been moved?
+                  // Eventually, we could perhaps modify this rule to
+                  // permit `[..a, b]` where `b` is a move, because in
+                  // that case we can adjust the length of the
+                  // original vec accordingly, but we'd have to make
+                  // trans do the right thing, and it would only work
+                  // for `~` vectors. It seems simpler to just require
+                  // that people call `vec.pop()` or `vec.unshift()`.
                   self.guarantee_valid(pat.id, pat.span,
                                        cmt_index, slice_mutbl, slice_r);
               }

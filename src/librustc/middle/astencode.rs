@@ -53,7 +53,6 @@ pub struct Maps {
     method_map: middle::typeck::method_map,
     vtable_map: middle::typeck::vtable_map,
     write_guard_map: middle::borrowck::write_guard_map,
-    moves_map: middle::moves::MovesMap,
     capture_map: middle::moves::CaptureMap,
 }
 
@@ -952,12 +951,6 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
         }
     }
 
-    if maps.moves_map.contains(&id) {
-        do ebml_w.tag(c::tag_table_moves_map) |ebml_w| {
-            ebml_w.id(id);
-        }
-    }
-
     {
         let r = maps.capture_map.find(&id);
         for r.iter().advance |&cap_vars| {
@@ -1121,9 +1114,7 @@ fn decode_side_tables(xcx: @ExtendedDecodeContext,
                 xcx.dcx.tcx.sess.bug(
                     fmt!("unknown tag found in side tables: %x", tag));
             }
-            Some(value) => if value == c::tag_table_moves_map {
-                dcx.maps.moves_map.insert(id);
-            } else {
+            Some(value) => {
                 let val_doc = entry_doc.get(c::tag_table_val as uint);
                 let mut val_dsr = reader::Decoder(val_doc);
                 let val_dsr = &mut val_dsr;

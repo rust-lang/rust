@@ -608,6 +608,10 @@ impl block_ {
     pub fn tcx(&self) -> ty::ctxt { self.fcx.ccx.tcx }
     pub fn sess(&self) -> Session { self.fcx.ccx.sess }
 
+    pub fn ident(&self, ident: ident) -> @str {
+        token::ident_to_str(&ident)
+    }
+
     pub fn node_id_to_str(&self, id: ast::node_id) -> ~str {
         ast_map::node_id_to_str(self.tcx().items, id, self.sess().intr())
     }

@@ -158,9 +158,9 @@ pub fn check_pat_variant(pcx: &pat_ctxt, pat: @ast::pat, path: &ast::Path,
                 None => {
                     fcx.infcx().type_error_message_str_with_expected(pat.span,
                                                        |expected, actual| {
-                                                       expected.map_default(~"", |&e| {
+                                                       expected.map_default(~"", |e| {
                         fmt!("mismatched types: expected `%s` but found %s",
-                             e, actual)})},
+                             *e, actual)})},
                              Some(expected), ~"a structure pattern",
                              None);
                     fcx.write_error(pat.id);
@@ -200,9 +200,9 @@ pub fn check_pat_variant(pcx: &pat_ctxt, pat: @ast::pat, path: &ast::Path,
         _ => {
             fcx.infcx().type_error_message_str_with_expected(pat.span,
                                                |expected, actual| {
-                                               expected.map_default(~"", |&e| {
+                                               expected.map_default(~"", |e| {
                     fmt!("mismatched types: expected `%s` but found %s",
-                         e, actual)})},
+                         *e, actual)})},
                     Some(expected), ~"an enum or structure pattern",
                     None);
             fcx.write_error(pat.id);
@@ -534,9 +534,9 @@ pub fn check_pat(pcx: &pat_ctxt, pat: @ast::pat, expected: ty::t) {
                     _ => ty::terr_mismatch
                 };
                 fcx.infcx().type_error_message_str_with_expected(pat.span, |expected, actual| {
-                expected.map_default(~"", |&e| {
+                expected.map_default(~"", |e| {
                     fmt!("mismatched types: expected `%s` but found %s",
-                                     e, actual)})}, Some(expected), ~"tuple", Some(&type_error));
+                                     *e, actual)})}, Some(expected), ~"tuple", Some(&type_error));
                 fcx.write_error(pat.id);
             }
         }
@@ -583,9 +583,9 @@ pub fn check_pat(pcx: &pat_ctxt, pat: @ast::pat, expected: ty::t) {
               fcx.infcx().type_error_message_str_with_expected(
                   pat.span,
                   |expected, actual| {
-                      expected.map_default(~"", |&e| {
+                      expected.map_default(~"", |e| {
                           fmt!("mismatched types: expected `%s` but found %s",
-                               e, actual)})},
+                               *e, actual)})},
                   Some(expected),
                   ~"a vector pattern",
                   None);
@@ -641,9 +641,9 @@ pub fn check_pointer_pat(pcx: &pat_ctxt,
             fcx.infcx().type_error_message_str_with_expected(
                 span,
                 |expected, actual| {
-                    expected.map_default(~"", |&e| {
+                    expected.map_default(~"", |e| {
                         fmt!("mismatched types: expected `%s` but found %s",
-                             e, actual)})},
+                             *e, actual)})},
                 Some(expected),
                 fmt!("%s pattern", match pointer_kind {
                     Managed => "an @-box",

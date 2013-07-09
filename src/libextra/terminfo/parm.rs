@@ -81,8 +81,8 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
 
     // Copy parameters into a local vector for mutability
     let mut mparams = [Number(0), ..9];
-    for mparams.mut_iter().zip(params.iter()).advance |(dst, &src)| {
-        *dst = src;
+    for mparams.mut_iter().zip(params.iter()).advance |(dst, src)| {
+        *dst = copy *src;
     }
 
     for cap.iter().transform(|&x| x).advance |c| {
