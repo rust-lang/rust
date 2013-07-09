@@ -568,7 +568,6 @@ fn create_enum_md(cx: &mut CrateContext,
     assert!(Type::enum_discrim(cx) == cx.int_type);
     let discriminant_type_md = get_or_create_type(cx, ty::mk_int(), span);
 
-
     let variants : &[ty::VariantInfo] = *ty::enum_variants(cx.tcx, enum_def_id);
 
     let enumerators : ~[(~str, int)] = variants
@@ -971,8 +970,7 @@ fn get_or_create_type(cx: &mut CrateContext, t: ty::t, span: span) -> DIType {
         ty::ty_enum(def_id, ref substs) => {
             create_enum_md(cx, t, def_id, substs, span)
         },
-        ty::ty_box(ref mt) |
-        ty::ty_uniq(ref mt) => {
+        ty::ty_box(ref mt) => {
             let content_llvm_type = type_of::type_of(cx, mt.ty);
             let content_type_metadata = get_or_create_type(cx, mt.ty, span);
 
@@ -998,7 +996,8 @@ fn get_or_create_type(cx: &mut CrateContext, t: ty::t, span: span) -> DIType {
                 }
             }
         },
-        ty::ty_ptr(ref mt) |
+        ty::ty_uniq(ref mt)    |
+        ty::ty_ptr(ref mt)     |
         ty::ty_rptr(_, ref mt) => {
             let pointee = get_or_create_type(cx, mt.ty, span);
             create_pointer_type(cx, t, span, pointee)

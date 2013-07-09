@@ -13,13 +13,13 @@
 // debugger:run
 // debugger:finish
 
-// debugger:print unique->val
+// debugger:print *unique
 // check:$1 = {x = 99, y = 999, z = 9999, w = 99999}
 
 // debugger:print managed->val
 // check:$2 = {x = 88, y = 888, z = 8888, w = 88888}
 
-// debugger:print unique_dtor->val
+// debugger:print *unique_dtor
 // check:$3 = {x = 77, y = 777, z = 7777, w = 77777}
 
 // debugger:print managed_dtor->val
