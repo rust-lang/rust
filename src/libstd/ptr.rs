@@ -14,6 +14,7 @@ use cast;
 use option::{Option, Some, None};
 use sys;
 use unstable::intrinsics;
+use util::swap;
 
 #[cfg(not(test))] use cmp::{Eq, Ord};
 use uint;
@@ -177,9 +178,9 @@ pub unsafe fn swap_ptr<T>(x: *mut T, y: *mut T) {
     let t: *mut T = &mut tmp;
 
     // Perform the swap
-    copy_memory(t, x, 1);
-    copy_memory(x, y, 1);
-    copy_memory(y, t, 1);
+    copy_nonoverlapping_memory(t, x, 1);
+    copy_memory(x, y, 1); // `x` and `y` may overlap
+    copy_nonoverlapping_memory(y, t, 1);
 
     // y and t now point to the same thing, but we need to completely forget `tmp`
     // because it's no longer relevant.
@@ -192,7 +193,7 @@ pub unsafe fn swap_ptr<T>(x: *mut T, y: *mut T) {
  */
 #[inline]
 pub unsafe fn replace_ptr<T>(dest: *mut T, mut src: T) -> T {
-    swap_ptr(dest, &mut src);
+    swap(cast::transmute(dest), &mut src); // cannot overlap
     src
 }
 
@@ -202,8 +203,7 @@ pub unsafe fn replace_ptr<T>(dest: *mut T, mut src: T) -> T {
 #[inline(always)]
 pub unsafe fn read_ptr<T>(src: *mut T) -> T {
     let mut tmp: T = intrinsics::uninit();
-    let t: *mut T = &mut tmp;
-    copy_memory(t, src, 1);
+    copy_nonoverlapping_memory(&mut tmp, src, 1);
     tmp
 }
 
