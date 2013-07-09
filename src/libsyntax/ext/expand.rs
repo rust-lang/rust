@@ -1185,10 +1185,14 @@ mod test {
         pprust::print_mod(s, &crate.module, crate.attrs);
     }
 
-    //fn expand_and_resolve(crate_str: @str) -> ast::crate {
-        //let (crate_ast,ps) = string_to_crate_and_sess(crate_str);
+    fn expand_crate_str(crate_str: @str) -> @ast::Crate {
+        let (crate_ast,ps) = string_to_crate_and_sess(crate_str);
         // the cfg argument actually does matter, here...
-        //let expanded_ast = expand_crate(ps,~[],crate_ast);
+        expand_crate(ps,~[],crate_ast)
+    }
+
+    //fn expand_and_resolve(crate_str: @str) -> ast::crate {
+        //let expanded_ast = expand_crate_str(crate_str);
         // std::io::println(fmt!("expanded: %?\n",expanded_ast));
         //mtwt_resolve_crate(expanded_ast)
     //}
