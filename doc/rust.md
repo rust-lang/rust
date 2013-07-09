@@ -802,11 +802,11 @@ Use declarations support a number of convenient shortcuts:
 An example of `use` declarations:
 
 ~~~~
-use std::float::sin;
+use std::num::sin;
 use std::option::{Some, None};
 
 fn main() {
-    // Equivalent to 'info!(std::float::sin(1.0));'
+    // Equivalent to 'info!(std::num::sin(1.0));'
     info!(sin(1.0));
 
     // Equivalent to 'info!(~[std::option::Some(1.0), std::option::None]);'

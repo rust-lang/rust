@@ -840,7 +840,7 @@ mod test_qsort {
 
         let expected = ~[1, 2, 3];
 
-        do quick_sort(names) |x, y| { int::le(*x, *y) };
+        do quick_sort(names) |x, y| { *x < *y };
 
         let immut_names = names;
 

@@ -11,9 +11,9 @@
 #[allow(missing_doc)];
 
 
-use std::i32;
 use std::int;
 use std::io;
+use std::num;
 use std::str;
 
 static NSEC_PER_SEC: i32 = 1_000_000_000_i32;
@@ -249,7 +249,7 @@ impl Tm {
         } else {
             let s = self.strftime("%Y-%m-%dT%H:%M:%S");
             let sign = if self.tm_gmtoff > 0_i32 { '+' } else { '-' };
-            let mut m = i32::abs(self.tm_gmtoff) / 60_i32;
+            let mut m = num::abs(self.tm_gmtoff) / 60_i32;
             let h = m / 60_i32;
             m -= h * 60_i32;
             s + fmt!("%c%02d:%02d", sign, h as int, m as int)
@@ -832,7 +832,7 @@ priv fn do_strftime(format: &str, tm: &Tm) -> ~str {
           'Z' => copy tm.tm_zone,
           'z' => {
             let sign = if tm.tm_gmtoff > 0_i32 { '+' } else { '-' };
-            let mut m = i32::abs(tm.tm_gmtoff) / 60_i32;
+            let mut m = num::abs(tm.tm_gmtoff) / 60_i32;
             let h = m / 60_i32;
             m -= h * 60_i32;
             fmt!("%c%02d%02d", sign, h as int, m as int)

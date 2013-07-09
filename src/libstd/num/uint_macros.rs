@@ -30,42 +30,6 @@ pub static bytes : uint = ($bits / 8);
 pub static min_value: $T = 0 as $T;
 pub static max_value: $T = 0 as $T - 1 as $T;
 
-/// Calculates the sum of two numbers
-#[inline]
-pub fn add(x: $T, y: $T) -> $T { x + y }
-/// Subtracts the second number from the first
-#[inline]
-pub fn sub(x: $T, y: $T) -> $T { x - y }
-/// Multiplies two numbers together
-#[inline]
-pub fn mul(x: $T, y: $T) -> $T { x * y }
-/// Divides the first argument by the second argument (using integer division)
-#[inline]
-pub fn div(x: $T, y: $T) -> $T { x / y }
-/// Calculates the integer remainder when x is divided by y (equivalent to the
-/// '%' operator)
-#[inline]
-pub fn rem(x: $T, y: $T) -> $T { x % y }
-
-/// Returns true iff `x < y`
-#[inline]
-pub fn lt(x: $T, y: $T) -> bool { x < y }
-/// Returns true iff `x <= y`
-#[inline]
-pub fn le(x: $T, y: $T) -> bool { x <= y }
-/// Returns true iff `x == y`
-#[inline]
-pub fn eq(x: $T, y: $T) -> bool { x == y }
-/// Returns true iff `x != y`
-#[inline]
-pub fn ne(x: $T, y: $T) -> bool { x != y }
-/// Returns true iff `x >= y`
-#[inline]
-pub fn ge(x: $T, y: $T) -> bool { x >= y }
-/// Returns true iff `x > y`
-#[inline]
-pub fn gt(x: $T, y: $T) -> bool { x > y }
-
 #[inline]
 /**
  * Iterate through a range with a given step value.
@@ -112,12 +76,6 @@ pub fn range(lo: $T, hi: $T, it: &fn($T) -> bool) -> bool {
 /// Iterate over the range [`hi`..`lo`)
 pub fn range_rev(hi: $T, lo: $T, it: &fn($T) -> bool) -> bool {
     range_step(hi, lo, -1 as $T_SIGNED, it)
-}
-
-/// Computes the bitwise complement
-#[inline]
-pub fn compl(i: $T) -> $T {
-    max_value ^ i
 }
 
 impl Num for $T {}

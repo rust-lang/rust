@@ -46,6 +46,7 @@ use container::Container;
 use int;
 use iterator::IteratorUtil;
 use local_data;
+use num;
 use prelude::*;
 use str;
 use sys;
@@ -463,7 +464,7 @@ impl<R: Rng> RngUtil for R {
      */
     fn gen_int_range(&mut self, start: int, end: int) -> int {
         assert!(start < end);
-        start + int::abs(self.gen::<int>() % (end - start))
+        start + num::abs(self.gen::<int>() % (end - start))
     }
 
     /**

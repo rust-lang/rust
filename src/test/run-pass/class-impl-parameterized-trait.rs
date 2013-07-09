@@ -58,7 +58,7 @@ class cat : map<int, bool> {
   fn find(&&k:int) -> Option<bool> { Some(self.get(k)) }
   fn remove(&&k:int) -> Option<bool> { self.meows -= k; Some(true) }
   fn each(f: &fn(&&int, &&bool) -> bool) {
-    let mut n = int::abs(self.meows);
+    let mut n = num::abs(self.meows);
     while n > 0 {
         if !f(n, true) { break; }
         n -= 1;
