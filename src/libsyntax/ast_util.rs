@@ -915,7 +915,7 @@ fn idx_push<T>(vec: &mut ~[T], val: T) -> uint {
 }
 
 /// Resolve a syntax object to a name, per MTWT.
-pub fn resolve(id : Ident) -> Name {
+pub fn mtwt_resolve(id : Ident) -> Name {
     resolve_internal(id, get_sctable())
 }
 
