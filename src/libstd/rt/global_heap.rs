@@ -80,7 +80,7 @@ pub unsafe fn exchange_malloc(td: *c_char, size: uintptr_t) -> *c_char {
 #[cfg(not(stage0), not(test))]
 #[lang="exchange_malloc"]
 #[inline]
-pub unsafe fn exchange_malloc(align: u32, size: uintptr_t) -> *c_char {
+pub unsafe fn exchange_malloc(_align: u32, size: uintptr_t) -> *c_char {
     malloc_raw(size as uint) as *c_char
 }
 

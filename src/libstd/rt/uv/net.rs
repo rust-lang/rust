@@ -97,7 +97,7 @@ fn uv_ip_as_ip<T>(addr: UvIpAddr, f: &fn(IpAddr) -> T) -> T {
     let ip_str = str::from_bytes_slice(ip_name).trim_right_chars(&'\x00');
     let ip = match addr {
         UvIpv4(*) => {
-            let ip: ~[u8] = 
+            let ip: ~[u8] =
                 ip_str.split_iter('.')
                       .transform(|s: &str| -> u8 { FromStr::from_str(s).unwrap() })
                       .collect();
@@ -288,8 +288,10 @@ impl TcpWatcher {
             rtdebug!("connect_t: %x", connect_handle as uint);
             do ip_as_uv_ip(address) |addr| {
                 let result = match addr {
-                    UvIpv4(addr) => uvll::tcp_connect(connect_handle, self.native_handle(), addr, connect_cb),
-                    UvIpv6(addr) => uvll::tcp_connect6(connect_handle, self.native_handle(), addr, connect_cb),
+                    UvIpv4(addr) => uvll::tcp_connect(connect_handle,
+                                                      self.native_handle(), addr, connect_cb),
+                    UvIpv6(addr) => uvll::tcp_connect6(connect_handle,
+                                                       self.native_handle(), addr, connect_cb),
                 };
                 assert_eq!(0, result);
             }
@@ -416,8 +418,10 @@ impl UdpWatcher {
         do ip_as_uv_ip(address) |addr| {
             let result = unsafe {
                 match addr {
-                    UvIpv4(addr) => uvll::udp_send(req.native_handle(), self.native_handle(), [buf], addr, send_cb),
-                    UvIpv6(addr) => uvll::udp_send6(req.native_handle(), self.native_handle(), [buf], addr, send_cb),
+                    UvIpv4(addr) => uvll::udp_send(req.native_handle(),
+                                                   self.native_handle(), [buf], addr, send_cb),
+                    UvIpv6(addr) => uvll::udp_send6(req.native_handle(),
+                                                    self.native_handle(), [buf], addr, send_cb),
                 }
             };
             assert_eq!(0, result);
