@@ -118,16 +118,16 @@ fn fold_mac_(m: &mac, fld: @ast_fold) -> mac {
         node: match m.node {
             mac_invoc_tt(ref p,ref tts,ctxt) =>
             mac_invoc_tt(fld.fold_path(p),
-                         fold_tts(*tts,|id|{fld.fold_ident(id)}),
+                         fold_tts(*tts,fld),
                          ctxt)
         },
         span: fld.new_span(m.span)
     }
 }
 
-// build a new vector of tts by appling the given function to
+// build a new vector of tts by appling the ast_fold's fold_ident to
 // all of the identifiers in the token trees.
-pub fn fold_tts(tts : &[token_tree], f: @fn(ident)->ident) -> ~[token_tree] {
+pub fn fold_tts(tts : &[token_tree], f : @ast_fold) -> ~[token_tree] {
     do tts.map |tt| {
         match *tt {
             tt_tok(span, ref tok) =>
@@ -140,16 +140,16 @@ pub fn fold_tts(tts : &[token_tree], f: @fn(ident)->ident) -> ~[token_tree] {
                    sep.map(|tok|maybe_fold_ident(tok,f)),
                    is_optional),
             tt_nonterminal(sp,ref ident) =>
-            tt_nonterminal(sp,f(*ident))
+            tt_nonterminal(sp,f.fold_ident(*ident))
         }
     }
 }
 
 // apply ident folder if it's an ident, otherwise leave it alone
-fn maybe_fold_ident(t : &token::Token, f: @fn(ident)->ident) -> token::Token {
+fn maybe_fold_ident(t : &token::Token, f: @ast_fold) -> token::Token {
     match *t {
         token::IDENT(id,followed_by_colons) =>
-        token::IDENT(f(id),followed_by_colons),
+        token::IDENT(f.fold_ident(id),followed_by_colons),
         _ => (*t).clone()
     }
 }
@@ -947,6 +947,8 @@ impl AstFoldExtensions for @ast_fold {
     }
 }
 
+// brson agrees with me that this function's existence is probably
+// not a good or useful thing.
 pub fn make_fold(afp: ast_fold_fns) -> @ast_fold {
     afp as @ast_fold
 }
