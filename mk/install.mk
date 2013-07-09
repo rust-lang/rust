@@ -38,18 +38,18 @@ endif
 # Target-specific $(LIB_DESTIN_DIR) is the destination directory
 # $(1) is the filename/libname-glob
 define INSTALL_LIB
-  $(if $(filter-out 1,$(words $(wildcard $(LIB_SOURCE_DIR)/$(1)))),      \
-       $(error Aborting install because more than one library matching   \
-               $(1) is present in build tree $(LIB_SOURCE_DIR):          \
+  $(if $(filter-out 1,$(words $(wildcard $(LIB_SOURCE_DIR)/$(1)))),        \
+       $(error Aborting install because more than one library matching     \
+               $(1) is present in build tree $(LIB_SOURCE_DIR):            \
                $(wildcard $(LIB_SOURCE_DIR)/$(1))))
-  $(Q)LIB_NAME=$(notdir $(lastword $(wildcard $(LIB_SOURCE_DIR)/$(1)))); \
-  MATCHES=$(filter-out %$(notdir $(lastword $(wildcard $(LIB_SOURCE_DIR)/$(1)))),\
-                        $(wildcard $(LIB_DESTIN_DIR)/$(1)));             \
-  if [ -n "$$MATCHES" ]; then                                            \
-    echo "Warning, one or libraries matching Rust library '$(1)'" &&     \
-    echo "  (other than '$$LIB_NAME' itself) already present"     &&     \
-    echo "  at destination $(LIB_DESTIN_DIR):"                    &&     \
-    echo $$MATCHES ;                                                     \
+  $(Q)LIB_NAME="$(notdir $(lastword $(wildcard $(LIB_SOURCE_DIR)/$(1))))"; \
+  MATCHES="$(filter-out %$(notdir $(lastword $(wildcard $(LIB_SOURCE_DIR)/$(1)))),\
+                        $(wildcard $(LIB_DESTIN_DIR)/$(1)))";              \
+  if [ -n "$$MATCHES" ]; then                                              \
+    echo "Warning, one or libraries matching Rust library '$(1)'" &&       \
+    echo "  (other than '$$LIB_NAME' itself) already present"     &&       \
+    echo "  at destination $(LIB_DESTIN_DIR):"                    &&       \
+    echo $$MATCHES ;                                                       \
   fi
   $(call DO_INSTALL_LIB,$(1))
 endef
