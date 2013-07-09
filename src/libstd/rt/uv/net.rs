@@ -81,8 +81,8 @@ fn uv_ip_as_ip<T>(addr: UvIpAddr, f: &fn(IpAddr) -> T) -> T {
         let buf = vec::from_elem(ip_size + 1 /*null terminated*/, 0u8);
         unsafe {
             match addr {
-                UvIpv4(addr) => uvll::ip4_name(addr, vec::raw::to_ptr(buf), ip_size as u64),
-                UvIpv6(addr) => uvll::ip6_name(addr, vec::raw::to_ptr(buf), ip_size as u64),
+                UvIpv4(addr) => uvll::ip4_name(addr, vec::raw::to_ptr(buf), ip_size as size_t),
+                UvIpv6(addr) => uvll::ip6_name(addr, vec::raw::to_ptr(buf), ip_size as size_t),
             }
         };
         buf
