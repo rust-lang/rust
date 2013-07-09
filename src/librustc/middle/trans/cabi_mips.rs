@@ -10,7 +10,7 @@
 
 
 use std::libc::c_uint;
-use std::uint;
+use std::num;
 use std::vec;
 use lib::llvm::{llvm, Integer, Pointer, Float, Double, Struct, Array};
 use lib::llvm::{Attribute, StructRetAttribute};
@@ -43,7 +43,7 @@ fn ty_align(ty: Type) -> uint {
             1
           } else {
             let str_tys = ty.field_types();
-            str_tys.iter().fold(1, |a, t| uint::max(a, ty_align(*t)))
+            str_tys.iter().fold(1, |a, t| num::max(a, ty_align(*t)))
           }
         }
         Array => {
@@ -97,7 +97,7 @@ fn classify_arg_ty(ty: Type, offset: &mut uint) -> (LLVMType, Option<Attribute>)
     let size = ty_size(ty) * 8;
     let mut align = ty_align(ty);
 
-    align = uint::min(uint::max(align, 4), 8);
+    align = num::min(num::max(align, 4), 8);
     *offset = align_up_to(*offset, align);
     *offset += align_up_to(size, align * 8) / 8;
 

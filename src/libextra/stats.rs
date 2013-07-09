@@ -12,7 +12,6 @@ use sort;
 use std::cmp;
 use std::io;
 use std::num;
-use std::f64;
 use std::vec;
 
 // NB: this can probably be rewritten in terms of num::Num
@@ -178,7 +177,7 @@ impl<'self> Stats for &'self [f64] {
     }
 
     fn std_dev(self) -> f64 {
-        f64::sqrt(self.var())
+        self.var().sqrt()
     }
 
     fn std_dev_pct(self) -> f64 {

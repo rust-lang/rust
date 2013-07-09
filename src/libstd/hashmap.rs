@@ -19,6 +19,7 @@ use container::{Container, Mutable, Map, Set};
 use cmp::{Eq, Equiv};
 use hash::Hash;
 use iterator::{Iterator, IteratorUtil};
+use num;
 use option::{None, Option, Some};
 use rand::RngUtil;
 use rand;
@@ -74,7 +75,7 @@ pub fn linear_map_with_capacity<K:Eq + Hash,V>(
 fn linear_map_with_capacity_and_keys<K:Eq + Hash,V>(
     k0: u64, k1: u64,
     initial_capacity: uint) -> HashMap<K, V> {
-    let cap = uint::max(INITIAL_CAPACITY, initial_capacity);
+    let cap = num::max(INITIAL_CAPACITY, initial_capacity);
     HashMap {
         k0: k0, k1: k1,
         resize_at: resize_at(cap),

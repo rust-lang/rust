@@ -34,11 +34,11 @@ use driver::session;
 use middle::lint;
 
 use std::io;
+use std::num;
 use std::os;
 use std::result;
 use std::str;
 use std::task;
-use std::uint;
 use std::vec;
 use extra::getopts::{groups, opt_present};
 use extra::getopts;
@@ -153,7 +153,7 @@ Available lint options:
 
     let lint_dict = lint::get_lint_dict();
     let mut max_key = 0;
-    for lint_dict.each_key |k| { max_key = uint::max(k.len(), max_key); }
+    for lint_dict.each_key |k| { max_key = num::max(k.len(), max_key); }
     fn padded(max: uint, s: &str) -> ~str {
         str::from_bytes(vec::from_elem(max - s.len(), ' ' as u8)) + s
     }

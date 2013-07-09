@@ -18,6 +18,7 @@ use visit;
 
 use std::hashmap::HashMap;
 use std::int;
+use std::num;
 use std::option;
 use std::cast;
 use std::local_data;
@@ -376,8 +377,8 @@ impl id_range {
     }
 
     pub fn add(&mut self, id: node_id) {
-        self.min = int::min(self.min, id);
-        self.max = int::max(self.max, id + 1);
+        self.min = num::min(self.min, id);
+        self.max = num::max(self.max, id + 1);
     }
 }
 

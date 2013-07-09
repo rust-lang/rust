@@ -10,6 +10,7 @@
 
 //! A double-ended queue implemented as a circular buffer
 
+use std::num;
 use std::uint;
 use std::vec;
 use std::iterator::FromIterator;
@@ -51,7 +52,7 @@ impl<T> Deque<T> {
     /// Create an empty Deque with space for at least `n` elements.
     pub fn with_capacity(n: uint) -> Deque<T> {
         Deque{nelts: 0, lo: 0,
-              elts: vec::from_fn(uint::max(MINIMUM_CAPACITY, n), |_| None)}
+              elts: vec::from_fn(num::max(MINIMUM_CAPACITY, n), |_| None)}
     }
 
     /// Return a reference to the first element in the deque

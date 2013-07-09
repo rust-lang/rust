@@ -23,9 +23,7 @@ use to_str;
 pub use cmath::c_double_targ_consts::*;
 pub use cmp::{min, max};
 
-// An inner module is required to get the #[inline] attribute on the
-// functions.
-pub use self::delegated::*;
+use self::delegated::*;
 
 macro_rules! delegate(
     (
@@ -37,6 +35,8 @@ macro_rules! delegate(
             ) -> $rv:ty = $bound_name:path
         ),*
     ) => (
+        // An inner module is required to get the #[inline] attribute on the
+        // functions.
         mod delegated {
             use cmath::c_double_utils;
             use libc::{c_double, c_int};
@@ -142,49 +142,6 @@ pub static infinity: f64 = 1.0_f64/0.0_f64;
 
 pub static neg_infinity: f64 = -1.0_f64/0.0_f64;
 
-#[inline]
-pub fn add(x: f64, y: f64) -> f64 { return x + y; }
-
-#[inline]
-pub fn sub(x: f64, y: f64) -> f64 { return x - y; }
-
-#[inline]
-pub fn mul(x: f64, y: f64) -> f64 { return x * y; }
-
-#[inline]
-pub fn div(x: f64, y: f64) -> f64 { return x / y; }
-
-#[inline]
-pub fn rem(x: f64, y: f64) -> f64 { return x % y; }
-
-#[inline]
-pub fn lt(x: f64, y: f64) -> bool { return x < y; }
-
-#[inline]
-pub fn le(x: f64, y: f64) -> bool { return x <= y; }
-
-#[inline]
-pub fn eq(x: f64, y: f64) -> bool { return x == y; }
-
-#[inline]
-pub fn ne(x: f64, y: f64) -> bool { return x != y; }
-
-#[inline]
-pub fn ge(x: f64, y: f64) -> bool { return x >= y; }
-
-#[inline]
-pub fn gt(x: f64, y: f64) -> bool { return x > y; }
-
-#[inline]
-pub fn fmax(x: f64, y: f64) -> f64 {
-    if x >= y || y.is_NaN() { x } else { y }
-}
-
-#[inline]
-pub fn fmin(x: f64, y: f64) -> f64 {
-    if x <= y || y.is_NaN() { x } else { y }
-}
-
 // FIXME (#1999): add is_normal, is_subnormal, and fpclassify
 
 /* Module: consts */
@@ -273,13 +230,23 @@ impl Orderable for f64 {
     /// Returns `NaN` if either of the numbers are `NaN`.
     #[inline]
     fn min(&self, other: &f64) -> f64 {
-        if self.is_NaN() || other.is_NaN() { Float::NaN() } else { fmin(*self, *other) }
+        cond!(
+            (self.is_NaN())  { *self  }
+            (other.is_NaN()) { *other }
+            (*self < *other) { *self  }
+            _                { *other }
+        )
     }
 
     /// Returns `NaN` if either of the numbers are `NaN`.
     #[inline]
     fn max(&self, other: &f64) -> f64 {
-        if self.is_NaN() || other.is_NaN() { Float::NaN() } else { fmax(*self, *other) }
+        cond!(
+            (self.is_NaN())  { *self  }
+            (other.is_NaN()) { *other }
+            (*self > *other) { *self  }
+            _                { *other }
+        )
     }
 
     /// Returns the number constrained within the range `mn <= self <= mx`.
