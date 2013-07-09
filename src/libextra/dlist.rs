@@ -39,24 +39,28 @@ struct Node<T> {
 pub struct ForwardIterator<'self, T> {
     priv list: &'self List<T>,
     priv next: &'self Link<T>,
+    priv nelem: uint,
 }
 
 /// List reverse iterator
 pub struct ReverseIterator<'self, T> {
     priv list: &'self List<T>,
     priv next: Rawlink<T>,
+    priv nelem: uint,
 }
 
 /// List mutable iterator
 pub struct MutForwardIterator<'self, T> {
     priv list: &'self mut List<T>,
     priv curs: Rawlink<T>,
+    priv nelem: uint,
 }
 
 /// List mutable reverse iterator
 pub struct MutReverseIterator<'self, T> {
     priv list: &'self mut List<T>,
     priv next: Rawlink<T>,
+    priv nelem: uint,
 }
 
 /// List consuming iterator
@@ -287,22 +291,22 @@ impl<T> List<T> {
 
     /// Provide a forward iterator
     pub fn iter<'a>(&'a self) -> ForwardIterator<'a, T> {
-        ForwardIterator{list: self, next: &self.list_head}
+        ForwardIterator{nelem: self.len(), list: self, next: &self.list_head}
     }
 
     /// Provide a reverse iterator
     pub fn rev_iter<'a>(&'a self) -> ReverseIterator<'a, T> {
-        ReverseIterator{list: self, next: self.list_tail}
+        ReverseIterator{nelem: self.len(), list: self, next: self.list_tail}
     }
 
     /// Provide a forward iterator with mutable references
     pub fn mut_iter<'a>(&'a mut self) -> MutForwardIterator<'a, T> {
-        MutForwardIterator{list: self, curs: None}
+        MutForwardIterator{nelem: self.len(), list: self, curs: None}
     }
 
     /// Provide a reverse iterator with mutable references
     pub fn mut_rev_iter<'a>(&'a mut self) -> MutReverseIterator<'a, T> {
-        MutReverseIterator{list: self, next: self.list_tail}
+        MutReverseIterator{nelem: self.len(), list: self, next: self.list_tail}
     }
 
 
@@ -332,6 +336,7 @@ impl<'self, A> Iterator<&'self A> for ForwardIterator<'self, A> {
         match *self.next {
             None => None,
             Some(ref next) => {
+                self.nelem -= 1;
                 self.next = &next.next;
                 Some(&next.value)
             }
@@ -339,7 +344,7 @@ impl<'self, A> Iterator<&'self A> for ForwardIterator<'self, A> {
     }
 
     fn size_hint(&self) -> (uint, Option<uint>) {
-        (0, Some(self.list.length))
+        (self.nelem, Some(self.nelem))
     }
 }
 
@@ -353,6 +358,7 @@ impl<'self, A> Iterator<&'self mut A> for MutForwardIterator<'self, A> {
                 match self.list.list_head {
                     None => None,
                     Some(ref mut head) => {
+                        self.nelem -= 1;
                         self.curs = rawlink(&mut **head);
                         Some(&mut head.value)
                     }
@@ -362,6 +368,7 @@ impl<'self, A> Iterator<&'self mut A> for MutForwardIterator<'self, A> {
                 match resolve_rawlink(rcurs).next {
                     None => None,
                     Some(ref mut head) => {
+                        self.nelem -= 1;
                         self.curs = rawlink(&mut **head);
                         Some(&mut head.value)
                     }
@@ -371,7 +378,7 @@ impl<'self, A> Iterator<&'self mut A> for MutForwardIterator<'self, A> {
     }
 
     fn size_hint(&self) -> (uint, Option<uint>) {
-        (0, Some(self.list.length))
+        (self.nelem, Some(self.nelem))
     }
 }
 
@@ -381,6 +388,7 @@ impl<'self, A> Iterator<&'self A> for ReverseIterator<'self, A> {
         match self.next {
             None => None,
             Some(rnext) => {
+                self.nelem -= 1;
                 let prev = resolve_rawlink(rnext);
                 self.next = prev.prev;
                 Some(&prev.value)
@@ -389,7 +397,7 @@ impl<'self, A> Iterator<&'self A> for ReverseIterator<'self, A> {
     }
 
     fn size_hint(&self) -> (uint, Option<uint>) {
-        (0, Some(self.list.length))
+        (self.nelem, Some(self.nelem))
     }
 }
 
@@ -399,6 +407,7 @@ impl<'self, A> Iterator<&'self mut A> for MutReverseIterator<'self, A> {
         match self.next {
             None => None,
             Some(rnext) => {
+                self.nelem -= 1;
                 let prev = resolve_rawlink(rnext);
                 self.next = prev.prev;
                 Some(&mut prev.value)
@@ -407,7 +416,7 @@ impl<'self, A> Iterator<&'self mut A> for MutReverseIterator<'self, A> {
     }
 
     fn size_hint(&self) -> (uint, Option<uint>) {
-        (0, Some(self.list.length))
+        (self.nelem, Some(self.nelem))
     }
 }
 
@@ -628,7 +637,9 @@ fn test_iterator() {
     assert_eq!(n.iter().next(), None);
     n.push_front(4);
     let mut it = n.iter();
+    assert_eq!(it.size_hint(), (1, Some(1)));
     assert_eq!(it.next().unwrap(), &4);
+    assert_eq!(it.size_hint(), (0, Some(0)));
     assert_eq!(it.next(), None);
 }
 
@@ -642,7 +653,9 @@ fn test_rev_iter() {
     assert_eq!(n.rev_iter().next(), None);
     n.push_front(4);
     let mut it = n.rev_iter();
+    assert_eq!(it.size_hint(), (1, Some(1)));
     assert_eq!(it.next().unwrap(), &4);
+    assert_eq!(it.size_hint(), (0, Some(0)));
     assert_eq!(it.next(), None);
 }
 
@@ -659,7 +672,9 @@ fn test_mut_iter() {
     assert!(n.mut_iter().next().is_none());
     n.push_front(4);
     let mut it = n.mut_iter();
+    assert_eq!(it.size_hint(), (1, Some(1)));
     assert!(it.next().is_some());
+    assert_eq!(it.size_hint(), (0, Some(0)));
     assert!(it.next().is_none());
 }
 
