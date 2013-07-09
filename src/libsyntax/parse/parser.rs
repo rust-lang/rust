@@ -3393,7 +3393,10 @@ impl Parser {
     }
 
     fn is_self_ident(&self) -> bool {
-        *self.token == token::IDENT(special_idents::self_, false)
+        match *self.token {
+          token::IDENT(id, false) => id.name == special_idents::self_.name,
+          _ => false
+        }
     }
 
     fn expect_self_ident(&self) {

@@ -679,14 +679,34 @@ pub fn is_reserved_keyword(tok: &Token) -> bool {
     }
 }
 
+pub fn mtwt_token_eq(t1 : &Token, t2 : &Token) -> bool {
+    if (*t1 == *t2) {
+        true
+    } else {
+        match (t1,t2) {
+            (&IDENT(id1,_),&IDENT(id2,_)) =>
+            ast_util::mtwt_resolve(id1) == ast_util::mtwt_resolve(id2),
+            _ => false
+        }
+    }
+}
+
 
 #[cfg(test)]
 mod test {
+    use ast;
+    use ast_util;
     use super::*;
-    use std::io;
-    #[test] fn t1() {
-        let a = fresh_name("ghi");
-        printfln!("interned name: %u,\ntextual name: %s\n",
-                  a, interner_get(a));
+
+    fn mark_ident(id : ast::ident, m : ast::Mrk) -> ast::ident {
+        ast::ident{name:id.name,ctxt:ast_util::new_mark(m,id.ctxt)}
     }
+
+    #[test] fn mtwt_token_eq_test() {
+        assert!(mtwt_token_eq(&GT,&GT));
+        let a = str_to_ident("bac");
+        let a1 = mark_ident(a,92);
+        assert!(mtwt_token_eq(&IDENT(a,true),&IDENT(a1,false)));
+    }
+
 }
