@@ -824,8 +824,8 @@ extern {
     unsafe fn rust_uv_timer_start(
         timer_handle: *uv_timer_t,
         cb: *u8,
-        timeout: libc::uint64_t,
-        repeat: libc::uint64_t) -> libc::c_int;
+        timeout: u64,
+        repeat: u64) -> libc::c_int;
     unsafe fn rust_uv_timer_stop(handle: *uv_timer_t) -> libc::c_int;
 
     unsafe fn rust_uv_getaddrinfo(loop_ptr: *libc::c_void,
@@ -1089,8 +1089,8 @@ pub unsafe fn timer_init(loop_ptr: *libc::c_void,
 }
 pub unsafe fn timer_start(timer_ptr: *uv_timer_t, cb: *u8, timeout: uint,
                       repeat: uint) -> libc::c_int {
-    return rust_uv_timer_start(timer_ptr, cb, timeout as libc::uint64_t,
-                               repeat as libc::uint64_t);
+    return rust_uv_timer_start(timer_ptr, cb, timeout as u64,
+                               repeat as u64);
 }
 pub unsafe fn timer_stop(timer_ptr: *uv_timer_t) -> libc::c_int {
     return rust_uv_timer_stop(timer_ptr);

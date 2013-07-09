@@ -436,8 +436,8 @@ extern {
                           timer_handle: *uv_timer_t) -> c_int;
     fn rust_uv_timer_start(timer_handle: *uv_timer_t,
                            cb: *u8,
-                           timeout: libc::uint64_t,
-                           repeat: libc::uint64_t) -> c_int;
+                           timeout: u64,
+                           repeat: u64) -> c_int;
     fn rust_uv_timer_stop(handle: *uv_timer_t) -> c_int;
 
     fn rust_uv_malloc_buf_base_of(sug_size: size_t) -> *u8;

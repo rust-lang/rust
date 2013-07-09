@@ -191,14 +191,7 @@ pub mod types {
             pub enum fpos_t {}
         }
         pub mod c99 {
-            pub type int8_t = i8;
-            pub type int16_t = i16;
-            pub type int32_t = i32;
-            pub type int64_t = i64;
-            pub type uint8_t = u8;
-            pub type uint16_t = u16;
-            pub type uint32_t = u32;
-            pub type uint64_t = u64;
+            // Omitted: fixed-size integer types
         }
         pub mod posix88 {
             pub enum DIR {}
@@ -520,7 +513,6 @@ pub mod types {
                 pub type ssize_t = i64;
             }
             pub mod posix01 {
-                use libc::types::common::c99::{uint8_t, uint32_t, int32_t};
                 use libc::types::os::arch::c95::{c_long, time_t};
                 use libc::types::os::arch::posix88::{dev_t, gid_t, ino_t};
                 use libc::types::os::arch::posix88::{mode_t, off_t};
@@ -548,11 +540,11 @@ pub mod types {
                     st_blocks: blkcnt_t,
                     st_blksize: blksize_t,
                     st_flags: fflags_t,
-                    st_gen: uint32_t,
-                    st_lspare: int32_t,
+                    st_gen: u32,
+                    st_lspare: i32,
                     st_birthtime: time_t,
                     st_birthtime_nsec: c_long,
-                    __unused: [uint8_t, ..2],
+                    __unused: [u8, ..2],
                 }
             }
             pub mod posix08 {
@@ -569,7 +561,7 @@ pub mod types {
         pub mod common {
             pub mod posix01 {
                 use libc::types::os::arch::c95::c_short;
-                use libc::types::os::arch::extra::{int64, time64_t};
+                use libc::types::os::arch::extra::time64_t;
                 use libc::types::os::arch::posix88::{dev_t, ino_t};
                 use libc::types::os::arch::posix88::mode_t;
 
@@ -583,7 +575,7 @@ pub mod types {
                     st_uid: c_short,
                     st_gid: c_short,
                     st_rdev: dev_t,
-                    st_size: int64,
+                    st_size: i64,
                     st_atime: time64_t,
                     st_mtime: time64_t,
                     st_ctime: time64_t,
@@ -679,7 +671,6 @@ pub mod types {
                 pub type SIZE_T = size_t;
 
                 pub type time64_t = i64;
-                pub type int64 = i64;
 
                 pub struct STARTUPINFO {
                     cb: DWORD,
@@ -820,7 +811,6 @@ pub mod types {
                 pub type ssize_t = i32;
             }
             pub mod posix01 {
-                use libc::types::common::c99::{int32_t, int64_t, uint32_t};
                 use libc::types::os::arch::c95::{c_long, time_t};
                 use libc::types::os::arch::posix88::{dev_t, gid_t, ino_t,
                                                      mode_t, off_t, uid_t};
@@ -848,10 +838,10 @@ pub mod types {
                     st_size: off_t,
                     st_blocks: blkcnt_t,
                     st_blksize: blksize_t,
-                    st_flags: uint32_t,
-                    st_gen: uint32_t,
-                    st_lspare: int32_t,
-                    st_qspare: [int64_t, ..2],
+                    st_flags: u32,
+                    st_gen: u32,
+                    st_lspare: i32,
+                    st_qspare: [i64, ..2],
                 }
             }
             pub mod posix08 {
@@ -900,8 +890,6 @@ pub mod types {
                 pub type ssize_t = i64;
             }
             pub mod posix01 {
-                use libc::types::common::c99::{int32_t, int64_t};
-                use libc::types::common::c99::{uint32_t};
                 use libc::types::os::arch::c95::{c_long, time_t};
                 use libc::types::os::arch::posix88::{dev_t, gid_t, ino_t};
                 use libc::types::os::arch::posix88::{mode_t, off_t, uid_t};
@@ -929,10 +917,10 @@ pub mod types {
                     st_size: off_t,
                     st_blocks: blkcnt_t,
                     st_blksize: blksize_t,
-                    st_flags: uint32_t,
-                    st_gen: uint32_t,
-                    st_lspare: int32_t,
-                    st_qspare: [int64_t, ..2],
+                    st_flags: u32,
+                    st_gen: u32,
+                    st_lspare: i32,
+                    st_qspare: [i64, ..2],
                 }
             }
             pub mod posix08 {
