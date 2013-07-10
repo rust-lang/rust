@@ -1142,7 +1142,7 @@ pub fn trans_stmt(cx: block, s: &ast::stmt) -> block {
                     bcx = init_local(bcx, *local);
                     if cx.sess().opts.extra_debuginfo
                         && fcx_has_nonzero_span(bcx.fcx) {
-                        debuginfo::create_local_var(bcx, *local);
+                        debuginfo::create_local_var_metadata(bcx, *local);
                     }
                 }
                 ast::decl_item(i) => trans_item(cx.fcx.ccx, i)
@@ -1774,7 +1774,7 @@ pub fn copy_args_to_allocas(fcx: fn_ctxt,
         bcx = _match::store_arg(bcx, args[arg_n].pat, llarg);
 
         if fcx.ccx.sess.opts.extra_debuginfo && fcx_has_nonzero_span(fcx) {
-            debuginfo::create_arg(bcx, &args[arg_n], args[arg_n].ty.span);
+            debuginfo::create_argument_metadata(bcx, &args[arg_n], args[arg_n].ty.span);
         }
     }
 
@@ -1948,7 +1948,7 @@ pub fn trans_fn(ccx: @mut CrateContext,
                   |fcx| {
                       if ccx.sess.opts.extra_debuginfo
                           && fcx_has_nonzero_span(fcx) {
-                          debuginfo::create_function(fcx);
+                          debuginfo::create_function_metadata(fcx);
                       }
                   },
                   |_bcx| { });
