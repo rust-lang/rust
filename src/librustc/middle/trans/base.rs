@@ -671,7 +671,7 @@ pub fn iter_structural_ty(cx: block, av: ValueRef, t: ty::t,
     let _icx = push_ctxt("iter_structural_ty");
 
     fn iter_variant(cx: block, repr: &adt::Repr, av: ValueRef,
-                    variant: ty::VariantInfo,
+                    variant: @ty::VariantInfo,
                     tps: &[ty::t], f: val_and_ty_fn) -> block {
         let _icx = push_ctxt("iter_variant");
         let tcx = cx.tcx();
@@ -2110,7 +2110,7 @@ pub fn trans_enum_variant_or_tuple_like_struct<A:IdAndTy>(
 }
 
 pub fn trans_enum_def(ccx: @mut CrateContext, enum_definition: &ast::enum_def,
-                      id: ast::node_id, vi: @~[ty::VariantInfo],
+                      id: ast::node_id, vi: @~[@ty::VariantInfo],
                       i: &mut uint) {
     for enum_definition.variants.iter().advance |variant| {
         let disr_val = vi[*i].disr_val;
