@@ -24,12 +24,25 @@ use extra::serialize::{Encodable, Decodable, Encoder, Decoder};
 // table) and a SyntaxContext to track renaming and
 // macro expansion per Flatt et al., "Macros
 // That Work Together"
-#[deriving(Clone, Eq, IterBytes, ToStr)]
+#[deriving(Clone, IterBytes, ToStr)]
 pub struct Ident { name: Name, ctxt: SyntaxContext }
 
 impl Ident {
     /// Construct an identifier with the given name and an empty context:
     pub fn new(name: Name) -> Ident { Ident {name: name, ctxt: EMPTY_CTXT}}
+}
+
+impl Eq for Ident {
+    fn eq(&self, other: &Ident) -> bool {
+        if (self.ctxt == other.ctxt) {
+            self.name == other.name
+        } else {
+            fail!(fmt!("not allowed to compare these idents: %?, %?", self, other));
+        }
+    }
+    fn ne(&self, other: &Ident) -> bool {
+        ! self.eq(other)
+    }
 }
 
 /// A SyntaxContext represents a chain of macro-expandings
