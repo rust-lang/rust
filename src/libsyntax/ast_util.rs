@@ -985,12 +985,49 @@ pub fn getLast(arr: &~[Mrk]) -> uint {
     *arr.last()
 }
 
+// are two paths equal when compared unhygienically?
+// since I'm using this to replace ==, it seems appropriate
+// to compare the span, global, etc. fields as well.
+pub fn path_name_eq(a : &ast::Path, b : &ast::Path) -> bool {
+    (a.span == b.span)
+    && (a.global == b.global)
+    // NOTE: ident->name in lifetimes!
+    && (a.rp == b.rp)
+    // NOTE: can a type contain an ident?
+    && (a.types == b.types)
+    && (idents_name_eq(a.idents, b.idents))
+}
+
+// are two arrays of idents equal when compared unhygienically?
+pub fn idents_name_eq(a : &[ast::ident], b : &[ast::ident]) -> bool {
+    if (a.len() != b.len()) {
+        false
+    } else {
+        for a.iter().enumerate().advance |(idx,id)|{
+            if (id.name != b[idx].name) {
+                return false;
+            }
+        }
+        true
+    }
+}
 
 #[cfg(test)]
 mod test {
     use ast::*;
     use super::*;
     use std::io;
+
+    #[test] fn idents_name_eq_test() {
+        assert!(idents_name_eq(~[ident{name:3,ctxt:4},
+                                 ident{name:78,ctxt:82}],
+                               ~[ident{name:3,ctxt:104},
+                                 ident{name:78,ctxt:182}]));
+        assert!(!idents_name_eq(~[ident{name:3,ctxt:4},
+                                  ident{name:78,ctxt:82}],
+                                ~[ident{name:3,ctxt:104},
+                                  ident{name:77,ctxt:182}]));
+    }
 
     #[test] fn xorpush_test () {
         let mut s = ~[];
