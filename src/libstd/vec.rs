@@ -1136,7 +1136,6 @@ impl<T> OwnedVector<T> for ~[T] {
      *
      * * n - The number of elements to reserve space for
      */
-    #[inline]
     #[cfg(stage0)]
     fn reserve(&mut self, n: uint) {
         // Only make the (slow) call into the runtime if we have to
@@ -1170,7 +1169,6 @@ impl<T> OwnedVector<T> for ~[T] {
      *
      * * n - The number of elements to reserve space for
      */
-    #[inline]
     #[cfg(not(stage0))]
     fn reserve(&mut self, n: uint) {
         // Only make the (slow) call into the runtime if we have to
@@ -1228,20 +1226,11 @@ impl<T> OwnedVector<T> for ~[T] {
             let repr: **raw::VecRepr = transmute(&mut *self);
             let fill = (**repr).unboxed.fill;
             if (**repr).unboxed.alloc <= fill {
-                // need more space
-                reserve_no_inline(self);
+                let new_len = self.len() + 1;
+                self.reserve_at_least(new_len);
             }
 
             self.push_fast(t);
-        }
-
-        // this peculiar function is because reserve_at_least is very
-        // large (because of reserve), and will be inlined, which
-        // makes push too large.
-        #[inline(never)]
-        fn reserve_no_inline<T>(v: &mut ~[T]) {
-            let new_len = v.len() + 1;
-            v.reserve_at_least(new_len);
         }
     }
 
