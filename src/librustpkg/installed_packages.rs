@@ -18,11 +18,11 @@ pub fn list_installed_packages(f: &fn(&PkgId) -> bool) -> bool  {
     for workspaces.iter().advance |p| {
         let binfiles = os::list_dir(&p.push("bin"));
         for binfiles.iter().advance() |exec| {
-            f(&PkgId::new(*exec));
+            f(&PkgId::new(*exec, p));
         }
         let libfiles = os::list_dir(&p.push("lib"));
         for libfiles.iter().advance() |lib| {
-            f(&PkgId::new(*lib));
+            f(&PkgId::new(*lib, p));
         }
     }
     true

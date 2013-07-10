@@ -38,9 +38,10 @@ use syntax::{ast, diagnostic};
 use util::*;
 use messages::*;
 use path_util::{build_pkg_id_in_workspace, first_pkgid_src_in_workspace};
-use path_util::{U_RWX, rust_path};
-use path_util::{built_executable_in_workspace, built_library_in_workspace};
+use path_util::{U_RWX, rust_path, in_rust_path};
+use path_util::{built_executable_in_workspace, built_library_in_workspace, default_workspace};
 use path_util::{target_executable_in_workspace, target_library_in_workspace};
+use source_control::is_git_dir;
 use workspace::{each_pkg_parent_workspace, pkg_parent_workspaces};
 use context::Ctx;
 use package_id::PkgId;
@@ -57,6 +58,7 @@ mod package_path;
 mod package_source;
 mod path_util;
 mod search;
+mod source_control;
 mod target;
 #[cfg(test)]
 mod tests;
@@ -201,8 +203,10 @@ impl CtxMethods for Ctx {
                 }
                 // The package id is presumed to be the first command-line
                 // argument
-                let pkgid = PkgId::new(copy args[0]);
+                let pkgid = PkgId::new(copy args[0], &os::getcwd());
                 for each_pkg_parent_workspace(&pkgid) |workspace| {
+                    debug!("found pkg %s in workspace %s, trying to build",
+                           pkgid.to_str(), workspace.to_str());
                     self.build(workspace, &pkgid);
                 }
             }
@@ -212,7 +216,7 @@ impl CtxMethods for Ctx {
                 }
                 // The package id is presumed to be the first command-line
                 // argument
-                let pkgid = PkgId::new(copy args[0]);
+                let pkgid = PkgId::new(copy args[0], &os::getcwd());
                 let cwd = os::getcwd();
                 self.clean(&cwd, &pkgid); // tjc: should use workspace, not cwd
             }
@@ -233,9 +237,10 @@ impl CtxMethods for Ctx {
 
                 // The package id is presumed to be the first command-line
                 // argument
-                let pkgid = PkgId::new(args[0]);
+                let pkgid = PkgId::new(args[0], &os::getcwd());
                 let workspaces = pkg_parent_workspaces(&pkgid);
                 if workspaces.is_empty() {
+                    debug!("install! workspaces was empty");
                     let rp = rust_path();
                     assert!(!rp.is_empty());
                     let src = PkgSrc::new(&rp[0], &build_pkg_id_in_workspace(&pkgid, &rp[0]),
@@ -245,6 +250,9 @@ impl CtxMethods for Ctx {
                 }
                 else {
                     for each_pkg_parent_workspace(&pkgid) |workspace| {
+                        debug!("install: found pkg %s in workspace %s, trying to build",
+                               pkgid.to_str(), workspace.to_str());
+
                         self.install(workspace, &pkgid);
                     }
                 }
@@ -272,7 +280,7 @@ impl CtxMethods for Ctx {
                     return usage::uninstall();
                 }
 
-                let pkgid = PkgId::new(args[0]);
+                let pkgid = PkgId::new(args[0], &os::getcwd()); // ??
                 if !installed_packages::package_is_installed(&pkgid) {
                     warn(fmt!("Package %s doesn't seem to be installed! Doing nothing.", args[0]));
                     return;
@@ -304,11 +312,28 @@ impl CtxMethods for Ctx {
     }
 
     fn build(&self, workspace: &Path, pkgid: &PkgId) {
-        debug!("build: workspace = %s pkgid = %s", workspace.to_str(),
+        debug!("build: workspace = %s (in Rust path? %? is git dir? %? \
+                pkgid = %s", workspace.to_str(),
+               in_rust_path(workspace), is_git_dir(&workspace.push_rel(&*pkgid.local_path)),
                pkgid.to_str());
         let src_dir   = first_pkgid_src_in_workspace(pkgid, workspace);
         let build_dir = build_pkg_id_in_workspace(pkgid, workspace);
         debug!("Destination dir = %s", build_dir.to_str());
+
+        // If workspace isn't in the RUST_PATH, and it's a git repo,
+        // then clone it into the first entry in RUST_PATH, and repeat
+        debug!("%? %? %s", in_rust_path(workspace),
+               is_git_dir(&workspace.push_rel(&*pkgid.local_path)),
+               workspace.to_str());
+        if !in_rust_path(workspace) && is_git_dir(&workspace.push_rel(&*pkgid.local_path)) {
+            let out_dir = default_workspace().push("src").push_rel(&*pkgid.local_path);
+            source_control::git_clone(&workspace.push_rel(&*pkgid.local_path),
+                                      &out_dir, &pkgid.version);
+            let default_ws = default_workspace();
+            debug!("Calling build recursively with %? and %?", default_ws.to_str(),
+                   pkgid.to_str());
+            return self.build(&default_ws, pkgid);
+        }
 
         // Create the package source
         let mut src = PkgSrc::new(workspace, &build_dir, pkgid);
