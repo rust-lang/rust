@@ -98,6 +98,12 @@ impl<T> Rawlink<T> {
     }
 }
 
+/// Set the .prev field on `next`, then return `Some(next)`
+fn link_with_prev<T>(mut next: ~Node<T>, prev: Rawlink<Node<T>>) -> Link<T> {
+    next.prev = prev;
+    Some(next)
+}
+
 impl<T> Container for List<T> {
     /// O(1)
     fn is_empty(&self) -> bool {
@@ -216,20 +222,17 @@ impl<T> List<T> {
     ///
     /// O(1)
     pub fn pop_front(&mut self) -> Option<T> {
-        match self.list_head {
+        match util::replace(&mut self.list_head, None) {
             None => None,
-            ref mut head @ Some(*) => {
+            Some(old_head) => {
                 self.length -= 1;
-                match *head.swap_unwrap() {
+                match *old_head {
                     Node{value: value, next: Some(next), prev: _} => {
-                        let mut mnext = next;
-                        mnext.prev = Rawlink::none();
-                        *head = Some(mnext);
+                        self.list_head = link_with_prev(next, Rawlink::none());
                         Some(value)
                     }
                     Node{value: value, next: None, prev: _} => {
                         self.list_tail = Rawlink::none();
-                        *head = None;
                         Some(value)
                     }
                 }
@@ -247,9 +250,7 @@ impl<T> List<T> {
                 match other {
                     List{list_head: None, list_tail: _, length: _} => return,
                     List{list_head: Some(node), list_tail: o_tail, length: o_length} => {
-                        let mut lnk_node = node;
-                        lnk_node.prev = self.list_tail;
-                        tail.next = Some(lnk_node);
+                        tail.next = link_with_prev(node, self.list_tail);
                         self.list_tail = o_tail;
                         self.length += o_length;
                     }
@@ -447,13 +448,10 @@ impl<'self, A> ListInsertCursor<A> for MutForwardIterator<'self, A> {
                     None => return self.list.push_front(elt),  // at head
                     Some(prev) => prev,
                 };
-                let mut node_own = prev_node.next.swap_unwrap();
-                let mut ins_node = ~Node{value: elt,
-                                         next: None,
-                                         prev: Rawlink::some(prev_node)};
-                node_own.prev = Rawlink::some(ins_node);
-                ins_node.next = Some(node_own);
-                prev_node.next = Some(ins_node);
+                let mut ins_node = ~Node{value: elt, next: None, prev: Rawlink::none()};
+                let node_own = prev_node.next.swap_unwrap();
+                ins_node.next = link_with_prev(node_own, Rawlink::some(ins_node));
+                prev_node.next = link_with_prev(ins_node, Rawlink::some(prev_node));
                 self.list.length += 1;
             }
         }
