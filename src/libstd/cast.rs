@@ -14,7 +14,6 @@ use sys;
 use unstable::intrinsics;
 
 /// Casts the value at `src` to U. The two types must have the same length.
-/// Casts the value at `src` to U. The two types must have the same length.
 #[cfg(target_word_size = "32")]
 #[inline]
 pub unsafe fn transmute_copy<T, U>(src: &T) -> U {
