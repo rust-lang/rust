@@ -56,7 +56,24 @@ pub struct Variables {
 impl Variables {
     /// Return a new zero-initialized Variables
     pub fn new() -> Variables {
-        Variables{ sta: [Number(0), ..26], dyn: [Number(0), ..26] }
+        Variables {
+            sta: [
+                Number(0), Number(0), Number(0), Number(0), Number(0),
+                Number(0), Number(0), Number(0), Number(0), Number(0),
+                Number(0), Number(0), Number(0), Number(0), Number(0),
+                Number(0), Number(0), Number(0), Number(0), Number(0),
+                Number(0), Number(0), Number(0), Number(0), Number(0),
+                Number(0),
+            ],
+            dyn: [
+                Number(0), Number(0), Number(0), Number(0), Number(0),
+                Number(0), Number(0), Number(0), Number(0), Number(0),
+                Number(0), Number(0), Number(0), Number(0), Number(0),
+                Number(0), Number(0), Number(0), Number(0), Number(0),
+                Number(0), Number(0), Number(0), Number(0), Number(0),
+                Number(0),
+            ],
+        }
     }
 }
 
@@ -81,7 +98,10 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
     let mut stack: ~[Param] = ~[];
 
     // Copy parameters into a local vector for mutability
-    let mut mparams = [Number(0), ..9];
+    let mut mparams = [
+        Number(0), Number(0), Number(0), Number(0), Number(0),
+        Number(0), Number(0), Number(0), Number(0),
+    ];
     for mparams.mut_iter().zip(params.iter()).advance |(dst, src)| {
         *dst = (*src).clone();
     }
