@@ -59,6 +59,7 @@ use syntax::print::pprust::{path_to_str, explicit_self_to_str};
 use syntax::visit;
 use syntax::opt_vec::OptVec;
 use syntax::opt_vec;
+use syntax::parse::token::special_idents;
 
 pub fn collect_item_types(ccx: @mut CrateCtxt, crate: &ast::crate) {
     fn collect_intrinsic_type(ccx: &CrateCtxt,
@@ -318,6 +319,7 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt,
         let self_trait_def = get_trait_def(ccx, local_def(trait_id));
         let self_trait_ref = self_trait_def.trait_ref.subst(tcx, &substs);
         new_type_param_defs.push(ty::TypeParameterDef {
+            ident: special_idents::self_,
             def_id: dummy_defid,
             bounds: @ty::ParamBounds {
                 builtin_bounds: ty::EmptyBuiltinBounds(),
@@ -1151,6 +1153,7 @@ pub fn ty_generics(ccx: &CrateCtxt,
                     let bounds = @compute_bounds(ccx, rp, generics,
                                                  param_ty, &param.bounds);
                     let def = ty::TypeParameterDef {
+                        ident: param.ident,
                         def_id: local_def(param.id),
                         bounds: bounds
                     };

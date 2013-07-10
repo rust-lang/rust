@@ -794,6 +794,7 @@ impl ToStr for IntVarValue {
 }
 
 pub struct TypeParameterDef {
+    ident: ast::ident,
     def_id: ast::def_id,
     bounds: @ParamBounds
 }
