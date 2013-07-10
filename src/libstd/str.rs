@@ -596,17 +596,25 @@ pub fn is_utf8(v: &[u8]) -> bool {
     let mut i = 0u;
     let total = v.len();
     while i < total {
-        let mut chsize = utf8_char_width(v[i]);
-        if chsize == 0u { return false; }
-        if i + chsize > total { return false; }
-        i += 1u;
-        while chsize > 1u {
-            if v[i] & 192u8 != TAG_CONT_U8 { return false; }
+        if v[i] < 128u8 {
             i += 1u;
-            chsize -= 1u;
+        } else {
+            let w = utf8_char_width(v[i]);
+            if w == 0u { return false; }
+
+            let nexti = i + w;
+            if nexti > total { return false; }
+
+            if v[i + 1] & 192u8 != TAG_CONT_U8 { return false; }
+            if w > 2 {
+                if v[i + 2] & 192u8 != TAG_CONT_U8 { return false; }
+                if w > 3 && (v[i + 3] & 192u8 != TAG_CONT_U8) { return false; }
+            }
+
+            i = nexti;
         }
     }
-    return true;
+    true
 }
 
 /// Determines if a vector of `u16` contains valid UTF-16
