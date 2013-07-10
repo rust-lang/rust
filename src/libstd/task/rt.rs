@@ -38,7 +38,6 @@ pub extern {
     fn rust_new_sched(num_threads: libc::uintptr_t) -> sched_id;
     fn rust_sched_threads() -> libc::size_t;
     fn rust_sched_current_nonlazy_threads() -> libc::size_t;
-    fn rust_num_threads() -> libc::uintptr_t;
 
     fn get_task_id() -> task_id;
     #[rust_stack]
