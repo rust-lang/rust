@@ -12,18 +12,18 @@ struct c1<T> {
     x: T,
 }
 
-impl<T:Copy> c1<T> {
+impl<T> c1<T> {
     pub fn f1(&self, x: int) {
     }
 }
 
-fn c1<T:Copy>(x: T) -> c1<T> {
+fn c1<T>(x: T) -> c1<T> {
     c1 {
         x: x
     }
 }
 
-impl<T:Copy> c1<T> {
+impl<T> c1<T> {
     pub fn f2(&self, x: int) {
     }
 }

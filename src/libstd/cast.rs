@@ -117,6 +117,12 @@ pub unsafe fn copy_lifetime_vec<'a,S,T>(_ptr: &'a [S], ptr: &T) -> &'a T {
     transmute_region(ptr)
 }
 
+/// Copies something ordinarily noncopyable.
+#[inline]
+pub unsafe fn unsafe_copy<T>(src: &T) -> T {
+    transmute_copy(src)
+}
+
 
 /****************************************************************************
  * Tests

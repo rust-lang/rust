@@ -18,21 +18,12 @@ intrinsic properties of the type. These classifications, often called
 They cannot be implemented by user code, but are instead implemented
 by the compiler automatically for the types to which they apply.
 
-The 3 kinds are
-
-* Copy - types that may be copied without allocation. This includes
-  scalar types and managed pointers, and exludes owned pointers. It
-  also excludes types that implement `Drop`.
+The 2 kinds are
 
 * Send - owned types and types containing owned types.  These types
   may be transferred across task boundaries.
 
 * Freeze - types that are deeply immutable.
-
-`Copy` types include both implicitly copyable types that the compiler
-will copy automatically and non-implicitly copyable types that require
-the `copy` keyword to copy. Types that do not implement `Copy` may
-instead implement `Clone`.
 
 */
 

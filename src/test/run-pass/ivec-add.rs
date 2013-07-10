@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn double<T:Copy + Clone>(a: T) -> ~[T] { return ~[a.clone()] + ~[a]; }
+fn double<T:Clone>(a: T) -> ~[T] { return ~[a.clone()] + ~[a]; }
 
 fn double_int(a: int) -> ~[int] { return ~[a] + ~[a]; }
 

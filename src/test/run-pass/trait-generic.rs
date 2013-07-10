@@ -26,10 +26,10 @@ impl to_str for () {
 }
 
 trait map<T> {
-    fn map<U:Copy>(&self, f: &fn(&T) -> U) -> ~[U];
+    fn map<U>(&self, f: &fn(&T) -> U) -> ~[U];
 }
 impl<T> map<T> for ~[T] {
-    fn map<U:Copy>(&self, f: &fn(&T) -> U) -> ~[U] {
+    fn map<U>(&self, f: &fn(&T) -> U) -> ~[U] {
         let mut r = ~[];
         // FIXME: #7355 generates bad code with Iterator
         for std::uint::range(0, self.len()) |i| {

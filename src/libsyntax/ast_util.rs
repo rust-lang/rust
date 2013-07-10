@@ -16,12 +16,13 @@ use opt_vec;
 use parse::token;
 use visit;
 
+use std::cast::unsafe_copy;
+use std::cast;
 use std::hashmap::HashMap;
 use std::int;
+use std::local_data;
 use std::num;
 use std::option;
-use std::cast;
-use std::local_data;
 
 pub fn path_name_i(idents: &[ident]) -> ~str {
     // FIXME: Bad copies (#2543 -- same for everything else that says "bad")
@@ -705,12 +706,12 @@ pub fn new_sctable_internal() -> SCTable {
 pub fn get_sctable() -> @mut SCTable {
     unsafe {
         let sctable_key = (cast::transmute::<(uint, uint),
-                           &fn:Copy(v: @@mut SCTable)>(
+                           &fn(v: @@mut SCTable)>(
                                (-4 as uint, 0u)));
-        match local_data::get(sctable_key, |k| k.map(|&k| *k)) {
+        match local_data::get(unsafe_copy(&sctable_key), |k| k.map(|&k| *k)) {
             None => {
                 let new_table = @@mut new_sctable_internal();
-                local_data::set(sctable_key,new_table);
+                local_data::set(sctable_key, new_table);
                 *new_table
             },
             Some(intr) => *intr

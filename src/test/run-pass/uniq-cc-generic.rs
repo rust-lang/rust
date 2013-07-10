@@ -20,7 +20,7 @@ struct Pointy {
     d : ~fn() -> uint,
 }
 
-fn make_uniq_closure<A:Send + Copy>(a: A) -> ~fn() -> uint {
+fn make_uniq_closure<A:Send>(a: A) -> ~fn() -> uint {
     let result: ~fn() -> uint = || ptr::to_unsafe_ptr(&a) as uint;
     result
 }

@@ -15,6 +15,7 @@ use parse::token;
 use util::interner::StrInterner;
 use util::interner;
 
+use std::cast::unsafe_copy;
 use std::cast;
 use std::cmp::Equiv;
 use std::local_data;
@@ -488,7 +489,7 @@ pub fn get_ident_interner() -> @ident_interner {
     unsafe {
         let key =
             (cast::transmute::<(uint, uint),
-             &fn:Copy(v: @@::parse::token::ident_interner)>(
+             &fn(v: @@::parse::token::ident_interner)>(
                  (-3 as uint, 0u)));
         match local_data::get(unsafe_copy(&key), |k| k.map(|&k| *k)) {
             Some(interner) => *interner,

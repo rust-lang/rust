@@ -34,7 +34,7 @@ fn use_std(crate: &ast::crate) -> bool {
 }
 
 fn inject_libstd_ref(sess: Session, crate: &ast::crate) -> @ast::crate {
-    fn spanned<T:Copy>(x: T) -> codemap::spanned<T> {
+    fn spanned<T>(x: T) -> codemap::spanned<T> {
         codemap::spanned { node: x, span: dummy_sp() }
     }
 

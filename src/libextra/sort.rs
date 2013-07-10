@@ -24,12 +24,12 @@ type Le<'self, T> = &'self fn(v1: &T, v2: &T) -> bool;
  * Has worst case O(n log n) performance, best case O(n), but
  * is not space efficient. This is a stable sort.
  */
-pub fn merge_sort<T:Copy + Clone>(v: &[T], le: Le<T>) -> ~[T] {
+pub fn merge_sort<T:Clone>(v: &[T], le: Le<T>) -> ~[T] {
     type Slice = (uint, uint);
 
     return merge_sort_(v, (0u, v.len()), le);
 
-    fn merge_sort_<T:Copy + Clone>(v: &[T], slice: Slice, le: Le<T>) -> ~[T] {
+    fn merge_sort_<T:Clone>(v: &[T], slice: Slice, le: Le<T>) -> ~[T] {
         let begin = slice.first();
         let end = slice.second();
 
@@ -44,7 +44,7 @@ pub fn merge_sort<T:Copy + Clone>(v: &[T], le: Le<T>) -> ~[T] {
                                     merge_sort_(v, b, |x,y| le(x,y)));
     }
 
-    fn merge<T:Copy + Clone>(le: Le<T>, a: &[T], b: &[T]) -> ~[T] {
+    fn merge<T:Clone>(le: Le<T>, a: &[T], b: &[T]) -> ~[T] {
         let mut rs = vec::with_capacity(a.len() + b.len());
         let a_len = a.len();
         let mut a_ix = 0;
@@ -183,7 +183,7 @@ static MIN_GALLOP: uint = 7;
 static INITIAL_TMP_STORAGE: uint = 128;
 
 #[allow(missing_doc)]
-pub fn tim_sort<T:Copy + Clone + Ord>(array: &mut [T]) {
+pub fn tim_sort<T:Clone + Ord>(array: &mut [T]) {
     let size = array.len();
     if size < 2 {
         return;
@@ -227,7 +227,7 @@ pub fn tim_sort<T:Copy + Clone + Ord>(array: &mut [T]) {
     ms.merge_force_collapse(array);
 }
 
-fn binarysort<T:Copy + Clone + Ord>(array: &mut [T], start: uint) {
+fn binarysort<T:Clone + Ord>(array: &mut [T], start: uint) {
     let size = array.len();
     let mut start = start;
     assert!(start <= size);
@@ -419,7 +419,7 @@ fn MergeState<T>() -> MergeState<T> {
     }
 }
 
-impl<T:Copy + Clone + Ord> MergeState<T> {
+impl<T:Clone + Ord> MergeState<T> {
     fn push_run(&mut self, run_base: uint, run_len: uint) {
         let tmp = RunState{base: run_base, len: run_len};
         self.runs.push(tmp);
@@ -739,10 +739,7 @@ fn copy_vec<T:Clone>(dest: &mut [T],
 }
 
 #[inline]
-fn shift_vec<T:Copy + Clone>(dest: &mut [T],
-                             s1: uint,
-                             s2: uint,
-                             len: uint) {
+fn shift_vec<T:Clone>(dest: &mut [T], s1: uint, s2: uint, len: uint) {
     assert!(s1+len <= dest.len());
 
     let tmp = dest.slice(s2, s2+len).to_owned();

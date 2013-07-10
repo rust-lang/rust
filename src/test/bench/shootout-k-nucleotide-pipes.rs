@@ -34,8 +34,8 @@ fn sort_and_fmt(mm: &HashMap<~[u8], uint>, total: uint) -> ~str {
       return (xx as float) * 100f / (yy as float);
    }
 
-   fn le_by_val<TT:Copy + Clone,
-                UU:Copy + Clone + Ord>(
+   fn le_by_val<TT:Clone,
+                UU:Clone + Ord>(
                 kv0: &(TT,UU),
                 kv1: &(TT,UU))
                 -> bool {
@@ -44,8 +44,8 @@ fn sort_and_fmt(mm: &HashMap<~[u8], uint>, total: uint) -> ~str {
       return v0 >= v1;
    }
 
-   fn le_by_key<TT:Copy + Clone + Ord,
-                UU:Copy + Clone>(
+   fn le_by_key<TT:Clone + Ord,
+                UU:Clone>(
                 kv0: &(TT,UU),
                 kv1: &(TT,UU))
                 -> bool {
@@ -55,10 +55,7 @@ fn sort_and_fmt(mm: &HashMap<~[u8], uint>, total: uint) -> ~str {
    }
 
    // sort by key, then by value
-   fn sortKV<TT:Copy + Clone + Ord,
-             UU:Copy + Clone + Ord>(
-             orig: ~[(TT,UU)])
-             -> ~[(TT,UU)] {
+   fn sortKV<TT:Clone + Ord, UU:Clone + Ord>(orig: ~[(TT,UU)]) -> ~[(TT,UU)] {
       return sort::merge_sort(sort::merge_sort(orig, le_by_key), le_by_val);
    }
 

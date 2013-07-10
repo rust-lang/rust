@@ -15,10 +15,9 @@ assign them or pass them as arguments, the receiver will get a copy,
 leaving the original value in place. These types do not require
 allocation to copy and do not have finalizers (i.e. they do not
 contain owned boxes or implement `Drop`), so the compiler considers
-them cheap and safe to copy and automatically implements the `Copy`
-trait for them. For other types copies must be made explicitly,
-by convention implementing the `Clone` trait and calling the
-`clone` method.
+them cheap and safe to copy. For other types copies must be made
+explicitly, by convention implementing the `Clone` trait and calling
+the `clone` method.
 
 */
 

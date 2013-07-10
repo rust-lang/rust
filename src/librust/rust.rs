@@ -43,19 +43,19 @@ impl ValidUsage {
     }
 }
 
-enum Action<'self> {
-    Call(&'self fn:Copy(args: &[~str]) -> ValidUsage),
-    CallMain(&'static str, &'self fn:Copy()),
+enum Action {
+    Call(extern "Rust" fn(args: &[~str]) -> ValidUsage),
+    CallMain(&'static str, extern "Rust" fn()),
 }
 
 enum UsageSource<'self> {
     UsgStr(&'self str),
-    UsgCall(&'self fn:Copy()),
+    UsgCall(extern "Rust" fn()),
 }
 
 struct Command<'self> {
     cmd: &'self str,
-    action: Action<'self>,
+    action: Action,
     usage_line: &'self str,
     usage_full: UsageSource<'self>,
 }
