@@ -23,7 +23,8 @@ use std::hashmap::{HashMap, HashSet};
 use std::trie::{TrieMap, TrieSet};
 use std::uint;
 use std::vec;
-use deque::Deque;
+use ringbuf::RingBuf;
+use container::Deque;
 use dlist::List;
 use treemap::{TreeMap, TreeSet};
 
@@ -679,7 +680,7 @@ impl<D:Decoder,T:Decodable<D>> Decodable<D> for List<T> {
 impl<
     S: Encoder,
     T: Encodable<S>
-> Encodable<S> for Deque<T> {
+> Encodable<S> for RingBuf<T> {
     fn encode(&self, s: &mut S) {
         do s.emit_seq(self.len()) |s| {
             for self.iter().enumerate().advance |(i, e)| {
@@ -689,12 +690,12 @@ impl<
     }
 }
 
-impl<D:Decoder,T:Decodable<D>> Decodable<D> for Deque<T> {
-    fn decode(d: &mut D) -> Deque<T> {
-        let mut deque = Deque::new();
+impl<D:Decoder,T:Decodable<D>> Decodable<D> for RingBuf<T> {
+    fn decode(d: &mut D) -> RingBuf<T> {
+        let mut deque = RingBuf::new();
         do d.read_seq |d, len| {
             for uint::range(0, len) |i| {
-                deque.add_back(d.read_seq_elt(i, |d| Decodable::decode(d)));
+                deque.push_back(d.read_seq_elt(i, |d| Decodable::decode(d)));
             }
         }
         deque
