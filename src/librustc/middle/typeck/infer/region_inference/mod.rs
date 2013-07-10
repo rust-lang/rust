@@ -722,63 +722,21 @@ struct RegionAndOrigin {
     origin: SubregionOrigin,
 }
 
-type Graph = graph::Graph<(), Constraint>;
-type GraphNode = graph::Node<()>;
-type GraphEdge = graph::Edge<Constraint>;
+type RegionGraph = graph::Graph<(), Constraint>;
 
 impl RegionVarBindings {
-    fn infer_variable_values(&mut self,
+    fn infer_variable_values(&self,
                              errors: &mut OptVec<RegionResolutionError>)
                              -> ~[VarValue] {
         let mut var_data = self.construct_var_data();
         self.expansion(var_data);
         self.contraction(var_data);
-        let graph = self.construct_graph();
-        self.collect_concrete_region_errors(&graph, errors);
-        self.extract_values_and_collect_conflicts(&graph, var_data, errors)
+        self.collect_concrete_region_errors(errors);
+        self.extract_values_and_collect_conflicts(var_data, errors)
     }
 
-    fn construct_graph(&mut self) -> Graph {
-        let num_vars = self.num_vars();
-        let num_edges = self.constraints.len();
-
-        let mut graph = graph::Graph::with_capacity(num_vars + 1,
-                                                    num_edges);
-
-        for uint::range(0, num_vars) |var_idx| {
-            graph.add_node(());
-        }
-        let dummy_idx = graph.add_node(());
-
-        for self.constraints.iter().advance |(constraint, _)| {
-            match *constraint {
-                ConstrainVarSubVar(a_id, b_id) => {
-                    graph.add_edge(NodeIndex(a_id.to_uint()),
-                                   NodeIndex(b_id.to_uint()),
-                                   *constraint);
-                }
-                ConstrainRegSubVar(_, b_id) => {
-                    graph.add_edge(dummy_idx,
-                                   NodeIndex(b_id.to_uint()),
-                                   *constraint);
-                }
-                ConstrainVarSubReg(a_id, _) => {
-                    graph.add_edge(NodeIndex(a_id.to_uint()),
-                                   dummy_idx,
-                                   *constraint);
-                }
-                ConstrainRegSubReg(*) => {
-                    // Relations between two concrete regions do not
-                    // require an edge in the graph.
-                }
-            }
-        }
-
-        return graph;
-    }
-
-    fn construct_var_data(&mut self) -> ~[VarData] {
-        vec::from_fn(self.num_vars(), |var_idx| {
+    fn construct_var_data(&self) -> ~[VarData] {
+        vec::from_fn(self.num_vars(), |_| {
             VarData {
                 // All nodes are initially classified as contracting; during
                 // the expansion phase, we will shift the classification for
@@ -790,7 +748,7 @@ impl RegionVarBindings {
         })
     }
 
-    fn expansion(&mut self, var_data: &mut [VarData]) {
+    fn expansion(&self, var_data: &mut [VarData]) {
         do self.iterate_until_fixed_point("Expansion") |constraint| {
             match *constraint {
               ConstrainRegSubVar(a_region, b_vid) => {
@@ -957,7 +915,6 @@ impl RegionVarBindings {
 
     fn collect_concrete_region_errors(
         &self,
-        graph: &Graph,
         errors: &mut OptVec<RegionResolutionError>)
     {
         for self.constraints.iter().advance |(constraint, _)| {
@@ -985,7 +942,6 @@ impl RegionVarBindings {
 
     fn extract_values_and_collect_conflicts(
         &self,
-        graph: &Graph,
         var_data: &[VarData],
         errors: &mut OptVec<RegionResolutionError>)
         -> ~[VarValue]
@@ -1004,6 +960,8 @@ impl RegionVarBindings {
         // regions of the graph, but not those that derive from
         // overlapping locations.
         let mut dup_vec = vec::from_elem(self.num_vars(), uint::max_value);
+
+        let mut opt_graph = None;
 
         for uint::range(0, self.num_vars()) |idx| {
             match var_data[idx].value {
@@ -1040,6 +998,11 @@ impl RegionVarBindings {
                        starts to create problems we'll have to revisit
                        this portion of the code and think hard about it. =) */
 
+                    if opt_graph.is_none() {
+                        opt_graph = Some(self.construct_graph());
+                    }
+                    let graph = opt_graph.get_ref();
+
                     let node_vid = RegionVid { id: idx };
                     match var_data[idx].classification {
                         Expanding => {
@@ -1058,9 +1021,48 @@ impl RegionVarBindings {
         vec::from_fn(self.num_vars(), |idx| var_data[idx].value)
     }
 
+    fn construct_graph(&self) -> RegionGraph {
+        let num_vars = self.num_vars();
+        let num_edges = self.constraints.len();
+
+        let mut graph = graph::Graph::with_capacity(num_vars + 1,
+                                                    num_edges);
+
+        for uint::range(0, num_vars) |_| {
+            graph.add_node(());
+        }
+        let dummy_idx = graph.add_node(());
+
+        for self.constraints.iter().advance |(constraint, _)| {
+            match *constraint {
+                ConstrainVarSubVar(a_id, b_id) => {
+                    graph.add_edge(NodeIndex(a_id.to_uint()),
+                                   NodeIndex(b_id.to_uint()),
+                                   *constraint);
+                }
+                ConstrainRegSubVar(_, b_id) => {
+                    graph.add_edge(dummy_idx,
+                                   NodeIndex(b_id.to_uint()),
+                                   *constraint);
+                }
+                ConstrainVarSubReg(a_id, _) => {
+                    graph.add_edge(NodeIndex(a_id.to_uint()),
+                                   dummy_idx,
+                                   *constraint);
+                }
+                ConstrainRegSubReg(*) => {
+                    // Relations between two concrete regions do not
+                    // require an edge in the graph.
+                }
+            }
+        }
+
+        return graph;
+    }
+
     fn collect_error_for_expanding_node(
         &self,
-        graph: &Graph,
+        graph: &RegionGraph,
         var_data: &[VarData],
         dup_vec: &mut [uint],
         node_idx: RegionVid,
@@ -1105,7 +1107,7 @@ impl RegionVarBindings {
 
     fn collect_error_for_contracting_node(
         &self,
-        graph: &Graph,
+        graph: &RegionGraph,
         var_data: &[VarData],
         dup_vec: &mut [uint],
         node_idx: RegionVid,
@@ -1148,7 +1150,7 @@ impl RegionVarBindings {
     }
 
     fn collect_concrete_regions(&self,
-                                graph: &Graph,
+                                graph: &RegionGraph,
                                 var_data: &[VarData],
                                 orig_node_idx: RegionVid,
                                 dir: Direction,
@@ -1202,7 +1204,7 @@ impl RegionVarBindings {
 
         fn process_edges(this: &RegionVarBindings,
                          state: &mut WalkState,
-                         graph: &Graph,
+                         graph: &RegionGraph,
                          source_vid: RegionVid,
                          dir: Direction) {
             debug!("process_edges(source_vid=%?, dir=%?)", source_vid, dir);
