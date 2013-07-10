@@ -17,11 +17,15 @@
 
 
 use getopts;
+use json::ToJson;
+use json;
+use serialize::Decodable;
 use sort;
-use stats;
 use stats::Stats;
+use stats;
 use term;
 use time::precise_time_ns;
+use treemap::TreeMap;
 
 use std::comm::{stream, SharedChan};
 use std::either;
@@ -31,6 +35,8 @@ use std::result;
 use std::task;
 use std::to_str::ToStr;
 use std::u64;
+use std::hashmap::HashMap;
+use std::os;
 
 
 // The name of a test. By convention this follows the rules for rust
@@ -83,6 +89,25 @@ pub struct TestDescAndFn {
     testfn: TestFn,
 }
 
+#[deriving(Encodable,Decodable,Eq)]
+pub struct Metric {
+    value: f64,
+    noise: f64
+}
+
+pub struct MetricMap(TreeMap<~str,Metric>);
+
+/// Analysis of a single change in metric
+pub enum MetricChange {
+    LikelyNoise,
+    MetricAdded,
+    MetricRemoved,
+    Improvement(f64),
+    Regression(f64)
+}
+
+pub type MetricDiff = TreeMap<~str,MetricChange>;
+
 // The default console test runner. It accepts the command line
 // arguments and a vector of test_descs.
 pub fn test_main(args: &[~str], tests: ~[TestDescAndFn]) {
@@ -123,8 +148,8 @@ pub struct TestOpts {
     run_ignored: bool,
     run_tests: bool,
     run_benchmarks: bool,
-    save_results: Option<Path>,
-    compare_results: Option<Path>,
+    ratchet_metrics: Option<Path>,
+    save_metrics: Option<Path>,
     logfile: Option<Path>
 }
 
@@ -136,8 +161,8 @@ pub fn parse_opts(args: &[~str]) -> OptRes {
     let opts = ~[getopts::optflag("ignored"),
                  getopts::optflag("test"),
                  getopts::optflag("bench"),
-                 getopts::optopt("save"),
-                 getopts::optopt("diff"),
+                 getopts::optopt("save-metrics"),
+                 getopts::optopt("ratchet-metrics"),
                  getopts::optopt("logfile")];
     let matches =
         match getopts::getopts(args_, opts) {
@@ -159,19 +184,19 @@ pub fn parse_opts(args: &[~str]) -> OptRes {
     let run_tests = ! run_benchmarks ||
         getopts::opt_present(&matches, "test");
 
-    let save_results = getopts::opt_maybe_str(&matches, "save");
-    let save_results = save_results.map(|s| Path(*s));
+    let ratchet_metrics = getopts::opt_maybe_str(&matches, "ratchet-metrics");
+    let ratchet_metrics = ratchet_metrics.map(|s| Path(*s));
 
-    let compare_results = getopts::opt_maybe_str(&matches, "diff");
-    let compare_results = compare_results.map(|s| Path(*s));
+    let save_metrics = getopts::opt_maybe_str(&matches, "save-metrics");
+    let save_metrics = save_metrics.map(|s| Path(*s));
 
     let test_opts = TestOpts {
         filter: filter,
         run_ignored: run_ignored,
         run_tests: run_tests,
         run_benchmarks: run_benchmarks,
-        save_results: save_results,
-        compare_results: compare_results,
+        ratchet_metrics: ratchet_metrics,
+        save_metrics: save_metrics,
         logfile: logfile
     };
 
@@ -197,6 +222,7 @@ struct ConsoleTestState {
     failed: uint,
     ignored: uint,
     benchmarked: uint,
+    metrics: MetricMap,
     failures: ~[TestDesc]
 }
 
@@ -228,6 +254,7 @@ impl ConsoleTestState {
             failed: 0u,
             ignored: 0u,
             benchmarked: 0u,
+            metrics: MetricMap::new(),
             failures: ~[]
         }
     }
@@ -246,6 +273,23 @@ impl ConsoleTestState {
 
     pub fn write_bench(&self) {
         self.write_pretty("bench", term::color::CYAN);
+    }
+
+
+    pub fn write_added(&self) {
+        self.write_pretty("added", term::color::GREEN);
+    }
+
+    pub fn write_improved(&self) {
+        self.write_pretty("improved", term::color::GREEN);
+    }
+
+    pub fn write_removed(&self) {
+        self.write_pretty("removed", term::color::YELLOW);
+    }
+
+    pub fn write_regressed(&self) {
+        self.write_pretty("regressed", term::color::RED);
     }
 
     pub fn write_pretty(&self,
@@ -315,14 +359,73 @@ impl ConsoleTestState {
         }
     }
 
-    pub fn write_run_finish(&self) -> bool {
+    pub fn write_metric_diff(&self, diff: &MetricDiff) {
+        let mut noise = 0;
+        let mut improved = 0;
+        let mut regressed = 0;
+        let mut added = 0;
+        let mut removed = 0;
+
+        for diff.iter().advance() |(k, v)| {
+            match *v {
+                LikelyNoise => noise += 1,
+                MetricAdded => {
+                    added += 1;
+                    self.write_added();
+                    self.out.write_line(fmt!(": %s", *k));
+                }
+                MetricRemoved => {
+                    removed += 1;
+                    self.write_removed();
+                    self.out.write_line(fmt!(": %s", *k));
+                }
+                Improvement(pct) => {
+                    improved += 1;
+                    self.out.write_str(*k);
+                    self.out.write_str(": ");
+                    self.write_improved();
+                    self.out.write_line(fmt!(" by %.2f%%", pct as float))
+                }
+                Regression(pct) => {
+                    regressed += 1;
+                    self.out.write_str(*k);
+                    self.out.write_str(": ");
+                    self.write_regressed();
+                    self.out.write_line(fmt!(" by %.2f%%", pct as float))
+                }
+            }
+        }
+        self.out.write_line(fmt!("result of ratchet: %u matrics added, %u removed, \
+                                  %u improved, %u regressed, %u noise",
+                                 added, removed, improved, regressed, noise));
+        if regressed == 0 {
+            self.out.write_line("updated ratchet file")
+        } else {
+            self.out.write_line("left ratchet file untouched")
+        }
+    }
+
+    pub fn write_run_finish(&self, ratchet_metrics: &Option<Path>) -> bool {
         assert!(self.passed + self.failed + self.ignored + self.benchmarked == self.total);
-        let success = self.failed == 0u;
-        if !success {
+
+        let ratchet_success = match *ratchet_metrics {
+            None => true,
+            Some(ref pth) => {
+                self.out.write_str(fmt!("\nusing metrics ratchet: %s\n", pth.to_str()));
+                let (diff, ok) = self.metrics.ratchet(pth);
+                self.write_metric_diff(&diff);
+                ok
+            }
+        };
+
+        let test_success = self.failed == 0u;
+        if !test_success {
             self.write_failures();
         }
 
-        self.out.write_str("\nresult: ");
+        let success = ratchet_success && test_success;
+
+        self.out.write_str("\ntest result: ");
         if success {
             // There's no parallelism at this point so it's safe to use color
             self.write_ok();
@@ -362,7 +465,12 @@ pub fn run_tests_console(opts: &TestOpts,
                 match result {
                     TrOk => st.passed += 1,
                     TrIgnored => st.ignored += 1,
-                    TrBench(_) => st.benchmarked += 1,
+                    TrBench(bs) => {
+                        st.metrics.insert_metric(test.name.to_str(),
+                                                 bs.ns_iter_summ.median,
+                                                 bs.ns_iter_summ.max - bs.ns_iter_summ.min);
+                        st.benchmarked += 1
+                    }
                     TrFailed => {
                         st.failed += 1;
                         st.failures.push(test);
@@ -373,7 +481,14 @@ pub fn run_tests_console(opts: &TestOpts,
     }
     let st = @mut ConsoleTestState::new(opts);
     run_tests(opts, tests, |x| callback(&x, st));
-    return st.write_run_finish();
+    match opts.save_metrics {
+        None => (),
+        Some(ref pth) => {
+            st.metrics.save(pth);
+            st.out.write_str(fmt!("\nmetrics saved to: %s", pth.to_str()));
+        }
+    }
+    return st.write_run_finish(&opts.ratchet_metrics);
 }
 
 #[test]
@@ -402,6 +517,7 @@ fn should_sort_failures_before_printing_them() {
             failed: 0u,
             ignored: 0u,
             benchmarked: 0u,
+            metrics: MetricsMap::new(),
             failures: ~[test_b, test_a]
         };
 
@@ -610,6 +726,133 @@ fn calc_result(desc: &TestDesc, task_succeeded: bool) -> TestResult {
     }
 }
 
+
+impl ToJson for Metric {
+    fn to_json(&self) -> json::Json {
+        let mut map = ~HashMap::new();
+        map.insert(~"value", json::Number(self.value as float));
+        map.insert(~"noise", json::Number(self.noise as float));
+        json::Object(map)
+    }
+}
+
+impl MetricMap {
+
+    fn new() -> MetricMap {
+        MetricMap(TreeMap::new())
+    }
+
+    /// Load MetricDiff from a file.
+    fn load(p: &Path) -> MetricMap {
+        assert!(os::path_exists(p));
+        let f = io::file_reader(p).get();
+        let mut decoder = json::Decoder(json::from_reader(f).get());
+        MetricMap(Decodable::decode(&mut decoder))
+    }
+
+    /// Write MetricDiff to a file.
+    pub fn save(&self, p: &Path) {
+        let f = io::file_writer(p, [io::Create, io::Truncate]).get();
+        json::to_pretty_writer(f, &self.to_json());
+    }
+
+    /// Compare against another MetricMap
+    pub fn compare_to_old(&self, old: MetricMap) -> MetricDiff {
+        let mut diff : MetricDiff = TreeMap::new();
+        for old.iter().advance |(k, vold)| {
+            let r = match self.find(k) {
+                None => MetricRemoved,
+                Some(v) => {
+                    let delta = (v.value - vold.value);
+                    if delta.abs() < vold.noise.abs() {
+                        LikelyNoise
+                    } else {
+                        let pct = delta.abs() / v.value * 100.0;
+                        if vold.noise < 0.0 {
+                            // When 'noise' is negative, it means we want
+                            // to see deltas that go up over time, and can
+                            // only tolerate slight negative movement.
+                            if delta < 0.0 {
+                                Regression(pct)
+                            } else {
+                                Improvement(pct)
+                            }
+                        } else {
+                            // When 'noise' is positive, it means we want
+                            // to see deltas that go down over time, and
+                            // can only tolerate slight positive movements.
+                            if delta < 0.0 {
+                                Improvement(pct)
+                            } else {
+                                Regression(pct)
+                            }
+                        }
+                    }
+                }
+            };
+            diff.insert(copy *k, r);
+        }
+        for self.iter().advance |(k, _)| {
+            if !diff.contains_key(k) {
+                diff.insert(copy *k, MetricAdded);
+            }
+        }
+        diff
+    }
+
+    /// Insert a named `value` (+/- `noise`) metric into the map. The value
+    /// must be non-negative. The `noise` indicates the uncertainty of the
+    /// metric, which doubles as the "noise range" of acceptable
+    /// pairwise-regressions on this named value, when comparing from one
+    /// metric to the next using `compare_to_old`.
+    ///
+    /// If `noise` is positive, then it means this metric is of a value
+    /// you want to see grow smaller, so a change larger than `noise` in the
+    /// positive direction represents a regression.
+    ///
+    /// If `noise` is negative, then it means this metric is of a value
+    /// you want to see grow larger, so a change larger than `noise` in the
+    /// negative direction represents a regression.
+    pub fn insert_metric(&mut self, name: &str, value: f64, noise: f64) {
+        let m = Metric {
+            value: value,
+            noise: noise
+        };
+        self.insert(name.to_owned(), m);
+    }
+
+    /// Attempt to "ratchet" an external metric file. This involves loading
+    /// metrics from a metric file (if it exists), comparing against
+    /// the metrics in `self` using `compare_to_old`, and rewriting the
+    /// file to contain the metrics in `self` if none of the
+    /// `MetricChange`s are `Regression`. Returns the diff as well
+    /// as a boolean indicating whether the ratchet succeeded.
+    pub fn ratchet(&self, p: &Path) -> (MetricDiff, bool) {
+        let old = if os::path_exists(p) {
+            MetricMap::load(p)
+        } else {
+            MetricMap::new()
+        };
+
+        let diff : MetricDiff = self.compare_to_old(old);
+        let ok = do diff.iter().all() |(_, v)| {
+            match *v {
+                Regression(_) => false,
+                _ => true
+            }
+        };
+
+        if ok {
+            debug!("rewriting file '%s' with updated metrics");
+            self.save(p);
+        }
+        return (diff, ok)
+    }
+}
+
+
+// Benchmarking
+
 impl BenchHarness {
     /// Callback for benchmark functions to run in their body.
     pub fn iter(&mut self, inner:&fn()) {
@@ -644,75 +887,41 @@ impl BenchHarness {
         f(self);
     }
 
-    // This is the Go benchmark algorithm. It produces a single
-    // datapoint and always tries to run for 1s.
-    pub fn go_bench(&mut self, f: &fn(&mut BenchHarness)) {
-
-        // Rounds a number down to the nearest power of 10.
-        fn round_down_10(n: u64) -> u64 {
-            let mut n = n;
-            let mut res = 1;
-            while n > 10 {
-                n = n / 10;
-                res *= 10;
-            }
-            res
-        }
-
-        // Rounds x up to a number of the form [1eX, 2eX, 5eX].
-        fn round_up(n: u64) -> u64 {
-            let base = round_down_10(n);
-            if n < (2 * base) {
-                2 * base
-            } else if n < (5 * base) {
-                5 * base
-            } else {
-                10 * base
-            }
-        }
+    // This is a more statistics-driven benchmark algorithm
+    pub fn auto_bench(&mut self, f: &fn(&mut BenchHarness)) -> stats::Summary {
 
         // Initial bench run to get ballpark figure.
         let mut n = 1_u64;
         self.bench_n(n, |x| f(x));
 
-        while n < 1_000_000_000 &&
-            self.ns_elapsed() < 1_000_000_000 {
-            let last = n;
-
-            // Try to estimate iter count for 1s falling back to 1bn
-            // iterations if first run took < 1ns.
-            if self.ns_per_iter() == 0 {
-                n = 1_000_000_000;
-            } else {
-                n = 1_000_000_000 / self.ns_per_iter();
-            }
-
-            n = u64::max(u64::min(n+n/2, 100*last), last+1);
-            n = round_up(n);
-            self.bench_n(n, |x| f(x));
+        // Try to estimate iter count for 1ms falling back to 1m
+        // iterations if first run took < 1ns.
+        if self.ns_per_iter() == 0 {
+            n = 1_000_000;
+        } else {
+            n = 1_000_000 / self.ns_per_iter();
         }
-    }
 
-    // This is a more statistics-driven benchmark algorithm.  It stops as
-    // quickly as 100ms, so long as the statistical properties are
-    // satisfactory. If those properties are not met, it may run as long as
-    // the Go algorithm.
-    pub fn auto_bench(&mut self, f: &fn(&mut BenchHarness)) -> stats::Summary {
-
-        let mut magnitude = 1000;
-
-        let samples : &mut [f64] = [0.0_f64, ..100];
+        let mut total_run = 0;
+        let samples : &mut [f64] = [0.0_f64, ..50];
         loop {
             let loop_start = precise_time_ns();
 
             for samples.mut_iter().advance() |p| {
-                self.bench_n(magnitude as u64, |x| f(x));
+                self.bench_n(n as u64, |x| f(x));
                 *p = self.ns_per_iter() as f64;
             };
 
-            // Clip top 10% and bottom 10% of outliers
-            stats::winsorize(samples, 10.0);
+            stats::winsorize(samples, 5.0);
             let summ = stats::Summary::new(samples);
+
+            for samples.mut_iter().advance() |p| {
+                self.bench_n(5 * n as u64, |x| f(x));
+                *p = self.ns_per_iter() as f64;
+            };
+
+            stats::winsorize(samples, 5.0);
+            let summ5 = stats::Summary::new(samples);
 
             debug!("%u samples, median %f, MAD=%f, MADP=%f",
                    samples.len(),
@@ -723,20 +932,27 @@ impl BenchHarness {
             let now = precise_time_ns();
             let loop_run = now - loop_start;
 
-            // Stop early if we have a good signal after a 100ms loop.
-            if loop_run > 100_000_000 && summ.median_abs_dev_pct < 5.0 {
-                return summ;
+            // If we've run for 100ms an seem to have converged to a
+            // stable median.
+            if loop_run > 100_000_000 &&
+                summ.median_abs_dev_pct < 1.0 &&
+                summ.median - summ5.median < summ5.median_abs_dev {
+                return summ5;
             }
 
-            // Longest we ever run for is 1s.
-            if loop_run > 1_000_000_000 {
-                return summ;
+            total_run += loop_run;
+            // Longest we ever run for is 10s.
+            if total_run > 10_000_000_000 {
+                return summ5;
             }
 
-            magnitude *= 3;
-            magnitude /= 2;
+            n *= 2;
         }
     }
+
+
+
+
 }
 
 pub mod bench {
@@ -881,8 +1097,7 @@ mod tests {
             logfile: option::None,
             run_tests: true,
             run_benchmarks: false,
-            save_results: option::None,
-            compare_results: option::None
+            ratchet: option::None,
         };
 
         let tests = ~[
@@ -918,8 +1133,8 @@ mod tests {
             logfile: option::None,
             run_tests: true,
             run_benchmarks: false,
-            save_results: option::None,
-            compare_results: option::None
+            ratchet_metrics: option::None,
+            save_metrics: option::None,
         };
 
         let names =
