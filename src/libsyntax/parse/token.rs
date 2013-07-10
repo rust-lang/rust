@@ -737,8 +737,8 @@ mod test {
     use ast;
     use ast_util;
 
-    fn mark_ident(id : ast::ident, m : ast::Mrk) -> ast::ident {
-        ast::ident{name:id.name,ctxt:ast_util::new_mark(m,id.ctxt)}
+    fn mark_ident(id : ast::Ident, m : ast::Mrk) -> ast::Ident {
+        ast::Ident{name:id.name,ctxt:ast_util::new_mark(m,id.ctxt)}
     }
 
     #[test] fn mtwt_token_eq_test() {
