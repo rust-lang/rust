@@ -497,11 +497,26 @@ pub fn try<T:Send>(f: ~fn() -> T) -> Result<T,()> {
 pub fn yield() {
     //! Yield control to the task scheduler
 
+    use rt::{context, OldTaskContext};
+    use rt::local::Local;
+    use rt::sched::Scheduler;
+
     unsafe {
-        let task_ = rt::rust_get_task();
-        let killed = rt::rust_task_yield(task_);
-        if killed && !failing() {
-            fail!("killed");
+        match context() {
+            OldTaskContext => {
+                let task_ = rt::rust_get_task();
+                let killed = rt::rust_task_yield(task_);
+                if killed && !failing() {
+                    fail!("killed");
+                }
+            }
+            _ => {
+                // XXX: What does yield really mean in newsched?
+                let sched = Local::take::<Scheduler>();
+                do sched.deschedule_running_task_and_then |sched, task| {
+                    sched.enqueue_task(task);
+                }
+            }
         }
     }
 }
@@ -520,20 +535,9 @@ pub fn failing() -> bool {
             }
         }
         _ => {
-            let mut unwinding = false;
-            do Local::borrow::<Task> |local| {
-                unwinding = match local.unwinder {
-                    Some(unwinder) => {
-                        unwinder.unwinding
-                    }
-                    None => {
-                        // Because there is no unwinder we can't be unwinding.
-                        // (The process will abort on failure)
-                        false
-                    }
-                }
+            do Local::borrow::<Task, bool> |local| {
+                local.unwinder.unwinding
             }
-            return unwinding;
         }
     }
 }
@@ -1191,3 +1195,4 @@ fn test_simple_newsched_spawn() {
         spawn(||())
     }
 }
+

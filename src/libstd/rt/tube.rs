@@ -16,14 +16,15 @@
 use option::*;
 use clone::Clone;
 use super::rc::RC;
-use rt::sched::{Scheduler, Coroutine};
+use rt::sched::Scheduler;
 use rt::{context, TaskContext, SchedulerContext};
 use rt::local::Local;
+use rt::task::Task;
 use vec::OwnedVector;
 use container::Container;
 
 struct TubeState<T> {
-    blocked_task: Option<~Coroutine>,
+    blocked_task: Option<~Task>,
     buf: ~[T]
 }
 
@@ -72,7 +73,7 @@ impl<T> Tube<T> {
                 assert!(self.p.refcount() > 1); // There better be somebody to wake us up
                 assert!((*state).blocked_task.is_none());
                 let sched = Local::take::<Scheduler>();
-                do sched.deschedule_running_task_and_then |task| {
+                do sched.deschedule_running_task_and_then |_, task| {
                     (*state).blocked_task = Some(task);
                 }
                 rtdebug!("waking after tube recv");
@@ -107,11 +108,10 @@ mod test {
             let tube_clone = tube.clone();
             let tube_clone_cell = Cell::new(tube_clone);
             let sched = Local::take::<Scheduler>();
-            do sched.deschedule_running_task_and_then |task| {
+            do sched.deschedule_running_task_and_then |sched, task| {
                 let mut tube_clone = tube_clone_cell.take();
                 tube_clone.send(1);
-                let sched = Local::take::<Scheduler>();
-                sched.resume_task_immediately(task);
+                sched.enqueue_task(task);
             }
 
             assert!(tube.recv() == 1);
@@ -123,21 +123,17 @@ mod test {
         do run_in_newsched_task {
             let mut tube: Tube<int> = Tube::new();
             let tube_clone = tube.clone();
-            let tube_clone = Cell::new(Cell::new(Cell::new(tube_clone)));
+            let tube_clone = Cell::new(tube_clone);
             let sched = Local::take::<Scheduler>();
-            do sched.deschedule_running_task_and_then |task| {
-                let tube_clone = tube_clone.take();
-                do Local::borrow::<Scheduler> |sched| {
-                    let tube_clone = tube_clone.take();
-                    do sched.event_loop.callback {
-                        let mut tube_clone = tube_clone.take();
-                        // The task should be blocked on this now and
-                        // sending will wake it up.
-                        tube_clone.send(1);
-                    }
+            do sched.deschedule_running_task_and_then |sched, task| {
+                let tube_clone = Cell::new(tube_clone.take());
+                do sched.event_loop.callback {
+                    let mut tube_clone = tube_clone.take();
+                    // The task should be blocked on this now and
+                    // sending will wake it up.
+                    tube_clone.send(1);
                 }
-                let sched = Local::take::<Scheduler>();
-                sched.resume_task_immediately(task);
+                sched.enqueue_task(task);
             }
 
             assert!(tube.recv() == 1);
@@ -153,14 +149,14 @@ mod test {
             let tube_clone = tube.clone();
             let tube_clone = Cell::new(tube_clone);
             let sched = Local::take::<Scheduler>();
-            do sched.deschedule_running_task_and_then |task| {
+            do sched.deschedule_running_task_and_then |sched, task| {
                 callback_send(tube_clone.take(), 0);
 
                 fn callback_send(tube: Tube<int>, i: int) {
                     if i == 100 { return; }
 
                     let tube = Cell::new(Cell::new(tube));
-                    do Local::borrow::<Scheduler> |sched| {
+                    do Local::borrow::<Scheduler, ()> |sched| {
                         let tube = tube.take();
                         do sched.event_loop.callback {
                             let mut tube = tube.take();
@@ -172,8 +168,7 @@ mod test {
                     }
                 }
 
-                let sched = Local::take::<Scheduler>();
-                sched.resume_task_immediately(task);
+                sched.enqueue_task(task);
             }
 
             for int::range(0, MAX) |i| {

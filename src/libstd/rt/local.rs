@@ -13,12 +13,13 @@ use rt::sched::Scheduler;
 use rt::task::Task;
 use rt::local_ptr;
 use rt::rtio::{EventLoop, IoFactoryObject};
+//use borrow::to_uint;
 
 pub trait Local {
     fn put(value: ~Self);
     fn take() -> ~Self;
     fn exists() -> bool;
-    fn borrow(f: &fn(&mut Self));
+    fn borrow<T>(f: &fn(&mut Self) -> T) -> T;
     unsafe fn unsafe_borrow() -> *mut Self;
     unsafe fn try_unsafe_borrow() -> Option<*mut Self>;
 }
@@ -27,23 +28,40 @@ impl Local for Scheduler {
     fn put(value: ~Scheduler) { unsafe { local_ptr::put(value) }}
     fn take() -> ~Scheduler { unsafe { local_ptr::take() } }
     fn exists() -> bool { local_ptr::exists() }
-    fn borrow(f: &fn(&mut Scheduler)) { unsafe { local_ptr::borrow(f) } }
+    fn borrow<T>(f: &fn(&mut Scheduler) -> T) -> T {
+        let mut res: Option<T> = None;
+        let res_ptr: *mut Option<T> = &mut res;
+        unsafe {
+            do local_ptr::borrow |sched| {
+//                rtdebug!("successfully unsafe borrowed sched pointer");
+                let result = f(sched);
+                *res_ptr = Some(result);
+            }
+        }
+        match res {
+            Some(r) => { r }
+            None => rtabort!("function failed!")
+        }
+    }
     unsafe fn unsafe_borrow() -> *mut Scheduler { local_ptr::unsafe_borrow() }
-    unsafe fn try_unsafe_borrow() -> Option<*mut Scheduler> { abort!("unimpl") }
+    unsafe fn try_unsafe_borrow() -> Option<*mut Scheduler> { rtabort!("unimpl") }
 }
 
 impl Local for Task {
-    fn put(_value: ~Task) { abort!("unimpl") }
-    fn take() -> ~Task { abort!("unimpl") }
-    fn exists() -> bool { abort!("unimpl") }
-    fn borrow(f: &fn(&mut Task)) {
-        do Local::borrow::<Scheduler> |sched| {
+    fn put(_value: ~Task) { rtabort!("unimpl") }
+    fn take() -> ~Task { rtabort!("unimpl") }
+    fn exists() -> bool { rtabort!("unimpl") }
+    fn borrow<T>(f: &fn(&mut Task) -> T) -> T {
+        do Local::borrow::<Scheduler, T> |sched| {
+//            rtdebug!("sched about to grab current_task");
             match sched.current_task {
                 Some(~ref mut task) => {
-                    f(&mut *task.task)
+//                    rtdebug!("current task pointer: %x", to_uint(task));
+//                    rtdebug!("current task heap pointer: %x", to_uint(&task.heap));
+                    f(task)
                 }
                 None => {
-                    abort!("no scheduler")
+                    rtabort!("no scheduler")
                 }
             }
         }
@@ -51,12 +69,12 @@ impl Local for Task {
     unsafe fn unsafe_borrow() -> *mut Task {
         match (*Local::unsafe_borrow::<Scheduler>()).current_task {
             Some(~ref mut task) => {
-                let s: *mut Task = &mut *task.task;
+                let s: *mut Task = &mut *task;
                 return s;
             }
             None => {
                 // Don't fail. Infinite recursion
-                abort!("no scheduler")
+                rtabort!("no scheduler")
             }
         }
     }
@@ -71,48 +89,69 @@ impl Local for Task {
 
 // XXX: This formulation won't work once ~IoFactoryObject is a real trait pointer
 impl Local for IoFactoryObject {
-    fn put(_value: ~IoFactoryObject) { abort!("unimpl") }
-    fn take() -> ~IoFactoryObject { abort!("unimpl") }
-    fn exists() -> bool { abort!("unimpl") }
-    fn borrow(_f: &fn(&mut IoFactoryObject)) { abort!("unimpl") }
+    fn put(_value: ~IoFactoryObject) { rtabort!("unimpl") }
+    fn take() -> ~IoFactoryObject { rtabort!("unimpl") }
+    fn exists() -> bool { rtabort!("unimpl") }
+    fn borrow<T>(_f: &fn(&mut IoFactoryObject) -> T) -> T { rtabort!("unimpl") }
     unsafe fn unsafe_borrow() -> *mut IoFactoryObject {
         let sched = Local::unsafe_borrow::<Scheduler>();
         let io: *mut IoFactoryObject = (*sched).event_loop.io().unwrap();
         return io;
     }
-    unsafe fn try_unsafe_borrow() -> Option<*mut IoFactoryObject> { abort!("unimpl") }
+    unsafe fn try_unsafe_borrow() -> Option<*mut IoFactoryObject> { rtabort!("unimpl") }
 }
 
 #[cfg(test)]
 mod test {
+    use unstable::run_in_bare_thread;
+    use rt::test::*;
     use rt::sched::Scheduler;
-    use rt::uv::uvio::UvEventLoop;
     use super::*;
 
     #[test]
     fn thread_local_scheduler_smoke_test() {
-        let scheduler = ~UvEventLoop::new_scheduler();
-        Local::put(scheduler);
-        let _scheduler: ~Scheduler = Local::take();
+        do run_in_bare_thread {
+            let scheduler = ~new_test_uv_sched();
+            Local::put(scheduler);
+            let _scheduler: ~Scheduler = Local::take();
+        }
     }
 
     #[test]
     fn thread_local_scheduler_two_instances() {
-        let scheduler = ~UvEventLoop::new_scheduler();
-        Local::put(scheduler);
-        let _scheduler: ~Scheduler = Local::take();
-        let scheduler = ~UvEventLoop::new_scheduler();
-        Local::put(scheduler);
-        let _scheduler: ~Scheduler = Local::take();
+        do run_in_bare_thread {
+            let scheduler = ~new_test_uv_sched();
+            Local::put(scheduler);
+            let _scheduler: ~Scheduler = Local::take();
+            let scheduler = ~new_test_uv_sched();
+            Local::put(scheduler);
+            let _scheduler: ~Scheduler = Local::take();
+        }
     }
 
     #[test]
     fn borrow_smoke_test() {
-        let scheduler = ~UvEventLoop::new_scheduler();
-        Local::put(scheduler);
-        unsafe {
-            let _scheduler: *mut Scheduler = Local::unsafe_borrow();
+        do run_in_bare_thread {
+            let scheduler = ~new_test_uv_sched();
+            Local::put(scheduler);
+            unsafe {
+                let _scheduler: *mut Scheduler = Local::unsafe_borrow();
+            }
+            let _scheduler: ~Scheduler = Local::take();
         }
-        let _scheduler: ~Scheduler = Local::take();
     }
+
+    #[test]
+    fn borrow_with_return() {
+        do run_in_bare_thread {
+            let scheduler = ~new_test_uv_sched();
+            Local::put(scheduler);
+            let res = do Local::borrow::<Scheduler,bool> |_sched| {
+                true
+            };
+            assert!(res);
+            let _scheduler: ~Scheduler = Local::take();
+        }
+    }
+
 }

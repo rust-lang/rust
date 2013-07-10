@@ -8,7 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+type Port = u16;
+
+#[deriving(Eq, TotalEq)]
 pub enum IpAddr {
-    Ipv4(u8, u8, u8, u8, u16),
-    Ipv6
+    Ipv4(u8, u8, u8, u8, Port),
+    Ipv6(u16, u16, u16, u16, u16, u16, u16, u16, Port)
 }
