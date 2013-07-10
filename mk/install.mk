@@ -12,16 +12,47 @@
 # For consistency it might be desirable for stageN to be an exact
 # mirror of the installation directory structure.
 
-# Installation macro. Call with source directory as arg 1,
-# destination directory as arg 2, and filename/libname-glob as arg 3
+# Installation macros.
+# For INSTALL,
+# $(1) is the source dirctory
+# $(2) is the destination directory
+# $(3) is the filename/libname-glob
 ifdef VERBOSE
  INSTALL = install -m755 $(1)/$(3) $(2)/$(3)
- INSTALL_LIB = install -m644 `ls -drt1 $(1)/$(3) | tail -1` $(2)/
 else
  INSTALL = $(Q)$(call E, install: $(2)/$(3)) && install -m755 $(1)/$(3) $(2)/$(3)
- INSTALL_LIB = $(Q)$(call E, install_lib: $(2)/$(3)) &&                    \
-	       install -m644 `ls -drt1 $(1)/$(3) | tail -1` $(2)/
 endif
+
+# For INSTALL_LIB,
+# Target-specific $(LIB_SOURCE_DIR) is the source directory
+# Target-specific $(LIB_DESTIN_DIR) is the destination directory
+# $(1) is the filename/libname-glob
+ifdef VERBOSE
+ DO_INSTALL_LIB = install -m644 `ls -drt1 $(LIB_SOURCE_DIR)/$(1) | tail -1` $(LIB_DESTIN_DIR)/
+else
+ DO_INSTALL_LIB = $(Q)$(call E, install_lib: $(LIB_DESTIN_DIR)/$(1)) &&                    \
+	       install -m644 `ls -drt1 $(LIB_SOURCE_DIR)/$(1) | tail -1` $(LIB_DESTIN_DIR)/
+endif
+
+# Target-specific $(LIB_SOURCE_DIR) is the source directory
+# Target-specific $(LIB_DESTIN_DIR) is the destination directory
+# $(1) is the filename/libname-glob
+define INSTALL_LIB
+  $(if $(filter-out 1,$(words $(wildcard $(LIB_SOURCE_DIR)/$(1)))),        \
+       $(error Aborting install because more than one library matching     \
+               $(1) is present in build tree $(LIB_SOURCE_DIR):            \
+               $(wildcard $(LIB_SOURCE_DIR)/$(1))))
+  $(Q)LIB_NAME="$(notdir $(lastword $(wildcard $(LIB_SOURCE_DIR)/$(1))))"; \
+  MATCHES="$(filter-out %$(notdir $(lastword $(wildcard $(LIB_SOURCE_DIR)/$(1)))),\
+                        $(wildcard $(LIB_DESTIN_DIR)/$(1)))";              \
+  if [ -n "$$MATCHES" ]; then                                              \
+    echo "Warning, one or libraries matching Rust library '$(1)'" &&       \
+    echo "  (other than '$$LIB_NAME' itself) already present"     &&       \
+    echo "  at destination $(LIB_DESTIN_DIR):"                    &&       \
+    echo $$MATCHES ;                                                       \
+  fi
+  $(call DO_INSTALL_LIB,$(1))
+endef
 
 # The stage we install from
 ISTAGE = 2
@@ -49,38 +80,32 @@ $(foreach target,$(CFG_TARGET_TRIPLES), \
  $(eval $(call INSTALL_PREPARE_N,$(target),$(CFG_BUILD_TRIPLE))))
 
 define INSTALL_TARGET_N
+install-target-$(1)-host-$(2): LIB_SOURCE_DIR=$$(TL$(1)$(2))
+install-target-$(1)-host-$(2): LIB_DESTIN_DIR=$$(PTL$(1)$(2))
 install-target-$(1)-host-$(2): $$(TSREQ$$(ISTAGE)_T_$(1)_H_$(2)) $$(SREQ$$(ISTAGE)_T_$(1)_H_$(2))
 	$$(Q)mkdir -p $$(PTL$(1)$(2))
-	$$(Q)$$(call INSTALL_LIB,$$(TL$(1)$(2)),$$(PTL$(1)$(2)),$$(CFG_RUNTIME_$(1)))
-	$$(Q)$$(call INSTALL_LIB, \
-		$$(TL$(1)$(2)),$$(PTL$(1)$(2)),$$(STDLIB_GLOB_$(1)))
-	$$(Q)$$(call INSTALL_LIB, \
-		$$(TL$(1)$(2)),$$(PTL$(1)$(2)),$$(EXTRALIB_GLOB_$(1)))
-	$$(Q)$$(call INSTALL_LIB,$$(TL$(1)$(2)),$$(PTL$(1)$(2)),libmorestack.a)
+	$$(Q)$$(call INSTALL_LIB,$$(CFG_RUNTIME_$(1)))
+	$$(Q)$$(call INSTALL_LIB,$$(STDLIB_GLOB_$(1)))
+	$$(Q)$$(call INSTALL_LIB,$$(EXTRALIB_GLOB_$(1)))
+	$$(Q)$$(call INSTALL_LIB,libmorestack.a)
 
 endef
 
 define INSTALL_HOST_N
+install-target-$(1)-host-$(2): LIB_SOURCE_DIR=$$(TL$(1)$(2))
+install-target-$(1)-host-$(2): LIB_DESTIN_DIR=$$(PTL$(1)$(2))
 install-target-$(1)-host-$(2): $$(CSREQ$$(ISTAGE)_T_$(1)_H_$(2))
 	$$(Q)mkdir -p $$(PTL$(1)$(2))
-	$$(Q)$$(call INSTALL_LIB,$$(TL$(1)$(2)),$$(PTL$(1)$(2)),$$(CFG_RUNTIME_$(1)))
-	$$(Q)$$(call INSTALL_LIB, \
-		$$(TL$(1)$(2)),$$(PTL$(1)$(2)),$$(STDLIB_GLOB_$(1)))
-	$$(Q)$$(call INSTALL_LIB, \
-		$$(TL$(1)$(2)),$$(PTL$(1)$(2)),$$(EXTRALIB_GLOB_$(1)))
-	$$(Q)$$(call INSTALL_LIB, \
-		$$(TL$(1)$(2)),$$(PTL$(1)$(2)),$$(LIBRUSTC_GLOB_$(1)))
-	$$(Q)$$(call INSTALL_LIB, \
-		$$(TL$(1)$(2)),$$(PTL$(1)$(2)),$$(LIBSYNTAX_GLOB_$(1)))
-	$$(Q)$$(call INSTALL_LIB, \
-		$$(TL$(1)$(2)),$$(PTL$(1)$(2)),$$(LIBRUSTPKG_GLOB_$(1)))
-	$$(Q)$$(call INSTALL_LIB, \
-		$$(TL$(1)$(2)),$$(PTL$(1)$(2)),$$(LIBRUSTDOC_GLOB_$(1)))
-	$$(Q)$$(call INSTALL_LIB, \
-		$$(TL$(1)$(2)),$$(PTL$(1)$(2)),$$(LIBRUSTI_GLOB_$(1)))
-	$$(Q)$$(call INSTALL_LIB, \
-		$$(TL$(1)$(2)),$$(PTL$(1)$(2)),$$(LIBRUST_GLOB_$(1)))
-	$$(Q)$$(call INSTALL_LIB,$$(TL$(1)$(2)),$$(PTL$(1)$(2)),libmorestack.a)
+	$$(Q)$$(call INSTALL_LIB,$$(CFG_RUNTIME_$(1)))
+	$$(Q)$$(call INSTALL_LIB,$$(STDLIB_GLOB_$(1)))
+	$$(Q)$$(call INSTALL_LIB,$$(EXTRALIB_GLOB_$(1)))
+	$$(Q)$$(call INSTALL_LIB,$$(LIBRUSTC_GLOB_$(1)))
+	$$(Q)$$(call INSTALL_LIB,$$(LIBSYNTAX_GLOB_$(1)))
+	$$(Q)$$(call INSTALL_LIB,$$(LIBRUSTPKG_GLOB_$(1)))
+	$$(Q)$$(call INSTALL_LIB,$$(LIBRUSTDOC_GLOB_$(1)))
+	$$(Q)$$(call INSTALL_LIB,$$(LIBRUSTI_GLOB_$(1)))
+	$$(Q)$$(call INSTALL_LIB,$$(LIBRUST_GLOB_$(1)))
+	$$(Q)$$(call INSTALL_LIB,libmorestack.a)
 
 endef
 
@@ -104,6 +129,8 @@ PHB = $(PREFIX_BIN)
 # Shorthand for the prefix bin directory
 PHL = $(PREFIX_LIB)
 
+install-host: LIB_SOURCE_DIR=$(HL)
+install-host: LIB_DESTIN_DIR=$(PHL)
 install-host: $(CSREQ$(ISTAGE)_T_$(CFG_BUILD_TRIPLE)_H_$(CFG_BUILD_TRIPLE))
 	$(Q)mkdir -p $(PREFIX_BIN)
 	$(Q)mkdir -p $(PREFIX_LIB)
@@ -113,14 +140,14 @@ install-host: $(CSREQ$(ISTAGE)_T_$(CFG_BUILD_TRIPLE)_H_$(CFG_BUILD_TRIPLE))
 	$(Q)$(call INSTALL,$(HB2),$(PHB),rustdoc$(X_$(CFG_BUILD_TRIPLE)))
 	$(Q)$(call INSTALL,$(HB2),$(PHB),rusti$(X_$(CFG_BUILD_TRIPLE)))
 	$(Q)$(call INSTALL,$(HB2),$(PHB),rust$(X_$(CFG_BUILD_TRIPLE)))
-	$(Q)$(call INSTALL_LIB,$(HL),$(PHL),$(STDLIB_GLOB_$(CFG_BUILD_TRIPLE)))
-	$(Q)$(call INSTALL_LIB,$(HL),$(PHL),$(EXTRALIB_GLOB_$(CFG_BUILD_TRIPLE)))
-	$(Q)$(call INSTALL_LIB,$(HL),$(PHL),$(LIBRUSTC_GLOB_$(CFG_BUILD_TRIPLE)))
-	$(Q)$(call INSTALL_LIB,$(HL),$(PHL),$(LIBSYNTAX_GLOB_$(CFG_BUILD_TRIPLE)))
-	$(Q)$(call INSTALL_LIB,$(HL),$(PHL),$(LIBRUSTI_GLOB_$(CFG_BUILD_TRIPLE)))
-	$(Q)$(call INSTALL_LIB,$(HL),$(PHL),$(LIBRUST_GLOB_$(CFG_BUILD_TRIPLE)))
-	$(Q)$(call INSTALL_LIB,$(HL),$(PHL),$(LIBRUSTPKG_GLOB_$(CFG_BUILD_TRIPLE)))
-	$(Q)$(call INSTALL_LIB,$(HL),$(PHL),$(LIBRUSTDOC_GLOB_$(CFG_BUILD_TRIPLE)))
+	$(Q)$(call INSTALL_LIB,$(STDLIB_GLOB_$(CFG_BUILD_TRIPLE)))
+	$(Q)$(call INSTALL_LIB,$(EXTRALIB_GLOB_$(CFG_BUILD_TRIPLE)))
+	$(Q)$(call INSTALL_LIB,$(LIBRUSTC_GLOB_$(CFG_BUILD_TRIPLE)))
+	$(Q)$(call INSTALL_LIB,$(LIBSYNTAX_GLOB_$(CFG_BUILD_TRIPLE)))
+	$(Q)$(call INSTALL_LIB,$(LIBRUSTI_GLOB_$(CFG_BUILD_TRIPLE)))
+	$(Q)$(call INSTALL_LIB,$(LIBRUST_GLOB_$(CFG_BUILD_TRIPLE)))
+	$(Q)$(call INSTALL_LIB,$(LIBRUSTPKG_GLOB_$(CFG_BUILD_TRIPLE)))
+	$(Q)$(call INSTALL_LIB,$(LIBRUSTDOC_GLOB_$(CFG_BUILD_TRIPLE)))
 	$(Q)$(call INSTALL,$(HL),$(PHL),$(CFG_RUNTIME_$(CFG_BUILD_TRIPLE)))
 	$(Q)$(call INSTALL,$(HL),$(PHL),$(CFG_RUSTLLVM_$(CFG_BUILD_TRIPLE)))
 	$(Q)$(call INSTALL,$(S)/man, \

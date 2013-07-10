@@ -8,9 +8,20 @@ def unpack_snapshot(triple, dl_path):
   print("opening snapshot " + dl_path)
   tar = tarfile.open(dl_path)
   kernel = get_kernel(triple)
+
+  stagep = os.path.join(triple, "stage0")
+
+  # Remove files from prior unpackings, since snapshot rustc may not
+  # be able to disambiguate between multiple candidate libraries.
+  # (Leave dirs in place since extracting step still needs them.)
+  for root, _, files in os.walk(stagep):
+    for f in files:
+      print("removing " + os.path.join(root, f))
+      os.unlink(os.path.join(root, f))
+
   for p in tar.getnames():
     name = p.replace("rust-stage0/", "", 1);
-    stagep = os.path.join(triple, "stage0")
+
     fp = os.path.join(stagep, name)
     print("extracting " + p)
     tar.extract(p, download_unpack_base)
