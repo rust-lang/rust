@@ -31,7 +31,6 @@ use std::result;
 use std::task;
 use std::to_str::ToStr;
 use std::u64;
-use std::uint;
 
 
 // The name of a test. By convention this follows the rules for rust
@@ -191,6 +190,7 @@ pub enum TestResult { TrOk, TrFailed, TrIgnored, TrBench(BenchSamples) }
 struct ConsoleTestState {
     out: @io::Writer,
     log_out: Option<@io::Writer>,
+    term: Option<term::Terminal>,
     use_color: bool,
     total: uint,
     passed: uint,
@@ -200,171 +200,180 @@ struct ConsoleTestState {
     failures: ~[TestDesc]
 }
 
+impl ConsoleTestState {
+    pub fn new(opts: &TestOpts) -> ConsoleTestState {
+        let log_out = match opts.logfile {
+            Some(ref path) => match io::file_writer(path,
+                                                    [io::Create,
+                                                     io::Truncate]) {
+                result::Ok(w) => Some(w),
+                result::Err(ref s) => {
+                    fail!("can't open output file: %s", *s)
+                }
+            },
+            None => None
+        };
+        let out = io::stdout();
+        let term = match term::Terminal::new(out) {
+            Err(_) => None,
+            Ok(t) => Some(t)
+        };
+        ConsoleTestState {
+            out: out,
+            log_out: log_out,
+            use_color: use_color(),
+            term: term,
+            total: 0u,
+            passed: 0u,
+            failed: 0u,
+            ignored: 0u,
+            benchmarked: 0u,
+            failures: ~[]
+        }
+    }
+
+    pub fn write_ok(&self) {
+        self.write_pretty("ok", term::color::GREEN);
+    }
+
+    pub fn write_failed(&self) {
+        self.write_pretty("FAILED", term::color::RED);
+    }
+
+    pub fn write_ignored(&self) {
+        self.write_pretty("ignored", term::color::YELLOW);
+    }
+
+    pub fn write_bench(&self) {
+        self.write_pretty("bench", term::color::CYAN);
+    }
+
+    pub fn write_pretty(&self,
+                        word: &str,
+                        color: term::color::Color) {
+        match self.term {
+            None => self.out.write_str(word),
+            Some(ref t) => {
+                if self.use_color {
+                    t.fg(color);
+                }
+                self.out.write_str(word);
+                if self.use_color {
+                    t.reset();
+                }
+            }
+        }
+    }
+
+    pub fn write_run_start(&mut self, len: uint) {
+        self.total = len;
+        let noun = if len != 1 { &"tests" } else { &"test" };
+        self.out.write_line(fmt!("\nrunning %u %s", len, noun));
+    }
+
+    pub fn write_test_start(&self, test: &TestDesc) {
+        self.out.write_str(fmt!("test %s ... ", test.name.to_str()));
+    }
+
+    pub fn write_result(&self, result: &TestResult) {
+        match *result {
+            TrOk => self.write_ok(),
+            TrFailed => self.write_failed(),
+            TrIgnored => self.write_ignored(),
+            TrBench(ref bs) => {
+                self.write_bench();
+                self.out.write_str(": " + fmt_bench_samples(bs))
+            }
+        }
+        self.out.write_str(&"\n");
+    }
+
+    pub fn write_log(&self, test: &TestDesc, result: &TestResult) {
+        match self.log_out {
+            None => (),
+            Some(out) => {
+                out.write_line(fmt!("%s %s",
+                                    match *result {
+                                        TrOk => ~"ok",
+                                        TrFailed => ~"failed",
+                                        TrIgnored => ~"ignored",
+                                        TrBench(ref bs) => fmt_bench_samples(bs)
+                                    }, test.name.to_str()));
+            }
+        }
+    }
+
+    pub fn write_failures(&self) {
+        self.out.write_line("\nfailures:");
+        let mut failures = ~[];
+        for self.failures.iter().advance() |f| {
+            failures.push(f.name.to_str());
+        }
+        sort::tim_sort(failures);
+        for failures.iter().advance |name| {
+            self.out.write_line(fmt!("    %s", name.to_str()));
+        }
+    }
+
+    pub fn write_run_finish(&self) -> bool {
+        assert!(self.passed + self.failed + self.ignored + self.benchmarked == self.total);
+        let success = self.failed == 0u;
+        if !success {
+            self.write_failures();
+        }
+
+        self.out.write_str("\nresult: ");
+        if success {
+            // There's no parallelism at this point so it's safe to use color
+            self.write_ok();
+        } else {
+            self.write_failed();
+        }
+        self.out.write_str(fmt!(". %u passed; %u failed; %u ignored, %u benchmarked\n\n",
+                                self.passed, self.failed, self.ignored, self.benchmarked));
+        return success;
+    }
+}
+
+pub fn fmt_bench_samples(bs: &BenchSamples) -> ~str {
+    if bs.mb_s != 0 {
+        fmt!("%u ns/iter (+/- %u) = %u MB/s",
+             bs.ns_iter_summ.median as uint,
+             (bs.ns_iter_summ.max - bs.ns_iter_summ.min) as uint,
+             bs.mb_s)
+    } else {
+        fmt!("%u ns/iter (+/- %u)",
+             bs.ns_iter_summ.median as uint,
+             (bs.ns_iter_summ.max - bs.ns_iter_summ.min) as uint)
+    }
+}
+
 // A simple console test runner
 pub fn run_tests_console(opts: &TestOpts,
                          tests: ~[TestDescAndFn]) -> bool {
     fn callback(event: &TestEvent, st: &mut ConsoleTestState) {
         debug!("callback(event=%?)", event);
         match copy *event {
-          TeFiltered(ref filtered_tests) => {
-            st.total = filtered_tests.len();
-            let noun = if st.total != 1 { ~"tests" } else { ~"test" };
-            st.out.write_line(fmt!("\nrunning %u %s", st.total, noun));
-          }
-          TeWait(ref test) => st.out.write_str(
-              fmt!("test %s ... ", test.name.to_str())),
-          TeResult(test, result) => {
-            match st.log_out {
-                Some(f) => write_log(f, copy result, &test),
-                None => ()
+            TeFiltered(ref filtered_tests) => st.write_run_start(filtered_tests.len()),
+            TeWait(ref test) => st.write_test_start(test),
+            TeResult(test, result) => {
+                st.write_log(&test, &result);
+                st.write_result(&result);
+                match result {
+                    TrOk => st.passed += 1,
+                    TrIgnored => st.ignored += 1,
+                    TrBench(_) => st.benchmarked += 1,
+                    TrFailed => {
+                        st.failed += 1;
+                        st.failures.push(test);
+                    }
+                }
             }
-            match result {
-              TrOk => {
-                st.passed += 1;
-                write_ok(st.out, st.use_color);
-                st.out.write_line("");
-              }
-              TrFailed => {
-                st.failed += 1;
-                write_failed(st.out, st.use_color);
-                st.out.write_line("");
-                st.failures.push(test);
-              }
-              TrIgnored => {
-                st.ignored += 1;
-                write_ignored(st.out, st.use_color);
-                st.out.write_line("");
-              }
-              TrBench(bs) => {
-                st.benchmarked += 1u;
-                write_bench(st.out, st.use_color);
-                st.out.write_line(fmt!(": %s",
-                                       fmt_bench_samples(&bs)));
-              }
-            }
-          }
         }
     }
-
-    let log_out = match opts.logfile {
-        Some(ref path) => match io::file_writer(path,
-                                                [io::Create,
-                                                 io::Truncate]) {
-          result::Ok(w) => Some(w),
-          result::Err(ref s) => {
-              fail!("can't open output file: %s", *s)
-          }
-        },
-        None => None
-    };
-
-    let st = @mut ConsoleTestState {
-        out: io::stdout(),
-        log_out: log_out,
-        use_color: use_color(),
-        total: 0u,
-        passed: 0u,
-        failed: 0u,
-        ignored: 0u,
-        benchmarked: 0u,
-        failures: ~[]
-    };
-
+    let st = @mut ConsoleTestState::new(opts);
     run_tests(opts, tests, |x| callback(&x, st));
-
-    assert!(st.passed + st.failed +
-                 st.ignored + st.benchmarked == st.total);
-    let success = st.failed == 0u;
-
-    if !success {
-        print_failures(st);
-    }
-
-    {
-      let st: &mut ConsoleTestState = st;
-      st.out.write_str(fmt!("\nresult: "));
-      if success {
-          // There's no parallelism at this point so it's safe to use color
-          write_ok(st.out, true);
-      } else {
-          write_failed(st.out, true);
-      }
-      st.out.write_str(fmt!(". %u passed; %u failed; %u ignored\n\n",
-                            st.passed, st.failed, st.ignored));
-    }
-
-    return success;
-
-    fn fmt_bench_samples(bs: &BenchSamples) -> ~str {
-        if bs.mb_s != 0 {
-            fmt!("%u ns/iter (+/- %u) = %u MB/s",
-                 bs.ns_iter_summ.median as uint,
-                 (bs.ns_iter_summ.max - bs.ns_iter_summ.min) as uint,
-                 bs.mb_s)
-        } else {
-            fmt!("%u ns/iter (+/- %u)",
-                 bs.ns_iter_summ.median as uint,
-                 (bs.ns_iter_summ.max - bs.ns_iter_summ.min) as uint)
-        }
-    }
-
-    fn write_log(out: @io::Writer, result: TestResult, test: &TestDesc) {
-        out.write_line(fmt!("%s %s",
-                    match result {
-                        TrOk => ~"ok",
-                        TrFailed => ~"failed",
-                        TrIgnored => ~"ignored",
-                        TrBench(ref bs) => fmt_bench_samples(bs)
-                    }, test.name.to_str()));
-    }
-
-    fn write_ok(out: @io::Writer, use_color: bool) {
-        write_pretty(out, "ok", term::color::GREEN, use_color);
-    }
-
-    fn write_failed(out: @io::Writer, use_color: bool) {
-        write_pretty(out, "FAILED", term::color::RED, use_color);
-    }
-
-    fn write_ignored(out: @io::Writer, use_color: bool) {
-        write_pretty(out, "ignored", term::color::YELLOW, use_color);
-    }
-
-    fn write_bench(out: @io::Writer, use_color: bool) {
-        write_pretty(out, "bench", term::color::CYAN, use_color);
-    }
-
-    fn write_pretty(out: @io::Writer,
-                    word: &str,
-                    color: term::color::Color,
-                    use_color: bool) {
-        let t = term::Terminal::new(out);
-        match t {
-            Ok(term)  => {
-                if use_color {
-                    term.fg(color);
-                }
-                out.write_str(word);
-                if use_color {
-                    term.reset();
-                }
-            },
-            Err(_) => out.write_str(word)
-        }
-    }
-}
-
-fn print_failures(st: &ConsoleTestState) {
-    st.out.write_line("\nfailures:");
-    let mut failures = ~[];
-    for uint::range(0, st.failures.len()) |i| {
-        let name = copy st.failures[i].name;
-        failures.push(name.to_str());
-    }
-    sort::tim_sort(failures);
-    for failures.iter().advance |name| {
-        st.out.write_line(fmt!("    %s", name.to_str()));
-    }
+    return st.write_run_finish();
 }
 
 #[test]
