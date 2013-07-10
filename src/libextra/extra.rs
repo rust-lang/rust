@@ -69,9 +69,9 @@ pub mod flatpipes;
 
 pub mod container;
 pub mod bitv;
-pub mod deque;
 pub mod fun_treemap;
 pub mod list;
+pub mod ringbuf;
 pub mod priority_queue;
 pub mod smallintmap;
 
