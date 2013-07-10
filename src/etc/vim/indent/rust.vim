@@ -10,7 +10,7 @@ endif
 let b:did_indent = 1
 
 setlocal cindent
-setlocal cinoptions=L0,(0,Ws,JN
+setlocal cinoptions=L0,(0,Ws,JN,j1
 setlocal cinkeys=0{,0},!^F,o,O,0[,0]
 " Don't think cinwords will actually do anything at all... never mind
 setlocal cinwords=do,for,if,else,while,loop,impl,mod,unsafe,trait,struct,enum,fn,extern
