@@ -13,6 +13,7 @@
 
 use std::cast;
 use std::cmp;
+use std::ptr;
 use std::util;
 use std::iterator::FromIterator;
 
@@ -20,18 +21,15 @@ use std::iterator::FromIterator;
 pub struct List<T> {
     priv length: uint,
     priv list_head: Link<T>,
-    priv list_tail: Rawlink<T>,
+    priv list_tail: Rawlink<Node<T>>,
 }
 
 type Link<T> = Option<~Node<T>>;
-type Rawlink<T> = Option<&'static Node<T>>;
-// Rawlink uses &'static to have a small Option<&'> represenation.
-// FIXME: Use a raw pointer like *mut Node if possible.
-// FIXME: Causes infinite recursion in %? repr
+struct Rawlink<T> { priv p: *mut T }
 
 struct Node<T> {
     priv next: Link<T>,
-    priv prev: Rawlink<T>,
+    priv prev: Rawlink<Node<T>>,
     priv value: T,
 }
 
@@ -45,21 +43,21 @@ pub struct ForwardIterator<'self, T> {
 /// List reverse iterator
 pub struct ReverseIterator<'self, T> {
     priv list: &'self List<T>,
-    priv next: Rawlink<T>,
+    priv next: Rawlink<Node<T>>,
     priv nelem: uint,
 }
 
 /// List mutable iterator
 pub struct MutForwardIterator<'self, T> {
     priv list: &'self mut List<T>,
-    priv curs: Rawlink<T>,
+    priv curs: Rawlink<Node<T>>,
     priv nelem: uint,
 }
 
 /// List mutable reverse iterator
 pub struct MutReverseIterator<'self, T> {
     priv list: &'self mut List<T>,
-    priv next: Rawlink<T>,
+    priv next: Rawlink<Node<T>>,
     priv nelem: uint,
 }
 
@@ -71,6 +69,33 @@ pub struct ConsumeIterator<T> {
 /// List reverse consuming iterator
 pub struct ConsumeRevIterator<T> {
     priv list: List<T>
+}
+
+/// Rawlink is a type like Option<T> but for holding a raw pointer
+impl<T> Rawlink<T> {
+    /// Like Option::None for Rawlink
+    fn none() -> Rawlink<T> {
+        Rawlink{p: ptr::mut_null()}
+    }
+
+    /// Like Option::Some for Rawlink
+    fn some(n: &mut T) -> Rawlink<T> {
+        Rawlink{p: ptr::to_mut_unsafe_ptr(n)}
+    }
+
+    /// Convert the `Rawlink` into an Option value
+    fn resolve_immut(&self) -> Option<&T> {
+        unsafe { self.p.to_option() }
+    }
+
+    /// Convert the `Rawlink` into an Option value
+    fn resolve(&mut self) -> Option<&mut T> {
+        if self.p.is_null() {
+            None
+        } else {
+            Some(unsafe { cast::transmute(self.p) })
+        }
+    }
 }
 
 impl<T> Container for List<T> {
@@ -93,19 +118,11 @@ impl<T> Mutable for List<T> {
     }
 }
 
-/// Cast the raw link into a borrowed ref
-fn resolve_rawlink<T>(lnk: &'static Node<T>) -> &mut Node<T> {
-    unsafe { cast::transmute_mut(lnk) }
-}
-fn rawlink<T>(n: &mut Node<T>) -> Rawlink<T> {
-    Some(unsafe { cast::transmute(n) })
-}
-
 impl<T> List<T> {
     /// Create an empty List
     #[inline]
     pub fn new() -> List<T> {
-        List{list_head: None, list_tail: None, length: 0}
+        List{list_head: None, list_tail: Rawlink::none(), length: 0}
     }
 
     /// Provide a reference to the front element, or None if the list is empty
@@ -123,17 +140,17 @@ impl<T> List<T> {
 
     /// Provide a reference to the back element, or None if the list is empty
     pub fn peek_back<'a>(&'a self) -> Option<&'a T> {
-        match self.list_tail {
+        match self.list_tail.resolve_immut() {
             None => None,
-            Some(tail) => Some(&resolve_rawlink(tail).value),
+            Some(tail) => Some(&tail.value),
         }
     }
 
     /// Provide a mutable reference to the back element, or None if the list is empty
     pub fn peek_back_mut<'a>(&'a mut self) -> Option<&'a mut T> {
-        match self.list_tail {
+        match self.list_tail.resolve() {
             None => None,
-            Some(tail) => Some(&mut resolve_rawlink(tail).value),
+            Some(tail) => Some(&mut tail.value),
         }
     }
 
@@ -141,12 +158,11 @@ impl<T> List<T> {
     ///
     /// O(1)
     pub fn push_back(&mut self, elt: T) {
-        match self.list_tail {
+        match self.list_tail.resolve() {
             None => return self.push_front(elt),
-            Some(rtail) => {
+            Some(tail) => {
                 let mut new_tail = ~Node{value: elt, next: None, prev: self.list_tail};
-                self.list_tail = rawlink(new_tail);
-                let tail = resolve_rawlink(rtail);
+                self.list_tail = Rawlink::some(new_tail);
                 tail.next = Some(new_tail);
             }
         }
@@ -158,19 +174,18 @@ impl<T> List<T> {
     /// O(1)
     #[inline]
     pub fn pop_back(&mut self) -> Option<T> {
-        match self.list_tail {
+        match self.list_tail.resolve() {
             None => None,
-            Some(rtail) => {
+            Some(tail) => {
                 self.length -= 1;
-                let tail = resolve_rawlink(rtail);
-                let tail_own = match tail.prev {
+                let tail_own = match tail.prev.resolve() {
                     None => {
-                        self.list_tail = None;
+                        self.list_tail = Rawlink::none();
                         self.list_head.swap_unwrap()
                     },
-                    Some(rtail_prev) => {
+                    Some(tail_prev) => {
                         self.list_tail = tail.prev;
-                        resolve_rawlink(rtail_prev).next.swap_unwrap()
+                        tail_prev.next.swap_unwrap()
                     }
                 };
                 Some(tail_own.value)
@@ -182,14 +197,14 @@ impl<T> List<T> {
     ///
     /// O(1)
     pub fn push_front(&mut self, elt: T) {
-        let mut new_head = ~Node{value: elt, next: None, prev: None};
+        let mut new_head = ~Node{value: elt, next: None, prev: Rawlink::none()};
         match self.list_head {
             None => {
-                self.list_tail = rawlink(new_head);
+                self.list_tail = Rawlink::some(new_head);
                 self.list_head = Some(new_head);
             }
             Some(ref mut head) => {
-                head.prev = rawlink(new_head);
+                head.prev = Rawlink::some(new_head);
                 util::swap(head, &mut new_head);
                 head.next = Some(new_head);
             }
@@ -208,12 +223,12 @@ impl<T> List<T> {
                 match *head.swap_unwrap() {
                     Node{value: value, next: Some(next), prev: _} => {
                         let mut mnext = next;
-                        mnext.prev = None;
+                        mnext.prev = Rawlink::none();
                         *head = Some(mnext);
                         Some(value)
                     }
                     Node{value: value, next: None, prev: _} => {
-                        self.list_tail = None;
+                        self.list_tail = Rawlink::none();
                         *head = None;
                         Some(value)
                     }
@@ -226,14 +241,13 @@ impl<T> List<T> {
     ///
     /// O(1)
     pub fn append(&mut self, other: List<T>) {
-        match self.list_tail {
+        match self.list_tail.resolve() {
             None => *self = other,
-            Some(rtail) => {
+            Some(tail) => {
                 match other {
                     List{list_head: None, list_tail: _, length: _} => return,
                     List{list_head: Some(node), list_tail: o_tail, length: o_length} => {
                         let mut lnk_node = node;
-                        let tail = resolve_rawlink(rtail);
                         lnk_node.prev = self.list_tail;
                         tail.next = Some(lnk_node);
                         self.list_tail = o_tail;
@@ -301,7 +315,7 @@ impl<T> List<T> {
 
     /// Provide a forward iterator with mutable references
     pub fn mut_iter<'a>(&'a mut self) -> MutForwardIterator<'a, T> {
-        MutForwardIterator{nelem: self.len(), list: self, curs: None}
+        MutForwardIterator{nelem: self.len(), list: self, curs: Rawlink::none()}
     }
 
     /// Provide a reverse iterator with mutable references
@@ -353,23 +367,23 @@ impl<'self, A> Iterator<&'self A> for ForwardIterator<'self, A> {
 impl<'self, A> Iterator<&'self mut A> for MutForwardIterator<'self, A> {
     #[inline]
     fn next(&mut self) -> Option<&'self mut A> {
-        match self.curs {
+        match self.curs.resolve() {
             None => {
                 match self.list.list_head {
                     None => None,
                     Some(ref mut head) => {
                         self.nelem -= 1;
-                        self.curs = rawlink(&mut **head);
+                        self.curs = Rawlink::some(*head);
                         Some(&mut head.value)
                     }
                 }
             }
-            Some(rcurs) => {
-                match resolve_rawlink(rcurs).next {
+            Some(curs) => {
+                match curs.next {
                     None => None,
                     Some(ref mut head) => {
                         self.nelem -= 1;
-                        self.curs = rawlink(&mut **head);
+                        self.curs = Rawlink::some(*head);
                         Some(&mut head.value)
                     }
                 }
@@ -385,11 +399,10 @@ impl<'self, A> Iterator<&'self mut A> for MutForwardIterator<'self, A> {
 impl<'self, A> Iterator<&'self A> for ReverseIterator<'self, A> {
     #[inline]
     fn next(&mut self) -> Option<&'self A> {
-        match self.next {
+        match self.next.resolve() {
             None => None,
-            Some(rnext) => {
+            Some(prev) => {
                 self.nelem -= 1;
-                let prev = resolve_rawlink(rnext);
                 self.next = prev.prev;
                 Some(&prev.value)
             }
@@ -404,11 +417,10 @@ impl<'self, A> Iterator<&'self A> for ReverseIterator<'self, A> {
 impl<'self, A> Iterator<&'self mut A> for MutReverseIterator<'self, A> {
     #[inline]
     fn next(&mut self) -> Option<&'self mut A> {
-        match self.next {
+        match self.next.resolve() {
             None => None,
-            Some(rnext) => {
+            Some(prev) => {
                 self.nelem -= 1;
-                let prev = resolve_rawlink(rnext);
                 self.next = prev.prev;
                 Some(&mut prev.value)
             }
@@ -428,19 +440,18 @@ trait ListInsertCursor<A> {
 
 impl<'self, A> ListInsertCursor<A> for MutForwardIterator<'self, A> {
     fn insert_before(&mut self, elt: A) {
-        match self.curs {
+        match self.curs.resolve() {
             None => self.list.push_front(elt),
-            Some(rcurs) => {
-                let node = resolve_rawlink(rcurs);
-                let prev_node = match node.prev {
+            Some(node) => {
+                let prev_node = match node.prev.resolve() {
                     None => return self.list.push_front(elt),  // at head
-                    Some(rprev) => resolve_rawlink(rprev),
+                    Some(prev) => prev,
                 };
                 let mut node_own = prev_node.next.swap_unwrap();
                 let mut ins_node = ~Node{value: elt,
                                          next: None,
-                                         prev: rawlink(prev_node)};
-                node_own.prev = rawlink(ins_node);
+                                         prev: Rawlink::some(prev_node)};
+                node_own.prev = Rawlink::some(ins_node);
                 ins_node.next = Some(node_own);
                 prev_node.next = Some(ins_node);
                 self.list.length += 1;
@@ -497,11 +508,11 @@ fn check_links<T>(list: &List<T>) {
         Some(ref node) => node_ptr = &**node,
     }
     loop {
-        match (last_ptr, node_ptr.prev) {
+        match (last_ptr, node_ptr.prev.resolve_immut()) {
             (None   , None      ) => {}
             (None   , _         ) => fail!("prev link for list_head"),
             (Some(p), Some(pptr)) => {
-                assert_eq!((p as *Node<T>) as uint, pptr as *Node<T> as uint);
+                assert_eq!(p as *Node<T>, pptr as *Node<T>);
             }
             _ => fail!("prev link is none, not good"),
         }
