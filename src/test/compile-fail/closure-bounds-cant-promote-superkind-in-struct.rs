@@ -9,11 +9,11 @@
 // except according to those terms.
 
 struct X {
-    field: @fn:Copy(),
+    field: @fn:Send(),
 }
 
 fn foo(blk: @fn:()) -> X {
-    return X { field: blk }; //~ ERROR expected bounds `Copy` but found no bounds
+    return X { field: blk }; //~ ERROR expected bounds `Send` but found no bounds
 }
 
 fn main() {

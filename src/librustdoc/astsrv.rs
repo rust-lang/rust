@@ -114,7 +114,8 @@ fn build_ctxt(sess: Session,
     use rustc::front::config;
 
     let ast = syntax::ext::expand::inject_std_macros(sess.parse_sess,
-                                                     copy sess.opts.cfg, ast);
+                                                     sess.opts.cfg.clone(),
+                                                     ast);
     let ast = config::strip_unconfigured_items(ast);
     let ast = syntax::ext::expand::expand_crate(sess.parse_sess,
                                                 sess.opts.cfg.clone(),

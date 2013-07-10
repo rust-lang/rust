@@ -394,8 +394,8 @@ mod test {
 
     #[test]
     fn should_add_impl_bounds() {
-        let doc = mk_doc(~"impl<T, U: Copy, V: Copy + Clone> Option<T, U, V> { }");
-        assert!(doc.cratemod().impls()[0].bounds_str == Some(~"<T, U: Copy, V: Copy + Clone>"));
+        let doc = mk_doc(~"impl<T, U, V: Clone> Option<T, U, V> { }");
+        assert!(doc.cratemod().impls()[0].bounds_str == Some(~"<T, U, V: Clone>"));
     }
 
     #[test]

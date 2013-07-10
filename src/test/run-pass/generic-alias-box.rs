@@ -10,7 +10,7 @@
 
 
 
-fn id<T:Copy>(t: T) -> T { return t; }
+fn id<T>(t: T) -> T { return t; }
 
 pub fn main() {
     let expected = @100;

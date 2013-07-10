@@ -16,7 +16,6 @@ use cmp::{Eq, ApproxEq, Ord};
 use ops::{Add, Sub, Mul, Div, Rem, Neg};
 use ops::{Not, BitAnd, BitOr, BitXor, Shl, Shr};
 use option::Option;
-use kinds::Copy;
 
 pub mod strconv;
 
@@ -428,7 +427,7 @@ pub trait FromStrRadix {
 /// - If code written to use this function doesn't care about it, it's
 ///   probably assuming that `x^0` always equals `1`.
 ///
-pub fn pow_with_uint<T:NumCast+One+Zero+Copy+Div<T,T>+Mul<T,T>>(radix: uint, pow: uint) -> T {
+pub fn pow_with_uint<T:NumCast+One+Zero+Div<T,T>+Mul<T,T>>(radix: uint, pow: uint) -> T {
     let _0: T = Zero::zero();
     let _1: T = One::one();
 

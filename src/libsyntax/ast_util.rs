@@ -16,11 +16,13 @@ use opt_vec;
 use parse::token;
 use visit;
 
+use std::cast::unsafe_copy;
+use std::cast;
 use std::hashmap::HashMap;
 use std::int;
+use std::local_data;
 use std::num;
 use std::option;
-use std::local_data;
 
 pub fn path_name_i(idents: &[ident]) -> ~str {
     // FIXME: Bad copies (#2543 -- same for everything else that says "bad")

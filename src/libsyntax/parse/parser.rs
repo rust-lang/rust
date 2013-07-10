@@ -473,10 +473,10 @@ impl Parser {
 
     // parse a sequence bracketed by '<' and '>', stopping
     // before the '>'.
-    pub fn parse_seq_to_before_gt<T: Copy>(&self,
-                                           sep: Option<token::Token>,
-                                           f: &fn(&Parser) -> T)
-                                           -> OptVec<T> {
+    pub fn parse_seq_to_before_gt<T>(&self,
+                                     sep: Option<token::Token>,
+                                     f: &fn(&Parser) -> T)
+                                     -> OptVec<T> {
         let mut first = true;
         let mut v = opt_vec::Empty;
         while *self.token != token::GT
@@ -493,10 +493,10 @@ impl Parser {
         return v;
     }
 
-    pub fn parse_seq_to_gt<T: Copy>(&self,
-                                    sep: Option<token::Token>,
-                                    f: &fn(&Parser) -> T)
-                                    -> OptVec<T> {
+    pub fn parse_seq_to_gt<T>(&self,
+                              sep: Option<token::Token>,
+                              f: &fn(&Parser) -> T)
+                              -> OptVec<T> {
         let v = self.parse_seq_to_before_gt(sep, f);
         self.expect_gt();
         return v;
@@ -505,11 +505,11 @@ impl Parser {
     // parse a sequence, including the closing delimiter. The function
     // f must consume tokens until reaching the next separator or
     // closing bracket.
-    pub fn parse_seq_to_end<T: Copy>(&self,
-                                     ket: &token::Token,
-                                     sep: SeqSep,
-                                     f: &fn(&Parser) -> T)
-                                     -> ~[T] {
+    pub fn parse_seq_to_end<T>(&self,
+                               ket: &token::Token,
+                               sep: SeqSep,
+                               f: &fn(&Parser) -> T)
+                               -> ~[T] {
         let val = self.parse_seq_to_before_end(ket, sep, f);
         self.bump();
         val
@@ -518,11 +518,11 @@ impl Parser {
     // parse a sequence, not including the closing delimiter. The function
     // f must consume tokens until reaching the next separator or
     // closing bracket.
-    pub fn parse_seq_to_before_end<T: Copy>(&self,
-                                            ket: &token::Token,
-                                            sep: SeqSep,
-                                            f: &fn(&Parser) -> T)
-                                            -> ~[T] {
+    pub fn parse_seq_to_before_end<T>(&self,
+                                      ket: &token::Token,
+                                      sep: SeqSep,
+                                      f: &fn(&Parser) -> T)
+                                      -> ~[T] {
         let mut first: bool = true;
         let mut v: ~[T] = ~[];
         while *self.token != *ket {
@@ -542,12 +542,12 @@ impl Parser {
     // parse a sequence, including the closing delimiter. The function
     // f must consume tokens until reaching the next separator or
     // closing bracket.
-    pub fn parse_unspanned_seq<T: Copy>(&self,
-                                        bra: &token::Token,
-                                        ket: &token::Token,
-                                        sep: SeqSep,
-                                        f: &fn(&Parser) -> T)
-                                        -> ~[T] {
+    pub fn parse_unspanned_seq<T>(&self,
+                                  bra: &token::Token,
+                                  ket: &token::Token,
+                                  sep: SeqSep,
+                                  f: &fn(&Parser) -> T)
+                                  -> ~[T] {
         self.expect(bra);
         let result = self.parse_seq_to_before_end(ket, sep, f);
         self.bump();
@@ -556,12 +556,12 @@ impl Parser {
 
     // NB: Do not use this function unless you actually plan to place the
     // spanned list in the AST.
-    pub fn parse_seq<T: Copy>(&self,
-                              bra: &token::Token,
-                              ket: &token::Token,
-                              sep: SeqSep,
-                              f: &fn(&Parser) -> T)
-                              -> spanned<~[T]> {
+    pub fn parse_seq<T>(&self,
+                        bra: &token::Token,
+                        ket: &token::Token,
+                        sep: SeqSep,
+                        f: &fn(&Parser) -> T)
+                        -> spanned<~[T]> {
         let lo = self.span.lo;
         self.expect(bra);
         let result = self.parse_seq_to_before_end(ket, sep, f);

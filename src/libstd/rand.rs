@@ -356,7 +356,7 @@ pub trait RngUtil {
      * }
      * ~~~
      */
-    fn choose<T:Copy + Clone>(&mut self, values: &[T]) -> T;
+    fn choose<T:Clone>(&mut self, values: &[T]) -> T;
     /// Choose Some(item) randomly, returning None if values is empty
     fn choose_option<T:Clone>(&mut self, values: &[T]) -> Option<T>;
     /**
@@ -379,7 +379,7 @@ pub trait RngUtil {
      * }
      * ~~~
      */
-    fn choose_weighted<T:Copy + Clone>(&mut self, v : &[Weighted<T>]) -> T;
+    fn choose_weighted<T:Clone>(&mut self, v : &[Weighted<T>]) -> T;
     /**
      * Choose Some(item) respecting the relative weights, returning none if
      * the sum of the weights is 0
@@ -439,7 +439,7 @@ pub trait RngUtil {
      * }
      * ~~~
      */
-    fn shuffle<T:Copy + Clone>(&mut self, values: &[T]) -> ~[T];
+    fn shuffle<T:Clone>(&mut self, values: &[T]) -> ~[T];
     /**
      * Shuffle a mutable vec in place
      *
@@ -532,7 +532,7 @@ impl<R: Rng> RngUtil for R {
     }
 
     /// Choose an item randomly, failing if values is empty
-    fn choose<T:Copy + Clone>(&mut self, values: &[T]) -> T {
+    fn choose<T:Clone>(&mut self, values: &[T]) -> T {
         self.choose_option(values).get()
     }
 
@@ -548,7 +548,7 @@ impl<R: Rng> RngUtil for R {
      * Choose an item respecting the relative weights, failing if the sum of
      * the weights is 0
      */
-    fn choose_weighted<T:Copy + Clone>(&mut self, v: &[Weighted<T>]) -> T {
+    fn choose_weighted<T:Clone>(&mut self, v: &[Weighted<T>]) -> T {
         self.choose_weighted_option(v).get()
     }
 
@@ -591,7 +591,7 @@ impl<R: Rng> RngUtil for R {
     }
 
     /// Shuffle a vec
-    fn shuffle<T:Copy + Clone>(&mut self, values: &[T]) -> ~[T] {
+    fn shuffle<T:Clone>(&mut self, values: &[T]) -> ~[T] {
         let mut m = values.to_owned();
         self.shuffle_mut(m);
         m

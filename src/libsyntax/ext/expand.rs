@@ -693,7 +693,7 @@ pub fn inject_std_macros(parse_sess: @mut parse::ParseSess,
                          cfg: ast::crate_cfg, c: &crate) -> @crate {
     let sm = match parse_item_from_source_str(@"<std-macros>",
                                               std_macros(),
-                                              copy cfg,
+                                              cfg.clone(),
                                               ~[],
                                               parse_sess) {
         Some(item) => item,
@@ -708,7 +708,7 @@ pub fn inject_std_macros(parse_sess: @mut parse::ParseSess,
             ast::_mod {
                 items: items,
                 // FIXME #2543: Bad copy.
-                .. copy *modd
+                .. (*modd).clone()
             }
         },
         .. *default_ast_fold()

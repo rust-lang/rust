@@ -47,7 +47,7 @@ impl<T, U> Condition<T, U> {
 
     pub fn raise(&self, t: T) -> U {
         let msg = fmt!("Unhandled condition: %s: %?", self.name, t);
-        self.raise_default(t, || fail!(copy msg))
+        self.raise_default(t, || fail!(msg.clone()))
     }
 
     pub fn raise_default(&self, t: T, default: &fn() -> U) -> U {
@@ -78,7 +78,8 @@ impl<'self, T, U> Condition<'self, T, U> {
     pub fn trap<'a>(&'a self, h: &'a fn(T) -> U) -> Trap<'a, T, U> {
         unsafe {
             let p : *RustClosure = ::cast::transmute(&h);
-            let prev = local_data::get(self.key, |k| k.map(|&x| *x));
+            let prev = local_data::get(::cast::unsafe_copy(&self.key),
+                                       |k| k.map(|&x| *x));
             let h = @Handler { handle: *p, prev: prev };
             Trap { cond: self, handler: h }
         }
@@ -91,7 +92,7 @@ impl<'self, T, U> Condition<'self, T, U> {
 
     pub fn raise_default(&self, t: T, default: &fn() -> U) -> U {
         unsafe {
-            match local_data::pop(self.key) {
+            match local_data::pop(::cast::unsafe_copy(&self.key)) {
                 None => {
                     debug!("Condition.raise: found no handler");
                     default()
@@ -100,12 +101,15 @@ impl<'self, T, U> Condition<'self, T, U> {
                     debug!("Condition.raise: found handler");
                     match handler.prev {
                         None => {}
-                        Some(hp) => local_data::set(self.key, hp)
+                        Some(hp) => {
+                            local_data::set(::cast::unsafe_copy(&self.key),
+                                            hp)
+                        }
                     }
                     let handle : &fn(T) -> U =
                         ::cast::transmute(handler.handle);
                     let u = handle(t);
-                    local_data::set(self.key, handler);
+                    local_data::set(::cast::unsafe_copy(&self.key), handler);
                     u
                 }
             }

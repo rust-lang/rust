@@ -12,7 +12,7 @@
 // than the trait method it's implementing
 
 trait A {
-  fn b<C:Copy,D>(x: C) -> C;
+  fn b<C,D>(x: C) -> C;
 }
 
 struct E {
@@ -20,7 +20,7 @@ struct E {
 }
 
 impl A for E {
-  fn b<F:Copy + Freeze,G>(_x: F) -> F { fail!() } //~ ERROR type parameter 0 requires `Freeze`
+  fn b<F:Freeze,G>(_x: F) -> F { fail!() } //~ ERROR type parameter 0 requires `Freeze`
 }
 
 fn main() {}

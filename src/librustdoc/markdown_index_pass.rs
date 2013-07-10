@@ -208,8 +208,8 @@ mod test {
                 == ~"impl-of-selectt-u-for-left-right");
         assert!(pandoc_header_id("impl of Condition<'self, T, U>")
                 == ~"impl-of-conditionself-t-u");
-        assert!(pandoc_header_id("impl of Condition<T: Copy + Clone>")
-                == ~"impl-of-conditiont-copy-clone");
+        assert!(pandoc_header_id("impl of Condition<T: Clone>")
+                == ~"impl-of-conditiont-clone");
     }
 
     #[test]

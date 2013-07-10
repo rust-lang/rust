@@ -650,10 +650,7 @@ impl<
     }
 }
 
-impl<
-    S: Encoder,
-    T: Encodable<S> + Copy
-> Encodable<S> for DList<T> {
+impl<S: Encoder, T: Encodable<S>> Encodable<S> for @mut DList<T> {
     fn encode(&self, s: &mut S) {
         do s.emit_seq(self.len()) |s| {
             let mut i = 0;
