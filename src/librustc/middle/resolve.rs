@@ -1233,7 +1233,7 @@ impl Resolver {
                 visit_item(item, (new_parent, visitor));
             }
 
-            item_impl(_, None, ref ty, ref methods) => {
+            item_impl(_, None, ty, ref methods) => {
                 // If this implements an anonymous trait, then add all the
                 // methods within to a new module, if the type was defined
                 // within this module.
@@ -1243,8 +1243,8 @@ impl Resolver {
                 // the same module that declared the type.
 
                 // Create the module and add all methods.
-                match ty {
-                    &Ty {
+                match *ty {
+                    Ty {
                         node: ty_path(ref path, _, _),
                         _
                     } if path.idents.len() == 1 => {
@@ -1313,7 +1313,7 @@ impl Resolver {
                 visit_item(item, (parent, visitor));
             }
 
-            item_impl(_, Some(_), _, _) => {
+            item_impl(_, Some(_), _ty, ref _methods) => {
                 visit_item(item, (parent, visitor));
             }
 
@@ -3534,7 +3534,7 @@ impl Resolver {
 
             item_impl(ref generics,
                       ref implemented_traits,
-                      ref self_type,
+                      self_type,
                       ref methods) => {
                 self.resolve_implementation(item.id,
                                             generics,
@@ -3585,10 +3585,10 @@ impl Resolver {
                                     visitor);
 
                                 for ty_m.decl.inputs.iter().advance |argument| {
-                                    self.resolve_type(&argument.ty, visitor);
+                                    self.resolve_type(argument.ty, visitor);
                                 }
 
-                                self.resolve_type(&ty_m.decl.output, visitor);
+                                self.resolve_type(ty_m.decl.output, visitor);
                             }
                           }
                           provided(m) => {
@@ -3778,12 +3778,12 @@ impl Resolver {
                                              None,
                                              visitor);
 
-                        self.resolve_type(&argument.ty, visitor);
+                        self.resolve_type(argument.ty, visitor);
 
                         debug!("(resolving function) recorded argument");
                     }
 
-                    self.resolve_type(&declaration.output, visitor);
+                    self.resolve_type(declaration.output, visitor);
                 }
             }
 
@@ -3878,7 +3878,7 @@ impl Resolver {
 
             // Resolve fields.
             for fields.iter().advance |field| {
-                self.resolve_type(&field.node.ty, visitor);
+                self.resolve_type(field.node.ty, visitor);
             }
         }
     }
@@ -3914,7 +3914,7 @@ impl Resolver {
                                   id: node_id,
                                   generics: &Generics,
                                   opt_trait_reference: &Option<trait_ref>,
-                                  self_type: &Ty,
+                                  self_type: @Ty,
                                   methods: &[@method],
                                   visitor: ResolveVisitor) {
         // If applicable, create a rib for the type parameters.
@@ -4001,7 +4001,7 @@ impl Resolver {
         let mutability = if local.node.is_mutbl {Mutable} else {Immutable};
 
         // Resolve the type.
-        self.resolve_type(&local.node.ty, visitor);
+        self.resolve_type(local.node.ty, visitor);
 
         // Resolve the initializer, if necessary.
         match local.node.init {
@@ -4112,7 +4112,7 @@ impl Resolver {
         debug!("(resolving block) leaving block");
     }
 
-    pub fn resolve_type(@mut self, ty: &Ty, visitor: ResolveVisitor) {
+    pub fn resolve_type(@mut self, ty: @Ty, visitor: ResolveVisitor) {
         match ty.node {
             // Like path expressions, the interpretation of path types depends
             // on whether the path has multiple elements in it or not.
@@ -4334,7 +4334,7 @@ impl Resolver {
 
                     // Check the types in the path pattern.
                     for path.types.iter().advance |ty| {
-                        self.resolve_type(ty, visitor);
+                        self.resolve_type(*ty, visitor);
                     }
                 }
 
@@ -4367,7 +4367,7 @@ impl Resolver {
 
                     // Check the types in the path pattern.
                     for path.types.iter().advance |ty| {
-                        self.resolve_type(ty, visitor);
+                        self.resolve_type(*ty, visitor);
                     }
                 }
 
@@ -4396,7 +4396,7 @@ impl Resolver {
 
                     // Check the types in the path pattern.
                     for path.types.iter().advance |ty| {
-                        self.resolve_type(ty, visitor);
+                        self.resolve_type(*ty, visitor);
                     }
                 }
 
@@ -4491,7 +4491,7 @@ impl Resolver {
                         -> Option<def> {
         // First, resolve the types.
         for path.types.iter().advance |ty| {
-            self.resolve_type(ty, visitor);
+            self.resolve_type(*ty, visitor);
         }
 
         if path.global {

@@ -1003,7 +1003,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
                                         index);
         }
       }
-      item_impl(ref generics, ref opt_trait, ref ty, ref methods) => {
+      item_impl(ref generics, ref opt_trait, ty, ref methods) => {
         add_to_index();
         ebml_w.start_tag(tag_items_data_item);
         encode_def_id(ebml_w, local_def(item.id));
