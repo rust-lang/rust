@@ -15,6 +15,7 @@ use libc;
 use local_data;
 use prelude::*;
 use ptr;
+use sys;
 use task::rt;
 use util;
 
@@ -156,8 +157,9 @@ unsafe fn get_local_map(handle: Handle) -> &mut TaskLocalMap {
     }
 }
 
-fn key_to_key_value<T: 'static>(key: local_data::Key<T>) -> *libc::c_void {
-    unsafe { cast::transmute(key) }
+unsafe fn key_to_key_value<T: 'static>(key: local_data::Key<T>) -> *libc::c_void {
+    let pair: sys::Closure = cast::transmute_copy(&key);
+    return pair.code as *libc::c_void;
 }
 
 pub unsafe fn local_pop<T: 'static>(handle: Handle,

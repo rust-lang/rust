@@ -561,7 +561,7 @@ pub fn each_lint(sess: session::Session,
 // This is used to make the simple visitors used for the lint passes
 // not traverse into subitems, since that is handled by the outer
 // lint visitor.
-fn item_stopping_visitor<E: Copy>(outer: visit::vt<E>) -> visit::vt<E> {
+fn item_stopping_visitor<E>(outer: visit::vt<E>) -> visit::vt<E> {
     visit::mk_vt(@visit::Visitor {
         visit_item: |_i, (_e, _v)| { },
         visit_fn: |fk, fd, b, s, id, (e, v)| {

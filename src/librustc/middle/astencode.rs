@@ -1282,14 +1282,14 @@ fn test_more() {
 fn test_simplification() {
     let ext_cx = mk_ctxt();
     let item_in = ast::ii_item(quote_item!(
-        fn new_int_alist<B:Copy>() -> alist<int, B> {
+        fn new_int_alist<B>() -> alist<int, B> {
             fn eq_int(a: int, b: int) -> bool { a == b }
             return alist {eq_fn: eq_int, data: ~[]};
         }
     ).get());
     let item_out = simplify_ast(&item_in);
     let item_exp = ast::ii_item(quote_item!(
-        fn new_int_alist<B:Copy>() -> alist<int, B> {
+        fn new_int_alist<B>() -> alist<int, B> {
             return alist {eq_fn: eq_int, data: ~[]};
         }
     ).get());

@@ -62,7 +62,7 @@ pub fn type_uses_for(ccx: @mut CrateContext, fn_id: def_id, n_tps: uint)
 
     fn store_type_uses(cx: Context, fn_id: def_id) -> @~[type_uses] {
         let Context { uses, ccx } = cx;
-        let uses = @copy *uses; // freeze
+        let uses = @(*uses).clone(); // freeze
         ccx.type_use_cache.insert(fn_id, uses);
         uses
     }

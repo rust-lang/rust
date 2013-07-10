@@ -59,7 +59,7 @@ use task::local_data_priv::*;
 #[cfg(not(stage0))]
 pub type Key<T> = &'static KeyValue<T>;
 #[cfg(stage0)]
-pub type Key<'self,T> = &'self fn:Copy(v: T);
+pub type Key<'self,T> = &'self fn(v: T);
 
 pub enum KeyValue<T> { Key }
 

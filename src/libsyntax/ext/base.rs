@@ -414,7 +414,7 @@ pub enum MapChain<K,V> {
 
 
 // get the map from an env frame
-impl <K: Eq + Hash + IterBytes ,V: Copy> MapChain<K,V>{
+impl <K: Eq + Hash + IterBytes, V> MapChain<K,V>{
 
     // Constructor. I don't think we need a zero-arg one.
     fn new(init: ~HashMap<K,@V>) -> @mut MapChain<K,V> {

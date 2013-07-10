@@ -24,7 +24,7 @@ struct t_rec<A,B> {
     tB: a_tag<A,B>
 }
 
-fn mk_rec<A:Copy,B:Copy>(a: A, b: B) -> t_rec<A,B> {
+fn mk_rec<A,B>(a: A, b: B) -> t_rec<A,B> {
     return t_rec{ chA:0u8, tA:varA(a), chB:1u8, tB:varB(b) };
 }
 

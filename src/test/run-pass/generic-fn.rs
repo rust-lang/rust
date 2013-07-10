@@ -12,7 +12,7 @@
 
 
 // -*- rust -*-
-fn id<T:Copy>(x: T) -> T { return x; }
+fn id<T>(x: T) -> T { return x; }
 
 struct Triple {x: int, y: int, z: int}
 

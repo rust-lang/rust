@@ -199,8 +199,9 @@ pub fn compile_rest(sess: Session,
         //
         // baz! should not use this definition unless foo is enabled.
         crate = time(time_passes, ~"std macros injection", ||
-                     syntax::ext::expand::inject_std_macros(sess.parse_sess, copy cfg,
-                                                             crate));
+                     syntax::ext::expand::inject_std_macros(sess.parse_sess,
+                                                            cfg.clone(),
+                                                            crate));
 
         crate = time(time_passes, ~"configuration 1", ||
                      front::config::strip_unconfigured_items(crate));

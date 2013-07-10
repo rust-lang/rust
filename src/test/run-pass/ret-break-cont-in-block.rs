@@ -23,7 +23,7 @@ fn iter<T>(v: ~[T], it: &fn(&T) -> bool) -> bool {
     return true;
 }
 
-fn find_pos<T:Eq + Copy + Clone>(n: T, h: ~[T]) -> Option<uint> {
+fn find_pos<T:Eq + Clone>(n: T, h: ~[T]) -> Option<uint> {
     let mut i = 0u;
     for iter(h.clone()) |e| {
         if *e == n { return Some(i); }

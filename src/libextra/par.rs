@@ -85,7 +85,7 @@ fn map_slices<A:Clone + Send,B:Clone + Send>(
 }
 
 /// A parallel version of map.
-pub fn map<A:Copy + Clone + Send,B:Copy + Clone + Send>(
+pub fn map<A:Clone + Send,B:Clone + Send>(
     xs: &[A], fn_factory: &fn() -> ~fn(&A) -> B) -> ~[B] {
     vec::concat(map_slices(xs, || {
         let f = fn_factory();
@@ -96,7 +96,7 @@ pub fn map<A:Copy + Clone + Send,B:Copy + Clone + Send>(
 }
 
 /// A parallel version of mapi.
-pub fn mapi<A:Copy + Clone + Send,B:Copy + Clone + Send>(
+pub fn mapi<A:Clone + Send,B:Clone + Send>(
         xs: &[A],
         fn_factory: &fn() -> ~fn(uint, &A) -> B) -> ~[B] {
     let slices = map_slices(xs, || {

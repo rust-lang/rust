@@ -1686,10 +1686,10 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
     // through the `unpack` function.  It there is no expected type or
     // resolution is not possible (e.g., no constraints yet present), just
     // returns `none`.
-    fn unpack_expected<O:Copy>(fcx: @mut FnCtxt,
-                                expected: Option<ty::t>,
-                                unpack: &fn(&ty::sty) -> Option<O>)
-                             -> Option<O> {
+    fn unpack_expected<O>(fcx: @mut FnCtxt,
+                          expected: Option<ty::t>,
+                          unpack: &fn(&ty::sty) -> Option<O>)
+                          -> Option<O> {
         match expected {
             Some(t) => {
                 match resolve_type(fcx.infcx(), t, force_tvar) {

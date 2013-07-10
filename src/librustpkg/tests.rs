@@ -839,7 +839,7 @@ fn install_check_duplicates() {
             fail!("package database contains duplicate ID");
         }
         else {
-            contents.push(copy *p);
+            contents.push((*p).clone());
         }
         false
     };

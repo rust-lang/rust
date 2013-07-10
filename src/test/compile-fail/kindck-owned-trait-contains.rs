@@ -10,11 +10,11 @@
 
 trait repeat<A> { fn get(&self) -> A; }
 
-impl<A:Copy> repeat<A> for @A {
+impl<A:Clone> repeat<A> for @A {
     fn get(&self) -> A { **self }
 }
 
-fn repeater<A:Copy>(v: @A) -> @repeat<A> {
+fn repeater<A:Clone>(v: @A) -> @repeat<A> {
     // Note: owned kind is not necessary as A appears in the trait type
     @v as @repeat<A> // No
 }

@@ -16,9 +16,8 @@ use core::cmp::{Ord, Eq};
 use ops::{Add, Sub, Mul, Div, Rem, Neg};
 use option::{None, Option, Some};
 use char;
+use str::{StrSlice};
 use str;
-use str::StrSlice;
-use kinds::Copy;
 use vec::{CopyableVector, ImmutableVector, MutableVector};
 use vec::OwnedVector;
 use num::{NumCast, Zero, One, cast, pow_with_uint, Integer};
@@ -466,7 +465,7 @@ priv static DIGIT_E_RADIX: uint = ('e' as uint) - ('a' as uint) + 11u;
  * - Fails if `radix` > 18 and `special == true` due to conflict
  *   between digit and lowest first character in `inf` and `NaN`, the `'i'`.
  */
-pub fn from_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Copy+Div<T,T>+
+pub fn from_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Div<T,T>+
                                     Mul<T,T>+Sub<T,T>+Neg<T>+Add<T,T>+
                                     NumStrConv+Clone>(
         buf: &[u8], radix: uint, negative: bool, fractional: bool,
@@ -663,7 +662,7 @@ pub fn from_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Copy+Div<T,T>+
  * `from_str_bytes_common()`, for details see there.
  */
 #[inline]
-pub fn from_str_common<T:NumCast+Zero+One+Eq+Ord+Copy+Div<T,T>+Mul<T,T>+
+pub fn from_str_common<T:NumCast+Zero+One+Eq+Ord+Div<T,T>+Mul<T,T>+
                               Sub<T,T>+Neg<T>+Add<T,T>+NumStrConv+Clone>(
         buf: &str, radix: uint, negative: bool, fractional: bool,
         special: bool, exponent: ExponentFormat, empty_zero: bool,

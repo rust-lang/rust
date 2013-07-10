@@ -9,15 +9,15 @@
 // except according to those terms.
 
 fn foo<T>() {
-    1u.bar::<T>(); //~ ERROR: does not fulfill `Copy`
+    1u.bar::<T>(); //~ ERROR: does not fulfill `Send`
 }
 
 trait bar {
-    fn bar<T:Copy>(&self);
+    fn bar<T:Send>(&self);
 }
 
 impl bar for uint {
-    fn bar<T:Copy>(&self) {
+    fn bar<T:Send>(&self) {
     }
 }
 

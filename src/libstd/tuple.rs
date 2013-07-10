@@ -13,7 +13,6 @@
 #[allow(missing_doc)];
 
 use clone::Clone;
-use kinds::Copy;
 use vec;
 use vec::ImmutableVector;
 use iterator::IteratorUtil;
@@ -86,8 +85,8 @@ pub trait ExtendedTupleOps<A,B> {
 }
 
 impl<'self,
-     A:Copy + Clone,
-     B:Copy + Clone>
+     A:Clone,
+     B:Clone>
      ExtendedTupleOps<A,B> for
      (&'self [A], &'self [B]) {
     #[inline]
@@ -109,10 +108,7 @@ impl<'self,
     }
 }
 
-impl<A:Copy + Clone,
-     B:Copy + Clone>
-     ExtendedTupleOps<A,B> for
-     (~[A], ~[B]) {
+impl<A:Clone, B:Clone> ExtendedTupleOps<A,B> for (~[A], ~[B]) {
     #[inline]
     fn zip(&self) -> ~[(A, B)] {
         match *self {

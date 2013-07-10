@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn f<T:Copy>(x: ~[T]) -> T { return x[0]; }
+fn f<T>(x: ~[T]) -> T { return x[0]; }
 
 fn g(act: &fn(~[int]) -> int) -> int { return act(~[1, 2, 3]); }
 
