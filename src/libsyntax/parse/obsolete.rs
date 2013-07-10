@@ -63,7 +63,6 @@ pub enum ObsoleteSyntax {
     ObsoleteNamedExternModule,
     ObsoleteMultipleLocalDecl,
     ObsoleteMutWithMultipleBindings,
-    ObsoletePatternCopyKeyword,
 }
 
 impl to_bytes::IterBytes for ObsoleteSyntax {
@@ -248,10 +247,6 @@ impl ParserObsoleteMethods for Parser {
                 "`mut` with multiple bindings",
                 "use multiple local declarations instead of e.g. `let mut \
                  (x, y) = ...`."
-            ),
-            ObsoletePatternCopyKeyword => (
-                "`copy` in patterns",
-                "`copy` in patterns no longer has any effect"
             ),
         };
 
