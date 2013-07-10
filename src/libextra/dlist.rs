@@ -497,7 +497,7 @@ impl<A: Clone> Clone for List<A> {
 }
 
 #[cfg(test)]
-fn check_links<T>(list: &List<T>) {
+pub fn check_links<T>(list: &List<T>) {
     let mut len = 0u;
     let mut last_ptr: Option<&Node<T>> = None;
     let mut node_ptr: &Node<T>;
@@ -529,296 +529,294 @@ fn check_links<T>(list: &List<T>) {
     assert_eq!(len, list.length);
 }
 
-#[test]
-fn test_basic() {
-    let mut m = List::new::<~int>();
-    assert_eq!(m.pop_front(), None);
-    assert_eq!(m.pop_back(), None);
-    assert_eq!(m.pop_front(), None);
-    m.push_front(~1);
-    assert_eq!(m.pop_front(), Some(~1));
-    m.push_back(~2);
-    m.push_back(~3);
-    assert_eq!(m.len(), 2);
-    assert_eq!(m.pop_front(), Some(~2));
-    assert_eq!(m.pop_front(), Some(~3));
-    assert_eq!(m.len(), 0);
-    assert_eq!(m.pop_front(), None);
-    m.push_back(~1);
-    m.push_back(~3);
-    m.push_back(~5);
-    m.push_back(~7);
-    assert_eq!(m.pop_front(), Some(~1));
-
-    let mut n = List::new();
-    n.push_front(2);
-    n.push_front(3);
-    {
-        assert_eq!(n.peek_front().unwrap(), &3);
-        let x = n.peek_front_mut().unwrap();
-        assert_eq!(*x, 3);
-        *x = 0;
-    }
-    {
-        assert_eq!(n.peek_back().unwrap(), &2);
-        let y = n.peek_back_mut().unwrap();
-        assert_eq!(*y, 2);
-        *y = 1;
-    }
-    assert_eq!(n.pop_front(), Some(0));
-    assert_eq!(n.pop_front(), Some(1));
-}
-
 #[cfg(test)]
-fn generate_test() -> List<int> {
-    list_from(&[0,1,2,3,4,5,6])
-}
-
-#[cfg(test)]
-fn list_from<T: Copy>(v: &[T]) -> List<T> {
-    v.iter().transform(|x| copy *x).collect()
-}
-
-#[test]
-fn test_append() {
-    {
-        let mut m = List::new();
-        let mut n = List::new();
-        n.push_back(2);
-        m.append(n);
-        assert_eq!(m.len(), 1);
-        assert_eq!(m.pop_back(), Some(2));
-        check_links(&m);
-    }
-    {
-        let mut m = List::new();
-        let n = List::new();
-        m.push_back(2);
-        m.append(n);
-        assert_eq!(m.len(), 1);
-        assert_eq!(m.pop_back(), Some(2));
-        check_links(&m);
-    }
-
-    let v = ~[1,2,3,4,5];
-    let u = ~[9,8,1,2,3,4,5];
-    let mut m = list_from(v);
-    m.append(list_from(u));
-    check_links(&m);
-    let sum = v + u;
-    assert_eq!(sum.len(), m.len());
-    for sum.consume_iter().advance |elt| {
-        assert_eq!(m.pop_front(), Some(elt))
-    }
-}
-
-#[test]
-fn test_prepend() {
-    {
-        let mut m = List::new();
-        let mut n = List::new();
-        n.push_back(2);
-        m.prepend(n);
-        assert_eq!(m.len(), 1);
-        assert_eq!(m.pop_back(), Some(2));
-        check_links(&m);
-    }
-
-    let v = ~[1,2,3,4,5];
-    let u = ~[9,8,1,2,3,4,5];
-    let mut m = list_from(v);
-    m.prepend(list_from(u));
-    check_links(&m);
-    let sum = u + v;
-    assert_eq!(sum.len(), m.len());
-    for sum.consume_iter().advance |elt| {
-        assert_eq!(m.pop_front(), Some(elt))
-    }
-}
-
-#[test]
-fn test_iterator() {
-    let m = generate_test();
-    for m.iter().enumerate().advance |(i, elt)| {
-        assert_eq!(i as int, *elt);
-    }
-    let mut n = List::new();
-    assert_eq!(n.iter().next(), None);
-    n.push_front(4);
-    let mut it = n.iter();
-    assert_eq!(it.size_hint(), (1, Some(1)));
-    assert_eq!(it.next().unwrap(), &4);
-    assert_eq!(it.size_hint(), (0, Some(0)));
-    assert_eq!(it.next(), None);
-}
-
-#[test]
-fn test_rev_iter() {
-    let m = generate_test();
-    for m.rev_iter().enumerate().advance |(i, elt)| {
-        assert_eq!((6 - i) as int, *elt);
-    }
-    let mut n = List::new();
-    assert_eq!(n.rev_iter().next(), None);
-    n.push_front(4);
-    let mut it = n.rev_iter();
-    assert_eq!(it.size_hint(), (1, Some(1)));
-    assert_eq!(it.next().unwrap(), &4);
-    assert_eq!(it.size_hint(), (0, Some(0)));
-    assert_eq!(it.next(), None);
-}
-
-#[test]
-fn test_mut_iter() {
-    let mut m = generate_test();
-    let mut len = m.len();
-    for m.mut_iter().enumerate().advance |(i, elt)| {
-        assert_eq!(i as int, *elt);
-        len -= 1;
-    }
-    assert_eq!(len, 0);
-    let mut n = List::new();
-    assert!(n.mut_iter().next().is_none());
-    n.push_front(4);
-    let mut it = n.mut_iter();
-    assert_eq!(it.size_hint(), (1, Some(1)));
-    assert!(it.next().is_some());
-    assert_eq!(it.size_hint(), (0, Some(0)));
-    assert!(it.next().is_none());
-}
-
-#[test]
-fn test_list_cursor() {
-    let mut m = generate_test();
-    let len = m.len();
-    {
-        let mut it = m.mut_iter();
-        loop {
-            match it.next() {
-                None => break,
-                Some(elt) => it.insert_before(*elt * 2),
-            }
-        }
-    }
-    assert_eq!(m.len(), len * 2);
-    check_links(&m);
-}
-
-#[test]
-fn test_merge() {
-    let mut m = list_from([0, 1, 3, 5, 6, 7, 2]);
-    let n = list_from([-1, 0, 0, 7, 7, 9]);
-    let len = m.len() + n.len();
-    m.merge(n, |a, b| a <= b);
-    assert_eq!(m.len(), len);
-    check_links(&m);
-    let res = m.consume_iter().collect::<~[int]>();
-    assert_eq!(res, ~[-1, 0, 0, 1, 0, 3, 5, 6, 7, 2, 7, 7, 9]);
-}
-
-#[test]
-fn test_insert_ordered() {
-    let mut n = List::new();
-    n.insert_ordered(1);
-    assert_eq!(n.len(), 1);
-    assert_eq!(n.pop_front(), Some(1));
-
-    let mut m = List::new();
-    m.push_back(2);
-    m.push_back(4);
-    m.insert_ordered(3);
-    check_links(&m);
-    assert_eq!(~[2,3,4], m.consume_iter().collect::<~[int]>());
-}
-
-#[test]
-fn test_mut_rev_iter() {
-    let mut m = generate_test();
-    for m.mut_rev_iter().enumerate().advance |(i, elt)| {
-        assert_eq!((6-i) as int, *elt);
-    }
-    let mut n = List::new();
-    assert!(n.mut_rev_iter().next().is_none());
-    n.push_front(4);
-    let mut it = n.mut_rev_iter();
-    assert!(it.next().is_some());
-    assert!(it.next().is_none());
-}
-
-#[test]
-fn test_send() {
-    let n = list_from([1,2,3]);
-    do spawn {
-        check_links(&n);
-        assert_eq!(~[&1,&2,&3], n.iter().collect::<~[&int]>());
-    }
-}
-
-#[test]
-fn test_eq() {
-    let mut n: List<u8> = list_from([]);
-    let mut m = list_from([]);
-    assert_eq!(&n, &m);
-    n.push_front(1);
-    assert!(n != m);
-    m.push_back(1);
-    assert_eq!(&n, &m);
-}
-
-#[test]
-fn test_fuzz() {
-    for 25.times {
-        fuzz_test(3);
-        fuzz_test(16);
-        fuzz_test(189);
-    }
-}
-
-#[cfg(test)]
-fn fuzz_test(sz: int) {
+mod tests {
+    use super::*;
     use std::rand;
     use std::int;
+    use extra::test;
 
-    let mut m = List::new::<int>();
-    let mut v = ~[];
-    for int::range(0i, sz) |i| {
+    #[test]
+    fn test_basic() {
+        let mut m = List::new::<~int>();
+        assert_eq!(m.pop_front(), None);
+        assert_eq!(m.pop_back(), None);
+        assert_eq!(m.pop_front(), None);
+        m.push_front(~1);
+        assert_eq!(m.pop_front(), Some(~1));
+        m.push_back(~2);
+        m.push_back(~3);
+        assert_eq!(m.len(), 2);
+        assert_eq!(m.pop_front(), Some(~2));
+        assert_eq!(m.pop_front(), Some(~3));
+        assert_eq!(m.len(), 0);
+        assert_eq!(m.pop_front(), None);
+        m.push_back(~1);
+        m.push_back(~3);
+        m.push_back(~5);
+        m.push_back(~7);
+        assert_eq!(m.pop_front(), Some(~1));
+
+        let mut n = List::new();
+        n.push_front(2);
+        n.push_front(3);
+        {
+            assert_eq!(n.peek_front().unwrap(), &3);
+            let x = n.peek_front_mut().unwrap();
+            assert_eq!(*x, 3);
+            *x = 0;
+        }
+        {
+            assert_eq!(n.peek_back().unwrap(), &2);
+            let y = n.peek_back_mut().unwrap();
+            assert_eq!(*y, 2);
+            *y = 1;
+        }
+        assert_eq!(n.pop_front(), Some(0));
+        assert_eq!(n.pop_front(), Some(1));
+    }
+
+    #[cfg(test)]
+    fn generate_test() -> List<int> {
+        list_from(&[0,1,2,3,4,5,6])
+    }
+
+    #[cfg(test)]
+    fn list_from<T: Copy>(v: &[T]) -> List<T> {
+        v.iter().transform(|x| copy *x).collect()
+    }
+
+    #[test]
+    fn test_append() {
+        {
+            let mut m = List::new();
+            let mut n = List::new();
+            n.push_back(2);
+            m.append(n);
+            assert_eq!(m.len(), 1);
+            assert_eq!(m.pop_back(), Some(2));
+            check_links(&m);
+        }
+        {
+            let mut m = List::new();
+            let n = List::new();
+            m.push_back(2);
+            m.append(n);
+            assert_eq!(m.len(), 1);
+            assert_eq!(m.pop_back(), Some(2));
+            check_links(&m);
+        }
+
+        let v = ~[1,2,3,4,5];
+        let u = ~[9,8,1,2,3,4,5];
+        let mut m = list_from(v);
+        m.append(list_from(u));
         check_links(&m);
-        let r: u8 = rand::random();
-        match r % 6 {
-            0 => {
-                m.pop_back();
-                if v.len() > 0 { v.pop(); }
-            }
-            1 => {
-                m.pop_front();
-                if v.len() > 0 { v.shift(); }
-            }
-            2 | 4 =>  {
-                m.push_front(-i);
-                v.unshift(-i);
-            }
-            3 | 5 | _ => {
-                m.push_back(i);
-                v.push(i);
-            }
+        let sum = v + u;
+        assert_eq!(sum.len(), m.len());
+        for sum.consume_iter().advance |elt| {
+            assert_eq!(m.pop_front(), Some(elt))
         }
     }
 
-    check_links(&m);
+    #[test]
+    fn test_prepend() {
+        {
+            let mut m = List::new();
+            let mut n = List::new();
+            n.push_back(2);
+            m.prepend(n);
+            assert_eq!(m.len(), 1);
+            assert_eq!(m.pop_back(), Some(2));
+            check_links(&m);
+        }
 
-    let mut i = 0u;
-    for m.consume_iter().zip(v.iter()).advance |(a, &b)| {
-        i += 1;
-        assert_eq!(a, b);
+        let v = ~[1,2,3,4,5];
+        let u = ~[9,8,1,2,3,4,5];
+        let mut m = list_from(v);
+        m.prepend(list_from(u));
+        check_links(&m);
+        let sum = u + v;
+        assert_eq!(sum.len(), m.len());
+        for sum.consume_iter().advance |elt| {
+            assert_eq!(m.pop_front(), Some(elt))
+        }
     }
-    assert_eq!(i, v.len());
-}
 
-#[cfg(test)]
-mod test_bench {
-    use extra::test;
+    #[test]
+    fn test_iterator() {
+        let m = generate_test();
+        for m.iter().enumerate().advance |(i, elt)| {
+            assert_eq!(i as int, *elt);
+        }
+        let mut n = List::new();
+        assert_eq!(n.iter().next(), None);
+        n.push_front(4);
+        let mut it = n.iter();
+        assert_eq!(it.size_hint(), (1, Some(1)));
+        assert_eq!(it.next().unwrap(), &4);
+        assert_eq!(it.size_hint(), (0, Some(0)));
+        assert_eq!(it.next(), None);
+    }
 
-    use super::*;
+    #[test]
+    fn test_rev_iter() {
+        let m = generate_test();
+        for m.rev_iter().enumerate().advance |(i, elt)| {
+            assert_eq!((6 - i) as int, *elt);
+        }
+        let mut n = List::new();
+        assert_eq!(n.rev_iter().next(), None);
+        n.push_front(4);
+        let mut it = n.rev_iter();
+        assert_eq!(it.size_hint(), (1, Some(1)));
+        assert_eq!(it.next().unwrap(), &4);
+        assert_eq!(it.size_hint(), (0, Some(0)));
+        assert_eq!(it.next(), None);
+    }
+
+    #[test]
+    fn test_mut_iter() {
+        let mut m = generate_test();
+        let mut len = m.len();
+        for m.mut_iter().enumerate().advance |(i, elt)| {
+            assert_eq!(i as int, *elt);
+            len -= 1;
+        }
+        assert_eq!(len, 0);
+        let mut n = List::new();
+        assert!(n.mut_iter().next().is_none());
+        n.push_front(4);
+        let mut it = n.mut_iter();
+        assert_eq!(it.size_hint(), (1, Some(1)));
+        assert!(it.next().is_some());
+        assert_eq!(it.size_hint(), (0, Some(0)));
+        assert!(it.next().is_none());
+    }
+
+    #[test]
+    fn test_list_cursor() {
+        let mut m = generate_test();
+        let len = m.len();
+        {
+            let mut it = m.mut_iter();
+            loop {
+                match it.next() {
+                    None => break,
+                    Some(elt) => it.insert_before(*elt * 2),
+                }
+            }
+        }
+        assert_eq!(m.len(), len * 2);
+        check_links(&m);
+    }
+
+    #[test]
+    fn test_merge() {
+        let mut m = list_from([0, 1, 3, 5, 6, 7, 2]);
+        let n = list_from([-1, 0, 0, 7, 7, 9]);
+        let len = m.len() + n.len();
+        m.merge(n, |a, b| a <= b);
+        assert_eq!(m.len(), len);
+        check_links(&m);
+        let res = m.consume_iter().collect::<~[int]>();
+        assert_eq!(res, ~[-1, 0, 0, 1, 0, 3, 5, 6, 7, 2, 7, 7, 9]);
+    }
+
+    #[test]
+    fn test_insert_ordered() {
+        let mut n = List::new();
+        n.insert_ordered(1);
+        assert_eq!(n.len(), 1);
+        assert_eq!(n.pop_front(), Some(1));
+
+        let mut m = List::new();
+        m.push_back(2);
+        m.push_back(4);
+        m.insert_ordered(3);
+        check_links(&m);
+        assert_eq!(~[2,3,4], m.consume_iter().collect::<~[int]>());
+    }
+
+    #[test]
+    fn test_mut_rev_iter() {
+        let mut m = generate_test();
+        for m.mut_rev_iter().enumerate().advance |(i, elt)| {
+            assert_eq!((6-i) as int, *elt);
+        }
+        let mut n = List::new();
+        assert!(n.mut_rev_iter().next().is_none());
+        n.push_front(4);
+        let mut it = n.mut_rev_iter();
+        assert!(it.next().is_some());
+        assert!(it.next().is_none());
+    }
+
+    #[test]
+    fn test_send() {
+        let n = list_from([1,2,3]);
+        do spawn {
+            check_links(&n);
+            assert_eq!(~[&1,&2,&3], n.iter().collect::<~[&int]>());
+        }
+    }
+
+    #[test]
+    fn test_eq() {
+        let mut n: List<u8> = list_from([]);
+        let mut m = list_from([]);
+        assert_eq!(&n, &m);
+        n.push_front(1);
+        assert!(n != m);
+        m.push_back(1);
+        assert_eq!(&n, &m);
+    }
+
+    #[test]
+    fn test_fuzz() {
+        for 25.times {
+            fuzz_test(3);
+            fuzz_test(16);
+            fuzz_test(189);
+        }
+    }
+
+    #[cfg(test)]
+    fn fuzz_test(sz: int) {
+        let mut m = List::new::<int>();
+        let mut v = ~[];
+        for int::range(0i, sz) |i| {
+            check_links(&m);
+            let r: u8 = rand::random();
+            match r % 6 {
+                0 => {
+                    m.pop_back();
+                    if v.len() > 0 { v.pop(); }
+                }
+                1 => {
+                    m.pop_front();
+                    if v.len() > 0 { v.shift(); }
+                }
+                2 | 4 =>  {
+                    m.push_front(-i);
+                    v.unshift(-i);
+                }
+                3 | 5 | _ => {
+                    m.push_back(i);
+                    v.push(i);
+                }
+            }
+        }
+
+        check_links(&m);
+
+        let mut i = 0u;
+        for m.consume_iter().zip(v.iter()).advance |(a, &b)| {
+            i += 1;
+            assert_eq!(a, b);
+        }
+        assert_eq!(i, v.len());
+    }
 
     #[bench]
     fn bench_collect_into(b: &mut test::BenchHarness) {
