@@ -15,6 +15,8 @@ use option::{Option, Some, None};
 use sys;
 use unstable::intrinsics;
 use util::swap;
+use ops::{Add,Sub};
+use num::Int;
 
 #[cfg(not(test))] use cmp::{Eq, Ord};
 use uint;
@@ -384,6 +386,46 @@ impl<T> Ord for *const T {
     }
 }
 
+#[cfg(not(test))]
+impl<T, I: Int> Add<I, *T> for *T {
+    /// Add an integer value to a pointer to get an offset pointer.
+    /// Is calculated according to the size of the type pointed to.
+    #[inline]
+    pub fn add(&self, rhs: &I) -> *T {
+        self.offset(rhs.to_int() as uint)
+    }
+}
+
+#[cfg(not(test))]
+impl<T, I: Int> Sub<I, *T> for *T {
+    /// Subtract an integer value from a pointer to get an offset pointer.
+    /// Is calculated according to the size of the type pointed to.
+    #[inline]
+    pub fn sub(&self, rhs: &I) -> *T {
+        self.offset(-rhs.to_int() as uint)
+    }
+}
+
+#[cfg(not(test))]
+impl<T, I: Int> Add<I, *mut T> for *mut T {
+    /// Add an integer value to a pointer to get an offset pointer.
+    /// Is calculated according to the size of the type pointed to.
+    #[inline]
+    pub fn add(&self, rhs: &I) -> *mut T {
+        self.offset(rhs.to_int() as uint)
+    }
+}
+
+#[cfg(not(test))]
+impl<T, I: Int> Sub<I, *mut T> for *mut T {
+    /// Subtract an integer value from a pointer to get an offset pointer.
+    /// Is calculated according to the size of the type pointed to.
+    #[inline]
+    pub fn sub(&self, rhs: &I) -> *mut T {
+        self.offset(-rhs.to_int() as uint)
+    }
+}
+
 #[cfg(test)]
 pub mod ptr_tests {
     use super::*;
@@ -498,6 +540,60 @@ pub mod ptr_tests {
 
             let q: *mut int = &mut 2;
             assert_eq!(q.to_option().unwrap(), &2);
+        }
+    }
+
+    #[test]
+    fn test_ptr_addition() {
+        use vec::raw::*;
+
+        unsafe {
+            let xs = ~[5, ..16];
+            let mut ptr = to_ptr(xs);
+            let end = ptr + 16;
+
+            while ptr < end {
+                assert_eq!(*ptr, 5);
+                ptr = ptr + 1u;
+            }
+
+            let mut xs_mut = xs.clone();
+            let mut m_ptr = to_mut_ptr(xs_mut);
+            let m_end = m_ptr + 16i16;
+
+            while m_ptr < m_end {
+                *m_ptr += 5;
+                m_ptr = m_ptr + 1u8;
+            }
+
+            assert_eq!(xs_mut, ~[10, ..16]);
+        }
+    }
+
+    #[test]
+    fn test_ptr_subtraction() {
+        use vec::raw::*;
+
+        unsafe {
+            let xs = ~[0,1,2,3,4,5,6,7,8,9];
+            let mut idx = 9i8;
+            let ptr = to_ptr(xs);
+
+            while idx >= 0i8 {
+                assert_eq!(*(ptr + idx), idx as int);
+                idx = idx - 1i8;
+            }
+
+            let mut xs_mut = xs.clone();
+            let mut m_start = to_mut_ptr(xs_mut);
+            let mut m_ptr = m_start + 9u32;
+
+            while m_ptr >= m_start {
+                *m_ptr += *m_ptr;
+                m_ptr = m_ptr - 1i8;
+            }
+
+            assert_eq!(xs_mut, ~[0,2,4,6,8,10,12,14,16,18]);
         }
     }
 
