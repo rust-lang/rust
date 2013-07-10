@@ -372,9 +372,9 @@ impl ErrorReporting for InferCtxt {
                     sup,
                     "");
             }
-            infer::ReferenceOutlivesReferent(ty, _) => {
+            infer::ReferenceOutlivesReferent(ty, span) => {
                 self.tcx.sess.span_err(
-                    origin.span(),
+                    span,
                     fmt!("in type `%s`, pointer has a longer lifetime than \
                           the data it references",
                          ty.user_string(self.tcx)));
