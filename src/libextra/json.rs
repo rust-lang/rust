@@ -1226,7 +1226,7 @@ impl Ord for Json {
 }
 
 /// A trait for converting values to JSON
-trait ToJson {
+pub trait ToJson {
     /// Converts the value of `self` to an instance of JSON
     fn to_json(&self) -> Json;
 }
