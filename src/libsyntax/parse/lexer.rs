@@ -33,8 +33,11 @@ pub trait reader {
     fn dup(@mut self) -> @reader;
 }
 
-#[deriving(Eq)]
-pub struct TokenAndSpan {tok: token::Token, sp: span}
+#[deriving(Clone, Eq)]
+pub struct TokenAndSpan {
+    tok: token::Token,
+    sp: span,
+}
 
 pub struct StringReader {
     span_diagnostic: @span_handler,

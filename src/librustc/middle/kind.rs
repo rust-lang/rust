@@ -433,7 +433,7 @@ fn check_copy(cx: Context, ty: ty::t, sp: span, reason: &str) {
     debug!("type_contents(%s)=%s",
            ty_to_str(cx.tcx, ty),
            ty::type_contents(cx.tcx, ty).to_str());
-    if !ty::type_is_copyable(cx.tcx, ty) {
+    if ty::type_moves_by_default(cx.tcx, ty) {
         cx.tcx.sess.span_err(
             sp, fmt!("copying a value of non-copyable type `%s`",
                      ty_to_str(cx.tcx, ty)));
