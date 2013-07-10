@@ -235,6 +235,39 @@ LIBRUST_DSYM_GLOB_$(1) :=$(call CFG_LIB_DSYM_GLOB_$(1),rust)
 
 endef
 
+# $(1) is the path for directory to match against
+# $(2) is the glob to use in the match
+# $(3) is filename (usually the target being created) to filter out from match
+#      (i.e. filename is not out-of-date artifact from prior Rust version/build)
+#
+# Note that a common bug is to accidentally construct the glob denoted
+# by $(2) with a space character prefix, which invalidates the
+# construction $(1)$(2).
+define CHECK_FOR_OLD_GLOB_MATCHES_EXCEPT
+  $(Q)MATCHES="$(filter-out %$(3),$(wildcard $(1)/$(2)))"; if [ -n "$$MATCHES" ] ; then echo "Warning: there are previous" \'$(2)\' "libraries:" $$MATCHES; fi
+endef
+
+# Same interface as above, but deletes rather than just listing the files.
+define REMOVE_ALL_OLD_GLOB_MATCHES_EXCEPT
+  $(Q)MATCHES="$(filter-out %$(3),$(wildcard $(1)/$(2)))"; if [ -n "$$MATCHES" ] ; then echo "Warning: removing previous" \'$(2)\' "libraries:" $$MATCHES; rm -v $$MATCHES ; fi
+endef
+
+# We use a different strategy for LIST_ALL_OLD_GLOB_MATCHES_EXCEPT
+# than in the macros above because it needs the result of running the
+# `ls` command after other rules in the command list have run; the
+# macro-expander for $(wildcard ...) would deliver its results too
+# soon. (This is in contrast to the macros above, which are meant to
+# be run at the outset of a command list in a rule.)
+ifdef VERBOSE
+define LIST_ALL_OLD_GLOB_MATCHES_EXCEPT
+  @echo "Info: now are following matches for" '$(2)' "libraries:"
+  @( cd $(1) && ( ls $(2) 2>/dev/null || true ) | grep -v $(3) || true )
+endef
+else
+define LIST_ALL_OLD_GLOB_MATCHES_EXCEPT
+endef
+endif
+
 $(foreach target,$(CFG_TARGET_TRIPLES),\
   $(eval $(call DEF_LIBS,$(target))))
 
