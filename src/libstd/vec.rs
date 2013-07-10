@@ -26,7 +26,7 @@ use option::{None, Option, Some};
 use ptr::to_unsafe_ptr;
 use ptr;
 use ptr::RawPtr;
-use rt::global_heap::realloc_raw;
+use rt::global_heap::{malloc_raw, realloc_raw};
 use sys;
 use sys::size_of;
 use uint;
@@ -95,10 +95,29 @@ pub fn to_owned<T:Copy>(t: &[T]) -> ~[T] {
 }
 
 /// Creates a new vector with a capacity of `capacity`
+#[cfg(stage0)]
 pub fn with_capacity<T>(capacity: uint) -> ~[T] {
     let mut vec = ~[];
     vec.reserve(capacity);
     vec
+}
+
+/// Creates a new vector with a capacity of `capacity`
+#[cfg(not(stage0))]
+pub fn with_capacity<T>(capacity: uint) -> ~[T] {
+    unsafe {
+        if contains_managed::<T>() {
+            let mut vec = ~[];
+            vec.reserve(capacity);
+            vec
+        } else {
+            let alloc = capacity * sys::nonzero_size_of::<T>();
+            let ptr = malloc_raw(alloc + size_of::<raw::VecRepr>()) as *mut raw::VecRepr;
+            (*ptr).unboxed.alloc = alloc;
+            (*ptr).unboxed.fill = 0;
+            cast::transmute(ptr)
+        }
+    }
 }
 
 /**
