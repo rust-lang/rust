@@ -68,11 +68,10 @@ rust_env_pairs() {
 }
 #endif
 
-extern "C" CDECL void
-vec_reserve_shared_actual(type_desc* ty, rust_vec_box** vp,
-                          size_t n_elts) {
+extern "C" CDECL void *
+rust_local_realloc(rust_opaque_box *ptr, size_t size) {
     rust_task *task = rust_get_current_task();
-    reserve_vec_exact_shared(task, vp, n_elts * ty->size);
+    return task->boxed.realloc(ptr, size);
 }
 
 extern "C" CDECL size_t
@@ -87,15 +86,10 @@ rand_gen_seed(uint8_t* dest, size_t size) {
 
 extern "C" CDECL void *
 rand_new_seeded(uint8_t* seed, size_t seed_size) {
-    rust_task *task = rust_get_current_task();
-    rust_rng *rng = (rust_rng *) task->malloc(sizeof(rust_rng),
-                                              "rand_new_seeded");
-    if (!rng) {
-        task->fail();
-        return NULL;
-    }
-    char *env_seed = task->kernel->env->rust_seed;
-    rng_init(rng, env_seed, seed, seed_size);
+    assert(seed != NULL);
+    rust_rng *rng = (rust_rng *) malloc(sizeof(rust_rng));
+    assert(rng != NULL && "rng alloc failed");
+    rng_init(rng, NULL, seed, seed_size);
     return rng;
 }
 
@@ -106,8 +100,7 @@ rand_next(rust_rng *rng) {
 
 extern "C" CDECL void
 rand_free(rust_rng *rng) {
-    rust_task *task = rust_get_current_task();
-    task->free(rng);
+    free(rng);
 }
 
 
@@ -594,12 +587,18 @@ rust_log_console_on() {
     log_console_on();
 }
 
-extern void log_console_off(rust_env *env);
+extern void log_console_off();
 
 extern "C" CDECL void
 rust_log_console_off() {
-    rust_task *task = rust_get_current_task();
-    log_console_off(task->kernel->env);
+    log_console_off();
+}
+
+extern bool should_log_console();
+
+extern "C" CDECL uintptr_t
+rust_should_log_console() {
+    return (uintptr_t)should_log_console();
 }
 
 extern "C" CDECL void
@@ -872,6 +871,12 @@ rust_delete_memory_region(memory_region *region) {
 }
 
 extern "C" CDECL boxed_region*
+rust_current_boxed_region() {
+    rust_task *task = rust_get_current_task();
+    return &task->boxed;
+}
+
+extern "C" CDECL boxed_region*
 rust_new_boxed_region(memory_region *region,
                       uintptr_t poison_on_free) {
     return new boxed_region(region, poison_on_free);
@@ -885,6 +890,11 @@ rust_delete_boxed_region(boxed_region *region) {
 extern "C" CDECL rust_opaque_box*
 rust_boxed_region_malloc(boxed_region *region, type_desc *td, size_t size) {
     return region->malloc(td, size);
+}
+
+extern "C" CDECL rust_opaque_box*
+rust_boxed_region_realloc(boxed_region *region, rust_opaque_box *ptr, size_t size) {
+    return region->realloc(ptr, size);
 }
 
 extern "C" CDECL void
@@ -917,6 +927,46 @@ rust_begin_unwind(uintptr_t token) {
 extern "C" CDECL uintptr_t
 rust_running_on_valgrind() {
     return RUNNING_ON_VALGRIND;
+}
+
+extern int get_num_cpus();
+
+extern "C" CDECL uintptr_t
+rust_get_num_cpus() {
+    return get_num_cpus();
+}
+
+static lock_and_signal global_args_lock;
+static uintptr_t global_args_ptr = 0;
+
+extern "C" CDECL void
+rust_take_global_args_lock() {
+    global_args_lock.lock();
+}
+
+extern "C" CDECL void
+rust_drop_global_args_lock() {
+    global_args_lock.unlock();
+}
+
+extern "C" CDECL uintptr_t*
+rust_get_global_args_ptr() {
+    return &global_args_ptr;
+}
+
+static lock_and_signal exit_status_lock;
+static uintptr_t exit_status = 0;
+
+extern "C" CDECL void
+rust_set_exit_status_newrt(uintptr_t code) {
+    scoped_lock with(exit_status_lock);
+    exit_status = code;
+}
+
+extern "C" CDECL uintptr_t
+rust_get_exit_status_newrt() {
+    scoped_lock with(exit_status_lock);
+    return exit_status;
 }
 
 //

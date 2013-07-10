@@ -10,18 +10,16 @@
 
 #[macro_escape];
 
+macro_rules! rterrln (
+    ($( $arg:expr),+) => ( {
+        ::rt::util::dumb_println(fmt!( $($arg),+ ));
+    } )
+)
+
 // Some basic logging
 macro_rules! rtdebug_ (
     ($( $arg:expr),+) => ( {
-        dumb_println(fmt!( $($arg),+ ));
-
-        fn dumb_println(s: &str) {
-            use io::WriterUtil;
-            let dbg = ::libc::STDERR_FILENO as ::io::fd_t;
-            dbg.write_str(s);
-            dbg.write_str("\n");
-        }
-
+        rterrln!( $($arg),+ )
     } )
 )
 
@@ -33,21 +31,15 @@ macro_rules! rtdebug (
 macro_rules! rtassert (
     ( $arg:expr ) => ( {
         if !$arg {
-            abort!("assertion failed: %s", stringify!($arg));
+            rtabort!("assertion failed: %s", stringify!($arg));
         }
     } )
 )
 
-macro_rules! abort(
+
+macro_rules! rtabort(
     ($( $msg:expr),+) => ( {
-        rtdebug!($($msg),+);
-
-        do_abort();
-
-        // NB: This is in a fn to avoid putting the `unsafe` block in a macro,
-        // which causes spurious 'unnecessary unsafe block' warnings.
-        fn do_abort() -> ! {
-            unsafe { ::libc::abort(); }
-        }
+        ::rt::util::abort(fmt!($($msg),+));
     } )
 )
+

@@ -19,13 +19,16 @@ use option::*;
 use cast;
 use util;
 use ops::Drop;
+use rt::task::Task;
 use kinds::Send;
-use rt::sched::{Scheduler, Coroutine};
+use rt::sched::Scheduler;
 use rt::local::Local;
-use unstable::intrinsics::{atomic_xchg, atomic_load};
+use unstable::atomics::{AtomicUint, AtomicOption, SeqCst};
+use unstable::sync::UnsafeAtomicRcBox;
 use util::Void;
 use comm::{GenericChan, GenericSmartChan, GenericPort, Peekable};
 use cell::Cell;
+use clone::Clone;
 
 /// A combined refcount / ~Task pointer.
 ///
@@ -34,14 +37,14 @@ use cell::Cell;
 /// * 2 - both endpoints are alive
 /// * 1 - either the sender or the receiver is dead, determined by context
 /// * <ptr> - A pointer to a blocked Task that can be transmuted to ~Task
-type State = int;
+type State = uint;
 
 static STATE_BOTH: State = 2;
 static STATE_ONE: State = 1;
 
 /// The heap-allocated structure shared between two endpoints.
 struct Packet<T> {
-    state: State,
+    state: AtomicUint,
     payload: Option<T>,
 }
 
@@ -70,7 +73,7 @@ pub struct PortOneHack<T> {
 
 pub fn oneshot<T: Send>() -> (PortOne<T>, ChanOne<T>) {
     let packet: ~Packet<T> = ~Packet {
-        state: STATE_BOTH,
+        state: AtomicUint::new(STATE_BOTH),
         payload: None
     };
 
@@ -114,20 +117,30 @@ impl<T> ChanOne<T> {
             // reordering of the payload write. This also issues an
             // acquire barrier that keeps the subsequent access of the
             // ~Task pointer from being reordered.
-            let oldstate = atomic_xchg(&mut (*packet).state, STATE_ONE);
+            let oldstate = (*packet).state.swap(STATE_ONE, SeqCst);
             match oldstate {
                 STATE_BOTH => {
                     // Port is not waiting yet. Nothing to do
+                    do Local::borrow::<Scheduler, ()> |sched| {
+                        rtdebug!("non-rendezvous send");
+                        sched.metrics.non_rendezvous_sends += 1;
+                    }
                 }
                 STATE_ONE => {
+                    do Local::borrow::<Scheduler, ()> |sched| {
+                        rtdebug!("rendezvous send");
+                        sched.metrics.rendezvous_sends += 1;
+                    }
                     // Port has closed. Need to clean up.
                     let _packet: ~Packet<T> = cast::transmute(this.inner.void_packet);
                     recvr_active = false;
                 }
                 task_as_state => {
                     // Port is blocked. Wake it up.
-                    let recvr: ~Coroutine = cast::transmute(task_as_state);
-                    let sched = Local::take::<Scheduler>();
+                    let recvr: ~Task = cast::transmute(task_as_state);
+                    let mut sched = Local::take::<Scheduler>();
+                    rtdebug!("rendezvous send");
+                    sched.metrics.rendezvous_sends += 1;
                     sched.schedule_task(recvr);
                 }
             }
@@ -158,23 +171,30 @@ impl<T> PortOne<T> {
 
         // Switch to the scheduler to put the ~Task into the Packet state.
         let sched = Local::take::<Scheduler>();
-        do sched.deschedule_running_task_and_then |task| {
+        do sched.deschedule_running_task_and_then |sched, task| {
             unsafe {
                 // Atomically swap the task pointer into the Packet state, issuing
                 // an acquire barrier to prevent reordering of the subsequent read
                 // of the payload. Also issues a release barrier to prevent reordering
                 // of any previous writes to the task structure.
                 let task_as_state: State = cast::transmute(task);
-                let oldstate = atomic_xchg(&mut (*packet).state, task_as_state);
+                let oldstate = (*packet).state.swap(task_as_state, SeqCst);
                 match oldstate {
                     STATE_BOTH => {
                         // Data has not been sent. Now we're blocked.
+                        rtdebug!("non-rendezvous recv");
+                        sched.metrics.non_rendezvous_recvs += 1;
                     }
                     STATE_ONE => {
+                        rtdebug!("rendezvous recv");
+                        sched.metrics.rendezvous_recvs += 1;
+
                         // Channel is closed. Switch back and check the data.
-                        let task: ~Coroutine = cast::transmute(task_as_state);
-                        let sched = Local::take::<Scheduler>();
-                        sched.resume_task_immediately(task);
+                        // NB: We have to drop back into the scheduler event loop here
+                        // instead of switching immediately back or we could end up
+                        // triggering infinite recursion on the scheduler's stack.
+                        let task: ~Task = cast::transmute(task_as_state);
+                        sched.enqueue_task(task);
                     }
                     _ => util::unreachable()
                 }
@@ -210,7 +230,7 @@ impl<T> Peekable<T> for PortOne<T> {
     fn peek(&self) -> bool {
         unsafe {
             let packet: *mut Packet<T> = self.inner.packet();
-            let oldstate = atomic_load(&mut (*packet).state);
+            let oldstate = (*packet).state.load(SeqCst);
             match oldstate {
                 STATE_BOTH => false,
                 STATE_ONE => (*packet).payload.is_some(),
@@ -227,7 +247,7 @@ impl<T> Drop for ChanOneHack<T> {
 
         unsafe {
             let this = cast::transmute_mut(self);
-            let oldstate = atomic_xchg(&mut (*this.packet()).state, STATE_ONE);
+            let oldstate = (*this.packet()).state.swap(STATE_ONE, SeqCst);
             match oldstate {
                 STATE_BOTH => {
                     // Port still active. It will destroy the Packet.
@@ -238,7 +258,7 @@ impl<T> Drop for ChanOneHack<T> {
                 task_as_state => {
                     // The port is blocked waiting for a message we will never send. Wake it.
                     assert!((*this.packet()).payload.is_none());
-                    let recvr: ~Coroutine = cast::transmute(task_as_state);
+                    let recvr: ~Task = cast::transmute(task_as_state);
                     let sched = Local::take::<Scheduler>();
                     sched.schedule_task(recvr);
                 }
@@ -254,7 +274,7 @@ impl<T> Drop for PortOneHack<T> {
 
         unsafe {
             let this = cast::transmute_mut(self);
-            let oldstate = atomic_xchg(&mut (*this.packet()).state, STATE_ONE);
+            let oldstate = (*this.packet()).state.swap(STATE_ONE, SeqCst);
             match oldstate {
                 STATE_BOTH => {
                     // Chan still active. It will destroy the packet.
@@ -295,16 +315,19 @@ struct StreamPayload<T> {
     next: PortOne<StreamPayload<T>>
 }
 
+type StreamChanOne<T> = ChanOne<StreamPayload<T>>;
+type StreamPortOne<T> = PortOne<StreamPayload<T>>;
+
 /// A channel with unbounded size.
 pub struct Chan<T> {
     // FIXME #5372. Using Cell because we don't take &mut self
-    next: Cell<ChanOne<StreamPayload<T>>>
+    next: Cell<StreamChanOne<T>>
 }
 
 /// An port with unbounded size.
 pub struct Port<T> {
     // FIXME #5372. Using Cell because we don't take &mut self
-    next: Cell<PortOne<StreamPayload<T>>>
+    next: Cell<StreamPortOne<T>>
 }
 
 pub fn stream<T: Send>() -> (Port<T>, Chan<T>) {
@@ -357,6 +380,136 @@ impl<T> Peekable<T> for Port<T> {
     }
 }
 
+pub struct SharedChan<T> {
+    // Just like Chan, but a shared AtomicOption instead of Cell
+    priv next: UnsafeAtomicRcBox<AtomicOption<StreamChanOne<T>>>
+}
+
+impl<T> SharedChan<T> {
+    pub fn new(chan: Chan<T>) -> SharedChan<T> {
+        let next = chan.next.take();
+        let next = AtomicOption::new(~next);
+        SharedChan { next: UnsafeAtomicRcBox::new(next) }
+    }
+}
+
+impl<T: Send> GenericChan<T> for SharedChan<T> {
+    fn send(&self, val: T) {
+        self.try_send(val);
+    }
+}
+
+impl<T: Send> GenericSmartChan<T> for SharedChan<T> {
+    fn try_send(&self, val: T) -> bool {
+        unsafe {
+            let (next_pone, next_cone) = oneshot();
+            let cone = (*self.next.get()).swap(~next_cone, SeqCst);
+            cone.unwrap().try_send(StreamPayload { val: val, next: next_pone })
+        }
+    }
+}
+
+impl<T> Clone for SharedChan<T> {
+    fn clone(&self) -> SharedChan<T> {
+        SharedChan {
+            next: self.next.clone()
+        }
+    }
+}
+
+pub struct SharedPort<T> {
+    // The next port on which we will receive the next port on which we will receive T
+    priv next_link: UnsafeAtomicRcBox<AtomicOption<PortOne<StreamPortOne<T>>>>
+}
+
+impl<T> SharedPort<T> {
+    pub fn new(port: Port<T>) -> SharedPort<T> {
+        // Put the data port into a new link pipe
+        let next_data_port = port.next.take();
+        let (next_link_port, next_link_chan) = oneshot();
+        next_link_chan.send(next_data_port);
+        let next_link = AtomicOption::new(~next_link_port);
+        SharedPort { next_link: UnsafeAtomicRcBox::new(next_link) }
+    }
+}
+
+impl<T: Send> GenericPort<T> for SharedPort<T> {
+    fn recv(&self) -> T {
+        match self.try_recv() {
+            Some(val) => val,
+            None => {
+                fail!("receiving on a closed channel");
+            }
+        }
+    }
+
+    fn try_recv(&self) -> Option<T> {
+        unsafe {
+            let (next_link_port, next_link_chan) = oneshot();
+            let link_port = (*self.next_link.get()).swap(~next_link_port, SeqCst);
+            let link_port = link_port.unwrap();
+            let data_port = link_port.recv();
+            let (next_data_port, res) = match data_port.try_recv() {
+                Some(StreamPayload { val, next }) => {
+                    (next, Some(val))
+                }
+                None => {
+                    let (next_data_port, _) = oneshot();
+                    (next_data_port, None)
+                }
+            };
+            next_link_chan.send(next_data_port);
+            return res;
+        }
+    }
+}
+
+impl<T> Clone for SharedPort<T> {
+    fn clone(&self) -> SharedPort<T> {
+        SharedPort {
+            next_link: self.next_link.clone()
+        }
+    }
+}
+
+// XXX: Need better name
+type MegaPipe<T> = (SharedPort<T>, SharedChan<T>);
+
+pub fn megapipe<T: Send>() -> MegaPipe<T> {
+    let (port, chan) = stream();
+    (SharedPort::new(port), SharedChan::new(chan))
+}
+
+impl<T: Send> GenericChan<T> for MegaPipe<T> {
+    fn send(&self, val: T) {
+        match *self {
+            (_, ref c) => c.send(val)
+        }
+    }
+}
+
+impl<T: Send> GenericSmartChan<T> for MegaPipe<T> {
+    fn try_send(&self, val: T) -> bool {
+        match *self {
+            (_, ref c) => c.try_send(val)
+        }
+    }
+}
+
+impl<T: Send> GenericPort<T> for MegaPipe<T> {
+    fn recv(&self) -> T {
+        match *self {
+            (ref p, _) => p.recv()
+        }
+    }
+
+    fn try_recv(&self) -> Option<T> {
+        match *self {
+            (ref p, _) => p.try_recv()
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -402,6 +555,8 @@ mod test {
                 { let _c = chan; }
                 port.recv();
             };
+            // What is our res?
+            rtdebug!("res is: %?", res.is_err());
             assert!(res.is_err());
         }
     }
@@ -584,7 +739,7 @@ mod test {
     #[test]
     fn stream_send_recv_stress() {
         for stress_factor().times {
-            do run_in_newsched_task {
+            do run_in_mt_newsched_task {
                 let (port, chan) = stream::<~int>();
 
                 send(chan, 0);
@@ -594,18 +749,18 @@ mod test {
                     if i == 10 { return }
 
                     let chan_cell = Cell::new(chan);
-                    let _thread = do spawntask_thread {
+                    do spawntask_random {
                         let chan = chan_cell.take();
                         chan.send(~i);
                         send(chan, i + 1);
-                    };
+                    }
                 }
 
                 fn recv(port: Port<~int>, i: int) {
                     if i == 10 { return }
 
                     let port_cell = Cell::new(port);
-                    let _thread = do spawntask_thread {
+                    do spawntask_random {
                         let port = port_cell.take();
                         assert!(port.recv() == ~i);
                         recv(port, i + 1);
@@ -614,4 +769,144 @@ mod test {
             }
         }
     }
+
+    #[test]
+    fn recv_a_lot() {
+        // Regression test that we don't run out of stack in scheduler context
+        do run_in_newsched_task {
+            let (port, chan) = stream();
+            for 10000.times { chan.send(()) }
+            for 10000.times { port.recv() }
+        }
+    }
+
+    #[test]
+    fn shared_chan_stress() {
+        do run_in_mt_newsched_task {
+            let (port, chan) = stream();
+            let chan = SharedChan::new(chan);
+            let total = stress_factor() + 100;
+            for total.times {
+                let chan_clone = chan.clone();
+                do spawntask_random {
+                    chan_clone.send(());
+                }
+            }
+
+            for total.times {
+                port.recv();
+            }
+        }
+    }
+
+    #[test]
+    fn shared_port_stress() {
+        do run_in_mt_newsched_task {
+            // XXX: Removing these type annotations causes an ICE
+            let (end_port, end_chan) = stream::<()>();
+            let (port, chan) = stream::<()>();
+            let end_chan = SharedChan::new(end_chan);
+            let port = SharedPort::new(port);
+            let total = stress_factor() + 100;
+            for total.times {
+                let end_chan_clone = end_chan.clone();
+                let port_clone = port.clone();
+                do spawntask_random {
+                    port_clone.recv();
+                    end_chan_clone.send(());
+                }
+            }
+
+            for total.times {
+                chan.send(());
+            }
+
+            for total.times {
+                end_port.recv();
+            }
+        }
+    }
+
+    #[test]
+    fn shared_port_close_simple() {
+        do run_in_mt_newsched_task {
+            let (port, chan) = stream::<()>();
+            let port = SharedPort::new(port);
+            { let _chan = chan; }
+            assert!(port.try_recv().is_none());
+        }
+    }
+
+    #[test]
+    fn shared_port_close() {
+        do run_in_mt_newsched_task {
+            let (end_port, end_chan) = stream::<bool>();
+            let (port, chan) = stream::<()>();
+            let end_chan = SharedChan::new(end_chan);
+            let port = SharedPort::new(port);
+            let chan = SharedChan::new(chan);
+            let send_total = 10;
+            let recv_total = 20;
+            do spawntask_random {
+                for send_total.times {
+                    let chan_clone = chan.clone();
+                    do spawntask_random {
+                        chan_clone.send(());
+                    }
+                }
+            }
+            let end_chan_clone = end_chan.clone();
+            do spawntask_random {
+                for recv_total.times {
+                    let port_clone = port.clone();
+                    let end_chan_clone = end_chan_clone.clone();
+                    do spawntask_random {
+                        let recvd = port_clone.try_recv().is_some();
+                        end_chan_clone.send(recvd);
+                    }
+                }
+            }
+
+            let mut recvd = 0;
+            for recv_total.times {
+                recvd += if end_port.recv() { 1 } else { 0 };
+            }
+
+            assert!(recvd == send_total);
+        }
+    }
+
+    #[test]
+    fn megapipe_stress() {
+        use rand;
+        use rand::RngUtil;
+
+        do run_in_mt_newsched_task {
+            let (end_port, end_chan) = stream::<()>();
+            let end_chan = SharedChan::new(end_chan);
+            let pipe = megapipe();
+            let total = stress_factor() + 10;
+            let mut rng = rand::rng();
+            for total.times {
+                let msgs = rng.gen_uint_range(0, 10);
+                let pipe_clone = pipe.clone();
+                let end_chan_clone = end_chan.clone();
+                do spawntask_random {
+                    for msgs.times {
+                        pipe_clone.send(());
+                    }
+                    for msgs.times {
+                        pipe_clone.recv();
+                    }
+                }
+
+                end_chan_clone.send(());
+            }
+
+            for total.times {
+                end_port.recv();
+            }
+        }
+    }
+
 }

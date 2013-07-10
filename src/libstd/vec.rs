@@ -20,7 +20,6 @@ use cmp::{Eq, TotalEq, TotalOrd, Ordering, Less, Equal, Greater};
 use clone::Clone;
 use iterator::{FromIterator, Iterator, IteratorUtil};
 use kinds::Copy;
-use libc;
 use libc::c_void;
 use num::Zero;
 use option::{None, Option, Some};
@@ -33,16 +32,11 @@ use sys::size_of;
 use uint;
 use unstable::intrinsics;
 #[cfg(stage0)]
-use intrinsic::{get_tydesc, TyDesc};
+use intrinsic::{get_tydesc};
 #[cfg(not(stage0))]
-use unstable::intrinsics::{get_tydesc, contains_managed, TyDesc};
+use unstable::intrinsics::{get_tydesc, contains_managed};
 use vec;
 use util;
-
-extern {
-    #[fast_ffi]
-    unsafe fn vec_reserve_shared_actual(t: *TyDesc, v: **raw::VecRepr, n: libc::size_t);
-}
 
 /// Returns true if two vectors have the same length
 pub fn same_length<T, U>(xs: &[T], ys: &[U]) -> bool {
@@ -1139,7 +1133,9 @@ impl<T> OwnedVector<T> for ~[T] {
                 let td = get_tydesc::<T>();
                 if ((**ptr).box_header.ref_count ==
                     managed::raw::RC_MANAGED_UNIQUE) {
-                    vec_reserve_shared_actual(td, ptr as **raw::VecRepr, n as libc::size_t);
+                    // XXX transmute shouldn't be necessary
+                    let td = cast::transmute(td);
+                    ::at_vec::raw::reserve_raw(td, ptr, n);
                 } else {
                     let alloc = n * sys::nonzero_size_of::<T>();
                     *ptr = realloc_raw(*ptr as *mut c_void, alloc + size_of::<raw::VecRepr>())
@@ -1169,7 +1165,7 @@ impl<T> OwnedVector<T> for ~[T] {
                 let ptr: *mut *mut raw::VecRepr = cast::transmute(self);
                 let td = get_tydesc::<T>();
                 if contains_managed::<T>() {
-                    vec_reserve_shared_actual(td, ptr as **raw::VecRepr, n as libc::size_t);
+                    ::at_vec::raw::reserve_raw(td, ptr, n);
                 } else {
                     let alloc = n * sys::nonzero_size_of::<T>();
                     let size = alloc + size_of::<raw::VecRepr>();

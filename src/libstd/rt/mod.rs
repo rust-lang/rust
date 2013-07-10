@@ -55,8 +55,27 @@ Several modules in `core` are clients of `rt`:
 */
 
 #[doc(hidden)];
+#[deny(unused_imports)];
+#[deny(unused_mut)];
+#[deny(unused_variable)];
+#[deny(unused_unsafe)];
 
+use cell::Cell;
+use clone::Clone;
+use container::Container;
+use iter::Times;
+use iterator::IteratorUtil;
+use option::Some;
 use ptr::RawPtr;
+use rt::sched::{Scheduler, Shutdown};
+use rt::sleeper_list::SleeperList;
+use rt::task::Task;
+use rt::thread::Thread;
+use rt::work_queue::WorkQueue;
+use rt::uv::uvio::UvEventLoop;
+use unstable::atomics::{AtomicInt, SeqCst};
+use unstable::sync::UnsafeAtomicRcBox;
+use vec::{OwnedVector, MutableVector};
 
 /// The global (exchange) heap.
 pub mod global_heap;
@@ -88,6 +107,9 @@ mod work_queue;
 /// A parallel queue.
 mod message_queue;
 
+/// A parallel data structure for tracking sleeping schedulers.
+mod sleeper_list;
+
 /// Stack segments and caching.
 mod stack;
 
@@ -101,7 +123,7 @@ mod thread;
 pub mod env;
 
 /// The local, managed heap
-mod local_heap;
+pub mod local_heap;
 
 /// The Logger trait and implementations
 pub mod logging;
@@ -127,6 +149,20 @@ pub mod local_ptr;
 /// Bindings to pthread/windows thread-local storage.
 pub mod thread_local_storage;
 
+/// For waiting on child tasks.
+pub mod join_latch;
+
+pub mod metrics;
+
+// FIXME #5248 shouldn't be pub
+/// Just stuff
+pub mod util;
+
+// Global command line argument storage
+pub mod args;
+
+// Support for dynamic borrowck
+pub mod borrowck;
 
 /// Set up a default runtime configuration, given compiler-supplied arguments.
 ///
@@ -142,27 +178,128 @@ pub mod thread_local_storage;
 /// # Return value
 ///
 /// The return value is used as the process return code. 0 on success, 101 on error.
-pub fn start(_argc: int, _argv: **u8, crate_map: *u8, main: ~fn()) -> int {
+pub fn start(argc: int, argv: **u8, crate_map: *u8, main: ~fn()) -> int {
 
-    use self::sched::{Scheduler, Coroutine};
-    use self::uv::uvio::UvEventLoop;
+    init(argc, argv, crate_map);
+    let exit_code = run(main);
+    cleanup();
 
-    init(crate_map);
-
-    let loop_ = ~UvEventLoop::new();
-    let mut sched = ~Scheduler::new(loop_);
-    let main_task = ~Coroutine::new(&mut sched.stack_pool, main);
-
-    sched.enqueue_task(main_task);
-    sched.run();
-
-    return 0;
+    return exit_code;
 }
 
-/// One-time runtime initialization. Currently all this does is set up logging
-/// based on the RUST_LOG environment variable.
-pub fn init(crate_map: *u8) {
-    logging::init(crate_map);
+/// One-time runtime initialization.
+///
+/// Initializes global state, including frobbing
+/// the crate's logging flags, registering GC
+/// metadata, and storing the process arguments.
+pub fn init(argc: int, argv: **u8, crate_map: *u8) {
+    // XXX: Derefing these pointers is not safe.
+    // Need to propagate the unsafety to `start`.
+    unsafe {
+        args::init(argc, argv);
+        logging::init(crate_map);
+        rust_update_gc_metadata(crate_map);
+    }
+
+    extern {
+        fn rust_update_gc_metadata(crate_map: *u8);
+    }
+}
+
+/// One-time runtime cleanup.
+pub fn cleanup() {
+    args::cleanup();
+}
+
+/// Execute the main function in a scheduler.
+///
+/// Configures the runtime according to the environment, by default
+/// using a task scheduler with the same number of threads as cores.
+/// Returns a process exit code.
+pub fn run(main: ~fn()) -> int {
+
+    static DEFAULT_ERROR_CODE: int = 101;
+
+    let nthreads = util::default_sched_threads();
+
+    // The shared list of sleeping schedulers. Schedulers wake each other
+    // occassionally to do new work.
+    let sleepers = SleeperList::new();
+    // The shared work queue. Temporary until work stealing is implemented.
+    let work_queue = WorkQueue::new();
+
+    // The schedulers.
+    let mut scheds = ~[];
+    // Handles to the schedulers. When the main task ends these will be
+    // sent the Shutdown message to terminate the schedulers.
+    let mut handles = ~[];
+
+    for nthreads.times {
+        // Every scheduler is driven by an I/O event loop.
+        let loop_ = ~UvEventLoop::new();
+        let mut sched = ~Scheduler::new(loop_, work_queue.clone(), sleepers.clone());
+        let handle = sched.make_handle();
+
+        scheds.push(sched);
+        handles.push(handle);
+    }
+
+    // Create a shared cell for transmitting the process exit
+    // code from the main task to this function.
+    let exit_code = UnsafeAtomicRcBox::new(AtomicInt::new(0));
+    let exit_code_clone = exit_code.clone();
+
+    // When the main task exits, after all the tasks in the main
+    // task tree, shut down the schedulers and set the exit code.
+    let handles = Cell::new(handles);
+    let on_exit: ~fn(bool) = |exit_success| {
+
+        let mut handles = handles.take();
+        for handles.mut_iter().advance |handle| {
+            handle.send(Shutdown);
+        }
+
+        unsafe {
+            let exit_code = if exit_success {
+                use rt::util;
+
+                // If we're exiting successfully, then return the global
+                // exit status, which can be set programmatically.
+                util::get_exit_status()
+            } else {
+                DEFAULT_ERROR_CODE
+            };
+            (*exit_code_clone.get()).store(exit_code, SeqCst);
+        }
+    };
+
+    // Create and enqueue the main task.
+    let main_cell = Cell::new(main);
+    let mut main_task = ~Task::new_root(&mut scheds[0].stack_pool,
+                                    main_cell.take());
+    main_task.on_exit = Some(on_exit);
+    scheds[0].enqueue_task(main_task);
+
+    // Run each scheduler in a thread.
+    let mut threads = ~[];
+    while !scheds.is_empty() {
+        let sched = scheds.pop();
+        let sched_cell = Cell::new(sched);
+        let thread = do Thread::start {
+            let sched = sched_cell.take();
+            sched.run();
+        };
+
+        threads.push(thread);
+    }
+
+    // Wait for schedulers
+    { let _threads = threads; }
+
+    // Return the exit code
+    unsafe {
+        (*exit_code.get()).load(SeqCst)
+    }
 }
 
 /// Possible contexts in which Rust code may be executing.
@@ -194,8 +331,8 @@ pub fn context() -> RuntimeContext {
         return OldTaskContext;
     } else {
         if Local::exists::<Scheduler>() {
-            let context = ::cell::Cell::new_empty();
-            do Local::borrow::<Scheduler> |sched| {
+            let context = Cell::new_empty();
+            do Local::borrow::<Scheduler, ()> |sched| {
                 if sched.in_task_context() {
                     context.put_back(TaskContext);
                 } else {
@@ -217,24 +354,20 @@ pub fn context() -> RuntimeContext {
 #[test]
 fn test_context() {
     use unstable::run_in_bare_thread;
-    use self::sched::{Scheduler, Coroutine};
-    use rt::uv::uvio::UvEventLoop;
-    use cell::Cell;
+    use self::sched::{Scheduler};
     use rt::local::Local;
+    use rt::test::new_test_uv_sched;
 
     assert_eq!(context(), OldTaskContext);
     do run_in_bare_thread {
         assert_eq!(context(), GlobalContext);
-        let mut sched = ~UvEventLoop::new_scheduler();
-        let task = ~do Coroutine::new(&mut sched.stack_pool) {
+        let mut sched = ~new_test_uv_sched();
+        let task = ~do Task::new_root(&mut sched.stack_pool) {
             assert_eq!(context(), TaskContext);
             let sched = Local::take::<Scheduler>();
-            do sched.deschedule_running_task_and_then() |task| {
+            do sched.deschedule_running_task_and_then() |sched, task| {
                 assert_eq!(context(), SchedulerContext);
-                let task = Cell::new(task);
-                do Local::borrow::<Scheduler> |sched| {
-                    sched.enqueue_task(task.take());
-                }
+                sched.enqueue_task(task);
             }
         };
         sched.enqueue_task(task);

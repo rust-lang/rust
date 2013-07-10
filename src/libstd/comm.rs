@@ -220,7 +220,7 @@ impl<T: Send> Peekable<T> for PortSet<T> {
 
 /// A channel that can be shared between many senders.
 pub struct SharedChan<T> {
-    ch: Exclusive<pipesy::Chan<T>>
+    inner: Either<Exclusive<pipesy::Chan<T>>, rtcomm::SharedChan<T>>
 }
 
 impl<T: Send> SharedChan<T> {
@@ -228,40 +228,50 @@ impl<T: Send> SharedChan<T> {
     pub fn new(c: Chan<T>) -> SharedChan<T> {
         let Chan { inner } = c;
         let c = match inner {
-            Left(c) => c,
-            Right(_) => fail!("SharedChan not implemented")
+            Left(c) => Left(exclusive(c)),
+            Right(c) => Right(rtcomm::SharedChan::new(c))
         };
-        SharedChan { ch: exclusive(c) }
+        SharedChan { inner: c }
     }
 }
 
 impl<T: Send> GenericChan<T> for SharedChan<T> {
     fn send(&self, x: T) {
-        unsafe {
-            let mut xx = Some(x);
-            do self.ch.with_imm |chan| {
-                let x = replace(&mut xx, None);
-                chan.send(x.unwrap())
+        match self.inner {
+            Left(ref chan) => {
+                unsafe {
+                    let mut xx = Some(x);
+                    do chan.with_imm |chan| {
+                        let x = replace(&mut xx, None);
+                        chan.send(x.unwrap())
+                    }
+                }
             }
+            Right(ref chan) => chan.send(x)
         }
     }
 }
 
 impl<T: Send> GenericSmartChan<T> for SharedChan<T> {
     fn try_send(&self, x: T) -> bool {
-        unsafe {
-            let mut xx = Some(x);
-            do self.ch.with_imm |chan| {
-                let x = replace(&mut xx, None);
-                chan.try_send(x.unwrap())
+        match self.inner {
+            Left(ref chan) => {
+                unsafe {
+                    let mut xx = Some(x);
+                    do chan.with_imm |chan| {
+                        let x = replace(&mut xx, None);
+                        chan.try_send(x.unwrap())
+                    }
+                }
             }
+            Right(ref chan) => chan.try_send(x)
         }
     }
 }
 
 impl<T: Send> ::clone::Clone for SharedChan<T> {
     fn clone(&self) -> SharedChan<T> {
-        SharedChan { ch: self.ch.clone() }
+        SharedChan { inner: self.inner.clone() }
     }
 }
 
