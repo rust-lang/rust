@@ -10,12 +10,13 @@
 // Backlinks over List::prev are raw pointers that form a full chain in
 // the reverse direction.
 
-
 use std::cast;
 use std::cmp;
 use std::ptr;
 use std::util;
 use std::iterator::FromIterator;
+
+use container::Deque;
 
 /// A doubly-linked list
 pub struct List<T> {
@@ -124,20 +125,14 @@ impl<T> Mutable for List<T> {
     }
 }
 
-impl<T> List<T> {
-    /// Create an empty List
-    #[inline]
-    pub fn new() -> List<T> {
-        List{list_head: None, list_tail: Rawlink::none(), length: 0}
-    }
-
+impl<T> Deque<T> for List<T> {
     /// Provide a reference to the front element, or None if the list is empty
-    pub fn peek_front<'a>(&'a self) -> Option<&'a T> {
+    fn front<'a>(&'a self) -> Option<&'a T> {
         self.list_head.chain_ref(|x| Some(&x.value))
     }
 
     /// Provide a mutable reference to the front element, or None if the list is empty
-    pub fn peek_front_mut<'a>(&'a mut self) -> Option<&'a mut T> {
+    fn front_mut<'a>(&'a mut self) -> Option<&'a mut T> {
         match self.list_head {
             None => None,
             Some(ref mut head) => Some(&mut head.value),
@@ -145,7 +140,7 @@ impl<T> List<T> {
     }
 
     /// Provide a reference to the back element, or None if the list is empty
-    pub fn peek_back<'a>(&'a self) -> Option<&'a T> {
+    fn back<'a>(&'a self) -> Option<&'a T> {
         match self.list_tail.resolve_immut() {
             None => None,
             Some(tail) => Some(&tail.value),
@@ -153,7 +148,7 @@ impl<T> List<T> {
     }
 
     /// Provide a mutable reference to the back element, or None if the list is empty
-    pub fn peek_back_mut<'a>(&'a mut self) -> Option<&'a mut T> {
+    fn back_mut<'a>(&'a mut self) -> Option<&'a mut T> {
         match self.list_tail.resolve() {
             None => None,
             Some(tail) => Some(&mut tail.value),
@@ -163,7 +158,7 @@ impl<T> List<T> {
     /// Add an element last in the list
     ///
     /// O(1)
-    pub fn push_back(&mut self, elt: T) {
+    fn push_back(&mut self, elt: T) {
         match self.list_tail.resolve() {
             None => return self.push_front(elt),
             Some(tail) => {
@@ -179,7 +174,7 @@ impl<T> List<T> {
     ///
     /// O(1)
     #[inline]
-    pub fn pop_back(&mut self) -> Option<T> {
+    fn pop_back(&mut self) -> Option<T> {
         match self.list_tail.resolve() {
             None => None,
             Some(tail) => {
@@ -202,7 +197,7 @@ impl<T> List<T> {
     /// Add an element first in the list
     ///
     /// O(1)
-    pub fn push_front(&mut self, elt: T) {
+    fn push_front(&mut self, elt: T) {
         let mut new_head = ~Node{value: elt, next: None, prev: Rawlink::none()};
         match self.list_head {
             None => {
@@ -221,7 +216,7 @@ impl<T> List<T> {
     /// Remove the first element and return it, or None if the list is empty
     ///
     /// O(1)
-    pub fn pop_front(&mut self) -> Option<T> {
+    fn pop_front(&mut self) -> Option<T> {
         match util::replace(&mut self.list_head, None) {
             None => None,
             Some(old_head) => {
@@ -238,6 +233,14 @@ impl<T> List<T> {
                 }
             }
         }
+    }
+}
+
+impl<T> List<T> {
+    /// Create an empty List
+    #[inline]
+    pub fn new() -> List<T> {
+        List{list_head: None, list_tail: Rawlink::none(), length: 0}
     }
 
     /// Add all elements from `other` to the end of the list
@@ -292,7 +295,7 @@ impl<T> List<T> {
         {
             let mut it = self.mut_iter();
             loop {
-                match (it.next(), other.peek_front()) {
+                match (it.next(), other.front()) {
                     (None   , _      ) => break,
                     (_      , None   ) => return,
                     (Some(x), Some(y)) => if f(x, y) { loop }
@@ -462,7 +465,7 @@ impl<'self, A> ListInsertion<A> for MutForwardIterator<'self, A> {
 
     fn peek_next<'a>(&'a mut self) -> Option<&'a mut A> {
         match self.curs.resolve() {
-            None => self.list.peek_front_mut(),
+            None => self.list.front_mut(),
             Some(curs) => match curs.next {
                 None => None,
                 Some(ref mut node) => Some(&mut node.value),
@@ -574,14 +577,14 @@ mod tests {
         n.push_front(2);
         n.push_front(3);
         {
-            assert_eq!(n.peek_front().unwrap(), &3);
-            let x = n.peek_front_mut().unwrap();
+            assert_eq!(n.front().unwrap(), &3);
+            let x = n.front_mut().unwrap();
             assert_eq!(*x, 3);
             *x = 0;
         }
         {
-            assert_eq!(n.peek_back().unwrap(), &2);
-            let y = n.peek_back_mut().unwrap();
+            assert_eq!(n.back().unwrap(), &2);
+            let y = n.back_mut().unwrap();
             assert_eq!(*y, 2);
             *y = 1;
         }
