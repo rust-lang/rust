@@ -1671,6 +1671,15 @@ pub trait MutableVector<'self, T> {
 
     fn swap(self, a: uint, b: uint);
 
+    /**
+     * Divides one `&mut` into two. The first will
+     * contain all indices from `0..mid` (excluding the index `mid`
+     * itself) and the second will contain all indices from
+     * `mid..len` (excluding the index `len` itself).
+     */
+    fn mut_split(self, mid: uint) -> (&'self mut [T],
+                                      &'self mut [T]);
+
     fn reverse(self);
 
     /**
@@ -1705,6 +1714,15 @@ impl<'self,T> MutableVector<'self, T> for &'self mut [T] {
                 transmute((ptr::mut_offset(p, start),
                            (end - start) * sys::nonzero_size_of::<T>()))
             }
+        }
+    }
+
+    #[inline]
+    fn mut_split(self, mid: uint) -> (&'self mut [T], &'self mut [T]) {
+        unsafe {
+            let len = self.len();
+            let self2: &'self mut [T] = cast::transmute_copy(&self);
+            (self.mut_slice(0, mid), self2.mut_slice(mid, len))
         }
     }
 
@@ -3354,5 +3372,24 @@ mod tests {
         v.reserve(-1);
         v.push(1);
         v.push(2);
+    }
+
+    #[test]
+    fn test_mut_split() {
+        let mut values = [1u8,2,3,4,5];
+        {
+            let (left, right) = values.mut_split(2);
+            assert_eq!(left.slice(0, left.len()), [1, 2]);
+            for left.mut_iter().advance |p| {
+                *p += 1;
+            }
+
+            assert_eq!(right.slice(0, right.len()), [3, 4, 5]);
+            for right.mut_iter().advance |p| {
+                *p += 2;
+            }
+        }
+
+        assert_eq!(values, [2, 3, 5, 6, 7]);
     }
 }
