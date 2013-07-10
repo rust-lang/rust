@@ -435,16 +435,17 @@ pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
       ty_infer(infer_ty) => infer_ty.to_str(),
       ty_err => ~"[type error]",
       ty_param(param_ty {idx: id, def_id: did}) => {
-          let mut parm = (('T' as uint) + id) as char;
-          if (parm as uint) > ('Z' as uint) {
-              parm = (parm as uint - 26) as char;
-          }
-
-          if cx.sess.verbose() {
-              fmt!("%c:%?", parm, did)
-          } else {
-              fmt!("%c", parm)
-          }
+          let param_def = cx.ty_param_defs.find(&did.node);
+          let ident = match param_def {
+              Some(def) => {
+                  cx.sess.str_of(def.ident).to_owned()
+              }
+              None => {
+                  // This should not happen...
+                  fmt!("BUG[%?]", id)
+              }
+          };
+          if !cx.sess.verbose() { ident } else { fmt!("%s:%?", ident, did) }
       }
       ty_self(*) => ~"Self",
       ty_enum(did, ref substs) | ty_struct(did, ref substs) => {
