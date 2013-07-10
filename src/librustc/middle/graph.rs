@@ -34,7 +34,6 @@ be indexed by the direction (see the type `Direction`).
 
 */
 
-use std::prelude::*;
 use std::uint;
 use std::vec;
 
