@@ -416,6 +416,8 @@ fn enc_bounds(w: @io::Writer, cx: @ctxt, bs: &ty::ParamBounds) {
 }
 
 pub fn enc_type_param_def(w: @io::Writer, cx: @ctxt, v: &ty::TypeParameterDef) {
+    w.write_str(cx.tcx.sess.str_of(v.ident));
+    w.write_char(':');
     w.write_str((cx.ds)(v.def_id));
     w.write_char('|');
     enc_bounds(w, cx, v.bounds);
