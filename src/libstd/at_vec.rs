@@ -22,23 +22,6 @@ use vec::{ImmutableVector, OwnedVector};
 /// Code for dealing with @-vectors. This is pretty incomplete, and
 /// contains a bunch of duplication from the code for ~-vectors.
 
-pub mod rustrt {
-    use libc;
-    use vec;
-    #[cfg(stage0)]
-    use intrinsic::{TyDesc};
-    #[cfg(not(stage0))]
-    use unstable::intrinsics::{TyDesc};
-
-    #[abi = "cdecl"]
-    #[link_name = "rustrt"]
-    pub extern {
-        pub unsafe fn vec_reserve_shared_actual(t: *TyDesc,
-                                                v: **vec::raw::VecRepr,
-                                                n: libc::size_t);
-    }
-}
-
 /// Returns the number of elements the vector can hold without reallocating
 #[inline]
 pub fn capacity<T>(v: @[T]) -> uint {
@@ -192,18 +175,17 @@ pub mod traits {
 pub mod traits {}
 
 pub mod raw {
-    use at_vec::{capacity, rustrt};
+    use at_vec::capacity;
+    use cast;
     use cast::{transmute, transmute_copy};
     use libc;
     use ptr;
     use sys;
     use uint;
-    use unstable::intrinsics::{move_val_init};
+    use unstable::intrinsics;
+    use unstable::intrinsics::{move_val_init, TyDesc};
     use vec;
-    #[cfg(stage0)]
-    use intrinsic::{get_tydesc};
-    #[cfg(not(stage0))]
-    use unstable::intrinsics::{get_tydesc};
+    use vec::UnboxedVecRepr;
 
     pub type VecRepr = vec::raw::VecRepr;
     pub type SliceRepr = vec::raw::SliceRepr;
@@ -264,9 +246,49 @@ pub mod raw {
     pub unsafe fn reserve<T>(v: &mut @[T], n: uint) {
         // Only make the (slow) call into the runtime if we have to
         if capacity(*v) < n {
-            let ptr: **VecRepr = transmute(v);
-            rustrt::vec_reserve_shared_actual(get_tydesc::<T>(),
-                                              ptr, n as libc::size_t);
+            let ptr: *mut *mut VecRepr = transmute(v);
+            let ty = intrinsics::get_tydesc::<T>();
+            // XXX transmute shouldn't be necessary
+            let ty = cast::transmute(ty);
+            return reserve_raw(ty, ptr, n);
+        }
+    }
+
+    // Implementation detail. Shouldn't be public
+    #[allow(missing_doc)]
+    pub fn reserve_raw(ty: *TyDesc, ptr: *mut *mut VecRepr, n: uint) {
+
+        unsafe {
+            let size_in_bytes = n * (*ty).size;
+            if size_in_bytes > (**ptr).unboxed.alloc {
+                let total_size = size_in_bytes + sys::size_of::<UnboxedVecRepr>();
+                // XXX: UnboxedVecRepr has an extra u8 at the end
+                let total_size = total_size - sys::size_of::<u8>();
+                (*ptr) = local_realloc(*ptr as *(), total_size) as *mut VecRepr;
+                (**ptr).unboxed.alloc = size_in_bytes;
+            }
+        }
+
+        fn local_realloc(ptr: *(), size: uint) -> *() {
+            use rt;
+            use rt::OldTaskContext;
+            use rt::local::Local;
+            use rt::task::Task;
+
+            if rt::context() == OldTaskContext {
+                unsafe {
+                    return rust_local_realloc(ptr, size as libc::size_t);
+                }
+
+                extern {
+                    #[fast_ffi]
+                    fn rust_local_realloc(ptr: *(), size: libc::size_t) -> *();
+                }
+            } else {
+                do Local::borrow::<Task, *()> |task| {
+                    task.heap.realloc(ptr as *libc::c_void, size) as *()
+                }
+            }
         }
     }
 

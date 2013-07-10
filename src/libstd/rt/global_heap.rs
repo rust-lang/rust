@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use libc::{c_char, c_void, size_t, uintptr_t, free, malloc, realloc};
+use libc::{c_void, c_char, size_t, uintptr_t, free, malloc, realloc};
 use managed::raw::{BoxHeaderRepr, BoxRepr};
 use unstable::intrinsics::TyDesc;
 use sys::size_of;
@@ -96,6 +96,11 @@ pub unsafe fn vector_exchange_malloc(align: u32, size: uintptr_t) -> *c_char {
 #[cfg(not(test))]
 #[lang="closure_exchange_malloc"]
 #[inline]
+pub unsafe fn closure_exchange_malloc_(td: *c_char, size: uintptr_t) -> *c_char {
+    closure_exchange_malloc(td, size)
+}
+
+#[inline]
 pub unsafe fn closure_exchange_malloc(td: *c_char, size: uintptr_t) -> *c_char {
     let td = td as *TyDesc;
     let size = size as uint;
@@ -115,6 +120,11 @@ pub unsafe fn closure_exchange_malloc(td: *c_char, size: uintptr_t) -> *c_char {
 // inside a landing pad may corrupt the state of the exception handler.
 #[cfg(not(test))]
 #[lang="exchange_free"]
+#[inline]
+pub unsafe fn exchange_free_(ptr: *c_char) {
+    exchange_free(ptr)
+}
+
 #[inline]
 pub unsafe fn exchange_free(ptr: *c_char) {
     free(ptr as *c_void);

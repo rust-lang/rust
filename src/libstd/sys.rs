@@ -12,7 +12,6 @@
 
 #[allow(missing_doc)];
 
-use option::{Some, None};
 use cast;
 use gc;
 use io;
@@ -151,10 +150,12 @@ impl FailWithCause for &'static str {
 
 // FIXME #4427: Temporary until rt::rt_fail_ goes away
 pub fn begin_unwind_(msg: *c_char, file: *c_char, line: size_t) -> ! {
-    use option::Option;
+    use cell::Cell;
+    use either::Left;
     use rt::{context, OldTaskContext, TaskContext};
-    use rt::task::{Task, Unwinder};
+    use rt::task::Task;
     use rt::local::Local;
+    use rt::logging::Logger;
 
     let context = context();
     match context {
@@ -171,24 +172,29 @@ pub fn begin_unwind_(msg: *c_char, file: *c_char, line: size_t) -> ! {
                 let msg = str::raw::from_c_str(msg);
                 let file = str::raw::from_c_str(file);
 
-                let outmsg = fmt!("%s at line %i of file %s", msg, line as int, file);
+                let outmsg = fmt!("task failed at '%s', %s:%i",
+                                  msg, file, line as int);
 
                 // XXX: Logging doesn't work correctly in non-task context because it
                 // invokes the local heap
                 if context == TaskContext {
-                    error!(outmsg);
+                    // XXX: Logging doesn't work here - the check to call the log
+                    // function never passes - so calling the log function directly.
+                    let outmsg = Cell::new(outmsg);
+                    do Local::borrow::<Task, ()> |task| {
+                        task.logger.log(Left(outmsg.take()));
+                    }
                 } else {
-                    rtdebug!("%s", outmsg);
+                    rterrln!("%s", outmsg);
                 }
 
                 gc::cleanup_stack_for_failure();
 
                 let task = Local::unsafe_borrow::<Task>();
-                let unwinder: &mut Option<Unwinder> = &mut (*task).unwinder;
-                match *unwinder {
-                    Some(ref mut unwinder) => unwinder.begin_unwind(),
-                    None => abort!("failure without unwinder. aborting process")
+                if (*task).unwinder.unwinding {
+                    rtabort!("unwinding again");
                 }
+                (*task).unwinder.begin_unwind();
             }
         }
     }

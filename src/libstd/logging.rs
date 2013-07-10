@@ -11,13 +11,20 @@
 //! Logging
 
 use option::*;
+use os;
 use either::*;
+use rt;
+use rt::OldTaskContext;
 use rt::logging::{Logger, StdErrLogger};
 
 /// Turns on logging to stdout globally
 pub fn console_on() {
-    unsafe {
-        rustrt::rust_log_console_on();
+    if rt::context() == OldTaskContext {
+        unsafe {
+            rustrt::rust_log_console_on();
+        }
+    } else {
+        rt::logging::console_on();
     }
 }
 
@@ -29,8 +36,17 @@ pub fn console_on() {
  * the RUST_LOG environment variable
  */
 pub fn console_off() {
-    unsafe {
-        rustrt::rust_log_console_off();
+    // If RUST_LOG is set then the console can't be turned off
+    if os::getenv("RUST_LOG").is_some() {
+        return;
+    }
+
+    if rt::context() == OldTaskContext {
+        unsafe {
+            rustrt::rust_log_console_off();
+        }
+    } else {
+        rt::logging::console_off();
     }
 }
 

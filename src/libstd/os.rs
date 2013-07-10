@@ -741,6 +741,7 @@ pub fn list_dir(p: &Path) -> ~[~str] {
                 as_utf16_p
             };
             use rt::global_heap::malloc_raw;
+
             #[nolink]
             extern {
                 unsafe fn rust_list_dir_wfd_size() -> libc::size_t;
@@ -1134,8 +1135,15 @@ pub fn last_os_error() -> ~str {
  * ignored and the process exits with the default failure status
  */
 pub fn set_exit_status(code: int) {
-    unsafe {
-        rustrt::rust_set_exit_status(code as libc::intptr_t);
+    use rt;
+    use rt::OldTaskContext;
+
+    if rt::context() == OldTaskContext {
+        unsafe {
+            rustrt::rust_set_exit_status(code as libc::intptr_t);
+        }
+    } else {
+        rt::util::set_exit_status(code);
     }
 }
 
@@ -1165,10 +1173,20 @@ pub fn real_args() -> ~[~str] {
 #[cfg(target_os = "android")]
 #[cfg(target_os = "freebsd")]
 pub fn real_args() -> ~[~str] {
-    unsafe {
-        let argc = rustrt::rust_get_argc();
-        let argv = rustrt::rust_get_argv();
-        load_argc_and_argv(argc, argv)
+    use rt;
+    use rt::TaskContext;
+
+    if rt::context() == TaskContext {
+        match rt::args::clone() {
+            Some(args) => args,
+            None => fail!("process arguments not initialized")
+        }
+    } else {
+        unsafe {
+            let argc = rustrt::rust_get_argc();
+            let argv = rustrt::rust_get_argv();
+            load_argc_and_argv(argc, argv)
+        }
     }
 }
 

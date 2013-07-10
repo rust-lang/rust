@@ -36,14 +36,6 @@ use std::u64;
 use std::uint;
 use std::vec;
 
-pub mod rustrt {
-    use std::libc::size_t;
-
-    #[abi = "cdecl"]
-    pub extern {
-        pub unsafe fn rust_sched_threads() -> size_t;
-    }
-}
 
 // The name of a test. By convention this follows the rules for rust
 // paths; i.e. it should be a series of identifiers separated by double
@@ -493,11 +485,10 @@ static SCHED_OVERCOMMIT : uint = 1;
 static SCHED_OVERCOMMIT : uint = 4u;
 
 fn get_concurrency() -> uint {
-    unsafe {
-        let threads = rustrt::rust_sched_threads() as uint;
-        if threads == 1 { 1 }
-        else { threads * SCHED_OVERCOMMIT }
-    }
+    use std::rt;
+    let threads = rt::util::default_sched_threads();
+    if threads == 1 { 1 }
+    else { threads * SCHED_OVERCOMMIT }
 }
 
 #[allow(non_implicitly_copyable_typarams)]

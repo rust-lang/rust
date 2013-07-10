@@ -91,6 +91,7 @@ use uint;
 use util;
 use unstable::sync::{Exclusive, exclusive};
 use rt::local::Local;
+use rt::task::Task;
 use iterator::IteratorUtil;
 
 #[cfg(test)] use task::default_task_opts;
@@ -581,12 +582,41 @@ pub fn spawn_raw(opts: TaskOpts, f: ~fn()) {
     }
 }
 
-fn spawn_raw_newsched(_opts: TaskOpts, f: ~fn()) {
+fn spawn_raw_newsched(mut opts: TaskOpts, f: ~fn()) {
     use rt::sched::*;
 
-    let mut sched = Local::take::<Scheduler>();
-    let task = ~Coroutine::new(&mut sched.stack_pool, f);
-    sched.schedule_new_task(task);
+    let f = Cell::new(f);
+
+    let mut task = unsafe {
+        let sched = Local::unsafe_borrow::<Scheduler>();
+        rtdebug!("unsafe borrowed sched");
+
+        if opts.linked {
+            do Local::borrow::<Task, ~Task>() |running_task| {
+                ~running_task.new_child(&mut (*sched).stack_pool, f.take())
+            }
+        } else {
+            // An unlinked task is a new root in the task tree
+            ~Task::new_root(&mut (*sched).stack_pool, f.take())
+        }
+    };
+
+    if opts.notify_chan.is_some() {
+        let notify_chan = opts.notify_chan.swap_unwrap();
+        let notify_chan = Cell::new(notify_chan);
+        let on_exit: ~fn(bool) = |success| {
+            notify_chan.take().send(
+                if success { Success } else { Failure }
+            )
+        };
+        task.on_exit = Some(on_exit);
+    }
+
+    rtdebug!("spawn about to take scheduler");
+
+    let sched = Local::take::<Scheduler>();
+    rtdebug!("took sched in spawn");
+    sched.schedule_task(task);
 }
 
 fn spawn_raw_oldsched(mut opts: TaskOpts, f: ~fn()) {

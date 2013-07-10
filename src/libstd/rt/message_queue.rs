@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! A concurrent queue that supports multiple producers and a
+//! single consumer.
+
 use container::Container;
 use kinds::Send;
 use vec::OwnedVector;

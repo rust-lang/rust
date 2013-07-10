@@ -10,105 +10,13 @@
 
 #[doc(hidden)];
 
-use libc::{c_char, intptr_t, uintptr_t};
+use libc::c_void;
 use ptr::{mut_null};
 use repr::BoxRepr;
 use cast::transmute;
 use unstable::intrinsics::TyDesc;
-#[cfg(not(test))] use unstable::lang::clear_task_borrow_list;
 
-/**
- * Runtime structures
- *
- * NB: These must match the representation in the C++ runtime.
- */
-
-type TaskID = uintptr_t;
-
-struct StackSegment { priv opaque: () }
-struct Scheduler { priv opaque: () }
-struct SchedulerLoop { priv opaque: () }
-struct Kernel { priv opaque: () }
-struct Env { priv opaque: () }
-struct AllocHeader { priv opaque: () }
-struct MemoryRegion { priv opaque: () }
-
-#[cfg(target_arch="x86")]
-struct Registers {
-    data: [u32, ..16]
-}
-
-#[cfg(target_arch="arm")]
-#[cfg(target_arch="mips")]
-struct Registers {
-    data: [u32, ..32]
-}
-
-#[cfg(target_arch="x86")]
-#[cfg(target_arch="arm")]
-#[cfg(target_arch="mips")]
-struct Context {
-    regs: Registers,
-    next: *Context,
-    pad: [u32, ..3]
-}
-
-#[cfg(target_arch="x86_64")]
-struct Registers {
-    data: [u64, ..22]
-}
-
-#[cfg(target_arch="x86_64")]
-struct Context {
-    regs: Registers,
-    next: *Context,
-    pad: uintptr_t
-}
-
-struct BoxedRegion {
-    env: *Env,
-    backing_region: *MemoryRegion,
-    live_allocs: *BoxRepr
-}
-
-#[cfg(target_arch="x86")]
-#[cfg(target_arch="arm")]
-#[cfg(target_arch="mips")]
-struct Task {
-    // Public fields
-    refcount: intptr_t,                 // 0
-    id: TaskID,                         // 4
-    pad: [u32, ..2],                    // 8
-    ctx: Context,                       // 16
-    stack_segment: *StackSegment,       // 96
-    runtime_sp: uintptr_t,              // 100
-    scheduler: *Scheduler,              // 104
-    scheduler_loop: *SchedulerLoop,     // 108
-
-    // Fields known only to the runtime
-    kernel: *Kernel,                    // 112
-    name: *c_char,                      // 116
-    list_index: i32,                    // 120
-    boxed_region: BoxedRegion           // 128
-}
-
-#[cfg(target_arch="x86_64")]
-struct Task {
-    // Public fields
-    refcount: intptr_t,
-    id: TaskID,
-    ctx: Context,
-    stack_segment: *StackSegment,
-    runtime_sp: uintptr_t,
-    scheduler: *Scheduler,
-    scheduler_loop: *SchedulerLoop,
-
-    // Fields known only to the runtime
-    kernel: *Kernel,
-    name: *c_char,
-    list_index: i32,
-    boxed_region: BoxedRegion
-}
+type DropGlue<'self> = &'self fn(**TyDesc, *c_void);
 
 /*
  * Box annihilation
@@ -127,9 +35,9 @@ unsafe fn each_live_alloc(read_next_before: bool,
     //! Walks the internal list of allocations
 
     use managed;
+    use rt::local_heap;
 
-    let task: *Task = transmute(rustrt::rust_get_task());
-    let box = (*task).boxed_region.live_allocs;
+    let box = local_heap::live_allocs();
     let mut box: *mut BoxRepr = transmute(copy box);
     while box != mut_null() {
         let next_before = transmute(copy (*box).header.next);
@@ -151,7 +59,13 @@ unsafe fn each_live_alloc(read_next_before: bool,
 
 #[cfg(unix)]
 fn debug_mem() -> bool {
-    ::rt::env::get().debug_mem
+    use rt;
+    use rt::OldTaskContext;
+    // XXX: Need to port the environment struct to newsched
+    match rt::context() {
+        OldTaskContext => ::rt::env::get().debug_mem,
+        _ => false
+    }
 }
 
 #[cfg(windows)]
@@ -173,13 +87,12 @@ unsafe fn call_drop_glue(tydesc: *TyDesc, data: *i8) {
 }
 
 /// Destroys all managed memory (i.e. @ boxes) held by the current task.
-#[cfg(not(test))]
-#[lang="annihilate"]
 pub unsafe fn annihilate() {
-    use unstable::lang::local_free;
+    use rt::local_heap::local_free;
     use io::WriterUtil;
     use io;
     use libc;
+    use rt::borrowck;
     use sys;
     use managed;
 
@@ -191,7 +104,7 @@ pub unsafe fn annihilate() {
 
     // Quick hack: we need to free this list upon task exit, and this
     // is a convenient place to do it.
-    clear_task_borrow_list();
+    borrowck::clear_task_borrow_list();
 
     // Pass 1: Make all boxes immortal.
     //
@@ -213,7 +126,7 @@ pub unsafe fn annihilate() {
     // callback, as the original value may have been freed.
     for each_live_alloc(false) |box, uniq| {
         if !uniq {
-            let tydesc = (*box).header.type_desc;
+            let tydesc: *TyDesc = transmute(copy (*box).header.type_desc);
             let data = transmute(&(*box).data);
             call_drop_glue(tydesc, data);
         }
