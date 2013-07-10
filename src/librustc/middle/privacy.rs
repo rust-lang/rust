@@ -207,7 +207,7 @@ pub fn check_crate<'mm>(tcx: ty::ctxt,
             |span, id, ident| {
         let fields = ty::lookup_struct_fields(tcx, id);
         for fields.iter().advance |field| {
-            if field.ident != ident { loop; }
+            if field.ident.name != ident.name { loop; }
             if field.vis == private {
                 tcx.sess.span_err(span, fmt!("field `%s` is private",
                                              token::ident_to_str(&ident)));
