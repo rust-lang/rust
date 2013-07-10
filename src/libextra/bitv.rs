@@ -17,6 +17,7 @@ use std::ops;
 use std::uint;
 use std::vec;
 
+#[deriving(Clone)]
 struct SmallBitv {
     /// only the lowest nbits of this value are used. the rest is undefined.
     bits: uint
@@ -107,6 +108,7 @@ impl SmallBitv {
     pub fn negate(&mut self) { self.bits = !self.bits; }
 }
 
+#[deriving(Clone)]
 struct BigBitv {
     storage: ~[uint]
 }
@@ -212,11 +214,13 @@ impl BigBitv {
     }
 }
 
+#[deriving(Clone)]
 enum BitvVariant { Big(~BigBitv), Small(~SmallBitv) }
 
 enum Op {Union, Intersect, Assign, Difference}
 
 /// The bitvector type
+#[deriving(Clone)]
 pub struct Bitv {
     /// Internal representation of the bit vector (small or large)
     rep: BitvVariant,
@@ -504,24 +508,6 @@ impl Bitv {
 
 }
 
-impl Clone for Bitv {
-    /// Makes a copy of a bitvector
-    #[inline]
-    fn clone(&self) -> Bitv {
-        match self.rep {
-          Small(ref b) => {
-            Bitv{nbits: self.nbits, rep: Small(~SmallBitv{bits: b.bits})}
-          }
-          Big(ref b) => {
-            let mut st = vec::from_elem(self.nbits / uint::bits + 1, 0u);
-            let len = st.len();
-            for uint::range(0, len) |i| { st[i] = b.storage[i]; };
-            Bitv{nbits: self.nbits, rep: Big(~BigBitv{storage: st})}
-          }
-        }
-    }
-}
-
 /**
  * Transform a byte-vector into a bitv. Each byte becomes 8 bits,
  * with the most significant bits of each byte coming first. Each
@@ -604,6 +590,7 @@ impl<'self> Iterator<bool> for BitvIterator<'self> {
 /// It should also be noted that the amount of storage necessary for holding a
 /// set of objects is proportional to the maximum of the objects when viewed
 /// as a uint.
+#[deriving(Clone)]
 pub struct BitvSet {
     priv size: uint,
 
@@ -1452,6 +1439,25 @@ mod tests {
         assert!(a.insert(1000));
         assert!(a.remove(&1000));
         assert_eq!(a.capacity(), uint::bits);
+    }
+
+    #[test]
+    fn test_bitv_clone() {
+        let mut a = BitvSet::new();
+
+        assert!(a.insert(1));
+        assert!(a.insert(100));
+        assert!(a.insert(1000));
+
+        let mut b = a.clone();
+
+        assert_eq!(&a, &b);
+
+        assert!(b.remove(&1));
+        assert!(a.contains(&1));
+
+        assert!(a.remove(&1000));
+        assert!(b.contains(&1000));
     }
 
     fn rng() -> rand::IsaacRng {
