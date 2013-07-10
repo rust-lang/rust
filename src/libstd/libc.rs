@@ -186,6 +186,13 @@ pub mod types {
     // Standard types that are opaque or common, so are not per-target.
     pub mod common {
         pub mod c95 {
+            /**
+            Type used to construct void pointers for use with C.
+
+            This type is only useful as a pointer target. Do not use it as a
+            return type for FFI functions which have the `void` return type in
+            C. Use the unit type `()` or omit the return type instead.
+            */
             pub enum c_void {}
             pub enum FILE {}
             pub enum fpos_t {}
