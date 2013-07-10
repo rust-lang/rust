@@ -1380,11 +1380,16 @@ fn trans_eager_binop(bcx: block,
     let rhs = rhs_datum.to_appropriate_llval(bcx);
     let rhs_t = rhs_datum.ty;
 
-    let intype = {
+    let mut intype = {
         if ty::type_is_bot(lhs_t) { rhs_t }
         else { lhs_t }
     };
+    let tcx = bcx.tcx();
+    if ty::type_is_simd(tcx, intype) {
+        intype = ty::simd_type(tcx, intype);
+    }
     let is_float = ty::type_is_fp(intype);
+    let signed = ty::type_is_signed(intype);
 
     let rhs = base::cast_shift_expr_rhs(bcx, op, lhs, rhs);
 
@@ -1409,7 +1414,7 @@ fn trans_eager_binop(bcx: block,
             // Only zero-check integers; fp /0 is NaN
             bcx = base::fail_if_zero(bcx, binop_expr.span,
                                      op, rhs, rhs_t);
-            if ty::type_is_signed(intype) {
+            if signed {
                 SDiv(bcx, lhs, rhs)
             } else {
                 UDiv(bcx, lhs, rhs)
@@ -1423,7 +1428,7 @@ fn trans_eager_binop(bcx: block,
             // Only zero-check integers; fp %0 is NaN
             bcx = base::fail_if_zero(bcx, binop_expr.span,
                                      op, rhs, rhs_t);
-            if ty::type_is_signed(intype) {
+            if signed {
                 SRem(bcx, lhs, rhs)
             } else {
                 URem(bcx, lhs, rhs)
@@ -1435,7 +1440,7 @@ fn trans_eager_binop(bcx: block,
       ast::bitxor => Xor(bcx, lhs, rhs),
       ast::shl => Shl(bcx, lhs, rhs),
       ast::shr => {
-        if ty::type_is_signed(intype) {
+        if signed {
             AShr(bcx, lhs, rhs)
         } else { LShr(bcx, lhs, rhs) }
       }
