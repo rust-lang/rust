@@ -206,11 +206,13 @@ impl ReprVisitor {
                            inner: *TyDesc)
                            -> bool {
         let mut p = ptr;
-        let end = ptr::offset(p, len);
         let (sz, al) = unsafe { ((*inner).size, (*inner).align) };
         self.writer.write_char('[');
         let mut first = true;
-        while (p as uint) < (end as uint) {
+        let mut left = len;
+        // unit structs have 0 size, and don't loop forever.
+        let dec = if sz == 0 {1} else {sz};
+        while left > 0 {
             if first {
                 first = false;
             } else {
@@ -219,6 +221,7 @@ impl ReprVisitor {
             self.write_mut_qualifier(mtbl);
             self.visit_ptr_inner(p as *c_void, inner);
             p = align(ptr::offset(p, sz) as uint, al) as *u8;
+            left -= dec;
         }
         self.writer.write_char(']');
         true
@@ -635,4 +638,7 @@ fn test_repr() {
                "(10, ~\"hello\")");
     exact_test(&(10_u64, ~"hello"),
                "(10, ~\"hello\")");
+
+    struct Foo;
+    exact_test(&(~[Foo, Foo, Foo]), "~[{}, {}, {}]");
 }
