@@ -94,7 +94,6 @@ pub trait AstBuilder {
     fn expr_deref(&self, sp: span, e: @ast::expr) -> @ast::expr;
     fn expr_unary(&self, sp: span, op: ast::unop, e: @ast::expr) -> @ast::expr;
 
-    fn expr_copy(&self, sp: span, e: @ast::expr) -> @ast::expr;
     fn expr_managed(&self, sp: span, e: @ast::expr) -> @ast::expr;
     fn expr_addr_of(&self, sp: span, e: @ast::expr) -> @ast::expr;
     fn expr_mut_addr_of(&self, sp: span, e: @ast::expr) -> @ast::expr;
@@ -442,9 +441,6 @@ impl AstBuilder for @ExtCtxt {
         self.expr(sp, ast::expr_unary(self.next_id(), op, e))
     }
 
-    fn expr_copy(&self, sp: span, e: @ast::expr) -> @ast::expr {
-        self.expr(sp, ast::expr_copy(e))
-    }
     fn expr_managed(&self, sp: span, e: @ast::expr) -> @ast::expr {
         self.expr_unary(sp, ast::box(ast::m_imm), e)
     }

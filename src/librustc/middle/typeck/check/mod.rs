@@ -2518,10 +2518,6 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
             fcx.write_nil(id);
         }
       }
-      ast::expr_copy(a) => {
-        check_expr_with_opt_hint(fcx, a, expected);
-        fcx.write_ty(id, fcx.expr_ty(a));
-      }
       ast::expr_paren(a) => {
         check_expr_with_opt_hint(fcx, a, expected);
         fcx.write_ty(id, fcx.expr_ty(a));

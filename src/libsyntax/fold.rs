@@ -580,7 +580,6 @@ pub fn noop_fold_expr(e: &expr_, fld: @ast_fold) -> expr_ {
             )
         }
         expr_block(ref blk) => expr_block(fld.fold_block(blk)),
-        expr_copy(e) => expr_copy(fld.fold_expr(e)),
         expr_assign(el, er) => {
             expr_assign(fld.fold_expr(el), fld.fold_expr(er))
         }

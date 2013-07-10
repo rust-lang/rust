@@ -298,17 +298,6 @@ pub fn check_expr(e: @expr, (cx, v): (Context, visit::vt<Context>)) {
                 _ => { }
             }
         }
-        expr_copy(expr) => {
-            // Note: This is the only place where we must check whether the
-            // argument is copyable.  This is not because this is the only
-            // kind of expression that may copy things, but rather because all
-            // other copies will have been converted to moves by by the
-            // `moves` pass if the value is not copyable.
-            check_copy(cx,
-                       ty::expr_ty(cx.tcx, expr),
-                       expr.span,
-                       "explicit copy requires a copyable argument");
-        }
         expr_repeat(element, count_expr, _) => {
             let count = ty::eval_repeat_count(&cx.tcx, count_expr);
             if count > 1 {
