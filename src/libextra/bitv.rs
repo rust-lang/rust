@@ -392,20 +392,15 @@ impl Bitv {
       match self.rep {
         Small(ref b) => b.is_true(self.nbits),
         _ => {
-          for self.each() |i| { if !i { return false; } }
+          for self.iter().advance |i| { if !i { return false; } }
           true
         }
       }
     }
 
     #[inline]
-    pub fn each(&self, f: &fn(bool) -> bool) -> bool {
-        let mut i = 0;
-        while i < self.nbits {
-            if !f(self.get(i)) { return false; }
-            i += 1;
-        }
-        return true;
+    pub fn iter<'a>(&'a self) -> BitvIterator<'a> {
+        BitvIterator {bitv: self, next_idx: 0}
     }
 
     /// Returns true if all bits are 0
@@ -413,7 +408,7 @@ impl Bitv {
       match self.rep {
         Small(ref b) => b.is_false(self.nbits),
         Big(_) => {
-          for self.each() |i| { if i { return false; } }
+          for self.iter().advance |i| { if i { return false; } }
           true
         }
       }
@@ -477,7 +472,7 @@ impl Bitv {
      */
      pub fn to_str(&self) -> ~str {
         let mut rs = ~"";
-        for self.each() |i| {
+        for self.iter().advance |i| {
             if i {
                 rs.push_char('1');
             } else {
@@ -580,6 +575,29 @@ fn iterate_bits(base: uint, bits: uint, f: &fn(uint) -> bool) -> bool {
     return true;
 }
 
+/// An iterator for Bitv
+pub struct BitvIterator<'self> {
+    priv bitv: &'self Bitv,
+    priv next_idx: uint
+}
+
+impl<'self> Iterator<bool> for BitvIterator<'self> {
+    fn next(&mut self) -> Option<bool> {
+        if self.next_idx < self.bitv.nbits {
+            let idx = self.next_idx;
+            self.next_idx += 1;
+            Some(self.bitv.get(idx))
+        } else {
+            None
+        }
+    }
+
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        let rem = self.bitv.nbits - self.next_idx;
+        (rem, Some(rem))
+    }
+}
+
 /// An implementation of a set using a bit vector as an underlying
 /// representation for holding numerical elements.
 ///
@@ -670,13 +688,8 @@ impl BitvSet {
         self.other_op(other, |w1, w2| w1 ^ w2);
     }
 
-    pub fn each(&self, blk: &fn(v: &uint) -> bool) -> bool {
-        for self.bitv.storage.iter().enumerate().advance |(i, &w)| {
-            if !iterate_bits(i * uint::bits, w, |b| blk(&b)) {
-                return false;
-            }
-        }
-        return true;
+    pub fn iter<'a>(&'a self) -> BitvSetIterator<'a> {
+        BitvSetIterator {set: self, next_idx: 0}
     }
 }
 
@@ -857,6 +870,30 @@ impl BitvSet {
             }
         }
         return true;
+    }
+}
+
+pub struct BitvSetIterator<'self> {
+    priv set: &'self BitvSet,
+    priv next_idx: uint
+}
+
+impl<'self> Iterator<uint> for BitvSetIterator<'self> {
+    fn next(&mut self) -> Option<uint> {
+        while self.next_idx < self.set.capacity() {
+            let idx = self.next_idx;
+            self.next_idx += 1;
+
+            if self.set.contains(&idx) {
+                return Some(idx);
+            }
+        }
+
+        return None;
+    }
+
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        (0, Some(self.set.capacity() - self.next_idx))
     }
 }
 
