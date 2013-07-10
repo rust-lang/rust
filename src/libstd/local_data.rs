@@ -12,14 +12,28 @@
 
 Task local data management
 
-Allows storing boxes with arbitrary types inside, to be accessed
-anywhere within a task, keyed by a pointer to a global finaliser
-function. Useful for dynamic variables, singletons, and interfacing
-with foreign code with bad callback interfaces.
+Allows storing boxes with arbitrary types inside, to be accessed anywhere within
+a task, keyed by a pointer to a global finaliser function. Useful for dynamic
+variables, singletons, and interfacing with foreign code with bad callback
+interfaces.
 
-To use, declare a monomorphic global function at the type to store,
-and use it as the 'key' when accessing. See the 'tls' tests below for
-examples.
+To use, declare a monomorphic (no type parameters) global function at the type
+to store, and use it as the 'key' when accessing.
+
+~~~{.rust}
+use std::local_data;
+
+fn key_int(_: @int) {}
+fn key_vector(_: @~[int]) {}
+
+unsafe {
+    local_data::set(key_int, @3);
+    assert!(local_data::get(key_int) == Some(@3));
+
+    local_data::set(key_vector, @~[3]);
+    assert!(local_data::get(key_vector).unwrap()[0] == 3);
+}
+~~~
 
 Casting 'Arcane Sight' reveals an overwhelming aura of Transmutation
 magic.
@@ -46,40 +60,37 @@ use task::local_data_priv::{local_get, local_pop, local_set, Handle};
  *
  * These two cases aside, the interface is safe.
  */
-pub type LocalDataKey<'self,T> = &'self fn:Copy(v: T);
+pub type Key<'self,T> = &'self fn:Copy(v: T);
 
 /**
  * Remove a task-local data value from the table, returning the
  * reference that was originally created to insert it.
  */
-pub unsafe fn local_data_pop<T: 'static>(key: LocalDataKey<T>) -> Option<T> {
+pub unsafe fn pop<T: 'static>(key: Key<T>) -> Option<T> {
     local_pop(Handle::new(), key)
 }
 /**
  * Retrieve a task-local data value. It will also be kept alive in the
  * table until explicitly removed.
  */
-pub unsafe fn local_data_get<T: 'static>(key: LocalDataKey<@T>) -> Option<@T> {
+pub unsafe fn get<T: 'static>(key: Key<@T>) -> Option<@T> {
     local_get(Handle::new(), key, |loc| loc.map(|&x| *x))
 }
 /**
  * Store a value in task-local data. If this key already has a value,
  * that value is overwritten (and its destructor is run).
  */
-pub unsafe fn local_data_set<T: 'static>(key: LocalDataKey<@T>, data: @T) {
+pub unsafe fn set<T: 'static>(key: Key<@T>, data: @T) {
     local_set(Handle::new(), key, data)
 }
 /**
  * Modify a task-local data value. If the function returns 'None', the
  * data is removed (and its reference dropped).
  */
-pub unsafe fn local_data_modify<T: 'static>(
-    key: LocalDataKey<@T>,
-    modify_fn: &fn(Option<@T>) -> Option<@T>) {
-
-    let cur = local_data_pop(key);
-    match modify_fn(cur) {
-        Some(next) => { local_data_set(key, next); }
+pub unsafe fn modify<T: 'static>(key: Key<@T>,
+                                 f: &fn(Option<@T>) -> Option<@T>) {
+    match f(pop(key)) {
+        Some(next) => { set(key, next); }
         None => {}
     }
 }
@@ -88,19 +99,19 @@ pub unsafe fn local_data_modify<T: 'static>(
 fn test_tls_multitask() {
     unsafe {
         fn my_key(_x: @~str) { }
-        local_data_set(my_key, @~"parent data");
+        set(my_key, @~"parent data");
         do task::spawn {
             // TLS shouldn't carry over.
-            assert!(local_data_get(my_key).is_none());
-            local_data_set(my_key, @~"child data");
-            assert!(*(local_data_get(my_key).get()) ==
+            assert!(get(my_key).is_none());
+            set(my_key, @~"child data");
+            assert!(*(get(my_key).get()) ==
                     ~"child data");
             // should be cleaned up for us
         }
         // Must work multiple times
-        assert!(*(local_data_get(my_key).get()) == ~"parent data");
-        assert!(*(local_data_get(my_key).get()) == ~"parent data");
-        assert!(*(local_data_get(my_key).get()) == ~"parent data");
+        assert!(*(get(my_key).get()) == ~"parent data");
+        assert!(*(get(my_key).get()) == ~"parent data");
+        assert!(*(get(my_key).get()) == ~"parent data");
     }
 }
 
@@ -108,9 +119,9 @@ fn test_tls_multitask() {
 fn test_tls_overwrite() {
     unsafe {
         fn my_key(_x: @~str) { }
-        local_data_set(my_key, @~"first data");
-        local_data_set(my_key, @~"next data"); // Shouldn't leak.
-        assert!(*(local_data_get(my_key).get()) == ~"next data");
+        set(my_key, @~"first data");
+        set(my_key, @~"next data"); // Shouldn't leak.
+        assert!(*(get(my_key).get()) == ~"next data");
     }
 }
 
@@ -118,10 +129,10 @@ fn test_tls_overwrite() {
 fn test_tls_pop() {
     unsafe {
         fn my_key(_x: @~str) { }
-        local_data_set(my_key, @~"weasel");
-        assert!(*(local_data_pop(my_key).get()) == ~"weasel");
+        set(my_key, @~"weasel");
+        assert!(*(pop(my_key).get()) == ~"weasel");
         // Pop must remove the data from the map.
-        assert!(local_data_pop(my_key).is_none());
+        assert!(pop(my_key).is_none());
     }
 }
 
@@ -129,20 +140,20 @@ fn test_tls_pop() {
 fn test_tls_modify() {
     unsafe {
         fn my_key(_x: @~str) { }
-        local_data_modify(my_key, |data| {
+        modify(my_key, |data| {
             match data {
                 Some(@ref val) => fail!("unwelcome value: %s", *val),
                 None           => Some(@~"first data")
             }
         });
-        local_data_modify(my_key, |data| {
+        modify(my_key, |data| {
             match data {
                 Some(@~"first data") => Some(@~"next data"),
                 Some(@ref val)       => fail!("wrong value: %s", *val),
                 None                 => fail!("missing value")
             }
         });
-        assert!(*(local_data_pop(my_key).get()) == ~"next data");
+        assert!(*(pop(my_key).get()) == ~"next data");
     }
 }
 
@@ -156,7 +167,7 @@ fn test_tls_crust_automorestack_memorial_bug() {
     // a stack smaller than 1 MB.
     fn my_key(_x: @~str) { }
     do task::spawn {
-        unsafe { local_data_set(my_key, @~"hax"); }
+        unsafe { set(my_key, @~"hax"); }
     }
 }
 
@@ -167,9 +178,9 @@ fn test_tls_multiple_types() {
     fn int_key(_x: @int) { }
     do task::spawn {
         unsafe {
-            local_data_set(str_key, @~"string data");
-            local_data_set(box_key, @@());
-            local_data_set(int_key, @42);
+            set(str_key, @~"string data");
+            set(box_key, @@());
+            set(int_key, @42);
         }
     }
 }
@@ -181,12 +192,12 @@ fn test_tls_overwrite_multiple_types() {
     fn int_key(_x: @int) { }
     do task::spawn {
         unsafe {
-            local_data_set(str_key, @~"string data");
-            local_data_set(int_key, @42);
+            set(str_key, @~"string data");
+            set(int_key, @42);
             // This could cause a segfault if overwriting-destruction is done
             // with the crazy polymorphic transmute rather than the provided
             // finaliser.
-            local_data_set(int_key, @31337);
+            set(int_key, @31337);
         }
     }
 }
@@ -199,17 +210,17 @@ fn test_tls_cleanup_on_failure() {
         fn str_key(_x: @~str) { }
         fn box_key(_x: @@()) { }
         fn int_key(_x: @int) { }
-        local_data_set(str_key, @~"parent data");
-        local_data_set(box_key, @@());
+        set(str_key, @~"parent data");
+        set(box_key, @@());
         do task::spawn {
             // spawn_linked
-            local_data_set(str_key, @~"string data");
-            local_data_set(box_key, @@());
-            local_data_set(int_key, @42);
+            set(str_key, @~"string data");
+            set(box_key, @@());
+            set(int_key, @42);
             fail!();
         }
         // Not quite nondeterministic.
-        local_data_set(int_key, @31337);
+        set(int_key, @31337);
         fail!();
     }
 }
@@ -219,6 +230,6 @@ fn test_static_pointer() {
     unsafe {
         fn key(_x: @&'static int) { }
         static VALUE: int = 0;
-        local_data_set(key, @&VALUE);
+        set(key, @&VALUE);
     }
 }

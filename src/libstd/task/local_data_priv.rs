@@ -12,7 +12,7 @@
 
 use cast;
 use libc;
-use local_data::LocalDataKey;
+use local_data;
 use managed::raw::BoxRepr;
 use prelude::*;
 use ptr;
@@ -131,7 +131,7 @@ unsafe fn get_local_map(handle: Handle) -> &mut TaskLocalMap {
     }
 }
 
-unsafe fn key_to_key_value<T: 'static>(key: LocalDataKey<T>) -> *libc::c_void {
+unsafe fn key_to_key_value<T: 'static>(key: local_data::Key<T>) -> *libc::c_void {
     let pair: sys::Closure = cast::transmute(key);
     return pair.code as *libc::c_void;
 }
@@ -155,7 +155,7 @@ unsafe fn transmute_back<'a, T>(data: &'a TLSValue) -> (*BoxRepr, &'a T) {
 }
 
 pub unsafe fn local_pop<T: 'static>(handle: Handle,
-                                    key: LocalDataKey<T>) -> Option<T> {
+                                    key: local_data::Key<T>) -> Option<T> {
     // If you've never seen horrendously unsafe code written in rust before,
     // just feel free to look a bit farther...
     let map = get_local_map(handle);
@@ -203,7 +203,7 @@ pub unsafe fn local_pop<T: 'static>(handle: Handle,
 }
 
 pub unsafe fn local_get<T: 'static, U>(handle: Handle,
-                                       key: LocalDataKey<T>,
+                                       key: local_data::Key<T>,
                                        f: &fn(Option<&T>) -> U) -> U {
     // This does in theory take multiple mutable loans on the tls map, but the
     // references returned are never removed because the map is only increasing
@@ -227,7 +227,7 @@ pub unsafe fn local_get<T: 'static, U>(handle: Handle,
 
 // FIXME(#7673): This shouldn't require '@', it should use '~'
 pub unsafe fn local_set<T: 'static>(handle: Handle,
-                                    key: LocalDataKey<@T>,
+                                    key: local_data::Key<@T>,
                                     data: @T) {
     let map = get_local_map(handle);
     let keyval = key_to_key_value(key);
