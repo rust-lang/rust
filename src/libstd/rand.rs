@@ -22,7 +22,8 @@ distributions like normal and exponential.
 # Examples
 
 ~~~ {.rust}
-use core::rand::RngUtil;
+use std::rand;
+use std::rand::RngUtil;
 
 fn main() {
     let mut rng = rand::rng();
@@ -33,6 +34,8 @@ fn main() {
 ~~~
 
 ~~~ {.rust}
+use std::rand;
+
 fn main () {
     let tuple_ptr = rand::random::<~(f64, char)>();
     println(fmt!("%?", tuple_ptr))
@@ -292,10 +295,11 @@ pub trait RngUtil {
      *
      * ~~~ {.rust}
      *
-     * use core::rand::RngUtil;
+     * use std::rand;
+     * use std::rand::RngUtil;
      *
      * fn main() {
-     *     rng = rand::rng();
+     *     let mut rng = rand::rng();
      *     println(fmt!("%b",rng.gen_weighted_bool(3)));
      * }
      * ~~~
@@ -308,10 +312,11 @@ pub trait RngUtil {
      *
      * ~~~ {.rust}
      *
-     * use core::rand::RngUtil;
+     * use std::rand;
+     * use std::rand::RngUtil;
      *
      * fn main() {
-     *     rng = rand::rng();
+     *     let mut rng = rand::rng();
      *     println(rng.gen_str(8));
      * }
      * ~~~
@@ -324,10 +329,11 @@ pub trait RngUtil {
      *
      * ~~~ {.rust}
      *
-     * use core::rand::RngUtil;
+     * use std::rand;
+     * use std::rand::RngUtil;
      *
      * fn main() {
-     *     rng = rand::rng();
+     *     let mut rng = rand::rng();
      *     println(fmt!("%?",rng.gen_bytes(8)));
      * }
      * ~~~
@@ -340,10 +346,11 @@ pub trait RngUtil {
      *
      * ~~~ {.rust}
      *
-     * use core::rand::RngUtil;
+     * use std::rand;
+     * use std::rand::RngUtil;
      *
      * fn main() {
-     *     rng = rand::rng();
+     *     let mut rng = rand::rng();
      *     println(fmt!("%d",rng.choose([1,2,4,8,16,32])));
      * }
      * ~~~
@@ -359,10 +366,11 @@ pub trait RngUtil {
      *
      * ~~~ {.rust}
      *
-     * use core::rand::RngUtil;
+     * use std::rand;
+     * use std::rand::RngUtil;
      *
      * fn main() {
-     *     rng = rand::rng();
+     *     let mut rng = rand::rng();
      *     let x = [rand::Weighted {weight: 4, item: 'a'},
      *              rand::Weighted {weight: 2, item: 'b'},
      *              rand::Weighted {weight: 2, item: 'c'}];
@@ -379,10 +387,11 @@ pub trait RngUtil {
      *
      * ~~~ {.rust}
      *
-     * use core::rand::RngUtil;
+     * use std::rand;
+     * use std::rand::RngUtil;
      *
      * fn main() {
-     *     rng = rand::rng();
+     *     let mut rng = rand::rng();
      *     let x = [rand::Weighted {weight: 4, item: 'a'},
      *              rand::Weighted {weight: 2, item: 'b'},
      *              rand::Weighted {weight: 2, item: 'c'}];
@@ -400,10 +409,11 @@ pub trait RngUtil {
      *
      * ~~~ {.rust}
      *
-     * use core::rand::RngUtil;
+     * use std::rand;
+     * use std::rand::RngUtil;
      *
      * fn main() {
-     *     rng = rand::rng();
+     *     let mut rng = rand::rng();
      *     let x = [rand::Weighted {weight: 4, item: 'a'},
      *              rand::Weighted {weight: 2, item: 'b'},
      *              rand::Weighted {weight: 2, item: 'c'}];
@@ -419,10 +429,11 @@ pub trait RngUtil {
      *
      * ~~~ {.rust}
      *
-     * use core::rand::RngUtil;
+     * use std::rand;
+     * use std::rand::RngUtil;
      *
      * fn main() {
-     *     rng = rand::rng();
+     *     let mut rng = rand::rng();
      *     println(fmt!("%?",rng.shuffle([1,2,3])));
      * }
      * ~~~
@@ -435,10 +446,11 @@ pub trait RngUtil {
      *
      * ~~~ {.rust}
      *
-     * use core::rand::RngUtil;
+     * use std::rand;
+     * use std::rand::RngUtil;
      *
      * fn main() {
-     *     rng = rand::rng();
+     *     let mut rng = rand::rng();
      *     let mut y = [1,2,3];
      *     rng.shuffle_mut(y);
      *     println(fmt!("%?",y));
