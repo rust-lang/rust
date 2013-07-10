@@ -67,6 +67,7 @@ pub mod flatpipes;
 
 // Collections
 
+pub mod container;
 pub mod bitv;
 pub mod deque;
 pub mod fun_treemap;
