@@ -631,17 +631,6 @@ fn trans_rvalue_dps_unadjusted(bcx: block, expr: @ast::expr,
         ast::expr_do_body(blk) => {
             return trans_into(bcx, blk, dest);
         }
-        ast::expr_copy(a) => {
-            // If we just called `trans_into(bcx, a, dest)`, then this
-            // might *move* the value into `dest` if the value is
-            // non-copyable. So first get a datum and then do an
-            // explicit copy.
-            let datumblk = trans_to_datum(bcx, a);
-            return match dest {
-                Ignore => datumblk.bcx,
-                SaveIn(llval) => datumblk.copy_to(INIT, llval)
-            };
-        }
         ast::expr_call(f, ref args, _) => {
             return callee::trans_call(
                 bcx, expr, f, callee::ArgExprs(*args), expr.id, dest);

@@ -90,7 +90,6 @@ pub fn classify(e: &expr,
                 }
               }
 
-              ast::expr_copy(inner) |
               ast::expr_unary(_, _, inner) |
               ast::expr_paren(inner) => {
                 classify(inner, tcx)

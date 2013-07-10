@@ -532,7 +532,6 @@ pub fn visit_expr<E:Clone>(ex: @expr, (e, v): (E, vt<E>)) {
             (v.visit_expr)(b, (e.clone(), v));
             (v.visit_expr)(a, (e.clone(), v));
         }
-        expr_copy(a) => (v.visit_expr)(a, (e.clone(), v)),
         expr_assign_op(_, _, a, b) => {
             (v.visit_expr)(b, (e.clone(), v));
             (v.visit_expr)(a, (e.clone(), v));

@@ -455,7 +455,6 @@ pub enum expr_ {
     expr_do_body(@expr),
     expr_block(blk),
 
-    expr_copy(@expr),
     expr_assign(@expr, @expr),
     expr_assign_op(node_id, binop, @expr, @expr),
     expr_field(@expr, ident, ~[Ty]),

@@ -454,10 +454,6 @@ impl VisitContext {
                 self.use_expr(discr, Read, visitor);
             }
 
-            expr_copy(base) => {
-                self.use_expr(base, Read, visitor);
-            }
-
             expr_paren(base) => {
                 // Note: base is not considered a *component* here, so
                 // use `expr_mode` not `comp_mode`.

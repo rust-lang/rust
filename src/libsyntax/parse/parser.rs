@@ -22,7 +22,7 @@ use ast::{crate, crate_cfg, decl, decl_item};
 use ast::{decl_local, default_blk, deref, div, enum_def, explicit_self};
 use ast::{expr, expr_, expr_addr_of, expr_match, expr_again};
 use ast::{expr_assign, expr_assign_op, expr_binary, expr_block};
-use ast::{expr_break, expr_call, expr_cast, expr_copy, expr_do_body};
+use ast::{expr_break, expr_call, expr_cast, expr_do_body};
 use ast::{expr_field, expr_fn_block, expr_if, expr_index};
 use ast::{expr_lit, expr_log, expr_loop, expr_loop_body, expr_mac};
 use ast::{expr_method_call, expr_paren, expr_path, expr_repeat};
@@ -84,7 +84,7 @@ use parse::obsolete::{ObsoletePurity, ObsoleteStaticMethod};
 use parse::obsolete::{ObsoleteConstItem, ObsoleteFixedLengthVectorType};
 use parse::obsolete::{ObsoleteNamedExternModule, ObsoleteMultipleLocalDecl};
 use parse::obsolete::{ObsoleteMutWithMultipleBindings};
-use parse::obsolete::{ObsoletePatternCopyKeyword, ParserObsoleteMethods};
+use parse::obsolete::{ParserObsoleteMethods};
 use parse::token::{can_begin_expr, get_ident_interner, ident_to_str, is_ident};
 use parse::token::{is_ident_or_path};
 use parse::token::{is_plain_ident, INTERPOLATED, keywords, special_idents};
@@ -1704,11 +1704,6 @@ impl Parser {
                 ex = expr_break(None);
             }
             hi = self.span.hi;
-        } else if self.eat_keyword(keywords::Copy) {
-            // COPY expression
-            let e = self.parse_expr();
-            ex = expr_copy(e);
-            hi = e.span.hi;
         } else if *self.token == token::MOD_SEP ||
                 is_ident(&*self.token) && !self.is_keyword(keywords::True) &&
                 !self.is_keyword(keywords::False) {
@@ -2799,10 +2794,6 @@ impl Parser {
             // parse ref pat
             let mutbl = self.parse_mutability();
             pat = self.parse_pat_ident(bind_by_ref(mutbl));
-        } else if self.eat_keyword(keywords::Copy) {
-            // parse copy pat
-            self.obsolete(*self.span, ObsoletePatternCopyKeyword);
-            pat = self.parse_pat_ident(bind_infer);
         } else {
             let can_be_enum_or_struct = do self.look_ahead(1) |t| {
                 match *t {
