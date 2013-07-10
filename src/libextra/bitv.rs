@@ -215,7 +215,7 @@ impl BigBitv {
 }
 
 #[deriving(Clone)]
-enum BitvVariant { Big(~BigBitv), Small(~SmallBitv) }
+enum BitvVariant { Big(BigBitv), Small(SmallBitv) }
 
 enum Op {Union, Intersect, Assign, Difference}
 
@@ -241,20 +241,20 @@ impl Bitv {
         match self.rep {
           Small(ref mut s) => match other.rep {
             Small(ref s1) => match op {
-              Union      => s.union(*s1,      self.nbits),
-              Intersect  => s.intersect(*s1,  self.nbits),
-              Assign     => s.become(*s1,     self.nbits),
-              Difference => s.difference(*s1, self.nbits)
+              Union      => s.union(s1,      self.nbits),
+              Intersect  => s.intersect(s1,  self.nbits),
+              Assign     => s.become(s1,     self.nbits),
+              Difference => s.difference(s1, self.nbits)
             },
             Big(_) => die()
           },
           Big(ref mut s) => match other.rep {
             Small(_) => die(),
             Big(ref s1) => match op {
-              Union      => s.union(*s1,      self.nbits),
-              Intersect  => s.intersect(*s1,  self.nbits),
-              Assign     => s.become(*s1,     self.nbits),
-              Difference => s.difference(*s1, self.nbits)
+              Union      => s.union(s1,      self.nbits),
+              Intersect  => s.intersect(s1,  self.nbits),
+              Assign     => s.become(s1,     self.nbits),
+              Difference => s.difference(s1, self.nbits)
             }
           }
         }
@@ -265,14 +265,14 @@ impl Bitv {
 impl Bitv {
     pub fn new(nbits: uint, init: bool) -> Bitv {
         let rep = if nbits <= uint::bits {
-            Small(~SmallBitv::new(if init {!0} else {0}))
+            Small(SmallBitv::new(if init {!0} else {0}))
         }
         else {
             let nelems = nbits/uint::bits +
                          if nbits % uint::bits == 0 {0} else {1};
             let elem = if init {!0u} else {0u};
             let s = vec::from_elem(nelems, elem);
-            Big(~BigBitv::new(s))
+            Big(BigBitv::new(s))
         };
         Bitv {rep: rep, nbits: nbits}
     }
@@ -341,11 +341,11 @@ impl Bitv {
       if self.nbits != v1.nbits { return false; }
       match self.rep {
         Small(ref b) => match v1.rep {
-          Small(ref b1) => b.equals(*b1, self.nbits),
+          Small(ref b1) => b.equals(b1, self.nbits),
           _ => false
         },
         Big(ref s) => match v1.rep {
-          Big(ref s1) => s.equals(*s1, self.nbits),
+          Big(ref s1) => s.equals(s1, self.nbits),
           Small(_) => return false
         }
       }
@@ -614,8 +614,8 @@ impl BitvSet {
         }
         let Bitv{rep, _} = bitv;
         match rep {
-            Big(~b) => BitvSet{ size: size, bitv: b },
-            Small(~SmallBitv{bits}) =>
+            Big(b) => BitvSet{ size: size, bitv: b },
+            Small(SmallBitv{bits}) =>
                 BitvSet{ size: size, bitv: BigBitv{ storage: ~[bits] } },
         }
     }
@@ -628,7 +628,7 @@ impl BitvSet {
     pub fn unwrap(self) -> Bitv {
         let cap = self.capacity();
         let BitvSet{bitv, _} = self;
-        return Bitv{ nbits:cap, rep: Big(~bitv) };
+        return Bitv{ nbits:cap, rep: Big(bitv) };
     }
 
     #[inline]
