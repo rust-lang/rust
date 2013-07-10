@@ -272,7 +272,7 @@ impl<T> List<T> {
     ///
     /// O(N)
     #[inline]
-    pub fn insert_before(&mut self, elt: T, f: &fn(&T, &T) -> bool) {
+    pub fn insert_when(&mut self, elt: T, f: &fn(&T, &T) -> bool) {
         {
             let mut it = self.mut_iter();
             loop {
@@ -341,7 +341,7 @@ impl<T> List<T> {
 /// O(N)
 impl<T: cmp::TotalOrd> List<T> {
     fn insert_ordered(&mut self, elt: T) {
-        self.insert_before(elt, |a, b| a.cmp(b) != cmp::Less);
+        self.insert_when(elt, |a, b| a.cmp(b) != cmp::Less);
     }
 }
 
@@ -363,7 +363,7 @@ impl<'self, A> Iterator<&'self A> for ForwardIterator<'self, A> {
     }
 }
 
-// MutForwardIterator is different because it implements ListInsertCursor,
+// MutForwardIterator is different because it implements ListInsertion,
 // and can modify the list during traversal, used in insert_when and merge.
 impl<'self, A> Iterator<&'self mut A> for MutForwardIterator<'self, A> {
     #[inline]
@@ -433,19 +433,22 @@ impl<'self, A> Iterator<&'self mut A> for MutReverseIterator<'self, A> {
     }
 }
 
-// XXX: Should this be `pub`?
-trait ListInsertCursor<A> {
+/// Allow mutating the List while iterating
+pub trait ListInsertion<A> {
     /// Insert `elt` just previous to the most recently yielded element
     fn insert_before(&mut self, elt: A);
+
+    /// Provide a reference to the next element, without changing the iterator
+    fn peek_next<'a>(&'a mut self) -> Option<&'a mut A>;
 }
 
-impl<'self, A> ListInsertCursor<A> for MutForwardIterator<'self, A> {
+impl<'self, A> ListInsertion<A> for MutForwardIterator<'self, A> {
     fn insert_before(&mut self, elt: A) {
         match self.curs.resolve() {
-            None => self.list.push_front(elt),
+            None => { self.list.push_front(elt); self.next(); }
             Some(node) => {
                 let prev_node = match node.prev.resolve() {
-                    None => return self.list.push_front(elt),  // at head
+                    None => return self.list.push_front(elt),
                     Some(prev) => prev,
                 };
                 let mut ins_node = ~Node{value: elt, next: None, prev: Rawlink::none()};
@@ -453,6 +456,16 @@ impl<'self, A> ListInsertCursor<A> for MutForwardIterator<'self, A> {
                 ins_node.next = link_with_prev(node_own, Rawlink::some(ins_node));
                 prev_node.next = link_with_prev(ins_node, Rawlink::some(prev_node));
                 self.list.length += 1;
+            }
+        }
+    }
+
+    fn peek_next<'a>(&'a mut self) -> Option<&'a mut A> {
+        match self.curs.resolve() {
+            None => self.list.peek_front_mut(),
+            Some(curs) => match curs.next {
+                None => None,
+                Some(ref mut node) => Some(&mut node.value),
             }
         }
     }
@@ -695,20 +708,30 @@ mod tests {
     }
 
     #[test]
-    fn test_list_cursor() {
-        let mut m = generate_test();
+    fn test_insert_prev() {
+        let mut m = list_from(&[0,2,4,6,8]);
         let len = m.len();
         {
             let mut it = m.mut_iter();
+            it.insert_before(-2);
             loop {
                 match it.next() {
                     None => break,
-                    Some(elt) => it.insert_before(*elt * 2),
+                    Some(elt) => {
+                        it.insert_before(*elt + 1);
+                        match it.peek_next() {
+                            Some(x) => assert_eq!(*x, *elt + 2),
+                            None => assert_eq!(8, *elt),
+                        }
+                    }
                 }
             }
+            it.insert_before(0);
+            it.insert_before(1);
         }
-        assert_eq!(m.len(), len * 2);
         check_links(&m);
+        assert_eq!(m.len(), 3 + len * 2);
+        assert_eq!(m.consume_iter().collect::<~[int]>(), ~[-2,1,0,3,2,5,4,7,6,9,0,1,8]);
     }
 
     #[test]
