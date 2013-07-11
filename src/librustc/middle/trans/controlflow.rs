@@ -248,7 +248,6 @@ pub fn trans_break_cont(bcx: block,
     let mut unwind = bcx;
     let mut cur_scope = unwind.scope;
     let mut target = unwind;
-    let mut quit = false;
     loop {
         cur_scope = match cur_scope {
             Some(@scope_info {

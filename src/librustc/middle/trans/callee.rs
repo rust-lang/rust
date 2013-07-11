@@ -20,7 +20,6 @@ use std::vec;
 
 use back::abi;
 use driver::session;
-use lib;
 use lib::llvm::ValueRef;
 use lib::llvm::llvm;
 use metadata::csearch;
