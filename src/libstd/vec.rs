@@ -26,7 +26,9 @@ use option::{None, Option, Some};
 use ptr::to_unsafe_ptr;
 use ptr;
 use ptr::RawPtr;
-use rt::global_heap::{malloc_raw, realloc_raw};
+#[cfg(not(stage0))]
+use rt::global_heap::malloc_raw;
+use rt::global_heap::realloc_raw;
 use sys;
 use sys::size_of;
 use uint;

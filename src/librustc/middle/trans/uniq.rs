@@ -19,7 +19,6 @@ use middle::trans::glue;
 use middle::ty;
 use middle::trans::machine::llsize_of;
 use middle::trans::type_of;
-use middle::trans::type_of::*;
 
 pub fn make_free_glue(bcx: block, vptrptr: ValueRef, box_ty: ty::t)
     -> block {

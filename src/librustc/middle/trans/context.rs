@@ -29,7 +29,6 @@ use std::hash;
 use std::hashmap::{HashMap, HashSet};
 use std::str;
 use std::local_data;
-use extra::time;
 use syntax::ast;
 
 use middle::trans::common::{mono_id,ExternMap,tydesc_info,BuilderRef_res,Stats};
