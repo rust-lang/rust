@@ -170,7 +170,7 @@ pub fn spawntask_immediately(f: ~fn()) {
 
     let sched = Local::take::<Scheduler>();
     do sched.switch_running_tasks_and_then(task) |sched, task| {
-        sched.enqueue_task(task);
+        sched.enqueue_blocked_task(task);
     }
 }
 
@@ -214,7 +214,7 @@ pub fn spawntask_random(f: ~fn()) {
 
     if run_now {
         do sched.switch_running_tasks_and_then(task) |sched, task| {
-            sched.enqueue_task(task);
+            sched.enqueue_blocked_task(task);
         }
     } else {
         sched.enqueue_task(task);
@@ -284,7 +284,7 @@ pub fn spawntask_try(f: ~fn()) -> Result<(), ()> {
 
     let sched = Local::take::<Scheduler>();
     do sched.switch_running_tasks_and_then(new_task) |sched, old_task| {
-        sched.enqueue_task(old_task);
+        sched.enqueue_blocked_task(old_task);
     }
 
     rtdebug!("enqueued the new task, now waiting on exit_status");

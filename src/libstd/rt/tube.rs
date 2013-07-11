@@ -18,13 +18,13 @@ use clone::Clone;
 use super::rc::RC;
 use rt::sched::Scheduler;
 use rt::{context, TaskContext, SchedulerContext};
+use rt::kill::BlockedTask;
 use rt::local::Local;
-use rt::task::Task;
 use vec::OwnedVector;
 use container::Container;
 
 struct TubeState<T> {
-    blocked_task: Option<~Task>,
+    blocked_task: Option<BlockedTask>,
     buf: ~[T]
 }
 
@@ -55,7 +55,7 @@ impl<T> Tube<T> {
                 rtdebug!("waking blocked tube");
                 let task = (*state).blocked_task.take_unwrap();
                 let sched = Local::take::<Scheduler>();
-                sched.resume_task_immediately(task);
+                sched.resume_blocked_task_immediately(task);
             }
         }
     }
@@ -111,7 +111,7 @@ mod test {
             do sched.deschedule_running_task_and_then |sched, task| {
                 let mut tube_clone = tube_clone_cell.take();
                 tube_clone.send(1);
-                sched.enqueue_task(task);
+                sched.enqueue_blocked_task(task);
             }
 
             assert!(tube.recv() == 1);
@@ -133,7 +133,7 @@ mod test {
                     // sending will wake it up.
                     tube_clone.send(1);
                 }
-                sched.enqueue_task(task);
+                sched.enqueue_blocked_task(task);
             }
 
             assert!(tube.recv() == 1);
@@ -168,7 +168,7 @@ mod test {
                     }
                 }
 
-                sched.enqueue_task(task);
+                sched.enqueue_blocked_task(task);
             }
 
             for int::range(0, MAX) |i| {

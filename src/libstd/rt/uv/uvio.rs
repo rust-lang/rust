@@ -227,7 +227,7 @@ impl IoFactory for UvIoFactory {
 
                     // Context switch
                     let scheduler = Local::take::<Scheduler>();
-                    scheduler.resume_task_immediately(task_cell.take());
+                    scheduler.resume_blocked_task_immediately(task_cell.take());
                 } else {
                     rtdebug!("status is some");
                     let task_cell = Cell::new(task_cell.take());
@@ -235,7 +235,7 @@ impl IoFactory for UvIoFactory {
                         let res = Err(uv_error_to_io_error(status.get()));
                         unsafe { (*result_cell_ptr).put_back(res); }
                         let scheduler = Local::take::<Scheduler>();
-                        scheduler.resume_task_immediately(task_cell.take());
+                        scheduler.resume_blocked_task_immediately(task_cell.take());
                     }
                 };
             }
@@ -255,7 +255,7 @@ impl IoFactory for UvIoFactory {
                     let task_cell = Cell::new(task);
                     do watcher.as_stream().close {
                         let scheduler = Local::take::<Scheduler>();
-                        scheduler.resume_task_immediately(task_cell.take());
+                        scheduler.resume_blocked_task_immediately(task_cell.take());
                     }
                 }
                 Err(uv_error_to_io_error(uverr))
@@ -273,7 +273,7 @@ impl IoFactory for UvIoFactory {
                     let task_cell = Cell::new(task);
                     do watcher.close {
                         let scheduler = Local::take::<Scheduler>();
-                        scheduler.resume_task_immediately(task_cell.take());
+                        scheduler.resume_blocked_task_immediately(task_cell.take());
                     }
                 }
                 Err(uv_error_to_io_error(uverr))
@@ -309,7 +309,7 @@ impl Drop for UvTcpListener {
             let task_cell = Cell::new(task);
             do watcher.as_stream().close {
                 let scheduler = Local::take::<Scheduler>();
-                scheduler.resume_task_immediately(task_cell.take());
+                scheduler.resume_blocked_task_immediately(task_cell.take());
             }
         }
     }
@@ -372,7 +372,7 @@ impl Drop for UvTcpStream {
             let task_cell = Cell::new(task);
             do self.close {
                 let scheduler = Local::take::<Scheduler>();
-                scheduler.resume_task_immediately(task_cell.take());
+                scheduler.resume_blocked_task_immediately(task_cell.take());
             }
         }
     }
@@ -419,7 +419,7 @@ impl RtioTcpStream for UvTcpStream {
                 unsafe { (*result_cell_ptr).put_back(result); }
 
                 let scheduler = Local::take::<Scheduler>();
-                scheduler.resume_task_immediately(task_cell.take());
+                scheduler.resume_blocked_task_immediately(task_cell.take());
             }
         }
 
@@ -447,7 +447,7 @@ impl RtioTcpStream for UvTcpStream {
                 unsafe { (*result_cell_ptr).put_back(result); }
 
                 let scheduler = Local::take::<Scheduler>();
-                scheduler.resume_task_immediately(task_cell.take());
+                scheduler.resume_blocked_task_immediately(task_cell.take());
             }
         }
 
@@ -473,7 +473,7 @@ impl Drop for UvUdpSocket {
             let task_cell = Cell::new(task);
             do self.close {
                 let scheduler = Local::take::<Scheduler>();
-                scheduler.resume_task_immediately(task_cell.take());
+                scheduler.resume_blocked_task_immediately(task_cell.take());
             }
         }
     }
@@ -513,7 +513,7 @@ impl RtioUdpSocket for UvUdpSocket {
                 unsafe { (*result_cell_ptr).put_back(result); }
 
                 let scheduler = Local::take::<Scheduler>();
-                scheduler.resume_task_immediately(task_cell.take());
+                scheduler.resume_blocked_task_immediately(task_cell.take());
             }
         }
 
@@ -540,7 +540,7 @@ impl RtioUdpSocket for UvUdpSocket {
                 unsafe { (*result_cell_ptr).put_back(result); }
 
                 let scheduler = Local::take::<Scheduler>();
-                scheduler.resume_task_immediately(task_cell.take());
+                scheduler.resume_blocked_task_immediately(task_cell.take());
             }
         }
 
@@ -678,7 +678,7 @@ fn test_read_and_block() {
                 // not ready for it
                 do scheduler.deschedule_running_task_and_then |sched, task| {
                     let task = Cell::new(task);
-                    sched.enqueue_task(task.take());
+                    sched.enqueue_blocked_task(task.take());
                 }
             }
 
