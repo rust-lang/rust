@@ -246,6 +246,7 @@ check-stage$(1)-T-$(2)-H-$(3)-exec:     				\
         check-stage$(1)-T-$(2)-H-$(3)-crates-exec                      \
 	check-stage$(1)-T-$(2)-H-$(3)-bench-exec			\
 	check-stage$(1)-T-$(2)-H-$(3)-debuginfo-exec \
+	check-stage$(1)-T-$(2)-H-$(3)-codegen-exec \
 	check-stage$(1)-T-$(2)-H-$(3)-doc-exec \
 	check-stage$(1)-T-$(2)-H-$(3)-pretty-exec
 
@@ -430,6 +431,8 @@ CFAIL_RS := $(wildcard $(S)src/test/compile-fail/*.rs)
 BENCH_RS := $(wildcard $(S)src/test/bench/*.rs)
 PRETTY_RS := $(wildcard $(S)src/test/pretty/*.rs)
 DEBUGINFO_RS := $(wildcard $(S)src/test/debug-info/*.rs)
+CODEGEN_RS := $(wildcard $(S)src/test/codegen/*.rs)
+CODEGEN_CC := $(wildcard $(S)src/test/codegen/*.cc)
 
 # perf tests are the same as bench tests only they run under
 # a performance monitor.
@@ -443,6 +446,7 @@ BENCH_TESTS := $(BENCH_RS)
 PERF_TESTS := $(PERF_RS)
 PRETTY_TESTS := $(PRETTY_RS)
 DEBUGINFO_TESTS := $(DEBUGINFO_RS)
+CODEGEN_TESTS := $(CODEGEN_RS) $(CODEGEN_CC)
 
 CTEST_SRC_BASE_rpass = run-pass
 CTEST_BUILD_BASE_rpass = run-pass
@@ -479,8 +483,17 @@ CTEST_BUILD_BASE_debuginfo = debug-info
 CTEST_MODE_debuginfo = debug-info
 CTEST_RUNTOOL_debuginfo = $(CTEST_RUNTOOL)
 
+CTEST_SRC_BASE_codegen = codegen
+CTEST_BUILD_BASE_codegen = codegen
+CTEST_MODE_codegen = codegen
+CTEST_RUNTOOL_codegen = $(CTEST_RUNTOOL)
+
 ifeq ($(CFG_GDB),)
 CTEST_DISABLE_debuginfo = "no gdb found"
+endif
+
+ifeq ($(CFG_CLANG),)
+CTEST_DISABLE_codegen = "no clang found"
 endif
 
 ifeq ($(CFG_OSTYPE),apple-darwin)
@@ -507,6 +520,8 @@ CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3) :=						\
 		--compile-lib-path $$(HLIB$(1)_H_$(3))				\
         --run-lib-path $$(TLIB$(1)_T_$(2)_H_$(3))			\
         --rustc-path $$(HBIN$(1)_H_$(3))/rustc$$(X_$(3))			\
+        --clang-path $(if $(CFG_CLANG),$(CFG_CLANG),clang) \
+        --llvm-bin-path $(CFG_LLVM_INST_DIR_$(CFG_BUILD_TRIPLE))/bin \
         --aux-base $$(S)src/test/auxiliary/                 \
         --stage-id stage$(1)-$(2)							\
         --target $(2)                                       \
@@ -522,6 +537,7 @@ CTEST_DEPS_cfail_$(1)-T-$(2)-H-$(3) = $$(CFAIL_TESTS)
 CTEST_DEPS_bench_$(1)-T-$(2)-H-$(3) = $$(BENCH_TESTS)
 CTEST_DEPS_perf_$(1)-T-$(2)-H-$(3) = $$(PERF_TESTS)
 CTEST_DEPS_debuginfo_$(1)-T-$(2)-H-$(3) = $$(DEBUGINFO_TESTS)
+CTEST_DEPS_codegen_$(1)-T-$(2)-H-$(3) = $$(CODEGEN_TESTS)
 
 endef
 
@@ -565,7 +581,7 @@ endif
 
 endef
 
-CTEST_NAMES = rpass rpass-full rfail cfail bench perf debuginfo
+CTEST_NAMES = rpass rpass-full rfail cfail bench perf debuginfo codegen
 
 $(foreach host,$(CFG_HOST_TRIPLES), \
  $(eval $(foreach target,$(CFG_TARGET_TRIPLES), \
@@ -674,6 +690,7 @@ TEST_GROUPS = \
 	bench \
 	perf \
 	debuginfo \
+	codegen \
 	doc \
 	$(foreach docname,$(DOC_TEST_NAMES),doc-$(docname)) \
 	pretty \
