@@ -186,22 +186,22 @@ fn diagnosticcolor(lvl: level) -> term::color::Color {
     }
 }
 
-fn print_maybe_colored(msg: &str, color: term::color::Color) {
+fn print_maybe_styled(msg: &str, color: term::attr::Attr) {
     let stderr = io::stderr();
 
-    let t = term::Terminal::new(stderr);
+    if stderr.get_type() == io::Screen {
+        let t = term::Terminal::new(stderr);
 
-    match t {
-        Ok(term) => {
-            if stderr.get_type() == io::Screen {
-                term.fg(color);
+        match t {
+            Ok(term) => {
+                term.attr(color);
                 stderr.write_str(msg);
                 term.reset();
-            } else {
-                stderr.write_str(msg);
-            }
-        },
-        _ => stderr.write_str(msg)
+            },
+            _ => stderr.write_str(msg)
+        }
+    } else {
+        stderr.write_str(msg);
     }
 }
 
@@ -212,8 +212,9 @@ fn print_diagnostic(topic: &str, lvl: level, msg: &str) {
         stderr.write_str(fmt!("%s ", topic));
     }
 
-    print_maybe_colored(fmt!("%s: ", diagnosticstr(lvl)), diagnosticcolor(lvl));
-    print_maybe_colored(fmt!("%s\n", msg), term::color::BRIGHT_WHITE);
+    print_maybe_styled(fmt!("%s: ", diagnosticstr(lvl)),
+                            term::attr::ForegroundColor(diagnosticcolor(lvl)));
+    print_maybe_styled(fmt!("%s\n", msg), term::attr::Bold);
 }
 
 pub fn collect(messages: @mut ~[~str])
@@ -312,7 +313,7 @@ fn highlight_lines(cm: @codemap::CodeMap,
                 s.push_char('~')
             }
         }
-        print_maybe_colored(s + "\n", diagnosticcolor(lvl));
+        print_maybe_styled(s + "\n", term::attr::ForegroundColor(diagnosticcolor(lvl)));
     }
 }
 
