@@ -19,7 +19,8 @@ An implementation of the Graph500 Breadth First Search problem in Rust.
 extern mod extra;
 use extra::arc;
 use extra::time;
-use extra::deque::Deque;
+use extra::ringbuf::RingBuf;
+use extra::container::Deque;
 use extra::par;
 use std::hashmap::HashSet;
 use std::num::abs;
@@ -133,18 +134,18 @@ fn bfs(graph: graph, key: node_id) -> bfs_result {
     let mut marks : ~[node_id]
         = vec::from_elem(graph.len(), -1i64);
 
-    let mut q = Deque::new();
+    let mut q = RingBuf::new();
 
-    q.add_back(key);
+    q.push_back(key);
     marks[key] = key;
 
     while !q.is_empty() {
-        let t = q.pop_front();
+        let t = q.pop_front().unwrap();
 
         do graph[t].iter().advance |k| {
             if marks[*k] == -1i64 {
                 marks[*k] = t;
-                q.add_back(*k);
+                q.push_back(*k);
             }
             true
         };
