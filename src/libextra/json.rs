@@ -16,11 +16,10 @@
 
 //! json serialization
 
-
-use std::char;
+use std::iterator;
 use std::float;
 use std::hashmap::HashMap;
-use std::io::{WriterUtil, ReaderUtil};
+use std::io::WriterUtil;
 use std::io;
 use std::str;
 use std::to_str;
@@ -481,24 +480,17 @@ pub fn to_pretty_str(json: &Json) -> ~str {
     io::with_str_writer(|wr| to_pretty_writer(wr, json))
 }
 
-static BUF_SIZE : uint = 64000;
-
-#[allow(missing_doc)]
-pub struct Parser {
-    priv rdr: @io::Reader,
-    priv buf: ~[char],
-    priv buf_idx: uint,
+pub struct Parser<T> {
+    priv rdr: ~T,
     priv ch: char,
     priv line: uint,
     priv col: uint,
 }
 
-/// Decode a json value from an io::reader
-pub fn Parser(rdr: @io::Reader) -> Parser {
+/// Decode a json value from an Iterator<char>
+pub fn Parser<T : iterator::Iterator<char>>(rdr: ~T) -> Parser<T> {
     let mut p = Parser {
         rdr: rdr,
-        buf: rdr.read_chars(BUF_SIZE),
-        buf_idx: 0,
         ch: 0 as char,
         line: 1,
         col: 0,
@@ -507,7 +499,7 @@ pub fn Parser(rdr: @io::Reader) -> Parser {
     p
 }
 
-impl Parser {
+impl<T: iterator::Iterator<char>> Parser<T> {
     pub fn parse(&mut self) -> Result<Json, Error> {
         match self.parse_value() {
           Ok(value) => {
@@ -525,30 +517,20 @@ impl Parser {
     }
 }
 
-impl Parser {
+impl<T : iterator::Iterator<char>> Parser<T> {
     fn eof(&self) -> bool { self.ch == -1 as char }
 
     fn bump(&mut self) {
-        if self.eof() {
-            return;
+        match self.rdr.next() {
+            Some(ch) => self.ch = ch,
+            None() => self.ch = -1 as char,
         }
-
-        self.col += 1u;
-
-        if self.buf_idx >= self.buf.len() {
-            self.buf = self.rdr.read_chars(BUF_SIZE);
-            if self.buf.len() == 0 {
-                self.ch = -1 as char;
-                return;
-            }
-            self.buf_idx = 0;
-        }
-        self.ch = self.buf[self.buf_idx];
-        self.buf_idx += 1;
 
         if self.ch == '\n' {
             self.line += 1u;
             self.col = 1u;
+        } else {
+            self.col += 1u;
         }
     }
 
@@ -583,7 +565,10 @@ impl Parser {
     }
 
     fn parse_whitespace(&mut self) {
-        while char::is_whitespace(self.ch) { self.bump(); }
+        while self.ch == ' ' ||
+              self.ch == '\n' ||
+              self.ch == '\t' ||
+              self.ch == '\r' { self.bump(); }
     }
 
     fn parse_ident(&mut self, ident: &str, value: Json) -> Result<Json, Error> {
@@ -727,8 +712,11 @@ impl Parser {
         let mut escape = false;
         let mut res = ~"";
 
-        while !self.eof() {
+        loop {
             self.bump();
+            if self.eof() {
+                return self.error(~"EOF while parsing string");
+            }
 
             if (escape) {
                 match self.ch {
@@ -783,8 +771,6 @@ impl Parser {
                 res.push_char(self.ch);
             }
         }
-
-        self.error(~"EOF while parsing string")
     }
 
     fn parse_list(&mut self) -> Result<Json, Error> {
@@ -870,15 +856,15 @@ impl Parser {
 
 /// Decodes a json value from an @io::Reader
 pub fn from_reader(rdr: @io::Reader) -> Result<Json, Error> {
-    let mut parser = Parser(rdr);
+    let s = str::from_bytes(rdr.read_whole_stream());
+    let mut parser = Parser(~s.iter());
     parser.parse()
 }
 
 /// Decodes a json value from a string
 pub fn from_str(s: &str) -> Result<Json, Error> {
-    do io::with_str_reader(s) |rdr| {
-        from_reader(rdr)
-    }
+    let mut parser = Parser(~s.iter());
+    parser.parse()
 }
 
 /// A structure to decode JSON to values in rust.
@@ -1744,7 +1730,7 @@ mod tests {
         assert_eq!(v, 0.4e-01f);
     }
 
-    // FIXME: #7611: xfailed for now
+    #[test]
     fn test_read_str() {
         assert_eq!(from_str("\""),
             Err(Error {line: 1u, col: 2u, msg: @~"EOF while parsing string"
