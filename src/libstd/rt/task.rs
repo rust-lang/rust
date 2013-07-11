@@ -172,10 +172,10 @@ mod test {
             unsafe {
                 fn key(_x: @~str) { }
                 local_data::set(key, @~"data");
-                assert!(*local_data::get(key).get() == ~"data");
+                assert!(*local_data::get(key, |k| k.map(|&k| *k)).get() == ~"data");
                 fn key2(_x: @~str) { }
                 local_data::set(key2, @~"data");
-                assert!(*local_data::get(key2).get() == ~"data");
+                assert!(*local_data::get(key2, |k| k.map(|&k| *k)).get() == ~"data");
             }
         }
     }
