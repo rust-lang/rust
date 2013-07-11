@@ -113,7 +113,6 @@ impl ToStr for AsciiArt {
 
 // This is similar to an interface in other languages: it defines a protocol which
 // developers can implement for arbitrary concrete types.
-#[allow(default_methods)]
 trait Canvas {
     fn add_point(&mut self, shape: Point);
     fn add_rect(&mut self, shape: Rect);

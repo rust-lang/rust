@@ -1,4 +1,3 @@
-#[allow(default_methods)];
 
 pub struct Something { x: int }
 

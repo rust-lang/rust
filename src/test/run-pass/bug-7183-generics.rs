@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[allow(default_methods)]
 trait Speak {
     fn say(&self, s:&str) -> ~str;
     fn hi(&self) -> ~str { hello(self) }
