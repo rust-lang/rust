@@ -13,7 +13,7 @@
 // Language items are items that represent concepts intrinsic to the language
 // itself. Examples are:
 //
-// * Traits that specify "kinds"; e.g. "Freeze", "Copy", "Send".
+// * Traits that specify "kinds"; e.g. "Freeze", "Send".
 //
 // * Traits that represent operators; e.g. "Add", "Sub", "Index".
 //
@@ -33,64 +33,63 @@ use std::hashmap::HashMap;
 
 pub enum LangItem {
     FreezeTraitLangItem,               // 0
-    CopyTraitLangItem,                 // 1
-    SendTraitLangItem,                 // 2
-    SizedTraitLangItem,                // 3
+    SendTraitLangItem,                 // 1
+    SizedTraitLangItem,                // 2
 
-    DropTraitLangItem,                 // 4
+    DropTraitLangItem,                 // 3
 
-    AddTraitLangItem,                  // 5
-    SubTraitLangItem,                  // 6
-    MulTraitLangItem,                  // 7
-    DivTraitLangItem,                  // 8
-    RemTraitLangItem,                  // 9
-    NegTraitLangItem,                  // 10
-    NotTraitLangItem,                  // 11
+    AddTraitLangItem,                  // 4
+    SubTraitLangItem,                  // 5
+    MulTraitLangItem,                  // 6
+    DivTraitLangItem,                  // 7
+    RemTraitLangItem,                  // 8
+    NegTraitLangItem,                  // 9
+    NotTraitLangItem,                  // 10
     BitXorTraitLangItem,               // 11
-    BitAndTraitLangItem,               // 13
-    BitOrTraitLangItem,                // 14
-    ShlTraitLangItem,                  // 15
-    ShrTraitLangItem,                  // 16
-    IndexTraitLangItem,                // 17
+    BitAndTraitLangItem,               // 12
+    BitOrTraitLangItem,                // 13
+    ShlTraitLangItem,                  // 14
+    ShrTraitLangItem,                  // 15
+    IndexTraitLangItem,                // 16
 
-    EqTraitLangItem,                   // 18
-    OrdTraitLangItem,                  // 19
+    EqTraitLangItem,                   // 17
+    OrdTraitLangItem,                  // 18
 
-    StrEqFnLangItem,                   // 20
-    UniqStrEqFnLangItem,               // 21
-    AnnihilateFnLangItem,              // 22
-    LogTypeFnLangItem,                 // 23
-    FailFnLangItem,                    // 24
-    FailBoundsCheckFnLangItem,         // 25
-    ExchangeMallocFnLangItem,          // 26
-    VectorExchangeMallocFnLangItem,    // 27
-    ClosureExchangeMallocFnLangItem,   // 28
-    ExchangeFreeFnLangItem,            // 29
-    MallocFnLangItem,                  // 30
-    FreeFnLangItem,                    // 31
-    BorrowAsImmFnLangItem,             // 32
-    BorrowAsMutFnLangItem,             // 33
-    ReturnToMutFnLangItem,             // 34
-    CheckNotBorrowedFnLangItem,        // 35
-    StrDupUniqFnLangItem,              // 36
-    RecordBorrowFnLangItem,            // 37
-    UnrecordBorrowFnLangItem,          // 38
+    StrEqFnLangItem,                   // 19
+    UniqStrEqFnLangItem,               // 20
+    AnnihilateFnLangItem,              // 21
+    LogTypeFnLangItem,                 // 22
+    FailFnLangItem,                    // 23
+    FailBoundsCheckFnLangItem,         // 24
+    ExchangeMallocFnLangItem,          // 25
+    VectorExchangeMallocFnLangItem,    // 26
+    ClosureExchangeMallocFnLangItem,   // 27
+    ExchangeFreeFnLangItem,            // 28
+    MallocFnLangItem,                  // 29
+    FreeFnLangItem,                    // 30
+    BorrowAsImmFnLangItem,             // 31
+    BorrowAsMutFnLangItem,             // 32
+    ReturnToMutFnLangItem,             // 33
+    CheckNotBorrowedFnLangItem,        // 34
+    StrDupUniqFnLangItem,              // 35
+    RecordBorrowFnLangItem,            // 36
+    UnrecordBorrowFnLangItem,          // 37
 
-    StartFnLangItem,                   // 39
+    StartFnLangItem,                   // 38
 
-    TyDescStructLangItem,              // 40
-    TyVisitorTraitLangItem,            // 41
-    OpaqueStructLangItem,              // 42
+    TyDescStructLangItem,              // 39
+    TyVisitorTraitLangItem,            // 40
+    OpaqueStructLangItem,              // 41
 }
 
 pub struct LanguageItems {
-    items: [Option<def_id>, ..43]
+    items: [Option<def_id>, ..42]
 }
 
 impl LanguageItems {
     pub fn new() -> LanguageItems {
         LanguageItems {
-            items: [ None, ..43 ]
+            items: [ None, ..42 ]
         }
     }
 
@@ -101,53 +100,52 @@ impl LanguageItems {
     pub fn item_name(index: uint) -> &'static str {
         match index {
             0  => "freeze",
-            1  => "copy",
-            2  => "send",
-            3  => "sized",
+            1  => "send",
+            2  => "sized",
 
-            4  => "drop",
+            3  => "drop",
 
-            5  => "add",
-            6  => "sub",
-            7  => "mul",
-            8  => "div",
-            9  => "rem",
-            10 => "neg",
-            11 => "not",
-            12 => "bitxor",
-            13 => "bitand",
-            14 => "bitor",
-            15 => "shl",
-            16 => "shr",
-            17 => "index",
-            18 => "eq",
-            19 => "ord",
+            4  => "add",
+            5  => "sub",
+            6  => "mul",
+            7  => "div",
+            8  => "rem",
+            9  => "neg",
+            10 => "not",
+            11 => "bitxor",
+            12 => "bitand",
+            13 => "bitor",
+            14 => "shl",
+            15 => "shr",
+            16 => "index",
+            17 => "eq",
+            18 => "ord",
 
-            20 => "str_eq",
-            21 => "uniq_str_eq",
-            22 => "annihilate",
-            23 => "log_type",
-            24 => "fail_",
-            25 => "fail_bounds_check",
-            26 => "exchange_malloc",
-            27 => "vector_exchange_malloc",
-            28 => "closure_exchange_malloc",
-            29 => "exchange_free",
-            30 => "malloc",
-            31 => "free",
-            32 => "borrow_as_imm",
-            33 => "borrow_as_mut",
-            34 => "return_to_mut",
-            35 => "check_not_borrowed",
-            36 => "strdup_uniq",
-            37 => "record_borrow",
-            38 => "unrecord_borrow",
+            19 => "str_eq",
+            20 => "uniq_str_eq",
+            21 => "annihilate",
+            22 => "log_type",
+            23 => "fail_",
+            24 => "fail_bounds_check",
+            25 => "exchange_malloc",
+            26 => "vector_exchange_malloc",
+            27 => "closure_exchange_malloc",
+            28 => "exchange_free",
+            29 => "malloc",
+            30 => "free",
+            31 => "borrow_as_imm",
+            32 => "borrow_as_mut",
+            33 => "return_to_mut",
+            34 => "check_not_borrowed",
+            35 => "strdup_uniq",
+            36 => "record_borrow",
+            37 => "unrecord_borrow",
 
-            39 => "start",
+            38 => "start",
 
-            40 => "ty_desc",
-            41 => "ty_visitor",
-            42 => "opaque",
+            39 => "ty_desc",
+            40 => "ty_visitor",
+            41 => "opaque",
 
             _ => "???"
         }
@@ -157,9 +155,6 @@ impl LanguageItems {
 
     pub fn freeze_trait(&self) -> def_id {
         self.items[FreezeTraitLangItem as uint].get()
-    }
-    pub fn copy_trait(&self) -> def_id {
-        self.items[CopyTraitLangItem as uint].get()
     }
     pub fn send_trait(&self) -> def_id {
         self.items[SendTraitLangItem as uint].get()
@@ -305,7 +300,6 @@ impl<'self> LanguageItemCollector<'self> {
         let mut item_refs = HashMap::new();
 
         item_refs.insert(@"freeze", FreezeTraitLangItem as uint);
-        item_refs.insert(@"copy", CopyTraitLangItem as uint);
         item_refs.insert(@"send", SendTraitLangItem as uint);
         item_refs.insert(@"sized", SizedTraitLangItem as uint);
 

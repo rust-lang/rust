@@ -584,45 +584,9 @@ impl CoherenceChecker {
                                                 b: &'a
                                                 UniversalQuantificationResult)
                                                 -> bool {
-        match infer::can_mk_subty(self.inference_context,
-                                  a.monotype, b.monotype) {
-            Ok(_) => {
-                // Check to ensure that each parameter binding respected its
-                // kind bounds.
-                let xs = [a, b];
-                for xs.iter().advance |result| {
-                    for result.type_variables.iter()
-                        .zip(result.type_param_defs.iter())
-                        .advance |(ty_var, type_param_def)|
-                    {
-                        if type_param_def.bounds.builtin_bounds.contains_elem(
-                            ty::BoundCopy)
-                        {
-                            match resolve_type(self.inference_context,
-                                               *ty_var,
-                                               resolve_nested_tvar) {
-                                Ok(resolved_ty) => {
-                                    if !ty::type_is_copyable(
-                                        self.inference_context.tcx,
-                                        resolved_ty)
-                                    {
-                                        return false;
-                                    }
-                                }
-                                Err(*) => {
-                                    // Conservatively assume it might unify.
-                                }
-                            }
-                        }
-                    }
-                }
-                true
-            }
-
-            Err(_) => {
-                false
-            }
-        }
+        infer::can_mk_subty(self.inference_context,
+                            a.monotype,
+                            b.monotype).is_ok()
     }
 
     pub fn get_self_type_for_implementation(&self, implementation: @Impl)

@@ -353,7 +353,10 @@ pub fn mk_output_path(what: OutputType, where: Target,
     // the executable blat-0.5 to live under blat/
     let dir = match where {
         // If we're installing, it just goes under <workspace>...
-        Install => (*workspace).clone(), // bad copy, but I just couldn't make the borrow checker happy
+        Install => {
+            (*workspace).clone()
+            // bad copy, but I just couldn't make the borrow checker happy
+        }
         // and if we're just building, it goes in a package-specific subdir
         Build => workspace.push_rel(&*pkg_id.local_path)
     };
