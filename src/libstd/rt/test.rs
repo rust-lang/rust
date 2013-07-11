@@ -293,7 +293,7 @@ pub fn spawntask_try(f: ~fn()) -> Result<(), ()> {
     if exit_status { Ok(()) } else { Err(()) }
 }
 
-// Spawn a new task in a new scheduler and return a thread handle.
+/// Spawn a new task in a new scheduler and return a thread handle.
 pub fn spawntask_thread(f: ~fn()) -> Thread {
     use rt::sched::*;
 
@@ -315,6 +315,16 @@ pub fn spawntask_thread(f: ~fn()) -> Thread {
         sched.run();
     };
     return thread;
+}
+
+/// Get a ~Task for testing purposes other than actually scheduling it.
+pub fn with_test_task(blk: ~fn(~Task) -> ~Task) {
+    do run_in_bare_thread {
+        let mut sched = ~new_test_uv_sched();
+        let task = blk(~Task::new_root(&mut sched.stack_pool, ||{}));
+        sched.enqueue_task(task);
+        sched.run();
+    }
 }
 
 
