@@ -9,33 +9,39 @@
 // except according to those terms.
 
 //! A double-ended queue implemented as a circular buffer
+//!
+//! RingBuf implements the trait Deque. It should be imported with `use
+//! extra::container::Deque`.
 
 use std::num;
+use std::util;
 use std::uint;
 use std::vec;
 use std::iterator::FromIterator;
 
+use container::Deque;
+
 static INITIAL_CAPACITY: uint = 8u; // 2^3
 static MINIMUM_CAPACITY: uint = 2u;
 
-#[allow(missing_doc)]
+/// RingBuf is a circular buffer that implements Deque.
 #[deriving(Clone)]
-pub struct Deque<T> {
+pub struct RingBuf<T> {
     priv nelts: uint,
     priv lo: uint,
     priv elts: ~[Option<T>]
 }
 
-impl<T> Container for Deque<T> {
-    /// Return the number of elements in the deque
+impl<T> Container for RingBuf<T> {
+    /// Return the number of elements in the RingBuf
     fn len(&self) -> uint { self.nelts }
 
-    /// Return true if the deque contains no elements
+    /// Return true if the RingBufcontains no elements
     fn is_empty(&self) -> bool { self.len() == 0 }
 }
 
-impl<T> Mutable for Deque<T> {
-    /// Clear the deque, removing all values.
+impl<T> Mutable for RingBuf<T> {
+    /// Clear the RingBuf, removing all values.
     fn clear(&mut self) {
         for self.elts.mut_iter().advance |x| { *x = None }
         self.nelts = 0;
@@ -43,68 +49,50 @@ impl<T> Mutable for Deque<T> {
     }
 }
 
-impl<T> Deque<T> {
-    /// Create an empty Deque
-    pub fn new() -> Deque<T> {
-        Deque::with_capacity(INITIAL_CAPACITY)
+impl<T> Deque<T> for RingBuf<T> {
+    /// Return a reference to the first element in the RingBuf
+    fn front<'a>(&'a self) -> Option<&'a T> {
+        if self.nelts > 0 { Some(self.get(0)) } else { None }
     }
 
-    /// Create an empty Deque with space for at least `n` elements.
-    pub fn with_capacity(n: uint) -> Deque<T> {
-        Deque{nelts: 0, lo: 0,
-              elts: vec::from_fn(num::max(MINIMUM_CAPACITY, n), |_| None)}
+    /// Return a mutable reference to the first element in the RingBuf
+    fn front_mut<'a>(&'a mut self) -> Option<&'a mut T> {
+        if self.nelts > 0 { Some(self.get_mut(0)) } else { None }
     }
 
-    /// Return a reference to the first element in the deque
-    ///
-    /// Fails if the deque is empty
-    pub fn peek_front<'a>(&'a self) -> &'a T { get(self.elts, self.raw_index(0)) }
+    /// Return a reference to the last element in the RingBuf
+    fn back<'a>(&'a self) -> Option<&'a T> {
+        if self.nelts > 0 { Some(self.get(self.nelts - 1)) } else { None }
+    }
 
-    /// Return a reference to the last element in the deque
-    ///
-    /// Fails if the deque is empty
-    pub fn peek_back<'a>(&'a self) -> &'a T {
-        if self.nelts > 0 {
-            get(self.elts, self.raw_index(self.nelts - 1))
-        } else {
-            fail!("peek_back: empty deque");
+    /// Return a mutable reference to the last element in the RingBuf
+    fn back_mut<'a>(&'a mut self) -> Option<&'a mut T> {
+        if self.nelts > 0 { Some(self.get_mut(self.nelts - 1)) } else { None }
+    }
+
+    /// Remove and return the first element in the RingBuf, or None if it is empty
+    fn pop_front(&mut self) -> Option<T> {
+        let result = util::replace(&mut self.elts[self.lo], None);
+        if result.is_some() {
+            self.lo = (self.lo + 1u) % self.elts.len();
+            self.nelts -= 1u;
         }
-    }
-
-    /// Retrieve an element in the deque by index
-    ///
-    /// Fails if there is no element with the given index
-    pub fn get<'a>(&'a self, i: int) -> &'a T {
-        let idx = (self.lo + (i as uint)) % self.elts.len();
-        get(self.elts, idx)
-    }
-
-    /// Remove and return the first element in the deque
-    ///
-    /// Fails if the deque is empty
-    pub fn pop_front(&mut self) -> T {
-        let result = self.elts[self.lo].swap_unwrap();
-        self.lo = (self.lo + 1u) % self.elts.len();
-        self.nelts -= 1u;
         result
     }
 
-    /// Return index in underlying vec for a given logical element index
-    fn raw_index(&self, idx: uint) -> uint {
-        raw_index(self.lo, self.elts.len(), idx)
+    /// Remove and return the last element in the RingBuf, or None if it is empty
+    fn pop_back(&mut self) -> Option<T> {
+        if self.nelts > 0 {
+            self.nelts -= 1;
+            let hi = self.raw_index(self.nelts);
+            util::replace(&mut self.elts[hi], None)
+        } else {
+            None
+        }
     }
 
-    /// Remove and return the last element in the deque
-    ///
-    /// Fails if the deque is empty
-    pub fn pop_back(&mut self) -> T {
-        self.nelts -= 1;
-        let hi = self.raw_index(self.nelts);
-        self.elts[hi].swap_unwrap()
-    }
-
-    /// Prepend an element to the deque
-    pub fn add_front(&mut self, t: T) {
+    /// Prepend an element to the RingBuf
+    fn push_front(&mut self, t: T) {
         if self.nelts == self.elts.len() {
             grow(self.nelts, &mut self.lo, &mut self.elts);
         }
@@ -115,8 +103,8 @@ impl<T> Deque<T> {
         self.nelts += 1u;
     }
 
-    /// Append an element to the deque
-    pub fn add_back(&mut self, t: T) {
+    /// Append an element to the RingBuf
+    fn push_back(&mut self, t: T) {
         if self.nelts == self.elts.len() {
             grow(self.nelts, &mut self.lo, &mut self.elts);
         }
@@ -124,8 +112,48 @@ impl<T> Deque<T> {
         self.elts[hi] = Some(t);
         self.nelts += 1u;
     }
+}
 
-    /// Reserve capacity for exactly `n` elements in the given deque,
+impl<T> RingBuf<T> {
+    /// Create an empty RingBuf
+    pub fn new() -> RingBuf<T> {
+        RingBuf::with_capacity(INITIAL_CAPACITY)
+    }
+
+    /// Create an empty RingBuf with space for at least `n` elements.
+    pub fn with_capacity(n: uint) -> RingBuf<T> {
+        RingBuf{nelts: 0, lo: 0,
+              elts: vec::from_fn(num::max(MINIMUM_CAPACITY, n), |_| None)}
+    }
+
+    /// Retrieve an element in the RingBuf by index
+    ///
+    /// Fails if there is no element with the given index
+    pub fn get<'a>(&'a self, i: uint) -> &'a T {
+        let idx = self.raw_index(i);
+        match self.elts[idx] {
+            None => fail!(),
+            Some(ref v) => v
+        }
+    }
+
+    /// Retrieve an element in the RingBuf by index
+    ///
+    /// Fails if there is no element with the given index
+    pub fn get_mut<'a>(&'a mut self, i: uint) -> &'a mut T {
+        let idx = self.raw_index(i);
+        match self.elts[idx] {
+            None => fail!(),
+            Some(ref mut v) => v
+        }
+    }
+
+    /// Return index in underlying vec for a given logical element index
+    fn raw_index(&self, idx: uint) -> uint {
+        raw_index(self.lo, self.elts.len(), idx)
+    }
+
+    /// Reserve capacity for exactly `n` elements in the given RingBuf,
     /// doing nothing if `self`'s capacity is already equal to or greater
     /// than the requested capacity
     ///
@@ -136,7 +164,7 @@ impl<T> Deque<T> {
         self.elts.reserve(n);
     }
 
-    /// Reserve capacity for at least `n` elements in the given deque,
+    /// Reserve capacity for at least `n` elements in the given RingBuf,
     /// over-allocating in case the caller needs to reserve additional
     /// space.
     ///
@@ -151,24 +179,24 @@ impl<T> Deque<T> {
     }
 
     /// Front-to-back iterator.
-    pub fn iter<'a>(&'a self) -> DequeIterator<'a, T> {
-        DequeIterator{index: 0, nelts: self.nelts, elts: self.elts, lo: self.lo}
+    pub fn iter<'a>(&'a self) -> RingBufIterator<'a, T> {
+        RingBufIterator{index: 0, nelts: self.nelts, elts: self.elts, lo: self.lo}
     }
 
     /// Front-to-back iterator which returns mutable values.
-    pub fn mut_iter<'a>(&'a mut self) -> DequeMutIterator<'a, T> {
-        DequeMutIterator{index: 0, nelts: self.nelts, elts: self.elts, lo: self.lo}
+    pub fn mut_iter<'a>(&'a mut self) -> RingBufMutIterator<'a, T> {
+        RingBufMutIterator{index: 0, nelts: self.nelts, elts: self.elts, lo: self.lo}
     }
 
     /// Back-to-front iterator.
-    pub fn rev_iter<'a>(&'a self) -> DequeRevIterator<'a, T> {
-        DequeRevIterator{index: self.nelts-1, nelts: self.nelts, elts: self.elts,
+    pub fn rev_iter<'a>(&'a self) -> RingBufRevIterator<'a, T> {
+        RingBufRevIterator{index: self.nelts-1, nelts: self.nelts, elts: self.elts,
                          lo: self.lo}
     }
 
     /// Back-to-front iterator which returns mutable values.
-    pub fn mut_rev_iter<'a>(&'a mut self) -> DequeMutRevIterator<'a, T> {
-        DequeMutRevIterator{index: self.nelts-1, nelts: self.nelts, elts: self.elts,
+    pub fn mut_rev_iter<'a>(&'a mut self) -> RingBufMutRevIterator<'a, T> {
+        RingBufMutRevIterator{index: self.nelts-1, nelts: self.nelts, elts: self.elts,
                             lo: self.lo}
     }
 }
@@ -190,41 +218,41 @@ macro_rules! iterator {
     }
 }
 
-/// Deque iterator
-pub struct DequeIterator<'self, T> {
+/// RingBuf iterator
+pub struct RingBufIterator<'self, T> {
     priv lo: uint,
     priv nelts: uint,
     priv index: uint,
     priv elts: &'self [Option<T>],
 }
-iterator!{impl DequeIterator -> &'self T, get_ref, 1}
+iterator!{impl RingBufIterator -> &'self T, get_ref, 1}
 
-/// Deque reverse iterator
-pub struct DequeRevIterator<'self, T> {
+/// RingBuf reverse iterator
+pub struct RingBufRevIterator<'self, T> {
     priv lo: uint,
     priv nelts: uint,
     priv index: uint,
     priv elts: &'self [Option<T>],
 }
-iterator!{impl DequeRevIterator -> &'self T, get_ref, -1}
+iterator!{impl RingBufRevIterator -> &'self T, get_ref, -1}
 
-/// Deque mutable iterator
-pub struct DequeMutIterator<'self, T> {
+/// RingBuf mutable iterator
+pub struct RingBufMutIterator<'self, T> {
     priv lo: uint,
     priv nelts: uint,
     priv index: uint,
     priv elts: &'self mut [Option<T>],
 }
-iterator!{impl DequeMutIterator -> &'self mut T, get_mut_ref, 1}
+iterator!{impl RingBufMutIterator -> &'self mut T, get_mut_ref, 1}
 
-/// Deque mutable reverse iterator
-pub struct DequeMutRevIterator<'self, T> {
+/// RingBuf mutable reverse iterator
+pub struct RingBufMutRevIterator<'self, T> {
     priv lo: uint,
     priv nelts: uint,
     priv index: uint,
     priv elts: &'self mut [Option<T>],
 }
-iterator!{impl DequeMutRevIterator -> &'self mut T, get_mut_ref, -1}
+iterator!{impl RingBufMutRevIterator -> &'self mut T, get_mut_ref, -1}
 
 /// Grow is only called on full elts, so nelts is also len(elts), unlike
 /// elsewhere.
@@ -261,10 +289,6 @@ fn grow<T>(nelts: uint, loptr: &mut uint, elts: &mut ~[Option<T>]) {
     }
 }
 
-fn get<'r, T>(elts: &'r [Option<T>], i: uint) -> &'r T {
-    match elts[i] { Some(ref t) => t, _ => fail!() }
-}
-
 /// Return index in underlying vec for a given logical element index
 fn raw_index(lo: uint, len: uint, index: uint) -> uint {
     if lo >= len - index {
@@ -274,21 +298,21 @@ fn raw_index(lo: uint, len: uint, index: uint) -> uint {
     }
 }
 
-impl<A: Eq> Eq for Deque<A> {
-    fn eq(&self, other: &Deque<A>) -> bool {
+impl<A: Eq> Eq for RingBuf<A> {
+    fn eq(&self, other: &RingBuf<A>) -> bool {
         self.nelts == other.nelts &&
             self.iter().zip(other.iter()).all(|(a, b)| a.eq(b))
     }
-    fn ne(&self, other: &Deque<A>) -> bool {
+    fn ne(&self, other: &RingBuf<A>) -> bool {
         !self.eq(other)
     }
 }
 
-impl<A, T: Iterator<A>> FromIterator<A, T> for Deque<A> {
-    fn from_iterator(iterator: &mut T) -> Deque<A> {
-        let mut deq = Deque::new();
+impl<A, T: Iterator<A>> FromIterator<A, T> for RingBuf<A> {
+    fn from_iterator(iterator: &mut T) -> RingBuf<A> {
+        let mut deq = RingBuf::new();
         for iterator.advance |elt| {
-            deq.add_back(elt);
+            deq.push_back(elt);
         }
         deq
     }
@@ -304,38 +328,38 @@ mod tests {
 
     #[test]
     fn test_simple() {
-        let mut d = Deque::new();
+        let mut d = RingBuf::new();
         assert_eq!(d.len(), 0u);
-        d.add_front(17);
-        d.add_front(42);
-        d.add_back(137);
+        d.push_front(17);
+        d.push_front(42);
+        d.push_back(137);
         assert_eq!(d.len(), 3u);
-        d.add_back(137);
+        d.push_back(137);
         assert_eq!(d.len(), 4u);
-        debug!(d.peek_front());
-        assert_eq!(*d.peek_front(), 42);
-        debug!(d.peek_back());
-        assert_eq!(*d.peek_back(), 137);
-        let mut i: int = d.pop_front();
+        debug!(d.front());
+        assert_eq!(*d.front().unwrap(), 42);
+        debug!(d.back());
+        assert_eq!(*d.back().unwrap(), 137);
+        let mut i = d.pop_front();
         debug!(i);
-        assert_eq!(i, 42);
+        assert_eq!(i, Some(42));
         i = d.pop_back();
         debug!(i);
-        assert_eq!(i, 137);
+        assert_eq!(i, Some(137));
         i = d.pop_back();
         debug!(i);
-        assert_eq!(i, 137);
+        assert_eq!(i, Some(137));
         i = d.pop_back();
         debug!(i);
-        assert_eq!(i, 17);
+        assert_eq!(i, Some(17));
         assert_eq!(d.len(), 0u);
-        d.add_back(3);
+        d.push_back(3);
         assert_eq!(d.len(), 1u);
-        d.add_front(2);
+        d.push_front(2);
         assert_eq!(d.len(), 2u);
-        d.add_back(4);
+        d.push_back(4);
         assert_eq!(d.len(), 3u);
-        d.add_front(1);
+        d.push_front(1);
         assert_eq!(d.len(), 4u);
         debug!(d.get(0));
         debug!(d.get(1));
@@ -354,28 +378,28 @@ mod tests {
         let c: @int = @64;
         let d: @int = @175;
 
-        let mut deq = Deque::new();
+        let mut deq = RingBuf::new();
         assert_eq!(deq.len(), 0);
-        deq.add_front(a);
-        deq.add_front(b);
-        deq.add_back(c);
+        deq.push_front(a);
+        deq.push_front(b);
+        deq.push_back(c);
         assert_eq!(deq.len(), 3);
-        deq.add_back(d);
+        deq.push_back(d);
         assert_eq!(deq.len(), 4);
-        assert_eq!(*deq.peek_front(), b);
-        assert_eq!(*deq.peek_back(), d);
-        assert_eq!(deq.pop_front(), b);
-        assert_eq!(deq.pop_back(), d);
-        assert_eq!(deq.pop_back(), c);
-        assert_eq!(deq.pop_back(), a);
+        assert_eq!(deq.front(), Some(&b));
+        assert_eq!(deq.back(), Some(&d));
+        assert_eq!(deq.pop_front(), Some(b));
+        assert_eq!(deq.pop_back(), Some(d));
+        assert_eq!(deq.pop_back(), Some(c));
+        assert_eq!(deq.pop_back(), Some(a));
         assert_eq!(deq.len(), 0);
-        deq.add_back(c);
+        deq.push_back(c);
         assert_eq!(deq.len(), 1);
-        deq.add_front(b);
+        deq.push_front(b);
         assert_eq!(deq.len(), 2);
-        deq.add_back(d);
+        deq.push_back(d);
         assert_eq!(deq.len(), 3);
-        deq.add_front(a);
+        deq.push_front(a);
         assert_eq!(deq.len(), 4);
         assert_eq!(*deq.get(0), a);
         assert_eq!(*deq.get(1), b);
@@ -385,28 +409,28 @@ mod tests {
 
     #[cfg(test)]
     fn test_parameterized<T:Copy + Eq>(a: T, b: T, c: T, d: T) {
-        let mut deq = Deque::new();
+        let mut deq = RingBuf::new();
         assert_eq!(deq.len(), 0);
-        deq.add_front(copy a);
-        deq.add_front(copy b);
-        deq.add_back(copy c);
+        deq.push_front(copy a);
+        deq.push_front(copy b);
+        deq.push_back(copy c);
         assert_eq!(deq.len(), 3);
-        deq.add_back(copy d);
+        deq.push_back(copy d);
         assert_eq!(deq.len(), 4);
-        assert_eq!(copy *deq.peek_front(), copy b);
-        assert_eq!(copy *deq.peek_back(), copy d);
-        assert_eq!(deq.pop_front(), copy b);
-        assert_eq!(deq.pop_back(), copy d);
-        assert_eq!(deq.pop_back(), copy c);
-        assert_eq!(deq.pop_back(), copy a);
+        assert_eq!(deq.front(), Some(&b));
+        assert_eq!(deq.back(), Some(&d));
+        assert_eq!(deq.pop_front(), Some(copy b));
+        assert_eq!(deq.pop_back(), Some(copy d));
+        assert_eq!(deq.pop_back(), Some(copy c));
+        assert_eq!(deq.pop_back(), Some(copy a));
         assert_eq!(deq.len(), 0);
-        deq.add_back(copy c);
+        deq.push_back(copy c);
         assert_eq!(deq.len(), 1);
-        deq.add_front(copy b);
+        deq.push_front(copy b);
         assert_eq!(deq.len(), 2);
-        deq.add_back(copy d);
+        deq.push_back(copy d);
         assert_eq!(deq.len(), 3);
-        deq.add_front(copy a);
+        deq.push_front(copy a);
         assert_eq!(deq.len(), 4);
         assert_eq!(copy *deq.get(0), copy a);
         assert_eq!(copy *deq.get(1), copy b);
@@ -415,23 +439,23 @@ mod tests {
     }
 
     #[test]
-    fn test_add_front_grow() {
-        let mut deq = Deque::new();
-        for int::range(0, 66) |i| {
-            deq.add_front(i);
+    fn test_push_front_grow() {
+        let mut deq = RingBuf::new();
+        for uint::range(0, 66) |i| {
+            deq.push_front(i);
         }
         assert_eq!(deq.len(), 66);
 
-        for int::range(0, 66) |i| {
+        for uint::range(0, 66) |i| {
             assert_eq!(*deq.get(i), 65 - i);
         }
 
-        let mut deq = Deque::new();
-        for int::range(0, 66) |i| {
-            deq.add_back(i);
+        let mut deq = RingBuf::new();
+        for uint::range(0, 66) |i| {
+            deq.push_back(i);
         }
 
-        for int::range(0, 66) |i| {
+        for uint::range(0, 66) |i| {
             assert_eq!(*deq.get(i), i);
         }
     }
@@ -439,32 +463,32 @@ mod tests {
     #[bench]
     fn bench_new(b: &mut test::BenchHarness) {
         do b.iter {
-            let _ = Deque::new::<u64>();
+            let _ = RingBuf::new::<u64>();
         }
     }
 
     #[bench]
-    fn bench_add_back(b: &mut test::BenchHarness) {
-        let mut deq = Deque::new();
+    fn bench_push_back(b: &mut test::BenchHarness) {
+        let mut deq = RingBuf::new();
         do b.iter {
-            deq.add_back(0);
+            deq.push_back(0);
         }
     }
 
     #[bench]
-    fn bench_add_front(b: &mut test::BenchHarness) {
-        let mut deq = Deque::new();
+    fn bench_push_front(b: &mut test::BenchHarness) {
+        let mut deq = RingBuf::new();
         do b.iter {
-            deq.add_front(0);
+            deq.push_front(0);
         }
     }
 
     #[bench]
     fn bench_grow(b: &mut test::BenchHarness) {
-        let mut deq = Deque::new();
+        let mut deq = RingBuf::new();
         do b.iter {
             for 65.times {
-                deq.add_front(1);
+                deq.push_front(1);
             }
         }
     }
@@ -518,77 +542,77 @@ mod tests {
 
     #[test]
     fn test_with_capacity() {
-        let mut d = Deque::with_capacity(0);
-        d.add_back(1);
+        let mut d = RingBuf::with_capacity(0);
+        d.push_back(1);
         assert_eq!(d.len(), 1);
-        let mut d = Deque::with_capacity(50);
-        d.add_back(1);
+        let mut d = RingBuf::with_capacity(50);
+        d.push_back(1);
         assert_eq!(d.len(), 1);
     }
 
     #[test]
     fn test_reserve() {
-        let mut d = Deque::new();
-        d.add_back(0u64);
+        let mut d = RingBuf::new();
+        d.push_back(0u64);
         d.reserve(50);
         assert_eq!(d.elts.capacity(), 50);
-        let mut d = Deque::new();
-        d.add_back(0u32);
+        let mut d = RingBuf::new();
+        d.push_back(0u32);
         d.reserve(50);
         assert_eq!(d.elts.capacity(), 50);
     }
 
     #[test]
     fn test_reserve_at_least() {
-        let mut d = Deque::new();
-        d.add_back(0u64);
+        let mut d = RingBuf::new();
+        d.push_back(0u64);
         d.reserve_at_least(50);
         assert_eq!(d.elts.capacity(), 64);
-        let mut d = Deque::new();
-        d.add_back(0u32);
+        let mut d = RingBuf::new();
+        d.push_back(0u32);
         d.reserve_at_least(50);
         assert_eq!(d.elts.capacity(), 64);
     }
 
     #[test]
     fn test_iter() {
-        let mut d = Deque::new();
+        let mut d = RingBuf::new();
         assert_eq!(d.iter().next(), None);
 
         for int::range(0,5) |i| {
-            d.add_back(i);
+            d.push_back(i);
         }
         assert_eq!(d.iter().collect::<~[&int]>(), ~[&0,&1,&2,&3,&4]);
 
         for int::range(6,9) |i| {
-            d.add_front(i);
+            d.push_front(i);
         }
         assert_eq!(d.iter().collect::<~[&int]>(), ~[&8,&7,&6,&0,&1,&2,&3,&4]);
     }
 
     #[test]
     fn test_rev_iter() {
-        let mut d = Deque::new();
+        let mut d = RingBuf::new();
         assert_eq!(d.rev_iter().next(), None);
 
         for int::range(0,5) |i| {
-            d.add_back(i);
+            d.push_back(i);
         }
         assert_eq!(d.rev_iter().collect::<~[&int]>(), ~[&4,&3,&2,&1,&0]);
 
         for int::range(6,9) |i| {
-            d.add_front(i);
+            d.push_front(i);
         }
         assert_eq!(d.rev_iter().collect::<~[&int]>(), ~[&4,&3,&2,&1,&0,&6,&7,&8]);
     }
 
     #[test]
     fn test_mut_iter() {
-        let mut d = Deque::new();
+        let mut d = RingBuf::new();
         assert!(d.mut_iter().next().is_none());
 
         for uint::range(0,3) |i| {
-            d.add_front(i);
+            d.push_front(i);
         }
 
         for d.mut_iter().enumerate().advance |(i, elt)| {
@@ -607,11 +631,11 @@ mod tests {
 
     #[test]
     fn test_mut_rev_iter() {
-        let mut d = Deque::new();
+        let mut d = RingBuf::new();
         assert!(d.mut_rev_iter().next().is_none());
 
         for uint::range(0,3) |i| {
-            d.add_front(i);
+            d.push_front(i);
         }
 
         for d.mut_rev_iter().enumerate().advance |(i, elt)| {
@@ -632,12 +656,12 @@ mod tests {
     fn test_from_iterator() {
         use std::iterator;
         let v = ~[1,2,3,4,5,6,7];
-        let deq: Deque<int> = v.iter().transform(|&x| x).collect();
+        let deq: RingBuf<int> = v.iter().transform(|&x| x).collect();
         let u: ~[int] = deq.iter().transform(|&x| x).collect();
         assert_eq!(u, v);
 
         let mut seq = iterator::Counter::new(0u, 2).take_(256);
-        let deq: Deque<uint> = seq.collect();
+        let deq: RingBuf<uint> = seq.collect();
         for deq.iter().enumerate().advance |(i, &x)| {
             assert_eq!(2*i, x);
         }
@@ -646,11 +670,11 @@ mod tests {
 
     #[test]
     fn test_clone() {
-        let mut d = Deque::new();
-        d.add_front(17);
-        d.add_front(42);
-        d.add_back(137);
-        d.add_back(137);
+        let mut d = RingBuf::new();
+        d.push_front(17);
+        d.push_front(42);
+        d.push_back(137);
+        d.push_back(137);
         assert_eq!(d.len(), 4u);
         let mut e = d.clone();
         assert_eq!(e.len(), 4u);
@@ -663,22 +687,22 @@ mod tests {
 
     #[test]
     fn test_eq() {
-        let mut d = Deque::new();
-        assert_eq!(&d, &Deque::with_capacity(0));
-        d.add_front(137);
-        d.add_front(17);
-        d.add_front(42);
-        d.add_back(137);
-        let mut e = Deque::with_capacity(0);
-        e.add_back(42);
-        e.add_back(17);
-        e.add_back(137);
-        e.add_back(137);
+        let mut d = RingBuf::new();
+        assert_eq!(&d, &RingBuf::with_capacity(0));
+        d.push_front(137);
+        d.push_front(17);
+        d.push_front(42);
+        d.push_back(137);
+        let mut e = RingBuf::with_capacity(0);
+        e.push_back(42);
+        e.push_back(17);
+        e.push_back(137);
+        e.push_back(137);
         assert_eq!(&e, &d);
         e.pop_back();
-        e.add_back(0);
+        e.push_back(0);
         assert!(e != d);
         e.clear();
-        assert_eq!(e, Deque::new());
+        assert_eq!(e, RingBuf::new());
     }
 }
