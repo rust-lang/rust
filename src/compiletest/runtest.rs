@@ -39,7 +39,8 @@ pub fn run(config: config, testfile: ~str) {
       mode_run_fail => run_rfail_test(&config, &props, &testfile),
       mode_run_pass => run_rpass_test(&config, &props, &testfile),
       mode_pretty => run_pretty_test(&config, &props, &testfile),
-      mode_debug_info => run_debuginfo_test(&config, &props, &testfile)
+      mode_debug_info => run_debuginfo_test(&config, &props, &testfile),
+      mode_codegen => run_codegen_test(&config, &props, &testfile)
     }
 }
 
@@ -835,3 +836,118 @@ fn _arm_push_aux_shared_library(config: &config, testfile: &Path) {
         }
     }
 }
+
+// codegen tests (vs. clang)
+
+fn make_o_name(config: &config, testfile: &Path) -> Path {
+    output_base_name(config, testfile).with_filetype("o")
+}
+
+fn append_suffix_to_stem(p: &Path, suffix: &str) -> Path {
+    if suffix.len() == 0 {
+        copy *p
+    } else {
+        let stem = p.filestem().get();
+        p.with_filestem(stem + "-" + suffix)
+    }
+}
+
+fn compile_test_and_save_bitcode(config: &config, props: &TestProps,
+                                 testfile: &Path) -> ProcRes {
+    let link_args = ~[~"-L", aux_output_dir_name(config, testfile).to_str()];
+    let llvm_args = ~[~"-c", ~"--lib", ~"--save-temps"];
+    let args = make_compile_args(config, props,
+                                 link_args + llvm_args,
+                                 make_o_name, testfile);
+    compose_and_run_compiler(config, props, testfile, args, None)
+}
+
+fn compile_cc_with_clang_and_save_bitcode(config: &config, _props: &TestProps,
+                                          testfile: &Path) -> ProcRes {
+    let bitcodefile = output_base_name(config, testfile).with_filetype("bc");
+    let bitcodefile = append_suffix_to_stem(&bitcodefile, "clang");
+    let ProcArgs = ProcArgs {
+        prog: config.clang_path.get_ref().to_str(),
+        args: ~[~"-c",
+                ~"-emit-llvm",
+                ~"-o", bitcodefile.to_str(),
+                testfile.with_filetype("cc").to_str() ]
+    };
+    compose_and_run(config, testfile, ProcArgs, ~[], "", None)
+}
+
+fn extract_function_from_bitcode(config: &config, _props: &TestProps,
+                                 fname: &str, testfile: &Path,
+                                 suffix: &str) -> ProcRes {
+    let bitcodefile = output_base_name(config, testfile).with_filetype("bc");
+    let bitcodefile = append_suffix_to_stem(&bitcodefile, suffix);
+    let extracted_bc = append_suffix_to_stem(&bitcodefile, "extract");
+    let ProcArgs = ProcArgs {
+        prog: config.llvm_bin_path.get_ref().push("llvm-extract").to_str(),
+        args: ~[~"-func=" + fname,
+                ~"-o=" + extracted_bc.to_str(),
+                bitcodefile.to_str() ]
+    };
+    compose_and_run(config, testfile, ProcArgs, ~[], "", None)
+}
+
+fn disassemble_extract(config: &config, _props: &TestProps,
+                       testfile: &Path, suffix: &str) -> ProcRes {
+    let bitcodefile = output_base_name(config, testfile).with_filetype("bc");
+    let bitcodefile = append_suffix_to_stem(&bitcodefile, suffix);
+    let extracted_bc = append_suffix_to_stem(&bitcodefile, "extract");
+    let extracted_ll = extracted_bc.with_filetype("ll");
+    let ProcArgs = ProcArgs {
+        prog: config.llvm_bin_path.get_ref().push("llvm-dis").to_str(),
+        args: ~[~"-o=" + extracted_ll.to_str(),
+                extracted_bc.to_str() ]
+    };
+    compose_and_run(config, testfile, ProcArgs, ~[], "", None)
+}
+
+
+fn run_codegen_test(config: &config, props: &TestProps, testfile: &Path) {
+
+    if config.llvm_bin_path.is_none() {
+        fatal(~"missing --llvm-bin-path");
+    }
+
+    if config.clang_path.is_none() {
+        fatal(~"missing --clang-path");
+    }
+
+    let mut ProcRes = compile_test_and_save_bitcode(config, props, testfile);
+    if ProcRes.status != 0 {
+        fatal_ProcRes(~"compilation failed!", &ProcRes);
+    }
+
+    ProcRes = extract_function_from_bitcode(config, props, "test", testfile, "");
+    if ProcRes.status != 0 {
+        fatal_ProcRes(~"extracting 'test' function failed", &ProcRes);
+    }
+
+    ProcRes = disassemble_extract(config, props, testfile, "");
+    if ProcRes.status != 0 {
+        fatal_ProcRes(~"disassembling extract failed", &ProcRes);
+    }
+
+
+    let mut ProcRes = compile_cc_with_clang_and_save_bitcode(config, props, testfile);
+    if ProcRes.status != 0 {
+        fatal_ProcRes(~"compilation failed!", &ProcRes);
+    }
+
+    ProcRes = extract_function_from_bitcode(config, props, "test", testfile, "clang");
+    if ProcRes.status != 0 {
+        fatal_ProcRes(~"extracting 'test' function failed", &ProcRes);
+    }
+
+    ProcRes = disassemble_extract(config, props, testfile, "clang");
+    if ProcRes.status != 0 {
+        fatal_ProcRes(~"disassembling extract failed", &ProcRes);
+    }
+
+
+
+}
+
