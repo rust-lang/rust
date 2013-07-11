@@ -1033,7 +1033,7 @@ pub enum foreign_item_ {
 #[deriving(Eq, Encodable, Decodable,IterBytes)]
 pub enum inlined_item {
     ii_item(@item),
-    ii_method(def_id /* impl id */, @method),
+    ii_method(def_id /* impl id */, bool /* is provided */, @method),
     ii_foreign(@foreign_item),
 }
 

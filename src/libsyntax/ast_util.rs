@@ -298,7 +298,7 @@ impl inlined_item_utils for inlined_item {
         match *self {
             ii_item(i) => /* FIXME (#2543) */ copy i.ident,
             ii_foreign(i) => /* FIXME (#2543) */ copy i.ident,
-            ii_method(_, m) => /* FIXME (#2543) */ copy m.ident,
+            ii_method(_, _, m) => /* FIXME (#2543) */ copy m.ident,
         }
     }
 
@@ -306,7 +306,7 @@ impl inlined_item_utils for inlined_item {
         match *self {
             ii_item(i) => i.id,
             ii_foreign(i) => i.id,
-            ii_method(_, m) => m.id,
+            ii_method(_, _, m) => m.id,
         }
     }
 
@@ -314,7 +314,7 @@ impl inlined_item_utils for inlined_item {
         match *self {
             ii_item(i) => (v.visit_item)(i, (e, v)),
             ii_foreign(i) => (v.visit_foreign_item)(i, (e, v)),
-            ii_method(_, m) => visit::visit_method_helper(m, (e, v)),
+            ii_method(_, _, m) => visit::visit_method_helper(m, (e, v)),
         }
     }
 }

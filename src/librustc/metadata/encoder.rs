@@ -791,7 +791,7 @@ fn encode_info_for_method(ecx: &EncodeContext,
     if len > 0u || should_inline {
         (ecx.encode_inlined_item)(
            ecx, ebml_w, impl_path,
-           ii_method(local_def(parent_id), m));
+           ii_method(local_def(parent_id), false, m));
     } else {
         encode_symbol(ecx, ebml_w, m.id);
     }
@@ -1123,21 +1123,16 @@ fn encode_info_for_item(ecx: &EncodeContext,
                 }
 
                 provided(m) => {
-                    // This is obviously a bogus assert but I don't think this
-                    // ever worked before anyhow...near as I can tell, before
-                    // we would emit two items.
-                    if method_ty.explicit_self == sty_static {
-                        tcx.sess.span_unimpl(
-                            item.span,
-                            fmt!("Method %s is both provided and static",
-                                 token::ident_to_str(&method_ty.ident)));
+                    // If this is a static method, we've already encoded
+                    // this.
+                    if method_ty.explicit_self != sty_static {
+                        encode_type_param_bounds(ebml_w, ecx,
+                                                 &m.generics.ty_params);
                     }
-                    encode_type_param_bounds(ebml_w, ecx,
-                                             &m.generics.ty_params);
                     encode_method_sort(ebml_w, 'p');
                     (ecx.encode_inlined_item)(
                         ecx, ebml_w, path,
-                        ii_method(local_def(item.id), m));
+                        ii_method(local_def(item.id), true, m));
                 }
             }
 
