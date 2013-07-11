@@ -18,6 +18,7 @@ use io;
 use libc;
 use libc::{c_char, size_t};
 use repr;
+use str::StrSlice;
 use str;
 use unstable::intrinsics;
 
@@ -122,8 +123,8 @@ pub trait FailWithCause {
 
 impl FailWithCause for ~str {
     fn fail_with(cause: ~str, file: &'static str, line: uint) -> ! {
-        do str::as_buf(cause) |msg_buf, _msg_len| {
-            do str::as_buf(file) |file_buf, _file_len| {
+        do cause.as_buf |msg_buf, _msg_len| {
+            do file.as_buf |file_buf, _file_len| {
                 unsafe {
                     let msg_buf = cast::transmute(msg_buf);
                     let file_buf = cast::transmute(file_buf);
@@ -136,8 +137,8 @@ impl FailWithCause for ~str {
 
 impl FailWithCause for &'static str {
     fn fail_with(cause: &'static str, file: &'static str, line: uint) -> ! {
-        do str::as_buf(cause) |msg_buf, _msg_len| {
-            do str::as_buf(file) |file_buf, _file_len| {
+        do cause.as_buf |msg_buf, _msg_len| {
+            do file.as_buf |file_buf, _file_len| {
                 unsafe {
                     let msg_buf = cast::transmute(msg_buf);
                     let file_buf = cast::transmute(file_buf);
