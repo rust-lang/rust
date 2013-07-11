@@ -76,7 +76,6 @@ pub enum lint {
     path_statement,
     implicit_copies,
     unrecognized_lint,
-    non_implicitly_copyable_typarams,
     deprecated_pattern,
     non_camel_case_types,
     non_uppercase_statics,
@@ -179,13 +178,6 @@ static lint_table: &'static [(&'static str, LintSpec)] = &[
      LintSpec {
         lint: unrecognized_lint,
         desc: "unrecognized lint attribute",
-        default: warn
-     }),
-
-    ("non_implicitly_copyable_typarams",
-     LintSpec {
-        lint: non_implicitly_copyable_typarams,
-        desc: "passing non implicitly copyable types as copy type params",
         default: warn
      }),
 

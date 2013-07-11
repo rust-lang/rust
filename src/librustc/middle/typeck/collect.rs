@@ -1189,8 +1189,8 @@ pub fn ty_generics(ccx: &CrateCtxt,
          * Translate the AST's notion of ty param bounds (which are an
          * enum consisting of a newtyped Ty or a region) to ty's
          * notion of ty param bounds, which can either be user-defined
-         * traits, or one of the four built-in traits (formerly known
-         * as kinds): Freeze, Copy, and Send.
+         * traits, or one of the two built-in traits (formerly known
+         * as kinds): Freeze and Send.
          */
 
         let mut param_bounds = ty::ParamBounds {

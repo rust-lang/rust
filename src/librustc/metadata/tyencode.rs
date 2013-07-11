@@ -400,7 +400,6 @@ fn enc_bounds(w: @io::Writer, cx: @ctxt, bs: &ty::ParamBounds) {
     for bs.builtin_bounds.each |bound| {
         match bound {
             ty::BoundSend => w.write_char('S'),
-            ty::BoundCopy => w.write_char('C'),
             ty::BoundFreeze => w.write_char('K'),
             ty::BoundStatic => w.write_char('O'),
             ty::BoundSized => w.write_char('Z'),

@@ -569,7 +569,6 @@ impl Repr for ty::ParamBounds {
         let mut res = ~[];
         for self.builtin_bounds.each |b| {
             res.push(match b {
-                ty::BoundCopy => ~"Copy",
                 ty::BoundStatic => ~"'static",
                 ty::BoundSend => ~"Send",
                 ty::BoundFreeze => ~"Freeze",
@@ -787,7 +786,6 @@ impl Repr for ty::BuiltinBound {
 impl UserString for ty::BuiltinBound {
     fn user_string(&self, _tcx: ctxt) -> ~str {
         match *self {
-            ty::BoundCopy => ~"Copy",
             ty::BoundStatic => ~"'static",
             ty::BoundSend => ~"Send",
             ty::BoundFreeze => ~"Freeze",

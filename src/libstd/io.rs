@@ -1559,7 +1559,6 @@ impl<T:Writer> WriterUtil for T {
 
 }
 
-#[allow(non_implicitly_copyable_typarams)]
 pub fn file_writer(path: &Path, flags: &[FileFlag]) -> Result<@Writer, ~str> {
     mk_file_writer(path, flags).chain(|w| result::Ok(w))
 }
@@ -1727,7 +1726,6 @@ pub fn seek_in_buf(offset: int, pos: uint, len: uint, whence: SeekStyle) ->
     return bpos as uint;
 }
 
-#[allow(non_implicitly_copyable_typarams)]
 pub fn read_whole_file_str(file: &Path) -> Result<~str, ~str> {
     result::chain(read_whole_file(file), |bytes| {
         if str::is_utf8(bytes) {
@@ -1740,7 +1738,6 @@ pub fn read_whole_file_str(file: &Path) -> Result<~str, ~str> {
 
 // FIXME (#2004): implement this in a low-level way. Going through the
 // abstractions is pointless.
-#[allow(non_implicitly_copyable_typarams)]
 pub fn read_whole_file(file: &Path) -> Result<~[u8], ~str> {
     result::chain(file_reader(file), |rdr| {
         result::Ok(rdr.read_whole_stream())

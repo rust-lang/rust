@@ -87,7 +87,6 @@ mod tests {
     use std::rand::RngUtil;
 
     #[test]
-    #[allow(non_implicitly_copyable_typarams)]
     fn test_flate_round_trip() {
         let mut r = rand::rng();
         let mut words = ~[];
