@@ -548,7 +548,7 @@ pub fn trans_trait_callee_from_llval(bcx: block,
 
     let _icx = push_ctxt("impl::trans_trait_callee");
     let ccx = bcx.ccx();
-    let mut bcx = bcx;
+    let bcx = bcx;
 
     // Load the vtable from the @Trait pair
     debug!("(translating trait callee) loading vtable from pair %s",
