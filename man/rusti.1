@@ -1,0 +1,82 @@
+.TH RUSTI "1" "July 2013" "rusti 0.7" "User Commands"
+\" Macros
+..
+.de Vb \" Begin verbatim text                                                   
+.ft CW
+.nf
+.ne \\$1
+..
+.de Ve \" End verbatim text                                                     
+.ft R
+.fi
+..
+.SH NAME
+rusti \- Rust interactive shell
+
+.SH SYNOPSIS
+.B rusti
+
+.SH DESCRIPTION
+
+This program is a REPL (Read-Eval-Print Loop) for the Rust language, available
+at <\fBhttps://www.rust-lang.org\fR>. It provides an interactive shell to
+evaluate Rust expressions, functions and code snippets, and to experiment with
+Rust code.
+
+.B WARNING:
+The Rust REPL is experimental and may be unstable. If you encounter problems,
+please use the compiler instead.
+
+.SH OPTIONS
+
+Currently none.
+
+.SH SPECIAL COMMANDS
+
+The interactive shell evaluates all input as a sequence of Rust expressions,
+except for a set of special commands prefixed by a colon ':'. These special
+commands are described below:
+
+.TP
+\fB:help\fR
+Display a summary of available commands.
+.TP
+\fB:{\\n ..lines.. \\n:}\\n\fR
+execute multiline command
+.TP
+\fB:load <crate> ...\fR
+loads given crates as dynamic libraries
+.TP
+\fB:clear\fR
+clear the bindings
+.TP
+\fB:exit\fR
+exit from the repl
+
+.SH "EXAMPLES"
+
+A simple example session, declaring a variable, defining a function,
+evaluating an expression and printing the result:
+
+.PP
+.Vb
+\&	\fBrusti>\fR let x = 42;
+\&	\fBrusti>\fR fn square(n: int) -> int { n*n }
+\&	\fBrusti>\fR println(fmt!("%d squared is %d", x, square(x)));
+\&	42 squared is 1764
+.Ve
+
+.SH "SEE ALSO"
+
+rust, rustc, rustdoc, rustpkg
+
+.SH "BUGS"
+See <\fBhttps://github.com/mozilla/rust/issues\fR> for issues.
+
+.SH "AUTHOR"
+See \fBAUTHORS.txt\fR in the rust source distribution. Graydon Hoare
+<\fIgraydon@mozilla.com\fR> is the project leader.
+
+.SH "COPYRIGHT"
+This work is dual-licensed under Apache 2.0 and MIT terms.  See \fBCOPYRIGHT\fR
+file in the rust source distribution.

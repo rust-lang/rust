@@ -150,8 +150,11 @@ install-host: $(CSREQ$(ISTAGE)_T_$(CFG_BUILD_TRIPLE)_H_$(CFG_BUILD_TRIPLE))
 	$(Q)$(call INSTALL_LIB,$(LIBRUSTDOC_GLOB_$(CFG_BUILD_TRIPLE)))
 	$(Q)$(call INSTALL,$(HL),$(PHL),$(CFG_RUNTIME_$(CFG_BUILD_TRIPLE)))
 	$(Q)$(call INSTALL,$(HL),$(PHL),$(CFG_RUSTLLVM_$(CFG_BUILD_TRIPLE)))
-	$(Q)$(call INSTALL,$(S)/man, \
-	     $(PREFIX_ROOT)/share/man/man1,rustc.1)
+	$(Q)$(call INSTALL,$(S)/man, $(PREFIX_ROOT)/share/man/man1,rust.1)
+	$(Q)$(call INSTALL,$(S)/man, $(PREFIX_ROOT)/share/man/man1,rustc.1)
+	$(Q)$(call INSTALL,$(S)/man, $(PREFIX_ROOT)/share/man/man1,rustdoc.1)
+	$(Q)$(call INSTALL,$(S)/man, $(PREFIX_ROOT)/share/man/man1,rusti.1)
+	$(Q)$(call INSTALL,$(S)/man, $(PREFIX_ROOT)/share/man/man1,rustpkg.1)
 
 install-targets: $(INSTALL_TARGET_RULES)
 
