@@ -13,12 +13,10 @@
 use cast;
 use libc;
 use local_data;
-use managed::raw::BoxRepr;
 use prelude::*;
 use ptr;
 use sys;
 use task::rt;
-use unstable::intrinsics;
 use util;
 
 use super::rt::rust_task;
@@ -50,7 +48,7 @@ impl Handle {
 trait LocalData {}
 impl<T: 'static> LocalData for T {}
 
-// The task-local-map actuall stores all TLS information. Right now it's a list
+// The task-local-map actually stores all TLS information. Right now it's a list
 // of triples of (key, value, loans). The key is a code pointer (right now at
 // least), the value is a trait so destruction can work, and the loans value
 // is a count of the number of times the value is currently on loan via
@@ -58,7 +56,7 @@ impl<T: 'static> LocalData for T {}
 //
 // TLS is designed to be able to store owned data, so `local_data_get` must
 // return a borrowed pointer to this data. In order to have a proper lifetime, a
-// borrowed pointer is insted yielded to a closure specified to the `get`
+// borrowed pointer is instead yielded to a closure specified to the `get`
 // function. As a result, it would be unsound to perform `local_data_set` on the
 // same key inside of a `local_data_get`, so we ensure at runtime that this does
 // not happen.
@@ -68,7 +66,7 @@ impl<T: 'static> LocalData for T {}
 // n.b. If TLS is used heavily in future, this could be made more efficient with
 // a proper map.
 type TaskLocalMap = ~[Option<(*libc::c_void, TLSValue, uint)>];
-type TLSValue = @LocalData;
+type TLSValue = ~LocalData:;
 
 fn cleanup_task_local_map(map_ptr: *libc::c_void) {
     unsafe {
@@ -136,28 +134,8 @@ unsafe fn key_to_key_value<T: 'static>(key: local_data::Key<T>) -> *libc::c_void
     return pair.code as *libc::c_void;
 }
 
-unsafe fn transmute_back<'a, T>(data: &'a TLSValue) -> (*BoxRepr, &'a T) {
-    // Currently, a TLSValue is an '@Trait' instance which means that its actual
-    // representation is a pair of (vtable, box). Also, because of issue #7673
-    // the box actually points to another box which has the data. Hence, to get
-    // a pointer to the actual value that we're interested in, we decode the
-    // trait pointer and pass through one layer of boxes to get to the actual
-    // data we're interested in.
-    //
-    // The reference count of the containing @Trait box is already taken care of
-    // because the TLSValue is owned by the containing TLS map which means that
-    // the reference count is at least one. Extra protections are then added at
-    // runtime to ensure that once a loan on a value in TLS has been given out,
-    // the value isn't modified by another user.
-    let (_vt, box) = *cast::transmute::<&TLSValue, &(uint, *BoxRepr)>(data);
-
-    return (box, cast::transmute(&(*box).data));
-}
-
 pub unsafe fn local_pop<T: 'static>(handle: Handle,
                                     key: local_data::Key<T>) -> Option<T> {
-    // If you've never seen horrendously unsafe code written in rust before,
-    // just feel free to look a bit farther...
     let map = get_local_map(handle);
     let key_value = key_to_key_value(key);
 
@@ -175,25 +153,23 @@ pub unsafe fn local_pop<T: 'static>(handle: Handle,
                     None => libc::abort(),
                 };
 
-                // First, via some various cheats/hacks, we extract the value
-                // contained within the TLS box. This leaves a big chunk of
-                // memory which needs to be deallocated now.
-                let (chunk, inside) = transmute_back(&data);
-                let inside = cast::transmute_mut(inside);
-                let ret = ptr::read_ptr(inside);
+                // Move `data` into transmute to get out the memory that it
+                // owns, we must free it manually later.
+                let (_vtable, box): (uint, ~~T) = cast::transmute(data);
 
-                // Forget the trait box because we're about to manually
-                // deallocate the other box. And for my next trick (kids don't
-                // try this at home), transmute the chunk of @ memory from the
-                // @-trait box to a pointer to a zero-sized '@' block which will
-                // then cause it to get properly deallocated, but it won't touch
-                // any of the uninitialized memory beyond the end.
-                cast::forget(data);
-                let chunk: *mut BoxRepr = cast::transmute(chunk);
-                (*chunk).header.type_desc =
-                    cast::transmute(intrinsics::get_tydesc::<()>());
-                let _: @() = cast::transmute(chunk);
+                // Read the box's value (using the compiler's built-in
+                // auto-deref functionality to obtain a pointer to the base)
+                let ret = ptr::read_ptr(cast::transmute::<&T, *mut T>(*box));
 
+                // Finally free the allocated memory. we don't want this to
+                // actually touch the memory inside because it's all duplicated
+                // now, so the box is transmuted to a 0-sized type. We also use
+                // a type which references `T` because currently the layout
+                // could depend on whether T contains managed pointers or not.
+                let _: ~~[T, ..0] = cast::transmute(box);
+
+                // Everything is now deallocated, and we own the value that was
+                // located inside TLS, so we now return it.
                 return Some(ret);
             }
             _ => {}
@@ -213,9 +189,17 @@ pub unsafe fn local_get<T: 'static, U>(handle: Handle,
     for map.mut_iter().advance |entry| {
         match *entry {
             Some((k, ref data, ref mut loans)) if k == key_value => {
+                let ret;
                 *loans = *loans + 1;
-                let (_, val) = transmute_back(data);
-                let ret = f(Some(val));
+                // data was created with `~~T as ~LocalData`, so we extract
+                // pointer part of the trait, (as ~~T), and then use compiler
+                // coercions to achieve a '&' pointer
+                match *cast::transmute::<&TLSValue, &(uint, ~~T)>(data) {
+                    (_vtable, ref box) => {
+                        let value: &T = **box;
+                        ret = f(Some(value));
+                    }
+                }
                 *loans = *loans - 1;
                 return ret;
             }
@@ -225,44 +209,46 @@ pub unsafe fn local_get<T: 'static, U>(handle: Handle,
     return f(None);
 }
 
-// FIXME(#7673): This shouldn't require '@', it should use '~'
 pub unsafe fn local_set<T: 'static>(handle: Handle,
-                                    key: local_data::Key<@T>,
-                                    data: @T) {
+                                    key: local_data::Key<T>,
+                                    data: T) {
     let map = get_local_map(handle);
     let keyval = key_to_key_value(key);
 
     // When the task-local map is destroyed, all the data needs to be cleaned
-    // up. For this reason we can't do some clever tricks to store '@T' as a
+    // up. For this reason we can't do some clever tricks to store '~T' as a
     // '*c_void' or something like that. To solve the problem, we cast
     // everything to a trait (LocalData) which is then stored inside the map.
     // Upon destruction of the map, all the objects will be destroyed and the
     // traits have enough information about them to destroy themselves.
-    let data = @data as @LocalData;
+    //
+    // FIXME(#7673): This should be "~data as ~LocalData" (without the colon at
+    //               the end, and only one sigil)
+    let data = ~~data as ~LocalData:;
 
-    // First, try to insert it if we already have it.
-    for map.mut_iter().advance |entry| {
-        match *entry {
-            Some((key, ref mut value, loans)) if key == keyval => {
-                if loans != 0 {
-                    fail!("TLS value has been loaned via get already");
+    fn insertion_position(map: &mut TaskLocalMap,
+                          key: *libc::c_void) -> Option<uint> {
+        // First see if the map contains this key already
+        let curspot = map.iter().position(|entry| {
+            match *entry {
+                Some((ekey, _, loans)) if key == ekey => {
+                    if loans != 0 {
+                        fail!("TLS value has been loaned via get already");
+                    }
+                    true
                 }
-                util::replace(value, data);
-                return;
+                _ => false,
             }
-            _ => {}
+        });
+        // If it doesn't contain the key, just find a slot that's None
+        match curspot {
+            Some(i) => Some(i),
+            None => map.iter().position(|entry| entry.is_none())
         }
     }
-    // Next, search for an open spot
-    for map.mut_iter().advance |entry| {
-        match *entry {
-            Some(*) => {}
-            None => {
-                *entry = Some((keyval, data, 0));
-                return;
-            }
-        }
+
+    match insertion_position(map, keyval) {
+        Some(i) => { map[i] = Some((keyval, data, 0)); }
+        None => { map.push(Some((keyval, data, 0))); }
     }
-    // Finally push it on the end of the list
-    map.push(Some((keyval, data, 0)));
 }

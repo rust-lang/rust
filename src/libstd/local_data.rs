@@ -66,6 +66,15 @@ pub type Key<'self,T> = &'self fn:Copy(v: T);
  * Remove a task-local data value from the table, returning the
  * reference that was originally created to insert it.
  */
+#[cfg(stage0)]
+pub unsafe fn pop<T: 'static>(key: Key<@T>) -> Option<@T> {
+    local_pop(Handle::new(), key)
+}
+/**
+ * Remove a task-local data value from the table, returning the
+ * reference that was originally created to insert it.
+ */
+#[cfg(not(stage0))]
 pub unsafe fn pop<T: 'static>(key: Key<T>) -> Option<T> {
     local_pop(Handle::new(), key)
 }
@@ -73,6 +82,15 @@ pub unsafe fn pop<T: 'static>(key: Key<T>) -> Option<T> {
  * Retrieve a task-local data value. It will also be kept alive in the
  * table until explicitly removed.
  */
+#[cfg(stage0)]
+pub unsafe fn get<T: 'static>(key: Key<@T>) -> Option<@T> {
+    local_get(Handle::new(), key, |loc| loc.map(|&x| *x))
+}
+/**
+ * Retrieve a task-local data value. It will also be kept alive in the
+ * table until explicitly removed.
+ */
+#[cfg(not(stage0))]
 pub unsafe fn get<T: 'static>(key: Key<@T>) -> Option<@T> {
     local_get(Handle::new(), key, |loc| loc.map(|&x| *x))
 }
@@ -80,15 +98,37 @@ pub unsafe fn get<T: 'static>(key: Key<@T>) -> Option<@T> {
  * Store a value in task-local data. If this key already has a value,
  * that value is overwritten (and its destructor is run).
  */
+#[cfg(stage0)]
 pub unsafe fn set<T: 'static>(key: Key<@T>, data: @T) {
+    local_set(Handle::new(), key, data)
+}
+/**
+ * Store a value in task-local data. If this key already has a value,
+ * that value is overwritten (and its destructor is run).
+ */
+#[cfg(not(stage0))]
+pub unsafe fn set<T: 'static>(key: Key<T>, data: T) {
     local_set(Handle::new(), key, data)
 }
 /**
  * Modify a task-local data value. If the function returns 'None', the
  * data is removed (and its reference dropped).
  */
+#[cfg(stage0)]
 pub unsafe fn modify<T: 'static>(key: Key<@T>,
                                  f: &fn(Option<@T>) -> Option<@T>) {
+    match f(pop(key)) {
+        Some(next) => { set(key, next); }
+        None => {}
+    }
+}
+/**
+ * Modify a task-local data value. If the function returns 'None', the
+ * data is removed (and its reference dropped).
+ */
+#[cfg(not(stage0))]
+pub unsafe fn modify<T: 'static>(key: Key<T>,
+                                 f: &fn(Option<T>) -> Option<T>) {
     match f(pop(key)) {
         Some(next) => { set(key, next); }
         None => {}
