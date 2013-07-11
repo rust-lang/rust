@@ -19,6 +19,7 @@ extern mod extra;
 use std::os;
 
 use extra::getopts;
+use extra::getopts::groups::{optopt, optflag, reqopt};
 use extra::test;
 
 use common::config;
@@ -27,6 +28,7 @@ use common::mode_run_fail;
 use common::mode_compile_fail;
 use common::mode_pretty;
 use common::mode_debug_info;
+use common::mode_codegen;
 use common::mode;
 use util::logv;
 
@@ -45,30 +47,53 @@ pub fn main() {
 }
 
 pub fn parse_config(args: ~[~str]) -> config {
-    let opts =
-        ~[getopts::reqopt("compile-lib-path"),
-          getopts::reqopt("run-lib-path"),
-          getopts::reqopt("rustc-path"), getopts::reqopt("src-base"),
-          getopts::reqopt("build-base"), getopts::reqopt("aux-base"),
-          getopts::reqopt("stage-id"),
-          getopts::reqopt("mode"), getopts::optflag("ignored"),
-          getopts::optopt("runtool"), getopts::optopt("rustcflags"),
-          getopts::optflag("verbose"),
-          getopts::optopt("logfile"),
-          getopts::optflag("jit"),
-          getopts::optflag("newrt"),
-          getopts::optopt("target"),
-          getopts::optopt("adb-path"),
-          getopts::optopt("adb-test-dir")
+
+    let groups : ~[getopts::groups::OptGroup] =
+        ~[reqopt("", "compile-lib-path", "path to host shared libraries", "PATH"),
+          reqopt("", "run-lib-path", "path to target shared libraries", "PATH"),
+          reqopt("", "rustc-path", "path to rustc to use for compiling", "PATH"),
+          optopt("", "clang-path", "path to  executable for codegen tests", "PATH"),
+          optopt("", "llvm-bin-path", "path to directory holding llvm binaries", "DIR"),
+          reqopt("", "src-base", "directory to scan for test files", "PATH"),
+          reqopt("", "build-base", "directory to deposit test outputs", "PATH"),
+          reqopt("", "aux-base", "directory to find auxiliary test files", "PATH"),
+          reqopt("", "stage-id", "the target-stage identifier", "stageN-TARGET"),
+          reqopt("", "mode", "which sort of compile tests to run",
+                 "(compile-fail|run-fail|run-pass|pretty|debug-info)"),
+          optflag("", "ignored", "run tests marked as ignored / xfailed"),
+          optopt("", "runtool", "supervisor program to run tests under \
+                                 (eg. emulator, valgrind)", "PROGRAM"),
+          optopt("", "rustcflags", "flags to pass to rustc", "FLAGS"),
+          optflag("", "verbose", "run tests verbosely, showing all output"),
+          optopt("", "logfile", "file to log test execution to", "FILE"),
+          optflag("", "jit", "run tests under the JIT"),
+          optflag("", "newrt", "run tests on the new runtime / scheduler"),
+          optopt("", "target", "the target to build for", "TARGET"),
+          optopt("", "adb-path", "path to the android debugger", "PATH"),
+          optopt("", "adb-test-dir", "path to tests for the android debugger", "PATH"),
+          optflag("h", "help", "show this message"),
          ];
 
     assert!(!args.is_empty());
+    let argv0 = copy args[0];
     let args_ = args.tail();
+    if args[1] == ~"-h" || args[1] == ~"--help" {
+        let message = fmt!("Usage: %s [OPTIONS] [TESTNAME...]", argv0);
+        println(getopts::groups::usage(message, groups));
+        fail!()
+    }
+
     let matches =
-        &match getopts::getopts(args_, opts) {
+        &match getopts::groups::getopts(args_, groups) {
           Ok(m) => m,
           Err(f) => fail!(getopts::fail_str(f))
         };
+
+    if getopts::opt_present(matches, "h") || getopts::opt_present(matches, "help") {
+        let message = fmt!("Usage: %s [OPTIONS]  [TESTNAME...]", argv0);
+        println(getopts::groups::usage(message, groups));
+        fail!()
+    }
 
     fn opt_path(m: &getopts::Matches, nm: &str) -> Path {
         Path(getopts::opt_str(m, nm))
@@ -78,6 +103,8 @@ pub fn parse_config(args: ~[~str]) -> config {
         compile_lib_path: getopts::opt_str(matches, "compile-lib-path"),
         run_lib_path: getopts::opt_str(matches, "run-lib-path"),
         rustc_path: opt_path(matches, "rustc-path"),
+        clang_path: getopts::opt_maybe_str(matches, "clang-path").map(|s| Path(*s)),
+        llvm_bin_path: getopts::opt_maybe_str(matches, "llvm-bin-path").map(|s| Path(*s)),
         src_base: opt_path(matches, "src-base"),
         build_base: opt_path(matches, "build-base"),
         aux_base: opt_path(matches, "aux-base"),
@@ -159,6 +186,7 @@ pub fn str_mode(s: ~str) -> mode {
       ~"run-pass" => mode_run_pass,
       ~"pretty" => mode_pretty,
       ~"debug-info" => mode_debug_info,
+      ~"codegen" => mode_codegen,
       _ => fail!("invalid mode")
     }
 }
@@ -170,6 +198,7 @@ pub fn mode_str(mode: mode) -> ~str {
       mode_run_pass => ~"run-pass",
       mode_pretty => ~"pretty",
       mode_debug_info => ~"debug-info",
+      mode_codegen => ~"codegen",
     }
 }
 
@@ -187,8 +216,9 @@ pub fn test_opts(config: &config) -> test::TestOpts {
         logfile: copy config.logfile,
         run_tests: true,
         run_benchmarks: false,
-        save_results: None,
-        compare_results: None
+        ratchet_metrics: None,
+        ratchet_noise_percent: None,
+        save_metrics: None,
     }
 }
 

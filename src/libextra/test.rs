@@ -17,24 +17,26 @@
 
 
 use getopts;
+use json::ToJson;
+use json;
+use serialize::Decodable;
 use sort;
 use stats::Stats;
+use stats;
 use term;
 use time::precise_time_ns;
+use treemap::TreeMap;
 
 use std::comm::{stream, SharedChan};
 use std::either;
 use std::io;
-use std::num;
-use std::option;
-use std::rand::RngUtil;
-use std::rand;
 use std::result;
 use std::task;
 use std::to_str::ToStr;
 use std::u64;
-use std::uint;
-use std::vec;
+use std::f64;
+use std::hashmap::HashMap;
+use std::os;
 
 
 // The name of a test. By convention this follows the rules for rust
@@ -87,6 +89,25 @@ pub struct TestDescAndFn {
     testfn: TestFn,
 }
 
+#[deriving(Encodable,Decodable,Eq)]
+pub struct Metric {
+    value: f64,
+    noise: f64
+}
+
+pub struct MetricMap(TreeMap<~str,Metric>);
+
+/// Analysis of a single change in metric
+pub enum MetricChange {
+    LikelyNoise,
+    MetricAdded,
+    MetricRemoved,
+    Improvement(f64),
+    Regression(f64)
+}
+
+pub type MetricDiff = TreeMap<~str,MetricChange>;
+
 // The default console test runner. It accepts the command line
 // arguments and a vector of test_descs.
 pub fn test_main(args: &[~str], tests: ~[TestDescAndFn]) {
@@ -127,8 +148,9 @@ pub struct TestOpts {
     run_ignored: bool,
     run_tests: bool,
     run_benchmarks: bool,
-    save_results: Option<Path>,
-    compare_results: Option<Path>,
+    ratchet_metrics: Option<Path>,
+    ratchet_noise_percent: Option<f64>,
+    save_metrics: Option<Path>,
     logfile: Option<Path>
 }
 
@@ -140,8 +162,9 @@ pub fn parse_opts(args: &[~str]) -> OptRes {
     let opts = ~[getopts::optflag("ignored"),
                  getopts::optflag("test"),
                  getopts::optflag("bench"),
-                 getopts::optopt("save"),
-                 getopts::optopt("diff"),
+                 getopts::optopt("save-metrics"),
+                 getopts::optopt("ratchet-metrics"),
+                 getopts::optopt("ratchet-noise-percent"),
                  getopts::optopt("logfile")];
     let matches =
         match getopts::getopts(args_, opts) {
@@ -151,8 +174,8 @@ pub fn parse_opts(args: &[~str]) -> OptRes {
 
     let filter =
         if matches.free.len() > 0 {
-            option::Some(copy (matches).free[0])
-        } else { option::None };
+            Some(copy (matches).free[0])
+        } else { None };
 
     let run_ignored = getopts::opt_present(&matches, "ignored");
 
@@ -163,19 +186,24 @@ pub fn parse_opts(args: &[~str]) -> OptRes {
     let run_tests = ! run_benchmarks ||
         getopts::opt_present(&matches, "test");
 
-    let save_results = getopts::opt_maybe_str(&matches, "save");
-    let save_results = save_results.map(|s| Path(*s));
+    let ratchet_metrics = getopts::opt_maybe_str(&matches, "ratchet-metrics");
+    let ratchet_metrics = ratchet_metrics.map(|s| Path(*s));
 
-    let compare_results = getopts::opt_maybe_str(&matches, "diff");
-    let compare_results = compare_results.map(|s| Path(*s));
+    let ratchet_noise_percent =
+        getopts::opt_maybe_str(&matches, "ratchet-noise-percent");
+    let ratchet_noise_percent = ratchet_noise_percent.map(|s| f64::from_str(*s).get());
+
+    let save_metrics = getopts::opt_maybe_str(&matches, "save-metrics");
+    let save_metrics = save_metrics.map(|s| Path(*s));
 
     let test_opts = TestOpts {
         filter: filter,
         run_ignored: run_ignored,
         run_tests: run_tests,
         run_benchmarks: run_benchmarks,
-        save_results: save_results,
-        compare_results: compare_results,
+        ratchet_metrics: ratchet_metrics,
+        ratchet_noise_percent: ratchet_noise_percent,
+        save_metrics: save_metrics,
         logfile: logfile
     };
 
@@ -184,7 +212,7 @@ pub fn parse_opts(args: &[~str]) -> OptRes {
 
 #[deriving(Eq)]
 pub struct BenchSamples {
-    ns_iter_samples: ~[f64],
+    ns_iter_summ: stats::Summary,
     mb_s: uint
 }
 
@@ -194,13 +222,248 @@ pub enum TestResult { TrOk, TrFailed, TrIgnored, TrBench(BenchSamples) }
 struct ConsoleTestState {
     out: @io::Writer,
     log_out: Option<@io::Writer>,
+    term: Option<term::Terminal>,
     use_color: bool,
     total: uint,
     passed: uint,
     failed: uint,
     ignored: uint,
     benchmarked: uint,
+    metrics: MetricMap,
     failures: ~[TestDesc]
+}
+
+impl ConsoleTestState {
+    pub fn new(opts: &TestOpts) -> ConsoleTestState {
+        let log_out = match opts.logfile {
+            Some(ref path) => match io::file_writer(path,
+                                                    [io::Create,
+                                                     io::Truncate]) {
+                result::Ok(w) => Some(w),
+                result::Err(ref s) => {
+                    fail!("can't open output file: %s", *s)
+                }
+            },
+            None => None
+        };
+        let out = io::stdout();
+        let term = match term::Terminal::new(out) {
+            Err(_) => None,
+            Ok(t) => Some(t)
+        };
+        ConsoleTestState {
+            out: out,
+            log_out: log_out,
+            use_color: use_color(),
+            term: term,
+            total: 0u,
+            passed: 0u,
+            failed: 0u,
+            ignored: 0u,
+            benchmarked: 0u,
+            metrics: MetricMap::new(),
+            failures: ~[]
+        }
+    }
+
+    pub fn write_ok(&self) {
+        self.write_pretty("ok", term::color::GREEN);
+    }
+
+    pub fn write_failed(&self) {
+        self.write_pretty("FAILED", term::color::RED);
+    }
+
+    pub fn write_ignored(&self) {
+        self.write_pretty("ignored", term::color::YELLOW);
+    }
+
+    pub fn write_bench(&self) {
+        self.write_pretty("bench", term::color::CYAN);
+    }
+
+
+    pub fn write_added(&self) {
+        self.write_pretty("added", term::color::GREEN);
+    }
+
+    pub fn write_improved(&self) {
+        self.write_pretty("improved", term::color::GREEN);
+    }
+
+    pub fn write_removed(&self) {
+        self.write_pretty("removed", term::color::YELLOW);
+    }
+
+    pub fn write_regressed(&self) {
+        self.write_pretty("regressed", term::color::RED);
+    }
+
+    pub fn write_pretty(&self,
+                        word: &str,
+                        color: term::color::Color) {
+        match self.term {
+            None => self.out.write_str(word),
+            Some(ref t) => {
+                if self.use_color {
+                    t.fg(color);
+                }
+                self.out.write_str(word);
+                if self.use_color {
+                    t.reset();
+                }
+            }
+        }
+    }
+
+    pub fn write_run_start(&mut self, len: uint) {
+        self.total = len;
+        let noun = if len != 1 { &"tests" } else { &"test" };
+        self.out.write_line(fmt!("\nrunning %u %s", len, noun));
+    }
+
+    pub fn write_test_start(&self, test: &TestDesc) {
+        self.out.write_str(fmt!("test %s ... ", test.name.to_str()));
+    }
+
+    pub fn write_result(&self, result: &TestResult) {
+        match *result {
+            TrOk => self.write_ok(),
+            TrFailed => self.write_failed(),
+            TrIgnored => self.write_ignored(),
+            TrBench(ref bs) => {
+                self.write_bench();
+                self.out.write_str(": " + fmt_bench_samples(bs))
+            }
+        }
+        self.out.write_str(&"\n");
+    }
+
+    pub fn write_log(&self, test: &TestDesc, result: &TestResult) {
+        match self.log_out {
+            None => (),
+            Some(out) => {
+                out.write_line(fmt!("%s %s",
+                                    match *result {
+                                        TrOk => ~"ok",
+                                        TrFailed => ~"failed",
+                                        TrIgnored => ~"ignored",
+                                        TrBench(ref bs) => fmt_bench_samples(bs)
+                                    }, test.name.to_str()));
+            }
+        }
+    }
+
+    pub fn write_failures(&self) {
+        self.out.write_line("\nfailures:");
+        let mut failures = ~[];
+        for self.failures.iter().advance() |f| {
+            failures.push(f.name.to_str());
+        }
+        sort::tim_sort(failures);
+        for failures.iter().advance |name| {
+            self.out.write_line(fmt!("    %s", name.to_str()));
+        }
+    }
+
+    pub fn write_metric_diff(&self, diff: &MetricDiff) {
+        let mut noise = 0;
+        let mut improved = 0;
+        let mut regressed = 0;
+        let mut added = 0;
+        let mut removed = 0;
+
+        for diff.iter().advance() |(k, v)| {
+            match *v {
+                LikelyNoise => noise += 1,
+                MetricAdded => {
+                    added += 1;
+                    self.write_added();
+                    self.out.write_line(fmt!(": %s", *k));
+                }
+                MetricRemoved => {
+                    removed += 1;
+                    self.write_removed();
+                    self.out.write_line(fmt!(": %s", *k));
+                }
+                Improvement(pct) => {
+                    improved += 1;
+                    self.out.write_str(*k);
+                    self.out.write_str(": ");
+                    self.write_improved();
+                    self.out.write_line(fmt!(" by %.2f%%", pct as float))
+                }
+                Regression(pct) => {
+                    regressed += 1;
+                    self.out.write_str(*k);
+                    self.out.write_str(": ");
+                    self.write_regressed();
+                    self.out.write_line(fmt!(" by %.2f%%", pct as float))
+                }
+            }
+        }
+        self.out.write_line(fmt!("result of ratchet: %u matrics added, %u removed, \
+                                  %u improved, %u regressed, %u noise",
+                                 added, removed, improved, regressed, noise));
+        if regressed == 0 {
+            self.out.write_line("updated ratchet file")
+        } else {
+            self.out.write_line("left ratchet file untouched")
+        }
+    }
+
+    pub fn write_run_finish(&self,
+                            ratchet_metrics: &Option<Path>,
+                            ratchet_pct: Option<f64>) -> bool {
+        assert!(self.passed + self.failed + self.ignored + self.benchmarked == self.total);
+
+        let ratchet_success = match *ratchet_metrics {
+            None => true,
+            Some(ref pth) => {
+                self.out.write_str(fmt!("\nusing metrics ratchet: %s\n", pth.to_str()));
+                match ratchet_pct {
+                    None => (),
+                    Some(pct) =>
+                    self.out.write_str(fmt!("with noise-tolerance forced to: %f%%\n",
+                                            pct as float))
+                }
+                let (diff, ok) = self.metrics.ratchet(pth, ratchet_pct);
+                self.write_metric_diff(&diff);
+                ok
+            }
+        };
+
+        let test_success = self.failed == 0u;
+        if !test_success {
+            self.write_failures();
+        }
+
+        let success = ratchet_success && test_success;
+
+        self.out.write_str("\ntest result: ");
+        if success {
+            // There's no parallelism at this point so it's safe to use color
+            self.write_ok();
+        } else {
+            self.write_failed();
+        }
+        self.out.write_str(fmt!(". %u passed; %u failed; %u ignored, %u benchmarked\n\n",
+                                self.passed, self.failed, self.ignored, self.benchmarked));
+        return success;
+    }
+}
+
+pub fn fmt_bench_samples(bs: &BenchSamples) -> ~str {
+    if bs.mb_s != 0 {
+        fmt!("%u ns/iter (+/- %u) = %u MB/s",
+             bs.ns_iter_summ.median as uint,
+             (bs.ns_iter_summ.max - bs.ns_iter_summ.min) as uint,
+             bs.mb_s)
+    } else {
+        fmt!("%u ns/iter (+/- %u)",
+             bs.ns_iter_summ.median as uint,
+             (bs.ns_iter_summ.max - bs.ns_iter_summ.min) as uint)
+    }
 }
 
 // A simple console test runner
@@ -209,166 +472,38 @@ pub fn run_tests_console(opts: &TestOpts,
     fn callback(event: &TestEvent, st: &mut ConsoleTestState) {
         debug!("callback(event=%?)", event);
         match copy *event {
-          TeFiltered(ref filtered_tests) => {
-            st.total = filtered_tests.len();
-            let noun = if st.total != 1 { ~"tests" } else { ~"test" };
-            st.out.write_line(fmt!("\nrunning %u %s", st.total, noun));
-          }
-          TeWait(ref test) => st.out.write_str(
-              fmt!("test %s ... ", test.name.to_str())),
-          TeResult(test, result) => {
-            match st.log_out {
-                Some(f) => write_log(f, copy result, &test),
-                None => ()
+            TeFiltered(ref filtered_tests) => st.write_run_start(filtered_tests.len()),
+            TeWait(ref test) => st.write_test_start(test),
+            TeResult(test, result) => {
+                st.write_log(&test, &result);
+                st.write_result(&result);
+                match result {
+                    TrOk => st.passed += 1,
+                    TrIgnored => st.ignored += 1,
+                    TrBench(bs) => {
+                        st.metrics.insert_metric(test.name.to_str(),
+                                                 bs.ns_iter_summ.median,
+                                                 bs.ns_iter_summ.max - bs.ns_iter_summ.min);
+                        st.benchmarked += 1
+                    }
+                    TrFailed => {
+                        st.failed += 1;
+                        st.failures.push(test);
+                    }
+                }
             }
-            match result {
-              TrOk => {
-                st.passed += 1;
-                write_ok(st.out, st.use_color);
-                st.out.write_line("");
-              }
-              TrFailed => {
-                st.failed += 1;
-                write_failed(st.out, st.use_color);
-                st.out.write_line("");
-                st.failures.push(test);
-              }
-              TrIgnored => {
-                st.ignored += 1;
-                write_ignored(st.out, st.use_color);
-                st.out.write_line("");
-              }
-              TrBench(bs) => {
-                st.benchmarked += 1u;
-                write_bench(st.out, st.use_color);
-                st.out.write_line(fmt!(": %s",
-                                       fmt_bench_samples(&bs)));
-              }
-            }
-          }
         }
     }
-
-    let log_out = match opts.logfile {
-        Some(ref path) => match io::file_writer(path,
-                                                [io::Create,
-                                                 io::Truncate]) {
-          result::Ok(w) => Some(w),
-          result::Err(ref s) => {
-              fail!("can't open output file: %s", *s)
-          }
-        },
-        None => None
-    };
-
-    let st = @mut ConsoleTestState {
-        out: io::stdout(),
-        log_out: log_out,
-        use_color: use_color(),
-        total: 0u,
-        passed: 0u,
-        failed: 0u,
-        ignored: 0u,
-        benchmarked: 0u,
-        failures: ~[]
-    };
-
+    let st = @mut ConsoleTestState::new(opts);
     run_tests(opts, tests, |x| callback(&x, st));
-
-    assert!(st.passed + st.failed +
-                 st.ignored + st.benchmarked == st.total);
-    let success = st.failed == 0u;
-
-    if !success {
-        print_failures(st);
-    }
-
-    {
-      let st: &mut ConsoleTestState = st;
-      st.out.write_str(fmt!("\nresult: "));
-      if success {
-          // There's no parallelism at this point so it's safe to use color
-          write_ok(st.out, true);
-      } else {
-          write_failed(st.out, true);
-      }
-      st.out.write_str(fmt!(". %u passed; %u failed; %u ignored\n\n",
-                            st.passed, st.failed, st.ignored));
-    }
-
-    return success;
-
-    fn fmt_bench_samples(bs: &BenchSamples) -> ~str {
-        use stats::Stats;
-        if bs.mb_s != 0 {
-            fmt!("%u ns/iter (+/- %u) = %u MB/s",
-                 bs.ns_iter_samples.median() as uint,
-                 3 * (bs.ns_iter_samples.median_abs_dev() as uint),
-                 bs.mb_s)
-        } else {
-            fmt!("%u ns/iter (+/- %u)",
-                 bs.ns_iter_samples.median() as uint,
-                 3 * (bs.ns_iter_samples.median_abs_dev() as uint))
+    match opts.save_metrics {
+        None => (),
+        Some(ref pth) => {
+            st.metrics.save(pth);
+            st.out.write_str(fmt!("\nmetrics saved to: %s", pth.to_str()));
         }
     }
-
-    fn write_log(out: @io::Writer, result: TestResult, test: &TestDesc) {
-        out.write_line(fmt!("%s %s",
-                    match result {
-                        TrOk => ~"ok",
-                        TrFailed => ~"failed",
-                        TrIgnored => ~"ignored",
-                        TrBench(ref bs) => fmt_bench_samples(bs)
-                    }, test.name.to_str()));
-    }
-
-    fn write_ok(out: @io::Writer, use_color: bool) {
-        write_pretty(out, "ok", term::color::GREEN, use_color);
-    }
-
-    fn write_failed(out: @io::Writer, use_color: bool) {
-        write_pretty(out, "FAILED", term::color::RED, use_color);
-    }
-
-    fn write_ignored(out: @io::Writer, use_color: bool) {
-        write_pretty(out, "ignored", term::color::YELLOW, use_color);
-    }
-
-    fn write_bench(out: @io::Writer, use_color: bool) {
-        write_pretty(out, "bench", term::color::CYAN, use_color);
-    }
-
-    fn write_pretty(out: @io::Writer,
-                    word: &str,
-                    color: term::color::Color,
-                    use_color: bool) {
-        let t = term::Terminal::new(out);
-        match t {
-            Ok(term)  => {
-                if use_color {
-                    term.fg(color);
-                }
-                out.write_str(word);
-                if use_color {
-                    term.reset();
-                }
-            },
-            Err(_) => out.write_str(word)
-        }
-    }
-}
-
-fn print_failures(st: &ConsoleTestState) {
-    st.out.write_line("\nfailures:");
-    let mut failures = ~[];
-    for uint::range(0, st.failures.len()) |i| {
-        let name = copy st.failures[i].name;
-        failures.push(name.to_str());
-    }
-    sort::tim_sort(failures);
-    for failures.iter().advance |name| {
-        st.out.write_line(fmt!("    %s", name.to_str()));
-    }
+    return st.write_run_finish(&opts.ratchet_metrics, opts.ratchet_noise_percent);
 }
 
 #[test]
@@ -390,17 +525,19 @@ fn should_sort_failures_before_printing_them() {
 
         let st = @ConsoleTestState {
             out: wr,
-            log_out: option::None,
+            log_out: None,
+            term: None,
             use_color: false,
             total: 0u,
             passed: 0u,
             failed: 0u,
             ignored: 0u,
             benchmarked: 0u,
+            metrics: MetricMap::new(),
             failures: ~[test_b, test_a]
         };
 
-        print_failures(st);
+        st.write_failures();
     };
 
     let apos = s.find_str("a").get();
@@ -503,15 +640,17 @@ pub fn filter_tests(
         filtered
     } else {
         let filter_str = match opts.filter {
-          option::Some(ref f) => copy *f,
-          option::None => ~""
+          Some(ref f) => copy *f,
+          None => ~""
         };
 
         fn filter_fn(test: TestDescAndFn, filter_str: &str) ->
             Option<TestDescAndFn> {
             if test.desc.name.to_str().contains(filter_str) {
-                return option::Some(test);
-            } else { return option::None; }
+                return Some(test);
+            } else {
+                return None;
+            }
         }
 
         filtered.consume_iter().filter_map(|x| filter_fn(x, filter_str)).collect()
@@ -605,6 +744,138 @@ fn calc_result(desc: &TestDesc, task_succeeded: bool) -> TestResult {
     }
 }
 
+
+impl ToJson for Metric {
+    fn to_json(&self) -> json::Json {
+        let mut map = ~HashMap::new();
+        map.insert(~"value", json::Number(self.value as float));
+        map.insert(~"noise", json::Number(self.noise as float));
+        json::Object(map)
+    }
+}
+
+impl MetricMap {
+
+    fn new() -> MetricMap {
+        MetricMap(TreeMap::new())
+    }
+
+    /// Load MetricDiff from a file.
+    fn load(p: &Path) -> MetricMap {
+        assert!(os::path_exists(p));
+        let f = io::file_reader(p).get();
+        let mut decoder = json::Decoder(json::from_reader(f).get());
+        MetricMap(Decodable::decode(&mut decoder))
+    }
+
+    /// Write MetricDiff to a file.
+    pub fn save(&self, p: &Path) {
+        let f = io::file_writer(p, [io::Create, io::Truncate]).get();
+        json::to_pretty_writer(f, &self.to_json());
+    }
+
+    /// Compare against another MetricMap
+    pub fn compare_to_old(&self, old: MetricMap,
+                          noise_pct: Option<f64>) -> MetricDiff {
+        let mut diff : MetricDiff = TreeMap::new();
+        for old.iter().advance |(k, vold)| {
+            let r = match self.find(k) {
+                None => MetricRemoved,
+                Some(v) => {
+                    let delta = (v.value - vold.value);
+                    let noise = match noise_pct {
+                        None => f64::max(vold.noise.abs(), v.noise.abs()),
+                        Some(pct) => vold.value * pct / 100.0
+                    };
+                    if delta.abs() < noise {
+                        LikelyNoise
+                    } else {
+                        let pct = delta.abs() / v.value * 100.0;
+                        if vold.noise < 0.0 {
+                            // When 'noise' is negative, it means we want
+                            // to see deltas that go up over time, and can
+                            // only tolerate slight negative movement.
+                            if delta < 0.0 {
+                                Regression(pct)
+                            } else {
+                                Improvement(pct)
+                            }
+                        } else {
+                            // When 'noise' is positive, it means we want
+                            // to see deltas that go down over time, and
+                            // can only tolerate slight positive movements.
+                            if delta < 0.0 {
+                                Improvement(pct)
+                            } else {
+                                Regression(pct)
+                            }
+                        }
+                    }
+                }
+            };
+            diff.insert(copy *k, r);
+        }
+        for self.iter().advance |(k, _)| {
+            if !diff.contains_key(k) {
+                diff.insert(copy *k, MetricAdded);
+            }
+        }
+        diff
+    }
+
+    /// Insert a named `value` (+/- `noise`) metric into the map. The value
+    /// must be non-negative. The `noise` indicates the uncertainty of the
+    /// metric, which doubles as the "noise range" of acceptable
+    /// pairwise-regressions on this named value, when comparing from one
+    /// metric to the next using `compare_to_old`.
+    ///
+    /// If `noise` is positive, then it means this metric is of a value
+    /// you want to see grow smaller, so a change larger than `noise` in the
+    /// positive direction represents a regression.
+    ///
+    /// If `noise` is negative, then it means this metric is of a value
+    /// you want to see grow larger, so a change larger than `noise` in the
+    /// negative direction represents a regression.
+    pub fn insert_metric(&mut self, name: &str, value: f64, noise: f64) {
+        let m = Metric {
+            value: value,
+            noise: noise
+        };
+        self.insert(name.to_owned(), m);
+    }
+
+    /// Attempt to "ratchet" an external metric file. This involves loading
+    /// metrics from a metric file (if it exists), comparing against
+    /// the metrics in `self` using `compare_to_old`, and rewriting the
+    /// file to contain the metrics in `self` if none of the
+    /// `MetricChange`s are `Regression`. Returns the diff as well
+    /// as a boolean indicating whether the ratchet succeeded.
+    pub fn ratchet(&self, p: &Path, pct: Option<f64>) -> (MetricDiff, bool) {
+        let old = if os::path_exists(p) {
+            MetricMap::load(p)
+        } else {
+            MetricMap::new()
+        };
+
+        let diff : MetricDiff = self.compare_to_old(old, pct);
+        let ok = do diff.iter().all() |(_, v)| {
+            match *v {
+                Regression(_) => false,
+                _ => true
+            }
+        };
+
+        if ok {
+            debug!("rewriting file '%s' with updated metrics");
+            self.save(p);
+        }
+        return (diff, ok)
+    }
+}
+
+
+// Benchmarking
+
 impl BenchHarness {
     /// Callback for benchmark functions to run in their body.
     pub fn iter(&mut self, inner:&fn()) {
@@ -639,105 +910,72 @@ impl BenchHarness {
         f(self);
     }
 
-    // This is the Go benchmark algorithm. It produces a single
-    // datapoint and always tries to run for 1s.
-    pub fn go_bench(&mut self, f: &fn(&mut BenchHarness)) {
-
-        // Rounds a number down to the nearest power of 10.
-        fn round_down_10(n: u64) -> u64 {
-            let mut n = n;
-            let mut res = 1;
-            while n > 10 {
-                n = n / 10;
-                res *= 10;
-            }
-            res
-        }
-
-        // Rounds x up to a number of the form [1eX, 2eX, 5eX].
-        fn round_up(n: u64) -> u64 {
-            let base = round_down_10(n);
-            if n < (2 * base) {
-                2 * base
-            } else if n < (5 * base) {
-                5 * base
-            } else {
-                10 * base
-            }
-        }
+    // This is a more statistics-driven benchmark algorithm
+    pub fn auto_bench(&mut self, f: &fn(&mut BenchHarness)) -> stats::Summary {
 
         // Initial bench run to get ballpark figure.
         let mut n = 1_u64;
         self.bench_n(n, |x| f(x));
 
-        while n < 1_000_000_000 &&
-            self.ns_elapsed() < 1_000_000_000 {
-            let last = n;
-
-            // Try to estimate iter count for 1s falling back to 1bn
-            // iterations if first run took < 1ns.
-            if self.ns_per_iter() == 0 {
-                n = 1_000_000_000;
-            } else {
-                n = 1_000_000_000 / self.ns_per_iter();
-            }
-
-            n = u64::max(u64::min(n+n/2, 100*last), last+1);
-            n = round_up(n);
-            self.bench_n(n, |x| f(x));
+        // Try to estimate iter count for 1ms falling back to 1m
+        // iterations if first run took < 1ns.
+        if self.ns_per_iter() == 0 {
+            n = 1_000_000;
+        } else {
+            n = 1_000_000 / self.ns_per_iter();
         }
-    }
 
-    // This is a more statistics-driven benchmark algorithm.
-    // It stops as quickly as 50ms, so long as the statistical
-    // properties are satisfactory. If those properties are
-    // not met, it may run as long as the Go algorithm.
-    pub fn auto_bench(&mut self, f: &fn(&mut BenchHarness)) -> ~[f64] {
-
-        let mut rng = rand::rng();
-        let mut magnitude = 10;
-        let mut prev_madp = 0.0;
-
+        let mut total_run = 0;
+        let samples : &mut [f64] = [0.0_f64, ..50];
         loop {
-            let n_samples = rng.gen_uint_range(50, 60);
-            let n_iter = rng.gen_uint_range(magnitude,
-                                            magnitude * 2);
+            let loop_start = precise_time_ns();
 
-            let samples = do vec::from_fn(n_samples) |_| {
-                self.bench_n(n_iter as u64, |x| f(x));
-                self.ns_per_iter() as f64
+            for samples.mut_iter().advance() |p| {
+                self.bench_n(n as u64, |x| f(x));
+                *p = self.ns_per_iter() as f64;
             };
 
-            // Eliminate outliers
-            let med = samples.median();
-            let mad = samples.median_abs_dev();
-            let samples = do samples.consume_iter().filter |f| {
-                num::abs(*f - med) <= 3.0 * mad
-            }.collect::<~[f64]>();
+            stats::winsorize(samples, 5.0);
+            let summ = stats::Summary::new(samples);
 
-            debug!("%u samples, median %f, MAD=%f, %u survived filter",
-                   n_samples, med as float, mad as float,
-                   samples.len());
+            for samples.mut_iter().advance() |p| {
+                self.bench_n(5 * n as u64, |x| f(x));
+                *p = self.ns_per_iter() as f64;
+            };
 
-            if samples.len() != 0 {
-                // If we have _any_ cluster of signal...
-                let curr_madp = samples.median_abs_dev_pct();
-                if self.ns_elapsed() > 1_000_000 &&
-                    (curr_madp < 1.0 ||
-                     num::abs(curr_madp - prev_madp) < 0.1) {
-                    return samples;
-                }
-                prev_madp = curr_madp;
+            stats::winsorize(samples, 5.0);
+            let summ5 = stats::Summary::new(samples);
 
-                if n_iter > 20_000_000 ||
-                    self.ns_elapsed() > 20_000_000 {
-                    return samples;
-                }
+            debug!("%u samples, median %f, MAD=%f, MADP=%f",
+                   samples.len(),
+                   summ.median as float,
+                   summ.median_abs_dev as float,
+                   summ.median_abs_dev_pct as float);
+
+            let now = precise_time_ns();
+            let loop_run = now - loop_start;
+
+            // If we've run for 100ms an seem to have converged to a
+            // stable median.
+            if loop_run > 100_000_000 &&
+                summ.median_abs_dev_pct < 1.0 &&
+                summ.median - summ5.median < summ5.median_abs_dev {
+                return summ5;
             }
 
-            magnitude *= 2;
+            total_run += loop_run;
+            // Longest we ever run for is 10s.
+            if total_run > 10_000_000_000 {
+                return summ5;
+            }
+
+            n *= 2;
         }
     }
+
+
+
+
 }
 
 pub mod bench {
@@ -752,13 +990,13 @@ pub mod bench {
             bytes: 0
         };
 
-        let ns_iter_samples = bs.auto_bench(f);
+        let ns_iter_summ = bs.auto_bench(f);
 
-        let iter_s = 1_000_000_000 / (ns_iter_samples.median() as u64);
+        let iter_s = 1_000_000_000 / (ns_iter_summ.median as u64);
         let mb_s = (bs.bytes * iter_s) / 1_000_000;
 
         BenchSamples {
-            ns_iter_samples: ns_iter_samples,
+            ns_iter_summ: ns_iter_summ,
             mb_s: mb_s as uint
         }
     }
@@ -877,13 +1115,14 @@ mod tests {
         // unignored tests and flip the ignore flag on the rest to false
 
         let opts = TestOpts {
-            filter: option::None,
+            filter: None,
             run_ignored: true,
-            logfile: option::None,
+            logfile: None,
             run_tests: true,
             run_benchmarks: false,
-            save_results: option::None,
-            compare_results: option::None
+            ratchet_noise_percent: None,
+            ratchet_metrics: None,
+            save_metrics: None,
         };
 
         let tests = ~[
@@ -914,13 +1153,14 @@ mod tests {
     #[test]
     pub fn sort_tests() {
         let opts = TestOpts {
-            filter: option::None,
+            filter: None,
             run_ignored: false,
-            logfile: option::None,
+            logfile: None,
             run_tests: true,
             run_benchmarks: false,
-            save_results: option::None,
-            compare_results: option::None
+            ratchet_noise_percent: None,
+            ratchet_metrics: None,
+            save_metrics: None,
         };
 
         let names =
