@@ -75,7 +75,7 @@ pub fn type_uses_for(ccx: @mut CrateContext, fn_id: def_id, n_tps: uint)
     let fn_id_loc = if fn_id.crate == local_crate {
         fn_id
     } else {
-        inline::maybe_instantiate_inline(ccx, fn_id, true)
+        inline::maybe_instantiate_inline(ccx, fn_id)
     };
 
     // Conservatively assume full use for recursive loops

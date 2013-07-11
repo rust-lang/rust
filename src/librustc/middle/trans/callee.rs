@@ -361,8 +361,7 @@ pub fn trans_fn_ref_with_vtables(
     // def_id to the local id of the inlined copy.
     let def_id = {
         if def_id.crate != ast::local_crate {
-            let may_translate = opt_impl_did.is_none();
-            inline::maybe_instantiate_inline(ccx, def_id, may_translate)
+            inline::maybe_instantiate_inline(ccx, def_id)
         } else {
             def_id
         }
