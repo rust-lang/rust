@@ -12,6 +12,7 @@
 
 use cast;
 use cell::Cell;
+use either::{Either, Left, Right};
 use option::{Option, Some, None};
 use prelude::*;
 use rt::task::Task;
@@ -26,6 +27,16 @@ static KILL_RUNNING:    uint = 0;
 static KILL_KILLED:     uint = 1;
 static KILL_UNKILLABLE: uint = 2;
 
+struct KillFlag(AtomicUint);
+type KillFlagHandle = UnsafeAtomicRcBox<KillFlag>;
+
+/// A handle to a blocked task. Usually this means having the ~Task pointer by
+/// ownership, but if the task is killable, a killer can steal it at any time.
+pub enum BlockedTask {
+    Unkillable(~Task),
+    Killable(KillFlagHandle),
+}
+
 // FIXME(#7544)(bblum): think about the cache efficiency of this
 struct KillHandleInner {
     // Is the task running, blocked, or killed? Possible values:
@@ -35,7 +46,7 @@ struct KillHandleInner {
     // This flag is refcounted because it may also be referenced by a blocking
     // concurrency primitive, used to wake the task normally, whose reference
     // may outlive the handle's if the task is killed.
-    killed: UnsafeAtomicRcBox<AtomicUint>,
+    killed: KillFlagHandle,
     // Has the task deferred kill signals? This flag guards the above one.
     // Possible values:
     // * KILL_RUNNING    - Not unkillable, no kill pending.
@@ -76,11 +87,93 @@ pub struct Death {
     wont_sleep:      int,
 }
 
+impl Drop for KillFlag {
+    // Letting a KillFlag with a task inside get dropped would leak the task.
+    // We could free it here, but the task should get awoken by hand somehow.
+    fn drop(&self) {
+        match self.load(Acquire) {
+            KILL_RUNNING | KILL_KILLED => { },
+            _ => rtabort!("can't drop kill flag with a blocked task inside!"),
+        }
+    }
+}
+
+impl BlockedTask {
+    /// Returns Some if the task was successfully woken; None if already killed.
+    pub fn wake(self) -> Option<~Task> {
+        let mut this = self;
+        match this {
+            Unkillable(task) => Some(task),
+            Killable(ref mut flag_arc) => {
+                let flag = unsafe { &mut **flag_arc.get() };
+                match flag.swap(KILL_RUNNING, SeqCst) {
+                    KILL_RUNNING => rtabort!("tried to wake an already-running task"),
+                    KILL_KILLED  => None, // a killer stole it already
+                    task_ptr     => Some(unsafe { cast::transmute(task_ptr) }),
+                }
+            }
+        }
+    }
+
+    /// Create a blocked task, unless the task was already killed.
+    pub fn try_block(task: ~Task) -> Either<~Task, BlockedTask> {
+        if task.death.unkillable > 0 { // FIXME(#7544): || self.indestructible
+            Right(Unkillable(task))
+        } else {
+            rtassert!(task.death.kill_handle.is_some());
+            unsafe {
+                // FIXME(#7544) optimz
+                let flag_arc = (*task.death.kill_handle.get_ref().get()).killed.clone();
+                let flag     = &mut **flag_arc.get();
+                let task_ptr = cast::transmute(task);
+                // Expect flag to contain RUNNING. If KILLED, it should stay KILLED.
+                match flag.compare_and_swap(KILL_RUNNING, task_ptr, SeqCst) {
+                    KILL_RUNNING => Right(Killable(flag_arc)),
+                    KILL_KILLED  => Left(cast::transmute(task_ptr)),
+                    x            => rtabort!("can't block task! kill flag = %?", x),
+                }
+            }
+        }
+    }
+
+    /// Convert to an unsafe uint value. Useful for storing in a pipe's state flag.
+    #[inline]
+    pub unsafe fn cast_to_uint(self) -> uint {
+        // Use the low bit to distinguish the enum variants, to save a second
+        // allocation in the indestructible case.
+        match self {
+            Unkillable(task) => {
+                let blocked_task_ptr: uint = cast::transmute(task);
+                rtassert!(blocked_task_ptr & 0x1 == 0);
+                blocked_task_ptr
+            },
+            Killable(flag_arc) => {
+                let blocked_task_ptr: uint = cast::transmute(~flag_arc);
+                rtassert!(blocked_task_ptr & 0x1 == 0);
+                blocked_task_ptr | 0x1
+            }
+        }
+    }
+
+    /// Convert from an unsafe uint value. Useful for retrieving a pipe's state flag.
+    #[inline]
+    pub unsafe fn cast_from_uint(blocked_task_ptr: uint) -> BlockedTask {
+        if blocked_task_ptr & 0x1 == 0 {
+            Unkillable(cast::transmute(blocked_task_ptr))
+        } else {
+            let ptr: ~KillFlagHandle = cast::transmute(blocked_task_ptr & !0x1);
+            match ptr {
+                ~flag_arc => Killable(flag_arc)
+            }
+        }
+    }
+}
+
 impl KillHandle {
     pub fn new() -> KillHandle {
         KillHandle(UnsafeAtomicRcBox::new(KillHandleInner {
             // Linked failure fields
-            killed:     UnsafeAtomicRcBox::new(AtomicUint::new(KILL_RUNNING)),
+            killed:     UnsafeAtomicRcBox::new(KillFlag(AtomicUint::new(KILL_RUNNING))),
             unkillable: AtomicUint::new(KILL_RUNNING),
             // Exit code propagation fields
             any_child_failed: false,
