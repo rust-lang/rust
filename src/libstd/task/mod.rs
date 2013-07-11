@@ -515,9 +515,10 @@ pub fn yield() {
             }
             _ => {
                 // XXX: What does yield really mean in newsched?
+                // FIXME(#7544): Optimize this, since we know we won't block.
                 let sched = Local::take::<Scheduler>();
                 do sched.deschedule_running_task_and_then |sched, task| {
-                    sched.enqueue_task(task);
+                    sched.enqueue_blocked_task(task);
                 }
             }
         }

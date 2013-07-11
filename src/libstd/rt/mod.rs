@@ -367,7 +367,7 @@ fn test_context() {
             let sched = Local::take::<Scheduler>();
             do sched.deschedule_running_task_and_then() |sched, task| {
                 assert_eq!(context(), SchedulerContext);
-                sched.enqueue_task(task);
+                sched.enqueue_blocked_task(task);
             }
         };
         sched.enqueue_task(task);
