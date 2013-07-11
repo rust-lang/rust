@@ -1,7 +1,6 @@
 // xfail-fast
 // aux-build:trait_default_method_xc_aux.rs
 
-#[allow(default_methods)];
 
 extern mod aux(name = "trait_default_method_xc_aux");
 use aux::{A, TestEquality, Something};

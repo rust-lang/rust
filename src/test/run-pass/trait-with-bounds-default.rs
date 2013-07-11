@@ -15,7 +15,6 @@ pub trait Clone2 {
     fn clone(&self) -> Self;
 }
 
-#[allow(default_methods)]
 trait Getter<T: Clone> {
     fn do_get(&self) -> T;
 
