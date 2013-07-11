@@ -714,14 +714,10 @@ pub fn is_reserved_keyword(tok: &Token) -> bool {
 
 // not currently used anywhere...
 pub fn mtwt_token_eq(t1 : &Token, t2 : &Token) -> bool {
-    if (*t1 == *t2) {
-        true
-    } else {
-        match (t1,t2) {
-            (&IDENT(id1,_),&IDENT(id2,_)) =>
-            ast_util::mtwt_resolve(id1) == ast_util::mtwt_resolve(id2),
-            _ => false
-        }
+    match (t1,t2) {
+        (&IDENT(id1,_),&IDENT(id2,_)) =>
+        ast_util::mtwt_resolve(id1) == ast_util::mtwt_resolve(id2),
+        _ => *t1 == *t2
     }
 }
 
