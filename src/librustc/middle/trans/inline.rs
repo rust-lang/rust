@@ -88,7 +88,7 @@ pub fn maybe_instantiate_inline(ccx: @mut CrateContext, fn_id: ast::def_id,
             ccx.sess.bug("maybe_get_item_ast returned a found_parent \
              with a non-item parent");
         }
-        csearch::found(ast::ii_method(impl_did, mth)) => {
+        csearch::found(ast::ii_method(impl_did, _is_provided, mth)) => {
           ccx.stats.n_inlines += 1;
           ccx.external.insert(fn_id, Some(mth.id));
           // If this is a default method, we can't look up the
