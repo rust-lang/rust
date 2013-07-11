@@ -18,7 +18,7 @@ use container::{Container, Mutable};
 use cmp;
 use cmp::{Eq, TotalEq, TotalOrd, Ordering, Less, Equal, Greater};
 use clone::Clone;
-use iterator::{FromIterator, Iterator, IteratorUtil};
+use iterator::*;
 use kinds::Copy;
 use libc::c_void;
 use num::Zero;
@@ -760,12 +760,7 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
     }
     #[inline]
     fn rev_iter(self) -> VecRevIterator<'self, T> {
-        unsafe {
-            let p = vec::raw::to_ptr(self);
-            VecRevIterator{ptr: p.offset(self.len() - 1),
-                           end: p.offset(-1),
-                           lifetime: cast::transmute(p)}
-        }
+        self.iter().invert()
     }
 
     /// Returns an iterator over the subslices of the vector which are
@@ -1717,13 +1712,9 @@ impl<'self,T> MutableVector<'self, T> for &'self mut [T] {
         }
     }
 
+    #[inline]
     fn mut_rev_iter(self) -> VecMutRevIterator<'self, T> {
-        unsafe {
-            let p = vec::raw::to_mut_ptr(self);
-            VecMutRevIterator{ptr: p.offset(self.len() - 1),
-                              end: p.offset(-1),
-                              lifetime: cast::transmute(p)}
-        }
+        self.mut_iter().invert()
     }
 
     /**
@@ -2083,17 +2074,17 @@ macro_rules! iterator {
             priv lifetime: $elem // FIXME: #5922
         }
     };*/
-    (impl $name:ident -> $elem:ty, $step:expr) => {
-        // could be implemented with &[T] with .slice(), but this avoids bounds checks
+    (impl $name:ident -> $elem:ty) => {
         impl<'self, T> Iterator<$elem> for $name<'self, T> {
             #[inline]
             fn next(&mut self) -> Option<$elem> {
+                // could be implemented with slices, but this avoids bounds checks
                 unsafe {
                     if self.ptr == self.end {
                         None
                     } else {
                         let old = self.ptr;
-                        self.ptr = self.ptr.offset($step);
+                        self.ptr = self.ptr.offset(1);
                         Some(cast::transmute(old))
                     }
                 }
@@ -2101,13 +2092,28 @@ macro_rules! iterator {
 
             #[inline]
             fn size_hint(&self) -> (uint, Option<uint>) {
-                let diff = if $step > 0 {
-                    (self.end as uint) - (self.ptr as uint)
-                } else {
-                    (self.ptr as uint) - (self.end as uint)
-                };
+                let diff = (self.end as uint) - (self.ptr as uint);
                 let exact = diff / size_of::<$elem>();
                 (exact, Some(exact))
+            }
+        }
+    }
+}
+
+macro_rules! double_ended_iterator {
+    (impl $name:ident -> $elem:ty) => {
+        impl<'self, T> DoubleEndedIterator<$elem> for $name<'self, T> {
+            #[inline]
+            fn next_back(&mut self) -> Option<$elem> {
+                // could be implemented with slices, but this avoids bounds checks
+                unsafe {
+                    if self.end == self.ptr {
+                        None
+                    } else {
+                        self.end = self.end.offset(-1);
+                        Some(cast::transmute(self.end))
+                    }
+                }
             }
         }
     }
@@ -2120,16 +2126,9 @@ pub struct VecIterator<'self, T> {
     priv end: *T,
     priv lifetime: &'self T // FIXME: #5922
 }
-iterator!{impl VecIterator -> &'self T, 1}
-
-//iterator!{struct VecRevIterator -> *T, &'self T}
-/// An iterator for iterating over a vector in reverse.
-pub struct VecRevIterator<'self, T> {
-    priv ptr: *T,
-    priv end: *T,
-    priv lifetime: &'self T // FIXME: #5922
-}
-iterator!{impl VecRevIterator -> &'self T, -1}
+iterator!{impl VecIterator -> &'self T}
+double_ended_iterator!{impl VecIterator -> &'self T}
+pub type VecRevIterator<'self, T> = InvertIterator<&'self T, VecIterator<'self, T>>;
 
 //iterator!{struct VecMutIterator -> *mut T, &'self mut T}
 /// An iterator for mutating the elements of a vector.
@@ -2138,16 +2137,9 @@ pub struct VecMutIterator<'self, T> {
     priv end: *mut T,
     priv lifetime: &'self mut T // FIXME: #5922
 }
-iterator!{impl VecMutIterator -> &'self mut T, 1}
-
-//iterator!{struct VecMutRevIterator -> *mut T, &'self mut T}
-/// An iterator for mutating the elements of a vector in reverse.
-pub struct VecMutRevIterator<'self, T> {
-    priv ptr: *mut T,
-    priv end: *mut T,
-    priv lifetime: &'self mut T // FIXME: #5922
-}
-iterator!{impl VecMutRevIterator -> &'self mut T, -1}
+iterator!{impl VecMutIterator -> &'self mut T}
+double_ended_iterator!{impl VecMutIterator -> &'self mut T}
+pub type VecMutRevIterator<'self, T> = InvertIterator<&'self mut T, VecMutIterator<'self, T>>;
 
 /// An iterator that moves out of a vector.
 pub struct VecConsumeIterator<T> {
