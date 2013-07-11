@@ -280,30 +280,42 @@ pub fn create_function_metadata(fcx: fn_ctxt) -> DISubprogram {
 
     let fnitem = cx.tcx.items.get_copy(&fcx.id);
     let (ident, ret_ty, id) = match fnitem {
-      ast_map::node_item(ref item, _) => {
-        match item.node {
-          ast::item_fn(ast::fn_decl { output: ref ty, _}, _, _, _, _) => {
-            (item.ident, ty, item.id)
-          }
-          _ => fcx.ccx.sess.span_bug(item.span,
-                                     "create_function_metadata: item bound to non-function")
+        ast_map::node_item(ref item, _) => {
+            match item.node {
+                ast::item_fn(ast::fn_decl { output: ref ty, _}, _, _, _, _) => {
+                    (item.ident, ty, item.id)
+                }
+                _ => fcx.ccx.sess.span_bug(item.span,
+                                           "create_function_metadata: item bound to non-function")
+            }
         }
-      }
-      ast_map::node_method(@ast::method { decl: ast::fn_decl { output: ref ty, _ },
-                           id: id, ident: ident, _}, _, _) => {
-          (ident, ty, id)
-      }
-      ast_map::node_expr(ref expr) => {
-        match expr.node {
-          ast::expr_fn_block(ref decl, _) => {
-            let name = gensym_name("fn");
-            (name, &decl.output, expr.id)
-          }
-          _ => fcx.ccx.sess.span_bug(expr.span,
-                  "create_function_metadata: expected an expr_fn_block here")
+        ast_map::node_method(@ast::method { decl: ast::fn_decl { output: ref ty, _ },
+                             id: id, ident: ident, _}, _, _) => {
+            (ident, ty, id)
         }
-      }
-      _ => fcx.ccx.sess.bug("create_function_metadata: unexpected sort of node")
+        ast_map::node_expr(ref expr) => {
+            match expr.node {
+                ast::expr_fn_block(ref decl, _) => {
+                    let name = gensym_name("fn");
+                    (name, &decl.output, expr.id)
+                }
+                _ => fcx.ccx.sess.span_bug(expr.span,
+                        "create_function_metadata: expected an expr_fn_block here")
+            }
+        }
+        ast_map::node_trait_method(
+            @ast::provided(
+                @ast::method {
+                    decl: ast::fn_decl { output: ref ty, _ },
+                    id: id,
+                    ident: ident,
+                    _}
+            ),
+            _def_id,
+            _path) => {
+            (ident, ty, id)
+        }
+        _ => fcx.ccx.sess.bug("create_function_metadata: unexpected sort of node")
     };
 
     match dbg_cx(cx).created_functions.find(&id) {
