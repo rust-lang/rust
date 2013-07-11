@@ -30,11 +30,11 @@ use treemap::TreeMap;
 use std::comm::{stream, SharedChan};
 use std::either;
 use std::io;
-use std::option;
 use std::result;
 use std::task;
 use std::to_str::ToStr;
 use std::u64;
+use std::f64;
 use std::hashmap::HashMap;
 use std::os;
 
@@ -149,6 +149,7 @@ pub struct TestOpts {
     run_tests: bool,
     run_benchmarks: bool,
     ratchet_metrics: Option<Path>,
+    ratchet_noise_percent: Option<f64>,
     save_metrics: Option<Path>,
     logfile: Option<Path>
 }
@@ -163,6 +164,7 @@ pub fn parse_opts(args: &[~str]) -> OptRes {
                  getopts::optflag("bench"),
                  getopts::optopt("save-metrics"),
                  getopts::optopt("ratchet-metrics"),
+                 getopts::optopt("ratchet-noise-percent"),
                  getopts::optopt("logfile")];
     let matches =
         match getopts::getopts(args_, opts) {
@@ -172,8 +174,8 @@ pub fn parse_opts(args: &[~str]) -> OptRes {
 
     let filter =
         if matches.free.len() > 0 {
-            option::Some(copy (matches).free[0])
-        } else { option::None };
+            Some(copy (matches).free[0])
+        } else { None };
 
     let run_ignored = getopts::opt_present(&matches, "ignored");
 
@@ -187,6 +189,10 @@ pub fn parse_opts(args: &[~str]) -> OptRes {
     let ratchet_metrics = getopts::opt_maybe_str(&matches, "ratchet-metrics");
     let ratchet_metrics = ratchet_metrics.map(|s| Path(*s));
 
+    let ratchet_noise_percent =
+        getopts::opt_maybe_str(&matches, "ratchet-noise-percent");
+    let ratchet_noise_percent = ratchet_noise_percent.map(|s| f64::from_str(*s).get());
+
     let save_metrics = getopts::opt_maybe_str(&matches, "save-metrics");
     let save_metrics = save_metrics.map(|s| Path(*s));
 
@@ -196,6 +202,7 @@ pub fn parse_opts(args: &[~str]) -> OptRes {
         run_tests: run_tests,
         run_benchmarks: run_benchmarks,
         ratchet_metrics: ratchet_metrics,
+        ratchet_noise_percent: ratchet_noise_percent,
         save_metrics: save_metrics,
         logfile: logfile
     };
@@ -405,14 +412,22 @@ impl ConsoleTestState {
         }
     }
 
-    pub fn write_run_finish(&self, ratchet_metrics: &Option<Path>) -> bool {
+    pub fn write_run_finish(&self,
+                            ratchet_metrics: &Option<Path>,
+                            ratchet_pct: Option<f64>) -> bool {
         assert!(self.passed + self.failed + self.ignored + self.benchmarked == self.total);
 
         let ratchet_success = match *ratchet_metrics {
             None => true,
             Some(ref pth) => {
                 self.out.write_str(fmt!("\nusing metrics ratchet: %s\n", pth.to_str()));
-                let (diff, ok) = self.metrics.ratchet(pth);
+                match ratchet_pct {
+                    None => (),
+                    Some(pct) =>
+                    self.out.write_str(fmt!("with noise-tolerance forced to: %f%%\n",
+                                            pct as float))
+                }
+                let (diff, ok) = self.metrics.ratchet(pth, ratchet_pct);
                 self.write_metric_diff(&diff);
                 ok
             }
@@ -488,7 +503,7 @@ pub fn run_tests_console(opts: &TestOpts,
             st.out.write_str(fmt!("\nmetrics saved to: %s", pth.to_str()));
         }
     }
-    return st.write_run_finish(&opts.ratchet_metrics);
+    return st.write_run_finish(&opts.ratchet_metrics, opts.ratchet_noise_percent);
 }
 
 #[test]
@@ -510,18 +525,19 @@ fn should_sort_failures_before_printing_them() {
 
         let st = @ConsoleTestState {
             out: wr,
-            log_out: option::None,
+            log_out: None,
+            term: None,
             use_color: false,
             total: 0u,
             passed: 0u,
             failed: 0u,
             ignored: 0u,
             benchmarked: 0u,
-            metrics: MetricsMap::new(),
+            metrics: MetricMap::new(),
             failures: ~[test_b, test_a]
         };
 
-        print_failures(st);
+        st.write_failures();
     };
 
     let apos = s.find_str("a").get();
@@ -624,15 +640,17 @@ pub fn filter_tests(
         filtered
     } else {
         let filter_str = match opts.filter {
-          option::Some(ref f) => copy *f,
-          option::None => ~""
+          Some(ref f) => copy *f,
+          None => ~""
         };
 
         fn filter_fn(test: TestDescAndFn, filter_str: &str) ->
             Option<TestDescAndFn> {
             if test.desc.name.to_str().contains(filter_str) {
-                return option::Some(test);
-            } else { return option::None; }
+                return Some(test);
+            } else {
+                return None;
+            }
         }
 
         filtered.consume_iter().filter_map(|x| filter_fn(x, filter_str)).collect()
@@ -757,14 +775,19 @@ impl MetricMap {
     }
 
     /// Compare against another MetricMap
-    pub fn compare_to_old(&self, old: MetricMap) -> MetricDiff {
+    pub fn compare_to_old(&self, old: MetricMap,
+                          noise_pct: Option<f64>) -> MetricDiff {
         let mut diff : MetricDiff = TreeMap::new();
         for old.iter().advance |(k, vold)| {
             let r = match self.find(k) {
                 None => MetricRemoved,
                 Some(v) => {
                     let delta = (v.value - vold.value);
-                    if delta.abs() < vold.noise.abs() {
+                    let noise = match noise_pct {
+                        None => f64::max(vold.noise.abs(), v.noise.abs()),
+                        Some(pct) => vold.value * pct / 100.0
+                    };
+                    if delta.abs() < noise {
                         LikelyNoise
                     } else {
                         let pct = delta.abs() / v.value * 100.0;
@@ -827,14 +850,14 @@ impl MetricMap {
     /// file to contain the metrics in `self` if none of the
     /// `MetricChange`s are `Regression`. Returns the diff as well
     /// as a boolean indicating whether the ratchet succeeded.
-    pub fn ratchet(&self, p: &Path) -> (MetricDiff, bool) {
+    pub fn ratchet(&self, p: &Path, pct: Option<f64>) -> (MetricDiff, bool) {
         let old = if os::path_exists(p) {
             MetricMap::load(p)
         } else {
             MetricMap::new()
         };
 
-        let diff : MetricDiff = self.compare_to_old(old);
+        let diff : MetricDiff = self.compare_to_old(old, pct);
         let ok = do diff.iter().all() |(_, v)| {
             match *v {
                 Regression(_) => false,
@@ -1092,12 +1115,14 @@ mod tests {
         // unignored tests and flip the ignore flag on the rest to false
 
         let opts = TestOpts {
-            filter: option::None,
+            filter: None,
             run_ignored: true,
-            logfile: option::None,
+            logfile: None,
             run_tests: true,
             run_benchmarks: false,
-            ratchet: option::None,
+            ratchet_noise_percent: None,
+            ratchet_metrics: None,
+            save_metrics: None,
         };
 
         let tests = ~[
@@ -1128,13 +1153,14 @@ mod tests {
     #[test]
     pub fn sort_tests() {
         let opts = TestOpts {
-            filter: option::None,
+            filter: None,
             run_ignored: false,
-            logfile: option::None,
+            logfile: None,
             run_tests: true,
             run_benchmarks: false,
-            ratchet_metrics: option::None,
-            save_metrics: option::None,
+            ratchet_noise_percent: None,
+            ratchet_metrics: None,
+            save_metrics: None,
         };
 
         let names =

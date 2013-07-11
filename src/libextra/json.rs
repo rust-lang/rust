@@ -1331,7 +1331,7 @@ impl<A:ToJson> ToJson for ~[A] {
     fn to_json(&self) -> Json { List(self.map(|elt| elt.to_json())) }
 }
 
-impl<A:ToJson + Copy> ToJson for HashMap<~str, A> {
+impl<A:ToJson> ToJson for HashMap<~str, A> {
     fn to_json(&self) -> Json {
         let mut d = HashMap::new();
         for self.iter().advance |(key, value)| {
@@ -1341,7 +1341,7 @@ impl<A:ToJson + Copy> ToJson for HashMap<~str, A> {
     }
 }
 
-impl<A:ToJson + Copy> ToJson for TreeMap<~str, A> {
+impl<A:ToJson> ToJson for TreeMap<~str, A> {
     fn to_json(&self) -> Json {
         let mut d = HashMap::new();
         for self.iter().advance |(key, value)| {
