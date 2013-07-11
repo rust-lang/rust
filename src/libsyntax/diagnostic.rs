@@ -13,6 +13,7 @@ use codemap;
 
 use std::io;
 use std::uint;
+use std::local_data;
 use extra::term;
 
 pub type Emitter = @fn(cmsp: Option<(@codemap::CodeMap, span)>,
@@ -187,13 +188,29 @@ fn diagnosticcolor(lvl: level) -> term::color::Color {
 }
 
 fn print_maybe_styled(msg: &str, color: term::attr::Attr) {
+    #[cfg(not(stage0))]
+    static tls_terminal: local_data::Key<@Option<term::Terminal>> = &local_data::Key;
+    #[cfg(stage0)]
+    fn tls_terminal(_: @Option<term::Terminal>) {}
+
     let stderr = io::stderr();
 
     if stderr.get_type() == io::Screen {
-        let t = term::Terminal::new(stderr);
+        let t = match local_data::get(tls_terminal, |v| v.map_consume(|&k|k)) {
+            None => {
+                let t = term::Terminal::new(stderr);
+                let tls = @match t {
+                    Ok(t) => Some(t),
+                    Err(_) => None
+                };
+                local_data::set(tls_terminal, tls);
+                &*tls
+            }
+            Some(tls) => &*tls
+        };
 
         match t {
-            Ok(term) => {
+            &Some(ref term) => {
                 term.attr(color);
                 stderr.write_str(msg);
                 term.reset();
