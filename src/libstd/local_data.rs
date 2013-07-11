@@ -273,3 +273,11 @@ fn test_static_pointer() {
         set(key, @&VALUE);
     }
 }
+
+#[test]
+fn test_owned() {
+    unsafe {
+        fn key(_x: ~int) { }
+        set(key, ~1);
+    }
+}

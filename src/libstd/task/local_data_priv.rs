@@ -48,23 +48,36 @@ impl Handle {
 trait LocalData {}
 impl<T: 'static> LocalData for T {}
 
-// The task-local-map actually stores all TLS information. Right now it's a list
-// of triples of (key, value, loans). The key is a code pointer (right now at
-// least), the value is a trait so destruction can work, and the loans value
-// is a count of the number of times the value is currently on loan via
-// `local_data_get`.
+// The task-local-map stores all TLS information for the currently running task.
+// It is stored as an owned pointer into the runtime, and it's only allocated
+// when TLS is used for the first time. This map must be very carefully
+// constructed because it has many mutable loans unsoundly handed out on it to
+// the various invocations of TLS requests.
 //
-// TLS is designed to be able to store owned data, so `local_data_get` must
-// return a borrowed pointer to this data. In order to have a proper lifetime, a
-// borrowed pointer is instead yielded to a closure specified to the `get`
-// function. As a result, it would be unsound to perform `local_data_set` on the
-// same key inside of a `local_data_get`, so we ensure at runtime that this does
-// not happen.
+// One of the most important operations is loaning a value via `get` to a
+// caller. In doing so, the slot that the TLS entry is occupying cannot be
+// invalidated because upon returning it's loan state must be updated. Currently
+// the TLS map is a vector, but this is possibly dangerous because the vector
+// can be reallocated/moved when new values are pushed onto it.
 //
-// n.b. Has to be a pointer at outermost layer; the foreign call returns void *.
+// This problem currently isn't solved in a very elegant way. Inside the `get`
+// function, it internally "invalidates" all references after the loan is
+// finished and looks up into the vector again. In theory this will prevent
+// pointers from being moved under our feet so long as LLVM doesn't go too crazy
+// with the optimizations.
+//
+// n.b. Other structures are not sufficient right now:
+//          * HashMap uses ~[T] internally (push reallocates/moves)
+//          * TreeMap is plausible, but it's in extra
+//          * dlist plausible, but not in std
+//          * a custom owned linked list was attempted, but difficult to write
+//            and involved a lot of extra code bloat
+//
+// n.b. Has to be stored with a pointer at outermost layer; the foreign call
+//      returns void *.
 //
 // n.b. If TLS is used heavily in future, this could be made more efficient with
-// a proper map.
+//      a proper map.
 type TaskLocalMap = ~[Option<(*libc::c_void, TLSValue, uint)>];
 type TLSValue = ~LocalData:;
 
@@ -181,32 +194,59 @@ pub unsafe fn local_pop<T: 'static>(handle: Handle,
 pub unsafe fn local_get<T: 'static, U>(handle: Handle,
                                        key: local_data::Key<T>,
                                        f: &fn(Option<&T>) -> U) -> U {
-    // This does in theory take multiple mutable loans on the tls map, but the
-    // references returned are never removed because the map is only increasing
-    // in size (it never shrinks).
+    // This function must be extremely careful. Because TLS can store owned
+    // values, and we must have some form of `get` function other than `pop`,
+    // this function has to give a `&` reference back to the caller.
+    //
+    // One option is to return the reference, but this cannot be sound because
+    // the actual lifetime of the object is not known. The slot in TLS could not
+    // be modified until the object goes out of scope, but the TLS code cannot
+    // know when this happens.
+    //
+    // For this reason, the reference is yielded to a specified closure. This
+    // way the TLS code knows exactly what the lifetime of the yielded pointer
+    // is, allowing callers to acquire references to owned data. This is also
+    // sound so long as measures are taken to ensure that while a TLS slot is
+    // loaned out to a caller, it's not modified recursively.
     let map = get_local_map(handle);
     let key_value = key_to_key_value(key);
-    for map.mut_iter().advance |entry| {
+
+    let pos = map.iter().position(|entry| {
         match *entry {
-            Some((k, ref data, ref mut loans)) if k == key_value => {
-                let ret;
-                *loans = *loans + 1;
-                // data was created with `~~T as ~LocalData`, so we extract
-                // pointer part of the trait, (as ~~T), and then use compiler
-                // coercions to achieve a '&' pointer
-                match *cast::transmute::<&TLSValue, &(uint, ~~T)>(data) {
-                    (_vtable, ref box) => {
-                        let value: &T = **box;
-                        ret = f(Some(value));
+            Some((k, _, _)) if k == key_value => true, _ => false
+        }
+    });
+    match pos {
+        None => { return f(None); }
+        Some(i) => {
+            let ret;
+            match map[i] {
+                Some((_, ref data, ref mut loans)) => {
+                    *loans = *loans + 1;
+                    // data was created with `~~T as ~LocalData`, so we extract
+                    // pointer part of the trait, (as ~~T), and then use
+                    // compiler coercions to achieve a '&' pointer
+                    match *cast::transmute::<&TLSValue, &(uint, ~~T)>(data) {
+                        (_vtable, ref box) => {
+                            let value: &T = **box;
+                            ret = f(Some(value));
+                        }
                     }
                 }
-                *loans = *loans - 1;
-                return ret;
+                _ => libc::abort()
             }
-            _ => {}
+
+            // n.b. 'data' and 'loans' are both invalid pointers at the point
+            // 'f' returned because `f` could have appended more TLS items which
+            // in turn relocated the vector. Hence we do another lookup here to
+            // fixup the loans.
+            match map[i] {
+                Some((_, _, ref mut loans)) => { *loans = *loans - 1; }
+                None => { libc::abort(); }
+            }
+            return ret;
         }
     }
-    return f(None);
 }
 
 pub unsafe fn local_set<T: 'static>(handle: Handle,
