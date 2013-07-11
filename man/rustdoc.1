@@ -1,0 +1,63 @@
+.TH RUSTDOC "1" "July 2013" "rustdoc 0.7" "User Commands"
+.SH NAME
+rustdoc \- generate documentation from Rust source code
+.SH SYNOPSIS
+.B rustdoc
+[\fIOPTIONS\fR] \fICRATEFILE\fR
+
+.SH DESCRIPTION
+This tool generates API reference documentation by extracting comments from
+source code written in the Rust language, available at <\fBhttps://www.rust-
+lang.org\fR>. It provides several output formats for the generated
+documentation.
+
+.SH COMMANDS
+
+.TP
+--output-dir <val>
+Put documents here (default: .)
+.TP
+--output-format <val>
+markdown or html (default: html)
+.TP
+--output-style <val>
+doc-per-crate or doc-per-mod (default: doc-per-mod)
+.TP
+--pandoc-cmd <val>
+Command for running pandoc
+.TP
+-h, --help
+Print help
+
+.SH "OUTPUT FORMATS"
+
+The rustdoc tool can generate documentation in either the Markdown
+or HTML formats. It requires the pandoc tool
+<\fBhttp://johnmacfarlane.net/pandoc/\fR> for conversion features.
+
+.SH "EXAMPLES"
+
+To generate documentation for the source in the current directory:
+    $ rustdoc hello.rs
+
+To build documentation into a subdirectory named 'doc' in the Markdown
+format:
+    $ rustdoc --output-dir doc --output-format markdown hello.rs
+
+The generated HTML can be viewed with any standard web browser, while
+the Markdown version is well-suited for conversion into other formats.
+
+.SH "SEE ALSO"
+
+rust, rustc, rustpkg, rusti
+
+.SH "BUGS"
+See <\fBhttps://github.com/mozilla/rust/issues\fR> for issues.
+
+.SH "AUTHOR"
+See \fBAUTHORS.txt\fR in the rust source distribution. Graydon Hoare
+<\fIgraydon@mozilla.com\fR> is the project leader.
+
+.SH "COPYRIGHT"
+This work is dual-licensed under Apache 2.0 and MIT terms.  See \fBCOPYRIGHT\fR
+file in the rust source distribution.
