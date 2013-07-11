@@ -38,6 +38,7 @@ use get_data_for_req = uv_ll::get_data_for_req;
 use ll = uv_ll;
 
 /// An IP address
+#[deriving(Clone)]
 pub enum IpAddr {
     /// An IPv4 address
     Ipv4(sockaddr_in),

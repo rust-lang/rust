@@ -206,7 +206,6 @@ The keywords are the following strings:
 ~~~~~~~~ {.keyword}
 as
 break
-copy
 do
 else enum extern
 false fn for
@@ -443,7 +442,7 @@ Two examples of paths with type arguments:
 ~~~~
 # use std::hashmap::HashMap;
 # fn f() {
-# fn id<T:Copy>(t: T) -> T { t }
+# fn id<T>(t: T) -> T { t }
 type t = HashMap<int,~str>;  // Type arguments used in a type expression
 let x = id::<int>(10);         // Type arguments used in a call expression
 # }
@@ -907,11 +906,10 @@ example, `sys::size_of::<u32>() == 4`.
 
 Since a parameter type is opaque to the generic function, the set of
 operations that can be performed on it is limited. Values of parameter
-type can always be moved, but they can only be copied when the
-parameter is given a [`Copy` bound](#type-kinds).
+type can only be moved, not copied.
 
 ~~~~
-fn id<T: Copy>(x: T) -> T { x }
+fn id<T>(x: T) -> T { x }
 ~~~~
 
 Similarly, [trait](#traits) bounds can be specified for type
@@ -1519,8 +1517,6 @@ A complete list of the built-in language items follows:
 
 `const`
   : Cannot be mutated.
-`copy`
-  : Can be implicitly copied.
 `owned`
   : Are uniquely owned.
 `durable`
@@ -1587,7 +1583,8 @@ A complete list of the built-in language items follows:
 `check_not_borrowed`
   : Fail if a value has existing borrowed pointers to it.
 `strdup_uniq`
-  : Return a new unique string containing a copy of the contents of a unique string.
+  : Return a new unique string
+    containing a copy of the contents of a unique string.
 
 > **Note:** This list is likely to become out of date. We should auto-generate it
 > from `librustc/middle/lang_items.rs`.
@@ -1736,10 +1733,13 @@ A temporary's lifetime equals the largest lifetime of any borrowed pointer that 
 
 #### Moved and copied types
 
-When a [local variable](#memory-slots) is used as an [rvalue](#lvalues-rvalues-and-temporaries)
-the variable will either be [moved](#move-expressions) or [copied](#copy-expressions),
+When a [local variable](#memory-slots) is used
+as an [rvalue](#lvalues-rvalues-and-temporaries)
+the variable will either be [moved](#move-expressions) or copied,
 depending on its type.
-For types that contain mutable fields or [owning pointers](#owning-pointers), the variable is moved.
+For types that contain [owning pointers](#owning-pointers)
+or values that implement the special trait `Drop`,
+the variable is moved.
 All other types are copied.
 
 
@@ -1918,9 +1918,9 @@ task in a _failing state_.
 
 ### Unary operator expressions
 
-Rust defines six symbolic unary operators,
-in addition to the unary [copy](#unary-copy-expressions) and [move](#unary-move-expressions) operators.
-They are all written as prefix operators, before the expression they apply to.
+Rust defines six symbolic unary operators.
+They are all written as prefix operators,
+before the expression they apply to.
 
 `-`
   : Negation. May only be applied to numeric types.
@@ -2118,60 +2118,6 @@ An example of a parenthesized expression:
 ~~~~
 let x = (2 + 3) * 4;
 ~~~~
-
-### Unary copy expressions
-
-~~~~~~~~{.ebnf .gram}
-copy_expr : "copy" expr ;
-~~~~~~~~
-
-> **Note:** `copy` expressions are deprecated. It's preferable to use
-> the `Clone` trait and `clone()` method.
-
-A _unary copy expression_ consists of the unary `copy` operator applied to
-some argument expression.
-
-Evaluating a copy expression first evaluates the argument expression, then
-copies the resulting value, allocating any memory necessary to hold the new
-copy.
-
-[Managed boxes](#pointer-types) (type `@`) are, as usual, shallow-copied,
-as are raw and borrowed pointers.
-[Owned boxes](#pointer-types), [owned vectors](#vector-types) and similar owned types are deep-copied.
-
-Since the binary [assignment operator](#assignment-expressions) `=` performs a copy or move implicitly,
-the unary copy operator is typically only used to cause an argument to a function to be copied and passed by value.
-
-An example of a copy expression:
-
-~~~~
-fn mutate(mut vec: ~[int]) {
-   vec[0] = 10;
-}
-
-let v = ~[1,2,3];
-
-mutate(copy v);   // Pass a copy
-
-assert!(v[0] == 1); // Original was not modified
-~~~~
-
-### Unary move expressions
-
-~~~~~~~~{.ebnf .gram}
-move_expr : "move" expr ;
-~~~~~~~~
-
-A _unary move expression_ is similar to a [unary copy](#unary-copy-expressions) expression,
-except that it can only be applied to a [local variable](#memory-slots),
-and it performs a _move_ on its operand, rather than a copy.
-That is, the memory location denoted by its operand is de-initialized after evaluation,
-and the resulting value is a shallow copy of the operand,
-even if the operand is an [owning type](#type-kinds).
-
-
-> **Note:** In future versions of Rust, `move` may be removed as a separate operator;
-> moves are now [automatically performed](#moved-and-copied-types) for most cases `move` would be appropriate.
 
 
 ### Call expressions
@@ -2507,10 +2453,11 @@ match x {
 }
 ~~~~
 
-Patterns that bind variables default to binding to a copy or move of the matched value
+Patterns that bind variables
+default to binding to a copy or move of the matched value
 (depending on the matched value's type).
-This can be made explicit using the ```copy``` keyword,
-changed to bind to a borrowed pointer by using the ```ref``` keyword,
+This can be changed to bind to a borrowed pointer by
+using the ```ref``` keyword,
 or to a mutable borrowed pointer using ```ref mut```.
 
 A pattern that's just an identifier,
@@ -2896,16 +2843,18 @@ and the cast expression in `main`.
 Within the body of an item that has type parameter declarations, the names of its type parameters are types:
 
 ~~~~~~~
-fn map<A: Copy, B: Copy>(f: &fn(A) -> B, xs: &[A]) -> ~[B] {
-   if xs.len() == 0 { return ~[]; }
-   let first: B = f(copy xs[0]);
-   let rest: ~[B] = map(f, xs.slice(1, xs.len()));
-   return ~[first] + rest;
+fn map<A: Clone, B: Clone>(f: &fn(A) -> B, xs: &[A]) -> ~[B] {
+    if xs.len() == 0 {
+       return ~[];
+    }
+    let first: B = f(xs[0].clone());
+    let rest: ~[B] = map(f, xs.slice(1, xs.len()));
+    return ~[first] + rest;
 }
 ~~~~~~~
 
-Here, `first` has type `B`, referring to `map`'s `B` type parameter; and `rest` has
-type `~[B]`, a vector type with element type `B`.
+Here, `first` has type `B`, referring to `map`'s `B` type parameter;
+and `rest` has type `~[B]`, a vector type with element type `B`.
 
 ### Self types
 
@@ -2919,7 +2868,9 @@ trait Printable {
 }
 
 impl Printable for ~str {
-  fn make_string(&self) -> ~str { copy *self }
+    fn make_string(&self) -> ~str {
+        (*self).clone()
+    }
 }
 ~~~~~~~~
 
@@ -2933,23 +2884,29 @@ The kinds are:
 
 `Freeze`
   : Types of this kind are deeply immutable;
-    they contain no mutable memory locations directly or indirectly via pointers.
+    they contain no mutable memory locations
+    directly or indirectly via pointers.
 `Send`
   : Types of this kind can be safely sent between tasks.
     This kind includes scalars, owning pointers, owned closures, and
-    structural types containing only other owned types. All `Send` types are `Static`.
-`Copy`
-  : This kind includes all types that can be copied. All types with
-    sendable kind are copyable, as are managed boxes, managed closures,
-    trait types, and structural types built out of these.
-    Types with destructors (types that implement `Drop`) can not implement `Copy`.
+    structural types containing only other owned types.
+    All `Send` types are `'static`.
+`'static`
+  : Types of this kind do not contain any borrowed pointers;
+    this can be a useful guarantee for code
+    that breaks borrowing assumptions
+    using [`unsafe` operations](#unsafe-functions).
 `Drop`
-  : This is not strictly a kind, but its presence interacts with kinds: the `Drop`
-    trait provides a single method `drop` that takes no parameters, and is run
-    when values of the type are dropped. Such a method is called a "destructor",
-    and are always executed in "top-down" order: a value is completely destroyed
-    before any of the values it owns run their destructors. Only `Send` types
-    that do not implement `Copy` can implement `Drop`.
+  : This is not strictly a kind,
+    but its presence interacts with kinds:
+    the `Drop` trait provides a single method `drop`
+    that takes no parameters,
+    and is run when values of the type are dropped.
+    Such a method is called a "destructor",
+    and are always executed in "top-down" order:
+    a value is completely destroyed
+    before any of the values it owns run their destructors.
+    Only `Send` types can implement `Drop`.
 
 _Default_
   : Types with destructors, closure environments,
@@ -2962,30 +2919,15 @@ Kinds can be supplied as _bounds_ on type parameters, like traits,
 in which case the parameter is constrained to types satisfying that kind.
 
 By default, type parameters do not carry any assumed kind-bounds at all.
+When instantiating a type parameter,
+the kind bounds on the parameter are checked
+to be the same or narrower than the kind
+of the type that it is instantiated with.
 
-Any operation that causes a value to be copied requires the type of that value to be of copyable kind,
-so the `Copy` bound is frequently required on function type parameters.
-For example, this is not a valid program:
-
-~~~~{.xfail-test}
-fn box<T>(x: T) -> @T { @x }
-~~~~
-
-Putting `x` into a managed box involves copying, and the `T` parameter has the default (non-copyable) kind.
-To change that, a bound is declared:
-
-~~~~
-fn box<T: Copy>(x: T) -> @T { @x }
-~~~~
-
-Calling this second version of `box` on a noncopyable type is not
-allowed. When instantiating a type parameter, the kind bounds on the
-parameter are checked to be the same or narrower than the kind of the
-type that it is instantiated with.
-
-Sending operations are not part of the Rust language, but are
-implemented in the library. Generic functions that send values bound
-the kind of these values to sendable.
+Sending operations are not part of the Rust language,
+but are implemented in the library.
+Generic functions that send values
+bound the kind of these values to sendable.
 
 # Memory and concurrency models
 
@@ -3093,9 +3035,7 @@ managed box value makes a shallow copy of the pointer (optionally incrementing
 a reference count, if the managed box is implemented through
 reference-counting).
 
-Owned box values exist in 1:1 correspondence with their heap allocation;
-copying an owned box value makes a deep copy of the heap allocation and
-produces a pointer to the new allocation.
+Owned box values exist in 1:1 correspondence with their heap allocation.
 
 An example of constructing one managed box type and value, and one owned box
 type and value:

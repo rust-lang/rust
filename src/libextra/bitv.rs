@@ -1453,7 +1453,7 @@ mod tests {
     fn bench_big_bitv_big(b: &mut BenchHarness) {
         let mut r = rng();
         let mut storage = ~[];
-        storage.grow(BENCH_BITS / uint::bits, &0);
+        storage.grow(BENCH_BITS / uint::bits, &0u);
         let mut bitv = BigBitv::new(storage);
         do b.iter {
             bitv.set((r.next() as uint) % BENCH_BITS, true);

@@ -266,6 +266,7 @@ pub struct uv_timer_t {
 }
 
 // unix size: 16
+#[deriving(Clone)]
 pub struct sockaddr_in {
     sin_family: u16,
     sin_port: u16,
@@ -280,6 +281,7 @@ pub struct sockaddr_in6 {
     a0: *u8, a1: *u8,
     a2: *u8, a3: *u8,
 }
+
 #[cfg(target_arch="x86")]
 #[cfg(target_arch="arm")]
 #[cfg(target_arch="mips")]
@@ -288,6 +290,12 @@ pub struct sockaddr_in6 {
     a2: *u8, a3: *u8,
     a4: *u8, a5: *u8,
     a6: *u8, a7: *u8,
+}
+
+impl Clone for sockaddr_in6 {
+    fn clone(&self) -> sockaddr_in6 {
+        *self
+    }
 }
 
 // unix size: 28 .. FIXME #1645

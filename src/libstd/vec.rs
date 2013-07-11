@@ -3049,7 +3049,6 @@ mod tests {
     #[test]
     #[ignore(windows)]
     #[should_fail]
-    #[allow(non_implicitly_copyable_typarams)]
     fn test_grow_fn_fail() {
         let mut v = ~[];
         do v.grow_fn(100) |i| {
@@ -3108,7 +3107,6 @@ mod tests {
     #[test]
     #[ignore(windows)]
     #[should_fail]
-    #[allow(non_implicitly_copyable_typarams)]
     fn test_permute_fail() {
         let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
         let mut i = 0;

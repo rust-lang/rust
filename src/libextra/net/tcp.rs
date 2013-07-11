@@ -93,6 +93,7 @@ pub struct TcpErrData {
 }
 
 /// Details returned as part of a `Result::Err` result from `tcp::listen`
+#[deriving(Clone)]
 pub enum TcpListenErrData {
     /**
      * Some unplanned-for error. The first and second fields correspond
@@ -120,6 +121,7 @@ pub enum TcpListenErrData {
     AccessDenied
 }
 /// Details returned as part of a `Result::Err` result from `tcp::connect`
+#[deriving(Clone)]
 pub enum TcpConnectErrData {
     /**
      * Some unplanned-for error. The first and second fields correspond

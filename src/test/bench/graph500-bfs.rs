@@ -154,6 +154,15 @@ fn bfs(graph: graph, key: node_id) -> bfs_result {
     marks
 }
 
+#[deriving(Clone)]
+enum color {
+    white,
+    // node_id marks which node turned this gray/black.
+    // the node id later becomes the parent.
+    gray(node_id),
+    black(node_id)
+}
+
 /**
  * Another version of the bfs function.
  *
@@ -162,14 +171,6 @@ fn bfs(graph: graph, key: node_id) -> bfs_result {
  */
 fn bfs2(graph: graph, key: node_id) -> bfs_result {
     // This works by doing functional updates of a color vector.
-
-    enum color {
-        white,
-        // node_id marks which node turned this gray/black.
-        // the node id later becomes the parent.
-        gray(node_id),
-        black(node_id)
-    };
 
     let mut colors = do vec::from_fn(graph.len()) |i| {
         if i as node_id == key {
@@ -235,14 +236,6 @@ fn bfs2(graph: graph, key: node_id) -> bfs_result {
 /// A parallel version of the bfs function.
 fn pbfs(graph: &arc::ARC<graph>, key: node_id) -> bfs_result {
     // This works by doing functional updates of a color vector.
-
-    enum color {
-        white,
-        // node_id marks which node turned this gray/black.
-        // the node id later becomes the parent.
-        gray(node_id),
-        black(node_id)
-    };
 
     let graph_vec = graph.get(); // FIXME #3387 requires this temp
     let mut colors = do vec::from_fn(graph_vec.len()) |i| {

@@ -44,7 +44,7 @@ pub fn main() {
     }
 
     let file = io::file_writer(&out_path.push("generated.rs"),
-                               [io::Create]).get();
+                               [io::Create]).unwrap();
     file.write_str("pub fn wheeeee() { for [1, 2, 3].each() |_| { assert!(true); } }");
 
 

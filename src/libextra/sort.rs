@@ -926,6 +926,7 @@ mod test_tim_sort {
     use std::rand;
     use std::vec;
 
+    #[deriving(Clone)]
     struct CVal {
         val: float,
     }
@@ -992,7 +993,10 @@ mod test_tim_sort {
         fail!("Guarantee the fail");
     }
 
-    struct DVal { val: uint }
+    #[deriving(Clone)]
+    struct DVal {
+        val: uint,
+    }
 
     impl Ord for DVal {
         fn lt(&self, _x: &DVal) -> bool { true }

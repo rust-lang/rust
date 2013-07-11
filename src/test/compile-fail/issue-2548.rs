@@ -37,7 +37,7 @@ fn main() {
         let mut res = foo(x);
 
         let mut v = ~[];
-        v = ~[(res)] + v; //~ instantiating a type parameter with an incompatible type `foo`, which does not fulfill `Clone`
+        v = ~[(res)] + v; //~ failed to find an implementation of trait
         assert_eq!(v.len(), 2);
     }
 
