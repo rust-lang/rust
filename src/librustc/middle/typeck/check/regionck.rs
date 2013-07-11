@@ -48,7 +48,10 @@ use syntax::visit;
 
 pub struct Rcx {
     fcx: @mut FnCtxt,
-    errors_reported: uint
+    errors_reported: uint,
+
+    // id of innermost fn or loop
+    repeating_scope: ast::node_id,
 }
 
 pub type rvt = visit::vt<@mut Rcx>;
@@ -76,6 +79,12 @@ fn encl_region_of_def(fcx: @mut FnCtxt, def: ast::def) -> ty::Region {
 impl Rcx {
     pub fn tcx(&self) -> ty::ctxt {
         self.fcx.ccx.tcx
+    }
+
+    pub fn set_repeating_scope(&mut self, scope: ast::node_id) -> ast::node_id {
+        let old_scope = self.repeating_scope;
+        self.repeating_scope = scope;
+        old_scope
     }
 
     pub fn resolve_type(&mut self, unresolved_ty: ty::t) -> ty::t {
@@ -134,7 +143,8 @@ impl Rcx {
 }
 
 pub fn regionck_expr(fcx: @mut FnCtxt, e: @ast::expr) {
-    let rcx = @mut Rcx { fcx: fcx, errors_reported: 0 };
+    let rcx = @mut Rcx { fcx: fcx, errors_reported: 0,
+                         repeating_scope: e.id };
     if fcx.err_count_since_creation() == 0 {
         // regionck assumes typeck succeeded
         let v = regionck_visitor();
@@ -144,7 +154,8 @@ pub fn regionck_expr(fcx: @mut FnCtxt, e: @ast::expr) {
 }
 
 pub fn regionck_fn(fcx: @mut FnCtxt, blk: &ast::blk) {
-    let rcx = @mut Rcx { fcx: fcx, errors_reported: 0 };
+    let rcx = @mut Rcx { fcx: fcx, errors_reported: 0,
+                         repeating_scope: blk.node.id };
     if fcx.err_count_since_creation() == 0 {
         // regionck assumes typeck succeeded
         let v = regionck_visitor();
@@ -231,7 +242,8 @@ fn constrain_bindings_in_pat(pat: @ast::pat, rcx: @mut Rcx) {
 }
 
 fn visit_expr(expr: @ast::expr, (rcx, v): (@mut Rcx, rvt)) {
-    debug!("regionck::visit_expr(e=?)");
+    debug!("regionck::visit_expr(e=%s, repeating_scope=%?)",
+           expr.repr(rcx.fcx.tcx()), rcx.repeating_scope);
 
     let has_method_map = rcx.fcx.inh.method_map.contains_key(&expr.id);
 
@@ -274,6 +286,9 @@ fn visit_expr(expr: @ast::expr, (rcx, v): (@mut Rcx, rvt)) {
                 }
             }
         }
+        ast::expr_loop(ref body, _) => {
+            tcx.region_maps.record_cleanup_scope(body.node.id);
+        }
         ast::expr_while(cond, ref body) => {
             tcx.region_maps.record_cleanup_scope(cond.id);
             tcx.region_maps.record_cleanup_scope(body.node.id);
@@ -313,10 +328,14 @@ fn visit_expr(expr: @ast::expr, (rcx, v): (@mut Rcx, rvt)) {
         ast::expr_call(callee, ref args, _) => {
             constrain_callee(rcx, callee.id, expr, callee);
             constrain_call(rcx, callee.id, expr, None, *args, false);
+
+            visit::visit_expr(expr, (rcx, v));
         }
 
         ast::expr_method_call(callee_id, arg0, _, _, ref args, _) => {
             constrain_call(rcx, callee_id, expr, Some(arg0), *args, false);
+
+            visit::visit_expr(expr, (rcx, v));
         }
 
         ast::expr_index(callee_id, lhs, rhs) |
@@ -327,23 +346,31 @@ fn visit_expr(expr: @ast::expr, (rcx, v): (@mut Rcx, rvt)) {
             // implicit "by ref" sort of passing style here.  This
             // should be converted to an adjustment!
             constrain_call(rcx, callee_id, expr, Some(lhs), [rhs], true);
+
+            visit::visit_expr(expr, (rcx, v));
         }
 
         ast::expr_unary(callee_id, _, lhs) if has_method_map => {
             // As above.
             constrain_call(rcx, callee_id, expr, Some(lhs), [], true);
+
+            visit::visit_expr(expr, (rcx, v));
         }
 
         ast::expr_unary(_, ast::deref, base) => {
             // For *a, the lifetime of a must enclose the deref
             let base_ty = rcx.resolve_node_type(base.id);
             constrain_derefs(rcx, expr, 1, base_ty);
+
+            visit::visit_expr(expr, (rcx, v));
         }
 
         ast::expr_index(_, vec_expr, _) => {
             // For a[b], the lifetime of a must enclose the deref
             let vec_type = rcx.resolve_expr_type_adjusted(vec_expr);
             constrain_index(rcx, expr, vec_type);
+
+            visit::visit_expr(expr, (rcx, v));
         }
 
         ast::expr_cast(source, _) => {
@@ -372,6 +399,8 @@ fn visit_expr(expr: @ast::expr, (rcx, v): (@mut Rcx, rvt)) {
                 }
                 _ => ()
             }
+
+            visit::visit_expr(expr, (rcx, v));
         }
 
         ast::expr_addr_of(_, base) => {
@@ -387,29 +416,87 @@ fn visit_expr(expr: @ast::expr, (rcx, v): (@mut Rcx, rvt)) {
             let ty0 = rcx.resolve_node_type(expr.id);
             constrain_regions_in_type(rcx, ty::re_scope(expr.id),
                                       infer::AddrOf(expr.span), ty0);
+            visit::visit_expr(expr, (rcx, v));
         }
 
         ast::expr_match(discr, ref arms) => {
             guarantor::for_match(rcx, discr, *arms);
+
+            visit::visit_expr(expr, (rcx, v));
+        }
+
+        ast::expr_loop_body(subexpr) => {
+            check_expr_fn_block(rcx, subexpr, v, true);
         }
 
         ast::expr_fn_block(*) => {
-            // The lifetime of a block fn must not outlive the variables
-            // it closes over
+            check_expr_fn_block(rcx, expr, v, false);
+        }
+
+        ast::expr_loop(ref body, _) => {
+            let repeating_scope = rcx.set_repeating_scope(body.node.id);
+            visit::visit_expr(expr, (rcx, v));
+            rcx.set_repeating_scope(repeating_scope);
+        }
+
+        ast::expr_while(cond, ref body) => {
+            let repeating_scope = rcx.set_repeating_scope(cond.id);
+            (v.visit_expr)(cond, (rcx, v));
+
+            rcx.set_repeating_scope(body.node.id);
+            (v.visit_block)(body, (rcx, v));
+
+            rcx.set_repeating_scope(repeating_scope);
+        }
+
+        _ => {
+            visit::visit_expr(expr, (rcx, v));
+        }
+    }
+}
+
+fn check_expr_fn_block(rcx: @mut Rcx,
+                       expr: @ast::expr,
+                       v: rvt,
+                       is_loop_body: bool) {
+    let tcx = rcx.fcx.tcx();
+    match expr.node {
+        ast::expr_fn_block(_, ref body) => {
             let function_type = rcx.resolve_node_type(expr.id);
             match ty::get(function_type).sty {
-                ty::ty_closure(ty::ClosureTy {sigil: ast::BorrowedSigil,
-                                              region: region, _}) => {
-                    constrain_free_variables(rcx, region, expr);
+                ty::ty_closure(
+                    ty::ClosureTy {
+                        sigil: ast::BorrowedSigil, region: region, _}) => {
+                    if get_freevars(tcx, expr.id).is_empty() && !is_loop_body {
+                        // No free variables means that the environment
+                        // will be NULL at runtime and hence the closure
+                        // has static lifetime.
+                    } else {
+                        // Otherwise, the closure must not outlive the
+                        // variables it closes over, nor can it
+                        // outlive the innermost repeating scope
+                        // (since otherwise that would require
+                        // infinite stack).
+                        constrain_free_variables(rcx, region, expr);
+                        let repeating_scope = ty::re_scope(rcx.repeating_scope);
+                        rcx.fcx.mk_subr(true, infer::InfStackClosure(expr.span),
+                                        region, repeating_scope);
+                    }
                 }
                 _ => ()
             }
+
+            let repeating_scope = rcx.set_repeating_scope(body.node.id);
+            visit::visit_expr(expr, (rcx, v));
+            rcx.set_repeating_scope(repeating_scope);
         }
 
-        _ => ()
+        _ => {
+            tcx.sess.span_bug(
+                expr.span,
+                "Expected expr_fn_block");
+        }
     }
-
-    visit::visit_expr(expr, (rcx, v));
 }
 
 fn constrain_callee(rcx: @mut Rcx,
