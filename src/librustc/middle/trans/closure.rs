@@ -220,16 +220,24 @@ pub fn store_environment(bcx: block,
     // compute the type of the closure
     let cdata_ty = mk_closure_tys(tcx, bound_values);
 
-    // allocate closure in the heap
-    let Result {bcx: bcx, val: llbox} = allocate_cbox(bcx, sigil, cdata_ty);
-
     // cbox_ty has the form of a tuple: (a, b, c) we want a ptr to a
     // tuple.  This could be a ptr in uniq or a box or on stack,
     // whatever.
     let cbox_ty = tuplify_box_ty(tcx, cdata_ty);
     let cboxptr_ty = ty::mk_ptr(tcx, ty::mt {ty:cbox_ty, mutbl:ast::m_imm});
+    let llboxptr_ty = type_of(ccx, cboxptr_ty);
 
-    let llbox = PointerCast(bcx, llbox, type_of(ccx, cboxptr_ty));
+    // If there are no bound values, no point in allocating anything.
+    if bound_values.is_empty() {
+        return ClosureResult {llbox: C_null(llboxptr_ty),
+                              cdata_ty: cdata_ty,
+                              bcx: bcx};
+    }
+
+    // allocate closure in the heap
+    let Result {bcx: bcx, val: llbox} = allocate_cbox(bcx, sigil, cdata_ty);
+
+    let llbox = PointerCast(bcx, llbox, llboxptr_ty);
     debug!("tuplify_box_ty = %s", ty_to_str(tcx, cbox_ty));
 
     // Copy expr values into boxed bindings.
@@ -268,6 +276,7 @@ pub fn build_closure(bcx0: block,
                      sigil: ast::Sigil,
                      include_ret_handle: Option<ValueRef>) -> ClosureResult {
     let _icx = push_ctxt("closure::build_closure");
+
     // If we need to, package up the iterator body to call
     let bcx = bcx0;
 

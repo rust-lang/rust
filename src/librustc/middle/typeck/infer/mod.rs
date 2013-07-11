@@ -141,6 +141,10 @@ pub enum SubregionOrigin {
     // Arose from a subtyping relation
     Subtype(TypeTrace),
 
+    // Stack-allocated closures cannot outlive innermost loop
+    // or function so as to ensure we only require finite stack
+    InfStackClosure(span),
+
     // Invocation of closure must be within its lifetime
     InvokeClosure(span),
 
@@ -829,6 +833,7 @@ impl SubregionOrigin {
     pub fn span(&self) -> span {
         match *self {
             Subtype(a) => a.span(),
+            InfStackClosure(a) => a,
             InvokeClosure(a) => a,
             DerefPointer(a) => a,
             FreeVariable(a) => a,
@@ -850,6 +855,7 @@ impl Repr for SubregionOrigin {
     fn repr(&self, tcx: ty::ctxt) -> ~str {
         match *self {
             Subtype(a) => fmt!("Subtype(%s)", a.repr(tcx)),
+            InfStackClosure(a) => fmt!("InfStackClosure(%s)", a.repr(tcx)),
             InvokeClosure(a) => fmt!("InvokeClosure(%s)", a.repr(tcx)),
             DerefPointer(a) => fmt!("DerefPointer(%s)", a.repr(tcx)),
             FreeVariable(a) => fmt!("FreeVariable(%s)", a.repr(tcx)),
