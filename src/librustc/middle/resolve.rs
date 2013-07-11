@@ -22,7 +22,7 @@ use middle::pat_util::pat_bindings;
 
 use syntax::ast::*;
 use syntax::ast;
-use syntax::ast_util::{def_id_of_def, local_def}; // mtwt_resolve
+use syntax::ast_util::{def_id_of_def, local_def, mtwt_resolve};
 use syntax::ast_util::{path_to_ident, walk_pat, trait_method_to_ty_method};
 use syntax::ast_util::{Privacy, Public, Private};
 use syntax::ast_util::{variant_visibility_to_privacy, visibility_to_privacy};
@@ -4006,10 +4006,14 @@ impl Resolver {
                              None, visitor);
     }
 
+    // build a map from pattern identifiers to binding-info's.
+    // this is done hygienically. This could arise for a macro
+    // that expands into an or-pattern where one 'x' was from the
+    // user and one 'x' came from the macro.
     pub fn binding_mode_map(@mut self, pat: @pat) -> BindingMap {
         let mut result = HashMap::new();
         do pat_bindings(self.def_map, pat) |binding_mode, _id, sp, path| {
-            let name = path_to_ident(path).name; // mtwt_resolve(path_to_ident(path));
+            let name = mtwt_resolve(path_to_ident(path));
             result.insert(name,
                           binding_info {span: sp,
                                         binding_mode: binding_mode});
@@ -4017,6 +4021,8 @@ impl Resolver {
         return result;
     }
 
+    // check that all of the arms in an or-pattern have exactly the
+    // same set of bindings, with the same binding modes for each.
     pub fn check_consistent_bindings(@mut self, arm: &arm) {
         if arm.pats.len() == 0 { return; }
         let map_0 = self.binding_mode_map(arm.pats[0]);
@@ -4212,7 +4218,7 @@ impl Resolver {
                     // what you want).
 
                     let ident = path.idents[0];
-                    let renamed = ident.name; // mtwt_resolve(ident);
+                    let renamed = mtwt_resolve(ident);
 
                     match self.resolve_bare_identifier_pattern(ident) {
                         FoundStructOrEnumVariant(def)
@@ -4731,7 +4737,7 @@ impl Resolver {
         let search_result;
         match namespace {
             ValueNS => {
-                let renamed = ident.name; // mtwt_resolve(ident);
+                let renamed = mtwt_resolve(ident);
                 search_result = self.search_ribs(self.value_ribs, renamed,
                                                  span,
                                                  DontAllowCapturingSelf);
