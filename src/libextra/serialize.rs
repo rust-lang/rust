@@ -25,7 +25,7 @@ use std::uint;
 use std::vec;
 use ringbuf::RingBuf;
 use container::Deque;
-use dlist::List;
+use dlist::DList;
 use treemap::{TreeMap, TreeSet};
 
 pub trait Encoder {
@@ -653,7 +653,7 @@ impl<
 impl<
     S: Encoder,
     T: Encodable<S> + Copy
-> Encodable<S> for List<T> {
+> Encodable<S> for DList<T> {
     fn encode(&self, s: &mut S) {
         do s.emit_seq(self.len()) |s| {
             let mut i = 0;
@@ -665,9 +665,9 @@ impl<
     }
 }
 
-impl<D:Decoder,T:Decodable<D>> Decodable<D> for List<T> {
-    fn decode(d: &mut D) -> List<T> {
-        let mut list = List::new();
+impl<D:Decoder,T:Decodable<D>> Decodable<D> for DList<T> {
+    fn decode(d: &mut D) -> DList<T> {
+        let mut list = DList::new();
         do d.read_seq |d, len| {
             for uint::range(0, len) |i| {
                 list.push_back(d.read_seq_elt(i, |d| Decodable::decode(d)));

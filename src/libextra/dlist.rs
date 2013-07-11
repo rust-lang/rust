@@ -10,13 +10,13 @@
 
 //! A doubly-linked list with owned nodes.
 //!
-//! The List allows pushing and popping elements at either end.
+//! The DList allows pushing and popping elements at either end.
 
 
-// List is constructed like a singly-linked list over the field `next`.
+// DList is constructed like a singly-linked list over the field `next`.
 // including the last link being None; each Node owns its `next` field.
 //
-// Backlinks over List::prev are raw pointers that form a full chain in
+// Backlinks over DList::prev are raw pointers that form a full chain in
 // the reverse direction.
 
 use std::cast;
@@ -28,7 +28,7 @@ use std::iterator::FromIterator;
 use container::Deque;
 
 /// A doubly-linked list
-pub struct List<T> {
+pub struct DList<T> {
     priv length: uint,
     priv list_head: Link<T>,
     priv list_tail: Rawlink<Node<T>>,
@@ -43,42 +43,42 @@ struct Node<T> {
     priv value: T,
 }
 
-/// List iterator
+/// DList iterator
 pub struct ForwardIterator<'self, T> {
-    priv list: &'self List<T>,
+    priv list: &'self DList<T>,
     priv next: &'self Link<T>,
     priv nelem: uint,
 }
 
-/// List reverse iterator
+/// DList reverse iterator
 pub struct ReverseIterator<'self, T> {
-    priv list: &'self List<T>,
+    priv list: &'self DList<T>,
     priv next: Rawlink<Node<T>>,
     priv nelem: uint,
 }
 
-/// List mutable iterator
+/// DList mutable iterator
 pub struct MutForwardIterator<'self, T> {
-    priv list: &'self mut List<T>,
+    priv list: &'self mut DList<T>,
     priv curs: Rawlink<Node<T>>,
     priv nelem: uint,
 }
 
-/// List mutable reverse iterator
+/// DList mutable reverse iterator
 pub struct MutReverseIterator<'self, T> {
-    priv list: &'self mut List<T>,
+    priv list: &'self mut DList<T>,
     priv next: Rawlink<Node<T>>,
     priv nelem: uint,
 }
 
-/// List consuming iterator
+/// DList consuming iterator
 pub struct ConsumeIterator<T> {
-    priv list: List<T>
+    priv list: DList<T>
 }
 
-/// List reverse consuming iterator
+/// DList reverse consuming iterator
 pub struct ConsumeRevIterator<T> {
-    priv list: List<T>
+    priv list: DList<T>
 }
 
 /// Rawlink is a type like Option<T> but for holding a raw pointer
@@ -114,7 +114,7 @@ fn link_with_prev<T>(mut next: ~Node<T>, prev: Rawlink<Node<T>>) -> Link<T> {
     Some(next)
 }
 
-impl<T> Container for List<T> {
+impl<T> Container for DList<T> {
     /// O(1)
     fn is_empty(&self) -> bool {
         self.list_head.is_none()
@@ -125,16 +125,16 @@ impl<T> Container for List<T> {
     }
 }
 
-impl<T> Mutable for List<T> {
-    /// Remove all elements from the List
+impl<T> Mutable for DList<T> {
+    /// Remove all elements from the DList
     ///
     /// O(N)
     fn clear(&mut self) {
-        *self = List::new()
+        *self = DList::new()
     }
 }
 
-impl<T> Deque<T> for List<T> {
+impl<T> Deque<T> for DList<T> {
     /// Provide a reference to the front element, or None if the list is empty
     fn front<'a>(&'a self) -> Option<&'a T> {
         self.list_head.chain_ref(|x| Some(&x.value))
@@ -245,23 +245,23 @@ impl<T> Deque<T> for List<T> {
     }
 }
 
-impl<T> List<T> {
-    /// Create an empty List
+impl<T> DList<T> {
+    /// Create an empty DList
     #[inline]
-    pub fn new() -> List<T> {
-        List{list_head: None, list_tail: Rawlink::none(), length: 0}
+    pub fn new() -> DList<T> {
+        DList{list_head: None, list_tail: Rawlink::none(), length: 0}
     }
 
     /// Add all elements from `other` to the end of the list
     ///
     /// O(1)
-    pub fn append(&mut self, other: List<T>) {
+    pub fn append(&mut self, other: DList<T>) {
         match self.list_tail.resolve() {
             None => *self = other,
             Some(tail) => {
                 match other {
-                    List{list_head: None, list_tail: _, length: _} => return,
-                    List{list_head: Some(node), list_tail: o_tail, length: o_length} => {
+                    DList{list_head: None, list_tail: _, length: _} => return,
+                    DList{list_head: Some(node), list_tail: o_tail, length: o_length} => {
                         tail.next = link_with_prev(node, self.list_tail);
                         self.list_tail = o_tail;
                         self.length += o_length;
@@ -274,7 +274,7 @@ impl<T> List<T> {
     /// Add all elements from `other` to the beginning of the list
     ///
     /// O(1)
-    pub fn prepend(&mut self, mut other: List<T>) {
+    pub fn prepend(&mut self, mut other: DList<T>) {
         util::swap(self, &mut other);
         self.append(other);
     }
@@ -300,7 +300,7 @@ impl<T> List<T> {
     /// Merge, using the function `f`; take `a` if `f(a, b)` is true, else `b`.
     ///
     /// O(max(N, M))
-    pub fn merge(&mut self, mut other: List<T>, f: &fn(&T, &T) -> bool) {
+    pub fn merge(&mut self, mut other: DList<T>, f: &fn(&T, &T) -> bool) {
         {
             let mut it = self.mut_iter();
             loop {
@@ -351,7 +351,7 @@ impl<T> List<T> {
 /// Insert sorted in ascending order
 ///
 /// O(N)
-impl<T: cmp::TotalOrd> List<T> {
+impl<T: cmp::TotalOrd> DList<T> {
     fn insert_ordered(&mut self, elt: T) {
         self.insert_when(elt, |a, b| a.cmp(b) != cmp::Less);
     }
@@ -445,7 +445,7 @@ impl<'self, A> Iterator<&'self mut A> for MutReverseIterator<'self, A> {
     }
 }
 
-/// Allow mutating the List while iterating
+/// Allow mutating the DList while iterating
 pub trait ListInsertion<A> {
     /// Insert `elt` just previous to the most recently yielded element
     fn insert_before(&mut self, elt: A);
@@ -497,32 +497,32 @@ impl<A> Iterator<A> for ConsumeRevIterator<A> {
     }
 }
 
-impl<A, T: Iterator<A>> FromIterator<A, T> for List<A> {
-    fn from_iterator(iterator: &mut T) -> List<A> {
-        let mut ret = List::new();
+impl<A, T: Iterator<A>> FromIterator<A, T> for DList<A> {
+    fn from_iterator(iterator: &mut T) -> DList<A> {
+        let mut ret = DList::new();
         for iterator.advance |elt| { ret.push_back(elt); }
         ret
     }
 }
 
-impl<A: Eq> Eq for List<A> {
-    fn eq(&self, other: &List<A>) -> bool {
+impl<A: Eq> Eq for DList<A> {
+    fn eq(&self, other: &DList<A>) -> bool {
         self.len() == other.len() &&
             self.iter().zip(other.iter()).all(|(a, b)| a.eq(b))
     }
-    fn ne(&self, other: &List<A>) -> bool {
+    fn ne(&self, other: &DList<A>) -> bool {
         !self.eq(other)
     }
 }
 
-impl<A: Clone> Clone for List<A> {
-    fn clone(&self) -> List<A> {
+impl<A: Clone> Clone for DList<A> {
+    fn clone(&self) -> DList<A> {
         self.iter().transform(|x| x.clone()).collect()
     }
 }
 
 #[cfg(test)]
-pub fn check_links<T>(list: &List<T>) {
+pub fn check_links<T>(list: &DList<T>) {
     let mut len = 0u;
     let mut last_ptr: Option<&Node<T>> = None;
     let mut node_ptr: &Node<T>;
@@ -563,7 +563,7 @@ mod tests {
 
     #[test]
     fn test_basic() {
-        let mut m = List::new::<~int>();
+        let mut m = DList::new::<~int>();
         assert_eq!(m.pop_front(), None);
         assert_eq!(m.pop_back(), None);
         assert_eq!(m.pop_front(), None);
@@ -582,7 +582,7 @@ mod tests {
         m.push_back(~7);
         assert_eq!(m.pop_front(), Some(~1));
 
-        let mut n = List::new();
+        let mut n = DList::new();
         n.push_front(2);
         n.push_front(3);
         {
@@ -602,20 +602,20 @@ mod tests {
     }
 
     #[cfg(test)]
-    fn generate_test() -> List<int> {
+    fn generate_test() -> DList<int> {
         list_from(&[0,1,2,3,4,5,6])
     }
 
     #[cfg(test)]
-    fn list_from<T: Copy>(v: &[T]) -> List<T> {
+    fn list_from<T: Copy>(v: &[T]) -> DList<T> {
         v.iter().transform(|x| copy *x).collect()
     }
 
     #[test]
     fn test_append() {
         {
-            let mut m = List::new();
-            let mut n = List::new();
+            let mut m = DList::new();
+            let mut n = DList::new();
             n.push_back(2);
             m.append(n);
             assert_eq!(m.len(), 1);
@@ -623,8 +623,8 @@ mod tests {
             check_links(&m);
         }
         {
-            let mut m = List::new();
-            let n = List::new();
+            let mut m = DList::new();
+            let n = DList::new();
             m.push_back(2);
             m.append(n);
             assert_eq!(m.len(), 1);
@@ -647,8 +647,8 @@ mod tests {
     #[test]
     fn test_prepend() {
         {
-            let mut m = List::new();
-            let mut n = List::new();
+            let mut m = DList::new();
+            let mut n = DList::new();
             n.push_back(2);
             m.prepend(n);
             assert_eq!(m.len(), 1);
@@ -674,7 +674,7 @@ mod tests {
         for m.iter().enumerate().advance |(i, elt)| {
             assert_eq!(i as int, *elt);
         }
-        let mut n = List::new();
+        let mut n = DList::new();
         assert_eq!(n.iter().next(), None);
         n.push_front(4);
         let mut it = n.iter();
@@ -690,7 +690,7 @@ mod tests {
         for m.rev_iter().enumerate().advance |(i, elt)| {
             assert_eq!((6 - i) as int, *elt);
         }
-        let mut n = List::new();
+        let mut n = DList::new();
         assert_eq!(n.rev_iter().next(), None);
         n.push_front(4);
         let mut it = n.rev_iter();
@@ -709,7 +709,7 @@ mod tests {
             len -= 1;
         }
         assert_eq!(len, 0);
-        let mut n = List::new();
+        let mut n = DList::new();
         assert!(n.mut_iter().next().is_none());
         n.push_front(4);
         let mut it = n.mut_iter();
@@ -760,12 +760,12 @@ mod tests {
 
     #[test]
     fn test_insert_ordered() {
-        let mut n = List::new();
+        let mut n = DList::new();
         n.insert_ordered(1);
         assert_eq!(n.len(), 1);
         assert_eq!(n.pop_front(), Some(1));
 
-        let mut m = List::new();
+        let mut m = DList::new();
         m.push_back(2);
         m.push_back(4);
         m.insert_ordered(3);
@@ -779,7 +779,7 @@ mod tests {
         for m.mut_rev_iter().enumerate().advance |(i, elt)| {
             assert_eq!((6-i) as int, *elt);
         }
-        let mut n = List::new();
+        let mut n = DList::new();
         assert!(n.mut_rev_iter().next().is_none());
         n.push_front(4);
         let mut it = n.mut_rev_iter();
@@ -798,7 +798,7 @@ mod tests {
 
     #[test]
     fn test_eq() {
-        let mut n: List<u8> = list_from([]);
+        let mut n: DList<u8> = list_from([]);
         let mut m = list_from([]);
         assert_eq!(&n, &m);
         n.push_front(1);
@@ -818,7 +818,7 @@ mod tests {
 
     #[cfg(test)]
     fn fuzz_test(sz: int) {
-        let mut m = List::new::<int>();
+        let mut m = DList::new::<int>();
         let mut v = ~[];
         for int::range(0i, sz) |i| {
             check_links(&m);
@@ -857,7 +857,7 @@ mod tests {
     fn bench_collect_into(b: &mut test::BenchHarness) {
         let v = &[0, ..64];
         do b.iter {
-            let _: List<int> = v.iter().transform(|&x|x).collect();
+            let _: DList<int> = v.iter().transform(|&x|x).collect();
         }
     }
     #[bench]
@@ -870,7 +870,7 @@ mod tests {
 
     #[bench]
     fn bench_push_front(b: &mut test::BenchHarness) {
-        let mut m = List::new::<int>();
+        let mut m = DList::new::<int>();
         do b.iter {
             m.push_front(0);
         }
@@ -886,7 +886,7 @@ mod tests {
 
     #[bench]
     fn bench_push_back(b: &mut test::BenchHarness) {
-        let mut m = List::new::<int>();
+        let mut m = DList::new::<int>();
         do b.iter {
             m.push_back(0);
         }
@@ -901,7 +901,7 @@ mod tests {
 
     #[bench]
     fn bench_push_back_pop_back(b: &mut test::BenchHarness) {
-        let mut m = List::new::<int>();
+        let mut m = DList::new::<int>();
         do b.iter {
             m.push_back(0);
             m.pop_back();
@@ -919,7 +919,7 @@ mod tests {
     #[bench]
     fn bench_iter(b: &mut test::BenchHarness) {
         let v = &[0, ..128];
-        let m: List<int> = v.iter().transform(|&x|x).collect();
+        let m: DList<int> = v.iter().transform(|&x|x).collect();
         do b.iter {
             for m.iter().advance |_| {}
         }
@@ -927,7 +927,7 @@ mod tests {
     #[bench]
     fn bench_iter_mut(b: &mut test::BenchHarness) {
         let v = &[0, ..128];
-        let mut m: List<int> = v.iter().transform(|&x|x).collect();
+        let mut m: DList<int> = v.iter().transform(|&x|x).collect();
         do b.iter {
             for m.mut_iter().advance |_| {}
         }
@@ -935,7 +935,7 @@ mod tests {
     #[bench]
     fn bench_iter_rev(b: &mut test::BenchHarness) {
         let v = &[0, ..128];
-        let m: List<int> = v.iter().transform(|&x|x).collect();
+        let m: DList<int> = v.iter().transform(|&x|x).collect();
         do b.iter {
             for m.rev_iter().advance |_| {}
         }
@@ -943,7 +943,7 @@ mod tests {
     #[bench]
     fn bench_iter_mut_rev(b: &mut test::BenchHarness) {
         let v = &[0, ..128];
-        let mut m: List<int> = v.iter().transform(|&x|x).collect();
+        let mut m: DList<int> = v.iter().transform(|&x|x).collect();
         do b.iter {
             for m.mut_rev_iter().advance |_| {}
         }
