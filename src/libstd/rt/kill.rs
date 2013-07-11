@@ -464,6 +464,7 @@ impl Drop for Death {
 #[cfg(test)]
 mod test {
     #[allow(unused_mut)];
+    use cell::Cell;
     use rt::test::*;
     use super::*;
     use util;
@@ -597,6 +598,145 @@ mod test {
             // Failure must be seen in the tombstone.
             assert!(parent_inner.child_tombstones.take_unwrap()() == false);
             assert!(parent_inner.any_child_failed == false);
+        }
+    }
+
+    // Task killing tests
+
+    #[test]
+    fn kill_basic() {
+        do run_in_newsched_task {
+            let mut handle = KillHandle::new();
+            assert!(!handle.killed());
+            assert!(handle.kill().is_none());
+            assert!(handle.killed());
+        }
+    }
+
+    #[test]
+    fn double_kill() {
+        do run_in_newsched_task {
+            let mut handle = KillHandle::new();
+            assert!(!handle.killed());
+            assert!(handle.kill().is_none());
+            assert!(handle.killed());
+            assert!(handle.kill().is_none());
+            assert!(handle.killed());
+        }
+    }
+
+    #[test]
+    fn unkillable_after_kill() {
+        do run_in_newsched_task {
+            let mut handle = KillHandle::new();
+            assert!(handle.kill().is_none());
+            assert!(handle.killed());
+            let handle_cell = Cell::new(handle);
+            let result = do spawntask_try {
+                handle_cell.take().inhibit_kill(false);
+            };
+            assert!(result.is_err());
+        }
+    }
+
+    #[test]
+    fn unkillable_during_kill() {
+        do run_in_newsched_task {
+            let mut handle = KillHandle::new();
+            handle.inhibit_kill(false);
+            assert!(handle.kill().is_none());
+            assert!(!handle.killed());
+            let handle_cell = Cell::new(handle);
+            let result = do spawntask_try {
+                handle_cell.take().allow_kill(false);
+            };
+            assert!(result.is_err());
+        }
+    }
+
+    #[test]
+    fn unkillable_before_kill() {
+        do run_in_newsched_task {
+            let mut handle = KillHandle::new();
+            handle.inhibit_kill(false);
+            handle.allow_kill(false);
+            assert!(handle.kill().is_none());
+            assert!(handle.killed());
+        }
+    }
+
+    // Task blocking tests
+
+    #[test]
+    fn block_and_wake() {
+        do with_test_task |mut task| {
+            BlockedTask::try_block(task).unwrap_right().wake().unwrap()
+        }
+    }
+
+    #[test]
+    fn block_and_get_killed() {
+        do with_test_task |mut task| {
+            let mut handle = task.death.kill_handle.get_ref().clone();
+            let result = BlockedTask::try_block(task).unwrap_right();
+            let task = handle.kill().unwrap();
+            assert!(result.wake().is_none());
+            task
+        }
+    }
+
+    #[test]
+    fn block_already_killed() {
+        do with_test_task |mut task| {
+            let mut handle = task.death.kill_handle.get_ref().clone();
+            assert!(handle.kill().is_none());
+            BlockedTask::try_block(task).unwrap_left()
+        }
+    }
+
+    #[test]
+    fn block_unkillably_and_get_killed() {
+        do with_test_task |mut task| {
+            let mut handle = task.death.kill_handle.get_ref().clone();
+            task.death.inhibit_kill(false);
+            let result = BlockedTask::try_block(task).unwrap_right();
+            assert!(handle.kill().is_none());
+            let mut task = result.wake().unwrap();
+            // This call wants to fail, but we can't have that happen since
+            // we're not running in a newsched task, so we can't even use
+            // spawntask_try. But the failing behaviour is already tested
+            // above, in unkillable_during_kill(), so we punt on it here.
+            task.death.allow_kill(true);
+            task
+        }
+    }
+
+    #[test]
+    fn block_on_pipe() {
+        // Tests the "killable" path of casting to/from uint.
+        do run_in_newsched_task {
+            do with_test_task |mut task| {
+                let result = BlockedTask::try_block(task).unwrap_right();
+                let result = unsafe { result.cast_to_uint() };
+                let result = unsafe { BlockedTask::cast_from_uint(result) };
+                result.wake().unwrap()
+            }
+        }
+    }
+
+    #[test]
+    fn block_unkillably_on_pipe() {
+        // Tests the "indestructible" path of casting to/from uint.
+        do run_in_newsched_task {
+            do with_test_task |mut task| {
+                task.death.inhibit_kill(false);
+                let result = BlockedTask::try_block(task).unwrap_right();
+                let result = unsafe { result.cast_to_uint() };
+                let result = unsafe { BlockedTask::cast_from_uint(result) };
+                let mut task = result.wake().unwrap();
+                task.death.allow_kill(false);
+                task
+            }
         }
     }
 }
