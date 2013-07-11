@@ -1191,7 +1191,7 @@ mod tests {
                         ignore: false,
                         should_fail: false
                     },
-                    testfn: DynTestFn(testfn.clone()),
+                    testfn: DynTestFn(testfn),
                 };
                 tests.push(test);
             }

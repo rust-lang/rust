@@ -14,11 +14,8 @@ trait Foo {
 fn a(_x: ~Foo:Send) {
 }
 
-fn b(_x: ~Foo:Send+Clone) {
-}
-
 fn c(x: ~Foo:Freeze+Send) {
-    b(x); //~ ERROR expected bounds `Clone+Send`
+    a(x);
 }
 
 fn d(x: ~Foo:) {

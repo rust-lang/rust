@@ -1275,6 +1275,11 @@ The `+` operator means concatenation when applied to vector types.
 # enum Crayon { Almond, AntiqueBrass, Apricot,
 #               Aquamarine, Asparagus, AtomicTangerine,
 #               BananaMania, Beaver, Bittersweet };
+# impl Clone for Crayon {
+#     fn clone(&self) -> Crayon {
+#         *self
+#     }
+# }
 
 let my_crayons = ~[Almond, AntiqueBrass, Apricot];
 let your_crayons = ~[BananaMania, Beaver, Bittersweet];
@@ -1827,15 +1832,17 @@ similarities to type classes. Rust's traits are a form of *bounded
 polymorphism*: a trait is a way of limiting the set of possible types
 that a type parameter could refer to.
 
-As motivation, let us consider copying in Rust. The `copy` operation
-is not defined for all Rust types. One reason is user-defined
-destructors: copying a type that has a destructor could result in the
-destructor running multiple times. Therefore, types with user-defined
-destructors cannot be copied, either implicitly or explicitly, and
-neither can types that own other types containing destructors.
+As motivation, let us consider copying in Rust.
+The `clone` method is not defined for all Rust types.
+One reason is user-defined destructors:
+copying a type that has a destructor
+could result in the destructor running multiple times.
+Therefore, types with destructors cannot be copied
+unless you explicitly implement `Clone` for them.
 
-This complicates handling of generic functions. If you have a type
-parameter `T`, can you copy values of that type? In Rust, you can't,
+This complicates handling of generic functions.
+If you have a type parameter `T`, can you copy values of that type?
+In Rust, you can't,
 and if you try to run the following code the compiler will complain.
 
 ~~~~ {.xfail-test}
@@ -1845,42 +1852,43 @@ fn head_bad<T>(v: &[T]) -> T {
 }
 ~~~~
 
-However, we can tell the compiler that the `head` function is only for
-copyable types: that is, those that have the `Copy` trait. In that
-case, we can explicitly create a second copy of the value we are
-returning using the `copy` keyword:
+However, we can tell the compiler
+that the `head` function is only for copyable types:
+that is, those that implement the `Clone` trait.
+In that case,
+we can explicitly create a second copy of the value we are returning
+using the `clone` keyword:
 
 ~~~~
 // This does
-fn head<T: Copy>(v: &[T]) -> T {
-    copy v[0]
+fn head<T: Clone>(v: &[T]) -> T {
+    v[0].clone()
 }
 ~~~~
 
-This says that we can call `head` on any type `T` as long as that type
-implements the `Copy` trait. When instantiating a generic function,
-you can only instantiate it with types that implement the correct
-trait, so you could not apply `head` to a type with a
-destructor. (`Copy` is a special trait that is built in to the
-compiler, making it possible for the compiler to enforce this
-restriction.)
+This says that we can call `head` on any type `T`
+as long as that type implements the `Clone` trait.
+When instantiating a generic function,
+you can only instantiate it with types
+that implement the correct trait,
+so you could not apply `head` to a type
+that does not implement `Clone`.
 
-While most traits can be defined and implemented by user code, three
-traits are automatically derived and implemented for all applicable
-types by the compiler, and may not be overridden:
+While most traits can be defined and implemented by user code,
+two traits are automatically derived and implemented
+for all applicable types by the compiler,
+and may not be overridden:
 
-* `Copy` - Types that can be copied, either implicitly, or explicitly with the
-  `copy` operator. All types are copyable unless they have destructors or
-  contain types with destructors.
+* `Send` - Sendable types.
+Types are sendable
+unless they contain managed boxes, managed closures, or borrowed pointers.
 
-* `Owned` - Owned types. Types are owned unless they contain managed
-  boxes, managed closures, or borrowed pointers. Owned types may or
-  may not be copyable.
+* `Freeze` - Constant (immutable) types.
+These are types that do not contain anything intrinsically mutable.
+Intrinsically mutable values include `@mut`
+and `Cell` in the standard library.
 
-* `Const` - Constant (immutable) types. These are types that do not contain
-  mutable fields.
-
-> ***Note:*** These three traits were referred to as 'kinds' in earlier
+> ***Note:*** These two traits were referred to as 'kinds' in earlier
 > iterations of the language, and often still are.
 
 Additionally, the `Drop` trait is used to define destructors. This
@@ -1908,10 +1916,11 @@ may call it.
 
 ## Declaring and implementing traits
 
-A trait consists of a set of methods, without bodies, or may be empty,
-as is the case with `Copy`, `Owned`, and `Const`. For example, we could
-declare the trait `Printable` for things that can be printed to the
-console, with a single method:
+A trait consists of a set of methods without bodies,
+or may be empty, as is the case with `Send` and `Freeze`.
+For example, we could declare the trait
+`Printable` for things that can be printed to the console,
+with a single method:
 
 ~~~~
 trait Printable {
@@ -2030,7 +2039,7 @@ fn print_all<T: Printable>(printable_things: ~[T]) {
 ~~~~
 
 Declaring `T` as conforming to the `Printable` trait (as we earlier
-did with `Copy`) makes it possible to call methods from that trait
+did with `Clone`) makes it possible to call methods from that trait
 on values of type `T` inside the function. It will also cause a
 compile-time error when anyone tries to call `print_all` on an array
 whose element type does not have a `Printable` implementation.
@@ -2040,10 +2049,10 @@ as in this version of `print_all` that copies elements.
 
 ~~~
 # trait Printable { fn print(&self); }
-fn print_all<T: Printable + Copy>(printable_things: ~[T]) {
+fn print_all<T: Printable + Clone>(printable_things: ~[T]) {
     let mut i = 0;
     while i < printable_things.len() {
-        let copy_of_thing = copy printable_things[i];
+        let copy_of_thing = printable_things[i].clone();
         copy_of_thing.print();
         i += 1;
     }

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[deriving(Eq)]
+#[deriving(Clone, Eq)]
 pub enum mode {
     mode_compile_fail,
     mode_run_fail,
@@ -18,6 +18,7 @@ pub enum mode {
     mode_codegen
 }
 
+#[deriving(Clone)]
 pub struct config {
     // The library paths required for running the compiler
     compile_lib_path: ~str,

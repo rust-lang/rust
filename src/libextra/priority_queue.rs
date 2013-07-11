@@ -12,12 +12,13 @@
 
 #[allow(missing_doc)];
 
-
+use std::clone::Clone;
 use std::unstable::intrinsics::{move_val_init, init};
 use std::util::{replace, swap};
 use std::vec;
 
 /// A priority queue implemented with a binary heap
+#[deriving(Clone)]
 pub struct PriorityQueue<T> {
     priv data: ~[T],
 }

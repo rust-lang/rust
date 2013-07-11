@@ -736,7 +736,7 @@ mod test {
                 let server_stream_watcher = server_stream_watcher;
                 rtdebug!("starting read");
                 let alloc: AllocCallback = |size| {
-                    vec_to_uv_buf(vec::from_elem(size, 0))
+                    vec_to_uv_buf(vec::from_elem(size, 0u8))
                 };
                 do client_tcp_watcher.read_start(alloc)
                     |stream_watcher, nread, buf, status| {

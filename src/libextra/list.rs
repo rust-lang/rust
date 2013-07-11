@@ -12,7 +12,7 @@
 
 
 
-#[deriving(Eq)]
+#[deriving(Clone, Eq)]
 pub enum List<T> {
     Cons(T, @List<T>),
     Nil,

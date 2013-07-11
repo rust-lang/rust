@@ -178,7 +178,6 @@ impl<A:ToStr> ToStr for @[A] {
 }
 
 #[cfg(test)]
-#[allow(non_implicitly_copyable_typarams)]
 mod tests {
     use hashmap::HashMap;
     use hashmap::HashSet;
