@@ -577,13 +577,11 @@ pub fn tmpdir() -> Path {
     }
 
     #[cfg(unix)]
-    #[allow(non_implicitly_copyable_typarams)]
     fn lookup() -> Path {
         getenv_nonempty("TMPDIR").get_or_default(Path("/tmp"))
     }
 
     #[cfg(windows)]
-    #[allow(non_implicitly_copyable_typarams)]
     fn lookup() -> Path {
         getenv_nonempty("TMP").or(
             getenv_nonempty("TEMP").or(
@@ -688,7 +686,6 @@ pub fn mkdir_recursive(p: &Path, mode: c_int) -> bool {
 }
 
 /// Lists the contents of a directory
-#[allow(non_implicitly_copyable_typarams)]
 pub fn list_dir(p: &Path) -> ~[~str] {
     if p.components.is_empty() && !p.is_absolute() {
         // Not sure what the right behavior is here, but this
@@ -1732,7 +1729,6 @@ pub mod consts {
 }
 
 #[cfg(test)]
-#[allow(non_implicitly_copyable_typarams)]
 mod tests {
     use libc::{c_int, c_void, size_t};
     use libc;

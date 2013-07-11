@@ -666,7 +666,6 @@ pub type BuiltinBounds = EnumSet<BuiltinBound>;
 
 #[deriving(Clone, Eq, IterBytes)]
 pub enum BuiltinBound {
-    BoundCopy,
     BoundStatic,
     BoundSend,
     BoundFreeze,
@@ -679,7 +678,6 @@ pub fn EmptyBuiltinBounds() -> BuiltinBounds {
 
 pub fn AllBuiltinBounds() -> BuiltinBounds {
     let mut set = EnumSet::empty();
-    set.add(BoundCopy);
     set.add(BoundStatic);
     set.add(BoundSend);
     set.add(BoundFreeze);
@@ -1798,7 +1796,6 @@ impl TypeContents {
 
     pub fn meets_bound(&self, cx: ctxt, bb: BuiltinBound) -> bool {
         match bb {
-            BoundCopy => self.is_copy(cx),
             BoundStatic => self.is_static(cx),
             BoundFreeze => self.is_freezable(cx),
             BoundSend => self.is_sendable(cx),
@@ -1808,10 +1805,6 @@ impl TypeContents {
 
     pub fn intersects(&self, tc: TypeContents) -> bool {
         (self.bits & tc.bits) != 0
-    }
-
-    pub fn is_copy(&self, cx: ctxt) -> bool {
-        !self.intersects(TypeContents::noncopyable(cx))
     }
 
     pub fn noncopyable(_cx: ctxt) -> TypeContents {
@@ -1941,10 +1934,6 @@ static TC_DYNAMIC_SIZE: TypeContents =     TypeContents{bits: 0b1000_0000_0000};
 
 /// All possible contents.
 static TC_ALL: TypeContents =              TypeContents{bits: 0b1111_1111_1111};
-
-pub fn type_is_copyable(cx: ctxt, t: ty::t) -> bool {
-    type_contents(cx, t).is_copy(cx)
-}
 
 pub fn type_is_static(cx: ctxt, t: ty::t) -> bool {
     type_contents(cx, t).is_static(cx)
@@ -2237,8 +2226,7 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
             ast::Many => TC_NONE
         };
         // Prevent noncopyable types captured in the environment from being copied.
-        let ct = if cty.bounds.contains_elem(BoundCopy) ||
-                    cty.sigil == ast::ManagedSigil {
+        let ct = if cty.sigil == ast::ManagedSigil {
             TC_NONE
         } else {
             TC_NONCOPY_TRAIT
@@ -2261,9 +2249,6 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
         let mut bt = TC_NONE;
         for (AllBuiltinBounds() - bounds).each |bound| {
             bt = bt + match bound {
-                BoundCopy if store == UniqTraitStore
-                            => TC_NONCOPY_TRAIT,
-                BoundCopy   => TC_NONE, // @Trait/&Trait are copyable either way
                 BoundStatic if bounds.contains_elem(BoundSend)
                             => TC_NONE, // Send bound implies static bound.
                 BoundStatic => TC_BORROWED_POINTER, // Useful for "@Trait:'static"
@@ -2285,7 +2270,6 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
         for type_param_def.bounds.builtin_bounds.each |bound| {
             debug!("tc = %s, bound = %?", tc.to_str(), bound);
             tc = tc - match bound {
-                BoundCopy => TypeContents::noncopyable(cx),
                 BoundStatic => TypeContents::nonstatic(cx),
                 BoundSend => TypeContents::nonsendable(cx),
                 BoundFreeze => TypeContents::nonfreezable(cx),

@@ -671,7 +671,6 @@ fn get_concurrency() -> uint {
     else { threads * SCHED_OVERCOMMIT }
 }
 
-#[allow(non_implicitly_copyable_typarams)]
 pub fn filter_tests(
     opts: &TestOpts,
     tests: ~[TestDescAndFn]) -> ~[TestDescAndFn]

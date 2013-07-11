@@ -145,7 +145,6 @@ pub fn spawn<A:Send>(blk: ~fn() -> A) -> Future<A> {
     return from_port(port);
 }
 
-#[allow(non_implicitly_copyable_typarams)]
 #[cfg(test)]
 mod test {
     use future::*;

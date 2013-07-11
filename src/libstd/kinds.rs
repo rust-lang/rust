@@ -29,6 +29,7 @@ The 2 kinds are
 
 #[allow(missing_doc)];
 
+#[cfg(stage0)]
 #[lang="copy"]
 pub trait Copy {
     // Empty.
