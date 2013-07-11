@@ -835,7 +835,7 @@ mod test {
 
     // because of the SCTable, I now need a tidy way of
     // creating syntax objects. Sigh.
-    #[deriving(Eq)]
+    #[deriving(Clone, Eq)]
     enum TestSC {
         M(Mrk),
         R(ident,Name)

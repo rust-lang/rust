@@ -417,7 +417,7 @@ mod test {
     use std::vec;
 
     fn make_file(path : &Path, contents: &[~str]) {
-        let file = io::file_writer(path, [io::Create, io::Truncate]).get();
+        let file = io::file_writer(path, [io::Create, io::Truncate]).unwrap();
 
         for contents.iter().advance |str| {
             file.write_str(*str);
@@ -562,9 +562,11 @@ mod test {
         let f2 =
             Some(Path("tmp/lib-fileinput-test-no-trailing-newline-2.tmp"));
 
-        let wr = io::file_writer(f1.get_ref(), [io::Create, io::Truncate]).get();
+        let wr = io::file_writer(f1.get_ref(),
+                                 [io::Create, io::Truncate]).unwrap();
         wr.write_str("1\n2");
-        let wr = io::file_writer(f2.get_ref(), [io::Create, io::Truncate]).get();
+        let wr = io::file_writer(f2.get_ref(),
+                                 [io::Create, io::Truncate]).unwrap();
         wr.write_str("3\n4");
 
         let mut lines = ~[];

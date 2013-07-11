@@ -101,7 +101,7 @@ pub fn is_test_ignored(config: &config, testfile: &Path) -> bool {
 }
 
 fn iter_header(testfile: &Path, it: &fn(~str) -> bool) -> bool {
-    let rdr = io::file_reader(testfile).get();
+    let rdr = io::file_reader(testfile).unwrap();
     while !rdr.eof() {
         let ln = rdr.read_line();
 

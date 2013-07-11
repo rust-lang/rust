@@ -672,7 +672,7 @@ fn dump_output_file(config: &config, testfile: &Path,
                     out: &str, extension: &str) {
     let outfile = make_out_name(config, testfile, extension);
     let writer =
-        io::file_writer(&outfile, [io::Create, io::Truncate]).get();
+        io::file_writer(&outfile, [io::Create, io::Truncate]).unwrap();
     writer.write_str(out);
 }
 
