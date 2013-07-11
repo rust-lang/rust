@@ -1230,7 +1230,7 @@ fn overridden_arg_key(_v: @OverriddenArgs) {}
 /// `os::set_args` function.
 pub fn args() -> ~[~str] {
     unsafe {
-        match local_data::get(overridden_arg_key) {
+        match local_data::get(overridden_arg_key, |k| k.map(|&k| *k)) {
             None => real_args(),
             Some(args) => copy args.val
         }

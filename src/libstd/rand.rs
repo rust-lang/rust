@@ -850,7 +850,7 @@ fn tls_rng_state(_v: @@mut IsaacRng) {}
 pub fn task_rng() -> @mut IsaacRng {
     let r : Option<@@mut IsaacRng>;
     unsafe {
-        r = local_data::get(tls_rng_state);
+        r = local_data::get(tls_rng_state, |k| k.map(|&k| *k));
     }
     match r {
         None => {

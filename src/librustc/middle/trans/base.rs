@@ -92,7 +92,7 @@ fn task_local_insn_key(_v: @~[&'static str]) {}
 
 pub fn with_insn_ctxt(blk: &fn(&[&'static str])) {
     unsafe {
-        let opt = local_data::get(task_local_insn_key);
+        let opt = local_data::get(task_local_insn_key, |k| k.map(|&k| *k));
         if opt.is_some() {
             blk(*opt.unwrap());
         }

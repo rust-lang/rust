@@ -1204,7 +1204,7 @@ mod big_tests {
     #[unsafe_destructor]
     impl<'self> Drop for LVal<'self> {
         fn drop(&self) {
-            let x = unsafe { local_data::get(self.key) };
+            let x = unsafe { local_data::get(self.key, |k| k.map(|&k| *k)) };
             match x {
                 Some(@y) => {
                     unsafe {

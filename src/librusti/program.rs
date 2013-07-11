@@ -144,7 +144,7 @@ impl Program {
                 let key = ::std::sys::Closure{ code: %? as *(),
                                                env: ::std::ptr::null() };
                 let key = ::std::cast::transmute(key);
-                *::std::local_data::get(key).unwrap()
+                *::std::local_data::get(key, |k| k.map(|&x| *x)).unwrap()
             };\n", key.code as uint));
 
         // Using this __tls_map handle, deserialize each variable binding that

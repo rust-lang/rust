@@ -32,7 +32,7 @@ impl<'self, T, U> Condition<'self, T, U> {
     pub fn trap(&'self self, h: &'self fn(T) -> U) -> Trap<'self, T, U> {
         unsafe {
             let p : *RustClosure = ::cast::transmute(&h);
-            let prev = local_data::get(self.key);
+            let prev = local_data::get(self.key, |k| k.map(|&x| *x));
             let h = @Handler { handle: *p, prev: prev };
             Trap { cond: self, handler: h }
         }

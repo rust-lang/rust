@@ -83,16 +83,16 @@ pub unsafe fn pop<T: 'static>(key: Key<T>) -> Option<T> {
  * table until explicitly removed.
  */
 #[cfg(stage0)]
-pub unsafe fn get<T: 'static>(key: Key<@T>) -> Option<@T> {
-    local_get(Handle::new(), key, |loc| loc.map(|&x| *x))
+pub unsafe fn get<T: 'static, U>(key: Key<@T>, f: &fn(Option<&@T>) -> U) -> U {
+    local_get(Handle::new(), key, f)
 }
 /**
  * Retrieve a task-local data value. It will also be kept alive in the
  * table until explicitly removed.
  */
 #[cfg(not(stage0))]
-pub unsafe fn get<T: 'static>(key: Key<@T>) -> Option<@T> {
-    local_get(Handle::new(), key, |loc| loc.map(|&x| *x))
+pub unsafe fn get<T: 'static, U>(key: Key<T>, f: &fn(Option<&T>) -> U) -> U {
+    local_get(Handle::new(), key, f)
 }
 /**
  * Store a value in task-local data. If this key already has a value,
@@ -142,16 +142,16 @@ fn test_tls_multitask() {
         set(my_key, @~"parent data");
         do task::spawn {
             // TLS shouldn't carry over.
-            assert!(get(my_key).is_none());
+            assert!(get(my_key, |k| k.map(|&k| *k)).is_none());
             set(my_key, @~"child data");
-            assert!(*(get(my_key).get()) ==
+            assert!(*(get(my_key, |k| k.map(|&k| *k)).get()) ==
                     ~"child data");
             // should be cleaned up for us
         }
         // Must work multiple times
-        assert!(*(get(my_key).get()) == ~"parent data");
-        assert!(*(get(my_key).get()) == ~"parent data");
-        assert!(*(get(my_key).get()) == ~"parent data");
+        assert!(*(get(my_key, |k| k.map(|&k| *k)).get()) == ~"parent data");
+        assert!(*(get(my_key, |k| k.map(|&k| *k)).get()) == ~"parent data");
+        assert!(*(get(my_key, |k| k.map(|&k| *k)).get()) == ~"parent data");
     }
 }
 
@@ -161,7 +161,7 @@ fn test_tls_overwrite() {
         fn my_key(_x: @~str) { }
         set(my_key, @~"first data");
         set(my_key, @~"next data"); // Shouldn't leak.
-        assert!(*(get(my_key).get()) == ~"next data");
+        assert!(*(get(my_key, |k| k.map(|&k| *k)).get()) == ~"next data");
     }
 }
 
@@ -170,7 +170,7 @@ fn test_tls_pop() {
     unsafe {
         fn my_key(_x: @~str) { }
         set(my_key, @~"weasel");
-        assert!(*(pop(my_key).get()) == ~"weasel");
+        assert!(*(pop(my_key, |k| k.map(|&k| *k)).get()) == ~"weasel");
         // Pop must remove the data from the map.
         assert!(pop(my_key).is_none());
     }

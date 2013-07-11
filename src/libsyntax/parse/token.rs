@@ -490,7 +490,7 @@ pub fn get_ident_interner() -> @ident_interner {
             (cast::transmute::<(uint, uint),
              &fn:Copy(v: @@::parse::token::ident_interner)>(
                  (-3 as uint, 0u)));
-        match local_data::get(key) {
+        match local_data::get(key, |k| k.map(|&k| *k)) {
             Some(interner) => *interner,
             None => {
                 let interner = mk_fresh_ident_interner();
