@@ -3327,11 +3327,15 @@ pub fn instantiate_path(fcx: @mut FnCtxt,
         fcx.infcx().next_ty_vars(ty_param_count)
     } else if ty_substs_len > ty_param_count {
         fcx.ccx.tcx.sess.span_err
-            (span, "too many type parameters provided for this item");
+            (span,
+             fmt!("too many type parameters provided: expected %u, found %u",
+                  ty_param_count, ty_substs_len));
         fcx.infcx().next_ty_vars(ty_param_count)
     } else if ty_substs_len < ty_param_count {
         fcx.ccx.tcx.sess.span_err
-            (span, "not enough type parameters provided for this item");
+            (span,
+             fmt!("not enough type parameters provided: expected %u, found %u",
+                  ty_param_count, ty_substs_len));
         fcx.infcx().next_ty_vars(ty_param_count)
     } else {
         pth.types.map(|aty| fcx.to_ty(aty))
