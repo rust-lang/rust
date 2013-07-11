@@ -24,7 +24,7 @@
 // check:$3 = {{Case3, 0, 22873, 22873, 22873, 22873}, {Case3, 0, 1499027801, 1499027801}, {Case3, 0, 6438275382588823897}}
 
 // debugger:print univariant
-// check:$4 = {{-1}}
+// check:$4 = {-1}
 
 // The first element is to ensure proper alignment, irrespective of the machines word size. Since
 // the size of the discriminant value is machine dependent, this has be taken into account when

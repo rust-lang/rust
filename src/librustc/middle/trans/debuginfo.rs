@@ -50,6 +50,7 @@ use middle::trans::common::*;
 use middle::trans::machine;
 use middle::trans::type_of;
 use middle::trans::type_::Type;
+use middle::trans::adt;
 use middle::trans;
 use middle::ty;
 use util::ppaux::ty_to_str;
@@ -560,6 +561,161 @@ fn create_tuple_metadata(cx: &mut CrateContext,
         span);
 }
 
+// The stage0 snapshot does not yet support the fixes from PR #7557, so there are two versions of
+// following function for now
+#[cfg(not(stage0))]
+fn create_enum_metadata(cx: &mut CrateContext,
+                        enum_type: ty::t,
+                        enum_def_id: ast::def_id,
+                        substs: &ty::substs,
+                        span: span)
+                     -> DIType {
+
+    let enum_name = ty_to_str(cx.tcx, enum_type);
+
+    // For empty enums there is an early exit. Just describe it as an empty struct with the
+    // appropriate type name
+    if ty::type_is_empty(cx.tcx, enum_type) {
+        return create_composite_type_metadata(cx, Type::nil(), enum_name, &[], &[], &[], span);
+    }
+
+    // Prepare some data (llvm type, size, align, ...) about the discriminant. This data will be
+    // needed in all of the following cases.
+    let discriminant_llvm_type = Type::enum_discrim(cx);
+    let (discriminant_size, discriminant_align) = size_and_align_of(cx, discriminant_llvm_type);
+
+    assert!(Type::enum_discrim(cx) == cx.int_type);
+    let discriminant_type_metadata = get_or_create_type_metadata(cx, ty::mk_int(), span);
+
+    let variants : &[@ty::VariantInfo] = *ty::enum_variants(cx.tcx, enum_def_id);
+
+    let enumerators_metadata : ~[DIDescriptor] = variants
+        .iter()
+        .transform(|v| {
+            let name : &str = cx.sess.str_of(v.name);
+            let discriminant_value = v.disr_val as c_ulonglong;
+
+            do name.as_c_str |name| { unsafe {
+                llvm::LLVMDIBuilderCreateEnumerator(
+                    DIB(cx),
+                    name,
+                    discriminant_value)
+            }}
+        })
+        .collect();
+
+    let loc = span_start(cx, span);
+    let file_metadata = get_or_create_file_metadata(cx, loc.file.name);
+
+    let discriminant_type_metadata = do enum_name.as_c_str |enum_name| { unsafe {
+        llvm::LLVMDIBuilderCreateEnumerationType(
+            DIB(cx),
+            file_metadata,
+            enum_name,
+            file_metadata,
+            loc.line as c_uint,
+            bytes_to_bits(discriminant_size),
+            bytes_to_bits(discriminant_align),
+            create_DIArray(DIB(cx), enumerators_metadata),
+            discriminant_type_metadata)
+    }};
+
+    let type_rep = adt::represent_type(cx, enum_type);
+
+    match *type_rep {
+        adt::CEnum(*) => {
+            return discriminant_type_metadata;
+        }
+        adt::Univariant(ref struct_def, _destroyed_flag) => {
+            assert!(variants.len() == 1);
+            return create_adt_struct_metadata(cx, struct_def, variants[0], None, span);
+        }
+        adt::General(ref struct_defs) => {
+            let variants_member_metadata : ~[DIDescriptor] = do struct_defs
+                .iter()
+                .enumerate()
+                .transform |(i, struct_def)| {
+                    let variant_type_metadata = create_adt_struct_metadata(
+                        cx,
+                        struct_def,
+                        variants[i],
+                        Some(discriminant_type_metadata),
+                        span);
+
+                    do "".as_c_str |name| { unsafe {
+                        llvm::LLVMDIBuilderCreateMemberType(
+                            DIB(cx),
+                            file_metadata,
+                            name,
+                            file_metadata,
+                            loc.line as c_uint,
+                            bytes_to_bits(struct_def.size as uint),
+                            bytes_to_bits(struct_def.align as uint),
+                            bytes_to_bits(0),
+                            0,
+                            variant_type_metadata)
+                    }}
+            }.collect();
+
+            let enum_llvm_type = type_of::type_of(cx, enum_type);
+            let (enum_type_size, enum_type_align) = size_and_align_of(cx, enum_llvm_type);
+
+            return do enum_name.as_c_str |enum_name| { unsafe { llvm::LLVMDIBuilderCreateUnionType(
+                DIB(cx),
+                file_metadata,
+                enum_name,
+                file_metadata,
+                loc.line as c_uint,
+                bytes_to_bits(enum_type_size),
+                bytes_to_bits(enum_type_align),
+                0, // Flags
+                create_DIArray(DIB(cx), variants_member_metadata),
+                0) // RuntimeLang
+            }};
+        }
+        _ => { return ptr::null(); }
+    }
+
+    fn create_adt_struct_metadata(cx: &mut CrateContext,
+                                  struct_def: &adt::Struct,
+                                  variant_info: &ty::VariantInfo,
+                                  discriminant_type_metadata: Option<DIType>,
+                                  span: span)
+                               -> DICompositeType
+    {
+        let arg_llvm_types : ~[Type] = do struct_def.fields.map |&ty| { type_of::type_of(cx, ty) };
+        let arg_metadata : ~[DIType] = do struct_def.fields.iter().enumerate()
+            .transform |(i, &ty)| {
+                match discriminant_type_metadata {
+                    Some(metadata) if i == 0 => metadata,
+                    _                        => get_or_create_type_metadata(cx, ty, span)
+                }
+        }.collect();
+
+        let mut arg_names = match variant_info.arg_names {
+            Some(ref names) => do names.map |ident| { cx.sess.str_of(*ident).to_owned() },
+            None => do variant_info.args.map |_| { ~"" }
+        };
+
+        if (discriminant_type_metadata.is_some()) {
+            arg_names.insert(0, ~"");
+        }
+
+        let variant_llvm_type = Type::struct_(arg_llvm_types, struct_def.packed);
+        let variant_name : &str = cx.sess.str_of(variant_info.name);
+
+        return create_composite_type_metadata(
+            cx,
+            variant_llvm_type,
+            variant_name,
+            arg_llvm_types,
+            arg_names,
+            arg_metadata,
+            span);
+    }
+}
+
+#[cfg(stage0)]
 fn create_enum_metadata(cx: &mut CrateContext,
                         enum_type: ty::t,
                         enum_def_id: ast::def_id,

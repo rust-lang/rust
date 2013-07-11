@@ -22,7 +22,7 @@
 // check:$2 = {{TheB, x = 0, y = 1229782938247303441}, {TheB, 0, 286331153, 286331153}}
 
 // debugger:print univariant->val
-// check:$3 = {{-9747455}}
+// check:$3 = {-9747455}
 
 // The first element is to ensure proper alignment, irrespective of the machines word size. Since
 // the size of the discriminant value is machine dependent, this has be taken into account when

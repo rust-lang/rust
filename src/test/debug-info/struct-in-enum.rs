@@ -21,7 +21,7 @@
 // check:$2 = {{Case2, 0, {x = 286331153, y = 286331153, z = 4369}}, {Case2, 0, 1229782938247303441, 4369}}
 
 // debugger:print univariant
-// check:$3 = {{{x = 123, y = 456, z = 789}}}
+// check:$3 = {{x = 123, y = 456, z = 789}}
 
 struct Struct {
 	x: u32,

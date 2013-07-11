@@ -94,7 +94,7 @@ pub enum Repr {
 }
 
 /// For structs, and struct-like parts of anything fancier.
-struct Struct {
+pub struct Struct {
     size: u64,
     align: u64,
     packed: bool,
