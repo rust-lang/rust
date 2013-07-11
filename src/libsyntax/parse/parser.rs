@@ -1074,7 +1074,7 @@ impl Parser {
     // This version of parse arg doesn't necessarily require
     // identifier names.
     pub fn parse_arg_general(&self, require_name: bool) -> arg {
-        let mut is_mutbl = self.eat_keyword(keywords::Mut);
+        let is_mutbl = self.eat_keyword(keywords::Mut);
         let pat = if require_name || self.is_named_argument() {
             self.parse_arg_mode();
             let pat = self.parse_pat();
