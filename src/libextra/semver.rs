@@ -113,13 +113,7 @@ impl cmp::Ord for Version {
                  (0, _) => false,
                  (_, 0) => true,
                  (_, _) => self.pre < other.pre
-             })) ||
-
-            (self.major == other.major &&
-             self.minor == other.minor &&
-             self.patch == other.patch &&
-             self.pre == other.pre &&
-             self.build < other.build)
+             }))
     }
 
     #[inline]
@@ -377,15 +371,12 @@ fn test_spec_order() {
 
     let vs = ["1.0.0-alpha",
               "1.0.0-alpha.1",
+              "1.0.0-alpha.beta",
+              "1.0.0-beta",
               "1.0.0-beta.2",
               "1.0.0-beta.11",
               "1.0.0-rc.1",
-              "1.0.0-rc.1+build.1",
-              "1.0.0",
-              "1.0.0+0.3.7",
-              "1.3.7+build",
-              "1.3.7+build.2.b8f12d7",
-              "1.3.7+build.11.e0f985a"];
+              "1.0.0"];
     let mut i = 1;
     while i < vs.len() {
         let a = parse(vs[i-1]).get();
