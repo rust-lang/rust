@@ -10,7 +10,7 @@ endif
 let b:did_indent = 1
 
 setlocal cindent
-setlocal cinoptions=L0,(0,Ws,JN
+setlocal cinoptions=L0,(0,Ws,JN,j1
 setlocal cinkeys=0{,0},!^F,o,O,0[,0]
 " Don't think cinwords will actually do anything at all... never mind
 setlocal cinwords=do,for,if,else,while,loop,impl,mod,unsafe,trait,struct,enum,fn,extern
@@ -66,12 +66,23 @@ function GetRustIndent(lnum)
 	" Starting assumption: cindent (called at the end) will do it right
 	" normally. We just want to fix up a few cases.
 
+	let line = getline(a:lnum)
+
 	if has('syntax_items')
-		if synIDattr(synID(a:lnum, 1, 1), "name") == "rustString"
+		let synname = synIDattr(synID(a:lnum, 1, 1), "name")
+		if synname == "rustString"
 			" If the start of the line is in a string, don't change the indent
 			return -1
-		elseif synIDattr(synID(a:lnum, 1, 1), "name") =~ "\\(Comment\\|Todo\\)"
-					\ && getline(a:lnum) !~ "^\\s*/\\*"
+		elseif synname =~ "\\(Comment\\|Todo\\)"
+					\ && line !~ "^\\s*/\\*"  " not /* opening line
+			if synname =~ "CommentML" " multi-line
+				if line !~ "^\\s*\\*" && getline(a:lnum - 1) =~ "^\\s*/\\*"
+					" This is (hopefully) the line after a /*, and it has no
+					" leader, so the correct indentation is that of the
+					" previous line.
+					return GetRustIndent(a:lnum - 1)
+				endif
+			endif
 			" If it's in a comment, let cindent take care of it now. This is
 			" for cases like "/*" where the next line should start " * ", not
 			" "* " as the code below would otherwise cause for module scope
@@ -114,7 +125,6 @@ function GetRustIndent(lnum)
 	" start with these two main cases (square brackets and not returning to
 	" column zero)
 
-	let line = getline(a:lnum)
 	call cursor(a:lnum, 1)
 	if searchpair('{\|(', '', '}\|)', 'nbW') == 0
 		if searchpair('\[', '', '\]', 'nbW') == 0
