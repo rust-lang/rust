@@ -88,33 +88,41 @@ impl Terminal {
     ///
     /// If the color is a bright color, but the terminal only supports 8 colors,
     /// the corresponding normal color will be used instead.
-    pub fn fg(&self, color: color::Color) {
+    ///
+    /// Returns true if the color was set, false otherwise.
+    pub fn fg(&self, color: color::Color) -> bool {
         let color = self.dim_if_necessary(color);
         if self.num_colors > color {
             let s = expand(*self.ti.strings.find_equiv(&("setaf")).unwrap(),
                            [Number(color as int)], &mut Variables::new());
             if s.is_ok() {
                 self.out.write(s.unwrap());
+                return true
             } else {
                 warn!("%s", s.unwrap_err());
             }
         }
+        false
     }
     /// Sets the background color to the given color.
     ///
     /// If the color is a bright color, but the terminal only supports 8 colors,
     /// the corresponding normal color will be used instead.
-    pub fn bg(&self, color: color::Color) {
+    ///
+    /// Rturns true if the color was set, false otherwise.
+    pub fn bg(&self, color: color::Color) -> bool {
         let color = self.dim_if_necessary(color);
         if self.num_colors > color {
             let s = expand(*self.ti.strings.find_equiv(&("setab")).unwrap(),
                            [Number(color as int)], &mut Variables::new());
             if s.is_ok() {
                 self.out.write(s.unwrap());
+                return true
             } else {
                 warn!("%s", s.unwrap_err());
             }
         }
+        false
     }
     pub fn reset(&self) {
         let mut vars = Variables::new();
@@ -144,10 +152,12 @@ impl Terminal {
         return Ok(Terminal {out: out, num_colors: 0});
     }
 
-    pub fn fg(&self, _color: color::Color) {
+    pub fn fg(&self, _color: color::Color) -> bool {
+        false
     }
 
-    pub fn bg(&self, _color: color::Color) {
+    pub fn bg(&self, _color: color::Color) -> bool {
+        false
     }
 
     pub fn reset(&self) {
