@@ -427,7 +427,7 @@ RFAIL_RC := $(wildcard $(S)src/test/run-fail/*.rc)
 RFAIL_RS := $(wildcard $(S)src/test/run-fail/*.rs)
 CFAIL_RC := $(wildcard $(S)src/test/compile-fail/*.rc)
 CFAIL_RS := $(wildcard $(S)src/test/compile-fail/*.rs)
-BENCH_RS := $(wildcard $(S)src/test/bench/*.rs)
+BENCH_RS := $(wildcard $(S)src/test/bench/*.rs) $(wildcard $(S)src/test/bench/extra/*.rs) $(wildcard $(S)src/test/bench/rt/*.rs) $(wildcard $(S)src/test/bench/shootout/*.rs) $(wildcard $(S)src/test/bench/std/*.rs))
 PRETTY_RS := $(wildcard $(S)src/test/pretty/*.rs)
 DEBUGINFO_RS := $(wildcard $(S)src/test/debug-info/*.rs)
 
