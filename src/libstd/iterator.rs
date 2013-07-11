@@ -47,6 +47,49 @@ pub trait Iterator<A> {
     fn size_hint(&self) -> (uint, Option<uint>) { (0, None) }
 }
 
+/// A range iterator able to yield elements from both ends
+pub trait DoubleEndedIterator<A>: Iterator<A> {
+    /// Yield an element from the end of the range, returning `None` if the range is empty.
+    fn next_back(&mut self) -> Option<A>;
+}
+
+/// Iterator adaptors provided for every `DoubleEndedIterator` implementation.
+///
+/// In the future these will be default methods instead of a utility trait.
+pub trait DoubleEndedIteratorUtil<A> {
+    /// Flip the direction of the iterator
+    fn invert(self) -> InvertIterator<A, Self>;
+}
+
+/// Iterator adaptors provided for every `DoubleEndedIterator` implementation.
+///
+/// In the future these will be default methods instead of a utility trait.
+impl<A, T: DoubleEndedIterator<A>> DoubleEndedIteratorUtil<A> for T {
+    /// Flip the direction of the iterator
+    #[inline]
+    fn invert(self) -> InvertIterator<A, T> {
+        InvertIterator{iter: self}
+    }
+}
+
+/// An double-ended iterator with the direction inverted
+// FIXME #6967: Dummy A parameter to get around type inference bug
+pub struct InvertIterator<A, T> {
+    priv iter: T
+}
+
+impl<A, T: DoubleEndedIterator<A>> Iterator<A> for InvertIterator<A, T> {
+    #[inline]
+    fn next(&mut self) -> Option<A> { self.iter.next_back() }
+    #[inline]
+    fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
+}
+
+impl<A, T: Iterator<A>> DoubleEndedIterator<A> for InvertIterator<A, T> {
+    #[inline]
+    fn next_back(&mut self) -> Option<A> { self.iter.next() }
+}
+
 /// Iterator adaptors provided for every `Iterator` implementation. The adaptor objects are also
 /// implementations of the `Iterator` trait.
 ///
@@ -1473,5 +1516,14 @@ mod tests {
     fn test_min_by() {
         let xs = [-3, 0, 1, 5, -10];
         assert_eq!(*xs.iter().min_by(|x| x.abs()).unwrap(), 0);
+    }
+
+    #[test]
+    fn test_invert() {
+        let xs = [2, 4, 6, 8, 10, 12, 14, 16];
+        let mut it = xs.iter();
+        it.next();
+        it.next();
+        assert_eq!(it.invert().transform(|&x| x).collect::<~[int]>(), ~[16, 14, 12, 10, 8, 6]);
     }
 }
