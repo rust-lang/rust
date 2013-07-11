@@ -58,7 +58,7 @@ struct LocalVariable {
 }
 
 type LocalCache = @mut HashMap<~str, @~[u8]>;
-fn tls_key(_k: @LocalCache) {}
+fn tls_key(_k: LocalCache) {}
 
 impl Program {
     pub fn new() -> Program {
@@ -132,7 +132,7 @@ impl Program {
         ");
 
         let key: sys::Closure = unsafe {
-            let tls_key: &'static fn(@LocalCache) = tls_key;
+            let tls_key: &'static fn(LocalCache) = tls_key;
             cast::transmute(tls_key)
         };
         // First, get a handle to the tls map which stores all the local
@@ -144,7 +144,7 @@ impl Program {
                 let key = ::std::sys::Closure{ code: %? as *(),
                                                env: ::std::ptr::null() };
                 let key = ::std::cast::transmute(key);
-                *::std::local_data::get(key, |k| k.map(|&x| *x)).unwrap()
+                ::std::local_data::get(key, |k| k.map(|&x| *x)).unwrap()
             };\n", key.code as uint));
 
         // Using this __tls_map handle, deserialize each variable binding that
@@ -227,7 +227,7 @@ impl Program {
             map.insert(copy *name, @copy value.data);
         }
         unsafe {
-            local_data::set(tls_key, @map);
+            local_data::set(tls_key, map);
         }
     }
 
