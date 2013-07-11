@@ -11,6 +11,9 @@
 //! A doubly-linked list with owned nodes.
 //!
 //! The DList allows pushing and popping elements at either end.
+//!
+//! DList implements the trait Deque. It should be imported with `use
+//! extra::container::Deque`.
 
 
 // DList is constructed like a singly-linked list over the field `next`.
@@ -27,7 +30,7 @@ use std::iterator::FromIterator;
 
 use container::Deque;
 
-/// A doubly-linked list
+/// A doubly-linked list.
 pub struct DList<T> {
     priv length: uint,
     priv list_head: Link<T>,

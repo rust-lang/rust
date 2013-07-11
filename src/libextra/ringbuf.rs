@@ -9,6 +9,9 @@
 // except according to those terms.
 
 //! A double-ended queue implemented as a circular buffer
+//!
+//! RingBuf implements the trait Deque. It should be imported with `use
+//! extra::container::Deque`.
 
 use std::num;
 use std::util;
@@ -21,7 +24,7 @@ use container::Deque;
 static INITIAL_CAPACITY: uint = 8u; // 2^3
 static MINIMUM_CAPACITY: uint = 2u;
 
-#[allow(missing_doc)]
+/// RingBuf is a circular buffer that implements Deque.
 #[deriving(Clone)]
 pub struct RingBuf<T> {
     priv nelts: uint,
