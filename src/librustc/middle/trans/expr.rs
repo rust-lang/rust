@@ -956,7 +956,7 @@ fn trans_lvalue_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
                 fn get_did(ccx: @mut CrateContext, did: ast::def_id)
                     -> ast::def_id {
                     if did.crate != ast::local_crate {
-                        inline::maybe_instantiate_inline(ccx, did, true)
+                        inline::maybe_instantiate_inline(ccx, did)
                     } else {
                         did
                     }
