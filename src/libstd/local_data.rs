@@ -170,7 +170,7 @@ fn test_tls_pop() {
     unsafe {
         fn my_key(_x: @~str) { }
         set(my_key, @~"weasel");
-        assert!(*(pop(my_key, |k| k.map(|&k| *k)).get()) == ~"weasel");
+        assert!(*(pop(my_key).get()) == ~"weasel");
         // Pop must remove the data from the map.
         assert!(pop(my_key).is_none());
     }
