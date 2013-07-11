@@ -100,7 +100,6 @@ use middle::trans::glue;
 use middle::trans::tvec;
 use middle::trans::type_of;
 use middle::trans::write_guard;
-use middle::trans::type_::Type;
 use middle::ty;
 use util::common::indenter;
 use util::ppaux::ty_to_str;

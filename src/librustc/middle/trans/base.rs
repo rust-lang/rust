@@ -59,7 +59,6 @@ use middle::trans::type_of::*;
 use middle::ty;
 use util::common::indenter;
 use util::ppaux::{Repr, ty_to_str};
-use middle::pat_util;
 
 use middle::trans::type_::Type;
 
