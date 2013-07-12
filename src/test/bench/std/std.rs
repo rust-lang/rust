@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // Microbenchmarks for various functions in std and extra
+// FIXME #7685: rewrite to use the new bench runner
 
 extern mod extra;
 
