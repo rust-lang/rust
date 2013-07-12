@@ -12,10 +12,6 @@
 
 use std::local_data;
 
-fn key(_x: @&int) { }
+static key: local_data::Key<@&int> = &[]; //~ ERROR only 'static is allowed
 
-fn main() {
-    unsafe {
-        local_data::set(key, @&0); //~ ERROR does not fulfill `'static`
-    }
-}
+fn main() {}

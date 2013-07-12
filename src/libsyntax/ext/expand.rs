@@ -579,11 +579,11 @@ pub fn core_macros() -> @str {
         { pub $c:ident: $in:ty -> $out:ty; } => {
 
             pub mod $c {
-                fn key(_x: @::std::condition::Handler<$in,$out>) { }
+                #[allow(non_uppercase_statics)];
+                static key: &'static [@::std::condition::Handler<$in, $out>] = &[];
 
-                #[allow(non_uppercase_statics)]
                 pub static cond :
-                    ::std::condition::Condition<'static,$in,$out> =
+                    ::std::condition::Condition<$in,$out> =
                     ::std::condition::Condition {
                         name: stringify!($c),
                         key: key
@@ -595,11 +595,11 @@ pub fn core_macros() -> @str {
 
             // FIXME (#6009): remove mod's `pub` below once variant above lands.
             pub mod $c {
-                fn key(_x: @::std::condition::Handler<$in,$out>) { }
+                #[allow(non_uppercase_statics)];
+                static key: &'static [@::std::condition::Handler<$in, $out>] = &[];
 
-                #[allow(non_uppercase_statics)]
                 pub static cond :
-                    ::std::condition::Condition<'static,$in,$out> =
+                    ::std::condition::Condition<$in,$out> =
                     ::std::condition::Condition {
                         name: stringify!($c),
                         key: key
