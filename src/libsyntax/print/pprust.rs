@@ -619,7 +619,8 @@ pub fn print_item(s: @ps, item: &ast::item) {
         }
         bclose(s, item.span);
       }
-      ast::item_mac(codemap::Spanned { node: ast::mac_invoc_tt(ref pth, ref tts, ctxt),
+      // I think it's reasonable to hide the context here:
+      ast::item_mac(codemap::Spanned { node: ast::mac_invoc_tt(ref pth, ref tts, _),
                                    _}) => {
         print_visibility(s, item.vis);
         print_path(s, pth, false);
@@ -1021,7 +1022,8 @@ pub fn print_if(s: @ps, test: &ast::Expr, blk: &ast::Block,
 
 pub fn print_mac(s: @ps, m: &ast::mac) {
     match m.node {
-      ast::mac_invoc_tt(ref pth, ref tts, ctxt) => {
+      // I think it's reasonable to hide the ctxt here:
+      ast::mac_invoc_tt(ref pth, ref tts, _) => {
         print_path(s, pth, false);
         word(s.s, "!");
         popen(s);

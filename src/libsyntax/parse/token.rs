@@ -17,10 +17,7 @@ use util::interner;
 
 use std::cast;
 use std::char;
-use std::cmp::Equiv;
 use std::local_data;
-use std::rand;
-use std::rand::RngUtil;
 
 #[deriving(Clone, Encodable, Decodable, Eq, IterBytes)]
 pub enum binop {
@@ -565,8 +562,8 @@ pub fn str_ptr_eq(a : @str, b : @str) -> bool {
         let q : uint = cast::transmute(b);
         let result = p == q;
         // got to transmute them back, to make sure the ref count is correct:
-        let junk1 : @str = cast::transmute(p);
-        let junk2 : @str = cast::transmute(q);
+        let _junk1 : @str = cast::transmute(p);
+        let _junk2 : @str = cast::transmute(q);
         result
     }
 }

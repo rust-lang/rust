@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ast::{Block, Crate, NodeId, DeclLocal, EMPTY_CTXT, Expr_, ExprMac, SyntaxContext};
+use ast::{Block, Crate, NodeId, DeclLocal, Expr_, ExprMac, SyntaxContext};
 use ast::{Local, Ident, mac_invoc_tt};
 use ast::{item_mac, Mrk, Stmt_, StmtDecl, StmtMac, StmtExpr, StmtSemi};
-use ast::{ILLEGAL_CTXT, SCTable, token_tree};
+use ast::{token_tree};
 use ast;
-use ast_util::{new_rename, new_mark, mtwt_resolve};
+use ast_util::{new_rename, new_mark};
 use attr;
 use attr::AttrMetaMethods;
 use codemap;
@@ -585,7 +585,7 @@ fn expand_non_macro_stmt (exts: SyntaxEnv,
                 let new_name = fresh_name(ident);
                 new_pending_renames.push((*ident,new_name));
             }
-            let mut rename_fld = renames_to_fold(new_pending_renames);
+            let rename_fld = renames_to_fold(new_pending_renames);
             // rewrite the pattern using the new names (the old ones
             // have already been applied):
             let rewritten_pat = rename_fld.fold_pat(expanded_pat);
@@ -906,7 +906,7 @@ pub fn expand_block(extsbox: @mut SyntaxEnv,
                     _cx: @ExtCtxt,
                     blk: &Block,
                     fld: @ast_fold,
-                    orig: @fn(&Block, @ast_fold) -> Block)
+                    _orig: @fn(&Block, @ast_fold) -> Block)
                  -> Block {
     // see note below about treatment of exts table
     with_exts_frame!(extsbox,false,
@@ -917,7 +917,7 @@ pub fn expand_block(extsbox: @mut SyntaxEnv,
 pub fn expand_block_elts(exts: SyntaxEnv, b: &Block, fld: @ast_fold) -> Block {
     let block_info = get_block_info(exts);
     let pending_renames = block_info.pending_renames;
-    let mut rename_fld = renames_to_fold(pending_renames);
+    let rename_fld = renames_to_fold(pending_renames);
     let new_view_items = b.view_items.map(|x| fld.fold_view_item(x));
     let mut new_stmts = ~[];
     for x in b.stmts.iter() {
@@ -1456,7 +1456,7 @@ impl CtxtFn for Marker {
 pub struct Repainter { ctxt : SyntaxContext }
 
 impl CtxtFn for Repainter {
-    fn f(&self, ctxt : ast::SyntaxContext) -> ast::SyntaxContext {
+    fn f(&self, _ctxt : ast::SyntaxContext) -> ast::SyntaxContext {
         self.ctxt
     }
 }
