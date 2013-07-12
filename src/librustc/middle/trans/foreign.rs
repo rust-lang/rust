@@ -725,24 +725,21 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
             }
 
             if !ty::type_is_nil(out_type) {
-                // NB: Do not use a Load and Store here. This causes massive
-                // code bloat when `transmute` is used on large structural
-                // types.
                 let lldestptr = fcx.llretptr.get();
-                let lldestptr = PointerCast(bcx, lldestptr, Type::i8p());
-
                 let llsrcval = get_param(decl, first_real_arg);
-                let llsrcptr = if ty::type_is_immediate(ccx.tcx, in_type) {
-                    let llsrcptr = alloca(bcx, llintype, "__llsrcptr");
-                    Store(bcx, llsrcval, llsrcptr);
-                    llsrcptr
+                if ty::type_is_immediate(ccx.tcx, in_type) {
+                    let lldestptr = PointerCast(bcx, lldestptr, llintype.ptr_to());
+                    Store(bcx, llsrcval, lldestptr);
                 } else {
-                    llsrcval
-                };
-                let llsrcptr = PointerCast(bcx, llsrcptr, Type::i8p());
+                    // NB: Do not use a Load and Store here. This causes massive
+                    // code bloat when `transmute` is used on large structural
+                    // types.
+                    let lldestptr = PointerCast(bcx, lldestptr, Type::i8p());
+                    let llsrcptr = PointerCast(bcx, llsrcval, Type::i8p());
 
-                let llsize = llsize_of(ccx, llintype);
-                call_memcpy(bcx, lldestptr, llsrcptr, llsize, 1);
+                    let llsize = llsize_of(ccx, llintype);
+                    call_memcpy(bcx, lldestptr, llsrcptr, llsize, 1);
+                };
             }
         }
         "needs_drop" => {
