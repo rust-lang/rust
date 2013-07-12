@@ -1176,8 +1176,9 @@ fn trans_rec_or_struct(bcx: @mut Block,
         let mut need_base = vec::from_elem(field_tys.len(), true);
 
         let numbered_fields = do fields.map |field| {
-            let opt_pos = field_tys.iter().position(|field_ty|
-                                                    field_ty.ident.name == field.ident.name);
+            let opt_pos =
+                field_tys.iter().position(|field_ty|
+                                          field_ty.ident.name == field.ident.name);
             match opt_pos {
                 Some(i) => {
                     need_base[i] = false;
