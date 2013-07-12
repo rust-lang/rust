@@ -50,6 +50,7 @@ pub mod api;
 mod conditions;
 mod context;
 mod crate;
+mod installed_packages;
 mod messages;
 mod package_id;
 mod package_path;
@@ -248,6 +249,14 @@ impl CtxMethods for Ctx {
                     }
                 }
             }
+            "list" => {
+                io::println("Installed packages:");
+                for installed_packages::list_installed_packages |pkg_id| {
+                    io::println(fmt!("%s-%s",
+                                     pkg_id.local_path.to_str(),
+                                     pkg_id.version.to_str()));
+                }
+            }
             "prefer" => {
                 if args.len() < 1 {
                     return usage::uninstall();
@@ -263,11 +272,24 @@ impl CtxMethods for Ctx {
                     return usage::uninstall();
                 }
 
-                self.uninstall(args[0], None);
+                let pkgid = PkgId::new(args[0]);
+                if !installed_packages::package_is_installed(&pkgid) {
+                    warn(fmt!("Package %s doesn't seem to be installed! Doing nothing.", args[0]));
+                    return;
+                }
+                else {
+                    let rp = rust_path();
+                    assert!(!rp.is_empty());
+                    for each_pkg_parent_workspace(&pkgid) |workspace| {
+                        path_util::uninstall_package_from(workspace, &pkgid);
+                        note(fmt!("Uninstalled package %s (was installed in %s)",
+                                  pkgid.to_str(), workspace.to_str()));
+                    }
+                }
             }
             "unprefer" => {
                 if args.len() < 1 {
-                    return usage::uninstall();
+                    return usage::unprefer();
                 }
 
                 self.unprefer(args[0], None);
@@ -447,6 +469,7 @@ pub fn main() {
             ~"do" => usage::do_cmd(),
             ~"info" => usage::info(),
             ~"install" => usage::install(),
+            ~"list"    => usage::list(),
             ~"prefer" => usage::prefer(),
             ~"test" => usage::test(),
             ~"uninstall" => usage::uninstall(),

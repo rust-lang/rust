@@ -28,8 +28,11 @@ use search::find_library_in_search_path;
 use path_util::target_library_in_workspace;
 pub use target::{OutputType, Main, Lib, Bench, Test};
 
+// It would be nice to have the list of commands in just one place -- for example,
+// you could update the match in rustpkg.rc but forget to update this list. I think
+// that should be fixed.
 static COMMANDS: &'static [&'static str] =
-    &["build", "clean", "do", "info", "install", "prefer", "test", "uninstall",
+    &["build", "clean", "do", "info", "install", "list", "prefer", "test", "uninstall",
       "unprefer"];
 
 
@@ -150,12 +153,6 @@ pub fn ready_crate(sess: session::Session,
     let fold = fold::make_fold(precursor);
 
     @fold.fold_crate(crate)
-}
-
-pub fn need_dir(s: &Path) {
-    if !os::path_is_dir(s) && !os::make_dir(s, 493_i32) {
-        fail!("can't create dir: %s", s.to_str());
-    }
 }
 
 // FIXME (#4432): Use workcache to only compile when needed

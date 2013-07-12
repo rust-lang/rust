@@ -30,6 +30,15 @@ pub struct PkgId {
     version: Version
 }
 
+impl Eq for PkgId {
+    fn eq(&self, p: &PkgId) -> bool {
+        *p.local_path == *self.local_path && p.version == self.version
+    }
+    fn ne(&self, p: &PkgId) -> bool {
+        !(self.eq(p))
+    }
+}
+
 impl PkgId {
     pub fn new(s: &str) -> PkgId {
         use conditions::bad_pkg_id::cond;

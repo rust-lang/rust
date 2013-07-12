@@ -14,7 +14,7 @@ pub fn general() {
     io::println("Usage: rustpkg [options] <cmd> [args..]
 
 Where <cmd> is one of:
-    build, clean, do, info, install, prefer, test, uninstall, unprefer
+    build, clean, do, info, install, list, prefer, test, uninstall, unprefer
 
 Options:
 
@@ -53,6 +53,12 @@ Probe the package script in the current directory for information.
 
 Options:
     -j, --json      Output the result as JSON");
+}
+
+pub fn list() {
+    io::println("rustpkg list
+
+List all installed packages.");
 }
 
 pub fn install() {
