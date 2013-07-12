@@ -300,19 +300,26 @@ impl<T> DList<T> {
         self.push_back(elt);
     }
 
-    /// Merge, using the function `f`; take `a` if `f(a, b)` is true, else `b`.
+    /// Merge DList `other` into this DList, using the function `f`.
+    /// Iterate the both DList with `a` from self and `b` from `other`, and
+    /// put `a` in the result if `f(a, b)` is true, else `b`.
     ///
     /// O(max(N, M))
     pub fn merge(&mut self, mut other: DList<T>, f: &fn(&T, &T) -> bool) {
         {
             let mut it = self.mut_iter();
+            let mut elt = it.next();
             loop {
-                match (it.next(), other.front()) {
-                    (None   , _      ) => break,
-                    (_      , None   ) => return,
-                    (Some(x), Some(y)) => if f(x, y) { loop }
+                let take_a = match (&mut elt, other.front()) {
+                    (_    , None) => return,
+                    (&None, _   ) => break,
+                    (&Some(ref mut x), Some(y)) => f(*x, y),
+                };
+                if take_a {
+                    elt = it.next()
+                } else {
+                    it.insert_before(other.pop_front().unwrap());
                 }
-                it.insert_before(other.pop_front().unwrap());
             }
         }
         self.append(other);
@@ -351,11 +358,11 @@ impl<T> DList<T> {
     }
 }
 
-/// Insert sorted in ascending order
-///
-/// O(N)
 impl<T: cmp::TotalOrd> DList<T> {
-    fn insert_ordered(&mut self, elt: T) {
+    /// Insert `elt` sorted in ascending order
+    ///
+    /// O(N)
+    pub fn insert_ordered(&mut self, elt: T) {
         self.insert_when(elt, |a, b| a.cmp(b) != cmp::Less);
     }
 }
@@ -758,7 +765,7 @@ mod tests {
         assert_eq!(m.len(), len);
         check_links(&m);
         let res = m.consume_iter().collect::<~[int]>();
-        assert_eq!(res, ~[-1, 0, 0, 1, 0, 3, 5, 6, 7, 2, 7, 7, 9]);
+        assert_eq!(res, ~[-1, 0, 0, 0, 1, 3, 5, 6, 7, 2, 7, 7, 9]);
     }
 
     #[test]
