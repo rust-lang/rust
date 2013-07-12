@@ -1266,6 +1266,25 @@ mod tests {
     }
 
     #[test]
+    fn test_bitv_iterator() {
+        let bools = [true, false, true, true];
+        let bitv = from_bools(bools);
+
+        for bitv.iter().zip(bools.iter()).advance |(act, &ex)| {
+            assert_eq!(ex, act);
+        }
+    }
+
+    #[test]
+    fn test_bitv_set_iterator() {
+        let bools = [true, false, true, true];
+        let bitv = BitvSet::from_bitv(from_bools(bools));
+
+        let idxs: ~[uint] = bitv.iter().collect();
+        assert_eq!(idxs, ~[0, 2, 3]);
+    }
+
+    #[test]
     fn test_small_difference() {
         let mut b1 = Bitv::new(3, false);
         let mut b2 = Bitv::new(3, false);
