@@ -751,6 +751,12 @@ impl Repr for typeck::method_param {
     }
 }
 
+impl Repr for ty::RegionVid {
+    fn repr(&self, _tcx: ctxt) -> ~str {
+        fmt!("%?", *self)
+    }
+}
+
 impl Repr for ty::TraitStore {
     fn repr(&self, tcx: ctxt) -> ~str {
         match self {
