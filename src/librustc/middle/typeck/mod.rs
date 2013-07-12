@@ -303,7 +303,7 @@ fn check_main_fn_ty(ccx: &CrateCtxt,
     let tcx = ccx.tcx;
     let main_t = ty::node_id_to_type(tcx, main_id);
     match ty::get(main_t).sty {
-        ty::ty_bare_fn(ref fn_ty) => {
+        ty::ty_bare_fn(*) => {
             match tcx.items.find(&main_id) {
                 Some(&ast_map::node_item(it,_)) => {
                     match it.node {
