@@ -209,7 +209,7 @@ static lint_table: &'static [(&'static str, LintSpec)] = &[
      LintSpec {
          lint: non_uppercase_statics,
          desc: "static constants should have uppercase identifiers",
-         default: warn
+         default: allow
      }),
 
     ("managed_heap_memory",
