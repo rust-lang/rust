@@ -135,13 +135,13 @@ pub fn syntax_expander_table() -> SyntaxEnv {
     // utility function to simplify creating NormalTT syntax extensions
     // that ignore their contexts
     fn builtin_normal_tt_no_ctxt(f: SyntaxExpanderTTFunNoCtxt) -> @Transformer {
-        let wrapped_expander : SyntaxExpanderTTFun = |a,b,c,d|{f(a,b,c)};
+        let wrapped_expander : SyntaxExpanderTTFun = |a,b,c,_d|{f(a,b,c)};
         @SE(NormalTT(wrapped_expander, None))
     }
     // utility function to simplify creating IdentTT syntax extensions
     // that ignore their contexts
     fn builtin_item_tt_no_ctxt(f: SyntaxExpanderTTItemFunNoCtxt) -> @Transformer {
-        let wrapped_expander : SyntaxExpanderTTItemFun = |a,b,c,d,e|{f(a,b,c,d)};
+        let wrapped_expander : SyntaxExpanderTTItemFun = |a,b,c,d,_e|{f(a,b,c,d)};
         @SE(IdentTT(wrapped_expander, None))
     }
     let mut syntax_expanders = HashMap::new();

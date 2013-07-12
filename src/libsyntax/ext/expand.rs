@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ast::{Block, Crate, decl_local, empty_ctxt, expr_, expr_mac, Local, mac_invoc_tt};
+use ast::{Block, Crate, decl_local, expr_, expr_mac, Local, mac_invoc_tt};
 use ast::{item_mac, Mrk, stmt_, stmt_decl, stmt_mac, stmt_expr, stmt_semi, SyntaxContext};
-use ast::{SCTable, token_tree, illegal_ctxt};
+use ast::{token_tree};
 use ast;
-use ast_util::{new_rename, new_mark, mtwt_resolve};
+use ast_util::{new_rename, new_mark};
 use attr;
 use attr::AttrMetaMethods;
 use codemap;
@@ -431,7 +431,7 @@ fn expand_non_macro_stmt (exts: SyntaxEnv,
                 let new_name = fresh_name(ident);
                 new_pending_renames.push((*ident,new_name));
             }
-            let mut rename_fld = renames_to_fold(new_pending_renames);
+            let rename_fld = renames_to_fold(new_pending_renames);
             // rewrite the pattern using the new names (the old ones
             // have already been applied):
             let rewritten_pat = rename_fld.fold_pat(expanded_pat);
@@ -531,7 +531,7 @@ pub fn expand_block(extsbox: @mut SyntaxEnv,
                     _cx: @ExtCtxt,
                     blk: &Block,
                     fld: @ast_fold,
-                    orig: @fn(&Block, @ast_fold) -> Block)
+                    _orig: @fn(&Block, @ast_fold) -> Block)
                  -> Block {
     // see note below about treatment of exts table
     with_exts_frame!(extsbox,false,
@@ -542,7 +542,7 @@ pub fn expand_block(extsbox: @mut SyntaxEnv,
 pub fn expand_block_elts(exts: SyntaxEnv, b: &Block, fld: @ast_fold) -> Block {
     let block_info = get_block_info(exts);
     let pending_renames = block_info.pending_renames;
-    let mut rename_fld = renames_to_fold(pending_renames);
+    let rename_fld = renames_to_fold(pending_renames);
     let new_view_items = b.view_items.map(|x| fld.fold_view_item(x));
     let mut new_stmts = ~[];
     for b.stmts.iter().advance |x| {
@@ -928,7 +928,7 @@ impl CtxtFn for Marker {
 pub struct Repainter { ctxt : SyntaxContext }
 
 impl CtxtFn for Repainter {
-    pub fn f(&self, ctxt : ast::SyntaxContext) -> ast::SyntaxContext {
+    pub fn f(&self, _ctxt : ast::SyntaxContext) -> ast::SyntaxContext {
         self.ctxt
     }
 }
@@ -1013,7 +1013,7 @@ mod test {
     use print::pprust;
     use std;
     use std::vec;
-    use util::parser_testing::{string_to_crate, string_to_crate_and_sess, string_to_item}
+    use util::parser_testing::{string_to_crate, string_to_crate_and_sess, string_to_item};
     use util::parser_testing::{string_to_pat, strs_to_idents};
     use visit::{mk_vt};
     use visit;
