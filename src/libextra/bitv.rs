@@ -104,7 +104,7 @@ impl SmallBitv {
     }
 
     #[inline]
-    pub fn invert(&mut self) { self.bits = !self.bits; }
+    pub fn negate(&mut self) { self.bits = !self.bits; }
 }
 
 struct BigBitv {
@@ -160,7 +160,7 @@ impl BigBitv {
     }
 
     #[inline]
-    pub fn invert(&mut self) { for self.each_storage |w| { *w = !*w } }
+    pub fn negate(&mut self) { for self.each_storage |w| { *w = !*w } }
 
     #[inline]
     pub fn union(&mut self, b: &BigBitv, nbits: uint) -> bool {
@@ -366,9 +366,9 @@ impl Bitv {
 
     /// Invert all bits
     #[inline]
-    pub fn invert(&mut self) {
+    pub fn negate(&mut self) {
       match self.rep {
-        Small(ref mut b) => b.invert(),
+        Small(ref mut b) => b.negate(),
         Big(ref mut s) => for s.each_storage() |w| { *w = !*w } }
     }
 

@@ -47,8 +47,9 @@ pub use cmp::{Eq, ApproxEq, Ord, TotalEq, TotalOrd, Ordering, Less, Equal, Great
 pub use char::Char;
 pub use container::{Container, Mutable, Map, Set};
 pub use hash::Hash;
-pub use iter::{Times};
-pub use iterator::{Iterator, IteratorUtil, OrdIterator};
+pub use iter::Times;
+pub use iterator::{Iterator, IteratorUtil, DoubleEndedIterator, DoubleEndedIteratorUtil};
+pub use iterator::OrdIterator;
 pub use num::{Num, NumCast};
 pub use num::{Orderable, Signed, Unsigned, Round};
 pub use num::{Algebraic, Trigonometric, Exponential, Hyperbolic};

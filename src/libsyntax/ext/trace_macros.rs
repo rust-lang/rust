@@ -16,8 +16,6 @@ use parse::lexer::{new_tt_reader, reader};
 use parse::parser::Parser;
 use parse::token::keywords;
 
-use std::vec;
-
 pub fn expand_trace_macros(cx: @ExtCtxt,
                            sp: span,
                            tt: &[ast::token_tree])
@@ -27,7 +25,7 @@ pub fn expand_trace_macros(cx: @ExtCtxt,
     let tt_rdr = new_tt_reader(
         copy cx.parse_sess().span_diagnostic,
         None,
-        vec::to_owned(tt)
+        tt.to_owned()
     );
     let rdr = tt_rdr as @reader;
     let rust_parser = Parser(

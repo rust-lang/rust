@@ -446,7 +446,7 @@ pub mod flatteners {
                               T: Decodable<D>>(
                               buf: &[u8])
                               -> T {
-        let buf = vec::to_owned(buf);
+        let buf = buf.to_owned();
         let buf_reader = @BufReader::new(buf);
         let reader = buf_reader as @Reader;
         let mut deser: D = FromReader::from_reader(reader);
