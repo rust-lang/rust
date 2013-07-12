@@ -47,7 +47,6 @@
 use std::container::Map;
 use std::libc::c_ulonglong;
 use std::option::{Option, Some, None};
-use std::vec;
 
 use lib::llvm::{ValueRef, True, IntEQ, IntNE};
 use middle::trans::_match;
@@ -219,7 +218,7 @@ fn mk_struct(cx: &mut CrateContext, tys: &[ty::t], packed: bool) -> Struct {
         size: machine::llsize_of_alloc(cx, llty_rec) /*bad*/as u64,
         align: machine::llalign_of_min(cx, llty_rec) /*bad*/as u64,
         packed: packed,
-        fields: vec::to_owned(tys)
+        fields: tys.to_owned(),
     }
 }
 
