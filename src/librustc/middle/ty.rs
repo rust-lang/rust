@@ -1662,7 +1662,8 @@ fn type_is_newtype_immediate(cx: ctxt, ty: t) -> bool {
 pub fn type_is_immediate(cx: ctxt, ty: t) -> bool {
     return type_is_scalar(ty) || type_is_boxed(ty) ||
         type_is_unique(ty) || type_is_region_ptr(ty) ||
-        type_is_newtype_immediate(cx, ty);
+        type_is_newtype_immediate(cx, ty) ||
+        type_is_simd(cx, ty);
 }
 
 pub fn type_needs_drop(cx: ctxt, ty: t) -> bool {
@@ -4075,7 +4076,7 @@ pub fn struct_fields(cx: ctxt, did: ast::def_id, substs: &substs)
     }
 }
 
-pub fn is_binopable(_cx: ctxt, ty: t, op: ast::binop) -> bool {
+pub fn is_binopable(cx: ctxt, ty: t, op: ast::binop) -> bool {
     static tycat_other: int = 0;
     static tycat_bool: int = 1;
     static tycat_int: int = 2;
@@ -4115,7 +4116,10 @@ pub fn is_binopable(_cx: ctxt, ty: t, op: ast::binop) -> bool {
         }
     }
 
-    fn tycat(ty: t) -> int {
+    fn tycat(cx: ctxt, ty: t) -> int {
+        if type_is_simd(cx, ty) {
+            return tycat(cx, simd_type(cx, ty))
+        }
         match get(ty).sty {
           ty_bool => tycat_bool,
           ty_int(_) | ty_uint(_) | ty_infer(IntVar(_)) => tycat_int,
@@ -4140,7 +4144,7 @@ pub fn is_binopable(_cx: ctxt, ty: t, op: ast::binop) -> bool {
     /*bot*/     ~[f, f, f, f, f, f, f, f],
     /*struct*/  ~[t, t, t, t, f, f, t, t]];
 
-    return tbl[tycat(ty)][opcat(op)];
+    return tbl[tycat(cx, ty)][opcat(op)];
 }
 
 pub fn ty_params_to_tys(tcx: ty::ctxt, generics: &ast::Generics) -> ~[t] {
