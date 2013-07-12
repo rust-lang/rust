@@ -2760,7 +2760,8 @@ pub fn declare_intrinsics(llmod: ModuleRef) -> HashMap<&'static str, ValueRef> {
 
 pub fn declare_dbg_intrinsics(llmod: ModuleRef, intrinsics: &mut HashMap<&'static str, ValueRef>) {
     ifn!(intrinsics, "llvm.dbg.declare", [Type::metadata(), Type::metadata()], Type::void());
-    ifn!(intrinsics, "llvm.dbg.value",   [Type::metadata(), Type::i64(), Type::metadata()], Type::void());
+    ifn!(intrinsics,
+         "llvm.dbg.value",   [Type::metadata(), Type::i64(), Type::metadata()], Type::void());
 }
 
 pub fn trap(bcx: @mut Block) {
