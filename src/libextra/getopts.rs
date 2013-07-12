@@ -343,7 +343,7 @@ pub fn getopts(args: &[~str], opts: &[Opt]) -> Result {
         }
         i += 1;
     }
-    return Ok(Matches {opts: vec::to_owned(opts),
+    return Ok(Matches {opts: opts.to_owned(),
                vals: vals,
                free: free});
 }
