@@ -591,7 +591,7 @@ impl<R: Rng> RngUtil for R {
 
     /// Shuffle a vec
     fn shuffle<T:Copy>(&mut self, values: &[T]) -> ~[T] {
-        let mut m = vec::to_owned(values);
+        let mut m = values.to_owned();
         self.shuffle_mut(m);
         m
     }

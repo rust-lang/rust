@@ -20,7 +20,6 @@ use diagnostic::span_handler;
 use parse::comments::{doc_comment_style, strip_doc_comment_decoration};
 
 use std::hashmap::HashSet;
-use std::vec;
 /* Constructors */
 
 pub fn mk_name_value_item_str(name: @str, value: @str)
@@ -256,7 +255,7 @@ pub fn last_meta_item_list_by_name(items: ~[@ast::meta_item], name: &str)
 
 pub fn sort_meta_items(items: &[@ast::meta_item]) -> ~[@ast::meta_item] {
     // This is sort of stupid here, converting to a vec of mutables and back
-    let mut v = vec::to_owned(items);
+    let mut v = items.to_owned();
     do extra::sort::quick_sort(v) |ma, mb| {
         get_meta_item_name(*ma) <= get_meta_item_name(*mb)
     }

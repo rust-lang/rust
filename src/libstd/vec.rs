@@ -30,7 +30,6 @@ use ptr::RawPtr;
 use rt::global_heap::malloc_raw;
 use rt::global_heap::realloc_raw;
 use sys;
-use sys::size_of;
 use uint;
 use unstable::intrinsics;
 #[cfg(stage0)]
@@ -91,11 +90,6 @@ pub fn from_elem<T:Copy>(n_elts: uint, t: T) -> ~[T] {
     }
 }
 
-/// Creates a new unique vector with the same contents as the slice
-pub fn to_owned<T:Copy>(t: &[T]) -> ~[T] {
-    from_fn(t.len(), |i| copy t[i])
-}
-
 /// Creates a new vector with a capacity of `capacity`
 #[cfg(stage0)]
 pub fn with_capacity<T>(capacity: uint) -> ~[T] {
@@ -114,7 +108,7 @@ pub fn with_capacity<T>(capacity: uint) -> ~[T] {
             vec
         } else {
             let alloc = capacity * sys::nonzero_size_of::<T>();
-            let ptr = malloc_raw(alloc + size_of::<raw::VecRepr>()) as *mut raw::VecRepr;
+            let ptr = malloc_raw(alloc + sys::size_of::<raw::VecRepr>()) as *mut raw::VecRepr;
             (*ptr).unboxed.alloc = alloc;
             (*ptr).unboxed.fill = 0;
             cast::transmute(ptr)
@@ -756,10 +750,13 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
     fn iter(self) -> VecIterator<'self, T> {
         unsafe {
             let p = vec::raw::to_ptr(self);
-            VecIterator{ptr: p, end: p.offset(self.len()),
+            VecIterator{ptr: p,
+                        end: cast::transmute(p as uint + self.len() *
+                                             sys::nonzero_size_of::<T>()),
                         lifetime: cast::transmute(p)}
         }
     }
+
     #[inline]
     fn rev_iter(self) -> VecRevIterator<'self, T> {
         self.iter().invert()
@@ -1153,7 +1150,7 @@ impl<T> OwnedVector<T> for ~[T] {
                     ::at_vec::raw::reserve_raw(td, ptr, n);
                 } else {
                     let alloc = n * sys::nonzero_size_of::<T>();
-                    *ptr = realloc_raw(*ptr as *mut c_void, alloc + size_of::<raw::VecRepr>())
+                    *ptr = realloc_raw(*ptr as *mut c_void, alloc + sys::size_of::<raw::VecRepr>())
                            as *mut raw::VecRepr;
                     (**ptr).unboxed.alloc = alloc;
                 }
@@ -1182,7 +1179,7 @@ impl<T> OwnedVector<T> for ~[T] {
                     ::at_vec::raw::reserve_raw(td, ptr, n);
                 } else {
                     let alloc = n * sys::nonzero_size_of::<T>();
-                    let size = alloc + size_of::<raw::VecRepr>();
+                    let size = alloc + sys::size_of::<raw::VecRepr>();
                     if alloc / sys::nonzero_size_of::<T>() != n || size < alloc {
                         fail!("vector size is too large: %u", n);
                     }
@@ -1716,7 +1713,9 @@ impl<'self,T> MutableVector<'self, T> for &'self mut [T] {
     fn mut_iter(self) -> VecMutIterator<'self, T> {
         unsafe {
             let p = vec::raw::to_mut_ptr(self);
-            VecMutIterator{ptr: p, end: p.offset(self.len()),
+            VecMutIterator{ptr: p,
+                           end: cast::transmute(p as uint + self.len() *
+                                                sys::nonzero_size_of::<T>()),
                            lifetime: cast::transmute(p)}
         }
     }
@@ -2093,7 +2092,11 @@ macro_rules! iterator {
                         None
                     } else {
                         let old = self.ptr;
-                        self.ptr = self.ptr.offset(1);
+                        // purposefully don't use 'ptr.offset' because for
+                        // vectors with 0-size elements this would return the
+                        // same pointer.
+                        self.ptr = cast::transmute(self.ptr as uint +
+                                                   sys::nonzero_size_of::<T>());
                         Some(cast::transmute(old))
                     }
                 }
@@ -2102,7 +2105,7 @@ macro_rules! iterator {
             #[inline]
             fn size_hint(&self) -> (uint, Option<uint>) {
                 let diff = (self.end as uint) - (self.ptr as uint);
-                let exact = diff / size_of::<$elem>();
+                let exact = diff / sys::nonzero_size_of::<$elem>();
                 (exact, Some(exact))
             }
         }
@@ -2119,7 +2122,9 @@ macro_rules! double_ended_iterator {
                     if self.end == self.ptr {
                         None
                     } else {
-                        self.end = self.end.offset(-1);
+                        // See above for why 'ptr.offset' isn't used
+                        self.end = cast::transmute(self.end as uint -
+                                                   sys::nonzero_size_of::<T>());
                         Some(cast::transmute(self.end))
                     }
                 }
@@ -2210,7 +2215,6 @@ impl<A, T: Iterator<A>> FromIterator<A, T> for ~[A] {
         xs
     }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -2676,19 +2680,19 @@ mod tests {
         let mut results: ~[~[int]];
 
         results = ~[];
-        for each_permutation([]) |v| { results.push(to_owned(v)); }
+        for each_permutation([]) |v| { results.push(v.to_owned()); }
         assert_eq!(results, ~[~[]]);
 
         results = ~[];
-        for each_permutation([7]) |v| { results.push(to_owned(v)); }
+        for each_permutation([7]) |v| { results.push(v.to_owned()); }
         assert_eq!(results, ~[~[7]]);
 
         results = ~[];
-        for each_permutation([1,1]) |v| { results.push(to_owned(v)); }
+        for each_permutation([1,1]) |v| { results.push(v.to_owned()); }
         assert_eq!(results, ~[~[1,1],~[1,1]]);
 
         results = ~[];
-        for each_permutation([5,2,0]) |v| { results.push(to_owned(v)); }
+        for each_permutation([5,2,0]) |v| { results.push(v.to_owned()); }
         assert!(results ==
             ~[~[5,2,0],~[5,0,2],~[2,5,0],~[2,0,5],~[0,5,2],~[0,2,5]]);
     }
@@ -3374,5 +3378,51 @@ mod tests {
         }
 
         assert_eq!(values, [2, 3, 5, 6, 7]);
+    }
+
+    #[deriving(Eq)]
+    struct Foo;
+
+    #[test]
+    fn test_iter_zero_sized() {
+        let mut v = ~[Foo, Foo, Foo];
+        assert_eq!(v.len(), 3);
+        let mut cnt = 0;
+
+        for v.iter().advance |f| {
+            assert!(*f == Foo);
+            cnt += 1;
+        }
+        assert_eq!(cnt, 3);
+
+        for v.slice(1, 3).iter().advance |f| {
+            assert!(*f == Foo);
+            cnt += 1;
+        }
+        assert_eq!(cnt, 5);
+
+        for v.mut_iter().advance |f| {
+            assert!(*f == Foo);
+            cnt += 1;
+        }
+        assert_eq!(cnt, 8);
+
+        for v.consume_iter().advance |f| {
+            assert!(f == Foo);
+            cnt += 1;
+        }
+        assert_eq!(cnt, 11);
+
+        let xs = ~[Foo, Foo, Foo];
+        assert_eq!(fmt!("%?", xs.slice(0, 2).to_owned()), ~"~[{}, {}]");
+
+        let xs: [Foo, ..3] = [Foo, Foo, Foo];
+        assert_eq!(fmt!("%?", xs.slice(0, 2).to_owned()), ~"~[{}, {}]");
+        cnt = 0;
+        for xs.iter().advance |f| {
+            assert!(*f == Foo);
+            cnt += 1;
+        }
+        assert!(cnt == 3);
     }
 }
