@@ -650,6 +650,16 @@ fn encode_method_sort(ebml_w: &mut writer::Encoder, sort: char) {
     ebml_w.end_tag();
 }
 
+fn encode_provided_source(ebml_w: &mut writer::Encoder,
+                          source_opt: Option<def_id>) {
+    for source_opt.iter().advance |source| {
+        ebml_w.start_tag(tag_item_method_provided_source);
+        let s = def_to_str(*source);
+        ebml_w.writer.write(s.as_bytes());
+        ebml_w.end_tag();
+    }
+}
+
 /* Returns an index of items in this class */
 fn encode_info_for_struct(ecx: &EncodeContext,
                           ebml_w: &mut writer::Encoder,
@@ -726,6 +736,7 @@ fn encode_method_ty_fields(ecx: &EncodeContext,
         }
         _ => encode_family(ebml_w, purity_fn_family(purity))
     }
+    encode_provided_source(ebml_w, method_ty.provided_source);
 }
 
 fn encode_info_for_method(ecx: &EncodeContext,
@@ -987,7 +998,6 @@ fn encode_info_for_item(ecx: &EncodeContext,
             _ => {}
         }
         for imp.methods.iter().advance |method| {
-            if method.provided_source.is_some() { loop; }
             ebml_w.start_tag(tag_item_impl_method);
             let s = def_to_str(method.def_id);
             ebml_w.writer.write(s.as_bytes());
@@ -1005,16 +1015,24 @@ fn encode_info_for_item(ecx: &EncodeContext,
         let mut impl_path = vec::append(~[], path);
         impl_path.push(ast_map::path_name(item.ident));
 
-        for ast_methods.iter().advance |ast_method| {
-            let m = ty::method(ecx.tcx, local_def(ast_method.id));
+        // Iterate down the methods, emitting them. We rely on the
+        // assumption that all of the actually implemented methods
+        // appear first in the impl structure, in the same order they do
+        // in the ast. This is a little sketchy.
+        let num_implemented_methods = ast_methods.len();
+        for imp.methods.iter().enumerate().advance |(i, m)| {
+            let ast_method = if i < num_implemented_methods {
+                Some(ast_methods[i])
+            } else { None };
+
             index.push(entry {val: m.def_id.node, pos: ebml_w.writer.tell()});
             encode_info_for_method(ecx,
                                    ebml_w,
-                                   m,
+                                   *m,
                                    impl_path,
                                    false,
                                    item.id,
-                                   Some(*ast_method));
+                                   ast_method)
         }
       }
       item_trait(_, ref super_traits, ref ms) => {

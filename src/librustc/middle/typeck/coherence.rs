@@ -664,7 +664,7 @@ impl CoherenceChecker {
                              impls_seen: &mut HashSet<def_id>,
                              impl_def_id: def_id) {
         let tcx = self.crate_context.tcx;
-        let implementation = csearch::get_impl(tcx, impl_def_id);
+        let implementation = @csearch::get_impl(tcx, impl_def_id);
 
         debug!("coherence: adding impl from external crate: %s",
                ty::item_path_str(tcx, implementation.did));
@@ -697,21 +697,16 @@ impl CoherenceChecker {
         }
 
         // Record all the trait methods.
-        let mut implementation = @implementation;
         for associated_traits.iter().advance |trait_ref| {
-            // XXX(sully): We could probably avoid this copy if there are no
-            // default methods.
-            let mut methods = implementation.methods.clone();
-            self.instantiate_default_methods(implementation.did,
-                                             *trait_ref,
-                                             &mut methods);
+              self.add_trait_impl(trait_ref.def_id, implementation);
+        }
 
-            implementation = @Impl {
-                methods: methods,
-                ..*implementation
-            };
-
-            self.add_trait_impl(trait_ref.def_id, implementation);
+        // For any methods that use a default implementation, add them to
+        // the map. This is a bit unfortunate.
+        for implementation.methods.iter().advance |method| {
+            for method.provided_source.iter().advance |source| {
+                tcx.provided_method_sources.insert(method.def_id, *source);
+            }
         }
 
         // Add the implementation to the mapping from implementation to base

@@ -185,6 +185,12 @@ fn item_def_id(d: ebml::Doc, cdata: cmd) -> ast::def_id {
     return translate_def_id(cdata, reader::with_doc_data(tagdoc, parse_def_id));
 }
 
+fn get_provided_source(d: ebml::Doc, cdata: cmd) -> Option<ast::def_id> {
+    do reader::maybe_get_doc(d, tag_item_method_provided_source).map |doc| {
+        translate_def_id(cdata, reader::with_doc_data(*doc, parse_def_id))
+    }
+}
+
 fn each_reexport(d: ebml::Doc, f: &fn(ebml::Doc) -> bool) -> bool {
     for reader::tagged_docs(d, tag_items_data_item_reexport) |reexport_doc| {
         if !f(reexport_doc) {
@@ -844,6 +850,7 @@ pub fn get_method(intr: @ident_interner, cdata: cmd, id: ast::node_id,
     let fty = doc_method_fty(method_doc, tcx, cdata);
     let vis = item_visibility(method_doc);
     let explicit_self = get_explicit_self(method_doc);
+    let provided_source = get_provided_source(method_doc, cdata);
 
     ty::Method::new(
         name,
@@ -857,7 +864,7 @@ pub fn get_method(intr: @ident_interner, cdata: cmd, id: ast::node_id,
         vis,
         def_id,
         container_id,
-        None
+        provided_source
     )
 }
 
