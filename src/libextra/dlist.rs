@@ -72,11 +72,6 @@ pub struct ConsumeIterator<T> {
     priv list: DList<T>
 }
 
-/// DList reverse consuming iterator
-pub struct ConsumeRevIterator<T> {
-    priv list: DList<T>
-}
-
 /// Rawlink is a type like Option<T> but for holding a raw pointer
 impl<T> Rawlink<T> {
     /// Like Option::None for Rawlink
@@ -346,8 +341,8 @@ impl<T> DList<T> {
     }
 
     /// Consume the list into an iterator yielding elements by value, in reverse
-    pub fn consume_rev_iter(self) -> ConsumeRevIterator<T> {
-        ConsumeRevIterator{list: self}
+    pub fn consume_rev_iter(self) -> InvertIterator<T, ConsumeIterator<T>> {
+        self.consume_iter().invert()
     }
 }
 
@@ -494,11 +489,8 @@ impl<A> Iterator<A> for ConsumeIterator<A> {
     }
 }
 
-impl<A> Iterator<A> for ConsumeRevIterator<A> {
-    fn next(&mut self) -> Option<A> { self.list.pop_back() }
-    fn size_hint(&self) -> (uint, Option<uint>) {
-        (self.list.length, Some(self.list.length))
-    }
+impl<A> DoubleEndedIterator<A> for ConsumeIterator<A> {
+    fn next_back(&mut self) -> Option<A> { self.list.pop_back() }
 }
 
 impl<A, T: Iterator<A>> FromIterator<A, T> for DList<A> {
