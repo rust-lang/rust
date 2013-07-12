@@ -43,13 +43,13 @@ impl uint_utils for uint {
 trait vec_utils<T> {
     fn length_(&self, ) -> uint;
     fn iter_(&self, f: &fn(&T));
-    fn map_<U:Copy>(&self, f: &fn(&T) -> U) -> ~[U];
+    fn map_<U>(&self, f: &fn(&T) -> U) -> ~[U];
 }
 
 impl<T> vec_utils<T> for ~[T] {
     fn length_(&self) -> uint { self.len() }
     fn iter_(&self, f: &fn(&T)) { for self.iter().advance |x| { f(x); } }
-    fn map_<U:Copy>(&self, f: &fn(&T) -> U) -> ~[U] {
+    fn map_<U>(&self, f: &fn(&T) -> U) -> ~[U] {
         let mut r = ~[];
         for self.iter().advance |elt| {
             r.push(f(elt));

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn clamp<T:Copy + Ord + Signed>(x: T, mn: T, mx: T) -> T {
+fn clamp<T:Ord + Signed>(x: T, mn: T, mx: T) -> T {
     cond!(
         (x > mx) { return mx; }
         (x < mn) { return mn; }

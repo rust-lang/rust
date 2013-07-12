@@ -14,7 +14,7 @@
 extern mod trait_inheritance_overloading_xc;
 use trait_inheritance_overloading_xc::{MyNum, MyInt};
 
-fn f<T:Copy + MyNum>(x: T, y: T) -> (T, T, T) {
+fn f<T:MyNum>(x: T, y: T) -> (T, T, T) {
     return (x + y, x - y, x * y);
 }
 

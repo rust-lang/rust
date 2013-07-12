@@ -422,11 +422,11 @@ pub fn trans_expr_fn(bcx: block,
 
     let llfnty = type_of_fn_from_ty(ccx, fty);
 
-    let sub_path = vec::append_one(/*bad*/copy bcx.fcx.path,
+    let sub_path = vec::append_one(bcx.fcx.path.clone(),
                                    path_name(special_idents::anon));
     // XXX: Bad copy.
     let s = mangle_internal_name_by_path_and_seq(ccx,
-                                                 copy sub_path,
+                                                 sub_path.clone(),
                                                  "expr_fn");
     let llfn = decl_internal_cdecl_fn(ccx.llmod, s, llfnty);
 
@@ -458,7 +458,7 @@ pub fn trans_expr_fn(bcx: block,
                           body,
                           llfn,
                           no_self,
-                          /*bad*/ copy bcx.fcx.param_substs,
+                          bcx.fcx.param_substs,
                           user_id,
                           [],
                           real_return_type,

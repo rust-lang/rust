@@ -84,7 +84,7 @@ pub fn expand_expr(extsbox: @mut SyntaxEnv,
 
                             //keep going, outside-in
                             let fully_expanded =
-                                copy fld.fold_expr(expanded).node;
+                                fld.fold_expr(expanded).node.clone();
                             cx.bt_pop();
 
                             (fully_expanded, s)
@@ -209,7 +209,7 @@ pub fn expand_item_mac(extsbox: @mut SyntaxEnv,
                     -> Option<@ast::item> {
     let (pth, tts) = match it.node {
         item_mac(codemap::spanned { node: mac_invoc_tt(ref pth, ref tts), _}) => {
-            (pth, copy *tts)
+            (pth, (*tts).clone())
         }
         _ => cx.span_bug(it.span, "invalid item macro invocation")
     };
@@ -299,7 +299,7 @@ pub fn expand_stmt(extsbox: @mut SyntaxEnv,
         stmt_mac(ref mac, semi) => {
             match mac.node {
                 mac_invoc_tt(ref pth, ref tts) => {
-                    (copy *mac, pth, copy *tts, semi)
+                    ((*mac).clone(), pth, (*tts).clone(), semi)
                 }
             }
         }
@@ -338,7 +338,7 @@ pub fn expand_stmt(extsbox: @mut SyntaxEnv,
                 Some(stmt) => {
                     let fully_expanded = &stmt.node;
                     cx.bt_pop();
-                    copy *fully_expanded
+                    (*fully_expanded).clone()
                 }
                 None => {
                     cx.span_fatal(pth.span,
@@ -655,7 +655,7 @@ pub fn expand_crate(parse_sess: @mut parse::ParseSess,
     // every method/element of AstFoldFns in fold.rs.
     let extsbox = @mut syntax_expander_table();
     let afp = default_ast_fold();
-    let cx = ExtCtxt::new(parse_sess, copy cfg);
+    let cx = ExtCtxt::new(parse_sess, cfg.clone());
     let f_pre = @AstFoldFns {
         fold_expr: |expr,span,recur|
             expand_expr(extsbox, cx, expr, span, recur, afp.fold_expr),
@@ -688,7 +688,7 @@ pub fn expand_crate(parse_sess: @mut parse::ParseSess,
 
     let cm = match parse_item_from_source_str(@"<core-macros>",
                                               core_macros(),
-                                              copy cfg,
+                                              cfg.clone(),
                                               attrs,
                                               parse_sess) {
         Some(item) => item,

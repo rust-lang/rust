@@ -67,7 +67,7 @@ use syntax::{ast, visit, ast_util};
  * item that's being warned about.
  */
 
-#[deriving(Eq)]
+#[deriving(Clone, Eq)]
 pub enum lint {
     ctypes,
     unused_imports,
@@ -76,7 +76,6 @@ pub enum lint {
     path_statement,
     implicit_copies,
     unrecognized_lint,
-    non_implicitly_copyable_typarams,
     deprecated_pattern,
     non_camel_case_types,
     non_uppercase_statics,
@@ -108,7 +107,7 @@ pub fn level_to_str(lv: level) -> &'static str {
     }
 }
 
-#[deriving(Eq)]
+#[deriving(Clone, Eq)]
 pub enum level {
     allow, warn, deny, forbid
 }
@@ -174,13 +173,6 @@ static lint_table: &'static [(&'static str, LintSpec)] = &[
      LintSpec {
         lint: unrecognized_lint,
         desc: "unrecognized lint attribute",
-        default: warn
-     }),
-
-    ("non_implicitly_copyable_typarams",
-     LintSpec {
-        lint: non_implicitly_copyable_typarams,
-        desc: "passing non implicitly copyable types as copy type params",
         default: warn
      }),
 
@@ -509,7 +501,7 @@ impl Context {
             // item_stopping_visitor has overridden visit_fn(&fk_method(... ))
             // to be a no-op, so manually invoke visit_fn.
             Method(m) => {
-                let fk = visit::fk_method(copy m.ident, &m.generics, m);
+                let fk = visit::fk_method(m.ident, &m.generics, m);
                 for self.visitors.iter().advance |&(orig, stopping)| {
                     (orig.visit_fn)(&fk, &m.decl, &m.body, m.span, m.id,
                                     (self, stopping));
@@ -556,7 +548,7 @@ pub fn each_lint(sess: session::Session,
 // This is used to make the simple visitors used for the lint passes
 // not traverse into subitems, since that is handled by the outer
 // lint visitor.
-fn item_stopping_visitor<E: Copy>(outer: visit::vt<E>) -> visit::vt<E> {
+fn item_stopping_visitor<E>(outer: visit::vt<E>) -> visit::vt<E> {
     visit::mk_vt(@visit::Visitor {
         visit_item: |_i, (_e, _v)| { },
         visit_fn: |fk, fd, b, s, id, (e, v)| {
@@ -638,8 +630,11 @@ fn lint_type_limits() -> visit::vt<@mut Context> {
         }
     }
 
-    fn check_limits(cx: &Context, binop: ast::binop, l: &ast::expr,
-                    r: &ast::expr) -> bool {
+    fn check_limits(cx: &Context,
+                    binop: ast::binop,
+                    l: @ast::expr,
+                    r: @ast::expr)
+                    -> bool {
         let (lit, expr, swap) = match (&l.node, &r.node) {
             (&ast::expr_lit(_), _) => (l, r, true),
             (_, &ast::expr_lit(_)) => (r, l, false),
@@ -652,7 +647,7 @@ fn lint_type_limits() -> visit::vt<@mut Context> {
         } else {
             binop
         };
-        match ty::get(ty::expr_ty(cx.tcx, @/*bad*/copy *expr)).sty {
+        match ty::get(ty::expr_ty(cx.tcx, expr)).sty {
             ty::ty_int(int_ty) => {
                 let (min, max) = int_ty_range(int_ty);
                 let lit_val: i64 = match lit.node {
@@ -694,7 +689,7 @@ fn lint_type_limits() -> visit::vt<@mut Context> {
     visit::mk_vt(@visit::Visitor {
         visit_expr: |e, (cx, vt): (@mut Context, visit::vt<@mut Context>)| {
             match e.node {
-                ast::expr_binary(_, ref binop, @ref l, @ref r) => {
+                ast::expr_binary(_, ref binop, l, r) => {
                     if is_comparison(*binop)
                         && !check_limits(cx, *binop, l, r) {
                         cx.span_lint(type_limits, e.span,

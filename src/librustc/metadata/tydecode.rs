@@ -371,7 +371,10 @@ fn parse_ty(st: &mut PState, conv: conv_did) -> ty::t {
         match st.tcx.rcache.find(&key) {
           Some(&tt) => return tt,
           None => {
-            let mut ps = PState {pos: pos ,.. copy *st};
+            let mut ps = PState {
+                pos: pos,
+                .. *st
+            };
             let tt = parse_ty(&mut ps, conv);
             st.tcx.rcache.insert(key, tt);
             return tt;
@@ -557,9 +560,6 @@ fn parse_bounds(st: &mut PState, conv: conv_did) -> ty::ParamBounds {
         match next(st) {
             'S' => {
                 param_bounds.builtin_bounds.add(ty::BoundSend);
-            }
-            'C' => {
-                param_bounds.builtin_bounds.add(ty::BoundCopy);
             }
             'K' => {
                 param_bounds.builtin_bounds.add(ty::BoundFreeze);

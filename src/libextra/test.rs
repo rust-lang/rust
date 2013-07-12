@@ -44,13 +44,14 @@ use std::os;
 // colons. This way if some test runner wants to arrange the tests
 // hierarchically it may.
 
+#[deriving(Clone)]
 pub enum TestName {
     StaticTestName(&'static str),
     DynTestName(~str)
 }
 impl ToStr for TestName {
     fn to_str(&self) -> ~str {
-        match copy *self {
+        match (*self).clone() {
             StaticTestName(s) => s.to_str(),
             DynTestName(s) => s.to_str()
         }
@@ -78,6 +79,7 @@ pub struct BenchHarness {
 
 // The definition of a single test. A test runner will run a list of
 // these.
+#[deriving(Clone)]
 pub struct TestDesc {
     name: TestName,
     ignore: bool,
@@ -130,10 +132,10 @@ pub fn test_main_static(args: &[~str], tests: &[TestDescAndFn]) {
     let owned_tests = do tests.map |t| {
         match t.testfn {
             StaticTestFn(f) =>
-            TestDescAndFn { testfn: StaticTestFn(f), desc: copy t.desc },
+            TestDescAndFn { testfn: StaticTestFn(f), desc: t.desc.clone() },
 
             StaticBenchFn(f) =>
-            TestDescAndFn { testfn: StaticBenchFn(f), desc: copy t.desc },
+            TestDescAndFn { testfn: StaticBenchFn(f), desc: t.desc.clone() },
 
             _ => {
                 fail!("non-static tests passed to test::test_main_static");
@@ -174,8 +176,10 @@ pub fn parse_opts(args: &[~str]) -> OptRes {
 
     let filter =
         if matches.free.len() > 0 {
-            Some(copy (matches).free[0])
-        } else { None };
+            Some((matches).free[0].clone())
+        } else {
+            None
+        };
 
     let run_ignored = getopts::opt_present(&matches, "ignored");
 
@@ -210,14 +214,19 @@ pub fn parse_opts(args: &[~str]) -> OptRes {
     either::Left(test_opts)
 }
 
-#[deriving(Eq)]
+#[deriving(Clone, Eq)]
 pub struct BenchSamples {
     ns_iter_summ: stats::Summary,
     mb_s: uint
 }
 
-#[deriving(Eq)]
-pub enum TestResult { TrOk, TrFailed, TrIgnored, TrBench(BenchSamples) }
+#[deriving(Clone, Eq)]
+pub enum TestResult {
+    TrOk,
+    TrFailed,
+    TrIgnored,
+    TrBench(BenchSamples),
+}
 
 struct ConsoleTestState {
     out: @io::Writer,
@@ -471,7 +480,7 @@ pub fn run_tests_console(opts: &TestOpts,
                          tests: ~[TestDescAndFn]) -> bool {
     fn callback(event: &TestEvent, st: &mut ConsoleTestState) {
         debug!("callback(event=%?)", event);
-        match copy *event {
+        match (*event).clone() {
             TeFiltered(ref filtered_tests) => st.write_run_start(filtered_tests.len()),
             TeWait(ref test) => st.write_test_start(test),
             TeResult(test, result) => {
@@ -547,6 +556,7 @@ fn should_sort_failures_before_printing_them() {
 
 fn use_color() -> bool { return get_concurrency() == 1; }
 
+#[deriving(Clone)]
 enum TestEvent {
     TeFiltered(~[TestDesc]),
     TeWait(TestDesc),
@@ -560,7 +570,7 @@ fn run_tests(opts: &TestOpts,
              callback: &fn(e: TestEvent)) {
 
     let filtered_tests = filter_tests(opts, tests);
-    let filtered_descs = filtered_tests.map(|t| copy t.desc);
+    let filtered_descs = filtered_tests.map(|t| t.desc.clone());
 
     callback(TeFiltered(filtered_descs));
 
@@ -591,7 +601,7 @@ fn run_tests(opts: &TestOpts,
                 // We are doing one test at a time so we can print the name
                 // of the test before we run it. Useful for debugging tests
                 // that hang forever.
-                callback(TeWait(copy test.desc));
+                callback(TeWait(test.desc.clone()));
             }
             run_test(!opts.run_tests, test, ch.clone());
             pending += 1;
@@ -599,7 +609,7 @@ fn run_tests(opts: &TestOpts,
 
         let (desc, result) = p.recv();
         if concurrency != 1 {
-            callback(TeWait(copy desc));
+            callback(TeWait(desc.clone()));
         }
         callback(TeResult(desc, result));
         pending -= 1;
@@ -607,7 +617,7 @@ fn run_tests(opts: &TestOpts,
 
     // All benchmarks run at the end, in serial.
     for filtered_benchs.consume_iter().advance |b| {
-        callback(TeWait(copy b.desc));
+        callback(TeWait(b.desc.clone()));
         run_test(!opts.run_benchmarks, b, ch.clone());
         let (test, result) = p.recv();
         callback(TeResult(test, result));
@@ -628,7 +638,6 @@ fn get_concurrency() -> uint {
     else { threads * SCHED_OVERCOMMIT }
 }
 
-#[allow(non_implicitly_copyable_typarams)]
 pub fn filter_tests(
     opts: &TestOpts,
     tests: ~[TestDescAndFn]) -> ~[TestDescAndFn]
@@ -640,7 +649,7 @@ pub fn filter_tests(
         filtered
     } else {
         let filter_str = match opts.filter {
-          Some(ref f) => copy *f,
+          Some(ref f) => (*f).clone(),
           None => ~""
         };
 
@@ -714,7 +723,7 @@ pub fn run_test(force_ignore: bool,
             let task_result = result_future.unwrap().recv();
             let test_result = calc_result(&desc,
                                           task_result == task::Success);
-            monitor_ch.send((copy desc, test_result));
+            monitor_ch.send((desc.clone(), test_result));
         }
     }
 
@@ -763,14 +772,14 @@ impl MetricMap {
     /// Load MetricDiff from a file.
     fn load(p: &Path) -> MetricMap {
         assert!(os::path_exists(p));
-        let f = io::file_reader(p).get();
+        let f = io::file_reader(p).unwrap();
         let mut decoder = json::Decoder(json::from_reader(f).get());
         MetricMap(Decodable::decode(&mut decoder))
     }
 
     /// Write MetricDiff to a file.
     pub fn save(&self, p: &Path) {
-        let f = io::file_writer(p, [io::Create, io::Truncate]).get();
+        let f = io::file_writer(p, [io::Create, io::Truncate]).unwrap();
         json::to_pretty_writer(f, &self.to_json());
     }
 
@@ -813,11 +822,11 @@ impl MetricMap {
                     }
                 }
             };
-            diff.insert(copy *k, r);
+            diff.insert((*k).clone(), r);
         }
         for self.iter().advance |(k, _)| {
             if !diff.contains_key(k) {
-                diff.insert(copy *k, MetricAdded);
+                diff.insert((*k).clone(), MetricAdded);
             }
         }
         diff
@@ -1094,7 +1103,7 @@ mod tests {
           either::Left(o) => o,
           _ => fail!("Malformed arg in first_free_arg_should_be_a_filter")
         };
-        assert!("filter" == (copy opts.filter).get());
+        assert!("filter" == opts.filter.clone().get());
     }
 
     #[test]
@@ -1177,11 +1186,11 @@ mod tests {
             for names.iter().advance |name| {
                 let test = TestDescAndFn {
                     desc: TestDesc {
-                        name: DynTestName(copy *name),
+                        name: DynTestName((*name).clone()),
                         ignore: false,
                         should_fail: false
                     },
-                    testfn: DynTestFn(copy testfn),
+                    testfn: DynTestFn(testfn),
                 };
                 tests.push(test);
             }

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn mk_identity<T:Copy>() -> @fn(T) -> T {
+fn mk_identity<T>() -> @fn(T) -> T {
     let result: @fn(t: T) -> T = |t| t;
     result
 }

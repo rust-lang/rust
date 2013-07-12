@@ -60,7 +60,7 @@ use task::local_data_priv::{local_get, local_pop, local_set, Handle};
  *
  * These two cases aside, the interface is safe.
  */
-pub type Key<'self,T> = &'self fn:Copy(v: T);
+pub type Key<'self,T> = &'self fn(v: T);
 
 /**
  * Remove a task-local data value from the table, returning the
@@ -129,7 +129,7 @@ pub unsafe fn modify<T: 'static>(key: Key<@T>,
 #[cfg(not(stage0))]
 pub unsafe fn modify<T: 'static>(key: Key<T>,
                                  f: &fn(Option<T>) -> Option<T>) {
-    match f(pop(key)) {
+    match f(pop(::cast::unsafe_copy(&key))) {
         Some(next) => { set(key, next); }
         None => {}
     }

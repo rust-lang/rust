@@ -66,9 +66,9 @@ pub fn install_lib(sysroot: @Path,
     let build_dir = workspace.push("build");
     let dst_dir = build_dir.push_rel(&*pkg_id.local_path);
     let pkg_src = PkgSrc {
-        root: copy workspace,
-        dst_dir: copy dst_dir,
-        id: copy pkg_id,
+        root: workspace.clone(),
+        dst_dir: dst_dir.clone(),
+        id: pkg_id.clone(),
         libs: ~[mk_crate(lib_path)],
         mains: ~[],
         tests: ~[],

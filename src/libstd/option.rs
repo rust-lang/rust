@@ -41,9 +41,9 @@ let unwrapped_msg = match msg {
 
 */
 
+use clone::Clone;
 use cmp::{Eq,Ord};
 use ops::Add;
-use kinds::Copy;
 use util;
 use num::Zero;
 use iterator::Iterator;
@@ -88,13 +88,13 @@ impl<T:Ord> Ord for Option<T> {
     }
 }
 
-impl<T: Copy+Add<T,T>> Add<Option<T>, Option<T>> for Option<T> {
+impl<T:Clone+Add<T,T>> Add<Option<T>, Option<T>> for Option<T> {
     #[inline]
     fn add(&self, other: &Option<T>) -> Option<T> {
         match (&*self, &*other) {
             (&None, &None) => None,
-            (_, &None) => copy *self,
-            (&None, _) => copy *other,
+            (_, &None) => (*self).clone(),
+            (&None, _) => (*other).clone(),
             (&Some(ref lhs), &Some(ref rhs)) => Some(*lhs + *rhs)
         }
     }
@@ -313,9 +313,7 @@ impl<T> Option<T> {
           None => fail!(reason.to_owned()),
         }
     }
-}
 
-impl<T:Copy> Option<T> {
     /**
     Gets the value out of an option
 
@@ -354,7 +352,7 @@ impl<T:Copy> Option<T> {
     }
 }
 
-impl<T:Copy + Zero> Option<T> {
+impl<T:Zero> Option<T> {
     /// Returns the contained value or zero (for this type)
     #[inline]
     pub fn get_or_zero(self) -> T {

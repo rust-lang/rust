@@ -13,6 +13,7 @@
 extern mod extra;
 use extra::list;
 
+#[deriving(Clone)]
 enum foo {
   a(uint),
   b(~str),

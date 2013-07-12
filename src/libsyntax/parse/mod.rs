@@ -79,7 +79,7 @@ pub fn parse_crate_from_file(
     cfg: ast::crate_cfg,
     sess: @mut ParseSess
 ) -> @ast::crate {
-    new_parser_from_file(sess, /*bad*/ copy cfg, input).parse_crate_mod()
+    new_parser_from_file(sess, /*bad*/ cfg.clone(), input).parse_crate_mod()
     // why is there no p.abort_if_errors here?
 }
 
@@ -89,12 +89,10 @@ pub fn parse_crate_from_source_str(
     cfg: ast::crate_cfg,
     sess: @mut ParseSess
 ) -> @ast::crate {
-    let p = new_parser_from_source_str(
-        sess,
-        /*bad*/ copy cfg,
-        name,
-        source
-    );
+    let p = new_parser_from_source_str(sess,
+                                       /*bad*/ cfg.clone(),
+                                       name,
+                                       source);
     maybe_aborted(p.parse_crate_mod(),p)
 }
 
@@ -307,7 +305,7 @@ pub fn filemap_to_tts(sess: @mut ParseSess, filemap: @FileMap)
     // it appears to me that the cfg doesn't matter here... indeed,
     // parsing tt's probably shouldn't require a parser at all.
     let cfg = ~[];
-    let srdr = lexer::new_string_reader(copy sess.span_diagnostic, filemap);
+    let srdr = lexer::new_string_reader(sess.span_diagnostic, filemap);
     let p1 = Parser(sess, cfg, srdr as @reader);
     p1.parse_all_token_trees()
 }
@@ -316,11 +314,7 @@ pub fn filemap_to_tts(sess: @mut ParseSess, filemap: @FileMap)
 pub fn tts_to_parser(sess: @mut ParseSess,
                      tts: ~[ast::token_tree],
                      cfg: ast::crate_cfg) -> Parser {
-    let trdr = lexer::new_tt_reader(
-        copy sess.span_diagnostic,
-        None,
-        tts
-    );
+    let trdr = lexer::new_tt_reader(sess.span_diagnostic, None, tts);
     Parser(sess, cfg, trdr as @reader)
 }
 
@@ -461,7 +455,7 @@ mod test {
     }
 
     fn parser_done(p: Parser){
-        assert_eq!(copy *p.token,token::EOF);
+        assert_eq!((*p.token).clone(), token::EOF);
     }
 
     #[test] fn parse_ident_pat () {

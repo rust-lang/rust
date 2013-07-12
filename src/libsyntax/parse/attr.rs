@@ -39,7 +39,7 @@ impl parser_attr for Parser {
         loop {
             match *self.token {
               token::POUND => {
-                if self.look_ahead(1u) != token::LBRACKET {
+                if self.look_ahead(1, |t| *t != token::LBRACKET) {
                     break;
                 }
                 attrs.push(self.parse_attribute(ast::attr_outer));
@@ -96,7 +96,7 @@ impl parser_attr for Parser {
         loop {
             match *self.token {
               token::POUND => {
-                if self.look_ahead(1u) != token::LBRACKET {
+                if self.look_ahead(1, |t| *t != token::LBRACKET) {
                     // This is an extension
                     break;
                 }
@@ -162,12 +162,10 @@ impl parser_attr for Parser {
 
     // matches meta_seq = ( COMMASEP(meta_item) )
     fn parse_meta_seq(&self) -> ~[@ast::meta_item] {
-        copy self.parse_seq(
-            &token::LPAREN,
-            &token::RPAREN,
-            seq_sep_trailing_disallowed(token::COMMA),
-            |p| p.parse_meta_item()
-        ).node
+        self.parse_seq(&token::LPAREN,
+                       &token::RPAREN,
+                       seq_sep_trailing_disallowed(token::COMMA),
+                       |p| p.parse_meta_item()).node
     }
 
     fn parse_optional_meta(&self) -> ~[@ast::meta_item] {

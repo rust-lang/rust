@@ -534,7 +534,7 @@ mod tests {
 
             let arc_v : ARC<~[int]> = p.recv();
 
-            let v = copy (*arc_v.get());
+            let v = (*arc_v.get()).clone();
             assert_eq!(v[3], 4);
         };
 

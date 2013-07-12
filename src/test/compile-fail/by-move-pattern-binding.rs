@@ -13,7 +13,7 @@ fn main() {
     let s = S { x: Bar(~"hello") };
     match &s.x {
         &Foo => {}
-        &Bar(identifier) => f(copy identifier)  //~ ERROR cannot move
+        &Bar(identifier) => f(identifier.clone())  //~ ERROR cannot move
     };
     match &s.x {
         &Foo => {}

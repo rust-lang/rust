@@ -62,6 +62,8 @@ pub mod coercion;
 pub mod error_reporting;
 
 pub type Bound<T> = Option<T>;
+
+#[deriving(Clone)]
 pub struct Bounds<T> {
     lb: Bound<T>,
     ub: Bound<T>
@@ -96,6 +98,7 @@ pub struct InferCtxt {
 /// Why did we require that the two types be related?
 ///
 /// See `error_reporting.rs` for more details
+#[deriving(Clone)]
 pub enum TypeOrigin {
     // Not yet categorized in a better way
     Misc(span),
@@ -120,6 +123,7 @@ pub enum TypeOrigin {
 }
 
 /// See `error_reporting.rs` for more details
+#[deriving(Clone)]
 pub enum ValuePairs {
     Types(ty::expected_found<ty::t>),
     TraitRefs(ty::expected_found<@ty::TraitRef>),
@@ -129,6 +133,7 @@ pub enum ValuePairs {
 /// encounter an error or subtyping constraint.
 ///
 /// See `error_reporting.rs` for more details.
+#[deriving(Clone)]
 pub struct TypeTrace {
     origin: TypeOrigin,
     values: ValuePairs,
@@ -137,6 +142,7 @@ pub struct TypeTrace {
 /// The origin of a `r1 <= r2` constraint.
 ///
 /// See `error_reporting.rs` for more details
+#[deriving(Clone)]
 pub enum SubregionOrigin {
     // Arose from a subtyping relation
     Subtype(TypeTrace),
@@ -245,7 +251,7 @@ pub fn fixup_err_to_str(f: fixup_err) -> ~str {
     }
 }
 
-fn new_ValsAndBindings<V:Copy,T:Copy>() -> ValsAndBindings<V, T> {
+fn new_ValsAndBindings<V:Clone,T:Clone>() -> ValsAndBindings<V, T> {
     ValsAndBindings {
         vals: SmallIntMap::new(),
         bindings: ~[]
@@ -439,12 +445,12 @@ pub fn resolve_region(cx: @mut InferCtxt, r: ty::Region, modes: uint)
 }
 
 trait then {
-    fn then<T:Copy>(&self, f: &fn() -> Result<T,ty::type_err>)
+    fn then<T:Clone>(&self, f: &fn() -> Result<T,ty::type_err>)
         -> Result<T,ty::type_err>;
 }
 
 impl then for ures {
-    fn then<T:Copy>(&self, f: &fn() -> Result<T,ty::type_err>)
+    fn then<T:Clone>(&self, f: &fn() -> Result<T,ty::type_err>)
         -> Result<T,ty::type_err> {
         self.chain(|_i| f())
     }
@@ -467,11 +473,11 @@ trait CresCompare<T> {
     fn compare(&self, t: T, f: &fn() -> ty::type_err) -> cres<T>;
 }
 
-impl<T:Copy + Eq> CresCompare<T> for cres<T> {
+impl<T:Clone + Eq> CresCompare<T> for cres<T> {
     fn compare(&self, t: T, f: &fn() -> ty::type_err) -> cres<T> {
-        do (copy *self).chain |s| {
+        do (*self).clone().chain |s| {
             if s == t {
-                copy *self
+                (*self).clone()
             } else {
                 Err(f())
             }
@@ -483,10 +489,8 @@ pub fn uok() -> ures {
     Ok(())
 }
 
-fn rollback_to<V:Copy + Vid,T:Copy>(
-    vb: &mut ValsAndBindings<V, T>,
-    len: uint)
-{
+fn rollback_to<V:Clone + Vid,T:Clone>(vb: &mut ValsAndBindings<V, T>,
+                                      len: uint) {
     while vb.bindings.len() != len {
         let (vid, old_v) = vb.bindings.pop();
         vb.vals.insert(vid.to_uint(), old_v);
@@ -588,10 +592,10 @@ impl InferCtxt {
     }
 }
 
-fn next_simple_var<V:Copy,T:Copy>(
-        counter: &mut uint,
-        bindings: &mut ValsAndBindings<V,Option<T>>)
-     -> uint {
+fn next_simple_var<V:Clone,T:Clone>(counter: &mut uint,
+                                    bindings: &mut ValsAndBindings<V,
+                                                                   Option<T>>)
+                                    -> uint {
     let id = *counter;
     *counter += 1;
     bindings.vals.insert(id, Root(None, 0));
@@ -668,15 +672,17 @@ impl InferCtxt {
         // make up a dummy type just to reuse/abuse the resolve machinery
         let dummy0 = ty::mk_trait(self.tcx,
                                   trait_ref.def_id,
-                                  copy trait_ref.substs,
+                                  trait_ref.substs.clone(),
                                   ty::UniqTraitStore,
                                   ast::m_imm,
                                   ty::EmptyBuiltinBounds());
         let dummy1 = self.resolve_type_vars_if_possible(dummy0);
         match ty::get(dummy1).sty {
             ty::ty_trait(ref def_id, ref substs, _, _, _) => {
-                ty::TraitRef {def_id: *def_id,
-                              substs: copy *substs}
+                ty::TraitRef {
+                    def_id: *def_id,
+                    substs: (*substs).clone(),
+                }
             }
             _ => {
                 self.tcx.sess.bug(

@@ -38,6 +38,7 @@ use get_data_for_req = uv_ll::get_data_for_req;
 use ll = uv_ll;
 
 /// An IP address
+#[deriving(Clone)]
 pub enum IpAddr {
     /// An IPv4 address
     Ipv4(sockaddr_in),
@@ -176,12 +177,19 @@ pub mod v4 {
     pub fn parse_addr(ip: &str) -> IpAddr {
         match try_parse_addr(ip) {
           result::Ok(addr) => addr,
-          result::Err(ref err_data) => fail!(copy err_data.err_msg)
+          result::Err(ref err_data) => fail!(err_data.err_msg.clone())
         }
     }
+
     // the simple, old style numberic representation of
     // ipv4
-    pub struct Ipv4Rep { a: u8, b: u8, c: u8, d: u8 }
+    #[deriving(Clone)]
+    pub struct Ipv4Rep {
+        a: u8,
+        b: u8,
+        c: u8,
+        d: u8,
+    }
 
     pub trait AsUnsafeU32 {
         unsafe fn as_u32(&self) -> u32;
@@ -240,7 +248,7 @@ pub mod v4 {
                     err_msg: ~"uv_ip4_name produced invalid result.",
                 })
             } else {
-                Ok(Ipv4(copy(new_addr)))
+                Ok(Ipv4(new_addr))
             }
         }
     }
@@ -271,7 +279,7 @@ pub mod v6 {
     pub fn parse_addr(ip: &str) -> IpAddr {
         match try_parse_addr(ip) {
           result::Ok(addr) => addr,
-          result::Err(err_data) => fail!(copy err_data.err_msg)
+          result::Err(err_data) => fail!(err_data.err_msg.clone())
         }
     }
     pub fn try_parse_addr(ip: &str) -> result::Result<IpAddr,ParseAddrErr> {
@@ -312,12 +320,10 @@ extern fn get_addr_cb(handle: *uv_getaddrinfo_t,
                 let mut curr_addr = res;
                 loop {
                     let new_ip_addr = if ll::is_ipv4_addrinfo(curr_addr) {
-                        Ipv4(copy((
-                            *ll::addrinfo_as_sockaddr_in(curr_addr))))
+                        Ipv4(*ll::addrinfo_as_sockaddr_in(curr_addr))
                     }
                     else if ll::is_ipv6_addrinfo(curr_addr) {
-                        Ipv6(copy((
-                            *ll::addrinfo_as_sockaddr_in6(curr_addr))))
+                        Ipv6(*ll::addrinfo_as_sockaddr_in6(curr_addr))
                     }
                     else {
                         debug!("curr_addr is not of family AF_INET or \

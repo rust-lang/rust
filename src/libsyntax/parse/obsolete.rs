@@ -63,7 +63,6 @@ pub enum ObsoleteSyntax {
     ObsoleteNamedExternModule,
     ObsoleteMultipleLocalDecl,
     ObsoleteMutWithMultipleBindings,
-    ObsoletePatternCopyKeyword,
 }
 
 impl to_bytes::IterBytes for ObsoleteSyntax {
@@ -249,10 +248,6 @@ impl ParserObsoleteMethods for Parser {
                 "use multiple local declarations instead of e.g. `let mut \
                  (x, y) = ...`."
             ),
-            ObsoletePatternCopyKeyword => (
-                "`copy` in patterns",
-                "`copy` in patterns no longer has any effect"
-            ),
         };
 
         self.report(sp, kind, kind_str, desc);
@@ -314,8 +309,8 @@ impl ParserObsoleteMethods for Parser {
 
     pub fn try_parse_obsolete_with(&self) -> bool {
         if *self.token == token::COMMA
-            && self.token_is_obsolete_ident("with",
-                                            &self.look_ahead(1u)) {
+            && self.look_ahead(1,
+                               |t| self.token_is_obsolete_ident("with", t)) {
             self.bump();
         }
         if self.eat_obsolete_ident("with") {
@@ -329,8 +324,9 @@ impl ParserObsoleteMethods for Parser {
 
     pub fn try_parse_obsolete_priv_section(&self, attrs: &[attribute])
                                            -> bool {
-        if self.is_keyword(keywords::Priv) && self.look_ahead(1) == token::LBRACE {
-            self.obsolete(copy *self.span, ObsoletePrivSection);
+        if self.is_keyword(keywords::Priv) &&
+                self.look_ahead(1, |t| *t == token::LBRACE) {
+            self.obsolete(*self.span, ObsoletePrivSection);
             self.eat_keyword(keywords::Priv);
             self.bump();
             while *self.token != token::RBRACE {

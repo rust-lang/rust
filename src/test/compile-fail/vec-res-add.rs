@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: instantiating a type parameter with an incompatible type
+// error-pattern: failed to find an implementation
 
 struct r {
   i:int

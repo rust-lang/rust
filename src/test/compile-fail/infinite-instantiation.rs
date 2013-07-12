@@ -21,13 +21,13 @@ impl to_opt for uint {
     }
 }
 
-impl<T:Copy> to_opt for Option<T> {
+impl<T:Clone> to_opt for Option<T> {
     fn to_option(&self) -> Option<Option<T>> {
-        Some(copy *self)
+        Some((*self).clone())
     }
 }
 
-fn function<T:to_opt>(counter: uint, t: T) {
+fn function<T:to_opt + Clone>(counter: uint, t: T) {
     if counter > 0u {
         function(counter - 1u, t.to_option());
     }

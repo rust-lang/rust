@@ -22,6 +22,7 @@ pub trait ABIInfo {
     fn compute_info(&self, atys: &[Type], rty: Type, ret_def: bool) -> FnType;
 }
 
+#[deriving(Clone)]
 pub struct LLVMType {
     cast: bool,
     ty: Type

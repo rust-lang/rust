@@ -583,29 +583,31 @@ mod test {
         }
     }
 
+    #[deriving(Clone)]
+    struct Order {
+        immediate: bool,
+        succeed: bool,
+        orders: ~[Order]
+    }
+
     #[test]
     fn whateverman() {
-        struct Order {
-            immediate: bool,
-            succeed: bool,
-            orders: ~[Order]
-        }
         fn next(latch: &mut JoinLatch, orders: ~[Order]) {
             for orders.iter().advance |order| {
-                let suborders = copy order.orders;
+                let suborders = order.orders.clone();
                 let child_latch = Cell::new(latch.new_child());
                 let succeed = order.succeed;
                 if order.immediate {
                     do spawntask_immediately {
                         let mut child_latch = child_latch.take();
-                        next(&mut *child_latch, copy suborders);
+                        next(&mut *child_latch, suborders.clone());
                         rtdebug!("immediate releasing");
                         child_latch.release(succeed);
                     }
                 } else {
                     do spawntask_later {
                         let mut child_latch = child_latch.take();
-                        next(&mut *child_latch, copy suborders);
+                        next(&mut *child_latch, suborders.clone());
                         rtdebug!("later releasing");
                         child_latch.release(succeed);
                     }

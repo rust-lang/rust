@@ -573,7 +573,6 @@ impl Repr for ty::ParamBounds {
         let mut res = ~[];
         for self.builtin_bounds.each |b| {
             res.push(match b {
-                ty::BoundCopy => ~"Copy",
                 ty::BoundStatic => ~"'static",
                 ty::BoundSend => ~"Send",
                 ty::BoundFreeze => ~"Freeze",
@@ -791,7 +790,6 @@ impl Repr for ty::BuiltinBound {
 impl UserString for ty::BuiltinBound {
     fn user_string(&self, _tcx: ctxt) -> ~str {
         match *self {
-            ty::BoundCopy => ~"Copy",
             ty::BoundStatic => ~"'static",
             ty::BoundSend => ~"Send",
             ty::BoundFreeze => ~"Freeze",
@@ -836,7 +834,7 @@ impl UserString for ty::TraitRef {
         let path = ty::item_path(tcx, self.def_id);
         let base = ast_map::path_to_str(path, tcx.sess.intr());
         if tcx.sess.verbose() && self.substs.self_ty.is_some() {
-            let mut all_tps = copy self.substs.tps;
+            let mut all_tps = self.substs.tps.clone();
             for self.substs.self_ty.iter().advance |&t| { all_tps.push(t); }
             parameterized(tcx, base, self.substs.self_r, all_tps)
         } else {

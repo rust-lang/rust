@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn reproduce<T:Copy>(t: T) -> @fn() -> T {
+fn reproduce<T>(t: T) -> @fn() -> T {
     let result: @fn() -> T = || t;
     result
 }

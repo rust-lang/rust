@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn f<T:Copy>(t: T) -> T {
+fn f<T>(t: T) -> T {
     let t1 = t;
     t1
 }

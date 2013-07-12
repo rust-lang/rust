@@ -1035,7 +1035,6 @@ pub mod guarantor {
             ast::expr_loop_body(*) |
             ast::expr_do_body(*) |
             ast::expr_block(*) |
-            ast::expr_copy(*) |
             ast::expr_repeat(*) |
             ast::expr_vec(*) => {
                 assert!(!ty::expr_is_lval(

@@ -94,7 +94,6 @@ pub trait AstBuilder {
     fn expr_deref(&self, sp: span, e: @ast::expr) -> @ast::expr;
     fn expr_unary(&self, sp: span, op: ast::unop, e: @ast::expr) -> @ast::expr;
 
-    fn expr_copy(&self, sp: span, e: @ast::expr) -> @ast::expr;
     fn expr_managed(&self, sp: span, e: @ast::expr) -> @ast::expr;
     fn expr_addr_of(&self, sp: span, e: @ast::expr) -> @ast::expr;
     fn expr_mut_addr_of(&self, sp: span, e: @ast::expr) -> @ast::expr;
@@ -347,11 +346,11 @@ impl AstBuilder for @ExtCtxt {
 
     fn strip_bounds(&self, generics: &Generics) -> Generics {
         let new_params = do generics.ty_params.map |ty_param| {
-            ast::TyParam { bounds: opt_vec::Empty, ..copy *ty_param }
+            ast::TyParam { bounds: opt_vec::Empty, ..*ty_param }
         };
         Generics {
             ty_params: new_params,
-            .. copy *generics
+            .. (*generics).clone()
         }
     }
 
@@ -442,9 +441,6 @@ impl AstBuilder for @ExtCtxt {
         self.expr(sp, ast::expr_unary(self.next_id(), op, e))
     }
 
-    fn expr_copy(&self, sp: span, e: @ast::expr) -> @ast::expr {
-        self.expr(sp, ast::expr_copy(e))
-    }
     fn expr_managed(&self, sp: span, e: @ast::expr) -> @ast::expr {
         self.expr_unary(sp, ast::box(ast::m_imm), e)
     }
@@ -611,13 +607,13 @@ impl AstBuilder for @ExtCtxt {
     }
     fn lambda0(&self, _span: span, blk: ast::blk) -> @ast::expr {
         let ext_cx = *self;
-        let blk_e = self.expr(copy blk.span, ast::expr_block(copy blk));
+        let blk_e = self.expr(blk.span, ast::expr_block(blk.clone()));
         quote_expr!(|| $blk_e )
     }
 
     fn lambda1(&self, _span: span, blk: ast::blk, ident: ast::ident) -> @ast::expr {
         let ext_cx = *self;
-        let blk_e = self.expr(copy blk.span, ast::expr_block(copy blk));
+        let blk_e = self.expr(blk.span, ast::expr_block(blk.clone()));
         quote_expr!(|$ident| $blk_e )
     }
 

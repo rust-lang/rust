@@ -39,6 +39,17 @@ pub mod runtest;
 pub mod common;
 pub mod errors;
 
+<<<<<<< HEAD
+=======
+mod std {
+    pub use core::clone;
+    pub use core::cmp;
+    pub use core::str;
+    pub use core::sys;
+    pub use core::unstable;
+}
+
+>>>>>>> test: Fix tests.
 pub fn main() {
     let args = os::args();
     let config = parse_config(args);
@@ -112,9 +123,18 @@ pub fn parse_config(args: ~[~str]) -> config {
         mode: str_mode(getopts::opt_str(matches, "mode")),
         run_ignored: getopts::opt_present(matches, "ignored"),
         filter:
+<<<<<<< HEAD
+            if !matches.free.is_empty() {
+                 Some(matches.free[0].clone())
+            } else {
+                None
+=======
              if !matches.free.is_empty() {
-                 Some(copy matches.free[0])
-             } else { None },
+                option::Some(matches.free[0].clone())
+             } else {
+                option::None
+>>>>>>> test: Fix tests.
+            },
         logfile: getopts::opt_maybe_str(matches, "logfile").map(|s| Path(*s)),
         runtool: getopts::opt_maybe_str(matches, "runtool"),
         rustcflags: getopts::opt_maybe_str(matches, "rustcflags"),
@@ -211,9 +231,9 @@ pub fn run_tests(config: &config) {
 
 pub fn test_opts(config: &config) -> test::TestOpts {
     test::TestOpts {
-        filter: copy config.filter,
+        filter: config.filter.clone(),
         run_ignored: config.run_ignored,
-        logfile: copy config.logfile,
+        logfile: config.logfile.clone(),
         run_tests: true,
         run_benchmarks: false,
         ratchet_metrics: None,
@@ -228,7 +248,7 @@ pub fn make_tests(config: &config) -> ~[test::TestDescAndFn] {
     let mut tests = ~[];
     let dirs = os::list_dir_path(&config.src_base);
     for dirs.iter().advance |file| {
-        let file = copy *file;
+        let file = (*file).clone();
         debug!("inspecting file %s", file.to_str());
         if is_test(config, file) {
             tests.push(make_test(config, file))
@@ -287,7 +307,7 @@ pub fn make_test_name(config: &config, testfile: &Path) -> test::TestName {
 
 pub fn make_test_closure(config: &config, testfile: &Path) -> test::TestFn {
     use std::cell::Cell;
-    let config = Cell::new(copy *config);
+    let config = Cell::new((*config).clone());
     let testfile = Cell::new(testfile.to_str());
     test::DynTestFn(|| { runtest::run(config.take(), testfile.take()) })
 }

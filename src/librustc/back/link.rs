@@ -39,7 +39,7 @@ use syntax::attr;
 use syntax::print::pprust;
 use syntax::parse::token;
 
-#[deriving(Eq)]
+#[deriving(Clone, Eq)]
 pub enum output_type {
     output_type_none,
     output_type_bitcode,
@@ -249,7 +249,7 @@ pub mod write {
             }
 
             let passes = if sess.opts.custom_passes.len() > 0 {
-                copy sess.opts.custom_passes
+                sess.opts.custom_passes.clone()
             } else {
                 if sess.lint_llvm() {
                     mpm.add_pass_from_name("lint");
@@ -775,7 +775,7 @@ pub fn link_binary(sess: Session,
     // For win32, there is no cc command,
     // so we add a condition to make it use gcc.
     let cc_prog: ~str = match sess.opts.linker {
-        Some(ref linker) => copy *linker,
+        Some(ref linker) => linker.to_str(),
         None => match sess.targ_cfg.os {
             session::os_android =>
                 match &sess.opts.android_cross_path {
@@ -803,7 +803,7 @@ pub fn link_binary(sess: Session,
 
         out_filename.dir_path().push(long_libname)
     } else {
-        /*bad*/copy *out_filename
+        out_filename.clone()
     };
 
     debug!("output: %s", output.to_str());
@@ -854,7 +854,7 @@ pub fn link_args(sess: Session,
         let long_libname = output_dll_filename(sess.targ_cfg.os, lm);
         out_filename.dir_path().push(long_libname)
     } else {
-        /*bad*/copy *out_filename
+        out_filename.clone()
     };
 
     // The default library location, we need this to find the runtime.

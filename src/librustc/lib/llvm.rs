@@ -58,6 +58,7 @@ pub enum Linkage {
     LinkerPrivateWeakLinkage = 16,
 }
 
+#[deriving(Clone)]
 pub enum Attribute {
     ZExtAttribute = 1,
     SExtAttribute = 2,

@@ -30,6 +30,7 @@ use sort::Sort;
 use treemap::TreeMap;
 
 /// Represents a json value
+#[deriving(Clone, Eq)]
 pub enum Json {
     Number(float),
     String(~str),
@@ -1113,43 +1114,6 @@ impl serialize::Decoder for Decoder {
     }
 }
 
-impl Eq for Json {
-    fn eq(&self, other: &Json) -> bool {
-        match (self) {
-            &Number(f0) =>
-                match other { &Number(f1) => f0 == f1, _ => false },
-            &String(ref s0) =>
-                match other { &String(ref s1) => s0 == s1, _ => false },
-            &Boolean(b0) =>
-                match other { &Boolean(b1) => b0 == b1, _ => false },
-            &Null =>
-                match other { &Null => true, _ => false },
-            &List(ref v0) =>
-                match other { &List(ref v1) => v0 == v1, _ => false },
-            &Object(ref d0) => {
-                match other {
-                    &Object(ref d1) => {
-                        if d0.len() == d1.len() {
-                            let mut equal = true;
-                            for d0.iter().advance |(k, v0)| {
-                                match d1.find(k) {
-                                    Some(v1) if v0 == v1 => { },
-                                    _ => { equal = false; break }
-                                }
-                            };
-                            equal
-                        } else {
-                            false
-                        }
-                    }
-                    _ => false
-                }
-            }
-        }
-    }
-    fn ne(&self, other: &Json) -> bool { !self.eq(other) }
-}
-
 /// Test if two json values are less than one another
 impl Ord for Json {
     fn lt(&self, other: &Json) -> bool {
@@ -1195,12 +1159,12 @@ impl Ord for Json {
 
                         // FIXME #4430: this is horribly inefficient...
                         for d0.iter().advance |(k, v)| {
-                             d0_flat.push((@copy *k, @copy *v));
+                             d0_flat.push((@(*k).clone(), @(*v).clone()));
                         }
                         d0_flat.qsort();
 
                         for d1.iter().advance |(k, v)| {
-                            d1_flat.push((@copy *k, @copy *v));
+                            d1_flat.push((@(*k).clone(), @(*v).clone()));
                         }
                         d1_flat.qsort();
 
@@ -1232,7 +1196,7 @@ pub trait ToJson {
 }
 
 impl ToJson for Json {
-    fn to_json(&self) -> Json { copy *self }
+    fn to_json(&self) -> Json { (*self).clone() }
 }
 
 impl ToJson for @Json {
@@ -1300,11 +1264,11 @@ impl ToJson for bool {
 }
 
 impl ToJson for ~str {
-    fn to_json(&self) -> Json { String(copy *self) }
+    fn to_json(&self) -> Json { String((*self).clone()) }
 }
 
 impl ToJson for @~str {
-    fn to_json(&self) -> Json { String(copy **self) }
+    fn to_json(&self) -> Json { String((**self).clone()) }
 }
 
 impl<A:ToJson,B:ToJson> ToJson for (A, B) {
@@ -1335,7 +1299,7 @@ impl<A:ToJson> ToJson for HashMap<~str, A> {
     fn to_json(&self) -> Json {
         let mut d = HashMap::new();
         for self.iter().advance |(key, value)| {
-            d.insert(copy *key, value.to_json());
+            d.insert((*key).clone(), value.to_json());
         }
         Object(~d)
     }
@@ -1345,7 +1309,7 @@ impl<A:ToJson> ToJson for TreeMap<~str, A> {
     fn to_json(&self) -> Json {
         let mut d = HashMap::new();
         for self.iter().advance |(key, value)| {
-            d.insert(copy *key, value.to_json());
+            d.insert((*key).clone(), value.to_json());
         }
         Object(~d)
     }
@@ -1404,7 +1368,7 @@ mod tests {
 
         for items.iter().advance |item| {
             match *item {
-                (ref key, ref value) => { d.insert(copy *key, copy *value); },
+                (ref key, ref value) => { d.insert((*key).clone(), (*value).clone()); },
             }
         };
 
@@ -1549,8 +1513,8 @@ mod tests {
 
         // We can't compare the strings directly because the object fields be
         // printed in a different order.
-        assert_eq!(copy a, from_str(to_str(&a)).unwrap());
-        assert_eq!(copy a, from_str(to_pretty_str(&a)).unwrap());
+        assert_eq!(a.clone(), from_str(to_str(&a)).unwrap());
+        assert_eq!(a.clone(), from_str(to_pretty_str(&a)).unwrap());
     }
 
     #[test]

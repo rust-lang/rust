@@ -12,12 +12,13 @@
 
 #[allow(missing_doc)];
 
-
+use std::clone::Clone;
 use std::unstable::intrinsics::{move_val_init, init};
 use std::util::{replace, swap};
 use std::vec;
 
 /// A priority queue implemented with a binary heap
+#[deriving(Clone)]
 pub struct PriorityQueue<T> {
     priv data: ~[T],
 }
@@ -292,8 +293,8 @@ mod tests {
     }
 
     fn check_to_vec(data: ~[int]) {
-        let heap = PriorityQueue::from_vec(copy data);
-        assert_eq!(merge_sort((copy heap).to_vec(), |x, y| x.le(y)),
+        let heap = PriorityQueue::from_vec(data.clone());
+        assert_eq!(merge_sort(heap.clone().to_vec(), |x, y| x.le(y)),
                    merge_sort(data, |x, y| x.le(y)));
         assert_eq!(heap.to_sorted_vec(), merge_sort(data, |x, y| x.le(y)));
     }

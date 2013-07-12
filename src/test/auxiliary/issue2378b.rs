@@ -17,7 +17,7 @@ use issue2378a::maybe;
 
 struct two_maybes<T> {a: maybe<T>, b: maybe<T>}
 
-impl <T:Copy> Index<uint,(T,T)> for two_maybes<T> {
+impl<T:Clone> Index<uint,(T,T)> for two_maybes<T> {
     fn index(&self, idx: &uint) -> (T, T) {
         (self.a[*idx], self.b[*idx])
     }

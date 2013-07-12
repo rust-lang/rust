@@ -96,6 +96,7 @@ eof: [a $( a )* a b ·]
 /* to avoid costly uniqueness checks, we require that `match_seq` always has a
 nonempty body. */
 
+#[deriving(Clone)]
 pub enum matcher_pos_up { /* to break a circularity */
     matcher_pos_up(Option<~MatcherPos>)
 }
@@ -107,6 +108,7 @@ pub fn is_some(mpu: &matcher_pos_up) -> bool {
     }
 }
 
+#[deriving(Clone)]
 pub struct MatcherPos {
     elts: ~[ast::matcher], // maybe should be <'>? Need to understand regions.
     sep: Option<Token>,
@@ -119,7 +121,7 @@ pub struct MatcherPos {
 
 pub fn copy_up(mpu: &matcher_pos_up) -> ~MatcherPos {
     match *mpu {
-      matcher_pos_up(Some(ref mp)) => copy (*mp),
+      matcher_pos_up(Some(ref mp)) => (*mp).clone(),
       _ => fail!()
     }
 }
@@ -279,7 +281,7 @@ pub fn parse(
 
                         // Only touch the binders we have actually bound
                         for uint::range(ei.match_lo, ei.match_hi) |idx| {
-                            let sub = copy ei.matches[idx];
+                            let sub = ei.matches[idx].clone();
                             new_pos.matches[idx]
                                 .push(@matched_seq(sub,
                                                    mk_sp(ei.sp_lo,
@@ -293,10 +295,10 @@ pub fn parse(
                     // can we go around again?
 
                     // the *_t vars are workarounds for the lack of unary move
-                    match copy ei.sep {
+                    match ei.sep {
                       Some(ref t) if idx == len => { // we need a separator
                         if tok == (*t) { //pass the separator
-                            let mut ei_t = ei;
+                            let mut ei_t = ei.clone();
                             ei_t.idx += 1;
                             next_eis.push(ei_t);
                         }
@@ -311,12 +313,12 @@ pub fn parse(
                     eof_eis.push(ei);
                 }
             } else {
-                match copy ei.elts[idx].node {
+                match ei.elts[idx].node.clone() {
                   /* need to descend into sequence */
                   match_seq(ref matchers, ref sep, zero_ok,
                             match_idx_lo, match_idx_hi) => {
                     if zero_ok {
-                        let mut new_ei = copy ei;
+                        let mut new_ei = ei.clone();
                         new_ei.idx += 1u;
                         //we specifically matched zero repeats.
                         for uint::range(match_idx_lo, match_idx_hi) |idx| {
@@ -329,8 +331,8 @@ pub fn parse(
                     let matches = vec::from_elem(ei.matches.len(), ~[]);
                     let ei_t = ei;
                     cur_eis.push(~MatcherPos {
-                        elts: copy *matchers,
-                        sep: copy *sep,
+                        elts: (*matchers).clone(),
+                        sep: (*sep).clone(),
                         idx: 0u,
                         up: matcher_pos_up(Some(ei_t)),
                         matches: matches,
@@ -340,7 +342,7 @@ pub fn parse(
                   }
                   match_nonterminal(_,_,_) => { bb_eis.push(ei) }
                   match_tok(ref t) => {
-                    let mut ei_t = ei;
+                    let mut ei_t = ei.clone();
                     if (*t) == tok {
                         ei_t.idx += 1;
                         next_eis.push(ei_t);
@@ -388,7 +390,7 @@ pub fn parse(
                 }
                 rdr.next_token();
             } else /* bb_eis.len() == 1 */ {
-                let rust_parser = Parser(sess, copy cfg, rdr.dup());
+                let rust_parser = Parser(sess, cfg.clone(), rdr.dup());
 
                 let mut ei = bb_eis.pop();
                 match ei.elts[ei.idx].node {
@@ -426,7 +428,7 @@ pub fn parse_nt(p: &Parser, name: &str) -> nonterminal {
       "ident" => match *p.token {
         token::IDENT(sn,b) => { p.bump(); token::nt_ident(sn,b) }
         _ => p.fatal(~"expected ident, found "
-                     + token::to_str(get_ident_interner(), &copy *p.token))
+                     + token::to_str(get_ident_interner(), p.token))
       },
       "path" => token::nt_path(p.parse_path_with_tps(false)),
       "tt" => {

@@ -61,11 +61,11 @@ fn fold_impl(
                 match item.node {
                     ast::item_impl(_, None, _, ref methods) => {
                         // Associated impls have complex rules for method visibility
-                        strip_priv_methods(copy doc, *methods, item.vis)
+                        strip_priv_methods(doc.clone(), *methods, item.vis)
                     }
                     ast::item_impl(_, Some(_), _ ,_) => {
                         // Trait impls don't
-                        copy doc
+                        doc.clone()
                     }
                     _ => fail!()
                 }
@@ -91,7 +91,7 @@ fn strip_priv_methods(
             ast::private => false,
             ast::inherited => item_vis == ast::public
         }
-    }.transform(|x| copy *x).collect();
+    }.transform(|x| (*x).clone()).collect();
 
     doc::ImplDoc {
         methods: methods,
@@ -126,7 +126,7 @@ fn fold_mod(
                     is_visible(fold.ctxt.clone(), item_tag.item())
                 }
             }
-        }).transform(|x| copy *x).collect(),
+        }).transform(|x| (*x).clone()).collect(),
         .. doc
     }
 }
@@ -163,7 +163,7 @@ mod test {
     use prune_private_pass::run;
 
     fn mk_doc(source: ~str) -> doc::Doc {
-        do astsrv::from_str(copy source) |srv| {
+        do astsrv::from_str(source.clone()) |srv| {
             let doc = extract::from_srv(srv.clone(), ~"");
             let doc = tystr_pass::run(srv.clone(), doc);
             run(srv.clone(), doc)

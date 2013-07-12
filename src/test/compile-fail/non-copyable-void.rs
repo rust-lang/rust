@@ -14,7 +14,7 @@ fn main() {
     let x : *~[int] = &~[1,2,3];
     let y : *libc::c_void = x as *libc::c_void;
     unsafe {
-        let _z = copy *y;
-        //~^ ERROR copying a value of non-copyable type
+        let _z = (*y).clone();
+        //~^ ERROR does not implement any method in scope
     }
 }

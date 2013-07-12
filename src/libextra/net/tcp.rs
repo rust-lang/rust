@@ -86,12 +86,14 @@ pub fn TcpSocketBuf(data: @mut TcpBufferedSocketData) -> TcpSocketBuf {
 }
 
 /// Contains raw, string-based, error information returned from libuv
+#[deriving(Clone)]
 pub struct TcpErrData {
     err_name: ~str,
     err_msg: ~str,
 }
 
 /// Details returned as part of a `Result::Err` result from `tcp::listen`
+#[deriving(Clone)]
 pub enum TcpListenErrData {
     /**
      * Some unplanned-for error. The first and second fields correspond
@@ -119,6 +121,7 @@ pub enum TcpListenErrData {
     AccessDenied
 }
 /// Details returned as part of a `Result::Err` result from `tcp::connect`
+#[deriving(Clone)]
 pub enum TcpConnectErrData {
     /**
      * Some unplanned-for error. The first and second fields correspond
@@ -278,8 +281,8 @@ pub fn connect(input_ip: ip::IpAddr, port: uint,
                                                     as *libc::c_void);
                 let tcp_conn_err = match err_data.err_name {
                     ~"ECONNREFUSED" => ConnectionRefused,
-                    _ => GenericConnectErr(copy err_data.err_name,
-                                           copy err_data.err_msg)
+                    _ => GenericConnectErr(err_data.err_name.clone(),
+                                           err_data.err_msg.clone())
                 };
                 result::Err(tcp_conn_err)
             }
@@ -343,7 +346,7 @@ pub fn write_future(sock: &TcpSocket, raw_write_data: ~[u8])
 {
     let socket_data_ptr: *TcpSocketData = &*sock.socket_data;
     do future_spawn {
-        let data_copy = copy(raw_write_data);
+        let data_copy = raw_write_data.clone();
         write_common_impl(socket_data_ptr, data_copy)
     }
 }
@@ -682,8 +685,8 @@ fn listen_common(host_ip: ip::IpAddr,
     // will defeat a move sigil, as is done to the host_ip
     // arg above.. this same pattern works w/o complaint in
     // tcp::connect (because the iotask::interact cb isn't
-    // nested within a std::comm::listen block)
-    let loc_ip = copy(host_ip);
+    // nested within a core::comm::listen block)
+    let loc_ip = host_ip;
     do iotask::interact(iotask) |loop_ptr| {
         unsafe {
             match uv::ll::tcp_init(loop_ptr, server_stream_ptr) {
@@ -770,8 +773,8 @@ fn listen_common(host_ip: ip::IpAddr,
                     debug!("Got '%s' '%s' libuv error",
                                     err_data.err_name, err_data.err_msg);
                     result::Err(
-                        GenericListenErr(copy err_data.err_name,
-                                         copy err_data.err_msg))
+                        GenericListenErr(err_data.err_name.clone(),
+                                         err_data.err_msg.clone()))
                 }
             }
         }
@@ -791,8 +794,8 @@ fn listen_common(host_ip: ip::IpAddr,
             match kill_result {
                 // some failure post bind/listen
                 Some(ref err_data) => result::Err(GenericListenErr(
-                    copy err_data.err_name,
-                    copy err_data.err_msg)),
+                    err_data.err_name.clone(),
+                    err_data.err_msg.clone())),
                 // clean exit
                 None => result::Ok(())
             }
@@ -1263,7 +1266,10 @@ trait ToTcpErr {
 
 impl ToTcpErr for uv::ll::uv_err_data {
     fn to_tcp_err(&self) -> TcpErrData {
-        TcpErrData { err_name: copy self.err_name, err_msg: copy self.err_msg }
+        TcpErrData {
+            err_name: self.err_name.clone(),
+            err_msg: self.err_msg.clone(),
+        }
     }
 }
 

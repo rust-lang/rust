@@ -177,7 +177,7 @@ impl Arena {
         // Allocate a new chunk.
         let chunk_size = at_vec::capacity(self.pod_head.data);
         let new_min_chunk_size = num::max(n_bytes, chunk_size);
-        self.chunks = @mut MutCons(copy self.pod_head, self.chunks);
+        self.chunks = @mut MutCons(self.pod_head, self.chunks);
         self.pod_head =
             chunk(uint::next_power_of_two(new_min_chunk_size + 1u), true);
 
@@ -219,7 +219,7 @@ impl Arena {
         // Allocate a new chunk.
         let chunk_size = at_vec::capacity(self.head.data);
         let new_min_chunk_size = num::max(n_bytes, chunk_size);
-        self.chunks = @mut MutCons(copy self.head, self.chunks);
+        self.chunks = @mut MutCons(self.head, self.chunks);
         self.head =
             chunk(uint::next_power_of_two(new_min_chunk_size + 1u), false);
 

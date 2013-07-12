@@ -34,7 +34,7 @@ fn use_std(crate: &ast::crate) -> bool {
 }
 
 fn inject_libstd_ref(sess: Session, crate: &ast::crate) -> @ast::crate {
-    fn spanned<T:Copy>(x: T) -> codemap::spanned<T> {
+    fn spanned<T>(x: T) -> codemap::spanned<T> {
         codemap::spanned { node: x, span: dummy_sp() }
     }
 
@@ -61,14 +61,14 @@ fn inject_libstd_ref(sess: Session, crate: &ast::crate) -> @ast::crate {
             let vis = vec::append(~[vi1], crate.module.view_items);
             let mut new_module = ast::_mod {
                 view_items: vis,
-                ../*bad*/copy crate.module
+                ..crate.module.clone()
             };
             new_module = fld.fold_mod(&new_module);
 
             // FIXME #2543: Bad copy.
             let new_crate = ast::crate_ {
                 module: new_module,
-                ..copy *crate
+                ..(*crate).clone()
             };
             (new_crate, span)
         },
@@ -97,7 +97,7 @@ fn inject_libstd_ref(sess: Session, crate: &ast::crate) -> @ast::crate {
             // FIXME #2543: Bad copy.
             let new_module = ast::_mod {
                 view_items: vis,
-                ..copy *module
+                ..(*module).clone()
             };
             fold::noop_fold_mod(&new_module, fld)
         },

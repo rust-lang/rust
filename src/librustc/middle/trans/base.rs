@@ -112,7 +112,7 @@ impl Drop for _InsnCtxt {
         unsafe {
             do local_data::modify(task_local_insn_key) |c| {
                 do c.map_consume |ctx| {
-                    let mut ctx = copy *ctx;
+                    let mut ctx = (*ctx).clone();
                     ctx.pop();
                     @ctx
                 }
@@ -126,7 +126,7 @@ pub fn push_ctxt(s: &'static str) -> _InsnCtxt {
     unsafe {
         do local_data::modify(task_local_insn_key) |c| {
             do c.map_consume |ctx| {
-                let mut ctx = copy *ctx;
+                let mut ctx = (*ctx).clone();
                 ctx.push(s);
                 @ctx
             }
@@ -1390,7 +1390,7 @@ pub fn with_scope(bcx: block,
     let scope = simple_block_scope(bcx.scope, opt_node_info);
     bcx.scope = Some(scope);
     let ret = f(bcx);
-    let ret = trans_block_cleanups_(ret, /*bad*/copy scope.cleanups, false);
+    let ret = trans_block_cleanups_(ret, (scope.cleanups).clone(), false);
     bcx.scope = scope.parent;
     ret
 }
@@ -1404,7 +1404,9 @@ pub fn with_scope_result(bcx: block,
     let scope = simple_block_scope(bcx.scope, opt_node_info);
     bcx.scope = Some(scope);
     let Result { bcx: out_bcx, val } = f(bcx);
-    let out_bcx = trans_block_cleanups_(out_bcx, /*bad*/copy scope.cleanups, false);
+    let out_bcx = trans_block_cleanups_(out_bcx,
+                                        (scope.cleanups).clone(),
+                                        false);
     bcx.scope = scope.parent;
 
     rslt(out_bcx, val)
@@ -1886,7 +1888,7 @@ pub fn trans_fn(ccx: @mut CrateContext,
     let _icx = push_ctxt("trans_fn");
     let output_type = ty::ty_fn_ret(ty::node_id_to_type(ccx.tcx, id));
     trans_closure(ccx,
-                  copy path,
+                  path.clone(),
                   decl,
                   body,
                   llfndecl,
@@ -1992,7 +1994,7 @@ pub fn trans_enum_variant_or_tuple_like_struct<A:IdAndTy>(
     let fn_args = do args.map |varg| {
         ast::arg {
             is_mutbl: false,
-            ty: copy *varg.ty(),
+            ty: (*varg.ty()).clone(),
             pat: ast_util::ident_to_pat(
                 ccx.tcx.sess.next_node_id(),
                 codemap::dummy_sp(),
@@ -2001,12 +2003,21 @@ pub fn trans_enum_variant_or_tuple_like_struct<A:IdAndTy>(
         }
     };
 
+    let no_substs: &[ty::t] = [];
     let ty_param_substs = match param_substs {
-        Some(ref substs) => { copy substs.tys }
-        None => ~[]
+        Some(ref substs) => {
+            let v: &[ty::t] = substs.tys;
+            v
+        }
+        None => {
+            let v: &[ty::t] = no_substs;
+            v
+        }
     };
 
-    let ctor_ty = ty::subst_tps(ccx.tcx, ty_param_substs, None,
+    let ctor_ty = ty::subst_tps(ccx.tcx,
+                                ty_param_substs,
+                                None,
                                 ty::node_id_to_type(ccx.tcx, ctor_id));
 
     let result_ty = match ty::get(ctor_ty).sty {
@@ -2085,7 +2096,7 @@ pub fn trans_item(ccx: @mut CrateContext, item: &ast::item) {
         if purity == ast::extern_fn  {
             let llfndecl = get_item_val(ccx, item.id);
             foreign::trans_foreign_fn(ccx,
-                                      vec::append(/*bad*/copy *path,
+                                      vec::append((*path).clone(),
                                                   [path_name(item.ident)]),
                                       decl,
                                       body,
@@ -2094,7 +2105,7 @@ pub fn trans_item(ccx: @mut CrateContext, item: &ast::item) {
         } else if !generics.is_type_parameterized() {
             let llfndecl = get_item_val(ccx, item.id);
             trans_fn(ccx,
-                     vec::append(/*bad*/copy *path, [path_name(item.ident)]),
+                     vec::append((*path).clone(), [path_name(item.ident)]),
                      decl,
                      body,
                      llfndecl,
@@ -2115,8 +2126,12 @@ pub fn trans_item(ccx: @mut CrateContext, item: &ast::item) {
         }
       }
       ast::item_impl(ref generics, _, _, ref ms) => {
-        meth::trans_impl(ccx, /*bad*/copy *path, item.ident, *ms,
-                         generics, item.id);
+        meth::trans_impl(ccx,
+                         (*path).clone(),
+                         item.ident,
+                         *ms,
+                         generics,
+                         item.id);
       }
       ast::item_mod(ref m) => {
         trans_mod(ccx, m);
@@ -2229,7 +2244,7 @@ pub fn register_fn_fuller(ccx: @mut CrateContext,
     let ps = if attr::attrs_contains_name(attrs, "no_mangle") {
         path_elt_to_str(*path.last(), token::get_ident_interner())
     } else {
-        mangle_exported_name(ccx, /*bad*/copy path, node_type)
+        mangle_exported_name(ccx, path, node_type)
     };
 
     let llfn = decl_fn(ccx.llmod, ps, cc, fn_ty);
@@ -2393,7 +2408,7 @@ pub fn item_path(ccx: &CrateContext, i: &ast::item) -> path {
             // separate map for paths?
         _ => fail!("item_path")
     };
-    vec::append(/*bad*/copy *base, [path_name(i.ident)])
+    vec::append((*base).clone(), [path_name(i.ident)])
 }
 
 pub fn get_item_val(ccx: @mut CrateContext, id: ast::node_id) -> ValueRef {
@@ -2406,8 +2421,7 @@ pub fn get_item_val(ccx: @mut CrateContext, id: ast::node_id) -> ValueRef {
         let item = ccx.tcx.items.get_copy(&id);
         let val = match item {
           ast_map::node_item(i, pth) => {
-            let my_path = vec::append(/*bad*/copy *pth,
-                                      [path_name(i.ident)]);
+            let my_path = vec::append((*pth).clone(), [path_name(i.ident)]);
             match i.node {
               ast::item_static(_, m, expr) => {
                 let typ = ty::node_id_to_type(ccx.tcx, i.id);
@@ -2463,7 +2477,7 @@ pub fn get_item_val(ccx: @mut CrateContext, id: ast::node_id) -> ValueRef {
             match ni.node {
                 ast::foreign_item_fn(*) => {
                     register_fn(ccx, ni.span,
-                                vec::append(/*bad*/copy *pth,
+                                vec::append((*pth).clone(),
                                             [path_name(ni.ident)]),
                                 ni.id,
                                 ni.attrs)
@@ -2487,7 +2501,7 @@ pub fn get_item_val(ccx: @mut CrateContext, id: ast::node_id) -> ValueRef {
             match v.node.kind {
                 ast::tuple_variant_kind(ref args) => {
                     assert!(args.len() != 0u);
-                    let pth = vec::append(/*bad*/copy *pth,
+                    let pth = vec::append((*pth).clone(),
                                           [path_name(enm.ident),
                                            path_name((*v).node.name)]);
                     llfn = match enm.node {
@@ -2515,7 +2529,7 @@ pub fn get_item_val(ccx: @mut CrateContext, id: ast::node_id) -> ValueRef {
                 Some(ctor_id) => {
                     let llfn = register_fn(ccx,
                                            struct_item.span,
-                                           /*bad*/copy *struct_path,
+                                           (*struct_path).clone(),
                                            ctor_id,
                                            struct_item.attrs);
                     set_inline_hint(llfn);
@@ -2544,7 +2558,7 @@ pub fn register_method(ccx: @mut CrateContext,
                        m: @ast::method) -> ValueRef {
     let mty = ty::node_id_to_type(ccx.tcx, id);
 
-    let mut path = /*bad*/ copy *path;
+    let mut path = (*path).clone();
     path.push(path_name(gensym_name("meth")));
     path.push(path_name(m.ident));
 
@@ -2564,7 +2578,7 @@ pub fn trans_constant(ccx: &mut CrateContext, it: @ast::item) {
         let mut i = 0;
         let path = item_path(ccx, it);
         for (*enum_definition).variants.iter().advance |variant| {
-            let p = vec::append(/*bad*/copy path, [
+            let p = vec::append(path.clone(), [
                 path_name(variant.node.name),
                 path_name(special_idents::descrim)
             ]);
@@ -2913,7 +2927,7 @@ pub fn trans_crate(sess: session::Session,
                    -> (ContextRef, ModuleRef, LinkMeta) {
     // Before we touch LLVM, make sure that multithreading is enabled.
     if unsafe { !llvm::LLVMRustStartMultithreading() } {
-        sess.bug("couldn't enable multi-threaded LLVM");
+        //sess.bug("couldn't enable multi-threaded LLVM");
     }
 
     let mut symbol_hasher = hash::default_state();

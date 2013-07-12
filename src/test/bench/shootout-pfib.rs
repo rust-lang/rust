@@ -105,7 +105,7 @@ fn main() {
         args
     };
 
-    let opts = parse_opts(copy args);
+    let opts = parse_opts(args.clone());
 
     if opts.stress {
         stress(2);

@@ -49,15 +49,15 @@ pub trait append_types {
 impl append_types for ast::Path {
     fn add_ty(&self, ty: ast::Ty) -> ast::Path {
         ast::Path {
-            types: vec::append_one(copy self.types, ty),
-            .. copy *self
+            types: vec::append_one(self.types.clone(), ty),
+            .. (*self).clone()
         }
     }
 
     fn add_tys(&self, tys: ~[ast::Ty]) -> ast::Path {
         ast::Path {
-            types: vec::append(copy self.types, tys),
-            .. copy *self
+            types: vec::append(self.types.clone(), tys),
+            .. (*self).clone()
         }
     }
 }

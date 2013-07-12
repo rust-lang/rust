@@ -29,6 +29,7 @@ struct EbmlState {
     data_pos: uint,
 }
 
+#[deriving(Clone)]
 pub struct Doc {
     data: @~[u8],
     start: uint,
@@ -318,8 +319,12 @@ pub mod reader {
             let TaggedDoc { tag: r_tag, doc: r_doc } =
                 doc_at(self.parent.data, self.pos);
             debug!("self.parent=%?-%? self.pos=%? r_tag=%? r_doc=%?-%?",
-                   copy self.parent.start, copy self.parent.end,
-                   copy self.pos, r_tag, r_doc.start, r_doc.end);
+                   self.parent.start,
+                   self.parent.end,
+                   self.pos,
+                   r_tag,
+                   r_doc.start,
+                   r_doc.end);
             if r_tag != (exp_tag as uint) {
                 fail!("expected EBML doc with tag %? but found tag %?", exp_tag, r_tag);
             }
@@ -611,12 +616,22 @@ pub mod writer {
     use super::*;
 
     use std::cast;
+    use std::clone::Clone;
     use std::io;
 
     // ebml writing
     pub struct Encoder {
         writer: @io::Writer,
         priv size_positions: ~[uint],
+    }
+
+    impl Clone for Encoder {
+        fn clone(&self) -> Encoder {
+            Encoder {
+                writer: self.writer,
+                size_positions: self.size_positions.clone(),
+            }
+        }
     }
 
     fn write_sized_vuint(w: @io::Writer, n: uint, size: uint) {
