@@ -12,9 +12,10 @@
 
 use context::Ctx;
 use std::hashmap::HashMap;
-use std::{io, libc, os, result, run, str, vec};
+use std::{io, libc, os, result, run, str};
 use extra::tempfile::mkdtemp;
 use std::run::ProcessOutput;
+use installed_packages::list_installed_packages;
 use package_path::*;
 use package_id::{PkgId};
 use package_source::*;
@@ -128,20 +129,27 @@ fn test_sysroot() -> Path {
     self_path.pop()
 }
 
+fn command_line_test(args: &[~str], cwd: &Path) -> ProcessOutput {
+    command_line_test_with_env(args, cwd, None)
+}
+
 /// Runs `rustpkg` (based on the directory that this executable was
 /// invoked from) with the given arguments, in the given working directory.
 /// Returns the process's output.
-fn command_line_test(args: &[~str], cwd: &Path) -> ProcessOutput {
+fn command_line_test_with_env(args: &[~str], cwd: &Path, env: Option<~[(~str, ~str)]>)
+    -> ProcessOutput {
     let cmd = test_sysroot().push("bin").push("rustpkg").to_str();
     let cwd = normalize(RemotePath(copy *cwd));
     debug!("About to run command: %? %? in %s", cmd, args, cwd.to_str());
     assert!(os::path_is_dir(&*cwd));
-    let mut prog = run::Process::new(cmd, args, run::ProcessOptions { env: None,
-                                                           dir: Some(&*cwd),
-                                                           in_fd: None,
-                                                           out_fd: None,
-                                                           err_fd: None
-                                                          });
+    let cwd = cwd.clone();
+    let mut prog = run::Process::new(cmd, args, run::ProcessOptions {
+        env: env.map(|v| v.slice(0, v.len())),
+        dir: Some(&cwd),
+        in_fd: None,
+        out_fd: None,
+        err_fd: None
+    });
     let output = prog.finish_with_output();
     debug!("Output from command %s with args %? was %s {%s}[%?]",
                     cmd, args, str::from_bytes(output.output),
@@ -245,6 +253,16 @@ fn assert_executable_exists(repo: &Path, short_name: &str) {
 fn command_line_test_output(args: &[~str]) -> ~[~str] {
     let mut result = ~[];
     let p_output = command_line_test(args, &os::getcwd());
+    let test_output = str::from_bytes(p_output.output);
+    for test_output.split_iter('\n').advance |s| {
+        result.push(s.to_owned());
+    }
+    result
+}
+
+fn command_line_test_output_with_env(args: &[~str], env: ~[(~str, ~str)]) -> ~[~str] {
+    let mut result = ~[];
+    let p_output = command_line_test_with_env(args, &os::getcwd(), Some(env));
     let test_output = str::from_bytes(p_output.output);
     for test_output.split_iter('\n').advance |s| {
         result.push(s.to_owned());
@@ -476,8 +494,9 @@ fn test_package_version() {
                     push("test_pkg_version")));
 }
 
-// FIXME #7006: Fails on linux/mac for some reason
-#[test] #[ignore]
+// FIXME #7006: Fails on linux for some reason
+#[test]
+#[ignore]
 fn test_package_request_version() {
     let temp_pkg_id = PkgId::new("github.com/catamorphism/test_pkg_version#0.3");
     let temp = mk_empty_workspace(&LocalPath(Path("test_pkg_version")), &ExactRevision(~"0.3"));
@@ -613,7 +632,33 @@ fn rust_path_parse() {
 }
 
 #[test]
-#[ignore(reason = "Package database not yet implemented")]
+fn test_list() {
+    let foo = PkgId::new("foo");
+    let dir = mkdtemp(&os::tmpdir(), "test_list").expect("test_list failed");
+    create_local_package_in(&foo, &dir);
+    let bar = PkgId::new("bar");
+    create_local_package_in(&bar, &dir);
+    let quux = PkgId::new("quux");
+    create_local_package_in(&quux, &dir);
+
+    command_line_test([~"install", ~"foo"], &dir);
+    let env_arg = ~[(~"RUST_PATH", dir.to_str())];
+    let list_output = command_line_test_output_with_env([~"list"], env_arg.clone());
+    assert!(list_output.iter().any(|x| x.starts_with("foo-")));
+
+    command_line_test([~"install", ~"bar"], &dir);
+    let list_output = command_line_test_output_with_env([~"list"], env_arg.clone());
+    assert!(list_output.iter().any(|x| x.starts_with("foo-")));
+    assert!(list_output.iter().any(|x| x.starts_with("bar-")));
+
+    command_line_test([~"install", ~"quux"], &dir);
+    let list_output = command_line_test_output_with_env([~"list"], env_arg);
+    assert!(list_output.iter().any(|x| x.starts_with("foo-")));
+    assert!(list_output.iter().any(|x| x.starts_with("bar-")));
+    assert!(list_output.iter().any(|x| x.starts_with("quux-")));
+}
+
+#[test]
 fn install_remove() {
     let foo = PkgId::new("foo");
     let bar = PkgId::new("bar");
@@ -622,18 +667,43 @@ fn install_remove() {
     create_local_package_in(&foo, &dir);
     create_local_package_in(&bar, &dir);
     create_local_package_in(&quux, &dir);
+    let rust_path_to_use = ~[(~"RUST_PATH", dir.to_str())];
     command_line_test([~"install", ~"foo"], &dir);
     command_line_test([~"install", ~"bar"], &dir);
     command_line_test([~"install", ~"quux"], &dir);
-    let list_output = command_line_test_output([~"list"]);
-    assert!(list_output.iter().any(|x| x == &~"foo"));
-    assert!(list_output.iter().any(|x| x == &~"bar"));
-    assert!(list_output.iter().any(|x| x == &~"quux"));
-    command_line_test([~"remove", ~"foo"], &dir);
-    let list_output = command_line_test_output([~"list"]);
-    assert!(!list_output.iter().any(|x| x == &~"foo"));
-    assert!(list_output.iter().any(|x| x == &~"bar"));
-    assert!(list_output.iter().any(|x| x == &~"quux"));
+    let list_output = command_line_test_output_with_env([~"list"], rust_path_to_use.clone());
+    assert!(list_output.iter().any(|x| x.starts_with("foo")));
+    assert!(list_output.iter().any(|x| x.starts_with("bar")));
+    assert!(list_output.iter().any(|x| x.starts_with("quux")));
+    command_line_test([~"uninstall", ~"foo"], &dir);
+    let list_output = command_line_test_output_with_env([~"list"], rust_path_to_use.clone());
+    assert!(!list_output.iter().any(|x| x.starts_with("foo")));
+    assert!(list_output.iter().any(|x| x.starts_with("bar")));
+    assert!(list_output.iter().any(|x| x.starts_with("quux")));
+}
+
+#[test]
+fn install_check_duplicates() {
+    // should check that we don't install two packages with the same full name *and* version
+    // ("Is already installed -- doing nothing")
+    // check invariant that there are no dups in the pkg database
+    let dir = mkdtemp(&os::tmpdir(), "install_remove").expect("install_remove");
+    let foo = PkgId::new("foo");
+    create_local_package_in(&foo, &dir);
+
+    command_line_test([~"install", ~"foo"], &dir);
+    command_line_test([~"install", ~"foo"], &dir);
+    let mut contents = ~[];
+    let check_dups = |p: &PkgId| {
+        if contents.contains(p) {
+            fail!("package database contains duplicate ID");
+        }
+        else {
+            contents.push(copy *p);
+        }
+        false
+    };
+    list_installed_packages(check_dups);
 }
 
 #[test]
