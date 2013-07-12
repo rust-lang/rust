@@ -26,7 +26,7 @@ use std::cast;
 use std::cmp;
 use std::ptr;
 use std::util;
-use std::iterator::FromIterator;
+use std::iterator::{FromIterator, InvertIterator};
 
 use container::Deque;
 
@@ -46,17 +46,10 @@ struct Node<T> {
     priv value: T,
 }
 
-/// DList iterator
-pub struct ForwardIterator<'self, T> {
-    priv list: &'self DList<T>,
-    priv next: &'self Link<T>,
-    priv nelem: uint,
-}
-
-/// DList reverse iterator
-pub struct ReverseIterator<'self, T> {
-    priv list: &'self DList<T>,
-    priv next: Rawlink<Node<T>>,
+/// Double-ended DList iterator
+pub struct DListIterator<'self, T> {
+    priv head: &'self Link<T>,
+    priv tail: Rawlink<Node<T>>,
     priv nelem: uint,
 }
 
@@ -327,13 +320,13 @@ impl<T> DList<T> {
 
 
     /// Provide a forward iterator
-    pub fn iter<'a>(&'a self) -> ForwardIterator<'a, T> {
-        ForwardIterator{nelem: self.len(), list: self, next: &self.list_head}
+    pub fn iter<'a>(&'a self) -> DListIterator<'a, T> {
+        DListIterator{nelem: self.len(), head: &self.list_head, tail: self.list_tail}
     }
 
     /// Provide a reverse iterator
-    pub fn rev_iter<'a>(&'a self) -> ReverseIterator<'a, T> {
-        ReverseIterator{nelem: self.len(), list: self, next: self.list_tail}
+    pub fn rev_iter<'a>(&'a self) -> InvertIterator<&'a T, DListIterator<'a, T>> {
+        self.iter().invert()
     }
 
     /// Provide a forward iterator with mutable references
@@ -367,21 +360,40 @@ impl<T: cmp::TotalOrd> DList<T> {
     }
 }
 
-impl<'self, A> Iterator<&'self A> for ForwardIterator<'self, A> {
+impl<'self, A> Iterator<&'self A> for DListIterator<'self, A> {
     #[inline]
     fn next(&mut self) -> Option<&'self A> {
-        match *self.next {
+        if self.nelem == 0 {
+            return None;
+        }
+        match *self.head {
             None => None,
-            Some(ref next) => {
+            Some(ref head) => {
                 self.nelem -= 1;
-                self.next = &next.next;
-                Some(&next.value)
+                self.head = &head.next;
+                Some(&head.value)
             }
         }
     }
 
     fn size_hint(&self) -> (uint, Option<uint>) {
         (self.nelem, Some(self.nelem))
+    }
+}
+
+impl<'self, A> DoubleEndedIterator<&'self A> for DListIterator<'self, A> {
+    fn next_back(&mut self) -> Option<&'self A> {
+        if self.nelem == 0 {
+            return None;
+        }
+        match self.tail.resolve() {
+            None => None,
+            Some(prev) => {
+                self.nelem -= 1;
+                self.tail = prev.prev;
+                Some(&prev.value)
+            }
+        }
     }
 }
 
@@ -410,24 +422,6 @@ impl<'self, A> Iterator<&'self mut A> for MutForwardIterator<'self, A> {
                         Some(&mut head.value)
                     }
                 }
-            }
-        }
-    }
-
-    fn size_hint(&self) -> (uint, Option<uint>) {
-        (self.nelem, Some(self.nelem))
-    }
-}
-
-impl<'self, A> Iterator<&'self A> for ReverseIterator<'self, A> {
-    #[inline]
-    fn next(&mut self) -> Option<&'self A> {
-        match self.next.resolve() {
-            None => None,
-            Some(prev) => {
-                self.nelem -= 1;
-                self.next = prev.prev;
-                Some(&prev.value)
             }
         }
     }
