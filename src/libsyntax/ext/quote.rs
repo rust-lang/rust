@@ -17,8 +17,6 @@ use parse::token::*;
 use parse::token;
 use parse;
 
-use std::vec;
-
 /**
 *
 * Quasiquoting works via token trees.
@@ -653,7 +651,7 @@ fn expand_tts(cx: @ExtCtxt,
     let p = parse::new_parser_from_tts(
         cx.parse_sess(),
         cx.cfg(),
-        vec::to_owned(tts)
+        tts.to_owned()
     );
     *p.quote_depth += 1u;
     let tts = p.parse_all_token_trees();

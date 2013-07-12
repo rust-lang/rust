@@ -18,7 +18,6 @@ use parse;
 use parse::token;
 use parse::token::{ident_to_str, intern, str_to_ident};
 
-use std::vec;
 use std::hashmap::HashMap;
 
 // new-style macro! tt code:
@@ -362,7 +361,7 @@ pub fn get_exprs_from_tts(cx: @ExtCtxt, tts: &[ast::token_tree])
                        -> ~[@ast::expr] {
     let p = parse::new_parser_from_tts(cx.parse_sess(),
                                        cx.cfg(),
-                                       vec::to_owned(tts));
+                                       tts.to_owned());
     let mut es = ~[];
     while *p.token != token::EOF {
         if es.len() != 0 {

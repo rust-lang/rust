@@ -91,11 +91,6 @@ pub fn from_elem<T:Copy>(n_elts: uint, t: T) -> ~[T] {
     }
 }
 
-/// Creates a new unique vector with the same contents as the slice
-pub fn to_owned<T:Copy>(t: &[T]) -> ~[T] {
-    from_fn(t.len(), |i| copy t[i])
-}
-
 /// Creates a new vector with a capacity of `capacity`
 #[cfg(stage0)]
 pub fn with_capacity<T>(capacity: uint) -> ~[T] {
