@@ -1926,8 +1926,8 @@ pub fn print_arg(s: @ps, input: &ast::arg) {
         match input.pat.node {
             ast::PatIdent(_, ref path, _) if
                 path.segments.len() == 1 &&
-                path.segments[0].identifier ==
-                    parse::token::special_idents::invalid => {
+                path.segments[0].identifier.name ==
+                    parse::token::special_idents::invalid.name => {
                 // Do nothing.
             }
             _ => {
