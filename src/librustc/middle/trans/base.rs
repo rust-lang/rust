@@ -1428,7 +1428,7 @@ pub fn with_scope(bcx: block,
 
 pub fn with_scope_result(bcx: block,
                          opt_node_info: Option<NodeInfo>,
-                         name: &str,
+                         _name: &str,
                          f: &fn(block) -> Result) -> Result {
     let _icx = push_ctxt("with_scope_result");
 

@@ -197,7 +197,7 @@ fn get_impl_resolutions(bcx: block,
                         impl_id: ast::def_id)
                          -> typeck::vtable_res {
     if impl_id.crate == ast::local_crate {
-        *bcx.ccx().maps.vtable_map.get(&impl_id.node)
+        bcx.ccx().maps.vtable_map.get_copy(&impl_id.node)
     } else {
         // XXX: This is a temporary hack to work around not properly
         // exporting information about resolutions for impls.
@@ -670,15 +670,13 @@ pub fn trans_call_inner(in_cx: block,
             None => { assert!(ty::type_is_immediate(bcx.tcx(), ret_ty)) }
             Some(expr::Ignore) => {
                 // drop the value if it is not being saved.
-                unsafe {
-                    if ty::type_needs_drop(bcx.tcx(), ret_ty) {
-                        if ty::type_is_immediate(bcx.tcx(), ret_ty) {
-                            let llscratchptr = alloc_ty(bcx, ret_ty, "__ret");
-                            Store(bcx, llresult, llscratchptr);
-                            bcx = glue::drop_ty(bcx, llscratchptr, ret_ty);
-                        } else {
-                            bcx = glue::drop_ty(bcx, llretslot, ret_ty);
-                        }
+                if ty::type_needs_drop(bcx.tcx(), ret_ty) {
+                    if ty::type_is_immediate(bcx.tcx(), ret_ty) {
+                        let llscratchptr = alloc_ty(bcx, ret_ty, "__ret");
+                        Store(bcx, llresult, llscratchptr);
+                        bcx = glue::drop_ty(bcx, llscratchptr, ret_ty);
+                    } else {
+                        bcx = glue::drop_ty(bcx, llretslot, ret_ty);
                     }
                 }
             }

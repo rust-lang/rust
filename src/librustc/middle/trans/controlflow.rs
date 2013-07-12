@@ -254,7 +254,7 @@ pub fn trans_break_cont(bcx: block,
     // Locate closest loop block, outputting cleanup as we go.
     let mut unwind = bcx;
     let mut cur_scope = unwind.scope;
-    let mut target = unwind;
+    let mut target;
     loop {
         cur_scope = match cur_scope {
             Some(@scope_info {
