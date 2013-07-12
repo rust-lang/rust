@@ -948,11 +948,14 @@ pub fn resolve_internal(id : Ident,
                 match table.table[id.ctxt] {
                     EmptyCtxt => id.name,
                     // ignore marks here:
-                    Mark(_,subctxt) => resolve_internal(Ident{name:id.name, ctxt: subctxt},table,resolve_table),
+                    Mark(_,subctxt) =>
+                        resolve_internal(Ident{name:id.name, ctxt: subctxt},table,resolve_table),
                     // do the rename if necessary:
                     Rename(Ident{name,ctxt},toname,subctxt) => {
-                        let resolvedfrom = resolve_internal(Ident{name:name,ctxt:ctxt},table,resolve_table);
-                        let resolvedthis = resolve_internal(Ident{name:id.name,ctxt:subctxt},table,resolve_table);
+                        let resolvedfrom =
+                            resolve_internal(Ident{name:name,ctxt:ctxt},table,resolve_table);
+                        let resolvedthis =
+                            resolve_internal(Ident{name:id.name,ctxt:subctxt},table,resolve_table);
                         if ((resolvedthis == resolvedfrom)
                             && (marksof(ctxt,resolvedthis,table)
                                 == marksof(subctxt,resolvedthis,table))) {
@@ -1034,8 +1037,9 @@ pub fn segments_name_eq(a : &[ast::PathSegment], b : &[ast::PathSegment]) -> boo
     } else {
         for (idx,seg) in a.iter().enumerate() {
             if (seg.identifier.name != b[idx].identifier.name)
-                // ident -> name problems in lifetime comparison?
+                // FIXME #7743: ident -> name problems in lifetime comparison?
                 || (seg.lifetime != b[idx].lifetime)
+                // can types contain idents?
                 || (seg.types != b[idx].types) {
                 return false;
             }

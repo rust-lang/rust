@@ -49,7 +49,6 @@ pub fn add_new_extension(cx: @ExtCtxt,
     // ...quasiquoting this would be nice.
     let argument_gram = ~[
         ms(match_seq(~[
-            // NOTE : probably just use an enum for the NT_name ?
             ms(match_nonterminal(lhs_nm, special_idents::matchers, 0u)),
             ms(match_tok(FAT_ARROW)),
             ms(match_nonterminal(rhs_nm, special_idents::tt, 1u)),

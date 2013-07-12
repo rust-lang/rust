@@ -76,19 +76,20 @@ pub fn expand_expr(extsbox: @mut SyntaxEnv,
                             // mark before:
                             let marked_before = mark_tts(*tts,fm);
                             let marked_ctxt = new_mark(fm, ctxt);
-                            let expanded = match expandfun(cx, mac.span, marked_before, marked_ctxt) {
-                                MRExpr(e) => e,
-                                MRAny(expr_maker,_,_) => expr_maker(),
-                                _ => {
-                                    cx.span_fatal(
-                                        pth.span,
-                                        fmt!(
-                                            "non-expr macro in expr pos: %s",
-                                            extnamestr
+                            let expanded =
+                                match expandfun(cx, mac.span, marked_before, marked_ctxt) {
+                                    MRExpr(e) => e,
+                                    MRAny(expr_maker,_,_) => expr_maker(),
+                                    _ => {
+                                        cx.span_fatal(
+                                            pth.span,
+                                            fmt!(
+                                                "non-expr macro in expr pos: %s",
+                                                extnamestr
+                                            )
                                         )
-                                    )
-                                }
-                            };
+                                    }
+                                };
                             // mark after:
                             let marked_after = mark_expr(expanded,fm);
 
@@ -1735,12 +1736,14 @@ mod test {
                  ~[~[0]])
                 // FIXME #6994: the next string exposes the bug referred to in issue 6994, so I'm
                 // commenting it out.
-                // the z flows into and out of two macros (g & f) along one path, and one (just g) along the
-                // other, so the result of the whole thing should be "let z_123 = 3; z_123"
-                //"macro_rules! g (($x:ident) => ({macro_rules! f(($y:ident)=>({let $y=3;$x}));f!($x)}))
+                // the z flows into and out of two macros (g & f) along one path, and one
+                // (just g) along the other, so the result of the whole thing should
+                // be "let z_123 = 3; z_123"
+                //"macro_rules! g (($x:ident) =>
+                //   ({macro_rules! f(($y:ident)=>({let $y=3;$x}));f!($x)}))
                 //   fn a(){g!(z)}"
-                // create a really evil test case where a $x appears inside a binding of $x but *shouldnt*
-                // bind because it was inserted by a different macro....
+                // create a really evil test case where a $x appears inside a binding of $x
+                // but *shouldnt* bind because it was inserted by a different macro....
             ];
         for s in tests.iter() {
             run_renaming_test(s);
@@ -1820,7 +1823,8 @@ mod test {
         // find the ext_cx binding
         let bindings = @mut ~[];
         visit::walk_crate(&mut new_name_finder(bindings), crate, ());
-        let cxbinds : ~[&ast::Ident] = bindings.iter().filter(|b|{@"ext_cx" == (ident_to_str(*b))}).collect();
+        let cxbinds : ~[&ast::Ident] =
+            bindings.iter().filter(|b|{@"ext_cx" == (ident_to_str(*b))}).collect();
         let cxbind = match cxbinds {
             [b] => b,
             _ => fail!("expected just one binding for ext_cx")
