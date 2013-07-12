@@ -17,7 +17,7 @@ use metadata::csearch::get_type_name_if_impl;
 use metadata::cstore::find_extern_mod_stmt_cnum;
 use metadata::decoder::{def_like, dl_def, dl_field, dl_impl};
 use middle::lang_items::LanguageItems;
-use middle::lint::unused_imports;
+use middle::lint::{unnecessary_qualification, unused_imports};
 use middle::pat_util::pat_bindings;
 
 use syntax::ast::*;
@@ -3561,7 +3561,7 @@ impl Resolver {
 
                     // Resolve derived traits.
                     for traits.iter().advance |trt| {
-                        self.resolve_trait_reference(trt, visitor, TraitDerivation);
+                        self.resolve_trait_reference(item.id, trt, visitor, TraitDerivation);
                     }
 
                     for (*methods).iter().advance |method| {
@@ -3802,27 +3802,29 @@ impl Resolver {
                                    visitor: ResolveVisitor) {
         for type_parameters.iter().advance |type_parameter| {
             for type_parameter.bounds.iter().advance |bound| {
-                self.resolve_type_parameter_bound(bound, visitor);
+                self.resolve_type_parameter_bound(type_parameter.id, bound, visitor);
             }
         }
     }
 
     pub fn resolve_type_parameter_bound(@mut self,
+                                        id: node_id,
                                         type_parameter_bound: &TyParamBound,
                                         visitor: ResolveVisitor) {
         match *type_parameter_bound {
             TraitTyParamBound(ref tref) => {
-                self.resolve_trait_reference(tref, visitor, TraitBoundingTypeParameter)
+                self.resolve_trait_reference(id, tref, visitor, TraitBoundingTypeParameter)
             }
             RegionTyParamBound => {}
         }
     }
 
     pub fn resolve_trait_reference(@mut self,
+                                   id: node_id,
                                    trait_reference: &trait_ref,
                                    visitor: ResolveVisitor,
                                    reference_type: TraitReferenceType) {
-        match self.resolve_path(&trait_reference.path, TypeNS, true, visitor) {
+        match self.resolve_path(id, &trait_reference.path, TypeNS, true, visitor) {
             None => {
                 let path_str = self.idents_to_str(trait_reference.path.idents);
 
@@ -3930,7 +3932,8 @@ impl Resolver {
             let original_trait_refs;
             match opt_trait_reference {
                 &Some(ref trait_reference) => {
-                    self.resolve_trait_reference(trait_reference, visitor, TraitImplementation);
+                    self.resolve_trait_reference(id, trait_reference, visitor,
+                        TraitImplementation);
 
                     // Record the current set of trait references.
                     let mut new_trait_refs = ~[];
@@ -4142,7 +4145,7 @@ impl Resolver {
 
                 match result_def {
                     None => {
-                        match self.resolve_path(path, TypeNS, true, visitor) {
+                        match self.resolve_path(ty.id, path, TypeNS, true, visitor) {
                             Some(def) => {
                                 debug!("(resolving type) resolved `%s` to \
                                         type %?",
@@ -4179,7 +4182,7 @@ impl Resolver {
 
                 do bounds.map |bound_vec| {
                     for bound_vec.iter().advance |bound| {
-                        self.resolve_type_parameter_bound(bound, visitor);
+                        self.resolve_type_parameter_bound(ty.id, bound, visitor);
                     }
                 };
             }
@@ -4187,7 +4190,7 @@ impl Resolver {
             ty_closure(c) => {
                 do c.bounds.map |bounds| {
                     for bounds.iter().advance |bound| {
-                        self.resolve_type_parameter_bound(bound, visitor);
+                        self.resolve_type_parameter_bound(ty.id, bound, visitor);
                     }
                 };
                 visit_ty(ty, ((), visitor));
@@ -4340,7 +4343,7 @@ impl Resolver {
 
                 pat_ident(binding_mode, ref path, _) => {
                     // This must be an enum variant, struct, or constant.
-                    match self.resolve_path(path, ValueNS, false, visitor) {
+                    match self.resolve_path(pat_id, path, ValueNS, false, visitor) {
                         Some(def @ def_variant(*)) |
                                 Some(def @ def_struct(*)) => {
                             self.record_def(pattern.id, def);
@@ -4373,7 +4376,7 @@ impl Resolver {
 
                 pat_enum(ref path, _) => {
                     // This must be an enum variant, struct or const.
-                    match self.resolve_path(path, ValueNS, false, visitor) {
+                    match self.resolve_path(pat_id, path, ValueNS, false, visitor) {
                         Some(def @ def_fn(*))      |
                         Some(def @ def_variant(*)) |
                         Some(def @ def_struct(*))  |
@@ -4410,7 +4413,7 @@ impl Resolver {
                 }
 
                 pat_struct(ref path, _, _) => {
-                    match self.resolve_path(path, TypeNS, false, visitor) {
+                    match self.resolve_path(pat_id, path, TypeNS, false, visitor) {
                         Some(def_ty(class_id))
                                 if self.structs.contains(&class_id) => {
                             let class_def = def_struct(class_id);
@@ -4484,6 +4487,7 @@ impl Resolver {
     /// If `check_ribs` is true, checks the local definitions first; i.e.
     /// doesn't skip straight to the containing module.
     pub fn resolve_path(@mut self,
+                        id: node_id,
                         path: &Path,
                         namespace: Namespace,
                         check_ribs: bool,
@@ -4500,16 +4504,24 @@ impl Resolver {
                                                     namespace);
         }
 
+        let unqualified_def = self.resolve_identifier(
+            *path.idents.last(), namespace, check_ribs, path.span);
+
         if path.idents.len() > 1 {
-            return self.resolve_module_relative_path(path,
-                                                     self.xray_context,
-                                                     namespace);
+            let def = self.resolve_module_relative_path(
+                path, self.xray_context, namespace);
+            match (def, unqualified_def) {
+                (Some(d), Some(ud)) if d == ud => {
+                    self.session.add_lint(unnecessary_qualification,
+                                          id, path.span,
+                                          ~"unnecessary qualification");
+                }
+                _ => ()
+            }
+            return def;
         }
 
-        return self.resolve_identifier(*path.idents.last(),
-                                       namespace,
-                                       check_ribs,
-                                       path.span);
+        return unqualified_def;
     }
 
     pub fn resolve_identifier(@mut self,
@@ -4920,7 +4932,7 @@ impl Resolver {
                 // This is a local path in the value namespace. Walk through
                 // scopes looking for it.
 
-                match self.resolve_path(path, ValueNS, true, visitor) {
+                match self.resolve_path(expr.id, path, ValueNS, true, visitor) {
                     Some(def) => {
                         // Write the result into the def map.
                         debug!("(resolving expr) resolved `%s`",
@@ -4987,7 +4999,7 @@ impl Resolver {
 
             expr_struct(ref path, _, _) => {
                 // Resolve the path to the structure it goes to.
-                match self.resolve_path(path, TypeNS, false, visitor) {
+                match self.resolve_path(expr.id, path, TypeNS, false, visitor) {
                     Some(def_ty(class_id)) | Some(def_struct(class_id))
                             if self.structs.contains(&class_id) => {
                         let class_def = def_struct(class_id);
