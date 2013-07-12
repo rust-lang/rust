@@ -46,7 +46,7 @@ struct Packet<T> {
     payload: Option<T>,
 }
 
-/// A one-shot channel.
+// A one-shot channel.
 pub struct ChanOne<T> {
     void_packet: *mut Void,
     suppress_finalize: bool
@@ -681,7 +681,7 @@ impl<T> Clone for SharedPort<T> {
     }
 }
 
-// XXX: Need better name
+// FIXME #7760: Need better name
 type MegaPipe<T> = (SharedPort<T>, SharedChan<T>);
 
 pub fn megapipe<T: Send>() -> MegaPipe<T> {
@@ -1027,9 +1027,8 @@ mod test {
     fn shared_port_stress() {
         if util::limit_thread_creation_due_to_osx_and_valgrind() { return; }
         do run_in_mt_newsched_task {
-            // XXX: Removing these type annotations causes an ICE
-            let (end_port, end_chan) = stream::<()>();
-            let (port, chan) = stream::<()>();
+            let (end_port, end_chan) = stream();
+            let (port, chan) = stream();
             let end_chan = SharedChan::new(end_chan);
             let port = SharedPort::new(port);
             let total = stress_factor() + 100;

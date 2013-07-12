@@ -229,7 +229,7 @@ pub trait WriterByteConversions {
     fn write_be_i64(&mut self, n: i64);
 
     /// Write a big-endian i32 (4 bytes).
-    fn write_be_i32(&mut self, n: i32);
+    fn write_be_i32_(&mut self, n: i32);
 
     /// Write a big-endian i16 (2 bytes).
     fn write_be_i16(&mut self, n: i16);
@@ -238,7 +238,7 @@ pub trait WriterByteConversions {
     fn write_be_f64(&mut self, f: f64);
 
     /// Write a big-endian IEEE754 single-precision floating-point (4 bytes).
-    fn write_be_f32(&mut self, f: f32);
+    fn write_be_f32_(&mut self, f: f32);
 
     /// Write a little-endian u64 (8 bytes).
     fn write_le_u64_(&mut self, n: u64);
@@ -264,7 +264,7 @@ pub trait WriterByteConversions {
 
     /// Write a little-endian IEEE754 single-precision floating-point
     /// (4 bytes).
-    fn write_le_f32(&mut self, f: f32);
+    fn write_le_f32_(&mut self, f: f32);
 
     /// Write a u8 (1 byte).
     fn write_u8(&mut self, n: u8);
@@ -519,7 +519,7 @@ impl<T: Writer> WriterByteConversions for T {
         u64_to_be_bytes(n as u64, 8u, |v| self.write(v))
     }
 
-    fn write_be_i32(&mut self, n: i32) {
+    fn write_be_i32_(&mut self, n: i32) {
         u64_to_be_bytes(n as u64, 4u, |v| self.write(v))
     }
 
@@ -533,7 +533,7 @@ impl<T: Writer> WriterByteConversions for T {
         }
     }
 
-    fn write_be_f32(&mut self, f: f32) {
+    fn write_be_f32_(&mut self, f: f32) {
         unsafe {
             self.write_be_u32(cast::transmute(f))
         }
@@ -569,7 +569,7 @@ impl<T: Writer> WriterByteConversions for T {
         }
     }
 
-    fn write_le_f32(&mut self, f: f32) {
+    fn write_le_f32_(&mut self, f: f32) {
         unsafe {
             self.write_le_u32(cast::transmute(f))
         }
@@ -594,7 +594,7 @@ mod test {
     use super::ReaderUtil;
     use option::{Some, None};
     use cell::Cell;
-    use rt::io::mem::MemReader;
+    use rt::io::mem::{MemReader, MemWriter};
     use rt::io::mock::MockReader;
     use rt::io::{read_error, placeholder_error};
 
@@ -827,48 +827,49 @@ mod test {
         assert!(buf == ~[10, 11]);
     }
 
-    // XXX: Some problem with resolve here
-    /*#[test]
-    fn test_read_write_le() {
-        let uints = [0, 1, 2, 42, 10_123, 100_123_456, u64::max_value];
+
+    #[test]
+    fn test_read_write_le_mem() {
+        let uints = [0, 1, 2, 42, 10_123, 100_123_456, ::u64::max_value];
 
         let mut writer = MemWriter::new();
-        for uints.each |i| {
-            writer.write_le_u64(*i);
+        for i in uints.iter() {
+            writer.write_le_u64_(*i);
         }
 
         let mut reader = MemReader::new(writer.inner());
-        for uints.each |i| {
+        for i in uints.iter() {
             assert!(reader.read_le_u64() == *i);
         }
     }
 
+
     #[test]
     fn test_read_write_be() {
-        let uints = [0, 1, 2, 42, 10_123, 100_123_456, u64::max_value];
+        let uints = [0, 1, 2, 42, 10_123, 100_123_456, ::u64::max_value];
 
         let mut writer = MemWriter::new();
-        for uints.each |i| {
-            writer.write_be_u64(*i);
+        for i in uints.iter() {
+            writer.write_be_u64_(*i);
         }
 
         let mut reader = MemReader::new(writer.inner());
-        for uints.each |i| {
+        for i in uints.iter() {
             assert!(reader.read_be_u64() == *i);
         }
     }
 
     #[test]
     fn test_read_be_int_n() {
-        let ints = [i32::min_value, -123456, -42, -5, 0, 1, i32::max_value];
+        let ints = [::i32::min_value, -123456, -42, -5, 0, 1, ::i32::max_value];
 
         let mut writer = MemWriter::new();
-        for ints.each |i| {
-            writer.write_be_i32(*i);
+        for i in ints.iter() {
+            writer.write_be_i32_(*i);
         }
 
         let mut reader = MemReader::new(writer.inner());
-        for ints.each |i| {
+        for i in ints.iter() {
             // this tests that the sign extension is working
             // (comparing the values as i32 would not test this)
             assert!(reader.read_be_int_n(4) == *i as i64);
@@ -893,12 +894,12 @@ mod test {
         let f:f32 = 8.1250;
 
         let mut writer = MemWriter::new();
-        writer.write_be_f32(f);
-        writer.write_le_f32(f);
+        writer.write_be_f32_(f);
+        writer.write_le_f32_(f);
 
         let mut reader = MemReader::new(writer.inner());
         assert!(reader.read_be_f32() == 8.1250);
         assert!(reader.read_le_f32() == 8.1250);
-    }*/
+    }
 
 }

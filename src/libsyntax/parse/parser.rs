@@ -5061,12 +5061,19 @@ impl Parser {
         }
     }
 
-    pub fn parse_str(&self) -> @str {
+    pub fn parse_optional_str(&self) -> Option<@str> {
         match *self.token {
             token::LIT_STR(s) => {
                 self.bump();
-                ident_to_str(&s)
+                Some(ident_to_str(&s))
             }
+            _ => None
+        }
+    }
+
+    pub fn parse_str(&self) -> @str {
+        match self.parse_optional_str() {
+            Some(s) => { s }
             _ =>  self.fatal("expected string literal")
         }
     }
