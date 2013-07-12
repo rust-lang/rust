@@ -277,7 +277,7 @@ impl Arena {
 #[test]
 fn test_arena_destructors() {
     let arena = Arena::new();
-    for i in range(0u, 10) {
+    for i in range(0, 10) {
         // Arena allocate something with drop glue to make sure it
         // doesn't leak.
         do arena.alloc { @i };
