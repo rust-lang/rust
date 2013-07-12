@@ -195,7 +195,6 @@ rust_destroy_little_lock
 rust_lock_little_lock
 rust_unlock_little_lock
 rust_get_task_local_data
-rust_set_task_local_data
 rust_task_local_data_atexit
 rust_task_ref
 rust_task_deref

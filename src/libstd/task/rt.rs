@@ -63,9 +63,7 @@ pub extern {
     fn rust_task_kill_all(task: *rust_task);
 
     #[rust_stack]
-    fn rust_get_task_local_data(task: *rust_task) -> *libc::c_void;
-    #[rust_stack]
-    fn rust_set_task_local_data(task: *rust_task, map: *libc::c_void);
+    fn rust_get_task_local_data(task: *rust_task) -> *mut *libc::c_void;
     #[rust_stack]
     fn rust_task_local_data_atexit(task: *rust_task, cleanup_fn: *u8);
 }

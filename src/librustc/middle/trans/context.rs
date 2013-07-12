@@ -240,14 +240,14 @@ impl Drop for CrateContext {
 
 fn task_local_llcx_key(_v: @ContextRef) {}
 pub fn task_llcx() -> ContextRef {
-    let opt = unsafe { local_data::local_data_get(task_local_llcx_key) };
+    let opt = unsafe { local_data::get(task_local_llcx_key, |k| k.map(|&k| *k)) };
     *opt.expect("task-local LLVMContextRef wasn't ever set!")
 }
 
 unsafe fn set_task_llcx(c: ContextRef) {
-    local_data::local_data_set(task_local_llcx_key, @c);
+    local_data::set(task_local_llcx_key, @c);
 }
 
 unsafe fn unset_task_llcx() {
-    local_data::local_data_pop(task_local_llcx_key);
+    local_data::pop(task_local_llcx_key);
 }

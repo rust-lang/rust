@@ -10,12 +10,12 @@
 
 // Testing that we can't store a borrowed pointer it task-local storage
 
-use std::local_data::*;
+use std::local_data;
 
 fn key(_x: @&int) { }
 
 fn main() {
     unsafe {
-        local_data_set(key, @&0); //~ ERROR does not fulfill `'static`
+        local_data::set(key, @&0); //~ ERROR does not fulfill `'static`
     }
 }
