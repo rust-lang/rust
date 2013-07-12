@@ -205,3 +205,104 @@ println(fmt!("last: %?", it.next()));
 // the iterator is now fully consumed
 assert!(it.next().is_none());
 ~~~
+
+## Conversion
+
+Iterators offer generic conversion to containers with the `collect` adaptor:
+
+~~~
+let xs = [0, 1, 1, 2, 3, 5, 8];
+let ys = xs.rev_iter().skip(1).transform(|&x| x * 2).collect::<~[int]>();
+assert_eq!(ys, ~[10, 6, 4, 2, 2, 0]);
+~~~
+
+The method requires a type hint for the container type, if the surrounding code
+does not provide sufficient information.
+
+Containers can provide conversion from iterators through `collect` by
+implementing the `FromIterator` trait. For example, the implementation for
+vectors is as follows:
+
+~~~
+impl<A, T: Iterator<A>> FromIterator<A, T> for ~[A] {
+    pub fn from_iterator(iterator: &mut T) -> ~[A] {
+        let (lower, _) = iterator.size_hint();
+        let mut xs = with_capacity(lower);
+        for iterator.advance |x| {
+            xs.push(x);
+        }
+        xs
+    }
+}
+~~~
+
+### Size hints
+
+The `Iterator` trait provides a `size_hint` default method, returning a lower
+bound and optionally on upper bound on the length of the iterator:
+
+~~~
+fn size_hint(&self) -> (uint, Option<uint>) { (0, None) }
+~~~
+
+The vector implementation of `FromIterator` from above uses the lower bound
+to pre-allocate enough space to hold the minimum number of elements the
+iterator will yield.
+
+The default implementation is always correct, but it should be overridden if
+the iterator can provide better information.
+
+The `ZeroStream` from earlier can provide an exact lower and upper bound:
+
+~~~
+/// A stream of N zeroes
+struct ZeroStream {
+    priv remaining: uint
+}
+
+impl ZeroStream {
+    fn new(n: uint) -> ZeroStream {
+        ZeroStream { remaining: n }
+    }
+
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        (self.remaining, Some(self.remaining))
+    }
+}
+
+impl Iterator<int> for ZeroStream {
+    fn next(&mut self) -> Option<int> {
+        if self.remaining == 0 {
+            None
+        } else {
+            self.remaining -= 1;
+            Some(0)
+        }
+    }
+}
+~~~
+
+## Double-ended iterators
+
+The `DoubleEndedIterator` trait represents an iterator able to yield elements
+from either end of a range. It inherits from the `Iterator` trait and extends
+it with the `next_back` function.
+
+A `DoubleEndedIterator` can be flipped with the `invert` adaptor, returning
+another `DoubleEndedIterator` with `next` and `next_back` exchanged.
+
+~~~
+let xs = [1, 2, 3, 4, 5, 6];
+let mut it = xs.iter();
+println(fmt!("%?", it.next())); // prints `Some(&1)`
+println(fmt!("%?", it.next())); // prints `Some(&2)`
+println(fmt!("%?", it.next_back())); // prints `Some(&6)`
+
+// prints `5`, `4` and `3`
+for it.invert().advance |&x| {
+    println(fmt!("%?", x))
+}
+~~~
+
+The `rev_iter` and `mut_rev_iter` methods on vectors just return an inverted
+version of the standard immutable and mutable vector iterators.

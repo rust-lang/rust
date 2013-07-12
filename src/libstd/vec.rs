@@ -760,6 +760,7 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
                         lifetime: cast::transmute(p)}
         }
     }
+
     #[inline]
     fn rev_iter(self) -> VecRevIterator<'self, T> {
         self.iter().invert()
@@ -2210,7 +2211,6 @@ impl<A, T: Iterator<A>> FromIterator<A, T> for ~[A] {
         xs
     }
 }
-
 
 #[cfg(test)]
 mod tests {
