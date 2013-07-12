@@ -46,7 +46,8 @@ struct Packet<T> {
     payload: Option<T>,
 }
 
-/// A one-shot channel.
+/*
+// A one-shot channel.
 pub struct ChanOne<T> {
     void_packet: *mut Void,
     suppress_finalize: bool
