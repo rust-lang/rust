@@ -596,17 +596,25 @@ pub fn is_utf8(v: &[u8]) -> bool {
     let mut i = 0u;
     let total = v.len();
     while i < total {
-        let mut chsize = utf8_char_width(v[i]);
-        if chsize == 0u { return false; }
-        if i + chsize > total { return false; }
-        i += 1u;
-        while chsize > 1u {
-            if v[i] & 192u8 != TAG_CONT_U8 { return false; }
+        if v[i] < 128u8 {
             i += 1u;
-            chsize -= 1u;
+        } else {
+            let w = utf8_char_width(v[i]);
+            if w == 0u { return false; }
+
+            let nexti = i + w;
+            if nexti > total { return false; }
+
+            if v[i + 1] & 192u8 != TAG_CONT_U8 { return false; }
+            if w > 2 {
+                if v[i + 2] & 192u8 != TAG_CONT_U8 { return false; }
+                if w > 3 && (v[i + 3] & 192u8 != TAG_CONT_U8) { return false; }
+            }
+
+            i = nexti;
         }
     }
-    return true;
+    true
 }
 
 /// Determines if a vector of `u16` contains valid UTF-16
@@ -722,17 +730,29 @@ pub fn count_bytes<'b>(s: &'b str, start: uint, n: uint) -> uint {
     end - start
 }
 
+// https://tools.ietf.org/html/rfc3629
+static UTF8_CHAR_WIDTH: [u8, ..256] = [
+1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1, // 0x1F
+1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1, // 0x3F
+1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1, // 0x5F
+1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1, // 0x7F
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, // 0x9F
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, // 0xBF
+2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,
+2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2, // 0xDF
+3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3, // 0xEF
+4,4,4,4,4,0,0,0,0,0,0,0,0,0,0,0, // 0xFF
+];
+
 /// Given a first byte, determine how many bytes are in this UTF-8 character
 pub fn utf8_char_width(b: u8) -> uint {
-    let byte: uint = b as uint;
-    if byte < 128u { return 1u; }
-    // Not a valid start byte
-    if byte < 192u { return 0u; }
-    if byte < 224u { return 2u; }
-    if byte < 240u { return 3u; }
-    if byte < 248u { return 4u; }
-    if byte < 252u { return 5u; }
-    return 6u;
+    return UTF8_CHAR_WIDTH[b] as uint;
 }
 
 #[allow(missing_doc)]
@@ -1714,26 +1734,29 @@ impl<'self> StrSlice<'self> for &'self str {
      * If `i` is greater than or equal to the length of the string.
      * If `i` is not the index of the beginning of a valid UTF-8 character.
      */
+    #[inline]
     fn char_range_at(&self, i: uint) -> CharRange {
-        let b0 = self[i];
-        let w = utf8_char_width(b0);
-        assert!((w != 0u));
-        if w == 1u { return CharRange {ch: b0 as char, next: i + 1u}; }
-        let mut val = 0u;
-        let end = i + w;
-        let mut i = i + 1u;
-        while i < end {
-            let byte = self[i];
-            assert_eq!(byte & 192u8, TAG_CONT_U8);
-            val <<= 6u;
-            val += (byte & 63u8) as uint;
-            i += 1u;
+        if (self[i] < 128u8) {
+            return CharRange {ch: self[i] as char, next: i + 1 };
         }
-        // Clunky way to get the right bits from the first byte. Uses two shifts,
-        // the first to clip off the marker bits at the left of the byte, and then
-        // a second (as uint) to get it to the right position.
-        val += ((b0 << ((w + 1u) as u8)) as uint) << ((w - 1u) * 6u - w - 1u);
-        return CharRange {ch: val as char, next: i};
+
+        // Multibyte case is a fn to allow char_range_at to inline cleanly
+        fn multibyte_char_range_at(s: &str, i: uint) -> CharRange {
+            let mut val = s[i] as uint;
+            let w = UTF8_CHAR_WIDTH[val] as uint;
+            assert!((w != 0));
+
+            // First byte is special, only want bottom 5 bits for width 2, 4 bits
+            // for width 3, and 3 bits for width 4
+            val &= 0x7Fu >> w;
+            val = (val << 6) | (s[i + 1] & 63u8) as uint;
+            if w > 2 { val = (val << 6) | (s[i + 2] & 63u8) as uint; }
+            if w > 3 { val = (val << 6) | (s[i + 3] & 63u8) as uint; }
+
+            return CharRange {ch: val as char, next: i + w};
+        }
+
+        return multibyte_char_range_at(*self, i);
     }
 
     /// Plucks the character starting at the `i`th byte of a string
@@ -2430,7 +2453,11 @@ mod tests {
     fn test_push_char() {
         let mut data = ~"ประเทศไทย中";
         data.push_char('华');
-        assert_eq!(~"ประเทศไทย中华", data);
+        data.push_char('b'); // 1 byte
+        data.push_char('¢'); // 2 byte
+        data.push_char('€'); // 3 byte
+        data.push_char('𤭢'); // 4 byte
+        assert_eq!(~"ประเทศไทย中华b¢€𤭢", data);
     }
 
     #[test]
@@ -3238,6 +3265,19 @@ mod tests {
         "1234".cmp(& &"1234") == Equal;
         "12345555".cmp(& &"123456") == Less;
         "22".cmp(& &"1234") == Greater;
+    }
+
+    #[test]
+    fn test_char_range_at() {
+        let data = ~"b¢€𤭢𤭢€¢b";
+        assert_eq!('b', data.char_range_at(0).ch);
+        assert_eq!('¢', data.char_range_at(1).ch);
+        assert_eq!('€', data.char_range_at(3).ch);
+        assert_eq!('𤭢', data.char_range_at(6).ch);
+        assert_eq!('𤭢', data.char_range_at(10).ch);
+        assert_eq!('€', data.char_range_at(14).ch);
+        assert_eq!('¢', data.char_range_at(17).ch);
+        assert_eq!('b', data.char_range_at(19).ch);
     }
 
     #[test]

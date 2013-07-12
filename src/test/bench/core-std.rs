@@ -19,6 +19,7 @@ use std::os;
 use std::rand::RngUtil;
 use std::rand;
 use std::result;
+use std::str;
 use std::uint;
 use std::util;
 use std::vec;
@@ -36,6 +37,8 @@ fn main() {
     bench!(vec_plus);
     bench!(vec_append);
     bench!(vec_push_all);
+    bench!(is_utf8_ascii);
+    bench!(is_utf8_multibyte);
 }
 
 fn maybe_run_test(argv: &[~str], name: ~str, test: &fn()) {
@@ -124,6 +127,27 @@ fn vec_push_all() {
         else {
             util::swap(&mut v, &mut rv);
             v.push_all(rv);
+        }
+    }
+}
+
+fn is_utf8_ascii() {
+    let mut v : ~[u8] = ~[];
+    for uint::range(0, 20000) |_| {
+        v.push('b' as u8);
+        if !str::is_utf8(v) {
+            fail!("is_utf8 failed");
+        }
+    }
+}
+
+fn is_utf8_multibyte() {
+    let s = "b¢€𤭢";
+    let mut v : ~[u8]= ~[];
+    for uint::range(0, 5000) |_| {
+        v.push_all(s.as_bytes());
+        if !str::is_utf8(v) {
+            fail!("is_utf8 failed");
         }
     }
 }
