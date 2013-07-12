@@ -493,7 +493,7 @@ impl Bitv {
      *
      * Both the bitvector and vector must have the same length.
      */
-    pub fn eq_vec(&self, v: ~[bool]) -> bool {
+    pub fn eq_vec(&self, v: &[bool]) -> bool {
         assert_eq!(self.nbits, v.len());
         let mut i = 0;
         while i < self.nbits {
