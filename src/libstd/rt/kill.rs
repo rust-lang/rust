@@ -85,6 +85,9 @@ pub struct Death {
     unkillable:      int,
     // nesting level counter for task::atomically calls (0 == can yield).
     wont_sleep:      int,
+    // A "spare" handle to the kill flag inside the kill handle. Used during
+    // blocking/waking as an optimization to avoid two xadds on the refcount.
+    spare_kill_flag: Option<KillFlagHandle>,
 }
 
 impl Drop for KillFlag {
@@ -98,38 +101,60 @@ impl Drop for KillFlag {
     }
 }
 
+// Whenever a task blocks, it swaps out its spare kill flag to use as the
+// blocked task handle. So unblocking a task must restore that spare.
+unsafe fn revive_task_ptr(task_ptr: uint, spare_flag: Option<KillFlagHandle>) -> ~Task {
+    let mut task: ~Task = cast::transmute(task_ptr);
+    rtassert!(task.death.spare_kill_flag.is_none());
+    task.death.spare_kill_flag = spare_flag;
+    task
+}
+
 impl BlockedTask {
     /// Returns Some if the task was successfully woken; None if already killed.
     pub fn wake(self) -> Option<~Task> {
-        let mut this = self;
-        match this {
+        match self {
             Unkillable(task) => Some(task),
-            Killable(ref mut flag_arc) => {
+            Killable(flag_arc) => {
                 let flag = unsafe { &mut **flag_arc.get() };
                 match flag.swap(KILL_RUNNING, SeqCst) {
                     KILL_RUNNING => rtabort!("tried to wake an already-running task"),
                     KILL_KILLED  => None, // a killer stole it already
-                    task_ptr     => Some(unsafe { cast::transmute(task_ptr) }),
+                    task_ptr     =>
+                        Some(unsafe { revive_task_ptr(task_ptr, Some(flag_arc)) })
                 }
             }
         }
     }
 
     /// Create a blocked task, unless the task was already killed.
-    pub fn try_block(task: ~Task) -> Either<~Task, BlockedTask> {
+    pub fn try_block(mut task: ~Task) -> Either<~Task, BlockedTask> {
         if task.death.unkillable > 0 { // FIXME(#7544): || self.indestructible
             Right(Unkillable(task))
         } else {
             rtassert!(task.death.kill_handle.is_some());
             unsafe {
-                // FIXME(#7544) optimz
-                let flag_arc = (*task.death.kill_handle.get_ref().get()).killed.clone();
+                // The inverse of 'revive', above, occurs here.
+                // The spare kill flag will usually be Some, unless the task was
+                // already killed, in which case the killer will have deferred
+                // creating a new one until whenever it blocks during unwinding.
+                let flag_arc = match task.death.spare_kill_flag.take() {
+                    Some(spare_flag) => spare_flag,
+                    None => {
+                        // FIXME(#7544): Uncomment this when terminate_current_task
+                        // stops being *terrible*. That's the only place that violates
+                        // the assumption of "becoming unkillable will fail if the
+                        // task was killed".
+                        // rtassert!(task.unwinder.unwinding);
+                        (*task.death.kill_handle.get_ref().get()).killed.clone()
+                    }
+                };
                 let flag     = &mut **flag_arc.get();
                 let task_ptr = cast::transmute(task);
                 // Expect flag to contain RUNNING. If KILLED, it should stay KILLED.
                 match flag.compare_and_swap(KILL_RUNNING, task_ptr, SeqCst) {
                     KILL_RUNNING => Right(Killable(flag_arc)),
-                    KILL_KILLED  => Left(cast::transmute(task_ptr)),
+                    KILL_KILLED  => Left(revive_task_ptr(task_ptr, Some(flag_arc))),
                     x            => rtabort!("can't block task! kill flag = %?", x),
                 }
             }
@@ -170,16 +195,19 @@ impl BlockedTask {
 }
 
 impl KillHandle {
-    pub fn new() -> KillHandle {
-        KillHandle(UnsafeAtomicRcBox::new(KillHandleInner {
+    pub fn new() -> (KillHandle, KillFlagHandle) {
+        let (flag, flag_clone) =
+            UnsafeAtomicRcBox::new2(KillFlag(AtomicUint::new(KILL_RUNNING)));
+        let handle = KillHandle(UnsafeAtomicRcBox::new(KillHandleInner {
             // Linked failure fields
-            killed:     UnsafeAtomicRcBox::new(KillFlag(AtomicUint::new(KILL_RUNNING))),
+            killed:     flag,
             unkillable: AtomicUint::new(KILL_RUNNING),
             // Exit code propagation fields
             any_child_failed: false,
             child_tombstones: None,
             graveyard_lock:   LittleLock(),
-        }))
+        }));
+        (handle, flag_clone)
     }
 
     // Will begin unwinding if a kill signal was received, unless already_failing.
@@ -221,7 +249,10 @@ impl KillHandle {
                 // Task either not blocked or already taken care of.
                 KILL_RUNNING | KILL_KILLED => None,
                 // Got ownership of the blocked task.
-                task_ptr => Some(unsafe { cast::transmute(task_ptr) }),
+                // While the usual 'wake' path can just pass back the flag
+                // handle, we (the slower kill path) haven't an extra one lying
+                // around. The task will wake up without a spare.
+                task_ptr => Some(unsafe { revive_task_ptr(task_ptr, None) }),
             }
         } else {
             // Otherwise it was either unkillable or already killed. Somebody
@@ -320,23 +351,27 @@ impl KillHandle {
 
 impl Death {
     pub fn new() -> Death {
+        let (handle, spare) = KillHandle::new();
         Death {
-            kill_handle:     Some(KillHandle::new()),
+            kill_handle:     Some(handle),
             watching_parent: None,
             on_exit:         None,
             unkillable:      0,
             wont_sleep:      0,
+            spare_kill_flag: Some(spare),
         }
     }
 
     pub fn new_child(&self) -> Death {
         // FIXME(#7327)
+        let (handle, spare) = KillHandle::new();
         Death {
-            kill_handle:     Some(KillHandle::new()),
+            kill_handle:     Some(handle),
             watching_parent: self.kill_handle.clone(),
             on_exit:         None,
             unkillable:      0,
             wont_sleep:      0,
+            spare_kill_flag: Some(spare),
         }
     }
 
@@ -469,12 +504,15 @@ mod test {
     use super::*;
     use util;
 
+    // Test cases don't care about the spare killed flag.
+    fn make_kill_handle() -> KillHandle { let (h,_) = KillHandle::new(); h }
+
     #[test]
     fn no_tombstone_success() {
         do run_in_newsched_task {
             // Tests case 4 of the 4-way match in reparent_children.
-            let mut parent = KillHandle::new();
-            let mut child  = KillHandle::new();
+            let mut parent = make_kill_handle();
+            let mut child  = make_kill_handle();
 
             // Without another handle to child, the try unwrap should succeed.
             child.reparent_children_to(&mut parent);
@@ -487,8 +525,8 @@ mod test {
     fn no_tombstone_failure() {
         do run_in_newsched_task {
             // Tests case 2 of the 4-way match in reparent_children.
-            let mut parent = KillHandle::new();
-            let mut child  = KillHandle::new();
+            let mut parent = make_kill_handle();
+            let mut child  = make_kill_handle();
 
             child.notify_immediate_failure();
             // Without another handle to child, the try unwrap should succeed.
@@ -503,9 +541,9 @@ mod test {
     fn no_tombstone_because_sibling_already_failed() {
         do run_in_newsched_task {
             // Tests "case 0, the optimistic path in reparent_children.
-            let mut parent = KillHandle::new();
-            let mut child1 = KillHandle::new();
-            let mut child2 = KillHandle::new();
+            let mut parent = make_kill_handle();
+            let mut child1 = make_kill_handle();
+            let mut child2 = make_kill_handle();
             let mut link   = child2.clone();
 
             // Should set parent's child_failed flag
@@ -525,8 +563,8 @@ mod test {
     #[test]
     fn one_tombstone_success() {
         do run_in_newsched_task {
-            let mut parent = KillHandle::new();
-            let mut child  = KillHandle::new();
+            let mut parent = make_kill_handle();
+            let mut child  = make_kill_handle();
             let mut link   = child.clone();
 
             // Creates 1 tombstone. Existence of 'link' makes try-unwrap fail.
@@ -542,8 +580,8 @@ mod test {
     #[test]
     fn one_tombstone_failure() {
         do run_in_newsched_task {
-            let mut parent = KillHandle::new();
-            let mut child  = KillHandle::new();
+            let mut parent = make_kill_handle();
+            let mut child  = make_kill_handle();
             let mut link   = child.clone();
 
             // Creates 1 tombstone. Existence of 'link' makes try-unwrap fail.
@@ -562,9 +600,9 @@ mod test {
     #[test]
     fn two_tombstones_success() {
         do run_in_newsched_task {
-            let mut parent = KillHandle::new();
-            let mut middle = KillHandle::new();
-            let mut child  = KillHandle::new();
+            let mut parent = make_kill_handle();
+            let mut middle = make_kill_handle();
+            let mut child  = make_kill_handle();
             let mut link   = child.clone();
 
             child.reparent_children_to(&mut middle); // case 1 tombstone
@@ -581,9 +619,9 @@ mod test {
     #[test]
     fn two_tombstones_failure() {
         do run_in_newsched_task {
-            let mut parent = KillHandle::new();
-            let mut middle = KillHandle::new();
-            let mut child  = KillHandle::new();
+            let mut parent = make_kill_handle();
+            let mut middle = make_kill_handle();
+            let mut child  = make_kill_handle();
             let mut link   = child.clone();
 
             child.reparent_children_to(&mut middle); // case 1 tombstone
@@ -606,7 +644,7 @@ mod test {
     #[test]
     fn kill_basic() {
         do run_in_newsched_task {
-            let mut handle = KillHandle::new();
+            let mut handle = make_kill_handle();
             assert!(!handle.killed());
             assert!(handle.kill().is_none());
             assert!(handle.killed());
@@ -616,7 +654,7 @@ mod test {
     #[test]
     fn double_kill() {
         do run_in_newsched_task {
-            let mut handle = KillHandle::new();
+            let mut handle = make_kill_handle();
             assert!(!handle.killed());
             assert!(handle.kill().is_none());
             assert!(handle.killed());
@@ -628,7 +666,7 @@ mod test {
     #[test]
     fn unkillable_after_kill() {
         do run_in_newsched_task {
-            let mut handle = KillHandle::new();
+            let mut handle = make_kill_handle();
             assert!(handle.kill().is_none());
             assert!(handle.killed());
             let handle_cell = Cell::new(handle);
@@ -642,7 +680,7 @@ mod test {
     #[test]
     fn unkillable_during_kill() {
         do run_in_newsched_task {
-            let mut handle = KillHandle::new();
+            let mut handle = make_kill_handle();
             handle.inhibit_kill(false);
             assert!(handle.kill().is_none());
             assert!(!handle.killed());
@@ -657,7 +695,7 @@ mod test {
     #[test]
     fn unkillable_before_kill() {
         do run_in_newsched_task {
-            let mut handle = KillHandle::new();
+            let mut handle = make_kill_handle();
             handle.inhibit_kill(false);
             handle.allow_kill(false);
             assert!(handle.kill().is_none());

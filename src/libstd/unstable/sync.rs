@@ -52,6 +52,18 @@ impl<T: Send> UnsafeAtomicRcBox<T> {
         }
     }
 
+    /// As new(), but returns an extra pre-cloned handle.
+    pub fn new2(data: T) -> (UnsafeAtomicRcBox<T>, UnsafeAtomicRcBox<T>) {
+        unsafe {
+            let data = ~AtomicRcBoxData { count: AtomicUint::new(2),
+                                          unwrapper: AtomicOption::empty(),
+                                          data: Some(data) };
+            let ptr = cast::transmute(data);
+            return (UnsafeAtomicRcBox { data: ptr },
+                    UnsafeAtomicRcBox { data: ptr });
+        }
+    }
+
     #[inline]
     pub unsafe fn get(&self) -> *mut T
     {
