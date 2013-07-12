@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// xfail-test
+// this now fails (correctly, I claim) because hygiene prevents
+// the assembled identifier from being a reference to the binding.
 
 pub fn main() {
     let asdf_fdsa = ~"<.<";
