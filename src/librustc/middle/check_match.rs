@@ -484,7 +484,7 @@ pub fn specialize(cx: &MatchCheckCtxt,
                 match cx.tcx.def_map.find(&pat_id) {
                     Some(&def_variant(_, id)) => {
                         if variant(id) == *ctor_id {
-                            Some(vec::to_owned(r.tail()))
+                            Some(r.tail().to_owned())
                         } else {
                             None
                         }
@@ -522,7 +522,7 @@ pub fn specialize(cx: &MatchCheckCtxt,
                             _ => fail!("type error")
                         };
                         if match_ {
-                            Some(vec::to_owned(r.tail()))
+                            Some(r.tail().to_owned())
                         } else {
                             None
                         }
@@ -569,7 +569,7 @@ pub fn specialize(cx: &MatchCheckCtxt,
                             _ => fail!("type error")
                         };
                         if match_ {
-                            Some(vec::to_owned(r.tail()))
+                            Some(r.tail().to_owned())
                         } else {
                             None
                         }
@@ -579,7 +579,7 @@ pub fn specialize(cx: &MatchCheckCtxt,
                             Some(args) => args,
                             None => vec::from_elem(arity, wild())
                         };
-                        Some(vec::append(args, vec::to_owned(r.tail())))
+                        Some(vec::append(args, r.tail()))
                     }
                     def_variant(_, _) => None,
 
@@ -591,7 +591,7 @@ pub fn specialize(cx: &MatchCheckCtxt,
                             Some(args) => new_args = args,
                             None => new_args = vec::from_elem(arity, wild())
                         }
-                        Some(vec::append(new_args, vec::to_owned(r.tail())))
+                        Some(vec::append(new_args, r.tail()))
                     }
                     _ => None
                 }
@@ -609,7 +609,7 @@ pub fn specialize(cx: &MatchCheckCtxt,
                                     _ => wild()
                                 }
                             });
-                            Some(vec::append(args, vec::to_owned(r.tail())))
+                            Some(vec::append(args, r.tail()))
                         } else {
                             None
                         }
@@ -640,7 +640,7 @@ pub fn specialize(cx: &MatchCheckCtxt,
                                 _ => wild()
                             }
                         }).collect();
-                        Some(vec::append(args, vec::to_owned(r.tail())))
+                        Some(vec::append(args, r.tail()))
                     }
                 }
             }
@@ -676,14 +676,14 @@ pub fn specialize(cx: &MatchCheckCtxt,
                     single => true,
                     _ => fail!("type error")
                 };
-                if match_ { Some(vec::to_owned(r.tail())) } else { None }
+                if match_ { Some(r.tail().to_owned()) } else { None }
             }
             pat_range(lo, hi) => {
                 let (c_lo, c_hi) = match *ctor_id {
                     val(ref v) => ((/*bad*/copy *v), (/*bad*/copy *v)),
                     range(ref lo, ref hi) =>
                         ((/*bad*/copy *lo), (/*bad*/copy *hi)),
-                    single => return Some(vec::to_owned(r.tail())),
+                    single => return Some(r.tail().to_owned()),
                     _ => fail!("type error")
                 };
                 let v_lo = eval_const_expr(cx.tcx, lo);
@@ -693,7 +693,7 @@ pub fn specialize(cx: &MatchCheckCtxt,
                 let m2 = compare_const_vals(&c_hi, &v_hi);
                 match (m1, m2) {
                     (Some(val1), Some(val2)) if val1 >= 0 && val2 <= 0 => {
-                        Some(vec::to_owned(r.tail()))
+                        Some(r.tail().to_owned())
                     },
                     (Some(_), Some(_)) => None,
                     _ => {
@@ -734,7 +734,7 @@ pub fn specialize(cx: &MatchCheckCtxt,
 }
 
 pub fn default(cx: &MatchCheckCtxt, r: &[@pat]) -> Option<~[@pat]> {
-    if is_wild(cx, r[0]) { Some(vec::to_owned(r.tail())) }
+    if is_wild(cx, r[0]) { Some(r.tail().to_owned()) }
     else { None }
 }
 
