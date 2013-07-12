@@ -284,13 +284,13 @@ pub fn check_struct_pat_fields(pcx: &pat_ctxt,
     // Index the class fields.
     let mut field_map = HashMap::new();
     for class_fields.iter().enumerate().advance |(i, class_field)| {
-        field_map.insert(class_field.ident, i);
+        field_map.insert(class_field.ident.name, i);
     }
 
     // Typecheck each field.
     let mut found_fields = HashSet::new();
     for fields.iter().advance |field| {
-        match field_map.find(&field.ident) {
+        match field_map.find(&field.ident.name) {
             Some(&index) => {
                 let class_field = class_fields[index];
                 let field_type = ty::lookup_field_type(tcx,
