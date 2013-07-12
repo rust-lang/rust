@@ -1897,7 +1897,7 @@ pub fn print_arg(s: @ps, input: &ast::arg) {
         match input.pat.node {
             ast::pat_ident(_, ref path, _) if
                 path.idents.len() == 1 &&
-                path.idents[0] == parse::token::special_idents::invalid => {
+                path.idents[0].name == parse::token::special_idents::invalid.name => {
                 // Do nothing.
             }
             _ => {
