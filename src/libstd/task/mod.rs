@@ -543,7 +543,7 @@ pub fn deschedule() {
     use rt::local::Local;
     use rt::sched::Scheduler;
 
-    // XXX: What does yield really mean in newsched?
+    // FIXME #6842: What does yield really mean in newsched?
     // FIXME(#7544): Optimize this, since we know we won't block.
     let sched = Local::take::<Scheduler>();
     do sched.deschedule_running_task_and_then |sched, task| {

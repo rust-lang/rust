@@ -14,10 +14,10 @@ use libc::c_void;
 use cast::{transmute, transmute_mut_unsafe,
            transmute_region, transmute_mut_region};
 
-// XXX: Registers is boxed so that it is 16-byte aligned, for storing
+// FIXME #7761: Registers is boxed so that it is 16-byte aligned, for storing
 // SSE regs.  It would be marginally better not to do this. In C++ we
 // use an attribute on a struct.
-// XXX: It would be nice to define regs as `~Option<Registers>` since
+// FIXME #7761: It would be nice to define regs as `~Option<Registers>` since
 // the registers are sometimes empty, but the discriminant would
 // then misalign the regs again.
 pub struct Context {
@@ -37,7 +37,7 @@ impl Context {
 
     /// Create a new context that will resume execution by running ~fn()
     pub fn new(start: ~fn(), stack: &mut StackSegment) -> Context {
-        // XXX: Putting main into a ~ so it's a thin pointer and can
+        // FIXME #7767: Putting main into a ~ so it's a thin pointer and can
         // be passed to the spawn function.  Another unfortunate
         // allocation
         let start = ~start;
@@ -206,7 +206,7 @@ fn align_down(sp: *mut uint) -> *mut uint {
     }
 }
 
-// XXX: ptr::offset is positive ints only
+// ptr::mut_offset is positive ints only
 #[inline]
 pub fn mut_offset<T>(ptr: *mut T, count: int) -> *mut T {
     use std::sys::size_of;
