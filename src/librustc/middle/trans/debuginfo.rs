@@ -60,6 +60,7 @@ use middle::trans::type_::Type;
 use middle::trans::adt;
 use middle::trans;
 use middle::ty;
+use middle::pat_util;
 use util::ppaux::ty_to_str;
 
 use std::hashmap::HashMap;
@@ -71,15 +72,15 @@ use syntax::{ast, codemap, ast_util, ast_map};
 
 static DW_LANG_RUST: int = 0x9000;
 
-static DW_TAG_auto_variable: int = 0x100;
-static DW_TAG_arg_variable: int = 0x101;
+static DW_TAG_auto_variable: c_uint = 0x100;
+static DW_TAG_arg_variable: c_uint = 0x101;
 
-static DW_ATE_boolean: int = 0x02;
-static DW_ATE_float: int = 0x04;
-static DW_ATE_signed: int = 0x05;
-static DW_ATE_signed_char: int = 0x06;
-static DW_ATE_unsigned: int = 0x07;
-static DW_ATE_unsigned_char: int = 0x08;
+static DW_ATE_boolean: c_uint = 0x02;
+static DW_ATE_float: c_uint = 0x04;
+static DW_ATE_signed: c_uint = 0x05;
+static DW_ATE_signed_char: c_uint = 0x06;
+static DW_ATE_unsigned: c_uint = 0x07;
+static DW_ATE_unsigned_char: c_uint = 0x08;
 
 
 
@@ -132,65 +133,62 @@ pub fn finalize(cx: @mut CrateContext) {
 /// Creates debug information for the given local variable.
 ///
 /// Adds the created metadata nodes directly to the crate's IR.
-/// The return value should be ignored if called from outside of the debuginfo module.
-pub fn create_local_var_metadata(bcx: @mut Block, local: @ast::Local) -> DIVariable {
+pub fn create_local_var_metadata(bcx: @mut Block, local: &ast::Local) {
     let cx = bcx.ccx();
-
-    let ident = match local.pat.node {
-      ast::pat_ident(_, ref pth, _) => ast_util::path_to_ident(pth),
-      // FIXME this should be handled (#2533)
-      _ => {
-        bcx.sess().span_note(local.span, "debuginfo for pattern bindings NYI");
-        return ptr::null();
-      }
-    };
-
-    let name: &str = cx.sess.str_of(ident);
-    debug!("create_local_var_metadata: %s", name);
-
-    let loc = span_start(cx, local.span);
-    let ty = node_id_type(bcx, local.id);
-    let type_metadata = type_metadata(cx, ty, local.ty.span);
-    let file_metadata = file_metadata(cx, loc.file.name);
+    let def_map = cx.tcx.def_map;
+    let pattern = local.node.pat;
 
     let context = match bcx.parent {
         None => create_function_metadata(bcx.fcx),
         Some(_) => lexical_block_metadata(bcx)
     };
 
-    let var_metadata = do name.as_c_str |name| {
+    do pat_util::pat_bindings(def_map, pattern) |_, node_id, span, path_ref| {
+
+        let ident = ast_util::path_to_ident(path_ref);
+        let name: &str = cx.sess.str_of(ident);
+        debug!("create_local_var_metadata: %s", name);
+        let loc = span_start(cx, span);
+        let ty = node_id_type(bcx, node_id);
+        let type_metadata = type_metadata(cx, ty, span);
+        let file_metadata = file_metadata(cx, loc.file.name);
+
+        let var_metadata = do as_c_str(name) |name| {
+            unsafe {
+                llvm::LLVMDIBuilderCreateLocalVariable(
+                    DIB(cx),
+                    DW_TAG_auto_variable,
+                    context,
+                    name,
+                    file_metadata,
+                    loc.line as c_uint,
+                    type_metadata,
+                    false,
+                    0,
+                    0)
+            }
+        };
+
+        let llptr = match bcx.fcx.lllocals.find_copy(&node_id) {
+            Some(v) => v,
+            None => {
+                bcx.tcx().sess.span_bug(
+                    local.span,
+                    fmt!("No entry in lllocals table for %?", local.node.id));
+            }
+        };
+
+        set_debug_location(cx, lexical_block_metadata(bcx), loc.line, loc.col.to_uint());
         unsafe {
-            llvm::LLVMDIBuilderCreateLocalVariable(
+            let instr = llvm::LLVMDIBuilderInsertDeclareAtEnd(
                 DIB(cx),
-                DW_TAG_auto_variable as u32,
-                context,
-                name,
-                file_metadata,
-                loc.line as c_uint,
-                type_metadata,
-                false,
-                0,
-                0)
-        }
-    };
+                llptr,
+                var_metadata,
+                bcx.llbb);
 
-    // FIXME(#6814) Should use `pat_util::pat_bindings` for pats like (a, b) etc
-    let llptr = match bcx.fcx.lllocals.find_copy(&local.pat.id) {
-        Some(v) => v,
-        None => {
-            bcx.tcx().sess.span_bug(
-                local.span,
-                fmt!("No entry in lllocals table for %?", local.id));
+            llvm::LLVMSetInstDebugLocation(trans::build::B(bcx), instr);
         }
-    };
-
-    set_debug_location(cx, lexical_block_metadata(bcx), loc.line, loc.col.to_uint());
-    unsafe {
-        let instr = llvm::LLVMDIBuilderInsertDeclareAtEnd(DIB(cx), llptr, var_metadata, bcx.llbb);
-        llvm::LLVMSetInstDebugLocation(trans::build::B(bcx).llbuilder, instr);
     }
-
-    return var_metadata;
 }
 
 /// Creates debug information for the given function argument.
@@ -527,7 +525,7 @@ fn basic_type_metadata(cx: &mut CrateContext, t: ty::t) -> DIType {
                 name,
                 bytes_to_bits(size),
                 bytes_to_bits(align),
-                encoding as c_uint)
+                encoding)
         }
     };
 
