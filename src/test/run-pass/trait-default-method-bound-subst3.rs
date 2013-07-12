@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[allow(default_methods)];
 
 trait A {
     fn g<T>(&self, x: T, y: T) -> (T, T) { (x, y) }

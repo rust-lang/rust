@@ -244,7 +244,7 @@ static lint_table: &'static [(&'static str, LintSpec)] = &[
      LintSpec {
         lint: default_methods,
         desc: "allow default methods",
-        default: deny
+        default: allow
      }),
 
     ("unused_unsafe",

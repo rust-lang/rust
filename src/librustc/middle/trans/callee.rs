@@ -250,7 +250,7 @@ pub fn trans_fn_ref_with_vtables(
         def_id: ast::def_id,   // def id of fn
         ref_id: ast::node_id,  // node id of use of fn; may be zero if N/A
         type_params: &[ty::t], // values for fn's ty params
-        vtables: Option<typeck::vtable_res>)
+        vtables: Option<typeck::vtable_res>) // vtables for the call
      -> FnData {
     //!
     //
@@ -361,8 +361,7 @@ pub fn trans_fn_ref_with_vtables(
     // def_id to the local id of the inlined copy.
     let def_id = {
         if def_id.crate != ast::local_crate {
-            let may_translate = opt_impl_did.is_none();
-            inline::maybe_instantiate_inline(ccx, def_id, may_translate)
+            inline::maybe_instantiate_inline(ccx, def_id)
         } else {
             def_id
         }

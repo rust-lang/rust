@@ -159,7 +159,7 @@ pub fn get_const_val(cx: @mut CrateContext, mut def_id: ast::def_id) -> ValueRef
     let contains_key = cx.const_values.contains_key(&def_id.node);
     if !ast_util::is_local(def_id) || !contains_key {
         if !ast_util::is_local(def_id) {
-            def_id = inline::maybe_instantiate_inline(cx, def_id, true);
+            def_id = inline::maybe_instantiate_inline(cx, def_id);
         }
         match cx.tcx.items.get_copy(&def_id.node) {
             ast_map::node_item(@ast::item {

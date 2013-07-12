@@ -49,6 +49,8 @@ pub type type_uses = uint; // Bitmask
 pub static use_repr: uint = 1;   /* Dependency on size/alignment/mode and
                                      take/drop glue */
 pub static use_tydesc: uint = 2; /* Takes the tydesc, or compares */
+pub static use_all: uint = use_repr|use_tydesc;
+
 
 pub struct Context {
     ccx: @mut CrateContext,
@@ -57,6 +59,14 @@ pub struct Context {
 
 pub fn type_uses_for(ccx: @mut CrateContext, fn_id: def_id, n_tps: uint)
     -> @~[type_uses] {
+
+    fn store_type_uses(cx: Context, fn_id: def_id) -> @~[type_uses] {
+        let Context { uses, ccx } = cx;
+        let uses = @copy *uses; // freeze
+        ccx.type_use_cache.insert(fn_id, uses);
+        uses
+    }
+
     match ccx.type_use_cache.find(&fn_id) {
       Some(uses) => return *uses,
       None => ()
@@ -65,32 +75,29 @@ pub fn type_uses_for(ccx: @mut CrateContext, fn_id: def_id, n_tps: uint)
     let fn_id_loc = if fn_id.crate == local_crate {
         fn_id
     } else {
-        inline::maybe_instantiate_inline(ccx, fn_id, true)
+        inline::maybe_instantiate_inline(ccx, fn_id)
     };
 
     // Conservatively assume full use for recursive loops
-    ccx.type_use_cache.insert(fn_id, @vec::from_elem(n_tps, 3u));
+    ccx.type_use_cache.insert(fn_id, @vec::from_elem(n_tps, use_all));
 
     let cx = Context {
         ccx: ccx,
         uses: @mut vec::from_elem(n_tps, 0)
     };
-    match ty::get(ty::lookup_item_type(cx.ccx.tcx, fn_id).ty).sty {
-        ty::ty_bare_fn(ty::BareFnTy {sig: ref sig, _}) |
-        ty::ty_closure(ty::ClosureTy {sig: ref sig, _}) => {
-            for sig.inputs.iter().advance |arg| {
-                type_needs(&cx, use_repr, *arg);
-            }
-        }
-        _ => ()
+
+    // If the method is a default method, we mark all of the types as
+    // used.  This is imprecise, but simple. Getting it right is
+    // tricky because the substs on the call and the substs on the
+    // default method differ, because of substs on the trait/impl.
+    let is_default = ccx.tcx.provided_method_sources.contains_key(&fn_id_loc);
+    // We also mark all of the params as used if it is an extern thing
+    // that we haven't been able to inline yet.
+    if is_default || fn_id_loc.crate != local_crate {
+        for uint::range(0u, n_tps) |n| { cx.uses[n] |= use_all; }
+        return store_type_uses(cx, fn_id);
     }
 
-    if fn_id_loc.crate != local_crate {
-        let Context { uses, _ } = cx;
-        let uses = @copy *uses; // freeze
-        ccx.type_use_cache.insert(fn_id, uses);
-        return uses;
-    }
     let map_node = match ccx.tcx.items.find(&fn_id_loc.node) {
         Some(x) => (/*bad*/copy *x),
         None    => ccx.sess.bug(fmt!("type_uses_for: unbound item ID %?",
@@ -106,7 +113,10 @@ pub fn type_uses_for(ccx: @mut CrateContext, fn_id: def_id, n_tps: uint)
         // This will be a static trait method. For now, we just assume
         // it fully depends on all of the type information. (Doing
         // otherwise would require finding the actual implementation).
-        for uint::range(0u, n_tps) |n| { cx.uses[n] |= use_repr|use_tydesc;}
+        for uint::range(0u, n_tps) |n| { cx.uses[n] |= use_all;}
+        // We need to return early, before the arguments are processed,
+        // because of difficulties in the handling of Self.
+        return store_type_uses(cx, fn_id);
       }
       ast_map::node_variant(_, _, _) => {
         for uint::range(0u, n_tps) |n| { cx.uses[n] |= use_repr;}
@@ -171,10 +181,19 @@ pub fn type_uses_for(ccx: @mut CrateContext, fn_id: def_id, n_tps: uint)
                                 token::get_ident_interner())));
       }
     }
-    let Context { uses, _ } = cx;
-    let uses = @copy *uses; // freeze
-    ccx.type_use_cache.insert(fn_id, uses);
-    uses
+
+    // Now handle arguments
+    match ty::get(ty::lookup_item_type(cx.ccx.tcx, fn_id).ty).sty {
+        ty::ty_bare_fn(ty::BareFnTy {sig: ref sig, _}) |
+        ty::ty_closure(ty::ClosureTy {sig: ref sig, _}) => {
+            for sig.inputs.iter().advance |arg| {
+                type_needs(&cx, use_repr, *arg);
+            }
+        }
+        _ => ()
+    }
+
+    store_type_uses(cx, fn_id)
 }
 
 pub fn type_needs(cx: &Context, use_: uint, ty: ty::t) {
