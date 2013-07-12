@@ -18,10 +18,11 @@
 
 use std::cmp;
 use std::container::{Container, Mutable, Map, Set};
-use std::iterator::{Iterator,IteratorUtil,ZipIterator,Counter};
+use std::iterator::*;
 use std::uint;
 use std::util::replace;
 use std::vec::{VecIterator,VecMutIterator,VecRevIterator,VecMutRevIterator};
+use std::vec::VecConsumeIterator;
 
 #[allow(missing_doc)]
 pub struct SmallIntMap<T> {
@@ -203,6 +204,17 @@ impl<V> SmallIntMap<V> {
         SmallIntMapMutRevIterator {
             iter: Counter::new(self.len() as int - 1, -1).zip(self.v.mut_rev_iter())
         }
+    }
+
+    /// Empties the hash map, moving all values into the specified closure
+    pub fn consume(&mut self)
+        -> FilterMapIterator<(uint, Option<V>), (uint, V),
+                EnumerateIterator<Option<V>, VecConsumeIterator<Option<V>>>>
+    {
+        let values = replace(&mut self.v, ~[]);
+        values.consume_iter().enumerate().filter_map(|(i, v)| {
+            v.map_consume(|v| (i, v))
+        })
     }
 }
 
@@ -624,6 +636,21 @@ mod tests {
         }
 
         assert!(a.iter().all(|(_,v)| *v == 5 ));
+    }
+
+    #[test]
+    fn test_consume() {
+        let mut m = SmallIntMap::new();
+        m.insert(1, ~2);
+        let mut called = false;
+        for m.consume().advance |(k, v)| {
+            assert!(!called);
+            called = true;
+            assert_eq!(k, 1);
+            assert_eq!(v, ~2);
+        }
+        assert!(called);
+        m.insert(2, ~1);
     }
 }
 
