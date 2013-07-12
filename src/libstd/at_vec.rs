@@ -255,8 +255,6 @@ pub mod raw {
         if capacity(*v) < n {
             let ptr: *mut *mut Box<Vec<()>> = transmute(v);
             let ty = intrinsics::get_tydesc::<T>();
-            // XXX transmute shouldn't be necessary
-            let ty = cast::transmute(ty);
             return reserve_raw(ty, ptr, n);
         }
     }
