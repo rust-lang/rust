@@ -758,11 +758,14 @@ pub fn resolve_internal(id : ident,
                 match table.table[id.ctxt] {
                     EmptyCtxt => id.name,
                     // ignore marks here:
-                    Mark(_,subctxt) => resolve_internal(ident{name:id.name, ctxt: subctxt},table,resolve_table),
+                    Mark(_,subctxt) =>
+                        resolve_internal(ident{name:id.name, ctxt: subctxt},table,resolve_table),
                     // do the rename if necessary:
                     Rename(ident{name,ctxt},toname,subctxt) => {
-                        let resolvedfrom = resolve_internal(ident{name:name,ctxt:ctxt},table,resolve_table);
-                        let resolvedthis = resolve_internal(ident{name:id.name,ctxt:subctxt},table,resolve_table);
+                        let resolvedfrom =
+                            resolve_internal(ident{name:name,ctxt:ctxt},table,resolve_table);
+                        let resolvedthis =
+                            resolve_internal(ident{name:id.name,ctxt:subctxt},table,resolve_table);
                         if ((resolvedthis == resolvedfrom)
                             && (marksof(ctxt,resolvedthis,table)
                                 == marksof(subctxt,resolvedthis,table))) {
@@ -834,9 +837,9 @@ pub fn getLast(arr: &~[Mrk]) -> uint {
 pub fn path_name_eq(a : &ast::Path, b : &ast::Path) -> bool {
     (a.span == b.span)
     && (a.global == b.global)
-    // NOTE: ident->name in lifetimes!
+    // FIXME #7743: ident->name in lifetimes!
     && (a.rp == b.rp)
-    // NOTE: can a type contain an ident?
+    // can types contain idents?
     && (a.types == b.types)
     && (idents_name_eq(a.idents, b.idents))
 }

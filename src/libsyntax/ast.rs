@@ -36,6 +36,12 @@ impl Eq for ident {
         if (self.ctxt == other.ctxt) {
             self.name == other.name
         } else {
+            // IF YOU SEE ONE OF THESE FAILS: it means that you're comparing
+            // idents that have different contexts. You can't fix this without
+            // knowing whether the comparison should be hygienic or non-hygienic.
+            // if it should be non-hygienic (most things are), just compare the
+            // 'name' fields of the idents. Or, even better, replace the idents
+            // with Name's.
             fail!(fmt!("not allowed to compare these idents: %?, %?", self, other));
         }
     }
@@ -114,6 +120,7 @@ pub type fn_ident = Option<ident>;
 pub struct Lifetime {
     id: NodeId,
     span: span,
+    // FIXME #7743 : change this to Name!
     ident: ident
 }
 
@@ -623,7 +630,6 @@ pub enum matcher_ {
     // lo, hi position-in-match-array used:
     match_seq(~[matcher], Option<::parse::token::Token>, bool, uint, uint),
     // parse a Rust NT: name to bind, name of NT, position in match array:
-    // NOTE: 'name of NT' shouldnt really be represented as an ident, should it?
     match_nonterminal(ident, ident, uint)
 }
 
