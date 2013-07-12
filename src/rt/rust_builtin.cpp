@@ -671,14 +671,10 @@ rust_unlock_little_lock(lock_and_signal *lock) {
     lock->unlock();
 }
 
-// set/get/atexit task_local_data can run on the rust stack for speed.
-extern "C" void *
+// get/atexit task_local_data can run on the rust stack for speed.
+extern "C" void **
 rust_get_task_local_data(rust_task *task) {
-    return task->task_local_data;
-}
-extern "C" void
-rust_set_task_local_data(rust_task *task, void *data) {
-    task->task_local_data = data;
+    return &task->task_local_data;
 }
 extern "C" void
 rust_task_local_data_atexit(rust_task *task, void (*cleanup_fn)(void *data)) {

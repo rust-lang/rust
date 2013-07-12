@@ -478,26 +478,28 @@ fn gen_child_taskgroup(linked: bool, supervised: bool)
          * Step 1. Get spawner's taskgroup info.
          *##################################################################*/
         let spawner_group: @@mut TCB =
-            match local_get(OldHandle(spawner), taskgroup_key!()) {
-                None => {
-                    // Main task, doing first spawn ever. Lazily initialise
-                    // here.
-                    let mut members = new_taskset();
-                    taskset_insert(&mut members, spawner);
-                    let tasks = exclusive(Some(TaskGroupData {
-                        members: members,
-                        descendants: new_taskset(),
-                    }));
-                    // Main task/group has no ancestors, no notifier, etc.
-                    let group = @@mut TCB(spawner,
-                                          tasks,
-                                          AncestorList(None),
-                                          true,
-                                          None);
-                    local_set(OldHandle(spawner), taskgroup_key!(), group);
-                    group
+            do local_get(OldHandle(spawner), taskgroup_key!()) |group| {
+                match group {
+                    None => {
+                        // Main task, doing first spawn ever. Lazily initialise
+                        // here.
+                        let mut members = new_taskset();
+                        taskset_insert(&mut members, spawner);
+                        let tasks = exclusive(Some(TaskGroupData {
+                            members: members,
+                            descendants: new_taskset(),
+                        }));
+                        // Main task/group has no ancestors, no notifier, etc.
+                        let group = @@mut TCB(spawner,
+                                              tasks,
+                                              AncestorList(None),
+                                              true,
+                                              None);
+                        local_set(OldHandle(spawner), taskgroup_key!(), group);
+                        group
+                    }
+                    Some(&group) => group
                 }
-                Some(group) => group
             };
         let spawner_group: &mut TCB = *spawner_group;
 
