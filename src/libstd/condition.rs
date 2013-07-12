@@ -12,7 +12,6 @@
 
 #[allow(missing_doc)];
 
-use local_data::{local_data_pop, local_data_set};
 use local_data;
 use prelude::*;
 
@@ -26,14 +25,14 @@ pub struct Handler<T, U> {
 
 pub struct Condition<'self, T, U> {
     name: &'static str,
-    key: local_data::LocalDataKey<'self, Handler<T, U>>
+    key: local_data::Key<'self, @Handler<T, U>>
 }
 
 impl<'self, T, U> Condition<'self, T, U> {
     pub fn trap(&'self self, h: &'self fn(T) -> U) -> Trap<'self, T, U> {
         unsafe {
             let p : *RustClosure = ::cast::transmute(&h);
-            let prev = local_data::local_data_get(self.key);
+            let prev = local_data::get(self.key, |k| k.map(|&x| *x));
             let h = @Handler { handle: *p, prev: prev };
             Trap { cond: self, handler: h }
         }
@@ -46,7 +45,7 @@ impl<'self, T, U> Condition<'self, T, U> {
 
     pub fn raise_default(&self, t: T, default: &fn() -> U) -> U {
         unsafe {
-            match local_data_pop(self.key) {
+            match local_data::pop(self.key) {
                 None => {
                     debug!("Condition.raise: found no handler");
                     default()
@@ -55,12 +54,12 @@ impl<'self, T, U> Condition<'self, T, U> {
                     debug!("Condition.raise: found handler");
                     match handler.prev {
                         None => {}
-                        Some(hp) => local_data_set(self.key, hp)
+                        Some(hp) => local_data::set(self.key, hp)
                     }
                     let handle : &fn(T) -> U =
                         ::cast::transmute(handler.handle);
                     let u = handle(t);
-                    local_data_set(self.key, handler);
+                    local_data::set(self.key, handler);
                     u
                 }
             }
@@ -78,7 +77,7 @@ impl<'self, T, U> Trap<'self, T, U> {
         unsafe {
             let _g = Guard { cond: self.cond };
             debug!("Trap: pushing handler to TLS");
-            local_data_set(self.cond.key, self.handler);
+            local_data::set(self.cond.key, self.handler);
             inner()
         }
     }
@@ -93,12 +92,12 @@ impl<'self, T, U> Drop for Guard<'self, T, U> {
     fn drop(&self) {
         unsafe {
             debug!("Guard: popping handler from TLS");
-            let curr = local_data_pop(self.cond.key);
+            let curr = local_data::pop(self.cond.key);
             match curr {
                 None => {}
                 Some(h) => match h.prev {
                     None => {}
-                    Some(hp) => local_data_set(self.cond.key, hp)
+                    Some(hp) => local_data::set(self.cond.key, hp)
                 }
             }
         }

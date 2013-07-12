@@ -698,10 +698,10 @@ pub fn get_sctable() -> @mut SCTable {
         let sctable_key = (cast::transmute::<(uint, uint),
                            &fn:Copy(v: @@mut SCTable)>(
                                (-4 as uint, 0u)));
-        match local_data::local_data_get(sctable_key) {
+        match local_data::get(sctable_key, |k| k.map(|&k| *k)) {
             None => {
                 let new_table = @@mut new_sctable_internal();
-                local_data::local_data_set(sctable_key,new_table);
+                local_data::set(sctable_key,new_table);
                 *new_table
             },
             Some(intr) => *intr

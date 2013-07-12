@@ -91,7 +91,7 @@ fn task_local_insn_key(_v: @~[&'static str]) {}
 
 pub fn with_insn_ctxt(blk: &fn(&[&'static str])) {
     unsafe {
-        let opt = local_data::local_data_get(task_local_insn_key);
+        let opt = local_data::get(task_local_insn_key, |k| k.map(|&k| *k));
         if opt.is_some() {
             blk(*opt.unwrap());
         }
@@ -100,7 +100,7 @@ pub fn with_insn_ctxt(blk: &fn(&[&'static str])) {
 
 pub fn init_insn_ctxt() {
     unsafe {
-        local_data::local_data_set(task_local_insn_key, @~[]);
+        local_data::set(task_local_insn_key, @~[]);
     }
 }
 
@@ -110,7 +110,7 @@ pub struct _InsnCtxt { _x: () }
 impl Drop for _InsnCtxt {
     fn drop(&self) {
         unsafe {
-            do local_data::local_data_modify(task_local_insn_key) |c| {
+            do local_data::modify(task_local_insn_key) |c| {
                 do c.map_consume |ctx| {
                     let mut ctx = copy *ctx;
                     ctx.pop();
@@ -124,7 +124,7 @@ impl Drop for _InsnCtxt {
 pub fn push_ctxt(s: &'static str) -> _InsnCtxt {
     debug!("new InsnCtxt: %s", s);
     unsafe {
-        do local_data::local_data_modify(task_local_insn_key) |c| {
+        do local_data::modify(task_local_insn_key) |c| {
             do c.map_consume |ctx| {
                 let mut ctx = copy *ctx;
                 ctx.push(s);
