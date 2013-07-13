@@ -28,7 +28,7 @@ avoid hitting the mutex.
 use cast::{transmute};
 use clone::Clone;
 use kinds::Send;
-use libc::{c_void};
+use libc::{c_void, intptr_t};
 use option::{Option, Some, None};
 use ops::Drop;
 use unstable::sync::{Exclusive, exclusive};
@@ -228,7 +228,7 @@ fn key_ptr<T:Send>(key: GlobalDataKey<T>) -> uint {
 }
 
 extern {
-    fn rust_get_global_data_ptr() -> *mut int;
+    fn rust_get_global_data_ptr() -> *mut intptr_t;
 }
 
 #[test]

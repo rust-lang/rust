@@ -8,13 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags:-D ctypes
-// error-pattern:found rust type
-mod libc {
-    #[nolink]
-    extern {
-        pub fn malloc(size: int) -> *u8;
-    }
+#[deny(ctypes)];
+
+use std::libc;
+
+#[nolink]
+extern {
+    pub fn bare_type1(size: int); //~ ERROR: found rust type
+    pub fn bare_type2(size: uint); //~ ERROR: found rust type
+    pub fn ptr_type1(size: *int); //~ ERROR: found rust type
+    pub fn ptr_type2(size: *uint); //~ ERROR: found rust type
+
+    pub fn good1(size: *libc::c_int);
+    pub fn good2(size: *libc::c_uint);
 }
 
 fn main() {
