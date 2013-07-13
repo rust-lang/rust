@@ -33,4 +33,11 @@ if exists("g:ftplugin_rust_source_path")
     let &l:path=g:ftplugin_rust_source_path . ',' . &l:path
 endif
 
-let b:undo_ftplugin = "setlocal formatoptions< comments< commentstring< includeexpr< suffixesadd<"
+if exists("g:loaded_delimitMate")
+	if exists("b:delimitMate_excluded_regions")
+		let b:rust_original_delimitMate_excluded_regions = b:delimitMate_excluded_regions
+	endif
+	let b:delimitMate_excluded_regions = delimitMate#Get("excluded_regions") . ',rustLifetimeCandidate,rustGenericLifetimeCandidate'
+endif
+
+let b:undo_ftplugin = "setlocal formatoptions< comments< commentstring< includeexpr< suffixesadd< | if exists('b:rust_original_delimitMate_excluded_regions') | let b:delimitMate_excluded_regions = b:rust_original_delimitMate_excluded_regions | unlet b:rust_original_delimitMate_excluded_regions | elseif exists('b:delimitMate_excluded_regions') | unlet b:delimitMate_excluded_regions | endif"
