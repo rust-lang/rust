@@ -14,7 +14,6 @@ trait Positioned<S> {
   fn X(&self) -> S;
 }
 
-#[allow(default_methods)]
 trait Movable<S, T>: Positioned<T> {
   fn translate(&self, dx: T) {
     self.SetX(self.X() + dx);

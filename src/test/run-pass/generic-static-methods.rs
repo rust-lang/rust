@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,14 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait Canvas {
-    fn add_point(&self, point: &int);
-    fn add_points(&self, shapes: &[int]) {
-        for shapes.iter().advance |pt| {
-            self.add_point(pt)
-        }
-    }
-
+trait vec_utils<T> {
+    fn map_<U:Copy>(x: &Self, f: &fn(&T) -> U) -> ~[U];
 }
 
-pub fn main() {}
+impl<T> vec_utils<T> for ~[T] {
+    fn map_<U:Copy>(x: &~[T], f: &fn(&T) -> U) -> ~[U] {
+        let mut r = ~[];
+        for x.iter().advance |elt| {
+            r.push(f(elt));
+        }
+        r
+    }
+}
+
+fn main() {
+    assert_eq!(vec_utils::map_(&~[1,2,3], |&x| x+1), ~[2,3,4]);
+}

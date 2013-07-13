@@ -154,12 +154,6 @@ impl Repr for param_substs {
     }
 }
 
-impl Repr for @param_substs {
-    fn repr(&self, tcx: ty::ctxt) -> ~str {
-        param_substs_to_str(*self, tcx)
-    }
-}
-
 // Function context.  Every LLVM function we create will have one of
 // these.
 pub struct fn_ctxt_ {

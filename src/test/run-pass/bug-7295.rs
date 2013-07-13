@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[allow(default_methods)];
 pub trait Foo<T> {
     pub fn func1<U>(&self, t: U);
 
