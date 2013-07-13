@@ -704,7 +704,7 @@ pub fn trans_call_inner(in_cx: block,
                         Store(bcx, C_bool(false), bcx.fcx.llretptr.get());
                     }
                 }
-                base::cleanup_and_leave(bcx, None, Some(bcx.fcx.llreturn));
+                base::cleanup_and_leave(bcx, None, Some(bcx.fcx.get_llreturn()));
                 Unreachable(bcx);
                 bcx
             }
