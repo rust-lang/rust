@@ -178,7 +178,7 @@ pub struct fn_ctxt_ {
     // the function, due to LLVM's quirks.
     // A block for all the function's static allocas, so that LLVM
     // will coalesce them into a single alloca call.
-    llstaticallocas: BasicBlockRef,
+    llstaticallocas: Option<BasicBlockRef>,
     // A block containing code that copies incoming arguments to space
     // already allocated by code in one of the llallocas blocks.
     // (LLVM requires that arguments be copied to local allocas before
@@ -249,6 +249,14 @@ impl fn_ctxt_ {
         } else {
             0u
         }
+    }
+
+    pub fn get_llstaticallocas(&mut self) -> BasicBlockRef {
+        if self.llstaticallocas.is_none() {
+            self.llstaticallocas = Some(base::mk_staticallocas_basic_block(self.llfn));
+        }
+
+        self.llstaticallocas.get()
     }
 
     pub fn get_llreturn(&mut self) -> BasicBlockRef {
