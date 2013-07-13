@@ -16,7 +16,6 @@ trait Positioned {
   fn X(&self) -> int;
 }
 
-#[allow(default_methods)]
 trait Movable: Positioned {
   fn translate(&mut self, dx: int) {
     let x = self.X();

@@ -165,8 +165,8 @@ pub fn map_decoded_item(diag: @span_handler,
                                               i.vis,    // Wrong but OK
                                               @path));
       }
-      ii_method(impl_did, m) => {
-        map_method(impl_did, @path, m, cx);
+      ii_method(impl_did, is_provided, m) => {
+        map_method(impl_did, @path, m, is_provided, cx);
       }
     }
 
@@ -207,8 +207,11 @@ pub fn map_pat(pat: @pat, (cx,v): (@mut Ctx, visit::vt<@mut Ctx>)) {
 }
 
 pub fn map_method(impl_did: def_id, impl_path: @path,
-                  m: @method, cx: @mut Ctx) {
-    cx.map.insert(m.id, node_method(m, impl_did, impl_path));
+                  m: @method, is_provided: bool, cx: @mut Ctx) {
+    let entry = if is_provided {
+        node_trait_method(@provided(m), impl_did, impl_path)
+    } else { node_method(m, impl_did, impl_path) };
+    cx.map.insert(m.id, entry);
     cx.map.insert(m.self_id, node_local(special_idents::self_));
 }
 
@@ -219,7 +222,7 @@ pub fn map_item(i: @item, (cx, v): (@mut Ctx, visit::vt<@mut Ctx>)) {
         item_impl(_, _, _, ref ms) => {
             let impl_did = ast_util::local_def(i.id);
             for ms.iter().advance |m| {
-                map_method(impl_did, extend(cx, i.ident), *m, cx);
+                map_method(impl_did, extend(cx, i.ident), *m, false, cx);
             }
         }
         item_enum(ref enum_definition, _) => {

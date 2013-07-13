@@ -22,11 +22,7 @@ use syntax::ast;
 use syntax::ast_map::path_name;
 use syntax::ast_util::local_def;
 
-// `translate` will be true if this function is allowed to translate the
-// item and false otherwise. Currently, this parameter is set to false when
-// translating default methods.
-pub fn maybe_instantiate_inline(ccx: @mut CrateContext, fn_id: ast::def_id,
-                                translate: bool)
+pub fn maybe_instantiate_inline(ccx: @mut CrateContext, fn_id: ast::def_id)
     -> ast::def_id {
     let _icx = push_ctxt("maybe_instantiate_inline");
     match ccx.external.find(&fn_id) {
@@ -59,7 +55,7 @@ pub fn maybe_instantiate_inline(ccx: @mut CrateContext, fn_id: ast::def_id,
         csearch::found(ast::ii_item(item)) => {
             ccx.external.insert(fn_id, Some(item.id));
             ccx.stats.n_inlines += 1;
-            if translate { trans_item(ccx, item); }
+            trans_item(ccx, item);
             local_def(item.id)
         }
         csearch::found(ast::ii_foreign(item)) => {
@@ -81,19 +77,19 @@ pub fn maybe_instantiate_inline(ccx: @mut CrateContext, fn_id: ast::def_id,
             _ => ccx.sess.bug("maybe_instantiate_inline: item has a \
                                non-enum parent")
           }
-          if translate { trans_item(ccx, item); }
+          trans_item(ccx, item);
           local_def(my_id)
         }
         csearch::found_parent(_, _) => {
             ccx.sess.bug("maybe_get_item_ast returned a found_parent \
              with a non-item parent");
         }
-        csearch::found(ast::ii_method(impl_did, mth)) => {
+        csearch::found(ast::ii_method(impl_did, is_provided, mth)) => {
           ccx.stats.n_inlines += 1;
           ccx.external.insert(fn_id, Some(mth.id));
           // If this is a default method, we can't look up the
           // impl type. But we aren't going to translate anyways, so don't.
-          if !translate { return local_def(mth.id); }
+          if is_provided { return local_def(mth.id); }
 
             let impl_tpt = ty::lookup_item_type(ccx.tcx, impl_did);
             let num_type_params =

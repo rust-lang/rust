@@ -520,7 +520,7 @@ pub fn get_res_dtor(ccx: @mut CrateContext,
     let _icx = push_ctxt("trans_res_dtor");
     if !substs.is_empty() {
         let did = if did.crate != ast::local_crate {
-            inline::maybe_instantiate_inline(ccx, did, true)
+            inline::maybe_instantiate_inline(ccx, did)
         } else {
             did
         };
