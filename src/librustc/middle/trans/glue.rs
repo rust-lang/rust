@@ -348,9 +348,9 @@ pub fn call_tydesc_glue(cx: block, v: ValueRef, t: ty::t, field: uint)
     return cx;
 }
 
-pub fn make_visit_glue(bcx: block, v: ValueRef, t: ty::t) {
+pub fn make_visit_glue(bcx: block, v: ValueRef, t: ty::t) -> block {
     let _icx = push_ctxt("make_visit_glue");
-    let bcx = do with_scope(bcx, None, "visitor cleanup") |bcx| {
+    do with_scope(bcx, None, "visitor cleanup") |bcx| {
         let mut bcx = bcx;
         let (visitor_trait, object_ty) = ty::visitor_object_ty(bcx.tcx());
         let v = PointerCast(bcx, v, type_of::type_of(bcx.ccx(), object_ty).ptr_to());
@@ -358,14 +358,13 @@ pub fn make_visit_glue(bcx: block, v: ValueRef, t: ty::t) {
         // The visitor is a boxed object and needs to be dropped
         add_clean(bcx, v, object_ty);
         bcx
-    };
-    build_return(bcx);
+    }
 }
 
-pub fn make_free_glue(bcx: block, v: ValueRef, t: ty::t) {
+pub fn make_free_glue(bcx: block, v: ValueRef, t: ty::t) -> block {
     // NB: v0 is an *alias* of type t here, not a direct value.
     let _icx = push_ctxt("make_free_glue");
-    let bcx = match ty::get(t).sty {
+    match ty::get(t).sty {
       ty::ty_box(body_mt) => {
         let v = Load(bcx, v);
         let body = GEPi(bcx, v, [0u, abi::box_field_body]);
@@ -389,9 +388,7 @@ pub fn make_free_glue(bcx: block, v: ValueRef, t: ty::t) {
         tvec::make_uniq_free_glue(bcx, v, t)
       }
       ty::ty_evec(_, ty::vstore_box) | ty::ty_estr(ty::vstore_box) => {
-        make_free_glue(bcx, v,
-                       tvec::expand_boxed_vec_ty(bcx.tcx(), t));
-        return;
+        make_free_glue(bcx, v, tvec::expand_boxed_vec_ty(bcx.tcx(), t))
       }
       ty::ty_closure(_) => {
         closure::make_closure_glue(bcx, v, t, free_ty)
@@ -400,8 +397,7 @@ pub fn make_free_glue(bcx: block, v: ValueRef, t: ty::t) {
         closure::make_opaque_cbox_free_glue(bcx, ck, v)
       }
       _ => bcx
-    };
-    build_return(bcx);
+    }
 }
 
 pub fn trans_struct_drop_flag(bcx: block, t: ty::t, v0: ValueRef, dtor_did: ast::def_id,
@@ -475,11 +471,11 @@ pub fn trans_struct_drop(mut bcx: block, t: ty::t, v0: ValueRef, dtor_did: ast::
     bcx
 }
 
-pub fn make_drop_glue(bcx: block, v0: ValueRef, t: ty::t) {
+pub fn make_drop_glue(bcx: block, v0: ValueRef, t: ty::t) -> block {
     // NB: v0 is an *alias* of type t here, not a direct value.
     let _icx = push_ctxt("make_drop_glue");
     let ccx = bcx.ccx();
-    let bcx = match ty::get(t).sty {
+    match ty::get(t).sty {
       ty::ty_box(_) | ty::ty_opaque_box |
       ty::ty_estr(ty::vstore_box) | ty::ty_evec(_, ty::vstore_box) => {
         decr_refcnt_maybe_free(bcx, Load(bcx, v0), Some(v0), t)
@@ -542,8 +538,7 @@ pub fn make_drop_glue(bcx: block, v0: ValueRef, t: ty::t) {
             iter_structural_ty(bcx, v0, t, drop_ty)
         } else { bcx }
       }
-    };
-    build_return(bcx);
+    }
 }
 
 // box_ptr_ptr is optional, it is constructed if not supplied.
@@ -569,10 +564,10 @@ pub fn decr_refcnt_maybe_free(bcx: block, box_ptr: ValueRef,
 }
 
 
-pub fn make_take_glue(bcx: block, v: ValueRef, t: ty::t) {
+pub fn make_take_glue(bcx: block, v: ValueRef, t: ty::t) -> block {
     let _icx = push_ctxt("make_take_glue");
     // NB: v is a *pointer* to type t here, not a direct value.
-    let bcx = match ty::get(t).sty {
+    match ty::get(t).sty {
       ty::ty_box(_) | ty::ty_opaque_box |
       ty::ty_evec(_, ty::vstore_box) | ty::ty_estr(ty::vstore_box) => {
         incr_refcnt_of_boxed(bcx, Load(bcx, v)); bcx
@@ -638,9 +633,7 @@ pub fn make_take_glue(bcx: block, v: ValueRef, t: ty::t) {
         iter_structural_ty(bcx, v, t, take_ty)
       }
       _ => bcx
-    };
-
-    build_return(bcx);
+    }
 }
 
 pub fn incr_refcnt_of_boxed(cx: block, box_ptr: ValueRef) {
@@ -690,7 +683,7 @@ pub fn declare_tydesc(ccx: &mut CrateContext, t: ty::t) -> @mut tydesc_info {
     return inf;
 }
 
-pub type glue_helper<'self> = &'self fn(block, ValueRef, ty::t);
+pub type glue_helper<'self> = &'self fn(block, ValueRef, ty::t) -> block;
 
 pub fn declare_generic_glue(ccx: &mut CrateContext, t: ty::t, llfnty: Type,
                             name: &str) -> ValueRef {
@@ -723,11 +716,9 @@ pub fn make_generic_glue_inner(ccx: @mut CrateContext,
     let llrawptr0 = unsafe { llvm::LLVMGetParam(llfn, rawptr0_arg as c_uint) };
     let llty = type_of(ccx, t);
     let llrawptr0 = PointerCast(bcx, llrawptr0, llty.ptr_to());
-    helper(bcx, llrawptr0, t);
+    let bcx = helper(bcx, llrawptr0, t);
 
-    // This is from the general finish fn, but that emits a ret {} that we don't want
-    Br(raw_block(fcx, false, fcx.llstaticallocas), lltop);
-    RetVoid(raw_block(fcx, false, fcx.llreturn));
+    finish_fn(fcx, lltop, bcx);
 
     return llfn;
 }
