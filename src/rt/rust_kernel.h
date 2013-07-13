@@ -124,7 +124,7 @@ class rust_kernel {
 
 public:
     struct rust_env *env;
-    uintptr_t global_data;
+    intptr_t global_data;
 
     rust_kernel(rust_env *env);
 

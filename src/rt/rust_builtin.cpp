@@ -769,7 +769,7 @@ rust_register_exit_function(spawn_fn runner, fn_env_pair *f) {
     task->kernel->register_exit_function(runner, f);
 }
 
-extern "C" void *
+extern "C" intptr_t*
 rust_get_global_data_ptr() {
     rust_task *task = rust_get_current_task();
     return &task->kernel->global_data;
