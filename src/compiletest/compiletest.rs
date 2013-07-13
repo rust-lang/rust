@@ -40,17 +40,6 @@ pub mod runtest;
 pub mod common;
 pub mod errors;
 
-<<<<<<< HEAD
-=======
-mod std {
-    pub use core::clone;
-    pub use core::cmp;
-    pub use core::str;
-    pub use core::sys;
-    pub use core::unstable;
-}
-
->>>>>>> test: Fix tests.
 pub fn main() {
     let args = os::args();
     let config = parse_config(args);
@@ -91,7 +80,7 @@ pub fn parse_config(args: ~[~str]) -> config {
          ];
 
     assert!(!args.is_empty());
-    let argv0 = copy args[0];
+    let argv0 = args[0].clone();
     let args_ = args.tail();
     if args[1] == ~"-h" || args[1] == ~"--help" {
         let message = fmt!("Usage: %s [OPTIONS] [TESTNAME...]", argv0);
@@ -128,17 +117,10 @@ pub fn parse_config(args: ~[~str]) -> config {
         mode: str_mode(getopts::opt_str(matches, "mode")),
         run_ignored: getopts::opt_present(matches, "ignored"),
         filter:
-<<<<<<< HEAD
             if !matches.free.is_empty() {
                  Some(matches.free[0].clone())
             } else {
                 None
-=======
-             if !matches.free.is_empty() {
-                option::Some(matches.free[0].clone())
-             } else {
-                option::None
->>>>>>> test: Fix tests.
             },
         logfile: getopts::opt_maybe_str(matches, "logfile").map(|s| Path(*s)),
         save_metrics: getopts::opt_maybe_str(matches, "save-metrics").map(|s| Path(*s)),

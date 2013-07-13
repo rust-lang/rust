@@ -199,11 +199,7 @@ fn bfs2(graph: graph, key: node_id) -> bfs_result {
               white => {
                 let i = i as node_id;
 
-<<<<<<< HEAD
                 let neighbors = &graph[i];
-=======
-                let neighbors = graph[i].clone();
->>>>>>> librustc: Remove all uses of "copy".
 
                 let mut color = white;
 

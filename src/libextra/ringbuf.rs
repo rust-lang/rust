@@ -417,28 +417,28 @@ mod tests {
 
     #[cfg(test)]
     fn test_parameterized<T:Clone + Eq>(a: T, b: T, c: T, d: T) {
-        let mut deq = Deque::new();
+        let mut deq = RingBuf::new();
         assert_eq!(deq.len(), 0);
-        deq.add_front(a.clone());
-        deq.add_front(b.clone());
-        deq.add_back(c.clone());
+        deq.push_front(a.clone());
+        deq.push_front(b.clone());
+        deq.push_back(c.clone());
         assert_eq!(deq.len(), 3);
-        deq.add_back(d.clone());
+        deq.push_back(d.clone());
         assert_eq!(deq.len(), 4);
-        assert_eq!((*deq.peek_front()).clone(), b.clone());
-        assert_eq!((*deq.peek_back()).clone(), d.clone());
-        assert_eq!(deq.pop_front(), b.clone());
-        assert_eq!(deq.pop_back(), d.clone());
-        assert_eq!(deq.pop_back(), c.clone());
-        assert_eq!(deq.pop_back(), a.clone());
+        assert_eq!((*deq.front().get()).clone(), b.clone());
+        assert_eq!((*deq.back().get()).clone(), d.clone());
+        assert_eq!(deq.pop_front().get(), b.clone());
+        assert_eq!(deq.pop_back().get(), d.clone());
+        assert_eq!(deq.pop_back().get(), c.clone());
+        assert_eq!(deq.pop_back().get(), a.clone());
         assert_eq!(deq.len(), 0);
-        deq.add_back(c.clone());
+        deq.push_back(c.clone());
         assert_eq!(deq.len(), 1);
-        deq.add_front(b.clone());
+        deq.push_front(b.clone());
         assert_eq!(deq.len(), 2);
-        deq.add_back(d.clone());
+        deq.push_back(d.clone());
         assert_eq!(deq.len(), 3);
-        deq.add_front(a.clone());
+        deq.push_front(a.clone());
         assert_eq!(deq.len(), 4);
         assert_eq!((*deq.get(0)).clone(), a.clone());
         assert_eq!((*deq.get(1)).clone(), b.clone());

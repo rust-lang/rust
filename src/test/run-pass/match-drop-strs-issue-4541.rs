@@ -10,7 +10,7 @@ fn parse_args() -> ~str {
     let mut n = 0;
 
     while n < args.len() {
-        match copy args[n] {
+        match args[n].clone() {
             ~"-v" => (),
             s => {
                 return s;
