@@ -26,7 +26,7 @@ use std::cast;
 use std::cmp;
 use std::ptr;
 use std::util;
-use std::iterator::FromIterator;
+use std::iterator::{FromIterator, InvertIterator};
 
 use container::Deque;
 
@@ -46,41 +46,23 @@ struct Node<T> {
     priv value: T,
 }
 
-/// DList iterator
-pub struct ForwardIterator<'self, T> {
-    priv list: &'self DList<T>,
-    priv next: &'self Link<T>,
+/// Double-ended DList iterator
+pub struct DListIterator<'self, T> {
+    priv head: &'self Link<T>,
+    priv tail: Rawlink<Node<T>>,
     priv nelem: uint,
 }
 
-/// DList reverse iterator
-pub struct ReverseIterator<'self, T> {
-    priv list: &'self DList<T>,
-    priv next: Rawlink<Node<T>>,
-    priv nelem: uint,
-}
-
-/// DList mutable iterator
-pub struct MutForwardIterator<'self, T> {
+/// Double-ended mutable DList iterator
+pub struct MutDListIterator<'self, T> {
     priv list: &'self mut DList<T>,
-    priv curs: Rawlink<Node<T>>,
-    priv nelem: uint,
-}
-
-/// DList mutable reverse iterator
-pub struct MutReverseIterator<'self, T> {
-    priv list: &'self mut DList<T>,
-    priv next: Rawlink<Node<T>>,
+    priv head: Rawlink<Node<T>>,
+    priv tail: Rawlink<Node<T>>,
     priv nelem: uint,
 }
 
 /// DList consuming iterator
 pub struct ConsumeIterator<T> {
-    priv list: DList<T>
-}
-
-/// DList reverse consuming iterator
-pub struct ConsumeRevIterator<T> {
     priv list: DList<T>
 }
 
@@ -291,28 +273,35 @@ impl<T> DList<T> {
         {
             let mut it = self.mut_iter();
             loop {
-                match it.next() {
+                match it.peek_next() {
                     None => break,
-                    Some(x) => if f(x, &elt) { it.insert_before(elt); return }
+                    Some(x) => if f(x, &elt) { break }
                 }
+                it.next();
             }
+            it.insert_next(elt);
         }
-        self.push_back(elt);
     }
 
-    /// Merge, using the function `f`; take `a` if `f(a, b)` is true, else `b`.
+    /// Merge DList `other` into this DList, using the function `f`.
+    /// Iterate the both DList with `a` from self and `b` from `other`, and
+    /// put `a` in the result if `f(a, b)` is true, else `b`.
     ///
     /// O(max(N, M))
     pub fn merge(&mut self, mut other: DList<T>, f: &fn(&T, &T) -> bool) {
         {
             let mut it = self.mut_iter();
             loop {
-                match (it.next(), other.front()) {
-                    (None   , _      ) => break,
-                    (_      , None   ) => return,
-                    (Some(x), Some(y)) => if f(x, y) { loop }
+                let take_a = match (it.peek_next(), other.front()) {
+                    (_   , None) => return,
+                    (None, _   ) => break,
+                    (Some(ref mut x), Some(y)) => f(*x, y),
+                };
+                if take_a {
+                    it.next();
+                } else {
+                    it.insert_next(other.pop_front().unwrap());
                 }
-                it.insert_before(other.pop_front().unwrap());
             }
         }
         self.append(other);
@@ -320,23 +309,32 @@ impl<T> DList<T> {
 
 
     /// Provide a forward iterator
-    pub fn iter<'a>(&'a self) -> ForwardIterator<'a, T> {
-        ForwardIterator{nelem: self.len(), list: self, next: &self.list_head}
+    pub fn iter<'a>(&'a self) -> DListIterator<'a, T> {
+        DListIterator{nelem: self.len(), head: &self.list_head, tail: self.list_tail}
     }
 
     /// Provide a reverse iterator
-    pub fn rev_iter<'a>(&'a self) -> ReverseIterator<'a, T> {
-        ReverseIterator{nelem: self.len(), list: self, next: self.list_tail}
+    pub fn rev_iter<'a>(&'a self) -> InvertIterator<&'a T, DListIterator<'a, T>> {
+        self.iter().invert()
     }
 
     /// Provide a forward iterator with mutable references
-    pub fn mut_iter<'a>(&'a mut self) -> MutForwardIterator<'a, T> {
-        MutForwardIterator{nelem: self.len(), list: self, curs: Rawlink::none()}
+    pub fn mut_iter<'a>(&'a mut self) -> MutDListIterator<'a, T> {
+        let head_raw = match self.list_head {
+            Some(ref mut h) => Rawlink::some(*h),
+            None => Rawlink::none(),
+        };
+        MutDListIterator{
+            nelem: self.len(),
+            head: head_raw,
+            tail: self.list_tail,
+            list: self
+        }
     }
-
     /// Provide a reverse iterator with mutable references
-    pub fn mut_rev_iter<'a>(&'a mut self) -> MutReverseIterator<'a, T> {
-        MutReverseIterator{nelem: self.len(), list: self, next: self.list_tail}
+    pub fn mut_rev_iter<'a>(&'a mut self) -> InvertIterator<&'a mut T,
+                                                MutDListIterator<'a, T>> {
+        self.mut_iter().invert()
     }
 
 
@@ -346,29 +344,32 @@ impl<T> DList<T> {
     }
 
     /// Consume the list into an iterator yielding elements by value, in reverse
-    pub fn consume_rev_iter(self) -> ConsumeRevIterator<T> {
-        ConsumeRevIterator{list: self}
+    pub fn consume_rev_iter(self) -> InvertIterator<T, ConsumeIterator<T>> {
+        self.consume_iter().invert()
     }
 }
 
-/// Insert sorted in ascending order
-///
-/// O(N)
 impl<T: cmp::TotalOrd> DList<T> {
-    fn insert_ordered(&mut self, elt: T) {
+    /// Insert `elt` sorted in ascending order
+    ///
+    /// O(N)
+    pub fn insert_ordered(&mut self, elt: T) {
         self.insert_when(elt, |a, b| a.cmp(b) != cmp::Less);
     }
 }
 
-impl<'self, A> Iterator<&'self A> for ForwardIterator<'self, A> {
+impl<'self, A> Iterator<&'self A> for DListIterator<'self, A> {
     #[inline]
     fn next(&mut self) -> Option<&'self A> {
-        match *self.next {
+        if self.nelem == 0 {
+            return None;
+        }
+        match *self.head {
             None => None,
-            Some(ref next) => {
+            Some(ref head) => {
                 self.nelem -= 1;
-                self.next = &next.next;
-                Some(&next.value)
+                self.head = &head.next;
+                Some(&head.value)
             }
         }
     }
@@ -378,67 +379,37 @@ impl<'self, A> Iterator<&'self A> for ForwardIterator<'self, A> {
     }
 }
 
-// MutForwardIterator is different because it implements ListInsertion,
-// and can modify the list during traversal, used in insert_when and merge.
-impl<'self, A> Iterator<&'self mut A> for MutForwardIterator<'self, A> {
-    #[inline]
-    fn next(&mut self) -> Option<&'self mut A> {
-        match self.curs.resolve() {
-            None => {
-                match self.list.list_head {
-                    None => None,
-                    Some(ref mut head) => {
-                        self.nelem -= 1;
-                        self.curs = Rawlink::some(*head);
-                        Some(&mut head.value)
-                    }
-                }
-            }
-            Some(curs) => {
-                match curs.next {
-                    None => None,
-                    Some(ref mut head) => {
-                        self.nelem -= 1;
-                        self.curs = Rawlink::some(*head);
-                        Some(&mut head.value)
-                    }
-                }
-            }
+impl<'self, A> DoubleEndedIterator<&'self A> for DListIterator<'self, A> {
+    fn next_back(&mut self) -> Option<&'self A> {
+        if self.nelem == 0 {
+            return None;
         }
-    }
-
-    fn size_hint(&self) -> (uint, Option<uint>) {
-        (self.nelem, Some(self.nelem))
-    }
-}
-
-impl<'self, A> Iterator<&'self A> for ReverseIterator<'self, A> {
-    #[inline]
-    fn next(&mut self) -> Option<&'self A> {
-        match self.next.resolve() {
+        match self.tail.resolve() {
             None => None,
             Some(prev) => {
                 self.nelem -= 1;
-                self.next = prev.prev;
+                self.tail = prev.prev;
                 Some(&prev.value)
             }
         }
     }
-
-    fn size_hint(&self) -> (uint, Option<uint>) {
-        (self.nelem, Some(self.nelem))
-    }
 }
 
-impl<'self, A> Iterator<&'self mut A> for MutReverseIterator<'self, A> {
+impl<'self, A> Iterator<&'self mut A> for MutDListIterator<'self, A> {
     #[inline]
     fn next(&mut self) -> Option<&'self mut A> {
-        match self.next.resolve() {
+        if self.nelem == 0 {
+            return None;
+        }
+        match self.head.resolve() {
             None => None,
-            Some(prev) => {
+            Some(next) => {
                 self.nelem -= 1;
-                self.next = prev.prev;
-                Some(&mut prev.value)
+                self.head = match next.next {
+                    Some(ref mut node) => Rawlink::some(&mut **node),
+                    None => Rawlink::none(),
+                };
+                Some(&mut next.value)
             }
         }
     }
@@ -448,19 +419,39 @@ impl<'self, A> Iterator<&'self mut A> for MutReverseIterator<'self, A> {
     }
 }
 
+impl<'self, A> DoubleEndedIterator<&'self mut A> for MutDListIterator<'self, A> {
+    #[inline]
+    fn next_back(&mut self) -> Option<&'self mut A> {
+        if self.nelem == 0 {
+            return None;
+        }
+        match self.tail.resolve() {
+            None => None,
+            Some(prev) => {
+                self.nelem -= 1;
+                self.tail = prev.prev;
+                Some(&mut prev.value)
+            }
+        }
+    }
+}
+
+
 /// Allow mutating the DList while iterating
 pub trait ListInsertion<A> {
-    /// Insert `elt` just previous to the most recently yielded element
-    fn insert_before(&mut self, elt: A);
+    /// Insert `elt` just after to the most recently yielded element
+    fn insert_next(&mut self, elt: A);
 
     /// Provide a reference to the next element, without changing the iterator
     fn peek_next<'a>(&'a mut self) -> Option<&'a mut A>;
 }
 
-impl<'self, A> ListInsertion<A> for MutForwardIterator<'self, A> {
-    fn insert_before(&mut self, elt: A) {
-        match self.curs.resolve() {
-            None => { self.list.push_front(elt); self.next(); }
+impl<'self, A> ListInsertion<A> for MutDListIterator<'self, A> {
+    fn insert_next(&mut self, elt: A) {
+        // Insert an element before `self.head` so that it is between the
+        // previously yielded element and self.head.
+        match self.head.resolve() {
+            None => { self.list.push_back(elt); }
             Some(node) => {
                 let prev_node = match node.prev.resolve() {
                     None => return self.list.push_front(elt),
@@ -476,12 +467,9 @@ impl<'self, A> ListInsertion<A> for MutForwardIterator<'self, A> {
     }
 
     fn peek_next<'a>(&'a mut self) -> Option<&'a mut A> {
-        match self.curs.resolve() {
-            None => self.list.front_mut(),
-            Some(curs) => match curs.next {
-                None => None,
-                Some(ref mut node) => Some(&mut node.value),
-            }
+        match self.head.resolve() {
+            None => None,
+            Some(head) => Some(&mut head.value),
         }
     }
 }
@@ -493,11 +481,8 @@ impl<A> Iterator<A> for ConsumeIterator<A> {
     }
 }
 
-impl<A> Iterator<A> for ConsumeRevIterator<A> {
-    fn next(&mut self) -> Option<A> { self.list.pop_back() }
-    fn size_hint(&self) -> (uint, Option<uint>) {
-        (self.list.length, Some(self.list.length))
-    }
+impl<A> DoubleEndedIterator<A> for ConsumeIterator<A> {
+    fn next_back(&mut self) -> Option<A> { self.list.pop_back() }
 }
 
 impl<A, T: Iterator<A>> FromIterator<A, T> for DList<A> {
@@ -688,6 +673,24 @@ mod tests {
     }
 
     #[test]
+    fn test_iterator_double_end() {
+        let mut n = DList::new();
+        assert_eq!(n.iter().next(), None);
+        n.push_front(4);
+        n.push_front(5);
+        n.push_front(6);
+        let mut it = n.iter();
+        assert_eq!(it.size_hint(), (3, Some(3)));
+        assert_eq!(it.next().unwrap(), &6);
+        assert_eq!(it.size_hint(), (2, Some(2)));
+        assert_eq!(it.next_back().unwrap(), &4);
+        assert_eq!(it.size_hint(), (1, Some(1)));
+        assert_eq!(it.next_back().unwrap(), &5);
+        assert_eq!(it.next_back(), None);
+        assert_eq!(it.next(), None);
+    }
+
+    #[test]
     fn test_rev_iter() {
         let m = generate_test();
         for m.rev_iter().enumerate().advance |(i, elt)| {
@@ -715,10 +718,30 @@ mod tests {
         let mut n = DList::new();
         assert!(n.mut_iter().next().is_none());
         n.push_front(4);
+        n.push_back(5);
         let mut it = n.mut_iter();
-        assert_eq!(it.size_hint(), (1, Some(1)));
+        assert_eq!(it.size_hint(), (2, Some(2)));
+        assert!(it.next().is_some());
         assert!(it.next().is_some());
         assert_eq!(it.size_hint(), (0, Some(0)));
+        assert!(it.next().is_none());
+    }
+
+    #[test]
+    fn test_iterator_mut_double_end() {
+        let mut n = DList::new();
+        assert!(n.mut_iter().next_back().is_none());
+        n.push_front(4);
+        n.push_front(5);
+        n.push_front(6);
+        let mut it = n.mut_iter();
+        assert_eq!(it.size_hint(), (3, Some(3)));
+        assert_eq!(*it.next().unwrap(), 6);
+        assert_eq!(it.size_hint(), (2, Some(2)));
+        assert_eq!(*it.next_back().unwrap(), 4);
+        assert_eq!(it.size_hint(), (1, Some(1)));
+        assert_eq!(*it.next_back().unwrap(), 5);
+        assert!(it.next_back().is_none());
         assert!(it.next().is_none());
     }
 
@@ -728,12 +751,12 @@ mod tests {
         let len = m.len();
         {
             let mut it = m.mut_iter();
-            it.insert_before(-2);
+            it.insert_next(-2);
             loop {
                 match it.next() {
                     None => break,
                     Some(elt) => {
-                        it.insert_before(*elt + 1);
+                        it.insert_next(*elt + 1);
                         match it.peek_next() {
                             Some(x) => assert_eq!(*x, *elt + 2),
                             None => assert_eq!(8, *elt),
@@ -741,12 +764,12 @@ mod tests {
                     }
                 }
             }
-            it.insert_before(0);
-            it.insert_before(1);
+            it.insert_next(0);
+            it.insert_next(1);
         }
         check_links(&m);
         assert_eq!(m.len(), 3 + len * 2);
-        assert_eq!(m.consume_iter().collect::<~[int]>(), ~[-2,1,0,3,2,5,4,7,6,9,0,1,8]);
+        assert_eq!(m.consume_iter().collect::<~[int]>(), ~[-2,0,1,2,3,4,5,6,7,8,9,0,1]);
     }
 
     #[test]
@@ -758,7 +781,7 @@ mod tests {
         assert_eq!(m.len(), len);
         check_links(&m);
         let res = m.consume_iter().collect::<~[int]>();
-        assert_eq!(res, ~[-1, 0, 0, 1, 0, 3, 5, 6, 7, 2, 7, 7, 9]);
+        assert_eq!(res, ~[-1, 0, 0, 0, 1, 3, 5, 6, 7, 2, 7, 7, 9]);
     }
 
     #[test]
@@ -860,7 +883,7 @@ mod tests {
     fn bench_collect_into(b: &mut test::BenchHarness) {
         let v = &[0, ..64];
         do b.iter {
-            let _: DList<int> = v.iter().transform(|&x|x).collect();
+            let _: DList<int> = v.iter().transform(|x| *x).collect();
         }
     }
     #[bench]
@@ -924,7 +947,7 @@ mod tests {
         let v = &[0, ..128];
         let m: DList<int> = v.iter().transform(|&x|x).collect();
         do b.iter {
-            for m.iter().advance |_| {}
+            assert!(m.iter().len_() == 128);
         }
     }
     #[bench]
@@ -932,7 +955,7 @@ mod tests {
         let v = &[0, ..128];
         let mut m: DList<int> = v.iter().transform(|&x|x).collect();
         do b.iter {
-            for m.mut_iter().advance |_| {}
+            assert!(m.mut_iter().len_() == 128);
         }
     }
     #[bench]
@@ -940,7 +963,7 @@ mod tests {
         let v = &[0, ..128];
         let m: DList<int> = v.iter().transform(|&x|x).collect();
         do b.iter {
-            for m.rev_iter().advance |_| {}
+            assert!(m.rev_iter().len_() == 128);
         }
     }
     #[bench]
@@ -948,7 +971,7 @@ mod tests {
         let v = &[0, ..128];
         let mut m: DList<int> = v.iter().transform(|&x|x).collect();
         do b.iter {
-            for m.mut_rev_iter().advance |_| {}
+            assert!(m.mut_rev_iter().len_() == 128);
         }
     }
     #[bench]
