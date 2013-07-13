@@ -1036,6 +1036,17 @@ pub fn expand_crate(parse_sess: @mut parse::ParseSess,
     @f.fold_crate(c)
 }
 
+// HYGIENIC CONTEXT EXTENSION:
+// all of these functions are for walking over
+// ASTs and making some change to the context of every
+// element that has one. a CtxtFn is a trait-ified
+// version of a closure in (SyntaxContext -> SyntaxContext).
+// the ones defined here include:
+// Renamer - add a rename to a context
+// MultiRenamer - add a set of renames to a context
+// Marker - add a mark to a context
+// Repainter - replace a context (maybe Replacer would be a better name?)
+
 // a function in SyntaxContext -> SyntaxContext
 pub trait CtxtFn{
     pub fn f(&self, ast::SyntaxContext) -> ast::SyntaxContext;
