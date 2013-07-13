@@ -230,7 +230,7 @@ pub fn lazily_emit_tydesc_glue(ccx: @mut CrateContext,
                                field: uint,
                                ti: @mut tydesc_info) {
     let _icx = push_ctxt("lazily_emit_tydesc_glue");
-    let llfnty = Type::glue_fn();
+    let llfnty = Type::glue_fn(type_of::type_of(ccx, ti.ty).ptr_to());
 
     if lazily_emit_simplified_tydesc_glue(ccx, field, ti) {
         return;
@@ -323,7 +323,20 @@ pub fn call_tydesc_glue_full(bcx: block,
       }
     };
 
-    let llrawptr = PointerCast(bcx, v, Type::i8p());
+    // When static type info is available, avoid casting parameter unless the
+    // glue is using a simplified type, because the function already has the
+    // right type. Otherwise cast to generic pointer.
+    let llrawptr = if static_ti.is_none() || static_glue_fn.is_none() {
+        PointerCast(bcx, v, Type::i8p())
+    } else {
+        let ty = static_ti.get().ty;
+        let simpl = simplified_glue_type(ccx.tcx, field, ty);
+        if simpl != ty {
+            PointerCast(bcx, v, type_of(ccx, simpl).ptr_to())
+        } else {
+            v
+        }
+    };
 
     let llfn = {
         match static_glue_fn {
@@ -709,13 +722,14 @@ pub fn make_generic_glue_inner(ccx: @mut CrateContext,
     // requirement since in many contexts glue is invoked indirectly and
     // the caller has no idea if it's dealing with something that can be
     // passed by value.
+    //
+    // llfn is expected be declared to take a parameter of the appropriate
+    // type, so we don't need to explicitly cast the function parameter.
 
     let bcx = top_scope_block(fcx, None);
     let lltop = bcx.llbb;
     let rawptr0_arg = fcx.arg_pos(0u);
     let llrawptr0 = unsafe { llvm::LLVMGetParam(llfn, rawptr0_arg as c_uint) };
-    let llty = type_of(ccx, t);
-    let llrawptr0 = PointerCast(bcx, llrawptr0, llty.ptr_to());
     let bcx = helper(bcx, llrawptr0, t);
 
     finish_fn(fcx, lltop, bcx);
