@@ -414,7 +414,6 @@ pub fn expand_item_mac(extsbox: @mut SyntaxEnv,
                     span: span
                 }
             });
-            let fm = fresh_mark();
             // mark before expansion:
             let marked_tts = mark_tts(tts,fm);
             let marked_ctxt = new_mark(fm,ctxt);
@@ -1159,7 +1158,7 @@ mod test {
     use super::*;
     use ast;
     use ast::{Attribute_, AttrOuter, MetaWord, empty_ctxt};
-    use ast_util::{get_sctable, mtwt_resolve, new_ident, new_rename};
+    use ast_util::{get_sctable, mtwt_marksof, mtwt_resolve, new_ident, new_rename};
     use codemap;
     use codemap::spanned;
     use parse;
@@ -1337,31 +1336,40 @@ mod test {
     //
     // The comparisons are done post-mtwt-resolve, so we're comparing renamed
     // names; differences in marks don't matter any more.
-    type renaming_test = (&'static str, ~[~[uint]]);
+    //
+    // oog... I also want tests that check "binding-identifier-=?". That is,
+    // not just "do these have the same name", but "do they have the same
+    // name *and* the same marks"? Understanding this is really pretty painful.
+    // in principle, you might want to control this boolean on a per-varref basis,
+    // but that would make things even harder to understand, and might not be
+    // necessary for thorough testing.
+    type renaming_test = (&'static str, ~[~[uint]], bool);
 
     #[test]
     fn automatic_renaming () {
-        // need some other way to test these...
         let tests : ~[renaming_test] =
             ~[// b & c should get new names throughout, in the expr too:
                 ("fn a() -> int { let b = 13; let c = b; b+c }",
-                 ~[~[0,1],~[2]]),
+                 ~[~[0,1],~[2]], false),
                 // both x's should be renamed (how is this causing a bug?)
                 ("fn main () {let x : int = 13;x;}",
-                 ~[~[0]]),
+                 ~[~[0]], false),
                 // the use of b after the + should be renamed, the other one not:
                 ("macro_rules! f (($x:ident) => (b + $x)) fn a() -> int { let b = 13; f!(b)}",
-                 ~[~[1]]),
+                 ~[~[1]], false),
                 // the b before the plus should not be renamed (requires marks)
                 ("macro_rules! f (($x:ident) => ({let b=9; ($x + b)})) fn a() -> int { f!(b)}",
-                 ~[~[1]]),
+                 ~[~[1]], false),
                 // the marks going in and out of letty should cancel, allowing that $x to
                 // capture the one following the semicolon.
                 // this was an awesome test case, and caught a *lot* of bugs.
                 ("macro_rules! letty(($x:ident) => (let $x = 15;))
                   macro_rules! user(($x:ident) => ({letty!($x); $x}))
                   fn main() -> int {user!(z)}",
-                 ~[~[0]])
+                 ~[~[0]], false),
+                // can't believe I missed this one : a macro def that refers to a local var:
+                ("fn main() {let x = 19; macro_rules! getx(()=>(x)); getx!();}",
+                ~[~[0]], true)
                 // FIXME #6994: the next string exposes the bug referred to in issue 6994, so I'm
                 // commenting it out.
                 // the z flows into and out of two macros (g & f) along one path, and one
@@ -1378,12 +1386,12 @@ mod test {
         }
     }
 
-
+    // run one of the renaming tests
     fn run_renaming_test(t : &renaming_test) {
         let nv = new_name_finder();
         let pv = new_path_finder();
-        let (teststr, bound_connections) = match *t {
-            (ref str,ref conns) => (str.to_managed(), conns.clone())
+        let (teststr, bound_connections, bound_ident_check) = match *t {
+            (ref str,ref conns, bic) => (str.to_managed(), conns.clone(), bic)
         };
         let cr = expand_crate_str(teststr.to_managed());
         let bindings = @mut ~[];
@@ -1394,15 +1402,17 @@ mod test {
         assert_eq!(bindings.len(),bound_connections.len());
         for bound_connections.iter().enumerate().advance |(binding_idx,shouldmatch)| {
             let binding_name = mtwt_resolve(bindings[binding_idx]);
+            let binding_marks = mtwt_marksof(bindings[binding_idx].ctxt,binding_name);
             // shouldmatch can't name varrefs that don't exist:
             assert!((shouldmatch.len() == 0) ||
                     (varrefs.len() > *shouldmatch.iter().max().get()));
             for varrefs.iter().enumerate().advance |(idx,varref)| {
                 if shouldmatch.contains(&idx) {
                     // it should be a path of length 1, and it should
-                    // be free-identifier=? to the given binding
+                    // be free-identifier=? or bound-identifier=? to the given binding
                     assert_eq!(varref.idents.len(),1);
                     let varref_name = mtwt_resolve(varref.idents[0]);
+                    let varref_marks = mtwt_marksof(varref.idents[0].ctxt, binding_name);
                     if (!(varref_name==binding_name)){
                         std::io::println("uh oh, should match but doesn't:");
                         std::io::println(fmt!("varref: %?",varref));
@@ -1414,6 +1424,10 @@ mod test {
                         }
                     }
                     assert_eq!(varref_name,binding_name);
+                    if (bound_ident_check) {
+                        // we need to check the marks, too:
+                        assert_eq!(varref_marks,binding_marks.clone());
+                    }
                 } else {
                     let fail = (varref.idents.len() == 1)
                         && (mtwt_resolve(varref.idents[0]) == binding_name);
@@ -1470,6 +1484,48 @@ mod test {
             if (mtwt_resolve(v.idents[0]) != resolved_binding) {
                 std::io::println("uh oh, ext_cx binding didn't match ext_cx varref:");
                 std::io::println(fmt!("this is varref # %?",idx));
+                std::io::println(fmt!("binding: %?",cxbind));
+                std::io::println(fmt!("resolves to: %?",resolved_binding));
+                std::io::println(fmt!("varref: %?",v.idents[0]));
+                std::io::println(fmt!("resolves to: %?",mtwt_resolve(v.idents[0])));
+                let table = get_sctable();
+                std::io::println("SC table:");
+                for table.table.iter().enumerate().advance |(idx,val)| {
+                    std::io::println(fmt!("%4u : %?",idx,val));
+                }
+            }
+            assert_eq!(mtwt_resolve(v.idents[0]),resolved_binding);
+        };
+    }
+
+    #[test] fn fmt_in_macro_used_inside_module_macro() {
+        let crate_str = @"macro_rules! fmt_wrap(($b:expr)=>(fmt!(\"left: %?\", $b)))
+macro_rules! foo_module (() => (mod generated { fn a() { let xx = 147; fmt_wrap!(xx);}}))
+foo_module!()
+";
+        let cr = expand_crate_str(crate_str);
+        let nv = new_name_finder();
+        let pv = new_path_finder();
+        // find the xx binding
+        let bindings = @mut ~[];
+        visit::visit_crate(cr, (bindings, mk_vt(nv)));
+        let cxbinds : ~[&ast::ident] =
+            bindings.iter().filter(|b|{@"xx" == (ident_to_str(*b))}).collect();
+        let cxbind = match cxbinds {
+            [b] => b,
+            _ => fail!("expected just one binding for ext_cx")
+        };
+        let resolved_binding = mtwt_resolve(*cxbind);
+        // find all the xx varrefs:
+        let varrefs = @mut ~[];
+        visit::visit_crate(cr, (varrefs, mk_vt(pv)));
+        // the xx binding should bind all of the xx varrefs:
+        for varrefs.iter().filter(|p|{ p.idents.len() == 1
+                                          && (@"xx" == (ident_to_str(&p.idents[0])))
+                                     }).enumerate().advance |(idx,v)| {
+            if (mtwt_resolve(v.idents[0]) != resolved_binding) {
+                std::io::println("uh oh, xx binding didn't match xx varref:");
+                std::io::println(fmt!("this is xx varref # %?",idx));
                 std::io::println(fmt!("binding: %?",cxbind));
                 std::io::println(fmt!("resolves to: %?",resolved_binding));
                 std::io::println(fmt!("varref: %?",v.idents[0]));
