@@ -16,6 +16,7 @@ use either::{Either, Left, Right};
 use option::{Option, Some, None};
 use prelude::*;
 use rt::task::Task;
+use to_bytes::IterBytes;
 use unstable::atomics::{AtomicUint, Acquire, SeqCst};
 use unstable::sync::{UnsafeAtomicRcBox, LittleLock};
 use util;
@@ -192,6 +193,17 @@ impl BlockedTask {
             }
         }
     }
+}
+
+// So that KillHandle can be hashed in the taskgroup bookkeeping code.
+impl IterBytes for KillHandle {
+    fn iter_bytes(&self, lsb0: bool, f: &fn(buf: &[u8]) -> bool) -> bool {
+        self.data.iter_bytes(lsb0, f)
+    }
+}
+impl Eq for KillHandle {
+    #[inline] fn eq(&self, other: &KillHandle) -> bool { self.data.eq(&other.data) }
+    #[inline] fn ne(&self, other: &KillHandle) -> bool { self.data.ne(&other.data) }
 }
 
 impl KillHandle {
