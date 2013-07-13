@@ -192,7 +192,6 @@ pub struct CrateCtxt {
     trait_map: resolve::TraitMap,
     method_map: method_map,
     vtable_map: vtable_map,
-    coherence_info: coherence::CoherenceInfo,
     tcx: ty::ctxt
 }
 
@@ -415,7 +414,6 @@ pub fn check_crate(tcx: ty::ctxt,
         trait_map: trait_map,
         method_map: @mut HashMap::new(),
         vtable_map: @mut HashMap::new(),
-        coherence_info: coherence::CoherenceInfo(),
         tcx: tcx
     };
 

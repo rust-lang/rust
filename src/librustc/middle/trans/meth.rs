@@ -162,7 +162,7 @@ pub fn trans_method_callee(bcx: block,
             let self_ty = node_id_type(bcx, this.id);
             // <impl_id> is the ID of the implementation of
             // trait <trait_id> for type <self_ty>
-            let impl_id = ty::get_impl_id(tcx, trait_id, self_ty);
+            let impl_id = ty::bogus_get_impl_id_from_ty(tcx, trait_id, self_ty);
             // Get the supertrait's methods
             let supertrait_method_def_ids = ty::trait_method_def_ids(tcx, trait_id);
             // Make sure to fail with a readable error message if

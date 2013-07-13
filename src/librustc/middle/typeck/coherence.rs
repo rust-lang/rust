@@ -159,23 +159,6 @@ pub fn method_to_MethodInfo(ast_method: @method) -> @MethodInfo {
     }
 }
 
-pub struct CoherenceInfo {
-    // Contains implementations of methods that are inherent to a type.
-    // Methods in these implementations don't need to be exported.
-    inherent_methods: @mut HashMap<def_id, @mut ~[@Impl]>,
-
-    // Contains implementations of methods associated with a trait. For these,
-    // the associated trait must be imported at the call site.
-    extension_methods: @mut HashMap<def_id, @mut ~[@Impl]>,
-}
-
-pub fn CoherenceInfo() -> CoherenceInfo {
-    CoherenceInfo {
-        inherent_methods: @mut HashMap::new(),
-        extension_methods: @mut HashMap::new(),
-    }
-}
-
 pub fn CoherenceChecker(crate_context: @mut CrateCtxt) -> CoherenceChecker {
     CoherenceChecker {
         crate_context: crate_context,
@@ -287,7 +270,7 @@ impl CoherenceChecker {
                 implementation_opt = Some(implementation);
             }
 
-            self.add_trait_method(trait_ref.def_id, implementation_opt.get());
+            self.add_trait_impl(trait_ref.def_id, implementation_opt.get());
         }
 
         // Add the implementation to the mapping from implementation to base
@@ -313,8 +296,7 @@ impl CoherenceChecker {
                         }
                     }
 
-                    self.add_inherent_method(base_type_def_id,
-                                             implementation);
+                    self.add_inherent_impl(base_type_def_id, implementation);
                 }
 
                 self.base_type_def_ids.insert(local_def(item.id),
@@ -418,16 +400,15 @@ impl CoherenceChecker {
         }
     }
 
-    pub fn add_inherent_method(&self,
-                               base_def_id: def_id,
-                               implementation: @Impl) {
+    pub fn add_inherent_impl(&self,
+                             base_def_id: def_id,
+                             implementation: @Impl) {
+        let tcx = self.crate_context.tcx;
         let implementation_list;
-        match self.crate_context.coherence_info.inherent_methods
-                  .find(&base_def_id) {
+        match tcx.inherent_impls.find(&base_def_id) {
             None => {
                 implementation_list = @mut ~[];
-                self.crate_context.coherence_info.inherent_methods
-                    .insert(base_def_id, implementation_list);
+                tcx.inherent_impls.insert(base_def_id, implementation_list);
             }
             Some(&existing_implementation_list) => {
                 implementation_list = existing_implementation_list;
@@ -435,18 +416,17 @@ impl CoherenceChecker {
         }
 
         implementation_list.push(implementation);
-
-        ty::add_base_impl(self.crate_context.tcx, base_def_id, implementation);
     }
 
-    pub fn add_trait_method(&self, trait_id: def_id, implementation: @Impl) {
+    pub fn add_trait_impl(&self,
+                          base_def_id: def_id,
+                          implementation: @Impl) {
+        let tcx = self.crate_context.tcx;
         let implementation_list;
-        match self.crate_context.coherence_info.extension_methods
-                  .find(&trait_id) {
+        match tcx.trait_impls.find(&base_def_id) {
             None => {
                 implementation_list = @mut ~[];
-                self.crate_context.coherence_info.extension_methods
-                    .insert(trait_id, implementation_list);
+                tcx.trait_impls.insert(base_def_id, implementation_list);
             }
             Some(&existing_implementation_list) => {
                 implementation_list = existing_implementation_list;
@@ -457,8 +437,7 @@ impl CoherenceChecker {
     }
 
     pub fn check_implementation_coherence(&self) {
-        let coherence_info = &self.crate_context.coherence_info;
-        for coherence_info.extension_methods.each_key |&trait_id| {
+        for self.crate_context.tcx.trait_impls.each_key |&trait_id| {
             self.check_implementation_coherence_of(trait_id);
         }
     }
@@ -472,8 +451,6 @@ impl CoherenceChecker {
 
             // "We have an impl of trait <trait_def_id> for type <polytype_a>,
             // and that impl is <implementation_a>"
-            self.add_impl_for_trait(trait_def_id, polytype_a.ty,
-                                    implementation_a);
             do self.iter_impls_of_trait(trait_def_id) |b| {
                 let implementation_b = b;
 
@@ -494,32 +471,8 @@ impl CoherenceChecker {
         }
     }
 
-    // Adds an impl of trait trait_t for self type self_t; that impl
-    // is the_impl
-    pub fn add_impl_for_trait(&self,
-                              trait_t: def_id,
-                              self_t: t,
-                              the_impl: @Impl) {
-        debug!("Adding impl %? of %? for %s",
-               the_impl.did, trait_t,
-               ty_to_str(self.crate_context.tcx, self_t));
-        match self.crate_context.tcx.trait_impls.find(&trait_t) {
-            None => {
-                let m = @mut HashMap::new();
-                m.insert(self_t, the_impl);
-                self.crate_context.tcx.trait_impls.insert(trait_t, m);
-            }
-            Some(&m) => {
-                m.insert(self_t, the_impl);
-            }
-        }
-    }
-
     pub fn iter_impls_of_trait(&self, trait_def_id: def_id, f: &fn(@Impl)) {
-        let coherence_info = &self.crate_context.coherence_info;
-        let extension_methods = &*coherence_info.extension_methods;
-
-        match extension_methods.find(&trait_def_id) {
+        match self.crate_context.tcx.trait_impls.find(&trait_def_id) {
             Some(impls) => {
                 for impls.iter().advance |&im| {
                     f(im);
@@ -874,7 +827,7 @@ impl CoherenceChecker {
                 ..*implementation
             };
 
-            self.add_trait_method(trait_ref.def_id, implementation);
+            self.add_trait_impl(trait_ref.def_id, implementation);
         }
 
         // Add the implementation to the mapping from implementation to base
@@ -887,8 +840,8 @@ impl CoherenceChecker {
                 // inherent methods apply to `impl Type` but not
                 // `impl Trait for Type`:
                 if associated_traits.is_none() {
-                    self.add_inherent_method(base_type_def_id,
-                                             implementation);
+                    self.add_inherent_impl(base_type_def_id,
+                                           implementation);
                 }
 
                 self.base_type_def_ids.insert(implementation.did,
@@ -922,12 +875,11 @@ impl CoherenceChecker {
     //
 
     pub fn populate_destructor_table(&self) {
-        let coherence_info = &self.crate_context.coherence_info;
         let tcx = self.crate_context.tcx;
         let drop_trait = match tcx.lang_items.drop_trait() {
             Some(id) => id, None => { return }
         };
-        let impls_opt = coherence_info.extension_methods.find(&drop_trait);
+        let impls_opt = tcx.trait_impls.find(&drop_trait);
 
         let impls;
         match impls_opt {

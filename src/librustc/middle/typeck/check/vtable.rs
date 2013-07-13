@@ -260,7 +260,7 @@ fn lookup_vtable(vcx: &VtableContext,
 
             let mut impls_seen = HashSet::new();
 
-            match vcx.ccx.coherence_info.extension_methods.find(&trait_ref.def_id) {
+            match tcx.trait_impls.find(&trait_ref.def_id) {
                 None => {
                     // Nothing found. Continue.
                 }
