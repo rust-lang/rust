@@ -789,6 +789,11 @@ pub fn resolve_internal(id : ident,
 }
 
 /// Compute the marks associated with a syntax context.
+pub fn mtwt_marksof(ctxt: SyntaxContext, stopname: Name) -> ~[Mrk] {
+    marksof(ctxt, stopname, get_sctable())
+}
+
+// the internal function for computing marks
 // it's not clear to me whether it's better to use a [] mutable
 // vector or a cons-list for this.
 pub fn marksof(ctxt: SyntaxContext, stopname: Name, table: &SCTable) -> ~[Mrk] {
