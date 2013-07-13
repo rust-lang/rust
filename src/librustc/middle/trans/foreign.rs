@@ -164,7 +164,10 @@ fn build_shim_fn_(ccx: @mut CrateContext,
     // follow the normal Rust calling conventions.
     tie_up_header_blocks(fcx, lltop);
 
-    let ret_cx = raw_block(fcx, false, fcx.llreturn);
+    let ret_cx = match fcx.llreturn {
+        Some(llreturn) => raw_block(fcx, false, llreturn),
+        None => bcx
+    };
     RetVoid(ret_cx);
 
     return llshimfn;
@@ -194,7 +197,7 @@ fn build_wrap_fn_(ccx: @mut CrateContext,
     // the C ABI.
     if needs_c_return && !ty::type_is_immediate(ccx.tcx, tys.fn_sig.output) {
         let lloutputtype = type_of::type_of(fcx.ccx, tys.fn_sig.output);
-        fcx.llretptr = Some(alloca(raw_block(fcx, false, fcx.llstaticallocas),
+        fcx.llretptr = Some(alloca(raw_block(fcx, false, fcx.get_llstaticallocas()),
                                    lloutputtype,
                                    ""));
     }
@@ -217,7 +220,10 @@ fn build_wrap_fn_(ccx: @mut CrateContext,
     tie_up_header_blocks(fcx, lltop);
 
     // Then return according to the C ABI.
-    let return_context = raw_block(fcx, false, fcx.llreturn);
+    let return_context = match fcx.llreturn {
+        Some(llreturn) => raw_block(fcx, false, llreturn),
+        None => bcx
+    };
 
     let llfunctiontype = val_ty(llwrapfn);
     let llfunctiontype = llfunctiontype.element_type();
@@ -388,7 +394,6 @@ pub fn trans_foreign_mod(ccx: @mut CrateContext,
                                      tys.ret_def,
                                      llargbundle,
                                      llretval);
-            build_return(bcx);
         }
 
         let lname = link_name(ccx, foreign_item);
@@ -438,8 +443,7 @@ pub fn trans_foreign_mod(ccx: @mut CrateContext,
         if !ty::type_is_nil(ret_ty) && !ty::type_is_bot(ret_ty) {
             Store(bcx, retval, fcx.llretptr.get());
         }
-        build_return(bcx);
-        finish_fn(fcx, lltop);
+        finish_fn(fcx, lltop, bcx);
     }
 
     // FIXME (#2535): this is very shaky and probably gets ABIs wrong all
@@ -467,8 +471,7 @@ pub fn trans_foreign_mod(ccx: @mut CrateContext,
         if !ty::type_is_nil(ret_ty) && !ty::type_is_bot(ret_ty) {
             Store(bcx, retval, fcx.llretptr.get());
         }
-        build_return(bcx);
-        finish_fn(fcx, lltop);
+        finish_fn(fcx, lltop, bcx);
     }
 
     fn build_wrap_fn(ccx: @mut CrateContext,
@@ -534,7 +537,6 @@ pub fn trans_foreign_mod(ccx: @mut CrateContext,
                 let llretptr = load_inbounds(bcx, llargbundle, [0, arg_count]);
                 Store(bcx, Load(bcx, llretptr), retptr);
             }
-            build_return(bcx);
         }
     }
 }
@@ -629,8 +631,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
             }
         }
 
-        build_return(bcx);
-        finish_fn(fcx, lltop);
+        finish_fn(fcx, lltop, bcx);
 
         return;
     }
@@ -1124,8 +1125,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
             ccx.sess.span_bug(item.span, "unknown intrinsic");
         }
     }
-    build_return(bcx);
-    finish_fn(fcx, lltop);
+    finish_fn(fcx, lltop, bcx);
 }
 
 /**
@@ -1257,8 +1257,6 @@ pub fn trans_foreign_fn(ccx: @mut CrateContext,
                 // NB: The return pointer in the Rust ABI function is wired
                 // directly into the return slot in the shim struct.
             }
-
-            build_return(bcx);
         }
 
         let shim_name = link::mangle_internal_name_by_path(
@@ -1314,7 +1312,6 @@ pub fn trans_foreign_fn(ccx: @mut CrateContext,
         fn build_ret(bcx: block, tys: &ShimTypes, llargbundle: ValueRef) {
             let _icx = push_ctxt("foreign::foreign::wrap::build_ret");
             tys.fn_ty.build_wrap_ret(bcx, tys.llsig.llarg_tys, llargbundle);
-            build_return(bcx);
         }
     }
 

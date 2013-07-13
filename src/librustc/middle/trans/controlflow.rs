@@ -67,13 +67,8 @@ pub fn trans_if(bcx: block,
         expr::trans_to_datum(bcx, cond).to_result();
 
     let then_bcx_in = scope_block(bcx, thn.info(), "then");
-    let else_bcx_in = scope_block(bcx, els.info(), "else");
 
     let cond_val = bool_to_i1(bcx, cond_val);
-    CondBr(bcx, cond_val, then_bcx_in.llbb, else_bcx_in.llbb);
-
-    debug!("then_bcx_in=%s, else_bcx_in=%s",
-           then_bcx_in.to_str(), else_bcx_in.to_str());
 
     let then_bcx_out = trans_block(then_bcx_in, thn, dest);
     let then_bcx_out = trans_block_cleanups(then_bcx_out,
@@ -83,9 +78,10 @@ pub fn trans_if(bcx: block,
     // because trans_expr will create another scope block
     // context for the block, but we've already got the
     // 'else' context
-    let else_bcx_out = match els {
+    let (else_bcx_in, next_bcx) = match els {
       Some(elexpr) => {
-        match elexpr.node {
+        let else_bcx_in = scope_block(bcx, els.info(), "else");
+        let else_bcx_out = match elexpr.node {
           ast::expr_if(_, _, _) => {
             let elseif_blk = ast_util::block_from_expr(elexpr);
             trans_block(else_bcx_in, &elseif_blk, dest)
@@ -95,14 +91,25 @@ pub fn trans_if(bcx: block,
           }
           // would be nice to have a constraint on ifs
           _ => bcx.tcx().sess.bug("strange alternative in if")
-        }
-      }
-      _ => else_bcx_in
-    };
-    let else_bcx_out = trans_block_cleanups(else_bcx_out,
-                                            block_cleanups(else_bcx_in));
-    return join_blocks(bcx, [then_bcx_out, else_bcx_out]);
+        };
+        let else_bcx_out = trans_block_cleanups(else_bcx_out,
+                                                block_cleanups(else_bcx_in));
 
+        (else_bcx_in, join_blocks(bcx, [then_bcx_out, else_bcx_out]))
+      }
+      _ => {
+          let next_bcx = sub_block(bcx, "next");
+          Br(then_bcx_out, next_bcx.llbb);
+
+          (next_bcx, next_bcx)
+      }
+    };
+
+    debug!("then_bcx_in=%s, else_bcx_in=%s",
+           then_bcx_in.to_str(), else_bcx_in.to_str());
+
+    CondBr(bcx, cond_val, then_bcx_in.llbb, else_bcx_in.llbb);
+    next_bcx
 }
 
 pub fn join_blocks(parent_bcx: block, in_cxs: &[block]) -> block {
@@ -279,7 +286,7 @@ pub fn trans_break_cont(bcx: block,
                         // This is a return from a loop body block
                         None => {
                             Store(bcx, C_bool(!to_end), bcx.fcx.llretptr.get());
-                            cleanup_and_leave(bcx, None, Some(bcx.fcx.llreturn));
+                            cleanup_and_leave(bcx, None, Some(bcx.fcx.get_llreturn()));
                             Unreachable(bcx);
                             return bcx;
                         }
@@ -328,7 +335,7 @@ pub fn trans_ret(bcx: block, e: Option<@ast::expr>) -> block {
       }
       _ => ()
     }
-    cleanup_and_leave(bcx, None, Some(bcx.fcx.llreturn));
+    cleanup_and_leave(bcx, None, Some(bcx.fcx.get_llreturn()));
     Unreachable(bcx);
     return bcx;
 }
