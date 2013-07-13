@@ -9,8 +9,7 @@
 // except according to those terms.
 
 struct thing(uint);
-impl Ord for thing { //~ ERROR missing method `gt`
-    fn lt(&self, other: &thing) -> bool { **self < **other }
+impl Ord for thing { //~ ERROR missing method `lt`
     fn le(&self, other: &thing) -> bool { **self < **other }
     fn ge(&self, other: &thing) -> bool { **self < **other }
 }
