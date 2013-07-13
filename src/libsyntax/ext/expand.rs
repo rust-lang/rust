@@ -643,6 +643,18 @@ pub fn core_macros() -> @str {
             $(if $pred $body)else+
         );
     )
+
+    macro_rules! print(
+        ($( $arg:expr),+) => ( {
+            print(fmt!($($arg),+));
+        } )
+    )
+
+    macro_rules! println(
+        ($( $arg:expr),+) => ( {
+            println(fmt!($($arg),+));
+        } )
+    )
 }";
 }
 
