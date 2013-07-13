@@ -279,7 +279,7 @@ pub fn trans_break_cont(bcx: block,
                         // This is a return from a loop body block
                         None => {
                             Store(bcx, C_bool(!to_end), bcx.fcx.llretptr.get());
-                            cleanup_and_leave(bcx, None, Some(bcx.fcx.llreturn));
+                            cleanup_and_leave(bcx, None, Some(bcx.fcx.get_llreturn()));
                             Unreachable(bcx);
                             return bcx;
                         }
@@ -328,7 +328,7 @@ pub fn trans_ret(bcx: block, e: Option<@ast::expr>) -> block {
       }
       _ => ()
     }
-    cleanup_and_leave(bcx, None, Some(bcx.fcx.llreturn));
+    cleanup_and_leave(bcx, None, Some(bcx.fcx.get_llreturn()));
     Unreachable(bcx);
     return bcx;
 }
