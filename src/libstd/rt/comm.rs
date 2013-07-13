@@ -682,7 +682,7 @@ impl<T> Clone for SharedPort<T> {
     }
 }
 
-// XXX: Need better name
+// FIXME #7760: Need better name
 type MegaPipe<T> = (SharedPort<T>, SharedChan<T>);
 
 pub fn megapipe<T: Send>() -> MegaPipe<T> {
@@ -1020,9 +1020,8 @@ mod test {
     #[test]
     fn shared_port_stress() {
         do run_in_mt_newsched_task {
-            // XXX: Removing these type annotations causes an ICE
-            let (end_port, end_chan) = stream::<()>();
-            let (port, chan) = stream::<()>();
+            let (end_port, end_chan) = stream();
+            let (port, chan) = stream();
             let end_chan = SharedChan::new(end_chan);
             let port = SharedPort::new(port);
             let total = stress_factor() + 100;
