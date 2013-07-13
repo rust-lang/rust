@@ -24,5 +24,5 @@ use lib::f;
 mod lib;
 
 fn main() {
-    let _ = f();
+    f();
 }

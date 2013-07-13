@@ -15,7 +15,7 @@ use std::os;
 
 pub fn list_installed_packages(f: &fn(&PkgId) -> bool) -> bool  {
     let workspaces = rust_path();
-    for workspaces.iter().advance() |p| {
+    for workspaces.iter().advance |p| {
         let binfiles = os::list_dir(&p.push("bin"));
         for binfiles.iter().advance() |exec| {
             f(&PkgId::new(*exec));
@@ -30,7 +30,7 @@ pub fn list_installed_packages(f: &fn(&PkgId) -> bool) -> bool  {
 
 pub fn package_is_installed(p: &PkgId) -> bool {
     let mut is_installed = false;
-    let _ = do list_installed_packages() |installed| {
+    do list_installed_packages() |installed| {
         if installed == p {
             is_installed = true;
         }
