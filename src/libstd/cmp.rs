@@ -157,19 +157,20 @@ pub fn lexical_ordering(o1: Ordering, o2: Ordering) -> Ordering {
 /**
 * Trait for values that can be compared for a sort-order.
 *
-* Eventually this may be simplified to only require
-* an `le` method, with the others generated from
-* default implementations. However it should remain
-* possible to implement the others separately, for
-* compatibility with floating-point NaN semantics
+* Ord only requires implementation of the `lt` method,
+* with the others generated from default implementations.
+*
+* However it remains possible to implement the others separately,
+* for compatibility with floating-point NaN semantics
 * (cf. IEEE 754-2008 section 5.11).
 */
+#[allow(default_methods)] // NOTE: Remove when allowed in stage0
 #[lang="ord"]
 pub trait Ord {
     fn lt(&self, other: &Self) -> bool;
-    fn le(&self, other: &Self) -> bool;
-    fn ge(&self, other: &Self) -> bool;
-    fn gt(&self, other: &Self) -> bool;
+    fn le(&self, other: &Self) -> bool { !other.lt(self) }
+    fn gt(&self, other: &Self) -> bool {  other.lt(self) }
+    fn ge(&self, other: &Self) -> bool { !self.lt(other) }
 }
 
 /// The equivalence relation. Two values may be equivalent even if they are
