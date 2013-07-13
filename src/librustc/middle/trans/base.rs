@@ -1557,7 +1557,7 @@ pub fn alloca_maybe_zeroed(cx: block, ty: Type, name: &str, zero: bool) -> Value
             return llvm::LLVMGetUndef(ty.to_ref());
         }
     }
-    let initcx = base::raw_block(cx.fcx, false, cx.fcx.llstaticallocas);
+    let initcx = base::raw_block(cx.fcx, false, cx.fcx.get_llstaticallocas());
     let p = Alloca(initcx, ty, name);
     if zero { memzero(initcx, p, ty); }
     p
@@ -1570,21 +1570,18 @@ pub fn arrayalloca(cx: block, ty: Type, v: ValueRef) -> ValueRef {
             return llvm::LLVMGetUndef(ty.to_ref());
         }
     }
-    return ArrayAlloca(base::raw_block(cx.fcx, false, cx.fcx.llstaticallocas), ty, v);
+    return ArrayAlloca(base::raw_block(cx.fcx, false, cx.fcx.get_llstaticallocas()), ty, v);
 }
 
 pub struct BasicBlocks {
     sa: BasicBlockRef,
 }
 
-// Creates the standard set of basic blocks for a function
-pub fn mk_standard_basic_blocks(llfn: ValueRef) -> BasicBlocks {
+pub fn mk_staticallocas_basic_block(llfn: ValueRef) -> BasicBlockRef {
     unsafe {
         let cx = task_llcx();
-        BasicBlocks {
-            sa: str::as_c_str("static_allocas",
-                           |buf| llvm::LLVMAppendBasicBlockInContext(cx, llfn, buf)),
-        }
+        str::as_c_str("static_allocas",
+                      |buf| llvm::LLVMAppendBasicBlockInContext(cx, llfn, buf))
     }
 }
 
@@ -1604,7 +1601,7 @@ pub fn make_return_pointer(fcx: fn_ctxt, output_type: ty::t) -> ValueRef {
             llvm::LLVMGetParam(fcx.llfn, 0)
         } else {
             let lloutputtype = type_of::type_of(fcx.ccx, output_type);
-            alloca(raw_block(fcx, false, fcx.llstaticallocas), lloutputtype,
+            alloca(raw_block(fcx, false, fcx.get_llstaticallocas()), lloutputtype,
                    "__make_return_pointer")
         }
     }
@@ -1632,8 +1629,6 @@ pub fn new_fn_ctxt_w_id(ccx: @mut CrateContext,
            id,
            param_substs.repr(ccx.tcx));
 
-    let llbbs = mk_standard_basic_blocks(llfndecl);
-
     let substd_output_type = match param_substs {
         None => output_type,
         Some(substs) => {
@@ -1647,7 +1642,7 @@ pub fn new_fn_ctxt_w_id(ccx: @mut CrateContext,
               llvm::LLVMGetUndef(Type::i8p().to_ref())
           },
           llretptr: None,
-          llstaticallocas: llbbs.sa,
+          llstaticallocas: None,
           llloadenv: None,
           llreturn: None,
           llself: None,
@@ -1821,14 +1816,24 @@ pub fn build_return_block(fcx: fn_ctxt, ret_cx: block) {
 
 pub fn tie_up_header_blocks(fcx: fn_ctxt, lltop: BasicBlockRef) {
     let _icx = push_ctxt("tie_up_header_blocks");
-    match fcx.llloadenv {
+    let llnext = match fcx.llloadenv {
         Some(ll) => {
-            Br(raw_block(fcx, false, fcx.llstaticallocas), ll);
+            unsafe {
+                llvm::LLVMMoveBasicBlockBefore(ll, lltop);
+            }
             Br(raw_block(fcx, false, ll), lltop);
+            ll
         }
-        None => {
-            Br(raw_block(fcx, false, fcx.llstaticallocas), lltop);
+        None => lltop
+    };
+    match fcx.llstaticallocas {
+        Some(ll) => {
+            unsafe {
+                llvm::LLVMMoveBasicBlockBefore(ll, llnext);
+            }
+            Br(raw_block(fcx, false, ll), llnext);
         }
+        None => ()
     }
 }
 

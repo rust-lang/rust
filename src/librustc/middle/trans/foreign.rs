@@ -197,7 +197,7 @@ fn build_wrap_fn_(ccx: @mut CrateContext,
     // the C ABI.
     if needs_c_return && !ty::type_is_immediate(ccx.tcx, tys.fn_sig.output) {
         let lloutputtype = type_of::type_of(fcx.ccx, tys.fn_sig.output);
-        fcx.llretptr = Some(alloca(raw_block(fcx, false, fcx.llstaticallocas),
+        fcx.llretptr = Some(alloca(raw_block(fcx, false, fcx.get_llstaticallocas()),
                                    lloutputtype,
                                    ""));
     }
