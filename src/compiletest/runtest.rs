@@ -852,7 +852,7 @@ fn make_o_name(config: &config, testfile: &Path) -> Path {
 
 fn append_suffix_to_stem(p: &Path, suffix: &str) -> Path {
     if suffix.len() == 0 {
-        copy *p
+        (*p).clone()
     } else {
         let stem = p.filestem().get();
         p.with_filestem(stem + "-" + suffix)

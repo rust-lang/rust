@@ -45,6 +45,8 @@ A BigDigit is half the size of machine word size.
 #[cfg(target_arch = "x86_64")]
 pub type BigDigit = u32;
 
+pub static ZERO_BIG_DIGIT: BigDigit = 0;
+
 pub mod BigDigit {
     use bigint::BigDigit;
 
@@ -614,7 +616,8 @@ impl BigUint {
     priv fn shl_unit(&self, n_unit: uint) -> BigUint {
         if n_unit == 0 || self.is_zero() { return (*self).clone(); }
 
-        return BigUint::new(vec::from_elem(n_unit, 0u32) + self.data);
+        return BigUint::new(vec::from_elem(n_unit, ZERO_BIG_DIGIT)
+                            + self.data);
     }
 
 

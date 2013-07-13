@@ -3468,7 +3468,7 @@ mod tests {
         assert_eq!(values, [2, 3, 5, 6, 7]);
     }
 
-    #[deriving(Eq)]
+    #[deriving(Clone, Eq)]
     struct Foo;
 
     #[test]
