@@ -32,3 +32,7 @@ condition! {
 condition! {
     bad_pkg_id: (super::Path, ~str) -> super::PkgId;
 }
+
+condition! {
+    no_rust_path: (~str) -> super::Path;
+}
