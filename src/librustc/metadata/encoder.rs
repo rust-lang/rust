@@ -396,7 +396,7 @@ fn encode_reexported_static_base_methods(ecx: &EncodeContext,
                                          ebml_w: &mut writer::Encoder,
                                          exp: &middle::resolve::Export2)
                                          -> bool {
-    match ecx.tcx.base_impls.find(&exp.def_id) {
+    match ecx.tcx.inherent_impls.find(&exp.def_id) {
         Some(implementations) => {
             for implementations.iter().advance |&base_impl| {
                 for base_impl.methods.iter().advance |&m| {
