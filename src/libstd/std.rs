@@ -222,6 +222,7 @@ mod std {
     pub use condition;
     pub use option;
     pub use kinds;
+    pub use local_data;
     pub use sys;
     pub use pipes;
     pub use unstable;

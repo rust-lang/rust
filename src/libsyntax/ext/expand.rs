@@ -580,7 +580,9 @@ pub fn core_macros() -> @str {
 
             pub mod $c {
                 #[allow(non_uppercase_statics)];
-                static key: &'static [@::std::condition::Handler<$in, $out>] = &[];
+                static key: ::std::local_data::Key<
+                    @::std::condition::Handler<$in, $out>> =
+                    &::std::local_data::Key;
 
                 pub static cond :
                     ::std::condition::Condition<$in,$out> =
@@ -596,7 +598,9 @@ pub fn core_macros() -> @str {
             // FIXME (#6009): remove mod's `pub` below once variant above lands.
             pub mod $c {
                 #[allow(non_uppercase_statics)];
-                static key: &'static [@::std::condition::Handler<$in, $out>] = &[];
+                static key: ::std::local_data::Key<
+                    @::std::condition::Handler<$in, $out>> =
+                    &::std::local_data::Key;
 
                 pub static cond :
                     ::std::condition::Condition<$in,$out> =

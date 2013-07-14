@@ -12,6 +12,7 @@
 
 use std::local_data;
 
-static key: local_data::Key<@&int> = &[]; //~ ERROR only 'static is allowed
+static key: local_data::Key<@&int> = &local_data::Key;
+//~^ ERROR only 'static is allowed
 
 fn main() {}

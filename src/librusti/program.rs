@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::cast;
 use std::hashmap::HashMap;
 use std::local_data;
-use std::vec;
 
 use syntax::ast;
 use syntax::parse::token;
@@ -57,7 +57,7 @@ struct LocalVariable {
 }
 
 type LocalCache = @mut HashMap<~str, @~[u8]>;
-static tls_key: local_data::Key<LocalCache> = &[];
+static tls_key: local_data::Key<LocalCache> = &local_data::Key;
 
 impl Program {
     pub fn new() -> Program {
@@ -130,16 +130,14 @@ impl Program {
             fn main() {
         ");
 
-        let key: *LocalCache = vec::raw::to_ptr(tls_key);
+        let key: uint= unsafe { cast::transmute(tls_key) };
         // First, get a handle to the tls map which stores all the local
         // variables. This works by totally legitimately using the 'code'
         // pointer of the 'tls_key' function as a uint, and then casting it back
         // up to a function
         code.push_str(fmt!("
             let __tls_map: @mut ::std::hashmap::HashMap<~str, @~[u8]> = unsafe {
-                let key = ::std::vec::raw::SliceRepr{ data: %? as *u8,
-                                                      len: 0 };
-                let key = ::std::cast::transmute(key);
+                let key = ::std::cast::transmute(%u);
                 ::std::local_data::get(key, |k| k.map(|&x| *x)).unwrap()
             };\n", key as uint));
 
