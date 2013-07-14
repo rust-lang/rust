@@ -13,7 +13,8 @@ use ast::{Local, Ident, mac_invoc_tt};
 use ast::{item_mac, Mrk, Stmt_, StmtDecl, StmtMac, StmtExpr, StmtSemi};
 use ast::{token_tree};
 use ast;
-use ast_util::{new_rename, new_mark};
+use ast_util::{mtwt_outer_mark, new_rename, new_mark};
+use ast_util;
 use attr;
 use attr::AttrMetaMethods;
 use codemap;
@@ -1507,7 +1508,10 @@ pub fn renames_to_fold(renames : @mut ~[(ast::Ident,ast::Name)]) -> @AstFoldFns 
 }
 
 // just a convenience:
-pub fn new_mark_folder(m : Mrk) -> @AstFoldFns { fun_to_ctxt_folder(@Marker{mark:m}) }
+pub fn new_mark_folder(m : Mrk) -> @AstFoldFns {
+    fun_to_ctxt_folder(@Marker{mark:m})
+}
+
 pub fn new_rename_folder(from : ast::Ident, to : ast::Name) -> @AstFoldFns {
     fun_to_ctxt_folder(@Renamer{from:from,to:to})
 }
@@ -1538,6 +1542,16 @@ pub fn replace_ctxts(expr : @ast::Expr, ctxt : SyntaxContext) -> @ast::Expr {
     fun_to_ctxt_folder(@Repainter{ctxt:ctxt}).fold_expr(expr)
 }
 
+// take the mark from the given ctxt (that has a mark at the outside),
+// and apply it to everything in the token trees, thereby cancelling
+// that mark.
+pub fn mtwt_cancel_outer_mark(tts: &[ast::token_tree], ctxt: ast::SyntaxContext)
+    -> ~[ast::token_tree] {
+    let outer_mark = mtwt_outer_mark(ctxt);
+    mark_tts(tts,outer_mark)
+}
+
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -1546,13 +1560,15 @@ mod test {
     use ast_util::{get_sctable, mtwt_marksof, mtwt_resolve, new_rename};
     use codemap;
     use codemap::Spanned;
+    use fold;
     use parse;
-    use parse::token::{gensym, intern, get_ident_interner, ident_to_str};
+    use parse::token::{fresh_mark, gensym, intern, get_ident_interner, ident_to_str};
+    use parse::token;
     use print::pprust;
     use std;
     use std::vec;
     use util::parser_testing::{string_to_crate, string_to_crate_and_sess, string_to_item};
-    use util::parser_testing::{string_to_pat, strs_to_idents};
+    use util::parser_testing::{string_to_pat, string_to_tts, strs_to_idents};
     use visit;
 
     // make sure that fail! is present
@@ -1648,6 +1664,28 @@ mod test {
                 },
                 is_sugared_doc: false,
             }
+        }
+    }
+
+    #[test] fn cancel_outer_mark_test(){
+        let invalid_name = token::special_idents::invalid.name;
+        let ident_str = @"x";
+        let tts = string_to_tts(ident_str);
+        let fm = fresh_mark();
+        let marked_once = fold::fold_tts(tts,new_mark_folder(fm) as @fold::ast_fold);
+        assert_eq!(marked_once.len(),1);
+        let marked_once_ctxt =
+            match marked_once[0] {
+                ast::tt_tok(_,token::IDENT(id,_)) => id.ctxt,
+                _ => fail!(fmt!("unexpected shape for marked tts: %?",marked_once[0]))
+            };
+        assert_eq!(mtwt_marksof(marked_once_ctxt,invalid_name),~[fm]);
+        let remarked = mtwt_cancel_outer_mark(marked_once,marked_once_ctxt);
+        assert_eq!(remarked.len(),1);
+        match remarked[0] {
+            ast::tt_tok(_,token::IDENT(id,_)) =>
+            assert_eq!(mtwt_marksof(id.ctxt,invalid_name),~[]),
+            _ => fail!(fmt!("unexpected shape for marked tts: %?",remarked[0]))
         }
     }
 
