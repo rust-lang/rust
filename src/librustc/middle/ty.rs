@@ -3621,25 +3621,29 @@ pub fn trait_method_def_ids(cx: ctxt, id: ast::def_id) -> @~[def_id] {
 }
 
 pub fn impl_trait_ref(cx: ctxt, id: ast::def_id) -> Option<@TraitRef> {
-    *do cx.impl_trait_cache.find_or_insert_with(id) |_| {
-        if id.crate == ast::local_crate {
-            debug!("(impl_trait_ref) searching for trait impl %?", id);
-            match cx.items.find(&id.node) {
-                Some(&ast_map::node_item(@ast::item {
-                                         node: ast::item_impl(_, ref opt_trait, _, _),
-                                         _},
-                                         _)) => {
-                    match opt_trait {
-                        &Some(ref t) => Some(ty::node_id_to_trait_ref(cx, t.ref_id)),
-                        &None => None
-                    }
-                }
-                _ => None
-            }
-        } else {
-            csearch::get_impl_trait(cx, id)
-        }
+    match cx.impl_trait_cache.find(&id) {
+        Some(&ret) => { return ret; }
+        None => {}
     }
+    let ret = if id.crate == ast::local_crate {
+        debug!("(impl_trait_ref) searching for trait impl %?", id);
+        match cx.items.find(&id.node) {
+            Some(&ast_map::node_item(@ast::item {
+                                     node: ast::item_impl(_, ref opt_trait, _, _),
+                                     _},
+                                     _)) => {
+                match opt_trait {
+                    &Some(ref t) => Some(ty::node_id_to_trait_ref(cx, t.ref_id)),
+                    &None => None
+                }
+            }
+            _ => None
+        }
+    } else {
+        csearch::get_impl_trait(cx, id)
+    };
+    cx.impl_trait_cache.insert(id, ret);
+    return ret;
 }
 
 pub fn ty_to_def_id(ty: t) -> Option<ast::def_id> {

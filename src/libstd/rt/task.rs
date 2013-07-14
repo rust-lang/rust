@@ -348,14 +348,12 @@ mod test {
     fn tls() {
         use local_data;
         do run_in_newsched_task() {
-            unsafe {
-                fn key(_x: @~str) { }
-                local_data::set(key, @~"data");
-                assert!(*local_data::get(key, |k| k.map(|&k| *k)).get() == ~"data");
-                fn key2(_x: @~str) { }
-                local_data::set(key2, @~"data");
-                assert!(*local_data::get(key2, |k| k.map(|&k| *k)).get() == ~"data");
-            }
+            static key: local_data::Key<@~str> = &local_data::Key;
+            local_data::set(key, @~"data");
+            assert!(*local_data::get(key, |k| k.map(|&k| *k)).get() == ~"data");
+            static key2: local_data::Key<@~str> = &local_data::Key;
+            local_data::set(key2, @~"data");
+            assert!(*local_data::get(key2, |k| k.map(|&k| *k)).get() == ~"data");
         }
     }
 

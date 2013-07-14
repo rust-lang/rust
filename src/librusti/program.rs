@@ -11,7 +11,6 @@
 use std::cast;
 use std::hashmap::HashMap;
 use std::local_data;
-use std::sys;
 
 use syntax::ast;
 use syntax::parse::token;
@@ -58,7 +57,7 @@ struct LocalVariable {
 }
 
 type LocalCache = @mut HashMap<~str, @~[u8]>;
-fn tls_key(_k: LocalCache) {}
+static tls_key: local_data::Key<LocalCache> = &local_data::Key;
 
 impl Program {
     pub fn new() -> Program {
@@ -131,21 +130,16 @@ impl Program {
             fn main() {
         ");
 
-        let key: sys::Closure = unsafe {
-            let tls_key: &'static fn(LocalCache) = tls_key;
-            cast::transmute(tls_key)
-        };
+        let key: uint= unsafe { cast::transmute(tls_key) };
         // First, get a handle to the tls map which stores all the local
         // variables. This works by totally legitimately using the 'code'
         // pointer of the 'tls_key' function as a uint, and then casting it back
         // up to a function
         code.push_str(fmt!("
             let __tls_map: @mut ::std::hashmap::HashMap<~str, @~[u8]> = unsafe {
-                let key = ::std::sys::Closure{ code: %? as *(),
-                                               env: ::std::ptr::null() };
-                let key = ::std::cast::transmute(key);
+                let key = ::std::cast::transmute(%u);
                 ::std::local_data::get(key, |k| k.map(|&x| *x)).unwrap()
-            };\n", key.code as uint));
+            };\n", key as uint));
 
         // Using this __tls_map handle, deserialize each variable binding that
         // we know about
@@ -226,18 +220,14 @@ impl Program {
         for self.local_vars.iter().advance |(name, value)| {
             map.insert(copy *name, @copy value.data);
         }
-        unsafe {
-            local_data::set(tls_key, map);
-        }
+        local_data::set(tls_key, map);
     }
 
     /// Once the program has finished running, this function will consume the
     /// task-local cache of local variables. After the program finishes running,
     /// it updates this cache with the new values of each local variable.
     pub fn consume_cache(&mut self) {
-        let map = unsafe {
-            local_data::pop(tls_key).expect("tls is empty")
-        };
+        let map = local_data::pop(tls_key).expect("tls is empty");
         do map.consume |name, value| {
             match self.local_vars.find_mut(&name) {
                 Some(v) => { v.data = copy *value; }
