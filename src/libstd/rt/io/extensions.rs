@@ -827,48 +827,49 @@ mod test {
         assert!(buf == ~[10, 11]);
     }
 
-    // XXX: Some problem with resolve here
-    /*#[test]
-    fn test_read_write_le() {
-        let uints = [0, 1, 2, 42, 10_123, 100_123_456, u64::max_value];
+
+    #[test]
+    fn test_read_write_le_mem() {
+        let uints = [0, 1, 2, 42, 10_123, 100_123_456, ::u64::max_value];
 
         let mut writer = MemWriter::new();
-        for uints.each |i| {
-            writer.write_le_u64(*i);
+        for uints.iter().advance() |i| {
+            writer.write_le_u64_(*i);
         }
 
         let mut reader = MemReader::new(writer.inner());
-        for uints.each |i| {
+        for uints.iter().advance() |i| {
             assert!(reader.read_le_u64() == *i);
         }
     }
 
+
     #[test]
     fn test_read_write_be() {
-        let uints = [0, 1, 2, 42, 10_123, 100_123_456, u64::max_value];
+        let uints = [0, 1, 2, 42, 10_123, 100_123_456, ::u64::max_value];
 
         let mut writer = MemWriter::new();
-        for uints.each |i| {
-            writer.write_be_u64(*i);
+        for uints.iter().advance() |i| {
+            writer.write_be_u64_(*i);
         }
 
         let mut reader = MemReader::new(writer.inner());
-        for uints.each |i| {
+        for uints.iter().advance() |i| {
             assert!(reader.read_be_u64() == *i);
         }
     }
 
     #[test]
     fn test_read_be_int_n() {
-        let ints = [i32::min_value, -123456, -42, -5, 0, 1, i32::max_value];
+        let ints = [::i32::min_value, -123456, -42, -5, 0, 1, ::i32::max_value];
 
         let mut writer = MemWriter::new();
-        for ints.each |i| {
+        for ints.iter().advance() |i| {
             writer.write_be_i32(*i);
         }
 
         let mut reader = MemReader::new(writer.inner());
-        for ints.each |i| {
+        for ints.iter().advance() |i| {
             // this tests that the sign extension is working
             // (comparing the values as i32 would not test this)
             assert!(reader.read_be_int_n(4) == *i as i64);
@@ -899,6 +900,6 @@ mod test {
         let mut reader = MemReader::new(writer.inner());
         assert!(reader.read_be_f32() == 8.1250);
         assert!(reader.read_le_f32() == 8.1250);
-    }*/
+    }
 
 }
