@@ -182,7 +182,7 @@ impl<A:ToStr> ToStr for @[A] {
 mod tests {
     use hashmap::HashMap;
     use hashmap::HashSet;
-    use container::{Set, Map};
+    use container::{Set, Map, MutableSet, MutableMap};
     #[test]
     fn test_simple_types() {
         assert_eq!(1i.to_str(), ~"1");
