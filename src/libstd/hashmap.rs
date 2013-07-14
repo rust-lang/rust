@@ -18,7 +18,7 @@
 use container::{Container, Mutable, Map, Set};
 use cmp::{Eq, Equiv};
 use hash::Hash;
-use iterator::{Iterator, IteratorUtil};
+use iterator::{Iterator, IteratorUtil, FromIterator};
 use num;
 use option::{None, Option, Some};
 use rand::RngUtil;
@@ -610,6 +610,18 @@ impl<'self, K> Iterator<&'self K> for HashSetIterator<'self, K> {
     }
 }
 
+impl<K: Eq + Hash, V, T: Iterator<(K, V)>> FromIterator<(K, V), T> for HashMap<K, V> {
+    pub fn from_iterator(iter: &mut T) -> HashMap<K, V> {
+        let (lower, _) = iter.size_hint();
+        let mut map = HashMap::with_capacity(lower);
+
+        for iter.advance |(k, v)| {
+            map.insert(k, v);
+        }
+
+        map
+    }
+}        
 
 /// An implementation of a hash set using the underlying representation of a
 /// HashMap where the value is (). As with the `HashMap` type, a `HashSet`
@@ -934,6 +946,17 @@ mod test_map {
         assert_eq!(m.find_equiv(&("baz")), Some(&baz));
 
         assert_eq!(m.find_equiv(&("qux")), None);
+    }
+
+    #[test]
+    fn test_from_iter() {
+        let xs = ~[(1, 1), (2, 2), (3, 3), (4, 4), (5, 5), (6, 6)];
+        
+        let map: HashMap<int, int> = xs.iter().transform(|&x| x).collect();
+
+        for xs.iter().advance |&(k, v)| {
+            assert_eq!(map.find(&k), Some(&v));
+        }
     }
 }
 
