@@ -19,4 +19,10 @@ The test runner should check that, after `rustpkg install install-paths`
    * install-paths/build/install_pathsbench exists and is an executable
 */
 
-fn main() {}
+use lib::f;
+
+mod lib;
+
+fn main() {
+    f();
+}
