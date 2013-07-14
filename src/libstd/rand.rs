@@ -854,7 +854,7 @@ pub fn seed() -> ~[u8] {
 #[cfg(stage0)]
 fn tls_rng_state(_v: @@mut IsaacRng) {}
 #[cfg(not(stage0))]
-static tls_rng_state: local_data::Key<@@mut IsaacRng> = &[];
+static tls_rng_state: local_data::Key<@@mut IsaacRng> = &local_data::Key;
 
 /**
  * Gives back a lazily initialized task-local random number generator,

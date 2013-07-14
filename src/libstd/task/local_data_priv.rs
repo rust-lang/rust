@@ -17,7 +17,6 @@ use prelude::*;
 use ptr;
 use task::rt;
 use util;
-use vec;
 
 use super::rt::rust_task;
 use rt::task::{Task, LocalStorage};
@@ -143,7 +142,7 @@ unsafe fn get_local_map(handle: Handle) -> &mut TaskLocalMap {
 }
 
 fn key_to_key_value<T: 'static>(key: local_data::Key<T>) -> *libc::c_void {
-    return vec::raw::to_ptr(key) as *libc::c_void;
+    unsafe { cast::transmute(key) }
 }
 
 pub unsafe fn local_pop<T: 'static>(handle: Handle,

@@ -13,18 +13,19 @@
 Task local data management
 
 Allows storing arbitrary types inside task-local-storage (TLS), to be accessed
-anywhere within a task, keyed by a global slice of the appropriate type.
-Useful for dynamic variables, singletons, and interfacing with foreign code
-with bad callback interfaces.
+anywhere within a task, keyed by a global pointer parameterized over the type of
+the TLS slot.  Useful for dynamic variables, singletons, and interfacing with
+foreign code with bad callback interfaces.
 
-To use, declare a static slice of the type you wish to store. The initialization
-should be `&[]`. This is then the key to what you wish to store.
+To use, declare a static variable of the type you wish to store. The
+initialization should be `&local_data::Key`. This is then the key to what you
+wish to store.
 
 ~~~{.rust}
 use std::local_data;
 
-static key_int: local_data::Key<int> = &[];
-static key_vector: local_data::Key<~[int]> = &[];
+static key_int: local_data::Key<int> = &local_data::Key;
+static key_vector: local_data::Key<~[int]> = &local_data::Key;
 
 local_data::set(key_int, 3);
 local_data::get(key_int, |opt| assert_eq!(opt, Some(&3)));
@@ -45,23 +46,22 @@ use task::local_data_priv::{local_get, local_pop, local_set, Handle};
 #[cfg(test)] use task;
 
 /**
- * Indexes a task-local data slot. The function's code pointer is used for
- * comparison. Recommended use is to write an empty function for each desired
- * task-local data slot (and use class destructors, not code inside the
- * function, if specific teardown is needed). DO NOT use multiple
- * instantiations of a single polymorphic function to index data of different
- * types; arbitrary type coercion is possible this way.
+ * Indexes a task-local data slot. This pointer is used for comparison to
+ * differentiate keys from one another. The actual type `T` is not used anywhere
+ * as a member of this type, except that it is parameterized with it to define
+ * the type of each key's value.
  *
- * One other exception is that this global state can be used in a destructor
- * context to create a circular @-box reference, which will crash during task
- * failure (see issue #3039).
- *
- * These two cases aside, the interface is safe.
+ * The value of each Key is of the singleton enum KeyValue. These also have the
+ * same name as `Key` and their purpose is to take up space in the programs data
+ * sections to ensure that each value of the `Key` type points to a unique
+ * location.
  */
 #[cfg(not(stage0))]
-pub type Key<T> = &'static [T];
+pub type Key<T> = &'static KeyValue<T>;
 #[cfg(stage0)]
 pub type Key<'self,T> = &'self fn:Copy(v: T);
+
+pub enum KeyValue<T> { Key }
 
 /**
  * Remove a task-local data value from the table, returning the
@@ -136,7 +136,7 @@ pub fn modify<T: 'static>(key: Key<T>, f: &fn(Option<T>) -> Option<T>) {
 
 #[test]
 fn test_tls_multitask() {
-    static my_key: Key<@~str> = &[];
+    static my_key: Key<@~str> = &Key;
     set(my_key, @~"parent data");
     do task::spawn {
         // TLS shouldn't carry over.
@@ -154,7 +154,7 @@ fn test_tls_multitask() {
 
 #[test]
 fn test_tls_overwrite() {
-    static my_key: Key<@~str> = &[];
+    static my_key: Key<@~str> = &Key;
     set(my_key, @~"first data");
     set(my_key, @~"next data"); // Shouldn't leak.
     assert!(*(get(my_key, |k| k.map(|&k| *k)).get()) == ~"next data");
@@ -162,7 +162,7 @@ fn test_tls_overwrite() {
 
 #[test]
 fn test_tls_pop() {
-    static my_key: Key<@~str> = &[];
+    static my_key: Key<@~str> = &Key;
     set(my_key, @~"weasel");
     assert!(*(pop(my_key).get()) == ~"weasel");
     // Pop must remove the data from the map.
@@ -171,7 +171,7 @@ fn test_tls_pop() {
 
 #[test]
 fn test_tls_modify() {
-    static my_key: Key<@~str> = &[];
+    static my_key: Key<@~str> = &Key;
     modify(my_key, |data| {
         match data {
             Some(@ref val) => fail!("unwelcome value: %s", *val),
@@ -196,7 +196,7 @@ fn test_tls_crust_automorestack_memorial_bug() {
     // to get recorded as something within a rust stack segment. Then a
     // subsequent upcall (esp. for logging, think vsnprintf) would run on
     // a stack smaller than 1 MB.
-    static my_key: Key<@~str> = &[];
+    static my_key: Key<@~str> = &Key;
     do task::spawn {
         set(my_key, @~"hax");
     }
@@ -204,9 +204,9 @@ fn test_tls_crust_automorestack_memorial_bug() {
 
 #[test]
 fn test_tls_multiple_types() {
-    static str_key: Key<@~str> = &[];
-    static box_key: Key<@@()> = &[];
-    static int_key: Key<@int> = &[];
+    static str_key: Key<@~str> = &Key;
+    static box_key: Key<@@()> = &Key;
+    static int_key: Key<@int> = &Key;
     do task::spawn {
         set(str_key, @~"string data");
         set(box_key, @@());
@@ -216,9 +216,9 @@ fn test_tls_multiple_types() {
 
 #[test]
 fn test_tls_overwrite_multiple_types() {
-    static str_key: Key<@~str> = &[];
-    static box_key: Key<@@()> = &[];
-    static int_key: Key<@int> = &[];
+    static str_key: Key<@~str> = &Key;
+    static box_key: Key<@@()> = &Key;
+    static int_key: Key<@int> = &Key;
     do task::spawn {
         set(str_key, @~"string data");
         set(int_key, @42);
@@ -233,9 +233,9 @@ fn test_tls_overwrite_multiple_types() {
 #[should_fail]
 #[ignore(cfg(windows))]
 fn test_tls_cleanup_on_failure() {
-    static str_key: Key<@~str> = &[];
-    static box_key: Key<@@()> = &[];
-    static int_key: Key<@int> = &[];
+    static str_key: Key<@~str> = &Key;
+    static box_key: Key<@@()> = &Key;
+    static int_key: Key<@int> = &Key;
     set(str_key, @~"parent data");
     set(box_key, @@());
     do task::spawn {
@@ -252,7 +252,7 @@ fn test_tls_cleanup_on_failure() {
 
 #[test]
 fn test_static_pointer() {
-    static key: Key<@&'static int> = &[];
+    static key: Key<@&'static int> = &Key;
     static VALUE: int = 0;
     let v: @&'static int = @&VALUE;
     set(key, v);
@@ -260,17 +260,17 @@ fn test_static_pointer() {
 
 #[test]
 fn test_owned() {
-    static key: Key<~int> = &[];
+    static key: Key<~int> = &Key;
     set(key, ~1);
 }
 
 #[test]
 fn test_same_key_type() {
-    static key1: Key<int> = &[];
-    static key2: Key<int> = &[];
-    static key3: Key<int> = &[];
-    static key4: Key<int> = &[];
-    static key5: Key<int> = &[];
+    static key1: Key<int> = &Key;
+    static key2: Key<int> = &Key;
+    static key3: Key<int> = &Key;
+    static key4: Key<int> = &Key;
+    static key5: Key<int> = &Key;
     set(key1, 1);
     set(key2, 2);
     set(key3, 3);

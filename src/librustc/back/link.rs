@@ -105,6 +105,7 @@ pub mod jit {
     use metadata::cstore;
 
     use std::cast;
+    #[cfg(not(stage0))]
     use std::local_data;
     use std::unstable::intrinsics;
 
@@ -202,18 +203,19 @@ pub mod jit {
 
     // The stage1 compiler won't work, but that doesn't really matter. TLS
     // changed only very recently to allow storage of owned values.
-    fn engine_key(_: ~Engine) {}
+    #[cfg(not(stage0))]
+    static engine_key: local_data::Key<~Engine> = &local_data::Key;
 
     #[cfg(not(stage0))]
     fn set_engine(engine: ~Engine) {
-        unsafe { local_data::set(engine_key, engine) }
+        local_data::set(engine_key, engine)
     }
     #[cfg(stage0)]
     fn set_engine(_: ~Engine) {}
 
     #[cfg(not(stage0))]
     pub fn consume_engine() -> Option<~Engine> {
-        unsafe { local_data::pop(engine_key) }
+        local_data::pop(engine_key)
     }
     #[cfg(stage0)]
     pub fn consume_engine() -> Option<~Engine> { None }
