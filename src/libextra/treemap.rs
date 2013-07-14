@@ -15,6 +15,7 @@
 
 use std::num;
 use std::util::{swap, replace};
+use std::iterator::FromIterator;
 
 // This is implemented as an AA tree, which is a simplified variation of
 // a red-black tree where red (horizontal) nodes can only be added
@@ -699,6 +700,30 @@ fn remove<K: TotalOrd, V>(node: &mut Option<~TreeNode<K, V>>,
     };
 }
 
+impl<K: TotalOrd, V, T: Iterator<(K, V)>> FromIterator<(K, V), T> for TreeMap<K, V> {
+    pub fn from_iterator(iter: &mut T) -> TreeMap<K, V> {
+        let mut map = TreeMap::new();
+
+        for iter.advance |(k, v)| {
+            map.insert(k, v);
+        }
+
+        map
+    }
+}
+
+impl<T: TotalOrd, Iter: Iterator<T>> FromIterator<T, Iter> for TreeSet<T> {
+    pub fn from_iterator(iter: &mut Iter) -> TreeSet<T> {
+        let mut set = TreeSet::new();
+
+        for iter.advance |elem| {
+            set.insert(elem);
+        }
+
+        set
+    }
+}
+
 #[cfg(test)]
 mod test_treemap {
 
@@ -1017,6 +1042,17 @@ mod test_treemap {
             i += 1;
         }
     }
+
+    #[test]
+    fn test_from_iter() {
+        let xs = ~[(1, 1), (2, 2), (3, 3), (4, 4), (5, 5), (6, 6)];
+
+        let map: TreeMap<int, int> = xs.iter().transform(|&x| x).collect();
+
+        for xs.iter().advance |&(k, v)| {
+            assert_eq!(map.find(&k), Some(&v));
+        }
+    }
 }
 
 #[cfg(test)]
@@ -1243,5 +1279,16 @@ mod test_set {
         m.insert(1, 2);
         assert_eq!(m.pop(&1), Some(2));
         assert_eq!(m.pop(&1), None);
+    }
+
+    #[test]
+    fn test_from_iter() {
+        let xs = ~[1, 2, 3, 4, 5, 6, 7, 8, 9];
+
+        let set: TreeSet<int> = xs.iter().transform(|&x| x).collect();
+
+        for xs.iter().advance |x: &int| {
+            assert!(set.contains(x));
+        }
     }
 }

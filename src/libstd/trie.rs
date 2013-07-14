@@ -11,7 +11,7 @@
 //! An ordered map and set for integer keys implemented as a radix trie
 
 use prelude::*;
-use iterator::IteratorUtil;
+use iterator::{IteratorUtil, FromIterator};
 use uint;
 use util::{swap, replace};
 
@@ -173,6 +173,18 @@ impl<T> TrieMap<T> {
     }
 }
 
+impl<T, Iter: Iterator<(uint, T)>> FromIterator<(uint, T), Iter> for TrieMap<T> {
+    pub fn from_iterator(iter: &mut Iter) -> TrieMap<T> {
+        let mut map = TrieMap::new();
+
+        for iter.advance |(k, v)| {
+            map.insert(k, v);
+        }
+
+        map
+    }
+}
+
 #[allow(missing_doc)]
 pub struct TrieSet {
     priv map: TrieMap<()>
@@ -229,6 +241,18 @@ impl TrieSet {
     #[inline]
     pub fn each_reverse(&self, f: &fn(&uint) -> bool) -> bool {
         self.map.each_key_reverse(f)
+    }
+}
+
+impl<Iter: Iterator<uint>> FromIterator<uint, Iter> for TrieSet {
+    pub fn from_iterator(iter: &mut Iter) -> TrieSet {
+        let mut set = TrieSet::new();
+
+        for iter.advance |elem| {
+            set.insert(elem);
+        }
+
+        set
     }
 }
 
@@ -384,7 +408,7 @@ pub fn check_integrity<T>(trie: &TrieNode<T>) {
 }
 
 #[cfg(test)]
-mod tests {
+mod test_map {
     use super::*;
     use core::option::{Some, None};
     use uint;
@@ -513,6 +537,39 @@ mod tests {
     }
 
     #[test]
+    fn test_swap() {
+        let mut m = TrieMap::new();
+        assert_eq!(m.swap(1, 2), None);
+        assert_eq!(m.swap(1, 3), Some(2));
+        assert_eq!(m.swap(1, 4), Some(3));
+    }
+
+    #[test]
+    fn test_pop() {
+        let mut m = TrieMap::new();
+        m.insert(1, 2);
+        assert_eq!(m.pop(&1), Some(2));
+        assert_eq!(m.pop(&1), None);
+    }
+
+    #[test]
+    fn test_from_iter() {
+        let xs = ~[(1u, 1i), (2, 2), (3, 3), (4, 4), (5, 5), (6, 6)];
+
+        let map: TrieMap<int> = xs.iter().transform(|&x| x).collect();
+
+        for xs.iter().advance |&(k, v)| {
+            assert_eq!(map.find(&k), Some(&v));
+        }
+    }
+}
+
+#[cfg(test)]
+mod test_set {
+    use super::*;
+    use uint;
+
+    #[test]
     fn test_sane_chunk() {
         let x = 1;
         let y = 1 << (uint::bits - 1);
@@ -535,18 +592,13 @@ mod tests {
     }
 
     #[test]
-    fn test_swap() {
-        let mut m = TrieMap::new();
-        assert_eq!(m.swap(1, 2), None);
-        assert_eq!(m.swap(1, 3), Some(2));
-        assert_eq!(m.swap(1, 4), Some(3));
-    }
+    fn test_from_iter() {
+        let xs = ~[9u, 8, 7, 6, 5, 4, 3, 2, 1];
 
-    #[test]
-    fn test_pop() {
-        let mut m = TrieMap::new();
-        m.insert(1, 2);
-        assert_eq!(m.pop(&1), Some(2));
-        assert_eq!(m.pop(&1), None);
+        let set: TrieSet = xs.iter().transform(|&x| x).collect();
+
+        for xs.iter().advance |x| {
+            assert!(set.contains(x));
+        }
     }
 }
