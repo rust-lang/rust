@@ -36,7 +36,7 @@ fn timed(result: &mut float, op: &fn()) {
 }
 
 impl Results {
-    pub fn bench_int<T:Set<uint>,
+    pub fn bench_int<T:MutableSet<uint>,
                  R: rand::Rng>(
                  &mut self,
                  rng: &mut R,
@@ -79,7 +79,7 @@ impl Results {
         }
     }
 
-    pub fn bench_str<T:Set<~str>,
+    pub fn bench_str<T:MutableSet<~str>,
                  R:rand::Rng>(
                  &mut self,
                  rng: &mut R,

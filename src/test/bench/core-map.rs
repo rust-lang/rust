@@ -27,7 +27,7 @@ fn timed(label: &str, f: &fn()) {
     io::println(fmt!("  %s: %f", label, end - start));
 }
 
-fn ascending<M: Map<uint, uint>>(map: &mut M, n_keys: uint) {
+fn ascending<M: MutableMap<uint, uint>>(map: &mut M, n_keys: uint) {
     io::println(" Ascending integers:");
 
     do timed("insert") {
@@ -49,7 +49,7 @@ fn ascending<M: Map<uint, uint>>(map: &mut M, n_keys: uint) {
     }
 }
 
-fn descending<M: Map<uint, uint>>(map: &mut M, n_keys: uint) {
+fn descending<M: MutableMap<uint, uint>>(map: &mut M, n_keys: uint) {
     io::println(" Descending integers:");
 
     do timed("insert") {
@@ -71,7 +71,7 @@ fn descending<M: Map<uint, uint>>(map: &mut M, n_keys: uint) {
     }
 }
 
-fn vector<M: Map<uint, uint>>(map: &mut M, n_keys: uint, dist: &[uint]) {
+fn vector<M: MutableMap<uint, uint>>(map: &mut M, n_keys: uint, dist: &[uint]) {
 
     do timed("insert") {
         for uint::range(0, n_keys) |i| {
