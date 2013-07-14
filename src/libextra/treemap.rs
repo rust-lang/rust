@@ -124,7 +124,9 @@ impl<K: TotalOrd, V> Map<K, V> for TreeMap<K, V> {
             }
         }
     }
+}
 
+impl<K: TotalOrd, V> MutableMap<K, V> for TreeMap<K, V> {
     /// Return a mutable reference to the value corresponding to the key
     #[inline]
     fn find_mut<'a>(&'a mut self, key: &K) -> Option<&'a mut V> {
@@ -292,16 +294,6 @@ impl<T: TotalOrd> Set<T> for TreeSet<T> {
     fn contains(&self, value: &T) -> bool {
         self.map.contains_key(value)
     }
-
-    /// Add a value to the set. Return true if the value was not already
-    /// present in the set.
-    #[inline]
-    fn insert(&mut self, value: T) -> bool { self.map.insert(value, ()) }
-
-    /// Remove a value from the set. Return true if the value was
-    /// present in the set.
-    #[inline]
-    fn remove(&mut self, value: &T) -> bool { self.map.remove(value) }
 
     /// Return true if the set has no elements in common with `other`.
     /// This is equivalent to checking for an empty intersection.
@@ -473,6 +465,18 @@ impl<T: TotalOrd> Set<T> for TreeSet<T> {
         }
         b.iter().advance(|&x| f(x)) && y.advance(f)
     }
+}
+
+impl<T: TotalOrd> MutableSet<T> for TreeSet<T> {
+    /// Add a value to the set. Return true if the value was not already
+    /// present in the set.
+    #[inline]
+    fn insert(&mut self, value: T) -> bool { self.map.insert(value, ()) }
+
+    /// Remove a value from the set. Return true if the value was
+    /// present in the set.
+    #[inline]
+    fn remove(&mut self, value: &T) -> bool { self.map.remove(value) }
 }
 
 impl<T: TotalOrd> TreeSet<T> {

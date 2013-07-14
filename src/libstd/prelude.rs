@@ -45,7 +45,7 @@ pub use io::{print, println};
 pub use clone::{Clone, DeepClone};
 pub use cmp::{Eq, ApproxEq, Ord, TotalEq, TotalOrd, Ordering, Less, Equal, Greater, Equiv};
 pub use char::Char;
-pub use container::{Container, Mutable, Map, Set};
+pub use container::{Container, Mutable, Map, MutableMap, Set, MutableSet};
 pub use hash::Hash;
 pub use iter::Times;
 pub use iterator::{Iterator, IteratorUtil, DoubleEndedIterator, DoubleEndedIteratorUtil};

@@ -11,7 +11,6 @@
 // xfail-fast
 
 use std::cmp;
-use std::container::{Container, Mutable, Map};
 use std::int;
 use std::uint;
 
@@ -63,17 +62,19 @@ impl<T> Mutable for cat<T> {
 impl<T> Map<int, T> for cat<T> {
     fn contains_key(&self, k: &int) -> bool { *k <= self.meows }
 
-    fn insert(&mut self, k: int, _: T) -> bool {
-        self.meows += k;
-        true
-    }
-
     fn find<'a>(&'a self, k: &int) -> Option<&'a T> {
         if *k <= self.meows {
             Some(&self.name)
         } else {
             None
         }
+    }
+}
+
+impl<T> MutableMap<int, T> for cat<T> {
+    fn insert(&mut self, k: int, _: T) -> bool {
+        self.meows += k;
+        true
     }
 
     fn find_mut<'a>(&'a mut self, _k: &int) -> Option<&'a mut T> { fail!() }

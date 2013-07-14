@@ -15,7 +15,7 @@
 
 #[mutable_doc];
 
-use container::{Container, Mutable, Map, Set};
+use container::{Container, Mutable, Map, MutableMap, Set, MutableSet};
 use cmp::{Eq, Equiv};
 use hash::Hash;
 use iterator::{Iterator, IteratorUtil};
@@ -316,7 +316,9 @@ impl<K:Hash + Eq,V> Map<K, V> for HashMap<K, V> {
             TableFull | FoundHole(_) => None,
         }
     }
+}
 
+impl<K:Hash + Eq,V> MutableMap<K, V> for HashMap<K, V> {
     /// Return a mutable reference to the value corresponding to the key
     fn find_mut<'a>(&'a mut self, k: &K) -> Option<&'a mut V> {
         let idx = match self.bucket_for_key(k) {
@@ -640,14 +642,6 @@ impl<T:Hash + Eq> Set<T> for HashSet<T> {
     /// Return true if the set contains a value
     fn contains(&self, value: &T) -> bool { self.map.contains_key(value) }
 
-    /// Add a value to the set. Return true if the value was not already
-    /// present in the set.
-    fn insert(&mut self, value: T) -> bool { self.map.insert(value, ()) }
-
-    /// Remove a value from the set. Return true if the value was
-    /// present in the set.
-    fn remove(&mut self, value: &T) -> bool { self.map.remove(value) }
-
     /// Return true if the set has no elements in common with `other`.
     /// This is equivalent to checking for an empty intersection.
     fn is_disjoint(&self, other: &HashSet<T>) -> bool {
@@ -686,6 +680,16 @@ impl<T:Hash + Eq> Set<T> for HashSet<T> {
         self.iter().advance(|t| f(t)) &&
             other.iter().advance(|v| self.contains(v) || f(v))
     }
+}
+
+impl<T:Hash + Eq> MutableSet<T> for HashSet<T> {
+    /// Add a value to the set. Return true if the value was not already
+    /// present in the set.
+    fn insert(&mut self, value: T) -> bool { self.map.insert(value, ()) }
+
+    /// Remove a value from the set. Return true if the value was
+    /// present in the set.
+    fn remove(&mut self, value: &T) -> bool { self.map.remove(value) }
 }
 
 impl<T:Hash + Eq> HashSet<T> {
