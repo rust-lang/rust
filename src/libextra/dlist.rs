@@ -122,31 +122,22 @@ impl<T> Mutable for DList<T> {
 impl<T> Deque<T> for DList<T> {
     /// Provide a reference to the front element, or None if the list is empty
     fn front<'a>(&'a self) -> Option<&'a T> {
-        self.list_head.chain_ref(|x| Some(&x.value))
+        self.list_head.map(|head| &head.value)
     }
 
     /// Provide a mutable reference to the front element, or None if the list is empty
     fn front_mut<'a>(&'a mut self) -> Option<&'a mut T> {
-        match self.list_head {
-            None => None,
-            Some(ref mut head) => Some(&mut head.value),
-        }
+        self.list_head.map_mut(|head| &mut head.value)
     }
 
     /// Provide a reference to the back element, or None if the list is empty
     fn back<'a>(&'a self) -> Option<&'a T> {
-        match self.list_tail.resolve_immut() {
-            None => None,
-            Some(tail) => Some(&tail.value),
-        }
+        self.list_tail.resolve_immut().map(|tail| &tail.value)
     }
 
     /// Provide a mutable reference to the back element, or None if the list is empty
     fn back_mut<'a>(&'a mut self) -> Option<&'a mut T> {
-        match self.list_tail.resolve() {
-            None => None,
-            Some(tail) => Some(&mut tail.value),
-        }
+        self.list_tail.resolve().map_mut(|tail| &mut tail.value)
     }
 
     /// Add an element last in the list
