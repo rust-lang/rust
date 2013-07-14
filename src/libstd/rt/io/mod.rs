@@ -275,7 +275,6 @@ pub mod net {
     pub mod ip;
     #[cfg(unix)]
     pub mod unix;
-    pub mod http;
 }
 
 /// Readers and Writers for memory buffers and strings.
