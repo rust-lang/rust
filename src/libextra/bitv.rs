@@ -568,6 +568,7 @@ pub struct BitvIterator<'self> {
 }
 
 impl<'self> Iterator<bool> for BitvIterator<'self> {
+    #[inline]
     fn next(&mut self) -> Option<bool> {
         if self.next_idx < self.bitv.nbits {
             let idx = self.next_idx;
@@ -866,6 +867,7 @@ pub struct BitvSetIterator<'self> {
 }
 
 impl<'self> Iterator<uint> for BitvSetIterator<'self> {
+    #[inline]
     fn next(&mut self) -> Option<uint> {
         while self.next_idx < self.set.capacity() {
             let idx = self.next_idx;
@@ -1564,6 +1566,40 @@ mod tests {
         let b2 = Bitv::new(BENCH_BITS, false);
         do b.iter {
             b1.union(&b2);
+        }
+    }
+
+    #[bench]
+    fn bench_btv_small_iter(b: &mut BenchHarness) {
+        let bitv = Bitv::new(uint::bits, false);
+        do b.iter {
+            let mut sum = 0;
+            for bitv.iter().advance |pres| {
+                sum += pres as uint;
+            }
+        }
+    }
+
+    #[bench]
+    fn bench_bitv_big_iter(b: &mut BenchHarness) {
+        let bitv = Bitv::new(BENCH_BITS, false);
+        do b.iter {
+            let mut sum = 0;
+            for bitv.iter().advance |pres| {
+                sum += pres as uint;
+            }
+        }
+    }
+
+    #[bench]
+    fn bench_bitvset_iter(b: &mut BenchHarness) {
+        let bitv = BitvSet::from_bitv(from_fn(BENCH_BITS,
+                                              |idx| {idx % 3 == 0}));
+        do b.iter {
+            let mut sum = 0;
+            for bitv.iter().advance |idx| {
+                sum += idx;
+            }
         }
     }
 }
