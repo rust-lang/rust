@@ -101,10 +101,12 @@ fn link_with_prev<T>(mut next: ~Node<T>, prev: Rawlink<Node<T>>) -> Link<T> {
 
 impl<T> Container for DList<T> {
     /// O(1)
+    #[inline]
     fn is_empty(&self) -> bool {
         self.list_head.is_none()
     }
     /// O(1)
+    #[inline]
     fn len(&self) -> uint {
         self.length
     }
@@ -114,6 +116,7 @@ impl<T> Mutable for DList<T> {
     /// Remove all elements from the DList
     ///
     /// O(N)
+    #[inline]
     fn clear(&mut self) {
         *self = DList::new()
     }
@@ -121,32 +124,27 @@ impl<T> Mutable for DList<T> {
 
 impl<T> Deque<T> for DList<T> {
     /// Provide a reference to the front element, or None if the list is empty
+    #[inline]
     fn front<'a>(&'a self) -> Option<&'a T> {
-        self.list_head.chain_ref(|x| Some(&x.value))
+        self.list_head.map(|head| &head.value)
     }
 
     /// Provide a mutable reference to the front element, or None if the list is empty
+    #[inline]
     fn front_mut<'a>(&'a mut self) -> Option<&'a mut T> {
-        match self.list_head {
-            None => None,
-            Some(ref mut head) => Some(&mut head.value),
-        }
+        self.list_head.map_mut(|head| &mut head.value)
     }
 
     /// Provide a reference to the back element, or None if the list is empty
+    #[inline]
     fn back<'a>(&'a self) -> Option<&'a T> {
-        match self.list_tail.resolve_immut() {
-            None => None,
-            Some(tail) => Some(&tail.value),
-        }
+        self.list_tail.resolve_immut().map(|tail| &tail.value)
     }
 
     /// Provide a mutable reference to the back element, or None if the list is empty
+    #[inline]
     fn back_mut<'a>(&'a mut self) -> Option<&'a mut T> {
-        match self.list_tail.resolve() {
-            None => None,
-            Some(tail) => Some(&mut tail.value),
-        }
+        self.list_tail.resolve().map_mut(|tail| &mut tail.value)
     }
 
     /// Add an element last in the list
@@ -167,7 +165,6 @@ impl<T> Deque<T> for DList<T> {
     /// Remove the last element and return it, or None if the list is empty
     ///
     /// O(1)
-    #[inline]
     fn pop_back(&mut self) -> Option<T> {
         match self.list_tail.resolve() {
             None => None,
@@ -259,6 +256,7 @@ impl<T> DList<T> {
     /// Add all elements from `other` to the beginning of the list
     ///
     /// O(1)
+    #[inline]
     pub fn prepend(&mut self, mut other: DList<T>) {
         util::swap(self, &mut other);
         self.append(other);
@@ -268,7 +266,6 @@ impl<T> DList<T> {
     /// or at the end.
     ///
     /// O(N)
-    #[inline]
     pub fn insert_when(&mut self, elt: T, f: &fn(&T, &T) -> bool) {
         {
             let mut it = self.mut_iter();
@@ -309,16 +306,19 @@ impl<T> DList<T> {
 
 
     /// Provide a forward iterator
+    #[inline]
     pub fn iter<'a>(&'a self) -> DListIterator<'a, T> {
         DListIterator{nelem: self.len(), head: &self.list_head, tail: self.list_tail}
     }
 
     /// Provide a reverse iterator
+    #[inline]
     pub fn rev_iter<'a>(&'a self) -> InvertIterator<&'a T, DListIterator<'a, T>> {
         self.iter().invert()
     }
 
     /// Provide a forward iterator with mutable references
+    #[inline]
     pub fn mut_iter<'a>(&'a mut self) -> MutDListIterator<'a, T> {
         let head_raw = match self.list_head {
             Some(ref mut h) => Rawlink::some(*h),
@@ -332,6 +332,7 @@ impl<T> DList<T> {
         }
     }
     /// Provide a reverse iterator with mutable references
+    #[inline]
     pub fn mut_rev_iter<'a>(&'a mut self) -> InvertIterator<&'a mut T,
                                                 MutDListIterator<'a, T>> {
         self.mut_iter().invert()
@@ -339,11 +340,13 @@ impl<T> DList<T> {
 
 
     /// Consume the list into an iterator yielding elements by value
+    #[inline]
     pub fn consume_iter(self) -> ConsumeIterator<T> {
         ConsumeIterator{list: self}
     }
 
     /// Consume the list into an iterator yielding elements by value, in reverse
+    #[inline]
     pub fn consume_rev_iter(self) -> InvertIterator<T, ConsumeIterator<T>> {
         self.consume_iter().invert()
     }
@@ -353,6 +356,7 @@ impl<T: cmp::TotalOrd> DList<T> {
     /// Insert `elt` sorted in ascending order
     ///
     /// O(N)
+    #[inline]
     pub fn insert_ordered(&mut self, elt: T) {
         self.insert_when(elt, |a, b| a.cmp(b) != cmp::Less);
     }
@@ -374,12 +378,14 @@ impl<'self, A> Iterator<&'self A> for DListIterator<'self, A> {
         }
     }
 
+    #[inline]
     fn size_hint(&self) -> (uint, Option<uint>) {
         (self.nelem, Some(self.nelem))
     }
 }
 
 impl<'self, A> DoubleEndedIterator<&'self A> for DListIterator<'self, A> {
+    #[inline]
     fn next_back(&mut self) -> Option<&'self A> {
         if self.nelem == 0 {
             return None;
@@ -414,6 +420,7 @@ impl<'self, A> Iterator<&'self mut A> for MutDListIterator<'self, A> {
         }
     }
 
+    #[inline]
     fn size_hint(&self) -> (uint, Option<uint>) {
         (self.nelem, Some(self.nelem))
     }
@@ -466,6 +473,7 @@ impl<'self, A> ListInsertion<A> for MutDListIterator<'self, A> {
         }
     }
 
+    #[inline]
     fn peek_next<'a>(&'a mut self) -> Option<&'a mut A> {
         match self.head.resolve() {
             None => None,
@@ -475,13 +483,17 @@ impl<'self, A> ListInsertion<A> for MutDListIterator<'self, A> {
 }
 
 impl<A> Iterator<A> for ConsumeIterator<A> {
+    #[inline]
     fn next(&mut self) -> Option<A> { self.list.pop_front() }
+
+    #[inline]
     fn size_hint(&self) -> (uint, Option<uint>) {
         (self.list.length, Some(self.list.length))
     }
 }
 
 impl<A> DoubleEndedIterator<A> for ConsumeIterator<A> {
+    #[inline]
     fn next_back(&mut self) -> Option<A> { self.list.pop_back() }
 }
 
@@ -498,6 +510,8 @@ impl<A: Eq> Eq for DList<A> {
         self.len() == other.len() &&
             self.iter().zip(other.iter()).all(|(a, b)| a.eq(b))
     }
+
+    #[inline]
     fn ne(&self, other: &DList<A>) -> bool {
         !self.eq(other)
     }

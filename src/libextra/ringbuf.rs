@@ -214,6 +214,11 @@ macro_rules! iterator {
                 self.nelts -= 1;
                 Some(self.elts[raw_index]. $getter ())
             }
+
+            #[inline]
+            fn size_hint(&self) -> (uint, Option<uint>) {
+                (self.nelts, Some(self.nelts))
+            }
         }
     }
 }
@@ -578,6 +583,7 @@ mod tests {
     fn test_iter() {
         let mut d = RingBuf::new();
         assert_eq!(d.iter().next(), None);
+        assert_eq!(d.iter().size_hint(), (0, Some(0)));
 
         for int::range(0,5) |i| {
             d.push_back(i);
@@ -588,6 +594,15 @@ mod tests {
             d.push_front(i);
         }
         assert_eq!(d.iter().collect::<~[&int]>(), ~[&8,&7,&6,&0,&1,&2,&3,&4]);
+
+        let mut it = d.iter();
+        let mut len = d.len();
+        loop {
+            match it.next() {
+                None => break,
+                _ => { len -= 1; assert_eq!(it.size_hint(), (len, Some(len))) }
+            }
+        }
     }
 
     #[test]
