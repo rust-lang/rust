@@ -851,7 +851,10 @@ pub fn seed() -> ~[u8] {
 }
 
 // used to make space in TLS for a random number generator
+#[cfg(stage0)]
 fn tls_rng_state(_v: @@mut IsaacRng) {}
+#[cfg(not(stage0))]
+static tls_rng_state: local_data::Key<@@mut IsaacRng> = &local_data::Key;
 
 /**
  * Gives back a lazily initialized task-local random number generator,
@@ -860,17 +863,12 @@ fn tls_rng_state(_v: @@mut IsaacRng) {}
  */
 #[inline]
 pub fn task_rng() -> @mut IsaacRng {
-    let r : Option<@@mut IsaacRng>;
-    unsafe {
-        r = local_data::get(tls_rng_state, |k| k.map(|&k| *k));
-    }
+    let r = local_data::get(tls_rng_state, |k| k.map(|&k| *k));
     match r {
         None => {
-            unsafe {
-                let rng = @@mut IsaacRng::new_seeded(seed());
-                local_data::set(tls_rng_state, rng);
-                *rng
-            }
+            let rng = @@mut IsaacRng::new_seeded(seed());
+            local_data::set(tls_rng_state, rng);
+            *rng
         }
         Some(rng) => *rng
     }

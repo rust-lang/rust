@@ -1195,39 +1195,4 @@ mod big_tests {
             isSorted(arr);
         }
     }
-
-    struct LVal<'self> {
-        val: uint,
-        key: &'self fn:Copy(@uint),
-    }
-
-    #[unsafe_destructor]
-    impl<'self> Drop for LVal<'self> {
-        fn drop(&self) {
-            let x = unsafe { local_data::get(self.key, |k| k.map(|&k| *k)) };
-            match x {
-                Some(@y) => {
-                    unsafe {
-                        local_data::set(self.key, @(y+1));
-                    }
-                }
-                _ => fail!("Expected key to work"),
-            }
-        }
-    }
-
-    impl<'self> Ord for LVal<'self> {
-        fn lt<'a>(&self, other: &'a LVal<'self>) -> bool {
-            (*self).val < other.val
-        }
-        fn le<'a>(&self, other: &'a LVal<'self>) -> bool {
-            (*self).val <= other.val
-        }
-        fn gt<'a>(&self, other: &'a LVal<'self>) -> bool {
-            (*self).val > other.val
-        }
-        fn ge<'a>(&self, other: &'a LVal<'self>) -> bool {
-            (*self).val >= other.val
-        }
-    }
 }

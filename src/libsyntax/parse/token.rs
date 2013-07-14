@@ -15,7 +15,6 @@ use parse::token;
 use util::interner::StrInterner;
 use util::interner;
 
-use std::cast;
 use std::cmp::Equiv;
 use std::local_data;
 use std::rand;
@@ -485,18 +484,17 @@ fn mk_fresh_ident_interner() -> @ident_interner {
 // if an interner exists in TLS, return it. Otherwise, prepare a
 // fresh one.
 pub fn get_ident_interner() -> @ident_interner {
-    unsafe {
-        let key =
-            (cast::transmute::<(uint, uint),
-             &fn:Copy(v: @@::parse::token::ident_interner)>(
-                 (-3 as uint, 0u)));
-        match local_data::get(key, |k| k.map(|&k| *k)) {
-            Some(interner) => *interner,
-            None => {
-                let interner = mk_fresh_ident_interner();
-                local_data::set(key, @interner);
-                interner
-            }
+    #[cfg(not(stage0))]
+    static key: local_data::Key<@@::parse::token::ident_interner> =
+        &local_data::Key;
+    #[cfg(stage0)]
+    fn key(_: @@::parse::token::ident_interner) {}
+    match local_data::get(key, |k| k.map(|&k| *k)) {
+        Some(interner) => *interner,
+        None => {
+            let interner = mk_fresh_ident_interner();
+            local_data::set(key, @interner);
+            interner
         }
     }
 }

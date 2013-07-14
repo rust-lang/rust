@@ -87,21 +87,20 @@ use syntax::abi::{X86, X86_64, Arm, Mips};
 
 pub use middle::trans::context::task_llcx;
 
-fn task_local_insn_key(_v: @~[&'static str]) {}
+#[cfg(not(stage0))]
+static task_local_insn_key: local_data::Key<@~[&'static str]> = &local_data::Key;
+#[cfg(stage0)]
+fn task_local_insn_key(_: @~[&'static str]) {}
 
 pub fn with_insn_ctxt(blk: &fn(&[&'static str])) {
-    unsafe {
-        let opt = local_data::get(task_local_insn_key, |k| k.map(|&k| *k));
-        if opt.is_some() {
-            blk(*opt.unwrap());
-        }
+    let opt = local_data::get(task_local_insn_key, |k| k.map(|&k| *k));
+    if opt.is_some() {
+        blk(*opt.unwrap());
     }
 }
 
 pub fn init_insn_ctxt() {
-    unsafe {
-        local_data::set(task_local_insn_key, @~[]);
-    }
+    local_data::set(task_local_insn_key, @~[]);
 }
 
 pub struct _InsnCtxt { _x: () }
@@ -109,13 +108,11 @@ pub struct _InsnCtxt { _x: () }
 #[unsafe_destructor]
 impl Drop for _InsnCtxt {
     fn drop(&self) {
-        unsafe {
-            do local_data::modify(task_local_insn_key) |c| {
-                do c.map_consume |ctx| {
-                    let mut ctx = copy *ctx;
-                    ctx.pop();
-                    @ctx
-                }
+        do local_data::modify(task_local_insn_key) |c| {
+            do c.map_consume |ctx| {
+                let mut ctx = copy *ctx;
+                ctx.pop();
+                @ctx
             }
         }
     }
@@ -123,13 +120,11 @@ impl Drop for _InsnCtxt {
 
 pub fn push_ctxt(s: &'static str) -> _InsnCtxt {
     debug!("new InsnCtxt: %s", s);
-    unsafe {
-        do local_data::modify(task_local_insn_key) |c| {
-            do c.map_consume |ctx| {
-                let mut ctx = copy *ctx;
-                ctx.push(s);
-                @ctx
-            }
+    do local_data::modify(task_local_insn_key) |c| {
+        do c.map_consume |ctx| {
+            let mut ctx = copy *ctx;
+            ctx.push(s);
+            @ctx
         }
     }
     _InsnCtxt { _x: () }
@@ -1428,7 +1423,7 @@ pub fn with_scope(bcx: block,
 
 pub fn with_scope_result(bcx: block,
                          opt_node_info: Option<NodeInfo>,
-                         name: &str,
+                         _name: &str,
                          f: &fn(block) -> Result) -> Result {
     let _icx = push_ctxt("with_scope_result");
 

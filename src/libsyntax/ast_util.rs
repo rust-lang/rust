@@ -20,7 +20,6 @@ use std::hashmap::HashMap;
 use std::int;
 use std::num;
 use std::option;
-use std::cast;
 use std::local_data;
 
 pub fn path_name_i(idents: &[ident]) -> ~str {
@@ -695,18 +694,17 @@ pub fn new_sctable_internal() -> SCTable {
 
 // fetch the SCTable from TLS, create one if it doesn't yet exist.
 pub fn get_sctable() -> @mut SCTable {
-    unsafe {
-        let sctable_key = (cast::transmute::<(uint, uint),
-                           &fn:Copy(v: @@mut SCTable)>(
-                               (-4 as uint, 0u)));
-        match local_data::get(sctable_key, |k| k.map(|&k| *k)) {
-            None => {
-                let new_table = @@mut new_sctable_internal();
-                local_data::set(sctable_key,new_table);
-                *new_table
-            },
-            Some(intr) => *intr
-        }
+    #[cfg(not(stage0))]
+    static sctable_key: local_data::Key<@@mut SCTable> = &local_data::Key;
+    #[cfg(stage0)]
+    fn sctable_key(_: @@mut SCTable) {}
+    match local_data::get(sctable_key, |k| k.map(|&k| *k)) {
+        None => {
+            let new_table = @@mut new_sctable_internal();
+            local_data::set(sctable_key,new_table);
+            *new_table
+        },
+        Some(intr) => *intr
     }
 }
 

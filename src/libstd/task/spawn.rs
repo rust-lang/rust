@@ -80,6 +80,7 @@ use cell::Cell;
 use container::MutableMap;
 use comm::{Chan, GenericChan};
 use hashmap::HashSet;
+use local_data;
 use task::local_data_priv::{local_get, local_set, OldHandle};
 use task::rt::rust_task;
 use task::rt;
@@ -465,10 +466,14 @@ fn kill_taskgroup(state: TaskGroupInner, me: *rust_task, is_main: bool) {
 
 // FIXME (#2912): Work around core-vs-coretest function duplication. Can't use
 // a proper closure because the #[test]s won't understand. Have to fake it.
-macro_rules! taskgroup_key (
-    // Use a "code pointer" value that will never be a real code pointer.
-    () => (cast::transmute((-2 as uint, 0u)))
-)
+#[cfg(not(stage0))]
+fn taskgroup_key() -> local_data::Key<@@mut TCB> {
+    unsafe { cast::transmute(-2) }
+}
+#[cfg(stage0)]
+fn taskgroup_key() -> local_data::Key<@@mut TCB> {
+    unsafe { cast::transmute((-2, 0)) }
+}
 
 fn gen_child_taskgroup(linked: bool, supervised: bool)
     -> (TaskGroupArc, AncestorList, bool) {
@@ -478,7 +483,7 @@ fn gen_child_taskgroup(linked: bool, supervised: bool)
          * Step 1. Get spawner's taskgroup info.
          *##################################################################*/
         let spawner_group: @@mut TCB =
-            do local_get(OldHandle(spawner), taskgroup_key!()) |group| {
+            do local_get(OldHandle(spawner), taskgroup_key()) |group| {
                 match group {
                     None => {
                         // Main task, doing first spawn ever. Lazily initialise
@@ -495,7 +500,7 @@ fn gen_child_taskgroup(linked: bool, supervised: bool)
                                               AncestorList(None),
                                               true,
                                               None);
-                        local_set(OldHandle(spawner), taskgroup_key!(), group);
+                        local_set(OldHandle(spawner), taskgroup_key(), group);
                         group
                     }
                     Some(&group) => group
@@ -688,7 +693,7 @@ fn spawn_raw_oldsched(mut opts: TaskOpts, f: ~fn()) {
                                       is_main,
                                       notifier);
                 unsafe {
-                    local_set(OldHandle(child), taskgroup_key!(), group);
+                    local_set(OldHandle(child), taskgroup_key(), group);
                 }
 
                 // Run the child's body.
