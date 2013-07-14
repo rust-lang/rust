@@ -718,38 +718,6 @@ impl Set<uint> for BitvSet {
         *value < self.bitv.storage.len() * uint::bits && self.bitv.get(*value)
     }
 
-    fn insert(&mut self, value: uint) -> bool {
-        if self.contains(&value) {
-            return false;
-        }
-        let nbits = self.capacity();
-        if value >= nbits {
-            let newsize = num::max(value, nbits * 2) / uint::bits + 1;
-            assert!(newsize > self.bitv.storage.len());
-            self.bitv.storage.grow(newsize, &0);
-        }
-        self.size += 1;
-        self.bitv.set(value, true);
-        return true;
-    }
-
-    fn remove(&mut self, value: &uint) -> bool {
-        if !self.contains(value) {
-            return false;
-        }
-        self.size -= 1;
-        self.bitv.set(*value, false);
-
-        // Attempt to truncate our storage
-        let mut i = self.bitv.storage.len();
-        while i > 1 && self.bitv.storage[i - 1] == 0 {
-            i -= 1;
-        }
-        self.bitv.storage.truncate(i);
-
-        return true;
-    }
-
     fn is_disjoint(&self, other: &BitvSet) -> bool {
         for self.intersection(other) |_| {
             return false;
@@ -813,6 +781,40 @@ impl Set<uint> for BitvSet {
             }
         }
         self.each_outlier(other, |_, i, w| iterate_bits(i, w, |b| f(&b)))
+    }
+}
+
+impl MutableSet<uint> for BitvSet {
+    fn insert(&mut self, value: uint) -> bool {
+        if self.contains(&value) {
+            return false;
+        }
+        let nbits = self.capacity();
+        if value >= nbits {
+            let newsize = num::max(value, nbits * 2) / uint::bits + 1;
+            assert!(newsize > self.bitv.storage.len());
+            self.bitv.storage.grow(newsize, &0);
+        }
+        self.size += 1;
+        self.bitv.set(value, true);
+        return true;
+    }
+
+    fn remove(&mut self, value: &uint) -> bool {
+        if !self.contains(value) {
+            return false;
+        }
+        self.size -= 1;
+        self.bitv.set(*value, false);
+
+        // Attempt to truncate our storage
+        let mut i = self.bitv.storage.len();
+        while i > 1 && self.bitv.storage[i - 1] == 0 {
+            i -= 1;
+        }
+        self.bitv.storage.truncate(i);
+
+        return true;
     }
 }
 
