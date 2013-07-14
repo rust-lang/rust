@@ -621,7 +621,7 @@ impl<K: Eq + Hash, V, T: Iterator<(K, V)>> FromIterator<(K, V), T> for HashMap<K
 
         map
     }
-}        
+}
 
 /// An implementation of a hash set using the underlying representation of a
 /// HashMap where the value is (). As with the `HashMap` type, a `HashSet`
@@ -747,7 +747,7 @@ impl<K: Eq + Hash, T: Iterator<K>> FromIterator<K, T> for HashSet<K> {
         set
     }
 }
-  
+
 
 #[cfg(test)]
 mod test_map {
@@ -965,7 +965,7 @@ mod test_map {
     #[test]
     fn test_from_iter() {
         let xs = ~[(1, 1), (2, 2), (3, 3), (4, 4), (5, 5), (6, 6)];
-        
+
         let map: HashMap<int, int> = xs.iter().transform(|&x| x).collect();
 
         for xs.iter().advance |&(k, v)| {
@@ -1157,7 +1157,7 @@ mod test_set {
     #[test]
     fn test_from_iter() {
         let xs = ~[1, 2, 3, 4, 5, 6, 7, 8, 9];
-        
+
         let set: HashSet<int> = xs.iter().transform(|&x| x).collect();
 
         for xs.iter().advance |x: &int| {
