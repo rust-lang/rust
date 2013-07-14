@@ -33,13 +33,18 @@ static PATH_ENTRY_SEPARATOR: &'static str = ";";
 #[cfg(not(windows))]
 static PATH_ENTRY_SEPARATOR: &'static str = ":";
 
+/// Returns RUST_PATH as a string, without default paths added
+pub fn get_rust_path() -> Option<~str> {
+    os::getenv("RUST_PATH")
+}
+
 /// Returns the value of RUST_PATH, as a list
 /// of Paths. Includes default entries for, if they exist:
 /// $HOME/.rust
 /// DIR/.rust for any DIR that's the current working directory
 /// or an ancestor of it
 pub fn rust_path() -> ~[Path] {
-    let mut env_rust_path: ~[Path] = match os::getenv("RUST_PATH") {
+    let mut env_rust_path: ~[Path] = match get_rust_path() {
         Some(env_path) => {
             let env_path_components: ~[&str] =
                 env_path.split_str_iter(PATH_ENTRY_SEPARATOR).collect();
@@ -377,4 +382,24 @@ pub fn mk_output_path(what: OutputType, where: Target,
     }
     debug!("mk_output_path: returning %s", output_path.to_str());
     output_path
+}
+
+/// Removes files for the package `pkgid`, assuming it's installed in workspace `workspace`
+pub fn uninstall_package_from(workspace: &Path, pkgid: &PkgId) {
+    let mut did_something = false;
+    let installed_bin = target_executable_in_workspace(pkgid, workspace);
+    if os::path_exists(&installed_bin) {
+        os::remove_file(&installed_bin);
+        did_something = true;
+    }
+    let installed_lib = target_library_in_workspace(pkgid, workspace);
+    if os::path_exists(&installed_lib) {
+        os::remove_file(&installed_lib);
+        did_something = true;
+    }
+    if !did_something {
+        warn(fmt!("Warning: there don't seem to be any files for %s installed in %s",
+             pkgid.to_str(), workspace.to_str()));
+    }
+
 }

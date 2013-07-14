@@ -18,13 +18,25 @@ use std::{char, os, result, run, str};
 use package_path::RemotePath;
 use extra::tempfile::mkdtemp;
 
-#[deriving(Eq)]
 pub enum Version {
     ExactRevision(~str), // Should look like a m.n.(...).x
     SemanticVersion(semver::Version),
     NoVersion // user didn't specify a version -- prints as 0.1
 }
 
+impl Eq for Version {
+    fn eq(&self, other: &Version) -> bool {
+        match (self, other) {
+            (&ExactRevision(ref s1), &ExactRevision(ref s2)) => *s1 == *s2,
+            (&SemanticVersion(ref v1), &SemanticVersion(ref v2)) => *v1 == *v2,
+            (&NoVersion, _) => true,
+            _ => false
+        }
+    }
+    fn ne(&self, other: &Version) -> bool {
+        !self.eq(other)
+    }
+}
 
 impl Ord for Version {
     fn lt(&self, other: &Version) -> bool {
