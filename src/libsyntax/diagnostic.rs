@@ -13,6 +13,7 @@ use codemap;
 
 use std::io;
 use std::uint;
+use std::local_data;
 use extra::term;
 
 pub type Emitter = @fn(cmsp: Option<(@codemap::CodeMap, span)>,
@@ -186,22 +187,38 @@ fn diagnosticcolor(lvl: level) -> term::color::Color {
     }
 }
 
-fn print_maybe_colored(msg: &str, color: term::color::Color) {
+fn print_maybe_styled(msg: &str, color: term::attr::Attr) {
+    #[cfg(not(stage0))]
+    static tls_terminal: local_data::Key<@Option<term::Terminal>> = &local_data::Key;
+    #[cfg(stage0)]
+    fn tls_terminal(_: @Option<term::Terminal>) {}
+
     let stderr = io::stderr();
 
-    let t = term::Terminal::new(stderr);
+    if stderr.get_type() == io::Screen {
+        let t = match local_data::get(tls_terminal, |v| v.map_consume(|&k|k)) {
+            None => {
+                let t = term::Terminal::new(stderr);
+                let tls = @match t {
+                    Ok(t) => Some(t),
+                    Err(_) => None
+                };
+                local_data::set(tls_terminal, tls);
+                &*tls
+            }
+            Some(tls) => &*tls
+        };
 
-    match t {
-        Ok(term) => {
-            if stderr.get_type() == io::Screen {
-                term.fg(color);
+        match t {
+            &Some(ref term) => {
+                term.attr(color);
                 stderr.write_str(msg);
                 term.reset();
-            } else {
-                stderr.write_str(msg);
-            }
-        },
-        _ => stderr.write_str(msg)
+            },
+            _ => stderr.write_str(msg)
+        }
+    } else {
+        stderr.write_str(msg);
     }
 }
 
@@ -212,8 +229,9 @@ fn print_diagnostic(topic: &str, lvl: level, msg: &str) {
         stderr.write_str(fmt!("%s ", topic));
     }
 
-    print_maybe_colored(fmt!("%s: ", diagnosticstr(lvl)), diagnosticcolor(lvl));
-    print_maybe_colored(fmt!("%s\n", msg), term::color::BRIGHT_WHITE);
+    print_maybe_styled(fmt!("%s: ", diagnosticstr(lvl)),
+                            term::attr::ForegroundColor(diagnosticcolor(lvl)));
+    print_maybe_styled(fmt!("%s\n", msg), term::attr::Bold);
 }
 
 pub fn collect(messages: @mut ~[~str])
@@ -312,7 +330,7 @@ fn highlight_lines(cm: @codemap::CodeMap,
                 s.push_char('~')
             }
         }
-        print_maybe_colored(s + "\n", diagnosticcolor(lvl));
+        print_maybe_styled(s + "\n", term::attr::ForegroundColor(diagnosticcolor(lvl)));
     }
 }
 
