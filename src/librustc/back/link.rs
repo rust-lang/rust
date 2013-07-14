@@ -101,14 +101,29 @@ pub mod jit {
     use back::link::llvm_err;
     use driver::session::Session;
     use lib::llvm::llvm;
-    use lib::llvm::{ModuleRef, ContextRef};
+    use lib::llvm::{ModuleRef, ContextRef, ExecutionEngineRef};
     use metadata::cstore;
 
     use std::cast;
-    use std::ptr;
-    use std::str;
-    use std::sys;
+    use std::local_data;
     use std::unstable::intrinsics;
+
+    struct LLVMJITData {
+        ee: ExecutionEngineRef,
+        llcx: ContextRef
+    }
+
+    pub trait Engine {}
+    impl Engine for LLVMJITData {}
+
+    impl Drop for LLVMJITData {
+        fn drop(&self) {
+            unsafe {
+                llvm::LLVMDisposeExecutionEngine(self.ee);
+                llvm::LLVMContextDispose(self.llcx);
+            }
+        }
+    }
 
     pub fn exec(sess: Session,
                 c: ContextRef,
@@ -130,7 +145,7 @@ pub mod jit {
 
                 debug!("linking: %s", path);
 
-                do str::as_c_str(path) |buf_t| {
+                do path.as_c_str |buf_t| {
                     if !llvm::LLVMRustLoadCrate(manager, buf_t) {
                         llvm_err(sess, ~"Could not link");
                     }
@@ -149,7 +164,7 @@ pub mod jit {
             // Next, we need to get a handle on the _rust_main function by
             // looking up it's corresponding ValueRef and then requesting that
             // the execution engine compiles the function.
-            let fun = do str::as_c_str("_rust_main") |entry| {
+            let fun = do "_rust_main".as_c_str |entry| {
                 llvm::LLVMGetNamedFunction(m, entry)
             };
             if fun.is_null() {
@@ -163,20 +178,45 @@ pub mod jit {
             // closure
             let code = llvm::LLVMGetPointerToGlobal(ee, fun);
             assert!(!code.is_null());
-            let closure = sys::Closure {
-                code: code,
-                env: ptr::null()
-            };
-            let func: &fn() = cast::transmute(closure);
+            let func: extern "Rust" fn() = cast::transmute(code);
             func();
 
-            // Sadly, there currently is no interface to re-use this execution
-            // engine, so it's disposed of here along with the context to
-            // prevent leaks.
-            llvm::LLVMDisposeExecutionEngine(ee);
-            llvm::LLVMContextDispose(c);
+            // Currently there is no method of re-using the executing engine
+            // from LLVM in another call to the JIT. While this kinda defeats
+            // the purpose of having a JIT in the first place, there isn't
+            // actually much code currently which would re-use data between
+            // different invocations of this. Additionally, the compilation
+            // model currently isn't designed to support this scenario.
+            //
+            // We can't destroy the engine/context immediately here, however,
+            // because of annihilation. The JIT code contains drop glue for any
+            // types defined in the crate we just ran, and if any of those boxes
+            // are going to be dropped during annihilation, the drop glue must
+            // be run. Hence, we need to transfer ownership of this jit engine
+            // to the caller of this function. To be convenient for now, we
+            // shove it into TLS and have someone else remove it later on.
+            let data = ~LLVMJITData { ee: ee, llcx: c };
+            set_engine(data as ~Engine);
         }
     }
+
+    // The stage1 compiler won't work, but that doesn't really matter. TLS
+    // changed only very recently to allow storage of owned values.
+    fn engine_key(_: ~Engine) {}
+
+    #[cfg(not(stage0))]
+    fn set_engine(engine: ~Engine) {
+        unsafe { local_data::set(engine_key, engine) }
+    }
+    #[cfg(stage0)]
+    fn set_engine(_: ~Engine) {}
+
+    #[cfg(not(stage0))]
+    pub fn consume_engine() -> Option<~Engine> {
+        unsafe { local_data::pop(engine_key) }
+    }
+    #[cfg(stage0)]
+    pub fn consume_engine() -> Option<~Engine> { None }
 }
 
 pub mod write {
