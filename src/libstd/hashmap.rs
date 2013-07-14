@@ -735,6 +735,20 @@ impl<T:Hash + Eq> HashSet<T> {
     }
 }
 
+impl<K: Eq + Hash, T: Iterator<K>> FromIterator<K, T> for HashSet<K> {
+    pub fn from_iterator(iter: &mut T) -> HashSet<K> {
+        let (lower, _) = iter.size_hint();
+        let mut set = HashSet::with_capacity(lower);
+
+        for iter.advance |k| {
+            set.insert(k);
+        }
+
+        set
+    }
+}
+  
+
 #[cfg(test)]
 mod test_map {
     use container::{Container, Map, Set};
@@ -1138,5 +1152,16 @@ mod test_set {
             i += 1
         }
         assert_eq!(i, expected.len());
+    }
+
+    #[test]
+    fn test_from_iter() {
+        let xs = ~[1, 2, 3, 4, 5, 6, 7, 8, 9];
+        
+        let set: HashSet<int> = xs.iter().transform(|&x| x).collect();
+
+        for xs.iter().advance |x: &int| {
+            assert!(set.contains(x));
+        }
     }
 }
