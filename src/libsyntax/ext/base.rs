@@ -152,8 +152,7 @@ pub fn syntax_expander_table() -> SyntaxEnv {
                                 pending_renames : @mut ~[]
                             }));
     syntax_expanders.insert(intern(&"macro_rules"),
-                            builtin_item_tt_no_ctxt(
-                                ext::tt::macro_rules::add_new_extension));
+                            @SE(IdentTT(ext::tt::macro_rules::add_new_extension, None)));
     syntax_expanders.insert(intern(&"fmt"),
                             builtin_normal_tt_no_ctxt(ext::fmt::expand_syntax_ext));
     syntax_expanders.insert(
