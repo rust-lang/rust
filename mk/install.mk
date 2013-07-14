@@ -183,7 +183,11 @@ uninstall:
         do rm -f $$i ; \
         done
 	$(Q)rm -Rf $(PHL)/rustc
+	$(Q)rm -f $(PREFIX_ROOT)/share/man/man1/rust.1
 	$(Q)rm -f $(PREFIX_ROOT)/share/man/man1/rustc.1
+	$(Q)rm -f $(PREFIX_ROOT)/share/man/man1/rustdoc.1
+	$(Q)rm -f $(PREFIX_ROOT)/share/man/man1/rusti.1
+	$(Q)rm -f $(PREFIX_ROOT)/share/man/man1/rustpkg.1
 
 # target platform specific variables
 # for arm-linux-androidabi
