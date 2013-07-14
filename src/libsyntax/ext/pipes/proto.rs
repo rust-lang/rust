@@ -144,7 +144,8 @@ pub struct protocol_ {
 impl protocol_ {
     /// Get a state.
     pub fn get_state(&self, name: &str) -> state {
-        *self.states.iter().find_(|i| name == i.name).get()
+        let mut i = self.states.iter();
+        *i.find_(|i| name == i.name).get()
     }
 
     pub fn get_state_by_id(&self, id: uint) -> state { self.states[id] }

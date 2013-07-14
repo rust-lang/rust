@@ -232,22 +232,24 @@ impl CrateContext {
 #[unsafe_destructor]
 impl Drop for CrateContext {
     fn drop(&self) {
-        unsafe {
-            unset_task_llcx();
-        }
+        unset_task_llcx();
     }
 }
 
+#[cfg(stage0)]
 fn task_local_llcx_key(_v: @ContextRef) {}
+#[cfg(not(stage0))]
+static task_local_llcx_key: local_data::Key<@ContextRef> = &local_data::Key;
+
 pub fn task_llcx() -> ContextRef {
-    let opt = unsafe { local_data::get(task_local_llcx_key, |k| k.map(|&k| *k)) };
+    let opt = local_data::get(task_local_llcx_key, |k| k.map(|&k| *k));
     *opt.expect("task-local LLVMContextRef wasn't ever set!")
 }
 
-unsafe fn set_task_llcx(c: ContextRef) {
+fn set_task_llcx(c: ContextRef) {
     local_data::set(task_local_llcx_key, @c);
 }
 
-unsafe fn unset_task_llcx() {
+fn unset_task_llcx() {
     local_data::pop(task_local_llcx_key);
 }

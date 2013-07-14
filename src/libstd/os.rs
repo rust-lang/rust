@@ -1239,7 +1239,10 @@ struct OverriddenArgs {
     val: ~[~str]
 }
 
+#[cfg(stage0)]
 fn overridden_arg_key(_v: @OverriddenArgs) {}
+#[cfg(not(stage0))]
+static overridden_arg_key: local_data::Key<@OverriddenArgs> = &local_data::Key;
 
 /// Returns the arguments which this program was started with (normally passed
 /// via the command line).
@@ -1247,11 +1250,9 @@ fn overridden_arg_key(_v: @OverriddenArgs) {}
 /// The return value of the function can be changed by invoking the
 /// `os::set_args` function.
 pub fn args() -> ~[~str] {
-    unsafe {
-        match local_data::get(overridden_arg_key, |k| k.map(|&k| *k)) {
-            None => real_args(),
-            Some(args) => copy args.val
-        }
+    match local_data::get(overridden_arg_key, |k| k.map(|&k| *k)) {
+        None => real_args(),
+        Some(args) => copy args.val
     }
 }
 
@@ -1259,10 +1260,8 @@ pub fn args() -> ~[~str] {
 /// program had when it started. These new arguments are only available to the
 /// current task via the `os::args` method.
 pub fn set_args(new_args: ~[~str]) {
-    unsafe {
-        let overridden_args = @OverriddenArgs { val: copy new_args };
-        local_data::set(overridden_arg_key, overridden_args);
-    }
+    let overridden_args = @OverriddenArgs { val: copy new_args };
+    local_data::set(overridden_arg_key, overridden_args);
 }
 
 // FIXME #6100 we should really use an internal implementation of this - using

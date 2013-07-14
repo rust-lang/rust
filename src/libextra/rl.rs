@@ -66,24 +66,28 @@ pub unsafe fn read(prompt: &str) -> Option<~str> {
     }
 }
 
-pub type CompletionCb<'self> = @fn(~str, &'self fn(~str));
+pub type CompletionCb = @fn(~str, @fn(~str));
 
-fn complete_key(_v: @CompletionCb) {}
+#[cfg(not(stage0))]
+static complete_key: local_data::Key<@CompletionCb> = &local_data::Key;
+#[cfg(stage0)]
+fn complete_key(_: @CompletionCb) {}
 
 /// Bind to the main completion callback
 pub unsafe fn complete(cb: CompletionCb) {
-    local_data::set(complete_key, @(cb));
+    local_data::set(complete_key, @cb);
 
     extern fn callback(line: *c_char, completions: *()) {
-        unsafe {
-            let cb = *local_data::get(complete_key, |k| k.map(|&k| *k))
-                .get();
+        do local_data::get(complete_key) |cb| {
+            let cb = **cb.unwrap();
 
-            do cb(str::raw::from_c_str(line)) |suggestion| {
-                do str::as_c_str(suggestion) |buf| {
-                    rustrt::linenoiseAddCompletion(completions, buf);
+            unsafe {
+                do cb(str::raw::from_c_str(line)) |suggestion| {
+                    do str::as_c_str(suggestion) |buf| {
+                        rustrt::linenoiseAddCompletion(completions, buf);
+                    }
                 }
-            }
+}
         }
     }
 
