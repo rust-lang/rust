@@ -78,7 +78,9 @@ impl<T> Map<uint, T> for TrieMap<T> {
             idx += 1;
         }
     }
+}
 
+impl<T> MutableMap<uint, T> for TrieMap<T> {
     /// Return a mutable reference to the value corresponding to the key
     #[inline]
     fn find_mut<'a>(&'a mut self, key: &uint) -> Option<&'a mut T> {
