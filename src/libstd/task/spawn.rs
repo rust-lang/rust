@@ -77,7 +77,7 @@ use prelude::*;
 use cast::transmute;
 use cast;
 use cell::Cell;
-use container::Map;
+use container::MutableMap;
 use comm::{Chan, GenericChan};
 use hashmap::HashSet;
 use task::local_data_priv::{local_get, local_set, OldHandle};

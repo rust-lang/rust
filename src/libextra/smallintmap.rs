@@ -17,8 +17,7 @@
 
 
 use std::cmp;
-use std::container::{Container, Mutable, Map, Set};
-use std::iterator::*;
+use std::iterator::{Iterator,IteratorUtil,ZipIterator,Counter,EnumerateIterator,FilterMapIterator};
 use std::uint;
 use std::util::replace;
 use std::vec::{VecIterator,VecMutIterator,VecRevIterator,VecMutRevIterator};
@@ -68,7 +67,9 @@ impl<V> Map<uint, V> for SmallIntMap<V> {
             None
         }
     }
+}
 
+impl<V> MutableMap<uint, V> for SmallIntMap<V> {
     /// Return a mutable reference to the value corresponding to the key
     fn find_mut<'a>(&'a mut self, key: &uint) -> Option<&'a mut V> {
         if *key < self.v.len() {
@@ -349,14 +350,6 @@ impl Set<uint> for SmallIntSet {
     /// Return true if the set contains a value
     fn contains(&self, value: &uint) -> bool { self.map.contains_key(value) }
 
-    /// Add a value to the set. Return true if the value was not already
-    /// present in the set.
-    fn insert(&mut self, value: uint) -> bool { self.map.insert(value, ()) }
-
-    /// Remove a value from the set. Return true if the value was
-    /// present in the set.
-    fn remove(&mut self, value: &uint) -> bool { self.map.remove(value) }
-
     /// Return true if the set has no elements in common with `other`.
     /// This is equivalent to checking for an empty uintersection.
     fn is_disjoint(&self, other: &SmallIntSet) -> bool {
@@ -410,6 +403,16 @@ impl Set<uint> for SmallIntSet {
         }
         return true;
     }
+}
+
+impl MutableSet<uint> for SmallIntSet {
+    /// Add a value to the set. Return true if the value was not already
+    /// present in the set.
+    fn insert(&mut self, value: uint) -> bool { self.map.insert(value, ()) }
+
+    /// Remove a value from the set. Return true if the value was
+    /// present in the set.
+    fn remove(&mut self, value: &uint) -> bool { self.map.remove(value) }
 }
 
 impl SmallIntSet {
