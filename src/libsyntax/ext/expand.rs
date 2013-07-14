@@ -644,16 +644,22 @@ pub fn core_macros() -> @str {
         );
     )
 
-    macro_rules! print(
-        ($( $arg:expr),+) => ( {
-            print(fmt!($($arg),+));
-        } )
+    macro_rules! printf (
+        ($arg:expr) => (
+            print(fmt!(\"%?\", $arg))
+        );
+        ($( $arg:expr ),+) => (
+            print(fmt!($($arg),+))
+        )
     )
 
-    macro_rules! println(
-        ($( $arg:expr),+) => ( {
-            println(fmt!($($arg),+));
-        } )
+    macro_rules! printfln (
+        ($arg:expr) => (
+            println(fmt!(\"%?\", $arg))
+        );
+        ($( $arg:expr ),+) => (
+            println(fmt!($($arg),+))
+        )
     )
 }";
 }
