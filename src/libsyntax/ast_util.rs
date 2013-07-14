@@ -1010,6 +1010,16 @@ pub fn marksof(ctxt: SyntaxContext, stopname: Name, table: &SCTable) -> ~[Mrk] {
     }
 }
 
+/// Return the outer mark for a context with a mark at the outside.
+/// FAILS when outside is not a mark.
+pub fn mtwt_outer_mark(ctxt: SyntaxContext) -> Mrk {
+    let sctable = get_sctable();
+    match sctable.table[ctxt] {
+        ast::Mark(mrk,_) => mrk,
+        _ => fail!("can't retrieve outer mark when outside is not a mark")
+    }
+}
+
 /// Push a name... unless it matches the one on top, in which
 /// case pop and discard (so two of the same marks cancel)
 pub fn xorPush(marks: &mut ~[uint], mark: uint) {
