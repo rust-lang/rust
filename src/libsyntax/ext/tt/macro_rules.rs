@@ -14,6 +14,7 @@ use ast;
 use codemap::{span, spanned, dummy_sp};
 use ext::base::{ExtCtxt, MacResult, MRAny, MRDef, MacroDef, NormalTT};
 use ext::base;
+use ext::expand;
 use ext::tt::macro_parser::{error};
 use ext::tt::macro_parser::{named_match, matched_seq, matched_nonterminal};
 use ext::tt::macro_parser::{parse, parse_or_else, success, failure};
@@ -29,8 +30,10 @@ use print;
 pub fn add_new_extension(cx: @ExtCtxt,
                          sp: span,
                          name: ident,
-                         arg: ~[ast::token_tree])
+                         arg: ~[ast::token_tree],
+                         stx_ctxt: ast::SyntaxContext)
                       -> base::MacResult {
+    let arg = expand::mtwt_cancel_outer_mark(arg,stx_ctxt);
     // Wrap a matcher_ in a spanned to produce a matcher.
     // these spans won't matter, anyways
     fn ms(m: matcher_) -> matcher {
