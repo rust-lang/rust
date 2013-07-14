@@ -81,6 +81,15 @@ impl Ident {
 // storage.
 pub type SyntaxContext = uint;
 
+// the SCTable contains a table of SyntaxContext_'s. It
+// represents a flattened tree structure, to avoid having
+// managed pointers everywhere (that caused an ICE).
+// the mark_memo and rename_memo fields are side-tables
+// that ensure that adding the same mark to the same context
+// gives you back the same context as before. This shouldn't
+// change the semantics--everything here is immutable--but
+// it should cut down on memory use *a lot*; applying a mark
+// to a tree containing 50 identifiers would otherwise generate
 pub struct SCTable {
     table : ~[SyntaxContext_],
     mark_memo : HashMap<(SyntaxContext,Mrk),SyntaxContext>,
