@@ -402,7 +402,7 @@ fn encode_reexported_static_base_methods(ecx: &EncodeContext,
                 for base_impl.methods.iter().advance |&m| {
                     if m.explicit_self == ast::sty_static {
                         encode_reexported_static_method(ecx, ebml_w, exp,
-                                                        m.did, m.ident);
+                                                        m.def_id, m.ident);
                     }
                 }
             }

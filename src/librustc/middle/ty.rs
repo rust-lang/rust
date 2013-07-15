@@ -16,7 +16,6 @@ use middle::const_eval;
 use middle::lang_items::{TyDescStructLangItem, TyVisitorTraitLangItem};
 use middle::lang_items::OpaqueStructLangItem;
 use middle::freevars;
-use middle::resolve::{Impl, MethodInfo};
 use middle::resolve;
 use middle::ty;
 use middle::subst::Subst;
@@ -94,6 +93,12 @@ impl Method {
             def_id: def_id
         }
     }
+}
+
+pub struct Impl {
+    did: def_id,
+    ident: ident,
+    methods: ~[@Method]
 }
 
 #[deriving(Clone, Eq, IterBytes)]
