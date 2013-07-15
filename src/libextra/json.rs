@@ -14,7 +14,7 @@
 #[forbid(non_camel_case_types)];
 #[allow(missing_doc)];
 
-//! json serialization
+//! json parsing and serialization
 
 use std::iterator;
 use std::float;
