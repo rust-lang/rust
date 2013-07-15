@@ -1003,11 +1003,24 @@ pub mod raw {
 
     /// Sets the length of the string and adds the null terminator
     #[inline]
+    #[cfg(stage0)]
     pub unsafe fn set_len(v: &mut ~str, new_len: uint) {
         let v: **mut vec::raw::VecRepr = cast::transmute(v);
         let repr: *mut vec::raw::VecRepr = *v;
         (*repr).unboxed.fill = new_len + 1u;
         let null = ptr::mut_offset(cast::transmute(&((*repr).unboxed.data)),
+                                   new_len);
+        *null = 0u8;
+    }
+
+    /// Sets the length of the string and adds the null terminator
+    #[inline]
+    #[cfg(not(stage0))]
+    pub unsafe fn set_len(v: &mut ~str, new_len: uint) {
+        let v: **mut vec::UnboxedVecRepr = cast::transmute(v);
+        let repr: *mut vec::UnboxedVecRepr = *v;
+        (*repr).fill = new_len + 1u;
+        let null = ptr::mut_offset(cast::transmute(&((*repr).data)),
                                    new_len);
         *null = 0u8;
     }
@@ -2027,7 +2040,7 @@ impl NullTerminatedStr for @str {
      */
     #[inline]
     fn as_bytes_with_null<'a>(&'a self) -> &'a [u8] {
-        let ptr: &'a ~[u8] = unsafe { ::cast::transmute(self) };
+        let ptr: &'a @[u8] = unsafe { ::cast::transmute(self) };
         let slice: &'a [u8] = *ptr;
         slice
     }

@@ -297,6 +297,14 @@ impl<V:TyVisitor + MovePtr> TyVisitor for MovePtrAdaptor<V> {
         true
     }
 
+    #[cfg(not(stage0))]
+    fn visit_evec_uniq_managed(&self, mtbl: uint, inner: *TyDesc) -> bool {
+        self.align_to::<~[@u8]>();
+        if ! self.inner.visit_evec_uniq_managed(mtbl, inner) { return false; }
+        self.bump_past::<~[@u8]>();
+        true
+    }
+
     fn visit_evec_slice(&self, mtbl: uint, inner: *TyDesc) -> bool {
         self.align_to::<&'static [u8]>();
         if ! self.inner.visit_evec_slice(mtbl, inner) { return false; }

@@ -122,9 +122,9 @@ impl Reflector {
                      bracket_name: &str,
                      extra: &[ValueRef],
                      inner: &fn(&mut Reflector)) {
-        self.visit(~"enter_" + bracket_name, extra);
+        self.visit("enter_" + bracket_name, extra);
         inner(self);
-        self.visit(~"leave_" + bracket_name, extra);
+        self.visit("leave_" + bracket_name, extra);
     }
 
     pub fn vstore_name_and_extra(&mut self,
@@ -183,7 +183,11 @@ impl Reflector {
           ty::ty_evec(ref mt, vst) => {
               let (name, extra) = self.vstore_name_and_extra(t, vst);
               let extra = extra + self.c_mt(mt);
-              self.visit(~"evec_" + name, extra)
+              if "uniq" == name && ty::type_contents(bcx.tcx(), t).contains_managed() {
+                  self.visit("evec_uniq_managed", extra)
+              } else {
+                  self.visit(~"evec_" + name, extra)
+              }
           }
           ty::ty_box(ref mt) => {
               let extra = self.c_mt(mt);

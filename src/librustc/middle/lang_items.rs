@@ -63,34 +63,33 @@ pub enum LangItem {
     FailFnLangItem,                    // 24
     FailBoundsCheckFnLangItem,         // 25
     ExchangeMallocFnLangItem,          // 26
-    VectorExchangeMallocFnLangItem,    // 27
-    ClosureExchangeMallocFnLangItem,   // 28
-    ExchangeFreeFnLangItem,            // 29
-    MallocFnLangItem,                  // 30
-    FreeFnLangItem,                    // 31
-    BorrowAsImmFnLangItem,             // 32
-    BorrowAsMutFnLangItem,             // 33
-    ReturnToMutFnLangItem,             // 34
-    CheckNotBorrowedFnLangItem,        // 35
-    StrDupUniqFnLangItem,              // 36
-    RecordBorrowFnLangItem,            // 37
-    UnrecordBorrowFnLangItem,          // 38
+    ClosureExchangeMallocFnLangItem,   // 27
+    ExchangeFreeFnLangItem,            // 28
+    MallocFnLangItem,                  // 29
+    FreeFnLangItem,                    // 30
+    BorrowAsImmFnLangItem,             // 31
+    BorrowAsMutFnLangItem,             // 32
+    ReturnToMutFnLangItem,             // 33
+    CheckNotBorrowedFnLangItem,        // 34
+    StrDupUniqFnLangItem,              // 35
+    RecordBorrowFnLangItem,            // 36
+    UnrecordBorrowFnLangItem,          // 37
 
-    StartFnLangItem,                   // 39
+    StartFnLangItem,                   // 38
 
-    TyDescStructLangItem,              // 40
-    TyVisitorTraitLangItem,            // 41
-    OpaqueStructLangItem,              // 42
+    TyDescStructLangItem,              // 39
+    TyVisitorTraitLangItem,            // 40
+    OpaqueStructLangItem,              // 41
 }
 
 pub struct LanguageItems {
-    items: [Option<def_id>, ..43]
+    items: [Option<def_id>, ..42]
 }
 
 impl LanguageItems {
     pub fn new() -> LanguageItems {
         LanguageItems {
-            items: [ None, ..43 ]
+            items: [ None, ..42 ]
         }
     }
 
@@ -130,24 +129,23 @@ impl LanguageItems {
             24 => "fail_",
             25 => "fail_bounds_check",
             26 => "exchange_malloc",
-            27 => "vector_exchange_malloc",
-            28 => "closure_exchange_malloc",
-            29 => "exchange_free",
-            30 => "malloc",
-            31 => "free",
-            32 => "borrow_as_imm",
-            33 => "borrow_as_mut",
-            34 => "return_to_mut",
-            35 => "check_not_borrowed",
-            36 => "strdup_uniq",
-            37 => "record_borrow",
-            38 => "unrecord_borrow",
+            27 => "closure_exchange_malloc",
+            28 => "exchange_free",
+            29 => "malloc",
+            30 => "free",
+            31 => "borrow_as_imm",
+            32 => "borrow_as_mut",
+            33 => "return_to_mut",
+            34 => "check_not_borrowed",
+            35 => "strdup_uniq",
+            36 => "record_borrow",
+            37 => "unrecord_borrow",
 
-            39 => "start",
+            38 => "start",
 
-            40 => "ty_desc",
-            41 => "ty_visitor",
-            42 => "opaque",
+            39 => "ty_desc",
+            40 => "ty_visitor",
+            41 => "opaque",
 
             _ => "???"
         }
@@ -239,9 +237,6 @@ impl LanguageItems {
     }
     pub fn exchange_malloc_fn(&self) -> def_id {
         self.items[ExchangeMallocFnLangItem as uint].get()
-    }
-    pub fn vector_exchange_malloc_fn(&self) -> def_id {
-        self.items[VectorExchangeMallocFnLangItem as uint].get()
     }
     pub fn closure_exchange_malloc_fn(&self) -> def_id {
         self.items[ClosureExchangeMallocFnLangItem as uint].get()
@@ -336,7 +331,6 @@ impl<'self> LanguageItemCollector<'self> {
         item_refs.insert(@"fail_bounds_check",
                          FailBoundsCheckFnLangItem as uint);
         item_refs.insert(@"exchange_malloc", ExchangeMallocFnLangItem as uint);
-        item_refs.insert(@"vector_exchange_malloc", VectorExchangeMallocFnLangItem as uint);
         item_refs.insert(@"closure_exchange_malloc", ClosureExchangeMallocFnLangItem as uint);
         item_refs.insert(@"exchange_free", ExchangeFreeFnLangItem as uint);
         item_refs.insert(@"malloc", MallocFnLangItem as uint);
