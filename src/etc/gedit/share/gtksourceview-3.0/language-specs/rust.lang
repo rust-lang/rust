@@ -19,8 +19,9 @@
     <style id="type" _name="Data Type" map-to="def:type"/>
     <style id="constant" _name="Constant" map-to="def:constant"/>
     <style id="identifier" _name="Identifier" map-to="def:identifier"/>
-    <style id="number" _name="Number" map-to="def:decimal"/>
+    <style id="number" _name="Number" map-to="def:number"/>
     <style id="scope" _name="Scope" map-to="def:preprocessor"/>
+    <style id="attribute" _name="Attribute" map-to="def:preprocessor"/>
   </styles>
 
   <definitions>
@@ -216,9 +217,19 @@
       </match>
     </context>
 
+    <define-regex id="ident" extended="true">
+      ([^[:cntrl:][:space:][:punct:][:digit:]]|_)([^[:cntrl:][:punct:][:space:]]|_)*
+    </define-regex>
+
     <context id="scope" style-ref="scope">
       <match extended="true">
-        [a-zA-Z_][a-zA-Z0-9_]*::
+        \%{ident}::
+      </match>
+    </context>
+
+    <context id="lifetime" style-ref="keyword">
+      <match extended="true">
+        '\%{ident}
       </match>
     </context>
 
@@ -231,12 +242,23 @@
       </include>
     </context>
 
-    <context id="char" style-ref="char" end-at-line-end="true" class="char" class-disabled="no-spell-check">
-      <start>'</start>
-      <end>'</end>
-      <include>
-        <context ref="def:escape"/>
-      </include>
+    <define-regex id="hex_digit" extended="true">
+      [0-9a-fA-F]
+    </define-regex>
+
+    <define-regex id="common_escape" extended="true">
+      (n|r|t)|
+      x\%{hex_digit}{2}|
+      u\%{hex_digit}{4}|
+      U\%{hex_digit}{8}
+    </define-regex>
+
+    <context id="char" style-ref="char" class="char">
+      <match extended="true">'([^\\]|\\\%{common_escape})'</match>
+    </context>
+
+    <context id="attribute" style-ref="attribute" class="attribute">
+      <match extended="true">\#\[[^\]]+\]</match>
     </context>
 
     <context id="rust" class="no-spell-check">
@@ -255,6 +277,8 @@
         <context ref="scope"/>
         <context ref="string"/>
         <context ref="char"/>
+        <context ref="lifetime"/>
+        <context ref="attribute"/>
       </include>
     </context>
 
