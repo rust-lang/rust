@@ -286,8 +286,14 @@ impl<T> Drop for PortOneHack<T> {
                 STATE_ONE => {
                     let _packet: ~Packet<T> = cast::transmute(this.void_packet);
                 }
-                _ => {
-                    util::unreachable()
+                task_as_state => {
+                    // This case occurs during unwinding, when the blocked
+                    // receiver was killed awake. The task can't still be
+                    // blocked (we are it), but we need to free the handle.
+                    let recvr = BlockedTask::cast_from_uint(task_as_state);
+                    // FIXME(#7554)(bblum): Make this cfg(test) dependent.
+                    // in a later commit.
+                    assert!(recvr.wake().is_none());
                 }
             }
         }

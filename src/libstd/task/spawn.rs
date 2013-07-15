@@ -669,19 +669,44 @@ pub fn spawn_raw(opts: TaskOpts, f: ~fn()) {
 }
 
 fn spawn_raw_newsched(mut opts: TaskOpts, f: ~fn()) {
-    let f = Cell::new(f);
+    let child_data = Cell::new(gen_child_taskgroup(opts.linked, opts.supervised));
+
+    let child_wrapper: ~fn() = || {
+        // Child task runs this code.
+        let child_data = Cell::new(child_data.take()); // :(
+        let enlist_success = do Local::borrow::<Task, bool> |me| {
+            let (child_tg, ancestors, is_main) = child_data.take();
+            let mut ancestors = ancestors;
+            // FIXME(#7544): Optimize out the xadd in this clone, somehow.
+            let handle = me.death.kill_handle.get_ref().clone();
+            // Atomically try to get into all of our taskgroups.
+            if enlist_many(NewTask(handle), &child_tg, &mut ancestors) {
+                // Got in. We can run the provided child body, and can also run
+                // the taskgroup's exit-time-destructor afterward.
+                me.taskgroup = Some(TCB(child_tg, ancestors, is_main, None));
+                true
+            } else {
+                false
+            }
+        };
+        // Should be run after the local-borrowed task is returned.
+        if enlist_success {
+            f()
+        }
+    };
 
     let mut task = unsafe {
         let sched = Local::unsafe_borrow::<Scheduler>();
         rtdebug!("unsafe borrowed sched");
 
         if opts.linked {
+            let child_wrapper = Cell::new(child_wrapper);
             do Local::borrow::<Task, ~Task>() |running_task| {
-                ~running_task.new_child(&mut (*sched).stack_pool, f.take())
+                ~running_task.new_child(&mut (*sched).stack_pool, child_wrapper.take())
             }
         } else {
             // An unlinked task is a new root in the task tree
-            ~Task::new_root(&mut (*sched).stack_pool, f.take())
+            ~Task::new_root(&mut (*sched).stack_pool, child_wrapper)
         }
     };
 
