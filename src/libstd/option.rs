@@ -180,6 +180,13 @@ impl<T> Option<T> {
         match *self { Some(ref mut x) => Some(f(x)), None => None }
     }
 
+    /// Maps a `some` value from one type to another by a mutable reference,
+    /// or returns a default value.
+    #[inline]
+    pub fn map_mut_default<'a, U>(&'a mut self, def: U, f: &fn(&'a mut T) -> U) -> U {
+        match *self { Some(ref mut x) => f(x), None => def }
+    }
+
     /// As `map`, but consumes the option and gives `f` ownership to avoid
     /// copying.
     #[inline]
