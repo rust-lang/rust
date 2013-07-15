@@ -1137,15 +1137,7 @@ fn get_or_create_type_metadata(cx: &mut CrateContext,
             create_enum_metadata(cx, t, def_id, substs, span)
         },
         ty::ty_box(ref mt) => {
-            let content_llvm_type = type_of::type_of(cx, mt.ty);
-            let content_type_metadata = get_or_create_type_metadata(cx, mt.ty, span);
-
-            let box_metadata = create_boxed_type_metadata(cx,
-                                                 content_llvm_type,
-                                                 content_type_metadata,
-                                                 span);
-
-            create_pointer_type_metadata(cx, t, box_metadata)
+            create_pointer_to_box_metadata(cx, t, mt.ty)
         },
         ty::ty_evec(ref mt, ref vstore) => {
             match *vstore {
@@ -1161,6 +1153,9 @@ fn get_or_create_type_metadata(cx: &mut CrateContext,
                     create_vec_slice_metadata(cx, t, mt.ty, span)
                 }
             }
+        },
+        ty::ty_uniq(ref mt) if ty::type_contents(cx.tcx, mt.ty).contains_managed() => {
+            create_pointer_to_box_metadata(cx, t, mt.ty)
         },
         ty::ty_uniq(ref mt)    |
         ty::ty_ptr(ref mt)     |
@@ -1193,6 +1188,24 @@ fn get_or_create_type_metadata(cx: &mut CrateContext,
 
     dbg_cx(cx).created_types.insert(type_id, type_metadata);
     return type_metadata;
+
+
+    fn create_pointer_to_box_metadata(cx: &mut CrateContext,
+                                      pointer_type: ty::t,
+                                      type_in_box: ty::t)
+                                   -> DIType {
+        let content_llvm_type = type_of::type_of(cx, type_in_box);
+        let content_type_metadata = get_or_create_type_metadata(cx,
+                                                                type_in_box,
+                                                                codemap::dummy_sp());
+
+        let box_metadata = create_boxed_type_metadata(cx,
+                                                      content_llvm_type,
+                                                      content_type_metadata,
+                                                      codemap::dummy_sp());
+
+        create_pointer_type_metadata(cx, pointer_type, box_metadata)
+    }
 }
 
 fn set_debug_location(cx: @mut CrateContext, scope: DIScope, line: uint, col: uint) {
