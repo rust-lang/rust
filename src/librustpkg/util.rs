@@ -344,7 +344,7 @@ pub fn find_and_install_dependencies(ctxt: &Ctx,
                     }
                     None => {
                         // Try to install it
-                        let pkg_id = PkgId::new(lib_name);
+                        let pkg_id = PkgId::new(lib_name, &os::getcwd());
                         my_ctxt.install(&my_workspace, &pkg_id);
                         // Also, add an additional search path
                         debug!("let installed_path...")
