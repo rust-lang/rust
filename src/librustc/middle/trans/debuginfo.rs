@@ -673,7 +673,9 @@ fn create_enum_metadata(cx: &mut CrateContext,
                 0) // RuntimeLang
             }};
         }
-        _ => { return ptr::null(); }
+        adt::NullablePointer { nonnull: ref struct_def, nndiscr, _ } => {
+            return create_adt_struct_metadata(cx, struct_def, variants[nndiscr], None, span);
+        }
     }
 
     fn create_adt_struct_metadata(cx: &mut CrateContext,
