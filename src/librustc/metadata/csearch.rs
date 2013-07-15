@@ -15,7 +15,7 @@ use metadata::common::*;
 use metadata::cstore;
 use metadata::decoder;
 use metadata;
-use middle::{ty, resolve};
+use middle::ty;
 
 use std::vec;
 use reader = extra::ebml::reader;
@@ -97,10 +97,10 @@ pub fn get_enum_variants(tcx: ty::ctxt, def: ast::def_id)
 }
 
 /// Returns information about the given implementation.
-pub fn get_impl(cstore: @mut cstore::CStore, impl_def_id: ast::def_id)
-                -> resolve::Impl {
-    let cdata = cstore::get_crate_data(cstore, impl_def_id.crate);
-    decoder::get_impl(cstore.intr, cdata, impl_def_id.node)
+pub fn get_impl(tcx: ty::ctxt, impl_def_id: ast::def_id)
+                -> ty::Impl {
+    let cdata = cstore::get_crate_data(tcx.cstore, impl_def_id.crate);
+    decoder::get_impl(tcx.cstore.intr, cdata, impl_def_id.node, tcx)
 }
 
 pub fn get_method(tcx: ty::ctxt, def: ast::def_id) -> ty::Method {

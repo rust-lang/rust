@@ -527,7 +527,7 @@ impl<'self> LookupContext<'self> {
 
     pub fn push_candidates_from_impl(&self,
                                      candidates: &mut ~[Candidate],
-                                     impl_info: &resolve::Impl) {
+                                     impl_info: &ty::Impl) {
         if !self.impl_dups.insert(impl_info.did) {
             return; // already visited
         }
@@ -543,7 +543,7 @@ impl<'self> LookupContext<'self> {
             }
         };
 
-        let method = ty::method(self.tcx(), impl_info.methods[idx].did);
+        let method = ty::method(self.tcx(), impl_info.methods[idx].def_id);
 
         // determine the `self` of the impl with fresh
         // variables for each parameter:

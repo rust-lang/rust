@@ -20,7 +20,7 @@ use metadata::decoder;
 use metadata::tydecode::{parse_ty_data, parse_def_id,
                          parse_type_param_def_data,
                          parse_bare_fn_ty_data, parse_trait_ref_data};
-use middle::{ty, resolve};
+use middle::ty;
 
 use std::hash::HashUtil;
 use std::int;
@@ -795,34 +795,29 @@ fn get_explicit_self(item: ebml::Doc) -> ast::explicit_self_ {
 }
 
 fn item_impl_methods(intr: @ident_interner, cdata: cmd, item: ebml::Doc,
-                     base_tps: uint) -> ~[@resolve::MethodInfo] {
+                     tcx: ty::ctxt) -> ~[@ty::Method] {
     let mut rslt = ~[];
     for reader::tagged_docs(item, tag_item_impl_method) |doc| {
         let m_did = reader::with_doc_data(doc, parse_def_id);
-        let mth_item = lookup_item(m_did.node, cdata.data);
-        let explicit_self = get_explicit_self(mth_item);
-        rslt.push(@resolve::MethodInfo {
-                    did: translate_def_id(cdata, m_did),
-                    n_tps: item_ty_param_count(mth_item) - base_tps,
-                    ident: item_name(intr, mth_item),
-                    explicit_self: explicit_self});
+        rslt.push(@get_method(intr, cdata, m_did.node, tcx));
     }
+
     rslt
 }
 
 /// Returns information about the given implementation.
-pub fn get_impl(intr: @ident_interner, cdata: cmd, impl_id: ast::node_id)
-                -> resolve::Impl {
+pub fn get_impl(intr: @ident_interner, cdata: cmd, impl_id: ast::node_id,
+               tcx: ty::ctxt)
+                -> ty::Impl {
     let data = cdata.data;
     let impl_item = lookup_item(impl_id, data);
-    let base_tps = item_ty_param_count(impl_item);
-    resolve::Impl {
+    ty::Impl {
         did: ast::def_id {
             crate: cdata.cnum,
             node: impl_id,
         },
         ident: item_name(intr, impl_item),
-        methods: item_impl_methods(intr, cdata, impl_item, base_tps),
+        methods: item_impl_methods(intr, cdata, impl_item, tcx),
     }
 }
 
