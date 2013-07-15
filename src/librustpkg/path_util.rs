@@ -54,11 +54,28 @@ pub fn rust_path() -> ~[Path] {
     };
     let cwd = os::getcwd();
     // now add in default entries
+    env_rust_path.push(cwd.push(".rust"));
     env_rust_path.push(copy cwd);
     do cwd.each_parent() |p| { push_if_exists(&mut env_rust_path, p) };
     let h = os::homedir();
     for h.iter().advance |h| { push_if_exists(&mut env_rust_path, h); }
     env_rust_path
+}
+
+pub fn default_workspace() -> Path {
+    let p = rust_path();
+    if p.is_empty() {
+        fail!("Empty RUST_PATH");
+    }
+    let result = p[0];
+    if !os::path_is_dir(&result) {
+        os::mkdir_recursive(&result, U_RWX);
+    }
+    result
+}
+
+pub fn in_rust_path(p: &Path) -> bool {
+    rust_path().contains(p)
 }
 
 pub static U_RWX: i32 = (S_IRUSR | S_IWUSR | S_IXUSR) as i32;
