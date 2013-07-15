@@ -178,8 +178,8 @@ struct AncestorNode {
     // approach the tail of the list.
     // FIXME(#3068): Make the generation counter togglable with #[cfg(debug)].
     generation:     uint,
-    // Should really be a non-option. This way appeases borrowck.
-    parent_group:   Option<TaskGroupArc>,
+    // Handle to the tasks in the group of the current generation.
+    parent_group:   TaskGroupArc,
     // Recursive rest of the list.
     ancestors:      AncestorList,
 }
@@ -221,18 +221,13 @@ fn each_ancestor(list:        &mut AncestorList,
                 bail_blk:        &fn(TaskGroupInner),
                 forward_blk:     &fn(TaskGroupInner) -> bool,
                 last_generation: uint) -> bool {
-        // Need to swap the list out to use it, to appease borrowck.
-        let tmp_list = util::replace(&mut *list, AncestorList(None));
         let (coalesce_this, early_break) =
-            iterate(&tmp_list, bail_blk, forward_blk, last_generation);
+            iterate(list, bail_blk, forward_blk, last_generation);
         // What should our next ancestor end up being?
         if coalesce_this.is_some() {
             // Needed coalesce. Our next ancestor becomes our old
             // ancestor's next ancestor. ("next = old_next->next;")
             *list = coalesce_this.unwrap();
-        } else {
-            // No coalesce; restore from tmp. ("next = old_next;")
-            *list = tmp_list;
         }
         return early_break;
     }
@@ -245,7 +240,7 @@ fn each_ancestor(list:        &mut AncestorList,
     // bool:
     //     True if the supplied block did 'break', here or in any recursive
     //     calls. If so, must call the unwinder on all previous nodes.
-    fn iterate(ancestors:       &AncestorList,
+    fn iterate(ancestors:       &mut AncestorList,
                bail_blk:        &fn(TaskGroupInner),
                forward_blk:     &fn(TaskGroupInner) -> bool,
                last_generation: uint)
@@ -263,7 +258,7 @@ fn each_ancestor(list:        &mut AncestorList,
 
         // The map defaults to None, because if ancestors is None, we're at
         // the end of the list, which doesn't make sense to coalesce.
-        return do (**ancestors).map_default((None,false)) |ancestor_arc| {
+        do ancestors.map_default((None,false)) |ancestor_arc| {
             // NB: Takes a lock! (this ancestor node)
             do access_ancestors(ancestor_arc) |nobe| {
                 // Argh, but we couldn't give it to coalesce() otherwise.
@@ -276,7 +271,7 @@ fn each_ancestor(list:        &mut AncestorList,
                 let mut nobe_is_dead = false;
                 let do_continue =
                     // NB: Takes a lock! (this ancestor node's parent group)
-                    do with_parent_tg(&mut nobe.parent_group) |tg_opt| {
+                    do access_group(&nobe.parent_group) |tg_opt| {
                         // Decide whether this group is dead. Note that the
                         // group being *dead* is disjoint from it *failing*.
                         nobe_is_dead = match *tg_opt {
@@ -305,7 +300,7 @@ fn each_ancestor(list:        &mut AncestorList,
                  * Step 3: Maybe unwind; compute return info for our caller.
                  *##########################################################*/
                 if need_unwind && !nobe_is_dead {
-                    do with_parent_tg(&mut nobe.parent_group) |tg_opt| {
+                    do access_group(&nobe.parent_group) |tg_opt| {
                         bail_blk(tg_opt)
                     }
                 }
@@ -321,16 +316,6 @@ fn each_ancestor(list:        &mut AncestorList,
                     (None, need_unwind)
                 }
             }
-        };
-
-        // Wrapper around exclusive::with that appeases borrowck.
-        fn with_parent_tg<U>(parent_group: &mut Option<TaskGroupArc>,
-                             blk: &fn(TaskGroupInner) -> U) -> U {
-            // If this trips, more likely the problem is 'blk' failed inside.
-            let tmp_arc = parent_group.take_unwrap();
-            let result = do access_group(&tmp_arc) |tg_opt| { blk(tg_opt) };
-            *parent_group = Some(tmp_arc);
-            result
         }
     }
 }
@@ -544,7 +529,7 @@ impl RuntimeGlue {
         }
     }
 
-    fn with_my_taskgroup<U>(blk: &fn(&mut TCB) -> U) -> U {
+    fn with_my_taskgroup<U>(blk: &fn(&TCB) -> U) -> U {
         match context() {
             OldTaskContext => unsafe {
                 let me = rt::rust_get_task();
@@ -561,9 +546,9 @@ impl RuntimeGlue {
                             // Main task/group has no ancestors, no notifier, etc.
                             let group = @@mut TCB(tasks, AncestorList(None), true, None);
                             local_set(OldHandle(me), taskgroup_key(), group);
-                            blk(&mut **group)
+                            blk(&**group)
                         }
-                        Some(&group) => blk(&mut **group)
+                        Some(&group) => blk(&**group)
                     }
                 }
             },
@@ -583,9 +568,9 @@ impl RuntimeGlue {
                         }));
                         let group = TCB(tasks, AncestorList(None), true, None);
                         (*me).taskgroup = Some(group);
-                        (*me).taskgroup.get_mut_ref()
+                        (*me).taskgroup.get_ref()
                     }
-                    Some(ref mut group) => group,
+                    Some(ref group) => group,
                 })
             },
             SchedulerContext | GlobalContext => rtabort!("spawning in bad context"),
@@ -595,14 +580,13 @@ impl RuntimeGlue {
 
 fn gen_child_taskgroup(linked: bool, supervised: bool)
     -> (TaskGroupArc, AncestorList, bool) {
-    return do RuntimeGlue::with_my_taskgroup |spawner_group| {
+    do RuntimeGlue::with_my_taskgroup |spawner_group| {
+        let ancestors = AncestorList(spawner_group.ancestors.map(|x| x.clone()));
         if linked {
             // Child is in the same group as spawner.
-            let g = spawner_group.tasks.clone();
             // Child's ancestors are spawner's ancestors.
-            let a = share_ancestors(&mut spawner_group.ancestors);
             // Propagate main-ness.
-            (g, a, spawner_group.is_main)
+            (spawner_group.tasks.clone(), ancestors, spawner_group.is_main)
         } else {
             // Child is in a separate group from spawner.
             let g = exclusive(Some(TaskGroupData {
@@ -610,48 +594,29 @@ fn gen_child_taskgroup(linked: bool, supervised: bool)
                 descendants: new_taskset(),
             }));
             let a = if supervised {
-                // Child's ancestors start with the spawner.
-                let old_ancestors =
-                    share_ancestors(&mut spawner_group.ancestors);
                 // FIXME(#3068) - The generation counter is only used for a
                 // debug assertion, but initialising it requires locking a
                 // mutex. Hence it should be enabled only in debug builds.
                 let new_generation =
-                    match *old_ancestors {
+                    match *ancestors {
                         Some(ref arc) => {
                             access_ancestors(arc, |a| a.generation+1)
                         }
                         None => 0 // the actual value doesn't really matter.
                     };
                 assert!(new_generation < uint::max_value);
+                // Child's ancestors start with the spawner.
                 // Build a new node in the ancestor list.
                 AncestorList(Some(exclusive(AncestorNode {
                     generation: new_generation,
-                    parent_group: Some(spawner_group.tasks.clone()),
-                    ancestors: old_ancestors,
+                    parent_group: spawner_group.tasks.clone(),
+                    ancestors: ancestors,
                 })))
             } else {
                 // Child has no ancestors.
                 AncestorList(None)
             };
             (g, a, false)
-        }
-    };
-
-    fn share_ancestors(ancestors: &mut AncestorList) -> AncestorList {
-        // Appease the borrow-checker. Really this wants to be written as:
-        // match ancestors
-        //    Some(ancestor_arc) { ancestor_list(Some(ancestor_arc.clone())) }
-        //    None               { ancestor_list(None) }
-        let tmp = util::replace(&mut **ancestors, None);
-        if tmp.is_some() {
-            let ancestor_arc = tmp.unwrap();
-            let result = ancestor_arc.clone();
-            error!("cloned ancestors");
-            **ancestors = Some(ancestor_arc);
-            AncestorList(Some(result))
-        } else {
-            AncestorList(None)
         }
     }
 }
@@ -754,14 +719,8 @@ fn spawn_raw_oldsched(mut opts: TaskOpts, f: ~fn()) {
             };
             assert!(!new_task.is_null());
             // Getting killed after here would leak the task.
-            let notify_chan = if opts.notify_chan.is_none() {
-                None
-            } else {
-                Some(opts.notify_chan.take_unwrap())
-            };
-
             let child_wrapper = make_child_wrapper(new_task, child_tg,
-                  ancestors, is_main, notify_chan, f);
+                  ancestors, is_main, opts.notify_chan.take(), f);
 
             let closure = cast::transmute(&child_wrapper);
 
