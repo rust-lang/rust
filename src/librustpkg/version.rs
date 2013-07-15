@@ -89,6 +89,29 @@ pub fn parse_vers(vers: ~str) -> result::Result<semver::Version, ~str> {
     }
 }
 
+/// If `local_path` is a git repo, and the most recent tag in that repo denotes a version,
+/// return it; otherwise, `None`
+pub fn try_getting_local_version(local_path: &Path) -> Option<Version> {
+    debug!("in try_getting_local_version");
+    let outp = run::process_output("git",
+                                   [fmt!("--git-dir=%s", local_path.push(".git").to_str()),
+                                    ~"tag", ~"-l"]);
+
+    debug!("git --git-dir=%s tag -l ~~~> %?", local_path.push(".git").to_str(), outp.status);
+
+    if outp.status != 0 {
+        return None;
+    }
+
+    let mut output = None;
+    let output_text = str::from_bytes(outp.output);
+    for output_text.line_iter().advance |l| {
+        if !l.is_whitespace() {
+            output = Some(l);
+        }
+    }
+    output.chain(try_parsing_version)
+}
 
 /// If `remote_path` refers to a git repo that can be downloaded,
 /// and the most recent tag in that repo denotes a version, return it;

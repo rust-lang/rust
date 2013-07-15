@@ -15,6 +15,7 @@ use std::{os, run, str};
 use context::*;
 use crate::Crate;
 use messages::*;
+use source_control::git_clone;
 use path_util::pkgid_src_in_workspace;
 use util::compile_crate;
 use version::{ExactRevision, SemanticVersion, NoVersion};
@@ -76,9 +77,10 @@ impl PkgSrc {
         dir
     }
 
-    /// Try interpreting self's package id as a remote package, and try
+    /// Try interpreting self's package id as a git repository, and try
     /// fetching it and caching it in a local directory. Return the cached directory
-    /// if this was successful, None otherwise
+    /// if this was successful, None otherwise. Similarly, if the package id
+    /// refers to a git repo on the local version, also check it out.
     /// (right now we only support git)
     pub fn fetch_git(&self) -> Option<Path> {
 
@@ -86,6 +88,18 @@ impl PkgSrc {
         local = local.push(self.id.to_str());
         // Git can't clone into a non-empty directory
         os::remove_dir_recursive(&local);
+
+        debug!("Checking whether %s exists locally. Cwd = %s, does it? %?",
+               self.id.local_path.to_str(),
+               os::getcwd().to_str(),
+               os::path_exists(&*self.id.local_path));
+
+        if os::path_exists(&*self.id.local_path) {
+            debug!("%s exists locally! Cloning it into %s",
+                   self.id.local_path.to_str(), local.to_str());
+            git_clone(&*self.id.local_path, &local, &self.id.version);
+            return Some(local);
+        }
 
         let url = fmt!("https://%s", self.id.remote_path.to_str());
         let branch_args = match self.id.version {

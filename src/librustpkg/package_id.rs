@@ -9,7 +9,8 @@
 // except according to those terms.
 
 pub use package_path::{RemotePath, LocalPath, normalize, hash};
-use version::{try_getting_version, Version, NoVersion, split_version};
+use version::{try_getting_version, try_getting_local_version,
+              Version, NoVersion, split_version};
 
 /// Path-fragment identifier of a package such as
 /// 'github.com/graydon/test'; path must be a relative
@@ -40,7 +41,10 @@ impl Eq for PkgId {
 }
 
 impl PkgId {
-    pub fn new(s: &str) -> PkgId {
+    // The PkgId constructor takes a Path argument so as
+    // to be able to infer the version if the path refers
+    // to a local git repository
+    pub fn new(s: &str, work_dir: &Path) -> PkgId {
         use conditions::bad_pkg_id::cond;
 
         let mut given_version = None;
@@ -71,9 +75,12 @@ impl PkgId {
 
         let version = match given_version {
             Some(v) => v,
-            None => match try_getting_version(&remote_path) {
+            None => match try_getting_local_version(&work_dir.push_rel(&*local_path)) {
                 Some(v) => v,
-                None => NoVersion
+                None => match try_getting_version(&remote_path) {
+                    Some(v) => v,
+                    None => NoVersion
+                }
             }
         };
 

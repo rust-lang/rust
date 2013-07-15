@@ -28,8 +28,8 @@ pub fn build_lib(sysroot: @Path, root: Path, dest: Path, name: ~str, version: Ve
 
     let pkg_src = PkgSrc {
         root: root,
-        dst_dir: dest,
-        id: PkgId{ version: version, ..PkgId::new(name)},
+        dst_dir: dest.clone(),
+        id: PkgId{ version: version, ..PkgId::new(name, &dest.pop())},
         libs: ~[mk_crate(lib)],
         mains: ~[],
         tests: ~[],
@@ -42,8 +42,8 @@ pub fn build_exe(sysroot: @Path, root: Path, dest: Path, name: ~str, version: Ve
                  main: Path) {
     let pkg_src = PkgSrc {
         root: root,
-        dst_dir: dest,
-        id: PkgId{ version: version, ..PkgId::new(name)},
+        dst_dir: dest.clone(),
+        id: PkgId{ version: version, ..PkgId::new(name, &dest.pop())},
         libs: ~[],
         mains: ~[mk_crate(main)],
         tests: ~[],
@@ -62,7 +62,7 @@ pub fn install_lib(sysroot: @Path,
     debug!("sysroot = %s", sysroot.to_str());
     debug!("workspace = %s", workspace.to_str());
     // make a PkgSrc
-    let pkg_id = PkgId{ version: version, ..PkgId::new(name)};
+    let pkg_id = PkgId{ version: version, ..PkgId::new(name, &workspace)};
     let build_dir = workspace.push("build");
     let dst_dir = build_dir.push_rel(&*pkg_id.local_path);
     let pkg_src = PkgSrc {
@@ -81,7 +81,7 @@ pub fn install_lib(sysroot: @Path,
 
 pub fn install_exe(sysroot: @Path, workspace: Path, name: ~str, version: Version) {
     default_ctxt(sysroot).install(&workspace, &PkgId{ version: version,
-                                            ..PkgId::new(name)});
+                                            ..PkgId::new(name, &workspace)});
 
 }
 
