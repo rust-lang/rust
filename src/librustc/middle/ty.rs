@@ -214,21 +214,6 @@ pub enum AutoRef {
     AutoUnsafe(ast::mutability)
 }
 
-// Stores information about provided methods (a.k.a. default methods) in
-// implementations.
-//
-// This is a map from ID of each implementation to the method info and trait
-// method ID of each of the default methods belonging to the trait that
-// implementation implements.
-pub type ProvidedMethodsMap = @mut HashMap<def_id,@mut ~[@ProvidedMethodInfo]>;
-
-// Stores the method info and definition ID of the associated trait method for
-// each instantiation of each provided method.
-pub struct ProvidedMethodInfo {
-    method_info: @MethodInfo,
-    trait_method_def_id: def_id
-}
-
 pub struct ProvidedMethodSource {
     method_id: ast::def_id,
     impl_id: ast::def_id
@@ -287,10 +272,7 @@ struct ctxt_ {
     adjustments: @mut HashMap<ast::node_id, @AutoAdjustment>,
     normalized_cache: @mut HashMap<t, t>,
     lang_items: middle::lang_items::LanguageItems,
-    // A mapping from an implementation ID to the method info and trait
-    // method ID of the provided (a.k.a. default) methods in the traits that
-    // that implementation implements.
-    provided_methods: ProvidedMethodsMap,
+    // A mapping of fake provided method def_ids to the default implementation
     provided_method_sources: @mut HashMap<ast::def_id, ProvidedMethodSource>,
     supertraits: @mut HashMap<ast::def_id, @~[@TraitRef]>,
 
@@ -310,6 +292,12 @@ struct ctxt_ {
     // Contains implementations of methods that are inherent to a type.
     // Methods in these implementations don't need to be exported.
     inherent_impls: @mut HashMap<ast::def_id, @mut ~[@Impl]>,
+
+    // Maps a def_id of an impl to an Impl structure.
+    // Note that this contains all of the impls that we know about,
+    // including ones in other crates. It's not clear that this is the best
+    // way to do it.
+    impls: @mut HashMap<ast::def_id, @Impl>,
 
     // Set of used unsafe nodes (functions or blocks). Unsafe nodes not
     // present in this set can be warned about.
@@ -904,13 +892,13 @@ pub fn mk_ctxt(s: session::Session,
         adjustments: @mut HashMap::new(),
         normalized_cache: new_ty_hash(),
         lang_items: lang_items,
-        provided_methods: @mut HashMap::new(),
         provided_method_sources: @mut HashMap::new(),
         supertraits: @mut HashMap::new(),
         destructor_for_type: @mut HashMap::new(),
         destructors: @mut HashSet::new(),
         trait_impls: @mut HashMap::new(),
         inherent_impls:  @mut HashMap::new(),
+        impls:  @mut HashMap::new(),
         used_unsafe: @mut HashSet::new(),
         used_mut_nodes: @mut HashSet::new(),
      }
