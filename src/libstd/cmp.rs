@@ -21,6 +21,7 @@ and `Eq` to overload the `==` and `!=` operators.
 */
 
 #[allow(missing_doc)];
+#[allow(default_methods)]; // NOTE: Remove when allowed in stage0
 
 /**
 * Trait for values that can be compared for equality and inequality.
@@ -29,12 +30,14 @@ and `Eq` to overload the `==` and `!=` operators.
 * unequal. For example, with the built-in floating-point types `a == b` and `a != b` will both
 * evaluate to false if either `a` or `b` is NaN (cf. IEEE 754-2008 section 5.11).
 *
+* Eq only requires the `eq` method to be implemented; `ne` is its negation by default.
+*
 * Eventually, this will be implemented by default for types that implement `TotalEq`.
 */
 #[lang="eq"]
 pub trait Eq {
     fn eq(&self, other: &Self) -> bool;
-    fn ne(&self, other: &Self) -> bool;
+    fn ne(&self, other: &Self) -> bool { !self.eq(other) }
 }
 
 /// Trait for equality comparisons where `a == b` and `a != b` are strict inverses.
@@ -164,7 +167,6 @@ pub fn lexical_ordering(o1: Ordering, o2: Ordering) -> Ordering {
 * for compatibility with floating-point NaN semantics
 * (cf. IEEE 754-2008 section 5.11).
 */
-#[allow(default_methods)] // NOTE: Remove when allowed in stage0
 #[lang="ord"]
 pub trait Ord {
     fn lt(&self, other: &Self) -> bool;
