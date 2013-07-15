@@ -8,8 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test default methods in Ord
+// Test default methods in Ord and Eq
 //
+struct Fool(bool);
+
+impl Eq for Fool {
+    fn eq(&self, other: &Fool) -> bool {
+        **self != **other
+    }
+}
+
 struct Int(int);
 
 impl Ord for Int {
@@ -40,4 +48,9 @@ pub fn main() {
     assert!(RevInt(1) >  RevInt(2));
     assert!(RevInt(1) >= RevInt(2));
     assert!(RevInt(1) >= RevInt(1));
+
+    assert!(Fool(true)  == Fool(false));
+    assert!(Fool(true)  != Fool(true));
+    assert!(Fool(false) != Fool(false));
+    assert!(Fool(false) == Fool(true));
 }
