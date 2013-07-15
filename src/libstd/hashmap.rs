@@ -455,6 +455,14 @@ impl<K: Hash + Eq, V> HashMap<K, V> {
         }
     }
 
+    /// Creates a consuming iterator, that is, one that moves each key-value
+    /// pair out of the map in arbitrary order. The map cannot be used after
+    /// calling this.
+    pub fn consume_iter(self) -> HashMapConsumeIterator<K, V> {
+        // `consume_rev_iter` is more efficient than `consume_iter` for vectors
+        HashMapConsumeIterator {iter: self.buckets.consume_rev_iter()}
+    }
+
     /// Retrieves a value for the given key, failing if the key is not
     /// present.
     pub fn get<'a>(&'a self, k: &K) -> &'a V {
@@ -568,9 +576,19 @@ pub struct HashMapMutIterator<'self, K, V> {
     priv iter: vec::VecMutIterator<'self, Option<Bucket<K, V>>>,
 }
 
+/// HashMap consume iterator
+pub struct HashMapConsumeIterator<K, V> {
+    priv iter: vec::VecConsumeRevIterator<Option<Bucket<K, V>>>,
+}
+
 /// HashSet iterator
 pub struct HashSetIterator<'self, K> {
     priv iter: vec::VecIterator<'self, Option<Bucket<K, ()>>>,
+}
+
+/// HashSet consume iterator
+pub struct HashSetConsumeIterator<K> {
+    priv iter: vec::VecConsumeRevIterator<Option<Bucket<K, ()>>>,
 }
 
 impl<'self, K, V> Iterator<(&'self K, &'self V)> for HashMapIterator<'self, K, V> {
@@ -599,6 +617,19 @@ impl<'self, K, V> Iterator<(&'self K, &'self mut V)> for HashMapMutIterator<'sel
     }
 }
 
+impl<K, V> Iterator<(K, V)> for HashMapConsumeIterator<K, V> {
+    #[inline]
+    fn next(&mut self) -> Option<(K, V)> {
+        for self.iter.advance |elt| {
+            match elt {
+                Some(Bucket {key, value, _}) => return Some((key, value)),
+                None => {},
+            }
+        }
+        None
+    }
+}
+
 impl<'self, K> Iterator<&'self K> for HashSetIterator<'self, K> {
     #[inline]
     fn next(&mut self) -> Option<&'self K> {
@@ -606,6 +637,19 @@ impl<'self, K> Iterator<&'self K> for HashSetIterator<'self, K> {
             match elt {
                 &Some(ref bucket) => return Some(&bucket.key),
                 &None => {},
+            }
+        }
+        None
+    }
+}
+
+impl<K> Iterator<K> for HashSetConsumeIterator<K> {
+    #[inline]
+    fn next(&mut self) -> Option<K> {
+        for self.iter.advance |elt| {
+            match elt {
+                Some(bucket) => return Some(bucket.key),
+                None => {},
             }
         }
         None
@@ -724,6 +768,14 @@ impl<T:Hash + Eq> HashSet<T> {
     /// Consumes all of the elements in the set, emptying it out
     pub fn consume(&mut self, f: &fn(T)) {
         self.map.consume(|k, _| f(k))
+    }
+
+    /// Creates a consuming iterator, that is, one that moves each value out
+    /// of the set in arbitrary order. The set cannot be used after calling
+    /// this.
+    pub fn consume_iter(self) -> HashSetConsumeIterator<T> {
+        // `consume_rev_iter` is more efficient than `consume_iter` for vectors
+        HashSetConsumeIterator {iter: self.map.buckets.consume_rev_iter()}
     }
 
     /// Returns true if the hash set contains a value equivalent to the
@@ -886,6 +938,21 @@ mod test_map {
         assert!(m.insert(1, 2));
         do m.consume |_, _| {}
         assert!(m.insert(1, 2));
+    }
+
+    #[test]
+    fn test_consume_iter() {
+        let hm = {
+            let mut hm = HashMap::new();
+
+            hm.insert('a', 1);
+            hm.insert('b', 2);
+
+            hm
+        };
+
+        let v = hm.consume_iter().collect::<~[(char, int)]>();
+        assert!([('a', 1), ('b', 2)] == v || [('b', 2), ('a', 1)] == v);
     }
 
     #[test]
@@ -1167,5 +1234,20 @@ mod test_set {
         for xs.iter().advance |x: &int| {
             assert!(set.contains(x));
         }
+    }
+
+    #[test]
+    fn test_consume_iter() {
+        let hs = {
+            let mut hs = HashSet::new();
+
+            hs.insert('a');
+            hs.insert('b');
+
+            hs
+        };
+
+        let v = hs.consume_iter().collect::<~[char]>();
+        assert!(['a', 'b'] == v || ['b', 'a'] == v);
     }
 }
