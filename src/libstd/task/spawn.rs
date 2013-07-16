@@ -671,6 +671,7 @@ pub fn spawn_raw(opts: TaskOpts, f: ~fn()) {
 
 fn spawn_raw_newsched(mut opts: TaskOpts, f: ~fn()) {
     let child_data = Cell::new(gen_child_taskgroup(opts.linked, opts.supervised));
+    let indestructible = opts.indestructible;
 
     let child_wrapper: ~fn() = || {
         // Child task runs this code.
@@ -692,7 +693,11 @@ fn spawn_raw_newsched(mut opts: TaskOpts, f: ~fn()) {
         };
         // Should be run after the local-borrowed task is returned.
         if enlist_success {
-            f()
+            if indestructible {
+                unsafe { do unkillable { f() } }
+            } else {
+                f()
+            }
         }
     };
 
@@ -700,13 +705,13 @@ fn spawn_raw_newsched(mut opts: TaskOpts, f: ~fn()) {
         let sched = Local::unsafe_borrow::<Scheduler>();
         rtdebug!("unsafe borrowed sched");
 
-        if opts.linked {
+        if opts.watched {
             let child_wrapper = Cell::new(child_wrapper);
             do Local::borrow::<Task, ~Task>() |running_task| {
                 ~running_task.new_child(&mut (*sched).stack_pool, child_wrapper.take())
             }
         } else {
-            // An unlinked task is a new root in the task tree
+            // An unwatched task is a new root in the exit-code propagation tree
             ~Task::new_root(&mut (*sched).stack_pool, child_wrapper)
         }
     };
@@ -848,6 +853,7 @@ fn test_spawn_raw_simple() {
 fn test_spawn_raw_unsupervise() {
     let opts = task::TaskOpts {
         linked: false,
+        watched: false,
         notify_chan: None,
         .. default_task_opts()
     };
@@ -878,6 +884,7 @@ fn test_spawn_raw_notify_failure() {
 
     let opts = task::TaskOpts {
         linked: false,
+        watched: false,
         notify_chan: Some(notify_ch),
         .. default_task_opts()
     };

@@ -148,6 +148,17 @@ pub struct SchedOpts {
  * * supervised - Propagate failure unidirectionally from parent to child,
  *                but not from child to parent. False by default.
  *
+ * * watched - Make parent task collect exit status notifications from child
+ *             before reporting its own exit status. (This delays the parent
+ *             task's death and cleanup until after all transitively watched
+ *             children also exit.) True by default.
+ *
+ * * indestructible - Configures the task to ignore kill signals received from
+ *                    linked failure. This may cause process hangs during
+ *                    failure if not used carefully, but causes task blocking
+ *                    code paths (e.g. port recv() calls) to be faster by 2
+ *                    atomic operations. False by default.
+ *
  * * notify_chan - Enable lifecycle notifications on the given channel
  *
  * * sched - Specify the configuration of a new scheduler to create the task
@@ -166,6 +177,8 @@ pub struct SchedOpts {
 pub struct TaskOpts {
     linked: bool,
     supervised: bool,
+    watched: bool,
+    indestructible: bool,
     notify_chan: Option<Chan<TaskResult>>,
     sched: SchedOpts
 }
@@ -217,6 +230,8 @@ impl TaskBuilder {
             opts: TaskOpts {
                 linked: self.opts.linked,
                 supervised: self.opts.supervised,
+                watched: self.opts.watched,
+                indestructible: self.opts.indestructible,
                 notify_chan: notify_chan,
                 sched: self.opts.sched
             },
@@ -232,6 +247,7 @@ impl TaskBuilder {
     /// the other will not be killed.
     pub fn unlinked(&mut self) {
         self.opts.linked = false;
+        self.opts.watched = false;
     }
 
     /// Unidirectionally link the child task's failure with the parent's. The
@@ -240,6 +256,7 @@ impl TaskBuilder {
     pub fn supervised(&mut self) {
         self.opts.supervised = true;
         self.opts.linked = false;
+        self.opts.watched = false;
     }
 
     /// Link the child task's and parent task's failures. If either fails, the
@@ -247,6 +264,26 @@ impl TaskBuilder {
     pub fn linked(&mut self) {
         self.opts.linked = true;
         self.opts.supervised = false;
+        self.opts.watched = true;
+    }
+
+    /// Cause the parent task to collect the child's exit status (and that of
+    /// all transitively-watched grandchildren) before reporting its own.
+    pub fn watched(&mut self) {
+        self.opts.watched = true;
+    }
+
+    /// Allow the child task to outlive the parent task, at the possible cost
+    /// of the parent reporting success even if the child task fails later.
+    pub fn unwatched(&mut self) {
+        self.opts.watched = false;
+    }
+
+    /// Cause the child task to ignore any kill signals received from linked
+    /// failure. This optimizes context switching, at the possible expense of
+    /// process hangs in the case of unexpected failure.
+    pub fn indestructible(&mut self) {
+        self.opts.indestructible = true;
     }
 
     /**
@@ -341,6 +378,8 @@ impl TaskBuilder {
         let opts = TaskOpts {
             linked: x.opts.linked,
             supervised: x.opts.supervised,
+            watched: x.opts.watched,
+            indestructible: x.opts.indestructible,
             notify_chan: notify_chan,
             sched: x.opts.sched
         };
@@ -407,6 +446,8 @@ pub fn default_task_opts() -> TaskOpts {
     TaskOpts {
         linked: true,
         supervised: false,
+        watched: true,
+        indestructible: false,
         notify_chan: None,
         sched: SchedOpts {
             mode: DefaultScheduler,
@@ -445,6 +486,17 @@ pub fn spawn_supervised(f: ~fn()) {
 
     let mut task = task();
     task.supervised();
+    task.spawn(f)
+}
+
+/// Creates a child task that cannot be killed by linked failure. This causes
+/// its context-switch path to be faster by 2 atomic swap operations.
+/// (Note that this convenience wrapper still uses linked-failure, so the
+/// child's children will still be killable by the parent. For the fastest
+/// possible spawn mode, use task::task().unlinked().indestructible().spawn.)
+pub fn spawn_indestructible(f: ~fn()) {
+    let mut task = task();
+    task.indestructible();
     task.spawn(f)
 }
 
@@ -1209,3 +1261,61 @@ fn test_simple_newsched_spawn() {
     }
 }
 
+#[test] #[ignore(cfg(windows))]
+fn test_spawn_watched() {
+    use rt::test::{run_in_newsched_task, spawntask_try};
+    do run_in_newsched_task {
+        let result = do spawntask_try {
+            let mut t = task();
+            t.unlinked();
+            t.watched();
+            do t.spawn {
+                let mut t = task();
+                t.unlinked();
+                t.watched();
+                do t.spawn {
+                    task::yield();
+                    fail!();
+                }
+            }
+        };
+        assert!(result.is_err());
+    }
+}
+
+#[test] #[ignore(cfg(windows))]
+fn test_indestructible() {
+    use rt::test::{run_in_newsched_task, spawntask_try};
+    do run_in_newsched_task {
+        let result = do spawntask_try {
+            let mut t = task();
+            t.watched();
+            t.supervised();
+            t.indestructible();
+            do t.spawn {
+                let (p1, _c1) = stream::<()>();
+                let (p2, c2) = stream::<()>();
+                let (p3, c3) = stream::<()>();
+                let mut t = task();
+                t.unwatched();
+                do t.spawn {
+                    do (|| {
+                        p1.recv(); // would deadlock if not killed
+                    }).finally {
+                        c2.send(());
+                    };
+                }
+                let mut t = task();
+                t.unwatched();
+                do t.spawn {
+                    p3.recv();
+                    task::yield();
+                    fail!();
+                }
+                c3.send(());
+                p2.recv();
+            }
+        };
+        assert!(result.is_ok());
+    }
+}
