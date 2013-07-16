@@ -19,7 +19,7 @@ use metadata::csearch::{each_path, get_impl_trait};
 use metadata::csearch;
 use metadata::cstore::iter_crate_data;
 use metadata::decoder::{dl_def, dl_field, dl_impl};
-use middle::ty::{ProvidedMethodSource, get};
+use middle::ty::get;
 use middle::ty::{lookup_item_type, subst};
 use middle::ty::{substs, t, ty_bool, ty_bot, ty_box, ty_enum, ty_err};
 use middle::ty::{ty_estr, ty_evec, ty_float, ty_infer, ty_int, ty_nil};
@@ -303,7 +303,8 @@ impl CoherenceChecker {
                     impl_id,
                     trait_ref,
                     new_did,
-                    *trait_method);
+                    *trait_method,
+                    Some(trait_method.def_id));
 
             debug!("new_method_ty=%s", new_method_ty.repr(tcx));
             all_methods.push(new_method_ty);
@@ -328,13 +329,8 @@ impl CoherenceChecker {
 
             // Pair the new synthesized ID up with the
             // ID of the method.
-            let source = ProvidedMethodSource {
-                method_id: trait_method.def_id,
-                impl_id: impl_id
-            };
-
-            self.crate_context.tcx.provided_method_sources.insert(new_did,
-                                                                  source);
+            self.crate_context.tcx.provided_method_sources
+                .insert(new_did, trait_method.def_id);
         }
     }
 
@@ -864,7 +860,8 @@ fn subst_receiver_types_in_method_ty(tcx: ty::ctxt,
                                      impl_id: ast::def_id,
                                      trait_ref: &ty::TraitRef,
                                      new_def_id: ast::def_id,
-                                     method: &ty::Method)
+                                     method: &ty::Method,
+                                     provided_source: Option<ast::def_id>)
                                      -> ty::Method {
 
     let combined_substs = make_substs_for_receiver_types(
@@ -884,7 +881,9 @@ fn subst_receiver_types_in_method_ty(tcx: ty::ctxt,
 
         method.explicit_self,
         method.vis,
-        new_def_id
+        new_def_id,
+        impl_id,
+        provided_source
     )
 }
 

@@ -938,8 +938,7 @@ pub fn mono_data_classify(t: ty::t) -> MonoDataClass {
 #[deriving(Eq,IterBytes)]
 pub struct mono_id_ {
     def: ast::def_id,
-    params: ~[mono_param_id],
-    impl_did_opt: Option<ast::def_id>
+    params: ~[mono_param_id]
 }
 
 pub type mono_id = @mono_id_;

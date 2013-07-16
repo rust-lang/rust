@@ -772,6 +772,7 @@ fn encode_info_for_method(ecx: &EncodeContext,
     let method_def_id = local_def(m.id);
     let method_ty = ty::method(ecx.tcx, method_def_id);
     encode_method_ty_fields(ecx, ebml_w, method_ty);
+    encode_parent_item(ebml_w, local_def(parent_id));
 
     match m.explicit_self.node {
         ast::sty_static => {
