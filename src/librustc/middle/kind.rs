@@ -309,7 +309,7 @@ pub fn check_expr(e: @expr, (cx, v): (Context, visit::vt<Context>)) {
                        "explicit copy requires a copyable argument");
         }
         expr_repeat(element, count_expr, _) => {
-            let count = ty::eval_repeat_count(cx.tcx, count_expr);
+            let count = ty::eval_repeat_count(&cx.tcx, count_expr);
             if count > 1 {
                 let element_ty = ty::expr_ty(cx.tcx, element);
                 check_copy(cx, element_ty, element.span,

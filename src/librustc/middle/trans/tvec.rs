@@ -417,7 +417,7 @@ pub fn write_content(bcx: block,
                     return expr::trans_into(bcx, element, Ignore);
                 }
                 SaveIn(lldest) => {
-                    let count = ty::eval_repeat_count(bcx.tcx(), count_expr);
+                    let count = ty::eval_repeat_count(&bcx.tcx(), count_expr);
                     if count == 0 {
                         return bcx;
                     }
@@ -509,7 +509,7 @@ pub fn elements_required(bcx: block, content_expr: &ast::expr) -> uint {
         },
         ast::expr_vec(ref es, _) => es.len(),
         ast::expr_repeat(_, count_expr, _) => {
-            ty::eval_repeat_count(bcx.tcx(), count_expr)
+            ty::eval_repeat_count(&bcx.tcx(), count_expr)
         }
         _ => bcx.tcx().sess.span_bug(content_expr.span,
                                      "Unexpected evec content")

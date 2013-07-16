@@ -479,7 +479,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Copy + 'static>(
         }
       }
       ast::ty_fixed_length_vec(ref a_mt, e) => {
-        match const_eval::eval_const_expr_partial(tcx, e) {
+        match const_eval::eval_const_expr_partial(&tcx, e) {
           Ok(ref r) => {
             match *r {
               const_eval::const_int(i) =>
