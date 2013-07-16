@@ -460,7 +460,7 @@ fn trans_rvalue_datum_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
                                                       expr, contents);
         }
         ast::expr_vstore(contents, ast::expr_vstore_uniq) => {
-            let heap = tvec::heap_for_unique_vector(bcx, expr_ty(bcx, contents));
+            let heap = heap_for_unique(bcx, expr_ty(bcx, contents));
             return tvec::trans_uniq_or_managed_vstore(bcx, heap,
                                                       expr, contents);
         }
