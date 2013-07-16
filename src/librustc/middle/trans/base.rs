@@ -294,25 +294,6 @@ pub fn malloc_raw_dyn(bcx: block,
             [size],
             None);
         rslt(r.bcx, PointerCast(r.bcx, r.val, llty_value.ptr_to()))
-    } else if heap == heap_exchange_vector {
-        // Grab the TypeRef type of box_ptr_ty.
-        let element_type = match ty::get(t).sty {
-            ty::ty_unboxed_vec(e) => e,
-            _ => fail!("not a vector body")
-        };
-        let box_ptr_ty = ty::mk_evec(bcx.tcx(), element_type, ty::vstore_uniq);
-        let llty = type_of(ccx, box_ptr_ty);
-
-        let llty_value = type_of::type_of(ccx, t);
-        let llalign = llalign_of_min(ccx, llty_value);
-
-        // Allocate space:
-        let r = callee::trans_lang_call(
-            bcx,
-            bcx.tcx().lang_items.vector_exchange_malloc_fn(),
-            [C_i32(llalign as i32), size],
-            None);
-        rslt(r.bcx, PointerCast(r.bcx, r.val, llty))
     } else {
         // we treat ~fn, @fn and @[] as @ here, which isn't ideal
         let (mk_fn, langcall) = match heap {
@@ -322,7 +303,7 @@ pub fn malloc_raw_dyn(bcx: block,
             heap_exchange_closure => {
                 (ty::mk_imm_box, bcx.tcx().lang_items.closure_exchange_malloc_fn())
             }
-            _ => fail!("heap_exchange/heap_exchange_vector already handled")
+            _ => fail!("heap_exchange already handled")
         };
 
         // Grab the TypeRef type of box_ptr_ty.

@@ -183,7 +183,7 @@ pub fn type_of(cx: &mut CrateContext, t: ty::t) -> Type {
       ty::ty_uint(t) => Type::uint_from_ty(cx, t),
       ty::ty_float(t) => Type::float_from_ty(cx, t),
       ty::ty_estr(ty::vstore_uniq) => {
-        Type::unique(cx, &Type::vec(cx.sess.targ_cfg.arch, &Type::i8())).ptr_to()
+        Type::vec(cx.sess.targ_cfg.arch, &Type::i8()).ptr_to()
       }
       ty::ty_enum(did, ref substs) => {
         // Only create the named struct, but don't fill it in. We
@@ -217,7 +217,11 @@ pub fn type_of(cx: &mut CrateContext, t: ty::t) -> Type {
       ty::ty_evec(ref mt, ty::vstore_uniq) => {
           let ty = type_of(cx, mt.ty);
           let ty = Type::vec(cx.sess.targ_cfg.arch, &ty);
-          Type::unique(cx, &ty).ptr_to()
+          if ty::type_contents(cx.tcx, mt.ty).contains_managed() {
+              Type::unique(cx, &ty).ptr_to()
+          } else {
+              ty.ptr_to()
+          }
       }
       ty::ty_unboxed_vec(ref mt) => {
           let ty = type_of(cx, mt.ty);

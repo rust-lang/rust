@@ -390,9 +390,9 @@ void tm_to_rust_tm(tm* in_tm, rust_tm* out_tm, int32_t gmtoff,
     if (zone != NULL) {
         size_t size = strlen(zone);
         reserve_vec_exact(&out_tm->tm_zone, size + 1);
-        memcpy(out_tm->tm_zone->body.data, zone, size);
-        out_tm->tm_zone->body.fill = size + 1;
-        out_tm->tm_zone->body.data[size] = '\0';
+        memcpy(out_tm->tm_zone->data, zone, size);
+        out_tm->tm_zone->fill = size + 1;
+        out_tm->tm_zone->data[size] = '\0';
     }
 }
 

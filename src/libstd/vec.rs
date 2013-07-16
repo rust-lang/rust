@@ -30,6 +30,7 @@ use ptr::RawPtr;
 use rt::global_heap::malloc_raw;
 use rt::global_heap::realloc_raw;
 use sys;
+use sys::size_of;
 use uint;
 use unstable::intrinsics;
 #[cfg(stage0)]
@@ -108,9 +109,9 @@ pub fn with_capacity<T>(capacity: uint) -> ~[T] {
             vec
         } else {
             let alloc = capacity * sys::nonzero_size_of::<T>();
-            let ptr = malloc_raw(alloc + sys::size_of::<raw::VecRepr>()) as *mut raw::VecRepr;
-            (*ptr).unboxed.alloc = alloc;
-            (*ptr).unboxed.fill = 0;
+            let ptr = malloc_raw(alloc + sys::size_of::<UnboxedVecRepr>()) as *mut UnboxedVecRepr;
+            (*ptr).alloc = alloc;
+            (*ptr).fill = 0;
             cast::transmute(ptr)
         }
     }
@@ -1150,7 +1151,7 @@ impl<T> OwnedVector<T> for ~[T] {
                     ::at_vec::raw::reserve_raw(td, ptr, n);
                 } else {
                     let alloc = n * sys::nonzero_size_of::<T>();
-                    *ptr = realloc_raw(*ptr as *mut c_void, alloc + sys::size_of::<raw::VecRepr>())
+                    *ptr = realloc_raw(*ptr as *mut c_void, alloc + size_of::<raw::VecRepr>())
                            as *mut raw::VecRepr;
                     (**ptr).unboxed.alloc = alloc;
                 }
@@ -1173,19 +1174,20 @@ impl<T> OwnedVector<T> for ~[T] {
         // Only make the (slow) call into the runtime if we have to
         if self.capacity() < n {
             unsafe {
-                let ptr: *mut *mut raw::VecRepr = cast::transmute(self);
                 let td = get_tydesc::<T>();
                 if contains_managed::<T>() {
+                    let ptr: *mut *mut raw::VecRepr = cast::transmute(self);
                     ::at_vec::raw::reserve_raw(td, ptr, n);
                 } else {
+                    let ptr: *mut *mut UnboxedVecRepr = cast::transmute(self);
                     let alloc = n * sys::nonzero_size_of::<T>();
-                    let size = alloc + sys::size_of::<raw::VecRepr>();
+                    let size = alloc + sys::size_of::<UnboxedVecRepr>();
                     if alloc / sys::nonzero_size_of::<T>() != n || size < alloc {
                         fail!("vector size is too large: %u", n);
                     }
                     *ptr = realloc_raw(*ptr as *mut c_void, size)
-                           as *mut raw::VecRepr;
-                    (**ptr).unboxed.alloc = alloc;
+                           as *mut UnboxedVecRepr;
+                    (**ptr).alloc = alloc;
                 }
             }
         }
@@ -1211,6 +1213,7 @@ impl<T> OwnedVector<T> for ~[T] {
 
     /// Returns the number of elements the vector can hold without reallocating.
     #[inline]
+    #[cfg(stage0)]
     fn capacity(&self) -> uint {
         unsafe {
             let repr: **raw::VecRepr = transmute(self);
@@ -1218,8 +1221,24 @@ impl<T> OwnedVector<T> for ~[T] {
         }
     }
 
+    /// Returns the number of elements the vector can hold without reallocating.
+    #[inline]
+    #[cfg(not(stage0))]
+    fn capacity(&self) -> uint {
+        unsafe {
+            if contains_managed::<T>() {
+                let repr: **raw::VecRepr = transmute(self);
+                (**repr).unboxed.alloc / sys::nonzero_size_of::<T>()
+            } else {
+                let repr: **UnboxedVecRepr = transmute(self);
+                (**repr).alloc / sys::nonzero_size_of::<T>()
+            }
+        }
+    }
+
     /// Append an element to a vector
     #[inline]
+    #[cfg(stage0)]
     fn push(&mut self, t: T) {
         unsafe {
             let repr: **raw::VecRepr = transmute(&mut *self);
@@ -1233,8 +1252,36 @@ impl<T> OwnedVector<T> for ~[T] {
         }
     }
 
+    /// Append an element to a vector
+    #[inline]
+    #[cfg(not(stage0))]
+    fn push(&mut self, t: T) {
+        unsafe {
+            if contains_managed::<T>() {
+                let repr: **raw::VecRepr = transmute(&mut *self);
+                let fill = (**repr).unboxed.fill;
+                if (**repr).unboxed.alloc <= fill {
+                    let new_len = self.len() + 1;
+                    self.reserve_at_least(new_len);
+                }
+
+                self.push_fast(t);
+            } else {
+                let repr: **UnboxedVecRepr = transmute(&mut *self);
+                let fill = (**repr).fill;
+                if (**repr).alloc <= fill {
+                    let new_len = self.len() + 1;
+                    self.reserve_at_least(new_len);
+                }
+
+                self.push_fast(t);
+            }
+        }
+    }
+
     // This doesn't bother to make sure we have space.
     #[inline] // really pretty please
+    #[cfg(stage0)]
     unsafe fn push_fast(&mut self, t: T) {
         let repr: **mut raw::VecRepr = transmute(self);
         let fill = (**repr).unboxed.fill;
@@ -1242,6 +1289,27 @@ impl<T> OwnedVector<T> for ~[T] {
         let p = to_unsafe_ptr(&((**repr).unboxed.data));
         let p = ptr::offset(p, fill) as *mut T;
         intrinsics::move_val_init(&mut(*p), t);
+    }
+
+    // This doesn't bother to make sure we have space.
+    #[inline] // really pretty please
+    #[cfg(not(stage0))]
+    unsafe fn push_fast(&mut self, t: T) {
+        if contains_managed::<T>() {
+            let repr: **mut raw::VecRepr = transmute(self);
+            let fill = (**repr).unboxed.fill;
+            (**repr).unboxed.fill += sys::nonzero_size_of::<T>();
+            let p = to_unsafe_ptr(&((**repr).unboxed.data));
+            let p = ptr::offset(p, fill) as *mut T;
+            intrinsics::move_val_init(&mut(*p), t);
+        } else {
+            let repr: **mut UnboxedVecRepr = transmute(self);
+            let fill = (**repr).fill;
+            (**repr).fill += sys::nonzero_size_of::<T>();
+            let p = to_unsafe_ptr(&((**repr).data));
+            let p = ptr::offset(p, fill) as *mut T;
+            intrinsics::move_val_init(&mut(*p), t);
+        }
     }
 
     /// Takes ownership of the vector `rhs`, moving all elements into
@@ -1834,6 +1902,8 @@ pub mod raw {
     use unstable::intrinsics;
     use vec::{UnboxedVecRepr, with_capacity, ImmutableVector, MutableVector};
     use util;
+    #[cfg(not(stage0))]
+    use unstable::intrinsics::contains_managed;
 
     /// The internal representation of a (boxed) vector
     #[allow(missing_doc)]
@@ -1858,9 +1928,29 @@ pub mod raw {
      * the vector is actually the specified size.
      */
     #[inline]
+    #[cfg(stage0)]
     pub unsafe fn set_len<T>(v: &mut ~[T], new_len: uint) {
         let repr: **mut VecRepr = transmute(v);
         (**repr).unboxed.fill = new_len * sys::nonzero_size_of::<T>();
+    }
+
+    /**
+     * Sets the length of a vector
+     *
+     * This will explicitly set the size of the vector, without actually
+     * modifing its buffers, so it is up to the caller to ensure that
+     * the vector is actually the specified size.
+     */
+    #[inline]
+    #[cfg(not(stage0))]
+    pub unsafe fn set_len<T>(v: &mut ~[T], new_len: uint) {
+        if contains_managed::<T>() {
+            let repr: **mut VecRepr = transmute(v);
+            (**repr).unboxed.fill = new_len * sys::nonzero_size_of::<T>();
+        } else {
+            let repr: **mut UnboxedVecRepr = transmute(v);
+            (**repr).fill = new_len * sys::nonzero_size_of::<T>();
+        }
     }
 
     /**

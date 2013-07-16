@@ -33,23 +33,6 @@ use std::option::None;
 use syntax::ast;
 use syntax::codemap;
 
-pub fn make_uniq_free_glue(bcx: block, vptrptr: ValueRef, box_ty: ty::t)
-    -> block {
-    let box_datum = immediate_rvalue(Load(bcx, vptrptr), box_ty);
-
-    let not_null = IsNotNull(bcx, box_datum.val);
-    do with_cond(bcx, not_null) |bcx| {
-        let body_datum = box_datum.box_body(bcx);
-        let bcx = glue::drop_ty(bcx, body_datum.to_ref_llval(bcx),
-                                body_datum.ty);
-        if ty::type_contents(bcx.tcx(), box_ty).contains_managed() {
-            glue::trans_free(bcx, box_datum.val)
-        } else {
-            glue::trans_exchange_free(bcx, box_datum.val)
-        }
-    }
-}
-
 // Boxed vector types are in some sense currently a "shorthand" for a box
 // containing an unboxed vector. This expands a boxed vector type into such an
 // expanded type. It doesn't respect mutability, but that doesn't matter at
@@ -59,7 +42,7 @@ pub fn expand_boxed_vec_ty(tcx: ty::ctxt, t: ty::t) -> ty::t {
     let unboxed_vec_ty = ty::mk_mut_unboxed_vec(tcx, unit_ty);
     match ty::get(t).sty {
       ty::ty_estr(ty::vstore_uniq) | ty::ty_evec(_, ty::vstore_uniq) => {
-        fail!("cannot treat vectors/strings as exchange allocations yet");
+        ty::mk_imm_uniq(tcx, unboxed_vec_ty)
       }
       ty::ty_estr(ty::vstore_box) | ty::ty_evec(_, ty::vstore_box) => {
         ty::mk_imm_box(tcx, unboxed_vec_ty)
@@ -80,8 +63,12 @@ pub fn get_alloc(bcx: block, vptr: ValueRef) -> ValueRef {
     Load(bcx, GEPi(bcx, vptr, [0u, abi::vec_elt_alloc]))
 }
 
-pub fn get_bodyptr(bcx: block, vptr: ValueRef) -> ValueRef {
-    GEPi(bcx, vptr, [0u, abi::box_field_body])
+pub fn get_bodyptr(bcx: block, vptr: ValueRef, t: ty::t) -> ValueRef {
+    if ty::type_contents(bcx.tcx(), t).contains_managed() {
+        GEPi(bcx, vptr, [0u, abi::box_field_body])
+    } else {
+        vptr
+    }
 }
 
 pub fn get_dataptr(bcx: block, vptr: ValueRef) -> ValueRef {
@@ -104,25 +91,24 @@ pub fn alloc_raw(bcx: block, unit_ty: ty::t,
     let vecbodyty = ty::mk_mut_unboxed_vec(bcx.tcx(), unit_ty);
     let vecsize = Add(bcx, alloc, llsize_of(ccx, ccx.opaque_vec_type));
 
-    let base::MallocResult {bcx, box: bx, body} =
-        base::malloc_general_dyn(bcx, vecbodyty, heap, vecsize);
-    Store(bcx, fill, GEPi(bcx, body, [0u, abi::vec_elt_fill]));
-    Store(bcx, alloc, GEPi(bcx, body, [0u, abi::vec_elt_alloc]));
-    base::maybe_set_managed_unique_rc(bcx, bx, heap);
-    return rslt(bcx, bx);
-}
-
-pub fn heap_for_unique_vector(bcx: block, t: ty::t) -> heap {
-    if ty::type_contents(bcx.tcx(), t).contains_managed() {
-        heap_managed_unique
+    if heap == heap_exchange {
+        let Result { bcx: bcx, val: val } = malloc_raw_dyn(bcx, vecbodyty, heap_exchange, vecsize);
+        Store(bcx, fill, GEPi(bcx, val, [0u, abi::vec_elt_fill]));
+        Store(bcx, alloc, GEPi(bcx, val, [0u, abi::vec_elt_alloc]));
+        return rslt(bcx, val);
     } else {
-        heap_exchange_vector
+        let base::MallocResult {bcx, box: bx, body} =
+            base::malloc_general_dyn(bcx, vecbodyty, heap, vecsize);
+        Store(bcx, fill, GEPi(bcx, body, [0u, abi::vec_elt_fill]));
+        Store(bcx, alloc, GEPi(bcx, body, [0u, abi::vec_elt_alloc]));
+        base::maybe_set_managed_unique_rc(bcx, bx, heap);
+        return rslt(bcx, bx);
     }
 }
 
 pub fn alloc_uniq_raw(bcx: block, unit_ty: ty::t,
                       fill: ValueRef, alloc: ValueRef) -> Result {
-    alloc_raw(bcx, unit_ty, fill, alloc, heap_for_unique_vector(bcx, unit_ty))
+    alloc_raw(bcx, unit_ty, fill, alloc, base::heap_for_unique(bcx, unit_ty))
 }
 
 pub fn alloc_vec(bcx: block,
@@ -146,12 +132,12 @@ pub fn alloc_vec(bcx: block,
 pub fn duplicate_uniq(bcx: block, vptr: ValueRef, vec_ty: ty::t) -> Result {
     let _icx = push_ctxt("tvec::duplicate_uniq");
 
-    let fill = get_fill(bcx, get_bodyptr(bcx, vptr));
+    let fill = get_fill(bcx, get_bodyptr(bcx, vptr, vec_ty));
     let unit_ty = ty::sequence_element_type(bcx.tcx(), vec_ty);
     let Result {bcx, val: newptr} = alloc_uniq_raw(bcx, unit_ty, fill, fill);
 
-    let data_ptr = get_dataptr(bcx, get_bodyptr(bcx, vptr));
-    let new_data_ptr = get_dataptr(bcx, get_bodyptr(bcx, newptr));
+    let data_ptr = get_dataptr(bcx, get_bodyptr(bcx, vptr, vec_ty));
+    let new_data_ptr = get_dataptr(bcx, get_bodyptr(bcx, newptr, vec_ty));
     base::call_memcpy(bcx, new_data_ptr, data_ptr, fill, 1);
 
     let bcx = if ty::type_needs_drop(bcx.tcx(), unit_ty) {
@@ -323,7 +309,7 @@ pub fn trans_uniq_or_managed_vstore(bcx: block, heap: heap, vstore_expr: @ast::e
 
     // Handle ~"".
     match heap {
-        heap_exchange_vector => {
+        heap_exchange => {
             match content_expr.node {
                 ast::expr_lit(@codemap::spanned {
                     node: ast::lit_str(s), _
@@ -346,7 +332,7 @@ pub fn trans_uniq_or_managed_vstore(bcx: block, heap: heap, vstore_expr: @ast::e
                 _ => {}
             }
         }
-        heap_exchange | heap_exchange_closure => fail!("vectors use vector_exchange_alloc"),
+        heap_exchange_closure => fail!("vectors use exchange_alloc"),
         heap_managed | heap_managed_unique => {}
     }
 
@@ -356,7 +342,7 @@ pub fn trans_uniq_or_managed_vstore(bcx: block, heap: heap, vstore_expr: @ast::e
     let Result {bcx, val} = alloc_vec(bcx, vt.unit_ty, count, heap);
 
     add_clean_free(bcx, val, heap);
-    let dataptr = get_dataptr(bcx, get_bodyptr(bcx, val));
+    let dataptr = get_dataptr(bcx, get_bodyptr(bcx, val, vt.vec_ty));
 
     debug!("alloc_vec() returned val=%s, dataptr=%s",
            bcx.val_to_str(val), bcx.val_to_str(dataptr));
@@ -562,7 +548,7 @@ pub fn get_base_and_len(bcx: block,
             (base, len)
         }
         ty::vstore_uniq | ty::vstore_box => {
-            let body = get_bodyptr(bcx, llval);
+            let body = get_bodyptr(bcx, llval, vec_ty);
             (get_dataptr(bcx, body), get_fill(bcx, body))
         }
     }
@@ -604,7 +590,7 @@ pub fn iter_vec_raw(bcx: block, data_ptr: ValueRef, vec_ty: ty::t,
 pub fn iter_vec_uniq(bcx: block, vptr: ValueRef, vec_ty: ty::t,
                      fill: ValueRef, f: iter_vec_block) -> block {
     let _icx = push_ctxt("tvec::iter_vec_uniq");
-    let data_ptr = get_dataptr(bcx, get_bodyptr(bcx, vptr));
+    let data_ptr = get_dataptr(bcx, get_bodyptr(bcx, vptr, vec_ty));
     iter_vec_raw(bcx, data_ptr, vec_ty, fill, f)
 }
 
