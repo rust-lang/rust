@@ -1417,13 +1417,82 @@ names are effectively reserved. Some significant attributes include:
 * The `lang` attribute, for custom definitions of traits and functions that are known to the Rust compiler (see [Language items](#language-items)).
 * The `link` attribute, for describing linkage metadata for a crate.
 * The `test` attribute, for marking functions as unit tests.
-* The `allow`, `warn`, `forbid`, and `deny` attributes, for controlling lint checks. Lint checks supported
-by the compiler can be found via `rustc -W help`.
+* The `allow`, `warn`, `forbid`, and `deny` attributes, for
+  controlling lint checks (see [Lint check attributes](#lint-check-attributes)).
 * The `deriving` attribute, for automatically generating
   implementations of certain traits.
 * The `static_assert` attribute, for asserting that a static bool is true at compiletime
 
 Other attributes may be added or removed during development of the language.
+
+### Lint check attributes
+
+A lint check names a potentially undesirable coding pattern, such as
+unreachable code or omitted documentation, for the static entity to
+which the attribute applies.
+
+For any lint check `C`:
+
+ * `warn(C)` warns about violations of `C` but continues compilation,
+ * `deny(C)` signals an error after encountering a violation of `C`,
+ * `allow(C)` overrides the check for `C` so that violations will go
+    unreported,
+ * `forbid(C)` is the same as `deny(C)`, but also forbids uses of
+   `allow(C)` within the entity.
+
+The lint checks supported by the compiler can be found via `rustc -W help`,
+along with their default settings.
+
+~~~{.xfail-test}
+mod m1 {
+    // Missing documentation is ignored here
+    #[allow(missing_doc)]
+    pub fn undocumented_one() -> int { 1 }
+
+    // Missing documentation signals a warning here
+    #[warn(missing_doc)]
+    pub fn undocumented_too() -> int { 2 }
+
+    // Missing documentation signals an error here
+    #[deny(missing_doc)]
+    pub fn undocumented_end() -> int { 3 }
+}
+~~~
+
+This example shows how one can use `allow` and `warn` to toggle
+a particular check on and off.
+
+~~~
+#[warn(missing_doc)]
+mod m2{
+    #[allow(missing_doc)]
+    mod nested {
+        // Missing documentation is ignored here
+        pub fn undocumented_one() -> int { 1 }
+
+        // Missing documentation signals a warning here,
+        // despite the allow above.
+        #[warn(missing_doc)]
+        pub fn undocumented_two() -> int { 2 }
+    }
+
+    // Missing documentation signals a warning here
+    pub fn undocumented_too() -> int { 3 }
+}
+~~~
+
+This example shows how one can use `forbid` to disallow uses
+of `allow` for that lint check.
+
+~~~{.xfail-test}
+#[forbid(missing_doc)]
+mod m3 {
+    // Attempting to toggle warning signals an error here
+    #[allow(missing_doc)]
+    /// Returns 2.
+    pub fn undocumented_too() -> int { 2 }
+}
+~~~
 
 ### Language items
 
