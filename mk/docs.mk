@@ -236,6 +236,9 @@ GENERATED += doc/version.md doc/version_info.html
 docs: $(DOCS)
 
 docs-l10n:
-	po4a doc/po4a.conf
+	po4a --copyright-holder="The Rust Project Developers" \
+	     --package-name="Rust" \
+	     --package-version="$(CFG_RELEASE)" \
+	     doc/po4a.conf
 
 .PHONY: docs-l10n
