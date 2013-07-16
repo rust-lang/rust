@@ -17,7 +17,7 @@ use std::num;
 use std::util;
 use std::uint;
 use std::vec;
-use std::iterator::FromIterator;
+use std::iterator::{FromIterator, InvertIterator};
 
 use container::Deque;
 
@@ -180,29 +180,29 @@ impl<T> RingBuf<T> {
 
     /// Front-to-back iterator.
     pub fn iter<'a>(&'a self) -> RingBufIterator<'a, T> {
-        RingBufIterator{index: 0, nelts: self.nelts, elts: self.elts, lo: self.lo}
+        RingBufIterator{index: 0, rindex: self.nelts - 1,
+                        nelts: self.nelts, elts: self.elts, lo: self.lo}
+    }
+
+    /// Back-to-front iterator.
+    pub fn rev_iter<'a>(&'a self) -> InvertIterator<&'a T, RingBufIterator<'a, T>> {
+        self.iter().invert()
     }
 
     /// Front-to-back iterator which returns mutable values.
     pub fn mut_iter<'a>(&'a mut self) -> RingBufMutIterator<'a, T> {
-        RingBufMutIterator{index: 0, nelts: self.nelts, elts: self.elts, lo: self.lo}
-    }
-
-    /// Back-to-front iterator.
-    pub fn rev_iter<'a>(&'a self) -> RingBufRevIterator<'a, T> {
-        RingBufRevIterator{index: self.nelts-1, nelts: self.nelts, elts: self.elts,
-                         lo: self.lo}
+        RingBufMutIterator{index: 0, rindex: self.nelts - 1,
+                           nelts: self.nelts, elts: self.elts, lo: self.lo}
     }
 
     /// Back-to-front iterator which returns mutable values.
-    pub fn mut_rev_iter<'a>(&'a mut self) -> RingBufMutRevIterator<'a, T> {
-        RingBufMutRevIterator{index: self.nelts-1, nelts: self.nelts, elts: self.elts,
-                            lo: self.lo}
+    pub fn mut_rev_iter<'a>(&'a mut self) -> InvertIterator<&'a mut T, RingBufMutIterator<'a, T>> {
+        self.mut_iter().invert()
     }
 }
 
 macro_rules! iterator {
-    (impl $name:ident -> $elem:ty, $getter:ident, $step:expr) => {
+    (impl $name:ident -> $elem:ty, $getter:ident) => {
         impl<'self, T> Iterator<$elem> for $name<'self, T> {
             #[inline]
             fn next(&mut self) -> Option<$elem> {
@@ -210,7 +210,7 @@ macro_rules! iterator {
                     return None;
                 }
                 let raw_index = raw_index(self.lo, self.elts.len(), self.index);
-                self.index += $step;
+                self.index += 1;
                 self.nelts -= 1;
                 Some(self.elts[raw_index]. $getter ())
             }
@@ -223,41 +223,44 @@ macro_rules! iterator {
     }
 }
 
+macro_rules! iterator_rev {
+    (impl $name:ident -> $elem:ty, $getter:ident) => {
+        impl<'self, T> DoubleEndedIterator<$elem> for $name<'self, T> {
+            #[inline]
+            fn next_back(&mut self) -> Option<$elem> {
+                if self.nelts == 0 {
+                    return None;
+                }
+                let raw_index = raw_index(self.lo, self.elts.len(), self.rindex);
+                self.rindex -= 1;
+                self.nelts -= 1;
+                Some(self.elts[raw_index]. $getter ())
+            }
+        }
+    }
+}
+
 /// RingBuf iterator
 pub struct RingBufIterator<'self, T> {
     priv lo: uint,
     priv nelts: uint,
     priv index: uint,
+    priv rindex: uint,
     priv elts: &'self [Option<T>],
 }
-iterator!{impl RingBufIterator -> &'self T, get_ref, 1}
-
-/// RingBuf reverse iterator
-pub struct RingBufRevIterator<'self, T> {
-    priv lo: uint,
-    priv nelts: uint,
-    priv index: uint,
-    priv elts: &'self [Option<T>],
-}
-iterator!{impl RingBufRevIterator -> &'self T, get_ref, -1}
+iterator!{impl RingBufIterator -> &'self T, get_ref}
+iterator_rev!{impl RingBufIterator -> &'self T, get_ref}
 
 /// RingBuf mutable iterator
 pub struct RingBufMutIterator<'self, T> {
     priv lo: uint,
     priv nelts: uint,
     priv index: uint,
+    priv rindex: uint,
     priv elts: &'self mut [Option<T>],
 }
-iterator!{impl RingBufMutIterator -> &'self mut T, get_mut_ref, 1}
-
-/// RingBuf mutable reverse iterator
-pub struct RingBufMutRevIterator<'self, T> {
-    priv lo: uint,
-    priv nelts: uint,
-    priv index: uint,
-    priv elts: &'self mut [Option<T>],
-}
-iterator!{impl RingBufMutRevIterator -> &'self mut T, get_mut_ref, -1}
+iterator!{impl RingBufMutIterator -> &'self mut T, get_mut_ref}
+iterator_rev!{impl RingBufMutIterator -> &'self mut T, get_mut_ref}
 
 /// Grow is only called on full elts, so nelts is also len(elts), unlike
 /// elsewhere.
