@@ -287,7 +287,7 @@ impl<T> TrieNode<T> {
 
     fn each_reverse<'a>(&'a self, f: &fn(&uint, &'a T) -> bool) -> bool {
         for uint::range_rev(self.children.len(), 0) |idx| {
-            match self.children[idx - 1] {
+            match self.children[idx] {
                 Internal(ref x) => if !x.each_reverse(|i,t| f(i,t)) { return false },
                 External(k, ref v) => if !f(&k, v) { return false },
                 Nothing => ()
@@ -488,7 +488,7 @@ mod test_map {
             m.insert(x, x / 2);
         }
 
-        let mut n = uint::max_value - 9999;
+        let mut n = uint::max_value - 10000;
         for m.each |k, v| {
             if n == uint::max_value - 5000 { break }
             assert!(n < uint::max_value - 5000);
@@ -525,7 +525,7 @@ mod test_map {
             m.insert(x, x / 2);
         }
 
-        let mut n = uint::max_value;
+        let mut n = uint::max_value - 1;
         for m.each_reverse |k, v| {
             if n == uint::max_value - 5000 { break }
             assert!(n > uint::max_value - 5000);
