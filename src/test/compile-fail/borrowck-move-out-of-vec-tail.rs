@@ -22,7 +22,7 @@ pub fn main() {
                 }
             }
             let z = copy tail[0];
-            debug!(fmt!("%?", z));
+            info!(fmt!("%?", z));
         }
         _ => {
             ::std::util::unreachable();

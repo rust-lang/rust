@@ -11,4 +11,4 @@
 // error-pattern: unresolved
 use main::bar;
 
-fn main(args: ~[str]) { debug!("foo"); }
+fn main(args: ~[str]) { info!("foo"); }

@@ -16,24 +16,24 @@ use std::comm::Chan;
 use std::comm;
 use std::task;
 
-pub fn main() { debug!("===== WITHOUT THREADS ====="); test00(); }
+pub fn main() { info!("===== WITHOUT THREADS ====="); test00(); }
 
 fn test00_start(ch: &Chan<int>, message: int, count: int) {
-    debug!("Starting test00_start");
+    info!("Starting test00_start");
     let mut i: int = 0;
     while i < count {
-        debug!("Sending Message");
+        info!("Sending Message");
         ch.send(message + 0);
         i = i + 1;
     }
-    debug!("Ending test00_start");
+    info!("Ending test00_start");
 }
 
 fn test00() {
     let number_of_tasks: int = 16;
     let number_of_messages: int = 4;
 
-    debug!("Creating tasks");
+    info!("Creating tasks");
 
     let po = comm::PortSet::new();
 
@@ -66,7 +66,7 @@ fn test00() {
     // Join spawned tasks...
     for results.iter().advance |r| { r.recv(); }
 
-    debug!("Completed: Final number is: ");
+    info!("Completed: Final number is: ");
     error!(sum);
     // assert (sum == (((number_of_tasks * (number_of_tasks - 1)) / 2) *
     //       number_of_messages));

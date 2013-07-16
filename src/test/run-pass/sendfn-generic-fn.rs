@@ -22,12 +22,12 @@ fn make_generic_record<A:Copy,B:Copy>(a: A, b: B) -> Pair<A,B> {
 
 fn test05_start(f: &~fn(v: float, v: ~str) -> Pair<float, ~str>) {
     let p = (*f)(22.22f, ~"Hi");
-    debug!(copy p);
+    info!(copy p);
     assert!(p.a == 22.22f);
     assert!(p.b == ~"Hi");
 
     let q = (*f)(44.44f, ~"Ho");
-    debug!(copy q);
+    info!(copy q);
     assert!(q.a == 44.44f);
     assert!(q.b == ~"Ho");
 }

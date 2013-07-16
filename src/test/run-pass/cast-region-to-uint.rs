@@ -12,5 +12,5 @@ use std::borrow;
 
 pub fn main() {
     let x = 3;
-    debug!("&x=%x", borrow::to_uint(&x));
+    info!("&x=%x", borrow::to_uint(&x));
 }

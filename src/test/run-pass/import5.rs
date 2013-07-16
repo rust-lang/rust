@@ -14,7 +14,7 @@ use foo::bar;
 mod foo {
     pub use foo::zed::bar;
     pub mod zed {
-        pub fn bar() { debug!("foo"); }
+        pub fn bar() { info!("foo"); }
     }
 }
 

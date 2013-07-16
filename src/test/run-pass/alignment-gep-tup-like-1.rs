@@ -19,7 +19,7 @@ fn f<A:Copy + 'static>(a: A, b: u16) -> @fn() -> (A, u16) {
 
 pub fn main() {
     let (a, b) = f(22_u64, 44u16)();
-    debug!("a=%? b=%?", a, b);
+    info!("a=%? b=%?", a, b);
     assert_eq!(a, 22u64);
     assert_eq!(b, 44u16);
 }

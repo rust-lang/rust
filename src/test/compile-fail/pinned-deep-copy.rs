@@ -34,7 +34,7 @@ fn main() {
         // Can't do this copy
         let x = ~~~A {y: r(i)};
         let _z = copy x; //~ ERROR copying a value of non-copyable type
-        debug!(x);
+        info!(x);
     }
     error!(*i);
 }

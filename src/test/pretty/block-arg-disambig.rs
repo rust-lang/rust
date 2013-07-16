@@ -9,4 +9,4 @@
 // except according to those terms.
 
 fn blk1(b: &fn()) -> @fn() { return || { }; }
-fn test1() { (do blk1 { debug!("hi"); })(); }
+fn test1() { (do blk1 { info!("hi"); })(); }

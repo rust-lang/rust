@@ -26,16 +26,16 @@ fn call_sum(x: &[int]) -> int { x.sum_() }
 pub fn main() {
     let x = ~[1, 2, 3];
     let y = call_sum(x);
-    debug!("y==%d", y);
+    info!("y==%d", y);
     assert_eq!(y, 6);
 
     let mut x = ~[1, 2, 3];
     let y = x.sum_();
-    debug!("y==%d", y);
+    info!("y==%d", y);
     assert_eq!(y, 6);
 
     let x = ~[1, 2, 3];
     let y = x.sum_();
-    debug!("y==%d", y);
+    info!("y==%d", y);
     assert_eq!(y, 6);
 }

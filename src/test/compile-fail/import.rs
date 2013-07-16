@@ -12,6 +12,6 @@
 use zed::bar;
 use zed::baz;
 mod zed {
-    pub fn bar() { debug!("bar"); }
+    pub fn bar() { info!("bar"); }
 }
 fn main(args: ~[str]) { bar(); }

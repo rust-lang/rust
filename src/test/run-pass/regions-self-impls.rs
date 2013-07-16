@@ -22,6 +22,6 @@ impl<'self> get_chowder<'self> for Clam<'self> {
 
 pub fn main() {
     let clam = Clam { chowder: &3 };
-    debug!(*clam.get_chowder());
+    info!(*clam.get_chowder());
     clam.get_chowder();
 }

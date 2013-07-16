@@ -190,7 +190,8 @@ mod test {
     #[test]
     fn should_promote_desc() {
         let doc = mk_doc(~"#[doc = \"desc\"] mod m { }");
-        assert_eq!(doc.cratemod().mods()[0].brief(), Some(~"desc"));
+        // hidden __std_macros module at the start.
+        assert_eq!(doc.cratemod().mods()[1].brief(), Some(~"desc"));
     }
 
     #[test]
