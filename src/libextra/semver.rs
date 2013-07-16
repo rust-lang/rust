@@ -113,13 +113,7 @@ impl cmp::Ord for Version {
                  (0, _) => false,
                  (_, 0) => true,
                  (_, _) => self.pre < other.pre
-             })) ||
-
-            (self.major == other.major &&
-             self.minor == other.minor &&
-             self.patch == other.patch &&
-             self.pre == other.pre &&
-             self.build < other.build)
+             }))
     }
 
     #[inline]
@@ -324,6 +318,8 @@ fn test_parse() {
 fn test_eq() {
     assert_eq!(parse("1.2.3"), parse("1.2.3"));
     assert_eq!(parse("1.2.3-alpha1"), parse("1.2.3-alpha1"));
+    assert_eq!(parse("1.2.3+build.42"), parse("1.2.3+build.42"));
+    assert_eq!(parse("1.2.3-alpha1+42"), parse("1.2.3-alpha1+42"));
 }
 
 #[test]
@@ -332,6 +328,7 @@ fn test_ne() {
     assert!(parse("0.0.0")       != parse("0.1.0"));
     assert!(parse("0.0.0")       != parse("1.0.0"));
     assert!(parse("1.2.3-alpha") != parse("1.2.3-beta"));
+    assert!(parse("1.2.3+23")    != parse("1.2.3+42"));
 }
 
 #[test]
@@ -342,6 +339,7 @@ fn test_lt() {
     assert!(parse("1.2.3-alpha1") < parse("1.2.3"));
     assert!(parse("1.2.3-alpha1") < parse("1.2.3-alpha2"));
     assert!(!(parse("1.2.3-alpha2") < parse("1.2.3-alpha2")));
+    assert!(!(parse("1.2.3+23")     < parse("1.2.3+42")));
 }
 
 #[test]
@@ -351,6 +349,7 @@ fn test_le() {
     assert!(parse("1.2.0")        <= parse("1.2.3-alpha2"));
     assert!(parse("1.2.3-alpha1") <= parse("1.2.3-alpha2"));
     assert!(parse("1.2.3-alpha2") <= parse("1.2.3-alpha2"));
+    assert!(parse("1.2.3+23")     <= parse("1.2.3+42"));
 }
 
 #[test]
@@ -361,6 +360,7 @@ fn test_gt() {
     assert!(parse("1.2.3-alpha2") > parse("1.2.3-alpha1"));
     assert!(parse("1.2.3")        > parse("1.2.3-alpha2"));
     assert!(!(parse("1.2.3-alpha2") > parse("1.2.3-alpha2")));
+    assert!(!(parse("1.2.3+23")     > parse("1.2.3+42")));
 }
 
 #[test]
@@ -370,6 +370,7 @@ fn test_ge() {
     assert!(parse("1.2.3-alpha2") >= parse("1.2.0"));
     assert!(parse("1.2.3-alpha2") >= parse("1.2.3-alpha1"));
     assert!(parse("1.2.3-alpha2") >= parse("1.2.3-alpha2"));
+    assert!(parse("1.2.3+23")     >= parse("1.2.3+42"));
 }
 
 #[test]
@@ -377,15 +378,12 @@ fn test_spec_order() {
 
     let vs = ["1.0.0-alpha",
               "1.0.0-alpha.1",
+              "1.0.0-alpha.beta",
+              "1.0.0-beta",
               "1.0.0-beta.2",
               "1.0.0-beta.11",
               "1.0.0-rc.1",
-              "1.0.0-rc.1+build.1",
-              "1.0.0",
-              "1.0.0+0.3.7",
-              "1.3.7+build",
-              "1.3.7+build.2.b8f12d7",
-              "1.3.7+build.11.e0f985a"];
+              "1.0.0"];
     let mut i = 1;
     while i < vs.len() {
         let a = parse(vs[i-1]).get();
