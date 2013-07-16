@@ -12,6 +12,8 @@
 use back::link;
 use lib;
 use lib::llvm::*;
+use middle::lang_items::{FailFnLangItem, FailBoundsCheckFnLangItem};
+use middle::lang_items::LogTypeFnLangItem;
 use middle::trans::base::*;
 use middle::trans::build::*;
 use middle::trans::callee;
@@ -276,7 +278,7 @@ pub fn trans_log(log_ex: &ast::expr,
 
             // Call the polymorphic log function
             let val = val_datum.to_ref_llval(bcx);
-            let did = bcx.tcx().lang_items.log_type_fn();
+            let did = langcall(bcx, Some(e.span), "", LogTypeFnLangItem);
             let bcx = callee::trans_lang_call_with_type_params(
                 bcx, did, [level, val], [val_datum.ty], expr::Ignore);
             bcx
@@ -435,8 +437,8 @@ fn trans_fail_value(bcx: block,
     let V_str = PointerCast(bcx, V_fail_str, Type::i8p());
     let V_filename = PointerCast(bcx, V_filename, Type::i8p());
     let args = ~[V_str, V_filename, C_int(ccx, V_line)];
-    let bcx = callee::trans_lang_call(
-        bcx, bcx.tcx().lang_items.fail_fn(), args, Some(expr::Ignore)).bcx;
+    let did = langcall(bcx, sp_opt, "", FailFnLangItem);
+    let bcx = callee::trans_lang_call(bcx, did, args, Some(expr::Ignore)).bcx;
     Unreachable(bcx);
     return bcx;
 }
@@ -446,8 +448,8 @@ pub fn trans_fail_bounds_check(bcx: block, sp: span,
     let _icx = push_ctxt("trans_fail_bounds_check");
     let (filename, line) = filename_and_line_num_from_span(bcx, sp);
     let args = ~[filename, line, index, len];
-    let bcx = callee::trans_lang_call(
-        bcx, bcx.tcx().lang_items.fail_bounds_check_fn(), args, Some(expr::Ignore)).bcx;
+    let did = langcall(bcx, Some(sp), "", FailBoundsCheckFnLangItem);
+    let bcx = callee::trans_lang_call(bcx, did, args, Some(expr::Ignore)).bcx;
     Unreachable(bcx);
     return bcx;
 }

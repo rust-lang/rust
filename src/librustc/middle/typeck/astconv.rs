@@ -811,16 +811,16 @@ pub fn try_add_builtin_trait(tcx: ty::ctxt,
     //! is a builtin trait.
 
     let li = &tcx.lang_items;
-    if trait_def_id == li.send_trait() {
+    if Some(trait_def_id) == li.send_trait() {
         builtin_bounds.add(ty::BoundSend);
         true
-    } else if trait_def_id == li.copy_trait() {
+    } else if Some(trait_def_id) == li.copy_trait() {
         builtin_bounds.add(ty::BoundCopy);
         true
-    } else if trait_def_id == li.freeze_trait() {
+    } else if Some(trait_def_id) == li.freeze_trait() {
         builtin_bounds.add(ty::BoundFreeze);
         true
-    } else if trait_def_id == li.sized_trait() {
+    } else if Some(trait_def_id) == li.sized_trait() {
         builtin_bounds.add(ty::BoundSized);
         true
     } else {
