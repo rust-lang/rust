@@ -605,7 +605,7 @@ fn mk_tt(cx: @ExtCtxt, sp: span, tt: &ast::token_tree)
             ~[cx.stmt_expr(e_push)]
         }
 
-        ast::tt_delim(ref tts) => mk_tts(cx, sp, *tts),
+        ast::tt_delim(ref tts) => mk_tts(cx, sp, **tts),
         ast::tt_seq(*) => fail!("tt_seq in quote!"),
 
         ast::tt_nonterminal(sp, ident) => {

@@ -319,6 +319,13 @@ impl<A:IterBytes> IterBytes for @A {
     }
 }
 
+impl<A:IterBytes> IterBytes for @mut A {
+    #[inline]
+    fn iter_bytes(&self, lsb0: bool, f: Cb) -> bool {
+        (**self).iter_bytes(lsb0, f)
+    }
+}
+
 impl<A:IterBytes> IterBytes for ~A {
     #[inline]
     fn iter_bytes(&self, lsb0: bool, f: Cb) -> bool {

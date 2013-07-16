@@ -219,7 +219,7 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
         match r.stack.forest[r.stack.idx].clone() {
           tt_delim(tts) => {
             r.stack = @mut TtFrame {
-                forest: @mut tts,
+                forest: tts,
                 idx: 0u,
                 dotdotdoted: false,
                 sep: None,
@@ -235,7 +235,7 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
           }
           tt_seq(sp, tts, sep, zerok) => {
             // XXX(pcwalton): Bad copy.
-            let t = tt_seq(sp, tts.clone(), sep.clone(), zerok);
+            let t = tt_seq(sp, tts, sep.clone(), zerok);
             match lockstep_iter_size(&t, r) {
               lis_unconstrained => {
                 r.sp_diag.span_fatal(
@@ -263,7 +263,7 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
                     r.repeat_len.push(len);
                     r.repeat_idx.push(0u);
                     r.stack = @mut TtFrame {
-                        forest: @mut tts,
+                        forest: tts,
                         idx: 0u,
                         dotdotdoted: true,
                         sep: sep,

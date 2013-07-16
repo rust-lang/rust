@@ -85,7 +85,7 @@ pub fn add_new_extension(cx: @ExtCtxt,
             io::println(fmt!("%s! { %s }",
                              cx.str_of(name),
                              print::pprust::tt_to_str(
-                                 &ast::tt_delim(arg.to_owned()),
+                                 &ast::tt_delim(@mut arg.to_owned()),
                                  get_ident_interner())));
         }
 
