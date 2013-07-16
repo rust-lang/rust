@@ -552,7 +552,7 @@ fn mutate_values<'r, K: TotalOrd, V>(node: &'r mut Option<~TreeNode<K, V>>,
 // Remove left horizontal link by rotating right
 fn skew<K: TotalOrd, V>(node: &mut ~TreeNode<K, V>) {
     if node.left.map_default(false, |x| x.level == node.level) {
-        let mut save = node.left.swap_unwrap();
+        let mut save = node.left.take_unwrap();
         swap(&mut node.left, &mut save.right); // save.right now None
         swap(node, &mut save);
         node.right = Some(save);
@@ -564,7 +564,7 @@ fn skew<K: TotalOrd, V>(node: &mut ~TreeNode<K, V>) {
 fn split<K: TotalOrd, V>(node: &mut ~TreeNode<K, V>) {
     if node.right.map_default(false,
       |x| x.right.map_default(false, |y| y.level == node.level)) {
-        let mut save = node.right.swap_unwrap();
+        let mut save = node.right.take_unwrap();
         swap(&mut node.right, &mut save.left); // save.left now None
         save.level += 1;
         swap(node, &mut save);
@@ -643,7 +643,7 @@ fn remove<K: TotalOrd, V>(node: &mut Option<~TreeNode<K, V>>,
           Equal => {
             if save.left.is_some() {
                 if save.right.is_some() {
-                    let mut left = save.left.swap_unwrap();
+                    let mut left = save.left.take_unwrap();
                     if left.right.is_some() {
                         heir_swap(save, &mut left.right);
                     } else {
@@ -653,13 +653,13 @@ fn remove<K: TotalOrd, V>(node: &mut Option<~TreeNode<K, V>>,
                     save.left = Some(left);
                     (remove(&mut save.left, key), true)
                 } else {
-                    let new = save.left.swap_unwrap();
+                    let new = save.left.take_unwrap();
                     let ~TreeNode{value, _} = replace(save, new);
-                    *save = save.left.swap_unwrap();
+                    *save = save.left.take_unwrap();
                     (Some(value), true)
                 }
             } else if save.right.is_some() {
-                let new = save.right.swap_unwrap();
+                let new = save.right.take_unwrap();
                 let ~TreeNode{value, _} = replace(save, new);
                 (Some(value), true)
             } else {
