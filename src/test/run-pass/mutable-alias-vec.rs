@@ -23,6 +23,6 @@ pub fn main() {
     grow(&mut v);
     grow(&mut v);
     let len = v.len();
-    debug!(len);
+    info!(len);
     assert_eq!(len, 3 as uint);
 }

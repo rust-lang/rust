@@ -15,7 +15,7 @@ pub mod foo {
 }
 
 pub mod bar {
-    pub fn x() { debug!("x"); }
+    pub fn x() { info!("x"); }
 }
 
 pub fn main() { foo::x(); }

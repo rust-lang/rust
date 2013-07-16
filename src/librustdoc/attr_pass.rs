@@ -255,7 +255,8 @@ mod test {
     #[test]
     fn should_should_extract_mod_attributes() {
         let doc = mk_doc(~"#[doc = \"test\"] mod a { }");
-        assert!(doc.cratemod().mods()[0].desc() == Some(~"test"));
+        // hidden __std_macros module at the start.
+        assert!(doc.cratemod().mods()[1].desc() == Some(~"test"));
     }
 
     #[test]

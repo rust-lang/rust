@@ -33,11 +33,11 @@ fn main() {
 
 fn run(repeat: int, depth: int) {
     for (repeat as uint).times {
-        debug!("starting %.4f", precise_time_s());
+        info!("starting %.4f", precise_time_s());
         do task::try {
             recurse_or_fail(depth, None)
         };
-        debug!("stopping %.4f", precise_time_s());
+        info!("stopping %.4f", precise_time_s());
     }
 }
 
@@ -71,7 +71,7 @@ fn r(l: @nillist) -> r {
 
 fn recurse_or_fail(depth: int, st: Option<State>) {
     if depth == 0 {
-        debug!("unwinding %.4f", precise_time_s());
+        info!("unwinding %.4f", precise_time_s());
         fail!();
     } else {
         let depth = depth - 1;

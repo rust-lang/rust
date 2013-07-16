@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,9 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn foo(x: int) { info!(x); }
+#[allow(unreachable_code)];
+
+fn foo() -> bool { false }
+
+fn bar() {
+    return;
+    !foo();
+}
+
+fn baz() {
+    return;
+    if "" == "" {}
+}
 
 fn main() {
-    let x: int;
-    foo(x); //~ ERROR use of possibly uninitialized variable: `x`
+    bar();
+    baz();
 }

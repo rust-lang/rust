@@ -166,12 +166,14 @@ mod test {
     use attr_pass;
     use doc;
     use extract;
+    use prune_hidden_pass;
     use sectionalize_pass::run;
 
     fn mk_doc(source: ~str) -> doc::Doc {
         do astsrv::from_str(copy source) |srv| {
             let doc = extract::from_srv(srv.clone(), ~"");
             let doc = (attr_pass::mk_pass().f)(srv.clone(), doc);
+            let doc = (prune_hidden_pass::mk_pass().f)(srv.clone(), doc);
             run(srv.clone(), doc)
         }
     }

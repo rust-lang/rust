@@ -30,7 +30,7 @@ extern fn cb(data: libc::uintptr_t) -> libc::uintptr_t {
 
 fn count(n: uint) -> uint {
     unsafe {
-        debug!("n = %?", n);
+        info!("n = %?", n);
         rustrt::rust_dbg_call(cb, n)
     }
 }
@@ -40,7 +40,7 @@ pub fn main() {
     // has a large stack)
     do task::spawn {
         let result = count(1000u);
-        debug!("result = %?", result);
+        info!("result = %?", result);
         assert_eq!(result, 1000u);
     };
 }

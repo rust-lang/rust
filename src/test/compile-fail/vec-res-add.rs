@@ -25,5 +25,5 @@ fn main() {
     let i = ~[r(0)];
     let j = ~[r(1)];
     let k = i + j;
-    debug!(j);
+    info!(j);
 }

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Testing that calling fmt! (via debug!) doesn't complain about impure borrows
+// Testing that calling fmt! (via info!) doesn't complain about impure borrows
 
 struct Big { b: @~str, c: uint, d: int, e: char,
             f: float, g: bool }
@@ -22,12 +22,12 @@ fn foo() {
         f: 0.0,
         g: true
     };
-    debug!("test %?", a.b);
-    debug!("test %u", a.c);
-    debug!("test %i", a.d);
-    debug!("test %c", a.e);
-    debug!("test %f", a.f);
-    debug!("test %b", a.g);
+    info!("test %?", a.b);
+    info!("test %u", a.c);
+    info!("test %i", a.d);
+    info!("test %c", a.e);
+    info!("test %f", a.f);
+    info!("test %b", a.g);
 }
 
 pub fn main() {

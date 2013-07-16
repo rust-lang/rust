@@ -11,8 +11,8 @@
 extern mod extra;
 
 fn test(actual: ~str, expected: ~str) {
-    debug!(actual.clone());
-    debug!(expected.clone());
+    info!(actual.clone());
+    info!(expected.clone());
     assert_eq!(actual, expected);
 }
 

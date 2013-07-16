@@ -113,6 +113,8 @@ fn build_ctxt(sess: Session,
 
     use rustc::front::config;
 
+    let ast = syntax::ext::expand::inject_std_macros(sess.parse_sess,
+                                                     copy sess.opts.cfg, ast);
     let ast = config::strip_unconfigured_items(ast);
     let ast = syntax::ext::expand::expand_crate(sess.parse_sess,
                                                 copy sess.opts.cfg, ast);
@@ -138,7 +140,8 @@ fn should_prune_unconfigured_items() {
     let source = ~"#[cfg(shut_up_and_leave_me_alone)]fn a() { }";
     do from_str(source) |srv| {
         do exec(srv) |ctxt| {
-            assert!(ctxt.ast.node.module.items.is_empty());
+            // one item: the __std_macros secret module
+            assert_eq!(ctxt.ast.node.module.items.len(), 1);
         }
     }
 }

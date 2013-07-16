@@ -44,7 +44,7 @@ fn roundtrip(id: int, n_tasks: int, p: &Port<int>, ch: &Chan<int>) {
             return;
           }
           token => {
-            debug!("thread: %d   got token: %d", id, token);
+            info!("thread: %d   got token: %d", id, token);
             ch.send(token - 1);
             if token <= n_tasks {
                 return;

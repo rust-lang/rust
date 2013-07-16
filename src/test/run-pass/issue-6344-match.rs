@@ -18,7 +18,7 @@ fn main() {
 
     match a {
         A { x : ref x } => {
-            debug!("%?", x)
+            info!("%?", x)
         }
     }
 }

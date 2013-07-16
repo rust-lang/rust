@@ -14,7 +14,7 @@
 use zed::bar;
 
 mod zed {
-    pub fn bar() { debug!("bar"); }
+    pub fn bar() { info!("bar"); }
 }
 
 pub fn main() { let zed = 42; bar(); }

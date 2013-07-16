@@ -11,7 +11,7 @@
 // except according to those terms.
 
 mod foo {
-    pub fn x(y: int) { debug!(y); }
+    pub fn x(y: int) { info!(y); }
 }
 
 mod bar {

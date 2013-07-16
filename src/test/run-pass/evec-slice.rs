@@ -20,7 +20,7 @@ pub fn main() {
     let c : &[int] = &[2,2,2,2,3];
     let cc : &[int] = &[2,2,2,2,2,2];
 
-    debug!(a);
+    info!(a);
 
     assert!(a < b);
     assert!(a <= b);
@@ -28,7 +28,7 @@ pub fn main() {
     assert!(b >= a);
     assert!(b > a);
 
-    debug!(b);
+    info!(b);
 
     assert!(b < c);
     assert!(b <= c);
@@ -42,7 +42,7 @@ pub fn main() {
     assert!(c >= a);
     assert!(c > a);
 
-    debug!(c);
+    info!(c);
 
     assert!(a < cc);
     assert!(a <= cc);
@@ -50,5 +50,5 @@ pub fn main() {
     assert!(cc >= a);
     assert!(cc > a);
 
-    debug!(cc);
+    info!(cc);
 }

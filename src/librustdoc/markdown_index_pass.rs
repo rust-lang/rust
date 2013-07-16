@@ -172,6 +172,7 @@ mod test {
     use extract;
     use markdown_index_pass::run;
     use path_pass;
+    use prune_hidden_pass;
     use super::pandoc_header_id;
 
     fn mk_doc(output_style: config::OutputStyle, source: ~str)
@@ -183,8 +184,10 @@ mod test {
             };
             let doc = extract::from_srv(srv.clone(), ~"");
             let doc = (attr_pass::mk_pass().f)(srv.clone(), doc);
+            let doc = (prune_hidden_pass::mk_pass().f)(srv.clone(), doc);
             let doc = (desc_to_brief_pass::mk_pass().f)(srv.clone(), doc);
             let doc = (path_pass::mk_pass().f)(srv.clone(), doc);
+
             run(srv.clone(), doc, config)
         }
     }
@@ -240,13 +243,13 @@ mod test {
             config::DocPerMod,
             ~"mod a { } fn b() { }"
         );
-        assert!(doc.cratemod().index.get().entries[0] == doc::IndexEntry {
+        assert_eq!(doc.cratemod().index.get().entries[0], doc::IndexEntry {
             kind: ~"Module",
             name: ~"a",
             brief: None,
             link: ~"a.html"
         });
-        assert!(doc.cratemod().index.get().entries[1] == doc::IndexEntry {
+        assert_eq!(doc.cratemod().index.get().entries[1], doc::IndexEntry {
             kind: ~"Function",
             name: ~"b",
             brief: None,
@@ -260,8 +263,7 @@ mod test {
             config::DocPerMod,
             ~"#[doc = \"test\"] mod a { }"
         );
-        assert!(doc.cratemod().index.get().entries[0].brief
-                == Some(~"test"));
+        assert_eq!(doc.cratemod().index.get().entries[0].brief, Some(~"test"));
     }
 
     #[test]
@@ -270,12 +272,13 @@ mod test {
             config::DocPerCrate,
             ~"extern { fn b(); }"
         );
-        assert!(doc.cratemod().nmods()[0].index.get().entries[0]
-                == doc::IndexEntry {
-                    kind: ~"Function",
-                    name: ~"b",
-                    brief: None,
-                    link: ~"#function-b"
-                });
+        // hidden __std_macros module at the start.
+        assert_eq!(doc.cratemod().nmods()[0].index.get().entries[0],
+                   doc::IndexEntry {
+                       kind: ~"Function",
+                       name: ~"b",
+                       brief: None,
+                       link: ~"#function-b"
+                   });
     }
 }
