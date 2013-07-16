@@ -69,8 +69,12 @@ pub fn collect_item_types(ccx: @mut CrateCtxt, crate: &ast::crate) {
         ccx.tcx.intrinsic_defs.insert(lang_item, ty);
     }
 
-    collect_intrinsic_type(ccx, ccx.tcx.lang_items.ty_desc());
-    collect_intrinsic_type(ccx, ccx.tcx.lang_items.opaque());
+    match ccx.tcx.lang_items.ty_desc() {
+        Some(id) => { collect_intrinsic_type(ccx, id); } None => {}
+    }
+    match ccx.tcx.lang_items.opaque() {
+        Some(id) => { collect_intrinsic_type(ccx, id); } None => {}
+    }
 
     visit::visit_crate(
         crate, ((),

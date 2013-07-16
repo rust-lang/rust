@@ -5268,8 +5268,13 @@ impl Resolver {
 
     pub fn add_fixed_trait_for_expr(@mut self,
                                     expr_id: node_id,
-                                    trait_id: def_id) {
-        self.trait_map.insert(expr_id, @mut ~[trait_id]);
+                                    trait_id: Option<def_id>) {
+        match trait_id {
+            Some(trait_id) => {
+                self.trait_map.insert(expr_id, @mut ~[trait_id]);
+            }
+            None => {}
+        }
     }
 
     pub fn record_def(@mut self, node_id: node_id, def: def) {

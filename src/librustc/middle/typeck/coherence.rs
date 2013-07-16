@@ -960,7 +960,9 @@ impl CoherenceChecker {
     pub fn populate_destructor_table(&self) {
         let coherence_info = &self.crate_context.coherence_info;
         let tcx = self.crate_context.tcx;
-        let drop_trait = tcx.lang_items.drop_trait();
+        let drop_trait = match tcx.lang_items.drop_trait() {
+            Some(id) => id, None => { return }
+        };
         let impls_opt = coherence_info.extension_methods.find(&drop_trait);
 
         let impls;
