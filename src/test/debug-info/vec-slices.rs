@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// xfail-win32 Broken because of LLVM bug: http://llvm.org/bugs/show_bug.cgi?id=16249
+
 // compile-flags:-Z extra-debug-info
 // debugger:set print pretty off
 // debugger:break zzz
@@ -52,14 +54,14 @@ struct AStruct {
 }
 
 fn main() {
-    let empty : &[i64] = &[];
-    let singleton : &[i64] = &[1];
-    let multiple : &[i64] = &[2, 3, 4, 5];
+    let empty: &[i64] = &[];
+    let singleton: &[i64] = &[1];
+    let multiple: &[i64] = &[2, 3, 4, 5];
     let slice_of_slice = multiple.slice(1,3);
 
-    let padded_tuple : &[(i32, i16)] = &[(6, 7), (8, 9)];
+    let padded_tuple: &[(i32, i16)] = &[(6, 7), (8, 9)];
 
-    let padded_struct : &[AStruct] = &[
+    let padded_struct: &[AStruct] = &[
         AStruct { x: 10, y: 11, z: 12 },
         AStruct { x: 13, y: 14, z: 15 }
     ];

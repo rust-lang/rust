@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// xfail-win32 Broken because of LLVM bug: http://llvm.org/bugs/show_bug.cgi?id=16249
+
 // compile-flags:-Z extra-debug-info
 // debugger:break zzz
 // debugger:run
@@ -49,8 +51,8 @@ enum NamedFields<'self> {
 
 fn main() {
 
-    let some : Option<&u32> = Some(unsafe { std::cast::transmute(0x12345678) });
-    let none : Option<&u32> = None;
+    let some: Option<&u32> = Some(unsafe { std::cast::transmute(0x12345678) });
+    let none: Option<&u32> = None;
 
     let full = Full(454545, unsafe { std::cast::transmute(0x87654321) }, 9988);
 

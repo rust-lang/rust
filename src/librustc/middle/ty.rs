@@ -3731,17 +3731,18 @@ impl VariantInfo {
             },
             ast::struct_variant_kind(ref struct_def) => {
 
-                let fields : &[@struct_field] = struct_def.fields;
+                let fields: &[@struct_field] = struct_def.fields;
 
                 assert!(fields.len() > 0);
 
                 let arg_tys = ty_fn_args(ctor_ty).map(|a| *a);
                 let arg_names = do fields.map |field| {
                     match field.node.kind {
-                        named_field(ident, _visibility) => ident,
+                        named_field(ident, _) => ident,
                         unnamed_field => cx.sess.bug(
                             "enum_variants: all fields in struct must have a name")
-                    }};
+                    }
+                };
 
                 return VariantInfo {
                     args: arg_tys,
@@ -3904,7 +3905,7 @@ pub fn enum_variants(cx: ctxt, id: ast::def_id) -> @~[@VariantInfo] {
                     node: ast::item_enum(ref enum_definition, _),
                     _
                 }, _) => {
-            let mut last_discriminant : Option<int> = None;
+            let mut last_discriminant: Option<int> = None;
             @enum_definition.variants.iter().transform(|variant| {
 
                 let mut discriminant = match last_discriminant {
@@ -3914,8 +3915,13 @@ pub fn enum_variants(cx: ctxt, id: ast::def_id) -> @~[@VariantInfo] {
 
                 match variant.node.disr_expr {
                     Some(e) => match const_eval::eval_const_expr_partial(cx, e) {
-                        Ok(const_eval::const_int(val)) => { discriminant = val as int; }
-                        _ => {}
+                        Ok(const_eval::const_int(val)) => discriminant = val as int,
+                        Ok(_) => {
+                            cx.sess.span_err(e.span, "expected signed integer constant");
+                        }
+                        Err(ref err) => {
+                            cx.sess.span_err(e.span, fmt!("expected constant: %s", (*err)));
+                        }
                     },
                     None => {}
                 };
