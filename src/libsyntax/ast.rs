@@ -215,15 +215,16 @@ pub enum meta_item_ {
     meta_name_value(@str, lit),
 }
 
-pub type blk = spanned<blk_>;
+//pub type blk = spanned<blk_>;
 
 #[deriving(Eq, Encodable, Decodable,IterBytes)]
-pub struct blk_ {
+pub struct blk {
     view_items: ~[view_item],
     stmts: ~[@stmt],
     expr: Option<@expr>,
     id: node_id,
     rules: blk_check_mode,
+    span: span,
 }
 
 #[deriving(Eq, Encodable, Decodable,IterBytes)]

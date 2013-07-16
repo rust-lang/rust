@@ -11,7 +11,7 @@
 use ast::*;
 use ast;
 use ast_util;
-use codemap::{span, spanned};
+use codemap::{span, dummy_sp};
 use opt_vec;
 use parse::token;
 use visit;
@@ -194,21 +194,23 @@ pub fn is_call_expr(e: @expr) -> bool {
 }
 
 pub fn block_from_expr(e: @expr) -> blk {
-    let blk_ = default_block(~[], option::Some::<@expr>(e), e.id);
-    return spanned {node: blk_, span: e.span};
+    let mut blk = default_block(~[], option::Some::<@expr>(e), e.id);
+    blk.span = e.span;
+    return blk;
 }
 
 pub fn default_block(
     stmts1: ~[@stmt],
     expr1: Option<@expr>,
     id1: node_id
-) -> blk_ {
-    ast::blk_ {
+) -> blk {
+    ast::blk {
         view_items: ~[],
         stmts: stmts1,
         expr: expr1,
         id: id1,
         rules: default_blk,
+        span: dummy_sp(),
     }
 }
 
@@ -437,7 +439,7 @@ pub fn id_visitor<T: Copy>(vfn: @fn(node_id, T)) -> visit::vt<T> {
             visit::visit_local(l, (t, vt));
         },
         visit_block: |b, (t, vt)| {
-            vfn(b.node.id, copy t);
+            vfn(b.id, copy t);
             visit::visit_block(b, (t, vt));
         },
         visit_stmt: |s, (t, vt)| {

@@ -557,27 +557,26 @@ mod test {
                                         lifetimes: opt_vec::Empty,
                                         ty_params: opt_vec::Empty,
                                     },
-                                    spanned{
+                                    ast::blk {
+                                        view_items: ~[],
+                                        stmts: ~[@spanned{
+                                            node: ast::stmt_semi(@ast::expr{
+                                                id: 6,
+                                                node: ast::expr_path(
+                                                      ast::Path{
+                                                        span:sp(17,18),
+                                                        global:false,
+                                                        idents:~[str_to_ident("b")],
+                                                        rp:None,
+                                                        types: ~[]}),
+                                                span: sp(17,18)},
+                                                                 7), // fixme
+                                            span: sp(17,18)}],
+                                        expr: None,
+                                        id: 8, // fixme
+                                        rules: ast::default_blk, // no idea
                                         span: sp(15,21),
-                                        node: ast::blk_{
-                                            view_items: ~[],
-                                            stmts: ~[@spanned{
-                                                node: ast::stmt_semi(@ast::expr{
-                                                    id: 6,
-                                                    node: ast::expr_path(
-                                                          ast::Path{
-                                                            span:sp(17,18),
-                                                            global:false,
-                                                            idents:~[str_to_ident("b")],
-                                                            rp:None,
-                                                            types: ~[]}),
-                                                    span: sp(17,18)},
-                                                                     7), // fixme
-                                                span: sp(17,18)}],
-                                            expr: None,
-                                            id: 8, // fixme
-                                            rules: ast::default_blk // no idea
-                                        }}),
+                                    }),
                             vis: ast::inherited,
                             span: sp(0,21)}));
     }

@@ -276,7 +276,7 @@ fn visit_block(b: &ast::blk, (wbcx, v): (@mut WbCtxt, wb_vt)) {
         return;
     }
 
-    resolve_type_vars_for_node(wbcx, b.span, b.node.id);
+    resolve_type_vars_for_node(wbcx, b.span, b.id);
     visit::visit_block(b, (wbcx, v));
 }
 
