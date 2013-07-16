@@ -58,6 +58,15 @@ pub struct config {
     // Write out a parseable log of tests that were run
     logfile: Option<Path>,
 
+    // Write out a json file containing any metrics of the run
+    save_metrics: Option<Path>,
+
+    // Write and ratchet a metrics file
+    ratchet_metrics: Option<Path>,
+
+    // Percent change in metrics to consider noise
+    ratchet_noise_percent: Option<f64>,
+
     // A command line to prefix program execution with,
     // for running under valgrind
     runtool: Option<~str>,

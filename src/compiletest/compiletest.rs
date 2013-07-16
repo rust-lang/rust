@@ -17,6 +17,7 @@
 extern mod extra;
 
 use std::os;
+use std::f64;
 
 use extra::getopts;
 use extra::getopts::groups::{optopt, optflag, reqopt};
@@ -66,6 +67,10 @@ pub fn parse_config(args: ~[~str]) -> config {
           optopt("", "rustcflags", "flags to pass to rustc", "FLAGS"),
           optflag("", "verbose", "run tests verbosely, showing all output"),
           optopt("", "logfile", "file to log test execution to", "FILE"),
+          optopt("", "save-metrics", "file to save metrics to", "FILE"),
+          optopt("", "ratchet-metrics", "file to ratchet metrics against", "FILE"),
+          optopt("", "ratchet-noise-percent",
+                 "percent change in metrics to consider noise", "N"),
           optflag("", "jit", "run tests under the JIT"),
           optflag("", "newrt", "run tests on the new runtime / scheduler"),
           optopt("", "target", "the target to build for", "TARGET"),
@@ -116,6 +121,13 @@ pub fn parse_config(args: ~[~str]) -> config {
                  Some(copy matches.free[0])
              } else { None },
         logfile: getopts::opt_maybe_str(matches, "logfile").map(|s| Path(*s)),
+        save_metrics: getopts::opt_maybe_str(matches, "save-metrics").map(|s| Path(*s)),
+        ratchet_metrics:
+            getopts::opt_maybe_str(matches, "ratchet-metrics").map(|s| Path(*s)),
+        ratchet_noise_percent:
+            getopts::opt_maybe_str(matches,
+                                   "ratchet-noise-percent").map(|s|
+                                                                f64::from_str(*s).get()),
         runtool: getopts::opt_maybe_str(matches, "runtool"),
         rustcflags: getopts::opt_maybe_str(matches, "rustcflags"),
         jit: getopts::opt_present(matches, "jit"),
@@ -215,10 +227,10 @@ pub fn test_opts(config: &config) -> test::TestOpts {
         run_ignored: config.run_ignored,
         logfile: copy config.logfile,
         run_tests: true,
-        run_benchmarks: false,
-        ratchet_metrics: None,
-        ratchet_noise_percent: None,
-        save_metrics: None,
+        run_benchmarks: true,
+        ratchet_metrics: copy config.ratchet_metrics,
+        ratchet_noise_percent: copy config.ratchet_noise_percent,
+        save_metrics: copy config.save_metrics,
     }
 }
 
@@ -231,7 +243,13 @@ pub fn make_tests(config: &config) -> ~[test::TestDescAndFn] {
         let file = copy *file;
         debug!("inspecting file %s", file.to_str());
         if is_test(config, file) {
-            tests.push(make_test(config, file))
+            let t = do make_test(config, file) {
+                match config.mode {
+                    mode_codegen => make_metrics_test_closure(config, file),
+                    _ => make_test_closure(config, file)
+                }
+            };
+            tests.push(t)
         }
     }
     tests
@@ -260,14 +278,15 @@ pub fn is_test(config: &config, testfile: &Path) -> bool {
     return valid;
 }
 
-pub fn make_test(config: &config, testfile: &Path) -> test::TestDescAndFn {
+pub fn make_test(config: &config, testfile: &Path,
+                 f: &fn()->test::TestFn) -> test::TestDescAndFn {
     test::TestDescAndFn {
         desc: test::TestDesc {
             name: make_test_name(config, testfile),
             ignore: header::is_test_ignored(config, testfile),
             should_fail: false
         },
-        testfn: make_test_closure(config, testfile),
+        testfn: f(),
     }
 }
 
@@ -290,4 +309,11 @@ pub fn make_test_closure(config: &config, testfile: &Path) -> test::TestFn {
     let config = Cell::new(copy *config);
     let testfile = Cell::new(testfile.to_str());
     test::DynTestFn(|| { runtest::run(config.take(), testfile.take()) })
+}
+
+pub fn make_metrics_test_closure(config: &config, testfile: &Path) -> test::TestFn {
+    use std::cell::Cell;
+    let config = Cell::new(copy *config);
+    let testfile = Cell::new(testfile.to_str());
+    test::DynMetricFn(|mm| { runtest::run_metrics(config.take(), testfile.take(), mm) })
 }

@@ -25,7 +25,14 @@ use std::os;
 use std::uint;
 use std::vec;
 
+use extra::test::MetricMap;
+
 pub fn run(config: config, testfile: ~str) {
+    let mut _mm = MetricMap::new();
+    run_metrics(config, testfile, &mut _mm);
+}
+
+pub fn run_metrics(config: config, testfile: ~str, mm: &mut MetricMap) {
     if config.verbose {
         // We're going to be dumping a lot of info. Start on a new line.
         io::stdout().write_str("\n\n");
@@ -40,7 +47,7 @@ pub fn run(config: config, testfile: ~str) {
       mode_run_pass => run_rpass_test(&config, &props, &testfile),
       mode_pretty => run_pretty_test(&config, &props, &testfile),
       mode_debug_info => run_debuginfo_test(&config, &props, &testfile),
-      mode_codegen => run_codegen_test(&config, &props, &testfile)
+      mode_codegen => run_codegen_test(&config, &props, &testfile, mm)
     }
 }
 
@@ -906,7 +913,14 @@ fn disassemble_extract(config: &config, _props: &TestProps,
 }
 
 
-fn run_codegen_test(config: &config, props: &TestProps, testfile: &Path) {
+fn count_extracted_lines(p: &Path) -> uint {
+    let x = io::read_whole_file_str(&p.with_filetype("ll")).get();
+    x.line_iter().len_()
+}
+
+
+fn run_codegen_test(config: &config, props: &TestProps,
+                    testfile: &Path, mm: &mut MetricMap) {
 
     if config.llvm_bin_path.is_none() {
         fatal(~"missing --llvm-bin-path");
@@ -947,7 +961,17 @@ fn run_codegen_test(config: &config, props: &TestProps, testfile: &Path) {
         fatal_ProcRes(~"disassembling extract failed", &ProcRes);
     }
 
+    let base = output_base_name(config, testfile);
+    let base_extract = append_suffix_to_stem(&base, "extract");
 
+    let base_clang = append_suffix_to_stem(&base, "clang");
+    let base_clang_extract = append_suffix_to_stem(&base_clang, "extract");
 
+    let base_lines = count_extracted_lines(&base_extract);
+    let clang_lines = count_extracted_lines(&base_clang_extract);
+
+    mm.insert_metric("clang-codegen-ratio",
+                     (base_lines as f64) / (clang_lines as f64),
+                     0.001);
 }
 
