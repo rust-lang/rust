@@ -283,7 +283,6 @@ pub enum heap {
     heap_managed,
     heap_managed_unique,
     heap_exchange,
-    heap_exchange_vector,
     heap_exchange_closure
 }
 
@@ -405,7 +404,7 @@ pub fn add_clean_free(cx: block, ptr: ValueRef, heap: heap) {
         let f: @fn(block) -> block = |a| glue::trans_free(a, ptr);
         f
       }
-      heap_exchange | heap_exchange_vector | heap_exchange_closure => {
+      heap_exchange | heap_exchange_closure => {
         let f: @fn(block) -> block = |a| glue::trans_exchange_free(a, ptr);
         f
       }

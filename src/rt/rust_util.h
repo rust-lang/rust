@@ -57,17 +57,17 @@ vec_data(rust_vec *v) {
     return reinterpret_cast<T*>(v->data);
 }
 
-inline void reserve_vec_exact(rust_vec_box** vpp,
+inline void reserve_vec_exact(rust_vec** vpp,
                               size_t size) {
-    if (size > (*vpp)->body.alloc) {
+    if (size > (*vpp)->alloc) {
         rust_exchange_alloc exchange_alloc;
-        *vpp = (rust_vec_box*)exchange_alloc
-            .realloc(*vpp, size + sizeof(rust_vec_box));
-        (*vpp)->body.alloc = size;
+        *vpp = (rust_vec*)exchange_alloc
+            .realloc(*vpp, size + sizeof(rust_vec));
+        (*vpp)->alloc = size;
     }
 }
 
-typedef rust_vec_box rust_str;
+typedef rust_vec rust_str;
 
 inline size_t get_box_size(size_t body_size, size_t body_align) {
     size_t header_size = sizeof(rust_opaque_box);

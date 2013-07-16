@@ -85,6 +85,14 @@ impl TyVisitor for MyVisitor {
         self.types.push(~"]");
         true
     }
+    fn visit_evec_uniq_managed(&self, _mtbl: uint, inner: *TyDesc) -> bool {
+        self.types.push(~"[");
+        unsafe {
+            visit_tydesc(inner, (@*self) as @TyVisitor);
+        }
+        self.types.push(~"]");
+        true
+    }
     fn visit_evec_slice(&self, _mtbl: uint, _inner: *TyDesc) -> bool { true }
     fn visit_evec_fixed(&self, _n: uint, _sz: uint, _align: uint,
                         _mtbl: uint, _inner: *TyDesc) -> bool { true }
