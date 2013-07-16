@@ -422,7 +422,7 @@ pub fn pretty_print_input(sess: Session, cfg: ast::crate_cfg, input: &input,
           pprust::node_block(s, ref blk) => {
             pp::space(s.s);
             pprust::synth_comment(
-                s, ~"block " + int::to_str(blk.node.id));
+                s, ~"block " + int::to_str(blk.id));
           }
           pprust::node_expr(s, expr) => {
             pp::space(s.s);

@@ -33,7 +33,7 @@ pub fn strip_items(crate: &ast::crate, in_cfg: in_cfg_pred)
 
     let precursor = @fold::AstFoldFns {
           fold_mod: |a,b| fold_mod(ctxt, a, b),
-          fold_block: fold::wrap(|a,b| fold_block(ctxt, a, b) ),
+          fold_block: |a,b| fold_block(ctxt, a, b),
           fold_foreign_mod: |a,b| fold_foreign_mod(ctxt, a, b),
           fold_item_underscore: |a,b| {
             // Bad copy.
@@ -133,21 +133,22 @@ fn filter_stmt(cx: @Context, stmt: @ast::stmt) ->
 
 fn fold_block(
     cx: @Context,
-    b: &ast::blk_,
+    b: &ast::blk,
     fld: @fold::ast_fold
-) -> ast::blk_ {
+) -> ast::blk {
     let resulting_stmts = do b.stmts.iter().filter_map |a| {
         filter_stmt(cx, *a).chain(|stmt| fld.fold_stmt(stmt))
     }.collect();
     let filtered_view_items = do b.view_items.iter().filter_map |a| {
         filter_view_item(cx, a).map(|&x| fld.fold_view_item(x))
     }.collect();
-    ast::blk_ {
+    ast::blk {
         view_items: filtered_view_items,
         stmts: resulting_stmts,
         expr: b.expr.map(|x| fld.fold_expr(*x)),
         id: b.id,
         rules: b.rules,
+        span: b.span,
     }
 }
 

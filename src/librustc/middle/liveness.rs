@@ -886,7 +886,7 @@ impl Liveness {
                       self.tcx.sess.intr()));
 
         let entry_ln: LiveNode =
-            self.with_loop_nodes(body.node.id, self.s.exit_ln, self.s.exit_ln,
+            self.with_loop_nodes(body.id, self.s.exit_ln, self.s.exit_ln,
               || { self.propagate_through_fn_block(decl, body) });
 
         // hack to skip the loop unless debug! is enabled:
@@ -895,7 +895,7 @@ impl Liveness {
                    for uint::range(0u, self.ir.num_live_nodes) |ln_idx| {
                        debug!("%s", self.ln_str(LiveNode(ln_idx)));
                    }
-                   body.node.id
+                   body.id
                },
                entry_ln.to_str());
 
@@ -907,7 +907,7 @@ impl Liveness {
         // the fallthrough exit is only for those cases where we do not
         // explicitly return:
         self.init_from_succ(self.s.fallthrough_ln, self.s.exit_ln);
-        if blk.node.expr.is_none() {
+        if blk.expr.is_none() {
             self.acc(self.s.fallthrough_ln, self.s.no_ret_var, ACC_READ)
         }
 
@@ -916,8 +916,8 @@ impl Liveness {
 
     pub fn propagate_through_block(&self, blk: &blk, succ: LiveNode)
                                    -> LiveNode {
-        let succ = self.propagate_through_opt_expr(blk.node.expr, succ);
-        do blk.node.stmts.rev_iter().fold(succ) |succ, stmt| {
+        let succ = self.propagate_through_opt_expr(blk.expr, succ);
+        do blk.stmts.rev_iter().fold(succ) |succ, stmt| {
             self.propagate_through_stmt(*stmt, succ)
         }
     }
@@ -1009,7 +1009,7 @@ impl Liveness {
               The next-node for a break is the successor of the entire
               loop. The next-node for a continue is the top of this loop.
               */
-              self.with_loop_nodes(blk.node.id, succ,
+              self.with_loop_nodes(blk.id, succ,
                   self.live_node(expr.id, expr.span), || {
 
                  // the construction of a closure itself is not important,

@@ -400,14 +400,14 @@ impl AstBuilder for @ExtCtxt {
                view_items: ~[ast::view_item],
                stmts: ~[@ast::stmt],
                expr: Option<@ast::expr>) -> ast::blk {
-        respan(span,
-               ast::blk_ {
-                   view_items: view_items,
-                   stmts: stmts,
-                   expr: expr,
-                   id: self.next_id(),
-                   rules: ast::default_blk,
-               })
+           ast::blk {
+               view_items: view_items,
+               stmts: stmts,
+               expr: expr,
+               id: self.next_id(),
+               rules: ast::default_blk,
+               span: span,
+           }
     }
 
     fn expr(&self, span: span, node: ast::expr_) -> @ast::expr {

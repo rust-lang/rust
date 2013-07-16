@@ -80,8 +80,8 @@ pub fn gather_loans(bccx: @BorrowckCtxt,
         bccx: bccx,
         id_range: id_range::max(),
         all_loans: @mut ~[],
-        item_ub: body.node.id,
-        repeating_ids: ~[body.node.id],
+        item_ub: body.id,
+        repeating_ids: ~[body.id],
         move_data: @mut MoveData::new()
     };
     glcx.gather_fn_arg_patterns(decl, body);
@@ -123,9 +123,9 @@ fn gather_loans_in_fn(fk: &visit::fn_kind,
 
         // Visit closures as part of the containing item.
         &visit::fk_anon(*) | &visit::fk_fn_block(*) => {
-            this.push_repeating_id(body.node.id);
+            this.push_repeating_id(body.id);
             visit::visit_fn(fk, decl, body, sp, id, (this, v));
-            this.pop_repeating_id(body.node.id);
+            this.pop_repeating_id(body.id);
             this.gather_fn_arg_patterns(decl, body);
         }
     }
@@ -134,7 +134,7 @@ fn gather_loans_in_fn(fk: &visit::fn_kind,
 fn gather_loans_in_block(blk: &ast::blk,
                          (this, vt): (@mut GatherLoanCtxt,
                                       visit::vt<@mut GatherLoanCtxt>)) {
-    this.id_range.add(blk.node.id);
+    this.id_range.add(blk.id);
     visit::visit_block(blk, (this, vt));
 }
 
@@ -240,7 +240,7 @@ fn gather_loans_in_expr(ex: @ast::expr,
         let cmt = this.bccx.cat_expr(ex_v);
         for arms.iter().advance |arm| {
             for arm.pats.iter().advance |pat| {
-                this.gather_pat(cmt, *pat, Some((arm.body.node.id, ex.id)));
+                this.gather_pat(cmt, *pat, Some((arm.body.id, ex.id)));
             }
         }
         visit::visit_expr(ex, (this, vt));
@@ -268,16 +268,16 @@ fn gather_loans_in_expr(ex: @ast::expr,
           this.pop_repeating_id(cond.id);
 
           // during body, can only root for the body
-          this.push_repeating_id(body.node.id);
+          this.push_repeating_id(body.id);
           (vt.visit_block)(body, (this, vt));
-          this.pop_repeating_id(body.node.id);
+          this.pop_repeating_id(body.id);
       }
 
       // see explanation attached to the `root_ub` field:
       ast::expr_loop(ref body, _) => {
-          this.push_repeating_id(body.node.id);
+          this.push_repeating_id(body.id);
           visit::visit_expr(ex, (this, vt));
-          this.pop_repeating_id(body.node.id);
+          this.pop_repeating_id(body.id);
       }
 
       ast::expr_fn_block(*) => {
@@ -623,7 +623,7 @@ impl GatherLoanCtxt {
             let arg_cmt = mc_ctxt.cat_rvalue(
                 arg.id,
                 arg.pat.span,
-                body.node.id, // Arguments live only as long as the fn body.
+                body.id, // Arguments live only as long as the fn body.
                 arg_ty);
 
             self.gather_pat(arg_cmt, arg.pat, None);

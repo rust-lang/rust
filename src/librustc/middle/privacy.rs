@@ -384,7 +384,7 @@ pub fn check_crate<'mm>(tcx: ty::ctxt,
         visit_block: |block, (method_map, visitor)| {
             // Gather up all the privileged items.
             let mut n_added = 0;
-            for block.node.stmts.iter().advance |stmt| {
+            for block.stmts.iter().advance |stmt| {
                 match stmt.node {
                     stmt_decl(decl, _) => {
                         match decl.node {
