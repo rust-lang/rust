@@ -1610,6 +1610,7 @@ pub fn new_fn_ctxt_w_id(ccx: @mut CrateContext,
                         llfndecl: ValueRef,
                         id: ast::node_id,
                         output_type: ty::t,
+                        skip_retptr: bool,
                         param_substs: Option<@param_substs>,
                         sp: Option<span>)
                      -> fn_ctxt {
@@ -1653,7 +1654,7 @@ pub fn new_fn_ctxt_w_id(ccx: @mut CrateContext,
     fcx.llenv = unsafe {
           llvm::LLVMGetParam(llfndecl, fcx.env_arg_pos() as c_uint)
     };
-    if !ty::type_is_nil(substd_output_type) {
+    if !ty::type_is_nil(substd_output_type) && !(is_immediate && skip_retptr) {
         fcx.llretptr = Some(make_return_pointer(fcx, substd_output_type));
     }
     fcx
@@ -1665,7 +1666,7 @@ pub fn new_fn_ctxt(ccx: @mut CrateContext,
                    output_type: ty::t,
                    sp: Option<span>)
                 -> fn_ctxt {
-    new_fn_ctxt_w_id(ccx, path, llfndecl, -1, output_type, None, sp)
+    new_fn_ctxt_w_id(ccx, path, llfndecl, -1, output_type, false, None, sp)
 }
 
 // NB: must keep 4 fns in sync:
@@ -1859,6 +1860,7 @@ pub fn trans_closure(ccx: @mut CrateContext,
                                llfndecl,
                                id,
                                output_type,
+                               false,
                                param_substs,
                                Some(body.span));
     let raw_llargs = create_llargs_for_fn_args(fcx, self_arg, decl.inputs);
@@ -2068,6 +2070,7 @@ pub fn trans_enum_variant_or_tuple_like_struct<A:IdAndTy>(
                                llfndecl,
                                ctor_id,
                                result_ty,
+                               false,
                                param_substs,
                                None);
 
