@@ -83,7 +83,7 @@ use middle::pat_util;
 use middle::lint::unreachable_code;
 use middle::ty::{FnSig, VariantInfo_};
 use middle::ty::{ty_param_bounds_and_ty, ty_param_substs_and_ty};
-use middle::ty::{substs, param_ty};
+use middle::ty::{substs, param_ty, ExprTyProvider};
 use middle::ty;
 use middle::typeck::astconv::AstConv;
 use middle::typeck::astconv::{ast_region_to_region, ast_ty_to_ty};
@@ -287,6 +287,16 @@ pub fn blank_fn_ctxt(ccx: @mut CrateCtxt,
         fn_kind: Vanilla,
         inh: blank_inherited(ccx),
         ccx: ccx
+    }
+}
+
+impl ExprTyProvider for FnCtxt {
+    pub fn expr_ty(&self, ex: &ast::expr) -> ty::t {
+        self.expr_ty(ex)
+    }
+
+    pub fn ty_ctxt(&self) -> ty::ctxt {
+        self.ccx.tcx
     }
 }
 
@@ -797,7 +807,7 @@ impl FnCtxt {
         pat.repr(self.tcx())
     }
 
-    pub fn expr_ty(&self, ex: @ast::expr) -> ty::t {
+    pub fn expr_ty(&self, ex: &ast::expr) -> ty::t {
         match self.inh.node_types.find(&ex.id) {
             Some(&t) => t,
             None => {
@@ -2250,8 +2260,8 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
             }
           }
           ast::expr_repeat(element, count_expr, mutbl) => {
-            let _ = ty::eval_repeat_count(tcx, count_expr);
             check_expr_with_hint(fcx, count_expr, ty::mk_uint());
+            let _ = ty::eval_repeat_count(fcx, count_expr);
             let tt = ast_expr_vstore_to_vstore(fcx, ev, vst);
             let mutability = match vst {
                 ast::expr_vstore_mut_box | ast::expr_vstore_mut_slice => {
@@ -2730,8 +2740,8 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         fcx.write_ty(id, typ);
       }
       ast::expr_repeat(element, count_expr, mutbl) => {
-        let count = ty::eval_repeat_count(tcx, count_expr);
         check_expr_with_hint(fcx, count_expr, ty::mk_uint());
+        let count = ty::eval_repeat_count(fcx, count_expr);
         let t: ty::t = fcx.infcx().next_ty_var();
         check_expr_has_type(fcx, element, t);
         let element_ty = fcx.expr_ty(element);
@@ -3126,7 +3136,7 @@ pub fn check_enum_variants(ccx: @mut CrateCtxt,
                 // that the expression is in an form that eval_const_expr can
                 // handle, so we may still get an internal compiler error
 
-                match const_eval::eval_const_expr_partial(ccx.tcx, e) {
+                match const_eval::eval_const_expr_partial(&ccx.tcx, e) {
                   Ok(const_eval::const_int(val)) => {
                     *disr_val = val as int;
                   }
