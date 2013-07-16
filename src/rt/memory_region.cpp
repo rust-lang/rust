@@ -203,6 +203,11 @@ memory_region::release_alloc(void *mem) {
 
 #   if RUSTRT_TRACK_ALLOCATIONS >= 2
     if (_synchronized) { _lock.lock(); }
+    if (((size_t) alloc->index) >= _allocation_list.size()) {
+        printf("free: ptr 0x%" PRIxPTR " (%s) index %d is beyond allocation_list of size %zu\n",
+               (uintptr_t) get_data(alloc), alloc->tag, alloc->index, _allocation_list.size());
+        assert(false && "index beyond allocation_list");
+    }
     if (_allocation_list[alloc->index] != alloc) {
         printf("free: ptr 0x%" PRIxPTR " (%s) is not in allocation_list\n",
                (uintptr_t) get_data(alloc), alloc->tag);
