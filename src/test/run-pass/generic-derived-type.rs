@@ -21,8 +21,8 @@ fn f<T:Copy>(t: T) -> Pair<T> {
 
 pub fn main() {
     let b = f::<int>(10);
-    debug!(b.a);
-    debug!(b.b);
+    info!(b.a);
+    info!(b.b);
     assert_eq!(b.a, 10);
     assert_eq!(b.b, 10);
 }

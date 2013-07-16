@@ -12,4 +12,4 @@
 
 static i: int = 10;
 
-pub fn main() { debug!("%i", i); }
+pub fn main() { info!("%i", i); }

@@ -21,6 +21,6 @@ fn call_static_closure(cl: closure_box<'static>) {
 }
 
 pub fn main() {
-    let cl_box = box_it(|| debug!("Hello, world!"));
+    let cl_box = box_it(|| info!("Hello, world!"));
     call_static_closure(cl_box);
 }

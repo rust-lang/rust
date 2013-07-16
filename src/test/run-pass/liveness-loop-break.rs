@@ -14,7 +14,7 @@ fn test() {
         v = 3;
         break;
     }
-    debug!("%d", v);
+    info!("%d", v);
 }
 
 pub fn main() {

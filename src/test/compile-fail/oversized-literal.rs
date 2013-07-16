@@ -10,4 +10,4 @@
 
 // error-pattern:literal out of range
 
-fn main() { debug!(300u8); }
+fn main() { info!(300u8); }

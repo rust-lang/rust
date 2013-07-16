@@ -16,7 +16,7 @@ use baz::zed::bar;
 
 mod baz {
     pub mod zed {
-        pub fn bar() { debug!("bar2"); }
+        pub fn bar() { info!("bar2"); }
     }
 }
 

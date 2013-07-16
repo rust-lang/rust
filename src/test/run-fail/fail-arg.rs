@@ -9,6 +9,6 @@
 // except according to those terms.
 
 // error-pattern:woe
-fn f(a: int) { debug!(a); }
+fn f(a: int) { info!(a); }
 
 fn main() { f(fail!("woe")); }

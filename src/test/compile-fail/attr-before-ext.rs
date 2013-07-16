@@ -10,5 +10,5 @@
 
 fn main() {
     #[attr] //~ ERROR expected item after attributes
-    debug!("hi");
+    info!("hi");
 }

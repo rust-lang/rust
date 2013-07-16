@@ -32,6 +32,6 @@ fn main() {
     f(copy r1, copy r2);
     //~^ ERROR copying a value of non-copyable type
     //~^^ ERROR copying a value of non-copyable type
-    debug!((r2, *i1));
-    debug!((r1, *i2));
+    info!((r2, *i1));
+    info!((r1, *i2));
 }

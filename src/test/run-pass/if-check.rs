@@ -16,7 +16,7 @@ fn even(x: uint) -> bool {
 
 fn foo(x: uint) {
     if even(x) {
-        debug!(x);
+        info!(x);
     } else {
         fail!();
     }

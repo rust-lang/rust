@@ -529,6 +529,7 @@ mod test {
     use markdown_writer;
     use path_pass;
     use page_pass;
+    use prune_hidden_pass;
     use sectionalize_pass;
     use trim_pass;
     use tystr_pass;
@@ -557,6 +558,8 @@ mod test {
             debug!("doc (path): %?", doc);
             let doc = (attr_pass::mk_pass().f)(srv.clone(), doc);
             debug!("doc (attr): %?", doc);
+            let doc = (prune_hidden_pass::mk_pass().f)(srv.clone(), doc);
+            debug!("doc (prune_hidden): %?", doc);
             let doc = (desc_to_brief_pass::mk_pass().f)(srv.clone(), doc);
             debug!("doc (desc_to_brief): %?", doc);
             let doc = (unindent_pass::mk_pass().f)(srv.clone(), doc);

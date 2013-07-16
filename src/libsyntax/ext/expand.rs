@@ -453,8 +453,9 @@ pub fn new_span(cx: @ExtCtxt, sp: span) -> span {
 
 pub fn std_macros() -> @str {
     return
-@"pub mod __std_macros {
+@"mod __std_macros {
     #[macro_escape];
+    #[doc(hidden)];
 
     macro_rules! ignore (($($x:tt)*) => (()))
 

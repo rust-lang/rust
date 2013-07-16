@@ -11,8 +11,8 @@
 pub fn main() {
     let x = ~[1, 2, 3];
     let mut y = 0;
-    for x.iter().advance |i| { debug!(*i); y += *i; }
-    debug!(y);
+    for x.iter().advance |i| { info!(*i); y += *i; }
+    info!(y);
     assert_eq!(y, 6);
     let s = ~"hello there";
     let mut i: int = 0;
@@ -25,8 +25,8 @@ pub fn main() {
         // ...
 
         i += 1;
-        debug!(i);
-        debug!(c);
+        info!(i);
+        info!(c);
     }
     assert_eq!(i, 11);
 }

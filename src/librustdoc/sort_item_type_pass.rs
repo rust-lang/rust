@@ -53,6 +53,7 @@ fn test() {
     do astsrv::from_str(source) |srv| {
         let doc = extract::from_srv(srv.clone(), ~"");
         let doc = (mk_pass().f)(srv.clone(), doc);
+        // hidden __std_macros module at the start.
         assert_eq!(doc.cratemod().items[0].name(), ~"iconst");
         assert_eq!(doc.cratemod().items[1].name(), ~"itype");
         assert_eq!(doc.cratemod().items[2].name(), ~"ienum");
@@ -60,6 +61,7 @@ fn test() {
         assert_eq!(doc.cratemod().items[4].name(), ~"itrait");
         assert_eq!(doc.cratemod().items[5].name(), ~"__extensions__");
         assert_eq!(doc.cratemod().items[6].name(), ~"ifn");
-        assert_eq!(doc.cratemod().items[7].name(), ~"imod");
+        // hidden __std_macros module fits here.
+        assert_eq!(doc.cratemod().items[8].name(), ~"imod");
     }
 }

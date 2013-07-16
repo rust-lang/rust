@@ -14,20 +14,20 @@
 enum t { make_t(@int), clam, }
 
 fn foo(s: @int) {
-    debug!(::std::sys::refcount(s));
+    info!(::std::sys::refcount(s));
     let count = ::std::sys::refcount(s);
     let x: t = make_t(s); // ref up
     assert_eq!(::std::sys::refcount(s), count + 1u);
-    debug!(::std::sys::refcount(s));
+    info!(::std::sys::refcount(s));
 
     match x {
       make_t(y) => {
-        debug!("%?", y); // ref up then down
+        info!("%?", y); // ref up then down
 
       }
-      _ => { debug!("?"); fail!(); }
+      _ => { info!("?"); fail!(); }
     }
-    debug!(::std::sys::refcount(s));
+    info!(::std::sys::refcount(s));
     assert_eq!(::std::sys::refcount(s), count + 1u);
     let _ = ::std::sys::refcount(s); // don't get bitten by last-use.
 }
@@ -39,7 +39,7 @@ pub fn main() {
 
     foo(s); // ref up then down
 
-    debug!("%u", ::std::sys::refcount(s));
+    info!("%u", ::std::sys::refcount(s));
     let count2 = ::std::sys::refcount(s);
     assert_eq!(count, count2);
 }

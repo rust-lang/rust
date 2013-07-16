@@ -19,7 +19,7 @@ fn main()
 {
 
     let _z = match g(1, 2) {
-      g(x, x) => { debug!(x + x); }
+      g(x, x) => { info!(x + x); }
       //~^ ERROR Identifier `x` is bound more than once in the same pattern
     };
 

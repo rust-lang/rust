@@ -34,7 +34,7 @@ pub fn main() {
     let z = f(~x, y);
     make_cycle(z);
     let (a, b) = z();
-    debug!("a=%u b=%u", *a as uint, b as uint);
+    info!("a=%u b=%u", *a as uint, b as uint);
     assert_eq!(*a, x);
     assert_eq!(b, y);
 }

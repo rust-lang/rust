@@ -67,10 +67,11 @@ fn test() {
     do astsrv::from_str(source) |srv| {
         let doc = extract::from_srv(srv.clone(), ~"");
         let doc = (mk_pass(~"", name_lteq).f)(srv.clone(), doc);
-        assert_eq!(doc.cratemod().mods()[0].name(), ~"w");
-        assert_eq!(doc.cratemod().mods()[1].items[0].name(), ~"x");
-        assert_eq!(doc.cratemod().mods()[1].items[1].name(), ~"y");
-        assert_eq!(doc.cratemod().mods()[1].name(), ~"z");
+        // hidden __std_macros module at the start.
+        assert_eq!(doc.cratemod().mods()[1].name(), ~"w");
+        assert_eq!(doc.cratemod().mods()[2].items[0].name(), ~"x");
+        assert_eq!(doc.cratemod().mods()[2].items[1].name(), ~"y");
+        assert_eq!(doc.cratemod().mods()[2].name(), ~"z");
     }
 }
 
@@ -84,10 +85,11 @@ fn should_be_stable() {
     do astsrv::from_str(source) |srv| {
         let doc = extract::from_srv(srv.clone(), ~"");
         let doc = (mk_pass(~"", always_eq).f)(srv.clone(), doc);
-        assert_eq!(doc.cratemod().mods()[0].items[0].name(), ~"b");
-        assert_eq!(doc.cratemod().mods()[1].items[0].name(), ~"d");
+        // hidden __std_macros module at the start.
+        assert_eq!(doc.cratemod().mods()[1].items[0].name(), ~"b");
+        assert_eq!(doc.cratemod().mods()[2].items[0].name(), ~"d");
         let doc = (mk_pass(~"", always_eq).f)(srv.clone(), doc);
-        assert_eq!(doc.cratemod().mods()[0].items[0].name(), ~"b");
-        assert_eq!(doc.cratemod().mods()[1].items[0].name(), ~"d");
+        assert_eq!(doc.cratemod().mods()[1].items[0].name(), ~"b");
+        assert_eq!(doc.cratemod().mods()[2].items[0].name(), ~"d");
     }
 }

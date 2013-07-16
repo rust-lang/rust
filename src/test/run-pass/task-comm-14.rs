@@ -19,7 +19,7 @@ pub fn main() {
     // Spawn 10 tasks each sending us back one int.
     let mut i = 10;
     while (i > 0) {
-        debug!(i);
+        info!(i);
         let (p, ch) = comm::stream();
         po.add(p);
         task::spawn({let i = i; || child(i, &ch)});
@@ -31,15 +31,15 @@ pub fn main() {
 
     i = 10;
     while (i > 0) {
-        debug!(i);
+        info!(i);
         po.recv();
         i = i - 1;
     }
 
-    debug!("main thread exiting");
+    info!("main thread exiting");
 }
 
 fn child(x: int, ch: &comm::Chan<int>) {
-    debug!(x);
+    info!(x);
     ch.send(x);
 }

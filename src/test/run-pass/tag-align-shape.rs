@@ -20,6 +20,6 @@ struct t_rec {
 pub fn main() {
     let x = t_rec {c8: 22u8, t: a_tag(44u64)};
     let y = fmt!("%?", x);
-    debug!("y = %s", y);
+    info!("y = %s", y);
     assert_eq!(y, ~"{c8: 22, t: a_tag(44)}");
 }
