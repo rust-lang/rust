@@ -165,7 +165,55 @@ pub fn classify(e: &expr,
 pub fn lookup_const(tcx: ty::ctxt, e: &expr) -> Option<@expr> {
     match tcx.def_map.find(&e.id) {
         Some(&ast::def_static(def_id, false)) => lookup_const_by_id(tcx, def_id),
+        Some(&ast::def_variant(enum_def, variant_def)) => lookup_variant_by_id(tcx,
+                                                                               enum_def,
+                                                                               variant_def),
         _ => None
+    }
+}
+
+pub fn lookup_variant_by_id(tcx: ty::ctxt,
+                            enum_def: ast::def_id,
+                            variant_def: ast::def_id)
+                       -> Option<@expr> {
+    fn variant_expr(variants: &[ast::variant], id: ast::node_id) -> Option<@expr> {
+        for variants.iter().advance |variant| {
+            if variant.node.id == id {
+                return variant.node.disr_expr;
+            }
+        }
+        None
+    }
+
+    if ast_util::is_local(enum_def) {
+        match tcx.items.find(&enum_def.node) {
+            None => None,
+            Some(&ast_map::node_item(it, _)) => match it.node {
+                item_enum(ast::enum_def { variants: ref variants }, _) => {
+                    variant_expr(*variants, variant_def.node)
+                }
+                _ => None
+            },
+            Some(_) => None
+        }
+    } else {
+        let maps = astencode::Maps {
+            root_map: @mut HashMap::new(),
+            method_map: @mut HashMap::new(),
+            vtable_map: @mut HashMap::new(),
+            write_guard_map: @mut HashSet::new(),
+            capture_map: @mut HashMap::new()
+        };
+        match csearch::maybe_get_item_ast(tcx, enum_def,
+            |a, b, c, d| astencode::decode_inlined_item(a, b, maps, /*bar*/ copy c, d)) {
+            csearch::found(ast::ii_item(item)) => match item.node {
+                item_enum(ast::enum_def { variants: ref variants }, _) => {
+                    variant_expr(*variants, variant_def.node)
+                }
+                _ => None
+            },
+            _ => None
+        }
     }
 }
 
@@ -237,13 +285,13 @@ pub enum const_val {
 }
 
 pub fn eval_const_expr(tcx: middle::ty::ctxt, e: &expr) -> const_val {
-    match eval_const_expr_partial(tcx, e) {
+    match eval_const_expr_partial(&tcx, e) {
         Ok(r) => r,
         Err(s) => tcx.sess.span_fatal(e.span, s)
     }
 }
 
-pub fn eval_const_expr_partial(tcx: middle::ty::ctxt, e: &expr)
+pub fn eval_const_expr_partial<T: ty::ExprTyProvider>(tcx: &T, e: &expr)
                             -> Result<const_val, ~str> {
     use middle::ty;
     fn fromb(b: bool) -> Result<const_val, ~str> { Ok(const_int(b as i64)) }
@@ -360,7 +408,7 @@ pub fn eval_const_expr_partial(tcx: middle::ty::ctxt, e: &expr)
         }
       }
       expr_cast(base, _) => {
-        let ety = ty::expr_ty(tcx, e);
+        let ety = tcx.expr_ty(e);
         let base = eval_const_expr_partial(tcx, base);
         match /*bad*/copy base {
             Err(_) => base,
@@ -390,8 +438,8 @@ pub fn eval_const_expr_partial(tcx: middle::ty::ctxt, e: &expr)
         }
       }
       expr_path(_) => {
-          match lookup_const(tcx, e) {
-              Some(actual_e) => eval_const_expr_partial(tcx, actual_e),
+          match lookup_const(tcx.ty_ctxt(), e) {
+              Some(actual_e) => eval_const_expr_partial(&tcx.ty_ctxt(), actual_e),
               None => Err(~"Non-constant path in constant expr")
           }
       }
