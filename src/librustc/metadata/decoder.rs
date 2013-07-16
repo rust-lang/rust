@@ -174,14 +174,6 @@ fn item_parent_item(d: ebml::Doc) -> Option<ast::def_id> {
     None
 }
 
-fn translated_parent_item_opt(cnum: ast::crate_num, d: ebml::Doc) ->
-        Option<ast::def_id> {
-    let trait_did_opt = item_parent_item(d);
-    do trait_did_opt.map |trait_did| {
-        ast::def_id { crate: cnum, node: trait_did.node }
-    }
-}
-
 fn item_reqd_and_translated_parent_item(cnum: ast::crate_num,
                                         d: ebml::Doc) -> ast::def_id {
     let trait_did = item_parent_item(d).expect("item without parent");
@@ -323,13 +315,19 @@ fn item_to_def_like(item: ebml::Doc, did: ast::def_id, cnum: ast::crate_num)
         UnsafeFn  => dl_def(ast::def_fn(did, ast::unsafe_fn)),
         Fn        => dl_def(ast::def_fn(did, ast::impure_fn)),
         ForeignFn => dl_def(ast::def_fn(did, ast::extern_fn)),
-        UnsafeStaticMethod => {
-            let trait_did_opt = translated_parent_item_opt(cnum, item);
-            dl_def(ast::def_static_method(did, trait_did_opt, ast::unsafe_fn))
-        }
-        StaticMethod => {
-            let trait_did_opt = translated_parent_item_opt(cnum, item);
-            dl_def(ast::def_static_method(did, trait_did_opt, ast::impure_fn))
+        StaticMethod | UnsafeStaticMethod => {
+            let purity = if fam == UnsafeStaticMethod { ast::unsafe_fn } else
+                { ast::impure_fn };
+            // def_static_method carries an optional field of its enclosing
+            // *trait*, but not an inclosing Impl (if this is an inherent
+            // static method). So we need to detect whether this is in
+            // a trait or not, which we do through the mildly hacky
+            // way of checking whether there is a trait_method_sort.
+            let trait_did_opt = if reader::maybe_get_doc(
+                  item, tag_item_trait_method_sort).is_some() {
+                Some(item_reqd_and_translated_parent_item(cnum, item))
+            } else { None };
+            dl_def(ast::def_static_method(did, trait_did_opt, purity))
         }
         Type | ForeignType => dl_def(ast::def_ty(did)),
         Mod => dl_def(ast::def_mod(did)),
@@ -837,6 +835,8 @@ pub fn get_method(intr: @ident_interner, cdata: cmd, id: ast::node_id,
 {
     let method_doc = lookup_item(id, cdata.data);
     let def_id = item_def_id(method_doc, cdata);
+    let container_id = item_reqd_and_translated_parent_item(cdata.cnum,
+                                                            method_doc);
     let name = item_name(intr, method_doc);
     let type_param_defs = item_ty_param_defs(method_doc, tcx, cdata,
                                              tag_item_method_tps);
@@ -855,7 +855,9 @@ pub fn get_method(intr: @ident_interner, cdata: cmd, id: ast::node_id,
         fty,
         explicit_self,
         vis,
-        def_id
+        def_id,
+        container_id,
+        None
     )
 }
 

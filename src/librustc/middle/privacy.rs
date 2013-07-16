@@ -106,29 +106,6 @@ pub fn check_crate<'mm>(tcx: ty::ctxt,
         }
     };
 
-    // Returns the ID of the container (impl or trait) that a crate-local
-    // method belongs to.
-    let local_method_container_id:
-            @fn(span: span, method_id: node_id) -> def_id =
-            |span, method_id| {
-        match tcx.items.find(&method_id) {
-            Some(&node_method(_, impl_id, _)) => impl_id,
-            Some(&node_trait_method(_, trait_id, _)) => trait_id,
-            Some(_) => {
-                tcx.sess.span_bug(span,
-                                  fmt!("method was a %s?!",
-                                       ast_map::node_id_to_str(
-                                            tcx.items,
-                                            method_id,
-                                           token::get_ident_interner())));
-            }
-            None => {
-                tcx.sess.span_bug(span, "method not found in \
-                                         AST map?!");
-            }
-        }
-    };
-
     // Returns true if a crate-local method is private and false otherwise.
     let method_is_private: @fn(span: span, method_id: node_id) -> bool =
             |span, method_id| {
@@ -248,15 +225,12 @@ pub fn check_crate<'mm>(tcx: ty::ctxt,
         // If the method is a default method, we need to use the def_id of
         // the default implementation.
         // Having to do this this is really unfortunate.
-        let method_id = match tcx.provided_method_sources.find(&method_id) {
-            None => method_id,
-            Some(source) => source.method_id
-        };
+        let method_id = ty::method(tcx, method_id).provided_source
+            .get_or_default(method_id);
 
         if method_id.crate == local_crate {
             let is_private = method_is_private(span, method_id.node);
-            let container_id = local_method_container_id(span,
-                                                         method_id.node);
+            let container_id = ty::method(tcx, method_id).container_id;
             if is_private &&
                     (container_id.crate != local_crate ||
                      !privileged_items.iter().any(|x| x == &(container_id.node))) {

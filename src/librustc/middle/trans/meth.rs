@@ -617,7 +617,6 @@ pub fn vtable_id(ccx: @mut CrateContext,
             monomorphize::make_mono_id(
                 ccx,
                 impl_id,
-                None,
                 &psubsts,
                 None)
         }

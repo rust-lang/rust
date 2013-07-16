@@ -64,7 +64,11 @@ pub struct Method {
     fty: BareFnTy,
     explicit_self: ast::explicit_self_,
     vis: ast::visibility,
-    def_id: ast::def_id
+    def_id: ast::def_id,
+    container_id: ast::def_id,
+
+    // If this method is provided, we need to know where it came from
+    provided_source: Option<ast::def_id>
 }
 
 impl Method {
@@ -74,7 +78,9 @@ impl Method {
                fty: BareFnTy,
                explicit_self: ast::explicit_self_,
                vis: ast::visibility,
-               def_id: ast::def_id)
+               def_id: ast::def_id,
+               container_id: ast::def_id,
+               provided_source: Option<ast::def_id>)
                -> Method {
         // Check the invariants.
         if explicit_self == ast::sty_static {
@@ -90,7 +96,9 @@ impl Method {
             fty: fty,
             explicit_self: explicit_self,
             vis: vis,
-            def_id: def_id
+            def_id: def_id,
+            container_id: container_id,
+            provided_source: provided_source
         }
     }
 }
@@ -219,11 +227,6 @@ pub enum AutoRef {
     AutoUnsafe(ast::mutability)
 }
 
-pub struct ProvidedMethodSource {
-    method_id: ast::def_id,
-    impl_id: ast::def_id
-}
-
 pub type ctxt = @ctxt_;
 
 struct ctxt_ {
@@ -278,7 +281,7 @@ struct ctxt_ {
     normalized_cache: @mut HashMap<t, t>,
     lang_items: middle::lang_items::LanguageItems,
     // A mapping of fake provided method def_ids to the default implementation
-    provided_method_sources: @mut HashMap<ast::def_id, ProvidedMethodSource>,
+    provided_method_sources: @mut HashMap<ast::def_id, ast::def_id>,
     supertraits: @mut HashMap<ast::def_id, @~[@TraitRef]>,
 
     // A mapping from the def ID of an enum or struct type to the def ID
@@ -3509,6 +3512,11 @@ pub fn def_has_ty_params(def: ast::def) -> bool {
         => true,
       _ => false
     }
+}
+
+pub fn provided_source(cx: ctxt, id: ast::def_id)
+    -> Option<ast::def_id> {
+    cx.provided_method_sources.find(&id).map(|x| **x)
 }
 
 pub fn provided_trait_methods(cx: ctxt, id: ast::def_id) -> ~[@Method] {
