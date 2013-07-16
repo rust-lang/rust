@@ -4230,42 +4230,57 @@ pub fn normalize_ty(cx: ctxt, t: t) -> t {
     return t_norm;
 }
 
+pub trait ExprTyProvider {
+    pub fn expr_ty(&self, ex: &ast::expr) -> t;
+    pub fn ty_ctxt(&self) -> ctxt;
+}
+
+impl ExprTyProvider for ctxt {
+    pub fn expr_ty(&self, ex: &ast::expr) -> t {
+        expr_ty(*self, ex)
+    }
+
+    pub fn ty_ctxt(&self) -> ctxt {
+        *self
+    }
+}
+
 // Returns the repeat count for a repeating vector expression.
-pub fn eval_repeat_count(tcx: ctxt, count_expr: &ast::expr) -> uint {
+pub fn eval_repeat_count<T: ExprTyProvider>(tcx: &T, count_expr: &ast::expr) -> uint {
     match const_eval::eval_const_expr_partial(tcx, count_expr) {
       Ok(ref const_val) => match *const_val {
         const_eval::const_int(count) => if count < 0 {
-            tcx.sess.span_err(count_expr.span,
-                              "expected positive integer for \
-                               repeat count but found negative integer");
+            tcx.ty_ctxt().sess.span_err(count_expr.span,
+                                        "expected positive integer for \
+                                         repeat count but found negative integer");
             return 0;
         } else {
             return count as uint
         },
         const_eval::const_uint(count) => return count as uint,
         const_eval::const_float(count) => {
-            tcx.sess.span_err(count_expr.span,
-                              "expected positive integer for \
-                               repeat count but found float");
+            tcx.ty_ctxt().sess.span_err(count_expr.span,
+                                        "expected positive integer for \
+                                         repeat count but found float");
             return count as uint;
         }
         const_eval::const_str(_) => {
-            tcx.sess.span_err(count_expr.span,
-                              "expected positive integer for \
-                               repeat count but found string");
+            tcx.ty_ctxt().sess.span_err(count_expr.span,
+                                        "expected positive integer for \
+                                         repeat count but found string");
             return 0;
         }
         const_eval::const_bool(_) => {
-            tcx.sess.span_err(count_expr.span,
-                              "expected positive integer for \
-                               repeat count but found boolean");
+            tcx.ty_ctxt().sess.span_err(count_expr.span,
+                                        "expected positive integer for \
+                                         repeat count but found boolean");
             return 0;
         }
       },
       Err(*) => {
-        tcx.sess.span_err(count_expr.span,
-                          "expected constant integer for repeat count \
-                           but found variable");
+        tcx.ty_ctxt().sess.span_err(count_expr.span,
+                                    "expected constant integer for repeat count \
+                                     but found variable");
         return 0;
       }
     }
