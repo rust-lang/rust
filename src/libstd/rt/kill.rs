@@ -130,7 +130,7 @@ impl BlockedTask {
 
     /// Create a blocked task, unless the task was already killed.
     pub fn try_block(mut task: ~Task) -> Either<~Task, BlockedTask> {
-        if task.death.unkillable > 0 { // FIXME(#7544): || self.indestructible
+        if task.death.unkillable > 0 {
             Right(Unkillable(task))
         } else {
             rtassert!(task.death.kill_handle.is_some());
