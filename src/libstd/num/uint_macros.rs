@@ -30,32 +30,46 @@ pub static bytes : uint = ($bits / 8);
 pub static min_value: $T = 0 as $T;
 pub static max_value: $T = 0 as $T - 1 as $T;
 
+enum Range { Closed, HalfOpen }
+
 #[inline]
-/**
- * Iterate through a range with a given step value.
- *
- * # Examples
- * ~~~ {.rust}
- * let nums = [1,2,3,4,5,6,7];
- *
- * for uint::range_step(0, nums.len() - 1, 2) |i| {
- *     println(fmt!("%d & %d", nums[i], nums[i+1]));
- * }
- * ~~~
- */
-pub fn range_step(start: $T, stop: $T, step: $T_SIGNED, it: &fn($T) -> bool) -> bool {
+///
+/// Iterate through a range with a given step value.
+///
+/// Let `term` denote the closed interval `[stop-step,stop]` if `r` is Closed;
+/// otherwise `term` denotes the half-open interval `[stop-step,stop)`.
+/// Iterates through the range `[x_0, x_1, ..., x_n]` where
+/// `x_j == start + step*j`, and `x_n` lies in the interval `term`.
+///
+/// If no such nonnegative integer `n` exists, then the iteration range
+/// is empty.
+///
+fn range_step_core(start: $T, stop: $T, step: $T_SIGNED, r: Range, it: &fn($T) -> bool) -> bool {
     let mut i = start;
     if step == 0 {
         fail!("range_step called with step == 0");
-    }
-    if step >= 0 {
+    } else if step == (1 as $T_SIGNED) { // elide bounds check to tighten loop
+        while i < stop {
+            if !it(i) { return false; }
+            // no need for overflow check;
+            // cannot have i + 1 > max_value because i < stop <= max_value
+            i += (1 as $T);
+        }
+    } else if step == (-1 as $T_SIGNED) { // elide bounds check to tighten loop
+        while i > stop {
+            if !it(i) { return false; }
+            // no need for underflow check;
+            // cannot have i - 1 < min_value because i > stop >= min_value
+            i -= (1 as $T);
+        }
+    } else if step > 0 { // ascending
         while i < stop {
             if !it(i) { return false; }
             // avoiding overflow. break if i + step > max_value
             if i > max_value - (step as $T) { return true; }
             i += step as $T;
         }
-    } else {
+    } else { // descending
         while i > stop {
             if !it(i) { return false; }
             // avoiding underflow. break if i + step < min_value
@@ -63,7 +77,52 @@ pub fn range_step(start: $T, stop: $T, step: $T_SIGNED, it: &fn($T) -> bool) -> 
             i -= -step as $T;
         }
     }
-    return true;
+    match r {
+        HalfOpen => return true,
+        Closed => return (i != stop || it(i))
+    }
+}
+
+#[inline]
+///
+/// Iterate through the range [`start`..`stop`) with a given step value.
+///
+/// Iterates through the range `[x_0, x_1, ..., x_n]` where
+/// - `x_i == start + step*i`, and
+/// - `n` is the greatest nonnegative integer such that `x_n < stop`
+///
+/// (If no such `n` exists, then the iteration range is empty.)
+///
+/// # Arguments
+///
+/// * `start` - lower bound, inclusive
+/// * `stop` - higher bound, exclusive
+///
+/// # Examples
+/// ~~~ {.rust}
+/// let nums = [1,2,3,4,5,6,7];
+///
+/// for uint::range_step(0, nums.len() - 1, 2) |i| {
+///     println(fmt!("%d & %d", nums[i], nums[i+1]));
+/// }
+/// ~~~
+///
+pub fn range_step(start: $T, stop: $T, step: $T_SIGNED, it: &fn($T) -> bool) -> bool {
+    range_step_core(start, stop, step, HalfOpen, it)
+}
+
+#[inline]
+///
+/// Iterate through a range with a given step value.
+///
+/// Iterates through the range `[x_0, x_1, ..., x_n]` where
+/// `x_i == start + step*i` and `x_n <= last < step + x_n`.
+///
+/// (If no such nonnegative integer `n` exists, then the iteration
+///  range is empty.)
+///
+pub fn range_step_inclusive(start: $T, last: $T, step: $T_SIGNED, it: &fn($T) -> bool) -> bool {
+    range_step_core(start, last, step, Closed, it)
 }
 
 #[inline]
@@ -73,9 +132,10 @@ pub fn range(lo: $T, hi: $T, it: &fn($T) -> bool) -> bool {
 }
 
 #[inline]
-/// Iterate over the range [`hi`..`lo`)
+/// Iterate over the range (`hi`..`lo`]
 pub fn range_rev(hi: $T, lo: $T, it: &fn($T) -> bool) -> bool {
-    range_step(hi, lo, -1 as $T_SIGNED, it)
+    if hi == min_value { return true; }
+    range_step_inclusive(hi-1, lo, -1 as $T_SIGNED, it)
 }
 
 impl Num for $T {}
@@ -603,7 +663,7 @@ mod tests {
         for range(0,3) |i| {
             l.push(i);
         }
-        for range_rev(13,10) |i| {
+        for range_rev(14,11) |i| {
             l.push(i);
         }
         for range_step(20,26,2) |i| {
