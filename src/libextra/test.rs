@@ -1019,8 +1019,8 @@ impl BenchHarness {
             }
 
             total_run += loop_run;
-            // Longest we ever run for is 10s.
-            if total_run > 10_000_000_000 {
+            // Longest we ever run for is 3s.
+            if total_run > 3_000_000_000 {
                 return summ5;
             }
 
