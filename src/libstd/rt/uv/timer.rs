@@ -70,7 +70,7 @@ impl TimerWatcher {
             let mut watcher: TimerWatcher = NativeHandle::from_native_handle(handle);
             {
                 let data = watcher.get_watcher_data();
-                data.close_cb.swap_unwrap()();
+                data.close_cb.take_unwrap()();
             }
             watcher.drop_watcher_data();
             unsafe {

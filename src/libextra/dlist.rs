@@ -173,11 +173,11 @@ impl<T> Deque<T> for DList<T> {
                 let tail_own = match tail.prev.resolve() {
                     None => {
                         self.list_tail = Rawlink::none();
-                        self.list_head.swap_unwrap()
+                        self.list_head.take_unwrap()
                     },
                     Some(tail_prev) => {
                         self.list_tail = tail.prev;
-                        tail_prev.next.swap_unwrap()
+                        tail_prev.next.take_unwrap()
                     }
                 };
                 Some(tail_own.value)
@@ -465,7 +465,7 @@ impl<'self, A> ListInsertion<A> for MutDListIterator<'self, A> {
                     Some(prev) => prev,
                 };
                 let mut ins_node = ~Node{value: elt, next: None, prev: Rawlink::none()};
-                let node_own = prev_node.next.swap_unwrap();
+                let node_own = prev_node.next.take_unwrap();
                 ins_node.next = link_with_prev(node_own, Rawlink::some(ins_node));
                 prev_node.next = link_with_prev(ins_node, Rawlink::some(prev_node));
                 self.list.length += 1;
