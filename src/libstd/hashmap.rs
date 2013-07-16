@@ -16,9 +16,10 @@
 #[mutable_doc];
 
 use container::{Container, Mutable, Map, MutableMap, Set, MutableSet};
+use clone::Clone;
 use cmp::{Eq, Equiv};
 use hash::Hash;
-use iterator::{Iterator, IteratorUtil, FromIterator};
+use iterator::{Iterator, IteratorUtil, FromIterator, ChainIterator};
 use num;
 use option::{None, Option, Some};
 use rand::RngUtil;
@@ -510,19 +511,6 @@ impl<K: Hash + Eq, V> HashMap<K, V> {
         self.iter().advance(|(_, v)| blk(v))
     }
 
-    /// Iterate over the map and mutate the contained values
-    pub fn mutate_values(&mut self, blk: &fn(&K, &mut V) -> bool) -> bool {
-        for uint::range(0, self.buckets.len()) |i| {
-            match self.buckets[i] {
-              Some(Bucket{key: ref key, value: ref mut value, _}) => {
-                if !blk(key, value) { return false; }
-              }
-              None => ()
-            }
-        }
-        return true;
-    }
-
     /// An iterator visiting all key-value pairs in arbitrary order.
     /// Iterator element type is (&'a K, &'a V).
     pub fn iter<'a>(&'a self) -> HashMapIterator<'a, K, V> {
@@ -716,25 +704,24 @@ impl<T:Hash + Eq> Set<T> for HashSet<T> {
 
     /// Visit the values representing the difference
     fn difference(&self, other: &HashSet<T>, f: &fn(&T) -> bool) -> bool {
-        self.iter().advance(|v| other.contains(v) || f(v))
+        self.difference_iter(other).advance(f)
     }
 
     /// Visit the values representing the symmetric difference
     fn symmetric_difference(&self,
                             other: &HashSet<T>,
                             f: &fn(&T) -> bool) -> bool {
-        self.difference(other, |t| f(t)) && other.difference(self, |t| f(t))
+        self.symmetric_difference_iter(other).advance(f)
     }
 
     /// Visit the values representing the intersection
     fn intersection(&self, other: &HashSet<T>, f: &fn(&T) -> bool) -> bool {
-        self.iter().advance(|v| !other.contains(v) || f(v))
+        self.intersection_iter(other).advance(f)
     }
 
     /// Visit the values representing the union
     fn union(&self, other: &HashSet<T>, f: &fn(&T) -> bool) -> bool {
-        self.iter().advance(|t| f(t)) &&
-            other.iter().advance(|v| self.contains(v) || f(v))
+        self.union_iter(other).advance(f)
     }
 }
 
@@ -789,6 +776,33 @@ impl<T:Hash + Eq> HashSet<T> {
     pub fn iter<'a>(&'a self) -> HashSetIterator<'a, T> {
         HashSetIterator { iter: self.map.buckets.iter() }
     }
+
+    /// Visit the values representing the difference
+    pub fn difference_iter<'a>(&'a self, other: &'a HashSet<T>)
+        -> SetAlgebraIter<'a, T> {
+        EnvFilterIterator{iter: self.iter(), env: other,
+                          filter: |elt, other| !other.contains(elt) }
+    }
+
+    /// Visit the values representing the symmetric difference
+    pub fn symmetric_difference_iter<'a>(&'a self, other: &'a HashSet<T>)
+        -> ChainIterator<&'a T, SetAlgebraIter<'a, T>, SetAlgebraIter<'a, T>> {
+        self.difference_iter(other).chain_(other.difference_iter(self))
+    }
+
+    /// Visit the values representing the intersection
+    pub fn intersection_iter<'a>(&'a self, other: &'a HashSet<T>)
+        -> SetAlgebraIter<'a, T> {
+        EnvFilterIterator{iter: self.iter(), env: other,
+                          filter: |elt, other| other.contains(elt) }
+    }
+
+    /// Visit the values representing the union
+    pub fn union_iter<'a>(&'a self, other: &'a HashSet<T>)
+        -> ChainIterator<&'a T, HashSetIterator<'a, T>, SetAlgebraIter<'a, T>> {
+        self.iter().chain_(other.difference_iter(self))
+    }
+
 }
 
 impl<K: Eq + Hash, T: Iterator<K>> FromIterator<K, T> for HashSet<K> {
@@ -803,6 +817,39 @@ impl<K: Eq + Hash, T: Iterator<K>> FromIterator<K, T> for HashSet<K> {
         set
     }
 }
+
+// FIXME #7814: use std::iterator::FilterIterator
+/// Building block for Set operation iterators
+pub struct EnvFilterIterator<A, Env, I> {
+    priv env: Env,
+    priv filter: &'static fn(&A, Env) -> bool,
+    priv iter: I,
+}
+
+impl<'self, A, Env: Clone, I: Iterator<&'self A>> Iterator<&'self A>
+        for EnvFilterIterator<A, Env, I> {
+    #[inline]
+    fn next(&mut self) -> Option<&'self A> {
+        loop {
+            match self.iter.next() {
+                Some(elt) => if (self.filter)(elt, self.env.clone()) {
+                    return Some(elt)
+                },
+                None => return None,
+            }
+        }
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        let (_, upper) = self.iter.size_hint();
+        (0, upper)
+    }
+}
+
+/// Set operations iterator
+pub type SetAlgebraIter<'self, T> =
+    EnvFilterIterator<T, &'self HashSet<T>, HashSetIterator<'self, T>>;
 
 
 #[cfg(test)]
@@ -1139,7 +1186,7 @@ mod test_set {
 
         let mut i = 0;
         let expected = [3, 5, 11, 77];
-        for a.intersection(&b) |x| {
+        for a.intersection_iter(&b).advance |x| {
             assert!(expected.contains(x));
             i += 1
         }
@@ -1162,7 +1209,7 @@ mod test_set {
 
         let mut i = 0;
         let expected = [1, 5, 11];
-        for a.difference(&b) |x| {
+        for a.difference_iter(&b).advance |x| {
             assert!(expected.contains(x));
             i += 1
         }
@@ -1188,7 +1235,7 @@ mod test_set {
 
         let mut i = 0;
         let expected = [-2, 1, 5, 11, 14, 22];
-        for a.symmetric_difference(&b) |x| {
+        for a.symmetric_difference_iter(&b).advance |x| {
             assert!(expected.contains(x));
             i += 1
         }
@@ -1218,7 +1265,7 @@ mod test_set {
 
         let mut i = 0;
         let expected = [-2, 1, 3, 5, 9, 11, 13, 16, 19, 24];
-        for a.union(&b) |x| {
+        for a.union_iter(&b).advance |x| {
             assert!(expected.contains(x));
             i += 1
         }
