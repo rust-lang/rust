@@ -510,19 +510,6 @@ impl<K: Hash + Eq, V> HashMap<K, V> {
         self.iter().advance(|(_, v)| blk(v))
     }
 
-    /// Iterate over the map and mutate the contained values
-    pub fn mutate_values(&mut self, blk: &fn(&K, &mut V) -> bool) -> bool {
-        for uint::range(0, self.buckets.len()) |i| {
-            match self.buckets[i] {
-              Some(Bucket{key: ref key, value: ref mut value, _}) => {
-                if !blk(key, value) { return false; }
-              }
-              None => ()
-            }
-        }
-        return true;
-    }
-
     /// An iterator visiting all key-value pairs in arbitrary order.
     /// Iterator element type is (&'a K, &'a V).
     pub fn iter<'a>(&'a self) -> HashMapIterator<'a, K, V> {
