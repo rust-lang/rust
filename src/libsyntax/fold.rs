@@ -131,10 +131,10 @@ fn fold_tts(tts : &[token_tree], fld: @ast_fold) -> ~[token_tree] {
             tt_tok(span, ref tok) =>
             tt_tok(span,maybe_fold_ident(tok,fld)),
             tt_delim(ref tts) =>
-            tt_delim(fold_tts(*tts,fld)),
+            tt_delim(@mut fold_tts(**tts, fld)),
             tt_seq(span, ref pattern, ref sep, is_optional) =>
             tt_seq(span,
-                   fold_tts(*pattern,fld),
+                   @mut fold_tts(**pattern, fld),
                    sep.map(|tok|maybe_fold_ident(tok,fld)),
                    is_optional),
             tt_nonterminal(sp,ref ident) =>

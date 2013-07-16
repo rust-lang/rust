@@ -429,6 +429,18 @@ impl<D:Decoder,T:Decodable<D>> Decodable<D> for @T {
     }
 }
 
+impl<S:Encoder,T:Encodable<S>> Encodable<S> for @mut T {
+    fn encode(&self, s: &mut S) {
+        (**self).encode(s)
+    }
+}
+
+impl<D:Decoder,T:Decodable<D>> Decodable<D> for @mut T {
+    fn decode(d: &mut D) -> @mut T {
+        @mut Decodable::decode(d)
+    }
+}
+
 impl<'self, S:Encoder,T:Encodable<S>> Encodable<S> for &'self [T] {
     fn encode(&self, s: &mut S) {
         do s.emit_seq(self.len()) |s| {
@@ -646,18 +658,6 @@ impl<
                 d.read_seq_elt(3, |d| Decodable::decode(d)),
                 d.read_seq_elt(4, |d| Decodable::decode(d))
             )
-        }
-    }
-}
-
-impl<S: Encoder, T: Encodable<S>> Encodable<S> for @mut DList<T> {
-    fn encode(&self, s: &mut S) {
-        do s.emit_seq(self.len()) |s| {
-            let mut i = 0;
-            for self.iter().advance |e| {
-                s.emit_seq_elt(i, |s| e.encode(s));
-                i += 1;
-            }
         }
     }
 }

@@ -1925,7 +1925,7 @@ impl Parser {
                     };
                     tt_seq(
                         mk_sp(sp.lo, p.span.hi),
-                        seq,
+                        @mut seq,
                         s,
                         z
                     )
@@ -1950,21 +1950,20 @@ impl Parser {
             }
             token::LPAREN | token::LBRACE | token::LBRACKET => {
                 let close_delim = token::flip_delimiter(&*self.token);
-                tt_delim(
-                    vec::append(
-                        // the open delimiter:
-                        ~[parse_any_tt_tok(self)],
-                        vec::append(
-                            self.parse_seq_to_before_end(
-                                &close_delim,
-                                seq_sep_none(),
-                                |p| p.parse_token_tree()
-                            ),
-                            // the close delimiter:
-                            [parse_any_tt_tok(self)]
-                        )
-                    )
-                )
+
+                // Parse the open delimiter.
+                let mut result = ~[parse_any_tt_tok(self)];
+
+                let trees =
+                    self.parse_seq_to_before_end(&close_delim,
+                                                 seq_sep_none(),
+                                                 |p| p.parse_token_tree());
+                result.push_all_move(trees);
+
+                // Parse the close delimiter.
+                result.push(parse_any_tt_tok(self));
+
+                tt_delim(@mut result)
             }
             _ => parse_non_delim_tt_tok(self)
         }
