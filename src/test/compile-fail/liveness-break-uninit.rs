@@ -16,9 +16,9 @@ fn foo() -> int {
         x = 0;
     }
 
-    debug!(x); //~ ERROR use of possibly uninitialized variable: `x`
+    info!(x); //~ ERROR use of possibly uninitialized variable: `x`
 
     return 17;
 }
 
-fn main() { debug!(foo()); }
+fn main() { info!(foo()); }

@@ -277,7 +277,8 @@ mod test {
             .. config::default_config(&Path("input/test.rc"))
         };
         let doc = mk_doc(~"", ~"mod a { mod b { } }");
-        let modb = copy doc.cratemod().mods()[0].mods()[0];
+        // hidden __std_macros module at the start.
+        let modb = copy doc.cratemod().mods()[1].mods()[0];
         let page = doc::ItemPage(doc::ModTag(modb));
         let filename = make_local_filename(&config, page);
         assert_eq!(filename, Path("output/dir/a_b.html"));

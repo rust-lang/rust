@@ -10,4 +10,4 @@
 
 // error-pattern: unresolved name `foobar`.
 
-fn main(args: ~[str]) { debug!(foobar); }
+fn main(args: ~[str]) { info!(foobar); }

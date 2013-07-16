@@ -21,8 +21,8 @@ fn start(c: &comm::Chan<int>, start: int, number_of_messages: int) {
 }
 
 pub fn main() {
-    debug!("Check that we don't deadlock.");
+    info!("Check that we don't deadlock.");
     let (p, ch) = comm::stream();
     task::try(|| start(&ch, 0, 10) );
-    debug!("Joined task");
+    info!("Joined task");
 }

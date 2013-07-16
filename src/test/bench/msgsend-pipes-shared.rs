@@ -110,6 +110,6 @@ fn main() {
         copy args
     };
 
-    debug!("%?", args);
+    info!("%?", args);
     run(args);
 }

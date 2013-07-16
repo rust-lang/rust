@@ -43,7 +43,7 @@ fn main() {
     for 10u.times {
         do task::spawn {
             let result = count(5u);
-            debug!("result = %?", result);
+            info!("result = %?", result);
             fail!();
         };
     }

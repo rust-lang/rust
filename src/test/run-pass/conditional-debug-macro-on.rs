@@ -8,9 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn foo(x: int) { info!(x); }
+// xfail-fast compile-flags directive doesn't work for check-fast
+// compile-flags: --cfg debug
+// exec-env:RUST_LOG=conditional-debug-macro-on=4
 
 fn main() {
-    let x: int;
-    foo(x); //~ ERROR use of possibly uninitialized variable: `x`
+    // exits early if debug! evaluates its arguments, otherwise it
+    // will hit the fail.
+    debug!({ if true { return; } });
+
+    fail!();
 }

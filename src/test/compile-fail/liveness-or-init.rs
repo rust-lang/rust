@@ -11,6 +11,6 @@
 fn main() {
     let i: int;
 
-    debug!(false || { i = 5; true });
-    debug!(i); //~ ERROR use of possibly uninitialized variable: `i`
+    info!(false || { i = 5; true });
+    info!(i); //~ ERROR use of possibly uninitialized variable: `i`
 }
