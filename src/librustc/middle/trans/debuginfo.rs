@@ -581,7 +581,8 @@ fn tuple_metadata(cx: &mut CrateContext,
 fn enum_metadata(cx: &mut CrateContext,
                  enum_type: ty::t,
                  enum_def_id: ast::def_id,
-                 substs: &ty::substs,
+                 // _substs is only needed in the other version. Will go away with new snapshot.
+                 _substs: &ty::substs,
                  span: span)
               -> DIType {
 
@@ -1017,10 +1018,10 @@ fn fixed_vec_metadata(cx: &mut CrateContext,
     };
 }
 
-fn boxed_vec_metadata(cx: &mut CrateContext,
-                      element_type: ty::t,
-                      span: span)
-                   -> DICompositeType {
+fn vec_metadata(cx: &mut CrateContext,
+                element_type: ty::t,
+                span: span)
+             -> DICompositeType {
 
     let element_type_metadata = type_metadata(cx, element_type, span);
     let element_llvm_type = type_of::type_of(cx, element_type);
@@ -1045,7 +1046,7 @@ fn boxed_vec_metadata(cx: &mut CrateContext,
     //                           fill               alloc              elements
     let member_type_metadata = &[int_type_metadata, int_type_metadata, array_type_metadata];
 
-    let vec_metadata = composite_type_metadata(
+    return composite_type_metadata(
         cx,
         vec_llvm_type,
         vec_type_name,
@@ -1053,6 +1054,17 @@ fn boxed_vec_metadata(cx: &mut CrateContext,
         member_names,
         member_type_metadata,
         span);
+}
+
+fn boxed_vec_metadata(cx: &mut CrateContext,
+                      element_type: ty::t,
+                      span: span)
+                   -> DICompositeType {
+
+    let element_llvm_type = type_of::type_of(cx, element_type);
+    let vec_llvm_type = Type::vec(cx.sess.targ_cfg.arch, &element_llvm_type);
+    let vec_type_name: &str = fmt!("[%s]", ty_to_str(cx.tcx, element_type));
+    let vec_metadata = vec_metadata(cx, element_type, span);
 
     return boxed_type_metadata(
         cx,
@@ -1197,10 +1209,13 @@ fn type_metadata(cx: &mut CrateContext,
                 ty::vstore_fixed(len) => {
                     fixed_vec_metadata(cx, i8_t, len + 1, span)
                 },
-                ty::vstore_uniq |
+                ty::vstore_uniq  => {
+                    let vec_metadata = vec_metadata(cx, i8_t, span);
+                    pointer_type_metadata(cx, t, vec_metadata)
+                }
                 ty::vstore_box => {
-                    let box_metadata = boxed_vec_metadata(cx, i8_t, span);
-                    pointer_type_metadata(cx, t, box_metadata)
+                    let boxed_vec_metadata = boxed_vec_metadata(cx, i8_t, span);
+                    pointer_type_metadata(cx, t, boxed_vec_metadata)
                 }
                 ty::vstore_slice(_region) => {
                     vec_slice_metadata(cx, t, i8_t, span)
@@ -1217,12 +1232,19 @@ fn type_metadata(cx: &mut CrateContext,
             match *vstore {
                 ty::vstore_fixed(len) => {
                     fixed_vec_metadata(cx, mt.ty, len, span)
-                },
-                ty::vstore_uniq |
-                ty::vstore_box  => {
-                    let box_metadata = boxed_vec_metadata(cx, mt.ty, span);
-                    pointer_type_metadata(cx, t, box_metadata)
-                },
+                }
+                ty::vstore_uniq if ty::type_contents(cx.tcx, mt.ty).contains_managed() => {
+                    let boxed_vec_metadata = boxed_vec_metadata(cx, mt.ty, span);
+                    pointer_type_metadata(cx, t, boxed_vec_metadata)
+                }
+                ty::vstore_uniq => {
+                    let vec_metadata = vec_metadata(cx, mt.ty, span);
+                    pointer_type_metadata(cx, t, vec_metadata)
+                }
+                ty::vstore_box => {
+                    let boxed_vec_metadata = boxed_vec_metadata(cx, mt.ty, span);
+                    pointer_type_metadata(cx, t, boxed_vec_metadata)
+                }
                 ty::vstore_slice(_) => {
                     vec_slice_metadata(cx, t, mt.ty, span)
                 }

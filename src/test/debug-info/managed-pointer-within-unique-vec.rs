@@ -15,20 +15,21 @@
 // debugger:run
 // debugger:finish
 
-// debugger:print managed->val.fill
-// check:$1 = 24
-// debugger:print *((uint64_t[3]*)(managed->val.elements))
-// check:$2 = {7, 8, 9}
+// debugger:print unique->val.elements[0]->val
+// check:$1 = 10
 
-// debugger:print unique->fill
-// check:$3 = 32
-// debugger:print *((uint64_t[4]*)(unique->elements))
-// check:$4 = {10, 11, 12, 13}
+// debugger:print unique->val.elements[1]->val
+// check:$2 = 11
+
+// debugger:print unique->val.elements[2]->val
+// check:$3 = 12
+
+// debugger:print unique->val.elements[3]->val
+// check:$4 = 13
 
 fn main() {
 
-    let managed: @[i64] = @[7, 8, 9];
-    let unique: ~[i64] = ~[10, 11, 12, 13];
+    let unique: ~[@i64] = ~[@10, @11, @12, @13];
 
     zzz();
 }
