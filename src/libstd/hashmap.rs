@@ -438,31 +438,6 @@ impl<K: Hash + Eq, V> HashMap<K, V> {
         self.mangle(k, v, |_k,a| a, |k,v,_a| f(k,v))
     }
 
-    /// Calls a function on each element of a hash map, destroying the hash
-    /// map in the process.
-    pub fn consume(&mut self, f: &fn(K, V)) {
-        let buckets = replace(&mut self.buckets,
-                              vec::from_fn(INITIAL_CAPACITY, |_| None));
-        self.size = 0;
-
-        for buckets.consume_iter().advance |bucket| {
-            match bucket {
-                None => {},
-                Some(Bucket{key, value, _}) => {
-                    f(key, value)
-                }
-            }
-        }
-    }
-
-    /// Creates a consuming iterator, that is, one that moves each key-value
-    /// pair out of the map in arbitrary order. The map cannot be used after
-    /// calling this.
-    pub fn consume_iter(self) -> HashMapConsumeIterator<K, V> {
-        // `consume_rev_iter` is more efficient than `consume_iter` for vectors
-        HashMapConsumeIterator {iter: self.buckets.consume_rev_iter()}
-    }
-
     /// Retrieves a value for the given key, failing if the key is not
     /// present.
     pub fn get<'a>(&'a self, k: &K) -> &'a V {
@@ -522,6 +497,15 @@ impl<K: Hash + Eq, V> HashMap<K, V> {
     pub fn mut_iter<'a>(&'a mut self) -> HashMapMutIterator<'a, K, V> {
         HashMapMutIterator { iter: self.buckets.mut_iter() }
     }
+
+    /// Creates a consuming iterator, that is, one that moves each key-value
+    /// pair out of the map in arbitrary order. The map cannot be used after
+    /// calling this.
+    pub fn consume(self) -> HashMapConsumeIterator<K, V> {
+        // `consume_rev_iter` is more efficient than `consume_iter` for vectors
+        HashMapConsumeIterator {iter: self.buckets.consume_rev_iter()}
+    }
+
 }
 
 impl<K: Hash + Eq, V: Clone> HashMap<K, V> {
@@ -761,19 +745,6 @@ impl<T:Hash + Eq> HashSet<T> {
         self.map.reserve_at_least(n)
     }
 
-    /// Consumes all of the elements in the set, emptying it out
-    pub fn consume(&mut self, f: &fn(T)) {
-        self.map.consume(|k, _| f(k))
-    }
-
-    /// Creates a consuming iterator, that is, one that moves each value out
-    /// of the set in arbitrary order. The set cannot be used after calling
-    /// this.
-    pub fn consume_iter(self) -> HashSetConsumeIterator<T> {
-        // `consume_rev_iter` is more efficient than `consume_iter` for vectors
-        HashSetConsumeIterator {iter: self.map.buckets.consume_rev_iter()}
-    }
-
     /// Returns true if the hash set contains a value equivalent to the
     /// given query value.
     pub fn contains_equiv<Q:Hash + Equiv<T>>(&self, value: &Q) -> bool {
@@ -784,6 +755,14 @@ impl<T:Hash + Eq> HashSet<T> {
     /// Iterator element type is &'a T.
     pub fn iter<'a>(&'a self) -> HashSetIterator<'a, T> {
         HashSetIterator { iter: self.map.buckets.iter() }
+    }
+
+    /// Creates a consuming iterator, that is, one that moves each value out
+    /// of the set in arbitrary order. The set cannot be used after calling
+    /// this.
+    pub fn consume(self) -> HashSetConsumeIterator<T> {
+        // `consume_rev_iter` is more efficient than `consume_iter` for vectors
+        HashSetConsumeIterator {iter: self.map.buckets.consume_rev_iter()}
     }
 
     /// Visit the values representing the difference
@@ -975,29 +954,6 @@ mod test_map {
 
     #[test]
     fn test_consume() {
-        let mut m = HashMap::new();
-        assert!(m.insert(1, 2));
-        assert!(m.insert(2, 3));
-        let mut m2 = HashMap::new();
-        do m.consume |k, v| {
-            m2.insert(k, v);
-        }
-        assert_eq!(m.len(), 0);
-        assert_eq!(m2.len(), 2);
-        assert_eq!(m2.get(&1), &2);
-        assert_eq!(m2.get(&2), &3);
-    }
-
-    #[test]
-    fn test_consume_still_usable() {
-        let mut m = HashMap::new();
-        assert!(m.insert(1, 2));
-        do m.consume |_, _| {}
-        assert!(m.insert(1, 2));
-    }
-
-    #[test]
-    fn test_consume_iter() {
         let hm = {
             let mut hm = HashMap::new();
 
@@ -1007,7 +963,7 @@ mod test_map {
             hm
         };
 
-        let v = hm.consume_iter().collect::<~[(char, int)]>();
+        let v = hm.consume().collect::<~[(char, int)]>();
         assert!([('a', 1), ('b', 2)] == v || [('b', 2), ('a', 1)] == v);
     }
 
@@ -1293,7 +1249,7 @@ mod test_set {
     }
 
     #[test]
-    fn test_consume_iter() {
+    fn test_consume() {
         let hs = {
             let mut hs = HashSet::new();
 
@@ -1303,7 +1259,7 @@ mod test_set {
             hs
         };
 
-        let v = hs.consume_iter().collect::<~[char]>();
+        let v = hs.consume().collect::<~[char]>();
         assert!(['a', 'b'] == v || ['b', 'a'] == v);
     }
 }

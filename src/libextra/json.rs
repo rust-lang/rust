@@ -1086,9 +1086,8 @@ impl serialize::Decoder for Decoder {
         debug!("read_map()");
         let len = match self.stack.pop() {
             Object(obj) => {
-                let mut obj = obj;
                 let len = obj.len();
-                do obj.consume |key, value| {
+                for obj.consume().advance |(key, value)| {
                     self.stack.push(value);
                     self.stack.push(String(key));
                 }
