@@ -98,6 +98,7 @@ pub struct Metric {
 pub struct MetricMap(TreeMap<~str,Metric>);
 
 /// Analysis of a single change in metric
+#[deriving(Eq)]
 pub enum MetricChange {
     LikelyNoise,
     MetricAdded,
@@ -774,8 +775,13 @@ impl MetricMap {
         json::to_pretty_writer(f, &self.to_json());
     }
 
-    /// Compare against another MetricMap
-    pub fn compare_to_old(&self, old: MetricMap,
+    /// Compare against another MetricMap. Optionally compare all
+    /// measurements in the maps using the provided `noise_pct` as a
+    /// percentage of each value to consider noise. If `None`, each
+    /// measurement's noise threshold is independently chosen as the
+    /// maximum of that measurement's recorded noise quantity in either
+    /// map.
+    pub fn compare_to_old(&self, old: &MetricMap,
                           noise_pct: Option<f64>) -> MetricDiff {
         let mut diff : MetricDiff = TreeMap::new();
         for old.iter().advance |(k, vold)| {
@@ -790,7 +796,7 @@ impl MetricMap {
                     if delta.abs() < noise {
                         LikelyNoise
                     } else {
-                        let pct = delta.abs() / v.value * 100.0;
+                        let pct = delta.abs() / vold.value * 100.0;
                         if vold.noise < 0.0 {
                             // When 'noise' is negative, it means we want
                             // to see deltas that go up over time, and can
@@ -857,7 +863,7 @@ impl MetricMap {
             MetricMap::new()
         };
 
-        let diff : MetricDiff = self.compare_to_old(old, pct);
+        let diff : MetricDiff = self.compare_to_old(&old, pct);
         let ok = do diff.iter().all() |(_, v)| {
             match *v {
                 Regression(_) => false,
@@ -1006,13 +1012,16 @@ pub mod bench {
 mod tests {
     use test::{TrFailed, TrIgnored, TrOk, filter_tests, parse_opts,
                TestDesc, TestDescAndFn,
+               Metric, MetricMap, MetricAdded, MetricRemoved,
+               Improvement, Regression, LikelyNoise,
                StaticTestName, DynTestName, DynTestFn};
     use test::{TestOpts, run_test};
 
     use std::either;
     use std::comm::{stream, SharedChan};
-    use std::option;
     use std::vec;
+    use tempfile;
+    use std::os;
 
     #[test]
     pub fn do_not_run_ignored_tests() {
@@ -1207,5 +1216,96 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[test]
+    pub fn test_metricmap_compare() {
+        let mut m1 = MetricMap::new();
+        let mut m2 = MetricMap::new();
+        m1.insert_metric("in-both-noise", 1000.0, 200.0);
+        m2.insert_metric("in-both-noise", 1100.0, 200.0);
+
+        m1.insert_metric("in-first-noise", 1000.0, 2.0);
+        m2.insert_metric("in-second-noise", 1000.0, 2.0);
+
+        m1.insert_metric("in-both-want-downwards-but-regressed", 1000.0, 10.0);
+        m2.insert_metric("in-both-want-downwards-but-regressed", 2000.0, 10.0);
+
+        m1.insert_metric("in-both-want-downwards-and-improved", 2000.0, 10.0);
+        m2.insert_metric("in-both-want-downwards-and-improved", 1000.0, 10.0);
+
+        m1.insert_metric("in-both-want-upwards-but-regressed", 2000.0, -10.0);
+        m2.insert_metric("in-both-want-upwards-but-regressed", 1000.0, -10.0);
+
+        m1.insert_metric("in-both-want-upwards-and-improved", 1000.0, -10.0);
+        m2.insert_metric("in-both-want-upwards-and-improved", 2000.0, -10.0);
+
+        let diff1 = m2.compare_to_old(&m1, None);
+
+        assert_eq!(*(diff1.find(&~"in-both-noise").get()), LikelyNoise);
+        assert_eq!(*(diff1.find(&~"in-first-noise").get()), MetricRemoved);
+        assert_eq!(*(diff1.find(&~"in-second-noise").get()), MetricAdded);
+        assert_eq!(*(diff1.find(&~"in-both-want-downwards-but-regressed").get()), Regression(100.0));
+        assert_eq!(*(diff1.find(&~"in-both-want-downwards-and-improved").get()), Improvement(50.0));
+        assert_eq!(*(diff1.find(&~"in-both-want-upwards-but-regressed").get()), Regression(50.0));
+        assert_eq!(*(diff1.find(&~"in-both-want-upwards-and-improved").get()), Improvement(100.0));
+        assert_eq!(diff1.len(), 7);
+
+        let diff2 = m2.compare_to_old(&m1, Some(200.0));
+
+        assert_eq!(*(diff2.find(&~"in-both-noise").get()), LikelyNoise);
+        assert_eq!(*(diff2.find(&~"in-first-noise").get()), MetricRemoved);
+        assert_eq!(*(diff2.find(&~"in-second-noise").get()), MetricAdded);
+        assert_eq!(*(diff2.find(&~"in-both-want-downwards-but-regressed").get()), LikelyNoise);
+        assert_eq!(*(diff2.find(&~"in-both-want-downwards-and-improved").get()), LikelyNoise);
+        assert_eq!(*(diff2.find(&~"in-both-want-upwards-but-regressed").get()), LikelyNoise);
+        assert_eq!(*(diff2.find(&~"in-both-want-upwards-and-improved").get()), LikelyNoise);
+        assert_eq!(diff2.len(), 7);
+    }
+
+    pub fn ratchet_test() {
+
+        let dpth = tempfile::mkdtemp(&os::tmpdir(),
+                                     "test-ratchet").expect("missing test for ratchet");
+        let pth = dpth.push("ratchet.json");
+
+        let mut m1 = MetricMap::new();
+        m1.insert_metric("runtime", 1000.0, 2.0);
+        m1.insert_metric("throughput", 50.0, 2.0);
+
+        let mut m2 = MetricMap::new();
+        m2.insert_metric("runtime", 1100.0, 2.0);
+        m2.insert_metric("throughput", 50.0, 2.0);
+
+        m1.save(&pth);
+
+        // Ask for a ratchet that should fail to advance.
+        let (diff1, ok1) = m2.ratchet(&pth, None);
+        assert_eq!(ok1, false);
+        assert_eq!(diff1.len(), 2);
+        assert_eq!(*(diff1.find(&~"runtime").get()), Regression(10.0));
+        assert_eq!(*(diff1.find(&~"throughput").get()), LikelyNoise);
+
+        // Check that it was not rewritten.
+        let m3 = MetricMap::load(&pth);
+        assert_eq!(m3.len(), 2);
+        assert_eq!(*(m3.find(&~"runtime").get()), Metric { value: 1000.0, noise: 2.0 });
+        assert_eq!(*(m3.find(&~"throughput").get()), Metric { value: 50.0, noise: 2.0 });
+
+        // Ask for a ratchet with an explicit noise-percentage override,
+        // that should advance.
+        let (diff2, ok2) = m2.ratchet(&pth, Some(10.0));
+        assert_eq!(ok2, true);
+        assert_eq!(diff2.len(), 2);
+        assert_eq!(*(diff2.find(&~"runtime").get()), LikelyNoise);
+        assert_eq!(*(diff2.find(&~"throughput").get()), LikelyNoise);
+
+        // Check that it was rewritten.
+        let m4 = MetricMap::load(&pth);
+        assert_eq!(m4.len(), 2);
+        assert_eq!(*(m4.find(&~"runtime").get()), Metric { value: 1100.0, noise: 2.0 });
+        assert_eq!(*(m4.find(&~"throughput").get()), Metric { value: 50.0, noise: 2.0 });
+
+        os::remove_dir_recursive(&dpth);
     }
 }
