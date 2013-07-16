@@ -3138,9 +3138,9 @@ pub fn check_enum_variants(ccx: @mut CrateCtxt,
                 -> ~[@ty::VariantInfo] {
 
         let rty = ty::node_id_to_type(ccx.tcx, id);
-        let mut variants : ~[@ty::VariantInfo] = ~[];
+        let mut variants: ~[@ty::VariantInfo] = ~[];
         let mut disr_vals: ~[int] = ~[];
-        let mut prev_disr_val : Option<int> = None;
+        let mut prev_disr_val: Option<int> = None;
 
         for vs.iter().advance |v| {
 
@@ -3163,7 +3163,7 @@ pub fn check_enum_variants(ccx: @mut CrateCtxt,
                     // handle, so we may still get an internal compiler error
 
                     match const_eval::eval_const_expr_partial(&ccx.tcx, e) {
-                        Ok(const_eval::const_int(val)) => { current_disr_val = val as int; }
+                        Ok(const_eval::const_int(val)) => current_disr_val = val as int,
                         Ok(_) => {
                             ccx.tcx.sess.span_err(e.span, "expected signed integer constant");
                         }

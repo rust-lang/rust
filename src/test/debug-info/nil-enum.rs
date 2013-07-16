@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// xfail-win32 Broken because of LLVM bug: http://llvm.org/bugs/show_bug.cgi?id=16249
+
 // compile-flags:-Z extra-debug-info
 // debugger:break zzz
 // debugger:run
@@ -28,8 +30,8 @@ enum AnotherNilEnum {}
 // 2. That gdb prints the string "{<No data fields>}" for empty structs (which may change some time)
 fn main() {
     unsafe {
-        let first : ANilEnum = std::cast::transmute(());
-        let second : AnotherNilEnum = std::cast::transmute(());
+        let first: ANilEnum = std::cast::transmute(());
+        let second: AnotherNilEnum = std::cast::transmute(());
 
         zzz();
     }

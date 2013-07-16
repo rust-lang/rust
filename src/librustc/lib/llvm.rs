@@ -2127,7 +2127,7 @@ pub mod llvm {
             AlignInBits: c_ulonglong,
             Flags: c_uint ,
             Elements: ValueRef,
-            RunTimeLang : c_uint) -> ValueRef;
+            RunTimeLang: c_uint) -> ValueRef;
     }
 }
 

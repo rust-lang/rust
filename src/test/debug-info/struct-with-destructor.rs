@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// xfail-win32 Broken because of LLVM bug: http://llvm.org/bugs/show_bug.cgi?id=16249
+
 // compile-flags:-Z extra-debug-info
 // debugger:break zzz
 // debugger:run
@@ -29,13 +31,13 @@
 
 
 struct NoDestructor {
-    x : i32,
-    y : i64
+    x: i32,
+    y: i64
 }
 
 struct WithDestructor {
-    x : i32,
-    y : i64
+    x: i32,
+    y: i64
 }
 
 impl Drop for WithDestructor {

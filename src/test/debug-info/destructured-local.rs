@@ -22,7 +22,7 @@
 // check:$2 = false
 
 fn main() {
-    let (a, b) : (int, bool) = (9898, false);
+    let (a, b): (int, bool) = (9898, false);
 
     zzz();
 }

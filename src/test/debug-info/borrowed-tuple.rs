@@ -29,14 +29,14 @@
 
 fn main() {
     let stack_val: (i16, f32) = (-14, -19f32);
-    let stack_val_ref : &(i16, f32) = &stack_val;
-    let ref_to_unnamed : &(i16, f32) = &(-15, -20f32);
+    let stack_val_ref: &(i16, f32) = &stack_val;
+    let ref_to_unnamed: &(i16, f32) = &(-15, -20f32);
 
-    let managed_val : @(i16, f32) = @(-16, -21f32);
-    let managed_val_ref : &(i16, f32) = managed_val;
+    let managed_val: @(i16, f32) = @(-16, -21f32);
+    let managed_val_ref: &(i16, f32) = managed_val;
 
     let unique_val: ~(i16, f32) = ~(-17, -22f32);
-    let unique_val_ref : &(i16, f32) = unique_val;
+    let unique_val_ref: &(i16, f32) = unique_val;
 
     zzz();
 }
