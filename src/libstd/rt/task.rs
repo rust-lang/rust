@@ -27,7 +27,7 @@ use super::local_heap::LocalHeap;
 use rt::sched::{Scheduler, SchedHandle};
 use rt::stack::{StackSegment, StackPool};
 use rt::context::Context;
-use task::spawn::TCB;
+use task::spawn::Taskgroup;
 use cell::Cell;
 
 pub struct Task {
@@ -37,7 +37,7 @@ pub struct Task {
     logger: StdErrLogger,
     unwinder: Unwinder,
     home: Option<SchedHome>,
-    taskgroup: Option<TCB>,
+    taskgroup: Option<Taskgroup>,
     death: Death,
     destroyed: bool,
     coroutine: Option<~Coroutine>
