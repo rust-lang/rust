@@ -61,7 +61,7 @@ fn canttouchthis() -> uint {
     fn p() -> bool { true }
     let _a = (assert!((true)) == (assert!(p())));
     let _c = (assert!((p())) == ());
-    let _b: bool = (debug!("%d", 0) == (return 0u));
+    let _b: bool = (info!("%d", 0) == (return 0u));
 }
 
 fn angrydome() {
@@ -71,7 +71,7 @@ fn angrydome() {
       break; }
 }
 
-fn evil_lincoln() { let evil = debug!("lincoln"); }
+fn evil_lincoln() { let evil = info!("lincoln"); }
 
 pub fn main() {
     strange();

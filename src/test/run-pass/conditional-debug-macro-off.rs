@@ -8,9 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn foo(x: int) { info!(x); }
+// xfail-fast exec-env directive doesn't work for check-fast
+// exec-env:RUST_LOG=conditional-debug-macro-off=4
 
 fn main() {
-    let x: int;
-    foo(x); //~ ERROR use of possibly uninitialized variable: `x`
+    // only fails if debug! evaluates its argument.
+    debug!({ if true { fail!() } });
 }

@@ -19,5 +19,5 @@ impl Drop for r {
 fn main() {
     let i = ~r { b: true };
     let _j = copy i; //~ ERROR copying a value of non-copyable type
-    debug!(i);
+    info!(i);
 }

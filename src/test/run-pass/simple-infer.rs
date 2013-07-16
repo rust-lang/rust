@@ -10,4 +10,4 @@
 
 
 
-pub fn main() { let mut n; n = 1; debug!(n); }
+pub fn main() { let mut n; n = 1; info!(n); }

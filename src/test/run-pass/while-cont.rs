@@ -13,7 +13,7 @@ pub fn main() {
     let mut i = 1;
     while i > 0 {
         assert!((i > 0));
-        debug!(i);
+        info!(i);
         i -= 1;
         loop;
     }

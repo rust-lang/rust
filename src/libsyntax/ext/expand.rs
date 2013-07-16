@@ -8,15 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ast::{blk_, attribute_, attr_outer, meta_word};
-use ast::{crate, expr_, expr_mac, mac_invoc_tt};
+use ast::{blk_, crate, expr_, expr_mac, mac_invoc_tt};
 use ast::{item_mac, stmt_, stmt_mac, stmt_expr, stmt_semi};
 use ast::{illegal_ctxt};
 use ast;
 use ast_util::{new_rename, new_mark, resolve};
 use attr;
 use codemap;
-use codemap::{span, ExpnInfo, NameAndSpan, spanned};
+use codemap::{span, ExpnInfo, NameAndSpan};
 use ext::base::*;
 use fold::*;
 use parse;
@@ -452,9 +451,12 @@ pub fn new_span(cx: @ExtCtxt, sp: span) -> span {
 // the default compilation environment. It would be much nicer to use
 // a mechanism like syntax_quote to ensure hygiene.
 
-pub fn core_macros() -> @str {
+pub fn std_macros() -> @str {
     return
-@"pub mod macros {
+@"mod __std_macros {
+    #[macro_escape];
+    #[doc(hidden)];
+
     macro_rules! ignore (($($x:tt)*) => (()))
 
     macro_rules! error (
@@ -484,7 +486,9 @@ pub fn core_macros() -> @str {
         )
     )
 
-    macro_rules! debug (
+    // conditionally define debug!, but keep it type checking even
+    // in non-debug builds.
+    macro_rules! __debug (
         ($arg:expr) => (
             __log(4u32, fmt!( \"%?\", $arg ))
         );
@@ -492,6 +496,22 @@ pub fn core_macros() -> @str {
             __log(4u32, fmt!( $($arg),+ ))
         )
     )
+
+    #[cfg(debug)]
+    #[macro_escape]
+    mod debug_macro {
+        macro_rules! debug (($($arg:expr),*) => {
+            __debug!($($arg),*)
+        })
+    }
+
+    #[cfg(not(debug))]
+    #[macro_escape]
+    mod debug_macro {
+        macro_rules! debug (($($arg:expr),*) => {
+            if false { __debug!($($arg),*) }
+        })
+    }
 
     macro_rules! fail(
         () => (
@@ -668,6 +688,35 @@ pub fn core_macros() -> @str {
 }";
 }
 
+// add a bunch of macros as though they were placed at the head of the
+// program (ick). This should run before cfg stripping.
+pub fn inject_std_macros(parse_sess: @mut parse::ParseSess,
+                         cfg: ast::crate_cfg, c: &crate) -> @crate {
+    let sm = match parse_item_from_source_str(@"<std-macros>",
+                                              std_macros(),
+                                              copy cfg,
+                                              ~[],
+                                              parse_sess) {
+        Some(item) => item,
+        None => fail!("expected core macros to parse correctly")
+    };
+
+    let injecter = @AstFoldFns {
+        fold_mod: |modd, _| {
+            // just inject the std macros at the start of the first
+            // module in the crate (i.e the crate file itself.)
+            let items = vec::append(~[sm], modd.items);
+            ast::_mod {
+                items: items,
+                // FIXME #2543: Bad copy.
+                .. copy *modd
+            }
+        },
+        .. *default_ast_fold()
+    };
+    @make_fold(injecter).fold_crate(c)
+}
+
 pub fn expand_crate(parse_sess: @mut parse::ParseSess,
                     cfg: ast::crate_cfg, c: &crate) -> @crate {
     // adding *another* layer of indirection here so that the block
@@ -692,33 +741,6 @@ pub fn expand_crate(parse_sess: @mut parse::ParseSess,
         new_span: |a| new_span(cx, a),
         .. *afp};
     let f = make_fold(f_pre);
-    // add a bunch of macros as though they were placed at the
-    // head of the program (ick).
-    let attrs = ~[
-        spanned {
-            span: codemap::dummy_sp(),
-            node: attribute_ {
-                style: attr_outer,
-                value: @spanned {
-                    node: meta_word(@"macro_escape"),
-                    span: codemap::dummy_sp(),
-                },
-                is_sugared_doc: false,
-            }
-        }
-    ];
-
-    let cm = match parse_item_from_source_str(@"<core-macros>",
-                                              core_macros(),
-                                              copy cfg,
-                                              attrs,
-                                              parse_sess) {
-        Some(item) => item,
-        None => cx.bug("expected core macros to parse correctly")
-    };
-    // This is run for its side-effects on the expander env,
-    // as it registers all the core macros as expanders.
-    f.fold_item(cm);
 
     @f.fold_crate(c)
 }
@@ -789,6 +811,8 @@ mod test {
             @"<test>",
             src,
             ~[],sess);
+        let crate_ast = inject_std_macros(sess, ~[], crate_ast);
+        // don't bother with striping, doesn't affect fail!.
         expand_crate(sess,~[],crate_ast);
     }
 
@@ -836,20 +860,14 @@ mod test {
         expand_crate(sess,~[],crate_ast);
     }
 
-    #[test] fn core_macros_must_parse () {
-        let src = @"
-  pub mod macros {
-    macro_rules! ignore (($($x:tt)*) => (()))
-
-    macro_rules! error ( ($( $arg:expr ),+) => (
-        log(::core::error, fmt!( $($arg),+ )) ))
-}";
+    #[test] fn std_macros_must_parse () {
+        let src = super::std_macros();
         let sess = parse::new_parse_sess(None);
         let cfg = ~[];
         let item_ast = parse::parse_item_from_source_str(
             @"<test>",
             src,
-            cfg,~[make_dummy_attr (@"macro_escape")],sess);
+            cfg,~[],sess);
         match item_ast {
             Some(_) => (), // success
             None => fail!("expected this to parse")

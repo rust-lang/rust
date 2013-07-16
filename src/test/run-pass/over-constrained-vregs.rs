@@ -17,6 +17,6 @@ pub fn main() {
     while b <= 32u {
         0u << b;
         b <<= 1u;
-        debug!(b);
+        info!(b);
     }
 }

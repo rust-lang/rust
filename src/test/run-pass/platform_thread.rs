@@ -20,7 +20,7 @@ pub fn main() {
 
 fn run(i: int) {
 
-    debug!(i);
+    info!(i);
 
     if i == 0 {
         return;

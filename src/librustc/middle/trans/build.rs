@@ -569,15 +569,17 @@ pub fn LoadRangeAssert(cx: block, PointerVal: ValueRef, lo: c_ulonglong,
                        hi: c_ulonglong, signed: lib::llvm::Bool) -> ValueRef {
     let value = Load(cx, PointerVal);
 
-    unsafe {
-        let t = llvm::LLVMGetElementType(llvm::LLVMTypeOf(PointerVal));
-        let min = llvm::LLVMConstInt(t, lo, signed);
-        let max = llvm::LLVMConstInt(t, hi, signed);
+    if !cx.unreachable {
+        unsafe {
+            let t = llvm::LLVMGetElementType(llvm::LLVMTypeOf(PointerVal));
+            let min = llvm::LLVMConstInt(t, lo, signed);
+            let max = llvm::LLVMConstInt(t, hi, signed);
 
-        do [min, max].as_imm_buf |ptr, len| {
-            llvm::LLVMSetMetadata(value, lib::llvm::MD_range as c_uint,
-                                  llvm::LLVMMDNodeInContext(cx.fcx.ccx.llcx,
-                                                            ptr, len as c_uint));
+            do [min, max].as_imm_buf |ptr, len| {
+                llvm::LLVMSetMetadata(value, lib::llvm::MD_range as c_uint,
+                                      llvm::LLVMMDNodeInContext(cx.fcx.ccx.llcx,
+                                                                ptr, len as c_uint));
+            }
         }
     }
 

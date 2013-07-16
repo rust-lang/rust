@@ -1530,7 +1530,7 @@ pub fn alloca_maybe_zeroed(cx: block, ty: Type, name: &str, zero: bool) -> Value
     let _icx = push_ctxt("alloca");
     if cx.unreachable {
         unsafe {
-            return llvm::LLVMGetUndef(ty.to_ref());
+            return llvm::LLVMGetUndef(ty.ptr_to().to_ref());
         }
     }
     let initcx = base::raw_block(cx.fcx, false, cx.fcx.get_llstaticallocas());

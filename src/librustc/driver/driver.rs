@@ -194,6 +194,10 @@ pub fn compile_rest(sess: Session,
         //   mod bar { macro_rules! baz!(() => {{}}) }
         //
         // baz! should not use this definition unless foo is enabled.
+        crate = time(time_passes, ~"std macros injection", ||
+                     syntax::ext::expand::inject_std_macros(sess.parse_sess, copy cfg,
+                                                             crate));
+
         crate = time(time_passes, ~"configuration 1", ||
                      front::config::strip_unconfigured_items(crate));
 
@@ -214,7 +218,7 @@ pub fn compile_rest(sess: Session,
     assert!(phases.from != cu_no_trans);
 
     let (llcx, llmod, link_meta) = {
-        crate = time(time_passes, ~"extra injection", ||
+        crate = time(time_passes, ~"std injection", ||
                      front::std_inject::maybe_inject_libstd_ref(sess, crate));
 
         let ast_map = time(time_passes, ~"ast indexing", ||

@@ -413,7 +413,7 @@ impl Datum {
     pub fn to_value_datum(&self, bcx: block) -> Datum {
         /*!
          *
-         * Yields a by-ref form of this datum.  This may involve
+         * Yields a by-value form of this datum.  This may involve
          * creation of a temporary stack slot.  The value returned by
          * this function is not separately rooted from this datum, so
          * it will not live longer than the current datum. */
