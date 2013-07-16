@@ -683,6 +683,9 @@ fn test_cant_dup_task_builder() {
 // !!! These tests are dangerous. If Something is buggy, they will hang, !!!
 // !!! instead of exiting cleanly. This might wedge the buildbots.       !!!
 
+#[cfg(test)]
+fn block_forever() { let (po, _ch) = stream::<()>(); po.recv(); }
+
 #[test] #[ignore(cfg(windows))]
 fn test_spawn_unlinked_unsup_no_fail_down() { // grandchild sends on a port
     let (po, ch) = stream();
@@ -710,14 +713,12 @@ fn test_spawn_unlinked_sup_no_fail_up() { // child unlinked fails
 }
 #[test] #[should_fail] #[ignore(cfg(windows))]
 fn test_spawn_unlinked_sup_fail_down() {
-    do spawn_supervised { loop { task::yield(); } }
+    do spawn_supervised { block_forever(); }
     fail!(); // Shouldn't leave a child hanging around.
 }
 
 #[test] #[should_fail] #[ignore(cfg(windows))]
 fn test_spawn_linked_sup_fail_up() { // child fails; parent fails
-    let (po, _ch) = stream::<()>();
-
     // Unidirectional "parenting" shouldn't override bidirectional linked.
     // We have to cheat with opts - the interface doesn't support them because
     // they don't make sense (redundant with task().supervised()).
@@ -728,7 +729,7 @@ fn test_spawn_linked_sup_fail_up() { // child fails; parent fails
     do b0.spawn {
         fail!();
     }
-    po.recv(); // We should get punted awake
+    block_forever(); // We should get punted awake
 }
 #[test] #[should_fail] #[ignore(cfg(windows))]
 fn test_spawn_linked_sup_fail_down() { // parent fails; child fails
@@ -737,24 +738,19 @@ fn test_spawn_linked_sup_fail_down() { // parent fails; child fails
     let mut b0 = task();
     b0.opts.linked = true;
     b0.opts.supervised = true;
-    do b0.spawn {
-        loop {
-            task::yield();
-        }
-    }
+    do b0.spawn { block_forever(); }
     fail!(); // *both* mechanisms would be wrong if this didn't kill the child
 }
 #[test] #[should_fail] #[ignore(cfg(windows))]
 fn test_spawn_linked_unsup_fail_up() { // child fails; parent fails
-    let (po, _ch) = stream::<()>();
     // Default options are to spawn linked & unsupervised.
     do spawn { fail!(); }
-    po.recv(); // We should get punted awake
+    block_forever(); // We should get punted awake
 }
 #[test] #[should_fail] #[ignore(cfg(windows))]
 fn test_spawn_linked_unsup_fail_down() { // parent fails; child fails
     // Default options are to spawn linked & unsupervised.
-    do spawn { loop { task::yield(); } }
+    do spawn { block_forever(); }
     fail!();
 }
 #[test] #[should_fail] #[ignore(cfg(windows))]
@@ -762,11 +758,7 @@ fn test_spawn_linked_unsup_default_opts() { // parent fails; child fails
     // Make sure the above test is the same as this one.
     let mut builder = task();
     builder.linked();
-    do builder.spawn {
-        loop {
-            task::yield();
-        }
-    }
+    do builder.spawn { block_forever(); }
     fail!();
 }
 
@@ -777,9 +769,7 @@ fn test_spawn_linked_unsup_default_opts() { // parent fails; child fails
 fn test_spawn_failure_propagate_grandchild() {
     // Middle task exits; does grandparent's failure propagate across the gap?
     do spawn_supervised {
-        do spawn_supervised {
-            loop { task::yield(); }
-        }
+        do spawn_supervised { block_forever(); }
     }
     for 16.times { task::yield(); }
     fail!();
@@ -789,9 +779,7 @@ fn test_spawn_failure_propagate_grandchild() {
 fn test_spawn_failure_propagate_secondborn() {
     // First-born child exits; does parent's failure propagate to sibling?
     do spawn_supervised {
-        do spawn { // linked
-            loop { task::yield(); }
-        }
+        do spawn { block_forever(); } // linked
     }
     for 16.times { task::yield(); }
     fail!();
@@ -801,9 +789,7 @@ fn test_spawn_failure_propagate_secondborn() {
 fn test_spawn_failure_propagate_nephew_or_niece() {
     // Our sibling exits; does our failure propagate to sibling's child?
     do spawn { // linked
-        do spawn_supervised {
-            loop { task::yield(); }
-        }
+        do spawn_supervised { block_forever(); }
     }
     for 16.times { task::yield(); }
     fail!();
@@ -813,9 +799,7 @@ fn test_spawn_failure_propagate_nephew_or_niece() {
 fn test_spawn_linked_sup_propagate_sibling() {
     // Middle sibling exits - does eldest's failure propagate to youngest?
     do spawn { // linked
-        do spawn { // linked
-            loop { task::yield(); }
-        }
+        do spawn { block_forever(); } // linked
     }
     for 16.times { task::yield(); }
     fail!();
