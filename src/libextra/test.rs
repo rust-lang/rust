@@ -64,7 +64,9 @@ impl ToStr for TestName {
 pub enum TestFn {
     StaticTestFn(extern fn()),
     StaticBenchFn(extern fn(&mut BenchHarness)),
+    StaticMetricFn(~fn(&mut MetricMap)),
     DynTestFn(~fn()),
+    DynMetricFn(~fn(&mut MetricMap)),
     DynBenchFn(~fn(&mut BenchHarness))
 }
 
@@ -95,6 +97,7 @@ pub struct Metric {
     noise: f64
 }
 
+#[deriving(Eq)]
 pub struct MetricMap(TreeMap<~str,Metric>);
 
 /// Analysis of a single change in metric
@@ -218,7 +221,13 @@ pub struct BenchSamples {
 }
 
 #[deriving(Eq)]
-pub enum TestResult { TrOk, TrFailed, TrIgnored, TrBench(BenchSamples) }
+pub enum TestResult {
+    TrOk,
+    TrFailed,
+    TrIgnored,
+    TrMetrics(MetricMap),
+    TrBench(BenchSamples)
+}
 
 struct ConsoleTestState {
     out: @io::Writer,
@@ -229,7 +238,7 @@ struct ConsoleTestState {
     passed: uint,
     failed: uint,
     ignored: uint,
-    benchmarked: uint,
+    measured: uint,
     metrics: MetricMap,
     failures: ~[TestDesc]
 }
@@ -261,7 +270,7 @@ impl ConsoleTestState {
             passed: 0u,
             failed: 0u,
             ignored: 0u,
-            benchmarked: 0u,
+            measured: 0u,
             metrics: MetricMap::new(),
             failures: ~[]
         }
@@ -279,10 +288,13 @@ impl ConsoleTestState {
         self.write_pretty("ignored", term::color::YELLOW);
     }
 
+    pub fn write_metric(&self) {
+        self.write_pretty("metric", term::color::CYAN);
+    }
+
     pub fn write_bench(&self) {
         self.write_pretty("bench", term::color::CYAN);
     }
-
 
     pub fn write_added(&self) {
         self.write_pretty("added", term::color::GREEN);
@@ -332,6 +344,10 @@ impl ConsoleTestState {
             TrOk => self.write_ok(),
             TrFailed => self.write_failed(),
             TrIgnored => self.write_ignored(),
+            TrMetrics(ref mm) => {
+                self.write_metric();
+                self.out.write_str(": " + fmt_metrics(mm));
+            }
             TrBench(ref bs) => {
                 self.write_bench();
                 self.out.write_str(": " + fmt_bench_samples(bs))
@@ -349,6 +365,7 @@ impl ConsoleTestState {
                                         TrOk => ~"ok",
                                         TrFailed => ~"failed",
                                         TrIgnored => ~"ignored",
+                                        TrMetrics(ref mm) => fmt_metrics(mm),
                                         TrBench(ref bs) => fmt_bench_samples(bs)
                                     }, test.name.to_str()));
             }
@@ -416,7 +433,7 @@ impl ConsoleTestState {
     pub fn write_run_finish(&self,
                             ratchet_metrics: &Option<Path>,
                             ratchet_pct: Option<f64>) -> bool {
-        assert!(self.passed + self.failed + self.ignored + self.benchmarked == self.total);
+        assert!(self.passed + self.failed + self.ignored + self.measured == self.total);
 
         let ratchet_success = match *ratchet_metrics {
             None => true,
@@ -448,10 +465,21 @@ impl ConsoleTestState {
         } else {
             self.write_failed();
         }
-        self.out.write_str(fmt!(". %u passed; %u failed; %u ignored, %u benchmarked\n\n",
-                                self.passed, self.failed, self.ignored, self.benchmarked));
+        self.out.write_str(fmt!(". %u passed; %u failed; %u ignored; %u measured\n\n",
+                                self.passed, self.failed, self.ignored, self.measured));
         return success;
     }
+}
+
+pub fn fmt_metrics(mm: &MetricMap) -> ~str {
+    use std::iterator::IteratorUtil;
+    let v : ~[~str] = mm.iter()
+        .transform(|(k,v)| fmt!("%s: %f (+/- %f)",
+                                *k,
+                                v.value as float,
+                                v.noise as float))
+        .collect();
+    v.connect(", ")
 }
 
 pub fn fmt_bench_samples(bs: &BenchSamples) -> ~str {
@@ -481,11 +509,19 @@ pub fn run_tests_console(opts: &TestOpts,
                 match result {
                     TrOk => st.passed += 1,
                     TrIgnored => st.ignored += 1,
+                    TrMetrics(mm) => {
+                        let tname = test.name.to_str();
+                        for mm.iter().advance() |(k,v)| {
+                            st.metrics.insert_metric(tname + "." + *k,
+                                                     v.value, v.noise);
+                        }
+                        st.measured += 1
+                    }
                     TrBench(bs) => {
                         st.metrics.insert_metric(test.name.to_str(),
                                                  bs.ns_iter_summ.median,
                                                  bs.ns_iter_summ.max - bs.ns_iter_summ.min);
-                        st.benchmarked += 1
+                        st.measured += 1
                     }
                     TrFailed => {
                         st.failed += 1;
@@ -533,7 +569,7 @@ fn should_sort_failures_before_printing_them() {
             passed: 0u,
             failed: 0u,
             ignored: 0u,
-            benchmarked: 0u,
+            measured: 0u,
             metrics: MetricMap::new(),
             failures: ~[test_b, test_a]
         };
@@ -565,11 +601,11 @@ fn run_tests(opts: &TestOpts,
 
     callback(TeFiltered(filtered_descs));
 
-    let (filtered_tests, filtered_benchs) =
+    let (filtered_tests, filtered_benchs_and_metrics) =
         do filtered_tests.partition |e| {
         match e.testfn {
             StaticTestFn(_) | DynTestFn(_) => true,
-            StaticBenchFn(_) | DynBenchFn(_) => false
+            _ => false
         }
     };
 
@@ -607,7 +643,8 @@ fn run_tests(opts: &TestOpts,
     }
 
     // All benchmarks run at the end, in serial.
-    for filtered_benchs.consume_iter().advance |b| {
+    // (this includes metric fns)
+    for filtered_benchs_and_metrics.consume_iter().advance |b| {
         callback(TeWait(copy b.desc));
         run_test(!opts.run_benchmarks, b, ch.clone());
         let (test, result) = p.recv();
@@ -730,6 +767,18 @@ pub fn run_test(force_ignore: bool,
             monitor_ch.send((desc, TrBench(bs)));
             return;
         }
+        DynMetricFn(f) => {
+            let mut mm = MetricMap::new();
+            f(&mut mm);
+            monitor_ch.send((desc, TrMetrics(mm)));
+            return;
+        }
+        StaticMetricFn(f) => {
+            let mut mm = MetricMap::new();
+            f(&mut mm);
+            monitor_ch.send((desc, TrMetrics(mm)));
+            return;
+        }
         DynTestFn(f) => run_test_inner(desc, monitor_ch, f),
         StaticTestFn(f) => run_test_inner(desc, monitor_ch, || f())
     }
@@ -757,12 +806,12 @@ impl ToJson for Metric {
 
 impl MetricMap {
 
-    fn new() -> MetricMap {
+    pub fn new() -> MetricMap {
         MetricMap(TreeMap::new())
     }
 
     /// Load MetricDiff from a file.
-    fn load(p: &Path) -> MetricMap {
+    pub fn load(p: &Path) -> MetricMap {
         assert!(os::path_exists(p));
         let f = io::file_reader(p).get();
         let mut decoder = json::Decoder(json::from_reader(f).get());
@@ -793,7 +842,7 @@ impl MetricMap {
                         None => f64::max(vold.noise.abs(), v.noise.abs()),
                         Some(pct) => vold.value * pct / 100.0
                     };
-                    if delta.abs() < noise {
+                    if delta.abs() <= noise {
                         LikelyNoise
                     } else {
                         let pct = delta.abs() / vold.value * 100.0;
@@ -1245,10 +1294,14 @@ mod tests {
         assert_eq!(*(diff1.find(&~"in-both-noise").get()), LikelyNoise);
         assert_eq!(*(diff1.find(&~"in-first-noise").get()), MetricRemoved);
         assert_eq!(*(diff1.find(&~"in-second-noise").get()), MetricAdded);
-        assert_eq!(*(diff1.find(&~"in-both-want-downwards-but-regressed").get()), Regression(100.0));
-        assert_eq!(*(diff1.find(&~"in-both-want-downwards-and-improved").get()), Improvement(50.0));
-        assert_eq!(*(diff1.find(&~"in-both-want-upwards-but-regressed").get()), Regression(50.0));
-        assert_eq!(*(diff1.find(&~"in-both-want-upwards-and-improved").get()), Improvement(100.0));
+        assert_eq!(*(diff1.find(&~"in-both-want-downwards-but-regressed").get()),
+                   Regression(100.0));
+        assert_eq!(*(diff1.find(&~"in-both-want-downwards-and-improved").get()),
+                   Improvement(50.0));
+        assert_eq!(*(diff1.find(&~"in-both-want-upwards-but-regressed").get()),
+                   Regression(50.0));
+        assert_eq!(*(diff1.find(&~"in-both-want-upwards-and-improved").get()),
+                   Improvement(100.0));
         assert_eq!(diff1.len(), 7);
 
         let diff2 = m2.compare_to_old(&m1, Some(200.0));
