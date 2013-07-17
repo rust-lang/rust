@@ -209,7 +209,7 @@ impl StreamWatcher {
             let write_request: WriteRequest = NativeHandle::from_native_handle(req);
             let mut stream_watcher = write_request.stream();
             write_request.delete();
-            let cb = stream_watcher.get_watcher_data().write_cb.swap_unwrap();
+            let cb = stream_watcher.get_watcher_data().write_cb.take_unwrap();
             let status = status_to_maybe_uv_error(stream_watcher.native_handle(), status);
             cb(stream_watcher, status);
         }
@@ -233,7 +233,7 @@ impl StreamWatcher {
 
         extern fn close_cb(handle: *uvll::uv_stream_t) {
             let mut stream_watcher: StreamWatcher = NativeHandle::from_native_handle(handle);
-            stream_watcher.get_watcher_data().close_cb.swap_unwrap()();
+            stream_watcher.get_watcher_data().close_cb.take_unwrap()();
             stream_watcher.drop_watcher_data();
             unsafe { free_handle(handle as *c_void) }
         }
@@ -301,7 +301,7 @@ impl TcpWatcher {
                 let connect_request: ConnectRequest = NativeHandle::from_native_handle(req);
                 let mut stream_watcher = connect_request.stream();
                 connect_request.delete();
-                let cb = stream_watcher.get_watcher_data().connect_cb.swap_unwrap();
+                let cb = stream_watcher.get_watcher_data().connect_cb.take_unwrap();
                 let status = status_to_maybe_uv_error(stream_watcher.native_handle(), status);
                 cb(stream_watcher, status);
             }
@@ -438,7 +438,7 @@ impl UdpWatcher {
             let send_request: UdpSendRequest = NativeHandle::from_native_handle(req);
             let mut udp_watcher = send_request.handle();
             send_request.delete();
-            let cb = udp_watcher.get_watcher_data().udp_send_cb.swap_unwrap();
+            let cb = udp_watcher.get_watcher_data().udp_send_cb.take_unwrap();
             let status = status_to_maybe_uv_error(udp_watcher.native_handle(), status);
             cb(udp_watcher, status);
         }
@@ -456,7 +456,7 @@ impl UdpWatcher {
 
         extern fn close_cb(handle: *uvll::uv_udp_t) {
             let mut udp_watcher: UdpWatcher = NativeHandle::from_native_handle(handle);
-            udp_watcher.get_watcher_data().close_cb.swap_unwrap()();
+            udp_watcher.get_watcher_data().close_cb.take_unwrap()();
             udp_watcher.drop_watcher_data();
             unsafe { free_handle(handle as *c_void) }
         }

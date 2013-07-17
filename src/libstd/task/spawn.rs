@@ -302,7 +302,7 @@ fn each_ancestor(list:        &mut AncestorList,
         fn with_parent_tg<U>(parent_group: &mut Option<TaskGroupArc>,
                              blk: &fn(TaskGroupInner) -> U) -> U {
             // If this trips, more likely the problem is 'blk' failed inside.
-            let tmp_arc = parent_group.swap_unwrap();
+            let tmp_arc = parent_group.take_unwrap();
             let result = do access_group(&tmp_arc) |tg_opt| { blk(tg_opt) };
             *parent_group = Some(tmp_arc);
             result
@@ -609,7 +609,7 @@ fn spawn_raw_newsched(mut opts: TaskOpts, f: ~fn()) {
     };
 
     if opts.notify_chan.is_some() {
-        let notify_chan = opts.notify_chan.swap_unwrap();
+        let notify_chan = opts.notify_chan.take_unwrap();
         let notify_chan = Cell::new(notify_chan);
         let on_exit: ~fn(bool) = |success| {
             notify_chan.take().send(
@@ -647,7 +647,7 @@ fn spawn_raw_oldsched(mut opts: TaskOpts, f: ~fn()) {
             let notify_chan = if opts.notify_chan.is_none() {
                 None
             } else {
-                Some(opts.notify_chan.swap_unwrap())
+                Some(opts.notify_chan.take_unwrap())
             };
 
             let child_wrapper = make_child_wrapper(new_task, child_tg,
