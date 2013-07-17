@@ -65,11 +65,11 @@ use clone::Clone;
 use container::Container;
 use iter::Times;
 use iterator::IteratorUtil;
-use option::Some;
+use option::{Some, None};
 use ptr::RawPtr;
 use rt::sched::{Scheduler, Shutdown};
 use rt::sleeper_list::SleeperList;
-use rt::task::Task;
+use rt::task::{Task, Sched};
 use rt::thread::Thread;
 use rt::work_queue::WorkQueue;
 use rt::uv::uvio::UvEventLoop;
@@ -187,6 +187,19 @@ pub fn start(argc: int, argv: **u8, crate_map: *u8, main: ~fn()) -> int {
     return exit_code;
 }
 
+/// Like `start` but creates an additional scheduler on the current thread,
+/// which in most cases will be the 'main' thread, and pins the main task to it.
+///
+/// This is appropriate for running code that must execute on the main thread,
+/// such as the platform event loop and GUI.
+pub fn start_on_main_thread(argc: int, argv: **u8, crate_map: *u8, main: ~fn()) -> int {
+    init(argc, argv, crate_map);
+    let exit_code = run_on_main_thread(main);
+    cleanup();
+
+    return exit_code;
+}
+
 /// One-time runtime initialization.
 ///
 /// Initializes global state, including frobbing
@@ -217,10 +230,17 @@ pub fn cleanup() {
 /// using a task scheduler with the same number of threads as cores.
 /// Returns a process exit code.
 pub fn run(main: ~fn()) -> int {
+    run_(main, false)
+}
 
+pub fn run_on_main_thread(main: ~fn()) -> int {
+    run_(main, true)
+}
+
+fn run_(main: ~fn(), use_main_sched: bool) -> int {
     static DEFAULT_ERROR_CODE: int = 101;
 
-    let nthreads = util::default_sched_threads();
+    let nscheds = util::default_sched_threads();
 
     // The shared list of sleeping schedulers. Schedulers wake each other
     // occassionally to do new work.
@@ -234,7 +254,7 @@ pub fn run(main: ~fn()) -> int {
     // sent the Shutdown message to terminate the schedulers.
     let mut handles = ~[];
 
-    for nthreads.times {
+    for nscheds.times {
         // Every scheduler is driven by an I/O event loop.
         let loop_ = ~UvEventLoop::new();
         let mut sched = ~Scheduler::new(loop_, work_queue.clone(), sleepers.clone());
@@ -243,6 +263,21 @@ pub fn run(main: ~fn()) -> int {
         scheds.push(sched);
         handles.push(handle);
     }
+
+    // If we need a main-thread task then create a main thread scheduler
+    // that will reject any task that isn't pinned to it
+    let mut main_sched = if use_main_sched {
+        let main_loop = ~UvEventLoop::new();
+        let mut main_sched = ~Scheduler::new_special(main_loop,
+                                                     work_queue.clone(),
+                                                     sleepers.clone(),
+                                                     false);
+        let main_handle = main_sched.make_handle();
+        handles.push(main_handle);
+        Some(main_sched)
+    } else {
+        None
+    };
 
     // Create a shared cell for transmitting the process exit
     // code from the main task to this function.
@@ -273,12 +308,22 @@ pub fn run(main: ~fn()) -> int {
         }
     };
 
-    // Create and enqueue the main task.
-    let main_cell = Cell::new(main);
-    let mut main_task = ~Task::new_root(&mut scheds[0].stack_pool,
-                                    main_cell.take());
-    main_task.death.on_exit = Some(on_exit);
-    scheds[0].enqueue_task(main_task);
+    // Build the main task and queue it up
+    match main_sched {
+        None => {
+            // The default case where we don't need a scheduler on the main thread.
+            // Just put an unpinned task onto one of the default schedulers.
+            let mut main_task = ~Task::new_root(&mut scheds[0].stack_pool, main);
+            main_task.death.on_exit = Some(on_exit);
+            scheds[0].enqueue_task(main_task);
+        }
+        Some(ref mut main_sched) => {
+            let home = Sched(main_sched.make_handle());
+            let mut main_task = ~Task::new_root_homed(&mut scheds[0].stack_pool, home, main);
+            main_task.death.on_exit = Some(on_exit);
+            main_sched.enqueue_task(main_task);
+        }
+    };
 
     // Run each scheduler in a thread.
     let mut threads = ~[];
@@ -291,6 +336,12 @@ pub fn run(main: ~fn()) -> int {
         };
 
         threads.push(thread);
+    }
+
+    // Run the main-thread scheduler
+    match main_sched {
+        Some(sched) => { let _ = sched.run(); },
+        None => ()
     }
 
     // Wait for schedulers
