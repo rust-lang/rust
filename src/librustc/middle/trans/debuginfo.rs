@@ -289,8 +289,15 @@ pub fn create_function_metadata(fcx: fn_ctxt) -> DISubprogram {
                                            "create_function_metadata: item bound to non-function")
             }
         }
-        ast_map::node_method(@ast::method { decl: ast::fn_decl { output: ref ty, _ },
-                             id: id, ident: ident, _}, _, _) => {
+        ast_map::node_method(
+            @ast::method {
+                decl: ast::fn_decl { output: ref ty, _ },
+                id: id,
+                ident: ident,
+                _
+            },
+            _,
+            _) => {
             (ident, ty, id)
         }
         ast_map::node_expr(ref expr) => {
@@ -309,10 +316,10 @@ pub fn create_function_metadata(fcx: fn_ctxt) -> DISubprogram {
                     decl: ast::fn_decl { output: ref ty, _ },
                     id: id,
                     ident: ident,
-                    _}
-            ),
-            _def_id,
-            _path) => {
+                    _
+                }),
+            _,
+            _) => {
             (ident, ty, id)
         }
         _ => fcx.ccx.sess.bug("create_function_metadata: unexpected sort of node")
