@@ -1742,7 +1742,6 @@ mod tests {
     use rand;
     use run;
     use str::StrSlice;
-    use vec;
     use vec::CopyableVector;
     use libc::consts::os::posix88::{S_IRUSR, S_IWUSR, S_IXUSR};
 

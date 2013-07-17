@@ -546,7 +546,6 @@ pub fn main() {
 #[cfg(test)]
 mod tests {
     use std::io;
-    use std::iterator::IteratorUtil;
     use program::Program;
     use super::*;
 
