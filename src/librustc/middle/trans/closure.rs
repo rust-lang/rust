@@ -326,6 +326,11 @@ pub fn load_environment(fcx: fn_ctxt,
                         sigil: ast::Sigil) {
     let _icx = push_ctxt("closure::load_environment");
 
+    // Don't bother to create the block if there's nothing to load
+    if cap_vars.len() == 0 && !load_ret_handle {
+        return;
+    }
+
     let llloadenv = match fcx.llloadenv {
         Some(ll) => ll,
         None => {
