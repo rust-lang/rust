@@ -63,6 +63,38 @@ pub fn trans_if(bcx: block,
     let _indenter = indenter();
 
     let _icx = push_ctxt("trans_if");
+
+    match cond.node {
+        // `if true` and `if false` can be trans'd more efficiently,
+        // by dropping branches that are known to be impossible.
+        ast::expr_lit(@ref l) => match l.node {
+            ast::lit_bool(true) => {
+                // if true { .. } [else { .. }]
+                let then_bcx_in = scope_block(bcx, thn.info(), "if_true_then");
+                let then_bcx_out = trans_block(then_bcx_in, thn, dest);
+                let then_bcx_out = trans_block_cleanups(then_bcx_out,
+                                                        block_cleanups(then_bcx_in));
+                Br(bcx, then_bcx_in.llbb);
+                return then_bcx_out;
+            }
+            ast::lit_bool(false) => {
+                match els {
+                    // if false { .. } else { .. }
+                    Some(elexpr) => {
+                        let (else_bcx_in, else_bcx_out) =
+                            trans_if_else(bcx, elexpr, dest, "if_false_else");
+                        Br(bcx, else_bcx_in.llbb);
+                        return else_bcx_out;
+                    }
+                    // if false { .. }
+                    None => return bcx,
+                }
+            }
+            _ => {}
+        },
+        _ => {}
+    }
+
     let Result {bcx, val: cond_val} =
         expr::trans_to_datum(bcx, cond).to_result();
 
@@ -80,22 +112,8 @@ pub fn trans_if(bcx: block,
     // 'else' context
     let (else_bcx_in, next_bcx) = match els {
       Some(elexpr) => {
-        let else_bcx_in = scope_block(bcx, els.info(), "else");
-        let else_bcx_out = match elexpr.node {
-          ast::expr_if(_, _, _) => {
-            let elseif_blk = ast_util::block_from_expr(elexpr);
-            trans_block(else_bcx_in, &elseif_blk, dest)
-          }
-          ast::expr_block(ref blk) => {
-            trans_block(else_bcx_in, blk, dest)
-          }
-          // would be nice to have a constraint on ifs
-          _ => bcx.tcx().sess.bug("strange alternative in if")
-        };
-        let else_bcx_out = trans_block_cleanups(else_bcx_out,
-                                                block_cleanups(else_bcx_in));
-
-        (else_bcx_in, join_blocks(bcx, [then_bcx_out, else_bcx_out]))
+          let (else_bcx_in, else_bcx_out) = trans_if_else(bcx, elexpr, dest, "else");
+          (else_bcx_in, join_blocks(bcx, [then_bcx_out, else_bcx_out]))
       }
       _ => {
           let next_bcx = sub_block(bcx, "next");
@@ -109,7 +127,27 @@ pub fn trans_if(bcx: block,
            then_bcx_in.to_str(), else_bcx_in.to_str());
 
     CondBr(bcx, cond_val, then_bcx_in.llbb, else_bcx_in.llbb);
-    next_bcx
+    return next_bcx;
+
+    // trans `else [ if { .. } ... | { .. } ]`
+    fn trans_if_else(bcx: block, elexpr: @ast::expr,
+                     dest: expr::Dest, scope_name: &str) -> (block, block) {
+        let else_bcx_in = scope_block(bcx, elexpr.info(), scope_name);
+        let else_bcx_out = match elexpr.node {
+            ast::expr_if(_, _, _) => {
+                let elseif_blk = ast_util::block_from_expr(elexpr);
+                trans_block(else_bcx_in, &elseif_blk, dest)
+            }
+            ast::expr_block(ref blk) => {
+                trans_block(else_bcx_in, blk, dest)
+            }
+            // would be nice to have a constraint on ifs
+            _ => bcx.tcx().sess.bug("strange alternative in if")
+        };
+        let else_bcx_out = trans_block_cleanups(else_bcx_out,
+                                                block_cleanups(else_bcx_in));
+        (else_bcx_in, else_bcx_out)
+    }
 }
 
 pub fn join_blocks(parent_bcx: block, in_cxs: &[block]) -> block {
