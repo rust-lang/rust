@@ -203,14 +203,14 @@ impl<T> Option<T> {
     /// Apply a function to the contained value or do nothing
     pub fn mutate(&mut self, f: &fn(T) -> T) {
         if self.is_some() {
-            *self = Some(f(self.swap_unwrap()));
+            *self = Some(f(self.take_unwrap()));
         }
     }
 
     /// Apply a function to the contained value or set it to a default
     pub fn mutate_default(&mut self, def: T, f: &fn(T) -> T) {
         if self.is_some() {
-            *self = Some(f(self.swap_unwrap()));
+            *self = Some(f(self.take_unwrap()));
         } else {
             *self = Some(def);
         }
@@ -293,8 +293,8 @@ impl<T> Option<T> {
      * Fails if the value equals `None`.
      */
     #[inline]
-    pub fn swap_unwrap(&mut self) -> T {
-        if self.is_none() { fail!("option::swap_unwrap none") }
+    pub fn take_unwrap(&mut self) -> T {
+        if self.is_none() { fail!("option::take_unwrap none") }
         util::replace(self, None).unwrap()
     }
 
@@ -460,7 +460,7 @@ fn test_option_dance() {
     let mut y = Some(5);
     let mut y2 = 0;
     for x.iter().advance |_x| {
-        y2 = y.swap_unwrap();
+        y2 = y.take_unwrap();
     }
     assert_eq!(y2, 5);
     assert!(y.is_none());
@@ -468,8 +468,8 @@ fn test_option_dance() {
 #[test] #[should_fail] #[ignore(cfg(windows))]
 fn test_option_too_much_dance() {
     let mut y = Some(util::NonCopyable);
-    let _y2 = y.swap_unwrap();
-    let _y3 = y.swap_unwrap();
+    let _y2 = y.take_unwrap();
+    let _y3 = y.take_unwrap();
 }
 
 #[test]

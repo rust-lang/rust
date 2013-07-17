@@ -56,8 +56,8 @@ fn thread_ring(i: uint, count: uint, num_chan: pipe, num_port: pipe) {
     // Send/Receive lots of messages.
     for uint::range(0u, count) |j| {
         //error!("task %?, iter %?", i, j);
-        let mut num_chan2 = num_chan.swap_unwrap();
-        let mut num_port2 = num_port.swap_unwrap();
+        let mut num_chan2 = num_chan.take_unwrap();
+        let mut num_port2 = num_port.take_unwrap();
         send(&num_chan2, i * j);
         num_chan = Some(num_chan2);
         let _n = recv(&num_port2);

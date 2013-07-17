@@ -127,7 +127,7 @@ impl Task {
 
         // Wait for children. Possibly report the exit status.
         let local_success = !self.unwinder.unwinding;
-        let join_latch = self.join_latch.swap_unwrap();
+        let join_latch = self.join_latch.take_unwrap();
         match self.on_exit {
             Some(ref on_exit) => {
                 let success = join_latch.wait(local_success);

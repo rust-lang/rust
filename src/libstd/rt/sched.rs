@@ -328,7 +328,7 @@ impl Scheduler {
     /// Given an input Coroutine sends it back to its home scheduler.
     fn send_task_home(task: ~Task) {
         let mut task = task;
-        let mut home = task.home.swap_unwrap();
+        let mut home = task.home.take_unwrap();
         match home {
             Sched(ref mut home_handle) => {
                 home_handle.send(PinnedTask(task));
@@ -418,7 +418,7 @@ impl Scheduler {
 
         do self.deschedule_running_task_and_then |sched, dead_task| {
             let mut dead_task = dead_task;
-            let coroutine = dead_task.coroutine.swap_unwrap();
+            let coroutine = dead_task.coroutine.take_unwrap();
             coroutine.recycle(&mut sched.stack_pool);
         }
 
@@ -506,7 +506,7 @@ impl Scheduler {
         this.metrics.context_switches_task_to_sched += 1;
 
         unsafe {
-            let blocked_task = this.current_task.swap_unwrap();
+            let blocked_task = this.current_task.take_unwrap();
             let f_fake_region = transmute::<&fn(&mut Scheduler, ~Task),
                                             &fn(&mut Scheduler, ~Task)>(f);
             let f_opaque = ClosureConverter::from_fn(f_fake_region);
@@ -538,7 +538,7 @@ impl Scheduler {
         rtdebug!("switching tasks");
         this.metrics.context_switches_task_to_task += 1;
 
-        let old_running_task = this.current_task.swap_unwrap();
+        let old_running_task = this.current_task.take_unwrap();
         let f_fake_region = unsafe {
             transmute::<&fn(&mut Scheduler, ~Task),
                         &fn(&mut Scheduler, ~Task)>(f)
@@ -576,7 +576,7 @@ impl Scheduler {
 
         assert!(self.cleanup_job.is_some());
 
-        let cleanup_job = self.cleanup_job.swap_unwrap();
+        let cleanup_job = self.cleanup_job.take_unwrap();
         match cleanup_job {
             DoNothing => { }
             GiveTask(task, f) => (f.to_fn())(self, task)
