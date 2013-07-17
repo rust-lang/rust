@@ -410,7 +410,7 @@ fn validate(edges: ~[(node_id, node_id)],
 
 fn main() {
     let args = os::args();
-    let args = if os::getenv(~"RUST_BENCH").is_some() {
+    let args = if os::getenv("RUST_BENCH").is_some() {
         ~[~"", ~"15", ~"48"]
     } else if args.len() <= 1 {
         ~[~"", ~"10", ~"16"]
@@ -447,7 +447,7 @@ fn main() {
     let graph_arc = arc::ARC(graph.clone());
 
     do gen_search_keys(graph, num_keys).map() |root| {
-        io::stdout().write_line(~"");
+        io::stdout().write_line("");
         io::stdout().write_line(fmt!("Search key: %?", root));
 
         if do_sequential {
@@ -511,7 +511,7 @@ fn main() {
         }
     };
 
-    io::stdout().write_line(~"");
+    io::stdout().write_line("");
     io::stdout().write_line(
         fmt!("Total sequential: %? \t Total Parallel: %? \t Speedup: %?x",
              total_seq, total_par, total_seq / total_par));

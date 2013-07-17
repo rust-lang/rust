@@ -12,7 +12,6 @@
 
 // xfail-test OOM on linux-32 without opts
 
-use std::comm::*;
 use std::os;
 use std::task;
 use std::uint;
@@ -49,7 +48,7 @@ fn calc(children: uint, parent_wait_chan: &Chan<Chan<Chan<int>>>) {
 
 fn main() {
     let args = os::args();
-    let args = if os::getenv(~"RUST_BENCH").is_some() {
+    let args = if os::getenv("RUST_BENCH").is_some() {
         ~[~"", ~"30"]
     } else if args.len() <= 1u {
         ~[~"", ~"10"]
