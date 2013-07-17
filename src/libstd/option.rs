@@ -295,7 +295,15 @@ impl<T> Option<T> {
     #[inline]
     pub fn take_unwrap(&mut self) -> T {
         if self.is_none() { fail!("option::take_unwrap none") }
-        util::replace(self, None).unwrap()
+        self.take().unwrap()
+    }
+
+    /**
+     * Return the value, replacing the original value with `None`.
+     */
+    #[inline]
+    pub fn take(&mut self) -> Option<T> {
+        util::replace(self, None)
     }
 
     /**
@@ -377,7 +385,7 @@ pub struct OptionIterator<'self, A> {
 
 impl<'self, A> Iterator<&'self A> for OptionIterator<'self, A> {
     fn next(&mut self) -> Option<&'self A> {
-        util::replace(&mut self.opt, None)
+        self.opt.take()
     }
 
     fn size_hint(&self) -> (uint, Option<uint>) {
@@ -395,7 +403,7 @@ pub struct OptionMutIterator<'self, A> {
 
 impl<'self, A> Iterator<&'self mut A> for OptionMutIterator<'self, A> {
     fn next(&mut self) -> Option<&'self mut A> {
-        util::replace(&mut self.opt, None)
+        self.opt.take()
     }
 
     fn size_hint(&self) -> (uint, Option<uint>) {
@@ -470,6 +478,19 @@ fn test_option_too_much_dance() {
     let mut y = Some(util::NonCopyable);
     let _y2 = y.take_unwrap();
     let _y3 = y.take_unwrap();
+}
+
+#[test]
+fn test_option_take() {
+    let mut x = Some(());
+    let mut y = x.take();
+    let z = y.take();
+    assert!(x.is_none());
+    assert!(y.is_none());
+    assert_eq!(z, Some(()));
+
+    let w = x.take();
+    assert_eq!(w, None);
 }
 
 #[test]
