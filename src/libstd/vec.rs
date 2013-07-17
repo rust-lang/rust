@@ -1896,12 +1896,11 @@ pub mod raw {
     use cast::transmute;
     use clone::Clone;
     use managed;
-    use option::{None, Some};
+    use option::Some;
     use ptr;
     use sys;
     use unstable::intrinsics;
     use vec::{UnboxedVecRepr, with_capacity, ImmutableVector, MutableVector};
-    use util;
     #[cfg(not(stage0))]
     use unstable::intrinsics::contains_managed;
 
@@ -2022,9 +2021,8 @@ pub mod raw {
     pub unsafe fn init_elem<T>(v: &mut [T], i: uint, val: T) {
         let mut box = Some(val);
         do v.as_mut_buf |p, _len| {
-            let box2 = util::replace(&mut box, None);
             intrinsics::move_val_init(&mut(*ptr::mut_offset(p, i)),
-                                      box2.unwrap());
+                                      box.take_unwrap());
         }
     }
 
