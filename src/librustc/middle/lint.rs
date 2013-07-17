@@ -112,7 +112,7 @@ pub enum level {
     allow, warn, deny, forbid
 }
 
-#[deriving(Eq)]
+#[deriving(Clone, Eq)]
 pub struct LintSpec {
     lint: lint,
     desc: &'static str,
