@@ -330,36 +330,28 @@ impl<T:Send +
     pub fn new(p: @mut Prep, e: Either<T,PortOne<(Exec,T)>>) -> Work<T> {
         Work { prep: p, res: Some(e) }
     }
-}
 
-// FIXME (#3724): movable self. This should be in impl Work.
-fn unwrap<T:Send +
-            Encodable<json::Encoder> +
-            Decodable<json::Decoder>>( // FIXME(#5121)
-        w: Work<T>) -> T {
-    let mut ww = w;
-    let s = ww.res.take();
-
-    match s {
-        None => fail!(),
-        Some(Left(v)) => v,
-        Some(Right(port)) => {
-            let (exe, v) = recv_one(port);
-
-            let s = json_encode(&v);
-
-            let p = &*ww.prep;
-            do p.ctxt.db.write |db| {
-                db.cache(p.fn_name,
-                         &p.declared_inputs,
-                         &exe.discovered_inputs,
-                         &exe.discovered_outputs,
-                         s);
+    pub fn unwrap(self) -> T {
+        let Work { prep, res } = self;
+        match res {
+            None => fail!(),
+            Some(Left(v)) => v,
+            Some(Right(port)) => {
+                let (exe, v) = recv_one(port);
+                let s = json_encode(&v);
+                do prep.ctxt.db.write |db| {
+                    db.cache(prep.fn_name,
+                             &prep.declared_inputs,
+                             &exe.discovered_inputs,
+                             &exe.discovered_outputs,
+                             s);
+                }
+                v
             }
-            v
         }
     }
 }
+
 
 //#[test]
 fn test() {
@@ -385,6 +377,6 @@ fn test() {
             out.to_str()
         }
     };
-    let s = unwrap(w);
+    let s = w.unwrap();
     io::println(s);
 }
