@@ -3914,7 +3914,7 @@ pub fn enum_variants(cx: ctxt, id: ast::def_id) -> @~[@VariantInfo] {
                 };
 
                 match variant.node.disr_expr {
-                    Some(e) => match const_eval::eval_const_expr_partial(cx, e) {
+                    Some(e) => match const_eval::eval_const_expr_partial(&cx, e) {
                         Ok(const_eval::const_int(val)) => discriminant = val as int,
                         Ok(_) => {
                             cx.sess.span_err(e.span, "expected signed integer constant");
