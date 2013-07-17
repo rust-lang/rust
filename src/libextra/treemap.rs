@@ -34,6 +34,7 @@ use std::iterator::FromIterator;
 // These would be convenient since the methods work like `each`
 
 #[allow(missing_doc)]
+#[deriving(Clone)]
 pub struct TreeMap<K, V> {
     priv root: Option<~TreeNode<K, V>>,
     priv length: uint
@@ -506,6 +507,7 @@ pub struct TreeSetIterator<'self, T> {
 
 // Nodes keep track of their level in the tree, starting at 1 in the
 // leaves and with a red child sharing the level of the parent.
+#[deriving(Clone)]
 struct TreeNode<K, V> {
     key: K,
     value: V,
