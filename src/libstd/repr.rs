@@ -353,6 +353,15 @@ impl TyVisitor for ReprVisitor {
         }
     }
 
+    #[cfg(stage0)]
+    fn visit_evec_uniq(&self, mtbl: uint, inner: *TyDesc) -> bool {
+        do self.get::<&VecRepr> |b| {
+            self.writer.write_char('~');
+            self.write_unboxed_vec_repr(mtbl, &b.unboxed, inner);
+        }
+    }
+
+    #[cfg(not(stage0))]
     fn visit_evec_uniq(&self, mtbl: uint, inner: *TyDesc) -> bool {
         do self.get::<&UnboxedVecRepr> |b| {
             self.writer.write_char('~');
