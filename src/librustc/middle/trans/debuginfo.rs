@@ -27,11 +27,18 @@ where possible. This will hopefully ease the adaption of this module to future L
 
 The public API of the module is a set of functions that will insert the correct metadata into the
 LLVM IR when called with the right parameters. The module is thus driven from an outside client with
-functions like `debuginfo::create_local_var_metadata(bcx: block, local: @ast::local)`.
+functions like `debuginfo::local_var_metadata(bcx: block, local: &ast::local)`.
 
-Internally the module will try to reuse already created metadata by utilizing a cache. All private
-state used by the module is stored within a DebugContext struct, which in turn is contained in the
-CrateContext.
+Internally the module will try to reuse already created metadata by utilizing a cache. The way to
+get a shared metadata node when needed is thus to just call the corresponding function in this
+module:
+
+    let file_metadata = file_metadata(crate_context, path);
+
+The function will take care of probing the cache for an existing node for that exact file path.
+
+All private state used by the module is stored within a DebugContext struct, which in turn is
+contained in the CrateContext.
 
 
 This file consists of three conceptual sections:
@@ -149,7 +156,7 @@ pub fn create_local_var_metadata(bcx: block, local: @ast::local) -> DIVariable {
 
     let context = match bcx.parent {
         None => create_function_metadata(bcx.fcx),
-        Some(_) => block_metadata(bcx)
+        Some(_) => lexical_block_metadata(bcx)
     };
 
     let var_metadata = do as_c_str(name) |name| {
@@ -178,7 +185,7 @@ pub fn create_local_var_metadata(bcx: block, local: @ast::local) -> DIVariable {
         }
     };
 
-    set_debug_location(cx, block_metadata(bcx), loc.line, loc.col.to_uint());
+    set_debug_location(cx, lexical_block_metadata(bcx), loc.line, loc.col.to_uint());
     unsafe {
         let instr = llvm::LLVMDIBuilderInsertDeclareAtEnd(DIB(cx), llptr, var_metadata, bcx.llbb);
         llvm::LLVMSetInstDebugLocation(trans::build::B(bcx), instr);
@@ -236,7 +243,7 @@ pub fn create_argument_metadata(bcx: block, arg: &ast::arg, span: span) -> Optio
             };
 
             let llptr = fcx.llargs.get_copy(&arg.id);
-            set_debug_location(cx, block_metadata(bcx), loc.line, loc.col.to_uint());
+            set_debug_location(cx, lexical_block_metadata(bcx), loc.line, loc.col.to_uint());
             unsafe {
                 let instr = llvm::LLVMDIBuilderInsertDeclareAtEnd(
                         DIB(cx), llptr, var_metadata, bcx.llbb);
@@ -259,7 +266,7 @@ pub fn update_source_pos(bcx: block, span: span) {
     }
     debug!("update_source_pos: %s", bcx.sess().codemap.span_to_str(span));
     let loc = span_start(bcx.ccx(), span);
-    set_debug_location(bcx.ccx(), block_metadata(bcx), loc.line, loc.col.to_uint())
+    set_debug_location(bcx.ccx(), lexical_block_metadata(bcx), loc.line, loc.col.to_uint())
 }
 
 /// Creates debug information for the given function.
@@ -418,44 +425,50 @@ fn file_metadata(cx: &mut CrateContext, full_path: &str) -> DIFile {
     return file_metadata;
 }
 
-fn block_metadata(bcx: block) -> DILexicalBlock {
-    let mut bcx = bcx;
+/// Get or create the lexical block metadata node for the given LLVM basic block.
+fn lexical_block_metadata(bcx: block) -> DILexicalBlock {
     let cx = bcx.ccx();
+    let mut bcx = bcx;
 
+    // Search up the tree of basic blocks until we find one that knows the containing lexical block.
     while bcx.node_info.is_none() {
         match bcx.parent {
-          Some(b) => bcx = b,
-          None => fail!()
+            Some(b) => bcx = b,
+            None => cx.sess.bug("debuginfo: Could not find lexical block for LLVM basic block.")
         }
     }
+
     let span = bcx.node_info.get().span;
     let id = bcx.node_info.get().id;
 
+    // Check whether we already have a cache entry for this node id
     match dbg_cx(cx).created_blocks.find(&id) {
         Some(block) => return *block,
         None => ()
     }
 
-    debug!("block_metadata: %s", bcx.sess().codemap.span_to_str(span));
+    debug!("lexical_block_metadata: %s", bcx.sess().codemap.span_to_str(span));
 
     let parent = match bcx.parent {
         None => create_function_metadata(bcx.fcx),
-        Some(b) => block_metadata(b)
+        Some(b) => lexical_block_metadata(b)
     };
-    let cx = bcx.ccx();
+
     let loc = span_start(cx, span);
     let file_metadata = file_metadata(cx, loc.file.name);
 
-    let block_metadata = unsafe {
+    let lexical_block_metadata = unsafe {
         llvm::LLVMDIBuilderCreateLexicalBlock(
             DIB(cx),
-            parent, file_metadata,
-            loc.line as c_uint, loc.col.to_uint() as c_uint)
+            parent,
+            file_metadata,
+            loc.line as c_uint,
+            loc.col.to_uint() as c_uint)
     };
 
-    dbg_cx(cx).created_blocks.insert(id, block_metadata);
+    dbg_cx(cx).created_blocks.insert(id, lexical_block_metadata);
 
-    return block_metadata;
+    return lexical_block_metadata;
 }
 
 fn basic_type_metadata(cx: &mut CrateContext, t: ty::t) -> DIType {
