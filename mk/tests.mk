@@ -34,9 +34,12 @@ ifdef CHECK_XFAILS
   TESTARGS += --ignored
 endif
 
+CTEST_BENCH = --bench
+
 # Arguments to the cfail/rfail/rpass/bench tests
 ifdef CFG_VALGRIND
   CTEST_RUNTOOL = --runtool "$(CFG_VALGRIND)"
+  CTEST_BENCH =
 endif
 
 # Arguments to the perf tests
@@ -59,6 +62,21 @@ endif
 
 TEST_LOG_FILE=tmp/check-stage$(1)-T-$(2)-H-$(3)-$(4).log
 TEST_OK_FILE=tmp/check-stage$(1)-T-$(2)-H-$(3)-$(4).ok
+
+TEST_RATCHET_FILE=tmp/check-stage$(1)-T-$(2)-H-$(3)-$(4)-metrics.json
+TEST_RATCHET_NOISE_PERCENT=10.0
+
+# Whether to ratchet or merely save benchmarks
+ifdef CFG_RATCHET_BENCH
+CRATE_TEST_BENCH_ARGS=\
+  --test $(CTEST_BENCH) \
+  --ratchet-metrics $(call TEST_RATCHET_FILE,$(1),$(2),$(3),$(4)) \
+  --ratchet-noise-percent $(TEST_RATCHET_NOISE_PERCENT)
+else
+CRATE_TEST_BENCH_ARGS=\
+  --test $(CTEST_BENCH) \
+  --save-metrics $(call TEST_RATCHET_FILE,$(1),$(2),$(3),$(4))
+endif
 
 define DEF_TARGET_COMMANDS
 
@@ -359,11 +377,14 @@ $(foreach host,$(CFG_HOST_TRIPLES), \
 define DEF_TEST_CRATE_RULES
 check-stage$(1)-T-$(2)-H-$(3)-$(4)-exec: $$(call TEST_OK_FILE,$(1),$(2),$(3),$(4))
 
+check-stage$(1)-T-$(2)-H-$(3)-$(4)-exec: $$(call TEST_OK_FILE,$(1),$(2),$(3),$(4))
+
 $$(call TEST_OK_FILE,$(1),$(2),$(3),$(4)): \
 		$(3)/stage$(1)/test/$(4)test-$(2)$$(X_$(2))
 	@$$(call E, run: $$<)
 	$$(Q)$$(call CFG_RUN_TEST_$(2),$$<,$(2),$(3)) $$(TESTARGS)	\
 	--logfile $$(call TEST_LOG_FILE,$(1),$(2),$(3),$(4)) \
+	$$(call CRATE_TEST_BENCH_ARGS,$(1),$(2),$(3),$(4)) \
 	&& touch $$@
 endef
 
@@ -552,6 +573,7 @@ CTEST_ARGS$(1)-T-$(2)-H-$(3)-$(4) := \
         $$(CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3))	\
         --src-base $$(S)src/test/$$(CTEST_SRC_BASE_$(4))/ \
         --build-base $(3)/test/$$(CTEST_BUILD_BASE_$(4))/ \
+        --ratchet-metrics $(call TEST_RATCHET_FILE,$(1),$(2),$(3),$(4)) \
         --mode $$(CTEST_MODE_$(4)) \
 	$$(CTEST_RUNTOOL_$(4))
 
