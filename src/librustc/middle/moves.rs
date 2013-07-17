@@ -285,13 +285,13 @@ impl VisitContext {
          * meaning either copied or moved depending on its type.
          */
 
-        debug!("consume_block(blk.id=%?)", blk.node.id);
+        debug!("consume_block(blk.id=%?)", blk.id);
 
-        for blk.node.stmts.iter().advance |stmt| {
+        for blk.stmts.iter().advance |stmt| {
             (visitor.visit_stmt)(*stmt, (*self, visitor));
         }
 
-        for blk.node.expr.iter().advance |tail_expr| {
+        for blk.expr.iter().advance |tail_expr| {
             self.consume_expr(*tail_expr, visitor);
         }
     }

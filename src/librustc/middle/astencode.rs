@@ -289,7 +289,7 @@ fn encode_ast(ebml_w: &mut writer::Encoder, item: ast::inlined_item) {
 // nested items, as otherwise it would get confused when translating
 // inlined items.
 fn simplify_ast(ii: &ast::inlined_item) -> ast::inlined_item {
-    fn drop_nested_items(blk: &ast::blk_, fld: @fold::ast_fold) -> ast::blk_ {
+    fn drop_nested_items(blk: &ast::blk, fld: @fold::ast_fold) -> ast::blk {
         let stmts_sans_items = do blk.stmts.iter().filter_map |stmt| {
             match stmt.node {
               ast::stmt_expr(_, _) | ast::stmt_semi(_, _) |
@@ -300,19 +300,20 @@ fn simplify_ast(ii: &ast::inlined_item) -> ast::inlined_item {
               ast::stmt_mac(*) => fail!("unexpanded macro in astencode")
             }
         }.collect();
-        let blk_sans_items = ast::blk_ {
+        let blk_sans_items = ast::blk {
             view_items: ~[], // I don't know if we need the view_items here,
                              // but it doesn't break tests!
             stmts: stmts_sans_items,
             expr: blk.expr,
             id: blk.id,
-            rules: blk.rules
+            rules: blk.rules,
+            span: blk.span,
         };
         fold::noop_fold_block(&blk_sans_items, fld)
     }
 
     let fld = fold::make_fold(@fold::AstFoldFns {
-        fold_block: fold::wrap(drop_nested_items),
+        fold_block: drop_nested_items,
         .. *fold::default_ast_fold()
     });
 

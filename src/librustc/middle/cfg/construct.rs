@@ -53,13 +53,13 @@ pub fn construct(tcx: ty::ctxt,
 impl CFGBuilder {
     fn block(&mut self, blk: &ast::blk, pred: CFGIndex) -> CFGIndex {
         let mut stmts_exit = pred;
-        for blk.node.stmts.iter().advance |&stmt| {
+        for blk.stmts.iter().advance |&stmt| {
             stmts_exit = self.stmt(stmt, stmts_exit);
         }
 
-        let expr_exit = self.opt_expr(blk.node.expr, stmts_exit);
+        let expr_exit = self.opt_expr(blk.expr, stmts_exit);
 
-        self.add_node(blk.node.id, [expr_exit])
+        self.add_node(blk.id, [expr_exit])
     }
 
     fn stmt(&mut self, stmt: @ast::stmt, pred: CFGIndex) -> CFGIndex {

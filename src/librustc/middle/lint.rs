@@ -921,8 +921,8 @@ fn lint_unused_unsafe() -> visit::vt<@mut Context> {
     visit::mk_vt(@visit::Visitor {
         visit_expr: |e, (cx, vt): (@mut Context, visit::vt<@mut Context>)| {
             match e.node {
-                ast::expr_block(ref blk) if blk.node.rules == ast::unsafe_blk => {
-                    if !cx.tcx.used_unsafe.contains(&blk.node.id) {
+                ast::expr_block(ref blk) if blk.rules == ast::unsafe_blk => {
+                    if !cx.tcx.used_unsafe.contains(&blk.id) {
                         cx.span_lint(unused_unsafe, blk.span,
                                      "unnecessary `unsafe` block");
                     }

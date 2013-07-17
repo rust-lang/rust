@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ast::{blk_, crate, expr_, expr_mac, mac_invoc_tt};
+use ast::{blk, crate, expr_, expr_mac, mac_invoc_tt};
 use ast::{item_mac, stmt_, stmt_mac, stmt_expr, stmt_semi};
 use ast::{illegal_ctxt};
 use ast;
@@ -394,13 +394,12 @@ pub fn new_name_finder() -> @Visitor<@mut ~[ast::ident]> {
 
 pub fn expand_block(extsbox: @mut SyntaxEnv,
                     _cx: @ExtCtxt,
-                    blk: &blk_,
-                    sp: span,
+                    blk: &blk,
                     fld: @ast_fold,
-                    orig: @fn(&blk_, span, @ast_fold) -> (blk_, span))
-                 -> (blk_, span) {
+                    orig: @fn(&blk, @ast_fold) -> blk)
+                 -> blk {
     // see note below about treatment of exts table
-    with_exts_frame!(extsbox,false,orig(blk,sp,fld))
+    with_exts_frame!(extsbox,false,orig(blk,fld))
 }
 
 
@@ -736,8 +735,8 @@ pub fn expand_crate(parse_sess: @mut parse::ParseSess,
             expand_item(extsbox, cx, item, recur, afp.fold_item),
         fold_stmt: |stmt,span,recur|
             expand_stmt(extsbox, cx, stmt, span, recur, afp.fold_stmt),
-        fold_block: |blk,span,recur|
-            expand_block(extsbox, cx, blk, span, recur, afp.fold_block),
+        fold_block: |blk,recur|
+            expand_block(extsbox, cx, blk, recur, afp.fold_block),
         new_span: |a| new_span(cx, a),
         .. *afp};
     let f = make_fold(f_pre);

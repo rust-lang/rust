@@ -200,8 +200,8 @@ impl PurityState {
             ast::unsafe_fn if self.from_fn => *self,
 
             purity => {
-                let (purity, def) = match blk.node.rules {
-                    ast::unsafe_blk => (ast::unsafe_fn, blk.node.id),
+                let (purity, def) = match blk.rules {
+                    ast::unsafe_blk => (ast::unsafe_fn, blk.id),
                     ast::default_blk => (purity, self.def),
                 };
                 PurityState{ def: def,
@@ -365,7 +365,7 @@ pub fn check_fn(ccx: @mut CrateCtxt,
         let (isr, opt_self_ty, fn_sig) =
             replace_bound_regions_in_fn_sig(
                 tcx, inherited_isr, opt_self_ty, fn_sig,
-                |br| ty::re_free(ty::FreeRegion {scope_id: body.node.id,
+                |br| ty::re_free(ty::FreeRegion {scope_id: body.id,
                                                  bound_region: br}));
         let opt_self_info =
             opt_self_info.map(
@@ -399,7 +399,7 @@ pub fn check_fn(ccx: @mut CrateCtxt,
             ret_ty: ret_ty,
             indirect_ret_ty: indirect_ret_ty,
             ps: PurityState::function(purity, id),
-            region_lb: body.node.id,
+            region_lb: body.id,
             in_scope_regions: isr,
             fn_kind: fn_kind,
             inh: inherited,
@@ -412,7 +412,7 @@ pub fn check_fn(ccx: @mut CrateCtxt,
 
     // We unify the tail expr's type with the
     // function result type, if there is a tail expr.
-    match body.node.expr {
+    match body.expr {
       Some(tail_expr) => {
         let tail_expr_ty = fcx.expr_ty(tail_expr);
         // Special case: we print a special error if there appears
@@ -515,7 +515,7 @@ pub fn check_fn(ccx: @mut CrateCtxt,
             // non-obvious: the `blk` variable maps to region lb, so
             // we have to keep this up-to-date.  This
             // is... unfortunate.  It'd be nice to not need this.
-            do fcx.with_region_lb(b.node.id) {
+            do fcx.with_region_lb(b.id) {
                 visit::visit_block(b, (e, v));
             }
         };
@@ -1456,7 +1456,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         let branches_ty = match opt_else_expr {
             Some(else_expr) => {
                 check_block_with_expected(fcx, then_blk, expected);
-                let then_ty = fcx.node_ty(then_blk.node.id);
+                let then_ty = fcx.node_ty(then_blk.id);
                 check_expr_with_opt_hint(fcx, else_expr, expected);
                 let else_ty = fcx.expr_ty(else_expr);
                 infer::common_supertype(fcx.infcx(),
@@ -2533,7 +2533,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         check_expr_has_type(fcx, cond, ty::mk_bool());
         check_block_no_value(fcx, body);
         let cond_ty = fcx.expr_ty(cond);
-        let body_ty = fcx.node_ty(body.node.id);
+        let body_ty = fcx.node_ty(body.id);
         if ty::type_is_error(cond_ty) || ty::type_is_error(body_ty) {
             fcx.write_error(id);
         }
@@ -2598,7 +2598,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
       }
       ast::expr_block(ref b) => {
         check_block_with_expected(fcx, b, expected);
-        fcx.write_ty(id, fcx.node_ty(b.node.id));
+        fcx.write_ty(id, fcx.node_ty(b.id));
       }
       ast::expr_call(f, ref args, sugar) => {
           check_call(fcx, expr.id, expr, f, *args, sugar);
@@ -2959,12 +2959,12 @@ pub fn check_stmt(fcx: @mut FnCtxt, stmt: @ast::stmt)  {
 
 pub fn check_block_no_value(fcx: @mut FnCtxt, blk: &ast::blk)  {
     check_block_with_expected(fcx, blk, Some(ty::mk_nil()));
-    let blkty = fcx.node_ty(blk.node.id);
+    let blkty = fcx.node_ty(blk.id);
     if ty::type_is_error(blkty) {
-        fcx.write_error(blk.node.id);
+        fcx.write_error(blk.id);
     }
     else if ty::type_is_bot(blkty) {
-        fcx.write_bot(blk.node.id);
+        fcx.write_bot(blk.id);
     }
     else {
         let nilty = ty::mk_nil();
@@ -2982,12 +2982,12 @@ pub fn check_block_with_expected(fcx: @mut FnCtxt,
     let purity_state = fcx.ps.recurse(blk);
     let prev = replace(&mut fcx.ps, purity_state);
 
-    do fcx.with_region_lb(blk.node.id) {
+    do fcx.with_region_lb(blk.id) {
         let mut warned = false;
         let mut last_was_bot = false;
         let mut any_bot = false;
         let mut any_err = false;
-        for blk.node.stmts.iter().advance |s| {
+        for blk.stmts.iter().advance |s| {
             check_stmt(fcx, *s);
             let s_id = ast_util::stmt_id(*s);
             let s_ty = fcx.node_ty(s_id);
@@ -3009,15 +3009,15 @@ pub fn check_block_with_expected(fcx: @mut FnCtxt,
             any_bot = any_bot || ty::type_is_bot(s_ty);
             any_err = any_err || ty::type_is_error(s_ty);
         }
-        match blk.node.expr {
+        match blk.expr {
             None => if any_err {
-                fcx.write_error(blk.node.id);
+                fcx.write_error(blk.id);
             }
             else if any_bot {
-                fcx.write_bot(blk.node.id);
+                fcx.write_bot(blk.id);
             }
             else  {
-                fcx.write_nil(blk.node.id);
+                fcx.write_nil(blk.id);
             },
           Some(e) => {
             if any_bot && !warned {
@@ -3025,12 +3025,12 @@ pub fn check_block_with_expected(fcx: @mut FnCtxt,
             }
             check_expr_with_opt_hint(fcx, e, expected);
               let ety = fcx.expr_ty(e);
-              fcx.write_ty(blk.node.id, ety);
+              fcx.write_ty(blk.id, ety);
               if any_err {
-                  fcx.write_error(blk.node.id);
+                  fcx.write_error(blk.id);
               }
               else if any_bot {
-                  fcx.write_bot(blk.node.id);
+                  fcx.write_bot(blk.id);
               }
           }
         };

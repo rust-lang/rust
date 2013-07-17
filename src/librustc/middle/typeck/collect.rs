@@ -749,7 +749,7 @@ pub fn convert_methods(ccx: &CrateCtxt,
         write_ty_to_tcx(tcx, m.id, fty);
         tcx.methods.insert(mty.def_id, mty);
         ConvertedMethod {mty: mty, id: m.id,
-                         span: m.span, body_id: m.body.node.id}
+                         span: m.span, body_id: m.body.id}
     }).collect();
 
     fn ty_of_method(ccx: &CrateCtxt,

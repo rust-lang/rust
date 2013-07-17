@@ -1446,7 +1446,7 @@ pub fn with_scope_datumblock(bcx: block, opt_node_info: Option<NodeInfo>,
 }
 
 pub fn block_locals(b: &ast::blk, it: &fn(@ast::local)) {
-    for b.node.stmts.iter().advance |s| {
+    for b.stmts.iter().advance |s| {
         match s.node {
           ast::stmt_decl(d, _) => {
             match d.node {
@@ -1874,7 +1874,7 @@ pub fn trans_closure(ccx: @mut CrateContext,
     let bcx_top = top_scope_block(fcx, body.info());
     let mut bcx = bcx_top;
     let lltop = bcx.llbb;
-    let block_ty = node_id_type(bcx, body.node.id);
+    let block_ty = node_id_type(bcx, body.id);
 
     let arg_tys = ty::ty_fn_args(node_id_type(bcx, id));
     bcx = copy_args_to_allocas(fcx, bcx, decl.inputs, raw_llargs, arg_tys);
@@ -1885,7 +1885,7 @@ pub fn trans_closure(ccx: @mut CrateContext,
     // translation calls that don't have a return value (trans_crate,
     // trans_mod, trans_item, et cetera) and those that do
     // (trans_block, trans_expr, et cetera).
-    if body.node.expr.is_none() || ty::type_is_bot(block_ty) ||
+    if body.expr.is_none() || ty::type_is_bot(block_ty) ||
         ty::type_is_nil(block_ty)
     {
         bcx = controlflow::trans_block(bcx, body, expr::Ignore);
@@ -2148,7 +2148,7 @@ pub fn trans_item(ccx: @mut CrateContext, item: &ast::item) {
                      item.id,
                      item.attrs);
         } else {
-            for body.node.stmts.iter().advance |stmt| {
+            for body.stmts.iter().advance |stmt| {
                 match stmt.node {
                   ast::stmt_decl(@codemap::spanned { node: ast::decl_item(i),
                                                  _ }, _) => {

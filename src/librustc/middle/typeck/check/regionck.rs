@@ -155,7 +155,7 @@ pub fn regionck_expr(fcx: @mut FnCtxt, e: @ast::expr) {
 
 pub fn regionck_fn(fcx: @mut FnCtxt, blk: &ast::blk) {
     let rcx = @mut Rcx { fcx: fcx, errors_reported: 0,
-                         repeating_scope: blk.node.id };
+                         repeating_scope: blk.id };
     if fcx.err_count_since_creation() == 0 {
         // regionck assumes typeck succeeded
         let v = regionck_visitor();
@@ -188,7 +188,7 @@ fn visit_item(_item: @ast::item, (_rcx, _v): (@mut Rcx, rvt)) {
 }
 
 fn visit_block(b: &ast::blk, (rcx, v): (@mut Rcx, rvt)) {
-    rcx.fcx.tcx().region_maps.record_cleanup_scope(b.node.id);
+    rcx.fcx.tcx().region_maps.record_cleanup_scope(b.id);
     visit::visit_block(b, (rcx, v));
 }
 
@@ -287,11 +287,11 @@ fn visit_expr(expr: @ast::expr, (rcx, v): (@mut Rcx, rvt)) {
             }
         }
         ast::expr_loop(ref body, _) => {
-            tcx.region_maps.record_cleanup_scope(body.node.id);
+            tcx.region_maps.record_cleanup_scope(body.id);
         }
         ast::expr_while(cond, ref body) => {
             tcx.region_maps.record_cleanup_scope(cond.id);
-            tcx.region_maps.record_cleanup_scope(body.node.id);
+            tcx.region_maps.record_cleanup_scope(body.id);
         }
         _ => {}
     }
@@ -434,7 +434,7 @@ fn visit_expr(expr: @ast::expr, (rcx, v): (@mut Rcx, rvt)) {
         }
 
         ast::expr_loop(ref body, _) => {
-            let repeating_scope = rcx.set_repeating_scope(body.node.id);
+            let repeating_scope = rcx.set_repeating_scope(body.id);
             visit::visit_expr(expr, (rcx, v));
             rcx.set_repeating_scope(repeating_scope);
         }
@@ -443,7 +443,7 @@ fn visit_expr(expr: @ast::expr, (rcx, v): (@mut Rcx, rvt)) {
             let repeating_scope = rcx.set_repeating_scope(cond.id);
             (v.visit_expr)(cond, (rcx, v));
 
-            rcx.set_repeating_scope(body.node.id);
+            rcx.set_repeating_scope(body.id);
             (v.visit_block)(body, (rcx, v));
 
             rcx.set_repeating_scope(repeating_scope);
@@ -486,7 +486,7 @@ fn check_expr_fn_block(rcx: @mut Rcx,
                 _ => ()
             }
 
-            let repeating_scope = rcx.set_repeating_scope(body.node.id);
+            let repeating_scope = rcx.set_repeating_scope(body.id);
             visit::visit_expr(expr, (rcx, v));
             rcx.set_repeating_scope(repeating_scope);
         }

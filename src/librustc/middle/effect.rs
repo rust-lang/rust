@@ -99,9 +99,9 @@ pub fn check_crate(tcx: ty::ctxt,
 
         visit_block: |block, (_, visitor)| {
             let old_unsafe_context = context.unsafe_context;
-            if block.node.rules == unsafe_blk &&
+            if block.rules == unsafe_blk &&
                     context.unsafe_context == SafeContext {
-                context.unsafe_context = UnsafeBlock(block.node.id)
+                context.unsafe_context = UnsafeBlock(block.id)
             }
 
             visit::visit_block(block, ((), visitor));
