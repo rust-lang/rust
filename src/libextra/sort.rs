@@ -1020,8 +1020,6 @@ mod big_tests {
 
     use sort::*;
 
-    use std::cast::unsafe_copy;
-    use std::local_data;
     use std::rand::RngUtil;
     use std::rand;
     use std::uint;

@@ -357,7 +357,6 @@ extern {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use cell::Cell;
     use comm;
     use option::*;
