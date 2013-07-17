@@ -34,6 +34,8 @@ use lib;
 use metadata::common::LinkMeta;
 use metadata::{csearch, cstore, encoder};
 use middle::astencode;
+use middle::lang_items::{LangItem, ExchangeMallocFnLangItem, StartFnLangItem};
+use middle::lang_items::{MallocFnLangItem, ClosureExchangeMallocFnLangItem};
 use middle::resolve;
 use middle::trans::_match;
 use middle::trans::adt;
@@ -284,13 +286,25 @@ pub fn malloc_raw_dyn(bcx: block,
     let _icx = push_ctxt("malloc_raw");
     let ccx = bcx.ccx();
 
+    fn require_alloc_fn(bcx: block, t: ty::t, it: LangItem) -> ast::def_id {
+        let li = &bcx.tcx().lang_items;
+        match li.require(it) {
+            Ok(id) => id,
+            Err(s) => {
+                bcx.tcx().sess.fatal(fmt!("allocation of `%s` %s",
+                                          bcx.ty_to_str(t), s));
+            }
+        }
+    }
+
     if heap == heap_exchange {
         let llty_value = type_of::type_of(ccx, t);
+
 
         // Allocate space:
         let r = callee::trans_lang_call(
             bcx,
-            bcx.tcx().lang_items.exchange_malloc_fn(),
+            require_alloc_fn(bcx, t, ExchangeMallocFnLangItem),
             [size],
             None);
         rslt(r.bcx, PointerCast(r.bcx, r.val, llty_value.ptr_to()))
@@ -298,10 +312,12 @@ pub fn malloc_raw_dyn(bcx: block,
         // we treat ~fn, @fn and @[] as @ here, which isn't ideal
         let (mk_fn, langcall) = match heap {
             heap_managed | heap_managed_unique => {
-                (ty::mk_imm_box, bcx.tcx().lang_items.malloc_fn())
+                (ty::mk_imm_box,
+                 require_alloc_fn(bcx, t, MallocFnLangItem))
             }
             heap_exchange_closure => {
-                (ty::mk_imm_box, bcx.tcx().lang_items.closure_exchange_malloc_fn())
+                (ty::mk_imm_box,
+                 require_alloc_fn(bcx, t, ClosureExchangeMallocFnLangItem))
             }
             _ => fail!("heap_exchange already handled")
         };
@@ -2324,7 +2340,8 @@ pub fn create_entry_wrapper(ccx: @mut CrateContext,
     fn create_entry_fn(ccx: @mut CrateContext,
                        rust_main: ValueRef,
                        use_start_lang_item: bool) {
-        let llfty = Type::func([ccx.int_type, Type::i8().ptr_to().ptr_to()], &ccx.int_type);
+        let llfty = Type::func([ccx.int_type, Type::i8().ptr_to().ptr_to()],
+                               &ccx.int_type);
 
         // FIXME #4404 android JNI hacks
         let llfn = if *ccx.sess.building_library {
@@ -2345,25 +2362,21 @@ pub fn create_entry_wrapper(ccx: @mut CrateContext,
         unsafe {
             llvm::LLVMPositionBuilderAtEnd(bld, llbb);
 
-            let start_def_id = ccx.tcx.lang_items.start_fn();
-            if start_def_id.crate != ast::local_crate {
-                let start_fn_type = csearch::get_type(ccx.tcx,
-                                                      start_def_id).ty;
-                trans_external_path(ccx, start_def_id, start_fn_type);
-            }
-
             let crate_map = ccx.crate_map;
             let opaque_crate_map = do "crate_map".as_c_str |buf| {
                 llvm::LLVMBuildPointerCast(bld, crate_map, Type::i8p().to_ref(), buf)
             };
 
             let (start_fn, args) = if use_start_lang_item {
-                let start_def_id = ccx.tcx.lang_items.start_fn();
+                let start_def_id = match ccx.tcx.lang_items.require(StartFnLangItem) {
+                    Ok(id) => id,
+                    Err(s) => { ccx.tcx.sess.fatal(s); }
+                };
                 let start_fn = if start_def_id.crate == ast::local_crate {
                     get_item_val(ccx, start_def_id.node)
                 } else {
                     let start_fn_type = csearch::get_type(ccx.tcx,
-                            start_def_id).ty;
+                                                          start_def_id).ty;
                     trans_external_path(ccx, start_def_id, start_fn_type)
                 };
 
@@ -2383,14 +2396,12 @@ pub fn create_entry_wrapper(ccx: @mut CrateContext,
                 (start_fn, args)
             } else {
                 debug!("using user-defined start fn");
-                let args = {
-                    ~[
-                        C_null(Type::opaque_box(ccx).ptr_to()),
-                        llvm::LLVMGetParam(llfn, 0 as c_uint),
-                        llvm::LLVMGetParam(llfn, 1 as c_uint),
-                        opaque_crate_map
-                    ]
-                };
+                let args = ~[
+                    C_null(Type::opaque_box(ccx).ptr_to()),
+                    llvm::LLVMGetParam(llfn, 0 as c_uint),
+                    llvm::LLVMGetParam(llfn, 1 as c_uint),
+                    opaque_crate_map
+                ];
 
                 (rust_main, args)
             };
@@ -2832,17 +2843,18 @@ pub fn fill_crate_map(ccx: @mut CrateContext, map: ValueRef) {
     }
     subcrates.push(C_int(ccx, 0));
 
-    let llannihilatefn;
-    let annihilate_def_id = ccx.tcx.lang_items.annihilate_fn();
-    if annihilate_def_id.crate == ast::local_crate {
-        llannihilatefn = get_item_val(ccx, annihilate_def_id.node);
-    } else {
-        let annihilate_fn_type = csearch::get_type(ccx.tcx,
-                                                   annihilate_def_id).ty;
-        llannihilatefn = trans_external_path(ccx,
-                                             annihilate_def_id,
-                                             annihilate_fn_type);
-    }
+    let llannihilatefn = match ccx.tcx.lang_items.annihilate_fn() {
+        Some(annihilate_def_id) => {
+            if annihilate_def_id.crate == ast::local_crate {
+                get_item_val(ccx, annihilate_def_id.node)
+            } else {
+                let annihilate_fn_type = csearch::get_type(ccx.tcx,
+                                                           annihilate_def_id).ty;
+                trans_external_path(ccx, annihilate_def_id, annihilate_fn_type)
+            }
+        }
+        None => { C_null(Type::i8p()) }
+    };
 
     unsafe {
         let mod_map = create_module_map(ccx);

@@ -122,7 +122,7 @@ fn check_item(item: @item, (cx, visitor): (Context, visit::vt<Context>)) {
                     None => cx.tcx.sess.bug("trait ref not in def map!"),
                     Some(&trait_def) => {
                         let trait_def_id = ast_util::def_id_of_def(trait_def);
-                        if cx.tcx.lang_items.drop_trait() == trait_def_id {
+                        if cx.tcx.lang_items.drop_trait() == Some(trait_def_id) {
                             // Yes, it's a destructor.
                             match self_type.node {
                                 ty_path(_, ref bounds, path_node_id) => {

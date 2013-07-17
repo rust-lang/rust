@@ -13,6 +13,8 @@ use driver::session;
 use metadata::csearch;
 use metadata;
 use middle::const_eval;
+use middle::lang_items::{TyDescStructLangItem, TyVisitorTraitLangItem};
+use middle::lang_items::OpaqueStructLangItem;
 use middle::freevars;
 use middle::resolve::{Impl, MethodInfo};
 use middle::resolve;
@@ -4373,29 +4375,34 @@ pub fn get_impl_id(tcx: ctxt, trait_id: def_id, self_ty: t) -> def_id {
     }
 }
 
-pub fn get_tydesc_ty(tcx: ctxt) -> t {
-    let tydesc_lang_item = tcx.lang_items.ty_desc();
-    tcx.intrinsic_defs.find_copy(&tydesc_lang_item)
-        .expect("Failed to resolve TyDesc")
+pub fn get_tydesc_ty(tcx: ctxt) -> Result<t, ~str> {
+    do tcx.lang_items.require(TyDescStructLangItem).map |tydesc_lang_item| {
+        tcx.intrinsic_defs.find_copy(tydesc_lang_item)
+            .expect("Failed to resolve TyDesc")
+    }
 }
 
-pub fn get_opaque_ty(tcx: ctxt) -> t {
-    let opaque_lang_item = tcx.lang_items.opaque();
-    tcx.intrinsic_defs.find_copy(&opaque_lang_item)
-        .expect("Failed to resolve Opaque")
+pub fn get_opaque_ty(tcx: ctxt) -> Result<t, ~str> {
+    do tcx.lang_items.require(OpaqueStructLangItem).map |opaque_lang_item| {
+        tcx.intrinsic_defs.find_copy(opaque_lang_item)
+            .expect("Failed to resolve Opaque")
+    }
 }
 
-pub fn visitor_object_ty(tcx: ctxt) -> (@TraitRef, t) {
+pub fn visitor_object_ty(tcx: ctxt) -> Result<(@TraitRef, t), ~str> {
+    let trait_lang_item = match tcx.lang_items.require(TyVisitorTraitLangItem) {
+        Ok(id) => id,
+        Err(s) => { return Err(s); }
+    };
     let substs = substs {
         self_r: None,
         self_ty: None,
         tps: ~[]
     };
-    let trait_lang_item = tcx.lang_items.ty_visitor();
     let trait_ref = @TraitRef { def_id: trait_lang_item, substs: substs };
     let mut static_trait_bound = EmptyBuiltinBounds();
     static_trait_bound.add(BoundStatic);
-    (trait_ref,
-     mk_trait(tcx, trait_ref.def_id, copy trait_ref.substs,
-              BoxTraitStore, ast::m_imm, static_trait_bound))
+    Ok((trait_ref,
+        mk_trait(tcx, trait_ref.def_id, copy trait_ref.substs,
+                 BoxTraitStore, ast::m_imm, static_trait_bound)))
 }

@@ -17,6 +17,7 @@ use lib::llvm::{ValueRef, BasicBlockRef, BuilderRef};
 use lib::llvm::{True, False, Bool};
 use lib::llvm::{llvm};
 use lib;
+use middle::lang_items::LangItem;
 use middle::trans::base;
 use middle::trans::build;
 use middle::trans::datum;
@@ -1125,4 +1126,18 @@ pub fn filename_and_line_num_from_span(bcx: block,
 // Casts a Rust bool value to an i1.
 pub fn bool_to_i1(bcx: block, llval: ValueRef) -> ValueRef {
     build::ICmp(bcx, lib::llvm::IntNE, llval, C_bool(false))
+}
+
+pub fn langcall(bcx: block, span: Option<span>, msg: &str,
+                li: LangItem) -> ast::def_id {
+    match bcx.tcx().lang_items.require(li) {
+        Ok(id) => id,
+        Err(s) => {
+            let msg = fmt!("%s %s", msg, s);
+            match span {
+                Some(span) => { bcx.tcx().sess.span_fatal(span, msg); }
+                None => { bcx.tcx().sess.fatal(msg); }
+            }
+        }
+    }
 }

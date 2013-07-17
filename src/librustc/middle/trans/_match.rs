@@ -152,6 +152,7 @@ use back::abi;
 use lib::llvm::{llvm, ValueRef, BasicBlockRef};
 use middle::const_eval;
 use middle::borrowck::root_map_key;
+use middle::lang_items::{UniqStrEqFnLangItem, StrEqFnLangItem};
 use middle::pat_util::*;
 use middle::resolve::DefMap;
 use middle::trans::adt;
@@ -1099,7 +1100,9 @@ pub fn compare_values(cx: block,
             Store(cx, lhs, scratch_lhs);
             let scratch_rhs = alloca(cx, val_ty(rhs), "__rhs");
             Store(cx, rhs, scratch_rhs);
-            let did = cx.tcx().lang_items.uniq_str_eq_fn();
+            let did = langcall(cx, None,
+                               fmt!("comparison of `%s`", cx.ty_to_str(rhs_t)),
+                               UniqStrEqFnLangItem);
             let result = callee::trans_lang_call(cx, did, [scratch_lhs, scratch_rhs], None);
             Result {
                 bcx: result.bcx,
@@ -1107,7 +1110,9 @@ pub fn compare_values(cx: block,
             }
         }
         ty::ty_estr(_) => {
-            let did = cx.tcx().lang_items.str_eq_fn();
+            let did = langcall(cx, None,
+                               fmt!("comparison of `%s`", cx.ty_to_str(rhs_t)),
+                               StrEqFnLangItem);
             let result = callee::trans_lang_call(cx, did, [lhs, rhs], None);
             Result {
                 bcx: result.bcx,
