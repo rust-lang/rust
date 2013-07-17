@@ -84,7 +84,6 @@ supported build environments that are most likely to work.
 > know.
 
 [bug-3319]: https://github.com/mozilla/rust/issues/3319
-[wiki-start]:	https://github.com/mozilla/rust/wiki/Note-getting-started-developing-Rust
 
 To build from source you will also need the following prerequisite
 packages:
@@ -118,7 +117,6 @@ API-documentation tool; `rustpkg`, the Rust package manager;
 `rusti`, the Rust REPL; and `rust`, a tool which acts both as a unified
 interface for them, and for a few common command line scenarios.
 
-[wiki-start]: https://github.com/mozilla/rust/wiki/Note-getting-started-developing-Rust
 [tarball]: http://static.rust-lang.org/dist/rust-0.7.tar.gz
 [win-exe]: http://static.rust-lang.org/dist/rust-0.7-install.exe
 
@@ -409,8 +407,6 @@ println(fmt!("what is this thing: %?", mystery_object));
 [pf]: http://en.cppreference.com/w/cpp/io/c/fprintf
 
 You can define your own syntax extensions with the macro system. For details, see the [macro tutorial][macros].
-
-[macros]: tutorial-macros.html
 
 # Control structures
 
@@ -1512,8 +1508,6 @@ closures, but they also own them: that is, no other code can access
 them. Owned closures are used in concurrent code, particularly
 for spawning [tasks][tasks].
 
-[tasks]: tutorial-tasks.html
-
 ## Closure compatibility
 
 Rust closures have a convenient subtyping property: you can pass any kind of
@@ -2534,6 +2528,7 @@ There is further documentation on the [wiki].
 [ffi]: tutorial-ffi.html
 
 [wiki]: https://github.com/mozilla/rust/wiki/Docs
+[wiki-start]:	https://github.com/mozilla/rust/wiki/Note-getting-started-developing-Rust
 [unit testing]: https://github.com/mozilla/rust/wiki/Doc-unit-testing
 [rustdoc]: https://github.com/mozilla/rust/wiki/Doc-using-rustdoc
 [cargo]: https://github.com/mozilla/rust/wiki/Doc-using-cargo-to-manage-packages
