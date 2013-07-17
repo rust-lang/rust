@@ -108,15 +108,20 @@ pub fn level_to_str(lv: level) -> &'static str {
     }
 }
 
-#[deriving(Eq)]
+#[deriving(Eq, Ord)]
 pub enum level {
     allow, warn, deny, forbid
 }
 
-struct LintSpec {
+#[deriving(Eq)]
+pub struct LintSpec {
     lint: lint,
     desc: &'static str,
     default: level
+}
+
+impl Ord for LintSpec {
+    fn lt(&self, other: &LintSpec) -> bool { self.default < other.default }
 }
 
 pub type LintDict = HashMap<&'static str, LintSpec>;

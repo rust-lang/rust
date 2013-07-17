@@ -144,6 +144,7 @@ Additional help:
 }
 
 pub fn describe_warnings() {
+    use extra::sort::Sort;
     io::println(fmt!("
 Available lint options:
     -W <foo>           Warn about <foo>
@@ -153,8 +154,15 @@ Available lint options:
 "));
 
     let lint_dict = lint::get_lint_dict();
+    let mut lint_dict = lint_dict.consume_iter()
+                                 .transform(|(k, v)| (v, k))
+                                 .collect::<~[(lint::LintSpec, &'static str)]>();
+    lint_dict.qsort();
+
     let mut max_key = 0;
-    for lint_dict.each_key |k| { max_key = num::max(k.len(), max_key); }
+    for lint_dict.iter().advance |&(_, name)| {
+        max_key = num::max(name.len(), max_key);
+    }
     fn padded(max: uint, s: &str) -> ~str {
         str::from_bytes(vec::from_elem(max - s.len(), ' ' as u8)) + s
     }
@@ -163,17 +171,12 @@ Available lint options:
                      padded(max_key, "name"), "default", "meaning"));
     io::println(fmt!("    %s  %7.7s  %s\n",
                      padded(max_key, "----"), "-------", "-------"));
-    for lint_dict.iter().advance |(k, v)| {
-        let k = k.replace("_", "-");
+    for lint_dict.consume_iter().advance |(spec, name)| {
+        let name = name.replace("_", "-");
         io::println(fmt!("    %s  %7.7s  %s",
-                         padded(max_key, k),
-                         match v.default {
-                             lint::allow => ~"allow",
-                             lint::warn => ~"warn",
-                             lint::deny => ~"deny",
-                             lint::forbid => ~"forbid"
-                         },
-                         v.desc));
+                         padded(max_key, name),
+                         lint::level_to_str(spec.default),
+                         spec.desc));
     }
     io::println("");
 }
