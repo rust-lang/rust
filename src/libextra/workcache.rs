@@ -164,7 +164,7 @@ impl Logger {
 struct Context {
     db: RWARC<Database>,
     logger: @mut Logger,
-    cfg: @json::Object,
+    cfg: json::Object,
     freshness: TreeMap<~str,@fn(&str,&str)->bool>
 }
 
@@ -215,7 +215,7 @@ fn digest_file(path: &Path) -> ~str {
 }
 
 impl Context {
-    pub fn new(db: RWARC<Database>, lg: @mut Logger, cfg: @json::Object)
+    pub fn new(db: RWARC<Database>, lg: @mut Logger, cfg: json::Object)
                -> Context {
         Context {
             db: db,
@@ -361,7 +361,7 @@ fn test() {
                               db_cache: TreeMap::new(),
                               db_dirty: false });
     let lg = @mut Logger { a: () };
-    let cfg = @HashMap::new();
+    let cfg = HashMap::new();
     let cx = @Context::new(db, lg, cfg);
     let w:Work<~str> = do cx.prep("test1") |prep| {
         let pth = Path("foo.c");
