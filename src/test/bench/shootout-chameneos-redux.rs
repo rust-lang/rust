@@ -12,7 +12,6 @@
 
 extern mod extra;
 
-use extra::sort;
 use std::cell::Cell;
 use std::comm::*;
 use std::io;
@@ -20,7 +19,6 @@ use std::option;
 use std::os;
 use std::task;
 use std::uint;
-use std::vec;
 
 fn print_complements() {
     let all = [Blue, Red, Yellow];
@@ -206,7 +204,7 @@ fn rendezvous(nn: uint, set: ~[color]) {
 
 fn main() {
     let args = os::args();
-    let args = if os::getenv(~"RUST_BENCH").is_some() {
+    let args = if os::getenv("RUST_BENCH").is_some() {
         ~[~"", ~"200000"]
     } else if args.len() <= 1u {
         ~[~"", ~"600"]
@@ -217,10 +215,10 @@ fn main() {
     let nn = uint::from_str(args[1]).get();
 
     print_complements();
-    io::println(~"");
+    io::println("");
 
     rendezvous(nn, ~[Blue, Red, Yellow]);
-    io::println(~"");
+    io::println("");
 
     rendezvous(nn,
         ~[Blue, Red, Yellow, Red, Yellow, Blue, Red, Yellow, Red, Blue]);

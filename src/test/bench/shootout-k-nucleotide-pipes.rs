@@ -121,8 +121,8 @@ fn windows_with_carry(bb: &[u8], nn: uint,
 }
 
 fn make_sequence_processor(sz: uint,
-                           from_parent: &comm::Port<~[u8]>,
-                           to_parent: &comm::Chan<~str>) {
+                           from_parent: &Port<~[u8]>,
+                           to_parent: &Chan<~str>) {
    let mut freqs: HashMap<~[u8], uint> = HashMap::new();
    let mut carry: ~[u8] = ~[];
    let mut total: uint = 0u;
@@ -143,11 +143,11 @@ fn make_sequence_processor(sz: uint,
    let buffer = match sz {
        1u => { sort_and_fmt(&freqs, total) }
        2u => { sort_and_fmt(&freqs, total) }
-       3u => { fmt!("%u\t%s", find(&freqs, ~"GGT"), ~"GGT") }
-       4u => { fmt!("%u\t%s", find(&freqs, ~"GGTA"), ~"GGTA") }
-       6u => { fmt!("%u\t%s", find(&freqs, ~"GGTATT"), ~"GGTATT") }
-      12u => { fmt!("%u\t%s", find(&freqs, ~"GGTATTTTAATT"), ~"GGTATTTTAATT") }
-      18u => { fmt!("%u\t%s", find(&freqs, ~"GGTATTTTAATTTATAGT"), ~"GGTATTTTAATTTATAGT") }
+       3u => { fmt!("%u\t%s", find(&freqs, ~"GGT"), "GGT") }
+       4u => { fmt!("%u\t%s", find(&freqs, ~"GGTA"), "GGTA") }
+       6u => { fmt!("%u\t%s", find(&freqs, ~"GGTATT"), "GGTATT") }
+      12u => { fmt!("%u\t%s", find(&freqs, ~"GGTATTTTAATT"), "GGTATTTTAATT") }
+      18u => { fmt!("%u\t%s", find(&freqs, ~"GGTATTTTAATTTATAGT"), "GGTATTTTAATTTATAGT") }
         _ => { ~"" }
    };
 
@@ -156,8 +156,7 @@ fn make_sequence_processor(sz: uint,
 
 // given a FASTA file on stdin, process sequence THREE
 fn main() {
-    let args = os::args();
-    let rdr = if os::getenv(~"RUST_BENCH").is_some() {
+    let rdr = if os::getenv("RUST_BENCH").is_some() {
        // FIXME: Using this compile-time env variable is a crummy way to
        // get to this massive data set, but include_bin! chokes on it (#2598)
        let path = Path(env!("CFG_SRC_DIR"))
@@ -203,7 +202,7 @@ fn main() {
 
          // start processing if this is the one
          ('>', false) => {
-            match line.slice_from(1).find_str(~"THREE") {
+            match line.slice_from(1).find_str("THREE") {
                option::Some(_) => { proc_mode = true; }
                option::None    => { }
             }
@@ -217,7 +216,7 @@ fn main() {
             let line_bytes = line.as_bytes();
 
            for sizes.iter().enumerate().advance |(ii, _sz)| {
-               let mut lb = line_bytes.to_owned();
+               let lb = line_bytes.to_owned();
                to_child[ii].send(lb);
             }
          }

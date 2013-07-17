@@ -40,7 +40,7 @@ fn main() {
     use std::os;
     use std::int;
     let args = std::os::args();
-    let args = if os::getenv(~"RUST_BENCH").is_some() {
+    let args = if os::getenv("RUST_BENCH").is_some() {
         ~[~"", ~"17"]
     } else if args.len() <= 1u {
         ~[~"", ~"8"]
