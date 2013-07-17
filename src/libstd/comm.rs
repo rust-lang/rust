@@ -242,8 +242,7 @@ impl<T: Send> GenericChan<T> for SharedChan<T> {
                 unsafe {
                     let mut xx = Some(x);
                     do chan.with_imm |chan| {
-                        let x = replace(&mut xx, None);
-                        chan.send(x.unwrap())
+                        chan.send(xx.take_unwrap())
                     }
                 }
             }
@@ -259,8 +258,7 @@ impl<T: Send> GenericSmartChan<T> for SharedChan<T> {
                 unsafe {
                     let mut xx = Some(x);
                     do chan.with_imm |chan| {
-                        let x = replace(&mut xx, None);
-                        chan.try_send(x.unwrap())
+                        chan.try_send(xx.take_unwrap())
                     }
                 }
             }
@@ -372,7 +370,6 @@ mod pipesy {
     use pipes::{recv, try_recv, peek, PacketHeader};
     use super::{GenericChan, GenericSmartChan, GenericPort, Peekable, Selectable};
     use cast::transmute_mut;
-    use util::replace;
 
     /*proto! oneshot (
         Oneshot:send<T:Send> {
@@ -638,8 +635,7 @@ mod pipesy {
         fn send(&self, x: T) {
             unsafe {
                 let self_endp = transmute_mut(&self.endp);
-                let endp = replace(self_endp, None);
-                *self_endp = Some(streamp::client::data(endp.unwrap(), x))
+                *self_endp = Some(streamp::client::data(self_endp.take_unwrap(), x))
             }
         }
     }
@@ -649,8 +645,7 @@ mod pipesy {
         fn try_send(&self, x: T) -> bool {
             unsafe {
                 let self_endp = transmute_mut(&self.endp);
-                let endp = replace(self_endp, None);
-                match streamp::client::try_data(endp.unwrap(), x) {
+                match streamp::client::try_data(self_endp.take_unwrap(), x) {
                     Some(next) => {
                         *self_endp = Some(next);
                         true
@@ -666,7 +661,7 @@ mod pipesy {
         fn recv(&self) -> T {
             unsafe {
                 let self_endp = transmute_mut(&self.endp);
-                let endp = replace(self_endp, None);
+                let endp = self_endp.take();
                 let streamp::data(x, endp) = recv(endp.unwrap());
                 *self_endp = Some(endp);
                 x
@@ -677,7 +672,7 @@ mod pipesy {
         fn try_recv(&self) -> Option<T> {
             unsafe {
                 let self_endp = transmute_mut(&self.endp);
-                let endp = replace(self_endp, None);
+                let endp = self_endp.take();
                 match try_recv(endp.unwrap()) {
                     Some(streamp::data(x, endp)) => {
                         *self_endp = Some(endp);
@@ -694,7 +689,7 @@ mod pipesy {
         fn peek(&self) -> bool {
             unsafe {
                 let self_endp = transmute_mut(&self.endp);
-                let mut endp = replace(self_endp, None);
+                let mut endp = self_endp.take();
                 let peek = match endp {
                     Some(ref mut endp) => peek(endp),
                     None => fail!("peeking empty stream")

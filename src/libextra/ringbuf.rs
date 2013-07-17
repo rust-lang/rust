@@ -14,7 +14,6 @@
 //! extra::container::Deque`.
 
 use std::num;
-use std::util;
 use std::uint;
 use std::vec;
 use std::iterator::{FromIterator, InvertIterator};
@@ -72,7 +71,7 @@ impl<T> Deque<T> for RingBuf<T> {
 
     /// Remove and return the first element in the RingBuf, or None if it is empty
     fn pop_front(&mut self) -> Option<T> {
-        let result = util::replace(&mut self.elts[self.lo], None);
+        let result = self.elts[self.lo].take();
         if result.is_some() {
             self.lo = (self.lo + 1u) % self.elts.len();
             self.nelts -= 1u;
@@ -85,7 +84,7 @@ impl<T> Deque<T> for RingBuf<T> {
         if self.nelts > 0 {
             self.nelts -= 1;
             let hi = self.raw_index(self.nelts);
-            util::replace(&mut self.elts[hi], None)
+            self.elts[hi].take()
         } else {
             None
         }

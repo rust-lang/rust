@@ -208,7 +208,7 @@ impl<T> Deque<T> for DList<T> {
     ///
     /// O(1)
     fn pop_front(&mut self) -> Option<T> {
-        match util::replace(&mut self.list_head, None) {
+        match self.list_head.take() {
             None => None,
             Some(old_head) => {
                 self.length -= 1;
