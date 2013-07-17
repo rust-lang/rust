@@ -200,7 +200,7 @@ impl ReprVisitor {
     }
 
     pub fn write_vec_range(&self,
-                           mtbl: uint,
+                           _mtbl: uint,
                            ptr: *u8,
                            len: uint,
                            inner: *TyDesc)
@@ -218,7 +218,6 @@ impl ReprVisitor {
             } else {
                 self.writer.write_str(", ");
             }
-            self.write_mut_qualifier(mtbl);
             self.visit_ptr_inner(p as *c_void, inner);
             p = align(ptr::offset(p, sz) as uint, al) as *u8;
             left -= dec;
@@ -303,18 +302,16 @@ impl TyVisitor for ReprVisitor {
         }
     }
 
-    fn visit_uniq(&self, mtbl: uint, inner: *TyDesc) -> bool {
+    fn visit_uniq(&self, _mtbl: uint, inner: *TyDesc) -> bool {
         self.writer.write_char('~');
-        self.write_mut_qualifier(mtbl);
         do self.get::<*c_void> |b| {
             self.visit_ptr_inner(*b, inner);
         }
     }
 
     #[cfg(not(stage0))]
-    fn visit_uniq_managed(&self, mtbl: uint, inner: *TyDesc) -> bool {
+    fn visit_uniq_managed(&self, _mtbl: uint, inner: *TyDesc) -> bool {
         self.writer.write_char('~');
-        self.write_mut_qualifier(mtbl);
         do self.get::<&managed::raw::BoxRepr> |b| {
             let p = ptr::to_unsafe_ptr(&b.data) as *c_void;
             self.visit_ptr_inner(p, inner);
@@ -349,6 +346,7 @@ impl TyVisitor for ReprVisitor {
     fn visit_evec_box(&self, mtbl: uint, inner: *TyDesc) -> bool {
         do self.get::<&VecRepr> |b| {
             self.writer.write_char('@');
+            self.write_mut_qualifier(mtbl);
             self.write_unboxed_vec_repr(mtbl, &b.unboxed, inner);
         }
     }
@@ -630,6 +628,7 @@ fn test_repr() {
     exact_test(&(&10), "&10");
     let mut x = 10;
     exact_test(&(&mut x), "&mut 10");
+    exact_test(&(@mut [1, 2]), "@mut [1, 2]");
 
     exact_test(&(1,), "(1,)");
     exact_test(&(@[1,2,3,4,5,6,7,8]),
