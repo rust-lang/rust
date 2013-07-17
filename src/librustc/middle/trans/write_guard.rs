@@ -34,10 +34,10 @@ use syntax::ast;
 use middle::trans::type_::Type;
 
 pub fn root_and_write_guard(datum: &Datum,
-                            mut bcx: block,
+                            mut bcx: @mut Block,
                             span: span,
                             expr_id: ast::node_id,
-                            derefs: uint) -> block {
+                            derefs: uint) -> @mut Block {
     let key = root_map_key { id: expr_id, derefs: derefs };
     debug!("write_guard::root_and_write_guard(key=%?)", key);
 
@@ -60,12 +60,12 @@ pub fn root_and_write_guard(datum: &Datum,
     }
 }
 
-pub fn return_to_mut(mut bcx: block,
+pub fn return_to_mut(mut bcx: @mut Block,
                      root_key: root_map_key,
                      frozen_val_ref: ValueRef,
                      bits_val_ref: ValueRef,
                      filename_val: ValueRef,
-                     line_val: ValueRef) -> block {
+                     line_val: ValueRef) -> @mut Block {
     debug!("write_guard::return_to_mut(root_key=%?, %s, %s, %s)",
            root_key,
            bcx.to_str(),
@@ -102,10 +102,10 @@ pub fn return_to_mut(mut bcx: block,
 }
 
 fn root(datum: &Datum,
-        mut bcx: block,
+        mut bcx: @mut Block,
         span: span,
         root_key: root_map_key,
-        root_info: RootInfo) -> block {
+        root_info: RootInfo) -> @mut Block {
     //! In some cases, borrowck will decide that an @T/@[]/@str
     //! value must be rooted for the program to be safe.  In that
     //! case, we will call this function, which will stash a copy
@@ -182,8 +182,8 @@ fn root(datum: &Datum,
 }
 
 fn perform_write_guard(datum: &Datum,
-                       bcx: block,
-                       span: span) -> block {
+                       bcx: @mut Block,
+                       span: span) -> @mut Block {
     debug!("perform_write_guard");
 
     let llval = datum.to_value_llval(bcx);

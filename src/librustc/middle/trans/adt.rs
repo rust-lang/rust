@@ -106,7 +106,7 @@ pub struct Struct {
  * these, for places in trans where the `ty::t` isn't directly
  * available.
  */
-pub fn represent_node(bcx: block, node: ast::node_id) -> @Repr {
+pub fn represent_node(bcx: @mut Block, node: ast::node_id) -> @Repr {
     represent_type(bcx.ccx(), node_id_type(bcx, node))
 }
 
@@ -283,7 +283,7 @@ fn struct_llfields(cx: &mut CrateContext, st: &Struct, sizing: bool) -> ~[Type] 
  *
  * This should ideally be less tightly tied to `_match`.
  */
-pub fn trans_switch(bcx: block, r: &Repr, scrutinee: ValueRef)
+pub fn trans_switch(bcx: @mut Block, r: &Repr, scrutinee: ValueRef)
     -> (_match::branch_kind, Option<ValueRef>) {
     match *r {
         CEnum(*) | General(*) => {
@@ -301,7 +301,7 @@ pub fn trans_switch(bcx: block, r: &Repr, scrutinee: ValueRef)
 
 
 /// Obtain the actual discriminant of a value.
-pub fn trans_get_discr(bcx: block, r: &Repr, scrutinee: ValueRef)
+pub fn trans_get_discr(bcx: @mut Block, r: &Repr, scrutinee: ValueRef)
     -> ValueRef {
     match *r {
         CEnum(min, max) => load_discr(bcx, scrutinee, min, max),
@@ -315,7 +315,7 @@ pub fn trans_get_discr(bcx: block, r: &Repr, scrutinee: ValueRef)
     }
 }
 
-fn nullable_bitdiscr(bcx: block, nonnull: &Struct, nndiscr: int, ptrfield: uint,
+fn nullable_bitdiscr(bcx: @mut Block, nonnull: &Struct, nndiscr: int, ptrfield: uint,
                      scrutinee: ValueRef) -> ValueRef {
     let cmp = if nndiscr == 0 { IntEQ } else { IntNE };
     let llptr = Load(bcx, GEPi(bcx, scrutinee, [0, ptrfield]));
@@ -324,7 +324,7 @@ fn nullable_bitdiscr(bcx: block, nonnull: &Struct, nndiscr: int, ptrfield: uint,
 }
 
 /// Helper for cases where the discriminant is simply loaded.
-fn load_discr(bcx: block, scrutinee: ValueRef, min: int, max: int)
+fn load_discr(bcx: @mut Block, scrutinee: ValueRef, min: int, max: int)
     -> ValueRef {
     let ptr = GEPi(bcx, scrutinee, [0, 0]);
     if max + 1 == min {
@@ -348,7 +348,7 @@ fn load_discr(bcx: block, scrutinee: ValueRef, min: int, max: int)
  *
  * This should ideally be less tightly tied to `_match`.
  */
-pub fn trans_case(bcx: block, r: &Repr, discr: int) -> _match::opt_result {
+pub fn trans_case(bcx: @mut Block, r: &Repr, discr: int) -> _match::opt_result {
     match *r {
         CEnum(*) => {
             _match::single_result(rslt(bcx, C_int(bcx.ccx(), discr)))
@@ -371,7 +371,7 @@ pub fn trans_case(bcx: block, r: &Repr, discr: int) -> _match::opt_result {
  * representation.  The fields, if any, should then be initialized via
  * `trans_field_ptr`.
  */
-pub fn trans_start_init(bcx: block, r: &Repr, val: ValueRef, discr: int) {
+pub fn trans_start_init(bcx: @mut Block, r: &Repr, val: ValueRef, discr: int) {
     match *r {
         CEnum(min, max) => {
             assert!(min <= discr && discr <= max);
@@ -417,7 +417,7 @@ pub fn num_args(r: &Repr, discr: int) -> uint {
 }
 
 /// Access a field, at a point when the value's case is known.
-pub fn trans_field_ptr(bcx: block, r: &Repr, val: ValueRef, discr: int,
+pub fn trans_field_ptr(bcx: @mut Block, r: &Repr, val: ValueRef, discr: int,
                        ix: uint) -> ValueRef {
     // Note: if this ever needs to generate conditionals (e.g., if we
     // decide to do some kind of cdr-coding-like non-unique repr
@@ -449,7 +449,7 @@ pub fn trans_field_ptr(bcx: block, r: &Repr, val: ValueRef, discr: int,
     }
 }
 
-fn struct_field_ptr(bcx: block, st: &Struct, val: ValueRef, ix: uint,
+fn struct_field_ptr(bcx: @mut Block, st: &Struct, val: ValueRef, ix: uint,
               needs_cast: bool) -> ValueRef {
     let ccx = bcx.ccx();
 
@@ -467,7 +467,7 @@ fn struct_field_ptr(bcx: block, st: &Struct, val: ValueRef, ix: uint,
 }
 
 /// Access the struct drop flag, if present.
-pub fn trans_drop_flag_ptr(bcx: block, r: &Repr, val: ValueRef) -> ValueRef {
+pub fn trans_drop_flag_ptr(bcx: @mut Block, r: &Repr, val: ValueRef) -> ValueRef {
     match *r {
         Univariant(ref st, true) => GEPi(bcx, val, [0, st.fields.len() - 1]),
         _ => bcx.ccx().sess.bug("tried to get drop flag of non-droppable type")

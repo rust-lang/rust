@@ -134,7 +134,7 @@ pub fn finalize(cx: @mut CrateContext) {
 ///
 /// Adds the created metadata nodes directly to the crate's IR.
 /// The return value should be ignored if called from outside of the debuginfo module.
-pub fn create_local_var_metadata(bcx: block, local: @ast::Local) -> DIVariable {
+pub fn create_local_var_metadata(bcx: @mut Block, local: @ast::Local) -> DIVariable {
     let cx = bcx.ccx();
 
     let ident = match local.pat.node {
@@ -198,7 +198,7 @@ pub fn create_local_var_metadata(bcx: block, local: @ast::Local) -> DIVariable {
 ///
 /// Adds the created metadata nodes directly to the crate's IR.
 /// The return value should be ignored if called from outside of the debuginfo module.
-pub fn create_argument_metadata(bcx: block, arg: &ast::arg, span: span) -> Option<DIVariable> {
+pub fn create_argument_metadata(bcx: @mut Block, arg: &ast::arg, span: span) -> Option<DIVariable> {
     debug!("create_argument_metadata");
     if true {
         // XXX create_argument_metadata disabled for now because "node_id_type(bcx, arg.id)" below
@@ -260,7 +260,7 @@ pub fn create_argument_metadata(bcx: block, arg: &ast::arg, span: span) -> Optio
 /// Sets the current debug location at the beginning of the span
 ///
 /// Maps to a call to llvm::LLVMSetCurrentDebugLocation(...)
-pub fn update_source_pos(bcx: block, span: span) {
+pub fn update_source_pos(bcx: @mut Block, span: span) {
     if !bcx.sess().opts.debuginfo || (*span.lo == 0 && *span.hi == 0) {
         return;
     }
@@ -273,9 +273,8 @@ pub fn update_source_pos(bcx: block, span: span) {
 ///
 /// Adds the created metadata nodes directly to the crate's IR.
 /// The return value should be ignored if called from outside of the debuginfo module.
-pub fn create_function_metadata(fcx: fn_ctxt) -> DISubprogram {
+pub fn create_function_metadata(fcx: &FunctionContext) -> DISubprogram {
     let cx = fcx.ccx;
-    let fcx = &mut *fcx;
     let span = fcx.span.get();
 
     let fnitem = cx.tcx.items.get_copy(&fcx.id);
@@ -445,7 +444,7 @@ fn file_metadata(cx: &mut CrateContext, full_path: &str) -> DIFile {
 }
 
 /// Get or create the lexical block metadata node for the given LLVM basic block.
-fn lexical_block_metadata(bcx: block) -> DILexicalBlock {
+fn lexical_block_metadata(bcx: @mut Block) -> DILexicalBlock {
     let cx = bcx.ccx();
     let mut bcx = bcx;
 
