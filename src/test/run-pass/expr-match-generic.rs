@@ -13,8 +13,8 @@
 
 type compare<T> = @fn(T, T) -> bool;
 
-fn test_generic<T:Copy>(expected: T, eq: compare<T>) {
-  let actual: T = match true { true => { copy expected }, _ => fail!("wat") };
+fn test_generic<T:Clone>(expected: T, eq: compare<T>) {
+  let actual: T = match true { true => { expected.clone() }, _ => fail!("wat") };
     assert!((eq(expected, actual)));
 }
 
@@ -23,7 +23,11 @@ fn test_bool() {
     test_generic::<bool>(true, compare_bool);
 }
 
-struct Pair { a: int, b: int }
+#[deriving(Clone)]
+struct Pair {
+    a: int,
+    b: int,
+}
 
 fn test_rec() {
     fn compare_rec(t1: Pair, t2: Pair) -> bool {

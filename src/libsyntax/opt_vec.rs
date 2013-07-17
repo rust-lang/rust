@@ -18,7 +18,7 @@
 
 use std::vec::{VecIterator};
 
-#[deriving(Encodable, Decodable,IterBytes)]
+#[deriving(Clone, Encodable, Decodable, IterBytes)]
 pub enum OptVec<T> {
     Empty,
     Vec(~[T])
@@ -113,7 +113,7 @@ pub fn take_vec<T>(v: OptVec<T>) -> ~[T] {
     }
 }
 
-impl<T:Copy> OptVec<T> {
+impl<T:Clone> OptVec<T> {
     fn prepend(&self, t: T) -> OptVec<T> {
         let mut v0 = ~[t];
         match *self {

@@ -17,7 +17,7 @@ fn main() {
             loop {
                 loop {
                     x = y; //~ ERROR use of moved value
-                    copy x;
+                    x.clone();
                 }
             }
         }

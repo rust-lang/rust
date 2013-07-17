@@ -20,6 +20,7 @@ use parse::token::{str_to_ident};
 use std::char;
 use std::either;
 use std::u64;
+use std::util;
 
 pub use ext::tt::transcribe::{TtReader, new_tt_reader};
 
@@ -32,8 +33,11 @@ pub trait reader {
     fn dup(@mut self) -> @reader;
 }
 
-#[deriving(Eq)]
-pub struct TokenAndSpan {tok: token::Token, sp: span}
+#[deriving(Clone, Eq)]
+pub struct TokenAndSpan {
+    tok: token::Token,
+    sp: span,
+}
 
 pub struct StringReader {
     span_diagnostic: @span_handler,
@@ -93,8 +97,8 @@ fn dup_string_reader(r: @mut StringReader) -> @mut StringReader {
         col: r.col,
         curr: r.curr,
         filemap: r.filemap,
-        peek_tok: copy r.peek_tok,
-        peek_span: copy r.peek_span
+        peek_tok: r.peek_tok.clone(),
+        peek_span: r.peek_span
     }
 }
 
@@ -103,20 +107,21 @@ impl reader for StringReader {
     // return the next token. EFFECT: advances the string_reader.
     fn next_token(@mut self) -> TokenAndSpan {
         let ret_val = TokenAndSpan {
-            tok: copy self.peek_tok,
-            sp: copy self.peek_span,
+            tok: util::replace(&mut self.peek_tok, token::UNDERSCORE),
+            sp: self.peek_span,
         };
         string_advance_token(self);
         ret_val
     }
     fn fatal(@mut self, m: ~str) -> ! {
-        self.span_diagnostic.span_fatal(copy self.peek_span, m)
+        self.span_diagnostic.span_fatal(self.peek_span, m)
     }
     fn span_diag(@mut self) -> @span_handler { self.span_diagnostic }
     fn peek(@mut self) -> TokenAndSpan {
+        // XXX(pcwalton): Bad copy!
         TokenAndSpan {
-            tok: copy self.peek_tok,
-            sp: copy self.peek_span,
+            tok: self.peek_tok.clone(),
+            sp: self.peek_span,
         }
     }
     fn dup(@mut self) -> @reader { dup_string_reader(self) as @reader }
@@ -126,13 +131,13 @@ impl reader for TtReader {
     fn is_eof(@mut self) -> bool { self.cur_tok == token::EOF }
     fn next_token(@mut self) -> TokenAndSpan { tt_next_token(self) }
     fn fatal(@mut self, m: ~str) -> ! {
-        self.sp_diag.span_fatal(copy self.cur_span, m);
+        self.sp_diag.span_fatal(self.cur_span, m);
     }
     fn span_diag(@mut self) -> @span_handler { self.sp_diag }
     fn peek(@mut self) -> TokenAndSpan {
         TokenAndSpan {
-            tok: copy self.cur_tok,
-            sp: copy self.cur_span,
+            tok: self.cur_tok.clone(),
+            sp: self.cur_span,
         }
     }
     fn dup(@mut self) -> @reader { dup_tt_reader(self) as @reader }
@@ -143,8 +148,8 @@ impl reader for TtReader {
 fn string_advance_token(r: @mut StringReader) {
     match (consume_whitespace_and_comments(r)) {
         Some(comment) => {
-            r.peek_tok = copy comment.tok;
-            r.peek_span = copy comment.sp;
+            r.peek_span = comment.sp;
+            r.peek_tok = comment.tok;
         },
         None => {
             if is_eof(r) {
@@ -818,7 +823,7 @@ mod test {
             sp:span {lo:BytePos(21),hi:BytePos(23),expn_info: None}};
         assert_eq!(tok1,tok2);
         // the 'main' id is already read:
-        assert_eq!(copy string_reader.last_pos,BytePos(28));
+        assert_eq!(string_reader.last_pos.clone(), BytePos(28));
         // read another token:
         let tok3 = string_reader.next_token();
         let tok4 = TokenAndSpan{
@@ -826,7 +831,7 @@ mod test {
             sp:span {lo:BytePos(24),hi:BytePos(28),expn_info: None}};
         assert_eq!(tok3,tok4);
         // the lparen is already read:
-        assert_eq!(copy string_reader.last_pos,BytePos(29))
+        assert_eq!(string_reader.last_pos.clone(), BytePos(29))
     }
 
     // check that the given reader produces the desired stream

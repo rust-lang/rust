@@ -39,7 +39,7 @@ pub fn from_srv(
     //! Use the AST service to create a document tree
 
     do astsrv::exec(srv) |ctxt| {
-        extract(ctxt.ast, copy default_name)
+        extract(ctxt.ast, default_name.clone())
     }
 }
 
@@ -61,7 +61,7 @@ fn top_moddoc_from_crate(
     default_name: ~str
 ) -> doc::ModDoc {
     moddoc_from_mod(mk_itemdoc(ast::crate_node_id, default_name),
-                    copy crate.node.module)
+                    crate.node.module.clone())
 }
 
 fn mk_itemdoc(id: ast::node_id, name: ~str) -> doc::ItemDoc {
@@ -84,7 +84,7 @@ fn moddoc_from_mod(
         item: itemdoc,
         items: do module_.items.iter().filter_map |item| {
             let ItemDoc = mk_itemdoc(item.id, to_str(item.ident));
-            match copy item.node {
+            match item.node.clone() {
               ast::item_mod(m) => {
                 Some(doc::ModTag(
                     moddoc_from_mod(ItemDoc, m)
@@ -107,7 +107,7 @@ fn moddoc_from_mod(
               }
               ast::item_enum(enum_definition, _) => {
                 Some(doc::EnumTag(
-                    enumdoc_from_enum(ItemDoc, copy enum_definition.variants)
+                    enumdoc_from_enum(ItemDoc, enum_definition.variants.clone())
                 ))
               }
               ast::item_trait(_, _, methods) => {
@@ -203,7 +203,7 @@ fn traitdoc_from_trait(
     doc::TraitDoc {
         item: itemdoc,
         methods: do methods.iter().transform |method| {
-            match copy *method {
+            match (*method).clone() {
               ast::required(ty_m) => {
                 doc::MethodDoc {
                     name: to_str(ty_m.ident),

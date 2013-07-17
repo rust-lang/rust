@@ -221,7 +221,7 @@ fn resolve_default_method_vtables(bcx: block,
     // Build up a param_substs that we are going to resolve the
     // trait_vtables under.
     let param_substs = Some(@param_substs {
-        tys: copy substs.tps,
+        tys: substs.tps.clone(),
         self_ty: substs.self_ty,
         vtables: impl_vtables,
         self_vtable: None
@@ -696,7 +696,7 @@ pub fn trans_call_inner(in_cx: block,
             let ret_flag_result = bool_to_i1(bcx, Load(bcx, ret_flag.get()));
             bcx = do with_cond(bcx, ret_flag_result) |bcx| {
                 {
-                    let r = (copy bcx.fcx.loop_ret);
+                    let r = bcx.fcx.loop_ret;
                     for r.iter().advance |&(flagptr, _)| {
                         Store(bcx, C_bool(true), flagptr);
                         Store(bcx, C_bool(false), bcx.fcx.llretptr.get());

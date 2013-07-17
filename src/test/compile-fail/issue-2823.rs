@@ -20,6 +20,6 @@ impl Drop for C {
 
 fn main() {
     let c = C{ x: 2};
-    let d = copy c; //~ ERROR copying a value of non-copyable type `C`
+    let d = c.clone(); //~ ERROR does not implement any method in scope
     error!("%?", d.x);
 }

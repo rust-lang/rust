@@ -12,9 +12,9 @@
 
 #[allow(missing_doc)];
 
+use clone::Clone;
 use container::Container;
 use cmp::Eq;
-use kinds::Copy;
 use iterator::IteratorUtil;
 use result::Result;
 use result;
@@ -43,11 +43,11 @@ pub fn either<T, U, V>(f_left: &fn(&T) -> V,
 }
 
 /// Extracts from a vector of either all the left values
-pub fn lefts<T:Copy,U>(eithers: &[Either<T, U>]) -> ~[T] {
+pub fn lefts<T:Clone,U>(eithers: &[Either<T, U>]) -> ~[T] {
     do vec::build_sized(eithers.len()) |push| {
         for eithers.iter().advance |elt| {
             match *elt {
-                Left(ref l) => { push(copy *l); }
+                Left(ref l) => { push((*l).clone()); }
                 _ => { /* fallthrough */ }
             }
         }
@@ -55,11 +55,11 @@ pub fn lefts<T:Copy,U>(eithers: &[Either<T, U>]) -> ~[T] {
 }
 
 /// Extracts from a vector of either all the right values
-pub fn rights<T, U: Copy>(eithers: &[Either<T, U>]) -> ~[U] {
+pub fn rights<T, U: Clone>(eithers: &[Either<T, U>]) -> ~[U] {
     do vec::build_sized(eithers.len()) |push| {
         for eithers.iter().advance |elt| {
             match *elt {
-                Right(ref r) => { push(copy *r); }
+                Right(ref r) => { push((*r).clone()); }
                 _ => { /* fallthrough */ }
             }
         }

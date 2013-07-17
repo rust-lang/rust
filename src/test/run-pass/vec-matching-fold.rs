@@ -1,8 +1,7 @@
-fn foldl<T, U: Copy+Clone>(
-    values: &[T],
-    initial: U,
-    function: &fn(partial: U, element: &T) -> U
-) -> U {
+fn foldl<T,U:Clone>(values: &[T],
+                    initial: U,
+                    function: &fn(partial: U, element: &T) -> U)
+                    -> U {
     match values {
         [ref head, ..tail] =>
             foldl(tail, function(initial, head), function),
@@ -10,11 +9,10 @@ fn foldl<T, U: Copy+Clone>(
     }
 }
 
-fn foldr<T, U: Copy+Clone>(
-    values: &[T],
-    initial: U,
-    function: &fn(element: &T, partial: U) -> U
-) -> U {
+fn foldr<T,U:Clone>(values: &[T],
+                    initial: U,
+                    function: &fn(element: &T, partial: U) -> U)
+                    -> U {
     match values {
         [..head, ref tail] =>
             foldr(head, function(tail, initial), function),

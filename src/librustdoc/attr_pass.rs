@@ -61,17 +61,17 @@ fn fold_crate(
     let doc = fold::default_seq_fold_crate(fold, doc);
 
     let attrs = do astsrv::exec(srv) |ctxt| {
-        let attrs = copy ctxt.ast.node.attrs;
+        let attrs = ctxt.ast.node.attrs.clone();
         attr_parser::parse_crate(attrs)
     };
 
     doc::CrateDoc {
         topmod: doc::ModDoc {
             item: doc::ItemDoc {
-                name: (copy attrs.name).get_or_default(doc.topmod.name()),
-                .. copy doc.topmod.item
+                name: attrs.name.clone().get_or_default(doc.topmod.name()),
+                .. doc.topmod.item.clone()
             },
-            .. copy doc.topmod
+            .. doc.topmod.clone()
         }
     }
 }
@@ -87,7 +87,7 @@ fn fold_item(
     let desc = if doc.id == ast::crate_node_id {
         // This is the top-level mod, use the crate attributes
         do astsrv::exec(srv) |ctxt| {
-            attr_parser::parse_desc(copy ctxt.ast.node.attrs)
+            attr_parser::parse_desc(ctxt.ast.node.attrs.clone())
         }
     } else {
         parse_item_attrs(srv, doc.id, attr_parser::parse_desc)
@@ -105,8 +105,8 @@ fn parse_item_attrs<T:Send>(
     parse_attrs: ~fn(a: ~[ast::attribute]) -> T) -> T {
     do astsrv::exec(srv) |ctxt| {
         let attrs = match ctxt.ast_map.get_copy(&id) {
-            ast_map::node_item(item, _) => copy item.attrs,
-            ast_map::node_foreign_item(item, _, _, _) => copy item.attrs,
+            ast_map::node_item(item, _) => item.attrs.clone(),
+            ast_map::node_foreign_item(item, _, _, _) => item.attrs.clone(),
             _ => fail!("parse_item_attrs: not an item")
         };
         parse_attrs(attrs)
@@ -124,21 +124,21 @@ fn fold_enum(
 
     doc::EnumDoc {
         variants: do doc.variants.iter().transform |variant| {
-            let variant = copy *variant;
+            let variant = (*variant).clone();
             let desc = {
-                let variant = copy variant;
+                let variant = variant.clone();
                 do astsrv::exec(srv.clone()) |ctxt| {
                     match ctxt.ast_map.get_copy(&doc_id) {
                         ast_map::node_item(@ast::item {
                             node: ast::item_enum(ref enum_definition, _), _
                         }, _) => {
                             let ast_variant =
-                                copy *enum_definition.variants.iter().find_(|v| {
+                                (*enum_definition.variants.iter().find_(|v| {
                                     to_str(v.node.name) == variant.name
-                                }).get();
+                                }).get()).clone();
 
                             attr_parser::parse_desc(
-                                copy ast_variant.node.attrs)
+                                ast_variant.node.attrs.clone())
                         }
                         _ => {
                             fail!("Enum variant %s has id that's not bound to an enum item",
@@ -165,7 +165,7 @@ fn fold_trait(
     let doc = fold::default_seq_fold_trait(fold, doc);
 
     doc::TraitDoc {
-        methods: merge_method_attrs(srv, doc.id(), copy doc.methods),
+        methods: merge_method_attrs(srv, doc.id(), doc.methods.clone()),
         .. doc
     }
 }
@@ -183,13 +183,13 @@ fn merge_method_attrs(
                 node: ast::item_trait(_, _, ref methods), _
             }, _) => {
                 methods.iter().transform(|method| {
-                    match copy *method {
+                    match (*method).clone() {
                         ast::required(ty_m) => {
                             (to_str(ty_m.ident),
-                             attr_parser::parse_desc(copy ty_m.attrs))
+                             attr_parser::parse_desc(ty_m.attrs.clone()))
                         }
                         ast::provided(m) => {
-                            (to_str(m.ident), attr_parser::parse_desc(copy m.attrs))
+                            (to_str(m.ident), attr_parser::parse_desc(m.attrs.clone()))
                         }
                     }
                 }).collect()
@@ -199,7 +199,7 @@ fn merge_method_attrs(
             }, _) => {
                 methods.iter().transform(|method| {
                     (to_str(method.ident),
-                     attr_parser::parse_desc(copy method.attrs))
+                     attr_parser::parse_desc(method.attrs.clone()))
                 }).collect()
             }
             _ => fail!("unexpected item")
@@ -212,7 +212,7 @@ fn merge_method_attrs(
 
         doc::MethodDoc {
             desc: desc,
-            .. copy *doc
+            .. (*doc).clone()
         }
     }.collect()
 }
@@ -226,7 +226,7 @@ fn fold_impl(
     let doc = fold::default_seq_fold_impl(fold, doc);
 
     doc::ImplDoc {
-        methods: merge_method_attrs(srv, doc.id(), copy doc.methods),
+        methods: merge_method_attrs(srv, doc.id(), doc.methods.clone()),
         .. doc
     }
 }
@@ -240,7 +240,7 @@ mod test {
     use extract;
 
     fn mk_doc(source: ~str) -> doc::Doc {
-        do astsrv::from_str(copy source) |srv| {
+        do astsrv::from_str(source.clone()) |srv| {
             let doc = extract::from_srv(srv.clone(), ~"");
             run(srv.clone(), doc)
         }

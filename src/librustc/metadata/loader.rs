@@ -55,11 +55,11 @@ pub struct Context {
 
 pub fn load_library_crate(cx: &Context) -> (~str, @~[u8]) {
     match find_library_crate(cx) {
-      Some(ref t) => return (/*bad*/copy *t),
+      Some(ref t) => return (/*bad*/(*t).clone()),
       None => {
-        cx.diag.span_fatal(
-            cx.span, fmt!("can't find crate for `%s`",
-                          token::ident_to_str(&cx.ident)));
+        cx.diag.span_fatal(cx.span,
+                           fmt!("can't find crate for `%s`",
+                                token::ident_to_str(&cx.ident)));
       }
     }
 }

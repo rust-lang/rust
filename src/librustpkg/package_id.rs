@@ -15,6 +15,7 @@ use version::{try_getting_version, try_getting_local_version,
 /// Path-fragment identifier of a package such as
 /// 'github.com/graydon/test'; path must be a relative
 /// path with >=1 component.
+#[deriving(Clone)]
 pub struct PkgId {
     /// Remote path: for example, github.com/mozilla/quux-whatever
     remote_path: RemotePath,
@@ -70,8 +71,8 @@ impl PkgId {
             return cond.raise((p, ~"0-length pkgid"));
         }
         let remote_path = RemotePath(p);
-        let local_path = normalize(copy remote_path);
-        let short_name = (copy local_path).filestem().expect(fmt!("Strange path! %s", s));
+        let local_path = normalize(remote_path.clone());
+        let short_name = local_path.clone().filestem().expect(fmt!("Strange path! %s", s));
 
         let version = match given_version {
             Some(v) => v,

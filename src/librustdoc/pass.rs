@@ -31,8 +31,8 @@ pub fn run_passes(
     do passes.iter().fold(doc) |doc, pass| {
         debug!("pass #%d", passno);
         passno += 1;
-        do time(copy pass.name) {
-            (pass.f)(srv.clone(), copy doc)
+        do time(pass.name.clone()) {
+            (pass.f)(srv.clone(), doc.clone())
         }
     }
 }
@@ -49,7 +49,7 @@ fn test_run_passes() {
                     topmod: doc::ModDoc{
                         item: doc::ItemDoc {
                             name: doc.cratemod().name() + "two",
-                            .. copy doc.cratemod().item
+                            .. doc.cratemod().item.clone()
                         },
                         items: ~[],
                         index: None
@@ -68,7 +68,7 @@ fn test_run_passes() {
                     topmod: doc::ModDoc{
                         item: doc::ItemDoc {
                             name: doc.cratemod().name() + "three",
-                            .. copy doc.cratemod().item
+                            .. doc.cratemod().item.clone()
                         },
                         items: ~[],
                         index: None

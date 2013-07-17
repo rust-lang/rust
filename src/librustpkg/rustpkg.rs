@@ -104,12 +104,12 @@ impl<'self> PkgScript<'self> {
             binary: binary,
             maybe_sysroot: Some(@os::self_exe_path().get().pop()),
             crate_type: session::bin_crate,
-            .. copy *session::basic_options()
+            .. (*session::basic_options()).clone()
         };
         let input = driver::file_input(script);
         let sess = driver::build_session(options, diagnostic::emit);
         let cfg = driver::build_configuration(sess, binary, &input);
-        let (crate, _) = driver::compile_upto(sess, copy cfg, &input, driver::cu_parse, None);
+        let (crate, _) = driver::compile_upto(sess, cfg.clone(), &input, driver::cu_parse, None);
         let work_dir = build_pkg_id_in_workspace(id, workspace);
 
         debug!("Returning package script with id %?", id);
@@ -203,7 +203,7 @@ impl CtxMethods for Ctx {
                 }
                 // The package id is presumed to be the first command-line
                 // argument
-                let pkgid = PkgId::new(copy args[0], &os::getcwd());
+                let pkgid = PkgId::new(args[0].clone(), &os::getcwd());
                 for each_pkg_parent_workspace(&pkgid) |workspace| {
                     debug!("found pkg %s in workspace %s, trying to build",
                            pkgid.to_str(), workspace.to_str());
@@ -216,7 +216,7 @@ impl CtxMethods for Ctx {
                 }
                 // The package id is presumed to be the first command-line
                 // argument
-                let pkgid = PkgId::new(copy args[0], &os::getcwd());
+                let pkgid = PkgId::new(args[0].clone(), &os::getcwd());
                 let cwd = os::getcwd();
                 self.clean(&cwd, &pkgid); // tjc: should use workspace, not cwd
             }
@@ -225,7 +225,7 @@ impl CtxMethods for Ctx {
                     return usage::do_cmd();
                 }
 
-                self.do_cmd(copy args[0], copy args[1]);
+                self.do_cmd(args[0].clone(), args[1].clone());
             }
             "info" => {
                 self.info();
@@ -423,16 +423,16 @@ impl CtxMethods for Ctx {
             debug!("Copying: %s -> %s", exec.to_str(), target_exec.to_str());
             if !(os::mkdir_recursive(&target_exec.dir_path(), U_RWX) &&
                  os::copy_file(exec, &target_exec)) {
-                cond.raise((copy *exec, copy target_exec));
+                cond.raise(((*exec).clone(), target_exec.clone()));
             }
         }
         for maybe_library.iter().advance |lib| {
-            let target_lib = (copy target_lib).expect(fmt!("I built %s but apparently \
+            let target_lib = target_lib.clone().expect(fmt!("I built %s but apparently \
                                                 didn't install it!", lib.to_str()));
             debug!("Copying: %s -> %s", lib.to_str(), target_lib.to_str());
             if !(os::mkdir_recursive(&target_lib.dir_path(), U_RWX) &&
                  os::copy_file(lib, &target_lib)) {
-                cond.raise((copy *lib, copy target_lib));
+                cond.raise(((*lib).clone(), target_lib.clone()));
             }
         }
     }
@@ -475,7 +475,7 @@ pub fn main() {
                getopts::opt_present(matches, "help");
     let json = getopts::opt_present(matches, "j") ||
                getopts::opt_present(matches, "json");
-    let mut args = copy matches.free;
+    let mut args = matches.free.clone();
 
     args.shift();
 

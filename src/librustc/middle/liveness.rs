@@ -128,6 +128,12 @@ struct Variable(uint);
 #[deriving(Eq)]
 struct LiveNode(uint);
 
+impl Clone for LiveNode {
+    fn clone(&self) -> LiveNode {
+        LiveNode(**self)
+    }
+}
+
 #[deriving(Eq)]
 enum LiveNodeKind {
     FreeVarNode(span),
@@ -505,7 +511,7 @@ fn visit_expr(expr: @expr, (this, vt): (@mut IrMaps, vt<@mut IrMaps>)) {
       // otherwise, live nodes are not required:
       expr_index(*) | expr_field(*) | expr_vstore(*) | expr_vec(*) |
       expr_call(*) | expr_method_call(*) | expr_tup(*) | expr_log(*) |
-      expr_binary(*) | expr_addr_of(*) | expr_copy(*) | expr_loop_body(*) |
+      expr_binary(*) | expr_addr_of(*) | expr_loop_body(*) |
       expr_do_body(*) | expr_cast(*) | expr_unary(*) | expr_break(_) |
       expr_again(_) | expr_lit(_) | expr_ret(*) | expr_block(*) |
       expr_assign(*) | expr_assign_op(*) | expr_mac(*) |
@@ -522,6 +528,7 @@ fn visit_expr(expr: @expr, (this, vt): (@mut IrMaps, vt<@mut IrMaps>)) {
 // Actually we compute just a bit more than just liveness, but we use
 // the same basic propagation framework in all cases.
 
+#[deriving(Clone)]
 struct Users {
     reader: LiveNode,
     writer: LiveNode,
@@ -680,7 +687,7 @@ impl Liveness {
     */
     pub fn live_on_exit(&self, ln: LiveNode, var: Variable)
                         -> Option<LiveNodeKind> {
-        self.live_on_entry(copy self.successors[*ln], var)
+        self.live_on_entry(self.successors[*ln], var)
     }
 
     pub fn used_on_entry(&self, ln: LiveNode, var: Variable) -> bool {
@@ -697,7 +704,7 @@ impl Liveness {
 
     pub fn assigned_on_exit(&self, ln: LiveNode, var: Variable)
                             -> Option<LiveNodeKind> {
-        self.assigned_on_entry(copy self.successors[*ln], var)
+        self.assigned_on_entry(self.successors[*ln], var)
     }
 
     pub fn indices(&self, ln: LiveNode, op: &fn(uint)) {
@@ -768,14 +775,14 @@ impl Liveness {
             wr.write_str("[ln(");
             wr.write_uint(*ln);
             wr.write_str(") of kind ");
-            wr.write_str(fmt!("%?", copy self.ir.lnks[*ln]));
+            wr.write_str(fmt!("%?", self.ir.lnks[*ln]));
             wr.write_str(" reads");
             self.write_vars(wr, ln, |idx| self.users[idx].reader );
             wr.write_str("  writes");
             self.write_vars(wr, ln, |idx| self.users[idx].writer );
             wr.write_str(" ");
             wr.write_str(" precedes ");
-            wr.write_str((copy self.successors[*ln]).to_str());
+            wr.write_str((self.successors[*ln]).to_str());
             wr.write_str("]");
         }
     }
@@ -813,9 +820,9 @@ impl Liveness {
         let mut changed = false;
         do self.indices2(ln, succ_ln) |idx, succ_idx| {
             let users = &mut *self.users;
-            changed |= copy_if_invalid(copy users[succ_idx].reader,
+            changed |= copy_if_invalid(users[succ_idx].reader,
                                        &mut users[idx].reader);
-            changed |= copy_if_invalid(copy users[succ_idx].writer,
+            changed |= copy_if_invalid(users[succ_idx].writer,
                                        &mut users[idx].writer);
             if users[succ_idx].used && !users[idx].used {
                 users[idx].used = true;
@@ -1199,7 +1206,6 @@ impl Liveness {
           }
 
           expr_addr_of(_, e) |
-          expr_copy(e) |
           expr_loop_body(e) |
           expr_do_body(e) |
           expr_cast(e, _) |
@@ -1474,7 +1480,7 @@ fn check_expr(expr: @expr, (this, vt): (@Liveness, vt<@Liveness>)) {
       expr_call(*) | expr_method_call(*) | expr_if(*) | expr_match(*) |
       expr_while(*) | expr_loop(*) | expr_index(*) | expr_field(*) |
       expr_vstore(*) | expr_vec(*) | expr_tup(*) | expr_log(*) |
-      expr_binary(*) | expr_copy(*) | expr_loop_body(*) | expr_do_body(*) |
+      expr_binary(*) | expr_loop_body(*) | expr_do_body(*) |
       expr_cast(*) | expr_unary(*) | expr_ret(*) | expr_break(*) |
       expr_again(*) | expr_lit(_) | expr_block(*) |
       expr_mac(*) | expr_addr_of(*) | expr_struct(*) | expr_repeat(*) |

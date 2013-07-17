@@ -20,7 +20,7 @@ use std::local_data;
 use std::rand;
 use std::rand::RngUtil;
 
-#[deriving(Encodable, Decodable, Eq, IterBytes)]
+#[deriving(Clone, Encodable, Decodable, Eq, IterBytes)]
 pub enum binop {
     PLUS,
     MINUS,
@@ -34,7 +34,7 @@ pub enum binop {
     SHR,
 }
 
-#[deriving(Encodable, Decodable, Eq, IterBytes)]
+#[deriving(Clone, Encodable, Decodable, Eq, IterBytes)]
 pub enum Token {
     /* Expression-operator symbols. */
     EQ,
@@ -95,7 +95,7 @@ pub enum Token {
     EOF,
 }
 
-#[deriving(Encodable, Decodable, Eq, IterBytes)]
+#[deriving(Clone, Encodable, Decodable, Eq, IterBytes)]
 /// For interpolation during macro expansion.
 pub enum nonterminal {
     nt_item(@ast::item),
@@ -350,8 +350,8 @@ pub mod special_idents {
  * Maps a token to a record specifying the corresponding binary
  * operator
  */
-pub fn token_to_binop(tok: Token) -> Option<ast::binop> {
-  match tok {
+pub fn token_to_binop(tok: &Token) -> Option<ast::binop> {
+  match *tok {
       BINOP(STAR)    => Some(ast::mul),
       BINOP(SLASH)   => Some(ast::div),
       BINOP(PERCENT) => Some(ast::rem),
@@ -566,7 +566,6 @@ pub mod keywords {
         As,
         Break,
         Const,
-        Copy,
         Do,
         Else,
         Enum,
@@ -609,7 +608,6 @@ pub mod keywords {
                 As => ident { name: 32, ctxt: 0 },
                 Break => ident { name: 33, ctxt: 0 },
                 Const => ident { name: 34, ctxt: 0 },
-                Copy => ident { name: 35, ctxt: 0 },
                 Do => ident { name: 36, ctxt: 0 },
                 Else => ident { name: 37, ctxt: 0 },
                 Enum => ident { name: 38, ctxt: 0 },

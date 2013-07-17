@@ -48,7 +48,7 @@ fn main() {
     } else if args.len() <= 1 {
         ~[~"", ~"100"]
     } else {
-        copy args
+        args.clone()
     };
 
     let (p,c) = comm::stream();

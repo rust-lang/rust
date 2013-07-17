@@ -16,6 +16,7 @@ Cross-platform file path handling
 
 #[allow(missing_doc)];
 
+use clone::Clone;
 use container::Container;
 use cmp::Eq;
 use iterator::IteratorUtil;
@@ -553,7 +554,7 @@ impl GenericPath for PosixPath {
     fn filename(&self) -> Option<~str> {
         match self.components.len() {
             0 => None,
-            n => Some(copy self.components[n - 1]),
+            n => Some(self.components[n - 1].clone()),
         }
     }
 
@@ -563,7 +564,7 @@ impl GenericPath for PosixPath {
             Some(ref f) => {
                 match f.rfind('.') {
                     Some(p) => Some(f.slice_to(p).to_owned()),
-                    None => Some(copy *f),
+                    None => Some((*f).clone()),
                 }
             }
         }
@@ -603,7 +604,7 @@ impl GenericPath for PosixPath {
 
     fn with_filetype(&self, t: &str) -> PosixPath {
         match (t.len(), self.filestem()) {
-            (0, None)        => copy *self,
+            (0, None)        => (*self).clone(),
             (0, Some(ref s)) => self.with_filename(*s),
             (_, None)        => self.with_filename(fmt!(".%s", t)),
             (_, Some(ref s)) => self.with_filename(fmt!("%s.%s", *s, t)),
@@ -612,7 +613,7 @@ impl GenericPath for PosixPath {
 
     fn dir_path(&self) -> PosixPath {
         match self.components.len() {
-            0 => copy *self,
+            0 => (*self).clone(),
             _ => self.pop(),
         }
     }
@@ -620,7 +621,7 @@ impl GenericPath for PosixPath {
     fn file_path(&self) -> PosixPath {
         let cs = match self.filename() {
           None => ~[],
-          Some(ref f) => ~[copy *f]
+          Some(ref f) => ~[(*f).clone()]
         };
         PosixPath {
             is_absolute: false,
@@ -637,7 +638,7 @@ impl GenericPath for PosixPath {
         if other.is_absolute {
             PosixPath {
                 is_absolute: true,
-                components: copy other.components,
+                components: other.components.clone(),
             }
         } else {
             self.push_rel(other)
@@ -649,7 +650,7 @@ impl GenericPath for PosixPath {
     }
 
     fn push_many<S: Str>(&self, cs: &[S]) -> PosixPath {
-        let mut v = copy self.components;
+        let mut v = self.components.clone();
         for cs.iter().advance |e| {
             for e.as_slice().split_iter(windows::is_sep).advance |s| {
                 if !s.is_empty() {
@@ -664,17 +665,20 @@ impl GenericPath for PosixPath {
     }
 
     fn push(&self, s: &str) -> PosixPath {
-        let mut v = copy self.components;
+        let mut v = self.components.clone();
         for s.split_iter(windows::is_sep).advance |s| {
             if !s.is_empty() {
                 v.push(s.to_owned())
             }
         }
-        PosixPath { components: v, ..copy *self }
+        PosixPath {
+            components: v,
+            ..(*self).clone()
+        }
     }
 
     fn pop(&self) -> PosixPath {
-        let mut cs = copy self.components;
+        let mut cs = self.components.clone();
         if cs.len() != 0 {
             cs.pop();
         }
@@ -734,13 +738,13 @@ impl GenericPath for WindowsPath {
         ) {
             (Some((ref d, ref r)), _) => {
                 host = None;
-                device = Some(copy *d);
-                rest = copy *r;
+                device = Some((*d).clone());
+                rest = (*r).clone();
             }
             (None, Some((ref h, ref r))) => {
-                host = Some(copy *h);
+                host = Some((*h).clone());
                 device = None;
-                rest = copy *r;
+                rest = (*r).clone();
             }
             (None, None) => {
                 host = None;
@@ -773,7 +777,7 @@ impl GenericPath for WindowsPath {
     fn filename(&self) -> Option<~str> {
         match self.components.len() {
             0 => None,
-            n => Some(copy self.components[n - 1]),
+            n => Some(self.components[n - 1].clone()),
         }
     }
 
@@ -783,7 +787,7 @@ impl GenericPath for WindowsPath {
             Some(ref f) => {
                 match f.rfind('.') {
                     Some(p) => Some(f.slice_to(p).to_owned()),
-                    None => Some(copy *f),
+                    None => Some((*f).clone()),
                 }
             }
         }
@@ -823,7 +827,7 @@ impl GenericPath for WindowsPath {
 
     fn with_filetype(&self, t: &str) -> WindowsPath {
         match (t.len(), self.filestem()) {
-            (0, None)        => copy *self,
+            (0, None)        => (*self).clone(),
             (0, Some(ref s)) => self.with_filename(*s),
             (_, None)        => self.with_filename(fmt!(".%s", t)),
             (_, Some(ref s)) => self.with_filename(fmt!("%s.%s", *s, t)),
@@ -832,7 +836,7 @@ impl GenericPath for WindowsPath {
 
     fn dir_path(&self) -> WindowsPath {
         match self.components.len() {
-            0 => copy *self,
+            0 => (*self).clone(),
             _ => self.pop(),
         }
     }
@@ -844,7 +848,7 @@ impl GenericPath for WindowsPath {
             is_absolute: false,
             components: match self.filename() {
                 None => ~[],
-                Some(ref f) => ~[copy *f],
+                Some(ref f) => ~[(*f).clone()],
             }
         }
     }
@@ -864,10 +868,10 @@ impl GenericPath for WindowsPath {
         match other.host {
             Some(ref host) => {
                 return WindowsPath {
-                    host: Some(copy *host),
-                    device: copy other.device,
+                    host: Some((*host).clone()),
+                    device: other.device.clone(),
                     is_absolute: true,
-                    components: copy other.components,
+                    components: other.components.clone(),
                 };
             }
             _ => {}
@@ -878,9 +882,9 @@ impl GenericPath for WindowsPath {
             Some(ref device) => {
                 return WindowsPath {
                     host: None,
-                    device: Some(copy *device),
+                    device: Some((*device).clone()),
                     is_absolute: true,
-                    components: copy other.components,
+                    components: other.components.clone(),
                 };
             }
             _ => {}
@@ -889,10 +893,10 @@ impl GenericPath for WindowsPath {
         /* fallback: host and device of lhs win, but the
            whole path of the right */
         WindowsPath {
-            host: copy self.host,
-            device: copy self.device,
+            host: self.host.clone(),
+            device: self.device.clone(),
             is_absolute: self.is_absolute || other.is_absolute,
-            components: copy other.components,
+            components: other.components.clone(),
         }
     }
 
@@ -912,7 +916,7 @@ impl GenericPath for WindowsPath {
     }
 
     fn push_many<S: Str>(&self, cs: &[S]) -> WindowsPath {
-        let mut v = copy self.components;
+        let mut v = self.components.clone();
         for cs.iter().advance |e| {
             for e.as_slice().split_iter(windows::is_sep).advance |s| {
                 if !s.is_empty() {
@@ -922,31 +926,31 @@ impl GenericPath for WindowsPath {
         }
         // tedious, but as-is, we can't use ..self
         WindowsPath {
-            host: copy self.host,
-            device: copy self.device,
+            host: self.host.clone(),
+            device: self.device.clone(),
             is_absolute: self.is_absolute,
             components: v
         }
     }
 
     fn push(&self, s: &str) -> WindowsPath {
-        let mut v = copy self.components;
+        let mut v = self.components.clone();
         for s.split_iter(windows::is_sep).advance |s| {
             if !s.is_empty() {
                 v.push(s.to_owned())
             }
         }
-        WindowsPath { components: v, ..copy *self }
+        WindowsPath { components: v, ..(*self).clone() }
     }
 
     fn pop(&self) -> WindowsPath {
-        let mut cs = copy self.components;
+        let mut cs = self.components.clone();
         if cs.len() != 0 {
             cs.pop();
         }
         WindowsPath {
-            host: copy self.host,
-            device: copy self.device,
+            host: self.host.clone(),
+            device: self.device.clone(),
             is_absolute: self.is_absolute,
             components: cs,
         }
@@ -954,7 +958,7 @@ impl GenericPath for WindowsPath {
 
     fn normalize(&self) -> WindowsPath {
         WindowsPath {
-            host: copy self.host,
+            host: self.host.clone(),
             device: match self.device {
                 None => None,
 
@@ -982,7 +986,7 @@ pub fn normalize(components: &[~str]) -> ~[~str] {
             cs.pop();
             loop;
         }
-        cs.push(copy *c);
+        cs.push((*c).clone());
     }
     cs
 }

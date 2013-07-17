@@ -12,7 +12,7 @@
 
 struct Box<T> {c: @T}
 
-fn unbox<T:Copy>(b: Box<T>) -> T { return copy *b.c; }
+fn unbox<T:Clone>(b: Box<T>) -> T { return (*b.c).clone(); }
 
 pub fn main() {
     let foo: int = 17;

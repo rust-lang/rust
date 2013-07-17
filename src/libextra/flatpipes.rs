@@ -164,8 +164,8 @@ Constructors for flat pipes that send POD types using memcpy.
 
 # Safety Note
 
-This module is currently unsafe because it uses `Copy Send` as a type
-parameter bounds meaning POD (plain old data), but `Copy Send` and
+This module is currently unsafe because it uses `Clone + Send` as a type
+parameter bounds meaning POD (plain old data), but `Clone + Send` and
 POD are not equivelant.
 
 */
@@ -188,7 +188,7 @@ pub mod pod {
     pub type PipeChan<T> = FlatChan<T, PodFlattener<T>, PipeByteChan>;
 
     /// Create a `FlatPort` from a `Reader`
-    pub fn reader_port<T:Copy + Send,R:Reader>(
+    pub fn reader_port<T:Clone + Send,R:Reader>(
         reader: R
     ) -> ReaderPort<T, R> {
         let unflat: PodUnflattener<T> = PodUnflattener::new();
@@ -197,7 +197,7 @@ pub mod pod {
     }
 
     /// Create a `FlatChan` from a `Writer`
-    pub fn writer_chan<T:Copy + Send,W:Writer>(
+    pub fn writer_chan<T:Clone + Send,W:Writer>(
         writer: W
     ) -> WriterChan<T, W> {
         let flat: PodFlattener<T> = PodFlattener::new();
@@ -206,21 +206,21 @@ pub mod pod {
     }
 
     /// Create a `FlatPort` from a `Port<~[u8]>`
-    pub fn pipe_port<T:Copy + Send>(port: Port<~[u8]>) -> PipePort<T> {
+    pub fn pipe_port<T:Clone + Send>(port: Port<~[u8]>) -> PipePort<T> {
         let unflat: PodUnflattener<T> = PodUnflattener::new();
         let byte_port = PipeBytePort::new(port);
         FlatPort::new(unflat, byte_port)
     }
 
     /// Create a `FlatChan` from a `Chan<~[u8]>`
-    pub fn pipe_chan<T:Copy + Send>(chan: Chan<~[u8]>) -> PipeChan<T> {
+    pub fn pipe_chan<T:Clone + Send>(chan: Chan<~[u8]>) -> PipeChan<T> {
         let flat: PodFlattener<T> = PodFlattener::new();
         let byte_chan = PipeByteChan::new(chan);
         FlatChan::new(flat, byte_chan)
     }
 
     /// Create a pair of `FlatChan` and `FlatPort`, backed by pipes
-    pub fn pipe_stream<T:Copy + Send>() -> (PipePort<T>, PipeChan<T>) {
+    pub fn pipe_stream<T:Clone + Send>() -> (PipePort<T>, PipeChan<T>) {
         let (port, chan) = comm::stream();
         return (pipe_port(port), pipe_chan(chan));
     }
@@ -348,7 +348,7 @@ pub mod flatteners {
     use std::sys::size_of;
     use std::vec;
 
-    // FIXME #4074: Copy + Send != POD
+    // FIXME #4074: Clone + Send != POD
     pub struct PodUnflattener<T> {
         bogus: ()
     }
@@ -357,17 +357,17 @@ pub mod flatteners {
         bogus: ()
     }
 
-    impl<T:Copy + Send> Unflattener<T> for PodUnflattener<T> {
+    impl<T:Clone + Send> Unflattener<T> for PodUnflattener<T> {
         fn unflatten(&self, buf: ~[u8]) -> T {
             assert!(size_of::<T>() != 0);
             assert_eq!(size_of::<T>(), buf.len());
             let addr_of_init: &u8 = unsafe { &*vec::raw::to_ptr(buf) };
             let addr_of_value: &T = unsafe { cast::transmute(addr_of_init) };
-            copy *addr_of_value
+            (*addr_of_value).clone()
         }
     }
 
-    impl<T:Copy + Send> Flattener<T> for PodFlattener<T> {
+    impl<T:Clone + Send> Flattener<T> for PodFlattener<T> {
         fn flatten(&self, val: T) -> ~[u8] {
             assert!(size_of::<T>() != 0);
             let val: *T = ptr::to_unsafe_ptr(&val);
@@ -376,7 +376,7 @@ pub mod flatteners {
         }
     }
 
-    impl<T:Copy + Send> PodUnflattener<T> {
+    impl<T:Clone + Send> PodUnflattener<T> {
         pub fn new() -> PodUnflattener<T> {
             PodUnflattener {
                 bogus: ()
@@ -384,7 +384,7 @@ pub mod flatteners {
         }
     }
 
-    impl<T:Copy + Send> PodFlattener<T> {
+    impl<T:Clone + Send> PodFlattener<T> {
         pub fn new() -> PodFlattener<T> {
             PodFlattener {
                 bogus: ()
@@ -655,7 +655,7 @@ mod test {
 
         chan.send(10);
 
-        let bytes = copy *chan.byte_chan.writer.bytes;
+        let bytes = (*chan.byte_chan.writer.bytes).clone();
 
         let reader = BufReader::new(bytes);
         let port = serial::reader_port(reader);
@@ -703,7 +703,7 @@ mod test {
 
         chan.send(10);
 
-        let bytes = copy *chan.byte_chan.writer.bytes;
+        let bytes = (*chan.byte_chan.writer.bytes).clone();
 
         let reader = BufReader::new(bytes);
         let port = pod::reader_port(reader);
@@ -785,13 +785,13 @@ mod test {
         let accept_chan = Cell::new(accept_chan);
 
         // The server task
-        let addr = copy addr0;
+        let addr = addr0.clone();
         do task::spawn || {
             let iotask = &uv::global_loop::get();
             let begin_connect_chan = begin_connect_chan.take();
             let accept_chan = accept_chan.take();
             let listen_res = do tcp::listen(
-                copy addr, port, 128, iotask, |_kill_ch| {
+                addr.clone(), port, 128, iotask, |_kill_ch| {
                     // Tell the sender to initiate the connection
                     debug!("listening");
                     begin_connect_chan.send(())
@@ -811,14 +811,14 @@ mod test {
         }
 
         // Client task
-        let addr = copy addr0;
+        let addr = addr0.clone();
         do task::spawn || {
             // Wait for the server to start listening
             begin_connect_port.recv();
 
             debug!("connecting");
             let iotask = &uv::global_loop::get();
-            let connect_result = tcp::connect(copy addr, port, iotask);
+            let connect_result = tcp::connect(addr.clone(), port, iotask);
             assert!(connect_result.is_ok());
             let sock = result::unwrap(connect_result);
             let socket_buf: tcp::TcpSocketBuf = tcp::socket_buf(sock);

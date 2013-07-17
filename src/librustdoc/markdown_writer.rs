@@ -22,6 +22,7 @@ use std::str;
 use std::task;
 use extra::future;
 
+#[deriving(Clone)]
 pub enum WriteInstr {
     Write(~str),
     Done
@@ -90,7 +91,7 @@ fn pandoc_writer(
     page: doc::Page
 ) -> Writer {
     assert!(config.pandoc_cmd.is_some());
-    let pandoc_cmd = copy *config.pandoc_cmd.get_ref();
+    let pandoc_cmd = (*config.pandoc_cmd.get_ref()).clone();
     let filename = make_local_filename(config, page);
 
     let pandoc_args = ~[
@@ -198,7 +199,7 @@ pub fn future_writer_factory(
             let mut future = future;
             writer_ch.send(writer);
             let s = future.get();
-            markdown_ch.send((copy page, s));
+            markdown_ch.send((page.clone(), s));
         }
         writer_po.recv()
     };
@@ -208,7 +209,7 @@ pub fn future_writer_factory(
 
 fn future_writer() -> (Writer, future::Future<~str>) {
     let (port, chan) = comm::stream();
-    let writer: ~fn(instr: WriteInstr) = |instr| chan.send(copy instr);
+    let writer: ~fn(instr: WriteInstr) = |instr| chan.send(instr.clone());
     let future = do future::from_fn || {
         let mut res = ~"";
         loop {
@@ -234,7 +235,7 @@ mod test {
 
     fn mk_doc(name: ~str, source: ~str) -> doc::Doc {
         do astsrv::from_str(source) |srv| {
-            let doc = extract::from_srv(srv.clone(), copy name);
+            let doc = extract::from_srv(srv.clone(), name.clone());
             let doc = (path_pass::mk_pass().f)(srv.clone(), doc);
             doc
         }
@@ -278,7 +279,7 @@ mod test {
         };
         let doc = mk_doc(~"", ~"mod a { mod b { } }");
         // hidden __std_macros module at the start.
-        let modb = copy doc.cratemod().mods()[1].mods()[0];
+        let modb = doc.cratemod().mods()[1].mods()[0].clone();
         let page = doc::ItemPage(doc::ModTag(modb));
         let filename = make_local_filename(&config, page);
         assert_eq!(filename, Path("output/dir/a_b.html"));

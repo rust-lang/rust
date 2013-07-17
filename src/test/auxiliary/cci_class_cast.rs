@@ -18,7 +18,7 @@ pub mod kitty {
     }
 
     impl ToStr for cat {
-       fn to_str(&self) -> ~str { copy self.name }
+       fn to_str(&self) -> ~str { self.name.clone() }
     }
 
     impl cat {

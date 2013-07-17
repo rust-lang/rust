@@ -116,6 +116,7 @@ pub mod lib {
 // macros.
 /*
 mod std {
+    pub use std::clone;
     pub use std::cmp;
     pub use std::os;
     pub use std::str;
@@ -184,9 +185,12 @@ Available lint options:
 pub fn describe_debug_flags() {
     io::println(fmt!("\nAvailable debug options:\n"));
     let r = session::debugging_opts_map();
-    for r.iter().advance |pair| {
-        let (name, desc, _) = /*bad*/copy *pair;
-        io::println(fmt!("    -Z %-20s -- %s", name, desc));
+    for r.iter().advance |tuple| {
+        match *tuple {
+            (ref name, ref desc, _) => {
+                io::println(fmt!("    -Z %-20s -- %s", *name, *desc));
+            }
+        }
     }
 }
 
@@ -194,7 +198,7 @@ pub fn run_compiler(args: &~[~str], demitter: diagnostic::Emitter) {
     // Don't display log spew by default. Can override with RUST_LOG.
     ::std::logging::console_off();
 
-    let mut args = /*bad*/copy *args;
+    let mut args = (*args).clone();
     let binary = args.shift().to_managed();
 
     if args.is_empty() { usage(binary); return; }

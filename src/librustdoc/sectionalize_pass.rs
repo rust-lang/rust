@@ -39,7 +39,7 @@ pub fn run(_srv: astsrv::Srv, doc: doc::Doc) -> doc::Doc {
 
 fn fold_item(fold: &fold::Fold<()>, doc: doc::ItemDoc) -> doc::ItemDoc {
     let doc = fold::default_seq_fold_item(fold, doc);
-    let (desc, sections) = sectionalize(copy doc.desc);
+    let (desc, sections) = sectionalize(doc.desc.clone());
 
     doc::ItemDoc {
         desc: desc,
@@ -53,12 +53,12 @@ fn fold_trait(fold: &fold::Fold<()>, doc: doc::TraitDoc) -> doc::TraitDoc {
 
     doc::TraitDoc {
         methods: do doc.methods.map |method| {
-            let (desc, sections) = sectionalize(copy method.desc);
+            let (desc, sections) = sectionalize(method.desc.clone());
 
             doc::MethodDoc {
                 desc: desc,
                 sections: sections,
-                .. copy *method
+                .. (*method).clone()
             }
         },
         .. doc
@@ -70,12 +70,12 @@ fn fold_impl(fold: &fold::Fold<()>, doc: doc::ImplDoc) -> doc::ImplDoc {
 
     doc::ImplDoc {
         methods: do doc.methods.map |method| {
-            let (desc, sections) = sectionalize(copy method.desc);
+            let (desc, sections) = sectionalize(method.desc.clone());
 
             doc::MethodDoc {
                 desc: desc,
                 sections: sections,
-                .. copy *method
+                .. (*method).clone()
             }
         },
         .. doc
@@ -105,14 +105,14 @@ fn sectionalize(desc: Option<~str>) -> (Option<~str>, ~[doc::Section]) {
     }
 
     let mut new_desc = None::<~str>;
-    let mut current_section = None;
+    let mut current_section: Option<doc::Section> = None;
     let mut sections = ~[];
 
     for desc.get_ref().any_line_iter().advance |line| {
         match parse_header(line) {
           Some(header) => {
             if current_section.is_some() {
-                sections.push(copy *current_section.get_ref());
+                sections.push((*current_section.get_ref()).clone());
             }
             current_section = Some(doc::Section {
                 header: header.to_owned(),
@@ -120,7 +120,7 @@ fn sectionalize(desc: Option<~str>) -> (Option<~str>, ~[doc::Section]) {
             });
           }
           None => {
-            match copy current_section {
+            match current_section.clone() {
               Some(section) => {
                 current_section = Some(doc::Section {
                     body: fmt!("%s\n%s", section.body, line),
@@ -128,7 +128,7 @@ fn sectionalize(desc: Option<~str>) -> (Option<~str>, ~[doc::Section]) {
                 });
               }
               None => {
-                new_desc = match copy new_desc {
+                new_desc = match new_desc.clone() {
                   Some(desc) => {
                     Some(fmt!("%s\n%s", desc, line))
                   }
@@ -170,7 +170,7 @@ mod test {
     use sectionalize_pass::run;
 
     fn mk_doc(source: ~str) -> doc::Doc {
-        do astsrv::from_str(copy source) |srv| {
+        do astsrv::from_str(source.clone()) |srv| {
             let doc = extract::from_srv(srv.clone(), ~"");
             let doc = (attr_pass::mk_pass().f)(srv.clone(), doc);
             let doc = (prune_hidden_pass::mk_pass().f)(srv.clone(), doc);

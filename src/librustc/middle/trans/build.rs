@@ -59,7 +59,7 @@ pub fn count_insn(cx: block, category: &str) {
         let len = v.len();
         let mut i = 0u;
         while i < len {
-            mm.insert(copy v[i], i);
+            mm.insert(v[i], i);
             i += 1u;
         }
 
@@ -897,7 +897,7 @@ pub fn add_span_comment(bcx: block, sp: span, text: &str) {
     let ccx = bcx.ccx();
     if ccx.sess.asm_comments() {
         let s = fmt!("%s (%s)", text, ccx.sess.codemap.span_to_str(sp));
-        debug!("%s", copy s);
+        debug!("%s", s);
         add_comment(bcx, s);
     }
 }

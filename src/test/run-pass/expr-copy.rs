@@ -21,7 +21,7 @@ pub fn main() {
     f(&mut x);
     assert_eq!(x.a, 100);
     x.a = 20;
-    let mut y = copy x;
+    let mut y = x;
     f(&mut y);
     assert_eq!(x.a, 20);
 }

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub fn to_closure<A:'static + Copy>(x: A) -> @fn() -> A {
-    let result: @fn() -> A = || copy x;
+pub fn to_closure<A:'static + Clone>(x: A) -> @fn() -> A {
+    let result: @fn() -> A = || x.clone();
     result
 }

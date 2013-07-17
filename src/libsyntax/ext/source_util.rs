@@ -148,6 +148,6 @@ fn res_rel_file(cx: @ExtCtxt, sp: codemap::span, arg: &Path) -> Path {
         let cu = Path(cx.codemap().span_to_filename(sp));
         cu.dir_path().push_many(arg.components)
     } else {
-        copy *arg
+        (*arg).clone()
     }
 }

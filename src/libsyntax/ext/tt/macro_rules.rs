@@ -32,7 +32,10 @@ pub fn add_new_extension(cx: @ExtCtxt,
                       -> base::MacResult {
     // these spans won't matter, anyways
     fn ms(m: matcher_) -> matcher {
-        spanned { node: copy m, span: dummy_sp() }
+        spanned {
+            node: m.clone(),
+            span: dummy_sp()
+        }
     }
 
     let lhs_nm =  gensym_ident("lhs");
@@ -53,8 +56,9 @@ pub fn add_new_extension(cx: @ExtCtxt,
 
 
     // Parse the macro_rules! invocation (`none` is for no interpolations):
-    let arg_reader = new_tt_reader(copy cx.parse_sess().span_diagnostic,
-                                   None, copy arg);
+    let arg_reader = new_tt_reader(cx.parse_sess().span_diagnostic,
+                                   None,
+                                   arg.clone());
     let argument_map = parse_or_else(cx.parse_sess(),
                                      cx.cfg(),
                                      arg_reader as @reader,
@@ -62,12 +66,12 @@ pub fn add_new_extension(cx: @ExtCtxt,
 
     // Extract the arguments:
     let lhses = match *argument_map.get(&lhs_nm) {
-        @matched_seq(ref s, _) => /* FIXME (#2543) */ @copy *s,
+        @matched_seq(ref s, _) => /* FIXME (#2543) */ @(*s).clone(),
         _ => cx.span_bug(sp, "wrong-structured lhs")
     };
 
     let rhses = match *argument_map.get(&rhs_nm) {
-      @matched_seq(ref s, _) => /* FIXME (#2543) */ @copy *s,
+      @matched_seq(ref s, _) => /* FIXME (#2543) */ @(*s).clone(),
       _ => cx.span_bug(sp, "wrong-structured rhs")
     };
 
@@ -81,7 +85,7 @@ pub fn add_new_extension(cx: @ExtCtxt,
             io::println(fmt!("%s! { %s }",
                              cx.str_of(name),
                              print::pprust::tt_to_str(
-                                 &ast::tt_delim(arg.to_owned()),
+                                 &ast::tt_delim(@mut arg.to_owned()),
                                  get_ident_interner())));
         }
 
@@ -131,7 +135,7 @@ pub fn add_new_extension(cx: @ExtCtxt,
                   }
                   failure(sp, ref msg) => if sp.lo >= best_fail_spot.lo {
                     best_fail_spot = sp;
-                    best_fail_msg = copy *msg;
+                    best_fail_msg = (*msg).clone();
                   },
                   error(sp, ref msg) => cx.span_fatal(sp, (*msg))
                 }

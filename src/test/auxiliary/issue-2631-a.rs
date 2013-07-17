@@ -18,6 +18,6 @@ use std::hashmap::HashMap;
 pub type header_map = HashMap<~str, @mut ~[@~str]>;
 
 // the unused ty param is necessary so this gets monomorphized
-pub fn request<T:Copy>(req: &header_map) {
-  let _x = copy *(copy **req.get(&~"METHOD"))[0u];
+pub fn request<T>(req: &header_map) {
+  let _x = (*((**req.get(&~"METHOD")).clone())[0u]).clone();
 }

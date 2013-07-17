@@ -287,7 +287,7 @@ pub enum heap {
     heap_exchange_closure
 }
 
-#[deriving(Eq)]
+#[deriving(Clone, Eq)]
 pub enum cleantype {
     normal_exit_only,
     normal_exit_and_unwind
@@ -298,8 +298,19 @@ pub enum cleanup {
     clean_temp(ValueRef, @fn(block) -> block, cleantype),
 }
 
+// Can't use deriving(Clone) because of the managed closure.
+impl Clone for cleanup {
+    fn clone(&self) -> cleanup {
+        match *self {
+            clean(f, ct) => clean(f, ct),
+            clean_temp(v, f, ct) => clean_temp(v, f, ct),
+        }
+    }
+}
+
 // Used to remember and reuse existing cleanup paths
 // target: none means the path ends in an resume instruction
+#[deriving(Clone)]
 pub struct cleanup_path {
     target: Option<BasicBlockRef>,
     size: uint,
@@ -441,7 +452,7 @@ pub fn revoke_clean(cx: block, val: ValueRef) {
 pub fn block_cleanups(bcx: block) -> ~[cleanup] {
     match bcx.scope {
        None  => ~[],
-       Some(inf) => /*bad*/copy inf.cleanups
+       Some(inf) => inf.cleanups.clone(),
     }
 }
 
@@ -1036,7 +1047,9 @@ pub fn resolve_vtables_under_param_substs(tcx: ty::ctxt,
     -> typeck::vtable_res {
     @vts.iter().transform(|ds|
       @ds.iter().transform(
-          |d| resolve_vtable_under_param_substs(tcx, param_substs, copy *d))
+          |d| resolve_vtable_under_param_substs(tcx,
+                                                param_substs,
+                                                d))
                           .collect::<~[typeck::vtable_origin]>())
         .collect::<~[typeck::vtable_param_res]>()
 }
@@ -1044,7 +1057,7 @@ pub fn resolve_vtables_under_param_substs(tcx: ty::ctxt,
 
 // Apply the typaram substitutions in the fn_ctxt to a vtable. This should
 // eliminate any vtable_params.
-pub fn resolve_vtable_in_fn_ctxt(fcx: fn_ctxt, vt: typeck::vtable_origin)
+pub fn resolve_vtable_in_fn_ctxt(fcx: fn_ctxt, vt: &typeck::vtable_origin)
     -> typeck::vtable_origin {
     resolve_vtable_under_param_substs(fcx.ccx.tcx,
                                       fcx.param_substs,
@@ -1053,17 +1066,17 @@ pub fn resolve_vtable_in_fn_ctxt(fcx: fn_ctxt, vt: typeck::vtable_origin)
 
 pub fn resolve_vtable_under_param_substs(tcx: ty::ctxt,
                                          param_substs: Option<@param_substs>,
-                                         vt: typeck::vtable_origin)
-    -> typeck::vtable_origin {
-    match vt {
-        typeck::vtable_static(trait_id, tys, sub) => {
+                                         vt: &typeck::vtable_origin)
+                                         -> typeck::vtable_origin {
+    match *vt {
+        typeck::vtable_static(trait_id, ref tys, sub) => {
             let tys = match param_substs {
                 Some(substs) => {
                     do tys.iter().transform |t| {
                         ty::subst_tps(tcx, substs.tys, substs.self_ty, *t)
                     }.collect()
                 }
-                _ => tys
+                _ => tys.to_owned()
             };
             typeck::vtable_static(
                 trait_id, tys,
@@ -1085,7 +1098,7 @@ pub fn resolve_vtable_under_param_substs(tcx: ty::ctxt,
             match param_substs {
                 Some(@param_substs
                      {self_vtable: Some(ref self_vtable), _}) => {
-                    copy *self_vtable
+                    (*self_vtable).clone()
                 }
                 _ => {
                     tcx.sess.bug(fmt!(
@@ -1097,13 +1110,15 @@ pub fn resolve_vtable_under_param_substs(tcx: ty::ctxt,
     }
 }
 
-pub fn find_vtable(tcx: ty::ctxt, ps: &param_substs,
-                   n_param: uint, n_bound: uint)
-    -> typeck::vtable_origin {
+pub fn find_vtable(tcx: ty::ctxt,
+                   ps: &param_substs,
+                   n_param: uint,
+                   n_bound: uint)
+                   -> typeck::vtable_origin {
     debug!("find_vtable(n_param=%u, n_bound=%u, ps=%s)",
            n_param, n_bound, ps.repr(tcx));
 
-    /*bad*/ copy ps.vtables.get()[n_param][n_bound]
+    ps.vtables.get()[n_param][n_bound].clone()
 }
 
 pub fn dummy_substs(tps: ~[ty::t]) -> ty::substs {

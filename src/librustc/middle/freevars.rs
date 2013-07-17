@@ -79,7 +79,7 @@ fn collect_freevars(def_map: resolve::DefMap, blk: &ast::blk)
                                           visit_expr: walk_expr,
                                           .. *visit::default_visitor()});
     (v.visit_block)(blk, (1, v));
-    return @/*bad*/copy *refs;
+    return @(*refs).clone();
 }
 
 // Build a map from every function and for-each body to a set of the

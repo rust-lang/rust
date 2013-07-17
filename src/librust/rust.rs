@@ -43,19 +43,19 @@ impl ValidUsage {
     }
 }
 
-enum Action<'self> {
-    Call(&'self fn:Copy(args: &[~str]) -> ValidUsage),
-    CallMain(&'static str, &'self fn:Copy()),
+enum Action {
+    Call(extern "Rust" fn(args: &[~str]) -> ValidUsage),
+    CallMain(&'static str, extern "Rust" fn()),
 }
 
 enum UsageSource<'self> {
     UsgStr(&'self str),
-    UsgCall(&'self fn:Copy()),
+    UsgCall(extern "Rust" fn()),
 }
 
 struct Command<'self> {
     cmd: &'self str,
-    action: Action<'self>,
+    action: Action,
     usage_line: &'self str,
     usage_full: UsageSource<'self>,
 }
@@ -118,13 +118,13 @@ static COMMANDS: &'static [Command<'static>] = &[
 ];
 
 fn rustc_help() {
-    rustc::usage(copy os::args()[0])
+    rustc::usage(os::args()[0].clone())
 }
 
 fn find_cmd(command_string: &str) -> Option<Command> {
     do COMMANDS.iter().find_ |command| {
         command.cmd == command_string
-    }.map_consume(|x| copy *x)
+    }.map_consume(|x| *x)
 }
 
 fn cmd_help(args: &[~str]) -> ValidUsage {
@@ -148,7 +148,7 @@ fn cmd_help(args: &[~str]) -> ValidUsage {
     }
 
     match args {
-        [ref command_string] => print_usage(copy *command_string),
+        [ref command_string] => print_usage((*command_string).clone()),
         _                    => Invalid
     }
 }

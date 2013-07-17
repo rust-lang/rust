@@ -18,6 +18,7 @@ use std::{char, os, result, run, str};
 use package_path::RemotePath;
 use extra::tempfile::mkdtemp;
 
+#[deriving(Clone)]
 pub enum Version {
     ExactRevision(~str), // Should look like a m.n.(...).x
     SemanticVersion(semver::Version),

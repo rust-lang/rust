@@ -29,7 +29,6 @@ use syntax::{visit, ast_util};
 // of the following attributes.
 //
 //  send: Things that can be sent on channels or included in spawned closures.
-//  copy: Things that can be copied.
 //  freeze: Things thare are deeply immutable. They are guaranteed never to
 //    change, and can be safely shared without copying between tasks.
 //  'static: Things that do not contain borrowed pointers.
@@ -37,14 +36,12 @@ use syntax::{visit, ast_util};
 // Send includes scalar types as well as classes and unique types containing
 // only sendable types.
 //
-// Copy includes boxes, closure and unique types containing copyable types.
-//
 // Freeze include scalar types, things without non-const fields, and pointers
 // to freezable things.
 //
 // This pass ensures that type parameters are only instantiated with types
 // whose kinds are equal or less general than the way the type parameter was
-// annotated (with the `Send`, `Copy` or `Freeze` bound).
+// annotated (with the `Send` or `Freeze` bound).
 //
 // It also verifies that noncopyable kinds are not copied. Sendability is not
 // applied, since none of our language primitives send. Instead, the sending
@@ -53,6 +50,7 @@ use syntax::{visit, ast_util};
 
 pub static try_adding: &'static str = "Try adding a move";
 
+#[deriving(Clone)]
 pub struct Context {
     tcx: ty::ctxt,
     method_map: typeck::method_map,
@@ -297,17 +295,6 @@ pub fn check_expr(e: @expr, (cx, v): (Context, visit::vt<Context>)) {
                 _ => { }
             }
         }
-        expr_copy(expr) => {
-            // Note: This is the only place where we must check whether the
-            // argument is copyable.  This is not because this is the only
-            // kind of expression that may copy things, but rather because all
-            // other copies will have been converted to moves by by the
-            // `moves` pass if the value is not copyable.
-            check_copy(cx,
-                       ty::expr_ty(cx.tcx, expr),
-                       expr.span,
-                       "explicit copy requires a copyable argument");
-        }
         expr_repeat(element, count_expr, _) => {
             let count = ty::eval_repeat_count(&cx.tcx, count_expr);
             if count > 1 {
@@ -443,7 +430,7 @@ fn check_copy(cx: Context, ty: ty::t, sp: span, reason: &str) {
     debug!("type_contents(%s)=%s",
            ty_to_str(cx.tcx, ty),
            ty::type_contents(cx.tcx, ty).to_str());
-    if !ty::type_is_copyable(cx.tcx, ty) {
+    if ty::type_moves_by_default(cx.tcx, ty) {
         cx.tcx.sess.span_err(
             sp, fmt!("copying a value of non-copyable type `%s`",
                      ty_to_str(cx.tcx, ty)));

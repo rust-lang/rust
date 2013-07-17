@@ -38,9 +38,9 @@ unsafe fn each_live_alloc(read_next_before: bool,
     use rt::local_heap;
 
     let box = local_heap::live_allocs();
-    let mut box: *mut BoxRepr = transmute(copy box);
+    let mut box: *mut BoxRepr = transmute(box);
     while box != mut_null() {
-        let next_before = transmute(copy (*box).header.next);
+        let next_before = transmute((*box).header.next);
         let uniq =
             (*box).header.ref_count == managed::raw::RC_MANAGED_UNIQUE;
 
@@ -51,7 +51,7 @@ unsafe fn each_live_alloc(read_next_before: bool,
         if read_next_before {
             box = next_before;
         } else {
-            box = transmute(copy (*box).header.next);
+            box = transmute((*box).header.next);
         }
     }
     return true;
@@ -126,7 +126,7 @@ pub unsafe fn annihilate() {
     // callback, as the original value may have been freed.
     for each_live_alloc(false) |box, uniq| {
         if !uniq {
-            let tydesc: *TyDesc = transmute(copy (*box).header.type_desc);
+            let tydesc: *TyDesc = transmute((*box).header.type_desc);
             let data = transmute(&(*box).data);
             call_drop_glue(tydesc, data);
         }

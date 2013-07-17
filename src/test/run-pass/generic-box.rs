@@ -10,7 +10,7 @@
 
 
 
-fn box<T:Copy>(x: Box<T>) -> @Box<T> { return @x; }
+fn box<T>(x: Box<T>) -> @Box<T> { return @x; }
 
 struct Box<T> {x: T, y: T, z: T}
 

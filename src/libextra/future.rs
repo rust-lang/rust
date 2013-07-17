@@ -53,10 +53,10 @@ priv enum FutureState<A> {
 }
 
 /// Methods on the `future` type
-impl<A:Copy> Future<A> {
+impl<A:Clone> Future<A> {
     pub fn get(&mut self) -> A {
         //! Get the value of the future.
-        copy *(self.get_ref())
+        (*(self.get_ref())).clone()
     }
 }
 
@@ -145,7 +145,6 @@ pub fn spawn<A:Send>(blk: ~fn() -> A) -> Future<A> {
     return from_port(port);
 }
 
-#[allow(non_implicitly_copyable_typarams)]
 #[cfg(test)]
 mod test {
     use future::*;

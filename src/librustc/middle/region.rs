@@ -60,6 +60,7 @@ pub struct RegionMaps {
     priv cleanup_scopes: HashSet<ast::node_id>
 }
 
+#[deriving(Clone)]
 pub struct Context {
     sess: Session,
     def_map: resolve::DefMap,
@@ -604,7 +605,7 @@ impl DetermineRpCtxt {
                                        token::get_ident_interner()),
                ast_map::node_id_to_str(self.ast_map, self.item_id,
                                        token::get_ident_interner()),
-               copy self.ambient_variance);
+               self.ambient_variance);
         let vec = do self.dep_map.find_or_insert_with(from) |_| {
             @mut ~[]
         };

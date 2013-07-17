@@ -185,7 +185,7 @@ pub fn minimize_rpaths(rpaths: &[Path]) -> ~[Path] {
     let mut minimized = ~[];
     for rpaths.iter().advance |rpath| {
         if set.insert(rpath.to_str()) {
-            minimized.push(copy *rpath);
+            minimized.push(rpath.clone());
         }
     }
     minimized

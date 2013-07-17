@@ -683,7 +683,7 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
                 tm_yday: tm.tm_yday,
                 tm_isdst: tm.tm_isdst,
                 tm_gmtoff: tm.tm_gmtoff,
-                tm_zone: copy tm.tm_zone,
+                tm_zone: tm.tm_zone.clone(),
                 tm_nsec: tm.tm_nsec,
             })
         } else { result }
@@ -829,7 +829,7 @@ priv fn do_strftime(format: &str, tm: &Tm) -> ~str {
           //'x' {}
           'Y' => int::to_str(tm.tm_year as int + 1900),
           'y' => fmt!("%02d", (tm.tm_year as int + 1900) % 100),
-          'Z' => copy tm.tm_zone,
+          'Z' => tm.tm_zone.clone(),
           'z' => {
             let sign = if tm.tm_gmtoff > 0_i32 { '+' } else { '-' };
             let mut m = num::abs(tm.tm_gmtoff) / 60_i32;

@@ -59,7 +59,7 @@ use task::local_data_priv::*;
 #[cfg(not(stage0))]
 pub type Key<T> = &'static KeyValue<T>;
 #[cfg(stage0)]
-pub type Key<'self,T> = &'self fn:Copy(v: T);
+pub type Key<'self,T> = &'self fn(v: T);
 
 pub enum KeyValue<T> { Key }
 
@@ -135,9 +135,11 @@ pub fn modify<T: 'static>(key: Key<@T>, f: &fn(Option<@T>) -> Option<@T>) {
  */
 #[cfg(not(stage0))]
 pub fn modify<T: 'static>(key: Key<T>, f: &fn(Option<T>) -> Option<T>) {
-    match f(pop(key)) {
-        Some(next) => { set(key, next); }
-        None => {}
+    unsafe {
+        match f(pop(::cast::unsafe_copy(&key))) {
+            Some(next) => { set(key, next); }
+            None => {}
+        }
     }
 }
 
