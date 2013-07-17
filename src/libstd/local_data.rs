@@ -41,7 +41,7 @@ magic.
 
 use prelude::*;
 
-use task::local_data_priv::{local_get, local_pop, local_set, Handle};
+use task::local_data_priv::*;
 
 #[cfg(test)] use task;
 
@@ -94,6 +94,13 @@ pub fn get<T: 'static, U>(key: Key<@T>, f: &fn(Option<&@T>) -> U) -> U {
 #[cfg(not(stage0))]
 pub fn get<T: 'static, U>(key: Key<T>, f: &fn(Option<&T>) -> U) -> U {
     unsafe { local_get(Handle::new(), key, f) }
+}
+/**
+ * Retrieve a mutable borrowed pointer to a task-local data value.
+ */
+#[cfg(not(stage0))]
+pub fn get_mut<T: 'static, U>(key: Key<T>, f: &fn(Option<&mut T>) -> U) -> U {
+    unsafe { local_get_mut(Handle::new(), key, f) }
 }
 /**
  * Store a value in task-local data. If this key already has a value,
@@ -262,6 +269,34 @@ fn test_static_pointer() {
 fn test_owned() {
     static key: Key<~int> = &Key;
     set(key, ~1);
+
+    do get(key) |v| {
+        do get(key) |v| {
+            do get(key) |v| {
+                assert_eq!(**v.unwrap(), 1);
+            }
+            assert_eq!(**v.unwrap(), 1);
+        }
+        assert_eq!(**v.unwrap(), 1);
+    }
+    set(key, ~2);
+    do get(key) |v| {
+        assert_eq!(**v.unwrap(), 2);
+    }
+}
+
+#[test]
+fn test_get_mut() {
+    static key: Key<int> = &Key;
+    set(key, 1);
+
+    do get_mut(key) |v| {
+        *v.unwrap() = 2;
+    }
+
+    do get(key) |v| {
+        assert_eq!(*v.unwrap(), 2);
+    }
 }
 
 #[test]
@@ -282,4 +317,44 @@ fn test_same_key_type() {
     get(key3, |x| assert_eq!(*x.unwrap(), 3));
     get(key4, |x| assert_eq!(*x.unwrap(), 4));
     get(key5, |x| assert_eq!(*x.unwrap(), 5));
+}
+
+#[test]
+#[should_fail]
+fn test_nested_get_set1() {
+    static key: Key<int> = &Key;
+    set(key, 4);
+    do get(key) |_| {
+        set(key, 4);
+    }
+}
+
+#[test]
+#[should_fail]
+fn test_nested_get_mut2() {
+    static key: Key<int> = &Key;
+    set(key, 4);
+    do get(key) |_| {
+        get_mut(key, |_| {})
+    }
+}
+
+#[test]
+#[should_fail]
+fn test_nested_get_mut3() {
+    static key: Key<int> = &Key;
+    set(key, 4);
+    do get_mut(key) |_| {
+        get(key, |_| {})
+    }
+}
+
+#[test]
+#[should_fail]
+fn test_nested_get_mut4() {
+    static key: Key<int> = &Key;
+    set(key, 4);
+    do get_mut(key) |_| {
+        get_mut(key, |_| {})
+    }
 }
