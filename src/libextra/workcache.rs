@@ -15,10 +15,9 @@ use digest::DigestUtil;
 use json;
 use sha1::Sha1;
 use serialize::{Encoder, Encodable, Decoder, Decodable};
-use sort;
+use treemap::TreeMap;
 
 use std::cell::Cell;
-use std::cmp;
 use std::comm::{PortOne, oneshot, send_one, recv_one};
 use std::either::{Either, Left, Right};
 use std::hashmap::HashMap;
@@ -26,7 +25,6 @@ use std::io;
 use std::result;
 use std::run;
 use std::task;
-use std::to_bytes;
 
 /**
 *
@@ -96,34 +94,10 @@ use std::to_bytes;
 *
 */
 
-#[deriving(Clone, Eq, Encodable, Decodable)]
+#[deriving(Clone, Eq, Encodable, Decodable, TotalOrd, TotalEq)]
 struct WorkKey {
     kind: ~str,
     name: ~str
-}
-
-impl to_bytes::IterBytes for WorkKey {
-    #[inline]
-    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
-        self.kind.iter_bytes(lsb0, |b| f(b)) && self.name.iter_bytes(lsb0, |b| f(b))
-    }
-}
-
-impl cmp::Ord for WorkKey {
-    fn lt(&self, other: &WorkKey) -> bool {
-        self.kind < other.kind ||
-            (self.kind == other.kind &&
-             self.name < other.name)
-    }
-    fn le(&self, other: &WorkKey) -> bool {
-        self.lt(other) || self.eq(other)
-    }
-    fn ge(&self, other: &WorkKey) -> bool {
-        self.gt(other) || self.eq(other)
-    }
-    fn gt(&self, other: &WorkKey) -> bool {
-        ! self.le(other)
-    }
 }
 
 impl WorkKey {
@@ -135,43 +109,16 @@ impl WorkKey {
     }
 }
 
-struct WorkMap(HashMap<WorkKey, ~str>);
-
-impl Clone for WorkMap {
-    fn clone(&self) -> WorkMap {
-        WorkMap((**self).clone())
-    }
-}
+#[deriving(Clone, Eq, Encodable, Decodable)]
+struct WorkMap(TreeMap<WorkKey, ~str>);
 
 impl WorkMap {
-    fn new() -> WorkMap { WorkMap(HashMap::new()) }
-}
-
-impl<S:Encoder> Encodable<S> for WorkMap {
-    fn encode(&self, s: &mut S) {
-        let mut d = ~[];
-        for self.iter().advance |(k, v)| {
-            d.push(((*k).clone(), (*v).clone()))
-        }
-        sort::tim_sort(d);
-        d.encode(s)
-    }
-}
-
-impl<D:Decoder> Decodable<D> for WorkMap {
-    fn decode(d: &mut D) -> WorkMap {
-        let v : ~[(WorkKey,~str)] = Decodable::decode(d);
-        let mut w = WorkMap::new();
-        for v.iter().advance |pair| {
-            w.insert(pair.first(), pair.second());
-        }
-        w
-    }
+    fn new() -> WorkMap { WorkMap(TreeMap::new()) }
 }
 
 struct Database {
     db_filename: Path,
-    db_cache: HashMap<~str, ~str>,
+    db_cache: TreeMap<~str, ~str>,
     db_dirty: bool
 }
 
@@ -217,7 +164,7 @@ struct Context {
     db: @mut Database,
     logger: @mut Logger,
     cfg: @json::Object,
-    freshness: HashMap<~str,@fn(&str,&str)->bool>
+    freshness: TreeMap<~str,@fn(&str,&str)->bool>
 }
 
 #[deriving(Clone)]
@@ -273,7 +220,7 @@ impl Context {
             db: db,
             logger: lg,
             cfg: cfg,
-            freshness: HashMap::new()
+            freshness: TreeMap::new()
         }
     }
 
@@ -312,16 +259,20 @@ impl TPrep for Prep {
     fn is_fresh(&self, cat: &str, kind: &str,
                 name: &str, val: &str) -> bool {
         let k = kind.to_owned();
-        let f = (*self.ctxt.freshness.get(&k))(name, val);
+        let f = self.ctxt.freshness.find(&k);
+        let fresh = match f {
+            None => fail!("missing freshness-function for '%s'", kind),
+            Some(f) => (*f)(name, val)
+        };
         let lg = self.ctxt.logger;
-            if f {
-                lg.info(fmt!("%s %s:%s is fresh",
-                             cat, kind, name));
-            } else {
-                lg.info(fmt!("%s %s:%s is not fresh",
-                             cat, kind, name))
-            }
-        f
+        if fresh {
+            lg.info(fmt!("%s %s:%s is fresh",
+                         cat, kind, name));
+        } else {
+            lg.info(fmt!("%s %s:%s is not fresh",
+                         cat, kind, name))
+        }
+        fresh
     }
 
     fn all_fresh(&self, cat: &str, map: &WorkMap) -> bool {
@@ -411,7 +362,7 @@ fn test() {
     use std::io::WriterUtil;
 
     let db = @mut Database { db_filename: Path("db.json"),
-                             db_cache: HashMap::new(),
+                             db_cache: TreeMap::new(),
                              db_dirty: false };
     let lg = @mut Logger { a: () };
     let cfg = @HashMap::new();
