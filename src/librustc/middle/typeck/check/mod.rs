@@ -3551,7 +3551,10 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
             }
 
             "get_tydesc" => {
-              let tydesc_ty = ty::get_tydesc_ty(ccx.tcx);
+              let tydesc_ty = match ty::get_tydesc_ty(ccx.tcx) {
+                  Ok(t) => t,
+                  Err(s) => { tcx.sess.span_fatal(it.span, s); }
+              };
               let td_ptr = ty::mk_ptr(ccx.tcx, ty::mt {
                   ty: tydesc_ty,
                   mutbl: ast::m_imm
@@ -3559,8 +3562,15 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
               (1u, ~[], td_ptr)
             }
             "visit_tydesc" => {
-              let tydesc_ty = ty::get_tydesc_ty(ccx.tcx);
-              let (_, visitor_object_ty) = ty::visitor_object_ty(tcx);
+              let tydesc_ty = match ty::get_tydesc_ty(ccx.tcx) {
+                  Ok(t) => t,
+                  Err(s) => { tcx.sess.span_fatal(it.span, s); }
+              };
+              let visitor_object_ty = match ty::visitor_object_ty(tcx) {
+                  Ok((_, vot)) => vot,
+                  Err(s) => { tcx.sess.span_fatal(it.span, s); }
+              };
+
               let td_ptr = ty::mk_ptr(ccx.tcx, ty::mt {
                   ty: tydesc_ty,
                   mutbl: ast::m_imm

@@ -12,6 +12,7 @@
 use back::abi;
 use lib;
 use lib::llvm::{llvm, ValueRef};
+use middle::lang_items::StrDupUniqFnLangItem;
 use middle::trans::base;
 use middle::trans::base::*;
 use middle::trans::build::*;
@@ -312,16 +313,18 @@ pub fn trans_uniq_or_managed_vstore(bcx: block, heap: heap, vstore_expr: @ast::e
         heap_exchange => {
             match content_expr.node {
                 ast::expr_lit(@codemap::spanned {
-                    node: ast::lit_str(s), _
+                    node: ast::lit_str(s), span
                 }) => {
                     let llptrval = C_cstr(bcx.ccx(), s);
                     let llptrval = PointerCast(bcx, llptrval, Type::i8p());
                     let llsizeval = C_uint(bcx.ccx(), s.len());
                     let typ = ty::mk_estr(bcx.tcx(), ty::vstore_uniq);
                     let lldestval = scratch_datum(bcx, typ, "", false);
+                    let alloc_fn = langcall(bcx, Some(span), "",
+                                            StrDupUniqFnLangItem);
                     let bcx = callee::trans_lang_call(
                         bcx,
-                        bcx.tcx().lang_items.strdup_uniq_fn(),
+                        alloc_fn,
                         [ llptrval, llsizeval ],
                         Some(expr::SaveIn(lldestval.to_ref_llval(bcx)))).bcx;
                     return DatumBlock {

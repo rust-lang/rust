@@ -13,6 +13,7 @@ use back::abi;
 use back::link::{mangle_internal_name_by_path_and_seq};
 use lib::llvm::{llvm, ValueRef};
 use middle::moves;
+use middle::lang_items::ClosureExchangeMallocFnLangItem;
 use middle::trans::base::*;
 use middle::trans::build::*;
 use middle::trans::callee;
@@ -541,9 +542,13 @@ pub fn make_opaque_cbox_take_glue(
         // Allocate memory, update original ptr, and copy existing data
         let opaque_tydesc = PointerCast(bcx, tydesc, Type::i8p());
         let mut bcx = bcx;
+        let alloc_fn = langcall(bcx, None,
+                                fmt!("allocation of type with sigil `%s`",
+                                    sigil.to_str()),
+                                ClosureExchangeMallocFnLangItem);
         let llresult = unpack_result!(bcx, callee::trans_lang_call(
             bcx,
-            bcx.tcx().lang_items.closure_exchange_malloc_fn(),
+            alloc_fn,
             [opaque_tydesc, sz],
             None));
         let cbox_out = PointerCast(bcx, llresult, llopaquecboxty);
