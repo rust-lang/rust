@@ -34,9 +34,12 @@ ifdef CHECK_XFAILS
   TESTARGS += --ignored
 endif
 
+CTEST_BENCH = --bench
+
 # Arguments to the cfail/rfail/rpass/bench tests
 ifdef CFG_VALGRIND
   CTEST_RUNTOOL = --runtool "$(CFG_VALGRIND)"
+  CTEST_BENCH =
 endif
 
 # Arguments to the perf tests
@@ -66,12 +69,12 @@ TEST_RATCHET_NOISE_PERCENT=10.0
 # Whether to ratchet or merely save benchmarks
 ifdef CFG_RATCHET_BENCH
 CRATE_TEST_BENCH_ARGS=\
-  --test --bench \
+  --test $(CTEST_BENCH) \
   --ratchet-metrics $(call TEST_RATCHET_FILE,$(1),$(2),$(3),$(4)) \
   --ratchet-noise-percent $(TEST_RATCHET_NOISE_PERCENT)
 else
 CRATE_TEST_BENCH_ARGS=\
-  --test --bench \
+  --test $(CTEST_BENCH) \
   --save-metrics $(call TEST_RATCHET_FILE,$(1),$(2),$(3),$(4))
 endif
 
