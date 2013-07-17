@@ -621,9 +621,9 @@ fn test_repr() {
     exact_test(&(@"hello"), "@\"hello\"");
     exact_test(&(~"he\u10f3llo"), "~\"he\\u10f3llo\"");
 
-    // FIXME #4210: the mut fields are a bit off here.
     exact_test(&(@10), "@10");
-    exact_test(&(@mut 10), "@10");
+    exact_test(&(@mut 10), "@10"); // FIXME: #4210: incorrect
+    exact_test(&((@mut 10, 2)), "(@mut 10, 2)");
     exact_test(&(~10), "~10");
     exact_test(&(&10), "&10");
     let mut x = 10;
