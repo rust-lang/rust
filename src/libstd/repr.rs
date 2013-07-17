@@ -269,6 +269,7 @@ impl TyVisitor for ReprVisitor {
     }
 
     // Type no longer exists, vestigial function.
+    #[cfg(stage0)]
     fn visit_str(&self) -> bool { fail!(); }
 
     fn visit_estr_box(&self) -> bool {
