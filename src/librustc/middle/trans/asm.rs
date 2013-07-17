@@ -25,7 +25,7 @@ use std::str;
 use syntax::ast;
 
 // Take an inline assembly expression and splat it out via LLVM
-pub fn trans_inline_asm(bcx: block, ia: &ast::inline_asm) -> block {
+pub fn trans_inline_asm(bcx: @mut Block, ia: &ast::inline_asm) -> @mut Block {
 
     let mut bcx = bcx;
     let mut constraints = ~[];
