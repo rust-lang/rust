@@ -13,6 +13,7 @@
 // Make sure that we can detect when one end of the pipe is closed.
 
 // xfail-win32
+// xfail-test needs sleep
 
 extern mod extra;
 use extra::timer::sleep;
