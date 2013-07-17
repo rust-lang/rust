@@ -863,7 +863,7 @@ pub type SetAlgebraIter<'self, T> =
 
 #[cfg(test)]
 mod test_map {
-    use container::{Container, Map, Set};
+    use container::{Container, Map};
     use option::{None, Some};
     use super::*;
     use uint;
@@ -1104,7 +1104,7 @@ mod test_map {
 #[cfg(test)]
 mod test_set {
     use super::*;
-    use container::{Container, Map, Set};
+    use container::Container;
     use vec::ImmutableEqVector;
     use uint;
 
