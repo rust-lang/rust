@@ -13,7 +13,6 @@
  */
 
 use ast;
-use codemap;
 
 // does this expression require a semicolon to be treated
 // as a statement? The negation of this: 'can this expression
@@ -40,8 +39,7 @@ pub fn expr_requires_semi_to_be_stmt(e: @ast::expr) -> bool {
 pub fn expr_is_simple_block(e: @ast::expr) -> bool {
     match e.node {
         ast::expr_block(
-            codemap::spanned {
-                node: ast::blk_ { rules: ast::default_blk, _ }, _ }
+            ast::blk { rules: ast::default_blk, _ }
         ) => true,
       _ => false
     }

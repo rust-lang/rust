@@ -414,7 +414,7 @@ pub fn handle_body(cx: &Context, body: &blk) {
         },
         visit_block: |b, (cx, v)| {
             visit::visit_block(b, (cx, v));
-            for b.node.expr.iter().advance |e| {
+            for b.expr.iter().advance |e| {
                 node_type_needs(cx, use_repr, e.id);
             }
         },

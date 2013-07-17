@@ -190,7 +190,7 @@ pub fn map_fn(
 }
 
 pub fn map_block(b: &blk, (cx,v): (@mut Ctx, visit::vt<@mut Ctx>)) {
-    cx.map.insert(b.node.id, node_block(/* FIXME (#2543) */ copy *b));
+    cx.map.insert(b.id, node_block(/* FIXME (#2543) */ copy *b));
     visit::visit_block(b, (cx, v));
 }
 

@@ -482,7 +482,7 @@ impl get_node_info for ast::expr {
 
 impl get_node_info for ast::blk {
     fn info(&self) -> Option<NodeInfo> {
-        Some(NodeInfo {id: self.node.id,
+        Some(NodeInfo {id: self.id,
                        callee_id: None,
                        span: self.span})
     }

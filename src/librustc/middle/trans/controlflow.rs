@@ -37,11 +37,11 @@ use syntax::codemap::span;
 pub fn trans_block(bcx: block, b: &ast::blk, dest: expr::Dest) -> block {
     let _icx = push_ctxt("trans_block");
     let mut bcx = bcx;
-    for b.node.stmts.iter().advance |s| {
+    for b.stmts.iter().advance |s| {
         debuginfo::update_source_pos(bcx, b.span);
         bcx = trans_stmt(bcx, *s);
     }
-    match b.node.expr {
+    match b.expr {
         Some(e) => {
             debuginfo::update_source_pos(bcx, e.span);
             bcx = expr::trans_into(bcx, e, dest);
@@ -60,7 +60,7 @@ pub fn trans_if(bcx: block,
             dest: expr::Dest)
          -> block {
     debug!("trans_if(bcx=%s, cond=%s, thn=%?, dest=%s)",
-           bcx.to_str(), bcx.expr_to_str(cond), thn.node.id,
+           bcx.to_str(), bcx.expr_to_str(cond), thn.id,
            dest.to_str(bcx.ccx()));
     let _indenter = indenter();
 

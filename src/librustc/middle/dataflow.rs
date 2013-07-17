@@ -330,7 +330,7 @@ impl<O:DataFlowOperator+Copy+'static> DataFlowContext<O> {
         let pre: @fn(pprust::ann_node) = |node| {
             let (ps, id) = match node {
                 pprust::node_expr(ps, expr) => (ps, expr.id),
-                pprust::node_block(ps, blk) => (ps, blk.node.id),
+                pprust::node_block(ps, blk) => (ps, blk.id),
                 pprust::node_item(ps, _) => (ps, 0),
                 pprust::node_pat(ps, pat) => (ps, pat.id)
             };
@@ -383,18 +383,18 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
                   blk: &ast::blk,
                   in_out: &mut [uint],
                   loop_scopes: &mut ~[LoopScope]) {
-        debug!("DataFlowContext::walk_block(blk.node.id=%?, in_out=%s)",
-               blk.node.id, bits_to_str(reslice(in_out)));
+        debug!("DataFlowContext::walk_block(blk.id=%?, in_out=%s)",
+               blk.id, bits_to_str(reslice(in_out)));
 
-        self.merge_with_entry_set(blk.node.id, in_out);
+        self.merge_with_entry_set(blk.id, in_out);
 
-        for blk.node.stmts.iter().advance |&stmt| {
+        for blk.stmts.iter().advance |&stmt| {
             self.walk_stmt(stmt, in_out, loop_scopes);
         }
 
-        self.walk_opt_expr(blk.node.expr, in_out, loop_scopes);
+        self.walk_opt_expr(blk.expr, in_out, loop_scopes);
 
-        self.dfcx.apply_gen_kill(blk.node.id, in_out);
+        self.dfcx.apply_gen_kill(blk.id, in_out);
     }
 
     fn walk_stmt(&mut self,

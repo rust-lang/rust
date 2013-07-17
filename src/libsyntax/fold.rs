@@ -51,7 +51,7 @@ pub struct AstFoldFns {
     fold_struct_field: @fn(@struct_field, @ast_fold) -> @struct_field,
     fold_item_underscore: @fn(&item_, @ast_fold) -> item_,
     fold_method: @fn(@method, @ast_fold) -> @method,
-    fold_block: @fn(&blk_, span, @ast_fold) -> (blk_, span),
+    fold_block: @fn(&blk, @ast_fold) -> blk,
     fold_stmt: @fn(&stmt_, span, @ast_fold) -> (Option<stmt_>, span),
     fold_arm: @fn(&arm, @ast_fold) -> arm,
     fold_pat: @fn(&pat_, span, @ast_fold) -> (pat_, span),
@@ -372,7 +372,7 @@ fn noop_fold_method(m: @method, fld: @ast_fold) -> @method {
 }
 
 
-pub fn noop_fold_block(b: &blk_, fld: @ast_fold) -> blk_ {
+pub fn noop_fold_block(b: &blk, fld: @ast_fold) -> blk {
     let view_items = b.view_items.map(|x| fld.fold_view_item(x));
     let mut stmts = ~[];
     for b.stmts.iter().advance |stmt| {
@@ -381,12 +381,13 @@ pub fn noop_fold_block(b: &blk_, fld: @ast_fold) -> blk_ {
             Some(stmt) => stmts.push(stmt)
         }
     }
-    ast::blk_ {
+    ast::blk {
         view_items: view_items,
         stmts: stmts,
         expr: b.expr.map(|x| fld.fold_expr(*x)),
         id: fld.new_id(b.id),
         rules: b.rules,
+        span: b.span,
     }
 }
 
@@ -794,7 +795,7 @@ pub fn default_ast_fold() -> ast_fold_fns {
         fold_struct_field: noop_fold_struct_field,
         fold_item_underscore: noop_fold_item_underscore,
         fold_method: noop_fold_method,
-        fold_block: wrap(noop_fold_block),
+        fold_block: noop_fold_block,
         fold_stmt: |x, s, fld| (noop_fold_stmt(x, fld), s),
         fold_arm: noop_fold_arm,
         fold_pat: wrap(noop_fold_pat),
@@ -851,8 +852,7 @@ impl ast_fold for AstFoldFns {
         (self.fold_method)(x, self as @ast_fold)
     }
     fn fold_block(@self, x: &blk) -> blk {
-        let (n, s) = (self.fold_block)(&x.node, x.span, self as @ast_fold);
-        spanned { node: n, span: (self.new_span)(s) }
+        (self.fold_block)(x, self as @ast_fold)
     }
     fn fold_stmt(@self, x: &stmt) -> Option<@stmt> {
         let (n_opt, s) = (self.fold_stmt)(&x.node, x.span, self as @ast_fold);

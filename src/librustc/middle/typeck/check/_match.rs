@@ -72,14 +72,14 @@ pub fn check_match(fcx: @mut FnCtxt,
           None => ()
         }
         check_block(fcx, &arm.body);
-        let bty = fcx.node_ty(arm.body.node.id);
+        let bty = fcx.node_ty(arm.body.id);
         saw_err = saw_err || ty::type_is_error(bty);
         if guard_err {
-            fcx.write_error(arm.body.node.id);
+            fcx.write_error(arm.body.id);
             saw_err = true;
         }
         else if guard_bot {
-            fcx.write_bot(arm.body.node.id);
+            fcx.write_bot(arm.body.id);
         }
 
         result_ty =

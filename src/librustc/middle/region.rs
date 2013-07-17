@@ -324,11 +324,11 @@ fn parent_to_expr(cx: Context, child_id: ast::node_id, sp: span) {
 
 fn resolve_block(blk: &ast::blk, (cx, visitor): (Context, visit::vt<Context>)) {
     // Record the parent of this block.
-    parent_to_expr(cx, blk.node.id, blk.span);
+    parent_to_expr(cx, blk.id, blk.span);
 
     // Descend.
-    let new_cx = Context {var_parent: Some(blk.node.id),
-                          parent: Some(blk.node.id),
+    let new_cx = Context {var_parent: Some(blk.id),
+                          parent: Some(blk.id),
                           ..cx};
     visit::visit_block(blk, (new_cx, visitor));
 }
@@ -420,20 +420,20 @@ fn resolve_fn(fk: &visit::fn_kind,
                               visit::vt<Context>)) {
     debug!("region::resolve_fn(id=%?, \
                                span=%?, \
-                               body.node.id=%?, \
+                               body.id=%?, \
                                cx.parent=%?)",
            id,
            cx.sess.codemap.span_to_str(sp),
-           body.node.id,
+           body.id,
            cx.parent);
 
     // The arguments and `self` are parented to the body of the fn.
-    let decl_cx = Context {parent: Some(body.node.id),
-                           var_parent: Some(body.node.id),
+    let decl_cx = Context {parent: Some(body.id),
+                           var_parent: Some(body.id),
                            ..cx};
     match *fk {
         visit::fk_method(_, _, method) => {
-            cx.region_maps.record_parent(method.self_id, body.node.id);
+            cx.region_maps.record_parent(method.self_id, body.id);
         }
         _ => {}
     }

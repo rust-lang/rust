@@ -149,7 +149,7 @@ fn run(mut program: ~Program, binary: ~str, lib_search_paths: ~[~str],
     do find_main(crate, sess) |blk| {
         // Fish out all the view items, be sure to record 'extern mod' items
         // differently beause they must appear before all 'use' statements
-        for blk.node.view_items.iter().advance |vi| {
+        for blk.view_items.iter().advance |vi| {
             let s = do with_pp(intr) |pp, _| {
                 pprust::print_view_item(pp, vi);
             };
@@ -163,7 +163,7 @@ fn run(mut program: ~Program, binary: ~str, lib_search_paths: ~[~str],
 
         // Iterate through all of the block's statements, inserting them into
         // the correct portions of the program
-        for blk.node.stmts.iter().advance |stmt| {
+        for blk.stmts.iter().advance |stmt| {
             let s = do with_pp(intr) |pp, _| { pprust::print_stmt(pp, *stmt); };
             match stmt.node {
                 ast::stmt_decl(d, _) => {
@@ -203,7 +203,7 @@ fn run(mut program: ~Program, binary: ~str, lib_search_paths: ~[~str],
                 }
             }
         }
-        result = do blk.node.expr.map_consume |e| {
+        result = do blk.expr.map_consume |e| {
             do with_pp(intr) |pp, _| { pprust::print_expr(pp, e); }
         };
     }
