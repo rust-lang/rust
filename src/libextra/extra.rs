@@ -36,23 +36,9 @@ use std::str::{StrSlice, OwnedStr};
 
 pub use std::os;
 
-pub mod uv_ll;
-
-// General io and system-services modules
-
-#[path = "net/mod.rs"]
-pub mod net;
-
-// libuv modules
-pub mod uv;
-pub mod uv_iotask;
-pub mod uv_global_loop;
-
-
 // Utility modules
 
 pub mod c_vec;
-pub mod timer;
 pub mod io_util;
 pub mod rc;
 
