@@ -181,13 +181,6 @@ impl<V:TyVisitor + movable_ptr> TyVisitor for ptr_visit_adaptor<V> {
         true
     }
 
-    fn visit_str(&self) -> bool {
-        self.align_to::<~str>();
-        if ! self.inner.visit_str() { return false; }
-        self.bump_past::<~str>();
-        true
-    }
-
     fn visit_estr_box(&self) -> bool {
         self.align_to::<@str>();
         if ! self.inner.visit_estr_box() { return false; }
@@ -556,7 +549,6 @@ impl TyVisitor for my_visitor {
     fn visit_f64(&self) -> bool { true }
 
     fn visit_char(&self) -> bool { true }
-    fn visit_str(&self) -> bool { true }
 
     fn visit_estr_box(&self) -> bool { true }
     fn visit_estr_uniq(&self) -> bool { true }
