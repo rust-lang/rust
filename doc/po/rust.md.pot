@@ -1,13 +1,13 @@
 # SOME DESCRIPTIVE TITLE
-# Copyright (C) YEAR Free Software Foundation, Inc.
-# This file is distributed under the same license as the PACKAGE package.
+# Copyright (C) YEAR The Rust Project Developers
+# This file is distributed under the same license as the Rust package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
 #
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: PACKAGE VERSION\n"
-"POT-Creation-Date: 2013-07-07 21:10+0300\n"
+"Project-Id-Version: Rust 0.8-pre\n"
+"POT-Creation-Date: 2013-07-17 07:47+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -24,7 +24,7 @@ msgstr ""
 #. type: Plain text
 #: doc/rust.md:4 doc/rustpkg.md:4 doc/tutorial.md:4
 #: doc/tutorial-borrowed-ptr.md:4 doc/tutorial-ffi.md:4
-#: doc/tutorial-macros.md:4 doc/tutorial-tasks.md:4 doc/tut.md:4
+#: doc/tutorial-macros.md:4 doc/tutorial-tasks.md:4
 msgid "# Introduction"
 msgstr ""
 
@@ -456,9 +456,9 @@ msgstr ""
 #. type: Plain text
 #: doc/rust.md:223
 msgid ""
-"~~~~~~~~ {.keyword} as break copy do drop else enum extern false fn for if "
-"impl let loop match mod mut priv pub ref return self static struct super "
-"true trait type unsafe use while ~~~~~~~~"
+"~~~~~~~~ {.keyword} as break copy do else enum extern false fn for if impl "
+"let loop match mod mut priv pub ref return self static struct super true "
+"trait type unsafe use while ~~~~~~~~"
 msgstr ""
 
 #. type: Plain text
@@ -1637,7 +1637,7 @@ msgstr ""
 
 #. type: Plain text
 #: doc/rust.md:807
-msgid "~~~~ use std::float::sin; use std::option::{Some, None};"
+msgid "~~~~ use std::num::sin; use std::option::{Some, None};"
 msgstr ""
 
 #. type: Plain text
@@ -1645,7 +1645,7 @@ msgstr ""
 #, no-wrap
 msgid ""
 "fn main() {\n"
-"    // Equivalent to 'info!(std::float::sin(1.0));'\n"
+"    // Equivalent to 'info!(std::num::sin(1.0));'\n"
 "    info!(sin(1.0));\n"
 msgstr ""
 
@@ -2423,7 +2423,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1231 doc/tutorial.md:2179
+#: doc/rust.md:1231 doc/tutorial.md:2177
 msgid ""
 "In type-parameterized functions, methods of the supertrait may be called on "
 "values of subtrait-bound type parameters.  Refering to the previous example "
@@ -2431,7 +2431,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1240 doc/tutorial.md:2188
+#: doc/rust.md:1240 doc/tutorial.md:2186
 #, no-wrap
 msgid ""
 "~~~\n"
@@ -2445,7 +2445,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1242 doc/tutorial.md:2190
+#: doc/rust.md:1242 doc/tutorial.md:2188
 msgid "Likewise, supertrait methods may also be called on trait objects."
 msgstr ""
 
@@ -2792,15 +2792,25 @@ msgstr ""
 msgid "The `test` attribute, for marking functions as unit tests."
 msgstr ""
 
-#. type: Plain text
+#. type: Bullet: '* '
 #: doc/rust.md:1425
-#, no-wrap
 msgid ""
-"* The `allow`, `warn`, `forbid`, and `deny` attributes, for controlling lint checks. Lint checks supported\n"
-"by the compiler can be found via `rustc -W help`.\n"
-"* The `deriving` attribute, for automatically generating\n"
-"  implementations of certain traits.\n"
-"* The `static_assert` attribute, for asserting that a static bool is true at compiletime\n"
+"The `allow`, `warn`, `forbid`, and `deny` attributes, for controlling lint "
+"checks (see [Lint check attributes](#lint-check-attributes))."
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/rust.md:1425
+msgid ""
+"The `deriving` attribute, for automatically generating implementations of "
+"certain traits."
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/rust.md:1425
+msgid ""
+"The `static_assert` attribute, for asserting that a static bool is true at "
+"compiletime"
 msgstr ""
 
 #. type: Plain text
@@ -2811,11 +2821,150 @@ msgstr ""
 
 #. type: Plain text
 #: doc/rust.md:1429
-msgid "### Language items"
+msgid "### Lint check attributes"
+msgstr ""
+
+#. type: Plain text
+#: doc/rust.md:1433
+msgid ""
+"A lint check names a potentially undesirable coding pattern, such as "
+"unreachable code or omitted documentation, for the static entity to which "
+"the attribute applies."
 msgstr ""
 
 #. type: Plain text
 #: doc/rust.md:1435
+msgid "For any lint check `C`:"
+msgstr ""
+
+#. type: Bullet: ' * '
+#: doc/rust.md:1442
+msgid "`warn(C)` warns about violations of `C` but continues compilation,"
+msgstr ""
+
+#. type: Bullet: ' * '
+#: doc/rust.md:1442
+msgid "`deny(C)` signals an error after encountering a violation of `C`,"
+msgstr ""
+
+#. type: Plain text
+#: doc/rust.md:1442
+#, no-wrap
+msgid ""
+" * `allow(C)` overrides the check for `C` so that violations will go\n"
+"    unreported,\n"
+" * `forbid(C)` is the same as `deny(C)`, but also forbids uses of\n"
+"   `allow(C)` within the entity.\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/rust.md:1445
+msgid ""
+"The lint checks supported by the compiler can be found via `rustc -W help`, "
+"along with their default settings."
+msgstr ""
+
+#. type: Plain text
+#: doc/rust.md:1451
+#, no-wrap
+msgid ""
+"~~~{.xfail-test}\n"
+"mod m1 {\n"
+"    // Missing documentation is ignored here\n"
+"    #[allow(missing_doc)]\n"
+"    pub fn undocumented_one() -> int { 1 }\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/rust.md:1455
+#, no-wrap
+msgid ""
+"    // Missing documentation signals a warning here\n"
+"    #[warn(missing_doc)]\n"
+"    pub fn undocumented_too() -> int { 2 }\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/rust.md:1461
+#, no-wrap
+msgid ""
+"    // Missing documentation signals an error here\n"
+"    #[deny(missing_doc)]\n"
+"    pub fn undocumented_end() -> int { 3 }\n"
+"}\n"
+"~~~\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/rust.md:1464
+msgid ""
+"This example shows how one can use `allow` and `warn` to toggle a particular "
+"check on and off."
+msgstr ""
+
+#. type: Plain text
+#: doc/rust.md:1472
+#, no-wrap
+msgid ""
+"~~~\n"
+"#[warn(missing_doc)]\n"
+"mod m2{\n"
+"    #[allow(missing_doc)]\n"
+"    mod nested {\n"
+"        // Missing documentation is ignored here\n"
+"        pub fn undocumented_one() -> int { 1 }\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/rust.md:1478
+#, no-wrap
+msgid ""
+"        // Missing documentation signals a warning here,\n"
+"        // despite the allow above.\n"
+"        #[warn(missing_doc)]\n"
+"        pub fn undocumented_two() -> int { 2 }\n"
+"    }\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/rust.md:1483
+#, no-wrap
+msgid ""
+"    // Missing documentation signals a warning here\n"
+"    pub fn undocumented_too() -> int { 3 }\n"
+"}\n"
+"~~~\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/rust.md:1486
+msgid ""
+"This example shows how one can use `forbid` to disallow uses of `allow` for "
+"that lint check."
+msgstr ""
+
+#. type: Plain text
+#: doc/rust.md:1496
+#, no-wrap
+msgid ""
+"~~~{.xfail-test}\n"
+"#[forbid(missing_doc)]\n"
+"mod m3 {\n"
+"    // Attempting to toggle warning signals an error here\n"
+"    #[allow(missing_doc)]\n"
+"    /// Returns 2.\n"
+"    pub fn undocumented_too() -> int { 2 }\n"
+"}\n"
+"~~~\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/rust.md:1498
+msgid "### Language items"
+msgstr ""
+
+#. type: Plain text
+#: doc/rust.md:1504
 msgid ""
 "Some primitive Rust operations are defined in Rust code, rather than being "
 "implemented directly in C or assembly language.  The definitions of these "
@@ -2825,7 +2974,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1442
+#: doc/rust.md:1511
 #, no-wrap
 msgid ""
 "~~~ {.xfail-test}\n"
@@ -2837,7 +2986,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1446
+#: doc/rust.md:1515
 msgid ""
 "The name `str_eq` has a special meaning to the Rust compiler, and the "
 "presence of this definition means that it will use this definition when "
@@ -2845,17 +2994,17 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1448
+#: doc/rust.md:1517
 msgid "A complete list of the built-in language items follows:"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1450
+#: doc/rust.md:1519
 msgid "#### Traits"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1491
+#: doc/rust.md:1560
 #, no-wrap
 msgid ""
 "`const`\n"
@@ -2901,12 +3050,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1493
+#: doc/rust.md:1562
 msgid "#### Operations"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1522
+#: doc/rust.md:1591
 #, no-wrap
 msgid ""
 "`str_eq`\n"
@@ -2940,19 +3089,19 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1525
+#: doc/rust.md:1594
 msgid ""
 "> **Note:** This list is likely to become out of date. We should auto-"
 "generate it > from `librustc/middle/lang_items.rs`."
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1527
+#: doc/rust.md:1596
 msgid "### Deriving"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1533
+#: doc/rust.md:1602
 msgid ""
 "The `deriving` attribute allows certain traits to be automatically "
 "implemented for data structures. For example, the following will create an "
@@ -2961,7 +3110,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1541
+#: doc/rust.md:1610
 #, no-wrap
 msgid ""
 "~~~\n"
@@ -2974,12 +3123,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1543
+#: doc/rust.md:1612
 msgid "The generated `impl` for `Eq` is equivalent to"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1550
+#: doc/rust.md:1619
 #, no-wrap
 msgid ""
 "~~~\n"
@@ -2991,7 +3140,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1556
+#: doc/rust.md:1625
 #, no-wrap
 msgid ""
 "    fn ne(&self, other: &Foo<T>) -> bool {\n"
@@ -3002,42 +3151,42 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1558
+#: doc/rust.md:1627
 msgid "Supported traits for `deriving` are:"
 msgstr ""
 
 #. type: Bullet: '* '
-#: doc/rust.md:1569
+#: doc/rust.md:1638
 msgid "Comparison traits: `Eq`, `TotalEq`, `Ord`, `TotalOrd`."
 msgstr ""
 
 #. type: Bullet: '* '
-#: doc/rust.md:1569
+#: doc/rust.md:1638
 msgid "Serialization: `Encodable`, `Decodable`. These require `extra`."
 msgstr ""
 
 #. type: Bullet: '* '
-#: doc/rust.md:1569
+#: doc/rust.md:1638
 msgid "`Clone` and `DeepClone`, to perform (deep) copies."
 msgstr ""
 
 #. type: Bullet: '* '
-#: doc/rust.md:1569
+#: doc/rust.md:1638
 msgid "`IterBytes`, to iterate over the bytes in a data type."
 msgstr ""
 
 #. type: Bullet: '* '
-#: doc/rust.md:1569
+#: doc/rust.md:1638
 msgid "`Rand`, to create a random instance of a data type."
 msgstr ""
 
 #. type: Bullet: '* '
-#: doc/rust.md:1569
+#: doc/rust.md:1638
 msgid "`Zero`, to create an zero (or empty) instance of a data type."
 msgstr ""
 
 #. type: Bullet: '* '
-#: doc/rust.md:1569
+#: doc/rust.md:1638
 msgid ""
 "`ToStr`, to convert to a string. For a type with this instance, `obj."
 "to_str()` has similar output as `fmt!(\"%?\", obj)`, but it differs in that "
@@ -3046,12 +3195,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1571
+#: doc/rust.md:1640
 msgid "# Statements and expressions"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1578
+#: doc/rust.md:1647
 msgid ""
 "Rust is _primarily_ an expression language. This means that most forms of "
 "value-producing or effect-causing evaluation are directed by the uniform "
@@ -3062,38 +3211,38 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1581
+#: doc/rust.md:1650
 msgid ""
 "In contrast, statements in Rust serve _mostly_ to contain and explicitly "
 "sequence expression evaluation."
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1583
+#: doc/rust.md:1652
 msgid "## Statements"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1586
+#: doc/rust.md:1655
 msgid ""
 "A _statement_ is a component of a block, which is in turn a component of an "
 "outer [expression](#expressions) or [function](#functions)."
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1590
+#: doc/rust.md:1659
 msgid ""
 "Rust has two kinds of statement: [declaration statements](#declaration-"
 "statements) and [expression statements](#expression-statements)."
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1592
+#: doc/rust.md:1661
 msgid "### Declaration statements"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1595
+#: doc/rust.md:1664
 msgid ""
 "A _declaration statement_ is one that introduces one or more *names* into "
 "the enclosing statement block.  The declared names may denote new slots or "
@@ -3101,12 +3250,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1597
+#: doc/rust.md:1666
 msgid "#### Item declarations"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1604
+#: doc/rust.md:1673
 msgid ""
 "An _item declaration statement_ has a syntactic form identical to an [item]"
 "(#items) declaration within a module. Declaring an item -- a function, "
@@ -3117,26 +3266,26 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1607
+#: doc/rust.md:1676
 msgid ""
 "Note: there is no implicit capture of the function's dynamic environment "
 "when declaring a function-local item."
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1610
+#: doc/rust.md:1679
 msgid "#### Slot declarations"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1615
+#: doc/rust.md:1684
 msgid ""
 "~~~~~~~~{.ebnf .gram} let_decl : \"let\" pat [':' type ] ? [ init ] ? ';' ; "
 "init : [ '=' ] expr ; ~~~~~~~~"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1621
+#: doc/rust.md:1690
 msgid ""
 "A _slot declaration_ introduces a new set of slots, given by a pattern.  The "
 "pattern may be followed by a type annotation, and/or an initializer "
@@ -3147,12 +3296,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1623
+#: doc/rust.md:1692
 msgid "### Expression statements"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1628
+#: doc/rust.md:1697
 msgid ""
 "An _expression statement_ is one that evaluates an [expression]"
 "(#expressions)  and ignores its result.  The type of an expression statement "
@@ -3162,12 +3311,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1630
+#: doc/rust.md:1699
 msgid "## Expressions"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1639
+#: doc/rust.md:1708
 #, no-wrap
 msgid ""
 "An expression may have two roles: it always produces a *value*, and it may have *effects*\n"
@@ -3181,7 +3330,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1644
+#: doc/rust.md:1713
 msgid ""
 "In this way, the structure of expressions dictates the structure of "
 "execution.  Blocks are just another kind of expression, so blocks, "
@@ -3190,12 +3339,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1646
+#: doc/rust.md:1715
 msgid "#### Lvalues, rvalues and temporaries"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1650
+#: doc/rust.md:1719
 msgid ""
 "Expressions are divided into two main categories: _lvalues_ and _rvalues_.  "
 "Likewise within each expression, sub-expressions may occur in _lvalue "
@@ -3204,14 +3353,14 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1653
+#: doc/rust.md:1722
 msgid ""
 "[Path](#path-expressions), [field](#field-expressions) and [index](#index-"
 "expressions) expressions are lvalues.  All other expressions are rvalues."
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1661
+#: doc/rust.md:1730
 msgid ""
 "The left operand of an [assignment](#assignment-expressions), [binary move]"
 "(#binary-move-expressions) or [compound-assignment](#compound-assignment-"
@@ -3222,7 +3371,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1664
+#: doc/rust.md:1733
 msgid ""
 "When an lvalue is evaluated in an _lvalue context_, it denotes a memory "
 "location; when evaluated in an _rvalue context_, it denotes the value held "
@@ -3230,7 +3379,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1667
+#: doc/rust.md:1736
 msgid ""
 "When an rvalue is used in lvalue context, a temporary un-named lvalue is "
 "created and used instead.  A temporary's lifetime equals the largest "
@@ -3238,12 +3387,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1669
+#: doc/rust.md:1738
 msgid "#### Moved and copied types"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1675
+#: doc/rust.md:1744
 msgid ""
 "When a [local variable](#memory-slots) is used as an [rvalue](#lvalues-"
 "rvalues-and-temporaries)  the variable will either be [moved](#move-"
@@ -3253,12 +3402,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1678
+#: doc/rust.md:1747
 msgid "### Literal expressions"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1682
+#: doc/rust.md:1751
 msgid ""
 "A _literal expression_ consists of one of the [literal](#literals)  forms "
 "described earlier. It directly describes a number, character, string, "
@@ -3266,7 +3415,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1689
+#: doc/rust.md:1758
 #, no-wrap
 msgid ""
 "~~~~~~~~ {.literals}\n"
@@ -3278,12 +3427,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1691
+#: doc/rust.md:1760
 msgid "### Path expressions"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1694
+#: doc/rust.md:1763
 msgid ""
 "A [path](#paths) used as an expression context denotes either a local "
 "variable or an item.  Path expressions are [lvalues](#lvalues-rvalues-and-"
@@ -3291,29 +3440,29 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1696
+#: doc/rust.md:1765
 msgid "### Tuple expressions"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1700
+#: doc/rust.md:1769
 msgid ""
 "Tuples are written by enclosing one or more comma-separated expressions in "
 "parentheses. They are used to create [tuple-typed](#tuple-types)  values."
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1706
+#: doc/rust.md:1775
 msgid "~~~~~~~~ {.tuple} (0,); (0f, 4.5f); (\"a\", 4u, true); ~~~~~~~~"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1708
+#: doc/rust.md:1777
 msgid "### Structure expressions"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1717
+#: doc/rust.md:1786
 #, no-wrap
 msgid ""
 "~~~~~~~~{.ebnf .gram}\n"
@@ -3327,7 +3476,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1724
+#: doc/rust.md:1793
 msgid ""
 "There are several forms of structure expressions.  A _structure expression_ "
 "consists of the [path](#paths) of a [structure item](#structures), followed "
@@ -3339,7 +3488,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1729
+#: doc/rust.md:1798
 msgid ""
 "A _tuple structure expression_ consists of the [path](#paths) of a "
 "[structure item](#structures), followed by a parenthesized list of one or "
@@ -3349,19 +3498,19 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1731
+#: doc/rust.md:1800
 msgid ""
 "A _unit-like structure expression_ consists only of the [path](#paths) of a "
 "[structure item](#structures)."
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1733
+#: doc/rust.md:1802
 msgid "The following are examples of structure expressions:"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1744
+#: doc/rust.md:1813
 msgid ""
 "~~~~ # struct Point { x: float, y: float } # struct TuplePoint(float, "
 "float); # mod game { pub struct User<'self> { name: &'self str, age: uint, "
@@ -3371,7 +3520,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1747
+#: doc/rust.md:1816
 msgid ""
 "A structure expression forms a new value of the named structure type.  Note "
 "that for a given *unit-like* structure type, this will always be the same "
@@ -3379,7 +3528,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1754
+#: doc/rust.md:1823
 msgid ""
 "A structure expression can terminate with the syntax `..` followed by an "
 "expression to denote a functional update.  The expression following `..` "
@@ -3391,19 +3540,19 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1760
+#: doc/rust.md:1829
 msgid ""
 "~~~~ # struct Point3d { x: int, y: int, z: int } let base = Point3d {x: 1, "
 "y: 2, z: 3}; Point3d {y: 0, z: 10, .. base}; ~~~~"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1762
+#: doc/rust.md:1831
 msgid "### Record expressions"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1768
+#: doc/rust.md:1837
 #, no-wrap
 msgid ""
 "~~~~~~~~{.ebnf .gram}\n"
@@ -3414,19 +3563,19 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1770
+#: doc/rust.md:1839
 msgid "### Method-call expressions"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1774
+#: doc/rust.md:1843
 msgid ""
 "~~~~~~~~{.ebnf .gram} method_call_expr : expr '.' ident paren_expr_list ; "
 "~~~~~~~~"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1779
+#: doc/rust.md:1848
 msgid ""
 "A _method call_ consists of an expression followed by a single dot, an "
 "identifier, and a parenthesized expression-list.  Method calls are resolved "
@@ -3437,17 +3586,17 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1782
+#: doc/rust.md:1851
 msgid "### Field expressions"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1786
+#: doc/rust.md:1855
 msgid "~~~~~~~~{.ebnf .gram} field_expr : expr '.' ident ~~~~~~~~"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1790
+#: doc/rust.md:1859
 msgid ""
 "A _field expression_ consists of an expression followed by a single dot and "
 "an identifier, when not immediately followed by a parenthesized expression-"
@@ -3456,12 +3605,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1795
+#: doc/rust.md:1864
 msgid "~~~~~~~~ {.field} myrecord.myfield; {a: 10, b: 20}.a; ~~~~~~~~"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1798
+#: doc/rust.md:1867
 msgid ""
 "A field access on a record is an [lvalue](#lvalues-rvalues-and-temporaries) "
 "referring to the value of that field.  When the field is mutable, it can be "
@@ -3469,7 +3618,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1801
+#: doc/rust.md:1870
 msgid ""
 "When the type of the expression to the left of the dot is a pointer to a "
 "record or structure, it is automatically derferenced to make the field "
@@ -3477,29 +3626,29 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1804
+#: doc/rust.md:1873
 msgid "### Vector expressions"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1807
+#: doc/rust.md:1876
 msgid "~~~~~~~~{.ebnf .gram} vec_expr : '[' \"mut\"? vec_elems? ']'"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1810
+#: doc/rust.md:1879
 msgid "vec_elems : [expr [',' expr]*] | [expr ',' \"..\" expr] ~~~~~~~~"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1813
+#: doc/rust.md:1882
 msgid ""
 "A [_vector_](#vector-types) _expression_ is written by enclosing zero or "
 "more comma-separated expressions of uniform type in square brackets."
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1817
+#: doc/rust.md:1886
 msgid ""
 "In the `[expr ',' \"..\" expr]` form, the expression after the `\"..\"` must "
 "be a constant expression that can be evaluated at compile time, such as a "
@@ -3507,7 +3656,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1824
+#: doc/rust.md:1893
 #, no-wrap
 msgid ""
 "~~~~\n"
@@ -3519,17 +3668,17 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1826
+#: doc/rust.md:1895
 msgid "### Index expressions"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1830
+#: doc/rust.md:1899
 msgid "~~~~~~~~{.ebnf .gram} idx_expr : expr '[' expr ']' ~~~~~~~~"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1835
+#: doc/rust.md:1904
 msgid ""
 "[Vector](#vector-types)-typed expressions can be indexed by writing a square-"
 "bracket-enclosed expression (the index) after them. When the vector is "
@@ -3538,7 +3687,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1839
+#: doc/rust.md:1908
 msgid ""
 "Indices are zero-based, and may be of any integral type. Vector access is "
 "bounds-checked at run-time. When the check fails, it will put the task in a "
@@ -3546,27 +3695,27 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1843
+#: doc/rust.md:1912
 msgid "~~~~ # use std::task; # do task::spawn_unlinked {"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1846
+#: doc/rust.md:1915
 msgid "([1, 2, 3, 4])[0]; ([\"a\", \"b\"])[10]; // fails"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1849 doc/tutorial-tasks.md:649
+#: doc/rust.md:1918 doc/tutorial-tasks.md:649
 msgid "# } ~~~~"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1851
+#: doc/rust.md:1920
 msgid "### Unary operator expressions"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1855
+#: doc/rust.md:1924
 msgid ""
 "Rust defines six symbolic unary operators, in addition to the unary [copy]"
 "(#unary-copy-expressions) and [move](#unary-move-expressions) operators.  "
@@ -3575,7 +3724,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1874
+#: doc/rust.md:1943
 #, no-wrap
 msgid ""
 "`-`\n"
@@ -3599,29 +3748,29 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1876
+#: doc/rust.md:1945
 msgid "### Binary operator expressions"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1880
+#: doc/rust.md:1949
 msgid "~~~~~~~~{.ebnf .gram} binop_expr : expr binop expr ; ~~~~~~~~"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1883
+#: doc/rust.md:1952
 msgid ""
 "Binary operators expressions are given in terms of [operator precedence]"
 "(#operator-precedence)."
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1885
+#: doc/rust.md:1954
 msgid "#### Arithmetic operators"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1890
+#: doc/rust.md:1959
 msgid ""
 "Binary arithmetic expressions are syntactic sugar for calls to built-in "
 "traits, defined in the `std::ops` module of the `std` library.  This means "
@@ -3630,7 +3779,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1906
+#: doc/rust.md:1975
 #, no-wrap
 msgid ""
 "`+`\n"
@@ -3651,12 +3800,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1908
+#: doc/rust.md:1977
 msgid "#### Bitwise operators"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1913
+#: doc/rust.md:1982
 msgid ""
 "Like the [arithmetic operators](#arithmetic-operators), bitwise operators "
 "are syntactic sugar for calls to methods of built-in traits.  This means "
@@ -3665,7 +3814,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1929
+#: doc/rust.md:1998
 #, no-wrap
 msgid ""
 "`&`\n"
@@ -3686,12 +3835,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1931
+#: doc/rust.md:2000
 msgid "#### Lazy boolean operators"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1938
+#: doc/rust.md:2007
 msgid ""
 "The operators `||` and `&&` may be applied to operands of boolean type.  The "
 "`||` operator denotes logical 'or', and the `&&` operator denotes logical "
@@ -3703,12 +3852,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1940
+#: doc/rust.md:2009
 msgid "#### Comparison operators"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1946
+#: doc/rust.md:2015
 msgid ""
 "Comparison operators are, like the [arithmetic operators](#arithmetic-"
 "operators), and [bitwise operators](#bitwise-operators), syntactic sugar for "
@@ -3718,7 +3867,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1965
+#: doc/rust.md:2034
 #, no-wrap
 msgid ""
 "`==`\n"
@@ -3742,24 +3891,24 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1968
+#: doc/rust.md:2037
 msgid "#### Type cast expressions"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1970
+#: doc/rust.md:2039
 msgid "A type cast expression is denoted with the binary operator `as`."
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1973
+#: doc/rust.md:2042
 msgid ""
 "Executing an `as` expression casts the value on the left-hand side to the "
 "type on the right-hand side."
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1977
+#: doc/rust.md:2046
 msgid ""
 "A numeric value can be cast to any numeric type.  A raw pointer value can be "
 "cast to or from any integral type or raw pointer type.  Any other cast is "
@@ -3767,19 +3916,19 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1979
+#: doc/rust.md:2048
 msgid "An example of an `as` expression:"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1983
+#: doc/rust.md:2052
 msgid ""
 "~~~~ # fn sum(v: &[float]) -> float { 0.0 } # fn len(v: &[float]) -> int "
 "{ 0 }"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1990
+#: doc/rust.md:2059
 #, no-wrap
 msgid ""
 "fn avg(v: &[float]) -> float {\n"
@@ -3791,12 +3940,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1992
+#: doc/rust.md:2061
 msgid "#### Assignment expressions"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1995
+#: doc/rust.md:2064
 msgid ""
 "An _assignment expression_ consists of an [lvalue](#lvalues-rvalues-and-"
 "temporaries) expression followed by an equals sign (`=`) and an [rvalue]"
@@ -3804,29 +3953,29 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1997
+#: doc/rust.md:2066
 msgid ""
 "Evaluating an assignment expression [either copies or moves](#moved-and-"
 "copied-types) its right-hand operand to its left-hand operand."
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2001
+#: doc/rust.md:2070
 msgid "~~~~ # let mut x = 0; # let y = 0;"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2004
+#: doc/rust.md:2073
 msgid "x = y; ~~~~"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2006
+#: doc/rust.md:2075
 msgid "#### Compound assignment expressions"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2011
+#: doc/rust.md:2080
 msgid ""
 "The `+`, `-`, `*`, `/`, `%`, `&`, `|`, `^`, `<<`, and `>>` operators may be "
 "composed with the `=` operator. The expression `lval OP= val` is equivalent "
@@ -3834,24 +3983,24 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2013
+#: doc/rust.md:2082
 msgid "Any such expression always has the [`unit`](#primitive-types) type."
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2015
+#: doc/rust.md:2084
 msgid "#### Operator precedence"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2018
+#: doc/rust.md:2087
 msgid ""
 "The precedence of Rust binary operators is ordered as follows, going from "
 "strong to weak:"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2031
+#: doc/rust.md:2100
 #, no-wrap
 msgid ""
 "~~~~ {.precedence}\n"
@@ -3870,12 +4019,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2033 doc/rust.md:2174 doc/tutorial-macros.md:323
+#: doc/rust.md:2102 doc/rust.md:2243 doc/tutorial-macros.md:323
 msgid "~~~~"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2036
+#: doc/rust.md:2105
 msgid ""
 "Operators at the same precedence level are evaluated left-to-right. [Unary "
 "operators](#unary-operator-expressions)  have the same precedence level and "
@@ -3883,12 +4032,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2038
+#: doc/rust.md:2107
 msgid "### Grouped expressions"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2042
+#: doc/rust.md:2111
 msgid ""
 "An expression enclosed in parentheses evaluates to the result of the "
 "enclosed expression.  Parentheses can be used to explicitly specify "
@@ -3896,46 +4045,46 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2046
+#: doc/rust.md:2115
 msgid "~~~~~~~~{.ebnf .gram} paren_expr : '(' expr ')' ; ~~~~~~~~"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2048
+#: doc/rust.md:2117
 msgid "An example of a parenthesized expression:"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2052
+#: doc/rust.md:2121
 msgid "~~~~ let x = (2 + 3) * 4; ~~~~"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2054
+#: doc/rust.md:2123
 msgid "### Unary copy expressions"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2058
+#: doc/rust.md:2127
 msgid "~~~~~~~~{.ebnf .gram} copy_expr : \"copy\" expr ; ~~~~~~~~"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2061
+#: doc/rust.md:2130
 msgid ""
 "> **Note:** `copy` expressions are deprecated. It's preferable to use > the "
 "`Clone` trait and `clone()` method."
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2064
+#: doc/rust.md:2133
 msgid ""
 "A _unary copy expression_ consists of the unary `copy` operator applied to "
 "some argument expression."
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2068
+#: doc/rust.md:2137
 msgid ""
 "Evaluating a copy expression first evaluates the argument expression, then "
 "copies the resulting value, allocating any memory necessary to hold the new "
@@ -3943,7 +4092,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2072
+#: doc/rust.md:2141
 msgid ""
 "[Managed boxes](#pointer-types) (type `@`) are, as usual, shallow-copied, as "
 "are raw and borrowed pointers.  [Owned boxes](#pointer-types), [owned "
@@ -3951,7 +4100,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2075
+#: doc/rust.md:2144
 msgid ""
 "Since the binary [assignment operator](#assignment-expressions) `=` performs "
 "a copy or move implicitly, the unary copy operator is typically only used to "
@@ -3959,12 +4108,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2077
+#: doc/rust.md:2146
 msgid "An example of a copy expression:"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2082
+#: doc/rust.md:2151
 #, no-wrap
 msgid ""
 "~~~~\n"
@@ -3974,33 +4123,33 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2084
+#: doc/rust.md:2153
 msgid "let v = ~[1,2,3];"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2086
+#: doc/rust.md:2155
 #, no-wrap
 msgid "mutate(copy v);   // Pass a copy\n"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2089
+#: doc/rust.md:2158
 msgid "assert!(v[0] == 1); // Original was not modified ~~~~"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2091
+#: doc/rust.md:2160
 msgid "### Unary move expressions"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2095
+#: doc/rust.md:2164
 msgid "~~~~~~~~{.ebnf .gram} move_expr : \"move\" expr ; ~~~~~~~~"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2102
+#: doc/rust.md:2171
 msgid ""
 "A _unary move expression_ is similar to a [unary copy](#unary-copy-"
 "expressions) expression, except that it can only be applied to a [local "
@@ -4011,7 +4160,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2106
+#: doc/rust.md:2175
 msgid ""
 "> **Note:** In future versions of Rust, `move` may be removed as a separate "
 "operator; > moves are now [automatically performed](#moved-and-copied-types) "
@@ -4019,12 +4168,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2109
+#: doc/rust.md:2178
 msgid "### Call expressions"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2115
+#: doc/rust.md:2184
 msgid ""
 "~~~~~~~~ {.abnf .gram} expr_list : [ expr [ ',' expr ]* ] ? ; "
 "paren_expr_list : '(' expr_list ')' ; call_expr : expr paren_expr_list ; "
@@ -4032,7 +4181,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2120
+#: doc/rust.md:2189
 msgid ""
 "A _call expression_ invokes a function, providing zero or more input slots "
 "and an optional reference slot to serve as the function's output, bound to "
@@ -4041,36 +4190,36 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2122
+#: doc/rust.md:2191
 msgid "Some examples of call expressions:"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2126
+#: doc/rust.md:2195
 msgid ""
 "~~~~ # use std::from_str::FromStr; # fn add(x: int, y: int) -> int { 0 }"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2130
+#: doc/rust.md:2199
 msgid ""
 "let x: int = add(1, 2); let pi = FromStr::from_str::<f32>(\"3.14\"); ~~~~"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2132
+#: doc/rust.md:2201
 msgid "### Lambda expressions"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2137
+#: doc/rust.md:2206
 msgid ""
 "~~~~~~~~ {.abnf .gram} ident_list : [ ident [ ',' ident ]* ] ? ; "
 "lambda_expr : '|' ident_list '|' expr ; ~~~~~~~~"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2141
+#: doc/rust.md:2210
 msgid ""
 "A _lambda expression_ (sometimes called an \"anonymous function expression"
 "\") defines a function and denotes it as a value, in a single expression.  A "
@@ -4079,7 +4228,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2146
+#: doc/rust.md:2215
 msgid ""
 "A lambda expression denotes a function that maps a list of parameters "
 "(`ident_list`)  onto the expression that follows the `ident_list`.  The "
@@ -4089,7 +4238,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2149
+#: doc/rust.md:2218
 msgid ""
 "Lambda expressions are most useful when passing functions as arguments to "
 "other functions, as an abbreviation for defining and capturing a separate "
@@ -4097,7 +4246,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2158
+#: doc/rust.md:2227
 msgid ""
 "Significantly, lambda expressions _capture their environment_, which regular "
 "[function definitions](#functions) do not.  The exact type of capture "
@@ -4111,14 +4260,14 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2161
+#: doc/rust.md:2230
 msgid ""
 "In this example, we define a function `ten_times` that takes a higher-order "
 "function argument, and call it with a lambda expression as an argument."
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2170
+#: doc/rust.md:2239
 #, no-wrap
 msgid ""
 "~~~~\n"
@@ -4132,23 +4281,23 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2172
+#: doc/rust.md:2241
 msgid "ten_times(|j| println(fmt!(\"hello, %d\", j)));"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2176
+#: doc/rust.md:2245
 msgid "### While loops"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2180
+#: doc/rust.md:2249
 msgid ""
 "~~~~~~~~{.ebnf .gram} while_expr : \"while\" expr '{' block '}' ; ~~~~~~~~"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2185
+#: doc/rust.md:2254
 msgid ""
 "A `while` loop begins by evaluating the boolean loop conditional "
 "expression.  If the loop conditional expression evaluates to `true`, the "
@@ -4158,17 +4307,17 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2187
+#: doc/rust.md:2256
 msgid "An example:"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2190
+#: doc/rust.md:2259
 msgid "~~~~ let mut i = 0;"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2196
+#: doc/rust.md:2265
 #, no-wrap
 msgid ""
 "while i < 10 {\n"
@@ -4179,12 +4328,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2198
+#: doc/rust.md:2267
 msgid "### Infinite loops"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2202
+#: doc/rust.md:2271
 msgid ""
 "The keyword `loop` in Rust appears both in _loop expressions_ and in "
 "_continue expressions_.  A loop expression denotes an infinite loop; see "
@@ -4192,14 +4341,14 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2206
+#: doc/rust.md:2275
 msgid ""
 "~~~~~~~~{.ebnf .gram} loop_expr : [ lifetime ':' ] \"loop\" '{' block '}'; "
 "~~~~~~~~"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2211
+#: doc/rust.md:2280
 msgid ""
 "A `loop` expression may optionally have a _label_.  If a label is present, "
 "then labeled `break` and `loop` expressions nested within this loop may exit "
@@ -4208,17 +4357,17 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2213
+#: doc/rust.md:2282
 msgid "### Break expressions"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2217
+#: doc/rust.md:2286
 msgid "~~~~~~~~{.ebnf .gram} break_expr : \"break\" [ lifetime ]; ~~~~~~~~"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2224
+#: doc/rust.md:2293
 msgid ""
 "A `break` expression has an optional `label`.  If the label is absent, then "
 "executing a `break` expression immediately terminates the innermost loop "
@@ -4229,17 +4378,17 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2226
+#: doc/rust.md:2295
 msgid "### Continue expressions"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2230
+#: doc/rust.md:2299
 msgid "~~~~~~~~{.ebnf .gram} continue_expr : \"loop\" [ lifetime ]; ~~~~~~~~"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2241
+#: doc/rust.md:2310
 msgid ""
 "A continue expression, written `loop`, also has an optional `label`.  If the "
 "label is absent, then executing a `loop` expression immediately terminates "
@@ -4253,24 +4402,24 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2243
+#: doc/rust.md:2312
 msgid "A `loop` expression is only permitted in the body of a loop."
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2246
+#: doc/rust.md:2315
 msgid "### Do expressions"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2250
+#: doc/rust.md:2319
 msgid ""
 "~~~~~~~~{.ebnf .gram} do_expr : \"do\" expr [ '|' ident_list '|' ] ? '{' "
 "block '}' ; ~~~~~~~~"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2253
+#: doc/rust.md:2322
 msgid ""
 "A _do expression_ provides a more-familiar block-syntax for a [lambda "
 "expression](#lambda-expressions), including a special translation of [return "
@@ -4278,7 +4427,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2261
+#: doc/rust.md:2330
 msgid ""
 "Any occurrence of a [return expression](#return-expressions)  inside this "
 "`block` expression is rewritten as a reference to an (anonymous) flag set in "
@@ -4290,7 +4439,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2264
+#: doc/rust.md:2333
 msgid ""
 "The optional `ident_list` and `block` provided in a `do` expression are "
 "parsed as though they constitute a lambda expression; if the `ident_list` is "
@@ -4298,7 +4447,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2270
+#: doc/rust.md:2339
 msgid ""
 "The lambda expression is then provided as a _trailing argument_ to the "
 "outermost [call](#call-expressions) or [method call](#method-call-"
@@ -4309,22 +4458,22 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2272
+#: doc/rust.md:2341
 msgid "In this example, both calls to `f` are equivalent:"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2276
+#: doc/rust.md:2345
 msgid "~~~~ # fn f(f: &fn(int)) { } # fn g(i: int) { }"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2278
+#: doc/rust.md:2347
 msgid "f(|j| g(j));"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2283
+#: doc/rust.md:2352
 #, no-wrap
 msgid ""
 "do f |j| {\n"
@@ -4334,23 +4483,23 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2285
+#: doc/rust.md:2354
 msgid ""
 "In this example, both calls to the (binary) function `k` are equivalent:"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2289
+#: doc/rust.md:2358
 msgid "~~~~ # fn k(x:int, f: &fn(int)) { } # fn l(i: int) { }"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2291
+#: doc/rust.md:2360
 msgid "k(3, |j| l(j));"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2296
+#: doc/rust.md:2365
 #, no-wrap
 msgid ""
 "do k(3) |j| {\n"
@@ -4360,19 +4509,19 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2299
+#: doc/rust.md:2368
 msgid "### For expressions"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2303
+#: doc/rust.md:2372
 msgid ""
 "~~~~~~~~{.ebnf .gram} for_expr : \"for\" expr [ '|' ident_list '|' ] ? '{' "
 "block '}' ; ~~~~~~~~"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2307
+#: doc/rust.md:2376
 msgid ""
 "A _for expression_ is similar to a [`do` expression](#do-expressions), in "
 "that it provides a special block-form of lambda expression, suited to "
@@ -4380,7 +4529,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2313
+#: doc/rust.md:2382
 msgid ""
 "In contrast to a `do` expression, a `for` expression is designed to work "
 "with methods such as `each` and `times`, that require the body block to "
@@ -4390,7 +4539,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2320
+#: doc/rust.md:2389
 msgid ""
 "In addition, [`break`](#break-expressions) and [`loop`](#loop-expressions) "
 "expressions are rewritten inside `for` expressions in the same way that "
@@ -4401,24 +4550,24 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2322
+#: doc/rust.md:2391
 msgid "An example of a for loop over the contents of a vector:"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2329
+#: doc/rust.md:2398
 msgid ""
 "~~~~ # type foo = int; # fn bar(f: foo) { } # let a = 0; # let b = 0; # let "
 "c = 0;"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2331
+#: doc/rust.md:2400
 msgid "let v: &[foo] = &[a, b, c];"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2336
+#: doc/rust.md:2405
 #, no-wrap
 msgid ""
 "for v.iter().advance |e| {\n"
@@ -4428,12 +4577,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2338
+#: doc/rust.md:2407
 msgid "An example of a for loop over a series of integers:"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2346
+#: doc/rust.md:2415
 #, no-wrap
 msgid ""
 "~~~~\n"
@@ -4446,12 +4595,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2348
+#: doc/rust.md:2417
 msgid "### If expressions"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2352
+#: doc/rust.md:2421
 #, no-wrap
 msgid ""
 "~~~~~~~~{.ebnf .gram}\n"
@@ -4460,7 +4609,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2356
+#: doc/rust.md:2425
 #, no-wrap
 msgid ""
 "else_tail : \"else\" [ if_expr\n"
@@ -4469,7 +4618,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2367
+#: doc/rust.md:2436
 msgid ""
 "An `if` expression is a conditional branch in program control. The form of "
 "an `if` expression is a condition expression, followed by a consequent "
@@ -4483,29 +4632,29 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2370
+#: doc/rust.md:2439
 msgid "### Match expressions"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2373
+#: doc/rust.md:2442
 msgid ""
 "~~~~~~~~{.ebnf .gram} match_expr : \"match\" expr '{' match_arm [ '|' "
 "match_arm ] * '}' ;"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2375
+#: doc/rust.md:2444
 msgid "match_arm : match_pat '=>' [ expr \",\" | '{' block '}' ] ;"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2378
+#: doc/rust.md:2447
 msgid "match_pat : pat [ \"..\" pat ] ? [ \"if\" expr ] ; ~~~~~~~~"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2386
+#: doc/rust.md:2455
 msgid ""
 "A `match` expression branches on a *pattern*. The exact form of matching "
 "that occurs depends on the pattern. Patterns consist of some combination of "
@@ -4517,7 +4666,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2390
+#: doc/rust.md:2459
 msgid ""
 "In a pattern whose head expression has an `enum` type, a placeholder (`_`) "
 "stands for a *single* data field, whereas a wildcard `*` stands for *all* "
@@ -4525,17 +4674,17 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2393
+#: doc/rust.md:2462
 msgid "~~~~ enum List<X> { Nil, Cons(X, @List<X>) }"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2395 doc/rust.md:2424
+#: doc/rust.md:2464 doc/rust.md:2493
 msgid "let x: List<int> = Cons(10, @Cons(11, @Nil));"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2402
+#: doc/rust.md:2471
 #, no-wrap
 msgid ""
 "match x {\n"
@@ -4547,7 +4696,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2407
+#: doc/rust.md:2476
 msgid ""
 "The first pattern matches lists constructed by applying `Cons` to any head "
 "value, and a tail value of `@Nil`. The second pattern matches _any_ list "
@@ -4558,7 +4707,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2413
+#: doc/rust.md:2482
 msgid ""
 "To execute an `match` expression, first the head expression is evaluated, "
 "then its value is sequentially compared to the patterns in the arms until a "
@@ -4568,22 +4717,22 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2415
+#: doc/rust.md:2484
 msgid "An example of an `match` expression:"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2420
+#: doc/rust.md:2489
 msgid "~~~~ # fn process_pair(a: int, b: int) { } # fn process_ten() { }"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2422
+#: doc/rust.md:2491
 msgid "enum List<X> { Nil, Cons(X, @List<X>) }"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2440
+#: doc/rust.md:2509
 #, no-wrap
 msgid ""
 "match x {\n"
@@ -4604,7 +4753,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2446
+#: doc/rust.md:2515
 msgid ""
 "Patterns that bind variables default to binding to a copy or move of the "
 "matched value (depending on the matched value's type).  This can be made "
@@ -4614,7 +4763,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2457
+#: doc/rust.md:2526
 msgid ""
 "A pattern that's just an identifier, like `Nil` in the previous answer, "
 "could either refer to an enum variant that's in scope, or bind a new "
@@ -4629,19 +4778,19 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2461
+#: doc/rust.md:2530
 msgid ""
 "Multiple match patterns may be joined with the `|` operator.  A range of "
 "values may be specified with `..`.  For example:"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2464
+#: doc/rust.md:2533
 msgid "~~~~ # let x = 2;"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2471
+#: doc/rust.md:2540
 #, no-wrap
 msgid ""
 "let message = match x {\n"
@@ -4653,7 +4802,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2475
+#: doc/rust.md:2544
 msgid ""
 "Range patterns only work on scalar types (like integers and characters; not "
 "like vectors and structs, which have sub-components).  A range pattern may "
@@ -4661,7 +4810,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2480
+#: doc/rust.md:2549
 msgid ""
 "Finally, match patterns can accept *pattern guards* to further refine the "
 "criteria for matching a case. Pattern guards appear after the pattern and "
@@ -4670,14 +4819,14 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2485
+#: doc/rust.md:2554
 msgid ""
 "~~~~ # let maybe_digit = Some(0); # fn process_digit(i: int) { } # fn "
 "process_other(i: int) { }"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2492
+#: doc/rust.md:2561
 #, no-wrap
 msgid ""
 "let message = match maybe_digit {\n"
@@ -4689,17 +4838,17 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2494
+#: doc/rust.md:2563
 msgid "### Return expressions"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2498
+#: doc/rust.md:2567
 msgid "~~~~~~~~{.ebnf .gram} return_expr : \"return\" expr ? ; ~~~~~~~~"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2503
+#: doc/rust.md:2572
 msgid ""
 "Return expressions are denoted with the keyword `return`. Evaluating a "
 "`return` expression moves its argument into the output slot of the current "
@@ -4708,12 +4857,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2505
+#: doc/rust.md:2574
 msgid "An example of a `return` expression:"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2514
+#: doc/rust.md:2583
 #, no-wrap
 msgid ""
 "~~~~\n"
@@ -4727,24 +4876,24 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2517
+#: doc/rust.md:2586
 msgid "# Type system"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2519
+#: doc/rust.md:2588
 msgid "## Types"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2522
+#: doc/rust.md:2591
 msgid ""
 "Every slot, item and value in a Rust program has a type. The _type_ of a "
 "*value* defines the interpretation of the memory holding it."
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2526
+#: doc/rust.md:2595
 msgid ""
 "Built-in types and type-constructors are tightly integrated into the "
 "language, in nontrivial ways that are not possible to emulate in user-"
@@ -4752,17 +4901,17 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2528
+#: doc/rust.md:2597
 msgid "### Primitive types"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2530
+#: doc/rust.md:2599
 msgid "The primitive types are the following:"
 msgstr ""
 
 #. type: Bullet: '* '
-#: doc/rust.md:2536
+#: doc/rust.md:2605
 msgid ""
 "The \"unit\" type `()`, having the single \"unit\" value `()` (occasionally "
 "called \"nil\").  ^[The \"unit\" value `()` is *not* a sentinel \"null "
@@ -4773,32 +4922,32 @@ msgid ""
 msgstr ""
 
 #. type: Bullet: '* '
-#: doc/rust.md:2536
+#: doc/rust.md:2605
 msgid "The boolean type `bool` with values `true` and `false`."
 msgstr ""
 
 #. type: Bullet: '* '
-#: doc/rust.md:2536
+#: doc/rust.md:2605
 msgid "The machine types."
 msgstr ""
 
 #. type: Bullet: '* '
-#: doc/rust.md:2536
+#: doc/rust.md:2605
 msgid "The machine-dependent integer and floating-point types."
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2538
+#: doc/rust.md:2607
 msgid "#### Machine types"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2540
+#: doc/rust.md:2609
 msgid "The machine types are the following:"
 msgstr ""
 
 #. type: Bullet: '* '
-#: doc/rust.md:2545
+#: doc/rust.md:2614
 msgid ""
 "The unsigned word types `u8`, `u16`, `u32` and `u64`, with values drawn from "
 "the integer intervals $[0, 2^8 - 1]$, $[0, 2^{16} - 1]$, $[0, 2^{32} - 1]$ "
@@ -4806,7 +4955,7 @@ msgid ""
 msgstr ""
 
 #. type: Bullet: '* '
-#: doc/rust.md:2550
+#: doc/rust.md:2619
 msgid ""
 "The signed two's complement word types `i8`, `i16`, `i32` and `i64`, with "
 "values drawn from the integer intervals $[-(2^7), 2^7 - 1]$, $[-(2^{15}), "
@@ -4815,19 +4964,19 @@ msgid ""
 msgstr ""
 
 #. type: Bullet: '* '
-#: doc/rust.md:2553
+#: doc/rust.md:2622
 msgid ""
 "The IEEE 754-2008 `binary32` and `binary64` floating-point types: `f32` and "
 "`f64`, respectively."
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2555
+#: doc/rust.md:2624
 msgid "#### Machine-dependent integer types"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2560
+#: doc/rust.md:2629
 msgid ""
 "The Rust type `uint`^[A Rust `uint` is analogous to a C99 `uintptr_t`.] is "
 "an unsigned integer type with target-machine-dependent size. Its size, in "
@@ -4836,7 +4985,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2565
+#: doc/rust.md:2634
 msgid ""
 "The Rust type `int`^[A Rust `int` is analogous to a C99 `intptr_t`.] is a "
 "two's complement signed integer type with target-machine-dependent size. Its "
@@ -4845,12 +4994,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2568
+#: doc/rust.md:2637
 msgid "#### Machine-dependent floating point type"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2575
+#: doc/rust.md:2644
 msgid ""
 "The Rust type `float` is a machine-specific type equal to one of the "
 "supported Rust floating-point machine types (`f32` or `f64`). It is the "
@@ -4861,31 +5010,31 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2578
+#: doc/rust.md:2647
 msgid ""
 "Note that due to the preference for hardware-supported floating-point, the "
 "type `float` may not be equal to the largest *supported* floating-point type."
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2581
+#: doc/rust.md:2650
 msgid "### Textual types"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2583
+#: doc/rust.md:2652
 msgid "The types `char` and `str` hold textual data."
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2586
+#: doc/rust.md:2655
 msgid ""
 "A value of type `char` is a Unicode character, represented as a 32-bit "
 "unsigned word holding a UCS-4 codepoint."
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2592
+#: doc/rust.md:2661
 msgid ""
 "A value of type `str` is a Unicode string, represented as a vector of 8-bit "
 "unsigned bytes holding a sequence of UTF-8 codepoints.  Since `str` is of "
@@ -4894,61 +5043,61 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2595
+#: doc/rust.md:2664
 msgid "### Tuple types"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2598
+#: doc/rust.md:2667
 msgid ""
 "The tuple type-constructor forms a new heterogeneous product of values "
 "similar to the record type-constructor. The differences are as follows:"
 msgstr ""
 
 #. type: Bullet: '* '
-#: doc/rust.md:2601
+#: doc/rust.md:2670
 msgid "tuple elements cannot be mutable, unlike record fields"
 msgstr ""
 
 #. type: Bullet: '* '
-#: doc/rust.md:2601
+#: doc/rust.md:2670
 msgid ""
 "tuple elements are not named and can be accessed only by pattern-matching"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2605
+#: doc/rust.md:2674
 msgid ""
 "Tuple types and values are denoted by listing the types or values of their "
 "elements, respectively, in a parenthesized, comma-separated list."
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2608
+#: doc/rust.md:2677
 msgid ""
 "The members of a tuple are laid out in memory contiguously, like a record, "
 "in order specified by the tuple type."
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2610
+#: doc/rust.md:2679
 msgid "An example of a tuple type and its use:"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2617
+#: doc/rust.md:2686
 msgid ""
 "~~~~ type Pair<'self> = (int,&'self str); let p: Pair<'static> = (10,\"hello"
 "\"); let (a, b) = p; assert!(b != \"world\"); ~~~~"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2620
+#: doc/rust.md:2689
 msgid "### Vector types"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2633
+#: doc/rust.md:2702
 msgid ""
 "The vector type constructor represents a homogeneous array of values of a "
 "given type.  A vector has a fixed size.  (Operations like `vec.push` operate "
@@ -4963,7 +5112,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2637
+#: doc/rust.md:2706
 msgid ""
 "Expressions producing vectors of definite size cannot be evaluated in a "
 "context expecting a vector of indefinite size; one must copy the definite-"
@@ -4971,30 +5120,30 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2639
+#: doc/rust.md:2708
 msgid "An example of a vector type and its use:"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2645
+#: doc/rust.md:2714
 msgid ""
 "~~~~ let v: &[int] = &[7, 5, 3]; let i: int = v[2]; assert!(i == 3); ~~~~"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2648
+#: doc/rust.md:2717
 msgid ""
 "All in-bounds elements of a vector are always initialized, and access to a "
 "vector is always bounds-checked."
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2651
+#: doc/rust.md:2720
 msgid "### Structure types"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2656
+#: doc/rust.md:2725
 msgid ""
 "A `struct` *type* is a heterogeneous product of other types, called the "
 "*fields* of the type.  ^[`struct` types are analogous `struct` types in C, "
@@ -5003,14 +5152,14 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2658
+#: doc/rust.md:2727
 msgid ""
 "New instances of a `struct` can be constructed with a [struct expression]"
 "(#struct-expressions)."
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2662
+#: doc/rust.md:2731
 msgid ""
 "The memory order of fields in a `struct` is given by the item defining it.  "
 "Fields may be given in any order in a corresponding struct *expression*; the "
@@ -5019,7 +5168,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2665
+#: doc/rust.md:2734
 msgid ""
 "The fields of a `struct` may be qualified by [visibility modifiers]"
 "(#visibility-modifiers), to restrict access to implementation-private data "
@@ -5027,14 +5176,14 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2667
+#: doc/rust.md:2736
 msgid ""
 "A _tuple struct_ type is just like a structure type, except that the fields "
 "are anonymous."
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2670
+#: doc/rust.md:2739
 msgid ""
 "A _unit-like struct_ type is like a structure type, except that it has no "
 "fields.  The one value constructed by the associated [structure expression]"
@@ -5042,12 +5191,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2672
+#: doc/rust.md:2741
 msgid "### Enumerated types"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2677
+#: doc/rust.md:2746
 msgid ""
 "An *enumerated type* is a nominal, heterogeneous disjoint union type, "
 "denoted by the name of an [`enum` item](#enumerations).  ^[The `enum` type "
@@ -5056,7 +5205,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2680
+#: doc/rust.md:2749
 msgid ""
 "An [`enum` item](#enumerations) declares both the type and a number of "
 "*variant constructors*, each of which is independently named and takes an "
@@ -5064,33 +5213,33 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2683
+#: doc/rust.md:2752
 msgid ""
 "New instances of an `enum` can be constructed by calling one of the variant "
 "constructors, in a [call expression](#call-expressions)."
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2685
+#: doc/rust.md:2754
 msgid ""
 "Any `enum` value consumes as much memory as the largest variant constructor "
 "for its corresponding `enum` type."
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2688
+#: doc/rust.md:2757
 msgid ""
 "Enum types cannot be denoted *structurally* as types, but must be denoted by "
 "named reference to an [`enum` item](#enumerations)."
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2691
+#: doc/rust.md:2760
 msgid "### Recursive types"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2695
+#: doc/rust.md:2764
 msgid ""
 "Nominal types -- [enumerations](#enumerated-types) and [structures]"
 "(#structure-types) -- may be recursive.  That is, each `enum` constructor or "
@@ -5099,7 +5248,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2705
+#: doc/rust.md:2774
 #, no-wrap
 msgid ""
 "* Recursive types must include a nominal type in the recursion\n"
@@ -5114,12 +5263,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2707
+#: doc/rust.md:2776
 msgid "An example of a *recursive* type and its use:"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2713
+#: doc/rust.md:2782
 #, no-wrap
 msgid ""
 "~~~~\n"
@@ -5130,17 +5279,17 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2716
+#: doc/rust.md:2785
 msgid "let a: List<int> = Cons(7, @Cons(13, @Nil)); ~~~~"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2719
+#: doc/rust.md:2788
 msgid "### Pointer types"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2723
+#: doc/rust.md:2792
 msgid ""
 "All pointers in Rust are explicit first-class values.  They can be copied, "
 "stored into data structures, and returned from functions.  There are four "
@@ -5148,7 +5297,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2733
+#: doc/rust.md:2802
 #, no-wrap
 msgid ""
 "Managed pointers (`@`)\n"
@@ -5163,7 +5312,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2742
+#: doc/rust.md:2811
 #, no-wrap
 msgid ""
 "Owning pointers (`~`)\n"
@@ -5177,7 +5326,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2755
+#: doc/rust.md:2824
 #, no-wrap
 msgid ""
 "Borrowed pointers (`&`)\n"
@@ -5195,7 +5344,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2765
+#: doc/rust.md:2834
 #, no-wrap
 msgid ""
 "Raw pointers (`*`)\n"
@@ -5210,12 +5359,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2768
+#: doc/rust.md:2837
 msgid "### Function types"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2772
+#: doc/rust.md:2841
 msgid ""
 "The function type constructor `fn` forms new function types.  A function "
 "type consists of a possibly-empty set of function-type modifiers (such as "
@@ -5223,12 +5372,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2774
+#: doc/rust.md:2843
 msgid "An example of a `fn` type:"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2779
+#: doc/rust.md:2848
 #, no-wrap
 msgid ""
 "~~~~~~~~\n"
@@ -5238,24 +5387,24 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2781
+#: doc/rust.md:2850
 msgid "let mut x = add(5,7);"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2786
+#: doc/rust.md:2855
 msgid ""
 "type Binop<'self> = &'self fn(int,int) -> int; let bo: Binop = add; x = "
 "bo(5,7); ~~~~~~~~"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2788
+#: doc/rust.md:2857
 msgid "### Object types"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2795
+#: doc/rust.md:2864
 msgid ""
 "Every trait item (see [traits](#traits)) defines a type with the same name "
 "as the trait.  This type is called the _object type_ of the trait.  Object "
@@ -5268,7 +5417,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2800
+#: doc/rust.md:2869
 msgid ""
 "Given a pointer-typed expression `E` of type `&T`, `~T` or `@T`, where `T` "
 "implements trait `R`, casting `E` to the corresponding pointer type `&R`, "
@@ -5278,12 +5427,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2802
+#: doc/rust.md:2871
 msgid "An example of an object type:"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2808
+#: doc/rust.md:2877
 #, no-wrap
 msgid ""
 "~~~~~~~~\n"
@@ -5294,7 +5443,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2812
+#: doc/rust.md:2881
 #, no-wrap
 msgid ""
 "impl Printable for int {\n"
@@ -5303,7 +5452,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2816
+#: doc/rust.md:2885
 #, no-wrap
 msgid ""
 "fn print(a: @Printable) {\n"
@@ -5312,7 +5461,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2821
+#: doc/rust.md:2890
 #, no-wrap
 msgid ""
 "fn main() {\n"
@@ -5322,26 +5471,26 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2824
+#: doc/rust.md:2893
 msgid ""
 "In this example, the trait `Printable` occurs as an object type in both the "
 "type signature of `print`, and the cast expression in `main`."
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2826
+#: doc/rust.md:2895
 msgid "### Type parameters"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2828
+#: doc/rust.md:2897
 msgid ""
 "Within the body of an item that has type parameter declarations, the names "
 "of its type parameters are types:"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2837
+#: doc/rust.md:2906
 #, no-wrap
 msgid ""
 "~~~~~~~\n"
@@ -5355,26 +5504,26 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2840
+#: doc/rust.md:2909
 msgid ""
 "Here, `first` has type `B`, referring to `map`'s `B` type parameter; and "
 "`rest` has type `~[B]`, a vector type with element type `B`."
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2842
+#: doc/rust.md:2911
 msgid "### Self types"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2846
+#: doc/rust.md:2915
 msgid ""
 "The special type `self` has a meaning within methods inside an impl item. It "
 "refers to the type of the implicit `self` argument. For example, in:"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2851
+#: doc/rust.md:2920
 #, no-wrap
 msgid ""
 "~~~~~~~~\n"
@@ -5384,7 +5533,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2856
+#: doc/rust.md:2925
 #, no-wrap
 msgid ""
 "impl Printable for ~str {\n"
@@ -5394,26 +5543,26 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2859
+#: doc/rust.md:2928
 msgid ""
 "`self` refers to the value of type `~str` that is the receiver for a call to "
 "the method `make_string`."
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2861
+#: doc/rust.md:2930
 msgid "## Type kinds"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2864
+#: doc/rust.md:2933
 msgid ""
 "Types in Rust are categorized into kinds, based on various properties of the "
 "components of the type.  The kinds are:"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2884
+#: doc/rust.md:2953
 #, no-wrap
 msgid ""
 "`Freeze`\n"
@@ -5438,7 +5587,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2891
+#: doc/rust.md:2960
 #, no-wrap
 msgid ""
 "_Default_\n"
@@ -5450,20 +5599,20 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2894
+#: doc/rust.md:2963
 msgid ""
 "Kinds can be supplied as _bounds_ on type parameters, like traits, in which "
 "case the parameter is constrained to types satisfying that kind."
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2896
+#: doc/rust.md:2965
 msgid ""
 "By default, type parameters do not carry any assumed kind-bounds at all."
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2900
+#: doc/rust.md:2969
 msgid ""
 "Any operation that causes a value to be copied requires the type of that "
 "value to be of copyable kind, so the `Copy` bound is frequently required on "
@@ -5471,24 +5620,24 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2904
+#: doc/rust.md:2973
 msgid "~~~~{.xfail-test} fn box<T>(x: T) -> @T { @x } ~~~~"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2907
+#: doc/rust.md:2976
 msgid ""
 "Putting `x` into a managed box involves copying, and the `T` parameter has "
 "the default (non-copyable) kind.  To change that, a bound is declared:"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2911
+#: doc/rust.md:2980
 msgid "~~~~ fn box<T: Copy>(x: T) -> @T { @x } ~~~~"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2916
+#: doc/rust.md:2985
 msgid ""
 "Calling this second version of `box` on a noncopyable type is not allowed. "
 "When instantiating a type parameter, the kind bounds on the parameter are "
@@ -5497,7 +5646,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2920
+#: doc/rust.md:2989
 msgid ""
 "Sending operations are not part of the Rust language, but are implemented in "
 "the library. Generic functions that send values bound the kind of these "
@@ -5505,12 +5654,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2922
+#: doc/rust.md:2991
 msgid "# Memory and concurrency models"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2927
+#: doc/rust.md:2996
 msgid ""
 "Rust has a memory model centered around concurrently-executing _tasks_. Thus "
 "its memory model and its concurrency model are best discussed "
@@ -5519,7 +5668,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2932
+#: doc/rust.md:3001
 msgid ""
 "When reading about the memory model, keep in mind that it is partitioned in "
 "order to support tasks; and when reading about tasks, keep in mind that "
@@ -5528,12 +5677,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2934
+#: doc/rust.md:3003
 msgid "## Memory model"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2938
+#: doc/rust.md:3007
 msgid ""
 "A Rust program's memory consists of a static set of *items*, a set of [tasks]"
 "(#tasks) each with its own *stack*, and a *heap*. Immutable portions of the "
@@ -5541,19 +5690,19 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2941
+#: doc/rust.md:3010
 msgid ""
 "Allocations in the stack consist of *slots*, and allocations in the heap "
 "consist of *boxes*."
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2944
+#: doc/rust.md:3013
 msgid "### Memory allocation and lifetime"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2949
+#: doc/rust.md:3018
 msgid ""
 "The _items_ of a program are those functions, modules and types that have "
 "their value calculated at compile-time and stored uniquely in the memory "
@@ -5561,7 +5710,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2953
+#: doc/rust.md:3022
 msgid ""
 "A task's _stack_ consists of activation frames automatically allocated on "
 "entry to each function as the task executes. A stack allocation is reclaimed "
@@ -5569,7 +5718,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2960
+#: doc/rust.md:3029
 msgid ""
 "The _heap_ is a general term that describes two separate sets of boxes: "
 "managed boxes -- which may be subject to garbage collection -- and owned "
@@ -5580,19 +5729,19 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2962
+#: doc/rust.md:3031
 msgid "### Memory ownership"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2965
+#: doc/rust.md:3034
 msgid ""
 "A task owns all memory it can *safely* reach through local variables, as "
 "well as managed, owning and borrowed pointers."
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2972
+#: doc/rust.md:3041
 msgid ""
 "When a task sends a value that has the `Send` trait to another task, it "
 "loses ownership of the value sent and can no longer refer to it.  This is "
@@ -5603,14 +5752,14 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2975
+#: doc/rust.md:3044
 msgid ""
 "When a stack frame is exited, its local allocations are all released, and "
 "its references to boxes (both managed and owned) are dropped."
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2981
+#: doc/rust.md:3050
 msgid ""
 "A managed box may (in the case of a recursive, mutable managed type) be "
 "cyclic; in this case the release of memory inside the managed structure may "
@@ -5620,38 +5769,38 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2984
+#: doc/rust.md:3053
 msgid ""
 "When a task finishes, its stack is necessarily empty and it therefore has no "
 "references to any boxes; the remainder of its heap is immediately freed."
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2987
+#: doc/rust.md:3056
 msgid "### Memory slots"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2989
+#: doc/rust.md:3058
 msgid "A task's stack contains slots."
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2992
+#: doc/rust.md:3061
 msgid ""
 "A _slot_ is a component of a stack frame, either a function parameter, a "
 "[temporary](#lvalues-rvalues-and-temporaries), or a local variable."
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2995
+#: doc/rust.md:3064
 msgid ""
 "A _local variable_ (or *stack-local* allocation) holds a value directly, "
 "allocated within the stack's memory. The value is a part of the stack frame."
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:3000
+#: doc/rust.md:3069
 msgid ""
 "Local variables are immutable unless declared with `let mut`.  The `mut` "
 "keyword applies to all local variables declared within that declaration (so "
@@ -5659,7 +5808,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:3005
+#: doc/rust.md:3074
 msgid ""
 "Function parameters are immutable unless declared with `mut`. The `mut` "
 "keyword applies only to the following parameter (so `|mut x, y|` and `fn "
@@ -5668,7 +5817,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:3011
+#: doc/rust.md:3080
 msgid ""
 "Local variables are not initialized when allocated; the entire frame worth "
 "of local variables are allocated at once, on frame-entry, in an "
@@ -5678,31 +5827,31 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:3014
+#: doc/rust.md:3083
 msgid "### Memory boxes"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:3017
+#: doc/rust.md:3086
 msgid ""
 "A _box_ is a reference to a heap allocation holding another value. There are "
 "two kinds of boxes: *managed boxes* and *owned boxes*."
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:3019
+#: doc/rust.md:3088
 msgid ""
 "A _managed box_ type or value is constructed by the prefix *at* sigil `@`."
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:3021
+#: doc/rust.md:3090
 msgid ""
 "An _owned box_ type or value is constructed by the prefix *tilde* sigil `~`."
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:3026
+#: doc/rust.md:3095
 msgid ""
 "Multiple managed box values can point to the same heap allocation; copying a "
 "managed box value makes a shallow copy of the pointer (optionally "
@@ -5711,7 +5860,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:3030
+#: doc/rust.md:3099
 msgid ""
 "Owned box values exist in 1:1 correspondence with their heap allocation; "
 "copying an owned box value makes a deep copy of the heap allocation and "
@@ -5719,33 +5868,33 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:3033
+#: doc/rust.md:3102
 msgid ""
 "An example of constructing one managed box type and value, and one owned box "
 "type and value:"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:3038
+#: doc/rust.md:3107
 msgid "~~~~~~~~ let x: @int = @10; let x: ~int = ~10; ~~~~~~~~"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:3041
+#: doc/rust.md:3110
 msgid ""
 "Some operations (such as field selection) implicitly dereference boxes. An "
 "example of an _implicit dereference_ operation performed on box values:"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:3047
+#: doc/rust.md:3116
 msgid ""
 "~~~~~~~~ struct Foo { y: int } let x = @Foo{y: 10}; assert!(x.y == 10); "
 "~~~~~~~~"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:3053
+#: doc/rust.md:3122
 msgid ""
 "Other operations act on box values as single-word-sized address values. For "
 "these operations, to access the value held in the box requires an explicit "
@@ -5755,33 +5904,33 @@ msgid ""
 msgstr ""
 
 #. type: Bullet: '* '
-#: doc/rust.md:3056
+#: doc/rust.md:3125
 msgid "copying box values (`x = y`)"
 msgstr ""
 
 #. type: Bullet: '* '
-#: doc/rust.md:3056
+#: doc/rust.md:3125
 msgid "passing box values to functions (`f(x,y)`)"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:3059
+#: doc/rust.md:3128
 msgid ""
 "An example of an explicit-dereference operation performed on box values:"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:3063
+#: doc/rust.md:3132
 msgid "~~~~~~~~ fn takes_boxed(b: @int) { }"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:3066
+#: doc/rust.md:3135
 msgid "fn takes_unboxed(b: int) { }"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:3073
+#: doc/rust.md:3142
 #, no-wrap
 msgid ""
 "fn main() {\n"
@@ -5793,12 +5942,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:3075
+#: doc/rust.md:3144
 msgid "## Tasks"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:3083
+#: doc/rust.md:3152
 msgid ""
 "An executing Rust program consists of a tree of tasks.  A Rust _task_ "
 "consists of an entry function, a stack, a set of outgoing communication "
@@ -5809,7 +5958,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:3098
+#: doc/rust.md:3167
 msgid ""
 "Multiple Rust tasks may coexist in a single operating-system process.  The "
 "runtime scheduler maps tasks to a certain number of operating-system "
@@ -5828,12 +5977,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:3101
+#: doc/rust.md:3170
 msgid "### Communication between tasks"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:3106
+#: doc/rust.md:3175
 msgid ""
 "Rust tasks are isolated and generally unable to interfere with one another's "
 "memory directly, except through [`unsafe` code](#unsafe-functions).  All "
@@ -5842,33 +5991,33 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:3109
+#: doc/rust.md:3178
 msgid ""
 "Inter-task communication and co-ordination facilities are provided in the "
 "standard library.  These include:"
 msgstr ""
 
 #. type: Bullet: '  - '
-#: doc/rust.md:3113
+#: doc/rust.md:3182
 msgid ""
 "synchronous and asynchronous communication channels with various "
 "communication topologies"
 msgstr ""
 
 #. type: Bullet: '  - '
-#: doc/rust.md:3113
+#: doc/rust.md:3182
 msgid ""
 "read-only and read-write shared variables with various safe mutual exclusion "
 "patterns"
 msgstr ""
 
 #. type: Bullet: '  - '
-#: doc/rust.md:3113
+#: doc/rust.md:3182
 msgid "simple locks and semaphores"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:3118
+#: doc/rust.md:3187
 msgid ""
 "When such facilities carry values, the values are restricted to the [`Send` "
 "type-kind](#type-kinds).  Restricting communication interfaces to this kind "
@@ -5879,39 +6028,39 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:3121
+#: doc/rust.md:3190
 msgid "### Task lifecycle"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:3124
+#: doc/rust.md:3193
 msgid ""
 "The _lifecycle_ of a task consists of a finite set of states and events that "
 "cause transitions between the states. The lifecycle states of a task are:"
 msgstr ""
 
 #. type: Bullet: '* '
-#: doc/rust.md:3129
+#: doc/rust.md:3198
 msgid "running"
 msgstr ""
 
 #. type: Bullet: '* '
-#: doc/rust.md:3129
+#: doc/rust.md:3198
 msgid "blocked"
 msgstr ""
 
 #. type: Bullet: '* '
-#: doc/rust.md:3129
+#: doc/rust.md:3198
 msgid "failing"
 msgstr ""
 
 #. type: Bullet: '* '
-#: doc/rust.md:3129
+#: doc/rust.md:3198
 msgid "dead"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:3133
+#: doc/rust.md:3202
 msgid ""
 "A task begins its lifecycle -- once it has been spawned -- in the *running* "
 "state. In this state it executes the statements of its entry function, and "
@@ -5919,7 +6068,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:3139
+#: doc/rust.md:3208
 msgid ""
 "A task may transition from the *running* state to the *blocked* state any "
 "time it makes a blocking communication call. When the call can be completed "
@@ -5929,7 +6078,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:3158
+#: doc/rust.md:3227
 msgid ""
 "A task may transition to the *failing* state at any time, due being killed "
 "by some external event or internally, from the evaluation of a `fail!()` "
@@ -5952,7 +6101,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:3162
+#: doc/rust.md:3231
 msgid ""
 "A task in the *dead* state cannot transition to other states; it exists only "
 "to have its termination status inspected by other tasks, and/or to await "
@@ -5960,12 +6109,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:3165
+#: doc/rust.md:3234
 msgid "### Task scheduling"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:3169
+#: doc/rust.md:3238
 msgid ""
 "The currently scheduled task is given a finite *time slice* in which to "
 "execute, after which it is *descheduled* at a loop-edge or similar "
@@ -5973,7 +6122,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:3173
+#: doc/rust.md:3242
 msgid ""
 "An executing task can yield control at any time, by making a library call to "
 "`std::task::yield`, which deschedules it immediately. Entering any other non-"
@@ -5981,12 +6130,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:3176
+#: doc/rust.md:3245
 msgid "# Runtime services, linkage and debugging"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:3183
+#: doc/rust.md:3252
 msgid ""
 "The Rust _runtime_ is a relatively compact collection of C++ and Rust code "
 "that provides fundamental services and datatypes to all Rust tasks at run-"
@@ -5996,19 +6145,19 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:3185
+#: doc/rust.md:3254
 msgid ""
 "> **Note:** The runtime library will merge with the `std` library in future "
 "versions of Rust."
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:3187
+#: doc/rust.md:3256
 msgid "### Memory allocation"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:3193
+#: doc/rust.md:3262
 msgid ""
 "The runtime memory-management system is based on a _service-provider "
 "interface_, through which the runtime requests blocks of memory from its "
@@ -6018,7 +6167,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:3197
+#: doc/rust.md:3266
 msgid ""
 "The runtime memory-management system, in turn, supplies Rust tasks with "
 "facilities for allocating, extending and releasing stacks, as well as "
@@ -6026,12 +6175,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:3199
+#: doc/rust.md:3268
 msgid "### Built in types"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:3203
+#: doc/rust.md:3272
 msgid ""
 "The runtime provides C and Rust code to assist with various built-in types, "
 "such as vectors, strings, and the low level communication system (ports, "
@@ -6039,19 +6188,19 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:3206
+#: doc/rust.md:3275
 msgid ""
 "Support for other built-in types such as simple types, tuples, records, and "
 "enums is open-coded by the Rust compiler."
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:3210
+#: doc/rust.md:3279
 msgid "### Task scheduling and communication"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:3216
+#: doc/rust.md:3285
 msgid ""
 "The runtime provides code to manage inter-task communication.  This includes "
 "the system of task-lifecycle state transitions depending on the contents of "
@@ -6061,12 +6210,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:3219
+#: doc/rust.md:3288
 msgid "### Logging system"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:3223
+#: doc/rust.md:3292
 msgid ""
 "The runtime contains a system for directing [logging expressions](#log-"
 "expressions) to a logging console and/or internal logging buffers. Logging "
@@ -6074,7 +6223,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:3230
+#: doc/rust.md:3299
 msgid ""
 "Logging output is enabled by setting the `RUST_LOG` environment variable.  "
 "`RUST_LOG` accepts a logging specification made up of a comma-separated list "
@@ -6085,7 +6234,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:3238
+#: doc/rust.md:3307
 msgid ""
 "The path to a module consists of the crate name, any parent modules, then "
 "the module itself, all separated by double colons (`::`).  The optional log "
@@ -6096,7 +6245,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:3244
+#: doc/rust.md:3313
 msgid ""
 "As an example, to see all the logs generated by the compiler, you would set "
 "`RUST_LOG` to `rustc`, which is the crate name (as specified in its `link` "
@@ -6106,7 +6255,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:3249
+#: doc/rust.md:3318
 msgid ""
 "Note that when compiling either `.rs` or `.rc` files that don't specify a "
 "crate name the crate is given a default name that matches the source file, "
@@ -6116,7 +6265,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:3253
+#: doc/rust.md:3322
 msgid ""
 "As a convenience, the logging spec can also be set to a special pseudo-"
 "crate, `::help`. In this case, when the application starts, the runtime will "
@@ -6124,7 +6273,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:3258
+#: doc/rust.md:3327
 msgid ""
 "The Rust runtime itself generates logging information. The runtime's logs "
 "are generated for a number of artificial modules in the `::rt` pseudo-crate, "
@@ -6133,84 +6282,84 @@ msgid ""
 msgstr ""
 
 #. type: Bullet: '* '
-#: doc/rust.md:3272
+#: doc/rust.md:3341
 msgid "`::rt::mem` Memory management"
 msgstr ""
 
 #. type: Bullet: '* '
-#: doc/rust.md:3272
+#: doc/rust.md:3341
 msgid "`::rt::comm` Messaging and task communication"
 msgstr ""
 
 #. type: Bullet: '* '
-#: doc/rust.md:3272
+#: doc/rust.md:3341
 msgid "`::rt::task` Task management"
 msgstr ""
 
 #. type: Bullet: '* '
-#: doc/rust.md:3272
+#: doc/rust.md:3341
 msgid "`::rt::dom` Task scheduling"
 msgstr ""
 
 #. type: Bullet: '* '
-#: doc/rust.md:3272
+#: doc/rust.md:3341
 msgid "`::rt::trace` Unused"
 msgstr ""
 
 #. type: Bullet: '* '
-#: doc/rust.md:3272
+#: doc/rust.md:3341
 msgid "`::rt::cache` Type descriptor cache"
 msgstr ""
 
 #. type: Bullet: '* '
-#: doc/rust.md:3272
+#: doc/rust.md:3341
 msgid "`::rt::upcall` Compiler-generated runtime calls"
 msgstr ""
 
 #. type: Bullet: '* '
-#: doc/rust.md:3272
+#: doc/rust.md:3341
 msgid "`::rt::timer` The scheduler timer"
 msgstr ""
 
 #. type: Bullet: '* '
-#: doc/rust.md:3272
+#: doc/rust.md:3341
 msgid "`::rt::gc` Garbage collection"
 msgstr ""
 
 #. type: Bullet: '* '
-#: doc/rust.md:3272
+#: doc/rust.md:3341
 msgid "`::rt::stdlib` Functions used directly by the standard library"
 msgstr ""
 
 #. type: Bullet: '* '
-#: doc/rust.md:3272
+#: doc/rust.md:3341
 msgid "`::rt::kern` The runtime kernel"
 msgstr ""
 
 #. type: Bullet: '* '
-#: doc/rust.md:3272
+#: doc/rust.md:3341
 msgid "`::rt::backtrace` Log a backtrace on task failure"
 msgstr ""
 
 #. type: Bullet: '* '
-#: doc/rust.md:3272
+#: doc/rust.md:3341
 msgid "`::rt::callback` Unused"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:3274
+#: doc/rust.md:3343
 msgid "#### Logging Expressions"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:3277
+#: doc/rust.md:3346
 msgid ""
 "Rust provides several macros to log information. Here's a simple Rust "
 "program that demonstrates all four of them:"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:3286
+#: doc/rust.md:3355
 #, no-wrap
 msgid ""
 "```rust\n"
@@ -6224,13 +6373,13 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:3288
+#: doc/rust.md:3357
 msgid ""
 "These four log levels correspond to levels 1-4, as controlled by `RUST_LOG`:"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:3295
+#: doc/rust.md:3364
 msgid ""
 "```bash $ RUST_LOG=rust=3 ./rust rust: ~\"\\\"This is an error log\\\"\" "
 "rust: ~\"\\\"This is a warn log\\\"\" rust: ~\"\\\"this is an info log\\\"\" "
@@ -6238,28 +6387,28 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:3297
+#: doc/rust.md:3366
 msgid "# Appendix: Rationales and design tradeoffs"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:3299
+#: doc/rust.md:3368
 #, no-wrap
 msgid "*TODO*.\n"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:3301
+#: doc/rust.md:3370
 msgid "# Appendix: Influences and further references"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:3303
+#: doc/rust.md:3372
 msgid "## Influences"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:3312
+#: doc/rust.md:3381
 msgid ""
 "> The essential problem that must be solved in making a fault-tolerant > "
 "software system is therefore that of fault-isolation. Different programmers "
@@ -6270,7 +6419,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:3324
+#: doc/rust.md:3393
 msgid ""
 "> In our approach, all data is private to some process, and processes can > "
 "only communicate through communications channels. *Security*, as used > in "
@@ -6282,7 +6431,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:3332
+#: doc/rust.md:3401
 msgid ""
 "> Concurrent and applicative programming complement each other. The > "
 "ability to send messages on channels provides I/O without side effects, > "
@@ -6291,7 +6440,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:3339
+#: doc/rust.md:3408
 msgid ""
 "Rust is not a particularly original language. It may however appear unusual "
 "by contemporary standards, as its design elements are drawn from a number of "
@@ -6301,7 +6450,7 @@ msgid ""
 msgstr ""
 
 #. type: Bullet: '* '
-#: doc/rust.md:3343
+#: doc/rust.md:3412
 msgid ""
 "The NIL (1981) and Hermes (1990) family. These languages were developed by "
 "Robert Strom, Shaula Yemini, David Bacon and others in their group at IBM "
@@ -6309,7 +6458,7 @@ msgid ""
 msgstr ""
 
 #. type: Bullet: '* '
-#: doc/rust.md:3347
+#: doc/rust.md:3416
 msgid ""
 "The Erlang (1987) language, developed by Joe Armstrong, Robert Virding, "
 "Claes Wikstr&ouml;m, Mike Williams and others in their group at the Ericsson "
@@ -6317,7 +6466,7 @@ msgid ""
 msgstr ""
 
 #. type: Bullet: '* '
-#: doc/rust.md:3352
+#: doc/rust.md:3421
 msgid ""
 "The Sather (1990) language, developed by Stephen Omohundro, Chu-Cheow Lim, "
 "Heinz Schmidt and others in their group at The International Computer "
@@ -6326,7 +6475,7 @@ msgid ""
 msgstr ""
 
 #. type: Bullet: '* '
-#: doc/rust.md:3357
+#: doc/rust.md:3426
 msgid ""
 "The Newsqueak (1988), Alef (1995), and Limbo (1996) family. These languages "
 "were developed by Rob Pike, Phil Winterbottom, Sean Dorward and others in "
@@ -6335,7 +6484,7 @@ msgid ""
 msgstr ""
 
 #. type: Bullet: '* '
-#: doc/rust.md:3361
+#: doc/rust.md:3430
 msgid ""
 "The Napier (1985) and Napier88 (1988) family. These languages were developed "
 "by Malcolm Atkinson, Ron Morrison and others in their group at the "
@@ -6343,47 +6492,47 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:3363
+#: doc/rust.md:3432
 msgid ""
 "Additional specific influences can be seen from the following languages:"
 msgstr ""
 
 #. type: Bullet: '* '
-#: doc/rust.md:3371
+#: doc/rust.md:3440
 msgid "The stack-growth implementation of Go."
 msgstr ""
 
 #. type: Bullet: '* '
-#: doc/rust.md:3371
+#: doc/rust.md:3440
 msgid "The structural algebraic types and compilation manager of SML."
 msgstr ""
 
 #. type: Bullet: '* '
-#: doc/rust.md:3371
+#: doc/rust.md:3440
 msgid "The attribute and assembly systems of C#."
 msgstr ""
 
 #. type: Bullet: '* '
-#: doc/rust.md:3371
+#: doc/rust.md:3440
 msgid "The references and deterministic destructor system of C++."
 msgstr ""
 
 #. type: Bullet: '* '
-#: doc/rust.md:3371
+#: doc/rust.md:3440
 msgid "The memory region systems of the ML Kit and Cyclone."
 msgstr ""
 
 #. type: Bullet: '* '
-#: doc/rust.md:3371
+#: doc/rust.md:3440
 msgid "The typeclass system of Haskell."
 msgstr ""
 
 #. type: Bullet: '* '
-#: doc/rust.md:3371
+#: doc/rust.md:3440
 msgid "The lexical identifier rule of Python."
 msgstr ""
 
 #. type: Bullet: '* '
-#: doc/rust.md:3371
+#: doc/rust.md:3440
 msgid "The block syntax of Ruby."
 msgstr ""

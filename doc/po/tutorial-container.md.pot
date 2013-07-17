@@ -1,13 +1,13 @@
 # SOME DESCRIPTIVE TITLE
-# Copyright (C) YEAR Free Software Foundation, Inc.
-# This file is distributed under the same license as the PACKAGE package.
+# Copyright (C) YEAR The Rust Project Developers
+# This file is distributed under the same license as the Rust package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
 #
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: PACKAGE VERSION\n"
-"POT-Creation-Date: 2013-07-07 21:10+0300\n"
+"Project-Id-Version: Rust 0.8-pre\n"
+"POT-Creation-Date: 2013-07-17 07:18+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -195,7 +195,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-container.md:89
+#: doc/tutorial-container.md:89 doc/tutorial-container.md:262
 #, no-wrap
 msgid ""
 "~~~\n"
@@ -217,7 +217,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-container.md:107
+#: doc/tutorial-container.md:107 doc/tutorial-container.md:284
 #, no-wrap
 msgid ""
 "impl Iterator<int> for ZeroStream {\n"
@@ -440,6 +440,162 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-container.md:207
+#: doc/tutorial-container.md:208
 msgid "// the iterator is now fully consumed assert!(it.next().is_none()); ~~~"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-container.md:210
+msgid "## Conversion"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-container.md:212
+msgid ""
+"Iterators offer generic conversion to containers with the `collect` adaptor:"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-container.md:218
+msgid ""
+"~~~ let xs = [0, 1, 1, 2, 3, 5, 8]; let ys = xs.rev_iter().skip(1)."
+"transform(|&x| x * 2).collect::<~[int]>(); assert_eq!(ys, ~[10, 6, 4, 2, 2, "
+"0]); ~~~"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-container.md:221
+msgid ""
+"The method requires a type hint for the container type, if the surrounding "
+"code does not provide sufficient information."
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-container.md:225
+msgid ""
+"Containers can provide conversion from iterators through `collect` by "
+"implementing the `FromIterator` trait. For example, the implementation for "
+"vectors is as follows:"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-container.md:238
+#, no-wrap
+msgid ""
+"~~~\n"
+"impl<A, T: Iterator<A>> FromIterator<A, T> for ~[A] {\n"
+"    pub fn from_iterator(iterator: &mut T) -> ~[A] {\n"
+"        let (lower, _) = iterator.size_hint();\n"
+"        let mut xs = with_capacity(lower);\n"
+"        for iterator.advance |x| {\n"
+"            xs.push(x);\n"
+"        }\n"
+"        xs\n"
+"    }\n"
+"}\n"
+"~~~\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-container.md:240
+msgid "### Size hints"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-container.md:243
+msgid ""
+"The `Iterator` trait provides a `size_hint` default method, returning a "
+"lower bound and optionally on upper bound on the length of the iterator:"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-container.md:247
+msgid "~~~ fn size_hint(&self) -> (uint, Option<uint>) { (0, None) } ~~~"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-container.md:251
+msgid ""
+"The vector implementation of `FromIterator` from above uses the lower bound "
+"to pre-allocate enough space to hold the minimum number of elements the "
+"iterator will yield."
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-container.md:254
+msgid ""
+"The default implementation is always correct, but it should be overridden if "
+"the iterator can provide better information."
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-container.md:256
+msgid ""
+"The `ZeroStream` from earlier can provide an exact lower and upper bound:"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-container.md:267
+#, no-wrap
+msgid ""
+"impl ZeroStream {\n"
+"    fn new(n: uint) -> ZeroStream {\n"
+"        ZeroStream { remaining: n }\n"
+"    }\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-container.md:272
+#, no-wrap
+msgid ""
+"    fn size_hint(&self) -> (uint, Option<uint>) {\n"
+"        (self.remaining, Some(self.remaining))\n"
+"    }\n"
+"}\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-container.md:286
+msgid "## Double-ended iterators"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-container.md:290
+msgid ""
+"The `DoubleEndedIterator` trait represents an iterator able to yield "
+"elements from either end of a range. It inherits from the `Iterator` trait "
+"and extends it with the `next_back` function."
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-container.md:293
+msgid ""
+"A `DoubleEndedIterator` can be flipped with the `invert` adaptor, returning "
+"another `DoubleEndedIterator` with `next` and `next_back` exchanged."
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-container.md:300
+msgid ""
+"~~~ let xs = [1, 2, 3, 4, 5, 6]; let mut it = xs.iter(); println(fmt!(\"%?"
+"\", it.next())); // prints `Some(&1)` println(fmt!(\"%?\", it.next())); // "
+"prints `Some(&2)` println(fmt!(\"%?\", it.next_back())); // prints `Some(&6)`"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-container.md:306
+#, no-wrap
+msgid ""
+"// prints `5`, `4` and `3`\n"
+"for it.invert().advance |&x| {\n"
+"    println(fmt!(\"%?\", x))\n"
+"}\n"
+"~~~\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-container.md:308
+msgid ""
+"The `rev_iter` and `mut_rev_iter` methods on vectors just return an inverted "
+"version of the standard immutable and mutable vector iterators."
 msgstr ""
