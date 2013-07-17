@@ -27,6 +27,7 @@ use term;
 use time::precise_time_ns;
 use treemap::TreeMap;
 
+use std::clone::Clone;
 use std::comm::{stream, SharedChan};
 use std::either;
 use std::io;
@@ -93,7 +94,7 @@ pub struct TestDescAndFn {
     testfn: TestFn,
 }
 
-#[deriving(Encodable,Decodable,Eq)]
+#[deriving(Clone, Encodable, Decodable, Eq)]
 pub struct Metric {
     value: f64,
     noise: f64
@@ -101,6 +102,12 @@ pub struct Metric {
 
 #[deriving(Eq)]
 pub struct MetricMap(TreeMap<~str,Metric>);
+
+impl Clone for MetricMap {
+    pub fn clone(&self) -> MetricMap {
+        MetricMap((**self).clone())
+    }
+}
 
 /// Analysis of a single change in metric
 #[deriving(Eq)]
