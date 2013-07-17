@@ -50,37 +50,37 @@ pub trait IoFactory {
 
 pub trait RtioTcpListener : RtioSocket {
     fn accept(&mut self) -> Result<~RtioTcpStreamObject, IoError>;
-    fn accept_simultaneously(&self);
-    fn dont_accept_simultaneously(&self);
+    fn accept_simultaneously(&mut self);
+    fn dont_accept_simultaneously(&mut self);
 }
 
 pub trait RtioTcpStream : RtioSocket {
-    fn read(&self, buf: &mut [u8]) -> Result<uint, IoError>;
-    fn write(&self, buf: &[u8]) -> Result<(), IoError>;
-    fn peer_name(&self) -> IpAddr;
-    fn control_congestion(&self);
-    fn nodelay(&self);
-    fn keepalive(&self, delay_in_seconds: uint);
-    fn letdie(&self);
+    fn read(&mut self, buf: &mut [u8]) -> Result<uint, IoError>;
+    fn write(&mut self, buf: &[u8]) -> Result<(), IoError>;
+    fn peer_name(&mut self) -> IpAddr;
+    fn control_congestion(&mut self);
+    fn nodelay(&mut self);
+    fn keepalive(&mut self, delay_in_seconds: uint);
+    fn letdie(&mut self);
 }
 
 pub trait RtioSocket {
-    fn socket_name(&self) -> IpAddr;
+    fn socket_name(&mut self) -> IpAddr;
 }
 
 pub trait RtioUdpSocket : RtioSocket {
-    fn recvfrom(&self, buf: &mut [u8]) -> Result<(uint, IpAddr), IoError>;
-    fn sendto(&self, buf: &[u8], dst: IpAddr) -> Result<(), IoError>;
+    fn recvfrom(&mut self, buf: &mut [u8]) -> Result<(uint, IpAddr), IoError>;
+    fn sendto(&mut self, buf: &[u8], dst: IpAddr) -> Result<(), IoError>;
 
-    fn join_multicast(&self, multi: IpAddr);
-    fn leave_multicast(&self, multi: IpAddr);
+    fn join_multicast(&mut self, multi: IpAddr);
+    fn leave_multicast(&mut self, multi: IpAddr);
 
-    fn loop_multicast_locally(&self);
-    fn dont_loop_multicast_locally(&self);
+    fn loop_multicast_locally(&mut self);
+    fn dont_loop_multicast_locally(&mut self);
 
-    fn multicast_time_to_live(&self, ttl: int);
-    fn time_to_live(&self, ttl: int);
+    fn multicast_time_to_live(&mut self, ttl: int);
+    fn time_to_live(&mut self, ttl: int);
 
-    fn hear_broadcasts(&self);
-    fn ignore_broadcasts(&self);
+    fn hear_broadcasts(&mut self);
+    fn ignore_broadcasts(&mut self);
 }
