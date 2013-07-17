@@ -932,7 +932,7 @@ pub fn print_possibly_embedded_block_(s: @ps,
                                       indented: uint,
                                       attrs: &[ast::attribute],
                                       close_box: bool) {
-    match blk.node.rules {
+    match blk.rules {
       ast::unsafe_blk => word_space(s, "unsafe"),
       ast::default_blk => ()
     }
@@ -946,11 +946,11 @@ pub fn print_possibly_embedded_block_(s: @ps,
 
     print_inner_attributes(s, attrs);
 
-    for blk.node.view_items.iter().advance |vi| { print_view_item(s, vi); }
-    for blk.node.stmts.iter().advance |st| {
+    for blk.view_items.iter().advance |vi| { print_view_item(s, vi); }
+    for blk.stmts.iter().advance |st| {
         print_stmt(s, *st);
     }
-    match blk.node.expr {
+    match blk.expr {
       Some(expr) => {
         space_if_not_bol(s);
         print_expr(s, expr);
@@ -1255,12 +1255,12 @@ pub fn print_expr(s: @ps, expr: &ast::expr) {
 
             // Extract the expression from the extra block the parser adds
             // in the case of foo => expr
-            if arm.body.node.view_items.is_empty() &&
-                arm.body.node.stmts.is_empty() &&
-                arm.body.node.rules == ast::default_blk &&
-                arm.body.node.expr.is_some()
+            if arm.body.view_items.is_empty() &&
+                arm.body.stmts.is_empty() &&
+                arm.body.rules == ast::default_blk &&
+                arm.body.expr.is_some()
             {
-                match arm.body.node.expr {
+                match arm.body.expr {
                     Some(expr) => {
                         match expr.node {
                             ast::expr_block(ref blk) => {
@@ -1297,16 +1297,16 @@ pub fn print_expr(s: @ps, expr: &ast::expr) {
         print_fn_block_args(s, decl);
         space(s.s);
         // }
-        assert!(body.node.stmts.is_empty());
-        assert!(body.node.expr.is_some());
+        assert!(body.stmts.is_empty());
+        assert!(body.expr.is_some());
         // we extract the block, so as not to create another set of boxes
-        match body.node.expr.get().node {
+        match body.expr.get().node {
             ast::expr_block(ref blk) => {
                 print_block_unclosed(s, blk);
             }
             _ => {
                 // this is a bare expression
-                print_expr(s, body.node.expr.get());
+                print_expr(s, body.expr.get());
                 end(s); // need to close a box
             }
         }

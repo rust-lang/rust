@@ -1069,12 +1069,12 @@ impl Resolver {
 
     pub fn block_needs_anonymous_module(@mut self, block: &blk) -> bool {
         // If the block has view items, we need an anonymous module.
-        if block.node.view_items.len() > 0 {
+        if block.view_items.len() > 0 {
             return true;
         }
 
         // Check each statement.
-        for block.node.stmts.iter().advance |statement| {
+        for block.stmts.iter().advance |statement| {
             match statement.node {
                 stmt_decl(declaration, _) => {
                     match declaration.node {
@@ -1566,7 +1566,7 @@ impl Resolver {
                                           vt<ReducedGraphParent>)) {
         let new_parent;
         if self.block_needs_anonymous_module(block) {
-            let block_id = block.node.id;
+            let block_id = block.id;
 
             debug!("(building reduced graph for block) creating a new \
                     anonymous module for block %d",
@@ -4096,7 +4096,7 @@ impl Resolver {
 
         // Move down in the graph, if there's an anonymous module rooted here.
         let orig_module = self.current_module;
-        match self.current_module.anonymous_children.find(&block.node.id) {
+        match self.current_module.anonymous_children.find(&block.id) {
             None => { /* Nothing to do. */ }
             Some(&anonymous_module) => {
                 debug!("(resolving block) found anonymous module, moving \
@@ -4989,7 +4989,7 @@ impl Resolver {
             }
 
             expr_fn_block(ref fn_decl, ref block) => {
-                self.resolve_function(FunctionRibKind(expr.id, block.node.id),
+                self.resolve_function(FunctionRibKind(expr.id, block.id),
                                       Some(fn_decl),
                                       NoTypeParameters,
                                       block,

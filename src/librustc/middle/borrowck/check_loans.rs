@@ -44,7 +44,7 @@ pub fn check_loans(bccx: @BorrowckCtxt,
                    move_data: move_data::FlowedMoveData,
                    all_loans: &[Loan],
                    body: &ast::blk) {
-    debug!("check_loans(body id=%?)", body.node.id);
+    debug!("check_loans(body id=%?)", body.id);
 
     let clcx = @mut CheckLoanCtxt {
         bccx: bccx,
@@ -751,5 +751,5 @@ fn check_loans_in_block<'a>(blk: &ast::blk,
                                          visit::vt<@mut CheckLoanCtxt<'a>>))
 {
     visit::visit_block(blk, (this, vt));
-    this.check_for_conflicting_loans(blk.node.id);
+    this.check_for_conflicting_loans(blk.id);
 }

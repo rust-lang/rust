@@ -2245,15 +2245,15 @@ impl Parser {
         let lo = self.last_span.lo;
         let decl = parse_decl();
         let body = parse_body();
-        let fakeblock = ast::blk_ {
+        let fakeblock = ast::blk {
             view_items: ~[],
             stmts: ~[],
             expr: Some(body),
             id: self.get_id(),
             rules: default_blk,
+            span: body.span,
         };
-        let fakeblock = spanned(body.span.lo, body.span.hi,
-                                fakeblock);
+
         return self.mk_expr(lo, body.span.hi,
                             expr_fn_block(decl, fakeblock));
     }
@@ -2402,14 +2402,12 @@ impl Parser {
                 self.eat(&token::COMMA);
             }
 
-            let blk = codemap::spanned {
-                node: ast::blk_ {
-                    view_items: ~[],
-                    stmts: ~[],
-                    expr: Some(expr),
-                    id: self.get_id(),
-                    rules: default_blk,
-                },
+            let blk = ast::blk {
+                view_items: ~[],
+                stmts: ~[],
+                expr: Some(expr),
+                id: self.get_id(),
+                rules: default_blk,
                 span: expr.span,
             };
 
@@ -3120,14 +3118,14 @@ impl Parser {
 
         let hi = self.span.hi;
         self.bump();
-        let bloc = ast::blk_ {
+        ast::blk {
             view_items: view_items,
             stmts: stmts,
             expr: expr,
             id: self.get_id(),
             rules: s,
-        };
-        spanned(lo, hi, bloc)
+            span: mk_sp(lo, hi),
+        }
     }
 
     fn parse_optional_purity(&self) -> ast::purity {

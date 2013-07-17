@@ -413,13 +413,13 @@ pub fn visit_struct_field<E: Copy>(sf: &struct_field, (e, v): (E, vt<E>)) {
 }
 
 pub fn visit_block<E: Copy>(b: &blk, (e, v): (E, vt<E>)) {
-    for b.node.view_items.iter().advance |vi| {
+    for b.view_items.iter().advance |vi| {
         (v.visit_view_item)(vi, (copy e, v));
     }
-    for b.node.stmts.iter().advance |s| {
+    for b.stmts.iter().advance |s| {
         (v.visit_stmt)(*s, (copy e, v));
     }
-    visit_expr_opt(b.node.expr, (e, v));
+    visit_expr_opt(b.expr, (e, v));
 }
 
 pub fn visit_stmt<E>(s: &stmt, (e, v): (E, vt<E>)) {
