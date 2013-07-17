@@ -84,6 +84,7 @@ supported build environments that are most likely to work.
 > know.
 
 [bug-3319]: https://github.com/mozilla/rust/issues/3319
+[wiki-start]: https://github.com/mozilla/rust/wiki/Note-getting-started-developing-Rust
 
 To build from source you will also need the following prerequisite
 packages:
@@ -2528,10 +2529,4 @@ There is further documentation on the [wiki].
 [ffi]: tutorial-ffi.html
 
 [wiki]: https://github.com/mozilla/rust/wiki/Docs
-[wiki-start]:	https://github.com/mozilla/rust/wiki/Note-getting-started-developing-Rust
-[unit testing]: https://github.com/mozilla/rust/wiki/Doc-unit-testing
-[rustdoc]: https://github.com/mozilla/rust/wiki/Doc-using-rustdoc
-[cargo]: https://github.com/mozilla/rust/wiki/Doc-using-cargo-to-manage-packages
-[attributes]: https://github.com/mozilla/rust/wiki/Doc-attributes
 
-[pound-rust]: http://chat.mibbit.com/?server=irc.mozilla.org&channel=%23rust
