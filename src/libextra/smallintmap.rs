@@ -118,7 +118,7 @@ impl<V> MutableMap<uint, V> for SmallIntMap<V> {
         if *key >= self.v.len() {
             return None;
         }
-        replace(&mut self.v[*key], None)
+        self.v[*key].take()
     }
 }
 

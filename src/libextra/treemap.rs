@@ -697,7 +697,7 @@ fn remove<K: TotalOrd, V>(node: &mut Option<~TreeNode<K, V>>,
         }
       }
     }
-    return match replace(node, None) {
+    return match node.take() {
         Some(~TreeNode{value, _}) => Some(value), None => fail!()
     };
 }

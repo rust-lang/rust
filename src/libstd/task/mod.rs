@@ -46,7 +46,6 @@ use rt::{context, OldTaskContext, TaskContext};
 use rt::local::Local;
 use task::rt::{task_id, sched_id};
 use unstable::finally::Finally;
-use util::replace;
 use util;
 
 #[cfg(test)] use cast;
@@ -224,8 +223,8 @@ impl TaskBuilder {
             fail!("Cannot copy a task_builder"); // Fake move mode on self
         }
         self.consumed = true;
-        let gen_body = replace(&mut self.gen_body, None);
-        let notify_chan = replace(&mut self.opts.notify_chan, None);
+        let gen_body = self.gen_body.take();
+        let notify_chan = self.opts.notify_chan.take();
         TaskBuilder {
             opts: TaskOpts {
                 linked: self.opts.linked,
@@ -340,7 +339,7 @@ impl TaskBuilder {
      * existing body generator to the new body generator.
      */
     pub fn add_wrapper(&mut self, wrapper: ~fn(v: ~fn()) -> ~fn()) {
-        let prev_gen_body = replace(&mut self.gen_body, None);
+        let prev_gen_body = self.gen_body.take();
         let prev_gen_body = match prev_gen_body {
             Some(gen) => gen,
             None => {
@@ -372,8 +371,8 @@ impl TaskBuilder {
      * must be greater than zero.
      */
     pub fn spawn(&mut self, f: ~fn()) {
-        let gen_body = replace(&mut self.gen_body, None);
-        let notify_chan = replace(&mut self.opts.notify_chan, None);
+        let gen_body = self.gen_body.take();
+        let notify_chan = self.opts.notify_chan.take();
         let x = self.consume();
         let opts = TaskOpts {
             linked: x.opts.linked,
