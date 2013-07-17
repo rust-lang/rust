@@ -15,6 +15,7 @@ use digest::DigestUtil;
 use json;
 use sha1::Sha1;
 use serialize::{Encoder, Encodable, Decoder, Decodable};
+use arc::RWARC;
 use treemap::TreeMap;
 
 use std::cell::Cell;
@@ -123,7 +124,7 @@ struct Database {
 }
 
 impl Database {
-    pub fn prepare(&mut self,
+    pub fn prepare(&self,
                    fn_name: &str,
                    declared_inputs: &WorkMap)
                    -> Option<(WorkMap, WorkMap, ~str)> {
@@ -161,7 +162,7 @@ impl Logger {
 }
 
 struct Context {
-    db: @mut Database,
+    db: RWARC<Database>,
     logger: @mut Logger,
     cfg: @json::Object,
     freshness: TreeMap<~str,@fn(&str,&str)->bool>
@@ -214,7 +215,7 @@ fn digest_file(path: &Path) -> ~str {
 }
 
 impl Context {
-    pub fn new(db: @mut Database, lg: @mut Logger, cfg: @json::Object)
+    pub fn new(db: RWARC<Database>, lg: @mut Logger, cfg: @json::Object)
                -> Context {
         Context {
             db: db,
@@ -290,7 +291,9 @@ impl TPrep for Prep {
             &self, blk: ~fn(&Exec) -> T) -> Work<T> {
         let mut bo = Some(blk);
 
-        let cached = self.ctxt.db.prepare(self.fn_name, &self.declared_inputs);
+        let cached = do self.ctxt.db.read |db| {
+            db.prepare(self.fn_name, &self.declared_inputs)
+        };
 
         match cached {
             Some((ref disc_in, ref disc_out, ref res))
@@ -346,12 +349,13 @@ fn unwrap<T:Send +
             let s = json_encode(&v);
 
             let p = &*ww.prep;
-            let db = p.ctxt.db;
-            db.cache(p.fn_name,
-                 &p.declared_inputs,
-                 &exe.discovered_inputs,
-                 &exe.discovered_outputs,
-                 s);
+            do p.ctxt.db.write |db| {
+                db.cache(p.fn_name,
+                         &p.declared_inputs,
+                         &exe.discovered_inputs,
+                         &exe.discovered_outputs,
+                         s);
+            }
             v
         }
     }
@@ -361,9 +365,9 @@ fn unwrap<T:Send +
 fn test() {
     use std::io::WriterUtil;
 
-    let db = @mut Database { db_filename: Path("db.json"),
-                             db_cache: TreeMap::new(),
-                             db_dirty: false };
+    let db = RWARC(Database { db_filename: Path("db.json"),
+                              db_cache: TreeMap::new(),
+                              db_dirty: false });
     let lg = @mut Logger { a: () };
     let cfg = @HashMap::new();
     let cx = @Context::new(db, lg, cfg);
