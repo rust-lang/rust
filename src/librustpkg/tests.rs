@@ -221,7 +221,7 @@ fn command_line_test_with_env(args: &[~str], cwd: &Path, env: Option<~[(~str, ~s
     let cwd = normalize(RemotePath((*cwd).clone()));
     debug!("About to run command: %? %? in %s", cmd, args, cwd.to_str());
     assert!(os::path_is_dir(&*cwd));
-    let cwd = cwd.clone();
+    let cwd = (*cwd).clone();
     let mut prog = run::Process::new(cmd, args, run::ProcessOptions {
         env: env.map(|v| v.slice(0, v.len())),
         dir: Some(&cwd),

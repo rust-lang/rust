@@ -63,7 +63,7 @@ fn sort_and_fmt(mm: &HashMap<~[u8], uint>, total: uint) -> ~str {
 
    // map -> [(k,%)]
    for mm.iter().advance |(key, &val)| {
-      pairs.push((copy *key, pct(val, total)));
+      pairs.push(((*key).clone(), pct(val, total)));
    }
 
    let pairs_sorted = sortKV(pairs);
