@@ -869,25 +869,37 @@ pub fn change_dir(p: &Path) -> bool {
 /// CWD to what it was before, returning true.
 /// Returns false if the directory doesn't exist or if the directory change
 /// is otherwise unsuccessful.
+/// FIXME #7870 This probably shouldn't be part of the public API
 pub fn change_dir_locked(p: &Path, action: &fn()) -> bool {
-    use unstable::global::global_data_clone_create;
-    use unstable::sync::{Exclusive, exclusive};
-
-    fn key(_: Exclusive<()>) { }
+    use task;
+    use unstable::finally::Finally;
 
     unsafe {
-        let result = global_data_clone_create(key, || { ~exclusive(()) });
+        // This is really sketchy. Using a pthread mutex so descheduling
+        // in the `action` callback can cause deadlock. Doing it in
+        // `task::atomically` to try to avoid that, but ... I don't know
+        // this is all bogus.
+        return do task::atomically {
+            rust_take_change_dir_lock();
 
-        do result.with_imm() |_| {
-            let old_dir = os::getcwd();
-            if change_dir(p) {
-                action();
-                change_dir(&old_dir)
-            }
-            else {
-                false
+            do (||{
+                let old_dir = os::getcwd();
+                if change_dir(p) {
+                    action();
+                    change_dir(&old_dir)
+                }
+                else {
+                    false
+                }
+            }).finally {
+                rust_drop_change_dir_lock();
             }
         }
+    }
+
+    extern {
+        fn rust_take_change_dir_lock();
+        fn rust_drop_change_dir_lock();
     }
 }
 

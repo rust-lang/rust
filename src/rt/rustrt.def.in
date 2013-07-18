@@ -268,3 +268,5 @@ rust_take_global_args_lock
 rust_drop_global_args_lock
 rust_set_exit_status_newrt
 rust_get_exit_status_newrt
+rust_take_change_dir_lock
+rust_drop_change_dir_lock
