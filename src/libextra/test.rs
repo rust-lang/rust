@@ -38,7 +38,6 @@ use std::task;
 use std::to_str::ToStr;
 use std::u64;
 use std::f64;
-use std::hashmap::HashMap;
 use std::os;
 
 
@@ -852,7 +851,7 @@ fn calc_result(desc: &TestDesc, task_succeeded: bool) -> TestResult {
 
 impl ToJson for Metric {
     fn to_json(&self) -> json::Json {
-        let mut map = ~HashMap::new();
+        let mut map = ~TreeMap::new();
         map.insert(~"value", json::Number(self.value as float));
         map.insert(~"noise", json::Number(self.noise as float));
         json::Object(map)
