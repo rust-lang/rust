@@ -86,7 +86,7 @@ pub fn reset<T>(val: &mut T, func: &fn(T) -> T) {
 
         // Duplicate `val`
         ptr::copy_nonoverlapping_memory(t, val, 1);
-        
+
         // Apply the transformation (the old value will get dropped unless the
         // new value references it or `func` is `id`)
         tmp = func(tmp);
@@ -196,7 +196,7 @@ mod tests {
 
         let mut y = Some(NonCopyable);
         do reset(&mut y) |o| {
-            assert!(y.is_some());
+            assert!(o.is_some());
             None
         }
         assert!(y.is_none());
