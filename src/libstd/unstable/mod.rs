@@ -16,8 +16,6 @@ use libc;
 use prelude::*;
 use task;
 
-pub mod at_exit;
-
 pub mod dynamic_lib;
 
 pub mod finally;

@@ -757,12 +757,6 @@ rust_raw_thread_join_delete(raw_thread *thread) {
     delete thread;
 }
 
-extern "C" void
-rust_register_exit_function(spawn_fn runner, fn_env_pair *f) {
-    rust_task *task = rust_get_current_task();
-    task->kernel->register_exit_function(runner, f);
-}
-
 #ifndef _WIN32
 #include <sys/types.h>
 #include <dirent.h>
