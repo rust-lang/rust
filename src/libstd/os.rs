@@ -863,46 +863,6 @@ pub fn change_dir(p: &Path) -> bool {
     }
 }
 
-/// Changes the current working directory to the specified
-/// path while acquiring a global lock, then calls `action`.
-/// If the change is successful, releases the lock and restores the
-/// CWD to what it was before, returning true.
-/// Returns false if the directory doesn't exist or if the directory change
-/// is otherwise unsuccessful.
-/// FIXME #7870 This probably shouldn't be part of the public API
-pub fn change_dir_locked(p: &Path, action: &fn()) -> bool {
-    use task;
-    use unstable::finally::Finally;
-
-    unsafe {
-        // This is really sketchy. Using a pthread mutex so descheduling
-        // in the `action` callback can cause deadlock. Doing it in
-        // `task::atomically` to try to avoid that, but ... I don't know
-        // this is all bogus.
-        return do task::atomically {
-            rust_take_change_dir_lock();
-
-            do (||{
-                let old_dir = os::getcwd();
-                if change_dir(p) {
-                    action();
-                    change_dir(&old_dir)
-                }
-                else {
-                    false
-                }
-            }).finally {
-                rust_drop_change_dir_lock();
-            }
-        }
-    }
-
-    extern {
-        fn rust_take_change_dir_lock();
-        fn rust_drop_change_dir_lock();
-    }
-}
-
 /// Copies a file from one location to another
 pub fn copy_file(from: &Path, to: &Path) -> bool {
     return do_copy_file(from, to);
