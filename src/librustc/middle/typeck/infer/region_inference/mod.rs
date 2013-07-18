@@ -385,7 +385,6 @@ impl RegionVarBindings {
 
     pub fn tainted(&mut self, snapshot: uint, r0: Region) -> ~[Region] {
         /*!
-         *
          * Computes all regions that have been related to `r0` in any
          * way since the snapshot `snapshot` was taken---`r0` itself
          * will be the first entry. This is used when checking whether
