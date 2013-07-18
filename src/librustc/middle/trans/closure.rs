@@ -174,16 +174,6 @@ pub fn allocate_cbox(bcx: block, sigil: ast::Sigil, cdata_ty: ty::t)
     let ccx = bcx.ccx();
     let tcx = ccx.tcx;
 
-    fn nuke_ref_count(bcx: block, llbox: ValueRef) {
-        let _icx = push_ctxt("closure::nuke_ref_count");
-        // Initialize ref count to arbitrary value for debugging:
-        let ccx = bcx.ccx();
-        let llbox = PointerCast(bcx, llbox, Type::opaque_box(ccx).ptr_to());
-        let ref_cnt = GEPi(bcx, llbox, [0u, abi::box_field_refcnt]);
-        let rc = C_int(ccx, 0x12345678);
-        Store(bcx, rc, ref_cnt);
-    }
-
     // Allocate and initialize the box:
     match sigil {
         ast::ManagedSigil => {
@@ -195,7 +185,6 @@ pub fn allocate_cbox(bcx: block, sigil: ast::Sigil, cdata_ty: ty::t)
         ast::BorrowedSigil => {
             let cbox_ty = tuplify_box_ty(tcx, cdata_ty);
             let llbox = alloc_ty(bcx, cbox_ty, "__closure");
-            nuke_ref_count(bcx, llbox);
             rslt(bcx, llbox)
         }
     }
