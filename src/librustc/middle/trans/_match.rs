@@ -17,8 +17,8 @@
  *
  * ## Matching
  *
- * The basic state of the code is maintained in an array `m` of `@Match`
- * objects.  Each `@Match` describes some list of patterns, all of which must
+ * The basic state of the code is maintained in an array `m` of `Match`
+ * objects.  Each `Match` describes some list of patterns, all of which must
  * match against the current list of values.  If those patterns match, then
  * the arm listed in the match is the correct arm.  A given arm may have
  * multiple corresponding match entries, one for each alternative that
@@ -316,6 +316,7 @@ pub fn variant_opt(bcx: block, pat_id: ast::node_id)
     }
 }
 
+#[deriving(Clone)]
 pub enum TransBindingMode {
     TrByValue(/*llbinding:*/ ValueRef),
     TrByRef,
@@ -329,6 +330,7 @@ pub enum TransBindingMode {
  * - `trmode` is the trans binding mode
  * - `id` is the node id of the binding
  * - `ty` is the Rust type of the binding */
+ #[deriving(Clone)]
 pub struct BindingInfo {
     llmatch: ValueRef,
     trmode: TransBindingMode,
@@ -338,15 +340,17 @@ pub struct BindingInfo {
 
 pub type BindingsMap = HashMap<ident, BindingInfo>;
 
+#[deriving(Clone)]
 pub struct ArmData<'self> {
     bodycx: block,
     arm: &'self ast::arm,
-    bindings_map: BindingsMap
+    bindings_map: @BindingsMap
 }
 
+#[deriving(Clone)]
 pub struct Match<'self> {
     pats: ~[@ast::pat],
-    data: @ArmData<'self>
+    data: ArmData<'self>
 }
 
 pub fn match_to_str(bcx: block, m: &Match) -> ~str {
@@ -358,11 +362,11 @@ pub fn match_to_str(bcx: block, m: &Match) -> ~str {
     }
 }
 
-pub fn matches_to_str(bcx: block, m: &[@Match]) -> ~str {
-    fmt!("%?", m.map(|n| match_to_str(bcx, *n)))
+pub fn matches_to_str(bcx: block, m: &[Match]) -> ~str {
+    fmt!("%?", m.map(|n| match_to_str(bcx, n)))
 }
 
-pub fn has_nested_bindings(m: &[@Match], col: uint) -> bool {
+pub fn has_nested_bindings(m: &[Match], col: uint) -> bool {
     for m.iter().advance |br| {
         match br.pats[col].node {
           ast::pat_ident(_, _, Some(_)) => return true,
@@ -373,10 +377,10 @@ pub fn has_nested_bindings(m: &[@Match], col: uint) -> bool {
 }
 
 pub fn expand_nested_bindings<'r>(bcx: block,
-                                  m: &[@Match<'r>],
+                                  m: &[Match<'r>],
                                   col: uint,
                                   val: ValueRef)
-                              -> ~[@Match<'r>] {
+                              -> ~[Match<'r>] {
     debug!("expand_nested_bindings(bcx=%s, m=%s, col=%u, val=%?)",
            bcx.to_str(),
            matches_to_str(bcx, m),
@@ -397,11 +401,12 @@ pub fn expand_nested_bindings<'r>(bcx: block,
                     br.data.bindings_map.get(&path_to_ident(path));
 
                 Store(bcx, val, binding_info.llmatch);
-                @Match {pats: pats, data: br.data}
+                Match {
+                    pats: pats,
+                    data: br.data.clone()
+                }
             }
-            _ => {
-                *br
-            }
+            _ => (*br).clone(),
         }
     }
 }
@@ -419,11 +424,11 @@ pub type enter_pat<'self> = &'self fn(@ast::pat) -> Option<~[@ast::pat]>;
 
 pub fn enter_match<'r>(bcx: block,
                        dm: DefMap,
-                       m: &[@Match<'r>],
+                       m: &[Match<'r>],
                        col: uint,
                        val: ValueRef,
                        e: enter_pat)
-                    -> ~[@Match<'r>] {
+                    -> ~[Match<'r>] {
     debug!("enter_match(bcx=%s, m=%s, col=%u, val=%?)",
            bcx.to_str(),
            matches_to_str(bcx, m),
@@ -453,7 +458,10 @@ pub fn enter_match<'r>(bcx: block,
                     _ => {}
                 }
 
-                result.push(@Match {pats: pats, data: br.data});
+                result.push(Match {
+                    pats: pats,
+                    data: br.data.clone()
+                });
             }
             None => ()
         }
@@ -466,10 +474,10 @@ pub fn enter_match<'r>(bcx: block,
 
 pub fn enter_default<'r>(bcx: block,
                          dm: DefMap,
-                         m: &[@Match<'r>],
+                         m: &[Match<'r>],
                          col: uint,
                          val: ValueRef)
-                      -> ~[@Match<'r>] {
+                      -> ~[Match<'r>] {
     debug!("enter_default(bcx=%s, m=%s, col=%u, val=%?)",
            bcx.to_str(),
            matches_to_str(bcx, m),
@@ -511,12 +519,12 @@ pub fn enter_default<'r>(bcx: block,
 //             wildcards
 
 pub fn enter_opt<'r>(bcx: block,
-                     m: &[@Match<'r>],
+                     m: &[Match<'r>],
                      opt: &Opt,
                      col: uint,
                      variant_size: uint,
                      val: ValueRef)
-                  -> ~[@Match<'r>] {
+                  -> ~[Match<'r>] {
     debug!("enter_opt(bcx=%s, m=%s, col=%u, val=%?)",
            bcx.to_str(),
            matches_to_str(bcx, m),
@@ -624,11 +632,11 @@ pub fn enter_opt<'r>(bcx: block,
 
 pub fn enter_rec_or_struct<'r>(bcx: block,
                                dm: DefMap,
-                               m: &[@Match<'r>],
+                               m: &[Match<'r>],
                                col: uint,
                                fields: &[ast::ident],
                                val: ValueRef)
-                            -> ~[@Match<'r>] {
+                            -> ~[Match<'r>] {
     debug!("enter_rec_or_struct(bcx=%s, m=%s, col=%u, val=%?)",
            bcx.to_str(),
            matches_to_str(bcx, m),
@@ -659,11 +667,11 @@ pub fn enter_rec_or_struct<'r>(bcx: block,
 
 pub fn enter_tup<'r>(bcx: block,
                      dm: DefMap,
-                     m: &[@Match<'r>],
+                     m: &[Match<'r>],
                      col: uint,
                      val: ValueRef,
                      n_elts: uint)
-                  -> ~[@Match<'r>] {
+                  -> ~[Match<'r>] {
     debug!("enter_tup(bcx=%s, m=%s, col=%u, val=%?)",
            bcx.to_str(),
            matches_to_str(bcx, m),
@@ -685,11 +693,11 @@ pub fn enter_tup<'r>(bcx: block,
 
 pub fn enter_tuple_struct<'r>(bcx: block,
                               dm: DefMap,
-                              m: &[@Match<'r>],
+                              m: &[Match<'r>],
                               col: uint,
                               val: ValueRef,
                               n_elts: uint)
-                          -> ~[@Match<'r>] {
+                          -> ~[Match<'r>] {
     debug!("enter_tuple_struct(bcx=%s, m=%s, col=%u, val=%?)",
            bcx.to_str(),
            matches_to_str(bcx, m),
@@ -711,10 +719,10 @@ pub fn enter_tuple_struct<'r>(bcx: block,
 
 pub fn enter_box<'r>(bcx: block,
                      dm: DefMap,
-                     m: &[@Match<'r>],
+                     m: &[Match<'r>],
                      col: uint,
                      val: ValueRef)
-                 -> ~[@Match<'r>] {
+                 -> ~[Match<'r>] {
     debug!("enter_box(bcx=%s, m=%s, col=%u, val=%?)",
            bcx.to_str(),
            matches_to_str(bcx, m),
@@ -738,10 +746,10 @@ pub fn enter_box<'r>(bcx: block,
 
 pub fn enter_uniq<'r>(bcx: block,
                       dm: DefMap,
-                      m: &[@Match<'r>],
+                      m: &[Match<'r>],
                       col: uint,
                       val: ValueRef)
-                  -> ~[@Match<'r>] {
+                  -> ~[Match<'r>] {
     debug!("enter_uniq(bcx=%s, m=%s, col=%u, val=%?)",
            bcx.to_str(),
            matches_to_str(bcx, m),
@@ -765,10 +773,10 @@ pub fn enter_uniq<'r>(bcx: block,
 
 pub fn enter_region<'r>(bcx: block,
                         dm: DefMap,
-                        m: &[@Match<'r>],
+                        m: &[Match<'r>],
                         col: uint,
                         val: ValueRef)
-                    -> ~[@Match<'r>] {
+                    -> ~[Match<'r>] {
     debug!("enter_region(bcx=%s, m=%s, col=%u, val=%?)",
            bcx.to_str(),
            matches_to_str(bcx, m),
@@ -793,7 +801,7 @@ pub fn enter_region<'r>(bcx: block,
 // Returns the options in one column of matches. An option is something that
 // needs to be conditionally matched at runtime; for example, the discriminant
 // on a set of enum variants or a literal.
-pub fn get_options(bcx: block, m: &[@Match], col: uint) -> ~[Opt] {
+pub fn get_options(bcx: block, m: &[Match], col: uint) -> ~[Opt] {
     let ccx = bcx.ccx();
     fn add_to_set(tcx: ty::ctxt, set: &mut ~[Opt], val: Opt) {
         if set.iter().any(|l| opt_eq(tcx, l, &val)) {return;}
@@ -943,7 +951,7 @@ pub fn extract_vec_elems(bcx: block,
 
 // NB: This function does not collect fields from struct-like enum variants.
 pub fn collect_record_or_struct_fields(bcx: block,
-                                       m: &[@Match],
+                                       m: &[Match],
                                        col: uint)
                                     -> ~[ast::ident] {
     let mut fields: ~[ast::ident] = ~[];
@@ -971,7 +979,7 @@ pub fn collect_record_or_struct_fields(bcx: block,
 }
 
 pub fn pats_require_rooting(bcx: block,
-                            m: &[@Match],
+                            m: &[Match],
                             col: uint)
                          -> bool {
     do m.iter().any |br| {
@@ -982,7 +990,7 @@ pub fn pats_require_rooting(bcx: block,
 }
 
 pub fn root_pats_as_necessary(mut bcx: block,
-                              m: &[@Match],
+                              m: &[Match],
                               col: uint,
                               val: ValueRef)
                            -> block {
@@ -1012,23 +1020,23 @@ macro_rules! any_pat (
     )
 )
 
-pub fn any_box_pat(m: &[@Match], col: uint) -> bool {
+pub fn any_box_pat(m: &[Match], col: uint) -> bool {
     any_pat!(m, ast::pat_box(_))
 }
 
-pub fn any_uniq_pat(m: &[@Match], col: uint) -> bool {
+pub fn any_uniq_pat(m: &[Match], col: uint) -> bool {
     any_pat!(m, ast::pat_uniq(_))
 }
 
-pub fn any_region_pat(m: &[@Match], col: uint) -> bool {
+pub fn any_region_pat(m: &[Match], col: uint) -> bool {
     any_pat!(m, ast::pat_region(_))
 }
 
-pub fn any_tup_pat(m: &[@Match], col: uint) -> bool {
+pub fn any_tup_pat(m: &[Match], col: uint) -> bool {
     any_pat!(m, ast::pat_tup(_))
 }
 
-pub fn any_tuple_struct_pat(bcx: block, m: &[@Match], col: uint) -> bool {
+pub fn any_tuple_struct_pat(bcx: block, m: &[Match], col: uint) -> bool {
     do m.iter().any |br| {
         let pat = br.pats[col];
         match pat.node {
@@ -1046,7 +1054,7 @@ pub fn any_tuple_struct_pat(bcx: block, m: &[@Match], col: uint) -> bool {
 
 pub type mk_fail = @fn() -> BasicBlockRef;
 
-pub fn pick_col(m: &[@Match]) -> uint {
+pub fn pick_col(m: &[Match]) -> uint {
     fn score(p: &ast::pat) -> uint {
         match p.node {
           ast::pat_lit(_) | ast::pat_enum(_, _) | ast::pat_range(_, _) => 1u,
@@ -1201,7 +1209,7 @@ fn insert_lllocals(bcx: block,
 pub fn compile_guard(bcx: block,
                      guard_expr: @ast::expr,
                      data: &ArmData,
-                     m: &[@Match],
+                     m: &[Match],
                      vals: &[ValueRef],
                      chk: Option<mk_fail>)
                   -> block {
@@ -1214,8 +1222,10 @@ pub fn compile_guard(bcx: block,
 
     let mut bcx = bcx;
     let mut temp_cleanups = ~[];
-    bcx = store_non_ref_bindings(bcx, &data.bindings_map, Some(&mut temp_cleanups));
-    bcx = insert_lllocals(bcx, &data.bindings_map, BindLocal, false);
+    bcx = store_non_ref_bindings(bcx,
+                                 data.bindings_map,
+                                 Some(&mut temp_cleanups));
+    bcx = insert_lllocals(bcx, data.bindings_map, BindLocal, false);
 
     let val = unpack_result!(bcx, {
         do with_scope_result(bcx, guard_expr.info(),
@@ -1254,7 +1264,7 @@ pub fn compile_guard(bcx: block,
 }
 
 pub fn compile_submatch(bcx: block,
-                        m: &[@Match],
+                        m: &[Match],
                         vals: &[ValueRef],
                         chk: Option<mk_fail>) {
     debug!("compile_submatch(bcx=%s, m=%s, vals=%?)",
@@ -1276,12 +1286,15 @@ pub fn compile_submatch(bcx: block,
         return;
     }
     if m[0].pats.len() == 0u {
-        let data = m[0].data;
+        let data = &m[0].data;
         match data.arm.guard {
             Some(guard_expr) => {
-                bcx = compile_guard(bcx, guard_expr, m[0].data,
+                bcx = compile_guard(bcx,
+                                    guard_expr,
+                                    &m[0].data,
                                     m.slice(1, m.len()),
-                                    vals, chk);
+                                    vals,
+                                    chk);
             }
             _ => ()
         }
@@ -1291,13 +1304,23 @@ pub fn compile_submatch(bcx: block,
 
     let col = pick_col(m);
     let val = vals[col];
-    let m = {
-        if has_nested_bindings(m, col) {
-            expand_nested_bindings(bcx, m, col, val)
-        } else {
-            m.to_owned()
-        }
-    };
+
+    if has_nested_bindings(m, col) {
+        let expanded = expand_nested_bindings(bcx, m, col, val);
+        compile_submatch_continue(bcx, expanded, vals, chk, col, val)
+    } else {
+        compile_submatch_continue(bcx, m, vals, chk, col, val)
+    }
+}
+
+fn compile_submatch_continue(mut bcx: block,
+                             m: &[Match],
+                             vals: &[ValueRef],
+                             chk: Option<mk_fail>,
+                             col: uint,
+                             val: ValueRef) {
+    let tcx = bcx.tcx();
+    let dm = tcx.def_map;
 
     let vals_left = vec::append(vals.slice(0u, col).to_owned(),
                                 vals.slice(col + 1u, vals.len()));
@@ -1670,12 +1693,17 @@ pub fn trans_match_inner(scope_cx: block,
     for arms.iter().advance |arm| {
         let body = scope_block(bcx, arm.body.info(), "case_body");
         let bindings_map = create_bindings_map(bcx, arm.pats[0]);
-        let arm_data = @ArmData {bodycx: body,
-                                 arm: arm,
-                                 bindings_map: bindings_map};
-        arm_datas.push(arm_data);
+        let arm_data = ArmData {
+            bodycx: body,
+            arm: arm,
+            bindings_map: @bindings_map
+        };
+        arm_datas.push(arm_data.clone());
         for arm.pats.iter().advance |p| {
-            matches.push(@Match {pats: ~[*p], data: arm_data});
+            matches.push(Match {
+                pats: ~[*p],
+                data: arm_data.clone(),
+            });
         }
     }
 
@@ -1703,11 +1731,11 @@ pub fn trans_match_inner(scope_cx: block,
         // is just to reduce code space.  See extensive comment at the start
         // of the file for more details.
         if arm_data.arm.guard.is_none() {
-            bcx = store_non_ref_bindings(bcx, &arm_data.bindings_map, None);
+            bcx = store_non_ref_bindings(bcx, arm_data.bindings_map, None);
         }
 
         // insert bindings into the lllocals map and add cleanups
-        bcx = insert_lllocals(bcx, &arm_data.bindings_map, BindLocal, true);
+        bcx = insert_lllocals(bcx, arm_data.bindings_map, BindLocal, true);
 
         bcx = controlflow::trans_block(bcx, &arm_data.arm.body, dest);
         bcx = trans_block_cleanups(bcx, block_cleanups(arm_data.bodycx));
