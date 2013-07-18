@@ -546,18 +546,23 @@ pub fn decr_refcnt_maybe_free(bcx: block, box_ptr: ValueRef,
     let _icx = push_ctxt("decr_refcnt_maybe_free");
     let ccx = bcx.ccx();
 
-    do with_cond(bcx, IsNotNull(bcx, box_ptr)) |bcx| {
-        let rc_ptr = GEPi(bcx, box_ptr, [0u, abi::box_field_refcnt]);
-        let rc = Sub(bcx, Load(bcx, rc_ptr), C_int(ccx, 1));
-        Store(bcx, rc, rc_ptr);
-        let zero_test = ICmp(bcx, lib::llvm::IntEQ, C_int(ccx, 0), rc);
-        do with_cond(bcx, zero_test) |bcx| {
-            match box_ptr_ptr {
-                Some(p) => free_ty(bcx, p, t),
-                None => free_ty_immediate(bcx, box_ptr, t)
-            }
-        }
-    }
+    let decr_bcx = sub_block(bcx, "decr");
+    let free_bcx = sub_block(decr_bcx, "free");
+    let next_bcx = sub_block(bcx, "next");
+    CondBr(bcx, IsNotNull(bcx, box_ptr), decr_bcx.llbb, next_bcx.llbb);
+
+    let rc_ptr = GEPi(decr_bcx, box_ptr, [0u, abi::box_field_refcnt]);
+    let rc = Sub(decr_bcx, Load(decr_bcx, rc_ptr), C_int(ccx, 1));
+    Store(decr_bcx, rc, rc_ptr);
+    CondBr(decr_bcx, IsNull(decr_bcx, rc), free_bcx.llbb, next_bcx.llbb);
+
+    let free_bcx = match box_ptr_ptr {
+        Some(p) => free_ty(free_bcx, p, t),
+        None => free_ty_immediate(free_bcx, box_ptr, t)
+    };
+    Br(free_bcx, next_bcx.llbb);
+
+    next_bcx
 }
 
 
