@@ -2713,7 +2713,6 @@ impl Parser {
           token::LBRACE => {
             self.bump();
             let (_, _) = self.parse_pat_fields();
-            hi = self.span.hi;
             self.bump();
             self.obsolete(*self.span, ObsoleteRecordPattern);
             pat = pat_wild;
@@ -2744,7 +2743,6 @@ impl Parser {
                     }
                 }
                 if fields.len() == 1 { self.expect(&token::COMMA); }
-                hi = self.span.hi;
                 self.expect(&token::RPAREN);
                 pat = pat_tup(fields);
             }
@@ -2760,7 +2758,6 @@ impl Parser {
             self.bump();
             let (before, slice, after) =
                 self.parse_pat_vec_elements();
-            hi = self.span.hi;
             self.expect(&token::RBRACKET);
             pat = ast::pat_vec(before, slice, after);
             hi = self.last_span.hi;
@@ -4654,7 +4651,7 @@ impl Parser {
 
     pub fn parse_item(&self, attrs: ~[attribute]) -> Option<@ast::item> {
         match self.parse_item_or_view_item(attrs, true) {
-            iovi_none(attrs) =>
+            iovi_none(_) =>
                 None,
             iovi_view_item(_) =>
                 self.fatal("view items are not allowed here"),
@@ -4824,7 +4821,6 @@ impl Parser {
         // First, parse view items.
         let mut view_items : ~[ast::view_item] = ~[];
         let mut items = ~[];
-        let mut done = false;
         // I think this code would probably read better as a single
         // loop with a mutable three-state-variable (for extern mods,
         // view items, and regular items) ... except that because
