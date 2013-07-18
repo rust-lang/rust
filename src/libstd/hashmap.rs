@@ -255,11 +255,8 @@ impl<K:Hash + Eq,V> HashMap<K, V> {
         let len_buckets = self.buckets.len();
         let bucket = self.buckets[idx].take();
 
-        let value = match bucket {
-            None => None,
-            Some(Bucket{value, _}) => {
-                Some(value)
-            },
+        let value = do bucket.map_consume |bucket| {
+            bucket.value
         };
 
         /* re-inserting buckets may cause changes in size, so remember
@@ -505,7 +502,6 @@ impl<K: Hash + Eq, V> HashMap<K, V> {
         // `consume_rev_iter` is more efficient than `consume_iter` for vectors
         HashMapConsumeIterator {iter: self.buckets.consume_rev_iter()}
     }
-
 }
 
 impl<K: Hash + Eq, V: Clone> HashMap<K, V> {
@@ -524,14 +520,12 @@ impl<K:Hash + Eq,V:Eq> Eq for HashMap<K, V> {
     fn eq(&self, other: &HashMap<K, V>) -> bool {
         if self.len() != other.len() { return false; }
 
-        for self.iter().advance |(key, value)| {
+        do self.iter().all |(key, value)| {
             match other.find(key) {
-                None => return false,
-                Some(v) => if value != v { return false },
+                None => false,
+                Some(v) => value == v
             }
         }
-
-        true
     }
 
     fn ne(&self, other: &HashMap<K, V>) -> bool { !self.eq(other) }
