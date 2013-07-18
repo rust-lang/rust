@@ -20,7 +20,6 @@ use print::pprust;
 use visit;
 use syntax::parse::token::special_idents;
 
-use std::cmp;
 use std::hashmap::HashMap;
 use std::vec;
 
