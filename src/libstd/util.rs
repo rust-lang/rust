@@ -74,6 +74,31 @@ pub fn replace<T>(dest: &mut T, mut src: T) -> T {
     src
 }
 
+/**
+ * Transform the value at a mutable location without deinitializing or copying
+ * it.
+ */
+#[inline]
+pub fn reset<T>(val: &mut T, func: &fn(T) -> T) {
+    unsafe {
+        let mut tmp: T = intrinsics::uninit();
+        let t: *mut T = &mut tmp;
+
+        // Duplicate `val`
+        ptr::copy_nonoverlapping_memory(t, val, 1);
+        
+        // Apply the transformation (the old value will get dropped unless the
+        // new value references it or `func` is `id`)
+        tmp = func(tmp);
+
+        // Overwrite `val` with the new value
+        ptr::copy_nonoverlapping_memory(val, t, 1);
+
+        // Don't let `tmp` get dropped, `val` now owns the value
+        cast::forget(tmp);
+    }
+}
+
 /// A non-copyable dummy type.
 #[deriving(Eq, TotalEq, Ord, TotalOrd)]
 #[unsafe_no_drop_flag]
@@ -156,6 +181,23 @@ mod tests {
         let y = replace(&mut x, None);
         assert!(x.is_none());
         assert!(y.is_some());
+    }
+
+    #[test]
+    fn test_reset() {
+        let mut x = 42;
+        do reset(&mut x) |i| {
+            assert_eq!(i, 42);
+            31337
+        }
+        assert_eq!(x, 31337)
+
+        let mut y = Some(NonCopyable);
+        do reset(&mut y) |o| {
+            assert!(y.is_some());
+            None
+        }
+        assert!(y.is_none());
     }
 
     #[test]
