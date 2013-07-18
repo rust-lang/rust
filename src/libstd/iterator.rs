@@ -1495,6 +1495,20 @@ mod tests {
     }
 
     #[test]
+    fn test_cycle() {
+        let cycle_len = 3;
+        let it = Counter::new(0u,1).take_(cycle_len).cycle();
+        assert_eq!(it.size_hint(), (uint::max_value, None));
+        for it.take_(100).enumerate().advance |(i, x)| {
+            assert_eq!(i % cycle_len, x);
+        }
+
+        let mut it = Counter::new(0u,1).take_(0).cycle();
+        assert_eq!(it.size_hint(), (0, Some(0)));
+        assert_eq!(it.next(), None);
+    }
+
+    #[test]
     fn test_iterator_nth() {
         let v = &[0, 1, 2, 3, 4];
         for uint::range(0, v.len()) |i| {
