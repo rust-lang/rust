@@ -74,6 +74,7 @@ impl<A, T: DoubleEndedIterator<A>> DoubleEndedIteratorUtil<A> for T {
 
 /// An double-ended iterator with the direction inverted
 // FIXME #6967: Dummy A parameter to get around type inference bug
+#[deriving(Clone)]
 pub struct InvertIterator<A, T> {
     priv iter: T
 }
@@ -753,6 +754,7 @@ impl<A, T: Clone + Iterator<A>> ClonableIterator<A> for T {
 }
 
 /// An iterator that repeats endlessly
+#[deriving(Clone)]
 pub struct CycleIterator<A, T> {
     priv orig: T,
     priv iter: T,
@@ -780,6 +782,7 @@ impl<A, T: Clone + Iterator<A>> Iterator<A> for CycleIterator<A, T> {
 
 /// An iterator which strings two iterators together
 // FIXME #6967: Dummy A parameter to get around type inference bug
+#[deriving(Clone)]
 pub struct ChainIterator<A, T, U> {
     priv a: T,
     priv b: U,
@@ -835,6 +838,7 @@ for ChainIterator<A, T, U> {
 
 /// An iterator which iterates two other iterators simultaneously
 // FIXME #6967: Dummy A & B parameters to get around type inference bug
+#[deriving(Clone)]
 pub struct ZipIterator<A, T, B, U> {
     priv a: T,
     priv b: U
@@ -988,6 +992,7 @@ for FilterMapIterator<'self, A, B, T> {
 
 /// An iterator which yields the current count and the element during iteration
 // FIXME #6967: Dummy A parameter to get around type inference bug
+#[deriving(Clone)]
 pub struct EnumerateIterator<A, T> {
     priv iter: T,
     priv count: uint
@@ -1086,6 +1091,7 @@ impl<'self, A, T: Iterator<A>> Iterator<A> for TakeWhileIterator<'self, A, T> {
 
 /// An iterator which skips over `n` elements of `iter`.
 // FIXME #6967: Dummy A parameter to get around type inference bug
+#[deriving(Clone)]
 pub struct SkipIterator<A, T> {
     priv iter: T,
     priv n: uint
@@ -1134,6 +1140,7 @@ impl<A, T: Iterator<A>> Iterator<A> for SkipIterator<A, T> {
 
 /// An iterator which only iterates over the first `n` iterations of `iter`.
 // FIXME #6967: Dummy A parameter to get around type inference bug
+#[deriving(Clone)]
 pub struct TakeIterator<A, T> {
     priv iter: T,
     priv n: uint
@@ -1285,6 +1292,7 @@ impl<'self, A, St> Iterator<A> for UnfoldrIterator<'self, A, St> {
 
 /// An infinite iterator starting at `start` and advancing by `step` with each
 /// iteration
+#[deriving(Clone)]
 pub struct Counter<A> {
     /// The current state the counter is at (next value to be yielded)
     state: A,
