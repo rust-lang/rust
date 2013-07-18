@@ -87,8 +87,7 @@ pub fn is_not_null<T>(ptr: *const T) -> bool { !is_null(ptr) }
 #[inline]
 #[cfg(target_word_size = "32")]
 pub unsafe fn copy_memory<T>(dst: *mut T, src: *const T, count: uint) {
-    use unstable::intrinsics::memmove32;
-    memmove32(dst, src as *T, count as u32);
+    intrinsics::memmove32(dst, src as *T, count as u32);
 }
 
 /**
@@ -100,8 +99,7 @@ pub unsafe fn copy_memory<T>(dst: *mut T, src: *const T, count: uint) {
 #[inline]
 #[cfg(target_word_size = "64")]
 pub unsafe fn copy_memory<T>(dst: *mut T, src: *const T, count: uint) {
-    use unstable::intrinsics::memmove64;
-    memmove64(dst, src as *T, count as u64);
+    intrinsics::memmove64(dst, src as *T, count as u64);
 }
 
 /**
@@ -113,8 +111,7 @@ pub unsafe fn copy_memory<T>(dst: *mut T, src: *const T, count: uint) {
 #[inline]
 #[cfg(target_word_size = "32")]
 pub unsafe fn copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T, count: uint) {
-    use unstable::intrinsics::memcpy32;
-    memcpy32(dst, src as *T, count as u32);
+    intrinsics::memcpy32(dst, src as *T, count as u32);
 }
 
 /**
@@ -126,8 +123,7 @@ pub unsafe fn copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T, count: u
 #[inline]
 #[cfg(target_word_size = "64")]
 pub unsafe fn copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T, count: uint) {
-    use unstable::intrinsics::memcpy64;
-    memcpy64(dst, src as *T, count as u64);
+    intrinsics::memcpy64(dst, src as *T, count as u64);
 }
 
 /**
@@ -137,8 +133,7 @@ pub unsafe fn copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T, count: u
 #[inline]
 #[cfg(target_word_size = "32")]
 pub unsafe fn set_memory<T>(dst: *mut T, c: u8, count: uint) {
-    use unstable::intrinsics::memset32;
-    memset32(dst, c, count as u32);
+    intrinsics::memset32(dst, c, count as u32);
 }
 
 /**
@@ -148,32 +143,15 @@ pub unsafe fn set_memory<T>(dst: *mut T, c: u8, count: uint) {
 #[inline]
 #[cfg(target_word_size = "64")]
 pub unsafe fn set_memory<T>(dst: *mut T, c: u8, count: uint) {
-    use unstable::intrinsics::memset64;
-    memset64(dst, c, count as u64);
+    intrinsics::memset64(dst, c, count as u64);
 }
 
 /**
  * Zeroes out `count * size_of::<T>` bytes of memory at `dst`
  */
 #[inline]
-#[cfg(not(stage0))]
 pub unsafe fn zero_memory<T>(dst: *mut T, count: uint) {
     set_memory(dst, 0, count);
-}
-
-/**
- * Zeroes out `count * size_of::<T>` bytes of memory at `dst`
- */
-#[inline]
-#[cfg(stage0)]
-pub unsafe fn zero_memory<T>(dst: *mut T, count: uint) {
-    let mut count = count * sys::size_of::<T>();
-    let mut dst = dst as *mut u8;
-    while count > 0 {
-        *dst = 0;
-        dst = mut_offset(dst, 1);
-        count -= 1;
-    }
 }
 
 /**

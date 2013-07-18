@@ -82,7 +82,6 @@ pub trait TyVisitor {
     fn visit_f64(&self) -> bool;
 
     fn visit_char(&self) -> bool;
-    fn visit_str(&self) -> bool;
 
     fn visit_estr_box(&self) -> bool;
     fn visit_estr_uniq(&self) -> bool;
