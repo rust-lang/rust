@@ -2232,6 +2232,10 @@ iterator!{impl VecIterator -> &'self T}
 double_ended_iterator!{impl VecIterator -> &'self T}
 pub type VecRevIterator<'self, T> = InvertIterator<&'self T, VecIterator<'self, T>>;
 
+impl<'self, T> Clone for VecIterator<'self, T> {
+    fn clone(&self) -> VecIterator<'self, T> { *self }
+}
+
 //iterator!{struct VecMutIterator -> *mut T, &'self mut T}
 /// An iterator for mutating the elements of a vector.
 pub struct VecMutIterator<'self, T> {
@@ -2244,6 +2248,7 @@ double_ended_iterator!{impl VecMutIterator -> &'self mut T}
 pub type VecMutRevIterator<'self, T> = InvertIterator<&'self mut T, VecMutIterator<'self, T>>;
 
 /// An iterator that moves out of a vector.
+#[deriving(Clone)]
 pub struct VecConsumeIterator<T> {
     priv v: ~[T],
     priv idx: uint,
@@ -2270,6 +2275,7 @@ impl<T> Iterator<T> for VecConsumeIterator<T> {
 }
 
 /// An iterator that moves out of a vector in reverse order.
+#[deriving(Clone)]
 pub struct VecConsumeRevIterator<T> {
     priv v: ~[T]
 }
@@ -3183,6 +3189,17 @@ mod tests {
         assert_eq!(xs.rev_iter().size_hint(), (5, Some(5)));
         assert_eq!(xs.mut_iter().size_hint(), (5, Some(5)));
         assert_eq!(xs.mut_rev_iter().size_hint(), (5, Some(5)));
+    }
+
+    #[test]
+    fn test_iter_clone() {
+        let xs = [1, 2, 5];
+        let mut it = xs.iter();
+        it.next();
+        let mut jt = it.clone();
+        assert_eq!(it.next(), jt.next());
+        assert_eq!(it.next(), jt.next());
+        assert_eq!(it.next(), jt.next());
     }
 
     #[test]
