@@ -750,18 +750,18 @@ then
     cd ${CFG_SRC_DIR}
 
     msg "git: submodule sync"
-    "${CFG_GIT}" submodule --quiet sync
+    "${CFG_GIT}" submodule sync
 
     msg "git: submodule update"
-    "${CFG_GIT}" submodule --quiet update --init
+    "${CFG_GIT}" submodule update --init
     need_ok "git failed"
 
     msg "git: submodule foreach sync"
-    "${CFG_GIT}" submodule --quiet foreach --recursive 'if test -e .gitmodules; then git submodule sync; fi'
+    "${CFG_GIT}" submodule foreach --recursive 'if test -e .gitmodules; then git submodule sync; fi'
     need_ok "git failed"
 
     msg "git: submodule foreach update"
-    "${CFG_GIT}" submodule --quiet update --init --recursive
+    "${CFG_GIT}" submodule update --init --recursive
     need_ok "git failed"
 
     # NB: this is just for the sake of getting the submodule SHA1 values
@@ -770,9 +770,9 @@ then
     "${CFG_GIT}" submodule status --recursive
 
     msg "git: submodule clobber"
-    "${CFG_GIT}" submodule --quiet foreach --recursive git clean -dxf
+    "${CFG_GIT}" submodule foreach --recursive git clean -dxf
     need_ok "git failed"
-    "${CFG_GIT}" submodule --quiet foreach --recursive git checkout .
+    "${CFG_GIT}" submodule foreach --recursive git checkout .
     need_ok "git failed"
 
     cd ${CFG_BUILD_DIR}
