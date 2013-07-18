@@ -20,7 +20,6 @@ pub mod at_exit;
 
 pub mod dynamic_lib;
 
-pub mod global;
 pub mod finally;
 pub mod intrinsics;
 pub mod simd;
