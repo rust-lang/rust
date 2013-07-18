@@ -45,23 +45,12 @@ struct Packet<T> {
 
 /// A one-shot channel.
 pub struct ChanOne<T> {
-    // XXX: Hack extra allocation to make by-val self work
-    inner: ~ChanOneHack<T>
-}
-
-
-/// A one-shot port.
-pub struct PortOne<T> {
-    // XXX: Hack extra allocation to make by-val self work
-    inner: ~PortOneHack<T>
-}
-
-pub struct ChanOneHack<T> {
     void_packet: *mut Void,
     suppress_finalize: bool
 }
 
-pub struct PortOneHack<T> {
+/// A one-shot port.
+pub struct PortOne<T> {
     void_packet: *mut Void,
     suppress_finalize: bool
 }
@@ -75,22 +64,25 @@ pub fn oneshot<T: Send>() -> (PortOne<T>, ChanOne<T>) {
     unsafe {
         let packet: *mut Void = cast::transmute(packet);
         let port = PortOne {
-            inner: ~PortOneHack {
-                void_packet: packet,
-                suppress_finalize: false
-            }
+            void_packet: packet,
+            suppress_finalize: false
         };
         let chan = ChanOne {
-            inner: ~ChanOneHack {
-                void_packet: packet,
-                suppress_finalize: false
-            }
+            void_packet: packet,
+            suppress_finalize: false
         };
         return (port, chan);
     }
 }
 
 impl<T> ChanOne<T> {
+    fn packet(&self) -> *mut Packet<T> {
+        unsafe {
+            let p: *mut ~Packet<T> = cast::transmute(&self.void_packet);
+            let p: *mut Packet<T> = &mut **p;
+            return p;
+        }
+    }
 
     pub fn send(self, val: T) {
         self.try_send(val);
@@ -99,7 +91,7 @@ impl<T> ChanOne<T> {
     pub fn try_send(self, val: T) -> bool {
         let mut this = self;
         let mut recvr_active = true;
-        let packet = this.inner.packet();
+        let packet = this.packet();
 
         unsafe {
 
@@ -127,7 +119,7 @@ impl<T> ChanOne<T> {
                         sched.metrics.rendezvous_sends += 1;
                     }
                     // Port has closed. Need to clean up.
-                    let _packet: ~Packet<T> = cast::transmute(this.inner.void_packet);
+                    let _packet: ~Packet<T> = cast::transmute(this.void_packet);
                     recvr_active = false;
                 }
                 task_as_state => {
@@ -144,13 +136,21 @@ impl<T> ChanOne<T> {
         }
 
         // Suppress the synchronizing actions in the finalizer. We're done with the packet.
-        this.inner.suppress_finalize = true;
+        this.suppress_finalize = true;
         return recvr_active;
     }
 }
 
 
 impl<T> PortOne<T> {
+    fn packet(&self) -> *mut Packet<T> {
+        unsafe {
+            let p: *mut ~Packet<T> = cast::transmute(&self.void_packet);
+            let p: *mut Packet<T> = &mut **p;
+            return p;
+        }
+    }
+
     pub fn recv(self) -> T {
         match self.try_recv() {
             Some(val) => val,
@@ -162,7 +162,7 @@ impl<T> PortOne<T> {
 
     pub fn try_recv(self) -> Option<T> {
         let mut this = self;
-        let packet = this.inner.packet();
+        let packet = this.packet();
 
         // XXX: Optimize this to not require the two context switches when data is available
 
@@ -215,9 +215,9 @@ impl<T> PortOne<T> {
             let payload = util::replace(&mut (*packet).payload, None);
 
             // The sender has closed up shop. Drop the packet.
-            let _packet: ~Packet<T> = cast::transmute(this.inner.void_packet);
+            let _packet: ~Packet<T> = cast::transmute(this.void_packet);
             // Suppress the synchronizing actions in the finalizer. We're done with the packet.
-            this.inner.suppress_finalize = true;
+            this.suppress_finalize = true;
             return payload;
         }
     }
@@ -226,7 +226,7 @@ impl<T> PortOne<T> {
 impl<T> Peekable<T> for PortOne<T> {
     fn peek(&self) -> bool {
         unsafe {
-            let packet: *mut Packet<T> = self.inner.packet();
+            let packet: *mut Packet<T> = self.packet();
             let oldstate = (*packet).state.load(SeqCst);
             match oldstate {
                 STATE_BOTH => false,
@@ -238,7 +238,7 @@ impl<T> Peekable<T> for PortOne<T> {
 }
 
 #[unsafe_destructor]
-impl<T> Drop for ChanOneHack<T> {
+impl<T> Drop for ChanOne<T> {
     fn drop(&self) {
         if self.suppress_finalize { return }
 
@@ -267,7 +267,7 @@ impl<T> Drop for ChanOneHack<T> {
 }
 
 #[unsafe_destructor]
-impl<T> Drop for PortOneHack<T> {
+impl<T> Drop for PortOne<T> {
     fn drop(&self) {
         if self.suppress_finalize { return }
 
@@ -291,26 +291,6 @@ impl<T> Drop for PortOneHack<T> {
                     assert!(recvr.wake().is_none());
                 }
             }
-        }
-    }
-}
-
-impl<T> ChanOneHack<T> {
-    fn packet(&self) -> *mut Packet<T> {
-        unsafe {
-            let p: *mut ~Packet<T> = cast::transmute(&self.void_packet);
-            let p: *mut Packet<T> = &mut **p;
-            return p;
-        }
-    }
-}
-
-impl<T> PortOneHack<T> {
-    fn packet(&self) -> *mut Packet<T> {
-        unsafe {
-            let p: *mut ~Packet<T> = cast::transmute(&self.void_packet);
-            let p: *mut Packet<T> = &mut **p;
-            return p;
         }
     }
 }
