@@ -41,7 +41,7 @@ pub enum Json {
 }
 
 pub type List = ~[Json];
-pub type Object = HashMap<~str, Json>;
+pub type Object = TreeMap<~str, Json>;
 
 #[deriving(Eq)]
 /// If an error occurs while parsing some JSON, this is the structure which is
@@ -809,7 +809,7 @@ impl<T : iterator::Iterator<char>> Parser<T> {
         self.bump();
         self.parse_whitespace();
 
-        let mut values = ~HashMap::new();
+        let mut values = ~TreeMap::new();
 
         if self.ch == '}' {
           self.bump();
@@ -1087,7 +1087,7 @@ impl serialize::Decoder for Decoder {
         let len = match self.stack.pop() {
             Object(obj) => {
                 let len = obj.len();
-                for obj.consume().advance |(key, value)| {
+                for obj.consume_iter().advance |(key, value)| {
                     self.stack.push(value);
                     self.stack.push(String(key));
                 }
@@ -1294,9 +1294,9 @@ impl<A:ToJson> ToJson for ~[A] {
     fn to_json(&self) -> Json { List(self.map(|elt| elt.to_json())) }
 }
 
-impl<A:ToJson> ToJson for HashMap<~str, A> {
+impl<A:ToJson> ToJson for TreeMap<~str, A> {
     fn to_json(&self) -> Json {
-        let mut d = HashMap::new();
+        let mut d = TreeMap::new();
         for self.iter().advance |(key, value)| {
             d.insert((*key).clone(), value.to_json());
         }
@@ -1304,9 +1304,9 @@ impl<A:ToJson> ToJson for HashMap<~str, A> {
     }
 }
 
-impl<A:ToJson> ToJson for TreeMap<~str, A> {
+impl<A:ToJson> ToJson for HashMap<~str, A> {
     fn to_json(&self) -> Json {
-        let mut d = HashMap::new();
+        let mut d = TreeMap::new();
         for self.iter().advance |(key, value)| {
             d.insert((*key).clone(), value.to_json());
         }
@@ -1338,11 +1338,11 @@ mod tests {
 
     use super::*;
 
-    use std::hashmap::HashMap;
     use std::io;
     use std::result;
 
-    use extra::serialize::Decodable;
+    use serialize::Decodable;
+    use treemap::TreeMap;
 
     #[deriving(Eq, Encodable, Decodable)]
     enum Animal {
@@ -1363,7 +1363,7 @@ mod tests {
     }
 
     fn mk_object(items: &[(~str, Json)]) -> Json {
-        let mut d = ~HashMap::new();
+        let mut d = ~TreeMap::new();
 
         for items.iter().advance |item| {
             match *item {
@@ -1954,7 +1954,7 @@ mod tests {
     fn test_decode_map() {
         let s = ~"{\"a\": \"Dog\", \"b\": [\"Frog\", \"Henry\", 349]}";
         let mut decoder = Decoder(from_str(s).unwrap());
-        let mut map: HashMap<~str, Animal> = Decodable::decode(&mut decoder);
+        let mut map: TreeMap<~str, Animal> = Decodable::decode(&mut decoder);
 
         assert_eq!(map.pop(&~"a"), Some(Dog));
         assert_eq!(map.pop(&~"b"), Some(Frog(~"Henry", 349)));

@@ -21,7 +21,6 @@ use treemap::TreeMap;
 use std::cell::Cell;
 use std::comm::{PortOne, oneshot, send_one, recv_one};
 use std::either::{Either, Left, Right};
-use std::hashmap::HashMap;
 use std::io;
 use std::result;
 use std::run;
@@ -381,7 +380,7 @@ fn test() {
     }
 
     let cx = Context::new(RWARC(Database::new(Path("db.json"))),
-                          Logger::new(), HashMap::new());
+                          Logger::new(), TreeMap::new());
 
     let s = do cx.with_prep("test1") |prep| {
         prep.declare_input("file", pth.to_str(), digest_file(&pth));
