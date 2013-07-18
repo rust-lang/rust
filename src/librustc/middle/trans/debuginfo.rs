@@ -91,14 +91,15 @@ static DW_ATE_unsigned_char: c_uint = 0x08;
 
 /// A context object for maintaining all state needed by the debuginfo module.
 pub struct DebugContext {
-    crate_file: ~str,
-    llcontext: ContextRef,
-    builder: DIBuilderRef,
-    curr_loc: (uint, uint),
-    created_files: HashMap<~str, DIFile>,
-    created_functions: HashMap<ast::node_id, DISubprogram>,
-    created_blocks: HashMap<ast::node_id, DILexicalBlock>,
-    created_types: HashMap<uint, DIType>
+    priv crate_file: ~str,
+    priv llcontext: ContextRef,
+    priv builder: DIBuilderRef,
+    priv curr_loc: (uint, uint),
+    priv created_files: HashMap<~str, DIFile>,
+    priv created_functions: HashMap<ast::node_id, DISubprogram>,
+    priv created_blocks: HashMap<ast::node_id, DILexicalBlock>,
+    priv created_types: HashMap<uint, DIType>,
+    priv argument_index_counters: HashMap<ast::node_id, uint>,
 }
 
 impl DebugContext {
@@ -116,6 +117,7 @@ impl DebugContext {
             created_functions: HashMap::new(),
             created_blocks: HashMap::new(),
             created_types: HashMap::new(),
+            argument_index_counters: HashMap::new(),
         };
     }
 }
@@ -138,10 +140,13 @@ pub fn create_local_var_metadata(bcx: @mut Block, local: &ast::Local) {
     let def_map = cx.tcx.def_map;
     let pattern = local.node.pat;
 
-    let context = match bcx.parent {
+    let scope = match bcx.parent {
         None => create_function_metadata(bcx.fcx),
         Some(_) => lexical_block_metadata(bcx)
     };
+
+    let filename = span_start(cx, local.span).file.name;
+    let file_metadata = file_metadata(cx, filename);
 
     do pat_util::pat_bindings(def_map, pattern) |_, node_id, span, path_ref| {
 
@@ -151,14 +156,13 @@ pub fn create_local_var_metadata(bcx: @mut Block, local: &ast::Local) {
         let loc = span_start(cx, span);
         let ty = node_id_type(bcx, node_id);
         let type_metadata = type_metadata(cx, ty, span);
-        let file_metadata = file_metadata(cx, loc.file.name);
 
         let var_metadata = do as_c_str(name) |name| {
             unsafe {
                 llvm::LLVMDIBuilderCreateLocalVariable(
                     DIB(cx),
                     DW_TAG_auto_variable,
-                    context,
+                    scope,
                     name,
                     file_metadata,
                     loc.line as c_uint,
@@ -172,9 +176,7 @@ pub fn create_local_var_metadata(bcx: @mut Block, local: &ast::Local) {
         let llptr = match bcx.fcx.lllocals.find_copy(&node_id) {
             Some(v) => v,
             None => {
-                bcx.tcx().sess.span_bug(
-                    local.span,
-                    fmt!("No entry in lllocals table for %?", local.node.id));
+                bcx.tcx().sess.span_bug(span, fmt!("No entry in lllocals table for %?", node_id));
             }
         };
 
@@ -194,64 +196,77 @@ pub fn create_local_var_metadata(bcx: @mut Block, local: &ast::Local) {
 /// Creates debug information for the given function argument.
 ///
 /// Adds the created metadata nodes directly to the crate's IR.
-/// The return value should be ignored if called from outside of the debuginfo module.
-pub fn create_argument_metadata(bcx: @mut Block, arg: &ast::arg, span: span) -> Option<DIVariable> {
-    debug!("create_argument_metadata");
-    if true {
-        // XXX create_argument_metadata disabled for now because "node_id_type(bcx, arg.id)" below
-        // blows up:
-        // "error: internal compiler error: node_id_to_type: no type for node `arg (id=10)`"
-        return None;
-    }
-
+pub fn create_argument_metadata(bcx: @mut Block, arg: &ast::arg, span: span) {
     let fcx = bcx.fcx;
     let cx = fcx.ccx;
 
-    let loc = span_start(cx, span);
-    if "<intrinsic>" == loc.file.name {
-        return None;
+    if fcx.span.is_none() {
+        return;
     }
 
-    let ty = node_id_type(bcx, arg.id);
-    let type_metadata = type_metadata(cx, ty, arg.ty.span);
-    let file_metadata = file_metadata(cx, loc.file.name);
-    let context = create_function_metadata(fcx);
+    if "<intrinsic>" == span_start(cx, span).file.name {
+        return;
+    }
 
-    match arg.pat.node {
-        ast::pat_ident(_, ref path, _) => {
-            // XXX: This is wrong; it should work for multiple bindings.
-            let ident = path.idents.last();
-            let name: &str = cx.sess.str_of(*ident);
-            let var_metadata = do name.as_c_str |name| {
-                unsafe {
-                    llvm::LLVMDIBuilderCreateLocalVariable(
-                        DIB(cx),
-                        DW_TAG_arg_variable as u32,
-                        context,
-                        name,
-                        file_metadata,
-                        loc.line as c_uint,
-                        type_metadata,
-                        false,
-                        0,
-                        0)
-                    // XXX need to pass in a real argument number
-                }
-            };
+    let def_map = cx.tcx.def_map;
+    let pattern = arg.pat;
 
-            let llptr = fcx.llargs.get_copy(&arg.id);
-            set_debug_location(cx, lexical_block_metadata(bcx), loc.line, loc.col.to_uint());
+    let mut argument_index = match dbg_cx(cx).argument_index_counters.find_copy(&arg.id) {
+        Some(value) => value,
+        None => 0
+    };
+
+    let filename = span_start(cx, span).file.name;
+    let file_metadata = file_metadata(cx, filename);
+    let scope = create_function_metadata(fcx);
+
+    do pat_util::pat_bindings(def_map, pattern) |_, node_id, span, path_ref| {
+
+        let ty = node_id_type(bcx, node_id);
+        let type_metadata = type_metadata(cx, ty, codemap::dummy_sp());
+        let loc = span_start(cx, span);
+        let ident = ast_util::path_to_ident(path_ref);
+        let name: &str = cx.sess.str_of(ident);
+        debug!("create_argument_metadata: %s", name);
+
+        let arg_metadata = do as_c_str(name) |name| {
             unsafe {
-                let instr = llvm::LLVMDIBuilderInsertDeclareAtEnd(
-                        DIB(cx), llptr, var_metadata, bcx.llbb);
-                llvm::LLVMSetInstDebugLocation(trans::build::B(bcx).llbuilder, instr);
+                llvm::LLVMDIBuilderCreateLocalVariable(
+                    DIB(cx),
+                    DW_TAG_arg_variable,
+                    scope,
+                    name,
+                    file_metadata,
+                    loc.line as c_uint,
+                    type_metadata,
+                    false,
+                    0,
+                    argument_index as c_uint)
             }
-            return Some(var_metadata);
-        }
-        _ => {
-            return None;
+        };
+
+        argument_index += 1;
+
+        let llptr = match bcx.fcx.llargs.find_copy(&node_id) {
+            Some(v) => v,
+            None => {
+                bcx.tcx().sess.span_bug(span, fmt!("No entry in llargs table for %?", node_id));
+            }
+        };
+
+        set_debug_location(cx, lexical_block_metadata(bcx), loc.line, loc.col.to_uint());
+        unsafe {
+            let instr = llvm::LLVMDIBuilderInsertDeclareAtEnd(
+                DIB(cx),
+                llptr,
+                arg_metadata,
+                bcx.llbb);
+
+            llvm::LLVMSetInstDebugLocation(trans::build::B(bcx), instr);
         }
     }
+
+    dbg_cx(cx).argument_index_counters.insert(arg.id, argument_index);
 }
 
 /// Sets the current debug location at the beginning of the span
@@ -272,7 +287,6 @@ pub fn update_source_pos(bcx: @mut Block, span: span) {
 /// The return value should be ignored if called from outside of the debuginfo module.
 pub fn create_function_metadata(fcx: &FunctionContext) -> DISubprogram {
     let cx = fcx.ccx;
-    let span = fcx.span.get();
 
     let fnitem = cx.tcx.items.get_copy(&fcx.id);
     let (ident, ret_ty, id) = match fnitem {
@@ -318,13 +332,18 @@ pub fn create_function_metadata(fcx: &FunctionContext) -> DISubprogram {
             _) => {
             (ident, ty, id)
         }
-        _ => fcx.ccx.sess.bug("create_function_metadata: unexpected sort of node")
+        _ => fcx.ccx.sess.bug(fmt!("create_function_metadata: unexpected sort of node: %?", fnitem))
     };
 
     match dbg_cx(cx).created_functions.find(&id) {
         Some(fn_metadata) => return *fn_metadata,
         None => ()
     }
+
+    let span = match fcx.span {
+        Some(value) => value,
+        None => codemap::dummy_sp()
+    };
 
     debug!("create_function_metadata: %s, %s",
            cx.sess.str_of(ident),
