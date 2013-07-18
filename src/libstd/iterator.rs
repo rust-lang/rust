@@ -729,6 +729,55 @@ impl<A: Ord, T: Iterator<A>> OrdIterator<A> for T {
     }
 }
 
+/// A trait for iterators that are clonable.
+// FIXME #6967: Dummy A parameter to get around type inference bug
+pub trait ClonableIterator<A> {
+    /// Repeats an iterator endlessly
+    ///
+    /// # Example
+    ///
+    /// ~~~ {.rust}
+    /// let a = Counter::new(1,1).take_(1);
+    /// let mut cy = a.cycle();
+    /// assert_eq!(cy.next(), Some(1));
+    /// assert_eq!(cy.next(), Some(1));
+    /// ~~~
+    fn cycle(self) -> CycleIterator<A, Self>;
+}
+
+impl<A, T: Clone + Iterator<A>> ClonableIterator<A> for T {
+    #[inline]
+    fn cycle(self) -> CycleIterator<A, T> {
+        CycleIterator{orig: self.clone(), iter: self}
+    }
+}
+
+/// An iterator that repeats endlessly
+pub struct CycleIterator<A, T> {
+    priv orig: T,
+    priv iter: T,
+}
+
+impl<A, T: Clone + Iterator<A>> Iterator<A> for CycleIterator<A, T> {
+    #[inline]
+    fn next(&mut self) -> Option<A> {
+        match self.iter.next() {
+            None => { self.iter = self.orig.clone(); self.iter.next() }
+            y => y
+        }
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        // the cycle iterator is either empty or infinite
+        match self.orig.size_hint() {
+            sz @ (0, Some(0)) => sz,
+            (0, _) => (0, None),
+            _ => (uint::max_value, None)
+        }
+    }
+}
+
 /// An iterator which strings two iterators together
 // FIXME #6967: Dummy A parameter to get around type inference bug
 pub struct ChainIterator<A, T, U> {
