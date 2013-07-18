@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-test
-
 // compile-flags:-Z extra-debug-info
 // debugger:break zzz
 // debugger:run
@@ -34,7 +32,7 @@ fn main() {
     nested(2000, 3000);
 
     fn nested(a: i32, b: i64) -> (i32, i64) {
-        zzz()
+        zzz();
         (a, b)
     }
 }
