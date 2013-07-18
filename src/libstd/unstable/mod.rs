@@ -22,7 +22,6 @@ pub mod dynamic_lib;
 
 pub mod global;
 pub mod finally;
-pub mod weak_task;
 pub mod intrinsics;
 pub mod simd;
 pub mod extfmt;

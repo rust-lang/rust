@@ -769,18 +769,6 @@ rust_get_global_data_ptr() {
     return &task->kernel->global_data;
 }
 
-extern "C" void
-rust_inc_kernel_live_count() {
-    rust_task *task = rust_get_current_task();
-    task->kernel->inc_live_count();
-}
-
-extern "C" void
-rust_dec_kernel_live_count() {
-    rust_task *task = rust_get_current_task();
-    task->kernel->dec_live_count();
-}
-
 #ifndef _WIN32
 #include <sys/types.h>
 #include <dirent.h>
