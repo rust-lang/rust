@@ -154,7 +154,7 @@ Available lint options:
 "));
 
     let lint_dict = lint::get_lint_dict();
-    let mut lint_dict = lint_dict.consume_iter()
+    let mut lint_dict = lint_dict.consume()
                                  .transform(|(k, v)| (v, k))
                                  .collect::<~[(lint::LintSpec, &'static str)]>();
     lint_dict.qsort();
