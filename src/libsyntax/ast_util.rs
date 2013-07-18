@@ -16,8 +16,6 @@ use opt_vec;
 use parse::token;
 use visit;
 
-use std::cast::unsafe_copy;
-use std::cast;
 use std::hashmap::HashMap;
 use std::int;
 use std::local_data;

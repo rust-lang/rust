@@ -19,8 +19,6 @@
 #[license = "MIT/ASL2"];
 #[crate_type = "lib"];
 
-#[allow(non_implicitly_copyable_typarams)];
-
 extern mod extra;
 extern mod rustc;
 extern mod syntax;
