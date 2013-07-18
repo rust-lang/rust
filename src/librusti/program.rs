@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use std::cast;
+use std::util;
 use std::hashmap::HashMap;
 use std::local_data;
 
@@ -165,7 +166,8 @@ impl Program {
             None => {}
         }
 
-        do self.newvars.consume |name, var| {
+        let newvars = util::replace(&mut self.newvars, HashMap::new());
+        for newvars.consume().advance |(name, var)| {
             self.local_vars.insert(name, var);
         }
 
@@ -230,7 +232,8 @@ impl Program {
     /// it updates this cache with the new values of each local variable.
     pub fn consume_cache(&mut self) {
         let map = local_data::pop(tls_key).expect("tls is empty");
-        do map.consume |name, value| {
+        let cons_map = util::replace(map, HashMap::new());
+        for cons_map.consume().advance |(name, value)| {
             match self.local_vars.find_mut(&name) {
                 Some(v) => { v.data = (*value).clone(); }
                 None => { fail!("unknown variable %s", name) }
@@ -341,7 +344,8 @@ impl Program {
         }
 
         // I'm not an @ pointer, so this has to be done outside.
-        do newvars.consume |k, v| {
+        let cons_newvars = util::replace(newvars, HashMap::new());
+        for cons_newvars.consume().advance |(k, v)| {
             self.newvars.insert(k, v);
         }
 
