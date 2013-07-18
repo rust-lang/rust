@@ -921,9 +921,6 @@ do
         esac
         need_ok "LLVM configure failed"
 
-        # Hack the tools Makefile to turn off the clang build
-        sed -i 's/clang//g' tools/Makefile
-
         cd $CFG_BUILD_DIR
     fi
 
