@@ -200,18 +200,16 @@ pub fn create_argument_metadata(bcx: @mut Block, arg: &ast::arg, span: span) {
     let fcx = bcx.fcx;
     let cx = fcx.ccx;
 
-    if fcx.span.is_none() {
-        return;
-    }
-
-    if "<intrinsic>" == span_start(cx, span).file.name {
+    if fcx.id == -1 ||
+       fcx.span.is_none() ||
+       "<intrinsic>" == span_start(cx, span).file.name {
         return;
     }
 
     let def_map = cx.tcx.def_map;
     let pattern = arg.pat;
 
-    let mut argument_index = match dbg_cx(cx).argument_index_counters.find_copy(&arg.id) {
+    let mut argument_index = match dbg_cx(cx).argument_index_counters.find_copy(&fcx.id) {
         Some(value) => value,
         None => 0
     };
@@ -266,7 +264,7 @@ pub fn create_argument_metadata(bcx: @mut Block, arg: &ast::arg, span: span) {
         }
     }
 
-    dbg_cx(cx).argument_index_counters.insert(arg.id, argument_index);
+    dbg_cx(cx).argument_index_counters.insert(fcx.id, argument_index);
 }
 
 /// Sets the current debug location at the beginning of the span
