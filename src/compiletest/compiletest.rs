@@ -230,9 +230,9 @@ pub fn test_opts(config: &config) -> test::TestOpts {
         logfile: config.logfile.clone(),
         run_tests: true,
         run_benchmarks: true,
-        ratchet_metrics: copy config.ratchet_metrics,
-        ratchet_noise_percent: copy config.ratchet_noise_percent,
-        save_metrics: copy config.save_metrics,
+        ratchet_metrics: config.ratchet_metrics.clone(),
+        ratchet_noise_percent: config.ratchet_noise_percent.clone(),
+        save_metrics: config.save_metrics.clone(),
     }
 }
 
@@ -315,7 +315,7 @@ pub fn make_test_closure(config: &config, testfile: &Path) -> test::TestFn {
 
 pub fn make_metrics_test_closure(config: &config, testfile: &Path) -> test::TestFn {
     use std::cell::Cell;
-    let config = Cell::new(copy *config);
+    let config = Cell::new((*config).clone());
     let testfile = Cell::new(testfile.to_str());
     test::DynMetricFn(|mm| { runtest::run_metrics(config.take(), testfile.take(), mm) })
 }
