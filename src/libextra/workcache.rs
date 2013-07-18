@@ -15,7 +15,7 @@ use digest::DigestUtil;
 use json;
 use sha1::Sha1;
 use serialize::{Encoder, Encodable, Decoder, Decodable};
-use arc::RWARC;
+use arc::{ARC,RWARC};
 use treemap::TreeMap;
 
 use std::cell::Cell;
@@ -174,11 +174,12 @@ impl Logger {
     }
 }
 
+#[deriving(Clone)]
 struct Context {
     db: RWARC<Database>,
-    logger: Logger,
-    cfg: json::Object,
-    freshness: TreeMap<~str,@fn(&str,&str)->bool>
+    logger: RWARC<Logger>,
+    cfg: ARC<json::Object>,
+    freshness: ARC<TreeMap<~str,~fn(&str,&str)->bool>>
 }
 
 struct Prep<'self> {
@@ -228,12 +229,14 @@ fn digest_file(path: &Path) -> ~str {
 
 impl Context {
 
-    pub fn new(db: RWARC<Database>, lg: Logger, cfg: json::Object) -> Context {
+    pub fn new(db: RWARC<Database>,
+               lg: RWARC<Logger>,
+               cfg: ARC<json::Object>) -> Context {
         Context {
             db: db,
             logger: lg,
             cfg: cfg,
-            freshness: TreeMap::new()
+            freshness: ARC(TreeMap::new())
         }
     }
 
@@ -267,19 +270,20 @@ impl<'self> Prep<'self> {
     fn is_fresh(&self, cat: &str, kind: &str,
                 name: &str, val: &str) -> bool {
         let k = kind.to_owned();
-        let f = self.ctxt.freshness.find(&k);
+        let f = self.ctxt.freshness.get().find(&k);
         let fresh = match f {
             None => fail!("missing freshness-function for '%s'", kind),
             Some(f) => (*f)(name, val)
         };
-        let lg = self.ctxt.logger;
-        if fresh {
-            lg.info(fmt!("%s %s:%s is fresh",
-                         cat, kind, name));
-        } else {
-            lg.info(fmt!("%s %s:%s is not fresh",
-                         cat, kind, name))
-        }
+        do self.ctxt.logger.write |lg| {
+            if fresh {
+                lg.info(fmt!("%s %s:%s is fresh",
+                             cat, kind, name));
+            } else {
+                lg.info(fmt!("%s %s:%s is not fresh",
+                             cat, kind, name))
+            }
+        };
         fresh
     }
 
@@ -380,13 +384,21 @@ fn test() {
     }
 
     let cx = Context::new(RWARC(Database::new(Path("db.json"))),
-                          Logger::new(), TreeMap::new());
+                          RWARC(Logger::new()),
+                          ARC(TreeMap::new()));
 
     let s = do cx.with_prep("test1") |prep| {
+
+        let subcx = cx.clone();
+
         prep.declare_input("file", pth.to_str(), digest_file(&pth));
         do prep.exec |_exe| {
             let out = Path("foo.o");
             run::process_status("gcc", [~"foo.c", ~"-o", out.to_str()]);
+
+            let _proof_of_concept = subcx.prep("subfn");
+            // Could run sub-rules inside here.
+
             out.to_str()
         }
     };
