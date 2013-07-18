@@ -17,6 +17,7 @@
 
 
 use getopts;
+use getopts::groups;
 use json::ToJson;
 use json;
 use serialize::Decodable;
@@ -29,6 +30,7 @@ use treemap::TreeMap;
 
 use std::clone::Clone;
 use std::comm::{stream, SharedChan};
+use std::libc;
 use std::either;
 use std::io;
 use std::result;
@@ -169,21 +171,63 @@ pub struct TestOpts {
 
 type OptRes = Either<TestOpts, ~str>;
 
+fn optgroups() -> ~[getopts::groups::OptGroup] {
+    ~[groups::optflag("", "ignored", "Run ignored tests"),
+      groups::optflag("", "test", "Run tests and not benchmarks"),
+      groups::optflag("", "bench", "Run benchmarks instead of tests"),
+      groups::optflag("h", "help", "Display this message (longer with --help)"),
+      groups::optopt("", "save-metrics", "Location to save bench metrics",
+                     "PATH"),
+      groups::optopt("", "ratchet-metrics",
+                     "Location to load and save metrics from. The metrics \
+                      loaded are cause benchmarks to fail if they run too \
+                      slowly", "PATH"),
+      groups::optopt("", "ratchet-noise-percent",
+                     "Tests within N% of the recorded metrics will be \
+                      considered as passing", "PERCENTAGE"),
+      groups::optopt("", "logfile", "Write logs to the specified file instead \
+                          of stdout", "PATH")]
+}
+
+fn usage(binary: &str, helpstr: &str) -> ! {
+    let message = fmt!("Usage: %s [OPTIONS] [FILTER]", binary);
+    println(groups::usage(message, optgroups()));
+    if helpstr == "help" {
+        println("\
+The FILTER is matched against the name of all tests to run, and if any tests
+have a substring match, only those tests are run.
+
+By default, all tests are run in parallel. This can be altered with the
+RUST_THREADS environment variable when running tests (set it to 1).
+
+Test Attributes:
+
+    #[test]        - Indicates a function is a test to be run. This function
+                     takes no arguments.
+    #[bench]       - Indicates a function is a benchmark to be run. This
+                     function takes one argument (extra::test::BenchHarness).
+    #[should_fail] - This function (also labeled with #[test]) will only pass if
+                     the code causes a failure (an assertion failure or fail!)
+    #[ignore]      - When applied to a function which is already attributed as a
+                     test, then the test runner will ignore these tests during
+                     normal test runs. Running with --ignored will run these
+                     tests. This may also be written as #[ignore(cfg(...))] to
+                     ignore the test on certain configurations.");
+    }
+    unsafe { libc::exit(0) }
+}
+
 // Parses command line arguments into test options
 pub fn parse_opts(args: &[~str]) -> OptRes {
     let args_ = args.tail();
-    let opts = ~[getopts::optflag("ignored"),
-                 getopts::optflag("test"),
-                 getopts::optflag("bench"),
-                 getopts::optopt("save-metrics"),
-                 getopts::optopt("ratchet-metrics"),
-                 getopts::optopt("ratchet-noise-percent"),
-                 getopts::optopt("logfile")];
     let matches =
-        match getopts::getopts(args_, opts) {
+        match groups::getopts(args_, optgroups()) {
           Ok(m) => m,
           Err(f) => return either::Right(getopts::fail_str(f))
         };
+
+    if getopts::opt_present(&matches, "h") { usage(args[0], "h"); }
+    if getopts::opt_present(&matches, "help") { usage(args[0], "help"); }
 
     let filter =
         if matches.free.len() > 0 {

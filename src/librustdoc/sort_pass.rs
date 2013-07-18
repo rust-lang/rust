@@ -42,7 +42,6 @@ pub fn mk_pass(name: ~str, lteq: ItemLtEqOp) -> Pass {
     }
 }
 
-#[allow(non_implicitly_copyable_typarams)]
 fn run(
     _srv: astsrv::Srv,
     doc: doc::Doc,
@@ -55,7 +54,6 @@ fn run(
     (fold.fold_doc)(&fold, doc)
 }
 
-#[allow(non_implicitly_copyable_typarams)]
 fn fold_mod(
     fold: &fold::Fold<ItemLtEq>,
     doc: doc::ModDoc

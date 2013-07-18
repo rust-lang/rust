@@ -44,7 +44,6 @@ impl Clone for WrappedOp {
     }
 }
 
-#[allow(non_implicitly_copyable_typarams)]
 fn run(
     _srv: astsrv::Srv,
     doc: doc::Doc,

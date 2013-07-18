@@ -639,15 +639,14 @@ fn check_loans_in_fn<'a>(fk: &visit::fn_kind,
                                 span: span) {
         let cap_vars = this.bccx.capture_map.get(&closure_id);
         for cap_vars.iter().advance |cap_var| {
+            let var_id = ast_util::def_id_of_def(cap_var.def).node;
+            let var_path = @LpVar(var_id);
+            this.check_if_path_is_moved(closure_id, span,
+                                        MovedInCapture, var_path);
             match cap_var.mode {
-                moves::CapRef | moves::CapCopy => {
-                    let var_id = ast_util::def_id_of_def(cap_var.def).node;
-                    let lp = @LpVar(var_id);
-                    this.check_if_path_is_moved(closure_id, span,
-                                                MovedInCapture, lp);
-                }
+                moves::CapRef | moves::CapCopy => {}
                 moves::CapMove => {
-                    check_by_move_capture(this, closure_id, cap_var);
+                    check_by_move_capture(this, closure_id, cap_var, var_path);
                 }
             }
         }
@@ -655,9 +654,8 @@ fn check_loans_in_fn<'a>(fk: &visit::fn_kind,
 
         fn check_by_move_capture(this: @mut CheckLoanCtxt,
                                  closure_id: ast::node_id,
-                                 cap_var: &moves::CaptureVar) {
-            let var_id = ast_util::def_id_of_def(cap_var.def).node;
-            let move_path = @LpVar(var_id);
+                                 cap_var: &moves::CaptureVar,
+                                 move_path: @LoanPath) {
             let move_err = this.analyze_move_out_from(closure_id, move_path);
             match move_err {
                 MoveOk => {}
