@@ -158,6 +158,7 @@ pub enum ImportDirectiveSubclass {
 }
 
 /// The context that we thread through while building the reduced graph.
+#[deriving(Clone)]
 pub enum ReducedGraphParent {
     ModuleReducedGraphParent(@mut Module)
 }
@@ -394,8 +395,8 @@ impl ImportResolution {
     pub fn target_for_namespace(&self, namespace: Namespace)
                                 -> Option<Target> {
         match namespace {
-            TypeNS      => return copy self.type_target,
-            ValueNS     => return copy self.value_target
+            TypeNS      => return self.type_target,
+            ValueNS     => return self.value_target,
         }
     }
 
@@ -795,7 +796,7 @@ pub fn Resolver(session: Session,
 
     let this = Resolver {
         session: @session,
-        lang_items: copy lang_items,
+        lang_items: lang_items,
         crate: crate,
 
         // The outermost module has def ID 0; this is not reflected in the
@@ -1069,12 +1070,12 @@ impl Resolver {
 
     pub fn block_needs_anonymous_module(@mut self, block: &blk) -> bool {
         // If the block has view items, we need an anonymous module.
-        if block.node.view_items.len() > 0 {
+        if block.view_items.len() > 0 {
             return true;
         }
 
         // Check each statement.
-        for block.node.stmts.iter().advance |statement| {
+        for block.stmts.iter().advance |statement| {
             match statement.node {
                 stmt_decl(declaration, _) => {
                     match declaration.node {
@@ -1483,12 +1484,13 @@ impl Resolver {
                             for source_idents.iter().advance |source_ident| {
                                 let name = source_ident.node.name;
                                 let subclass = @SingleImport(name, name);
-                                self.build_import_directive(privacy,
-                                                            module_,
-                                                            copy module_path,
-                                                            subclass,
-                                                            source_ident.span,
-                                                            source_ident.node.id);
+                                self.build_import_directive(
+                                    privacy,
+                                    module_,
+                                    module_path.clone(),
+                                    subclass,
+                                    source_ident.span,
+                                    source_ident.node.id);
                             }
                         }
                         view_path_glob(_, id) => {
@@ -1566,7 +1568,7 @@ impl Resolver {
                                           vt<ReducedGraphParent>)) {
         let new_parent;
         if self.block_needs_anonymous_module(block) {
-            let block_id = block.node.id;
+            let block_id = block.id;
 
             debug!("(building reduced graph for block) creating a new \
                     anonymous module for block %d",
@@ -2477,9 +2479,9 @@ impl Resolver {
                     let new_import_resolution =
                         @mut ImportResolution(privacy, id);
                     new_import_resolution.value_target =
-                        copy target_import_resolution.value_target;
+                        target_import_resolution.value_target;
                     new_import_resolution.type_target =
-                        copy target_import_resolution.type_target;
+                        target_import_resolution.type_target;
 
                     module_.import_resolutions.insert
                         (*ident, new_import_resolution);
@@ -2531,7 +2533,7 @@ impl Resolver {
                    self.session.str_of(ident),
                    self.module_to_str(containing_module),
                    self.module_to_str(module_),
-                   copy dest_import_resolution.privacy);
+                   dest_import_resolution.privacy);
 
             // Merge the child item into the import resolution.
             if name_bindings.defined_in_public_namespace(ValueNS) {
@@ -2810,7 +2812,7 @@ impl Resolver {
                         debug!("(resolving item in lexical scope) using \
                                 import resolution");
                         self.used_imports.insert(import_resolution.id(namespace));
-                        return Success(copy target);
+                        return Success(target);
                     }
                 }
             }
@@ -2888,7 +2890,7 @@ impl Resolver {
                 }
                 Success(target) => {
                     // We found the module.
-                    return Success(copy target);
+                    return Success(target);
                 }
             }
         }
@@ -3079,7 +3081,7 @@ impl Resolver {
                         debug!("(resolving name in module) resolved to \
                                 import");
                         self.used_imports.insert(import_resolution.id(namespace));
-                        return Success(copy target);
+                        return Success(target);
                     }
                     Some(_) => {
                         debug!("(resolving name in module) name found, \
@@ -3204,7 +3206,7 @@ impl Resolver {
         let mut exports2 = ~[];
 
         self.add_exports_for_module(&mut exports2, module_);
-        match /*bad*/copy module_.def_id {
+        match module_.def_id {
             Some(def_id) => {
                 self.export_map2.insert(def_id.node, exports2);
                 debug!("(computing exports) writing exports for %d (some)",
@@ -4096,7 +4098,7 @@ impl Resolver {
 
         // Move down in the graph, if there's an anonymous module rooted here.
         let orig_module = self.current_module;
-        match self.current_module.anonymous_children.find(&block.node.id) {
+        match self.current_module.anonymous_children.find(&block.id) {
             None => { /* Nothing to do. */ }
             Some(&anonymous_module) => {
                 debug!("(resolving block) found anonymous module, moving \
@@ -4989,7 +4991,7 @@ impl Resolver {
             }
 
             expr_fn_block(ref fn_decl, ref block) => {
-                self.resolve_function(FunctionRibKind(expr.id, block.node.id),
+                self.resolve_function(FunctionRibKind(expr.id, block.id),
                                       Some(fn_decl),
                                       NoTypeParameters,
                                       block,
@@ -5165,13 +5167,13 @@ impl Resolver {
         match self.method_map.find(&name) {
             Some(candidate_traits) => loop {
                 // Look for the current trait.
-                match /*bad*/copy self.current_trait_refs {
-                    Some(trait_def_ids) => {
+                match self.current_trait_refs {
+                    Some(ref trait_def_ids) => {
                         for trait_def_ids.iter().advance |trait_def_id| {
                             if candidate_traits.contains(trait_def_id) {
-                                self.add_trait_info(
-                                    &mut found_traits,
-                                    *trait_def_id, name);
+                                self.add_trait_info(&mut found_traits,
+                                                    *trait_def_id,
+                                                    name);
                             }
                         }
                     }
@@ -5268,8 +5270,13 @@ impl Resolver {
 
     pub fn add_fixed_trait_for_expr(@mut self,
                                     expr_id: node_id,
-                                    trait_id: def_id) {
-        self.trait_map.insert(expr_id, @mut ~[trait_id]);
+                                    trait_id: Option<def_id>) {
+        match trait_id {
+            Some(trait_id) => {
+                self.trait_map.insert(expr_id, @mut ~[trait_id]);
+            }
+            None => {}
+        }
     }
 
     pub fn record_def(@mut self, node_id: node_id, def: def) {
@@ -5423,10 +5430,9 @@ pub fn resolve_crate(session: Session,
                   -> CrateMap {
     let resolver = @mut Resolver(session, lang_items, crate);
     resolver.resolve();
-    let Resolver { def_map, export_map2, trait_map, _ } = copy *resolver;
     CrateMap {
-        def_map: def_map,
-        exp_map2: export_map2,
-        trait_map: trait_map
+        def_map: resolver.def_map,
+        exp_map2: resolver.export_map2,
+        trait_map: resolver.trait_map.clone(),
     }
 }

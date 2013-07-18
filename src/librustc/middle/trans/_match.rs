@@ -76,7 +76,7 @@
  *
  *    let a: A = ...;
  *    let b: B = ...;
- *    match (a, b) { (ref c, copy d) => { ... } }
+ *    match (a, b) { (ref c, d) => { ... } }
  *
  * For `c` and `d`, we would generate allocas of type `C*` and `D*`
  * respectively.  These are called the `llmatch`.  As we match, when we come
@@ -152,6 +152,7 @@ use back::abi;
 use lib::llvm::{llvm, ValueRef, BasicBlockRef};
 use middle::const_eval;
 use middle::borrowck::root_map_key;
+use middle::lang_items::{UniqStrEqFnLangItem, StrEqFnLangItem};
 use middle::pat_util::*;
 use middle::resolve::DefMap;
 use middle::trans::adt;
@@ -539,9 +540,10 @@ pub fn enter_opt<'r>(bcx: block,
             }
             ast::pat_enum(_, ref subpats) => {
                 if opt_eq(tcx, &variant_opt(bcx, p.id), opt) {
+                    // XXX: Must we clone?
                     match *subpats {
                         None => Some(vec::from_elem(variant_size, dummy)),
-                        _ => copy *subpats
+                        _ => (*subpats).clone(),
                     }
                 } else {
                     None
@@ -596,7 +598,7 @@ pub fn enter_opt<'r>(bcx: block,
                         let n = before.len() + after.len();
                         let i = before.len();
                         if opt_eq(tcx, &vec_len_ge(n, i), opt) {
-                            Some(vec::append_one(copy *before, slice) +
+                            Some(vec::append_one((*before).clone(), slice) +
                                     *after)
                         } else {
                             None
@@ -605,7 +607,7 @@ pub fn enter_opt<'r>(bcx: block,
                     None => {
                         let n = before.len();
                         if opt_eq(tcx, &vec_len_eq(n), opt) {
-                            Some(copy *before)
+                            Some((*before).clone())
                         } else {
                             None
                         }
@@ -672,9 +674,7 @@ pub fn enter_tup<'r>(bcx: block,
     let dummy = @ast::pat {id: 0, node: ast::pat_wild, span: dummy_sp()};
     do enter_match(bcx, dm, m, col, val) |p| {
         match p.node {
-            ast::pat_tup(ref elts) => {
-                Some(copy *elts)
-            }
+            ast::pat_tup(ref elts) => Some((*elts).clone()),
             _ => {
                 assert_is_binding_or_wild(bcx, p);
                 Some(vec::from_elem(n_elts, dummy))
@@ -700,7 +700,7 @@ pub fn enter_tuple_struct<'r>(bcx: block,
     let dummy = @ast::pat {id: 0, node: ast::pat_wild, span: dummy_sp()};
     do enter_match(bcx, dm, m, col, val) |p| {
         match p.node {
-            ast::pat_enum(_, Some(ref elts)) => Some(copy *elts),
+            ast::pat_enum(_, Some(ref elts)) => Some((*elts).clone()),
             _ => {
                 assert_is_binding_or_wild(bcx, p);
                 Some(vec::from_elem(n_elts, dummy))
@@ -1099,7 +1099,9 @@ pub fn compare_values(cx: block,
             Store(cx, lhs, scratch_lhs);
             let scratch_rhs = alloca(cx, val_ty(rhs), "__rhs");
             Store(cx, rhs, scratch_rhs);
-            let did = cx.tcx().lang_items.uniq_str_eq_fn();
+            let did = langcall(cx, None,
+                               fmt!("comparison of `%s`", cx.ty_to_str(rhs_t)),
+                               UniqStrEqFnLangItem);
             let result = callee::trans_lang_call(cx, did, [scratch_lhs, scratch_rhs], None);
             Result {
                 bcx: result.bcx,
@@ -1107,7 +1109,9 @@ pub fn compare_values(cx: block,
             }
         }
         ty::ty_estr(_) => {
-            let did = cx.tcx().lang_items.str_eq_fn();
+            let did = langcall(cx, None,
+                               fmt!("comparison of `%s`", cx.ty_to_str(rhs_t)),
+                               StrEqFnLangItem);
             let result = callee::trans_lang_call(cx, did, [lhs, rhs], None);
             Result {
                 bcx: result.bcx,
@@ -1577,7 +1581,7 @@ pub fn compile_submatch(bcx: block,
                 let args = extract_vec_elems(opt_cx, pat_span, pat_id, n, slice,
                                              val, test_val);
                 size = args.vals.len();
-                unpacked = /*bad*/copy args.vals;
+                unpacked = args.vals.clone();
                 opt_cx = args.bcx;
             }
             lit(_) | range(_, _) => ()
@@ -1601,7 +1605,7 @@ pub fn compile_submatch(bcx: block,
 pub fn trans_match(bcx: block,
                    match_expr: &ast::expr,
                    discr_expr: @ast::expr,
-                   arms: ~[ast::arm],
+                   arms: &[ast::arm],
                    dest: Dest) -> block {
     let _icx = push_ctxt("match::trans_match");
     do with_scope(bcx, match_expr.info(), "match") |bcx| {

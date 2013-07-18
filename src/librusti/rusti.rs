@@ -118,7 +118,7 @@ fn run(mut program: ~Program, binary: ~str, lib_search_paths: ~[~str],
         binary: binary,
         addl_lib_search_paths: @mut lib_search_paths.map(|p| Path(*p)),
         jit: true,
-        .. copy *session::basic_options()
+        .. (*session::basic_options()).clone()
     };
     // Because we assume that everything is encodable (and assert so), add some
     // extra helpful information if the error crops up. Otherwise people are
@@ -149,7 +149,7 @@ fn run(mut program: ~Program, binary: ~str, lib_search_paths: ~[~str],
     do find_main(crate, sess) |blk| {
         // Fish out all the view items, be sure to record 'extern mod' items
         // differently beause they must appear before all 'use' statements
-        for blk.node.view_items.iter().advance |vi| {
+        for blk.view_items.iter().advance |vi| {
             let s = do with_pp(intr) |pp, _| {
                 pprust::print_view_item(pp, vi);
             };
@@ -163,7 +163,7 @@ fn run(mut program: ~Program, binary: ~str, lib_search_paths: ~[~str],
 
         // Iterate through all of the block's statements, inserting them into
         // the correct portions of the program
-        for blk.node.stmts.iter().advance |stmt| {
+        for blk.stmts.iter().advance |stmt| {
             let s = do with_pp(intr) |pp, _| { pprust::print_stmt(pp, *stmt); };
             match stmt.node {
                 ast::stmt_decl(d, _) => {
@@ -203,7 +203,7 @@ fn run(mut program: ~Program, binary: ~str, lib_search_paths: ~[~str],
                 }
             }
         }
-        result = do blk.node.expr.map_consume |e| {
+        result = do blk.expr.map_consume |e| {
             do with_pp(intr) |pp, _| { pprust::print_expr(pp, e); }
         };
     }
@@ -224,7 +224,7 @@ fn run(mut program: ~Program, binary: ~str, lib_search_paths: ~[~str],
     let dinput = driver::str_input(test.to_managed());
     let cfg = driver::build_configuration(sess, binary, &dinput);
     let outputs = driver::build_output_filenames(&dinput, &None, &None, [], sess);
-    let (crate, tcx) = driver::compile_upto(sess, copy cfg, &dinput,
+    let (crate, tcx) = driver::compile_upto(sess, cfg.clone(), &dinput,
                                             driver::cu_typeck, Some(outputs));
     // Once we're typechecked, record the types of all local variables defined
     // in this input
@@ -300,9 +300,9 @@ fn compile_crate(src_filename: ~str, binary: ~str) -> Option<bool> {
         let options = @session::options {
             binary: binary,
             addl_lib_search_paths: @mut ~[os::getcwd()],
-            .. copy *session::basic_options()
+            .. (*session::basic_options()).clone()
         };
-        let input = driver::file_input(copy src_path);
+        let input = driver::file_input(src_path.clone());
         let sess = driver::build_session(options, diagnostic::emit);
         *sess.building_library = true;
         let cfg = driver::build_configuration(sess, binary, &input);
@@ -393,11 +393,11 @@ fn run_cmd(repl: &mut Repl, _in: @io::Reader, _out: @io::Writer,
             for args.iter().advance |arg| {
                 let (crate, filename) =
                     if arg.ends_with(".rs") || arg.ends_with(".rc") {
-                    (arg.slice_to(arg.len() - 3).to_owned(), copy *arg)
+                    (arg.slice_to(arg.len() - 3).to_owned(), (*arg).clone())
                 } else {
-                    (copy *arg, *arg + ".rs")
+                    ((*arg).clone(), *arg + ".rs")
                 };
-                match compile_crate(filename, copy repl.binary) {
+                match compile_crate(filename, repl.binary.clone()) {
                     Some(_) => loaded_crates.push(crate),
                     None => { }
                 }
@@ -452,7 +452,7 @@ pub fn run_line(repl: &mut Repl, in: @io::Reader, out: @io::Writer, line: ~str,
         let len = split.len();
 
         if len > 0 {
-            let cmd = copy split[0];
+            let cmd = split[0].clone();
 
             if !cmd.is_empty() {
                 let args = if len > 1 {
@@ -473,9 +473,9 @@ pub fn run_line(repl: &mut Repl, in: @io::Reader, out: @io::Writer, line: ~str,
     }
 
     let line = Cell::new(line);
-    let program = Cell::new(copy repl.program);
-    let lib_search_paths = Cell::new(copy repl.lib_search_paths);
-    let binary = Cell::new(copy repl.binary);
+    let program = Cell::new(repl.program.clone());
+    let lib_search_paths = Cell::new(repl.lib_search_paths.clone());
+    let binary = Cell::new(repl.binary.clone());
     let result = do task::try {
         run(program.take(), binary.take(), lib_search_paths.take(), line.take())
     };
@@ -499,7 +499,7 @@ pub fn main() {
     let out = io::stdout();
     let mut repl = Repl {
         prompt: ~"rusti> ",
-        binary: copy args[0],
+        binary: args[0].clone(),
         running: true,
         lib_search_paths: ~[],
         engines: ~[],

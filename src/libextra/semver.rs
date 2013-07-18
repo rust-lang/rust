@@ -21,7 +21,7 @@ use std::option::{Option, Some, None};
 use std::to_str::ToStr;
 use std::uint;
 
-#[deriving(Eq)]
+#[deriving(Clone, Eq)]
 pub enum Identifier {
     Numeric(uint),
     AlphaNumeric(~str)
@@ -62,7 +62,7 @@ impl ToStr for Identifier {
 }
 
 
-#[deriving(Eq)]
+#[deriving(Clone, Eq)]
 pub struct Version {
     major: uint,
     minor: uint,

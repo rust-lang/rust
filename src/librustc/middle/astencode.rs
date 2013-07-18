@@ -106,7 +106,7 @@ pub fn encode_inlined_item(ecx: &e::EncodeContext,
 pub fn decode_inlined_item(cdata: @cstore::crate_metadata,
                            tcx: ty::ctxt,
                            maps: Maps,
-                           path: ast_map::path,
+                           path: &[ast_map::path_elt],
                            par_doc: ebml::Doc)
                         -> Option<ast::inlined_item> {
     let dcx = @DecodeContext {
@@ -134,7 +134,9 @@ pub fn decode_inlined_item(cdata: @cstore::crate_metadata,
                ast_map::path_to_str(path, token::get_ident_interner()),
                tcx.sess.str_of(ii.ident()));
         ast_map::map_decoded_item(tcx.sess.diagnostic(),
-                                  dcx.tcx.items, path, &ii);
+                                  dcx.tcx.items,
+                                  path.to_owned(),
+                                  &ii);
         decode_side_tables(xcx, ast_doc);
         match ii {
           ast::ii_item(i) => {
@@ -289,7 +291,7 @@ fn encode_ast(ebml_w: &mut writer::Encoder, item: ast::inlined_item) {
 // nested items, as otherwise it would get confused when translating
 // inlined items.
 fn simplify_ast(ii: &ast::inlined_item) -> ast::inlined_item {
-    fn drop_nested_items(blk: &ast::blk_, fld: @fold::ast_fold) -> ast::blk_ {
+    fn drop_nested_items(blk: &ast::blk, fld: @fold::ast_fold) -> ast::blk {
         let stmts_sans_items = do blk.stmts.iter().filter_map |stmt| {
             match stmt.node {
               ast::stmt_expr(_, _) | ast::stmt_semi(_, _) |
@@ -300,19 +302,20 @@ fn simplify_ast(ii: &ast::inlined_item) -> ast::inlined_item {
               ast::stmt_mac(*) => fail!("unexpanded macro in astencode")
             }
         }.collect();
-        let blk_sans_items = ast::blk_ {
+        let blk_sans_items = ast::blk {
             view_items: ~[], // I don't know if we need the view_items here,
                              // but it doesn't break tests!
             stmts: stmts_sans_items,
             expr: blk.expr,
             id: blk.id,
-            rules: blk.rules
+            rules: blk.rules,
+            span: blk.span,
         };
         fold::noop_fold_block(&blk_sans_items, fld)
     }
 
     let fld = fold::make_fold(@fold::AstFoldFns {
-        fold_block: fold::wrap(drop_nested_items),
+        fold_block: drop_nested_items,
         .. *fold::default_ast_fold()
     });
 
@@ -617,7 +620,7 @@ fn encode_vtable_origin(ecx: &e::EncodeContext,
                     ebml_w.emit_def_id(def_id)
                 }
                 do ebml_w.emit_enum_variant_arg(1u) |ebml_w| {
-                    ebml_w.emit_tys(ecx, /*bad*/copy *tys);
+                    ebml_w.emit_tys(ecx, *tys);
                 }
                 do ebml_w.emit_enum_variant_arg(2u) |ebml_w| {
                     encode_vtable_res(ecx, ebml_w, vtable_res);
@@ -813,7 +816,7 @@ fn encode_side_tables_for_ii(ecx: &e::EncodeContext,
                              ebml_w: &mut writer::Encoder,
                              ii: &ast::inlined_item) {
     ebml_w.start_tag(c::tag_table as uint);
-    let new_ebml_w = copy *ebml_w;
+    let new_ebml_w = (*ebml_w).clone();
 
     // Because the ast visitor uses @fn, I can't pass in
     // ecx directly, but /I/ know that it'll be fine since
@@ -826,7 +829,7 @@ fn encode_side_tables_for_ii(ecx: &e::EncodeContext,
             // Note: this will cause a copy of ebml_w, which is bad as
             // it is mutable. But I believe it's harmless since we generate
             // balanced EBML.
-            let mut new_ebml_w = copy new_ebml_w;
+            let mut new_ebml_w = new_ebml_w.clone();
             // See above
             let ecx : &e::EncodeContext = unsafe { cast::transmute(ecx_ptr) };
             encode_side_tables_for_id(ecx, maps, &mut new_ebml_w, id)
@@ -1279,14 +1282,14 @@ fn test_more() {
 fn test_simplification() {
     let ext_cx = mk_ctxt();
     let item_in = ast::ii_item(quote_item!(
-        fn new_int_alist<B:Copy>() -> alist<int, B> {
+        fn new_int_alist<B>() -> alist<int, B> {
             fn eq_int(a: int, b: int) -> bool { a == b }
             return alist {eq_fn: eq_int, data: ~[]};
         }
     ).get());
     let item_out = simplify_ast(&item_in);
     let item_exp = ast::ii_item(quote_item!(
-        fn new_int_alist<B:Copy>() -> alist<int, B> {
+        fn new_int_alist<B>() -> alist<int, B> {
             return alist {eq_fn: eq_int, data: ~[]};
         }
     ).get());

@@ -170,12 +170,14 @@ pub type MovesMap = @mut HashSet<node_id>;
 pub type MovedVariablesSet = @mut HashSet<node_id>;
 
 /** See the section Output on the module comment for explanation. */
+#[deriving(Clone)]
 pub struct MoveMaps {
     moves_map: MovesMap,
     moved_variables_set: MovedVariablesSet,
     capture_map: CaptureMap
 }
 
+#[deriving(Clone)]
 struct VisitContext {
     tcx: ty::ctxt,
     method_map: method_map,
@@ -285,13 +287,13 @@ impl VisitContext {
          * meaning either copied or moved depending on its type.
          */
 
-        debug!("consume_block(blk.id=%?)", blk.node.id);
+        debug!("consume_block(blk.id=%?)", blk.id);
 
-        for blk.node.stmts.iter().advance |stmt| {
+        for blk.stmts.iter().advance |stmt| {
             (visitor.visit_stmt)(*stmt, (*self, visitor));
         }
 
-        for blk.node.expr.iter().advance |tail_expr| {
+        for blk.expr.iter().advance |tail_expr| {
             self.consume_expr(*tail_expr, visitor);
         }
     }
@@ -450,10 +452,6 @@ impl VisitContext {
                 // if there are by-move bindings, but borrowck deals
                 // with that itself.
                 self.use_expr(discr, Read, visitor);
-            }
-
-            expr_copy(base) => {
-                self.use_expr(base, Read, visitor);
             }
 
             expr_paren(base) => {

@@ -17,6 +17,10 @@
 
 use lib::llvm::ValueRef;
 use middle::borrowck::{RootInfo, root_map_key, DynaImm, DynaMut};
+use middle::lang_items::CheckNotBorrowedFnLangItem;
+use middle::lang_items::{BorrowAsImmFnLangItem, BorrowAsMutFnLangItem};
+use middle::lang_items::{RecordBorrowFnLangItem, UnrecordBorrowFnLangItem};
+use middle::lang_items::ReturnToMutFnLangItem;
 use middle::trans::base::*;
 use middle::trans::build::*;
 use middle::trans::callee;
@@ -74,7 +78,7 @@ pub fn return_to_mut(mut bcx: block,
 
     if bcx.tcx().sess.debug_borrows() {
         bcx = callee::trans_lang_call( bcx,
-            bcx.tcx().lang_items.unrecord_borrow_fn(),
+            langcall(bcx, None, "unborrow", UnrecordBorrowFnLangItem),
             [
                 box_ptr,
                 bits_val,
@@ -86,7 +90,7 @@ pub fn return_to_mut(mut bcx: block,
 
     callee::trans_lang_call(
         bcx,
-        bcx.tcx().lang_items.return_to_mut_fn(),
+        langcall(bcx, None, "unborrow", ReturnToMutFnLangItem),
         [
             box_ptr,
             bits_val,
@@ -138,16 +142,16 @@ fn root(datum: &Datum,
             let scratch_bits = scratch_datum(bcx, ty::mk_uint(),
                                              "__write_guard_bits", false);
 
-            let freeze_did = match freeze_kind {
-                DynaImm => bcx.tcx().lang_items.borrow_as_imm_fn(),
-                DynaMut => bcx.tcx().lang_items.borrow_as_mut_fn(),
+            let freeze_item = match freeze_kind {
+                DynaImm => BorrowAsImmFnLangItem,
+                DynaMut => BorrowAsMutFnLangItem,
             };
 
             let box_ptr = Load(bcx, PointerCast(bcx, scratch.val, Type::i8p().ptr_to()));
 
             let llresult = unpack_result!(bcx, callee::trans_lang_call(
                 bcx,
-                freeze_did,
+                langcall(bcx, Some(span), "freeze", freeze_item),
                 [
                     box_ptr,
                     filename,
@@ -158,7 +162,7 @@ fn root(datum: &Datum,
             if bcx.tcx().sess.debug_borrows() {
                 bcx = callee::trans_lang_call(
                     bcx,
-                    bcx.tcx().lang_items.record_borrow_fn(),
+                    langcall(bcx, Some(span), "freeze", RecordBorrowFnLangItem),
                     [
                         box_ptr,
                         llresult,
@@ -187,7 +191,7 @@ fn perform_write_guard(datum: &Datum,
 
     callee::trans_lang_call(
         bcx,
-        bcx.tcx().lang_items.check_not_borrowed_fn(),
+        langcall(bcx, Some(span), "write guard", CheckNotBorrowedFnLangItem),
         [PointerCast(bcx, llval, Type::i8p()), filename, line],
         Some(expr::Ignore)).bcx
 }

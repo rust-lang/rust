@@ -33,13 +33,11 @@ pub fn strip_items(crate: &ast::crate, in_cfg: in_cfg_pred)
 
     let precursor = @fold::AstFoldFns {
           fold_mod: |a,b| fold_mod(ctxt, a, b),
-          fold_block: fold::wrap(|a,b| fold_block(ctxt, a, b) ),
+          fold_block: |a,b| fold_block(ctxt, a, b),
           fold_foreign_mod: |a,b| fold_foreign_mod(ctxt, a, b),
-          fold_item_underscore: |a,b| {
-            // Bad copy.
-            fold_item_underscore(ctxt, copy a, b)
-          },
-          .. *fold::default_ast_fold()};
+          fold_item_underscore: |a,b| fold_item_underscore(ctxt, a, b),
+          .. *fold::default_ast_fold()
+    };
 
     let fold = fold::make_fold(precursor);
     @fold.fold_crate(crate)
@@ -101,14 +99,14 @@ fn fold_item_underscore(cx: @Context, item: &ast::item_,
         ast::item_impl(ref a, ref b, ref c, ref methods) => {
             let methods = methods.iter().filter(|m| method_in_cfg(cx, **m))
                 .transform(|x| *x).collect();
-            ast::item_impl(/*bad*/ copy *a, /*bad*/ copy *b, /*bad*/ copy *c, methods)
+            ast::item_impl((*a).clone(), (*b).clone(), (*c).clone(), methods)
         }
         ast::item_trait(ref a, ref b, ref methods) => {
             let methods = methods.iter().filter(|m| trait_method_in_cfg(cx, *m) )
-                .transform(|x| /* bad */copy *x).collect();
-            ast::item_trait(/*bad*/copy *a, /*bad*/copy *b, methods)
+                .transform(|x| (*x).clone()).collect();
+            ast::item_trait((*a).clone(), (*b).clone(), methods)
         }
-        ref item => /*bad*/ copy *item
+        ref item => (*item).clone(),
     };
 
     fold::noop_fold_item_underscore(&item, fld)
@@ -133,30 +131,31 @@ fn filter_stmt(cx: @Context, stmt: @ast::stmt) ->
 
 fn fold_block(
     cx: @Context,
-    b: &ast::blk_,
+    b: &ast::blk,
     fld: @fold::ast_fold
-) -> ast::blk_ {
+) -> ast::blk {
     let resulting_stmts = do b.stmts.iter().filter_map |a| {
         filter_stmt(cx, *a).chain(|stmt| fld.fold_stmt(stmt))
     }.collect();
     let filtered_view_items = do b.view_items.iter().filter_map |a| {
         filter_view_item(cx, a).map(|&x| fld.fold_view_item(x))
     }.collect();
-    ast::blk_ {
+    ast::blk {
         view_items: filtered_view_items,
         stmts: resulting_stmts,
         expr: b.expr.map(|x| fld.fold_expr(*x)),
         id: b.id,
         rules: b.rules,
+        span: b.span,
     }
 }
 
 fn item_in_cfg(cx: @Context, item: @ast::item) -> bool {
-    return (cx.in_cfg)(/*bad*/copy item.attrs);
+    return (cx.in_cfg)(item.attrs);
 }
 
 fn foreign_item_in_cfg(cx: @Context, item: @ast::foreign_item) -> bool {
-    return (cx.in_cfg)(/*bad*/copy item.attrs);
+    return (cx.in_cfg)(item.attrs);
 }
 
 fn view_item_in_cfg(cx: @Context, item: &ast::view_item) -> bool {
@@ -164,13 +163,13 @@ fn view_item_in_cfg(cx: @Context, item: &ast::view_item) -> bool {
 }
 
 fn method_in_cfg(cx: @Context, meth: @ast::method) -> bool {
-    return (cx.in_cfg)(/*bad*/copy meth.attrs);
+    return (cx.in_cfg)(meth.attrs);
 }
 
 fn trait_method_in_cfg(cx: @Context, meth: &ast::trait_method) -> bool {
     match *meth {
-        ast::required(ref meth) => (cx.in_cfg)(/*bad*/copy meth.attrs),
-        ast::provided(@ref meth) => (cx.in_cfg)(/*bad*/copy meth.attrs)
+        ast::required(ref meth) => (cx.in_cfg)(meth.attrs),
+        ast::provided(@ref meth) => (cx.in_cfg)(meth.attrs)
     }
 }
 

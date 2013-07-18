@@ -538,14 +538,12 @@ impl<'self> EachItemContext<'self> {
 
     fn each_item_of_module(&mut self, def_id: ast::def_id) -> bool {
         // This item might not be in this crate. If it's not, look it up.
-        let (_cdata, items) = if def_id.crate == self.cdata.cnum {
-            let items = reader::get_doc(reader::Doc(self.cdata.data),
-                                        tag_items);
-            (self.cdata, items)
+        let items = if def_id.crate == self.cdata.cnum {
+            reader::get_doc(reader::Doc(self.cdata.data), tag_items)
         } else {
             let crate_data = (self.get_crate_data)(def_id.crate);
             let root = reader::Doc(crate_data.data);
-            (crate_data, reader::get_doc(root, tag_items))
+            reader::get_doc(root, tag_items)
         };
 
         // Look up the item.
@@ -716,15 +714,15 @@ pub fn maybe_get_item_ast(cdata: cmd, tcx: ty::ctxt,
         let item_path = item_path(item_doc);
         item_path.init().to_owned()
     };
-    match decode_inlined_item(cdata, tcx, copy path, item_doc) {
-      Some(ref ii) => csearch::found((/*bad*/copy *ii)),
+    match decode_inlined_item(cdata, tcx, /*bad*/path.clone(), item_doc) {
+      Some(ref ii) => csearch::found(*ii),
       None => {
         match item_parent_item(item_doc) {
           Some(did) => {
             let did = translate_def_id(cdata, did);
             let parent_item = lookup_item(did.node, cdata.data);
             match decode_inlined_item(cdata, tcx, path, parent_item) {
-              Some(ref ii) => csearch::found_parent(did, (/*bad*/copy *ii)),
+              Some(ref ii) => csearch::found_parent(did, *ii),
               None => csearch::not_found
             }
           }
@@ -748,7 +746,7 @@ pub fn get_enum_variants(intr: @ident_interner, cdata: cmd, id: ast::node_id,
                                 item, tcx, cdata);
         let name = item_name(intr, item);
         let arg_tys = match ty::get(ctor_ty).sty {
-          ty::ty_bare_fn(ref f) => copy f.sig.inputs,
+          ty::ty_bare_fn(ref f) => f.sig.inputs.clone(),
           _ => ~[], // Nullary enum variant.
         };
         match variant_disr_val(item) {
@@ -1151,6 +1149,7 @@ pub fn get_crate_attributes(data: @~[u8]) -> ~[ast::attribute] {
     return get_attributes(reader::Doc(data));
 }
 
+#[deriving(Clone)]
 pub struct crate_dep {
     cnum: ast::crate_num,
     name: ast::ident,

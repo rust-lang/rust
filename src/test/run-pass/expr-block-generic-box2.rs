@@ -13,8 +13,8 @@
 
 type compare<T> = @fn(T, T) -> bool;
 
-fn test_generic<T:Copy>(expected: T, eq: compare<T>) {
-    let actual: T = { copy expected };
+fn test_generic<T:Clone>(expected: T, eq: compare<T>) {
+    let actual: T = { expected.clone() };
     assert!((eq(expected, actual)));
 }
 

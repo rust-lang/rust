@@ -1,5 +1,6 @@
 // Test that we do not permit moves from &[] matched by a vec pattern.
 
+#[deriving(Clone)]
 struct Foo {
     string: ~str
 }
@@ -21,7 +22,7 @@ pub fn main() {
                     ::std::util::unreachable();
                 }
             }
-            let z = copy tail[0];
+            let z = tail[0].clone();
             info!(fmt!("%?", z));
         }
         _ => {

@@ -48,6 +48,7 @@ implement `Reader` and `Writer`, where appropriate.
 
 use result::Result;
 
+use clone::Clone;
 use container::Container;
 use int;
 use libc;
@@ -1558,7 +1559,6 @@ impl<T:Writer> WriterUtil for T {
 
 }
 
-#[allow(non_implicitly_copyable_typarams)]
 pub fn file_writer(path: &Path, flags: &[FileFlag]) -> Result<@Writer, ~str> {
     mk_file_writer(path, flags).chain(|w| result::Ok(w))
 }
@@ -1697,7 +1697,7 @@ pub fn with_bytes_writer(f: &fn(@Writer)) -> ~[u8] {
     let wr = @BytesWriter::new();
     f(wr as @Writer);
     let @BytesWriter { bytes, _ } = wr;
-    copy *bytes
+    (*bytes).clone()
 }
 
 pub fn with_str_writer(f: &fn(@Writer)) -> ~str {
@@ -1726,7 +1726,6 @@ pub fn seek_in_buf(offset: int, pos: uint, len: uint, whence: SeekStyle) ->
     return bpos as uint;
 }
 
-#[allow(non_implicitly_copyable_typarams)]
 pub fn read_whole_file_str(file: &Path) -> Result<~str, ~str> {
     result::chain(read_whole_file(file), |bytes| {
         if str::is_utf8(bytes) {
@@ -1739,7 +1738,6 @@ pub fn read_whole_file_str(file: &Path) -> Result<~str, ~str> {
 
 // FIXME (#2004): implement this in a low-level way. Going through the
 // abstractions is pointless.
-#[allow(non_implicitly_copyable_typarams)]
 pub fn read_whole_file(file: &Path) -> Result<~[u8], ~str> {
     result::chain(file_reader(file), |rdr| {
         result::Ok(rdr.read_whole_stream())
@@ -1750,7 +1748,6 @@ pub fn read_whole_file(file: &Path) -> Result<~[u8], ~str> {
 
 pub mod fsync {
     use io::{FILERes, FdRes, fd_t};
-    use kinds::Copy;
     use libc;
     use ops::Drop;
     use option::{None, Option, Some};
@@ -1775,21 +1772,20 @@ pub mod fsync {
         arg: Arg<t>,
     }
 
-    impl <t: Copy> Res<t> {
+    impl <t> Res<t> {
         pub fn new(arg: Arg<t>) -> Res<t> {
             Res { arg: arg }
         }
     }
 
     #[unsafe_destructor]
-    impl<T:Copy> Drop for Res<T> {
+    impl<T> Drop for Res<T> {
         fn drop(&self) {
             match self.arg.opt_level {
                 None => (),
                 Some(level) => {
                   // fail hard if not succesful
-                  assert!(((self.arg.fsync_fn)(copy self.arg.val, level)
-                    != -1));
+                  assert!(((self.arg.fsync_fn)(&self.arg.val, level) != -1));
                 }
             }
         }
@@ -1798,7 +1794,7 @@ pub mod fsync {
     pub struct Arg<t> {
         val: t,
         opt_level: Option<Level>,
-        fsync_fn: @fn(f: t, Level) -> int,
+        fsync_fn: @fn(f: &t, Level) -> int,
     }
 
     // fsync file after executing blk
@@ -1810,7 +1806,7 @@ pub mod fsync {
             val: file.f, opt_level: opt_level,
             fsync_fn: |file, l| {
                 unsafe {
-                    os::fsync_fd(libc::fileno(file), l) as int
+                    os::fsync_fd(libc::fileno(*file), l) as int
                 }
             }
         }));
@@ -1821,7 +1817,7 @@ pub mod fsync {
                        blk: &fn(v: Res<fd_t>)) {
         blk(Res::new(Arg {
             val: fd.fd, opt_level: opt_level,
-            fsync_fn: |fd, l| os::fsync_fd(fd, l) as int
+            fsync_fn: |fd, l| os::fsync_fd(*fd, l) as int
         }));
     }
 
@@ -1833,7 +1829,7 @@ pub mod fsync {
                     blk: &fn(v: Res<@FSyncable>)) {
         blk(Res::new(Arg {
             val: o, opt_level: opt_level,
-            fsync_fn: |o, l| o.fsync(l)
+            fsync_fn: |o, l| (*o).fsync(l)
         }));
     }
 }
@@ -1854,16 +1850,16 @@ mod tests {
         debug!(tmpfile);
         let frood: ~str =
             ~"A hoopy frood who really knows where his towel is.";
-        debug!(copy frood);
+        debug!(frood.clone());
         {
             let out: @io::Writer =
-                result::get(
-                    &io::file_writer(tmpfile, [io::Create, io::Truncate]));
+                result::unwrap(
+                    io::file_writer(tmpfile, [io::Create, io::Truncate]));
             out.write_str(frood);
         }
-        let inp: @io::Reader = result::get(&io::file_reader(tmpfile));
+        let inp: @io::Reader = result::unwrap(io::file_reader(tmpfile));
         let frood2: ~str = inp.read_c_str();
-        debug!(copy frood2);
+        debug!(frood2.clone());
         assert_eq!(frood, frood2);
     }
 
@@ -1959,10 +1955,10 @@ mod tests {
     fn test_read_buffer_too_small() {
         let path = &Path("tmp/lib-io-test-read-buffer-too-small.tmp");
         // ensure the file exists
-        io::file_writer(path, [io::Create]).get();
+        io::file_writer(path, [io::Create]).unwrap();
 
-        let file = io::file_reader(path).get();
-        let mut buf = vec::from_elem(5, 0);
+        let file = io::file_reader(path).unwrap();
+        let mut buf = vec::from_elem(5, 0u8);
         file.read(buf, 6); // this should fail because buf is too small
     }
 
@@ -1970,17 +1966,17 @@ mod tests {
     fn test_read_buffer_big_enough() {
         let path = &Path("tmp/lib-io-test-read-buffer-big-enough.tmp");
         // ensure the file exists
-        io::file_writer(path, [io::Create]).get();
+        io::file_writer(path, [io::Create]).unwrap();
 
-        let file = io::file_reader(path).get();
-        let mut buf = vec::from_elem(5, 0);
+        let file = io::file_reader(path).unwrap();
+        let mut buf = vec::from_elem(5, 0u8);
         file.read(buf, 4); // this should succeed because buf is big enough
     }
 
     #[test]
     fn test_write_empty() {
         let file = io::file_writer(&Path("tmp/lib-io-test-write-empty.tmp"),
-                                   [io::Create]).get();
+                                   [io::Create]).unwrap();
         file.write([]);
     }
 
@@ -2026,7 +2022,7 @@ mod tests {
 
         // write the ints to the file
         {
-            let file = io::file_writer(&path, [io::Create]).get();
+            let file = io::file_writer(&path, [io::Create]).unwrap();
             for uints.iter().advance |i| {
                 file.write_le_u64(*i);
             }
@@ -2034,7 +2030,7 @@ mod tests {
 
         // then read them back and check that they are the same
         {
-            let file = io::file_reader(&path).get();
+            let file = io::file_reader(&path).unwrap();
             for uints.iter().advance |i| {
                 assert_eq!(file.read_le_u64(), *i);
             }
@@ -2048,7 +2044,7 @@ mod tests {
 
         // write the ints to the file
         {
-            let file = io::file_writer(&path, [io::Create]).get();
+            let file = io::file_writer(&path, [io::Create]).unwrap();
             for uints.iter().advance |i| {
                 file.write_be_u64(*i);
             }
@@ -2056,7 +2052,7 @@ mod tests {
 
         // then read them back and check that they are the same
         {
-            let file = io::file_reader(&path).get();
+            let file = io::file_reader(&path).unwrap();
             for uints.iter().advance |i| {
                 assert_eq!(file.read_be_u64(), *i);
             }
@@ -2070,7 +2066,7 @@ mod tests {
 
         // write the ints to the file
         {
-            let file = io::file_writer(&path, [io::Create]).get();
+            let file = io::file_writer(&path, [io::Create]).unwrap();
             for ints.iter().advance |i| {
                 file.write_be_i32(*i);
             }
@@ -2078,7 +2074,7 @@ mod tests {
 
         // then read them back and check that they are the same
         {
-            let file = io::file_reader(&path).get();
+            let file = io::file_reader(&path).unwrap();
             for ints.iter().advance |i| {
                 // this tests that the sign extension is working
                 // (comparing the values as i32 would not test this)
@@ -2094,12 +2090,12 @@ mod tests {
         let buf = ~[0x41, 0x02, 0x00, 0x00];
 
         {
-            let file = io::file_writer(&path, [io::Create]).get();
+            let file = io::file_writer(&path, [io::Create]).unwrap();
             file.write(buf);
         }
 
         {
-            let file = io::file_reader(&path).get();
+            let file = io::file_reader(&path).unwrap();
             let f = file.read_be_f32();
             assert_eq!(f, 8.1250);
         }
@@ -2111,13 +2107,13 @@ mod tests {
         let f:f32 = 8.1250;
 
         {
-            let file = io::file_writer(&path, [io::Create]).get();
+            let file = io::file_writer(&path, [io::Create]).unwrap();
             file.write_be_f32(f);
             file.write_le_f32(f);
         }
 
         {
-            let file = io::file_reader(&path).get();
+            let file = io::file_reader(&path).unwrap();
             assert_eq!(file.read_be_f32(), 8.1250);
             assert_eq!(file.read_le_f32(), 8.1250);
         }

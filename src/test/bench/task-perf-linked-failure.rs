@@ -68,7 +68,7 @@ fn main() {
     } else if args.len() <= 1u {
         ~[~"", ~"100"]
     } else {
-        copy args
+        args.clone()
     };
 
     let num_tasks = uint::from_str(args[1]).get();

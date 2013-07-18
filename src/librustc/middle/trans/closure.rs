@@ -13,6 +13,7 @@ use back::abi;
 use back::link::{mangle_internal_name_by_path_and_seq};
 use lib::llvm::{llvm, ValueRef};
 use middle::moves;
+use middle::lang_items::ClosureExchangeMallocFnLangItem;
 use middle::trans::base::*;
 use middle::trans::build::*;
 use middle::trans::callee;
@@ -422,11 +423,11 @@ pub fn trans_expr_fn(bcx: block,
 
     let llfnty = type_of_fn_from_ty(ccx, fty);
 
-    let sub_path = vec::append_one(/*bad*/copy bcx.fcx.path,
+    let sub_path = vec::append_one(bcx.fcx.path.clone(),
                                    path_name(special_idents::anon));
     // XXX: Bad copy.
     let s = mangle_internal_name_by_path_and_seq(ccx,
-                                                 copy sub_path,
+                                                 sub_path.clone(),
                                                  "expr_fn");
     let llfn = decl_internal_cdecl_fn(ccx.llmod, s, llfnty);
 
@@ -458,7 +459,7 @@ pub fn trans_expr_fn(bcx: block,
                           body,
                           llfn,
                           no_self,
-                          /*bad*/ copy bcx.fcx.param_substs,
+                          bcx.fcx.param_substs,
                           user_id,
                           [],
                           real_return_type,
@@ -541,9 +542,13 @@ pub fn make_opaque_cbox_take_glue(
         // Allocate memory, update original ptr, and copy existing data
         let opaque_tydesc = PointerCast(bcx, tydesc, Type::i8p());
         let mut bcx = bcx;
+        let alloc_fn = langcall(bcx, None,
+                                fmt!("allocation of type with sigil `%s`",
+                                    sigil.to_str()),
+                                ClosureExchangeMallocFnLangItem);
         let llresult = unpack_result!(bcx, callee::trans_lang_call(
             bcx,
-            bcx.tcx().lang_items.closure_exchange_malloc_fn(),
+            alloc_fn,
             [opaque_tydesc, sz],
             None));
         let cbox_out = PointerCast(bcx, llresult, llopaquecboxty);

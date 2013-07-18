@@ -77,11 +77,11 @@ impl Combine for Sub {
           m_mutbl => {
             // If supertype is mut, subtype must match exactly
             // (i.e., invariant if mut):
-            eq_tys(self, a.ty, b.ty).then(|| Ok(copy *a) )
+            eq_tys(self, a.ty, b.ty).then(|| Ok(*a))
           }
           m_imm | m_const => {
             // Otherwise we can be covariant:
-            self.tys(a.ty, b.ty).chain(|_t| Ok(copy *a) )
+            self.tys(a.ty, b.ty).chain(|_t| Ok(*a) )
           }
         }
     }

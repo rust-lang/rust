@@ -34,6 +34,8 @@ use lib;
 use metadata::common::LinkMeta;
 use metadata::{csearch, cstore, encoder};
 use middle::astencode;
+use middle::lang_items::{LangItem, ExchangeMallocFnLangItem, StartFnLangItem};
+use middle::lang_items::{MallocFnLangItem, ClosureExchangeMallocFnLangItem};
 use middle::resolve;
 use middle::trans::_match;
 use middle::trans::adt;
@@ -110,7 +112,7 @@ impl Drop for _InsnCtxt {
     fn drop(&self) {
         do local_data::modify(task_local_insn_key) |c| {
             do c.map_consume |ctx| {
-                let mut ctx = copy *ctx;
+                let mut ctx = (*ctx).clone();
                 ctx.pop();
                 @ctx
             }
@@ -122,7 +124,7 @@ pub fn push_ctxt(s: &'static str) -> _InsnCtxt {
     debug!("new InsnCtxt: %s", s);
     do local_data::modify(task_local_insn_key) |c| {
         do c.map_consume |ctx| {
-            let mut ctx = copy *ctx;
+            let mut ctx = (*ctx).clone();
             ctx.push(s);
             @ctx
         }
@@ -284,13 +286,25 @@ pub fn malloc_raw_dyn(bcx: block,
     let _icx = push_ctxt("malloc_raw");
     let ccx = bcx.ccx();
 
+    fn require_alloc_fn(bcx: block, t: ty::t, it: LangItem) -> ast::def_id {
+        let li = &bcx.tcx().lang_items;
+        match li.require(it) {
+            Ok(id) => id,
+            Err(s) => {
+                bcx.tcx().sess.fatal(fmt!("allocation of `%s` %s",
+                                          bcx.ty_to_str(t), s));
+            }
+        }
+    }
+
     if heap == heap_exchange {
         let llty_value = type_of::type_of(ccx, t);
+
 
         // Allocate space:
         let r = callee::trans_lang_call(
             bcx,
-            bcx.tcx().lang_items.exchange_malloc_fn(),
+            require_alloc_fn(bcx, t, ExchangeMallocFnLangItem),
             [size],
             None);
         rslt(r.bcx, PointerCast(r.bcx, r.val, llty_value.ptr_to()))
@@ -298,10 +312,12 @@ pub fn malloc_raw_dyn(bcx: block,
         // we treat ~fn, @fn and @[] as @ here, which isn't ideal
         let (mk_fn, langcall) = match heap {
             heap_managed | heap_managed_unique => {
-                (ty::mk_imm_box, bcx.tcx().lang_items.malloc_fn())
+                (ty::mk_imm_box,
+                 require_alloc_fn(bcx, t, MallocFnLangItem))
             }
             heap_exchange_closure => {
-                (ty::mk_imm_box, bcx.tcx().lang_items.closure_exchange_malloc_fn())
+                (ty::mk_imm_box,
+                 require_alloc_fn(bcx, t, ClosureExchangeMallocFnLangItem))
             }
             _ => fail!("heap_exchange already handled")
         };
@@ -1397,7 +1413,7 @@ pub fn with_scope(bcx: block,
     let scope = simple_block_scope(bcx.scope, opt_node_info);
     bcx.scope = Some(scope);
     let ret = f(bcx);
-    let ret = trans_block_cleanups_(ret, /*bad*/copy scope.cleanups, false);
+    let ret = trans_block_cleanups_(ret, (scope.cleanups).clone(), false);
     bcx.scope = scope.parent;
     ret
 }
@@ -1411,7 +1427,9 @@ pub fn with_scope_result(bcx: block,
     let scope = simple_block_scope(bcx.scope, opt_node_info);
     bcx.scope = Some(scope);
     let Result { bcx: out_bcx, val } = f(bcx);
-    let out_bcx = trans_block_cleanups_(out_bcx, /*bad*/copy scope.cleanups, false);
+    let out_bcx = trans_block_cleanups_(out_bcx,
+                                        (scope.cleanups).clone(),
+                                        false);
     bcx.scope = scope.parent;
 
     rslt(out_bcx, val)
@@ -1430,7 +1448,7 @@ pub fn with_scope_datumblock(bcx: block, opt_node_info: Option<NodeInfo>,
 }
 
 pub fn block_locals(b: &ast::blk, it: &fn(@ast::local)) {
-    for b.node.stmts.iter().advance |s| {
+    for b.stmts.iter().advance |s| {
         match s.node {
           ast::stmt_decl(d, _) => {
             match d.node {
@@ -1858,7 +1876,7 @@ pub fn trans_closure(ccx: @mut CrateContext,
     let bcx_top = top_scope_block(fcx, body.info());
     let mut bcx = bcx_top;
     let lltop = bcx.llbb;
-    let block_ty = node_id_type(bcx, body.node.id);
+    let block_ty = node_id_type(bcx, body.id);
 
     let arg_tys = ty::ty_fn_args(node_id_type(bcx, id));
     bcx = copy_args_to_allocas(fcx, bcx, decl.inputs, raw_llargs, arg_tys);
@@ -1869,7 +1887,7 @@ pub fn trans_closure(ccx: @mut CrateContext,
     // translation calls that don't have a return value (trans_crate,
     // trans_mod, trans_item, et cetera) and those that do
     // (trans_block, trans_expr, et cetera).
-    if body.node.expr.is_none() || ty::type_is_bot(block_ty) ||
+    if body.expr.is_none() || ty::type_is_bot(block_ty) ||
         ty::type_is_nil(block_ty)
     {
         bcx = controlflow::trans_block(bcx, body, expr::Ignore);
@@ -1916,7 +1934,7 @@ pub fn trans_fn(ccx: @mut CrateContext,
     let _icx = push_ctxt("trans_fn");
     let output_type = ty::ty_fn_ret(ty::node_id_to_type(ccx.tcx, id));
     trans_closure(ccx,
-                  copy path,
+                  path.clone(),
                   decl,
                   body,
                   llfndecl,
@@ -2022,7 +2040,7 @@ pub fn trans_enum_variant_or_tuple_like_struct<A:IdAndTy>(
     let fn_args = do args.map |varg| {
         ast::arg {
             is_mutbl: false,
-            ty: copy *varg.ty(),
+            ty: (*varg.ty()).clone(),
             pat: ast_util::ident_to_pat(
                 ccx.tcx.sess.next_node_id(),
                 codemap::dummy_sp(),
@@ -2031,12 +2049,21 @@ pub fn trans_enum_variant_or_tuple_like_struct<A:IdAndTy>(
         }
     };
 
+    let no_substs: &[ty::t] = [];
     let ty_param_substs = match param_substs {
-        Some(ref substs) => { copy substs.tys }
-        None => ~[]
+        Some(ref substs) => {
+            let v: &[ty::t] = substs.tys;
+            v
+        }
+        None => {
+            let v: &[ty::t] = no_substs;
+            v
+        }
     };
 
-    let ctor_ty = ty::subst_tps(ccx.tcx, ty_param_substs, None,
+    let ctor_ty = ty::subst_tps(ccx.tcx,
+                                ty_param_substs,
+                                None,
                                 ty::node_id_to_type(ccx.tcx, ctor_id));
 
     let result_ty = match ty::get(ctor_ty).sty {
@@ -2114,7 +2141,7 @@ pub fn trans_item(ccx: @mut CrateContext, item: &ast::item) {
         if purity == ast::extern_fn  {
             let llfndecl = get_item_val(ccx, item.id);
             foreign::trans_foreign_fn(ccx,
-                                      vec::append(/*bad*/copy *path,
+                                      vec::append((*path).clone(),
                                                   [path_name(item.ident)]),
                                       decl,
                                       body,
@@ -2123,7 +2150,7 @@ pub fn trans_item(ccx: @mut CrateContext, item: &ast::item) {
         } else if !generics.is_type_parameterized() {
             let llfndecl = get_item_val(ccx, item.id);
             trans_fn(ccx,
-                     vec::append(/*bad*/copy *path, [path_name(item.ident)]),
+                     vec::append((*path).clone(), [path_name(item.ident)]),
                      decl,
                      body,
                      llfndecl,
@@ -2132,7 +2159,7 @@ pub fn trans_item(ccx: @mut CrateContext, item: &ast::item) {
                      item.id,
                      item.attrs);
         } else {
-            for body.node.stmts.iter().advance |stmt| {
+            for body.stmts.iter().advance |stmt| {
                 match stmt.node {
                   ast::stmt_decl(@codemap::spanned { node: ast::decl_item(i),
                                                  _ }, _) => {
@@ -2144,8 +2171,12 @@ pub fn trans_item(ccx: @mut CrateContext, item: &ast::item) {
         }
       }
       ast::item_impl(ref generics, _, _, ref ms) => {
-        meth::trans_impl(ccx, /*bad*/copy *path, item.ident, *ms,
-                         generics, item.id);
+        meth::trans_impl(ccx,
+                         (*path).clone(),
+                         item.ident,
+                         *ms,
+                         generics,
+                         item.id);
       }
       ast::item_mod(ref m) => {
         trans_mod(ccx, m);
@@ -2258,7 +2289,7 @@ pub fn register_fn_fuller(ccx: @mut CrateContext,
     let ps = if attr::attrs_contains_name(attrs, "no_mangle") {
         path_elt_to_str(*path.last(), token::get_ident_interner())
     } else {
-        mangle_exported_name(ccx, /*bad*/copy path, node_type)
+        mangle_exported_name(ccx, path, node_type)
     };
 
     let llfn = decl_fn(ccx.llmod, ps, cc, fn_ty);
@@ -2324,7 +2355,8 @@ pub fn create_entry_wrapper(ccx: @mut CrateContext,
     fn create_entry_fn(ccx: @mut CrateContext,
                        rust_main: ValueRef,
                        use_start_lang_item: bool) {
-        let llfty = Type::func([ccx.int_type, Type::i8().ptr_to().ptr_to()], &ccx.int_type);
+        let llfty = Type::func([ccx.int_type, Type::i8().ptr_to().ptr_to()],
+                               &ccx.int_type);
 
         // FIXME #4404 android JNI hacks
         let llfn = if *ccx.sess.building_library {
@@ -2345,25 +2377,21 @@ pub fn create_entry_wrapper(ccx: @mut CrateContext,
         unsafe {
             llvm::LLVMPositionBuilderAtEnd(bld, llbb);
 
-            let start_def_id = ccx.tcx.lang_items.start_fn();
-            if start_def_id.crate != ast::local_crate {
-                let start_fn_type = csearch::get_type(ccx.tcx,
-                                                      start_def_id).ty;
-                trans_external_path(ccx, start_def_id, start_fn_type);
-            }
-
             let crate_map = ccx.crate_map;
             let opaque_crate_map = do "crate_map".as_c_str |buf| {
                 llvm::LLVMBuildPointerCast(bld, crate_map, Type::i8p().to_ref(), buf)
             };
 
             let (start_fn, args) = if use_start_lang_item {
-                let start_def_id = ccx.tcx.lang_items.start_fn();
+                let start_def_id = match ccx.tcx.lang_items.require(StartFnLangItem) {
+                    Ok(id) => id,
+                    Err(s) => { ccx.tcx.sess.fatal(s); }
+                };
                 let start_fn = if start_def_id.crate == ast::local_crate {
                     get_item_val(ccx, start_def_id.node)
                 } else {
                     let start_fn_type = csearch::get_type(ccx.tcx,
-                            start_def_id).ty;
+                                                          start_def_id).ty;
                     trans_external_path(ccx, start_def_id, start_fn_type)
                 };
 
@@ -2383,14 +2411,12 @@ pub fn create_entry_wrapper(ccx: @mut CrateContext,
                 (start_fn, args)
             } else {
                 debug!("using user-defined start fn");
-                let args = {
-                    ~[
-                        C_null(Type::opaque_box(ccx).ptr_to()),
-                        llvm::LLVMGetParam(llfn, 0 as c_uint),
-                        llvm::LLVMGetParam(llfn, 1 as c_uint),
-                        opaque_crate_map
-                    ]
-                };
+                let args = ~[
+                    C_null(Type::opaque_box(ccx).ptr_to()),
+                    llvm::LLVMGetParam(llfn, 0 as c_uint),
+                    llvm::LLVMGetParam(llfn, 1 as c_uint),
+                    opaque_crate_map
+                ];
 
                 (rust_main, args)
             };
@@ -2421,7 +2447,7 @@ pub fn item_path(ccx: &CrateContext, i: &ast::item) -> path {
             // separate map for paths?
         _ => fail!("item_path")
     };
-    vec::append(/*bad*/copy *base, [path_name(i.ident)])
+    vec::append((*base).clone(), [path_name(i.ident)])
 }
 
 pub fn get_item_val(ccx: @mut CrateContext, id: ast::node_id) -> ValueRef {
@@ -2434,8 +2460,7 @@ pub fn get_item_val(ccx: @mut CrateContext, id: ast::node_id) -> ValueRef {
         let item = ccx.tcx.items.get_copy(&id);
         let val = match item {
           ast_map::node_item(i, pth) => {
-            let my_path = vec::append(/*bad*/copy *pth,
-                                      [path_name(i.ident)]);
+            let my_path = vec::append((*pth).clone(), [path_name(i.ident)]);
             match i.node {
               ast::item_static(_, m, expr) => {
                 let typ = ty::node_id_to_type(ccx.tcx, i.id);
@@ -2491,7 +2516,7 @@ pub fn get_item_val(ccx: @mut CrateContext, id: ast::node_id) -> ValueRef {
             match ni.node {
                 ast::foreign_item_fn(*) => {
                     register_fn(ccx, ni.span,
-                                vec::append(/*bad*/copy *pth,
+                                vec::append((*pth).clone(),
                                             [path_name(ni.ident)]),
                                 ni.id,
                                 ni.attrs)
@@ -2515,7 +2540,7 @@ pub fn get_item_val(ccx: @mut CrateContext, id: ast::node_id) -> ValueRef {
             match v.node.kind {
                 ast::tuple_variant_kind(ref args) => {
                     assert!(args.len() != 0u);
-                    let pth = vec::append(/*bad*/copy *pth,
+                    let pth = vec::append((*pth).clone(),
                                           [path_name(enm.ident),
                                            path_name((*v).node.name)]);
                     llfn = match enm.node {
@@ -2543,7 +2568,7 @@ pub fn get_item_val(ccx: @mut CrateContext, id: ast::node_id) -> ValueRef {
                 Some(ctor_id) => {
                     let llfn = register_fn(ccx,
                                            struct_item.span,
-                                           /*bad*/copy *struct_path,
+                                           (*struct_path).clone(),
                                            ctor_id,
                                            struct_item.attrs);
                     set_inline_hint(llfn);
@@ -2572,7 +2597,7 @@ pub fn register_method(ccx: @mut CrateContext,
                        m: @ast::method) -> ValueRef {
     let mty = ty::node_id_to_type(ccx.tcx, id);
 
-    let mut path = /*bad*/ copy *path;
+    let mut path = (*path).clone();
     path.push(path_name(gensym_name("meth")));
     path.push(path_name(m.ident));
 
@@ -2592,7 +2617,7 @@ pub fn trans_constant(ccx: &mut CrateContext, it: @ast::item) {
         let mut i = 0;
         let path = item_path(ccx, it);
         for (*enum_definition).variants.iter().advance |variant| {
-            let p = vec::append(/*bad*/copy path, [
+            let p = vec::append(path.clone(), [
                 path_name(variant.node.name),
                 path_name(special_idents::descrim)
             ]);
@@ -2832,17 +2857,18 @@ pub fn fill_crate_map(ccx: @mut CrateContext, map: ValueRef) {
     }
     subcrates.push(C_int(ccx, 0));
 
-    let llannihilatefn;
-    let annihilate_def_id = ccx.tcx.lang_items.annihilate_fn();
-    if annihilate_def_id.crate == ast::local_crate {
-        llannihilatefn = get_item_val(ccx, annihilate_def_id.node);
-    } else {
-        let annihilate_fn_type = csearch::get_type(ccx.tcx,
-                                                   annihilate_def_id).ty;
-        llannihilatefn = trans_external_path(ccx,
-                                             annihilate_def_id,
-                                             annihilate_fn_type);
-    }
+    let llannihilatefn = match ccx.tcx.lang_items.annihilate_fn() {
+        Some(annihilate_def_id) => {
+            if annihilate_def_id.crate == ast::local_crate {
+                get_item_val(ccx, annihilate_def_id.node)
+            } else {
+                let annihilate_fn_type = csearch::get_type(ccx.tcx,
+                                                           annihilate_def_id).ty;
+                trans_external_path(ccx, annihilate_def_id, annihilate_fn_type)
+            }
+        }
+        None => { C_null(Type::i8p()) }
+    };
 
     unsafe {
         let mod_map = create_module_map(ccx);
@@ -2941,7 +2967,7 @@ pub fn trans_crate(sess: session::Session,
                    -> (ContextRef, ModuleRef, LinkMeta) {
     // Before we touch LLVM, make sure that multithreading is enabled.
     if unsafe { !llvm::LLVMRustStartMultithreading() } {
-        sess.bug("couldn't enable multi-threaded LLVM");
+        //sess.bug("couldn't enable multi-threaded LLVM");
     }
 
     let mut symbol_hasher = hash::default_state();

@@ -18,7 +18,7 @@ fn f(p: @mut Point) { assert!((p.z == 12)); p.z = 13; assert!((p.z == 13)); }
 
 pub fn main() {
     let a: Point = Point {x: 10, y: 11, z: 12};
-    let b: @mut Point = @mut copy a;
+    let b: @mut Point = @mut a;
     assert_eq!(b.z, 12);
     f(b);
     assert_eq!(a.z, 12);

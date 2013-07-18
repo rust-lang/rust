@@ -12,10 +12,10 @@
 
 #[allow(missing_doc)];
 
+use clone::Clone;
 use cmp::Eq;
 use either;
 use either::Either;
-use kinds::Copy;
 use iterator::IteratorUtil;
 use option::{None, Option, Some};
 use vec;
@@ -39,9 +39,9 @@ pub enum Result<T, U> {
  * If the result is an error
  */
 #[inline]
-pub fn get<T:Copy,U>(res: &Result<T, U>) -> T {
+pub fn get<T:Clone,U>(res: &Result<T, U>) -> T {
     match *res {
-      Ok(ref t) => copy *t,
+      Ok(ref t) => (*t).clone(),
       Err(ref the_err) =>
         fail!("get called on error result: %?", *the_err)
     }
@@ -71,9 +71,9 @@ pub fn get_ref<'a, T, U>(res: &'a Result<T, U>) -> &'a T {
  * If the result is not an error
  */
 #[inline]
-pub fn get_err<T, U: Copy>(res: &Result<T, U>) -> U {
+pub fn get_err<T, U: Clone>(res: &Result<T, U>) -> U {
     match *res {
-      Err(ref u) => copy *u,
+      Err(ref u) => (*u).clone(),
       Ok(_) => fail!("get_err called on ok result")
     }
 }
@@ -100,11 +100,11 @@ pub fn is_err<T, U>(res: &Result<T, U>) -> bool {
  * result variants are converted to `either::left`.
  */
 #[inline]
-pub fn to_either<T:Copy,U:Copy>(res: &Result<U, T>)
+pub fn to_either<T:Clone,U:Clone>(res: &Result<U, T>)
     -> Either<T, U> {
     match *res {
-      Ok(ref res) => either::Right(copy *res),
-      Err(ref fail_) => either::Left(copy *fail_)
+      Ok(ref res) => either::Right((*res).clone()),
+      Err(ref fail_) => either::Left((*fail_).clone())
     }
 }
 
@@ -203,11 +203,11 @@ pub fn iter_err<T, E>(res: &Result<T, E>, f: &fn(&E)) {
  *     }
  */
 #[inline]
-pub fn map<T, E: Copy, U: Copy>(res: &Result<T, E>, op: &fn(&T) -> U)
+pub fn map<T, E: Clone, U: Clone>(res: &Result<T, E>, op: &fn(&T) -> U)
   -> Result<U, E> {
     match *res {
       Ok(ref t) => Ok(op(t)),
-      Err(ref e) => Err(copy *e)
+      Err(ref e) => Err((*e).clone())
     }
 }
 
@@ -220,10 +220,10 @@ pub fn map<T, E: Copy, U: Copy>(res: &Result<T, E>, op: &fn(&T) -> U)
  * successful result while handling an error.
  */
 #[inline]
-pub fn map_err<T:Copy,E,F:Copy>(res: &Result<T, E>, op: &fn(&E) -> F)
+pub fn map_err<T:Clone,E,F:Clone>(res: &Result<T, E>, op: &fn(&E) -> F)
   -> Result<T, F> {
     match *res {
-      Ok(ref t) => Ok(copy *t),
+      Ok(ref t) => Ok((*t).clone()),
       Err(ref e) => Err(op(e))
     }
 }
@@ -261,22 +261,22 @@ impl<T, E> Result<T, E> {
     }
 }
 
-impl<T:Copy,E> Result<T, E> {
+impl<T:Clone,E> Result<T, E> {
     #[inline]
     pub fn get(&self) -> T { get(self) }
 
     #[inline]
-    pub fn map_err<F:Copy>(&self, op: &fn(&E) -> F) -> Result<T,F> {
+    pub fn map_err<F:Clone>(&self, op: &fn(&E) -> F) -> Result<T,F> {
         map_err(self, op)
     }
 }
 
-impl<T, E: Copy> Result<T, E> {
+impl<T, E:Clone> Result<T, E> {
     #[inline]
     pub fn get_err(&self) -> E { get_err(self) }
 
     #[inline]
-    pub fn map<U:Copy>(&self, op: &fn(&T) -> U) -> Result<U,E> {
+    pub fn map<U:Clone>(&self, op: &fn(&T) -> U) -> Result<U,E> {
         map(self, op)
     }
 }
@@ -299,9 +299,8 @@ impl<T, E: Copy> Result<T, E> {
  *     }
  */
 #[inline]
-pub fn map_vec<T,U:Copy,V:Copy>(
-    ts: &[T], op: &fn(&T) -> Result<V,U>) -> Result<~[V],U> {
-
+pub fn map_vec<T,U,V>(ts: &[T], op: &fn(&T) -> Result<V,U>)
+                      -> Result<~[V],U> {
     let mut vs: ~[V] = vec::with_capacity(ts.len());
     for ts.iter().advance |t| {
         match op(t) {
@@ -314,15 +313,18 @@ pub fn map_vec<T,U:Copy,V:Copy>(
 
 #[inline]
 #[allow(missing_doc)]
-pub fn map_opt<T,U:Copy,V:Copy>(
-    o_t: &Option<T>, op: &fn(&T) -> Result<V,U>) -> Result<Option<V>,U> {
-
+pub fn map_opt<T,
+               U,
+               V>(
+               o_t: &Option<T>,
+               op: &fn(&T) -> Result<V,U>)
+               -> Result<Option<V>,U> {
     match *o_t {
-      None => Ok(None),
-      Some(ref t) => match op(t) {
-        Ok(v) => Ok(Some(v)),
-        Err(e) => Err(e)
-      }
+        None => Ok(None),
+        Some(ref t) => match op(t) {
+            Ok(v) => Ok(Some(v)),
+            Err(e) => Err(e)
+        }
     }
 }
 
@@ -336,7 +338,7 @@ pub fn map_opt<T,U:Copy,V:Copy>(
  * to accommodate an error like the vectors being of different lengths.
  */
 #[inline]
-pub fn map_vec2<S,T,U:Copy,V:Copy>(ss: &[S], ts: &[T],
+pub fn map_vec2<S,T,U,V>(ss: &[S], ts: &[T],
                 op: &fn(&S,&T) -> Result<V,U>) -> Result<~[V],U> {
 
     assert!(vec::same_length(ss, ts));
@@ -359,7 +361,7 @@ pub fn map_vec2<S,T,U:Copy,V:Copy>(ss: &[S], ts: &[T],
  * on its own as no result vector is built.
  */
 #[inline]
-pub fn iter_vec2<S,T,U:Copy>(ss: &[S], ts: &[T],
+pub fn iter_vec2<S,T,U>(ss: &[S], ts: &[T],
                          op: &fn(&S,&T) -> Result<(),U>) -> Result<(),U> {
 
     assert!(vec::same_length(ss, ts));

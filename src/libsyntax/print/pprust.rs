@@ -121,11 +121,15 @@ pub fn print_crate(cm: @CodeMap,
         s: pp::mk_printer(out, default_columns),
         cm: Some(cm),
         intr: intr,
-        comments: Some(copy cmnts),
+        comments: Some(cmnts),
         // If the code is post expansion, don't use the table of
         // literals, since it doesn't correspond with the literals
         // in the AST anymore.
-        literals: if is_expanded { None } else { Some(copy lits) },
+        literals: if is_expanded {
+            None
+        } else {
+            Some(lits)
+        },
         cur_cmnt_and_lit: @mut CurrentCommentAndLiteral {
             cur_cmnt: 0,
             cur_lit: 0
@@ -405,15 +409,19 @@ pub fn print_type(s: @ps, ty: &ast::Ty) {
         pclose(s);
       }
       ast::ty_bare_fn(f) => {
-          let generics = ast::Generics {lifetimes: copy f.lifetimes,
-                                        ty_params: opt_vec::Empty};
+          let generics = ast::Generics {
+            lifetimes: f.lifetimes.clone(),
+            ty_params: opt_vec::Empty
+          };
           print_ty_fn(s, Some(f.abis), None, &None,
                       f.purity, ast::Many, &f.decl, None, &None,
                       Some(&generics), None);
       }
       ast::ty_closure(f) => {
-          let generics = ast::Generics {lifetimes: copy f.lifetimes,
-                                        ty_params: opt_vec::Empty};
+          let generics = ast::Generics {
+            lifetimes: f.lifetimes.clone(),
+            ty_params: opt_vec::Empty
+          };
           print_ty_fn(s, None, Some(f.sigil), &f.region,
                       f.purity, f.onceness, &f.decl, None, &f.bounds,
                       Some(&generics), None);
@@ -803,9 +811,17 @@ pub fn print_ty_method(s: @ps, m: &ast::ty_method) {
     hardbreak_if_not_bol(s);
     maybe_print_comment(s, m.span.lo);
     print_outer_attributes(s, m.attrs);
-    print_ty_fn(s, None, None, &None, m.purity, ast::Many,
-                &m.decl, Some(m.ident), &None, Some(&m.generics),
-                Some(/*bad*/ copy m.explicit_self.node));
+    print_ty_fn(s,
+                None,
+                None,
+                &None,
+                m.purity,
+                ast::Many,
+                &m.decl,
+                Some(m.ident),
+                &None,
+                Some(&m.generics),
+                Some(m.explicit_self.node));
     word(s.s, ";");
 }
 
@@ -932,7 +948,7 @@ pub fn print_possibly_embedded_block_(s: @ps,
                                       indented: uint,
                                       attrs: &[ast::attribute],
                                       close_box: bool) {
-    match blk.node.rules {
+    match blk.rules {
       ast::unsafe_blk => word_space(s, "unsafe"),
       ast::default_blk => ()
     }
@@ -946,11 +962,11 @@ pub fn print_possibly_embedded_block_(s: @ps,
 
     print_inner_attributes(s, attrs);
 
-    for blk.node.view_items.iter().advance |vi| { print_view_item(s, vi); }
-    for blk.node.stmts.iter().advance |st| {
+    for blk.view_items.iter().advance |vi| { print_view_item(s, vi); }
+    for blk.stmts.iter().advance |st| {
         print_stmt(s, *st);
     }
-    match blk.node.expr {
+    match blk.expr {
       Some(expr) => {
         space_if_not_bol(s);
         print_expr(s, expr);
@@ -1159,13 +1175,13 @@ pub fn print_expr(s: @ps, expr: &ast::expr) {
         pclose(s);
       }
       ast::expr_call(func, ref args, sugar) => {
-        let mut base_args = copy *args;
+        let mut base_args = (*args).clone();
         let blk = print_call_pre(s, sugar, &mut base_args);
         print_expr(s, func);
         print_call_post(s, sugar, &blk, &mut base_args);
       }
       ast::expr_method_call(_, func, ident, ref tys, ref args, sugar) => {
-        let mut base_args = copy *args;
+        let mut base_args = (*args).clone();
         let blk = print_call_pre(s, sugar, &mut base_args);
         print_expr(s, func);
         word(s.s, ".");
@@ -1255,12 +1271,12 @@ pub fn print_expr(s: @ps, expr: &ast::expr) {
 
             // Extract the expression from the extra block the parser adds
             // in the case of foo => expr
-            if arm.body.node.view_items.is_empty() &&
-                arm.body.node.stmts.is_empty() &&
-                arm.body.node.rules == ast::default_blk &&
-                arm.body.node.expr.is_some()
+            if arm.body.view_items.is_empty() &&
+                arm.body.stmts.is_empty() &&
+                arm.body.rules == ast::default_blk &&
+                arm.body.expr.is_some()
             {
-                match arm.body.node.expr {
+                match arm.body.expr {
                     Some(expr) => {
                         match expr.node {
                             ast::expr_block(ref blk) => {
@@ -1297,16 +1313,16 @@ pub fn print_expr(s: @ps, expr: &ast::expr) {
         print_fn_block_args(s, decl);
         space(s.s);
         // }
-        assert!(body.node.stmts.is_empty());
-        assert!(body.node.expr.is_some());
+        assert!(body.stmts.is_empty());
+        assert!(body.expr.is_some());
         // we extract the block, so as not to create another set of boxes
-        match body.node.expr.get().node {
+        match body.expr.get().node {
             ast::expr_block(ref blk) => {
                 print_block_unclosed(s, blk);
             }
             _ => {
                 // this is a bare expression
-                print_expr(s, body.node.expr.get());
+                print_expr(s, body.expr.get());
                 end(s); // need to close a box
             }
         }
@@ -1328,7 +1344,6 @@ pub fn print_expr(s: @ps, expr: &ast::expr) {
         ibox(s, 0u);
         print_block(s, blk);
       }
-      ast::expr_copy(e) => { word_space(s, "copy"); print_expr(s, e); }
       ast::expr_assign(lhs, rhs) => {
         print_expr(s, lhs);
         space(s.s);
@@ -1790,12 +1805,10 @@ pub fn print_meta_item(s: @ps, item: &ast::meta_item) {
       ast::meta_list(name, ref items) => {
         word(s.s, name);
         popen(s);
-        commasep(
-            s,
-            consistent,
-            items.as_slice(),
-            |p, &i| print_meta_item(p, i)
-        );
+        commasep(s,
+                 consistent,
+                 items.as_slice(),
+                 |p, &i| print_meta_item(p, i));
         pclose(s);
       }
     }
@@ -2053,7 +2066,7 @@ pub fn next_lit(s: @ps, pos: BytePos) -> Option<comments::lit> {
     match s.literals {
       Some(ref lits) => {
         while s.cur_cmnt_and_lit.cur_lit < lits.len() {
-            let ltrl = /*bad*/ copy (*lits)[s.cur_cmnt_and_lit.cur_lit];
+            let ltrl = (*lits)[s.cur_cmnt_and_lit.cur_lit].clone();
             if ltrl.pos > pos { return None; }
             s.cur_cmnt_and_lit.cur_lit += 1u;
             if ltrl.pos == pos { return Some(ltrl); }
@@ -2140,8 +2153,10 @@ pub fn next_comment(s: @ps) -> Option<comments::cmnt> {
     match s.comments {
       Some(ref cmnts) => {
         if s.cur_cmnt_and_lit.cur_cmnt < cmnts.len() {
-            return Some(copy cmnts[s.cur_cmnt_and_lit.cur_cmnt]);
-        } else { return None::<comments::cmnt>; }
+            return Some(cmnts[s.cur_cmnt_and_lit.cur_cmnt].clone());
+        } else {
+            return None::<comments::cmnt>;
+        }
       }
       _ => return None::<comments::cmnt>
     }

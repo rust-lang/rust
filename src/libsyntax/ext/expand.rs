@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ast::{blk_, crate, expr_, expr_mac, mac_invoc_tt};
+use ast::{blk, crate, expr_, expr_mac, mac_invoc_tt};
 use ast::{item_mac, stmt_, stmt_mac, stmt_expr, stmt_semi};
 use ast::{illegal_ctxt};
 use ast;
@@ -83,7 +83,7 @@ pub fn expand_expr(extsbox: @mut SyntaxEnv,
 
                             //keep going, outside-in
                             let fully_expanded =
-                                copy fld.fold_expr(expanded).node;
+                                fld.fold_expr(expanded).node.clone();
                             cx.bt_pop();
 
                             (fully_expanded, s)
@@ -208,7 +208,7 @@ pub fn expand_item_mac(extsbox: @mut SyntaxEnv,
                     -> Option<@ast::item> {
     let (pth, tts) = match it.node {
         item_mac(codemap::spanned { node: mac_invoc_tt(ref pth, ref tts), _}) => {
-            (pth, copy *tts)
+            (pth, (*tts).clone())
         }
         _ => cx.span_bug(it.span, "invalid item macro invocation")
     };
@@ -298,7 +298,7 @@ pub fn expand_stmt(extsbox: @mut SyntaxEnv,
         stmt_mac(ref mac, semi) => {
             match mac.node {
                 mac_invoc_tt(ref pth, ref tts) => {
-                    (copy *mac, pth, copy *tts, semi)
+                    ((*mac).clone(), pth, (*tts).clone(), semi)
                 }
             }
         }
@@ -337,7 +337,7 @@ pub fn expand_stmt(extsbox: @mut SyntaxEnv,
                 Some(stmt) => {
                     let fully_expanded = &stmt.node;
                     cx.bt_pop();
-                    copy *fully_expanded
+                    (*fully_expanded).clone()
                 }
                 None => {
                     cx.span_fatal(pth.span,
@@ -394,13 +394,12 @@ pub fn new_name_finder() -> @Visitor<@mut ~[ast::ident]> {
 
 pub fn expand_block(extsbox: @mut SyntaxEnv,
                     _cx: @ExtCtxt,
-                    blk: &blk_,
-                    sp: span,
+                    blk: &blk,
                     fld: @ast_fold,
-                    orig: @fn(&blk_, span, @ast_fold) -> (blk_, span))
-                 -> (blk_, span) {
+                    orig: @fn(&blk, @ast_fold) -> blk)
+                 -> blk {
     // see note below about treatment of exts table
-    with_exts_frame!(extsbox,false,orig(blk,sp,fld))
+    with_exts_frame!(extsbox,false,orig(blk,fld))
 }
 
 
@@ -694,7 +693,7 @@ pub fn inject_std_macros(parse_sess: @mut parse::ParseSess,
                          cfg: ast::crate_cfg, c: &crate) -> @crate {
     let sm = match parse_item_from_source_str(@"<std-macros>",
                                               std_macros(),
-                                              copy cfg,
+                                              cfg.clone(),
                                               ~[],
                                               parse_sess) {
         Some(item) => item,
@@ -709,7 +708,7 @@ pub fn inject_std_macros(parse_sess: @mut parse::ParseSess,
             ast::_mod {
                 items: items,
                 // FIXME #2543: Bad copy.
-                .. copy *modd
+                .. (*modd).clone()
             }
         },
         .. *default_ast_fold()
@@ -726,7 +725,7 @@ pub fn expand_crate(parse_sess: @mut parse::ParseSess,
     // every method/element of AstFoldFns in fold.rs.
     let extsbox = @mut syntax_expander_table();
     let afp = default_ast_fold();
-    let cx = ExtCtxt::new(parse_sess, copy cfg);
+    let cx = ExtCtxt::new(parse_sess, cfg.clone());
     let f_pre = @AstFoldFns {
         fold_expr: |expr,span,recur|
             expand_expr(extsbox, cx, expr, span, recur, afp.fold_expr),
@@ -736,8 +735,8 @@ pub fn expand_crate(parse_sess: @mut parse::ParseSess,
             expand_item(extsbox, cx, item, recur, afp.fold_item),
         fold_stmt: |stmt,span,recur|
             expand_stmt(extsbox, cx, stmt, span, recur, afp.fold_stmt),
-        fold_block: |blk,span,recur|
-            expand_block(extsbox, cx, blk, span, recur, afp.fold_block),
+        fold_block: |blk,recur|
+            expand_block(extsbox, cx, blk, recur, afp.fold_block),
         new_span: |a| new_span(cx, a),
         .. *afp};
     let f = make_fold(f_pre);

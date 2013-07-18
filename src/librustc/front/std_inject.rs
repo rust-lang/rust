@@ -32,9 +32,12 @@ pub fn maybe_inject_libstd_ref(sess: Session, crate: @ast::crate)
 fn use_std(crate: &ast::crate) -> bool {
     !attr::attrs_contains_name(crate.node.attrs, "no_std")
 }
+fn no_prelude(attrs: &[ast::attribute]) -> bool {
+    attr::attrs_contains_name(attrs, "no_implicit_prelude")
+}
 
 fn inject_libstd_ref(sess: Session, crate: &ast::crate) -> @ast::crate {
-    fn spanned<T:Copy>(x: T) -> codemap::spanned<T> {
+    fn spanned<T>(x: T) -> codemap::spanned<T> {
         codemap::spanned { node: x, span: dummy_sp() }
     }
 
@@ -61,16 +64,31 @@ fn inject_libstd_ref(sess: Session, crate: &ast::crate) -> @ast::crate {
             let vis = vec::append(~[vi1], crate.module.view_items);
             let mut new_module = ast::_mod {
                 view_items: vis,
-                ../*bad*/copy crate.module
+                ..crate.module.clone()
             };
-            new_module = fld.fold_mod(&new_module);
+
+            if !no_prelude(crate.attrs) {
+                // only add `use std::prelude::*;` if there wasn't a
+                // `#[no_implicit_prelude];` at the crate level.
+                new_module = fld.fold_mod(&new_module);
+            }
 
             // FIXME #2543: Bad copy.
             let new_crate = ast::crate_ {
                 module: new_module,
-                ..copy *crate
+                ..(*crate).clone()
             };
             (new_crate, span)
+        },
+        fold_item: |item, fld| {
+            if !no_prelude(item.attrs) {
+                // only recur if there wasn't `#[no_implicit_prelude];`
+                // on this item, i.e. this means that the prelude is not
+                // implicitly imported though the whole subtree
+                fold::noop_fold_item(item, fld)
+            } else {
+                Some(item)
+            }
         },
         fold_mod: |module, fld| {
             let n2 = sess.next_node_id();
@@ -97,7 +115,7 @@ fn inject_libstd_ref(sess: Session, crate: &ast::crate) -> @ast::crate {
             // FIXME #2543: Bad copy.
             let new_module = ast::_mod {
                 view_items: vis,
-                ..copy *module
+                ..(*module).clone()
             };
             fold::noop_fold_mod(&new_module, fld)
         },

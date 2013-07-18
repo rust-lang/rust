@@ -499,9 +499,9 @@ struct Stuff {
 }
 
 impl my_visitor {
-    pub fn get<T:Copy>(&self, f: &fn(T)) {
+    pub fn get<T:Clone>(&self, f: &fn(T)) {
         unsafe {
-            f(copy *(self.ptr1 as *T));
+            f((*(self.ptr1 as *T)).clone());
         }
     }
 

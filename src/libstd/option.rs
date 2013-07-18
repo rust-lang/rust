@@ -41,9 +41,9 @@ let unwrapped_msg = match msg {
 
 */
 
+use clone::Clone;
 use cmp::{Eq,Ord};
 use ops::Add;
-use kinds::Copy;
 use util;
 use num::Zero;
 use iterator::Iterator;
@@ -88,13 +88,13 @@ impl<T:Ord> Ord for Option<T> {
     }
 }
 
-impl<T: Copy+Add<T,T>> Add<Option<T>, Option<T>> for Option<T> {
+impl<T:Clone+Add<T,T>> Add<Option<T>, Option<T>> for Option<T> {
     #[inline]
     fn add(&self, other: &Option<T>) -> Option<T> {
         match (&*self, &*other) {
             (&None, &None) => None,
-            (_, &None) => copy *self,
-            (&None, _) => copy *other,
+            (_, &None) => (*self).clone(),
+            (&None, _) => (*other).clone(),
             (&Some(ref lhs), &Some(ref rhs)) => Some(*lhs + *rhs)
         }
     }
@@ -203,14 +203,14 @@ impl<T> Option<T> {
     /// Apply a function to the contained value or do nothing
     pub fn mutate(&mut self, f: &fn(T) -> T) {
         if self.is_some() {
-            *self = Some(f(self.swap_unwrap()));
+            *self = Some(f(self.take_unwrap()));
         }
     }
 
     /// Apply a function to the contained value or set it to a default
     pub fn mutate_default(&mut self, def: T, f: &fn(T) -> T) {
         if self.is_some() {
-            *self = Some(f(self.swap_unwrap()));
+            *self = Some(f(self.take_unwrap()));
         } else {
             *self = Some(def);
         }
@@ -293,8 +293,8 @@ impl<T> Option<T> {
      * Fails if the value equals `None`.
      */
     #[inline]
-    pub fn swap_unwrap(&mut self) -> T {
-        if self.is_none() { fail!("option::swap_unwrap none") }
+    pub fn take_unwrap(&mut self) -> T {
+        if self.is_none() { fail!("option::take_unwrap none") }
         util::replace(self, None).unwrap()
     }
 
@@ -313,9 +313,7 @@ impl<T> Option<T> {
           None => fail!(reason.to_owned()),
         }
     }
-}
 
-impl<T:Copy> Option<T> {
     /**
     Gets the value out of an option
 
@@ -354,7 +352,7 @@ impl<T:Copy> Option<T> {
     }
 }
 
-impl<T:Copy + Zero> Option<T> {
+impl<T:Zero> Option<T> {
     /// Returns the contained value or zero (for this type)
     #[inline]
     pub fn get_or_zero(self) -> T {
@@ -460,7 +458,7 @@ fn test_option_dance() {
     let mut y = Some(5);
     let mut y2 = 0;
     for x.iter().advance |_x| {
-        y2 = y.swap_unwrap();
+        y2 = y.take_unwrap();
     }
     assert_eq!(y2, 5);
     assert!(y.is_none());
@@ -468,8 +466,8 @@ fn test_option_dance() {
 #[test] #[should_fail] #[ignore(cfg(windows))]
 fn test_option_too_much_dance() {
     let mut y = Some(util::NonCopyable);
-    let _y2 = y.swap_unwrap();
-    let _y3 = y.swap_unwrap();
+    let _y2 = y.take_unwrap();
+    let _y3 = y.take_unwrap();
 }
 
 #[test]

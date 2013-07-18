@@ -244,14 +244,15 @@ mod tests {
     use digest::{Digest, DigestUtil};
     use sha1::Sha1;
 
+    #[deriving(Clone)]
+    struct Test {
+        input: ~str,
+        output: ~[u8],
+        output_str: ~str,
+    }
+
     #[test]
     fn test() {
-        struct Test {
-            input: ~str,
-            output: ~[u8],
-            output_str: ~str,
-        }
-
         fn a_million_letter_a() -> ~str {
             let mut i = 0;
             let mut rs = ~"";

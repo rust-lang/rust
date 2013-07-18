@@ -376,7 +376,7 @@ pub fn check_crate<'mm>(tcx: ty::ctxt,
         visit_item: |item, (method_map, visitor)| {
             // Do not check privacy inside items with the resolve_unexported
             // attribute. This is used for the test runner.
-            if !attr::contains_name(attr::attr_metas(/*bad*/copy item.attrs),
+            if !attr::contains_name(attr::attr_metas(item.attrs),
                                     "!resolve_unexported") {
                 visit::visit_item(item, (method_map, visitor));
             }
@@ -384,7 +384,7 @@ pub fn check_crate<'mm>(tcx: ty::ctxt,
         visit_block: |block, (method_map, visitor)| {
             // Gather up all the privileged items.
             let mut n_added = 0;
-            for block.node.stmts.iter().advance |stmt| {
+            for block.stmts.iter().advance |stmt| {
                 match stmt.node {
                     stmt_decl(decl, _) => {
                         match decl.node {

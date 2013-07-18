@@ -264,7 +264,8 @@ struct TrieNode<T> {
 impl<T> TrieNode<T> {
     #[inline]
     fn new() -> TrieNode<T> {
-        // FIXME: #5244: [Nothing, ..SIZE] should be possible without Copy
+        // FIXME: #5244: [Nothing, ..SIZE] should be possible without implicit
+        // copyability
         TrieNode{count: 0,
                  children: [Nothing, Nothing, Nothing, Nothing,
                             Nothing, Nothing, Nothing, Nothing,

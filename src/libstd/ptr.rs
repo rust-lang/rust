@@ -11,6 +11,7 @@
 //! Unsafe pointer utility functions
 
 use cast;
+use clone::Clone;
 use option::{Option, Some, None};
 use sys;
 use unstable::intrinsics;
@@ -43,6 +44,12 @@ pub fn mut_offset<T>(ptr: *mut T, count: uint) -> *mut T {
 #[inline]
 pub unsafe fn buf_len<T>(buf: **T) -> uint {
     position(buf, |i| *i == null())
+}
+
+impl<T> Clone for *T {
+    fn clone(&self) -> *T {
+        *self
+    }
 }
 
 /// Return the first offset `i` such that `f(buf[i]) == true`.
@@ -617,7 +624,7 @@ pub mod ptr_tests {
             array_each_with_len(arr_ptr, arr.len(),
                                 |e| {
                                          let actual = str::raw::from_c_str(e);
-                                         let expected = copy expected_arr[ctr];
+                                         let expected = expected_arr[ctr].clone();
                                          debug!(
                                              "test_ptr_array_each e: %s, a: %s",
                                              expected, actual);
@@ -649,7 +656,7 @@ pub mod ptr_tests {
             let mut iteration_count = 0;
             array_each(arr_ptr, |e| {
                 let actual = str::raw::from_c_str(e);
-                let expected = copy expected_arr[ctr];
+                let expected = expected_arr[ctr].clone();
                 debug!(
                     "test_ptr_array_each e: %s, a: %s",
                     expected, actual);

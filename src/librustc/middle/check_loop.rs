@@ -14,6 +14,7 @@ use middle::ty;
 use syntax::ast::*;
 use syntax::visit;
 
+#[deriving(Clone)]
 pub struct Context {
     in_loop: bool,
     can_ret: bool

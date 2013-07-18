@@ -33,7 +33,12 @@ use std::hashmap::HashMap;
 #[deriving(Eq)]
 pub enum os { os_win32, os_macos, os_linux, os_android, os_freebsd, }
 
-pub enum crate_type { bin_crate, lib_crate, unknown_crate, }
+#[deriving(Clone)]
+pub enum crate_type {
+    bin_crate,
+    lib_crate,
+    unknown_crate,
+}
 
 pub struct config {
     os: os,
@@ -118,7 +123,7 @@ pub fn debugging_opts_map() -> ~[(~str, ~str, uint)] {
     ]
 }
 
-#[deriving(Eq)]
+#[deriving(Clone, Eq)]
 pub enum OptLevel {
     No, // -O0
     Less, // -O1
@@ -126,6 +131,7 @@ pub enum OptLevel {
     Aggressive // -O3
 }
 
+#[deriving(Clone)]
 pub struct options {
     // The crate config requested for the session, which may be combined
     // with additional crate configurations during the compile process
@@ -345,10 +351,8 @@ pub fn basic_options() -> @options {
 }
 
 // Seems out of place, but it uses session, so I'm putting it here
-pub fn expect<T:Copy>(sess: Session,
-                       opt: Option<T>,
-                       msg: &fn() -> ~str)
-                    -> T {
+pub fn expect<T:Clone>(sess: Session, opt: Option<T>, msg: &fn() -> ~str)
+                       -> T {
     diagnostic::expect(sess.diagnostic(), opt, msg)
 }
 

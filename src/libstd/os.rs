@@ -29,6 +29,7 @@
 #[allow(missing_doc)];
 
 use cast;
+use clone::Clone;
 use container::Container;
 use io;
 use iterator::IteratorUtil;
@@ -576,13 +577,11 @@ pub fn tmpdir() -> Path {
     }
 
     #[cfg(unix)]
-    #[allow(non_implicitly_copyable_typarams)]
     fn lookup() -> Path {
         getenv_nonempty("TMPDIR").get_or_default(Path("/tmp"))
     }
 
     #[cfg(windows)]
-    #[allow(non_implicitly_copyable_typarams)]
     fn lookup() -> Path {
         getenv_nonempty("TMP").or(
             getenv_nonempty("TEMP").or(
@@ -630,7 +629,7 @@ pub fn path_exists(p: &Path) -> bool {
 // the input paths.
 pub fn make_absolute(p: &Path) -> Path {
     if p.is_absolute {
-        copy *p
+        (*p).clone()
     } else {
         getcwd().push_many(p.components)
     }
@@ -687,7 +686,6 @@ pub fn mkdir_recursive(p: &Path, mode: c_int) -> bool {
 }
 
 /// Lists the contents of a directory
-#[allow(non_implicitly_copyable_typarams)]
 pub fn list_dir(p: &Path) -> ~[~str] {
     if p.components.is_empty() && !p.is_absolute() {
         // Not sure what the right behavior is here, but this
@@ -1252,7 +1250,7 @@ static overridden_arg_key: local_data::Key<@OverriddenArgs> = &local_data::Key;
 pub fn args() -> ~[~str] {
     match local_data::get(overridden_arg_key, |k| k.map(|&k| *k)) {
         None => real_args(),
-        Some(args) => copy args.val
+        Some(args) => args.val.clone()
     }
 }
 
@@ -1260,7 +1258,9 @@ pub fn args() -> ~[~str] {
 /// program had when it started. These new arguments are only available to the
 /// current task via the `os::args` method.
 pub fn set_args(new_args: ~[~str]) {
-    let overridden_args = @OverriddenArgs { val: copy new_args };
+    let overridden_args = @OverriddenArgs {
+        val: new_args.clone()
+    };
     local_data::set(overridden_arg_key, overridden_args);
 }
 
@@ -1729,7 +1729,6 @@ pub mod consts {
 }
 
 #[cfg(test)]
-#[allow(non_implicitly_copyable_typarams)]
 mod tests {
     use libc::{c_int, c_void, size_t};
     use libc;
@@ -1807,7 +1806,7 @@ mod tests {
         }
         let n = make_rand_name();
         setenv(n, s);
-        debug!(copy s);
+        debug!(s.clone());
         assert_eq!(getenv(n), option::Some(s));
     }
 
@@ -1816,7 +1815,7 @@ mod tests {
         let path = os::self_exe_path();
         assert!(path.is_some());
         let path = path.get();
-        debug!(copy path);
+        debug!(path.clone());
 
         // Hard to test this function
         assert!(path.is_absolute);
@@ -1828,8 +1827,8 @@ mod tests {
         let e = env();
         assert!(e.len() > 0u);
         for e.iter().advance |p| {
-            let (n, v) = copy *p;
-            debug!(copy n);
+            let (n, v) = (*p).clone();
+            debug!(n.clone());
             let v2 = getenv(n);
             // MingW seems to set some funky environment variables like
             // "=C:=C:\MinGW\msys\1.0\bin" and "!::=::\" that are returned
@@ -1844,7 +1843,7 @@ mod tests {
 
         let mut e = env();
         setenv(n, "VALUE");
-        assert!(!e.contains(&(copy n, ~"VALUE")));
+        assert!(!e.contains(&(n.clone(), ~"VALUE")));
 
         e = env();
         assert!(e.contains(&(n, ~"VALUE")));
@@ -1920,7 +1919,7 @@ mod tests {
         assert!(dirs.len() > 0u);
 
         for dirs.iter().advance |dir| {
-            debug!(copy *dir);
+            debug!((*dir).clone());
         }
     }
 

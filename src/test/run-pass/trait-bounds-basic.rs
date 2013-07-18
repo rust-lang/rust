@@ -21,7 +21,7 @@ fn c(x: ~Foo:Freeze+Send) {
     a(x);
 }
 
-fn d(x: ~Foo:Send+Copy) {
+fn d(x: ~Foo:Send) {
     b(x);
 }
 

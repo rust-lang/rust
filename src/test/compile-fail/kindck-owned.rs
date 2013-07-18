@@ -8,13 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn copy1<T:Copy>(t: T) -> @fn() -> T {
-    let result: @fn() -> T = || copy t; //~ ERROR does not fulfill `'static`
+fn copy1<T:Clone>(t: T) -> @fn() -> T {
+    let result: @fn() -> T = || t.clone();  //~ ERROR does not fulfill `'static`
     result
 }
 
-fn copy2<T:Copy + 'static>(t: T) -> @fn() -> T {
-    let result: @fn() -> T = || copy t;
+fn copy2<T:Clone + 'static>(t: T) -> @fn() -> T {
+    let result: @fn() -> T = || t.clone();
     result
 }
 
@@ -24,11 +24,4 @@ fn main() {
 
     copy2(@3);
     copy2(@&x); //~ ERROR does not fulfill `'static`
-
-    let boxed: @fn() = || {};
-    copy2(boxed);
-    let owned: ~fn() = || {};
-    copy2(owned);    //~ ERROR does not fulfill `Copy`
-    let borrowed: &fn:Copy() = || {};
-    copy2(borrowed); //~ ERROR does not fulfill `'static`
 }

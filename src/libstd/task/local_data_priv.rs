@@ -15,6 +15,7 @@ use libc;
 use local_data;
 use prelude::*;
 use ptr;
+use sys;
 use task::rt;
 use util;
 
@@ -40,6 +41,21 @@ impl Handle {
                     NewHandle(&mut (*task).storage)
                 }
             }
+        }
+    }
+}
+
+#[deriving(Eq)]
+enum LoanState {
+    NoLoan, ImmLoan, MutLoan
+}
+
+impl LoanState {
+    fn describe(&self) -> &'static str {
+        match *self {
+            NoLoan => "no loan",
+            ImmLoan => "immutable",
+            MutLoan => "mutable"
         }
     }
 }
@@ -77,7 +93,7 @@ impl<T: 'static> LocalData for T {}
 //
 // n.b. If TLS is used heavily in future, this could be made more efficient with
 //      a proper map.
-type TaskLocalMap = ~[Option<(*libc::c_void, TLSValue, uint)>];
+type TaskLocalMap = ~[Option<(*libc::c_void, TLSValue, LoanState)>];
 type TLSValue = ~LocalData:;
 
 fn cleanup_task_local_map(map_ptr: *libc::c_void) {
@@ -141,8 +157,9 @@ unsafe fn get_local_map(handle: Handle) -> &mut TaskLocalMap {
     }
 }
 
-fn key_to_key_value<T: 'static>(key: local_data::Key<T>) -> *libc::c_void {
-    unsafe { cast::transmute(key) }
+unsafe fn key_to_key_value<T: 'static>(key: local_data::Key<T>) -> *libc::c_void {
+    let pair: sys::Closure = cast::transmute_copy(&key);
+    return pair.code as *libc::c_void;
 }
 
 pub unsafe fn local_pop<T: 'static>(handle: Handle,
@@ -152,9 +169,10 @@ pub unsafe fn local_pop<T: 'static>(handle: Handle,
 
     for map.mut_iter().advance |entry| {
         match *entry {
-            Some((k, _, loans)) if k == key_value => {
-                if loans != 0 {
-                    fail!("TLS value has been loaned via get already");
+            Some((k, _, loan)) if k == key_value => {
+                if loan != NoLoan {
+                    fail!("TLS value cannot be removed because it is already \
+                          borrowed as %s", loan.describe());
                 }
                 // Move the data out of the `entry` slot via util::replace. This
                 // is guaranteed to succeed because we already matched on `Some`
@@ -192,6 +210,29 @@ pub unsafe fn local_pop<T: 'static>(handle: Handle,
 pub unsafe fn local_get<T: 'static, U>(handle: Handle,
                                        key: local_data::Key<T>,
                                        f: &fn(Option<&T>) -> U) -> U {
+    local_get_with(handle, key, ImmLoan, f)
+}
+
+pub unsafe fn local_get_mut<T: 'static, U>(handle: Handle,
+                                           key: local_data::Key<T>,
+                                           f: &fn(Option<&mut T>) -> U) -> U {
+    do local_get_with(handle, key, MutLoan) |x| {
+        match x {
+            None => f(None),
+            // We're violating a lot of compiler guarantees with this
+            // invocation of `transmute_mut`, but we're doing runtime checks to
+            // ensure that it's always valid (only one at a time).
+            //
+            // there is no need to be upset!
+            Some(x) => { f(Some(cast::transmute_mut(x))) }
+        }
+    }
+}
+
+unsafe fn local_get_with<T: 'static, U>(handle: Handle,
+                                        key: local_data::Key<T>,
+                                        state: LoanState,
+                                        f: &fn(Option<&T>) -> U) -> U {
     // This function must be extremely careful. Because TLS can store owned
     // values, and we must have some form of `get` function other than `pop`,
     // this function has to give a `&` reference back to the caller.
@@ -218,12 +259,24 @@ pub unsafe fn local_get<T: 'static, U>(handle: Handle,
         None => { return f(None); }
         Some(i) => {
             let ret;
+            let mut return_loan = false;
             match map[i] {
-                Some((_, ref data, ref mut loans)) => {
-                    *loans = *loans + 1;
+                Some((_, ref data, ref mut loan)) => {
+                    match (state, *loan) {
+                        (_, NoLoan) => {
+                            *loan = state;
+                            return_loan = true;
+                        }
+                        (ImmLoan, ImmLoan) => {}
+                        (want, cur) => {
+                            fail!("TLS slot cannot be borrowed as %s because \
+                                   it is already borrowed as %s",
+                                  want.describe(), cur.describe());
+                        }
+                    }
                     // data was created with `~~T as ~LocalData`, so we extract
                     // pointer part of the trait, (as ~~T), and then use
-                    // compiler coercions to achieve a '&' pointer
+                    // compiler coercions to achieve a '&' pointer.
                     match *cast::transmute::<&TLSValue, &(uint, ~~T)>(data) {
                         (_vtable, ref box) => {
                             let value: &T = **box;
@@ -238,9 +291,11 @@ pub unsafe fn local_get<T: 'static, U>(handle: Handle,
             // 'f' returned because `f` could have appended more TLS items which
             // in turn relocated the vector. Hence we do another lookup here to
             // fixup the loans.
-            match map[i] {
-                Some((_, _, ref mut loans)) => { *loans = *loans - 1; }
-                None => { libc::abort(); }
+            if return_loan {
+                match map[i] {
+                    Some((_, _, ref mut loan)) => { *loan = NoLoan; }
+                    None => { libc::abort(); }
+                }
             }
             return ret;
         }
@@ -269,9 +324,10 @@ pub unsafe fn local_set<T: 'static>(handle: Handle,
         // First see if the map contains this key already
         let curspot = map.iter().position(|entry| {
             match *entry {
-                Some((ekey, _, loans)) if key == ekey => {
-                    if loans != 0 {
-                        fail!("TLS value has been loaned via get already");
+                Some((ekey, _, loan)) if key == ekey => {
+                    if loan != NoLoan {
+                        fail!("TLS value cannot be overwritten because it is
+                               already borrowed as %s", loan.describe())
                     }
                     true
                 }
@@ -286,7 +342,7 @@ pub unsafe fn local_set<T: 'static>(handle: Handle,
     }
 
     match insertion_position(map, keyval) {
-        Some(i) => { map[i] = Some((keyval, data, 0)); }
-        None => { map.push(Some((keyval, data, 0))); }
+        Some(i) => { map[i] = Some((keyval, data, NoLoan)); }
+        None => { map.push(Some((keyval, data, NoLoan))); }
     }
 }

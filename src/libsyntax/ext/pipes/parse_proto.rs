@@ -44,7 +44,7 @@ impl proto_parser for parser::Parser {
         let name = interner_get(id.name);
 
         self.expect(&token::COLON);
-        let dir = match copy *self.token {
+        let dir = match (*self.token).clone() {
             token::IDENT(n, _) => interner_get(n.name),
             _ => fail!()
         };

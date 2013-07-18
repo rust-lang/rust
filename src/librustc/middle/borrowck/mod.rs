@@ -49,6 +49,15 @@ pub mod gather_loans;
 pub mod move_data;
 
 pub struct LoanDataFlowOperator;
+
+/// XXX(pcwalton): Should just be #[deriving(Clone)], but that doesn't work
+/// yet on unit structs.
+impl Clone for LoanDataFlowOperator {
+    fn clone(&self) -> LoanDataFlowOperator {
+        LoanDataFlowOperator
+    }
+}
+
 pub type LoanDataFlow = DataFlowContext<LoanDataFlowOperator>;
 
 pub fn check_crate(
@@ -577,7 +586,7 @@ impl BorrowckCtxt {
                 ty::ty_closure(ref cty) if cty.sigil == ast::BorrowedSigil =>
                     "a non-copyable stack closure (capture it in a new closure, \
                      e.g. `|x| f(x)`, to override)",
-                _ if !ty::type_is_copyable(tcx, ty) =>
+                _ if ty::type_moves_by_default(tcx, ty) =>
                     "non-copyable (perhaps you meant to use clone()?)",
                 _ => default_msg,
             }

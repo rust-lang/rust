@@ -18,26 +18,28 @@ pub struct alist<A,B> {
     data: @mut ~[Entry<A,B>]
 }
 
-pub fn alist_add<A:Copy,B:Copy>(lst: &alist<A,B>, k: A, v: B) {
+pub fn alist_add<A,B>(lst: &alist<A,B>, k: A, v: B) {
     lst.data.push(Entry{key:k, value:v});
 }
 
-pub fn alist_get<A:Copy,B:Copy>(lst: &alist<A,B>, k: A) -> B {
+pub fn alist_get<A:Clone,B:Clone>(lst: &alist<A,B>, k: A) -> B {
     let eq_fn = lst.eq_fn;
     for lst.data.iter().advance |entry| {
-        if eq_fn(copy entry.key, copy k) { return copy entry.value; }
+        if eq_fn(entry.key.clone(), k.clone()) {
+            return entry.value.clone();
+        }
     }
     fail!();
 }
 
 #[inline]
-pub fn new_int_alist<B:Copy>() -> alist<int, B> {
+pub fn new_int_alist<B>() -> alist<int, B> {
     fn eq_int(a: int, b: int) -> bool { a == b }
     return alist {eq_fn: eq_int, data: @mut ~[]};
 }
 
 #[inline]
-pub fn new_int_alist_2<B:Copy>() -> alist<int, B> {
+pub fn new_int_alist_2<B>() -> alist<int, B> {
     #[inline]
     fn eq_int(a: int, b: int) -> bool { a == b }
     return alist {eq_fn: eq_int, data: @mut ~[]};

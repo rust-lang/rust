@@ -15,11 +15,11 @@ fn main() {
     let carrots = @~"crunchy";
 
     let result: @fn(@~str, &fn(~str)) = (|tasties, macerate| {
-        macerate(copy *tasties);
+        macerate((*tasties).clone());
     });
     result(carrots, |food| {
         let mush = food + cheese;
-        let cheese = copy cheese;
+        let cheese = cheese.clone();
         let f: &fn() = || {
             let chew = mush + cheese;
             fail!("so yummy")

@@ -73,7 +73,7 @@ impl IdleWatcher {
                 let mut idle_watcher: IdleWatcher = NativeHandle::from_native_handle(handle);
                 {
                     let data = idle_watcher.get_watcher_data();
-                    data.close_cb.swap_unwrap()();
+                    data.close_cb.take_unwrap()();
                 }
                 idle_watcher.drop_watcher_data();
                 uvll::idle_delete(handle);

@@ -18,6 +18,7 @@ use back::link::*;
 use driver::session;
 use lib;
 use lib::llvm::{llvm, ValueRef, True};
+use middle::lang_items::{FreeFnLangItem, ExchangeFreeFnLangItem};
 use middle::trans::adt;
 use middle::trans::base::*;
 use middle::trans::callee;
@@ -44,7 +45,7 @@ use syntax::ast;
 pub fn trans_free(cx: block, v: ValueRef) -> block {
     let _icx = push_ctxt("trans_free");
     callee::trans_lang_call(cx,
-        cx.tcx().lang_items.free_fn(),
+        langcall(cx, None, "", FreeFnLangItem),
         [PointerCast(cx, v, Type::i8p())],
         Some(expr::Ignore)).bcx
 }
@@ -52,7 +53,7 @@ pub fn trans_free(cx: block, v: ValueRef) -> block {
 pub fn trans_exchange_free(cx: block, v: ValueRef) -> block {
     let _icx = push_ctxt("trans_exchange_free");
     callee::trans_lang_call(cx,
-        cx.tcx().lang_items.exchange_free_fn(),
+        langcall(cx, None, "", ExchangeFreeFnLangItem),
         [PointerCast(cx, v, Type::i8p())],
         Some(expr::Ignore)).bcx
 }
@@ -365,7 +366,12 @@ pub fn make_visit_glue(bcx: block, v: ValueRef, t: ty::t) -> block {
     let _icx = push_ctxt("make_visit_glue");
     do with_scope(bcx, None, "visitor cleanup") |bcx| {
         let mut bcx = bcx;
-        let (visitor_trait, object_ty) = ty::visitor_object_ty(bcx.tcx());
+        let (visitor_trait, object_ty) = match ty::visitor_object_ty(bcx.tcx()){
+            Ok(pair) => pair,
+            Err(s) => {
+                bcx.tcx().sess.fatal(s);
+            }
+        };
         let v = PointerCast(bcx, v, type_of::type_of(bcx.ccx(), object_ty).ptr_to());
         bcx = reflect::emit_calls_to_trait_visit_ty(bcx, t, v, visitor_trait.def_id);
         // The visitor is a boxed object and needs to be dropped
@@ -420,7 +426,7 @@ pub fn trans_struct_drop_flag(bcx: block, t: ty::t, v0: ValueRef, dtor_did: ast:
 
         // Find and call the actual destructor
         let dtor_addr = get_res_dtor(bcx.ccx(), dtor_did,
-                                     class_did, /*bad*/copy substs.tps);
+                                     class_did, substs.tps.clone());
 
         // The second argument is the "self" argument for drop
         let params = unsafe {
@@ -455,7 +461,7 @@ pub fn trans_struct_drop(mut bcx: block, t: ty::t, v0: ValueRef, dtor_did: ast::
 
     // Find and call the actual destructor
     let dtor_addr = get_res_dtor(bcx.ccx(), dtor_did,
-                                 class_did, /*bad*/copy substs.tps);
+                                 class_did, substs.tps.clone());
 
     // The second argument is the "self" argument for drop
     let params = unsafe {

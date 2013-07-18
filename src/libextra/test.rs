@@ -27,6 +27,7 @@ use term;
 use time::precise_time_ns;
 use treemap::TreeMap;
 
+use std::clone::Clone;
 use std::comm::{stream, SharedChan};
 use std::either;
 use std::io;
@@ -44,13 +45,14 @@ use std::os;
 // colons. This way if some test runner wants to arrange the tests
 // hierarchically it may.
 
+#[deriving(Clone)]
 pub enum TestName {
     StaticTestName(&'static str),
     DynTestName(~str)
 }
 impl ToStr for TestName {
     fn to_str(&self) -> ~str {
-        match copy *self {
+        match (*self).clone() {
             StaticTestName(s) => s.to_str(),
             DynTestName(s) => s.to_str()
         }
@@ -64,7 +66,9 @@ impl ToStr for TestName {
 pub enum TestFn {
     StaticTestFn(extern fn()),
     StaticBenchFn(extern fn(&mut BenchHarness)),
+    StaticMetricFn(~fn(&mut MetricMap)),
     DynTestFn(~fn()),
+    DynMetricFn(~fn(&mut MetricMap)),
     DynBenchFn(~fn(&mut BenchHarness))
 }
 
@@ -78,6 +82,7 @@ pub struct BenchHarness {
 
 // The definition of a single test. A test runner will run a list of
 // these.
+#[deriving(Clone)]
 pub struct TestDesc {
     name: TestName,
     ignore: bool,
@@ -89,15 +94,23 @@ pub struct TestDescAndFn {
     testfn: TestFn,
 }
 
-#[deriving(Encodable,Decodable,Eq)]
+#[deriving(Clone, Encodable, Decodable, Eq)]
 pub struct Metric {
     value: f64,
     noise: f64
 }
 
+#[deriving(Eq)]
 pub struct MetricMap(TreeMap<~str,Metric>);
 
+impl Clone for MetricMap {
+    pub fn clone(&self) -> MetricMap {
+        MetricMap((**self).clone())
+    }
+}
+
 /// Analysis of a single change in metric
+#[deriving(Eq)]
 pub enum MetricChange {
     LikelyNoise,
     MetricAdded,
@@ -130,10 +143,10 @@ pub fn test_main_static(args: &[~str], tests: &[TestDescAndFn]) {
     let owned_tests = do tests.map |t| {
         match t.testfn {
             StaticTestFn(f) =>
-            TestDescAndFn { testfn: StaticTestFn(f), desc: copy t.desc },
+            TestDescAndFn { testfn: StaticTestFn(f), desc: t.desc.clone() },
 
             StaticBenchFn(f) =>
-            TestDescAndFn { testfn: StaticBenchFn(f), desc: copy t.desc },
+            TestDescAndFn { testfn: StaticBenchFn(f), desc: t.desc.clone() },
 
             _ => {
                 fail!("non-static tests passed to test::test_main_static");
@@ -174,8 +187,10 @@ pub fn parse_opts(args: &[~str]) -> OptRes {
 
     let filter =
         if matches.free.len() > 0 {
-            Some(copy (matches).free[0])
-        } else { None };
+            Some((matches).free[0].clone())
+        } else {
+            None
+        };
 
     let run_ignored = getopts::opt_present(&matches, "ignored");
 
@@ -210,14 +225,20 @@ pub fn parse_opts(args: &[~str]) -> OptRes {
     either::Left(test_opts)
 }
 
-#[deriving(Eq)]
+#[deriving(Clone, Eq)]
 pub struct BenchSamples {
     ns_iter_summ: stats::Summary,
     mb_s: uint
 }
 
-#[deriving(Eq)]
-pub enum TestResult { TrOk, TrFailed, TrIgnored, TrBench(BenchSamples) }
+#[deriving(Clone, Eq)]
+pub enum TestResult {
+    TrOk,
+    TrFailed,
+    TrIgnored,
+    TrMetrics(MetricMap),
+    TrBench(BenchSamples),
+}
 
 struct ConsoleTestState {
     out: @io::Writer,
@@ -228,7 +249,7 @@ struct ConsoleTestState {
     passed: uint,
     failed: uint,
     ignored: uint,
-    benchmarked: uint,
+    measured: uint,
     metrics: MetricMap,
     failures: ~[TestDesc]
 }
@@ -260,7 +281,7 @@ impl ConsoleTestState {
             passed: 0u,
             failed: 0u,
             ignored: 0u,
-            benchmarked: 0u,
+            measured: 0u,
             metrics: MetricMap::new(),
             failures: ~[]
         }
@@ -278,10 +299,13 @@ impl ConsoleTestState {
         self.write_pretty("ignored", term::color::YELLOW);
     }
 
+    pub fn write_metric(&self) {
+        self.write_pretty("metric", term::color::CYAN);
+    }
+
     pub fn write_bench(&self) {
         self.write_pretty("bench", term::color::CYAN);
     }
-
 
     pub fn write_added(&self) {
         self.write_pretty("added", term::color::GREEN);
@@ -331,6 +355,10 @@ impl ConsoleTestState {
             TrOk => self.write_ok(),
             TrFailed => self.write_failed(),
             TrIgnored => self.write_ignored(),
+            TrMetrics(ref mm) => {
+                self.write_metric();
+                self.out.write_str(": " + fmt_metrics(mm));
+            }
             TrBench(ref bs) => {
                 self.write_bench();
                 self.out.write_str(": " + fmt_bench_samples(bs))
@@ -348,6 +376,7 @@ impl ConsoleTestState {
                                         TrOk => ~"ok",
                                         TrFailed => ~"failed",
                                         TrIgnored => ~"ignored",
+                                        TrMetrics(ref mm) => fmt_metrics(mm),
                                         TrBench(ref bs) => fmt_bench_samples(bs)
                                     }, test.name.to_str()));
             }
@@ -415,7 +444,7 @@ impl ConsoleTestState {
     pub fn write_run_finish(&self,
                             ratchet_metrics: &Option<Path>,
                             ratchet_pct: Option<f64>) -> bool {
-        assert!(self.passed + self.failed + self.ignored + self.benchmarked == self.total);
+        assert!(self.passed + self.failed + self.ignored + self.measured == self.total);
 
         let ratchet_success = match *ratchet_metrics {
             None => true,
@@ -447,10 +476,21 @@ impl ConsoleTestState {
         } else {
             self.write_failed();
         }
-        self.out.write_str(fmt!(". %u passed; %u failed; %u ignored, %u benchmarked\n\n",
-                                self.passed, self.failed, self.ignored, self.benchmarked));
+        self.out.write_str(fmt!(". %u passed; %u failed; %u ignored; %u measured\n\n",
+                                self.passed, self.failed, self.ignored, self.measured));
         return success;
     }
+}
+
+pub fn fmt_metrics(mm: &MetricMap) -> ~str {
+    use std::iterator::IteratorUtil;
+    let v : ~[~str] = mm.iter()
+        .transform(|(k,v)| fmt!("%s: %f (+/- %f)",
+                                *k,
+                                v.value as float,
+                                v.noise as float))
+        .collect();
+    v.connect(", ")
 }
 
 pub fn fmt_bench_samples(bs: &BenchSamples) -> ~str {
@@ -471,7 +511,7 @@ pub fn run_tests_console(opts: &TestOpts,
                          tests: ~[TestDescAndFn]) -> bool {
     fn callback(event: &TestEvent, st: &mut ConsoleTestState) {
         debug!("callback(event=%?)", event);
-        match copy *event {
+        match (*event).clone() {
             TeFiltered(ref filtered_tests) => st.write_run_start(filtered_tests.len()),
             TeWait(ref test) => st.write_test_start(test),
             TeResult(test, result) => {
@@ -480,11 +520,19 @@ pub fn run_tests_console(opts: &TestOpts,
                 match result {
                     TrOk => st.passed += 1,
                     TrIgnored => st.ignored += 1,
+                    TrMetrics(mm) => {
+                        let tname = test.name.to_str();
+                        for mm.iter().advance() |(k,v)| {
+                            st.metrics.insert_metric(tname + "." + *k,
+                                                     v.value, v.noise);
+                        }
+                        st.measured += 1
+                    }
                     TrBench(bs) => {
                         st.metrics.insert_metric(test.name.to_str(),
                                                  bs.ns_iter_summ.median,
                                                  bs.ns_iter_summ.max - bs.ns_iter_summ.min);
-                        st.benchmarked += 1
+                        st.measured += 1
                     }
                     TrFailed => {
                         st.failed += 1;
@@ -532,7 +580,7 @@ fn should_sort_failures_before_printing_them() {
             passed: 0u,
             failed: 0u,
             ignored: 0u,
-            benchmarked: 0u,
+            measured: 0u,
             metrics: MetricMap::new(),
             failures: ~[test_b, test_a]
         };
@@ -547,6 +595,7 @@ fn should_sort_failures_before_printing_them() {
 
 fn use_color() -> bool { return get_concurrency() == 1; }
 
+#[deriving(Clone)]
 enum TestEvent {
     TeFiltered(~[TestDesc]),
     TeWait(TestDesc),
@@ -560,15 +609,15 @@ fn run_tests(opts: &TestOpts,
              callback: &fn(e: TestEvent)) {
 
     let filtered_tests = filter_tests(opts, tests);
-    let filtered_descs = filtered_tests.map(|t| copy t.desc);
+    let filtered_descs = filtered_tests.map(|t| t.desc.clone());
 
     callback(TeFiltered(filtered_descs));
 
-    let (filtered_tests, filtered_benchs) =
+    let (filtered_tests, filtered_benchs_and_metrics) =
         do filtered_tests.partition |e| {
         match e.testfn {
             StaticTestFn(_) | DynTestFn(_) => true,
-            StaticBenchFn(_) | DynBenchFn(_) => false
+            _ => false
         }
     };
 
@@ -591,7 +640,7 @@ fn run_tests(opts: &TestOpts,
                 // We are doing one test at a time so we can print the name
                 // of the test before we run it. Useful for debugging tests
                 // that hang forever.
-                callback(TeWait(copy test.desc));
+                callback(TeWait(test.desc.clone()));
             }
             run_test(!opts.run_tests, test, ch.clone());
             pending += 1;
@@ -599,15 +648,16 @@ fn run_tests(opts: &TestOpts,
 
         let (desc, result) = p.recv();
         if concurrency != 1 {
-            callback(TeWait(copy desc));
+            callback(TeWait(desc.clone()));
         }
         callback(TeResult(desc, result));
         pending -= 1;
     }
 
     // All benchmarks run at the end, in serial.
-    for filtered_benchs.consume_iter().advance |b| {
-        callback(TeWait(copy b.desc));
+    // (this includes metric fns)
+    for filtered_benchs_and_metrics.consume_iter().advance |b| {
+        callback(TeWait(b.desc.clone()));
         run_test(!opts.run_benchmarks, b, ch.clone());
         let (test, result) = p.recv();
         callback(TeResult(test, result));
@@ -628,7 +678,6 @@ fn get_concurrency() -> uint {
     else { threads * SCHED_OVERCOMMIT }
 }
 
-#[allow(non_implicitly_copyable_typarams)]
 pub fn filter_tests(
     opts: &TestOpts,
     tests: ~[TestDescAndFn]) -> ~[TestDescAndFn]
@@ -640,7 +689,7 @@ pub fn filter_tests(
         filtered
     } else {
         let filter_str = match opts.filter {
-          Some(ref f) => copy *f,
+          Some(ref f) => (*f).clone(),
           None => ~""
         };
 
@@ -714,7 +763,7 @@ pub fn run_test(force_ignore: bool,
             let task_result = result_future.unwrap().recv();
             let test_result = calc_result(&desc,
                                           task_result == task::Success);
-            monitor_ch.send((copy desc, test_result));
+            monitor_ch.send((desc.clone(), test_result));
         }
     }
 
@@ -727,6 +776,18 @@ pub fn run_test(force_ignore: bool,
         StaticBenchFn(benchfn) => {
             let bs = ::test::bench::benchmark(benchfn);
             monitor_ch.send((desc, TrBench(bs)));
+            return;
+        }
+        DynMetricFn(f) => {
+            let mut mm = MetricMap::new();
+            f(&mut mm);
+            monitor_ch.send((desc, TrMetrics(mm)));
+            return;
+        }
+        StaticMetricFn(f) => {
+            let mut mm = MetricMap::new();
+            f(&mut mm);
+            monitor_ch.send((desc, TrMetrics(mm)));
             return;
         }
         DynTestFn(f) => run_test_inner(desc, monitor_ch, f),
@@ -756,26 +817,31 @@ impl ToJson for Metric {
 
 impl MetricMap {
 
-    fn new() -> MetricMap {
+    pub fn new() -> MetricMap {
         MetricMap(TreeMap::new())
     }
 
     /// Load MetricDiff from a file.
-    fn load(p: &Path) -> MetricMap {
+    pub fn load(p: &Path) -> MetricMap {
         assert!(os::path_exists(p));
-        let f = io::file_reader(p).get();
+        let f = io::file_reader(p).unwrap();
         let mut decoder = json::Decoder(json::from_reader(f).get());
         MetricMap(Decodable::decode(&mut decoder))
     }
 
     /// Write MetricDiff to a file.
     pub fn save(&self, p: &Path) {
-        let f = io::file_writer(p, [io::Create, io::Truncate]).get();
+        let f = io::file_writer(p, [io::Create, io::Truncate]).unwrap();
         json::to_pretty_writer(f, &self.to_json());
     }
 
-    /// Compare against another MetricMap
-    pub fn compare_to_old(&self, old: MetricMap,
+    /// Compare against another MetricMap. Optionally compare all
+    /// measurements in the maps using the provided `noise_pct` as a
+    /// percentage of each value to consider noise. If `None`, each
+    /// measurement's noise threshold is independently chosen as the
+    /// maximum of that measurement's recorded noise quantity in either
+    /// map.
+    pub fn compare_to_old(&self, old: &MetricMap,
                           noise_pct: Option<f64>) -> MetricDiff {
         let mut diff : MetricDiff = TreeMap::new();
         for old.iter().advance |(k, vold)| {
@@ -787,10 +853,10 @@ impl MetricMap {
                         None => f64::max(vold.noise.abs(), v.noise.abs()),
                         Some(pct) => vold.value * pct / 100.0
                     };
-                    if delta.abs() < noise {
+                    if delta.abs() <= noise {
                         LikelyNoise
                     } else {
-                        let pct = delta.abs() / v.value * 100.0;
+                        let pct = delta.abs() / (vold.value).max(&f64::epsilon) * 100.0;
                         if vold.noise < 0.0 {
                             // When 'noise' is negative, it means we want
                             // to see deltas that go up over time, and can
@@ -813,11 +879,11 @@ impl MetricMap {
                     }
                 }
             };
-            diff.insert(copy *k, r);
+            diff.insert((*k).clone(), r);
         }
         for self.iter().advance |(k, _)| {
             if !diff.contains_key(k) {
-                diff.insert(copy *k, MetricAdded);
+                diff.insert((*k).clone(), MetricAdded);
             }
         }
         diff
@@ -857,7 +923,7 @@ impl MetricMap {
             MetricMap::new()
         };
 
-        let diff : MetricDiff = self.compare_to_old(old, pct);
+        let diff : MetricDiff = self.compare_to_old(&old, pct);
         let ok = do diff.iter().all() |(_, v)| {
             match *v {
                 Regression(_) => false,
@@ -899,7 +965,7 @@ impl BenchHarness {
         if self.iterations == 0 {
             0
         } else {
-            self.ns_elapsed() / self.iterations
+            self.ns_elapsed() / self.iterations.max(&1)
         }
     }
 
@@ -922,7 +988,7 @@ impl BenchHarness {
         if self.ns_per_iter() == 0 {
             n = 1_000_000;
         } else {
-            n = 1_000_000 / self.ns_per_iter();
+            n = 1_000_000 / self.ns_per_iter().max(&1);
         }
 
         let mut total_run = 0;
@@ -964,8 +1030,8 @@ impl BenchHarness {
             }
 
             total_run += loop_run;
-            // Longest we ever run for is 10s.
-            if total_run > 10_000_000_000 {
+            // Longest we ever run for is 3s.
+            if total_run > 3_000_000_000 {
                 return summ5;
             }
 
@@ -992,7 +1058,8 @@ pub mod bench {
 
         let ns_iter_summ = bs.auto_bench(f);
 
-        let iter_s = 1_000_000_000 / (ns_iter_summ.median as u64);
+        let ns_iter = (ns_iter_summ.median as u64).max(&1);
+        let iter_s = 1_000_000_000 / ns_iter;
         let mb_s = (bs.bytes * iter_s) / 1_000_000;
 
         BenchSamples {
@@ -1006,13 +1073,16 @@ pub mod bench {
 mod tests {
     use test::{TrFailed, TrIgnored, TrOk, filter_tests, parse_opts,
                TestDesc, TestDescAndFn,
+               Metric, MetricMap, MetricAdded, MetricRemoved,
+               Improvement, Regression, LikelyNoise,
                StaticTestName, DynTestName, DynTestFn};
     use test::{TestOpts, run_test};
 
     use std::either;
     use std::comm::{stream, SharedChan};
-    use std::option;
     use std::vec;
+    use tempfile;
+    use std::os;
 
     #[test]
     pub fn do_not_run_ignored_tests() {
@@ -1094,7 +1164,7 @@ mod tests {
           either::Left(o) => o,
           _ => fail!("Malformed arg in first_free_arg_should_be_a_filter")
         };
-        assert!("filter" == (copy opts.filter).get());
+        assert!("filter" == opts.filter.clone().get());
     }
 
     #[test]
@@ -1177,11 +1247,11 @@ mod tests {
             for names.iter().advance |name| {
                 let test = TestDescAndFn {
                     desc: TestDesc {
-                        name: DynTestName(copy *name),
+                        name: DynTestName((*name).clone()),
                         ignore: false,
                         should_fail: false
                     },
-                    testfn: DynTestFn(copy testfn),
+                    testfn: DynTestFn(testfn),
                 };
                 tests.push(test);
             }
@@ -1207,5 +1277,100 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[test]
+    pub fn test_metricmap_compare() {
+        let mut m1 = MetricMap::new();
+        let mut m2 = MetricMap::new();
+        m1.insert_metric("in-both-noise", 1000.0, 200.0);
+        m2.insert_metric("in-both-noise", 1100.0, 200.0);
+
+        m1.insert_metric("in-first-noise", 1000.0, 2.0);
+        m2.insert_metric("in-second-noise", 1000.0, 2.0);
+
+        m1.insert_metric("in-both-want-downwards-but-regressed", 1000.0, 10.0);
+        m2.insert_metric("in-both-want-downwards-but-regressed", 2000.0, 10.0);
+
+        m1.insert_metric("in-both-want-downwards-and-improved", 2000.0, 10.0);
+        m2.insert_metric("in-both-want-downwards-and-improved", 1000.0, 10.0);
+
+        m1.insert_metric("in-both-want-upwards-but-regressed", 2000.0, -10.0);
+        m2.insert_metric("in-both-want-upwards-but-regressed", 1000.0, -10.0);
+
+        m1.insert_metric("in-both-want-upwards-and-improved", 1000.0, -10.0);
+        m2.insert_metric("in-both-want-upwards-and-improved", 2000.0, -10.0);
+
+        let diff1 = m2.compare_to_old(&m1, None);
+
+        assert_eq!(*(diff1.find(&~"in-both-noise").get()), LikelyNoise);
+        assert_eq!(*(diff1.find(&~"in-first-noise").get()), MetricRemoved);
+        assert_eq!(*(diff1.find(&~"in-second-noise").get()), MetricAdded);
+        assert_eq!(*(diff1.find(&~"in-both-want-downwards-but-regressed").get()),
+                   Regression(100.0));
+        assert_eq!(*(diff1.find(&~"in-both-want-downwards-and-improved").get()),
+                   Improvement(50.0));
+        assert_eq!(*(diff1.find(&~"in-both-want-upwards-but-regressed").get()),
+                   Regression(50.0));
+        assert_eq!(*(diff1.find(&~"in-both-want-upwards-and-improved").get()),
+                   Improvement(100.0));
+        assert_eq!(diff1.len(), 7);
+
+        let diff2 = m2.compare_to_old(&m1, Some(200.0));
+
+        assert_eq!(*(diff2.find(&~"in-both-noise").get()), LikelyNoise);
+        assert_eq!(*(diff2.find(&~"in-first-noise").get()), MetricRemoved);
+        assert_eq!(*(diff2.find(&~"in-second-noise").get()), MetricAdded);
+        assert_eq!(*(diff2.find(&~"in-both-want-downwards-but-regressed").get()), LikelyNoise);
+        assert_eq!(*(diff2.find(&~"in-both-want-downwards-and-improved").get()), LikelyNoise);
+        assert_eq!(*(diff2.find(&~"in-both-want-upwards-but-regressed").get()), LikelyNoise);
+        assert_eq!(*(diff2.find(&~"in-both-want-upwards-and-improved").get()), LikelyNoise);
+        assert_eq!(diff2.len(), 7);
+    }
+
+    pub fn ratchet_test() {
+
+        let dpth = tempfile::mkdtemp(&os::tmpdir(),
+                                     "test-ratchet").expect("missing test for ratchet");
+        let pth = dpth.push("ratchet.json");
+
+        let mut m1 = MetricMap::new();
+        m1.insert_metric("runtime", 1000.0, 2.0);
+        m1.insert_metric("throughput", 50.0, 2.0);
+
+        let mut m2 = MetricMap::new();
+        m2.insert_metric("runtime", 1100.0, 2.0);
+        m2.insert_metric("throughput", 50.0, 2.0);
+
+        m1.save(&pth);
+
+        // Ask for a ratchet that should fail to advance.
+        let (diff1, ok1) = m2.ratchet(&pth, None);
+        assert_eq!(ok1, false);
+        assert_eq!(diff1.len(), 2);
+        assert_eq!(*(diff1.find(&~"runtime").get()), Regression(10.0));
+        assert_eq!(*(diff1.find(&~"throughput").get()), LikelyNoise);
+
+        // Check that it was not rewritten.
+        let m3 = MetricMap::load(&pth);
+        assert_eq!(m3.len(), 2);
+        assert_eq!(*(m3.find(&~"runtime").get()), Metric { value: 1000.0, noise: 2.0 });
+        assert_eq!(*(m3.find(&~"throughput").get()), Metric { value: 50.0, noise: 2.0 });
+
+        // Ask for a ratchet with an explicit noise-percentage override,
+        // that should advance.
+        let (diff2, ok2) = m2.ratchet(&pth, Some(10.0));
+        assert_eq!(ok2, true);
+        assert_eq!(diff2.len(), 2);
+        assert_eq!(*(diff2.find(&~"runtime").get()), LikelyNoise);
+        assert_eq!(*(diff2.find(&~"throughput").get()), LikelyNoise);
+
+        // Check that it was rewritten.
+        let m4 = MetricMap::load(&pth);
+        assert_eq!(m4.len(), 2);
+        assert_eq!(*(m4.find(&~"runtime").get()), Metric { value: 1100.0, noise: 2.0 });
+        assert_eq!(*(m4.find(&~"throughput").get()), Metric { value: 50.0, noise: 2.0 });
+
+        os::remove_dir_recursive(&dpth);
     }
 }

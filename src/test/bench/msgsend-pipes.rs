@@ -34,11 +34,11 @@ enum request {
 }
 
 fn server(requests: &PortSet<request>, responses: &Chan<uint>) {
-    let mut count = 0;
+    let mut count: uint = 0;
     let mut done = false;
     while !done {
         match requests.try_recv() {
-          Some(get_count) => { responses.send(copy count); }
+          Some(get_count) => { responses.send(count.clone()); }
           Some(bytes(b)) => {
             //error!("server: received %? bytes", b);
             count += b;
@@ -103,7 +103,7 @@ fn main() {
     } else if args.len() <= 1u {
         ~[~"", ~"10000", ~"4"]
     } else {
-        copy args
+        args.clone()
     };
 
     info!("%?", args);

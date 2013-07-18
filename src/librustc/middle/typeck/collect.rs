@@ -69,8 +69,12 @@ pub fn collect_item_types(ccx: @mut CrateCtxt, crate: &ast::crate) {
         ccx.tcx.intrinsic_defs.insert(lang_item, ty);
     }
 
-    collect_intrinsic_type(ccx, ccx.tcx.lang_items.ty_desc());
-    collect_intrinsic_type(ccx, ccx.tcx.lang_items.opaque());
+    match ccx.tcx.lang_items.ty_desc() {
+        Some(id) => { collect_intrinsic_type(ccx, id); } None => {}
+    }
+    match ccx.tcx.lang_items.opaque() {
+        Some(id) => { collect_intrinsic_type(ccx, id); } None => {}
+    }
 
     visit::visit_crate(
         crate, ((),
@@ -82,7 +86,7 @@ pub fn collect_item_types(ccx: @mut CrateCtxt, crate: &ast::crate) {
 }
 
 pub trait ToTy {
-    fn to_ty<RS:region_scope + Copy + 'static>(
+    fn to_ty<RS:region_scope + Clone + 'static>(
              &self,
              rs: &RS,
              ast_ty: &ast::Ty)
@@ -90,7 +94,7 @@ pub trait ToTy {
 }
 
 impl ToTy for CrateCtxt {
-    fn to_ty<RS:region_scope + Copy + 'static>(
+    fn to_ty<RS:region_scope + Clone + 'static>(
              &self,
              rs: &RS,
              ast_ty: &ast::Ty)
@@ -305,7 +309,7 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt,
         // create the type of `foo`, applying the substitution above
         let ty = ty::subst(tcx,
                            &substs,
-                           ty::mk_bare_fn(tcx, copy m.fty));
+                           ty::mk_bare_fn(tcx, m.fty.clone()));
 
         // create the type parameter definitions for `foo`, applying
         // the substitution to any traits that appear in their bounds.
@@ -565,27 +569,35 @@ pub fn compare_impl_method(tcx: ty::ctxt,
 
     // Create a bare fn type for trait/impl that includes self argument
     let trait_fty =
-        ty::mk_bare_fn(
-            tcx,
-            ty::BareFnTy {purity: trait_m.fty.purity,
-                          abis: trait_m.fty.abis,
-                          sig: ty::FnSig {
-                              bound_lifetime_names:
-                                  copy trait_m.fty.sig.bound_lifetime_names,
-                              inputs: trait_fn_args,
-                              output: trait_m.fty.sig.output
-                          }});
+        ty::mk_bare_fn(tcx,
+                       ty::BareFnTy {
+                            purity: trait_m.fty.purity,
+                            abis: trait_m.fty.abis,
+                            sig: ty::FnSig {
+                                bound_lifetime_names:
+                                    trait_m.fty
+                                           .sig
+                                           .bound_lifetime_names
+                                           .clone(),
+                                inputs: trait_fn_args,
+                                output: trait_m.fty.sig.output
+                            }
+                        });
     let impl_fty =
-        ty::mk_bare_fn(
-            tcx,
-            ty::BareFnTy {purity: impl_m.fty.purity,
-                          abis: impl_m.fty.abis,
-                          sig: ty::FnSig {
-                              bound_lifetime_names:
-                                  copy impl_m.fty.sig.bound_lifetime_names,
-                              inputs: impl_fn_args,
-                              output: impl_m.fty.sig.output
-                          }});
+        ty::mk_bare_fn(tcx,
+                       ty::BareFnTy {
+                            purity: impl_m.fty.purity,
+                            abis: impl_m.fty.abis,
+                            sig: ty::FnSig {
+                                bound_lifetime_names:
+                                    impl_m.fty
+                                          .sig
+                                          .bound_lifetime_names
+                                          .clone(),
+                                    inputs: impl_fn_args,
+                                    output: impl_m.fty.sig.output
+                            }
+                        });
 
     // Perform substitutions so that the trait/impl methods are expressed
     // in terms of the same set of type/region parameters:
@@ -726,8 +738,7 @@ pub fn convert_methods(ccx: &CrateCtxt,
                           untransformed_rcvr_ty,
                           rcvr_ast_generics, rcvr_visibility,
                           &m.generics);
-        let fty =
-            ty::mk_bare_fn(tcx, copy mty.fty);
+        let fty = ty::mk_bare_fn(tcx, mty.fty.clone());
         tcx.tcache.insert(
             local_def(m.id),
 
@@ -736,7 +747,7 @@ pub fn convert_methods(ccx: &CrateCtxt,
             ty_param_bounds_and_ty {
                 generics: ty::Generics {
                     type_param_defs: @vec::append(
-                        copy *rcvr_ty_generics.type_param_defs,
+                        (*rcvr_ty_generics.type_param_defs).clone(),
                         *m_ty_generics.type_param_defs),
                     region_param: rcvr_ty_generics.region_param
                 },
@@ -745,7 +756,7 @@ pub fn convert_methods(ccx: &CrateCtxt,
         write_ty_to_tcx(tcx, m.id, fty);
         tcx.methods.insert(mty.def_id, mty);
         ConvertedMethod {mty: mty, id: m.id,
-                         span: m.span, body_id: m.body.node.id}
+                         span: m.span, body_id: m.body.id}
     }).collect();
 
     fn ty_of_method(ccx: &CrateCtxt,
@@ -1178,8 +1189,8 @@ pub fn ty_generics(ccx: &CrateCtxt,
          * Translate the AST's notion of ty param bounds (which are an
          * enum consisting of a newtyped Ty or a region) to ty's
          * notion of ty param bounds, which can either be user-defined
-         * traits, or one of the four built-in traits (formerly known
-         * as kinds): Freeze, Copy, and Send.
+         * traits, or one of the two built-in traits (formerly known
+         * as kinds): Freeze and Send.
          */
 
         let mut param_bounds = ty::ParamBounds {

@@ -24,7 +24,7 @@ use std::option::Option;
 use std::uint;
 use std::vec;
 
-#[deriving(Eq)]
+#[deriving(Clone, Eq)]
 enum RegClass {
     NoClass,
     Int,

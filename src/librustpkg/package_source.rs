@@ -41,9 +41,9 @@ impl PkgSrc {
     pub fn new(src_dir: &Path, dst_dir: &Path,
                   id: &PkgId) -> PkgSrc {
         PkgSrc {
-            root: copy *src_dir,
-            dst_dir: copy *dst_dir,
-            id: copy *id,
+            root: (*src_dir).clone(),
+            dst_dir: (*dst_dir).clone(),
+            id: (*id).clone(),
             libs: ~[],
             mains: ~[],
             tests: ~[],
@@ -62,15 +62,15 @@ impl PkgSrc {
         debug!("Checking dirs: %?", dirs);
         let path = dirs.iter().find_(|&d| os::path_exists(d));
         match path {
-            Some(d) => dir = copy *d,
+            Some(d) => dir = (*d).clone(),
             None => dir = match self.fetch_git() {
-                None => cond.raise((copy self.id, ~"supplied path for package dir does not \
+                None => cond.raise((self.id.clone(), ~"supplied path for package dir does not \
                                       exist, and couldn't interpret it as a URL fragment")),
                 Some(d) => d
             }
         }
         if !os::path_is_dir(&dir) {
-            cond.raise((copy self.id, ~"supplied path for package dir is a \
+            cond.raise((self.id.clone(), ~"supplied path for package dir is a \
                                         non-directory"));
         }
 
@@ -104,7 +104,7 @@ impl PkgSrc {
         let url = fmt!("https://%s", self.id.remote_path.to_str());
         let branch_args = match self.id.version {
                       NoVersion => ~[],
-                      ExactRevision(ref s) => ~[~"--branch", copy *s],
+                      ExactRevision(ref s) => ~[~"--branch", (*s).clone()],
                       SemanticVersion(ref s) => ~[~"--branch", s.to_str()]
         };
 
@@ -112,7 +112,7 @@ impl PkgSrc {
         note(fmt!("Fetching package: git clone %s %s %?", url, local.to_str(), branch_args));
 
         if run::process_output("git",
-                               ~[~"clone", copy url, local.to_str()] + branch_args).status != 0 {
+                               ~[~"clone", url.clone(), local.to_str()] + branch_args).status != 0 {
             note(fmt!("fetching %s failed: can't clone repository", url));
             None
         }
@@ -199,7 +199,7 @@ impl PkgSrc {
             note("Couldn't infer any crates to build.\n\
                          Try naming a crate `main.rs`, `lib.rs`, \
                          `test.rs`, or `bench.rs`.");
-            cond.raise(copy self.id);
+            cond.raise(self.id.clone());
         }
 
         debug!("found %u libs, %u mains, %u tests, %u benchs",
