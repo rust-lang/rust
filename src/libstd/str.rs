@@ -288,6 +288,7 @@ impl<'self, C: CharEq> CharEq for &'self [C] {
 
 
 /// An iterator over the substrings of a string, separated by `sep`.
+#[deriving(Clone)]
 pub struct StrCharSplitIterator<'self,Sep> {
     priv string: &'self str,
     priv position: uint,
@@ -355,6 +356,7 @@ impl<'self, Sep: CharEq> Iterator<&'self str> for StrCharSplitIterator<'self, Se
 
 /// An iterator over the start and end indicies of the matches of a
 /// substring within a larger string
+#[deriving(Clone)]
 pub struct StrMatchesIndexIterator<'self> {
     priv haystack: &'self str,
     priv needle: &'self str,
@@ -363,6 +365,7 @@ pub struct StrMatchesIndexIterator<'self> {
 
 /// An iterator over the substrings of a string separated by a given
 /// search string
+#[deriving(Clone)]
 pub struct StrStrSplitIterator<'self> {
     priv it: StrMatchesIndexIterator<'self>,
     priv last_end: uint,
@@ -2269,6 +2272,7 @@ impl Clone for @str {
 
 /// External iterator for a string's characters. Use with the `std::iterator`
 /// module.
+#[deriving(Clone)]
 pub struct StrCharIterator<'self> {
     priv index: uint,
     priv string: &'self str,
@@ -2288,6 +2292,7 @@ impl<'self> Iterator<char> for StrCharIterator<'self> {
 }
 /// External iterator for a string's characters in reverse order. Use
 /// with the `std::iterator` module.
+#[deriving(Clone)]
 pub struct StrCharRevIterator<'self> {
     priv index: uint,
     priv string: &'self str,
@@ -2308,6 +2313,7 @@ impl<'self> Iterator<char> for StrCharRevIterator<'self> {
 
 /// External iterator for a string's bytes. Use with the `std::iterator`
 /// module.
+#[deriving(Clone)]
 pub struct StrBytesIterator<'self> {
     priv it: vec::VecIterator<'self, u8>
 }
@@ -2321,6 +2327,7 @@ impl<'self> Iterator<u8> for StrBytesIterator<'self> {
 
 /// External iterator for a string's bytes in reverse order. Use with
 /// the `std::iterator` module.
+#[deriving(Clone)]
 pub struct StrBytesRevIterator<'self> {
     priv it: vec::VecRevIterator<'self, u8>
 }
