@@ -59,7 +59,6 @@ impl TyVisitor for MyVisitor {
     fn visit_f64(&self) -> bool { true }
 
     fn visit_char(&self) -> bool { true }
-    fn visit_str(&self) -> bool { true }
 
     fn visit_estr_box(&self) -> bool { true }
     fn visit_estr_uniq(&self) -> bool { true }

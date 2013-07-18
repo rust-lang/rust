@@ -197,6 +197,7 @@ impl<V:TyVisitor + MovePtr> TyVisitor for MovePtrAdaptor<V> {
         true
     }
 
+    #[cfg(stage0)]
     fn visit_str(&self) -> bool {
         self.align_to::<~str>();
         if ! self.inner.visit_str() { return false; }
