@@ -573,7 +573,7 @@ The top level of this tree is a module that is anonymous (from the point of view
 
 The Rust compiler is always invoked with a single source file as input, and always produces a single output crate.
 The processing of that source file may result in other source files being loaded as modules.
-Source and crate files typically have the extension `.rs`.
+Source files have the extension `.rs`.
 
 A Rust source file describes a module, the name and
 location of which -- in the module tree of the current crate -- are defined
