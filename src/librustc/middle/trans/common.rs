@@ -1109,7 +1109,9 @@ pub fn find_vtable(tcx: ty::ctxt,
     debug!("find_vtable(n_param=%u, n_bound=%u, ps=%s)",
            n_param, n_bound, ps.repr(tcx));
 
-    ps.vtables.get()[n_param][n_bound].clone()
+    let tables = ps.vtables.expect("vtables missing where they are needed");
+    let param_bounds = tables[n_param];
+    param_bounds[n_bound].clone()
 }
 
 pub fn dummy_substs(tps: ~[ty::t]) -> ty::substs {
