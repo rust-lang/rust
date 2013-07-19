@@ -369,7 +369,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Clone + 'static>(
         // return /something/ so they can at least get more errors
         ty::mk_evec(tcx, ast_mt_to_mt(this, rscope, mt), ty::vstore_uniq)
       }
-      ast::ty_ptr(ref mt) => {
+      ast::ty_ptr(_, ref mt) => {
         ty::mk_ptr(tcx, ast_mt_to_mt(this, rscope, mt))
       }
       ast::ty_rptr(ref region, ref mt) => {

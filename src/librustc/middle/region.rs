@@ -817,7 +817,7 @@ fn determine_rp_in_ty(ty: &ast::Ty,
 
     match ty.node {
       ast::ty_box(ref mt) | ast::ty_uniq(ref mt) | ast::ty_vec(ref mt) |
-      ast::ty_rptr(_, ref mt) | ast::ty_ptr(ref mt) => {
+      ast::ty_rptr(_, ref mt) | ast::ty_ptr(_, ref mt) => {
         visit_mt(mt, (cx, visitor));
       }
 

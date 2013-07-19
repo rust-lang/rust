@@ -725,7 +725,9 @@ fn check_item_ctypes(cx: &Context, it: &ast::item) {
                     _ => ()
                 }
             }
-            ast::ty_ptr(ref mt) => { check_ty(cx, mt.ty) }
+            ast::ty_ptr(_, ref mt) => {
+                check_ty(cx, mt.ty)
+            }
             _ => ()
         }
     }
