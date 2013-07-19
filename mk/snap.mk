@@ -12,13 +12,8 @@ define DEF_SNAP_FOR_STAGE_H
 # $(1) stage
 # $(2) triple
 
-ifdef CFG_INSTALL_SNAP
-snap-stage$(1)-H-$(2): $$(HSREQ$(1)_H_$(2))
-	$(CFG_PYTHON) $(S)src/etc/make-snapshot.py stage$(1) $(2) install
-else
 snap-stage$(1)-H-$(2): $$(HSREQ$(1)_H_$(2))
 	$(CFG_PYTHON) $(S)src/etc/make-snapshot.py stage$(1) $(2)
-endif
 
 endef
 
