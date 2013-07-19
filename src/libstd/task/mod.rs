@@ -1180,4 +1180,3 @@ fn test_simple_newsched_spawn() {
         spawn(||())
     }
 }
-

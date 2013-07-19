@@ -90,7 +90,6 @@ use task::unkillable;
 use uint;
 use util;
 use unstable::sync::{Exclusive, exclusive};
-use rt::local::Local;
 use rt::task::Task;
 use iterator::IteratorUtil;
 
@@ -566,39 +565,26 @@ fn gen_child_taskgroup(linked: bool, supervised: bool)
 pub fn spawn_raw(opts: TaskOpts, f: ~fn()) {
     use rt::*;
 
-    match context() {
-        OldTaskContext => {
-            spawn_raw_oldsched(opts, f)
-        }
-        TaskContext => {
-            spawn_raw_newsched(opts, f)
-        }
-        SchedulerContext => {
-            fail!("can't spawn from scheduler context")
-        }
-        GlobalContext => {
-            fail!("can't spawn from global context")
-        }
+    // A hack to go with the context function. Just do the boolean
+    // check and let an interesting runtime error occur if it was one
+    // of the two bad cases.
+
+    if context() == OldTaskContext {
+        spawn_raw_oldsched(opts, f)
+    } else {
+        spawn_raw_newsched(opts, f)
     }
+
 }
 
 fn spawn_raw_newsched(mut opts: TaskOpts, f: ~fn()) {
     use rt::sched::*;
 
-    let f = Cell::new(f);
-
-    let mut task = unsafe {
-        let sched = Local::unsafe_borrow::<Scheduler>();
-        rtdebug!("unsafe borrowed sched");
-
-        if opts.linked {
-            do Local::borrow::<Task, ~Task>() |running_task| {
-                ~running_task.new_child(&mut (*sched).stack_pool, f.take())
-            }
-        } else {
-            // An unlinked task is a new root in the task tree
-            ~Task::new_root(&mut (*sched).stack_pool, f.take())
-        }
+    let mut task = if opts.linked {
+        Task::build_child(f)
+    } else {
+        // An unlinked task is a new root in the task tree
+        Task::build_root(f)
     };
 
     if opts.notify_chan.is_some() {
@@ -612,11 +598,9 @@ fn spawn_raw_newsched(mut opts: TaskOpts, f: ~fn()) {
         task.on_exit = Some(on_exit);
     }
 
-    rtdebug!("spawn about to take scheduler");
+    rtdebug!("spawn calling run_task");
+    Scheduler::run_task(task);
 
-    let sched = Local::take::<Scheduler>();
-    rtdebug!("took sched in spawn");
-    sched.schedule_task(task);
 }
 
 fn spawn_raw_oldsched(mut opts: TaskOpts, f: ~fn()) {

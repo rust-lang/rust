@@ -49,7 +49,7 @@ use unstable::finally::Finally;
 
 use rt::io::IoError;
 
-#[cfg(test)] use unstable::run_in_bare_thread;
+//#[cfg(test)] use unstable::run_in_bare_thread;
 
 pub use self::file::FsRequest;
 pub use self::net::{StreamWatcher, TcpWatcher};
@@ -325,7 +325,7 @@ pub fn vec_from_uv_buf(buf: Buf) -> Option<~[u8]> {
         return None;
     }
 }
-
+/*
 #[test]
 fn test_slice_to_uv_buf() {
     let slice = [0, .. 20];
@@ -352,3 +352,4 @@ fn loop_smoke_test() {
         loop_.close();
     }
 }
+*/
