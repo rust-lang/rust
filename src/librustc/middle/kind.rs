@@ -59,7 +59,7 @@ pub struct Context {
 
 pub fn check_crate(tcx: ty::ctxt,
                    method_map: typeck::method_map,
-                   crate: &crate) {
+                   crate: &Crate) {
     let ctx = Context {
         tcx: tcx,
         method_map: method_map,
@@ -107,7 +107,7 @@ fn check_struct_safe_for_destructor(cx: Context,
     }
 }
 
-fn check_block(block: &blk, (cx, visitor): (Context, visit::vt<Context>)) {
+fn check_block(block: &Block, (cx, visitor): (Context, visit::vt<Context>)) {
     visit::visit_block(block, (cx, visitor));
 }
 
@@ -227,7 +227,7 @@ fn with_appropriate_checker(cx: Context, id: node_id,
 fn check_fn(
     fk: &visit::fn_kind,
     decl: &fn_decl,
-    body: &blk,
+    body: &Block,
     sp: span,
     fn_id: node_id,
     (cx, v): (Context,

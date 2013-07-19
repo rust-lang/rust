@@ -61,7 +61,7 @@ use syntax::opt_vec::OptVec;
 use syntax::opt_vec;
 use syntax::parse::token::special_idents;
 
-pub fn collect_item_types(ccx: @mut CrateCtxt, crate: &ast::crate) {
+pub fn collect_item_types(ccx: @mut CrateCtxt, crate: &ast::Crate) {
     fn collect_intrinsic_type(ccx: &CrateCtxt,
                               lang_item: ast::def_id) {
         let ty::ty_param_bounds_and_ty { ty: ty, _ } =

@@ -32,13 +32,13 @@ use syntax::ast_map;
 use syntax;
 
 pub struct Ctxt {
-    ast: @ast::crate,
+    ast: @ast::Crate,
     ast_map: ast_map::map
 }
 
 type SrvOwner<'self,T> = &'self fn(srv: Srv) -> T;
 pub type CtxtHandler<T> = ~fn(ctxt: Ctxt) -> T;
-type Parser = ~fn(Session, s: @str) -> @ast::crate;
+type Parser = ~fn(Session, s: @str) -> @ast::Crate;
 
 enum Msg {
     HandleRequest(~fn(Ctxt)),
@@ -109,7 +109,7 @@ pub fn exec<T:Send>(
 }
 
 fn build_ctxt(sess: Session,
-              ast: @ast::crate) -> Ctxt {
+              ast: @ast::Crate) -> Ctxt {
 
     use rustc::front::config;
 
@@ -143,7 +143,7 @@ fn should_prune_unconfigured_items() {
     do from_str(source) |srv| {
         do exec(srv) |ctxt| {
             // one item: the __std_macros secret module
-            assert_eq!(ctxt.ast.node.module.items.len(), 1);
+            assert_eq!(ctxt.ast.module.items.len(), 1);
         }
     }
 }

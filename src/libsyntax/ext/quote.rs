@@ -110,7 +110,7 @@ pub mod rt {
         }
     }
 
-    impl ToSource for ast::blk {
+    impl ToSource for ast::Block {
         fn to_source(&self) -> @str {
             pprust::block_to_str(self, get_ident_interner()).to_managed()
         }
@@ -238,7 +238,7 @@ pub mod rt {
         }
     }
 
-    impl ToTokens for ast::blk {
+    impl ToTokens for ast::Block {
         fn to_tokens(&self, cx: @ExtCtxt) -> ~[token_tree] {
             cx.parse_tts(self.to_source())
         }

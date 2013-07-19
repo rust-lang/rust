@@ -406,7 +406,7 @@ pub fn mark_for_expr(cx: &Context, e: &expr) {
     }
 }
 
-pub fn handle_body(cx: &Context, body: &blk) {
+pub fn handle_body(cx: &Context, body: &Block) {
     let v = visit::mk_vt(@visit::Visitor {
         visit_expr: |e, (cx, v)| {
             visit::visit_expr(e, (cx, v));
@@ -414,7 +414,7 @@ pub fn handle_body(cx: &Context, body: &blk) {
         },
         visit_local: |l, (cx, v)| {
             visit::visit_local(l, (cx, v));
-            node_type_needs(cx, use_repr, l.node.id);
+            node_type_needs(cx, use_repr, l.id);
         },
         visit_pat: |p, (cx, v)| {
             visit::visit_pat(p, (cx, v));

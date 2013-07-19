@@ -158,7 +158,7 @@ pub struct options {
     // items to the crate config, and during parsing the entire crate config
     // will be added to the crate AST node.  This should not be used for
     // anything except building the full crate config prior to parsing.
-    cfg: ast::crate_cfg,
+    cfg: ast::CrateConfig,
     binary: @str,
     test: bool,
     parse_only: bool,
@@ -357,7 +357,7 @@ pub fn expect<T:Clone>(sess: Session, opt: Option<T>, msg: &fn() -> ~str)
 }
 
 pub fn building_library(req_crate_type: crate_type,
-                        crate: &ast::crate,
+                        crate: &ast::Crate,
                         testing: bool) -> bool {
     match req_crate_type {
       bin_crate => false,
@@ -367,7 +367,7 @@ pub fn building_library(req_crate_type: crate_type,
             false
         } else {
             match syntax::attr::first_attr_value_str_by_name(
-                crate.node.attrs,
+                crate.attrs,
                 "crate_type") {
               Some(s) => "lib" == s,
               _ => false
@@ -402,7 +402,7 @@ mod test {
         attr::mk_attr(attr::mk_name_value_item_str(@"crate_type", t))
     }
 
-    fn make_crate(with_bin: bool, with_lib: bool) -> @ast::crate {
+    fn make_crate(with_bin: bool, with_lib: bool) -> @ast::Crate {
         let mut attrs = ~[];
         if with_bin {
             attrs.push(make_crate_type_attr(@"bin"));
@@ -410,11 +410,12 @@ mod test {
         if with_lib {
             attrs.push(make_crate_type_attr(@"lib"));
         }
-        @codemap::respan(codemap::dummy_sp(), ast::crate_ {
+        @ast::Crate {
             module: ast::_mod { view_items: ~[], items: ~[] },
             attrs: attrs,
-            config: ~[]
-        })
+            config: ~[],
+            span: codemap::dummy_sp(),
+        }
     }
 
     #[test]

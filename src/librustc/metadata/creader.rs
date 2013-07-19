@@ -29,7 +29,7 @@ use syntax::ast;
 // Traverses an AST, reading all the information about use'd crates and extern
 // libraries necessary for later resolving, typechecking, linking, etc.
 pub fn read_crates(diag: @span_handler,
-                   crate: &ast::crate,
+                   crate: &ast::Crate,
                    cstore: @mut cstore::CStore,
                    filesearch: @FileSearch,
                    os: loader::os,
@@ -118,14 +118,14 @@ struct Env {
     os: loader::os,
     statik: bool,
     crate_cache: @mut ~[cache_entry],
-    next_crate_num: ast::crate_num,
+    next_crate_num: ast::CrateNum,
     intr: @ident_interner
 }
 
-fn visit_crate(e: &Env, c: &ast::crate) {
+fn visit_crate(e: &Env, c: &ast::Crate) {
     let cstore = e.cstore;
 
-    for c.node.attrs.iter().filter(|m| "link_args" == m.name()).advance |a| {
+    for c.attrs.iter().filter(|m| "link_args" == m.name()).advance |a| {
         match a.value_str() {
           Some(ref linkarg) => {
             cstore::add_used_link_args(cstore, *linkarg);
@@ -237,7 +237,7 @@ fn resolve_crate(e: @mut Env,
                  metas: ~[@ast::MetaItem],
                  hash: @str,
                  span: span)
-              -> ast::crate_num {
+              -> ast::CrateNum {
     let metas = metas_with_ident(token::ident_to_str(&ident), metas);
 
     match existing_match(e, metas, hash) {

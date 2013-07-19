@@ -1092,23 +1092,23 @@ pub fn trans_trace(bcx: block, sp_opt: Option<span>, trace_str: @str) {
     Call(bcx, ccx.upcalls.trace, args);
 }
 
-pub fn ignore_lhs(_bcx: block, local: &ast::local) -> bool {
-    match local.node.pat.node {
+pub fn ignore_lhs(_bcx: block, local: &ast::Local) -> bool {
+    match local.pat.node {
         ast::pat_wild => true, _ => false
     }
 }
 
-pub fn init_local(bcx: block, local: &ast::local) -> block {
+pub fn init_local(bcx: block, local: &ast::Local) -> block {
 
     debug!("init_local(bcx=%s, local.id=%?)",
-           bcx.to_str(), local.node.id);
+           bcx.to_str(), local.id);
     let _indenter = indenter();
 
     let _icx = push_ctxt("init_local");
 
     if ignore_lhs(bcx, local) {
         // Handle let _ = e; just like e;
-        match local.node.init {
+        match local.init {
             Some(init) => {
               return expr::trans_into(bcx, init, expr::Ignore);
             }
@@ -1116,7 +1116,7 @@ pub fn init_local(bcx: block, local: &ast::local) -> block {
         }
     }
 
-    _match::store_local(bcx, local.node.pat, local.node.init)
+    _match::store_local(bcx, local.pat, local.init)
 }
 
 pub fn trans_stmt(cx: block, s: &ast::stmt) -> block {
@@ -1445,7 +1445,7 @@ pub fn with_scope_datumblock(bcx: block, opt_node_info: Option<NodeInfo>,
     DatumBlock {bcx: leave_block(bcx, scope_cx), datum: datum}
 }
 
-pub fn block_locals(b: &ast::blk, it: &fn(@ast::local)) {
+pub fn block_locals(b: &ast::Block, it: &fn(@ast::Local)) {
     for b.stmts.iter().advance |s| {
         match s.node {
           ast::stmt_decl(d, _) => {
@@ -1838,7 +1838,7 @@ pub enum self_arg { impl_self(ty::t, ty::SelfMode), no_self, }
 pub fn trans_closure(ccx: @mut CrateContext,
                      path: path,
                      decl: &ast::fn_decl,
-                     body: &ast::blk,
+                     body: &ast::Block,
                      llfndecl: ValueRef,
                      self_arg: self_arg,
                      param_substs: Option<@param_substs>,
@@ -1919,7 +1919,7 @@ pub fn trans_closure(ccx: @mut CrateContext,
 pub fn trans_fn(ccx: @mut CrateContext,
                 path: path,
                 decl: &ast::fn_decl,
-                body: &ast::blk,
+                body: &ast::Block,
                 llfndecl: ValueRef,
                 self_arg: self_arg,
                 param_substs: Option<@param_substs>,
@@ -2638,7 +2638,7 @@ pub fn trans_constant(ccx: &mut CrateContext, it: @ast::item) {
     }
 }
 
-pub fn trans_constants(ccx: @mut CrateContext, crate: &ast::crate) {
+pub fn trans_constants(ccx: @mut CrateContext, crate: &ast::Crate) {
     visit::visit_crate(
         crate, ((),
         visit::mk_simple_visitor(@visit::SimpleVisitor {
@@ -2895,7 +2895,7 @@ pub fn crate_ctxt_to_encode_parms<'r>(cx: &'r CrateContext, ie: encoder::encode_
         }
 }
 
-pub fn write_metadata(cx: &mut CrateContext, crate: &ast::crate) {
+pub fn write_metadata(cx: &mut CrateContext, crate: &ast::Crate) {
     if !*cx.sess.building_library { return; }
 
     let encode_inlined_item: encoder::encode_inlined_item =
@@ -2953,7 +2953,7 @@ pub fn write_abi_version(ccx: &mut CrateContext) {
 }
 
 pub fn trans_crate(sess: session::Session,
-                   crate: &ast::crate,
+                   crate: &ast::Crate,
                    tcx: ty::ctxt,
                    output: &Path,
                    emap2: resolve::ExportMap2,
@@ -2994,7 +2994,7 @@ pub fn trans_crate(sess: session::Session,
 
     {
         let _icx = push_ctxt("text");
-        trans_mod(ccx, &crate.node.module);
+        trans_mod(ccx, &crate.module);
     }
 
     decl_gc_metadata(ccx, llmod_id);

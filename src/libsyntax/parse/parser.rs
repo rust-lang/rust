@@ -16,9 +16,9 @@ use ast::{TyBareFn, TyClosure};
 use ast::{RegionTyParamBound, TraitTyParamBound};
 use ast::{provided, public, purity};
 use ast::{_mod, add, arg, arm, Attribute, bind_by_ref, bind_infer};
-use ast::{bitand, bitor, bitxor, blk};
+use ast::{bitand, bitor, bitxor, Block};
 use ast::{blk_check_mode, box};
-use ast::{crate, crate_cfg, decl, decl_item};
+use ast::{Crate, CrateConfig, decl, decl_item};
 use ast::{decl_local, default_blk, deref, div, enum_def, explicit_self};
 use ast::{expr, expr_, expr_addr_of, expr_match, expr_again};
 use ast::{expr_assign, expr_assign_op, expr_binary, expr_block};
@@ -36,7 +36,7 @@ use ast::{ident, impure_fn, inherited, item, item_, item_static};
 use ast::{item_enum, item_fn, item_foreign_mod, item_impl};
 use ast::{item_mac, item_mod, item_struct, item_trait, item_ty, lit, lit_};
 use ast::{lit_bool, lit_float, lit_float_unsuffixed, lit_int};
-use ast::{lit_int_unsuffixed, lit_nil, lit_str, lit_uint, local, m_const};
+use ast::{lit_int_unsuffixed, lit_nil, lit_str, lit_uint, Local, m_const};
 use ast::{m_imm, m_mutbl, mac_, mac_invoc_tt, matcher, match_nonterminal};
 use ast::{match_seq, match_tok, method, mt, mul, mutability};
 use ast::{named_field, neg, node_id, noreturn, not, pat, pat_box, pat_enum};
@@ -261,7 +261,7 @@ struct ParsedItemsAndViewItems {
 /* ident is handled by common.rs */
 
 pub fn Parser(sess: @mut ParseSess,
-              cfg: ast::crate_cfg,
+              cfg: ast::CrateConfig,
               rdr: @reader)
            -> Parser {
     let tok0 = rdr.next_token();
@@ -299,7 +299,7 @@ pub fn Parser(sess: @mut ParseSess,
 // ooh, nasty mutable fields everywhere....
 pub struct Parser {
     sess: @mut ParseSess,
-    cfg: crate_cfg,
+    cfg: CrateConfig,
     // the current token:
     token: @mut token::Token,
     // the span of the current token:
@@ -2294,7 +2294,7 @@ impl Parser {
         let lo = self.last_span.lo;
         let decl = parse_decl();
         let body = parse_body();
-        let fakeblock = ast::blk {
+        let fakeblock = ast::Block {
             view_items: ~[],
             stmts: ~[],
             expr: Some(body),
@@ -2460,7 +2460,7 @@ impl Parser {
                 self.eat(&token::COMMA);
             }
 
-            let blk = ast::blk {
+            let blk = ast::Block {
                 view_items: ~[],
                 stmts: ~[],
                 expr: Some(expr),
@@ -2916,7 +2916,7 @@ impl Parser {
     }
 
     // parse a local variable declaration
-    fn parse_local(&self, is_mutbl: bool) -> @local {
+    fn parse_local(&self, is_mutbl: bool) -> @Local {
         let lo = self.span.lo;
         let pat = self.parse_pat();
 
@@ -2931,17 +2931,14 @@ impl Parser {
         };
         if self.eat(&token::COLON) { ty = self.parse_ty(false); }
         let init = self.parse_initializer();
-        @spanned(
-            lo,
-            self.last_span.hi,
-            ast::local_ {
-                is_mutbl: is_mutbl,
-                ty: ty,
-                pat: pat,
-                init: init,
-                id: self.get_id(),
-            }
-        )
+        @ast::Local {
+            is_mutbl: is_mutbl,
+            ty: ty,
+            pat: pat,
+            init: init,
+            id: self.get_id(),
+            span: mk_sp(lo, self.last_span.hi),
+        }
     }
 
     // parse a "let" stmt
@@ -3077,7 +3074,7 @@ impl Parser {
     }
 
     // parse a block. No inner attrs are allowed.
-    pub fn parse_block(&self) -> blk {
+    pub fn parse_block(&self) -> Block {
         maybe_whole!(self, nt_block);
 
         let lo = self.span.lo;
@@ -3091,7 +3088,7 @@ impl Parser {
 
     // parse a block. Inner attrs are allowed.
     fn parse_inner_attrs_and_block(&self)
-        -> (~[Attribute], blk) {
+        -> (~[Attribute], Block) {
 
         maybe_whole!(pair_empty self, nt_block);
 
@@ -3109,13 +3106,13 @@ impl Parser {
     // I guess that also means "already parsed the 'impure'" if
     // necessary, and this should take a qualifier.
     // some blocks start with "#{"...
-    fn parse_block_tail(&self, lo: BytePos, s: blk_check_mode) -> blk {
+    fn parse_block_tail(&self, lo: BytePos, s: blk_check_mode) -> Block {
         self.parse_block_tail_(lo, s, ~[])
     }
 
     // parse the rest of a block expression or function body
     fn parse_block_tail_(&self, lo: BytePos, s: blk_check_mode,
-                         first_item_attrs: ~[Attribute]) -> blk {
+                         first_item_attrs: ~[Attribute]) -> Block {
         let mut stmts = ~[];
         let mut expr = None;
 
@@ -3237,7 +3234,7 @@ impl Parser {
 
         let hi = self.span.hi;
         self.bump();
-        ast::blk {
+        ast::Block {
             view_items: view_items,
             stmts: stmts,
             expr: expr,
@@ -4946,7 +4943,7 @@ impl Parser {
 
     // Parses a source module as a crate. This is the main
     // entry point for the parser.
-    pub fn parse_crate_mod(&self) -> @crate {
+    pub fn parse_crate_mod(&self) -> @Crate {
         let lo = self.span.lo;
         // parse the crate's inner attrs, maybe (oops) one
         // of the attrs of an item:
@@ -4954,10 +4951,13 @@ impl Parser {
         let first_item_outer_attrs = next;
         // parse the items inside the crate:
         let m = self.parse_mod_items(token::EOF, first_item_outer_attrs);
-        @spanned(lo, self.span.lo,
-                 ast::crate_ { module: m,
-                               attrs: inner,
-                               config: self.cfg.clone() })
+
+        @ast::Crate {
+            module: m,
+            attrs: inner,
+            config: self.cfg.clone(),
+            span: mk_sp(lo, self.span.lo)
+        }
     }
 
     pub fn parse_str(&self) -> @str {

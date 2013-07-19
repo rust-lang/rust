@@ -64,7 +64,7 @@ pub fn source_name(input: &input) -> @str {
 }
 
 pub fn default_configuration(sess: Session, argv0: @str, input: &input) ->
-   ast::crate_cfg {
+   ast::CrateConfig {
     let (libc, tos) = match sess.targ_cfg.os {
         session::os_win32 =>   (@"msvcrt.dll", @"win32"),
         session::os_macos =>   (@"libc.dylib", @"macos"),
@@ -96,14 +96,14 @@ pub fn default_configuration(sess: Session, argv0: @str, input: &input) ->
          mk(@"build_input", source_name(input))];
 }
 
-pub fn append_configuration(cfg: &mut ast::crate_cfg, name: @str) {
+pub fn append_configuration(cfg: &mut ast::CrateConfig, name: @str) {
     if !cfg.iter().any(|mi| mi.name() == name) {
         cfg.push(attr::mk_word_item(name))
     }
 }
 
 pub fn build_configuration(sess: Session, argv0: @str, input: &input) ->
-   ast::crate_cfg {
+   ast::CrateConfig {
     // Combine the configuration requested by the session (command line) with
     // some default and generated configuration items
     let default_cfg = default_configuration(sess, argv0, input);
@@ -117,11 +117,11 @@ pub fn build_configuration(sess: Session, argv0: @str, input: &input) ->
 
 // Convert strings provided as --cfg [cfgspec] into a crate_cfg
 fn parse_cfgspecs(cfgspecs: ~[~str],
-                  demitter: diagnostic::Emitter) -> ast::crate_cfg {
+                  demitter: diagnostic::Emitter) -> ast::CrateConfig {
     do cfgspecs.consume_iter().transform |s| {
         let sess = parse::new_parse_sess(Some(demitter));
         parse::parse_meta_from_source_str(@"cfgspec", s.to_managed(), ~[], sess)
-    }.collect::<ast::crate_cfg>()
+    }.collect::<ast::CrateConfig>()
 }
 
 pub enum input {
@@ -132,8 +132,8 @@ pub enum input {
     str_input(@str)
 }
 
-pub fn parse_input(sess: Session, cfg: ast::crate_cfg, input: &input)
-    -> @ast::crate {
+pub fn parse_input(sess: Session, cfg: ast::CrateConfig, input: &input)
+    -> @ast::Crate {
     match *input {
       file_input(ref file) => {
         parse::parse_crate_from_file(&(*file), cfg, sess.parse_sess)
@@ -167,11 +167,11 @@ pub enum compile_phase {
 
 #[fixed_stack_segment]
 pub fn compile_rest(sess: Session,
-                    cfg: ast::crate_cfg,
+                    cfg: ast::CrateConfig,
                     phases: compile_upto,
                     outputs: Option<@OutputFilenames>,
-                    curr: Option<@ast::crate>)
-    -> (Option<@ast::crate>, Option<ty::ctxt>) {
+                    curr: Option<@ast::Crate>)
+    -> (Option<@ast::Crate>, Option<ty::ctxt>) {
 
     let time_passes = sess.time_passes();
 
@@ -372,11 +372,11 @@ pub fn compile_rest(sess: Session,
 }
 
 pub fn compile_upto(sess: Session,
-                    cfg: ast::crate_cfg,
+                    cfg: ast::CrateConfig,
                     input: &input,
                     upto: compile_phase,
                     outputs: Option<@OutputFilenames>)
-                    -> (Option<@ast::crate>, Option<ty::ctxt>) {
+                    -> (Option<@ast::Crate>, Option<ty::ctxt>) {
     let time_passes = sess.time_passes();
     let crate = time(time_passes,
                      ~"parsing",
@@ -395,7 +395,7 @@ pub fn compile_upto(sess: Session,
                  Some(crate))
 }
 
-pub fn compile_input(sess: Session, cfg: ast::crate_cfg, input: &input,
+pub fn compile_input(sess: Session, cfg: ast::CrateConfig, input: &input,
                      outdir: &Option<Path>, output: &Option<Path>) {
     let upto = if sess.opts.parse_only { cu_parse }
                else if sess.opts.no_trans { cu_no_trans }
@@ -404,7 +404,7 @@ pub fn compile_input(sess: Session, cfg: ast::crate_cfg, input: &input,
     compile_upto(sess, cfg, input, upto, Some(outputs));
 }
 
-pub fn pretty_print_input(sess: Session, cfg: ast::crate_cfg, input: &input,
+pub fn pretty_print_input(sess: Session, cfg: ast::CrateConfig, input: &input,
                           ppm: pp_mode) {
     fn ann_paren_for_expr(node: pprust::ann_node) {
         match node {

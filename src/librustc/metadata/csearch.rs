@@ -42,7 +42,7 @@ pub fn get_type_param_count(cstore: @mut cstore::CStore, def: ast::def_id)
 
 /// Iterates over all the language items in the given crate.
 pub fn each_lang_item(cstore: @mut cstore::CStore,
-                      cnum: ast::crate_num,
+                      cnum: ast::CrateNum,
                       f: &fn(ast::node_id, uint) -> bool) -> bool {
     let crate_data = cstore::get_crate_data(cstore, cnum);
     decoder::each_lang_item(crate_data, f)
@@ -50,7 +50,7 @@ pub fn each_lang_item(cstore: @mut cstore::CStore,
 
 /// Iterates over all the paths in the given crate.
 pub fn each_path(cstore: @mut cstore::CStore,
-                 cnum: ast::crate_num,
+                 cnum: ast::CrateNum,
                  f: &fn(&str, decoder::def_like, ast::visibility) -> bool)
                  -> bool {
     let crate_data = cstore::get_crate_data(cstore, cnum);
@@ -232,7 +232,7 @@ pub fn get_item_visibility(cstore: @mut cstore::CStore,
 }
 
 pub fn get_link_args_for_crate(cstore: @mut cstore::CStore,
-                               crate_num: ast::crate_num)
+                               crate_num: ast::CrateNum)
                             -> ~[~str] {
     let cdata = cstore::get_crate_data(cstore, crate_num);
     decoder::get_link_args_for_crate(cdata)

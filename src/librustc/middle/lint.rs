@@ -127,7 +127,7 @@ pub type LintDict = HashMap<&'static str, LintSpec>;
 enum AttributedNode<'self> {
     Item(@ast::item),
     Method(&'self ast::method),
-    Crate(@ast::crate),
+    Crate(@ast::Crate),
 }
 
 #[deriving(Eq)]
@@ -938,8 +938,8 @@ fn lint_unused_mut() -> visit::vt<@mut Context> {
 
     visit::mk_vt(@visit::Visitor {
         visit_local: |l, (cx, vt): (@mut Context, visit::vt<@mut Context>)| {
-            if l.node.is_mutbl {
-                check_pat(cx, l.node.pat);
+            if l.is_mutbl {
+                check_pat(cx, l.pat);
             }
             visit::visit_local(l, (cx, vt));
         },
@@ -1095,7 +1095,7 @@ fn lint_missing_doc() -> visit::vt<@mut Context> {
     })
 }
 
-pub fn check_crate(tcx: ty::ctxt, crate: @ast::crate) {
+pub fn check_crate(tcx: ty::ctxt, crate: @ast::Crate) {
     let cx = @mut Context {
         dict: @get_lint_dict(),
         curr: SmallIntMap::new(),
@@ -1128,7 +1128,7 @@ pub fn check_crate(tcx: ty::ctxt, crate: @ast::crate) {
     cx.add_lint(lint_missing_doc());
 
     // Actually perform the lint checks (iterating the ast)
-    do cx.with_lint_attrs(crate.node.attrs) {
+    do cx.with_lint_attrs(crate.attrs) {
         cx.process(Crate(crate));
 
         visit::visit_crate(crate, (cx, visit::mk_vt(@visit::Visitor {

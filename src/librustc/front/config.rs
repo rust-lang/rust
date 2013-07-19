@@ -20,14 +20,14 @@ struct Context {
 
 // Support conditional compilation by transforming the AST, stripping out
 // any items that do not belong in the current configuration
-pub fn strip_unconfigured_items(crate: @ast::crate) -> @ast::crate {
+pub fn strip_unconfigured_items(crate: @ast::Crate) -> @ast::Crate {
     do strip_items(crate) |attrs| {
-        in_cfg(crate.node.config, attrs)
+        in_cfg(crate.config, attrs)
     }
 }
 
-pub fn strip_items(crate: &ast::crate, in_cfg: in_cfg_pred)
-    -> @ast::crate {
+pub fn strip_items(crate: &ast::Crate, in_cfg: in_cfg_pred)
+    -> @ast::Crate {
 
     let ctxt = @Context { in_cfg: in_cfg };
 
@@ -131,16 +131,16 @@ fn filter_stmt(cx: @Context, stmt: @ast::stmt) ->
 
 fn fold_block(
     cx: @Context,
-    b: &ast::blk,
+    b: &ast::Block,
     fld: @fold::ast_fold
-) -> ast::blk {
+) -> ast::Block {
     let resulting_stmts = do b.stmts.iter().filter_map |a| {
         filter_stmt(cx, *a).chain(|stmt| fld.fold_stmt(stmt))
     }.collect();
     let filtered_view_items = do b.view_items.iter().filter_map |a| {
         filter_view_item(cx, a).map(|&x| fld.fold_view_item(x))
     }.collect();
-    ast::blk {
+    ast::Block {
         view_items: filtered_view_items,
         stmts: resulting_stmts,
         expr: b.expr.map(|x| fld.fold_expr(*x)),

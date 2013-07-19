@@ -62,7 +62,7 @@ pub fn field_exprs(fields: ~[ast::field]) -> ~[@ast::expr] {
 
 // Takes a predicate p, returns true iff p is true for any subexpressions
 // of b -- skipping any inner loops (loop, while, loop_body)
-pub fn loop_query(b: &ast::blk, p: @fn(&ast::expr_) -> bool) -> bool {
+pub fn loop_query(b: &ast::Block, p: @fn(&ast::expr_) -> bool) -> bool {
     let rs = @mut false;
     let visit_expr: @fn(@ast::expr,
                         (@mut bool,
@@ -85,7 +85,7 @@ pub fn loop_query(b: &ast::blk, p: @fn(&ast::expr_) -> bool) -> bool {
 
 // Takes a predicate p, returns true iff p is true for any subexpressions
 // of b -- skipping any inner loops (loop, while, loop_body)
-pub fn block_query(b: &ast::blk, p: @fn(@ast::expr) -> bool) -> bool {
+pub fn block_query(b: &ast::Block, p: @fn(@ast::expr) -> bool) -> bool {
     let rs = @mut false;
     let visit_expr: @fn(@ast::expr,
                         (@mut bool,
@@ -100,8 +100,8 @@ pub fn block_query(b: &ast::blk, p: @fn(@ast::expr) -> bool) -> bool {
     return *rs;
 }
 
-pub fn local_rhs_span(l: @ast::local, def: span) -> span {
-    match l.node.init {
+pub fn local_rhs_span(l: @ast::Local, def: span) -> span {
+    match l.init {
       Some(i) => return i.span,
       _ => return def
     }
