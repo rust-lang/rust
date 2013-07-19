@@ -28,7 +28,6 @@ rust_get_argc
 rust_get_argv
 rust_new_sched
 rust_new_task_in_sched
-rust_num_threads
 rust_path_is_dir
 rust_path_exists
 rust_get_stdin
