@@ -8,313 +8,256 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Functions dealing with attributes and meta_items
+// Functions dealing with attributes and meta items
 
 use extra;
 
 use ast;
+use ast::{Attribute, Attribute_, MetaItem, MetaWord, MetaNameValue, MetaList};
 use codemap::{spanned, dummy_spanned};
-use attr;
 use codemap::BytePos;
 use diagnostic::span_handler;
 use parse::comments::{doc_comment_style, strip_doc_comment_decoration};
 
 use std::hashmap::HashSet;
+
+pub trait AttrMetaMethods {
+    // This could be changed to `fn check_name(&self, name: @str) ->
+    // bool` which would facilitate a side table recording which
+    // attributes/meta items are used/unused.
+
+    /// Retrieve the name of the meta item, e.g. foo in #[foo],
+    /// #[foo="bar"] and #[foo(bar)]
+    fn name(&self) -> @str;
+
+    /**
+     * Gets the string value if self is a MetaNameValue variant
+     * containing a string, otherwise None.
+     */
+    fn value_str(&self) -> Option<@str>;
+    /// Gets a list of inner meta items from a list MetaItem type.
+    fn meta_item_list<'a>(&'a self) -> Option<&'a [@MetaItem]>;
+
+    /**
+     * If the meta item is a name-value type with a string value then returns
+     * a tuple containing the name and string value, otherwise `None`
+     */
+    fn name_str_pair(&self) -> Option<(@str, @str)>;
+}
+
+impl AttrMetaMethods for Attribute {
+    fn name(&self) -> @str { self.meta().name() }
+    fn value_str(&self) -> Option<@str> { self.meta().value_str() }
+    fn meta_item_list<'a>(&'a self) -> Option<&'a [@MetaItem]> {
+        self.node.value.meta_item_list()
+    }
+    fn name_str_pair(&self) -> Option<(@str, @str)> { self.meta().name_str_pair() }
+}
+
+impl AttrMetaMethods for MetaItem {
+    fn name(&self) -> @str {
+        match self.node {
+            MetaWord(n) => n,
+            MetaNameValue(n, _) => n,
+            MetaList(n, _) => n
+        }
+    }
+
+    fn value_str(&self) -> Option<@str> {
+        match self.node {
+            MetaNameValue(_, ref v) => {
+                match v.node {
+                    ast::lit_str(s) => Some(s),
+                    _ => None,
+                }
+            },
+            _ => None
+        }
+    }
+
+    fn meta_item_list<'a>(&'a self) -> Option<&'a [@MetaItem]> {
+        match self.node {
+            MetaList(_, ref l) => Some(l.as_slice()),
+            _ => None
+        }
+    }
+
+    pub fn name_str_pair(&self) -> Option<(@str, @str)> {
+        self.value_str().map_consume(|s| (self.name(), s))
+    }
+}
+
+// Annoying, but required to get test_cfg to work
+impl AttrMetaMethods for @MetaItem {
+    fn name(&self) -> @str { (**self).name() }
+    fn value_str(&self) -> Option<@str> { (**self).value_str() }
+    fn meta_item_list<'a>(&'a self) -> Option<&'a [@MetaItem]> {
+        (**self).meta_item_list()
+    }
+    fn name_str_pair(&self) -> Option<(@str, @str)> { (**self).name_str_pair() }
+}
+
+
+pub trait AttributeMethods {
+    fn meta(&self) -> @MetaItem;
+    fn desugar_doc(&self) -> Attribute;
+}
+
+impl AttributeMethods for Attribute {
+    /// Extract the MetaItem from inside this Attribute.
+    pub fn meta(&self) -> @MetaItem {
+        self.node.value
+    }
+
+    /// Convert self to a normal #[doc="foo"] comment, if it is a
+    /// comment like `///` or `/** */`. (Returns self unchanged for
+    /// non-sugared doc attributes.)
+    pub fn desugar_doc(&self) -> Attribute {
+        if self.node.is_sugared_doc {
+            let comment = self.value_str().get();
+            let meta = mk_name_value_item_str(@"doc",
+                                              strip_doc_comment_decoration(comment).to_managed());
+            mk_attr(meta)
+        } else {
+            *self
+        }
+    }
+}
+
 /* Constructors */
 
-pub fn mk_name_value_item_str(name: @str, value: @str)
-                           -> @ast::meta_item {
+pub fn mk_name_value_item_str(name: @str, value: @str) -> @MetaItem {
     let value_lit = dummy_spanned(ast::lit_str(value));
     mk_name_value_item(name, value_lit)
 }
 
-pub fn mk_name_value_item(name: @str, value: ast::lit)
-        -> @ast::meta_item {
-    @dummy_spanned(ast::meta_name_value(name, value))
+pub fn mk_name_value_item(name: @str, value: ast::lit) -> @MetaItem {
+    @dummy_spanned(MetaNameValue(name, value))
 }
 
-pub fn mk_list_item(name: @str, items: ~[@ast::meta_item]) ->
-   @ast::meta_item {
-    @dummy_spanned(ast::meta_list(name, items))
+pub fn mk_list_item(name: @str, items: ~[@MetaItem]) -> @MetaItem {
+    @dummy_spanned(MetaList(name, items))
 }
 
-pub fn mk_word_item(name: @str) -> @ast::meta_item {
-    @dummy_spanned(ast::meta_word(name))
+pub fn mk_word_item(name: @str) -> @MetaItem {
+    @dummy_spanned(MetaWord(name))
 }
 
-pub fn mk_attr(item: @ast::meta_item) -> ast::attribute {
-    dummy_spanned(ast::attribute_ { style: ast::attr_inner,
-                                    value: item,
-                                    is_sugared_doc: false })
+pub fn mk_attr(item: @MetaItem) -> Attribute {
+    dummy_spanned(Attribute_ {
+        style: ast::AttrInner,
+        value: item,
+        is_sugared_doc: false,
+    })
 }
 
-pub fn mk_sugared_doc_attr(text: @str,
-                           lo: BytePos, hi: BytePos) -> ast::attribute {
+pub fn mk_sugared_doc_attr(text: @str, lo: BytePos, hi: BytePos) -> Attribute {
     let style = doc_comment_style(text);
     let lit = spanned(lo, hi, ast::lit_str(text));
-    let attr = ast::attribute_ {
+    let attr = Attribute_ {
         style: style,
-        value: @spanned(lo, hi, ast::meta_name_value(@"doc", lit)),
+        value: @spanned(lo, hi, MetaNameValue(@"doc", lit)),
         is_sugared_doc: true
     };
     spanned(lo, hi, attr)
 }
 
-/* Conversion */
-
-pub fn attr_meta(attr: ast::attribute) -> @ast::meta_item {
-    attr.node.value
-}
-
-// Get the meta_items from inside a vector of attributes
-pub fn attr_metas(attrs: &[ast::attribute]) -> ~[@ast::meta_item] {
-    do attrs.map |a| { attr_meta(*a) }
-}
-
-pub fn desugar_doc_attr(attr: &ast::attribute) -> ast::attribute {
-    if attr.node.is_sugared_doc {
-        let comment = get_meta_item_value_str(attr.node.value).get();
-        let meta = mk_name_value_item_str(@"doc",
-                                     strip_doc_comment_decoration(comment).to_managed());
-        mk_attr(meta)
-    } else {
-        *attr
-    }
-}
-
-/* Accessors */
-
-pub fn get_attr_name(attr: &ast::attribute) -> @str {
-    get_meta_item_name(attr.node.value)
-}
-
-pub fn get_meta_item_name(meta: @ast::meta_item) -> @str {
-    match meta.node {
-        ast::meta_word(n) => n,
-        ast::meta_name_value(n, _) => n,
-        ast::meta_list(n, _) => n,
-    }
-}
-
-/**
- * Gets the string value if the meta_item is a meta_name_value variant
- * containing a string, otherwise none
- */
-pub fn get_meta_item_value_str(meta: @ast::meta_item) -> Option<@str> {
-    match meta.node {
-        ast::meta_name_value(_, v) => {
-            match v.node {
-                ast::lit_str(s) => Some(s),
-                _ => None,
-            }
-        },
-        _ => None
-    }
-}
-
-/// Gets a list of inner meta items from a list meta_item type
-pub fn get_meta_item_list(meta: @ast::meta_item)
-                       -> Option<~[@ast::meta_item]> {
-    match meta.node {
-        ast::meta_list(_, ref l) => Some(/* FIXME (#2543) */ (*l).clone()),
-        _ => None
-    }
-}
-
-/**
- * If the meta item is a nam-value type with a string value then returns
- * a tuple containing the name and string value, otherwise `none`
- */
-pub fn get_name_value_str_pair(item: @ast::meta_item)
-                            -> Option<(@str, @str)> {
-    match attr::get_meta_item_value_str(item) {
-      Some(value) => {
-        let name = attr::get_meta_item_name(item);
-        Some((name, value))
-      }
-      None => None
-    }
-}
-
-
 /* Searching */
-
-/// Search a list of attributes and return only those with a specific name
-pub fn find_attrs_by_name(attrs: &[ast::attribute], name: &str) ->
-   ~[ast::attribute] {
-    do attrs.iter().filter_map |a| {
-        if name == get_attr_name(a) {
-            Some(*a)
-        } else {
-            None
-        }
-    }.collect()
-}
-
-/// Search a list of meta items and return only those with a specific name
-pub fn find_meta_items_by_name(metas: &[@ast::meta_item], name: &str) ->
-   ~[@ast::meta_item] {
-    let mut rs = ~[];
-    for metas.iter().advance |mi| {
-        if name == get_meta_item_name(*mi) {
-            rs.push(*mi)
-        }
-    }
-    rs
-}
-
-/**
- * Returns true if a list of meta items contains another meta item. The
- * comparison is performed structurally.
- */
-pub fn contains(haystack: &[@ast::meta_item],
-                needle: @ast::meta_item) -> bool {
-    for haystack.iter().advance |item| {
-        if eq(*item, needle) { return true; }
-    }
-    return false;
-}
-
-fn eq(a: @ast::meta_item, b: @ast::meta_item) -> bool {
-    match a.node {
-        ast::meta_word(ref na) => match b.node {
-            ast::meta_word(ref nb) => (*na) == (*nb),
-            _ => false
-        },
-        ast::meta_name_value(ref na, va) => match b.node {
-            ast::meta_name_value(ref nb, vb) => {
-                (*na) == (*nb) && va.node == vb.node
-            }
-            _ => false
-        },
-        ast::meta_list(ref na, ref misa) => match b.node {
-            ast::meta_list(ref nb, ref misb) => {
-                if na != nb { return false; }
-                for misa.iter().advance |mi| {
-                    if !misb.iter().any(|x| x == mi) { return false; }
-                }
-                true
-            }
-            _ => false
-        }
+/// Check if `needle` occurs in `haystack` by a structural
+/// comparison. This is slightly subtle, and relies on ignoring the
+/// span included in the `==` comparison a plain MetaItem.
+pub fn contains(haystack: &[@ast::MetaItem],
+                needle: @ast::MetaItem) -> bool {
+    debug!("attr::contains (name=%s)", needle.name());
+    do haystack.iter().any |item| {
+        debug!("  testing: %s", item.name());
+        item.node == needle.node
     }
 }
 
-pub fn contains_name(metas: &[@ast::meta_item], name: &str) -> bool {
-    let matches = find_meta_items_by_name(metas, name);
-    matches.len() > 0u
+pub fn contains_name<AM: AttrMetaMethods>(metas: &[AM], name: &str) -> bool {
+    debug!("attr::contains_name (name=%s)", name);
+    do metas.iter().any |item| {
+        debug!("  testing: %s", item.name());
+        name == item.name()
+    }
 }
 
-pub fn attrs_contains_name(attrs: &[ast::attribute], name: &str) -> bool {
-    !find_attrs_by_name(attrs, name).is_empty()
-}
-
-pub fn first_attr_value_str_by_name(attrs: &[ast::attribute], name: &str)
+pub fn first_attr_value_str_by_name(attrs: &[Attribute], name: &str)
                                  -> Option<@str> {
-
-    let mattrs = find_attrs_by_name(attrs, name);
-    if mattrs.len() > 0 {
-        get_meta_item_value_str(attr_meta(mattrs[0]))
-    } else {
-        None
-    }
+    attrs.iter()
+        .find_(|at| name == at.name())
+        .chain(|at| at.value_str())
 }
 
-fn last_meta_item_by_name(items: &[@ast::meta_item], name: &str)
-    -> Option<@ast::meta_item> {
-
-    let items = attr::find_meta_items_by_name(items, name);
-    items.last_opt().map(|item| **item)
-}
-
-pub fn last_meta_item_value_str_by_name(items: &[@ast::meta_item], name: &str)
+pub fn last_meta_item_value_str_by_name(items: &[@MetaItem], name: &str)
                                      -> Option<@str> {
-
-    match last_meta_item_by_name(items, name) {
-        Some(item) => {
-            match attr::get_meta_item_value_str(item) {
-                Some(value) => Some(value),
-                None => None
-            }
-        },
-        None => None
-    }
+    items.rev_iter().find_(|mi| name == mi.name()).chain(|i| i.value_str())
 }
-
-pub fn last_meta_item_list_by_name(items: ~[@ast::meta_item], name: &str)
-    -> Option<~[@ast::meta_item]> {
-
-    match last_meta_item_by_name(items, name) {
-      Some(item) => attr::get_meta_item_list(item),
-      None => None
-    }
-}
-
 
 /* Higher-level applications */
 
-pub fn sort_meta_items(items: &[@ast::meta_item]) -> ~[@ast::meta_item] {
-    // This is sort of stupid here, converting to a vec of mutables and back
-    let mut v = items.to_owned();
-    do extra::sort::quick_sort(v) |ma, mb| {
-        get_meta_item_name(*ma) <= get_meta_item_name(*mb)
+pub fn sort_meta_items(items: &[@MetaItem]) -> ~[@MetaItem] {
+    // This is sort of stupid here, but we need to sort by
+    // human-readable strings.
+    let mut v = items.iter()
+        .transform(|&mi| (mi.name(), mi))
+        .collect::<~[(@str, @MetaItem)]>();
+
+    do extra::sort::quick_sort(v) |&(a, _), &(b, _)| {
+        a <= b
     }
 
     // There doesn't seem to be a more optimal way to do this
-    do v.map |m| {
+    do v.consume_iter().transform |(_, m)| {
         match m.node {
-            ast::meta_list(n, ref mis) => {
+            MetaList(n, ref mis) => {
                 @spanned {
-                    node: ast::meta_list(n, sort_meta_items(*mis)),
-                    .. /*bad*/ (**m).clone()
+                    node: MetaList(n, sort_meta_items(*mis)),
+                    .. /*bad*/ (*m).clone()
                 }
             }
-            _ => *m
+            _ => m
         }
-    }
-}
-
-pub fn remove_meta_items_by_name(items: ~[@ast::meta_item], name: &str) ->
-   ~[@ast::meta_item] {
-    items.consume_iter().filter(|item| name != get_meta_item_name(*item)).collect()
+    }.collect()
 }
 
 /**
  * From a list of crate attributes get only the meta_items that affect crate
  * linkage
  */
-pub fn find_linkage_metas(attrs: &[ast::attribute]) -> ~[@ast::meta_item] {
-    do find_attrs_by_name(attrs, "link").flat_map |attr| {
-        match attr.node.value.node {
-            ast::meta_list(_, ref items) => {
-                /* FIXME (#2543) */ (*items).clone()
-            }
-            _ => ~[]
+pub fn find_linkage_metas(attrs: &[Attribute]) -> ~[@MetaItem] {
+    let mut result = ~[];
+    for attrs.iter().filter(|at| "link" == at.name()).advance |attr| {
+        match attr.meta().node {
+            MetaList(_, ref items) => result.push_all(*items),
+            _ => ()
         }
     }
+    result
 }
 
 #[deriving(Eq)]
-pub enum inline_attr {
-    ia_none,
-    ia_hint,
-    ia_always,
-    ia_never,
+pub enum InlineAttr {
+    InlineNone,
+    InlineHint,
+    InlineAlways,
+    InlineNever,
 }
 
 /// True if something like #[inline] is found in the list of attrs.
-pub fn find_inline_attr(attrs: &[ast::attribute]) -> inline_attr {
+pub fn find_inline_attr(attrs: &[Attribute]) -> InlineAttr {
     // FIXME (#2809)---validate the usage of #[inline] and #[inline]
-    do attrs.iter().fold(ia_none) |ia,attr| {
+    do attrs.iter().fold(InlineNone) |ia,attr| {
         match attr.node.value.node {
-          ast::meta_word(s) if "inline" == s => ia_hint,
-          ast::meta_list(s, ref items) if "inline" == s => {
-            if !find_meta_items_by_name(*items, "always").is_empty() {
-                ia_always
-            } else if !find_meta_items_by_name(*items, "never").is_empty() {
-                ia_never
+          MetaWord(n) if "inline" == n => InlineHint,
+          MetaList(n, ref items) if "inline" == n => {
+            if contains_name(*items, "always") {
+                InlineAlways
+            } else if contains_name(*items, "never") {
+                InlineNever
             } else {
-                ia_hint
+                InlineHint
             }
           }
           _ => ia
@@ -322,12 +265,59 @@ pub fn find_inline_attr(attrs: &[ast::attribute]) -> inline_attr {
     }
 }
 
+/// Tests if any `cfg(...)` meta items in `metas` match `cfg`. e.g.
+///
+/// test_cfg(`[foo="a", bar]`, `[cfg(foo), cfg(bar)]`) == true
+/// test_cfg(`[foo="a", bar]`, `[cfg(not(bar))]`) == false
+/// test_cfg(`[foo="a", bar]`, `[cfg(bar, foo="a")]`) == true
+/// test_cfg(`[foo="a", bar]`, `[cfg(bar, foo="b")]`) == false
+pub fn test_cfg<AM: AttrMetaMethods, It: Iterator<AM>>
+    (cfg: &[@MetaItem], mut metas: It) -> bool {
+    // having no #[cfg(...)] attributes counts as matching.
+    let mut no_cfgs = true;
+
+    // this would be much nicer as a chain of iterator adaptors, but
+    // this doesn't work.
+    let some_cfg_matches = do metas.any |mi| {
+        debug!("testing name: %s", mi.name());
+        if "cfg" == mi.name() { // it is a #[cfg()] attribute
+            debug!("is cfg");
+            no_cfgs = false;
+             // only #[cfg(...)] ones are understood.
+            match mi.meta_item_list() {
+                Some(cfg_meta) => {
+                    debug!("is cfg(...)");
+                    do cfg_meta.iter().all |cfg_mi| {
+                        debug!("cfg(%s[...])", cfg_mi.name());
+                        match cfg_mi.node {
+                            ast::MetaList(s, ref not_cfgs) if "not" == s => {
+                                debug!("not!");
+                                // inside #[cfg(not(...))], so these need to all
+                                // not match.
+                                not_cfgs.iter().all(|mi| {
+                                    debug!("cfg(not(%s[...]))", mi.name());
+                                    !contains(cfg, *mi)
+                                })
+                            }
+                            _ => contains(cfg, *cfg_mi)
+                        }
+                    }
+                }
+                None => false
+            }
+        } else {
+            false
+        }
+    };
+    debug!("test_cfg (no_cfgs=%?, some_cfg_matches=%?)", no_cfgs, some_cfg_matches);
+    no_cfgs || some_cfg_matches
+}
 
 pub fn require_unique_names(diagnostic: @span_handler,
-                            metas: &[@ast::meta_item]) {
+                            metas: &[@MetaItem]) {
     let mut set = HashSet::new();
     for metas.iter().advance |meta| {
-        let name = get_meta_item_name(*meta);
+        let name = meta.name();
 
         // FIXME: How do I silence the warnings? --pcw (#2619)
         if !set.insert(name) {

@@ -36,7 +36,7 @@ pub struct MacroDef {
 
 pub type ItemDecorator = @fn(@ExtCtxt,
                              span,
-                             @ast::meta_item,
+                             @ast::MetaItem,
                              ~[@ast::item])
                           -> ~[@ast::item];
 

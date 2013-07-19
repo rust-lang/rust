@@ -369,7 +369,7 @@ pub fn building_library(req_crate_type: crate_type,
             match syntax::attr::first_attr_value_str_by_name(
                 crate.node.attrs,
                 "crate_type") {
-              Some(s) if "lib" == s => true,
+              Some(s) => "lib" == s,
               _ => false
             }
         }
@@ -395,18 +395,11 @@ mod test {
     use driver::session::{unknown_crate};
 
     use syntax::ast;
+    use syntax::attr;
     use syntax::codemap;
 
-    fn make_crate_type_attr(t: @str) -> ast::attribute {
-        codemap::respan(codemap::dummy_sp(), ast::attribute_ {
-            style: ast::attr_outer,
-            value: @codemap::respan(codemap::dummy_sp(),
-                ast::meta_name_value(
-                    @"crate_type",
-                    codemap::respan(codemap::dummy_sp(),
-                                     ast::lit_str(t)))),
-            is_sugared_doc: false
-        })
+    fn make_crate_type_attr(t: @str) -> ast::Attribute {
+        attr::mk_attr(attr::mk_name_value_item_str(@"crate_type", t))
     }
 
     fn make_crate(with_bin: bool, with_lib: bool) -> @ast::crate {

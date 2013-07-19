@@ -17,7 +17,7 @@ use ext::base::*;
 pub fn expand_auto_encode(
     cx: @ExtCtxt,
     span: span,
-    _mitem: @ast::meta_item,
+    _mitem: @ast::MetaItem,
     in_items: ~[@ast::item]
 ) -> ~[@ast::item] {
     cx.span_err(span, "`#[auto_encode]` is deprecated, use `#[deriving(Encodable)]` instead");
@@ -27,7 +27,7 @@ pub fn expand_auto_encode(
 pub fn expand_auto_decode(
     cx: @ExtCtxt,
     span: span,
-    _mitem: @ast::meta_item,
+    _mitem: @ast::MetaItem,
     in_items: ~[@ast::item]
 ) -> ~[@ast::item] {
     cx.span_err(span, "`#[auto_decode]` is deprecated, use `#[deriving(Decodable)]` instead");

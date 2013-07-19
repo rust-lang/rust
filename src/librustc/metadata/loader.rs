@@ -22,6 +22,7 @@ use syntax::parse::token;
 use syntax::parse::token::ident_interner;
 use syntax::print::pprust;
 use syntax::{ast, attr};
+use syntax::attr::AttrMetaMethods;
 
 use std::cast;
 use std::io;
@@ -46,7 +47,7 @@ pub struct Context {
     filesearch: @FileSearch,
     span: span,
     ident: ast::ident,
-    metas: ~[@ast::meta_item],
+    metas: ~[@ast::MetaItem],
     hash: @str,
     os: os,
     is_static: bool,
@@ -55,7 +56,7 @@ pub struct Context {
 
 pub fn load_library_crate(cx: &Context) -> (~str, @~[u8]) {
     match find_library_crate(cx) {
-      Some(ref t) => return (/*bad*/(*t).clone()),
+      Some(t) => t,
       None => {
         cx.diag.span_fatal(cx.span,
                            fmt!("can't find crate for `%s`",
@@ -140,15 +141,11 @@ fn find_library_crate_aux(
         }
 }
 
-pub fn crate_name_from_metas(metas: &[@ast::meta_item]) -> @str {
+pub fn crate_name_from_metas(metas: &[@ast::MetaItem]) -> @str {
     for metas.iter().advance |m| {
-        match m.node {
-            ast::meta_name_value(s, ref l) if s == @"name" =>
-                match l.node {
-                    ast::lit_str(s) => return s,
-                    _ => ()
-                },
-            _ => ()
+        match m.name_str_pair() {
+            Some((name, s)) if "name" == name => { return s; }
+            _ => {}
         }
     }
     fail!("expected to find the crate name")
@@ -156,7 +153,7 @@ pub fn crate_name_from_metas(metas: &[@ast::meta_item]) -> @str {
 
 pub fn note_linkage_attrs(intr: @ident_interner,
                           diag: @span_handler,
-                          attrs: ~[ast::attribute]) {
+                          attrs: ~[ast::Attribute]) {
     let r = attr::find_linkage_metas(attrs);
     for r.iter().advance |mi| {
         diag.handler().note(fmt!("meta: %s", pprust::meta_item_to_str(*mi,intr)));
@@ -164,7 +161,7 @@ pub fn note_linkage_attrs(intr: @ident_interner,
 }
 
 fn crate_matches(crate_data: @~[u8],
-                 metas: &[@ast::meta_item],
+                 metas: &[@ast::MetaItem],
                  hash: @str) -> bool {
     let attrs = decoder::get_crate_attributes(crate_data);
     let linkage_metas = attr::find_linkage_metas(attrs);
@@ -175,18 +172,15 @@ fn crate_matches(crate_data: @~[u8],
     metadata_matches(linkage_metas, metas)
 }
 
-pub fn metadata_matches(extern_metas: &[@ast::meta_item],
-                        local_metas: &[@ast::meta_item]) -> bool {
+pub fn metadata_matches(extern_metas: &[@ast::MetaItem],
+                        local_metas: &[@ast::MetaItem]) -> bool {
 
     debug!("matching %u metadata requirements against %u items",
            local_metas.len(), extern_metas.len());
 
-    for local_metas.iter().advance |needed| {
-        if !attr::contains(extern_metas, *needed) {
-            return false;
-        }
+    do local_metas.iter().all |needed| {
+        attr::contains(extern_metas, *needed)
     }
-    return true;
 }
 
 fn get_metadata_section(os: os,

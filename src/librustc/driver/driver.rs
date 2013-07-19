@@ -34,6 +34,7 @@ use extra::getopts;
 use syntax::ast;
 use syntax::abi;
 use syntax::attr;
+use syntax::attr::{AttrMetaMethods};
 use syntax::codemap;
 use syntax::diagnostic;
 use syntax::parse;
@@ -95,12 +96,9 @@ pub fn default_configuration(sess: Session, argv0: @str, input: &input) ->
          mk(@"build_input", source_name(input))];
 }
 
-pub fn append_configuration(cfg: ast::crate_cfg, name: @str)
-                         -> ast::crate_cfg {
-    if attr::contains_name(cfg, name) {
-        cfg
-    } else {
-        vec::append_one(cfg, attr::mk_word_item(name))
+pub fn append_configuration(cfg: &mut ast::crate_cfg, name: @str) {
+    if !cfg.iter().any(|mi| mi.name() == name) {
+        cfg.push(attr::mk_word_item(name))
     }
 }
 
@@ -109,18 +107,11 @@ pub fn build_configuration(sess: Session, argv0: @str, input: &input) ->
     // Combine the configuration requested by the session (command line) with
     // some default and generated configuration items
     let default_cfg = default_configuration(sess, argv0, input);
-    let user_cfg = sess.opts.cfg.clone();
+    let mut user_cfg = sess.opts.cfg.clone();
     // If the user wants a test runner, then add the test cfg
-    let user_cfg = if sess.opts.test {
-        append_configuration(user_cfg, @"test")
-    } else {
-        user_cfg
-    };
-
+    if sess.opts.test { append_configuration(&mut user_cfg, @"test") }
     // If the user requested GC, then add the GC cfg
-    let user_cfg = append_configuration(
-        user_cfg,
-        if sess.opts.gc { @"gc" } else { @"nogc" });
+    append_configuration(&mut user_cfg, if sess.opts.gc { @"gc" } else { @"nogc" });
     return vec::append(user_cfg, default_cfg);
 }
 
@@ -130,7 +121,7 @@ fn parse_cfgspecs(cfgspecs: ~[~str],
     do cfgspecs.consume_iter().transform |s| {
         let sess = parse::new_parse_sess(Some(demitter));
         parse::parse_meta_from_source_str(@"cfgspec", s.to_managed(), ~[], sess)
-    }.collect()
+    }.collect::<ast::crate_cfg>()
 }
 
 pub enum input {
@@ -214,6 +205,7 @@ pub fn compile_rest(sess: Session,
         // strip again, in case expansion added anything with a #[cfg].
         crate = time(time_passes, ~"configuration 2", ||
                      front::config::strip_unconfigured_items(crate));
+
 
         crate = time(time_passes, ~"maybe building test harness", ||
                      front::test::modify_for_testing(sess, crate));
@@ -870,7 +862,7 @@ pub struct OutputFilenames {
 pub fn build_output_filenames(input: &input,
                               odir: &Option<Path>,
                               ofile: &Option<Path>,
-                              attrs: &[ast::attribute],
+                              attrs: &[ast::Attribute],
                               sess: Session)
                            -> @OutputFilenames {
     let obj_path;
@@ -912,12 +904,10 @@ pub fn build_output_filenames(input: &input,
           let linkage_metas = attr::find_linkage_metas(attrs);
           if !linkage_metas.is_empty() {
               // But if a linkage meta is present, that overrides
-              let maybe_matches = attr::find_meta_items_by_name(linkage_metas, "name");
-              if !maybe_matches.is_empty() {
-                  match attr::get_meta_item_value_str(maybe_matches[0]) {
-                      Some(s) => stem = s,
-                      _ => ()
-                  }
+              let maybe_name = linkage_metas.iter().find_(|m| "name" == m.name());
+              match maybe_name.chain(|m| m.value_str()) {
+                  Some(s) => stem = s,
+                  _ => ()
               }
               // If the name is missing, we just default to the filename
               // version
@@ -1011,7 +1001,8 @@ mod test {
             @"rustc", matches, diagnostic::emit);
         let sess = build_session(sessopts, diagnostic::emit);
         let cfg = build_configuration(sess, @"whatever", &str_input(@""));
-        let test_items = attr::find_meta_items_by_name(cfg, "test");
-        assert_eq!(test_items.len(), 1u);
+        let mut test_items = cfg.iter().filter(|m| "test" == m.name());
+        assert!(test_items.next().is_some());
+        assert!(test_items.next().is_none());
     }
 }
