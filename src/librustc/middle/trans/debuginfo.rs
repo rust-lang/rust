@@ -1225,8 +1225,8 @@ fn type_metadata(cx: &mut CrateContext,
 
     debug!("type_metadata: %?", ty::get(t));
 
-    let sty = copy ty::get(t).sty;
-    let type_metadata = match sty {
+    let sty = &ty::get(t).sty;
+    let type_metadata = match *sty {
         ty::ty_nil      |
         ty::ty_bot      |
         ty::ty_bool     |
