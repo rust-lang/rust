@@ -163,7 +163,7 @@ impl Scheduler {
         stask.destroyed = true;
 
         let local_success = !stask.unwinder.unwinding;
-        let join_latch = stask.join_latch.swap_unwrap();
+        let join_latch = stask.join_latch.take_unwrap();
         match stask.on_exit {
             Some(ref on_exit) => {
                 let success = join_latch.wait(local_success);
@@ -567,7 +567,7 @@ impl Scheduler {
         // Trickier - we need to get the scheduler task out of self
         // and use it as the destination.
         let mut this = self;
-        let stask = this.sched_task.swap_unwrap();
+        let stask = this.sched_task.take_unwrap();
         this.change_task_context(stask, f);
     }
 
@@ -620,7 +620,7 @@ impl Scheduler {
 
     pub fn run_cleanup_job(&mut self) {
         rtdebug!("running cleanup job");
-        let cleanup_job = self.cleanup_job.swap_unwrap();
+        let cleanup_job = self.cleanup_job.take_unwrap();
         match cleanup_job {
             DoNothing => { }
             GiveTask(task, f) => (f.to_fn())(self, task)
@@ -924,30 +924,14 @@ mod test {
             let port = Cell::new(port);
             let chan = Cell::new(chan);
 
-            let _thread_one = do Thread::start {
-                do run_in_newsched_task_core {
-                    chan.take().send(());
-                }
-            };
-
-            let _thread_two = do Thread::start {
-                do run_in_newsched_task_core {
-                    port.take().recv();
-                }
-            };
-        }
-
-        do run_in_bare_thread {
-            let (port, chan) = oneshot::<()>();
-            let port = Cell::new(port);
-            let chan = Cell::new(chan);
-
             let mut sched = ~new_test_uv_sched();
             let handle = sched.make_handle();
             let handle = Cell::new(handle);
             let sched = Cell::new(sched);
 
             let _thread_one = do Thread::start {
+                let port = Cell::new(port.take());
+                let handle = Cell::new(handle.take());
                 do run_in_newsched_task_core {
                     port.take().recv();
                     handle.take();
@@ -955,6 +939,7 @@ mod test {
             };
 
             let _thread_two = do Thread::start {
+                let chan = Cell::new(chan.take());
                 let on_exit: ~fn(bool) = |exit_status| rtassert!(exit_status);
                 let job: ~fn() = || { chan.take().send(()) };
                 let mut sched = sched.take();

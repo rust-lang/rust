@@ -56,7 +56,7 @@ impl Local for Scheduler {
     }
     fn take() -> ~Scheduler {
         do Local::borrow::<Task,~Scheduler> |task| {
-            let sched = task.sched.swap_unwrap();
+            let sched = task.sched.take_unwrap();
             let task = task;
             task.sched = None;
             sched
@@ -119,7 +119,6 @@ impl Local for IoFactoryObject {
 
 #[cfg(test)]
 mod test {
-    use unstable::run_in_bare_thread;
     use rt::test::*;
     use super::*;
     use rt::task::Task;

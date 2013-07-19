@@ -16,7 +16,7 @@ use clone::Clone;
 use container::Container;
 use iterator::IteratorUtil;
 use vec::{OwnedVector, MutableVector};
-use super::io::net::ip::{IpAddr, Ipv4, Ipv6};
+use super::io::net::ip::Ipv6;
 use rt::sched::Scheduler;
 use super::io::net::ip::{IpAddr, Ipv4};
 use unstable::run_in_bare_thread;
@@ -207,7 +207,7 @@ pub fn cleanup_task(task: ~Task) {
     task.destroyed = true;
 
     let local_success = !task.unwinder.unwinding;
-    let join_latch = task.join_latch.swap_unwrap();
+    let join_latch = task.join_latch.take_unwrap();
     match task.on_exit {
         Some(ref on_exit) => {
             let success = join_latch.wait(local_success);

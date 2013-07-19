@@ -85,7 +85,7 @@ impl Task {
         let f = Cell::new(f);
         let home = Cell::new(home);
         do Local::borrow::<Task, ~Task> |running_task| {
-            let mut sched = running_task.sched.swap_unwrap();
+            let mut sched = running_task.sched.take_unwrap();
             let new_task = ~running_task.new_child_homed(&mut sched.stack_pool,
                                                          home.take(),
                                                          f.take());
@@ -102,7 +102,7 @@ impl Task {
         let f = Cell::new(f);
         let home = Cell::new(home);
         do Local::borrow::<Task, ~Task> |running_task| {
-            let mut sched = running_task.sched.swap_unwrap();
+            let mut sched = running_task.sched.take_unwrap();
             let new_task = ~Task::new_root_homed(&mut sched.stack_pool,
                                                     home.take(),
                                                     f.take());
@@ -193,7 +193,7 @@ impl Task {
     pub fn swap_unwrap_home(&mut self) -> SchedHome {
         match self.task_type {
             GreenTask(ref mut home) => {
-                let out = home.swap_unwrap();
+                let out = home.take_unwrap();
                 return *out;
             }
             SchedTask => {
