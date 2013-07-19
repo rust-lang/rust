@@ -698,7 +698,7 @@ pub fn resolve_impl(ccx: @mut CrateCtxt, impl_item: @ast::item) {
 
 // Detect points where a trait-bounded type parameter is
 // instantiated, resolve the impls for the parameters.
-pub fn resolve_in_block(fcx: @mut FnCtxt, bl: &ast::blk) {
+pub fn resolve_in_block(fcx: @mut FnCtxt, bl: &ast::Block) {
     visit::visit_block(bl, (fcx, visit::mk_vt(@visit::Visitor {
         visit_expr: resolve_expr,
         visit_item: |_,_| {},

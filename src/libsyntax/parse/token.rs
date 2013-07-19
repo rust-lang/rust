@@ -99,7 +99,7 @@ pub enum Token {
 /// For interpolation during macro expansion.
 pub enum nonterminal {
     nt_item(@ast::item),
-    nt_block(ast::blk),
+    nt_block(ast::Block),
     nt_stmt(@ast::stmt),
     nt_pat( @ast::pat),
     nt_expr(@ast::expr),

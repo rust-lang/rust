@@ -34,7 +34,7 @@ use syntax::ast_map::path_mod;
 use syntax::ast_util;
 use syntax::codemap::span;
 
-pub fn trans_block(bcx: block, b: &ast::blk, dest: expr::Dest) -> block {
+pub fn trans_block(bcx: block, b: &ast::Block, dest: expr::Dest) -> block {
     let _icx = push_ctxt("trans_block");
     let mut bcx = bcx;
     for b.stmts.iter().advance |s| {
@@ -55,7 +55,7 @@ pub fn trans_block(bcx: block, b: &ast::blk, dest: expr::Dest) -> block {
 
 pub fn trans_if(bcx: block,
             cond: @ast::expr,
-            thn: &ast::blk,
+            thn: &ast::Block,
             els: Option<@ast::expr>,
             dest: expr::Dest)
          -> block {
@@ -167,7 +167,7 @@ pub fn join_blocks(parent_bcx: block, in_cxs: &[block]) -> block {
     return out;
 }
 
-pub fn trans_while(bcx: block, cond: @ast::expr, body: &ast::blk) -> block {
+pub fn trans_while(bcx: block, cond: @ast::expr, body: &ast::Block) -> block {
     let _icx = push_ctxt("trans_while");
     let next_bcx = sub_block(bcx, "while next");
 
@@ -207,7 +207,7 @@ pub fn trans_while(bcx: block, cond: @ast::expr, body: &ast::blk) -> block {
 }
 
 pub fn trans_loop(bcx:block,
-                  body: &ast::blk,
+                  body: &ast::Block,
                   opt_label: Option<ident>)
                -> block {
     let _icx = push_ctxt("trans_loop");

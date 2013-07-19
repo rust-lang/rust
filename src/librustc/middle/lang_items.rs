@@ -23,7 +23,7 @@
 use driver::session::Session;
 use metadata::csearch::each_lang_item;
 use metadata::cstore::iter_crate_data;
-use syntax::ast::{crate, def_id, MetaItem};
+use syntax::ast::{Crate, def_id, MetaItem};
 use syntax::ast_util::local_def;
 use syntax::attr::AttrMetaMethods;
 use syntax::visit::{default_simple_visitor, mk_simple_visitor, SimpleVisitor};
@@ -291,14 +291,14 @@ impl LanguageItems {
 struct LanguageItemCollector<'self> {
     items: LanguageItems,
 
-    crate: &'self crate,
+    crate: &'self Crate,
     session: Session,
 
     item_refs: HashMap<@str, uint>,
 }
 
 impl<'self> LanguageItemCollector<'self> {
-    pub fn new<'a>(crate: &'a crate, session: Session)
+    pub fn new<'a>(crate: &'a Crate, session: Session)
                    -> LanguageItemCollector<'a> {
         let mut item_refs = HashMap::new();
 
@@ -442,7 +442,7 @@ impl<'self> LanguageItemCollector<'self> {
     }
 }
 
-pub fn collect_language_items(crate: &crate,
+pub fn collect_language_items(crate: &Crate,
                               session: Session)
                            -> LanguageItems {
     let mut collector = LanguageItemCollector::new(crate, session);

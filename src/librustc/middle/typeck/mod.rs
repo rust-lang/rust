@@ -407,7 +407,7 @@ fn check_for_entry_fn(ccx: &CrateCtxt) {
 
 pub fn check_crate(tcx: ty::ctxt,
                    trait_map: resolve::TraitMap,
-                   crate: &ast::crate)
+                   crate: &ast::Crate)
                 -> (method_map, vtable_map) {
     let time_passes = tcx.sess.time_passes();
     let ccx = @mut CrateCtxt {

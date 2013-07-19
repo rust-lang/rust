@@ -66,7 +66,7 @@ fn lookup_hash(d: ebml::Doc, eq_fn: &fn(x:&[u8]) -> bool, hash: uint) ->
     None
 }
 
-pub type GetCrateDataCb<'self> = &'self fn(ast::crate_num) -> cmd;
+pub type GetCrateDataCb<'self> = &'self fn(ast::CrateNum) -> cmd;
 
 pub fn maybe_find_item(item_id: int, items: ebml::Doc) -> Option<ebml::Doc> {
     fn eq_item(bytes: &[u8], item_id: int) -> bool {
@@ -174,7 +174,7 @@ fn item_parent_item(d: ebml::Doc) -> Option<ast::def_id> {
     None
 }
 
-fn item_reqd_and_translated_parent_item(cnum: ast::crate_num,
+fn item_reqd_and_translated_parent_item(cnum: ast::CrateNum,
                                         d: ebml::Doc) -> ast::def_id {
     let trait_did = item_parent_item(d).expect("item without parent");
     ast::def_id { crate: cnum, node: trait_did.node }
@@ -311,7 +311,7 @@ fn item_name(intr: @ident_interner, item: ebml::Doc) -> ast::ident {
     }
 }
 
-fn item_to_def_like(item: ebml::Doc, did: ast::def_id, cnum: ast::crate_num)
+fn item_to_def_like(item: ebml::Doc, did: ast::def_id, cnum: ast::CrateNum)
     -> def_like {
     let fam = item_family(item);
     match fam {
@@ -349,7 +349,7 @@ fn item_to_def_like(item: ebml::Doc, did: ast::def_id, cnum: ast::crate_num)
     }
 }
 
-pub fn lookup_def(cnum: ast::crate_num, data: @~[u8], did_: ast::def_id) ->
+pub fn lookup_def(cnum: ast::CrateNum, data: @~[u8], did_: ast::def_id) ->
    ast::def {
     let item = lookup_item(did_.node, data);
     let did = ast::def_id { crate: cnum, node: did_.node };
@@ -1160,7 +1160,7 @@ pub fn get_crate_attributes(data: @~[u8]) -> ~[ast::Attribute] {
 
 #[deriving(Clone)]
 pub struct crate_dep {
-    cnum: ast::crate_num,
+    cnum: ast::CrateNum,
     name: ast::ident,
     vers: @str,
     hash: @str

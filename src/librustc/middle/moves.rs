@@ -192,7 +192,7 @@ enum UseMode {
 
 pub fn compute_moves(tcx: ty::ctxt,
                      method_map: method_map,
-                     crate: &crate) -> MoveMaps
+                     crate: &Crate) -> MoveMaps
 {
     let visitor = visit::mk_vt(@visit::Visitor {
         visit_fn: compute_modes_for_fn,
@@ -227,18 +227,18 @@ pub fn moved_variable_node_id_from_def(def: def) -> Option<node_id> {
 ///////////////////////////////////////////////////////////////////////////
 // Expressions
 
-fn compute_modes_for_local<'a>(local: @local,
+fn compute_modes_for_local<'a>(local: @Local,
                                (cx, v): (VisitContext,
                                          vt<VisitContext>)) {
-    cx.use_pat(local.node.pat);
-    for local.node.init.iter().advance |&init| {
+    cx.use_pat(local.pat);
+    for local.init.iter().advance |&init| {
         cx.use_expr(init, Read, v);
     }
 }
 
 fn compute_modes_for_fn(fk: &visit::fn_kind,
                         decl: &fn_decl,
-                        body: &blk,
+                        body: &Block,
                         span: span,
                         id: node_id,
                         (cx, v): (VisitContext,
@@ -281,7 +281,7 @@ impl VisitContext {
         };
     }
 
-    pub fn consume_block(&self, blk: &blk, visitor: vt<VisitContext>) {
+    pub fn consume_block(&self, blk: &Block, visitor: vt<VisitContext>) {
         /*!
          * Indicates that the value of `blk` will be consumed,
          * meaning either copied or moved depending on its type.

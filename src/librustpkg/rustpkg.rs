@@ -83,9 +83,9 @@ struct PkgScript<'self> {
     /// build script
     sess: session::Session,
     /// The config for compiling the custom build script
-    cfg: ast::crate_cfg,
+    cfg: ast::CrateConfig,
     /// The crate for the custom build script
-    crate: @ast::crate,
+    crate: @ast::Crate,
     /// Directory in which to store build output
     build_dir: Path
 }

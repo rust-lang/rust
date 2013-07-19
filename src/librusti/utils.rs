@@ -14,7 +14,7 @@ use syntax::print::pp;
 use syntax::print::pprust;
 use syntax::parse::token;
 
-pub fn each_binding(l: @ast::local, f: @fn(&ast::Path, ast::node_id)) {
+pub fn each_binding(l: @ast::Local, f: @fn(&ast::Path, ast::node_id)) {
     use syntax::visit;
 
     let vt = visit::mk_simple_visitor(
@@ -30,7 +30,7 @@ pub fn each_binding(l: @ast::local, f: @fn(&ast::Path, ast::node_id)) {
             .. *visit::default_simple_visitor()
         }
     );
-    (vt.visit_pat)(l.node.pat, ((), vt));
+    (vt.visit_pat)(l.pat, ((), vt));
 }
 
 /// A utility function that hands off a pretty printer to a callback.

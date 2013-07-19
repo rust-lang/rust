@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ast::{blk, crate, expr_, expr_mac, mac_invoc_tt};
+use ast::{Block, Crate, expr_, expr_mac, mac_invoc_tt};
 use ast::{item_mac, stmt_, stmt_mac, stmt_expr, stmt_semi};
 use ast::{illegal_ctxt};
 use ast;
@@ -395,10 +395,10 @@ pub fn new_name_finder() -> @Visitor<@mut ~[ast::ident]> {
 
 pub fn expand_block(extsbox: @mut SyntaxEnv,
                     _cx: @ExtCtxt,
-                    blk: &blk,
+                    blk: &Block,
                     fld: @ast_fold,
-                    orig: @fn(&blk, @ast_fold) -> blk)
-                 -> blk {
+                    orig: @fn(&Block, @ast_fold) -> Block)
+                 -> Block {
     // see note below about treatment of exts table
     with_exts_frame!(extsbox,false,orig(blk,fld))
 }
@@ -691,7 +691,7 @@ pub fn std_macros() -> @str {
 // add a bunch of macros as though they were placed at the head of the
 // program (ick). This should run before cfg stripping.
 pub fn inject_std_macros(parse_sess: @mut parse::ParseSess,
-                         cfg: ast::crate_cfg, c: &crate) -> @crate {
+                         cfg: ast::CrateConfig, c: &Crate) -> @Crate {
     let sm = match parse_item_from_source_str(@"<std-macros>",
                                               std_macros(),
                                               cfg.clone(),
@@ -718,7 +718,7 @@ pub fn inject_std_macros(parse_sess: @mut parse::ParseSess,
 }
 
 pub fn expand_crate(parse_sess: @mut parse::ParseSess,
-                    cfg: ast::crate_cfg, c: &crate) -> @crate {
+                    cfg: ast::CrateConfig, c: &Crate) -> @Crate {
     // adding *another* layer of indirection here so that the block
     // visitor can swap out one exts table for another for the duration
     // of the block.  The cleaner alternative would be to thread the

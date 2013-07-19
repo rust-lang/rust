@@ -34,7 +34,7 @@ use syntax::parse::parse_crate_from_source_str;
 use syntax::{ast, attr, parse};
 
 struct Env {
-    crate: @ast::crate,
+    crate: @ast::Crate,
     tcx: ty::ctxt,
     infcx: infer::infer_ctxt,
     err_messages: @DVec<~str>

@@ -265,7 +265,7 @@ pub fn lookup_constness(tcx: ty::ctxt, e: &expr) -> constness {
     }
 }
 
-pub fn process_crate(crate: &ast::crate,
+pub fn process_crate(crate: &ast::Crate,
                      tcx: ty::ctxt) {
     let v = visit::mk_simple_visitor(@visit::SimpleVisitor {
         visit_expr_post: |e| { classify(e, tcx); },

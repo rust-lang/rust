@@ -488,7 +488,7 @@ pub mod write {
  */
 
 pub fn build_link_meta(sess: Session,
-                       c: &ast::crate,
+                       c: &ast::Crate,
                        output: &Path,
                        symbol_hasher: &mut hash::State)
                        -> LinkMeta {
@@ -498,12 +498,12 @@ pub fn build_link_meta(sess: Session,
         cmh_items: ~[@ast::MetaItem]
     }
 
-    fn provided_link_metas(sess: Session, c: &ast::crate) ->
+    fn provided_link_metas(sess: Session, c: &ast::Crate) ->
        ProvidedMetas {
         let mut name = None;
         let mut vers = None;
         let mut cmh_items = ~[];
-        let linkage_metas = attr::find_linkage_metas(c.node.attrs);
+        let linkage_metas = attr::find_linkage_metas(c.attrs);
         attr::require_unique_names(sess.diagnostic(), linkage_metas);
         for linkage_metas.iter().advance |meta| {
             match meta.name_str_pair() {
