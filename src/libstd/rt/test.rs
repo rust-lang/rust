@@ -69,7 +69,7 @@ pub fn run_in_mt_newsched_task(f: ~fn()) {
     let f_cell = Cell::new(f);
 
     do run_in_bare_thread {
-        let nthreads = match os::getenv("RUST_TEST_THREADS") {
+        let nthreads = match os::getenv("RUST_RT_TEST_THREADS") {
             Some(nstr) => FromStr::from_str(nstr).get(),
             None => {
                 // Using more threads than cores in test code
