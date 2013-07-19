@@ -3694,7 +3694,7 @@ fn struct_ctor_id(cx: ctxt, struct_did: ast::def_id) -> Option<ast::def_id> {
 
 // Enum information
 #[deriving(Clone)]
-pub struct VariantInfo_ {
+pub struct VariantInfo {
     args: ~[t],
     arg_names: Option<~[ast::ident]>,
     ctor_ty: t,
