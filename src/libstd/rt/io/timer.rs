@@ -17,11 +17,11 @@ use rt::local::Local;
 pub struct Timer(~RtioTimerObject);
 
 impl Timer {
-    fn new(i: ~RtioTimerObject) -> Timer {
+    fn new_on_rt(i: ~RtioTimerObject) -> Timer {
         Timer(i)
     }
 
-    pub fn init() -> Option<Timer> {
+    pub fn new() -> Option<Timer> {
         let timer = unsafe {
             rtdebug!("Timer::init: borrowing io to init timer");
             let io = Local::unsafe_borrow::<IoFactoryObject>();
@@ -29,7 +29,7 @@ impl Timer {
             (*io).timer_init()
         };
         match timer {
-            Ok(t) => Some(Timer::new(t)),
+            Ok(t) => Some(Timer::new_on_rt(t)),
             Err(ioerr) => {
                 rtdebug!("Timer::init: failed to init: %?", ioerr);
                 io_error::cond.raise(ioerr);
@@ -53,7 +53,7 @@ mod test {
     #[test]
     fn test_io_timer_sleep_simple() {
         do run_in_newsched_task {
-            let timer = Timer::init();
+            let timer = Timer::new();
             match timer {
                 Some(t) => t.sleep(1),
                 None => assert!(false)
