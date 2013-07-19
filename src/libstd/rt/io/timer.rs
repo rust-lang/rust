@@ -1,12 +1,13 @@
-// copyright 2013 the rust project developers. see the copyright
+// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
-// http://rust-lang.org/copyright.
+// http://rust-lang.org/COPYRIGHT.
 //
-// licensed under the apache license, version 2.0 <license-apache or
-// http://www.apache.org/licenses/license-2.0> or the mit license
-// <license-mit or http://opensource.org/licenses/mit>, at your
-// option. this file may not be copied, modified, or distributed
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
 // except according to those terms.
+
 use option::{Option, Some, None};
 use result::{Ok, Err};
 use rt::io::{io_error};
