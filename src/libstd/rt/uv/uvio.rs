@@ -264,7 +264,7 @@ impl IoFactory for UvIoFactory {
     }
 
     fn udp_bind(&mut self, addr: IpAddr) -> Result<~RtioUdpSocketObject, IoError> {
-        let /*mut*/ watcher = UdpWatcher::new(self.uv_loop());
+        let mut watcher = UdpWatcher::new(self.uv_loop());
         match watcher.bind(addr) {
             Ok(_) => Ok(~UvUdpSocket(watcher)),
             Err(uverr) => {
@@ -497,7 +497,7 @@ impl RtioUdpSocket for UvUdpSocket {
             assert!(!sched.in_task_context());
             let task_cell = Cell::new(task);
             let alloc: AllocCallback = |_| unsafe { slice_to_uv_buf(*buf_ptr) };
-            do self.recv_start(alloc) |watcher, nread, _buf, addr, flags, status| {
+            do self.recv_start(alloc) |mut watcher, nread, _buf, addr, flags, status| {
                 let _ = flags; // XXX add handling for partials?
 
                 watcher.recv_stop();

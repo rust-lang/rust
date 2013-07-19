@@ -359,7 +359,7 @@ impl UdpWatcher {
         }
     }
 
-    pub fn bind(&self, address: IpAddr) -> Result<(), UvError> {
+    pub fn bind(&mut self, address: IpAddr) -> Result<(), UvError> {
         do ip_as_uv_ip(address) |addr| {
             let result = unsafe {
                 match addr {
@@ -374,10 +374,9 @@ impl UdpWatcher {
         }
     }
 
-    pub fn recv_start(&self, alloc: AllocCallback, cb: UdpReceiveCallback) {
+    pub fn recv_start(&mut self, alloc: AllocCallback, cb: UdpReceiveCallback) {
         {
-            let mut this = *self;
-            let data = this.get_watcher_data();
+            let data = self.get_watcher_data();
             data.alloc_cb = Some(alloc);
             data.udp_recv_cb = Some(cb);
         }
@@ -409,14 +408,13 @@ impl UdpWatcher {
         }
     }
 
-    pub fn recv_stop(&self) {
+    pub fn recv_stop(&mut self) {
         unsafe { uvll::udp_recv_stop(self.native_handle()); }
     }
 
-    pub fn send(&self, buf: Buf, address: IpAddr, cb: UdpSendCallback) {
+    pub fn send(&mut self, buf: Buf, address: IpAddr, cb: UdpSendCallback) {
         {
-            let mut this = *self;
-            let data = this.get_watcher_data();
+            let data = self.get_watcher_data();
             assert!(data.udp_send_cb.is_none());
             data.udp_send_cb = Some(cb);
         }
@@ -620,7 +618,7 @@ mod test {
     fn udp_bind_close_ip4() {
         do run_in_bare_thread() {
             let mut loop_ = Loop::new();
-            let udp_watcher = { UdpWatcher::new(&mut loop_) };
+            let mut udp_watcher = { UdpWatcher::new(&mut loop_) };
             let addr = next_test_ip4();
             udp_watcher.bind(addr);
             udp_watcher.close(||());
@@ -633,7 +631,7 @@ mod test {
     fn udp_bind_close_ip6() {
         do run_in_bare_thread() {
             let mut loop_ = Loop::new();
-            let udp_watcher = { UdpWatcher::new(&mut loop_) };
+            let mut udp_watcher = { UdpWatcher::new(&mut loop_) };
             let addr = next_test_ip6();
             udp_watcher.bind(addr);
             udp_watcher.close(||());
@@ -798,7 +796,7 @@ mod test {
             let server_addr = next_test_ip4();
             let client_addr = next_test_ip4();
 
-            let server = UdpWatcher::new(&loop_);
+            let mut server = UdpWatcher::new(&loop_);
             assert!(server.bind(server_addr).is_ok());
 
             rtdebug!("starting read");
@@ -806,7 +804,7 @@ mod test {
                 vec_to_uv_buf(vec::from_elem(size, 0u8))
             };
 
-            do server.recv_start(alloc) |server, nread, buf, src, flags, status| {
+            do server.recv_start(alloc) |mut server, nread, buf, src, flags, status| {
                 server.recv_stop();
                 rtdebug!("i'm reading!");
                 assert!(status.is_none());
@@ -830,7 +828,7 @@ mod test {
 
             do Thread::start {
                 let mut loop_ = Loop::new();
-                let client = UdpWatcher::new(&loop_);
+                let mut client = UdpWatcher::new(&loop_);
                 assert!(client.bind(client_addr).is_ok());
                 let msg = ~[0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
                 let buf = slice_to_uv_buf(msg);
@@ -857,7 +855,7 @@ mod test {
             let server_addr = next_test_ip6();
             let client_addr = next_test_ip6();
 
-            let server = UdpWatcher::new(&loop_);
+            let mut server = UdpWatcher::new(&loop_);
             assert!(server.bind(server_addr).is_ok());
 
             rtdebug!("starting read");
@@ -865,7 +863,7 @@ mod test {
                 vec_to_uv_buf(vec::from_elem(size, 0u8))
             };
 
-            do server.recv_start(alloc) |server, nread, buf, src, flags, status| {
+            do server.recv_start(alloc) |mut server, nread, buf, src, flags, status| {
                 server.recv_stop();
                 rtdebug!("i'm reading!");
                 assert!(status.is_none());
@@ -889,7 +887,7 @@ mod test {
 
             do Thread::start {
                 let mut loop_ = Loop::new();
-                let client = UdpWatcher::new(&loop_);
+                let mut client = UdpWatcher::new(&loop_);
                 assert!(client.bind(client_addr).is_ok());
                 let msg = ~[0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
                 let buf = slice_to_uv_buf(msg);
