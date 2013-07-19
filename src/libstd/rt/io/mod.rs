@@ -298,7 +298,7 @@ mod extensions;
 mod support;
 
 /// Basic Timer
-mod timer;
+pub mod timer;
 
 /// Thread-blocking implementations
 pub mod native {
