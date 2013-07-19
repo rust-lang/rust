@@ -792,7 +792,6 @@ mod test_qsort {
 
     use sort::*;
 
-    use std::int;
     use std::vec;
 
     fn check_sort(v1: &mut [int], v2: &mut [int]) {

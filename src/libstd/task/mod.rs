@@ -110,8 +110,6 @@ pub enum SchedMode {
     /// All tasks run in the same OS thread
     SingleThreaded,
     /// Tasks are distributed among available CPUs
-    ThreadPerCore,
-    /// Each task runs in its own OS thread
     ThreadPerTask,
     /// Tasks are distributed among a fixed number of OS threads
     ManualThreads(uint),
@@ -1145,22 +1143,6 @@ fn test_child_doesnt_ref_parent() {
         }
     }
     task::spawn(child_no(0));
-}
-
-#[test]
-fn test_sched_thread_per_core() {
-    let (port, chan) = comm::stream();
-
-    do spawn_sched(ThreadPerCore) || {
-        unsafe {
-            let cores = rt::rust_num_threads();
-            let reported_threads = rt::rust_sched_threads();
-            assert_eq!(cores as uint, reported_threads as uint);
-            chan.send(());
-        }
-    }
-
-    port.recv();
 }
 
 #[test]

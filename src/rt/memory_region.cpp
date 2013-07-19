@@ -34,6 +34,14 @@ void *memory_region::get_data(alloc_header *ptr) {
     return (void*)((char *)ptr + HEADER_SIZE);
 }
 
+inline void memory_region::maybe_print_backtrace(const alloc_header *header) const {
+#   if RUSTRT_TRACK_ALLOCATIONS >= 3
+    if (_detailed_leaks) {
+        backtrace_symbols_fd(header->bt + 1, header->btframes - 1, 2);
+    }
+#   endif
+}
+
 memory_region::memory_region(bool synchronized,
                              bool detailed_leaks,
                              bool poison_on_free) :
@@ -174,13 +182,7 @@ memory_region::~memory_region() {
                        header->tag,
                        (uintptr_t) get_data(header));
                 ++leak_count;
-
-#               if RUSTRT_TRACK_ALLOCATIONS >= 3
-                if (_detailed_leaks) {
-                    backtrace_symbols_fd(header->bt + 1,
-                                         header->btframes - 1, 2);
-                }
-#               endif
+                maybe_print_backtrace(header);
             }
         }
         assert(leak_count == _live_allocations);
@@ -203,9 +205,16 @@ memory_region::release_alloc(void *mem) {
 
 #   if RUSTRT_TRACK_ALLOCATIONS >= 2
     if (_synchronized) { _lock.lock(); }
+    if (((size_t) alloc->index) >= _allocation_list.size()) {
+        printf("free: ptr 0x%" PRIxPTR " (%s) index %d is beyond allocation_list of size %zu\n",
+               (uintptr_t) get_data(alloc), alloc->tag, alloc->index, _allocation_list.size());
+        maybe_print_backtrace(alloc);
+        assert(false && "index beyond allocation_list");
+    }
     if (_allocation_list[alloc->index] != alloc) {
         printf("free: ptr 0x%" PRIxPTR " (%s) is not in allocation_list\n",
                (uintptr_t) get_data(alloc), alloc->tag);
+        maybe_print_backtrace(alloc);
         assert(false && "not in allocation_list");
     }
     else {

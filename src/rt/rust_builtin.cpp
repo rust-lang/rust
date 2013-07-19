@@ -476,12 +476,6 @@ rust_get_sched_id() {
     return task->sched->get_id();
 }
 
-extern "C" CDECL uintptr_t
-rust_num_threads() {
-    rust_task *task = rust_get_current_task();
-    return task->kernel->env->num_sched_threads;
-}
-
 extern "C" CDECL int
 rust_get_argc() {
     rust_task *task = rust_get_current_task();

@@ -1078,7 +1078,6 @@ mod tests {
         // This is to verify that the implementation of the ISAAC rng is
         // correct (i.e. matches the output of the upstream implementation,
         // which is in the runtime)
-        use vec;
         use libc::size_t;
 
         #[abi = "cdecl"]
