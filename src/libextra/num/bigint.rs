@@ -732,6 +732,11 @@ impl Ord for Sign {
     }
 }
 
+impl TotalEq for Sign {
+    fn equals(&self, other: &Sign) -> bool {
+        *self == *other
+    }
+}
 impl TotalOrd for Sign {
 
     fn cmp(&self, other: &Sign) -> Ordering {

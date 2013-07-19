@@ -86,6 +86,12 @@ pub trait TotalOrd: TotalEq {
     fn cmp(&self, other: &Self) -> Ordering;
 }
 
+impl TotalEq for Ordering {
+    #[inline]
+    fn equals(&self, other: &Ordering) -> bool {
+        *self == *other
+    }
+}
 impl TotalOrd for Ordering {
     #[inline]
     fn cmp(&self, other: &Ordering) -> Ordering {
