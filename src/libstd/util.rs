@@ -75,29 +75,53 @@ pub fn replace<T>(dest: &mut T, mut src: T) -> T {
 }
 
 /**
- * Transform the value at a mutable location without deinitializing or copying
- * it.
+ * Combine two values and replace the original without copying or deinitializing
+ * either one.
+ *
+ * Especially useful for owned recursive datatypes.
  */
 #[inline]
-pub fn reset<T>(val: &mut T, func: &fn(T) -> T) {
+fn pack<T, U>(val: &mut T, param: U, comb: &fn(T, U) -> T) {
     unsafe {
         let mut tmp: T = intrinsics::uninit();
-        let t: *mut T = &mut tmp;
 
-        // Duplicate `val`
-        ptr::copy_nonoverlapping_memory(t, val, 1);
+        swap(val, &mut tmp);
 
-        // Apply the transformation (the old value will get dropped unless the
-        // new value references it or `func` is `id`)
-        tmp = func(tmp);
+        // Perform the combination into a new T
+        let new = comb(tmp, param);
 
-        // Overwrite `val` with the new value
-        ptr::copy_nonoverlapping_memory(val, t, 1);
+        let nothing = replace(val, new);
 
-        // Don't let `tmp` get dropped, `val` now owns the value
-        cast::forget(tmp);
+        // Don't let the tmp variable get dropped
+        cast::forget(nothing);
     }
 }
+
+/**
+ * Split one value into two and replace the original, returning the remainder.
+ * 
+ * Especially useful for recursive datatypes.
+ */
+#[inline]
+fn unpack<T, U>(val: &mut T, split: &fn(T) -> (T, U)) -> U {
+    unsafe {
+        let mut tmp: T = intrinsics::uninit();
+
+        swap(val, &mut tmp);
+
+        let (new, result) = split(tmp);
+
+        let nothing = replace(val, new);
+
+        // Don't let the tmp variable get dropped
+        cast::forget(nothing);
+
+        // Return the unpacked value
+        result
+    }
+}
+
+ 
 
 /// A non-copyable dummy type.
 #[deriving(Eq, TotalEq, Ord, TotalOrd)]
@@ -183,23 +207,6 @@ mod tests {
         let y = replace(&mut x, None);
         assert!(x.is_none());
         assert!(y.is_some());
-    }
-
-    #[test]
-    fn test_reset() {
-        let mut x = 42;
-        do reset(&mut x) |i| {
-            assert_eq!(i, 42);
-            31337
-        }
-        assert_eq!(x, 31337)
-
-        let mut y = Some(NonCopyable);
-        do reset(&mut y) |o| {
-            assert!(o.is_some());
-            None
-        }
-        assert!(y.is_none());
     }
 
     #[test]
