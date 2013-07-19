@@ -547,10 +547,10 @@ pub fn super_tys<C:Combine>(
         }
       }
 
-      (&ty::ty_ptr(ref a_mt), &ty::ty_ptr(ref b_mt)) => {
-        do this.mts(a_mt, b_mt).chain |mt| {
-            Ok(ty::mk_ptr(tcx, mt))
-        }
+      (&ty::ty_ptr(a_r, ref a_mt), &ty::ty_ptr(b_r, ref b_mt)) => {
+          let r = if_ok!(this.contraregions(a_r, b_r));
+          let mt = if_ok!(this.mts(a_mt, b_mt));
+          Ok(ty::mk_ptr(tcx, r, mt))
       }
 
       (&ty::ty_rptr(a_r, ref a_mt), &ty::ty_rptr(b_r, ref b_mt)) => {

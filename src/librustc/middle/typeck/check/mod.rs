@@ -2712,7 +2712,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                         &T to *T. */
                         let te = structurally_resolved_type(fcx, e.span, t_e);
                         match (&ty::get(te).sty, &ty::get(t_1).sty) {
-                            (&ty::ty_rptr(_, mt1), &ty::ty_ptr(mt2))
+                            (&ty::ty_rptr(_, mt1), &ty::ty_ptr(_, mt2))
                             if types_compatible(fcx, e.span,
                                                 mt1.ty, mt2.ty) => {
                                 /* this case is allowed */
@@ -3246,6 +3246,7 @@ pub fn ty_param_bounds_and_ty_for_def(fcx: @mut FnCtxt,
             },
             ty: ty::mk_ptr(
                 fcx.ccx.tcx,
+                ty::re_static,
                 ty::mt {
                     ty: ty::mk_mach_uint(ast::ty_u8),
                     mutbl: ast::m_imm
@@ -3556,7 +3557,7 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
                   Ok(t) => t,
                   Err(s) => { tcx.sess.span_fatal(it.span, s); }
               };
-              let td_ptr = ty::mk_ptr(ccx.tcx, ty::mt {
+              let td_ptr = ty::mk_ptr(ccx.tcx, ty::re_static, ty::mt {
                   ty: tydesc_ty,
                   mutbl: ast::m_imm
               });
@@ -3572,7 +3573,7 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
                   Err(s) => { tcx.sess.span_fatal(it.span, s); }
               };
 
-              let td_ptr = ty::mk_ptr(ccx.tcx, ty::mt {
+              let td_ptr = ty::mk_ptr(ccx.tcx, ty::re_static, ty::mt {
                   ty: tydesc_ty,
                   mutbl: ast::m_imm
               });
@@ -3587,23 +3588,27 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
                   bounds: ty::EmptyBuiltinBounds(),
                   sig: ty::FnSig {
                       bound_lifetime_names: opt_vec::Empty,
-                      inputs: ~[ty::mk_imm_ptr(ccx.tcx, ty::mk_mach_uint(ast::ty_u8))],
+                      inputs: ~[
+                          ty::mk_imm_ptr(ccx.tcx,
+                                         ty::re_static,
+                                         ty::mk_mach_uint(ast::ty_u8))
+                      ],
                       output: ty::mk_nil()
                   }
               });
               (0u, ~[fty], ty::mk_nil())
             }
             "morestack_addr" => {
-              (0u, ~[], ty::mk_nil_ptr(ccx.tcx))
+              (0u, ~[], ty::mk_nil_ptr(ccx.tcx, ty::re_static))
             }
             "memcpy32" => {
               (1,
                ~[
-                  ty::mk_ptr(tcx, ty::mt {
+                  ty::mk_ptr(tcx, ty::re_static, ty::mt {
                       ty: param(ccx, 0),
                       mutbl: ast::m_mutbl
                   }),
-                  ty::mk_ptr(tcx, ty::mt {
+                  ty::mk_ptr(tcx, ty::re_static, ty::mt {
                       ty: param(ccx, 0),
                       mutbl: ast::m_imm
                   }),
@@ -3614,11 +3619,11 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
             "memcpy64" => {
               (1,
                ~[
-                  ty::mk_ptr(tcx, ty::mt {
+                  ty::mk_ptr(tcx, ty::re_static, ty::mt {
                       ty: param(ccx, 0),
                       mutbl: ast::m_mutbl
                   }),
-                  ty::mk_ptr(tcx, ty::mt {
+                  ty::mk_ptr(tcx, ty::re_static, ty::mt {
                       ty: param(ccx, 0),
                       mutbl: ast::m_imm
                   }),
@@ -3629,11 +3634,11 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
             "memmove32" => {
               (1,
                ~[
-                  ty::mk_ptr(tcx, ty::mt {
+                  ty::mk_ptr(tcx, ty::re_static, ty::mt {
                       ty: param(ccx, 0),
                       mutbl: ast::m_mutbl
                   }),
-                  ty::mk_ptr(tcx, ty::mt {
+                  ty::mk_ptr(tcx, ty::re_static, ty::mt {
                       ty: param(ccx, 0),
                       mutbl: ast::m_imm
                   }),
@@ -3644,11 +3649,11 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
             "memmove64" => {
               (1,
                ~[
-                  ty::mk_ptr(tcx, ty::mt {
+                  ty::mk_ptr(tcx, ty::re_static, ty::mt {
                       ty: param(ccx, 0),
                       mutbl: ast::m_mutbl
                   }),
-                  ty::mk_ptr(tcx, ty::mt {
+                  ty::mk_ptr(tcx, ty::re_static, ty::mt {
                       ty: param(ccx, 0),
                       mutbl: ast::m_imm
                   }),
@@ -3659,7 +3664,7 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
             "memset32" => {
               (1,
                ~[
-                  ty::mk_ptr(tcx, ty::mt {
+                  ty::mk_ptr(tcx, ty::re_static, ty::mt {
                       ty: param(ccx, 0),
                       mutbl: ast::m_mutbl
                   }),
@@ -3671,7 +3676,7 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
             "memset64" => {
               (1,
                ~[
-                  ty::mk_ptr(tcx, ty::mt {
+                  ty::mk_ptr(tcx, ty::re_static, ty::mt {
                       ty: param(ccx, 0),
                       mutbl: ast::m_mutbl
                   }),

@@ -877,7 +877,7 @@ pub mod guarantor {
                                      guarantor_of_deref(&expr_ct.cat));
             }
 
-            ty::AutoUnsafe(_) => {}
+            ty::AutoUnsafe(*) => {}
         }
 
         fn maybe_make_subregion(
@@ -1069,7 +1069,7 @@ pub mod guarantor {
                 match adjustment.autoref {
                     None => {
                     }
-                    Some(ty::AutoUnsafe(_)) => {
+                    Some(ty::AutoUnsafe(*)) => {
                         expr_ct.cat.guarantor = None;
                         expr_ct.cat.pointer = OtherPointer;
                         debug!("autoref, cat=%?", expr_ct.cat);

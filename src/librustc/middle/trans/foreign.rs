@@ -844,6 +844,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
             let frameaddress_val = Call(bcx, frameaddress, [C_i32(0i32)]);
             let star_u8 = ty::mk_imm_ptr(
                 bcx.tcx(),
+                ty::re_static,
                 ty::mk_mach_uint(ast::ty_u8));
             let fty = ty::mk_closure(bcx.tcx(), ty::ClosureTy {
                 purity: ast::impure_fn,

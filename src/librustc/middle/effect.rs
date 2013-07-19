@@ -133,7 +133,7 @@ pub fn check_crate(tcx: ty::ctxt,
                     debug!("effect: unary case, base type is %s",
                            ppaux::ty_to_str(tcx, base_type));
                     match ty::get(base_type).sty {
-                        ty_ptr(_) => {
+                        ty_ptr(*) => {
                             require_unsafe(expr.span,
                                            "dereference of unsafe pointer")
                         }

@@ -227,7 +227,7 @@ pub fn type_of(cx: &mut CrateContext, t: ty::t) -> Type {
           let ty = type_of(cx, mt.ty);
           Type::vec(cx.sess.targ_cfg.arch, &ty)
       }
-      ty::ty_ptr(ref mt) => type_of(cx, mt.ty).ptr_to(),
+      ty::ty_ptr(_, ref mt) => type_of(cx, mt.ty).ptr_to(),
       ty::ty_rptr(_, ref mt) => type_of(cx, mt.ty).ptr_to(),
 
       ty::ty_evec(ref mt, ty::vstore_slice(_)) => {

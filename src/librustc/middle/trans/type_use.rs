@@ -233,8 +233,8 @@ pub fn type_needs_inner(cx: &Context,
                  */
                 ty::ty_closure(*) |
                 ty::ty_bare_fn(*) |
-                ty::ty_ptr(_) |
-                ty::ty_rptr(_, _) |
+                ty::ty_ptr(*) |
+                ty::ty_rptr(*) |
                 ty::ty_trait(*) => false,
 
               ty::ty_enum(did, ref substs) => {

@@ -88,7 +88,7 @@ pub enum ptr_kind {
     uniq_ptr(ast::mutability),
     gc_ptr(ast::mutability),
     region_ptr(ast::mutability, ty::Region),
-    unsafe_ptr
+    unsafe_ptr(ty::Region),
 }
 
 // We use the term "interior" to mean "something reachable from the
@@ -188,8 +188,8 @@ pub fn opt_deref_kind(t: ty::t) -> Option<deref_kind> {
             Some(deref_ptr(gc_ptr(ast::m_imm)))
         }
 
-        ty::ty_ptr(*) => {
-            Some(deref_ptr(unsafe_ptr))
+        ty::ty_ptr(r, _) => {
+            Some(deref_ptr(unsafe_ptr(r)))
         }
 
         ty::ty_enum(*) |
@@ -678,7 +678,7 @@ impl mem_categorization_ctxt {
                     uniq_ptr(*) => {
                         self.inherited_mutability(base_cmt.mutbl, mt.mutbl)
                     }
-                    gc_ptr(*) | region_ptr(_, _) | unsafe_ptr => {
+                    gc_ptr(*) | region_ptr(*) | unsafe_ptr(*) => {
                         MutabilityCategory::from_mutbl(mt.mutbl)
                     }
                 };
@@ -759,7 +759,7 @@ impl mem_categorization_ctxt {
               uniq_ptr(*) => {
                 self.inherited_mutability(base_cmt.mutbl, mt.mutbl)
               }
-              gc_ptr(_) | region_ptr(_, _) | unsafe_ptr => {
+              gc_ptr(_) | region_ptr(*) | unsafe_ptr(*) => {
                 MutabilityCategory::from_mutbl(mt.mutbl)
               }
             };
@@ -1232,7 +1232,7 @@ pub fn ptr_sigil(ptr: ptr_kind) -> ~str {
         uniq_ptr(_) => ~"~",
         gc_ptr(_) => ~"@",
         region_ptr(_, _) => ~"&",
-        unsafe_ptr => ~"*"
+        unsafe_ptr(*) => ~"*"
     }
 }
 
