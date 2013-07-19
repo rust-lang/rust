@@ -130,23 +130,6 @@ pub fn alloc_vec(bcx: block,
     return rslt(bcx, vptr);
 }
 
-pub fn duplicate_uniq(bcx: block, vptr: ValueRef, vec_ty: ty::t) -> Result {
-    let _icx = push_ctxt("tvec::duplicate_uniq");
-
-    let fill = get_fill(bcx, get_bodyptr(bcx, vptr, vec_ty));
-    let unit_ty = ty::sequence_element_type(bcx.tcx(), vec_ty);
-    let Result {bcx, val: newptr} = alloc_uniq_raw(bcx, unit_ty, fill, fill);
-
-    let data_ptr = get_dataptr(bcx, get_bodyptr(bcx, vptr, vec_ty));
-    let new_data_ptr = get_dataptr(bcx, get_bodyptr(bcx, newptr, vec_ty));
-    base::call_memcpy(bcx, new_data_ptr, data_ptr, fill, 1);
-
-    let bcx = if ty::type_needs_drop(bcx.tcx(), unit_ty) {
-        iter_vec_raw(bcx, new_data_ptr, vec_ty, fill, glue::take_ty)
-    } else { bcx };
-    return rslt(bcx, newptr);
-}
-
 pub fn make_drop_glue_unboxed(bcx: block, vptr: ValueRef, vec_ty: ty::t) ->
    block {
     let _icx = push_ctxt("tvec::make_drop_glue_unboxed");

@@ -13,15 +13,12 @@ use back::abi;
 use back::link::{mangle_internal_name_by_path_and_seq};
 use lib::llvm::{llvm, ValueRef};
 use middle::moves;
-use middle::lang_items::ClosureExchangeMallocFnLangItem;
 use middle::trans::base::*;
 use middle::trans::build::*;
-use middle::trans::callee;
 use middle::trans::common::*;
 use middle::trans::datum::{Datum, INIT, ByRef, ZeroMem};
 use middle::trans::expr;
 use middle::trans::glue;
-use middle::trans::machine;
 use middle::trans::type_of::*;
 use middle::ty;
 use util::ppaux::ty_to_str;
@@ -508,51 +505,8 @@ pub fn make_opaque_cbox_take_glue(
             return bcx;
         }
         ast::OwnedSigil => {
-            /* hard case: fallthrough to code below */
+            fail!("unique closures are not copyable")
         }
-    }
-
-    // ~fn requires a deep copy.
-    let ccx = bcx.ccx();
-    let tcx = ccx.tcx;
-    let llopaquecboxty = Type::opaque_box(ccx).ptr_to();
-    let cbox_in = Load(bcx, cboxptr);
-    do with_cond(bcx, IsNotNull(bcx, cbox_in)) |bcx| {
-        // Load the size from the type descr found in the cbox
-        let cbox_in = PointerCast(bcx, cbox_in, llopaquecboxty);
-        let tydescptr = GEPi(bcx, cbox_in, [0u, abi::box_field_tydesc]);
-        let tydesc = Load(bcx, tydescptr);
-        let tydesc = PointerCast(bcx, tydesc, ccx.tydesc_type.ptr_to());
-        let sz = Load(bcx, GEPi(bcx, tydesc, [0u, abi::tydesc_field_size]));
-
-        // Adjust sz to account for the rust_opaque_box header fields
-        let sz = Add(bcx, sz, machine::llsize_of(ccx, Type::box_header(ccx)));
-
-        // Allocate memory, update original ptr, and copy existing data
-        let opaque_tydesc = PointerCast(bcx, tydesc, Type::i8p());
-        let mut bcx = bcx;
-        let alloc_fn = langcall(bcx, None,
-                                fmt!("allocation of type with sigil `%s`",
-                                    sigil.to_str()),
-                                ClosureExchangeMallocFnLangItem);
-        let llresult = unpack_result!(bcx, callee::trans_lang_call(
-            bcx,
-            alloc_fn,
-            [opaque_tydesc, sz],
-            None));
-        let cbox_out = PointerCast(bcx, llresult, llopaquecboxty);
-        call_memcpy(bcx, cbox_out, cbox_in, sz, 1);
-        Store(bcx, cbox_out, cboxptr);
-
-        // Take the (deeply cloned) type descriptor
-        let tydesc_out = GEPi(bcx, cbox_out, [0u, abi::box_field_tydesc]);
-        let bcx = glue::take_ty(bcx, tydesc_out, ty::mk_type(tcx));
-
-        // Take the data in the tuple
-        let cdata_out = GEPi(bcx, cbox_out, [0u, abi::box_field_body]);
-        glue::call_tydesc_glue_full(bcx, cdata_out, tydesc,
-                                    abi::tydesc_field_take_glue, None);
-        bcx
     }
 }
 
