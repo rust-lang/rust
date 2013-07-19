@@ -22,6 +22,7 @@ use unstable::finally::Finally;
 use ops::Drop;
 use clone::Clone;
 use kinds::Send;
+use vec;
 
 /// An atomically reference counted pointer.
 ///
@@ -41,26 +42,53 @@ struct AtomicRcBoxData<T> {
     data: Option<T>,
 }
 
+unsafe fn new_inner<T: Send>(data: T, refcount: uint) -> *mut libc::c_void {
+    let data = ~AtomicRcBoxData { count: AtomicUint::new(refcount),
+                                  unwrapper: AtomicOption::empty(),
+                                  data: Some(data) };
+    cast::transmute(data)
+}
+
 impl<T: Send> UnsafeAtomicRcBox<T> {
     pub fn new(data: T) -> UnsafeAtomicRcBox<T> {
-        unsafe {
-            let data = ~AtomicRcBoxData { count: AtomicUint::new(1),
-                                          unwrapper: AtomicOption::empty(),
-                                          data: Some(data) };
-            let ptr = cast::transmute(data);
-            return UnsafeAtomicRcBox { data: ptr };
-        }
+        unsafe { UnsafeAtomicRcBox { data: new_inner(data, 1) } }
     }
 
     /// As new(), but returns an extra pre-cloned handle.
     pub fn new2(data: T) -> (UnsafeAtomicRcBox<T>, UnsafeAtomicRcBox<T>) {
         unsafe {
-            let data = ~AtomicRcBoxData { count: AtomicUint::new(2),
-                                          unwrapper: AtomicOption::empty(),
-                                          data: Some(data) };
-            let ptr = cast::transmute(data);
-            return (UnsafeAtomicRcBox { data: ptr },
-                    UnsafeAtomicRcBox { data: ptr });
+            let ptr = new_inner(data, 2);
+            (UnsafeAtomicRcBox { data: ptr }, UnsafeAtomicRcBox { data: ptr })
+        }
+    }
+
+    /// As new(), but returns a vector of as many pre-cloned handles as requested.
+    pub fn newN(data: T, num_handles: uint) -> ~[UnsafeAtomicRcBox<T>] {
+        unsafe {
+            if num_handles == 0 {
+                ~[] // need to free data here
+            } else {
+                let ptr = new_inner(data, num_handles);
+                vec::from_fn(num_handles, |_| UnsafeAtomicRcBox { data: ptr })
+            }
+        }
+    }
+
+    /// As newN(), but from an already-existing handle. Uses one xadd.
+    pub fn cloneN(self, num_handles: uint) -> ~[UnsafeAtomicRcBox<T>] {
+        if num_handles == 0 {
+            ~[] // The "num_handles - 1" trick (below) fails in the 0 case.
+        } else {
+            unsafe {
+                let mut data: ~AtomicRcBoxData<T> = cast::transmute(self.data);
+                // Minus one because we are recycling the given handle's refcount.
+                let old_count = data.count.fetch_add(num_handles - 1, Acquire);
+                // let old_count = data.count.fetch_add(num_handles, Acquire);
+                assert!(old_count >= 1);
+                let ptr = cast::transmute(data);
+                cast::forget(self); // Don't run the destructor on this handle.
+                vec::from_fn(num_handles, |_| UnsafeAtomicRcBox { data: ptr })
+            }
         }
     }
 
