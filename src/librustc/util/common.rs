@@ -54,10 +54,10 @@ pub fn indenter() -> _indenter {
     _indenter(())
 }
 
-pub fn field_expr(f: ast::field) -> @ast::expr { return f.node.expr; }
+pub fn field_expr(f: ast::Field) -> @ast::expr { return f.expr; }
 
-pub fn field_exprs(fields: ~[ast::field]) -> ~[@ast::expr] {
-    fields.map(|f| f.node.expr)
+pub fn field_exprs(fields: ~[ast::Field]) -> ~[@ast::expr] {
+    fields.map(|f| f.expr)
 }
 
 // Takes a predicate p, returns true iff p is true for any subexpressions

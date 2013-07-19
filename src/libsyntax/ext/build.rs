@@ -107,9 +107,9 @@ pub trait AstBuilder {
                         args: ~[@ast::expr]) -> @ast::expr;
     fn expr_blk(&self, b: ast::Block) -> @ast::expr;
 
-    fn field_imm(&self, span: span, name: ident, e: @ast::expr) -> ast::field;
-    fn expr_struct(&self, span: span, path: ast::Path, fields: ~[ast::field]) -> @ast::expr;
-    fn expr_struct_ident(&self, span: span, id: ast::ident, fields: ~[ast::field]) -> @ast::expr;
+    fn field_imm(&self, span: span, name: ident, e: @ast::expr) -> ast::Field;
+    fn expr_struct(&self, span: span, path: ast::Path, fields: ~[ast::Field]) -> @ast::expr;
+    fn expr_struct_ident(&self, span: span, id: ast::ident, fields: ~[ast::Field]) -> @ast::expr;
 
     fn expr_lit(&self, sp: span, lit: ast::lit_) -> @ast::expr;
 
@@ -477,14 +477,14 @@ impl AstBuilder for @ExtCtxt {
     fn expr_blk(&self, b: ast::Block) -> @ast::expr {
         self.expr(b.span, ast::expr_block(b))
     }
-    fn field_imm(&self, span: span, name: ident, e: @ast::expr) -> ast::field {
-        respan(span, ast::field_ { ident: name, expr: e })
+    fn field_imm(&self, span: span, name: ident, e: @ast::expr) -> ast::Field {
+        ast::Field { ident: name, expr: e, span: span }
     }
-    fn expr_struct(&self, span: span, path: ast::Path, fields: ~[ast::field]) -> @ast::expr {
+    fn expr_struct(&self, span: span, path: ast::Path, fields: ~[ast::Field]) -> @ast::expr {
         self.expr(span, ast::expr_struct(path, fields, None))
     }
     fn expr_struct_ident(&self, span: span,
-                         id: ast::ident, fields: ~[ast::field]) -> @ast::expr {
+                         id: ast::ident, fields: ~[ast::Field]) -> @ast::expr {
         self.expr_struct(span, self.path_ident(span, id), fields)
     }
 

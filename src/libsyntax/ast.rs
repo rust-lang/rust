@@ -409,12 +409,11 @@ pub struct arm {
 }
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
-pub struct field_ {
+pub struct Field {
     ident: ident,
     expr: @expr,
+    span: span,
 }
-
-pub type field = spanned<field_>;
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub enum blk_check_mode {
@@ -495,7 +494,7 @@ pub enum expr_ {
     expr_mac(mac),
 
     // A struct literal expression.
-    expr_struct(Path, ~[field], Option<@expr>),
+    expr_struct(Path, ~[Field], Option<@expr>),
 
     // A vector literal constructed from one repeated element.
     expr_repeat(@expr /* element */, @expr /* count */, mutability),

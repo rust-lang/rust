@@ -705,7 +705,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
 
             ast::expr_struct(_, ref fields, with_expr) => {
                 for fields.iter().advance |field| {
-                    self.walk_expr(field.node.expr, in_out, loop_scopes);
+                    self.walk_expr(field.expr, in_out, loop_scopes);
                 }
                 self.walk_opt_expr(with_expr, in_out, loop_scopes);
             }
