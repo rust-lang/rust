@@ -86,7 +86,7 @@ impl<A, T: DoubleEndedIterator<A>> Iterator<A> for InvertIterator<A, T> {
     fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
 }
 
-impl<A, T: Iterator<A>> DoubleEndedIterator<A> for InvertIterator<A, T> {
+impl<A, T: DoubleEndedIterator<A>> DoubleEndedIterator<A> for InvertIterator<A, T> {
     #[inline]
     fn next_back(&mut self) -> Option<A> { self.iter.next() }
 }
