@@ -14,6 +14,7 @@ fn to_foo<T:Clone + foo>(t: T) -> @foo {
     @t as @foo
     //~^ ERROR value may contain borrowed pointers; add `'static` bound
     //~^^ ERROR cannot pack type
+    //~^^^ ERROR value may contain borrowed pointers
 }
 
 fn to_foo2<T:Clone + foo + 'static>(t: T) -> @foo {

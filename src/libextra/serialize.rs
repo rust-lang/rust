@@ -423,7 +423,7 @@ impl<S:Encoder,T:Encodable<S>> Encodable<S> for @T {
     }
 }
 
-impl<D:Decoder,T:Decodable<D>> Decodable<D> for @T {
+impl<D:Decoder,T:Decodable<D> + 'static> Decodable<D> for @T {
     fn decode(d: &mut D) -> @T {
         @Decodable::decode(d)
     }
@@ -435,7 +435,7 @@ impl<S:Encoder,T:Encodable<S>> Encodable<S> for @mut T {
     }
 }
 
-impl<D:Decoder,T:Decodable<D>> Decodable<D> for @mut T {
+impl<D:Decoder,T:Decodable<D> + 'static> Decodable<D> for @mut T {
     fn decode(d: &mut D) -> @mut T {
         @mut Decodable::decode(d)
     }
