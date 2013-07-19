@@ -16,8 +16,9 @@ use option::{Option, Some, None};
 use sys;
 use unstable::intrinsics;
 use util::swap;
-use ops::{Add,Sub};
-use num::Int;
+
+#[cfg(not(test))] use ops::{Add,Sub};
+#[cfg(not(test))] use num::Int;
 
 #[cfg(not(test))] use cmp::{Eq, Ord};
 use uint;
@@ -570,7 +571,7 @@ pub mod ptr_tests {
             }
 
             let mut xs_mut = xs.clone();
-            let mut m_start = to_mut_ptr(xs_mut);
+            let m_start = to_mut_ptr(xs_mut);
             let mut m_ptr = m_start + 9u32;
 
             while m_ptr >= m_start {

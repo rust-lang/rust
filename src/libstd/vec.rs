@@ -16,7 +16,7 @@ use cast::transmute;
 use cast;
 use clone::Clone;
 use container::{Container, Mutable};
-use cmp::{Eq, TotalEq, TotalOrd, Ordering, Less, Equal, Greater};
+use cmp::{Eq, TotalOrd, Ordering, Less, Equal, Greater};
 use cmp;
 use iterator::*;
 use libc::c_void;
