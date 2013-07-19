@@ -643,9 +643,9 @@ fn spawn_process_os(prog: &str, args: &[~str],
         use libc::c_void;
 
         #[abi = "cdecl"]
-        pub extern {
-            unsafe fn rust_unset_sigprocmask();
-            unsafe fn rust_set_environ(envp: *c_void);
+        extern {
+            pub unsafe fn rust_unset_sigprocmask();
+            pub unsafe fn rust_set_environ(envp: *c_void);
         }
     }
 

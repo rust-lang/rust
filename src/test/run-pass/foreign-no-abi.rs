@@ -13,7 +13,7 @@
 mod rustrt {
     use std::libc;
 
-    pub extern {
+    extern {
         pub fn get_task_id() -> libc::intptr_t;
     }
 }

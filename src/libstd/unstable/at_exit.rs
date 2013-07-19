@@ -41,8 +41,8 @@ pub fn at_exit(f: ~fn()) {
 mod rustrt {
     use libc::c_void;
 
-    pub extern {
-        fn rust_register_exit_function(runner: *c_void, f: ~~fn());
+    extern {
+        pub fn rust_register_exit_function(runner: *c_void, f: ~~fn());
     }
 }
 

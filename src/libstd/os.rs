@@ -61,12 +61,12 @@ pub mod rustrt {
     use libc::{c_char, c_int};
     use libc;
 
-    pub extern {
-        unsafe fn rust_get_argc() -> c_int;
-        unsafe fn rust_get_argv() -> **c_char;
-        unsafe fn rust_path_is_dir(path: *libc::c_char) -> c_int;
-        unsafe fn rust_path_exists(path: *libc::c_char) -> c_int;
-        unsafe fn rust_set_exit_status(code: libc::intptr_t);
+    extern {
+        pub unsafe fn rust_get_argc() -> c_int;
+        pub unsafe fn rust_get_argv() -> **c_char;
+        pub unsafe fn rust_path_is_dir(path: *libc::c_char) -> c_int;
+        pub unsafe fn rust_path_exists(path: *libc::c_char) -> c_int;
+        pub unsafe fn rust_set_exit_status(code: libc::intptr_t);
     }
 }
 

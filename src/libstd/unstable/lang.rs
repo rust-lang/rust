@@ -26,22 +26,23 @@ pub mod rustrt {
     use unstable::lang::rust_task;
     use libc::{c_char, uintptr_t};
 
-    pub extern {
+    extern {
         #[rust_stack]
-        unsafe fn rust_upcall_malloc(td: *c_char, size: uintptr_t) -> *c_char;
+        pub unsafe fn rust_upcall_malloc(td: *c_char, size: uintptr_t)
+                                         -> *c_char;
 
         #[rust_stack]
-        unsafe fn rust_upcall_free(ptr: *c_char);
+        pub unsafe fn rust_upcall_free(ptr: *c_char);
 
         #[fast_ffi]
-        unsafe fn rust_upcall_malloc_noswitch(td: *c_char,
-                                              size: uintptr_t)
-                                           -> *c_char;
+        pub unsafe fn rust_upcall_malloc_noswitch(td: *c_char,
+                                                  size: uintptr_t)
+                                                  -> *c_char;
 
         #[rust_stack]
-        fn rust_try_get_task() -> *rust_task;
+        pub fn rust_try_get_task() -> *rust_task;
 
-        fn rust_dbg_breakpoint();
+        pub fn rust_dbg_breakpoint();
     }
 }
 

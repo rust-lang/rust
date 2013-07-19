@@ -14,7 +14,7 @@
 
 mod libc {
     #[nolink]
-    pub extern {
+    extern {
         pub fn malloc(size: int) -> *u8;
     }
 }

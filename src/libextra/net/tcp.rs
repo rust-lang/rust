@@ -35,11 +35,11 @@ pub mod rustrt {
     use std::libc;
 
     #[nolink]
-    pub extern {
-        unsafe fn rust_uv_current_kernel_malloc(size: libc::c_uint)
-                                             -> *libc::c_void;
-        unsafe fn rust_uv_current_kernel_free(mem: *libc::c_void);
-        unsafe fn rust_uv_helper_uv_tcp_t_size() -> libc::c_uint;
+    extern {
+        pub unsafe fn rust_uv_current_kernel_malloc(size: libc::c_uint)
+                                                    -> *libc::c_void;
+        pub unsafe fn rust_uv_current_kernel_free(mem: *libc::c_void);
+        pub unsafe fn rust_uv_helper_uv_tcp_t_size() -> libc::c_uint;
     }
 }
 
