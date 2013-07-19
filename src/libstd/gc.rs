@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #[doc(hidden)];
+#[allow(non_uppercase_statics)];
 
 /*! Precise garbage collector
 
@@ -38,7 +39,7 @@ with destructors.
 */
 
 use cast;
-use container::{Map, Set};
+use container::{Set, MutableSet};
 use io;
 use libc::{uintptr_t};
 use option::{None, Option, Some};

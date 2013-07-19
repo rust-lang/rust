@@ -2,7 +2,8 @@
 " Language:     Rust
 " Maintainer:   Patrick Walton <pcwalton@mozilla.com>
 " Maintainer:   Ben Blum <bblum@cs.cmu.edu>
-" Last Change:  2013 Jun 14
+" Maintainer:   Chris Morgan <me@chrismorgan.info>
+" Last Change:  2013 Jul 10
 
 if version < 600
   syntax clear
@@ -13,8 +14,8 @@ endif
 syn keyword   rustConditional match if else
 syn keyword   rustOperator    as
 
-syn match     rustAssert      "\<assert\(\w\)*!"
-syn match     rustFail        "\<fail\(\w\)*!"
+syn match     rustAssert      "\<assert\(\w\)*!" contained
+syn match     rustFail        "\<fail\(\w\)*!" contained
 syn keyword   rustKeyword     break copy do extern
 syn keyword   rustKeyword     for if impl let log
 syn keyword   rustKeyword     copy do extern
@@ -90,12 +91,12 @@ syn match     rustFormat      display "%%" contained
 syn region    rustString      start=+L\="+ skip=+\\\\\|\\"+ end=+"+ contains=rustTodo,rustFormat
 
 syn region    rustAttribute   start="#\[" end="\]" contains=rustString,rustDeriving
-syn region    rustDeriving    start="deriving(" end=")" contains=rustTrait
+syn region    rustDeriving    start="deriving(" end=")" contained contains=rustTrait
 
 " Number literals
 syn match     rustNumber      display "\<[0-9][0-9_]*\>"
 syn match     rustNumber      display "\<[0-9][0-9_]*\(u\|u8\|u16\|u32\|u64\)\>"
-syn match     rustNumber      display "\<[0-9][0-9_]*\(i8\|i16\|i32\|i64\)\>"
+syn match     rustNumber      display "\<[0-9][0-9_]*\(i\|i8\|i16\|i32\|i64\)\>"
 
 syn match     rustHexNumber   display "\<0x[a-fA-F0-9_]\+\>"
 syn match     rustHexNumber   display "\<0x[a-fA-F0-9_]\+\(u\|u8\|u16\|u32\|u64\)\>"
@@ -112,17 +113,27 @@ syn match     rustFloat       display "\<[0-9][0-9_]*\.[0-9_]\+\(f\|f32\|f64\)\>
 syn match     rustFloat       display "\<[0-9][0-9_]*\.[0-9_]\+\%([eE][+-]\=[0-9_]\+\)\>"
 syn match     rustFloat       display "\<[0-9][0-9_]*\.[0-9_]\+\%([eE][+-]\=[0-9_]\+\)\(f\|f32\|f64\)\>"
 
+" For the benefit of delimitMate
+syn region rustLifetimeCandidate display start=/&'\%(\([^'\\]\|\\\(['nrt\\\"]\|x\x\{2}\|u\x\{4}\|U\x\{8}\)\)'\)\@!/ end=/[[:cntrl:][:space:][:punct:]]\@=\|$/ contains=rustLifetime
+syn region rustGenericRegion display start=/<\%('\|[^[cntrl:][:space:][:punct:]]\)\@=')\S\@=/ end=/>/ contains=rustGenericLifetimeCandidate
+syn region rustGenericLifetimeCandidate display start=/\%(<\|,\s*\)\@<='/ end=/[[:cntrl:][:space:][:punct:]]\@=\|$/ contains=rustLifetime
+
 "rustLifetime must appear before rustCharacter, or chars will get the lifetime highlighting
 syn match     rustLifetime    display "\'\%([^[:cntrl:][:space:][:punct:][:digit:]]\|_\)\%([^[:cntrl:][:punct:][:space:]]\|_\)*"
 syn match   rustCharacter   "'\([^'\\]\|\\\(['nrt\\\"]\|x\x\{2}\|u\x\{4}\|U\x\{8}\)\)'"
 
-syn region    rustCommentDoc  start="/\*[\*!]" end="\*/"
-syn region    rustCommentDoc  start="//[/!]" skip="\\$" end="$" keepend
-syn match     rustComment     "/\*\*/"
-syn region    rustComment     start="/\*\([^\*!]\|$\)" end="\*/" contains=rustTodo
-syn region    rustComment     start="//\([^/!]\|$\)" skip="\\$" end="$" contains=rustTodo keepend
+syn region    rustCommentML   start="/\*" end="\*/" contains=rustTodo
+syn region    rustComment     start="//" skip="\\$" end="$" contains=rustTodo keepend
+syn region    rustCommentMLDoc start="/\*\%(!\|\*/\@!\)" end="\*/" contains=rustTodo
+syn region    rustCommentDoc  start="//[/!]" skip="\\$" end="$" contains=rustTodo keepend
 
-syn keyword rustTodo contained TODO FIXME XXX NB
+syn keyword rustTodo contained TODO FIXME XXX NB NOTE
+
+" Trivial folding rules to begin with.
+" TODO: use the AST to make really good folding
+syn region rustFoldBraces start="{" end="}" transparent fold
+" If you wish to enable this, setlocal foldmethod=syntax
+" It's not enabled by default as it would drive some people mad.
 
 hi def link rustHexNumber       rustNumber
 hi def link rustBinNumber       rustNumber
@@ -142,10 +153,15 @@ hi def link rustKeyword       Keyword
 hi def link rustConditional   Conditional
 hi def link rustIdentifier    Identifier
 hi def link rustModPath       Include
+hi def link rustModPathSep    Delimiter
 hi def link rustFuncName      Function
 hi def link rustFuncCall      Function
+hi def link rustCommentMLDoc  rustCommentDoc
 hi def link rustCommentDoc    SpecialComment
+hi def link rustCommentML     rustComment
 hi def link rustComment       Comment
+hi def link rustAssert        PreCondit
+hi def link rustFail          PreCondit
 hi def link rustMacro         Macro
 hi def link rustType          Type
 hi def link rustTodo          Todo
@@ -160,7 +176,6 @@ hi def link rustLifetime      Special
 " hi rustAssert ctermfg=yellow
 " hi rustFail ctermfg=red
 " hi rustMacro ctermfg=magenta
-" hi rustModPathSep ctermfg=grey
 
 syn sync minlines=200
 syn sync maxlines=500

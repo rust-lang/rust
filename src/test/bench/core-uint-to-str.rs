@@ -25,6 +25,6 @@ fn main() {
 
     for uint::range(0u, n) |i| {
         let x = uint::to_str(i);
-        debug!(x);
+        info!(x);
     }
 }

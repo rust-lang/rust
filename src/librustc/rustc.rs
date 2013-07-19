@@ -9,7 +9,7 @@
 // except according to those terms.
 
 #[link(name = "rustc",
-       vers = "0.7",
+       vers = "0.8-pre",
        uuid = "0ce89b41-2f92-459e-bbc1-8f5fe32f16cf",
        url = "https://github.com/mozilla/rust/tree/master/src/rustc")];
 
@@ -17,8 +17,6 @@
 #[license = "MIT/ASL2"];
 #[crate_type = "lib"];
 
-#[allow(non_implicitly_copyable_typarams)];
-#[allow(non_camel_case_types)];
 #[deny(deprecated_pattern)];
 
 extern mod extra;
@@ -33,11 +31,11 @@ use driver::session;
 use middle::lint;
 
 use std::io;
+use std::num;
 use std::os;
 use std::result;
 use std::str;
 use std::task;
-use std::uint;
 use std::vec;
 use extra::getopts::{groups, opt_present};
 use extra::getopts;
@@ -73,6 +71,9 @@ pub mod middle {
     pub mod entry;
     pub mod effect;
     pub mod reachable;
+    pub mod graph;
+    #[path = "cfg/mod.rs"]
+    pub mod cfg;
 }
 
 pub mod front {
@@ -114,6 +115,7 @@ pub mod lib {
 // macros.
 /*
 mod std {
+    pub use std::clone;
     pub use std::cmp;
     pub use std::os;
     pub use std::str;
@@ -142,6 +144,7 @@ Additional help:
 }
 
 pub fn describe_warnings() {
+    use extra::sort::Sort;
     io::println(fmt!("
 Available lint options:
     -W <foo>           Warn about <foo>
@@ -151,8 +154,15 @@ Available lint options:
 "));
 
     let lint_dict = lint::get_lint_dict();
+    let mut lint_dict = lint_dict.consume()
+                                 .transform(|(k, v)| (v, k))
+                                 .collect::<~[(lint::LintSpec, &'static str)]>();
+    lint_dict.qsort();
+
     let mut max_key = 0;
-    for lint_dict.each_key |k| { max_key = uint::max(k.len(), max_key); }
+    for lint_dict.iter().advance |&(_, name)| {
+        max_key = num::max(name.len(), max_key);
+    }
     fn padded(max: uint, s: &str) -> ~str {
         str::from_bytes(vec::from_elem(max - s.len(), ' ' as u8)) + s
     }
@@ -161,17 +171,12 @@ Available lint options:
                      padded(max_key, "name"), "default", "meaning"));
     io::println(fmt!("    %s  %7.7s  %s\n",
                      padded(max_key, "----"), "-------", "-------"));
-    for lint_dict.iter().advance |(k, v)| {
-        let k = k.replace("_", "-");
+    for lint_dict.consume_iter().advance |(spec, name)| {
+        let name = name.replace("_", "-");
         io::println(fmt!("    %s  %7.7s  %s",
-                         padded(max_key, k),
-                         match v.default {
-                             lint::allow => ~"allow",
-                             lint::warn => ~"warn",
-                             lint::deny => ~"deny",
-                             lint::forbid => ~"forbid"
-                         },
-                         v.desc));
+                         padded(max_key, name),
+                         lint::level_to_str(spec.default),
+                         spec.desc));
     }
     io::println("");
 }
@@ -179,9 +184,12 @@ Available lint options:
 pub fn describe_debug_flags() {
     io::println(fmt!("\nAvailable debug options:\n"));
     let r = session::debugging_opts_map();
-    for r.iter().advance |pair| {
-        let (name, desc, _) = /*bad*/copy *pair;
-        io::println(fmt!("    -Z %-20s -- %s", name, desc));
+    for r.iter().advance |tuple| {
+        match *tuple {
+            (ref name, ref desc, _) => {
+                io::println(fmt!("    -Z %-20s -- %s", *name, *desc));
+            }
+        }
     }
 }
 
@@ -189,7 +197,7 @@ pub fn run_compiler(args: &~[~str], demitter: diagnostic::Emitter) {
     // Don't display log spew by default. Can override with RUST_LOG.
     ::std::logging::console_off();
 
-    let mut args = /*bad*/copy *args;
+    let mut args = (*args).clone();
     let binary = args.shift().to_managed();
 
     if args.is_empty() { usage(binary); return; }
@@ -211,7 +219,7 @@ pub fn run_compiler(args: &~[~str], demitter: diagnostic::Emitter) {
     let lint_flags = vec::append(getopts::opt_strs(matches, "W"),
                                  getopts::opt_strs(matches, "warn"));
 
-    let show_lint_options = lint_flags.iter().any_(|x| x == &~"help") ||
+    let show_lint_options = lint_flags.iter().any(|x| x == &~"help") ||
         (opt_present(matches, "W") && lint_flags.is_empty());
 
     if show_lint_options {
@@ -220,7 +228,7 @@ pub fn run_compiler(args: &~[~str], demitter: diagnostic::Emitter) {
     }
 
     let r = getopts::opt_strs(matches, "Z");
-    if r.iter().any_(|x| x == &~"help") {
+    if r.iter().any(|x| x == &~"help") {
         describe_debug_flags();
         return;
     }
@@ -328,7 +336,11 @@ pub fn monitor(f: ~fn(diagnostic::Emitter)) {
 
         let _finally = finally { ch: ch };
 
-        f(demitter)
+        f(demitter);
+
+        // Due reasons explain in #7732, if there was a jit execution context it
+        // must be consumed and passed along to our parent task.
+        back::link::jit::consume_engine()
     } {
         result::Ok(_) => { /* fallthrough */ }
         result::Err(_) => {

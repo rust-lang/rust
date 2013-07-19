@@ -8,13 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::float;
+use std::num;
 
 pub fn main() {
     let ε = 0.00001;
     let Π = 3.14;
     let लंच = Π * Π + 1.54;
-    assert!(float::abs((लंच - 1.54) - (Π * Π)) < ε);
+    assert!(num::abs((लंच - 1.54) - (Π * Π)) < ε);
     assert_eq!(საჭმელად_გემრიელი_სადილი(), 0);
 }
 

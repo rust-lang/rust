@@ -29,7 +29,6 @@ use std::hash;
 use std::hashmap::{HashMap, HashSet};
 use std::str;
 use std::local_data;
-use extra::time;
 use syntax::ast;
 
 use middle::trans::common::{mono_id,ExternMap,tydesc_info,BuilderRef_res,Stats};
@@ -96,7 +95,7 @@ pub struct CrateContext {
      all_llvm_symbols: HashSet<@str>,
      tcx: ty::ctxt,
      maps: astencode::Maps,
-     stats: Stats,
+     stats: @mut Stats,
      upcalls: @upcall::Upcalls,
      tydesc_type: Type,
      int_type: Type,
@@ -201,7 +200,7 @@ impl CrateContext {
                   all_llvm_symbols: HashSet::new(),
                   tcx: tcx,
                   maps: maps,
-                  stats: Stats {
+                  stats: @mut Stats {
                     n_static_tydescs: 0u,
                     n_glues_created: 0u,
                     n_null_glues: 0u,
@@ -210,8 +209,10 @@ impl CrateContext {
                     n_monos: 0u,
                     n_inlines: 0u,
                     n_closures: 0u,
+                    n_llvm_insns: 0u,
+                    llvm_insn_ctxt: ~[],
                     llvm_insns: HashMap::new(),
-                    fn_times: ~[]
+                    fn_stats: ~[]
                   },
                   upcalls: upcall::declare_upcalls(targ_cfg, llmod),
                   tydesc_type: tydesc_type,
@@ -226,33 +227,29 @@ impl CrateContext {
             }
         }
     }
-
-    pub fn log_fn_time(&mut self, name: ~str, start: time::Timespec, end: time::Timespec) {
-        let elapsed = 1000 * ((end.sec - start.sec) as int) +
-            ((end.nsec as int) - (start.nsec as int)) / 1000000;
-        self.stats.fn_times.push((name, elapsed));
-    }
 }
 
 #[unsafe_destructor]
 impl Drop for CrateContext {
     fn drop(&self) {
-        unsafe {
-            unset_task_llcx();
-        }
+        unset_task_llcx();
     }
 }
 
+#[cfg(stage0)]
 fn task_local_llcx_key(_v: @ContextRef) {}
+#[cfg(not(stage0))]
+static task_local_llcx_key: local_data::Key<@ContextRef> = &local_data::Key;
+
 pub fn task_llcx() -> ContextRef {
-    let opt = unsafe { local_data::local_data_get(task_local_llcx_key) };
+    let opt = local_data::get(task_local_llcx_key, |k| k.map(|&k| *k));
     *opt.expect("task-local LLVMContextRef wasn't ever set!")
 }
 
-unsafe fn set_task_llcx(c: ContextRef) {
-    local_data::local_data_set(task_local_llcx_key, @c);
+fn set_task_llcx(c: ContextRef) {
+    local_data::set(task_local_llcx_key, @c);
 }
 
-unsafe fn unset_task_llcx() {
-    local_data::local_data_pop(task_local_llcx_key);
+fn unset_task_llcx() {
+    local_data::pop(task_local_llcx_key);
 }

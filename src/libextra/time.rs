@@ -11,9 +11,9 @@
 #[allow(missing_doc)];
 
 
-use std::i32;
 use std::int;
 use std::io;
+use std::num;
 use std::str;
 
 static NSEC_PER_SEC: i32 = 1_000_000_000_i32;
@@ -249,7 +249,7 @@ impl Tm {
         } else {
             let s = self.strftime("%Y-%m-%dT%H:%M:%S");
             let sign = if self.tm_gmtoff > 0_i32 { '+' } else { '-' };
-            let mut m = i32::abs(self.tm_gmtoff) / 60_i32;
+            let mut m = num::abs(self.tm_gmtoff) / 60_i32;
             let h = m / 60_i32;
             m -= h * 60_i32;
             s + fmt!("%c%02d:%02d", sign, h as int, m as int)
@@ -683,7 +683,7 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
                 tm_yday: tm.tm_yday,
                 tm_isdst: tm.tm_isdst,
                 tm_gmtoff: tm.tm_gmtoff,
-                tm_zone: copy tm.tm_zone,
+                tm_zone: tm.tm_zone.clone(),
                 tm_nsec: tm.tm_nsec,
             })
         } else { result }
@@ -829,10 +829,10 @@ priv fn do_strftime(format: &str, tm: &Tm) -> ~str {
           //'x' {}
           'Y' => int::to_str(tm.tm_year as int + 1900),
           'y' => fmt!("%02d", (tm.tm_year as int + 1900) % 100),
-          'Z' => copy tm.tm_zone,
+          'Z' => tm.tm_zone.clone(),
           'z' => {
             let sign = if tm.tm_gmtoff > 0_i32 { '+' } else { '-' };
-            let mut m = i32::abs(tm.tm_gmtoff) / 60_i32;
+            let mut m = num::abs(tm.tm_gmtoff) / 60_i32;
             let h = m / 60_i32;
             m -= h * 60_i32;
             fmt!("%c%02d%02d", sign, h as int, m as int)
@@ -868,20 +868,20 @@ mod tests {
     use std::str;
 
     fn test_get_time() {
-        static some_recent_date: i64 = 1325376000i64; // 2012-01-01T00:00:00Z
-        static some_future_date: i64 = 1577836800i64; // 2020-01-01T00:00:00Z
+        static SOME_RECENT_DATE: i64 = 1325376000i64; // 2012-01-01T00:00:00Z
+        static SOME_FUTURE_DATE: i64 = 1577836800i64; // 2020-01-01T00:00:00Z
 
         let tv1 = get_time();
         debug!("tv1=%? sec + %? nsec", tv1.sec as uint, tv1.nsec as uint);
 
-        assert!(tv1.sec > some_recent_date);
+        assert!(tv1.sec > SOME_RECENT_DATE);
         assert!(tv1.nsec < 1000000000i32);
 
         let tv2 = get_time();
         debug!("tv2=%? sec + %? nsec", tv2.sec as uint, tv2.nsec as uint);
 
         assert!(tv2.sec >= tv1.sec);
-        assert!(tv2.sec < some_future_date);
+        assert!(tv2.sec < SOME_FUTURE_DATE);
         assert!(tv2.nsec < 1000000000i32);
         if tv2.sec == tv1.sec {
             assert!(tv2.nsec >= tv1.nsec);

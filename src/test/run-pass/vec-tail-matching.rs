@@ -9,7 +9,7 @@ pub fn main() {
         Foo { string: ~"baz" }
     ];
     match x {
-        [first, ..tail] => {
+        [ref first, ..tail] => {
             assert!(first.string == ~"foo");
             assert_eq!(tail.len(), 2);
             assert!(tail[0].string == ~"bar");

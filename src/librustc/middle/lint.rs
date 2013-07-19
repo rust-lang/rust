@@ -14,7 +14,6 @@ use middle::ty;
 use middle::pat_util;
 use util::ppaux::{ty_to_str};
 
-use std::char;
 use std::cmp;
 use std::hashmap::HashMap;
 use std::i16;
@@ -25,7 +24,6 @@ use std::u16;
 use std::u32;
 use std::u64;
 use std::u8;
-use std::vec;
 use extra::smallintmap::SmallIntMap;
 use syntax::attr;
 use syntax::codemap::span;
@@ -69,17 +67,18 @@ use syntax::{ast, visit, ast_util};
  * item that's being warned about.
  */
 
-#[deriving(Eq)]
+#[deriving(Clone, Eq)]
 pub enum lint {
     ctypes,
     unused_imports,
+    unnecessary_qualification,
     while_true,
     path_statement,
     implicit_copies,
     unrecognized_lint,
-    non_implicitly_copyable_typarams,
     deprecated_pattern,
     non_camel_case_types,
+    non_uppercase_statics,
     type_limits,
     default_methods,
     unused_unsafe,
@@ -108,15 +107,20 @@ pub fn level_to_str(lv: level) -> &'static str {
     }
 }
 
-#[deriving(Eq)]
+#[deriving(Clone, Eq, Ord)]
 pub enum level {
     allow, warn, deny, forbid
 }
 
-struct LintSpec {
+#[deriving(Clone, Eq)]
+pub struct LintSpec {
     lint: lint,
     desc: &'static str,
     default: level
+}
+
+impl Ord for LintSpec {
+    fn lt(&self, other: &LintSpec) -> bool { self.default < other.default }
 }
 
 pub type LintDict = HashMap<&'static str, LintSpec>;
@@ -149,6 +153,13 @@ static lint_table: &'static [(&'static str, LintSpec)] = &[
         default: warn
      }),
 
+    ("unnecessary_qualification",
+     LintSpec {
+        lint: unnecessary_qualification,
+        desc: "detects unnecessarily qualified names",
+        default: allow
+     }),
+
     ("while_true",
      LintSpec {
         lint: while_true,
@@ -167,13 +178,6 @@ static lint_table: &'static [(&'static str, LintSpec)] = &[
      LintSpec {
         lint: unrecognized_lint,
         desc: "unrecognized lint attribute",
-        default: warn
-     }),
-
-    ("non_implicitly_copyable_typarams",
-     LintSpec {
-        lint: non_implicitly_copyable_typarams,
-        desc: "passing non implicitly copyable types as copy type params",
         default: warn
      }),
 
@@ -196,6 +200,13 @@ static lint_table: &'static [(&'static str, LintSpec)] = &[
         lint: non_camel_case_types,
         desc: "types, variants and traits should have camel case names",
         default: allow
+     }),
+
+    ("non_uppercase_statics",
+     LintSpec {
+         lint: non_uppercase_statics,
+         desc: "static constants should have uppercase identifiers",
+         default: allow
      }),
 
     ("managed_heap_memory",
@@ -230,7 +241,7 @@ static lint_table: &'static [(&'static str, LintSpec)] = &[
      LintSpec {
         lint: default_methods,
         desc: "allow default methods",
-        default: deny
+        default: allow
      }),
 
     ("unused_unsafe",
@@ -495,7 +506,7 @@ impl Context {
             // item_stopping_visitor has overridden visit_fn(&fk_method(... ))
             // to be a no-op, so manually invoke visit_fn.
             Method(m) => {
-                let fk = visit::fk_method(copy m.ident, &m.generics, m);
+                let fk = visit::fk_method(m.ident, &m.generics, m);
                 for self.visitors.iter().advance |&(orig, stopping)| {
                     (orig.visit_fn)(&fk, &m.decl, &m.body, m.span, m.id,
                                     (self, stopping));
@@ -542,7 +553,7 @@ pub fn each_lint(sess: session::Session,
 // This is used to make the simple visitors used for the lint passes
 // not traverse into subitems, since that is handled by the outer
 // lint visitor.
-fn item_stopping_visitor<E: Copy>(outer: visit::vt<E>) -> visit::vt<E> {
+fn item_stopping_visitor<E>(outer: visit::vt<E>) -> visit::vt<E> {
     visit::mk_vt(@visit::Visitor {
         visit_item: |_i, (_e, _v)| { },
         visit_fn: |fk, fd, b, s, id, (e, v)| {
@@ -551,11 +562,7 @@ fn item_stopping_visitor<E: Copy>(outer: visit::vt<E>) -> visit::vt<E> {
                 _ => (outer.visit_fn)(fk, fd, b, s, id, (e, v))
             }
         },
-    .. **(ty_stopping_visitor(outer))})
-}
-
-fn ty_stopping_visitor<E>(v: visit::vt<E>) -> visit::vt<E> {
-    visit::mk_vt(@visit::Visitor {visit_ty: |_t, (_e, _v)| { },.. **v})
+    .. **outer})
 }
 
 fn lint_while_true() -> visit::vt<@mut Context> {
@@ -628,8 +635,11 @@ fn lint_type_limits() -> visit::vt<@mut Context> {
         }
     }
 
-    fn check_limits(cx: &Context, binop: ast::binop, l: &ast::expr,
-                    r: &ast::expr) -> bool {
+    fn check_limits(cx: &Context,
+                    binop: ast::binop,
+                    l: @ast::expr,
+                    r: @ast::expr)
+                    -> bool {
         let (lit, expr, swap) = match (&l.node, &r.node) {
             (&ast::expr_lit(_), _) => (l, r, true),
             (_, &ast::expr_lit(_)) => (r, l, false),
@@ -642,7 +652,7 @@ fn lint_type_limits() -> visit::vt<@mut Context> {
         } else {
             binop
         };
-        match ty::get(ty::expr_ty(cx.tcx, @/*bad*/copy *expr)).sty {
+        match ty::get(ty::expr_ty(cx.tcx, expr)).sty {
             ty::ty_int(int_ty) => {
                 let (min, max) = int_ty_range(int_ty);
                 let lit_val: i64 = match lit.node {
@@ -684,7 +694,7 @@ fn lint_type_limits() -> visit::vt<@mut Context> {
     visit::mk_vt(@visit::Visitor {
         visit_expr: |e, (cx, vt): (@mut Context, visit::vt<@mut Context>)| {
             match e.node {
-                ast::expr_binary(_, ref binop, @ref l, @ref r) => {
+                ast::expr_binary(_, ref binop, l, r) => {
                     if is_comparison(*binop)
                         && !check_limits(cx, *binop, l, r) {
                         cx.span_lint(type_limits, e.span,
@@ -735,15 +745,16 @@ fn check_item_ctypes(cx: &Context, it: &ast::item) {
                     _ => ()
                 }
             }
+            ast::ty_ptr(ref mt) => { check_ty(cx, mt.ty) }
             _ => ()
         }
     }
 
     fn check_foreign_fn(cx: &Context, decl: &ast::fn_decl) {
         for decl.inputs.iter().advance |in| {
-            check_ty(cx, in.ty);
+            check_ty(cx, &in.ty);
         }
-        check_ty(cx, decl.output)
+        check_ty(cx, &decl.output)
     }
 
     match it.node {
@@ -753,7 +764,7 @@ fn check_item_ctypes(cx: &Context, it: &ast::item) {
                 ast::foreign_item_fn(ref decl, _, _) => {
                     check_foreign_fn(cx, decl);
                 }
-                ast::foreign_item_static(t, _) => { check_ty(cx, t); }
+                ast::foreign_item_static(ref t, _) => { check_ty(cx, t); }
             }
         }
       }
@@ -854,7 +865,10 @@ fn check_item_non_camel_case_types(cx: &Context, it: &ast::item) {
         let ident = cx.sess.str_of(ident);
         assert!(!ident.is_empty());
         let ident = ident.trim_chars(&'_');
-        char::is_uppercase(ident.char_at(0)) &&
+
+        // start with a non-lowercase letter rather than non-uppercase
+        // ones (some scripts don't have a concept of upper/lowercase)
+        !ident.char_at(0).is_lowercase() &&
             !ident.contains_char('_')
     }
 
@@ -881,12 +895,29 @@ fn check_item_non_camel_case_types(cx: &Context, it: &ast::item) {
     }
 }
 
+fn check_item_non_uppercase_statics(cx: &Context, it: &ast::item) {
+    match it.node {
+        // only check static constants
+        ast::item_static(_, ast::m_imm, _) => {
+            let s = cx.tcx.sess.str_of(it.ident);
+            // check for lowercase letters rather than non-uppercase
+            // ones (some scripts don't have a concept of
+            // upper/lowercase)
+            if s.iter().any(|c| c.is_lowercase()) {
+                cx.span_lint(non_uppercase_statics, it.span,
+                             "static constant should have an uppercase identifier");
+            }
+        }
+        _ => {}
+    }
+}
+
 fn lint_unused_unsafe() -> visit::vt<@mut Context> {
     visit::mk_vt(@visit::Visitor {
         visit_expr: |e, (cx, vt): (@mut Context, visit::vt<@mut Context>)| {
             match e.node {
-                ast::expr_block(ref blk) if blk.node.rules == ast::unsafe_blk => {
-                    if !cx.tcx.used_unsafe.contains(&blk.node.id) {
+                ast::expr_block(ref blk) if blk.rules == ast::unsafe_blk => {
+                    if !cx.tcx.used_unsafe.contains(&blk.id) {
                         cx.span_lint(unused_unsafe, blk.span,
                                      "unnecessary `unsafe` block");
                     }
@@ -940,10 +971,6 @@ fn lint_unused_mut() -> visit::vt<@mut Context> {
             visit_fn_decl(cx, &tm.decl);
             visit::visit_ty_method(tm, (cx, vt));
         },
-        visit_struct_method: |sm, (cx, vt)| {
-            visit_fn_decl(cx, &sm.decl);
-            visit::visit_struct_method(sm, (cx, vt));
-        },
         visit_trait_method: |tm, (cx, vt)| {
             match *tm {
                 ast::required(ref tm) => visit_fn_decl(cx, &tm.decl),
@@ -960,7 +987,7 @@ fn lint_session() -> visit::vt<@mut Context> {
         match cx.tcx.sess.lints.pop(&id) {
             None => {},
             Some(l) => {
-                do vec::consume(l) |_, (lint, span, msg)| {
+                for l.consume_iter().advance |(lint, span, msg)| {
                     cx.span_lint(lint, span, msg)
                 }
             }
@@ -1016,21 +1043,13 @@ fn lint_missing_doc() -> visit::vt<@mut Context> {
         // If we have doc(hidden), nothing to do
         if cx.doc_hidden { return }
         // If we're documented, nothing to do
-        if attrs.iter().any_(|a| a.node.is_sugared_doc) { return }
+        if attrs.iter().any(|a| a.node.is_sugared_doc) { return }
 
         // otherwise, warn!
         cx.span_lint(missing_doc, sp, msg);
     }
 
     visit::mk_vt(@visit::Visitor {
-        visit_struct_method: |m, (cx, vt)| {
-            if m.vis == ast::public {
-                check_attrs(cx, m.attrs, m.span,
-                            "missing documentation for a method");
-            }
-            visit::visit_struct_method(m, (cx, vt));
-        },
-
         visit_ty_method: |m, (cx, vt)| {
             // All ty_method objects are linted about because they're part of a
             // trait (no visibility)
@@ -1143,6 +1162,7 @@ pub fn check_crate(tcx: ty::ctxt, crate: @ast::crate) {
                     }
                     check_item_ctypes(cx, it);
                     check_item_non_camel_case_types(cx, it);
+                    check_item_non_uppercase_statics(cx, it);
                     check_item_default_methods(cx, it);
                     check_item_heap(cx, it);
 

@@ -10,14 +10,14 @@
 
 #[allow(missing_doc)];
 
+use clone::Clone;
 use container::Container;
 use core::cmp::{Ord, Eq};
 use ops::{Add, Sub, Mul, Div, Rem, Neg};
 use option::{None, Option, Some};
 use char;
+use str::{StrSlice};
 use str;
-use str::StrSlice;
-use kinds::Copy;
 use vec::{CopyableVector, ImmutableVector, MutableVector};
 use vec::OwnedVector;
 use num::{NumCast, Zero, One, cast, pow_with_uint, Integer};
@@ -101,12 +101,12 @@ impl_NumStrConv_Integer!(u64)
 
 
 // Special value strings as [u8] consts.
-static inf_buf:          [u8, ..3] = ['i' as u8, 'n' as u8, 'f' as u8];
-static positive_inf_buf: [u8, ..4] = ['+' as u8, 'i' as u8, 'n' as u8,
+static INF_BUF:          [u8, ..3] = ['i' as u8, 'n' as u8, 'f' as u8];
+static POS_INF_BUF: [u8, ..4] = ['+' as u8, 'i' as u8, 'n' as u8,
                                       'f' as u8];
-static negative_inf_buf: [u8, ..4] = ['-' as u8, 'i' as u8, 'n' as u8,
+static NEG_INF_BUF: [u8, ..4] = ['-' as u8, 'i' as u8, 'n' as u8,
                                       'f' as u8];
-static nan_buf:          [u8, ..3] = ['N' as u8, 'a' as u8, 'N' as u8];
+static NAN_BUF:          [u8, ..3] = ['N' as u8, 'a' as u8, 'N' as u8];
 
 /**
  * Converts an integral number to its string representation as a byte vector.
@@ -465,9 +465,9 @@ priv static DIGIT_E_RADIX: uint = ('e' as uint) - ('a' as uint) + 11u;
  * - Fails if `radix` > 18 and `special == true` due to conflict
  *   between digit and lowest first character in `inf` and `NaN`, the `'i'`.
  */
-pub fn from_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Copy+Div<T,T>+
+pub fn from_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Div<T,T>+
                                     Mul<T,T>+Sub<T,T>+Neg<T>+Add<T,T>+
-                                    NumStrConv>(
+                                    NumStrConv+Clone>(
         buf: &[u8], radix: uint, negative: bool, fractional: bool,
         special: bool, exponent: ExponentFormat, empty_zero: bool,
         ignore_underscores: bool
@@ -506,15 +506,15 @@ pub fn from_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Copy+Div<T,T>+
     }
 
     if special {
-        if buf == inf_buf || buf == positive_inf_buf {
+        if buf == INF_BUF || buf == POS_INF_BUF {
             return NumStrConv::inf();
-        } else if buf == negative_inf_buf {
+        } else if buf == NEG_INF_BUF {
             if negative {
                 return NumStrConv::neg_inf();
             } else {
                 return None;
             }
-        } else if buf == nan_buf {
+        } else if buf == NAN_BUF {
             return NumStrConv::NaN();
         }
     }
@@ -528,8 +528,8 @@ pub fn from_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Copy+Div<T,T>+
 
     // Initialize accumulator with signed zero for floating point parsing to
     // work
-    let mut accum      = if accum_positive { copy _0 } else { -_1 * _0};
-    let mut last_accum = copy accum; // Necessary to detect overflow
+    let mut accum      = if accum_positive { _0.clone() } else { -_1 * _0};
+    let mut last_accum = accum.clone(); // Necessary to detect overflow
     let mut i          = start;
     let mut exp_found  = false;
 
@@ -540,7 +540,7 @@ pub fn from_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Copy+Div<T,T>+
         match char::to_digit(c, radix) {
             Some(digit) => {
                 // shift accum one digit left
-                accum = accum * copy radix_gen;
+                accum = accum * radix_gen.clone();
 
                 // add/subtract current digit depending on sign
                 if accum_positive {
@@ -555,7 +555,7 @@ pub fn from_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Copy+Div<T,T>+
                     if accum_positive && accum <= last_accum { return None; }
                     if !accum_positive && accum >= last_accum { return None; }
                 }
-                last_accum = copy accum;
+                last_accum = accum.clone();
             }
             None => match c {
                 '_' if ignore_underscores => {}
@@ -577,7 +577,7 @@ pub fn from_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Copy+Div<T,T>+
     // Parse fractional part of number
     // Skip if already reached start of exponent
     if !exp_found {
-        let mut power = copy _1;
+        let mut power = _1.clone();
 
         while i < len {
             let c = buf[i] as char;
@@ -599,7 +599,7 @@ pub fn from_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Copy+Div<T,T>+
                     // Detect overflow by comparing to last value
                     if accum_positive && accum < last_accum { return None; }
                     if !accum_positive && accum > last_accum { return None; }
-                    last_accum = copy accum;
+                    last_accum = accum.clone();
                 }
                 None => match c {
                     '_' if ignore_underscores => {}
@@ -625,7 +625,7 @@ pub fn from_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Copy+Div<T,T>+
         }
     }
 
-    let mut multiplier = copy _1;
+    let mut multiplier = _1.clone();
 
     if exp_found {
         let c = buf[i] as char;
@@ -662,8 +662,8 @@ pub fn from_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Copy+Div<T,T>+
  * `from_str_bytes_common()`, for details see there.
  */
 #[inline]
-pub fn from_str_common<T:NumCast+Zero+One+Eq+Ord+Copy+Div<T,T>+Mul<T,T>+
-                              Sub<T,T>+Neg<T>+Add<T,T>+NumStrConv>(
+pub fn from_str_common<T:NumCast+Zero+One+Eq+Ord+Div<T,T>+Mul<T,T>+
+                              Sub<T,T>+Neg<T>+Add<T,T>+NumStrConv+Clone>(
         buf: &str, radix: uint, negative: bool, fractional: bool,
         special: bool, exponent: ExponentFormat, empty_zero: bool,
         ignore_underscores: bool

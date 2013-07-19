@@ -12,12 +12,12 @@ fn main() {
     let y: ~int = ~42;
     let mut x: ~int;
     loop {
-        debug!(y);
+        info!(y);
         loop {
             loop {
                 loop {
                     x = y; //~ ERROR use of moved value
-                    copy x;
+                    x.clone();
                 }
             }
         }

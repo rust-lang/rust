@@ -372,6 +372,7 @@ opt optimize 1 "build optimized rust code"
 opt optimize-cxx 1 "build optimized C++ code"
 opt optimize-llvm 1 "build optimized LLVM"
 opt debug 0 "build with extra debug fun"
+opt ratchet-bench 0 "ratchet benchmarks"
 opt fast-make 0 "use .gitmodules as timestamp for submodule deps"
 opt manage-submodules 1 "let the build manage the git submodules"
 opt mingw-cross 0 "cross-compile for win32 using mingw"
@@ -402,7 +403,7 @@ fi
 step_msg "looking for build programs"
 
 probe_need CFG_PERL        perl
-probe_need CFG_CURL        curl
+probe_need CFG_CURLORWGET  curl wget
 probe_need CFG_PYTHON      python2.7 python2.6 python2 python
 
 python_version=$($CFG_PYTHON -V 2>&1)
@@ -731,6 +732,7 @@ do
     make_dir $h/test/perf
     make_dir $h/test/pretty
     make_dir $h/test/debug-info
+    make_dir $h/test/codegen
     make_dir $h/test/doc-tutorial
     make_dir $h/test/doc-tutorial-ffi
     make_dir $h/test/doc-tutorial-macros
@@ -748,18 +750,18 @@ then
     cd ${CFG_SRC_DIR}
 
     msg "git: submodule sync"
-    "${CFG_GIT}" submodule --quiet sync
+    "${CFG_GIT}" submodule sync
 
     msg "git: submodule update"
-    "${CFG_GIT}" submodule --quiet update --init
+    "${CFG_GIT}" submodule update --init
     need_ok "git failed"
 
     msg "git: submodule foreach sync"
-    "${CFG_GIT}" submodule --quiet foreach --recursive 'if test -e .gitmodules; then git submodule sync; fi'
+    "${CFG_GIT}" submodule foreach --recursive 'if test -e .gitmodules; then git submodule sync; fi'
     need_ok "git failed"
 
     msg "git: submodule foreach update"
-    "${CFG_GIT}" submodule --quiet update --init --recursive
+    "${CFG_GIT}" submodule update --init --recursive
     need_ok "git failed"
 
     # NB: this is just for the sake of getting the submodule SHA1 values
@@ -768,9 +770,9 @@ then
     "${CFG_GIT}" submodule status --recursive
 
     msg "git: submodule clobber"
-    "${CFG_GIT}" submodule --quiet foreach --recursive git clean -dxf
+    "${CFG_GIT}" submodule foreach --recursive git clean -dxf
     need_ok "git failed"
-    "${CFG_GIT}" submodule --quiet foreach --recursive git checkout .
+    "${CFG_GIT}" submodule foreach --recursive git checkout .
     need_ok "git failed"
 
     cd ${CFG_BUILD_DIR}
@@ -918,9 +920,6 @@ do
                 ;;
         esac
         need_ok "LLVM configure failed"
-
-        # Hack the tools Makefile to turn off the clang build
-        sed -i 's/clang//g' tools/Makefile
 
         cd $CFG_BUILD_DIR
     fi

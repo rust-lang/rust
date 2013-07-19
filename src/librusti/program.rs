@@ -9,9 +9,9 @@
 // except according to those terms.
 
 use std::cast;
+use std::util;
 use std::hashmap::HashMap;
 use std::local_data;
-use std::sys;
 
 use syntax::ast;
 use syntax::parse::token;
@@ -23,6 +23,7 @@ use utils::*;
 
 /// This structure keeps track of the state of the world for the code being
 /// executed in rusti.
+#[deriving(Clone)]
 struct Program {
     /// All known local variables
     local_vars: HashMap<~str, LocalVariable>,
@@ -42,6 +43,7 @@ struct Program {
 }
 
 /// Represents a local variable that the program is currently using.
+#[deriving(Clone)]
 struct LocalVariable {
     /// Should this variable be locally declared as mutable?
     mutable: bool,
@@ -58,7 +60,7 @@ struct LocalVariable {
 }
 
 type LocalCache = @mut HashMap<~str, @~[u8]>;
-fn tls_key(_k: @LocalCache) {}
+static tls_key: local_data::Key<LocalCache> = &local_data::Key;
 
 impl Program {
     pub fn new() -> Program {
@@ -131,21 +133,16 @@ impl Program {
             fn main() {
         ");
 
-        let key: sys::Closure = unsafe {
-            let tls_key: &'static fn(@LocalCache) = tls_key;
-            cast::transmute(tls_key)
-        };
+        let key: uint= unsafe { cast::transmute(tls_key) };
         // First, get a handle to the tls map which stores all the local
         // variables. This works by totally legitimately using the 'code'
         // pointer of the 'tls_key' function as a uint, and then casting it back
         // up to a function
         code.push_str(fmt!("
             let __tls_map: @mut ::std::hashmap::HashMap<~str, @~[u8]> = unsafe {
-                let key = ::std::sys::Closure{ code: %? as *(),
-                                               env: ::std::ptr::null() };
-                let key = ::std::cast::transmute(key);
-                *::std::local_data::local_data_get(key).unwrap()
-            };\n", key.code as uint));
+                let key = ::std::cast::transmute(%u);
+                ::std::local_data::get(key, |k| k.map(|&x| *x)).unwrap()
+            };\n", key as uint));
 
         // Using this __tls_map handle, deserialize each variable binding that
         // we know about
@@ -169,7 +166,8 @@ impl Program {
             None => {}
         }
 
-        do self.newvars.consume |name, var| {
+        let newvars = util::replace(&mut self.newvars, HashMap::new());
+        for newvars.consume().advance |(name, var)| {
             self.local_vars.insert(name, var);
         }
 
@@ -196,21 +194,7 @@ impl Program {
         // up front, disable lots of annoying lints, then include all global
         // state such as items, view items, and extern mods.
         let mut code = fmt!("
-            #[allow(ctypes)];
-            #[allow(heap_memory)];
-            #[allow(implicit_copies)];
-            #[allow(managed_heap_memory)];
-            #[allow(non_camel_case_types)];
-            #[allow(owned_heap_memory)];
-            #[allow(path_statement)];
-            #[allow(unrecognized_lint)];
-            #[allow(unused_imports)];
-            #[allow(while_true)];
-            #[allow(unused_variable)];
-            #[allow(dead_assignment)];
-            #[allow(unused_unsafe)];
-            #[allow(unused_mut)];
-            #[allow(unreachable_code)];
+            #[allow(warnings)];
 
             extern mod extra;
             %s // extern mods
@@ -238,23 +222,20 @@ impl Program {
     pub fn set_cache(&self) {
         let map = @mut HashMap::new();
         for self.local_vars.iter().advance |(name, value)| {
-            map.insert(copy *name, @copy value.data);
+            map.insert((*name).clone(), @(value.data).clone());
         }
-        unsafe {
-            local_data::local_data_set(tls_key, @map);
-        }
+        local_data::set(tls_key, map);
     }
 
     /// Once the program has finished running, this function will consume the
     /// task-local cache of local variables. After the program finishes running,
     /// it updates this cache with the new values of each local variable.
     pub fn consume_cache(&mut self) {
-        let map = unsafe {
-            local_data::local_data_pop(tls_key).expect("tls is empty")
-        };
-        do map.consume |name, value| {
+        let map = local_data::pop(tls_key).expect("tls is empty");
+        let cons_map = util::replace(map, HashMap::new());
+        for cons_map.consume().advance |(name, value)| {
             match self.local_vars.find_mut(&name) {
-                Some(v) => { v.data = copy *value; }
+                Some(v) => { v.data = (*value).clone(); }
                 None => { fail!("unknown variable %s", name) }
             }
         }
@@ -327,7 +308,7 @@ impl Program {
                         ty::ty_evec(mt, ty::vstore_slice(*)) |
                         ty::ty_evec(mt, ty::vstore_fixed(*)) => {
                             let vty = ppaux::ty_to_str(tcx, mt.ty);
-                            let derefs = copy tystr;
+                            let derefs = tystr.clone();
                             lvar.ty = tystr + "~[" + vty + "]";
                             lvar.alterations = Some((tystr + "&[" + vty + "]",
                                                      derefs));
@@ -336,7 +317,7 @@ impl Program {
                         // Similar to vectors, &str serializes to ~str, so a
                         // borrow must be taken
                         ty::ty_estr(ty::vstore_slice(*)) => {
-                            let derefs = copy tystr;
+                            let derefs = tystr.clone();
                             lvar.ty = tystr + "~str";
                             lvar.alterations = Some((tystr + "&str", derefs));
                             break;
@@ -350,7 +331,7 @@ impl Program {
                         // If we're just borrowing (no vectors or strings), then
                         // we just need to record how many borrows there were.
                         _ => {
-                            let derefs = copy tystr;
+                            let derefs = tystr.clone();
                             let tmptystr = ppaux::ty_to_str(tcx, t);
                             lvar.alterations = Some((tystr + tmptystr, derefs));
                             lvar.ty = tmptystr;
@@ -363,14 +344,15 @@ impl Program {
         }
 
         // I'm not an @ pointer, so this has to be done outside.
-        do newvars.consume |k, v| {
+        let cons_newvars = util::replace(newvars, HashMap::new());
+        for cons_newvars.consume().advance |(k, v)| {
             self.newvars.insert(k, v);
         }
 
         // helper functions to perform ast iteration
         fn each_user_local(blk: &ast::blk, f: &fn(@ast::local)) {
             do find_user_block(blk) |blk| {
-                for blk.node.stmts.iter().advance |stmt| {
+                for blk.stmts.iter().advance |stmt| {
                     match stmt.node {
                         ast::stmt_decl(d, _) => {
                             match d.node {
@@ -385,7 +367,7 @@ impl Program {
         }
 
         fn find_user_block(blk: &ast::blk, f: &fn(&ast::blk)) {
-            for blk.node.stmts.iter().advance |stmt| {
+            for blk.stmts.iter().advance |stmt| {
                 match stmt.node {
                     ast::stmt_semi(e, _) => {
                         match e.node {

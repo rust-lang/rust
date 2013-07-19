@@ -30,6 +30,7 @@ use middle::ty;
 use middle::typeck;
 use util::ppaux::Repr;
 
+#[deriving(Clone)]
 pub struct DataFlowContext<O> {
     priv tcx: ty::ctxt,
     priv method_map: typeck::method_map,
@@ -294,8 +295,8 @@ impl<O:DataFlowOperator> DataFlowContext<O> {
     }
 }
 
-impl<O:DataFlowOperator+Copy+'static> DataFlowContext<O> {
-//                      ^^^^^^^^^^^^ only needed for pretty printing
+impl<O:DataFlowOperator+Clone+'static> DataFlowContext<O> {
+//                      ^^^^^^^^^^^^^ only needed for pretty printing
     pub fn propagate(&mut self, blk: &ast::blk) {
         //! Performs the data flow analysis.
 
@@ -304,23 +305,25 @@ impl<O:DataFlowOperator+Copy+'static> DataFlowContext<O> {
             return;
         }
 
-        let mut propcx = PropagationContext {
-            dfcx: self,
-            changed: true
-        };
+        {
+            let mut propcx = PropagationContext {
+                dfcx: self,
+                changed: true
+            };
 
-        let mut temp = vec::from_elem(self.words_per_id, 0);
-        let mut loop_scopes = ~[];
+            let mut temp = vec::from_elem(self.words_per_id, 0u);
+            let mut loop_scopes = ~[];
 
-        while propcx.changed {
-            propcx.changed = false;
-            propcx.reset(temp);
-            propcx.walk_block(blk, temp, &mut loop_scopes);
+            while propcx.changed {
+                propcx.changed = false;
+                propcx.reset(temp);
+                propcx.walk_block(blk, temp, &mut loop_scopes);
+            }
         }
 
         debug!("Dataflow result:");
         debug!("%s", {
-            let this = @copy *self;
+            let this = @(*self).clone();
             this.pretty_print_to(io::stderr(), blk);
             ""
         });
@@ -330,7 +333,7 @@ impl<O:DataFlowOperator+Copy+'static> DataFlowContext<O> {
         let pre: @fn(pprust::ann_node) = |node| {
             let (ps, id) = match node {
                 pprust::node_expr(ps, expr) => (ps, expr.id),
-                pprust::node_block(ps, blk) => (ps, blk.node.id),
+                pprust::node_block(ps, blk) => (ps, blk.id),
                 pprust::node_item(ps, _) => (ps, 0),
                 pprust::node_pat(ps, pat) => (ps, pat.id)
             };
@@ -341,14 +344,14 @@ impl<O:DataFlowOperator+Copy+'static> DataFlowContext<O> {
                 let entry_str = bits_to_str(on_entry);
 
                 let gens = self.gens.slice(start, end);
-                let gens_str = if gens.iter().any_(|&u| u != 0) {
+                let gens_str = if gens.iter().any(|&u| u != 0) {
                     fmt!(" gen: %s", bits_to_str(gens))
                 } else {
                     ~""
                 };
 
                 let kills = self.kills.slice(start, end);
-                let kills_str = if kills.iter().any_(|&u| u != 0) {
+                let kills_str = if kills.iter().any(|&u| u != 0) {
                     fmt!(" kill: %s", bits_to_str(kills))
                 } else {
                     ~""
@@ -383,18 +386,18 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
                   blk: &ast::blk,
                   in_out: &mut [uint],
                   loop_scopes: &mut ~[LoopScope]) {
-        debug!("DataFlowContext::walk_block(blk.node.id=%?, in_out=%s)",
-               blk.node.id, bits_to_str(reslice(in_out)));
+        debug!("DataFlowContext::walk_block(blk.id=%?, in_out=%s)",
+               blk.id, bits_to_str(reslice(in_out)));
 
-        self.merge_with_entry_set(blk.node.id, in_out);
+        self.merge_with_entry_set(blk.id, in_out);
 
-        for blk.node.stmts.iter().advance |&stmt| {
+        for blk.stmts.iter().advance |&stmt| {
             self.walk_stmt(stmt, in_out, loop_scopes);
         }
 
-        self.walk_opt_expr(blk.node.expr, in_out, loop_scopes);
+        self.walk_opt_expr(blk.expr, in_out, loop_scopes);
 
-        self.dfcx.apply_gen_kill(blk.node.id, in_out);
+        self.dfcx.apply_gen_kill(blk.id, in_out);
     }
 
     fn walk_stmt(&mut self,
@@ -422,8 +425,8 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
                  loop_scopes: &mut ~[LoopScope]) {
         match decl.node {
             ast::decl_local(local) => {
-                self.walk_pat(local.node.pat, in_out, loop_scopes);
                 self.walk_opt_expr(local.node.init, in_out, loop_scopes);
+                self.walk_pat(local.node.pat, in_out, loop_scopes);
             }
 
             ast::decl_item(_) => {}
@@ -643,7 +646,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
                 self.walk_opt_expr(o_e, in_out, loop_scopes);
 
                 // is this a return from a `for`-loop closure?
-                match loop_scopes.iter().position_(|s| s.loop_kind == ForLoop) {
+                match loop_scopes.iter().position(|s| s.loop_kind == ForLoop) {
                     Some(i) => {
                         // if so, add the in_out bits to the state
                         // upon exit. Remember that we cannot count
@@ -751,7 +754,6 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
             }
 
             ast::expr_addr_of(_, e) |
-            ast::expr_copy(e) |
             ast::expr_loop_body(e) |
             ast::expr_do_body(e) |
             ast::expr_cast(e, _) |
@@ -897,7 +899,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
         // statement.
         let initial_state = reslice(in_out).to_owned();
         for pats.iter().advance |&pat| {
-            let mut temp = copy initial_state;
+            let mut temp = initial_state.clone();
             self.walk_pat(pat, temp, loop_scopes);
             join_bits(&self.dfcx.oper, temp, in_out);
         }
@@ -916,7 +918,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
             Some(_) => {
                 match self.tcx().def_map.find(&expr.id) {
                     Some(&ast::def_label(loop_id)) => {
-                        match loop_scopes.iter().position_(|l| l.loop_id == loop_id) {
+                        match loop_scopes.iter().position(|l| l.loop_id == loop_id) {
                             Some(i) => i,
                             None => {
                                 self.tcx().sess.span_bug(

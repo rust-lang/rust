@@ -70,8 +70,8 @@
  *   This is a "shallow" clone.  After `move_to()`, the current datum
  *   is invalid and should no longer be used.
  *
- * - `store_to()` either performs a copy or a move by consulting the
- *   moves_map computed by `middle::moves`.
+ * - `store_to()` either performs a copy or a move depending on the
+ *   Rust type of the datum.
  *
  * # Scratch datum
  *
@@ -172,23 +172,23 @@ pub fn immediate_rvalue_bcx(bcx: block,
     return DatumBlock {bcx: bcx, datum: immediate_rvalue(val, ty)};
 }
 
-pub fn scratch_datum(bcx: block, ty: ty::t, zero: bool) -> Datum {
+pub fn scratch_datum(bcx: block, ty: ty::t, name: &str, zero: bool) -> Datum {
     /*!
-     *
      * Allocates temporary space on the stack using alloca() and
      * returns a by-ref Datum pointing to it.  If `zero` is true, the
      * space will be zeroed when it is allocated; this is normally not
      * necessary, but in the case of automatic rooting in match
      * statements it is possible to have temporaries that may not get
      * initialized if a certain arm is not taken, so we must zero
-     * them. You must arrange any cleanups etc yourself! */
+     * them. You must arrange any cleanups etc yourself!
+     */
 
     let llty = type_of::type_of(bcx.ccx(), ty);
-    let scratch = alloca_maybe_zeroed(bcx, llty, zero);
+    let scratch = alloca_maybe_zeroed(bcx, llty, name, zero);
     Datum { val: scratch, ty: ty, mode: ByRef(RevokeClean) }
 }
 
-pub fn appropriate_mode(ty: ty::t) -> DatumMode {
+pub fn appropriate_mode(tcx: ty::ctxt, ty: ty::t) -> DatumMode {
     /*!
     *
     * Indicates the "appropriate" mode for this value,
@@ -197,7 +197,7 @@ pub fn appropriate_mode(ty: ty::t) -> DatumMode {
 
     if ty::type_is_nil(ty) || ty::type_is_bot(ty) {
         ByValue
-    } else if ty::type_is_immediate(ty) {
+    } else if ty::type_is_immediate(tcx, ty) {
         ByValue
     } else {
         ByRef(RevokeClean)
@@ -207,7 +207,6 @@ pub fn appropriate_mode(ty: ty::t) -> DatumMode {
 impl Datum {
     pub fn store_to(&self,
                     bcx: block,
-                    id: ast::node_id,
                     action: CopyAction,
                     dst: ValueRef)
                     -> block {
@@ -217,7 +216,7 @@ impl Datum {
          * `id` is located in the move table, but copies otherwise.
          */
 
-        if bcx.ccx().maps.moves_map.contains(&id) {
+        if ty::type_moves_by_default(bcx.tcx(), self.ty) {
             self.move_to(bcx, action, dst)
         } else {
             self.copy_to(bcx, action, dst)
@@ -226,7 +225,6 @@ impl Datum {
 
     pub fn store_to_dest(&self,
                          bcx: block,
-                         id: ast::node_id,
                          dest: expr::Dest)
                          -> block {
         match dest {
@@ -234,21 +232,20 @@ impl Datum {
                 return bcx;
             }
             expr::SaveIn(addr) => {
-                return self.store_to(bcx, id, INIT, addr);
+                return self.store_to(bcx, INIT, addr);
             }
         }
     }
 
     pub fn store_to_datum(&self,
                           bcx: block,
-                          id: ast::node_id,
                           action: CopyAction,
                           datum: Datum)
                           -> block {
         debug!("store_to_datum(self=%s, action=%?, datum=%s)",
                self.to_str(bcx.ccx()), action, datum.to_str(bcx.ccx()));
         assert!(datum.mode.is_by_ref());
-        self.store_to(bcx, id, action, datum.val)
+        self.store_to(bcx, action, datum.val)
     }
 
     pub fn move_to_datum(&self, bcx: block, action: CopyAction, datum: Datum)
@@ -416,7 +413,7 @@ impl Datum {
     pub fn to_value_datum(&self, bcx: block) -> Datum {
         /*!
          *
-         * Yields a by-ref form of this datum.  This may involve
+         * Yields a by-value form of this datum.  This may involve
          * creation of a temporary stack slot.  The value returned by
          * this function is not separately rooted from this datum, so
          * it will not live longer than the current datum. */
@@ -475,7 +472,7 @@ impl Datum {
                 if ty::type_is_nil(self.ty) || ty::type_is_bot(self.ty) {
                     C_null(type_of::type_of(bcx.ccx(), self.ty).ptr_to())
                 } else {
-                    let slot = alloc_ty(bcx, self.ty);
+                    let slot = alloc_ty(bcx, self.ty, "");
                     Store(bcx, self.val, slot);
                     slot
                 }
@@ -508,10 +505,10 @@ impl Datum {
         }
     }
 
-    pub fn appropriate_mode(&self) -> DatumMode {
+    pub fn appropriate_mode(&self, tcx: ty::ctxt) -> DatumMode {
         /*! See the `appropriate_mode()` function */
 
-        appropriate_mode(self.ty)
+        appropriate_mode(tcx, self.ty)
     }
 
     pub fn to_appropriate_llval(&self, bcx: block) -> ValueRef {
@@ -519,7 +516,7 @@ impl Datum {
          *
          * Yields an llvalue with the `appropriate_mode()`. */
 
-        match self.appropriate_mode() {
+        match self.appropriate_mode(bcx.tcx()) {
             ByValue => self.to_value_llval(bcx),
             ByRef(_) => self.to_ref_llval(bcx)
         }
@@ -530,7 +527,7 @@ impl Datum {
          *
          * Yields a datum with the `appropriate_mode()`. */
 
-        match self.appropriate_mode() {
+        match self.appropriate_mode(bcx.tcx()) {
             ByValue => self.to_value_datum(bcx),
             ByRef(_) => self.to_ref_datum(bcx)
         }
@@ -567,8 +564,14 @@ impl Datum {
          * This datum must represent an @T or ~T box.  Returns a new
          * by-ref datum of type T, pointing at the contents. */
 
-        let content_ty = match ty::get(self.ty).sty {
-            ty::ty_box(mt) | ty::ty_uniq(mt) => mt.ty,
+        let (content_ty, header) = match ty::get(self.ty).sty {
+            ty::ty_box(mt) => (mt.ty, true),
+            ty::ty_uniq(mt) => (mt.ty, false),
+            ty::ty_evec(_, ty::vstore_uniq) | ty::ty_estr(ty::vstore_uniq) => {
+                let unit_ty = ty::sequence_element_type(bcx.tcx(), self.ty);
+                let unboxed_vec_ty = ty::mk_mut_unboxed_vec(bcx.tcx(), unit_ty);
+                (unboxed_vec_ty, true)
+            }
             _ => {
                 bcx.tcx().sess.bug(fmt!(
                     "box_body() invoked on non-box type %s",
@@ -576,9 +579,16 @@ impl Datum {
             }
         };
 
-        let ptr = self.to_value_llval(bcx);
-        let body = opaque_box_body(bcx, content_ty, ptr);
-        Datum {val: body, ty: content_ty, mode: ByRef(ZeroMem)}
+        if !header && !ty::type_contents(bcx.tcx(), content_ty).contains_managed() {
+            let ptr = self.to_value_llval(bcx);
+            let ty = type_of(bcx.ccx(), content_ty);
+            let body = PointerCast(bcx, ptr, ty.ptr_to());
+            Datum {val: body, ty: content_ty, mode: ByRef(ZeroMem)}
+        } else { // has a header
+            let ptr = self.to_value_llval(bcx);
+            let body = opaque_box_body(bcx, content_ty, ptr);
+            Datum {val: body, ty: content_ty, mode: ByRef(ZeroMem)}
+        }
     }
 
     pub fn to_rptr(&self, bcx: block) -> Datum {
@@ -657,13 +667,7 @@ impl Datum {
                     ByValue => {
                         // Actually, this case cannot happen right
                         // now, because enums are never immediate.
-                        // But in principle newtype'd immediate
-                        // values should be immediate, and in that
-                        // case the * would be a no-op except for
-                        // changing the type, so I am putting this
-                        // code in place here to do the right
-                        // thing if this change ever goes through.
-                        assert!(ty::type_is_immediate(ty));
+                        assert!(ty::type_is_immediate(bcx.tcx(), ty));
                         (Some(Datum {ty: ty, ..*self}), bcx)
                     }
                 };
@@ -695,15 +699,15 @@ impl Datum {
                         )
                     }
                     ByValue => {
-                        // Actually, this case cannot happen right now,
-                        // because structs are never immediate. But in
-                        // principle, newtype'd immediate values should be
-                        // immediate, and in that case the * would be a no-op
-                        // except for changing the type, so I am putting this
-                        // code in place here to do the right thing if this
-                        // change ever goes through.
-                        assert!(ty::type_is_immediate(ty));
-                        (Some(Datum {ty: ty, ..*self}), bcx)
+                        assert!(ty::type_is_immediate(bcx.tcx(), ty));
+                        (
+                            Some(Datum {
+                                val: ExtractValue(bcx, self.val, 0),
+                                ty: ty,
+                                mode: ByValue
+                            }),
+                            bcx
+                        )
                     }
                 }
             }
@@ -820,11 +824,10 @@ impl DatumBlock {
     }
 
     pub fn store_to(&self,
-                    id: ast::node_id,
                     action: CopyAction,
                     dst: ValueRef)
                     -> block {
-        self.datum.store_to(self.bcx, id, action, dst)
+        self.datum.store_to(self.bcx, action, dst)
     }
 
     pub fn copy_to(&self, action: CopyAction, dst: ValueRef) -> block {

@@ -29,6 +29,7 @@
 #[allow(missing_doc)];
 
 use cast;
+use clone::Clone;
 use container::Container;
 use io;
 use iterator::IteratorUtil;
@@ -41,6 +42,7 @@ use os;
 use prelude::*;
 use ptr;
 use str;
+use to_str;
 use uint;
 use unstable::finally::Finally;
 use vec;
@@ -92,7 +94,7 @@ pub fn as_c_charp<T>(s: &str, f: &fn(*c_char) -> T) -> T {
 pub fn fill_charp_buf(f: &fn(*mut c_char, size_t) -> bool)
     -> Option<~str> {
     let mut buf = vec::from_elem(TMPBUF_SZ, 0u8 as c_char);
-    do vec::as_mut_buf(buf) |b, sz| {
+    do buf.as_mut_buf |b, sz| {
         if f(b, sz as size_t) {
             unsafe {
                 Some(str::raw::from_buf(b as *u8))
@@ -122,7 +124,7 @@ pub mod win32 {
             while !done {
                 let mut k: DWORD = 0;
                 let mut buf = vec::from_elem(n as uint, 0u16);
-                do vec::as_mut_buf(buf) |b, _sz| {
+                do buf.as_mut_buf |b, _sz| {
                     k = f(b, TMPBUF_SZ as DWORD);
                     if k == (0 as DWORD) {
                         done = true;
@@ -147,7 +149,7 @@ pub mod win32 {
         let mut t = s.to_utf16();
         // Null terminate before passing on.
         t.push(0u16);
-        vec::as_imm_buf(t, |buf, _len| f(buf))
+        t.as_imm_buf(|buf, _len| f(buf))
     }
 }
 
@@ -575,13 +577,11 @@ pub fn tmpdir() -> Path {
     }
 
     #[cfg(unix)]
-    #[allow(non_implicitly_copyable_typarams)]
     fn lookup() -> Path {
         getenv_nonempty("TMPDIR").get_or_default(Path("/tmp"))
     }
 
     #[cfg(windows)]
-    #[allow(non_implicitly_copyable_typarams)]
     fn lookup() -> Path {
         getenv_nonempty("TMP").or(
             getenv_nonempty("TEMP").or(
@@ -629,7 +629,7 @@ pub fn path_exists(p: &Path) -> bool {
 // the input paths.
 pub fn make_absolute(p: &Path) -> Path {
     if p.is_absolute {
-        copy *p
+        (*p).clone()
     } else {
         getcwd().push_many(p.components)
     }
@@ -686,7 +686,6 @@ pub fn mkdir_recursive(p: &Path, mode: c_int) -> bool {
 }
 
 /// Lists the contents of a directory
-#[allow(non_implicitly_copyable_typarams)]
 pub fn list_dir(p: &Path) -> ~[~str] {
     if p.components.is_empty() && !p.is_absolute() {
         // Not sure what the right behavior is here, but this
@@ -778,9 +777,9 @@ pub fn list_dir(p: &Path) -> ~[~str] {
                 strings
             }
         }
-        do get_list(p).filtered |filename| {
-            *filename != ~"." && *filename != ~".."
-        }
+        do get_list(p).consume_iter().filter |filename| {
+            "." != *filename && ".." != *filename
+        }.collect()
     }
 }
 
@@ -938,7 +937,7 @@ pub fn copy_file(from: &Path, to: &Path) -> bool {
             let mut done = false;
             let mut ok = true;
             while !done {
-                do vec::as_mut_buf(buf) |b, _sz| {
+                do buf.as_mut_buf |b, _sz| {
                   let nread = libc::fread(b as *mut c_void, 1u as size_t,
                                           bufsize as size_t,
                                           istream);
@@ -1134,8 +1133,15 @@ pub fn last_os_error() -> ~str {
  * ignored and the process exits with the default failure status
  */
 pub fn set_exit_status(code: int) {
-    unsafe {
-        rustrt::rust_set_exit_status(code as libc::intptr_t);
+    use rt;
+    use rt::OldTaskContext;
+
+    if rt::context() == OldTaskContext {
+        unsafe {
+            rustrt::rust_set_exit_status(code as libc::intptr_t);
+        }
+    } else {
+        rt::util::set_exit_status(code);
     }
 }
 
@@ -1231,7 +1237,10 @@ struct OverriddenArgs {
     val: ~[~str]
 }
 
+#[cfg(stage0)]
 fn overridden_arg_key(_v: @OverriddenArgs) {}
+#[cfg(not(stage0))]
+static overridden_arg_key: local_data::Key<@OverriddenArgs> = &local_data::Key;
 
 /// Returns the arguments which this program was started with (normally passed
 /// via the command line).
@@ -1239,11 +1248,9 @@ fn overridden_arg_key(_v: @OverriddenArgs) {}
 /// The return value of the function can be changed by invoking the
 /// `os::set_args` function.
 pub fn args() -> ~[~str] {
-    unsafe {
-        match local_data::local_data_get(overridden_arg_key) {
-            None => real_args(),
-            Some(args) => copy args.val
-        }
+    match local_data::get(overridden_arg_key, |k| k.map(|&k| *k)) {
+        None => real_args(),
+        Some(args) => args.val.clone()
     }
 }
 
@@ -1251,10 +1258,10 @@ pub fn args() -> ~[~str] {
 /// program had when it started. These new arguments are only available to the
 /// current task via the `os::args` method.
 pub fn set_args(new_args: ~[~str]) {
-    unsafe {
-        let overridden_args = @OverriddenArgs { val: copy new_args };
-        local_data::local_data_set(overridden_arg_key, overridden_args);
-    }
+    let overridden_args = @OverriddenArgs {
+        val: new_args.clone()
+    };
+    local_data::set(overridden_arg_key, overridden_args);
 }
 
 // FIXME #6100 we should really use an internal implementation of this - using
@@ -1344,6 +1351,288 @@ extern {
     // These functions are in crt_externs.h.
     pub fn _NSGetArgc() -> *c_int;
     pub fn _NSGetArgv() -> ***c_char;
+}
+
+// Round up `from` to be divisible by `to`
+fn round_up(from: uint, to: uint) -> uint {
+    let r = if from % to == 0 {
+        from
+    } else {
+        from + to - (from % to)
+    };
+    if r == 0 {
+        to
+    } else {
+        r
+    }
+}
+
+#[cfg(unix)]
+pub fn page_size() -> uint {
+    unsafe {
+        libc::sysconf(libc::_SC_PAGESIZE) as uint
+    }
+}
+
+#[cfg(windows)]
+pub fn page_size() -> uint {
+  unsafe {
+    let mut info = libc::SYSTEM_INFO::new();
+    libc::GetSystemInfo(&mut info);
+
+    return info.dwPageSize as uint;
+  }
+}
+
+pub struct MemoryMap {
+    data: *mut u8,
+    len: size_t,
+    kind: MemoryMapKind
+}
+
+pub enum MemoryMapKind {
+    MapFile(*c_void),
+    MapVirtual
+}
+
+pub enum MapOption {
+    MapReadable,
+    MapWritable,
+    MapExecutable,
+    MapAddr(*c_void),
+    MapFd(c_int),
+    MapOffset(uint)
+}
+
+pub enum MapError {
+    // Linux-specific errors
+    ErrFdNotAvail,
+    ErrInvalidFd,
+    ErrUnaligned,
+    ErrNoMapSupport,
+    ErrNoMem,
+    ErrUnknown(libc::c_int),
+
+    // Windows-specific errors
+    ErrUnsupProt,
+    ErrUnsupOffset,
+    ErrNeedRW,
+    ErrAlreadyExists,
+    ErrVirtualAlloc(uint),
+    ErrCreateFileMappingW(uint),
+    ErrMapViewOfFile(uint)
+}
+
+impl to_str::ToStr for MapError {
+    fn to_str(&self) -> ~str {
+        match *self {
+            ErrFdNotAvail => ~"fd not available for reading or writing",
+            ErrInvalidFd => ~"Invalid fd",
+            ErrUnaligned => ~"Unaligned address, invalid flags, \
+                              negative length or unaligned offset",
+            ErrNoMapSupport=> ~"File doesn't support mapping",
+            ErrNoMem => ~"Invalid address, or not enough available memory",
+            ErrUnknown(code) => fmt!("Unknown error=%?", code),
+            ErrUnsupProt => ~"Protection mode unsupported",
+            ErrUnsupOffset => ~"Offset in virtual memory mode is unsupported",
+            ErrNeedRW => ~"File mapping should be at least readable/writable",
+            ErrAlreadyExists => ~"File mapping for specified file already exists",
+            ErrVirtualAlloc(code) => fmt!("VirtualAlloc failure=%?", code),
+            ErrCreateFileMappingW(code) => fmt!("CreateFileMappingW failure=%?", code),
+            ErrMapViewOfFile(code) => fmt!("MapViewOfFile failure=%?", code)
+        }
+    }
+}
+
+#[cfg(unix)]
+impl MemoryMap {
+    pub fn new(min_len: uint, options: ~[MapOption]) -> Result<~MemoryMap, MapError> {
+        use libc::off_t;
+
+        let mut addr: *c_void = ptr::null();
+        let mut prot: c_int = 0;
+        let mut flags: c_int = libc::MAP_PRIVATE;
+        let mut fd: c_int = -1;
+        let mut offset: off_t = 0;
+        let len = round_up(min_len, page_size()) as size_t;
+
+        for options.iter().advance |&o| {
+            match o {
+                MapReadable => { prot |= libc::PROT_READ; },
+                MapWritable => { prot |= libc::PROT_WRITE; },
+                MapExecutable => { prot |= libc::PROT_EXEC; },
+                MapAddr(addr_) => {
+                    flags |= libc::MAP_FIXED;
+                    addr = addr_;
+                },
+                MapFd(fd_) => {
+                    flags |= libc::MAP_FILE;
+                    fd = fd_;
+                },
+                MapOffset(offset_) => { offset = offset_ as off_t; }
+            }
+        }
+        if fd == -1 { flags |= libc::MAP_ANON; }
+
+        let r = unsafe {
+            libc::mmap(addr, len, prot, flags, fd, offset)
+        };
+        if r == libc::MAP_FAILED {
+            Err(match errno() as c_int {
+                libc::EACCES => ErrFdNotAvail,
+                libc::EBADF => ErrInvalidFd,
+                libc::EINVAL => ErrUnaligned,
+                libc::ENODEV => ErrNoMapSupport,
+                libc::ENOMEM => ErrNoMem,
+                code => ErrUnknown(code)
+            })
+        } else {
+            Ok(~MemoryMap {
+               data: r as *mut u8,
+               len: len,
+               kind: if fd == -1 {
+                   MapVirtual
+               } else {
+                   MapFile(ptr::null())
+               }
+            })
+        }
+    }
+}
+
+#[cfg(unix)]
+impl Drop for MemoryMap {
+    fn drop(&self) {
+        unsafe {
+            match libc::munmap(self.data as *c_void, self.len) {
+                0 => (),
+                -1 => error!(match errno() as c_int {
+                    libc::EINVAL => ~"invalid addr or len",
+                    e => fmt!("unknown errno=%?", e)
+                }),
+                r => error!(fmt!("Unexpected result %?", r))
+            }
+        }
+    }
+}
+
+#[cfg(windows)]
+impl MemoryMap {
+    pub fn new(min_len: uint, options: ~[MapOption]) -> Result<~MemoryMap, MapError> {
+        use libc::types::os::arch::extra::{LPVOID, DWORD, SIZE_T, HANDLE};
+
+        let mut lpAddress: LPVOID = ptr::mut_null();
+        let mut readable = false;
+        let mut writable = false;
+        let mut executable = false;
+        let mut fd: c_int = -1;
+        let mut offset: uint = 0;
+        let len = round_up(min_len, page_size()) as SIZE_T;
+
+        for options.iter().advance |&o| {
+            match o {
+                MapReadable => { readable = true; },
+                MapWritable => { writable = true; },
+                MapExecutable => { executable = true; }
+                MapAddr(addr_) => { lpAddress = addr_ as LPVOID; },
+                MapFd(fd_) => { fd = fd_; },
+                MapOffset(offset_) => { offset = offset_; }
+            }
+        }
+
+        let flProtect = match (executable, readable, writable) {
+            (false, false, false) if fd == -1 => libc::PAGE_NOACCESS,
+            (false, true, false) => libc::PAGE_READONLY,
+            (false, true, true) => libc::PAGE_READWRITE,
+            (true, false, false) if fd == -1 => libc::PAGE_EXECUTE,
+            (true, true, false) => libc::PAGE_EXECUTE_READ,
+            (true, true, true) => libc::PAGE_EXECUTE_READWRITE,
+            _ => return Err(ErrUnsupProt)
+        };
+
+        if fd == -1 {
+            if offset != 0 {
+                return Err(ErrUnsupOffset);
+            }
+            let r = unsafe {
+                libc::VirtualAlloc(lpAddress,
+                                   len,
+                                   libc::MEM_COMMIT | libc::MEM_RESERVE,
+                                   flProtect)
+            };
+            match r as uint {
+                0 => Err(ErrVirtualAlloc(errno())),
+                _ => Ok(~MemoryMap {
+                   data: r as *mut u8,
+                   len: len,
+                   kind: MapVirtual
+                })
+            }
+        } else {
+            let dwDesiredAccess = match (readable, writable) {
+                (true, true) => libc::FILE_MAP_ALL_ACCESS,
+                (true, false) => libc::FILE_MAP_READ,
+                (false, true) => libc::FILE_MAP_WRITE,
+                _ => {
+                    return Err(ErrNeedRW);
+                }
+            };
+            unsafe {
+                let hFile = libc::get_osfhandle(fd) as HANDLE;
+                let mapping = libc::CreateFileMappingW(hFile,
+                                                       ptr::mut_null(),
+                                                       flProtect,
+                                                       (len >> 32) as DWORD,
+                                                       (len & 0xffff_ffff) as DWORD,
+                                                       ptr::null());
+                if mapping == ptr::mut_null() {
+                    return Err(ErrCreateFileMappingW(errno()));
+                }
+                if errno() as c_int == libc::ERROR_ALREADY_EXISTS {
+                    return Err(ErrAlreadyExists);
+                }
+                let r = libc::MapViewOfFile(mapping,
+                                            dwDesiredAccess,
+                                            (offset >> 32) as DWORD,
+                                            (offset & 0xffff_ffff) as DWORD,
+                                            0);
+                match r as uint {
+                    0 => Err(ErrMapViewOfFile(errno())),
+                    _ => Ok(~MemoryMap {
+                       data: r as *mut u8,
+                       len: len,
+                       kind: MapFile(mapping as *c_void)
+                    })
+                }
+            }
+        }
+    }
+}
+
+#[cfg(windows)]
+impl Drop for MemoryMap {
+    fn drop(&self) {
+        use libc::types::os::arch::extra::{LPCVOID, HANDLE};
+
+        unsafe {
+            match self.kind {
+                MapVirtual => match libc::VirtualFree(self.data as *mut c_void,
+                                                      self.len,
+                                                      libc::MEM_RELEASE) {
+                    0 => error!(fmt!("VirtualFree failed: %?", errno())),
+                    _ => ()
+                },
+                MapFile(mapping) => {
+                    if libc::UnmapViewOfFile(self.data as LPCVOID) != 0 {
+                        error!(fmt!("UnmapViewOfFile failed: %?", errno()));
+                    }
+                    if libc::CloseHandle(mapping as HANDLE) != 0 {
+                        error!(fmt!("CloseHandle failed: %?", errno()));
+                    }
+                }
+            }
+        }
+    }
 }
 
 pub mod consts {
@@ -1440,7 +1729,6 @@ pub mod consts {
 }
 
 #[cfg(test)]
-#[allow(non_implicitly_copyable_typarams)]
 mod tests {
     use libc::{c_int, c_void, size_t};
     use libc;
@@ -1454,7 +1742,6 @@ mod tests {
     use rand;
     use run;
     use str::StrSlice;
-    use vec;
     use vec::CopyableVector;
     use libc::consts::os::posix88::{S_IRUSR, S_IWUSR, S_IXUSR};
 
@@ -1518,7 +1805,7 @@ mod tests {
         }
         let n = make_rand_name();
         setenv(n, s);
-        debug!(copy s);
+        debug!(s.clone());
         assert_eq!(getenv(n), option::Some(s));
     }
 
@@ -1527,7 +1814,7 @@ mod tests {
         let path = os::self_exe_path();
         assert!(path.is_some());
         let path = path.get();
-        debug!(copy path);
+        debug!(path.clone());
 
         // Hard to test this function
         assert!(path.is_absolute);
@@ -1539,8 +1826,8 @@ mod tests {
         let e = env();
         assert!(e.len() > 0u);
         for e.iter().advance |p| {
-            let (n, v) = copy *p;
-            debug!(copy n);
+            let (n, v) = (*p).clone();
+            debug!(n.clone());
             let v2 = getenv(n);
             // MingW seems to set some funky environment variables like
             // "=C:=C:\MinGW\msys\1.0\bin" and "!::=::\" that are returned
@@ -1555,7 +1842,7 @@ mod tests {
 
         let mut e = env();
         setenv(n, "VALUE");
-        assert!(!e.contains(&(copy n, ~"VALUE")));
+        assert!(!e.contains(&(n.clone(), ~"VALUE")));
 
         e = env();
         assert!(e.contains(&(n, ~"VALUE")));
@@ -1631,7 +1918,7 @@ mod tests {
         assert!(dirs.len() > 0u);
 
         for dirs.iter().advance |dir| {
-            debug!(copy *dir);
+            debug!((*dir).clone());
         }
     }
 
@@ -1694,7 +1981,7 @@ mod tests {
           let s = ~"hello";
           let mut buf = s.as_bytes_with_null().to_owned();
           let len = buf.len();
-          do vec::as_mut_buf(buf) |b, _len| {
+          do buf.as_mut_buf |b, _len| {
               assert_eq!(libc::fwrite(b as *c_void, 1u as size_t,
                                       (s.len() + 1u) as size_t, ostream),
                          len as size_t)
@@ -1724,6 +2011,76 @@ mod tests {
     fn recursive_mkdir_empty() {
         let path = Path("");
         assert!(!os::mkdir_recursive(&path, (S_IRUSR | S_IWUSR | S_IXUSR) as i32));
+    }
+
+    #[test]
+    fn memory_map_rw() {
+        use result::{Ok, Err};
+
+        let chunk = match os::MemoryMap::new(16, ~[
+            os::MapReadable,
+            os::MapWritable
+        ]) {
+            Ok(chunk) => chunk,
+            Err(msg) => fail!(msg.to_str())
+        };
+        assert!(chunk.len >= 16);
+
+        unsafe {
+            *chunk.data = 0xBE;
+            assert!(*chunk.data == 0xBE);
+        }
+    }
+
+    #[test]
+    fn memory_map_file() {
+        use result::{Ok, Err};
+        use os::*;
+        use libc::*;
+
+        #[cfg(unix)]
+        fn lseek_(fd: c_int, size: uint) {
+            unsafe {
+                assert!(lseek(fd, size as off_t, SEEK_SET) == size as off_t);
+            }
+        }
+        #[cfg(windows)]
+        fn lseek_(fd: c_int, size: uint) {
+           unsafe {
+               assert!(lseek(fd, size as c_long, SEEK_SET) == size as c_long);
+           }
+        }
+
+        let p = tmpdir().push("mmap_file.tmp");
+        let size = page_size() * 2;
+        remove_file(&p);
+
+        let fd = unsafe {
+            let fd = do as_c_charp(p.to_str()) |path| {
+                open(path, O_CREAT | O_RDWR | O_TRUNC, S_IRUSR | S_IWUSR)
+            };
+            lseek_(fd, size);
+            do as_c_charp("x") |x| {
+                assert!(write(fd, x as *c_void, 1) == 1);
+            }
+            fd
+        };
+        let chunk = match MemoryMap::new(size / 2, ~[
+            MapReadable,
+            MapWritable,
+            MapFd(fd),
+            MapOffset(size / 2)
+        ]) {
+            Ok(chunk) => chunk,
+            Err(msg) => fail!(msg.to_str())
+        };
+        assert!(chunk.len > 0);
+
+        unsafe {
+            *chunk.data = 0xbe;
+            assert!(*chunk.data == 0xbe);
+            close(fd);
+        }
     }
 
     // More recursive_mkdir tests are in extra::tempfile

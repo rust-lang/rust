@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
-
 use common::mode_run_pass;
 use common::mode_run_fail;
 use common::mode_compile_fail;
@@ -22,12 +20,19 @@ use procsrv;
 use util;
 use util::logv;
 
-use core::io;
-use core::os;
-use core::uint;
-use core::vec;
+use std::io;
+use std::os;
+use std::uint;
+use std::vec;
+
+use extra::test::MetricMap;
 
 pub fn run(config: config, testfile: ~str) {
+    let mut _mm = MetricMap::new();
+    run_metrics(config, testfile, &mut _mm);
+}
+
+pub fn run_metrics(config: config, testfile: ~str, mm: &mut MetricMap) {
     if config.verbose {
         // We're going to be dumping a lot of info. Start on a new line.
         io::stdout().write_str("\n\n");
@@ -41,7 +46,8 @@ pub fn run(config: config, testfile: ~str) {
       mode_run_fail => run_rfail_test(&config, &props, &testfile),
       mode_run_pass => run_rpass_test(&config, &props, &testfile),
       mode_pretty => run_pretty_test(&config, &props, &testfile),
-      mode_debug_info => run_debuginfo_test(&config, &props, &testfile)
+      mode_debug_info => run_debuginfo_test(&config, &props, &testfile),
+      mode_codegen => run_codegen_test(&config, &props, &testfile, mm)
     }
 }
 
@@ -79,8 +85,8 @@ fn run_rfail_test(config: &config, props: &TestProps, testfile: &Path) {
     };
 
     // The value our Makefile configures valgrind to return on failure
-    static valgrind_err: int = 100;
-    if ProcRes.status == valgrind_err {
+    static VALGRIND_ERR: int = 100;
+    if ProcRes.status == VALGRIND_ERR {
         fatal_ProcRes(~"run-fail test isn't valgrind-clean!", &ProcRes);
     }
 
@@ -102,8 +108,8 @@ fn run_rfail_test(config: &config, props: &TestProps, testfile: &Path) {
 
 fn check_correct_failure_status(ProcRes: &ProcRes) {
     // The value the rust runtime returns on failure
-    static rust_err: int = 101;
-    if ProcRes.status != rust_err {
+    static RUST_ERR: int = 101;
+    if ProcRes.status != RUST_ERR {
         fatal_ProcRes(
             fmt!("failure produced the wrong error code: %d",
                  ProcRes.status),
@@ -144,7 +150,7 @@ fn run_pretty_test(config: &config, props: &TestProps, testfile: &Path) {
     let mut round = 0;
     while round < rounds {
         logv(config, fmt!("pretty-printing round %d", round));
-        let ProcRes = print_source(config, testfile, copy srcs[round]);
+        let ProcRes = print_source(config, testfile, srcs[round].clone());
 
         if ProcRes.status != 0 {
             fatal_ProcRes(fmt!("pretty-printing failed in round %d", round),
@@ -162,9 +168,9 @@ fn run_pretty_test(config: &config, props: &TestProps, testfile: &Path) {
             let filepath = testfile.dir_path().push_rel(file);
             io::read_whole_file_str(&filepath).get()
           }
-          None => { copy srcs[srcs.len() - 2u] }
+          None => { srcs[srcs.len() - 2u].clone() }
         };
-    let mut actual = copy srcs[srcs.len() - 1u];
+    let mut actual = srcs[srcs.len() - 1u].clone();
 
     if props.pp_exact.is_some() {
         // Now we have to care about line endings
@@ -237,13 +243,13 @@ fn run_debuginfo_test(config: &config, props: &TestProps, testfile: &Path) {
     let mut config = match config.rustcflags {
         Some(ref flags) => config {
             rustcflags: Some(flags.replace("-O", "")),
-            .. copy *config
+            .. (*config).clone()
         },
-        None => copy *config
+        None => (*config).clone()
     };
     let config = &mut config;
     let cmds = props.debugger_cmds.connect("\n");
-    let check_lines = copy props.check_lines;
+    let check_lines = props.check_lines.clone();
 
     // compile test file (it shoud have 'compile-flags:-g' in the header)
     let mut ProcRes = compile_test(config, props, testfile);
@@ -492,7 +498,7 @@ fn exec_compiled_test(config: &config, props: &TestProps,
                       testfile: &Path) -> ProcRes {
 
     // If testing the new runtime then set the RUST_NEWRT env var
-    let env = copy props.exec_env;
+    let env = props.exec_env.clone();
     let env = if config.newrt { env + &[(~"RUST_NEWRT", ~"1")] } else { env };
 
     match config.target {
@@ -601,9 +607,8 @@ fn make_run_args(config: &config, _props: &TestProps, testfile: &Path) ->
    ProcArgs {
     // If we've got another tool to run under (valgrind),
     // then split apart its command
-    let toolargs = split_maybe_args(&config.runtool);
-
-    let mut args = toolargs + [make_exe_name(config, testfile).to_str()];
+    let mut args = split_maybe_args(&config.runtool);
+    args.push(make_exe_name(config, testfile).to_str());
     let prog = args.shift();
     return ProcArgs {prog: prog, args: args};
 }
@@ -667,7 +672,7 @@ fn dump_output_file(config: &config, testfile: &Path,
                     out: &str, extension: &str) {
     let outfile = make_out_name(config, testfile, extension);
     let writer =
-        io::file_writer(&outfile, [io::Create, io::Truncate]).get();
+        io::file_writer(&outfile, [io::Create, io::Truncate]).unwrap();
     writer.write_str(out);
 }
 
@@ -737,7 +742,7 @@ fn _arm_exec_compiled_test(config: &config, props: &TestProps,
 
     // copy to target
     let copy_result = procsrv::run("", config.adb_path,
-        [~"push", copy args.prog, copy config.adb_test_dir],
+        [~"push", args.prog.clone(), config.adb_test_dir.clone()],
         ~[(~"",~"")], Some(~""));
 
     if config.verbose {
@@ -827,7 +832,7 @@ fn _arm_push_aux_shared_library(config: &config, testfile: &Path) {
         if (file.filetype() == Some(~".so")) {
 
             let copy_result = procsrv::run("", config.adb_path,
-                [~"push", file.to_str(), copy config.adb_test_dir],
+                [~"push", file.to_str(), config.adb_test_dir.clone()],
                 ~[(~"",~"")], Some(~""));
 
             if config.verbose {
@@ -838,3 +843,135 @@ fn _arm_push_aux_shared_library(config: &config, testfile: &Path) {
         }
     }
 }
+
+// codegen tests (vs. clang)
+
+fn make_o_name(config: &config, testfile: &Path) -> Path {
+    output_base_name(config, testfile).with_filetype("o")
+}
+
+fn append_suffix_to_stem(p: &Path, suffix: &str) -> Path {
+    if suffix.len() == 0 {
+        (*p).clone()
+    } else {
+        let stem = p.filestem().get();
+        p.with_filestem(stem + "-" + suffix)
+    }
+}
+
+fn compile_test_and_save_bitcode(config: &config, props: &TestProps,
+                                 testfile: &Path) -> ProcRes {
+    let link_args = ~[~"-L", aux_output_dir_name(config, testfile).to_str()];
+    let llvm_args = ~[~"-c", ~"--lib", ~"--save-temps"];
+    let args = make_compile_args(config, props,
+                                 link_args + llvm_args,
+                                 make_o_name, testfile);
+    compose_and_run_compiler(config, props, testfile, args, None)
+}
+
+fn compile_cc_with_clang_and_save_bitcode(config: &config, _props: &TestProps,
+                                          testfile: &Path) -> ProcRes {
+    let bitcodefile = output_base_name(config, testfile).with_filetype("bc");
+    let bitcodefile = append_suffix_to_stem(&bitcodefile, "clang");
+    let ProcArgs = ProcArgs {
+        prog: config.clang_path.get_ref().to_str(),
+        args: ~[~"-c",
+                ~"-emit-llvm",
+                ~"-o", bitcodefile.to_str(),
+                testfile.with_filetype("cc").to_str() ]
+    };
+    compose_and_run(config, testfile, ProcArgs, ~[], "", None)
+}
+
+fn extract_function_from_bitcode(config: &config, _props: &TestProps,
+                                 fname: &str, testfile: &Path,
+                                 suffix: &str) -> ProcRes {
+    let bitcodefile = output_base_name(config, testfile).with_filetype("bc");
+    let bitcodefile = append_suffix_to_stem(&bitcodefile, suffix);
+    let extracted_bc = append_suffix_to_stem(&bitcodefile, "extract");
+    let ProcArgs = ProcArgs {
+        prog: config.llvm_bin_path.get_ref().push("llvm-extract").to_str(),
+        args: ~[~"-func=" + fname,
+                ~"-o=" + extracted_bc.to_str(),
+                bitcodefile.to_str() ]
+    };
+    compose_and_run(config, testfile, ProcArgs, ~[], "", None)
+}
+
+fn disassemble_extract(config: &config, _props: &TestProps,
+                       testfile: &Path, suffix: &str) -> ProcRes {
+    let bitcodefile = output_base_name(config, testfile).with_filetype("bc");
+    let bitcodefile = append_suffix_to_stem(&bitcodefile, suffix);
+    let extracted_bc = append_suffix_to_stem(&bitcodefile, "extract");
+    let extracted_ll = extracted_bc.with_filetype("ll");
+    let ProcArgs = ProcArgs {
+        prog: config.llvm_bin_path.get_ref().push("llvm-dis").to_str(),
+        args: ~[~"-o=" + extracted_ll.to_str(),
+                extracted_bc.to_str() ]
+    };
+    compose_and_run(config, testfile, ProcArgs, ~[], "", None)
+}
+
+
+fn count_extracted_lines(p: &Path) -> uint {
+    let x = io::read_whole_file_str(&p.with_filetype("ll")).get();
+    x.line_iter().len_()
+}
+
+
+fn run_codegen_test(config: &config, props: &TestProps,
+                    testfile: &Path, mm: &mut MetricMap) {
+
+    if config.llvm_bin_path.is_none() {
+        fatal(~"missing --llvm-bin-path");
+    }
+
+    if config.clang_path.is_none() {
+        fatal(~"missing --clang-path");
+    }
+
+    let mut ProcRes = compile_test_and_save_bitcode(config, props, testfile);
+    if ProcRes.status != 0 {
+        fatal_ProcRes(~"compilation failed!", &ProcRes);
+    }
+
+    ProcRes = extract_function_from_bitcode(config, props, "test", testfile, "");
+    if ProcRes.status != 0 {
+        fatal_ProcRes(~"extracting 'test' function failed", &ProcRes);
+    }
+
+    ProcRes = disassemble_extract(config, props, testfile, "");
+    if ProcRes.status != 0 {
+        fatal_ProcRes(~"disassembling extract failed", &ProcRes);
+    }
+
+
+    let mut ProcRes = compile_cc_with_clang_and_save_bitcode(config, props, testfile);
+    if ProcRes.status != 0 {
+        fatal_ProcRes(~"compilation failed!", &ProcRes);
+    }
+
+    ProcRes = extract_function_from_bitcode(config, props, "test", testfile, "clang");
+    if ProcRes.status != 0 {
+        fatal_ProcRes(~"extracting 'test' function failed", &ProcRes);
+    }
+
+    ProcRes = disassemble_extract(config, props, testfile, "clang");
+    if ProcRes.status != 0 {
+        fatal_ProcRes(~"disassembling extract failed", &ProcRes);
+    }
+
+    let base = output_base_name(config, testfile);
+    let base_extract = append_suffix_to_stem(&base, "extract");
+
+    let base_clang = append_suffix_to_stem(&base, "clang");
+    let base_clang_extract = append_suffix_to_stem(&base_clang, "extract");
+
+    let base_lines = count_extracted_lines(&base_extract);
+    let clang_lines = count_extracted_lines(&base_clang_extract);
+
+    mm.insert_metric("clang-codegen-ratio",
+                     (base_lines as f64) / (clang_lines as f64),
+                     0.001);
+}
+

@@ -19,7 +19,7 @@ fn test_vec() {
 }
 
 fn test_generic() {
-    fn f<T:Copy>(t: T) -> T { t }
+    fn f<T>(t: T) -> T { t }
     assert_eq!(f(10), 10);
 }
 

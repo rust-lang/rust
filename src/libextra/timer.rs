@@ -118,10 +118,8 @@ pub fn sleep(iotask: &IoTask, msecs: uint) {
  * on the provided port in the allotted timeout period, then the result will
  * be a `Some(T)`. If not, then `None` will be returned.
  */
-pub fn recv_timeout<T:Copy + Send>(iotask: &IoTask,
-                                   msecs: uint,
-                                   wait_po: &Port<T>)
-                                   -> Option<T> {
+pub fn recv_timeout<T:Send>(iotask: &IoTask, msecs: uint, wait_po: &Port<T>)
+                            -> Option<T> {
     let (timeout_po, timeout_ch) = stream::<()>();
     let mut timeout_po = timeout_po;
     delayed_send(iotask, msecs, &timeout_ch, ());

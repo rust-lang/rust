@@ -16,9 +16,9 @@ fn foo() {
       Some::<int>(x) => {
         let mut bar;
         match None::<int> { None::<int> => { bar = 5; } _ => { baz(); } }
-        debug!(bar);
+        info!(bar);
       }
-      None::<int> => { debug!("hello"); }
+      None::<int> => { info!("hello"); }
     }
 }
 

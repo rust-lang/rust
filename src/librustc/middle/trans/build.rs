@@ -46,6 +46,9 @@ pub fn B(cx: block) -> BuilderRef {
 }
 
 pub fn count_insn(cx: block, category: &str) {
+    if cx.ccx().sess.trans_stats() {
+        cx.ccx().stats.n_llvm_insns += 1;
+    }
     do base::with_insn_ctxt |v| {
         let h = &mut cx.ccx().stats.llvm_insns;
 
@@ -56,7 +59,7 @@ pub fn count_insn(cx: block, category: &str) {
         let len = v.len();
         let mut i = 0u;
         while i < len {
-            mm.insert(copy v[i], i);
+            mm.insert(v[i], i);
             i += 1u;
         }
 
@@ -502,11 +505,17 @@ pub fn ArrayMalloc(cx: block, Ty: Type, Val: ValueRef) -> ValueRef {
     }
 }
 
-pub fn Alloca(cx: block, Ty: Type) -> ValueRef {
+pub fn Alloca(cx: block, Ty: Type, name: &str) -> ValueRef {
     unsafe {
         if cx.unreachable { return llvm::LLVMGetUndef(Ty.ptr_to().to_ref()); }
         count_insn(cx, "alloca");
-        return llvm::LLVMBuildAlloca(B(cx), Ty.to_ref(), noname());
+        if name.is_empty() {
+            llvm::LLVMBuildAlloca(B(cx), Ty.to_ref(), noname())
+        } else {
+            str::as_c_str(
+                name,
+                |c| llvm::LLVMBuildAlloca(B(cx), Ty.to_ref(), c))
+        }
     }
 }
 
@@ -560,15 +569,17 @@ pub fn LoadRangeAssert(cx: block, PointerVal: ValueRef, lo: c_ulonglong,
                        hi: c_ulonglong, signed: lib::llvm::Bool) -> ValueRef {
     let value = Load(cx, PointerVal);
 
-    unsafe {
-        let t = llvm::LLVMGetElementType(llvm::LLVMTypeOf(PointerVal));
-        let min = llvm::LLVMConstInt(t, lo, signed);
-        let max = llvm::LLVMConstInt(t, hi, signed);
+    if !cx.unreachable {
+        unsafe {
+            let t = llvm::LLVMGetElementType(llvm::LLVMTypeOf(PointerVal));
+            let min = llvm::LLVMConstInt(t, lo, signed);
+            let max = llvm::LLVMConstInt(t, hi, signed);
 
-        do vec::as_imm_buf([min, max]) |ptr, len| {
-            llvm::LLVMSetMetadata(value, lib::llvm::MD_range as c_uint,
-                                  llvm::LLVMMDNodeInContext(cx.fcx.ccx.llcx,
-                                                            ptr, len as c_uint));
+            do [min, max].as_imm_buf |ptr, len| {
+                llvm::LLVMSetMetadata(value, lib::llvm::MD_range as c_uint,
+                                      llvm::LLVMMDNodeInContext(cx.fcx.ccx.llcx,
+                                                                ptr, len as c_uint));
+            }
         }
     }
 
@@ -886,7 +897,7 @@ pub fn add_span_comment(bcx: block, sp: span, text: &str) {
     let ccx = bcx.ccx();
     if ccx.sess.asm_comments() {
         let s = fmt!("%s (%s)", text, ccx.sess.codemap.span_to_str(sp));
-        debug!("%s", copy s);
+        debug!("%s", s);
         add_comment(bcx, s);
     }
 }
@@ -942,7 +953,7 @@ pub fn Call(cx: block, Fn: ValueRef, Args: &[ValueRef]) -> ValueRef {
                cx.val_to_str(Fn),
                Args.map(|arg| cx.val_to_str(*arg)));
 
-        do vec::as_imm_buf(Args) |ptr, len| {
+        do Args.as_imm_buf |ptr, len| {
             llvm::LLVMBuildCall(B(cx), Fn, ptr, len as c_uint, noname())
         }
     }

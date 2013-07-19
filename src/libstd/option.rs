@@ -41,9 +41,9 @@ let unwrapped_msg = match msg {
 
 */
 
+use clone::Clone;
 use cmp::{Eq,Ord};
 use ops::Add;
-use kinds::Copy;
 use util;
 use num::Zero;
 use iterator::Iterator;
@@ -88,13 +88,13 @@ impl<T:Ord> Ord for Option<T> {
     }
 }
 
-impl<T: Copy+Add<T,T>> Add<Option<T>, Option<T>> for Option<T> {
+impl<T:Clone+Add<T,T>> Add<Option<T>, Option<T>> for Option<T> {
     #[inline]
     fn add(&self, other: &Option<T>) -> Option<T> {
         match (&*self, &*other) {
             (&None, &None) => None,
-            (_, &None) => copy *self,
-            (&None, _) => copy *other,
+            (_, &None) => (*self).clone(),
+            (&None, _) => (*other).clone(),
             (&Some(ref lhs), &Some(ref rhs)) => Some(*lhs + *rhs)
         }
     }
@@ -161,7 +161,7 @@ impl<T> Option<T> {
 
     /// Filters an optional value using given function.
     #[inline(always)]
-    pub fn filtered<'a>(self, f: &fn(t: &'a T) -> bool) -> Option<T> {
+    pub fn filtered(self, f: &fn(t: &T) -> bool) -> Option<T> {
         match self {
             Some(x) => if(f(&x)) {Some(x)} else {None},
             None => None
@@ -170,8 +170,14 @@ impl<T> Option<T> {
 
     /// Maps a `some` value from one type to another by reference
     #[inline]
-    pub fn map<'a, U>(&self, f: &fn(&'a T) -> U) -> Option<U> {
+    pub fn map<'a, U>(&'a self, f: &fn(&'a T) -> U) -> Option<U> {
         match *self { Some(ref x) => Some(f(x)), None => None }
+    }
+
+    /// Maps a `some` value from one type to another by a mutable reference
+    #[inline]
+    pub fn map_mut<'a, U>(&'a mut self, f: &fn(&'a mut T) -> U) -> Option<U> {
+        match *self { Some(ref mut x) => Some(f(x)), None => None }
     }
 
     /// As `map`, but consumes the option and gives `f` ownership to avoid
@@ -197,14 +203,14 @@ impl<T> Option<T> {
     /// Apply a function to the contained value or do nothing
     pub fn mutate(&mut self, f: &fn(T) -> T) {
         if self.is_some() {
-            *self = Some(f(self.swap_unwrap()));
+            *self = Some(f(self.take_unwrap()));
         }
     }
 
     /// Apply a function to the contained value or set it to a default
     pub fn mutate_default(&mut self, def: T, f: &fn(T) -> T) {
         if self.is_some() {
-            *self = Some(f(self.swap_unwrap()));
+            *self = Some(f(self.take_unwrap()));
         } else {
             *self = Some(def);
         }
@@ -287,8 +293,8 @@ impl<T> Option<T> {
      * Fails if the value equals `None`.
      */
     #[inline]
-    pub fn swap_unwrap(&mut self) -> T {
-        if self.is_none() { fail!("option::swap_unwrap none") }
+    pub fn take_unwrap(&mut self) -> T {
+        if self.is_none() { fail!("option::take_unwrap none") }
         util::replace(self, None).unwrap()
     }
 
@@ -307,9 +313,7 @@ impl<T> Option<T> {
           None => fail!(reason.to_owned()),
         }
     }
-}
 
-impl<T:Copy> Option<T> {
     /**
     Gets the value out of an option
 
@@ -348,7 +352,7 @@ impl<T:Copy> Option<T> {
     }
 }
 
-impl<T:Copy + Zero> Option<T> {
+impl<T:Zero> Option<T> {
     /// Returns the contained value or zero (for this type)
     #[inline]
     pub fn get_or_zero(self) -> T {
@@ -373,6 +377,13 @@ impl<'self, A> Iterator<&'self A> for OptionIterator<'self, A> {
     fn next(&mut self) -> Option<&'self A> {
         util::replace(&mut self.opt, None)
     }
+
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        match self.opt {
+            Some(_) => (1, Some(1)),
+            None => (0, Some(0)),
+        }
+    }
 }
 
 /// Mutable iterator over an `Option<A>`
@@ -383,6 +394,13 @@ pub struct OptionMutIterator<'self, A> {
 impl<'self, A> Iterator<&'self mut A> for OptionMutIterator<'self, A> {
     fn next(&mut self) -> Option<&'self mut A> {
         util::replace(&mut self.opt, None)
+    }
+
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        match self.opt {
+            Some(_) => (1, Some(1)),
+            None => (0, Some(0)),
+        }
     }
 }
 
@@ -440,7 +458,7 @@ fn test_option_dance() {
     let mut y = Some(5);
     let mut y2 = 0;
     for x.iter().advance |_x| {
-        y2 = y.swap_unwrap();
+        y2 = y.take_unwrap();
     }
     assert_eq!(y2, 5);
     assert!(y.is_none());
@@ -448,8 +466,8 @@ fn test_option_dance() {
 #[test] #[should_fail] #[ignore(cfg(windows))]
 fn test_option_too_much_dance() {
     let mut y = Some(util::NonCopyable);
-    let _y2 = y.swap_unwrap();
-    let _y3 = y.swap_unwrap();
+    let _y2 = y.take_unwrap();
+    let _y3 = y.take_unwrap();
 }
 
 #[test]
@@ -480,4 +498,40 @@ fn test_filtered() {
     let modified_stuff = some_stuff.filtered(|&x| {x < 10});
     assert_eq!(some_stuff.get(), 42);
     assert!(modified_stuff.is_none());
+}
+
+#[test]
+fn test_iter() {
+    let val = 5;
+
+    let x = Some(val);
+    let mut it = x.iter();
+
+    assert_eq!(it.size_hint(), (1, Some(1)));
+    assert_eq!(it.next(), Some(&val));
+    assert_eq!(it.size_hint(), (0, Some(0)));
+    assert!(it.next().is_none());
+}
+
+#[test]
+fn test_mut_iter() {
+    let val = 5;
+    let new_val = 11;
+
+    let mut x = Some(val);
+    let mut it = x.mut_iter();
+
+    assert_eq!(it.size_hint(), (1, Some(1)));
+
+    match it.next() {
+        Some(interior) => {
+            assert_eq!(*interior, val);
+            *interior = new_val;
+            assert_eq!(x, Some(new_val));
+        }
+        None => assert!(false),
+    }
+
+    assert_eq!(it.size_hint(), (0, Some(0)));
+    assert!(it.next().is_none());
 }

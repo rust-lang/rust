@@ -14,14 +14,14 @@ use syntax::print::pp;
 use syntax::print::pprust;
 use syntax::parse::token;
 
-pub fn each_binding(l: @ast::local, f: @fn(@ast::Path, ast::node_id)) {
+pub fn each_binding(l: @ast::local, f: @fn(&ast::Path, ast::node_id)) {
     use syntax::visit;
 
     let vt = visit::mk_simple_visitor(
         @visit::SimpleVisitor {
             visit_pat: |pat| {
                 match pat.node {
-                    ast::pat_ident(_, path, _) => {
+                    ast::pat_ident(_, ref path, _) => {
                         f(path, pat.id);
                     }
                     _ => {}

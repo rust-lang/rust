@@ -9,5 +9,5 @@
 // except according to those terms.
 
 fn main() -> char {
-//~^ ERROR Wrong type in main function: found `extern "Rust" fn() -> char`
+//~^ ERROR: main function expects type
 }

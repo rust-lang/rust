@@ -13,6 +13,6 @@ use baz::zed::bar;  //~ ERROR unresolved import
 
 mod baz {}
 mod zed {
-    pub fn bar() { debug!("bar3"); }
+    pub fn bar() { info!("bar3"); }
 }
 fn main(args: ~[str]) { bar(); }

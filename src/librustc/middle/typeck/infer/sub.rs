@@ -21,7 +21,7 @@ use middle::typeck::infer::lattice::CombineFieldsLatticeMethods;
 use middle::typeck::infer::lub::Lub;
 use middle::typeck::infer::to_str::InferStr;
 use middle::typeck::infer::{TypeTrace, Subtype};
-use util::common::{indent, indenter};
+use util::common::{indenter};
 use util::ppaux::bound_region_to_str;
 
 use extra::list::Nil;
@@ -29,7 +29,6 @@ use extra::list;
 use syntax::abi::AbiSet;
 use syntax::ast;
 use syntax::ast::{Onceness, m_const, purity};
-use syntax::codemap::span;
 
 pub struct Sub(CombineFields);  // "subtype", "subregion" etc
 
@@ -78,11 +77,11 @@ impl Combine for Sub {
           m_mutbl => {
             // If supertype is mut, subtype must match exactly
             // (i.e., invariant if mut):
-            eq_tys(self, a.ty, b.ty).then(|| Ok(copy *a) )
+            eq_tys(self, a.ty, b.ty).then(|| Ok(*a))
           }
           m_imm | m_const => {
             // Otherwise we can be covariant:
-            self.tys(a.ty, b.ty).chain(|_t| Ok(copy *a) )
+            self.tys(a.ty, b.ty).chain(|_t| Ok(*a) )
           }
         }
     }
@@ -200,7 +199,7 @@ impl Combine for Sub {
                 // or new variables:
                 match *tainted_region {
                     ty::re_infer(ty::ReVar(ref vid)) => {
-                        if new_vars.iter().any_(|x| x == vid) { loop; }
+                        if new_vars.iter().any(|x| x == vid) { loop; }
                     }
                     _ => {
                         if *tainted_region == skol { loop; }

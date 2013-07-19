@@ -10,7 +10,7 @@
 
 // Issue #976
 
-fn f<T:Copy>(x: ~T) {
+fn f<T>(x: ~T) {
     let _x2 = x;
 }
 pub fn main() { }

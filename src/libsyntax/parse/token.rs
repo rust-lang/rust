@@ -15,13 +15,12 @@ use parse::token;
 use util::interner::StrInterner;
 use util::interner;
 
-use std::cast;
 use std::cmp::Equiv;
 use std::local_data;
 use std::rand;
 use std::rand::RngUtil;
 
-#[deriving(Encodable, Decodable, Eq, IterBytes)]
+#[deriving(Clone, Encodable, Decodable, Eq, IterBytes)]
 pub enum binop {
     PLUS,
     MINUS,
@@ -35,7 +34,7 @@ pub enum binop {
     SHR,
 }
 
-#[deriving(Encodable, Decodable, Eq, IterBytes)]
+#[deriving(Clone, Encodable, Decodable, Eq, IterBytes)]
 pub enum Token {
     /* Expression-operator symbols. */
     EQ,
@@ -96,7 +95,7 @@ pub enum Token {
     EOF,
 }
 
-#[deriving(Encodable, Decodable, Eq, IterBytes)]
+#[deriving(Clone, Encodable, Decodable, Eq, IterBytes)]
 /// For interpolation during macro expansion.
 pub enum nonterminal {
     nt_item(@ast::item),
@@ -104,9 +103,9 @@ pub enum nonterminal {
     nt_stmt(@ast::stmt),
     nt_pat( @ast::pat),
     nt_expr(@ast::expr),
-    nt_ty(  @ast::Ty),
+    nt_ty(   ast::Ty),
     nt_ident(ast::ident, bool),
-    nt_path(@ast::Path),
+    nt_path( ast::Path),
     nt_tt(  @ast::token_tree), //needs @ed to break a circularity
     nt_matchers(~[ast::matcher])
 }
@@ -351,8 +350,8 @@ pub mod special_idents {
  * Maps a token to a record specifying the corresponding binary
  * operator
  */
-pub fn token_to_binop(tok: Token) -> Option<ast::binop> {
-  match tok {
+pub fn token_to_binop(tok: &Token) -> Option<ast::binop> {
+  match *tok {
       BINOP(STAR)    => Some(ast::mul),
       BINOP(SLASH)   => Some(ast::div),
       BINOP(PERCENT) => Some(ast::rem),
@@ -485,18 +484,17 @@ fn mk_fresh_ident_interner() -> @ident_interner {
 // if an interner exists in TLS, return it. Otherwise, prepare a
 // fresh one.
 pub fn get_ident_interner() -> @ident_interner {
-    unsafe {
-        let key =
-            (cast::transmute::<(uint, uint),
-             &fn:Copy(v: @@::parse::token::ident_interner)>(
-                 (-3 as uint, 0u)));
-        match local_data::local_data_get(key) {
-            Some(interner) => *interner,
-            None => {
-                let interner = mk_fresh_ident_interner();
-                local_data::local_data_set(key, @interner);
-                interner
-            }
+    #[cfg(not(stage0))]
+    static key: local_data::Key<@@::parse::token::ident_interner> =
+        &local_data::Key;
+    #[cfg(stage0)]
+    fn key(_: @@::parse::token::ident_interner) {}
+    match local_data::get(key, |k| k.map(|&k| *k)) {
+        Some(interner) => *interner,
+        None => {
+            let interner = mk_fresh_ident_interner();
+            local_data::set(key, @interner);
+            interner
         }
     }
 }
@@ -568,7 +566,6 @@ pub mod keywords {
         As,
         Break,
         Const,
-        Copy,
         Do,
         Else,
         Enum,
@@ -611,7 +608,6 @@ pub mod keywords {
                 As => ident { name: 32, ctxt: 0 },
                 Break => ident { name: 33, ctxt: 0 },
                 Const => ident { name: 34, ctxt: 0 },
-                Copy => ident { name: 35, ctxt: 0 },
                 Do => ident { name: 36, ctxt: 0 },
                 Else => ident { name: 37, ctxt: 0 },
                 Enum => ident { name: 38, ctxt: 0 },

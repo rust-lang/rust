@@ -13,15 +13,15 @@
 // -*- rust -*-
 type compare<T> = @fn(~T, ~T) -> bool;
 
-fn test_generic<T:Copy+Clone>(expected: ~T, eq: compare<T>) {
+fn test_generic<T:Clone>(expected: ~T, eq: compare<T>) {
     let actual: ~T = { expected.clone() };
     assert!((eq(expected, actual)));
 }
 
 fn test_box() {
     fn compare_box(b1: ~bool, b2: ~bool) -> bool {
-        debug!(*b1);
-        debug!(*b2);
+        info!(*b1);
+        info!(*b2);
         return *b1 == *b2;
     }
     test_generic::<bool>(~true, compare_box);

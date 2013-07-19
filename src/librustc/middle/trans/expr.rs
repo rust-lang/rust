@@ -23,7 +23,8 @@ This will generate code that evaluates `expr`, storing the result into
 `Dest`, which must either be the special flag ignore (throw the result
 away) or be a pointer to memory of the same type/size as the
 expression.  It returns the resulting basic block.  This form will
-handle all automatic adjustments and moves for you.
+handle all automatic adjustments for you. The value will be moved if
+its type is linear and copied otherwise.
 
 ## Translation to a datum
 
@@ -42,18 +43,18 @@ This function generates code to evaluate the expression and return a
 tries to return its result in the most efficient way possible, without
 introducing extra copies or sacrificing information.  Therefore, for
 lvalue expressions, you always get a by-ref `Datum` in return that
-points at the memory for this lvalue (almost, see [1]).  For rvalue
-expressions, we will return a by-value `Datum` whenever possible, but
-it is often necessary to allocate a stack slot, store the result of
-the rvalue in there, and then return a pointer to the slot (see the
-discussion later on about the different kinds of rvalues).
+points at the memory for this lvalue.  For rvalue expressions, we will
+return a by-value `Datum` whenever possible, but it is often necessary
+to allocate a stack slot, store the result of the rvalue in there, and
+then return a pointer to the slot (see the discussion later on about
+the different kinds of rvalues).
 
 NB: The `trans_to_datum()` function does perform adjustments, but
 since it returns a pointer to the value "in place" it does not handle
-any moves that may be relevant.  If you are transing an expression
-whose result should be moved, you should either use the Datum methods
-`move_to()` (for unconditional moves) or `store_to()` (for moves
-conditioned on the type of the expression) at some point.
+moves.  If you wish to copy/move the value returned into a new
+location, you should use the Datum method `store_to()` (move or copy
+depending on type). You can also use `move_to()` (force move) or
+`copy_to()` (force copy) for special situations.
 
 ## Translating local variables
 
@@ -110,13 +111,6 @@ generate phi nodes).
 Finally, statement rvalues are rvalues that always produce a nil
 return type, such as `while` loops or assignments (`a = b`).
 
-## Caveats
-
-[1] Actually, some lvalues are only stored by value and not by
-reference.  An example (as of this writing) would be immutable
-arguments or pattern bindings of immediate type.  However, mutable
-lvalues are *never* stored by value.
-
 */
 
 
@@ -150,6 +144,7 @@ use middle::ty::{AutoPtr, AutoBorrowVec, AutoBorrowVecRef, AutoBorrowFn,
 use middle::ty;
 use util::common::indenter;
 use util::ppaux::Repr;
+use middle::trans::machine::llsize_of;
 
 use middle::trans::type_::Type;
 
@@ -273,7 +268,7 @@ pub fn trans_to_datum(bcx: block, expr: @ast::expr) -> DatumBlock {
                                    ty::mt { ty: unit_ty, mutbl: ast::m_imm },
                                    ty::vstore_slice(ty::re_static));
 
-        let scratch = scratch_datum(bcx, slice_ty, false);
+        let scratch = scratch_datum(bcx, slice_ty, "__adjust", false);
         Store(bcx, base, GEPi(bcx, scratch.val, [0u, abi::slice_elt_base]));
         Store(bcx, len, GEPi(bcx, scratch.val, [0u, abi::slice_elt_len]));
         DatumBlock {bcx: bcx, datum: scratch}
@@ -289,9 +284,9 @@ pub fn trans_to_datum(bcx: block, expr: @ast::expr) -> DatumBlock {
         let tcx = bcx.tcx();
         let closure_ty = expr_ty_adjusted(bcx, expr);
         debug!("add_env(closure_ty=%s)", closure_ty.repr(tcx));
-        let scratch = scratch_datum(bcx, closure_ty, false);
+        let scratch = scratch_datum(bcx, closure_ty, "__adjust", false);
         let llfn = GEPi(bcx, scratch.val, [0u, abi::fn_field_code]);
-        assert_eq!(datum.appropriate_mode(), ByValue);
+        assert_eq!(datum.appropriate_mode(tcx), ByValue);
         Store(bcx, datum.to_appropriate_llval(bcx), llfn);
         let llenv = GEPi(bcx, scratch.val, [0u, abi::fn_field_box]);
         Store(bcx, base::null_env_ptr(bcx), llenv);
@@ -314,7 +309,7 @@ pub fn trans_into(bcx: block, expr: @ast::expr, dest: Dest) -> block {
         let datumblock = trans_to_datum(bcx, expr);
         return match dest {
             Ignore => datumblock.bcx,
-            SaveIn(lldest) => datumblock.store_to(expr.id, INIT, lldest)
+            SaveIn(lldest) => datumblock.store_to(INIT, lldest)
         };
     }
 
@@ -342,7 +337,7 @@ pub fn trans_into(bcx: block, expr: @ast::expr, dest: Dest) -> block {
             let datumblock = trans_lvalue_unadjusted(bcx, expr);
             match dest {
                 Ignore => datumblock.bcx,
-                SaveIn(lldest) => datumblock.store_to(expr.id, INIT, lldest)
+                SaveIn(lldest) => datumblock.store_to(INIT, lldest)
             }
         }
         ty::RvalueDatumExpr => {
@@ -350,8 +345,9 @@ pub fn trans_into(bcx: block, expr: @ast::expr, dest: Dest) -> block {
             match dest {
                 Ignore => datumblock.drop_val(),
 
-                // NB: We always do `move_to()` regardless of the
-                // moves_map because we're processing an rvalue
+                // When processing an rvalue, the value will be newly
+                // allocated, so we always `move_to` so as not to
+                // unnecessarily inc ref counts and so forth:
                 SaveIn(lldest) => datumblock.move_to(INIT, lldest)
             }
         }
@@ -385,11 +381,11 @@ fn trans_lvalue(bcx: block, expr: @ast::expr) -> DatumBlock {
 
 fn trans_to_datum_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
     /*!
-     *
      * Translates an expression into a datum.  If this expression
      * is an rvalue, this will result in a temporary value being
-     * created.  If you already know where the result should be stored,
-     * you should use `trans_into()` instead. */
+     * created.  If you plan to store the value somewhere else,
+     * you should prefer `trans_into()` instead.
+     */
 
     let mut bcx = bcx;
 
@@ -422,7 +418,7 @@ fn trans_to_datum_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
                 bcx = trans_rvalue_dps_unadjusted(bcx, expr, Ignore);
                 return nil(bcx, ty);
             } else {
-                let scratch = scratch_datum(bcx, ty, false);
+                let scratch = scratch_datum(bcx, ty, "", false);
                 bcx = trans_rvalue_dps_unadjusted(
                     bcx, expr, SaveIn(scratch.val));
 
@@ -534,7 +530,7 @@ fn trans_rvalue_stmt_unadjusted(bcx: block, expr: @ast::expr) -> block {
             let dst_datum = unpack_datum!(
                 bcx, trans_lvalue(bcx, dst));
             return src_datum.store_to_datum(
-                bcx, src.id, DROP_EXISTING, dst_datum);
+                bcx, DROP_EXISTING, dst_datum);
         }
         ast::expr_assign_op(callee_id, op, dst, src) => {
             return trans_assign_op(bcx, expr, callee_id, op, dst, src);
@@ -574,8 +570,7 @@ fn trans_rvalue_dps_unadjusted(bcx: block, expr: @ast::expr,
             return controlflow::trans_if(bcx, cond, thn, els, dest);
         }
         ast::expr_match(discr, ref arms) => {
-            return _match::trans_match(bcx, expr, discr, /*bad*/copy *arms,
-                                       dest);
+            return _match::trans_match(bcx, expr, discr, *arms, dest);
         }
         ast::expr_block(ref blk) => {
             return do base::with_scope(bcx, blk.info(),
@@ -635,9 +630,6 @@ fn trans_rvalue_dps_unadjusted(bcx: block, expr: @ast::expr,
         }
         ast::expr_do_body(blk) => {
             return trans_into(bcx, blk, dest);
-        }
-        ast::expr_copy(a) => {
-            return trans_into(bcx, a, dest);
         }
         ast::expr_call(f, ref args, _) => {
             return callee::trans_call(
@@ -952,7 +944,7 @@ fn trans_lvalue_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
                 fn get_did(ccx: @mut CrateContext, did: ast::def_id)
                     -> ast::def_id {
                     if did.crate != ast::local_crate {
-                        inline::maybe_instantiate_inline(ccx, did, true)
+                        inline::maybe_instantiate_inline(ccx, did)
                     } else {
                         did
                     }
@@ -1147,7 +1139,7 @@ fn trans_rec_or_struct(bcx: block,
         let mut need_base = vec::from_elem(field_tys.len(), true);
 
         let numbered_fields = do fields.map |field| {
-            let opt_pos = field_tys.iter().position_(|field_ty| field_ty.ident == field.node.ident);
+            let opt_pos = field_tys.iter().position(|field_ty| field_ty.ident == field.node.ident);
             match opt_pos {
                 Some(i) => {
                     need_base[i] = false;
@@ -1171,7 +1163,7 @@ fn trans_rec_or_struct(bcx: block,
                                      fields: leftovers })
             }
             None => {
-                if need_base.iter().any_(|b| *b) {
+                if need_base.iter().any(|b| *b) {
                     tcx.sess.span_bug(expr_span, "missing fields and no base expr")
                 }
                 None
@@ -1220,6 +1212,7 @@ fn trans_adt(bcx: block, repr: &adt::Repr, discr: int,
                 bcx = trans_into(bcx, e, Ignore);
             }
             for optbase.iter().advance |sbi| {
+                // FIXME #7261: this moves entire base, not just certain fields
                 bcx = trans_into(bcx, sbi.expr, Ignore);
             }
             return bcx;
@@ -1244,7 +1237,7 @@ fn trans_adt(bcx: block, repr: &adt::Repr, discr: int,
                 adt::trans_field_ptr(bcx, repr, srcval, discr, i)
             };
             let dest = adt::trans_field_ptr(bcx, repr, addr, discr, i);
-            bcx = datum.store_to(bcx, base.expr.id, INIT, dest);
+            bcx = datum.store_to(bcx, INIT, dest);
         }
     }
 
@@ -1329,12 +1322,23 @@ fn trans_unary_datum(bcx: block,
                         contents_ty: ty::t,
                         heap: heap) -> DatumBlock {
         let _icx = push_ctxt("trans_boxed_expr");
-        let base::MallocResult { bcx, box: bx, body } =
-            base::malloc_general(bcx, contents_ty, heap);
-        add_clean_free(bcx, bx, heap);
-        let bcx = trans_into(bcx, contents, SaveIn(body));
-        revoke_clean(bcx, bx);
-        return immediate_rvalue_bcx(bcx, bx, box_ty);
+        if heap == heap_exchange {
+            let llty = type_of(bcx.ccx(), contents_ty);
+            let size = llsize_of(bcx.ccx(), llty);
+            let Result { bcx: bcx, val: val } = malloc_raw_dyn(bcx, contents_ty,
+                                                               heap_exchange, size);
+            add_clean_free(bcx, val, heap_exchange);
+            let bcx = trans_into(bcx, contents, SaveIn(val));
+            revoke_clean(bcx, val);
+            return immediate_rvalue_bcx(bcx, val, box_ty);
+        } else {
+            let base::MallocResult { bcx, box: bx, body } =
+                base::malloc_general(bcx, contents_ty, heap);
+            add_clean_free(bcx, bx, heap);
+            let bcx = trans_into(bcx, contents, SaveIn(body));
+            revoke_clean(bcx, bx);
+            return immediate_rvalue_bcx(bcx, bx, box_ty);
+        }
     }
 }
 
@@ -1364,11 +1368,16 @@ fn trans_eager_binop(bcx: block,
     let rhs = rhs_datum.to_appropriate_llval(bcx);
     let rhs_t = rhs_datum.ty;
 
-    let intype = {
+    let mut intype = {
         if ty::type_is_bot(lhs_t) { rhs_t }
         else { lhs_t }
     };
+    let tcx = bcx.tcx();
+    if ty::type_is_simd(tcx, intype) {
+        intype = ty::simd_type(tcx, intype);
+    }
     let is_float = ty::type_is_fp(intype);
+    let signed = ty::type_is_signed(intype);
 
     let rhs = base::cast_shift_expr_rhs(bcx, op, lhs, rhs);
 
@@ -1393,7 +1402,7 @@ fn trans_eager_binop(bcx: block,
             // Only zero-check integers; fp /0 is NaN
             bcx = base::fail_if_zero(bcx, binop_expr.span,
                                      op, rhs, rhs_t);
-            if ty::type_is_signed(intype) {
+            if signed {
                 SDiv(bcx, lhs, rhs)
             } else {
                 UDiv(bcx, lhs, rhs)
@@ -1407,7 +1416,7 @@ fn trans_eager_binop(bcx: block,
             // Only zero-check integers; fp %0 is NaN
             bcx = base::fail_if_zero(bcx, binop_expr.span,
                                      op, rhs, rhs_t);
-            if ty::type_is_signed(intype) {
+            if signed {
                 SRem(bcx, lhs, rhs)
             } else {
                 URem(bcx, lhs, rhs)
@@ -1419,7 +1428,7 @@ fn trans_eager_binop(bcx: block,
       ast::bitxor => Xor(bcx, lhs, rhs),
       ast::shl => Shl(bcx, lhs, rhs),
       ast::shr => {
-        if ty::type_is_signed(intype) {
+        if signed {
             AShr(bcx, lhs, rhs)
         } else { LShr(bcx, lhs, rhs) }
       }
@@ -1539,8 +1548,8 @@ fn trans_overloaded_op(bcx: block,
                                                           origin)
                              },
                              callee::ArgExprs(args),
-                             dest,
-                             DoAutorefArg)
+                             Some(dest),
+                             DoAutorefArg).bcx
 }
 
 fn int_cast(bcx: block, lldsttype: Type, llsrctype: Type,
@@ -1675,7 +1684,7 @@ fn trans_assign_op(bcx: block,
     // A user-defined operator method
     if bcx.ccx().maps.method_map.find(&expr.id).is_some() {
         // FIXME(#2528) evaluates the receiver twice!!
-        let scratch = scratch_datum(bcx, dst_datum.ty, false);
+        let scratch = scratch_datum(bcx, dst_datum.ty, "__assign_op", false);
         let bcx = trans_overloaded_op(bcx,
                                       expr,
                                       callee_id,

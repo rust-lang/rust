@@ -13,7 +13,6 @@ use rt::sched::Scheduler;
 use rt::task::Task;
 use rt::local_ptr;
 use rt::rtio::{EventLoop, IoFactoryObject};
-//use borrow::to_uint;
 use cell::Cell;
 
 pub trait Local {
@@ -120,8 +119,8 @@ impl Local for IoFactoryObject {
 
 #[cfg(test)]
 mod test {
+    use unstable::run_in_bare_thread;
     use rt::test::*;
-//    use rt::sched::Scheduler;
     use super::*;
     use rt::task::Task;
     use rt::local_ptr;
@@ -148,12 +147,10 @@ mod test {
         Local::put(task);
         let task: ~Task = Local::take();
         cleanup_task(task);
-
     }
 
     #[test]
     fn borrow_smoke_test() {
-
         local_ptr::init_tls_key();
         let mut sched = ~new_test_uv_sched();
         let task = ~Task::new_root(&mut sched.stack_pool, || {});

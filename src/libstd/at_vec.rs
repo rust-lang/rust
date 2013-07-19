@@ -11,14 +11,13 @@
 //! Managed vectors
 
 use cast::transmute;
+use clone::Clone;
 use container::Container;
 use iterator::IteratorUtil;
-use kinds::Copy;
 use option::Option;
 use sys;
 use uint;
-use vec;
-use vec::ImmutableVector;
+use vec::{ImmutableVector, OwnedVector};
 
 /// Code for dealing with @-vectors. This is pretty incomplete, and
 /// contains a bunch of duplication from the code for ~-vectors.
@@ -91,10 +90,14 @@ pub fn build_sized_opt<A>(size: Option<uint>,
 /// Iterates over the `rhs` vector, copying each element and appending it to the
 /// `lhs`. Afterwards, the `lhs` is then returned for use again.
 #[inline]
-pub fn append<T:Copy>(lhs: @[T], rhs: &[T]) -> @[T] {
+pub fn append<T:Clone>(lhs: @[T], rhs: &[T]) -> @[T] {
     do build_sized(lhs.len() + rhs.len()) |push| {
-        for lhs.iter().advance |x| { push(copy *x); }
-        for uint::range(0, rhs.len()) |i| { push(copy rhs[i]); }
+        for lhs.iter().advance |x| {
+            push((*x).clone());
+        }
+        for uint::range(0, rhs.len()) |i| {
+            push(rhs[i].clone());
+        }
     }
 }
 
@@ -127,10 +130,13 @@ pub fn from_fn<T>(n_elts: uint, op: &fn(uint) -> T) -> @[T] {
  * Creates an immutable vector of size `n_elts` and initializes the elements
  * to the value `t`.
  */
-pub fn from_elem<T:Copy>(n_elts: uint, t: T) -> @[T] {
+pub fn from_elem<T:Clone>(n_elts: uint, t: T) -> @[T] {
     do build_sized(n_elts) |push| {
         let mut i: uint = 0u;
-        while i < n_elts { push(copy t); i += 1u; }
+        while i < n_elts {
+            push(t.clone());
+            i += 1u;
+        }
     }
 }
 
@@ -142,7 +148,7 @@ pub fn to_managed_consume<T>(v: ~[T]) -> @[T] {
     let mut av = @[];
     unsafe {
         raw::reserve(&mut av, v.len());
-        do vec::consume(v) |_i, x| {
+        for v.consume_iter().advance |x| {
             raw::push(&mut av, x);
         }
         transmute(av)
@@ -153,20 +159,27 @@ pub fn to_managed_consume<T>(v: ~[T]) -> @[T] {
  * Creates and initializes an immutable managed vector by copying all the
  * elements of a slice.
  */
-pub fn to_managed<T:Copy>(v: &[T]) -> @[T] {
-    from_fn(v.len(), |i| copy v[i])
+pub fn to_managed<T:Clone>(v: &[T]) -> @[T] {
+    from_fn(v.len(), |i| v[i].clone())
+}
+
+impl<T> Clone for @[T] {
+    fn clone(&self) -> @[T] {
+        *self
+    }
 }
 
 #[cfg(not(test))]
 pub mod traits {
     use at_vec::append;
-    use kinds::Copy;
+    use clone::Clone;
     use ops::Add;
+    use vec::Vector;
 
-    impl<'self,T:Copy> Add<&'self [T],@[T]> for @[T] {
+    impl<'self,T:Clone, V: Vector<T>> Add<V,@[T]> for @[T] {
         #[inline]
-        fn add(&self, rhs: & &'self [T]) -> @[T] {
-            append(*self, (*rhs))
+        fn add(&self, rhs: &V) -> @[T] {
+            append(*self, rhs.as_slice())
         }
     }
 }
@@ -335,7 +348,7 @@ mod test {
 
     #[test]
     fn append_test() {
-        assert_eq!(@[1,2,3] + [4,5,6], @[1,2,3,4,5,6]);
+        assert_eq!(@[1,2,3] + &[4,5,6], @[1,2,3,4,5,6]);
     }
 
     #[test]

@@ -71,7 +71,7 @@ pub enum SchedHome {
 }
 
 pub struct GarbageCollector;
-pub struct LocalStorage(*c_void, Option<~fn(*c_void)>);
+pub struct LocalStorage(*c_void, Option<extern "Rust" fn(*c_void)>);
 
 pub struct Unwinder {
     unwinding: bool,
@@ -209,7 +209,7 @@ impl Task {
 
         // Wait for children. Possibly report the exit status.
         let local_success = !self.unwinder.unwinding;
-        let join_latch = self.join_latch.swap_unwrap();
+        let join_latch = self.join_latch.take_unwrap();
         match self.on_exit {
             Some(ref on_exit) => {
                 let success = join_latch.wait(local_success);
@@ -508,16 +508,14 @@ mod test {
 
     #[test]
     fn tls() {
-        use local_data::*;
+        use local_data;
         do run_in_newsched_task() {
-            unsafe {
-                fn key(_x: @~str) { }
-                local_data_set(key, @~"data");
-                assert!(*local_data_get(key).get() == ~"data");
-                fn key2(_x: @~str) { }
-                local_data_set(key2, @~"data");
-                assert!(*local_data_get(key2).get() == ~"data");
-            }
+            static key: local_data::Key<@~str> = &local_data::Key;
+            local_data::set(key, @~"data");
+            assert!(*local_data::get(key, |k| k.map(|&k| *k)).get() == ~"data");
+            static key2: local_data::Key<@~str> = &local_data::Key;
+            local_data::set(key2, @~"data");
+            assert!(*local_data::get(key2, |k| k.map(|&k| *k)).get() == ~"data");
         }
     }
 

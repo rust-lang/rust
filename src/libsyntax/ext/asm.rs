@@ -19,8 +19,6 @@ use ext::base::*;
 use parse;
 use parse::token;
 
-use std::vec;
-
 enum State {
     Asm,
     Outputs,
@@ -43,7 +41,7 @@ pub fn expand_asm(cx: @ExtCtxt, sp: span, tts: &[ast::token_tree])
                -> base::MacResult {
     let p = parse::new_parser_from_tts(cx.parse_sess(),
                                        cx.cfg(),
-                                       vec::to_owned(tts));
+                                       tts.to_owned());
 
     let mut asm = @"";
     let mut outputs = ~[];

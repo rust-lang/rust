@@ -323,7 +323,7 @@ impl<'self> TraitDef<'self> {
         let mut trait_generics = self.generics.to_generics(cx, span, type_ident, generics);
         // Copy the lifetimes
         for generics.lifetimes.iter().advance |l| {
-            trait_generics.lifetimes.push(copy *l)
+            trait_generics.lifetimes.push(*l)
         };
         // Create the type parameters.
         for generics.ty_params.iter().advance |ty_param| {
@@ -335,9 +335,9 @@ impl<'self> TraitDef<'self> {
                     cx.typarambound(p.to_path(cx, span, type_ident, generics))
                 });
             // require the current trait
-            bounds.push(cx.typarambound(trait_path));
+            bounds.push(cx.typarambound(trait_path.clone()));
 
-            trait_generics.ty_params.push(cx.typaram(ty_param.ident, @bounds));
+            trait_generics.ty_params.push(cx.typaram(ty_param.ident, bounds));
         }
 
         // Create the reference to the trait.
@@ -351,13 +351,12 @@ impl<'self> TraitDef<'self> {
         let self_lifetime = if generics.lifetimes.is_empty() {
             None
         } else {
-            Some(@*generics.lifetimes.get(0))
+            Some(*generics.lifetimes.get(0))
         };
 
         // Create the type of `self`.
         let self_type = cx.ty_path(cx.path_all(span, false, ~[ type_ident ], self_lifetime,
-                                               opt_vec::take_vec(self_ty_params)),
-                                   @None);
+                                               opt_vec::take_vec(self_ty_params)), None);
 
         let doc_attr = cx.attribute(
             span,
@@ -457,7 +456,7 @@ impl<'self> MethodDef<'self> {
     }
 
     fn get_ret_ty(&self, cx: @ExtCtxt, span: span,
-                     generics: &Generics, type_ident: ident) -> @ast::Ty {
+                     generics: &Generics, type_ident: ident) -> ast::Ty {
         self.ret_ty.to_ty(cx, span, type_ident, generics)
     }
 
@@ -467,7 +466,7 @@ impl<'self> MethodDef<'self> {
 
     fn split_self_nonself_args(&self, cx: @ExtCtxt, span: span,
                              type_ident: ident, generics: &Generics)
-        -> (ast::explicit_self, ~[@expr], ~[@expr], ~[(ident, @ast::Ty)]) {
+        -> (ast::explicit_self, ~[@expr], ~[@expr], ~[(ident, ast::Ty)]) {
 
         let mut self_args = ~[];
         let mut nonself_args = ~[];
@@ -515,13 +514,13 @@ impl<'self> MethodDef<'self> {
                      type_ident: ident,
                      generics: &Generics,
                      explicit_self: ast::explicit_self,
-                     arg_types: ~[(ident, @ast::Ty)],
+                     arg_types: ~[(ident, ast::Ty)],
                      body: @expr) -> @ast::method {
         // create the generics that aren't for Self
         let fn_generics = self.generics.to_generics(cx, span, type_ident, generics);
 
-        let args = do arg_types.map |&(id, ty)| {
-            cx.arg(span, id, ty)
+        let args = do arg_types.map |pair| {
+            cx.arg(span, pair.first(), pair.second())
         };
 
         let ret_type = self.get_ret_ty(cx, span, generics, type_ident);
@@ -590,7 +589,7 @@ impl<'self> MethodDef<'self> {
 
         // transpose raw_fields
         let fields = match raw_fields {
-            [self_arg, .. rest] => {
+            [ref self_arg, .. rest] => {
                 do self_arg.iter().enumerate().transform |(i, &(opt_id, field))| {
                     let other_fields = do rest.map |l| {
                         match &l[i] {
@@ -739,16 +738,20 @@ impl<'self> MethodDef<'self> {
 
                     let mut enum_matching_fields = vec::from_elem(self_vec.len(), ~[]);
 
-                    for matches_so_far.tail().iter().advance |&(_, _, other_fields)| {
-                        for other_fields.iter().enumerate().advance |(i, &(_, other_field))| {
-                            enum_matching_fields[i].push(other_field);
+                    for matches_so_far.tail().iter().advance |triple| {
+                        match triple {
+                            &(_, _, ref other_fields) => {
+                                for other_fields.iter().enumerate().advance |(i, pair)| {
+                                    enum_matching_fields[i].push(pair.second());
+                                }
+                            }
                         }
                     }
                     let field_tuples =
                         do self_vec.iter()
                            .zip(enum_matching_fields.iter())
-                           .transform |(&(id, self_f), &other)| {
-                        (id, self_f, other)
+                           .transform |(&(id, self_f), other)| {
+                        (id, self_f, (*other).clone())
                     }.collect();
                     substructure = EnumMatching(variant_index, variant, field_tuples);
                 }
@@ -786,7 +789,9 @@ impl<'self> MethodDef<'self> {
                                                                     current_match_str,
                                                                     ast::m_imm);
 
-                matches_so_far.push((index, /*bad*/ copy *variant, idents));
+                matches_so_far.push((index,
+                                     /*bad*/ (*variant).clone(),
+                                     idents));
                 let arm_expr = self.build_enum_match(cx, span,
                                                      enum_def,
                                                      type_ident,
@@ -815,7 +820,9 @@ impl<'self> MethodDef<'self> {
                                                                        current_match_str,
                                                                        ast::m_imm);
 
-                    matches_so_far.push((index, /*bad*/ copy *variant, idents));
+                    matches_so_far.push((index,
+                                         /*bad*/ (*variant).clone(),
+                                         idents));
                     let new_matching =
                         match matching {
                             _ if match_count == 0 => Some(index),
@@ -890,11 +897,12 @@ fn summarise_struct(cx: @ExtCtxt, span: span,
 
 pub fn create_subpatterns(cx: @ExtCtxt,
                           span: span,
-                          field_paths: ~[@ast::Path],
+                          field_paths: ~[ast::Path],
                           mutbl: ast::mutability)
                    -> ~[@ast::pat] {
-    do field_paths.map |&path| {
-        cx.pat(span, ast::pat_ident(ast::bind_by_ref(mutbl), path, None))
+    do field_paths.map |path| {
+        cx.pat(span,
+               ast::pat_ident(ast::bind_by_ref(mutbl), (*path).clone(), None))
     }
 }
 
@@ -941,7 +949,7 @@ fn create_struct_pattern(cx: @ExtCtxt,
         };
         let path = cx.path_ident(span,
                                  cx.ident_of(fmt!("%s_%u", prefix, i)));
-        paths.push(path);
+        paths.push(path.clone());
         ident_expr.push((opt_id, cx.expr_path(path)));
     }
 
@@ -987,7 +995,7 @@ fn create_enum_variant_pattern(cx: @ExtCtxt,
                 let path = cx.path_ident(span,
                                          cx.ident_of(fmt!("%s_%u", prefix, i)));
 
-                paths.push(path);
+                paths.push(path.clone());
                 ident_expr.push((None, cx.expr_path(path)));
             }
 
@@ -1016,7 +1024,8 @@ left-to-right (`true`) or right-to-left (`false`).
 pub fn cs_fold(use_foldl: bool,
                f: &fn(@ExtCtxt, span,
                       old: @expr,
-                      self_f: @expr, other_fs: &[@expr]) -> @expr,
+                      self_f: @expr,
+                      other_fs: &[@expr]) -> @expr,
                base: @expr,
                enum_nonmatch_f: EnumNonMatchFunc,
                cx: @ExtCtxt, span: span,
@@ -1024,11 +1033,13 @@ pub fn cs_fold(use_foldl: bool,
     match *substructure.fields {
         EnumMatching(_, _, ref all_fields) | Struct(ref all_fields) => {
             if use_foldl {
-                do all_fields.iter().fold(base) |old, &(_, self_f, other_fs)| {
+                do all_fields.iter().fold(base) |old, triple| {
+                    let (_, self_f, other_fs) = (*triple).clone();
                     f(cx, span, old, self_f, other_fs)
                 }
             } else {
-                do all_fields.rev_iter().fold(base) |old, &(_, self_f, other_fs)| {
+                do all_fields.rev_iter().fold(base) |old, triple| {
+                    let (_, self_f, other_fs) = (*triple).clone();
                     f(cx, span, old, self_f, other_fs)
                 }
             }
@@ -1060,7 +1071,8 @@ pub fn cs_same_method(f: &fn(@ExtCtxt, span, ~[@expr]) -> @expr,
     match *substructure.fields {
         EnumMatching(_, _, ref all_fields) | Struct(ref all_fields) => {
             // call self_n.method(other_1_n, other_2_n, ...)
-            let called = do all_fields.map |&(_, self_field, other_fields)| {
+            let called = do all_fields.map |triple| {
+                let (_, self_field, other_fields) = (*triple).clone();
                 cx.expr_method_call(span,
                                     self_field,
                                     substructure.method_ident,

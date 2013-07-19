@@ -8,15 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ast::{blk_, attribute_, attr_outer, meta_word};
-use ast::{crate, expr_, expr_mac, mac_invoc_tt};
+use ast::{blk, crate, expr_, expr_mac, mac_invoc_tt};
 use ast::{item_mac, stmt_, stmt_mac, stmt_expr, stmt_semi};
 use ast::{illegal_ctxt};
 use ast;
 use ast_util::{new_rename, new_mark, resolve};
 use attr;
 use codemap;
-use codemap::{span, CallInfo, ExpandedFrom, NameAndSpan, spanned};
+use codemap::{span, ExpnInfo, NameAndSpan};
 use ext::base::*;
 use fold::*;
 use parse;
@@ -40,7 +39,7 @@ pub fn expand_expr(extsbox: @mut SyntaxEnv,
         expr_mac(ref mac) => {
             match (*mac).node {
                 // Token-tree macros:
-                mac_invoc_tt(pth, ref tts) => {
+                mac_invoc_tt(ref pth, ref tts) => {
                     if (pth.idents.len() > 1u) {
                         cx.span_fatal(
                             pth.span,
@@ -60,13 +59,13 @@ pub fn expand_expr(extsbox: @mut SyntaxEnv,
                             expander: exp,
                             span: exp_sp
                         }))) => {
-                            cx.bt_push(ExpandedFrom(CallInfo {
+                            cx.bt_push(ExpnInfo {
                                 call_site: s,
                                 callee: NameAndSpan {
                                     name: extnamestr,
                                     span: exp_sp,
                                 },
-                            }));
+                            });
 
                             let expanded = match exp(cx, mac.span, *tts) {
                                 MRExpr(e) => e,
@@ -84,7 +83,7 @@ pub fn expand_expr(extsbox: @mut SyntaxEnv,
 
                             //keep going, outside-in
                             let fully_expanded =
-                                copy fld.fold_expr(expanded).node;
+                                fld.fold_expr(expanded).node.clone();
                             cx.bt_pop();
 
                             (fully_expanded, s)
@@ -131,13 +130,13 @@ pub fn expand_mod_items(extsbox: @mut SyntaxEnv,
 
             match (*extsbox).find(&intern(mname)) {
               Some(@SE(ItemDecorator(dec_fn))) => {
-                  cx.bt_push(ExpandedFrom(CallInfo {
+                  cx.bt_push(ExpnInfo {
                       call_site: attr.span,
                       callee: NameAndSpan {
                           name: mname,
                           span: None
                       }
-                  }));
+                  });
                   let r = dec_fn(cx, attr.span, attr.node.value, items);
                   cx.bt_pop();
                   r
@@ -198,7 +197,7 @@ pub fn expand_item(extsbox: @mut SyntaxEnv,
 
 // does this attribute list contain "macro_escape" ?
 pub fn contains_macro_escape (attrs: &[ast::attribute]) -> bool {
-    attrs.iter().any_(|attr| "macro_escape" == attr::get_attr_name(attr))
+    attrs.iter().any(|attr| "macro_escape" == attr::get_attr_name(attr))
 }
 
 // Support for item-position macro invocations, exactly the same
@@ -208,8 +207,8 @@ pub fn expand_item_mac(extsbox: @mut SyntaxEnv,
                        fld: @ast_fold)
                     -> Option<@ast::item> {
     let (pth, tts) = match it.node {
-        item_mac(codemap::spanned { node: mac_invoc_tt(pth, ref tts), _}) => {
-            (pth, copy *tts)
+        item_mac(codemap::spanned { node: mac_invoc_tt(ref pth, ref tts), _}) => {
+            (pth, (*tts).clone())
         }
         _ => cx.span_bug(it.span, "invalid item macro invocation")
     };
@@ -227,13 +226,13 @@ pub fn expand_item_mac(extsbox: @mut SyntaxEnv,
                                     given '%s'", extnamestr,
                                    ident_to_str(&it.ident)));
             }
-            cx.bt_push(ExpandedFrom(CallInfo {
+            cx.bt_push(ExpnInfo {
                 call_site: it.span,
                 callee: NameAndSpan {
                     name: extnamestr,
                     span: expand.span
                 }
-            }));
+            });
             ((*expand).expander)(cx, it.span, tts)
         }
         Some(@SE(IdentTT(ref expand))) => {
@@ -242,13 +241,13 @@ pub fn expand_item_mac(extsbox: @mut SyntaxEnv,
                               fmt!("macro %s! expects an ident argument",
                                    extnamestr));
             }
-            cx.bt_push(ExpandedFrom(CallInfo {
+            cx.bt_push(ExpnInfo {
                 call_site: it.span,
                 callee: NameAndSpan {
                     name: extnamestr,
                     span: expand.span
                 }
-            }));
+            });
             ((*expand).expander)(cx, it.span, it.ident, tts)
         }
         _ => cx.span_fatal(
@@ -298,8 +297,8 @@ pub fn expand_stmt(extsbox: @mut SyntaxEnv,
     let (mac, pth, tts, semi) = match *s {
         stmt_mac(ref mac, semi) => {
             match mac.node {
-                mac_invoc_tt(pth, ref tts) => {
-                    (copy *mac, pth, copy *tts, semi)
+                mac_invoc_tt(ref pth, ref tts) => {
+                    ((*mac).clone(), pth, (*tts).clone(), semi)
                 }
             }
         }
@@ -319,10 +318,10 @@ pub fn expand_stmt(extsbox: @mut SyntaxEnv,
 
         Some(@SE(NormalTT(
             SyntaxExpanderTT{expander: exp, span: exp_sp}))) => {
-            cx.bt_push(ExpandedFrom(CallInfo {
+            cx.bt_push(ExpnInfo {
                 call_site: sp,
                 callee: NameAndSpan { name: extnamestr, span: exp_sp }
-            }));
+            });
             let expanded = match exp(cx, mac.span, tts) {
                 MRExpr(e) =>
                     @codemap::spanned { node: stmt_expr(e, cx.next_id()),
@@ -338,7 +337,7 @@ pub fn expand_stmt(extsbox: @mut SyntaxEnv,
                 Some(stmt) => {
                     let fully_expanded = &stmt.node;
                     cx.bt_pop();
-                    copy *fully_expanded
+                    (*fully_expanded).clone()
                 }
                 None => {
                     cx.span_fatal(pth.span,
@@ -372,10 +371,10 @@ pub fn new_name_finder() -> @Visitor<@mut ~[ast::ident]> {
                      (ident_accum, v): (@mut ~[ast::ident], visit::vt<@mut ~[ast::ident]>)| {
             match *p {
                 // we found a pat_ident!
-                ast::pat{id:_, node: ast::pat_ident(_,path,ref inner), span:_} => {
+                ast::pat{id:_, node: ast::pat_ident(_,ref path,ref inner), span:_} => {
                     match path {
                         // a path of length one:
-                        @ast::Path{global: false,idents: [id], span:_,rp:_,types:_} =>
+                        &ast::Path{global: false,idents: [id], span:_,rp:_,types:_} =>
                         ident_accum.push(id),
                         // I believe these must be enums...
                         _ => ()
@@ -395,13 +394,12 @@ pub fn new_name_finder() -> @Visitor<@mut ~[ast::ident]> {
 
 pub fn expand_block(extsbox: @mut SyntaxEnv,
                     _cx: @ExtCtxt,
-                    blk: &blk_,
-                    sp: span,
+                    blk: &blk,
                     fld: @ast_fold,
-                    orig: @fn(&blk_, span, @ast_fold) -> (blk_, span))
-                 -> (blk_, span) {
+                    orig: @fn(&blk, @ast_fold) -> blk)
+                 -> blk {
     // see note below about treatment of exts table
-    with_exts_frame!(extsbox,false,orig(blk,sp,fld))
+    with_exts_frame!(extsbox,false,orig(blk,fld))
 }
 
 
@@ -452,9 +450,12 @@ pub fn new_span(cx: @ExtCtxt, sp: span) -> span {
 // the default compilation environment. It would be much nicer to use
 // a mechanism like syntax_quote to ensure hygiene.
 
-pub fn core_macros() -> @str {
+pub fn std_macros() -> @str {
     return
-@"pub mod macros {
+@"mod __std_macros {
+    #[macro_escape];
+    #[doc(hidden)];
+
     macro_rules! ignore (($($x:tt)*) => (()))
 
     macro_rules! error (
@@ -484,7 +485,9 @@ pub fn core_macros() -> @str {
         )
     )
 
-    macro_rules! debug (
+    // conditionally define debug!, but keep it type checking even
+    // in non-debug builds.
+    macro_rules! __debug (
         ($arg:expr) => (
             __log(4u32, fmt!( \"%?\", $arg ))
         );
@@ -492,6 +495,22 @@ pub fn core_macros() -> @str {
             __log(4u32, fmt!( $($arg),+ ))
         )
     )
+
+    #[cfg(debug)]
+    #[macro_escape]
+    mod debug_macro {
+        macro_rules! debug (($($arg:expr),*) => {
+            __debug!($($arg),*)
+        })
+    }
+
+    #[cfg(not(debug))]
+    #[macro_escape]
+    mod debug_macro {
+        macro_rules! debug (($($arg:expr),*) => {
+            if false { __debug!($($arg),*) }
+        })
+    }
 
     macro_rules! fail(
         () => (
@@ -531,7 +550,8 @@ pub fn core_macros() -> @str {
                 let expected_val = $expected;
                 // check both directions of equality....
                 if !((given_val == expected_val) && (expected_val == given_val)) {
-                    fail!(\"left: %? does not equal right: %?\", given_val, expected_val);
+                    fail!(\"assertion failed: `(left == right) && (right == \
+                    left)` (left: `%?`, right: `%?`)\", given_val, expected_val);
                 }
             }
         )
@@ -578,10 +598,13 @@ pub fn core_macros() -> @str {
         { pub $c:ident: $in:ty -> $out:ty; } => {
 
             pub mod $c {
-                fn key(_x: @::std::condition::Handler<$in,$out>) { }
+                #[allow(non_uppercase_statics)];
+                static key: ::std::local_data::Key<
+                    @::std::condition::Handler<$in, $out>> =
+                    &::std::local_data::Key;
 
                 pub static cond :
-                    ::std::condition::Condition<'static,$in,$out> =
+                    ::std::condition::Condition<$in,$out> =
                     ::std::condition::Condition {
                         name: stringify!($c),
                         key: key
@@ -593,10 +616,13 @@ pub fn core_macros() -> @str {
 
             // FIXME (#6009): remove mod's `pub` below once variant above lands.
             pub mod $c {
-                fn key(_x: @::std::condition::Handler<$in,$out>) { }
+                #[allow(non_uppercase_statics)];
+                static key: ::std::local_data::Key<
+                    @::std::condition::Handler<$in, $out>> =
+                    &::std::local_data::Key;
 
                 pub static cond :
-                    ::std::condition::Condition<'static,$in,$out> =
+                    ::std::condition::Condition<$in,$out> =
                     ::std::condition::Condition {
                         name: stringify!($c),
                         key: key
@@ -640,7 +666,54 @@ pub fn core_macros() -> @str {
             $(if $pred $body)else+
         );
     )
+
+    macro_rules! printf (
+        ($arg:expr) => (
+            print(fmt!(\"%?\", $arg))
+        );
+        ($( $arg:expr ),+) => (
+            print(fmt!($($arg),+))
+        )
+    )
+
+    macro_rules! printfln (
+        ($arg:expr) => (
+            println(fmt!(\"%?\", $arg))
+        );
+        ($( $arg:expr ),+) => (
+            println(fmt!($($arg),+))
+        )
+    )
 }";
+}
+
+// add a bunch of macros as though they were placed at the head of the
+// program (ick). This should run before cfg stripping.
+pub fn inject_std_macros(parse_sess: @mut parse::ParseSess,
+                         cfg: ast::crate_cfg, c: &crate) -> @crate {
+    let sm = match parse_item_from_source_str(@"<std-macros>",
+                                              std_macros(),
+                                              cfg.clone(),
+                                              ~[],
+                                              parse_sess) {
+        Some(item) => item,
+        None => fail!("expected core macros to parse correctly")
+    };
+
+    let injecter = @AstFoldFns {
+        fold_mod: |modd, _| {
+            // just inject the std macros at the start of the first
+            // module in the crate (i.e the crate file itself.)
+            let items = vec::append(~[sm], modd.items);
+            ast::_mod {
+                items: items,
+                // FIXME #2543: Bad copy.
+                .. (*modd).clone()
+            }
+        },
+        .. *default_ast_fold()
+    };
+    @make_fold(injecter).fold_crate(c)
 }
 
 pub fn expand_crate(parse_sess: @mut parse::ParseSess,
@@ -652,7 +725,7 @@ pub fn expand_crate(parse_sess: @mut parse::ParseSess,
     // every method/element of AstFoldFns in fold.rs.
     let extsbox = @mut syntax_expander_table();
     let afp = default_ast_fold();
-    let cx = ExtCtxt::new(parse_sess, copy cfg);
+    let cx = ExtCtxt::new(parse_sess, cfg.clone());
     let f_pre = @AstFoldFns {
         fold_expr: |expr,span,recur|
             expand_expr(extsbox, cx, expr, span, recur, afp.fold_expr),
@@ -662,38 +735,11 @@ pub fn expand_crate(parse_sess: @mut parse::ParseSess,
             expand_item(extsbox, cx, item, recur, afp.fold_item),
         fold_stmt: |stmt,span,recur|
             expand_stmt(extsbox, cx, stmt, span, recur, afp.fold_stmt),
-        fold_block: |blk,span,recur|
-            expand_block(extsbox, cx, blk, span, recur, afp.fold_block),
+        fold_block: |blk,recur|
+            expand_block(extsbox, cx, blk, recur, afp.fold_block),
         new_span: |a| new_span(cx, a),
         .. *afp};
     let f = make_fold(f_pre);
-    // add a bunch of macros as though they were placed at the
-    // head of the program (ick).
-    let attrs = ~[
-        spanned {
-            span: codemap::dummy_sp(),
-            node: attribute_ {
-                style: attr_outer,
-                value: @spanned {
-                    node: meta_word(@"macro_escape"),
-                    span: codemap::dummy_sp(),
-                },
-                is_sugared_doc: false,
-            }
-        }
-    ];
-
-    let cm = match parse_item_from_source_str(@"<core-macros>",
-                                              core_macros(),
-                                              copy cfg,
-                                              attrs,
-                                              parse_sess) {
-        Some(item) => item,
-        None => cx.bug("expected core macros to parse correctly")
-    };
-    // This is run for its side-effects on the expander env,
-    // as it registers all the core macros as expanders.
-    f.fold_item(cm);
 
     @f.fold_crate(c)
 }
@@ -764,6 +810,8 @@ mod test {
             @"<test>",
             src,
             ~[],sess);
+        let crate_ast = inject_std_macros(sess, ~[], crate_ast);
+        // don't bother with striping, doesn't affect fail!.
         expand_crate(sess,~[],crate_ast);
     }
 
@@ -811,20 +859,14 @@ mod test {
         expand_crate(sess,~[],crate_ast);
     }
 
-    #[test] fn core_macros_must_parse () {
-        let src = @"
-  pub mod macros {
-    macro_rules! ignore (($($x:tt)*) => (()))
-
-    macro_rules! error ( ($( $arg:expr ),+) => (
-        log(::core::error, fmt!( $($arg),+ )) ))
-}";
+    #[test] fn std_macros_must_parse () {
+        let src = super::std_macros();
         let sess = parse::new_parse_sess(None);
         let cfg = ~[];
         let item_ast = parse::parse_item_from_source_str(
             @"<test>",
             src,
-            cfg,~[make_dummy_attr (@"macro_escape")],sess);
+            cfg,~[],sess);
         match item_ast {
             Some(_) => (), // success
             None => fail!("expected this to parse")

@@ -11,9 +11,10 @@
 // except according to those terms.
 
 extern mod extra;
-use extra::deque::Deque;
+use extra::ringbuf::RingBuf;
+use extra::container::Deque;
 
 pub fn main() {
-    let mut q = Deque::new();
-    q.add_back(10);
+    let mut q = RingBuf::new();
+    q.push_back(10);
 }

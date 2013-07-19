@@ -75,7 +75,7 @@ pub mod infer;
 pub mod collect;
 pub mod coherence;
 
-#[deriving(Encodable, Decodable)]
+#[deriving(Clone, Encodable, Decodable)]
 pub enum method_origin {
     // supertrait method invoked on "self" inside a default method
     // first field is supertrait ID;
@@ -99,7 +99,7 @@ pub enum method_origin {
 
 // details for a method invoked with a receiver whose type is a type parameter
 // with a bounded trait.
-#[deriving(Encodable, Decodable)]
+#[deriving(Clone, Encodable, Decodable)]
 pub struct method_param {
     // the trait containing the method to be invoked
     trait_id: ast::def_id,
@@ -115,6 +115,7 @@ pub struct method_param {
     bound_num: uint,
 }
 
+#[deriving(Clone)]
 pub struct method_map_entry {
     // the type of the self parameter, which is not reflected in the fn type
     // (FIXME #3446)
@@ -138,6 +139,7 @@ pub type vtable_param_res = @~[vtable_origin];
 // Resolutions for bounds of all parameters, left to right, for a given path.
 pub type vtable_res = @~[vtable_param_res];
 
+#[deriving(Clone)]
 pub enum vtable_origin {
     /*
       Statically known vtable. def_id gives the class or impl item
@@ -215,7 +217,7 @@ pub fn write_tpt_to_tcx(tcx: ty::ctxt,
                         tpt: &ty::ty_param_substs_and_ty) {
     write_ty_to_tcx(tcx, node_id, tpt.ty);
     if !tpt.substs.tps.is_empty() {
-        write_substs_to_tcx(tcx, node_id, copy tpt.substs.tps);
+        write_substs_to_tcx(tcx, node_id, tpt.substs.tps.clone());
     }
 }
 
@@ -303,7 +305,7 @@ fn check_main_fn_ty(ccx: &CrateCtxt,
     let tcx = ccx.tcx;
     let main_t = ty::node_id_to_type(tcx, main_id);
     match ty::get(main_t).sty {
-        ty::ty_bare_fn(ref fn_ty) => {
+        ty::ty_bare_fn(*) => {
             match tcx.items.find(&main_id) {
                 Some(&ast_map::node_item(it,_)) => {
                     match it.node {
@@ -319,16 +321,19 @@ fn check_main_fn_ty(ccx: &CrateCtxt,
                 }
                 _ => ()
             }
-            let mut ok = ty::type_is_nil(fn_ty.sig.output);
-            let num_args = fn_ty.sig.inputs.len();
-            ok &= num_args == 0u;
-            if !ok {
-                tcx.sess.span_err(
-                    main_span,
-                    fmt!("Wrong type in main function: found `%s`, \
-                          expected `fn() -> ()`",
-                         ppaux::ty_to_str(tcx, main_t)));
-            }
+            let se_ty = ty::mk_bare_fn(tcx, ty::BareFnTy {
+                purity: ast::impure_fn,
+                abis: abi::AbiSet::Rust(),
+                sig: ty::FnSig {
+                    bound_lifetime_names: opt_vec::Empty,
+                    inputs: ~[],
+                    output: ty::mk_nil()
+                }
+            });
+
+            require_same_types(tcx, None, false, main_span, main_t, se_ty,
+                || fmt!("main function expects type: `%s`",
+                        ppaux::ty_to_str(ccx.tcx, se_ty)));
         }
         _ => {
             tcx.sess.span_bug(main_span,

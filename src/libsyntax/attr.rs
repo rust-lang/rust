@@ -20,7 +20,6 @@ use diagnostic::span_handler;
 use parse::comments::{doc_comment_style, strip_doc_comment_decoration};
 
 use std::hashmap::HashSet;
-use std::vec;
 /* Constructors */
 
 pub fn mk_name_value_item_str(name: @str, value: @str)
@@ -117,7 +116,7 @@ pub fn get_meta_item_value_str(meta: @ast::meta_item) -> Option<@str> {
 pub fn get_meta_item_list(meta: @ast::meta_item)
                        -> Option<~[@ast::meta_item]> {
     match meta.node {
-        ast::meta_list(_, ref l) => Some(/* FIXME (#2543) */ copy *l),
+        ast::meta_list(_, ref l) => Some(/* FIXME (#2543) */ (*l).clone()),
         _ => None
     }
 }
@@ -143,13 +142,13 @@ pub fn get_name_value_str_pair(item: @ast::meta_item)
 /// Search a list of attributes and return only those with a specific name
 pub fn find_attrs_by_name(attrs: &[ast::attribute], name: &str) ->
    ~[ast::attribute] {
-    do vec::filter_mapped(attrs) |a| {
+    do attrs.iter().filter_map |a| {
         if name == get_attr_name(a) {
             Some(*a)
         } else {
             None
         }
-    }
+    }.collect()
 }
 
 /// Search a list of meta items and return only those with a specific name
@@ -192,7 +191,7 @@ fn eq(a: @ast::meta_item, b: @ast::meta_item) -> bool {
             ast::meta_list(ref nb, ref misb) => {
                 if na != nb { return false; }
                 for misa.iter().advance |mi| {
-                    if !misb.iter().any_(|x| x == mi) { return false; }
+                    if !misb.iter().any(|x| x == mi) { return false; }
                 }
                 true
             }
@@ -256,7 +255,7 @@ pub fn last_meta_item_list_by_name(items: ~[@ast::meta_item], name: &str)
 
 pub fn sort_meta_items(items: &[@ast::meta_item]) -> ~[@ast::meta_item] {
     // This is sort of stupid here, converting to a vec of mutables and back
-    let mut v = vec::to_owned(items);
+    let mut v = items.to_owned();
     do extra::sort::quick_sort(v) |ma, mb| {
         get_meta_item_name(*ma) <= get_meta_item_name(*mb)
     }
@@ -267,24 +266,17 @@ pub fn sort_meta_items(items: &[@ast::meta_item]) -> ~[@ast::meta_item] {
             ast::meta_list(n, ref mis) => {
                 @spanned {
                     node: ast::meta_list(n, sort_meta_items(*mis)),
-                    .. /*bad*/ copy **m
+                    .. /*bad*/ (**m).clone()
                 }
             }
-            _ => /*bad*/ copy *m
+            _ => *m
         }
     }
 }
 
 pub fn remove_meta_items_by_name(items: ~[@ast::meta_item], name: &str) ->
    ~[@ast::meta_item] {
-
-    return vec::filter_mapped(items, |item| {
-        if name != get_meta_item_name(*item) {
-            Some(*item)
-        } else {
-            None
-        }
-    });
+    items.consume_iter().filter(|item| name != get_meta_item_name(*item)).collect()
 }
 
 /**
@@ -294,7 +286,9 @@ pub fn remove_meta_items_by_name(items: ~[@ast::meta_item], name: &str) ->
 pub fn find_linkage_metas(attrs: &[ast::attribute]) -> ~[@ast::meta_item] {
     do find_attrs_by_name(attrs, "link").flat_map |attr| {
         match attr.node.value.node {
-            ast::meta_list(_, ref items) => /* FIXME (#2543) */ copy *items,
+            ast::meta_list(_, ref items) => {
+                /* FIXME (#2543) */ (*items).clone()
+            }
             _ => ~[]
         }
     }

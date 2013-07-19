@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[allow(non_uppercase_statics)];
+
 /// ncurses-compatible compiled terminfo format parsing (term(5))
 
 
@@ -292,7 +294,7 @@ pub fn parse(file: @Reader, longnames: bool) -> Result<~TermInfo, ~str> {
 
             // Find the offset of the NUL we want to go to
             let nulpos = string_table.slice(offset as uint, string_table_bytes as uint)
-                .iter().position_(|&b| b == 0);
+                .iter().position(|&b| b == 0);
             match nulpos {
                 Some(len) => {
                     string_map.insert(name.to_owned(),

@@ -8,9 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use cell::Cell;
+use libc;
 use uint;
 use option::{Some, None};
+use cell::Cell;
+use clone::Clone;
+use container::Container;
+use iterator::IteratorUtil;
+use vec::{OwnedVector, MutableVector};
+use super::io::net::ip::{IpAddr, Ipv4, Ipv6};
 use rt::sched::Scheduler;
 use super::io::net::ip::{IpAddr, Ipv4};
 use unstable::run_in_bare_thread;
@@ -70,7 +76,7 @@ pub fn run_in_mt_newsched_task(f: ~fn()) {
     let f = Cell::new(f);
 
     do run_in_bare_thread {
-        let nthreads = match os::getenv("RUST_TEST_THREADS") {
+        let nthreads = match os::getenv("RUST_RT_TEST_THREADS") {
             Some(nstr) => FromStr::from_str(nstr).get(),
             None => {
                 // Using more threads than cores in test code
@@ -216,16 +222,62 @@ pub fn cleanup_task(task: ~Task) {
 /// Get a port number, starting at 9600, for use in tests
 pub fn next_test_port() -> u16 {
     unsafe {
-        return rust_dbg_next_port() as u16;
+        return rust_dbg_next_port(base_port() as libc::uintptr_t) as u16;
     }
     extern {
-        fn rust_dbg_next_port() -> ::libc::uintptr_t;
+        fn rust_dbg_next_port(base: libc::uintptr_t) -> libc::uintptr_t;
     }
 }
 
-/// Get a unique localhost:port pair starting at 9600
+/// Get a unique IPv4 localhost:port pair starting at 9600
 pub fn next_test_ip4() -> IpAddr {
     Ipv4(127, 0, 0, 1, next_test_port())
+}
+
+/// Get a unique IPv6 localhost:port pair starting at 9600
+pub fn next_test_ip6() -> IpAddr {
+    Ipv6(0, 0, 0, 0, 0, 0, 0, 1, next_test_port())
+}
+
+/*
+XXX: Welcome to MegaHack City.
+
+The bots run multiple builds at the same time, and these builds
+all want to use ports. This function figures out which workspace
+it is running in and assigns a port range based on it.
+*/
+fn base_port() -> uint {
+    use os;
+    use str::StrSlice;
+    use to_str::ToStr;
+    use vec::ImmutableVector;
+
+    let base = 9600u;
+    let range = 1000;
+
+    let bases = [
+        ("32-opt", base + range * 1),
+        ("32-noopt", base + range * 2),
+        ("64-opt", base + range * 3),
+        ("64-noopt", base + range * 4),
+        ("64-opt-vg", base + range * 5),
+        ("all-opt", base + range * 6),
+        ("snap3", base + range * 7),
+        ("dist", base + range * 8)
+    ];
+
+    let path = os::getcwd().to_str();
+
+    let mut final_base = base;
+
+    for bases.iter().advance |&(dir, base)| {
+        if path.contains(dir) {
+            final_base = base;
+            break;
+        }
+    }
+
+    return final_base;
 }
 
 /// Get a constant that represents the number of times to repeat

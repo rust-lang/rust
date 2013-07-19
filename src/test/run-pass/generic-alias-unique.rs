@@ -10,11 +10,11 @@
 
 
 
-fn id<T:Copy + Send>(t: T) -> T { return t; }
+fn id<T:Send>(t: T) -> T { return t; }
 
 pub fn main() {
     let expected = ~100;
     let actual = id::<~int>(expected.clone());
-    debug!(*actual);
+    info!(*actual);
     assert_eq!(*expected, *actual);
 }

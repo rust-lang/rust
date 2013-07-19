@@ -38,7 +38,6 @@ pub extern {
     fn rust_new_sched(num_threads: libc::uintptr_t) -> sched_id;
     fn rust_sched_threads() -> libc::size_t;
     fn rust_sched_current_nonlazy_threads() -> libc::size_t;
-    fn rust_num_threads() -> libc::uintptr_t;
 
     fn get_task_id() -> task_id;
     #[rust_stack]
@@ -63,9 +62,7 @@ pub extern {
     fn rust_task_kill_all(task: *rust_task);
 
     #[rust_stack]
-    fn rust_get_task_local_data(task: *rust_task) -> *libc::c_void;
-    #[rust_stack]
-    fn rust_set_task_local_data(task: *rust_task, map: *libc::c_void);
+    fn rust_get_task_local_data(task: *rust_task) -> *mut *libc::c_void;
     #[rust_stack]
     fn rust_task_local_data_atexit(task: *rust_task, cleanup_fn: *u8);
 }

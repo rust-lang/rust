@@ -17,6 +17,7 @@ use lib::llvm::{ValueRef, BasicBlockRef, BuilderRef};
 use lib::llvm::{True, False, Bool};
 use lib::llvm::{llvm};
 use lib;
+use middle::lang_items::LangItem;
 use middle::trans::base;
 use middle::trans::build;
 use middle::trans::datum;
@@ -34,9 +35,6 @@ use std::cast::transmute;
 use std::cast;
 use std::hashmap::{HashMap};
 use std::libc::{c_uint, c_longlong, c_ulonglong};
-use std::to_bytes;
-use std::str;
-use std::vec::raw::to_ptr;
 use std::vec;
 use syntax::ast::ident;
 use syntax::ast_map::{path, path_elt};
@@ -96,8 +94,10 @@ pub struct Stats {
     n_monos: uint,
     n_inlines: uint,
     n_closures: uint,
+    n_llvm_insns: uint,
+    llvm_insn_ctxt: ~[~str],
     llvm_insns: HashMap<~str, uint>,
-    fn_times: ~[(~str, int)] // (ident, time)
+    fn_stats: ~[(~str, uint, uint)] // (ident, time-in-ms, llvm-instructions)
 }
 
 pub struct BuilderRef_res {
@@ -155,12 +155,6 @@ impl Repr for param_substs {
     }
 }
 
-impl Repr for @param_substs {
-    fn repr(&self, tcx: ty::ctxt) -> ~str {
-        param_substs_to_str(*self, tcx)
-    }
-}
-
 // Function context.  Every LLVM function we create will have one of
 // these.
 pub struct fn_ctxt_ {
@@ -185,13 +179,13 @@ pub struct fn_ctxt_ {
     // the function, due to LLVM's quirks.
     // A block for all the function's static allocas, so that LLVM
     // will coalesce them into a single alloca call.
-    llstaticallocas: BasicBlockRef,
+    llstaticallocas: Option<BasicBlockRef>,
     // A block containing code that copies incoming arguments to space
     // already allocated by code in one of the llallocas blocks.
     // (LLVM requires that arguments be copied to local allocas before
     // allowing most any operation to be performed on them.)
     llloadenv: Option<BasicBlockRef>,
-    llreturn: BasicBlockRef,
+    llreturn: Option<BasicBlockRef>,
     // The 'self' value currently in use in this function, if there
     // is one.
     //
@@ -258,6 +252,21 @@ impl fn_ctxt_ {
         }
     }
 
+    pub fn get_llstaticallocas(&mut self) -> BasicBlockRef {
+        if self.llstaticallocas.is_none() {
+            self.llstaticallocas = Some(base::mk_staticallocas_basic_block(self.llfn));
+        }
+
+        self.llstaticallocas.get()
+    }
+
+    pub fn get_llreturn(&mut self) -> BasicBlockRef {
+        if self.llreturn.is_none() {
+            self.llreturn = Some(base::mk_return_basic_block(self.llfn));
+        }
+
+        self.llreturn.get()
+    }
 }
 
 pub type fn_ctxt = @mut fn_ctxt_;
@@ -278,7 +287,7 @@ pub enum heap {
     heap_exchange_closure
 }
 
-#[deriving(Eq)]
+#[deriving(Clone, Eq)]
 pub enum cleantype {
     normal_exit_only,
     normal_exit_and_unwind
@@ -289,8 +298,19 @@ pub enum cleanup {
     clean_temp(ValueRef, @fn(block) -> block, cleantype),
 }
 
+// Can't use deriving(Clone) because of the managed closure.
+impl Clone for cleanup {
+    fn clone(&self) -> cleanup {
+        match *self {
+            clean(f, ct) => clean(f, ct),
+            clean_temp(v, f, ct) => clean_temp(v, f, ct),
+        }
+    }
+}
+
 // Used to remember and reuse existing cleanup paths
 // target: none means the path ends in an resume instruction
+#[deriving(Clone)]
 pub struct cleanup_path {
     target: Option<BasicBlockRef>,
     size: uint,
@@ -321,7 +341,7 @@ pub fn add_clean(bcx: block, val: ValueRef, t: ty::t) {
     debug!("add_clean(%s, %s, %s)", bcx.to_str(), bcx.val_to_str(val), t.repr(bcx.tcx()));
 
     let cleanup_type = cleanup_type(bcx.tcx(), t);
-    do in_scope_cx(bcx) |scope_info| {
+    do in_scope_cx(bcx, None) |scope_info| {
         scope_info.cleanups.push(clean(|a| glue::drop_ty(a, val, t), cleanup_type));
         grow_scope_clean(scope_info);
     }
@@ -333,25 +353,36 @@ pub fn add_clean_temp_immediate(cx: block, val: ValueRef, ty: ty::t) {
            cx.to_str(), cx.val_to_str(val),
            ty.repr(cx.tcx()));
     let cleanup_type = cleanup_type(cx.tcx(), ty);
-    do in_scope_cx(cx) |scope_info| {
+    do in_scope_cx(cx, None) |scope_info| {
         scope_info.cleanups.push(
             clean_temp(val, |a| glue::drop_ty_immediate(a, val, ty),
                        cleanup_type));
         grow_scope_clean(scope_info);
     }
 }
+
 pub fn add_clean_temp_mem(bcx: block, val: ValueRef, t: ty::t) {
+    add_clean_temp_mem_in_scope_(bcx, None, val, t);
+}
+
+pub fn add_clean_temp_mem_in_scope(bcx: block, scope_id: ast::node_id, val: ValueRef, t: ty::t) {
+    add_clean_temp_mem_in_scope_(bcx, Some(scope_id), val, t);
+}
+
+pub fn add_clean_temp_mem_in_scope_(bcx: block, scope_id: Option<ast::node_id>,
+                                    val: ValueRef, t: ty::t) {
     if !ty::type_needs_drop(bcx.tcx(), t) { return; }
     debug!("add_clean_temp_mem(%s, %s, %s)",
            bcx.to_str(), bcx.val_to_str(val),
            t.repr(bcx.tcx()));
     let cleanup_type = cleanup_type(bcx.tcx(), t);
-    do in_scope_cx(bcx) |scope_info| {
+    do in_scope_cx(bcx, scope_id) |scope_info| {
         scope_info.cleanups.push(clean_temp(val, |a| glue::drop_ty(a, val, t), cleanup_type));
         grow_scope_clean(scope_info);
     }
 }
 pub fn add_clean_return_to_mut(bcx: block,
+                               scope_id: ast::node_id,
                                root_key: root_map_key,
                                frozen_val_ref: ValueRef,
                                bits_val_ref: ValueRef,
@@ -369,7 +400,7 @@ pub fn add_clean_return_to_mut(bcx: block,
            bcx.to_str(),
            bcx.val_to_str(frozen_val_ref),
            bcx.val_to_str(bits_val_ref));
-    do in_scope_cx(bcx) |scope_info| {
+    do in_scope_cx(bcx, Some(scope_id)) |scope_info| {
         scope_info.cleanups.push(
             clean_temp(
                 frozen_val_ref,
@@ -390,7 +421,7 @@ pub fn add_clean_free(cx: block, ptr: ValueRef, heap: heap) {
         f
       }
     };
-    do in_scope_cx(cx) |scope_info| {
+    do in_scope_cx(cx, None) |scope_info| {
         scope_info.cleanups.push(clean_temp(ptr, free_fn,
                                       normal_exit_and_unwind));
         grow_scope_clean(scope_info);
@@ -402,8 +433,8 @@ pub fn add_clean_free(cx: block, ptr: ValueRef, heap: heap) {
 // this will be more involved. For now, we simply zero out the local, and the
 // drop glue checks whether it is zero.
 pub fn revoke_clean(cx: block, val: ValueRef) {
-    do in_scope_cx(cx) |scope_info| {
-        let cleanup_pos = scope_info.cleanups.iter().position_(
+    do in_scope_cx(cx, None) |scope_info| {
+        let cleanup_pos = scope_info.cleanups.iter().position(
             |cu| match *cu {
                 clean_temp(v, _, _) if v == val => true,
                 _ => false
@@ -419,27 +450,14 @@ pub fn revoke_clean(cx: block, val: ValueRef) {
 }
 
 pub fn block_cleanups(bcx: block) -> ~[cleanup] {
-    match bcx.kind {
-       block_non_scope  => ~[],
-       block_scope(inf) => /*bad*/copy inf.cleanups
+    match bcx.scope {
+       None  => ~[],
+       Some(inf) => inf.cleanups.clone(),
     }
 }
 
-pub enum block_kind {
-    // A scope at the end of which temporary values created inside of it are
-    // cleaned up. May correspond to an actual block in the language, but also
-    // to an implicit scope, for example, calls introduce an implicit scope in
-    // which the arguments are evaluated and cleaned up.
-    block_scope(@mut scope_info),
-
-    // A non-scope block is a basic block created as a translation artifact
-    // from translating code that expresses conditional logic rather than by
-    // explicit { ... } block structure in the source language.  It's called a
-    // non-scope block because it doesn't introduce a new variable scope.
-    block_non_scope,
-}
-
 pub struct scope_info {
+    parent: Option<@mut scope_info>,
     loop_break: Option<block>,
     loop_label: Option<ident>,
     // A list of functions that must be run at when leaving this
@@ -451,6 +469,8 @@ pub struct scope_info {
     cleanup_paths: ~[cleanup_path],
     // Unwinding landing pad. Also cleared when cleanups change.
     landing_pad: Option<BasicBlockRef>,
+    // info about the AST node this scope originated from, if any
+    node_info: Option<NodeInfo>,
 }
 
 impl scope_info {
@@ -473,7 +493,7 @@ impl get_node_info for ast::expr {
 
 impl get_node_info for ast::blk {
     fn info(&self) -> Option<NodeInfo> {
-        Some(NodeInfo {id: self.node.id,
+        Some(NodeInfo {id: self.id,
                        callee_id: None,
                        span: self.span})
     }
@@ -506,8 +526,8 @@ pub struct block_ {
     terminated: bool,
     unreachable: bool,
     parent: Option<block>,
-    // The 'kind' of basic block this is.
-    kind: block_kind,
+    // The current scope within this basic block
+    scope: Option<@mut scope_info>,
     // Is this block part of a landing pad?
     is_lpad: bool,
     // info about the AST node this block originated from, if any
@@ -517,7 +537,7 @@ pub struct block_ {
     fcx: fn_ctxt
 }
 
-pub fn block_(llbb: BasicBlockRef, parent: Option<block>, kind: block_kind,
+pub fn block_(llbb: BasicBlockRef, parent: Option<block>,
               is_lpad: bool, node_info: Option<NodeInfo>, fcx: fn_ctxt)
     -> block_ {
 
@@ -526,7 +546,7 @@ pub fn block_(llbb: BasicBlockRef, parent: Option<block>, kind: block_kind,
         terminated: false,
         unreachable: false,
         parent: parent,
-        kind: kind,
+        scope: None,
         is_lpad: is_lpad,
         node_info: node_info,
         fcx: fcx
@@ -535,10 +555,10 @@ pub fn block_(llbb: BasicBlockRef, parent: Option<block>, kind: block_kind,
 
 pub type block = @mut block_;
 
-pub fn mk_block(llbb: BasicBlockRef, parent: Option<block>, kind: block_kind,
+pub fn mk_block(llbb: BasicBlockRef, parent: Option<block>,
             is_lpad: bool, node_info: Option<NodeInfo>, fcx: fn_ctxt)
     -> block {
-    @mut block_(llbb, parent, kind, is_lpad, node_info, fcx)
+    @mut block_(llbb, parent, is_lpad, node_info, fcx)
 }
 
 pub struct Result {
@@ -563,19 +583,33 @@ pub fn val_ty(v: ValueRef) -> Type {
     }
 }
 
-pub fn in_scope_cx(cx: block, f: &fn(si: &mut scope_info)) {
+pub fn in_scope_cx(cx: block, scope_id: Option<ast::node_id>, f: &fn(si: &mut scope_info)) {
     let mut cur = cx;
+    let mut cur_scope = cur.scope;
     loop {
-        match cur.kind {
-            block_scope(inf) => {
-                debug!("in_scope_cx: selected cur=%s (cx=%s)",
-                       cur.to_str(), cx.to_str());
-                f(inf);
-                return;
+        cur_scope = match cur_scope {
+            Some(inf) => match scope_id {
+                Some(wanted) => match inf.node_info {
+                    Some(NodeInfo { id: actual, _ }) if wanted == actual => {
+                        debug!("in_scope_cx: selected cur=%s (cx=%s)",
+                               cur.to_str(), cx.to_str());
+                        f(inf);
+                        return;
+                    },
+                    _ => inf.parent,
+                },
+                None => {
+                    debug!("in_scope_cx: selected cur=%s (cx=%s)",
+                           cur.to_str(), cx.to_str());
+                    f(inf);
+                    return;
+                }
+            },
+            None => {
+                cur = block_parent(cur);
+                cur.scope
             }
-            _ => ()
         }
-        cur = block_parent(cur);
     }
 }
 
@@ -593,6 +627,10 @@ impl block_ {
     pub fn ccx(&self) -> @mut CrateContext { self.fcx.ccx }
     pub fn tcx(&self) -> ty::ctxt { self.fcx.ccx.tcx }
     pub fn sess(&self) -> Session { self.fcx.ccx.sess }
+
+    pub fn ident(&self, ident: ident) -> @str {
+        token::ident_to_str(&ident)
+    }
 
     pub fn node_id_to_str(&self, id: ast::node_id) -> ~str {
         ast_map::node_id_to_str(self.tcx().items, id, self.sess().intr())
@@ -774,7 +812,7 @@ pub fn C_zero_byte_arr(size: uint) -> ValueRef {
 
 pub fn C_struct(elts: &[ValueRef]) -> ValueRef {
     unsafe {
-        do vec::as_imm_buf(elts) |ptr, len| {
+        do elts.as_imm_buf |ptr, len| {
             llvm::LLVMConstStructInContext(base::task_llcx(), ptr, len as c_uint, False)
         }
     }
@@ -782,7 +820,7 @@ pub fn C_struct(elts: &[ValueRef]) -> ValueRef {
 
 pub fn C_packed_struct(elts: &[ValueRef]) -> ValueRef {
     unsafe {
-        do vec::as_imm_buf(elts) |ptr, len| {
+        do elts.as_imm_buf |ptr, len| {
             llvm::LLVMConstStructInContext(base::task_llcx(), ptr, len as c_uint, True)
         }
     }
@@ -790,7 +828,7 @@ pub fn C_packed_struct(elts: &[ValueRef]) -> ValueRef {
 
 pub fn C_named_struct(T: Type, elts: &[ValueRef]) -> ValueRef {
     unsafe {
-        do vec::as_imm_buf(elts) |ptr, len| {
+        do elts.as_imm_buf |ptr, len| {
             llvm::LLVMConstNamedStruct(T.to_ref(), ptr, len as c_uint)
         }
     }
@@ -826,7 +864,7 @@ pub fn get_param(fndecl: ValueRef, param: uint) -> ValueRef {
 pub fn const_get_elt(cx: &CrateContext, v: ValueRef, us: &[c_uint])
                   -> ValueRef {
     unsafe {
-        let r = do vec::as_imm_buf(us) |p, len| {
+        let r = do us.as_imm_buf |p, len| {
             llvm::LLVMConstExtractValue(v, p, len as c_uint)
         };
 
@@ -1009,7 +1047,9 @@ pub fn resolve_vtables_under_param_substs(tcx: ty::ctxt,
     -> typeck::vtable_res {
     @vts.iter().transform(|ds|
       @ds.iter().transform(
-          |d| resolve_vtable_under_param_substs(tcx, param_substs, copy *d))
+          |d| resolve_vtable_under_param_substs(tcx,
+                                                param_substs,
+                                                d))
                           .collect::<~[typeck::vtable_origin]>())
         .collect::<~[typeck::vtable_param_res]>()
 }
@@ -1017,7 +1057,7 @@ pub fn resolve_vtables_under_param_substs(tcx: ty::ctxt,
 
 // Apply the typaram substitutions in the fn_ctxt to a vtable. This should
 // eliminate any vtable_params.
-pub fn resolve_vtable_in_fn_ctxt(fcx: fn_ctxt, vt: typeck::vtable_origin)
+pub fn resolve_vtable_in_fn_ctxt(fcx: fn_ctxt, vt: &typeck::vtable_origin)
     -> typeck::vtable_origin {
     resolve_vtable_under_param_substs(fcx.ccx.tcx,
                                       fcx.param_substs,
@@ -1026,17 +1066,17 @@ pub fn resolve_vtable_in_fn_ctxt(fcx: fn_ctxt, vt: typeck::vtable_origin)
 
 pub fn resolve_vtable_under_param_substs(tcx: ty::ctxt,
                                          param_substs: Option<@param_substs>,
-                                         vt: typeck::vtable_origin)
-    -> typeck::vtable_origin {
-    match vt {
-        typeck::vtable_static(trait_id, tys, sub) => {
+                                         vt: &typeck::vtable_origin)
+                                         -> typeck::vtable_origin {
+    match *vt {
+        typeck::vtable_static(trait_id, ref tys, sub) => {
             let tys = match param_substs {
                 Some(substs) => {
                     do tys.iter().transform |t| {
                         ty::subst_tps(tcx, substs.tys, substs.self_ty, *t)
                     }.collect()
                 }
-                _ => tys
+                _ => tys.to_owned()
             };
             typeck::vtable_static(
                 trait_id, tys,
@@ -1058,7 +1098,7 @@ pub fn resolve_vtable_under_param_substs(tcx: ty::ctxt,
             match param_substs {
                 Some(@param_substs
                      {self_vtable: Some(ref self_vtable), _}) => {
-                    copy *self_vtable
+                    (*self_vtable).clone()
                 }
                 _ => {
                     tcx.sess.bug(fmt!(
@@ -1070,13 +1110,15 @@ pub fn resolve_vtable_under_param_substs(tcx: ty::ctxt,
     }
 }
 
-pub fn find_vtable(tcx: ty::ctxt, ps: &param_substs,
-                   n_param: uint, n_bound: uint)
-    -> typeck::vtable_origin {
+pub fn find_vtable(tcx: ty::ctxt,
+                   ps: &param_substs,
+                   n_param: uint,
+                   n_bound: uint)
+                   -> typeck::vtable_origin {
     debug!("find_vtable(n_param=%u, n_bound=%u, ps=%s)",
            n_param, n_bound, ps.repr(tcx));
 
-    /*bad*/ copy ps.vtables.get()[n_param][n_bound]
+    ps.vtables.get()[n_param][n_bound].clone()
 }
 
 pub fn dummy_substs(tps: ~[ty::t]) -> ty::substs {
@@ -1099,4 +1141,18 @@ pub fn filename_and_line_num_from_span(bcx: block,
 // Casts a Rust bool value to an i1.
 pub fn bool_to_i1(bcx: block, llval: ValueRef) -> ValueRef {
     build::ICmp(bcx, lib::llvm::IntNE, llval, C_bool(false))
+}
+
+pub fn langcall(bcx: block, span: Option<span>, msg: &str,
+                li: LangItem) -> ast::def_id {
+    match bcx.tcx().lang_items.require(li) {
+        Ok(id) => id,
+        Err(s) => {
+            let msg = fmt!("%s %s", msg, s);
+            match span {
+                Some(span) => { bcx.tcx().sess.span_fatal(span, msg); }
+                None => { bcx.tcx().sess.fatal(msg); }
+            }
+        }
+    }
 }

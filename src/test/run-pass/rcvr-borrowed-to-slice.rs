@@ -11,33 +11,31 @@
 use std::vec;
 
 trait sum {
-    fn sum(self) -> int;
+    fn sum_(self) -> int;
 }
 
 // Note: impl on a slice
 impl<'self> sum for &'self [int] {
-    fn sum(self) -> int {
-        let mut sum = 0;
-        for self.iter().advance |e| { sum += *e; }
-        return sum;
+    fn sum_(self) -> int {
+        self.iter().fold(0, |a, &b| a + b)
     }
 }
 
-fn call_sum(x: &[int]) -> int { x.sum() }
+fn call_sum(x: &[int]) -> int { x.sum_() }
 
 pub fn main() {
     let x = ~[1, 2, 3];
     let y = call_sum(x);
-    debug!("y==%d", y);
+    info!("y==%d", y);
     assert_eq!(y, 6);
 
     let mut x = ~[1, 2, 3];
-    let y = x.sum();
-    debug!("y==%d", y);
+    let y = x.sum_();
+    info!("y==%d", y);
     assert_eq!(y, 6);
 
     let x = ~[1, 2, 3];
-    let y = x.sum();
-    debug!("y==%d", y);
+    let y = x.sum_();
+    info!("y==%d", y);
     assert_eq!(y, 6);
 }

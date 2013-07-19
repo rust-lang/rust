@@ -12,6 +12,8 @@
 use back::link;
 use lib;
 use lib::llvm::*;
+use middle::lang_items::{FailFnLangItem, FailBoundsCheckFnLangItem};
+use middle::lang_items::LogTypeFnLangItem;
 use middle::trans::base::*;
 use middle::trans::build::*;
 use middle::trans::callee;
@@ -26,7 +28,6 @@ use util::ppaux;
 use middle::trans::type_::Type;
 
 use std::str;
-use std::vec;
 use syntax::ast;
 use syntax::ast::ident;
 use syntax::ast_map::path_mod;
@@ -36,14 +37,11 @@ use syntax::codemap::span;
 pub fn trans_block(bcx: block, b: &ast::blk, dest: expr::Dest) -> block {
     let _icx = push_ctxt("trans_block");
     let mut bcx = bcx;
-    do block_locals(b) |local| {
-        bcx = alloc_local(bcx, local);
-    };
-    for b.node.stmts.iter().advance |s| {
+    for b.stmts.iter().advance |s| {
         debuginfo::update_source_pos(bcx, b.span);
         bcx = trans_stmt(bcx, *s);
     }
-    match b.node.expr {
+    match b.expr {
         Some(e) => {
             debuginfo::update_source_pos(bcx, e.span);
             bcx = expr::trans_into(bcx, e, dest);
@@ -62,22 +60,49 @@ pub fn trans_if(bcx: block,
             dest: expr::Dest)
          -> block {
     debug!("trans_if(bcx=%s, cond=%s, thn=%?, dest=%s)",
-           bcx.to_str(), bcx.expr_to_str(cond), thn.node.id,
+           bcx.to_str(), bcx.expr_to_str(cond), thn.id,
            dest.to_str(bcx.ccx()));
     let _indenter = indenter();
 
     let _icx = push_ctxt("trans_if");
+
+    match cond.node {
+        // `if true` and `if false` can be trans'd more efficiently,
+        // by dropping branches that are known to be impossible.
+        ast::expr_lit(@ref l) => match l.node {
+            ast::lit_bool(true) => {
+                // if true { .. } [else { .. }]
+                let then_bcx_in = scope_block(bcx, thn.info(), "if_true_then");
+                let then_bcx_out = trans_block(then_bcx_in, thn, dest);
+                let then_bcx_out = trans_block_cleanups(then_bcx_out,
+                                                        block_cleanups(then_bcx_in));
+                Br(bcx, then_bcx_in.llbb);
+                return then_bcx_out;
+            }
+            ast::lit_bool(false) => {
+                match els {
+                    // if false { .. } else { .. }
+                    Some(elexpr) => {
+                        let (else_bcx_in, else_bcx_out) =
+                            trans_if_else(bcx, elexpr, dest, "if_false_else");
+                        Br(bcx, else_bcx_in.llbb);
+                        return else_bcx_out;
+                    }
+                    // if false { .. }
+                    None => return bcx,
+                }
+            }
+            _ => {}
+        },
+        _ => {}
+    }
+
     let Result {bcx, val: cond_val} =
         expr::trans_to_datum(bcx, cond).to_result();
 
     let then_bcx_in = scope_block(bcx, thn.info(), "then");
-    let else_bcx_in = scope_block(bcx, els.info(), "else");
 
     let cond_val = bool_to_i1(bcx, cond_val);
-    CondBr(bcx, cond_val, then_bcx_in.llbb, else_bcx_in.llbb);
-
-    debug!("then_bcx_in=%s, else_bcx_in=%s",
-           then_bcx_in.to_str(), else_bcx_in.to_str());
 
     let then_bcx_out = trans_block(then_bcx_in, thn, dest);
     let then_bcx_out = trans_block_cleanups(then_bcx_out,
@@ -87,26 +112,44 @@ pub fn trans_if(bcx: block,
     // because trans_expr will create another scope block
     // context for the block, but we've already got the
     // 'else' context
-    let else_bcx_out = match els {
+    let (else_bcx_in, next_bcx) = match els {
       Some(elexpr) => {
-        match elexpr.node {
-          ast::expr_if(_, _, _) => {
-            let elseif_blk = ast_util::block_from_expr(elexpr);
-            trans_block(else_bcx_in, &elseif_blk, dest)
-          }
-          ast::expr_block(ref blk) => {
-            trans_block(else_bcx_in, blk, dest)
-          }
-          // would be nice to have a constraint on ifs
-          _ => bcx.tcx().sess.bug("strange alternative in if")
-        }
+          let (else_bcx_in, else_bcx_out) = trans_if_else(bcx, elexpr, dest, "else");
+          (else_bcx_in, join_blocks(bcx, [then_bcx_out, else_bcx_out]))
       }
-      _ => else_bcx_in
-    };
-    let else_bcx_out = trans_block_cleanups(else_bcx_out,
-                                            block_cleanups(else_bcx_in));
-    return join_blocks(bcx, [then_bcx_out, else_bcx_out]);
+      _ => {
+          let next_bcx = sub_block(bcx, "next");
+          Br(then_bcx_out, next_bcx.llbb);
 
+          (next_bcx, next_bcx)
+      }
+    };
+
+    debug!("then_bcx_in=%s, else_bcx_in=%s",
+           then_bcx_in.to_str(), else_bcx_in.to_str());
+
+    CondBr(bcx, cond_val, then_bcx_in.llbb, else_bcx_in.llbb);
+    return next_bcx;
+
+    // trans `else [ if { .. } ... | { .. } ]`
+    fn trans_if_else(bcx: block, elexpr: @ast::expr,
+                     dest: expr::Dest, scope_name: &str) -> (block, block) {
+        let else_bcx_in = scope_block(bcx, elexpr.info(), scope_name);
+        let else_bcx_out = match elexpr.node {
+            ast::expr_if(_, _, _) => {
+                let elseif_blk = ast_util::block_from_expr(elexpr);
+                trans_block(else_bcx_in, &elseif_blk, dest)
+            }
+            ast::expr_block(ref blk) => {
+                trans_block(else_bcx_in, blk, dest)
+            }
+            // would be nice to have a constraint on ifs
+            _ => bcx.tcx().sess.bug("strange alternative in if")
+        };
+        let else_bcx_out = trans_block_cleanups(else_bcx_out,
+                                                block_cleanups(else_bcx_in));
+        (else_bcx_in, else_bcx_out)
+    }
 }
 
 pub fn join_blocks(parent_bcx: block, in_cxs: &[block]) -> block {
@@ -190,9 +233,13 @@ pub fn trans_log(log_ex: &ast::expr,
 
     let (modpath, modname) = {
         let path = &mut bcx.fcx.path;
-        let modpath = vec::append(
-            ~[path_mod(ccx.sess.ident_of(ccx.link_meta.name))],
-            path.filtered(|e| match *e { path_mod(_) => true, _ => false }));
+        let mut modpath = ~[path_mod(ccx.sess.ident_of(ccx.link_meta.name))];
+        for path.iter().advance |e| {
+            match *e {
+                path_mod(_) => { modpath.push(*e) }
+                _ => {}
+            }
+        }
         let modname = path_str(ccx.sess, modpath);
         (modpath, modname)
     };
@@ -231,7 +278,7 @@ pub fn trans_log(log_ex: &ast::expr,
 
             // Call the polymorphic log function
             let val = val_datum.to_ref_llval(bcx);
-            let did = bcx.tcx().lang_items.log_type_fn();
+            let did = langcall(bcx, Some(e.span), "", LogTypeFnLangItem);
             let bcx = callee::trans_lang_call_with_type_params(
                 bcx, did, [level, val], [val_datum.ty], expr::Ignore);
             bcx
@@ -246,42 +293,47 @@ pub fn trans_break_cont(bcx: block,
     let _icx = push_ctxt("trans_break_cont");
     // Locate closest loop block, outputting cleanup as we go.
     let mut unwind = bcx;
+    let mut cur_scope = unwind.scope;
     let mut target;
     loop {
-        match unwind.kind {
-          block_scope(@scope_info {
-            loop_break: Some(brk),
-            loop_label: l,
-            _
-          }) => {
-              // If we're looking for a labeled loop, check the label...
-              target = if to_end {
-                  brk
-              } else {
-                  unwind
-              };
-              match opt_label {
-                  Some(desired) => match l {
-                      Some(actual) if actual == desired => break,
-                      // If it doesn't match the one we want,
-                      // don't break
-                      _ => ()
-                  },
-                  None => break
-              }
-          }
-          _ => ()
+        cur_scope = match cur_scope {
+            Some(@scope_info {
+                loop_break: Some(brk),
+                loop_label: l,
+                parent,
+                _
+            }) => {
+                // If we're looking for a labeled loop, check the label...
+                target = if to_end {
+                    brk
+                } else {
+                    unwind
+                };
+                match opt_label {
+                    Some(desired) => match l {
+                        Some(actual) if actual == desired => break,
+                        // If it doesn't match the one we want,
+                        // don't break
+                        _ => parent,
+                    },
+                    None => break,
+                }
+            }
+            Some(inf) => inf.parent,
+            None => {
+                unwind = match unwind.parent {
+                    Some(bcx) => bcx,
+                        // This is a return from a loop body block
+                        None => {
+                            Store(bcx, C_bool(!to_end), bcx.fcx.llretptr.get());
+                            cleanup_and_leave(bcx, None, Some(bcx.fcx.get_llreturn()));
+                            Unreachable(bcx);
+                            return bcx;
+                        }
+                };
+                unwind.scope
+            }
         }
-        unwind = match unwind.parent {
-          Some(bcx) => bcx,
-          // This is a return from a loop body block
-          None => {
-            Store(bcx, C_bool(!to_end), bcx.fcx.llretptr.get());
-            cleanup_and_leave(bcx, None, Some(bcx.fcx.llreturn));
-            Unreachable(bcx);
-            return bcx;
-          }
-        };
     }
     cleanup_and_Br(bcx, unwind, target.llbb);
     Unreachable(bcx);
@@ -299,7 +351,7 @@ pub fn trans_cont(bcx: block, label_opt: Option<ident>) -> block {
 pub fn trans_ret(bcx: block, e: Option<@ast::expr>) -> block {
     let _icx = push_ctxt("trans_ret");
     let mut bcx = bcx;
-    let dest = match copy bcx.fcx.loop_ret {
+    let dest = match bcx.fcx.loop_ret {
       Some((flagptr, retptr)) => {
         // This is a loop body return. Must set continue flag (our retptr)
         // to false, return flag to true, and then store the value in the
@@ -323,7 +375,7 @@ pub fn trans_ret(bcx: block, e: Option<@ast::expr>) -> block {
       }
       _ => ()
     }
-    cleanup_and_leave(bcx, None, Some(bcx.fcx.llreturn));
+    cleanup_and_leave(bcx, None, Some(bcx.fcx.get_llreturn()));
     Unreachable(bcx);
     return bcx;
 }
@@ -385,8 +437,8 @@ fn trans_fail_value(bcx: block,
     let V_str = PointerCast(bcx, V_fail_str, Type::i8p());
     let V_filename = PointerCast(bcx, V_filename, Type::i8p());
     let args = ~[V_str, V_filename, C_int(ccx, V_line)];
-    let bcx = callee::trans_lang_call(
-        bcx, bcx.tcx().lang_items.fail_fn(), args, expr::Ignore);
+    let did = langcall(bcx, sp_opt, "", FailFnLangItem);
+    let bcx = callee::trans_lang_call(bcx, did, args, Some(expr::Ignore)).bcx;
     Unreachable(bcx);
     return bcx;
 }
@@ -396,8 +448,8 @@ pub fn trans_fail_bounds_check(bcx: block, sp: span,
     let _icx = push_ctxt("trans_fail_bounds_check");
     let (filename, line) = filename_and_line_num_from_span(bcx, sp);
     let args = ~[filename, line, index, len];
-    let bcx = callee::trans_lang_call(
-        bcx, bcx.tcx().lang_items.fail_bounds_check_fn(), args, expr::Ignore);
+    let did = langcall(bcx, Some(sp), "", FailBoundsCheckFnLangItem);
+    let bcx = callee::trans_lang_call(bcx, did, args, Some(expr::Ignore)).bcx;
     Unreachable(bcx);
     return bcx;
 }

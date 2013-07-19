@@ -36,15 +36,30 @@
  * - Pass #3
  *   Finally, a program is generated to deserialize the local variable state,
  *   run the code input, and then reserialize all bindings back into a local
- *   hash map. Once this code runs, the input has fully been run and the REPL
- *   waits for new input.
+ *   hash map. This code is then run in the JIT engine provided by the rust
+ *   compiler.
+ *
+ * - Pass #4
+ *   Once this code runs, the input has fully been run and the hash map of local
+ *   variables from TLS is read back into the local store of variables. This is
+ *   then used later to pass back along to the parent rusti task and then begin
+ *   waiting for input again.
+ *
+ * - Pass #5
+ *   When running rusti code, it's important to consume ownership of the LLVM
+ *   jit contextual information to prevent code from being deallocated too soon
+ *   (before drop glue runs, see #7732). For this reason, the jit context is
+ *   consumed and also passed along to the parent task. The parent task then
+ *   keeps around all contexts while rusti is running. This must be done because
+ *   tasks could in theory be spawned off and running in the background (still
+ *   using the code).
  *
  * Encoding/decoding is done with EBML, and there is simply a map of ~str ->
  * ~[u8] maintaining the values of each local binding (by name).
  */
 
 #[link(name = "rusti",
-       vers = "0.7",
+       vers = "0.8-pre",
        uuid = "7fb5bf52-7d45-4fee-8325-5ad3311149fc",
        url = "https://github.com/mozilla/rust/tree/master/src/rusti")];
 
@@ -60,6 +75,7 @@ use std::cell::Cell;
 use extra::rl;
 
 use rustc::driver::{driver, session};
+use rustc::back::link::jit;
 use syntax::{ast, diagnostic};
 use syntax::ast_util::*;
 use syntax::parse::token;
@@ -80,8 +96,9 @@ pub struct Repl {
     binary: ~str,
     running: bool,
     lib_search_paths: ~[~str],
+    engines: ~[~jit::Engine],
 
-    program: Program,
+    program: ~Program,
 }
 
 // Action to do after reading a :command
@@ -91,15 +108,17 @@ enum CmdAction {
 }
 
 /// Run an input string in a Repl, returning the new Repl.
-fn run(mut repl: Repl, input: ~str) -> Repl {
+fn run(mut program: ~Program, binary: ~str, lib_search_paths: ~[~str],
+       input: ~str) -> (~Program, Option<~jit::Engine>)
+{
     // Build some necessary rustc boilerplate for compiling things
-    let binary = repl.binary.to_managed();
+    let binary = binary.to_managed();
     let options = @session::options {
         crate_type: session::unknown_crate,
         binary: binary,
-        addl_lib_search_paths: @mut repl.lib_search_paths.map(|p| Path(*p)),
+        addl_lib_search_paths: @mut lib_search_paths.map(|p| Path(*p)),
         jit: true,
-        .. copy *session::basic_options()
+        .. (*session::basic_options()).clone()
     };
     // Because we assume that everything is encodable (and assert so), add some
     // extra helpful information if the error crops up. Otherwise people are
@@ -130,21 +149,21 @@ fn run(mut repl: Repl, input: ~str) -> Repl {
     do find_main(crate, sess) |blk| {
         // Fish out all the view items, be sure to record 'extern mod' items
         // differently beause they must appear before all 'use' statements
-        for blk.node.view_items.iter().advance |vi| {
+        for blk.view_items.iter().advance |vi| {
             let s = do with_pp(intr) |pp, _| {
-                pprust::print_view_item(pp, *vi);
+                pprust::print_view_item(pp, vi);
             };
             match vi.node {
                 ast::view_item_extern_mod(*) => {
-                    repl.program.record_extern(s);
+                    program.record_extern(s);
                 }
-                ast::view_item_use(*) => { repl.program.record_view_item(s); }
+                ast::view_item_use(*) => { program.record_view_item(s); }
             }
         }
 
         // Iterate through all of the block's statements, inserting them into
         // the correct portions of the program
-        for blk.node.stmts.iter().advance |stmt| {
+        for blk.stmts.iter().advance |stmt| {
             let s = do with_pp(intr) |pp, _| { pprust::print_stmt(pp, *stmt); };
             match stmt.node {
                 ast::stmt_decl(d, _) => {
@@ -156,10 +175,10 @@ fn run(mut repl: Repl, input: ~str) -> Repl {
                                 // them at all usable they need to be decorated
                                 // with #[deriving(Encoable, Decodable)]
                                 ast::item_struct(*) => {
-                                    repl.program.record_struct(name, s);
+                                    program.record_struct(name, s);
                                 }
                                 // Item declarations are hoisted out of main()
-                                _ => { repl.program.record_item(name, s); }
+                                _ => { program.record_item(name, s); }
                             }
                         }
 
@@ -184,13 +203,13 @@ fn run(mut repl: Repl, input: ~str) -> Repl {
                 }
             }
         }
-        result = do blk.node.expr.map_consume |e| {
+        result = do blk.expr.map_consume |e| {
             do with_pp(intr) |pp, _| { pprust::print_expr(pp, e); }
         };
     }
     // return fast for empty inputs
     if to_run.len() == 0 && result.is_none() {
-        return repl;
+        return (program, None);
     }
 
     //
@@ -198,26 +217,26 @@ fn run(mut repl: Repl, input: ~str) -> Repl {
     //          variables introduced into the program
     //
     info!("Learning about the new types in the program");
-    repl.program.set_cache(); // before register_new_vars (which changes them)
+    program.set_cache(); // before register_new_vars (which changes them)
     let input = to_run.connect("\n");
-    let test = repl.program.test_code(input, &result, *new_locals);
+    let test = program.test_code(input, &result, *new_locals);
     debug!("testing with ^^^^^^ %?", (||{ println(test) })());
     let dinput = driver::str_input(test.to_managed());
     let cfg = driver::build_configuration(sess, binary, &dinput);
     let outputs = driver::build_output_filenames(&dinput, &None, &None, [], sess);
-    let (crate, tcx) = driver::compile_upto(sess, copy cfg, &dinput,
+    let (crate, tcx) = driver::compile_upto(sess, cfg.clone(), &dinput,
                                             driver::cu_typeck, Some(outputs));
     // Once we're typechecked, record the types of all local variables defined
     // in this input
     do find_main(crate.expect("crate after cu_typeck"), sess) |blk| {
-        repl.program.register_new_vars(blk, tcx.expect("tcx after cu_typeck"));
+        program.register_new_vars(blk, tcx.expect("tcx after cu_typeck"));
     }
 
     //
     // Stage 3: Actually run the code in the JIT
     //
     info!("actually running code");
-    let code = repl.program.code(input, &result);
+    let code = program.code(input, &result);
     debug!("actually running ^^^^^^ %?", (||{ println(code) })());
     let input = driver::str_input(code.to_managed());
     let cfg = driver::build_configuration(sess, binary, &input);
@@ -231,9 +250,15 @@ fn run(mut repl: Repl, input: ~str) -> Repl {
     //          local variable bindings.
     //
     info!("cleaning up after code");
-    repl.program.consume_cache();
+    program.consume_cache();
 
-    return repl;
+    //
+    // Stage 5: Extract the LLVM execution engine to take ownership of the
+    //          generated JIT code. This means that rusti can spawn parallel
+    //          tasks and we won't deallocate the code emitted until rusti
+    //          itself is destroyed.
+    //
+    return (program, jit::consume_engine());
 
     fn parse_input(sess: session::Session, binary: @str,
                    input: &str) -> @ast::crate {
@@ -275,9 +300,9 @@ fn compile_crate(src_filename: ~str, binary: ~str) -> Option<bool> {
         let options = @session::options {
             binary: binary,
             addl_lib_search_paths: @mut ~[os::getcwd()],
-            .. copy *session::basic_options()
+            .. (*session::basic_options()).clone()
         };
-        let input = driver::file_input(copy src_path);
+        let input = driver::file_input(src_path.clone());
         let sess = driver::build_session(options, diagnostic::emit);
         *sess.building_library = true;
         let cfg = driver::build_configuration(sess, binary, &input);
@@ -368,11 +393,11 @@ fn run_cmd(repl: &mut Repl, _in: @io::Reader, _out: @io::Writer,
             for args.iter().advance |arg| {
                 let (crate, filename) =
                     if arg.ends_with(".rs") || arg.ends_with(".rc") {
-                    (arg.slice_to(arg.len() - 3).to_owned(), copy *arg)
+                    (arg.slice_to(arg.len() - 3).to_owned(), (*arg).clone())
                 } else {
-                    (copy *arg, *arg + ".rs")
+                    ((*arg).clone(), *arg + ".rs")
                 };
-                match compile_crate(filename, copy repl.binary) {
+                match compile_crate(filename, repl.binary.clone()) {
                     Some(_) => loaded_crates.push(crate),
                     None => { }
                 }
@@ -381,7 +406,7 @@ fn run_cmd(repl: &mut Repl, _in: @io::Reader, _out: @io::Writer,
                 let crate_path = Path(*crate);
                 let crate_dir = crate_path.dirname();
                 repl.program.record_extern(fmt!("extern mod %s;", *crate));
-                if !repl.lib_search_paths.iter().any_(|x| x == &crate_dir) {
+                if !repl.lib_search_paths.iter().any(|x| x == &crate_dir) {
                     repl.lib_search_paths.push(crate_dir);
                 }
             }
@@ -418,8 +443,8 @@ fn run_cmd(repl: &mut Repl, _in: @io::Reader, _out: @io::Writer,
 /// Executes a line of input, which may either be rust code or a
 /// :command. Returns a new Repl if it has changed.
 pub fn run_line(repl: &mut Repl, in: @io::Reader, out: @io::Writer, line: ~str,
-                use_rl: bool)
-    -> Option<Repl> {
+                use_rl: bool) -> bool
+{
     if line.starts_with(":") {
         // drop the : and the \n (one byte each)
         let full = line.slice(1, line.len());
@@ -427,7 +452,7 @@ pub fn run_line(repl: &mut Repl, in: @io::Reader, out: @io::Writer, line: ~str,
         let len = split.len();
 
         if len > 0 {
-            let cmd = copy split[0];
+            let cmd = split[0].clone();
 
             if !cmd.is_empty() {
                 let args = if len > 1 {
@@ -442,21 +467,30 @@ pub fn run_line(repl: &mut Repl, in: @io::Reader, out: @io::Writer, line: ~str,
                         }
                     }
                 }
-                return None;
+                return true;
             }
         }
     }
 
     let line = Cell::new(line);
-    let r = Cell::new(copy *repl);
+    let program = Cell::new(repl.program.clone());
+    let lib_search_paths = Cell::new(repl.lib_search_paths.clone());
+    let binary = Cell::new(repl.binary.clone());
     let result = do task::try {
-        run(r.take(), line.take())
+        run(program.take(), binary.take(), lib_search_paths.take(), line.take())
     };
 
-    if result.is_ok() {
-        return Some(result.get());
+    match result {
+        Ok((program, engine)) => {
+            repl.program = program;
+            match engine {
+                Some(e) => { repl.engines.push(e); }
+                None => {}
+            }
+            return true;
+        }
+        Err(*) => { return false; }
     }
-    return None;
 }
 
 pub fn main() {
@@ -465,11 +499,12 @@ pub fn main() {
     let out = io::stdout();
     let mut repl = Repl {
         prompt: ~"rusti> ",
-        binary: copy args[0],
+        binary: args[0].clone(),
         running: true,
         lib_search_paths: ~[],
+        engines: ~[],
 
-        program: Program::new(),
+        program: ~Program::new(),
     };
 
     let istty = unsafe { libc::isatty(libc::STDIN_FILENO as i32) } != 0;
@@ -502,20 +537,15 @@ pub fn main() {
                     }
                     loop;
                 }
-                match run_line(&mut repl, in, out, line, istty) {
-                    Some(new_repl) => repl = new_repl,
-                    None => { }
-                }
+                run_line(&mut repl, in, out, line, istty);
             }
         }
     }
 }
 
-//#[cfg(test)]
-#[cfg(ignore)] // FIXME #7541 doesn't work under cross-compile
+#[cfg(test)]
 mod tests {
     use std::io;
-    use std::iterator::IteratorUtil;
     use program::Program;
     use super::*;
 
@@ -525,22 +555,23 @@ mod tests {
             binary: ~"rusti",
             running: true,
             lib_search_paths: ~[],
-            program: Program::new(),
+            engines: ~[],
+            program: ~Program::new(),
         }
     }
 
     // FIXME: #7220 rusti on 32bit mac doesn't work.
-    #[cfg(not(target_word_size="32"))]
-    #[cfg(not(target_os="macos"))]
+    // FIXME: #7641 rusti on 32bit linux cross compile doesn't work
+    // FIXME: #7115 re-enable once LLVM has been upgraded
+    #[cfg(thiswillneverbeacfgflag)]
     fn run_program(prog: &str) {
         let mut r = repl();
         for prog.split_iter('\n').advance |cmd| {
-            let result = run_line(&mut r, io::stdin(), io::stdout(),
-                                  cmd.to_owned(), false);
-            r = result.expect(fmt!("the command '%s' failed", cmd));
+            assert!(run_line(&mut r, io::stdin(), io::stdout(),
+                             cmd.to_owned(), false),
+                    "the command '%s' failed", cmd);
         }
     }
-    #[cfg(target_word_size="32", target_os="macos")]
     fn run_program(_: &str) {}
 
     #[test]
@@ -668,8 +699,10 @@ mod tests {
             fn f() {}
             f()
         ");
+    }
 
-        debug!("simultaneous definitions + expressions are allowed");
+    #[test]
+    fn simultaneous_definition_and_expression() {
         run_program("
             let a = 3; a as u8
         ");
@@ -681,7 +714,7 @@ mod tests {
         assert!(r.running);
         let result = run_line(&mut r, io::stdin(), io::stdout(),
                               ~":exit", false);
-        assert!(result.is_none());
+        assert!(result);
         assert!(!r.running);
     }
 }

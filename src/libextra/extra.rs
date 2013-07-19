@@ -21,7 +21,7 @@ Rust extras are part of the standard Rust distribution.
 */
 
 #[link(name = "extra",
-       vers = "0.7",
+       vers = "0.8-pre",
        uuid = "122bed0b-c19b-4b82-b0b7-7ae8aead7297",
        url = "https://github.com/mozilla/rust/tree/master/src/libextra")];
 
@@ -40,10 +40,8 @@ pub mod uv_ll;
 
 // General io and system-services modules
 
+#[path = "net/mod.rs"]
 pub mod net;
-pub mod net_ip;
-pub mod net_tcp;
-pub mod net_url;
 
 // libuv modules
 pub mod uv;
@@ -69,12 +67,12 @@ pub mod flatpipes;
 
 // Collections
 
+pub mod container;
 pub mod bitv;
-pub mod deque;
 pub mod fun_treemap;
 pub mod list;
+pub mod ringbuf;
 pub mod priority_queue;
-pub mod rope;
 pub mod smallintmap;
 
 pub mod sort;

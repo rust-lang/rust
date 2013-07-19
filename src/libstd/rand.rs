@@ -22,7 +22,8 @@ distributions like normal and exponential.
 # Examples
 
 ~~~ {.rust}
-use core::rand::RngUtil;
+use std::rand;
+use std::rand::RngUtil;
 
 fn main() {
     let mut rng = rand::rng();
@@ -33,6 +34,8 @@ fn main() {
 ~~~
 
 ~~~ {.rust}
+use std::rand;
+
 fn main () {
     let tuple_ptr = rand::random::<~(f64, char)>();
     println(fmt!("%?", tuple_ptr))
@@ -41,11 +44,13 @@ fn main () {
 */
 
 use cast;
+use clone::Clone;
 use cmp;
 use container::Container;
 use int;
 use iterator::IteratorUtil;
 use local_data;
+use num;
 use prelude::*;
 use str;
 use sys;
@@ -157,7 +162,7 @@ impl Rand for f32 {
     }
 }
 
-static scale : f64 = (u32::max_value as f64) + 1.0f64;
+static SCALE : f64 = (u32::max_value as f64) + 1.0f64;
 impl Rand for f64 {
     #[inline]
     fn rand<R: Rng>(rng: &mut R) -> f64 {
@@ -165,7 +170,7 @@ impl Rand for f64 {
         let u2 = rng.next() as f64;
         let u3 = rng.next() as f64;
 
-        ((u1 / scale + u2) / scale + u3) / scale
+        ((u1 / SCALE + u2) / SCALE + u3) / SCALE
     }
 }
 
@@ -291,10 +296,11 @@ pub trait RngUtil {
      *
      * ~~~ {.rust}
      *
-     * use core::rand::RngUtil;
+     * use std::rand;
+     * use std::rand::RngUtil;
      *
      * fn main() {
-     *     rng = rand::rng();
+     *     let mut rng = rand::rng();
      *     println(fmt!("%b",rng.gen_weighted_bool(3)));
      * }
      * ~~~
@@ -307,10 +313,11 @@ pub trait RngUtil {
      *
      * ~~~ {.rust}
      *
-     * use core::rand::RngUtil;
+     * use std::rand;
+     * use std::rand::RngUtil;
      *
      * fn main() {
-     *     rng = rand::rng();
+     *     let mut rng = rand::rng();
      *     println(rng.gen_str(8));
      * }
      * ~~~
@@ -323,10 +330,11 @@ pub trait RngUtil {
      *
      * ~~~ {.rust}
      *
-     * use core::rand::RngUtil;
+     * use std::rand;
+     * use std::rand::RngUtil;
      *
      * fn main() {
-     *     rng = rand::rng();
+     *     let mut rng = rand::rng();
      *     println(fmt!("%?",rng.gen_bytes(8)));
      * }
      * ~~~
@@ -339,17 +347,18 @@ pub trait RngUtil {
      *
      * ~~~ {.rust}
      *
-     * use core::rand::RngUtil;
+     * use std::rand;
+     * use std::rand::RngUtil;
      *
      * fn main() {
-     *     rng = rand::rng();
+     *     let mut rng = rand::rng();
      *     println(fmt!("%d",rng.choose([1,2,4,8,16,32])));
      * }
      * ~~~
      */
-    fn choose<T:Copy>(&mut self, values: &[T]) -> T;
+    fn choose<T:Clone>(&mut self, values: &[T]) -> T;
     /// Choose Some(item) randomly, returning None if values is empty
-    fn choose_option<T:Copy>(&mut self, values: &[T]) -> Option<T>;
+    fn choose_option<T:Clone>(&mut self, values: &[T]) -> Option<T>;
     /**
      * Choose an item respecting the relative weights, failing if the sum of
      * the weights is 0
@@ -358,10 +367,11 @@ pub trait RngUtil {
      *
      * ~~~ {.rust}
      *
-     * use core::rand::RngUtil;
+     * use std::rand;
+     * use std::rand::RngUtil;
      *
      * fn main() {
-     *     rng = rand::rng();
+     *     let mut rng = rand::rng();
      *     let x = [rand::Weighted {weight: 4, item: 'a'},
      *              rand::Weighted {weight: 2, item: 'b'},
      *              rand::Weighted {weight: 2, item: 'c'}];
@@ -369,7 +379,7 @@ pub trait RngUtil {
      * }
      * ~~~
      */
-    fn choose_weighted<T:Copy>(&mut self, v : &[Weighted<T>]) -> T;
+    fn choose_weighted<T:Clone>(&mut self, v : &[Weighted<T>]) -> T;
     /**
      * Choose Some(item) respecting the relative weights, returning none if
      * the sum of the weights is 0
@@ -378,10 +388,11 @@ pub trait RngUtil {
      *
      * ~~~ {.rust}
      *
-     * use core::rand::RngUtil;
+     * use std::rand;
+     * use std::rand::RngUtil;
      *
      * fn main() {
-     *     rng = rand::rng();
+     *     let mut rng = rand::rng();
      *     let x = [rand::Weighted {weight: 4, item: 'a'},
      *              rand::Weighted {weight: 2, item: 'b'},
      *              rand::Weighted {weight: 2, item: 'c'}];
@@ -389,7 +400,7 @@ pub trait RngUtil {
      * }
      * ~~~
      */
-    fn choose_weighted_option<T:Copy>(&mut self, v: &[Weighted<T>])
+    fn choose_weighted_option<T:Clone>(&mut self, v: &[Weighted<T>])
                                      -> Option<T>;
     /**
      * Return a vec containing copies of the items, in order, where
@@ -399,10 +410,11 @@ pub trait RngUtil {
      *
      * ~~~ {.rust}
      *
-     * use core::rand::RngUtil;
+     * use std::rand;
+     * use std::rand::RngUtil;
      *
      * fn main() {
-     *     rng = rand::rng();
+     *     let mut rng = rand::rng();
      *     let x = [rand::Weighted {weight: 4, item: 'a'},
      *              rand::Weighted {weight: 2, item: 'b'},
      *              rand::Weighted {weight: 2, item: 'c'}];
@@ -410,7 +422,7 @@ pub trait RngUtil {
      * }
      * ~~~
      */
-    fn weighted_vec<T:Copy>(&mut self, v: &[Weighted<T>]) -> ~[T];
+    fn weighted_vec<T:Clone>(&mut self, v: &[Weighted<T>]) -> ~[T];
     /**
      * Shuffle a vec
      *
@@ -418,15 +430,16 @@ pub trait RngUtil {
      *
      * ~~~ {.rust}
      *
-     * use core::rand::RngUtil;
+     * use std::rand;
+     * use std::rand::RngUtil;
      *
      * fn main() {
-     *     rng = rand::rng();
+     *     let mut rng = rand::rng();
      *     println(fmt!("%?",rng.shuffle([1,2,3])));
      * }
      * ~~~
      */
-    fn shuffle<T:Copy>(&mut self, values: &[T]) -> ~[T];
+    fn shuffle<T:Clone>(&mut self, values: &[T]) -> ~[T];
     /**
      * Shuffle a mutable vec in place
      *
@@ -434,10 +447,11 @@ pub trait RngUtil {
      *
      * ~~~ {.rust}
      *
-     * use core::rand::RngUtil;
+     * use std::rand;
+     * use std::rand::RngUtil;
      *
      * fn main() {
-     *     rng = rand::rng();
+     *     let mut rng = rand::rng();
      *     let mut y = [1,2,3];
      *     rng.shuffle_mut(y);
      *     println(fmt!("%?",y));
@@ -463,7 +477,7 @@ impl<R: Rng> RngUtil for R {
      */
     fn gen_int_range(&mut self, start: int, end: int) -> int {
         assert!(start < end);
-        start + int::abs(self.gen::<int>() % (end - start))
+        start + num::abs(self.gen::<int>() % (end - start))
     }
 
     /**
@@ -518,23 +532,23 @@ impl<R: Rng> RngUtil for R {
     }
 
     /// Choose an item randomly, failing if values is empty
-    fn choose<T:Copy>(&mut self, values: &[T]) -> T {
+    fn choose<T:Clone>(&mut self, values: &[T]) -> T {
         self.choose_option(values).get()
     }
 
     /// Choose Some(item) randomly, returning None if values is empty
-    fn choose_option<T:Copy>(&mut self, values: &[T]) -> Option<T> {
+    fn choose_option<T:Clone>(&mut self, values: &[T]) -> Option<T> {
         if values.is_empty() {
             None
         } else {
-            Some(copy values[self.gen_uint_range(0u, values.len())])
+            Some(values[self.gen_uint_range(0u, values.len())].clone())
         }
     }
     /**
      * Choose an item respecting the relative weights, failing if the sum of
      * the weights is 0
      */
-    fn choose_weighted<T:Copy>(&mut self, v: &[Weighted<T>]) -> T {
+    fn choose_weighted<T:Clone>(&mut self, v: &[Weighted<T>]) -> T {
         self.choose_weighted_option(v).get()
     }
 
@@ -542,8 +556,8 @@ impl<R: Rng> RngUtil for R {
      * Choose Some(item) respecting the relative weights, returning none if
      * the sum of the weights is 0
      */
-    fn choose_weighted_option<T:Copy>(&mut self, v: &[Weighted<T>])
-                                     -> Option<T> {
+    fn choose_weighted_option<T:Clone>(&mut self, v: &[Weighted<T>])
+                                       -> Option<T> {
         let mut total = 0u;
         for v.iter().advance |item| {
             total += item.weight;
@@ -556,7 +570,7 @@ impl<R: Rng> RngUtil for R {
         for v.iter().advance |item| {
             so_far += item.weight;
             if so_far > chosen {
-                return Some(copy item.item);
+                return Some(item.item.clone());
             }
         }
         util::unreachable();
@@ -566,19 +580,19 @@ impl<R: Rng> RngUtil for R {
      * Return a vec containing copies of the items, in order, where
      * the weight of the item determines how many copies there are
      */
-    fn weighted_vec<T:Copy>(&mut self, v: &[Weighted<T>]) -> ~[T] {
+    fn weighted_vec<T:Clone>(&mut self, v: &[Weighted<T>]) -> ~[T] {
         let mut r = ~[];
         for v.iter().advance |item| {
             for uint::range(0u, item.weight) |_i| {
-                r.push(copy item.item);
+                r.push(item.item.clone());
             }
         }
         r
     }
 
     /// Shuffle a vec
-    fn shuffle<T:Copy>(&mut self, values: &[T]) -> ~[T] {
-        let mut m = vec::to_owned(values);
+    fn shuffle<T:Clone>(&mut self, values: &[T]) -> ~[T] {
+        let mut m = values.to_owned();
         self.shuffle_mut(m);
         m
     }
@@ -724,7 +738,7 @@ impl IsaacRng {
         let mut a = self.a;
         let mut b = self.b + self.c;
 
-        static midpoint: uint = RAND_SIZE as uint / 2;
+        static MIDPOINT: uint = RAND_SIZE as uint / 2;
 
         macro_rules! ind (($x:expr) => {
             self.mem[($x >> 2) & (RAND_SIZE - 1)]
@@ -748,9 +762,9 @@ impl IsaacRng {
             }}
         );
 
-        let r = [(0, midpoint), (midpoint, 0)];
+        let r = [(0, MIDPOINT), (MIDPOINT, 0)];
         for r.iter().advance |&(mr_offset, m2_offset)| {
-            for uint::range_step(0, midpoint, 4) |base| {
+            for uint::range_step(0, MIDPOINT, 4) |base| {
                 rngstep!(0, 13);
                 rngstep!(1, -6);
                 rngstep!(2, 2);
@@ -830,7 +844,7 @@ pub fn seed() -> ~[u8] {
     unsafe {
         let n = rustrt::rand_seed_size() as uint;
         let mut s = vec::from_elem(n, 0_u8);
-        do vec::as_mut_buf(s) |p, sz| {
+        do s.as_mut_buf |p, sz| {
             rustrt::rand_gen_seed(p, sz as size_t)
         }
         s
@@ -838,7 +852,10 @@ pub fn seed() -> ~[u8] {
 }
 
 // used to make space in TLS for a random number generator
+#[cfg(stage0)]
 fn tls_rng_state(_v: @@mut IsaacRng) {}
+#[cfg(not(stage0))]
+static tls_rng_state: local_data::Key<@@mut IsaacRng> = &local_data::Key;
 
 /**
  * Gives back a lazily initialized task-local random number generator,
@@ -847,17 +864,12 @@ fn tls_rng_state(_v: @@mut IsaacRng) {}
  */
 #[inline]
 pub fn task_rng() -> @mut IsaacRng {
-    let r : Option<@@mut IsaacRng>;
-    unsafe {
-        r = local_data::local_data_get(tls_rng_state);
-    }
+    let r = local_data::get(tls_rng_state, |k| k.map(|&k| *k));
     match r {
         None => {
-            unsafe {
-                let rng = @@mut IsaacRng::new_seeded(seed());
-                local_data::local_data_set(tls_rng_state, rng);
-                *rng
-            }
+            let rng = @@mut IsaacRng::new_seeded(seed());
+            local_data::set(tls_rng_state, rng);
+            *rng
         }
         Some(rng) => *rng
     }
@@ -1066,7 +1078,6 @@ mod tests {
         // This is to verify that the implementation of the ISAAC rng is
         // correct (i.e. matches the output of the upstream implementation,
         // which is in the runtime)
-        use vec;
         use libc::size_t;
 
         #[abi = "cdecl"]
@@ -1087,7 +1098,7 @@ mod tests {
         for 10.times {
             unsafe {
                 let seed = super::seed();
-                let rt_rng = do vec::as_imm_buf(seed) |p, sz| {
+                let rt_rng = do seed.as_imm_buf |p, sz| {
                     rustrt::rand_new_seeded(p, sz as size_t)
                 };
                 let mut rng = IsaacRng::new_seeded(seed);

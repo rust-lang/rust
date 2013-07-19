@@ -12,7 +12,7 @@
 
 struct Recbox<T> {x: @T}
 
-fn reclift<T:Copy>(t: T) -> Recbox<T> { return Recbox {x: @t}; }
+fn reclift<T>(t: T) -> Recbox<T> { return Recbox {x: @t}; }
 
 pub fn main() {
     let foo: int = 17;

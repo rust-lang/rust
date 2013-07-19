@@ -234,3 +234,11 @@ doc/version_info.html: version_info.html.template $(MKFILE_DEPS) \
 GENERATED += doc/version.md doc/version_info.html
 
 docs: $(DOCS)
+
+docs-l10n:
+	po4a --copyright-holder="The Rust Project Developers" \
+	     --package-name="Rust" \
+	     --package-version="$(CFG_RELEASE)" \
+	     doc/po4a.conf
+
+.PHONY: docs-l10n

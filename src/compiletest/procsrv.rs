@@ -8,11 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
-
-use core::os;
-use core::run;
-use core::str;
+use std::os;
+use std::run;
+use std::str;
 
 #[cfg(target_os = "win32")]
 fn target_env(lib_path: &str, prog: &str) -> ~[(~str,~str)] {
@@ -24,7 +22,7 @@ fn target_env(lib_path: &str, prog: &str) -> ~[(~str,~str)] {
     let aux_path = prog.slice(0u, prog.len() - 4u).to_owned() + ".libaux";
 
     env = do env.map() |pair| {
-        let (k,v) = copy *pair;
+        let (k,v) = (*pair).clone();
         if k == ~"PATH" { (~"PATH", v + ";" + lib_path + ";" + aux_path) }
         else { (k,v) }
     };

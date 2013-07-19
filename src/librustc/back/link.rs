@@ -39,7 +39,7 @@ use syntax::attr;
 use syntax::print::pprust;
 use syntax::parse::token;
 
-#[deriving(Eq)]
+#[deriving(Clone, Eq)]
 pub enum output_type {
     output_type_none,
     output_type_bitcode,
@@ -101,14 +101,30 @@ pub mod jit {
     use back::link::llvm_err;
     use driver::session::Session;
     use lib::llvm::llvm;
-    use lib::llvm::{ModuleRef, ContextRef};
+    use lib::llvm::{ModuleRef, ContextRef, ExecutionEngineRef};
     use metadata::cstore;
 
     use std::cast;
-    use std::ptr;
-    use std::str;
-    use std::sys;
+    #[cfg(not(stage0))]
+    use std::local_data;
     use std::unstable::intrinsics;
+
+    struct LLVMJITData {
+        ee: ExecutionEngineRef,
+        llcx: ContextRef
+    }
+
+    pub trait Engine {}
+    impl Engine for LLVMJITData {}
+
+    impl Drop for LLVMJITData {
+        fn drop(&self) {
+            unsafe {
+                llvm::LLVMDisposeExecutionEngine(self.ee);
+                llvm::LLVMContextDispose(self.llcx);
+            }
+        }
+    }
 
     pub fn exec(sess: Session,
                 c: ContextRef,
@@ -130,7 +146,7 @@ pub mod jit {
 
                 debug!("linking: %s", path);
 
-                do str::as_c_str(path) |buf_t| {
+                do path.as_c_str |buf_t| {
                     if !llvm::LLVMRustLoadCrate(manager, buf_t) {
                         llvm_err(sess, ~"Could not link");
                     }
@@ -149,7 +165,7 @@ pub mod jit {
             // Next, we need to get a handle on the _rust_main function by
             // looking up it's corresponding ValueRef and then requesting that
             // the execution engine compiles the function.
-            let fun = do str::as_c_str("_rust_main") |entry| {
+            let fun = do "_rust_main".as_c_str |entry| {
                 llvm::LLVMGetNamedFunction(m, entry)
             };
             if fun.is_null() {
@@ -163,20 +179,46 @@ pub mod jit {
             // closure
             let code = llvm::LLVMGetPointerToGlobal(ee, fun);
             assert!(!code.is_null());
-            let closure = sys::Closure {
-                code: code,
-                env: ptr::null()
-            };
-            let func: &fn() = cast::transmute(closure);
+            let func: extern "Rust" fn() = cast::transmute(code);
             func();
 
-            // Sadly, there currently is no interface to re-use this execution
-            // engine, so it's disposed of here along with the context to
-            // prevent leaks.
-            llvm::LLVMDisposeExecutionEngine(ee);
-            llvm::LLVMContextDispose(c);
+            // Currently there is no method of re-using the executing engine
+            // from LLVM in another call to the JIT. While this kinda defeats
+            // the purpose of having a JIT in the first place, there isn't
+            // actually much code currently which would re-use data between
+            // different invocations of this. Additionally, the compilation
+            // model currently isn't designed to support this scenario.
+            //
+            // We can't destroy the engine/context immediately here, however,
+            // because of annihilation. The JIT code contains drop glue for any
+            // types defined in the crate we just ran, and if any of those boxes
+            // are going to be dropped during annihilation, the drop glue must
+            // be run. Hence, we need to transfer ownership of this jit engine
+            // to the caller of this function. To be convenient for now, we
+            // shove it into TLS and have someone else remove it later on.
+            let data = ~LLVMJITData { ee: ee, llcx: c };
+            set_engine(data as ~Engine);
         }
     }
+
+    // The stage1 compiler won't work, but that doesn't really matter. TLS
+    // changed only very recently to allow storage of owned values.
+    #[cfg(not(stage0))]
+    static engine_key: local_data::Key<~Engine> = &local_data::Key;
+
+    #[cfg(not(stage0))]
+    fn set_engine(engine: ~Engine) {
+        local_data::set(engine_key, engine)
+    }
+    #[cfg(stage0)]
+    fn set_engine(_: ~Engine) {}
+
+    #[cfg(not(stage0))]
+    pub fn consume_engine() -> Option<~Engine> {
+        local_data::pop(engine_key)
+    }
+    #[cfg(stage0)]
+    pub fn consume_engine() -> Option<~Engine> { None }
 }
 
 pub mod write {
@@ -249,7 +291,7 @@ pub mod write {
             }
 
             let passes = if sess.opts.custom_passes.len() > 0 {
-                copy sess.opts.custom_passes
+                sess.opts.custom_passes.clone()
             } else {
                 if sess.lint_llvm() {
                     mpm.add_pass_from_name("lint");
@@ -775,7 +817,7 @@ pub fn link_binary(sess: Session,
     // For win32, there is no cc command,
     // so we add a condition to make it use gcc.
     let cc_prog: ~str = match sess.opts.linker {
-        Some(ref linker) => copy *linker,
+        Some(ref linker) => linker.to_str(),
         None => match sess.targ_cfg.os {
             session::os_android =>
                 match &sess.opts.android_cross_path {
@@ -803,7 +845,7 @@ pub fn link_binary(sess: Session,
 
         out_filename.dir_path().push(long_libname)
     } else {
-        /*bad*/copy *out_filename
+        out_filename.clone()
     };
 
     debug!("output: %s", output.to_str());
@@ -854,7 +896,7 @@ pub fn link_args(sess: Session,
         let long_libname = output_dll_filename(sess.targ_cfg.os, lm);
         out_filename.dir_path().push(long_libname)
     } else {
-        /*bad*/copy *out_filename
+        out_filename.clone()
     };
 
     // The default library location, we need this to find the runtime.
@@ -893,7 +935,7 @@ pub fn link_args(sess: Session,
     // Add all the link args for external crates.
     do cstore::iter_crate_data(cstore) |crate_num, _| {
         let link_args = csearch::get_link_args_for_crate(cstore, crate_num);
-        do vec::consume(link_args) |_, link_arg| {
+        for link_args.consume_iter().advance |link_arg| {
             args.push(link_arg);
         }
     }

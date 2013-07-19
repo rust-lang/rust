@@ -49,6 +49,15 @@ pub mod gather_loans;
 pub mod move_data;
 
 pub struct LoanDataFlowOperator;
+
+/// XXX(pcwalton): Should just be #[deriving(Clone)], but that doesn't work
+/// yet on unit structs.
+impl Clone for LoanDataFlowOperator {
+    fn clone(&self) -> LoanDataFlowOperator {
+        LoanDataFlowOperator
+    }
+}
+
 pub type LoanDataFlow = DataFlowContext<LoanDataFlowOperator>;
 
 pub fn check_crate(
@@ -124,7 +133,7 @@ fn borrowck_fn(fk: &visit::fn_kind,
 
             // Check the body of fn items.
             let (id_range, all_loans, move_data) =
-                gather_loans::gather_loans(this, body);
+                gather_loans::gather_loans(this, decl, body);
             let mut loan_dfcx =
                 DataFlowContext::new(this.tcx,
                                      this.method_map,
@@ -264,7 +273,7 @@ pub fn opt_loan_path(cmt: mc::cmt) -> Option<@LoanPath> {
     //! traverses the CMT.
 
     match cmt.cat {
-        mc::cat_rvalue |
+        mc::cat_rvalue(*) |
         mc::cat_static_item |
         mc::cat_copied_upvar(_) |
         mc::cat_implicit_self => {
@@ -485,7 +494,7 @@ impl BorrowckCtxt {
 
     pub fn mc_ctxt(&self) -> mc::mem_categorization_ctxt {
         mc::mem_categorization_ctxt {tcx: self.tcx,
-                                 method_map: self.method_map}
+                                     method_map: self.method_map}
     }
 
     pub fn cat_pattern(&self,
@@ -538,12 +547,13 @@ impl BorrowckCtxt {
 
             move_data::MoveExpr(expr) => {
                 let expr_ty = ty::expr_ty_adjusted(self.tcx, expr);
+                let suggestion = move_suggestion(self.tcx, expr_ty,
+                        "moved by default (use `copy` to override)");
                 self.tcx.sess.span_note(
                     expr.span,
-                    fmt!("`%s` moved here because it has type `%s`, \
-                          which is moved by default (use `copy` to override)",
+                    fmt!("`%s` moved here because it has type `%s`, which is %s",
                          self.loan_path_to_str(moved_lp),
-                         expr_ty.user_string(self.tcx)));
+                         expr_ty.user_string(self.tcx), suggestion));
             }
 
             move_data::MovePat(pat) => {
@@ -557,12 +567,28 @@ impl BorrowckCtxt {
             }
 
             move_data::Captured(expr) => {
+                let expr_ty = ty::expr_ty_adjusted(self.tcx, expr);
+                let suggestion = move_suggestion(self.tcx, expr_ty,
+                        "moved by default (make a copy and \
+                         capture that instead to override)");
                 self.tcx.sess.span_note(
                     expr.span,
-                    fmt!("`%s` moved into closure environment here \
-                          because its type is moved by default \
-                          (make a copy and capture that instead to override)",
-                         self.loan_path_to_str(moved_lp)));
+                    fmt!("`%s` moved into closure environment here because it \
+                          has type `%s`, which is %s",
+                         self.loan_path_to_str(moved_lp),
+                         expr_ty.user_string(self.tcx), suggestion));
+            }
+        }
+
+        fn move_suggestion(tcx: ty::ctxt, ty: ty::t, default_msg: &'static str)
+                          -> &'static str {
+            match ty::get(ty).sty {
+                ty::ty_closure(ref cty) if cty.sigil == ast::BorrowedSigil =>
+                    "a non-copyable stack closure (capture it in a new closure, \
+                     e.g. `|x| f(x)`, to override)",
+                _ if ty::type_moves_by_default(tcx, ty) =>
+                    "non-copyable (perhaps you meant to use clone()?)",
+                _ => default_msg,
             }
         }
     }

@@ -35,13 +35,15 @@ impl direction {
     }
 }
 
+#[deriving(Clone)]
 pub struct next_state {
     state: @str,
-    tys: ~[@ast::Ty],
+    tys: ~[ast::Ty],
 }
 
 // name, span, data, current state, next state
-pub struct message(@str, span, ~[@ast::Ty], state, Option<next_state>);
+#[deriving(Clone)]
+pub struct message(@str, span, ~[ast::Ty], state, Option<next_state>);
 
 impl message {
     pub fn name(&mut self) -> @str {
@@ -59,7 +61,7 @@ impl message {
     /// Return the type parameters actually used by this message
     pub fn get_generics(&self) -> ast::Generics {
         match *self {
-          message(_, _, _, this, _) => copy this.generics
+          message(_, _, _, this, _) => this.generics.clone()
         }
     }
 }
@@ -81,7 +83,7 @@ impl state_ {
     pub fn add_message(@self,
                        name: @str,
                        span: span,
-                       data: ~[@ast::Ty],
+                       data: ~[ast::Ty],
                        next: Option<next_state>) {
         self.messages.push(message(name, span, data, self,
                                    next));
@@ -96,10 +98,10 @@ impl state_ {
     }
 
     /// Returns the type that is used for the messages.
-    pub fn to_ty(&self, cx: @ExtCtxt) -> @ast::Ty {
+    pub fn to_ty(&self, cx: @ExtCtxt) -> ast::Ty {
         cx.ty_path
             (path(~[cx.ident_of(self.name)],self.span).add_tys(
-                cx.ty_vars(&self.generics.ty_params)), @None)
+                cx.ty_vars(&self.generics.ty_params)), None)
     }
 
     /// Iterate over the states that can be reached in one message
@@ -144,7 +146,8 @@ pub struct protocol_ {
 impl protocol_ {
     /// Get a state.
     pub fn get_state(&self, name: &str) -> state {
-        *self.states.iter().find_(|i| name == i.name).get()
+        let mut i = self.states.iter();
+        *i.find_(|i| name == i.name).get()
     }
 
     pub fn get_state_by_id(&self, id: uint) -> state { self.states[id] }
@@ -206,17 +209,16 @@ impl protocol_ {
 pub trait visitor<Tproto, Tstate, Tmessage> {
     fn visit_proto(&self, proto: protocol, st: &[Tstate]) -> Tproto;
     fn visit_state(&self, state: state, m: &[Tmessage]) -> Tstate;
-    fn visit_message(&self, name: @str, spane: span, tys: &[@ast::Ty],
+    fn visit_message(&self, name: @str, spane: span, tys: &[ast::Ty],
                      this: state, next: Option<next_state>) -> Tmessage;
 }
 
 pub fn visit<Tproto, Tstate, Tmessage, V: visitor<Tproto, Tstate, Tmessage>>(
     proto: protocol, visitor: V) -> Tproto {
 
-    // the copy keywords prevent recursive use of dvec
-    let states: ~[Tstate] = do (copy proto.states).iter().transform |&s| {
-        let messages: ~[Tmessage] = do (copy s.messages).iter().transform |&m| {
-            let message(name, span, tys, this, next) = m;
+    let states: ~[Tstate] = do proto.states.iter().transform |&s| {
+        let messages: ~[Tmessage] = do s.messages.iter().transform |m| {
+            let message(name, span, tys, this, next) = (*m).clone();
             visitor.visit_message(name, span, tys, this, next)
         }.collect();
         visitor.visit_state(s, messages)

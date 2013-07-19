@@ -86,10 +86,10 @@ Build a test harness
 \fB\-\-target\fR TRIPLE
 Target triple cpu-manufacturer-kernel[-os] to compile for (see
 http://sources.redhat.com/autobook/autobook/autobook_17.html
-for detail)
+for details)
 .TP
 \fB\-\-target-feature\fR TRIPLE
-Target-specific attributes (see llc -mattr=help for detail)
+Target-specific attributes (see llc -mattr=help for details)
 .TP
 \fB\-\-android-cross-path\fR PATH
 The path to the Android NDK
@@ -128,6 +128,9 @@ To build either with a crate (.rc) file:
 To build an executable with debug info (experimental):
     $ rustc -Z debug-info -o hello hello.rs
 
+.SH "SEE ALSO"
+
+rust, rustdoc, rustpkg, rusti
 
 .SH "BUGS"
 See <\fBhttps://github.com/mozilla/rust/issues\fR> for issues.

@@ -8,7 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct Triple { x: int, y: int, z: int }
+#[deriving(Clone)]
+struct Triple {
+    x: int,
+    y: int,
+    z: int,
+}
 
 fn test(x: bool, foo: ~Triple) -> int {
     let bar = foo;
@@ -19,8 +24,8 @@ fn test(x: bool, foo: ~Triple) -> int {
 
 pub fn main() {
     let x = ~Triple{x: 1, y: 2, z: 3};
-    assert_eq!(test(true, copy x), 2);
-    assert_eq!(test(true, copy x), 2);
-    assert_eq!(test(true, copy x), 2);
+    assert_eq!(test(true, x.clone()), 2);
+    assert_eq!(test(true, x.clone()), 2);
+    assert_eq!(test(true, x.clone()), 2);
     assert_eq!(test(false, x), 5);
 }

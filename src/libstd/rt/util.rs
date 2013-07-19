@@ -97,3 +97,25 @@ memory and partly incapable of presentation to others.",
 
     unsafe { libc::abort(); }
 }
+
+pub fn set_exit_status(code: int) {
+
+    unsafe {
+        return rust_set_exit_status_newrt(code as libc::uintptr_t);
+    }
+
+    extern {
+        fn rust_set_exit_status_newrt(code: libc::uintptr_t);
+    }
+}
+
+pub fn get_exit_status() -> int {
+
+    unsafe {
+        return rust_get_exit_status_newrt() as int;
+    }
+
+    extern {
+        fn rust_get_exit_status_newrt() -> libc::uintptr_t;
+    }
+}

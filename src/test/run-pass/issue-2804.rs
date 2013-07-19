@@ -23,19 +23,15 @@ enum object {
 
 fn lookup(table: ~json::Object, key: ~str, default: ~str) -> ~str
 {
-    match table.find(&key)
-    {
-        option::Some(&extra::json::String(ref s)) =>
-        {
-            copy *s
+    match table.find(&key) {
+        option::Some(&extra::json::String(ref s)) => {
+            (*s).clone()
         }
-        option::Some(value) =>
-        {
+        option::Some(value) => {
             error!("%s was expected to be a string but is a %?", key, value);
             default
         }
-        option::None =>
-        {
+        option::None => {
             default
         }
     }
@@ -43,17 +39,14 @@ fn lookup(table: ~json::Object, key: ~str, default: ~str) -> ~str
 
 fn add_interface(store: int, managed_ip: ~str, data: extra::json::Json) -> (~str, object)
 {
-    match &data
-    {
-        &extra::json::Object(ref interface) =>
-        {
-            let name = lookup(copy *interface, ~"ifDescr", ~"");
+    match &data {
+        &extra::json::Object(ref interface) => {
+            let name = lookup((*interface).clone(), ~"ifDescr", ~"");
             let label = fmt!("%s-%s", managed_ip, name);
 
             (label, bool_value(false))
         }
-        _ =>
-        {
+        _ => {
             error!("Expected dict for %s interfaces but found %?", managed_ip, data);
             (~"gnos:missing-interface", bool_value(true))
         }
@@ -67,7 +60,7 @@ fn add_interfaces(store: int, managed_ip: ~str, device: HashMap<~str, extra::jso
         &extra::json::List(ref interfaces) =>
         {
           do interfaces.map |interface| {
-                add_interface(store, copy managed_ip, copy *interface)
+                add_interface(store, managed_ip.clone(), (*interface).clone())
           }
         }
         _ =>

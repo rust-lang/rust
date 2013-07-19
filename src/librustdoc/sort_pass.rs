@@ -15,24 +15,33 @@ use doc;
 use fold::Fold;
 use fold;
 use pass::Pass;
-use util::NominalOp;
 
 #[cfg(test)] use extract;
 
 use extra::sort;
+use std::clone::Clone;
 
 pub type ItemLtEqOp = @fn(v1: &doc::ItemTag, v2:  &doc::ItemTag) -> bool;
 
-type ItemLtEq = NominalOp<ItemLtEqOp>;
+struct ItemLtEq {
+    op: ItemLtEqOp,
+}
 
-pub fn mk_pass(name: ~str, lteq: ItemLtEqOp) -> Pass {
-    Pass {
-        name: copy name,
-        f: |srv, doc| run(srv, doc, NominalOp { op: lteq })
+impl Clone for ItemLtEq {
+    fn clone(&self) -> ItemLtEq {
+        ItemLtEq {
+            op: self.op,
+        }
     }
 }
 
-#[allow(non_implicitly_copyable_typarams)]
+pub fn mk_pass(name: ~str, lteq: ItemLtEqOp) -> Pass {
+    Pass {
+        name: name.clone(),
+        f: |srv, doc| run(srv, doc, ItemLtEq { op: lteq })
+    }
+}
+
 fn run(
     _srv: astsrv::Srv,
     doc: doc::Doc,
@@ -45,7 +54,6 @@ fn run(
     (fold.fold_doc)(&fold, doc)
 }
 
-#[allow(non_implicitly_copyable_typarams)]
 fn fold_mod(
     fold: &fold::Fold<ItemLtEq>,
     doc: doc::ModDoc
@@ -67,10 +75,11 @@ fn test() {
     do astsrv::from_str(source) |srv| {
         let doc = extract::from_srv(srv.clone(), ~"");
         let doc = (mk_pass(~"", name_lteq).f)(srv.clone(), doc);
-        assert_eq!(doc.cratemod().mods()[0].name(), ~"w");
-        assert_eq!(doc.cratemod().mods()[1].items[0].name(), ~"x");
-        assert_eq!(doc.cratemod().mods()[1].items[1].name(), ~"y");
-        assert_eq!(doc.cratemod().mods()[1].name(), ~"z");
+        // hidden __std_macros module at the start.
+        assert_eq!(doc.cratemod().mods()[1].name(), ~"w");
+        assert_eq!(doc.cratemod().mods()[2].items[0].name(), ~"x");
+        assert_eq!(doc.cratemod().mods()[2].items[1].name(), ~"y");
+        assert_eq!(doc.cratemod().mods()[2].name(), ~"z");
     }
 }
 
@@ -84,10 +93,11 @@ fn should_be_stable() {
     do astsrv::from_str(source) |srv| {
         let doc = extract::from_srv(srv.clone(), ~"");
         let doc = (mk_pass(~"", always_eq).f)(srv.clone(), doc);
-        assert_eq!(doc.cratemod().mods()[0].items[0].name(), ~"b");
-        assert_eq!(doc.cratemod().mods()[1].items[0].name(), ~"d");
+        // hidden __std_macros module at the start.
+        assert_eq!(doc.cratemod().mods()[1].items[0].name(), ~"b");
+        assert_eq!(doc.cratemod().mods()[2].items[0].name(), ~"d");
         let doc = (mk_pass(~"", always_eq).f)(srv.clone(), doc);
-        assert_eq!(doc.cratemod().mods()[0].items[0].name(), ~"b");
-        assert_eq!(doc.cratemod().mods()[1].items[0].name(), ~"d");
+        assert_eq!(doc.cratemod().mods()[1].items[0].name(), ~"b");
+        assert_eq!(doc.cratemod().mods()[2].items[0].name(), ~"d");
     }
 }

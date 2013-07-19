@@ -21,7 +21,7 @@ pub fn main() {
     match getopts(args, opts) {
         Ok(ref m)  =>
             assert!(!opt_present(m, "b")),
-        Err(ref f) => fail!(fail_str(copy *f))
+        Err(ref f) => fail!(fail_str((*f).clone()))
     };
 
 }

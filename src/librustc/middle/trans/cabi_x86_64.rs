@@ -18,12 +18,13 @@ use middle::trans::cabi::*;
 
 use middle::trans::type_::Type;
 
+use std::num;
 use std::option;
 use std::option::Option;
 use std::uint;
 use std::vec;
 
-#[deriving(Eq)]
+#[deriving(Clone, Eq)]
 enum RegClass {
     NoClass,
     Int,
@@ -104,7 +105,7 @@ fn classify_ty(ty: Type) -> ~[RegClass] {
                 1
               } else {
                 let str_tys = ty.field_types();
-                str_tys.iter().fold(1, |a, t| uint::max(a, ty_align(*t)))
+                str_tys.iter().fold(1, |a, t| num::max(a, ty_align(*t)))
               }
             }
             Array => {

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: attempted dynamic environment-capture
+// error-pattern: can't capture dynamic environment in a fn item;
 fn foo(x: int) {
     fn bar() { log(debug, x); }
 }

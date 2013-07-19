@@ -76,7 +76,7 @@ fn trait_method_might_be_inlined(trait_method: &trait_method) -> bool {
 // The context we're in. If we're in a public context, then public symbols are
 // marked reachable. If we're in a private context, then only trait
 // implementations are marked reachable.
-#[deriving(Eq)]
+#[deriving(Clone, Eq)]
 enum PrivacyContext {
     PublicContext,
     PrivateContext,
@@ -141,7 +141,7 @@ impl ReachableContext {
                             }
                         }
                     }
-                    item_impl(ref generics, trait_ref, _, ref methods) => {
+                    item_impl(ref generics, ref trait_ref, _, ref methods) => {
                         // XXX(pcwalton): We conservatively assume any methods
                         // on a trait implementation are reachable, when this
                         // is not the case. We could be more precise by only

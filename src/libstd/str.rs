@@ -13,8 +13,7 @@
  *
  * Strings are a packed UTF-8 representation of text, stored as null
  * terminated buffers of u8 bytes.  Strings should be indexed in bytes,
- * for efficiency, but UTF-8 unsafe operations should be avoided.  For
- * some heavy-duty uses, try extra::rope.
+ * for efficiency, but UTF-8 unsafe operations should be avoided.
  */
 
 use at_vec;
@@ -279,7 +278,7 @@ impl CharEq for extern "Rust" fn(char) -> bool {
 impl<'self, C: CharEq> CharEq for &'self [C] {
     #[inline]
     fn matches(&self, c: char) -> bool {
-        self.iter().any_(|m| m.matches(c))
+        self.iter().any(|m| m.matches(c))
     }
 
     fn only_ascii(&self) -> bool {
@@ -597,17 +596,25 @@ pub fn is_utf8(v: &[u8]) -> bool {
     let mut i = 0u;
     let total = v.len();
     while i < total {
-        let mut chsize = utf8_char_width(v[i]);
-        if chsize == 0u { return false; }
-        if i + chsize > total { return false; }
-        i += 1u;
-        while chsize > 1u {
-            if v[i] & 192u8 != tag_cont_u8 { return false; }
+        if v[i] < 128u8 {
             i += 1u;
-            chsize -= 1u;
+        } else {
+            let w = utf8_char_width(v[i]);
+            if w == 0u { return false; }
+
+            let nexti = i + w;
+            if nexti > total { return false; }
+
+            if v[i + 1] & 192u8 != TAG_CONT_U8 { return false; }
+            if w > 2 {
+                if v[i + 2] & 192u8 != TAG_CONT_U8 { return false; }
+                if w > 3 && (v[i + 3] & 192u8 != TAG_CONT_U8) { return false; }
+            }
+
+            i = nexti;
         }
     }
-    return true;
+    true
 }
 
 /// Determines if a vector of `u16` contains valid UTF-16
@@ -723,17 +730,29 @@ pub fn count_bytes<'b>(s: &'b str, start: uint, n: uint) -> uint {
     end - start
 }
 
+// https://tools.ietf.org/html/rfc3629
+static UTF8_CHAR_WIDTH: [u8, ..256] = [
+1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1, // 0x1F
+1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1, // 0x3F
+1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1, // 0x5F
+1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1, // 0x7F
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, // 0x9F
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, // 0xBF
+2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,
+2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2, // 0xDF
+3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3, // 0xEF
+4,4,4,4,4,0,0,0,0,0,0,0,0,0,0,0, // 0xFF
+];
+
 /// Given a first byte, determine how many bytes are in this UTF-8 character
 pub fn utf8_char_width(b: u8) -> uint {
-    let byte: uint = b as uint;
-    if byte < 128u { return 1u; }
-    // Not a valid start byte
-    if byte < 192u { return 0u; }
-    if byte < 224u { return 2u; }
-    if byte < 240u { return 3u; }
-    if byte < 248u { return 4u; }
-    if byte < 252u { return 5u; }
-    return 6u;
+    return UTF8_CHAR_WIDTH[b] as uint;
 }
 
 #[allow(missing_doc)]
@@ -743,18 +762,14 @@ pub struct CharRange {
 }
 
 // UTF-8 tags and ranges
-static tag_cont_u8: u8 = 128u8;
-static tag_cont: uint = 128u;
-static max_one_b: uint = 128u;
-static tag_two_b: uint = 192u;
-static max_two_b: uint = 2048u;
-static tag_three_b: uint = 224u;
-static max_three_b: uint = 65536u;
-static tag_four_b: uint = 240u;
-static max_four_b: uint = 2097152u;
-static tag_five_b: uint = 248u;
-static max_five_b: uint = 67108864u;
-static tag_six_b: uint = 252u;
+static TAG_CONT_U8: u8 = 128u8;
+static TAG_CONT: uint = 128u;
+static MAX_ONE_B: uint = 128u;
+static TAG_TWO_B: uint = 192u;
+static MAX_TWO_B: uint = 2048u;
+static TAG_THREE_B: uint = 224u;
+static MAX_THREE_B: uint = 65536u;
+static TAG_FOUR_B: uint = 240u;
 
 /**
  * A dummy trait to hold all the utility methods that we implement on strings.
@@ -826,6 +841,7 @@ pub mod raw {
     use str::raw;
     use str::{as_buf, is_utf8};
     use vec;
+    use vec::MutableVector;
 
     /// Create a Rust string from a null-terminated *u8 buffer
     pub unsafe fn from_buf(buf: *u8) -> ~str {
@@ -841,7 +857,7 @@ pub mod raw {
     /// Create a Rust string from a *u8 buffer of the given length
     pub unsafe fn from_buf_len(buf: *u8, len: uint) -> ~str {
         let mut v: ~[u8] = vec::with_capacity(len + 1);
-        vec::as_mut_buf(v, |vbuf, _len| {
+        v.as_mut_buf(|vbuf, _len| {
             ptr::copy_memory(vbuf, buf as *u8, len)
         });
         vec::raw::set_len(&mut v, len);
@@ -863,7 +879,7 @@ pub mod raw {
 
     /// Converts a vector of bytes to a new owned string.
     pub unsafe fn from_bytes(v: &[u8]) -> ~str {
-        do vec::as_imm_buf(v) |buf, len| {
+        do v.as_imm_buf |buf, len| {
             from_buf_len(buf, len)
         }
     }
@@ -917,7 +933,7 @@ pub mod raw {
             assert!((end <= n));
 
             let mut v = vec::with_capacity(end - begin + 1u);
-            do vec::as_imm_buf(v) |vbuf, _vlen| {
+            do v.as_imm_buf |vbuf, _vlen| {
                 let vbuf = ::cast::transmute_mut_unsafe(vbuf);
                 let src = ptr::offset(sbuf, begin);
                 ptr::copy_memory(vbuf, src, end - begin);
@@ -987,11 +1003,24 @@ pub mod raw {
 
     /// Sets the length of the string and adds the null terminator
     #[inline]
+    #[cfg(stage0)]
     pub unsafe fn set_len(v: &mut ~str, new_len: uint) {
         let v: **mut vec::raw::VecRepr = cast::transmute(v);
         let repr: *mut vec::raw::VecRepr = *v;
         (*repr).unboxed.fill = new_len + 1u;
         let null = ptr::mut_offset(cast::transmute(&((*repr).unboxed.data)),
+                                   new_len);
+        *null = 0u8;
+    }
+
+    /// Sets the length of the string and adds the null terminator
+    #[inline]
+    #[cfg(not(stage0))]
+    pub unsafe fn set_len(v: &mut ~str, new_len: uint) {
+        let v: **mut vec::UnboxedVecRepr = cast::transmute(v);
+        let repr: *mut vec::UnboxedVecRepr = *v;
+        (*repr).fill = new_len + 1u;
+        let null = ptr::mut_offset(cast::transmute(&((*repr).data)),
                                    new_len);
         *null = 0u8;
     }
@@ -1718,26 +1747,29 @@ impl<'self> StrSlice<'self> for &'self str {
      * If `i` is greater than or equal to the length of the string.
      * If `i` is not the index of the beginning of a valid UTF-8 character.
      */
+    #[inline]
     fn char_range_at(&self, i: uint) -> CharRange {
-        let b0 = self[i];
-        let w = utf8_char_width(b0);
-        assert!((w != 0u));
-        if w == 1u { return CharRange {ch: b0 as char, next: i + 1u}; }
-        let mut val = 0u;
-        let end = i + w;
-        let mut i = i + 1u;
-        while i < end {
-            let byte = self[i];
-            assert_eq!(byte & 192u8, tag_cont_u8);
-            val <<= 6u;
-            val += (byte & 63u8) as uint;
-            i += 1u;
+        if (self[i] < 128u8) {
+            return CharRange {ch: self[i] as char, next: i + 1 };
         }
-        // Clunky way to get the right bits from the first byte. Uses two shifts,
-        // the first to clip off the marker bits at the left of the byte, and then
-        // a second (as uint) to get it to the right position.
-        val += ((b0 << ((w + 1u) as u8)) as uint) << ((w - 1u) * 6u - w - 1u);
-        return CharRange {ch: val as char, next: i};
+
+        // Multibyte case is a fn to allow char_range_at to inline cleanly
+        fn multibyte_char_range_at(s: &str, i: uint) -> CharRange {
+            let mut val = s[i] as uint;
+            let w = UTF8_CHAR_WIDTH[val] as uint;
+            assert!((w != 0));
+
+            // First byte is special, only want bottom 5 bits for width 2, 4 bits
+            // for width 3, and 3 bits for width 4
+            val &= 0x7Fu >> w;
+            val = (val << 6) | (s[i + 1] & 63u8) as uint;
+            if w > 2 { val = (val << 6) | (s[i + 2] & 63u8) as uint; }
+            if w > 3 { val = (val << 6) | (s[i + 3] & 63u8) as uint; }
+
+            return CharRange {ch: val as char, next: i + w};
+        }
+
+        return multibyte_char_range_at(*self, i);
     }
 
     /// Plucks the character starting at the `i`th byte of a string
@@ -1755,7 +1787,7 @@ impl<'self> StrSlice<'self> for &'self str {
         let mut prev = start;
 
         // while there is a previous byte == 10......
-        while prev > 0u && self[prev - 1u] & 192u8 == tag_cont_u8 {
+        while prev > 0u && self[prev - 1u] & 192u8 == TAG_CONT_U8 {
             prev -= 1u;
         }
 
@@ -2008,7 +2040,7 @@ impl NullTerminatedStr for @str {
      */
     #[inline]
     fn as_bytes_with_null<'a>(&'a self) -> &'a [u8] {
-        let ptr: &'a ~[u8] = unsafe { ::cast::transmute(self) };
+        let ptr: &'a @[u8] = unsafe { ::cast::transmute(self) };
         let slice: &'a [u8] = *ptr;
         slice
     }
@@ -2069,14 +2101,13 @@ impl OwnedStr for ~str {
     /// Appends a character to the back of a string
     #[inline]
     fn push_char(&mut self, c: char) {
+        assert!(c as uint <= 0x10ffff); // FIXME: #7609: should be enforced on all `char`
         unsafe {
             let code = c as uint;
-            let nb = if code < max_one_b { 1u }
-            else if code < max_two_b { 2u }
-            else if code < max_three_b { 3u }
-            else if code < max_four_b { 4u }
-            else if code < max_five_b { 5u }
-            else { 6u };
+            let nb = if code < MAX_ONE_B { 1u }
+            else if code < MAX_TWO_B { 2u }
+            else if code < MAX_THREE_B { 3u }
+            else { 4u };
             let len = self.len();
             let new_len = len + nb;
             self.reserve_at_least(new_len);
@@ -2088,34 +2119,19 @@ impl OwnedStr for ~str {
                         *ptr::mut_offset(buf, off) = code as u8;
                     }
                     2u => {
-                        *ptr::mut_offset(buf, off) = (code >> 6u & 31u | tag_two_b) as u8;
-                        *ptr::mut_offset(buf, off + 1u) = (code & 63u | tag_cont) as u8;
+                        *ptr::mut_offset(buf, off) = (code >> 6u & 31u | TAG_TWO_B) as u8;
+                        *ptr::mut_offset(buf, off + 1u) = (code & 63u | TAG_CONT) as u8;
                     }
                     3u => {
-                        *ptr::mut_offset(buf, off) = (code >> 12u & 15u | tag_three_b) as u8;
-                        *ptr::mut_offset(buf, off + 1u) = (code >> 6u & 63u | tag_cont) as u8;
-                        *ptr::mut_offset(buf, off + 2u) = (code & 63u | tag_cont) as u8;
+                        *ptr::mut_offset(buf, off) = (code >> 12u & 15u | TAG_THREE_B) as u8;
+                        *ptr::mut_offset(buf, off + 1u) = (code >> 6u & 63u | TAG_CONT) as u8;
+                        *ptr::mut_offset(buf, off + 2u) = (code & 63u | TAG_CONT) as u8;
                     }
                     4u => {
-                        *ptr::mut_offset(buf, off) = (code >> 18u & 7u | tag_four_b) as u8;
-                        *ptr::mut_offset(buf, off + 1u) = (code >> 12u & 63u | tag_cont) as u8;
-                        *ptr::mut_offset(buf, off + 2u) = (code >> 6u & 63u | tag_cont) as u8;
-                        *ptr::mut_offset(buf, off + 3u) = (code & 63u | tag_cont) as u8;
-                    }
-                    5u => {
-                        *ptr::mut_offset(buf, off) = (code >> 24u & 3u | tag_five_b) as u8;
-                        *ptr::mut_offset(buf, off + 1u) = (code >> 18u & 63u | tag_cont) as u8;
-                        *ptr::mut_offset(buf, off + 2u) = (code >> 12u & 63u | tag_cont) as u8;
-                        *ptr::mut_offset(buf, off + 3u) = (code >> 6u & 63u | tag_cont) as u8;
-                        *ptr::mut_offset(buf, off + 4u) = (code & 63u | tag_cont) as u8;
-                    }
-                    6u => {
-                        *ptr::mut_offset(buf, off) = (code >> 30u & 1u | tag_six_b) as u8;
-                        *ptr::mut_offset(buf, off + 1u) = (code >> 24u & 63u | tag_cont) as u8;
-                        *ptr::mut_offset(buf, off + 2u) = (code >> 18u & 63u | tag_cont) as u8;
-                        *ptr::mut_offset(buf, off + 3u) = (code >> 12u & 63u | tag_cont) as u8;
-                        *ptr::mut_offset(buf, off + 4u) = (code >> 6u & 63u | tag_cont) as u8;
-                        *ptr::mut_offset(buf, off + 5u) = (code & 63u | tag_cont) as u8;
+                        *ptr::mut_offset(buf, off) = (code >> 18u & 7u | TAG_FOUR_B) as u8;
+                        *ptr::mut_offset(buf, off + 1u) = (code >> 12u & 63u | TAG_CONT) as u8;
+                        *ptr::mut_offset(buf, off + 2u) = (code >> 6u & 63u | TAG_CONT) as u8;
+                        *ptr::mut_offset(buf, off + 3u) = (code & 63u | TAG_CONT) as u8;
                     }
                     _ => {}
                 }
@@ -2241,6 +2257,13 @@ impl Clone for ~str {
     #[inline]
     fn clone(&self) -> ~str {
         to_owned(*self)
+    }
+}
+
+impl Clone for @str {
+    #[inline]
+    fn clone(&self) -> @str {
+        *self
     }
 }
 
@@ -2450,7 +2473,11 @@ mod tests {
     fn test_push_char() {
         let mut data = ~"ประเทศไทย中";
         data.push_char('华');
-        assert_eq!(~"ประเทศไทย中华", data);
+        data.push_char('b'); // 1 byte
+        data.push_char('¢'); // 2 byte
+        data.push_char('€'); // 3 byte
+        data.push_char('𤭢'); // 4 byte
+        assert_eq!(~"ประเทศไทย中华b¢€𤭢", data);
     }
 
     #[test]
@@ -3190,7 +3217,7 @@ mod tests {
                 0x000a_u16 ]) ];
 
         for pairs.iter().advance |p| {
-            let (s, u) = copy *p;
+            let (s, u) = (*p).clone();
             assert!(s.to_utf16() == u);
             assert!(from_utf16(u) == s);
             assert!(from_utf16(s.to_utf16()) == s);
@@ -3258,6 +3285,19 @@ mod tests {
         "1234".cmp(& &"1234") == Equal;
         "12345555".cmp(& &"123456") == Less;
         "22".cmp(& &"1234") == Greater;
+    }
+
+    #[test]
+    fn test_char_range_at() {
+        let data = ~"b¢€𤭢𤭢€¢b";
+        assert_eq!('b', data.char_range_at(0).ch);
+        assert_eq!('¢', data.char_range_at(1).ch);
+        assert_eq!('€', data.char_range_at(3).ch);
+        assert_eq!('𤭢', data.char_range_at(6).ch);
+        assert_eq!('𤭢', data.char_range_at(10).ch);
+        assert_eq!('€', data.char_range_at(14).ch);
+        assert_eq!('¢', data.char_range_at(17).ch);
+        assert_eq!('b', data.char_range_at(19).ch);
     }
 
     #[test]

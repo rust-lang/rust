@@ -51,11 +51,11 @@ pub struct Srv {
 }
 
 pub fn from_str<T>(source: ~str, owner: SrvOwner<T>) -> T {
-    run(owner, copy source, parse::from_str_sess)
+    run(owner, source.clone(), parse::from_str_sess)
 }
 
 pub fn from_file<T>(file: ~str, owner: SrvOwner<T>) -> T {
-    run(owner, copy file, |sess, f| parse::from_file_sess(sess, &Path(f)))
+    run(owner, file.clone(), |sess, f| parse::from_file_sess(sess, &Path(f)))
 }
 
 fn run<T>(owner: SrvOwner<T>, source: ~str, parse: Parser) -> T {
@@ -113,9 +113,13 @@ fn build_ctxt(sess: Session,
 
     use rustc::front::config;
 
+    let ast = syntax::ext::expand::inject_std_macros(sess.parse_sess,
+                                                     sess.opts.cfg.clone(),
+                                                     ast);
     let ast = config::strip_unconfigured_items(ast);
     let ast = syntax::ext::expand::expand_crate(sess.parse_sess,
-                                                copy sess.opts.cfg, ast);
+                                                sess.opts.cfg.clone(),
+                                                ast);
     let ast = front::test::modify_for_testing(sess, ast);
     let ast_map = ast_map::map_crate(sess.diagnostic(), ast);
 
@@ -138,7 +142,8 @@ fn should_prune_unconfigured_items() {
     let source = ~"#[cfg(shut_up_and_leave_me_alone)]fn a() { }";
     do from_str(source) |srv| {
         do exec(srv) |ctxt| {
-            assert!(ctxt.ast.node.module.items.is_empty());
+            // one item: the __std_macros secret module
+            assert_eq!(ctxt.ast.node.module.items.len(), 1);
         }
     }
 }

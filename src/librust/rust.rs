@@ -13,7 +13,7 @@
 // FIXME #2238 Make run only accept source that emits an executable
 
 #[link(name = "rust",
-       vers = "0.7",
+       vers = "0.8-pre",
        uuid = "4a24da33-5cc8-4037-9352-2cbe9bd9d27c",
        url = "https://github.com/mozilla/rust/tree/master/src/rust")];
 
@@ -43,24 +43,24 @@ impl ValidUsage {
     }
 }
 
-enum Action<'self> {
-    Call(&'self fn:Copy(args: &[~str]) -> ValidUsage),
-    CallMain(&'static str, &'self fn:Copy()),
+enum Action {
+    Call(extern "Rust" fn(args: &[~str]) -> ValidUsage),
+    CallMain(&'static str, extern "Rust" fn()),
 }
 
 enum UsageSource<'self> {
     UsgStr(&'self str),
-    UsgCall(&'self fn:Copy()),
+    UsgCall(extern "Rust" fn()),
 }
 
 struct Command<'self> {
     cmd: &'self str,
-    action: Action<'self>,
+    action: Action,
     usage_line: &'self str,
     usage_full: UsageSource<'self>,
 }
 
-static commands: &'static [Command<'static>] = &[
+static COMMANDS: &'static [Command<'static>] = &[
     Command{
         cmd: "build",
         action: CallMain("rustc", rustc::main),
@@ -118,13 +118,13 @@ static commands: &'static [Command<'static>] = &[
 ];
 
 fn rustc_help() {
-    rustc::usage(copy os::args()[0])
+    rustc::usage(os::args()[0].clone())
 }
 
 fn find_cmd(command_string: &str) -> Option<Command> {
-    do commands.iter().find_ |command| {
+    do COMMANDS.iter().find_ |command| {
         command.cmd == command_string
-    }.map_consume(|x| copy *x)
+    }.map_consume(|x| *x)
 }
 
 fn cmd_help(args: &[~str]) -> ValidUsage {
@@ -148,7 +148,7 @@ fn cmd_help(args: &[~str]) -> ValidUsage {
     }
 
     match args {
-        [ref command_string] => print_usage(copy *command_string),
+        [ref command_string] => print_usage((*command_string).clone()),
         _                    => Invalid
     }
 }
@@ -197,7 +197,7 @@ fn do_command(command: &Command, args: &[~str]) -> ValidUsage {
 }
 
 fn usage() {
-    static indent: uint = 8;
+    static INDENT: uint = 8;
 
     io::print(
         "The rust tool is a convenience for managing rust source code.\n\
@@ -209,8 +209,8 @@ fn usage() {
         \n"
     );
 
-    for commands.iter().advance |command| {
-        let padding = " ".repeat(indent - command.cmd.len());
+    for COMMANDS.iter().advance |command| {
+        let padding = " ".repeat(INDENT - command.cmd.len());
         io::println(fmt!("    %s%s%s",
                          command.cmd, padding, command.usage_line));
     }

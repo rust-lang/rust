@@ -170,12 +170,14 @@ pub type MovesMap = @mut HashSet<node_id>;
 pub type MovedVariablesSet = @mut HashSet<node_id>;
 
 /** See the section Output on the module comment for explanation. */
+#[deriving(Clone)]
 pub struct MoveMaps {
     moves_map: MovesMap,
     moved_variables_set: MovedVariablesSet,
     capture_map: CaptureMap
 }
 
+#[deriving(Clone)]
 struct VisitContext {
     tcx: ty::ctxt,
     method_map: method_map,
@@ -193,7 +195,9 @@ pub fn compute_moves(tcx: ty::ctxt,
                      crate: &crate) -> MoveMaps
 {
     let visitor = visit::mk_vt(@visit::Visitor {
+        visit_fn: compute_modes_for_fn,
         visit_expr: compute_modes_for_expr,
+        visit_local: compute_modes_for_local,
         .. *visit::default_visitor()
     });
     let visit_cx = VisitContext {
@@ -220,8 +224,30 @@ pub fn moved_variable_node_id_from_def(def: def) -> Option<node_id> {
     }
 }
 
-// ______________________________________________________________________
+///////////////////////////////////////////////////////////////////////////
 // Expressions
+
+fn compute_modes_for_local<'a>(local: @local,
+                               (cx, v): (VisitContext,
+                                         vt<VisitContext>)) {
+    cx.use_pat(local.node.pat);
+    for local.node.init.iter().advance |&init| {
+        cx.use_expr(init, Read, v);
+    }
+}
+
+fn compute_modes_for_fn(fk: &visit::fn_kind,
+                        decl: &fn_decl,
+                        body: &blk,
+                        span: span,
+                        id: node_id,
+                        (cx, v): (VisitContext,
+                                  vt<VisitContext>)) {
+    for decl.inputs.iter().advance |a| {
+        cx.use_pat(a.pat);
+    }
+    visit::visit_fn(fk, decl, body, span, id, (cx, v));
+}
 
 fn compute_modes_for_expr(expr: @expr,
                           (cx, v): (VisitContext,
@@ -261,13 +287,13 @@ impl VisitContext {
          * meaning either copied or moved depending on its type.
          */
 
-        debug!("consume_block(blk.id=%?)", blk.node.id);
+        debug!("consume_block(blk.id=%?)", blk.id);
 
-        for blk.node.stmts.iter().advance |stmt| {
+        for blk.stmts.iter().advance |stmt| {
             (visitor.visit_stmt)(*stmt, (*self, visitor));
         }
 
-        for blk.node.expr.iter().advance |tail_expr| {
+        for blk.expr.iter().advance |tail_expr| {
             self.consume_expr(*tail_expr, visitor);
         }
     }
@@ -390,8 +416,8 @@ impl VisitContext {
                     // any fields which (1) were not explicitly
                     // specified and (2) have a type that
                     // moves-by-default:
-                    let consume_with = with_fields.iter().any_(|tf| {
-                        !fields.iter().any_(|f| f.node.ident == tf.ident) &&
+                    let consume_with = with_fields.iter().any(|tf| {
+                        !fields.iter().any(|f| f.node.ident == tf.ident) &&
                             ty::type_moves_by_default(self.tcx, tf.mt.ty)
                     });
 
@@ -426,10 +452,6 @@ impl VisitContext {
                 // if there are by-move bindings, but borrowck deals
                 // with that itself.
                 self.use_expr(discr, Read, visitor);
-            }
-
-            expr_copy(base) => {
-                self.use_expr(base, Read, visitor);
             }
 
             expr_paren(base) => {
@@ -522,7 +544,10 @@ impl VisitContext {
                 self.use_expr(base, comp_mode, visitor);
             }
 
-            expr_fn_block(_, ref body) => {
+            expr_fn_block(ref decl, ref body) => {
+                for decl.inputs.iter().advance |a| {
+                    self.use_pat(a.pat);
+                }
                 let cap_vars = self.compute_captures(expr.id);
                 self.move_maps.capture_map.insert(expr.id, cap_vars);
                 self.consume_block(body, visitor);
@@ -580,13 +605,15 @@ impl VisitContext {
          * into itself or not based on its type and annotation.
          */
 
-        do pat_bindings(self.tcx.def_map, pat) |bm, id, _span, _path| {
+        do pat_bindings(self.tcx.def_map, pat) |bm, id, _span, path| {
             let binding_moves = match bm {
                 bind_by_ref(_) => false,
                 bind_infer => {
                     let pat_ty = ty::node_id_to_type(self.tcx, id);
-                    debug!("pattern %? type is %s",
-                           id, pat_ty.repr(self.tcx));
+                    debug!("pattern %? %s type is %s",
+                           id,
+                           ast_util::path_to_ident(path).repr(self.tcx),
+                           pat_ty.repr(self.tcx));
                     ty::type_moves_by_default(self.tcx, pat_ty)
                 }
             };

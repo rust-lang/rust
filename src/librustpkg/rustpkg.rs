@@ -11,7 +11,7 @@
 // rustpkg - a package manager and build system for Rust
 
 #[link(name = "rustpkg",
-       vers = "0.7",
+       vers = "0.8-pre",
        uuid = "25de5e6e-279e-4a20-845c-4cabae92daaf",
        url = "https://github.com/mozilla/rust/tree/master/src/librustpkg")];
 
@@ -38,9 +38,10 @@ use syntax::{ast, diagnostic};
 use util::*;
 use messages::*;
 use path_util::{build_pkg_id_in_workspace, first_pkgid_src_in_workspace};
-use path_util::{u_rwx, rust_path};
-use path_util::{built_executable_in_workspace, built_library_in_workspace};
+use path_util::{U_RWX, rust_path, in_rust_path};
+use path_util::{built_executable_in_workspace, built_library_in_workspace, default_workspace};
 use path_util::{target_executable_in_workspace, target_library_in_workspace};
+use source_control::is_git_dir;
 use workspace::{each_pkg_parent_workspace, pkg_parent_workspaces};
 use context::Ctx;
 use package_id::PkgId;
@@ -50,12 +51,14 @@ pub mod api;
 mod conditions;
 mod context;
 mod crate;
+mod installed_packages;
 mod messages;
 mod package_id;
 mod package_path;
 mod package_source;
 mod path_util;
 mod search;
+mod source_control;
 mod target;
 #[cfg(test)]
 mod tests;
@@ -101,12 +104,12 @@ impl<'self> PkgScript<'self> {
             binary: binary,
             maybe_sysroot: Some(@os::self_exe_path().get().pop()),
             crate_type: session::bin_crate,
-            .. copy *session::basic_options()
+            .. (*session::basic_options()).clone()
         };
         let input = driver::file_input(script);
         let sess = driver::build_session(options, diagnostic::emit);
         let cfg = driver::build_configuration(sess, binary, &input);
-        let (crate, _) = driver::compile_upto(sess, copy cfg, &input, driver::cu_parse, None);
+        let (crate, _) = driver::compile_upto(sess, cfg.clone(), &input, driver::cu_parse, None);
         let work_dir = build_pkg_id_in_workspace(id, workspace);
 
         debug!("Returning package script with id %?", id);
@@ -200,8 +203,10 @@ impl CtxMethods for Ctx {
                 }
                 // The package id is presumed to be the first command-line
                 // argument
-                let pkgid = PkgId::new(copy args[0]);
+                let pkgid = PkgId::new(args[0].clone(), &os::getcwd());
                 for each_pkg_parent_workspace(&pkgid) |workspace| {
+                    debug!("found pkg %s in workspace %s, trying to build",
+                           pkgid.to_str(), workspace.to_str());
                     self.build(workspace, &pkgid);
                 }
             }
@@ -211,7 +216,7 @@ impl CtxMethods for Ctx {
                 }
                 // The package id is presumed to be the first command-line
                 // argument
-                let pkgid = PkgId::new(copy args[0]);
+                let pkgid = PkgId::new(args[0].clone(), &os::getcwd());
                 let cwd = os::getcwd();
                 self.clean(&cwd, &pkgid); // tjc: should use workspace, not cwd
             }
@@ -220,7 +225,7 @@ impl CtxMethods for Ctx {
                     return usage::do_cmd();
                 }
 
-                self.do_cmd(copy args[0], copy args[1]);
+                self.do_cmd(args[0].clone(), args[1].clone());
             }
             "info" => {
                 self.info();
@@ -232,9 +237,10 @@ impl CtxMethods for Ctx {
 
                 // The package id is presumed to be the first command-line
                 // argument
-                let pkgid = PkgId::new(args[0]);
+                let pkgid = PkgId::new(args[0], &os::getcwd());
                 let workspaces = pkg_parent_workspaces(&pkgid);
                 if workspaces.is_empty() {
+                    debug!("install! workspaces was empty");
                     let rp = rust_path();
                     assert!(!rp.is_empty());
                     let src = PkgSrc::new(&rp[0], &build_pkg_id_in_workspace(&pkgid, &rp[0]),
@@ -244,8 +250,19 @@ impl CtxMethods for Ctx {
                 }
                 else {
                     for each_pkg_parent_workspace(&pkgid) |workspace| {
+                        debug!("install: found pkg %s in workspace %s, trying to build",
+                               pkgid.to_str(), workspace.to_str());
+
                         self.install(workspace, &pkgid);
                     }
+                }
+            }
+            "list" => {
+                io::println("Installed packages:");
+                for installed_packages::list_installed_packages |pkg_id| {
+                    io::println(fmt!("%s-%s",
+                                     pkg_id.local_path.to_str(),
+                                     pkg_id.version.to_str()));
                 }
             }
             "prefer" => {
@@ -263,11 +280,24 @@ impl CtxMethods for Ctx {
                     return usage::uninstall();
                 }
 
-                self.uninstall(args[0], None);
+                let pkgid = PkgId::new(args[0], &os::getcwd()); // ??
+                if !installed_packages::package_is_installed(&pkgid) {
+                    warn(fmt!("Package %s doesn't seem to be installed! Doing nothing.", args[0]));
+                    return;
+                }
+                else {
+                    let rp = rust_path();
+                    assert!(!rp.is_empty());
+                    for each_pkg_parent_workspace(&pkgid) |workspace| {
+                        path_util::uninstall_package_from(workspace, &pkgid);
+                        note(fmt!("Uninstalled package %s (was installed in %s)",
+                                  pkgid.to_str(), workspace.to_str()));
+                    }
+                }
             }
             "unprefer" => {
                 if args.len() < 1 {
-                    return usage::uninstall();
+                    return usage::unprefer();
                 }
 
                 self.unprefer(args[0], None);
@@ -282,11 +312,28 @@ impl CtxMethods for Ctx {
     }
 
     fn build(&self, workspace: &Path, pkgid: &PkgId) {
-        debug!("build: workspace = %s pkgid = %s", workspace.to_str(),
+        debug!("build: workspace = %s (in Rust path? %? is git dir? %? \
+                pkgid = %s", workspace.to_str(),
+               in_rust_path(workspace), is_git_dir(&workspace.push_rel(&*pkgid.local_path)),
                pkgid.to_str());
         let src_dir   = first_pkgid_src_in_workspace(pkgid, workspace);
         let build_dir = build_pkg_id_in_workspace(pkgid, workspace);
         debug!("Destination dir = %s", build_dir.to_str());
+
+        // If workspace isn't in the RUST_PATH, and it's a git repo,
+        // then clone it into the first entry in RUST_PATH, and repeat
+        debug!("%? %? %s", in_rust_path(workspace),
+               is_git_dir(&workspace.push_rel(&*pkgid.local_path)),
+               workspace.to_str());
+        if !in_rust_path(workspace) && is_git_dir(&workspace.push_rel(&*pkgid.local_path)) {
+            let out_dir = default_workspace().push("src").push_rel(&*pkgid.local_path);
+            source_control::git_clone(&workspace.push_rel(&*pkgid.local_path),
+                                      &out_dir, &pkgid.version);
+            let default_ws = default_workspace();
+            debug!("Calling build recursively with %? and %?", default_ws.to_str(),
+                   pkgid.to_str());
+            return self.build(&default_ws, pkgid);
+        }
 
         // Create the package source
         let mut src = PkgSrc::new(workspace, &build_dir, pkgid);
@@ -374,18 +421,18 @@ impl CtxMethods for Ctx {
 
         for maybe_executable.iter().advance |exec| {
             debug!("Copying: %s -> %s", exec.to_str(), target_exec.to_str());
-            if !(os::mkdir_recursive(&target_exec.dir_path(), u_rwx) &&
+            if !(os::mkdir_recursive(&target_exec.dir_path(), U_RWX) &&
                  os::copy_file(exec, &target_exec)) {
-                cond.raise((copy *exec, copy target_exec));
+                cond.raise(((*exec).clone(), target_exec.clone()));
             }
         }
         for maybe_library.iter().advance |lib| {
-            let target_lib = (copy target_lib).expect(fmt!("I built %s but apparently \
+            let target_lib = target_lib.clone().expect(fmt!("I built %s but apparently \
                                                 didn't install it!", lib.to_str()));
             debug!("Copying: %s -> %s", lib.to_str(), target_lib.to_str());
-            if !(os::mkdir_recursive(&target_lib.dir_path(), u_rwx) &&
+            if !(os::mkdir_recursive(&target_lib.dir_path(), U_RWX) &&
                  os::copy_file(lib, &target_lib)) {
-                cond.raise((copy *lib, copy target_lib));
+                cond.raise(((*lib).clone(), target_lib.clone()));
             }
         }
     }
@@ -428,7 +475,7 @@ pub fn main() {
                getopts::opt_present(matches, "help");
     let json = getopts::opt_present(matches, "j") ||
                getopts::opt_present(matches, "json");
-    let mut args = copy matches.free;
+    let mut args = matches.free.clone();
 
     args.shift();
 
@@ -447,6 +494,7 @@ pub fn main() {
             ~"do" => usage::do_cmd(),
             ~"info" => usage::info(),
             ~"install" => usage::install(),
+            ~"list"    => usage::list(),
             ~"prefer" => usage::prefer(),
             ~"test" => usage::test(),
             ~"uninstall" => usage::uninstall(),

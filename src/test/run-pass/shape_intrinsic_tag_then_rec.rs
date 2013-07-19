@@ -13,20 +13,43 @@
 // interior record which is then itself interior to
 // something else, shape calculations were off.
 
+#[deriving(Clone)]
 enum opt_span {
-
     //hack (as opposed to option), to make `span` compile
     os_none,
     os_some(@Span),
 }
-struct Span {lo: uint, hi: uint, expanded_from: opt_span}
-struct Spanned<T> { data: T, span: Span }
+
+#[deriving(Clone)]
+struct Span {
+    lo: uint,
+    hi: uint,
+    expanded_from: opt_span,
+}
+
+#[deriving(Clone)]
+struct Spanned<T> {
+    data: T,
+    span: Span,
+}
+
 type ty_ = uint;
-struct Path_ { global: bool, idents: ~[~str], types: ~[@ty] }
+
+#[deriving(Clone)]
+struct Path_ {
+    global: bool,
+    idents: ~[~str],
+    types: ~[@ty],
+}
+
 type path = Spanned<Path_>;
 type ty = Spanned<ty_>;
 
-struct X { sp: Span, path: path }
+#[deriving(Clone)]
+struct X {
+    sp: Span,
+    path: path,
+}
 
 pub fn main() {
     let sp: Span = Span {lo: 57451u, hi: 57542u, expanded_from: os_none};
@@ -34,6 +57,6 @@ pub fn main() {
     let p_: Path_ = Path_ { global: true, idents: ~[~"hi"], types: ~[t] };
     let p: path = Spanned { data: p_, span: sp };
     let x = X { sp: sp, path: p };
-    error!(copy x.path);
-    error!(copy x);
+    error!(x.path.clone());
+    error!(x.clone());
 }

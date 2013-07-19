@@ -10,19 +10,23 @@
 
 
 
-fn g<X:Copy>(x: X) -> X { return x; }
+fn g<X>(x: X) -> X { return x; }
 
-struct Pair<T> {a: T, b: T}
+#[deriving(Clone)]
+struct Pair<T> {
+    a: T,
+    b: T
+}
 
-fn f<T:Copy>(t: T) -> Pair<T> {
-    let x: Pair<T> = Pair {a: copy t, b: t};
+fn f<T:Clone>(t: T) -> Pair<T> {
+    let x: Pair<T> = Pair {a: t.clone(), b: t};
     return g::<Pair<T>>(x);
 }
 
 pub fn main() {
     let b = f::<int>(10);
-    debug!(b.a);
-    debug!(b.b);
+    info!(b.a);
+    info!(b.b);
     assert_eq!(b.a, 10);
     assert_eq!(b.b, 10);
 }

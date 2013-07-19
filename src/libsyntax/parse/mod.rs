@@ -44,6 +44,8 @@ pub struct ParseSess {
     cm: @codemap::CodeMap, // better be the same as the one in the reader!
     next_id: node_id,
     span_diagnostic: @span_handler, // better be the same as the one in the reader!
+    /// Used to determine and report recursive mod inclusions
+    included_mod_stack: ~[Path],
 }
 
 pub fn new_parse_sess(demitter: Option<Emitter>) -> @mut ParseSess {
@@ -52,6 +54,7 @@ pub fn new_parse_sess(demitter: Option<Emitter>) -> @mut ParseSess {
         cm: cm,
         next_id: 1,
         span_diagnostic: mk_span_handler(mk_handler(demitter), cm),
+        included_mod_stack: ~[],
     }
 }
 
@@ -62,6 +65,7 @@ pub fn new_parse_sess_special_handler(sh: @span_handler,
         cm: cm,
         next_id: 1,
         span_diagnostic: sh,
+        included_mod_stack: ~[],
     }
 }
 
@@ -75,7 +79,7 @@ pub fn parse_crate_from_file(
     cfg: ast::crate_cfg,
     sess: @mut ParseSess
 ) -> @ast::crate {
-    new_parser_from_file(sess, /*bad*/ copy cfg, input).parse_crate_mod()
+    new_parser_from_file(sess, /*bad*/ cfg.clone(), input).parse_crate_mod()
     // why is there no p.abort_if_errors here?
 }
 
@@ -85,12 +89,10 @@ pub fn parse_crate_from_source_str(
     cfg: ast::crate_cfg,
     sess: @mut ParseSess
 ) -> @ast::crate {
-    let p = new_parser_from_source_str(
-        sess,
-        /*bad*/ copy cfg,
-        name,
-        source
-    );
+    let p = new_parser_from_source_str(sess,
+                                       /*bad*/ cfg.clone(),
+                                       name,
+                                       source);
     maybe_aborted(p.parse_crate_mod(),p)
 }
 
@@ -303,7 +305,7 @@ pub fn filemap_to_tts(sess: @mut ParseSess, filemap: @FileMap)
     // it appears to me that the cfg doesn't matter here... indeed,
     // parsing tt's probably shouldn't require a parser at all.
     let cfg = ~[];
-    let srdr = lexer::new_string_reader(copy sess.span_diagnostic, filemap);
+    let srdr = lexer::new_string_reader(sess.span_diagnostic, filemap);
     let p1 = Parser(sess, cfg, srdr as @reader);
     p1.parse_all_token_trees()
 }
@@ -312,11 +314,7 @@ pub fn filemap_to_tts(sess: @mut ParseSess, filemap: @FileMap)
 pub fn tts_to_parser(sess: @mut ParseSess,
                      tts: ~[ast::token_tree],
                      cfg: ast::crate_cfg) -> Parser {
-    let trdr = lexer::new_tt_reader(
-        copy sess.span_diagnostic,
-        None,
-        tts
-    );
+    let trdr = lexer::new_tt_reader(sess.span_diagnostic, None, tts);
     Parser(sess, cfg, trdr as @reader)
 }
 
@@ -366,7 +364,7 @@ mod test {
     #[test] fn path_exprs_1 () {
         assert_eq!(string_to_expr(@"a"),
                    @ast::expr{id:1,
-                              node:ast::expr_path(@ast::Path {span:sp(0,1),
+                              node:ast::expr_path(ast::Path {span:sp(0,1),
                                                               global:false,
                                                               idents:~[str_to_ident("a")],
                                                               rp:None,
@@ -378,7 +376,7 @@ mod test {
         assert_eq!(string_to_expr(@"::a::b"),
                    @ast::expr{id:1,
                                node:ast::expr_path(
-                                   @ast::Path {span:sp(0,6),
+                                    ast::Path {span:sp(0,6),
                                                global:true,
                                                idents:strs_to_idents(~["a","b"]),
                                                rp:None,
@@ -428,7 +426,7 @@ mod test {
                               node:ast::expr_ret(
                                   Some(@ast::expr{id:1,
                                                   node:ast::expr_path(
-                                                      @ast::Path{span:sp(7,8),
+                                                       ast::Path{span:sp(7,8),
                                                                  global:false,
                                                                  idents:~[str_to_ident("d")],
                                                                  rp:None,
@@ -444,7 +442,7 @@ mod test {
                        node: ast::stmt_expr(@ast::expr{
                            id: 1,
                            node: ast::expr_path(
-                               @ast::Path{
+                                ast::Path{
                                    span:sp(0,1),
                                    global:false,
                                    idents:~[str_to_ident("b")],
@@ -457,7 +455,7 @@ mod test {
     }
 
     fn parser_done(p: Parser){
-        assert_eq!(copy *p.token,token::EOF);
+        assert_eq!((*p.token).clone(), token::EOF);
     }
 
     #[test] fn parse_ident_pat () {
@@ -465,7 +463,7 @@ mod test {
         assert_eq!(parser.parse_pat(),
                    @ast::pat{id:1, // fixme
                              node: ast::pat_ident(ast::bind_infer,
-                                                  @ast::Path{
+                                                   ast::Path{
                                                       span:sp(0,1),
                                                       global:false,
                                                       idents:~[str_to_ident("b")],
@@ -482,19 +480,19 @@ mod test {
         assert_eq!(parser.parse_arg_general(true),
                    ast::arg{
                        is_mutbl: false,
-                       ty: @ast::Ty{id:3, // fixme
-                                    node: ast::ty_path(@ast::Path{
+                       ty: ast::Ty{id:3, // fixme
+                                    node: ast::ty_path(ast::Path{
                                         span:sp(4,4), // this is bizarre...
                                         // check this in the original parser?
                                         global:false,
                                         idents:~[str_to_ident("int")],
                                         rp: None,
                                         types: ~[]},
-                                                       @None, 2),
+                                                       None, 2),
                                     span:sp(4,7)},
                        pat: @ast::pat{id:1,
                                       node: ast::pat_ident(ast::bind_infer,
-                                                           @ast::Path{
+                                                            ast::Path{
                                                                span:sp(0,1),
                                                                global:false,
                                                                idents:~[str_to_ident("b")],
@@ -519,19 +517,19 @@ mod test {
                             node: ast::item_fn(ast::fn_decl{
                                 inputs: ~[ast::arg{
                                     is_mutbl: false,
-                                    ty: @ast::Ty{id:3, // fixme
-                                                node: ast::ty_path(@ast::Path{
+                                    ty: ast::Ty{id:3, // fixme
+                                                node: ast::ty_path(ast::Path{
                                         span:sp(10,13),
                                         global:false,
                                         idents:~[str_to_ident("int")],
                                         rp: None,
                                         types: ~[]},
-                                                       @None, 2),
+                                                       None, 2),
                                                 span:sp(10,13)},
                                     pat: @ast::pat{id:1, // fixme
                                                    node: ast::pat_ident(
                                                        ast::bind_infer,
-                                                       @ast::Path{
+                                                       ast::Path{
                                                            span:sp(6,7),
                                                            global:false,
                                                            idents:~[str_to_ident("b")],
@@ -542,7 +540,7 @@ mod test {
                                                   span: sp(6,7)},
                                     id: 4 // fixme
                                 }],
-                                output: @ast::Ty{id:5, // fixme
+                                output: ast::Ty{id:5, // fixme
                                                  node: ast::ty_nil,
                                                  span:sp(15,15)}, // not sure
                                 cf: ast::return_val
@@ -553,27 +551,26 @@ mod test {
                                         lifetimes: opt_vec::Empty,
                                         ty_params: opt_vec::Empty,
                                     },
-                                    spanned{
+                                    ast::blk {
+                                        view_items: ~[],
+                                        stmts: ~[@spanned{
+                                            node: ast::stmt_semi(@ast::expr{
+                                                id: 6,
+                                                node: ast::expr_path(
+                                                      ast::Path{
+                                                        span:sp(17,18),
+                                                        global:false,
+                                                        idents:~[str_to_ident("b")],
+                                                        rp:None,
+                                                        types: ~[]}),
+                                                span: sp(17,18)},
+                                                                 7), // fixme
+                                            span: sp(17,18)}],
+                                        expr: None,
+                                        id: 8, // fixme
+                                        rules: ast::default_blk, // no idea
                                         span: sp(15,21),
-                                        node: ast::blk_{
-                                            view_items: ~[],
-                                            stmts: ~[@spanned{
-                                                node: ast::stmt_semi(@ast::expr{
-                                                    id: 6,
-                                                    node: ast::expr_path(
-                                                        @ast::Path{
-                                                            span:sp(17,18),
-                                                            global:false,
-                                                            idents:~[str_to_ident("b")],
-                                                            rp:None,
-                                                            types: ~[]}),
-                                                    span: sp(17,18)},
-                                                                     7), // fixme
-                                                span: sp(17,18)}],
-                                            expr: None,
-                                            id: 8, // fixme
-                                            rules: ast::default_blk // no idea
-                                        }}),
+                                    }),
                             vis: ast::inherited,
                             span: sp(0,21)}));
     }

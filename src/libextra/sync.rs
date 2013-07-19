@@ -260,7 +260,7 @@ impl<'self> Condvar<'self> {
                             signal_waitqueue(&state.waiters);
                         }
                         // Enqueue ourself to be woken up by a signaller.
-                        let SignalEnd = SignalEnd.swap_unwrap();
+                        let SignalEnd = SignalEnd.take_unwrap();
                         state.blocked[condvar_id].tail.send(SignalEnd);
                     } else {
                         out_of_bounds = Some(state.blocked.len());
@@ -281,7 +281,7 @@ impl<'self> Condvar<'self> {
             // Unconditionally "block". (Might not actually block if a
             // signaller already sent -- I mean 'unconditionally' in contrast
             // with acquire().)
-            let _ = comm::recv_one(WaitEnd.swap_unwrap());
+            let _ = comm::recv_one(WaitEnd.take_unwrap());
         }
 
         // This is needed for a failing condition variable to reacquire the
@@ -353,7 +353,7 @@ impl<'self> Condvar<'self> {
                 }
             }
             do check_cvar_bounds(out_of_bounds, condvar_id, "cond.signal_on()") {
-                let queue = queue.swap_unwrap();
+                let queue = queue.take_unwrap();
                 broadcast_waitqueue(&queue)
             }
         }
@@ -1436,7 +1436,7 @@ mod tests {
         do x.write_downgrade |xwrite| {
             let mut xopt = Some(xwrite);
             do y.write_downgrade |_ywrite| {
-                y.downgrade(xopt.swap_unwrap());
+                y.downgrade(xopt.take_unwrap());
                 error!("oops, y.downgrade(x) should have failed!");
             }
         }

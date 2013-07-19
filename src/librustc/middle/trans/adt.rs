@@ -47,7 +47,6 @@
 use std::container::Map;
 use std::libc::c_ulonglong;
 use std::option::{Option, Some, None};
-use std::vec;
 
 use lib::llvm::{ValueRef, True, IntEQ, IntNE};
 use middle::trans::_match;
@@ -131,13 +130,13 @@ fn represent_type_uncached(cx: &mut CrateContext, t: ty::t) -> Repr {
         }
         ty::ty_struct(def_id, ref substs) => {
             let fields = ty::lookup_struct_fields(cx.tcx, def_id);
-            let ftys = do fields.map |field| {
+            let mut ftys = do fields.map |field| {
                 ty::lookup_field_type(cx.tcx, def_id, field.id, substs)
             };
             let packed = ty::lookup_packed(cx.tcx, def_id);
             let dtor = ty::ty_dtor(cx.tcx, def_id).has_drop_flag();
-            let ftys =
-                if dtor { ftys + [ty::mk_bool()] } else { ftys };
+            if dtor { ftys.push(ty::mk_bool()); }
+
             return Univariant(mk_struct(cx, ftys, packed), dtor)
         }
         ty::ty_enum(def_id, ref substs) => {
@@ -147,7 +146,7 @@ fn represent_type_uncached(cx: &mut CrateContext, t: ty::t) -> Repr {
                     mk_struct(cx, self.tys, false).size == 0
                 }
                 fn find_ptr(&self) -> Option<uint> {
-                    self.tys.iter().position_(|&ty| mono_data_classify(ty) == MonoNonNull)
+                    self.tys.iter().position(|&ty| mono_data_classify(ty) == MonoNonNull)
                 }
             }
 
@@ -192,9 +191,11 @@ fn represent_type_uncached(cx: &mut CrateContext, t: ty::t) -> Repr {
                             Some(ptrfield) => {
                                 return NullablePointer {
                                     nndiscr: discr,
-                                    nonnull: mk_struct(cx, cases[discr].tys, false),
+                                    nonnull: mk_struct(cx,
+                                                       cases[discr].tys,
+                                                       false),
                                     ptrfield: ptrfield,
-                                    nullfields: copy cases[1 - discr].tys
+                                    nullfields: cases[1 - discr].tys.clone()
                                 }
                             }
                             None => { }
@@ -219,7 +220,7 @@ fn mk_struct(cx: &mut CrateContext, tys: &[ty::t], packed: bool) -> Struct {
         size: machine::llsize_of_alloc(cx, llty_rec) /*bad*/as u64,
         align: machine::llalign_of_min(cx, llty_rec) /*bad*/as u64,
         packed: packed,
-        fields: vec::to_owned(tys)
+        fields: tys.to_owned(),
     }
 }
 
@@ -263,7 +264,7 @@ fn generic_fields_of(cx: &mut CrateContext, r: &Repr, sizing: bool) -> ~[Type] {
             let padding = largest_size - most_aligned.size;
 
             struct_llfields(cx, most_aligned, sizing)
-                + [Type::array(&Type::i8(), padding)]
+                + &[Type::array(&Type::i8(), padding)]
         }
     }
 }
@@ -512,7 +513,7 @@ pub fn trans_const(ccx: &mut CrateContext, r: &Repr, discr: int,
             let discr_ty = C_int(ccx, discr);
             let contents = build_const_struct(ccx, case,
                                               ~[discr_ty] + vals);
-            C_struct(contents + [padding(max_sz - case.size)])
+            C_struct(contents + &[padding(max_sz - case.size)])
         }
         NullablePointer{ nonnull: ref nonnull, nndiscr, ptrfield, _ } => {
             if discr == nndiscr {

@@ -1,5 +1,6 @@
 // Test that we do not permit moves from &[] matched by a vec pattern.
 
+#[deriving(Clone)]
 struct Foo {
     string: ~str
 }
@@ -11,7 +12,7 @@ pub fn main() {
         Foo { string: ~"baz" }
     ];
     match x {
-        [first, ..tail] => {
+        [_, ..tail] => {
             match tail {
                 [Foo { string: a }, Foo { string: b }] => {
                     //~^ ERROR cannot move out of dereference of & pointer
@@ -21,8 +22,8 @@ pub fn main() {
                     ::std::util::unreachable();
                 }
             }
-            let z = copy tail[0];
-            debug!(fmt!("%?", z));
+            let z = tail[0].clone();
+            info!(fmt!("%?", z));
         }
         _ => {
             ::std::util::unreachable();

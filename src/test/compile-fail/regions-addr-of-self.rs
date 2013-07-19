@@ -33,5 +33,5 @@ fn dog() -> dog {
 fn main() {
     let mut d = dog();
     d.chase_cat();
-    debug!("cats_chased: %u", d.cats_chased);
+    info!("cats_chased: %u", d.cats_chased);
 }

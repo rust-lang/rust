@@ -12,6 +12,7 @@
 
 
 use std::cmp;
+use std::num;
 use std::ops;
 use std::uint;
 use std::vec;
@@ -103,7 +104,7 @@ impl SmallBitv {
     }
 
     #[inline]
-    pub fn invert(&mut self) { self.bits = !self.bits; }
+    pub fn negate(&mut self) { self.bits = !self.bits; }
 }
 
 struct BigBitv {
@@ -159,7 +160,7 @@ impl BigBitv {
     }
 
     #[inline]
-    pub fn invert(&mut self) { for self.each_storage |w| { *w = !*w } }
+    pub fn negate(&mut self) { for self.each_storage |w| { *w = !*w } }
 
     #[inline]
     pub fn union(&mut self, b: &BigBitv, nbits: uint) -> bool {
@@ -265,7 +266,7 @@ impl Bitv {
         else {
             let nelems = nbits/uint::bits +
                          if nbits % uint::bits == 0 {0} else {1};
-            let elem = if init {!0} else {0};
+            let elem = if init {!0u} else {0u};
             let s = vec::from_elem(nelems, elem);
             Big(~BigBitv::new(s))
         };
@@ -365,9 +366,9 @@ impl Bitv {
 
     /// Invert all bits
     #[inline]
-    pub fn invert(&mut self) {
+    pub fn negate(&mut self) {
       match self.rep {
-        Small(ref mut b) => b.invert(),
+        Small(ref mut b) => b.negate(),
         Big(ref mut s) => for s.each_storage() |w| { *w = !*w } }
     }
 
@@ -488,18 +489,15 @@ impl Bitv {
 
 
     /**
-     * Compare a bitvector to a vector of uint
+     * Compare a bitvector to a vector of bool.
      *
-     * The uint vector is expected to only contain the values 0u and 1u. Both
-     * the bitvector and vector must have the same length
+     * Both the bitvector and vector must have the same length.
      */
-    pub fn eq_vec(&self, v: ~[uint]) -> bool {
+    pub fn eq_vec(&self, v: &[bool]) -> bool {
         assert_eq!(self.nbits, v.len());
         let mut i = 0;
         while i < self.nbits {
-            let w0 = self.get(i);
-            let w1 = v[i];
-            if !w0 && w1 != 0u || w0 && w1 == 0u { return false; }
+            if self.get(i) != v[i] { return false; }
             i = i + 1;
         }
         true
@@ -520,7 +518,7 @@ impl Clone for Bitv {
             Bitv{nbits: self.nbits, rep: Small(~SmallBitv{bits: b.bits})}
           }
           Big(ref b) => {
-            let mut st = vec::from_elem(self.nbits / uint::bits + 1, 0);
+            let mut st = vec::from_elem(self.nbits / uint::bits + 1, 0u);
             let len = st.len();
             for uint::range(0, len) |i| { st[i] = b.storage[i]; };
             Bitv{nbits: self.nbits, rep: Big(~BigBitv{storage: st})}
@@ -720,38 +718,6 @@ impl Set<uint> for BitvSet {
         *value < self.bitv.storage.len() * uint::bits && self.bitv.get(*value)
     }
 
-    fn insert(&mut self, value: uint) -> bool {
-        if self.contains(&value) {
-            return false;
-        }
-        let nbits = self.capacity();
-        if value >= nbits {
-            let newsize = uint::max(value, nbits * 2) / uint::bits + 1;
-            assert!(newsize > self.bitv.storage.len());
-            self.bitv.storage.grow(newsize, &0);
-        }
-        self.size += 1;
-        self.bitv.set(value, true);
-        return true;
-    }
-
-    fn remove(&mut self, value: &uint) -> bool {
-        if !self.contains(value) {
-            return false;
-        }
-        self.size -= 1;
-        self.bitv.set(*value, false);
-
-        // Attempt to truncate our storage
-        let mut i = self.bitv.storage.len();
-        while i > 1 && self.bitv.storage[i - 1] == 0 {
-            i -= 1;
-        }
-        self.bitv.storage.truncate(i);
-
-        return true;
-    }
-
     fn is_disjoint(&self, other: &BitvSet) -> bool {
         for self.intersection(other) |_| {
             return false;
@@ -818,6 +784,40 @@ impl Set<uint> for BitvSet {
     }
 }
 
+impl MutableSet<uint> for BitvSet {
+    fn insert(&mut self, value: uint) -> bool {
+        if self.contains(&value) {
+            return false;
+        }
+        let nbits = self.capacity();
+        if value >= nbits {
+            let newsize = num::max(value, nbits * 2) / uint::bits + 1;
+            assert!(newsize > self.bitv.storage.len());
+            self.bitv.storage.grow(newsize, &0);
+        }
+        self.size += 1;
+        self.bitv.set(value, true);
+        return true;
+    }
+
+    fn remove(&mut self, value: &uint) -> bool {
+        if !self.contains(value) {
+            return false;
+        }
+        self.size -= 1;
+        self.bitv.set(*value, false);
+
+        // Attempt to truncate our storage
+        let mut i = self.bitv.storage.len();
+        while i > 1 && self.bitv.storage[i - 1] == 0 {
+            i -= 1;
+        }
+        self.bitv.storage.truncate(i);
+
+        return true;
+    }
+}
+
 impl BitvSet {
     /// Visits each of the words that the two bit vectors (self and other)
     /// both have in common. The three yielded arguments are (bit location,
@@ -825,7 +825,7 @@ impl BitvSet {
     /// and w1/w2 are the words coming from the two vectors self, other.
     fn each_common(&self, other: &BitvSet,
                    f: &fn(uint, uint, uint) -> bool) -> bool {
-        let min = uint::min(self.bitv.storage.len(),
+        let min = num::min(self.bitv.storage.len(),
                             other.bitv.storage.len());
         self.bitv.storage.slice(0, min).iter().enumerate().advance(|(i, &w)| {
             f(i * uint::bits, w, other.bitv.storage[i])
@@ -843,7 +843,7 @@ impl BitvSet {
                     f: &fn(bool, uint, uint) -> bool) -> bool {
         let len1 = self.bitv.storage.len();
         let len2 = other.bitv.storage.len();
-        let min = uint::min(len1, len2);
+        let min = num::min(len1, len2);
 
         /* only one of these loops will execute and that's the point */
         for self.bitv.storage.slice(min, len1).iter().enumerate().advance |(i, &w)| {
@@ -872,7 +872,7 @@ mod tests {
     use std::rand;
     use std::rand::Rng;
 
-    static bench_bits : uint = 1 << 14;
+    static BENCH_BITS : uint = 1 << 14;
 
     #[test]
     fn test_to_str() {
@@ -886,16 +886,16 @@ mod tests {
     #[test]
     fn test_0_elements() {
         let act = Bitv::new(0u, false);
-        let exp = vec::from_elem::<uint>(0u, 0u);
+        let exp = vec::from_elem::<bool>(0u, false);
         assert!(act.eq_vec(exp));
     }
 
     #[test]
     fn test_1_element() {
         let mut act = Bitv::new(1u, false);
-        assert!(act.eq_vec(~[0u]));
+        assert!(act.eq_vec([false]));
         act = Bitv::new(1u, true);
-        assert!(act.eq_vec(~[1u]));
+        assert!(act.eq_vec([true]));
     }
 
     #[test]
@@ -912,11 +912,12 @@ mod tests {
         // all 0
 
         act = Bitv::new(10u, false);
-        assert!((act.eq_vec(~[0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u])));
+        assert!((act.eq_vec(
+                    [false, false, false, false, false, false, false, false, false, false])));
         // all 1
 
         act = Bitv::new(10u, true);
-        assert!((act.eq_vec(~[1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u])));
+        assert!((act.eq_vec([true, true, true, true, true, true, true, true, true, true])));
         // mixed
 
         act = Bitv::new(10u, false);
@@ -925,7 +926,7 @@ mod tests {
         act.set(2u, true);
         act.set(3u, true);
         act.set(4u, true);
-        assert!((act.eq_vec(~[1u, 1u, 1u, 1u, 1u, 0u, 0u, 0u, 0u, 0u])));
+        assert!((act.eq_vec([true, true, true, true, true, false, false, false, false, false])));
         // mixed
 
         act = Bitv::new(10u, false);
@@ -934,7 +935,7 @@ mod tests {
         act.set(7u, true);
         act.set(8u, true);
         act.set(9u, true);
-        assert!((act.eq_vec(~[0u, 0u, 0u, 0u, 0u, 1u, 1u, 1u, 1u, 1u])));
+        assert!((act.eq_vec([false, false, false, false, false, true, true, true, true, true])));
         // mixed
 
         act = Bitv::new(10u, false);
@@ -942,7 +943,7 @@ mod tests {
         act.set(3u, true);
         act.set(6u, true);
         act.set(9u, true);
-        assert!((act.eq_vec(~[1u, 0u, 0u, 1u, 0u, 0u, 1u, 0u, 0u, 1u])));
+        assert!((act.eq_vec([true, false, false, true, false, false, true, false, false, true])));
     }
 
     #[test]
@@ -952,16 +953,16 @@ mod tests {
 
         act = Bitv::new(31u, false);
         assert!(act.eq_vec(
-                       ~[0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
-                        0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
-                        0u, 0u, 0u, 0u, 0u]));
+                [false, false, false, false, false, false, false, false, false, false, false,
+                false, false, false, false, false, false, false, false, false, false, false, false,
+                false, false, false, false, false, false, false, false]));
         // all 1
 
         act = Bitv::new(31u, true);
         assert!(act.eq_vec(
-                       ~[1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u,
-                        1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u,
-                        1u, 1u, 1u, 1u, 1u]));
+                [true, true, true, true, true, true, true, true, true, true, true, true, true,
+                true, true, true, true, true, true, true, true, true, true, true, true, true, true,
+                true, true, true, true]));
         // mixed
 
         act = Bitv::new(31u, false);
@@ -974,9 +975,9 @@ mod tests {
         act.set(6u, true);
         act.set(7u, true);
         assert!(act.eq_vec(
-                       ~[1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 0u, 0u, 0u, 0u, 0u,
-                        0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
-                        0u, 0u, 0u, 0u, 0u]));
+                [true, true, true, true, true, true, true, true, false, false, false, false, false,
+                false, false, false, false, false, false, false, false, false, false, false, false,
+                false, false, false, false, false, false]));
         // mixed
 
         act = Bitv::new(31u, false);
@@ -989,9 +990,9 @@ mod tests {
         act.set(22u, true);
         act.set(23u, true);
         assert!(act.eq_vec(
-                       ~[0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
-                        0u, 0u, 0u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 0u, 0u,
-                        0u, 0u, 0u, 0u, 0u]));
+                [false, false, false, false, false, false, false, false, false, false, false,
+                false, false, false, false, false, true, true, true, true, true, true, true, true,
+                false, false, false, false, false, false, false]));
         // mixed
 
         act = Bitv::new(31u, false);
@@ -1003,9 +1004,9 @@ mod tests {
         act.set(29u, true);
         act.set(30u, true);
         assert!(act.eq_vec(
-                       ~[0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
-                        0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 1u, 1u,
-                        1u, 1u, 1u, 1u, 1u]));
+                [false, false, false, false, false, false, false, false, false, false, false,
+                false, false, false, false, false, false, false, false, false, false, false, false,
+                false, true, true, true, true, true, true, true]));
         // mixed
 
         act = Bitv::new(31u, false);
@@ -1013,9 +1014,9 @@ mod tests {
         act.set(17u, true);
         act.set(30u, true);
         assert!(act.eq_vec(
-                       ~[0u, 0u, 0u, 1u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
-                        0u, 0u, 0u, 0u, 1u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
-                        0u, 0u, 0u, 0u, 1u]));
+                [false, false, false, true, false, false, false, false, false, false, false, false,
+                false, false, false, false, false, true, false, false, false, false, false, false,
+                false, false, false, false, false, false, true]));
     }
 
     #[test]
@@ -1025,16 +1026,16 @@ mod tests {
 
         act = Bitv::new(32u, false);
         assert!(act.eq_vec(
-                       ~[0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
-                        0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
-                        0u, 0u, 0u, 0u, 0u, 0u]));
+                [false, false, false, false, false, false, false, false, false, false, false,
+                false, false, false, false, false, false, false, false, false, false, false, false,
+                false, false, false, false, false, false, false, false, false]));
         // all 1
 
         act = Bitv::new(32u, true);
         assert!(act.eq_vec(
-                       ~[1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u,
-                        1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u,
-                        1u, 1u, 1u, 1u, 1u, 1u]));
+                [true, true, true, true, true, true, true, true, true, true, true, true, true,
+                true, true, true, true, true, true, true, true, true, true, true, true, true, true,
+                true, true, true, true, true]));
         // mixed
 
         act = Bitv::new(32u, false);
@@ -1047,9 +1048,9 @@ mod tests {
         act.set(6u, true);
         act.set(7u, true);
         assert!(act.eq_vec(
-                       ~[1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 0u, 0u, 0u, 0u, 0u,
-                        0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
-                        0u, 0u, 0u, 0u, 0u, 0u]));
+                [true, true, true, true, true, true, true, true, false, false, false, false, false,
+                false, false, false, false, false, false, false, false, false, false, false, false,
+                false, false, false, false, false, false, false]));
         // mixed
 
         act = Bitv::new(32u, false);
@@ -1062,9 +1063,9 @@ mod tests {
         act.set(22u, true);
         act.set(23u, true);
         assert!(act.eq_vec(
-                       ~[0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
-                        0u, 0u, 0u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 0u, 0u,
-                        0u, 0u, 0u, 0u, 0u, 0u]));
+                [false, false, false, false, false, false, false, false, false, false, false,
+                false, false, false, false, false, true, true, true, true, true, true, true, true,
+                false, false, false, false, false, false, false, false]));
         // mixed
 
         act = Bitv::new(32u, false);
@@ -1077,9 +1078,9 @@ mod tests {
         act.set(30u, true);
         act.set(31u, true);
         assert!(act.eq_vec(
-                       ~[0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
-                        0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 1u, 1u,
-                        1u, 1u, 1u, 1u, 1u, 1u]));
+                [false, false, false, false, false, false, false, false, false, false, false,
+                false, false, false, false, false, false, false, false, false, false, false, false,
+                false, true, true, true, true, true, true, true, true]));
         // mixed
 
         act = Bitv::new(32u, false);
@@ -1088,9 +1089,9 @@ mod tests {
         act.set(30u, true);
         act.set(31u, true);
         assert!(act.eq_vec(
-                       ~[0u, 0u, 0u, 1u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
-                        0u, 0u, 0u, 0u, 1u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
-                        0u, 0u, 0u, 0u, 1u, 1u]));
+                [false, false, false, true, false, false, false, false, false, false, false, false,
+                false, false, false, false, false, true, false, false, false, false, false, false,
+                false, false, false, false, false, false, true, true]));
     }
 
     #[test]
@@ -1100,16 +1101,16 @@ mod tests {
 
         act = Bitv::new(33u, false);
         assert!(act.eq_vec(
-                       ~[0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
-                        0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
-                        0u, 0u, 0u, 0u, 0u, 0u, 0u]));
+                [false, false, false, false, false, false, false, false, false, false, false,
+                false, false, false, false, false, false, false, false, false, false, false, false,
+                false, false, false, false, false, false, false, false, false, false]));
         // all 1
 
         act = Bitv::new(33u, true);
         assert!(act.eq_vec(
-                       ~[1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u,
-                        1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u,
-                        1u, 1u, 1u, 1u, 1u, 1u, 1u]));
+                [true, true, true, true, true, true, true, true, true, true, true, true, true,
+                true, true, true, true, true, true, true, true, true, true, true, true, true, true,
+                true, true, true, true, true, true]));
         // mixed
 
         act = Bitv::new(33u, false);
@@ -1122,9 +1123,9 @@ mod tests {
         act.set(6u, true);
         act.set(7u, true);
         assert!(act.eq_vec(
-                       ~[1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 0u, 0u, 0u, 0u, 0u,
-                        0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
-                        0u, 0u, 0u, 0u, 0u, 0u, 0u]));
+                [true, true, true, true, true, true, true, true, false, false, false, false, false,
+                false, false, false, false, false, false, false, false, false, false, false, false,
+                false, false, false, false, false, false, false, false]));
         // mixed
 
         act = Bitv::new(33u, false);
@@ -1137,9 +1138,9 @@ mod tests {
         act.set(22u, true);
         act.set(23u, true);
         assert!(act.eq_vec(
-                       ~[0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
-                        0u, 0u, 0u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 0u, 0u,
-                        0u, 0u, 0u, 0u, 0u, 0u, 0u]));
+                [false, false, false, false, false, false, false, false, false, false, false,
+                false, false, false, false, false, true, true, true, true, true, true, true, true,
+                false, false, false, false, false, false, false, false, false]));
         // mixed
 
         act = Bitv::new(33u, false);
@@ -1152,9 +1153,9 @@ mod tests {
         act.set(30u, true);
         act.set(31u, true);
         assert!(act.eq_vec(
-                       ~[0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
-                        0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 1u, 1u,
-                        1u, 1u, 1u, 1u, 1u, 1u, 0u]));
+                [false, false, false, false, false, false, false, false, false, false, false,
+                false, false, false, false, false, false, false, false, false, false, false, false,
+                false, true, true, true, true, true, true, true, true, false]));
         // mixed
 
         act = Bitv::new(33u, false);
@@ -1164,9 +1165,9 @@ mod tests {
         act.set(31u, true);
         act.set(32u, true);
         assert!(act.eq_vec(
-                       ~[0u, 0u, 0u, 1u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
-                        0u, 0u, 0u, 0u, 1u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
-                        0u, 0u, 0u, 0u, 1u, 1u, 1u]));
+                [false, false, false, true, false, false, false, false, false, false, false, false,
+                false, false, false, false, false, true, false, false, false, false, false, false,
+                false, false, false, false, false, false, true, true, true]));
     }
 
     #[test]
@@ -1452,19 +1453,19 @@ mod tests {
     fn bench_big_bitv_big(b: &mut BenchHarness) {
         let mut r = rng();
         let mut storage = ~[];
-        storage.grow(bench_bits / uint::bits, &0);
+        storage.grow(BENCH_BITS / uint::bits, &0u);
         let mut bitv = BigBitv::new(storage);
         do b.iter {
-            bitv.set((r.next() as uint) % bench_bits, true);
+            bitv.set((r.next() as uint) % BENCH_BITS, true);
         }
     }
 
     #[bench]
     fn bench_bitv_big(b: &mut BenchHarness) {
         let mut r = rng();
-        let mut bitv = Bitv::new(bench_bits, false);
+        let mut bitv = Bitv::new(BENCH_BITS, false);
         do b.iter {
-            bitv.set((r.next() as uint) % bench_bits, true);
+            bitv.set((r.next() as uint) % BENCH_BITS, true);
         }
     }
 
@@ -1491,14 +1492,14 @@ mod tests {
         let mut r = rng();
         let mut bitv = BitvSet::new();
         do b.iter {
-            bitv.insert((r.next() as uint) % bench_bits);
+            bitv.insert((r.next() as uint) % BENCH_BITS);
         }
     }
 
     #[bench]
     fn bench_bitv_big_union(b: &mut BenchHarness) {
-        let mut b1 = Bitv::new(bench_bits, false);
-        let b2 = Bitv::new(bench_bits, false);
+        let mut b1 = Bitv::new(BENCH_BITS, false);
+        let b2 = Bitv::new(BENCH_BITS, false);
         do b.iter {
             b1.union(&b2);
         }

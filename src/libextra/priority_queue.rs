@@ -12,12 +12,14 @@
 
 #[allow(missing_doc)];
 
-
+use std::clone::Clone;
 use std::unstable::intrinsics::{move_val_init, init};
 use std::util::{replace, swap};
 use std::vec;
+use std::iterator::FromIterator;
 
 /// A priority queue implemented with a binary heap
+#[deriving(Clone)]
 pub struct PriorityQueue<T> {
     priv data: ~[T],
 }
@@ -186,6 +188,24 @@ pub struct PriorityQueueIterator <'self, T> {
 impl<'self, T> Iterator<&'self T> for PriorityQueueIterator<'self, T> {
     #[inline]
     fn next(&mut self) -> Option<(&'self T)> { self.iter.next() }
+
+    #[inline]
+    fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
+}
+
+impl<T: Ord, Iter: Iterator<T>> FromIterator<T, Iter> for PriorityQueue<T> {
+    pub fn from_iterator(iter: &mut Iter) -> PriorityQueue<T> {
+        let (lower, _) = iter.size_hint();
+
+        let mut q = PriorityQueue::new();
+        q.reserve_at_least(lower);
+
+        for iter.advance |elem| {
+            q.push(elem);
+        }
+
+        q
+    }
 }
 
 #[cfg(test)]
@@ -289,8 +309,8 @@ mod tests {
     }
 
     fn check_to_vec(data: ~[int]) {
-        let heap = PriorityQueue::from_vec(copy data);
-        assert_eq!(merge_sort((copy heap).to_vec(), |x, y| x.le(y)),
+        let heap = PriorityQueue::from_vec(data.clone());
+        assert_eq!(merge_sort(heap.clone().to_vec(), |x, y| x.le(y)),
                    merge_sort(data, |x, y| x.le(y)));
         assert_eq!(heap.to_sorted_vec(), merge_sort(data, |x, y| x.le(y)));
     }
@@ -338,4 +358,15 @@ mod tests {
     #[should_fail]
     #[ignore(cfg(windows))]
     fn test_empty_replace() { let mut heap = PriorityQueue::new(); heap.replace(5); }
+
+    #[test]
+    fn test_from_iter() {
+        let xs = ~[9u, 8, 7, 6, 5, 4, 3, 2, 1];
+
+        let mut q: PriorityQueue<uint> = xs.rev_iter().transform(|&x| x).collect();
+
+        for xs.iter().advance |&x| {
+            assert_eq!(q.pop(), x);
+        }
+    }
 }

@@ -25,11 +25,11 @@ use syntax::{ast, attr};
 
 use std::cast;
 use std::io;
+use std::num;
 use std::option;
 use std::os::consts::{macos, freebsd, linux, android, win32};
 use std::ptr;
 use std::str;
-use std::uint;
 use std::vec;
 use extra::flate;
 
@@ -55,11 +55,11 @@ pub struct Context {
 
 pub fn load_library_crate(cx: &Context) -> (~str, @~[u8]) {
     match find_library_crate(cx) {
-      Some(ref t) => return (/*bad*/copy *t),
+      Some(ref t) => return (/*bad*/(*t).clone()),
       None => {
-        cx.diag.span_fatal(
-            cx.span, fmt!("can't find crate for `%s`",
-                          token::ident_to_str(&cx.ident)));
+        cx.diag.span_fatal(cx.span,
+                           fmt!("can't find crate for `%s`",
+                                token::ident_to_str(&cx.ident)));
       }
     }
 }
@@ -127,7 +127,9 @@ fn find_library_crate_aux(
             cx.diag.span_err(
                     cx.span, fmt!("multiple matching crates for `%s`", crate_name));
                 cx.diag.handler().note("candidates:");
-                for matches.iter().advance |&(ident, data)| {
+                for matches.iter().advance |pair| {
+                    let ident = pair.first();
+                    let data = pair.second();
                     cx.diag.handler().note(fmt!("path: %s", ident));
                     let attrs = decoder::get_crate_attributes(data);
                     note_linkage_attrs(cx.intr, cx.diag, attrs);
@@ -211,7 +213,7 @@ fn get_metadata_section(os: os,
                 let vlen = encoder::metadata_encoding_version.len();
                 debug!("checking %u bytes of metadata-version stamp",
                        vlen);
-                let minsz = uint::min(vlen, csz);
+                let minsz = num::min(vlen, csz);
                 let mut version_ok = false;
                 do vec::raw::buf_as_slice(cvbuf, minsz) |buf0| {
                     version_ok = (buf0 ==

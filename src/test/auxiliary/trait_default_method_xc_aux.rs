@@ -1,9 +1,11 @@
-#[allow(default_methods)];
+
+pub struct Something { x: int }
 
 pub trait A {
     fn f(&self) -> int;
     fn g(&self) -> int { 10 }
-    fn h(&self) -> int { 10 }
+    fn h(&self) -> int { 11 }
+    fn lurr(x: &Self, y: &Self) -> int { x.g() + y.h() }
 }
 
 
@@ -11,8 +13,13 @@ impl A for int {
     fn f(&self) -> int { 10 }
 }
 
+impl A for Something {
+    fn f(&self) -> int { 10 }
+}
+
 trait B<T> {
     fn thing<U>(&self, x: T, y: U) -> (T, U) { (x, y) }
+    fn staticthing<U>(z: &Self, x: T, y: U) -> (T, U) { (x, y) }
 }
 
 impl<T> B<T> for int { }

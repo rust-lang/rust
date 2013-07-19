@@ -17,9 +17,11 @@
 
 
 use std::cmp;
-use std::container::{Container, Mutable, Map, Set};
+use std::iterator::{Iterator,IteratorUtil,ZipIterator,Counter,EnumerateIterator,FilterMapIterator};
 use std::uint;
 use std::util::replace;
+use std::vec::{VecIterator,VecMutIterator,VecRevIterator,VecMutRevIterator};
+use std::vec::VecConsumeIterator;
 
 #[allow(missing_doc)]
 pub struct SmallIntMap<T> {
@@ -65,7 +67,9 @@ impl<V> Map<uint, V> for SmallIntMap<V> {
             None
         }
     }
+}
 
+impl<V> MutableMap<uint, V> for SmallIntMap<V> {
     /// Return a mutable reference to the value corresponding to the key
     fn find_mut<'a>(&'a mut self, key: &uint) -> Option<&'a mut V> {
         if *key < self.v.len() {
@@ -157,8 +161,8 @@ impl<V> SmallIntMap<V> {
     /// Visit all key-value pairs in reverse order
     pub fn each_reverse<'a>(&'a self, it: &fn(uint, &'a V) -> bool) -> bool {
         for uint::range_rev(self.v.len(), 0) |i| {
-            match self.v[i - 1] {
-              Some(ref elt) => if !it(i - 1, elt) { return false; },
+            match self.v[i] {
+              Some(ref elt) => if !it(i, elt) { return false; },
               None => ()
             }
         }
@@ -168,14 +172,59 @@ impl<V> SmallIntMap<V> {
     pub fn get<'a>(&'a self, key: &uint) -> &'a V {
         self.find(key).expect("key not present")
     }
+
+    /// An iterator visiting all key-value pairs in ascending order by the keys.
+    /// Iterator element type is (uint, &'r V)
+    pub fn iter<'r>(&'r self) -> SmallIntMapIterator<'r, V> {
+        SmallIntMapIterator {
+            iter: Counter::new(0,1).zip(self.v.iter())
+        }
+    }
+
+    /// An iterator visiting all key-value pairs in ascending order by the keys,
+    /// with mutable references to the values
+    /// Iterator element type is (uint, &'r mut V)
+    pub fn mut_iter<'r>(&'r mut self) -> SmallIntMapMutIterator<'r, V> {
+        SmallIntMapMutIterator {
+            iter: Counter::new(0,1).zip(self.v.mut_iter())
+        }
+    }
+
+    /// An iterator visiting all key-value pairs in descending order by the keys.
+    /// Iterator element type is (uint, &'r V)
+    pub fn rev_iter<'r>(&'r self) -> SmallIntMapRevIterator<'r, V> {
+        SmallIntMapRevIterator {
+            iter: Counter::new(self.len() as int - 1, -1).zip(self.v.rev_iter())
+        }
+    }
+
+    /// An iterator visiting all key-value pairs in descending order by the keys,
+    /// with mutable references to the values
+    /// Iterator element type is (uint, &'r mut V)
+    pub fn mut_rev_iter<'r>(&'r mut self) -> SmallIntMapMutRevIterator <'r, V> {
+        SmallIntMapMutRevIterator {
+            iter: Counter::new(self.len() as int - 1, -1).zip(self.v.mut_rev_iter())
+        }
+    }
+
+    /// Empties the hash map, moving all values into the specified closure
+    pub fn consume(&mut self)
+        -> FilterMapIterator<(uint, Option<V>), (uint, V),
+                EnumerateIterator<Option<V>, VecConsumeIterator<Option<V>>>>
+    {
+        let values = replace(&mut self.v, ~[]);
+        values.consume_iter().enumerate().filter_map(|(i, v)| {
+            v.map_consume(|v| (i, v))
+        })
+    }
 }
 
-impl<V:Copy> SmallIntMap<V> {
+impl<V:Clone> SmallIntMap<V> {
     pub fn update_with_key(&mut self, key: uint, val: V,
                            ff: &fn(uint, V, V) -> V) -> bool {
         let new_val = match self.find(&key) {
             None => val,
-            Some(orig) => ff(key, copy *orig, val)
+            Some(orig) => ff(key, (*orig).clone(), val)
         };
         self.insert(key, new_val)
     }
@@ -185,6 +234,95 @@ impl<V:Copy> SmallIntMap<V> {
         self.update_with_key(key, newval, |_k, v, v1| ff(v,v1))
     }
 }
+
+
+macro_rules! iterator {
+    /* FIXME: #4375 Cannot attach documentation/attributes to a macro generated struct.
+    (struct $name:ident -> $ptr:ty, $elem:ty) => {
+        pub struct $name<'self, T> {
+            priv ptr: $ptr,
+            priv end: $ptr,
+            priv lifetime: $elem // FIXME: #5922
+        }
+    };*/
+    (impl $name:ident -> $elem:ty) => {
+        impl<'self, T> Iterator<(uint, $elem)> for $name<'self, T> {
+            #[inline]
+            pub fn next(&mut self) -> Option<(uint, $elem)> {
+                for self.iter.advance |(idx, elem)| {
+                    match elem {
+                        &None => {}
+                        &Some(ref e) => { return Some((idx as uint, e)) }
+                    }
+                }
+
+                None
+            }
+        }
+    }
+}
+
+macro_rules! mut_iterator {
+    /* FIXME: #4375 Cannot attach documentation/attributes to a macro generated struct.
+    (struct $name:ident -> $ptr:ty, $elem:ty) => {
+        pub struct $name<'self, T> {
+            priv ptr: $ptr,
+            priv end: $ptr,
+            priv lifetime: $elem // FIXME: #5922
+        }
+    };*/
+    (impl $name:ident -> $elem:ty) => {
+        impl<'self, T> Iterator<(uint, $elem)> for $name<'self, T> {
+            #[inline]
+            pub fn next(&mut self) -> Option<(uint, $elem)> {
+                for self.iter.advance |(idx, elem)| {
+                    match elem {
+                        &None => {}
+                        &Some(ref mut e) => { return Some((idx as uint, e)) }
+                    }
+                }
+
+                None
+            }
+        }
+    }
+}
+
+pub struct SmallIntMapIterator<'self, T> {
+    priv iter: ZipIterator<int,
+                           Counter<int>,
+                           &'self Option<T>,
+                           VecIterator<'self, Option<T> > >
+}
+
+iterator!{impl SmallIntMapIterator -> &'self T}
+
+pub struct SmallIntMapMutIterator<'self, T> {
+    priv iter: ZipIterator<int,
+                           Counter<int>,
+                           &'self mut Option<T>,
+                           VecMutIterator<'self, Option<T> > >
+}
+
+mut_iterator!{impl SmallIntMapMutIterator -> &'self mut T}
+
+pub struct SmallIntMapRevIterator<'self, T> {
+    priv iter: ZipIterator<int,
+                           Counter<int>,
+                           &'self Option<T>,
+                           VecRevIterator<'self, Option<T> > >
+}
+
+iterator!{impl SmallIntMapRevIterator -> &'self T}
+
+pub struct SmallIntMapMutRevIterator<'self, T> {
+    priv iter: ZipIterator<int,
+                           Counter<int>,
+                           &'self mut Option<T>,
+                           VecMutRevIterator<'self, Option<T> > >
+}
+
+mut_iterator!{impl SmallIntMapMutRevIterator -> &'self mut T}
 
 /// A set implemented on top of the SmallIntMap type. This set is always a set
 /// of integers, and the space requirements are on the order of the highest
@@ -211,14 +349,6 @@ impl Mutable for SmallIntSet {
 impl Set<uint> for SmallIntSet {
     /// Return true if the set contains a value
     fn contains(&self, value: &uint) -> bool { self.map.contains_key(value) }
-
-    /// Add a value to the set. Return true if the value was not already
-    /// present in the set.
-    fn insert(&mut self, value: uint) -> bool { self.map.insert(value, ()) }
-
-    /// Remove a value from the set. Return true if the value was
-    /// present in the set.
-    fn remove(&mut self, value: &uint) -> bool { self.map.remove(value) }
 
     /// Return true if the set has no elements in common with `other`.
     /// This is equivalent to checking for an empty uintersection.
@@ -275,13 +405,72 @@ impl Set<uint> for SmallIntSet {
     }
 }
 
+impl MutableSet<uint> for SmallIntSet {
+    /// Add a value to the set. Return true if the value was not already
+    /// present in the set.
+    fn insert(&mut self, value: uint) -> bool { self.map.insert(value, ()) }
+
+    /// Remove a value from the set. Return true if the value was
+    /// present in the set.
+    fn remove(&mut self, value: &uint) -> bool { self.map.remove(value) }
+}
+
 impl SmallIntSet {
     /// Create an empty SmallIntSet
     pub fn new() -> SmallIntSet { SmallIntSet{map: SmallIntMap::new()} }
 
     /// Visit all values in order
     pub fn each(&self, f: &fn(&uint) -> bool) -> bool { self.map.each_key(f) }
+
+    /// An iterator visiting all set members in ascending order.
+    /// Iterator element type is uint
+    pub fn iter<'r>(&'r self) -> SmallIntSetIterator<'r> {
+        SmallIntSetIterator {
+            iter: self.map.iter()
+        }
+    }
+
+    /// An iterator visiting all set members in descending order.
+    /// Iterator element type is uint
+    pub fn rev_iter<'r>(&'r mut self) -> SmallIntSetRevIterator<'r> {
+        SmallIntSetRevIterator {
+            iter: self.map.rev_iter()
+        }
+    }
+
 }
+
+pub struct SmallIntSetIterator<'self> {
+    priv iter: SmallIntMapIterator<'self, ()>
+}
+
+pub struct SmallIntSetRevIterator<'self> {
+    priv iter: SmallIntMapRevIterator<'self,()>
+}
+
+impl<'self> Iterator<uint> for SmallIntSetIterator<'self> {
+    #[inline]
+    pub fn next(&mut self) -> Option<uint> {
+        let next_opt = self.iter.next();
+        match next_opt {
+            None => { None }
+            Some((idx, _)) => { Some(idx) }
+        }
+    }
+}
+
+impl<'self> Iterator<uint> for SmallIntSetRevIterator<'self> {
+    #[inline]
+    pub fn next(&mut self) -> Option<uint> {
+        let next_opt = self.iter.next();
+        match next_opt {
+            None => { None }
+            Some((idx, _)) => { Some(idx) }
+        }
+    }
+}
+
+
 
 #[cfg(test)]
 mod tests {
@@ -374,6 +563,97 @@ mod tests {
         m.insert(1, 2);
         assert_eq!(m.pop(&1), Some(2));
         assert_eq!(m.pop(&1), None);
+    }
+
+    #[test]
+    fn test_iterator() {
+        let mut a = SmallIntMap::new();
+
+        assert!(a.insert(0,1));
+        assert!(a.insert(1,2));
+        assert!(a.insert(2,5));
+        assert!(a.insert(3,10));
+        assert!(a.insert(4,11));
+
+        let mut it = a.iter();
+        assert_eq!(it.next().unwrap(), (0, &1));
+        assert_eq!(it.next().unwrap(), (1, &2));
+        assert_eq!(it.next().unwrap(), (2, &5));
+        assert_eq!(it.next().unwrap(), (3, &10));
+        assert_eq!(it.next().unwrap(), (4, &11));
+        assert!(it.next().is_none());
+    }
+
+    #[test]
+    fn test_mut_iterator() {
+        let mut a = SmallIntMap::new();
+
+        assert!(a.insert(0,1));
+        assert!(a.insert(1,1));
+        assert!(a.insert(2,1));
+        assert!(a.insert(3,1));
+        assert!(a.insert(4,1));
+
+        for a.mut_iter().advance |(_,v)| {
+            *v += 1;
+        }
+
+       assert!(a.iter().all(|(_,v)| *v == 2));
+    }
+
+    #[test]
+    fn test_rev_iterator() {
+       let mut a = SmallIntMap::new();
+
+        assert!(a.insert(0,1));
+        assert!(a.insert(1,2));
+        assert!(a.insert(2,5));
+        assert!(a.insert(3,10));
+        assert!(a.insert(4,11));
+
+        let mut b = SmallIntMap::new();
+
+        assert!(b.insert(0,11));
+        assert!(b.insert(1,10));
+        assert!(b.insert(2,5));
+        assert!(b.insert(3,2));
+        assert!(b.insert(4,1));
+
+        let (a_it, b_it) = (a.iter(), b.rev_iter());
+
+        assert!(a_it.zip(b_it).all(|( (_ ,v1), (_, v2) )| *v1 == *v2));
+    }
+
+    #[test]
+    fn test_mut_rev_iterator() {
+        let mut a = SmallIntMap::new();
+
+        assert!(a.insert(0,5));
+        assert!(a.insert(1,4));
+        assert!(a.insert(2,3));
+        assert!(a.insert(3,2));
+        assert!(a.insert(4,1));
+
+        for a.mut_rev_iter().advance |(i,v)| {
+            *v += i as int;
+        }
+
+        assert!(a.iter().all(|(_,v)| *v == 5 ));
+    }
+
+    #[test]
+    fn test_consume() {
+        let mut m = SmallIntMap::new();
+        m.insert(1, ~2);
+        let mut called = false;
+        for m.consume().advance |(k, v)| {
+            assert!(!called);
+            called = true;
+            assert_eq!(k, 1);
+            assert_eq!(v, ~2);
+        }
+        assert!(called);
+        m.insert(2, ~1);
     }
 }
 
@@ -535,4 +815,41 @@ mod test_set {
         }
         assert_eq!(i, expected.len());
     }
+
+    #[test]
+    fn test_iterator() {
+        let mut a = SmallIntSet::new();
+
+        assert!(a.insert(0));
+        assert!(a.insert(1));
+        assert!(a.insert(2));
+        assert!(a.insert(3));
+        assert!(a.insert(4));
+
+        let mut it = a.iter();
+        assert_eq!(it.next().unwrap(), 0);
+        assert_eq!(it.next().unwrap(), 1);
+        assert_eq!(it.next().unwrap(), 2);
+        assert_eq!(it.next().unwrap(), 3);
+        assert_eq!(it.next().unwrap(), 4);
+        assert!(it.next().is_none());
+    }
+
+    #[test]
+    fn test_rev_iterator() {
+       let mut a = SmallIntSet::new();
+
+        assert!(a.insert(0));
+        assert!(a.insert(1));
+        assert!(a.insert(2));
+        assert!(a.insert(3));
+        assert!(a.insert(4));
+
+        let a_it = a.rev_iter();
+
+        assert!(do a_it.enumerate().all |( i, v2 )| {
+            i + v2 == 4
+        });
+    }
+
 }

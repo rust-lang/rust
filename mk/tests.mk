@@ -15,7 +15,7 @@
 
 # The names of crates that must be tested
 TEST_TARGET_CRATES = std extra
-TEST_HOST_CRATES = syntax rustc rustdoc rusti rust rustpkg
+TEST_HOST_CRATES = syntax rustc rustdoc rust rustpkg rusti
 TEST_CRATES = $(TEST_TARGET_CRATES) $(TEST_HOST_CRATES)
 
 # Markdown files under doc/ that should have their code extracted and run
@@ -34,9 +34,12 @@ ifdef CHECK_XFAILS
   TESTARGS += --ignored
 endif
 
+CTEST_BENCH = --bench
+
 # Arguments to the cfail/rfail/rpass/bench tests
 ifdef CFG_VALGRIND
   CTEST_RUNTOOL = --runtool "$(CFG_VALGRIND)"
+  CTEST_BENCH =
 endif
 
 # Arguments to the perf tests
@@ -59,6 +62,21 @@ endif
 
 TEST_LOG_FILE=tmp/check-stage$(1)-T-$(2)-H-$(3)-$(4).log
 TEST_OK_FILE=tmp/check-stage$(1)-T-$(2)-H-$(3)-$(4).ok
+
+TEST_RATCHET_FILE=tmp/check-stage$(1)-T-$(2)-H-$(3)-$(4)-metrics.json
+TEST_RATCHET_NOISE_PERCENT=10.0
+
+# Whether to ratchet or merely save benchmarks
+ifdef CFG_RATCHET_BENCH
+CRATE_TEST_BENCH_ARGS=\
+  --test $(CTEST_BENCH) \
+  --ratchet-metrics $(call TEST_RATCHET_FILE,$(1),$(2),$(3),$(4)) \
+  --ratchet-noise-percent $(TEST_RATCHET_NOISE_PERCENT)
+else
+CRATE_TEST_BENCH_ARGS=\
+  --test $(CTEST_BENCH) \
+  --save-metrics $(call TEST_RATCHET_FILE,$(1),$(2),$(3),$(4))
+endif
 
 define DEF_TARGET_COMMANDS
 
@@ -157,6 +175,7 @@ check-test: cleantestlibs cleantmptestlogs all check-stage2-rfail
 
 check-lite: cleantestlibs cleantmptestlogs \
 	check-stage2-std check-stage2-extra check-stage2-rpass \
+	check-stage2-rustpkg check-stage2-rusti \
 	check-stage2-rfail check-stage2-cfail
 	$(Q)$(CFG_PYTHON) $(S)src/etc/check-summary.py tmp/*.log
 
@@ -245,6 +264,7 @@ check-stage$(1)-T-$(2)-H-$(3)-exec:     				\
         check-stage$(1)-T-$(2)-H-$(3)-crates-exec                      \
 	check-stage$(1)-T-$(2)-H-$(3)-bench-exec			\
 	check-stage$(1)-T-$(2)-H-$(3)-debuginfo-exec \
+	check-stage$(1)-T-$(2)-H-$(3)-codegen-exec \
 	check-stage$(1)-T-$(2)-H-$(3)-doc-exec \
 	check-stage$(1)-T-$(2)-H-$(3)-pretty-exec
 
@@ -357,11 +377,14 @@ $(foreach host,$(CFG_HOST_TRIPLES), \
 define DEF_TEST_CRATE_RULES
 check-stage$(1)-T-$(2)-H-$(3)-$(4)-exec: $$(call TEST_OK_FILE,$(1),$(2),$(3),$(4))
 
+check-stage$(1)-T-$(2)-H-$(3)-$(4)-exec: $$(call TEST_OK_FILE,$(1),$(2),$(3),$(4))
+
 $$(call TEST_OK_FILE,$(1),$(2),$(3),$(4)): \
 		$(3)/stage$(1)/test/$(4)test-$(2)$$(X_$(2))
 	@$$(call E, run: $$<)
 	$$(Q)$$(call CFG_RUN_TEST_$(2),$$<,$(2),$(3)) $$(TESTARGS)	\
 	--logfile $$(call TEST_LOG_FILE,$(1),$(2),$(3),$(4)) \
+	$$(call CRATE_TEST_BENCH_ARGS,$(1),$(2),$(3),$(4)) \
 	&& touch $$@
 endef
 
@@ -429,6 +452,8 @@ CFAIL_RS := $(wildcard $(S)src/test/compile-fail/*.rs)
 BENCH_RS := $(wildcard $(S)src/test/bench/*.rs)
 PRETTY_RS := $(wildcard $(S)src/test/pretty/*.rs)
 DEBUGINFO_RS := $(wildcard $(S)src/test/debug-info/*.rs)
+CODEGEN_RS := $(wildcard $(S)src/test/codegen/*.rs)
+CODEGEN_CC := $(wildcard $(S)src/test/codegen/*.cc)
 
 # perf tests are the same as bench tests only they run under
 # a performance monitor.
@@ -442,6 +467,7 @@ BENCH_TESTS := $(BENCH_RS)
 PERF_TESTS := $(PERF_RS)
 PRETTY_TESTS := $(PRETTY_RS)
 DEBUGINFO_TESTS := $(DEBUGINFO_RS)
+CODEGEN_TESTS := $(CODEGEN_RS) $(CODEGEN_CC)
 
 CTEST_SRC_BASE_rpass = run-pass
 CTEST_BUILD_BASE_rpass = run-pass
@@ -478,8 +504,17 @@ CTEST_BUILD_BASE_debuginfo = debug-info
 CTEST_MODE_debuginfo = debug-info
 CTEST_RUNTOOL_debuginfo = $(CTEST_RUNTOOL)
 
+CTEST_SRC_BASE_codegen = codegen
+CTEST_BUILD_BASE_codegen = codegen
+CTEST_MODE_codegen = codegen
+CTEST_RUNTOOL_codegen = $(CTEST_RUNTOOL)
+
 ifeq ($(CFG_GDB),)
 CTEST_DISABLE_debuginfo = "no gdb found"
+endif
+
+ifeq ($(CFG_CLANG),)
+CTEST_DISABLE_codegen = "no clang found"
 endif
 
 ifeq ($(CFG_OSTYPE),apple-darwin)
@@ -506,6 +541,8 @@ CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3) :=						\
 		--compile-lib-path $$(HLIB$(1)_H_$(3))				\
         --run-lib-path $$(TLIB$(1)_T_$(2)_H_$(3))			\
         --rustc-path $$(HBIN$(1)_H_$(3))/rustc$$(X_$(3))			\
+        --clang-path $(if $(CFG_CLANG),$(CFG_CLANG),clang) \
+        --llvm-bin-path $(CFG_LLVM_INST_DIR_$(CFG_BUILD_TRIPLE))/bin \
         --aux-base $$(S)src/test/auxiliary/                 \
         --stage-id stage$(1)-$(2)							\
         --target $(2)                                       \
@@ -521,6 +558,7 @@ CTEST_DEPS_cfail_$(1)-T-$(2)-H-$(3) = $$(CFAIL_TESTS)
 CTEST_DEPS_bench_$(1)-T-$(2)-H-$(3) = $$(BENCH_TESTS)
 CTEST_DEPS_perf_$(1)-T-$(2)-H-$(3) = $$(PERF_TESTS)
 CTEST_DEPS_debuginfo_$(1)-T-$(2)-H-$(3) = $$(DEBUGINFO_TESTS)
+CTEST_DEPS_codegen_$(1)-T-$(2)-H-$(3) = $$(CODEGEN_TESTS)
 
 endef
 
@@ -535,6 +573,7 @@ CTEST_ARGS$(1)-T-$(2)-H-$(3)-$(4) := \
         $$(CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3))	\
         --src-base $$(S)src/test/$$(CTEST_SRC_BASE_$(4))/ \
         --build-base $(3)/test/$$(CTEST_BUILD_BASE_$(4))/ \
+        --ratchet-metrics $(call TEST_RATCHET_FILE,$(1),$(2),$(3),$(4)) \
         --mode $$(CTEST_MODE_$(4)) \
 	$$(CTEST_RUNTOOL_$(4))
 
@@ -564,7 +603,7 @@ endif
 
 endef
 
-CTEST_NAMES = rpass rpass-full rfail cfail bench perf debuginfo
+CTEST_NAMES = rpass rpass-full rfail cfail bench perf debuginfo codegen
 
 $(foreach host,$(CFG_HOST_TRIPLES), \
  $(eval $(foreach target,$(CFG_TARGET_TRIPLES), \
@@ -673,6 +712,7 @@ TEST_GROUPS = \
 	bench \
 	perf \
 	debuginfo \
+	codegen \
 	doc \
 	$(foreach docname,$(DOC_TEST_NAMES),doc-$(docname)) \
 	pretty \

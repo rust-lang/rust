@@ -30,7 +30,7 @@ fn separate_arms() {
             x = Some(1); //~ ERROR cannot assign
         }
     }
-    copy x; // just to prevent liveness warnings
+    x.clone(); // just to prevent liveness warnings
 }
 
 fn guard() {

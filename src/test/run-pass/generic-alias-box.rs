@@ -10,11 +10,11 @@
 
 
 
-fn id<T:Copy>(t: T) -> T { return t; }
+fn id<T>(t: T) -> T { return t; }
 
 pub fn main() {
     let expected = @100;
     let actual = id::<@int>(expected);
-    debug!(*actual);
+    info!(*actual);
     assert_eq!(*expected, *actual);
 }

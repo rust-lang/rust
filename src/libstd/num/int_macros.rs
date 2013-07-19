@@ -14,6 +14,8 @@
 
 macro_rules! int_module (($T:ty, $bits:expr) => (mod generated {
 
+#[allow(non_uppercase_statics)];
+
 use num::{ToStrRadix, FromStrRadix};
 use num::{Zero, One, strconv};
 use prelude::*;
@@ -27,84 +29,38 @@ pub static bytes : uint = ($bits / 8);
 pub static min_value: $T = (-1 as $T) << (bits - 1);
 pub static max_value: $T = min_value - 1 as $T;
 
-/// Calculates the sum of two numbers
-#[inline]
-pub fn add(x: $T, y: $T) -> $T { x + y }
-/// Subtracts the second number from the first
-#[inline]
-pub fn sub(x: $T, y: $T) -> $T { x - y }
-/// Multiplies two numbers together
-#[inline]
-pub fn mul(x: $T, y: $T) -> $T { x * y }
-/// Divides the first argument by the second argument (using integer division)
-/// Divides the first argument by the second argument (using integer division)
-#[inline]
-pub fn div(x: $T, y: $T) -> $T { x / y }
+enum Range { Closed, HalfOpen }
 
-///
-/// Returns the remainder of y / x.
-///
-/// # Examples
-/// ~~~
-/// assert!(int::rem(5 / 2) == 1);
-/// ~~~
-///
-/// When faced with negative numbers, the result copies the sign of the
-/// dividend.
-///
-/// ~~~
-/// assert!(int::rem(2 / -3) ==  2);
-/// ~~~
-///
-/// ~~~
-/// assert!(int::rem(-2 / 3) ==  -2);
-/// ~~~
-///
-///
 #[inline]
-pub fn rem(x: $T, y: $T) -> $T { x % y }
-
-/// Returns true iff `x < y`
-#[inline]
-pub fn lt(x: $T, y: $T) -> bool { x < y }
-/// Returns true iff `x <= y`
-#[inline]
-pub fn le(x: $T, y: $T) -> bool { x <= y }
-/// Returns true iff `x == y`
-#[inline]
-pub fn eq(x: $T, y: $T) -> bool { x == y }
-/// Returns true iff `x != y`
-#[inline]
-pub fn ne(x: $T, y: $T) -> bool { x != y }
-/// Returns true iff `x >= y`
-#[inline]
-pub fn ge(x: $T, y: $T) -> bool { x >= y }
-/// Returns true iff `x > y`
-#[inline]
-pub fn gt(x: $T, y: $T) -> bool { x > y }
-
 ///
-/// Iterate over the range [`lo`..`hi`)
+/// Iterate through a range with a given step value.
 ///
-/// # Arguments
+/// Let `term` denote the closed interval `[stop-step,stop]` if `r` is Closed;
+/// otherwise `term` denotes the half-open interval `[stop-step,stop)`.
+/// Iterates through the range `[x_0, x_1, ..., x_n]` where
+/// `x_j == start + step*j`, and `x_n` lies in the interval `term`.
 ///
-/// * `lo` - lower bound, inclusive
-/// * `hi` - higher bound, exclusive
+/// If no such nonnegative integer `n` exists, then the iteration range
+/// is empty.
 ///
-/// # Examples
-/// ~~~
-/// let mut sum = 0;
-/// for int::range(1, 5) |i| {
-///     sum += i;
-/// }
-/// assert!(sum == 10);
-/// ~~~
-///
-#[inline]
-pub fn range_step(start: $T, stop: $T, step: $T, it: &fn($T) -> bool) -> bool {
+fn range_step_core(start: $T, stop: $T, step: $T, r: Range, it: &fn($T) -> bool) -> bool {
     let mut i = start;
     if step == 0 {
         fail!(~"range_step called with step == 0");
+    } else if step == (1 as $T) { // elide bounds check to tighten loop
+        while i < stop {
+            if !it(i) { return false; }
+            // no need for overflow check;
+            // cannot have i + 1 > max_value because i < stop <= max_value
+            i += (1 as $T);
+        }
+    } else if step == (-1 as $T) { // elide bounds check to tighten loop
+        while i > stop {
+            if !it(i) { return false; }
+            // no need for underflow check;
+            // cannot have i - 1 < min_value because i > stop >= min_value
+            i -= (1 as $T);
+        }
     } else if step > 0 { // ascending
         while i < stop {
             if !it(i) { return false; }
@@ -120,8 +76,54 @@ pub fn range_step(start: $T, stop: $T, step: $T, it: &fn($T) -> bool) -> bool {
             i += step;
         }
     }
-    return true;
+    match r {
+        HalfOpen => return true,
+        Closed => return (i != stop || it(i))
+    }
 }
+
+#[inline]
+///
+/// Iterate through the range [`start`..`stop`) with a given step value.
+///
+/// Iterates through the range `[x_0, x_1, ..., x_n]` where
+/// * `x_i == start + step*i`, and
+/// * `n` is the greatest nonnegative integer such that `x_n < stop`
+///
+/// (If no such `n` exists, then the iteration range is empty.)
+///
+/// # Arguments
+///
+/// * `start` - lower bound, inclusive
+/// * `stop` - higher bound, exclusive
+///
+/// # Examples
+/// ~~~
+/// let mut sum = 0;
+/// for int::range(1, 5) |i| {
+///     sum += i;
+/// }
+/// assert!(sum == 10);
+/// ~~~
+///
+pub fn range_step(start: $T, stop: $T, step: $T, it: &fn($T) -> bool) -> bool {
+    range_step_core(start, stop, step, HalfOpen, it)
+}
+
+#[inline]
+///
+/// Iterate through a range with a given step value.
+///
+/// Iterates through the range `[x_0, x_1, ..., x_n]` where
+/// `x_i == start + step*i` and `x_n <= last < step + x_n`.
+///
+/// (If no such nonnegative integer `n` exists, then the iteration
+///  range is empty.)
+///
+pub fn range_step_inclusive(start: $T, last: $T, step: $T, it: &fn($T) -> bool) -> bool {
+    range_step_core(start, last, step, Closed, it)
+}
+
 
 #[inline]
 /// Iterate over the range [`lo`..`hi`)
@@ -130,20 +132,11 @@ pub fn range(lo: $T, hi: $T, it: &fn($T) -> bool) -> bool {
 }
 
 #[inline]
-/// Iterate over the range [`hi`..`lo`)
+/// Iterate over the range (`hi`..`lo`]
 pub fn range_rev(hi: $T, lo: $T, it: &fn($T) -> bool) -> bool {
-    range_step(hi, lo, -1 as $T, it)
+    if hi == min_value { return true; }
+    range_step_inclusive(hi-1, lo, -1 as $T, it)
 }
-
-/// Computes the bitwise complement
-#[inline]
-pub fn compl(i: $T) -> $T {
-    -1 as $T ^ i
-}
-
-/// Computes the absolute value
-#[inline]
-pub fn abs(i: $T) -> $T { i.abs() }
 
 impl Num for $T {}
 
@@ -905,7 +898,7 @@ mod tests {
         for range(0,3) |i| {
             l.push(i);
         }
-        for range_rev(13,10) |i| {
+        for range_rev(14,11) |i| {
             l.push(i);
         }
         for range_step(20,26,2) |i| {

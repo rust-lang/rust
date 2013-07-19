@@ -29,5 +29,5 @@ impl Foo for Bar {
 fn main() {
     let x = ~Bar { x: 10 };
     let y: ~Foo = x as ~Foo;
-    let _z = copy y; //~ ERROR copying a value of non-copyable type
+    let _z = y.clone(); //~ ERROR does not implement any method in scope
 }

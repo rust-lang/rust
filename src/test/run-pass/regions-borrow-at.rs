@@ -15,6 +15,6 @@ fn foo(x: &uint) -> uint {
 pub fn main() {
     let p = @22u;
     let r = foo(p);
-    debug!("r=%u", r);
+    info!("r=%u", r);
     assert_eq!(r, 22u);
 }

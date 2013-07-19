@@ -260,7 +260,15 @@ pub fn run(main: ~fn()) -> int {
         }
 
         unsafe {
-            let exit_code = if exit_success { 0 } else { DEFAULT_ERROR_CODE };
+            let exit_code = if exit_success {
+                use rt::util;
+
+                // If we're exiting successfully, then return the global
+                // exit status, which can be set programmatically.
+                util::get_exit_status()
+            } else {
+                DEFAULT_ERROR_CODE
+            };
             (*exit_code_clone.get()).store(exit_code, SeqCst);
         }
     };

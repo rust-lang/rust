@@ -17,9 +17,11 @@ A BigInt is a combination of BigUint and Sign.
 */
 
 #[allow(missing_doc)];
+#[allow(non_uppercase_statics)];
 
 use std::cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering, Less, Equal, Greater};
 use std::int;
+use std::num;
 use std::num::{IntConvertible, Zero, One, ToStrRadix, FromStrRadix, Orderable};
 use std::str;
 use std::uint;
@@ -42,6 +44,8 @@ A BigDigit is half the size of machine word size.
 */
 #[cfg(target_arch = "x86_64")]
 pub type BigDigit = u32;
+
+pub static ZERO_BIG_DIGIT: BigDigit = 0;
 
 pub mod BigDigit {
     use bigint::BigDigit;
@@ -203,10 +207,10 @@ impl Unsigned for BigUint {}
 impl Add<BigUint, BigUint> for BigUint {
 
     fn add(&self, other: &BigUint) -> BigUint {
-        let new_len = uint::max(self.data.len(), other.data.len());
+        let new_len = num::max(self.data.len(), other.data.len());
 
         let mut carry = 0;
-        let sum = do vec::from_fn(new_len) |i| {
+        let mut sum = do vec::from_fn(new_len) |i| {
             let ai = if i < self.data.len()  { self.data[i]  } else { 0 };
             let bi = if i < other.data.len() { other.data[i] } else { 0 };
             let (hi, lo) = BigDigit::from_uint(
@@ -215,15 +219,15 @@ impl Add<BigUint, BigUint> for BigUint {
             carry = hi;
             lo
         };
-        if carry == 0 { return BigUint::new(sum) };
-        return BigUint::new(sum + [carry]);
+        if carry != 0 { sum.push(carry); }
+        return BigUint::new(sum);
     }
 }
 
 impl Sub<BigUint, BigUint> for BigUint {
 
     fn sub(&self, other: &BigUint) -> BigUint {
-        let new_len = uint::max(self.data.len(), other.data.len());
+        let new_len = num::max(self.data.len(), other.data.len());
 
         let mut borrow = 0;
         let diff = do vec::from_fn(new_len) |i| {
@@ -259,7 +263,7 @@ impl Mul<BigUint, BigUint> for BigUint {
         // = a1*b1 * base^2 +
         //   (a1*b1 + a0*b0 - (a1-b0)*(b1-a0)) * base +
         //   a0*b0
-        let half_len = uint::max(s_len, o_len) / 2;
+        let half_len = num::max(s_len, o_len) / 2;
         let (sHi, sLo) = cut_at(self,  half_len);
         let (oHi, oLo) = cut_at(other, half_len);
 
@@ -280,23 +284,23 @@ impl Mul<BigUint, BigUint> for BigUint {
 
         fn mul_digit(a: &BigUint, n: BigDigit) -> BigUint {
             if n == 0 { return Zero::zero(); }
-            if n == 1 { return copy *a; }
+            if n == 1 { return (*a).clone(); }
 
             let mut carry = 0;
-            let prod = do a.data.iter().transform |ai| {
+            let mut prod = do a.data.iter().transform |ai| {
                 let (hi, lo) = BigDigit::from_uint(
                     (*ai as uint) * (n as uint) + (carry as uint)
                 );
                 carry = hi;
                 lo
             }.collect::<~[BigDigit]>();
-            if carry == 0 { return BigUint::new(prod) };
-            return BigUint::new(prod + [carry]);
+            if carry != 0 { prod.push(carry); }
+            return BigUint::new(prod);
         }
 
 
         fn cut_at(a: &BigUint, n: uint) -> (BigUint, BigUint) {
-            let mid = uint::min(a.data.len(), n);
+            let mid = num::min(a.data.len(), n);
             return (BigUint::from_slice(a.data.slice(mid, a.data.len())),
                     BigUint::from_slice(a.data.slice(0, mid)));
         }
@@ -355,10 +359,10 @@ impl Integer for BigUint {
     fn div_mod_floor(&self, other: &BigUint) -> (BigUint, BigUint) {
         if other.is_zero() { fail!() }
         if self.is_zero() { return (Zero::zero(), Zero::zero()); }
-        if *other == One::one() { return (copy *self, Zero::zero()); }
+        if *other == One::one() { return ((*self).clone(), Zero::zero()); }
 
         match self.cmp(other) {
-            Less    => return (Zero::zero(), copy *self),
+            Less    => return (Zero::zero(), (*self).clone()),
             Equal   => return (One::one(), Zero::zero()),
             Greater => {} // Do nothing
         }
@@ -409,7 +413,7 @@ impl Integer for BigUint {
         fn div_estimate(a: &BigUint, b: &BigUint, n: uint)
             -> (BigUint, BigUint, BigUint) {
             if a.data.len() < n {
-                return (Zero::zero(), Zero::zero(), copy *a);
+                return (Zero::zero(), Zero::zero(), (*a).clone());
             }
 
             let an = a.data.slice(a.data.len() - n, a.data.len());
@@ -426,7 +430,7 @@ impl Integer for BigUint {
 
             let shift = (a.data.len() - an.len()) - (b.data.len() - 1);
             if shift == 0 {
-                return (BigUint::new(d), One::one(), copy *b);
+                return (BigUint::new(d), One::one(), (*b).clone());
             }
             return (BigUint::from_slice(d).shl_unit(shift),
                     One::one::<BigUint>().shl_unit(shift),
@@ -442,8 +446,8 @@ impl Integer for BigUint {
 
     fn gcd(&self, other: &BigUint) -> BigUint {
         // Use Euclid's algorithm
-        let mut m = copy *self;
-        let mut n = copy *other;
+        let mut m = (*self).clone();
+        let mut n = (*other).clone();
         while !m.is_zero() {
             let temp = m;
             m = n % temp;
@@ -481,7 +485,7 @@ impl Integer for BigUint {
 impl IntConvertible for BigUint {
 
     fn to_int(&self) -> int {
-        uint::min(self.to_uint(), int::max_value as uint) as int
+        num::min(self.to_uint(), int::max_value as uint) as int
     }
 
 
@@ -498,7 +502,7 @@ impl ToStrRadix for BigUint {
         if base == BigDigit::base {
             return fill_concat(self.data, radix, max_len)
         }
-        return fill_concat(convert_base(copy *self, base), radix, max_len);
+        return fill_concat(convert_base((*self).clone(), base), radix, max_len);
 
 
         fn convert_base(n: BigUint, base: uint) -> ~[BigDigit] {
@@ -519,10 +523,12 @@ impl ToStrRadix for BigUint {
 
         fn fill_concat(v: &[BigDigit], radix: uint, l: uint) -> ~str {
             if v.is_empty() { return ~"0" }
-            let s = vec::reversed(v).map(|n| {
-                let s = uint::to_str_radix(*n as uint, radix);
-                str::from_chars(vec::from_elem(l - s.len(), '0')) + s
-            }).concat();
+            let mut s = str::with_capacity(v.len() * l);
+            for v.rev_iter().advance |n| {
+                let ss = uint::to_str_radix(*n as uint, radix);
+                s.push_str("0".repeat(l - ss.len()));
+                s.push_str(ss);
+            }
             s.trim_left_chars(&'0').to_owned()
         }
     }
@@ -563,7 +569,7 @@ impl BigUint {
     /// Creates and initializes an BigUint.
 
     pub fn from_slice(slice: &[BigDigit]) -> BigUint {
-        return BigUint::new(vec::to_owned(slice));
+        return BigUint::new(slice.to_owned());
     }
 
     /// Creates and initializes an BigUint.
@@ -577,7 +583,7 @@ impl BigUint {
         let mut n: BigUint      = Zero::zero();
         let mut power: BigUint  = One::one();
         loop {
-            let start = uint::max(end, unit_len) - unit_len;
+            let start = num::max(end, unit_len) - unit_len;
             match uint::parse_bytes(buf.slice(start, end), radix) {
                 // FIXME(#6102): Assignment operator for BigInt causes ICE
                 // Some(d) => n += BigUint::from_uint(d) * power,
@@ -608,30 +614,31 @@ impl BigUint {
 
 
     priv fn shl_unit(&self, n_unit: uint) -> BigUint {
-        if n_unit == 0 || self.is_zero() { return copy *self; }
+        if n_unit == 0 || self.is_zero() { return (*self).clone(); }
 
-        return BigUint::new(vec::from_elem(n_unit, 0) + self.data);
+        return BigUint::new(vec::from_elem(n_unit, ZERO_BIG_DIGIT)
+                            + self.data);
     }
 
 
     priv fn shl_bits(&self, n_bits: uint) -> BigUint {
-        if n_bits == 0 || self.is_zero() { return copy *self; }
+        if n_bits == 0 || self.is_zero() { return (*self).clone(); }
 
         let mut carry = 0;
-        let shifted = do self.data.iter().transform |elem| {
+        let mut shifted = do self.data.iter().transform |elem| {
             let (hi, lo) = BigDigit::from_uint(
                 (*elem as uint) << n_bits | (carry as uint)
             );
             carry = hi;
             lo
         }.collect::<~[BigDigit]>();
-        if carry == 0 { return BigUint::new(shifted); }
-        return BigUint::new(shifted + [carry]);
+        if carry != 0 { shifted.push(carry); }
+        return BigUint::new(shifted);
     }
 
 
     priv fn shr_unit(&self, n_unit: uint) -> BigUint {
-        if n_unit == 0 { return copy *self; }
+        if n_unit == 0 { return (*self).clone(); }
         if self.data.len() < n_unit { return Zero::zero(); }
         return BigUint::from_slice(
             self.data.slice(n_unit, self.data.len())
@@ -640,7 +647,7 @@ impl BigUint {
 
 
     priv fn shr_bits(&self, n_bits: uint) -> BigUint {
-        if n_bits == 0 || self.data.is_empty() { return copy *self; }
+        if n_bits == 0 || self.data.is_empty() { return (*self).clone(); }
 
         let mut borrow = 0;
         let mut shifted = ~[];
@@ -1052,9 +1059,9 @@ impl IntConvertible for BigInt {
 
     fn to_int(&self) -> int {
         match self.sign {
-            Plus  => uint::min(self.to_uint(), int::max_value as uint) as int,
+            Plus  => num::min(self.to_uint(), int::max_value as uint) as int,
             Zero  => 0,
-            Minus => uint::min((-self).to_uint(),
+            Minus => num::min((-self).to_uint(),
                                (int::max_value as uint) + 1) as int
         }
     }
@@ -1568,10 +1575,10 @@ mod biguint_tests {
     fn test_to_str_radix() {
         let r = to_str_pairs();
         for r.iter().advance |num_pair| {
-            let &(n, rs) = num_pair;
+            let &(ref n, ref rs) = num_pair;
             for rs.iter().advance |str_pair| {
-                let &(radix, str) = str_pair;
-                assert_eq!(n.to_str_radix(radix), str);
+                let &(ref radix, ref str) = str_pair;
+                assert_eq!(&n.to_str_radix(*radix), str);
             }
         }
     }
@@ -1580,10 +1587,10 @@ mod biguint_tests {
     fn test_from_str_radix() {
         let r = to_str_pairs();
         for r.iter().advance |num_pair| {
-            let &(n, rs) = num_pair;
+            let &(ref n, ref rs) = num_pair;
             for rs.iter().advance |str_pair| {
-                let &(radix, str) = str_pair;
-                assert_eq!(&n, &FromStrRadix::from_str_radix(str, radix).get());
+                let &(ref radix, ref str) = str_pair;
+                assert_eq!(n, &FromStrRadix::from_str_radix(*str, *radix).get());
             }
         }
 
@@ -1628,7 +1635,6 @@ mod bigint_tests {
     use std::int;
     use std::num::{IntConvertible, Zero, One, FromStrRadix};
     use std::uint;
-    use std::vec;
 
     #[test]
     fn test_from_biguint() {
@@ -1645,9 +1651,11 @@ mod bigint_tests {
 
     #[test]
     fn test_cmp() {
-        let vs = [ &[2], &[1, 1], &[2, 1], &[1, 1, 1] ];
-        let mut nums = vec::reversed(vs)
-            .map(|s| BigInt::from_slice(Minus, *s));
+        let vs = [ &[2 as BigDigit], &[1, 1], &[2, 1], &[1, 1, 1] ];
+        let mut nums = ~[];
+        for vs.rev_iter().advance |s| {
+            nums.push(BigInt::from_slice(Minus, *s));
+        }
         nums.push(Zero::zero());
         nums.push_all_move(vs.map(|s| BigInt::from_slice(Plus, *s)));
 

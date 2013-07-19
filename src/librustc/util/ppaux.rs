@@ -435,16 +435,17 @@ pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
       ty_infer(infer_ty) => infer_ty.to_str(),
       ty_err => ~"[type error]",
       ty_param(param_ty {idx: id, def_id: did}) => {
-          let mut parm = (('T' as uint) + id) as char;
-          if (parm as uint) > ('Z' as uint) {
-              parm = (parm as uint - 26) as char;
-          }
-
-          if cx.sess.verbose() {
-              fmt!("%c:%?", parm, did)
-          } else {
-              fmt!("%c", parm)
-          }
+          let param_def = cx.ty_param_defs.find(&did.node);
+          let ident = match param_def {
+              Some(def) => {
+                  cx.sess.str_of(def.ident).to_owned()
+              }
+              None => {
+                  // This should not happen...
+                  fmt!("BUG[%?]", id)
+              }
+          };
+          if !cx.sess.verbose() { ident } else { fmt!("%s:%?", ident, did) }
       }
       ty_self(*) => ~"Self",
       ty_enum(did, ref substs) | ty_struct(did, ref substs) => {
@@ -511,9 +512,6 @@ impl<T:Repr> Repr for Option<T> {
     }
 }
 
-/*
-Annoyingly, these conflict with @ast::expr.
-
 impl<T:Repr> Repr for @T {
     fn repr(&self, tcx: ctxt) -> ~str {
         (&**self).repr(tcx)
@@ -525,7 +523,6 @@ impl<T:Repr> Repr for ~T {
         (&**self).repr(tcx)
     }
 }
-*/
 
 fn repr_vec<T:Repr>(tcx: ctxt, v: &[T]) -> ~str {
     fmt!("[%s]", v.map(|t| t.repr(tcx)).connect(","))
@@ -537,11 +534,11 @@ impl<'self, T:Repr> Repr for &'self [T] {
     }
 }
 
-// This is necessary to handle types like Option<@~[T]>, for which
+// This is necessary to handle types like Option<~[T]>, for which
 // autoderef cannot convert the &[T] handler
-impl<T:Repr> Repr for @~[T] {
+impl<T:Repr> Repr for ~[T] {
     fn repr(&self, tcx: ctxt) -> ~str {
-        repr_vec(tcx, **self)
+        repr_vec(tcx, *self)
     }
 }
 
@@ -572,7 +569,6 @@ impl Repr for ty::ParamBounds {
         let mut res = ~[];
         for self.builtin_bounds.each |b| {
             res.push(match b {
-                ty::BoundCopy => ~"Copy",
                 ty::BoundStatic => ~"'static",
                 ty::BoundSend => ~"Send",
                 ty::BoundFreeze => ~"Freeze",
@@ -592,19 +588,19 @@ impl Repr for ty::TraitRef {
     }
 }
 
-impl Repr for @ast::expr {
+impl Repr for ast::expr {
     fn repr(&self, tcx: ctxt) -> ~str {
         fmt!("expr(%d: %s)",
              self.id,
-             pprust::expr_to_str(*self, tcx.sess.intr()))
+             pprust::expr_to_str(self, tcx.sess.intr()))
     }
 }
 
-impl Repr for @ast::pat {
+impl Repr for ast::pat {
     fn repr(&self, tcx: ctxt) -> ~str {
         fmt!("pat(%d: %s)",
              self.id,
-             pprust::pat_to_str(*self, tcx.sess.intr()))
+             pprust::pat_to_str(self, tcx.sess.intr()))
     }
 }
 
@@ -750,6 +746,12 @@ impl Repr for typeck::method_param {
     }
 }
 
+impl Repr for ty::RegionVid {
+    fn repr(&self, _tcx: ctxt) -> ~str {
+        fmt!("%?", *self)
+    }
+}
+
 impl Repr for ty::TraitStore {
     fn repr(&self, tcx: ctxt) -> ~str {
         match self {
@@ -784,7 +786,6 @@ impl Repr for ty::BuiltinBound {
 impl UserString for ty::BuiltinBound {
     fn user_string(&self, _tcx: ctxt) -> ~str {
         match *self {
-            ty::BoundCopy => ~"Copy",
             ty::BoundStatic => ~"'static",
             ty::BoundSend => ~"Send",
             ty::BoundFreeze => ~"Freeze",
@@ -829,7 +830,7 @@ impl UserString for ty::TraitRef {
         let path = ty::item_path(tcx, self.def_id);
         let base = ast_map::path_to_str(path, tcx.sess.intr());
         if tcx.sess.verbose() && self.substs.self_ty.is_some() {
-            let mut all_tps = copy self.substs.tps;
+            let mut all_tps = self.substs.tps.clone();
             for self.substs.self_ty.iter().advance |&t| { all_tps.push(t); }
             parameterized(tcx, base, self.substs.self_r, all_tps)
         } else {

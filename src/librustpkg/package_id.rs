@@ -9,11 +9,13 @@
 // except according to those terms.
 
 pub use package_path::{RemotePath, LocalPath, normalize, hash};
-use version::{try_getting_version, Version, NoVersion, split_version};
+use version::{try_getting_version, try_getting_local_version,
+              Version, NoVersion, split_version};
 
 /// Path-fragment identifier of a package such as
 /// 'github.com/graydon/test'; path must be a relative
 /// path with >=1 component.
+#[deriving(Clone)]
 pub struct PkgId {
     /// Remote path: for example, github.com/mozilla/quux-whatever
     remote_path: RemotePath,
@@ -30,8 +32,20 @@ pub struct PkgId {
     version: Version
 }
 
+impl Eq for PkgId {
+    fn eq(&self, p: &PkgId) -> bool {
+        *p.local_path == *self.local_path && p.version == self.version
+    }
+    fn ne(&self, p: &PkgId) -> bool {
+        !(self.eq(p))
+    }
+}
+
 impl PkgId {
-    pub fn new(s: &str) -> PkgId {
+    // The PkgId constructor takes a Path argument so as
+    // to be able to infer the version if the path refers
+    // to a local git repository
+    pub fn new(s: &str, work_dir: &Path) -> PkgId {
         use conditions::bad_pkg_id::cond;
 
         let mut given_version = None;
@@ -57,14 +71,17 @@ impl PkgId {
             return cond.raise((p, ~"0-length pkgid"));
         }
         let remote_path = RemotePath(p);
-        let local_path = normalize(copy remote_path);
-        let short_name = (copy local_path).filestem().expect(fmt!("Strange path! %s", s));
+        let local_path = normalize(remote_path.clone());
+        let short_name = local_path.clone().filestem().expect(fmt!("Strange path! %s", s));
 
         let version = match given_version {
             Some(v) => v,
-            None => match try_getting_version(&remote_path) {
+            None => match try_getting_local_version(&work_dir.push_rel(&*local_path)) {
                 Some(v) => v,
-                None => NoVersion
+                None => match try_getting_version(&remote_path) {
+                    Some(v) => v,
+                    None => NoVersion
+                }
             }
         };
 

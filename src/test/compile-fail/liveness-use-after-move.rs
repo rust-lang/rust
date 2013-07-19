@@ -11,6 +11,6 @@
 fn main() {
     let x = ~5;
     let y = x;
-    debug!(*x); //~ ERROR use of moved value: `x`
-    copy y;
+    info!(*x); //~ ERROR use of moved value: `x`
+    y.clone();
 }

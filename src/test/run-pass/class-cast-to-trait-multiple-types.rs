@@ -22,7 +22,7 @@ struct dog {
 
 impl dog {
     priv fn bark(&self) -> int {
-      debug!("Woof %u %d", *self.barks, *self.volume);
+      info!("Woof %u %d", *self.barks, *self.volume);
       *self.barks += 1u;
       if *self.barks % 3u == 0u {
           *self.volume += 1;
@@ -30,7 +30,7 @@ impl dog {
       if *self.barks % 10u == 0u {
           *self.volume -= 2;
       }
-      debug!("Grrr %u %d", *self.barks, *self.volume);
+      info!("Grrr %u %d", *self.barks, *self.volume);
       *self.volume
     }
 }
@@ -46,6 +46,7 @@ fn dog() -> dog {
     }
 }
 
+#[deriving(Clone)]
 struct cat {
   priv meows : @mut uint,
 
@@ -63,7 +64,7 @@ impl cat {
 
 impl cat {
     fn meow(&self) -> uint {
-      debug!("Meow");
+      info!("Meow");
       *self.meows += 1u;
       if *self.meows % 5u == 0u {
           *self.how_hungry += 1;
@@ -88,8 +89,8 @@ fn annoy_neighbors(critter: @noisy) {
 pub fn main() {
   let nyan : cat  = cat(0u, 2, ~"nyan");
   let whitefang : dog = dog();
-  annoy_neighbors(@(copy nyan) as @noisy);
-  annoy_neighbors(@(copy whitefang) as @noisy);
+  annoy_neighbors(@nyan.clone() as @noisy);
+  annoy_neighbors(@whitefang as @noisy);
   assert_eq!(nyan.meow_count(), 10u);
   assert_eq!(*whitefang.volume, 1);
 }

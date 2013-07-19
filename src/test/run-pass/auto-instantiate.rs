@@ -16,9 +16,9 @@
 struct Pair<T, U> { a: T, b: U }
 struct Triple { x: int, y: int, z: int }
 
-fn f<T:Copy,U:Copy>(x: T, y: U) -> Pair<T, U> { return Pair {a: x, b: y}; }
+fn f<T,U>(x: T, y: U) -> Pair<T, U> { return Pair {a: x, b: y}; }
 
 pub fn main() {
-    debug!("%?", f(Triple {x: 3, y: 4, z: 5}, 4).a.x);
-    debug!("%?", f(5, 6).a);
+    info!("%?", f(Triple {x: 3, y: 4, z: 5}, 4).a.x);
+    info!("%?", f(5, 6).a);
 }

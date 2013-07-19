@@ -54,6 +54,10 @@ use util;
 #[cfg(test)] use ptr;
 #[cfg(test)] use task;
 
+#[cfg(stage0)]
+#[path="local_data_priv_stage0.rs"]
+mod local_data_priv;
+#[cfg(not(stage0))]
 mod local_data_priv;
 pub mod rt;
 pub mod spawn;
@@ -106,8 +110,6 @@ pub enum SchedMode {
     /// All tasks run in the same OS thread
     SingleThreaded,
     /// Tasks are distributed among available CPUs
-    ThreadPerCore,
-    /// Each task runs in its own OS thread
     ThreadPerTask,
     /// Tasks are distributed among a fixed number of OS threads
     ManualThreads(uint),
@@ -497,11 +499,26 @@ pub fn try<T:Send>(f: ~fn() -> T) -> Result<T,()> {
 pub fn yield() {
     //! Yield control to the task scheduler
 
+    use rt::{context, OldTaskContext};
+    use rt::local::Local;
+    use rt::sched::Scheduler;
+
     unsafe {
-        let task_ = rt::rust_get_task();
-        let killed = rt::rust_task_yield(task_);
-        if killed && !failing() {
-            fail!("killed");
+        match context() {
+            OldTaskContext => {
+                let task_ = rt::rust_get_task();
+                let killed = rt::rust_task_yield(task_);
+                if killed && !failing() {
+                    fail!("killed");
+                }
+            }
+            _ => {
+                // XXX: What does yield really mean in newsched?
+                let sched = Local::take::<Scheduler>();
+                do sched.deschedule_running_task_and_then |sched, task| {
+                    sched.enqueue_task(task);
+                }
+            }
         }
     }
 }
@@ -1126,22 +1143,6 @@ fn test_child_doesnt_ref_parent() {
         }
     }
     task::spawn(child_no(0));
-}
-
-#[test]
-fn test_sched_thread_per_core() {
-    let (port, chan) = comm::stream();
-
-    do spawn_sched(ThreadPerCore) || {
-        unsafe {
-            let cores = rt::rust_num_threads();
-            let reported_threads = rt::rust_sched_threads();
-            assert_eq!(cores as uint, reported_threads as uint);
-            chan.send(());
-        }
-    }
-
-    port.recv();
 }
 
 #[test]

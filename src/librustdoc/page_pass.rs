@@ -23,7 +23,6 @@ use doc;
 use fold::Fold;
 use fold;
 use pass::Pass;
-use util::NominalOp;
 
 use std::comm::*;
 use std::task;
@@ -62,8 +61,6 @@ pub fn run(
 type PagePort = Port<Option<doc::Page>>;
 type PageChan = SharedChan<Option<doc::Page>>;
 
-type NominalPageChan = NominalOp<PageChan>;
-
 fn make_doc_from_pages(page_port: &PagePort) -> doc::Doc {
     let mut pages = ~[];
     loop {
@@ -81,46 +78,39 @@ fn make_doc_from_pages(page_port: &PagePort) -> doc::Doc {
 
 fn find_pages(doc: doc::Doc, page_chan: PageChan) {
     let fold = Fold {
-        ctxt: NominalOp { op: page_chan.clone() },
+        ctxt: page_chan.clone(),
         fold_crate: fold_crate,
         fold_mod: fold_mod,
         fold_nmod: fold_nmod,
-        .. fold::default_any_fold(NominalOp { op: page_chan.clone() })
+        .. fold::default_any_fold(page_chan.clone())
     };
-    (fold.fold_doc)(&fold, copy doc);
+    (fold.fold_doc)(&fold, doc.clone());
 
     page_chan.send(None);
 }
 
-fn fold_crate(
-    fold: &fold::Fold<NominalPageChan>,
-    doc: doc::CrateDoc
-) -> doc::CrateDoc {
-
+fn fold_crate(fold: &fold::Fold<PageChan>, doc: doc::CrateDoc)
+              -> doc::CrateDoc {
     let doc = fold::default_seq_fold_crate(fold, doc);
 
     let page = doc::CratePage(doc::CrateDoc {
-        topmod: strip_mod(copy doc.topmod),
-        .. copy doc
+        topmod: strip_mod(doc.topmod.clone()),
+        .. doc.clone()
     });
 
-    fold.ctxt.op.send(Some(page));
+    fold.ctxt.send(Some(page));
 
     doc
 }
 
-fn fold_mod(
-    fold: &fold::Fold<NominalPageChan>,
-    doc: doc::ModDoc
-) -> doc::ModDoc {
-
+fn fold_mod(fold: &fold::Fold<PageChan>, doc: doc::ModDoc) -> doc::ModDoc {
     let doc = fold::default_any_fold_mod(fold, doc);
 
     if doc.id() != ast::crate_node_id {
 
-        let doc = strip_mod(copy doc);
+        let doc = strip_mod(doc.clone());
         let page = doc::ItemPage(doc::ModTag(doc));
-        fold.ctxt.op.send(Some(page));
+        fold.ctxt.send(Some(page));
     }
 
     doc
@@ -128,24 +118,20 @@ fn fold_mod(
 
 fn strip_mod(doc: doc::ModDoc) -> doc::ModDoc {
     doc::ModDoc {
-        items: do doc.items.filtered |item| {
-            match *item {
-              doc::ModTag(_) => false,
-              doc::NmodTag(_) => false,
+        items: do doc.items.iter().filter |item| {
+            match **item {
+              doc::ModTag(_) | doc::NmodTag(_) => false,
               _ => true
             }
-        },
-        .. copy doc
+        }.transform(|x| (*x).clone()).collect::<~[doc::ItemTag]>(),
+        .. doc.clone()
     }
 }
 
-fn fold_nmod(
-    fold: &fold::Fold<NominalPageChan>,
-    doc: doc::NmodDoc
-) -> doc::NmodDoc {
+fn fold_nmod(fold: &fold::Fold<PageChan>, doc: doc::NmodDoc) -> doc::NmodDoc {
     let doc = fold::default_seq_fold_nmod(fold, doc);
-    let page = doc::ItemPage(doc::NmodTag(copy doc));
-    fold.ctxt.op.send(Some(page));
+    let page = doc::ItemPage(doc::NmodTag(doc.clone()));
+    fold.ctxt.send(Some(page));
     return doc;
 }
 
@@ -153,22 +139,26 @@ fn fold_nmod(
 mod test {
     use astsrv;
     use config;
+    use attr_pass;
     use doc;
     use extract;
+    use prune_hidden_pass;
     use page_pass::run;
 
     fn mk_doc_(
         output_style: config::OutputStyle,
         source: ~str
     ) -> doc::Doc {
-        do astsrv::from_str(copy source) |srv| {
+        do astsrv::from_str(source.clone()) |srv| {
             let doc = extract::from_srv(srv.clone(), ~"");
+            let doc = (attr_pass::mk_pass().f)(srv.clone(), doc);
+            let doc = (prune_hidden_pass::mk_pass().f)(srv.clone(), doc);
             run(srv.clone(), doc, output_style)
         }
     }
 
     fn mk_doc(source: ~str) -> doc::Doc {
-        mk_doc_(config::DocPerMod, copy source)
+        mk_doc_(config::DocPerMod, source.clone())
     }
 
     #[test]
@@ -183,6 +173,7 @@ mod test {
     #[test]
     fn should_make_a_page_for_every_mod() {
         let doc = mk_doc(~"mod a { }");
+        // hidden __std_macros module at the start.
         assert_eq!(doc.pages.mods()[0].name(), ~"a");
     }
 

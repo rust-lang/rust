@@ -71,6 +71,12 @@ pub struct FlowedMoveData {
 #[deriving(Eq)]
 pub struct MovePathIndex(uint);
 
+impl Clone for MovePathIndex {
+    fn clone(&self) -> MovePathIndex {
+        MovePathIndex(**self)
+    }
+}
+
 static InvalidMovePathIndex: MovePathIndex =
     MovePathIndex(uint::max_value);
 
@@ -133,9 +139,27 @@ pub struct Assignment {
 }
 
 pub struct MoveDataFlowOperator;
+
+/// XXX(pcwalton): Should just be #[deriving(Clone)], but that doesn't work
+/// yet on unit structs.
+impl Clone for MoveDataFlowOperator {
+    fn clone(&self) -> MoveDataFlowOperator {
+        MoveDataFlowOperator
+    }
+}
+
 pub type MoveDataFlow = DataFlowContext<MoveDataFlowOperator>;
 
 pub struct AssignDataFlowOperator;
+
+/// XXX(pcwalton): Should just be #[deriving(Clone)], but that doesn't work
+/// yet on unit structs.
+impl Clone for AssignDataFlowOperator {
+    fn clone(&self) -> AssignDataFlowOperator {
+        AssignDataFlowOperator
+    }
+}
+
 pub type AssignDataFlow = DataFlowContext<AssignDataFlowOperator>;
 
 impl MoveData {
@@ -474,6 +498,24 @@ impl FlowedMoveData {
         }
     }
 
+    pub fn each_path_moved_by(&self,
+                              id: ast::node_id,
+                              f: &fn(&Move, @LoanPath) -> bool)
+                              -> bool {
+        /*!
+         * Iterates through each path moved by `id`
+         */
+
+        for self.dfcx_moves.each_gen_bit_frozen(id) |index| {
+            let move = &self.move_data.moves[index];
+            let moved_path = move.path;
+            if !f(move, self.move_data.path(moved_path).loan_path) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     pub fn each_move_of(&self,
                         id: ast::node_id,
                         loan_path: @LoanPath,
@@ -506,7 +548,7 @@ impl FlowedMoveData {
         for self.dfcx_moves.each_bit_on_entry_frozen(id) |index| {
             let move = &self.move_data.moves[index];
             let moved_path = move.path;
-            if base_indices.iter().any_(|x| x == &moved_path) {
+            if base_indices.iter().any(|x| x == &moved_path) {
                 // Scenario 1 or 2: `loan_path` or some base path of
                 // `loan_path` was moved.
                 if !f(move, self.move_data.path(moved_path).loan_path) {
@@ -535,7 +577,7 @@ impl FlowedMoveData {
                        -> bool {
         //! True if `id` is the id of the LHS of an assignment
 
-        self.move_data.assignee_ids.iter().any_(|x| x == &id)
+        self.move_data.assignee_ids.iter().any(|x| x == &id)
     }
 
     pub fn each_assignment_of(&self,

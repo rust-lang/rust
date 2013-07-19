@@ -17,7 +17,7 @@ fn failfn() {
 fn main() {
     let y = ~0;
     let x: @@fn() = @|| {
-        error!(copy y);
+        error!(y.clone());
     };
     failfn();
     error!(x);

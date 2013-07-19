@@ -178,11 +178,10 @@ impl<A:ToStr> ToStr for @[A] {
 }
 
 #[cfg(test)]
-#[allow(non_implicitly_copyable_typarams)]
 mod tests {
     use hashmap::HashMap;
     use hashmap::HashSet;
-    use container::{Set, Map};
+    use container::{MutableSet, MutableMap};
     #[test]
     fn test_simple_types() {
         assert_eq!(1i.to_str(), ~"1");

@@ -13,6 +13,7 @@
 #[allow(missing_doc)];
 
 use cast;
+use clone::Clone;
 use comm::{stream, SharedChan, GenericChan, GenericPort};
 use io;
 use iterator::IteratorUtil;
@@ -24,7 +25,7 @@ use prelude::*;
 use ptr;
 use str;
 use task;
-use vec;
+use vec::ImmutableVector;
 
 /**
  * A value representing a child process.
@@ -587,7 +588,7 @@ pub fn make_command_line(prog: &str, args: &[~str]) -> ~str {
     return cmd;
 
     fn append_arg(cmd: &mut ~str, arg: &str) {
-        let quote = arg.iter().any_(|c| c == ' ' || c == '\t');
+        let quote = arg.iter().any(|c| c == ' ' || c == '\t');
         if quote {
             cmd.push_char('"');
         }
@@ -669,7 +670,7 @@ fn spawn_process_os(prog: &str, args: &[~str],
             fail!("failure in dup3(err_fd, 2): %s", os::last_os_error());
         }
         // close all other fds
-        for int::range_rev(getdtablesize() as int - 1, 2) |fd| {
+        for int::range_rev(getdtablesize() as int, 3) |fd| {
             close(fd as c_int);
         }
 
@@ -698,12 +699,12 @@ fn with_argv<T>(prog: &str, args: &[~str],
     let mut argptrs = ~[str::as_c_str(prog, |b| b)];
     let mut tmps = ~[];
     for args.iter().advance |arg| {
-        let t = @copy *arg;
+        let t = @(*arg).clone();
         tmps.push(t);
         argptrs.push(str::as_c_str(*t, |b| b));
     }
     argptrs.push(ptr::null());
-    vec::as_imm_buf(argptrs, |buf, _len| cb(buf))
+    argptrs.as_imm_buf(|buf, _len| cb(buf))
 }
 
 #[cfg(unix)]
@@ -715,14 +716,20 @@ fn with_envp<T>(env: Option<&[(~str, ~str)]>, cb: &fn(*c_void) -> T) -> T {
         let mut tmps = ~[];
         let mut ptrs = ~[];
 
-        for es.iter().advance |&(k, v)| {
-            let kv = @fmt!("%s=%s", k, v);
-            tmps.push(kv);
-            ptrs.push(str::as_c_str(*kv, |b| b));
+        for es.iter().advance |pair| {
+            // Use of match here is just to workaround limitations
+            // in the stage0 irrefutable pattern impl.
+            match pair {
+                &(ref k, ref v) => {
+                    let kv = @fmt!("%s=%s", *k, *v);
+                    tmps.push(kv);
+                    ptrs.push(str::as_c_str(*kv, |b| b));
+                }
+            }
         }
 
         ptrs.push(ptr::null());
-        vec::as_imm_buf(ptrs, |p, _len|
+        ptrs.as_imm_buf(|p, _len|
             unsafe { cb(::cast::transmute(p)) }
         )
       }
@@ -738,12 +745,12 @@ fn with_envp<T>(env: Option<&[(~str, ~str)]>, cb: &fn(*mut c_void) -> T) -> T {
     match env {
       Some(es) => {
         let mut blk = ~[];
-        for es.iter().advance |&(k, v)| {
-            let kv = fmt!("%s=%s", k, v);
+        for es.iter().advance |pair| {
+            let kv = fmt!("%s=%s", pair.first(), pair.second());
             blk.push_all(kv.as_bytes_with_null_consume());
         }
         blk.push(0);
-        vec::as_imm_buf(blk, |p, _len|
+        blk.as_imm_buf(|p, _len|
             unsafe { cb(::cast::transmute(p)) }
         )
       }
@@ -1294,9 +1301,9 @@ mod tests {
         let output = str::from_bytes(prog.finish_with_output().output);
 
         let r = os::env();
-        for r.iter().advance |&(k, v)| {
+        for r.iter().advance |&(ref k, ref v)| {
             // don't check windows magical empty-named variables
-            assert!(k.is_empty() || output.contains(fmt!("%s=%s", k, v)));
+            assert!(k.is_empty() || output.contains(fmt!("%s=%s", *k, *v)));
         }
     }
     #[test]

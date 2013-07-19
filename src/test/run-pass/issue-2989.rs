@@ -20,7 +20,7 @@ trait methods {
 
 impl methods for () {
     fn to_bytes(&self) -> ~[u8] {
-        vec::from_elem(0, 0)
+        vec::from_elem(0, 0u8)
     }
 }
 

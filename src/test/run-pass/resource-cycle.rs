@@ -19,7 +19,7 @@ struct r {
 impl Drop for r {
     fn drop(&self) {
         unsafe {
-            debug!("r's dtor: self = %x, self.v = %x, self.v's value = %x",
+            info!("r's dtor: self = %x, self.v = %x, self.v's value = %x",
               cast::transmute::<*r, uint>(self),
               cast::transmute::<**int, uint>(&(self.v)),
               cast::transmute::<*int, uint>(self.v));
@@ -56,11 +56,11 @@ pub fn main() {
             next: None,
               r: {
               let rs = r(i1p);
-              debug!("r = %x", cast::transmute::<*r, uint>(&rs));
+              info!("r = %x", cast::transmute::<*r, uint>(&rs));
               rs }
         });
 
-        debug!("x1 = %x, x1.r = %x",
+        info!("x1 = %x, x1.r = %x",
                cast::transmute::<@mut t, uint>(x1),
                cast::transmute::<*r, uint>(&x1.r));
 
@@ -68,12 +68,12 @@ pub fn main() {
             next: None,
               r: {
               let rs = r(i2p);
-              debug!("r2 = %x", cast::transmute::<*r, uint>(&rs));
+              info!("r2 = %x", cast::transmute::<*r, uint>(&rs));
               rs
                 }
         });
 
-        debug!("x2 = %x, x2.r = %x",
+        info!("x2 = %x, x2.r = %x",
                cast::transmute::<@mut t, uint>(x2),
                cast::transmute::<*r, uint>(&(x2.r)));
 

@@ -22,6 +22,7 @@ pub trait ABIInfo {
     fn compute_info(&self, atys: &[Type], rty: Type, ret_def: bool) -> FnType;
 }
 
+#[deriving(Clone)]
 pub struct LLVMType {
     cast: bool,
     ty: Type
@@ -130,10 +131,10 @@ impl FnType {
             j = 1u;
             get_param(llwrapfn, 0u)
         } else if self.ret_ty.cast {
-            let retptr = alloca(bcx, self.ret_ty.ty);
+            let retptr = alloca(bcx, self.ret_ty.ty, "");
             BitCast(bcx, retptr, ret_ty.ptr_to())
         } else {
-            alloca(bcx, ret_ty)
+            alloca(bcx, ret_ty, "")
         };
 
         let mut i = 0u;

@@ -12,7 +12,6 @@
 
 #[allow(missing_doc)];
 
-use local_data::{local_data_pop, local_data_set};
 use local_data;
 use prelude::*;
 
@@ -24,16 +23,23 @@ pub struct Handler<T, U> {
     prev: Option<@Handler<T, U>>,
 }
 
+#[cfg(stage0)]
 pub struct Condition<'self, T, U> {
     name: &'static str,
-    key: local_data::LocalDataKey<'self, Handler<T, U>>
+    key: local_data::Key<'self, @Handler<T, U>>
+}
+#[cfg(not(stage0))]
+pub struct Condition<T, U> {
+    name: &'static str,
+    key: local_data::Key<@Handler<T, U>>
 }
 
-impl<'self, T, U> Condition<'self, T, U> {
-    pub fn trap(&'self self, h: &'self fn(T) -> U) -> Trap<'self, T, U> {
+#[cfg(not(stage0))]
+impl<T, U> Condition<T, U> {
+    pub fn trap<'a>(&'a self, h: &'a fn(T) -> U) -> Trap<'a, T, U> {
         unsafe {
             let p : *RustClosure = ::cast::transmute(&h);
-            let prev = local_data::local_data_get(self.key);
+            let prev = local_data::get(self.key, |k| k.map(|&x| *x));
             let h = @Handler { handle: *p, prev: prev };
             Trap { cond: self, handler: h }
         }
@@ -41,12 +47,12 @@ impl<'self, T, U> Condition<'self, T, U> {
 
     pub fn raise(&self, t: T) -> U {
         let msg = fmt!("Unhandled condition: %s: %?", self.name, t);
-        self.raise_default(t, || fail!(copy msg))
+        self.raise_default(t, || fail!(msg.clone()))
     }
 
     pub fn raise_default(&self, t: T, default: &fn() -> U) -> U {
         unsafe {
-            match local_data_pop(self.key) {
+            match local_data::pop(self.key) {
                 None => {
                     debug!("Condition.raise: found no handler");
                     default()
@@ -55,12 +61,55 @@ impl<'self, T, U> Condition<'self, T, U> {
                     debug!("Condition.raise: found handler");
                     match handler.prev {
                         None => {}
-                        Some(hp) => local_data_set(self.key, hp)
+                        Some(hp) => local_data::set(self.key, hp)
                     }
                     let handle : &fn(T) -> U =
                         ::cast::transmute(handler.handle);
                     let u = handle(t);
-                    local_data_set(self.key, handler);
+                    local_data::set(self.key, handler);
+                    u
+                }
+            }
+        }
+    }
+}
+#[cfg(stage0)]
+impl<'self, T, U> Condition<'self, T, U> {
+    pub fn trap<'a>(&'a self, h: &'a fn(T) -> U) -> Trap<'a, T, U> {
+        unsafe {
+            let p : *RustClosure = ::cast::transmute(&h);
+            let prev = local_data::get(::cast::unsafe_copy(&self.key),
+                                       |k| k.map(|&x| *x));
+            let h = @Handler { handle: *p, prev: prev };
+            Trap { cond: self, handler: h }
+        }
+    }
+
+    pub fn raise(&self, t: T) -> U {
+        let msg = fmt!("Unhandled condition: %s: %?", self.name, t);
+        self.raise_default(t, || fail!(msg.clone()))
+    }
+
+    pub fn raise_default(&self, t: T, default: &fn() -> U) -> U {
+        unsafe {
+            match local_data::pop(::cast::unsafe_copy(&self.key)) {
+                None => {
+                    debug!("Condition.raise: found no handler");
+                    default()
+                }
+                Some(handler) => {
+                    debug!("Condition.raise: found handler");
+                    match handler.prev {
+                        None => {}
+                        Some(hp) => {
+                            local_data::set(::cast::unsafe_copy(&self.key),
+                                            hp)
+                        }
+                    }
+                    let handle : &fn(T) -> U =
+                        ::cast::transmute(handler.handle);
+                    let u = handle(t);
+                    local_data::set(::cast::unsafe_copy(&self.key), handler);
                     u
                 }
             }
@@ -68,38 +117,45 @@ impl<'self, T, U> Condition<'self, T, U> {
     }
 }
 
+#[cfg(stage0)]
 struct Trap<'self, T, U> {
     cond: &'self Condition<'self, T, U>,
+    handler: @Handler<T, U>
+}
+#[cfg(not(stage0))]
+struct Trap<'self, T, U> {
+    cond: &'self Condition<T, U>,
     handler: @Handler<T, U>
 }
 
 impl<'self, T, U> Trap<'self, T, U> {
     pub fn in<V>(&self, inner: &'self fn() -> V) -> V {
-        unsafe {
-            let _g = Guard { cond: self.cond };
-            debug!("Trap: pushing handler to TLS");
-            local_data_set(self.cond.key, self.handler);
-            inner()
-        }
+        let _g = Guard { cond: self.cond };
+        debug!("Trap: pushing handler to TLS");
+        local_data::set(self.cond.key, self.handler);
+        inner()
     }
 }
 
+#[cfg(stage0)]
 struct Guard<'self, T, U> {
     cond: &'self Condition<'self, T, U>
+}
+#[cfg(not(stage0))]
+struct Guard<'self, T, U> {
+    cond: &'self Condition<T, U>
 }
 
 #[unsafe_destructor]
 impl<'self, T, U> Drop for Guard<'self, T, U> {
     fn drop(&self) {
-        unsafe {
-            debug!("Guard: popping handler from TLS");
-            let curr = local_data_pop(self.cond.key);
-            match curr {
+        debug!("Guard: popping handler from TLS");
+        let curr = local_data::pop(self.cond.key);
+        match curr {
+            None => {}
+            Some(h) => match h.prev {
                 None => {}
-                Some(h) => match h.prev {
-                    None => {}
-                    Some(hp) => local_data_set(self.cond.key, hp)
-                }
+                Some(hp) => local_data::set(self.cond.key, hp)
             }
         }
     }

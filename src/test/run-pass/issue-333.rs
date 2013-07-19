@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn quux<T:Copy>(x: T) -> T { let f = id::<T>; return f(x); }
+fn quux<T>(x: T) -> T { let f = id::<T>; return f(x); }
 
-fn id<T:Copy>(x: T) -> T { return x; }
+fn id<T>(x: T) -> T { return x; }
 
 pub fn main() { assert!((quux(10) == 10)); }

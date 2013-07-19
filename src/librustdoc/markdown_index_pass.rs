@@ -24,7 +24,7 @@ use pass::Pass;
 pub fn mk_pass(config: config::Config) -> Pass {
     Pass {
         name: ~"markdown_index",
-        f: |srv, doc| run(srv, doc, copy config)
+        f: |srv, doc| run(srv, doc, config.clone())
     }
 }
 
@@ -49,7 +49,7 @@ fn fold_mod(
     let doc = fold::default_any_fold_mod(fold, doc);
 
     doc::ModDoc {
-        index: Some(build_mod_index(copy doc, copy fold.ctxt)),
+        index: Some(build_mod_index(doc.clone(), fold.ctxt.clone())),
         .. doc
     }
 }
@@ -62,7 +62,7 @@ fn fold_nmod(
     let doc = fold::default_any_fold_nmod(fold, doc);
 
     doc::NmodDoc {
-        index: Some(build_nmod_index(copy doc, copy fold.ctxt)),
+        index: Some(build_nmod_index(doc.clone(), fold.ctxt.clone())),
         .. doc
     }
 }
@@ -73,7 +73,7 @@ fn build_mod_index(
 ) -> doc::Index {
     doc::Index {
         entries: doc.items.map(|doc| {
-            item_to_entry(copy *doc, &config)
+            item_to_entry((*doc).clone(), &config)
         })
     }
 }
@@ -84,7 +84,7 @@ fn build_nmod_index(
 ) -> doc::Index {
     doc::Index {
         entries: doc.fns.map(|doc| {
-            item_to_entry(doc::FnTag(copy *doc), &config)
+            item_to_entry(doc::FnTag((*doc).clone()), &config)
         })
     }
 }
@@ -97,16 +97,16 @@ fn item_to_entry(
       doc::ModTag(_) | doc::NmodTag(_)
       if config.output_style == config::DocPerMod => {
         markdown_writer::make_filename(config,
-                                       doc::ItemPage(copy doc)).to_str()
+                                       doc::ItemPage(doc.clone())).to_str()
       }
       _ => {
-        ~"#" + pandoc_header_id(markdown_pass::header_text(copy doc))
+        ~"#" + pandoc_header_id(markdown_pass::header_text(doc.clone()))
       }
     };
 
     doc::IndexEntry {
-        kind: markdown_pass::header_kind(copy doc),
-        name: markdown_pass::header_name(copy doc),
+        kind: markdown_pass::header_kind(doc.clone()),
+        name: markdown_pass::header_name(doc.clone()),
         brief: doc.brief(),
         link: link
     }
@@ -172,6 +172,7 @@ mod test {
     use extract;
     use markdown_index_pass::run;
     use path_pass;
+    use prune_hidden_pass;
     use super::pandoc_header_id;
 
     fn mk_doc(output_style: config::OutputStyle, source: ~str)
@@ -183,8 +184,10 @@ mod test {
             };
             let doc = extract::from_srv(srv.clone(), ~"");
             let doc = (attr_pass::mk_pass().f)(srv.clone(), doc);
+            let doc = (prune_hidden_pass::mk_pass().f)(srv.clone(), doc);
             let doc = (desc_to_brief_pass::mk_pass().f)(srv.clone(), doc);
             let doc = (path_pass::mk_pass().f)(srv.clone(), doc);
+
             run(srv.clone(), doc, config)
         }
     }
@@ -205,8 +208,8 @@ mod test {
                 == ~"impl-of-selectt-u-for-left-right");
         assert!(pandoc_header_id("impl of Condition<'self, T, U>")
                 == ~"impl-of-conditionself-t-u");
-        assert!(pandoc_header_id("impl of Condition<T: Copy + Clone>")
-                == ~"impl-of-conditiont-copy-clone");
+        assert!(pandoc_header_id("impl of Condition<T: Clone>")
+                == ~"impl-of-conditiont-clone");
     }
 
     #[test]
@@ -240,13 +243,13 @@ mod test {
             config::DocPerMod,
             ~"mod a { } fn b() { }"
         );
-        assert!(doc.cratemod().index.get().entries[0] == doc::IndexEntry {
+        assert_eq!(doc.cratemod().index.get().entries[0], doc::IndexEntry {
             kind: ~"Module",
             name: ~"a",
             brief: None,
             link: ~"a.html"
         });
-        assert!(doc.cratemod().index.get().entries[1] == doc::IndexEntry {
+        assert_eq!(doc.cratemod().index.get().entries[1], doc::IndexEntry {
             kind: ~"Function",
             name: ~"b",
             brief: None,
@@ -260,8 +263,7 @@ mod test {
             config::DocPerMod,
             ~"#[doc = \"test\"] mod a { }"
         );
-        assert!(doc.cratemod().index.get().entries[0].brief
-                == Some(~"test"));
+        assert_eq!(doc.cratemod().index.get().entries[0].brief, Some(~"test"));
     }
 
     #[test]
@@ -270,12 +272,13 @@ mod test {
             config::DocPerCrate,
             ~"extern { fn b(); }"
         );
-        assert!(doc.cratemod().nmods()[0].index.get().entries[0]
-                == doc::IndexEntry {
-                    kind: ~"Function",
-                    name: ~"b",
-                    brief: None,
-                    link: ~"#function-b"
-                });
+        // hidden __std_macros module at the start.
+        assert_eq!(doc.cratemod().nmods()[0].index.get().entries[0],
+                   doc::IndexEntry {
+                       kind: ~"Function",
+                       name: ~"b",
+                       brief: None,
+                       link: ~"#function-b"
+                   });
     }
 }

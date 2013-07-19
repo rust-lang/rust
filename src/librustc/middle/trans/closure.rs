@@ -13,6 +13,7 @@ use back::abi;
 use back::link::{mangle_internal_name_by_path_and_seq};
 use lib::llvm::{llvm, ValueRef};
 use middle::moves;
+use middle::lang_items::ClosureExchangeMallocFnLangItem;
 use middle::trans::base::*;
 use middle::trans::build::*;
 use middle::trans::callee;
@@ -173,16 +174,6 @@ pub fn allocate_cbox(bcx: block, sigil: ast::Sigil, cdata_ty: ty::t)
     let ccx = bcx.ccx();
     let tcx = ccx.tcx;
 
-    fn nuke_ref_count(bcx: block, llbox: ValueRef) {
-        let _icx = push_ctxt("closure::nuke_ref_count");
-        // Initialize ref count to arbitrary value for debugging:
-        let ccx = bcx.ccx();
-        let llbox = PointerCast(bcx, llbox, Type::opaque_box(ccx).ptr_to());
-        let ref_cnt = GEPi(bcx, llbox, [0u, abi::box_field_refcnt]);
-        let rc = C_int(ccx, 0x12345678);
-        Store(bcx, rc, ref_cnt);
-    }
-
     // Allocate and initialize the box:
     match sigil {
         ast::ManagedSigil => {
@@ -193,8 +184,7 @@ pub fn allocate_cbox(bcx: block, sigil: ast::Sigil, cdata_ty: ty::t)
         }
         ast::BorrowedSigil => {
             let cbox_ty = tuplify_box_ty(tcx, cdata_ty);
-            let llbox = alloc_ty(bcx, cbox_ty);
-            nuke_ref_count(bcx, llbox);
+            let llbox = alloc_ty(bcx, cbox_ty, "__closure");
             rslt(bcx, llbox)
         }
     }
@@ -220,16 +210,24 @@ pub fn store_environment(bcx: block,
     // compute the type of the closure
     let cdata_ty = mk_closure_tys(tcx, bound_values);
 
-    // allocate closure in the heap
-    let Result {bcx: bcx, val: llbox} = allocate_cbox(bcx, sigil, cdata_ty);
-
     // cbox_ty has the form of a tuple: (a, b, c) we want a ptr to a
     // tuple.  This could be a ptr in uniq or a box or on stack,
     // whatever.
     let cbox_ty = tuplify_box_ty(tcx, cdata_ty);
     let cboxptr_ty = ty::mk_ptr(tcx, ty::mt {ty:cbox_ty, mutbl:ast::m_imm});
+    let llboxptr_ty = type_of(ccx, cboxptr_ty);
 
-    let llbox = PointerCast(bcx, llbox, type_of(ccx, cboxptr_ty));
+    // If there are no bound values, no point in allocating anything.
+    if bound_values.is_empty() {
+        return ClosureResult {llbox: C_null(llboxptr_ty),
+                              cdata_ty: cdata_ty,
+                              bcx: bcx};
+    }
+
+    // allocate closure in the heap
+    let Result {bcx: bcx, val: llbox} = allocate_cbox(bcx, sigil, cdata_ty);
+
+    let llbox = PointerCast(bcx, llbox, llboxptr_ty);
     debug!("tuplify_box_ty = %s", ty_to_str(tcx, cbox_ty));
 
     // Copy expr values into boxed bindings.
@@ -268,6 +266,7 @@ pub fn build_closure(bcx0: block,
                      sigil: ast::Sigil,
                      include_ret_handle: Option<ValueRef>) -> ClosureResult {
     let _icx = push_ctxt("closure::build_closure");
+
     // If we need to, package up the iterator body to call
     let bcx = bcx0;
 
@@ -413,11 +412,11 @@ pub fn trans_expr_fn(bcx: block,
 
     let llfnty = type_of_fn_from_ty(ccx, fty);
 
-    let sub_path = vec::append_one(/*bad*/copy bcx.fcx.path,
+    let sub_path = vec::append_one(bcx.fcx.path.clone(),
                                    path_name(special_idents::anon));
     // XXX: Bad copy.
     let s = mangle_internal_name_by_path_and_seq(ccx,
-                                                 copy sub_path,
+                                                 sub_path.clone(),
                                                  "expr_fn");
     let llfn = decl_internal_cdecl_fn(ccx.llmod, s, llfnty);
 
@@ -449,7 +448,7 @@ pub fn trans_expr_fn(bcx: block,
                           body,
                           llfn,
                           no_self,
-                          /*bad*/ copy bcx.fcx.param_substs,
+                          bcx.fcx.param_substs,
                           user_id,
                           [],
                           real_return_type,
@@ -531,13 +530,17 @@ pub fn make_opaque_cbox_take_glue(
 
         // Allocate memory, update original ptr, and copy existing data
         let opaque_tydesc = PointerCast(bcx, tydesc, Type::i8p());
-        let rval = alloca(bcx, Type::i8p());
-        let bcx = callee::trans_lang_call(
+        let mut bcx = bcx;
+        let alloc_fn = langcall(bcx, None,
+                                fmt!("allocation of type with sigil `%s`",
+                                    sigil.to_str()),
+                                ClosureExchangeMallocFnLangItem);
+        let llresult = unpack_result!(bcx, callee::trans_lang_call(
             bcx,
-            bcx.tcx().lang_items.closure_exchange_malloc_fn(),
+            alloc_fn,
             [opaque_tydesc, sz],
-            expr::SaveIn(rval));
-        let cbox_out = PointerCast(bcx, Load(bcx, rval), llopaquecboxty);
+            None));
+        let cbox_out = PointerCast(bcx, llresult, llopaquecboxty);
         call_memcpy(bcx, cbox_out, cbox_in, sz, 1);
         Store(bcx, cbox_out, cboxptr);
 

@@ -16,5 +16,5 @@ trait to_strz {
 }
 
 impl to_strz for ~str {
-    fn to_strz() -> ~str { copy self }
+    fn to_strz() -> ~str { self.clone() }
 }

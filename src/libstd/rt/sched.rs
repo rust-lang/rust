@@ -429,7 +429,7 @@ impl Scheduler {
 
         do self.deschedule_running_task_and_then |sched, dead_task| {
             let mut dead_task = dead_task;
-            let coroutine = dead_task.coroutine.swap_unwrap();
+            let coroutine = dead_task.coroutine.take_unwrap();
             coroutine.recycle(&mut sched.stack_pool);
         }
 

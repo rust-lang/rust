@@ -91,7 +91,7 @@ pub fn const_vec(cx: @mut CrateContext, e: &ast::expr, es: &[@ast::expr])
         let sz = llvm::LLVMConstMul(C_uint(cx, es.len()), unit_sz);
         let vs = es.map(|e| const_expr(cx, *e));
         // If the vector contains enums, an LLVM array won't work.
-        let v = if vs.iter().any_(|vi| val_ty(*vi) != llunitty) {
+        let v = if vs.iter().any(|vi| val_ty(*vi) != llunitty) {
             C_struct(vs)
         } else {
             C_array(llunitty, vs)
@@ -159,7 +159,7 @@ pub fn get_const_val(cx: @mut CrateContext, mut def_id: ast::def_id) -> ValueRef
     let contains_key = cx.const_values.contains_key(&def_id.node);
     if !ast_util::is_local(def_id) || !contains_key {
         if !ast_util::is_local(def_id) {
-            def_id = inline::maybe_instantiate_inline(cx, def_id, true);
+            def_id = inline::maybe_instantiate_inline(cx, def_id);
         }
         match cx.tcx.items.get_copy(&def_id.node) {
             ast_map::node_item(@ast::item {
@@ -525,7 +525,7 @@ fn const_expr_unadjusted(cx: @mut CrateContext, e: &ast::expr) -> ValueRef {
               _ => cx.sess.span_bug(e.span, "bad const-slice expr")
             }
           }
-          ast::expr_path(pth) => {
+          ast::expr_path(ref pth) => {
             assert_eq!(pth.types.len(), 0);
             let tcx = cx.tcx;
             match tcx.def_map.find(&e.id) {

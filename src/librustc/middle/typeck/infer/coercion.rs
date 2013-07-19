@@ -275,8 +275,10 @@ impl Coerce {
                b.inf_str(self.infcx));
 
         let fn_ty = match *sty_a {
-            ty::ty_closure(ref f) if f.sigil == ast::ManagedSigil => copy *f,
-            ty::ty_closure(ref f) if f.sigil == ast::OwnedSigil => copy *f,
+            ty::ty_closure(ref f) if f.sigil == ast::ManagedSigil ||
+                                     f.sigil == ast::OwnedSigil => {
+                (*f).clone()
+            }
             ty::ty_bare_fn(ref f) => {
                 return self.coerce_from_bare_fn(a, f, b);
             }
@@ -331,16 +333,16 @@ impl Coerce {
         }
 
         let fn_ty_b = match *sty_b {
-            ty::ty_closure(ref f) => {copy *f}
-            _ => {
-                return self.subtype(a, b);
-            }
+            ty::ty_closure(ref f) => (*f).clone(),
+            _ => return self.subtype(a, b),
         };
 
         let adj = @ty::AutoAddEnv(fn_ty_b.region, fn_ty_b.sigil);
-        let a_closure = ty::mk_closure(
-            self.infcx.tcx,
-            ty::ClosureTy {sig: copy fn_ty_a.sig, ..fn_ty_b});
+        let a_closure = ty::mk_closure(self.infcx.tcx,
+                                       ty::ClosureTy {
+                                            sig: fn_ty_a.sig.clone(),
+                                            ..fn_ty_b
+                                       });
         if_ok!(self.subtype(a_closure, b));
         Ok(Some(adj))
     }

@@ -26,23 +26,71 @@ use std::io;
 pub mod color {
     pub type Color = u16;
 
-    pub static black:   Color = 0u16;
-    pub static red:     Color = 1u16;
-    pub static green:   Color = 2u16;
-    pub static yellow:  Color = 3u16;
-    pub static blue:    Color = 4u16;
-    pub static magenta: Color = 5u16;
-    pub static cyan:    Color = 6u16;
-    pub static white:   Color = 7u16;
+    pub static BLACK:   Color = 0u16;
+    pub static RED:     Color = 1u16;
+    pub static GREEN:   Color = 2u16;
+    pub static YELLOW:  Color = 3u16;
+    pub static BLUE:    Color = 4u16;
+    pub static MAGENTA: Color = 5u16;
+    pub static CYAN:    Color = 6u16;
+    pub static WHITE:   Color = 7u16;
 
-    pub static bright_black:   Color = 8u16;
-    pub static bright_red:     Color = 9u16;
-    pub static bright_green:   Color = 10u16;
-    pub static bright_yellow:  Color = 11u16;
-    pub static bright_blue:    Color = 12u16;
-    pub static bright_magenta: Color = 13u16;
-    pub static bright_cyan:    Color = 14u16;
-    pub static bright_white:   Color = 15u16;
+    pub static BRIGHT_BLACK:   Color = 8u16;
+    pub static BRIGHT_RED:     Color = 9u16;
+    pub static BRIGHT_GREEN:   Color = 10u16;
+    pub static BRIGHT_YELLOW:  Color = 11u16;
+    pub static BRIGHT_BLUE:    Color = 12u16;
+    pub static BRIGHT_MAGENTA: Color = 13u16;
+    pub static BRIGHT_CYAN:    Color = 14u16;
+    pub static BRIGHT_WHITE:   Color = 15u16;
+}
+
+pub mod attr {
+    /// Terminal attributes for use with term.attr().
+    /// Most attributes can only be turned on and must be turned off with term.reset().
+    /// The ones that can be turned off explicitly take a boolean value.
+    /// Color is also represented as an attribute for convenience.
+    pub enum Attr {
+        /// Bold (or possibly bright) mode
+        Bold,
+        /// Dim mode, also called faint or half-bright. Often not supported
+        Dim,
+        /// Italics mode. Often not supported
+        Italic(bool),
+        /// Underline mode
+        Underline(bool),
+        /// Blink mode
+        Blink,
+        /// Standout mode. Often implemented as Reverse, sometimes coupled with Bold
+        Standout(bool),
+        /// Reverse mode, inverts the foreground and background colors
+        Reverse,
+        /// Secure mode, also called invis mode. Hides the printed text
+        Secure,
+        /// Convenience attribute to set the foreground color
+        ForegroundColor(super::color::Color),
+        /// Convenience attribute to set the background color
+        BackgroundColor(super::color::Color)
+    }
+}
+
+#[cfg(not(target_os = "win32"))]
+priv fn cap_for_attr(attr: attr::Attr) -> &'static str {
+    match attr {
+        attr::Bold               => "bold",
+        attr::Dim                => "dim",
+        attr::Italic(true)       => "sitm",
+        attr::Italic(false)      => "ritm",
+        attr::Underline(true)    => "smul",
+        attr::Underline(false)   => "rmul",
+        attr::Blink              => "blink",
+        attr::Standout(true)     => "smso",
+        attr::Standout(false)    => "rmso",
+        attr::Reverse            => "rev",
+        attr::Secure             => "invis",
+        attr::ForegroundColor(_) => "setaf",
+        attr::BackgroundColor(_) => "setab"
+    }
 }
 
 #[cfg(not(target_os = "win32"))]
@@ -88,45 +136,100 @@ impl Terminal {
     ///
     /// If the color is a bright color, but the terminal only supports 8 colors,
     /// the corresponding normal color will be used instead.
-    pub fn fg(&self, color: color::Color) {
+    ///
+    /// Returns true if the color was set, false otherwise.
+    pub fn fg(&self, color: color::Color) -> bool {
         let color = self.dim_if_necessary(color);
         if self.num_colors > color {
             let s = expand(*self.ti.strings.find_equiv(&("setaf")).unwrap(),
                            [Number(color as int)], &mut Variables::new());
             if s.is_ok() {
                 self.out.write(s.unwrap());
+                return true
             } else {
                 warn!("%s", s.unwrap_err());
             }
         }
+        false
     }
     /// Sets the background color to the given color.
     ///
     /// If the color is a bright color, but the terminal only supports 8 colors,
     /// the corresponding normal color will be used instead.
-    pub fn bg(&self, color: color::Color) {
+    ///
+    /// Rturns true if the color was set, false otherwise.
+    pub fn bg(&self, color: color::Color) -> bool {
         let color = self.dim_if_necessary(color);
         if self.num_colors > color {
             let s = expand(*self.ti.strings.find_equiv(&("setab")).unwrap(),
                            [Number(color as int)], &mut Variables::new());
             if s.is_ok() {
                 self.out.write(s.unwrap());
+                return true
             } else {
                 warn!("%s", s.unwrap_err());
             }
         }
+        false
     }
+
+    /// Sets the given terminal attribute, if supported.
+    /// Returns true if the attribute was supported, false otherwise.
+    pub fn attr(&self, attr: attr::Attr) -> bool {
+        match attr {
+            attr::ForegroundColor(c) => self.fg(c),
+            attr::BackgroundColor(c) => self.bg(c),
+            _ => {
+                let cap = cap_for_attr(attr);
+                let parm = self.ti.strings.find_equiv(&cap);
+                if parm.is_some() {
+                    let s = expand(*parm.unwrap(), [], &mut Variables::new());
+                    if s.is_ok() {
+                        self.out.write(s.unwrap());
+                        return true
+                    } else {
+                        warn!("%s", s.unwrap_err());
+                    }
+                }
+                false
+            }
+        }
+    }
+
+    /// Returns whether the given terminal attribute is supported.
+    pub fn supports_attr(&self, attr: attr::Attr) -> bool {
+        match attr {
+            attr::ForegroundColor(_) | attr::BackgroundColor(_) => {
+                self.num_colors > 0
+            }
+            _ => {
+                let cap = cap_for_attr(attr);
+                self.ti.strings.find_equiv(&cap).is_some()
+            }
+        }
+    }
+
+    /// Resets all terminal attributes and color to the default.
     pub fn reset(&self) {
-        let mut vars = Variables::new();
-        let s = do self.ti.strings.find_equiv(&("op"))
-                       .map_consume_default(Err(~"can't find terminfo capability `op`")) |&op| {
-                           expand(op, [], &mut vars)
-                       };
+        let mut cap = self.ti.strings.find_equiv(&("sgr0"));
+        if cap.is_none() {
+            // are there any terminals that have color/attrs and not sgr0?
+            // Try falling back to sgr, then op
+            cap = self.ti.strings.find_equiv(&("sgr"));
+            if cap.is_none() {
+                cap = self.ti.strings.find_equiv(&("op"));
+            }
+        }
+        let s = do cap.map_consume_default(Err(~"can't find terminfo capability `sgr0`")) |op| {
+            expand(*op, [], &mut Variables::new())
+        };
         if s.is_ok() {
             self.out.write(s.unwrap());
         } else if self.num_colors > 0 {
             warn!("%s", s.unwrap_err());
         } else {
+            // if we support attributes but not color, it would be nice to still warn!()
+            // but it's not worth testing all known attributes just for this.
             debug!("%s", s.unwrap_err());
         }
     }
@@ -144,10 +247,20 @@ impl Terminal {
         return Ok(Terminal {out: out, num_colors: 0});
     }
 
-    pub fn fg(&self, _color: color::Color) {
+    pub fn fg(&self, _color: color::Color) -> bool {
+        false
     }
 
-    pub fn bg(&self, _color: color::Color) {
+    pub fn bg(&self, _color: color::Color) -> bool {
+        false
+    }
+
+    pub fn attr(&self, _attr: attr::Attr) -> bool {
+        false
+    }
+
+    pub fn supports_attr(&self, _attr: attr::Attr) -> bool {
+        false
     }
 
     pub fn reset(&self) {

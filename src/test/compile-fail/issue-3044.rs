@@ -12,7 +12,7 @@ fn main() {
     let needlesArr: ~[char] = ~['a', 'f'];
     do needlesArr.iter().fold() |x, y| {
     }
-    //~^ ERROR 1 parameter was supplied (including the closure passed by the `do` keyword)
+    //~^^ ERROR 1 parameter was supplied (including the closure passed by the `do` keyword)
     //
     // the first error is, um, non-ideal.
 }

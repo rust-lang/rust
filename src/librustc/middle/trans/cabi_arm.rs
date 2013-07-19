@@ -14,8 +14,8 @@ use middle::trans::cabi::{ABIInfo, FnType, LLVMType};
 
 use middle::trans::type_::Type;
 
+use std::num;
 use std::option::{Option, None, Some};
-use std::uint;
 
 fn align_up_to(off: uint, a: uint) -> uint {
     return (off + a - 1u) / a * a;
@@ -41,7 +41,7 @@ fn ty_align(ty: Type) -> uint {
                 1
             } else {
                 let str_tys = ty.field_types();
-                str_tys.iter().fold(1, |a, t| uint::max(a, ty_align(*t)))
+                str_tys.iter().fold(1, |a, t| num::max(a, ty_align(*t)))
             }
         }
         Array => {

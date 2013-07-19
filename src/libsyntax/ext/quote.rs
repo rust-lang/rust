@@ -17,8 +17,6 @@ use parse::token::*;
 use parse::token;
 use parse;
 
-use std::vec;
-
 /**
 *
 * Quasiquoting works via token trees.
@@ -47,7 +45,7 @@ pub mod rt {
 
     impl ToTokens for ~[token_tree] {
         pub fn to_tokens(&self, _cx: @ExtCtxt) -> ~[token_tree] {
-            copy *self
+            (*self).clone()
         }
     }
 
@@ -88,13 +86,13 @@ pub mod rt {
         }
     }
 
-    impl ToSource for @ast::Ty {
+    impl ToSource for ast::Ty {
         fn to_source(&self) -> @str {
-            pprust::ty_to_str(*self, get_ident_interner()).to_managed()
+            pprust::ty_to_str(self, get_ident_interner()).to_managed()
         }
     }
 
-    impl<'self> ToSource for &'self [@ast::Ty] {
+    impl<'self> ToSource for &'self [ast::Ty] {
         fn to_source(&self) -> @str {
             self.map(|i| i.to_source()).connect(", ").to_managed()
         }
@@ -216,13 +214,13 @@ pub mod rt {
         }
     }
 
-    impl ToTokens for @ast::Ty {
+    impl ToTokens for ast::Ty {
         fn to_tokens(&self, cx: @ExtCtxt) -> ~[token_tree] {
             cx.parse_tts(self.to_source())
         }
     }
 
-    impl<'self> ToTokens for &'self [@ast::Ty] {
+    impl<'self> ToTokens for &'self [ast::Ty] {
         fn to_tokens(&self, cx: @ExtCtxt) -> ~[token_tree] {
             cx.parse_tts(self.to_source())
         }
@@ -607,7 +605,7 @@ fn mk_tt(cx: @ExtCtxt, sp: span, tt: &ast::token_tree)
             ~[cx.stmt_expr(e_push)]
         }
 
-        ast::tt_delim(ref tts) => mk_tts(cx, sp, *tts),
+        ast::tt_delim(ref tts) => mk_tts(cx, sp, **tts),
         ast::tt_seq(*) => fail!("tt_seq in quote!"),
 
         ast::tt_nonterminal(sp, ident) => {
@@ -653,7 +651,7 @@ fn expand_tts(cx: @ExtCtxt,
     let p = parse::new_parser_from_tts(
         cx.parse_sess(),
         cx.cfg(),
-        vec::to_owned(tts)
+        tts.to_owned()
     );
     *p.quote_depth += 1u;
     let tts = p.parse_all_token_trees();

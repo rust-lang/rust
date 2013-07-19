@@ -14,13 +14,13 @@
 // -*- rust -*-
 pub fn main() {
     let mut sum: int = 0;
-    do first_ten |i| { debug!("main"); debug!(i); sum = sum + i; }
-    debug!("sum");
-    debug!(sum);
+    do first_ten |i| { info!("main"); info!(i); sum = sum + i; }
+    info!("sum");
+    info!(sum);
     assert_eq!(sum, 45);
 }
 
 fn first_ten(it: &fn(int)) {
     let mut i: int = 0;
-    while i < 10 { debug!("first_ten"); it(i); i = i + 1; }
+    while i < 10 { info!("first_ten"); it(i); i = i + 1; }
 }

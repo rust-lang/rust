@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn foo<T:Copy>(x: &T) -> T{
+fn foo<T:Clone>(x: &T) -> T{
     match x {
-        &ref a => copy *a
+        &ref a => (*a).clone()
     }
 }
 

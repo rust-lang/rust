@@ -86,15 +86,10 @@ rand_gen_seed(uint8_t* dest, size_t size) {
 
 extern "C" CDECL void *
 rand_new_seeded(uint8_t* seed, size_t seed_size) {
-    rust_task *task = rust_get_current_task();
-    rust_rng *rng = (rust_rng *) task->malloc(sizeof(rust_rng),
-                                              "rand_new_seeded");
-    if (!rng) {
-        task->fail();
-        return NULL;
-    }
-    char *env_seed = task->kernel->env->rust_seed;
-    rng_init(rng, env_seed, seed, seed_size);
+    assert(seed != NULL);
+    rust_rng *rng = (rust_rng *) malloc(sizeof(rust_rng));
+    assert(rng != NULL && "rng alloc failed");
+    rng_init(rng, NULL, seed, seed_size);
     return rng;
 }
 
@@ -105,8 +100,7 @@ rand_next(rust_rng *rng) {
 
 extern "C" CDECL void
 rand_free(rust_rng *rng) {
-    rust_task *task = rust_get_current_task();
-    task->free(rng);
+    free(rng);
 }
 
 
@@ -396,9 +390,9 @@ void tm_to_rust_tm(tm* in_tm, rust_tm* out_tm, int32_t gmtoff,
     if (zone != NULL) {
         size_t size = strlen(zone);
         reserve_vec_exact(&out_tm->tm_zone, size + 1);
-        memcpy(out_tm->tm_zone->body.data, zone, size);
-        out_tm->tm_zone->body.fill = size + 1;
-        out_tm->tm_zone->body.data[size] = '\0';
+        memcpy(out_tm->tm_zone->data, zone, size);
+        out_tm->tm_zone->fill = size + 1;
+        out_tm->tm_zone->data[size] = '\0';
     }
 }
 
@@ -480,12 +474,6 @@ extern "C" CDECL rust_sched_id
 rust_get_sched_id() {
     rust_task *task = rust_get_current_task();
     return task->sched->get_id();
-}
-
-extern "C" CDECL uintptr_t
-rust_num_threads() {
-    rust_task *task = rust_get_current_task();
-    return task->kernel->env->num_sched_threads;
 }
 
 extern "C" CDECL int
@@ -677,14 +665,10 @@ rust_unlock_little_lock(lock_and_signal *lock) {
     lock->unlock();
 }
 
-// set/get/atexit task_local_data can run on the rust stack for speed.
-extern "C" void *
+// get/atexit task_local_data can run on the rust stack for speed.
+extern "C" void **
 rust_get_task_local_data(rust_task *task) {
-    return task->task_local_data;
-}
-extern "C" void
-rust_set_task_local_data(rust_task *task, void *data) {
-    task->task_local_data = data;
+    return &task->task_local_data;
 }
 extern "C" void
 rust_task_local_data_atexit(rust_task *task, void (*cleanup_fn)(void *data)) {
@@ -779,7 +763,7 @@ rust_register_exit_function(spawn_fn runner, fn_env_pair *f) {
     task->kernel->register_exit_function(runner, f);
 }
 
-extern "C" void *
+extern "C" intptr_t*
 rust_get_global_data_ptr() {
     rust_task *task = rust_get_current_task();
     return &task->kernel->global_data;
@@ -958,6 +942,21 @@ rust_drop_global_args_lock() {
 extern "C" CDECL uintptr_t*
 rust_get_global_args_ptr() {
     return &global_args_ptr;
+}
+
+static lock_and_signal exit_status_lock;
+static uintptr_t exit_status = 0;
+
+extern "C" CDECL void
+rust_set_exit_status_newrt(uintptr_t code) {
+    scoped_lock with(exit_status_lock);
+    exit_status = code;
+}
+
+extern "C" CDECL uintptr_t
+rust_get_exit_status_newrt() {
+    scoped_lock with(exit_status_lock);
+    return exit_status;
 }
 
 //

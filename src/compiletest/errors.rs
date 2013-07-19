@@ -8,16 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
-
-use core::io;
+use std::io;
 
 pub struct ExpectedError { line: uint, kind: ~str, msg: ~str }
 
 // Load any test directives embedded in the file
 pub fn load_errors(testfile: &Path) -> ~[ExpectedError] {
     let mut error_patterns = ~[];
-    let rdr = io::file_reader(testfile).get();
+    let rdr = io::file_reader(testfile).unwrap();
     let mut line_num = 1u;
     while !rdr.eof() {
         let ln = rdr.read_line();

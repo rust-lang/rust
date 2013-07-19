@@ -12,5 +12,5 @@
 
 fn main() {
     let a = if true { true };
-    debug!(a);
+    info!(a);
 }

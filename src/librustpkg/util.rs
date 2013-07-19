@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::{libc, os, result, str};
+use std::{os, result};
 use rustc::driver::{driver, session};
 use rustc::metadata::filesearch;
 use extra::getopts::groups::getopts;
@@ -28,8 +28,11 @@ use search::find_library_in_search_path;
 use path_util::target_library_in_workspace;
 pub use target::{OutputType, Main, Lib, Bench, Test};
 
-static Commands: &'static [&'static str] =
-    &["build", "clean", "do", "info", "install", "prefer", "test", "uninstall",
+// It would be nice to have the list of commands in just one place -- for example,
+// you could update the match in rustpkg.rc but forget to update this list. I think
+// that should be fixed.
+static COMMANDS: &'static [&'static str] =
+    &["build", "clean", "do", "info", "install", "list", "prefer", "test", "uninstall",
       "unprefer"];
 
 
@@ -55,7 +58,7 @@ pub fn root() -> Path {
 }
 
 pub fn is_cmd(cmd: &str) -> bool {
-    Commands.iter().any_(|&c| c == cmd)
+    COMMANDS.iter().any(|&c| c == cmd)
 }
 
 struct ListenerFn {
@@ -77,10 +80,14 @@ fn fold_mod(_ctx: @mut ReadyCtx,
             fold: @fold::ast_fold) -> ast::_mod {
     fn strip_main(item: @ast::item) -> @ast::item {
         @ast::item {
-            attrs: do item.attrs.filtered |attr| {
-                "main" != attr::get_attr_name(attr)
-            },
-            .. copy *item
+            attrs: do item.attrs.iter().filter_map |attr| {
+                if "main" != attr::get_attr_name(attr) {
+                    Some(*attr)
+                } else {
+                    None
+                }
+            }.collect(),
+            .. (*item).clone()
         }
     }
 
@@ -88,7 +95,7 @@ fn fold_mod(_ctx: @mut ReadyCtx,
         items: do m.items.map |item| {
             strip_main(*item)
         },
-        .. copy *m
+        .. (*m).clone()
     }, fold)
 }
 
@@ -119,7 +126,7 @@ fn fold_item(ctx: @mut ReadyCtx,
         ctx.fns.push(ListenerFn {
             cmds: cmds,
             span: item.span,
-            path: /*bad*/copy ctx.path
+            path: /*bad*/ctx.path.clone()
         });
     }
 
@@ -136,7 +143,7 @@ pub fn ready_crate(sess: session::Session,
     let ctx = @mut ReadyCtx {
         sess: sess,
         crate: crate,
-        ext_cx: ExtCtxt::new(sess.parse_sess, copy sess.opts.cfg),
+        ext_cx: ExtCtxt::new(sess.parse_sess, sess.opts.cfg.clone()),
         path: ~[],
         fns: ~[]
     };
@@ -152,12 +159,6 @@ pub fn ready_crate(sess: session::Session,
     @fold.fold_crate(crate)
 }
 
-pub fn need_dir(s: &Path) {
-    if !os::path_is_dir(s) && !os::make_dir(s, 493_i32) {
-        fail!("can't create dir: %s", s.to_str());
-    }
-}
-
 // FIXME (#4432): Use workcache to only compile when needed
 pub fn compile_input(ctxt: &Ctx,
                      pkg_id: &PkgId,
@@ -171,7 +172,7 @@ pub fn compile_input(ctxt: &Ctx,
     let workspace = out_dir.pop().pop();
 
     assert!(in_file.components.len() > 1);
-    let input = driver::file_input(copy *in_file);
+    let input = driver::file_input((*in_file).clone());
     debug!("compile_input: %s / %?", in_file.to_str(), what);
     // tjc: by default, use the package ID name as the link name
     // not sure if we should support anything else
@@ -194,17 +195,17 @@ pub fn compile_input(ctxt: &Ctx,
                               Main => ~[]
                           }
                           + flags
-                          + cfgs.flat_map(|&c| { ~[~"--cfg", c] }),
+                          + cfgs.flat_map(|c| { ~[~"--cfg", (*c).clone()] }),
                           driver::optgroups()).get();
     let options = @session::options {
         crate_type: crate_type,
         optimize: if opt { session::Aggressive } else { session::No },
         test: what == Test || what == Bench,
         maybe_sysroot: ctxt.sysroot_opt,
-        addl_lib_search_paths: @mut (~[copy *out_dir]),
+        addl_lib_search_paths: @mut (~[(*out_dir).clone()]),
         // output_type should be conditional
         output_type: output_type_exe, // Use this to get a library? That's weird
-        .. copy *driver::build_session_options(binary, &matches, diagnostic::emit)
+        .. (*driver::build_session_options(binary, &matches, diagnostic::emit)).clone()
     };
 
     let addl_lib_search_paths = @mut options.addl_lib_search_paths;
@@ -219,7 +220,7 @@ pub fn compile_input(ctxt: &Ctx,
     // Infer dependencies that rustpkg needs to build, by scanning for
     // `extern mod` directives.
     let cfg = driver::build_configuration(sess, binary, &input);
-    let (crate_opt, _) = driver::compile_upto(sess, copy cfg, &input, driver::cu_expand, None);
+    let (crate_opt, _) = driver::compile_upto(sess, cfg.clone(), &input, driver::cu_expand, None);
 
     let mut crate = match crate_opt {
         Some(c) => c,
@@ -241,7 +242,7 @@ pub fn compile_input(ctxt: &Ctx,
         let short_name_to_use = match what {
             Test  => fmt!("%stest", pkg_id.short_name),
             Bench => fmt!("%sbench", pkg_id.short_name),
-            _     => copy pkg_id.short_name
+            _     => pkg_id.short_name.clone()
         };
         debug!("Injecting link name: %s", short_name_to_use);
         crate = @codemap::respan(crate.span, ast::crate_ {
@@ -251,12 +252,12 @@ pub fn compile_input(ctxt: &Ctx,
                                       mk_string_lit(short_name_to_use.to_managed()))),
                    @dummy_spanned(meta_name_value(@"vers",
                          mk_string_lit(pkg_id.version.to_str().to_managed())))])))],
-            ..copy crate.node});
+            ..crate.node.clone()});
     }
 
     debug!("calling compile_crate_from_input, out_dir = %s,
            building_library = %?", out_dir.to_str(), sess.building_library);
-    compile_crate_from_input(&input, out_dir, sess, crate, copy cfg, driver::cu_expand);
+    compile_crate_from_input(&input, out_dir, sess, crate, cfg.clone(), driver::cu_expand);
     true
 }
 
@@ -275,7 +276,7 @@ pub fn compile_crate_from_input(input: &driver::input,
            build_dir.to_str(), sess.building_library);
 
     // bad copy
-    let outputs = driver::build_output_filenames(input, &Some(copy *build_dir), &None,
+    let outputs = driver::build_output_filenames(input, &Some((*build_dir).clone()), &None,
                                                  crate.node.attrs, sess);
 
     debug!("Outputs are %? and output type = %?", outputs, sess.opts.output_type);
@@ -311,8 +312,8 @@ pub fn compile_crate(ctxt: &Ctx, pkg_id: &PkgId,
                      what: OutputType) -> bool {
     debug!("compile_crate: crate=%s, dir=%s", crate.to_str(), dir.to_str());
     debug!("compile_crate: short_name = %s, flags =...", pkg_id.to_str());
-    for flags.iter().advance |&fl| {
-        debug!("+++ %s", fl);
+    for flags.iter().advance |fl| {
+        debug!("+++ %s", *fl);
     }
     compile_input(ctxt, pkg_id, crate, dir, flags, cfgs, opt, what)
 }
@@ -329,8 +330,8 @@ pub fn find_and_install_dependencies(ctxt: &Ctx,
                                 ) {
     // :-(
     debug!("In find_and_install_dependencies...");
-    let my_workspace = copy *workspace;
-    let my_ctxt      = copy *ctxt;
+    let my_workspace = (*workspace).clone();
+    let my_ctxt      = *ctxt;
     for c.each_view_item() |vi: &ast::view_item| {
         debug!("A view item!");
         match vi.node {
@@ -347,7 +348,7 @@ pub fn find_and_install_dependencies(ctxt: &Ctx,
                     }
                     None => {
                         // Try to install it
-                        let pkg_id = PkgId::new(lib_name);
+                        let pkg_id = PkgId::new(lib_name, &os::getcwd());
                         my_ctxt.install(&my_workspace, &pkg_id);
                         // Also, add an additional search path
                         debug!("let installed_path...")
@@ -379,6 +380,7 @@ pub fn link_exe(_src: &Path, _dest: &Path) -> bool {
 #[cfg(target_os = "freebsd")]
 #[cfg(target_os = "macos")]
 pub fn link_exe(src: &Path, dest: &Path) -> bool {
+    use std::{libc, str};
     unsafe {
         do str::as_c_str(src.to_str()) |src_buf| {
             do str::as_c_str(dest.to_str()) |dest_buf| {
@@ -417,4 +419,4 @@ mod test {
 
 // tjc: cheesy
 fn debug_flags() -> ~[~str] { ~[] }
-// static debug_flags: ~[~str] = ~[~"-Z", ~"time-passes"];
+// static DEBUG_FLAGS: ~[~str] = ~[~"-Z", ~"time-passes"];

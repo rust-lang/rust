@@ -77,14 +77,15 @@ use prelude::*;
 use cast::transmute;
 use cast;
 use cell::Cell;
-use container::Map;
+use container::MutableMap;
 use comm::{Chan, GenericChan};
 use hashmap::HashSet;
+use local_data;
 use task::local_data_priv::{local_get, local_set, OldHandle};
 use task::rt::rust_task;
 use task::rt;
 use task::{Failure, ManualThreads, PlatformThread, SchedOpts, SingleThreaded};
-use task::{Success, TaskOpts, TaskResult, ThreadPerCore, ThreadPerTask};
+use task::{Success, TaskOpts, TaskResult, ThreadPerTask};
 use task::{ExistingScheduler, SchedulerHandle};
 use task::unkillable;
 use uint;
@@ -300,7 +301,7 @@ fn each_ancestor(list:        &mut AncestorList,
         fn with_parent_tg<U>(parent_group: &mut Option<TaskGroupArc>,
                              blk: &fn(TaskGroupInner) -> U) -> U {
             // If this trips, more likely the problem is 'blk' failed inside.
-            let tmp_arc = parent_group.swap_unwrap();
+            let tmp_arc = parent_group.take_unwrap();
             let result = do access_group(&tmp_arc) |tg_opt| { blk(tg_opt) };
             *parent_group = Some(tmp_arc);
             result
@@ -464,10 +465,14 @@ fn kill_taskgroup(state: TaskGroupInner, me: *rust_task, is_main: bool) {
 
 // FIXME (#2912): Work around core-vs-coretest function duplication. Can't use
 // a proper closure because the #[test]s won't understand. Have to fake it.
-macro_rules! taskgroup_key (
-    // Use a "code pointer" value that will never be a real code pointer.
-    () => (cast::transmute((-2 as uint, 0u)))
-)
+#[cfg(not(stage0))]
+fn taskgroup_key() -> local_data::Key<@@mut TCB> {
+    unsafe { cast::transmute(-2) }
+}
+#[cfg(stage0)]
+fn taskgroup_key() -> local_data::Key<@@mut TCB> {
+    unsafe { cast::transmute((-2, 0)) }
+}
 
 fn gen_child_taskgroup(linked: bool, supervised: bool)
     -> (TaskGroupArc, AncestorList, bool) {
@@ -477,26 +482,28 @@ fn gen_child_taskgroup(linked: bool, supervised: bool)
          * Step 1. Get spawner's taskgroup info.
          *##################################################################*/
         let spawner_group: @@mut TCB =
-            match local_get(OldHandle(spawner), taskgroup_key!()) {
-                None => {
-                    // Main task, doing first spawn ever. Lazily initialise
-                    // here.
-                    let mut members = new_taskset();
-                    taskset_insert(&mut members, spawner);
-                    let tasks = exclusive(Some(TaskGroupData {
-                        members: members,
-                        descendants: new_taskset(),
-                    }));
-                    // Main task/group has no ancestors, no notifier, etc.
-                    let group = @@mut TCB(spawner,
-                                          tasks,
-                                          AncestorList(None),
-                                          true,
-                                          None);
-                    local_set(OldHandle(spawner), taskgroup_key!(), group);
-                    group
+            do local_get(OldHandle(spawner), taskgroup_key()) |group| {
+                match group {
+                    None => {
+                        // Main task, doing first spawn ever. Lazily initialise
+                        // here.
+                        let mut members = new_taskset();
+                        taskset_insert(&mut members, spawner);
+                        let tasks = exclusive(Some(TaskGroupData {
+                            members: members,
+                            descendants: new_taskset(),
+                        }));
+                        // Main task/group has no ancestors, no notifier, etc.
+                        let group = @@mut TCB(spawner,
+                                              tasks,
+                                              AncestorList(None),
+                                              true,
+                                              None);
+                        local_set(OldHandle(spawner), taskgroup_key(), group);
+                        group
+                    }
+                    Some(&group) => group
                 }
-                Some(group) => group
             };
         let spawner_group: &mut TCB = *spawner_group;
 
@@ -588,7 +595,7 @@ fn spawn_raw_newsched(mut opts: TaskOpts, f: ~fn()) {
     };
 
     if opts.notify_chan.is_some() {
-        let notify_chan = opts.notify_chan.swap_unwrap();
+        let notify_chan = opts.notify_chan.take_unwrap();
         let notify_chan = Cell::new(notify_chan);
         let on_exit: ~fn(bool) = |success| {
             notify_chan.take().send(
@@ -624,7 +631,7 @@ fn spawn_raw_oldsched(mut opts: TaskOpts, f: ~fn()) {
             let notify_chan = if opts.notify_chan.is_none() {
                 None
             } else {
-                Some(opts.notify_chan.swap_unwrap())
+                Some(opts.notify_chan.take_unwrap())
             };
 
             let child_wrapper = make_child_wrapper(new_task, child_tg,
@@ -670,7 +677,7 @@ fn spawn_raw_oldsched(mut opts: TaskOpts, f: ~fn()) {
                                       is_main,
                                       notifier);
                 unsafe {
-                    local_set(OldHandle(child), taskgroup_key!(), group);
+                    local_set(OldHandle(child), taskgroup_key(), group);
                 }
 
                 // Run the child's body.
@@ -729,7 +736,6 @@ fn spawn_raw_oldsched(mut opts: TaskOpts, f: ~fn()) {
             | ExistingScheduler(*)
             | PlatformThread => 0u, /* Won't be used */
             SingleThreaded => 1u,
-            ThreadPerCore => unsafe { rt::rust_num_threads() },
             ThreadPerTask => {
                 fail!("ThreadPerTask scheduling mode unimplemented")
             }

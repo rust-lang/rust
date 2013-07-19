@@ -90,7 +90,6 @@ pub fn classify(e: &expr,
                 }
               }
 
-              ast::expr_copy(inner) |
               ast::expr_unary(_, _, inner) |
               ast::expr_paren(inner) => {
                 classify(inner, tcx)
@@ -165,7 +164,59 @@ pub fn classify(e: &expr,
 pub fn lookup_const(tcx: ty::ctxt, e: &expr) -> Option<@expr> {
     match tcx.def_map.find(&e.id) {
         Some(&ast::def_static(def_id, false)) => lookup_const_by_id(tcx, def_id),
+        Some(&ast::def_variant(enum_def, variant_def)) => lookup_variant_by_id(tcx,
+                                                                               enum_def,
+                                                                               variant_def),
         _ => None
+    }
+}
+
+pub fn lookup_variant_by_id(tcx: ty::ctxt,
+                            enum_def: ast::def_id,
+                            variant_def: ast::def_id)
+                       -> Option<@expr> {
+    fn variant_expr(variants: &[ast::variant], id: ast::node_id) -> Option<@expr> {
+        for variants.iter().advance |variant| {
+            if variant.node.id == id {
+                return variant.node.disr_expr;
+            }
+        }
+        None
+    }
+
+    if ast_util::is_local(enum_def) {
+        match tcx.items.find(&enum_def.node) {
+            None => None,
+            Some(&ast_map::node_item(it, _)) => match it.node {
+                item_enum(ast::enum_def { variants: ref variants }, _) => {
+                    variant_expr(*variants, variant_def.node)
+                }
+                _ => None
+            },
+            Some(_) => None
+        }
+    } else {
+        let maps = astencode::Maps {
+            root_map: @mut HashMap::new(),
+            method_map: @mut HashMap::new(),
+            vtable_map: @mut HashMap::new(),
+            write_guard_map: @mut HashSet::new(),
+            capture_map: @mut HashMap::new()
+        };
+        match csearch::maybe_get_item_ast(tcx, enum_def,
+            |a, b, c, d| astencode::decode_inlined_item(a,
+                                                        b,
+                                                        maps,
+                                                        /*bad*/ c.clone(),
+                                                        d)) {
+            csearch::found(ast::ii_item(item)) => match item.node {
+                item_enum(ast::enum_def { variants: ref variants }, _) => {
+                    variant_expr(*variants, variant_def.node)
+                }
+                _ => None
+            },
+            _ => None
+        }
     }
 }
 
@@ -187,11 +238,10 @@ pub fn lookup_const_by_id(tcx: ty::ctxt,
             method_map: @mut HashMap::new(),
             vtable_map: @mut HashMap::new(),
             write_guard_map: @mut HashSet::new(),
-            moves_map: @mut HashSet::new(),
             capture_map: @mut HashMap::new()
         };
         match csearch::maybe_get_item_ast(tcx, def_id,
-            |a, b, c, d| astencode::decode_inlined_item(a, b, maps, /*bar*/ copy c, d)) {
+            |a, b, c, d| astencode::decode_inlined_item(a, b, maps, c, d)) {
             csearch::found(ast::ii_item(item)) => match item.node {
                 item_static(_, ast::m_imm, const_expr) => Some(const_expr),
                 _ => None
@@ -228,7 +278,7 @@ pub fn process_crate(crate: &ast::crate,
 
 // FIXME (#33): this doesn't handle big integer/float literals correctly
 // (nor does the rest of our literal handling).
-#[deriving(Eq)]
+#[deriving(Clone, Eq)]
 pub enum const_val {
     const_float(f64),
     const_int(i64),
@@ -238,13 +288,13 @@ pub enum const_val {
 }
 
 pub fn eval_const_expr(tcx: middle::ty::ctxt, e: &expr) -> const_val {
-    match eval_const_expr_partial(tcx, e) {
+    match eval_const_expr_partial(&tcx, e) {
         Ok(r) => r,
         Err(s) => tcx.sess.span_fatal(e.span, s)
     }
 }
 
-pub fn eval_const_expr_partial(tcx: middle::ty::ctxt, e: &expr)
+pub fn eval_const_expr_partial<T: ty::ExprTyProvider>(tcx: &T, e: &expr)
                             -> Result<const_val, ~str> {
     use middle::ty;
     fn fromb(b: bool) -> Result<const_val, ~str> { Ok(const_int(b as i64)) }
@@ -256,7 +306,7 @@ pub fn eval_const_expr_partial(tcx: middle::ty::ctxt, e: &expr)
           Ok(const_uint(i)) => Ok(const_uint(-i)),
           Ok(const_str(_)) => Err(~"Negate on string"),
           Ok(const_bool(_)) => Err(~"Negate on boolean"),
-          ref err => (/*bad*/copy *err)
+          ref err => ((*err).clone())
         }
       }
       expr_unary(_, not, inner) => {
@@ -361,38 +411,44 @@ pub fn eval_const_expr_partial(tcx: middle::ty::ctxt, e: &expr)
         }
       }
       expr_cast(base, _) => {
-        let ety = ty::expr_ty(tcx, e);
+        let ety = tcx.expr_ty(e);
         let base = eval_const_expr_partial(tcx, base);
-        match /*bad*/copy base {
+        match base {
             Err(_) => base,
             Ok(val) => {
                 match ty::get(ety).sty {
-                    ty::ty_float(_) => match val {
-                        const_uint(u) => Ok(const_float(u as f64)),
-                        const_int(i) => Ok(const_float(i as f64)),
-                        const_float(_) => base,
-                        _ => Err(~"Can't cast float to str"),
-                    },
-                    ty::ty_uint(_) => match val {
-                        const_uint(_) => base,
-                        const_int(i) => Ok(const_uint(i as u64)),
-                        const_float(f) => Ok(const_uint(f as u64)),
-                        _ => Err(~"Can't cast str to uint"),
-                    },
-                    ty::ty_int(_) | ty::ty_bool => match val {
-                        const_uint(u) => Ok(const_int(u as i64)),
-                        const_int(_) => base,
-                        const_float(f) => Ok(const_int(f as i64)),
-                        _ => Err(~"Can't cast str to int"),
-                    },
+                    ty::ty_float(_) => {
+                        match val {
+                            const_uint(u) => Ok(const_float(u as f64)),
+                            const_int(i) => Ok(const_float(i as f64)),
+                            const_float(f) => Ok(const_float(f)),
+                            _ => Err(~"Can't cast float to str"),
+                        }
+                    }
+                    ty::ty_uint(_) => {
+                        match val {
+                            const_uint(u) => Ok(const_uint(u)),
+                            const_int(i) => Ok(const_uint(i as u64)),
+                            const_float(f) => Ok(const_uint(f as u64)),
+                            _ => Err(~"Can't cast str to uint"),
+                        }
+                    }
+                    ty::ty_int(_) | ty::ty_bool => {
+                        match val {
+                            const_uint(u) => Ok(const_int(u as i64)),
+                            const_int(i) => Ok(const_int(i)),
+                            const_float(f) => Ok(const_int(f as i64)),
+                            _ => Err(~"Can't cast str to int"),
+                        }
+                    }
                     _ => Err(~"Can't cast this type")
                 }
             }
         }
       }
       expr_path(_) => {
-          match lookup_const(tcx, e) {
-              Some(actual_e) => eval_const_expr_partial(tcx, actual_e),
+          match lookup_const(tcx.ty_ctxt(), e) {
+              Some(actual_e) => eval_const_expr_partial(&tcx.ty_ctxt(), actual_e),
               None => Err(~"Non-constant path in constant expr")
           }
       }

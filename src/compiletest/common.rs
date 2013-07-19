@@ -8,17 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
-
-#[deriving(Eq)]
+#[deriving(Clone, Eq)]
 pub enum mode {
     mode_compile_fail,
     mode_run_fail,
     mode_run_pass,
     mode_pretty,
     mode_debug_info,
+    mode_codegen
 }
 
+#[deriving(Clone)]
 pub struct config {
     // The library paths required for running the compiler
     compile_lib_path: ~str,
@@ -28,6 +28,12 @@ pub struct config {
 
     // The rustc executable
     rustc_path: Path,
+
+    // The clang executable
+    clang_path: Option<Path>,
+
+    // The llvm binaries path
+    llvm_bin_path: Option<Path>,
 
     // The directory containing the tests to run
     src_base: Path,
@@ -52,6 +58,15 @@ pub struct config {
 
     // Write out a parseable log of tests that were run
     logfile: Option<Path>,
+
+    // Write out a json file containing any metrics of the run
+    save_metrics: Option<Path>,
+
+    // Write and ratchet a metrics file
+    ratchet_metrics: Option<Path>,
+
+    // Percent change in metrics to consider noise
+    ratchet_noise_percent: Option<f64>,
 
     // A command line to prefix program execution with,
     // for running under valgrind

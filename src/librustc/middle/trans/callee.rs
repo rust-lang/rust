@@ -20,7 +20,6 @@ use std::vec;
 
 use back::abi;
 use driver::session;
-use lib;
 use lib::llvm::ValueRef;
 use lib::llvm::llvm;
 use metadata::csearch;
@@ -198,7 +197,7 @@ fn get_impl_resolutions(bcx: block,
                         impl_id: ast::def_id)
                          -> typeck::vtable_res {
     if impl_id.crate == ast::local_crate {
-        *bcx.ccx().maps.vtable_map.get(&impl_id.node)
+        bcx.ccx().maps.vtable_map.get_copy(&impl_id.node)
     } else {
         // XXX: This is a temporary hack to work around not properly
         // exporting information about resolutions for impls.
@@ -222,7 +221,7 @@ fn resolve_default_method_vtables(bcx: block,
     // Build up a param_substs that we are going to resolve the
     // trait_vtables under.
     let param_substs = Some(@param_substs {
-        tys: copy substs.tps,
+        tys: substs.tps.clone(),
         self_ty: substs.self_ty,
         vtables: impl_vtables,
         self_vtable: None
@@ -251,7 +250,7 @@ pub fn trans_fn_ref_with_vtables(
         def_id: ast::def_id,   // def id of fn
         ref_id: ast::node_id,  // node id of use of fn; may be zero if N/A
         type_params: &[ty::t], // values for fn's ty params
-        vtables: Option<typeck::vtable_res>)
+        vtables: Option<typeck::vtable_res>) // vtables for the call
      -> FnData {
     //!
     //
@@ -362,8 +361,7 @@ pub fn trans_fn_ref_with_vtables(
     // def_id to the local id of the inlined copy.
     let def_id = {
         if def_id.crate != ast::local_crate {
-            let may_translate = opt_impl_did.is_none();
-            inline::maybe_instantiate_inline(ccx, def_id, may_translate)
+            inline::maybe_instantiate_inline(ccx, def_id)
         } else {
             def_id
         }
@@ -446,8 +444,8 @@ pub fn trans_call(in_cx: block,
                      node_id_type(in_cx, id),
                      |cx| trans(cx, f),
                      args,
-                     dest,
-                     DontAutorefArg)
+                     Some(dest),
+                     DontAutorefArg).bcx
 }
 
 pub fn trans_method_call(in_cx: block,
@@ -484,15 +482,15 @@ pub fn trans_method_call(in_cx: block,
             }
         },
         args,
-        dest,
-        DontAutorefArg)
+        Some(dest),
+        DontAutorefArg).bcx
 }
 
 pub fn trans_lang_call(bcx: block,
                        did: ast::def_id,
                        args: &[ValueRef],
-                       dest: expr::Dest)
-    -> block {
+                       dest: Option<expr::Dest>)
+    -> Result {
     let fty = if did.crate == ast::local_crate {
         ty::node_id_to_type(bcx.ccx().tcx, did.node)
     } else {
@@ -552,7 +550,7 @@ pub fn trans_lang_call_with_type_params(bcx: block,
             }
             Callee { bcx: callee.bcx, data: Fn(FnData { llfn: new_llval }) }
         },
-        ArgVals(args), dest, DontAutorefArg);
+        ArgVals(args), Some(dest), DontAutorefArg).bcx;
 }
 
 pub fn body_contains_ret(body: &ast::blk) -> bool {
@@ -579,10 +577,10 @@ pub fn trans_call_inner(in_cx: block,
                         ret_ty: ty::t,
                         get_callee: &fn(block) -> Callee,
                         args: CallArgs,
-                        dest: expr::Dest,
+                        dest: Option<expr::Dest>,
                         autoref_arg: AutorefArg)
-                        -> block {
-    do base::with_scope(in_cx, call_info, "call") |cx| {
+                        -> Result {
+    do base::with_scope_result(in_cx, call_info, "call") |cx| {
         let ret_in_loop = match args {
           ArgExprs(args) => {
             args.len() > 0u && match args.last().node {
@@ -600,7 +598,7 @@ pub fn trans_call_inner(in_cx: block,
         let mut bcx = callee.bcx;
         let ccx = cx.ccx();
         let ret_flag = if ret_in_loop {
-            let flag = alloca(bcx, Type::bool());
+            let flag = alloca(bcx, Type::bool(), "__ret_flag");
             Store(bcx, C_bool(false), flag);
             Some(flag)
         } else {
@@ -633,7 +631,7 @@ pub fn trans_call_inner(in_cx: block,
 
         let mut llargs = ~[];
 
-        if !ty::type_is_immediate(ret_ty) {
+        if !ty::type_is_immediate(bcx.tcx(), ret_ty) {
             llargs.push(llretslot);
         }
 
@@ -669,32 +667,24 @@ pub fn trans_call_inner(in_cx: block,
         bcx = new_bcx;
 
         match dest {
-            expr::Ignore => {
+            None => { assert!(ty::type_is_immediate(bcx.tcx(), ret_ty)) }
+            Some(expr::Ignore) => {
                 // drop the value if it is not being saved.
-                unsafe {
-                    if llvm::LLVMIsUndef(llretslot) != lib::llvm::True {
-                        if ty::type_is_nil(ret_ty) {
-                            // When implementing the for-loop sugar syntax, the
-                            // type of the for-loop is nil, but the function
-                            // it's invoking returns a bool. This is a special
-                            // case to ignore instead of invoking the Store
-                            // below into a scratch pointer of a mismatched
-                            // type.
-                        } else if ty::type_is_immediate(ret_ty) {
-                            let llscratchptr = alloc_ty(bcx, ret_ty);
-                            Store(bcx, llresult, llscratchptr);
-                            bcx = glue::drop_ty(bcx, llscratchptr, ret_ty);
-                        } else {
-                            bcx = glue::drop_ty(bcx, llretslot, ret_ty);
-                        }
+                if ty::type_needs_drop(bcx.tcx(), ret_ty) {
+                    if ty::type_is_immediate(bcx.tcx(), ret_ty) {
+                        let llscratchptr = alloc_ty(bcx, ret_ty, "__ret");
+                        Store(bcx, llresult, llscratchptr);
+                        bcx = glue::drop_ty(bcx, llscratchptr, ret_ty);
+                    } else {
+                        bcx = glue::drop_ty(bcx, llretslot, ret_ty);
                     }
                 }
             }
-            expr::SaveIn(lldest) => {
+            Some(expr::SaveIn(lldest)) => {
                 // If this is an immediate, store into the result location.
                 // (If this was not an immediate, the result will already be
                 // directly written into the output slot.)
-                if ty::type_is_immediate(ret_ty) {
+                if ty::type_is_immediate(bcx.tcx(), ret_ty) {
                     Store(bcx, llresult, lldest);
                 }
             }
@@ -706,18 +696,18 @@ pub fn trans_call_inner(in_cx: block,
             let ret_flag_result = bool_to_i1(bcx, Load(bcx, ret_flag.get()));
             bcx = do with_cond(bcx, ret_flag_result) |bcx| {
                 {
-                    let r = (copy bcx.fcx.loop_ret);
+                    let r = bcx.fcx.loop_ret;
                     for r.iter().advance |&(flagptr, _)| {
                         Store(bcx, C_bool(true), flagptr);
                         Store(bcx, C_bool(false), bcx.fcx.llretptr.get());
                     }
                 }
-                base::cleanup_and_leave(bcx, None, Some(bcx.fcx.llreturn));
+                base::cleanup_and_leave(bcx, None, Some(bcx.fcx.get_llreturn()));
                 Unreachable(bcx);
                 bcx
             }
         }
-        bcx
+        rslt(bcx, llresult)
     }
 }
 
@@ -727,19 +717,19 @@ pub enum CallArgs<'self> {
     ArgVals(&'self [ValueRef])
 }
 
-pub fn trans_ret_slot(bcx: block, fn_ty: ty::t, dest: expr::Dest)
+pub fn trans_ret_slot(bcx: block, fn_ty: ty::t, dest: Option<expr::Dest>)
                       -> ValueRef {
     let retty = ty::ty_fn_ret(fn_ty);
 
     match dest {
-        expr::SaveIn(dst) => dst,
-        expr::Ignore => {
-            if ty::type_is_nil(retty) {
+        Some(expr::SaveIn(dst)) => dst,
+        _ => {
+            if ty::type_is_immediate(bcx.tcx(), retty) {
                 unsafe {
                     llvm::LLVMGetUndef(Type::nil().ptr_to().to_ref())
                 }
             } else {
-                alloc_ty(bcx, retty)
+                alloc_ty(bcx, retty, "__trans_ret_slot")
             }
         }
     }
@@ -829,7 +819,7 @@ pub fn trans_arg_expr(bcx: block,
                         _
                     }) => {
                     let scratch_ty = expr_ty(bcx, arg_expr);
-                    let scratch = alloc_ty(bcx, scratch_ty);
+                    let scratch = alloc_ty(bcx, scratch_ty, "__ret_flag");
                     let arg_ty = expr_ty(bcx, arg_expr);
                     let sigil = ty::ty_closure_sigil(arg_ty);
                     let bcx = closure::trans_expr_fn(
@@ -866,8 +856,6 @@ pub fn trans_arg_expr(bcx: block,
         // FIXME(#3548) use the adjustments table
         match autoref_arg {
             DoAutorefArg => {
-                assert!(!
-                    bcx.ccx().maps.moves_map.contains(&arg_expr.id));
                 val = arg_datum.to_ref_llval(bcx);
             }
             DontAutorefArg => {
@@ -881,10 +869,10 @@ pub fn trans_arg_expr(bcx: block,
                         //    &arg_expr.id);
                         debug!("by ref arg with type %s, storing to scratch",
                                bcx.ty_to_str(arg_datum.ty));
-                        let scratch = scratch_datum(bcx, arg_datum.ty, false);
+                        let scratch = scratch_datum(bcx, arg_datum.ty,
+                                                    "__self", false);
 
                         arg_datum.store_to_datum(bcx,
-                                                 arg_expr.id,
                                                  INIT,
                                                  scratch);
 
@@ -898,13 +886,13 @@ pub fn trans_arg_expr(bcx: block,
                     }
                     ty::ByCopy => {
                         if ty::type_needs_drop(bcx.tcx(), arg_datum.ty) ||
-                                arg_datum.appropriate_mode().is_by_ref() {
+                                arg_datum.appropriate_mode(bcx.tcx()).is_by_ref() {
                             debug!("by copy arg with type %s, storing to scratch",
                                    bcx.ty_to_str(arg_datum.ty));
-                            let scratch = scratch_datum(bcx, arg_datum.ty, false);
+                            let scratch = scratch_datum(bcx, arg_datum.ty,
+                                                        "__arg", false);
 
                             arg_datum.store_to_datum(bcx,
-                                                     arg_expr.id,
                                                      INIT,
                                                      scratch);
 
@@ -914,7 +902,7 @@ pub fn trans_arg_expr(bcx: block,
                             scratch.add_clean(bcx);
                             temp_cleanups.push(scratch.val);
 
-                            match scratch.appropriate_mode() {
+                            match scratch.appropriate_mode(bcx.tcx()) {
                                 ByValue => val = Load(bcx, scratch.val),
                                 ByRef(_) => val = scratch.val,
                             }

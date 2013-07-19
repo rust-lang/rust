@@ -14,7 +14,6 @@ use sys;
 use unstable::intrinsics;
 
 /// Casts the value at `src` to U. The two types must have the same length.
-/// Casts the value at `src` to U. The two types must have the same length.
 #[cfg(target_word_size = "32")]
 #[inline]
 pub unsafe fn transmute_copy<T, U>(src: &T) -> U {
@@ -34,6 +33,14 @@ pub unsafe fn transmute_copy<T, U>(src: &T) -> U {
     let src_ptr: *u8 = transmute(src);
     intrinsics::memcpy64(dest_ptr, src_ptr, sys::size_of::<U>() as u64);
     dest
+}
+
+/**
+ * Forces a copy of a value, even if that value is considered noncopyable.
+ */
+#[inline]
+pub unsafe fn unsafe_copy<T>(thing: &T) -> T {
+    transmute_copy(thing)
 }
 
 /**

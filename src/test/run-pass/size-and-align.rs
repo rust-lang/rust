@@ -16,8 +16,8 @@ enum clam<T> { a(T, int), b, }
 
 fn uhoh<T>(v: ~[clam<T>]) {
     match v[1] {
-      a::<T>(ref t, ref u) => { debug!("incorrect"); debug!(u); fail!(); }
-      b::<T> => { debug!("correct"); }
+      a::<T>(ref t, ref u) => { info!("incorrect"); info!(u); fail!(); }
+      b::<T> => { info!("correct"); }
     }
 }
 

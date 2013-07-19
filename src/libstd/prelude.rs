@@ -29,7 +29,7 @@ Rust's prelude has three main parts:
 
 // Reexported core operators
 pub use either::{Either, Left, Right};
-pub use kinds::{Copy, Sized};
+pub use kinds::Sized;
 pub use kinds::{Freeze, Send};
 pub use ops::{Add, Sub, Mul, Div, Rem, Neg, Not};
 pub use ops::{BitAnd, BitOr, BitXor};
@@ -45,10 +45,11 @@ pub use io::{print, println};
 pub use clone::{Clone, DeepClone};
 pub use cmp::{Eq, ApproxEq, Ord, TotalEq, TotalOrd, Ordering, Less, Equal, Greater, Equiv};
 pub use char::Char;
-pub use container::{Container, Mutable, Map, Set};
+pub use container::{Container, Mutable, Map, MutableMap, Set, MutableSet};
 pub use hash::Hash;
-pub use iter::{Times, FromIter};
-pub use iterator::{Iterator, IteratorUtil, OrdIterator};
+pub use iter::Times;
+pub use iterator::{Iterator, IteratorUtil, DoubleEndedIterator, DoubleEndedIteratorUtil};
+pub use iterator::OrdIterator;
 pub use num::{Num, NumCast};
 pub use num::{Orderable, Signed, Unsigned, Round};
 pub use num::{Algebraic, Trigonometric, Exponential, Hyperbolic};
@@ -72,7 +73,7 @@ pub use tuple::{CloneableTuple10, CloneableTuple11, CloneableTuple12};
 pub use tuple::{ImmutableTuple2, ImmutableTuple3, ImmutableTuple4, ImmutableTuple5};
 pub use tuple::{ImmutableTuple6, ImmutableTuple7, ImmutableTuple8, ImmutableTuple9};
 pub use tuple::{ImmutableTuple10, ImmutableTuple11, ImmutableTuple12};
-pub use vec::{VectorVector, CopyableVector, ImmutableVector};
+pub use vec::{Vector, VectorVector, CopyableVector, ImmutableVector};
 pub use vec::{ImmutableEqVector, ImmutableTotalOrdVector, ImmutableCopyableVector};
 pub use vec::{OwnedVector, OwnedCopyableVector,OwnedEqVector, MutableVector};
 pub use io::{Reader, ReaderUtil, Writer, WriterUtil};

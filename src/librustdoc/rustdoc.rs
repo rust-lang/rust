@@ -11,15 +11,13 @@
 //! Rustdoc - The Rust documentation generator
 
 #[link(name = "rustdoc",
-       vers = "0.7",
+       vers = "0.8-pre",
        uuid = "f8abd014-b281-484d-a0c3-26e3de8e2412",
        url = "https://github.com/mozilla/rust/tree/master/src/rustdoc")];
 
 #[comment = "The Rust documentation generator"];
 #[license = "MIT/ASL2"];
 #[crate_type = "lib"];
-
-#[allow(non_implicitly_copyable_typarams)];
 
 extern mod extra;
 extern mod rustc;
@@ -59,12 +57,11 @@ pub mod page_pass;
 pub mod sectionalize_pass;
 pub mod escape_pass;
 pub mod prune_private_pass;
-pub mod util;
 
 pub fn main() {
     let args = os::args();
 
-    if args.iter().any_(|x| "-h" == *x) || args.iter().any_(|x| "--help" == *x) {
+    if args.iter().any(|x| "-h" == *x) || args.iter().any(|x| "--help" == *x) {
         config::usage();
         return;
     }
@@ -83,7 +80,7 @@ pub fn main() {
 /// Runs rustdoc over the given file
 fn run(config: Config) {
 
-    let source_file = copy config.input_crate;
+    let source_file = config.input_crate.clone();
 
     // Create an AST service from the source code
     do astsrv::from_file(source_file.to_str()) |srv| {
@@ -96,7 +93,7 @@ fn run(config: Config) {
         // Extract the initial doc tree from the AST. This contains
         // just names and node ids.
         let doc = time(~"extract", || {
-            let default_name = copy source_file;
+            let default_name = source_file.clone();
             extract::from_srv(srv.clone(), default_name.to_str())
         });
 
@@ -127,13 +124,13 @@ fn run(config: Config) {
             // Sort items again by kind
             sort_item_type_pass::mk_pass(),
             // Create indexes appropriate for markdown
-            markdown_index_pass::mk_pass(copy config),
+            markdown_index_pass::mk_pass(config.clone()),
             // Break the document into pages if required by the
             // output format
             page_pass::mk_pass(config.output_style),
             // Render
             markdown_pass::mk_pass(
-                markdown_writer::make_writer_factory(copy config)
+                markdown_writer::make_writer_factory(config.clone())
             )
         ]);
     }

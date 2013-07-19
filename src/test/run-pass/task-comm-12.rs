@@ -14,7 +14,7 @@ use std::task;
 
 pub fn main() { test00(); }
 
-fn start(task_number: int) { debug!("Started / Finished task."); }
+fn start(task_number: int) { info!("Started / Finished task."); }
 
 fn test00() {
     let i: int = 0;
@@ -35,5 +35,5 @@ fn test00() {
     // Try joining tasks that have already finished.
     result.unwrap().recv();
 
-    debug!("Joined task.");
+    info!("Joined task.");
 }

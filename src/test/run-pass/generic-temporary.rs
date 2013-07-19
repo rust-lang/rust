@@ -12,7 +12,7 @@
 
 fn mk() -> int { return 1; }
 
-fn chk(a: int) { debug!(a); assert!((a == 1)); }
+fn chk(a: int) { info!(a); assert!((a == 1)); }
 
 fn apply<T>(produce: extern fn() -> T,
             consume: extern fn(T)) {

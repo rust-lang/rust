@@ -13,5 +13,5 @@
 
 fn main() {
     return;
-    debug!("Paul is dead"); //~ ERROR: unreachable
+    info!("Paul is dead"); //~ ERROR: unreachable
 }

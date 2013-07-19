@@ -16,9 +16,9 @@
  * other useful things like `push()` and `len()`.
  */
 
-use std::vec::VecIterator;
+use std::vec::{VecIterator};
 
-#[deriving(Encodable, Decodable,IterBytes)]
+#[deriving(Clone, Encodable, Decodable, IterBytes)]
 pub enum OptVec<T> {
     Empty,
     Vec(~[T])
@@ -55,6 +55,13 @@ impl<T> OptVec<T> {
         match *self {
             Empty => Empty,
             Vec(ref v) => Vec(v.map(op))
+        }
+    }
+
+    fn map_consume<U>(self, op: &fn(T) -> U) -> OptVec<U> {
+        match self {
+            Empty => Empty,
+            Vec(v) => Vec(v.consume_iter().transform(op).collect())
         }
     }
 
@@ -106,7 +113,7 @@ pub fn take_vec<T>(v: OptVec<T>) -> ~[T] {
     }
 }
 
-impl<T:Copy> OptVec<T> {
+impl<T:Clone> OptVec<T> {
     fn prepend(&self, t: T) -> OptVec<T> {
         let mut v0 = ~[t];
         match *self {
@@ -144,6 +151,14 @@ impl<'self, T> Iterator<&'self T> for OptVecIterator<'self, T> {
         match self.iter {
             Some(ref mut x) => x.next(),
             None => None
+        }
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        match self.iter {
+            Some(ref x) => x.size_hint(),
+            None => (0, Some(0))
         }
     }
 }

@@ -60,12 +60,6 @@ pub unsafe fn realloc_raw(ptr: *mut c_void, size: uint) -> *mut c_void {
 #[cfg(stage0, not(test))]
 #[lang="exchange_malloc"]
 #[inline]
-pub unsafe fn exchange_malloc_(td: *c_char, size: uintptr_t) -> *c_char {
-    exchange_malloc(td, size)
-}
-
-#[cfg(stage0)]
-#[inline]
 pub unsafe fn exchange_malloc(td: *c_char, size: uintptr_t) -> *c_char {
     let td = td as *TyDesc;
     let size = size as uint;
@@ -82,19 +76,12 @@ pub unsafe fn exchange_malloc(td: *c_char, size: uintptr_t) -> *c_char {
     box as *c_char
 }
 
-// FIXME #4942: Make these signatures agree with exchange_alloc's signatures
+/// The allocator for unique pointers without contained managed pointers.
 #[cfg(not(stage0), not(test))]
 #[lang="exchange_malloc"]
 #[inline]
-pub unsafe fn exchange_malloc_(align: u32, size: uintptr_t) -> *c_char {
-    exchange_malloc(align, size)
-}
-
-#[cfg(not(stage0))]
-#[inline]
-pub unsafe fn exchange_malloc(align: u32, size: uintptr_t) -> *c_char {
-    let total_size = get_box_size(size as uint, align as uint);
-    malloc_raw(total_size as uint) as *c_char
+pub unsafe fn exchange_malloc(size: uintptr_t) -> *c_char {
+    malloc_raw(size as uint) as *c_char
 }
 
 // FIXME: #7496

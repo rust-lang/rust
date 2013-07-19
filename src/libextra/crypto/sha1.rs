@@ -240,19 +240,19 @@ impl Digest for Sha1 {
 
 #[cfg(test)]
 mod tests {
-    use std::vec;
 
     use digest::{Digest, DigestUtil};
     use sha1::Sha1;
 
+    #[deriving(Clone)]
+    struct Test {
+        input: ~str,
+        output: ~[u8],
+        output_str: ~str,
+    }
+
     #[test]
     fn test() {
-        struct Test {
-            input: ~str,
-            output: ~[u8],
-            output_str: ~str,
-        }
-
         fn a_million_letter_a() -> ~str {
             let mut i = 0;
             let mut rs = ~"";
@@ -337,7 +337,7 @@ mod tests {
         for tests.iter().advance |t| {
             (*sh).input_str(t.input);
             sh.result(out);
-            assert!(vec::eq(t.output, out));
+            assert!(t.output.as_slice() == out);
 
             let out_str = (*sh).result_str();
             assert_eq!(out_str.len(), 40);
@@ -357,7 +357,7 @@ mod tests {
                 left = left - take;
             }
             sh.result(out);
-            assert!(vec::eq(t.output, out));
+            assert!(t.output.as_slice() == out);
 
             let out_str = (*sh).result_str();
             assert_eq!(out_str.len(), 40);

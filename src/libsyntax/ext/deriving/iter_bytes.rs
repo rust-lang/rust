@@ -56,8 +56,9 @@ fn iter_bytes_substructure(cx: @ExtCtxt, span: span, substr: &Substructure) -> @
     let iter_bytes_ident = substr.method_ident;
     let call_iterbytes = |thing_expr| {
         cx.expr_method_call(span,
-                              thing_expr, iter_bytes_ident,
-                              ~[lsb0, borrowed_f])
+                            thing_expr,
+                            iter_bytes_ident,
+                            ~[lsb0, borrowed_f])
     };
     let mut exprs = ~[];
     let fields;

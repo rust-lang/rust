@@ -11,15 +11,13 @@
 use ast;
 use ast::Name;
 use codemap;
-use codemap::{CodeMap, span, ExpnInfo, ExpandedFrom};
-use codemap::CallInfo;
+use codemap::{CodeMap, span, ExpnInfo};
 use diagnostic::span_handler;
 use ext;
 use parse;
 use parse::token;
 use parse::token::{ident_to_str, intern, str_to_ident};
 
-use std::vec;
 use std::hashmap::HashMap;
 
 // new-style macro! tt code:
@@ -240,10 +238,10 @@ impl ExtCtxt {
 
     pub fn codemap(&self) -> @CodeMap { self.parse_sess.cm }
     pub fn parse_sess(&self) -> @mut parse::ParseSess { self.parse_sess }
-    pub fn cfg(&self) -> ast::crate_cfg { copy self.cfg }
+    pub fn cfg(&self) -> ast::crate_cfg { self.cfg.clone() }
     pub fn call_site(&self) -> span {
         match *self.backtrace {
-            Some(@ExpandedFrom(CallInfo {call_site: cs, _})) => cs,
+            Some(@ExpnInfo {call_site: cs, _}) => cs,
             None => self.bug("missing top span")
         }
     }
@@ -251,24 +249,22 @@ impl ExtCtxt {
     pub fn backtrace(&self) -> Option<@ExpnInfo> { *self.backtrace }
     pub fn mod_push(&self, i: ast::ident) { self.mod_path.push(i); }
     pub fn mod_pop(&self) { self.mod_path.pop(); }
-    pub fn mod_path(&self) -> ~[ast::ident] { copy *self.mod_path }
+    pub fn mod_path(&self) -> ~[ast::ident] { (*self.mod_path).clone() }
     pub fn bt_push(&self, ei: codemap::ExpnInfo) {
         match ei {
-            ExpandedFrom(CallInfo {call_site: cs, callee: ref callee}) => {
+            ExpnInfo {call_site: cs, callee: ref callee} => {
                 *self.backtrace =
-                    Some(@ExpandedFrom(CallInfo {
+                    Some(@ExpnInfo {
                         call_site: span {lo: cs.lo, hi: cs.hi,
                                          expn_info: *self.backtrace},
-                        callee: copy *callee}));
+                        callee: *callee});
             }
         }
     }
     pub fn bt_pop(&self) {
         match *self.backtrace {
-            Some(@ExpandedFrom(
-                CallInfo {
-                    call_site: span {expn_info: prev, _}, _
-                })) => {
+            Some(@ExpnInfo {
+                call_site: span {expn_info: prev, _}, _}) => {
                 *self.backtrace = prev
             }
             _ => self.bug("tried to pop without a push")
@@ -329,7 +325,7 @@ pub fn expr_to_ident(cx: @ExtCtxt,
                      expr: @ast::expr,
                      err_msg: &str) -> ast::ident {
     match expr.node {
-      ast::expr_path(p) => {
+      ast::expr_path(ref p) => {
         if p.types.len() > 0u || p.idents.len() != 1u {
             cx.span_fatal(expr.span, err_msg);
         }
@@ -365,7 +361,7 @@ pub fn get_exprs_from_tts(cx: @ExtCtxt, tts: &[ast::token_tree])
                        -> ~[@ast::expr] {
     let p = parse::new_parser_from_tts(cx.parse_sess(),
                                        cx.cfg(),
-                                       vec::to_owned(tts));
+                                       tts.to_owned());
     let mut es = ~[];
     while *p.token != token::EOF {
         if es.len() != 0 {
@@ -418,7 +414,7 @@ pub enum MapChain<K,V> {
 
 
 // get the map from an env frame
-impl <K: Eq + Hash + IterBytes ,V: Copy> MapChain<K,V>{
+impl <K: Eq + Hash + IterBytes, V> MapChain<K,V>{
 
     // Constructor. I don't think we need a zero-arg one.
     fn new(init: ~HashMap<K,@V>) -> @mut MapChain<K,V> {

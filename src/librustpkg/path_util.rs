@@ -29,9 +29,14 @@ fn push_if_exists(vec: &mut ~[Path], p: &Path) {
 }
 
 #[cfg(windows)]
-static path_entry_separator: &'static str = ";";
+static PATH_ENTRY_SEPARATOR: &'static str = ";";
 #[cfg(not(windows))]
-static path_entry_separator: &'static str = ":";
+static PATH_ENTRY_SEPARATOR: &'static str = ":";
+
+/// Returns RUST_PATH as a string, without default paths added
+pub fn get_rust_path() -> Option<~str> {
+    os::getenv("RUST_PATH")
+}
 
 /// Returns the value of RUST_PATH, as a list
 /// of Paths. Includes default entries for, if they exist:
@@ -39,29 +44,46 @@ static path_entry_separator: &'static str = ":";
 /// DIR/.rust for any DIR that's the current working directory
 /// or an ancestor of it
 pub fn rust_path() -> ~[Path] {
-    let mut env_rust_path: ~[Path] = match os::getenv("RUST_PATH") {
+    let mut env_rust_path: ~[Path] = match get_rust_path() {
         Some(env_path) => {
             let env_path_components: ~[&str] =
-                env_path.split_str_iter(path_entry_separator).collect();
+                env_path.split_str_iter(PATH_ENTRY_SEPARATOR).collect();
             env_path_components.map(|&s| Path(s))
         }
         None => ~[]
     };
     let cwd = os::getcwd();
     // now add in default entries
-    env_rust_path.push(copy cwd);
+    env_rust_path.push(cwd.push(".rust"));
+    env_rust_path.push(cwd.clone());
     do cwd.each_parent() |p| { push_if_exists(&mut env_rust_path, p) };
     let h = os::homedir();
     for h.iter().advance |h| { push_if_exists(&mut env_rust_path, h); }
     env_rust_path
 }
 
-pub static u_rwx: i32 = (S_IRUSR | S_IWUSR | S_IXUSR) as i32;
+pub fn default_workspace() -> Path {
+    let p = rust_path();
+    if p.is_empty() {
+        fail!("Empty RUST_PATH");
+    }
+    let result = p[0];
+    if !os::path_is_dir(&result) {
+        os::mkdir_recursive(&result, U_RWX);
+    }
+    result
+}
+
+pub fn in_rust_path(p: &Path) -> bool {
+    rust_path().contains(p)
+}
+
+pub static U_RWX: i32 = (S_IRUSR | S_IWUSR | S_IXUSR) as i32;
 
 /// Creates a directory that is readable, writeable,
 /// and executable by the user. Returns true iff creation
 /// succeeded.
-pub fn make_dir_rwx(p: &Path) -> bool { os::make_dir(p, u_rwx) }
+pub fn make_dir_rwx(p: &Path) -> bool { os::make_dir(p, U_RWX) }
 
 // n.b. The next three functions ignore the package version right
 // now. Should fix that.
@@ -71,8 +93,8 @@ pub fn make_dir_rwx(p: &Path) -> bool { os::make_dir(p, u_rwx) }
 pub fn workspace_contains_package_id(pkgid: &PkgId, workspace: &Path) -> bool {
     let src_dir = workspace.push("src");
     let dirs = os::list_dir(&src_dir);
-    for dirs.iter().advance |&p| {
-        let p = Path(p);
+    for dirs.iter().advance |p| {
+        let p = Path((*p).clone());
         debug!("=> p = %s", p.to_str());
         if !os::path_is_dir(&src_dir.push_rel(&p)) {
             loop;
@@ -84,8 +106,8 @@ pub fn workspace_contains_package_id(pkgid: &PkgId, workspace: &Path) -> bool {
         }
         else {
             let pf = p.filename();
-            for pf.iter().advance |&pf| {
-                let f_ = copy pf;
+            for pf.iter().advance |pf| {
+                let f_ = (*pf).clone();
                 let g = f_.to_str();
                 match split_version_general(g, '-') {
                     Some((ref might_match, ref vers)) => {
@@ -123,7 +145,7 @@ pub fn first_pkgid_src_in_workspace(pkgid: &PkgId, workspace: &Path) -> Option<P
     let rs = pkgid_src_in_workspace(pkgid, workspace);
     for rs.iter().advance |p| {
         if os::path_exists(p) {
-            return Some(copy *p);
+            return Some((*p).clone());
         }
     }
     None
@@ -217,10 +239,10 @@ pub fn library_in_workspace(path: &LocalPath, short_name: &str, where: Target,
     debug!("lib_prefix = %s and lib_filetype = %s", lib_prefix, lib_filetype);
 
     let mut result_filename = None;
-    for dir_contents.iter().advance |&p| {
+    for dir_contents.iter().advance |p| {
         let mut which = 0;
         let mut hash = None;
-        let p_path = Path(p);
+        let p_path = Path((*p).clone());
         let extension = p_path.filetype();
         debug!("p = %s, p's extension is %?", p.to_str(), extension);
         match extension {
@@ -286,7 +308,7 @@ pub fn target_executable_in_workspace(pkgid: &PkgId, workspace: &Path) -> Path {
 pub fn target_library_in_workspace(pkgid: &PkgId, workspace: &Path) -> Path {
     use conditions::bad_path::cond;
     if !os::path_is_dir(workspace) {
-        cond.raise((copy *workspace,
+        cond.raise(((*workspace).clone(),
                     fmt!("Workspace supplied to target_library_in_workspace \
                           is not a directory! %s", workspace.to_str())));
     }
@@ -318,8 +340,8 @@ fn target_file_in_workspace(pkgid: &PkgId, workspace: &Path,
         Lib => "lib", Main | Test | Bench => "bin"
     };
     let result = workspace.push(subdir);
-    if !os::path_exists(&result) && !mkdir_recursive(&result, u_rwx) {
-        cond.raise((copy result, fmt!("target_file_in_workspace couldn't \
+    if !os::path_exists(&result) && !mkdir_recursive(&result, U_RWX) {
+        cond.raise((result.clone(), fmt!("target_file_in_workspace couldn't \
             create the %s dir (pkgid=%s, workspace=%s, what=%?, where=%?",
             subdir, pkgid.to_str(), workspace.to_str(), what, where)));
     }
@@ -335,7 +357,7 @@ pub fn build_pkg_id_in_workspace(pkgid: &PkgId, workspace: &Path) -> Path {
     // n.b. Should actually use a target-specific
     // subdirectory of build/
     result = result.push_rel(&*pkgid.local_path);
-    if os::path_exists(&result) || os::mkdir_recursive(&result, u_rwx) {
+    if os::path_exists(&result) || os::mkdir_recursive(&result, U_RWX) {
         result
     }
     else {
@@ -353,12 +375,15 @@ pub fn mk_output_path(what: OutputType, where: Target,
     // the executable blat-0.5 to live under blat/
     let dir = match where {
         // If we're installing, it just goes under <workspace>...
-        Install => copy *workspace, // bad copy, but I just couldn't make the borrow checker happy
+        Install => {
+            // bad copy, but I just couldn't make the borrow checker happy
+            (*workspace).clone()
+        }
         // and if we're just building, it goes in a package-specific subdir
         Build => workspace.push_rel(&*pkg_id.local_path)
     };
     debug!("[%?:%?] mk_output_path: short_name = %s, path = %s", what, where,
-           if what == Lib { copy short_name_with_version } else { copy pkg_id.short_name },
+           if what == Lib { short_name_with_version.clone() } else { pkg_id.short_name.clone() },
            dir.to_str());
     let mut output_path = match what {
         // this code is duplicated from elsewhere; fix this
@@ -377,4 +402,24 @@ pub fn mk_output_path(what: OutputType, where: Target,
     }
     debug!("mk_output_path: returning %s", output_path.to_str());
     output_path
+}
+
+/// Removes files for the package `pkgid`, assuming it's installed in workspace `workspace`
+pub fn uninstall_package_from(workspace: &Path, pkgid: &PkgId) {
+    let mut did_something = false;
+    let installed_bin = target_executable_in_workspace(pkgid, workspace);
+    if os::path_exists(&installed_bin) {
+        os::remove_file(&installed_bin);
+        did_something = true;
+    }
+    let installed_lib = target_library_in_workspace(pkgid, workspace);
+    if os::path_exists(&installed_lib) {
+        os::remove_file(&installed_lib);
+        did_something = true;
+    }
+    if !did_something {
+        warn(fmt!("Warning: there don't seem to be any files for %s installed in %s",
+             pkgid.to_str(), workspace.to_str()));
+    }
+
 }

@@ -45,9 +45,9 @@ pub fn parse_crate(attrs: ~[ast::attribute]) -> CrateAttrs {
 }
 
 pub fn parse_desc(attrs: ~[ast::attribute]) -> Option<~str> {
-    let doc_strs = do doc_metas(attrs).filter_mapped |meta| {
-        attr::get_meta_item_value_str(*meta).map(|s| s.to_owned())
-    };
+    let doc_strs = do doc_metas(attrs).consume_iter().filter_map |meta| {
+        attr::get_meta_item_value_str(meta).map(|s| s.to_owned())
+    }.collect::<~[~str]>();
     if doc_strs.is_empty() {
         None
     } else {
@@ -57,7 +57,7 @@ pub fn parse_desc(attrs: ~[ast::attribute]) -> Option<~str> {
 
 pub fn parse_hidden(attrs: ~[ast::attribute]) -> bool {
     let r = doc_metas(attrs);
-    do r.iter().any_ |meta| {
+    do r.iter().any |meta| {
         match attr::get_meta_item_list(*meta) {
             Some(metas) => {
                 let hiddens = attr::find_meta_items_by_name(metas, "hidden");

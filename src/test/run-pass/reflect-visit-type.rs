@@ -59,7 +59,6 @@ impl TyVisitor for MyVisitor {
     fn visit_f64(&self) -> bool { true }
 
     fn visit_char(&self) -> bool { true }
-    fn visit_str(&self) -> bool { true }
 
     fn visit_estr_box(&self) -> bool { true }
     fn visit_estr_uniq(&self) -> bool { true }
@@ -70,6 +69,7 @@ impl TyVisitor for MyVisitor {
 
     fn visit_box(&self, _mtbl: uint, _inner: *TyDesc) -> bool { true }
     fn visit_uniq(&self, _mtbl: uint, _inner: *TyDesc) -> bool { true }
+    fn visit_uniq_managed(&self, _mtbl: uint, _inner: *TyDesc) -> bool { true }
     fn visit_ptr(&self, _mtbl: uint, _inner: *TyDesc) -> bool { true }
     fn visit_rptr(&self, _mtbl: uint, _inner: *TyDesc) -> bool { true }
 
@@ -77,6 +77,14 @@ impl TyVisitor for MyVisitor {
     fn visit_unboxed_vec(&self, _mtbl: uint, _inner: *TyDesc) -> bool { true }
     fn visit_evec_box(&self, _mtbl: uint, _inner: *TyDesc) -> bool { true }
     fn visit_evec_uniq(&self, _mtbl: uint, inner: *TyDesc) -> bool {
+        self.types.push(~"[");
+        unsafe {
+            visit_tydesc(inner, (@*self) as @TyVisitor);
+        }
+        self.types.push(~"]");
+        true
+    }
+    fn visit_evec_uniq_managed(&self, _mtbl: uint, inner: *TyDesc) -> bool {
         self.types.push(~"[");
         unsafe {
             visit_tydesc(inner, (@*self) as @TyVisitor);
@@ -162,8 +170,8 @@ pub fn main() {
     visit_ty::<i16>(vv);
     visit_ty::<~[int]>(vv);
 
-    for v.types.iter().advance |&s| {
-        println(fmt!("type: %s", s));
+    for v.types.iter().advance |s| {
+        println(fmt!("type: %s", (*s).clone()));
     }
     assert_eq!((*v.types).clone(), ~[~"bool", ~"int", ~"i8", ~"i16", ~"[", ~"int", ~"]"]);
 }
