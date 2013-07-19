@@ -893,9 +893,9 @@ mod tests {
     #[test]
     fn test_1_element() {
         let mut act = Bitv::new(1u, false);
-        assert!(act.eq_vec(~[false]));
+        assert!(act.eq_vec([false]));
         act = Bitv::new(1u, true);
-        assert!(act.eq_vec(~[true]));
+        assert!(act.eq_vec([true]));
     }
 
     #[test]
@@ -913,11 +913,11 @@ mod tests {
 
         act = Bitv::new(10u, false);
         assert!((act.eq_vec(
-                    ~[false, false, false, false, false, false, false, false, false, false])));
+                    [false, false, false, false, false, false, false, false, false, false])));
         // all 1
 
         act = Bitv::new(10u, true);
-        assert!((act.eq_vec(~[true, true, true, true, true, true, true, true, true, true])));
+        assert!((act.eq_vec([true, true, true, true, true, true, true, true, true, true])));
         // mixed
 
         act = Bitv::new(10u, false);
@@ -926,7 +926,7 @@ mod tests {
         act.set(2u, true);
         act.set(3u, true);
         act.set(4u, true);
-        assert!((act.eq_vec(~[true, true, true, true, true, false, false, false, false, false])));
+        assert!((act.eq_vec([true, true, true, true, true, false, false, false, false, false])));
         // mixed
 
         act = Bitv::new(10u, false);
@@ -935,7 +935,7 @@ mod tests {
         act.set(7u, true);
         act.set(8u, true);
         act.set(9u, true);
-        assert!((act.eq_vec(~[false, false, false, false, false, true, true, true, true, true])));
+        assert!((act.eq_vec([false, false, false, false, false, true, true, true, true, true])));
         // mixed
 
         act = Bitv::new(10u, false);
@@ -943,7 +943,7 @@ mod tests {
         act.set(3u, true);
         act.set(6u, true);
         act.set(9u, true);
-        assert!((act.eq_vec(~[true, false, false, true, false, false, true, false, false, true])));
+        assert!((act.eq_vec([true, false, false, true, false, false, true, false, false, true])));
     }
 
     #[test]
@@ -953,14 +953,14 @@ mod tests {
 
         act = Bitv::new(31u, false);
         assert!(act.eq_vec(
-                ~[false, false, false, false, false, false, false, false, false, false, false,
+                [false, false, false, false, false, false, false, false, false, false, false,
                 false, false, false, false, false, false, false, false, false, false, false, false,
                 false, false, false, false, false, false, false, false]));
         // all 1
 
         act = Bitv::new(31u, true);
         assert!(act.eq_vec(
-                ~[true, true, true, true, true, true, true, true, true, true, true, true, true,
+                [true, true, true, true, true, true, true, true, true, true, true, true, true,
                 true, true, true, true, true, true, true, true, true, true, true, true, true, true,
                 true, true, true, true]));
         // mixed
@@ -975,7 +975,7 @@ mod tests {
         act.set(6u, true);
         act.set(7u, true);
         assert!(act.eq_vec(
-                ~[true, true, true, true, true, true, true, true, false, false, false, false, false,
+                [true, true, true, true, true, true, true, true, false, false, false, false, false,
                 false, false, false, false, false, false, false, false, false, false, false, false,
                 false, false, false, false, false, false]));
         // mixed
@@ -990,7 +990,7 @@ mod tests {
         act.set(22u, true);
         act.set(23u, true);
         assert!(act.eq_vec(
-                ~[false, false, false, false, false, false, false, false, false, false, false,
+                [false, false, false, false, false, false, false, false, false, false, false,
                 false, false, false, false, false, true, true, true, true, true, true, true, true,
                 false, false, false, false, false, false, false]));
         // mixed
@@ -1004,7 +1004,7 @@ mod tests {
         act.set(29u, true);
         act.set(30u, true);
         assert!(act.eq_vec(
-                ~[false, false, false, false, false, false, false, false, false, false, false,
+                [false, false, false, false, false, false, false, false, false, false, false,
                 false, false, false, false, false, false, false, false, false, false, false, false,
                 false, true, true, true, true, true, true, true]));
         // mixed
@@ -1014,7 +1014,7 @@ mod tests {
         act.set(17u, true);
         act.set(30u, true);
         assert!(act.eq_vec(
-                ~[false, false, false, true, false, false, false, false, false, false, false, false,
+                [false, false, false, true, false, false, false, false, false, false, false, false,
                 false, false, false, false, false, true, false, false, false, false, false, false,
                 false, false, false, false, false, false, true]));
     }
@@ -1026,14 +1026,14 @@ mod tests {
 
         act = Bitv::new(32u, false);
         assert!(act.eq_vec(
-                ~[false, false, false, false, false, false, false, false, false, false, false,
+                [false, false, false, false, false, false, false, false, false, false, false,
                 false, false, false, false, false, false, false, false, false, false, false, false,
                 false, false, false, false, false, false, false, false, false]));
         // all 1
 
         act = Bitv::new(32u, true);
         assert!(act.eq_vec(
-                ~[true, true, true, true, true, true, true, true, true, true, true, true, true,
+                [true, true, true, true, true, true, true, true, true, true, true, true, true,
                 true, true, true, true, true, true, true, true, true, true, true, true, true, true,
                 true, true, true, true, true]));
         // mixed
@@ -1048,7 +1048,7 @@ mod tests {
         act.set(6u, true);
         act.set(7u, true);
         assert!(act.eq_vec(
-                ~[true, true, true, true, true, true, true, true, false, false, false, false, false,
+                [true, true, true, true, true, true, true, true, false, false, false, false, false,
                 false, false, false, false, false, false, false, false, false, false, false, false,
                 false, false, false, false, false, false, false]));
         // mixed
@@ -1063,7 +1063,7 @@ mod tests {
         act.set(22u, true);
         act.set(23u, true);
         assert!(act.eq_vec(
-                ~[false, false, false, false, false, false, false, false, false, false, false,
+                [false, false, false, false, false, false, false, false, false, false, false,
                 false, false, false, false, false, true, true, true, true, true, true, true, true,
                 false, false, false, false, false, false, false, false]));
         // mixed
@@ -1078,7 +1078,7 @@ mod tests {
         act.set(30u, true);
         act.set(31u, true);
         assert!(act.eq_vec(
-                ~[false, false, false, false, false, false, false, false, false, false, false,
+                [false, false, false, false, false, false, false, false, false, false, false,
                 false, false, false, false, false, false, false, false, false, false, false, false,
                 false, true, true, true, true, true, true, true, true]));
         // mixed
@@ -1089,7 +1089,7 @@ mod tests {
         act.set(30u, true);
         act.set(31u, true);
         assert!(act.eq_vec(
-                ~[false, false, false, true, false, false, false, false, false, false, false, false,
+                [false, false, false, true, false, false, false, false, false, false, false, false,
                 false, false, false, false, false, true, false, false, false, false, false, false,
                 false, false, false, false, false, false, true, true]));
     }
@@ -1101,14 +1101,14 @@ mod tests {
 
         act = Bitv::new(33u, false);
         assert!(act.eq_vec(
-                ~[false, false, false, false, false, false, false, false, false, false, false,
+                [false, false, false, false, false, false, false, false, false, false, false,
                 false, false, false, false, false, false, false, false, false, false, false, false,
                 false, false, false, false, false, false, false, false, false, false]));
         // all 1
 
         act = Bitv::new(33u, true);
         assert!(act.eq_vec(
-                ~[true, true, true, true, true, true, true, true, true, true, true, true, true,
+                [true, true, true, true, true, true, true, true, true, true, true, true, true,
                 true, true, true, true, true, true, true, true, true, true, true, true, true, true,
                 true, true, true, true, true, true]));
         // mixed
@@ -1123,7 +1123,7 @@ mod tests {
         act.set(6u, true);
         act.set(7u, true);
         assert!(act.eq_vec(
-                ~[true, true, true, true, true, true, true, true, false, false, false, false, false,
+                [true, true, true, true, true, true, true, true, false, false, false, false, false,
                 false, false, false, false, false, false, false, false, false, false, false, false,
                 false, false, false, false, false, false, false, false]));
         // mixed
@@ -1138,7 +1138,7 @@ mod tests {
         act.set(22u, true);
         act.set(23u, true);
         assert!(act.eq_vec(
-                ~[false, false, false, false, false, false, false, false, false, false, false,
+                [false, false, false, false, false, false, false, false, false, false, false,
                 false, false, false, false, false, true, true, true, true, true, true, true, true,
                 false, false, false, false, false, false, false, false, false]));
         // mixed
@@ -1153,7 +1153,7 @@ mod tests {
         act.set(30u, true);
         act.set(31u, true);
         assert!(act.eq_vec(
-                ~[false, false, false, false, false, false, false, false, false, false, false,
+                [false, false, false, false, false, false, false, false, false, false, false,
                 false, false, false, false, false, false, false, false, false, false, false, false,
                 false, true, true, true, true, true, true, true, true, false]));
         // mixed
@@ -1165,7 +1165,7 @@ mod tests {
         act.set(31u, true);
         act.set(32u, true);
         assert!(act.eq_vec(
-                ~[false, false, false, true, false, false, false, false, false, false, false, false,
+                [false, false, false, true, false, false, false, false, false, false, false, false,
                 false, false, false, false, false, true, false, false, false, false, false, false,
                 false, false, false, false, false, false, true, true, true]));
     }
