@@ -69,6 +69,8 @@ private:
     void release_alloc(void *mem);
     void claim_alloc(void *mem);
 
+    void maybe_print_backtrace(const alloc_header *) const;
+
 private:
     // private and undefined to disable copying
     memory_region(const memory_region& rhs);
