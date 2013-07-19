@@ -653,6 +653,11 @@ impl InferCtxt {
                   self.resolve_type_vars_if_possible(t))
     }
 
+    pub fn tys_to_str(@mut self, ts: &[ty::t]) -> ~str {
+        let tstrs = ts.map(|t| self.ty_to_str(*t));
+        fmt!("(%s)", tstrs.connect(", "))
+    }
+
     pub fn trait_ref_to_str(@mut self, t: &ty::TraitRef) -> ~str {
         let t = self.resolve_type_vars_in_trait_ref_if_possible(t);
         trait_ref_to_str(self.tcx, &t)
