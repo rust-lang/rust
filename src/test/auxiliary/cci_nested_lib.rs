@@ -18,11 +18,15 @@ pub struct alist<A,B> {
     data: @mut ~[Entry<A,B>]
 }
 
-pub fn alist_add<A,B>(lst: &alist<A,B>, k: A, v: B) {
+pub fn alist_add<A:'static,B:'static>(lst: &alist<A,B>, k: A, v: B) {
     lst.data.push(Entry{key:k, value:v});
 }
 
-pub fn alist_get<A:Clone,B:Clone>(lst: &alist<A,B>, k: A) -> B {
+pub fn alist_get<A:Clone + 'static,
+                 B:Clone + 'static>(
+                 lst: &alist<A,B>,
+                 k: A)
+                 -> B {
     let eq_fn = lst.eq_fn;
     for lst.data.iter().advance |entry| {
         if eq_fn(entry.key.clone(), k.clone()) {
@@ -33,13 +37,13 @@ pub fn alist_get<A:Clone,B:Clone>(lst: &alist<A,B>, k: A) -> B {
 }
 
 #[inline]
-pub fn new_int_alist<B>() -> alist<int, B> {
+pub fn new_int_alist<B:'static>() -> alist<int, B> {
     fn eq_int(a: int, b: int) -> bool { a == b }
     return alist {eq_fn: eq_int, data: @mut ~[]};
 }
 
 #[inline]
-pub fn new_int_alist_2<B>() -> alist<int, B> {
+pub fn new_int_alist_2<B:'static>() -> alist<int, B> {
     #[inline]
     fn eq_int(a: int, b: int) -> bool { a == b }
     return alist {eq_fn: eq_int, data: @mut ~[]};

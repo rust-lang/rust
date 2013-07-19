@@ -858,7 +858,7 @@ fn mk_rcache() -> creader_cache {
     return @mut HashMap::new();
 }
 
-pub fn new_ty_hash<V>() -> @mut HashMap<t, V> {
+pub fn new_ty_hash<V:'static>() -> @mut HashMap<t, V> {
     @mut HashMap::new()
 }
 

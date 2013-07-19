@@ -242,7 +242,7 @@ impl<T: Rand> Rand for ~T {
     fn rand<R: Rng>(rng: &mut R) -> ~T { ~rng.gen() }
 }
 
-impl<T: Rand> Rand for @T {
+impl<T: Rand + 'static> Rand for @T {
     #[inline]
     fn rand<R: Rng>(rng: &mut R) -> @T { @rng.gen() }
 }

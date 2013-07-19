@@ -21,7 +21,7 @@ pub struct Interner<T> {
 }
 
 // when traits can extend traits, we should extend index<uint,T> to get []
-impl<T:Eq + IterBytes + Hash + Freeze + Clone> Interner<T> {
+impl<T:Eq + IterBytes + Hash + Freeze + Clone + 'static> Interner<T> {
     pub fn new() -> Interner<T> {
         Interner {
             map: @mut HashMap::new(),

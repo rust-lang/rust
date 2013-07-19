@@ -446,12 +446,12 @@ pub fn pow_with_uint<T:NumCast+One+Zero+Div<T,T>+Mul<T,T>>(radix: uint, pow: uin
     total
 }
 
-impl<T: Zero> Zero for @mut T {
+impl<T: Zero + 'static> Zero for @mut T {
     fn zero() -> @mut T { @mut Zero::zero() }
     fn is_zero(&self) -> bool { (**self).is_zero() }
 }
 
-impl<T: Zero> Zero for @T {
+impl<T: Zero + 'static> Zero for @T {
     fn zero() -> @T { @Zero::zero() }
     fn is_zero(&self) -> bool { (**self).is_zero() }
 }

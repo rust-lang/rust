@@ -285,6 +285,10 @@ pub fn check_expr(e: @expr, (cx, v): (Context, visit::vt<Context>)) {
     }
 
     match e.node {
+        expr_unary(_, box(_), interior) => {
+            let interior_type = ty::expr_ty(cx.tcx, interior);
+            let _ = check_durable(cx.tcx, interior_type, interior.span);
+        }
         expr_cast(source, _) => {
             check_cast_for_escaping_regions(cx, source, e);
             match ty::get(ty::expr_ty(cx.tcx, e)).sty {
