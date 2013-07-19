@@ -106,8 +106,14 @@ impl Drop for KillFlag {
 // blocked task handle. So unblocking a task must restore that spare.
 unsafe fn revive_task_ptr(task_ptr: uint, spare_flag: Option<KillFlagHandle>) -> ~Task {
     let mut task: ~Task = cast::transmute(task_ptr);
-    rtassert!(task.death.spare_kill_flag.is_none());
-    task.death.spare_kill_flag = spare_flag;
+    if task.death.spare_kill_flag.is_none() {
+        task.death.spare_kill_flag = spare_flag;
+    } else {
+        // A task's spare kill flag is not used for blocking in one case:
+        // when an unkillable task blocks on select. In this case, a separate
+        // one was created, which we now discard.
+        rtassert!(task.death.unkillable > 0);
+    }
     task
 }
 
@@ -119,7 +125,7 @@ impl BlockedTask {
             Killable(flag_arc) => {
                 let flag = unsafe { &mut **flag_arc.get() };
                 match flag.swap(KILL_RUNNING, SeqCst) {
-                    KILL_RUNNING => rtabort!("tried to wake an already-running task"),
+                    KILL_RUNNING => None, // woken from select(), perhaps
                     KILL_KILLED  => None, // a killer stole it already
                     task_ptr     =>
                         Some(unsafe { revive_task_ptr(task_ptr, Some(flag_arc)) })
@@ -161,6 +167,27 @@ impl BlockedTask {
             }
         }
     }
+
+    /// Converts one blocked task handle to a list of many handles to the same.
+    pub fn make_selectable(self, num_handles: uint) -> ~[BlockedTask] {
+        let handles = match self {
+            Unkillable(task) => {
+                let flag = unsafe { KillFlag(AtomicUint::new(cast::transmute(task))) };
+                UnsafeAtomicRcBox::newN(flag, num_handles)
+            }
+            Killable(flag_arc) => flag_arc.cloneN(num_handles),
+        };
+        // Even if the task was unkillable before, we use 'Killable' because
+        // multiple pipes will have handles. It does not really mean killable.
+        handles.consume_iter().transform(|x| Killable(x)).collect()
+    }
+
+    // This assertion has two flavours because the wake involves an atomic op.
+    // In the faster version, destructors will fail dramatically instead.
+    #[inline] #[cfg(not(test))]
+    pub fn assert_already_awake(self) { }
+    #[inline] #[cfg(test)]
+    pub fn assert_already_awake(self) { assert!(self.wake().is_none()); }
 
     /// Convert to an unsafe uint value. Useful for storing in a pipe's state flag.
     #[inline]
