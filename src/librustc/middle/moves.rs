@@ -394,7 +394,7 @@ impl VisitContext {
 
             expr_struct(_, ref fields, opt_with) => {
                 for fields.iter().advance |field| {
-                    self.consume_expr(field.node.expr, visitor);
+                    self.consume_expr(field.expr, visitor);
                 }
 
                 for opt_with.iter().advance |with_expr| {
@@ -417,7 +417,7 @@ impl VisitContext {
                     // specified and (2) have a type that
                     // moves-by-default:
                     let consume_with = with_fields.iter().any(|tf| {
-                        !fields.iter().any(|f| f.node.ident == tf.ident) &&
+                        !fields.iter().any(|f| f.ident == tf.ident) &&
                             ty::type_moves_by_default(self.tcx, tf.mt.ty)
                     });
 

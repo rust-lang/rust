@@ -1161,7 +1161,7 @@ impl Liveness {
           expr_struct(_, ref fields, with_expr) => {
             let succ = self.propagate_through_opt_expr(with_expr, succ);
             do fields.rev_iter().fold(succ) |succ, field| {
-                self.propagate_through_expr(field.node.expr, succ)
+                self.propagate_through_expr(field.expr, succ)
             }
           }
 

@@ -474,7 +474,7 @@ pub fn visit_expr<E:Clone>(ex: @expr, (e, v): (E, vt<E>)) {
         expr_struct(ref p, ref flds, base) => {
             visit_path(p, (e.clone(), v));
             for flds.iter().advance |f| {
-                (v.visit_expr)(f.node.expr, (e.clone(), v));
+                (v.visit_expr)(f.expr, (e.clone(), v));
             }
             visit_expr_opt(base, (e.clone(), v));
         }

@@ -29,7 +29,7 @@ use ast::{expr_method_call, expr_paren, expr_path, expr_repeat};
 use ast::{expr_ret, expr_self, expr_struct, expr_tup, expr_unary};
 use ast::{expr_vec, expr_vstore, expr_vstore_mut_box};
 use ast::{expr_vstore_slice, expr_vstore_box};
-use ast::{expr_vstore_mut_slice, expr_while, extern_fn, field, fn_decl};
+use ast::{expr_vstore_mut_slice, expr_while, extern_fn, Field, fn_decl};
 use ast::{expr_vstore_uniq, Onceness, Once, Many};
 use ast::{foreign_item, foreign_item_static, foreign_item_fn, foreign_mod};
 use ast::{ident, impure_fn, inherited, item, item_, item_static};
@@ -1498,15 +1498,16 @@ impl Parser {
     }
 
     // parse ident COLON expr
-    pub fn parse_field(&self) -> field {
+    pub fn parse_field(&self) -> Field {
         let lo = self.span.lo;
         let i = self.parse_ident();
         self.expect(&token::COLON);
         let e = self.parse_expr();
-        spanned(lo, e.span.hi, ast::field_ {
+        ast::Field {
             ident: i,
-            expr: e
-        })
+            expr: e,
+            span: mk_sp(lo, e.span.hi),
+        }
     }
 
     pub fn mk_expr(&self, lo: BytePos, hi: BytePos, node: expr_) -> @expr {

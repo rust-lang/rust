@@ -1103,14 +1103,14 @@ pub fn print_call_post(s: @ps,
 }
 
 pub fn print_expr(s: @ps, expr: &ast::expr) {
-    fn print_field(s: @ps, field: &ast::field) {
+    fn print_field(s: @ps, field: &ast::Field) {
         ibox(s, indent_unit);
-        print_ident(s, field.node.ident);
+        print_ident(s, field.ident);
         word_space(s, ":");
-        print_expr(s, field.node.expr);
+        print_expr(s, field.expr);
         end(s);
     }
-    fn get_span(field: &ast::field) -> codemap::span { return field.span; }
+    fn get_span(field: &ast::Field) -> codemap::span { return field.span; }
 
     maybe_print_comment(s, expr.span.lo);
     ibox(s, indent_unit);

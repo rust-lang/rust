@@ -117,7 +117,7 @@ pub fn classify(e: &expr,
 
               ast::expr_struct(_, ref fs, None) => {
                 let cs = do fs.iter().transform |f| {
-                    classify(f.node.expr, tcx)
+                    classify(f.expr, tcx)
                 };
                 join_all(cs)
               }

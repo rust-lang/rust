@@ -1872,7 +1872,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                                       node_id: ast::node_id,
                                       substitutions: ty::substs,
                                       field_types: &[ty::field_ty],
-                                      ast_fields: &[ast::field],
+                                      ast_fields: &[ast::Field],
                                       check_completeness: bool)  {
         let tcx = fcx.ccx.tcx;
 
@@ -1888,21 +1888,21 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         for ast_fields.iter().advance |field| {
             let mut expected_field_type = ty::mk_err();
 
-            let pair = class_field_map.find(&field.node.ident).
+            let pair = class_field_map.find(&field.ident).
                                        map_consume(|x| *x);
             match pair {
                 None => {
                     tcx.sess.span_err(
                         field.span,
                         fmt!("structure has no field named `%s`",
-                             tcx.sess.str_of(field.node.ident)));
+                             tcx.sess.str_of(field.ident)));
                     error_happened = true;
                 }
                 Some((_, true)) => {
                     tcx.sess.span_err(
                         field.span,
                         fmt!("field `%s` specified more than once",
-                             tcx.sess.str_of(field.node.ident)));
+                             tcx.sess.str_of(field.ident)));
                     error_happened = true;
                 }
                 Some((field_id, false)) => {
@@ -1910,7 +1910,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                         ty::lookup_field_type(
                             tcx, class_id, field_id, &substitutions);
                     class_field_map.insert(
-                        field.node.ident, (field_id, true));
+                        field.ident, (field_id, true));
                     fields_found += 1;
                 }
             }
@@ -1918,7 +1918,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
             // an error, so we can continue typechecking
             check_expr_coercable_to_type(
                     fcx,
-                    field.node.expr,
+                    field.expr,
                     expected_field_type);
         }
 
@@ -1961,7 +1961,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                                 id: ast::node_id,
                                 span: codemap::span,
                                 class_id: ast::def_id,
-                                fields: &[ast::field],
+                                fields: &[ast::Field],
                                 base_expr: Option<@ast::expr>) {
         let tcx = fcx.ccx.tcx;
 
@@ -2051,7 +2051,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                                  span: codemap::span,
                                  enum_id: ast::def_id,
                                  variant_id: ast::def_id,
-                                 fields: &[ast::field]) {
+                                 fields: &[ast::Field]) {
         let tcx = fcx.ccx.tcx;
 
         // Look up the number of type parameters and the raw type, and

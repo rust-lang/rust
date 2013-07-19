@@ -374,7 +374,7 @@ impl CFGBuilder {
             ast::expr_struct(_, ref fields, base) => {
                 let base_exit = self.opt_expr(base, pred);
                 let field_exprs: ~[@ast::expr] =
-                    fields.iter().transform(|f| f.node.expr).collect();
+                    fields.iter().transform(|f| f.expr).collect();
                 self.straightline(expr, base_exit, field_exprs)
             }
 
