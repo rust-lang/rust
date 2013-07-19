@@ -355,7 +355,11 @@ impl Item for StructDoc {
 
 pub trait ItemUtils {
     fn id(&self) -> AstId;
-    fn name(&self) -> ~str;
+    /// FIXME #5898: This conflicts with
+    /// syntax::attr::AttrMetaMethods.name; This rustdoc seems to be on
+    /// the way out so I'm making this one look bad rather than the
+    /// new methods in attr.
+    fn name_(&self) -> ~str;
     fn path(&self) -> ~[~str];
     fn brief(&self) -> Option<~str>;
     fn desc(&self) -> Option<~str>;
@@ -367,7 +371,7 @@ impl<A:Item> ItemUtils for A {
         self.item().id
     }
 
-    fn name(&self) -> ~str {
+    fn name_(&self) -> ~str {
         self.item().name.clone()
     }
 

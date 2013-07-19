@@ -14,7 +14,7 @@ use ast;
 use ast_util;
 use opt_vec::OptVec;
 use opt_vec;
-use attr;
+use attr::{AttrMetaMethods, AttributeMethods};
 use codemap::{CodeMap, BytePos};
 use codemap;
 use diagnostic;
@@ -212,11 +212,11 @@ pub fn block_to_str(blk: &ast::blk, intr: @ident_interner) -> ~str {
     }
 }
 
-pub fn meta_item_to_str(mi: &ast::meta_item, intr: @ident_interner) -> ~str {
+pub fn meta_item_to_str(mi: &ast::MetaItem, intr: @ident_interner) -> ~str {
     to_str(mi, print_meta_item, intr)
 }
 
-pub fn attribute_to_str(attr: &ast::attribute, intr: @ident_interner) -> ~str {
+pub fn attribute_to_str(attr: &ast::Attribute, intr: @ident_interner) -> ~str {
     to_str(attr, print_attribute, intr)
 }
 
@@ -352,7 +352,7 @@ pub fn commasep_exprs(s: @ps, b: breaks, exprs: &[@ast::expr]) {
     commasep_cmnt(s, b, exprs, |p, &e| print_expr(p, e), |e| e.span);
 }
 
-pub fn print_mod(s: @ps, _mod: &ast::_mod, attrs: &[ast::attribute]) {
+pub fn print_mod(s: @ps, _mod: &ast::_mod, attrs: &[ast::Attribute]) {
     print_inner_attributes(s, attrs);
     for _mod.view_items.iter().advance |vitem| {
         print_view_item(s, vitem);
@@ -361,7 +361,7 @@ pub fn print_mod(s: @ps, _mod: &ast::_mod, attrs: &[ast::attribute]) {
 }
 
 pub fn print_foreign_mod(s: @ps, nmod: &ast::foreign_mod,
-                         attrs: &[ast::attribute]) {
+                         attrs: &[ast::Attribute]) {
     print_inner_attributes(s, attrs);
     for nmod.view_items.iter().advance |vitem| {
         print_view_item(s, vitem);
@@ -843,22 +843,22 @@ pub fn print_method(s: @ps, meth: &ast::method) {
     print_block_with_attrs(s, &meth.body, meth.attrs);
 }
 
-pub fn print_outer_attributes(s: @ps, attrs: &[ast::attribute]) {
+pub fn print_outer_attributes(s: @ps, attrs: &[ast::Attribute]) {
     let mut count = 0;
     for attrs.iter().advance |attr| {
         match attr.node.style {
-          ast::attr_outer => { print_attribute(s, attr); count += 1; }
+          ast::AttrOuter => { print_attribute(s, attr); count += 1; }
           _ => {/* fallthrough */ }
         }
     }
     if count > 0 { hardbreak_if_not_bol(s); }
 }
 
-pub fn print_inner_attributes(s: @ps, attrs: &[ast::attribute]) {
+pub fn print_inner_attributes(s: @ps, attrs: &[ast::Attribute]) {
     let mut count = 0;
     for attrs.iter().advance |attr| {
         match attr.node.style {
-          ast::attr_inner => {
+          ast::AttrInner => {
             print_attribute(s, attr);
             if !attr.node.is_sugared_doc {
                 word(s.s, ";");
@@ -871,16 +871,15 @@ pub fn print_inner_attributes(s: @ps, attrs: &[ast::attribute]) {
     if count > 0 { hardbreak_if_not_bol(s); }
 }
 
-pub fn print_attribute(s: @ps, attr: &ast::attribute) {
+pub fn print_attribute(s: @ps, attr: &ast::Attribute) {
     hardbreak_if_not_bol(s);
     maybe_print_comment(s, attr.span.lo);
     if attr.node.is_sugared_doc {
-        let meta = attr::attr_meta(*attr);
-        let comment = attr::get_meta_item_value_str(meta).get();
+        let comment = attr.value_str().get();
         word(s.s, comment);
     } else {
         word(s.s, "#[");
-        print_meta_item(s, attr.node.value);
+        print_meta_item(s, attr.meta());
         word(s.s, "]");
     }
 }
@@ -927,7 +926,7 @@ pub fn print_block_unclosed_indent(s: @ps, blk: &ast::blk, indented: uint) {
 
 pub fn print_block_with_attrs(s: @ps,
                               blk: &ast::blk,
-                              attrs: &[ast::attribute]) {
+                              attrs: &[ast::Attribute]) {
     print_possibly_embedded_block_(s, blk, block_normal, indent_unit, attrs,
                                   true);
 }
@@ -946,7 +945,7 @@ pub fn print_possibly_embedded_block_(s: @ps,
                                       blk: &ast::blk,
                                       embedded: embed_type,
                                       indented: uint,
-                                      attrs: &[ast::attribute],
+                                      attrs: &[ast::Attribute],
                                       close_box: bool) {
     match blk.rules {
       ast::unsafe_blk => word_space(s, "unsafe"),
@@ -1793,16 +1792,16 @@ pub fn print_generics(s: @ps, generics: &ast::Generics) {
     }
 }
 
-pub fn print_meta_item(s: @ps, item: &ast::meta_item) {
+pub fn print_meta_item(s: @ps, item: &ast::MetaItem) {
     ibox(s, indent_unit);
     match item.node {
-      ast::meta_word(name) => word(s.s, name),
-      ast::meta_name_value(name, value) => {
+      ast::MetaWord(name) => word(s.s, name),
+      ast::MetaNameValue(name, value) => {
         word_space(s, name);
         word_space(s, "=");
         print_literal(s, @value);
       }
-      ast::meta_list(name, ref items) => {
+      ast::MetaList(name, ref items) => {
         word(s.s, name);
         popen(s);
         commasep(s,

@@ -17,7 +17,7 @@ use sort_pass;
 
 pub fn mk_pass() -> Pass {
     fn by_item_name(item1: &doc::ItemTag, item2: &doc::ItemTag) -> bool {
-        (*item1).name() <= (*item2).name()
+        (*item1).name_() <= (*item2).name_()
     }
     sort_pass::mk_pass(~"sort_item_name", by_item_name)
 }
@@ -32,7 +32,7 @@ fn test() {
         let doc = extract::from_srv(srv.clone(), ~"");
         let doc = (mk_pass().f)(srv.clone(), doc);
         // hidden __std_macros module at the start.
-        assert_eq!(doc.cratemod().items[1].name(), ~"y");
-        assert_eq!(doc.cratemod().items[2].name(), ~"z");
+        assert_eq!(doc.cratemod().items[1].name_(), ~"y");
+        assert_eq!(doc.cratemod().items[2].name_(), ~"z");
     }
 }

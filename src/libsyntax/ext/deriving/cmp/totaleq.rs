@@ -8,17 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ast::{meta_item, item, expr};
+use ast::{MetaItem, item, expr};
 use codemap::span;
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use ext::deriving::generic::*;
 
 pub fn expand_deriving_totaleq(cx: @ExtCtxt,
-                          span: span,
-                          mitem: @meta_item,
-                          in_items: ~[@item]) -> ~[@item] {
-
+                               span: span,
+                               mitem: @MetaItem,
+                               in_items: ~[@item]) -> ~[@item] {
     fn cs_equals(cx: @ExtCtxt, span: span, substr: &Substructure) -> @expr {
         cs_and(|cx, span, _, _| cx.expr_bool(span, false),
                cx, span, substr)

@@ -163,7 +163,7 @@ pub trait AstBuilder {
 
     // items
     fn item(&self, span: span,
-            name: ident, attrs: ~[ast::attribute], node: ast::item_) -> @ast::item;
+            name: ident, attrs: ~[ast::Attribute], node: ast::item_) -> @ast::item;
 
     fn arg(&self, span: span, name: ident, ty: ast::Ty) -> ast::arg;
     // XXX unused self
@@ -199,7 +199,7 @@ pub trait AstBuilder {
     fn item_struct(&self, span: span, name: ident, struct_def: ast::struct_def) -> @ast::item;
 
     fn item_mod(&self, span: span,
-                name: ident, attrs: ~[ast::attribute],
+                name: ident, attrs: ~[ast::Attribute],
                 vi: ~[ast::view_item], items: ~[@ast::item]) -> @ast::item;
 
     fn item_ty_poly(&self,
@@ -209,11 +209,11 @@ pub trait AstBuilder {
                     generics: Generics) -> @ast::item;
     fn item_ty(&self, span: span, name: ident, ty: ast::Ty) -> @ast::item;
 
-    fn attribute(&self, sp: span, mi: @ast::meta_item) -> ast::attribute;
+    fn attribute(&self, sp: span, mi: @ast::MetaItem) -> ast::Attribute;
 
-    fn meta_word(&self, sp: span, w: @str) -> @ast::meta_item;
-    fn meta_list(&self, sp: span, name: @str, mis: ~[@ast::meta_item]) -> @ast::meta_item;
-    fn meta_name_value(&self, sp: span, name: @str, value: ast::lit_) -> @ast::meta_item;
+    fn meta_word(&self, sp: span, w: @str) -> @ast::MetaItem;
+    fn meta_list(&self, sp: span, name: @str, mis: ~[@ast::MetaItem]) -> @ast::MetaItem;
+    fn meta_name_value(&self, sp: span, name: @str, value: ast::lit_) -> @ast::MetaItem;
 
     fn view_use(&self, sp: span,
                 vis: ast::visibility, vp: ~[@ast::view_path]) -> ast::view_item;
@@ -657,7 +657,7 @@ impl AstBuilder for @ExtCtxt {
     }
 
     fn item(&self, span: span,
-            name: ident, attrs: ~[ast::attribute], node: ast::item_) -> @ast::item {
+            name: ident, attrs: ~[ast::Attribute], node: ast::item_) -> @ast::item {
         // XXX: Would be nice if our generated code didn't violate
         // Rust coding conventions
         @ast::item { ident: name,
@@ -754,7 +754,7 @@ impl AstBuilder for @ExtCtxt {
     }
 
     fn item_mod(&self, span: span, name: ident,
-                attrs: ~[ast::attribute],
+                attrs: ~[ast::Attribute],
                 vi: ~[ast::view_item],
                 items: ~[@ast::item]) -> @ast::item {
         self.item(
@@ -777,23 +777,22 @@ impl AstBuilder for @ExtCtxt {
         self.item_ty_poly(span, name, ty, ast_util::empty_generics())
     }
 
-    fn attribute(&self, sp: span, mi: @ast::meta_item) -> ast::attribute {
-        respan(sp,
-               ast::attribute_ {
-                   style: ast::attr_outer,
-                   value: mi,
-                   is_sugared_doc: false
-               })
+    fn attribute(&self, sp: span, mi: @ast::MetaItem) -> ast::Attribute {
+        respan(sp, ast::Attribute_ {
+            style: ast::AttrOuter,
+            value: mi,
+            is_sugared_doc: false,
+        })
     }
 
-    fn meta_word(&self, sp: span, w: @str) -> @ast::meta_item {
-        @respan(sp, ast::meta_word(w))
+    fn meta_word(&self, sp: span, w: @str) -> @ast::MetaItem {
+        @respan(sp, ast::MetaWord(w))
     }
-    fn meta_list(&self, sp: span, name: @str, mis: ~[@ast::meta_item]) -> @ast::meta_item {
-        @respan(sp, ast::meta_list(name, mis))
+    fn meta_list(&self, sp: span, name: @str, mis: ~[@ast::MetaItem]) -> @ast::MetaItem {
+        @respan(sp, ast::MetaList(name, mis))
     }
-    fn meta_name_value(&self, sp: span, name: @str, value: ast::lit_) -> @ast::meta_item {
-        @respan(sp, ast::meta_name_value(name, respan(sp, value)))
+    fn meta_name_value(&self, sp: span, name: @str, value: ast::lit_) -> @ast::MetaItem {
+        @respan(sp, ast::MetaNameValue(name, respan(sp, value)))
     }
 
     fn view_use(&self, sp: span,

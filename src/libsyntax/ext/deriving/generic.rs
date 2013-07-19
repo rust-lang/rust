@@ -281,7 +281,7 @@ pub type EnumNonMatchFunc<'self> =
 impl<'self> TraitDef<'self> {
     pub fn expand(&self, cx: @ExtCtxt,
                   span: span,
-                  _mitem: @ast::meta_item,
+                  _mitem: @ast::MetaItem,
                   in_items: ~[@ast::item]) -> ~[@ast::item] {
         let mut result = ~[];
         for in_items.iter().advance |item| {
@@ -361,7 +361,8 @@ impl<'self> TraitDef<'self> {
         let doc_attr = cx.attribute(
             span,
             cx.meta_name_value(span,
-                               @"doc", ast::lit_str(@"Automatically derived.")));
+                               @"doc",
+                               ast::lit_str(@"Automatically derived.")));
         cx.item(
             span,
             ::parse::token::special_idents::clownshoes_extensions,

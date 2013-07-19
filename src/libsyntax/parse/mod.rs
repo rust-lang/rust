@@ -115,7 +115,7 @@ pub fn parse_item_from_source_str(
     name: @str,
     source: @str,
     cfg: ast::crate_cfg,
-    attrs: ~[ast::attribute],
+    attrs: ~[ast::Attribute],
     sess: @mut ParseSess
 ) -> Option<@ast::item> {
     let p = new_parser_from_source_str(
@@ -132,7 +132,7 @@ pub fn parse_meta_from_source_str(
     source: @str,
     cfg: ast::crate_cfg,
     sess: @mut ParseSess
-) -> @ast::meta_item {
+) -> @ast::MetaItem {
     let p = new_parser_from_source_str(
         sess,
         cfg,
@@ -146,7 +146,7 @@ pub fn parse_stmt_from_source_str(
     name: @str,
     source: @str,
     cfg: ast::crate_cfg,
-    attrs: ~[ast::attribute],
+    attrs: ~[ast::Attribute],
     sess: @mut ParseSess
 ) -> @ast::stmt {
     let p = new_parser_from_source_str(
