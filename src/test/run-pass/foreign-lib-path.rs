@@ -16,7 +16,7 @@ mod WHATGOESHERE {
     // FIXME: I want to name a mod that would not link successfully
     // wouthout providing a -L argument to the compiler, and that
     // will also be found successfully at runtime.
-    pub extern {
+    extern {
         pub fn IDONTKNOW() -> u32;
     }
 }

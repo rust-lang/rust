@@ -345,9 +345,9 @@ pub fn context() -> RuntimeContext {
         }
     }
 
-    pub extern {
+    extern {
         #[rust_stack]
-        fn rust_try_get_task() -> *rust_task;
+        pub fn rust_try_get_task() -> *rust_task;
     }
 }
 

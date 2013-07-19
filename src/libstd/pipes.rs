@@ -256,20 +256,21 @@ pub mod rustrt {
     use libc;
     use super::rust_task;
 
-    pub extern {
+    extern {
         #[rust_stack]
-        unsafe fn rust_get_task() -> *rust_task;
+        pub unsafe fn rust_get_task() -> *rust_task;
         #[rust_stack]
-        unsafe fn rust_task_ref(task: *rust_task);
-        unsafe fn rust_task_deref(task: *rust_task);
+        pub unsafe fn rust_task_ref(task: *rust_task);
+        pub unsafe fn rust_task_deref(task: *rust_task);
 
         #[rust_stack]
-        unsafe fn task_clear_event_reject(task: *rust_task);
+        pub unsafe fn task_clear_event_reject(task: *rust_task);
 
-        unsafe fn task_wait_event(this: *rust_task,
-                                  killed: &mut *libc::c_void)
-                               -> bool;
-        unsafe fn task_signal_event(target: *rust_task, event: *libc::c_void);
+        pub unsafe fn task_wait_event(this: *rust_task,
+                                      killed: &mut *libc::c_void)
+                                   -> bool;
+        pub unsafe fn task_signal_event(target: *rust_task,
+                                        event: *libc::c_void);
     }
 }
 

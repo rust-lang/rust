@@ -63,6 +63,7 @@ pub enum ObsoleteSyntax {
     ObsoleteNamedExternModule,
     ObsoleteMultipleLocalDecl,
     ObsoleteMutWithMultipleBindings,
+    ObsoleteExternVisibility,
 }
 
 impl to_bytes::IterBytes for ObsoleteSyntax {
@@ -248,6 +249,11 @@ impl ParserObsoleteMethods for Parser {
                 "use multiple local declarations instead of e.g. `let mut \
                  (x, y) = ...`."
             ),
+            ObsoleteExternVisibility => (
+                "`pub extern` or `priv extern`",
+                "place the `pub` or `priv` on the individual external items \
+                 instead"
+            )
         };
 
         self.report(sp, kind, kind_str, desc);

@@ -10,7 +10,7 @@
 
 // Test a function that takes/returns a u8.
 
-pub extern {
+extern {
     pub fn rust_dbg_extern_identity_u8(v: u8) -> u8;
 }
 

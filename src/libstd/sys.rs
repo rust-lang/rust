@@ -30,11 +30,11 @@ pub struct Closure {
 pub mod rustrt {
     use libc::{c_char, size_t};
 
-    pub extern {
+    extern {
         #[rust_stack]
-        unsafe fn rust_upcall_fail(expr: *c_char,
-                                   file: *c_char,
-                                   line: size_t);
+        pub unsafe fn rust_upcall_fail(expr: *c_char,
+                                       file: *c_char,
+                                       line: size_t);
     }
 }
 

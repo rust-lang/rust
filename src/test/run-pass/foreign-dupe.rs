@@ -16,7 +16,7 @@ mod rustrt1 {
 
     #[abi = "cdecl"]
     #[link_name = "rustrt"]
-    pub extern {
+    extern {
         pub fn rust_get_argc() -> libc::c_int;
     }
 }
@@ -26,7 +26,7 @@ mod rustrt2 {
 
     #[abi = "cdecl"]
     #[link_name = "rustrt"]
-    pub extern {
+    extern {
         pub fn rust_get_argc() -> libc::c_int;
     }
 }

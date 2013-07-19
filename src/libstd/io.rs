@@ -77,10 +77,10 @@ pub mod rustrt {
 
     #[abi = "cdecl"]
     #[link_name = "rustrt"]
-    pub extern {
-        unsafe fn rust_get_stdin() -> *libc::FILE;
-        unsafe fn rust_get_stdout() -> *libc::FILE;
-        unsafe fn rust_get_stderr() -> *libc::FILE;
+    extern {
+        pub unsafe fn rust_get_stdin() -> *libc::FILE;
+        pub unsafe fn rust_get_stdout() -> *libc::FILE;
+        pub unsafe fn rust_get_stderr() -> *libc::FILE;
     }
 }
 

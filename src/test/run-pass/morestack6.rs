@@ -17,7 +17,7 @@ use std::task;
 mod rustrt {
     use std::libc;
 
-    pub extern {
+    extern {
         pub fn debug_get_stk_seg() -> *u8;
 
         pub fn rust_get_sched_id() -> libc::intptr_t;

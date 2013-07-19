@@ -524,7 +524,7 @@ pub fn print_item(s: @ps, item: &ast::item) {
         bclose(s, item.span);
       }
       ast::item_foreign_mod(ref nmod) => {
-        head(s, visibility_qualified(item.vis, "extern"));
+        head(s, "extern");
         word_nbsp(s, nmod.abis.to_str());
         match nmod.sort {
             ast::named => {
