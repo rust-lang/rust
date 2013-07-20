@@ -34,15 +34,15 @@
 // check:$7 = {{21, 22}, 23}
 
 fn main() {
-    let no_padding1 : ((u32, u32), u32, u32) = ((0, 1), 2, 3);
-    let no_padding2 : (u32, (u32, u32), u32) = (4, (5, 6), 7);
-    let no_padding3 : (u32, u32, (u32, u32)) = (8, 9, (10, 11));
+    let no_padding1: ((u32, u32), u32, u32) = ((0, 1), 2, 3);
+    let no_padding2: (u32, (u32, u32), u32) = (4, (5, 6), 7);
+    let no_padding3: (u32, u32, (u32, u32)) = (8, 9, (10, 11));
 
-    let internal_padding1 : (i16, (i32, i32)) = (12, (13, 14));
-    let internal_padding2 : (i16, (i16, i32)) = (15, (16, 17));
+    let internal_padding1: (i16, (i32, i32)) = (12, (13, 14));
+    let internal_padding2: (i16, (i16, i32)) = (15, (16, 17));
 
-    let padding_at_end1 : (i32, (i32, i16)) = (18, (19, 20));
-    let padding_at_end2 : ((i32, i16), i32) = ((21, 22), 23);
+    let padding_at_end1: (i32, (i32, i16)) = (18, (19, 20));
+    let padding_at_end2: ((i32, i16), i32) = ((21, 22), 23);
 
     zzz();
 }

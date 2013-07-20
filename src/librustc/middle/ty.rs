@@ -49,6 +49,8 @@ use syntax::opt_vec;
 use syntax::abi::AbiSet;
 use syntax;
 
+pub static INITIAL_DISCRIMINANT_VALUE: int = 0;
+
 // Data types
 
 #[deriving(Eq, IterBytes)]
@@ -275,7 +277,7 @@ struct ctxt_ {
     needs_unwind_cleanup_cache: @mut HashMap<t, bool>,
     tc_cache: @mut HashMap<uint, TypeContents>,
     ast_ty_to_ty_cache: @mut HashMap<node_id, ast_ty_to_ty_cache_entry>,
-    enum_var_cache: @mut HashMap<def_id, @~[VariantInfo]>,
+    enum_var_cache: @mut HashMap<def_id, @~[@VariantInfo]>,
     ty_param_defs: @mut HashMap<ast::node_id, TypeParameterDef>,
     adjustments: @mut HashMap<ast::node_id, @AutoAdjustment>,
     normalized_cache: @mut HashMap<t, t>,
@@ -3681,8 +3683,9 @@ fn struct_ctor_id(cx: ctxt, struct_did: ast::def_id) -> Option<ast::def_id> {
 
 // Enum information
 #[deriving(Clone)]
-pub struct VariantInfo_ {
+pub struct VariantInfo {
     args: ~[t],
+    arg_names: Option<~[ast::ident]>,
     ctor_ty: t,
     name: ast::ident,
     id: ast::def_id,
@@ -3690,19 +3693,71 @@ pub struct VariantInfo_ {
     vis: visibility
 }
 
-pub type VariantInfo = @VariantInfo_;
+impl VariantInfo {
+
+    /// Creates a new VariantInfo from the corresponding ast representation.
+    ///
+    /// Does not do any caching of the value in the type context.
+    pub fn from_ast_variant(cx: ctxt,
+                            ast_variant: &ast::variant,
+                            discriminant: int) -> VariantInfo {
+
+        let ctor_ty = node_id_to_type(cx, ast_variant.node.id);
+
+        match ast_variant.node.kind {
+            ast::tuple_variant_kind(ref args) => {
+                let arg_tys = if args.len() > 0 { ty_fn_args(ctor_ty).map(|a| *a) } else { ~[] };
+
+                return VariantInfo {
+                    args: arg_tys,
+                    arg_names: None,
+                    ctor_ty: ctor_ty,
+                    name: ast_variant.node.name,
+                    id: ast_util::local_def(ast_variant.node.id),
+                    disr_val: discriminant,
+                    vis: ast_variant.node.vis
+                };
+            },
+            ast::struct_variant_kind(ref struct_def) => {
+
+                let fields: &[@struct_field] = struct_def.fields;
+
+                assert!(fields.len() > 0);
+
+                let arg_tys = ty_fn_args(ctor_ty).map(|a| *a);
+                let arg_names = do fields.map |field| {
+                    match field.node.kind {
+                        named_field(ident, _) => ident,
+                        unnamed_field => cx.sess.bug(
+                            "enum_variants: all fields in struct must have a name")
+                    }
+                };
+
+                return VariantInfo {
+                    args: arg_tys,
+                    arg_names: Some(arg_names),
+                    ctor_ty: ctor_ty,
+                    name: ast_variant.node.name,
+                    id: ast_util::local_def(ast_variant.node.id),
+                    disr_val: discriminant,
+                    vis: ast_variant.node.vis
+                };
+            }
+        }
+    }
+}
 
 pub fn substd_enum_variants(cx: ctxt,
                             id: ast::def_id,
                             substs: &substs)
-                         -> ~[VariantInfo] {
+                         -> ~[@VariantInfo] {
     do enum_variants(cx, id).iter().transform |variant_info| {
         let substd_args = variant_info.args.iter()
             .transform(|aty| subst(cx, substs, *aty)).collect();
 
         let substd_ctor_ty = subst(cx, substs, variant_info.ctor_ty);
 
-        @VariantInfo_ {
+        @VariantInfo {
             args: substd_args,
             ctor_ty: substd_ctor_ty,
             ..(**variant_info).clone()
@@ -3820,7 +3875,7 @@ pub fn type_is_empty(cx: ctxt, t: t) -> bool {
      }
 }
 
-pub fn enum_variants(cx: ctxt, id: ast::def_id) -> @~[VariantInfo] {
+pub fn enum_variants(cx: ctxt, id: ast::def_id) -> @~[@VariantInfo] {
     match cx.enum_var_cache.find(&id) {
       Some(&variants) => return variants,
       _ => { /* fallthrough */ }
@@ -3839,61 +3894,31 @@ pub fn enum_variants(cx: ctxt, id: ast::def_id) -> @~[VariantInfo] {
                     node: ast::item_enum(ref enum_definition, _),
                     _
                 }, _) => {
-            let mut disr_val = -1;
+            let mut last_discriminant: Option<int> = None;
             @enum_definition.variants.iter().transform(|variant| {
 
-                let ctor_ty = node_id_to_type(cx, variant.node.id);
+                let mut discriminant = match last_discriminant {
+                    Some(val) => val + 1,
+                    None => INITIAL_DISCRIMINANT_VALUE
+                };
 
-                match variant.node.kind {
-                    ast::tuple_variant_kind(ref args) => {
-                        let arg_tys = if args.len() > 0u {
-                                ty_fn_args(ctor_ty).map(|a| *a) }
-                            else {
-                                ~[]
-                            };
-
-                        match variant.node.disr_expr {
-                          Some (ex) => {
-                            disr_val = match const_eval::eval_const_expr(cx,
-                                                                         ex) {
-                              const_eval::const_int(val) => val as int,
-                              _ => cx.sess.bug("enum_variants: bad disr expr")
-                            }
-                          }
-                          _ => disr_val += 1
+                match variant.node.disr_expr {
+                    Some(e) => match const_eval::eval_const_expr_partial(&cx, e) {
+                        Ok(const_eval::const_int(val)) => discriminant = val as int,
+                        Ok(_) => {
+                            cx.sess.span_err(e.span, "expected signed integer constant");
                         }
-                        @VariantInfo_{
-                            args: arg_tys,
-                            ctor_ty: ctor_ty,
-                            name: variant.node.name,
-                            id: ast_util::local_def(variant.node.id),
-                            disr_val: disr_val,
-                            vis: variant.node.vis
-                         }
+                        Err(ref err) => {
+                            cx.sess.span_err(e.span, fmt!("expected constant: %s", (*err)));
+                        }
                     },
-                    ast::struct_variant_kind(struct_def) => {
-                        let arg_tys =
-                            // Is this check needed for structs too, or are they always guaranteed
-                            // to have a valid constructor function?
-                            if struct_def.fields.len() > 0 {
-                                ty_fn_args(ctor_ty).map(|a| *a)
-                            } else {
-                                ~[]
-                            };
+                    None => {}
+                };
 
-                        assert!(variant.node.disr_expr.is_none());
-                        disr_val += 1;
+                let variant_info = @VariantInfo::from_ast_variant(cx, variant, discriminant);
+                last_discriminant = Some(discriminant);
+                variant_info
 
-                        @VariantInfo_{
-                            args: arg_tys,
-                            ctor_ty: ctor_ty,
-                            name: variant.node.name,
-                            id: ast_util::local_def(variant.node.id),
-                            disr_val: disr_val,
-                            vis: variant.node.vis
-                        }
-                    }
-                }
             }).collect()
           }
           _ => cx.sess.bug("enum_variants: id not bound to an enum")
@@ -3908,7 +3933,7 @@ pub fn enum_variants(cx: ctxt, id: ast::def_id) -> @~[VariantInfo] {
 pub fn enum_variant_with_id(cx: ctxt,
                             enum_id: ast::def_id,
                             variant_id: ast::def_id)
-                         -> VariantInfo {
+                         -> @VariantInfo {
     let variants = enum_variants(cx, enum_id);
     let mut i = 0;
     while i < variants.len() {

@@ -113,3 +113,9 @@ pub fn llalign_of(cx: &CrateContext, ty: Type) -> ValueRef {
             llvm::LLVMAlignOf(ty.to_ref()), cx.int_type.to_ref(), False);
     }
 }
+
+pub fn llelement_offset(cx: &CrateContext, struct_ty: Type, element: uint) -> uint {
+    unsafe {
+        return llvm::LLVMOffsetOfElement(cx.td.lltd, struct_ty.to_ref(), element as u32) as uint;
+    }
+}

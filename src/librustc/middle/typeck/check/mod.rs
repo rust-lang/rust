@@ -81,7 +81,7 @@ use middle::const_eval;
 use middle::pat_util::pat_id_map;
 use middle::pat_util;
 use middle::lint::unreachable_code;
-use middle::ty::{FnSig, VariantInfo_};
+use middle::ty::{FnSig, VariantInfo};
 use middle::ty::{ty_param_bounds_and_ty, ty_param_substs_and_ty};
 use middle::ty::{substs, param_ty, ExprTyProvider};
 use middle::ty;
@@ -3133,82 +3133,66 @@ pub fn check_enum_variants(ccx: @mut CrateCtxt,
                            vs: &[ast::variant],
                            id: ast::node_id) {
     fn do_check(ccx: @mut CrateCtxt,
-                _sp: span,
                 vs: &[ast::variant],
-                id: ast::node_id,
-                disr_vals: &mut ~[int],
-                disr_val: &mut int,
-                variants: &mut ~[ty::VariantInfo]) {
+                id: ast::node_id)
+                -> ~[@ty::VariantInfo] {
+
         let rty = ty::node_id_to_type(ccx.tcx, id);
+        let mut variants: ~[@ty::VariantInfo] = ~[];
+        let mut disr_vals: ~[int] = ~[];
+        let mut prev_disr_val: Option<int> = None;
+
         for vs.iter().advance |v| {
-            for v.node.disr_expr.iter().advance |e_ref| {
-                let e = *e_ref;
-                debug!("disr expr, checking %s",
-                       pprust::expr_to_str(e, ccx.tcx.sess.intr()));
-                let declty = ty::mk_int();
-                let fcx = blank_fn_ctxt(ccx, rty, e.id);
-                check_const_with_ty(fcx, e.span, e, declty);
-                // check_expr (from check_const pass) doesn't guarantee
-                // that the expression is in an form that eval_const_expr can
-                // handle, so we may still get an internal compiler error
 
-                match const_eval::eval_const_expr_partial(&ccx.tcx, e) {
-                  Ok(const_eval::const_int(val)) => {
-                    *disr_val = val as int;
-                  }
-                  Ok(_) => {
-                    ccx.tcx.sess.span_err(e.span, "expected signed integer \
-                                                   constant");
-                  }
-                  Err(ref err) => {
-                    ccx.tcx.sess.span_err(e.span,
-                     fmt!("expected constant: %s", (*err)));
-
-                  }
-                }
-            }
-            if disr_vals.contains(&*disr_val) {
-                ccx.tcx.sess.span_err(v.span,
-                                      "discriminator value already exists");
-            }
-            disr_vals.push(*disr_val);
-            let ctor_ty = ty::node_id_to_type(ccx.tcx, v.node.id);
-
-            let this_disr_val = *disr_val;
-            *disr_val += 1;
-
-            let arg_tys = match v.node.kind {
-                ast::tuple_variant_kind(ref args) if args.len() > 0u => {
-                    Some(ty::ty_fn_args(ctor_ty).map(|a| *a))
-                }
-                ast::tuple_variant_kind(_) => {
-                    Some(~[])
-                }
-                ast::struct_variant_kind(_) => {
-                    Some(ty::lookup_struct_fields(
-                        ccx.tcx, local_def(v.node.id)).map(|cf|
-                            ty::node_id_to_type(ccx.tcx, cf.id.node)))
-                }
+            // If the discriminant value is specified explicitly in the enum check whether the
+            // initialization expression is valid, otherwise use the last value plus one.
+            let mut current_disr_val = match prev_disr_val {
+                Some(prev_disr_val) => prev_disr_val + 1,
+                None => ty::INITIAL_DISCRIMINANT_VALUE
             };
 
-            match arg_tys {
-                None => {}
-                Some(arg_tys) => {
-                    variants.push(
-                        @VariantInfo_{args: arg_tys, ctor_ty: ctor_ty,
-                          name: v.node.name, id: local_def(v.node.id),
-                          disr_val: this_disr_val, vis: v.node.vis});
-                }
+            match v.node.disr_expr {
+                Some(e) => {
+                    debug!("disr expr, checking %s", pprust::expr_to_str(e, ccx.tcx.sess.intr()));
+
+                    let declty = ty::mk_int();
+                    let fcx = blank_fn_ctxt(ccx, rty, e.id);
+                    check_const_with_ty(fcx, e.span, e, declty);
+                    // check_expr (from check_const pass) doesn't guarantee
+                    // that the expression is in an form that eval_const_expr can
+                    // handle, so we may still get an internal compiler error
+
+                    match const_eval::eval_const_expr_partial(&ccx.tcx, e) {
+                        Ok(const_eval::const_int(val)) => current_disr_val = val as int,
+                        Ok(_) => {
+                            ccx.tcx.sess.span_err(e.span, "expected signed integer constant");
+                        }
+                        Err(ref err) => {
+                            ccx.tcx.sess.span_err(e.span, fmt!("expected constant: %s", (*err)));
+                        }
+                    }
+                },
+                None => ()
+            };
+
+            // Check for duplicate discriminator values
+            if disr_vals.contains(&current_disr_val) {
+                ccx.tcx.sess.span_err(v.span, "discriminator value already exists");
             }
+            disr_vals.push(current_disr_val);
+
+            let variant_info = @VariantInfo::from_ast_variant(ccx.tcx, v, current_disr_val);
+            prev_disr_val = Some(current_disr_val);
+
+            variants.push(variant_info);
         }
+
+        return variants;
     }
 
     let rty = ty::node_id_to_type(ccx.tcx, id);
-    let mut disr_vals: ~[int] = ~[];
-    let mut disr_val = 0;
-    let mut variants = ~[];
 
-    do_check(ccx, sp, vs, id, &mut disr_vals, &mut disr_val, &mut variants);
+    let variants = do_check(ccx, vs, id);
 
     // cache so that ty::enum_variants won't repeat this work
     ccx.tcx.enum_var_cache.insert(local_def(id), @variants);

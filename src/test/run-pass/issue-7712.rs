@@ -8,23 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-test
+// compile-flags:-Z debug-info
 
-// compile-flags:-Z extra-debug-info
-// debugger:break zzz
-// debugger:run
-// debugger:finish
+#[allow(default_methods)];
 
-// debugger:print a
-// check:$1 = 9898
-
-// debugger:print b
-// check:$2 = false
-
-fn main() {
-    let (a, b): (int, bool) = (9898, false);
-
-    zzz();
+pub trait TraitWithDefaultMethod {
+    pub fn method(self) {
+        ()
+    }
 }
 
-fn zzz() {()}
+struct MyStruct;
+
+impl TraitWithDefaultMethod for MyStruct { }
+
+fn main() {
+    MyStruct.method();
+}

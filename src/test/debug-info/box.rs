@@ -8,20 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-test
+// xfail-win32 Broken because of LLVM bug: http://llvm.org/bugs/show_bug.cgi?id=16249
 
 // compile-flags:-Z extra-debug-info
 // debugger:set print pretty off
 // debugger:break _zzz
 // debugger:run
 // debugger:finish
-// debugger:print a->boxed
+// debugger:print *a
 // check:$1 = 1
-// debugger:print b->boxed
+// debugger:print *b
 // check:$2 = {2, 3.5}
-// debugger:print c->boxed
+// debugger:print c->val
 // check:$3 = 4
-// debugger:print d->boxed
+// debugger:print d->val
 // check:$4 = false
 
 fn main() {
