@@ -55,24 +55,6 @@ pub struct binding_info {
 // Map from the name in a pattern to its binding mode.
 pub type BindingMap = HashMap<ident,binding_info>;
 
-// Implementation resolution
-//
-// FIXME #4946: This kind of duplicates information kept in
-// ty::method. Maybe it should go away.
-
-pub struct MethodInfo {
-    did: def_id,
-    n_tps: uint,
-    ident: ident,
-    explicit_self: explicit_self_
-}
-
-pub struct Impl {
-    did: def_id,
-    ident: ident,
-    methods: ~[@MethodInfo]
-}
-
 // Trait method resolution
 pub type TraitMap = HashMap<node_id,@mut ~[def_id]>;
 

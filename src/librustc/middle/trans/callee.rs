@@ -296,10 +296,10 @@ pub fn trans_fn_ref_with_vtables(
     // We need to do a bunch of special handling for default methods.
     // We need to modify the def_id and our substs in order to monomorphize
     // the function.
-    let (def_id, opt_impl_did, substs, self_vtable, vtables) =
-        match tcx.provided_method_sources.find(&def_id) {
-        None => (def_id, None, substs, None, vtables),
-        Some(source) => {
+    let (is_default, def_id, substs, self_vtable, vtables) =
+        match ty::provided_source(tcx, def_id) {
+        None => (false, def_id, substs, None, vtables),
+        Some(source_id) => {
             // There are two relevant substitutions when compiling
             // default methods. First, there is the substitution for
             // the type parameters of the impl we are using and the
@@ -313,10 +313,11 @@ pub fn trans_fn_ref_with_vtables(
             // So, what we need to do is find this substitution and
             // compose it with the one we already have.
 
-            let trait_ref = ty::impl_trait_ref(tcx, source.impl_id)
+            let impl_id = ty::method(tcx, def_id).container_id;
+            let method = ty::method(tcx, source_id);
+            let trait_ref = ty::impl_trait_ref(tcx, impl_id)
                 .expect("could not find trait_ref for impl with \
                          default methods");
-            let method = ty::method(tcx, source.method_id);
 
             // Get all of the type params for the receiver
             let param_defs = method.generics.type_param_defs;
@@ -330,18 +331,18 @@ pub fn trans_fn_ref_with_vtables(
             };
 
             let self_vtable =
-                typeck::vtable_static(source.impl_id, receiver_substs,
+                typeck::vtable_static(impl_id, receiver_substs,
                                       receiver_vtables);
             // Compute the first substitution
             let first_subst = make_substs_for_receiver_types(
-                tcx, source.impl_id, trait_ref, method);
+                tcx, impl_id, trait_ref, method);
 
             // And compose them
             let new_substs = first_subst.subst(tcx, &substs);
 
 
             let vtables =
-                resolve_default_method_vtables(bcx, source.impl_id,
+                resolve_default_method_vtables(bcx, impl_id,
                                                method, &new_substs, vtables);
 
             debug!("trans_fn_with_vtables - default method: \
@@ -352,7 +353,7 @@ pub fn trans_fn_ref_with_vtables(
                    first_subst.repr(tcx), new_substs.repr(tcx),
                    self_vtable.repr(tcx), vtables.repr(tcx));
 
-            (source.method_id, Some(source.impl_id),
+            (true, source_id,
              new_substs, Some(self_vtable), Some(vtables))
         }
     };
@@ -372,7 +373,7 @@ pub fn trans_fn_ref_with_vtables(
     // intrinsic that is inlined from a different crate, we want to reemit the
     // intrinsic instead of trying to call it in the other crate.
     let must_monomorphise;
-    if type_params.len() > 0 || opt_impl_did.is_some() {
+    if type_params.len() > 0 || is_default {
         must_monomorphise = true;
     } else if def_id.crate == ast::local_crate {
         let map_node = session::expect(
@@ -400,7 +401,7 @@ pub fn trans_fn_ref_with_vtables(
         let (val, must_cast) =
             monomorphize::monomorphic_fn(ccx, def_id, &substs,
                                          vtables, self_vtable,
-                                         opt_impl_did, Some(ref_id));
+                                         Some(ref_id));
         let mut val = val;
         if must_cast && ref_id != 0 {
             // Monotype of the REFERENCE to the function (type params
