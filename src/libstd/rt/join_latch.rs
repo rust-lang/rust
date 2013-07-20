@@ -345,7 +345,7 @@ mod test {
 
             let child_latch = latch.new_child();
             let child_latch = Cell::new(child_latch);
-            do spawntask_immediately {
+            do spawntask {
                 let child_latch = child_latch.take();
                 assert!(child_latch.wait(true));
             }
@@ -467,7 +467,7 @@ mod test {
             let child_latch = latch.new_child();
             let child_latch = Cell::new(child_latch);
 
-            do spawntask_immediately {
+            do spawntask {
                 let latch = child_latch.take();
                 latch.release(false);
             }
@@ -483,7 +483,7 @@ mod test {
             let child_latch = latch.new_child();
             let child_latch = Cell::new(child_latch);
 
-            do spawntask_immediately {
+            do spawntask {
                 let mut latch = child_latch.take();
                 let child_latch = latch.new_child();
                 let child_latch = Cell::new(child_latch);
@@ -509,7 +509,7 @@ mod test {
                 let mut latch = child_latch.take();
                 let child_latch = latch.new_child();
                 let child_latch = Cell::new(child_latch);
-                do spawntask_immediately {
+                do spawntask {
                     let latch = child_latch.take();
                     latch.release(false);
                 }
@@ -598,7 +598,7 @@ mod test {
                 let child_latch = Cell::new(latch.new_child());
                 let succeed = order.succeed;
                 if order.immediate {
-                    do spawntask_immediately {
+                    do spawntask {
                         let mut child_latch = child_latch.take();
                         next(&mut *child_latch, suborders.clone());
                         rtdebug!("immediate releasing");

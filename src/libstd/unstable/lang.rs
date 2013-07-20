@@ -69,9 +69,6 @@ pub unsafe fn local_malloc(td: *c_char, size: uintptr_t) -> *c_char {
         _ => {
             let mut alloc = ::ptr::null();
             do Local::borrow::<Task,()> |task| {
-                rtdebug!("task pointer: %x, heap pointer: %x",
-                         to_uint(task),
-                         to_uint(&task.heap));
                 alloc = task.heap.alloc(td as *c_void, size as uint) as *c_char;
             }
             return alloc;

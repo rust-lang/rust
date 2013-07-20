@@ -152,7 +152,7 @@ mod test {
         do run_in_newsched_task {
             let addr = next_test_ip4();
 
-            do spawntask_immediately {
+            do spawntask {
                 let mut listener = TcpListener::bind(addr);
                 let mut stream = listener.accept();
                 let mut buf = [0];
@@ -160,7 +160,7 @@ mod test {
                 assert!(buf[0] == 99);
             }
 
-            do spawntask_immediately {
+            do spawntask {
                 let mut stream = TcpStream::connect(addr);
                 stream.write([99]);
             }
@@ -172,7 +172,7 @@ mod test {
         do run_in_newsched_task {
             let addr = next_test_ip6();
 
-            do spawntask_immediately {
+            do spawntask {
                 let mut listener = TcpListener::bind(addr);
                 let mut stream = listener.accept();
                 let mut buf = [0];
@@ -180,7 +180,7 @@ mod test {
                 assert!(buf[0] == 99);
             }
 
-            do spawntask_immediately {
+            do spawntask {
                 let mut stream = TcpStream::connect(addr);
                 stream.write([99]);
             }
@@ -192,7 +192,7 @@ mod test {
         do run_in_newsched_task {
             let addr = next_test_ip4();
 
-            do spawntask_immediately {
+            do spawntask {
                 let mut listener = TcpListener::bind(addr);
                 let mut stream = listener.accept();
                 let mut buf = [0];
@@ -200,7 +200,7 @@ mod test {
                 assert!(nread.is_none());
             }
 
-            do spawntask_immediately {
+            do spawntask {
                 let _stream = TcpStream::connect(addr);
                 // Close
             }
@@ -212,7 +212,7 @@ mod test {
         do run_in_newsched_task {
             let addr = next_test_ip6();
 
-            do spawntask_immediately {
+            do spawntask {
                 let mut listener = TcpListener::bind(addr);
                 let mut stream = listener.accept();
                 let mut buf = [0];
@@ -220,7 +220,7 @@ mod test {
                 assert!(nread.is_none());
             }
 
-            do spawntask_immediately {
+            do spawntask {
                 let _stream = TcpStream::connect(addr);
                 // Close
             }
@@ -232,7 +232,7 @@ mod test {
         do run_in_newsched_task {
             let addr = next_test_ip4();
 
-            do spawntask_immediately {
+            do spawntask {
                 let mut listener = TcpListener::bind(addr);
                 let mut stream = listener.accept();
                 let mut buf = [0];
@@ -242,7 +242,7 @@ mod test {
                 assert!(nread.is_none());
             }
 
-            do spawntask_immediately {
+            do spawntask {
                 let _stream = TcpStream::connect(addr);
                 // Close
             }
@@ -254,7 +254,7 @@ mod test {
         do run_in_newsched_task {
             let addr = next_test_ip6();
 
-            do spawntask_immediately {
+            do spawntask {
                 let mut listener = TcpListener::bind(addr);
                 let mut stream = listener.accept();
                 let mut buf = [0];
@@ -264,7 +264,7 @@ mod test {
                 assert!(nread.is_none());
             }
 
-            do spawntask_immediately {
+            do spawntask {
                 let _stream = TcpStream::connect(addr);
                 // Close
             }
@@ -276,7 +276,7 @@ mod test {
         do run_in_newsched_task {
             let addr = next_test_ip4();
 
-            do spawntask_immediately {
+            do spawntask {
                 let mut listener = TcpListener::bind(addr);
                 let mut stream = listener.accept();
                 let buf = [0];
@@ -293,7 +293,7 @@ mod test {
                 }
             }
 
-            do spawntask_immediately {
+            do spawntask {
                 let _stream = TcpStream::connect(addr);
                 // Close
             }
@@ -305,7 +305,7 @@ mod test {
         do run_in_newsched_task {
             let addr = next_test_ip6();
 
-            do spawntask_immediately {
+            do spawntask {
                 let mut listener = TcpListener::bind(addr);
                 let mut stream = listener.accept();
                 let buf = [0];
@@ -322,7 +322,7 @@ mod test {
                 }
             }
 
-            do spawntask_immediately {
+            do spawntask {
                 let _stream = TcpStream::connect(addr);
                 // Close
             }
@@ -335,7 +335,7 @@ mod test {
             let addr = next_test_ip4();
             let max = 10;
 
-            do spawntask_immediately {
+            do spawntask {
                 let mut listener = TcpListener::bind(addr);
                 for max.times {
                     let mut stream = listener.accept();
@@ -345,7 +345,7 @@ mod test {
                 }
             }
 
-            do spawntask_immediately {
+            do spawntask {
                 for max.times {
                     let mut stream = TcpStream::connect(addr);
                     stream.write([99]);
@@ -360,7 +360,7 @@ mod test {
             let addr = next_test_ip6();
             let max = 10;
 
-            do spawntask_immediately {
+            do spawntask {
                 let mut listener = TcpListener::bind(addr);
                 for max.times {
                     let mut stream = listener.accept();
@@ -370,7 +370,7 @@ mod test {
                 }
             }
 
-            do spawntask_immediately {
+            do spawntask {
                 for max.times {
                     let mut stream = TcpStream::connect(addr);
                     stream.write([99]);
@@ -385,13 +385,13 @@ mod test {
             let addr = next_test_ip4();
             static MAX: int = 10;
 
-            do spawntask_immediately {
+            do spawntask {
                 let mut listener = TcpListener::bind(addr);
                 for int::range(0, MAX) |i| {
                     let stream = Cell::new(listener.accept());
                     rtdebug!("accepted");
                     // Start another task to handle the connection
-                    do spawntask_immediately {
+                    do spawntask {
                         let mut stream = stream.take();
                         let mut buf = [0];
                         stream.read(buf);
@@ -406,7 +406,7 @@ mod test {
             fn connect(i: int, addr: IpAddr) {
                 if i == MAX { return }
 
-                do spawntask_immediately {
+                do spawntask {
                     rtdebug!("connecting");
                     let mut stream = TcpStream::connect(addr);
                     // Connect again before writing
@@ -424,13 +424,13 @@ mod test {
             let addr = next_test_ip6();
             static MAX: int = 10;
 
-            do spawntask_immediately {
+            do spawntask {
                 let mut listener = TcpListener::bind(addr);
                 for int::range(0, MAX) |i| {
                     let stream = Cell::new(listener.accept());
                     rtdebug!("accepted");
                     // Start another task to handle the connection
-                    do spawntask_immediately {
+                    do spawntask {
                         let mut stream = stream.take();
                         let mut buf = [0];
                         stream.read(buf);
@@ -445,7 +445,7 @@ mod test {
             fn connect(i: int, addr: IpAddr) {
                 if i == MAX { return }
 
-                do spawntask_immediately {
+                do spawntask {
                     rtdebug!("connecting");
                     let mut stream = TcpStream::connect(addr);
                     // Connect again before writing
@@ -463,13 +463,13 @@ mod test {
             let addr = next_test_ip4();
             static MAX: int = 10;
 
-            do spawntask_immediately {
+            do spawntask {
                 let mut listener = TcpListener::bind(addr);
                 for int::range(0, MAX) |_| {
                     let stream = Cell::new(listener.accept());
                     rtdebug!("accepted");
                     // Start another task to handle the connection
-                    do spawntask_later {
+                    do spawntask {
                         let mut stream = stream.take();
                         let mut buf = [0];
                         stream.read(buf);
@@ -484,7 +484,7 @@ mod test {
             fn connect(i: int, addr: IpAddr) {
                 if i == MAX { return }
 
-                do spawntask_later {
+                do spawntask {
                     rtdebug!("connecting");
                     let mut stream = TcpStream::connect(addr);
                     // Connect again before writing
@@ -501,7 +501,7 @@ mod test {
             let addr = next_test_ip6();
             static MAX: int = 10;
 
-            do spawntask_immediately {
+            do spawntask {
                 let mut listener = TcpListener::bind(addr);
                 for int::range(0, MAX) |_| {
                     let stream = Cell::new(listener.accept());

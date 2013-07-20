@@ -29,19 +29,32 @@ use rt::stack::{StackSegment, StackPool};
 use rt::context::Context;
 use cell::Cell;
 
+// The Task struct represents all state associated with a rust
+// task. There are at this point two primary "subtypes" of task,
+// however instead of using a subtype we just have a "task_type" field
+// in the struct. This contains a pointer to another struct that holds
+// the type-specific state.
+
 pub struct Task {
     heap: LocalHeap,
     gc: GarbageCollector,
     storage: LocalStorage,
     logger: StdErrLogger,
     unwinder: Unwinder,
-    home: Option<SchedHome>,
     join_latch: Option<~JoinLatch>,
     on_exit: Option<~fn(bool)>,
     destroyed: bool,
-    coroutine: Option<~Coroutine>
+    coroutine: Option<~Coroutine>,
+    sched: Option<~Scheduler>,
+    task_type: TaskType
 }
 
+pub enum TaskType {
+    GreenTask(Option<~SchedHome>),
+    SchedTask
+}
+
+/// A coroutine is nothing more than a (register context, stack) pair.
 pub struct Coroutine {
     /// The segment of stack on which the task is currently running or
     /// if the task is blocked, on which the task will resume
@@ -51,6 +64,7 @@ pub struct Coroutine {
     saved_context: Context
 }
 
+/// Some tasks have a deciated home scheduler that they must run on.
 pub enum SchedHome {
     AnySched,
     Sched(SchedHandle)
@@ -64,6 +78,58 @@ pub struct Unwinder {
 }
 
 impl Task {
+
+    // A helper to build a new task using the dynamically found
+    // scheduler and task. Only works in GreenTask context.
+    pub fn build_homed_child(f: ~fn(), home: SchedHome) -> ~Task {
+        let f = Cell::new(f);
+        let home = Cell::new(home);
+        do Local::borrow::<Task, ~Task> |running_task| {
+            let mut sched = running_task.sched.take_unwrap();
+            let new_task = ~running_task.new_child_homed(&mut sched.stack_pool,
+                                                         home.take(),
+                                                         f.take());
+            running_task.sched = Some(sched);
+            new_task
+        }
+    }
+
+    pub fn build_child(f: ~fn()) -> ~Task {
+        Task::build_homed_child(f, AnySched)
+    }
+
+    pub fn build_homed_root(f: ~fn(), home: SchedHome) -> ~Task {
+        let f = Cell::new(f);
+        let home = Cell::new(home);
+        do Local::borrow::<Task, ~Task> |running_task| {
+            let mut sched = running_task.sched.take_unwrap();
+            let new_task = ~Task::new_root_homed(&mut sched.stack_pool,
+                                                    home.take(),
+                                                    f.take());
+            running_task.sched = Some(sched);
+            new_task
+        }
+    }
+
+    pub fn build_root(f: ~fn()) -> ~Task {
+        Task::build_homed_root(f, AnySched)
+    }
+
+    pub fn new_sched_task() -> Task {
+        Task {
+            heap: LocalHeap::new(),
+            gc: GarbageCollector,
+            storage: LocalStorage(ptr::null(), None),
+            logger: StdErrLogger,
+            unwinder: Unwinder { unwinding: false },
+            join_latch: Some(JoinLatch::new_root()),
+            on_exit: None,
+            destroyed: false,
+            coroutine: Some(~Coroutine::empty()),
+            sched: None,
+            task_type: SchedTask
+        }
+    }
 
     pub fn new_root(stack_pool: &mut StackPool,
                     start: ~fn()) -> Task {
@@ -85,11 +151,12 @@ impl Task {
             storage: LocalStorage(ptr::null(), None),
             logger: StdErrLogger,
             unwinder: Unwinder { unwinding: false },
-            home: Some(home),
             join_latch: Some(JoinLatch::new_root()),
             on_exit: None,
             destroyed: false,
-            coroutine: Some(~Coroutine::new(stack_pool, start))
+            coroutine: Some(~Coroutine::new(stack_pool, start)),
+            sched: None,
+            task_type: GreenTask(Some(~home))
         }
     }
 
@@ -102,25 +169,40 @@ impl Task {
             gc: GarbageCollector,
             storage: LocalStorage(ptr::null(), None),
             logger: StdErrLogger,
-            home: Some(home),
             unwinder: Unwinder { unwinding: false },
             join_latch: Some(self.join_latch.get_mut_ref().new_child()),
             on_exit: None,
             destroyed: false,
-            coroutine: Some(~Coroutine::new(stack_pool, start))
+            coroutine: Some(~Coroutine::new(stack_pool, start)),
+            sched: None,
+            task_type: GreenTask(Some(~home))
         }
     }
 
     pub fn give_home(&mut self, new_home: SchedHome) {
-        self.home = Some(new_home);
+        match self.task_type {
+            GreenTask(ref mut home) => {
+                *home = Some(~new_home);
+            }
+            SchedTask => {
+                rtabort!("type error: used SchedTask as GreenTask");
+            }
+        }
+    }
+
+    pub fn swap_unwrap_home(&mut self) -> SchedHome {
+        match self.task_type {
+            GreenTask(ref mut home) => {
+                let out = home.take_unwrap();
+                return *out;
+            }
+            SchedTask => {
+                rtabort!("type error: used SchedTask as GreenTask");
+            }
+        }
     }
 
     pub fn run(&mut self, f: &fn()) {
-        // This is just an assertion that `run` was called unsafely
-        // and this instance of Task is still accessible.
-        do Local::borrow::<Task, ()> |task| {
-            assert!(borrow::ref_eq(task, self));
-        }
 
         self.unwinder.try(f);
         self.destroy();
@@ -146,6 +228,8 @@ impl Task {
     /// thread-local-storage.
     fn destroy(&mut self) {
 
+        rtdebug!("DESTROYING TASK: %u", borrow::to_uint(self));
+
         do Local::borrow::<Task, ()> |task| {
             assert!(borrow::ref_eq(task, self));
         }
@@ -163,6 +247,64 @@ impl Task {
         self.destroyed = true;
     }
 
+    // New utility functions for homes.
+
+    pub fn is_home_no_tls(&self, sched: &~Scheduler) -> bool {
+        match self.task_type {
+            GreenTask(Some(~AnySched)) => { false }
+            GreenTask(Some(~Sched(SchedHandle { sched_id: ref id, _}))) => {
+                *id == sched.sched_id()
+            }
+            GreenTask(None) => {
+                rtabort!("task without home");
+            }
+            SchedTask => {
+                // Awe yea
+                rtabort!("type error: expected: GreenTask, found: SchedTask");
+            }
+        }
+    }
+
+    pub fn homed(&self) -> bool {
+        match self.task_type {
+            GreenTask(Some(~AnySched)) => { false }
+            GreenTask(Some(~Sched(SchedHandle { _ }))) => { true }
+            GreenTask(None) => {
+                rtabort!("task without home");
+            }
+            SchedTask => {
+                rtabort!("type error: expected: GreenTask, found: SchedTask");
+            }
+        }
+    }
+
+    // Grab both the scheduler and the task from TLS and check if the
+    // task is executing on an appropriate scheduler.
+    pub fn on_appropriate_sched() -> bool {
+        do Local::borrow::<Task,bool> |task| {
+            let sched_id = task.sched.get_ref().sched_id();
+            let sched_run_anything = task.sched.get_ref().run_anything;
+            match task.task_type {
+                GreenTask(Some(~AnySched)) => {
+                    rtdebug!("anysched task in sched check ****");
+                    sched_run_anything
+                }
+                GreenTask(Some(~Sched(SchedHandle { sched_id: ref id, _ }))) => {
+                    rtdebug!("homed task in sched check ****");
+                    *id == sched_id
+                }
+                GreenTask(None) => {
+                    rtabort!("task without home");
+                }
+                SchedTask => {
+                    rtabort!("type error: expected: GreenTask, found: SchedTask");
+                }
+            }
+        }
+    }
+
+    // These utility functions related to home will need to change.
+/*
     /// Check if *task* is currently home.
     pub fn is_home(&self) -> bool {
         do Local::borrow::<Scheduler,bool> |sched| {
@@ -215,11 +357,14 @@ impl Task {
             !sched.run_anything
         }
     }
-
+*/
 }
 
 impl Drop for Task {
-    fn drop(&self) { assert!(self.destroyed) }
+    fn drop(&self) {
+        rtdebug!("called drop for a task");
+        assert!(self.destroyed)
+    }
 }
 
 // Coroutines represent nothing more than a context and a stack
@@ -239,19 +384,33 @@ impl Coroutine {
         }
     }
 
+    pub fn empty() -> Coroutine {
+        Coroutine {
+            current_stack_segment: StackSegment::new(0),
+            saved_context: Context::empty()
+        }
+    }
+
     fn build_start_wrapper(start: ~fn()) -> ~fn() {
         let start_cell = Cell::new(start);
         let wrapper: ~fn() = || {
             // First code after swap to this new context. Run our
             // cleanup job.
             unsafe {
-                let sched = Local::unsafe_borrow::<Scheduler>();
-                (*sched).run_cleanup_job();
 
-                let sched = Local::unsafe_borrow::<Scheduler>();
-                let task = (*sched).current_task.get_mut_ref();
+                // Again - might work while safe, or it might not.
+                do Local::borrow::<Scheduler,()> |sched| {
+                    (sched).run_cleanup_job();
+                }
 
-                do task.run {
+                // To call the run method on a task we need a direct
+                // reference to it. The task is in TLS, so we can
+                // simply unsafe_borrow it to get this reference. We
+                // need to still have the task in TLS though, so we
+                // need to unsafe_borrow.
+                let task = Local::unsafe_borrow::<Task>();
+
+                do (*task).run {
                     // N.B. Removing `start` from the start wrapper
                     // closure by emptying a cell is critical for
                     // correctness. The ~Task pointer, and in turn the
@@ -267,8 +426,11 @@ impl Coroutine {
                 };
             }
 
+            // We remove the sched from the Task in TLS right now.
             let sched = Local::take::<Scheduler>();
-            sched.terminate_current_task();
+            // ... allowing us to give it away when performing a
+            // scheduling operation.
+            sched.terminate_current_task()
         };
         return wrapper;
     }
@@ -329,7 +491,7 @@ impl Unwinder {
         }
     }
 }
-
+/*
 #[cfg(test)]
 mod test {
     use rt::test::*;
@@ -470,3 +632,4 @@ mod test {
         }
     }
 }
+*/
