@@ -502,7 +502,7 @@ impl<A, T: Iterator<A>> IteratorUtil<A> for T {
     #[inline]
     fn flat_map_<'r, B, U: Iterator<B>>(self, f: &'r fn(A) -> U)
         -> FlatMapIterator<'r, A, B, T, U> {
-        FlatMapIterator{iter: self, f: f, subiter: None }
+        FlatMapIterator{iter: self, f: f, frontiter: None, backiter: None }
     }
 
     // FIXME: #5898: should be called `peek`
@@ -1202,22 +1202,44 @@ impl<'self, A, B, T: Iterator<A>, St> Iterator<B> for ScanIterator<'self, A, B, 
 pub struct FlatMapIterator<'self, A, B, T, U> {
     priv iter: T,
     priv f: &'self fn(A) -> U,
-    priv subiter: Option<U>,
+    priv frontiter: Option<U>,
+    priv backiter: Option<U>,
 }
 
-impl<'self, A, T: Iterator<A>, B, U: Iterator<B>> Iterator<B> for
-    FlatMapIterator<'self, A, B, T, U> {
+impl<'self, A, T: Iterator<A>, B, U: Iterator<B>> Iterator<B>
+     for FlatMapIterator<'self, A, B, T, U> {
     #[inline]
     fn next(&mut self) -> Option<B> {
         loop {
-            for self.subiter.mut_iter().advance |inner| {
+            for self.frontiter.mut_iter().advance |inner| {
                 for inner.advance |x| {
                     return Some(x)
                 }
             }
             match self.iter.next().map_consume(|x| (self.f)(x)) {
-                None => return None,
-                next => self.subiter = next,
+                None => return self.backiter.chain_mut_ref(|it| it.next()),
+                next => self.frontiter = next,
+            }
+        }
+    }
+}
+
+impl<'self,
+     A, T: DoubleEndedIterator<A>,
+     B, U: DoubleEndedIterator<B>> DoubleEndedIterator<B>
+     for FlatMapIterator<'self, A, B, T, U> {
+    #[inline]
+    fn next_back(&mut self) -> Option<B> {
+        loop {
+            for self.backiter.mut_iter().advance |inner| {
+                match inner.next_back() {
+                    None => (),
+                    y => return y
+                }
+            }
+            match self.iter.next_back().map_consume(|x| (self.f)(x)) {
+                None => return self.frontiter.chain_mut_ref(|it| it.next_back()),
+                next => self.backiter = next,
             }
         }
     }
@@ -1717,5 +1739,22 @@ mod tests {
         assert_eq!(it.next_back().unwrap(), &5)
         assert_eq!(it.next_back().unwrap(), &7)
         assert_eq!(it.next_back(), None)
+    }
+
+    #[test]
+    fn test_double_ended_flat_map() {
+        let u = [0u,1];
+        let v = [5,6,7,8];
+        let mut it = u.iter().flat_map_(|x| v.slice(*x, v.len()).iter());
+        assert_eq!(it.next_back().unwrap(), &8);
+        assert_eq!(it.next().unwrap(),      &5);
+        assert_eq!(it.next_back().unwrap(), &7);
+        assert_eq!(it.next_back().unwrap(), &6);
+        assert_eq!(it.next_back().unwrap(), &8);
+        assert_eq!(it.next().unwrap(),      &6);
+        assert_eq!(it.next_back().unwrap(), &7);
+        assert_eq!(it.next_back(), None);
+        assert_eq!(it.next(),      None);
+        assert_eq!(it.next_back(), None);
     }
 }
