@@ -209,6 +209,6 @@ fn align_down(sp: *mut uint) -> *mut uint {
 // XXX: ptr::offset is positive ints only
 #[inline]
 pub fn mut_offset<T>(ptr: *mut T, count: int) -> *mut T {
-    use core::sys::size_of;
+    use std::sys::size_of;
     (ptr as int + count * (size_of::<T>() as int)) as *mut T
 }
