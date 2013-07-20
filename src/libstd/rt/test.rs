@@ -64,7 +64,6 @@ pub fn run_in_mt_newsched_task(f: ~fn()) {
     use os;
     use from_str::FromStr;
     use rt::sched::Shutdown;
-    use rt::util;
 
     let f_cell = Cell::new(f);
 
@@ -72,10 +71,10 @@ pub fn run_in_mt_newsched_task(f: ~fn()) {
         let nthreads = match os::getenv("RUST_RT_TEST_THREADS") {
             Some(nstr) => FromStr::from_str(nstr).get(),
             None => {
-                // Using more threads than cores in test code
-                // to force the OS to preempt them frequently.
-                // Assuming that this help stress test concurrent types.
-                util::num_cpus() * 2
+                // A reasonable number of threads for testing
+                // multithreading. NB: It's easy to exhaust OS X's
+                // low maximum fd limit by setting this too high (#7772)
+                4
             }
         };
 
