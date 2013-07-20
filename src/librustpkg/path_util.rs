@@ -54,11 +54,17 @@ pub fn rust_path() -> ~[Path] {
     };
     let cwd = os::getcwd();
     // now add in default entries
-    env_rust_path.push(cwd.push(".rust"));
     env_rust_path.push(cwd.clone());
     do cwd.each_parent() |p| { push_if_exists(&mut env_rust_path, p) };
     let h = os::homedir();
-    for h.iter().advance |h| { push_if_exists(&mut env_rust_path, h); }
+    // Avoid adding duplicates
+    // could still add dups if someone puts one of these in the RUST_PATH
+    // manually, though...
+    for h.iter().advance |hdir| {
+        if !(cwd.is_ancestor_of(hdir) || hdir.is_ancestor_of(&cwd)) {
+            push_if_exists(&mut env_rust_path, hdir);
+        }
+    }
     env_rust_path
 }
 

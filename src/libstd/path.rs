@@ -122,6 +122,9 @@ pub trait GenericPath {
 
     /// Returns `true` if `self` is an absolute path.
     fn is_absolute(&self) -> bool;
+
+    /// True if `self` is an ancestor of `other`. See `test_is_ancestor_of` for examples
+    fn is_ancestor_of(&self, (&Self)) -> bool;
 }
 
 #[cfg(target_os = "linux")]
@@ -698,6 +701,15 @@ impl GenericPath for PosixPath {
     fn is_absolute(&self) -> bool {
         self.is_absolute
     }
+
+    fn is_ancestor_of(&self, other: &PosixPath) -> bool {
+        debug!("%s / %s %? %?", self.to_str(), other.to_str(), self.is_absolute,
+               self.components.len());
+        self == other ||
+            (!other.components.is_empty() && !(self.components.is_empty() && !self.is_absolute) &&
+             self.is_ancestor_of(&other.pop()))
+    }
+
 }
 
 
@@ -974,8 +986,13 @@ impl GenericPath for WindowsPath {
     fn is_absolute(&self) -> bool {
         self.is_absolute
     }
-}
 
+    fn is_ancestor_of(&self, other: &WindowsPath) -> bool {
+        self == other ||
+            (!other.components.is_empty() && !(self.components.is_empty() && !self.is_absolute) &&
+             self.is_ancestor_of(&other.pop()))
+    }
+}
 
 pub fn normalize(components: &[~str]) -> ~[~str] {
     let mut cs = ~[];
@@ -1290,4 +1307,27 @@ mod tests {
         assert_eq!(WindowsPath("C:\\COM1.TXT").is_restricted(), true);
         assert_eq!(WindowsPath("c:\\prn.exe").is_restricted(), true);
     }
+
+    #[test]
+    fn test_is_ancestor_of() {
+        assert!(&PosixPath("/a/b").is_ancestor_of(&PosixPath("/a/b/c/d")));
+        assert!(!&PosixPath("/a/b/c/d").is_ancestor_of(&PosixPath("/a/b")));
+        assert!(!&PosixPath("/a/b").is_ancestor_of(&PosixPath("/c/d")));
+        assert!(&PosixPath("/a/b").is_ancestor_of(&PosixPath("/a/b/c/d")));
+        assert!(&PosixPath("/").is_ancestor_of(&PosixPath("/a/b/c")));
+        assert!(!&PosixPath("/").is_ancestor_of(&PosixPath("")));
+        assert!(!&PosixPath("/a/b/c").is_ancestor_of(&PosixPath("")));
+        assert!(!&PosixPath("").is_ancestor_of(&PosixPath("/a/b/c")));
+
+        assert!(&WindowsPath("C:\\a\\b").is_ancestor_of(&WindowsPath("C:\\a\\b\\c\\d")));
+        assert!(!&WindowsPath("C:\\a\\b\\c\\d").is_ancestor_of(&WindowsPath("C:\\a\\b")));
+        assert!(!&WindowsPath("C:\\a\\b").is_ancestor_of(&WindowsPath("C:\\c\\d")));
+        assert!(&WindowsPath("C:\\a\\b").is_ancestor_of(&WindowsPath("C:\\a\\b\\c\\d")));
+        assert!(&WindowsPath("C:\\").is_ancestor_of(&WindowsPath("C:\\a\\b\\c")));
+        assert!(!&WindowsPath("C:\\").is_ancestor_of(&WindowsPath("")));
+        assert!(!&WindowsPath("C:\\a\\b\\c").is_ancestor_of(&WindowsPath("")));
+        assert!(!&WindowsPath("").is_ancestor_of(&WindowsPath("C:\\a\\b\\c")));
+
+    }
+
 }
