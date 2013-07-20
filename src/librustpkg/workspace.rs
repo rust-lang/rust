@@ -10,9 +10,10 @@
 
 // rustpkg utilities having to do with workspaces
 
+use std::os;
+use std::path::Path;
 use path_util::{rust_path, workspace_contains_package_id};
 use package_id::PkgId;
-use std::path::Path;
 
 pub fn each_pkg_parent_workspace(pkgid: &PkgId, action: &fn(&Path) -> bool) -> bool {
     // Using the RUST_PATH, find workspaces that contain
@@ -37,4 +38,25 @@ pub fn pkg_parent_workspaces(pkgid: &PkgId) -> ~[Path] {
     rust_path().consume_iter()
         .filter(|ws| workspace_contains_package_id(pkgid, ws))
         .collect()
+}
+
+pub fn in_workspace(complain: &fn()) -> bool {
+    let dir_part = os::getcwd().pop().components.clone();
+    if  *(dir_part.last()) != ~"src" {
+        complain();
+        false
+    }
+    else {
+        true
+    }
+}
+
+/// Construct a workspace and package-ID name based on the current directory.
+/// This gets used when rustpkg gets invoked without a package-ID argument.
+pub fn cwd_to_workspace() -> (Path, PkgId) {
+    let cwd = os::getcwd();
+    let ws = cwd.pop().pop();
+    let cwd_ = cwd.clone();
+    let pkgid = cwd_.components.last().to_str();
+    (ws, PkgId::new(pkgid, &cwd))
 }
