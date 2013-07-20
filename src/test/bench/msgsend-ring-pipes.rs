@@ -24,7 +24,6 @@ use std::cell::Cell;
 use std::io;
 use std::os;
 use std::pipes::recv;
-use std::ptr;
 use std::uint;
 use std::util;
 
@@ -58,7 +57,7 @@ fn thread_ring(i: uint,
 
 fn main() {
     let args = os::args();
-    let args = if os::getenv(~"RUST_BENCH").is_some() {
+    let args = if os::getenv("RUST_BENCH").is_some() {
         ~[~"", ~"100", ~"10000"]
     } else if args.len() <= 1u {
         ~[~"", ~"100", ~"1000"]
@@ -70,7 +69,7 @@ fn main() {
     let msg_per_task = uint::from_str(args[2]).get();
 
     let (num_port, num_chan) = ring::init();
-    let mut num_chan = Cell::new(num_chan);
+    let num_chan = Cell::new(num_chan);
 
     let start = time::precise_time_s();
 

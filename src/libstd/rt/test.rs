@@ -51,7 +51,7 @@ pub fn run_in_newsched_task(f: ~fn()) {
         let mut task = ~Task::new_root(&mut sched.stack_pool,
                                        f.take());
         rtdebug!("newsched_task: %x", to_uint(task));
-        task.on_exit = Some(on_exit);
+        task.death.on_exit = Some(on_exit);
         sched.enqueue_task(task);
         sched.run();
     }
@@ -108,7 +108,7 @@ pub fn run_in_mt_newsched_task(f: ~fn()) {
         };
         let mut main_task = ~Task::new_root(&mut scheds[0].stack_pool,
                                         f_cell.take());
-        main_task.on_exit = Some(on_exit);
+        main_task.death.on_exit = Some(on_exit);
         scheds[0].enqueue_task(main_task);
 
         let mut threads = ~[];
@@ -169,7 +169,7 @@ pub fn spawntask_immediately(f: ~fn()) {
 
     let sched = Local::take::<Scheduler>();
     do sched.switch_running_tasks_and_then(task) |sched, task| {
-        sched.enqueue_task(task);
+        sched.enqueue_blocked_task(task);
     }
 }
 
@@ -213,7 +213,7 @@ pub fn spawntask_random(f: ~fn()) {
 
     if run_now {
         do sched.switch_running_tasks_and_then(task) |sched, task| {
-            sched.enqueue_task(task);
+            sched.enqueue_blocked_task(task);
         }
     } else {
         sched.enqueue_task(task);
@@ -279,11 +279,11 @@ pub fn spawntask_try(f: ~fn()) -> Result<(), ()> {
                            f.take())
         }
     };
-    new_task.on_exit = Some(on_exit);
+    new_task.death.on_exit = Some(on_exit);
 
     let sched = Local::take::<Scheduler>();
     do sched.switch_running_tasks_and_then(new_task) |sched, old_task| {
-        sched.enqueue_task(old_task);
+        sched.enqueue_blocked_task(old_task);
     }
 
     rtdebug!("enqueued the new task, now waiting on exit_status");
@@ -292,7 +292,7 @@ pub fn spawntask_try(f: ~fn()) -> Result<(), ()> {
     if exit_status { Ok(()) } else { Err(()) }
 }
 
-// Spawn a new task in a new scheduler and return a thread handle.
+/// Spawn a new task in a new scheduler and return a thread handle.
 pub fn spawntask_thread(f: ~fn()) -> Thread {
     use rt::sched::*;
 
@@ -314,6 +314,16 @@ pub fn spawntask_thread(f: ~fn()) -> Thread {
         sched.run();
     };
     return thread;
+}
+
+/// Get a ~Task for testing purposes other than actually scheduling it.
+pub fn with_test_task(blk: ~fn(~Task) -> ~Task) {
+    do run_in_bare_thread {
+        let mut sched = ~new_test_uv_sched();
+        let task = blk(~Task::new_root(&mut sched.stack_pool, ||{}));
+        sched.enqueue_task(task);
+        sched.run();
+    }
 }
 
 

@@ -83,6 +83,9 @@ pub mod global_heap;
 /// Implementations of language-critical runtime features like @.
 pub mod task;
 
+/// Facilities related to task failure, killing, and death.
+mod kill;
+
 /// The coroutine task scheduler, built on the `io` event loop.
 mod sched;
 
@@ -148,9 +151,6 @@ pub mod local_ptr;
 // FIXME #5248: The import in `sched` doesn't resolve unless this is pub!
 /// Bindings to pthread/windows thread-local storage.
 pub mod thread_local_storage;
-
-/// For waiting on child tasks.
-pub mod join_latch;
 
 pub mod metrics;
 
@@ -277,7 +277,7 @@ pub fn run(main: ~fn()) -> int {
     let main_cell = Cell::new(main);
     let mut main_task = ~Task::new_root(&mut scheds[0].stack_pool,
                                     main_cell.take());
-    main_task.on_exit = Some(on_exit);
+    main_task.death.on_exit = Some(on_exit);
     scheds[0].enqueue_task(main_task);
 
     // Run each scheduler in a thread.
@@ -367,7 +367,7 @@ fn test_context() {
             let sched = Local::take::<Scheduler>();
             do sched.deschedule_running_task_and_then() |sched, task| {
                 assert_eq!(context(), SchedulerContext);
-                sched.enqueue_task(task);
+                sched.enqueue_blocked_task(task);
             }
         };
         sched.enqueue_task(task);

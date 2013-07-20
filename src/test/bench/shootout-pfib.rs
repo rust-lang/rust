@@ -28,7 +28,6 @@ use std::io::WriterUtil;
 use std::io;
 use std::os;
 use std::result::{Ok, Err};
-use std::str;
 use std::task;
 use std::u64;
 use std::uint;
@@ -59,13 +58,13 @@ struct Config {
 }
 
 fn parse_opts(argv: ~[~str]) -> Config {
-    let opts = ~[getopts::optflag(~"stress")];
+    let opts = ~[getopts::optflag("stress")];
 
     let opt_args = argv.slice(1, argv.len());
 
     match getopts::getopts(opt_args, opts) {
       Ok(ref m) => {
-          return Config {stress: getopts::opt_present(m, ~"stress")}
+          return Config {stress: getopts::opt_present(m, "stress")}
       }
       Err(_) => { fail!(); }
     }
@@ -97,7 +96,7 @@ fn stress(num_tasks: int) {
 
 fn main() {
     let args = os::args();
-    let args = if os::getenv(~"RUST_BENCH").is_some() {
+    let args = if os::getenv("RUST_BENCH").is_some() {
         ~[~"", ~"20"]
     } else if args.len() <= 1u {
         ~[~"", ~"8"]
