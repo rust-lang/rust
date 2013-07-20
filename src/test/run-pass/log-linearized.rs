@@ -19,12 +19,12 @@ struct Smallintmap<T> {v: ~[option<T>]}
 
 struct V<T> { v: ~[option<T>] }
 
-fn mk<T>() -> @mut Smallintmap<T> {
+fn mk<T:'static>() -> @mut Smallintmap<T> {
     let mut v: ~[option<T>] = ~[];
     return @mut Smallintmap {v: v};
 }
 
-fn f<T,U>() {
+fn f<T,U:'static>() {
     let mut sim = mk::<U>();
     error!(sim);
 }

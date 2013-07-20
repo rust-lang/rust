@@ -23,5 +23,6 @@ fn main() {
     copy2(&x); //~ ERROR does not fulfill `'static`
 
     copy2(@3);
-    copy2(@&x); //~ ERROR does not fulfill `'static`
+    copy2(@&x); //~ ERROR value may contain borrowed pointers
+    //~^ ERROR does not fulfill `'static`
 }

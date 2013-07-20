@@ -14,12 +14,12 @@
 // happen.)
 
 fn eat_tup(_r: ~@(int, @fn(Pair) -> int)) {}
-fn eat_rec(_r: @~Rec) {}
+fn eat_rec(_r: ~Rec) {}
 
 struct Rec<'self> { a: int, b: &'self fn(Pair) -> int }
 struct Pair { x: int, y: int }
 
 pub fn main() {
     eat_tup(~@(10, |a| a.x ));
-    eat_rec(@~Rec{a: 10, b: |a| a.x });
+    eat_rec(~Rec{a: 10, b: |a| a.x });
 }

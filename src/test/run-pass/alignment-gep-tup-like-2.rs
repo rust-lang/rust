@@ -18,12 +18,16 @@ struct Rec<A> {
     rec: Option<@mut RecEnum<A>>
 }
 
-fn make_cycle<A>(a: A) {
+fn make_cycle<A:'static>(a: A) {
     let g: @mut RecEnum<A> = @mut RecEnum(Rec {val: a, rec: None});
     g.rec = Some(g);
 }
 
-fn f<A:Send + Clone,B:Send + Clone>(a: A, b: B) -> @fn() -> (A, B) {
+fn f<A:Send + Clone + 'static,
+     B:Send + Clone + 'static>(
+     a: A,
+     b: B)
+     -> @fn() -> (A, B) {
     let result: @fn() -> (A, B) = || (a.clone(), b.clone());
     result
 }
