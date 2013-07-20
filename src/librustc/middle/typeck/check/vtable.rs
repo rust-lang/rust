@@ -727,6 +727,23 @@ pub fn resolve_impl(ccx: @mut CrateCtxt, impl_item: @ast::item) {
 
             // FIXME(#7450): Doesn't work cross crate
             ccx.vtable_map.insert(impl_item.id, vtbls);
+
+            // Now, locate the vtable for the impl itself. The real
+            // purpose of this is to check for supertrait impls,
+            // but that falls out of doing this.
+            let param_bounds = ty::ParamBounds {
+                builtin_bounds: ty::EmptyBuiltinBounds(),
+                trait_bounds: ~[trait_ref]
+            };
+            let t = ty::node_id_to_type(ccx.tcx, impl_item.id);
+            debug!("=== Doing a self lookup now.");
+            // Right now, we don't have any place to store this.
+            // We will need to make one so we can use this information
+            // for compiling default methods that refer to supertraits.
+            let _self_vtable_res =
+                lookup_vtables_for_param(&vcx, &loc_info, None,
+                                         &param_bounds, t, false);
+
         }
     }
 }
