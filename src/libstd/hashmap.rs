@@ -548,6 +548,7 @@ impl<K:Hash + Eq + Clone,V:Clone> Clone for HashMap<K,V> {
 }
 
 /// HashMap iterator
+#[deriving(Clone)]
 pub struct HashMapIterator<'self, K, V> {
     priv iter: vec::VecIterator<'self, Option<Bucket<K, V>>>,
 }
@@ -563,6 +564,7 @@ pub struct HashMapConsumeIterator<K, V> {
 }
 
 /// HashSet iterator
+#[deriving(Clone)]
 pub struct HashSetIterator<'self, K> {
     priv iter: vec::VecIterator<'self, Option<Bucket<K, ()>>>,
 }
