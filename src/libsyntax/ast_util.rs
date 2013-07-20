@@ -14,6 +14,7 @@ use ast_util;
 use codemap::{span, dummy_sp};
 use opt_vec;
 use parse::token;
+use visit::{SimpleVisitor, SimpleVisitorVisitor, Visitor};
 use visit;
 
 use std::hashmap::HashMap;
@@ -297,7 +298,7 @@ pub fn struct_field_visibility(field: ast::struct_field) -> visibility {
 pub trait inlined_item_utils {
     fn ident(&self) -> ident;
     fn id(&self) -> ast::NodeId;
-    fn accept<E: Clone>(&self, e: E, v: visit::vt<E>);
+    fn accept<E: Clone>(&self, e: E, v: @Visitor<E>);
 }
 
 impl inlined_item_utils for inlined_item {
@@ -317,11 +318,11 @@ impl inlined_item_utils for inlined_item {
         }
     }
 
-    fn accept<E: Clone>(&self, e: E, v: visit::vt<E>) {
+    fn accept<E: Clone>(&self, e: E, v: @Visitor<E>) {
         match *self {
-            ii_item(i) => (v.visit_item)(i, (e, v)),
-            ii_foreign(i) => (v.visit_foreign_item)(i, (e, v)),
-            ii_method(_, _, m) => visit::visit_method_helper(m, (e, v)),
+            ii_item(i) => v.visit_item(i, e),
+            ii_foreign(i) => v.visit_foreign_item(i, e),
+            ii_method(_, _, m) => visit::visit_method_helper(v, m, e),
         }
     }
 }
@@ -339,8 +340,8 @@ pub fn is_self(d: ast::def) -> bool {
 /// Maps a binary operator to its precedence
 pub fn operator_prec(op: ast::binop) -> uint {
   match op {
-      mul | div | rem   => 12u,
-      // 'as' sits between here with 11
+      // 'as' sits here with 12
+      mul | div | rem   => 11u,
       add | subtract    => 10u,
       shl | shr         =>  9u,
       bitand            =>  8u,
@@ -355,7 +356,7 @@ pub fn operator_prec(op: ast::binop) -> uint {
 
 /// Precedence of the `as` operator, which is a binary operator
 /// not appearing in the prior table.
-pub static as_prec: uint = 11u;
+pub static as_prec: uint = 12u;
 
 pub fn empty_generics() -> Generics {
     Generics {lifetimes: opt_vec::Empty,
@@ -389,134 +390,238 @@ impl id_range {
     }
 }
 
-pub fn id_visitor<T: Clone>(vfn: @fn(NodeId, T)) -> visit::vt<T> {
-    let visit_generics: @fn(&Generics, T) = |generics, t| {
-        foreach p in generics.ty_params.iter() {
-            vfn(p.id, t.clone());
+struct IdVisitor {
+    visit_callback: @fn(NodeId),
+    pass_through_items: bool,
+    visited_outermost: bool,
+}
+
+impl IdVisitor {
+    fn visit_generics_helper(@mut self, generics: &Generics) {
+        foreach type_parameter in generics.ty_params.iter() {
+            (self.visit_callback)(type_parameter.id)
         }
-        foreach p in generics.lifetimes.iter() {
-            vfn(p.id, t.clone());
+        foreach lifetime in generics.lifetimes.iter() {
+            (self.visit_callback)(lifetime.id)
         }
+    }
+}
+
+impl Visitor<()> for IdVisitor {
+    fn visit_mod(@mut self,
+                 module: &_mod,
+                 span: span,
+                 node_id: NodeId,
+                 env: ()) {
+        (self.visit_callback)(node_id);
+        visit::visit_mod(self as @Visitor<()>, module, env)
+    }
+
+    fn visit_view_item(@mut self, view_item: &view_item, env: ()) {
+        match view_item.node {
+            view_item_extern_mod(_, _, node_id) => {
+                (self.visit_callback)(node_id)
+            }
+            view_item_use(ref view_paths) => {
+                foreach view_path in view_paths.iter() {
+                    match view_path.node {
+                        view_path_simple(_, _, node_id) |
+                        view_path_glob(_, node_id) => {
+                            (self.visit_callback)(node_id)
+                        }
+                        view_path_list(_, ref paths, node_id) => {
+                            (self.visit_callback)(node_id);
+                            foreach path in paths.iter() {
+                                (self.visit_callback)(path.node.id)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        visit::visit_view_item(self as @Visitor<()>, view_item, env)
+    }
+
+    fn visit_foreign_item(@mut self, foreign_item: @foreign_item, env: ()) {
+        (self.visit_callback)(foreign_item.id);
+        visit::visit_foreign_item(self as @Visitor<()>, foreign_item, env)
+    }
+
+    fn visit_item(@mut self, item: @item, env: ()) {
+        if !self.pass_through_items {
+            if self.visited_outermost {
+                return
+            } else {
+                self.visited_outermost = true
+            }
+        }
+
+        (self.visit_callback)(item.id);
+        match item.node {
+            item_enum(ref enum_definition, _) => {
+                foreach variant in enum_definition.variants.iter() {
+                    (self.visit_callback)(variant.node.id)
+                }
+            }
+            _ => {}
+        }
+
+        visit::visit_item(self as @Visitor<()>, item, env);
+
+        self.visited_outermost = false
+    }
+
+    fn visit_local(@mut self, local: @Local, env: ()) {
+        (self.visit_callback)(local.id);
+        visit::visit_local(self as @Visitor<()>, local, env)
+    }
+
+    fn visit_block(@mut self, block: &Block, env: ()) {
+        (self.visit_callback)(block.id);
+        visit::visit_block(self as @Visitor<()>, block, env)
+    }
+
+    fn visit_stmt(@mut self, statement: @stmt, env: ()) {
+        (self.visit_callback)(ast_util::stmt_id(statement));
+        visit::visit_stmt(self as @Visitor<()>, statement, env)
+    }
+
+    // XXX: Default
+    fn visit_arm(@mut self, arm: &arm, env: ()) {
+        visit::visit_arm(self as @Visitor<()>, arm, env)
+    }
+
+    fn visit_pat(@mut self, pattern: @pat, env: ()) {
+        (self.visit_callback)(pattern.id);
+        visit::visit_pat(self as @Visitor<()>, pattern, env)
+    }
+
+    // XXX: Default
+    fn visit_decl(@mut self, declaration: @decl, env: ()) {
+        visit::visit_decl(self as @Visitor<()>, declaration, env)
+    }
+
+    fn visit_expr(@mut self, expression: @expr, env: ()) {
+        {
+            let optional_callee_id = expression.get_callee_id();
+            foreach callee_id in optional_callee_id.iter() {
+                (self.visit_callback)(*callee_id)
+            }
+        }
+        (self.visit_callback)(expression.id);
+        visit::visit_expr(self as @Visitor<()>, expression, env)
+    }
+
+    // XXX: Default
+    fn visit_expr_post(@mut self, _: @expr, _: ()) {
+        // Empty!
+    }
+
+    fn visit_ty(@mut self, typ: &Ty, env: ()) {
+        (self.visit_callback)(typ.id);
+        match typ.node {
+            ty_path(_, _, id) => (self.visit_callback)(id),
+            _ => {}
+        }
+        visit::visit_ty(self as @Visitor<()>, typ, env)
+    }
+
+    fn visit_generics(@mut self, generics: &Generics, env: ()) {
+        self.visit_generics_helper(generics);
+        visit::visit_generics(self as @Visitor<()>, generics, env)
+    }
+
+    fn visit_fn(@mut self,
+                function_kind: &visit::fn_kind,
+                function_declaration: &fn_decl,
+                block: &Block,
+                span: span,
+                node_id: NodeId,
+                env: ()) {
+        if !self.pass_through_items {
+            match *function_kind {
+                visit::fk_method(*) if self.visited_outermost => return,
+                visit::fk_method(*) => self.visited_outermost = true,
+                _ => {}
+            }
+        }
+
+        (self.visit_callback)(node_id);
+
+        match *function_kind {
+            visit::fk_item_fn(_, generics, _, _) => {
+                self.visit_generics_helper(generics)
+            }
+            visit::fk_method(_, generics, method) => {
+                (self.visit_callback)(method.self_id);
+                self.visit_generics_helper(generics)
+            }
+            visit::fk_anon(_) | visit::fk_fn_block => {}
+        }
+
+        foreach argument in function_declaration.inputs.iter() {
+            (self.visit_callback)(argument.id)
+        }
+
+        visit::visit_fn(self as @Visitor<()>,
+                        function_kind,
+                        function_declaration,
+                        block,
+                        span,
+                        node_id,
+                        env);
+
+        if !self.pass_through_items {
+            match *function_kind {
+                visit::fk_method(*) => self.visited_outermost = false,
+                _ => {}
+            }
+        }
+    }
+
+    // XXX: Default
+    fn visit_ty_method(@mut self, type_method: &TypeMethod, env: ()) {
+        visit::visit_ty_method(self as @Visitor<()>, type_method, env)
+    }
+
+    // XXX: Default
+    fn visit_trait_method(@mut self, trait_method: &trait_method, env: ()) {
+        visit::visit_trait_method(self as @Visitor<()>, trait_method, env)
+    }
+
+    // XXX: Default
+    fn visit_struct_def(@mut self,
+                        struct_definition: @struct_def,
+                        identifier: ident,
+                        generics: &Generics,
+                        node_id: NodeId,
+                        env: ()) {
+        visit::visit_struct_def(self as @Visitor<()>,
+                                struct_definition,
+                                identifier,
+                                generics,
+                                node_id,
+                                env)
+    }
+
+    fn visit_struct_field(@mut self, struct_field: @struct_field, env: ()) {
+        (self.visit_callback)(struct_field.node.id);
+        visit::visit_struct_field(self as @Visitor<()>, struct_field, env)
+    }
+}
+
+pub fn id_visitor(vfn: @fn(NodeId), pass_through_items: bool)
+                  -> @Visitor<()> {
+    let visitor = @IdVisitor {
+        visit_callback: vfn,
+        pass_through_items: pass_through_items,
+        visited_outermost: false,
     };
-    visit::mk_vt(@visit::Visitor {
-        visit_mod: |m, sp, id, (t, vt): (T, visit::vt<T>)| {
-            vfn(id, t.clone());
-            visit::visit_mod(m, sp, id, (t, vt));
-        },
-
-        visit_view_item: |vi, (t, vt)| {
-            match vi.node {
-              view_item_extern_mod(_, _, id) => vfn(id, t.clone()),
-              view_item_use(ref vps) => {
-                  foreach vp in vps.iter() {
-                      match vp.node {
-                          view_path_simple(_, _, id) => vfn(id, t.clone()),
-                          view_path_glob(_, id) => vfn(id, t.clone()),
-                          view_path_list(_, ref paths, id) => {
-                              vfn(id, t.clone());
-                              foreach p in paths.iter() {
-                                  vfn(p.node.id, t.clone());
-                              }
-                          }
-                      }
-                  }
-              }
-            }
-            visit::visit_view_item(vi, (t, vt));
-        },
-
-        visit_foreign_item: |ni, (t, vt)| {
-            vfn(ni.id, t.clone());
-            visit::visit_foreign_item(ni, (t, vt));
-        },
-
-        visit_item: |i, (t, vt)| {
-            vfn(i.id, t.clone());
-            match i.node {
-              item_enum(ref enum_definition, _) =>
-                foreach v in (*enum_definition).variants.iter() {
-                    vfn(v.node.id, t.clone());
-                },
-              _ => ()
-            }
-            visit::visit_item(i, (t, vt));
-        },
-
-        visit_local: |l, (t, vt)| {
-            vfn(l.id, t.clone());
-            visit::visit_local(l, (t, vt));
-        },
-        visit_block: |b, (t, vt)| {
-            vfn(b.id, t.clone());
-            visit::visit_block(b, (t, vt));
-        },
-        visit_stmt: |s, (t, vt)| {
-            vfn(ast_util::stmt_id(s), t.clone());
-            visit::visit_stmt(s, (t, vt));
-        },
-        visit_pat: |p, (t, vt)| {
-            vfn(p.id, t.clone());
-            visit::visit_pat(p, (t, vt));
-        },
-
-        visit_expr: |e, (t, vt)| {
-            {
-                let r = e.get_callee_id();
-                foreach callee_id in r.iter() {
-                    vfn(*callee_id, t.clone());
-                }
-            }
-            vfn(e.id, t.clone());
-            visit::visit_expr(e, (t, vt));
-        },
-
-        visit_ty: |ty, (t, vt)| {
-            vfn(ty.id, t.clone());
-            match ty.node {
-              ty_path(_, _, id) => vfn(id, t.clone()),
-              _ => { /* fall through */ }
-            }
-            visit::visit_ty(ty, (t, vt));
-        },
-
-        visit_generics: |generics, (t, vt)| {
-            visit_generics(generics, t.clone());
-            visit::visit_generics(generics, (t, vt));
-        },
-
-        visit_fn: |fk, d, a, b, id, (t, vt)| {
-            vfn(id, t.clone());
-
-            match *fk {
-                visit::fk_item_fn(_, generics, _, _) => {
-                    visit_generics(generics, t.clone());
-                }
-                visit::fk_method(_, generics, m) => {
-                    vfn(m.self_id, t.clone());
-                    visit_generics(generics, t.clone());
-                }
-                visit::fk_anon(_) |
-                visit::fk_fn_block => {
-                }
-            }
-
-            foreach arg in d.inputs.iter() {
-                vfn(arg.id, t.clone())
-            }
-            visit::visit_fn(fk, d, a, b, id, (t.clone(), vt));
-        },
-
-        visit_struct_field: |f, (t, vt)| {
-            vfn(f.node.id, t.clone());
-            visit::visit_struct_field(f, (t, vt));
-        },
-
-        .. *visit::default_visitor()
-    })
+    visitor as @Visitor<()>
 }
 
 pub fn visit_ids_for_inlined_item(item: &inlined_item, vfn: @fn(NodeId)) {
-    item.accept((), id_visitor(|id, ()| vfn(id)));
+    item.accept((), id_visitor(|id| vfn(id), true));
 }
 
 pub fn compute_id_range(visit_ids_fn: &fn(@fn(NodeId))) -> id_range {
@@ -570,13 +675,91 @@ pub trait EachViewItem {
     pub fn each_view_item(&self, f: @fn(&ast::view_item) -> bool) -> bool;
 }
 
+struct EachViewItemData {
+    callback: @fn(&ast::view_item) -> bool,
+}
+
+impl SimpleVisitor for EachViewItemData {
+    fn visit_mod(@mut self, _: &_mod, _: span, _: NodeId) {
+        // XXX: Default method.
+    }
+    fn visit_view_item(@mut self, view_item: &view_item) {
+        let _ = (self.callback)(view_item);
+    }
+    fn visit_foreign_item(@mut self, _: @foreign_item) {
+        // XXX: Default method.
+    }
+    fn visit_item(@mut self, _: @item) {
+        // XXX: Default method.
+    }
+    fn visit_local(@mut self, _: @Local) {
+        // XXX: Default method.
+    }
+    fn visit_block(@mut self, _: &Block) {
+        // XXX: Default method.
+    }
+    fn visit_stmt(@mut self, _: @stmt) {
+        // XXX: Default method.
+    }
+    fn visit_arm(@mut self, _: &arm) {
+        // XXX: Default method.
+    }
+    fn visit_pat(@mut self, _: @pat) {
+        // XXX: Default method.
+    }
+    fn visit_decl(@mut self, _: @decl) {
+        // XXX: Default method.
+    }
+    fn visit_expr(@mut self, _: @expr) {
+        // XXX: Default method.
+    }
+    fn visit_expr_post(@mut self, _: @expr) {
+        // XXX: Default method.
+    }
+    fn visit_ty(@mut self, _: &Ty) {
+        // XXX: Default method.
+    }
+    fn visit_generics(@mut self, _: &Generics) {
+        // XXX: Default method.
+    }
+    fn visit_fn(@mut self,
+                _: &visit::fn_kind,
+                _: &fn_decl,
+                _: &Block,
+                _: span,
+                _: NodeId) {
+        // XXX: Default method.
+    }
+    fn visit_ty_method(@mut self, _: &TypeMethod) {
+        // XXX: Default method.
+    }
+    fn visit_trait_method(@mut self, _: &trait_method) {
+        // XXX: Default method.
+    }
+    fn visit_struct_def(@mut self,
+                        _: @struct_def,
+                        _: ident,
+                        _: &Generics,
+                        _: NodeId) {
+        // XXX: Default method.
+    }
+    fn visit_struct_field(@mut self, _: @struct_field) {
+        // XXX: Default method.
+    }
+    fn visit_struct_method(@mut self, _: @method) {
+        // XXX: Default method.
+    }
+}
+
 impl EachViewItem for ast::Crate {
     fn each_view_item(&self, f: @fn(&ast::view_item) -> bool) -> bool {
-        let broke = @mut false;
-        let vtor: visit::vt<()> = visit::mk_simple_visitor(@visit::SimpleVisitor {
-            visit_view_item: |vi| { *broke = f(vi); }, ..*visit::default_simple_visitor()
-        });
-        visit::visit_crate(self, ((), vtor));
+        let data = @mut EachViewItemData {
+            callback: f,
+        };
+        let visitor = @mut SimpleVisitorVisitor {
+            simple_visitor: data as @SimpleVisitor,
+        };
+        visit::visit_crate(visitor as @Visitor<()>, self, ());
         true
     }
 }

@@ -29,7 +29,7 @@ use syntax::ast;
 use syntax::ast_util;
 use syntax::codemap::span;
 use syntax::print::pprust::expr_to_str;
-use syntax::visit;
+use syntax::oldvisit;
 
 // vtable resolution looks for places where trait bounds are
 // substituted in and figures out which vtable is used. There is some
@@ -721,9 +721,9 @@ pub fn early_resolve_expr(ex: @ast::expr,
 
 fn resolve_expr(ex: @ast::expr,
                 (fcx, v): (@mut FnCtxt,
-                           visit::vt<@mut FnCtxt>)) {
+                           oldvisit::vt<@mut FnCtxt>)) {
     early_resolve_expr(ex, fcx, false);
-    visit::visit_expr(ex, (fcx, v));
+    oldvisit::visit_expr(ex, (fcx, v));
 }
 
 pub fn resolve_impl(ccx: @mut CrateCtxt, impl_item: @ast::item) {
@@ -773,9 +773,9 @@ pub fn resolve_impl(ccx: @mut CrateCtxt, impl_item: @ast::item) {
 // Detect points where a trait-bounded type parameter is
 // instantiated, resolve the impls for the parameters.
 pub fn resolve_in_block(fcx: @mut FnCtxt, bl: &ast::Block) {
-    visit::visit_block(bl, (fcx, visit::mk_vt(@visit::Visitor {
+    oldvisit::visit_block(bl, (fcx, oldvisit::mk_vt(@oldvisit::Visitor {
         visit_expr: resolve_expr,
         visit_item: |_,_| {},
-        .. *visit::default_visitor()
+        .. *oldvisit::default_visitor()
     })));
 }

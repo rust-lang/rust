@@ -34,7 +34,7 @@ use syntax::ast_util::{variant_visibility_to_privacy, visibility_to_privacy};
 use syntax::attr;
 use syntax::codemap::span;
 use syntax::parse::token;
-use syntax::visit;
+use syntax::oldvisit;
 
 pub fn check_crate<'mm>(tcx: ty::ctxt,
                    method_map: &'mm method_map,
@@ -334,11 +334,14 @@ pub fn check_crate<'mm>(tcx: ty::ctxt,
         }
     };
 
-    let visitor = visit::mk_vt(@visit::Visitor {
+    let visitor = oldvisit::mk_vt(@oldvisit::Visitor {
         visit_mod: |the_module, span, node_id, (method_map, visitor)| {
             let n_added = add_privileged_items(the_module.items);
 
-            visit::visit_mod(the_module, span, node_id, (method_map, visitor));
+            oldvisit::visit_mod(the_module,
+                                span,
+                                node_id,
+                                (method_map, visitor));
 
             do n_added.times {
                 ignore(privileged_items.pop());
@@ -348,7 +351,7 @@ pub fn check_crate<'mm>(tcx: ty::ctxt,
             // Do not check privacy inside items with the resolve_unexported
             // attribute. This is used for the test runner.
             if !attr::contains_name(item.attrs, "!resolve_unexported") {
-                visit::visit_item(item, (method_map, visitor));
+                oldvisit::visit_item(item, (method_map, visitor));
             }
         },
         visit_block: |block, (method_map, visitor)| {
@@ -368,13 +371,15 @@ pub fn check_crate<'mm>(tcx: ty::ctxt,
                 }
             }
 
-            visit::visit_block(block, (method_map, visitor));
+            oldvisit::visit_block(block, (method_map, visitor));
 
             do n_added.times {
                 ignore(privileged_items.pop());
             }
         },
-        visit_expr: |expr, (method_map, visitor): (&'mm method_map, visit::vt<&'mm method_map>)| {
+        visit_expr: |expr,
+                     (method_map, visitor):
+                        (&'mm method_map, oldvisit::vt<&'mm method_map>)| {
             match expr.node {
                 expr_field(base, ident, _) => {
                     // Method calls are now a special syntactic form,
@@ -480,7 +485,7 @@ pub fn check_crate<'mm>(tcx: ty::ctxt,
                 _ => {}
             }
 
-            visit::visit_expr(expr, (method_map, visitor));
+            oldvisit::visit_expr(expr, (method_map, visitor));
         },
         visit_pat: |pattern, (method_map, visitor)| {
             match pattern.node {
@@ -528,9 +533,9 @@ pub fn check_crate<'mm>(tcx: ty::ctxt,
                 _ => {}
             }
 
-            visit::visit_pat(pattern, (method_map, visitor));
+            oldvisit::visit_pat(pattern, (method_map, visitor));
         },
-        .. *visit::default_visitor()
+        .. *oldvisit::default_visitor()
     });
-    visit::visit_crate(crate, (method_map, visitor));
+    oldvisit::visit_crate(crate, (method_map, visitor));
 }
