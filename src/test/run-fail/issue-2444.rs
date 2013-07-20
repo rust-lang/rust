@@ -11,9 +11,9 @@
 // error-pattern:explicit failure
 
 extern mod extra;
-use extra::arc;
+use extra::sync::Arc;
 
-enum e<T> { e(arc::ARC<T>) }
+enum e<T> { e(Arc<T>) }
 
 fn foo() -> e<int> {fail!();}
 

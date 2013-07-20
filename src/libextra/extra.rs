@@ -58,8 +58,9 @@ pub mod rc;
 
 // Concurrency
 
+#[path = "sync/mod.rs"]
 pub mod sync;
-pub mod arc;
+
 pub mod comm;
 pub mod future;
 pub mod task_pool;

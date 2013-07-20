@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -10,11 +10,11 @@
 
 // xfail-fast
 extern mod extra;
-use extra::arc;
-fn dispose(_x: arc::ARC<bool>) { unsafe { } }
+use extra::sync::arc::Arc;
+fn dispose(_x: Arc<bool>) { unsafe { } }
 
 pub fn main() {
-    let p = arc::ARC(true);
+    let p = Arc::new(true);
     let x = Some(p);
     match x {
         Some(z) => { dispose(z); },
