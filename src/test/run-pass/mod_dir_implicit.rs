@@ -8,8 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-mod not_a_real_file; //~ ERROR file not found for module `not_a_real_file`
+// xfail-pretty
+// xfail-fast
 
-fn main() {
-    assert_eq!(mod_file_aux::bar(), 10);
+mod mod_dir_implicit_aux;
+
+pub fn main() {
+    assert_eq!(mod_dir_implicit_aux::foo(), 10);
 }
