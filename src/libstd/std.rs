@@ -206,16 +206,6 @@ pub mod rt;
 // 'std' so that macro-expanded references to std::error and such
 // can be resolved within libstd.
 #[doc(hidden)]
-mod core {
-    pub use clone;
-    pub use cmp;
-    pub use condition;
-    pub use option;
-    pub use kinds;
-    pub use sys;
-    pub use pipes;
-}
-#[doc(hidden)]
 mod std {
     pub use clone;
     pub use cmp;
