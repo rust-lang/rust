@@ -11,7 +11,7 @@
 
 use syntax::ast;
 use syntax::codemap::{span};
-use syntax::visit;
+use syntax::oldvisit;
 
 use std::hashmap::HashSet;
 use extra;
@@ -65,20 +65,20 @@ pub fn loop_query(b: &ast::Block, p: @fn(&ast::expr_) -> bool) -> bool {
     let rs = @mut false;
     let visit_expr: @fn(@ast::expr,
                         (@mut bool,
-                         visit::vt<@mut bool>)) = |e, (flag, v)| {
+                         oldvisit::vt<@mut bool>)) = |e, (flag, v)| {
         *flag |= p(&e.node);
         match e.node {
           // Skip inner loops, since a break in the inner loop isn't a
           // break inside the outer loop
           ast::expr_loop(*) | ast::expr_while(*)
           | ast::expr_loop_body(*) => {}
-          _ => visit::visit_expr(e, (flag, v))
+          _ => oldvisit::visit_expr(e, (flag, v))
         }
     };
-    let v = visit::mk_vt(@visit::Visitor {
+    let v = oldvisit::mk_vt(@oldvisit::Visitor {
         visit_expr: visit_expr,
-        .. *visit::default_visitor()});
-    visit::visit_block(b, (rs, v));
+        .. *oldvisit::default_visitor()});
+    oldvisit::visit_block(b, (rs, v));
     return *rs;
 }
 
@@ -88,14 +88,14 @@ pub fn block_query(b: &ast::Block, p: @fn(@ast::expr) -> bool) -> bool {
     let rs = @mut false;
     let visit_expr: @fn(@ast::expr,
                         (@mut bool,
-                         visit::vt<@mut bool>)) = |e, (flag, v)| {
+                         oldvisit::vt<@mut bool>)) = |e, (flag, v)| {
         *flag |= p(e);
-        visit::visit_expr(e, (flag, v))
+        oldvisit::visit_expr(e, (flag, v))
     };
-    let v = visit::mk_vt(@visit::Visitor{
+    let v = oldvisit::mk_vt(@oldvisit::Visitor{
         visit_expr: visit_expr,
-        .. *visit::default_visitor()});
-    visit::visit_block(b, (rs, v));
+        .. *oldvisit::default_visitor()});
+    oldvisit::visit_block(b, (rs, v));
     return *rs;
 }
 
