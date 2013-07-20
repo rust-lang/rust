@@ -445,6 +445,32 @@ mod tests {
     }
 
     #[test]
+    fn arclike_newN() {
+        // Tests that the many-refcounts-at-once constructors don't leak.
+        let _ = UnsafeAtomicRcBox::new2(~~"hello");
+        let x = UnsafeAtomicRcBox::newN(~~"hello", 0);
+        assert_eq!(x.len(), 0)
+        let x = UnsafeAtomicRcBox::newN(~~"hello", 1);
+        assert_eq!(x.len(), 1)
+        let x = UnsafeAtomicRcBox::newN(~~"hello", 10);
+        assert_eq!(x.len(), 10)
+    }
+
+    #[test]
+    fn arclike_cloneN() {
+        // Tests that the many-refcounts-at-once special-clone doesn't leak.
+        let x = UnsafeAtomicRcBox::new(~~"hello");
+        let x = x.cloneN(0);
+        assert_eq!(x.len(), 0);
+        let x = UnsafeAtomicRcBox::new(~~"hello");
+        let x = x.cloneN(1);
+        assert_eq!(x.len(), 1);
+        let x = UnsafeAtomicRcBox::new(~~"hello");
+        let x = x.cloneN(10);
+        assert_eq!(x.len(), 10);
+    }
+
+    #[test]
     fn arclike_unwrap_basic() {
         unsafe {
             let x = UnsafeAtomicRcBox::new(~~"hello");
