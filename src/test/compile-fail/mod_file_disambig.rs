@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:error opening
+mod mod_file_disambig_aux; //~ ERROR file for module `mod_file_disambig_aux` found at both
 
-mod doesnotexist;
+fn main() {
+    assert_eq!(mod_file_aux::bar(), 10);
+}

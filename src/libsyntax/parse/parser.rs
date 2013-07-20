@@ -3996,37 +3996,50 @@ impl Parser {
         let prefix = prefix.dir_path();
         let mod_path_stack = &*self.mod_path_stack;
         let mod_path = Path(".").push_many(*mod_path_stack);
+        let dir_path = prefix.push_many(mod_path.components);
         let file_path = match ::attr::first_attr_value_str_by_name(
                 outer_attrs, "path") {
             Some(d) => {
                 let path = Path(d);
                 if !path.is_absolute {
-                    mod_path.push(d)
+                    dir_path.push(d)
                 } else {
                     path
                 }
             }
-            None => mod_path.push(token::interner_get(id.name) + ".rs") // default
+            None => {
+                let mod_name = token::interner_get(id.name).to_owned();
+                let default_path_str = mod_name + ".rs";
+                let secondary_path_str = mod_name + "/mod.rs";
+                let default_path = dir_path.push(default_path_str);
+                let secondary_path = dir_path.push(secondary_path_str);
+                let default_exists = default_path.exists();
+                let secondary_exists = secondary_path.exists();
+                match (default_exists, secondary_exists) {
+                    (true, false) => default_path,
+                    (false, true) => secondary_path,
+                    (false, false) => {
+                        self.span_fatal(id_sp, fmt!("file not found for module `%s`", mod_name));
+                    }
+                    (true, true) => {
+                        self.span_fatal(id_sp,
+                                        fmt!("file for module `%s` found at both %s and %s",
+                                             mod_name, default_path_str, secondary_path_str));
+                    }
+                }
+            }
         };
 
-        self.eval_src_mod_from_path(prefix,
-                                    file_path,
+        self.eval_src_mod_from_path(file_path,
                                     outer_attrs.to_owned(),
                                     id_sp)
     }
 
     fn eval_src_mod_from_path(&self,
-                              prefix: Path,
                               path: Path,
                               outer_attrs: ~[ast::Attribute],
                               id_sp: span) -> (ast::item_, ~[ast::Attribute]) {
-
-        let full_path = if path.is_absolute {
-            path
-        } else {
-            prefix.push_many(path.components)
-        };
-        let full_path = full_path.normalize();
+        let full_path = path.normalize();
 
         let maybe_i = do self.sess.included_mod_stack.iter().position |p| { *p == full_path };
         match maybe_i {
