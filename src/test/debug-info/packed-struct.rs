@@ -34,14 +34,6 @@
 // debugger:print sizeof(packedInPacked)
 // check:$6 = 40
 
-// debugger:print sizeof(packedInUnpacked)
-// check:$7 = 48
-
-// debugger:print sizeof(unpackedInPacked)
-// check:$8 = 58
-
-
-
 #[packed]
 struct Packed {
     x: i16,
@@ -57,7 +49,7 @@ struct PackedInPacked {
     d: Packed
 }
 
-// layout: aaaa bbbb bbbb bbbb bb.. .... cccc cccc dddd dddd dddd dd..
+// layout (64 bit): aaaa bbbb bbbb bbbb bb.. .... cccc cccc dddd dddd dddd dd..
 struct PackedInUnpacked {
     a: i32,
     b: Packed,
@@ -65,7 +57,7 @@ struct PackedInUnpacked {
     d: Packed
 }
 
-// layout: xx.. yyyy zz.. .... wwww wwww
+// layout (64 bit): xx.. yyyy zz.. .... wwww wwww
 struct Unpacked {
     x: i16,
     y: i32,
@@ -73,7 +65,7 @@ struct Unpacked {
     w: i64
 }
 
-// layout: aabb bbbb bbbb bbbb bbbb bbbb bbcc cccc cccc cccc cccc cccc ccdd dddd dd
+// layout (64 bit): aabb bbbb bbbb bbbb bbbb bbbb bbcc cccc cccc cccc cccc cccc ccdd dddd dd
 #[packed]
 struct UnpackedInPacked {
     a: i16,
