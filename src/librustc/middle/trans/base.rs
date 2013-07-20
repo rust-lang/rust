@@ -670,7 +670,7 @@ pub fn iter_structural_ty(cx: block, av: ValueRef, t: ty::t,
     let _icx = push_ctxt("iter_structural_ty");
 
     fn iter_variant(cx: block, repr: &adt::Repr, av: ValueRef,
-                    variant: ty::VariantInfo,
+                    variant: @ty::VariantInfo,
                     tps: &[ty::t], f: val_and_ty_fn) -> block {
         let _icx = push_ctxt("iter_variant");
         let tcx = cx.tcx();
@@ -1141,7 +1141,7 @@ pub fn trans_stmt(cx: block, s: &ast::stmt) -> block {
                     bcx = init_local(bcx, *local);
                     if cx.sess().opts.extra_debuginfo
                         && fcx_has_nonzero_span(bcx.fcx) {
-                        debuginfo::create_local_var(bcx, *local);
+                        debuginfo::create_local_var_metadata(bcx, *local);
                     }
                 }
                 ast::decl_item(i) => trans_item(cx.fcx.ccx, i)
@@ -1773,7 +1773,7 @@ pub fn copy_args_to_allocas(fcx: fn_ctxt,
         bcx = _match::store_arg(bcx, args[arg_n].pat, llarg);
 
         if fcx.ccx.sess.opts.extra_debuginfo && fcx_has_nonzero_span(fcx) {
-            debuginfo::create_arg(bcx, &args[arg_n], args[arg_n].ty.span);
+            debuginfo::create_argument_metadata(bcx, &args[arg_n], args[arg_n].ty.span);
         }
     }
 
@@ -1947,7 +1947,7 @@ pub fn trans_fn(ccx: @mut CrateContext,
                   |fcx| {
                       if ccx.sess.opts.extra_debuginfo
                           && fcx_has_nonzero_span(fcx) {
-                          debuginfo::create_function(fcx);
+                          debuginfo::create_function_metadata(fcx);
                       }
                   },
                   |_bcx| { });
@@ -2109,7 +2109,7 @@ pub fn trans_enum_variant_or_tuple_like_struct<A:IdAndTy>(
 }
 
 pub fn trans_enum_def(ccx: @mut CrateContext, enum_definition: &ast::enum_def,
-                      id: ast::node_id, vi: @~[ty::VariantInfo],
+                      id: ast::node_id, vi: @~[@ty::VariantInfo],
                       i: &mut uint) {
     for enum_definition.variants.iter().advance |variant| {
         let disr_val = vi[*i].disr_val;

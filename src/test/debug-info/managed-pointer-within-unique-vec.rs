@@ -8,21 +8,28 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-test
+// xfail-win32 Broken because of LLVM bug: http://llvm.org/bugs/show_bug.cgi?id=16249
 
 // compile-flags:-Z extra-debug-info
 // debugger:break zzz
 // debugger:run
 // debugger:finish
 
-// debugger:print a
-// check:$1 = 9898
+// debugger:print unique->val.elements[0]->val
+// check:$1 = 10
 
-// debugger:print b
-// check:$2 = false
+// debugger:print unique->val.elements[1]->val
+// check:$2 = 11
+
+// debugger:print unique->val.elements[2]->val
+// check:$3 = 12
+
+// debugger:print unique->val.elements[3]->val
+// check:$4 = 13
 
 fn main() {
-    let (a, b): (int, bool) = (9898, false);
+
+    let unique: ~[@i64] = ~[@10, @11, @12, @13];
 
     zzz();
 }
