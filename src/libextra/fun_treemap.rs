@@ -31,10 +31,17 @@ enum TreeNode<K, V> {
 }
 
 /// Create a treemap
-pub fn init<K, V>() -> Treemap<K, V> { @Empty }
+pub fn init<K: 'static, V: 'static>() -> Treemap<K, V> {
+    @Empty
+}
 
 /// Insert a value into the map
-pub fn insert<K:Eq + Ord,V>(m: Treemap<K, V>, k: K, v: V) -> Treemap<K, V> {
+pub fn insert<K:Eq + Ord + 'static,
+              V:'static>(
+              m: Treemap<K, V>,
+              k: K,
+              v: V)
+              -> Treemap<K, V> {
     @match m {
         @Empty => Node(@k, @v, @Empty, @Empty),
         @Node(kk, vv, left, right) => cond!(
@@ -46,7 +53,11 @@ pub fn insert<K:Eq + Ord,V>(m: Treemap<K, V>, k: K, v: V) -> Treemap<K, V> {
 }
 
 /// Find a value based on the key
-pub fn find<K:Eq + Ord,V:Clone>(m: Treemap<K, V>, k: K) -> Option<V> {
+pub fn find<K:Eq + Ord + 'static,
+            V:Clone + 'static>(
+            m: Treemap<K, V>,
+            k: K)
+            -> Option<V> {
     match *m {
         Empty => None,
         Node(kk, v, left, right) => cond!(

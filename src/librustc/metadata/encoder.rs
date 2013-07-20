@@ -1238,8 +1238,9 @@ fn encode_info_for_items(ecx: &EncodeContext,
 
 // Path and definition ID indexing
 
-fn create_index<T:Clone + Hash + IterBytes>(index: ~[entry<T>])
-                                            -> ~[@~[entry<T>]] {
+fn create_index<T:Clone + Hash + IterBytes + 'static>(
+                index: ~[entry<T>])
+                -> ~[@~[entry<T>]] {
     let mut buckets: ~[@mut ~[entry<T>]] = ~[];
     for uint::range(0u, 256u) |_i| { buckets.push(@mut ~[]); };
     for index.iter().advance |elt| {
@@ -1254,9 +1255,10 @@ fn create_index<T:Clone + Hash + IterBytes>(index: ~[entry<T>])
     return buckets_frozen;
 }
 
-fn encode_index<T>(ebml_w: &mut writer::Encoder,
-                   buckets: ~[@~[entry<T>]],
-                   write_fn: &fn(@io::Writer, &T)) {
+fn encode_index<T:'static>(
+                ebml_w: &mut writer::Encoder,
+                buckets: ~[@~[entry<T>]],
+                write_fn: &fn(@io::Writer, &T)) {
     let writer = ebml_w.writer;
     ebml_w.start_tag(tag_index);
     let mut bucket_locs: ~[uint] = ~[];
