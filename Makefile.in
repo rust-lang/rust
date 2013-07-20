@@ -249,7 +249,7 @@ endef
 
 # Same interface as above, but deletes rather than just listing the files.
 define REMOVE_ALL_OLD_GLOB_MATCHES_EXCEPT
-  $(Q)MATCHES="$(filter-out %$(3),$(wildcard $(1)/$(2)))"; if [ -n "$$MATCHES" ] ; then echo "Warning: removing previous" \'$(2)\' "libraries:" $$MATCHES; rm -v $$MATCHES ; fi
+  $(Q)MATCHES="$(filter-out %$(3),$(wildcard $(1)/$(2)))"; if [ -n "$$MATCHES" ] ; then echo "Warning: removing previous" \'$(2)\' "libraries:" $$MATCHES; rm $$MATCHES ; fi
 endef
 
 # We use a different strategy for LIST_ALL_OLD_GLOB_MATCHES_EXCEPT

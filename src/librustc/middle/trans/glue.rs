@@ -93,26 +93,6 @@ pub fn drop_ty_immediate(bcx: block, v: ValueRef, t: ty::t) -> block {
     }
 }
 
-pub fn take_ty_immediate(bcx: block, v: ValueRef, t: ty::t) -> Result {
-    let _icx = push_ctxt("take_ty_immediate");
-    match ty::get(t).sty {
-      ty::ty_box(_) | ty::ty_opaque_box |
-      ty::ty_evec(_, ty::vstore_box) |
-      ty::ty_estr(ty::vstore_box) => {
-        incr_refcnt_of_boxed(bcx, v);
-        rslt(bcx, v)
-      }
-      ty::ty_uniq(_) => {
-        uniq::duplicate(bcx, v, t)
-      }
-      ty::ty_evec(_, ty::vstore_uniq) |
-      ty::ty_estr(ty::vstore_uniq) => {
-        tvec::duplicate_uniq(bcx, v, t)
-      }
-      _ => rslt(bcx, v)
-    }
-}
-
 pub fn free_ty(cx: block, v: ValueRef, t: ty::t) -> block {
     // NB: v is an *alias* of type t here, not a direct value.
     let _icx = push_ctxt("free_ty");
@@ -589,23 +569,15 @@ pub fn make_take_glue(bcx: block, v: ValueRef, t: ty::t) -> block {
       ty::ty_evec(_, ty::vstore_box) | ty::ty_estr(ty::vstore_box) => {
         incr_refcnt_of_boxed(bcx, Load(bcx, v)); bcx
       }
-      ty::ty_uniq(_) => {
-        let Result {bcx, val} = uniq::duplicate(bcx, Load(bcx, v), t);
-        Store(bcx, val, v);
-        bcx
-      }
-      ty::ty_evec(_, ty::vstore_uniq) | ty::ty_estr(ty::vstore_uniq) => {
-        let Result {bcx, val} = tvec::duplicate_uniq(bcx, Load(bcx, v), t);
-        Store(bcx, val, v);
-        bcx
-      }
       ty::ty_evec(_, ty::vstore_slice(_))
       | ty::ty_estr(ty::vstore_slice(_)) => {
         bcx
       }
-      ty::ty_closure(_) => {
+      ty::ty_closure(ty::ClosureTy { sigil: ast::BorrowedSigil, _ }) |
+      ty::ty_closure(ty::ClosureTy { sigil: ast::ManagedSigil, _ }) => {
         closure::make_closure_glue(bcx, v, t, take_ty)
       }
+      ty::ty_closure(ty::ClosureTy { sigil: ast::OwnedSigil, _ }) => bcx,
       ty::ty_trait(_, _, ty::BoxTraitStore, _, _) => {
         let llbox = Load(bcx, GEPi(bcx, v, [0u, abi::trt_field_box]));
         incr_refcnt_of_boxed(bcx, llbox);

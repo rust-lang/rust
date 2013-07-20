@@ -382,19 +382,19 @@ mod pipesy {
 
     #[allow(non_camel_case_types)]
     pub mod oneshot {
-        priv use core::kinds::Send;
+        priv use std::kinds::Send;
         use ptr::to_mut_unsafe_ptr;
 
         pub fn init<T: Send>() -> (server::Oneshot<T>, client::Oneshot<T>) {
-            pub use core::pipes::HasBuffer;
+            pub use std::pipes::HasBuffer;
 
-            let buffer = ~::core::pipes::Buffer {
-                header: ::core::pipes::BufferHeader(),
+            let buffer = ~::std::pipes::Buffer {
+                header: ::std::pipes::BufferHeader(),
                 data: __Buffer {
-                    Oneshot: ::core::pipes::mk_packet::<Oneshot<T>>()
+                    Oneshot: ::std::pipes::mk_packet::<Oneshot<T>>()
                 },
             };
-            do ::core::pipes::entangle_buffer(buffer) |buffer, data| {
+            do ::std::pipes::entangle_buffer(buffer) |buffer, data| {
                 data.Oneshot.set_buffer(buffer);
                 to_mut_unsafe_ptr(&mut data.Oneshot)
             }
@@ -403,23 +403,23 @@ mod pipesy {
         pub enum Oneshot<T> { pub send(T), }
         #[allow(non_camel_case_types)]
         pub struct __Buffer<T> {
-            Oneshot: ::core::pipes::Packet<Oneshot<T>>,
+            Oneshot: ::std::pipes::Packet<Oneshot<T>>,
         }
 
         #[allow(non_camel_case_types)]
         pub mod client {
 
-            priv use core::kinds::Send;
+            priv use std::kinds::Send;
 
             #[allow(non_camel_case_types)]
             pub fn try_send<T: Send>(pipe: Oneshot<T>, x_0: T) ->
-                ::core::option::Option<()> {
+                ::std::option::Option<()> {
                 {
                     use super::send;
                     let message = send(x_0);
-                    if ::core::pipes::send(pipe, message) {
-                        ::core::pipes::rt::make_some(())
-                    } else { ::core::pipes::rt::make_none() }
+                    if ::std::pipes::send(pipe, message) {
+                        ::std::pipes::rt::make_some(())
+                    } else { ::std::pipes::rt::make_none() }
                 }
             }
 
@@ -428,13 +428,13 @@ mod pipesy {
                 {
                     use super::send;
                     let message = send(x_0);
-                    ::core::pipes::send(pipe, message);
+                    ::std::pipes::send(pipe, message);
                 }
             }
 
             #[allow(non_camel_case_types)]
             pub type Oneshot<T> =
-                ::core::pipes::SendPacketBuffered<super::Oneshot<T>,
+                ::std::pipes::SendPacketBuffered<super::Oneshot<T>,
             super::__Buffer<T>>;
         }
 
@@ -442,7 +442,7 @@ mod pipesy {
         pub mod server {
             #[allow(non_camel_case_types)]
             pub type Oneshot<T> =
-                ::core::pipes::RecvPacketBuffered<super::Oneshot<T>,
+                ::std::pipes::RecvPacketBuffered<super::Oneshot<T>,
             super::__Buffer<T>>;
         }
     }
@@ -557,11 +557,11 @@ mod pipesy {
 
     #[allow(non_camel_case_types)]
     pub mod streamp {
-        priv use core::kinds::Send;
+        priv use std::kinds::Send;
 
         pub fn init<T: Send>() -> (server::Open<T>, client::Open<T>) {
-            pub use core::pipes::HasBuffer;
-            ::core::pipes::entangle()
+            pub use std::pipes::HasBuffer;
+            ::std::pipes::entangle()
         }
 
         #[allow(non_camel_case_types)]
@@ -569,18 +569,18 @@ mod pipesy {
 
         #[allow(non_camel_case_types)]
         pub mod client {
-            priv use core::kinds::Send;
+            priv use std::kinds::Send;
 
             #[allow(non_camel_case_types)]
             pub fn try_data<T: Send>(pipe: Open<T>, x_0: T) ->
-                ::core::option::Option<Open<T>> {
+                ::std::option::Option<Open<T>> {
                 {
                     use super::data;
-                    let (s, c) = ::core::pipes::entangle();
+                    let (s, c) = ::std::pipes::entangle();
                     let message = data(x_0, s);
-                    if ::core::pipes::send(pipe, message) {
-                        ::core::pipes::rt::make_some(c)
-                    } else { ::core::pipes::rt::make_none() }
+                    if ::std::pipes::send(pipe, message) {
+                        ::std::pipes::rt::make_some(c)
+                    } else { ::std::pipes::rt::make_none() }
                 }
             }
 
@@ -588,21 +588,21 @@ mod pipesy {
             pub fn data<T: Send>(pipe: Open<T>, x_0: T) -> Open<T> {
                 {
                     use super::data;
-                    let (s, c) = ::core::pipes::entangle();
+                    let (s, c) = ::std::pipes::entangle();
                     let message = data(x_0, s);
-                    ::core::pipes::send(pipe, message);
+                    ::std::pipes::send(pipe, message);
                     c
                 }
             }
 
             #[allow(non_camel_case_types)]
-            pub type Open<T> = ::core::pipes::SendPacket<super::Open<T>>;
+            pub type Open<T> = ::std::pipes::SendPacket<super::Open<T>>;
         }
 
         #[allow(non_camel_case_types)]
         pub mod server {
             #[allow(non_camel_case_types)]
-            pub type Open<T> = ::core::pipes::RecvPacket<super::Open<T>>;
+            pub type Open<T> = ::std::pipes::RecvPacket<super::Open<T>>;
         }
     }
 
