@@ -411,7 +411,7 @@ pub fn check_integrity<T>(trie: &TrieNode<T>) {
 #[cfg(test)]
 mod test_map {
     use super::*;
-    use core::option::{Some, None};
+    use option::{Some, None};
     use uint;
 
     #[test]
