@@ -10,9 +10,6 @@
 
 // xfail-win32 Broken because of LLVM bug: http://llvm.org/bugs/show_bug.cgi?id=16249
 
-// GDB doesn't know about UTF-32 character encoding and will print a rust char as only its numerical
-// value.
-
 // compile-flags:-Z extra-debug-info
 // debugger:break zzz
 // debugger:run
@@ -57,20 +54,20 @@ struct SomeStruct {
 
 fn main() {
     let stack_val: SomeStruct = SomeStruct { x: 10, y: 23.5 };
-    let stack_val_ref : &SomeStruct = &stack_val;
-    let stack_val_interior_ref_1 : &int = &stack_val.x;
-    let stack_val_interior_ref_2 : &f64 = &stack_val.y;
-    let ref_to_unnamed : &SomeStruct = &SomeStruct { x: 11, y: 24.5 };
+    let stack_val_ref: &SomeStruct = &stack_val;
+    let stack_val_interior_ref_1: &int = &stack_val.x;
+    let stack_val_interior_ref_2: &f64 = &stack_val.y;
+    let ref_to_unnamed: &SomeStruct = &SomeStruct { x: 11, y: 24.5 };
 
     let managed_val = @SomeStruct { x: 12, y: 25.5 };
-    let managed_val_ref : &SomeStruct = managed_val;
-    let managed_val_interior_ref_1 : &int = &managed_val.x;
-    let managed_val_interior_ref_2 : &f64 = &managed_val.y;
+    let managed_val_ref: &SomeStruct = managed_val;
+    let managed_val_interior_ref_1: &int = &managed_val.x;
+    let managed_val_interior_ref_2: &f64 = &managed_val.y;
 
     let unique_val = ~SomeStruct { x: 13, y: 26.5 };
-    let unique_val_ref : &SomeStruct = unique_val;
-    let unique_val_interior_ref_1 : &int = &unique_val.x;
-    let unique_val_interior_ref_2 : &f64 = &unique_val.y;
+    let unique_val_ref: &SomeStruct = unique_val;
+    let unique_val_interior_ref_1: &int = &unique_val.x;
+    let unique_val_interior_ref_2: &f64 = &unique_val.y;
 
     zzz();
 }

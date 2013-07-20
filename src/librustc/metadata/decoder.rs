@@ -737,11 +737,11 @@ pub fn maybe_get_item_ast(cdata: cmd, tcx: ty::ctxt,
 }
 
 pub fn get_enum_variants(intr: @ident_interner, cdata: cmd, id: ast::node_id,
-                     tcx: ty::ctxt) -> ~[ty::VariantInfo] {
+                     tcx: ty::ctxt) -> ~[@ty::VariantInfo] {
     let data = cdata.data;
     let items = reader::get_doc(reader::Doc(data), tag_items);
     let item = find_item(id, items);
-    let mut infos: ~[ty::VariantInfo] = ~[];
+    let mut infos: ~[@ty::VariantInfo] = ~[];
     let variant_ids = enum_variant_ids(item, cdata);
     let mut disr_val = 0;
     for variant_ids.iter().advance |did| {
@@ -757,11 +757,16 @@ pub fn get_enum_variants(intr: @ident_interner, cdata: cmd, id: ast::node_id,
           Some(val) => { disr_val = val; }
           _         => { /* empty */ }
         }
-        infos.push(@ty::VariantInfo_{args: arg_tys,
-                       ctor_ty: ctor_ty, name: name,
-                  // I'm not even sure if we encode visibility
-                  // for variants -- TEST -- tjc
-                  id: *did, disr_val: disr_val, vis: ast::inherited});
+        infos.push(@ty::VariantInfo{
+            args: arg_tys,
+            arg_names: None,
+            ctor_ty: ctor_ty,
+            name: name,
+            // I'm not even sure if we encode visibility
+            // for variants -- TEST -- tjc
+            id: *did,
+            disr_val: disr_val,
+            vis: ast::inherited});
         disr_val += 1;
     }
     return infos;

@@ -8,21 +8,27 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-test
+// xfail-win32 Broken because of LLVM bug: http://llvm.org/bugs/show_bug.cgi?id=16249
 
 // compile-flags:-Z extra-debug-info
 // debugger:break zzz
 // debugger:run
 // debugger:finish
 
-// debugger:print a
-// check:$1 = 9898
+// debugger:print managed->val.fill
+// check:$1 = 24
+// debugger:print *((uint64_t[3]*)(managed->val.elements))
+// check:$2 = {7, 8, 9}
 
-// debugger:print b
-// check:$2 = false
+// debugger:print unique->fill
+// check:$3 = 32
+// debugger:print *((uint64_t[4]*)(unique->elements))
+// check:$4 = {10, 11, 12, 13}
 
 fn main() {
-    let (a, b): (int, bool) = (9898, false);
+
+    let managed: @[i64] = @[7, 8, 9];
+    let unique: ~[i64] = ~[10, 11, 12, 13];
 
     zzz();
 }

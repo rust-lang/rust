@@ -10,9 +10,6 @@
 
 // xfail-win32 Broken because of LLVM bug: http://llvm.org/bugs/show_bug.cgi?id=16249
 
-// GDB doesn't know about UTF-32 character encoding and will print a rust char as only its numerical
-// value.
-
 // compile-flags:-Z extra-debug-info
 // debugger:break zzz
 // debugger:run
@@ -32,14 +29,14 @@
 
 fn main() {
     let stack_val: (i16, f32) = (-14, -19f32);
-    let stack_val_ref : &(i16, f32) = &stack_val;
-    let ref_to_unnamed : &(i16, f32) = &(-15, -20f32);
+    let stack_val_ref: &(i16, f32) = &stack_val;
+    let ref_to_unnamed: &(i16, f32) = &(-15, -20f32);
 
-    let managed_val : @(i16, f32) = @(-16, -21f32);
-    let managed_val_ref : &(i16, f32) = managed_val;
+    let managed_val: @(i16, f32) = @(-16, -21f32);
+    let managed_val_ref: &(i16, f32) = managed_val;
 
     let unique_val: ~(i16, f32) = ~(-17, -22f32);
-    let unique_val_ref : &(i16, f32) = unique_val;
+    let unique_val_ref: &(i16, f32) = unique_val;
 
     zzz();
 }

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-test
+// xfail-win32 Broken because of LLVM bug: http://llvm.org/bugs/show_bug.cgi?id=16249
 
 // compile-flags:-Z extra-debug-info
 // debugger:break zzz
@@ -23,18 +23,21 @@
 // debugger:print withDestructor
 // check:$3 = {a = {x = 10, y = 20}, guard = -1}
 
+// debugger:print nested
+// check:$4 = {a = {a = {x = 7890, y = 9870}}}
+
 struct NoDestructor {
-    x : i32,
-    y : i64
+    x: i32,
+    y: i64
 }
 
 struct WithDestructor {
-    x : i32,
-    y : i64
+    x: i32,
+    y: i64
 }
 
 impl Drop for WithDestructor {
-    fn finalize(&self) {}
+    fn drop(&self) {}
 }
 
 struct NoDestructorGuarded {
@@ -45,6 +48,18 @@ struct NoDestructorGuarded {
 struct WithDestructorGuarded {
     a: WithDestructor,
     guard: i64
+}
+
+struct NestedInner {
+    a: WithDestructor
+}
+
+impl Drop for NestedInner {
+    fn drop(&self) {}
+}
+
+struct NestedOuter {
+    a: NestedInner
 }
 
 
@@ -65,6 +80,8 @@ fn main() {
     // then the debugger will have an invalid offset for the field 'guard' and thus should not be
     // able to read its value correctly (dots are padding bytes, D is the boolean destructor flag):
     //
+    // 64 bit
+    //
     // NoDestructorGuarded = 0000....00000000FFFFFFFF
     //                       <--------------><------>
     //                         NoDestructor   guard
@@ -77,10 +94,30 @@ fn main() {
     //                         <----------------------><------>  // How it actually is
     //                              WithDestructor      guard
     //
+    // 32 bit
+    //
+    // NoDestructorGuarded = 000000000000FFFFFFFF
+    //                       <----------><------>
+    //                       NoDestructor guard
+    //
+    //
+    // withDestructorGuarded = 000000000000D...FFFFFFFF
+    //                         <----------><------>      // How debug info says it is
+    //                      WithDestructor  guard
+    //
+    //                         <--------------><------>  // How it actually is
+    //                          WithDestructor  guard
+    //
     let withDestructor = WithDestructorGuarded {
         a: WithDestructor { x: 10, y: 20 },
         guard: -1
     };
+
+    // expected layout (64 bit) = xxxx....yyyyyyyyD.......D...
+    //                            <--WithDestructor------>
+    //                            <-------NestedInner-------->
+    //                            <-------NestedOuter-------->
+    let nested = NestedOuter { a: NestedInner { a: WithDestructor { x: 7890, y: 9870 } } };
 
     zzz();
 }

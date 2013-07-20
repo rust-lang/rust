@@ -15,11 +15,31 @@
 // debugger:break zzz
 // debugger:run
 // debugger:finish
-// debugger:print a
-// check:$1 = {1, 2, 3}
+
+// debugger:print *ordinary_unique
+// check:$1 = {-1, -2}
+
+// debugger:print managed_within_unique.val->x
+// check:$2 = -3
+
+// debugger:print managed_within_unique.val->y->val
+// check:$3 = -4
+
+struct ContainsManaged
+{
+	x: int,
+	y: @int
+}
 
 fn main() {
-    let a = [1, 2, 3];
+
+	let ordinary_unique = ~(-1, -2);
+
+
+	// This is a special case: Normally values allocated in the exchange heap are not boxed, unless,
+	// however, if they contain managed pointers.
+	// This test case verifies that both cases are handled correctly.
+    let managed_within_unique = ~ContainsManaged { x: -3, y: @-4 };
 
     zzz();
 }

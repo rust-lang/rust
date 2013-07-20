@@ -8,21 +8,33 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-test
+// xfail-win32 Broken because of LLVM bug: http://llvm.org/bugs/show_bug.cgi?id=16249
 
 // compile-flags:-Z extra-debug-info
 // debugger:break zzz
 // debugger:run
 // debugger:finish
 
-// debugger:print a
-// check:$1 = 9898
+// debugger:print *the_a_ref
+// check:$1 = TheA
 
-// debugger:print b
-// check:$2 = false
+// debugger:print *the_b_ref
+// check:$2 = TheB
+
+// debugger:print *the_c_ref
+// check:$3 = TheC
+
+enum ABC { TheA, TheB, TheC }
 
 fn main() {
-    let (a, b): (int, bool) = (9898, false);
+    let the_a = TheA;
+    let the_a_ref: &ABC = &the_a;
+
+    let the_b = TheB;
+    let the_b_ref: &ABC = &the_b;
+
+    let the_c = TheC;
+    let the_c_ref: &ABC = &the_c;
 
     zzz();
 }

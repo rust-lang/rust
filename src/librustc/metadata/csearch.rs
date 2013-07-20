@@ -90,7 +90,7 @@ pub fn maybe_get_item_ast(tcx: ty::ctxt, def: ast::def_id,
 }
 
 pub fn get_enum_variants(tcx: ty::ctxt, def: ast::def_id)
-                      -> ~[ty::VariantInfo] {
+                      -> ~[@ty::VariantInfo] {
     let cstore = tcx.cstore;
     let cdata = cstore::get_crate_data(cstore, def.crate);
     return decoder::get_enum_variants(cstore.intr, cdata, def.node, tcx)
