@@ -74,6 +74,7 @@ impl<A, T: DoubleEndedIterator<A>> DoubleEndedIteratorUtil<A> for T {
 
 /// An double-ended iterator with the direction inverted
 // FIXME #6967: Dummy A parameter to get around type inference bug
+#[deriving(Clone)]
 pub struct InvertIterator<A, T> {
     priv iter: T
 }
@@ -729,8 +730,59 @@ impl<A: Ord, T: Iterator<A>> OrdIterator<A> for T {
     }
 }
 
+/// A trait for iterators that are clonable.
+// FIXME #6967: Dummy A parameter to get around type inference bug
+pub trait ClonableIterator<A> {
+    /// Repeats an iterator endlessly
+    ///
+    /// # Example
+    ///
+    /// ~~~ {.rust}
+    /// let a = Counter::new(1,1).take_(1);
+    /// let mut cy = a.cycle();
+    /// assert_eq!(cy.next(), Some(1));
+    /// assert_eq!(cy.next(), Some(1));
+    /// ~~~
+    fn cycle(self) -> CycleIterator<A, Self>;
+}
+
+impl<A, T: Clone + Iterator<A>> ClonableIterator<A> for T {
+    #[inline]
+    fn cycle(self) -> CycleIterator<A, T> {
+        CycleIterator{orig: self.clone(), iter: self}
+    }
+}
+
+/// An iterator that repeats endlessly
+#[deriving(Clone)]
+pub struct CycleIterator<A, T> {
+    priv orig: T,
+    priv iter: T,
+}
+
+impl<A, T: Clone + Iterator<A>> Iterator<A> for CycleIterator<A, T> {
+    #[inline]
+    fn next(&mut self) -> Option<A> {
+        match self.iter.next() {
+            None => { self.iter = self.orig.clone(); self.iter.next() }
+            y => y
+        }
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        // the cycle iterator is either empty or infinite
+        match self.orig.size_hint() {
+            sz @ (0, Some(0)) => sz,
+            (0, _) => (0, None),
+            _ => (uint::max_value, None)
+        }
+    }
+}
+
 /// An iterator which strings two iterators together
 // FIXME #6967: Dummy A parameter to get around type inference bug
+#[deriving(Clone)]
 pub struct ChainIterator<A, T, U> {
     priv a: T,
     priv b: U,
@@ -786,6 +838,7 @@ for ChainIterator<A, T, U> {
 
 /// An iterator which iterates two other iterators simultaneously
 // FIXME #6967: Dummy A & B parameters to get around type inference bug
+#[deriving(Clone)]
 pub struct ZipIterator<A, T, B, U> {
     priv a: T,
     priv b: U
@@ -939,6 +992,7 @@ for FilterMapIterator<'self, A, B, T> {
 
 /// An iterator which yields the current count and the element during iteration
 // FIXME #6967: Dummy A parameter to get around type inference bug
+#[deriving(Clone)]
 pub struct EnumerateIterator<A, T> {
     priv iter: T,
     priv count: uint
@@ -1037,6 +1091,7 @@ impl<'self, A, T: Iterator<A>> Iterator<A> for TakeWhileIterator<'self, A, T> {
 
 /// An iterator which skips over `n` elements of `iter`.
 // FIXME #6967: Dummy A parameter to get around type inference bug
+#[deriving(Clone)]
 pub struct SkipIterator<A, T> {
     priv iter: T,
     priv n: uint
@@ -1085,6 +1140,7 @@ impl<A, T: Iterator<A>> Iterator<A> for SkipIterator<A, T> {
 
 /// An iterator which only iterates over the first `n` iterations of `iter`.
 // FIXME #6967: Dummy A parameter to get around type inference bug
+#[deriving(Clone)]
 pub struct TakeIterator<A, T> {
     priv iter: T,
     priv n: uint
@@ -1236,6 +1292,7 @@ impl<'self, A, St> Iterator<A> for UnfoldrIterator<'self, A, St> {
 
 /// An infinite iterator starting at `start` and advancing by `step` with each
 /// iteration
+#[deriving(Clone)]
 pub struct Counter<A> {
     /// The current state the counter is at (next value to be yielded)
     state: A,
@@ -1435,6 +1492,20 @@ mod tests {
             i += 1;
         }
         assert_eq!(i, 10);
+    }
+
+    #[test]
+    fn test_cycle() {
+        let cycle_len = 3;
+        let it = Counter::new(0u,1).take_(cycle_len).cycle();
+        assert_eq!(it.size_hint(), (uint::max_value, None));
+        for it.take_(100).enumerate().advance |(i, x)| {
+            assert_eq!(i % cycle_len, x);
+        }
+
+        let mut it = Counter::new(0u,1).take_(0).cycle();
+        assert_eq!(it.size_hint(), (0, Some(0)));
+        assert_eq!(it.next(), None);
     }
 
     #[test]
