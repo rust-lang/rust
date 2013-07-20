@@ -21,7 +21,7 @@ the `clone` method.
 
 */
 
-use core::kinds::Freeze;
+use std::kinds::Freeze;
 
 /// A common trait for cloning an object.
 pub trait Clone {

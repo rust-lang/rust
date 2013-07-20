@@ -773,6 +773,17 @@ impl<A, T: Iterator<A>, U: Iterator<A>> Iterator<A> for ChainIterator<A, T, U> {
     }
 }
 
+impl<A, T: DoubleEndedIterator<A>, U: DoubleEndedIterator<A>> DoubleEndedIterator<A>
+for ChainIterator<A, T, U> {
+    #[inline]
+    fn next_back(&mut self) -> Option<A> {
+        match self.b.next_back() {
+            Some(x) => Some(x),
+            None => self.a.next_back()
+        }
+    }
+}
+
 /// An iterator which iterates two other iterators simultaneously
 // FIXME #6967: Dummy A & B parameters to get around type inference bug
 pub struct ZipIterator<A, T, B, U> {
@@ -828,6 +839,17 @@ impl<'self, A, B, T: Iterator<A>> Iterator<B> for MapIterator<'self, A, B, T> {
     }
 }
 
+impl<'self, A, B, T: DoubleEndedIterator<A>> DoubleEndedIterator<B>
+for MapIterator<'self, A, B, T> {
+    #[inline]
+    fn next_back(&mut self) -> Option<B> {
+        match self.iter.next_back() {
+            Some(a) => Some((self.f)(a)),
+            _ => None
+        }
+    }
+}
+
 /// An iterator which filters the elements of `iter` with `predicate`
 pub struct FilterIterator<'self, A, T> {
     priv iter: T,
@@ -854,6 +876,24 @@ impl<'self, A, T: Iterator<A>> Iterator<A> for FilterIterator<'self, A, T> {
     }
 }
 
+impl<'self, A, T: DoubleEndedIterator<A>> DoubleEndedIterator<A> for FilterIterator<'self, A, T> {
+    #[inline]
+    fn next_back(&mut self) -> Option<A> {
+        loop {
+            match self.iter.next_back() {
+                None => return None,
+                Some(x) => {
+                    if (self.predicate)(&x) {
+                        return Some(x);
+                    } else {
+                        loop
+                    }
+                }
+            }
+        }
+    }
+}
+
 /// An iterator which uses `f` to both filter and map elements from `iter`
 pub struct FilterMapIterator<'self, A, B, T> {
     priv iter: T,
@@ -876,6 +916,24 @@ impl<'self, A, B, T: Iterator<A>> Iterator<B> for FilterMapIterator<'self, A, B,
     fn size_hint(&self) -> (uint, Option<uint>) {
         let (_, upper) = self.iter.size_hint();
         (0, upper) // can't know a lower bound, due to the predicate
+    }
+}
+
+impl<'self, A, B, T: DoubleEndedIterator<A>> DoubleEndedIterator<B>
+for FilterMapIterator<'self, A, B, T> {
+    #[inline]
+    fn next_back(&mut self) -> Option<B> {
+        loop {
+            match self.iter.next_back() {
+                None => return None,
+                Some(x) => {
+                    match (self.f)(x) {
+                        Some(y) => return Some(y),
+                        None => ()
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -1132,6 +1190,20 @@ impl<'self, A, T: Iterator<A>> Iterator<A> for PeekIterator<'self, A, T> {
     #[inline]
     fn size_hint(&self) -> (uint, Option<uint>) {
         self.iter.size_hint()
+    }
+}
+
+impl<'self, A, T: DoubleEndedIterator<A>> DoubleEndedIterator<A> for PeekIterator<'self, A, T> {
+    #[inline]
+    fn next_back(&mut self) -> Option<A> {
+        let next = self.iter.next_back();
+
+        match next {
+            Some(ref a) => (self.f)(a),
+            None => ()
+        }
+
+        next
     }
 }
 
@@ -1525,5 +1597,54 @@ mod tests {
         it.next();
         it.next();
         assert_eq!(it.invert().transform(|&x| x).collect::<~[int]>(), ~[16, 14, 12, 10, 8, 6]);
+    }
+
+    #[test]
+    fn test_double_ended_map() {
+        let xs = [1, 2, 3, 4, 5, 6];
+        let mut it = xs.iter().transform(|&x| x * -1);
+        assert_eq!(it.next(), Some(-1));
+        assert_eq!(it.next(), Some(-2));
+        assert_eq!(it.next_back(), Some(-6));
+        assert_eq!(it.next_back(), Some(-5));
+        assert_eq!(it.next(), Some(-3));
+        assert_eq!(it.next_back(), Some(-4));
+        assert_eq!(it.next(), None);
+    }
+
+    #[test]
+    fn test_double_ended_filter() {
+        let xs = [1, 2, 3, 4, 5, 6];
+        let mut it = xs.iter().filter(|&x| *x & 1 == 0);
+        assert_eq!(it.next_back().unwrap(), &6);
+        assert_eq!(it.next_back().unwrap(), &4);
+        assert_eq!(it.next().unwrap(), &2);
+        assert_eq!(it.next_back(), None);
+    }
+
+    #[test]
+    fn test_double_ended_filter_map() {
+        let xs = [1, 2, 3, 4, 5, 6];
+        let mut it = xs.iter().filter_map(|&x| if x & 1 == 0 { Some(x * 2) } else { None });
+        assert_eq!(it.next_back().unwrap(), 12);
+        assert_eq!(it.next_back().unwrap(), 8);
+        assert_eq!(it.next().unwrap(), 4);
+        assert_eq!(it.next_back(), None);
+    }
+
+    #[test]
+    fn test_double_ended_chain() {
+        let xs = [1, 2, 3, 4, 5];
+        let ys = ~[7, 9, 11];
+        let mut it = xs.iter().chain_(ys.iter()).invert();
+        assert_eq!(it.next().unwrap(), &11)
+        assert_eq!(it.next().unwrap(), &9)
+        assert_eq!(it.next_back().unwrap(), &1)
+        assert_eq!(it.next_back().unwrap(), &2)
+        assert_eq!(it.next_back().unwrap(), &3)
+        assert_eq!(it.next_back().unwrap(), &4)
+        assert_eq!(it.next_back().unwrap(), &5)
+        assert_eq!(it.next_back().unwrap(), &7)
+        assert_eq!(it.next_back(), None)
     }
 }
