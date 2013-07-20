@@ -30,7 +30,7 @@ impl UdpSocket {
         }
     }
 
-    pub fn recvfrom(&self, buf: &mut [u8]) -> Option<(uint, IpAddr)> {
+    pub fn recvfrom(&mut self, buf: &mut [u8]) -> Option<(uint, IpAddr)> {
         match (**self).recvfrom(buf) {
             Ok((nread, src)) => Some((nread, src)),
             Err(ioerr) => {
@@ -43,7 +43,7 @@ impl UdpSocket {
         }
     }
 
-    pub fn sendto(&self, buf: &[u8], dst: IpAddr) {
+    pub fn sendto(&mut self, buf: &[u8], dst: IpAddr) {
         match (**self).sendto(buf, dst) {
             Ok(_) => (),
             Err(ioerr) => io_error::cond.raise(ioerr),
@@ -61,16 +61,17 @@ pub struct UdpStream {
 }
 
 impl UdpStream {
-    pub fn as_socket<T>(&self, f: &fn(&UdpSocket) -> T) -> T { f(&self.socket) }
+    pub fn as_socket<T>(&mut self, f: &fn(&mut UdpSocket) -> T) -> T { f(&mut self.socket) }
 
     pub fn disconnect(self) -> UdpSocket { self.socket }
 }
 
 impl Reader for UdpStream {
     fn read(&mut self, buf: &mut [u8]) -> Option<uint> {
+        let peer = self.connectedTo;
         do self.as_socket |sock| {
             match sock.recvfrom(buf) {
-                Some((_nread, src)) if src != self.connectedTo => Some(0),
+                Some((_nread, src)) if src != peer => Some(0),
                 Some((nread, _src)) => Some(nread),
                 None => None,
             }
@@ -122,7 +123,7 @@ mod test {
 
             do spawntask_immediately {
                 match UdpSocket::bind(server_ip) {
-                    Some(server) => {
+                    Some(ref mut server) => {
                         let mut buf = [0];
                         match server.recvfrom(buf) {
                             Some((nread, src)) => {
@@ -139,7 +140,7 @@ mod test {
 
             do spawntask_immediately {
                 match UdpSocket::bind(client_ip) {
-                    Some(client) => client.sendto([99], server_ip),
+                    Some(ref mut client) => client.sendto([99], server_ip),
                     None => fail!()
                 }
             }
@@ -154,7 +155,7 @@ mod test {
 
             do spawntask_immediately {
                 match UdpSocket::bind(server_ip) {
-                    Some(server) => {
+                    Some(ref mut server) => {
                         let mut buf = [0];
                         match server.recvfrom(buf) {
                             Some((nread, src)) => {
@@ -171,7 +172,7 @@ mod test {
 
             do spawntask_immediately {
                 match UdpSocket::bind(client_ip) {
-                    Some(client) => client.sendto([99], server_ip),
+                    Some(ref mut client) => client.sendto([99], server_ip),
                     None => fail!()
                 }
             }
