@@ -90,7 +90,7 @@ pub fn type_uses_for(ccx: @mut CrateContext, fn_id: def_id, n_tps: uint)
     // used.  This is imprecise, but simple. Getting it right is
     // tricky because the substs on the call and the substs on the
     // default method differ, because of substs on the trait/impl.
-    let is_default = ccx.tcx.provided_method_sources.contains_key(&fn_id_loc);
+    let is_default = ty::provided_source(ccx.tcx, fn_id_loc).is_some();
     // We also mark all of the params as used if it is an extern thing
     // that we haven't been able to inline yet.
     if is_default || fn_id_loc.crate != local_crate {

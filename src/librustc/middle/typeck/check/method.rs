@@ -330,8 +330,7 @@ impl<'self> LookupContext<'self> {
         for opt_applicable_traits.iter().advance |applicable_traits| {
             for applicable_traits.iter().advance |trait_did| {
                 // Look for explicit implementations.
-                let opt_impl_infos =
-                    self.fcx.ccx.coherence_info.extension_methods.find(trait_did);
+                let opt_impl_infos = self.tcx().trait_impls.find(trait_did);
                 for opt_impl_infos.iter().advance |impl_infos| {
                     for impl_infos.iter().advance |impl_info| {
                         self.push_candidates_from_impl(
@@ -517,8 +516,7 @@ impl<'self> LookupContext<'self> {
     }
 
     pub fn push_inherent_impl_candidates_for_type(&self, did: def_id) {
-        let opt_impl_infos =
-            self.fcx.ccx.coherence_info.inherent_methods.find(&did);
+        let opt_impl_infos = self.tcx().inherent_impls.find(&did);
         for opt_impl_infos.iter().advance |impl_infos| {
             for impl_infos.iter().advance |impl_info| {
                 self.push_candidates_from_impl(
@@ -529,7 +527,7 @@ impl<'self> LookupContext<'self> {
 
     pub fn push_candidates_from_impl(&self,
                                      candidates: &mut ~[Candidate],
-                                     impl_info: &resolve::Impl) {
+                                     impl_info: &ty::Impl) {
         if !self.impl_dups.insert(impl_info.did) {
             return; // already visited
         }
@@ -545,7 +543,7 @@ impl<'self> LookupContext<'self> {
             }
         };
 
-        let method = ty::method(self.tcx(), impl_info.methods[idx].did);
+        let method = ty::method(self.tcx(), impl_info.methods[idx].def_id);
 
         // determine the `self` of the impl with fresh
         // variables for each parameter:

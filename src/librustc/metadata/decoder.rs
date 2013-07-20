@@ -20,7 +20,7 @@ use metadata::decoder;
 use metadata::tydecode::{parse_ty_data, parse_def_id,
                          parse_type_param_def_data,
                          parse_bare_fn_ty_data, parse_trait_ref_data};
-use middle::{ty, resolve};
+use middle::ty;
 
 use std::hash::HashUtil;
 use std::int;
@@ -174,14 +174,6 @@ fn item_parent_item(d: ebml::Doc) -> Option<ast::def_id> {
     None
 }
 
-fn translated_parent_item_opt(cnum: ast::crate_num, d: ebml::Doc) ->
-        Option<ast::def_id> {
-    let trait_did_opt = item_parent_item(d);
-    do trait_did_opt.map |trait_did| {
-        ast::def_id { crate: cnum, node: trait_did.node }
-    }
-}
-
 fn item_reqd_and_translated_parent_item(cnum: ast::crate_num,
                                         d: ebml::Doc) -> ast::def_id {
     let trait_did = item_parent_item(d).expect("item without parent");
@@ -191,6 +183,12 @@ fn item_reqd_and_translated_parent_item(cnum: ast::crate_num,
 fn item_def_id(d: ebml::Doc, cdata: cmd) -> ast::def_id {
     let tagdoc = reader::get_doc(d, tag_def_id);
     return translate_def_id(cdata, reader::with_doc_data(tagdoc, parse_def_id));
+}
+
+fn get_provided_source(d: ebml::Doc, cdata: cmd) -> Option<ast::def_id> {
+    do reader::maybe_get_doc(d, tag_item_method_provided_source).map |doc| {
+        translate_def_id(cdata, reader::with_doc_data(*doc, parse_def_id))
+    }
 }
 
 fn each_reexport(d: ebml::Doc, f: &fn(ebml::Doc) -> bool) -> bool {
@@ -323,13 +321,19 @@ fn item_to_def_like(item: ebml::Doc, did: ast::def_id, cnum: ast::crate_num)
         UnsafeFn  => dl_def(ast::def_fn(did, ast::unsafe_fn)),
         Fn        => dl_def(ast::def_fn(did, ast::impure_fn)),
         ForeignFn => dl_def(ast::def_fn(did, ast::extern_fn)),
-        UnsafeStaticMethod => {
-            let trait_did_opt = translated_parent_item_opt(cnum, item);
-            dl_def(ast::def_static_method(did, trait_did_opt, ast::unsafe_fn))
-        }
-        StaticMethod => {
-            let trait_did_opt = translated_parent_item_opt(cnum, item);
-            dl_def(ast::def_static_method(did, trait_did_opt, ast::impure_fn))
+        StaticMethod | UnsafeStaticMethod => {
+            let purity = if fam == UnsafeStaticMethod { ast::unsafe_fn } else
+                { ast::impure_fn };
+            // def_static_method carries an optional field of its enclosing
+            // *trait*, but not an inclosing Impl (if this is an inherent
+            // static method). So we need to detect whether this is in
+            // a trait or not, which we do through the mildly hacky
+            // way of checking whether there is a trait_method_sort.
+            let trait_did_opt = if reader::maybe_get_doc(
+                  item, tag_item_trait_method_sort).is_some() {
+                Some(item_reqd_and_translated_parent_item(cnum, item))
+            } else { None };
+            dl_def(ast::def_static_method(did, trait_did_opt, purity))
         }
         Type | ForeignType => dl_def(ast::def_ty(did)),
         Mod => dl_def(ast::def_mod(did)),
@@ -795,34 +799,29 @@ fn get_explicit_self(item: ebml::Doc) -> ast::explicit_self_ {
 }
 
 fn item_impl_methods(intr: @ident_interner, cdata: cmd, item: ebml::Doc,
-                     base_tps: uint) -> ~[@resolve::MethodInfo] {
+                     tcx: ty::ctxt) -> ~[@ty::Method] {
     let mut rslt = ~[];
     for reader::tagged_docs(item, tag_item_impl_method) |doc| {
         let m_did = reader::with_doc_data(doc, parse_def_id);
-        let mth_item = lookup_item(m_did.node, cdata.data);
-        let explicit_self = get_explicit_self(mth_item);
-        rslt.push(@resolve::MethodInfo {
-                    did: translate_def_id(cdata, m_did),
-                    n_tps: item_ty_param_count(mth_item) - base_tps,
-                    ident: item_name(intr, mth_item),
-                    explicit_self: explicit_self});
+        rslt.push(@get_method(intr, cdata, m_did.node, tcx));
     }
+
     rslt
 }
 
 /// Returns information about the given implementation.
-pub fn get_impl(intr: @ident_interner, cdata: cmd, impl_id: ast::node_id)
-                -> resolve::Impl {
+pub fn get_impl(intr: @ident_interner, cdata: cmd, impl_id: ast::node_id,
+               tcx: ty::ctxt)
+                -> ty::Impl {
     let data = cdata.data;
     let impl_item = lookup_item(impl_id, data);
-    let base_tps = item_ty_param_count(impl_item);
-    resolve::Impl {
+    ty::Impl {
         did: ast::def_id {
             crate: cdata.cnum,
             node: impl_id,
         },
         ident: item_name(intr, impl_item),
-        methods: item_impl_methods(intr, cdata, impl_item, base_tps),
+        methods: item_impl_methods(intr, cdata, impl_item, tcx),
     }
 }
 
@@ -842,6 +841,8 @@ pub fn get_method(intr: @ident_interner, cdata: cmd, id: ast::node_id,
 {
     let method_doc = lookup_item(id, cdata.data);
     let def_id = item_def_id(method_doc, cdata);
+    let container_id = item_reqd_and_translated_parent_item(cdata.cnum,
+                                                            method_doc);
     let name = item_name(intr, method_doc);
     let type_param_defs = item_ty_param_defs(method_doc, tcx, cdata,
                                              tag_item_method_tps);
@@ -849,6 +850,7 @@ pub fn get_method(intr: @ident_interner, cdata: cmd, id: ast::node_id,
     let fty = doc_method_fty(method_doc, tcx, cdata);
     let vis = item_visibility(method_doc);
     let explicit_self = get_explicit_self(method_doc);
+    let provided_source = get_provided_source(method_doc, cdata);
 
     ty::Method::new(
         name,
@@ -860,7 +862,9 @@ pub fn get_method(intr: @ident_interner, cdata: cmd, id: ast::node_id,
         fty,
         explicit_self,
         vis,
-        def_id
+        def_id,
+        container_id,
+        provided_source
     )
 }
 
