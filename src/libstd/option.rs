@@ -159,6 +159,17 @@ impl<T> Option<T> {
         }
     }
 
+    /// Update an optional value by optionally running its content by mut reference
+    /// through a function that returns an option.
+    #[inline]
+    pub fn chain_mut_ref<'a, U>(&'a mut self, f: &fn(x: &'a mut T) -> Option<U>)
+                                -> Option<U> {
+        match *self {
+            Some(ref mut x) => f(x),
+            None => None
+        }
+    }
+
     /// Filters an optional value using given function.
     #[inline(always)]
     pub fn filtered(self, f: &fn(t: &T) -> bool) -> Option<T> {
