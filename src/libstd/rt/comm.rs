@@ -9,11 +9,6 @@
 // except according to those terms.
 
 //! Ports and channels.
-//!
-//! XXX: Carefully consider whether the sequentially consistent
-//! atomics here can be converted to acq/rel. I'm not sure they can,
-//! because there is data being transerred in both directions (the payload
-//! goes from sender to receiver and the task pointer goes the other way).
 
 use option::*;
 use cast;
