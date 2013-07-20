@@ -61,6 +61,19 @@ impl<A:Clone> Future<A> {
 }
 
 impl<A> Future<A> {
+    /// Gets the value from this future, forcing evaluation.
+    pub fn unwrap(self) -> A {
+        let mut this = self;
+        this.get_ref();
+        let state = replace(&mut this.state, Evaluating);
+        match state {
+            Forced(v) => v,
+            _ => fail!( "Logic error." ),
+        }
+    }
+}
+
+impl<A> Future<A> {
     pub fn get_ref<'a>(&'a mut self) -> &'a A {
         /*!
         * Executes the future's closure and then returns a borrowed
@@ -177,6 +190,12 @@ mod test {
     fn test_interface_get() {
         let mut f = from_value(~"fail");
         assert_eq!(f.get(), ~"fail");
+    }
+
+    #[test]
+    fn test_interface_unwrap() {
+        let mut f = from_value(~"fail");
+        assert_eq!(f.unwrap(), ~"fail");
     }
 
     #[test]
