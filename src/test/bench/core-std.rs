@@ -30,7 +30,7 @@ macro_rules! bench (
 
 fn main() {
     let argv = os::args();
-    let tests = argv.slice(1, argv.len());
+    let _tests = argv.slice(1, argv.len());
 
     bench!(shift_push);
     bench!(read_line);
@@ -44,7 +44,7 @@ fn main() {
 fn maybe_run_test(argv: &[~str], name: ~str, test: &fn()) {
     let mut run_test = false;
 
-    if os::getenv(~"RUST_BENCH").is_some() {
+    if os::getenv("RUST_BENCH").is_some() {
         run_test = true
     } else if argv.len() > 0 {
         run_test = argv.iter().any(|x| x == &~"all") || argv.iter().any(|x| x == &name)

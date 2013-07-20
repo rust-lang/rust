@@ -15,7 +15,6 @@ extern mod extra;
 use std::io::{ReaderUtil, WriterUtil};
 use std::io;
 use std::os;
-use std::str;
 use std::u8;
 use std::uint;
 use std::unstable::intrinsics::cttz16;
@@ -50,7 +49,7 @@ impl Sudoku {
     }
 
     pub fn from_vec(vec: &[[u8, ..9], ..9]) -> Sudoku {
-        let mut g = do vec::from_fn(9u) |i| {
+        let g = do vec::from_fn(9u) |i| {
             do vec::from_fn(9u) |j| { vec[i][j] }
         };
         return Sudoku::new(g)
@@ -161,17 +160,17 @@ impl Sudoku {
 // Stores available colors as simple bitfield, bit 0 is always unset
 struct Colors(u16);
 
-static heads: u16 = (1u16 << 10) - 1; /* bits 9..0 */
+static HEADS: u16 = (1u16 << 10) - 1; /* bits 9..0 */
 
 impl Colors {
     fn new(start_color: u8) -> Colors {
         // Sets bits 9..start_color
         let tails = !0u16 << start_color;
-        return Colors(heads & tails);
+        return Colors(HEADS & tails);
     }
 
     fn next(&self) -> u8 {
-        let val = **self & heads;
+        let val = **self & HEADS;
         if (0u16 == val) {
             return 0u8;
         } else {
@@ -190,7 +189,7 @@ impl Colors {
     }
 }
 
-static default_sudoku: [[u8, ..9], ..9] = [
+static DEFAULT_SUDOKU: [[u8, ..9], ..9] = [
          /* 0    1    2    3    4    5    6    7    8    */
   /* 0 */  [0u8, 4u8, 0u8, 6u8, 0u8, 0u8, 0u8, 3u8, 2u8],
   /* 1 */  [0u8, 0u8, 8u8, 0u8, 2u8, 0u8, 0u8, 0u8, 0u8],
@@ -204,7 +203,7 @@ static default_sudoku: [[u8, ..9], ..9] = [
 ];
 
 #[cfg(test)]
-static default_solution: [[u8, ..9], ..9] = [
+static DEFAULT_SOLUTION: [[u8, ..9], ..9] = [
          /* 0    1    2    3    4    5    6    7    8    */
   /* 0 */  [1u8, 4u8, 9u8, 6u8, 7u8, 5u8, 8u8, 3u8, 2u8],
   /* 1 */  [5u8, 3u8, 8u8, 1u8, 2u8, 9u8, 7u8, 4u8, 6u8],
@@ -258,10 +257,10 @@ fn colors_remove_works() {
 }
 
 #[test]
-fn check_default_sudoku_solution() {
+fn check_DEFAULT_SUDOKU_solution() {
     // GIVEN
-    let mut sudoku = Sudoku::from_vec(&default_sudoku);
-    let solution   = Sudoku::from_vec(&default_solution);
+    let mut sudoku = Sudoku::from_vec(&DEFAULT_SUDOKU);
+    let solution   = Sudoku::from_vec(&DEFAULT_SOLUTION);
 
     // WHEN
     sudoku.solve();
@@ -274,7 +273,7 @@ fn main() {
     let args        = os::args();
     let use_default = args.len() == 1u;
     let mut sudoku = if use_default {
-        Sudoku::from_vec(&default_sudoku)
+        Sudoku::from_vec(&DEFAULT_SUDOKU)
     } else {
         Sudoku::read(io::stdin())
     };

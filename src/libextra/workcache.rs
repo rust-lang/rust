@@ -27,7 +27,6 @@ use std::result;
 use std::run;
 use std::task;
 use std::to_bytes;
-use std::util::replace;
 
 /**
 *
@@ -353,7 +352,7 @@ impl TPrep for Prep {
 
             _ => {
                 let (port, chan) = oneshot();
-                let blk = replace(&mut bo, None).unwrap();
+                let blk = bo.take_unwrap();
                 let chan = Cell::new(chan);
 
                 do task::spawn {
@@ -385,7 +384,7 @@ fn unwrap<T:Send +
             Decodable<json::Decoder>>( // FIXME(#5121)
         w: Work<T>) -> T {
     let mut ww = w;
-    let s = replace(&mut ww.res, None);
+    let s = ww.res.take();
 
     match s {
         None => fail!(),

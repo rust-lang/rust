@@ -22,7 +22,7 @@ enum UniqueList {
 }
 
 fn main() {
-    let (repeat, depth) = if os::getenv(~"RUST_BENCH").is_some() {
+    let (repeat, depth) = if os::getenv("RUST_BENCH").is_some() {
         (50, 1000)
     } else {
         (10, 10)

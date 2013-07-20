@@ -18,6 +18,7 @@ use cmp::Eq;
 use iterator::IteratorUtil;
 use result::Result;
 use result;
+use str::StrSlice;
 use vec;
 use vec::{OwnedVector, ImmutableVector};
 
@@ -121,22 +122,35 @@ pub fn is_right<T, U>(eith: &Either<T, U>) -> bool {
     }
 }
 
+/// Retrieves the value in the left branch.
+/// Fails with a specified reason if the either is Right.
+#[inline]
+pub fn expect_left<T,U>(eith: Either<T,U>, reason: &str) -> T {
+    match eith {
+        Left(x) => x,
+        Right(_) => fail!(reason.to_owned())
+    }
+}
+
 /// Retrieves the value in the left branch. Fails if the either is Right.
 #[inline]
 pub fn unwrap_left<T,U>(eith: Either<T,U>) -> T {
+    expect_left(eith, "either::unwrap_left Right")
+}
+
+/// Retrieves the value in the right branch.
+/// Fails with a specified reason if the either is Left.
+#[inline]
+pub fn expect_right<T,U>(eith: Either<T,U>, reason: &str) -> U {
     match eith {
-        Left(x) => x,
-        Right(_) => fail!("either::unwrap_left Right")
+        Right(x) => x,
+        Left(_) => fail!(reason.to_owned())
     }
 }
 
 /// Retrieves the value in the right branch. Fails if the either is Left.
-#[inline]
 pub fn unwrap_right<T,U>(eith: Either<T,U>) -> U {
-    match eith {
-        Right(x) => x,
-        Left(_) => fail!("either::unwrap_right Left")
-    }
+    expect_right(eith, "either::unwrap_right Left")
 }
 
 impl<T, U> Either<T, U> {
@@ -158,7 +172,13 @@ impl<T, U> Either<T, U> {
     pub fn is_right(&self) -> bool { is_right(self) }
 
     #[inline]
+    pub fn expect_left(self, reason: &str) -> T { expect_left(self, reason) }
+
+    #[inline]
     pub fn unwrap_left(self) -> T { unwrap_left(self) }
+
+    #[inline]
+    pub fn expect_right(self, reason: &str) -> U { expect_right(self, reason) }
 
     #[inline]
     pub fn unwrap_right(self) -> U { unwrap_right(self) }
