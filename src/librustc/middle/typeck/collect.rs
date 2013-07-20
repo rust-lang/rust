@@ -376,7 +376,9 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt,
             m_explicit_self.node,
             // assume public, because this is only invoked on trait methods
             ast::public,
-            local_def(*m_id)
+            local_def(*m_id),
+            local_def(trait_id),
+            None
         )
     }
 }
@@ -720,6 +722,7 @@ pub struct ConvertedMethod {
 }
 
 pub fn convert_methods(ccx: &CrateCtxt,
+                       container_id: ast::node_id,
                        ms: &[@ast::method],
                        untransformed_rcvr_ty: ty::t,
                        rcvr_ty_generics: &ty::Generics,
@@ -734,7 +737,7 @@ pub fn convert_methods(ccx: &CrateCtxt,
             ty_generics(ccx, rcvr_ty_generics.region_param, &m.generics,
                         num_rcvr_ty_params);
         let mty =
-            @ty_of_method(ccx, *m, rcvr_ty_generics.region_param,
+            @ty_of_method(ccx, container_id, *m, rcvr_ty_generics.region_param,
                           untransformed_rcvr_ty,
                           rcvr_ast_generics, rcvr_visibility,
                           &m.generics);
@@ -760,6 +763,7 @@ pub fn convert_methods(ccx: &CrateCtxt,
     }).collect();
 
     fn ty_of_method(ccx: &CrateCtxt,
+                    container_id: ast::node_id,
                     m: &ast::method,
                     rp: Option<ty::region_variance>,
                     untransformed_rcvr_ty: ty::t,
@@ -790,7 +794,9 @@ pub fn convert_methods(ccx: &CrateCtxt,
             fty,
             m.explicit_self.node,
             method_vis,
-            local_def(m.id)
+            local_def(m.id),
+            local_def(container_id),
+            None
         )
     }
 }
@@ -849,7 +855,7 @@ pub fn convert(ccx: &CrateCtxt, it: &ast::item) {
             it.vis
         };
 
-        let cms = convert_methods(ccx, *ms, selfty,
+        let cms = convert_methods(ccx, it.id, *ms, selfty,
                                   &i_ty_generics, generics,
                                   parent_visibility);
         for opt_trait_ref.iter().advance |t| {
@@ -867,7 +873,7 @@ pub fn convert(ccx: &CrateCtxt, it: &ast::item) {
           let untransformed_rcvr_ty = ty::mk_self(tcx, local_def(it.id));
           let (ty_generics, _) = mk_item_substs(ccx, generics, rp,
                                                 Some(untransformed_rcvr_ty));
-          let _ = convert_methods(ccx, provided_methods,
+          let _ = convert_methods(ccx, it.id, provided_methods,
                                   untransformed_rcvr_ty,
                                   &ty_generics, generics,
                                   it.vis);

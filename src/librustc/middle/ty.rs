@@ -16,7 +16,6 @@ use middle::const_eval;
 use middle::lang_items::{TyDescStructLangItem, TyVisitorTraitLangItem};
 use middle::lang_items::OpaqueStructLangItem;
 use middle::freevars;
-use middle::resolve::{Impl, MethodInfo};
 use middle::resolve;
 use middle::ty;
 use middle::subst::Subst;
@@ -65,7 +64,11 @@ pub struct Method {
     fty: BareFnTy,
     explicit_self: ast::explicit_self_,
     vis: ast::visibility,
-    def_id: ast::def_id
+    def_id: ast::def_id,
+    container_id: ast::def_id,
+
+    // If this method is provided, we need to know where it came from
+    provided_source: Option<ast::def_id>
 }
 
 impl Method {
@@ -75,7 +78,9 @@ impl Method {
                fty: BareFnTy,
                explicit_self: ast::explicit_self_,
                vis: ast::visibility,
-               def_id: ast::def_id)
+               def_id: ast::def_id,
+               container_id: ast::def_id,
+               provided_source: Option<ast::def_id>)
                -> Method {
         // Check the invariants.
         if explicit_self == ast::sty_static {
@@ -91,9 +96,17 @@ impl Method {
             fty: fty,
             explicit_self: explicit_self,
             vis: vis,
-            def_id: def_id
+            def_id: def_id,
+            container_id: container_id,
+            provided_source: provided_source
         }
     }
+}
+
+pub struct Impl {
+    did: def_id,
+    ident: ident,
+    methods: ~[@Method]
 }
 
 #[deriving(Clone, Eq, IterBytes)]
@@ -214,26 +227,6 @@ pub enum AutoRef {
     AutoUnsafe(ast::mutability)
 }
 
-// Stores information about provided methods (a.k.a. default methods) in
-// implementations.
-//
-// This is a map from ID of each implementation to the method info and trait
-// method ID of each of the default methods belonging to the trait that
-// implementation implements.
-pub type ProvidedMethodsMap = @mut HashMap<def_id,@mut ~[@ProvidedMethodInfo]>;
-
-// Stores the method info and definition ID of the associated trait method for
-// each instantiation of each provided method.
-pub struct ProvidedMethodInfo {
-    method_info: @MethodInfo,
-    trait_method_def_id: def_id
-}
-
-pub struct ProvidedMethodSource {
-    method_id: ast::def_id,
-    impl_id: ast::def_id
-}
-
 pub type ctxt = @ctxt_;
 
 struct ctxt_ {
@@ -287,11 +280,8 @@ struct ctxt_ {
     adjustments: @mut HashMap<ast::node_id, @AutoAdjustment>,
     normalized_cache: @mut HashMap<t, t>,
     lang_items: middle::lang_items::LanguageItems,
-    // A mapping from an implementation ID to the method info and trait
-    // method ID of the provided (a.k.a. default) methods in the traits that
-    // that implementation implements.
-    provided_methods: ProvidedMethodsMap,
-    provided_method_sources: @mut HashMap<ast::def_id, ProvidedMethodSource>,
+    // A mapping of fake provided method def_ids to the default implementation
+    provided_method_sources: @mut HashMap<ast::def_id, ast::def_id>,
     supertraits: @mut HashMap<ast::def_id, @~[@TraitRef]>,
 
     // A mapping from the def ID of an enum or struct type to the def ID
@@ -303,11 +293,19 @@ struct ctxt_ {
     // A method will be in this list if and only if it is a destructor.
     destructors: @mut HashSet<ast::def_id>,
 
-    // Maps a trait onto a mapping from self-ty to impl
-    trait_impls: @mut HashMap<ast::def_id, @mut HashMap<t, @Impl>>,
+    // Maps a trait onto a list of impls of that trait.
+    trait_impls: @mut HashMap<ast::def_id, @mut ~[@Impl]>,
 
-    // Maps a base type to its impl
-    base_impls: @mut HashMap<ast::def_id, @mut ~[@Impl]>,
+    // Maps a def_id of a type to a list of its inherent impls.
+    // Contains implementations of methods that are inherent to a type.
+    // Methods in these implementations don't need to be exported.
+    inherent_impls: @mut HashMap<ast::def_id, @mut ~[@Impl]>,
+
+    // Maps a def_id of an impl to an Impl structure.
+    // Note that this contains all of the impls that we know about,
+    // including ones in other crates. It's not clear that this is the best
+    // way to do it.
+    impls: @mut HashMap<ast::def_id, @Impl>,
 
     // Set of used unsafe nodes (functions or blocks). Unsafe nodes not
     // present in this set can be warned about.
@@ -902,13 +900,13 @@ pub fn mk_ctxt(s: session::Session,
         adjustments: @mut HashMap::new(),
         normalized_cache: new_ty_hash(),
         lang_items: lang_items,
-        provided_methods: @mut HashMap::new(),
         provided_method_sources: @mut HashMap::new(),
         supertraits: @mut HashMap::new(),
         destructor_for_type: @mut HashMap::new(),
         destructors: @mut HashSet::new(),
         trait_impls: @mut HashMap::new(),
-        base_impls:  @mut HashMap::new(),
+        inherent_impls:  @mut HashMap::new(),
+        impls:  @mut HashMap::new(),
         used_unsafe: @mut HashSet::new(),
         used_mut_nodes: @mut HashSet::new(),
      }
@@ -3516,6 +3514,11 @@ pub fn def_has_ty_params(def: ast::def) -> bool {
     }
 }
 
+pub fn provided_source(cx: ctxt, id: ast::def_id)
+    -> Option<ast::def_id> {
+    cx.provided_method_sources.find(&id).map(|x| **x)
+}
+
 pub fn provided_trait_methods(cx: ctxt, id: ast::def_id) -> ~[@Method] {
     if is_local(id) {
         match cx.items.find(&id.node) {
@@ -3595,20 +3598,6 @@ pub fn trait_method(cx: ctxt, trait_did: ast::def_id, idx: uint) -> @Method {
     ty::method(cx, method_def_id)
 }
 
-
-pub fn add_base_impl(cx: ctxt, base_def_id: def_id, implementation: @Impl) {
-    let implementations;
-    match cx.base_impls.find(&base_def_id) {
-        None => {
-            implementations = @mut ~[];
-            cx.base_impls.insert(base_def_id, implementations);
-        }
-        Some(&existing) => {
-            implementations = existing;
-        }
-    }
-    implementations.push(implementation);
-}
 
 pub fn trait_methods(cx: ctxt, trait_did: ast::def_id) -> @~[@Method] {
     match cx.trait_methods_cache.find(&trait_did) {
@@ -4375,16 +4364,25 @@ pub fn count_traits_and_supertraits(tcx: ctxt,
     return total;
 }
 
-// Given a trait and a type, returns the impl of that type
-pub fn get_impl_id(tcx: ctxt, trait_id: def_id, self_ty: t) -> def_id {
+// Given a trait and a type, returns the impl of that type.
+// This is broken, of course, by parametric impls. This used to use
+// a table specifically for this mapping, but I removed that table.
+// This is only used when calling a supertrait method from a default method,
+// and should go away once I fix how that works. -sully
+pub fn bogus_get_impl_id_from_ty(tcx: ctxt,
+                                 trait_id: def_id, self_ty: t) -> def_id {
     match tcx.trait_impls.find(&trait_id) {
-        Some(ty_to_impl) => match ty_to_impl.find(&self_ty) {
-            Some(the_impl) => the_impl.did,
-            None => // try autoderef!
-                match deref(tcx, self_ty, false) {
-                    Some(some_ty) => get_impl_id(tcx, trait_id, some_ty.ty),
-                    None => tcx.sess.bug("get_impl_id: no impl of trait for \
-                                          this type")
+        Some(ty_to_impl) => {
+            for ty_to_impl.iter().advance |imp| {
+                let impl_ty = tcx.tcache.get_copy(&imp.did);
+                if impl_ty.ty == self_ty { return imp.did; }
+            }
+            // try autoderef!
+            match deref(tcx, self_ty, false) {
+                Some(some_ty) =>
+                  bogus_get_impl_id_from_ty(tcx, trait_id, some_ty.ty),
+                None => tcx.sess.bug("get_impl_id: no impl of trait for \
+                                      this type")
             }
         },
         None => tcx.sess.bug("get_impl_id: trait isn't in trait_impls")
