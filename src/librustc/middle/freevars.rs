@@ -17,7 +17,7 @@ use middle::ty;
 
 use std::hashmap::HashMap;
 use syntax::codemap::span;
-use syntax::{ast, ast_util, visit};
+use syntax::{ast, ast_util, oldvisit};
 
 // A vector of defs representing the free variables referred to in a function.
 // (The def_upvar will already have been stripped).
@@ -39,12 +39,14 @@ fn collect_freevars(def_map: resolve::DefMap, blk: &ast::Block)
     let seen = @mut HashMap::new();
     let refs = @mut ~[];
 
-    fn ignore_item(_i: @ast::item, (_depth, _v): (int, visit::vt<int>)) { }
+    fn ignore_item(_i: @ast::item, (_depth, _v): (int, oldvisit::vt<int>)) { }
 
-    let walk_expr: @fn(expr: @ast::expr, (int, visit::vt<int>)) =
+    let walk_expr: @fn(expr: @ast::expr, (int, oldvisit::vt<int>)) =
         |expr, (depth, v)| {
             match expr.node {
-              ast::expr_fn_block(*) => visit::visit_expr(expr, (depth + 1, v)),
+              ast::expr_fn_block(*) => {
+                oldvisit::visit_expr(expr, (depth + 1, v))
+              }
               ast::expr_path(*) | ast::expr_self => {
                   let mut i = 0;
                   match def_map.find(&expr.id) {
@@ -71,13 +73,13 @@ fn collect_freevars(def_map: resolve::DefMap, blk: &ast::Block)
                     }
                   }
               }
-              _ => visit::visit_expr(expr, (depth, v))
+              _ => oldvisit::visit_expr(expr, (depth, v))
             }
         };
 
-    let v = visit::mk_vt(@visit::Visitor {visit_item: ignore_item,
+    let v = oldvisit::mk_vt(@oldvisit::Visitor {visit_item: ignore_item,
                                           visit_expr: walk_expr,
-                                          .. *visit::default_visitor()});
+                                          .. *oldvisit::default_visitor()});
     (v.visit_block)(blk, (1, v));
     return @(*refs).clone();
 }
@@ -91,7 +93,7 @@ pub fn annotate_freevars(def_map: resolve::DefMap, crate: &ast::Crate) ->
    freevar_map {
     let freevars = @mut HashMap::new();
 
-    let walk_fn: @fn(&visit::fn_kind,
+    let walk_fn: @fn(&oldvisit::fn_kind,
                      &ast::fn_decl,
                      &ast::Block,
                      span,
@@ -101,10 +103,10 @@ pub fn annotate_freevars(def_map: resolve::DefMap, crate: &ast::Crate) ->
     };
 
     let visitor =
-        visit::mk_simple_visitor(@visit::SimpleVisitor {
+        oldvisit::mk_simple_visitor(@oldvisit::SimpleVisitor {
             visit_fn: walk_fn,
-            .. *visit::default_simple_visitor()});
-    visit::visit_crate(crate, ((), visitor));
+            .. *oldvisit::default_simple_visitor()});
+    oldvisit::visit_crate(crate, ((), visitor));
 
     return freevars;
 }

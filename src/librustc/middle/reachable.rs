@@ -26,8 +26,8 @@ use syntax::ast_map;
 use syntax::ast_util::def_id_of_def;
 use syntax::attr;
 use syntax::parse::token;
-use syntax::visit::Visitor;
-use syntax::visit;
+use syntax::oldvisit::Visitor;
+use syntax::oldvisit;
 
 // Returns true if the given set of attributes contains the `#[inline]`
 // attribute.
@@ -113,9 +113,9 @@ impl ReachableContext {
     fn mark_public_symbols(&self, crate: @Crate) {
         let reachable_symbols = self.reachable_symbols;
         let worklist = self.worklist;
-        let visitor = visit::mk_vt(@Visitor {
+        let visitor = oldvisit::mk_vt(@Visitor {
             visit_item: |item, (privacy_context, visitor):
-                    (PrivacyContext, visit::vt<PrivacyContext>)| {
+                    (PrivacyContext, oldvisit::vt<PrivacyContext>)| {
                 match item.node {
                     item_fn(*) => {
                         if privacy_context == PublicContext {
@@ -201,15 +201,15 @@ impl ReachableContext {
                 }
 
                 if item.vis == public && privacy_context == PublicContext {
-                    visit::visit_item(item, (PublicContext, visitor))
+                    oldvisit::visit_item(item, (PublicContext, visitor))
                 } else {
-                    visit::visit_item(item, (PrivateContext, visitor))
+                    oldvisit::visit_item(item, (PrivateContext, visitor))
                 }
             },
-            .. *visit::default_visitor()
+            .. *oldvisit::default_visitor()
         });
 
-        visit::visit_crate(crate, (PublicContext, visitor))
+        oldvisit::visit_crate(crate, (PublicContext, visitor))
     }
 
     // Returns true if the given def ID represents a local item that is
@@ -271,10 +271,10 @@ impl ReachableContext {
     }
 
     // Helper function to set up a visitor for `propagate()` below.
-    fn init_visitor(&self) -> visit::vt<()> {
+    fn init_visitor(&self) -> oldvisit::vt<()> {
         let (worklist, method_map) = (self.worklist, self.method_map);
         let (tcx, reachable_symbols) = (self.tcx, self.reachable_symbols);
-        visit::mk_vt(@visit::Visitor {
+        oldvisit::mk_vt(@oldvisit::Visitor {
             visit_expr: |expr, (_, visitor)| {
                 match expr.node {
                     expr_path(_) => {
@@ -319,9 +319,9 @@ impl ReachableContext {
                     _ => {}
                 }
 
-                visit::visit_expr(expr, ((), visitor))
+                oldvisit::visit_expr(expr, ((), visitor))
             },
-            ..*visit::default_visitor()
+            ..*oldvisit::default_visitor()
         })
     }
 
@@ -344,7 +344,7 @@ impl ReachableContext {
                 Some(&ast_map::node_item(item, _)) => {
                     match item.node {
                         item_fn(_, _, _, _, ref search_block) => {
-                            visit::visit_block(search_block, ((), visitor))
+                            oldvisit::visit_block(search_block, ((), visitor))
                         }
                         _ => {
                             self.tcx.sess.span_bug(item.span,
@@ -361,12 +361,12 @@ impl ReachableContext {
                                                     worklist?!")
                         }
                         provided(ref method) => {
-                            visit::visit_block(&method.body, ((), visitor))
+                            oldvisit::visit_block(&method.body, ((), visitor))
                         }
                     }
                 }
                 Some(&ast_map::node_method(ref method, _, _)) => {
-                    visit::visit_block(&method.body, ((), visitor))
+                    oldvisit::visit_block(&method.body, ((), visitor))
                 }
                 Some(_) => {
                     let ident_interner = token::get_ident_interner();
