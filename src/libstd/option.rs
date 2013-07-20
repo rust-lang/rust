@@ -119,13 +119,13 @@ impl<T> Option<T> {
         }
     }
 
-    /// Returns true if the option equals `none`
+    /// Returns true if the option equals `None`
     #[inline]
     pub fn is_none(&self) -> bool {
         match *self { None => true, Some(_) => false }
     }
 
-    /// Returns true if the option contains some value
+    /// Returns true if the option contains a `Some` value
     #[inline]
     pub fn is_some(&self) -> bool { !self.is_none() }
 
@@ -168,19 +168,19 @@ impl<T> Option<T> {
         }
     }
 
-    /// Maps a `some` value from one type to another by reference
+    /// Maps a `Some` value from one type to another by reference
     #[inline]
     pub fn map<'a, U>(&'a self, f: &fn(&'a T) -> U) -> Option<U> {
         match *self { Some(ref x) => Some(f(x)), None => None }
     }
 
-    /// Maps a `some` value from one type to another by a mutable reference
+    /// Maps a `Some` value from one type to another by a mutable reference
     #[inline]
     pub fn map_mut<'a, U>(&'a mut self, f: &fn(&'a mut T) -> U) -> Option<U> {
         match *self { Some(ref mut x) => Some(f(x)), None => None }
     }
 
-    /// Maps a `some` value from one type to another by a mutable reference,
+    /// Maps a `Some` value from one type to another by a mutable reference,
     /// or returns a default value.
     #[inline]
     pub fn map_mut_default<'a, U>(&'a mut self, def: U, f: &fn(&'a mut T) -> U) -> U {
@@ -261,7 +261,7 @@ impl<T> Option<T> {
     pub fn get_ref<'a>(&'a self) -> &'a T {
         match *self {
           Some(ref x) => x,
-          None => fail!("option::get_ref none")
+          None => fail!("option::get_ref None")
         }
     }
 
@@ -283,7 +283,7 @@ impl<T> Option<T> {
     pub fn get_mut_ref<'a>(&'a mut self) -> &'a mut T {
         match *self {
           Some(ref mut x) => x,
-          None => fail!("option::get_mut_ref none")
+          None => fail!("option::get_mut_ref None")
         }
     }
 
@@ -307,7 +307,7 @@ impl<T> Option<T> {
          */
         match self {
           Some(x) => x,
-          None => fail!("option::unwrap none")
+          None => fail!("option::unwrap None")
         }
     }
 
@@ -321,7 +321,7 @@ impl<T> Option<T> {
      */
     #[inline]
     pub fn take_unwrap(&mut self) -> T {
-        if self.is_none() { fail!("option::take_unwrap none") }
+        if self.is_none() { fail!("option::take_unwrap None") }
         self.take().unwrap()
     }
 
@@ -331,7 +331,7 @@ impl<T> Option<T> {
      *
      * # Failure
      *
-     * Fails if the value equals `none`
+     * Fails if the value equals `None`
      */
     #[inline]
     pub fn expect(self, reason: &str) -> T {
@@ -359,7 +359,7 @@ impl<T> Option<T> {
     pub fn get(self) -> T {
         match self {
           Some(x) => return x,
-          None => fail!("option::get none")
+          None => fail!("option::get None")
         }
     }
 
@@ -369,7 +369,7 @@ impl<T> Option<T> {
         match self { Some(x) => x, None => def }
     }
 
-    /// Applies a function zero or more times until the result is none.
+    /// Applies a function zero or more times until the result is None.
     #[inline]
     pub fn while_some(self, blk: &fn(v: T) -> Option<T>) {
         let mut opt = self;
