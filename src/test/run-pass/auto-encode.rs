@@ -12,8 +12,6 @@
 
 // xfail-test #6122
 
-#[forbid(deprecated_pattern)];
-
 extern mod extra;
 
 // These tests used to be separate files, but I wanted to refactor all
