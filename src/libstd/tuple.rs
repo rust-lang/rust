@@ -384,7 +384,6 @@ mod tests {
     }
 
     #[test]
-    #[allow(non_implicitly_copyable_typarams)]
     fn test_tuple() {
         assert_eq!((948, 4039.48).first(), 948);
         assert_eq!((34.5, ~"foo").second(), ~"foo");
