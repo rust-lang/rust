@@ -8,7 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use option::*;
+use either::{Left, Right};
+use option::{Option, Some, None};
 use sys;
 use cast::transmute;
 use clone::Clone;
@@ -20,6 +21,7 @@ use super::rtio::{EventLoop, EventLoopObject, RemoteCallbackObject};
 use super::context::Context;
 use super::task::{Task, AnySched, Sched};
 use super::message_queue::MessageQueue;
+use rt::kill::BlockedTask;
 use rt::local_ptr;
 use rt::local::Local;
 use rt::rtio::RemoteCallback;
@@ -271,6 +273,14 @@ impl Scheduler {
         };
     }
 
+    /// As enqueue_task, but with the possibility for the blocked task to
+    /// already have been killed.
+    pub fn enqueue_blocked_task(&mut self, blocked_task: BlockedTask) {
+        do blocked_task.wake().map_consume |task| {
+            self.enqueue_task(task);
+        };
+    }
+
     // * Scheduler-context operations
 
     fn interpret_message_queue(~self) -> bool {
@@ -412,14 +422,26 @@ impl Scheduler {
     /// Called by a running task to end execution, after which it will
     /// be recycled by the scheduler for reuse in a new task.
     pub fn terminate_current_task(~self) {
-        assert!(self.in_task_context());
+        let mut this = self;
+        assert!(this.in_task_context());
 
         rtdebug!("ending running task");
 
-        do self.deschedule_running_task_and_then |sched, dead_task| {
-            let mut dead_task = dead_task;
-            let coroutine = dead_task.coroutine.take_unwrap();
-            coroutine.recycle(&mut sched.stack_pool);
+        // This task is post-cleanup, so it must be unkillable. This sequence
+        // of descheduling and recycling must not get interrupted by a kill.
+        // FIXME(#7544): Make this use an inner descheduler, like yield should.
+        this.current_task.get_mut_ref().death.unkillable += 1;
+
+        do this.deschedule_running_task_and_then |sched, dead_task| {
+            match dead_task.wake() {
+                Some(dead_task) => {
+                    let mut dead_task = dead_task;
+                    dead_task.death.unkillable -= 1; // FIXME(#7544) ugh
+                    let coroutine = dead_task.coroutine.take_unwrap();
+                    coroutine.recycle(&mut sched.stack_pool);
+                }
+                None => rtabort!("dead task killed before recycle"),
+            }
         }
 
         rtabort!("control reached end of task");
@@ -440,7 +462,7 @@ impl Scheduler {
             // here we know we are home, execute now OR we know we
             // aren't homed, and that this sched doesn't care
             do this.switch_running_tasks_and_then(task) |sched, last_task| {
-                sched.enqueue_task(last_task);
+                sched.enqueue_blocked_task(last_task);
             }
         } else if !homed && !this.run_anything {
             // the task isn't homed, but it can't be run here
@@ -483,7 +505,19 @@ impl Scheduler {
 
             // Running tasks may have asked us to do some cleanup
             (*sched).run_cleanup_job();
+
+            // Must happen after running the cleanup job (of course).
+            // Might not be running in task context; if not, a later call to
+            // resume_task_immediately will take care of this.
+            (*sched).current_task.map(|t| t.death.check_killed());
         }
+    }
+
+    pub fn resume_blocked_task_immediately(~self, blocked_task: BlockedTask) {
+        match blocked_task.wake() {
+            Some(task) => self.resume_task_immediately(task),
+            None => Local::put(self),
+        };
     }
 
     /// Block a running task, context switch to the scheduler, then pass the
@@ -498,7 +532,7 @@ impl Scheduler {
     /// This passes a Scheduler pointer to the fn after the context switch
     /// in order to prevent that fn from performing further scheduling operations.
     /// Doing further scheduling could easily result in infinite recursion.
-    pub fn deschedule_running_task_and_then(~self, f: &fn(&mut Scheduler, ~Task)) {
+    pub fn deschedule_running_task_and_then(~self, f: &fn(&mut Scheduler, BlockedTask)) {
         let mut this = self;
         assert!(this.in_task_context());
 
@@ -507,8 +541,8 @@ impl Scheduler {
 
         unsafe {
             let blocked_task = this.current_task.take_unwrap();
-            let f_fake_region = transmute::<&fn(&mut Scheduler, ~Task),
-                                            &fn(&mut Scheduler, ~Task)>(f);
+            let f_fake_region = transmute::<&fn(&mut Scheduler, BlockedTask),
+                                            &fn(&mut Scheduler, BlockedTask)>(f);
             let f_opaque = ClosureConverter::from_fn(f_fake_region);
             this.enqueue_cleanup_job(GiveTask(blocked_task, f_opaque));
         }
@@ -524,6 +558,9 @@ impl Scheduler {
             // We could be executing in a different thread now
             let sched = Local::unsafe_borrow::<Scheduler>();
             (*sched).run_cleanup_job();
+
+            // As above, must happen after running the cleanup job.
+            (*sched).current_task.map(|t| t.death.check_killed());
         }
     }
 
@@ -531,7 +568,7 @@ impl Scheduler {
     /// You would want to think hard about doing this, e.g. if there are
     /// pending I/O events it would be a bad idea.
     pub fn switch_running_tasks_and_then(~self, next_task: ~Task,
-                                         f: &fn(&mut Scheduler, ~Task)) {
+                                         f: &fn(&mut Scheduler, BlockedTask)) {
         let mut this = self;
         assert!(this.in_task_context());
 
@@ -540,8 +577,8 @@ impl Scheduler {
 
         let old_running_task = this.current_task.take_unwrap();
         let f_fake_region = unsafe {
-            transmute::<&fn(&mut Scheduler, ~Task),
-                        &fn(&mut Scheduler, ~Task)>(f)
+            transmute::<&fn(&mut Scheduler, BlockedTask),
+                        &fn(&mut Scheduler, BlockedTask)>(f)
         };
         let f_opaque = ClosureConverter::from_fn(f_fake_region);
         this.enqueue_cleanup_job(GiveTask(old_running_task, f_opaque));
@@ -559,6 +596,9 @@ impl Scheduler {
             // We could be executing in a different thread now
             let sched = Local::unsafe_borrow::<Scheduler>();
             (*sched).run_cleanup_job();
+
+            // As above, must happen after running the cleanup job.
+            (*sched).current_task.map(|t| t.death.check_killed());
         }
     }
 
@@ -579,7 +619,15 @@ impl Scheduler {
         let cleanup_job = self.cleanup_job.take_unwrap();
         match cleanup_job {
             DoNothing => { }
-            GiveTask(task, f) => (f.to_fn())(self, task)
+            GiveTask(task, f) => {
+                let f = f.to_fn();
+                // Task might need to receive a kill signal instead of blocking.
+                // We can call the "and_then" only if it blocks successfully.
+                match BlockedTask::try_block(task) {
+                    Left(killed_task) => self.enqueue_task(killed_task),
+                    Right(blocked_task) => f(self, blocked_task),
+                }
+            }
         }
     }
 
@@ -652,12 +700,14 @@ impl SchedHandle {
 // complaining
 type UnsafeTaskReceiver = sys::Closure;
 trait ClosureConverter {
-    fn from_fn(&fn(&mut Scheduler, ~Task)) -> Self;
-    fn to_fn(self) -> &fn(&mut Scheduler, ~Task);
+    fn from_fn(&fn(&mut Scheduler, BlockedTask)) -> Self;
+    fn to_fn(self) -> &fn(&mut Scheduler, BlockedTask);
 }
 impl ClosureConverter for UnsafeTaskReceiver {
-    fn from_fn(f: &fn(&mut Scheduler, ~Task)) -> UnsafeTaskReceiver { unsafe { transmute(f) } }
-    fn to_fn(self) -> &fn(&mut Scheduler, ~Task) { unsafe { transmute(self) } }
+    fn from_fn(f: &fn(&mut Scheduler, BlockedTask)) -> UnsafeTaskReceiver {
+        unsafe { transmute(f) }
+    }
+    fn to_fn(self) -> &fn(&mut Scheduler, BlockedTask) { unsafe { transmute(self) } }
 }
 
 
@@ -917,8 +967,7 @@ mod test {
                 };
                 // Context switch directly to the new task
                 do sched.switch_running_tasks_and_then(task2) |sched, task1| {
-                    let task1 = Cell::new(task1);
-                    sched.enqueue_task(task1.take());
+                    sched.enqueue_blocked_task(task1);
                 }
                 unsafe { *count_ptr = *count_ptr + 1; }
             };
@@ -969,9 +1018,8 @@ mod test {
                 let sched = Local::take::<Scheduler>();
                 assert!(sched.in_task_context());
                 do sched.deschedule_running_task_and_then() |sched, task| {
-                    let task = Cell::new(task);
                     assert!(!sched.in_task_context());
-                    sched.enqueue_task(task.take());
+                    sched.enqueue_blocked_task(task);
                 }
             };
             sched.enqueue_task(task);
@@ -993,7 +1041,7 @@ mod test {
                     do sched.event_loop.callback_ms(10) {
                         rtdebug!("in callback");
                         let mut sched = Local::take::<Scheduler>();
-                        sched.enqueue_task(task.take());
+                        sched.enqueue_blocked_task(task.take());
                         Local::put(sched);
                     }
                 }

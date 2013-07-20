@@ -2,7 +2,6 @@ use std::cast::transmute;
 use std::from_str::FromStr;
 use std::libc::{FILE, STDOUT_FILENO, c_int, fdopen, fputc, fputs, fwrite, size_t};
 use std::os;
-use std::str;
 use std::uint::{min, range};
 use std::vec::bytes::copy_memory;
 use std::vec;

@@ -190,7 +190,7 @@ fn timeit(f: &fn()) -> float {
 }
 
 fn main() {
-    let count = if os::getenv(~"RUST_BENCH").is_some() {
+    let count = if os::getenv("RUST_BENCH").is_some() {
         250000
     } else {
         100

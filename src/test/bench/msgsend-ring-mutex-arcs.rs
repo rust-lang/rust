@@ -24,7 +24,6 @@ use std::cell::Cell;
 use std::io;
 use std::os;
 use std::uint;
-use std::vec;
 
 // A poor man's pipe.
 type pipe = arc::MutexARC<~[uint]>;
@@ -60,8 +59,8 @@ fn thread_ring(i: uint, count: uint, num_chan: pipe, num_port: pipe) {
     // Send/Receive lots of messages.
     for uint::range(0u, count) |j| {
         //error!("task %?, iter %?", i, j);
-        let mut num_chan2 = num_chan.take_unwrap();
-        let mut num_port2 = num_port.take_unwrap();
+        let num_chan2 = num_chan.take_unwrap();
+        let num_port2 = num_port.take_unwrap();
         send(&num_chan2, i * j);
         num_chan = Some(num_chan2);
         let _n = recv(&num_port2);
@@ -72,7 +71,7 @@ fn thread_ring(i: uint, count: uint, num_chan: pipe, num_port: pipe) {
 
 fn main() {
     let args = os::args();
-    let args = if os::getenv(~"RUST_BENCH").is_some() {
+    let args = if os::getenv("RUST_BENCH").is_some() {
         ~[~"", ~"100", ~"10000"]
     } else if args.len() <= 1u {
         ~[~"", ~"10", ~"100"]
@@ -84,7 +83,7 @@ fn main() {
     let msg_per_task = uint::from_str(args[2]).get();
 
     let (num_chan, num_port) = init();
-    let mut num_chan = Cell::new(num_chan);
+    let num_chan = Cell::new(num_chan);
 
     let start = time::precise_time_s();
 
