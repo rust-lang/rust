@@ -47,6 +47,7 @@ struct Node<T> {
 }
 
 /// Double-ended DList iterator
+#[deriving(Clone)]
 pub struct DListIterator<'self, T> {
     priv head: &'self Link<T>,
     priv tail: Rawlink<Node<T>>,
@@ -62,6 +63,7 @@ pub struct MutDListIterator<'self, T> {
 }
 
 /// DList consuming iterator
+#[deriving(Clone)]
 pub struct ConsumeIterator<T> {
     priv list: DList<T>
 }
@@ -90,6 +92,13 @@ impl<T> Rawlink<T> {
         } else {
             Some(unsafe { cast::transmute(self.p) })
         }
+    }
+}
+
+impl<T> Clone for Rawlink<T> {
+    #[inline]
+    fn clone(&self) -> Rawlink<T> {
+        Rawlink{p: self.p}
     }
 }
 
@@ -684,6 +693,20 @@ mod tests {
         assert_eq!(it.next().unwrap(), &4);
         assert_eq!(it.size_hint(), (0, Some(0)));
         assert_eq!(it.next(), None);
+    }
+
+    #[test]
+    fn test_iterator_clone() {
+        let mut n = DList::new();
+        n.push_back(2);
+        n.push_back(3);
+        n.push_back(4);
+        let mut it = n.iter();
+        it.next();
+        let mut jt = it.clone();
+        assert_eq!(it.next(), jt.next());
+        assert_eq!(it.next_back(), jt.next_back());
+        assert_eq!(it.next(), jt.next());
     }
 
     #[test]
