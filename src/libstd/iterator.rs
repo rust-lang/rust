@@ -1222,6 +1222,16 @@ impl<'self, A, T: Iterator<A>, B, U: Iterator<B>> Iterator<B>
             }
         }
     }
+
+    #[inline]
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        let (flo, fhi) = self.frontiter.map_default((0, Some(0)), |it| it.size_hint());
+        let (blo, bhi) = self.backiter.map_default((0, Some(0)), |it| it.size_hint());
+        match (self.iter.size_hint(), fhi, bhi) {
+            ((0, Some(0)), Some(a), Some(b)) => (flo + blo, Some(a + b)),
+            _ => (flo + blo, None)
+        }
+    }
 }
 
 impl<'self,
