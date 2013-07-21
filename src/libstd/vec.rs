@@ -1688,7 +1688,7 @@ pub trait MutableVector<'self, T> {
      */
     fn move_from(self, src: ~[T], start: uint, end: uint) -> uint;
 
-    unsafe fn unsafe_mut_ref(&self, index: uint) -> *mut T;
+    unsafe fn unsafe_mut_ref(&self, index: uint) -> *'self mut T;
     unsafe fn unsafe_set(&self, index: uint, val: T);
 
     fn as_mut_buf<U>(&self, f: &fn(*'static mut T, uint) -> U) -> U;
@@ -1770,7 +1770,7 @@ impl<'self,T> MutableVector<'self, T> for &'self mut [T] {
     }
 
     #[inline]
-    unsafe fn unsafe_mut_ref(&self, index: uint) -> *mut T {
+    unsafe fn unsafe_mut_ref(&self, index: uint) -> *'self mut T {
         let pair_ptr: &(*mut T, uint) = transmute(self);
         let (ptr, _) = *pair_ptr;
         ptr.offset(index)
@@ -1886,7 +1886,7 @@ pub mod raw {
      * would also make any pointers to it invalid.
      */
     #[inline]
-    pub fn to_ptr<T>(v: &[T]) -> *'static T {
+    pub fn to_ptr<'a, T>(v: &[T]) -> *'a T {
         unsafe {
             let repr: *'static *'static SliceRepr = transmute(&v);
             transmute(&((**repr).data))
@@ -1895,7 +1895,7 @@ pub mod raw {
 
     /** see `to_ptr()` */
     #[inline]
-    pub fn to_mut_ptr<T>(v: &mut [T]) -> *'static mut T {
+    pub fn to_mut_ptr<'a, T>(v: &mut [T]) -> *'a mut T {
         unsafe {
             let repr: **SliceRepr = transmute(&v);
             transmute(&((**repr).data))
