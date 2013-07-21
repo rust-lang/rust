@@ -916,7 +916,7 @@ fn convert_whence(whence: SeekStyle) -> i32 {
     };
 }
 
-impl Reader for *'static libc::FILE {
+impl<'self> Reader for *'self libc::FILE {
     fn read(&self, bytes: &mut [u8], len: uint) -> uint {
         unsafe {
             do bytes.as_mut_buf |buf_p, buf_len| {
@@ -1151,7 +1151,7 @@ impl<W:Writer,C> Writer for Wrapper<W, C> {
     fn get_type(&self) -> WriterType { File }
 }
 
-impl Writer for *'static libc::FILE {
+impl<'self> Writer for *'self libc::FILE {
     fn write(&self, v: &[u8]) {
         unsafe {
             do v.as_imm_buf |vbuf, len| {

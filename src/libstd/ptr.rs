@@ -47,8 +47,8 @@ pub unsafe fn buf_len<T>(buf: **T) -> uint {
     position(buf, |i| *i == null())
 }
 
-impl<T> Clone for *'static T {
-    fn clone(&self) -> *'static T {
+impl<'self, T> Clone for *'self T {
+    fn clone(&self) -> *'self T {
         *self
     }
 }
@@ -281,7 +281,7 @@ pub trait RawPtr<T> {
 }
 
 /// Extension methods for immutable pointers
-impl<T> RawPtr<T> for *'static T {
+impl<'self, T> RawPtr<T> for *'self T {
     /// Returns true if the pointer is equal to the null pointer.
     #[inline]
     fn is_null(&self) -> bool { is_null(*self) }
@@ -313,7 +313,7 @@ impl<T> RawPtr<T> for *'static T {
 }
 
 /// Extension methods for mutable pointers
-impl<T> RawPtr<T> for *'static mut T {
+impl<'self, T> RawPtr<T> for *'self mut T {
     /// Returns true if the pointer is equal to the null pointer.
     #[inline]
     fn is_null(&self) -> bool { is_null(*self) }
@@ -346,7 +346,7 @@ impl<T> RawPtr<T> for *'static mut T {
 
 // Equality for pointers
 #[cfg(not(test))]
-impl<T> Eq for *'static const T {
+impl<'self, T> Eq for *'self const T {
     #[inline]
     fn eq(&self, other: &*const T) -> bool {
         (*self as uint) == (*other as uint)
@@ -357,7 +357,7 @@ impl<T> Eq for *'static const T {
 
 // Comparison for pointers
 #[cfg(not(test))]
-impl<T> Ord for *'static const T {
+impl<'self, T> Ord for *'self const T {
     #[inline]
     fn lt(&self, other: &*const T) -> bool {
         (*self as uint) < (*other as uint)
@@ -377,41 +377,41 @@ impl<T> Ord for *'static const T {
 }
 
 #[cfg(not(test))]
-impl<T, I: Int> Add<I, *'static T> for *'static T {
+impl<'self, T, I: Int> Add<I, *'self T> for *'self T {
     /// Add an integer value to a pointer to get an offset pointer.
     /// Is calculated according to the size of the type pointed to.
     #[inline]
-    pub fn add(&self, rhs: &I) -> *'static T {
+    pub fn add(&self, rhs: &I) -> *'self T {
         self.offset(rhs.to_int() as uint)
     }
 }
 
 #[cfg(not(test))]
-impl<T, I: Int> Sub<I, *'static T> for *'static T {
+impl<'self, T, I: Int> Sub<I, *'self T> for *'self T {
     /// Subtract an integer value from a pointer to get an offset pointer.
     /// Is calculated according to the size of the type pointed to.
     #[inline]
-    pub fn sub(&self, rhs: &I) -> *'static T {
+    pub fn sub(&self, rhs: &I) -> *'self T {
         self.offset(-rhs.to_int() as uint)
     }
 }
 
 #[cfg(not(test))]
-impl<T, I: Int> Add<I, *'static mut T> for *'static mut T {
+impl<'self, T, I: Int> Add<I, *'self mut T> for *'self mut T {
     /// Add an integer value to a pointer to get an offset pointer.
     /// Is calculated according to the size of the type pointed to.
     #[inline]
-    pub fn add(&self, rhs: &I) -> *'static mut T {
+    pub fn add(&self, rhs: &I) -> *'self mut T {
         self.offset(rhs.to_int() as uint)
     }
 }
 
 #[cfg(not(test))]
-impl<T, I: Int> Sub<I, *'static mut T> for *'static mut T {
+impl<'self, T, I: Int> Sub<I, *'self mut T> for *'self mut T {
     /// Subtract an integer value from a pointer to get an offset pointer.
     /// Is calculated according to the size of the type pointed to.
     #[inline]
-    pub fn sub(&self, rhs: &I) -> *'static mut T {
+    pub fn sub(&self, rhs: &I) -> *'self mut T {
         self.offset(-rhs.to_int() as uint)
     }
 }

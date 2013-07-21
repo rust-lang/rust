@@ -2148,8 +2148,8 @@ macro_rules! double_ended_iterator {
 //iterator!{struct VecIterator -> *T, &'self T}
 /// An iterator for iterating over a vector.
 pub struct VecIterator<'self, T> {
-    priv ptr: *'static T,
-    priv end: *'static T,
+    priv ptr: *'self T,
+    priv end: *'self T,
     priv lifetime: &'self T // FIXME: #5922
 }
 iterator!{impl VecIterator -> &'self T}
@@ -2163,8 +2163,8 @@ impl<'self, T> Clone for VecIterator<'self, T> {
 //iterator!{struct VecMutIterator -> *mut T, &'self mut T}
 /// An iterator for mutating the elements of a vector.
 pub struct VecMutIterator<'self, T> {
-    priv ptr: *'static mut T,
-    priv end: *'static mut T,
+    priv ptr: *'self mut T,
+    priv end: *'self mut T,
     priv lifetime: &'self mut T // FIXME: #5922
 }
 iterator!{impl VecMutIterator -> &'self mut T}

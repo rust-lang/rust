@@ -12,11 +12,11 @@
 
 use std::cast;
 
-struct r {
-  v: *'static int,
+struct r<'self> {
+  v: *'self int,
 }
 
-impl Drop for r {
+impl<'self> Drop for r<'self> {
     fn drop(&self) {
         unsafe {
             info!("r's dtor: self = %x, self.v = %x, self.v's value = %x",
@@ -28,17 +28,17 @@ impl Drop for r {
     }
 }
 
-fn r(v: *'static int) -> r {
+fn r<'a>(v: *'a int) -> r<'a> {
     r {
         v: v
     }
 }
 
-struct t(Node);
+struct t<'self>(Node<'self>);
 
-struct Node {
-    next: Option<@mut t>,
-    r: r
+struct Node<'self> {
+    next: Option<@mut t<'self>>,
+    r: r<'self>
 }
 
 pub fn main() {
