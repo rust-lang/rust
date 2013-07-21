@@ -1045,15 +1045,19 @@ pub mod traits {
     use super::{Str, eq_slice};
     
     impl Mul<uint,~str> for ~str {
-
         fn mul(&self,repeat: &uint) -> ~str{
-            let mut repeated_string = ~"";
-            for repeat.times {
-                repeated_string = repeated_string.append((*self).clone());
-            }
-            repeated_string
+            self.repeat(*repeat)
         }
-    
+    }
+     impl Mul<uint,@str> for @str {
+        fn mul(&self,repeat: &uint) -> @str{
+            self.repeat(*repeat).to_managed()
+        }
+    }
+     impl<'self> Mul<uint,~str> for &'self str {
+        fn mul(&self,repeat: &uint) -> ~str{
+            self.repeat(*repeat)
+        }
     }
 
     impl<'self> Add<&'self str,~str> for &'self str {
@@ -2377,15 +2381,17 @@ mod tests {
 
     #[test]
     fn test_repeat_string() {
-        let rust = ~"Rust";
-        let rust_zero = rust * 0;
-        let rust_single = rust * 1;
-        let rust_two = rust * 2;
+        assert_eq!(@"foo" * 1 , @"foo");
+        assert_eq!(@"foo" * 0 , @"");
+        assert_eq!(@"foo" * 2 , @"foofoo");
 
-        assert!((eq(&rust_single, &rust)));
-        assert!((eq(&rust_zero, &~"")));
-        assert!((eq(&rust_two, &~"RustRust")));
-        
+        assert_eq!(~"foo" * 1,~"foo");
+        assert_eq!(~"foo" * 0, ~"");
+        assert_eq!(~"foo" * 2, ~"foofoo");
+
+        assert_eq!("foo" * 1, ~"foo");
+        assert_eq!("foo" * 0, ~"");  
+        assert_eq!("foo" * 2, ~"foofoo");
     }
     #[test]
     fn test_eq() {
