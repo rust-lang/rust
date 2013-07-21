@@ -318,14 +318,18 @@ pub fn ArrayMalloc(cx: block, Ty: Type, Val: ValueRef) -> ValueRef {
 pub fn Alloca(cx: block, Ty: Type, name: &str) -> ValueRef {
     unsafe {
         if cx.unreachable { return llvm::LLVMGetUndef(Ty.ptr_to().to_ref()); }
-        B(cx).alloca(Ty, name)
+        let b = cx.fcx.ccx.builder();
+        b.position_before(cx.fcx.alloca_insert_pt.get());
+        b.alloca(Ty, name)
     }
 }
 
 pub fn ArrayAlloca(cx: block, Ty: Type, Val: ValueRef) -> ValueRef {
     unsafe {
         if cx.unreachable { return llvm::LLVMGetUndef(Ty.ptr_to().to_ref()); }
-        B(cx).array_alloca(Ty, Val)
+        let b = cx.fcx.ccx.builder();
+        b.position_before(cx.fcx.alloca_insert_pt.get());
+        b.array_alloca(Ty, Val)
     }
 }
 

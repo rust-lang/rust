@@ -11,7 +11,7 @@
 
 use back::abi;
 use back::link::{mangle_internal_name_by_path_and_seq};
-use lib::llvm::{llvm, ValueRef};
+use lib::llvm::ValueRef;
 use middle::moves;
 use middle::trans::base::*;
 use middle::trans::build::*;
@@ -25,7 +25,6 @@ use util::ppaux::ty_to_str;
 
 use middle::trans::type_::Type;
 
-use std::str;
 use std::vec;
 use syntax::ast;
 use syntax::ast_map::path_name;
@@ -331,23 +330,7 @@ pub fn load_environment(fcx: fn_ctxt,
         return;
     }
 
-    let llloadenv = match fcx.llloadenv {
-        Some(ll) => ll,
-        None => {
-            let ll =
-                str::as_c_str("load_env",
-                              |buf|
-                              unsafe {
-                                llvm::LLVMAppendBasicBlockInContext(fcx.ccx.llcx,
-                                                                    fcx.llfn,
-                                                                    buf)
-                              });
-            fcx.llloadenv = Some(ll);
-            ll
-        }
-    };
-
-    let bcx = raw_block(fcx, false, llloadenv);
+    let bcx = fcx.entry_bcx.get();
 
     // Load a pointer to the closure data, skipping over the box header:
     let llcdata = opaque_box_body(bcx, cdata_ty, fcx.llenv);

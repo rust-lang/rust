@@ -984,6 +984,8 @@ pub mod llvm {
         pub unsafe fn LLVMGetNextInstruction(Inst: ValueRef) -> ValueRef;
         #[fast_ffi]
         pub unsafe fn LLVMGetPreviousInstruction(Inst: ValueRef) -> ValueRef;
+        #[fast_ffi]
+        pub unsafe fn LLVMInstructionEraseFromParent(Inst: ValueRef);
 
         /* Operations on call sites */
         #[fast_ffi]
