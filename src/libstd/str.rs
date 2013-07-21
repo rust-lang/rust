@@ -1037,11 +1037,24 @@ pub mod raw {
 
 }
 
+
 #[cfg(not(test))]
 pub mod traits {
-    use ops::Add;
+    use ops::{Add,Mul};
     use cmp::{TotalOrd, Ordering, Less, Equal, Greater, Eq, Ord, Equiv, TotalEq};
     use super::{Str, eq_slice};
+    
+    impl Mul<uint,~str> for ~str {
+
+        fn mul(&self,repeat: &uint) -> ~str{
+            let mut repeated_string = ~"";
+            for repeat.times {
+                repeated_string = repeated_string.append((*self).clone());
+            }
+            repeated_string
+        }
+    
+    }
 
     impl<'self> Add<&'self str,~str> for &'self str {
         #[inline]
@@ -2362,6 +2375,18 @@ mod tests {
     use vec::{ImmutableVector, CopyableVector};
     use cmp::{TotalOrd, Less, Equal, Greater};
 
+    #[test]
+    fn test_repeat_string() {
+        let rust = ~"Rust";
+        let rust_zero = rust * 0;
+        let rust_single = rust * 1;
+        let rust_two = rust * 2;
+
+        assert!((eq(&rust_single, &rust)));
+        assert!((eq(&rust_zero, &~"")));
+        assert!((eq(&rust_two, &~"RustRust")));
+        
+    }
     #[test]
     fn test_eq() {
         assert!((eq(&~"", &~"")));
