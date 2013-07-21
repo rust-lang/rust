@@ -788,8 +788,8 @@ pub fn list_dir(p: &Path) -> ~[~str] {
  *
  * This version prepends each entry with the directory.
  */
-pub fn list_dir_path(p: &Path) -> ~[~Path] {
-    list_dir(p).map(|f| ~p.push(*f))
+pub fn list_dir_path(p: &Path) -> ~[Path] {
+    list_dir(p).map(|f| p.push(*f))
 }
 
 /// Removes a directory at the specified path, after removing
