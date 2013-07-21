@@ -158,7 +158,7 @@ pub trait TyVisitor {
 }
 
 #[abi = "rust-intrinsic"]
-pub extern "rust-intrinsic" {
+extern "rust-intrinsic" {
 
     /// Atomic compare and exchange, sequentially consistent.
     pub fn atomic_cxchg(dst: &mut int, old: int, src: int) -> int;

@@ -86,7 +86,7 @@ mod test {
 
     #[abi = "cdecl"]
     #[nolink]
-    pub extern {
+    extern {
         pub fn rust_get_sched_id() -> libc::intptr_t;
         pub fn get_task_id() -> libc::intptr_t;
     }

@@ -17,7 +17,7 @@ use std::vec;
 mod libc {
     #[nolink]
     #[abi = "cdecl"]
-    pub extern {
+    extern {
         #[link_name = "strlen"]
         pub fn my_strlen(str: *u8) -> uint;
     }

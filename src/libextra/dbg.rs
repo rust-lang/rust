@@ -25,7 +25,7 @@ pub mod rustrt {
     use std::unstable::intrinsics::{TyDesc};
 
     #[abi = "cdecl"]
-    pub extern {
+    extern {
         pub unsafe fn debug_tydesc(td: *TyDesc);
         pub unsafe fn debug_opaque(td: *TyDesc, x: *());
         pub unsafe fn debug_box(td: *TyDesc, x: *());

@@ -14,37 +14,37 @@ use std::f64;
 
 mod rusti {
     #[abi = "rust-intrinsic"]
-    pub extern "rust-intrinsic" {
-        fn sqrtf32(x: f32) -> f32;
-        fn sqrtf64(x: f64) -> f64;
-        fn powif32(a: f32, x: i32) -> f32;
-        fn powif64(a: f64, x: i32) -> f64;
-        fn sinf32(x: f32) -> f32;
-        fn sinf64(x: f64) -> f64;
-        fn cosf32(x: f32) -> f32;
-        fn cosf64(x: f64) -> f64;
-        fn powf32(a: f32, x: f32) -> f32;
-        fn powf64(a: f64, x: f64) -> f64;
-        fn expf32(x: f32) -> f32;
-        fn expf64(x: f64) -> f64;
-        fn exp2f32(x: f32) -> f32;
-        fn exp2f64(x: f64) -> f64;
-        fn logf32(x: f32) -> f32;
-        fn logf64(x: f64) -> f64;
-        fn log10f32(x: f32) -> f32;
-        fn log10f64(x: f64) -> f64;
-        fn log2f32(x: f32) -> f32;
-        fn log2f64(x: f64) -> f64;
-        fn fmaf32(a: f32, b: f32, c: f32) -> f32;
-        fn fmaf64(a: f64, b: f64, c: f64) -> f64;
-        fn fabsf32(x: f32) -> f32;
-        fn fabsf64(x: f64) -> f64;
-        fn floorf32(x: f32) -> f32;
-        fn floorf64(x: f64) -> f64;
-        fn ceilf32(x: f32) -> f32;
-        fn ceilf64(x: f64) -> f64;
-        fn truncf32(x: f32) -> f32;
-        fn truncf64(x: f64) -> f64;
+    extern "rust-intrinsic" {
+        pub fn sqrtf32(x: f32) -> f32;
+        pub fn sqrtf64(x: f64) -> f64;
+        pub fn powif32(a: f32, x: i32) -> f32;
+        pub fn powif64(a: f64, x: i32) -> f64;
+        pub fn sinf32(x: f32) -> f32;
+        pub fn sinf64(x: f64) -> f64;
+        pub fn cosf32(x: f32) -> f32;
+        pub fn cosf64(x: f64) -> f64;
+        pub fn powf32(a: f32, x: f32) -> f32;
+        pub fn powf64(a: f64, x: f64) -> f64;
+        pub fn expf32(x: f32) -> f32;
+        pub fn expf64(x: f64) -> f64;
+        pub fn exp2f32(x: f32) -> f32;
+        pub fn exp2f64(x: f64) -> f64;
+        pub fn logf32(x: f32) -> f32;
+        pub fn logf64(x: f64) -> f64;
+        pub fn log10f32(x: f32) -> f32;
+        pub fn log10f64(x: f64) -> f64;
+        pub fn log2f32(x: f32) -> f32;
+        pub fn log2f64(x: f64) -> f64;
+        pub fn fmaf32(a: f32, b: f32, c: f32) -> f32;
+        pub fn fmaf64(a: f64, b: f64, c: f64) -> f64;
+        pub fn fabsf32(x: f32) -> f32;
+        pub fn fabsf64(x: f64) -> f64;
+        pub fn floorf32(x: f32) -> f32;
+        pub fn floorf64(x: f64) -> f64;
+        pub fn ceilf32(x: f32) -> f32;
+        pub fn ceilf64(x: f64) -> f64;
+        pub fn truncf32(x: f32) -> f32;
+        pub fn truncf64(x: f64) -> f64;
     }
 }
 

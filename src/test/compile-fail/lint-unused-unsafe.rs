@@ -13,7 +13,7 @@
 #[deny(unused_unsafe)];
 
 mod foo {
-    pub extern {
+    extern {
         pub fn bar();
     }
 }

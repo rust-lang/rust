@@ -64,7 +64,7 @@ pub mod rustrt {
     use super::StackSegment;
 
     #[link_name = "rustrt"]
-    pub extern {
+    extern {
         #[rust_stack]
         pub unsafe fn rust_gc_metadata() -> *Word;
 

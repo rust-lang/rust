@@ -13,7 +13,7 @@ use std::str;
 mod libc {
     #[abi = "cdecl"]
     #[nolink]
-    pub extern {
+    extern {
         pub fn atol(x: *u8) -> int;
         pub fn atoll(x: *u8) -> i64;
     }
