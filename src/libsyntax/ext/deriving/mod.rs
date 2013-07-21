@@ -18,7 +18,8 @@ library.
 
 */
 
-use ast::{enum_def, ident, item, Generics, meta_item, struct_def};
+use ast::{enum_def, ident, item, Generics, struct_def};
+use ast::{MetaItem, MetaList, MetaNameValue, MetaWord};
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use codemap::span;
@@ -58,26 +59,24 @@ pub type ExpandDerivingEnumDefFn<'self> = &'self fn(@ExtCtxt,
 
 pub fn expand_meta_deriving(cx: @ExtCtxt,
                             _span: span,
-                            mitem: @meta_item,
+                            mitem: @MetaItem,
                             in_items: ~[@item])
                          -> ~[@item] {
-    use ast::{meta_list, meta_name_value, meta_word};
-
     match mitem.node {
-        meta_name_value(_, ref l) => {
+        MetaNameValue(_, ref l) => {
             cx.span_err(l.span, "unexpected value in `deriving`");
             in_items
         }
-        meta_word(_) | meta_list(_, []) => {
+        MetaWord(_) | MetaList(_, []) => {
             cx.span_warn(mitem.span, "empty trait list in `deriving`");
             in_items
         }
-        meta_list(_, ref titems) => {
+        MetaList(_, ref titems) => {
             do titems.rev_iter().fold(in_items) |in_items, &titem| {
                 match titem.node {
-                    meta_name_value(tname, _) |
-                    meta_list(tname, _) |
-                    meta_word(tname) => {
+                    MetaNameValue(tname, _) |
+                    MetaList(tname, _) |
+                    MetaWord(tname) => {
                         macro_rules! expand(($func:path) => ($func(cx, titem.span,
                                                                    titem, in_items)));
                         match tname.as_slice() {

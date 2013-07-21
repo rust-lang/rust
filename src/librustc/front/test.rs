@@ -23,6 +23,7 @@ use syntax::ext::base::ExtCtxt;
 use syntax::fold;
 use syntax::print::pprust;
 use syntax::{ast, ast_util};
+use syntax::attr::AttrMetaMethods;
 
 type node_id_gen = @fn() -> ast::node_id;
 
@@ -50,8 +51,7 @@ pub fn modify_for_testing(sess: session::Session,
     // We generate the test harness when building in the 'test'
     // configuration, either with the '--test' or '--cfg test'
     // command line options.
-    let should_test = attr::contains(crate.node.config,
-                                     attr::mk_word_item(@"test"));
+    let should_test = attr::contains_name(crate.node.config, "test");
 
     if should_test {
         generate_test_harness(sess, crate)
@@ -95,8 +95,8 @@ fn strip_test_functions(crate: &ast::crate) -> @ast::crate {
     // When not compiling with --test we should not compile the
     // #[test] functions
     do config::strip_items(crate) |attrs| {
-        !attr::contains_name(attr::attr_metas(attrs), "test") &&
-        !attr::contains_name(attr::attr_metas(attrs), "bench")
+        !attr::contains_name(attrs, "test") &&
+        !attr::contains_name(attrs, "bench")
     }
 }
 
@@ -111,7 +111,7 @@ fn fold_mod(cx: @mut TestCtxt,
         if !*cx.sess.building_library {
             @ast::item {
                 attrs: do item.attrs.iter().filter_map |attr| {
-                    if "main" != attr::get_attr_name(attr) {
+                    if "main" != attr.name() {
                         Some(*attr)
                     } else {
                         None
@@ -180,8 +180,7 @@ fn fold_item(cx: @mut TestCtxt, i: @ast::item, fld: @fold::ast_fold)
 }
 
 fn is_test_fn(cx: @mut TestCtxt, i: @ast::item) -> bool {
-    let has_test_attr = !attr::find_attrs_by_name(i.attrs,
-                                                  "test").is_empty();
+    let has_test_attr = attr::contains_name(i.attrs, "test");
 
     fn has_test_signature(i: @ast::item) -> bool {
         match &i.node {
@@ -205,11 +204,12 @@ fn is_test_fn(cx: @mut TestCtxt, i: @ast::item) -> bool {
             "functions used as tests must have signature fn() -> ()."
         );
     }
+
     return has_test_attr && has_test_signature(i);
 }
 
 fn is_bench_fn(i: @ast::item) -> bool {
-    let has_bench_attr = !attr::find_attrs_by_name(i.attrs, "bench").is_empty();
+    let has_bench_attr = attr::contains_name(i.attrs, "bench");
 
     fn has_test_signature(i: @ast::item) -> bool {
         match i.node {
@@ -233,21 +233,17 @@ fn is_bench_fn(i: @ast::item) -> bool {
 }
 
 fn is_ignored(cx: @mut TestCtxt, i: @ast::item) -> bool {
-    let ignoreattrs = attr::find_attrs_by_name(i.attrs, "ignore");
-    let ignoreitems = attr::attr_metas(ignoreattrs);
-    return if !ignoreitems.is_empty() {
-        let cfg_metas = ignoreitems.consume_iter()
-            .filter_map(|i| attr::get_meta_item_list(i))
-            .collect::<~[~[@ast::meta_item]]>()
-            .concat_vec();
-        config::metas_in_cfg(cx.crate.node.config.clone(), cfg_metas)
-    } else {
-        false
+    do i.attrs.iter().any |attr| {
+        // check ignore(cfg(foo, bar))
+        "ignore" == attr.name() && match attr.meta_item_list() {
+            Some(ref cfgs) => attr::test_cfg(cx.crate.node.config, cfgs.iter().transform(|x| *x)),
+            None => true
+        }
     }
 }
 
 fn should_fail(i: @ast::item) -> bool {
-    !attr::find_attrs_by_name(i.attrs, "should_fail").is_empty()
+    attr::contains_name(i.attrs, "should_fail")
 }
 
 fn add_test_module(cx: &TestCtxt, m: &ast::_mod) -> ast::_mod {
@@ -278,19 +274,15 @@ mod __test {
 */
 
 fn mk_std(cx: &TestCtxt) -> ast::view_item {
-    let vers = ast::lit_str(@"0.8-pre");
-    let vers = nospan(vers);
-    let mi = ast::meta_name_value(@"vers", vers);
-    let mi = nospan(mi);
-    let id_std = cx.sess.ident_of("extra");
-    let vi = if is_std(cx) {
+    let id_extra = cx.sess.ident_of("extra");
+    let vi = if is_extra(cx) {
         ast::view_item_use(
-            ~[@nospan(ast::view_path_simple(id_std,
-                                            path_node(~[id_std]),
+            ~[@nospan(ast::view_path_simple(id_extra,
+                                            path_node(~[id_extra]),
                                             cx.sess.next_node_id()))])
     } else {
-        ast::view_item_extern_mod(id_std, ~[@mi],
-                           cx.sess.next_node_id())
+        let mi = attr::mk_name_value_item_str(@"vers", @"0.8-pre");
+        ast::view_item_extern_mod(id_extra, ~[mi], cx.sess.next_node_id())
     };
     ast::view_item {
         node: vi,
@@ -377,15 +369,12 @@ fn mk_tests(cx: &TestCtxt) -> @ast::item {
     )).get()
 }
 
-fn is_std(cx: &TestCtxt) -> bool {
-    let is_std = {
-        let items = attr::find_linkage_metas(cx.crate.node.attrs);
-        match attr::last_meta_item_value_str_by_name(items, "name") {
-          Some(s) if "extra" == s => true,
-          _ => false
-        }
-    };
-    return is_std;
+fn is_extra(cx: &TestCtxt) -> bool {
+    let items = attr::find_linkage_metas(cx.crate.node.attrs);
+    match attr::last_meta_item_value_str_by_name(items, "name") {
+        Some(s) if "extra" == s => true,
+        _ => false
+    }
 }
 
 fn mk_test_descs(cx: &TestCtxt) -> @ast::expr {

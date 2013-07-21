@@ -3980,7 +3980,7 @@ pub fn has_attr(tcx: ctxt, did: def_id, attr: &str) -> bool {
                 &ast_map::node_item(@ast::item {
                     attrs: ref attrs,
                     _
-                }, _)) => attr::attrs_contains_name(*attrs, attr),
+                }, _)) => attr::contains_name(*attrs, attr),
             _ => tcx.sess.bug(fmt!("has_attr: %? is not an item",
                                    did))
         }

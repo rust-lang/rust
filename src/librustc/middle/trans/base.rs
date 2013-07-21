@@ -79,6 +79,7 @@ use syntax::ast::ident;
 use syntax::ast_map::{path, path_elt_to_str, path_name};
 use syntax::ast_util::{local_def};
 use syntax::attr;
+use syntax::attr::AttrMetaMethods;
 use syntax::codemap::span;
 use syntax::parse::token;
 use syntax::parse::token::{special_idents};
@@ -464,13 +465,14 @@ pub fn set_inline_hint(f: ValueRef) {
     }
 }
 
-pub fn set_inline_hint_if_appr(attrs: &[ast::attribute],
+pub fn set_inline_hint_if_appr(attrs: &[ast::Attribute],
                                llfn: ValueRef) {
-    match attr::find_inline_attr(attrs) {
-      attr::ia_hint => set_inline_hint(llfn),
-      attr::ia_always => set_always_inline(llfn),
-      attr::ia_never => set_no_inline(llfn),
-      attr::ia_none => { /* fallthrough */ }
+    use syntax::attr::*;
+    match find_inline_attr(attrs) {
+        InlineHint   => set_inline_hint(llfn),
+        InlineAlways => set_always_inline(llfn),
+        InlineNever  => set_no_inline(llfn),
+        InlineNone   => { /* fallthrough */ }
     }
 }
 
@@ -1844,7 +1846,7 @@ pub fn trans_closure(ccx: @mut CrateContext,
                      self_arg: self_arg,
                      param_substs: Option<@param_substs>,
                      id: ast::node_id,
-                     attributes: &[ast::attribute],
+                     attributes: &[ast::Attribute],
                      output_type: ty::t,
                      maybe_load_env: &fn(fn_ctxt),
                      finish: &fn(block)) {
@@ -1867,7 +1869,7 @@ pub fn trans_closure(ccx: @mut CrateContext,
     let raw_llargs = create_llargs_for_fn_args(fcx, self_arg, decl.inputs);
 
     // Set the fixed stack segment flag if necessary.
-    if attr::attrs_contains_name(attributes, "fixed_stack_segment") {
+    if attr::contains_name(attributes, "fixed_stack_segment") {
         set_no_inline(fcx.llfn);
         set_fixed_stack_segment(fcx.llfn);
     }
@@ -1925,7 +1927,7 @@ pub fn trans_fn(ccx: @mut CrateContext,
                 self_arg: self_arg,
                 param_substs: Option<@param_substs>,
                 id: ast::node_id,
-                attrs: &[ast::attribute]) {
+                attrs: &[ast::Attribute]) {
 
     let the_path_str = path_str(ccx.sess, path);
     let _s = StatRecorder::new(ccx, the_path_str);
@@ -2195,23 +2197,17 @@ pub fn trans_item(ccx: @mut CrateContext, item: &ast::item) {
           // Do static_assert checking. It can't really be done much earlier because we need to get
           // the value of the bool out of LLVM
           for item.attrs.iter().advance |attr| {
-              match attr.node.value.node {
-                  ast::meta_word(x) => {
-                      if x.slice(0, x.len()) == "static_assert" {
-                          if m == ast::m_mutbl {
-                              ccx.sess.span_fatal(expr.span,
-                                                  "cannot have static_assert \
-                                                   on a mutable static");
-                          }
-                          let v = ccx.const_values.get_copy(&item.id);
-                          unsafe {
-                              if !(llvm::LLVMConstIntGetZExtValue(v) as bool) {
-                                  ccx.sess.span_fatal(expr.span, "static assertion failed");
-                              }
-                          }
+              if "static_assert" == attr.name() {
+                  if m == ast::m_mutbl {
+                      ccx.sess.span_fatal(expr.span,
+                                          "cannot have static_assert on a mutable static");
+                  }
+                  let v = ccx.const_values.get_copy(&item.id);
+                  unsafe {
+                      if !(llvm::LLVMConstIntGetZExtValue(v) as bool) {
+                          ccx.sess.span_fatal(expr.span, "static assertion failed");
                       }
-                  },
-                  _ => ()
+                  }
               }
           }
       },
@@ -2257,7 +2253,7 @@ pub fn register_fn(ccx: @mut CrateContext,
                    sp: span,
                    path: path,
                    node_id: ast::node_id,
-                   attrs: &[ast::attribute])
+                   attrs: &[ast::Attribute])
                 -> ValueRef {
     let t = ty::node_id_to_type(ccx.tcx, node_id);
     register_fn_full(ccx, sp, path, node_id, attrs, t)
@@ -2267,7 +2263,7 @@ pub fn register_fn_full(ccx: @mut CrateContext,
                         sp: span,
                         path: path,
                         node_id: ast::node_id,
-                        attrs: &[ast::attribute],
+                        attrs: &[ast::Attribute],
                         node_type: ty::t)
                      -> ValueRef {
     let llfty = type_of_fn_from_ty(ccx, node_type);
@@ -2279,7 +2275,7 @@ pub fn register_fn_fuller(ccx: @mut CrateContext,
                           sp: span,
                           path: path,
                           node_id: ast::node_id,
-                          attrs: &[ast::attribute],
+                          attrs: &[ast::Attribute],
                           node_type: ty::t,
                           cc: lib::llvm::CallConv,
                           fn_ty: Type)
@@ -2288,7 +2284,7 @@ pub fn register_fn_fuller(ccx: @mut CrateContext,
            node_id,
            ast_map::path_to_str(path, token::get_ident_interner()));
 
-    let ps = if attr::attrs_contains_name(attrs, "no_mangle") {
+    let ps = if attr::contains_name(attrs, "no_mangle") {
         path_elt_to_str(*path.last(), token::get_ident_interner())
     } else {
         mangle_exported_name(ccx, path, node_type)

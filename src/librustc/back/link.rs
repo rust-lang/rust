@@ -36,6 +36,7 @@ use std::vec;
 use syntax::ast;
 use syntax::ast_map::{path, path_mod, path_name};
 use syntax::attr;
+use syntax::attr::{AttrMetaMethods};
 use syntax::print::pprust;
 use syntax::parse::token;
 
@@ -502,7 +503,7 @@ pub fn build_link_meta(sess: Session,
     struct ProvidedMetas {
         name: Option<@str>,
         vers: Option<@str>,
-        cmh_items: ~[@ast::meta_item]
+        cmh_items: ~[@ast::MetaItem]
     }
 
     fn provided_link_metas(sess: Session, c: &ast::crate) ->
@@ -513,18 +514,10 @@ pub fn build_link_meta(sess: Session,
         let linkage_metas = attr::find_linkage_metas(c.node.attrs);
         attr::require_unique_names(sess.diagnostic(), linkage_metas);
         for linkage_metas.iter().advance |meta| {
-            match attr::get_meta_item_value_str(*meta) {
-                Some(value) => {
-                    let item_name : &str = attr::get_meta_item_name(*meta);
-                    match item_name {
-                        // Changing attr would avoid the need for the copy
-                        // here
-                        "name" => name = Some(value),
-                        "vers" => vers = Some(value),
-                        _ => cmh_items.push(*meta)
-                    }
-                },
-                None => cmh_items.push(*meta)
+            match meta.name_str_pair() {
+                Some((n, value)) if "name" == n => name = Some(value),
+                Some((n, value)) if "vers" == n => vers = Some(value),
+                _ => cmh_items.push(*meta)
             }
         }
 
@@ -537,7 +530,7 @@ pub fn build_link_meta(sess: Session,
 
     // This calculates CMH as defined above
     fn crate_meta_extras_hash(symbol_hasher: &mut hash::State,
-                              cmh_items: ~[@ast::meta_item],
+                              cmh_items: ~[@ast::MetaItem],
                               dep_hashes: ~[@str]) -> @str {
         fn len_and_str(s: &str) -> ~str {
             fmt!("%u_%s", s.len(), s)
@@ -549,16 +542,16 @@ pub fn build_link_meta(sess: Session,
 
         let cmh_items = attr::sort_meta_items(cmh_items);
 
-        fn hash(symbol_hasher: &mut hash::State, m: &@ast::meta_item) {
+        fn hash(symbol_hasher: &mut hash::State, m: &@ast::MetaItem) {
             match m.node {
-              ast::meta_name_value(key, value) => {
+              ast::MetaNameValue(key, value) => {
                 write_string(symbol_hasher, len_and_str(key));
                 write_string(symbol_hasher, len_and_str_lit(value));
               }
-              ast::meta_word(name) => {
+              ast::MetaWord(name) => {
                 write_string(symbol_hasher, len_and_str(name));
               }
-              ast::meta_list(name, ref mis) => {
+              ast::MetaList(name, ref mis) => {
                 write_string(symbol_hasher, len_and_str(name));
                 for mis.iter().advance |m_| {
                     hash(symbol_hasher, m_);

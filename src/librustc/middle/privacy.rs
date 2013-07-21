@@ -350,8 +350,7 @@ pub fn check_crate<'mm>(tcx: ty::ctxt,
         visit_item: |item, (method_map, visitor)| {
             // Do not check privacy inside items with the resolve_unexported
             // attribute. This is used for the test runner.
-            if !attr::contains_name(attr::attr_metas(item.attrs),
-                                    "!resolve_unexported") {
+            if !attr::contains_name(item.attrs, "!resolve_unexported") {
                 visit::visit_item(item, (method_map, visitor));
             }
         },

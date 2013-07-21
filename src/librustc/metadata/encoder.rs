@@ -35,6 +35,7 @@ use syntax::ast;
 use syntax::ast_map;
 use syntax::ast_util::*;
 use syntax::attr;
+use syntax::attr::AttrMetaMethods;
 use syntax::diagnostic::span_handler;
 use syntax::parse::token::special_idents;
 use syntax::{ast_util, visit};
@@ -792,10 +793,11 @@ fn purity_static_method_family(p: purity) -> char {
 }
 
 
-fn should_inline(attrs: &[attribute]) -> bool {
-    match attr::find_inline_attr(attrs) {
-        attr::ia_none | attr::ia_never  => false,
-        attr::ia_hint | attr::ia_always => true
+fn should_inline(attrs: &[Attribute]) -> bool {
+    use syntax::attr::*;
+    match find_inline_attr(attrs) {
+        InlineNone | InlineNever  => false,
+        InlineHint | InlineAlways => true
     }
 }
 
@@ -1294,16 +1296,16 @@ fn write_int(writer: @io::Writer, &n: &int) {
     writer.write_be_u32(n as u32);
 }
 
-fn encode_meta_item(ebml_w: &mut writer::Encoder, mi: @meta_item) {
+fn encode_meta_item(ebml_w: &mut writer::Encoder, mi: @MetaItem) {
     match mi.node {
-      meta_word(name) => {
+      MetaWord(name) => {
         ebml_w.start_tag(tag_meta_item_word);
         ebml_w.start_tag(tag_meta_item_name);
         ebml_w.writer.write(name.as_bytes());
         ebml_w.end_tag();
         ebml_w.end_tag();
       }
-      meta_name_value(name, value) => {
+      MetaNameValue(name, value) => {
         match value.node {
           lit_str(value) => {
             ebml_w.start_tag(tag_meta_item_name_value);
@@ -1318,7 +1320,7 @@ fn encode_meta_item(ebml_w: &mut writer::Encoder, mi: @meta_item) {
           _ => {/* FIXME (#623): encode other variants */ }
         }
       }
-      meta_list(name, ref items) => {
+      MetaList(name, ref items) => {
         ebml_w.start_tag(tag_meta_item_list);
         ebml_w.start_tag(tag_meta_item_name);
         ebml_w.writer.write(name.as_bytes());
@@ -1331,7 +1333,7 @@ fn encode_meta_item(ebml_w: &mut writer::Encoder, mi: @meta_item) {
     }
 }
 
-fn encode_attributes(ebml_w: &mut writer::Encoder, attrs: &[attribute]) {
+fn encode_attributes(ebml_w: &mut writer::Encoder, attrs: &[Attribute]) {
     ebml_w.start_tag(tag_attributes);
     for attrs.iter().advance |attr| {
         ebml_w.start_tag(tag_attribute);
@@ -1346,10 +1348,10 @@ fn encode_attributes(ebml_w: &mut writer::Encoder, attrs: &[attribute]) {
 // 'name' and 'vers' items, so if the user didn't provide them we will throw
 // them in anyway with default values.
 fn synthesize_crate_attrs(ecx: &EncodeContext,
-                          crate: &crate) -> ~[attribute] {
+                          crate: &crate) -> ~[Attribute] {
 
-    fn synthesize_link_attr(ecx: &EncodeContext, items: ~[@meta_item]) ->
-       attribute {
+    fn synthesize_link_attr(ecx: &EncodeContext, items: ~[@MetaItem]) ->
+       Attribute {
 
         assert!(!ecx.link_meta.name.is_empty());
         assert!(!ecx.link_meta.vers.is_empty());
@@ -1361,29 +1363,29 @@ fn synthesize_crate_attrs(ecx: &EncodeContext,
             attr::mk_name_value_item_str(@"vers",
                                          ecx.link_meta.vers);
 
-        let other_items =
-            {
-                let tmp = attr::remove_meta_items_by_name(items, "name");
-                attr::remove_meta_items_by_name(tmp, "vers")
-            };
+        let mut meta_items = ~[name_item, vers_item];
 
-        let meta_items = vec::append(~[name_item, vers_item], other_items);
+        for items.iter()
+            .filter(|mi| "name" != mi.name() && "vers" != mi.name())
+            .advance |&mi| {
+            meta_items.push(mi);
+        }
         let link_item = attr::mk_list_item(@"link", meta_items);
 
         return attr::mk_attr(link_item);
     }
 
-    let mut attrs: ~[attribute] = ~[];
+    let mut attrs = ~[];
     let mut found_link_attr = false;
     for crate.node.attrs.iter().advance |attr| {
         attrs.push(
-            if "link" != attr::get_attr_name(attr)  {
+            if "link" != attr.name()  {
                 *attr
             } else {
-                match attr.node.value.node {
-                  meta_list(_, ref l) => {
+                match attr.meta_item_list() {
+                  Some(l) => {
                     found_link_attr = true;;
-                    synthesize_link_attr(ecx, (*l).clone())
+                    synthesize_link_attr(ecx, l.to_owned())
                   }
                   _ => *attr
                 }

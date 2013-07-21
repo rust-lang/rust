@@ -975,7 +975,7 @@ pub fn get_static_methods_if_impl(intr: @ident_interner,
 
 pub fn get_item_attrs(cdata: cmd,
                       node_id: ast::node_id,
-                      f: &fn(~[@ast::meta_item])) {
+                      f: &fn(~[@ast::MetaItem])) {
 
     let item = lookup_item(node_id, cdata.data);
     for reader::tagged_docs(item, tag_attributes) |attributes| {
@@ -1082,8 +1082,8 @@ fn item_family_to_str(fam: Family) -> ~str {
     }
 }
 
-fn get_meta_items(md: ebml::Doc) -> ~[@ast::meta_item] {
-    let mut items: ~[@ast::meta_item] = ~[];
+fn get_meta_items(md: ebml::Doc) -> ~[@ast::MetaItem] {
+    let mut items: ~[@ast::MetaItem] = ~[];
     for reader::tagged_docs(md, tag_meta_item_word) |meta_item_doc| {
         let nd = reader::get_doc(meta_item_doc, tag_meta_item_name);
         let n = nd.as_str_slice().to_managed();
@@ -1094,7 +1094,7 @@ fn get_meta_items(md: ebml::Doc) -> ~[@ast::meta_item] {
         let vd = reader::get_doc(meta_item_doc, tag_meta_item_value);
         let n = nd.as_str_slice().to_managed();
         let v = vd.as_str_slice().to_managed();
-        // FIXME (#623): Should be able to decode meta_name_value variants,
+        // FIXME (#623): Should be able to decode MetaNameValue variants,
         // but currently the encoder just drops them
         items.push(attr::mk_name_value_item_str(n, v));
     };
@@ -1107,8 +1107,8 @@ fn get_meta_items(md: ebml::Doc) -> ~[@ast::meta_item] {
     return items;
 }
 
-fn get_attributes(md: ebml::Doc) -> ~[ast::attribute] {
-    let mut attrs: ~[ast::attribute] = ~[];
+fn get_attributes(md: ebml::Doc) -> ~[ast::Attribute] {
+    let mut attrs: ~[ast::Attribute] = ~[];
     match reader::maybe_get_doc(md, tag_attributes) {
       option::Some(attrs_d) => {
         for reader::tagged_docs(attrs_d, tag_attribute) |attr_doc| {
@@ -1119,8 +1119,8 @@ fn get_attributes(md: ebml::Doc) -> ~[ast::attribute] {
             let meta_item = meta_items[0];
             attrs.push(
                 codemap::spanned {
-                    node: ast::attribute_ {
-                        style: ast::attr_outer,
+                    node: ast::Attribute_ {
+                        style: ast::AttrOuter,
                         value: meta_item,
                         is_sugared_doc: false,
                     },
@@ -1154,7 +1154,7 @@ fn list_crate_attributes(intr: @ident_interner, md: ebml::Doc, hash: &str,
     out.write_str("\n\n");
 }
 
-pub fn get_crate_attributes(data: @~[u8]) -> ~[ast::attribute] {
+pub fn get_crate_attributes(data: @~[u8]) -> ~[ast::Attribute] {
     return get_attributes(reader::Doc(data));
 }
 

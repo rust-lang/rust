@@ -351,10 +351,10 @@ pub fn trans_foreign_mod(ccx: @mut CrateContext,
                         cc: lib::llvm::CallConv) {
         let llwrapfn = get_item_val(ccx, id);
         let tys = shim_types(ccx, id);
-        if attr::attrs_contains_name(foreign_item.attrs, "rust_stack") {
+        if attr::contains_name(foreign_item.attrs, "rust_stack") {
             build_direct_fn(ccx, llwrapfn, foreign_item,
                             &tys, cc);
-        } else if attr::attrs_contains_name(foreign_item.attrs, "fast_ffi") {
+        } else if attr::contains_name(foreign_item.attrs, "fast_ffi") {
             build_fast_ffi_fn(ccx, llwrapfn, foreign_item, &tys, cc);
         } else {
             let llshimfn = build_shim_fn(ccx, foreign_item, &tys, cc);
@@ -546,7 +546,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
                        item: &ast::foreign_item,
                        path: ast_map::path,
                        substs: @param_substs,
-                       attributes: &[ast::attribute],
+                       attributes: &[ast::Attribute],
                        ref_id: Option<ast::node_id>) {
     debug!("trans_intrinsic(item.ident=%s)", ccx.sess.str_of(item.ident));
 
@@ -624,7 +624,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
     set_always_inline(fcx.llfn);
 
     // Set the fixed stack segment flag if necessary.
-    if attr::attrs_contains_name(attributes, "fixed_stack_segment") {
+    if attr::contains_name(attributes, "fixed_stack_segment") {
         set_fixed_stack_segment(fcx.llfn);
     }
 
@@ -1146,7 +1146,7 @@ pub fn register_foreign_fn(ccx: @mut CrateContext,
                            sp: span,
                            path: ast_map::path,
                            node_id: ast::node_id,
-                           attrs: &[ast::attribute])
+                           attrs: &[ast::Attribute])
                            -> ValueRef {
     let _icx = push_ctxt("foreign::register_foreign_fn");
 
