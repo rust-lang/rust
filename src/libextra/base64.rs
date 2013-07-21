@@ -284,81 +284,109 @@ impl<'self> FromBase64 for &'self str {
     }
 }
 
-#[test]
-fn test_to_base64_basic() {
-    assert_eq!("".to_base64(STANDARD), ~"");
-    assert_eq!("f".to_base64(STANDARD), ~"Zg==");
-    assert_eq!("fo".to_base64(STANDARD), ~"Zm8=");
-    assert_eq!("foo".to_base64(STANDARD), ~"Zm9v");
-    assert_eq!("foob".to_base64(STANDARD), ~"Zm9vYg==");
-    assert_eq!("fooba".to_base64(STANDARD), ~"Zm9vYmE=");
-    assert_eq!("foobar".to_base64(STANDARD), ~"Zm9vYmFy");
-}
+#[cfg(test)]
+mod test {
+    use test::BenchHarness;
+    use base64::*;
 
-#[test]
-fn test_to_base64_line_break() {
-    assert!(![0u8, 1000].to_base64(Config {line_length: None, ..STANDARD})
-        .contains("\r\n"));
-    assert_eq!("foobar".to_base64(Config {line_length: Some(4), ..STANDARD}),
-        ~"Zm9v\r\nYmFy");
-}
-
-#[test]
-fn test_to_base64_padding() {
-    assert_eq!("f".to_base64(Config {pad: false, ..STANDARD}), ~"Zg");
-    assert_eq!("fo".to_base64(Config {pad: false, ..STANDARD}), ~"Zm8");
-}
-
-#[test]
-fn test_to_base64_url_safe() {
-    assert_eq!([251, 255].to_base64(URL_SAFE), ~"-_8");
-    assert_eq!([251, 255].to_base64(STANDARD), ~"+/8=");
-}
-
-#[test]
-fn test_from_base64_basic() {
-    assert_eq!("".from_base64().get(), "".as_bytes().to_owned());
-    assert_eq!("Zg==".from_base64().get(), "f".as_bytes().to_owned());
-    assert_eq!("Zm8=".from_base64().get(), "fo".as_bytes().to_owned());
-    assert_eq!("Zm9v".from_base64().get(), "foo".as_bytes().to_owned());
-    assert_eq!("Zm9vYg==".from_base64().get(), "foob".as_bytes().to_owned());
-    assert_eq!("Zm9vYmE=".from_base64().get(), "fooba".as_bytes().to_owned());
-    assert_eq!("Zm9vYmFy".from_base64().get(), "foobar".as_bytes().to_owned());
-}
-
-#[test]
-fn test_from_base64_newlines() {
-    assert_eq!("Zm9v\r\nYmFy".from_base64().get(),
-        "foobar".as_bytes().to_owned());
-}
-
-#[test]
-fn test_from_base64_urlsafe() {
-    assert_eq!("-_8".from_base64().get(), "+/8=".from_base64().get());
-}
-
-#[test]
-fn test_from_base64_invalid_char() {
-    assert!("Zm$=".from_base64().is_err())
-    assert!("Zg==$".from_base64().is_err());
-}
-
-#[test]
-fn test_from_base64_invalid_padding() {
-    assert!("Z===".from_base64().is_err());
-}
-
-#[test]
-fn test_base64_random() {
-    use std::rand::{task_rng, random, RngUtil};
-    use std::vec;
-
-    for 1000.times {
-        let v: ~[u8] = do vec::build |push| {
-            for task_rng().gen_uint_range(1, 100).times {
-                push(random());
-            }
-        };
-        assert_eq!(v.to_base64(STANDARD).from_base64().get(), v);
+    #[test]
+    fn test_to_base64_basic() {
+        assert_eq!("".to_base64(STANDARD), ~"");
+        assert_eq!("f".to_base64(STANDARD), ~"Zg==");
+        assert_eq!("fo".to_base64(STANDARD), ~"Zm8=");
+        assert_eq!("foo".to_base64(STANDARD), ~"Zm9v");
+        assert_eq!("foob".to_base64(STANDARD), ~"Zm9vYg==");
+        assert_eq!("fooba".to_base64(STANDARD), ~"Zm9vYmE=");
+        assert_eq!("foobar".to_base64(STANDARD), ~"Zm9vYmFy");
     }
+
+    #[test]
+    fn test_to_base64_line_break() {
+        assert!(![0u8, 1000].to_base64(Config {line_length: None, ..STANDARD})
+                .contains("\r\n"));
+        assert_eq!("foobar".to_base64(Config {line_length: Some(4), ..STANDARD}),
+                   ~"Zm9v\r\nYmFy");
+    }
+
+    #[test]
+    fn test_to_base64_padding() {
+        assert_eq!("f".to_base64(Config {pad: false, ..STANDARD}), ~"Zg");
+        assert_eq!("fo".to_base64(Config {pad: false, ..STANDARD}), ~"Zm8");
+    }
+
+    #[test]
+    fn test_to_base64_url_safe() {
+        assert_eq!([251, 255].to_base64(URL_SAFE), ~"-_8");
+        assert_eq!([251, 255].to_base64(STANDARD), ~"+/8=");
+    }
+
+    #[test]
+    fn test_from_base64_basic() {
+        assert_eq!("".from_base64().get(), "".as_bytes().to_owned());
+        assert_eq!("Zg==".from_base64().get(), "f".as_bytes().to_owned());
+        assert_eq!("Zm8=".from_base64().get(), "fo".as_bytes().to_owned());
+        assert_eq!("Zm9v".from_base64().get(), "foo".as_bytes().to_owned());
+        assert_eq!("Zm9vYg==".from_base64().get(), "foob".as_bytes().to_owned());
+        assert_eq!("Zm9vYmE=".from_base64().get(), "fooba".as_bytes().to_owned());
+        assert_eq!("Zm9vYmFy".from_base64().get(), "foobar".as_bytes().to_owned());
+    }
+
+    #[test]
+    fn test_from_base64_newlines() {
+        assert_eq!("Zm9v\r\nYmFy".from_base64().get(),
+                   "foobar".as_bytes().to_owned());
+    }
+
+    #[test]
+    fn test_from_base64_urlsafe() {
+        assert_eq!("-_8".from_base64().get(), "+/8=".from_base64().get());
+    }
+
+    #[test]
+    fn test_from_base64_invalid_char() {
+        assert!("Zm$=".from_base64().is_err())
+            assert!("Zg==$".from_base64().is_err());
+    }
+
+    #[test]
+    fn test_from_base64_invalid_padding() {
+        assert!("Z===".from_base64().is_err());
+    }
+
+    #[test]
+    fn test_base64_random() {
+        use std::rand::{task_rng, random, RngUtil};
+        use std::vec;
+
+        for 1000.times {
+            let v: ~[u8] = do vec::build |push| {
+                for task_rng().gen_uint_range(1, 100).times {
+                    push(random());
+                }
+            };
+            assert_eq!(v.to_base64(STANDARD).from_base64().get(), v);
+        }
+    }
+
+    #[bench]
+    pub fn to_base64(bh: & mut BenchHarness) {
+        let s = "イロハニホヘト チリヌルヲ ワカヨタレソ ツネナラム \
+                 ウヰノオクヤマ ケフコエテ アサキユメミシ ヱヒモセスン";
+        do bh.iter {
+            s.to_base64(STANDARD);
+        }
+        bh.bytes = s.len() as u64;
+    }
+
+    #[bench]
+    pub fn from_base64(bh: & mut BenchHarness) {
+        let s = "イロハニホヘト チリヌルヲ ワカヨタレソ ツネナラム \
+                 ウヰノオクヤマ ケフコエテ アサキユメミシ ヱヒモセスン";
+        let b = s.to_base64(STANDARD);
+        do bh.iter {
+            b.from_base64();
+        }
+        bh.bytes = b.len() as u64;
+    }
+
 }
