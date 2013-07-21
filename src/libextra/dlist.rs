@@ -258,6 +258,26 @@ impl<T> DList<T> {
         DList{list_head: None, list_tail: Rawlink::none(), length: 0}
     }
 
+    /// Move the last element to the front of the list.
+    ///
+    /// If the list is empty, do nothing.
+    #[inline]
+    pub fn rotate_to_front(&mut self) {
+        do self.pop_back_node().map_consume |tail| {
+            self.push_front_node(tail)
+        };
+    }
+
+    /// Move the first element to the back of the list.
+    ///
+    /// If the list is empty, do nothing.
+    #[inline]
+    pub fn rotate_to_back(&mut self) {
+        do self.pop_front_node().map_consume |head| {
+            self.push_back_node(head)
+        };
+    }
+
     /// Add all elements from `other` to the end of the list
     ///
     /// O(1)
@@ -686,6 +706,29 @@ mod tests {
         for sum.consume_iter().advance |elt| {
             assert_eq!(m.pop_front(), Some(elt))
         }
+    }
+
+    #[test]
+    fn test_rotate() {
+        let mut n = DList::new::<int>();
+        n.rotate_to_back(); check_links(&n);
+        assert_eq!(n.len(), 0);
+        n.rotate_to_front(); check_links(&n);
+        assert_eq!(n.len(), 0);
+
+        let v = ~[1,2,3,4,5];
+        let mut m = list_from(v);
+        m.rotate_to_back(); check_links(&m);
+        m.rotate_to_front(); check_links(&m);
+        assert_eq!(v.iter().collect::<~[&int]>(), m.iter().collect());
+        m.rotate_to_front(); check_links(&m);
+        m.rotate_to_front(); check_links(&m);
+        m.pop_front(); check_links(&m);
+        m.rotate_to_front(); check_links(&m);
+        m.rotate_to_back(); check_links(&m);
+        m.push_front(9); check_links(&m);
+        m.rotate_to_front(); check_links(&m);
+        assert_eq!(~[3,9,5,1,2], m.consume_iter().collect());
     }
 
     #[test]
