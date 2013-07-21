@@ -1039,6 +1039,25 @@ mod tests {
         }
     }
 
+    #[bench]
+    fn bench_rotate_to_front(b: &mut test::BenchHarness) {
+        let mut m = DList::new::<int>();
+        m.push_front(0);
+        m.push_front(1);
+        do b.iter {
+            m.rotate_to_front();
+        }
+    }
+
+    #[bench]
+    fn bench_rotate_to_back(b: &mut test::BenchHarness) {
+        let mut m = DList::new::<int>();
+        m.push_front(0);
+        m.push_front(1);
+        do b.iter {
+            m.rotate_to_back();
+        }
+    }
 
     #[bench]
     fn bench_iter(b: &mut test::BenchHarness) {
