@@ -13,7 +13,7 @@ mod a {
     pub type rust_task = uint;
     pub mod rustrt {
         use super::rust_task;
-        pub extern {
+        extern {
             pub fn rust_task_is_unwinding(rt: *rust_task) -> bool;
         }
     }
@@ -23,7 +23,7 @@ mod b {
     pub type rust_task = bool;
     pub mod rustrt {
         use super::rust_task;
-        pub extern {
+        extern {
             pub fn rust_task_is_unwinding(rt: *rust_task) -> bool;
         }
     }

@@ -24,18 +24,18 @@ pub mod rustrt {
     use std::libc::{c_int, c_void, size_t};
 
     #[link_name = "rustrt"]
-    pub extern {
-        unsafe fn tdefl_compress_mem_to_heap(psrc_buf: *const c_void,
-                                             src_buf_len: size_t,
-                                             pout_len: *mut size_t,
-                                             flags: c_int)
-                                          -> *c_void;
+    extern {
+        pub unsafe fn tdefl_compress_mem_to_heap(psrc_buf: *const c_void,
+                                                 src_buf_len: size_t,
+                                                 pout_len: *mut size_t,
+                                                 flags: c_int)
+                                                 -> *c_void;
 
-        unsafe fn tinfl_decompress_mem_to_heap(psrc_buf: *const c_void,
-                                               src_buf_len: size_t,
-                                               pout_len: *mut size_t,
-                                               flags: c_int)
-                                            -> *c_void;
+        pub unsafe fn tinfl_decompress_mem_to_heap(psrc_buf: *const c_void,
+                                                   src_buf_len: size_t,
+                                                   pout_len: *mut size_t,
+                                                   flags: c_int)
+                                                   -> *c_void;
     }
 }
 

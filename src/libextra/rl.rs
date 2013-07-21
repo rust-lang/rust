@@ -19,7 +19,7 @@ use std::str;
 pub mod rustrt {
     use std::libc::{c_char, c_int};
 
-    pub extern {
+    extern {
         pub unsafe fn linenoise(prompt: *c_char) -> *c_char;
         pub unsafe fn linenoiseHistoryAdd(line: *c_char) -> c_int;
         pub unsafe fn linenoiseHistorySetMaxLen(len: c_int) -> c_int;

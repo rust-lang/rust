@@ -10,7 +10,7 @@
 
 //error-pattern:libc::c_int or libc::c_long should be used
 mod xx {
-    pub extern {
+    extern {
         pub fn strlen(str: *u8) -> uint;
         pub fn foo(x: int, y: uint);
     }

@@ -12,7 +12,7 @@
 
 mod rusti {
     #[abi = "rust-intrinsic"]
-    pub extern "rust-intrinsic" {
+    extern "rust-intrinsic" {
         pub fn pref_align_of<T>() -> uint;
         pub fn min_align_of<T>() -> uint;
     }
