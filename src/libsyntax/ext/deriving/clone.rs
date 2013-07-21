@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ast::{meta_item, item, expr};
+use ast::{MetaItem, item, expr};
 use codemap::span;
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
@@ -16,7 +16,7 @@ use ext::deriving::generic::*;
 
 pub fn expand_deriving_clone(cx: @ExtCtxt,
                              span: span,
-                             mitem: @meta_item,
+                             mitem: @MetaItem,
                              in_items: ~[@item])
                           -> ~[@item] {
     let trait_def = TraitDef {
@@ -40,9 +40,9 @@ pub fn expand_deriving_clone(cx: @ExtCtxt,
 }
 
 pub fn expand_deriving_deep_clone(cx: @ExtCtxt,
-                                 span: span,
-                                 mitem: @meta_item,
-                                 in_items: ~[@item])
+                                  span: span,
+                                  mitem: @MetaItem,
+                                  in_items: ~[@item])
     -> ~[@item] {
     let trait_def = TraitDef {
         path: Path::new(~["std", "clone", "DeepClone"]),

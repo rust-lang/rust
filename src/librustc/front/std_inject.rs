@@ -30,10 +30,10 @@ pub fn maybe_inject_libstd_ref(sess: Session, crate: @ast::crate)
 }
 
 fn use_std(crate: &ast::crate) -> bool {
-    !attr::attrs_contains_name(crate.node.attrs, "no_std")
+    !attr::contains_name(crate.node.attrs, "no_std")
 }
-fn no_prelude(attrs: &[ast::attribute]) -> bool {
-    attr::attrs_contains_name(attrs, "no_implicit_prelude")
+fn no_prelude(attrs: &[ast::Attribute]) -> bool {
+    attr::contains_name(attrs, "no_implicit_prelude")
 }
 
 fn inject_libstd_ref(sess: Session, crate: &ast::crate) -> @ast::crate {
@@ -48,14 +48,8 @@ fn inject_libstd_ref(sess: Session, crate: &ast::crate) -> @ast::crate {
                 node: ast::view_item_extern_mod(
                         sess.ident_of("std"), ~[], n1),
                 attrs: ~[
-                    spanned(ast::attribute_ {
-                        style: ast::attr_inner,
-                        value: @spanned(ast::meta_name_value(
-                            @"vers",
-                            spanned(ast::lit_str(STD_VERSION.to_managed()))
-                        )),
-                        is_sugared_doc: false
-                    })
+                    attr::mk_attr(
+                        attr::mk_name_value_item_str(@"vers", STD_VERSION.to_managed()))
                 ],
                 vis: ast::private,
                 span: dummy_sp()

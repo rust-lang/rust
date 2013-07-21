@@ -26,6 +26,7 @@ use std::u64;
 use std::u8;
 use extra::smallintmap::SmallIntMap;
 use syntax::attr;
+use syntax::attr::AttrMetaMethods;
 use syntax::codemap::span;
 use syntax::codemap;
 use syntax::{ast, visit, ast_util};
@@ -417,7 +418,7 @@ impl Context {
      * current lint context, call the provided function, then reset the
      * lints in effect to their previous state.
      */
-    fn with_lint_attrs(@mut self, attrs: &[ast::attribute], f: &fn()) {
+    fn with_lint_attrs(@mut self, attrs: &[ast::Attribute], f: &fn()) {
         // Parse all of the lint attributes, and then add them all to the
         // current dictionary of lint information. Along the way, keep a history
         // of what we changed so we can roll everything back after invoking the
@@ -454,18 +455,14 @@ impl Context {
         }
 
         // detect doc(hidden)
-        let mut doc_hidden = false;
-        let r = attr::find_attrs_by_name(attrs, "doc");
-        for r.iter().advance |attr| {
-            match attr::get_meta_item_list(attr.node.value) {
-                Some(s) => {
-                    if attr::find_meta_items_by_name(s, "hidden").len() > 0 {
-                        doc_hidden = true;
-                    }
+        let mut doc_hidden = do attrs.iter().any |attr| {
+            "doc" == attr.name() &&
+                match attr.meta_item_list() {
+                    Some(l) => attr::contains_name(l, "hidden"),
+                    None    => false // not of the form #[doc(...)]
                 }
-                None => {}
-            }
-        }
+        };
+
         if doc_hidden && !self.doc_hidden {
             self.doc_hidden = true;
         } else {
@@ -517,16 +514,15 @@ impl Context {
 }
 
 pub fn each_lint(sess: session::Session,
-                 attrs: &[ast::attribute],
-                 f: &fn(@ast::meta_item, level, @str) -> bool) -> bool {
+                 attrs: &[ast::Attribute],
+                 f: &fn(@ast::MetaItem, level, @str) -> bool) -> bool {
     let xs = [allow, warn, deny, forbid];
     for xs.iter().advance |&level| {
         let level_name = level_to_str(level);
-        let attrs = attr::find_attrs_by_name(attrs, level_name);
-        for attrs.iter().advance |attr| {
+        for attrs.iter().filter(|m| level_name == m.name()).advance |attr| {
             let meta = attr.node.value;
             let metas = match meta.node {
-                ast::meta_list(_, ref metas) => metas,
+                ast::MetaList(_, ref metas) => metas,
                 _ => {
                     sess.span_err(meta.span, "malformed lint attribute");
                     loop;
@@ -534,7 +530,7 @@ pub fn each_lint(sess: session::Session,
             };
             for metas.iter().advance |meta| {
                 match meta.node {
-                    ast::meta_word(lintname) => {
+                    ast::MetaWord(lintname) => {
                         if !f(*meta, level, lintname) {
                             return false;
                         }
@@ -1035,7 +1031,7 @@ fn lint_unnecessary_allocations() -> visit::vt<@mut Context> {
 }
 
 fn lint_missing_doc() -> visit::vt<@mut Context> {
-    fn check_attrs(cx: @mut Context, attrs: &[ast::attribute],
+    fn check_attrs(cx: @mut Context, attrs: &[ast::Attribute],
                    sp: span, msg: &str) {
         // If we're building a test harness, then warning about documentation is
         // probably not really relevant right now

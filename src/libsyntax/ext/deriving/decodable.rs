@@ -16,7 +16,7 @@ encodable.rs for more.
 use std::vec;
 use std::uint;
 
-use ast::{meta_item, item, expr, m_mutbl};
+use ast::{MetaItem, item, expr, m_mutbl};
 use codemap::span;
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
@@ -24,7 +24,7 @@ use ext::deriving::generic::*;
 
 pub fn expand_deriving_decodable(cx: @ExtCtxt,
                                  span: span,
-                                 mitem: @meta_item,
+                                 mitem: @MetaItem,
                                  in_items: ~[@item]) -> ~[@item] {
     let trait_def = TraitDef {
         path: Path::new_(~["extra", "serialize", "Decodable"], None,

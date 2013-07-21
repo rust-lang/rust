@@ -48,7 +48,7 @@ fn test_run_passes() {
                 doc::CratePage(doc::CrateDoc{
                     topmod: doc::ModDoc{
                         item: doc::ItemDoc {
-                            name: doc.cratemod().name() + "two",
+                            name: doc.cratemod().name_() + "two",
                             .. doc.cratemod().item.clone()
                         },
                         items: ~[],
@@ -67,7 +67,7 @@ fn test_run_passes() {
                 doc::CratePage(doc::CrateDoc{
                     topmod: doc::ModDoc{
                         item: doc::ItemDoc {
-                            name: doc.cratemod().name() + "three",
+                            name: doc.cratemod().name_() + "three",
                             .. doc.cratemod().item.clone()
                         },
                         items: ~[],
@@ -91,6 +91,6 @@ fn test_run_passes() {
         ];
         let doc = extract::from_srv(srv.clone(), ~"one");
         let doc = run_passes(srv, doc, passes);
-        assert_eq!(doc.cratemod().name(), ~"onetwothree");
+        assert_eq!(doc.cratemod().name_(), ~"onetwothree");
     }
 }

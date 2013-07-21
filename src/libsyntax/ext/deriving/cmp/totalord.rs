@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ast::{meta_item, item, expr};
+use ast::{MetaItem, item, expr};
 use codemap::span;
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
@@ -17,7 +17,7 @@ use std::cmp::{Ordering, Equal, Less, Greater};
 
 pub fn expand_deriving_totalord(cx: @ExtCtxt,
                                 span: span,
-                                mitem: @meta_item,
+                                mitem: @MetaItem,
                                 in_items: ~[@item]) -> ~[@item] {
     let trait_def = TraitDef {
         path: Path::new(~["std", "cmp", "TotalOrd"]),

@@ -13,9 +13,9 @@ use driver::session;
 use driver::session::Session;
 use syntax::parse::token::special_idents;
 use syntax::ast::{crate, node_id, item, item_fn};
+use syntax::attr;
 use syntax::codemap::span;
 use syntax::visit::{default_visitor, mk_vt, vt, Visitor, visit_crate, visit_item};
-use syntax::attr::{attrs_contains_name};
 use syntax::ast_map;
 use std::util;
 
@@ -90,7 +90,7 @@ fn find_item(item: @item, ctxt: @mut EntryContext, visitor: EntryVisitor) {
                 }
             }
 
-            if attrs_contains_name(item.attrs, "main") {
+            if attr::contains_name(item.attrs, "main") {
                 if ctxt.attr_main_fn.is_none() {
                     ctxt.attr_main_fn = Some((item.id, item.span));
                 } else {
@@ -100,7 +100,7 @@ fn find_item(item: @item, ctxt: @mut EntryContext, visitor: EntryVisitor) {
                 }
             }
 
-            if attrs_contains_name(item.attrs, "start") {
+            if attr::contains_name(item.attrs, "start") {
                 if ctxt.start_fn.is_none() {
                     ctxt.start_fn = Some((item.id, item.span));
                 } else {

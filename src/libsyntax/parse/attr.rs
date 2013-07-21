@@ -17,32 +17,32 @@ use parse::parser::Parser;
 
 // a parser that can parse attributes.
 pub trait parser_attr {
-    fn parse_outer_attributes(&self) -> ~[ast::attribute];
-    fn parse_attribute(&self, style: ast::attr_style) -> ast::attribute;
+    fn parse_outer_attributes(&self) -> ~[ast::Attribute];
+    fn parse_attribute(&self, style: ast::AttrStyle) -> ast::Attribute;
     fn parse_attribute_naked(
         &self,
-        style: ast::attr_style,
+        style: ast::AttrStyle,
         lo: BytePos
-    ) -> ast::attribute;
+    ) -> ast::Attribute;
     fn parse_inner_attrs_and_next(&self) ->
-        (~[ast::attribute], ~[ast::attribute]);
-    fn parse_meta_item(&self) -> @ast::meta_item;
-    fn parse_meta_seq(&self) -> ~[@ast::meta_item];
-    fn parse_optional_meta(&self) -> ~[@ast::meta_item];
+        (~[ast::Attribute], ~[ast::Attribute]);
+    fn parse_meta_item(&self) -> @ast::MetaItem;
+    fn parse_meta_seq(&self) -> ~[@ast::MetaItem];
+    fn parse_optional_meta(&self) -> ~[@ast::MetaItem];
 }
 
 impl parser_attr for Parser {
 
     // Parse attributes that appear before an item
-    fn parse_outer_attributes(&self) -> ~[ast::attribute] {
-        let mut attrs: ~[ast::attribute] = ~[];
+    fn parse_outer_attributes(&self) -> ~[ast::Attribute] {
+        let mut attrs: ~[ast::Attribute] = ~[];
         loop {
             match *self.token {
               token::POUND => {
                 if self.look_ahead(1, |t| *t != token::LBRACKET) {
                     break;
                 }
-                attrs.push(self.parse_attribute(ast::attr_outer));
+                attrs.push(self.parse_attribute(ast::AttrOuter));
               }
               token::DOC_COMMENT(s) => {
                 let attr = ::attr::mk_sugared_doc_attr(
@@ -50,7 +50,7 @@ impl parser_attr for Parser {
                     self.span.lo,
                     self.span.hi
                 );
-                if attr.node.style != ast::attr_outer {
+                if attr.node.style != ast::AttrOuter {
                   self.fatal("expected outer comment");
                 }
                 attrs.push(attr);
@@ -63,20 +63,20 @@ impl parser_attr for Parser {
     }
 
     // matches attribute = # attribute_naked
-    fn parse_attribute(&self, style: ast::attr_style) -> ast::attribute {
+    fn parse_attribute(&self, style: ast::AttrStyle) -> ast::Attribute {
         let lo = self.span.lo;
         self.expect(&token::POUND);
         return self.parse_attribute_naked(style, lo);
     }
 
     // matches attribute_naked = [ meta_item ]
-    fn parse_attribute_naked(&self, style: ast::attr_style, lo: BytePos) ->
-        ast::attribute {
+    fn parse_attribute_naked(&self, style: ast::AttrStyle, lo: BytePos) ->
+        ast::Attribute {
         self.expect(&token::LBRACKET);
         let meta_item = self.parse_meta_item();
         self.expect(&token::RBRACKET);
         let hi = self.span.hi;
-        return spanned(lo, hi, ast::attribute_ { style: style,
+        return spanned(lo, hi, ast::Attribute_ { style: style,
                                                  value: meta_item, is_sugared_doc: false }); }
 
     // Parse attributes that appear after the opening of an item, each
@@ -90,9 +90,9 @@ impl parser_attr for Parser {
     // you can make the 'next' field an Option, but the result is going to be
     // more useful as a vector.
     fn parse_inner_attrs_and_next(&self) ->
-        (~[ast::attribute], ~[ast::attribute]) {
-        let mut inner_attrs: ~[ast::attribute] = ~[];
-        let mut next_outer_attrs: ~[ast::attribute] = ~[];
+        (~[ast::Attribute], ~[ast::Attribute]) {
+        let mut inner_attrs: ~[ast::Attribute] = ~[];
+        let mut next_outer_attrs: ~[ast::Attribute] = ~[];
         loop {
             match *self.token {
               token::POUND => {
@@ -100,7 +100,7 @@ impl parser_attr for Parser {
                     // This is an extension
                     break;
                 }
-                let attr = self.parse_attribute(ast::attr_inner);
+                let attr = self.parse_attribute(ast::AttrInner);
                 if *self.token == token::SEMI {
                     self.bump();
                     inner_attrs.push(attr);
@@ -108,7 +108,7 @@ impl parser_attr for Parser {
                     // It's not really an inner attribute
                     let outer_attr =
                         spanned(attr.span.lo, attr.span.hi,
-                            ast::attribute_ { style: ast::attr_outer,
+                            ast::Attribute_ { style: ast::AttrOuter,
                                               value: attr.node.value,
                                               is_sugared_doc: false });
                     next_outer_attrs.push(outer_attr);
@@ -122,7 +122,7 @@ impl parser_attr for Parser {
                     self.span.hi
                 );
                 self.bump();
-                if attr.node.style == ast::attr_inner {
+                if attr.node.style == ast::AttrInner {
                   inner_attrs.push(attr);
                 } else {
                   next_outer_attrs.push(attr);
@@ -138,7 +138,7 @@ impl parser_attr for Parser {
     // matches meta_item = IDENT
     // | IDENT = lit
     // | IDENT meta_seq
-    fn parse_meta_item(&self) -> @ast::meta_item {
+    fn parse_meta_item(&self) -> @ast::MetaItem {
         let lo = self.span.lo;
         let name = self.id_to_str(self.parse_ident());
         match *self.token {
@@ -146,29 +146,29 @@ impl parser_attr for Parser {
                 self.bump();
                 let lit = self.parse_lit();
                 let hi = self.span.hi;
-                @spanned(lo, hi, ast::meta_name_value(name, lit))
+                @spanned(lo, hi, ast::MetaNameValue(name, lit))
             }
             token::LPAREN => {
                 let inner_items = self.parse_meta_seq();
                 let hi = self.span.hi;
-                @spanned(lo, hi, ast::meta_list(name, inner_items))
+                @spanned(lo, hi, ast::MetaList(name, inner_items))
             }
             _ => {
                 let hi = self.last_span.hi;
-                @spanned(lo, hi, ast::meta_word(name))
+                @spanned(lo, hi, ast::MetaWord(name))
             }
         }
     }
 
     // matches meta_seq = ( COMMASEP(meta_item) )
-    fn parse_meta_seq(&self) -> ~[@ast::meta_item] {
+    fn parse_meta_seq(&self) -> ~[@ast::MetaItem] {
         self.parse_seq(&token::LPAREN,
                        &token::RPAREN,
                        seq_sep_trailing_disallowed(token::COMMA),
                        |p| p.parse_meta_item()).node
     }
 
-    fn parse_optional_meta(&self) -> ~[@ast::meta_item] {
+    fn parse_optional_meta(&self) -> ~[@ast::MetaItem] {
         match *self.token {
             token::LPAREN => self.parse_meta_seq(),
             _ => ~[]

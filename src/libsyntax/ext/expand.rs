@@ -14,6 +14,7 @@ use ast::{illegal_ctxt};
 use ast;
 use ast_util::{new_rename, new_mark, resolve};
 use attr;
+use attr::AttrMetaMethods;
 use codemap;
 use codemap::{span, ExpnInfo, NameAndSpan};
 use ext::base::*;
@@ -126,7 +127,7 @@ pub fn expand_mod_items(extsbox: @mut SyntaxEnv,
     // the item into a new set of items.
     let new_items = do vec::flat_map(module_.items) |item| {
         do item.attrs.rev_iter().fold(~[*item]) |items, attr| {
-            let mname = attr::get_attr_name(attr);
+            let mname = attr.name();
 
             match (*extsbox).find(&intern(mname)) {
               Some(@SE(ItemDecorator(dec_fn))) => {
@@ -196,8 +197,8 @@ pub fn expand_item(extsbox: @mut SyntaxEnv,
 }
 
 // does this attribute list contain "macro_escape" ?
-pub fn contains_macro_escape (attrs: &[ast::attribute]) -> bool {
-    attrs.iter().any(|attr| "macro_escape" == attr::get_attr_name(attr))
+pub fn contains_macro_escape(attrs: &[ast::Attribute]) -> bool {
+    attr::contains_name(attrs, "macro_escape")
 }
 
 // Support for item-position macro invocations, exactly the same
@@ -793,7 +794,7 @@ pub fn new_ident_resolver() ->
 mod test {
     use super::*;
     use ast;
-    use ast::{attribute_, attr_outer, meta_word, empty_ctxt};
+    use ast::{Attribute_, AttrOuter, MetaWord, empty_ctxt};
     use codemap;
     use codemap::spanned;
     use parse;
@@ -883,14 +884,14 @@ mod test {
         assert_eq!(contains_macro_escape (attrs2),false);
     }
 
-    // make a "meta_word" outer attribute with the given name
-    fn make_dummy_attr(s: @str) -> ast::attribute {
+    // make a MetaWord outer attribute with the given name
+    fn make_dummy_attr(s: @str) -> ast::Attribute {
         spanned {
             span:codemap::dummy_sp(),
-            node: attribute_ {
-                style: attr_outer,
+            node: Attribute_ {
+                style: AttrOuter,
                 value: @spanned {
-                    node: meta_word(s),
+                    node: MetaWord(s),
                     span: codemap::dummy_sp(),
                 },
                 is_sugared_doc: false,

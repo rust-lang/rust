@@ -15,7 +15,7 @@ use ast::{CallSugar, NoSugar, DoSugar, ForSugar};
 use ast::{TyBareFn, TyClosure};
 use ast::{RegionTyParamBound, TraitTyParamBound};
 use ast::{provided, public, purity};
-use ast::{_mod, add, arg, arm, attribute, bind_by_ref, bind_infer};
+use ast::{_mod, add, arg, arm, Attribute, bind_by_ref, bind_infer};
 use ast::{bitand, bitor, bitxor, blk};
 use ast::{blk_check_mode, box};
 use ast::{crate, crate_cfg, decl, decl_item};
@@ -109,12 +109,12 @@ enum restriction {
 }
 
 type arg_or_capture_item = Either<arg, ()>;
-type item_info = (ident, item_, Option<~[attribute]>);
+type item_info = (ident, item_, Option<~[Attribute]>);
 
 pub enum item_or_view_item {
     // Indicates a failure to parse any kind of item. The attributes are
     // returned.
-    iovi_none(~[attribute]),
+    iovi_none(~[Attribute]),
     iovi_item(@item),
     iovi_foreign_item(@foreign_item),
     iovi_view_item(view_item)
@@ -242,8 +242,8 @@ macro_rules! maybe_whole (
 )
 
 
-fn maybe_append(lhs: ~[attribute], rhs: Option<~[attribute]>)
-             -> ~[attribute] {
+fn maybe_append(lhs: ~[Attribute], rhs: Option<~[Attribute]>)
+             -> ~[Attribute] {
     match rhs {
         None => lhs,
         Some(ref attrs) => vec::append(lhs, (*attrs))
@@ -252,7 +252,7 @@ fn maybe_append(lhs: ~[attribute], rhs: Option<~[attribute]>)
 
 
 struct ParsedItemsAndViewItems {
-    attrs_remaining: ~[attribute],
+    attrs_remaining: ~[Attribute],
     view_items: ~[view_item],
     items: ~[@item],
     foreign_items: ~[@foreign_item]
@@ -2959,7 +2959,7 @@ impl Parser {
     // parse a structure field
     fn parse_name_and_ty(&self,
                          pr: visibility,
-                         attrs: ~[attribute]) -> @struct_field {
+                         attrs: ~[Attribute]) -> @struct_field {
         let lo = self.span.lo;
         if !is_plain_ident(&*self.token) {
             self.fatal("expected ident");
@@ -2977,7 +2977,7 @@ impl Parser {
 
     // parse a statement. may include decl.
     // precondition: any attributes are parsed already
-    pub fn parse_stmt(&self, item_attrs: ~[attribute]) -> @stmt {
+    pub fn parse_stmt(&self, item_attrs: ~[Attribute]) -> @stmt {
         maybe_whole!(self, nt_stmt);
 
         fn check_expected_item(p: &Parser, found_attrs: bool) {
@@ -3091,7 +3091,7 @@ impl Parser {
 
     // parse a block. Inner attrs are allowed.
     fn parse_inner_attrs_and_block(&self)
-        -> (~[attribute], blk) {
+        -> (~[Attribute], blk) {
 
         maybe_whole!(pair_empty self, nt_block);
 
@@ -3115,7 +3115,7 @@ impl Parser {
 
     // parse the rest of a block expression or function body
     fn parse_block_tail_(&self, lo: BytePos, s: blk_check_mode,
-                         first_item_attrs: ~[attribute]) -> blk {
+                         first_item_attrs: ~[Attribute]) -> blk {
         let mut stmts = ~[];
         let mut expr = None;
 
@@ -3594,7 +3594,7 @@ impl Parser {
 
     fn mk_item(&self, lo: BytePos, hi: BytePos, ident: ident,
                node: item_, vis: visibility,
-               attrs: ~[attribute]) -> @item {
+               attrs: ~[Attribute]) -> @item {
         @ast::item { ident: ident,
                      attrs: attrs,
                      id: self.get_id(),
@@ -3825,7 +3825,7 @@ impl Parser {
     // parse a structure field declaration
     pub fn parse_single_struct_field(&self,
                                      vis: visibility,
-                                     attrs: ~[attribute])
+                                     attrs: ~[Attribute])
                                      -> @struct_field {
         if self.eat_obsolete_ident("let") {
             self.obsolete(*self.last_span, ObsoleteLet);
@@ -3894,7 +3894,7 @@ impl Parser {
     // attributes (of length 0 or 1), parse all of the items in a module
     fn parse_mod_items(&self,
                        term: token::Token,
-                       first_item_attrs: ~[attribute])
+                       first_item_attrs: ~[Attribute])
                        -> _mod {
         // parse all of the items up to closing or an attribute.
         // view items are legal here.
@@ -3953,7 +3953,7 @@ impl Parser {
     }
 
     // parse a `mod <foo> { ... }` or `mod <foo>;` item
-    fn parse_item_mod(&self, outer_attrs: &[ast::attribute]) -> item_info {
+    fn parse_item_mod(&self, outer_attrs: &[Attribute]) -> item_info {
         let id_span = *self.span;
         let id = self.parse_ident();
         if *self.token == token::SEMI {
@@ -3972,11 +3972,10 @@ impl Parser {
         }
     }
 
-    fn push_mod_path(&self, id: ident, attrs: &[ast::attribute]) {
+    fn push_mod_path(&self, id: ident, attrs: &[Attribute]) {
         let default_path = token::interner_get(id.name);
-        let file_path = match ::attr::first_attr_value_str_by_name(
-            attrs, "path") {
-
+        let file_path = match ::attr::first_attr_value_str_by_name(attrs,
+                                                                   "path") {
             Some(d) => d,
             None => default_path
         };
@@ -3990,14 +3989,13 @@ impl Parser {
     // read a module from a source file.
     fn eval_src_mod(&self,
                     id: ast::ident,
-                    outer_attrs: &[ast::attribute],
+                    outer_attrs: &[ast::Attribute],
                     id_sp: span)
-                    -> (ast::item_, ~[ast::attribute]) {
+                    -> (ast::item_, ~[ast::Attribute]) {
         let prefix = Path(self.sess.cm.span_to_filename(*self.span));
         let prefix = prefix.dir_path();
         let mod_path_stack = &*self.mod_path_stack;
         let mod_path = Path(".").push_many(*mod_path_stack);
-        let default_path = token::interner_get(id.name).to_owned() + ".rs";
         let file_path = match ::attr::first_attr_value_str_by_name(
                 outer_attrs, "path") {
             Some(d) => {
@@ -4008,7 +4006,7 @@ impl Parser {
                     path
                 }
             }
-            None => mod_path.push(default_path)
+            None => mod_path.push(token::interner_get(id.name) + ".rs") // default
         };
 
         self.eval_src_mod_from_path(prefix,
@@ -4020,8 +4018,8 @@ impl Parser {
     fn eval_src_mod_from_path(&self,
                               prefix: Path,
                               path: Path,
-                              outer_attrs: ~[ast::attribute],
-                              id_sp: span) -> (ast::item_, ~[ast::attribute]) {
+                              outer_attrs: ~[ast::Attribute],
+                              id_sp: span) -> (ast::item_, ~[ast::Attribute]) {
 
         let full_path = if path.is_absolute {
             path
@@ -4057,17 +4055,10 @@ impl Parser {
         let m0 = p0.parse_mod_items(token::EOF, first_item_outer_attrs);
         self.sess.included_mod_stack.pop();
         return (ast::item_mod(m0), mod_attrs);
-
-        fn cdir_path_opt(default: @str, attrs: ~[ast::attribute]) -> @str {
-            match ::attr::first_attr_value_str_by_name(attrs, "path") {
-                Some(d) => d,
-                None => default
-            }
-        }
     }
 
     // parse a function declaration from a foreign module
-    fn parse_item_foreign_fn(&self,  attrs: ~[attribute]) -> @foreign_item {
+    fn parse_item_foreign_fn(&self,  attrs: ~[Attribute]) -> @foreign_item {
         let lo = self.span.lo;
         let vis = self.parse_visibility();
         let purity = self.parse_fn_purity();
@@ -4085,7 +4076,7 @@ impl Parser {
 
     // parse a const definition from a foreign module
     fn parse_item_foreign_const(&self, vis: ast::visibility,
-                                attrs: ~[attribute]) -> @foreign_item {
+                                attrs: ~[Attribute]) -> @foreign_item {
         let lo = self.span.lo;
 
         // XXX: Obsolete; remove after snap.
@@ -4130,7 +4121,7 @@ impl Parser {
     fn parse_foreign_mod_items(&self,
                                sort: ast::foreign_mod_sort,
                                abis: AbiSet,
-                               first_item_attrs: ~[attribute])
+                               first_item_attrs: ~[Attribute])
                                -> foreign_mod {
         let ParsedItemsAndViewItems {
             attrs_remaining: attrs_remaining,
@@ -4156,7 +4147,7 @@ impl Parser {
                               lo: BytePos,
                               opt_abis: Option<AbiSet>,
                               visibility: visibility,
-                              attrs: ~[attribute],
+                              attrs: ~[Attribute],
                               items_allowed: bool)
                               -> item_or_view_item {
         let mut must_be_named_mod = false;
@@ -4437,7 +4428,7 @@ impl Parser {
     // NB: this function no longer parses the items inside an
     // extern mod.
     fn parse_item_or_view_item(&self,
-                               attrs: ~[attribute],
+                               attrs: ~[Attribute],
                                macros_allowed: bool)
                                -> item_or_view_item {
         maybe_whole!(iovi self, nt_item);
@@ -4569,7 +4560,7 @@ impl Parser {
 
     // parse a foreign item; on failure, return iovi_none.
     fn parse_foreign_item(&self,
-                          attrs: ~[attribute],
+                          attrs: ~[Attribute],
                           macros_allowed: bool)
                           -> item_or_view_item {
         maybe_whole!(iovi self, nt_item);
@@ -4594,7 +4585,7 @@ impl Parser {
     // this is the fall-through for parsing items.
     fn parse_macro_use_or_failure(
         &self,
-        attrs: ~[attribute],
+        attrs: ~[Attribute],
         macros_allowed: bool,
         lo : BytePos,
         visibility : visibility
@@ -4656,7 +4647,7 @@ impl Parser {
         return iovi_none(attrs);
     }
 
-    pub fn parse_item(&self, attrs: ~[attribute]) -> Option<@ast::item> {
+    pub fn parse_item(&self, attrs: ~[Attribute]) -> Option<@ast::item> {
         match self.parse_item_or_view_item(attrs, true) {
             iovi_none(_) =>
                 None,
@@ -4793,7 +4784,7 @@ impl Parser {
     // parse a view item.
     fn parse_view_item(
         &self,
-        attrs: ~[attribute],
+        attrs: ~[Attribute],
         vis: visibility
     ) -> view_item {
         let lo = self.span.lo;
@@ -4819,7 +4810,7 @@ impl Parser {
     // - mod_items uses extern_mod_allowed = true
     // - block_tail_ uses extern_mod_allowed = false
     fn parse_items_and_view_items(&self,
-                                  first_item_attrs: ~[attribute],
+                                  first_item_attrs: ~[Attribute],
                                   mut extern_mod_allowed: bool,
                                   macros_allowed: bool)
                                   -> ParsedItemsAndViewItems {
@@ -4901,7 +4892,7 @@ impl Parser {
 
     // Parses a sequence of foreign items. Stops when it finds program
     // text that can't be parsed as an item
-    fn parse_foreign_items(&self, first_item_attrs: ~[attribute],
+    fn parse_foreign_items(&self, first_item_attrs: ~[Attribute],
                            macros_allowed: bool)
         -> ParsedItemsAndViewItems {
         let mut attrs = vec::append(first_item_attrs,

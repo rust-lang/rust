@@ -54,14 +54,14 @@ fn test() {
         let doc = extract::from_srv(srv.clone(), ~"");
         let doc = (mk_pass().f)(srv.clone(), doc);
         // hidden __std_macros module at the start.
-        assert_eq!(doc.cratemod().items[0].name(), ~"iconst");
-        assert_eq!(doc.cratemod().items[1].name(), ~"itype");
-        assert_eq!(doc.cratemod().items[2].name(), ~"ienum");
-        assert_eq!(doc.cratemod().items[3].name(), ~"istruct");
-        assert_eq!(doc.cratemod().items[4].name(), ~"itrait");
-        assert_eq!(doc.cratemod().items[5].name(), ~"__extensions__");
-        assert_eq!(doc.cratemod().items[6].name(), ~"ifn");
+        assert_eq!(doc.cratemod().items[0].name_(), ~"iconst");
+        assert_eq!(doc.cratemod().items[1].name_(), ~"itype");
+        assert_eq!(doc.cratemod().items[2].name_(), ~"ienum");
+        assert_eq!(doc.cratemod().items[3].name_(), ~"istruct");
+        assert_eq!(doc.cratemod().items[4].name_(), ~"itrait");
+        assert_eq!(doc.cratemod().items[5].name_(), ~"__extensions__");
+        assert_eq!(doc.cratemod().items[6].name_(), ~"ifn");
         // hidden __std_macros module fits here.
-        assert_eq!(doc.cratemod().items[8].name(), ~"imod");
+        assert_eq!(doc.cratemod().items[8].name_(), ~"imod");
     }
 }

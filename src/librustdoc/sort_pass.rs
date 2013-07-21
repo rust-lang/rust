@@ -68,7 +68,7 @@ fn fold_mod(
 #[test]
 fn test() {
     fn name_lteq(item1: &doc::ItemTag, item2: &doc::ItemTag) -> bool {
-        (*item1).name() <= (*item2).name()
+        (*item1).name_() <= (*item2).name_()
     }
 
     let source = ~"mod z { mod y { } fn x() { } } mod w { }";
@@ -76,10 +76,10 @@ fn test() {
         let doc = extract::from_srv(srv.clone(), ~"");
         let doc = (mk_pass(~"", name_lteq).f)(srv.clone(), doc);
         // hidden __std_macros module at the start.
-        assert_eq!(doc.cratemod().mods()[1].name(), ~"w");
-        assert_eq!(doc.cratemod().mods()[2].items[0].name(), ~"x");
-        assert_eq!(doc.cratemod().mods()[2].items[1].name(), ~"y");
-        assert_eq!(doc.cratemod().mods()[2].name(), ~"z");
+        assert_eq!(doc.cratemod().mods()[1].name_(), ~"w");
+        assert_eq!(doc.cratemod().mods()[2].items[0].name_(), ~"x");
+        assert_eq!(doc.cratemod().mods()[2].items[1].name_(), ~"y");
+        assert_eq!(doc.cratemod().mods()[2].name_(), ~"z");
     }
 }
 
@@ -94,10 +94,10 @@ fn should_be_stable() {
         let doc = extract::from_srv(srv.clone(), ~"");
         let doc = (mk_pass(~"", always_eq).f)(srv.clone(), doc);
         // hidden __std_macros module at the start.
-        assert_eq!(doc.cratemod().mods()[1].items[0].name(), ~"b");
-        assert_eq!(doc.cratemod().mods()[2].items[0].name(), ~"d");
+        assert_eq!(doc.cratemod().mods()[1].items[0].name_(), ~"b");
+        assert_eq!(doc.cratemod().mods()[2].items[0].name_(), ~"d");
         let doc = (mk_pass(~"", always_eq).f)(srv.clone(), doc);
-        assert_eq!(doc.cratemod().mods()[1].items[0].name(), ~"b");
-        assert_eq!(doc.cratemod().mods()[2].items[0].name(), ~"d");
+        assert_eq!(doc.cratemod().mods()[1].items[0].name_(), ~"b");
+        assert_eq!(doc.cratemod().mods()[2].items[0].name_(), ~"d");
     }
 }

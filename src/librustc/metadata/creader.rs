@@ -18,6 +18,7 @@ use metadata::loader;
 
 use std::hashmap::HashMap;
 use syntax::attr;
+use syntax::attr::AttrMetaMethods;
 use syntax::codemap::{span, dummy_sp};
 use syntax::diagnostic::span_handler;
 use syntax::parse::token;
@@ -59,7 +60,7 @@ struct cache_entry {
     cnum: int,
     span: span,
     hash: @str,
-    metas: @~[@ast::meta_item]
+    metas: @~[@ast::MetaItem]
 }
 
 fn dump_crates(crate_cache: &[cache_entry]) {
@@ -123,10 +124,9 @@ struct Env {
 
 fn visit_crate(e: &Env, c: &ast::crate) {
     let cstore = e.cstore;
-    let link_args = attr::find_attrs_by_name(c.node.attrs, "link_args");
 
-    for link_args.iter().advance |a| {
-        match attr::get_meta_item_value_str(attr::attr_meta(*a)) {
+    for c.node.attrs.iter().filter(|m| "link_args" == m.name()).advance |a| {
+        match a.value_str() {
           Some(ref linkarg) => {
             cstore::add_used_link_args(cstore, *linkarg);
           }
@@ -160,13 +160,17 @@ fn visit_item(e: &Env, i: @ast::item) {
 
         let cstore = e.cstore;
         let mut already_added = false;
-        let link_args = attr::find_attrs_by_name(i.attrs, "link_args");
+        let link_args = i.attrs.iter()
+            .filter_map(|at| if "link_args" == at.name() {Some(at)} else {None})
+            .collect::<~[&ast::Attribute]>();
 
         match fm.sort {
             ast::named => {
-                let foreign_name =
-                    match attr::first_attr_value_str_by_name(i.attrs,
-                                                             "link_name") {
+                let link_name = i.attrs.iter()
+                    .find_(|at| "link_name" == at.name())
+                    .chain(|at| at.value_str());
+
+                let foreign_name = match link_name {
                         Some(nn) => {
                             if nn.is_empty() {
                                 e.diag.span_fatal(
@@ -178,7 +182,7 @@ fn visit_item(e: &Env, i: @ast::item) {
                         }
                         None => token::ident_to_str(&i.ident)
                     };
-                if attr::find_attrs_by_name(i.attrs, "nolink").is_empty() {
+                if !attr::contains_name(i.attrs, "nolink") {
                     already_added =
                         !cstore::add_used_library(cstore, foreign_name);
                 }
@@ -190,8 +194,8 @@ fn visit_item(e: &Env, i: @ast::item) {
             ast::anonymous => { /* do nothing */ }
         }
 
-        for link_args.iter().advance |a| {
-            match attr::get_meta_item_value_str(attr::attr_meta(*a)) {
+        for link_args.iter().advance |m| {
+            match m.value_str() {
                 Some(linkarg) => {
                     cstore::add_used_link_args(cstore, linkarg);
                 }
@@ -203,21 +207,21 @@ fn visit_item(e: &Env, i: @ast::item) {
     }
 }
 
-fn metas_with(ident: @str, key: @str, mut metas: ~[@ast::meta_item])
-    -> ~[@ast::meta_item] {
-    let name_items = attr::find_meta_items_by_name(metas, key);
-    if name_items.is_empty() {
+fn metas_with(ident: @str, key: @str, mut metas: ~[@ast::MetaItem])
+    -> ~[@ast::MetaItem] {
+    // Check if key isn't there yet.
+    if !attr::contains_name(metas, key) {
         metas.push(attr::mk_name_value_item_str(key, ident));
     }
     metas
 }
 
-fn metas_with_ident(ident: @str, metas: ~[@ast::meta_item])
-    -> ~[@ast::meta_item] {
+fn metas_with_ident(ident: @str, metas: ~[@ast::MetaItem])
+    -> ~[@ast::MetaItem] {
     metas_with(ident, @"name", metas)
 }
 
-fn existing_match(e: &Env, metas: &[@ast::meta_item], hash: &str)
+fn existing_match(e: &Env, metas: &[@ast::MetaItem], hash: &str)
                -> Option<int> {
     for e.crate_cache.iter().advance |c| {
         if loader::metadata_matches(*c.metas, metas)
@@ -230,7 +234,7 @@ fn existing_match(e: &Env, metas: &[@ast::meta_item], hash: &str)
 
 fn resolve_crate(e: @mut Env,
                  ident: ast::ident,
-                 metas: ~[@ast::meta_item],
+                 metas: ~[@ast::MetaItem],
                  hash: @str,
                  span: span)
               -> ast::crate_num {
