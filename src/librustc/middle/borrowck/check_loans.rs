@@ -31,10 +31,11 @@ use syntax::codemap::span;
 use syntax::visit;
 use util::ppaux::Repr;
 
+#[deriving(Clone)]
 struct CheckLoanCtxt<'self> {
     bccx: @BorrowckCtxt,
     dfcx_loans: &'self LoanDataFlow,
-    move_data: move_data::FlowedMoveData,
+    move_data: @move_data::FlowedMoveData,
     all_loans: &'self [Loan],
     reported: @mut HashSet<ast::node_id>,
 }
@@ -46,10 +47,10 @@ pub fn check_loans(bccx: @BorrowckCtxt,
                    body: &ast::blk) {
     debug!("check_loans(body id=%?)", body.id);
 
-    let clcx = @mut CheckLoanCtxt {
+    let clcx = CheckLoanCtxt {
         bccx: bccx,
         dfcx_loans: dfcx_loans,
-        move_data: move_data,
+        move_data: @move_data,
         all_loans: all_loans,
         reported: @mut HashSet::new(),
     };
@@ -139,7 +140,7 @@ impl<'self> CheckLoanCtxt<'self> {
         return result;
     }
 
-    pub fn check_for_conflicting_loans(&mut self, scope_id: ast::node_id) {
+    pub fn check_for_conflicting_loans(&self, scope_id: ast::node_id) {
         //! Checks to see whether any of the loans that are issued
         //! by `scope_id` conflict with loans that have already been
         //! issued when we enter `scope_id` (for example, we do not
@@ -596,7 +597,7 @@ impl<'self> CheckLoanCtxt<'self> {
         MoveOk
     }
 
-    pub fn check_call(&mut self,
+    pub fn check_call(&self,
                       _expr: @ast::expr,
                       _callee: Option<@ast::expr>,
                       _callee_id: ast::node_id,
@@ -617,8 +618,8 @@ fn check_loans_in_fn<'a>(fk: &visit::fn_kind,
                          body: &ast::blk,
                          sp: span,
                          id: ast::node_id,
-                         (this, visitor): (@mut CheckLoanCtxt<'a>,
-                                           visit::vt<@mut CheckLoanCtxt<'a>>)) {
+                         (this, visitor): (CheckLoanCtxt<'a>,
+                                           visit::vt<CheckLoanCtxt<'a>>)) {
     match *fk {
         visit::fk_item_fn(*) |
         visit::fk_method(*) => {
@@ -634,7 +635,7 @@ fn check_loans_in_fn<'a>(fk: &visit::fn_kind,
 
     visit::visit_fn(fk, decl, body, sp, id, (this, visitor));
 
-    fn check_captured_variables(this: @mut CheckLoanCtxt,
+    fn check_captured_variables(this: CheckLoanCtxt,
                                 closure_id: ast::node_id,
                                 span: span) {
         let cap_vars = this.bccx.capture_map.get(&closure_id);
@@ -652,7 +653,7 @@ fn check_loans_in_fn<'a>(fk: &visit::fn_kind,
         }
         return;
 
-        fn check_by_move_capture(this: @mut CheckLoanCtxt,
+        fn check_by_move_capture(this: CheckLoanCtxt,
                                  closure_id: ast::node_id,
                                  cap_var: &moves::CaptureVar,
                                  move_path: @LoanPath) {
@@ -676,14 +677,14 @@ fn check_loans_in_fn<'a>(fk: &visit::fn_kind,
 }
 
 fn check_loans_in_local<'a>(local: @ast::local,
-                            (this, vt): (@mut CheckLoanCtxt<'a>,
-                                         visit::vt<@mut CheckLoanCtxt<'a>>)) {
+                            (this, vt): (CheckLoanCtxt<'a>,
+                                         visit::vt<CheckLoanCtxt<'a>>)) {
     visit::visit_local(local, (this, vt));
 }
 
 fn check_loans_in_expr<'a>(expr: @ast::expr,
-                           (this, vt): (@mut CheckLoanCtxt<'a>,
-                                        visit::vt<@mut CheckLoanCtxt<'a>>)) {
+                           (this, vt): (CheckLoanCtxt<'a>,
+                                        visit::vt<CheckLoanCtxt<'a>>)) {
     visit::visit_expr(expr, (this, vt));
 
     debug!("check_loans_in_expr(expr=%s)",
@@ -736,8 +737,8 @@ fn check_loans_in_expr<'a>(expr: @ast::expr,
 }
 
 fn check_loans_in_pat<'a>(pat: @ast::pat,
-                          (this, vt): (@mut CheckLoanCtxt<'a>,
-                                       visit::vt<@mut CheckLoanCtxt<'a>>))
+                          (this, vt): (CheckLoanCtxt<'a>,
+                                       visit::vt<CheckLoanCtxt<'a>>))
 {
     this.check_for_conflicting_loans(pat.id);
     this.check_move_out_from_id(pat.id, pat.span);
@@ -745,8 +746,8 @@ fn check_loans_in_pat<'a>(pat: @ast::pat,
 }
 
 fn check_loans_in_block<'a>(blk: &ast::blk,
-                            (this, vt): (@mut CheckLoanCtxt<'a>,
-                                         visit::vt<@mut CheckLoanCtxt<'a>>))
+                            (this, vt): (CheckLoanCtxt<'a>,
+                                         visit::vt<CheckLoanCtxt<'a>>))
 {
     visit::visit_block(blk, (this, vt));
     this.check_for_conflicting_loans(blk.id);

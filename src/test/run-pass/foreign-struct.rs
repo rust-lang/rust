@@ -17,7 +17,7 @@ mod bindgen {
     use super::void;
 
     #[nolink]
-    pub extern {
+    extern {
         pub fn printf(v: void);
     }
 }

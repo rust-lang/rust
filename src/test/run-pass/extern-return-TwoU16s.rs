@@ -15,7 +15,7 @@ struct TwoU16s {
     one: u16, two: u16
 }
 
-pub extern {
+extern {
     pub fn rust_dbg_extern_return_TwoU16s() -> TwoU16s;
 }
 

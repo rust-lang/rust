@@ -253,7 +253,7 @@ impl<K:Hash + Eq,V> HashMap<K, V> {
         };
 
         let len_buckets = self.buckets.len();
-        let bucket = replace(&mut self.buckets[idx], None);
+        let bucket = self.buckets[idx].take();
 
         let value = match bucket {
             None => None,
@@ -267,7 +267,7 @@ impl<K:Hash + Eq,V> HashMap<K, V> {
         let size = self.size - 1;
         idx = self.next_bucket(idx, len_buckets);
         while self.buckets[idx].is_some() {
-            let bucket = replace(&mut self.buckets[idx], None);
+            let bucket = self.buckets[idx].take();
             self.insert_opt_bucket(bucket);
             idx = self.next_bucket(idx, len_buckets);
         }
@@ -548,6 +548,7 @@ impl<K:Hash + Eq + Clone,V:Clone> Clone for HashMap<K,V> {
 }
 
 /// HashMap iterator
+#[deriving(Clone)]
 pub struct HashMapIterator<'self, K, V> {
     priv iter: vec::VecIterator<'self, Option<Bucket<K, V>>>,
 }
@@ -563,6 +564,7 @@ pub struct HashMapConsumeIterator<K, V> {
 }
 
 /// HashSet iterator
+#[deriving(Clone)]
 pub struct HashSetIterator<'self, K> {
     priv iter: vec::VecIterator<'self, Option<Bucket<K, ()>>>,
 }

@@ -68,7 +68,7 @@ fn fold_crate(
     doc::CrateDoc {
         topmod: doc::ModDoc {
             item: doc::ItemDoc {
-                name: attrs.name.clone().get_or_default(doc.topmod.name()),
+                name: attrs.name.clone().get_or_default(doc.topmod.name_()),
                 .. doc.topmod.item.clone()
             },
             .. doc.topmod.clone()
@@ -102,7 +102,7 @@ fn fold_item(
 fn parse_item_attrs<T:Send>(
     srv: astsrv::Srv,
     id: doc::AstId,
-    parse_attrs: ~fn(a: ~[ast::attribute]) -> T) -> T {
+    parse_attrs: ~fn(a: ~[ast::Attribute]) -> T) -> T {
     do astsrv::exec(srv) |ctxt| {
         let attrs = match ctxt.ast_map.get_copy(&id) {
             ast_map::node_item(item, _) => item.attrs.clone(),
@@ -249,7 +249,7 @@ mod test {
     #[test]
     fn should_replace_top_module_name_with_crate_name() {
         let doc = mk_doc(~"#[link(name = \"bond\")];");
-        assert!(doc.cratemod().name() == ~"bond");
+        assert!(doc.cratemod().name_() == ~"bond");
     }
 
     #[test]

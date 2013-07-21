@@ -9,17 +9,12 @@
 // except according to those terms.
 
 //! Ports and channels.
-//!
-//! XXX: Carefully consider whether the sequentially consistent
-//! atomics here can be converted to acq/rel. I'm not sure they can,
-//! because there is data being transerred in both directions (the payload
-//! goes from sender to receiver and the task pointer goes the other way).
 
 use option::*;
 use cast;
 use util;
 use ops::Drop;
-use rt::task::Task;
+use rt::kill::BlockedTask;
 use kinds::Send;
 use rt::sched::Scheduler;
 use rt::local::Local;
@@ -30,13 +25,13 @@ use comm::{GenericChan, GenericSmartChan, GenericPort, Peekable};
 use cell::Cell;
 use clone::Clone;
 
-/// A combined refcount / ~Task pointer.
+/// A combined refcount / BlockedTask-as-uint pointer.
 ///
 /// Can be equal to the following values:
 ///
 /// * 2 - both endpoints are alive
 /// * 1 - either the sender or the receiver is dead, determined by context
-/// * <ptr> - A pointer to a blocked Task that can be transmuted to ~Task
+/// * <ptr> - A pointer to a blocked Task (see BlockedTask::cast_{to,from}_uint)
 type State = uint;
 
 static STATE_BOTH: State = 2;
@@ -137,11 +132,13 @@ impl<T> ChanOne<T> {
                 }
                 task_as_state => {
                     // Port is blocked. Wake it up.
-                    let recvr: ~Task = cast::transmute(task_as_state);
-                    let mut sched = Local::take::<Scheduler>();
-                    rtdebug!("rendezvous send");
-                    sched.metrics.rendezvous_sends += 1;
-                    sched.schedule_task(recvr);
+                    let recvr = BlockedTask::cast_from_uint(task_as_state);
+                    do recvr.wake().map_consume |woken_task| {
+                        let mut sched = Local::take::<Scheduler>();
+                        rtdebug!("rendezvous send");
+                        sched.metrics.rendezvous_sends += 1;
+                        sched.schedule_task(woken_task);
+                    };
                 }
             }
         }
@@ -177,7 +174,7 @@ impl<T> PortOne<T> {
                 // an acquire barrier to prevent reordering of the subsequent read
                 // of the payload. Also issues a release barrier to prevent reordering
                 // of any previous writes to the task structure.
-                let task_as_state: State = cast::transmute(task);
+                let task_as_state = task.cast_to_uint();
                 let oldstate = (*packet).state.swap(task_as_state, SeqCst);
                 match oldstate {
                     STATE_BOTH => {
@@ -193,8 +190,8 @@ impl<T> PortOne<T> {
                         // NB: We have to drop back into the scheduler event loop here
                         // instead of switching immediately back or we could end up
                         // triggering infinite recursion on the scheduler's stack.
-                        let task: ~Task = cast::transmute(task_as_state);
-                        sched.enqueue_task(task);
+                        let recvr = BlockedTask::cast_from_uint(task_as_state);
+                        sched.enqueue_blocked_task(recvr);
                     }
                     _ => util::unreachable()
                 }
@@ -258,9 +255,11 @@ impl<T> Drop for ChanOneHack<T> {
                 task_as_state => {
                     // The port is blocked waiting for a message we will never send. Wake it.
                     assert!((*this.packet()).payload.is_none());
-                    let recvr: ~Task = cast::transmute(task_as_state);
-                    let sched = Local::take::<Scheduler>();
-                    sched.schedule_task(recvr);
+                    let recvr = BlockedTask::cast_from_uint(task_as_state);
+                    do recvr.wake().map_consume |woken_task| {
+                        let sched = Local::take::<Scheduler>();
+                        sched.schedule_task(woken_task);
+                    };
                 }
             }
         }
@@ -282,8 +281,14 @@ impl<T> Drop for PortOneHack<T> {
                 STATE_ONE => {
                     let _packet: ~Packet<T> = cast::transmute(this.void_packet);
                 }
-                _ => {
-                    util::unreachable()
+                task_as_state => {
+                    // This case occurs during unwinding, when the blocked
+                    // receiver was killed awake. The task can't still be
+                    // blocked (we are it), but we need to free the handle.
+                    let recvr = BlockedTask::cast_from_uint(task_as_state);
+                    // FIXME(#7554)(bblum): Make this cfg(test) dependent.
+                    // in a later commit.
+                    assert!(recvr.wake().is_none());
                 }
             }
         }

@@ -242,8 +242,7 @@ impl<T: Send> GenericChan<T> for SharedChan<T> {
                 unsafe {
                     let mut xx = Some(x);
                     do chan.with_imm |chan| {
-                        let x = replace(&mut xx, None);
-                        chan.send(x.unwrap())
+                        chan.send(xx.take_unwrap())
                     }
                 }
             }
@@ -259,8 +258,7 @@ impl<T: Send> GenericSmartChan<T> for SharedChan<T> {
                 unsafe {
                     let mut xx = Some(x);
                     do chan.with_imm |chan| {
-                        let x = replace(&mut xx, None);
-                        chan.try_send(x.unwrap())
+                        chan.try_send(xx.take_unwrap())
                     }
                 }
             }
@@ -372,7 +370,6 @@ mod pipesy {
     use pipes::{recv, try_recv, peek, PacketHeader};
     use super::{GenericChan, GenericSmartChan, GenericPort, Peekable, Selectable};
     use cast::transmute_mut;
-    use util::replace;
 
     /*proto! oneshot (
         Oneshot:send<T:Send> {
@@ -382,19 +379,19 @@ mod pipesy {
 
     #[allow(non_camel_case_types)]
     pub mod oneshot {
-        priv use core::kinds::Send;
+        priv use std::kinds::Send;
         use ptr::to_mut_unsafe_ptr;
 
         pub fn init<T: Send>() -> (server::Oneshot<T>, client::Oneshot<T>) {
-            pub use core::pipes::HasBuffer;
+            pub use std::pipes::HasBuffer;
 
-            let buffer = ~::core::pipes::Buffer {
-                header: ::core::pipes::BufferHeader(),
+            let buffer = ~::std::pipes::Buffer {
+                header: ::std::pipes::BufferHeader(),
                 data: __Buffer {
-                    Oneshot: ::core::pipes::mk_packet::<Oneshot<T>>()
+                    Oneshot: ::std::pipes::mk_packet::<Oneshot<T>>()
                 },
             };
-            do ::core::pipes::entangle_buffer(buffer) |buffer, data| {
+            do ::std::pipes::entangle_buffer(buffer) |buffer, data| {
                 data.Oneshot.set_buffer(buffer);
                 to_mut_unsafe_ptr(&mut data.Oneshot)
             }
@@ -403,23 +400,23 @@ mod pipesy {
         pub enum Oneshot<T> { pub send(T), }
         #[allow(non_camel_case_types)]
         pub struct __Buffer<T> {
-            Oneshot: ::core::pipes::Packet<Oneshot<T>>,
+            Oneshot: ::std::pipes::Packet<Oneshot<T>>,
         }
 
         #[allow(non_camel_case_types)]
         pub mod client {
 
-            priv use core::kinds::Send;
+            priv use std::kinds::Send;
 
             #[allow(non_camel_case_types)]
             pub fn try_send<T: Send>(pipe: Oneshot<T>, x_0: T) ->
-                ::core::option::Option<()> {
+                ::std::option::Option<()> {
                 {
                     use super::send;
                     let message = send(x_0);
-                    if ::core::pipes::send(pipe, message) {
-                        ::core::pipes::rt::make_some(())
-                    } else { ::core::pipes::rt::make_none() }
+                    if ::std::pipes::send(pipe, message) {
+                        ::std::pipes::rt::make_some(())
+                    } else { ::std::pipes::rt::make_none() }
                 }
             }
 
@@ -428,13 +425,13 @@ mod pipesy {
                 {
                     use super::send;
                     let message = send(x_0);
-                    ::core::pipes::send(pipe, message);
+                    ::std::pipes::send(pipe, message);
                 }
             }
 
             #[allow(non_camel_case_types)]
             pub type Oneshot<T> =
-                ::core::pipes::SendPacketBuffered<super::Oneshot<T>,
+                ::std::pipes::SendPacketBuffered<super::Oneshot<T>,
             super::__Buffer<T>>;
         }
 
@@ -442,7 +439,7 @@ mod pipesy {
         pub mod server {
             #[allow(non_camel_case_types)]
             pub type Oneshot<T> =
-                ::core::pipes::RecvPacketBuffered<super::Oneshot<T>,
+                ::std::pipes::RecvPacketBuffered<super::Oneshot<T>,
             super::__Buffer<T>>;
         }
     }
@@ -557,11 +554,11 @@ mod pipesy {
 
     #[allow(non_camel_case_types)]
     pub mod streamp {
-        priv use core::kinds::Send;
+        priv use std::kinds::Send;
 
         pub fn init<T: Send>() -> (server::Open<T>, client::Open<T>) {
-            pub use core::pipes::HasBuffer;
-            ::core::pipes::entangle()
+            pub use std::pipes::HasBuffer;
+            ::std::pipes::entangle()
         }
 
         #[allow(non_camel_case_types)]
@@ -569,18 +566,18 @@ mod pipesy {
 
         #[allow(non_camel_case_types)]
         pub mod client {
-            priv use core::kinds::Send;
+            priv use std::kinds::Send;
 
             #[allow(non_camel_case_types)]
             pub fn try_data<T: Send>(pipe: Open<T>, x_0: T) ->
-                ::core::option::Option<Open<T>> {
+                ::std::option::Option<Open<T>> {
                 {
                     use super::data;
-                    let (s, c) = ::core::pipes::entangle();
+                    let (s, c) = ::std::pipes::entangle();
                     let message = data(x_0, s);
-                    if ::core::pipes::send(pipe, message) {
-                        ::core::pipes::rt::make_some(c)
-                    } else { ::core::pipes::rt::make_none() }
+                    if ::std::pipes::send(pipe, message) {
+                        ::std::pipes::rt::make_some(c)
+                    } else { ::std::pipes::rt::make_none() }
                 }
             }
 
@@ -588,21 +585,21 @@ mod pipesy {
             pub fn data<T: Send>(pipe: Open<T>, x_0: T) -> Open<T> {
                 {
                     use super::data;
-                    let (s, c) = ::core::pipes::entangle();
+                    let (s, c) = ::std::pipes::entangle();
                     let message = data(x_0, s);
-                    ::core::pipes::send(pipe, message);
+                    ::std::pipes::send(pipe, message);
                     c
                 }
             }
 
             #[allow(non_camel_case_types)]
-            pub type Open<T> = ::core::pipes::SendPacket<super::Open<T>>;
+            pub type Open<T> = ::std::pipes::SendPacket<super::Open<T>>;
         }
 
         #[allow(non_camel_case_types)]
         pub mod server {
             #[allow(non_camel_case_types)]
-            pub type Open<T> = ::core::pipes::RecvPacket<super::Open<T>>;
+            pub type Open<T> = ::std::pipes::RecvPacket<super::Open<T>>;
         }
     }
 
@@ -638,8 +635,7 @@ mod pipesy {
         fn send(&self, x: T) {
             unsafe {
                 let self_endp = transmute_mut(&self.endp);
-                let endp = replace(self_endp, None);
-                *self_endp = Some(streamp::client::data(endp.unwrap(), x))
+                *self_endp = Some(streamp::client::data(self_endp.take_unwrap(), x))
             }
         }
     }
@@ -649,8 +645,7 @@ mod pipesy {
         fn try_send(&self, x: T) -> bool {
             unsafe {
                 let self_endp = transmute_mut(&self.endp);
-                let endp = replace(self_endp, None);
-                match streamp::client::try_data(endp.unwrap(), x) {
+                match streamp::client::try_data(self_endp.take_unwrap(), x) {
                     Some(next) => {
                         *self_endp = Some(next);
                         true
@@ -666,7 +661,7 @@ mod pipesy {
         fn recv(&self) -> T {
             unsafe {
                 let self_endp = transmute_mut(&self.endp);
-                let endp = replace(self_endp, None);
+                let endp = self_endp.take();
                 let streamp::data(x, endp) = recv(endp.unwrap());
                 *self_endp = Some(endp);
                 x
@@ -677,7 +672,7 @@ mod pipesy {
         fn try_recv(&self) -> Option<T> {
             unsafe {
                 let self_endp = transmute_mut(&self.endp);
-                let endp = replace(self_endp, None);
+                let endp = self_endp.take();
                 match try_recv(endp.unwrap()) {
                     Some(streamp::data(x, endp)) => {
                         *self_endp = Some(endp);
@@ -694,7 +689,7 @@ mod pipesy {
         fn peek(&self) -> bool {
             unsafe {
                 let self_endp = transmute_mut(&self.endp);
-                let mut endp = replace(self_endp, None);
+                let mut endp = self_endp.take();
                 let peek = match endp {
                     Some(ref mut endp) => peek(endp),
                     None => fail!("peeking empty stream")

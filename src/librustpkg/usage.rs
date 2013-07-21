@@ -23,10 +23,11 @@ Options:
 }
 
 pub fn build() {
-    io::println("rustpkg [options..] build
+    io::println("rustpkg [options..] build [package-ID]
 
-Build all targets described in the package script in the current
-directory.
+Build the given package ID if specified. With no package ID argument,
+build the package in the current directory. In that case, the current
+directory must be a direct child of an `src` directory in a workspace.
 
 Options:
     -c, --cfg      Pass a cfg flag to the package script");

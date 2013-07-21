@@ -1896,12 +1896,11 @@ pub mod raw {
     use cast::transmute;
     use clone::Clone;
     use managed;
-    use option::{None, Some};
+    use option::Some;
     use ptr;
     use sys;
     use unstable::intrinsics;
     use vec::{UnboxedVecRepr, with_capacity, ImmutableVector, MutableVector};
-    use util;
     #[cfg(not(stage0))]
     use unstable::intrinsics::contains_managed;
 
@@ -2022,9 +2021,8 @@ pub mod raw {
     pub unsafe fn init_elem<T>(v: &mut [T], i: uint, val: T) {
         let mut box = Some(val);
         do v.as_mut_buf |p, _len| {
-            let box2 = util::replace(&mut box, None);
             intrinsics::move_val_init(&mut(*ptr::mut_offset(p, i)),
-                                      box2.unwrap());
+                                      box.take_unwrap());
         }
     }
 
@@ -2234,6 +2232,10 @@ iterator!{impl VecIterator -> &'self T}
 double_ended_iterator!{impl VecIterator -> &'self T}
 pub type VecRevIterator<'self, T> = InvertIterator<&'self T, VecIterator<'self, T>>;
 
+impl<'self, T> Clone for VecIterator<'self, T> {
+    fn clone(&self) -> VecIterator<'self, T> { *self }
+}
+
 //iterator!{struct VecMutIterator -> *mut T, &'self mut T}
 /// An iterator for mutating the elements of a vector.
 pub struct VecMutIterator<'self, T> {
@@ -2246,6 +2248,7 @@ double_ended_iterator!{impl VecMutIterator -> &'self mut T}
 pub type VecMutRevIterator<'self, T> = InvertIterator<&'self mut T, VecMutIterator<'self, T>>;
 
 /// An iterator that moves out of a vector.
+#[deriving(Clone)]
 pub struct VecConsumeIterator<T> {
     priv v: ~[T],
     priv idx: uint,
@@ -2272,6 +2275,7 @@ impl<T> Iterator<T> for VecConsumeIterator<T> {
 }
 
 /// An iterator that moves out of a vector in reverse order.
+#[deriving(Clone)]
 pub struct VecConsumeRevIterator<T> {
     priv v: ~[T]
 }
@@ -3185,6 +3189,17 @@ mod tests {
         assert_eq!(xs.rev_iter().size_hint(), (5, Some(5)));
         assert_eq!(xs.mut_iter().size_hint(), (5, Some(5)));
         assert_eq!(xs.mut_rev_iter().size_hint(), (5, Some(5)));
+    }
+
+    #[test]
+    fn test_iter_clone() {
+        let xs = [1, 2, 5];
+        let mut it = xs.iter();
+        it.next();
+        let mut jt = it.clone();
+        assert_eq!(it.next(), jt.next());
+        assert_eq!(it.next(), jt.next());
+        assert_eq!(it.next(), jt.next());
     }
 
     #[test]

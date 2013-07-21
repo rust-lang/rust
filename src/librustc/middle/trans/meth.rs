@@ -162,7 +162,7 @@ pub fn trans_method_callee(bcx: block,
             let self_ty = node_id_type(bcx, this.id);
             // <impl_id> is the ID of the implementation of
             // trait <trait_id> for type <self_ty>
-            let impl_id = ty::get_impl_id(tcx, trait_id, self_ty);
+            let impl_id = ty::bogus_get_impl_id_from_ty(tcx, trait_id, self_ty);
             // Get the supertrait's methods
             let supertrait_method_def_ids = ty::trait_method_def_ids(tcx, trait_id);
             // Make sure to fail with a readable error message if
@@ -177,9 +177,7 @@ pub fn trans_method_callee(bcx: block,
             // Now that we know the impl ID, we can look up the method
             // ID from its name
             origin = typeck::method_static(
-                method_with_name_or_default(bcx.ccx(),
-                                            impl_id,
-                                            method_name));
+                method_with_name(bcx.ccx(), impl_id, method_name));
         }
         typeck::method_self(*) |
         typeck::method_static(*) | typeck::method_param(*) |
@@ -308,12 +306,10 @@ pub fn trans_static_method_callee(bcx: block,
         typeck::vtable_static(impl_did, ref rcvr_substs, rcvr_origins) => {
             assert!(rcvr_substs.iter().all(|t| !ty::type_needs_infer(*t)));
 
-            let mth_id = method_with_name_or_default(bcx.ccx(),
-                                                     impl_did,
-                                                     mname);
+            let mth_id = method_with_name(bcx.ccx(), impl_did, mname);
             let (callee_substs, callee_origins) =
                 combine_impl_and_methods_tps(
-                    bcx, mth_id, impl_did, callee_id,
+                    bcx, mth_id, callee_id,
                     *rcvr_substs, rcvr_origins);
 
             let FnData {llfn: lval} =
@@ -334,58 +330,22 @@ pub fn trans_static_method_callee(bcx: block,
     }
 }
 
-pub fn method_from_methods(ms: &[@ast::method], name: ast::ident)
-    -> Option<ast::def_id> {
-    ms.iter().find_(|m| m.ident == name).map(|m| ast_util::local_def(m.id))
-}
-
-pub fn method_with_name_or_default(ccx: &mut CrateContext,
-                                   impl_id: ast::def_id,
-                                   name: ast::ident) -> ast::def_id {
-    let imp = ccx.impl_method_cache.find_copy(&(impl_id, name));
-    match imp {
+pub fn method_with_name(ccx: &mut CrateContext,
+                        impl_id: ast::def_id,
+                        name: ast::ident) -> ast::def_id {
+    let meth_id_opt = ccx.impl_method_cache.find_copy(&(impl_id, name));
+    match meth_id_opt {
         Some(m) => return m,
         None => {}
     }
 
-    // None of this feels like it should be the best way to do this.
-    let mut did = if impl_id.crate == ast::local_crate {
-        match ccx.tcx.items.get_copy(&impl_id.node) {
-            ast_map::node_item(@ast::item {
-                node: ast::item_impl(_, _, _, ref ms), _
-            }, _) => { method_from_methods(*ms, name) },
-            _ => fail!("method_with_name")
-        }
-    } else {
-        csearch::get_impl_method(ccx.sess.cstore, impl_id, name)
-    };
+    let imp = ccx.tcx.impls.find(&impl_id)
+        .expect("could not find impl while translating");
+    let meth = imp.methods.iter().find_(|m| m.ident == name)
+        .expect("could not find method while translating");
 
-    if did.is_none() {
-        // Look for a default method
-        let pmm = ccx.tcx.provided_methods;
-        match pmm.find(&impl_id) {
-            Some(pmis) => {
-                for pmis.iter().advance |pmi| {
-                    if pmi.method_info.ident == name {
-                        debug!("pmi.method_info.did = %?",
-                               pmi.method_info.did);
-                        did = Some(pmi.method_info.did);
-                    }
-                }
-            }
-            None => {}
-        }
-    }
-
-    let imp = did.expect("could not find method while translating");
-    ccx.impl_method_cache.insert((impl_id, name), imp);
-    imp
-}
-
-pub fn method_ty_param_count(ccx: &CrateContext, m_id: ast::def_id,
-                             i_id: ast::def_id) -> uint {
-    debug!("method_ty_param_count: m_id: %?, i_id: %?", m_id, i_id);
-    ty::method(ccx.tcx, m_id).generics.type_param_defs.len()
+    ccx.impl_method_cache.insert((impl_id, name), meth.def_id);
+    meth.def_id
 }
 
 pub fn trans_monomorphized_callee(bcx: block,
@@ -401,8 +361,7 @@ pub fn trans_monomorphized_callee(bcx: block,
       typeck::vtable_static(impl_did, ref rcvr_substs, rcvr_origins) => {
           let ccx = bcx.ccx();
           let mname = ty::trait_method(ccx.tcx, trait_id, n_method).ident;
-          let mth_id = method_with_name_or_default(
-              bcx.ccx(), impl_did, mname);
+          let mth_id = method_with_name(bcx.ccx(), impl_did, mname);
 
           // obtain the `self` value:
           let mut temp_cleanups = ~[];
@@ -413,7 +372,7 @@ pub fn trans_monomorphized_callee(bcx: block,
           // those from the impl and those from the method:
           let (callee_substs, callee_origins) =
               combine_impl_and_methods_tps(
-                  bcx, mth_id, impl_did, callee_id,
+                  bcx, mth_id, callee_id,
                   *rcvr_substs, rcvr_origins);
 
           // translate the function
@@ -452,7 +411,6 @@ pub fn trans_monomorphized_callee(bcx: block,
 
 pub fn combine_impl_and_methods_tps(bcx: block,
                                     mth_did: ast::def_id,
-                                    impl_did: ast::def_id,
                                     callee_id: ast::node_id,
                                     rcvr_substs: &[ty::t],
                                     rcvr_origins: typeck::vtable_res)
@@ -475,15 +433,16 @@ pub fn combine_impl_and_methods_tps(bcx: block,
     * mapped to. */
 
     let ccx = bcx.ccx();
-    let n_m_tps = method_ty_param_count(ccx, mth_did, impl_did);
+    let method = ty::method(ccx.tcx, mth_did);
+    let n_m_tps = method.generics.type_param_defs.len();
     let node_substs = node_id_type_params(bcx, callee_id);
-    debug!("rcvr_substs=%?", rcvr_substs.map(|t| bcx.ty_to_str(*t)));
+    debug!("rcvr_substs=%?", rcvr_substs.repr(ccx.tcx));
     let ty_substs
         = vec::append(rcvr_substs.to_owned(),
                       node_substs.tailn(node_substs.len() - n_m_tps));
     debug!("n_m_tps=%?", n_m_tps);
-    debug!("node_substs=%?", node_substs.map(|t| bcx.ty_to_str(*t)));
-    debug!("ty_substs=%?", ty_substs.map(|t| bcx.ty_to_str(*t)));
+    debug!("node_substs=%?", node_substs.repr(ccx.tcx));
+    debug!("ty_substs=%?", ty_substs.repr(ccx.tcx));
 
 
     // Now, do the same work for the vtables.  The vtables might not
@@ -658,7 +617,6 @@ pub fn vtable_id(ccx: @mut CrateContext,
             monomorphize::make_mono_id(
                 ccx,
                 impl_id,
-                None,
                 &psubsts,
                 None)
         }
@@ -744,7 +702,7 @@ pub fn make_impl_vtable(bcx: block,
         } else {
             debug!("(making impl vtable) adding method to vtable: %s",
                    tcx.sess.str_of(im.ident));
-            let m_id = method_with_name_or_default(ccx, impl_id, im.ident);
+            let m_id = method_with_name(ccx, impl_id, im.ident);
 
             trans_fn_ref_with_vtables(bcx, m_id, 0,
                                       substs, Some(vtables)).llfn

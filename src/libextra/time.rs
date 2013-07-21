@@ -22,7 +22,7 @@ pub mod rustrt {
     use super::Tm;
 
     #[abi = "cdecl"]
-    pub extern {
+    extern {
         pub unsafe fn get_time(sec: &mut i64, nsec: &mut i32);
 
         pub unsafe fn precise_time_ns(ns: &mut u64);

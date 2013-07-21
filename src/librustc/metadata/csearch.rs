@@ -15,7 +15,7 @@ use metadata::common::*;
 use metadata::cstore;
 use metadata::decoder;
 use metadata;
-use middle::{ty, resolve};
+use middle::ty;
 
 use std::vec;
 use reader = extra::ebml::reader;
@@ -90,17 +90,17 @@ pub fn maybe_get_item_ast(tcx: ty::ctxt, def: ast::def_id,
 }
 
 pub fn get_enum_variants(tcx: ty::ctxt, def: ast::def_id)
-                      -> ~[ty::VariantInfo] {
+                      -> ~[@ty::VariantInfo] {
     let cstore = tcx.cstore;
     let cdata = cstore::get_crate_data(cstore, def.crate);
     return decoder::get_enum_variants(cstore.intr, cdata, def.node, tcx)
 }
 
 /// Returns information about the given implementation.
-pub fn get_impl(cstore: @mut cstore::CStore, impl_def_id: ast::def_id)
-                -> resolve::Impl {
-    let cdata = cstore::get_crate_data(cstore, impl_def_id.crate);
-    decoder::get_impl(cstore.intr, cdata, impl_def_id.node)
+pub fn get_impl(tcx: ty::ctxt, impl_def_id: ast::def_id)
+                -> ty::Impl {
+    let cdata = cstore::get_crate_data(tcx.cstore, impl_def_id.crate);
+    decoder::get_impl(tcx.cstore.intr, cdata, impl_def_id.node, tcx)
 }
 
 pub fn get_method(tcx: ty::ctxt, def: ast::def_id) -> ty::Method {
@@ -151,7 +151,7 @@ pub fn get_static_methods_if_impl(cstore: @mut cstore::CStore,
 
 pub fn get_item_attrs(cstore: @mut cstore::CStore,
                       def_id: ast::def_id,
-                      f: &fn(~[@ast::meta_item])) {
+                      f: &fn(~[@ast::MetaItem])) {
     let cdata = cstore::get_crate_data(cstore, def_id.crate);
     decoder::get_item_attrs(cdata, def_id.node, f)
 }

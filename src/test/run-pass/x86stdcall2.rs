@@ -19,7 +19,7 @@ mod kernel32 {
 
     #[cfg(target_os = "win32")]
     #[abi = "stdcall"]
-    pub extern "stdcall" {
+    extern "stdcall" {
         pub fn GetProcessHeap() -> HANDLE;
         pub fn HeapAlloc(hHeap: HANDLE, dwFlags: DWORD, dwBytes: SIZE_T)
                       -> LPVOID;

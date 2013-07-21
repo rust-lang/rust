@@ -35,15 +35,15 @@
 
 
 fn main() {
-    let noPadding8 : (i8, u8) = (-100, 100);
-    let noPadding16 : (i16, i16, u16) = (0, 1, 2);
-    let noPadding32 : (i32, f32, u32) = (3, 4.5, 5);
-    let noPadding64 : (i64, f64, u64) = (6, 7.5, 8);
+    let noPadding8: (i8, u8) = (-100, 100);
+    let noPadding16: (i16, i16, u16) = (0, 1, 2);
+    let noPadding32: (i32, f32, u32) = (3, 4.5, 5);
+    let noPadding64: (i64, f64, u64) = (6, 7.5, 8);
 
-    let internalPadding1 : (i16, i32) = (9, 10);
-    let internalPadding2 : (i16, i32, u32, u64) = (11, 12, 13, 14);
+    let internalPadding1: (i16, i32) = (9, 10);
+    let internalPadding2: (i16, i32, u32, u64) = (11, 12, 13, 14);
 
-    let paddingAtEnd : (i32, i16) = (15, 16);
+    let paddingAtEnd: (i32, i16) = (15, 16);
 
     zzz();
 }

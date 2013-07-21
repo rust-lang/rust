@@ -16,7 +16,6 @@ use middle::const_eval;
 use middle::lang_items::{TyDescStructLangItem, TyVisitorTraitLangItem};
 use middle::lang_items::OpaqueStructLangItem;
 use middle::freevars;
-use middle::resolve::{Impl, MethodInfo};
 use middle::resolve;
 use middle::ty;
 use middle::subst::Subst;
@@ -50,6 +49,8 @@ use syntax::opt_vec;
 use syntax::abi::AbiSet;
 use syntax;
 
+pub static INITIAL_DISCRIMINANT_VALUE: int = 0;
+
 // Data types
 
 #[deriving(Eq, IterBytes)]
@@ -65,7 +66,11 @@ pub struct Method {
     fty: BareFnTy,
     explicit_self: ast::explicit_self_,
     vis: ast::visibility,
-    def_id: ast::def_id
+    def_id: ast::def_id,
+    container_id: ast::def_id,
+
+    // If this method is provided, we need to know where it came from
+    provided_source: Option<ast::def_id>
 }
 
 impl Method {
@@ -75,7 +80,9 @@ impl Method {
                fty: BareFnTy,
                explicit_self: ast::explicit_self_,
                vis: ast::visibility,
-               def_id: ast::def_id)
+               def_id: ast::def_id,
+               container_id: ast::def_id,
+               provided_source: Option<ast::def_id>)
                -> Method {
         // Check the invariants.
         if explicit_self == ast::sty_static {
@@ -91,9 +98,17 @@ impl Method {
             fty: fty,
             explicit_self: explicit_self,
             vis: vis,
-            def_id: def_id
+            def_id: def_id,
+            container_id: container_id,
+            provided_source: provided_source
         }
     }
+}
+
+pub struct Impl {
+    did: def_id,
+    ident: ident,
+    methods: ~[@Method]
 }
 
 #[deriving(Clone, Eq, IterBytes)]
@@ -214,26 +229,6 @@ pub enum AutoRef {
     AutoUnsafe(ast::mutability)
 }
 
-// Stores information about provided methods (a.k.a. default methods) in
-// implementations.
-//
-// This is a map from ID of each implementation to the method info and trait
-// method ID of each of the default methods belonging to the trait that
-// implementation implements.
-pub type ProvidedMethodsMap = @mut HashMap<def_id,@mut ~[@ProvidedMethodInfo]>;
-
-// Stores the method info and definition ID of the associated trait method for
-// each instantiation of each provided method.
-pub struct ProvidedMethodInfo {
-    method_info: @MethodInfo,
-    trait_method_def_id: def_id
-}
-
-pub struct ProvidedMethodSource {
-    method_id: ast::def_id,
-    impl_id: ast::def_id
-}
-
 pub type ctxt = @ctxt_;
 
 struct ctxt_ {
@@ -282,16 +277,13 @@ struct ctxt_ {
     needs_unwind_cleanup_cache: @mut HashMap<t, bool>,
     tc_cache: @mut HashMap<uint, TypeContents>,
     ast_ty_to_ty_cache: @mut HashMap<node_id, ast_ty_to_ty_cache_entry>,
-    enum_var_cache: @mut HashMap<def_id, @~[VariantInfo]>,
+    enum_var_cache: @mut HashMap<def_id, @~[@VariantInfo]>,
     ty_param_defs: @mut HashMap<ast::node_id, TypeParameterDef>,
     adjustments: @mut HashMap<ast::node_id, @AutoAdjustment>,
     normalized_cache: @mut HashMap<t, t>,
     lang_items: middle::lang_items::LanguageItems,
-    // A mapping from an implementation ID to the method info and trait
-    // method ID of the provided (a.k.a. default) methods in the traits that
-    // that implementation implements.
-    provided_methods: ProvidedMethodsMap,
-    provided_method_sources: @mut HashMap<ast::def_id, ProvidedMethodSource>,
+    // A mapping of fake provided method def_ids to the default implementation
+    provided_method_sources: @mut HashMap<ast::def_id, ast::def_id>,
     supertraits: @mut HashMap<ast::def_id, @~[@TraitRef]>,
 
     // A mapping from the def ID of an enum or struct type to the def ID
@@ -303,11 +295,19 @@ struct ctxt_ {
     // A method will be in this list if and only if it is a destructor.
     destructors: @mut HashSet<ast::def_id>,
 
-    // Maps a trait onto a mapping from self-ty to impl
-    trait_impls: @mut HashMap<ast::def_id, @mut HashMap<t, @Impl>>,
+    // Maps a trait onto a list of impls of that trait.
+    trait_impls: @mut HashMap<ast::def_id, @mut ~[@Impl]>,
 
-    // Maps a base type to its impl
-    base_impls: @mut HashMap<ast::def_id, @mut ~[@Impl]>,
+    // Maps a def_id of a type to a list of its inherent impls.
+    // Contains implementations of methods that are inherent to a type.
+    // Methods in these implementations don't need to be exported.
+    inherent_impls: @mut HashMap<ast::def_id, @mut ~[@Impl]>,
+
+    // Maps a def_id of an impl to an Impl structure.
+    // Note that this contains all of the impls that we know about,
+    // including ones in other crates. It's not clear that this is the best
+    // way to do it.
+    impls: @mut HashMap<ast::def_id, @Impl>,
 
     // Set of used unsafe nodes (functions or blocks). Unsafe nodes not
     // present in this set can be warned about.
@@ -858,7 +858,7 @@ fn mk_rcache() -> creader_cache {
     return @mut HashMap::new();
 }
 
-pub fn new_ty_hash<V>() -> @mut HashMap<t, V> {
+pub fn new_ty_hash<V:'static>() -> @mut HashMap<t, V> {
     @mut HashMap::new()
 }
 
@@ -902,13 +902,13 @@ pub fn mk_ctxt(s: session::Session,
         adjustments: @mut HashMap::new(),
         normalized_cache: new_ty_hash(),
         lang_items: lang_items,
-        provided_methods: @mut HashMap::new(),
         provided_method_sources: @mut HashMap::new(),
         supertraits: @mut HashMap::new(),
         destructor_for_type: @mut HashMap::new(),
         destructors: @mut HashSet::new(),
         trait_impls: @mut HashMap::new(),
-        base_impls:  @mut HashMap::new(),
+        inherent_impls:  @mut HashMap::new(),
+        impls:  @mut HashMap::new(),
         used_unsafe: @mut HashSet::new(),
         used_mut_nodes: @mut HashSet::new(),
      }
@@ -3516,6 +3516,11 @@ pub fn def_has_ty_params(def: ast::def) -> bool {
     }
 }
 
+pub fn provided_source(cx: ctxt, id: ast::def_id)
+    -> Option<ast::def_id> {
+    cx.provided_method_sources.find(&id).map(|x| **x)
+}
+
 pub fn provided_trait_methods(cx: ctxt, id: ast::def_id) -> ~[@Method] {
     if is_local(id) {
         match cx.items.find(&id.node) {
@@ -3595,20 +3600,6 @@ pub fn trait_method(cx: ctxt, trait_did: ast::def_id, idx: uint) -> @Method {
     ty::method(cx, method_def_id)
 }
 
-
-pub fn add_base_impl(cx: ctxt, base_def_id: def_id, implementation: @Impl) {
-    let implementations;
-    match cx.base_impls.find(&base_def_id) {
-        None => {
-            implementations = @mut ~[];
-            cx.base_impls.insert(base_def_id, implementations);
-        }
-        Some(&existing) => {
-            implementations = existing;
-        }
-    }
-    implementations.push(implementation);
-}
 
 pub fn trait_methods(cx: ctxt, trait_did: ast::def_id) -> @~[@Method] {
     match cx.trait_methods_cache.find(&trait_did) {
@@ -3692,8 +3683,9 @@ fn struct_ctor_id(cx: ctxt, struct_did: ast::def_id) -> Option<ast::def_id> {
 
 // Enum information
 #[deriving(Clone)]
-pub struct VariantInfo_ {
+pub struct VariantInfo {
     args: ~[t],
+    arg_names: Option<~[ast::ident]>,
     ctor_ty: t,
     name: ast::ident,
     id: ast::def_id,
@@ -3701,19 +3693,71 @@ pub struct VariantInfo_ {
     vis: visibility
 }
 
-pub type VariantInfo = @VariantInfo_;
+impl VariantInfo {
+
+    /// Creates a new VariantInfo from the corresponding ast representation.
+    ///
+    /// Does not do any caching of the value in the type context.
+    pub fn from_ast_variant(cx: ctxt,
+                            ast_variant: &ast::variant,
+                            discriminant: int) -> VariantInfo {
+
+        let ctor_ty = node_id_to_type(cx, ast_variant.node.id);
+
+        match ast_variant.node.kind {
+            ast::tuple_variant_kind(ref args) => {
+                let arg_tys = if args.len() > 0 { ty_fn_args(ctor_ty).map(|a| *a) } else { ~[] };
+
+                return VariantInfo {
+                    args: arg_tys,
+                    arg_names: None,
+                    ctor_ty: ctor_ty,
+                    name: ast_variant.node.name,
+                    id: ast_util::local_def(ast_variant.node.id),
+                    disr_val: discriminant,
+                    vis: ast_variant.node.vis
+                };
+            },
+            ast::struct_variant_kind(ref struct_def) => {
+
+                let fields: &[@struct_field] = struct_def.fields;
+
+                assert!(fields.len() > 0);
+
+                let arg_tys = ty_fn_args(ctor_ty).map(|a| *a);
+                let arg_names = do fields.map |field| {
+                    match field.node.kind {
+                        named_field(ident, _) => ident,
+                        unnamed_field => cx.sess.bug(
+                            "enum_variants: all fields in struct must have a name")
+                    }
+                };
+
+                return VariantInfo {
+                    args: arg_tys,
+                    arg_names: Some(arg_names),
+                    ctor_ty: ctor_ty,
+                    name: ast_variant.node.name,
+                    id: ast_util::local_def(ast_variant.node.id),
+                    disr_val: discriminant,
+                    vis: ast_variant.node.vis
+                };
+            }
+        }
+    }
+}
 
 pub fn substd_enum_variants(cx: ctxt,
                             id: ast::def_id,
                             substs: &substs)
-                         -> ~[VariantInfo] {
+                         -> ~[@VariantInfo] {
     do enum_variants(cx, id).iter().transform |variant_info| {
         let substd_args = variant_info.args.iter()
             .transform(|aty| subst(cx, substs, *aty)).collect();
 
         let substd_ctor_ty = subst(cx, substs, variant_info.ctor_ty);
 
-        @VariantInfo_ {
+        @VariantInfo {
             args: substd_args,
             ctor_ty: substd_ctor_ty,
             ..(**variant_info).clone()
@@ -3831,7 +3875,7 @@ pub fn type_is_empty(cx: ctxt, t: t) -> bool {
      }
 }
 
-pub fn enum_variants(cx: ctxt, id: ast::def_id) -> @~[VariantInfo] {
+pub fn enum_variants(cx: ctxt, id: ast::def_id) -> @~[@VariantInfo] {
     match cx.enum_var_cache.find(&id) {
       Some(&variants) => return variants,
       _ => { /* fallthrough */ }
@@ -3850,61 +3894,31 @@ pub fn enum_variants(cx: ctxt, id: ast::def_id) -> @~[VariantInfo] {
                     node: ast::item_enum(ref enum_definition, _),
                     _
                 }, _) => {
-            let mut disr_val = -1;
+            let mut last_discriminant: Option<int> = None;
             @enum_definition.variants.iter().transform(|variant| {
 
-                let ctor_ty = node_id_to_type(cx, variant.node.id);
+                let mut discriminant = match last_discriminant {
+                    Some(val) => val + 1,
+                    None => INITIAL_DISCRIMINANT_VALUE
+                };
 
-                match variant.node.kind {
-                    ast::tuple_variant_kind(ref args) => {
-                        let arg_tys = if args.len() > 0u {
-                                ty_fn_args(ctor_ty).map(|a| *a) }
-                            else {
-                                ~[]
-                            };
-
-                        match variant.node.disr_expr {
-                          Some (ex) => {
-                            disr_val = match const_eval::eval_const_expr(cx,
-                                                                         ex) {
-                              const_eval::const_int(val) => val as int,
-                              _ => cx.sess.bug("enum_variants: bad disr expr")
-                            }
-                          }
-                          _ => disr_val += 1
+                match variant.node.disr_expr {
+                    Some(e) => match const_eval::eval_const_expr_partial(&cx, e) {
+                        Ok(const_eval::const_int(val)) => discriminant = val as int,
+                        Ok(_) => {
+                            cx.sess.span_err(e.span, "expected signed integer constant");
                         }
-                        @VariantInfo_{
-                            args: arg_tys,
-                            ctor_ty: ctor_ty,
-                            name: variant.node.name,
-                            id: ast_util::local_def(variant.node.id),
-                            disr_val: disr_val,
-                            vis: variant.node.vis
-                         }
+                        Err(ref err) => {
+                            cx.sess.span_err(e.span, fmt!("expected constant: %s", (*err)));
+                        }
                     },
-                    ast::struct_variant_kind(struct_def) => {
-                        let arg_tys =
-                            // Is this check needed for structs too, or are they always guaranteed
-                            // to have a valid constructor function?
-                            if struct_def.fields.len() > 0 {
-                                ty_fn_args(ctor_ty).map(|a| *a)
-                            } else {
-                                ~[]
-                            };
+                    None => {}
+                };
 
-                        assert!(variant.node.disr_expr.is_none());
-                        disr_val += 1;
+                let variant_info = @VariantInfo::from_ast_variant(cx, variant, discriminant);
+                last_discriminant = Some(discriminant);
+                variant_info
 
-                        @VariantInfo_{
-                            args: arg_tys,
-                            ctor_ty: ctor_ty,
-                            name: variant.node.name,
-                            id: ast_util::local_def(variant.node.id),
-                            disr_val: disr_val,
-                            vis: variant.node.vis
-                        }
-                    }
-                }
             }).collect()
           }
           _ => cx.sess.bug("enum_variants: id not bound to an enum")
@@ -3919,7 +3933,7 @@ pub fn enum_variants(cx: ctxt, id: ast::def_id) -> @~[VariantInfo] {
 pub fn enum_variant_with_id(cx: ctxt,
                             enum_id: ast::def_id,
                             variant_id: ast::def_id)
-                         -> VariantInfo {
+                         -> @VariantInfo {
     let variants = enum_variants(cx, enum_id);
     let mut i = 0;
     while i < variants.len() {
@@ -3966,7 +3980,7 @@ pub fn has_attr(tcx: ctxt, did: def_id, attr: &str) -> bool {
                 &ast_map::node_item(@ast::item {
                     attrs: ref attrs,
                     _
-                }, _)) => attr::attrs_contains_name(*attrs, attr),
+                }, _)) => attr::contains_name(*attrs, attr),
             _ => tcx.sess.bug(fmt!("has_attr: %? is not an item",
                                    did))
         }
@@ -4375,16 +4389,25 @@ pub fn count_traits_and_supertraits(tcx: ctxt,
     return total;
 }
 
-// Given a trait and a type, returns the impl of that type
-pub fn get_impl_id(tcx: ctxt, trait_id: def_id, self_ty: t) -> def_id {
+// Given a trait and a type, returns the impl of that type.
+// This is broken, of course, by parametric impls. This used to use
+// a table specifically for this mapping, but I removed that table.
+// This is only used when calling a supertrait method from a default method,
+// and should go away once I fix how that works. -sully
+pub fn bogus_get_impl_id_from_ty(tcx: ctxt,
+                                 trait_id: def_id, self_ty: t) -> def_id {
     match tcx.trait_impls.find(&trait_id) {
-        Some(ty_to_impl) => match ty_to_impl.find(&self_ty) {
-            Some(the_impl) => the_impl.did,
-            None => // try autoderef!
-                match deref(tcx, self_ty, false) {
-                    Some(some_ty) => get_impl_id(tcx, trait_id, some_ty.ty),
-                    None => tcx.sess.bug("get_impl_id: no impl of trait for \
-                                          this type")
+        Some(ty_to_impl) => {
+            for ty_to_impl.iter().advance |imp| {
+                let impl_ty = tcx.tcache.get_copy(&imp.did);
+                if impl_ty.ty == self_ty { return imp.did; }
+            }
+            // try autoderef!
+            match deref(tcx, self_ty, false) {
+                Some(some_ty) =>
+                  bogus_get_impl_id_from_ty(tcx, trait_id, some_ty.ty),
+                None => tcx.sess.bug("get_impl_id: no impl of trait for \
+                                      this type")
             }
         },
         None => tcx.sess.bug("get_impl_id: trait isn't in trait_impls")

@@ -227,7 +227,7 @@ impl IoFactory for UvIoFactory {
 
                     // Context switch
                     let scheduler = Local::take::<Scheduler>();
-                    scheduler.resume_task_immediately(task_cell.take());
+                    scheduler.resume_blocked_task_immediately(task_cell.take());
                 } else {
                     rtdebug!("status is some");
                     let task_cell = Cell::new(task_cell.take());
@@ -235,7 +235,7 @@ impl IoFactory for UvIoFactory {
                         let res = Err(uv_error_to_io_error(status.get()));
                         unsafe { (*result_cell_ptr).put_back(res); }
                         let scheduler = Local::take::<Scheduler>();
-                        scheduler.resume_task_immediately(task_cell.take());
+                        scheduler.resume_blocked_task_immediately(task_cell.take());
                     }
                 };
             }
@@ -255,7 +255,7 @@ impl IoFactory for UvIoFactory {
                     let task_cell = Cell::new(task);
                     do watcher.as_stream().close {
                         let scheduler = Local::take::<Scheduler>();
-                        scheduler.resume_task_immediately(task_cell.take());
+                        scheduler.resume_blocked_task_immediately(task_cell.take());
                     }
                 }
                 Err(uv_error_to_io_error(uverr))
@@ -264,7 +264,7 @@ impl IoFactory for UvIoFactory {
     }
 
     fn udp_bind(&mut self, addr: IpAddr) -> Result<~RtioUdpSocketObject, IoError> {
-        let /*mut*/ watcher = UdpWatcher::new(self.uv_loop());
+        let mut watcher = UdpWatcher::new(self.uv_loop());
         match watcher.bind(addr) {
             Ok(_) => Ok(~UvUdpSocket(watcher)),
             Err(uverr) => {
@@ -273,7 +273,7 @@ impl IoFactory for UvIoFactory {
                     let task_cell = Cell::new(task);
                     do watcher.close {
                         let scheduler = Local::take::<Scheduler>();
-                        scheduler.resume_task_immediately(task_cell.take());
+                        scheduler.resume_blocked_task_immediately(task_cell.take());
                     }
                 }
                 Err(uv_error_to_io_error(uverr))
@@ -309,7 +309,7 @@ impl Drop for UvTcpListener {
             let task_cell = Cell::new(task);
             do watcher.as_stream().close {
                 let scheduler = Local::take::<Scheduler>();
-                scheduler.resume_task_immediately(task_cell.take());
+                scheduler.resume_blocked_task_immediately(task_cell.take());
             }
         }
     }
@@ -317,7 +317,7 @@ impl Drop for UvTcpListener {
 
 impl RtioSocket for UvTcpListener {
     // XXX implement
-    fn socket_name(&self) -> IpAddr { fail!(); }
+    fn socket_name(&mut self) -> IpAddr { fail!(); }
 }
 
 impl RtioTcpListener for UvTcpListener {
@@ -357,8 +357,8 @@ impl RtioTcpListener for UvTcpListener {
     }
 
     // XXX implement
-    fn accept_simultaneously(&self) { fail!(); }
-    fn dont_accept_simultaneously(&self) { fail!(); }
+    fn accept_simultaneously(&mut self) { fail!(); }
+    fn dont_accept_simultaneously(&mut self) { fail!(); }
 }
 
 // FIXME #6090: Prefer newtype structs but Drop doesn't work
@@ -372,7 +372,7 @@ impl Drop for UvTcpStream {
             let task_cell = Cell::new(task);
             do self.close {
                 let scheduler = Local::take::<Scheduler>();
-                scheduler.resume_task_immediately(task_cell.take());
+                scheduler.resume_blocked_task_immediately(task_cell.take());
             }
         }
     }
@@ -380,11 +380,11 @@ impl Drop for UvTcpStream {
 
 impl RtioSocket for UvTcpStream {
     // XXX implement
-    fn socket_name(&self) -> IpAddr { fail!(); }
+    fn socket_name(&mut self) -> IpAddr { fail!(); }
 }
 
 impl RtioTcpStream for UvTcpStream {
-    fn read(&self, buf: &mut [u8]) -> Result<uint, IoError> {
+    fn read(&mut self, buf: &mut [u8]) -> Result<uint, IoError> {
         let result_cell = Cell::new_empty();
         let result_cell_ptr: *Cell<Result<uint, IoError>> = &result_cell;
 
@@ -419,7 +419,7 @@ impl RtioTcpStream for UvTcpStream {
                 unsafe { (*result_cell_ptr).put_back(result); }
 
                 let scheduler = Local::take::<Scheduler>();
-                scheduler.resume_task_immediately(task_cell.take());
+                scheduler.resume_blocked_task_immediately(task_cell.take());
             }
         }
 
@@ -427,7 +427,7 @@ impl RtioTcpStream for UvTcpStream {
         return result_cell.take();
     }
 
-    fn write(&self, buf: &[u8]) -> Result<(), IoError> {
+    fn write(&mut self, buf: &[u8]) -> Result<(), IoError> {
         let result_cell = Cell::new_empty();
         let result_cell_ptr: *Cell<Result<(), IoError>> = &result_cell;
         let scheduler = Local::take::<Scheduler>();
@@ -447,7 +447,7 @@ impl RtioTcpStream for UvTcpStream {
                 unsafe { (*result_cell_ptr).put_back(result); }
 
                 let scheduler = Local::take::<Scheduler>();
-                scheduler.resume_task_immediately(task_cell.take());
+                scheduler.resume_blocked_task_immediately(task_cell.take());
             }
         }
 
@@ -456,11 +456,11 @@ impl RtioTcpStream for UvTcpStream {
     }
 
     // XXX implement
-    fn peer_name(&self) -> IpAddr { fail!(); }
-    fn control_congestion(&self) { fail!(); }
-    fn nodelay(&self) { fail!(); }
-    fn keepalive(&self, _delay_in_seconds: uint) { fail!(); }
-    fn letdie(&self) { fail!(); }
+    fn peer_name(&mut self) -> IpAddr { fail!(); }
+    fn control_congestion(&mut self) { fail!(); }
+    fn nodelay(&mut self) { fail!(); }
+    fn keepalive(&mut self, _delay_in_seconds: uint) { fail!(); }
+    fn letdie(&mut self) { fail!(); }
 }
 
 pub struct UvUdpSocket(UdpWatcher);
@@ -473,7 +473,7 @@ impl Drop for UvUdpSocket {
             let task_cell = Cell::new(task);
             do self.close {
                 let scheduler = Local::take::<Scheduler>();
-                scheduler.resume_task_immediately(task_cell.take());
+                scheduler.resume_blocked_task_immediately(task_cell.take());
             }
         }
     }
@@ -481,11 +481,11 @@ impl Drop for UvUdpSocket {
 
 impl RtioSocket for UvUdpSocket {
     // XXX implement
-    fn socket_name(&self) -> IpAddr { fail!(); }
+    fn socket_name(&mut self) -> IpAddr { fail!(); }
 }
 
 impl RtioUdpSocket for UvUdpSocket {
-    fn recvfrom(&self, buf: &mut [u8]) -> Result<(uint, IpAddr), IoError> {
+    fn recvfrom(&mut self, buf: &mut [u8]) -> Result<(uint, IpAddr), IoError> {
         let result_cell = Cell::new_empty();
         let result_cell_ptr: *Cell<Result<(uint, IpAddr), IoError>> = &result_cell;
 
@@ -497,7 +497,7 @@ impl RtioUdpSocket for UvUdpSocket {
             assert!(!sched.in_task_context());
             let task_cell = Cell::new(task);
             let alloc: AllocCallback = |_| unsafe { slice_to_uv_buf(*buf_ptr) };
-            do self.recv_start(alloc) |watcher, nread, _buf, addr, flags, status| {
+            do self.recv_start(alloc) |mut watcher, nread, _buf, addr, flags, status| {
                 let _ = flags; // XXX add handling for partials?
 
                 watcher.recv_stop();
@@ -513,7 +513,7 @@ impl RtioUdpSocket for UvUdpSocket {
                 unsafe { (*result_cell_ptr).put_back(result); }
 
                 let scheduler = Local::take::<Scheduler>();
-                scheduler.resume_task_immediately(task_cell.take());
+                scheduler.resume_blocked_task_immediately(task_cell.take());
             }
         }
 
@@ -521,7 +521,7 @@ impl RtioUdpSocket for UvUdpSocket {
         return result_cell.take();
     }
 
-    fn sendto(&self, buf: &[u8], dst: IpAddr) -> Result<(), IoError> {
+    fn sendto(&mut self, buf: &[u8], dst: IpAddr) -> Result<(), IoError> {
         let result_cell = Cell::new_empty();
         let result_cell_ptr: *Cell<Result<(), IoError>> = &result_cell;
         let scheduler = Local::take::<Scheduler>();
@@ -540,7 +540,7 @@ impl RtioUdpSocket for UvUdpSocket {
                 unsafe { (*result_cell_ptr).put_back(result); }
 
                 let scheduler = Local::take::<Scheduler>();
-                scheduler.resume_task_immediately(task_cell.take());
+                scheduler.resume_blocked_task_immediately(task_cell.take());
             }
         }
 
@@ -549,17 +549,17 @@ impl RtioUdpSocket for UvUdpSocket {
     }
 
     // XXX implement
-    fn join_multicast(&self, _multi: IpAddr) { fail!(); }
-    fn leave_multicast(&self, _multi: IpAddr) { fail!(); }
+    fn join_multicast(&mut self, _multi: IpAddr) { fail!(); }
+    fn leave_multicast(&mut self, _multi: IpAddr) { fail!(); }
 
-    fn loop_multicast_locally(&self) { fail!(); }
-    fn dont_loop_multicast_locally(&self) { fail!(); }
+    fn loop_multicast_locally(&mut self) { fail!(); }
+    fn dont_loop_multicast_locally(&mut self) { fail!(); }
 
-    fn multicast_time_to_live(&self, _ttl: int) { fail!(); }
-    fn time_to_live(&self, _ttl: int) { fail!(); }
+    fn multicast_time_to_live(&mut self, _ttl: int) { fail!(); }
+    fn time_to_live(&mut self, _ttl: int) { fail!(); }
 
-    fn hear_broadcasts(&self) { fail!(); }
-    fn ignore_broadcasts(&self) { fail!(); }
+    fn hear_broadcasts(&mut self) { fail!(); }
+    fn ignore_broadcasts(&mut self) { fail!(); }
 }
 
 #[test]
@@ -596,7 +596,7 @@ fn test_simple_tcp_server_and_client() {
             unsafe {
                 let io = Local::unsafe_borrow::<IoFactoryObject>();
                 let mut listener = (*io).tcp_bind(addr).unwrap();
-                let stream = listener.accept().unwrap();
+                let mut stream = listener.accept().unwrap();
                 let mut buf = [0, .. 2048];
                 let nread = stream.read(buf).unwrap();
                 assert_eq!(nread, 8);
@@ -610,7 +610,7 @@ fn test_simple_tcp_server_and_client() {
         do spawntask_immediately {
             unsafe {
                 let io = Local::unsafe_borrow::<IoFactoryObject>();
-                let stream = (*io).tcp_connect(addr).unwrap();
+                let mut stream = (*io).tcp_connect(addr).unwrap();
                 stream.write([0, 1, 2, 3, 4, 5, 6, 7]);
             }
         }
@@ -626,7 +626,7 @@ fn test_simple_udp_server_and_client() {
         do spawntask_immediately {
             unsafe {
                 let io = Local::unsafe_borrow::<IoFactoryObject>();
-                let server_socket = (*io).udp_bind(server_addr).unwrap();
+                let mut server_socket = (*io).udp_bind(server_addr).unwrap();
                 let mut buf = [0, .. 2048];
                 let (nread,src) = server_socket.recvfrom(buf).unwrap();
                 assert_eq!(nread, 8);
@@ -641,7 +641,7 @@ fn test_simple_udp_server_and_client() {
         do spawntask_immediately {
             unsafe {
                 let io = Local::unsafe_borrow::<IoFactoryObject>();
-                let client_socket = (*io).udp_bind(client_addr).unwrap();
+                let mut client_socket = (*io).udp_bind(client_addr).unwrap();
                 client_socket.sendto([0, 1, 2, 3, 4, 5, 6, 7], server_addr);
             }
         }
@@ -656,7 +656,7 @@ fn test_read_and_block() {
         do spawntask_immediately {
             let io = unsafe { Local::unsafe_borrow::<IoFactoryObject>() };
             let mut listener = unsafe { (*io).tcp_bind(addr).unwrap() };
-            let stream = listener.accept().unwrap();
+            let mut stream = listener.accept().unwrap();
             let mut buf = [0, .. 2048];
 
             let expected = 32;
@@ -678,7 +678,7 @@ fn test_read_and_block() {
                 // not ready for it
                 do scheduler.deschedule_running_task_and_then |sched, task| {
                     let task = Cell::new(task);
-                    sched.enqueue_task(task.take());
+                    sched.enqueue_blocked_task(task.take());
                 }
             }
 
@@ -689,7 +689,7 @@ fn test_read_and_block() {
         do spawntask_immediately {
             unsafe {
                 let io = Local::unsafe_borrow::<IoFactoryObject>();
-                let stream = (*io).tcp_connect(addr).unwrap();
+                let mut stream = (*io).tcp_connect(addr).unwrap();
                 stream.write([0, 1, 2, 3, 4, 5, 6, 7]);
                 stream.write([0, 1, 2, 3, 4, 5, 6, 7]);
                 stream.write([0, 1, 2, 3, 4, 5, 6, 7]);
@@ -710,7 +710,7 @@ fn test_read_read_read() {
             unsafe {
                 let io = Local::unsafe_borrow::<IoFactoryObject>();
                 let mut listener = (*io).tcp_bind(addr).unwrap();
-                let stream = listener.accept().unwrap();
+                let mut stream = listener.accept().unwrap();
                 let buf = [1, .. 2048];
                 let mut total_bytes_written = 0;
                 while total_bytes_written < MAX {
@@ -723,7 +723,7 @@ fn test_read_read_read() {
         do spawntask_immediately {
             unsafe {
                 let io = Local::unsafe_borrow::<IoFactoryObject>();
-                let stream = (*io).tcp_connect(addr).unwrap();
+                let mut stream = (*io).tcp_connect(addr).unwrap();
                 let mut buf = [0, .. 2048];
                 let mut total_bytes_read = 0;
                 while total_bytes_read < MAX {
@@ -749,7 +749,7 @@ fn test_udp_twice() {
         do spawntask_immediately {
             unsafe {
                 let io = Local::unsafe_borrow::<IoFactoryObject>();
-                let client = (*io).udp_bind(client_addr).unwrap();
+                let mut client = (*io).udp_bind(client_addr).unwrap();
                 assert!(client.sendto([1], server_addr).is_ok());
                 assert!(client.sendto([2], server_addr).is_ok());
             }
@@ -758,7 +758,7 @@ fn test_udp_twice() {
         do spawntask_immediately {
             unsafe {
                 let io = Local::unsafe_borrow::<IoFactoryObject>();
-                let server = (*io).udp_bind(server_addr).unwrap();
+                let mut server = (*io).udp_bind(server_addr).unwrap();
                 let mut buf1 = [0];
                 let mut buf2 = [0];
                 let (nread1, src1) = server.recvfrom(buf1).unwrap();
@@ -786,8 +786,8 @@ fn test_udp_many_read() {
         do spawntask_immediately {
             unsafe {
                 let io = Local::unsafe_borrow::<IoFactoryObject>();
-                let server_out = (*io).udp_bind(server_out_addr).unwrap();
-                let server_in = (*io).udp_bind(server_in_addr).unwrap();
+                let mut server_out = (*io).udp_bind(server_out_addr).unwrap();
+                let mut server_in = (*io).udp_bind(server_in_addr).unwrap();
                 let msg = [1, .. 2048];
                 let mut total_bytes_sent = 0;
                 let mut buf = [1];
@@ -809,8 +809,8 @@ fn test_udp_many_read() {
         do spawntask_immediately {
             unsafe {
                 let io = Local::unsafe_borrow::<IoFactoryObject>();
-                let client_out = (*io).udp_bind(client_out_addr).unwrap();
-                let client_in = (*io).udp_bind(client_in_addr).unwrap();
+                let mut client_out = (*io).udp_bind(client_out_addr).unwrap();
+                let mut client_in = (*io).udp_bind(client_in_addr).unwrap();
                 let mut total_bytes_recv = 0;
                 let mut buf = [0, .. 2048];
                 while total_bytes_recv < MAX {

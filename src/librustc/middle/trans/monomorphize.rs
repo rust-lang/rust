@@ -42,7 +42,6 @@ pub fn monomorphic_fn(ccx: @mut CrateContext,
                       real_substs: &ty::substs,
                       vtables: Option<typeck::vtable_res>,
                       self_vtable: Option<typeck::vtable_origin>,
-                      impl_did_opt: Option<ast::def_id>,
                       ref_id: Option<ast::node_id>)
     -> (ValueRef, bool)
 {
@@ -51,13 +50,11 @@ pub fn monomorphic_fn(ccx: @mut CrateContext,
             real_substs=%s, \
             vtables=%s, \
             self_vtable=%s, \
-            impl_did_opt=%s, \
             ref_id=%?)",
            fn_id.repr(ccx.tcx),
            real_substs.repr(ccx.tcx),
            vtables.repr(ccx.tcx),
            self_vtable.repr(ccx.tcx),
-           impl_did_opt.repr(ccx.tcx),
            ref_id);
 
     assert!(real_substs.tps.iter().all(|t| !ty::type_needs_infer(*t)));
@@ -83,9 +80,7 @@ pub fn monomorphic_fn(ccx: @mut CrateContext,
     let param_uses = type_use::type_uses_for(ccx, fn_id, psubsts.tys.len());
 
 
-    let hash_id = make_mono_id(ccx, fn_id, impl_did_opt,
-                               &*psubsts,
-                               Some(param_uses));
+    let hash_id = make_mono_id(ccx, fn_id, &*psubsts, Some(param_uses));
     if hash_id.params.iter().any(
                 |p| match *p { mono_precise(_, _) => false, _ => true }) {
         must_cast = true;
@@ -367,7 +362,6 @@ pub fn normalize_for_monomorphization(tcx: ty::ctxt,
 
 pub fn make_mono_id(ccx: @mut CrateContext,
                     item: ast::def_id,
-                    impl_did_opt: Option<ast::def_id>,
                     substs: &param_substs,
                     param_uses: Option<@~[type_use::type_uses]>) -> mono_id {
     // FIXME (possibly #5801): Need a lot of type hints to get
@@ -442,5 +436,5 @@ pub fn make_mono_id(ccx: @mut CrateContext,
           }).collect()
       }
     };
-    @mono_id_ {def: item, params: param_ids, impl_did_opt: impl_did_opt}
+    @mono_id_ {def: item, params: param_ids}
 }

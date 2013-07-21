@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ast::{meta_item, item, expr};
+use ast::{MetaItem, item, expr};
 use codemap::span;
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
@@ -16,7 +16,7 @@ use ext::deriving::generic::*;
 
 pub fn expand_deriving_eq(cx: @ExtCtxt,
                           span: span,
-                          mitem: @meta_item,
+                          mitem: @MetaItem,
                           in_items: ~[@item]) -> ~[@item] {
     // structures are equal if all fields are equal, and non equal, if
     // any fields are not equal or if the enum variants are different

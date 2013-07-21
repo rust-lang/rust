@@ -74,6 +74,7 @@ impl<A, T: DoubleEndedIterator<A>> DoubleEndedIteratorUtil<A> for T {
 
 /// An double-ended iterator with the direction inverted
 // FIXME #6967: Dummy A parameter to get around type inference bug
+#[deriving(Clone)]
 pub struct InvertIterator<A, T> {
     priv iter: T
 }
@@ -729,8 +730,59 @@ impl<A: Ord, T: Iterator<A>> OrdIterator<A> for T {
     }
 }
 
+/// A trait for iterators that are clonable.
+// FIXME #6967: Dummy A parameter to get around type inference bug
+pub trait ClonableIterator<A> {
+    /// Repeats an iterator endlessly
+    ///
+    /// # Example
+    ///
+    /// ~~~ {.rust}
+    /// let a = Counter::new(1,1).take_(1);
+    /// let mut cy = a.cycle();
+    /// assert_eq!(cy.next(), Some(1));
+    /// assert_eq!(cy.next(), Some(1));
+    /// ~~~
+    fn cycle(self) -> CycleIterator<A, Self>;
+}
+
+impl<A, T: Clone + Iterator<A>> ClonableIterator<A> for T {
+    #[inline]
+    fn cycle(self) -> CycleIterator<A, T> {
+        CycleIterator{orig: self.clone(), iter: self}
+    }
+}
+
+/// An iterator that repeats endlessly
+#[deriving(Clone)]
+pub struct CycleIterator<A, T> {
+    priv orig: T,
+    priv iter: T,
+}
+
+impl<A, T: Clone + Iterator<A>> Iterator<A> for CycleIterator<A, T> {
+    #[inline]
+    fn next(&mut self) -> Option<A> {
+        match self.iter.next() {
+            None => { self.iter = self.orig.clone(); self.iter.next() }
+            y => y
+        }
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        // the cycle iterator is either empty or infinite
+        match self.orig.size_hint() {
+            sz @ (0, Some(0)) => sz,
+            (0, _) => (0, None),
+            _ => (uint::max_value, None)
+        }
+    }
+}
+
 /// An iterator which strings two iterators together
 // FIXME #6967: Dummy A parameter to get around type inference bug
+#[deriving(Clone)]
 pub struct ChainIterator<A, T, U> {
     priv a: T,
     priv b: U,
@@ -773,8 +825,20 @@ impl<A, T: Iterator<A>, U: Iterator<A>> Iterator<A> for ChainIterator<A, T, U> {
     }
 }
 
+impl<A, T: DoubleEndedIterator<A>, U: DoubleEndedIterator<A>> DoubleEndedIterator<A>
+for ChainIterator<A, T, U> {
+    #[inline]
+    fn next_back(&mut self) -> Option<A> {
+        match self.b.next_back() {
+            Some(x) => Some(x),
+            None => self.a.next_back()
+        }
+    }
+}
+
 /// An iterator which iterates two other iterators simultaneously
 // FIXME #6967: Dummy A & B parameters to get around type inference bug
+#[deriving(Clone)]
 pub struct ZipIterator<A, T, B, U> {
     priv a: T,
     priv b: U
@@ -828,6 +892,17 @@ impl<'self, A, B, T: Iterator<A>> Iterator<B> for MapIterator<'self, A, B, T> {
     }
 }
 
+impl<'self, A, B, T: DoubleEndedIterator<A>> DoubleEndedIterator<B>
+for MapIterator<'self, A, B, T> {
+    #[inline]
+    fn next_back(&mut self) -> Option<B> {
+        match self.iter.next_back() {
+            Some(a) => Some((self.f)(a)),
+            _ => None
+        }
+    }
+}
+
 /// An iterator which filters the elements of `iter` with `predicate`
 pub struct FilterIterator<'self, A, T> {
     priv iter: T,
@@ -851,6 +926,24 @@ impl<'self, A, T: Iterator<A>> Iterator<A> for FilterIterator<'self, A, T> {
     fn size_hint(&self) -> (uint, Option<uint>) {
         let (_, upper) = self.iter.size_hint();
         (0, upper) // can't know a lower bound, due to the predicate
+    }
+}
+
+impl<'self, A, T: DoubleEndedIterator<A>> DoubleEndedIterator<A> for FilterIterator<'self, A, T> {
+    #[inline]
+    fn next_back(&mut self) -> Option<A> {
+        loop {
+            match self.iter.next_back() {
+                None => return None,
+                Some(x) => {
+                    if (self.predicate)(&x) {
+                        return Some(x);
+                    } else {
+                        loop
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -879,8 +972,27 @@ impl<'self, A, B, T: Iterator<A>> Iterator<B> for FilterMapIterator<'self, A, B,
     }
 }
 
+impl<'self, A, B, T: DoubleEndedIterator<A>> DoubleEndedIterator<B>
+for FilterMapIterator<'self, A, B, T> {
+    #[inline]
+    fn next_back(&mut self) -> Option<B> {
+        loop {
+            match self.iter.next_back() {
+                None => return None,
+                Some(x) => {
+                    match (self.f)(x) {
+                        Some(y) => return Some(y),
+                        None => ()
+                    }
+                }
+            }
+        }
+    }
+}
+
 /// An iterator which yields the current count and the element during iteration
 // FIXME #6967: Dummy A parameter to get around type inference bug
+#[deriving(Clone)]
 pub struct EnumerateIterator<A, T> {
     priv iter: T,
     priv count: uint
@@ -979,6 +1091,7 @@ impl<'self, A, T: Iterator<A>> Iterator<A> for TakeWhileIterator<'self, A, T> {
 
 /// An iterator which skips over `n` elements of `iter`.
 // FIXME #6967: Dummy A parameter to get around type inference bug
+#[deriving(Clone)]
 pub struct SkipIterator<A, T> {
     priv iter: T,
     priv n: uint
@@ -1027,6 +1140,7 @@ impl<A, T: Iterator<A>> Iterator<A> for SkipIterator<A, T> {
 
 /// An iterator which only iterates over the first `n` iterations of `iter`.
 // FIXME #6967: Dummy A parameter to get around type inference bug
+#[deriving(Clone)]
 pub struct TakeIterator<A, T> {
     priv iter: T,
     priv n: uint
@@ -1135,6 +1249,20 @@ impl<'self, A, T: Iterator<A>> Iterator<A> for PeekIterator<'self, A, T> {
     }
 }
 
+impl<'self, A, T: DoubleEndedIterator<A>> DoubleEndedIterator<A> for PeekIterator<'self, A, T> {
+    #[inline]
+    fn next_back(&mut self) -> Option<A> {
+        let next = self.iter.next_back();
+
+        match next {
+            Some(ref a) => (self.f)(a),
+            None => ()
+        }
+
+        next
+    }
+}
+
 /// An iterator which just modifies the contained state throughout iteration.
 pub struct UnfoldrIterator<'self, A, St> {
     priv f: &'self fn(&mut St) -> Option<A>,
@@ -1164,6 +1292,7 @@ impl<'self, A, St> Iterator<A> for UnfoldrIterator<'self, A, St> {
 
 /// An infinite iterator starting at `start` and advancing by `step` with each
 /// iteration
+#[deriving(Clone)]
 pub struct Counter<A> {
     /// The current state the counter is at (next value to be yielded)
     state: A,
@@ -1366,6 +1495,20 @@ mod tests {
     }
 
     #[test]
+    fn test_cycle() {
+        let cycle_len = 3;
+        let it = Counter::new(0u,1).take_(cycle_len).cycle();
+        assert_eq!(it.size_hint(), (uint::max_value, None));
+        for it.take_(100).enumerate().advance |(i, x)| {
+            assert_eq!(i % cycle_len, x);
+        }
+
+        let mut it = Counter::new(0u,1).take_(0).cycle();
+        assert_eq!(it.size_hint(), (0, Some(0)));
+        assert_eq!(it.next(), None);
+    }
+
+    #[test]
     fn test_iterator_nth() {
         let v = &[0, 1, 2, 3, 4];
         for uint::range(0, v.len()) |i| {
@@ -1525,5 +1668,54 @@ mod tests {
         it.next();
         it.next();
         assert_eq!(it.invert().transform(|&x| x).collect::<~[int]>(), ~[16, 14, 12, 10, 8, 6]);
+    }
+
+    #[test]
+    fn test_double_ended_map() {
+        let xs = [1, 2, 3, 4, 5, 6];
+        let mut it = xs.iter().transform(|&x| x * -1);
+        assert_eq!(it.next(), Some(-1));
+        assert_eq!(it.next(), Some(-2));
+        assert_eq!(it.next_back(), Some(-6));
+        assert_eq!(it.next_back(), Some(-5));
+        assert_eq!(it.next(), Some(-3));
+        assert_eq!(it.next_back(), Some(-4));
+        assert_eq!(it.next(), None);
+    }
+
+    #[test]
+    fn test_double_ended_filter() {
+        let xs = [1, 2, 3, 4, 5, 6];
+        let mut it = xs.iter().filter(|&x| *x & 1 == 0);
+        assert_eq!(it.next_back().unwrap(), &6);
+        assert_eq!(it.next_back().unwrap(), &4);
+        assert_eq!(it.next().unwrap(), &2);
+        assert_eq!(it.next_back(), None);
+    }
+
+    #[test]
+    fn test_double_ended_filter_map() {
+        let xs = [1, 2, 3, 4, 5, 6];
+        let mut it = xs.iter().filter_map(|&x| if x & 1 == 0 { Some(x * 2) } else { None });
+        assert_eq!(it.next_back().unwrap(), 12);
+        assert_eq!(it.next_back().unwrap(), 8);
+        assert_eq!(it.next().unwrap(), 4);
+        assert_eq!(it.next_back(), None);
+    }
+
+    #[test]
+    fn test_double_ended_chain() {
+        let xs = [1, 2, 3, 4, 5];
+        let ys = ~[7, 9, 11];
+        let mut it = xs.iter().chain_(ys.iter()).invert();
+        assert_eq!(it.next().unwrap(), &11)
+        assert_eq!(it.next().unwrap(), &9)
+        assert_eq!(it.next_back().unwrap(), &1)
+        assert_eq!(it.next_back().unwrap(), &2)
+        assert_eq!(it.next_back().unwrap(), &3)
+        assert_eq!(it.next_back().unwrap(), &4)
+        assert_eq!(it.next_back().unwrap(), &5)
+        assert_eq!(it.next_back().unwrap(), &7)
+        assert_eq!(it.next_back(), None)
     }
 }

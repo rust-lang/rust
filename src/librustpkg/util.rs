@@ -14,11 +14,9 @@ use rustc::metadata::filesearch;
 use extra::getopts::groups::getopts;
 use syntax::ast_util::*;
 use syntax::codemap::{dummy_sp, spanned};
-use syntax::codemap::dummy_spanned;
 use syntax::ext::base::ExtCtxt;
 use syntax::{ast, attr, codemap, diagnostic, fold};
-use syntax::ast::{meta_name_value, meta_list};
-use syntax::attr::{mk_attr};
+use syntax::attr::AttrMetaMethods;
 use rustc::back::link::output_type_exe;
 use rustc::driver::driver::compile_upto;
 use rustc::driver::session::{lib_crate, bin_crate};
@@ -81,7 +79,7 @@ fn fold_mod(_ctx: @mut ReadyCtx,
     fn strip_main(item: @ast::item) -> @ast::item {
         @ast::item {
             attrs: do item.attrs.iter().filter_map |attr| {
-                if "main" != attr::get_attr_name(attr) {
+                if "main" != attr.name() {
                     Some(*attr)
                 } else {
                     None
@@ -104,25 +102,27 @@ fn fold_item(ctx: @mut ReadyCtx,
              fold: @fold::ast_fold) -> Option<@ast::item> {
     ctx.path.push(item.ident);
 
-    let attrs = attr::find_attrs_by_name(item.attrs, "pkg_do");
+    let mut cmds = ~[];
+    let mut had_pkg_do = false;
 
-    if attrs.len() > 0 {
-        let mut cmds = ~[];
-
-        for attrs.iter().advance |attr| {
+    for item.attrs.iter().advance |attr| {
+        if "pkg_do" == attr.name() {
+            had_pkg_do = true;
             match attr.node.value.node {
-                ast::meta_list(_, ref mis) => {
+                ast::MetaList(_, ref mis) => {
                     for mis.iter().advance |mi| {
                         match mi.node {
-                            ast::meta_word(cmd) => cmds.push(cmd.to_owned()),
+                            ast::MetaWord(cmd) => cmds.push(cmd.to_owned()),
                             _ => {}
                         };
                     }
                 }
                 _ => cmds.push(~"build")
-            };
+            }
         }
+    }
 
+    if had_pkg_do {
         ctx.fns.push(ListenerFn {
             cmds: cmds,
             span: item.span,
@@ -245,14 +245,13 @@ pub fn compile_input(ctxt: &Ctx,
             _     => pkg_id.short_name.clone()
         };
         debug!("Injecting link name: %s", short_name_to_use);
+        let link_options =
+            ~[attr::mk_name_value_item_str(@"name", short_name_to_use.to_managed()),
+              attr::mk_name_value_item_str(@"vers", pkg_id.version.to_str().to_managed())];
+
         crate = @codemap::respan(crate.span, ast::crate_ {
-            attrs: ~[mk_attr(@dummy_spanned(
-                meta_list(@"link",
-                 ~[@dummy_spanned(meta_name_value(@"name",
-                                      mk_string_lit(short_name_to_use.to_managed()))),
-                   @dummy_spanned(meta_name_value(@"vers",
-                         mk_string_lit(pkg_id.version.to_str().to_managed())))])))],
-            ..crate.node.clone()});
+            attrs: ~[attr::mk_attr(attr::mk_list_item(@"link", link_options))],
+            .. crate.node.clone()});
     }
 
     debug!("calling compile_crate_from_input, out_dir = %s,

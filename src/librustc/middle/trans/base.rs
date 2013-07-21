@@ -79,6 +79,7 @@ use syntax::ast::ident;
 use syntax::ast_map::{path, path_elt_to_str, path_name};
 use syntax::ast_util::{local_def};
 use syntax::attr;
+use syntax::attr::AttrMetaMethods;
 use syntax::codemap::span;
 use syntax::parse::token;
 use syntax::parse::token::{special_idents};
@@ -464,13 +465,14 @@ pub fn set_inline_hint(f: ValueRef) {
     }
 }
 
-pub fn set_inline_hint_if_appr(attrs: &[ast::attribute],
+pub fn set_inline_hint_if_appr(attrs: &[ast::Attribute],
                                llfn: ValueRef) {
-    match attr::find_inline_attr(attrs) {
-      attr::ia_hint => set_inline_hint(llfn),
-      attr::ia_always => set_always_inline(llfn),
-      attr::ia_never => set_no_inline(llfn),
-      attr::ia_none => { /* fallthrough */ }
+    use syntax::attr::*;
+    match find_inline_attr(attrs) {
+        InlineHint   => set_inline_hint(llfn),
+        InlineAlways => set_always_inline(llfn),
+        InlineNever  => set_no_inline(llfn),
+        InlineNone   => { /* fallthrough */ }
     }
 }
 
@@ -522,7 +524,6 @@ pub fn get_res_dtor(ccx: @mut CrateContext,
         let (val, _) = monomorphize::monomorphic_fn(ccx,
                                                     did,
                                                     &tsubsts,
-                                                    None,
                                                     None,
                                                     None,
                                                     None);
@@ -671,7 +672,7 @@ pub fn iter_structural_ty(cx: block, av: ValueRef, t: ty::t,
     let _icx = push_ctxt("iter_structural_ty");
 
     fn iter_variant(cx: block, repr: &adt::Repr, av: ValueRef,
-                    variant: ty::VariantInfo,
+                    variant: @ty::VariantInfo,
                     tps: &[ty::t], f: val_and_ty_fn) -> block {
         let _icx = push_ctxt("iter_variant");
         let tcx = cx.tcx();
@@ -1142,7 +1143,7 @@ pub fn trans_stmt(cx: block, s: &ast::stmt) -> block {
                     bcx = init_local(bcx, *local);
                     if cx.sess().opts.extra_debuginfo
                         && fcx_has_nonzero_span(bcx.fcx) {
-                        debuginfo::create_local_var(bcx, *local);
+                        debuginfo::create_local_var_metadata(bcx, *local);
                     }
                 }
                 ast::decl_item(i) => trans_item(cx.fcx.ccx, i)
@@ -1774,7 +1775,7 @@ pub fn copy_args_to_allocas(fcx: fn_ctxt,
         bcx = _match::store_arg(bcx, args[arg_n].pat, llarg);
 
         if fcx.ccx.sess.opts.extra_debuginfo && fcx_has_nonzero_span(fcx) {
-            debuginfo::create_arg(bcx, &args[arg_n], args[arg_n].ty.span);
+            debuginfo::create_argument_metadata(bcx, &args[arg_n], args[arg_n].ty.span);
         }
     }
 
@@ -1845,7 +1846,7 @@ pub fn trans_closure(ccx: @mut CrateContext,
                      self_arg: self_arg,
                      param_substs: Option<@param_substs>,
                      id: ast::node_id,
-                     attributes: &[ast::attribute],
+                     attributes: &[ast::Attribute],
                      output_type: ty::t,
                      maybe_load_env: &fn(fn_ctxt),
                      finish: &fn(block)) {
@@ -1868,7 +1869,7 @@ pub fn trans_closure(ccx: @mut CrateContext,
     let raw_llargs = create_llargs_for_fn_args(fcx, self_arg, decl.inputs);
 
     // Set the fixed stack segment flag if necessary.
-    if attr::attrs_contains_name(attributes, "fixed_stack_segment") {
+    if attr::contains_name(attributes, "fixed_stack_segment") {
         set_no_inline(fcx.llfn);
         set_fixed_stack_segment(fcx.llfn);
     }
@@ -1926,7 +1927,7 @@ pub fn trans_fn(ccx: @mut CrateContext,
                 self_arg: self_arg,
                 param_substs: Option<@param_substs>,
                 id: ast::node_id,
-                attrs: &[ast::attribute]) {
+                attrs: &[ast::Attribute]) {
 
     let the_path_str = path_str(ccx.sess, path);
     let _s = StatRecorder::new(ccx, the_path_str);
@@ -1948,7 +1949,7 @@ pub fn trans_fn(ccx: @mut CrateContext,
                   |fcx| {
                       if ccx.sess.opts.extra_debuginfo
                           && fcx_has_nonzero_span(fcx) {
-                          debuginfo::create_function(fcx);
+                          debuginfo::create_function_metadata(fcx);
                       }
                   },
                   |_bcx| { });
@@ -2110,7 +2111,7 @@ pub fn trans_enum_variant_or_tuple_like_struct<A:IdAndTy>(
 }
 
 pub fn trans_enum_def(ccx: @mut CrateContext, enum_definition: &ast::enum_def,
-                      id: ast::node_id, vi: @~[ty::VariantInfo],
+                      id: ast::node_id, vi: @~[@ty::VariantInfo],
                       i: &mut uint) {
     for enum_definition.variants.iter().advance |variant| {
         let disr_val = vi[*i].disr_val;
@@ -2196,23 +2197,17 @@ pub fn trans_item(ccx: @mut CrateContext, item: &ast::item) {
           // Do static_assert checking. It can't really be done much earlier because we need to get
           // the value of the bool out of LLVM
           for item.attrs.iter().advance |attr| {
-              match attr.node.value.node {
-                  ast::meta_word(x) => {
-                      if x.slice(0, x.len()) == "static_assert" {
-                          if m == ast::m_mutbl {
-                              ccx.sess.span_fatal(expr.span,
-                                                  "cannot have static_assert \
-                                                   on a mutable static");
-                          }
-                          let v = ccx.const_values.get_copy(&item.id);
-                          unsafe {
-                              if !(llvm::LLVMConstIntGetZExtValue(v) as bool) {
-                                  ccx.sess.span_fatal(expr.span, "static assertion failed");
-                              }
-                          }
+              if "static_assert" == attr.name() {
+                  if m == ast::m_mutbl {
+                      ccx.sess.span_fatal(expr.span,
+                                          "cannot have static_assert on a mutable static");
+                  }
+                  let v = ccx.const_values.get_copy(&item.id);
+                  unsafe {
+                      if !(llvm::LLVMConstIntGetZExtValue(v) as bool) {
+                          ccx.sess.span_fatal(expr.span, "static assertion failed");
                       }
-                  },
-                  _ => ()
+                  }
               }
           }
       },
@@ -2258,7 +2253,7 @@ pub fn register_fn(ccx: @mut CrateContext,
                    sp: span,
                    path: path,
                    node_id: ast::node_id,
-                   attrs: &[ast::attribute])
+                   attrs: &[ast::Attribute])
                 -> ValueRef {
     let t = ty::node_id_to_type(ccx.tcx, node_id);
     register_fn_full(ccx, sp, path, node_id, attrs, t)
@@ -2268,7 +2263,7 @@ pub fn register_fn_full(ccx: @mut CrateContext,
                         sp: span,
                         path: path,
                         node_id: ast::node_id,
-                        attrs: &[ast::attribute],
+                        attrs: &[ast::Attribute],
                         node_type: ty::t)
                      -> ValueRef {
     let llfty = type_of_fn_from_ty(ccx, node_type);
@@ -2280,7 +2275,7 @@ pub fn register_fn_fuller(ccx: @mut CrateContext,
                           sp: span,
                           path: path,
                           node_id: ast::node_id,
-                          attrs: &[ast::attribute],
+                          attrs: &[ast::Attribute],
                           node_type: ty::t,
                           cc: lib::llvm::CallConv,
                           fn_ty: Type)
@@ -2289,7 +2284,7 @@ pub fn register_fn_fuller(ccx: @mut CrateContext,
            node_id,
            ast_map::path_to_str(path, token::get_ident_interner()));
 
-    let ps = if attr::attrs_contains_name(attrs, "no_mangle") {
+    let ps = if attr::contains_name(attrs, "no_mangle") {
         path_elt_to_str(*path.last(), token::get_ident_interner())
     } else {
         mangle_exported_name(ccx, path, node_type)

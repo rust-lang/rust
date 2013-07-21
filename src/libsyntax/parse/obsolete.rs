@@ -17,7 +17,7 @@ Obsolete syntax that becomes too hard to parse can be
 removed.
 */
 
-use ast::{expr, expr_lit, lit_nil, attribute};
+use ast::{expr, expr_lit, lit_nil, Attribute};
 use ast;
 use codemap::{span, respan};
 use parse::parser::Parser;
@@ -63,6 +63,7 @@ pub enum ObsoleteSyntax {
     ObsoleteNamedExternModule,
     ObsoleteMultipleLocalDecl,
     ObsoleteMutWithMultipleBindings,
+    ObsoleteExternVisibility,
 }
 
 impl to_bytes::IterBytes for ObsoleteSyntax {
@@ -88,7 +89,7 @@ pub trait ParserObsoleteMethods {
     fn eat_obsolete_ident(&self, ident: &str) -> bool;
     fn try_parse_obsolete_struct_ctor(&self) -> bool;
     fn try_parse_obsolete_with(&self) -> bool;
-    fn try_parse_obsolete_priv_section(&self, attrs: &[attribute]) -> bool;
+    fn try_parse_obsolete_priv_section(&self, attrs: &[Attribute]) -> bool;
 }
 
 impl ParserObsoleteMethods for Parser {
@@ -248,6 +249,11 @@ impl ParserObsoleteMethods for Parser {
                 "use multiple local declarations instead of e.g. `let mut \
                  (x, y) = ...`."
             ),
+            ObsoleteExternVisibility => (
+                "`pub extern` or `priv extern`",
+                "place the `pub` or `priv` on the individual external items \
+                 instead"
+            )
         };
 
         self.report(sp, kind, kind_str, desc);
@@ -322,7 +328,7 @@ impl ParserObsoleteMethods for Parser {
         }
     }
 
-    pub fn try_parse_obsolete_priv_section(&self, attrs: &[attribute])
+    pub fn try_parse_obsolete_priv_section(&self, attrs: &[Attribute])
                                            -> bool {
         if self.is_keyword(keywords::Priv) &&
                 self.look_ahead(1, |t| *t == token::LBRACE) {

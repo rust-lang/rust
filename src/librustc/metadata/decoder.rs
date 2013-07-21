@@ -20,7 +20,7 @@ use metadata::decoder;
 use metadata::tydecode::{parse_ty_data, parse_def_id,
                          parse_type_param_def_data,
                          parse_bare_fn_ty_data, parse_trait_ref_data};
-use middle::{ty, resolve};
+use middle::ty;
 
 use std::hash::HashUtil;
 use std::int;
@@ -174,14 +174,6 @@ fn item_parent_item(d: ebml::Doc) -> Option<ast::def_id> {
     None
 }
 
-fn translated_parent_item_opt(cnum: ast::crate_num, d: ebml::Doc) ->
-        Option<ast::def_id> {
-    let trait_did_opt = item_parent_item(d);
-    do trait_did_opt.map |trait_did| {
-        ast::def_id { crate: cnum, node: trait_did.node }
-    }
-}
-
 fn item_reqd_and_translated_parent_item(cnum: ast::crate_num,
                                         d: ebml::Doc) -> ast::def_id {
     let trait_did = item_parent_item(d).expect("item without parent");
@@ -191,6 +183,12 @@ fn item_reqd_and_translated_parent_item(cnum: ast::crate_num,
 fn item_def_id(d: ebml::Doc, cdata: cmd) -> ast::def_id {
     let tagdoc = reader::get_doc(d, tag_def_id);
     return translate_def_id(cdata, reader::with_doc_data(tagdoc, parse_def_id));
+}
+
+fn get_provided_source(d: ebml::Doc, cdata: cmd) -> Option<ast::def_id> {
+    do reader::maybe_get_doc(d, tag_item_method_provided_source).map |doc| {
+        translate_def_id(cdata, reader::with_doc_data(*doc, parse_def_id))
+    }
 }
 
 fn each_reexport(d: ebml::Doc, f: &fn(ebml::Doc) -> bool) -> bool {
@@ -323,13 +321,19 @@ fn item_to_def_like(item: ebml::Doc, did: ast::def_id, cnum: ast::crate_num)
         UnsafeFn  => dl_def(ast::def_fn(did, ast::unsafe_fn)),
         Fn        => dl_def(ast::def_fn(did, ast::impure_fn)),
         ForeignFn => dl_def(ast::def_fn(did, ast::extern_fn)),
-        UnsafeStaticMethod => {
-            let trait_did_opt = translated_parent_item_opt(cnum, item);
-            dl_def(ast::def_static_method(did, trait_did_opt, ast::unsafe_fn))
-        }
-        StaticMethod => {
-            let trait_did_opt = translated_parent_item_opt(cnum, item);
-            dl_def(ast::def_static_method(did, trait_did_opt, ast::impure_fn))
+        StaticMethod | UnsafeStaticMethod => {
+            let purity = if fam == UnsafeStaticMethod { ast::unsafe_fn } else
+                { ast::impure_fn };
+            // def_static_method carries an optional field of its enclosing
+            // *trait*, but not an inclosing Impl (if this is an inherent
+            // static method). So we need to detect whether this is in
+            // a trait or not, which we do through the mildly hacky
+            // way of checking whether there is a trait_method_sort.
+            let trait_did_opt = if reader::maybe_get_doc(
+                  item, tag_item_trait_method_sort).is_some() {
+                Some(item_reqd_and_translated_parent_item(cnum, item))
+            } else { None };
+            dl_def(ast::def_static_method(did, trait_did_opt, purity))
         }
         Type | ForeignType => dl_def(ast::def_ty(did)),
         Mod => dl_def(ast::def_mod(did)),
@@ -733,11 +737,11 @@ pub fn maybe_get_item_ast(cdata: cmd, tcx: ty::ctxt,
 }
 
 pub fn get_enum_variants(intr: @ident_interner, cdata: cmd, id: ast::node_id,
-                     tcx: ty::ctxt) -> ~[ty::VariantInfo] {
+                     tcx: ty::ctxt) -> ~[@ty::VariantInfo] {
     let data = cdata.data;
     let items = reader::get_doc(reader::Doc(data), tag_items);
     let item = find_item(id, items);
-    let mut infos: ~[ty::VariantInfo] = ~[];
+    let mut infos: ~[@ty::VariantInfo] = ~[];
     let variant_ids = enum_variant_ids(item, cdata);
     let mut disr_val = 0;
     for variant_ids.iter().advance |did| {
@@ -753,11 +757,16 @@ pub fn get_enum_variants(intr: @ident_interner, cdata: cmd, id: ast::node_id,
           Some(val) => { disr_val = val; }
           _         => { /* empty */ }
         }
-        infos.push(@ty::VariantInfo_{args: arg_tys,
-                       ctor_ty: ctor_ty, name: name,
-                  // I'm not even sure if we encode visibility
-                  // for variants -- TEST -- tjc
-                  id: *did, disr_val: disr_val, vis: ast::inherited});
+        infos.push(@ty::VariantInfo{
+            args: arg_tys,
+            arg_names: None,
+            ctor_ty: ctor_ty,
+            name: name,
+            // I'm not even sure if we encode visibility
+            // for variants -- TEST -- tjc
+            id: *did,
+            disr_val: disr_val,
+            vis: ast::inherited});
         disr_val += 1;
     }
     return infos;
@@ -795,34 +804,29 @@ fn get_explicit_self(item: ebml::Doc) -> ast::explicit_self_ {
 }
 
 fn item_impl_methods(intr: @ident_interner, cdata: cmd, item: ebml::Doc,
-                     base_tps: uint) -> ~[@resolve::MethodInfo] {
+                     tcx: ty::ctxt) -> ~[@ty::Method] {
     let mut rslt = ~[];
     for reader::tagged_docs(item, tag_item_impl_method) |doc| {
         let m_did = reader::with_doc_data(doc, parse_def_id);
-        let mth_item = lookup_item(m_did.node, cdata.data);
-        let explicit_self = get_explicit_self(mth_item);
-        rslt.push(@resolve::MethodInfo {
-                    did: translate_def_id(cdata, m_did),
-                    n_tps: item_ty_param_count(mth_item) - base_tps,
-                    ident: item_name(intr, mth_item),
-                    explicit_self: explicit_self});
+        rslt.push(@get_method(intr, cdata, m_did.node, tcx));
     }
+
     rslt
 }
 
 /// Returns information about the given implementation.
-pub fn get_impl(intr: @ident_interner, cdata: cmd, impl_id: ast::node_id)
-                -> resolve::Impl {
+pub fn get_impl(intr: @ident_interner, cdata: cmd, impl_id: ast::node_id,
+               tcx: ty::ctxt)
+                -> ty::Impl {
     let data = cdata.data;
     let impl_item = lookup_item(impl_id, data);
-    let base_tps = item_ty_param_count(impl_item);
-    resolve::Impl {
+    ty::Impl {
         did: ast::def_id {
             crate: cdata.cnum,
             node: impl_id,
         },
         ident: item_name(intr, impl_item),
-        methods: item_impl_methods(intr, cdata, impl_item, base_tps),
+        methods: item_impl_methods(intr, cdata, impl_item, tcx),
     }
 }
 
@@ -842,6 +846,8 @@ pub fn get_method(intr: @ident_interner, cdata: cmd, id: ast::node_id,
 {
     let method_doc = lookup_item(id, cdata.data);
     let def_id = item_def_id(method_doc, cdata);
+    let container_id = item_reqd_and_translated_parent_item(cdata.cnum,
+                                                            method_doc);
     let name = item_name(intr, method_doc);
     let type_param_defs = item_ty_param_defs(method_doc, tcx, cdata,
                                              tag_item_method_tps);
@@ -849,6 +855,7 @@ pub fn get_method(intr: @ident_interner, cdata: cmd, id: ast::node_id,
     let fty = doc_method_fty(method_doc, tcx, cdata);
     let vis = item_visibility(method_doc);
     let explicit_self = get_explicit_self(method_doc);
+    let provided_source = get_provided_source(method_doc, cdata);
 
     ty::Method::new(
         name,
@@ -860,7 +867,9 @@ pub fn get_method(intr: @ident_interner, cdata: cmd, id: ast::node_id,
         fty,
         explicit_self,
         vis,
-        def_id
+        def_id,
+        container_id,
+        provided_source
     )
 }
 
@@ -966,7 +975,7 @@ pub fn get_static_methods_if_impl(intr: @ident_interner,
 
 pub fn get_item_attrs(cdata: cmd,
                       node_id: ast::node_id,
-                      f: &fn(~[@ast::meta_item])) {
+                      f: &fn(~[@ast::MetaItem])) {
 
     let item = lookup_item(node_id, cdata.data);
     for reader::tagged_docs(item, tag_attributes) |attributes| {
@@ -1073,8 +1082,8 @@ fn item_family_to_str(fam: Family) -> ~str {
     }
 }
 
-fn get_meta_items(md: ebml::Doc) -> ~[@ast::meta_item] {
-    let mut items: ~[@ast::meta_item] = ~[];
+fn get_meta_items(md: ebml::Doc) -> ~[@ast::MetaItem] {
+    let mut items: ~[@ast::MetaItem] = ~[];
     for reader::tagged_docs(md, tag_meta_item_word) |meta_item_doc| {
         let nd = reader::get_doc(meta_item_doc, tag_meta_item_name);
         let n = nd.as_str_slice().to_managed();
@@ -1085,7 +1094,7 @@ fn get_meta_items(md: ebml::Doc) -> ~[@ast::meta_item] {
         let vd = reader::get_doc(meta_item_doc, tag_meta_item_value);
         let n = nd.as_str_slice().to_managed();
         let v = vd.as_str_slice().to_managed();
-        // FIXME (#623): Should be able to decode meta_name_value variants,
+        // FIXME (#623): Should be able to decode MetaNameValue variants,
         // but currently the encoder just drops them
         items.push(attr::mk_name_value_item_str(n, v));
     };
@@ -1098,8 +1107,8 @@ fn get_meta_items(md: ebml::Doc) -> ~[@ast::meta_item] {
     return items;
 }
 
-fn get_attributes(md: ebml::Doc) -> ~[ast::attribute] {
-    let mut attrs: ~[ast::attribute] = ~[];
+fn get_attributes(md: ebml::Doc) -> ~[ast::Attribute] {
+    let mut attrs: ~[ast::Attribute] = ~[];
     match reader::maybe_get_doc(md, tag_attributes) {
       option::Some(attrs_d) => {
         for reader::tagged_docs(attrs_d, tag_attribute) |attr_doc| {
@@ -1110,8 +1119,8 @@ fn get_attributes(md: ebml::Doc) -> ~[ast::attribute] {
             let meta_item = meta_items[0];
             attrs.push(
                 codemap::spanned {
-                    node: ast::attribute_ {
-                        style: ast::attr_outer,
+                    node: ast::Attribute_ {
+                        style: ast::AttrOuter,
                         value: meta_item,
                         is_sugared_doc: false,
                     },
@@ -1145,7 +1154,7 @@ fn list_crate_attributes(intr: @ident_interner, md: ebml::Doc, hash: &str,
     out.write_str("\n\n");
 }
 
-pub fn get_crate_attributes(data: @~[u8]) -> ~[ast::attribute] {
+pub fn get_crate_attributes(data: @~[u8]) -> ~[ast::Attribute] {
     return get_attributes(reader::Doc(data));
 }
 

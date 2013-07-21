@@ -12,7 +12,7 @@
 
 mod rusti {
     #[abi = "rust-intrinsic"]
-    pub extern "rust-intrinsic" {
+    extern "rust-intrinsic" {
         pub fn frame_address(f: &once fn(*u8));
     }
 }

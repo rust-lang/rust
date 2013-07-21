@@ -50,9 +50,9 @@ use std::borrow;
 
 /// As sync::condvar, a mechanism for unlock-and-descheduling and signaling.
 pub struct Condvar<'self> {
-    is_mutex: bool,
-    failed: &'self mut bool,
-    cond: &'self sync::Condvar<'self>
+    priv is_mutex: bool,
+    priv failed: &'self mut bool,
+    priv cond: &'self sync::Condvar<'self>
 }
 
 impl<'self> Condvar<'self> {
@@ -108,7 +108,7 @@ impl<'self> Condvar<'self> {
  ****************************************************************************/
 
 /// An atomically reference counted wrapper for shared immutable state.
-pub struct ARC<T> { x: UnsafeAtomicRcBox<T> }
+pub struct ARC<T> { priv x: UnsafeAtomicRcBox<T> }
 
 /// Create an atomically reference counted wrapper.
 pub fn ARC<T:Freeze + Send>(data: T) -> ARC<T> {
@@ -122,6 +122,20 @@ pub fn ARC<T:Freeze + Send>(data: T) -> ARC<T> {
 impl<T:Freeze+Send> ARC<T> {
     pub fn get<'a>(&'a self) -> &'a T {
         unsafe { &*self.x.get_immut() }
+    }
+
+    /**
+     * Retrieve the data back out of the ARC. This function blocks until the
+     * reference given to it is the last existing one, and then unwrap the data
+     * instead of destroying it.
+     *
+     * If multiple tasks call unwrap, all but the first will fail. Do not call
+     * unwrap from a task that holds another reference to the same ARC; it is
+     * guaranteed to deadlock.
+     */
+    pub fn unwrap(self) -> T {
+        let ARC { x: x } = self;
+        unsafe { x.unwrap() }
     }
 }
 
@@ -143,9 +157,9 @@ impl<T:Freeze + Send> Clone for ARC<T> {
  ****************************************************************************/
 
 #[doc(hidden)]
-struct MutexARCInner<T> { lock: Mutex, failed: bool, data: T }
+struct MutexARCInner<T> { priv lock: Mutex, priv failed: bool, priv data: T }
 /// An ARC with mutable data protected by a blocking mutex.
-struct MutexARC<T> { x: UnsafeAtomicRcBox<MutexARCInner<T>> }
+struct MutexARC<T> { priv x: UnsafeAtomicRcBox<MutexARCInner<T>> }
 
 /// Create a mutex-protected ARC with the supplied data.
 pub fn MutexARC<T:Send>(user_data: T) -> MutexARC<T> {
@@ -225,6 +239,22 @@ impl<T:Send> MutexARC<T> {
                           cond: cond })
         }
     }
+
+    /**
+     * Retrieves the data, blocking until all other references are dropped,
+     * exactly as arc::unwrap.
+     *
+     * Will additionally fail if another task has failed while accessing the arc.
+     */
+    pub fn unwrap(self) -> T {
+        let MutexARC { x: x } = self;
+        let inner = unsafe { x.unwrap() };
+        let MutexARCInner { failed: failed, data: data, _ } = inner;
+        if failed {
+            fail!(~"Can't unwrap poisoned MutexARC - another task failed inside!");
+        }
+        data
+    }
 }
 
 // Common code for {mutex.access,rwlock.write}{,_cond}.
@@ -268,7 +298,7 @@ fn PoisonOnFail<'r>(failed: &'r mut bool) -> PoisonOnFail {
  ****************************************************************************/
 
 #[doc(hidden)]
-struct RWARCInner<T> { lock: RWlock, failed: bool, data: T }
+struct RWARCInner<T> { priv lock: RWlock, priv failed: bool, priv data: T }
 /**
  * A dual-mode ARC protected by a reader-writer lock. The data can be accessed
  * mutably or immutably, and immutably-accessing tasks may run concurrently.
@@ -278,7 +308,7 @@ struct RWARCInner<T> { lock: RWlock, failed: bool, data: T }
 #[mutable] // XXX remove after snap
 #[no_freeze]
 struct RWARC<T> {
-    x: UnsafeAtomicRcBox<RWARCInner<T>>,
+    priv x: UnsafeAtomicRcBox<RWARCInner<T>>,
 }
 
 /// Create a reader/writer ARC with the supplied data.
@@ -428,6 +458,23 @@ impl<T:Freeze + Send> RWARC<T> {
                 token: new_token,
             }
         }
+    }
+
+    /**
+     * Retrieves the data, blocking until all other references are dropped,
+     * exactly as arc::unwrap.
+     *
+     * Will additionally fail if another task has failed while accessing the arc
+     * in write mode.
+     */
+    pub fn unwrap(self) -> T {
+        let RWARC { x: x, _ } = self;
+        let inner = unsafe { x.unwrap() };
+        let RWARCInner { failed: failed, data: data, _ } = inner;
+        if failed {
+            fail!(~"Can't unwrap poisoned RWARC - another task failed inside!")
+        }
+        data
     }
 }
 
@@ -609,6 +656,23 @@ mod tests {
                 assert_eq!(*one, 1);
             }
         }
+    }
+    #[test] #[should_fail] #[ignore(cfg(windows))]
+    pub fn test_mutex_arc_unwrap_poison() {
+        let arc = MutexARC(1);
+        let arc2 = ~(&arc).clone();
+        let (p, c) = comm::stream();
+        do task::spawn {
+            unsafe {
+                do arc2.access |one| {
+                    c.send(());
+                    assert!(*one == 2);
+                }
+            }
+        }
+        let _ = p.recv();
+        let one = arc.unwrap();
+        assert!(one == 1);
     }
     #[test] #[should_fail] #[ignore(cfg(windows))]
     fn test_rw_arc_poison_wr() {

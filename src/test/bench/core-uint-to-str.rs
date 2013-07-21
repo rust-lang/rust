@@ -13,7 +13,7 @@ use std::uint;
 
 fn main() {
     let args = os::args();
-    let args = if os::getenv(~"RUST_BENCH").is_some() {
+    let args = if os::getenv("RUST_BENCH").is_some() {
         ~[~"", ~"10000000"]
     } else if args.len() <= 1u {
         ~[~"", ~"100000"]

@@ -193,26 +193,51 @@ pub enum def {
 }
 
 
-// The set of meta_items that define the compilation environment of the crate,
+// The set of MetaItems that define the compilation environment of the crate,
 // used to drive conditional compilation
-pub type crate_cfg = ~[@meta_item];
+pub type crate_cfg = ~[@MetaItem];
 
 pub type crate = spanned<crate_>;
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub struct crate_ {
     module: _mod,
-    attrs: ~[attribute],
+    attrs: ~[Attribute],
     config: crate_cfg,
 }
 
-pub type meta_item = spanned<meta_item_>;
+pub type MetaItem = spanned<MetaItem_>;
 
-#[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
-pub enum meta_item_ {
-    meta_word(@str),
-    meta_list(@str, ~[@meta_item]),
-    meta_name_value(@str, lit),
+#[deriving(Clone, Encodable, Decodable, IterBytes)]
+pub enum MetaItem_ {
+    MetaWord(@str),
+    MetaList(@str, ~[@MetaItem]),
+    MetaNameValue(@str, lit),
+}
+
+// can't be derived because the MetaList requires an unordered comparison
+impl Eq for MetaItem_ {
+    fn eq(&self, other: &MetaItem_) -> bool {
+        match *self {
+            MetaWord(ref ns) => match *other {
+                MetaWord(ref no) => (*ns) == (*no),
+                _ => false
+            },
+            MetaNameValue(ref ns, ref vs) => match *other {
+                MetaNameValue(ref no, ref vo) => {
+                    (*ns) == (*no) && vs.node == vo.node
+                }
+                _ => false
+            },
+            MetaList(ref ns, ref miss) => match *other {
+                MetaList(ref no, ref miso) => {
+                    ns == no &&
+                        miss.iter().all(|mi| miso.iter().any(|x| x.node == mi.node))
+                }
+                _ => false
+            }
+        }
+    }
 }
 
 //pub type blk = spanned<blk_>;
@@ -622,7 +647,7 @@ pub type ty_field = spanned<ty_field_>;
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub struct ty_method {
     ident: ident,
-    attrs: ~[attribute],
+    attrs: ~[Attribute],
     purity: purity,
     decl: fn_decl,
     generics: Generics,
@@ -833,7 +858,7 @@ pub type explicit_self = spanned<explicit_self_>;
 #[deriving(Eq, Encodable, Decodable,IterBytes)]
 pub struct method {
     ident: ident,
-    attrs: ~[attribute],
+    attrs: ~[Attribute],
     generics: Generics,
     explicit_self: explicit_self,
     purity: purity,
@@ -886,7 +911,7 @@ pub struct enum_def {
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub struct variant_ {
     name: ident,
-    attrs: ~[attribute],
+    attrs: ~[Attribute],
     kind: variant_kind,
     id: node_id,
     disr_expr: Option<@expr>,
@@ -925,34 +950,34 @@ pub enum view_path_ {
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub struct view_item {
     node: view_item_,
-    attrs: ~[attribute],
+    attrs: ~[Attribute],
     vis: visibility,
     span: span,
 }
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub enum view_item_ {
-    view_item_extern_mod(ident, ~[@meta_item], node_id),
+    view_item_extern_mod(ident, ~[@MetaItem], node_id),
     view_item_use(~[@view_path]),
 }
 
 // Meta-data associated with an item
-pub type attribute = spanned<attribute_>;
+pub type Attribute = spanned<Attribute_>;
 
-// Distinguishes between attributes that decorate items and attributes that
+// Distinguishes between Attributes that decorate items and Attributes that
 // are contained as statements within items. These two cases need to be
 // distinguished for pretty-printing.
 #[deriving(Clone, Eq, Encodable, Decodable,IterBytes)]
-pub enum attr_style {
-    attr_outer,
-    attr_inner,
+pub enum AttrStyle {
+    AttrOuter,
+    AttrInner,
 }
 
 // doc-comments are promoted to attributes that have is_sugared_doc = true
 #[deriving(Clone, Eq, Encodable, Decodable,IterBytes)]
-pub struct attribute_ {
-    style: attr_style,
-    value: @meta_item,
+pub struct Attribute_ {
+    style: AttrStyle,
+    value: @MetaItem,
     is_sugared_doc: bool,
 }
 
@@ -990,7 +1015,7 @@ pub struct struct_field_ {
     kind: struct_field_kind,
     id: node_id,
     ty: Ty,
-    attrs: ~[attribute],
+    attrs: ~[Attribute],
 }
 
 pub type struct_field = spanned<struct_field_>;
@@ -1016,7 +1041,7 @@ pub struct struct_def {
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub struct item {
     ident: ident,
-    attrs: ~[attribute],
+    attrs: ~[Attribute],
     id: node_id,
     node: item_,
     vis: visibility,
@@ -1044,7 +1069,7 @@ pub enum item_ {
 #[deriving(Eq, Encodable, Decodable,IterBytes)]
 pub struct foreign_item {
     ident: ident,
-    attrs: ~[attribute],
+    attrs: ~[Attribute],
     node: foreign_item_,
     id: node_id,
     span: span,

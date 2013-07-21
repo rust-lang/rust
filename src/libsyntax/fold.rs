@@ -74,35 +74,34 @@ pub type ast_fold_fns = @AstFoldFns;
 /* some little folds that probably aren't useful to have in ast_fold itself*/
 
 //used in noop_fold_item and noop_fold_crate and noop_fold_crate_directive
-fn fold_meta_item_(mi: @meta_item, fld: @ast_fold) -> @meta_item {
+fn fold_meta_item_(mi: @MetaItem, fld: @ast_fold) -> @MetaItem {
     @spanned {
         node:
             match mi.node {
-                meta_word(id) => meta_word(id),
-                meta_list(id, ref mis) => {
+                MetaWord(id) => MetaWord(id),
+                MetaList(id, ref mis) => {
                     let fold_meta_item = |x| fold_meta_item_(x, fld);
-                    meta_list(
+                    MetaList(
                         id,
                         mis.map(|e| fold_meta_item(*e))
                     )
                 }
-                meta_name_value(id, s) => {
-                    meta_name_value(id, s)
-                }
+                MetaNameValue(id, s) => MetaNameValue(id, s)
             },
         span: fld.new_span(mi.span) }
 }
 //used in noop_fold_item and noop_fold_crate
-fn fold_attribute_(at: attribute, fld: @ast_fold) -> attribute {
+fn fold_attribute_(at: Attribute, fld: @ast_fold) -> Attribute {
     spanned {
-        node: ast::attribute_ {
+        span: fld.new_span(at.span),
+        node: ast::Attribute_ {
             style: at.node.style,
             value: fold_meta_item_(at.node.value, fld),
-            is_sugared_doc: at.node.is_sugared_doc,
-        },
-        span: fld.new_span(at.span),
+            is_sugared_doc: at.node.is_sugared_doc
+        }
     }
 }
+
 //used in noop_fold_foreign_item and noop_fold_fn_decl
 fn fold_arg_(a: arg, fld: @ast_fold) -> arg {
     ast::arg {
@@ -936,11 +935,11 @@ impl ast_fold for AstFoldFns {
 }
 
 pub trait AstFoldExtensions {
-    fn fold_attributes(&self, attrs: ~[attribute]) -> ~[attribute];
+    fn fold_attributes(&self, attrs: ~[Attribute]) -> ~[Attribute];
 }
 
 impl AstFoldExtensions for @ast_fold {
-    fn fold_attributes(&self, attrs: ~[attribute]) -> ~[attribute] {
+    fn fold_attributes(&self, attrs: ~[Attribute]) -> ~[Attribute] {
         attrs.map(|x| fold_attribute_(*x, *self))
     }
 }

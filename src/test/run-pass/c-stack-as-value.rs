@@ -14,7 +14,7 @@ mod rustrt {
     use std::libc;
 
     #[abi = "cdecl"]
-    pub extern {
+    extern {
         pub fn get_task_id() -> libc::intptr_t;
     }
 }

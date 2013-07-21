@@ -159,12 +159,12 @@ pub fn make_filename(
                 config.output_style == config::DocPerMod {
                 ~"index"
             } else {
-                assert!(doc.topmod.name() != ~"");
-                doc.topmod.name()
+                assert!(doc.topmod.name_() != ~"");
+                doc.topmod.name_()
             }
           }
           doc::ItemPage(doc) => {
-            (doc.path() + &[doc.name()]).connect("_")
+            (doc.path() + &[doc.name_()]).connect("_")
           }
         }
     };

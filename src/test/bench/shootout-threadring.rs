@@ -15,7 +15,7 @@ use std::os;
 fn start(n_tasks: int, token: int) {
     let (p, ch1) = stream();
     let mut p = p;
-    let mut ch1 = ch1;
+    let ch1 = ch1;
     ch1.send(token);
     //  XXX could not get this to work with a range closure
     let mut i = 2;
@@ -55,7 +55,7 @@ fn roundtrip(id: int, n_tasks: int, p: &Port<int>, ch: &Chan<int>) {
 }
 
 fn main() {
-    let args = if os::getenv(~"RUST_BENCH").is_some() {
+    let args = if os::getenv("RUST_BENCH").is_some() {
         ~[~"", ~"2000000", ~"503"]
     }
     else {

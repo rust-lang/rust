@@ -15,7 +15,7 @@ mod rustrt {
     use super::{Floats, Quad};
 
     #[nolink]
-    pub extern {
+    extern {
         pub fn debug_abi_1(q: Quad) -> Quad;
         pub fn debug_abi_2(f: Floats) -> Floats;
     }

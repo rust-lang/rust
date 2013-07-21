@@ -256,20 +256,21 @@ pub mod rustrt {
     use libc;
     use super::rust_task;
 
-    pub extern {
+    extern {
         #[rust_stack]
-        unsafe fn rust_get_task() -> *rust_task;
+        pub unsafe fn rust_get_task() -> *rust_task;
         #[rust_stack]
-        unsafe fn rust_task_ref(task: *rust_task);
-        unsafe fn rust_task_deref(task: *rust_task);
+        pub unsafe fn rust_task_ref(task: *rust_task);
+        pub unsafe fn rust_task_deref(task: *rust_task);
 
         #[rust_stack]
-        unsafe fn task_clear_event_reject(task: *rust_task);
+        pub unsafe fn task_clear_event_reject(task: *rust_task);
 
-        unsafe fn task_wait_event(this: *rust_task,
-                                  killed: &mut *libc::c_void)
-                               -> bool;
-        unsafe fn task_signal_event(target: *rust_task, event: *libc::c_void);
+        pub unsafe fn task_wait_event(this: *rust_task,
+                                      killed: &mut *libc::c_void)
+                                   -> bool;
+        pub unsafe fn task_signal_event(target: *rust_task,
+                                        event: *libc::c_void);
     }
 }
 
@@ -431,7 +432,7 @@ fn try_recv_<T:Send>(p: &mut Packet<T>) -> Option<T> {
     // optimistic path
     match p.header.state {
       Full => {
-        let payload = replace(&mut p.payload, None);
+        let payload = p.payload.take();
         p.header.state = Empty;
         return Some(payload.unwrap())
       },
@@ -482,7 +483,7 @@ fn try_recv_<T:Send>(p: &mut Packet<T>) -> Option<T> {
             fail!("blocking on already blocked packet")
           },
           Full => {
-            let payload = replace(&mut p.payload, None);
+            let payload = p.payload.take();
             let old_task = swap_task(&mut p.header.blocked_task, ptr::null());
             if !old_task.is_null() {
                 unsafe {
@@ -676,8 +677,7 @@ impl<T:Send,Tbuffer:Send> Drop for SendPacketBuffered<T,Tbuffer> {
         unsafe {
             let this: &mut SendPacketBuffered<T,Tbuffer> = transmute(self);
             if this.p != None {
-                let p = replace(&mut this.p, None);
-                sender_terminate(p.unwrap())
+                sender_terminate(this.p.take_unwrap());
             }
         }
     }
@@ -695,7 +695,7 @@ pub fn SendPacketBuffered<T,Tbuffer>(p: *mut Packet<T>)
 
 impl<T,Tbuffer> SendPacketBuffered<T,Tbuffer> {
     pub fn unwrap(&mut self) -> *mut Packet<T> {
-        replace(&mut self.p, None).unwrap()
+        self.p.take_unwrap()
     }
 
     pub fn header(&mut self) -> *mut PacketHeader {
@@ -711,7 +711,7 @@ impl<T,Tbuffer> SendPacketBuffered<T,Tbuffer> {
 
     pub fn reuse_buffer(&mut self) -> BufferResource<Tbuffer> {
         //error!("send reuse_buffer");
-        replace(&mut self.buffer, None).unwrap()
+        self.buffer.take_unwrap()
     }
 }
 
@@ -734,8 +734,7 @@ impl<T:Send,Tbuffer:Send> Drop for RecvPacketBuffered<T,Tbuffer> {
         unsafe {
             let this: &mut RecvPacketBuffered<T,Tbuffer> = transmute(self);
             if this.p != None {
-                let p = replace(&mut this.p, None);
-                receiver_terminate(p.unwrap())
+                receiver_terminate(this.p.take_unwrap())
             }
         }
     }
@@ -743,11 +742,11 @@ impl<T:Send,Tbuffer:Send> Drop for RecvPacketBuffered<T,Tbuffer> {
 
 impl<T:Send,Tbuffer:Send> RecvPacketBuffered<T, Tbuffer> {
     pub fn unwrap(&mut self) -> *mut Packet<T> {
-        replace(&mut self.p, None).unwrap()
+        self.p.take_unwrap()
     }
 
     pub fn reuse_buffer(&mut self) -> BufferResource<Tbuffer> {
-        replace(&mut self.buffer, None).unwrap()
+        self.buffer.take_unwrap()
     }
 }
 
