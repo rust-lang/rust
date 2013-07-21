@@ -23,7 +23,6 @@
 // the reverse direction.
 
 use std::cast;
-use std::cmp;
 use std::ptr;
 use std::util;
 use std::iterator::{FromIterator, InvertIterator};
@@ -396,13 +395,13 @@ impl<T> DList<T> {
     }
 }
 
-impl<T: cmp::TotalOrd> DList<T> {
+impl<T: Ord> DList<T> {
     /// Insert `elt` sorted in ascending order
     ///
     /// O(N)
     #[inline]
     pub fn insert_ordered(&mut self, elt: T) {
-        self.insert_when(elt, |a, b| a.cmp(b) != cmp::Less);
+        self.insert_when(elt, |a, b| a >= b)
     }
 }
 
