@@ -306,6 +306,10 @@
             ((eq (rust-context-align cx) t) (+ (rust-context-column cx) (if closing -1 0)))
             (t (+ base (if closing 0 unit)))))))
 
+;; For compatibility with Emacs < 24, derive conditionally
+(defalias 'rust-parent-mode
+  (if (fboundp 'prog-mode) 'prog-mode 'fundamental-mode))
+
 ;;;###autoload
 (define-derived-mode rust-mode fundamental-mode "Rust"
   "Major mode for editing Rust source files."
