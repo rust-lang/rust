@@ -662,6 +662,19 @@ impl<
     }
 }
 
+impl<
+    S: Encoder,
+    T: Encodable<S>
+> Encodable<S> for DList<T> {
+    fn encode(&self, s: &mut S) {
+        do s.emit_seq(self.len()) |s| {
+            for self.iter().enumerate().advance |(i, e)| {
+                s.emit_seq_elt(i, |s| e.encode(s));
+            }
+        }
+    }
+}
+
 impl<D:Decoder,T:Decodable<D>> Decodable<D> for DList<T> {
     fn decode(d: &mut D) -> DList<T> {
         let mut list = DList::new();
