@@ -25,7 +25,7 @@ mod rustrt {
 
     use std::libc;
 
-    pub extern {
+    extern {
         pub fn rust_new_sched(num_threads: libc::uintptr_t) -> sched_id;
         pub fn rust_get_sched_id() -> sched_id;
         pub fn rust_new_task_in_sched(id: sched_id) -> task_id;

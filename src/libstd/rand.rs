@@ -251,9 +251,9 @@ impl<T: Rand + 'static> Rand for @T {
 pub mod rustrt {
     use libc::size_t;
 
-    pub extern {
-        unsafe fn rand_seed_size() -> size_t;
-        unsafe fn rand_gen_seed(buf: *mut u8, sz: size_t);
+    extern {
+        pub unsafe fn rand_seed_size() -> size_t;
+        pub unsafe fn rand_gen_seed(buf: *mut u8, sz: size_t);
     }
 }
 
@@ -1087,10 +1087,11 @@ mod tests {
             #[allow(non_camel_case_types)] // runtime type
             pub enum rust_rng {}
 
-            pub extern {
-                unsafe fn rand_new_seeded(buf: *u8, sz: size_t) -> *rust_rng;
-                unsafe fn rand_next(rng: *rust_rng) -> u32;
-                unsafe fn rand_free(rng: *rust_rng);
+            extern {
+                pub unsafe fn rand_new_seeded(buf: *u8, sz: size_t)
+                                              -> *rust_rng;
+                pub unsafe fn rand_next(rng: *rust_rng) -> u32;
+                pub unsafe fn rand_free(rng: *rust_rng);
             }
         }
 

@@ -10,7 +10,7 @@
 
 mod foo {
     #[nolink]
-    pub extern {
+    extern {
         pub static errno: int;
     }
 }

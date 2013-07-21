@@ -10,7 +10,7 @@
 
 mod rusti {
     #[abi = "rust-intrinsic"]
-    pub extern "rust-intrinsic" {
+    extern "rust-intrinsic" {
         fn uninit<T>() -> T;
     }
 }

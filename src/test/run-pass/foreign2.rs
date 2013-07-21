@@ -11,28 +11,28 @@
 mod bar {
     #[abi = "cdecl"]
     #[nolink]
-    pub extern {}
+    extern {}
 }
 
 mod zed {
     #[abi = "cdecl"]
     #[nolink]
-    pub extern {}
+    extern {}
 }
 
 mod libc {
     #[abi = "cdecl"]
     #[nolink]
-    pub extern {
+    extern {
         pub fn write(fd: int, buf: *u8, count: ::std::libc::size_t)
-                  -> ::std::libc::ssize_t;
+                     -> ::std::libc::ssize_t;
     }
 }
 
 mod baz {
     #[abi = "cdecl"]
     #[nolink]
-    pub extern {}
+    extern {}
 }
 
 pub fn main() { }

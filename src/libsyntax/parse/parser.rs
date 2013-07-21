@@ -84,7 +84,7 @@ use parse::obsolete::{ObsoletePurity, ObsoleteStaticMethod};
 use parse::obsolete::{ObsoleteConstItem, ObsoleteFixedLengthVectorType};
 use parse::obsolete::{ObsoleteNamedExternModule, ObsoleteMultipleLocalDecl};
 use parse::obsolete::{ObsoleteMutWithMultipleBindings};
-use parse::obsolete::{ParserObsoleteMethods};
+use parse::obsolete::{ObsoleteExternVisibility, ParserObsoleteMethods};
 use parse::token::{can_begin_expr, get_ident_interner, ident_to_str, is_ident};
 use parse::token::{is_ident_or_path};
 use parse::token::{is_plain_ident, INTERPOLATED, keywords, special_idents};
@@ -4191,16 +4191,23 @@ impl Parser {
                 self.obsolete(*self.last_span, ObsoleteNamedExternModule);
             }
 
+            // Do not allow visibility to be specified.
+            if visibility != ast::inherited {
+                self.obsolete(*self.span, ObsoleteExternVisibility);
+            }
+
             let abis = opt_abis.get_or_default(AbiSet::C());
 
             let (inner, next) = self.parse_inner_attrs_and_next();
             let m = self.parse_foreign_mod_items(sort, abis, next);
             self.expect(&token::RBRACE);
 
-            return iovi_item(self.mk_item(lo, self.last_span.hi, ident,
-                                          item_foreign_mod(m), visibility,
-                                          maybe_append(attrs,
-                                                       Some(inner))));
+            return iovi_item(self.mk_item(lo,
+                                          self.last_span.hi,
+                                          ident,
+                                          item_foreign_mod(m),
+                                          public,
+                                          maybe_append(attrs, Some(inner))));
         }
 
         if opt_abis.is_some() {

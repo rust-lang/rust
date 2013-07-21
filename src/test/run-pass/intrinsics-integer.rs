@@ -14,7 +14,7 @@ extern mod extra;
 
 mod rusti {
     #[abi = "rust-intrinsic"]
-    pub extern "rust-intrinsic" {
+    extern "rust-intrinsic" {
         fn ctpop8(x: i8) -> i8;
         fn ctpop16(x: i16) -> i16;
         fn ctpop32(x: i32) -> i32;
