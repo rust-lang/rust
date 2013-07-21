@@ -12,7 +12,7 @@
 use std::option;
 use syntax::{ast, fold, attr};
 
-type in_cfg_pred = @fn(attrs: &[ast::attribute]) -> bool;
+type in_cfg_pred = @fn(attrs: &[ast::Attribute]) -> bool;
 
 struct Context {
     in_cfg: in_cfg_pred
@@ -175,31 +175,6 @@ fn trait_method_in_cfg(cx: @Context, meth: &ast::trait_method) -> bool {
 
 // Determine if an item should be translated in the current crate
 // configuration based on the item's attributes
-fn in_cfg(cfg: &[@ast::meta_item], attrs: &[ast::attribute]) -> bool {
-    metas_in_cfg(cfg, attr::attr_metas(attrs))
-}
-
-pub fn metas_in_cfg(cfg: &[@ast::meta_item],
-                    metas: &[@ast::meta_item]) -> bool {
-    // The "cfg" attributes on the item
-    let cfg_metas = attr::find_meta_items_by_name(metas, "cfg");
-
-    // Pull the inner meta_items from the #[cfg(meta_item, ...)]  attributes,
-    // so we can match against them. This is the list of configurations for
-    // which the item is valid
-    let cfg_metas = cfg_metas.consume_iter()
-        .filter_map(|i| attr::get_meta_item_list(i))
-        .collect::<~[~[@ast::meta_item]]>();
-
-    if cfg_metas.iter().all(|c| c.is_empty()) { return true; }
-
-    cfg_metas.iter().any(|cfg_meta| {
-        cfg_meta.iter().all(|cfg_mi| {
-            match cfg_mi.node {
-                ast::meta_list(s, ref it) if "not" == s
-                    => it.iter().all(|mi| !attr::contains(cfg, *mi)),
-                _ => attr::contains(cfg, *cfg_mi)
-            }
-        })
-    })
+fn in_cfg(cfg: &[@ast::MetaItem], attrs: &[ast::Attribute]) -> bool {
+    attr::test_cfg(cfg, attrs.iter().transform(|x| *x))
 }

@@ -151,7 +151,7 @@ pub fn get_static_methods_if_impl(cstore: @mut cstore::CStore,
 
 pub fn get_item_attrs(cstore: @mut cstore::CStore,
                       def_id: ast::def_id,
-                      f: &fn(~[@ast::meta_item])) {
+                      f: &fn(~[@ast::MetaItem])) {
     let cdata = cstore::get_crate_data(cstore, def_id.crate);
     decoder::get_item_attrs(cdata, def_id.node, f)
 }

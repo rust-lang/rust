@@ -31,8 +31,8 @@ use syntax::visit;
 
 // Returns true if the given set of attributes contains the `#[inline]`
 // attribute.
-fn attributes_specify_inlining(attrs: &[attribute]) -> bool {
-    attr::attrs_contains_name(attrs, "inline")
+fn attributes_specify_inlining(attrs: &[Attribute]) -> bool {
+    attr::contains_name(attrs, "inline")
 }
 
 // Returns true if the given set of generics implies that the item it's
@@ -431,4 +431,3 @@ pub fn find_reachable(tcx: ty::ctxt,
     // Return the set of reachable symbols.
     reachable_context.reachable_symbols
 }
-

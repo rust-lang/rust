@@ -17,7 +17,7 @@ use util::ppaux::{Repr, ty_to_str};
 use util::ppaux::UserString;
 
 use syntax::ast::*;
-use syntax::attr::attrs_contains_name;
+use syntax::attr;
 use syntax::codemap::span;
 use syntax::print::pprust::expr_to_str;
 use syntax::{visit, ast_util};
@@ -113,7 +113,7 @@ fn check_block(block: &blk, (cx, visitor): (Context, visit::vt<Context>)) {
 
 fn check_item(item: @item, (cx, visitor): (Context, visit::vt<Context>)) {
     // If this is a destructor, check kinds.
-    if !attrs_contains_name(item.attrs, "unsafe_destructor") {
+    if !attr::contains_name(item.attrs, "unsafe_destructor") {
         match item.node {
             item_impl(_, Some(ref trait_ref), ref self_type, _) => {
                 match cx.tcx.def_map.find(&trait_ref.ref_id) {
@@ -578,4 +578,3 @@ pub fn check_cast_for_escaping_regions(
         cx.tcx.region_maps.is_subregion_of(r_sub, r_sup)
     }
 }
-

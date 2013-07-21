@@ -18,24 +18,20 @@ an AST's attributes.
 
 use syntax::ast;
 use syntax::attr;
+use syntax::attr::{AttrMetaMethods, AttributeMethods};
 
 pub struct CrateAttrs {
     name: Option<~str>
 }
 
-fn doc_metas(
-    attrs: ~[ast::attribute]
-) -> ~[@ast::meta_item] {
-
-    let doc_attrs = attr::find_attrs_by_name(attrs, "doc");
-    let doc_metas = do doc_attrs.map |attr| {
-        attr::attr_meta(attr::desugar_doc_attr(attr))
-    };
-
-    return doc_metas;
+fn doc_metas(attrs: ~[ast::Attribute]) -> ~[@ast::MetaItem] {
+    attrs.iter()
+        .filter(|at| "doc" == at.name())
+        .transform(|at| at.desugar_doc().meta())
+        .collect()
 }
 
-pub fn parse_crate(attrs: ~[ast::attribute]) -> CrateAttrs {
+pub fn parse_crate(attrs: ~[ast::Attribute]) -> CrateAttrs {
     let link_metas = attr::find_linkage_metas(attrs);
     let name = attr::last_meta_item_value_str_by_name(link_metas, "name");
 
@@ -44,10 +40,10 @@ pub fn parse_crate(attrs: ~[ast::attribute]) -> CrateAttrs {
     }
 }
 
-pub fn parse_desc(attrs: ~[ast::attribute]) -> Option<~str> {
+pub fn parse_desc(attrs: ~[ast::Attribute]) -> Option<~str> {
     let doc_strs = do doc_metas(attrs).consume_iter().filter_map |meta| {
-        attr::get_meta_item_value_str(meta).map(|s| s.to_owned())
-    }.collect::<~[~str]>();
+        meta.value_str()
+    }.collect::<~[@str]>();
     if doc_strs.is_empty() {
         None
     } else {
@@ -55,14 +51,11 @@ pub fn parse_desc(attrs: ~[ast::attribute]) -> Option<~str> {
     }
 }
 
-pub fn parse_hidden(attrs: ~[ast::attribute]) -> bool {
+pub fn parse_hidden(attrs: ~[ast::Attribute]) -> bool {
     let r = doc_metas(attrs);
     do r.iter().any |meta| {
-        match attr::get_meta_item_list(*meta) {
-            Some(metas) => {
-                let hiddens = attr::find_meta_items_by_name(metas, "hidden");
-                !hiddens.is_empty()
-            }
+        match meta.meta_item_list() {
+            Some(metas) => attr::contains_name(metas, "hidden"),
             None => false
         }
     }
@@ -74,7 +67,7 @@ mod test {
     use syntax;
     use super::{parse_hidden, parse_crate, parse_desc};
 
-    fn parse_attributes(source: @str) -> ~[ast::attribute] {
+    fn parse_attributes(source: @str) -> ~[ast::Attribute] {
         use syntax::parse;
         use syntax::parse::attr::parser_attr;
 

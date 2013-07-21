@@ -174,7 +174,7 @@ mod test {
     fn should_make_a_page_for_every_mod() {
         let doc = mk_doc(~"mod a { }");
         // hidden __std_macros module at the start.
-        assert_eq!(doc.pages.mods()[0].name(), ~"a");
+        assert_eq!(doc.pages.mods()[0].name_(), ~"a");
     }
 
     #[test]

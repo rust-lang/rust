@@ -26,7 +26,7 @@ use syntax::ast_util::{def_id_of_def, local_def};
 use syntax::ast_util::{path_to_ident, walk_pat, trait_method_to_ty_method};
 use syntax::ast_util::{Privacy, Public, Private};
 use syntax::ast_util::{variant_visibility_to_privacy, visibility_to_privacy};
-use syntax::attr::{attr_metas, contains_name};
+use syntax::attr;
 use syntax::parse::token;
 use syntax::parse::token::ident_interner;
 use syntax::parse::token::special_idents;
@@ -3476,8 +3476,7 @@ impl Resolver {
         // Items with the !resolve_unexported attribute are X-ray contexts.
         // This is used to allow the test runner to run unexported tests.
         let orig_xray_flag = self.xray_context;
-        if contains_name(attr_metas(item.attrs),
-                         "!resolve_unexported") {
+        if attr::contains_name(item.attrs, "!resolve_unexported") {
             self.xray_context = Xray;
         }
 
