@@ -975,27 +975,12 @@ mod tests {
             let _: DList<int> = v.iter().transform(|x| *x).collect();
         }
     }
-    #[bench]
-    fn bench_collect_into_vec(b: &mut test::BenchHarness) {
-        let v = &[0, ..64];
-        do b.iter {
-            let _: ~[int] = v.iter().transform(|&x|x).collect();
-        }
-    }
 
     #[bench]
     fn bench_push_front(b: &mut test::BenchHarness) {
         let mut m = DList::new::<int>();
         do b.iter {
             m.push_front(0);
-        }
-    }
-    #[bench]
-    fn bench_push_front_vec_size10(b: &mut test::BenchHarness) {
-        let mut m = ~[0, ..10];
-        do b.iter {
-            m.unshift(0);
-            m.pop(); // to keep it fair, dont' grow the vec
         }
     }
 
@@ -1006,27 +991,13 @@ mod tests {
             m.push_back(0);
         }
     }
-    #[bench]
-    fn bench_push_back_vec(b: &mut test::BenchHarness) {
-        let mut m = ~[];
-        do b.iter {
-            m.push(0);
-        }
-    }
+
     #[bench]
     fn bench_push_back_pop_back(b: &mut test::BenchHarness) {
         let mut m = DList::new::<int>();
         do b.iter {
             m.push_back(0);
             m.pop_back();
-        }
-    }
-    #[bench]
-    fn bench_push_back_pop_back_vec(b: &mut test::BenchHarness) {
-        let mut m = ~[];
-        do b.iter {
-            m.push(0);
-            m.pop();
         }
     }
 
@@ -1089,13 +1060,6 @@ mod tests {
         let mut m: DList<int> = v.iter().transform(|&x|x).collect();
         do b.iter {
             assert!(m.mut_rev_iter().len_() == 128);
-        }
-    }
-    #[bench]
-    fn bench_iter_vec(b: &mut test::BenchHarness) {
-        let v = &[0, ..128];
-        do b.iter {
-            for v.iter().advance |_| {}
         }
     }
 }
