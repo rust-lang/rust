@@ -22,6 +22,7 @@ pub mod context;
 pub mod consts;
 pub mod type_of;
 pub mod build;
+pub mod builder;
 pub mod base;
 pub mod _match;
 pub mod uniq;

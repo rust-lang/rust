@@ -188,7 +188,7 @@ pub fn create_local_var_metadata(bcx: block, local: @ast::local) -> DIVariable {
     set_debug_location(cx, lexical_block_metadata(bcx), loc.line, loc.col.to_uint());
     unsafe {
         let instr = llvm::LLVMDIBuilderInsertDeclareAtEnd(DIB(cx), llptr, var_metadata, bcx.llbb);
-        llvm::LLVMSetInstDebugLocation(trans::build::B(bcx), instr);
+        llvm::LLVMSetInstDebugLocation(trans::build::B(bcx).llbuilder, instr);
     }
 
     return var_metadata;
@@ -247,7 +247,7 @@ pub fn create_argument_metadata(bcx: block, arg: &ast::arg, span: span) -> Optio
             unsafe {
                 let instr = llvm::LLVMDIBuilderInsertDeclareAtEnd(
                         DIB(cx), llptr, var_metadata, bcx.llbb);
-                llvm::LLVMSetInstDebugLocation(trans::build::B(bcx), instr);
+                llvm::LLVMSetInstDebugLocation(trans::build::B(bcx).llbuilder, instr);
             }
             return Some(var_metadata);
         }
