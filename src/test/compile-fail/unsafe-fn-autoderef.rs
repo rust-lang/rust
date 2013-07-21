@@ -27,7 +27,7 @@ fn f(p: *Rec) -> int {
     // are prohibited by various checks, such as that the enum is
     // instantiable and so forth).
 
-    return p.f; //~ ERROR attempted access of field `f` on type `*'static Rec`
+    return p.f; //~ ERROR attempted access of field `f` on type `*Rec`
 }
 
 fn main() {
