@@ -1121,3 +1121,75 @@ mod tests {
         test_hash(sh, tests);
     }
 }
+
+
+
+#[cfg(test)]
+mod bench {
+
+    use sha2::{Sha256,Sha512};
+    use test::BenchHarness;
+
+    #[bench]
+    pub fn sha256_10(bh: & mut BenchHarness) {
+        let mut sh = Sha256::new();
+        let bytes = [1u8, ..10];
+        do bh.iter {
+            sh.input(bytes);
+        }
+        bh.bytes = bytes.len() as u64;
+    }
+
+    #[bench]
+    pub fn sha256_1k(bh: & mut BenchHarness) {
+        let mut sh = Sha256::new();
+        let bytes = [1u8, ..1024];
+        do bh.iter {
+            sh.input(bytes);
+        }
+        bh.bytes = bytes.len() as u64;
+    }
+
+    #[bench]
+    pub fn sha256_64k(bh: & mut BenchHarness) {
+        let mut sh = Sha256::new();
+        let bytes = [1u8, ..65536];
+        do bh.iter {
+            sh.input(bytes);
+        }
+        bh.bytes = bytes.len() as u64;
+    }
+
+
+
+    #[bench]
+    pub fn sha512_10(bh: & mut BenchHarness) {
+        let mut sh = Sha512::new();
+        let bytes = [1u8, ..10];
+        do bh.iter {
+            sh.input(bytes);
+        }
+        bh.bytes = bytes.len() as u64;
+    }
+
+    #[bench]
+    pub fn sha512_1k(bh: & mut BenchHarness) {
+        let mut sh = Sha512::new();
+        let bytes = [1u8, ..1024];
+        do bh.iter {
+            sh.input(bytes);
+        }
+        bh.bytes = bytes.len() as u64;
+    }
+
+    #[bench]
+    pub fn sha512_64k(bh: & mut BenchHarness) {
+        let mut sh = Sha512::new();
+        let bytes = [1u8, ..65536];
+        do bh.iter {
+            sh.input(bytes);
+        }
+        bh.bytes = bytes.len() as u64;
+    }
+
+}

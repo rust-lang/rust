@@ -1055,6 +1055,67 @@ mod test_treemap {
             assert_eq!(map.find(&k), Some(&v));
         }
     }
+
+}
+
+#[cfg(test)]
+mod bench {
+
+    use super::*;
+    use test::BenchHarness;
+    use container::bench::*;
+
+    // Find seq
+    #[bench]
+    pub fn insert_rand_100(bh: &mut BenchHarness) {
+        let mut m : TreeMap<uint,uint> = TreeMap::new();
+        insert_rand_n(100, &mut m, bh);
+    }
+
+    #[bench]
+    pub fn insert_rand_10_000(bh: &mut BenchHarness) {
+        let mut m : TreeMap<uint,uint> = TreeMap::new();
+        insert_rand_n(10_000, &mut m, bh);
+    }
+
+    // Insert seq
+    #[bench]
+    pub fn insert_seq_100(bh: &mut BenchHarness) {
+        let mut m : TreeMap<uint,uint> = TreeMap::new();
+        insert_seq_n(100, &mut m, bh);
+    }
+
+    #[bench]
+    pub fn insert_seq_10_000(bh: &mut BenchHarness) {
+        let mut m : TreeMap<uint,uint> = TreeMap::new();
+        insert_seq_n(10_000, &mut m, bh);
+    }
+
+    // Find rand
+    #[bench]
+    pub fn find_rand_100(bh: &mut BenchHarness) {
+        let mut m : TreeMap<uint,uint> = TreeMap::new();
+        find_rand_n(100, &mut m, bh);
+    }
+
+    #[bench]
+    pub fn find_rand_10_000(bh: &mut BenchHarness) {
+        let mut m : TreeMap<uint,uint> = TreeMap::new();
+        find_rand_n(10_000, &mut m, bh);
+    }
+
+    // Find seq
+    #[bench]
+    pub fn find_seq_100(bh: &mut BenchHarness) {
+        let mut m : TreeMap<uint,uint> = TreeMap::new();
+        find_seq_n(100, &mut m, bh);
+    }
+
+    #[bench]
+    pub fn find_seq_10_000(bh: &mut BenchHarness) {
+        let mut m : TreeMap<uint,uint> = TreeMap::new();
+        find_seq_n(10_000, &mut m, bh);
+    }
 }
 
 #[cfg(test)]
