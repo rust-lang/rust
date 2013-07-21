@@ -94,7 +94,7 @@ pub fn search<T>(filesearch: @FileSearch, pick: pick<T>) -> Option<T> {
         let r = os::list_dir_path(lib_search_path);
         for r.iter().advance |path| {
             debug!("testing %s", path.to_str());
-            let maybe_picked = pick(*path);
+            let maybe_picked = pick(path);
             if maybe_picked.is_some() {
                 debug!("picked %s", path.to_str());
                 rslt = maybe_picked;
