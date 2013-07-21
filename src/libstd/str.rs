@@ -22,7 +22,7 @@ use cast;
 use char;
 use char::Char;
 use clone::Clone;
-use container::Container;
+use container::{Container, Mutable};
 use iter::Times;
 use iterator::{Iterator, IteratorUtil, FilterIterator, AdditiveIterator, MapIterator};
 use libc;
@@ -1213,6 +1213,31 @@ impl<'self> Container for &'self str {
         self.len() == 0
     }
 }
+
+impl Container for ~str {
+    #[inline]
+    fn len(&self) -> uint { self.as_slice().len() }
+    #[inline]
+    fn is_empty(&self) -> bool { self.len() == 0 }
+}
+
+impl Container for @str {
+    #[inline]
+    fn len(&self) -> uint { self.as_slice().len() }
+    #[inline]
+    fn is_empty(&self) -> bool { self.len() == 0 }
+}
+
+impl Mutable for ~str {
+    /// Remove all content, make the string empty
+    #[inline]
+    fn clear(&mut self) {
+        unsafe {
+            raw::set_len(self, 0)
+        }
+    }
+}
+
 
 #[allow(missing_doc)]
 pub trait StrSlice<'self> {
@@ -2503,6 +2528,18 @@ mod tests {
     }
 
     #[test]
+    fn test_clear() {
+        let mut empty = ~"";
+        empty.clear();
+        assert_eq!("", empty.as_slice());
+        let mut data = ~"ประเทศไทย中";
+        data.clear();
+        assert_eq!("", data.as_slice());
+        data.push_char('华');
+        assert_eq!("华", data.as_slice());
+    }
+
+    #[test]
     fn test_split_within() {
         fn t(s: &str, i: uint, u: &[~str]) {
             let mut v = ~[];
@@ -3493,5 +3530,18 @@ mod tests {
         t::<&str>();
         t::<@str>();
         t::<~str>();
+    }
+
+    #[test]
+    fn test_str_container() {
+        fn sum_len<S: Container>(v: &[S]) -> uint {
+            v.iter().transform(|x| x.len()).sum()
+        }
+
+        let s = ~"01234";
+        assert_eq!(5, sum_len(["012", "", "34"]));
+        assert_eq!(5, sum_len([@"01", @"2", @"34", @""]));
+        assert_eq!(5, sum_len([~"01", ~"2", ~"34", ~""]));
+        assert_eq!(5, sum_len([s.as_slice()]));
     }
 }
