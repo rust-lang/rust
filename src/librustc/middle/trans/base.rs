@@ -41,6 +41,7 @@ use middle::trans::_match;
 use middle::trans::adt;
 use middle::trans::base;
 use middle::trans::build::*;
+use middle::trans::builder::noname;
 use middle::trans::callee;
 use middle::trans::common::*;
 use middle::trans::consts;

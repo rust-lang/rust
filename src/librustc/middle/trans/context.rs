@@ -19,6 +19,7 @@ use middle::astencode;
 use middle::resolve;
 use middle::trans::adt;
 use middle::trans::base;
+use middle::trans::builder::Builder;
 use middle::trans::debuginfo;
 use middle::trans::type_use;
 use middle::ty;
@@ -226,6 +227,10 @@ impl CrateContext {
                   do_not_commit_warning_issued: false
             }
         }
+    }
+
+    pub fn builder(@mut self) -> Builder {
+        Builder::new(self)
     }
 }
 
