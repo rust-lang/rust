@@ -149,8 +149,7 @@ fn build_shim_fn_(ccx: @mut CrateContext,
 
     // Declare the body of the shim function:
     let fcx = new_fn_ctxt(ccx, ~[], llshimfn, tys.fn_sig.output, None);
-    let bcx = top_scope_block(fcx, None);
-    let lltop = bcx.llbb;
+    let bcx = fcx.entry_bcx.get();
 
     let llargbundle = get_param(llshimfn, 0u);
     let llargvals = arg_builder(bcx, tys, llargbundle);
@@ -162,13 +161,12 @@ fn build_shim_fn_(ccx: @mut CrateContext,
 
     // Don't finish up the function in the usual way, because this doesn't
     // follow the normal Rust calling conventions.
-    tie_up_header_blocks(fcx, lltop);
-
     let ret_cx = match fcx.llreturn {
         Some(llreturn) => raw_block(fcx, false, llreturn),
         None => bcx
     };
     RetVoid(ret_cx);
+    fcx.cleanup();
 
     return llshimfn;
 }
@@ -192,18 +190,14 @@ fn build_wrap_fn_(ccx: @mut CrateContext,
                   ret_builder: wrap_ret_builder) {
     let _icx = push_ctxt("foreign::build_wrap_fn_");
     let fcx = new_fn_ctxt(ccx, ~[], llwrapfn, tys.fn_sig.output, None);
+    let bcx = fcx.entry_bcx.get();
 
     // Patch up the return type if it's not immediate and we're returning via
     // the C ABI.
     if needs_c_return && !ty::type_is_immediate(ccx.tcx, tys.fn_sig.output) {
         let lloutputtype = type_of::type_of(fcx.ccx, tys.fn_sig.output);
-        fcx.llretptr = Some(alloca(raw_block(fcx, false, fcx.get_llstaticallocas()),
-                                   lloutputtype,
-                                   ""));
+        fcx.llretptr = Some(alloca(bcx, lloutputtype, ""));
     }
-
-    let bcx = top_scope_block(fcx, None);
-    let lltop = bcx.llbb;
 
     // Allocate the struct and write the arguments into it.
     let llargbundle = alloca(bcx, tys.bundle_ty, "__llargbundle");
@@ -214,10 +208,6 @@ fn build_wrap_fn_(ccx: @mut CrateContext,
     let llrawargbundle = PointerCast(bcx, llargbundle, Type::i8p());
     Call(bcx, shim_upcall, [llrawargbundle, llshimfnptr]);
     ret_builder(bcx, tys, llargbundle);
-
-    // Perform a custom version of `finish_fn`. First, tie up the header
-    // blocks.
-    tie_up_header_blocks(fcx, lltop);
 
     // Then return according to the C ABI.
     let return_context = match fcx.llreturn {
@@ -239,6 +229,7 @@ fn build_wrap_fn_(ccx: @mut CrateContext,
         let llretptr = BitCast(return_context, fcx.llretptr.get(), return_type.ptr_to());
         Ret(return_context, Load(return_context, llretptr));
     }
+    fcx.cleanup();
 }
 
 // For each foreign function F, we generate a wrapper function W and a shim
@@ -430,8 +421,7 @@ pub fn trans_foreign_mod(ccx: @mut CrateContext,
         debug!("build_direct_fn(%s)", link_name(ccx, item));
 
         let fcx = new_fn_ctxt(ccx, ~[], decl, tys.fn_sig.output, None);
-        let bcx = top_scope_block(fcx, None);
-        let lltop = bcx.llbb;
+        let bcx = fcx.entry_bcx.get();
         let llbasefn = base_fn(ccx, link_name(ccx, item), tys, cc);
         let ty = ty::lookup_item_type(ccx.tcx,
                                       ast_util::local_def(item.id)).ty;
@@ -443,7 +433,7 @@ pub fn trans_foreign_mod(ccx: @mut CrateContext,
         if !ty::type_is_nil(ret_ty) && !ty::type_is_bot(ret_ty) {
             Store(bcx, retval, fcx.llretptr.get());
         }
-        finish_fn(fcx, lltop, bcx);
+        finish_fn(fcx, bcx);
     }
 
     // FIXME (#2535): this is very shaky and probably gets ABIs wrong all
@@ -456,8 +446,7 @@ pub fn trans_foreign_mod(ccx: @mut CrateContext,
         debug!("build_fast_ffi_fn(%s)", link_name(ccx, item));
 
         let fcx = new_fn_ctxt(ccx, ~[], decl, tys.fn_sig.output, None);
-        let bcx = top_scope_block(fcx, None);
-        let lltop = bcx.llbb;
+        let bcx = fcx.entry_bcx.get();
         let llbasefn = base_fn(ccx, link_name(ccx, item), tys, cc);
         set_no_inline(fcx.llfn);
         set_fixed_stack_segment(fcx.llfn);
@@ -471,7 +460,7 @@ pub fn trans_foreign_mod(ccx: @mut CrateContext,
         if !ty::type_is_nil(ret_ty) && !ty::type_is_bot(ret_ty) {
             Store(bcx, retval, fcx.llretptr.get());
         }
-        finish_fn(fcx, lltop, bcx);
+        finish_fn(fcx, bcx);
     }
 
     fn build_wrap_fn(ccx: @mut CrateContext,
@@ -619,6 +608,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
                                output_type,
                                true,
                                Some(substs),
+                               None,
                                Some(item.span));
 
     set_always_inline(fcx.llfn);
@@ -628,7 +618,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
         set_fixed_stack_segment(fcx.llfn);
     }
 
-    let mut bcx = top_scope_block(fcx, None);
+    let mut bcx = fcx.entry_bcx.get();
     let first_real_arg = fcx.arg_pos(0u);
 
     let nm = ccx.sess.str_of(item.ident);
@@ -694,6 +684,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
             }
         }
 
+        fcx.cleanup();
         return;
     }
 
@@ -942,6 +933,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
             ccx.sess.span_bug(item.span, "unknown intrinsic");
         }
     }
+    fcx.cleanup();
 }
 
 /**

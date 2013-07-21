@@ -303,7 +303,7 @@ impl Reflector {
                     //
                     llvm::LLVMGetParam(llfdecl, fcx.arg_pos(0u) as c_uint)
                 };
-                let mut bcx = top_scope_block(fcx, None);
+                let mut bcx = fcx.entry_bcx.get();
                 let arg = BitCast(bcx, arg, llptrty);
                 let ret = adt::trans_get_discr(bcx, repr, arg);
                 Store(bcx, ret, fcx.llretptr.get());
@@ -311,7 +311,7 @@ impl Reflector {
                     Some(llreturn) => cleanup_and_Br(bcx, bcx, llreturn),
                     None => bcx = cleanup_block(bcx, Some(bcx.llbb))
                 };
-                finish_fn(fcx, bcx.llbb, bcx);
+                finish_fn(fcx, bcx);
                 llfdecl
             };
 

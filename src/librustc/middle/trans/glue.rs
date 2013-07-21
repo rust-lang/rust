@@ -615,7 +615,7 @@ pub fn make_take_glue(bcx: block, v: ValueRef, t: ty::t) -> block {
             // Zero out the struct
             unsafe {
                 let ty = Type::from_ref(llvm::LLVMTypeOf(v));
-                memzero(bcx, v, ty);
+                memzero(&B(bcx), v, ty);
             }
 
           }
@@ -707,13 +707,12 @@ pub fn make_generic_glue_inner(ccx: @mut CrateContext,
     // llfn is expected be declared to take a parameter of the appropriate
     // type, so we don't need to explicitly cast the function parameter.
 
-    let bcx = top_scope_block(fcx, None);
-    let lltop = bcx.llbb;
+    let bcx = fcx.entry_bcx.get();
     let rawptr0_arg = fcx.arg_pos(0u);
     let llrawptr0 = unsafe { llvm::LLVMGetParam(llfn, rawptr0_arg as c_uint) };
     let bcx = helper(bcx, llrawptr0, t);
 
-    finish_fn(fcx, lltop, bcx);
+    finish_fn(fcx, bcx);
 
     return llfn;
 }
