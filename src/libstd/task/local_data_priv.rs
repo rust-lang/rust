@@ -23,8 +23,8 @@ use super::rt::rust_task;
 use rt::task::{Task, LocalStorage};
 
 pub enum Handle {
-    OldHandle(*rust_task),
-    NewHandle(*mut LocalStorage)
+    OldHandle(*'static rust_task),
+    NewHandle(*'static mut LocalStorage)
 }
 
 impl Handle {
@@ -93,7 +93,7 @@ impl<T: 'static> LocalData for T {}
 //
 // n.b. If TLS is used heavily in future, this could be made more efficient with
 //      a proper map.
-type TaskLocalMap = ~[Option<(*libc::c_void, TLSValue, LoanState)>];
+type TaskLocalMap = ~[Option<(*'static libc::c_void, TLSValue, LoanState)>];
 type TLSValue = ~LocalData:;
 
 fn cleanup_task_local_map(map_ptr: *libc::c_void) {

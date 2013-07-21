@@ -44,16 +44,16 @@ pub struct Process {
      * windows it will be a HANDLE to the process, which will prevent the
      * pid being re-used until the handle is closed.
      */
-    priv handle: *(),
+    priv handle: *'static (),
 
     /// Some(fd), or None when stdin is being redirected from a fd not created by Process::new.
     priv input: Option<c_int>,
 
     /// Some(file), or None when stdout is being redirected to a fd not created by Process::new.
-    priv output: Option<*libc::FILE>,
+    priv output: Option<*'static libc::FILE>,
 
     /// Some(file), or None when stderr is being redirected to a fd not created by Process::new.
-    priv error: Option<*libc::FILE>,
+    priv error: Option<*'static libc::FILE>,
 
     /// None until finish() is called.
     priv exit_code: Option<int>,
@@ -440,7 +440,7 @@ impl Drop for Process {
 
 struct SpawnProcessResult {
     pid: pid_t,
-    handle: *(),
+    handle: *'static (),
 }
 
 #[cfg(windows)]

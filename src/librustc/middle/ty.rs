@@ -158,7 +158,7 @@ pub struct creader_cache_key {
 type creader_cache = @mut HashMap<creader_cache_key, t>;
 
 struct intern_key {
-    sty: *sty,
+    sty: *'static sty,
 }
 
 // NB: Do not replace this with #[deriving(Eq)]. The automatically-derived
@@ -346,7 +346,7 @@ pub struct t_box_ {
 // ~15%.) This does mean that a t value relies on the ctxt to keep its box
 // alive, and using ty::get is unsafe when the ctxt is no longer alive.
 enum t_opaque {}
-pub type t = *t_opaque;
+pub type t = *'static t_opaque;
 
 pub fn get(t: t) -> t_box {
     unsafe {

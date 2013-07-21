@@ -14,7 +14,7 @@ use rt::uv::uvll;
 use rt::uv::{Watcher, Loop, NativeHandle, IdleCallback, NullCallback};
 use rt::uv::status_to_maybe_uv_error;
 
-pub struct IdleWatcher(*uvll::uv_idle_t);
+pub struct IdleWatcher(*'static uvll::uv_idle_t);
 impl Watcher for IdleWatcher { }
 
 impl IdleWatcher {
@@ -39,7 +39,7 @@ impl IdleWatcher {
             assert!(0 == uvll::idle_start(self.native_handle(), idle_cb))
         };
 
-        extern fn idle_cb(handle: *uvll::uv_idle_t, status: c_int) {
+        extern fn idle_cb(handle: *'static uvll::uv_idle_t, status: c_int) {
             let mut idle_watcher: IdleWatcher = NativeHandle::from_native_handle(handle);
             let data = idle_watcher.get_watcher_data();
             let cb: &IdleCallback = data.idle_cb.get_ref();
@@ -68,7 +68,7 @@ impl IdleWatcher {
 
         unsafe { uvll::close(self.native_handle(), close_cb) };
 
-        extern fn close_cb(handle: *uvll::uv_idle_t) {
+        extern fn close_cb(handle: *'static uvll::uv_idle_t) {
             unsafe {
                 let mut idle_watcher: IdleWatcher = NativeHandle::from_native_handle(handle);
                 {
@@ -82,8 +82,8 @@ impl IdleWatcher {
     }
 }
 
-impl NativeHandle<*uvll::uv_idle_t> for IdleWatcher {
-    fn from_native_handle(handle: *uvll::uv_idle_t) -> IdleWatcher {
+impl NativeHandle<*'static uvll::uv_idle_t> for IdleWatcher {
+    fn from_native_handle(handle: *'static uvll::uv_idle_t) -> IdleWatcher {
         IdleWatcher(handle)
     }
     fn native_handle(&self) -> *uvll::uv_idle_t {

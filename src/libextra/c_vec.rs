@@ -45,7 +45,7 @@ use std::ptr;
  *
  */
 pub struct CVec<T> {
-    priv base: *mut T,
+    priv base: *'static mut T,
     priv len: uint,
     priv rsrc: @DtorRes
 }
@@ -82,12 +82,12 @@ fn DtorRes(dtor: Option<@fn()>) -> DtorRes {
  * * base - A foreign pointer to a buffer
  * * len - The number of elements in the buffer
  */
-pub unsafe fn CVec<T>(base: *mut T, len: uint) -> CVec<T> {
-    return CVec{
+pub unsafe fn CVec<T>(base: *'static mut T, len: uint) -> CVec<T> {
+    CVec {
         base: base,
         len: len,
         rsrc: @DtorRes(option::None)
-    };
+    }
 }
 
 /**
@@ -101,13 +101,12 @@ pub unsafe fn CVec<T>(base: *mut T, len: uint) -> CVec<T> {
  * * dtor - A function to run when the value is destructed, useful
  *          for freeing the buffer, etc.
  */
-pub unsafe fn c_vec_with_dtor<T>(base: *mut T, len: uint, dtor: @fn())
-  -> CVec<T> {
-    return CVec{
+pub unsafe fn c_vec_with_dtor<T>(base: *'static mut T, len: uint, dtor: @fn()) -> CVec<T> {
+    CVec {
         base: base,
         len: len,
         rsrc: @DtorRes(option::Some(dtor))
-    };
+    }
 }
 
 /*

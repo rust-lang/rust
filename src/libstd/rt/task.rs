@@ -58,7 +58,7 @@ pub enum SchedHome {
 }
 
 pub struct GarbageCollector;
-pub struct LocalStorage(*c_void, Option<extern "Rust" fn(*c_void)>);
+pub struct LocalStorage(*'static c_void, Option<extern "Rust" fn(*c_void)>);
 
 pub struct Unwinder {
     unwinding: bool,

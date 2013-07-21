@@ -13,7 +13,7 @@
 use std::cast;
 
 struct r {
-  v: *int,
+  v: *'static int,
 }
 
 impl Drop for r {
@@ -28,7 +28,7 @@ impl Drop for r {
     }
 }
 
-fn r(v: *int) -> r {
+fn r(v: *'static int) -> r {
     r {
         v: v
     }

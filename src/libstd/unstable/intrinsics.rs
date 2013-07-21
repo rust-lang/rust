@@ -84,38 +84,44 @@ pub trait TyVisitor {
     fn visit_estr_slice(&self) -> bool;
     fn visit_estr_fixed(&self, n: uint, sz: uint, align: uint) -> bool;
 
-    fn visit_box(&self, mtbl: uint, inner: *TyDesc) -> bool;
-    fn visit_uniq(&self, mtbl: uint, inner: *TyDesc) -> bool;
-    fn visit_uniq_managed(&self, mtbl: uint, inner: *TyDesc) -> bool;
-    fn visit_ptr(&self, mtbl: uint, inner: *TyDesc) -> bool;
-    fn visit_rptr(&self, mtbl: uint, inner: *TyDesc) -> bool;
+    fn visit_box(&self, mtbl: uint, inner: *'static TyDesc) -> bool;
+    fn visit_uniq(&self, mtbl: uint, inner: *'static TyDesc) -> bool;
+    fn visit_uniq_managed(&self, mtbl: uint, inner: *'static TyDesc) -> bool;
+    fn visit_ptr(&self, mtbl: uint, inner: *'static TyDesc) -> bool;
+    fn visit_rptr(&self, mtbl: uint, inner: *'static TyDesc) -> bool;
 
-    fn visit_vec(&self, mtbl: uint, inner: *TyDesc) -> bool;
-    fn visit_unboxed_vec(&self, mtbl: uint, inner: *TyDesc) -> bool;
-    fn visit_evec_box(&self, mtbl: uint, inner: *TyDesc) -> bool;
-    fn visit_evec_uniq(&self, mtbl: uint, inner: *TyDesc) -> bool;
-    fn visit_evec_uniq_managed(&self, mtbl: uint, inner: *TyDesc) -> bool;
-    fn visit_evec_slice(&self, mtbl: uint, inner: *TyDesc) -> bool;
+    fn visit_vec(&self, mtbl: uint, inner: *'static TyDesc) -> bool;
+    fn visit_unboxed_vec(&self, mtbl: uint, inner: *'static TyDesc) -> bool;
+    fn visit_evec_box(&self, mtbl: uint, inner: *'static TyDesc) -> bool;
+    fn visit_evec_uniq(&self, mtbl: uint, inner: *'static TyDesc) -> bool;
+    fn visit_evec_uniq_managed(&self, mtbl: uint, inner: *'static TyDesc) -> bool;
+    fn visit_evec_slice(&self, mtbl: uint, inner: *'static TyDesc) -> bool;
     fn visit_evec_fixed(&self, n: uint, sz: uint, align: uint,
-                        mtbl: uint, inner: *TyDesc) -> bool;
+                        mtbl: uint, inner: *'static TyDesc) -> bool;
 
     fn visit_enter_rec(&self, n_fields: uint,
                        sz: uint, align: uint) -> bool;
-    fn visit_rec_field(&self, i: uint, name: &str,
-                       mtbl: uint, inner: *TyDesc) -> bool;
+    fn visit_rec_field(&self,
+                       i: uint,
+                       name: &str,
+                       mtbl: uint,
+                       inner: *'static TyDesc) -> bool;
     fn visit_leave_rec(&self, n_fields: uint,
                        sz: uint, align: uint) -> bool;
 
     fn visit_enter_class(&self, n_fields: uint,
                          sz: uint, align: uint) -> bool;
-    fn visit_class_field(&self, i: uint, name: &str,
-                         mtbl: uint, inner: *TyDesc) -> bool;
+    fn visit_class_field(&self,
+                         i: uint,
+                         name: &str,
+                         mtbl: uint,
+                         inner: *'static TyDesc) -> bool;
     fn visit_leave_class(&self, n_fields: uint,
                          sz: uint, align: uint) -> bool;
 
     fn visit_enter_tup(&self, n_fields: uint,
                        sz: uint, align: uint) -> bool;
-    fn visit_tup_field(&self, i: uint, inner: *TyDesc) -> bool;
+    fn visit_tup_field(&self, i: uint, inner: *'static TyDesc) -> bool;
     fn visit_leave_tup(&self, n_fields: uint,
                        sz: uint, align: uint) -> bool;
 
@@ -126,7 +132,7 @@ pub trait TyVisitor {
                                 disr_val: int,
                                 n_fields: uint,
                                 name: &str) -> bool;
-    fn visit_enum_variant_field(&self, i: uint, offset: uint, inner: *TyDesc) -> bool;
+    fn visit_enum_variant_field(&self, i: uint, offset: uint, inner: *'static TyDesc) -> bool;
     fn visit_leave_enum_variant(&self, variant: uint,
                                 disr_val: int,
                                 n_fields: uint,
@@ -137,8 +143,8 @@ pub trait TyVisitor {
 
     fn visit_enter_fn(&self, purity: uint, proto: uint,
                       n_inputs: uint, retstyle: uint) -> bool;
-    fn visit_fn_input(&self, i: uint, mode: uint, inner: *TyDesc) -> bool;
-    fn visit_fn_output(&self, retstyle: uint, inner: *TyDesc) -> bool;
+    fn visit_fn_input(&self, i: uint, mode: uint, inner: *'static TyDesc) -> bool;
+    fn visit_fn_output(&self, retstyle: uint, inner: *'static TyDesc) -> bool;
     fn visit_leave_fn(&self, purity: uint, proto: uint,
                       n_inputs: uint, retstyle: uint) -> bool;
 
@@ -149,7 +155,7 @@ pub trait TyVisitor {
     fn visit_self(&self) -> bool;
     fn visit_type(&self) -> bool;
     fn visit_opaque_box(&self) -> bool;
-    fn visit_constr(&self, inner: *TyDesc) -> bool;
+    fn visit_constr(&self, inner: *'static TyDesc) -> bool;
     fn visit_closure_ptr(&self, ck: uint) -> bool;
 }
 
@@ -280,7 +286,7 @@ extern "rust-intrinsic" {
     pub fn pref_align_of<T>() -> uint;
 
     /// Get a static pointer to a type descriptor.
-    pub fn get_tydesc<T>() -> *TyDesc;
+    pub fn get_tydesc<T>() -> *'static TyDesc;
 
     /// Create a value initialized to zero.
     ///
@@ -305,33 +311,33 @@ extern "rust-intrinsic" {
     /// Returns `true` if a type is managed (will be allocated on the local heap)
     pub fn contains_managed<T>() -> bool;
 
-    pub fn visit_tydesc(td: *TyDesc, tv: @TyVisitor);
+    pub fn visit_tydesc(td: *'static TyDesc, tv: @TyVisitor);
 
-    pub fn frame_address(f: &once fn(*u8));
+    pub fn frame_address(f: &once fn(*'static u8));
 
     /// Get the address of the `__morestack` stack growth function.
-    pub fn morestack_addr() -> *();
+    pub fn morestack_addr() -> *'static ();
 
     /// Equivalent to the `llvm.memcpy.p0i8.0i8.i32` intrinsic, with a size of
     /// `count` * `size_of::<T>()` and an alignment of `min_align_of::<T>()`
-    pub fn memcpy32<T>(dst: *mut T, src: *T, count: u32);
+    pub fn memcpy32<T>(dst: *'static mut T, src: *'static T, count: u32);
     /// Equivalent to the `llvm.memcpy.p0i8.0i8.i64` intrinsic, with a size of
     /// `count` * `size_of::<T>()` and an alignment of `min_align_of::<T>()`
-    pub fn memcpy64<T>(dst: *mut T, src: *T, count: u64);
+    pub fn memcpy64<T>(dst: *'static mut T, src: *'static T, count: u64);
 
     /// Equivalent to the `llvm.memmove.p0i8.0i8.i32` intrinsic, with a size of
     /// `count` * `size_of::<T>()` and an alignment of `min_align_of::<T>()`
-    pub fn memmove32<T>(dst: *mut T, src: *T, count: u32);
+    pub fn memmove32<T>(dst: *'static mut T, src: *'static T, count: u32);
     /// Equivalent to the `llvm.memmove.p0i8.0i8.i64` intrinsic, with a size of
     /// `count` * `size_of::<T>()` and an alignment of `min_align_of::<T>()`
-    pub fn memmove64<T>(dst: *mut T, src: *T, count: u64);
+    pub fn memmove64<T>(dst: *'static mut T, src: *'static T, count: u64);
 
     /// Equivalent to the `llvm.memset.p0i8.i32` intrinsic, with a size of
     /// `count` * `size_of::<T>()` and an alignment of `min_align_of::<T>()`
-    pub fn memset32<T>(dst: *mut T, val: u8, count: u32);
+    pub fn memset32<T>(dst: *'static mut T, val: u8, count: u32);
     /// Equivalent to the `llvm.memset.p0i8.i64` intrinsic, with a size of
     /// `count` * `size_of::<T>()` and an alignment of `min_align_of::<T>()`
-    pub fn memset64<T>(dst: *mut T, val: u8, count: u64);
+    pub fn memset64<T>(dst: *'static mut T, val: u8, count: u64);
 
     pub fn sqrtf32(x: f32) -> f32;
     pub fn sqrtf64(x: f64) -> f64;

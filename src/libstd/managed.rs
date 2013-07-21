@@ -23,9 +23,9 @@ pub mod raw {
     #[allow(missing_doc)]
     pub struct BoxHeaderRepr {
         ref_count: uint,
-        type_desc: *TyDesc,
-        prev: *BoxRepr,
-        next: *BoxRepr,
+        type_desc: *'static TyDesc,
+        prev: *'static BoxRepr,
+        next: *'static BoxRepr,
     }
 
     #[allow(missing_doc)]

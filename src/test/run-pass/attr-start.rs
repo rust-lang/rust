@@ -11,6 +11,6 @@
 //xfail-fast
 
 #[start]
-fn start(argc:int, argv: **u8, crate_map: *u8) -> int {
+fn start(argc:int, argv: *'static *'static u8, crate_map: *'static u8) -> int {
     return 0;
 }

@@ -194,41 +194,41 @@ pub enum AsmDialect {
 
 // Opaque pointer types
 pub enum Module_opaque {}
-pub type ModuleRef = *Module_opaque;
+pub type ModuleRef = *'static Module_opaque;
 pub enum Context_opaque {}
-pub type ContextRef = *Context_opaque;
+pub type ContextRef = *'static Context_opaque;
 pub enum Type_opaque {}
-pub type TypeRef = *Type_opaque;
+pub type TypeRef = *'static Type_opaque;
 pub enum Value_opaque {}
-pub type ValueRef = *Value_opaque;
+pub type ValueRef = *'static Value_opaque;
 pub enum BasicBlock_opaque {}
-pub type BasicBlockRef = *BasicBlock_opaque;
+pub type BasicBlockRef = *'static BasicBlock_opaque;
 pub enum Builder_opaque {}
-pub type BuilderRef = *Builder_opaque;
+pub type BuilderRef = *'static Builder_opaque;
 pub enum ExecutionEngine_opaque {}
-pub type ExecutionEngineRef = *ExecutionEngine_opaque;
+pub type ExecutionEngineRef = *'static ExecutionEngine_opaque;
 pub enum MemoryBuffer_opaque {}
-pub type MemoryBufferRef = *MemoryBuffer_opaque;
+pub type MemoryBufferRef = *'static MemoryBuffer_opaque;
 pub enum PassManager_opaque {}
-pub type PassManagerRef = *PassManager_opaque;
+pub type PassManagerRef = *'static PassManager_opaque;
 pub enum PassManagerBuilder_opaque {}
-pub type PassManagerBuilderRef = *PassManagerBuilder_opaque;
+pub type PassManagerBuilderRef = *'static PassManagerBuilder_opaque;
 pub enum Use_opaque {}
-pub type UseRef = *Use_opaque;
+pub type UseRef = *'static Use_opaque;
 pub enum TargetData_opaque {}
-pub type TargetDataRef = *TargetData_opaque;
+pub type TargetDataRef = *'static TargetData_opaque;
 pub enum ObjectFile_opaque {}
-pub type ObjectFileRef = *ObjectFile_opaque;
+pub type ObjectFileRef = *'static ObjectFile_opaque;
 pub enum SectionIterator_opaque {}
-pub type SectionIteratorRef = *SectionIterator_opaque;
+pub type SectionIteratorRef = *'static SectionIterator_opaque;
 pub enum Pass_opaque {}
-pub type PassRef = *Pass_opaque;
+pub type PassRef = *'static Pass_opaque;
 
 pub mod debuginfo {
     use super::{ValueRef};
 
     pub enum DIBuilder_opaque {}
-    pub type DIBuilderRef = *DIBuilder_opaque;
+    pub type DIBuilderRef = *'static DIBuilder_opaque;
 
     pub type DIDescriptor = ValueRef;
     pub type DIScope = DIDescriptor;

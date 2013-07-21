@@ -16,7 +16,7 @@ use rt::uv::{Watcher, Loop, NativeHandle, AsyncCallback, NullCallback};
 use rt::uv::WatcherInterop;
 use rt::uv::status_to_maybe_uv_error;
 
-pub struct AsyncWatcher(*uvll::uv_async_t);
+pub struct AsyncWatcher(*'static uvll::uv_async_t);
 impl Watcher for AsyncWatcher { }
 
 impl AsyncWatcher {
@@ -32,7 +32,7 @@ impl AsyncWatcher {
             return watcher;
         }
 
-        extern fn async_cb(handle: *uvll::uv_async_t, status: c_int) {
+        extern fn async_cb(handle: *'static uvll::uv_async_t, status: c_int) {
             let mut watcher: AsyncWatcher = NativeHandle::from_native_handle(handle);
             let status = status_to_maybe_uv_error(watcher.native_handle(), status);
             let data = watcher.get_watcher_data();
@@ -58,7 +58,7 @@ impl AsyncWatcher {
             uvll::close(self.native_handle(), close_cb);
         }
 
-        extern fn close_cb(handle: *uvll::uv_stream_t) {
+        extern fn close_cb(handle: *'static uvll::uv_stream_t) {
             let mut watcher: AsyncWatcher = NativeHandle::from_native_handle(handle);
             {
                 let data = watcher.get_watcher_data();
@@ -70,8 +70,8 @@ impl AsyncWatcher {
     }
 }
 
-impl NativeHandle<*uvll::uv_async_t> for AsyncWatcher {
-    fn from_native_handle(handle: *uvll::uv_async_t) -> AsyncWatcher {
+impl NativeHandle<*'static uvll::uv_async_t> for AsyncWatcher {
+    fn from_native_handle(handle: *'static uvll::uv_async_t) -> AsyncWatcher {
         AsyncWatcher(handle)
     }
     fn native_handle(&self) -> *uvll::uv_async_t {

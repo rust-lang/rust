@@ -46,7 +46,7 @@ impl Seek for FileDesc {
     fn seek(&mut self, _pos: i64, _style: SeekStyle) { fail!() }
 }
 
-pub struct CFile(*FILE);
+pub struct CFile(*'static FILE);
 
 impl CFile {
     /// Create a `CFile` from an open `FILE` pointer.

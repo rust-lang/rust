@@ -31,7 +31,7 @@ extern "rust-intrinsic" {
 }
 
 #[start]
-fn main(_: int, _: **u8, _: *u8) -> int {
+fn main(_: int, _: *'static *'static u8, _: *'static u8) -> int {
     unsafe {
         let (ptr, _): (*u8, uint) = transmute("Hello!");
         puts(ptr);

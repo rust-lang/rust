@@ -117,12 +117,12 @@ enum VariantState {
 }
 
 pub struct ReprVisitor {
-    ptr: @mut *c_void,
-    ptr_stk: @mut ~[*c_void],
+    ptr: @mut *'static c_void,
+    ptr_stk: @mut ~[*'static c_void],
     var_stk: @mut ~[VariantState],
     writer: @Writer
 }
-pub fn ReprVisitor(ptr: *c_void, writer: @Writer) -> ReprVisitor {
+pub fn ReprVisitor(ptr: *'static c_void, writer: @Writer) -> ReprVisitor {
     ReprVisitor {
         ptr: @mut ptr,
         ptr_stk: @mut ~[],
@@ -156,12 +156,12 @@ impl ReprVisitor {
     }
 
     #[inline]
-    pub fn visit_inner(&self, inner: *TyDesc) -> bool {
+    pub fn visit_inner(&self, inner: *'static TyDesc) -> bool {
         self.visit_ptr_inner(*self.ptr, inner)
     }
 
     #[inline]
-    pub fn visit_ptr_inner(&self, ptr: *c_void, inner: *TyDesc) -> bool {
+    pub fn visit_ptr_inner(&self, ptr: *'static c_void, inner: *'static TyDesc) -> bool {
         unsafe {
             let u = ReprVisitor(ptr, self.writer);
             let v = reflect::MovePtrAdaptor(u);
@@ -200,7 +200,7 @@ impl ReprVisitor {
                            _mtbl: uint,
                            ptr: *u8,
                            len: uint,
-                           inner: *TyDesc)
+                           inner: *'static TyDesc)
                            -> bool {
         let mut p = ptr;
         let (sz, al) = unsafe { ((*inner).size, (*inner).align) };
@@ -226,7 +226,7 @@ impl ReprVisitor {
     pub fn write_unboxed_vec_repr(&self,
                                   mtbl: uint,
                                   v: &UnboxedVecRepr,
-                                  inner: *TyDesc)
+                                  inner: *'static TyDesc)
                                   -> bool {
         self.write_vec_range(mtbl, ptr::to_unsafe_ptr(&v.data),
                              v.fill, inner)
@@ -286,7 +286,7 @@ impl TyVisitor for ReprVisitor {
     fn visit_estr_fixed(&self, _n: uint, _sz: uint,
                         _align: uint) -> bool { fail!(); }
 
-    fn visit_box(&self, mtbl: uint, inner: *TyDesc) -> bool {
+    fn visit_box(&self, mtbl: uint, inner: *'static TyDesc) -> bool {
         self.writer.write_char('@');
         self.write_mut_qualifier(mtbl);
         do self.get::<&managed::raw::BoxRepr> |b| {
@@ -295,14 +295,14 @@ impl TyVisitor for ReprVisitor {
         }
     }
 
-    fn visit_uniq(&self, _mtbl: uint, inner: *TyDesc) -> bool {
+    fn visit_uniq(&self, _mtbl: uint, inner: *'static TyDesc) -> bool {
         self.writer.write_char('~');
         do self.get::<*c_void> |b| {
             self.visit_ptr_inner(*b, inner);
         }
     }
 
-    fn visit_uniq_managed(&self, _mtbl: uint, inner: *TyDesc) -> bool {
+    fn visit_uniq_managed(&self, _mtbl: uint, inner: *'static TyDesc) -> bool {
         self.writer.write_char('~');
         do self.get::<&managed::raw::BoxRepr> |b| {
             let p = ptr::to_unsafe_ptr(&b.data) as *c_void;
@@ -310,14 +310,14 @@ impl TyVisitor for ReprVisitor {
         }
     }
 
-    fn visit_ptr(&self, _mtbl: uint, _inner: *TyDesc) -> bool {
+    fn visit_ptr(&self, _mtbl: uint, _inner: *'static TyDesc) -> bool {
         do self.get::<*c_void> |p| {
             self.writer.write_str(fmt!("(0x%x as *())",
                                        *p as uint));
         }
     }
 
-    fn visit_rptr(&self, mtbl: uint, inner: *TyDesc) -> bool {
+    fn visit_rptr(&self, mtbl: uint, inner: *'static TyDesc) -> bool {
         self.writer.write_char('&');
         self.write_mut_qualifier(mtbl);
         do self.get::<*c_void> |p| {
@@ -326,16 +326,16 @@ impl TyVisitor for ReprVisitor {
     }
 
     // Type no longer exists, vestigial function.
-    fn visit_vec(&self, _mtbl: uint, _inner: *TyDesc) -> bool { fail!(); }
+    fn visit_vec(&self, _mtbl: uint, _inner: *'static TyDesc) -> bool { fail!(); }
 
 
-    fn visit_unboxed_vec(&self, mtbl: uint, inner: *TyDesc) -> bool {
+    fn visit_unboxed_vec(&self, mtbl: uint, inner: *'static TyDesc) -> bool {
         do self.get::<vec::UnboxedVecRepr> |b| {
             self.write_unboxed_vec_repr(mtbl, b, inner);
         }
     }
 
-    fn visit_evec_box(&self, mtbl: uint, inner: *TyDesc) -> bool {
+    fn visit_evec_box(&self, mtbl: uint, inner: *'static TyDesc) -> bool {
         do self.get::<&VecRepr> |b| {
             self.writer.write_char('@');
             self.write_mut_qualifier(mtbl);
@@ -343,21 +343,21 @@ impl TyVisitor for ReprVisitor {
         }
     }
 
-    fn visit_evec_uniq(&self, mtbl: uint, inner: *TyDesc) -> bool {
+    fn visit_evec_uniq(&self, mtbl: uint, inner: *'static TyDesc) -> bool {
         do self.get::<&UnboxedVecRepr> |b| {
             self.writer.write_char('~');
             self.write_unboxed_vec_repr(mtbl, *b, inner);
         }
     }
 
-    fn visit_evec_uniq_managed(&self, mtbl: uint, inner: *TyDesc) -> bool {
+    fn visit_evec_uniq_managed(&self, mtbl: uint, inner: *'static TyDesc) -> bool {
         do self.get::<&VecRepr> |b| {
             self.writer.write_char('~');
             self.write_unboxed_vec_repr(mtbl, &b.unboxed, inner);
         }
     }
 
-    fn visit_evec_slice(&self, mtbl: uint, inner: *TyDesc) -> bool {
+    fn visit_evec_slice(&self, mtbl: uint, inner: *'static TyDesc) -> bool {
         do self.get::<SliceRepr> |s| {
             self.writer.write_char('&');
             self.write_vec_range(mtbl, s.data, s.len, inner);
@@ -365,7 +365,7 @@ impl TyVisitor for ReprVisitor {
     }
 
     fn visit_evec_fixed(&self, _n: uint, sz: uint, _align: uint,
-                        mtbl: uint, inner: *TyDesc) -> bool {
+                        mtbl: uint, inner: *'static TyDesc) -> bool {
         do self.get::<u8> |b| {
             self.write_vec_range(mtbl, ptr::to_unsafe_ptr(b), sz, inner);
         }
@@ -377,8 +377,11 @@ impl TyVisitor for ReprVisitor {
         true
     }
 
-    fn visit_rec_field(&self, i: uint, name: &str,
-                       mtbl: uint, inner: *TyDesc) -> bool {
+    fn visit_rec_field(&self,
+                       i: uint,
+                       name: &str,
+                       mtbl: uint,
+                       inner: *'static TyDesc) -> bool {
         if i != 0 {
             self.writer.write_str(", ");
         }
@@ -400,8 +403,11 @@ impl TyVisitor for ReprVisitor {
         self.writer.write_char('{');
         true
     }
-    fn visit_class_field(&self, i: uint, name: &str,
-                         mtbl: uint, inner: *TyDesc) -> bool {
+    fn visit_class_field(&self,
+                         i: uint,
+                         name: &str,
+                         mtbl: uint,
+                         inner: *'static TyDesc) -> bool {
         if i != 0 {
             self.writer.write_str(", ");
         }
@@ -422,7 +428,7 @@ impl TyVisitor for ReprVisitor {
         self.writer.write_char('(');
         true
     }
-    fn visit_tup_field(&self, i: uint, inner: *TyDesc) -> bool {
+    fn visit_tup_field(&self, i: uint, inner: *'static TyDesc) -> bool {
         if i != 0 {
             self.writer.write_str(", ");
         }
@@ -440,7 +446,7 @@ impl TyVisitor for ReprVisitor {
 
     fn visit_enter_enum(&self,
                         _n_variants: uint,
-                        get_disr: extern unsafe fn(ptr: *Opaque) -> int,
+                        get_disr: extern unsafe fn(ptr: *'static Opaque) -> int,
                         _sz: uint,
                         _align: uint) -> bool {
         let var_stk: &mut ~[VariantState] = self.var_stk;
@@ -482,7 +488,7 @@ impl TyVisitor for ReprVisitor {
     fn visit_enum_variant_field(&self,
                                 i: uint,
                                 _offset: uint,
-                                inner: *TyDesc)
+                                inner: *'static TyDesc)
                                 -> bool {
         match self.var_stk[self.var_stk.len() - 1] {
             Matched => {
@@ -515,7 +521,7 @@ impl TyVisitor for ReprVisitor {
 
     fn visit_leave_enum(&self,
                         _n_variants: uint,
-                        _get_disr: extern unsafe fn(ptr: *Opaque) -> int,
+                        _get_disr: extern unsafe fn(ptr: *'static Opaque) -> int,
                         _sz: uint,
                         _align: uint)
                         -> bool {
@@ -528,10 +534,10 @@ impl TyVisitor for ReprVisitor {
 
     fn visit_enter_fn(&self, _purity: uint, _proto: uint,
                       _n_inputs: uint, _retstyle: uint) -> bool { true }
-    fn visit_fn_input(&self, _i: uint, _mode: uint, _inner: *TyDesc) -> bool {
+    fn visit_fn_input(&self, _i: uint, _mode: uint, _inner: *'static TyDesc) -> bool {
         true
     }
-    fn visit_fn_output(&self, _retstyle: uint, _inner: *TyDesc) -> bool {
+    fn visit_fn_output(&self, _retstyle: uint, _inner: *'static TyDesc) -> bool {
         true
     }
     fn visit_leave_fn(&self, _purity: uint, _proto: uint,
@@ -554,7 +560,7 @@ impl TyVisitor for ReprVisitor {
     }
 
     // Type no longer exists, vestigial function.
-    fn visit_constr(&self, _inner: *TyDesc) -> bool { fail!(); }
+    fn visit_constr(&self, _inner: *'static TyDesc) -> bool { fail!(); }
 
     fn visit_closure_ptr(&self, _ck: uint) -> bool { true }
 }

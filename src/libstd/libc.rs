@@ -776,15 +776,15 @@ pub mod types {
                     __unused1: c_int,
                     gl_offs:   size_t,
                     __unused2: c_int,
-                    gl_pathv:  **c_char,
+                    gl_pathv:  *'static *'static c_char,
 
-                    __unused3: *c_void,
+                    __unused3: *'static c_void,
 
-                    __unused4: *c_void,
-                    __unused5: *c_void,
-                    __unused6: *c_void,
-                    __unused7: *c_void,
-                    __unused8: *c_void,
+                    __unused4: *'static c_void,
+                    __unused5: *'static c_void,
+                    __unused6: *'static c_void,
+                    __unused7: *'static c_void,
+                    __unused8: *'static c_void,
                 }
             }
         }
@@ -2011,7 +2011,7 @@ pub mod consts {
             pub static MAP_FIXED : c_int = 0x0010;
             pub static MAP_ANON : c_int = 0x1000;
 
-            pub static MAP_FAILED : *c_void = -1 as *c_void;
+            pub static MAP_FAILED : *'static c_void = -1 as *'static c_void;
 
             pub static MCL_CURRENT : c_int = 0x0001;
             pub static MCL_FUTURE : c_int = 0x0002;

@@ -38,7 +38,7 @@ pub struct DList<T> {
 }
 
 type Link<T> = Option<~Node<T>>;
-struct Rawlink<T> { priv p: *mut T }
+struct Rawlink<T> { priv p: *'static mut T }
 
 struct Node<T> {
     priv next: Link<T>,

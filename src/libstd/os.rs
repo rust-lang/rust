@@ -1188,7 +1188,7 @@ pub fn real_args() -> ~[~str] {
     return args;
 }
 
-type LPCWSTR = *u16;
+type LPCWSTR = *'static u16;
 
 #[cfg(windows)]
 #[link_name="kernel32"]
@@ -1354,13 +1354,13 @@ pub fn page_size() -> uint {
 }
 
 pub struct MemoryMap {
-    data: *mut u8,
+    data: *'static mut u8,
     len: size_t,
     kind: MemoryMapKind
 }
 
 pub enum MemoryMapKind {
-    MapFile(*c_void),
+    MapFile(*'static c_void),
     MapVirtual
 }
 
@@ -1368,7 +1368,7 @@ pub enum MapOption {
     MapReadable,
     MapWritable,
     MapExecutable,
-    MapAddr(*c_void),
+    MapAddr(*'static c_void),
     MapFd(c_int),
     MapOffset(uint)
 }

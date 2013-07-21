@@ -16,7 +16,7 @@ type raw_thread = libc::c_void;
 
 pub struct Thread {
     main: ~fn(),
-    raw_thread: *raw_thread
+    raw_thread: *'static raw_thread
 }
 
 impl Thread {

@@ -12,7 +12,7 @@ use std::str;
 
 static a: [u8, ..3] = ['h' as u8, 'i' as u8, 0 as u8];
 static c: &'static [u8, ..3] = &a;
-static b: *u8 = c as *u8;
+static b: *'static u8 = c as *'static u8;
 
 pub fn main() {
     let foo = &a as *u8;

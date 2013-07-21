@@ -37,7 +37,7 @@ struct RcBox<T> {
 #[unsafe_no_drop_flag]
 #[no_send]
 pub struct Rc<T> {
-    priv ptr: *mut RcBox<T>,
+    priv ptr: *'static mut RcBox<T>,
 }
 
 impl<T> Rc<T> {
@@ -170,7 +170,7 @@ struct RcMutBox<T> {
 #[no_freeze]
 #[unsafe_no_drop_flag]
 pub struct RcMut<T> {
-    priv ptr: *mut RcMutBox<T>,
+    priv ptr: *'static mut RcMutBox<T>,
 }
 
 impl<T> RcMut<T> {

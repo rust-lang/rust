@@ -75,11 +75,11 @@ struct AminoAcid {
 
 struct RepeatFasta {
     alu: &'static str,
-    stdout: *FILE,
+    stdout: *'static FILE,
 }
 
 impl RepeatFasta {
-    fn new(stdout: *FILE, alu: &'static str) -> RepeatFasta {
+    fn new(stdout: *'static FILE, alu: &'static str) -> RepeatFasta {
         RepeatFasta {
             alu: alu,
             stdout: stdout,
@@ -118,12 +118,12 @@ impl RepeatFasta {
 
 struct RandomFasta {
     seed: u32,
-    stdout: *FILE,
+    stdout: *'static FILE,
     lookup: [AminoAcid, ..LOOKUP_SIZE],
 }
 
 impl RandomFasta {
-    fn new(stdout: *FILE, a: &[AminoAcid]) -> RandomFasta {
+    fn new(stdout: *'static FILE, a: &[AminoAcid]) -> RandomFasta {
         RandomFasta {
             seed: 42,
             stdout: stdout,

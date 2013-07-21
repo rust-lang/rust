@@ -272,7 +272,7 @@ fn check_poison(is_mutex: bool, failed: bool) {
 
 #[doc(hidden)]
 struct PoisonOnFail {
-    failed: *mut bool,
+    failed: *'static mut bool,
 }
 
 impl Drop for PoisonOnFail {

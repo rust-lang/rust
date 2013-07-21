@@ -47,8 +47,8 @@ pub unsafe fn buf_len<T>(buf: **T) -> uint {
     position(buf, |i| *i == null())
 }
 
-impl<T> Clone for *T {
-    fn clone(&self) -> *T {
+impl<T> Clone for *'static T {
+    fn clone(&self) -> *'static T {
         *self
     }
 }
@@ -65,7 +65,7 @@ pub unsafe fn position<T>(buf: *T, f: &fn(&T) -> bool) -> uint {
 
 /// Create an unsafe null pointer
 #[inline]
-pub fn null<T>() -> *T { 0 as *T }
+pub fn null<T>() -> *'static T { 0 as *T }
 
 /// Create an unsafe mutable null pointer
 #[inline]
@@ -87,8 +87,8 @@ pub fn is_not_null<T>(ptr: *const T) -> bool { !is_null(ptr) }
  */
 #[inline]
 #[cfg(target_word_size = "32")]
-pub unsafe fn copy_memory<T>(dst: *mut T, src: *const T, count: uint) {
-    intrinsics::memmove32(dst, src as *T, count as u32);
+pub unsafe fn copy_memory<T>(dst: *'static mut T, src: *'static const T, count: uint) {
+    intrinsics::memmove32(dst, src as *'static T, count as u32);
 }
 
 /**
@@ -99,8 +99,8 @@ pub unsafe fn copy_memory<T>(dst: *mut T, src: *const T, count: uint) {
  */
 #[inline]
 #[cfg(target_word_size = "64")]
-pub unsafe fn copy_memory<T>(dst: *mut T, src: *const T, count: uint) {
-    intrinsics::memmove64(dst, src as *T, count as u64);
+pub unsafe fn copy_memory<T>(dst: *'static mut T, src: *'static const T, count: uint) {
+    intrinsics::memmove64(dst, src as *'static T, count as u64);
 }
 
 /**
@@ -111,8 +111,10 @@ pub unsafe fn copy_memory<T>(dst: *mut T, src: *const T, count: uint) {
  */
 #[inline]
 #[cfg(target_word_size = "32")]
-pub unsafe fn copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T, count: uint) {
-    intrinsics::memcpy32(dst, src as *T, count as u32);
+pub unsafe fn copy_nonoverlapping_memory<T>(dst: *'static mut T,
+                                            src: *'static const T,
+                                            count: uint) {
+    intrinsics::memcpy32(dst, src as *'static T, count as u32);
 }
 
 /**
@@ -123,8 +125,10 @@ pub unsafe fn copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T, count: u
  */
 #[inline]
 #[cfg(target_word_size = "64")]
-pub unsafe fn copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T, count: uint) {
-    intrinsics::memcpy64(dst, src as *T, count as u64);
+pub unsafe fn copy_nonoverlapping_memory<T>(dst: *'static mut T,
+                                            src: *'static const T,
+                                            count: uint) {
+    intrinsics::memcpy64(dst, src as *'static T, count as u64);
 }
 
 /**
@@ -133,7 +137,7 @@ pub unsafe fn copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T, count: u
  */
 #[inline]
 #[cfg(target_word_size = "32")]
-pub unsafe fn set_memory<T>(dst: *mut T, c: u8, count: uint) {
+pub unsafe fn set_memory<T>(dst: *'static mut T, c: u8, count: uint) {
     intrinsics::memset32(dst, c, count as u32);
 }
 
@@ -143,7 +147,7 @@ pub unsafe fn set_memory<T>(dst: *mut T, c: u8, count: uint) {
  */
 #[inline]
 #[cfg(target_word_size = "64")]
-pub unsafe fn set_memory<T>(dst: *mut T, c: u8, count: uint) {
+pub unsafe fn set_memory<T>(dst: *'static mut T, c: u8, count: uint) {
     intrinsics::memset64(dst, c, count as u64);
 }
 
@@ -151,7 +155,7 @@ pub unsafe fn set_memory<T>(dst: *mut T, c: u8, count: uint) {
  * Zeroes out `count * size_of::<T>` bytes of memory at `dst`
  */
 #[inline]
-pub unsafe fn zero_memory<T>(dst: *mut T, count: uint) {
+pub unsafe fn zero_memory<T>(dst: *'static mut T, count: uint) {
     set_memory(dst, 0, count);
 }
 
@@ -160,7 +164,7 @@ pub unsafe fn zero_memory<T>(dst: *mut T, count: uint) {
  * deinitialising or copying either one.
  */
 #[inline]
-pub unsafe fn swap_ptr<T>(x: *mut T, y: *mut T) {
+pub unsafe fn swap_ptr<T>(x: *'static mut T, y: *'static mut T) {
     // Give ourselves some scratch space to work with
     let mut tmp: T = intrinsics::uninit();
     let t: *mut T = &mut tmp;
@@ -180,7 +184,7 @@ pub unsafe fn swap_ptr<T>(x: *mut T, y: *mut T) {
  * value, without deinitialising or copying either one.
  */
 #[inline]
-pub unsafe fn replace_ptr<T>(dest: *mut T, mut src: T) -> T {
+pub unsafe fn replace_ptr<T>(dest: *'static mut T, mut src: T) -> T {
     swap(cast::transmute(dest), &mut src); // cannot overlap
     src
 }
@@ -189,7 +193,7 @@ pub unsafe fn replace_ptr<T>(dest: *mut T, mut src: T) -> T {
  * Reads the value from `*src` and returns it. Does not copy `*src`.
  */
 #[inline(always)]
-pub unsafe fn read_ptr<T>(src: *mut T) -> T {
+pub unsafe fn read_ptr<T>(src: *'static mut T) -> T {
     let mut tmp: T = intrinsics::uninit();
     copy_nonoverlapping_memory(&mut tmp, src, 1);
     tmp
@@ -200,7 +204,7 @@ pub unsafe fn read_ptr<T>(src: *mut T) -> T {
  * This currently prevents destructors from executing.
  */
 #[inline(always)]
-pub unsafe fn read_and_zero_ptr<T>(dest: *mut T) -> T {
+pub unsafe fn read_and_zero_ptr<T>(dest: *'static mut T) -> T {
     // Copy the data out from `dest`:
     let tmp = read_ptr(dest);
 
@@ -277,7 +281,7 @@ pub trait RawPtr<T> {
 }
 
 /// Extension methods for immutable pointers
-impl<T> RawPtr<T> for *T {
+impl<T> RawPtr<T> for *'static T {
     /// Returns true if the pointer is equal to the null pointer.
     #[inline]
     fn is_null(&self) -> bool { is_null(*self) }
@@ -309,7 +313,7 @@ impl<T> RawPtr<T> for *T {
 }
 
 /// Extension methods for mutable pointers
-impl<T> RawPtr<T> for *mut T {
+impl<T> RawPtr<T> for *'static mut T {
     /// Returns true if the pointer is equal to the null pointer.
     #[inline]
     fn is_null(&self) -> bool { is_null(*self) }
@@ -342,7 +346,7 @@ impl<T> RawPtr<T> for *mut T {
 
 // Equality for pointers
 #[cfg(not(test))]
-impl<T> Eq for *const T {
+impl<T> Eq for *'static const T {
     #[inline]
     fn eq(&self, other: &*const T) -> bool {
         (*self as uint) == (*other as uint)
@@ -353,7 +357,7 @@ impl<T> Eq for *const T {
 
 // Comparison for pointers
 #[cfg(not(test))]
-impl<T> Ord for *const T {
+impl<T> Ord for *'static const T {
     #[inline]
     fn lt(&self, other: &*const T) -> bool {
         (*self as uint) < (*other as uint)
@@ -373,41 +377,41 @@ impl<T> Ord for *const T {
 }
 
 #[cfg(not(test))]
-impl<T, I: Int> Add<I, *T> for *T {
+impl<T, I: Int> Add<I, *'static T> for *'static T {
     /// Add an integer value to a pointer to get an offset pointer.
     /// Is calculated according to the size of the type pointed to.
     #[inline]
-    pub fn add(&self, rhs: &I) -> *T {
+    pub fn add(&self, rhs: &I) -> *'static T {
         self.offset(rhs.to_int() as uint)
     }
 }
 
 #[cfg(not(test))]
-impl<T, I: Int> Sub<I, *T> for *T {
+impl<T, I: Int> Sub<I, *'static T> for *'static T {
     /// Subtract an integer value from a pointer to get an offset pointer.
     /// Is calculated according to the size of the type pointed to.
     #[inline]
-    pub fn sub(&self, rhs: &I) -> *T {
+    pub fn sub(&self, rhs: &I) -> *'static T {
         self.offset(-rhs.to_int() as uint)
     }
 }
 
 #[cfg(not(test))]
-impl<T, I: Int> Add<I, *mut T> for *mut T {
+impl<T, I: Int> Add<I, *'static mut T> for *'static mut T {
     /// Add an integer value to a pointer to get an offset pointer.
     /// Is calculated according to the size of the type pointed to.
     #[inline]
-    pub fn add(&self, rhs: &I) -> *mut T {
+    pub fn add(&self, rhs: &I) -> *'static mut T {
         self.offset(rhs.to_int() as uint)
     }
 }
 
 #[cfg(not(test))]
-impl<T, I: Int> Sub<I, *mut T> for *mut T {
+impl<T, I: Int> Sub<I, *'static mut T> for *'static mut T {
     /// Subtract an integer value from a pointer to get an offset pointer.
     /// Is calculated according to the size of the type pointed to.
     #[inline]
-    pub fn sub(&self, rhs: &I) -> *mut T {
+    pub fn sub(&self, rhs: &I) -> *'static mut T {
         self.offset(-rhs.to_int() as uint)
     }
 }

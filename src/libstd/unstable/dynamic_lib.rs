@@ -22,7 +22,7 @@ use ops::*;
 use option::*;
 use result::*;
 
-pub struct DynamicLibrary { priv handle: *libc::c_void }
+pub struct DynamicLibrary { priv handle: *'static libc::c_void }
 
 impl Drop for DynamicLibrary {
     fn drop(&self) {

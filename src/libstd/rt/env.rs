@@ -20,17 +20,17 @@ pub struct Environment {
     /// The maximum amount of total stack per task before aborting
     max_stack_size: size_t,
     /// The default logging configuration
-    logspec: *c_char,
+    logspec: *'static c_char,
     /// Record and report detailed information about memory leaks
     detailed_leaks: bool,
     /// Seed the random number generator
-    rust_seed: *c_char,
+    rust_seed: *'static c_char,
     /// Poison allocations on free
     poison_on_free: bool,
     /// The argc value passed to main
     argc: c_int,
     /// The argv value passed to main
-    argv: **c_char,
+    argv: *'static *'static c_char,
     /// Print GC debugging info (true if env var RUST_DEBUG_MEM is set)
     debug_mem: bool,
     /// Print GC debugging info (true if env var RUST_DEBUG_BORROW is set)

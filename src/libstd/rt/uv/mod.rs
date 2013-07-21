@@ -75,7 +75,7 @@ pub mod async;
 /// with dtors may not be destructured, but tuple structs can,
 /// but the results are not correct.
 pub struct Loop {
-    handle: *uvll::uv_loop_t
+    handle: *'static uvll::uv_loop_t
 }
 
 /// The trait implemented by uv 'watchers' (handles). Watchers are
@@ -110,8 +110,8 @@ impl Loop {
     }
 }
 
-impl NativeHandle<*uvll::uv_loop_t> for Loop {
-    fn from_native_handle(handle: *uvll::uv_loop_t) -> Loop {
+impl NativeHandle<*'static uvll::uv_loop_t> for Loop {
+    fn from_native_handle(handle: *'static uvll::uv_loop_t) -> Loop {
         Loop { handle: handle }
     }
     fn native_handle(&self) -> *uvll::uv_loop_t {
@@ -153,7 +153,7 @@ pub trait WatcherInterop {
     fn drop_watcher_data(&mut self);
 }
 
-impl<H, W: Watcher + NativeHandle<*H>> WatcherInterop for W {
+impl<H, W: Watcher + NativeHandle<*'static H>> WatcherInterop for W {
     /// Get the uv event loop from a Watcher
     pub fn event_loop(&self) -> Loop {
         unsafe {
@@ -241,7 +241,7 @@ fn error_smoke_test() {
     assert_eq!(err.to_str(), ~"EOF: end of file");
 }
 
-pub fn last_uv_error<H, W: Watcher + NativeHandle<*H>>(watcher: &W) -> UvError {
+pub fn last_uv_error<H, W: Watcher + NativeHandle<*'static H>>(watcher: &W) -> UvError {
     unsafe {
         let loop_ = watcher.event_loop();
         UvError(uvll::last_error(loop_.native_handle()))
@@ -314,7 +314,7 @@ pub fn vec_to_uv_buf(v: ~[u8]) -> Buf {
         let data = malloc(v.len() as size_t) as *u8;
         assert!(data.is_not_null());
         do v.as_imm_buf |b, l| {
-            let data = data as *mut u8;
+            let data = data as *'static mut u8;
             ptr::copy_memory(data, b, l)
         }
         uvll::buf_init(data, v.len())

@@ -10,11 +10,11 @@
 
 extern fn foopy() {}
 
-static f: *u8 = foopy;
+static f: *'static u8 = foopy;
 static s: S = S { f: foopy };
 
 struct S {
-    f: *u8
+    f: *'static u8
 }
 
 pub fn main() {

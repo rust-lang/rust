@@ -717,7 +717,7 @@ pub trait ImmutableVector<'self, T> {
 
     fn map<U>(&self, &fn(t: &T) -> U) -> ~[U];
 
-    fn as_imm_buf<U>(&self, f: &fn(*T, uint) -> U) -> U;
+    fn as_imm_buf<U>(&self, f: &fn(*'static T, uint) -> U) -> U;
 }
 
 /// Extension methods for vectors
@@ -995,14 +995,14 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
     #[inline]
     fn as_imm_buf<U>(&self,
                      /* NB---this CANNOT be const, see below */
-                     f: &fn(*T, uint) -> U) -> U {
+                     f: &fn(*'static T, uint) -> U) -> U {
         // NB---Do not change the type of s to `&const [T]`.  This is
         // unsound.  The reason is that we are going to create immutable pointers
         // into `s` and pass them to `f()`, but in fact they are potentially
         // pointing at *mutable memory*.  Use `as_mut_buf` instead!
 
         unsafe {
-            let v : *(*T,uint) = transmute(self);
+            let v : *'static (*'static T, uint) = transmute(self);
             let (buf,len) = *v;
             f(buf, len / sys::nonzero_size_of::<T>())
         }
@@ -1691,7 +1691,7 @@ pub trait MutableVector<'self, T> {
     unsafe fn unsafe_mut_ref(&self, index: uint) -> *mut T;
     unsafe fn unsafe_set(&self, index: uint, val: T);
 
-    fn as_mut_buf<U>(&self, f: &fn(*mut T, uint) -> U) -> U;
+    fn as_mut_buf<U>(&self, f: &fn(*'static mut T, uint) -> U) -> U;
 }
 
 impl<'self,T> MutableVector<'self, T> for &'self mut [T] {
@@ -1783,9 +1783,9 @@ impl<'self,T> MutableVector<'self, T> for &'self mut [T] {
 
     /// Similar to `as_imm_buf` but passing a `*mut T`
     #[inline]
-    fn as_mut_buf<U>(&self, f: &fn(*mut T, uint) -> U) -> U {
+    fn as_mut_buf<U>(&self, f: &fn(*'static mut T, uint) -> U) -> U {
         unsafe {
-            let v : *(*mut T,uint) = transmute(self);
+            let v : *'static (*'static mut T, uint) = transmute(self);
             let (buf,len) = *v;
             f(buf, len / sys::nonzero_size_of::<T>())
         }
@@ -1819,7 +1819,7 @@ impl<'self, T:Clone> MutableCloneableVector<T> for &'self mut [T] {
 * * elts - The number of elements in the buffer
 */
 // Wrapper for fn in raw: needs to be called by net_tcp::on_tcp_read_cb
-pub unsafe fn from_buf<T>(ptr: *T, elts: uint) -> ~[T] {
+pub unsafe fn from_buf<T>(ptr: *'static T, elts: uint) -> ~[T] {
     raw::from_buf_raw(ptr, elts)
 }
 
@@ -1853,7 +1853,7 @@ pub mod raw {
     /// The internal representation of a slice
     pub struct SliceRepr {
         /// Pointer to the base of this slice
-        data: *u8,
+        data: *'static u8,
         /// The length of the slice
         len: uint
     }
@@ -1886,16 +1886,16 @@ pub mod raw {
      * would also make any pointers to it invalid.
      */
     #[inline]
-    pub fn to_ptr<T>(v: &[T]) -> *T {
+    pub fn to_ptr<T>(v: &[T]) -> *'static T {
         unsafe {
-            let repr: **SliceRepr = transmute(&v);
+            let repr: *'static *'static SliceRepr = transmute(&v);
             transmute(&((**repr).data))
         }
     }
 
     /** see `to_ptr()` */
     #[inline]
-    pub fn to_mut_ptr<T>(v: &mut [T]) -> *mut T {
+    pub fn to_mut_ptr<T>(v: &mut [T]) -> *'static mut T {
         unsafe {
             let repr: **SliceRepr = transmute(&v);
             transmute(&((**repr).data))
@@ -1960,7 +1960,7 @@ pub mod raw {
     */
     // Was in raw, but needs to be called by net_tcp::on_tcp_read_cb
     #[inline]
-    pub unsafe fn from_buf_raw<T>(ptr: *T, elts: uint) -> ~[T] {
+    pub unsafe fn from_buf_raw<T>(ptr: *'static T, elts: uint) -> ~[T] {
         let mut dst = with_capacity(elts);
         set_len(&mut dst, elts);
         dst.as_mut_buf(|p_dst, _len_dst| ptr::copy_memory(p_dst, ptr, elts));
@@ -2148,8 +2148,8 @@ macro_rules! double_ended_iterator {
 //iterator!{struct VecIterator -> *T, &'self T}
 /// An iterator for iterating over a vector.
 pub struct VecIterator<'self, T> {
-    priv ptr: *T,
-    priv end: *T,
+    priv ptr: *'static T,
+    priv end: *'static T,
     priv lifetime: &'self T // FIXME: #5922
 }
 iterator!{impl VecIterator -> &'self T}
@@ -2163,8 +2163,8 @@ impl<'self, T> Clone for VecIterator<'self, T> {
 //iterator!{struct VecMutIterator -> *mut T, &'self mut T}
 /// An iterator for mutating the elements of a vector.
 pub struct VecMutIterator<'self, T> {
-    priv ptr: *mut T,
-    priv end: *mut T,
+    priv ptr: *'static mut T,
+    priv end: *'static mut T,
     priv lifetime: &'self mut T // FIXME: #5922
 }
 iterator!{impl VecMutIterator -> &'self mut T}

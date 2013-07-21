@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn f(a: *int) -> *int { return a; }
+fn f(a: *'static int) -> *'static int { a }
 
-fn g(a: *int) -> *int { let b = f(a); return b; }
+fn g(a: *'static int) -> *'static int { let b = f(a); b }
 
-pub fn main() { return; }
+pub fn main() { }

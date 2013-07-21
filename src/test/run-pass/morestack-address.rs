@@ -12,7 +12,7 @@ mod rusti {
     #[nolink]
     #[abi = "rust-intrinsic"]
     extern "rust-intrinsic" {
-        pub fn morestack_addr() -> *();
+        pub fn morestack_addr() -> *'static ();
     }
 }
 

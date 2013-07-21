@@ -793,12 +793,12 @@ pub trait StrUtil {
      * let s = "PATH".as_c_str(|path| libc::getenv(path));
      * ~~~
      */
-    fn as_c_str<T>(self, f: &fn(*libc::c_char) -> T) -> T;
+    fn as_c_str<T>(self, f: &fn(*'static libc::c_char) -> T) -> T;
 }
 
 impl<'self> StrUtil for &'self str {
     #[inline]
-    fn as_c_str<T>(self, f: &fn(*libc::c_char) -> T) -> T {
+    fn as_c_str<T>(self, f: &fn(*'static libc::c_char) -> T) -> T {
         do as_buf(self) |buf, len| {
             // NB: len includes the trailing null.
             assert!(len > 0);
@@ -815,7 +815,7 @@ impl<'self> StrUtil for &'self str {
  * Deprecated. Use the `as_c_str` method on strings instead.
  */
 #[inline]
-pub fn as_c_str<T>(s: &str, f: &fn(*libc::c_char) -> T) -> T {
+pub fn as_c_str<T>(s: &str, f: &fn(*'static libc::c_char) -> T) -> T {
     s.as_c_str(f)
 }
 
@@ -828,10 +828,10 @@ pub fn as_c_str<T>(s: &str, f: &fn(*libc::c_char) -> T) -> T {
  * to full strings, or suffixes of them.
  */
 #[inline]
-pub fn as_buf<T>(s: &str, f: &fn(*u8, uint) -> T) -> T {
+pub fn as_buf<T>(s: &str, f: &fn(*'static u8, uint) -> T) -> T {
     unsafe {
-        let v : *(*u8,uint) = transmute(&s);
-        let (buf,len) = *v;
+        let v : *'static (*'static u8, uint) = transmute(&s);
+        let (buf, len) = *v;
         f(buf, len)
     }
 }
