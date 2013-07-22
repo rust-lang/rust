@@ -393,9 +393,9 @@ fn frob_source_file(workspace: &Path, pkgid: &PkgId) {
     }
     match maybe_p {
         Some(p) => {
-            let w = io::file_writer(*p, &[io::Append]);
+            let w = io::file_writer(p, &[io::Append]);
             match w {
-                Err(s) => { let _ = cond.raise(((**p).clone(), fmt!("Bad path: %s", s))); }
+                Err(s) => { let _ = cond.raise((p.clone(), fmt!("Bad path: %s", s))); }
                 Ok(w)  => w.write_line("")
             }
         }
