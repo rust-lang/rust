@@ -1,1 +1,0 @@
-./configure --disable-optimize --disable-optimize-cxx --disable-optimize-llvm
