@@ -98,3 +98,8 @@ marking, press x, and ELPA will install the packages for you (under
 ~/.emacs.d/elpa/).
 
 * or using <kbd>M-x package-install rust-mode
+
+### Known bugs
+
+* Combining `global-whitespace-mode` and `rust-mode` is generally glitchy.
+  See [Issue #3994](https://github.com/mozilla/rust/issues/3994).
