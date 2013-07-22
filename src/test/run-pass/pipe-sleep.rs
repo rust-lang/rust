@@ -10,6 +10,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// xfail-test needs sleep
+
 extern mod extra;
 
 use extra::timer::sleep;

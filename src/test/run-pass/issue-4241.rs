@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // xfail-fast
+// xfail-test needs networking
 
 extern mod extra;
 
