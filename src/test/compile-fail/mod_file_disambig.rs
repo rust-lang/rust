@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-mod not_a_real_file; //~ ERROR file not found for module `not_a_real_file`
+mod mod_file_disambig_aux; //~ ERROR file for module `mod_file_disambig_aux` found at both
 
 fn main() {
     assert_eq!(mod_file_aux::bar(), 10);

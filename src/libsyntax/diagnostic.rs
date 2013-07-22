@@ -188,10 +188,7 @@ fn diagnosticcolor(lvl: level) -> term::color::Color {
 }
 
 fn print_maybe_styled(msg: &str, color: term::attr::Attr) {
-    #[cfg(not(stage0))]
     static tls_terminal: local_data::Key<@Option<term::Terminal>> = &local_data::Key;
-    #[cfg(stage0)]
-    fn tls_terminal(_: @Option<term::Terminal>) {}
 
     let stderr = io::stderr();
 

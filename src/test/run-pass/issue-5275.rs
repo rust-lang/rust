@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,8 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-mod not_a_real_file; //~ ERROR file not found for module `not_a_real_file`
+// Regression test for issue #5275
 
-fn main() {
-    assert_eq!(mod_file_aux::bar(), 10);
+fn foo(self_: &A) -> int {
+    if true {
+        fail!()
+    } else {
+        *bar(self_.bar)
+    }
 }
+
+fn bar<'r>(_: &'r mut int) -> &'r int {
+    fail!()
+}
+
+struct A {
+    bar: @mut int,
+}
+
+pub fn main() {}

@@ -23,18 +23,11 @@ pub struct Handler<T, U> {
     prev: Option<@Handler<T, U>>,
 }
 
-#[cfg(stage0)]
-pub struct Condition<'self, T, U> {
-    name: &'static str,
-    key: local_data::Key<'self, @Handler<T, U>>
-}
-#[cfg(not(stage0))]
 pub struct Condition<T, U> {
     name: &'static str,
     key: local_data::Key<@Handler<T, U>>
 }
 
-#[cfg(not(stage0))]
 impl<T, U> Condition<T, U> {
     pub fn trap<'a>(&'a self, h: &'a fn(T) -> U) -> Trap<'a, T, U> {
         unsafe {
@@ -73,56 +66,7 @@ impl<T, U> Condition<T, U> {
         }
     }
 }
-#[cfg(stage0)]
-impl<'self, T, U> Condition<'self, T, U> {
-    pub fn trap<'a>(&'a self, h: &'a fn(T) -> U) -> Trap<'a, T, U> {
-        unsafe {
-            let p : *RustClosure = ::cast::transmute(&h);
-            let prev = local_data::get(::cast::unsafe_copy(&self.key),
-                                       |k| k.map(|&x| *x));
-            let h = @Handler { handle: *p, prev: prev };
-            Trap { cond: self, handler: h }
-        }
-    }
 
-    pub fn raise(&self, t: T) -> U {
-        let msg = fmt!("Unhandled condition: %s: %?", self.name, t);
-        self.raise_default(t, || fail!(msg.clone()))
-    }
-
-    pub fn raise_default(&self, t: T, default: &fn() -> U) -> U {
-        unsafe {
-            match local_data::pop(::cast::unsafe_copy(&self.key)) {
-                None => {
-                    debug!("Condition.raise: found no handler");
-                    default()
-                }
-                Some(handler) => {
-                    debug!("Condition.raise: found handler");
-                    match handler.prev {
-                        None => {}
-                        Some(hp) => {
-                            local_data::set(::cast::unsafe_copy(&self.key),
-                                            hp)
-                        }
-                    }
-                    let handle : &fn(T) -> U =
-                        ::cast::transmute(handler.handle);
-                    let u = handle(t);
-                    local_data::set(::cast::unsafe_copy(&self.key), handler);
-                    u
-                }
-            }
-        }
-    }
-}
-
-#[cfg(stage0)]
-struct Trap<'self, T, U> {
-    cond: &'self Condition<'self, T, U>,
-    handler: @Handler<T, U>
-}
-#[cfg(not(stage0))]
 struct Trap<'self, T, U> {
     cond: &'self Condition<T, U>,
     handler: @Handler<T, U>
@@ -137,11 +81,6 @@ impl<'self, T, U> Trap<'self, T, U> {
     }
 }
 
-#[cfg(stage0)]
-struct Guard<'self, T, U> {
-    cond: &'self Condition<'self, T, U>
-}
-#[cfg(not(stage0))]
 struct Guard<'self, T, U> {
     cond: &'self Condition<T, U>
 }

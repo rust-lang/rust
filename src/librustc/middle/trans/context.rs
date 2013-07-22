@@ -236,9 +236,6 @@ impl Drop for CrateContext {
     }
 }
 
-#[cfg(stage0)]
-fn task_local_llcx_key(_v: @ContextRef) {}
-#[cfg(not(stage0))]
 static task_local_llcx_key: local_data::Key<@ContextRef> = &local_data::Key;
 
 pub fn task_llcx() -> ContextRef {
