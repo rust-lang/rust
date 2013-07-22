@@ -924,7 +924,7 @@ impl io::Reader for TcpSocketBuf {
                   break;
               }
           } else {
-              self.data.buf = result::unwrap(read_result);
+              self.data.buf = read_result.unwrap();
               self.data.buf_off = 0;
           }
         }
@@ -955,7 +955,7 @@ impl io::Reader for TcpSocketBuf {
                   fail!()
               }
           } else {
-              self.data.buf = result::unwrap(read_result);
+              self.data.buf = read_result.unwrap();
               self.data.buf_off = 0;
           }
         }
@@ -1046,7 +1046,7 @@ fn read_common_impl(socket_data: *TcpSocketData, timeout_msecs: uint)
             debug!("tcp::read before recv_timeout");
             let read_result = if timeout_msecs > 0u {
                 timer::recv_timeout(
-                    iotask, timeout_msecs, result::unwrap(rs_result))
+                    iotask, timeout_msecs, rs_result.unwrap())
             } else {
                 Some(result::get(&rs_result).recv())
             };

@@ -243,11 +243,23 @@ impl<T, E> Result<T, E> {
         }
     }
 
+    /// Unwraps a result, assuming it is an `ok(T)`
     #[inline]
-    pub fn unwrap(self) -> T { unwrap(self) }
+    pub fn unwrap(self) -> T { 
+        match self {
+            Ok(t) => t,
+            Err(_) => fail!("unwrap called on an err result")
+        }
+    }
 
+    /// Unwraps a result, assuming it is an `err(U)`
     #[inline]
-    pub fn unwrap_err(self) -> E { unwrap_err(self) }
+    pub fn unwrap_err(self) -> E {
+        match self {
+            Err(u) => u,
+            Ok(_) => fail!("unwrap called on an ok result")
+        }
+    }
 
     #[inline]
     pub fn chain<U>(self, op: &fn(T) -> Result<U,E>) -> Result<U,E> {
@@ -376,23 +388,6 @@ pub fn iter_vec2<S,T,U>(ss: &[S], ts: &[T],
     return Ok(());
 }
 
-/// Unwraps a result, assuming it is an `ok(T)`
-#[inline]
-pub fn unwrap<T, U>(res: Result<T, U>) -> T {
-    match res {
-      Ok(t) => t,
-      Err(_) => fail!("unwrap called on an err result")
-    }
-}
-
-/// Unwraps a result, assuming it is an `err(U)`
-#[inline]
-pub fn unwrap_err<T, U>(res: Result<T, U>) -> U {
-    match res {
-      Err(u) => u,
-      Ok(_) => fail!("unwrap called on an ok result")
-    }
-}
 
 #[cfg(test)]
 mod tests {
