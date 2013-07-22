@@ -135,3 +135,22 @@ extern {
     fn rust_boxed_region_free(region: *BoxedRegion, box: *OpaqueBox);
     fn rust_current_boxed_region() -> *BoxedRegion;
 }
+
+#[cfg(test)]
+mod bench {
+    use extra::test::BenchHarness;
+
+    #[bench]
+    fn alloc_managed_small(bh: &mut BenchHarness) {
+        do bh.iter {
+            @10;
+        }
+    }
+
+    #[bench]
+    fn alloc_managed_big(bh: &mut BenchHarness) {
+        do bh.iter {
+            @[10, ..1000];
+        }
+    }
+}
