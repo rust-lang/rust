@@ -3590,7 +3590,7 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
                       bound_lifetime_names: opt_vec::Empty,
                       inputs: ~[
                           ty::mk_imm_ptr(ccx.tcx,
-                                         ty::re_static,
+                                         ty::re_bound(ty::br_anon(0)),
                                          ty::mk_mach_uint(ast::ty_u8))
                       ],
                       output: ty::mk_nil()

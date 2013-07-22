@@ -313,7 +313,7 @@ extern "rust-intrinsic" {
 
     pub fn visit_tydesc(td: *'static TyDesc, tv: @TyVisitor);
 
-    pub fn frame_address(f: &once fn(*'static u8));
+    pub fn frame_address(f: &once fn(*u8));
 
     /// Get the address of the `__morestack` stack growth function.
     pub fn morestack_addr() -> *'static ();
