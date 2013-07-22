@@ -12,7 +12,6 @@
 
 #[warn(non_camel_case_types)];
 
-use cast::transmute;
 use cast;
 use clone::Clone;
 use container::{Container, Mutable};
@@ -32,6 +31,7 @@ use sys::size_of;
 use uint;
 use unstable::intrinsics;
 use unstable::intrinsics::{get_tydesc, contains_managed};
+use unstable::raw::{Box, Repr, Slice, Vec};
 use vec;
 use util;
 
@@ -96,7 +96,7 @@ pub fn with_capacity<T>(capacity: uint) -> ~[T] {
             vec
         } else {
             let alloc = capacity * sys::nonzero_size_of::<T>();
-            let ptr = malloc_raw(alloc + sys::size_of::<UnboxedVecRepr>()) as *mut UnboxedVecRepr;
+            let ptr = malloc_raw(alloc + sys::size_of::<Vec<()>>()) as *mut Vec<()>;
             (*ptr).alloc = alloc;
             (*ptr).fill = 0;
             cast::transmute(ptr)
@@ -736,8 +736,10 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
         assert!(end <= self.len());
         do self.as_imm_buf |p, _len| {
             unsafe {
-                transmute((ptr::offset(p, start),
-                           (end - start) * sys::nonzero_size_of::<T>()))
+                cast::transmute(Slice {
+                    data: ptr::offset(p, start),
+                    len: (end - start) * sys::nonzero_size_of::<T>(),
+                })
             }
         }
     }
@@ -767,8 +769,8 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
         unsafe {
             let p = vec::raw::to_ptr(self);
             VecIterator{ptr: p,
-                        end: cast::transmute(p as uint + self.len() *
-                                             sys::nonzero_size_of::<T>()),
+                        end: (p as uint + self.len() *
+                              sys::nonzero_size_of::<T>()) as *T,
                         lifetime: cast::transmute(p)}
         }
     }
@@ -947,8 +949,7 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
     /// bounds checking.
     #[inline]
     unsafe fn unsafe_ref(&self, index: uint) -> *T {
-        let (ptr, _): (*T, uint) = transmute(*self);
-        ptr.offset(index)
+        self.repr().data.offset(index)
     }
 
     /**
@@ -1002,11 +1003,8 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
         // into `s` and pass them to `f()`, but in fact they are potentially
         // pointing at *mutable memory*.  Use `as_mut_buf` instead!
 
-        unsafe {
-            let v : *(*T,uint) = transmute(self);
-            let (buf,len) = *v;
-            f(buf, len / sys::nonzero_size_of::<T>())
-        }
+        let s = self.repr();
+        f(s.data, s.len / sys::nonzero_size_of::<T>())
     }
 }
 
@@ -1158,17 +1156,17 @@ impl<T> OwnedVector<T> for ~[T] {
             unsafe {
                 let td = get_tydesc::<T>();
                 if contains_managed::<T>() {
-                    let ptr: *mut *mut raw::VecRepr = cast::transmute(self);
+                    let ptr: *mut *mut Box<Vec<()>> = cast::transmute(self);
                     ::at_vec::raw::reserve_raw(td, ptr, n);
                 } else {
-                    let ptr: *mut *mut UnboxedVecRepr = cast::transmute(self);
+                    let ptr: *mut *mut Vec<()> = cast::transmute(self);
                     let alloc = n * sys::nonzero_size_of::<T>();
-                    let size = alloc + sys::size_of::<UnboxedVecRepr>();
+                    let size = alloc + sys::size_of::<Vec<()>>();
                     if alloc / sys::nonzero_size_of::<T>() != n || size < alloc {
                         fail!("vector size is too large: %u", n);
                     }
                     *ptr = realloc_raw(*ptr as *mut c_void, size)
-                           as *mut UnboxedVecRepr;
+                           as *mut Vec<()>;
                     (**ptr).alloc = alloc;
                 }
             }
@@ -1198,10 +1196,10 @@ impl<T> OwnedVector<T> for ~[T] {
     fn capacity(&self) -> uint {
         unsafe {
             if contains_managed::<T>() {
-                let repr: **raw::VecRepr = transmute(self);
-                (**repr).unboxed.alloc / sys::nonzero_size_of::<T>()
+                let repr: **Box<Vec<()>> = cast::transmute(self);
+                (**repr).data.alloc / sys::nonzero_size_of::<T>()
             } else {
-                let repr: **UnboxedVecRepr = transmute(self);
+                let repr: **Vec<()> = cast::transmute(self);
                 (**repr).alloc / sys::nonzero_size_of::<T>()
             }
         }
@@ -1212,16 +1210,16 @@ impl<T> OwnedVector<T> for ~[T] {
     fn push(&mut self, t: T) {
         unsafe {
             if contains_managed::<T>() {
-                let repr: **raw::VecRepr = transmute(&mut *self);
-                let fill = (**repr).unboxed.fill;
-                if (**repr).unboxed.alloc <= fill {
+                let repr: **Box<Vec<()>> = cast::transmute(&mut *self);
+                let fill = (**repr).data.fill;
+                if (**repr).data.alloc <= fill {
                     let new_len = self.len() + 1;
                     self.reserve_at_least(new_len);
                 }
 
                 self.push_fast(t);
             } else {
-                let repr: **UnboxedVecRepr = transmute(&mut *self);
+                let repr: **Vec<()> = cast::transmute(&mut *self);
                 let fill = (**repr).fill;
                 if (**repr).alloc <= fill {
                     let new_len = self.len() + 1;
@@ -1237,14 +1235,14 @@ impl<T> OwnedVector<T> for ~[T] {
     #[inline] // really pretty please
     unsafe fn push_fast(&mut self, t: T) {
         if contains_managed::<T>() {
-            let repr: **mut raw::VecRepr = transmute(self);
-            let fill = (**repr).unboxed.fill;
-            (**repr).unboxed.fill += sys::nonzero_size_of::<T>();
-            let p = to_unsafe_ptr(&((**repr).unboxed.data));
+            let repr: **mut Box<Vec<u8>> = cast::transmute(self);
+            let fill = (**repr).data.fill;
+            (**repr).data.fill += sys::nonzero_size_of::<T>();
+            let p = to_unsafe_ptr(&((**repr).data.data));
             let p = ptr::offset(p, fill) as *mut T;
             intrinsics::move_val_init(&mut(*p), t);
         } else {
-            let repr: **mut UnboxedVecRepr = transmute(self);
+            let repr: **mut Vec<u8> = cast::transmute(self);
             let fill = (**repr).fill;
             (**repr).fill += sys::nonzero_size_of::<T>();
             let p = to_unsafe_ptr(&((**repr).data));
@@ -1338,14 +1336,14 @@ impl<T> OwnedVector<T> for ~[T] {
             {
                 let first_slice = self.slice(0, 1);
                 let last_slice = self.slice(next_ln, ln);
-                raw::copy_memory(transmute(last_slice), first_slice, 1);
+                raw::copy_memory(cast::transmute(last_slice), first_slice, 1);
             }
 
             // Memcopy everything to the left one element
             {
                 let init_slice = self.slice(0, next_ln);
                 let tail_slice = self.slice(1, ln);
-                raw::copy_memory(transmute(init_slice),
+                raw::copy_memory(cast::transmute(init_slice),
                                  tail_slice,
                                  next_ln);
             }
@@ -1689,8 +1687,8 @@ pub trait MutableVector<'self, T> {
      */
     fn move_from(self, src: ~[T], start: uint, end: uint) -> uint;
 
-    unsafe fn unsafe_mut_ref(&self, index: uint) -> *mut T;
-    unsafe fn unsafe_set(&self, index: uint, val: T);
+    unsafe fn unsafe_mut_ref(self, index: uint) -> *mut T;
+    unsafe fn unsafe_set(self, index: uint, val: T);
 
     fn as_mut_buf<U>(self, f: &fn(*mut T, uint) -> U) -> U;
 }
@@ -1703,8 +1701,10 @@ impl<'self,T> MutableVector<'self, T> for &'self mut [T] {
         assert!(end <= self.len());
         do self.as_mut_buf |p, _len| {
             unsafe {
-                transmute((ptr::mut_offset(p, start),
-                           (end - start) * sys::nonzero_size_of::<T>()))
+                cast::transmute(Slice {
+                    data: ptr::mut_offset(p, start) as *T,
+                    len: (end - start) * sys::nonzero_size_of::<T>()
+                })
             }
         }
     }
@@ -1723,8 +1723,8 @@ impl<'self,T> MutableVector<'self, T> for &'self mut [T] {
         unsafe {
             let p = vec::raw::to_mut_ptr(self);
             VecMutIterator{ptr: p,
-                           end: cast::transmute(p as uint + self.len() *
-                                                sys::nonzero_size_of::<T>()),
+                           end: (p as uint + self.len() *
+                                 sys::nonzero_size_of::<T>()) as *mut T,
                            lifetime: cast::transmute(p)}
         }
     }
@@ -1771,22 +1771,20 @@ impl<'self,T> MutableVector<'self, T> for &'self mut [T] {
     }
 
     #[inline]
-    unsafe fn unsafe_mut_ref(&self, index: uint) -> *mut T {
-        let pair_ptr: &(*mut T, uint) = transmute(self);
-        let (ptr, _) = *pair_ptr;
-        ptr.offset(index)
+    unsafe fn unsafe_mut_ref(self, index: uint) -> *mut T {
+        ptr::mut_offset(self.repr().data as *mut T, index)
     }
 
     #[inline]
-    unsafe fn unsafe_set(&self, index: uint, val: T) {
+    unsafe fn unsafe_set(self, index: uint, val: T) {
         *self.unsafe_mut_ref(index) = val;
     }
 
     /// Similar to `as_imm_buf` but passing a `*mut T`
     #[inline]
     fn as_mut_buf<U>(self, f: &fn(*mut T, uint) -> U) -> U {
-        let (buf, len): (*mut T, uint) = unsafe { transmute(self) };
-        f(buf, len / sys::nonzero_size_of::<T>())
+        let Slice{ data, len } = self.repr();
+        f(data as *mut T, len / sys::nonzero_size_of::<T>())
     }
 
 }
@@ -1821,40 +1819,17 @@ pub unsafe fn from_buf<T>(ptr: *T, elts: uint) -> ~[T] {
     raw::from_buf_raw(ptr, elts)
 }
 
-/// The internal 'unboxed' representation of a vector
-#[allow(missing_doc)]
-pub struct UnboxedVecRepr {
-    fill: uint,
-    alloc: uint,
-    data: u8
-}
-
 /// Unsafe operations
 pub mod raw {
-    use cast::transmute;
+    use cast;
     use clone::Clone;
-    use managed;
     use option::Some;
     use ptr;
     use sys;
     use unstable::intrinsics;
-    use vec::{UnboxedVecRepr, with_capacity, ImmutableVector, MutableVector};
+    use vec::{with_capacity, ImmutableVector, MutableVector};
     use unstable::intrinsics::contains_managed;
-
-    /// The internal representation of a (boxed) vector
-    #[allow(missing_doc)]
-    pub struct VecRepr {
-        box_header: managed::raw::BoxHeaderRepr,
-        unboxed: UnboxedVecRepr
-    }
-
-    /// The internal representation of a slice
-    pub struct SliceRepr {
-        /// Pointer to the base of this slice
-        data: *u8,
-        /// The length of the slice
-        len: uint
-    }
+    use unstable::raw::{Box, Vec, Slice};
 
     /**
      * Sets the length of a vector
@@ -1866,10 +1841,10 @@ pub mod raw {
     #[inline]
     pub unsafe fn set_len<T>(v: &mut ~[T], new_len: uint) {
         if contains_managed::<T>() {
-            let repr: **mut VecRepr = transmute(v);
-            (**repr).unboxed.fill = new_len * sys::nonzero_size_of::<T>();
+            let repr: **mut Box<Vec<()>> = cast::transmute(v);
+            (**repr).data.fill = new_len * sys::nonzero_size_of::<T>();
         } else {
-            let repr: **mut UnboxedVecRepr = transmute(v);
+            let repr: **mut Vec<()> = cast::transmute(v);
             (**repr).fill = new_len * sys::nonzero_size_of::<T>();
         }
     }
@@ -1885,19 +1860,13 @@ pub mod raw {
      */
     #[inline]
     pub fn to_ptr<T>(v: &[T]) -> *T {
-        unsafe {
-            let repr: **SliceRepr = transmute(&v);
-            transmute(&((**repr).data))
-        }
+        v.repr().data
     }
 
     /** see `to_ptr()` */
     #[inline]
     pub fn to_mut_ptr<T>(v: &mut [T]) -> *mut T {
-        unsafe {
-            let repr: **SliceRepr = transmute(&v);
-            transmute(&((**repr).data))
-        }
+        v.repr().data as *mut T
     }
 
     /**
@@ -1908,9 +1877,10 @@ pub mod raw {
     pub unsafe fn buf_as_slice<T,U>(p: *T,
                                     len: uint,
                                     f: &fn(v: &[T]) -> U) -> U {
-        let pair = (p, len * sys::nonzero_size_of::<T>());
-        let v : *(&'blk [T]) = transmute(&pair);
-        f(*v)
+        f(cast::transmute(Slice {
+            data: p,
+            len: len * sys::nonzero_size_of::<T>()
+        }))
     }
 
     /**
@@ -1921,9 +1891,10 @@ pub mod raw {
     pub unsafe fn mut_buf_as_slice<T,U>(p: *mut T,
                                         len: uint,
                                         f: &fn(v: &mut [T]) -> U) -> U {
-        let pair = (p, len * sys::nonzero_size_of::<T>());
-        let v : *(&'blk mut [T]) = transmute(&pair);
-        f(*v)
+        f(cast::transmute(Slice {
+            data: p as *T,
+            len: len * sys::nonzero_size_of::<T>()
+        }))
     }
 
     /**

@@ -12,8 +12,8 @@
 
 use libc::c_void;
 use ptr::{mut_null};
-use repr::BoxRepr;
 use unstable::intrinsics::TyDesc;
+use unstable::raw;
 
 type DropGlue<'self> = &'self fn(**TyDesc, *c_void);
 
@@ -30,14 +30,13 @@ struct AnnihilateStats {
 }
 
 unsafe fn each_live_alloc(read_next_before: bool,
-                          f: &fn(box: *mut BoxRepr, uniq: bool) -> bool) -> bool {
+                          f: &fn(box: *mut raw::Box<()>, uniq: bool) -> bool) -> bool {
     //! Walks the internal list of allocations
 
     use managed;
     use rt::local_heap;
 
-    let box = local_heap::live_allocs();
-    let mut box: *mut BoxRepr = transmute(box);
+    let mut box = local_heap::live_allocs();
     while box != mut_null() {
         let next_before = (*box).next;
         let uniq = (*box).ref_count == managed::RC_MANAGED_UNIQUE;
@@ -100,7 +99,7 @@ pub unsafe fn annihilate() {
         if uniq {
             stats.n_unique_boxes += 1;
         } else {
-            (*box).header.ref_count = managed::raw::RC_IMMORTAL;
+            (*box).ref_count = managed::RC_IMMORTAL;
         }
     }
 
@@ -126,9 +125,9 @@ pub unsafe fn annihilate() {
     for each_live_alloc(true) |box, uniq| {
         if !uniq {
             stats.n_bytes_freed +=
-                (*((*box).header.type_desc)).size
-                + sys::size_of::<BoxRepr>();
-            local_free(box as *u8);
+                (*((*box).type_desc)).size
+                + sys::size_of::<raw::Box<()>>();
+            local_free(box as *i8);
         }
     }
 

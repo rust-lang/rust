@@ -14,8 +14,8 @@ use std::int;
 use std::libc::c_void;
 use std::ptr;
 use std::sys;
-use std::vec::UnboxedVecRepr;
 use std::unstable::intrinsics::{TyDesc, get_tydesc, visit_tydesc, TyVisitor, Opaque};
+use std::unstable::raw::Vec;
 
 #[doc = "High-level interfaces to `std::unstable::intrinsics::visit_ty` reflection system."]
 
@@ -247,7 +247,7 @@ impl<V:TyVisitor + movable_ptr> TyVisitor for ptr_visit_adaptor<V> {
     }
 
     fn visit_unboxed_vec(&self, mtbl: uint, inner: *TyDesc) -> bool {
-        self.align_to::<UnboxedVecRepr>();
+        self.align_to::<Vec<()>>();
         // FIXME (#3732): Inner really has to move its own pointers on this one.
         // or else possibly we could have some weird interface wherein we
         // read-off a word from inner's pointers, but the read-word has to

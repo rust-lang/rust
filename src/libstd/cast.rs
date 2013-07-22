@@ -133,6 +133,7 @@ pub unsafe fn copy_lifetime_vec<'a,S,T>(_ptr: &'a [S], ptr: &T) -> &'a T {
 #[cfg(test)]
 mod tests {
     use cast::{bump_box_refcount, transmute};
+    use unstable::raw;
 
     #[test]
     fn test_transmute_copy() {
@@ -156,10 +157,9 @@ mod tests {
 
     #[test]
     fn test_transmute() {
-        use managed::raw::BoxRepr;
         unsafe {
             let x = @100u8;
-            let x: *BoxRepr = transmute(x);
+            let x: *raw::Box<u8> = transmute(x);
             assert!((*x).data == 100);
             let _x: @int = transmute(x);
         }

@@ -22,12 +22,6 @@ use str::StrSlice;
 use str;
 use unstable::intrinsics;
 
-/// The representation of a Rust closure
-pub struct Closure {
-    code: *(),
-    env: *(),
-}
-
 pub mod rustrt {
     use libc::{c_char, size_t};
 
@@ -278,6 +272,7 @@ mod tests {
 
     #[test]
     fn synthesize_closure() {
+        use unstable::raw::Closure;
         unsafe {
             let x = 10;
             let f: &fn(int) -> int = |y| x + y;
