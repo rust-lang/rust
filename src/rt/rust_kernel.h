@@ -63,13 +63,6 @@ typedef intptr_t rust_task_id;
 
 typedef std::map<rust_sched_id, rust_scheduler*> sched_map;
 
-// This is defined as a struct only because we need a single pointer to pass
-// to the Rust function that runs the at_exit functions
-struct exit_functions {
-    size_t count;
-    fn_env_pair **start;
-};
-
 class rust_kernel {
     rust_exchange_alloc exchange_alloc;
     rust_log _log;
@@ -114,17 +107,8 @@ class rust_kernel {
     void allow_scheduler_exit();
     void begin_shutdown();
 
-    lock_and_signal at_exit_lock;
-    spawn_fn at_exit_runner;
-    bool at_exit_started;
-    std::vector<fn_env_pair*> at_exit_fns;
-    exit_functions final_exit_fns;
-
-    void run_exit_functions();
-
 public:
     struct rust_env *env;
-    intptr_t global_data;
 
     rust_kernel(rust_env *env);
 
@@ -157,7 +141,6 @@ public:
     void inc_live_count();
     void dec_live_count();
 
-    void register_exit_function(spawn_fn runner, fn_env_pair *f);
 };
 
 template <typename T> struct kernel_owned {

@@ -12,6 +12,7 @@
 
 // xfail-pretty
 // xfail-win32
+// xfail-test needs sleep
 
 extern mod extra;
 use extra::timer::sleep;
