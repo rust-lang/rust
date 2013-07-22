@@ -21,7 +21,6 @@ fn C(x: uint) -> C {
 fn f<T>(_x: T) {
 }
 
-#[deny(non_implicitly_copyable_typarams)]
 pub fn main() {
     f(C(1u));
 }

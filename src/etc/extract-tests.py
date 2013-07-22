@@ -60,9 +60,6 @@ while cur < len(lines):
             if not re.search(r"\bextern mod extra\b", block):
                 block = "extern mod extra;\n" + block
             block = """#[ forbid(ctypes) ];
-#[ forbid(deprecated_pattern) ];
-#[ forbid(implicit_copies) ];
-#[ forbid(non_implicitly_copyable_typarams) ];
 #[ forbid(path_statement) ];
 #[ forbid(type_limits) ];
 #[ forbid(unrecognized_lint) ];
