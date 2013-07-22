@@ -18,7 +18,7 @@ use ext::build::AstBuilder;
 
 pub fn expand_syntax_ext(cx: @ExtCtxt, sp: span, tts: &[ast::token_tree]) -> base::MacResult {
     // Gather all argument expressions
-    let exprs = get_exprs_from_tts(cx, tts);
+    let exprs = get_exprs_from_tts(cx, sp, tts);
     let mut bytes = ~[];
 
     for exprs.iter().advance |expr| {
