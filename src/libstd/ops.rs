@@ -81,3 +81,28 @@ pub trait Shr<RHS,Result> {
 pub trait Index<Index,Result> {
     fn index(&self, index: &Index) -> Result;
 }
+
+#[cfg(test)]
+mod bench {
+
+    use extra::test::BenchHarness;
+    use ops::Drop;
+
+    // Overhead of dtors
+
+    struct HasDtor {
+        x: int
+    }
+
+    impl Drop for HasDtor {
+        fn drop(&self) {
+        }
+    }
+
+    #[bench]
+    fn alloc_obj_with_dtor(bh: &mut BenchHarness) {
+        do bh.iter {
+            HasDtor { x : 10 };
+        }
+    }
+}
