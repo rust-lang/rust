@@ -2563,9 +2563,9 @@ mod tests {
     #[test]
     fn test_swap_remove_noncopyable() {
         // Tests that we don't accidentally run destructors twice.
-        let mut v = ~[::unstable::sync::exclusive(()),
-                      ::unstable::sync::exclusive(()),
-                      ::unstable::sync::exclusive(())];
+        let mut v = ~[::unstable::sync::Exclusive::new(()),
+                      ::unstable::sync::Exclusive::new(()),
+                      ::unstable::sync::Exclusive::new(())];
         let mut _e = v.swap_remove(0);
         assert_eq!(v.len(), 2);
         _e = v.swap_remove(1);

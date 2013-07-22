@@ -28,7 +28,7 @@ use rt::io::{standard_error, OtherIoError};
 use rt::tube::Tube;
 use rt::local::Local;
 use str::StrSlice;
-use unstable::sync::{Exclusive, exclusive};
+use unstable::sync::Exclusive;
 
 #[cfg(test)] use container::Container;
 #[cfg(test)] use uint;
@@ -158,7 +158,7 @@ pub struct UvRemoteCallback {
 
 impl UvRemoteCallback {
     pub fn new(loop_: &mut Loop, f: ~fn()) -> UvRemoteCallback {
-        let exit_flag = exclusive(false);
+        let exit_flag = Exclusive::new(false);
         let exit_flag_clone = exit_flag.clone();
         let async = do AsyncWatcher::new(loop_) |watcher, status| {
             assert!(status.is_none());

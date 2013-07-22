@@ -11,7 +11,7 @@
 use container::Container;
 use option::*;
 use vec::OwnedVector;
-use unstable::sync::{Exclusive, exclusive};
+use unstable::sync::Exclusive;
 use cell::Cell;
 use kinds::Send;
 use clone::Clone;
@@ -24,7 +24,7 @@ pub struct WorkQueue<T> {
 impl<T: Send> WorkQueue<T> {
     pub fn new() -> WorkQueue<T> {
         WorkQueue {
-            queue: ~exclusive(~[])
+            queue: ~Exclusive::new(~[])
         }
     }
 

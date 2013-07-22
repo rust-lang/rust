@@ -21,7 +21,7 @@ fn foo(blk: &fn()) {
 }
 
 fn main() {
-    let x = arc::ARC(true);
+    let x = arc::Arc::new(true);
     do foo {
         assert!(*x.get());
         util::ignore(x); //~ ERROR cannot move out of captured outer variable
