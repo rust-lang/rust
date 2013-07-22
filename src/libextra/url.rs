@@ -800,7 +800,7 @@ fn test_get_path() {
 #[cfg(test)]
 mod tests {
 
-    use net::url::*;
+    use super::*;
 
     use std::hashmap::HashMap;
 

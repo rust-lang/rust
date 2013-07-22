@@ -16,13 +16,9 @@ use libc;
 use prelude::*;
 use task;
 
-pub mod at_exit;
-
 pub mod dynamic_lib;
 
-pub mod global;
 pub mod finally;
-pub mod weak_task;
 pub mod intrinsics;
 pub mod simd;
 pub mod extfmt;
@@ -79,4 +75,54 @@ pub type raw_thread = libc::c_void;
 extern {
     fn rust_raw_thread_start(f: &(&fn())) -> *raw_thread;
     fn rust_raw_thread_join_delete(thread: *raw_thread);
+}
+
+
+/// Changes the current working directory to the specified
+/// path while acquiring a global lock, then calls `action`.
+/// If the change is successful, releases the lock and restores the
+/// CWD to what it was before, returning true.
+/// Returns false if the directory doesn't exist or if the directory change
+/// is otherwise unsuccessful.
+///
+/// This is used by test cases to avoid cwd races.
+///
+/// # Safety Note
+///
+/// This uses a pthread mutex so descheduling in the action callback
+/// can lead to deadlock. Calling change_dir_locked recursively will
+/// also deadlock.
+pub fn change_dir_locked(p: &Path, action: &fn()) -> bool {
+    use os;
+    use os::change_dir;
+    use task;
+    use unstable::finally::Finally;
+
+    unsafe {
+        // This is really sketchy. Using a pthread mutex so descheduling
+        // in the `action` callback can cause deadlock. Doing it in
+        // `task::atomically` to try to avoid that, but ... I don't know
+        // this is all bogus.
+        return do task::atomically {
+            rust_take_change_dir_lock();
+
+            do (||{
+                let old_dir = os::getcwd();
+                if change_dir(p) {
+                    action();
+                    change_dir(&old_dir)
+                }
+                else {
+                    false
+                }
+            }).finally {
+                rust_drop_change_dir_lock();
+            }
+        }
+    }
+
+    extern {
+        fn rust_take_change_dir_lock();
+        fn rust_drop_change_dir_lock();
+    }
 }

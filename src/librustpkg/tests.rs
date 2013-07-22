@@ -791,12 +791,14 @@ fn rust_path_test() {
 
 #[test]
 fn rust_path_contents() {
+    use std::unstable::change_dir_locked;
+
     let dir = mkdtemp(&os::tmpdir(), "rust_path").expect("rust_path_contents failed");
     let abc = &dir.push("A").push("B").push("C");
     assert!(os::mkdir_recursive(&abc.push(".rust"), U_RWX));
     assert!(os::mkdir_recursive(&abc.pop().push(".rust"), U_RWX));
     assert!(os::mkdir_recursive(&abc.pop().pop().push(".rust"), U_RWX));
-    assert!(do os::change_dir_locked(&dir.push("A").push("B").push("C")) {
+    assert!(do change_dir_locked(&dir.push("A").push("B").push("C")) {
         let p = rust_path();
         let cwd = os::getcwd().push(".rust");
         let parent = cwd.pop().pop().push(".rust");

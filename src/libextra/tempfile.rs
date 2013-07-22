@@ -48,10 +48,11 @@ mod tests {
     fn recursive_mkdir_rel() {
         use std::libc::consts::os::posix88::{S_IRUSR, S_IWUSR, S_IXUSR};
         use std::os;
+        use std::unstable::change_dir_locked;
 
         let root = mkdtemp(&os::tmpdir(), "recursive_mkdir_rel").
             expect("recursive_mkdir_rel");
-        assert!(do os::change_dir_locked(&root) {
+        assert!(do change_dir_locked(&root) {
             let path = Path("frob");
             debug!("recursive_mkdir_rel: Making: %s in cwd %s [%?]", path.to_str(),
                    os::getcwd().to_str(),
@@ -78,10 +79,11 @@ mod tests {
     fn recursive_mkdir_rel_2() {
         use std::libc::consts::os::posix88::{S_IRUSR, S_IWUSR, S_IXUSR};
         use std::os;
+        use std::unstable::change_dir_locked;
 
         let root = mkdtemp(&os::tmpdir(), "recursive_mkdir_rel_2").
             expect("recursive_mkdir_rel_2");
-        assert!(do os::change_dir_locked(&root) {
+        assert!(do change_dir_locked(&root) {
             let path = Path("./frob/baz");
             debug!("recursive_mkdir_rel_2: Making: %s in cwd %s [%?]", path.to_str(),
                    os::getcwd().to_str(), os::path_exists(&path));

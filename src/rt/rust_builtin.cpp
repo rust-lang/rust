@@ -757,30 +757,6 @@ rust_raw_thread_join_delete(raw_thread *thread) {
     delete thread;
 }
 
-extern "C" void
-rust_register_exit_function(spawn_fn runner, fn_env_pair *f) {
-    rust_task *task = rust_get_current_task();
-    task->kernel->register_exit_function(runner, f);
-}
-
-extern "C" intptr_t*
-rust_get_global_data_ptr() {
-    rust_task *task = rust_get_current_task();
-    return &task->kernel->global_data;
-}
-
-extern "C" void
-rust_inc_kernel_live_count() {
-    rust_task *task = rust_get_current_task();
-    task->kernel->inc_live_count();
-}
-
-extern "C" void
-rust_dec_kernel_live_count() {
-    rust_task *task = rust_get_current_task();
-    task->kernel->dec_live_count();
-}
-
 #ifndef _WIN32
 #include <sys/types.h>
 #include <dirent.h>
@@ -957,6 +933,18 @@ extern "C" CDECL uintptr_t
 rust_get_exit_status_newrt() {
     scoped_lock with(exit_status_lock);
     return exit_status;
+}
+
+static lock_and_signal change_dir_lock;
+
+extern "C" CDECL void
+rust_take_change_dir_lock() {
+    global_args_lock.lock();
+}
+
+extern "C" CDECL void
+rust_drop_change_dir_lock() {
+    global_args_lock.unlock();
 }
 
 //

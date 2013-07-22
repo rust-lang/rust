@@ -639,7 +639,6 @@ mod test {
     use flatpipes::serial;
     use io_util::BufReader;
     use flatpipes::{BytePort, FlatChan, FlatPort};
-    use net::tcp::TcpSocketBuf;
 
     use std::comm;
     use std::int;
@@ -728,7 +727,8 @@ mod test {
     }
 
     // FIXME #2064: Networking doesn't work on x86
-    #[test]
+    // XXX Broken until networking support is added back
+    /*#[test]
     #[cfg(target_arch = "x86_64")]
     fn test_pod_tcp_stream() {
         fn reader_port(buf: TcpSocketBuf
@@ -745,6 +745,7 @@ mod test {
     #[test]
     #[cfg(target_arch = "x86_64")]
     fn test_serializing_tcp_stream() {
+        // XXX Broken until networking support is added back
         fn reader_port(buf: TcpSocketBuf
                       ) -> serial::ReaderPort<int, TcpSocketBuf> {
             serial::reader_port(buf)
@@ -860,7 +861,7 @@ mod test {
         }
 
         finish_port.recv();
-    }
+    }*/
 
     // Tests that the different backends behave the same when the
     // binary streaming protocol is broken
