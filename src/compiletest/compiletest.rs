@@ -242,13 +242,13 @@ pub fn make_tests(config: &config) -> ~[test::TestDescAndFn] {
     let mut tests = ~[];
     let dirs = os::list_dir_path(&config.src_base);
     for dirs.iter().advance |file| {
-        let file = (*file).clone();
+        let file = file.clone();
         debug!("inspecting file %s", file.to_str());
-        if is_test(config, file) {
-            let t = do make_test(config, file) {
+        if is_test(config, &file) {
+            let t = do make_test(config, &file) {
                 match config.mode {
-                    mode_codegen => make_metrics_test_closure(config, file),
-                    _ => make_test_closure(config, file)
+                    mode_codegen => make_metrics_test_closure(config, &file),
+                    _ => make_test_closure(config, &file)
                 }
             };
             tests.push(t)
