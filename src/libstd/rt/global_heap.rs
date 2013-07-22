@@ -9,8 +9,8 @@
 // except according to those terms.
 
 use libc::{c_void, c_char, size_t, uintptr_t, free, malloc, realloc};
-use managed::raw::{BoxHeaderRepr, BoxRepr};
 use unstable::intrinsics::TyDesc;
+use unstable::raw;
 use sys::size_of;
 
 extern {
@@ -20,7 +20,7 @@ extern {
 
 #[inline]
 fn get_box_size(body_size: uint, body_align: uint) -> uint {
-    let header_size = size_of::<BoxHeaderRepr>();
+    let header_size = size_of::<raw::Box<()>>();
     // FIXME (#2699): This alignment calculation is suspicious. Is it right?
     let total_size = align_to(header_size, body_align) + body_size;
     total_size
@@ -82,8 +82,8 @@ pub unsafe fn closure_exchange_malloc(td: *c_char, size: uintptr_t) -> *c_char {
     let total_size = get_box_size(size, (*td).align);
     let p = malloc_raw(total_size as uint);
 
-    let box: *mut BoxRepr = p as *mut BoxRepr;
-    (*box).header.type_desc = td;
+    let box = p as *mut raw::Box<()>;
+    (*box).type_desc = td;
 
     box as *c_char
 }
