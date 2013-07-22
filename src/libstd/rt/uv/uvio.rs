@@ -582,7 +582,7 @@ impl Drop for UvTimer {
             let task_cell = Cell::new(task);
             do self.close {
                 let scheduler = Local::take::<Scheduler>();
-                scheduler.resume_task_immediately(task_cell.take());
+                scheduler.resume_blocked_task_immediately(task_cell.take());
             }
         }
     }
@@ -600,7 +600,7 @@ impl RtioTimer for UvTimer {
             do watcher.start(msecs, 0) |_, status| {
                 assert!(status.is_none());
                 let scheduler = Local::take::<Scheduler>();
-                scheduler.resume_task_immediately(task_cell.take());
+                scheduler.resume_blocked_task_immediately(task_cell.take());
             }
         }
         let mut w = **self;
