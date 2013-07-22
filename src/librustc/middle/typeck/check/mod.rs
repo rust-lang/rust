@@ -3604,14 +3604,8 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
             "memcpy32" => {
               (1,
                ~[
-                  ty::mk_ptr(tcx, ty::re_static, ty::mt {
-                      ty: param(ccx, 0),
-                      mutbl: ast::m_mutbl
-                  }),
-                  ty::mk_ptr(tcx, ty::re_static, ty::mt {
-                      ty: param(ccx, 0),
-                      mutbl: ast::m_imm
-                  }),
+                  ty::mk_mut_ptr(tcx, ty::re_bound(ty::br_anon(0)), param(ccx, 0)),
+                  ty::mk_imm_ptr(tcx, ty::re_bound(ty::br_anon(1)), param(ccx, 0)),
                   ty::mk_u32()
                ],
                ty::mk_nil())
@@ -3619,14 +3613,8 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
             "memcpy64" => {
               (1,
                ~[
-                  ty::mk_ptr(tcx, ty::re_static, ty::mt {
-                      ty: param(ccx, 0),
-                      mutbl: ast::m_mutbl
-                  }),
-                  ty::mk_ptr(tcx, ty::re_static, ty::mt {
-                      ty: param(ccx, 0),
-                      mutbl: ast::m_imm
-                  }),
+                  ty::mk_mut_ptr(tcx, ty::re_bound(ty::br_anon(0)), param(ccx, 0)),
+                  ty::mk_imm_ptr(tcx, ty::re_bound(ty::br_anon(1)), param(ccx, 0)),
                   ty::mk_u64()
                ],
                ty::mk_nil())
@@ -3634,14 +3622,8 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
             "memmove32" => {
               (1,
                ~[
-                  ty::mk_ptr(tcx, ty::re_static, ty::mt {
-                      ty: param(ccx, 0),
-                      mutbl: ast::m_mutbl
-                  }),
-                  ty::mk_ptr(tcx, ty::re_static, ty::mt {
-                      ty: param(ccx, 0),
-                      mutbl: ast::m_imm
-                  }),
+                  ty::mk_mut_ptr(tcx, ty::re_bound(ty::br_anon(0)), param(ccx, 0)),
+                  ty::mk_imm_ptr(tcx, ty::re_bound(ty::br_anon(1)), param(ccx, 0)),
                   ty::mk_u32()
                ],
                ty::mk_nil())
@@ -3649,14 +3631,8 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
             "memmove64" => {
               (1,
                ~[
-                  ty::mk_ptr(tcx, ty::re_static, ty::mt {
-                      ty: param(ccx, 0),
-                      mutbl: ast::m_mutbl
-                  }),
-                  ty::mk_ptr(tcx, ty::re_static, ty::mt {
-                      ty: param(ccx, 0),
-                      mutbl: ast::m_imm
-                  }),
+                  ty::mk_mut_ptr(tcx, ty::re_bound(ty::br_anon(0)), param(ccx, 0)),
+                  ty::mk_imm_ptr(tcx, ty::re_bound(ty::br_anon(1)), param(ccx, 0)),
                   ty::mk_u64()
                ],
                ty::mk_nil())
@@ -3664,10 +3640,7 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
             "memset32" => {
               (1,
                ~[
-                  ty::mk_ptr(tcx, ty::re_static, ty::mt {
-                      ty: param(ccx, 0),
-                      mutbl: ast::m_mutbl
-                  }),
+                  ty::mk_mut_ptr(tcx, ty::re_bound(ty::br_anon(0)), param(ccx, 0)),
                   ty::mk_u8(),
                   ty::mk_u32()
                ],
@@ -3676,10 +3649,7 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
             "memset64" => {
               (1,
                ~[
-                  ty::mk_ptr(tcx, ty::re_static, ty::mt {
-                      ty: param(ccx, 0),
-                      mutbl: ast::m_mutbl
-                  }),
+                  ty::mk_mut_ptr(tcx, ty::re_bound(ty::br_anon(0)), param(ccx, 0)),
                   ty::mk_u8(),
                   ty::mk_u64()
                ],

@@ -320,24 +320,24 @@ extern "rust-intrinsic" {
 
     /// Equivalent to the `llvm.memcpy.p0i8.0i8.i32` intrinsic, with a size of
     /// `count` * `size_of::<T>()` and an alignment of `min_align_of::<T>()`
-    pub fn memcpy32<T>(dst: *'static mut T, src: *'static T, count: u32);
+    pub fn memcpy32<T>(dst: *mut T, src: *T, count: u32);
     /// Equivalent to the `llvm.memcpy.p0i8.0i8.i64` intrinsic, with a size of
     /// `count` * `size_of::<T>()` and an alignment of `min_align_of::<T>()`
-    pub fn memcpy64<T>(dst: *'static mut T, src: *'static T, count: u64);
+    pub fn memcpy64<T>(dst: *mut T, src: *T, count: u64);
 
     /// Equivalent to the `llvm.memmove.p0i8.0i8.i32` intrinsic, with a size of
     /// `count` * `size_of::<T>()` and an alignment of `min_align_of::<T>()`
-    pub fn memmove32<T>(dst: *'static mut T, src: *'static T, count: u32);
+    pub fn memmove32<T>(dst: *mut T, src: *T, count: u32);
     /// Equivalent to the `llvm.memmove.p0i8.0i8.i64` intrinsic, with a size of
     /// `count` * `size_of::<T>()` and an alignment of `min_align_of::<T>()`
-    pub fn memmove64<T>(dst: *'static mut T, src: *'static T, count: u64);
+    pub fn memmove64<T>(dst: *mut T, src: *T, count: u64);
 
     /// Equivalent to the `llvm.memset.p0i8.i32` intrinsic, with a size of
     /// `count` * `size_of::<T>()` and an alignment of `min_align_of::<T>()`
-    pub fn memset32<T>(dst: *'static mut T, val: u8, count: u32);
+    pub fn memset32<T>(dst: *mut T, val: u8, count: u32);
     /// Equivalent to the `llvm.memset.p0i8.i64` intrinsic, with a size of
     /// `count` * `size_of::<T>()` and an alignment of `min_align_of::<T>()`
-    pub fn memset64<T>(dst: *'static mut T, val: u8, count: u64);
+    pub fn memset64<T>(dst: *mut T, val: u8, count: u64);
 
     pub fn sqrtf32(x: f32) -> f32;
     pub fn sqrtf64(x: f64) -> f64;
