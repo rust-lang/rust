@@ -33,7 +33,7 @@ use std::uint;
 
 // The @ps is stored here to prevent recursive type.
 pub enum ann_node<'self> {
-    node_block(@ps, &'self ast::blk),
+    node_block(@ps, &'self ast::Block),
     node_item(@ps, &'self ast::item),
     node_expr(@ps, &'self ast::expr),
     node_pat(@ps, &'self ast::pat),
@@ -106,7 +106,7 @@ pub static default_columns: uint = 78u;
 pub fn print_crate(cm: @CodeMap,
                    intr: @ident_interner,
                    span_diagnostic: @diagnostic::span_handler,
-                   crate: &ast::crate,
+                   crate: &ast::Crate,
                    filename: @str,
                    in: @io::Reader,
                    out: @io::Writer,
@@ -140,8 +140,8 @@ pub fn print_crate(cm: @CodeMap,
     print_crate_(s, crate);
 }
 
-pub fn print_crate_(s: @ps, crate: &ast::crate) {
-    print_mod(s, &crate.node.module, crate.node.attrs);
+pub fn print_crate_(s: @ps, crate: &ast::Crate) {
+    print_mod(s, &crate.module, crate.attrs);
     print_remaining_comments(s);
     eof(s.s);
 }
@@ -200,7 +200,7 @@ pub fn fun_to_str(decl: &ast::fn_decl, purity: ast::purity, name: ast::ident,
     }
 }
 
-pub fn block_to_str(blk: &ast::blk, intr: @ident_interner) -> ~str {
+pub fn block_to_str(blk: &ast::Block, intr: @ident_interner) -> ~str {
     do io::with_str_writer |wr| {
         let s = rust_printer(wr, intr);
         // containing cbox, will be closed by print-block at }
@@ -910,22 +910,22 @@ pub fn print_stmt(s: @ps, st: &ast::stmt) {
     maybe_print_trailing_comment(s, st.span, None);
 }
 
-pub fn print_block(s: @ps, blk: &ast::blk) {
+pub fn print_block(s: @ps, blk: &ast::Block) {
     print_possibly_embedded_block(s, blk, block_normal, indent_unit);
 }
 
-pub fn print_block_unclosed(s: @ps, blk: &ast::blk) {
+pub fn print_block_unclosed(s: @ps, blk: &ast::Block) {
     print_possibly_embedded_block_(s, blk, block_normal, indent_unit, &[],
                                  false);
 }
 
-pub fn print_block_unclosed_indent(s: @ps, blk: &ast::blk, indented: uint) {
+pub fn print_block_unclosed_indent(s: @ps, blk: &ast::Block, indented: uint) {
     print_possibly_embedded_block_(s, blk, block_normal, indented, &[],
                                    false);
 }
 
 pub fn print_block_with_attrs(s: @ps,
-                              blk: &ast::blk,
+                              blk: &ast::Block,
                               attrs: &[ast::Attribute]) {
     print_possibly_embedded_block_(s, blk, block_normal, indent_unit, attrs,
                                   true);
@@ -934,7 +934,7 @@ pub fn print_block_with_attrs(s: @ps,
 pub enum embed_type { block_block_fn, block_normal, }
 
 pub fn print_possibly_embedded_block(s: @ps,
-                                     blk: &ast::blk,
+                                     blk: &ast::Block,
                                      embedded: embed_type,
                                      indented: uint) {
     print_possibly_embedded_block_(
@@ -942,7 +942,7 @@ pub fn print_possibly_embedded_block(s: @ps,
 }
 
 pub fn print_possibly_embedded_block_(s: @ps,
-                                      blk: &ast::blk,
+                                      blk: &ast::Block,
                                       embedded: embed_type,
                                       indented: uint,
                                       attrs: &[ast::Attribute],
@@ -977,7 +977,7 @@ pub fn print_possibly_embedded_block_(s: @ps,
     (s.ann.post)(ann_node);
 }
 
-pub fn print_if(s: @ps, test: &ast::expr, blk: &ast::blk,
+pub fn print_if(s: @ps, test: &ast::expr, blk: &ast::Block,
                 elseopt: Option<@ast::expr>, chk: bool) {
     head(s, "if");
     if chk { word_nbsp(s, "check"); }
@@ -1103,14 +1103,14 @@ pub fn print_call_post(s: @ps,
 }
 
 pub fn print_expr(s: @ps, expr: &ast::expr) {
-    fn print_field(s: @ps, field: &ast::field) {
+    fn print_field(s: @ps, field: &ast::Field) {
         ibox(s, indent_unit);
-        print_ident(s, field.node.ident);
+        print_ident(s, field.ident);
         word_space(s, ":");
-        print_expr(s, field.node.expr);
+        print_expr(s, field.expr);
         end(s);
     }
-    fn get_span(field: &ast::field) -> codemap::span { return field.span; }
+    fn get_span(field: &ast::Field) -> codemap::span { return field.span; }
 
     maybe_print_comment(s, expr.span.lo);
     ibox(s, indent_unit);
@@ -1447,11 +1447,11 @@ pub fn print_expr(s: @ps, expr: &ast::expr) {
     end(s);
 }
 
-pub fn print_local_decl(s: @ps, loc: &ast::local) {
-    print_pat(s, loc.node.pat);
-    match loc.node.ty.node {
+pub fn print_local_decl(s: @ps, loc: &ast::Local) {
+    print_pat(s, loc.pat);
+    match loc.ty.node {
       ast::ty_infer => (),
-      _ => { word_space(s, ":"); print_type(s, &loc.node.ty); }
+      _ => { word_space(s, ":"); print_type(s, &loc.ty); }
     }
 }
 
@@ -1463,15 +1463,15 @@ pub fn print_decl(s: @ps, decl: &ast::decl) {
         ibox(s, indent_unit);
         word_nbsp(s, "let");
 
-        if loc.node.is_mutbl {
+        if loc.is_mutbl {
             word_nbsp(s, "mut");
         }
 
-        fn print_local(s: @ps, loc: &ast::local) {
+        fn print_local(s: @ps, loc: &ast::Local) {
             ibox(s, indent_unit);
             print_local_decl(s, loc);
             end(s);
-            match loc.node.init {
+            match loc.init {
               Some(init) => {
                 nbsp(s);
                 word_space(s, "=");
@@ -1492,7 +1492,7 @@ pub fn print_ident(s: @ps, ident: ast::ident) {
     word(s.s, ident_to_str(&ident));
 }
 
-pub fn print_for_decl(s: @ps, loc: &ast::local, coll: &ast::expr) {
+pub fn print_for_decl(s: @ps, loc: &ast::Local, coll: &ast::expr) {
     print_local_decl(s, loc);
     space(s.s);
     word_space(s, "in");

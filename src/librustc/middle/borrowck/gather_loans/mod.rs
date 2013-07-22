@@ -74,7 +74,7 @@ struct GatherLoanCtxt {
 
 pub fn gather_loans(bccx: @BorrowckCtxt,
                     decl: &ast::fn_decl,
-                    body: &ast::blk)
+                    body: &ast::Block)
                     -> (id_range, @mut ~[Loan], @mut move_data::MoveData) {
     let glcx = @mut GatherLoanCtxt {
         bccx: bccx,
@@ -109,7 +109,7 @@ fn add_pat_to_id_range(p: @ast::pat,
 
 fn gather_loans_in_fn(fk: &visit::fn_kind,
                       decl: &ast::fn_decl,
-                      body: &ast::blk,
+                      body: &ast::Block,
                       sp: span,
                       id: ast::node_id,
                       (this, v): (@mut GatherLoanCtxt,
@@ -131,21 +131,21 @@ fn gather_loans_in_fn(fk: &visit::fn_kind,
     }
 }
 
-fn gather_loans_in_block(blk: &ast::blk,
+fn gather_loans_in_block(blk: &ast::Block,
                          (this, vt): (@mut GatherLoanCtxt,
                                       visit::vt<@mut GatherLoanCtxt>)) {
     this.id_range.add(blk.id);
     visit::visit_block(blk, (this, vt));
 }
 
-fn gather_loans_in_local(local: @ast::local,
+fn gather_loans_in_local(local: @ast::Local,
                          (this, vt): (@mut GatherLoanCtxt,
                                       visit::vt<@mut GatherLoanCtxt>)) {
-    match local.node.init {
+    match local.init {
         None => {
             // Variable declarations without initializers are considered "moves":
             let tcx = this.bccx.tcx;
-            do pat_util::pat_bindings(tcx.def_map, local.node.pat)
+            do pat_util::pat_bindings(tcx.def_map, local.pat)
                 |_, id, span, _| {
                 gather_moves::gather_decl(this.bccx,
                                           this.move_data,
@@ -157,7 +157,7 @@ fn gather_loans_in_local(local: @ast::local,
         Some(init) => {
             // Variable declarations with initializers are considered "assigns":
             let tcx = this.bccx.tcx;
-            do pat_util::pat_bindings(tcx.def_map, local.node.pat)
+            do pat_util::pat_bindings(tcx.def_map, local.pat)
                 |_, id, span, _| {
                 gather_moves::gather_assignment(this.bccx,
                                                 this.move_data,
@@ -167,7 +167,7 @@ fn gather_loans_in_local(local: @ast::local,
                                                 id);
             }
             let init_cmt = this.bccx.cat_expr(init);
-            this.gather_pat(init_cmt, local.node.pat, None);
+            this.gather_pat(init_cmt, local.pat, None);
         }
     }
 
@@ -608,7 +608,7 @@ impl GatherLoanCtxt {
 
     fn gather_fn_arg_patterns(&mut self,
                               decl: &ast::fn_decl,
-                              body: &ast::blk) {
+                              body: &ast::Block) {
         /*!
          * Walks the patterns for fn arguments, checking that they
          * do not attempt illegal moves or create refs that outlive

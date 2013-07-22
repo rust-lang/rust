@@ -271,11 +271,11 @@ impl Program {
     ///
     /// Once the types are known, they are inserted into the local_vars map in
     /// this Program (to be deserialized later on
-    pub fn register_new_vars(&mut self, blk: &ast::blk, tcx: ty::ctxt) {
+    pub fn register_new_vars(&mut self, blk: &ast::Block, tcx: ty::ctxt) {
         debug!("looking for new variables");
         let newvars = @mut HashMap::new();
         do each_user_local(blk) |local| {
-            let mutable = local.node.is_mutbl;
+            let mutable = local.is_mutbl;
             do each_binding(local) |path, id| {
                 let name = do with_pp(token::get_ident_interner()) |pp, _| {
                     pprust::print_path(pp, path, false);
@@ -350,7 +350,7 @@ impl Program {
         }
 
         // helper functions to perform ast iteration
-        fn each_user_local(blk: &ast::blk, f: &fn(@ast::local)) {
+        fn each_user_local(blk: &ast::Block, f: &fn(@ast::Local)) {
             do find_user_block(blk) |blk| {
                 for blk.stmts.iter().advance |stmt| {
                     match stmt.node {
@@ -366,7 +366,7 @@ impl Program {
             }
         }
 
-        fn find_user_block(blk: &ast::blk, f: &fn(&ast::blk)) {
+        fn find_user_block(blk: &ast::Block, f: &fn(&ast::Block)) {
             for blk.stmts.iter().advance |stmt| {
                 match stmt.node {
                     ast::stmt_semi(e, _) => {

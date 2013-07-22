@@ -37,7 +37,7 @@ struct Test {
 
 struct TestCtxt {
     sess: session::Session,
-    crate: @ast::crate,
+    crate: @ast::Crate,
     path: ~[ast::ident],
     ext_cx: @ExtCtxt,
     testfns: ~[Test]
@@ -46,12 +46,12 @@ struct TestCtxt {
 // Traverse the crate, collecting all the test functions, eliding any
 // existing main functions, and synthesizing a main test harness
 pub fn modify_for_testing(sess: session::Session,
-                          crate: @ast::crate)
-                       -> @ast::crate {
+                          crate: @ast::Crate)
+                       -> @ast::Crate {
     // We generate the test harness when building in the 'test'
     // configuration, either with the '--test' or '--cfg test'
     // command line options.
-    let should_test = attr::contains_name(crate.node.config, "test");
+    let should_test = attr::contains_name(crate.config, "test");
 
     if should_test {
         generate_test_harness(sess, crate)
@@ -61,8 +61,8 @@ pub fn modify_for_testing(sess: session::Session,
 }
 
 fn generate_test_harness(sess: session::Session,
-                         crate: @ast::crate)
-                      -> @ast::crate {
+                         crate: @ast::Crate)
+                      -> @ast::Crate {
     let cx: @mut TestCtxt = @mut TestCtxt {
         sess: sess,
         crate: crate,
@@ -81,7 +81,7 @@ fn generate_test_harness(sess: session::Session,
     });
 
     let precursor = @fold::AstFoldFns {
-        fold_crate: fold::wrap(|a,b| fold_crate(cx, a, b) ),
+        fold_crate: |a,b| fold_crate(cx, a, b),
         fold_item: |a,b| fold_item(cx, a, b),
         fold_mod: |a,b| fold_mod(cx, a, b),.. *fold::default_ast_fold()};
 
@@ -91,7 +91,7 @@ fn generate_test_harness(sess: session::Session,
     return res;
 }
 
-fn strip_test_functions(crate: &ast::crate) -> @ast::crate {
+fn strip_test_functions(crate: &ast::Crate) -> @ast::Crate {
     // When not compiling with --test we should not compile the
     // #[test] functions
     do config::strip_items(crate) |attrs| {
@@ -132,13 +132,13 @@ fn fold_mod(cx: @mut TestCtxt,
     fold::noop_fold_mod(&mod_nomain, fld)
 }
 
-fn fold_crate(cx: @mut TestCtxt, c: &ast::crate_, fld: @fold::ast_fold)
-              -> ast::crate_ {
+fn fold_crate(cx: @mut TestCtxt, c: &ast::Crate, fld: @fold::ast_fold)
+              -> ast::Crate {
     let folded = fold::noop_fold_crate(c, fld);
 
     // Add a special __test module to the crate that will contain code
     // generated for the test harness
-    ast::crate_ {
+    ast::Crate {
         module: add_test_module(cx, &folded.module),
         .. folded
     }
@@ -236,7 +236,7 @@ fn is_ignored(cx: @mut TestCtxt, i: @ast::item) -> bool {
     do i.attrs.iter().any |attr| {
         // check ignore(cfg(foo, bar))
         "ignore" == attr.name() && match attr.meta_item_list() {
-            Some(ref cfgs) => attr::test_cfg(cx.crate.node.config, cfgs.iter().transform(|x| *x)),
+            Some(ref cfgs) => attr::test_cfg(cx.crate.config, cfgs.iter().transform(|x| *x)),
             None => true
         }
     }
@@ -370,7 +370,7 @@ fn mk_tests(cx: &TestCtxt) -> @ast::item {
 }
 
 fn is_extra(cx: &TestCtxt) -> bool {
-    let items = attr::find_linkage_metas(cx.crate.node.attrs);
+    let items = attr::find_linkage_metas(cx.crate.attrs);
     match attr::last_meta_item_value_str_by_name(items, "name") {
         Some(s) if "extra" == s => true,
         _ => false

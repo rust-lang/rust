@@ -73,7 +73,7 @@ pub enum ast_node {
     node_stmt(@stmt),
     node_arg,
     node_local(ident),
-    node_block(blk),
+    node_block(Block),
     node_struct_ctor(@struct_def, @item, @path),
     node_callee_scope(@expr)
 }
@@ -104,7 +104,7 @@ pub fn mk_ast_map_visitor() -> vt {
     });
 }
 
-pub fn map_crate(diag: @span_handler, c: &crate) -> map {
+pub fn map_crate(diag: @span_handler, c: &Crate) -> map {
     let cx = @mut Ctx {
         map: @mut HashMap::new(),
         path: ~[],
@@ -157,7 +157,7 @@ pub fn map_decoded_item(diag: @span_handler,
 pub fn map_fn(
     fk: &visit::fn_kind,
     decl: &fn_decl,
-    body: &blk,
+    body: &Block,
     sp: codemap::span,
     id: node_id,
     (cx,v): (@mut Ctx,
@@ -169,7 +169,7 @@ pub fn map_fn(
     visit::visit_fn(fk, decl, body, sp, id, (cx, v));
 }
 
-pub fn map_block(b: &blk, (cx,v): (@mut Ctx, visit::vt<@mut Ctx>)) {
+pub fn map_block(b: &Block, (cx,v): (@mut Ctx, visit::vt<@mut Ctx>)) {
     cx.map.insert(b.id, node_block(/* FIXME (#2543) */ (*b).clone()));
     visit::visit_block(b, (cx, v));
 }

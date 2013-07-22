@@ -36,7 +36,7 @@ use middle::typeck::infer::combine::Combine;
 use middle::typeck::infer::InferCtxt;
 use middle::typeck::infer::{new_infer_ctxt, resolve_ivar, resolve_type};
 use middle::typeck::infer;
-use syntax::ast::{crate, def_id, def_struct, def_ty};
+use syntax::ast::{Crate, def_id, def_struct, def_ty};
 use syntax::ast::{item, item_enum, item_impl, item_mod, item_struct};
 use syntax::ast::{local_crate, trait_ref, ty_path};
 use syntax::ast;
@@ -169,7 +169,7 @@ pub struct CoherenceChecker {
 }
 
 impl CoherenceChecker {
-    pub fn check_coherence(self, crate: &crate) {
+    pub fn check_coherence(self, crate: &Crate) {
         // Check implementations and traits. This populates the tables
         // containing the inherent methods and extension methods. It also
         // builds up the trait inheritance table.
@@ -481,7 +481,7 @@ impl CoherenceChecker {
     }
 
     // Privileged scope checking
-    pub fn check_privileged_scopes(self, crate: &crate) {
+    pub fn check_privileged_scopes(self, crate: &Crate) {
         visit_crate(crate, ((), mk_vt(@Visitor {
             visit_item: |item, (_context, visitor)| {
                 match item.node {
@@ -882,7 +882,7 @@ fn subst_receiver_types_in_method_ty(tcx: ty::ctxt,
     )
 }
 
-pub fn check_coherence(crate_context: @mut CrateCtxt, crate: &crate) {
+pub fn check_coherence(crate_context: @mut CrateCtxt, crate: &Crate) {
     let coherence_checker = CoherenceChecker(crate_context);
     coherence_checker.check_coherence(crate);
 }

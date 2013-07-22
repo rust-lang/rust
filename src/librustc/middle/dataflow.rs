@@ -297,7 +297,7 @@ impl<O:DataFlowOperator> DataFlowContext<O> {
 
 impl<O:DataFlowOperator+Clone+'static> DataFlowContext<O> {
 //                      ^^^^^^^^^^^^^ only needed for pretty printing
-    pub fn propagate(&mut self, blk: &ast::blk) {
+    pub fn propagate(&mut self, blk: &ast::Block) {
         //! Performs the data flow analysis.
 
         if self.bits_per_id == 0 {
@@ -329,7 +329,7 @@ impl<O:DataFlowOperator+Clone+'static> DataFlowContext<O> {
         });
     }
 
-    fn pretty_print_to(@self, wr: @io::Writer, blk: &ast::blk) {
+    fn pretty_print_to(@self, wr: @io::Writer, blk: &ast::Block) {
         let pre: @fn(pprust::ann_node) = |node| {
             let (ps, id) = match node {
                 pprust::node_expr(ps, expr) => (ps, expr.id),
@@ -383,7 +383,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
     }
 
     fn walk_block(&mut self,
-                  blk: &ast::blk,
+                  blk: &ast::Block,
                   in_out: &mut [uint],
                   loop_scopes: &mut ~[LoopScope]) {
         debug!("DataFlowContext::walk_block(blk.id=%?, in_out=%s)",
@@ -425,8 +425,8 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
                  loop_scopes: &mut ~[LoopScope]) {
         match decl.node {
             ast::decl_local(local) => {
-                self.walk_opt_expr(local.node.init, in_out, loop_scopes);
-                self.walk_pat(local.node.pat, in_out, loop_scopes);
+                self.walk_opt_expr(local.init, in_out, loop_scopes);
+                self.walk_pat(local.pat, in_out, loop_scopes);
             }
 
             ast::decl_item(_) => {}
@@ -705,7 +705,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
 
             ast::expr_struct(_, ref fields, with_expr) => {
                 for fields.iter().advance |field| {
-                    self.walk_expr(field.node.expr, in_out, loop_scopes);
+                    self.walk_expr(field.expr, in_out, loop_scopes);
                 }
                 self.walk_opt_expr(with_expr, in_out, loop_scopes);
             }

@@ -44,7 +44,7 @@ pub fn check_loans(bccx: @BorrowckCtxt,
                    dfcx_loans: &LoanDataFlow,
                    move_data: move_data::FlowedMoveData,
                    all_loans: &[Loan],
-                   body: &ast::blk) {
+                   body: &ast::Block) {
     debug!("check_loans(body id=%?)", body.id);
 
     let clcx = CheckLoanCtxt {
@@ -615,7 +615,7 @@ impl<'self> CheckLoanCtxt<'self> {
 
 fn check_loans_in_fn<'a>(fk: &visit::fn_kind,
                          decl: &ast::fn_decl,
-                         body: &ast::blk,
+                         body: &ast::Block,
                          sp: span,
                          id: ast::node_id,
                          (this, visitor): (CheckLoanCtxt<'a>,
@@ -676,7 +676,7 @@ fn check_loans_in_fn<'a>(fk: &visit::fn_kind,
     }
 }
 
-fn check_loans_in_local<'a>(local: @ast::local,
+fn check_loans_in_local<'a>(local: @ast::Local,
                             (this, vt): (CheckLoanCtxt<'a>,
                                          visit::vt<CheckLoanCtxt<'a>>)) {
     visit::visit_local(local, (this, vt));
@@ -745,7 +745,7 @@ fn check_loans_in_pat<'a>(pat: @ast::pat,
     visit::visit_pat(pat, (this, vt));
 }
 
-fn check_loans_in_block<'a>(blk: &ast::blk,
+fn check_loans_in_block<'a>(blk: &ast::Block,
                             (this, vt): (CheckLoanCtxt<'a>,
                                          visit::vt<CheckLoanCtxt<'a>>))
 {

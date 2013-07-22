@@ -110,7 +110,7 @@ impl ReachableContext {
 
     // Step 1: Mark all public symbols, and add all public symbols that might
     // be inlined to a worklist.
-    fn mark_public_symbols(&self, crate: @crate) {
+    fn mark_public_symbols(&self, crate: @Crate) {
         let reachable_symbols = self.reachable_symbols;
         let worklist = self.worklist;
         let visitor = visit::mk_vt(@Visitor {
@@ -403,7 +403,7 @@ impl ReachableContext {
 
 pub fn find_reachable(tcx: ty::ctxt,
                       method_map: typeck::method_map,
-                      crate: @crate)
+                      crate: @Crate)
                       -> @mut HashSet<node_id> {
     // XXX(pcwalton): We only need to mark symbols that are exported. But this
     // is more complicated than just looking at whether the symbol is `pub`,

@@ -66,7 +66,7 @@ pub fn check_crate(
     moves_map: moves::MovesMap,
     moved_variables_set: moves::MovedVariablesSet,
     capture_map: moves::CaptureMap,
-    crate: &ast::crate) -> (root_map, write_guard_map)
+    crate: &ast::Crate) -> (root_map, write_guard_map)
 {
     let bccx = @BorrowckCtxt {
         tcx: tcx,
@@ -116,7 +116,7 @@ pub fn check_crate(
 
 fn borrowck_fn(fk: &visit::fn_kind,
                decl: &ast::fn_decl,
-               body: &ast::blk,
+               body: &ast::Block,
                sp: span,
                id: ast::node_id,
                (this, v): (@BorrowckCtxt,

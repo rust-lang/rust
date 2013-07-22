@@ -488,8 +488,8 @@ fn const_expr_unadjusted(cx: @mut CrateContext, e: &ast::expr) -> ValueRef {
               do expr::with_field_tys(tcx, ety, Some(e.id))
                   |discr, field_tys| {
                   let cs = field_tys.map(|field_ty| {
-                      match fs.iter().find_(|f| field_ty.ident == f.node.ident) {
-                          Some(f) => const_expr(cx, (*f).node.expr),
+                      match fs.iter().find_(|f| field_ty.ident == f.ident) {
+                          Some(f) => const_expr(cx, (*f).expr),
                           None => {
                               cx.tcx.sess.span_bug(e.span, "missing struct field");
                           }

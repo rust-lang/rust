@@ -113,17 +113,17 @@ pub struct Path {
     types: ~[Ty],
 }
 
-pub type crate_num = int;
+pub type CrateNum = int;
 
 pub type node_id = int;
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub struct def_id {
-    crate: crate_num,
+    crate: CrateNum,
     node: node_id,
 }
 
-pub static local_crate: crate_num = 0;
+pub static local_crate: CrateNum = 0;
 pub static crate_node_id: node_id = 0;
 
 // The AST represents all type param bounds as types.
@@ -195,15 +195,14 @@ pub enum def {
 
 // The set of MetaItems that define the compilation environment of the crate,
 // used to drive conditional compilation
-pub type crate_cfg = ~[@MetaItem];
-
-pub type crate = spanned<crate_>;
+pub type CrateConfig = ~[@MetaItem];
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
-pub struct crate_ {
+pub struct Crate {
     module: _mod,
     attrs: ~[Attribute],
-    config: crate_cfg,
+    config: CrateConfig,
+    span: span,
 }
 
 pub type MetaItem = spanned<MetaItem_>;
@@ -240,10 +239,8 @@ impl Eq for MetaItem_ {
     }
 }
 
-//pub type blk = spanned<blk_>;
-
 #[deriving(Clone, Eq, Encodable, Decodable,IterBytes)]
-pub struct blk {
+pub struct Block {
     view_items: ~[view_item],
     stmts: ~[@stmt],
     expr: Option<@expr>,
@@ -385,22 +382,21 @@ pub enum stmt_ {
 // FIXME (pending discussion of #1697, #2178...): local should really be
 // a refinement on pat.
 #[deriving(Eq, Encodable, Decodable,IterBytes)]
-pub struct local_ {
+pub struct Local {
     is_mutbl: bool,
     ty: Ty,
     pat: @pat,
     init: Option<@expr>,
     id: node_id,
+    span: span,
 }
-
-pub type local = spanned<local_>;
 
 pub type decl = spanned<decl_>;
 
 #[deriving(Eq, Encodable, Decodable,IterBytes)]
 pub enum decl_ {
     // a local (let) binding:
-    decl_local(@local),
+    decl_local(@Local),
     // an item binding:
     decl_item(@item),
 }
@@ -409,16 +405,15 @@ pub enum decl_ {
 pub struct arm {
     pats: ~[@pat],
     guard: Option<@expr>,
-    body: blk,
+    body: Block,
 }
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
-pub struct field_ {
+pub struct Field {
     ident: ident,
     expr: @expr,
+    span: span,
 }
-
-pub type field = spanned<field_>;
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub enum blk_check_mode {
@@ -464,21 +459,21 @@ pub enum expr_ {
     expr_unary(node_id, unop, @expr),
     expr_lit(@lit),
     expr_cast(@expr, Ty),
-    expr_if(@expr, blk, Option<@expr>),
-    expr_while(@expr, blk),
+    expr_if(@expr, Block, Option<@expr>),
+    expr_while(@expr, Block),
     /* Conditionless loop (can be exited with break, cont, or ret)
        Same semantics as while(true) { body }, but typestate knows that the
        (implicit) condition is always true. */
-    expr_loop(blk, Option<ident>),
+    expr_loop(Block, Option<ident>),
     expr_match(@expr, ~[arm]),
-    expr_fn_block(fn_decl, blk),
+    expr_fn_block(fn_decl, Block),
     // Inner expr is always an expr_fn_block. We need the wrapping node to
     // easily type this (a function returning nil on the inside but bool on
     // the outside).
     expr_loop_body(@expr),
     // Like expr_loop_body but for 'do' blocks
     expr_do_body(@expr),
-    expr_block(blk),
+    expr_block(Block),
 
     expr_assign(@expr, @expr),
     expr_assign_op(node_id, binop, @expr, @expr),
@@ -499,7 +494,7 @@ pub enum expr_ {
     expr_mac(mac),
 
     // A struct literal expression.
-    expr_struct(Path, ~[field], Option<@expr>),
+    expr_struct(Path, ~[Field], Option<@expr>),
 
     // A vector literal constructed from one repeated element.
     expr_repeat(@expr /* element */, @expr /* count */, mutability),
@@ -863,7 +858,7 @@ pub struct method {
     explicit_self: explicit_self,
     purity: purity,
     decl: fn_decl,
-    body: blk,
+    body: Block,
     id: node_id,
     span: span,
     self_id: node_id,
@@ -1051,7 +1046,7 @@ pub struct item {
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub enum item_ {
     item_static(Ty, mutability, @expr),
-    item_fn(fn_decl, purity, AbiSet, Generics, blk),
+    item_fn(fn_decl, purity, AbiSet, Generics, Block),
     item_mod(_mod),
     item_foreign_mod(foreign_mod),
     item_ty(Ty, Generics),

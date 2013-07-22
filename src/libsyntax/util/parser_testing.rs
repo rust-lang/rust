@@ -33,7 +33,7 @@ pub fn string_to_parser(source_str: @str) -> Parser {
     p
 }
 
-pub fn string_to_crate (source_str : @str) -> @ast::crate {
+pub fn string_to_crate (source_str : @str) -> @ast::Crate {
     string_to_parser(source_str).parse_crate_mod()
 }
 

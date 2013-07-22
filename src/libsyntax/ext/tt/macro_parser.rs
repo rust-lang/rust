@@ -223,7 +223,7 @@ pub enum parse_result {
 
 pub fn parse_or_else(
     sess: @mut ParseSess,
-    cfg: ast::crate_cfg,
+    cfg: ast::CrateConfig,
     rdr: @reader,
     ms: ~[matcher]
 ) -> HashMap<ident, @named_match> {
@@ -236,7 +236,7 @@ pub fn parse_or_else(
 
 pub fn parse(
     sess: @mut ParseSess,
-    cfg: ast::crate_cfg,
+    cfg: ast::CrateConfig,
     rdr: @reader,
     ms: &[matcher]
 ) -> parse_result {

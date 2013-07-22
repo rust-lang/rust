@@ -36,7 +36,7 @@ pub struct MatchCheckCtxt {
 pub fn check_crate(tcx: ty::ctxt,
                    method_map: method_map,
                    moves_map: moves::MovesMap,
-                   crate: &crate) {
+                   crate: &Crate) {
     let cx = @MatchCheckCtxt {tcx: tcx,
                               method_map: method_map,
                               moves_map: moves_map};
@@ -738,23 +738,23 @@ pub fn default(cx: &MatchCheckCtxt, r: &[@pat]) -> Option<~[@pat]> {
 }
 
 pub fn check_local(cx: &MatchCheckCtxt,
-                   loc: @local,
+                   loc: @Local,
                    (s, v): ((),
                             visit::vt<()>)) {
     visit::visit_local(loc, (s, v));
-    if is_refutable(cx, loc.node.pat) {
-        cx.tcx.sess.span_err(loc.node.pat.span,
+    if is_refutable(cx, loc.pat) {
+        cx.tcx.sess.span_err(loc.pat.span,
                              "refutable pattern in local binding");
     }
 
     // Check legality of move bindings.
-    check_legality_of_move_bindings(cx, false, [ loc.node.pat ]);
+    check_legality_of_move_bindings(cx, false, [ loc.pat ]);
 }
 
 pub fn check_fn(cx: &MatchCheckCtxt,
                 kind: &visit::fn_kind,
                 decl: &fn_decl,
-                body: &blk,
+                body: &Block,
                 sp: span,
                 id: node_id,
                 (s, v): ((),

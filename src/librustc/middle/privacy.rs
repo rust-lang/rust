@@ -39,7 +39,7 @@ use syntax::visit;
 
 pub fn check_crate<'mm>(tcx: ty::ctxt,
                    method_map: &'mm method_map,
-                   crate: &ast::crate) {
+                   crate: &ast::Crate) {
     let privileged_items = @mut ~[];
 
     // Adds an item to its scope.
@@ -413,9 +413,7 @@ pub fn check_crate<'mm>(tcx: ty::ctxt,
                                 Some(ref entry) => {
                                     debug!("(privacy checking) checking \
                                             impl method");
-                                    check_method(expr.span,
-                                                 &entry.origin,
-                                                 ident);
+                                    check_method(expr.span, &entry.origin, ident);
                                 }
                             }
                         }
@@ -433,8 +431,7 @@ pub fn check_crate<'mm>(tcx: ty::ctxt,
                                 for (*fields).iter().advance |field| {
                                         debug!("(privacy checking) checking \
                                                 field in struct literal");
-                                    check_field(expr.span, id,
-                                                field.node.ident);
+                                    check_field(expr.span, id, field.ident);
                                 }
                             }
                         }
@@ -448,8 +445,7 @@ pub fn check_crate<'mm>(tcx: ty::ctxt,
                                                         checking field in \
                                                         struct variant \
                                                         literal");
-                                            check_field(expr.span, variant_id,
-                                                        field.node.ident);
+                                            check_field(expr.span, variant_id, field.ident);
                                         }
                                     }
                                     _ => {
@@ -499,8 +495,7 @@ pub fn check_crate<'mm>(tcx: ty::ctxt,
                                 for fields.iter().advance |field| {
                                         debug!("(privacy checking) checking \
                                                 struct pattern");
-                                    check_field(pattern.span, id,
-                                                field.ident);
+                                    check_field(pattern.span, id, field.ident);
                                 }
                             }
                         }
@@ -513,9 +508,7 @@ pub fn check_crate<'mm>(tcx: ty::ctxt,
                                             debug!("(privacy checking) \
                                                     checking field in \
                                                     struct variant pattern");
-                                            check_field(pattern.span,
-                                                        variant_id,
-                                                        field.ident);
+                                            check_field(pattern.span, variant_id, field.ident);
                                         }
                                     }
                                     _ => {
