@@ -271,7 +271,7 @@ fn visit_expr(e: @ast::expr, (wbcx, v): (@mut WbCtxt, wb_vt)) {
     visit::visit_expr(e, (wbcx, v));
 }
 
-fn visit_block(b: &ast::blk, (wbcx, v): (@mut WbCtxt, wb_vt)) {
+fn visit_block(b: &ast::Block, (wbcx, v): (@mut WbCtxt, wb_vt)) {
     if !wbcx.success {
         return;
     }
@@ -294,16 +294,16 @@ fn visit_pat(p: @ast::pat, (wbcx, v): (@mut WbCtxt, wb_vt)) {
     visit::visit_pat(p, (wbcx, v));
 }
 
-fn visit_local(l: @ast::local, (wbcx, v): (@mut WbCtxt, wb_vt)) {
+fn visit_local(l: @ast::Local, (wbcx, v): (@mut WbCtxt, wb_vt)) {
     if !wbcx.success { return; }
-    let var_ty = wbcx.fcx.local_ty(l.span, l.node.id);
+    let var_ty = wbcx.fcx.local_ty(l.span, l.id);
     match resolve_type(wbcx.fcx.infcx(), var_ty, resolve_all | force_all) {
         Ok(lty) => {
             debug!("Type for local %s (id %d) resolved to %s",
-                   pat_to_str(l.node.pat, wbcx.fcx.tcx().sess.intr()),
-                   l.node.id,
+                   pat_to_str(l.pat, wbcx.fcx.tcx().sess.intr()),
+                   l.id,
                    wbcx.fcx.infcx().ty_to_str(lty));
-            write_ty_to_tcx(wbcx.fcx.ccx.tcx, l.node.id, lty);
+            write_ty_to_tcx(wbcx.fcx.ccx.tcx, l.id, lty);
         }
         Err(e) => {
             wbcx.fcx.ccx.tcx.sess.span_err(
@@ -339,7 +339,7 @@ pub fn resolve_type_vars_in_expr(fcx: @mut FnCtxt, e: @ast::expr) -> bool {
 
 pub fn resolve_type_vars_in_fn(fcx: @mut FnCtxt,
                                decl: &ast::fn_decl,
-                               blk: &ast::blk,
+                               blk: &ast::Block,
                                self_info: Option<SelfInfo>) -> bool {
     let wbcx = @mut WbCtxt { fcx: fcx, success: true };
     let visit = mk_visitor();

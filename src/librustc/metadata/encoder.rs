@@ -1170,14 +1170,14 @@ fn encode_info_for_foreign_item(ecx: &EncodeContext,
 
 fn encode_info_for_items(ecx: &EncodeContext,
                          ebml_w: &mut writer::Encoder,
-                         crate: &crate)
+                         crate: &Crate)
                          -> ~[entry<int>] {
     let index = @mut ~[];
     ebml_w.start_tag(tag_items_data);
     index.push(entry { val: crate_node_id, pos: ebml_w.writer.tell() });
     encode_info_for_mod(ecx,
                         ebml_w,
-                        &crate.node.module,
+                        &crate.module,
                         crate_node_id,
                         [],
                         syntax::parse::token::special_idents::invalid,
@@ -1348,7 +1348,7 @@ fn encode_attributes(ebml_w: &mut writer::Encoder, attrs: &[Attribute]) {
 // 'name' and 'vers' items, so if the user didn't provide them we will throw
 // them in anyway with default values.
 fn synthesize_crate_attrs(ecx: &EncodeContext,
-                          crate: &crate) -> ~[Attribute] {
+                          crate: &Crate) -> ~[Attribute] {
 
     fn synthesize_link_attr(ecx: &EncodeContext, items: ~[@MetaItem]) ->
        Attribute {
@@ -1377,7 +1377,7 @@ fn synthesize_crate_attrs(ecx: &EncodeContext,
 
     let mut attrs = ~[];
     let mut found_link_attr = false;
-    for crate.node.attrs.iter().advance |attr| {
+    for crate.attrs.iter().advance |attr| {
         attrs.push(
             if "link" != attr.name()  {
                 *attr
@@ -1477,11 +1477,11 @@ fn encode_link_args(ecx: &EncodeContext, ebml_w: &mut writer::Encoder) {
 }
 
 fn encode_misc_info(ecx: &EncodeContext,
-                    crate: &crate,
+                    crate: &Crate,
                     ebml_w: &mut writer::Encoder) {
     ebml_w.start_tag(tag_misc_info);
     ebml_w.start_tag(tag_misc_info_crate_items);
-    for crate.node.module.items.iter().advance |&item| {
+    for crate.module.items.iter().advance |&item| {
         ebml_w.start_tag(tag_mod_child);
         ebml_w.wr_str(def_to_str(local_def(item.id)));
         ebml_w.end_tag();
@@ -1531,7 +1531,7 @@ pub static metadata_encoding_version : &'static [u8] =
       0x74, //'t' as u8,
       0, 0, 0, 1 ];
 
-pub fn encode_metadata(parms: EncodeParams, crate: &crate) -> ~[u8] {
+pub fn encode_metadata(parms: EncodeParams, crate: &Crate) -> ~[u8] {
     let wr = @io::BytesWriter::new();
     let stats = Stats {
         inline_bytes: 0,

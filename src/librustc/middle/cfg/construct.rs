@@ -33,7 +33,7 @@ struct LoopScope {
 
 pub fn construct(tcx: ty::ctxt,
                  method_map: typeck::method_map,
-                 blk: &ast::blk) -> CFG {
+                 blk: &ast::Block) -> CFG {
     let mut cfg_builder = CFGBuilder {
         exit_map: HashMap::new(),
         graph: graph::Graph::new(),
@@ -51,7 +51,7 @@ pub fn construct(tcx: ty::ctxt,
 }
 
 impl CFGBuilder {
-    fn block(&mut self, blk: &ast::blk, pred: CFGIndex) -> CFGIndex {
+    fn block(&mut self, blk: &ast::Block, pred: CFGIndex) -> CFGIndex {
         let mut stmts_exit = pred;
         for blk.stmts.iter().advance |&stmt| {
             stmts_exit = self.stmt(stmt, stmts_exit);
@@ -81,8 +81,8 @@ impl CFGBuilder {
     fn decl(&mut self, decl: @ast::decl, pred: CFGIndex) -> CFGIndex {
         match decl.node {
             ast::decl_local(local) => {
-                let init_exit = self.opt_expr(local.node.init, pred);
-                self.pat(local.node.pat, init_exit)
+                let init_exit = self.opt_expr(local.init, pred);
+                self.pat(local.pat, init_exit)
             }
 
             ast::decl_item(_) => {
@@ -374,7 +374,7 @@ impl CFGBuilder {
             ast::expr_struct(_, ref fields, base) => {
                 let base_exit = self.opt_expr(base, pred);
                 let field_exprs: ~[@ast::expr] =
-                    fields.iter().transform(|f| f.node.expr).collect();
+                    fields.iter().transform(|f| f.expr).collect();
                 self.straightline(expr, base_exit, field_exprs)
             }
 

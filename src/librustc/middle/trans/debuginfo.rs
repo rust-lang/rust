@@ -134,10 +134,10 @@ pub fn finalize(cx: @mut CrateContext) {
 ///
 /// Adds the created metadata nodes directly to the crate's IR.
 /// The return value should be ignored if called from outside of the debuginfo module.
-pub fn create_local_var_metadata(bcx: block, local: @ast::local) -> DIVariable {
+pub fn create_local_var_metadata(bcx: block, local: @ast::Local) -> DIVariable {
     let cx = bcx.ccx();
 
-    let ident = match local.node.pat.node {
+    let ident = match local.pat.node {
       ast::pat_ident(_, ref pth, _) => ast_util::path_to_ident(pth),
       // FIXME this should be handled (#2533)
       _ => {
@@ -150,8 +150,8 @@ pub fn create_local_var_metadata(bcx: block, local: @ast::local) -> DIVariable {
     debug!("create_local_var_metadata: %s", name);
 
     let loc = span_start(cx, local.span);
-    let ty = node_id_type(bcx, local.node.id);
-    let type_metadata = type_metadata(cx, ty, local.node.ty.span);
+    let ty = node_id_type(bcx, local.id);
+    let type_metadata = type_metadata(cx, ty, local.ty.span);
     let file_metadata = file_metadata(cx, loc.file.name);
 
     let context = match bcx.parent {
@@ -176,12 +176,12 @@ pub fn create_local_var_metadata(bcx: block, local: @ast::local) -> DIVariable {
     };
 
     // FIXME(#6814) Should use `pat_util::pat_bindings` for pats like (a, b) etc
-    let llptr = match bcx.fcx.lllocals.find_copy(&local.node.pat.id) {
+    let llptr = match bcx.fcx.lllocals.find_copy(&local.pat.id) {
         Some(v) => v,
         None => {
             bcx.tcx().sess.span_bug(
                 local.span,
-                fmt!("No entry in lllocals table for %?", local.node.id));
+                fmt!("No entry in lllocals table for %?", local.id));
         }
     };
 

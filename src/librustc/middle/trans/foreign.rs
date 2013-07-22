@@ -965,7 +965,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
 pub fn trans_foreign_fn(ccx: @mut CrateContext,
                         path: ast_map::path,
                         decl: &ast::fn_decl,
-                        body: &ast::blk,
+                        body: &ast::Block,
                         llwrapfn: ValueRef,
                         id: ast::node_id) {
     let _icx = push_ctxt("foreign::build_foreign_fn");
@@ -973,7 +973,7 @@ pub fn trans_foreign_fn(ccx: @mut CrateContext,
     fn build_rust_fn(ccx: @mut CrateContext,
                      path: &ast_map::path,
                      decl: &ast::fn_decl,
-                     body: &ast::blk,
+                     body: &ast::Block,
                      id: ast::node_id)
                   -> ValueRef {
         let _icx = push_ctxt("foreign::foreign::build_rust_fn");

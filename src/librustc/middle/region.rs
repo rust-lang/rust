@@ -323,7 +323,7 @@ fn parent_to_expr(cx: Context, child_id: ast::node_id, sp: span) {
     }
 }
 
-fn resolve_block(blk: &ast::blk, (cx, visitor): (Context, visit::vt<Context>)) {
+fn resolve_block(blk: &ast::Block, (cx, visitor): (Context, visit::vt<Context>)) {
     // Record the parent of this block.
     parent_to_expr(cx, blk.id, blk.span);
 
@@ -398,11 +398,11 @@ fn resolve_expr(expr: @ast::expr, (cx, visitor): (Context, visit::vt<Context>)) 
     visit::visit_expr(expr, (new_cx, visitor));
 }
 
-fn resolve_local(local: @ast::local,
+fn resolve_local(local: @ast::Local,
                  (cx, visitor) : (Context,
                                   visit::vt<Context>)) {
     assert_eq!(cx.var_parent, cx.parent);
-    parent_to_expr(cx, local.node.id, local.span);
+    parent_to_expr(cx, local.id, local.span);
     visit::visit_local(local, (cx, visitor));
 }
 
@@ -414,7 +414,7 @@ fn resolve_item(item: @ast::item, (cx, visitor): (Context, visit::vt<Context>)) 
 
 fn resolve_fn(fk: &visit::fn_kind,
               decl: &ast::fn_decl,
-              body: &ast::blk,
+              body: &ast::Block,
               sp: span,
               id: ast::node_id,
               (cx, visitor): (Context,
@@ -457,7 +457,7 @@ fn resolve_fn(fk: &visit::fn_kind,
 
 pub fn resolve_crate(sess: Session,
                      def_map: resolve::DefMap,
-                     crate: &ast::crate) -> @mut RegionMaps
+                     crate: &ast::Crate) -> @mut RegionMaps
 {
     let region_maps = @mut RegionMaps {
         scope_map: HashMap::new(),
@@ -706,7 +706,7 @@ fn determine_rp_in_item(item: @ast::item,
 
 fn determine_rp_in_fn(fk: &visit::fn_kind,
                       decl: &ast::fn_decl,
-                      body: &ast::blk,
+                      body: &ast::Block,
                       _: span,
                       _: ast::node_id,
                       (cx, visitor): (@mut DetermineRpCtxt,
@@ -874,7 +874,7 @@ fn determine_rp_in_struct_field(
 pub fn determine_rp_in_crate(sess: Session,
                              ast_map: ast_map::map,
                              def_map: resolve::DefMap,
-                             crate: &ast::crate)
+                             crate: &ast::Crate)
                           -> region_paramd_items {
     let cx = @mut DetermineRpCtxt {
         sess: sess,
