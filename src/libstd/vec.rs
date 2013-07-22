@@ -689,6 +689,8 @@ impl<'self,T:Clone> CopyableVector<T> for &'self [T] {
 #[allow(missing_doc)]
 pub trait ImmutableVector<'self, T> {
     fn slice(&self, start: uint, end: uint) -> &'self [T];
+    fn slice_from(&self, start: uint) -> &'self [T];
+    fn slice_to(&self, end: uint) -> &'self [T];
     fn iter(self) -> VecIterator<'self, T>;
     fn rev_iter(self) -> VecRevIterator<'self, T>;
     fn split_iter(self, pred: &'self fn(&T) -> bool) -> VecSplitIterator<'self, T>;
@@ -720,17 +722,43 @@ pub trait ImmutableVector<'self, T> {
 
 /// Extension methods for vectors
 impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
-    /// Return a slice that points into another slice.
+
+    /**
+     * Returns a slice of self between `start` and `end`.
+     *
+     * Fails when `start` or `end` point outside the bounds of self,
+     * or when `start` > `end`.
+     */
     #[inline]
     fn slice(&self, start: uint, end: uint) -> &'self [T] {
-    assert!(start <= end);
-    assert!(end <= self.len());
+        assert!(start <= end);
+        assert!(end <= self.len());
         do self.as_imm_buf |p, _len| {
             unsafe {
                 transmute((ptr::offset(p, start),
                            (end - start) * sys::nonzero_size_of::<T>()))
             }
         }
+    }
+
+    /**
+     * Returns a slice of self from `start` to the end of the vec.
+     *
+     * Fails when `start` points outside the bounds of self.
+     */
+    #[inline]
+    fn slice_from(&self, start: uint) -> &'self [T] {
+        self.slice(start, self.len())
+    }
+
+    /**
+     * Returns a slice of self from the start of the vec to `end`.
+     *
+     * Fails when `end` points outside the bounds of self.
+     */
+    #[inline]
+    fn slice_to(&self, end: uint) -> &'self [T] {
+        self.slice(0, end)
     }
 
     #[inline]
@@ -2451,6 +2479,22 @@ mod tests {
         assert_eq!(v_d[2], 4);
         assert_eq!(v_d[3], 5);
         assert_eq!(v_d[4], 6);
+    }
+
+    #[test]
+    fn test_slice_from() {
+        let vec = &[1, 2, 3, 4];
+        assert_eq!(vec.slice_from(0), vec);
+        assert_eq!(vec.slice_from(2), &[3, 4]);
+        assert_eq!(vec.slice_from(4), &[]);
+    }
+
+    #[test]
+    fn test_slice_to() {
+        let vec = &[1, 2, 3, 4];
+        assert_eq!(vec.slice_to(4), vec);
+        assert_eq!(vec.slice_to(2), &[1, 2]);
+        assert_eq!(vec.slice_to(0), &[]);
     }
 
     #[test]
