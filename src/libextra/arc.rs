@@ -182,11 +182,11 @@ impl<T:Send> MutexArc<T> {
      * Create a mutex-protected Arc with the supplied data and a specified number
      * of condvars (as sync::Mutex::new_with_condvars).
      */
-    pub fn new_with_condvars(user_data: T,
-                             num_condvars: uint) -> MutexArc<T> {
-        let data =
-            MutexArcInner { lock: Mutex::new_with_condvars(num_condvars),
-                           failed: false, data: user_data };
+    pub fn new_with_condvars(user_data: T, num_condvars: uint) -> MutexArc<T> {
+        let data = MutexArcInner {
+            lock: Mutex::new_with_condvars(num_condvars),
+            failed: false, data: user_data
+        };
         MutexArc { x: UnsafeAtomicRcBox::new(data) }
     }
 
@@ -333,9 +333,10 @@ impl<T:Freeze + Send> RWArc<T> {
      * of condvars (as sync::RWLock::new_with_condvars).
      */
     pub fn new_with_condvars(user_data: T, num_condvars: uint) -> RWArc<T> {
-        let data =
-            RWArcInner { lock: RWLock::new_with_condvars(num_condvars),
-                        failed: false, data: user_data };
+        let data = RWArcInner {
+            lock: RWLock::new_with_condvars(num_condvars),
+            failed: false, data: user_data
+        };
         RWArc { x: UnsafeAtomicRcBox::new(data), }
     }
 
