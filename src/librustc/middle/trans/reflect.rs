@@ -281,7 +281,7 @@ impl Reflector {
             let llptrty = type_of(ccx, t).ptr_to();
             let opaquety = ty::get_opaque_ty(ccx.tcx).unwrap();
             let opaqueptrty = ty::mk_ptr(ccx.tcx,
-                                         ty::re_static,
+                                         ty::re_bound(ty::br_anon(0)),
                                          ty::mt { ty: opaquety, mutbl: ast::m_imm });
 
             let make_get_disr = || {

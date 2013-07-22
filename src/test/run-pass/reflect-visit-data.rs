@@ -211,42 +211,42 @@ impl<V:TyVisitor + movable_ptr> TyVisitor for ptr_visit_adaptor<V> {
         true
     }
 
-    fn visit_box(&self, mtbl: uint, inner: *'static TyDesc) -> bool {
+    fn visit_box(&self, mtbl: uint, inner: *TyDesc) -> bool {
         self.align_to::<@u8>();
         if ! self.inner.visit_box(mtbl, inner) { return false; }
         self.bump_past::<@u8>();
         true
     }
 
-    fn visit_uniq(&self, mtbl: uint, inner: *'static TyDesc) -> bool {
+    fn visit_uniq(&self, mtbl: uint, inner: *TyDesc) -> bool {
         self.align_to::<~u8>();
         if ! self.inner.visit_uniq(mtbl, inner) { return false; }
         self.bump_past::<~u8>();
         true
     }
 
-    fn visit_uniq_managed(&self, mtbl: uint, inner: *'static TyDesc) -> bool {
+    fn visit_uniq_managed(&self, mtbl: uint, inner: *TyDesc) -> bool {
         self.align_to::<~u8>();
         if ! self.inner.visit_uniq_managed(mtbl, inner) { return false; }
         self.bump_past::<~u8>();
         true
     }
 
-    fn visit_ptr(&self, mtbl: uint, inner: *'static TyDesc) -> bool {
+    fn visit_ptr(&self, mtbl: uint, inner: *TyDesc) -> bool {
         self.align_to::<*u8>();
         if ! self.inner.visit_ptr(mtbl, inner) { return false; }
         self.bump_past::<*u8>();
         true
     }
 
-    fn visit_rptr(&self, mtbl: uint, inner: *'static TyDesc) -> bool {
+    fn visit_rptr(&self, mtbl: uint, inner: *TyDesc) -> bool {
         self.align_to::<&'static u8>();
         if ! self.inner.visit_rptr(mtbl, inner) { return false; }
         self.bump_past::<&'static u8>();
         true
     }
 
-    fn visit_unboxed_vec(&self, mtbl: uint, inner: *'static TyDesc) -> bool {
+    fn visit_unboxed_vec(&self, mtbl: uint, inner: *TyDesc) -> bool {
         self.align_to::<UnboxedVecRepr>();
         // FIXME (#3732): Inner really has to move its own pointers on this one.
         // or else possibly we could have some weird interface wherein we
@@ -256,35 +256,35 @@ impl<V:TyVisitor + movable_ptr> TyVisitor for ptr_visit_adaptor<V> {
         true
     }
 
-    fn visit_vec(&self, mtbl: uint, inner: *'static TyDesc) -> bool {
+    fn visit_vec(&self, mtbl: uint, inner: *TyDesc) -> bool {
         self.align_to::<~[u8]>();
         if ! self.inner.visit_vec(mtbl, inner) { return false; }
         self.bump_past::<~[u8]>();
         true
     }
 
-    fn visit_evec_box(&self, mtbl: uint, inner: *'static TyDesc) -> bool {
+    fn visit_evec_box(&self, mtbl: uint, inner: *TyDesc) -> bool {
         self.align_to::<@[u8]>();
         if ! self.inner.visit_evec_box(mtbl, inner) { return false; }
         self.bump_past::<@[u8]>();
         true
     }
 
-    fn visit_evec_uniq(&self, mtbl: uint, inner: *'static TyDesc) -> bool {
+    fn visit_evec_uniq(&self, mtbl: uint, inner: *TyDesc) -> bool {
         self.align_to::<~[u8]>();
         if ! self.inner.visit_evec_uniq(mtbl, inner) { return false; }
         self.bump_past::<~[u8]>();
         true
     }
 
-    fn visit_evec_uniq_managed(&self, mtbl: uint, inner: *'static TyDesc) -> bool {
+    fn visit_evec_uniq_managed(&self, mtbl: uint, inner: *TyDesc) -> bool {
         self.align_to::<~[@u8]>();
         if ! self.inner.visit_evec_uniq_managed(mtbl, inner) { return false; }
         self.bump_past::<~[@u8]>();
         true
     }
 
-    fn visit_evec_slice(&self, mtbl: uint, inner: *'static TyDesc) -> bool {
+    fn visit_evec_slice(&self, mtbl: uint, inner: *TyDesc) -> bool {
         self.align_to::<&'static [u8]>();
         if ! self.inner.visit_evec_slice(mtbl, inner) { return false; }
         self.bump_past::<&'static [u8]>();
@@ -292,7 +292,7 @@ impl<V:TyVisitor + movable_ptr> TyVisitor for ptr_visit_adaptor<V> {
     }
 
     fn visit_evec_fixed(&self, n: uint, sz: uint, align: uint,
-                        mtbl: uint, inner: *'static TyDesc) -> bool {
+                        mtbl: uint, inner: *TyDesc) -> bool {
         self.align(align);
         if ! self.inner.visit_evec_fixed(n, sz, align, mtbl, inner) {
             return false;
@@ -308,7 +308,7 @@ impl<V:TyVisitor + movable_ptr> TyVisitor for ptr_visit_adaptor<V> {
     }
 
     fn visit_rec_field(&self, i: uint, name: &str,
-                       mtbl: uint, inner: *'static TyDesc) -> bool {
+                       mtbl: uint, inner: *TyDesc) -> bool {
         if ! self.inner.visit_rec_field(i, name, mtbl, inner) { return false; }
         true
     }
@@ -328,7 +328,7 @@ impl<V:TyVisitor + movable_ptr> TyVisitor for ptr_visit_adaptor<V> {
     }
 
     fn visit_class_field(&self, i: uint, name: &str,
-                         mtbl: uint, inner: *'static TyDesc) -> bool {
+                         mtbl: uint, inner: *TyDesc) -> bool {
         if ! self.inner.visit_class_field(i, name, mtbl, inner) {
             return false;
         }
@@ -349,7 +349,7 @@ impl<V:TyVisitor + movable_ptr> TyVisitor for ptr_visit_adaptor<V> {
         true
     }
 
-    fn visit_tup_field(&self, i: uint, inner: *'static TyDesc) -> bool {
+    fn visit_tup_field(&self, i: uint, inner: *TyDesc) -> bool {
         if ! self.inner.visit_tup_field(i, inner) { return false; }
         true
     }
@@ -367,12 +367,12 @@ impl<V:TyVisitor + movable_ptr> TyVisitor for ptr_visit_adaptor<V> {
         true
     }
 
-    fn visit_fn_input(&self, i: uint, mode: uint, inner: *'static TyDesc) -> bool {
+    fn visit_fn_input(&self, i: uint, mode: uint, inner: *TyDesc) -> bool {
         if ! self.inner.visit_fn_input(i, mode, inner) { return false; }
         true
     }
 
-    fn visit_fn_output(&self, retstyle: uint, inner: *'static TyDesc) -> bool {
+    fn visit_fn_output(&self, retstyle: uint, inner: *TyDesc) -> bool {
         if ! self.inner.visit_fn_output(retstyle, inner) { return false; }
         true
     }
@@ -405,7 +405,7 @@ impl<V:TyVisitor + movable_ptr> TyVisitor for ptr_visit_adaptor<V> {
         true
     }
 
-    fn visit_enum_variant_field(&self, i: uint, offset: uint, inner: *'static TyDesc) -> bool {
+    fn visit_enum_variant_field(&self, i: uint, offset: uint, inner: *TyDesc) -> bool {
         if ! self.inner.visit_enum_variant_field(i, offset, inner) { return false; }
         true
     }
@@ -470,7 +470,7 @@ impl<V:TyVisitor + movable_ptr> TyVisitor for ptr_visit_adaptor<V> {
         true
     }
 
-    fn visit_constr(&self, inner: *'static TyDesc) -> bool {
+    fn visit_constr(&self, inner: *TyDesc) -> bool {
         if ! self.inner.visit_constr(inner) { return false; }
         true
     }
@@ -498,7 +498,7 @@ impl my_visitor {
         }
     }
 
-    pub fn visit_inner(&self, inner: *'static TyDesc) -> bool {
+    pub fn visit_inner(&self, inner: *TyDesc) -> bool {
         unsafe {
             let u = my_visitor(**self);
             let v = ptr_visit_adaptor::<my_visitor>(Inner {inner: u});
@@ -556,25 +556,25 @@ impl TyVisitor for my_visitor {
     fn visit_estr_fixed(&self, _n: uint, _sz: uint,
                         _align: uint) -> bool { true }
 
-    fn visit_box(&self, _mtbl: uint, _inner: *'static TyDesc) -> bool { true }
-    fn visit_uniq(&self, _mtbl: uint, _inner: *'static TyDesc) -> bool { true }
-    fn visit_uniq_managed(&self, _mtbl: uint, _inner: *'static TyDesc) -> bool { true }
-    fn visit_ptr(&self, _mtbl: uint, _inner: *'static TyDesc) -> bool { true }
-    fn visit_rptr(&self, _mtbl: uint, _inner: *'static TyDesc) -> bool { true }
+    fn visit_box(&self, _mtbl: uint, _inner: *TyDesc) -> bool { true }
+    fn visit_uniq(&self, _mtbl: uint, _inner: *TyDesc) -> bool { true }
+    fn visit_uniq_managed(&self, _mtbl: uint, _inner: *TyDesc) -> bool { true }
+    fn visit_ptr(&self, _mtbl: uint, _inner: *TyDesc) -> bool { true }
+    fn visit_rptr(&self, _mtbl: uint, _inner: *TyDesc) -> bool { true }
 
-    fn visit_vec(&self, _mtbl: uint, _inner: *'static TyDesc) -> bool { true }
-    fn visit_unboxed_vec(&self, _mtbl: uint, _inner: *'static TyDesc) -> bool { true }
-    fn visit_evec_box(&self, _mtbl: uint, _inner: *'static TyDesc) -> bool { true }
-    fn visit_evec_uniq(&self, _mtbl: uint, _inner: *'static TyDesc) -> bool { true }
-    fn visit_evec_uniq_managed(&self, _mtbl: uint, _inner: *'static TyDesc) -> bool { true }
-    fn visit_evec_slice(&self, _mtbl: uint, _inner: *'static TyDesc) -> bool { true }
+    fn visit_vec(&self, _mtbl: uint, _inner: *TyDesc) -> bool { true }
+    fn visit_unboxed_vec(&self, _mtbl: uint, _inner: *TyDesc) -> bool { true }
+    fn visit_evec_box(&self, _mtbl: uint, _inner: *TyDesc) -> bool { true }
+    fn visit_evec_uniq(&self, _mtbl: uint, _inner: *TyDesc) -> bool { true }
+    fn visit_evec_uniq_managed(&self, _mtbl: uint, _inner: *TyDesc) -> bool { true }
+    fn visit_evec_slice(&self, _mtbl: uint, _inner: *TyDesc) -> bool { true }
     fn visit_evec_fixed(&self, _n: uint, _sz: uint, _align: uint,
-                        _mtbl: uint, _inner: *'static TyDesc) -> bool { true }
+                        _mtbl: uint, _inner: *TyDesc) -> bool { true }
 
     fn visit_enter_rec(&self, _n_fields: uint,
                        _sz: uint, _align: uint) -> bool { true }
     fn visit_rec_field(&self, _i: uint, _name: &str,
-                       _mtbl: uint, inner: *'static TyDesc) -> bool {
+                       _mtbl: uint, inner: *TyDesc) -> bool {
         error!("rec field!");
         self.visit_inner(inner)
     }
@@ -584,7 +584,7 @@ impl TyVisitor for my_visitor {
     fn visit_enter_class(&self, _n_fields: uint,
                          _sz: uint, _align: uint) -> bool { true }
     fn visit_class_field(&self, _i: uint, _name: &str,
-                         _mtbl: uint, inner: *'static TyDesc) -> bool {
+                         _mtbl: uint, inner: *TyDesc) -> bool {
         self.visit_inner(inner)
     }
     fn visit_leave_class(&self, _n_fields: uint,
@@ -592,7 +592,7 @@ impl TyVisitor for my_visitor {
 
     fn visit_enter_tup(&self, _n_fields: uint,
                        _sz: uint, _align: uint) -> bool { true }
-    fn visit_tup_field(&self, _i: uint, inner: *'static TyDesc) -> bool {
+    fn visit_tup_field(&self, _i: uint, inner: *TyDesc) -> bool {
         error!("tup field!");
         self.visit_inner(inner)
     }
@@ -609,7 +609,7 @@ impl TyVisitor for my_visitor {
                                 _disr_val: int,
                                 _n_fields: uint,
                                 _name: &str) -> bool { true }
-    fn visit_enum_variant_field(&self, _i: uint, _offset: uint, inner: *'static TyDesc) -> bool {
+    fn visit_enum_variant_field(&self, _i: uint, _offset: uint, inner: *TyDesc) -> bool {
         self.visit_inner(inner)
     }
     fn visit_leave_enum_variant(&self, _variant: uint,
@@ -622,10 +622,10 @@ impl TyVisitor for my_visitor {
 
     fn visit_enter_fn(&self, _purity: uint, _proto: uint,
                       _n_inputs: uint, _retstyle: uint) -> bool { true }
-    fn visit_fn_input(&self, _i: uint, _mode: uint, _inner: *'static TyDesc) -> bool {
+    fn visit_fn_input(&self, _i: uint, _mode: uint, _inner: *TyDesc) -> bool {
         true
     }
-    fn visit_fn_output(&self, _retstyle: uint, _inner: *'static TyDesc) -> bool {
+    fn visit_fn_output(&self, _retstyle: uint, _inner: *TyDesc) -> bool {
         true
     }
     fn visit_leave_fn(&self, _purity: uint, _proto: uint,
@@ -639,7 +639,7 @@ impl TyVisitor for my_visitor {
     fn visit_self(&self) -> bool { true }
     fn visit_type(&self) -> bool { true }
     fn visit_opaque_box(&self) -> bool { true }
-    fn visit_constr(&self, _inner: *'static TyDesc) -> bool { true }
+    fn visit_constr(&self, _inner: *TyDesc) -> bool { true }
     fn visit_closure_ptr(&self, _ck: uint) -> bool { true }
 }
 

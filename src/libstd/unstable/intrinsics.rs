@@ -84,20 +84,20 @@ pub trait TyVisitor {
     fn visit_estr_slice(&self) -> bool;
     fn visit_estr_fixed(&self, n: uint, sz: uint, align: uint) -> bool;
 
-    fn visit_box(&self, mtbl: uint, inner: *'static TyDesc) -> bool;
-    fn visit_uniq(&self, mtbl: uint, inner: *'static TyDesc) -> bool;
-    fn visit_uniq_managed(&self, mtbl: uint, inner: *'static TyDesc) -> bool;
-    fn visit_ptr(&self, mtbl: uint, inner: *'static TyDesc) -> bool;
-    fn visit_rptr(&self, mtbl: uint, inner: *'static TyDesc) -> bool;
+    fn visit_box(&self, mtbl: uint, inner: *TyDesc) -> bool;
+    fn visit_uniq(&self, mtbl: uint, inner: *TyDesc) -> bool;
+    fn visit_uniq_managed(&self, mtbl: uint, inner: *TyDesc) -> bool;
+    fn visit_ptr(&self, mtbl: uint, inner: *TyDesc) -> bool;
+    fn visit_rptr(&self, mtbl: uint, inner: *TyDesc) -> bool;
 
-    fn visit_vec(&self, mtbl: uint, inner: *'static TyDesc) -> bool;
-    fn visit_unboxed_vec(&self, mtbl: uint, inner: *'static TyDesc) -> bool;
-    fn visit_evec_box(&self, mtbl: uint, inner: *'static TyDesc) -> bool;
-    fn visit_evec_uniq(&self, mtbl: uint, inner: *'static TyDesc) -> bool;
-    fn visit_evec_uniq_managed(&self, mtbl: uint, inner: *'static TyDesc) -> bool;
-    fn visit_evec_slice(&self, mtbl: uint, inner: *'static TyDesc) -> bool;
+    fn visit_vec(&self, mtbl: uint, inner: *TyDesc) -> bool;
+    fn visit_unboxed_vec(&self, mtbl: uint, inner: *TyDesc) -> bool;
+    fn visit_evec_box(&self, mtbl: uint, inner: *TyDesc) -> bool;
+    fn visit_evec_uniq(&self, mtbl: uint, inner: *TyDesc) -> bool;
+    fn visit_evec_uniq_managed(&self, mtbl: uint, inner: *TyDesc) -> bool;
+    fn visit_evec_slice(&self, mtbl: uint, inner: *TyDesc) -> bool;
     fn visit_evec_fixed(&self, n: uint, sz: uint, align: uint,
-                        mtbl: uint, inner: *'static TyDesc) -> bool;
+                        mtbl: uint, inner: *TyDesc) -> bool;
 
     fn visit_enter_rec(&self, n_fields: uint,
                        sz: uint, align: uint) -> bool;
@@ -105,7 +105,7 @@ pub trait TyVisitor {
                        i: uint,
                        name: &str,
                        mtbl: uint,
-                       inner: *'static TyDesc) -> bool;
+                       inner: *TyDesc) -> bool;
     fn visit_leave_rec(&self, n_fields: uint,
                        sz: uint, align: uint) -> bool;
 
@@ -115,13 +115,13 @@ pub trait TyVisitor {
                          i: uint,
                          name: &str,
                          mtbl: uint,
-                         inner: *'static TyDesc) -> bool;
+                         inner: *TyDesc) -> bool;
     fn visit_leave_class(&self, n_fields: uint,
                          sz: uint, align: uint) -> bool;
 
     fn visit_enter_tup(&self, n_fields: uint,
                        sz: uint, align: uint) -> bool;
-    fn visit_tup_field(&self, i: uint, inner: *'static TyDesc) -> bool;
+    fn visit_tup_field(&self, i: uint, inner: *TyDesc) -> bool;
     fn visit_leave_tup(&self, n_fields: uint,
                        sz: uint, align: uint) -> bool;
 
@@ -132,7 +132,7 @@ pub trait TyVisitor {
                                 disr_val: int,
                                 n_fields: uint,
                                 name: &str) -> bool;
-    fn visit_enum_variant_field(&self, i: uint, offset: uint, inner: *'static TyDesc) -> bool;
+    fn visit_enum_variant_field(&self, i: uint, offset: uint, inner: *TyDesc) -> bool;
     fn visit_leave_enum_variant(&self, variant: uint,
                                 disr_val: int,
                                 n_fields: uint,
@@ -143,8 +143,8 @@ pub trait TyVisitor {
 
     fn visit_enter_fn(&self, purity: uint, proto: uint,
                       n_inputs: uint, retstyle: uint) -> bool;
-    fn visit_fn_input(&self, i: uint, mode: uint, inner: *'static TyDesc) -> bool;
-    fn visit_fn_output(&self, retstyle: uint, inner: *'static TyDesc) -> bool;
+    fn visit_fn_input(&self, i: uint, mode: uint, inner: *TyDesc) -> bool;
+    fn visit_fn_output(&self, retstyle: uint, inner: *TyDesc) -> bool;
     fn visit_leave_fn(&self, purity: uint, proto: uint,
                       n_inputs: uint, retstyle: uint) -> bool;
 
@@ -155,7 +155,7 @@ pub trait TyVisitor {
     fn visit_self(&self) -> bool;
     fn visit_type(&self) -> bool;
     fn visit_opaque_box(&self) -> bool;
-    fn visit_constr(&self, inner: *'static TyDesc) -> bool;
+    fn visit_constr(&self, inner: *TyDesc) -> bool;
     fn visit_closure_ptr(&self, ck: uint) -> bool;
 }
 
@@ -311,7 +311,7 @@ extern "rust-intrinsic" {
     /// Returns `true` if a type is managed (will be allocated on the local heap)
     pub fn contains_managed<T>() -> bool;
 
-    pub fn visit_tydesc(td: *'static TyDesc, tv: @TyVisitor);
+    pub fn visit_tydesc(td: *TyDesc, tv: @TyVisitor);
 
     pub fn frame_address(f: &once fn(*u8));
 
