@@ -40,7 +40,7 @@ fn roundtrip(id: int, n_tasks: int, p: &Port<int>, ch: &Chan<int>) {
     while (true) {
         match p.recv() {
           1 => {
-            println(fmt!("%d\n", id));
+            printfln!("%d\n", id);
             return;
           }
           token => {

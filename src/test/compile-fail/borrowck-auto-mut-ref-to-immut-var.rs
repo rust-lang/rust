@@ -18,7 +18,7 @@ struct Foo {
 
 impl Foo {
     pub fn printme(&mut self) {
-        io::println(fmt!("%d", self.x));
+        printfln!("%d", self.x);
     }
 }
 

@@ -28,7 +28,7 @@ fn innocent_looking_victim() {
             match x {
                 Some(ref msg) => {
                     (f.c)(f, true);
-                    println(fmt!("%?", msg));
+                    printfln!(msg);
                 },
                 None => fail!("oops"),
             }

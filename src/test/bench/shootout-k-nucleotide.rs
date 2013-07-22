@@ -82,7 +82,7 @@ struct PrintCallback(&'static str);
 
 impl TableCallback for PrintCallback {
     fn f(&self, entry: &mut Entry) {
-        println(fmt!("%d\t%s", entry.count as int, **self));
+        printfln!("%d\t%s", entry.count as int, **self);
     }
 }
 
@@ -279,9 +279,9 @@ fn print_frequencies(frequencies: &Table, frame: i32) {
     }
 
     for vector.each |&(key, count)| {
-        println(fmt!("%s %.3f",
-                     key.unpack(frame),
-                     (count as float * 100.0) / (total_count as float)));
+        printfln!("%s %.3f",
+                  key.unpack(frame),
+                  (count as float * 100.0) / (total_count as float));
     }
 }
 

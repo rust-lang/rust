@@ -32,5 +32,5 @@ fn main() {
         args
     };
     let n = int::from_str(args[1]).get();
-    io::println(fmt!("%d\n", fib(n)));
+    printfln!("%d\n", fib(n));
 }

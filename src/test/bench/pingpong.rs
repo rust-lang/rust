@@ -198,13 +198,13 @@ fn main() {
     let bounded = do timeit { bounded(count) };
     let unbounded = do timeit { unbounded(count) };
 
-    io::println(fmt!("count: %?\n", count));
-    io::println(fmt!("bounded:   %? s\t(%? μs/message)",
-                     bounded, bounded * 1000000. / (count as float)));
-    io::println(fmt!("unbounded: %? s\t(%? μs/message)",
-                     unbounded, unbounded * 1000000. / (count as float)));
+    printfln!("count: %?\n", count);
+    printfln!("bounded:   %? s\t(%? μs/message)",
+              bounded, bounded * 1000000. / (count as float));
+    printfln!("unbounded: %? s\t(%? μs/message)",
+              unbounded, unbounded * 1000000. / (count as float));
 
-    io::println(fmt!("\n\
-                      bounded is %?%% faster",
-                     (unbounded - bounded) / bounded * 100.));
+    printfln!("\n\
+               bounded is %?%% faster",
+              (unbounded - bounded) / bounded * 100.);
 }
