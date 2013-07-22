@@ -677,7 +677,7 @@ pub unsafe fn rekillable<U>(f: &fn() -> U) -> U {
 
 /**
  * A stronger version of unkillable that also inhibits scheduling operations.
- * For use with exclusive ARCs, which use pthread mutexes directly.
+ * For use with exclusive Arcs, which use pthread mutexes directly.
  */
 pub unsafe fn atomically<U>(f: &fn() -> U) -> U {
     use rt::task::Task;

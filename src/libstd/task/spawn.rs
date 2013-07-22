@@ -91,7 +91,7 @@ use task::unkillable;
 use to_bytes::IterBytes;
 use uint;
 use util;
-use unstable::sync::{Exclusive, exclusive};
+use unstable::sync::Exclusive;
 use rt::{OldTaskContext, TaskContext, SchedulerContext, GlobalContext, context};
 use rt::local::Local;
 use rt::task::Task;
@@ -545,7 +545,7 @@ impl RuntimeGlue {
                             // Main task, doing first spawn ever. Lazily initialise here.
                             let mut members = TaskSet::new();
                             members.insert(OldTask(me));
-                            let tasks = exclusive(Some(TaskGroupData {
+                            let tasks = Exclusive::new(Some(TaskGroupData {
                                 members: members,
                                 descendants: TaskSet::new(),
                             }));
@@ -569,7 +569,7 @@ impl RuntimeGlue {
                         let mut members = TaskSet::new();
                         let my_handle = (*me).death.kill_handle.get_ref().clone();
                         members.insert(NewTask(my_handle));
-                        let tasks = exclusive(Some(TaskGroupData {
+                        let tasks = Exclusive::new(Some(TaskGroupData {
                             members: members,
                             descendants: TaskSet::new(),
                         }));
@@ -596,7 +596,7 @@ fn gen_child_taskgroup(linked: bool, supervised: bool)
             (spawner_group.tasks.clone(), ancestors, spawner_group.is_main)
         } else {
             // Child is in a separate group from spawner.
-            let g = exclusive(Some(TaskGroupData {
+            let g = Exclusive::new(Some(TaskGroupData {
                 members:     TaskSet::new(),
                 descendants: TaskSet::new(),
             }));
@@ -605,7 +605,7 @@ fn gen_child_taskgroup(linked: bool, supervised: bool)
                 assert!(new_generation < uint::max_value);
                 // Child's ancestors start with the spawner.
                 // Build a new node in the ancestor list.
-                AncestorList(Some(exclusive(AncestorNode {
+                AncestorList(Some(Exclusive::new(AncestorNode {
                     generation: new_generation,
                     parent_group: spawner_group.tasks.clone(),
                     ancestors: ancestors,

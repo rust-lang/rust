@@ -17,7 +17,7 @@ fn f(p: &mut Point) { p.z = 13; }
 
 pub fn main() {
     unsafe {
-        let x = Some(unstable::sync::exclusive(true));
+        let x = Some(unstable::sync::Exclusive::new(true));
         match x {
             Some(ref z) if z.with(|b| *b) => {
                 do z.with |b| { assert!(*b); }

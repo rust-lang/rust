@@ -11,9 +11,9 @@
 // This test creates a bunch of tasks that simultaneously send to each
 // other in a ring. The messages should all be basically
 // independent.
-// This is like msgsend-ring-pipes but adapted to use ARCs.
+// This is like msgsend-ring-pipes but adapted to use Arcs.
 
-// This also serves as a pipes test, because ARCs are implemented with pipes.
+// This also serves as a pipes test, because Arcs are implemented with pipes.
 
 extern mod extra;
 
@@ -26,7 +26,7 @@ use std::os;
 use std::uint;
 
 // A poor man's pipe.
-type pipe = arc::MutexARC<~[uint]>;
+type pipe = arc::MutexArc<~[uint]>;
 
 fn send(p: &pipe, msg: uint) {
     unsafe {
@@ -48,7 +48,7 @@ fn recv(p: &pipe) -> uint {
 }
 
 fn init() -> (pipe,pipe) {
-    let m = arc::MutexARC(~[]);
+    let m = arc::MutexArc::new(~[]);
     ((&m).clone(), m)
 }
 

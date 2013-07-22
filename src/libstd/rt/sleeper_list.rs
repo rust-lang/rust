@@ -15,7 +15,7 @@ use container::Container;
 use vec::OwnedVector;
 use option::{Option, Some, None};
 use cell::Cell;
-use unstable::sync::{Exclusive, exclusive};
+use unstable::sync::Exclusive;
 use rt::sched::SchedHandle;
 use clone::Clone;
 
@@ -26,7 +26,7 @@ pub struct SleeperList {
 impl SleeperList {
     pub fn new() -> SleeperList {
         SleeperList {
-            stack: ~exclusive(~[])
+            stack: ~Exclusive::new(~[])
         }
     }
 
