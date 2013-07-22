@@ -138,7 +138,7 @@ pub fn finalize(cx: @mut CrateContext) {
 pub fn create_local_var_metadata(bcx: @mut Block, local: &ast::Local) {
     let cx = bcx.ccx();
     let def_map = cx.tcx.def_map;
-    let pattern = local.node.pat;
+    let pattern = local.pat;
 
     let scope = match bcx.parent {
         None => create_function_metadata(bcx.fcx),
@@ -157,7 +157,7 @@ pub fn create_local_var_metadata(bcx: @mut Block, local: &ast::Local) {
         let ty = node_id_type(bcx, node_id);
         let type_metadata = type_metadata(cx, ty, span);
 
-        let var_metadata = do as_c_str(name) |name| {
+        let var_metadata = do name.as_c_str |name| {
             unsafe {
                 llvm::LLVMDIBuilderCreateLocalVariable(
                     DIB(cx),
@@ -188,7 +188,7 @@ pub fn create_local_var_metadata(bcx: @mut Block, local: &ast::Local) {
                 var_metadata,
                 bcx.llbb);
 
-            llvm::LLVMSetInstDebugLocation(trans::build::B(bcx), instr);
+            llvm::LLVMSetInstDebugLocation(trans::build::B(bcx).llbuilder, instr);
         }
     }
 }
@@ -227,7 +227,7 @@ pub fn create_argument_metadata(bcx: @mut Block, arg: &ast::arg, span: span) {
         let name: &str = cx.sess.str_of(ident);
         debug!("create_argument_metadata: %s", name);
 
-        let arg_metadata = do as_c_str(name) |name| {
+        let arg_metadata = do name.as_c_str |name| {
             unsafe {
                 llvm::LLVMDIBuilderCreateLocalVariable(
                     DIB(cx),
@@ -260,7 +260,7 @@ pub fn create_argument_metadata(bcx: @mut Block, arg: &ast::arg, span: span) {
                 arg_metadata,
                 bcx.llbb);
 
-            llvm::LLVMSetInstDebugLocation(trans::build::B(bcx), instr);
+            llvm::LLVMSetInstDebugLocation(trans::build::B(bcx).llbuilder, instr);
         }
     }
 
@@ -623,8 +623,6 @@ fn tuple_metadata(cx: &mut CrateContext,
 fn enum_metadata(cx: &mut CrateContext,
                  enum_type: ty::t,
                  enum_def_id: ast::def_id,
-                 // _substs is only needed in the other version. Will go away with new snapshot.
-                 _substs: &ty::substs,
                  span: span)
               -> DIType {
 
@@ -1128,8 +1126,8 @@ fn type_metadata(cx: &mut CrateContext,
                 }
             }
         },
-        ty::ty_enum(def_id, ref substs) => {
-            enum_metadata(cx, t, def_id, substs, span)
+        ty::ty_enum(def_id, _) => {
+            enum_metadata(cx, t, def_id, span)
         },
         ty::ty_box(ref mt) => {
             create_pointer_to_box_metadata(cx, t, mt.ty)
