@@ -65,11 +65,11 @@ pub unsafe fn position<T>(buf: *T, f: &fn(&T) -> bool) -> uint {
 
 /// Create an unsafe null pointer
 #[inline]
-pub fn null<T>() -> *'static T { 0 as *T }
+pub fn null<'a, T>() -> *'a T { 0 as *'a T }
 
 /// Create an unsafe mutable null pointer
 #[inline]
-pub fn mut_null<T>() -> *mut T { 0 as *mut T }
+pub fn mut_null<'a, T>() -> *'a mut T { 0 as *'a mut T }
 
 /// Returns true if the pointer is equal to the null pointer.
 #[inline]
@@ -212,19 +212,19 @@ pub unsafe fn read_and_zero_ptr<T>(dest: *'static mut T) -> T {
 
 /// Transform a region pointer - &T - to an unsafe pointer - *T.
 #[inline]
-pub fn to_unsafe_ptr<T>(thing: &T) -> *T {
+pub fn to_unsafe_ptr<'a, T>(thing: &'a T) -> *'a T {
     thing as *T
 }
 
 /// Transform a const region pointer - &const T - to a const unsafe pointer - *const T.
 #[inline]
-pub fn to_const_unsafe_ptr<T>(thing: &const T) -> *const T {
+pub fn to_const_unsafe_ptr<'a, T>(thing: &'a const T) -> *'a const T {
     thing as *const T
 }
 
 /// Transform a mutable region pointer - &mut T - to a mutable unsafe pointer - *mut T.
 #[inline]
-pub fn to_mut_unsafe_ptr<T>(thing: &mut T) -> *mut T {
+pub fn to_mut_unsafe_ptr<'a, T>(thing: &'a mut T) -> *'a mut T {
     thing as *mut T
 }
 
@@ -477,19 +477,11 @@ pub mod ptr_tests {
 
     #[test]
     fn test_buf_len() {
-        let s0 = ~"hello";
-        let s1 = ~"there";
-        let s2 = ~"thing";
-        do str::as_c_str(s0) |p0| {
-            do str::as_c_str(s1) |p1| {
-                do str::as_c_str(s2) |p2| {
-                    let v = ~[p0, p1, p2, null()];
-                    do v.as_imm_buf |vp, len| {
-                        assert_eq!(unsafe { buf_len(vp) }, 3u);
-                        assert_eq!(len, 4u);
-                    }
-                }
-            }
+        let v = ~[1 as *int, 1 as *int, 1 as *int, null()];
+
+        do v.as_imm_buf |vp, len| {
+            assert_eq!(unsafe { buf_len(vp) }, 3u);
+            assert_eq!(len, 4u);
         }
     }
 

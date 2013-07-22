@@ -930,7 +930,9 @@ fn mk_t(cx: ctxt, st: sty) -> t {
         _ => {}
     };
 
-    let key = intern_key { sty: to_unsafe_ptr(&st) };
+    let key = intern_key {
+        sty: unsafe { cast::transmute(to_unsafe_ptr(&st)) }
+    };
     match cx.interner.find(&key) {
       Some(t) => unsafe { return cast::transmute(&t.sty); },
       _ => ()
@@ -1008,7 +1010,7 @@ fn mk_t(cx: ctxt, st: sty) -> t {
         flags: flags,
     };
 
-    let sty_ptr = to_unsafe_ptr(&t.sty);
+    let sty_ptr = unsafe { cast::transmute(to_unsafe_ptr(&t.sty)) };
 
     let key = intern_key {
         sty: sty_ptr,

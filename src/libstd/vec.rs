@@ -717,7 +717,7 @@ pub trait ImmutableVector<'self, T> {
 
     fn map<U>(&self, &fn(t: &T) -> U) -> ~[U];
 
-    fn as_imm_buf<U>(&self, f: &fn(*'static T, uint) -> U) -> U;
+    fn as_imm_buf<U>(&self, f: &fn(*'self T, uint) -> U) -> U;
 }
 
 /// Extension methods for vectors
@@ -995,14 +995,14 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
     #[inline]
     fn as_imm_buf<U>(&self,
                      /* NB---this CANNOT be const, see below */
-                     f: &fn(*'static T, uint) -> U) -> U {
+                     f: &fn(*'self T, uint) -> U) -> U {
         // NB---Do not change the type of s to `&const [T]`.  This is
         // unsound.  The reason is that we are going to create immutable pointers
         // into `s` and pass them to `f()`, but in fact they are potentially
         // pointing at *mutable memory*.  Use `as_mut_buf` instead!
 
         unsafe {
-            let v : *'static (*'static T, uint) = transmute(self);
+            let v : *(*'self T, uint) = transmute(self);
             let (buf,len) = *v;
             f(buf, len / sys::nonzero_size_of::<T>())
         }
@@ -1284,8 +1284,8 @@ impl<T> OwnedVector<T> for ~[T] {
         match self.len() {
             0  => None,
             ln => {
-                let valptr = ptr::to_mut_unsafe_ptr(&mut self[ln - 1u]);
                 unsafe {
+                    let valptr = ptr::to_mut_unsafe_ptr(cast::transmute(&mut self[ln - 1u]));
                     raw::set_len(self, ln - 1u);
                     Some(ptr::read_ptr(valptr))
                 }
@@ -1691,7 +1691,7 @@ pub trait MutableVector<'self, T> {
     unsafe fn unsafe_mut_ref(&self, index: uint) -> *'self mut T;
     unsafe fn unsafe_set(&self, index: uint, val: T);
 
-    fn as_mut_buf<U>(&self, f: &fn(*'static mut T, uint) -> U) -> U;
+    fn as_mut_buf<U>(&self, f: &fn(*'self mut T, uint) -> U) -> U;
 }
 
 impl<'self,T> MutableVector<'self, T> for &'self mut [T] {
@@ -1783,9 +1783,9 @@ impl<'self,T> MutableVector<'self, T> for &'self mut [T] {
 
     /// Similar to `as_imm_buf` but passing a `*mut T`
     #[inline]
-    fn as_mut_buf<U>(&self, f: &fn(*'static mut T, uint) -> U) -> U {
+    fn as_mut_buf<U>(&self, f: &fn(*'self mut T, uint) -> U) -> U {
         unsafe {
-            let v : *'static (*'static mut T, uint) = transmute(self);
+            let v : *(*'self mut T, uint) = transmute(self);
             let (buf,len) = *v;
             f(buf, len / sys::nonzero_size_of::<T>())
         }
@@ -1960,7 +1960,7 @@ pub mod raw {
     */
     // Was in raw, but needs to be called by net_tcp::on_tcp_read_cb
     #[inline]
-    pub unsafe fn from_buf_raw<T>(ptr: *'static T, elts: uint) -> ~[T] {
+    pub unsafe fn from_buf_raw<T>(ptr: *T, elts: uint) -> ~[T] {
         let mut dst = with_capacity(elts);
         set_len(&mut dst, elts);
         dst.as_mut_buf(|p_dst, _len_dst| ptr::copy_memory(p_dst, ptr, elts));
@@ -1974,8 +1974,7 @@ pub mod raw {
       * may overlap.
       */
     #[inline]
-    pub unsafe fn copy_memory<T>(dst: &mut [T], src: &[T],
-                                 count: uint) {
+    pub unsafe fn copy_memory<T>(dst: &mut [T], src: &[T], count: uint) {
         assert!(dst.len() >= count);
         assert!(src.len() >= count);
 

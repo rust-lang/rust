@@ -85,7 +85,7 @@ bounded and unbounded protocols allows for less code duplication.
 #[allow(missing_doc)];
 
 use container::Container;
-use cast::{forget, transmute, transmute_copy, transmute_mut};
+use cast::{forget, transmute, transmute_copy, transmute_mut, transmute_mut_region};
 use either::{Either, Left, Right};
 use iterator::IteratorUtil;
 use kinds::Send;
@@ -222,20 +222,20 @@ fn unibuffer<T>() -> ~Buffer<Packet<T>> {
 
 pub fn packet<T>() -> *mut Packet<T> {
     let mut b = unibuffer();
-    let p = ptr::to_mut_unsafe_ptr(&mut b.data);
-    // We'll take over memory management from here.
     unsafe {
+        let p = ptr::to_mut_unsafe_ptr(transmute_mut_region(&mut b.data));
+        // We'll take over memory management from here.
         forget(b);
+        p
     }
-    p
 }
 
-pub fn entangle_buffer<T:Send,Tstart:Send>(
+pub fn entangle_buffer<'a, T:Send, Tstart:Send>(
     mut buffer: ~Buffer<T>,
-    init: &fn(*'static libc::c_void, x: &mut T) -> *mut Packet<Tstart>)
+    init: &fn(*'static libc::c_void, x: &'a mut T) -> *'a mut Packet<Tstart>)
     -> (RecvPacketBuffered<Tstart, T>, SendPacketBuffered<Tstart, T>) {
     unsafe {
-        let p = init(transmute_copy(&buffer), &mut buffer.data);
+        let p = init(transmute_copy(&buffer), transmute_mut_region(&mut buffer.data));
         forget(buffer);
         (RecvPacketBuffered(p), SendPacketBuffered(p))
     }

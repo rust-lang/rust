@@ -445,12 +445,14 @@ fn test_unwrap_ptr() {
 
 #[test]
 fn test_unwrap_str() {
-    let x = ~"test";
-    let addr_x = str::as_buf(x, |buf, _len| buf);
-    let opt = Some(x);
-    let y = opt.unwrap();
-    let addr_y = str::as_buf(y, |buf, _len| buf);
-    assert_eq!(addr_x, addr_y);
+    unsafe {
+        let x = ~"test";
+        let addr_x: *'static u8 = str::as_buf(x, |buf, _len| ::cast::transmute(buf));
+        let opt = Some(x);
+        let y = opt.unwrap();
+        let addr_y: *'static u8 = str::as_buf(y, |buf, _len| ::cast::transmute(buf));
+        assert_eq!(addr_x, addr_y);
+    }
 }
 
 #[test]

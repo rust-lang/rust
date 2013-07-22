@@ -828,9 +828,9 @@ pub fn as_c_str<T>(s: &str, f: &fn(*'static libc::c_char) -> T) -> T {
  * to full strings, or suffixes of them.
  */
 #[inline]
-pub fn as_buf<T>(s: &str, f: &fn(*'static u8, uint) -> T) -> T {
+pub fn as_buf<'a, T>(s: &'a str, f: &fn(*'a u8, uint) -> T) -> T {
     unsafe {
-        let v : *'static (*'static u8, uint) = transmute(&s);
+        let v : *(*u8, uint) = transmute(&s);
         let (buf, len) = *v;
         f(buf, len)
     }
@@ -3113,9 +3113,10 @@ mod tests {
     fn test_as_buf2() {
         unsafe {
             let s = ~"hello";
-            let sb = as_buf(s, |b, _l| b);
-            let s_cstr = raw::from_buf(sb);
-            assert_eq!(s_cstr, s);
+            do as_buf(s) |b, _l| {
+                let s_cstr = raw::from_buf(b);
+                assert_eq!(s_cstr, s.clone());
+            }
         }
     }
 

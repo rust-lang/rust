@@ -26,6 +26,7 @@ use ptr;
 use str;
 use task;
 use vec::ImmutableVector;
+use vec;
 
 /**
  * A value representing a child process.
@@ -694,46 +695,62 @@ fn spawn_process_os(prog: &str, args: &[~str],
 }
 
 #[cfg(unix)]
-fn with_argv<T>(prog: &str, args: &[~str],
-                cb: &fn(**libc::c_char) -> T) -> T {
-    let mut argptrs = ~[str::as_c_str(prog, |b| b)];
-    let mut tmps = ~[];
+fn with_argv<'a, T>(prog: &'a str, args: &'a [~str], cb: &fn(**libc::c_char) -> T) -> T {
+    // While the interface of this function is safe, the internals is grossly
+    // unsafe because it relies on the inner behavior of strings. While `~str`
+    // strings are guaranteed to be null terminated, `&str` strings are
+    // not.
+    //
+    // In our case, we need to make sure we can get those inner buffers and
+    // guarantee that they live the entire lifetime of this function call.
+    // It's "safe" to get the inner buffer for the `args` arguments, we need to
+    // make an explicit copy of `prog` to make sure it's null terminated.
+    //
+    // Note: we can't use `str::as_c_str` because the `*c_char` cannot live in
+    // the same region as the `&str` because it may make an internal copy of
+    // the string.
+
+    let prog = prog.to_owned();
+
+    let mut ptrs = vec::with_capacity(args.len() + 1);
+    ptrs.push(str::as_buf(prog, |buf, _| buf as *'a libc::c_char));
+
     for args.iter().advance |arg| {
-        let t = @(*arg).clone();
-        tmps.push(t);
-        argptrs.push(str::as_c_str(*t, |b| b));
+        ptrs.push(str::as_buf(*arg, |buf, _| buf as *'a libc::c_char));
     }
-    argptrs.push(ptr::null());
-    argptrs.as_imm_buf(|buf, _len| cb(buf))
+
+    ptrs.push(ptr::null());
+
+    ptrs.as_imm_buf(|buf, _| cb(buf))
 }
 
 #[cfg(unix)]
-fn with_envp<T>(env: Option<&[(~str, ~str)]>, cb: &fn(*c_void) -> T) -> T {
+fn with_envp<'a, T>(env: Option<&'a [(~str, ~str)]>, cb: &fn(*c_void) -> T) -> T {
     // On posixy systems we can pass a char** for envp, which is
-    // a null-terminated array of "k=v\n" strings.
+    // a null-terminated array of "k=v" strings.
     match env {
-      Some(es) => {
-        let mut tmps = ~[];
-        let mut ptrs = ~[];
-
-        for es.iter().advance |pair| {
-            // Use of match here is just to workaround limitations
-            // in the stage0 irrefutable pattern impl.
-            match pair {
-                &(ref k, ref v) => {
-                    let kv = @fmt!("%s=%s", *k, *v);
-                    tmps.push(kv);
-                    ptrs.push(str::as_c_str(*kv, |b| b));
+        Some(env) => {
+            let tmps = do env.map |pair| {
+                // Use of match here is just to workaround limitations
+                // in the stage0 irrefutable pattern impl.
+                match pair {
+                    &(ref k, ref v) => fmt!("%s=%s", *k, *v),
                 }
+            };
+
+            let mut ptrs = vec::with_capacity(env.len() + 1);
+
+            for tmps.iter().advance |kv| {
+                ptrs.push(str::as_buf(*kv, |buf, _| buf as *'a libc::c_char));
+            }
+
+            ptrs.push(ptr::null());
+
+            do ptrs.as_imm_buf |buf, _| {
+                unsafe { cb(cast::transmute(buf)) }
             }
         }
-
-        ptrs.push(ptr::null());
-        ptrs.as_imm_buf(|p, _len|
-            unsafe { cb(::cast::transmute(p)) }
-        )
-      }
-      _ => cb(ptr::null())
+        None => cb(ptr::null())
     }
 }
 
