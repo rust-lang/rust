@@ -30,9 +30,9 @@ pub struct ident { name: Name, ctxt: SyntaxContext }
 /// Construct an identifier with the given name and an empty context:
 pub fn new_ident(name: Name) -> ident { ident {name: name, ctxt: empty_ctxt}}
 
-// a SyntaxContext represents a chain of macro-expandings
-// and renamings. Each macro expansion corresponds to
-// a fresh uint
+/// A SyntaxContext represents a chain of macro-expandings
+/// and renamings. Each macro expansion corresponds to
+/// a fresh uint
 
 // I'm representing this syntax context as an index into
 // a table, in order to work around a compiler bug
@@ -70,11 +70,10 @@ pub enum SyntaxContext_ {
     IllegalCtxt()
 }
 
-// a name is a part of an identifier, representing a string
-// or gensym. It's the result of interning.
+/// A name is a part of an identifier, representing a string or gensym. It's
+/// the result of interning.
 pub type Name = uint;
-// a mark represents a unique id associated
-// with a macro expansion
+/// A mark represents a unique id associated with a macro expansion
 pub type Mrk = uint;
 
 impl<S:Encoder> Encodable<S> for ident {
@@ -90,7 +89,7 @@ impl<D:Decoder> Decodable<D> for ident {
     }
 }
 
-// Functions may or may not have names.
+/// Function name (not all functions have names)
 pub type fn_ident = Option<ident>;
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
@@ -107,9 +106,14 @@ pub struct Lifetime {
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub struct Path {
     span: span,
+    /// A `::foo` path, is relative to the crate root rather than current
+    /// module (like paths in an import).
     global: bool,
+    /// The segments in the path (the things separated by ::)
     idents: ~[ident],
+    /// "Region parameter", currently only one lifetime is allowed in a path.
     rp: Option<Lifetime>,
+    /// These are the type parameters, ie, the `a, b` in `foo::bar::<a, b>`
     types: ~[Ty],
 }
 
