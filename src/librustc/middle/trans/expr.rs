@@ -1124,7 +1124,7 @@ pub fn with_field_tys<R>(tcx: ty::ctxt,
 }
 
 fn trans_rec_or_struct(bcx: block,
-                       fields: &[ast::field],
+                       fields: &[ast::Field],
                        base: Option<@ast::expr>,
                        expr_span: codemap::span,
                        id: ast::node_id,
@@ -1139,11 +1139,11 @@ fn trans_rec_or_struct(bcx: block,
         let mut need_base = vec::from_elem(field_tys.len(), true);
 
         let numbered_fields = do fields.map |field| {
-            let opt_pos = field_tys.iter().position(|field_ty| field_ty.ident == field.node.ident);
+            let opt_pos = field_tys.iter().position(|field_ty| field_ty.ident == field.ident);
             match opt_pos {
                 Some(i) => {
                     need_base[i] = false;
-                    (i, field.node.expr)
+                    (i, field.expr)
                 }
                 None => {
                     tcx.sess.span_bug(field.span,

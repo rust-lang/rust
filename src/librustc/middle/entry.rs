@@ -12,7 +12,7 @@
 use driver::session;
 use driver::session::Session;
 use syntax::parse::token::special_idents;
-use syntax::ast::{crate, node_id, item, item_fn};
+use syntax::ast::{Crate, node_id, item, item_fn};
 use syntax::attr;
 use syntax::codemap::span;
 use syntax::visit::{default_visitor, mk_vt, vt, Visitor, visit_crate, visit_item};
@@ -40,7 +40,7 @@ struct EntryContext {
 
 type EntryVisitor = vt<@mut EntryContext>;
 
-pub fn find_entry_point(session: Session, crate: &crate, ast_map: ast_map::map) {
+pub fn find_entry_point(session: Session, crate: &Crate, ast_map: ast_map::map) {
 
     // FIXME #4404 android JNI hacks
     if *session.building_library &&

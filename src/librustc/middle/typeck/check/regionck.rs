@@ -153,7 +153,7 @@ pub fn regionck_expr(fcx: @mut FnCtxt, e: @ast::expr) {
     fcx.infcx().resolve_regions();
 }
 
-pub fn regionck_fn(fcx: @mut FnCtxt, blk: &ast::blk) {
+pub fn regionck_fn(fcx: @mut FnCtxt, blk: &ast::Block) {
     let rcx = @mut Rcx { fcx: fcx, errors_reported: 0,
                          repeating_scope: blk.id };
     if fcx.err_count_since_creation() == 0 {
@@ -187,7 +187,7 @@ fn visit_item(_item: @ast::item, (_rcx, _v): (@mut Rcx, rvt)) {
     // Ignore items
 }
 
-fn visit_block(b: &ast::blk, (rcx, v): (@mut Rcx, rvt)) {
+fn visit_block(b: &ast::Block, (rcx, v): (@mut Rcx, rvt)) {
     rcx.fcx.tcx().region_maps.record_cleanup_scope(b.id);
     visit::visit_block(b, (rcx, v));
 }
@@ -201,9 +201,9 @@ fn visit_arm(arm: &ast::arm, (rcx, v): (@mut Rcx, rvt)) {
     visit::visit_arm(arm, (rcx, v));
 }
 
-fn visit_local(l: @ast::local, (rcx, v): (@mut Rcx, rvt)) {
+fn visit_local(l: @ast::Local, (rcx, v): (@mut Rcx, rvt)) {
     // see above
-    constrain_bindings_in_pat(l.node.pat, rcx);
+    constrain_bindings_in_pat(l.pat, rcx);
     visit::visit_local(l, (rcx, v));
 }
 

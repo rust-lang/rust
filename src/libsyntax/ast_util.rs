@@ -195,7 +195,7 @@ pub fn is_call_expr(e: @expr) -> bool {
     match e.node { expr_call(*) => true, _ => false }
 }
 
-pub fn block_from_expr(e: @expr) -> blk {
+pub fn block_from_expr(e: @expr) -> Block {
     let mut blk = default_block(~[], option::Some::<@expr>(e), e.id);
     blk.span = e.span;
     return blk;
@@ -205,8 +205,8 @@ pub fn default_block(
     stmts1: ~[@stmt],
     expr1: Option<@expr>,
     id1: node_id
-) -> blk {
-    ast::blk {
+) -> Block {
+    ast::Block {
         view_items: ~[],
         stmts: stmts1,
         expr: expr1,
@@ -443,7 +443,7 @@ pub fn id_visitor<T: Clone>(vfn: @fn(node_id, T)) -> visit::vt<T> {
         },
 
         visit_local: |l, (t, vt)| {
-            vfn(l.node.id, t.clone());
+            vfn(l.id, t.clone());
             visit::visit_local(l, (t, vt));
         },
         visit_block: |b, (t, vt)| {
@@ -570,7 +570,7 @@ pub trait EachViewItem {
     pub fn each_view_item(&self, f: @fn(&ast::view_item) -> bool) -> bool;
 }
 
-impl EachViewItem for ast::crate {
+impl EachViewItem for ast::Crate {
     fn each_view_item(&self, f: @fn(&ast::view_item) -> bool) -> bool {
         let broke = @mut false;
         let vtor: visit::vt<()> = visit::mk_simple_visitor(@visit::SimpleVisitor {

@@ -67,7 +67,7 @@ struct ListenerFn {
 
 struct ReadyCtx {
     sess: session::Session,
-    crate: @ast::crate,
+    crate: @ast::Crate,
     ext_cx: @ExtCtxt,
     path: ~[ast::ident],
     fns: ~[ListenerFn]
@@ -139,7 +139,7 @@ fn fold_item(ctx: @mut ReadyCtx,
 
 /// Generate/filter main function, add the list of commands, etc.
 pub fn ready_crate(sess: session::Session,
-                   crate: @ast::crate) -> @ast::crate {
+                   crate: @ast::Crate) -> @ast::Crate {
     let ctx = @mut ReadyCtx {
         sess: sess,
         crate: crate,
@@ -238,7 +238,7 @@ pub fn compile_input(ctxt: &Ctx,
                                   });
 
     // Inject the link attributes so we get the right package name and version
-    if attr::find_linkage_metas(crate.node.attrs).is_empty() {
+    if attr::find_linkage_metas(crate.attrs).is_empty() {
         let short_name_to_use = match what {
             Test  => fmt!("%stest", pkg_id.short_name),
             Bench => fmt!("%sbench", pkg_id.short_name),
@@ -249,9 +249,10 @@ pub fn compile_input(ctxt: &Ctx,
             ~[attr::mk_name_value_item_str(@"name", short_name_to_use.to_managed()),
               attr::mk_name_value_item_str(@"vers", pkg_id.version.to_str().to_managed())];
 
-        crate = @codemap::respan(crate.span, ast::crate_ {
+        crate = @ast::Crate {
             attrs: ~[attr::mk_attr(attr::mk_list_item(@"link", link_options))],
-            .. crate.node.clone()});
+            .. (*crate).clone()
+        };
     }
 
     debug!("calling compile_crate_from_input, out_dir = %s,
@@ -268,15 +269,15 @@ pub fn compile_input(ctxt: &Ctx,
 pub fn compile_crate_from_input(input: &driver::input,
                                 build_dir: &Path,
                                 sess: session::Session,
-                                crate: @ast::crate,
-                                cfg: ast::crate_cfg,
+                                crate: @ast::Crate,
+                                cfg: ast::CrateConfig,
                                 compile_from: driver::compile_phase) {
     debug!("Calling build_output_filenames with %s, building library? %?",
            build_dir.to_str(), sess.building_library);
 
     // bad copy
     let outputs = driver::build_output_filenames(input, &Some((*build_dir).clone()), &None,
-                                                 crate.node.attrs, sess);
+                                                 crate.attrs, sess);
 
     debug!("Outputs are %? and output type = %?", outputs, sess.opts.output_type);
     debug!("additional libraries:");
@@ -324,7 +325,7 @@ pub fn compile_crate(ctxt: &Ctx, pkg_id: &PkgId,
 pub fn find_and_install_dependencies(ctxt: &Ctx,
                                  sess: session::Session,
                                  workspace: &Path,
-                                 c: &ast::crate,
+                                 c: &ast::Crate,
                                  save: @fn(Path)
                                 ) {
     // :-(

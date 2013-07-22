@@ -192,7 +192,7 @@ enum UseMode {
 
 pub fn compute_moves(tcx: ty::ctxt,
                      method_map: method_map,
-                     crate: &crate) -> MoveMaps
+                     crate: &Crate) -> MoveMaps
 {
     let visitor = visit::mk_vt(@visit::Visitor {
         visit_fn: compute_modes_for_fn,
@@ -227,18 +227,18 @@ pub fn moved_variable_node_id_from_def(def: def) -> Option<node_id> {
 ///////////////////////////////////////////////////////////////////////////
 // Expressions
 
-fn compute_modes_for_local<'a>(local: @local,
+fn compute_modes_for_local<'a>(local: @Local,
                                (cx, v): (VisitContext,
                                          vt<VisitContext>)) {
-    cx.use_pat(local.node.pat);
-    for local.node.init.iter().advance |&init| {
+    cx.use_pat(local.pat);
+    for local.init.iter().advance |&init| {
         cx.use_expr(init, Read, v);
     }
 }
 
 fn compute_modes_for_fn(fk: &visit::fn_kind,
                         decl: &fn_decl,
-                        body: &blk,
+                        body: &Block,
                         span: span,
                         id: node_id,
                         (cx, v): (VisitContext,
@@ -281,7 +281,7 @@ impl VisitContext {
         };
     }
 
-    pub fn consume_block(&self, blk: &blk, visitor: vt<VisitContext>) {
+    pub fn consume_block(&self, blk: &Block, visitor: vt<VisitContext>) {
         /*!
          * Indicates that the value of `blk` will be consumed,
          * meaning either copied or moved depending on its type.
@@ -394,7 +394,7 @@ impl VisitContext {
 
             expr_struct(_, ref fields, opt_with) => {
                 for fields.iter().advance |field| {
-                    self.consume_expr(field.node.expr, visitor);
+                    self.consume_expr(field.expr, visitor);
                 }
 
                 for opt_with.iter().advance |with_expr| {
@@ -417,7 +417,7 @@ impl VisitContext {
                     // specified and (2) have a type that
                     // moves-by-default:
                     let consume_with = with_fields.iter().any(|tf| {
-                        !fields.iter().any(|f| f.node.ident == tf.ident) &&
+                        !fields.iter().any(|f| f.ident == tf.ident) &&
                             ty::type_moves_by_default(self.tcx, tf.mt.ty)
                     });
 

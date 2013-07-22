@@ -554,7 +554,7 @@ pub fn trans_lang_call_with_type_params(bcx: block,
         ArgVals(args), Some(dest), DontAutorefArg).bcx;
 }
 
-pub fn body_contains_ret(body: &ast::blk) -> bool {
+pub fn body_contains_ret(body: &ast::Block) -> bool {
     let cx = @mut false;
     visit::visit_block(body, (cx, visit::mk_vt(@visit::Visitor {
         visit_item: |_i, (_cx, _v)| { },

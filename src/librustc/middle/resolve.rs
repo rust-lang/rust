@@ -764,7 +764,7 @@ pub fn namespace_error_to_str(ns: NamespaceError) -> &'static str {
 
 pub fn Resolver(session: Session,
                 lang_items: LanguageItems,
-                crate: @crate)
+                crate: @Crate)
              -> Resolver {
     let graph_root = @mut NameBindings();
 
@@ -821,7 +821,7 @@ pub fn Resolver(session: Session,
 pub struct Resolver {
     session: @Session,
     lang_items: LanguageItems,
-    crate: @crate,
+    crate: @Crate,
 
     intr: @ident_interner,
 
@@ -1050,7 +1050,7 @@ impl Resolver {
         }
     }
 
-    pub fn block_needs_anonymous_module(@mut self, block: &blk) -> bool {
+    pub fn block_needs_anonymous_module(@mut self, block: &Block) -> bool {
         // If the block has view items, we need an anonymous module.
         if block.view_items.len() > 0 {
             return true;
@@ -1544,7 +1544,7 @@ impl Resolver {
     }
 
     pub fn build_reduced_graph_for_block(@mut self,
-                                         block: &blk,
+                                         block: &Block,
                                          (parent, visitor):
                                          (ReducedGraphParent,
                                           vt<ReducedGraphParent>)) {
@@ -3709,7 +3709,7 @@ impl Resolver {
                             rib_kind: RibKind,
                             optional_declaration: Option<&fn_decl>,
                             type_parameters: TypeParameters,
-                            block: &blk,
+                            block: &Block,
                             self_binding: SelfBinding,
                             visitor: ResolveVisitor) {
         // Create a value rib for the function.
@@ -3983,14 +3983,14 @@ impl Resolver {
         visit_mod(module_, span, id, ((), visitor));
     }
 
-    pub fn resolve_local(@mut self, local: @local, visitor: ResolveVisitor) {
-        let mutability = if local.node.is_mutbl {Mutable} else {Immutable};
+    pub fn resolve_local(@mut self, local: @Local, visitor: ResolveVisitor) {
+        let mutability = if local.is_mutbl {Mutable} else {Immutable};
 
         // Resolve the type.
-        self.resolve_type(&local.node.ty, visitor);
+        self.resolve_type(&local.ty, visitor);
 
         // Resolve the initializer, if necessary.
-        match local.node.init {
+        match local.init {
             None => {
                 // Nothing to do.
             }
@@ -4000,7 +4000,7 @@ impl Resolver {
         }
 
         // Resolve the pattern.
-        self.resolve_pattern(local.node.pat, LocalIrrefutableMode, mutability,
+        self.resolve_pattern(local.pat, LocalIrrefutableMode, mutability,
                              None, visitor);
     }
 
@@ -4073,7 +4073,7 @@ impl Resolver {
         self.value_ribs.pop();
     }
 
-    pub fn resolve_block(@mut self, block: &blk, visitor: ResolveVisitor) {
+    pub fn resolve_block(@mut self, block: &Block, visitor: ResolveVisitor) {
         debug!("(resolving block) entering block");
         self.value_ribs.push(@Rib(NormalRibKind));
 
@@ -4874,7 +4874,7 @@ impl Resolver {
           i -= 1;
           match this.type_ribs[i].kind {
             MethodRibKind(node_id, _) =>
-              for this.crate.node.module.items.iter().advance |item| {
+              for this.crate.module.items.iter().advance |item| {
                 if item.id == node_id {
                   match item.node {
                     item_struct(class_def, _) => {
@@ -5407,7 +5407,7 @@ pub struct CrateMap {
 /// Entry point to crate resolution.
 pub fn resolve_crate(session: Session,
                      lang_items: LanguageItems,
-                     crate: @crate)
+                     crate: @Crate)
                   -> CrateMap {
     let resolver = @mut Resolver(session, lang_items, crate);
     resolver.resolve();

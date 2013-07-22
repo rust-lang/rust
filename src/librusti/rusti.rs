@@ -185,7 +185,7 @@ fn run(mut program: ~Program, binary: ~str, lib_search_paths: ~[~str],
                         // Local declarations must be specially dealt with,
                         // record all local declarations for use later on
                         ast::decl_local(l) => {
-                            let mutbl = l.node.is_mutbl;
+                            let mutbl = l.is_mutbl;
                             do each_binding(l) |path, _| {
                                 let s = do with_pp(intr) |pp, _| {
                                     pprust::print_path(pp, path, false);
@@ -261,7 +261,7 @@ fn run(mut program: ~Program, binary: ~str, lib_search_paths: ~[~str],
     return (program, jit::consume_engine());
 
     fn parse_input(sess: session::Session, binary: @str,
-                   input: &str) -> @ast::crate {
+                   input: &str) -> @ast::Crate {
         let code = fmt!("fn main() {\n %s \n}", input);
         let input = driver::str_input(code.to_managed());
         let cfg = driver::build_configuration(sess, binary, &input);
@@ -271,9 +271,9 @@ fn run(mut program: ~Program, binary: ~str, lib_search_paths: ~[~str],
         crate.expect("parsing should return a crate")
     }
 
-    fn find_main(crate: @ast::crate, sess: session::Session,
-                 f: &fn(&ast::blk)) {
-        for crate.node.module.items.iter().advance |item| {
+    fn find_main(crate: @ast::Crate, sess: session::Session,
+                 f: &fn(&ast::Block)) {
+        for crate.module.items.iter().advance |item| {
             match item.node {
                 ast::item_fn(_, _, _, _, ref blk) => {
                     if item.ident == sess.ident_of("main") {

@@ -76,9 +76,9 @@ pub fn new_parse_sess_special_handler(sh: @span_handler,
 
 pub fn parse_crate_from_file(
     input: &Path,
-    cfg: ast::crate_cfg,
+    cfg: ast::CrateConfig,
     sess: @mut ParseSess
-) -> @ast::crate {
+) -> @ast::Crate {
     new_parser_from_file(sess, /*bad*/ cfg.clone(), input).parse_crate_mod()
     // why is there no p.abort_if_errors here?
 }
@@ -86,9 +86,9 @@ pub fn parse_crate_from_file(
 pub fn parse_crate_from_source_str(
     name: @str,
     source: @str,
-    cfg: ast::crate_cfg,
+    cfg: ast::CrateConfig,
     sess: @mut ParseSess
-) -> @ast::crate {
+) -> @ast::Crate {
     let p = new_parser_from_source_str(sess,
                                        /*bad*/ cfg.clone(),
                                        name,
@@ -99,7 +99,7 @@ pub fn parse_crate_from_source_str(
 pub fn parse_expr_from_source_str(
     name: @str,
     source: @str,
-    cfg: ast::crate_cfg,
+    cfg: ast::CrateConfig,
     sess: @mut ParseSess
 ) -> @ast::expr {
     let p = new_parser_from_source_str(
@@ -114,7 +114,7 @@ pub fn parse_expr_from_source_str(
 pub fn parse_item_from_source_str(
     name: @str,
     source: @str,
-    cfg: ast::crate_cfg,
+    cfg: ast::CrateConfig,
     attrs: ~[ast::Attribute],
     sess: @mut ParseSess
 ) -> Option<@ast::item> {
@@ -130,7 +130,7 @@ pub fn parse_item_from_source_str(
 pub fn parse_meta_from_source_str(
     name: @str,
     source: @str,
-    cfg: ast::crate_cfg,
+    cfg: ast::CrateConfig,
     sess: @mut ParseSess
 ) -> @ast::MetaItem {
     let p = new_parser_from_source_str(
@@ -145,7 +145,7 @@ pub fn parse_meta_from_source_str(
 pub fn parse_stmt_from_source_str(
     name: @str,
     source: @str,
-    cfg: ast::crate_cfg,
+    cfg: ast::CrateConfig,
     attrs: ~[ast::Attribute],
     sess: @mut ParseSess
 ) -> @ast::stmt {
@@ -161,7 +161,7 @@ pub fn parse_stmt_from_source_str(
 pub fn parse_tts_from_source_str(
     name: @str,
     source: @str,
-    cfg: ast::crate_cfg,
+    cfg: ast::CrateConfig,
     sess: @mut ParseSess
 ) -> ~[ast::token_tree] {
     let p = new_parser_from_source_str(
@@ -184,7 +184,7 @@ pub fn parse_from_source_str<T>(
     f: &fn(&Parser) -> T,
     name: @str, ss: codemap::FileSubstr,
     source: @str,
-    cfg: ast::crate_cfg,
+    cfg: ast::CrateConfig,
     sess: @mut ParseSess
 ) -> T {
     let p = new_parser_from_source_substr(
@@ -212,7 +212,7 @@ pub fn next_node_id(sess: @mut ParseSess) -> node_id {
 
 // Create a new parser from a source string
 pub fn new_parser_from_source_str(sess: @mut ParseSess,
-                                  cfg: ast::crate_cfg,
+                                  cfg: ast::CrateConfig,
                                   name: @str,
                                   source: @str)
                                -> Parser {
@@ -222,7 +222,7 @@ pub fn new_parser_from_source_str(sess: @mut ParseSess,
 // Create a new parser from a source string where the origin
 // is specified as a substring of another file.
 pub fn new_parser_from_source_substr(sess: @mut ParseSess,
-                                  cfg: ast::crate_cfg,
+                                  cfg: ast::CrateConfig,
                                   name: @str,
                                   ss: codemap::FileSubstr,
                                   source: @str)
@@ -234,7 +234,7 @@ pub fn new_parser_from_source_substr(sess: @mut ParseSess,
 /// if the file doesn't exist
 pub fn new_parser_from_file(
     sess: @mut ParseSess,
-    cfg: ast::crate_cfg,
+    cfg: ast::CrateConfig,
     path: &Path
 ) -> Parser {
     filemap_to_parser(sess,file_to_filemap(sess,path,None),cfg)
@@ -245,7 +245,7 @@ pub fn new_parser_from_file(
 /// On an error, use the given span as the source of the problem.
 pub fn new_sub_parser_from_file(
     sess: @mut ParseSess,
-    cfg: ast::crate_cfg,
+    cfg: ast::CrateConfig,
     path: &Path,
     sp: span
 ) -> Parser {
@@ -255,14 +255,14 @@ pub fn new_sub_parser_from_file(
 /// Given a filemap and config, return a parser
 pub fn filemap_to_parser(sess: @mut ParseSess,
                          filemap: @FileMap,
-                         cfg: ast::crate_cfg) -> Parser {
+                         cfg: ast::CrateConfig) -> Parser {
     tts_to_parser(sess,filemap_to_tts(sess,filemap),cfg)
 }
 
 // must preserve old name for now, because quote! from the *existing*
 // compiler expands into it
 pub fn new_parser_from_tts(sess: @mut ParseSess,
-                     cfg: ast::crate_cfg,
+                     cfg: ast::CrateConfig,
                      tts: ~[ast::token_tree]) -> Parser {
     tts_to_parser(sess,tts,cfg)
 }
@@ -313,7 +313,7 @@ pub fn filemap_to_tts(sess: @mut ParseSess, filemap: @FileMap)
 // given tts and cfg, produce a parser
 pub fn tts_to_parser(sess: @mut ParseSess,
                      tts: ~[ast::token_tree],
-                     cfg: ast::crate_cfg) -> Parser {
+                     cfg: ast::CrateConfig) -> Parser {
     let trdr = lexer::new_tt_reader(sess.span_diagnostic, None, tts);
     Parser(sess, cfg, trdr as @reader)
 }
@@ -551,7 +551,7 @@ mod test {
                                         lifetimes: opt_vec::Empty,
                                         ty_params: opt_vec::Empty,
                                     },
-                                    ast::blk {
+                                    ast::Block {
                                         view_items: ~[],
                                         stmts: ~[@spanned{
                                             node: ast::stmt_semi(@ast::expr{
