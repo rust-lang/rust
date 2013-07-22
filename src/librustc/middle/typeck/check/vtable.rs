@@ -17,7 +17,7 @@ use middle::typeck::infer::fixup_err_to_str;
 use middle::typeck::infer::{resolve_and_force_all_but_regions, resolve_type};
 use middle::typeck::infer;
 use middle::typeck::{CrateCtxt, vtable_origin, vtable_res, vtable_param_res};
-use middle::typeck::{vtable_static, vtable_param, vtable_self};
+use middle::typeck::{vtable_static, vtable_param, vtable_self, impl_res};
 use middle::subst::Subst;
 use util::common::indenter;
 use util::ppaux;
@@ -725,9 +725,6 @@ pub fn resolve_impl(ccx: @mut CrateCtxt, impl_item: @ast::item) {
                                        &trait_ref.substs,
                                        false);
 
-            // FIXME(#7450): Doesn't work cross crate
-            ccx.vtable_map.insert(impl_item.id, vtbls);
-
             // Now, locate the vtable for the impl itself. The real
             // purpose of this is to check for supertrait impls,
             // but that falls out of doing this.
@@ -740,10 +737,16 @@ pub fn resolve_impl(ccx: @mut CrateCtxt, impl_item: @ast::item) {
             // Right now, we don't have any place to store this.
             // We will need to make one so we can use this information
             // for compiling default methods that refer to supertraits.
-            let _self_vtable_res =
+            let self_vtable_res =
                 lookup_vtables_for_param(&vcx, &loc_info, None,
                                          &param_bounds, t, false);
 
+
+            let res = impl_res {
+                trait_vtables: vtbls,
+                self_vtables: self_vtable_res
+            };
+            ccx.tcx.impl_vtables.insert(def_id, res);
         }
     }
 }

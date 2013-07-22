@@ -187,6 +187,28 @@ impl Repr for vtable_origin {
 
 pub type vtable_map = @mut HashMap<ast::node_id, vtable_res>;
 
+
+// Information about the vtable resolutions for for a trait impl.
+// Mostly the information is important for implementing default
+// methods.
+#[deriving(Clone)]
+pub struct impl_res {
+    // resolutions for any bounded params on the trait definition
+    trait_vtables: vtable_res,
+    // resolutions for the trait /itself/ (and for supertraits)
+    self_vtables: vtable_param_res
+}
+
+impl Repr for impl_res {
+    fn repr(&self, tcx: ty::ctxt) -> ~str {
+        fmt!("impl_res {trait_vtables=%s, self_vtables=%s}",
+             self.trait_vtables.repr(tcx),
+             self.self_vtables.repr(tcx))
+    }
+}
+
+pub type impl_vtable_map = @mut HashMap<ast::def_id, impl_res>;
+
 pub struct CrateCtxt {
     // A mapping from method call sites to traits that have that method.
     trait_map: resolve::TraitMap,
