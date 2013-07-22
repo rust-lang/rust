@@ -477,7 +477,9 @@ impl<'self, A> DoubleEndedIterator<&'self mut A> for MutDListIterator<'self, A> 
 
 /// Allow mutating the DList while iterating
 pub trait ListInsertion<A> {
-    /// Insert `elt` just after to the most recently yielded element
+    /// Insert `elt` just after to the element most recently returned by `.next()`
+    ///
+    /// The inserted element does not appear in the iteration.
     fn insert_next(&mut self, elt: A);
 
     /// Provide a reference to the next element, without changing the iterator
@@ -515,6 +517,9 @@ impl<'self, A> ListInsertion<A> for MutDListIterator<'self, A> {
 
     #[inline]
     fn peek_next<'a>(&'a mut self) -> Option<&'a mut A> {
+        if self.nelem == 0 {
+            return None
+        }
         self.head.resolve().map_consume(|head| &mut head.value)
     }
 }
