@@ -62,21 +62,6 @@ pub fn get_err<T, U: Clone>(res: &Result<T, U>) -> U {
     }
 }
 
-/// Returns true if the result is `ok`
-#[inline]
-pub fn is_ok<T, U>(res: &Result<T, U>) -> bool {
-    match *res {
-      Ok(_) => true,
-      Err(_) => false
-    }
-}
-
-/// Returns true if the result is `err`
-#[inline]
-pub fn is_err<T, U>(res: &Result<T, U>) -> bool {
-    !is_ok(res)
-}
-
 /**
  * Convert to the `either` type
  *
@@ -134,27 +119,8 @@ pub fn chain_err<T, U, V>(
     }
 }
 
-/**
- * Call a function based on a previous result
- *
- * If `res` is `ok` then the value is extracted and passed to `op` whereupon
- * `op`s result is returned. if `res` is `err` then it is immediately
- * returned. This function can be used to compose the results of two
- * functions.
- *
- * Example:
- *
- *     iter(read_file(file)) { |buf|
- *         print_buf(buf)
- *     }
- */
-#[inline]
-pub fn iter<T, E>(res: &Result<T, E>, f: &fn(&T)) {
-    match *res {
-      Ok(ref t) => f(t),
-      Err(_) => ()
-    }
-}
+
+
 
 /**
  * Call a function based on a previous result
@@ -164,13 +130,7 @@ pub fn iter<T, E>(res: &Result<T, E>, f: &fn(&T)) {
  * This function can be used to pass through a successful result while
  * handling an error.
  */
-#[inline]
-pub fn iter_err<T, E>(res: &Result<T, E>, f: &fn(&E)) {
-    match *res {
-      Ok(_) => (),
-      Err(ref e) => f(e)
-    }
-}
+
 
 /**
  * Call a function based on a previous result
@@ -230,17 +190,58 @@ impl<T, E> Result<T, E> {
         } 
     }
 
+    /// Returns true if the result is `ok`
     #[inline]
-    pub fn is_ok(&self) -> bool { is_ok(self) }
+    pub fn is_ok(&self) -> bool { 
+        match *self {
+            Ok(_) => true,
+            Err(_) => false
+        }
+    }
 
+    /// Returns true if the result is `err`
     #[inline]
-    pub fn is_err(&self) -> bool { is_err(self) }
+    pub fn is_err(&self) -> bool { 
+        !self.is_ok()
+    }
 
+    /**
+    * Call a function based on a previous result
+    *
+    * If `*self` is `ok` then the value is extracted and passed to `op` whereupon
+    * `op`s result is returned. if `res` is `err` then it is immediately
+    * returned. This function can be used to compose the results of two
+    * functions.
+    *
+    * Example:
+    *
+    *     read_file(file).iter() { |buf|
+    *         print_buf(buf)
+    *     }
+    */
     #[inline]
-    pub fn iter(&self, f: &fn(&T)) { iter(self, f) }
+    pub fn iter(&self, f: &fn(&T)) { 
+        match *self {
+            Ok(ref t) => f(t),
+            Err(_) => ()
+        }
+    }
 
+    /**
+    * Call a function based on a previous result
+    *
+    * If `*self` is `err` then the value is extracted and passed to `op` whereupon
+    * `op`s result is returned. if `res` is `ok` then it is immediately returned.
+    * This function can be used to pass through a successful result while
+    * handling an error.
+    */
     #[inline]
-    pub fn iter_err(&self, f: &fn(&E)) { iter_err(self, f) }
+    pub fn iter_err(&self, f: &fn(&E)) { 
+        match *self {
+            Ok(_) => (),
+            Err(ref e) => f(e)
+        }
+    }
 
     #[inline]
     pub fn unwrap(self) -> T { unwrap(self) }
