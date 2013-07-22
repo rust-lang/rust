@@ -175,18 +175,16 @@ mod tests {
 
         // verify that `#[unsafe_no_drop_flag]` works as intended on a zero-size struct
 
-        // NOTE: uncomment after snapshot, will not parse yet
-        //static mut did_run: bool = false;
+        static mut did_run: bool = false;
 
         struct Foo { five: int }
 
         impl Drop for Foo {
             fn drop(&self) {
                 assert_eq!(self.five, 5);
-                // NOTE: uncomment after snapshot, will not parse yet
-                //unsafe {
-                    //did_run = true;
-                //}
+                unsafe {
+                    did_run = true;
+                }
             }
         }
 
@@ -194,7 +192,6 @@ mod tests {
             let _a = (NonCopyable, Foo { five: 5 }, NonCopyable);
         }
 
-        // NOTE: uncomment after snapshot, will not parse yet
-        //unsafe { assert_eq!(did_run, true); }
+        unsafe { assert_eq!(did_run, true); }
     }
 }

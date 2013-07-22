@@ -68,10 +68,7 @@ pub unsafe fn read(prompt: &str) -> Option<~str> {
 
 pub type CompletionCb = @fn(~str, @fn(~str));
 
-#[cfg(not(stage0))]
 static complete_key: local_data::Key<@CompletionCb> = &local_data::Key;
-#[cfg(stage0)]
-fn complete_key(_: @CompletionCb) {}
 
 /// Bind to the main completion callback
 pub unsafe fn complete(cb: CompletionCb) {
