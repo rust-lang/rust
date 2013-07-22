@@ -703,3 +703,27 @@ mod test {
         assert_eq!(n, None);
     }
 }
+
+#[cfg(test)]
+mod bench {
+    use extra::test::BenchHarness;
+    use rand::{XorShiftRng,RngUtil};
+    use uint;
+    use float;
+
+    #[bench]
+    fn uint_to_str_rand(bh: &mut BenchHarness) {
+        let mut rng = XorShiftRng::new();
+        do bh.iter {
+            uint::to_str(rng.gen());
+        }
+    }
+
+    #[bench]
+    fn float_to_str_rand(bh: &mut BenchHarness) {
+        let mut rng = XorShiftRng::new();
+        do bh.iter {
+            float::to_str(rng.gen());
+        }
+    }
+}
