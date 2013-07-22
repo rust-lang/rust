@@ -195,3 +195,68 @@ mod tests {
         unsafe { assert_eq!(did_run, true); }
     }
 }
+
+/// Completely miscellaneous language-construct benchmarks.
+#[cfg(test)]
+mod bench {
+
+    use extra::test::BenchHarness;
+    use option::{Some,None};
+
+    // Static/dynamic method dispatch
+
+    struct Struct {
+        field: int
+    }
+
+    trait Trait {
+        fn method(&self) -> int;
+    }
+
+    impl Trait for Struct {
+        fn method(&self) -> int {
+            self.field
+        }
+    }
+
+    #[bench]
+    fn trait_vtable_method_call(bh: &mut BenchHarness) {
+        let s = Struct { field: 10 };
+        let t = &s as &Trait;
+        do bh.iter {
+            t.method();
+        }
+    }
+
+    #[bench]
+    fn trait_static_method_call(bh: &mut BenchHarness) {
+        let s = Struct { field: 10 };
+        do bh.iter {
+            s.method();
+        }
+    }
+
+    // Overhead of various match forms
+
+    #[bench]
+    fn match_option_some(bh: &mut BenchHarness) {
+        let x = Some(10);
+        do bh.iter {
+            let _q = match x {
+                Some(y) => y,
+                None => 11
+            };
+        }
+    }
+
+    #[bench]
+    fn match_vec_pattern(bh: &mut BenchHarness) {
+        let x = [1,2,3,4,5,6];
+        do bh.iter {
+            let _q = match x {
+                [1,2,3,.._] => 10,
+                _ => 11
+            };
+        }
+    }
+}
