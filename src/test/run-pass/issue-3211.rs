@@ -4,5 +4,5 @@ pub fn main() {
         x += 1;
     }
     assert_eq!(x, 4096);
-    println(fmt!("x = %u", x));
+    printfln!("x = %u", x);
 }

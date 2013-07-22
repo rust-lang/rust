@@ -667,7 +667,7 @@ pub fn main() {
 
         let r = u.vals.clone();
         for r.iter().advance |s| {
-            println(fmt!("val: %s", *s));
+            printfln!("val: %s", *s);
         }
         error!("%?", u.vals.clone());
         assert_eq!(u.vals.clone(),
