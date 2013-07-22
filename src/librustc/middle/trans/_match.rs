@@ -1279,8 +1279,6 @@ pub fn compile_submatch(bcx: @mut Block,
     assert!((m.len() > 0u || chk.is_some()));
     let _icx = push_ctxt("match::compile_submatch");
     let mut bcx = bcx;
-    let tcx = bcx.tcx();
-    let dm = tcx.def_map;
     if m.len() == 0u {
         Br(bcx, chk.get()());
         return;
