@@ -183,9 +183,6 @@ void task_start_wrapper(spawn_args *a)
         // free the environment (which should be a unique closure).
         const type_desc *td = env->td;
         td->drop_glue(NULL,
-#ifdef _RUST_STAGE0
-                      NULL,
-#endif
                       box_body(env));
         task->kernel->region()->free(env);
     }

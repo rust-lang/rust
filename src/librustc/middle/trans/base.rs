@@ -90,10 +90,7 @@ use syntax::abi::{X86, X86_64, Arm, Mips};
 
 pub use middle::trans::context::task_llcx;
 
-#[cfg(not(stage0))]
 static task_local_insn_key: local_data::Key<@~[&'static str]> = &local_data::Key;
-#[cfg(stage0)]
-fn task_local_insn_key(_: @~[&'static str]) {}
 
 pub fn with_insn_ctxt(blk: &fn(&[&'static str])) {
     let opt = local_data::get(task_local_insn_key, |k| k.map(|&k| *k));

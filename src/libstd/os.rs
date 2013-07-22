@@ -1237,9 +1237,6 @@ struct OverriddenArgs {
     val: ~[~str]
 }
 
-#[cfg(stage0)]
-fn overridden_arg_key(_v: @OverriddenArgs) {}
-#[cfg(not(stage0))]
 static overridden_arg_key: local_data::Key<@OverriddenArgs> = &local_data::Key;
 
 /// Returns the arguments which this program was started with (normally passed

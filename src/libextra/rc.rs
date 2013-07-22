@@ -166,9 +166,7 @@ struct RcMutBox<T> {
 }
 
 /// Mutable reference counted pointer type
-#[non_owned]
 #[no_send]
-#[mutable] // XXX remove after snap
 #[no_freeze]
 #[unsafe_no_drop_flag]
 pub struct RcMut<T> {

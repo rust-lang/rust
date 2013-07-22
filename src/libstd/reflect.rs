@@ -16,9 +16,6 @@ Runtime type reflection
 
 #[allow(missing_doc)];
 
-#[cfg(stage0)]
-use intrinsic::{Opaque, TyDesc, TyVisitor};
-#[cfg(not(stage0))]
 use unstable::intrinsics::{Opaque, TyDesc, TyVisitor};
 use libc::c_void;
 use sys;
@@ -197,14 +194,6 @@ impl<V:TyVisitor + MovePtr> TyVisitor for MovePtrAdaptor<V> {
         true
     }
 
-    #[cfg(stage0)]
-    fn visit_str(&self) -> bool {
-        self.align_to::<~str>();
-        if ! self.inner.visit_str() { return false; }
-        self.bump_past::<~str>();
-        true
-    }
-
     fn visit_estr_box(&self) -> bool {
         self.align_to::<@str>();
         if ! self.inner.visit_estr_box() { return false; }
@@ -249,7 +238,6 @@ impl<V:TyVisitor + MovePtr> TyVisitor for MovePtrAdaptor<V> {
         true
     }
 
-    #[cfg(not(stage0))]
     fn visit_uniq_managed(&self, mtbl: uint, inner: *TyDesc) -> bool {
         self.align_to::<~u8>();
         if ! self.inner.visit_uniq_managed(mtbl, inner) { return false; }
@@ -298,7 +286,6 @@ impl<V:TyVisitor + MovePtr> TyVisitor for MovePtrAdaptor<V> {
         true
     }
 
-    #[cfg(not(stage0))]
     fn visit_evec_uniq_managed(&self, mtbl: uint, inner: *TyDesc) -> bool {
         self.align_to::<~[@u8]>();
         if ! self.inner.visit_evec_uniq_managed(mtbl, inner) { return false; }

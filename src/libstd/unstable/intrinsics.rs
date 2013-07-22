@@ -36,11 +36,7 @@ A quick refresher on memory ordering:
 #[cfg(test)]
 pub use realstd::unstable::intrinsics::{TyDesc, Opaque, TyVisitor};
 
-#[cfg(not(stage0))]
 pub type GlueFn = extern "Rust" fn(*i8);
-
-#[cfg(stage0)]
-pub type GlueFn = extern "Rust" fn(**TyDesc, *i8);
 
 // NB: this has to be kept in sync with the Rust ABI.
 #[lang="ty_desc"]
@@ -284,10 +280,7 @@ extern "rust-intrinsic" {
     pub fn pref_align_of<T>() -> uint;
 
     /// Get a static pointer to a type descriptor.
-    #[cfg(not(stage0))]
     pub fn get_tydesc<T>() -> *TyDesc;
-    #[cfg(stage0)]
-    pub fn get_tydesc<T>() -> *();
 
     /// Create a value initialized to zero.
     ///
@@ -310,10 +303,8 @@ extern "rust-intrinsic" {
     pub fn needs_drop<T>() -> bool;
 
     /// Returns `true` if a type is managed (will be allocated on the local heap)
-    #[cfg(not(stage0))]
     pub fn contains_managed<T>() -> bool;
 
-    #[cfg(not(stage0))]
     pub fn visit_tydesc(td: *TyDesc, tv: @TyVisitor);
 
     pub fn frame_address(f: &once fn(*u8));
