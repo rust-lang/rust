@@ -334,7 +334,7 @@ fn compile_crate(src_filename: ~str, binary: ~str) -> Option<bool> {
             None => { },
         }
         if (should_compile) {
-            println(fmt!("compiling %s...", src_filename));
+            printfln!("compiling %s...", src_filename);
             driver::compile_upto(sess, cfg, &input, driver::cu_everything,
                                  Some(outputs));
             true
@@ -413,8 +413,7 @@ fn run_cmd(repl: &mut Repl, _in: @io::Reader, _out: @io::Writer,
             if loaded_crates.is_empty() {
                 println("no crates loaded");
             } else {
-                println(fmt!("crates loaded: %s",
-                                 loaded_crates.connect(", ")));
+                printfln!("crates loaded: %s", loaded_crates.connect(", "));
             }
         }
         ~"{" => {

@@ -37,7 +37,6 @@ use util::ppaux::ty_to_short_str;
 
 use middle::trans::type_::Type;
 
-use std::io;
 use std::libc::c_uint;
 use std::str;
 use syntax::ast;
@@ -649,8 +648,8 @@ pub fn declare_tydesc(ccx: &mut CrateContext, t: ty::t) -> @mut tydesc_info {
     let llty = type_of(ccx, t);
 
     if ccx.sess.count_type_sizes() {
-        io::println(fmt!("%u\t%s", llsize_of_real(ccx, llty),
-                         ppaux::ty_to_str(ccx.tcx, t)));
+        printfln!("%u\t%s", llsize_of_real(ccx, llty),
+                  ppaux::ty_to_str(ccx.tcx, t));
     }
 
     let llsize = llsize_of(ccx, llty);
