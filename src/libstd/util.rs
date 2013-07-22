@@ -75,13 +75,31 @@ pub fn replace<T>(dest: &mut T, mut src: T) -> T {
 }
 
 /**
+ * Trasform a value without copying or deinitializing it.
+ *
+ * Replaces illegal statements of the form:
+ * x = trans(x);
+ */
+#[inline]
+pub fn reset<T>(val: &mut T, trans: &fn(T) -> T) {
+    unsafe {
+        let mut tmp: T = intrinsics::uninit();
+        swap(val, &mut tmp);
+
+        let nothing = replace(val, trans(tmp));
+        cast::forget(nothing);
+    }
+}
+
+/**
  * Combine two values and replace the original without copying or deinitializing
  * either one.
  *
- * Especially useful for owned recursive datatypes.
+ * Replaces illegal statements of the form:
+ * x = comb(x, y);
  */
 #[inline]
-fn pack<T, U>(val: &mut T, param: U, comb: &fn(T, U) -> T) {
+pub fn pack<T, U>(val: &mut T, param: U, comb: &fn(T, U) -> T) {
     unsafe {
         let mut tmp: T = intrinsics::uninit();
 
@@ -99,11 +117,13 @@ fn pack<T, U>(val: &mut T, param: U, comb: &fn(T, U) -> T) {
 
 /**
  * Split one value into two and replace the original, returning the remainder.
- * 
- * Especially useful for recursive datatypes.
+ *
+ * Replaces illegal expressions of the form:
+ * (x, y) = split(x);
+ * y
  */
 #[inline]
-fn unpack<T, U>(val: &mut T, split: &fn(T) -> (T, U)) -> U {
+pub fn unpack<T, U>(val: &mut T, split: &fn(T) -> (T, U)) -> U {
     unsafe {
         let mut tmp: T = intrinsics::uninit();
 
@@ -120,8 +140,6 @@ fn unpack<T, U>(val: &mut T, split: &fn(T) -> (T, U)) -> U {
         result
     }
 }
-
- 
 
 /// A non-copyable dummy type.
 #[deriving(Eq, TotalEq, Ord, TotalOrd)]
@@ -207,6 +225,47 @@ mod tests {
         let y = replace(&mut x, None);
         assert!(x.is_none());
         assert!(y.is_some());
+    }
+
+    #[deriving(Eq)]
+    enum IntExp {
+        Literal(int),
+        AddExp(~IntExp, ~IntExp)
+    }
+
+    #[test]
+    fn test_reset() {
+        let mut exp = Literal(1);
+        do reset(&mut exp) |e| {
+            assert_eq!(e, Literal(1));
+            AddExp(~e, ~e)
+        };
+        assert_eq!(exp, AddExp(~Literal(1), ~Literal(1)));
+    }
+
+    #[test]
+    fn test_pack() {
+        let mut exp = Literal(5);
+        do pack(&mut exp, 3) |e, i| {
+            assert_eq!(e, Literal(5));
+            assert_eq!(i, 3);
+            AddExp(~exp, ~Literal(i))
+        };
+        assert_eq!(exp, AddExp(~Literal(5), ~Literal(3)));
+    }
+
+    #[test]
+    fn test_unpack() {
+        let mut exp = AddExp(~Literal(2), ~Literal(7));
+        let res = do unpack(&mut exp) |e| {
+            assert_eq!(e,AddExp(~Literal(2), ~Literal(7)));
+            match exp {
+                AddExp(~Literal(x), ~Literal(y)) => (Literal(x+y), x+y),
+                _                                => fail!()
+            }
+        };
+        assert_eq!(exp, Literal(9));
+        assert_eq!(res, 9);
     }
 
     #[test]
