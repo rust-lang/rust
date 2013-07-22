@@ -475,7 +475,8 @@ fn test_install_invalid() {
 
 // Tests above should (maybe) be converted to shell out to rustpkg, too
 
-#[test] #[ignore(cfg(target_arch = "x86"))]
+// FIXME: #7956: temporarily disabled
+#[ignore(cfg(target_arch = "x86"))]
 fn test_install_git() {
     let sysroot = test_sysroot();
     debug!("sysroot = %s", sysroot.to_str());
@@ -566,7 +567,8 @@ fn test_package_ids_must_be_relative_path_like() {
 
 }
 
-#[test] #[ignore(cfg(target_arch = "x86"))]
+// FIXME: #7956: temporarily disabled
+#[ignore(cfg(target_arch = "x86"))]
 fn test_package_version() {
     let local_path = "mockgithub.com/catamorphism/test_pkg_version";
     let repo = init_git_repo(&Path(local_path));
@@ -678,7 +680,7 @@ fn rustpkg_install_url_2() {
                      &temp_dir);
 }
 
-#[test]
+// FIXME: #7956: temporarily disabled
 fn rustpkg_library_target() {
     let foo_repo = init_git_repo(&Path("foo"));
     let package_dir = foo_repo.push("foo");
