@@ -56,10 +56,7 @@ use task::local_data_priv::*;
  * sections to ensure that each value of the `Key` type points to a unique
  * location.
  */
-#[cfg(not(stage0))]
 pub type Key<T> = &'static KeyValue<T>;
-#[cfg(stage0)]
-pub type Key<'self,T> = &'self fn(v: T);
 
 pub enum KeyValue<T> { Key }
 
@@ -67,73 +64,37 @@ pub enum KeyValue<T> { Key }
  * Remove a task-local data value from the table, returning the
  * reference that was originally created to insert it.
  */
-#[cfg(stage0)]
-pub fn pop<T: 'static>(key: Key<@T>) -> Option<@T> {
-    unsafe { local_pop(Handle::new(), key) }
-}
-/**
- * Remove a task-local data value from the table, returning the
- * reference that was originally created to insert it.
- */
-#[cfg(not(stage0))]
 pub fn pop<T: 'static>(key: Key<T>) -> Option<T> {
     unsafe { local_pop(Handle::new(), key) }
 }
+
 /**
  * Retrieve a task-local data value. It will also be kept alive in the
  * table until explicitly removed.
  */
-#[cfg(stage0)]
-pub fn get<T: 'static, U>(key: Key<@T>, f: &fn(Option<&@T>) -> U) -> U {
-    unsafe { local_get(Handle::new(), key, f) }
-}
-/**
- * Retrieve a task-local data value. It will also be kept alive in the
- * table until explicitly removed.
- */
-#[cfg(not(stage0))]
 pub fn get<T: 'static, U>(key: Key<T>, f: &fn(Option<&T>) -> U) -> U {
     unsafe { local_get(Handle::new(), key, f) }
 }
+
 /**
  * Retrieve a mutable borrowed pointer to a task-local data value.
  */
-#[cfg(not(stage0))]
 pub fn get_mut<T: 'static, U>(key: Key<T>, f: &fn(Option<&mut T>) -> U) -> U {
     unsafe { local_get_mut(Handle::new(), key, f) }
 }
+
 /**
  * Store a value in task-local data. If this key already has a value,
  * that value is overwritten (and its destructor is run).
  */
-#[cfg(stage0)]
-pub fn set<T: 'static>(key: Key<@T>, data: @T) {
-    unsafe { local_set(Handle::new(), key, data) }
-}
-/**
- * Store a value in task-local data. If this key already has a value,
- * that value is overwritten (and its destructor is run).
- */
-#[cfg(not(stage0))]
 pub fn set<T: 'static>(key: Key<T>, data: T) {
     unsafe { local_set(Handle::new(), key, data) }
 }
+
 /**
  * Modify a task-local data value. If the function returns 'None', the
  * data is removed (and its reference dropped).
  */
-#[cfg(stage0)]
-pub fn modify<T: 'static>(key: Key<@T>, f: &fn(Option<@T>) -> Option<@T>) {
-    match f(pop(key)) {
-        Some(next) => { set(key, next); }
-        None => {}
-    }
-}
-/**
- * Modify a task-local data value. If the function returns 'None', the
- * data is removed (and its reference dropped).
- */
-#[cfg(not(stage0))]
 pub fn modify<T: 'static>(key: Key<T>, f: &fn(Option<T>) -> Option<T>) {
     unsafe {
         match f(pop(::cast::unsafe_copy(&key))) {

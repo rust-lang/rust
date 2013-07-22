@@ -487,13 +487,8 @@ fn kill_taskgroup(state: TaskGroupInner, me: &TaskHandle, is_main: bool) {
 
 // FIXME (#2912): Work around core-vs-coretest function duplication. Can't use
 // a proper closure because the #[test]s won't understand. Have to fake it.
-#[cfg(not(stage0))]
 fn taskgroup_key() -> local_data::Key<@@mut Taskgroup> {
     unsafe { cast::transmute(-2) }
-}
-#[cfg(stage0)]
-fn taskgroup_key() -> local_data::Key<@@mut Taskgroup> {
-    unsafe { cast::transmute((-2, 0)) }
 }
 
 // Transitionary.

@@ -25,16 +25,12 @@ use option::{None, Option, Some};
 use ptr::to_unsafe_ptr;
 use ptr;
 use ptr::RawPtr;
-#[cfg(not(stage0))]
 use rt::global_heap::malloc_raw;
 use rt::global_heap::realloc_raw;
 use sys;
 use sys::size_of;
 use uint;
 use unstable::intrinsics;
-#[cfg(stage0)]
-use intrinsic::{get_tydesc};
-#[cfg(not(stage0))]
 use unstable::intrinsics::{get_tydesc, contains_managed};
 use vec;
 use util;
@@ -91,15 +87,6 @@ pub fn from_elem<T:Clone>(n_elts: uint, t: T) -> ~[T] {
 }
 
 /// Creates a new vector with a capacity of `capacity`
-#[cfg(stage0)]
-pub fn with_capacity<T>(capacity: uint) -> ~[T] {
-    let mut vec = ~[];
-    vec.reserve(capacity);
-    vec
-}
-
-/// Creates a new vector with a capacity of `capacity`
-#[cfg(not(stage0))]
 pub fn with_capacity<T>(capacity: uint) -> ~[T] {
     unsafe {
         if contains_managed::<T>() {
@@ -1136,40 +1123,6 @@ impl<T> OwnedVector<T> for ~[T] {
      *
      * * n - The number of elements to reserve space for
      */
-    #[cfg(stage0)]
-    fn reserve(&mut self, n: uint) {
-        // Only make the (slow) call into the runtime if we have to
-        use managed;
-        if self.capacity() < n {
-            unsafe {
-                let ptr: *mut *mut raw::VecRepr = cast::transmute(self);
-                let td = get_tydesc::<T>();
-                if ((**ptr).box_header.ref_count ==
-                    managed::raw::RC_MANAGED_UNIQUE) {
-                    // XXX transmute shouldn't be necessary
-                    let td = cast::transmute(td);
-                    ::at_vec::raw::reserve_raw(td, ptr, n);
-                } else {
-                    let alloc = n * sys::nonzero_size_of::<T>();
-                    *ptr = realloc_raw(*ptr as *mut c_void, alloc + size_of::<raw::VecRepr>())
-                           as *mut raw::VecRepr;
-                    (**ptr).unboxed.alloc = alloc;
-                }
-            }
-        }
-    }
-
-    /**
-     * Reserves capacity for exactly `n` elements in the given vector.
-     *
-     * If the capacity for `self` is already equal to or greater than the requested
-     * capacity, then no action is taken.
-     *
-     * # Arguments
-     *
-     * * n - The number of elements to reserve space for
-     */
-    #[cfg(not(stage0))]
     fn reserve(&mut self, n: uint) {
         // Only make the (slow) call into the runtime if we have to
         if self.capacity() < n {
@@ -1213,17 +1166,6 @@ impl<T> OwnedVector<T> for ~[T] {
 
     /// Returns the number of elements the vector can hold without reallocating.
     #[inline]
-    #[cfg(stage0)]
-    fn capacity(&self) -> uint {
-        unsafe {
-            let repr: **raw::VecRepr = transmute(self);
-            (**repr).unboxed.alloc / sys::nonzero_size_of::<T>()
-        }
-    }
-
-    /// Returns the number of elements the vector can hold without reallocating.
-    #[inline]
-    #[cfg(not(stage0))]
     fn capacity(&self) -> uint {
         unsafe {
             if contains_managed::<T>() {
@@ -1238,23 +1180,6 @@ impl<T> OwnedVector<T> for ~[T] {
 
     /// Append an element to a vector
     #[inline]
-    #[cfg(stage0)]
-    fn push(&mut self, t: T) {
-        unsafe {
-            let repr: **raw::VecRepr = transmute(&mut *self);
-            let fill = (**repr).unboxed.fill;
-            if (**repr).unboxed.alloc <= fill {
-                let new_len = self.len() + 1;
-                self.reserve_at_least(new_len);
-            }
-
-            self.push_fast(t);
-        }
-    }
-
-    /// Append an element to a vector
-    #[inline]
-    #[cfg(not(stage0))]
     fn push(&mut self, t: T) {
         unsafe {
             if contains_managed::<T>() {
@@ -1281,19 +1206,6 @@ impl<T> OwnedVector<T> for ~[T] {
 
     // This doesn't bother to make sure we have space.
     #[inline] // really pretty please
-    #[cfg(stage0)]
-    unsafe fn push_fast(&mut self, t: T) {
-        let repr: **mut raw::VecRepr = transmute(self);
-        let fill = (**repr).unboxed.fill;
-        (**repr).unboxed.fill += sys::nonzero_size_of::<T>();
-        let p = to_unsafe_ptr(&((**repr).unboxed.data));
-        let p = ptr::offset(p, fill) as *mut T;
-        intrinsics::move_val_init(&mut(*p), t);
-    }
-
-    // This doesn't bother to make sure we have space.
-    #[inline] // really pretty please
-    #[cfg(not(stage0))]
     unsafe fn push_fast(&mut self, t: T) {
         if contains_managed::<T>() {
             let repr: **mut raw::VecRepr = transmute(self);
@@ -1901,7 +1813,6 @@ pub mod raw {
     use sys;
     use unstable::intrinsics;
     use vec::{UnboxedVecRepr, with_capacity, ImmutableVector, MutableVector};
-    #[cfg(not(stage0))]
     use unstable::intrinsics::contains_managed;
 
     /// The internal representation of a (boxed) vector
@@ -1927,21 +1838,6 @@ pub mod raw {
      * the vector is actually the specified size.
      */
     #[inline]
-    #[cfg(stage0)]
-    pub unsafe fn set_len<T>(v: &mut ~[T], new_len: uint) {
-        let repr: **mut VecRepr = transmute(v);
-        (**repr).unboxed.fill = new_len * sys::nonzero_size_of::<T>();
-    }
-
-    /**
-     * Sets the length of a vector
-     *
-     * This will explicitly set the size of the vector, without actually
-     * modifing its buffers, so it is up to the caller to ensure that
-     * the vector is actually the specified size.
-     */
-    #[inline]
-    #[cfg(not(stage0))]
     pub unsafe fn set_len<T>(v: &mut ~[T], new_len: uint) {
         if contains_managed::<T>() {
             let repr: **mut VecRepr = transmute(v);
@@ -2286,19 +2182,6 @@ impl<T> Iterator<T> for VecConsumeRevIterator<T> {
     }
 }
 
-#[cfg(stage0)]
-impl<A, T: Iterator<A>> FromIterator<A, T> for ~[A] {
-    pub fn from_iterator(iterator: &mut T) -> ~[A] {
-        let mut xs = ~[];
-        for iterator.advance |x| {
-            xs.push(x);
-        }
-        xs
-    }
-}
-
-
-#[cfg(not(stage0))]
 impl<A, T: Iterator<A>> FromIterator<A, T> for ~[A] {
     pub fn from_iterator(iterator: &mut T) -> ~[A] {
         let (lower, _) = iterator.size_hint();
