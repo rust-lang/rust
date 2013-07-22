@@ -191,15 +191,15 @@ pub fn list_passes() {
 
     io::println("\nAnalysis Passes:");
     for analysis_passes.iter().advance |&(name, desc)| {
-        io::println(fmt!("    %-30s -- %s", name, desc));
+        printfln!("    %-30s -- %s", name, desc);
     }
     io::println("\nTransformation Passes:");
     for transform_passes.iter().advance |&(name, desc)| {
-        io::println(fmt!("    %-30s -- %s", name, desc));
+        printfln!("    %-30s -- %s", name, desc);
     }
     io::println("\nUtility Passes:");
     for utility_passes.iter().advance |&(name, desc)| {
-        io::println(fmt!("    %-30s -- %s", name, desc));
+        printfln!("    %-30s -- %s", name, desc);
     }
 }
 
@@ -344,7 +344,7 @@ fn passes_exist() {
     if failed.len() > 0 {
         io::println("Some passes don't exist:");
         for failed.iter().advance |&n| {
-            io::println(fmt!("    %s", n));
+            printfln!("    %s", n);
         }
         fail!();
     }
