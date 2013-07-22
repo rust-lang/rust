@@ -317,6 +317,9 @@ struct ctxt_ {
     // some point. Local variable definitions not in this set can be warned
     // about.
     used_mut_nodes: @mut HashSet<ast::node_id>,
+
+    // vtable resolution information for impl declarations
+    impl_vtables: typeck::impl_vtable_map
 }
 
 pub enum tbox_flag {
@@ -911,6 +914,7 @@ pub fn mk_ctxt(s: session::Session,
         impls:  @mut HashMap::new(),
         used_unsafe: @mut HashSet::new(),
         used_mut_nodes: @mut HashSet::new(),
+        impl_vtables: @mut HashMap::new(),
      }
 }
 
@@ -3953,6 +3957,14 @@ pub fn lookup_item_type(cx: ctxt,
     lookup_locally_or_in_crate_store(
         "tcache", did, cx.tcache,
         || csearch::get_type(cx, did))
+}
+
+pub fn lookup_impl_vtables(cx: ctxt,
+                           did: ast::def_id)
+                     -> typeck::impl_res {
+    lookup_locally_or_in_crate_store(
+        "impl_vtables", did, cx.impl_vtables,
+        || csearch::get_impl_vtables(cx, did) )
 }
 
 /// Given the did of a trait, returns its canonical trait ref.

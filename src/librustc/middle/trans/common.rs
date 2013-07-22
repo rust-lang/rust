@@ -133,7 +133,7 @@ pub struct param_substs {
     tys: ~[ty::t],
     self_ty: Option<ty::t>,
     vtables: Option<typeck::vtable_res>,
-    self_vtable: Option<typeck::vtable_origin>
+    self_vtables: Option<typeck::vtable_param_res>
 }
 
 impl param_substs {
@@ -1037,13 +1037,24 @@ pub fn resolve_vtables_under_param_substs(tcx: ty::ctxt,
                                           vts: typeck::vtable_res)
     -> typeck::vtable_res {
     @vts.iter().transform(|ds|
-      @ds.iter().transform(
-          |d| resolve_vtable_under_param_substs(tcx,
-                                                param_substs,
-                                                d))
-                          .collect::<~[typeck::vtable_origin]>())
-        .collect::<~[typeck::vtable_param_res]>()
+      resolve_param_vtables_under_param_substs(tcx,
+                                               param_substs,
+                                               *ds))
+        .collect()
 }
+
+pub fn resolve_param_vtables_under_param_substs(
+    tcx: ty::ctxt,
+    param_substs: Option<@param_substs>,
+    ds: typeck::vtable_param_res)
+    -> typeck::vtable_param_res {
+    @ds.iter().transform(
+        |d| resolve_vtable_under_param_substs(tcx,
+                                              param_substs,
+                                              d))
+        .collect()
+}
+
 
 
 // Apply the typaram substitutions in the FunctionContext to a vtable. This should
@@ -1088,8 +1099,8 @@ pub fn resolve_vtable_under_param_substs(tcx: ty::ctxt,
         typeck::vtable_self(_trait_id) => {
             match param_substs {
                 Some(@param_substs
-                     {self_vtable: Some(ref self_vtable), _}) => {
-                    (*self_vtable).clone()
+                     {self_vtables: Some(self_vtables), _}) => {
+                    self_vtables[0].clone()
                 }
                 _ => {
                     tcx.sess.bug(fmt!(

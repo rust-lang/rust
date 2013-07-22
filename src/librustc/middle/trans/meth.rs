@@ -222,14 +222,15 @@ pub fn trans_method_callee(bcx: @mut Block,
         typeck::method_self(trait_id, method_index) => {
             match bcx.fcx.param_substs {
                 Some(@param_substs
-                     {self_vtable: Some(ref vtbl), _}) => {
+                     {self_vtables: Some(vtbls), _}) => {
+                    let vtbl = vtbls[0].clone();
                     trans_monomorphized_callee(bcx,
                                                callee_id,
                                                this,
                                                mentry,
                                                trait_id,
                                                method_index,
-                                               (*vtbl).clone())
+                                               vtbl)
                 }
                 _ => {
                     fail!("trans_method_callee: missing self_vtable")
@@ -611,7 +612,7 @@ pub fn vtable_id(ccx: @mut CrateContext,
                 tys: (*substs).clone(),
                 vtables: Some(sub_vtables),
                 self_ty: None,
-                self_vtable: None
+                self_vtables: None
             };
 
             monomorphize::make_mono_id(
