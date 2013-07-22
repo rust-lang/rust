@@ -8,10 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-// error on implicit copies to check fixed length vectors
-// are implicitly copyable
-#[deny(implicit_copies)]
 pub fn main() {
     let arr = [1,2,3];
     let arr2 = arr;

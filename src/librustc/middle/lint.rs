@@ -75,9 +75,7 @@ pub enum lint {
     unnecessary_qualification,
     while_true,
     path_statement,
-    implicit_copies,
     unrecognized_lint,
-    deprecated_pattern,
     non_camel_case_types,
     non_uppercase_statics,
     type_limits,
@@ -180,20 +178,6 @@ static lint_table: &'static [(&'static str, LintSpec)] = &[
         lint: unrecognized_lint,
         desc: "unrecognized lint attribute",
         default: warn
-     }),
-
-    ("implicit_copies",
-     LintSpec {
-        lint: implicit_copies,
-        desc: "implicit copies of non implicitly copyable data",
-        default: warn
-     }),
-
-    ("deprecated_pattern",
-     LintSpec {
-        lint: deprecated_pattern,
-        desc: "warn about deprecated uses of pattern bindings",
-        default: allow
      }),
 
     ("non_camel_case_types",
