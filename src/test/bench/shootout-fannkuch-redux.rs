@@ -93,5 +93,5 @@ fn fannkuch_redux(n: i32) -> i32 {
 #[fixed_stack_segment]
 fn main() {
     let n: i32 = FromStr::from_str(os::args()[1]).get();
-    println(fmt!("Pfannkuchen(%d) = %d", n as int, fannkuch_redux(n) as int));
+    printfln!("Pfannkuchen(%d) = %d", n as int, fannkuch_redux(n) as int);
 }

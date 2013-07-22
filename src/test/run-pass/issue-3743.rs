@@ -42,11 +42,11 @@ pub fn main() {
 
     // the following compiles and works properly
     let v1: Vec2 = a * 3f;
-    io::println(fmt!("%f %f", v1.x, v1.y));
+    printfln!("%f %f", v1.x, v1.y);
 
     // the following compiles but v2 will not be Vec2 yet and
     // using it later will cause an error that the type of v2
     // must be known
     let v2 = a * 3f;
-    io::println(fmt!("%f %f", v2.x, v2.y)); // error regarding v2's type
+    printfln!("%f %f", v2.x, v2.y); // error regarding v2's type
 }

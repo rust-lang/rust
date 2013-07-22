@@ -16,6 +16,6 @@ fn compute(i: mytype) -> int { return i.val + 20; }
 
 pub fn main() {
     let myval = mytype(Mytype{compute: compute, val: 30});
-    println(fmt!("%d", compute(myval)));
+    printfln!("%d", compute(myval));
     assert_eq!((myval.compute)(myval), 50);
 }
