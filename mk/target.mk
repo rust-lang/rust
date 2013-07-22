@@ -17,8 +17,7 @@ export CFG_COMPILER_TRIPLE
 # code, make sure that these common warnings are denied by default. These can
 # be overridden during development temporarily. For stage0, we allow all these
 # to suppress warnings which may be bugs in stage0 (should be fixed in stage1+)
-# NOTE: add "-A warnings" after snapshot to WFLAGS_ST0
-WFLAGS_ST0 = -A unrecognized-lint
+WFLAGS_ST0 = -A warnings
 WFLAGS_ST1 = -D warnings
 WFLAGS_ST2 = -D warnings
 
