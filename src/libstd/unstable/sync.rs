@@ -236,13 +236,11 @@ impl<T> Drop for UnsafeAtomicRcBox<T>{
 
 /****************************************************************************/
 
-enum RTLittleLock {
-    // We know nothing about the runtime's representation of the
-    // little lock so we leave the definition empty.
-}
+#[allow(non_camel_case_types)] // runtime type
+type rust_little_lock = *libc::c_void;
 
 pub struct LittleLock {
-    l: *RTLittleLock,
+    l: rust_little_lock,
 }
 
 impl Drop for LittleLock {
@@ -351,10 +349,10 @@ impl<T:Send> Exclusive<T> {
 }
 
 extern {
-    fn rust_create_little_lock() -> *RTLittleLock;
-    fn rust_destroy_little_lock(lock: *RTLittleLock);
-    fn rust_lock_little_lock(lock: *RTLittleLock);
-    fn rust_unlock_little_lock(lock: *RTLittleLock);
+    fn rust_create_little_lock() -> rust_little_lock;
+    fn rust_destroy_little_lock(lock: rust_little_lock);
+    fn rust_lock_little_lock(lock: rust_little_lock);
+    fn rust_unlock_little_lock(lock: rust_little_lock);
 }
 
 #[cfg(test)]
