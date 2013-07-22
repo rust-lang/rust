@@ -33,12 +33,9 @@ _rustc_opts_switches=(
 )
 _rustc_opts_lint=(
     'path-statement[path statements with no effect]'
-    'deprecated-pattern[warn about deprecated uses of pattern bindings]'
-    'non-implicitly-copyable-typarams[passing non implicitly copyable types as copy type params]'
     'missing-trait-doc[detects missing documentation for traits]'
     'missing-struct-doc[detects missing documentation for structs]'
     'ctypes[proper use of core::libc types in foreign modules]'
-    'implicit-copies[implicit copies of non implicitly copyable data]'
     "unused-mut[detect mut variables which don't need to be mutable]"
     'unused-imports[imports that are never used]'
     'heap-memory[use of any (~ type or @ type) heap memory]'

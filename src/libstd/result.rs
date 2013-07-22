@@ -396,7 +396,6 @@ pub fn unwrap_err<T, U>(res: Result<T, U>) -> U {
 }
 
 #[cfg(test)]
-#[allow(non_implicitly_copyable_typarams)]
 mod tests {
     use result::{Err, Ok, Result, chain, get, get_err};
     use result;

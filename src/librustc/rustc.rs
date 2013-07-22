@@ -17,8 +17,6 @@
 #[license = "MIT/ASL2"];
 #[crate_type = "lib"];
 
-#[deny(deprecated_pattern)];
-
 extern mod extra;
 extern mod syntax;
 
