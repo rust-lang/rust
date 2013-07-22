@@ -457,13 +457,13 @@ pub fn print_foreign_item(s: @ps, item: &ast::foreign_item) {
     match item.node {
       ast::foreign_item_fn(ref decl, purity, ref generics) => {
         print_fn(s, decl, Some(purity), AbiSet::Rust(), item.ident, generics, None,
-                 ast::inherited);
+                 item.vis);
         end(s); // end head-ibox
         word(s.s, ";");
         end(s); // end the outer fn box
       }
       ast::foreign_item_static(ref t, m) => {
-        head(s, "static");
+        head(s, visibility_qualified(item.vis, "static"));
         if m {
             word_space(s, "mut");
         }
