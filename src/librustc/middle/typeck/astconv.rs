@@ -115,15 +115,15 @@ pub fn ast_region_to_region<AC:AstConv,RS:region_scope + Clone + 'static>(
         &None => {
             (default_span, rscope.anon_region(default_span))
         }
-        &Some(ref lifetime) if lifetime.ident == special_idents::statik => {
+        &Some(ref lifetime) if lifetime.name == special_idents::statik.name => {
             (lifetime.span, Ok(ty::re_static))
         }
-        &Some(ref lifetime) if lifetime.ident == special_idents::self_ => {
+        &Some(ref lifetime) if lifetime.name == special_idents::self_.name => {
             (lifetime.span, rscope.self_region(lifetime.span))
         }
         &Some(ref lifetime) => {
             (lifetime.span, rscope.named_region(lifetime.span,
-                                                lifetime.ident))
+                                                lifetime.name))
         }
     };
 
@@ -539,7 +539,7 @@ pub fn ty_of_arg<AC:AstConv,
 
 pub fn bound_lifetimes<AC:AstConv>(
     this: &AC,
-    ast_lifetimes: &OptVec<ast::Lifetime>) -> OptVec<ast::ident>
+    ast_lifetimes: &OptVec<ast::Lifetime>) -> OptVec<ast::Name>
 {
     /*!
      *
@@ -555,13 +555,13 @@ pub fn bound_lifetimes<AC:AstConv>(
     let special_idents = [special_idents::statik, special_idents::self_];
     let mut bound_lifetime_names = opt_vec::Empty;
     ast_lifetimes.map_to_vec(|ast_lifetime| {
-        if special_idents.iter().any(|&i| i == ast_lifetime.ident) {
+        if special_idents.iter().any(|&i| i.name == ast_lifetime.name) {
             this.tcx().sess.span_err(
                 ast_lifetime.span,
                 fmt!("illegal lifetime parameter name: `%s`",
                      lifetime_to_str(ast_lifetime, this.tcx().sess.intr())));
         } else {
-            bound_lifetime_names.push(ast_lifetime.ident);
+            bound_lifetime_names.push(ast_lifetime.name);
         }
     });
     bound_lifetime_names

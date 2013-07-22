@@ -157,7 +157,7 @@ pub fn bound_region_to_str(cx: ctxt,
     if cx.sess.verbose() { return fmt!("%s%?%s", prefix, br, space_str); }
 
     match br {
-      br_named(id)         => fmt!("%s'%s%s", prefix, cx.sess.str_of(id), space_str),
+      br_named(id)         => fmt!("%s'%s%s", prefix, token::interner_get(id), space_str),
       br_self              => fmt!("%s'self%s", prefix, space_str),
       br_anon(_)           => prefix.to_str(),
       br_fresh(_)          => prefix.to_str(),

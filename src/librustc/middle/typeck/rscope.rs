@@ -26,7 +26,7 @@ pub struct RegionError {
 pub trait region_scope {
     fn anon_region(&self, span: span) -> Result<ty::Region, RegionError>;
     fn self_region(&self, span: span) -> Result<ty::Region, RegionError>;
-    fn named_region(&self, span: span, id: ast::ident)
+    fn named_region(&self, span: span, id: ast::Name)
                       -> Result<ty::Region, RegionError>;
 }
 
@@ -42,7 +42,7 @@ impl region_scope for empty_rscope {
     fn self_region(&self, _span: span) -> Result<ty::Region, RegionError> {
         self.anon_region(_span)
     }
-    fn named_region(&self, _span: span, _id: ast::ident)
+    fn named_region(&self, _span: span, _id: ast::Name)
         -> Result<ty::Region, RegionError>
     {
         self.anon_region(_span)
@@ -50,16 +50,16 @@ impl region_scope for empty_rscope {
 }
 
 #[deriving(Clone)]
-pub struct RegionParamNames(OptVec<ast::ident>);
+pub struct RegionParamNames(OptVec<ast::Name>);
 
 impl RegionParamNames {
     fn has_self(&self) -> bool {
-        self.has_ident(special_idents::self_)
+        self.has_name(special_idents::self_.name)
     }
 
-    fn has_ident(&self, ident: ast::ident) -> bool {
+    fn has_name(&self, name: ast::Name) -> bool {
         for region_param_name in self.iter() {
-            if *region_param_name == ident {
+            if *region_param_name == name {
                 return true;
             }
         }
@@ -73,11 +73,11 @@ impl RegionParamNames {
                 match **self {
                     opt_vec::Empty => {
                         *self = RegionParamNames(
-                            opt_vec::Vec(new_lifetimes.map(|lt| lt.ident)));
+                            opt_vec::Vec(new_lifetimes.map(|lt| lt.name)));
                     }
                     opt_vec::Vec(ref mut existing_lifetimes) => {
                         for new_lifetime in new_lifetimes.iter() {
-                            existing_lifetimes.push(new_lifetime.ident);
+                            existing_lifetimes.push(new_lifetime.name);
                         }
                     }
                 }
@@ -103,7 +103,7 @@ impl RegionParamNames {
         match generics.lifetimes {
             opt_vec::Empty => RegionParamNames(opt_vec::Empty),
             opt_vec::Vec(ref lifetimes) => {
-                RegionParamNames(opt_vec::Vec(lifetimes.map(|lt| lt.ident)))
+                RegionParamNames(opt_vec::Vec(lifetimes.map(|lt| lt.name)))
             }
         }
     }
@@ -113,7 +113,7 @@ impl RegionParamNames {
         match *lifetimes {
             opt_vec::Empty => RegionParamNames::new(),
             opt_vec::Vec(ref v) => {
-                RegionParamNames(opt_vec::Vec(v.map(|lt| lt.ident)))
+                RegionParamNames(opt_vec::Vec(v.map(|lt| lt.name)))
             }
         }
     }
@@ -196,9 +196,9 @@ impl region_scope for MethodRscope {
         }
         result::Ok(ty::re_bound(ty::br_self))
     }
-    fn named_region(&self, span: span, id: ast::ident)
+    fn named_region(&self, span: span, id: ast::Name)
                       -> Result<ty::Region, RegionError> {
-        if !self.region_param_names.has_ident(id) {
+        if !self.region_param_names.has_name(id) {
             return RegionParamNames::undeclared_name(None);
         }
         do empty_rscope.named_region(span, id).chain_err |_e| {
@@ -248,7 +248,7 @@ impl region_scope for type_rscope {
         }
         result::Ok(ty::re_bound(ty::br_self))
     }
-    fn named_region(&self, span: span, id: ast::ident)
+    fn named_region(&self, span: span, id: ast::Name)
                       -> Result<ty::Region, RegionError> {
         do empty_rscope.named_region(span, id).chain_err |_e| {
             result::Err(RegionError {
@@ -307,11 +307,11 @@ impl region_scope for binding_rscope {
     }
     fn named_region(&self,
                     span: span,
-                    id: ast::ident) -> Result<ty::Region, RegionError>
+                    id: ast::Name) -> Result<ty::Region, RegionError>
     {
         do self.base.named_region(span, id).chain_err |_e| {
             let result = ty::re_bound(ty::br_named(id));
-            if self.region_param_names.has_ident(id) {
+            if self.region_param_names.has_name(id) {
                 result::Ok(result)
             } else {
                 RegionParamNames::undeclared_name(Some(result))

@@ -19,6 +19,7 @@ use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use codemap::{span,respan};
 use opt_vec;
+use parse::token;
 
 /// The types of pointers
 pub enum PtrTy<'self> {
@@ -111,7 +112,7 @@ pub fn nil_ty() -> Ty<'static> {
 
 fn mk_lifetime(cx: @ExtCtxt, span: span, lt: &Option<&str>) -> Option<ast::Lifetime> {
     match *lt {
-        Some(ref s) => Some(cx.lifetime(span, cx.ident_of(*s))),
+        Some(ref s) => Some(cx.lifetime(span, token::intern(*s))),
         None => None
     }
 }
@@ -221,7 +222,7 @@ impl<'self> LifetimeBounds<'self> {
                        self_generics: &Generics)
                        -> Generics {
         let lifetimes = do self.lifetimes.map |lt| {
-            cx.lifetime(span, cx.ident_of(*lt))
+            cx.lifetime(span, token::intern(*lt))
         };
         let ty_params = do self.bounds.map |t| {
             match t {
@@ -249,7 +250,7 @@ pub fn get_explicit_self(cx: @ExtCtxt, span: span, self_ptr: &Option<PtrTy>)
                     Send => ast::sty_uniq,
                     Managed(mutbl) => ast::sty_box(mutbl),
                     Borrowed(ref lt, mutbl) => {
-                        let lt = lt.map(|s| cx.lifetime(span, cx.ident_of(*s)));
+                        let lt = lt.map(|s| cx.lifetime(span, token::intern(*s)));
                         ast::sty_region(lt, mutbl)
                     }
                 });

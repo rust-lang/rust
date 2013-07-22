@@ -23,6 +23,7 @@ use syntax::ast;
 use syntax::ast::*;
 use syntax::diagnostic::span_handler;
 use syntax::print::pprust::*;
+use syntax::parse::token;
 
 pub struct ctxt {
     diag: @span_handler,
@@ -184,7 +185,7 @@ fn enc_bound_region(w: @io::Writer, cx: @ctxt, br: ty::bound_region) {
       }
       ty::br_named(s) => {
         w.write_char('[');
-        w.write_str(cx.tcx.sess.str_of(s));
+        w.write_str(token::interner_get(s));
         w.write_char(']')
       }
       ty::br_cap_avoid(id, br) => {

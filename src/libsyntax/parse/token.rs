@@ -86,7 +86,7 @@ pub enum Token {
     // whitespace in between.
     IDENT(ast::ident, bool),
     UNDERSCORE,
-    LIFETIME(ast::ident),
+    LIFETIME(ast::Name),
 
     /* For interpolation */
     INTERPOLATED(nonterminal),
@@ -196,7 +196,7 @@ pub fn to_str(input: @ident_interner, t: &Token) -> ~str {
 
       /* Name components */
       IDENT(s, _) => input.get(s.name).to_owned(),
-      LIFETIME(s) => fmt!("'%s", input.get(s.name)),
+      LIFETIME(s) => fmt!("'%s", input.get(s)),
       UNDERSCORE => ~"_",
 
       /* Other */

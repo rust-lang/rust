@@ -1767,7 +1767,7 @@ pub fn print_bounds(s: @ps, bounds: &OptVec<ast::TyParamBound>,
 
 pub fn print_lifetime(s: @ps, lifetime: &ast::Lifetime) {
     word(s.s, "'");
-    print_ident(s, lifetime.ident);
+    word(s.s, token::interner_get(lifetime.name));
 }
 
 pub fn print_generics(s: @ps, generics: &ast::Generics) {

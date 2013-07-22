@@ -667,9 +667,9 @@ impl Parser {
         }
     }
 
-    pub fn get_lifetime(&self, tok: &token::Token) -> ast::ident {
+    pub fn get_lifetime(&self, tok: &token::Token) -> ast::Name {
         match *tok {
-            token::LIFETIME(ref ident) => *ident,
+            token::LIFETIME(ref name) => *name,
             _ => self.bug("not a lifetime"),
         }
     }
@@ -1330,7 +1330,7 @@ impl Parser {
                         Some(ast::Lifetime {
                             id: self.get_id(),
                             span: *span,
-                            ident: sid
+                            name: sid.name
                         })
                     }
                     _ => {
@@ -1420,7 +1420,7 @@ impl Parser {
                 return ast::Lifetime {
                     id: self.get_id(),
                     span: *span,
-                    ident: i
+                    name: i
                 };
             }
 
@@ -1433,7 +1433,7 @@ impl Parser {
                 return ast::Lifetime {
                     id: self.get_id(),
                     span: *span,
-                    ident: i
+                    name: i.name
                 };
             }
 
@@ -1635,7 +1635,7 @@ impl Parser {
             self.bump();
             self.expect(&token::COLON);
             self.expect_keyword(keywords::Loop);
-            return self.parse_loop_expr(Some(lifetime));
+            return self.parse_loop_expr(Some(ast::new_ident(lifetime)));
         } else if self.eat_keyword(keywords::Loop) {
             return self.parse_loop_expr(None);
         } else if self.eat_keyword(keywords::Match) {
@@ -1701,7 +1701,7 @@ impl Parser {
             if self.token_is_lifetime(&*self.token) {
                 let lifetime = self.get_lifetime(&*self.token);
                 self.bump();
-                ex = expr_break(Some(lifetime));
+                ex = expr_break(Some(ast::new_ident(lifetime)));
             } else {
                 ex = expr_break(None);
             }
@@ -2441,7 +2441,7 @@ impl Parser {
             let ex = if self.token_is_lifetime(&*self.token) {
                 let lifetime = self.get_lifetime(&*self.token);
                 self.bump();
-                expr_again(Some(lifetime))
+                expr_again(Some(ast::new_ident(lifetime)))
             } else {
                 expr_again(None)
             };
@@ -3298,7 +3298,7 @@ impl Parser {
         loop {
             match *self.token {
                 token::LIFETIME(lifetime) => {
-                    if "static" == self.id_to_str(lifetime) {
+                    if "static" == token::interner_get(lifetime) {
                         result.push(RegionTyParamBound);
                     } else {
                         self.span_err(*self.span,

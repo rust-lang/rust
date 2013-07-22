@@ -96,7 +96,7 @@ pub type fn_ident = Option<ident>;
 pub struct Lifetime {
     id: NodeId,
     span: span,
-    ident: ident
+    name: Name
 }
 
 // a "Path" is essentially Rust's notion of a name;
