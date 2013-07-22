@@ -73,19 +73,6 @@ fn debug_mem() -> bool {
     false
 }
 
-#[inline]
-#[cfg(not(stage0))]
-unsafe fn call_drop_glue(tydesc: *TyDesc, data: *i8) {
-    // This function should be inlined when stage0 is gone
-    ((*tydesc).drop_glue)(data);
-}
-
-#[inline]
-#[cfg(stage0)]
-unsafe fn call_drop_glue(tydesc: *TyDesc, data: *i8) {
-    ((*tydesc).drop_glue)(0 as **TyDesc, data);
-}
-
 /// Destroys all managed memory (i.e. @ boxes) held by the current task.
 pub unsafe fn annihilate() {
     use rt::local_heap::local_free;
@@ -128,7 +115,7 @@ pub unsafe fn annihilate() {
         if !uniq {
             let tydesc: *TyDesc = transmute((*box).header.type_desc);
             let data = transmute(&(*box).data);
-            call_drop_glue(tydesc, data);
+            ((*tydesc).drop_glue)(data);
         }
     }
 

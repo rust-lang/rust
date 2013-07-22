@@ -31,9 +31,6 @@ use to_str::ToStr;
 use vec::raw::{VecRepr, SliceRepr};
 use vec;
 use vec::{OwnedVector, UnboxedVecRepr};
-#[cfg(stage0)]
-use intrinsic::{Opaque, TyDesc, TyVisitor, get_tydesc, visit_tydesc};
-#[cfg(not(stage0))]
 use unstable::intrinsics::{Opaque, TyDesc, TyVisitor, get_tydesc, visit_tydesc};
 
 #[cfg(test)] use io;
@@ -267,10 +264,6 @@ impl TyVisitor for ReprVisitor {
         }
     }
 
-    // Type no longer exists, vestigial function.
-    #[cfg(stage0)]
-    fn visit_str(&self) -> bool { fail!(); }
-
     fn visit_estr_box(&self) -> bool {
         do self.get::<@str> |s| {
             self.writer.write_char('@');
@@ -309,7 +302,6 @@ impl TyVisitor for ReprVisitor {
         }
     }
 
-    #[cfg(not(stage0))]
     fn visit_uniq_managed(&self, _mtbl: uint, inner: *TyDesc) -> bool {
         self.writer.write_char('~');
         do self.get::<&managed::raw::BoxRepr> |b| {
@@ -351,15 +343,6 @@ impl TyVisitor for ReprVisitor {
         }
     }
 
-    #[cfg(stage0)]
-    fn visit_evec_uniq(&self, mtbl: uint, inner: *TyDesc) -> bool {
-        do self.get::<&VecRepr> |b| {
-            self.writer.write_char('~');
-            self.write_unboxed_vec_repr(mtbl, &b.unboxed, inner);
-        }
-    }
-
-    #[cfg(not(stage0))]
     fn visit_evec_uniq(&self, mtbl: uint, inner: *TyDesc) -> bool {
         do self.get::<&UnboxedVecRepr> |b| {
             self.writer.write_char('~');
@@ -367,7 +350,6 @@ impl TyVisitor for ReprVisitor {
         }
     }
 
-    #[cfg(not(stage0))]
     fn visit_evec_uniq_managed(&self, mtbl: uint, inner: *TyDesc) -> bool {
         do self.get::<&VecRepr> |b| {
             self.writer.write_char('~');
@@ -563,22 +545,11 @@ impl TyVisitor for ReprVisitor {
     fn visit_self(&self) -> bool { true }
     fn visit_type(&self) -> bool { true }
 
-    #[cfg(not(stage0))]
     fn visit_opaque_box(&self) -> bool {
         self.writer.write_char('@');
         do self.get::<&managed::raw::BoxRepr> |b| {
             let p = ptr::to_unsafe_ptr(&b.data) as *c_void;
             self.visit_ptr_inner(p, b.header.type_desc);
-        }
-    }
-    #[cfg(stage0)]
-    fn visit_opaque_box(&self) -> bool {
-        self.writer.write_char('@');
-        do self.get::<&managed::raw::BoxRepr> |b| {
-            let p = ptr::to_unsafe_ptr(&b.data) as *c_void;
-            unsafe {
-                self.visit_ptr_inner(p, transmute(b.header.type_desc));
-            }
         }
     }
 

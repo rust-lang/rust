@@ -29,31 +29,11 @@ The 2 kinds are
 
 #[allow(missing_doc)];
 
-#[cfg(stage0)]
-#[lang="copy"]
-pub trait Copy {
-    // Empty.
-}
-
-#[cfg(stage0)]
-#[lang="owned"]
-pub trait Send {
-    // empty.
-}
-
-#[cfg(not(stage0))]
 #[lang="send"]
 pub trait Send {
     // empty.
 }
 
-#[cfg(stage0)]
-#[lang="const"]
-pub trait Freeze {
-    // empty.
-}
-
-#[cfg(not(stage0))]
 #[lang="freeze"]
 pub trait Freeze {
     // empty.

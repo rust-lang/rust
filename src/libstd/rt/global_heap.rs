@@ -56,28 +56,8 @@ pub unsafe fn realloc_raw(ptr: *mut c_void, size: uint) -> *mut c_void {
     p
 }
 
-// FIXME #4942: Make these signatures agree with exchange_alloc's signatures
-#[cfg(stage0, not(test))]
-#[lang="exchange_malloc"]
-#[inline]
-pub unsafe fn exchange_malloc(td: *c_char, size: uintptr_t) -> *c_char {
-    let td = td as *TyDesc;
-    let size = size as uint;
-
-    assert!(td.is_not_null());
-
-    let total_size = get_box_size(size, (*td).align);
-    let p = malloc_raw(total_size as uint);
-
-    let box: *mut BoxRepr = p as *mut BoxRepr;
-    (*box).header.ref_count = -1;
-    (*box).header.type_desc = td;
-
-    box as *c_char
-}
-
 /// The allocator for unique pointers without contained managed pointers.
-#[cfg(not(stage0), not(test))]
+#[cfg(not(test))]
 #[lang="exchange_malloc"]
 #[inline]
 pub unsafe fn exchange_malloc(size: uintptr_t) -> *c_char {
