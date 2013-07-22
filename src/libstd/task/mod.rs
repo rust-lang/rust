@@ -54,10 +54,6 @@ use util;
 #[cfg(test)] use ptr;
 #[cfg(test)] use task;
 
-#[cfg(stage0)]
-#[path="local_data_priv_stage0.rs"]
-mod local_data_priv;
-#[cfg(not(stage0))]
 mod local_data_priv;
 pub mod rt;
 pub mod spawn;
