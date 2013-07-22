@@ -63,6 +63,9 @@ they contained the following prologue:
 #[deny(non_camel_case_types)];
 #[deny(missing_doc)];
 
+// Make extra accessible for benchmarking
+#[cfg(test)] extern mod extra(vers="0.8-pre");
+
 // Make std testable by not duplicating lang items. See #2912
 #[cfg(test)] extern mod realstd(name = "std");
 #[cfg(test)] pub use kinds = realstd::kinds;
