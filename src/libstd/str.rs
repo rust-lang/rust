@@ -1040,11 +1040,28 @@ pub mod raw {
 
 }
 
+
 #[cfg(not(test))]
 pub mod traits {
-    use ops::Add;
+    use ops::{Add,Mul};
     use cmp::{TotalOrd, Ordering, Less, Equal, Greater, Eq, Ord, Equiv, TotalEq};
     use super::{Str, eq_slice};
+    
+    impl Mul<uint,~str> for ~str {
+        fn mul(&self,repeat: &uint) -> ~str{
+            self.repeat(*repeat)
+        }
+    }
+     impl Mul<uint,@str> for @str {
+        fn mul(&self,repeat: &uint) -> @str{
+            self.repeat(*repeat).to_managed()
+        }
+    }
+     impl<'self> Mul<uint,~str> for &'self str {
+        fn mul(&self,repeat: &uint) -> ~str{
+            self.repeat(*repeat)
+        }
+    }
 
     impl<'self> Add<&'self str,~str> for &'self str {
         #[inline]
@@ -2394,6 +2411,20 @@ mod tests {
     use vec::{ImmutableVector, CopyableVector};
     use cmp::{TotalOrd, Less, Equal, Greater};
 
+    #[test]
+    fn test_repeat_string() {
+        assert_eq!(@"foo" * 1 , @"foo");
+        assert_eq!(@"foo" * 0 , @"");
+        assert_eq!(@"foo" * 2 , @"foofoo");
+
+        assert_eq!(~"foo" * 1,~"foo");
+        assert_eq!(~"foo" * 0, ~"");
+        assert_eq!(~"foo" * 2, ~"foofoo");
+
+        assert_eq!("foo" * 1, ~"foo");
+        assert_eq!("foo" * 0, ~"");  
+        assert_eq!("foo" * 2, ~"foofoo");
+    }
     #[test]
     fn test_eq() {
         assert!((eq(&~"", &~"")));
