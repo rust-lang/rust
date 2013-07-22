@@ -499,8 +499,8 @@ types.
 > items.
 
 ~~~~
-# use std::float;
-# use std::num::atan;
+use std::float;
+use std::num::atan;
 fn angle(vector: (float, float)) -> float {
     let pi = float::consts::pi;
     match vector {
@@ -555,7 +555,7 @@ while cake_amount > 0 {
 `loop` denotes an infinite loop, and is the preferred way of writing `while true`:
 
 ~~~~
-# use std::int;
+use std::int;
 let mut x = 5;
 loop {
     x += x - 3;
@@ -701,7 +701,7 @@ get at their contents. All variant constructors can be used as
 patterns, as in this definition of `area`:
 
 ~~~~
-# use std::float;
+use std::float;
 # struct Point {x: float, y: float}
 # enum Shape { Circle(Point, float), Rectangle(Point, Point) }
 fn area(sh: Shape) -> float {
@@ -733,7 +733,7 @@ fn point_from_direction(dir: Direction) -> Point {
 Enum variants may also be structs. For example:
 
 ~~~~
-# use std::float;
+use std::float;
 # struct Point { x: float, y: float }
 # fn square(x: float) -> float { x * x }
 enum Shape {
@@ -1599,7 +1599,8 @@ lists back to back. Since that is so unsightly, empty argument lists
 may be omitted from `do` expressions.
 
 ~~~~
-# use std::task::spawn;
+use std::task::spawn;
+
 do spawn {
    debug!("Kablam!");
 }
@@ -1728,7 +1729,7 @@ impl Circle {
 To call such a method, just prefix it with the type name and a double colon:
 
 ~~~~
-# use std::float::consts::pi;
+use std::float::consts::pi;
 struct Circle { radius: float }
 impl Circle {
     fn new(area: float) -> Circle { Circle { radius: (area / pi).sqrt() } }
@@ -1774,7 +1775,7 @@ illegal to copy and pass by value.
 Generic `type`, `struct`, and `enum` declarations follow the same pattern:
 
 ~~~~
-# use std::hashmap::HashMap;
+use std::hashmap::HashMap;
 type Set<T> = HashMap<T, ()>;
 
 struct Stack<T> {
@@ -2000,7 +2001,7 @@ name and a double colon.  The compiler uses type inference to decide which
 implementation to use.
 
 ~~~~
-# use std::float::consts::pi;
+use std::float::consts::pi;
 trait Shape { fn new(area: float) -> Self; }
 struct Circle { radius: float }
 struct Square { length: float }
@@ -2156,7 +2157,7 @@ trait Circle : Shape { fn radius(&self) -> float; }
 Now, we can implement `Circle` on a type only if we also implement `Shape`.
 
 ~~~~
-# use std::float::consts::pi;
+use std::float::consts::pi;
 # trait Shape { fn area(&self) -> float; }
 # trait Circle : Shape { fn radius(&self) -> float; }
 # struct Point { x: float, y: float }
@@ -2191,7 +2192,7 @@ fn radius_times_area<T: Circle>(c: T) -> float {
 Likewise, supertrait methods may also be called on trait objects.
 
 ~~~ {.xfail-test}
-# use std::float::consts::pi;
+use std::float::consts::pi;
 # trait Shape { fn area(&self) -> float; }
 # trait Circle : Shape { fn radius(&self) -> float; }
 # struct Point { x: float, y: float }
