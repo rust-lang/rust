@@ -4348,9 +4348,9 @@ pub fn determine_inherited_purity(parent: (ast::purity, ast::node_id),
 // relation on the supertraits from each bounded trait's constraint
 // list.
 pub fn each_bound_trait_and_supertraits(tcx: ctxt,
-                                        bounds: &ParamBounds,
+                                        bounds: &[@TraitRef],
                                         f: &fn(@TraitRef) -> bool) -> bool {
-    for bounds.trait_bounds.iter().advance |&bound_trait_ref| {
+    for bounds.iter().advance |&bound_trait_ref| {
         let mut supertrait_set = HashMap::new();
         let mut trait_refs = ~[];
         let mut i = 0;
@@ -4392,7 +4392,8 @@ pub fn count_traits_and_supertraits(tcx: ctxt,
                                     type_param_defs: &[TypeParameterDef]) -> uint {
     let mut total = 0;
     for type_param_defs.iter().advance |type_param_def| {
-        for each_bound_trait_and_supertraits(tcx, type_param_def.bounds) |_| {
+        for each_bound_trait_and_supertraits(
+            tcx, type_param_def.bounds.trait_bounds) |_| {
             total += 1;
         }
     }

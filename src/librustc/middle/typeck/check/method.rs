@@ -413,7 +413,8 @@ impl<'self> LookupContext<'self> {
         };
 
         self.push_inherent_candidates_from_bounds(
-            rcvr_ty, &*type_param_def.bounds, param_numbered(param_ty.idx));
+            rcvr_ty, type_param_def.bounds.trait_bounds,
+            param_numbered(param_ty.idx));
     }
 
 
@@ -423,18 +424,13 @@ impl<'self> LookupContext<'self> {
         let tcx = self.tcx();
 
         let trait_ref = ty::lookup_trait_def(tcx, did).trait_ref;
-        let bounds = ParamBounds {
-            builtin_bounds: EmptyBuiltinBounds(),
-            trait_bounds: ~[trait_ref]
-        };
-
         self.push_inherent_candidates_from_bounds(
-            self_ty, &bounds, param_self);
+            self_ty, &[trait_ref], param_self);
     }
 
     pub fn push_inherent_candidates_from_bounds(&self,
                                                 self_ty: ty::t,
-                                                bounds: &ParamBounds,
+                                                bounds: &[@TraitRef],
                                                 param: param_index) {
         let tcx = self.tcx();
         let mut next_bound_idx = 0; // count only trait bounds
