@@ -694,7 +694,7 @@ fn spawn_raw_newsched(mut opts: TaskOpts, f: ~fn()) {
         // Should be run after the local-borrowed task is returned.
         if enlist_success {
             if indestructible {
-                unsafe { do unkillable { f() } }
+                do unkillable { f() }
             } else {
                 f()
             }

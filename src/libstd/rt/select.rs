@@ -208,7 +208,7 @@ mod test {
     #[test]
     fn select_unkillable() {
         do run_in_newsched_task {
-            unsafe { do task::unkillable { select_helper(2, [1]) } }
+            do task::unkillable { select_helper(2, [1]) }
         }
     }
 
@@ -243,7 +243,7 @@ mod test {
                 if killable {
                     assert!(select(ports) == 1);
                 } else {
-                    unsafe { do task::unkillable { assert!(select(ports) == 1); } }
+                    do task::unkillable { assert!(select(ports) == 1); }
                 }
             }
         }
@@ -287,7 +287,7 @@ mod test {
                         if killable {
                             select(ports);
                         } else {
-                            unsafe { do task::unkillable { select(ports); } }
+                            do task::unkillable { select(ports); }
                         }
                     }
                 }
@@ -301,27 +301,25 @@ mod test {
             let (success_p, success_c) = oneshot::<bool>();
             let success_c = Cell::new(success_c);
             do task::try {
-                unsafe {
-                    let success_c = Cell::new(success_c.take());
-                    do task::unkillable {
-                        let (p,c) = oneshot();
-                        let c = Cell::new(c);
-                        do task::spawn {
-                            let (dead_ps, dead_cs) = unzip(from_fn(5, |_| oneshot::<()>()));
-                            let mut ports = dead_ps;
-                            select(ports); // should get killed; nothing should leak
-                            c.take().send(()); // must not happen
-                            // Make sure dead_cs doesn't get closed until after select.
-                            let _ = dead_cs;
-                        }
-                        do task::spawn {
-                            fail!(); // should kill sibling awake
-                        }
-
-                        // wait for killed selector to close (NOT send on) its c.
-                        // hope to send 'true'.
-                        success_c.take().send(p.try_recv().is_none());
+                let success_c = Cell::new(success_c.take());
+                do task::unkillable {
+                    let (p,c) = oneshot();
+                    let c = Cell::new(c);
+                    do task::spawn {
+                        let (dead_ps, dead_cs) = unzip(from_fn(5, |_| oneshot::<()>()));
+                        let mut ports = dead_ps;
+                        select(ports); // should get killed; nothing should leak
+                        c.take().send(()); // must not happen
+                        // Make sure dead_cs doesn't get closed until after select.
+                        let _ = dead_cs;
                     }
+                    do task::spawn {
+                        fail!(); // should kill sibling awake
+                    }
+
+                    // wait for killed selector to close (NOT send on) its c.
+                    // hope to send 'true'.
+                    success_c.take().send(p.try_recv().is_none());
                 }
             };
             assert!(success_p.recv());
