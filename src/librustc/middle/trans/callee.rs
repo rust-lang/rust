@@ -343,7 +343,7 @@ pub fn trans_fn_ref_with_vtables(
 
             let vtables =
                 resolve_default_method_vtables(bcx, impl_id,
-                                               method, &new_substs, vtables);
+                                               method, &substs, vtables);
 
             debug!("trans_fn_with_vtables - default method: \
                     substs = %s, trait_subst = %s, \
