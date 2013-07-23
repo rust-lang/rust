@@ -132,7 +132,7 @@ fn lookup_vtables_for_param(vcx: &VtableContext,
     let mut param_result = ~[];
 
     for ty::each_bound_trait_and_supertraits(
-        tcx, type_param_bounds) |trait_ref|
+        tcx, type_param_bounds.trait_bounds) |trait_ref|
     {
         // ...and here trait_ref is each bound that was declared on A,
         // expressed in terms of the type parameters.
@@ -249,7 +249,7 @@ fn lookup_vtable(vcx: &VtableContext,
             let mut n_bound = 0;
             let type_param_def = tcx.ty_param_defs.get(&did.node);
             for ty::each_bound_trait_and_supertraits(
-                tcx, type_param_def.bounds) |bound_trait_ref|
+                tcx, type_param_def.bounds.trait_bounds) |bound_trait_ref|
             {
                 debug!("checking bounds trait %s", bound_trait_ref.repr(vcx.tcx()));
 
