@@ -545,7 +545,7 @@ priv fn format(val: Param, op: FormatOp, flags: Flags) -> Result<~[u8],~str> {
         String(s) => {
             match op {
                 FormatString => {
-                    let mut s = s.as_bytes_with_null_consume();
+                    let mut s = s.to_bytes_with_null();
                     s.pop(); // remove the null
                     if flags.precision > 0 && flags.precision < s.len() {
                         s.truncate(flags.precision);
