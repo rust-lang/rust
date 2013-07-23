@@ -590,12 +590,6 @@ impl tr for method_origin {
           typeck::method_trait(did, m, vstore) => {
               typeck::method_trait(did.tr(xcx), m, vstore)
           }
-          typeck::method_self(did, m) => {
-              typeck::method_self(did.tr(xcx), m)
-          }
-          typeck::method_super(trait_did, m) => {
-              typeck::method_super(trait_did.tr(xcx), m)
-          }
         }
     }
 }
@@ -645,17 +639,10 @@ pub fn encode_vtable_origin(ecx: &e::EncodeContext,
           typeck::vtable_param(pn, bn) => {
             do ebml_w.emit_enum_variant("vtable_param", 1u, 2u) |ebml_w| {
                 do ebml_w.emit_enum_variant_arg(0u) |ebml_w| {
-                    ebml_w.emit_uint(pn);
+                    pn.encode(ebml_w);
                 }
                 do ebml_w.emit_enum_variant_arg(1u) |ebml_w| {
                     ebml_w.emit_uint(bn);
-                }
-            }
-          }
-          typeck::vtable_self(def_id) => {
-            do ebml_w.emit_enum_variant("vtable_self", 2u, 1u) |ebml_w| {
-                do ebml_w.emit_enum_variant_arg(0u) |ebml_w| {
-                    ebml_w.emit_def_id(def_id)
                 }
             }
           }
@@ -715,17 +702,10 @@ impl vtable_decoder_helpers for reader::Decoder {
                   1 => {
                     typeck::vtable_param(
                         do this.read_enum_variant_arg(0u) |this| {
-                            this.read_uint()
+                            Decodable::decode(this)
                         },
                         do this.read_enum_variant_arg(1u) |this| {
                             this.read_uint()
-                        }
-                    )
-                  }
-                  2 => {
-                    typeck::vtable_self(
-                        do this.read_enum_variant_arg(0u) |this| {
-                            this.read_def_id_noxcx(cdata)
                         }
                     )
                   }
