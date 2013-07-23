@@ -49,7 +49,7 @@ use syntax::opt_vec;
 use syntax::abi::AbiSet;
 use syntax;
 
-pub static INITIAL_DISCRIMINANT_VALUE: int = 0;
+pub static INITIAL_DISCRIMINANT_VALUE: uint = 0;
 
 // Data types
 
@@ -3689,7 +3689,7 @@ pub struct VariantInfo {
     ctor_ty: t,
     name: ast::ident,
     id: ast::def_id,
-    disr_val: int,
+    disr_val: uint,
     vis: visibility
 }
 
@@ -3700,7 +3700,7 @@ impl VariantInfo {
     /// Does not do any caching of the value in the type context.
     pub fn from_ast_variant(cx: ctxt,
                             ast_variant: &ast::variant,
-                            discriminant: int) -> VariantInfo {
+                            discriminant: uint) -> VariantInfo {
 
         let ctor_ty = node_id_to_type(cx, ast_variant.node.id);
 
@@ -3894,7 +3894,7 @@ pub fn enum_variants(cx: ctxt, id: ast::def_id) -> @~[@VariantInfo] {
                     node: ast::item_enum(ref enum_definition, _),
                     _
                 }, _) => {
-            let mut last_discriminant: Option<int> = None;
+            let mut last_discriminant: Option<uint> = None;
             @enum_definition.variants.iter().transform(|variant| {
 
                 let mut discriminant = match last_discriminant {
@@ -3904,7 +3904,8 @@ pub fn enum_variants(cx: ctxt, id: ast::def_id) -> @~[@VariantInfo] {
 
                 match variant.node.disr_expr {
                     Some(e) => match const_eval::eval_const_expr_partial(&cx, e) {
-                        Ok(const_eval::const_int(val)) => discriminant = val as int,
+                        Ok(const_eval::const_int(val)) => discriminant = val as uint,
+                        Ok(const_eval::const_uint(val)) => discriminant = val as uint,
                         Ok(_) => {
                             cx.sess.span_err(e.span, "expected signed integer constant");
                         }

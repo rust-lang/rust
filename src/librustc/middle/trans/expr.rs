@@ -1083,7 +1083,7 @@ pub fn trans_local_var(bcx: @mut Block, def: ast::def) -> Datum {
 pub fn with_field_tys<R>(tcx: ty::ctxt,
                          ty: ty::t,
                          node_id_opt: Option<ast::node_id>,
-                         op: &fn(int, (&[ty::field])) -> R) -> R {
+                         op: &fn(uint, (&[ty::field])) -> R) -> R {
     match ty::get(ty).sty {
         ty::ty_struct(did, ref substs) => {
             op(0, struct_fields(tcx, did, substs))
@@ -1200,7 +1200,7 @@ struct StructBaseInfo {
  * - `optbase` contains information on the base struct (if any) from
  * which remaining fields are copied; see comments on `StructBaseInfo`.
  */
-fn trans_adt(bcx: @mut Block, repr: &adt::Repr, discr: int,
+fn trans_adt(bcx: @mut Block, repr: &adt::Repr, discr: uint,
              fields: &[(uint, @ast::expr)],
              optbase: Option<StructBaseInfo>,
              dest: Dest) -> @mut Block {
