@@ -76,12 +76,12 @@ pub trait AstBuilder {
     fn stmt_let(&self, sp: span, mutbl: bool, ident: ast::ident, ex: @ast::expr) -> @ast::stmt;
 
     // blocks
-    fn blk(&self, span: span, stmts: ~[@ast::stmt], expr: Option<@ast::expr>) -> ast::blk;
-    fn blk_expr(&self, expr: @ast::expr) -> ast::blk;
+    fn blk(&self, span: span, stmts: ~[@ast::stmt], expr: Option<@ast::expr>) -> ast::Block;
+    fn blk_expr(&self, expr: @ast::expr) -> ast::Block;
     fn blk_all(&self, span: span,
                view_items: ~[ast::view_item],
                stmts: ~[@ast::stmt],
-               expr: Option<@ast::expr>) -> ast::blk;
+               expr: Option<@ast::expr>) -> ast::Block;
 
     // expressions
     fn expr(&self, span: span, node: ast::expr_) -> @ast::expr;
@@ -105,11 +105,11 @@ pub trait AstBuilder {
     fn expr_method_call(&self, span: span,
                         expr: @ast::expr, ident: ast::ident,
                         args: ~[@ast::expr]) -> @ast::expr;
-    fn expr_blk(&self, b: ast::blk) -> @ast::expr;
+    fn expr_blk(&self, b: ast::Block) -> @ast::expr;
 
-    fn field_imm(&self, span: span, name: ident, e: @ast::expr) -> ast::field;
-    fn expr_struct(&self, span: span, path: ast::Path, fields: ~[ast::field]) -> @ast::expr;
-    fn expr_struct_ident(&self, span: span, id: ast::ident, fields: ~[ast::field]) -> @ast::expr;
+    fn field_imm(&self, span: span, name: ident, e: @ast::expr) -> ast::Field;
+    fn expr_struct(&self, span: span, path: ast::Path, fields: ~[ast::Field]) -> @ast::expr;
+    fn expr_struct_ident(&self, span: span, id: ast::ident, fields: ~[ast::Field]) -> @ast::expr;
 
     fn expr_lit(&self, sp: span, lit: ast::lit_) -> @ast::expr;
 
@@ -147,11 +147,11 @@ pub trait AstBuilder {
     fn expr_if(&self, span: span,
                cond: @ast::expr, then: @ast::expr, els: Option<@ast::expr>) -> @ast::expr;
 
-    fn lambda_fn_decl(&self, span: span, fn_decl: ast::fn_decl, blk: ast::blk) -> @ast::expr;
+    fn lambda_fn_decl(&self, span: span, fn_decl: ast::fn_decl, blk: ast::Block) -> @ast::expr;
 
-    fn lambda(&self, span: span, ids: ~[ast::ident], blk: ast::blk) -> @ast::expr;
-    fn lambda0(&self, span: span, blk: ast::blk) -> @ast::expr;
-    fn lambda1(&self, span: span, blk: ast::blk, ident: ast::ident) -> @ast::expr;
+    fn lambda(&self, span: span, ids: ~[ast::ident], blk: ast::Block) -> @ast::expr;
+    fn lambda0(&self, span: span, blk: ast::Block) -> @ast::expr;
+    fn lambda1(&self, span: span, blk: ast::Block, ident: ast::ident) -> @ast::expr;
 
     fn lambda_expr(&self, span: span, ids: ~[ast::ident], blk: @ast::expr) -> @ast::expr;
     fn lambda_expr_0(&self, span: span, expr: @ast::expr) -> @ast::expr;
@@ -175,13 +175,13 @@ pub trait AstBuilder {
                     inputs: ~[ast::arg],
                     output: ast::Ty,
                     generics: Generics,
-                    body: ast::blk) -> @ast::item;
+                    body: ast::Block) -> @ast::item;
     fn item_fn(&self,
                span: span,
                name: ident,
                inputs: ~[ast::arg],
                output: ast::Ty,
-               body: ast::blk) -> @ast::item;
+               body: ast::Block) -> @ast::item;
 
     fn variant(&self, span: span, name: ident, tys: ~[ast::Ty]) -> ast::variant;
     fn item_enum_poly(&self,
@@ -375,31 +375,31 @@ impl AstBuilder for @ExtCtxt {
 
     fn stmt_let(&self, sp: span, mutbl: bool, ident: ast::ident, ex: @ast::expr) -> @ast::stmt {
         let pat = self.pat_ident(sp, ident);
-        let local = @respan(sp,
-                            ast::local_ {
-                                is_mutbl: mutbl,
-                                ty: self.ty_infer(sp),
-                                pat: pat,
-                                init: Some(ex),
-                                id: self.next_id(),
-                            });
+        let local = @ast::Local {
+            is_mutbl: mutbl,
+            ty: self.ty_infer(sp),
+            pat: pat,
+            init: Some(ex),
+            id: self.next_id(),
+            span: sp,
+        };
         let decl = respan(sp, ast::decl_local(local));
         @respan(sp, ast::stmt_decl(@decl, self.next_id()))
     }
 
-    fn blk(&self, span: span, stmts: ~[@ast::stmt], expr: Option<@expr>) -> ast::blk {
+    fn blk(&self, span: span, stmts: ~[@ast::stmt], expr: Option<@expr>) -> ast::Block {
         self.blk_all(span, ~[], stmts, expr)
     }
 
-    fn blk_expr(&self, expr: @ast::expr) -> ast::blk {
+    fn blk_expr(&self, expr: @ast::expr) -> ast::Block {
         self.blk_all(expr.span, ~[], ~[], Some(expr))
     }
     fn blk_all(&self,
                span: span,
                view_items: ~[ast::view_item],
                stmts: ~[@ast::stmt],
-               expr: Option<@ast::expr>) -> ast::blk {
-           ast::blk {
+               expr: Option<@ast::expr>) -> ast::Block {
+           ast::Block {
                view_items: view_items,
                stmts: stmts,
                expr: expr,
@@ -474,17 +474,17 @@ impl AstBuilder for @ExtCtxt {
         self.expr(span,
                   ast::expr_method_call(self.next_id(), expr, ident, ~[], args, ast::NoSugar))
     }
-    fn expr_blk(&self, b: ast::blk) -> @ast::expr {
+    fn expr_blk(&self, b: ast::Block) -> @ast::expr {
         self.expr(b.span, ast::expr_block(b))
     }
-    fn field_imm(&self, span: span, name: ident, e: @ast::expr) -> ast::field {
-        respan(span, ast::field_ { ident: name, expr: e })
+    fn field_imm(&self, span: span, name: ident, e: @ast::expr) -> ast::Field {
+        ast::Field { ident: name, expr: e, span: span }
     }
-    fn expr_struct(&self, span: span, path: ast::Path, fields: ~[ast::field]) -> @ast::expr {
+    fn expr_struct(&self, span: span, path: ast::Path, fields: ~[ast::Field]) -> @ast::expr {
         self.expr(span, ast::expr_struct(path, fields, None))
     }
     fn expr_struct_ident(&self, span: span,
-                         id: ast::ident, fields: ~[ast::field]) -> @ast::expr {
+                         id: ast::ident, fields: ~[ast::Field]) -> @ast::expr {
         self.expr_struct(span, self.path_ident(span, id), fields)
     }
 
@@ -595,23 +595,23 @@ impl AstBuilder for @ExtCtxt {
         self.expr(span, ast::expr_if(cond, self.blk_expr(then), els))
     }
 
-    fn lambda_fn_decl(&self, span: span, fn_decl: ast::fn_decl, blk: ast::blk) -> @ast::expr {
+    fn lambda_fn_decl(&self, span: span, fn_decl: ast::fn_decl, blk: ast::Block) -> @ast::expr {
         self.expr(span, ast::expr_fn_block(fn_decl, blk))
     }
-    fn lambda(&self, span: span, ids: ~[ast::ident], blk: ast::blk) -> @ast::expr {
+    fn lambda(&self, span: span, ids: ~[ast::ident], blk: ast::Block) -> @ast::expr {
         let fn_decl = self.fn_decl(
             ids.map(|id| self.arg(span, *id, self.ty_infer(span))),
             self.ty_infer(span));
 
         self.expr(span, ast::expr_fn_block(fn_decl, blk))
     }
-    fn lambda0(&self, _span: span, blk: ast::blk) -> @ast::expr {
+    fn lambda0(&self, _span: span, blk: ast::Block) -> @ast::expr {
         let ext_cx = *self;
         let blk_e = self.expr(blk.span, ast::expr_block(blk.clone()));
         quote_expr!(|| $blk_e )
     }
 
-    fn lambda1(&self, _span: span, blk: ast::blk, ident: ast::ident) -> @ast::expr {
+    fn lambda1(&self, _span: span, blk: ast::Block, ident: ast::ident) -> @ast::expr {
         let ext_cx = *self;
         let blk_e = self.expr(blk.span, ast::expr_block(blk.clone()));
         quote_expr!(|$ident| $blk_e )
@@ -674,7 +674,7 @@ impl AstBuilder for @ExtCtxt {
                     inputs: ~[ast::arg],
                     output: ast::Ty,
                     generics: Generics,
-                    body: ast::blk) -> @ast::item {
+                    body: ast::Block) -> @ast::item {
         self.item(span,
                   name,
                   ~[],
@@ -690,7 +690,7 @@ impl AstBuilder for @ExtCtxt {
                name: ident,
                inputs: ~[ast::arg],
                output: ast::Ty,
-               body: ast::blk
+               body: ast::Block
               ) -> @ast::item {
         self.item_fn_poly(
             span,

@@ -291,7 +291,7 @@ fn encode_ast(ebml_w: &mut writer::Encoder, item: ast::inlined_item) {
 // nested items, as otherwise it would get confused when translating
 // inlined items.
 fn simplify_ast(ii: &ast::inlined_item) -> ast::inlined_item {
-    fn drop_nested_items(blk: &ast::blk, fld: @fold::ast_fold) -> ast::blk {
+    fn drop_nested_items(blk: &ast::Block, fld: @fold::ast_fold) -> ast::Block {
         let stmts_sans_items = do blk.stmts.iter().filter_map |stmt| {
             match stmt.node {
               ast::stmt_expr(_, _) | ast::stmt_semi(_, _) |
@@ -302,7 +302,7 @@ fn simplify_ast(ii: &ast::inlined_item) -> ast::inlined_item {
               ast::stmt_mac(*) => fail!("unexpanded macro in astencode")
             }
         }.collect();
-        let blk_sans_items = ast::blk {
+        let blk_sans_items = ast::Block {
             view_items: ~[], // I don't know if we need the view_items here,
                              // but it doesn't break tests!
             stmts: stmts_sans_items,
@@ -1206,7 +1206,7 @@ fn decode_item_ast(par_doc: ebml::Doc) -> @ast::item {
 
 #[cfg(test)]
 trait fake_ext_ctxt {
-    fn cfg(&self) -> ast::crate_cfg;
+    fn cfg(&self) -> ast::CrateConfig;
     fn parse_sess(&self) -> @mut parse::ParseSess;
     fn call_site(&self) -> span;
     fn ident_of(&self, st: &str) -> ast::ident;
@@ -1217,7 +1217,7 @@ type fake_session = @mut parse::ParseSess;
 
 #[cfg(test)]
 impl fake_ext_ctxt for fake_session {
-    fn cfg(&self) -> ast::crate_cfg { ~[] }
+    fn cfg(&self) -> ast::CrateConfig { ~[] }
     fn parse_sess(&self) -> @mut parse::ParseSess { *self }
     fn call_site(&self) -> span {
         codemap::span {

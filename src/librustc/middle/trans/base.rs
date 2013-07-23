@@ -41,6 +41,7 @@ use middle::trans::_match;
 use middle::trans::adt;
 use middle::trans::base;
 use middle::trans::build::*;
+use middle::trans::builder::{Builder, noname};
 use middle::trans::callee;
 use middle::trans::common::*;
 use middle::trans::consts;
@@ -90,10 +91,7 @@ use syntax::abi::{X86, X86_64, Arm, Mips};
 
 pub use middle::trans::context::task_llcx;
 
-#[cfg(not(stage0))]
 static task_local_insn_key: local_data::Key<@~[&'static str]> = &local_data::Key;
-#[cfg(stage0)]
-fn task_local_insn_key(_: @~[&'static str]) {}
 
 pub fn with_insn_ctxt(blk: &fn(&[&'static str])) {
     let opt = local_data::get(task_local_insn_key, |k| k.map(|&k| *k));
@@ -1095,23 +1093,23 @@ pub fn trans_trace(bcx: block, sp_opt: Option<span>, trace_str: @str) {
     Call(bcx, ccx.upcalls.trace, args);
 }
 
-pub fn ignore_lhs(_bcx: block, local: &ast::local) -> bool {
-    match local.node.pat.node {
+pub fn ignore_lhs(_bcx: block, local: &ast::Local) -> bool {
+    match local.pat.node {
         ast::pat_wild => true, _ => false
     }
 }
 
-pub fn init_local(bcx: block, local: &ast::local) -> block {
+pub fn init_local(bcx: block, local: &ast::Local) -> block {
 
     debug!("init_local(bcx=%s, local.id=%?)",
-           bcx.to_str(), local.node.id);
+           bcx.to_str(), local.id);
     let _indenter = indenter();
 
     let _icx = push_ctxt("init_local");
 
     if ignore_lhs(bcx, local) {
         // Handle let _ = e; just like e;
-        match local.node.init {
+        match local.init {
             Some(init) => {
               return expr::trans_into(bcx, init, expr::Ignore);
             }
@@ -1119,7 +1117,7 @@ pub fn init_local(bcx: block, local: &ast::local) -> block {
         }
     }
 
-    _match::store_local(bcx, local.node.pat, local.node.init)
+    _match::store_local(bcx, local.pat, local.init)
 }
 
 pub fn trans_stmt(cx: block, s: &ast::stmt) -> block {
@@ -1448,7 +1446,7 @@ pub fn with_scope_datumblock(bcx: block, opt_node_info: Option<NodeInfo>,
     DatumBlock {bcx: leave_block(bcx, scope_cx), datum: datum}
 }
 
-pub fn block_locals(b: &ast::blk, it: &fn(@ast::local)) {
+pub fn block_locals(b: &ast::Block, it: &fn(@ast::Local)) {
     for b.stmts.iter().advance |s| {
         match s.node {
           ast::stmt_decl(d, _) => {
@@ -1502,11 +1500,12 @@ pub fn memcpy_ty(bcx: block, dst: ValueRef, src: ValueRef, t: ty::t) {
 }
 
 pub fn zero_mem(cx: block, llptr: ValueRef, t: ty::t) {
+    if cx.unreachable { return; }
     let _icx = push_ctxt("zero_mem");
     let bcx = cx;
     let ccx = cx.ccx();
     let llty = type_of::type_of(ccx, t);
-    memzero(bcx, llptr, llty);
+    memzero(&B(bcx), llptr, llty);
 }
 
 // Always use this function instead of storing a zero constant to the memory
@@ -1514,9 +1513,9 @@ pub fn zero_mem(cx: block, llptr: ValueRef, t: ty::t) {
 // allocation for large data structures, and the generated code will be
 // awful. (A telltale sign of this is large quantities of
 // `mov [byte ptr foo],0` in the generated code.)
-pub fn memzero(cx: block, llptr: ValueRef, ty: Type) {
+pub fn memzero(b: &Builder, llptr: ValueRef, ty: Type) {
     let _icx = push_ctxt("memzero");
-    let ccx = cx.ccx();
+    let ccx = b.ccx;
 
     let intrinsic_key = match ccx.sess.targ_cfg.arch {
         X86 | Arm | Mips => "llvm.memset.p0i8.i32",
@@ -1524,12 +1523,12 @@ pub fn memzero(cx: block, llptr: ValueRef, ty: Type) {
     };
 
     let llintrinsicfn = ccx.intrinsics.get_copy(&intrinsic_key);
-    let llptr = PointerCast(cx, llptr, Type::i8().ptr_to());
+    let llptr = b.pointercast(llptr, Type::i8().ptr_to());
     let llzeroval = C_u8(0);
-    let size = IntCast(cx, machine::llsize_of(ccx, ty), ccx.int_type);
+    let size = machine::llsize_of(ccx, ty);
     let align = C_i32(llalign_of_min(ccx, ty) as i32);
     let volatile = C_i1(false);
-    Call(cx, llintrinsicfn, [llptr, llzeroval, size, align, volatile]);
+    b.call(llintrinsicfn, [llptr, llzeroval, size, align, volatile]);
 }
 
 pub fn alloc_ty(bcx: block, t: ty::t, name: &str) -> ValueRef {
@@ -1552,9 +1551,12 @@ pub fn alloca_maybe_zeroed(cx: block, ty: Type, name: &str, zero: bool) -> Value
             return llvm::LLVMGetUndef(ty.ptr_to().to_ref());
         }
     }
-    let initcx = base::raw_block(cx.fcx, false, cx.fcx.get_llstaticallocas());
-    let p = Alloca(initcx, ty, name);
-    if zero { memzero(initcx, p, ty); }
+    let p = Alloca(cx, ty, name);
+    if zero {
+        let b = cx.fcx.ccx.builder();
+        b.position_before(cx.fcx.alloca_insert_pt.get());
+        memzero(&b, p, ty);
+    }
     p
 }
 
@@ -1565,7 +1567,7 @@ pub fn arrayalloca(cx: block, ty: Type, v: ValueRef) -> ValueRef {
             return llvm::LLVMGetUndef(ty.to_ref());
         }
     }
-    return ArrayAlloca(base::raw_block(cx.fcx, false, cx.fcx.get_llstaticallocas()), ty, v);
+    return ArrayAlloca(cx, ty, v);
 }
 
 pub struct BasicBlocks {
@@ -1596,8 +1598,8 @@ pub fn make_return_pointer(fcx: fn_ctxt, output_type: ty::t) -> ValueRef {
             llvm::LLVMGetParam(fcx.llfn, 0)
         } else {
             let lloutputtype = type_of::type_of(fcx.ccx, output_type);
-            alloca(raw_block(fcx, false, fcx.get_llstaticallocas()), lloutputtype,
-                   "__make_return_pointer")
+            let bcx = fcx.entry_bcx.get();
+            Alloca(bcx, lloutputtype, "__make_return_pointer")
         }
     }
 }
@@ -1615,6 +1617,7 @@ pub fn new_fn_ctxt_w_id(ccx: @mut CrateContext,
                         output_type: ty::t,
                         skip_retptr: bool,
                         param_substs: Option<@param_substs>,
+                        opt_node_info: Option<NodeInfo>,
                         sp: Option<span>)
                      -> fn_ctxt {
     for param_substs.iter().advance |p| { p.validate(); }
@@ -1638,8 +1641,8 @@ pub fn new_fn_ctxt_w_id(ccx: @mut CrateContext,
               llvm::LLVMGetUndef(Type::i8p().to_ref())
           },
           llretptr: None,
-          llstaticallocas: None,
-          llloadenv: None,
+          entry_bcx: None,
+          alloca_insert_pt: None,
           llreturn: None,
           llself: None,
           personality: None,
@@ -1657,6 +1660,15 @@ pub fn new_fn_ctxt_w_id(ccx: @mut CrateContext,
     fcx.llenv = unsafe {
           llvm::LLVMGetParam(llfndecl, fcx.env_arg_pos() as c_uint)
     };
+
+    unsafe {
+        let entry_bcx = top_scope_block(fcx, opt_node_info);
+        Load(entry_bcx, C_null(Type::i8p()));
+
+        fcx.entry_bcx = Some(entry_bcx);
+        fcx.alloca_insert_pt = Some(llvm::LLVMGetFirstInstruction(entry_bcx.llbb));
+    }
+
     if !ty::type_is_nil(substd_output_type) && !(is_immediate && skip_retptr) {
         fcx.llretptr = Some(make_return_pointer(fcx, substd_output_type));
     }
@@ -1669,7 +1681,7 @@ pub fn new_fn_ctxt(ccx: @mut CrateContext,
                    output_type: ty::t,
                    sp: Option<span>)
                 -> fn_ctxt {
-    new_fn_ctxt_w_id(ccx, path, llfndecl, -1, output_type, false, None, sp)
+    new_fn_ctxt_w_id(ccx, path, llfndecl, -1, output_type, false, None, None, sp)
 }
 
 // NB: must keep 4 fns in sync:
@@ -1784,9 +1796,8 @@ pub fn copy_args_to_allocas(fcx: fn_ctxt,
 
 // Ties up the llstaticallocas -> llloadenv -> lltop edges,
 // and builds the return block.
-pub fn finish_fn(fcx: fn_ctxt, lltop: BasicBlockRef, last_bcx: block) {
+pub fn finish_fn(fcx: fn_ctxt, last_bcx: block) {
     let _icx = push_ctxt("finish_fn");
-    tie_up_header_blocks(fcx, lltop);
 
     let ret_cx = match fcx.llreturn {
         Some(llreturn) => {
@@ -1798,6 +1809,7 @@ pub fn finish_fn(fcx: fn_ctxt, lltop: BasicBlockRef, last_bcx: block) {
         None => last_bcx
     };
     build_return_block(fcx, ret_cx);
+    fcx.cleanup();
 }
 
 // Builds the return block for a function.
@@ -1810,29 +1822,6 @@ pub fn build_return_block(fcx: fn_ctxt, ret_cx: block) {
     }
 }
 
-pub fn tie_up_header_blocks(fcx: fn_ctxt, lltop: BasicBlockRef) {
-    let _icx = push_ctxt("tie_up_header_blocks");
-    let llnext = match fcx.llloadenv {
-        Some(ll) => {
-            unsafe {
-                llvm::LLVMMoveBasicBlockBefore(ll, lltop);
-            }
-            Br(raw_block(fcx, false, ll), lltop);
-            ll
-        }
-        None => lltop
-    };
-    match fcx.llstaticallocas {
-        Some(ll) => {
-            unsafe {
-                llvm::LLVMMoveBasicBlockBefore(ll, llnext);
-            }
-            Br(raw_block(fcx, false, ll), llnext);
-        }
-        None => ()
-    }
-}
-
 pub enum self_arg { impl_self(ty::t, ty::SelfMode), no_self, }
 
 // trans_closure: Builds an LLVM function out of a source function.
@@ -1841,7 +1830,7 @@ pub enum self_arg { impl_self(ty::t, ty::SelfMode), no_self, }
 pub fn trans_closure(ccx: @mut CrateContext,
                      path: path,
                      decl: &ast::fn_decl,
-                     body: &ast::blk,
+                     body: &ast::Block,
                      llfndecl: ValueRef,
                      self_arg: self_arg,
                      param_substs: Option<@param_substs>,
@@ -1865,6 +1854,7 @@ pub fn trans_closure(ccx: @mut CrateContext,
                                output_type,
                                false,
                                param_substs,
+                               body.info(),
                                Some(body.span));
     let raw_llargs = create_llargs_for_fn_args(fcx, self_arg, decl.inputs);
 
@@ -1876,9 +1866,8 @@ pub fn trans_closure(ccx: @mut CrateContext,
 
     // Create the first basic block in the function and keep a handle on it to
     //  pass to finish_fn later.
-    let bcx_top = top_scope_block(fcx, body.info());
+    let bcx_top = fcx.entry_bcx.get();
     let mut bcx = bcx_top;
-    let lltop = bcx.llbb;
     let block_ty = node_id_type(bcx, body.id);
 
     let arg_tys = ty::ty_fn_args(node_id_type(bcx, id));
@@ -1914,7 +1903,7 @@ pub fn trans_closure(ccx: @mut CrateContext,
     }
 
     // Insert the mandatory first few basic blocks before lltop.
-    finish_fn(fcx, lltop, bcx);
+    finish_fn(fcx, bcx);
 }
 
 // trans_fn: creates an LLVM function corresponding to a source language
@@ -1922,7 +1911,7 @@ pub fn trans_closure(ccx: @mut CrateContext,
 pub fn trans_fn(ccx: @mut CrateContext,
                 path: path,
                 decl: &ast::fn_decl,
-                body: &ast::blk,
+                body: &ast::Block,
                 llfndecl: ValueRef,
                 self_arg: self_arg,
                 param_substs: Option<@param_substs>,
@@ -2084,12 +2073,12 @@ pub fn trans_enum_variant_or_tuple_like_struct<A:IdAndTy>(
                                result_ty,
                                false,
                                param_substs,
+                               None,
                                None);
 
     let raw_llargs = create_llargs_for_fn_args(fcx, no_self, fn_args);
 
-    let bcx = top_scope_block(fcx, None);
-    let lltop = bcx.llbb;
+    let bcx = fcx.entry_bcx.get();
     let arg_tys = ty::ty_fn_args(ctor_ty);
 
     insert_synthetic_type_entries(bcx, fn_args, arg_tys);
@@ -2107,7 +2096,7 @@ pub fn trans_enum_variant_or_tuple_like_struct<A:IdAndTy>(
         let arg_ty = arg_tys[i];
         memcpy_ty(bcx, lldestptr, llarg, arg_ty);
     }
-    finish_fn(fcx, lltop, bcx);
+    finish_fn(fcx, bcx);
 }
 
 pub fn trans_enum_def(ccx: @mut CrateContext, enum_definition: &ast::enum_def,
@@ -2335,9 +2324,7 @@ pub fn create_entry_wrapper(ccx: @mut CrateContext,
         // be updated if this assertion starts to fail.
         assert!(fcx.has_immediate_return_value);
 
-        let bcx = top_scope_block(fcx, None);
-        let lltop = bcx.llbb;
-
+        let bcx = fcx.entry_bcx.get();
         // Call main.
         let llenvarg = unsafe {
             let env_arg = fcx.env_arg_pos();
@@ -2346,7 +2333,7 @@ pub fn create_entry_wrapper(ccx: @mut CrateContext,
         let args = ~[llenvarg];
         Call(bcx, main_llfn, args);
 
-        finish_fn(fcx, lltop, bcx);
+        finish_fn(fcx, bcx);
         return llfdecl;
     }
 
@@ -2641,7 +2628,7 @@ pub fn trans_constant(ccx: &mut CrateContext, it: @ast::item) {
     }
 }
 
-pub fn trans_constants(ccx: @mut CrateContext, crate: &ast::crate) {
+pub fn trans_constants(ccx: @mut CrateContext, crate: &ast::Crate) {
     visit::visit_crate(
         crate, ((),
         visit::mk_simple_visitor(@visit::SimpleVisitor {
@@ -2898,7 +2885,7 @@ pub fn crate_ctxt_to_encode_parms<'r>(cx: &'r CrateContext, ie: encoder::encode_
         }
 }
 
-pub fn write_metadata(cx: &mut CrateContext, crate: &ast::crate) {
+pub fn write_metadata(cx: &mut CrateContext, crate: &ast::Crate) {
     if !*cx.sess.building_library { return; }
 
     let encode_inlined_item: encoder::encode_inlined_item =
@@ -2956,7 +2943,7 @@ pub fn write_abi_version(ccx: &mut CrateContext) {
 }
 
 pub fn trans_crate(sess: session::Session,
-                   crate: &ast::crate,
+                   crate: &ast::Crate,
                    tcx: ty::ctxt,
                    output: &Path,
                    emap2: resolve::ExportMap2,
@@ -2997,7 +2984,7 @@ pub fn trans_crate(sess: session::Session,
 
     {
         let _icx = push_ctxt("text");
-        trans_mod(ccx, &crate.node.module);
+        trans_mod(ccx, &crate.module);
     }
 
     decl_gc_metadata(ccx, llmod_id);

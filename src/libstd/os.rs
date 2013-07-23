@@ -788,8 +788,8 @@ pub fn list_dir(p: &Path) -> ~[~str] {
  *
  * This version prepends each entry with the directory.
  */
-pub fn list_dir_path(p: &Path) -> ~[~Path] {
-    list_dir(p).map(|f| ~p.push(*f))
+pub fn list_dir_path(p: &Path) -> ~[Path] {
+    list_dir(p).map(|f| p.push(*f))
 }
 
 /// Removes a directory at the specified path, after removing
@@ -859,34 +859,6 @@ pub fn change_dir(p: &Path) -> bool {
             return do as_c_charp(p.to_str()) |buf| {
                 libc::chdir(buf) == (0 as c_int)
             };
-        }
-    }
-}
-
-/// Changes the current working directory to the specified
-/// path while acquiring a global lock, then calls `action`.
-/// If the change is successful, releases the lock and restores the
-/// CWD to what it was before, returning true.
-/// Returns false if the directory doesn't exist or if the directory change
-/// is otherwise unsuccessful.
-pub fn change_dir_locked(p: &Path, action: &fn()) -> bool {
-    use unstable::global::global_data_clone_create;
-    use unstable::sync::{Exclusive, exclusive};
-
-    fn key(_: Exclusive<()>) { }
-
-    unsafe {
-        let result = global_data_clone_create(key, || { ~exclusive(()) });
-
-        do result.with_imm() |_| {
-            let old_dir = os::getcwd();
-            if change_dir(p) {
-                action();
-                change_dir(&old_dir)
-            }
-            else {
-                false
-            }
         }
     }
 }
@@ -1237,9 +1209,6 @@ struct OverriddenArgs {
     val: ~[~str]
 }
 
-#[cfg(stage0)]
-fn overridden_arg_key(_v: @OverriddenArgs) {}
-#[cfg(not(stage0))]
 static overridden_arg_key: local_data::Key<@OverriddenArgs> = &local_data::Key;
 
 /// Returns the arguments which this program was started with (normally passed

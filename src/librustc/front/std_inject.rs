@@ -20,8 +20,8 @@ use syntax::fold;
 
 static STD_VERSION: &'static str = "0.8-pre";
 
-pub fn maybe_inject_libstd_ref(sess: Session, crate: @ast::crate)
-                               -> @ast::crate {
+pub fn maybe_inject_libstd_ref(sess: Session, crate: @ast::Crate)
+                               -> @ast::Crate {
     if use_std(crate) {
         inject_libstd_ref(sess, crate)
     } else {
@@ -29,20 +29,21 @@ pub fn maybe_inject_libstd_ref(sess: Session, crate: @ast::crate)
     }
 }
 
-fn use_std(crate: &ast::crate) -> bool {
-    !attr::contains_name(crate.node.attrs, "no_std")
+fn use_std(crate: &ast::Crate) -> bool {
+    !attr::contains_name(crate.attrs, "no_std")
 }
+
 fn no_prelude(attrs: &[ast::Attribute]) -> bool {
     attr::contains_name(attrs, "no_implicit_prelude")
 }
 
-fn inject_libstd_ref(sess: Session, crate: &ast::crate) -> @ast::crate {
+fn inject_libstd_ref(sess: Session, crate: &ast::Crate) -> @ast::Crate {
     fn spanned<T>(x: T) -> codemap::spanned<T> {
         codemap::spanned { node: x, span: dummy_sp() }
     }
 
     let precursor = @fold::AstFoldFns {
-        fold_crate: |crate, span, fld| {
+        fold_crate: |crate, fld| {
             let n1 = sess.next_node_id();
             let vi1 = ast::view_item {
                 node: ast::view_item_extern_mod(
@@ -68,11 +69,10 @@ fn inject_libstd_ref(sess: Session, crate: &ast::crate) -> @ast::crate {
             }
 
             // FIXME #2543: Bad copy.
-            let new_crate = ast::crate_ {
+            ast::Crate {
                 module: new_module,
                 ..(*crate).clone()
-            };
-            (new_crate, span)
+            }
         },
         fold_item: |item, fld| {
             if !no_prelude(item.attrs) {

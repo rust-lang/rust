@@ -393,9 +393,9 @@ fn frob_source_file(workspace: &Path, pkgid: &PkgId) {
     }
     match maybe_p {
         Some(p) => {
-            let w = io::file_writer(*p, &[io::Append]);
+            let w = io::file_writer(p, &[io::Append]);
             match w {
-                Err(s) => { let _ = cond.raise(((**p).clone(), fmt!("Bad path: %s", s))); }
+                Err(s) => { let _ = cond.raise((p.clone(), fmt!("Bad path: %s", s))); }
                 Ok(w)  => w.write_line("")
             }
         }
@@ -475,7 +475,8 @@ fn test_install_invalid() {
 
 // Tests above should (maybe) be converted to shell out to rustpkg, too
 
-#[test] #[ignore(cfg(target_arch = "x86"))]
+// FIXME: #7956: temporarily disabled
+#[ignore(cfg(target_arch = "x86"))]
 fn test_install_git() {
     let sysroot = test_sysroot();
     debug!("sysroot = %s", sysroot.to_str());
@@ -566,7 +567,8 @@ fn test_package_ids_must_be_relative_path_like() {
 
 }
 
-#[test] #[ignore(cfg(target_arch = "x86"))]
+// FIXME: #7956: temporarily disabled
+#[ignore(cfg(target_arch = "x86"))]
 fn test_package_version() {
     let local_path = "mockgithub.com/catamorphism/test_pkg_version";
     let repo = init_git_repo(&Path(local_path));
@@ -678,7 +680,7 @@ fn rustpkg_install_url_2() {
                      &temp_dir);
 }
 
-#[test]
+// FIXME: #7956: temporarily disabled
 fn rustpkg_library_target() {
     let foo_repo = init_git_repo(&Path("foo"));
     let package_dir = foo_repo.push("foo");
@@ -789,12 +791,14 @@ fn rust_path_test() {
 
 #[test]
 fn rust_path_contents() {
+    use std::unstable::change_dir_locked;
+
     let dir = mkdtemp(&os::tmpdir(), "rust_path").expect("rust_path_contents failed");
     let abc = &dir.push("A").push("B").push("C");
     assert!(os::mkdir_recursive(&abc.push(".rust"), U_RWX));
     assert!(os::mkdir_recursive(&abc.pop().push(".rust"), U_RWX));
     assert!(os::mkdir_recursive(&abc.pop().pop().push(".rust"), U_RWX));
-    assert!(do os::change_dir_locked(&dir.push("A").push("B").push("C")) {
+    assert!(do change_dir_locked(&dir.push("A").push("B").push("C")) {
         let p = rust_path();
         let cwd = os::getcwd().push(".rust");
         let parent = cwd.pop().pop().push(".rust");

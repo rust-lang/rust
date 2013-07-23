@@ -305,7 +305,6 @@ struct RWARCInner<T> { priv lock: RWlock, priv failed: bool, priv data: T }
  *
  * Unlike mutex_arcs, rw_arcs are safe, because they cannot be nested.
  */
-#[mutable] // XXX remove after snap
 #[no_freeze]
 struct RWARC<T> {
     priv x: UnsafeAtomicRcBox<RWARCInner<T>>,

@@ -8,18 +8,4 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
-Top-level module for network-related functionality.
-
-Basically, including this module gives you:
-
-* `tcp`
-* `ip`
-* `url`
-
-See each of those three modules for documentation on what they do.
-*/
-
-pub mod tcp;
-pub mod ip;
-pub mod url;
+pub fn foo() -> int { 10 }

@@ -212,7 +212,7 @@ pub fn syntax_expander_table() -> SyntaxEnv {
 // -> expn_info of their expansion context stored into their span.
 pub struct ExtCtxt {
     parse_sess: @mut parse::ParseSess,
-    cfg: ast::crate_cfg,
+    cfg: ast::CrateConfig,
     backtrace: @mut Option<@ExpnInfo>,
 
     // These two @mut's should really not be here,
@@ -225,7 +225,7 @@ pub struct ExtCtxt {
 }
 
 impl ExtCtxt {
-    pub fn new(parse_sess: @mut parse::ParseSess, cfg: ast::crate_cfg)
+    pub fn new(parse_sess: @mut parse::ParseSess, cfg: ast::CrateConfig)
                -> @ExtCtxt {
         @ExtCtxt {
             parse_sess: parse_sess,
@@ -238,7 +238,7 @@ impl ExtCtxt {
 
     pub fn codemap(&self) -> @CodeMap { self.parse_sess.cm }
     pub fn parse_sess(&self) -> @mut parse::ParseSess { self.parse_sess }
-    pub fn cfg(&self) -> ast::crate_cfg { self.cfg.clone() }
+    pub fn cfg(&self) -> ast::CrateConfig { self.cfg.clone() }
     pub fn call_site(&self) -> span {
         match *self.backtrace {
             Some(@ExpnInfo {call_site: cs, _}) => cs,

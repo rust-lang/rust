@@ -2853,7 +2853,7 @@ pub fn tys_in_fn_sig(sig: &FnSig) -> ~[t] {
 }
 
 // Type accessors for AST nodes
-pub fn block_ty(cx: ctxt, b: &ast::blk) -> t {
+pub fn block_ty(cx: ctxt, b: &ast::Block) -> t {
     return node_id_to_type(cx, b.id);
 }
 

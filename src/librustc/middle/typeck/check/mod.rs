@@ -193,7 +193,7 @@ impl PurityState {
         PurityState { def: def, purity: purity, from_fn: true }
     }
 
-    pub fn recurse(&mut self, blk: &ast::blk) -> PurityState {
+    pub fn recurse(&mut self, blk: &ast::Block) -> PurityState {
         match self.purity {
             // If this unsafe, then if the outer function was already marked as
             // unsafe we shouldn't attribute the unsafe'ness to the block. This
@@ -303,7 +303,7 @@ impl ExprTyProvider for FnCtxt {
     }
 }
 
-pub fn check_item_types(ccx: @mut CrateCtxt, crate: &ast::crate) {
+pub fn check_item_types(ccx: @mut CrateCtxt, crate: &ast::Crate) {
     let visit = visit::mk_simple_visitor(@visit::SimpleVisitor {
         visit_item: |a| check_item(ccx, a),
         .. *visit::default_simple_visitor()
@@ -313,7 +313,7 @@ pub fn check_item_types(ccx: @mut CrateCtxt, crate: &ast::crate) {
 
 pub fn check_bare_fn(ccx: @mut CrateCtxt,
                      decl: &ast::fn_decl,
-                     body: &ast::blk,
+                     body: &ast::Block,
                      id: ast::node_id,
                      self_info: Option<SelfInfo>) {
     let fty = ty::node_id_to_type(ccx.tcx, id);
@@ -339,7 +339,7 @@ pub fn check_fn(ccx: @mut CrateCtxt,
                 fn_sig: &ty::FnSig,
                 decl: &ast::fn_decl,
                 id: ast::node_id,
-                body: &ast::blk,
+                body: &ast::Block,
                 fn_kind: FnKind,
                 inherited_isr: isr_alist,
                 inherited: @inherited) -> @mut FnCtxt
@@ -439,7 +439,7 @@ pub fn check_fn(ccx: @mut CrateCtxt,
 
     fn gather_locals(fcx: @mut FnCtxt,
                      decl: &ast::fn_decl,
-                     body: &ast::blk,
+                     body: &ast::Block,
                      arg_tys: &[ty::t],
                      opt_self_info: Option<SelfInfo>) {
         let tcx = fcx.ccx.tcx;
@@ -484,17 +484,17 @@ pub fn check_fn(ccx: @mut CrateCtxt,
         }
 
         // Add explicitly-declared locals.
-        let visit_local: @fn(@ast::local, ((), visit::vt<()>)) =
+        let visit_local: @fn(@ast::Local, ((), visit::vt<()>)) =
                 |local, (e, v)| {
-            let o_ty = match local.node.ty.node {
+            let o_ty = match local.ty.node {
               ast::ty_infer => None,
-              _ => Some(fcx.to_ty(&local.node.ty))
+              _ => Some(fcx.to_ty(&local.ty))
             };
-            assign(local.node.id, o_ty);
+            assign(local.id, o_ty);
             debug!("Local variable %s is assigned type %s",
-                   fcx.pat_to_str(local.node.pat),
+                   fcx.pat_to_str(local.pat),
                    fcx.infcx().ty_to_str(
-                       fcx.inh.locals.get_copy(&local.node.id)));
+                       fcx.inh.locals.get_copy(&local.id)));
             visit::visit_local(local, (e, v));
         };
 
@@ -514,7 +514,7 @@ pub fn check_fn(ccx: @mut CrateCtxt,
             visit::visit_pat(p, (e, v));
         };
 
-        let visit_block: @fn(&ast::blk, ((), visit::vt<()>)) = |b, (e, v)| {
+        let visit_block: @fn(&ast::Block, ((), visit::vt<()>)) = |b, (e, v)| {
             // non-obvious: the `blk` variable maps to region lb, so
             // we have to keep this up-to-date.  This
             // is... unfortunate.  It'd be nice to not need this.
@@ -525,7 +525,7 @@ pub fn check_fn(ccx: @mut CrateCtxt,
 
         // Don't descend into fns and items
         fn visit_fn(_fk: &visit::fn_kind, _decl: &ast::fn_decl,
-                    _body: &ast::blk, _sp: span,
+                    _body: &ast::Block, _sp: span,
                     _id: ast::node_id, (_t,_v): ((), visit::vt<()>)) {
         }
         fn visit_item(_i: @ast::item, (_e,_v): ((), visit::vt<()>)) { }
@@ -1456,7 +1456,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
     // or if-check
     fn check_then_else(fcx: @mut FnCtxt,
                        cond_expr: @ast::expr,
-                       then_blk: &ast::blk,
+                       then_blk: &ast::Block,
                        opt_else_expr: Option<@ast::expr>,
                        id: ast::node_id,
                        sp: span,
@@ -1705,7 +1705,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                      expr: @ast::expr,
                      ast_sigil_opt: Option<ast::Sigil>,
                      decl: &ast::fn_decl,
-                     body: &ast::blk,
+                     body: &ast::Block,
                      fn_kind: FnKind,
                      expected: Option<ty::t>) {
         let tcx = fcx.ccx.tcx;
@@ -1872,7 +1872,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                                       node_id: ast::node_id,
                                       substitutions: ty::substs,
                                       field_types: &[ty::field_ty],
-                                      ast_fields: &[ast::field],
+                                      ast_fields: &[ast::Field],
                                       check_completeness: bool)  {
         let tcx = fcx.ccx.tcx;
 
@@ -1888,21 +1888,21 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         for ast_fields.iter().advance |field| {
             let mut expected_field_type = ty::mk_err();
 
-            let pair = class_field_map.find(&field.node.ident).
+            let pair = class_field_map.find(&field.ident).
                                        map_consume(|x| *x);
             match pair {
                 None => {
                     tcx.sess.span_err(
                         field.span,
                         fmt!("structure has no field named `%s`",
-                             tcx.sess.str_of(field.node.ident)));
+                             tcx.sess.str_of(field.ident)));
                     error_happened = true;
                 }
                 Some((_, true)) => {
                     tcx.sess.span_err(
                         field.span,
                         fmt!("field `%s` specified more than once",
-                             tcx.sess.str_of(field.node.ident)));
+                             tcx.sess.str_of(field.ident)));
                     error_happened = true;
                 }
                 Some((field_id, false)) => {
@@ -1910,7 +1910,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                         ty::lookup_field_type(
                             tcx, class_id, field_id, &substitutions);
                     class_field_map.insert(
-                        field.node.ident, (field_id, true));
+                        field.ident, (field_id, true));
                     fields_found += 1;
                 }
             }
@@ -1918,7 +1918,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
             // an error, so we can continue typechecking
             check_expr_coercable_to_type(
                     fcx,
-                    field.node.expr,
+                    field.expr,
                     expected_field_type);
         }
 
@@ -1961,7 +1961,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                                 id: ast::node_id,
                                 span: codemap::span,
                                 class_id: ast::def_id,
-                                fields: &[ast::field],
+                                fields: &[ast::Field],
                                 base_expr: Option<@ast::expr>) {
         let tcx = fcx.ccx.tcx;
 
@@ -2051,7 +2051,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                                  span: codemap::span,
                                  enum_id: ast::def_id,
                                  variant_id: ast::def_id,
-                                 fields: &[ast::field]) {
+                                 fields: &[ast::Field]) {
         let tcx = fcx.ccx.tcx;
 
         // Look up the number of type parameters and the raw type, and
@@ -2900,18 +2900,18 @@ pub fn check_decl_initializer(fcx: @mut FnCtxt,
     check_expr_coercable_to_type(fcx, init, local_ty)
 }
 
-pub fn check_decl_local(fcx: @mut FnCtxt, local: @ast::local)  {
+pub fn check_decl_local(fcx: @mut FnCtxt, local: @ast::Local)  {
     let tcx = fcx.ccx.tcx;
 
-    let t = fcx.local_ty(local.span, local.node.id);
-    fcx.write_ty(local.node.id, t);
+    let t = fcx.local_ty(local.span, local.id);
+    fcx.write_ty(local.id, t);
 
-    match local.node.init {
+    match local.init {
         Some(init) => {
-            check_decl_initializer(fcx, local.node.id, init);
+            check_decl_initializer(fcx, local.id, init);
             let init_ty = fcx.expr_ty(init);
             if ty::type_is_error(init_ty) || ty::type_is_bot(init_ty) {
-                fcx.write_ty(local.node.id, init_ty);
+                fcx.write_ty(local.id, init_ty);
             }
         }
         _ => {}
@@ -2919,12 +2919,12 @@ pub fn check_decl_local(fcx: @mut FnCtxt, local: @ast::local)  {
 
     let pcx = pat_ctxt {
         fcx: fcx,
-        map: pat_id_map(tcx.def_map, local.node.pat),
+        map: pat_id_map(tcx.def_map, local.pat),
     };
-    _match::check_pat(&pcx, local.node.pat, t);
-    let pat_ty = fcx.node_ty(local.node.pat.id);
+    _match::check_pat(&pcx, local.pat, t);
+    let pat_ty = fcx.node_ty(local.pat.id);
     if ty::type_is_error(pat_ty) || ty::type_is_bot(pat_ty) {
-        fcx.write_ty(local.node.id, pat_ty);
+        fcx.write_ty(local.id, pat_ty);
     }
 }
 
@@ -2938,7 +2938,7 @@ pub fn check_stmt(fcx: @mut FnCtxt, stmt: @ast::stmt)  {
         match decl.node {
           ast::decl_local(ref l) => {
               check_decl_local(fcx, *l);
-              let l_t = fcx.node_ty(l.node.id);
+              let l_t = fcx.node_ty(l.id);
               saw_bot = saw_bot || ty::type_is_bot(l_t);
               saw_err = saw_err || ty::type_is_error(l_t);
           }
@@ -2973,7 +2973,7 @@ pub fn check_stmt(fcx: @mut FnCtxt, stmt: @ast::stmt)  {
     }
 }
 
-pub fn check_block_no_value(fcx: @mut FnCtxt, blk: &ast::blk)  {
+pub fn check_block_no_value(fcx: @mut FnCtxt, blk: &ast::Block)  {
     check_block_with_expected(fcx, blk, Some(ty::mk_nil()));
     let blkty = fcx.node_ty(blk.id);
     if ty::type_is_error(blkty) {
@@ -2988,12 +2988,12 @@ pub fn check_block_no_value(fcx: @mut FnCtxt, blk: &ast::blk)  {
     }
 }
 
-pub fn check_block(fcx0: @mut FnCtxt, blk: &ast::blk)  {
+pub fn check_block(fcx0: @mut FnCtxt, blk: &ast::Block)  {
     check_block_with_expected(fcx0, blk, None)
 }
 
 pub fn check_block_with_expected(fcx: @mut FnCtxt,
-                                 blk: &ast::blk,
+                                 blk: &ast::Block,
                                  expected: Option<ty::t>) {
     let purity_state = fcx.ps.recurse(blk);
     let prev = replace(&mut fcx.ps, purity_state);
@@ -3419,7 +3419,7 @@ pub fn ast_expr_vstore_to_vstore(fcx: @mut FnCtxt,
 }
 
 // Returns true if b contains a break that can exit from b
-pub fn may_break(cx: ty::ctxt, id: ast::node_id, b: &ast::blk) -> bool {
+pub fn may_break(cx: ty::ctxt, id: ast::node_id, b: &ast::Block) -> bool {
     // First: is there an unlabeled break immediately
     // inside the loop?
     (loop_query(b, |e| {

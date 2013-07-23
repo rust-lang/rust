@@ -44,7 +44,7 @@ pub fn from_srv(
 }
 
 pub fn extract(
-    crate: @ast::crate,
+    crate: @ast::Crate,
     default_name: ~str
 ) -> doc::Doc {
     doc::Doc {
@@ -57,11 +57,11 @@ pub fn extract(
 }
 
 fn top_moddoc_from_crate(
-    crate: @ast::crate,
+    crate: @ast::Crate,
     default_name: ~str
 ) -> doc::ModDoc {
     moddoc_from_mod(mk_itemdoc(ast::crate_node_id, default_name),
-                    crate.node.module.clone())
+                    crate.module.clone())
 }
 
 fn mk_itemdoc(id: ast::node_id, name: ~str) -> doc::ItemDoc {

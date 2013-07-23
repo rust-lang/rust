@@ -134,10 +134,10 @@ pub fn finalize(cx: @mut CrateContext) {
 ///
 /// Adds the created metadata nodes directly to the crate's IR.
 /// The return value should be ignored if called from outside of the debuginfo module.
-pub fn create_local_var_metadata(bcx: block, local: @ast::local) -> DIVariable {
+pub fn create_local_var_metadata(bcx: block, local: @ast::Local) -> DIVariable {
     let cx = bcx.ccx();
 
-    let ident = match local.node.pat.node {
+    let ident = match local.pat.node {
       ast::pat_ident(_, ref pth, _) => ast_util::path_to_ident(pth),
       // FIXME this should be handled (#2533)
       _ => {
@@ -150,8 +150,8 @@ pub fn create_local_var_metadata(bcx: block, local: @ast::local) -> DIVariable {
     debug!("create_local_var_metadata: %s", name);
 
     let loc = span_start(cx, local.span);
-    let ty = node_id_type(bcx, local.node.id);
-    let type_metadata = type_metadata(cx, ty, local.node.ty.span);
+    let ty = node_id_type(bcx, local.id);
+    let type_metadata = type_metadata(cx, ty, local.ty.span);
     let file_metadata = file_metadata(cx, loc.file.name);
 
     let context = match bcx.parent {
@@ -176,19 +176,19 @@ pub fn create_local_var_metadata(bcx: block, local: @ast::local) -> DIVariable {
     };
 
     // FIXME(#6814) Should use `pat_util::pat_bindings` for pats like (a, b) etc
-    let llptr = match bcx.fcx.lllocals.find_copy(&local.node.pat.id) {
+    let llptr = match bcx.fcx.lllocals.find_copy(&local.pat.id) {
         Some(v) => v,
         None => {
             bcx.tcx().sess.span_bug(
                 local.span,
-                fmt!("No entry in lllocals table for %?", local.node.id));
+                fmt!("No entry in lllocals table for %?", local.id));
         }
     };
 
     set_debug_location(cx, lexical_block_metadata(bcx), loc.line, loc.col.to_uint());
     unsafe {
         let instr = llvm::LLVMDIBuilderInsertDeclareAtEnd(DIB(cx), llptr, var_metadata, bcx.llbb);
-        llvm::LLVMSetInstDebugLocation(trans::build::B(bcx), instr);
+        llvm::LLVMSetInstDebugLocation(trans::build::B(bcx).llbuilder, instr);
     }
 
     return var_metadata;
@@ -247,7 +247,7 @@ pub fn create_argument_metadata(bcx: block, arg: &ast::arg, span: span) -> Optio
             unsafe {
                 let instr = llvm::LLVMDIBuilderInsertDeclareAtEnd(
                         DIB(cx), llptr, var_metadata, bcx.llbb);
-                llvm::LLVMSetInstDebugLocation(trans::build::B(bcx), instr);
+                llvm::LLVMSetInstDebugLocation(trans::build::B(bcx).llbuilder, instr);
             }
             return Some(var_metadata);
         }
@@ -607,9 +607,6 @@ fn tuple_metadata(cx: &mut CrateContext,
         span);
 }
 
-// The stage0 snapshot does not yet support the fixes from PR #7557, so there are two versions of
-// following function for now
-#[cfg(not(stage0))]
 fn enum_metadata(cx: &mut CrateContext,
                  enum_type: ty::t,
                  enum_def_id: ast::def_id,
@@ -771,142 +768,6 @@ fn enum_metadata(cx: &mut CrateContext,
             span);
     }
 }
-
-#[cfg(stage0)]
-fn enum_metadata(cx: &mut CrateContext,
-                 enum_type: ty::t,
-                 enum_def_id: ast::def_id,
-                 substs: &ty::substs,
-                 span: span)
-              -> DIType {
-
-    let enum_name = ty_to_str(cx.tcx, enum_type);
-
-    // For empty enums there is an early exit. Just describe it as an empty struct with the
-    // appropriate type name
-    if ty::type_is_empty(cx.tcx, enum_type) {
-        return composite_type_metadata(cx, Type::nil(), enum_name, &[], &[], &[], span);
-    }
-
-    // Prepare some data (llvm type, size, align, ...) about the discriminant. This data will be
-    // needed in all of the following cases.
-    let discriminant_llvm_type = Type::enum_discrim(cx);
-    let (discriminant_size, discriminant_align) = size_and_align_of(cx, discriminant_llvm_type);
-
-    assert!(Type::enum_discrim(cx) == cx.int_type);
-    let discriminant_type_metadata = type_metadata(cx, ty::mk_int(), span);
-
-    let variants: &[@ty::VariantInfo] = *ty::enum_variants(cx.tcx, enum_def_id);
-
-    let enumerators_metadata: ~[DIDescriptor] = variants
-        .iter()
-        .transform(|v| {
-            let name: &str = cx.sess.str_of(v.name);
-            let discriminant_value = v.disr_val as c_ulonglong;
-
-            do name.as_c_str |name| {
-                unsafe {
-                    llvm::LLVMDIBuilderCreateEnumerator(
-                        DIB(cx),
-                        name,
-                        discriminant_value)
-                }
-            }
-        })
-        .collect();
-
-    let loc = span_start(cx, span);
-    let file_metadata = file_metadata(cx, loc.file.name);
-
-    let discriminant_type_metadata = do enum_name.as_c_str |enum_name| {
-        unsafe {
-            llvm::LLVMDIBuilderCreateEnumerationType(
-                DIB(cx),
-                file_metadata,
-                enum_name,
-                file_metadata,
-                loc.line as c_uint,
-                bytes_to_bits(discriminant_size),
-                bytes_to_bits(discriminant_align),
-                create_DIArray(DIB(cx), enumerators_metadata),
-                discriminant_type_metadata)
-        }
-    };
-
-    if ty::type_is_c_like_enum(cx.tcx, enum_type) {
-        return discriminant_type_metadata;
-    }
-
-    let is_univariant = variants.len() == 1;
-
-    let variants_metadata = do variants.map |&vi| {
-
-        let raw_types: &[ty::t] = vi.args;
-        let arg_types = do raw_types.map |&raw_type| { ty::subst(cx.tcx, substs, raw_type) };
-
-        let mut arg_llvm_types = do arg_types.map |&ty| { type_of::type_of(cx, ty) };
-        let mut arg_names = match vi.arg_names {
-            Some(ref names) => do names.map |ident| { cx.sess.str_of(*ident).to_owned() },
-            None => do arg_types.map |_| { ~"" }
-        };
-
-        let mut arg_metadata = do arg_types.map |&ty| { type_metadata(cx, ty, span) };
-
-        if !is_univariant {
-            arg_llvm_types.insert(0, discriminant_llvm_type);
-            arg_names.insert(0, ~"");
-            arg_metadata.insert(0, discriminant_type_metadata);
-        }
-
-        let variant_llvm_type = Type::struct_(arg_llvm_types, false);
-        let (variant_type_size, variant_type_align) = size_and_align_of(cx, variant_llvm_type);
-
-        let variant_type_metadata = composite_type_metadata(
-            cx,
-            variant_llvm_type,
-            &"",
-            arg_llvm_types,
-            arg_names,
-            arg_metadata,
-            span);
-
-        do "".as_c_str |name| {
-            unsafe {
-                llvm::LLVMDIBuilderCreateMemberType(
-                    DIB(cx),
-                    file_metadata,
-                    name,
-                    file_metadata,
-                    loc.line as c_uint,
-                    bytes_to_bits(variant_type_size),
-                    bytes_to_bits(variant_type_align),
-                    bytes_to_bits(0),
-                    0,
-                    variant_type_metadata)
-            }
-        }
-    };
-
-    let enum_llvm_type = type_of::type_of(cx, enum_type);
-    let (enum_type_size, enum_type_align) = size_and_align_of(cx, enum_llvm_type);
-
-    return do enum_name.as_c_str |enum_name| {
-        unsafe {
-            llvm::LLVMDIBuilderCreateUnionType(
-                DIB(cx),
-                file_metadata,
-                enum_name,
-                file_metadata,
-                loc.line as c_uint,
-                bytes_to_bits(enum_type_size),
-                bytes_to_bits(enum_type_align),
-                0, // Flags
-                create_DIArray(DIB(cx), variants_metadata),
-                0) // RuntimeLang
-        }
-    };
-}
-
 
 /// Creates debug information for a composite type, that is, anything that results in a LLVM struct.
 ///

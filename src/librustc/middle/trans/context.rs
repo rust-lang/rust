@@ -19,6 +19,7 @@ use middle::astencode;
 use middle::resolve;
 use middle::trans::adt;
 use middle::trans::base;
+use middle::trans::builder::Builder;
 use middle::trans::debuginfo;
 use middle::trans::type_use;
 use middle::ty;
@@ -227,6 +228,10 @@ impl CrateContext {
             }
         }
     }
+
+    pub fn builder(@mut self) -> Builder {
+        Builder::new(self)
+    }
 }
 
 #[unsafe_destructor]
@@ -236,9 +241,6 @@ impl Drop for CrateContext {
     }
 }
 
-#[cfg(stage0)]
-fn task_local_llcx_key(_v: @ContextRef) {}
-#[cfg(not(stage0))]
 static task_local_llcx_key: local_data::Key<@ContextRef> = &local_data::Key;
 
 pub fn task_llcx() -> ContextRef {
