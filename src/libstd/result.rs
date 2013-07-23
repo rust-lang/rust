@@ -81,61 +81,6 @@ pub fn to_either<T:Clone,U:Clone>(res: &Result<U, T>)
  * Call a function based on a previous result
  *
  * If `res` is `ok` then the value is extracted and passed to `op` whereupon
- * `op`s result is returned. if `res` is `err` then it is immediately
- * returned. This function can be used to compose the results of two
- * functions.
- *
- * Example:
- *
- *     let res = chain(read_file(file)) { |buf|
- *         ok(parse_bytes(buf))
- *     }
- */
-#[inline]
-pub fn chain<T, U, V>(res: Result<T, V>, op: &fn(T)
-    -> Result<U, V>) -> Result<U, V> {
-    match res {
-        Ok(t) => op(t),
-        Err(e) => Err(e)
-    }
-}
-
-/**
- * Call a function based on a previous result
- *
- * If `res` is `err` then the value is extracted and passed to `op`
- * whereupon `op`s result is returned. if `res` is `ok` then it is
- * immediately returned.  This function can be used to pass through a
- * successful result while handling an error.
- */
-#[inline]
-pub fn chain_err<T, U, V>(
-    res: Result<T, V>,
-    op: &fn(t: V) -> Result<T, U>)
-    -> Result<T, U> {
-    match res {
-      Ok(t) => Ok(t),
-      Err(v) => op(v)
-    }
-}
-
-
-
-
-/**
- * Call a function based on a previous result
- *
- * If `res` is `err` then the value is extracted and passed to `op` whereupon
- * `op`s result is returned. if `res` is `ok` then it is immediately returned.
- * This function can be used to pass through a successful result while
- * handling an error.
- */
-
-
-/**
- * Call a function based on a previous result
- *
- * If `res` is `ok` then the value is extracted and passed to `op` whereupon
  * `op`s result is wrapped in `ok` and returned. if `res` is `err` then it is
  * immediately returned.  This function can be used to compose the results of
  * two functions.
@@ -208,7 +153,7 @@ impl<T, E> Result<T, E> {
      * Call a function based on a previous result
      *
      * If `*self` is `ok` then the value is extracted and passed to `op` whereupon
-     * `op`s result is returned. if `res` is `err` then it is immediately
+     * `op`s result is returned. if `*self` is `err` then it is immediately
      * returned. This function can be used to compose the results of two
      * functions.
      *
@@ -230,7 +175,7 @@ impl<T, E> Result<T, E> {
      * Call a function based on a previous result
      *
      * If `*self` is `err` then the value is extracted and passed to `op` whereupon
-     * `op`s result is returned. if `res` is `ok` then it is immediately returned.
+     * `op`s result is returned. if `*self` is `ok` then it is immediately returned.
      * This function can be used to pass through a successful result while
      * handling an error.
      */
@@ -260,14 +205,42 @@ impl<T, E> Result<T, E> {
         }
     }
 
+    /**
+     * Call a function based on a previous result
+     *
+     * If `self` is `ok` then the value is extracted and passed to `op` whereupon
+     * `op`s result is returned. if `self` is `err` then it is immediately
+     * returned. This function can be used to compose the results of two
+     * functions.
+     *
+     * Example:
+     *
+     *     let res = read_file(file).chain(op) { |buf|
+     *         ok(parse_bytes(buf))
+     *     }
+     */
     #[inline]
     pub fn chain<U>(self, op: &fn(T) -> Result<U,E>) -> Result<U,E> {
-        chain(self, op)
+        match self {
+            Ok(t) => op(t),
+            Err(e) => Err(e)
+        }
     }
 
+    /**
+    * Call a function based on a previous result
+    *
+    * If `self` is `err` then the value is extracted and passed to `op`
+    * whereupon `op`s result is returned. if `self` is `ok` then it is
+    * immediately returned.  This function can be used to pass through a
+    * successful result while handling an error.
+    */
     #[inline]
     pub fn chain_err<F>(self, op: &fn(E) -> Result<T,F>) -> Result<T,F> {
-        chain_err(self, op)
+        match self {
+            Ok(t) => Ok(t),
+            Err(v) => op(v)
+        }
     }
 }
 
@@ -390,7 +363,7 @@ pub fn iter_vec2<S,T,U>(ss: &[S], ts: &[T],
 
 #[cfg(test)]
 mod tests {
-    use result::{Err, Ok, Result, chain, get, get_err};
+    use result::{Err, Ok, Result, get, get_err};
     use result;
 
     pub fn op1() -> result::Result<int, ~str> { result::Ok(666) }
@@ -403,12 +376,12 @@ mod tests {
 
     #[test]
     pub fn chain_success() {
-        assert_eq!(get(&chain(op1(), op2)), 667u);
+        assert_eq!(get(&(op1().chain(op2))), 667u);
     }
 
     #[test]
     pub fn chain_failure() {
-        assert_eq!(get_err(&chain(op3(), op2)), ~"sadface");
+        assert_eq!(get_err(&op3().chain( op2)), ~"sadface");
     }
 
     #[test]
