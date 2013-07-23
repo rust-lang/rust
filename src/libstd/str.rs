@@ -32,7 +32,7 @@ use ptr::RawPtr;
 use to_str::ToStr;
 use uint;
 use vec;
-use vec::{OwnedVector, OwnedCopyableVector, ImmutableVector};
+use vec::{OwnedVector, OwnedCopyableVector, ImmutableVector, MutableVector};
 
 /*
 Section: Conditions
@@ -120,23 +120,17 @@ pub fn from_bytes_slice<'a>(vector: &'a [u8]) -> &'a str {
     }
 }
 
-/// Copy a slice into a new unique str
-#[inline]
-pub fn to_owned(s: &str) -> ~str {
-    unsafe { raw::slice_bytes_owned(s, 0, s.len()) }
-}
-
 impl ToStr for ~str {
     #[inline]
-    fn to_str(&self) -> ~str { to_owned(*self) }
+    fn to_str(&self) -> ~str { self.to_owned() }
 }
 impl<'self> ToStr for &'self str {
     #[inline]
-    fn to_str(&self) -> ~str { to_owned(*self) }
+    fn to_str(&self) -> ~str { self.to_owned() }
 }
 impl ToStr for @str {
     #[inline]
-    fn to_str(&self) -> ~str { to_owned(*self) }
+    fn to_str(&self) -> ~str { self.to_owned() }
 }
 
 /**
@@ -867,33 +861,6 @@ pub mod raw {
      * If begin is greater than end.
      * If end is greater than the length of the string.
      */
-    pub unsafe fn slice_bytes_owned(s: &str, begin: uint, end: uint) -> ~str {
-        do s.as_imm_buf |sbuf, n| {
-            assert!((begin <= end));
-            assert!((end <= n));
-
-            let mut v = vec::with_capacity(end - begin + 1u);
-            do v.as_imm_buf |vbuf, _vlen| {
-                let vbuf = ::cast::transmute_mut_unsafe(vbuf);
-                let src = ptr::offset(sbuf, begin);
-                ptr::copy_memory(vbuf, src, end - begin);
-            }
-            vec::raw::set_len(&mut v, end - begin);
-            v.push(0u8);
-            ::cast::transmute(v)
-        }
-    }
-
-    /**
-     * Takes a bytewise (not UTF-8) slice from a string.
-     *
-     * Returns the substring from [`begin`..`end`).
-     *
-     * # Failure
-     *
-     * If begin is greater than end.
-     * If end is greater than the length of the string.
-     */
     #[inline]
     pub unsafe fn slice_bytes(s: &str, begin: uint, end: uint) -> &str {
         do s.as_imm_buf |sbuf, n| {
@@ -936,7 +903,7 @@ pub mod raw {
         let len = s.len();
         assert!((len > 0u));
         let b = s[0];
-        *s = raw::slice_bytes_owned(*s, 1u, len);
+        *s = s.slice(1, len).to_owned();
         return b;
     }
 
@@ -1609,7 +1576,21 @@ impl<'self> StrSlice<'self> for &'self str {
 
     /// Copy a slice into a new unique str
     #[inline]
-    fn to_owned(&self) -> ~str { to_owned(*self) }
+    fn to_owned(&self) -> ~str {
+        do self.as_imm_buf |src, len| {
+            assert!(len > 0);
+            unsafe {
+                let mut v = vec::with_capacity(len);
+
+                do v.as_mut_buf |dst, _| {
+                    ptr::copy_memory(dst, src, len - 1);
+                }
+                vec::raw::set_len(&mut v, len - 1);
+                v.push(0u8);
+                ::cast::transmute(v)
+            }
+        }
+    }
 
     #[inline]
     fn to_managed(&self) -> @str {
@@ -2177,7 +2158,7 @@ impl OwnedStr for ~str {
      */
     fn shift_char(&mut self) -> char {
         let CharRange {ch, next} = self.char_range_at(0u);
-        *self = unsafe { raw::slice_bytes_owned(*self, next, self.len()) };
+        *self = self.slice(next, self.len()).to_owned();
         return ch;
     }
 
@@ -2270,7 +2251,7 @@ impl OwnedStr for ~str {
 impl Clone for ~str {
     #[inline]
     fn clone(&self) -> ~str {
-        to_owned(*self)
+        self.to_owned()
     }
 }
 
