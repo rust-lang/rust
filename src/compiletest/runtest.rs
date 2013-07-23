@@ -22,6 +22,7 @@ use util::logv;
 
 use std::io;
 use std::os;
+use std::str;
 use std::uint;
 use std::vec;
 
@@ -355,6 +356,30 @@ fn check_expected_errors(expected_errors: ~[errors::ExpectedError],
         fmt!("%s:%u:", testfile.to_str(), ee.line)
     }).collect::<~[~str]>();
 
+    fn to_lower( s : &str ) -> ~str {
+        let i = s.iter();
+        let c : ~[char] = i.transform( |c| {
+            if c.is_ascii() {
+                c.to_ascii().to_lower().to_char()
+            } else {
+                c
+            }
+        } ).collect();
+        str::from_chars( c )
+    }
+
+    #[cfg(target_os = "win32")]
+    fn prefix_matches( line : &str, prefix : &str ) -> bool {
+        to_lower(line).starts_with( to_lower(prefix) )
+    }
+
+    #[cfg(target_os = "linux")]
+    #[cfg(target_os = "macos")]
+    #[cfg(target_os = "freebsd")]
+    fn prefix_matches( line : &str, prefix : &str ) -> bool {
+        line.starts_with( prefix )
+    }
+
     // Scan and extract our error/warning messages,
     // which look like:
     //    filename:line1:col1: line2:col2: *error:* msg
@@ -367,7 +392,7 @@ fn check_expected_errors(expected_errors: ~[errors::ExpectedError],
             if !found_flags[i] {
                 debug!("prefix=%s ee.kind=%s ee.msg=%s line=%s",
                        prefixes[i], ee.kind, ee.msg, line);
-                if (line.starts_with(prefixes[i]) &&
+                if (prefix_matches(line, prefixes[i]) &&
                     line.contains(ee.kind) &&
                     line.contains(ee.msg)) {
                     found_flags[i] = true;
