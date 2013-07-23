@@ -87,6 +87,7 @@ pub fn from_elem<T:Clone>(n_elts: uint, t: T) -> ~[T] {
 }
 
 /// Creates a new vector with a capacity of `capacity`
+#[inline]
 pub fn with_capacity<T>(capacity: uint) -> ~[T] {
     unsafe {
         if contains_managed::<T>() {
