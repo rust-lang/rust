@@ -74,14 +74,14 @@ pub mod rustrt {
 }
 
 unsafe fn bump<T, U>(ptr: *T, count: uint) -> *U {
-    return cast::transmute(ptr::offset(ptr, count));
+    return ptr::offset(ptr, count) as *U;
 }
 
 unsafe fn align_to_pointer<T>(ptr: *T) -> *T {
     let align = sys::min_align_of::<*T>();
-    let ptr: uint = cast::transmute(ptr);
+    let ptr = ptr as uint;
     let ptr = (ptr + (align - 1)) & -align;
-    return cast::transmute(ptr);
+    return ptr as *T;
 }
 
 unsafe fn get_safe_point_count() -> uint {
@@ -126,8 +126,8 @@ type Visitor<'self> = &'self fn(root: **Word, tydesc: *TyDesc) -> bool;
 // Walks the list of roots for the given safe point, and calls visitor
 // on each root.
 unsafe fn _walk_safe_point(fp: *Word, sp: SafePoint, visitor: Visitor) -> bool {
-    let fp_bytes: *u8 = cast::transmute(fp);
-    let sp_meta: *u32 = cast::transmute(sp.sp_meta);
+    let fp_bytes = fp as *u8;
+    let sp_meta = sp.sp_meta as *u32;
 
     let num_stack_roots = *sp_meta as uint;
     let num_reg_roots = *ptr::offset(sp_meta, 1) as uint;
@@ -173,9 +173,9 @@ unsafe fn walk_safe_point(fp: *Word, sp: SafePoint, visitor: Visitor) -> bool {
 
 // Is fp contained in segment?
 unsafe fn is_frame_in_segment(fp: *Word, segment: *StackSegment) -> bool {
-    let begin: Word = cast::transmute(segment);
-    let end: Word = cast::transmute((*segment).end);
-    let frame: Word = cast::transmute(fp);
+    let begin = segment as Word;
+    let end = (*segment).end as Word;
+    let frame = fp as Word;
 
     return begin <= frame && frame <= end;
 }

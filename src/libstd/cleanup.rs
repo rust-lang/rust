@@ -13,7 +13,6 @@
 use libc::c_void;
 use ptr::{mut_null};
 use repr::BoxRepr;
-use cast::transmute;
 use unstable::intrinsics::TyDesc;
 
 type DropGlue<'self> = &'self fn(**TyDesc, *c_void);
@@ -40,18 +39,17 @@ unsafe fn each_live_alloc(read_next_before: bool,
     let box = local_heap::live_allocs();
     let mut box: *mut BoxRepr = transmute(box);
     while box != mut_null() {
-        let next_before = transmute((*box).header.next);
-        let uniq =
-            (*box).header.ref_count == managed::raw::RC_MANAGED_UNIQUE;
+        let next_before = (*box).next;
+        let uniq = (*box).ref_count == managed::RC_MANAGED_UNIQUE;
 
-        if !f(box, uniq) {
+        if !f(box as *mut raw::Box<()>, uniq) {
             return false;
         }
 
         if read_next_before {
             box = next_before;
         } else {
-            box = transmute((*box).header.next);
+            box = (*box).next;
         }
     }
     return true;
@@ -113,9 +111,9 @@ pub unsafe fn annihilate() {
     // callback, as the original value may have been freed.
     for each_live_alloc(false) |box, uniq| {
         if !uniq {
-            let tydesc: *TyDesc = transmute((*box).header.type_desc);
-            let data = transmute(&(*box).data);
-            ((*tydesc).drop_glue)(data);
+            let tydesc = (*box).type_desc;
+            let data = &(*box).data as *();
+            ((*tydesc).drop_glue)(data as *i8);
         }
     }
 
@@ -130,7 +128,7 @@ pub unsafe fn annihilate() {
             stats.n_bytes_freed +=
                 (*((*box).header.type_desc)).size
                 + sys::size_of::<BoxRepr>();
-            local_free(transmute(box));
+            local_free(box as *u8);
         }
     }
 
