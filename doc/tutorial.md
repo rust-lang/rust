@@ -1089,10 +1089,8 @@ we might like to compute the distance between `on_the_stack` and
 to define a function that takes two arguments of type point—that is,
 it takes the points by value. But this will cause the points to be
 copied when we call the function. For points, this is probably not so
-bad, but often copies are expensive or, worse, if copied data are in mutable
-slots, they can change the semantics of your program. So we’d like to
-define a function that takes the points by pointer. We can use
-borrowed pointers to do this:
+bad, but often copies are expensive. So we’d like to define a function
+that takes the points by pointer. We can use borrowed pointers to do this:
 
 ~~~
 # struct Point { x: float, y: float }
