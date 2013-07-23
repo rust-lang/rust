@@ -87,9 +87,8 @@ pub fn getcwd() -> Path {
 
 // FIXME: move these to str perhaps? #2620
 
-pub fn fill_charp_buf(f: &fn(*mut c_char, size_t) -> bool)
-    -> Option<~str> {
-    let mut buf = vec::from_elem(TMPBUF_SZ, 0u8 as c_char);
+pub fn fill_charp_buf(f: &fn(*mut c_char, size_t) -> bool) -> Option<~str> {
+    let mut buf = [0 as c_char, .. TMPBUF_SZ];
     do buf.as_mut_buf |b, sz| {
         if f(b, sz as size_t) {
             unsafe {
