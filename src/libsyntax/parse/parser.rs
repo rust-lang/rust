@@ -406,7 +406,9 @@ impl Parser {
     // consume token 'tok' if it exists. Returns true if the given
     // token was present, false otherwise.
     pub fn eat(&self, tok: &token::Token) -> bool {
-        return if *self.token == *tok { self.bump(); true } else { false };
+        let is_present = *self.token == *tok;
+        if is_present { self.bump() }
+        is_present
     }
 
     pub fn is_keyword(&self, kw: keywords::Keyword) -> bool {
@@ -458,21 +460,16 @@ impl Parser {
     // with a single > and continue. If a GT is not seen,
     // signal an error.
     pub fn expect_gt(&self) {
-        if *self.token == token::GT {
-            self.bump();
-        } else if *self.token == token::BINOP(token::SHR) {
-            self.replace_token(
+        match *self.token {
+            token::GT => self.bump(),
+            token::BINOP(token::SHR) => self.replace_token(
                 token::GT,
                 self.span.lo + BytePos(1u),
                 self.span.hi
-            );
-        } else {
-            let mut s: ~str = ~"expected `";
-            s.push_str(self.token_to_str(&token::GT));
-            s.push_str("`, found `");
-            s.push_str(self.this_token_to_str());
-            s.push_str("`");
-            self.fatal(s);
+            ),
+            _ => self.fatal(fmt!("expected `%s`, found `%s`",
+                                 self.token_to_str(&token::GT),
+                                 self.this_token_to_str()))
         }
     }
 
@@ -1114,19 +1111,20 @@ impl Parser {
     }
 
     pub fn is_named_argument(&self) -> bool {
-        let offset = if *self.token == token::BINOP(token::AND) {
-            1
-        } else if *self.token == token::BINOP(token::MINUS) {
-            1
-        } else if *self.token == token::ANDAND {
-            1
-        } else if *self.token == token::BINOP(token::PLUS) {
-            if self.look_ahead(1, |t| *t == token::BINOP(token::PLUS)) {
-                2
-            } else {
-                1
-            }
-        } else { 0 };
+        let offset = match *self.token {
+            token::BINOP(token::AND) => 1,
+            token::BINOP(token::MINUS) => 1,
+            token::ANDAND => 1,
+            token::BINOP(token::PLUS) => {
+                if self.look_ahead(1, |t| *t == token::BINOP(token::PLUS)) {
+                    2
+                } else {
+                    1
+                }
+            },
+            _ => 0
+        };
+
         if offset == 0 {
             is_plain_ident(&*self.token)
                 && self.look_ahead(1, |t| *t == token::COLON)
@@ -1869,21 +1867,26 @@ impl Parser {
     // parse an optional separator followed by a kleene-style
     // repetition token (+ or *).
     pub fn parse_sep_and_zerok(&self) -> (Option<token::Token>, bool) {
-        if *self.token == token::BINOP(token::STAR)
-            || *self.token == token::BINOP(token::PLUS) {
-            let zerok = *self.token == token::BINOP(token::STAR);
-            self.bump();
-            (None, zerok)
-        } else {
-            let sep = self.bump_and_get();
-            if *self.token == token::BINOP(token::STAR)
-                || *self.token == token::BINOP(token::PLUS) {
-                let zerok = *self.token == token::BINOP(token::STAR);
-                self.bump();
-                (Some(sep), zerok)
-            } else {
-                self.fatal("expected `*` or `+`");
+        fn parse_zerok(parser: &Parser) -> Option<bool> {
+            match *parser.token {
+                token::BINOP(token::STAR) | token::BINOP(token::PLUS) => {
+                    let zerok = *parser.token == token::BINOP(token::STAR);
+                    parser.bump();
+                    Some(zerok)
+                },
+                _ => None
             }
+        };
+
+        match parse_zerok(self) {
+            Some(zerok) => return (None, zerok),
+            None => {}
+        }
+
+        let separator = self.bump_and_get();
+        match parse_zerok(self) {
+            Some(zerok) => (Some(separator), zerok),
+            None => self.fatal("expected `*` or `+`")
         }
     }
 
@@ -2145,39 +2148,45 @@ impl Parser {
     // parse an expression of binops of at least min_prec precedence
     pub fn parse_more_binops(&self, lhs: @expr, min_prec: uint) -> @expr {
         if self.expr_is_complete(lhs) { return lhs; }
-        if token::BINOP(token::OR) == *self.token &&
-            (*self.restriction == RESTRICT_NO_BAR_OP ||
-             *self.restriction == RESTRICT_NO_BAR_OR_DOUBLEBAR_OP) {
-            lhs
-        } else if token::OROR == *self.token &&
-            *self.restriction == RESTRICT_NO_BAR_OR_DOUBLEBAR_OP {
-            lhs
-        } else {
-            let cur_opt = token_to_binop(self.token);
-            match cur_opt {
-                Some(cur_op) => {
-                    let cur_prec = operator_prec(cur_op);
-                    if cur_prec > min_prec {
-                        self.bump();
-                        let expr = self.parse_prefix_expr();
-                        let rhs = self.parse_more_binops(expr, cur_prec);
-                        let bin = self.mk_expr(lhs.span.lo, rhs.span.hi,
-                                               self.mk_binary(cur_op, lhs, rhs));
-                        self.parse_more_binops(bin, min_prec)
-                    } else {
-                        lhs
-                    }
+
+        // Prevent dynamic borrow errors later on by limiting the
+        // scope of the borrows.
+        {
+            let token: &token::Token = self.token;
+            let restriction: &restriction = self.restriction;
+            match (token, restriction) {
+                (&token::BINOP(token::OR), &RESTRICT_NO_BAR_OP) => return lhs,
+                (&token::BINOP(token::OR),
+                 &RESTRICT_NO_BAR_OR_DOUBLEBAR_OP) => return lhs,
+                (&token::OROR, &RESTRICT_NO_BAR_OR_DOUBLEBAR_OP) => return lhs,
+                _ => { }
+            }
+        }
+
+        let cur_opt = token_to_binop(self.token);
+        match cur_opt {
+            Some(cur_op) => {
+                let cur_prec = operator_prec(cur_op);
+                if cur_prec > min_prec {
+                    self.bump();
+                    let expr = self.parse_prefix_expr();
+                    let rhs = self.parse_more_binops(expr, cur_prec);
+                    let bin = self.mk_expr(lhs.span.lo, rhs.span.hi,
+                                           self.mk_binary(cur_op, lhs, rhs));
+                    self.parse_more_binops(bin, min_prec)
+                } else {
+                    lhs
                 }
-                None => {
-                    if as_prec > min_prec && self.eat_keyword(keywords::As) {
-                        let rhs = self.parse_ty(true);
-                        let _as = self.mk_expr(lhs.span.lo,
-                                               rhs.span.hi,
-                                               expr_cast(lhs, rhs));
-                        self.parse_more_binops(_as, min_prec)
-                    } else {
-                        lhs
-                    }
+            }
+            None => {
+                if as_prec > min_prec && self.eat_keyword(keywords::As) {
+                    let rhs = self.parse_ty(true);
+                    let _as = self.mk_expr(lhs.span.lo,
+                                           rhs.span.hi,
+                                           expr_cast(lhs, rhs));
+                    self.parse_more_binops(_as, min_prec)
+                } else {
+                    lhs
                 }
             }
         }
@@ -2198,19 +2207,18 @@ impl Parser {
           token::BINOPEQ(op) => {
               self.bump();
               let rhs = self.parse_expr();
-              let aop;
-              match op {
-                  token::PLUS => aop = add,
-                  token::MINUS => aop = subtract,
-                  token::STAR => aop = mul,
-                  token::SLASH => aop = div,
-                  token::PERCENT => aop = rem,
-                  token::CARET => aop = bitxor,
-                  token::AND => aop = bitand,
-                  token::OR => aop = bitor,
-                  token::SHL => aop = shl,
-                  token::SHR => aop = shr
-              }
+              let aop = match op {
+                  token::PLUS =>    add,
+                  token::MINUS =>   subtract,
+                  token::STAR =>    mul,
+                  token::SLASH =>   div,
+                  token::PERCENT => rem,
+                  token::CARET =>   bitxor,
+                  token::AND =>     bitand,
+                  token::OR =>      bitor,
+                  token::SHL =>     shl,
+                  token::SHR =>     shr
+              };
               self.mk_expr(lo, rhs.span.hi,
                            self.mk_assign_op(aop, lhs, rhs))
           }
@@ -2759,6 +2767,7 @@ impl Parser {
             self.bump();
             let (before, slice, after) =
                 self.parse_pat_vec_elements();
+
             self.expect(&token::RBRACKET);
             pat = ast::pat_vec(before, slice, after);
             hi = self.last_span.hi;
@@ -3347,9 +3356,7 @@ impl Parser {
     }
 
     // parse a generic use site
-    fn parse_generic_values(
-        &self) -> (OptVec<ast::Lifetime>, ~[Ty])
-    {
+    fn parse_generic_values(&self) -> (OptVec<ast::Lifetime>, ~[Ty]) {
         if !self.eat(&token::LT) {
             (opt_vec::Empty, ~[])
         } else {
@@ -3357,9 +3364,7 @@ impl Parser {
         }
     }
 
-    fn parse_generic_values_after_lt(
-        &self) -> (OptVec<ast::Lifetime>, ~[Ty])
-    {
+    fn parse_generic_values_after_lt(&self) -> (OptVec<ast::Lifetime>, ~[Ty]) {
         let lifetimes = self.parse_lifetimes();
         let result = self.parse_seq_to_gt(
             Some(token::COMMA),
@@ -3388,11 +3393,7 @@ impl Parser {
     }
 
     fn is_self_ident(&self) -> bool {
-        match *self.token {
-          token::IDENT(id, false) if id == special_idents::self_
-            => true,
-          _ => false
-        }
+        *self.token == token::IDENT(special_idents::self_, false)
     }
 
     fn expect_self_ident(&self) {
@@ -4660,14 +4661,12 @@ impl Parser {
 
     pub fn parse_item(&self, attrs: ~[Attribute]) -> Option<@ast::item> {
         match self.parse_item_or_view_item(attrs, true) {
-            iovi_none(_) =>
-                None,
+            iovi_none(_) => None,
             iovi_view_item(_) =>
                 self.fatal("view items are not allowed here"),
             iovi_foreign_item(_) =>
                 self.fatal("foreign items are not allowed here"),
-            iovi_item(item) =>
-                Some(item)
+            iovi_item(item) => Some(item)
         }
     }
 
@@ -4830,6 +4829,7 @@ impl Parser {
         // First, parse view items.
         let mut view_items : ~[ast::view_item] = ~[];
         let mut items = ~[];
+
         // I think this code would probably read better as a single
         // loop with a mutable three-state-variable (for extern mods,
         // view items, and regular items) ... except that because
