@@ -179,7 +179,7 @@ struct Context {
     db: RWARC<Database>,
     logger: RWARC<Logger>,
     cfg: ARC<json::Object>,
-    freshness: ARC<TreeMap<~str,~fn(&str,&str)->bool>>
+    freshness: ARC<TreeMap<~str,extern fn(&str,&str)->bool>>
 }
 
 struct Prep<'self> {
