@@ -253,9 +253,9 @@ mod tests {
         let mut val = ~11;
         let m = do unpack(&val) |v| {
             assert_eq!(*v, 11);
-            (v / 5, v % 5)
+            (*v / 5, *v % 5)
         };
-        assert_eq!(val, 2);
+        assert_eq!(*val, 2);
         assert_eq!(m, 1);
     }
 
