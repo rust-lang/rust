@@ -23,6 +23,7 @@ pub type IoFactoryObject = uvio::UvIoFactory;
 pub type RtioTcpStreamObject = uvio::UvTcpStream;
 pub type RtioTcpListenerObject = uvio::UvTcpListener;
 pub type RtioUdpSocketObject = uvio::UvUdpSocket;
+pub type RtioTimerObject = uvio::UvTimer;
 
 pub trait EventLoop {
     fn run(&mut self);
@@ -46,6 +47,7 @@ pub trait IoFactory {
     fn tcp_connect(&mut self, addr: IpAddr) -> Result<~RtioTcpStreamObject, IoError>;
     fn tcp_bind(&mut self, addr: IpAddr) -> Result<~RtioTcpListenerObject, IoError>;
     fn udp_bind(&mut self, addr: IpAddr) -> Result<~RtioUdpSocketObject, IoError>;
+    fn timer_init(&mut self) -> Result<~RtioTimerObject, IoError>;
 }
 
 pub trait RtioTcpListener : RtioSocket {
@@ -83,4 +85,8 @@ pub trait RtioUdpSocket : RtioSocket {
 
     fn hear_broadcasts(&mut self);
     fn ignore_broadcasts(&mut self);
+}
+
+pub trait RtioTimer {
+    fn sleep(&self, msecs: u64);
 }
