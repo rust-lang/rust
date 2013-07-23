@@ -992,7 +992,7 @@ task-local garbage collector. It will be destroyed at some point after there
 are no references left to the box, no later than the end of the task. Managed
 boxes lack an owner, so they start a new ownership tree and don't inherit
 mutability. They do own the contained object, and mutability is defined by the
-type of the shared box (`@` or `@mut`). An object containing a managed box is
+type of the managed box (`@` or `@mut`). An object containing a managed box is
 not `Owned`, and can't be sent between tasks.
 
 ~~~~
@@ -1089,8 +1089,8 @@ we might like to compute the distance between `on_the_stack` and
 to define a function that takes two arguments of type point—that is,
 it takes the points by value. But this will cause the points to be
 copied when we call the function. For points, this is probably not so
-bad, but often copies are expensive or, worse, if there are mutable
-fields, they can change the semantics of your program. So we’d like to
+bad, but often copies are expensive or, worse, if copied data are in mutable
+slots, they can change the semantics of your program. So we’d like to
 define a function that takes the points by pointer. We can use
 borrowed pointers to do this:
 
