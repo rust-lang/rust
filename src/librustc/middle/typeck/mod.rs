@@ -75,14 +75,14 @@ pub mod infer;
 pub mod collect;
 pub mod coherence;
 
+#[deriving(Clone, Encodable, Decodable, Eq, Ord)]
+pub enum param_index {
+    param_numbered(uint),
+    param_self
+}
+
 #[deriving(Clone, Encodable, Decodable)]
 pub enum method_origin {
-    // supertrait method invoked on "self" inside a default method
-    // first field is supertrait ID;
-    // second field is method index (relative to the *supertrait*
-    // method list)
-    method_super(ast::def_id, uint),
-
     // fully statically resolved method
     method_static(ast::def_id),
 
@@ -91,9 +91,6 @@ pub enum method_origin {
 
     // method invoked on a trait instance
     method_trait(ast::def_id, uint, ty::TraitStore),
-
-    // method invoked on "self" inside a default method
-    method_self(ast::def_id, uint)
 
 }
 
@@ -109,7 +106,7 @@ pub struct method_param {
 
     // index of the type parameter (from those that are in scope) that is
     // the type of the receiver
-    param_num: uint,
+    param_num: param_index,
 
     // index of the bound for this type parameter which specifies the trait
     bound_num: uint,
@@ -153,15 +150,10 @@ pub enum vtable_origin {
       fn foo<T:quux,baz,bar>(a: T) -- a's vtable would have a
       vtable_param origin
 
-      The first uint is the param number (identifying T in the example),
+      The first argument is the param index (identifying T in the example),
       and the second is the bound number (identifying baz)
      */
-    vtable_param(uint, uint),
-
-    /*
-     Dynamic vtable, comes from self.
-    */
-    vtable_self(ast::def_id)
+    vtable_param(param_index, uint),
 }
 
 impl Repr for vtable_origin {
@@ -177,9 +169,6 @@ impl Repr for vtable_origin {
 
             vtable_param(x, y) => {
                 fmt!("vtable_param(%?, %?)", x, y)
-            }
-            vtable_self(def_id) => {
-                fmt!("vtable_self(%?)", def_id)
             }
         }
     }

@@ -3065,9 +3065,7 @@ pub fn method_call_type_param_defs(tcx: ctxt,
           typeck::method_param(typeck::method_param {
               trait_id: trt_id,
               method_num: n_mth, _}) |
-          typeck::method_trait(trt_id, n_mth, _) |
-          typeck::method_self(trt_id, n_mth) |
-          typeck::method_super(trt_id, n_mth) => {
+          typeck::method_trait(trt_id, n_mth, _) => {
             // ...trait methods bounds, in contrast, include only the
             // method bounds, so we must preprend the tps from the
             // trait itself.  This ought to be harmonized.
@@ -4399,31 +4397,6 @@ pub fn count_traits_and_supertraits(tcx: ctxt,
         }
     }
     return total;
-}
-
-// Given a trait and a type, returns the impl of that type.
-// This is broken, of course, by parametric impls. This used to use
-// a table specifically for this mapping, but I removed that table.
-// This is only used when calling a supertrait method from a default method,
-// and should go away once I fix how that works. -sully
-pub fn bogus_get_impl_id_from_ty(tcx: ctxt,
-                                 trait_id: def_id, self_ty: t) -> def_id {
-    match tcx.trait_impls.find(&trait_id) {
-        Some(ty_to_impl) => {
-            for ty_to_impl.iter().advance |imp| {
-                let impl_ty = tcx.tcache.get_copy(&imp.did);
-                if impl_ty.ty == self_ty { return imp.did; }
-            }
-            // try autoderef!
-            match deref(tcx, self_ty, false) {
-                Some(some_ty) =>
-                  bogus_get_impl_id_from_ty(tcx, trait_id, some_ty.ty),
-                None => tcx.sess.bug("get_impl_id: no impl of trait for \
-                                      this type")
-            }
-        },
-        None => tcx.sess.bug("get_impl_id: trait isn't in trait_impls")
-    }
 }
 
 pub fn get_tydesc_ty(tcx: ctxt) -> Result<t, ~str> {

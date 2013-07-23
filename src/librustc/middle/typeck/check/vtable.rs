@@ -17,7 +17,8 @@ use middle::typeck::infer::fixup_err_to_str;
 use middle::typeck::infer::{resolve_and_force_all_but_regions, resolve_type};
 use middle::typeck::infer;
 use middle::typeck::{CrateCtxt, vtable_origin, vtable_res, vtable_param_res};
-use middle::typeck::{vtable_static, vtable_param, vtable_self, impl_res};
+use middle::typeck::{vtable_static, vtable_param, impl_res};
+use middle::typeck::{param_numbered, param_self};
 use middle::subst::Subst;
 use util::common::indenter;
 use util::ppaux;
@@ -239,7 +240,7 @@ fn lookup_vtable(vcx: &VtableContext,
             // The type has unconstrained type variables in it, so we can't
             // do early resolution on it. Return some completely bogus vtable
             // information: we aren't storing it anyways.
-            return Some(vtable_param(0, 0));
+            return Some(vtable_param(param_self, 0));
         }
     };
 
@@ -257,7 +258,7 @@ fn lookup_vtable(vcx: &VtableContext,
                                       location_info,
                                       bound_trait_ref,
                                       trait_ref);
-                    let vtable = vtable_param(n, n_bound);
+                    let vtable = vtable_param(param_numbered(n), n_bound);
                     debug!("found param vtable: %?",
                            vtable);
                     return Some(vtable);
@@ -272,7 +273,7 @@ fn lookup_vtable(vcx: &VtableContext,
                    trait_ref.def_id, trait_id);
 
             if trait_id == trait_ref.def_id {
-                let vtable = vtable_self(trait_id);
+                let vtable = vtable_param(param_self, 0);
                 debug!("found self vtable: %?", vtable);
                 return Some(vtable);
             }
@@ -403,7 +404,7 @@ fn search_for_vtable(vcx: &VtableContext,
             None => {
                 assert!(is_early);
                 // Bail out with a bogus answer
-                return Some(vtable_param(0, 0));
+                return Some(vtable_param(param_self, 0));
             }
         };
 

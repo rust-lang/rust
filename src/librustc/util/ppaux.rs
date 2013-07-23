@@ -715,10 +715,6 @@ impl Repr for typeck::method_map_entry {
 impl Repr for typeck::method_origin {
     fn repr(&self, tcx: ctxt) -> ~str {
         match self {
-            &typeck::method_super(def_id, n) => {
-                fmt!("method_super(%s, %?)",
-                     def_id.repr(tcx), n)
-            }
             &typeck::method_static(def_id) => {
                 fmt!("method_static(%s)", def_id.repr(tcx))
             }
@@ -728,9 +724,6 @@ impl Repr for typeck::method_origin {
             &typeck::method_trait(def_id, n, st) => {
                 fmt!("method_trait(%s, %?, %s)", def_id.repr(tcx), n,
                      st.repr(tcx))
-            }
-            &typeck::method_self(def_id, n) => {
-                fmt!("method_self(%s, %?)", def_id.repr(tcx), n)
             }
         }
     }
