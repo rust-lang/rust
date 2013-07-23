@@ -8,17 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-test - issue #5512, fails but exits with 0
-
+// exec-env:RUST_NEWRT=1
 // error-pattern:fail
 
 fn main() {
     let count = @mut 0u;
     let mut map = std::hashmap::HashMap::new();
     let mut arr = ~[];
-    for uint::range(0u, 10u) |i| {
-        arr += ~[@~"key stuff"];
-        map.insert(arr.clone(), arr + ~[@~"value stuff"]);
+    for std::uint::range(0u, 10u) |i| {
+        arr.push(@~"key stuff");
+        map.insert(arr.clone(), arr + &[@~"value stuff"]);
         if arr.len() == 5 {
             fail!();
         }

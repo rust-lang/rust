@@ -11,6 +11,8 @@
 // xfail-test
 // error-pattern:index out of bounds
 
+use std::uint;
+
 fn main() {
     let x = ~[1u,2u,3u];
 
