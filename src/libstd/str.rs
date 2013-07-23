@@ -180,9 +180,7 @@ impl<'self, S: Str> StrVector for &'self [S] {
 
         let len = self.iter().transform(|s| s.as_slice().len()).sum();
 
-        let mut s = ~"";
-
-        s.reserve(len);
+        let mut s = with_capacity(len);
 
         unsafe {
             do s.as_mut_buf |buf, _| {
@@ -678,6 +676,7 @@ pub fn from_utf16(v: &[u16]) -> ~str {
  * Allocates a new string with the specified capacity. The string returned is
  * the empty string, but has capacity for much more.
  */
+#[inline]
 pub fn with_capacity(capacity: uint) -> ~str {
     let mut buf = ~"";
     buf.reserve(capacity);
@@ -1830,10 +1829,9 @@ impl<'self> StrSlice<'self> for &'self str {
     /// Given a string, make a new string with repeated copies of it.
     fn repeat(&self, nn: uint) -> ~str {
         do self.as_imm_buf |buf, len| {
-            let mut ret = ~"";
             // ignore the NULL terminator
             let len = len - 1;
-            ret.reserve(nn * len);
+            let mut ret = with_capacity(nn * len);
 
             unsafe {
                 do ret.as_mut_buf |rbuf, _len| {
