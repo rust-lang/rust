@@ -309,7 +309,7 @@ was taken.
 
 In short, everything that's not a declaration (declarations are `let` for
 variables; `fn` for functions; and any top-level named items such as
-[traits](#traits), [enum types](#enums), and [constants](#constants)) is an
+[traits](#traits), [enum types](#enums), and static items) is an
 expression, including function bodies.
 
 ~~~~
@@ -1374,7 +1374,7 @@ let exchange_crayons: ~str = ~"Black, BlizzardBlue, Blue";
 ~~~
 
 Both vectors and strings support a number of useful
-[methods](#functions-and-methods), defined in [`std::vec`]
+[methods](#methods), defined in [`std::vec`]
 and [`std::str`]. Here are some examples.
 
 [`std::vec`]: std/vec.html
@@ -1928,7 +1928,7 @@ that implements a trait includes the name of the trait at the start of
 the definition, as in the following impls of `Printable` for `int`
 and `~str`.
 
-[impls]: #functions-and-methods
+[impls]: #methods
 
 ~~~~
 # trait Printable { fn print(&self); }
