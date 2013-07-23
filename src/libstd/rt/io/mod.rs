@@ -252,6 +252,7 @@ pub use self::stdio::print;
 pub use self::stdio::println;
 
 pub use self::file::FileStream;
+pub use self::timer::Timer;
 pub use self::net::ip::IpAddr;
 pub use self::net::tcp::TcpListener;
 pub use self::net::tcp::TcpStream;
@@ -295,6 +296,9 @@ mod extensions;
 
 /// Non-I/O things needed by the I/O module
 mod support;
+
+/// Basic Timer
+pub mod timer;
 
 /// Thread-blocking implementations
 pub mod native {

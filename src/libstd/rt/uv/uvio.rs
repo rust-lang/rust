@@ -280,6 +280,10 @@ impl IoFactory for UvIoFactory {
             }
         }
     }
+
+    fn timer_init(&mut self) -> Result<~RtioTimerObject, IoError> {
+        Ok(~UvTimer(TimerWatcher::new(self.uv_loop())))
+    }
 }
 
 // FIXME #6090: Prefer newtype structs but Drop doesn't work
@@ -562,6 +566,48 @@ impl RtioUdpSocket for UvUdpSocket {
     fn ignore_broadcasts(&mut self) { fail!(); }
 }
 
+pub struct UvTimer(timer::TimerWatcher);
+
+impl UvTimer {
+    fn new(w: timer::TimerWatcher) -> UvTimer {
+        UvTimer(w)
+    }
+}
+
+impl Drop for UvTimer {
+    fn drop(&self) {
+        rtdebug!("closing UvTimer");
+        let scheduler = Local::take::<Scheduler>();
+        do scheduler.deschedule_running_task_and_then |_, task| {
+            let task_cell = Cell::new(task);
+            do self.close {
+                let scheduler = Local::take::<Scheduler>();
+                scheduler.resume_blocked_task_immediately(task_cell.take());
+            }
+        }
+    }
+}
+
+impl RtioTimer for UvTimer {
+    fn sleep(&self, msecs: u64) {
+        let scheduler = Local::take::<Scheduler>();
+        assert!(scheduler.in_task_context());
+        do scheduler.deschedule_running_task_and_then |sched, task| {
+            rtdebug!("sleep: entered scheduler context");
+            assert!(!sched.in_task_context());
+            let task_cell = Cell::new(task);
+            let mut watcher = **self;
+            do watcher.start(msecs, 0) |_, status| {
+                assert!(status.is_none());
+                let scheduler = Local::take::<Scheduler>();
+                scheduler.resume_blocked_task_immediately(task_cell.take());
+            }
+        }
+        let mut w = **self;
+        w.stop();
+    }
+}
+
 #[test]
 fn test_simple_io_no_connect() {
     do run_in_newsched_task {
@@ -830,5 +876,22 @@ fn test_udp_many_read() {
                 assert!(client_out.sendto([0], server_in_addr).is_ok());
             }
         }
+    }
+}
+
+fn test_timer_sleep_simple_impl() {
+    unsafe {
+        let io = Local::unsafe_borrow::<IoFactoryObject>();
+        let timer = (*io).timer_init();
+        match timer {
+            Ok(t) => t.sleep(1),
+            Err(_) => assert!(false)
+        }
+    }
+}
+#[test]
+fn test_timer_sleep_simple() {
+    do run_in_newsched_task {
+        test_timer_sleep_simple_impl();
     }
 }
