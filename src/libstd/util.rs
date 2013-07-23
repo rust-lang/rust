@@ -84,10 +84,12 @@ pub fn replace<T>(dest: &mut T, mut src: T) -> T {
 pub fn reset<T>(val: &mut T, trans: &fn(T) -> T) {
     unsafe {
         let mut tmp: T = intrinsics::uninit();
-        swap(val, &mut tmp);
+        ptr::copy_nonoverlapping_memory(&mut tmp, val, 1);
 
-        let nothing = replace(val, trans(tmp));
-        cast::forget(nothing);
+        let mut res = trans(tmp);
+
+        ptr::copy_nonoverlapping_memory(val, &mut res, 1);
+        cast::forget(res);
     }
 }
 
@@ -103,15 +105,13 @@ pub fn pack<T, U>(val: &mut T, param: U, comb: &fn(T, U) -> T) {
     unsafe {
         let mut tmp: T = intrinsics::uninit();
 
-        swap(val, &mut tmp);
+        ptr::copy_nonoverlapping_memory(&mut tmp, val, 1);
 
         // Perform the combination into a new T
-        let new = comb(tmp, param);
+        let mut new = comb(tmp, param);
 
-        let nothing = replace(val, new);
-
-        // Don't let the tmp variable get dropped
-        cast::forget(nothing);
+        ptr::copy_nonoverlapping_memory(val, &mut new, 1);
+        cast::forget(new);
     }
 }
 
@@ -127,14 +127,13 @@ pub fn unpack<T, U>(val: &mut T, split: &fn(T) -> (T, U)) -> U {
     unsafe {
         let mut tmp: T = intrinsics::uninit();
 
-        swap(val, &mut tmp);
+        ptr::copy_nonoverlapping_memory(&mut tmp, val, 1);
 
-        let (new, result) = split(tmp);
+        let (t, result) = split(tmp);
+        let mut new = t;
 
-        let nothing = replace(val, new);
-
-        // Don't let the tmp variable get dropped
-        cast::forget(nothing);
+        ptr::copy_nonoverlapping_memory(val, &mut new, 1);
+        cast::forget(new);
 
         // Return the unpacked value
         result
