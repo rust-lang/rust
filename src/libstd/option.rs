@@ -445,10 +445,10 @@ fn test_unwrap_ptr() {
 #[test]
 fn test_unwrap_str() {
     let x = ~"test";
-    let addr_x = x.as_buf(|buf, _len| buf);
+    let addr_x = x.as_imm_buf(|buf, _len| buf);
     let opt = Some(x);
     let y = opt.unwrap();
-    let addr_y = y.as_buf(|buf, _len| buf);
+    let addr_y = y.as_imm_buf(|buf, _len| buf);
     assert_eq!(addr_x, addr_y);
 }
 
