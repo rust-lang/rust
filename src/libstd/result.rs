@@ -32,37 +32,6 @@ pub enum Result<T, U> {
 }
 
 /**
- * Get the value out of a successful result
- *
- * # Failure
- *
- * If the result is an error
- */
-#[inline]
-pub fn get<T:Clone,U>(res: &Result<T, U>) -> T {
-    match *res {
-      Ok(ref t) => (*t).clone(),
-      Err(ref the_err) =>
-        fail!("get called on error result: %?", *the_err)
-    }
-}
-
-/**
- * Get the value out of an error result
- *
- * # Failure
- *
- * If the result is not an error
- */
-#[inline]
-pub fn get_err<T, U: Clone>(res: &Result<T, U>) -> U {
-    match *res {
-      Err(ref u) => (*u).clone(),
-      Ok(_) => fail!("get_err called on ok result")
-    }
-}
-
-/**
  * Convert to the `either` type
  *
  * `ok` result variants are converted to `either::right` variants, `err`
@@ -245,8 +214,20 @@ impl<T, E> Result<T, E> {
 }
 
 impl<T:Clone,E> Result<T, E> {
+    /**
+     * Get the value out of a successful result
+     *
+     * # Failure
+     *
+     * If the result is an error
+     */
     #[inline]
-    pub fn get(&self) -> T { get(self) }
+    pub fn get(&self) -> T {
+        match *self {
+            Ok(ref t) => (*t).clone(),
+            Err(ref e) => fail!("get called on error result: %?", *e),
+        }
+    }
 
     #[inline]
     pub fn map_err<F:Clone>(&self, op: &fn(&E) -> F) -> Result<T,F> {
@@ -255,8 +236,20 @@ impl<T:Clone,E> Result<T, E> {
 }
 
 impl<T, E:Clone> Result<T, E> {
+    /**
+     * Get the value out of an error result
+     *
+     * # Failure
+     *
+     * If the result is not an error
+     */
     #[inline]
-    pub fn get_err(&self) -> E { get_err(self) }
+    pub fn get_err(&self) -> E {
+        match *self {
+            Err(ref u) => (*u).clone(),
+            Ok(_) => fail!("get_err called on ok result"),
+        }
+    }
 
     #[inline]
     pub fn map<U:Clone>(&self, op: &fn(&T) -> U) -> Result<U,E> {
@@ -363,7 +356,7 @@ pub fn iter_vec2<S,T,U>(ss: &[S], ts: &[T],
 
 #[cfg(test)]
 mod tests {
-    use result::{Err, Ok, Result, get, get_err};
+    use result::{Err, Ok, Result};
     use result;
 
     pub fn op1() -> result::Result<int, ~str> { result::Ok(666) }
@@ -376,12 +369,12 @@ mod tests {
 
     #[test]
     pub fn chain_success() {
-        assert_eq!(get(&(op1().chain(op2))), 667u);
+        assert_eq!(op1().chain(op2).get(), 667u);
     }
 
     #[test]
     pub fn chain_failure() {
-        assert_eq!(get_err(&op3().chain( op2)), ~"sadface");
+        assert_eq!(op3().chain( op2).get_err(), ~"sadface");
     }
 
     #[test]
