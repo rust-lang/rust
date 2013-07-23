@@ -805,6 +805,9 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
                             _ => Ret(bcx, BitCast(bcx, llsrcval, llouttype))
                         }
                     }
+                } else if ty::type_is_immediate(ccx.tcx, out_type) {
+                    let llsrcptr = PointerCast(bcx, llsrcval, llouttype.ptr_to());
+                    Ret(bcx, Load(bcx, llsrcptr));
                 } else {
                     // NB: Do not use a Load and Store here. This causes massive
                     // code bloat when `transmute` is used on large structural
