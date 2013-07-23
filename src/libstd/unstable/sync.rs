@@ -93,114 +93,121 @@ impl<T: Send> UnsafeAtomicRcBox<T> {
     }
 
     #[inline]
-    pub unsafe fn get(&self) -> *mut T
-    {
-        let mut data: ~AtomicRcBoxData<T> = cast::transmute(self.data);
-        assert!(data.count.load(Acquire) > 0); // no barrier is really needed
-        let r: *mut T = data.data.get_mut_ref();
-        cast::forget(data);
-        return r;
+    pub fn get(&self) -> *mut T {
+        unsafe {
+            let mut data: ~AtomicRcBoxData<T> = cast::transmute(self.data);
+            // FIXME(#6598) Change Acquire to Relaxed.
+            assert!(data.count.load(Acquire) > 0);
+            let r: *mut T = data.data.get_mut_ref();
+            cast::forget(data);
+            return r;
+        }
     }
 
     #[inline]
-    pub unsafe fn get_immut(&self) -> *T
-    {
-        let data: ~AtomicRcBoxData<T> = cast::transmute(self.data);
-        assert!(data.count.load(Acquire) > 0); // no barrier is really needed
-        let r: *T = data.data.get_ref();
-        cast::forget(data);
-        return r;
+    pub fn get_immut(&self) -> *T {
+        unsafe {
+            let data: ~AtomicRcBoxData<T> = cast::transmute(self.data);
+            assert!(data.count.load(Acquire) > 0); // no barrier is really needed
+            let r: *T = data.data.get_ref();
+            cast::forget(data);
+            return r;
+        }
     }
 
     /// Wait until all other handles are dropped, then retrieve the enclosed
     /// data. See extra::arc::Arc for specific semantics documentation.
     /// If called when the task is already unkillable, unwrap will unkillably
     /// block; otherwise, an unwrapping task can be killed by linked failure.
-    pub unsafe fn unwrap(self) -> T {
+    pub fn unwrap(self) -> T {
         let this = Cell::new(self); // argh
         do task::unkillable {
-            let mut this = this.take();
-            let mut data: ~AtomicRcBoxData<T> = cast::transmute(this.data);
-            // Set up the unwrap protocol.
-            let (p1,c1) = comm::oneshot(); // ()
-            let (p2,c2) = comm::oneshot(); // bool
-            // Try to put our server end in the unwrapper slot.
-            // This needs no barrier -- it's protected by the release barrier on
-            // the xadd, and the acquire+release barrier in the destructor's xadd.
-            // FIXME(#6598) Change Acquire to Relaxed.
-            if data.unwrapper.fill(~(c1,p2), Acquire).is_none() {
-                // Got in. Tell this handle's destructor not to run (we are now it).
-                this.data = ptr::mut_null();
-                // Drop our own reference.
-                let old_count = data.count.fetch_sub(1, Release);
-                assert!(old_count >= 1);
-                if old_count == 1 {
-                    // We were the last owner. Can unwrap immediately.
-                    // AtomicOption's destructor will free the server endpoint.
-                    // FIXME(#3224): it should be like this
-                    // let ~AtomicRcBoxData { data: user_data, _ } = data;
-                    // user_data
-                    data.data.take_unwrap()
-                } else {
-                    // The *next* person who sees the refcount hit 0 will wake us.
-                    let p1 = Cell::new(p1); // argh
-                    // Unlike the above one, this cell is necessary. It will get
-                    // taken either in the do block or in the finally block.
-                    let c2_and_data = Cell::new((c2,data));
-                    do (|| {
-                        do task::rekillable { p1.take().recv(); }
-                        // Got here. Back in the 'unkillable' without getting killed.
-                        let (c2, data) = c2_and_data.take();
-                        c2.send(true);
+            unsafe {
+                let mut this = this.take();
+                let mut data: ~AtomicRcBoxData<T> = cast::transmute(this.data);
+                // Set up the unwrap protocol.
+                let (p1,c1) = comm::oneshot(); // ()
+                let (p2,c2) = comm::oneshot(); // bool
+                // Try to put our server end in the unwrapper slot.
+                // This needs no barrier -- it's protected by the release barrier on
+                // the xadd, and the acquire+release barrier in the destructor's xadd.
+                // FIXME(#6598) Change Acquire to Relaxed.
+                if data.unwrapper.fill(~(c1,p2), Acquire).is_none() {
+                    // Got in. Tell this handle's destructor not to run (we are now it).
+                    this.data = ptr::mut_null();
+                    // Drop our own reference.
+                    let old_count = data.count.fetch_sub(1, Release);
+                    assert!(old_count >= 1);
+                    if old_count == 1 {
+                        // We were the last owner. Can unwrap immediately.
+                        // AtomicOption's destructor will free the server endpoint.
                         // FIXME(#3224): it should be like this
                         // let ~AtomicRcBoxData { data: user_data, _ } = data;
                         // user_data
-                        let mut data = data;
                         data.data.take_unwrap()
-                    }).finally {
-                        if task::failing() {
-                            // Killed during wait. Because this might happen while
-                            // someone else still holds a reference, we can't free
-                            // the data now; the "other" last refcount will free it.
+                    } else {
+                        // The *next* person who sees the refcount hit 0 will wake us.
+                        let p1 = Cell::new(p1); // argh
+                        // Unlike the above one, this cell is necessary. It will get
+                        // taken either in the do block or in the finally block.
+                        let c2_and_data = Cell::new((c2,data));
+                        do (|| {
+                            do task::rekillable { p1.take().recv(); }
+                            // Got here. Back in the 'unkillable' without getting killed.
                             let (c2, data) = c2_and_data.take();
-                            c2.send(false);
-                            cast::forget(data);
-                        } else {
-                            assert!(c2_and_data.is_empty());
+                            c2.send(true);
+                            // FIXME(#3224): it should be like this
+                            // let ~AtomicRcBoxData { data: user_data, _ } = data;
+                            // user_data
+                            let mut data = data;
+                            data.data.take_unwrap()
+                        }).finally {
+                            if task::failing() {
+                                // Killed during wait. Because this might happen while
+                                // someone else still holds a reference, we can't free
+                                // the data now; the "other" last refcount will free it.
+                                let (c2, data) = c2_and_data.take();
+                                c2.send(false);
+                                cast::forget(data);
+                            } else {
+                                assert!(c2_and_data.is_empty());
+                            }
                         }
                     }
+                } else {
+                    // If 'put' returns the server end back to us, we were rejected;
+                    // someone else was trying to unwrap. Avoid guaranteed deadlock.
+                    cast::forget(data);
+                    fail!("Another task is already unwrapping this Arc!");
                 }
-            } else {
-                // If 'put' returns the server end back to us, we were rejected;
-                // someone else was trying to unwrap. Avoid guaranteed deadlock.
-                cast::forget(data);
-                fail!("Another task is already unwrapping this Arc!");
             }
         }
     }
 
     /// As unwrap above, but without blocking. Returns 'Left(self)' if this is
     /// not the last reference; 'Right(unwrapped_data)' if so.
-    pub unsafe fn try_unwrap(self) -> Either<UnsafeAtomicRcBox<T>, T> {
-        let mut this = self; // FIXME(#4330) mutable self
-        let mut data: ~AtomicRcBoxData<T> = cast::transmute(this.data);
-        // This can of course race with anybody else who has a handle, but in
-        // such a case, the returned count will always be at least 2. If we
-        // see 1, no race was possible. All that matters is 1 or not-1.
-        let count = data.count.load(Acquire);
-        assert!(count >= 1);
-        // The more interesting race is one with an unwrapper. They may have
-        // already dropped their count -- but if so, the unwrapper pointer
-        // will have been set first, which the barriers ensure we will see.
-        // (Note: using is_empty(), not take(), to not free the unwrapper.)
-        if count == 1 && data.unwrapper.is_empty(Acquire) {
-            // Tell this handle's destructor not to run (we are now it).
-            this.data = ptr::mut_null();
-            // FIXME(#3224) as above
-            Right(data.data.take_unwrap())
-        } else {
-            cast::forget(data);
-            Left(this)
+    pub fn try_unwrap(self) -> Either<UnsafeAtomicRcBox<T>, T> {
+        unsafe {
+            let mut this = self; // FIXME(#4330) mutable self
+            let mut data: ~AtomicRcBoxData<T> = cast::transmute(this.data);
+            // This can of course race with anybody else who has a handle, but in
+            // such a case, the returned count will always be at least 2. If we
+            // see 1, no race was possible. All that matters is 1 or not-1.
+            let count = data.count.load(Acquire);
+            assert!(count >= 1);
+            // The more interesting race is one with an unwrapper. They may have
+            // already dropped their count -- but if so, the unwrapper pointer
+            // will have been set first, which the barriers ensure we will see.
+            // (Note: using is_empty(), not take(), to not free the unwrapper.)
+            if count == 1 && data.unwrapper.is_empty(Acquire) {
+                // Tell this handle's destructor not to run (we are now it).
+                this.data = ptr::mut_null();
+                // FIXME(#3224) as above
+                Right(data.data.take_unwrap())
+            } else {
+                cast::forget(data);
+                Left(this)
+            }
         }
     }
 }
@@ -370,7 +377,7 @@ impl<T:Send> Exclusive<T> {
     pub fn unwrap(self) -> T {
         let Exclusive { x: x } = self;
         // Someday we might need to unkillably unwrap an Exclusive, but not today.
-        let inner = unsafe { x.unwrap() };
+        let inner = x.unwrap();
         let ExData { data: user_data, _ } = inner; // will destroy the LittleLock
         user_data
     }
@@ -472,51 +479,43 @@ mod tests {
 
     #[test]
     fn arclike_unwrap_basic() {
-        unsafe {
-            let x = UnsafeAtomicRcBox::new(~~"hello");
-            assert!(x.unwrap() == ~~"hello");
-        }
+        let x = UnsafeAtomicRcBox::new(~~"hello");
+        assert!(x.unwrap() == ~~"hello");
     }
 
     #[test]
     fn arclike_try_unwrap() {
-        unsafe {
-            let x = UnsafeAtomicRcBox::new(~~"hello");
-            assert!(x.try_unwrap().expect_right("try_unwrap failed") == ~~"hello");
-        }
+        let x = UnsafeAtomicRcBox::new(~~"hello");
+        assert!(x.try_unwrap().expect_right("try_unwrap failed") == ~~"hello");
     }
 
     #[test]
     fn arclike_try_unwrap_fail() {
-        unsafe {
-            let x = UnsafeAtomicRcBox::new(~~"hello");
-            let x2 = x.clone();
-            let left_x = x.try_unwrap();
-            assert!(left_x.is_left());
-            util::ignore(left_x);
-            assert!(x2.try_unwrap().expect_right("try_unwrap none") == ~~"hello");
-        }
+        let x = UnsafeAtomicRcBox::new(~~"hello");
+        let x2 = x.clone();
+        let left_x = x.try_unwrap();
+        assert!(left_x.is_left());
+        util::ignore(left_x);
+        assert!(x2.try_unwrap().expect_right("try_unwrap none") == ~~"hello");
     }
 
     #[test]
     fn arclike_try_unwrap_unwrap_race() {
         // When an unwrap and a try_unwrap race, the unwrapper should always win.
-        unsafe {
-            let x = UnsafeAtomicRcBox::new(~~"hello");
-            let x2 = Cell::new(x.clone());
-            let (p,c) = comm::stream();
-            do task::spawn {
-                c.send(());
-                assert!(x2.take().unwrap() == ~~"hello");
-                c.send(());
-            }
-            p.recv();
-            task::yield(); // Try to make the unwrapper get blocked first.
-            let left_x = x.try_unwrap();
-            assert!(left_x.is_left());
-            util::ignore(left_x);
-            p.recv();
+        let x = UnsafeAtomicRcBox::new(~~"hello");
+        let x2 = Cell::new(x.clone());
+        let (p,c) = comm::stream();
+        do task::spawn {
+            c.send(());
+            assert!(x2.take().unwrap() == ~~"hello");
+            c.send(());
         }
+        p.recv();
+        task::yield(); // Try to make the unwrapper get blocked first.
+        let left_x = x.try_unwrap();
+        assert!(left_x.is_left());
+        util::ignore(left_x);
+        p.recv();
     }
 
     #[test]
