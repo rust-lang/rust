@@ -148,7 +148,7 @@ pub fn get_rustpkg_root() -> Result<Path, ~str> {
 }
 
 pub fn get_rustpkg_root_nearest() -> Result<Path, ~str> {
-    do result::chain(get_rustpkg_root()) |p| {
+    get_rustpkg_root().chain( |p| {
         let cwd = os::getcwd();
         let cwd_rustpkg = cwd.push(".rustpkg");
         let rustpkg_is_non_root_file =
@@ -170,19 +170,19 @@ pub fn get_rustpkg_root_nearest() -> Result<Path, ~str> {
             }
         }
         rslt
-    }
+    })
 }
 
 fn get_rustpkg_lib_path() -> Result<Path, ~str> {
-    do result::chain(get_rustpkg_root()) |p| {
+    get_rustpkg_root().chain( |p| {
         result::Ok(p.push(libdir()))
-    }
+    })
 }
 
 fn get_rustpkg_lib_path_nearest() -> Result<Path, ~str> {
-    do result::chain(get_rustpkg_root_nearest()) |p| {
+    get_rustpkg_root_nearest().chain( |p| {
         result::Ok(p.push(libdir()))
-    }
+    })
 }
 
 // The name of the directory rustc expects libraries to be located.

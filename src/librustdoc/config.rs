@@ -138,55 +138,55 @@ fn config_from_opts(
 
     let config = default_config(input_crate);
     let result = result::Ok(config);
-    let result = do result::chain(result) |config| {
+    let result = result.chain( |config| {
         let output_dir = getopts::opt_maybe_str(matches, opt_output_dir());
         let output_dir = output_dir.map(|s| Path(*s));
         result::Ok(Config {
             output_dir: output_dir.get_or_default(config.output_dir.clone()),
             .. config
         })
-    };
-    let result = do result::chain(result) |config| {
+    });
+    let result = result.chain( |config| {
         let output_format = getopts::opt_maybe_str(
             matches, opt_output_format());
         do output_format.map_default(result::Ok(config.clone()))
             |output_format| {
-            do result::chain(parse_output_format(*output_format))
+            parse_output_format(*output_format).chain(
                 |output_format| {
 
                 result::Ok(Config {
                     output_format: output_format,
                     .. config.clone()
                 })
-            }
+            })
         }
-    };
-    let result = do result::chain(result) |config| {
+    });
+    let result = result.chain( |config| {
         let output_style =
             getopts::opt_maybe_str(matches, opt_output_style());
         do output_style.map_default(result::Ok(config.clone()))
             |output_style| {
-            do result::chain(parse_output_style(*output_style))
+            parse_output_style(*output_style).chain(
                 |output_style| {
                 result::Ok(Config {
                     output_style: output_style,
                     .. config.clone()
                 })
-            }
+            })
         }
-    };
+    });
     let process_output = Cell::new(process_output);
-    let result = do result::chain(result) |config| {
+    let result = result.chain( |config| {
         let pandoc_cmd = getopts::opt_maybe_str(matches, opt_pandoc_cmd());
         let pandoc_cmd = maybe_find_pandoc(
             &config, pandoc_cmd, process_output.take());
-        do result::chain(pandoc_cmd) |pandoc_cmd| {
+        pandoc_cmd.chain( |pandoc_cmd| {
             result::Ok(Config {
                 pandoc_cmd: pandoc_cmd,
                 .. config.clone()
             })
-        }
-    };
+        })
+    });
     return result;
 }
 
