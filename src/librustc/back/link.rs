@@ -76,9 +76,9 @@ pub fn WriteOutputFile(sess: Session,
         OptLevel: c_int,
         EnableSegmentedStacks: bool) {
     unsafe {
-        do str::as_c_str(Triple) |Triple| {
-            do str::as_c_str(Feature) |Feature| {
-                do str::as_c_str(Output) |Output| {
+        do Triple.as_c_str |Triple| {
+            do Feature.as_c_str |Feature| {
+                do Output.as_c_str |Output| {
                     let result = llvm::LLVMRustWriteOutputFile(
                             PM,
                             M,
@@ -263,16 +263,16 @@ pub mod write {
                   output_type_bitcode => {
                     if opts.optimize != session::No {
                         let filename = output.with_filetype("no-opt.bc");
-                        str::as_c_str(filename.to_str(), |buf| {
-                            llvm::LLVMWriteBitcodeToFile(llmod, buf)
-                        });
+                        do filename.to_str().as_c_str |buf| {
+                            llvm::LLVMWriteBitcodeToFile(llmod, buf);
+                        }
                     }
                   }
                   _ => {
                     let filename = output.with_filetype("bc");
-                    str::as_c_str(filename.to_str(), |buf| {
-                        llvm::LLVMWriteBitcodeToFile(llmod, buf)
-                    });
+                    do filename.to_str().as_c_str |buf| {
+                        llvm::LLVMWriteBitcodeToFile(llmod, buf);
+                    }
                   }
                 }
             }
@@ -333,9 +333,9 @@ pub mod write {
                     // Always output the bitcode file with --save-temps
 
                     let filename = output.with_filetype("opt.bc");
-                    str::as_c_str(filename.to_str(), |buf| {
+                    do filename.to_str().as_c_str |buf| {
                         llvm::LLVMWriteBitcodeToFile(llmod, buf)
-                    });
+                    };
                     // Save the assembly file if -S is used
                     if output_type == output_type_assembly {
                         WriteOutputFile(
@@ -391,13 +391,15 @@ pub mod write {
 
             if output_type == output_type_llvm_assembly {
                 // Given options "-S --emit-llvm": output LLVM assembly
-                str::as_c_str(output.to_str(), |buf_o| {
-                    llvm::LLVMRustAddPrintModulePass(pm.llpm, llmod, buf_o)});
+                do output.to_str().as_c_str |buf_o| {
+                    llvm::LLVMRustAddPrintModulePass(pm.llpm, llmod, buf_o);
+                }
             } else {
                 // If only a bitcode file is asked for by using the
                 // '--emit-llvm' flag, then output it here
-                str::as_c_str(output.to_str(),
-                            |buf| llvm::LLVMWriteBitcodeToFile(llmod, buf) );
+                do output.to_str().as_c_str |buf| {
+                    llvm::LLVMWriteBitcodeToFile(llmod, buf);
+                }
             }
 
             llvm::LLVMDisposeModule(llmod);

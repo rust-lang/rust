@@ -186,9 +186,9 @@ pub fn metadata_matches(extern_metas: &[@ast::MetaItem],
 fn get_metadata_section(os: os,
                         filename: &Path) -> Option<@~[u8]> {
     unsafe {
-        let mb = str::as_c_str(filename.to_str(), |buf| {
+        let mb = do filename.to_str().as_c_str |buf| {
             llvm::LLVMRustCreateMemoryBufferWithContentsOfFile(buf)
-        });
+        };
         if mb as int == 0 { return option::None::<@~[u8]>; }
         let of = match mk_object_file(mb) {
             option::Some(of) => of,

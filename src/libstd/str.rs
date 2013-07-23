@@ -773,51 +773,6 @@ static TAG_THREE_B: uint = 224u;
 static MAX_THREE_B: uint = 65536u;
 static TAG_FOUR_B: uint = 240u;
 
-/**
- * A dummy trait to hold all the utility methods that we implement on strings.
- */
-pub trait StrUtil {
-    /**
-     * Work with the byte buffer of a string as a null-terminated C string.
-     *
-     * Allows for unsafe manipulation of strings, which is useful for foreign
-     * interop. This is similar to `str::as_buf`, but guarantees null-termination.
-     * If the given slice is not already null-terminated, this function will
-     * allocate a temporary, copy the slice, null terminate it, and pass
-     * that instead.
-     *
-     * # Example
-     *
-     * ~~~ {.rust}
-     * let s = "PATH".as_c_str(|path| libc::getenv(path));
-     * ~~~
-     */
-    fn as_c_str<T>(self, f: &fn(*libc::c_char) -> T) -> T;
-}
-
-impl<'self> StrUtil for &'self str {
-    #[inline]
-    fn as_c_str<T>(self, f: &fn(*libc::c_char) -> T) -> T {
-        do self.as_buf |buf, len| {
-            // NB: len includes the trailing null.
-            assert!(len > 0);
-            if unsafe { *(ptr::offset(buf,len-1)) != 0 } {
-                to_owned(self).as_c_str(|s| f(s))
-            } else {
-                f(buf as *libc::c_char)
-            }
-        }
-    }
-}
-
-/**
- * Deprecated. Use the `as_c_str` method on strings instead.
- */
-#[inline]
-pub fn as_c_str<T>(s: &str, f: &fn(*libc::c_char) -> T) -> T {
-    s.as_c_str(f)
-}
-
 /// Unsafe operations
 pub mod raw {
     use cast;
@@ -1271,6 +1226,7 @@ pub trait StrSlice<'self> {
     fn subslice_offset(&self, inner: &str) -> uint;
 
     fn as_buf<T>(&self, f: &fn(*u8, uint) -> T) -> T;
+    fn as_c_str<T>(&self, f: &fn(*libc::c_char) -> T) -> T;
 }
 
 /// Extension methods for strings
@@ -2025,6 +1981,34 @@ impl<'self> StrSlice<'self> for &'self str {
             let v: *(*u8, uint) = cast::transmute(self);
             let (buf, len) = *v;
             f(buf, len)
+        }
+    }
+
+    /**
+     * Work with the byte buffer of a string as a null-terminated C string.
+     *
+     * Allows for unsafe manipulation of strings, which is useful for foreign
+     * interop. This is similar to `str::as_buf`, but guarantees null-termination.
+     * If the given slice is not already null-terminated, this function will
+     * allocate a temporary, copy the slice, null terminate it, and pass
+     * that instead.
+     *
+     * # Example
+     *
+     * ~~~ {.rust}
+     * let s = "PATH".as_c_str(|path| libc::getenv(path));
+     * ~~~
+     */
+    #[inline]
+    fn as_c_str<T>(&self, f: &fn(*libc::c_char) -> T) -> T {
+        do self.as_buf |buf, len| {
+            // NB: len includes the trailing null.
+            assert!(len > 0);
+            if unsafe { *(ptr::offset(buf, len - 1)) != 0 } {
+                self.to_owned().as_c_str(|s| f(s))
+            } else {
+                f(buf as *libc::c_char)
+            }
         }
     }
 }

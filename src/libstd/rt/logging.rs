@@ -46,17 +46,15 @@ impl Logger for StdErrLogger {
 /// per-module global logging flags based on the logging spec
 pub fn init(crate_map: *u8) {
     use os;
-    use str;
+    use str::StrSlice;
     use ptr;
     use option::{Some, None};
 
     let log_spec = os::getenv("RUST_LOG");
     match log_spec {
         Some(spec) => {
-            do str::as_c_str(spec) |s| {
-                unsafe {
-                    rust_update_log_settings(crate_map, s);
-                }
+            do spec.as_c_str |buf| {
+                unsafe { rust_update_log_settings(crate_map, buf) }
             }
         }
         None => {

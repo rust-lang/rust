@@ -65,7 +65,6 @@ use util::ppaux::ty_to_str;
 use std::hashmap::HashMap;
 use std::libc::{c_uint, c_ulonglong, c_longlong};
 use std::ptr;
-use std::str::as_c_str;
 use std::vec;
 use syntax::codemap::span;
 use syntax::{ast, codemap, ast_util, ast_map};
@@ -159,7 +158,7 @@ pub fn create_local_var_metadata(bcx: block, local: @ast::Local) -> DIVariable {
         Some(_) => lexical_block_metadata(bcx)
     };
 
-    let var_metadata = do as_c_str(name) |name| {
+    let var_metadata = do name.as_c_str |name| {
         unsafe {
             llvm::LLVMDIBuilderCreateLocalVariable(
                 DIB(cx),
@@ -225,7 +224,7 @@ pub fn create_argument_metadata(bcx: block, arg: &ast::arg, span: span) -> Optio
             // XXX: This is wrong; it should work for multiple bindings.
             let ident = path.idents.last();
             let name: &str = cx.sess.str_of(*ident);
-            let var_metadata = do as_c_str(name) |name| {
+            let var_metadata = do name.as_c_str |name| {
                 unsafe {
                     llvm::LLVMDIBuilderCreateLocalVariable(
                         DIB(cx),
@@ -354,8 +353,8 @@ pub fn create_function_metadata(fcx: fn_ctxt) -> DISubprogram {
     };
 
     let fn_metadata =
-        do as_c_str(cx.sess.str_of(ident)) |name| {
-        do as_c_str(cx.sess.str_of(ident)) |linkage| {
+        do cx.sess.str_of(ident).as_c_str |name| {
+        do cx.sess.str_of(ident).as_c_str |linkage| {
             unsafe {
                 llvm::LLVMDIBuilderCreateFunction(
                     DIB(cx),
@@ -402,11 +401,11 @@ fn compile_unit_metadata(cx: @mut CrateContext) {
     let work_dir = cx.sess.working_dir.to_str();
     let producer = fmt!("rustc version %s", env!("CFG_VERSION"));
 
-    do as_c_str(crate_name) |crate_name| {
-    do as_c_str(work_dir) |work_dir| {
-    do as_c_str(producer) |producer| {
-    do as_c_str("") |flags| {
-    do as_c_str("") |split_name| {
+    do crate_name.as_c_str |crate_name| {
+    do work_dir.as_c_str |work_dir| {
+    do producer.as_c_str |producer| {
+    do "".as_c_str |flags| {
+    do "".as_c_str |split_name| {
         unsafe {
             llvm::LLVMDIBuilderCreateCompileUnit(dcx.builder,
                 DW_LANG_RUST as c_uint, crate_name, work_dir, producer,
@@ -433,8 +432,8 @@ fn file_metadata(cx: &mut CrateContext, full_path: &str) -> DIFile {
         };
 
     let file_metadata =
-        do as_c_str(file_name) |file_name| {
-        do as_c_str(work_dir) |work_dir| {
+        do file_name.as_c_str |file_name| {
+        do work_dir.as_c_str |work_dir| {
             unsafe {
                 llvm::LLVMDIBuilderCreateFile(DIB(cx), file_name, work_dir)
             }
@@ -522,7 +521,7 @@ fn basic_type_metadata(cx: &mut CrateContext, t: ty::t) -> DIType {
 
     let llvm_type = type_of::type_of(cx, t);
     let (size, align) = size_and_align_of(cx, llvm_type);
-    let ty_metadata = do as_c_str(name) |name| {
+    let ty_metadata = do name.as_c_str |name| {
         unsafe {
             llvm::LLVMDIBuilderCreateBasicType(
                 DIB(cx),
@@ -543,7 +542,7 @@ fn pointer_type_metadata(cx: &mut CrateContext,
     let pointer_llvm_type = type_of::type_of(cx, pointer_type);
     let (pointer_size, pointer_align) = size_and_align_of(cx, pointer_llvm_type);
     let name = ty_to_str(cx.tcx, pointer_type);
-    let ptr_metadata = do as_c_str(name) |name| {
+    let ptr_metadata = do name.as_c_str |name| {
         unsafe {
             llvm::LLVMDIBuilderCreatePointerType(
                 DIB(cx),
@@ -1038,7 +1037,7 @@ fn unimplemented_type_metadata(cx: &mut CrateContext, t: ty::t) -> DIType {
     debug!("unimplemented_type_metadata: %?", ty::get(t));
 
     let name = ty_to_str(cx.tcx, t);
-    let metadata = do as_c_str(fmt!("NYI<%s>", name)) |name| {
+    let metadata = do fmt!("NYI<%s>", name).as_c_str |name| {
         unsafe {
             llvm::LLVMDIBuilderCreateBasicType(
                 DIB(cx),
