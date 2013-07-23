@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // xfail-fast
+// xfail-win32 #7999
 
 use std::comm;
 use std::task;

@@ -11,6 +11,7 @@
 // except according to those terms.
 
 // xfail-test needs sleep
+// xfail-win32 #7999
 
 extern mod extra;
 
