@@ -1192,7 +1192,6 @@ pub trait StrSlice<'self> {
     fn subslice_offset(&self, inner: &str) -> uint;
 
     fn as_imm_buf<T>(&self, f: &fn(*u8, uint) -> T) -> T;
-    fn as_mut_buf<T>(&self, f: &fn(*mut u8, uint) -> T) -> T;
     fn as_c_str<T>(&self, f: &fn(*libc::c_char) -> T) -> T;
 }
 
@@ -1966,23 +1965,6 @@ impl<'self> StrSlice<'self> for &'self str {
     }
 
     /**
-     * Work with the byte buffer and length of a slice.
-     *
-     * The given length is one byte longer than the 'official' indexable
-     * length of the string. This is to permit probing the byte past the
-     * indexable area for a null byte, as is the case in slices pointing
-     * to full strings, or suffixes of them.
-     */
-    #[inline]
-    fn as_mut_buf<T>(&self, f: &fn(*mut u8, uint) -> T) -> T {
-        unsafe {
-            let v: *(*mut u8, uint) = cast::transmute(self);
-            let (buf, len) = *v;
-            f(buf, len)
-        }
-    }
-
-    /**
      * Work with the byte buffer of a string as a null-terminated C string.
      *
      * Allows for unsafe manipulation of strings, which is useful for foreign
@@ -2056,6 +2038,18 @@ pub trait OwnedStr {
     fn reserve_at_least(&mut self, n: uint);
     fn capacity(&self) -> uint;
     fn to_bytes_with_null(self) -> ~[u8];
+
+    /**
+     * Work with the mutable byte buffer and length of a slice.
+     *
+     * The given length is one byte longer than the 'official' indexable
+     * length of the string. This is to permit probing the byte past the
+     * indexable area for a null byte, as is the case in slices pointing
+     * to full strings, or suffixes of them.
+     *
+     * Make sure any mutations to this buffer keep this string valid UTF8.
+     */
+    fn as_mut_buf<T>(&mut self, f: &fn(*mut u8, uint) -> T) -> T;
 }
 
 impl OwnedStr for ~str {
@@ -2245,6 +2239,12 @@ impl OwnedStr for ~str {
     #[inline]
     fn to_bytes_with_null(self) -> ~[u8] {
         unsafe { ::cast::transmute(self) }
+    }
+
+    #[inline]
+    fn as_mut_buf<T>(&mut self, f: &fn(*mut u8, uint) -> T) -> T {
+        let v: &mut ~[u8] = unsafe { cast::transmute(self) };
+        v.as_mut_buf(f)
     }
 }
 
