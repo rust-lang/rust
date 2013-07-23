@@ -1691,7 +1691,7 @@ pub trait MutableVector<'self, T> {
     unsafe fn unsafe_mut_ref(&self, index: uint) -> *mut T;
     unsafe fn unsafe_set(&self, index: uint, val: T);
 
-    fn as_mut_buf<U>(&self, f: &fn(*mut T, uint) -> U) -> U;
+    fn as_mut_buf<U>(self, f: &fn(*mut T, uint) -> U) -> U;
 }
 
 impl<'self,T> MutableVector<'self, T> for &'self mut [T] {
@@ -1783,12 +1783,9 @@ impl<'self,T> MutableVector<'self, T> for &'self mut [T] {
 
     /// Similar to `as_imm_buf` but passing a `*mut T`
     #[inline]
-    fn as_mut_buf<U>(&self, f: &fn(*mut T, uint) -> U) -> U {
-        unsafe {
-            let v : *(*mut T,uint) = transmute(self);
-            let (buf,len) = *v;
-            f(buf, len / sys::nonzero_size_of::<T>())
-        }
+    fn as_mut_buf<U>(self, f: &fn(*mut T, uint) -> U) -> U {
+        let (buf, len): (*mut T, uint) = unsafe { transmute(self) };
+        f(buf, len / sys::nonzero_size_of::<T>())
     }
 
 }

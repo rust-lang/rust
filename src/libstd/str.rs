@@ -1957,11 +1957,8 @@ impl<'self> StrSlice<'self> for &'self str {
      */
     #[inline]
     fn as_imm_buf<T>(&self, f: &fn(*u8, uint) -> T) -> T {
-        unsafe {
-            let v: *(*u8, uint) = cast::transmute(self);
-            let (buf, len) = *v;
-            f(buf, len)
-        }
+        let v: &[u8] = unsafe { cast::transmute(*self) };
+        v.as_imm_buf(f)
     }
 
     /**
