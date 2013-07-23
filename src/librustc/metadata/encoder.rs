@@ -21,7 +21,6 @@ use middle;
 
 use std::hash::HashUtil;
 use std::hashmap::{HashMap, HashSet};
-use std::int;
 use std::io;
 use std::str;
 use std::uint;
@@ -290,9 +289,9 @@ fn encode_discriminant(ecx: &EncodeContext,
 
 fn encode_disr_val(_: &EncodeContext,
                    ebml_w: &mut writer::Encoder,
-                   disr_val: int) {
+                   disr_val: uint) {
     ebml_w.start_tag(tag_disr_val);
-    let s = int::to_str(disr_val);
+    let s = uint::to_str(disr_val);
     ebml_w.writer.write(s.as_bytes());
     ebml_w.end_tag();
 }
