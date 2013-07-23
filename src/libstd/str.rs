@@ -2028,7 +2028,7 @@ pub trait OwnedStr {
     fn pop_char(&mut self) -> char;
     fn shift_char(&mut self) -> char;
     fn unshift_char(&mut self, ch: char);
-    fn append(&self, rhs: &str) -> ~str; // FIXME #4850: this should consume self.
+    fn append(self, rhs: &str) -> ~str;
     fn reserve(&mut self, n: uint);
     fn reserve_at_least(&mut self, n: uint);
     fn capacity(&self) -> uint;
@@ -2162,11 +2162,10 @@ impl OwnedStr for ~str {
 
     /// Concatenate two strings together.
     #[inline]
-    fn append(&self, rhs: &str) -> ~str {
-        // FIXME #4850: this should consume self, but that causes segfaults
-        let mut v = self.clone();
-        v.push_str_no_overallocate(rhs);
-        v
+    fn append(self, rhs: &str) -> ~str {
+        let mut new_str = self;
+        new_str.push_str_no_overallocate(rhs);
+        new_str
     }
 
     /**
