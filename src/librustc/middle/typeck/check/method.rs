@@ -194,7 +194,6 @@ impl<'self> LookupContext<'self> {
         self.push_inherent_candidates(self_ty);
         self.push_extension_candidates();
 
-        let mut enum_dids = ~[];
         let mut self_ty = self_ty;
         let mut autoderefs = 0;
         loop {
@@ -236,7 +235,7 @@ impl<'self> LookupContext<'self> {
             }
 
             // Otherwise, perform autoderef.
-            match self.deref(self_ty, &mut enum_dids) {
+            match self.deref(self_ty) {
                 None => { break; }
                 Some(ty) => {
                     self_ty = ty;
@@ -248,20 +247,8 @@ impl<'self> LookupContext<'self> {
         self.search_for_autosliced_method(self_ty, autoderefs)
     }
 
-    pub fn deref(&self, ty: ty::t, enum_dids: &mut ~[ast::def_id])
+    pub fn deref(&self, ty: ty::t)
                  -> Option<ty::t> {
-        match ty::get(ty).sty {
-            ty_enum(did, _) => {
-                // Watch out for newtype'd enums like "enum t = @T".
-                // See discussion in typeck::check::do_autoderef().
-                if enum_dids.iter().any(|x| x == &did) {
-                    return None;
-                }
-                enum_dids.push(did);
-            }
-            _ => {}
-        }
-
         match ty::deref(self.tcx(), ty, false) {
             None => None,
             Some(t) => {
@@ -285,7 +272,6 @@ impl<'self> LookupContext<'self> {
          * we'll want to find the inherent impls for `C`.
          */
 
-        let mut enum_dids = ~[];
         let mut self_ty = self_ty;
         loop {
             match get(self_ty).sty {
@@ -314,7 +300,7 @@ impl<'self> LookupContext<'self> {
             // n.b.: Generally speaking, we only loop if we hit the
             // fallthrough case in the match above.  The exception
             // would be newtype enums.
-            self_ty = match self.deref(self_ty, &mut enum_dids) {
+            self_ty = match self.deref(self_ty) {
                 None => { return; }
                 Some(ty) => { ty }
             }
