@@ -457,7 +457,7 @@ pub fn opt_default(mm: &Matches, nm: &str, def: &str) -> Option<~str> {
     let vals = opt_vals(mm, nm);
     if vals.is_empty() { return None::<~str>; }
     return match vals[0] { Val(ref s) => Some::<~str>((*s).clone()),
-                           _      => Some::<~str>(str::to_owned(def)) }
+                           _      => Some::<~str>(def.to_owned()) }
 }
 
 #[deriving(Eq)]
@@ -497,10 +497,10 @@ pub mod groups {
                   desc: &str, hint: &str) -> OptGroup {
         let len = short_name.len();
         assert!(len == 1 || len == 0);
-        return OptGroup { short_name: str::to_owned(short_name),
-                long_name: str::to_owned(long_name),
-                hint: str::to_owned(hint),
-                desc: str::to_owned(desc),
+        return OptGroup { short_name: short_name.to_owned(),
+                long_name: long_name.to_owned(),
+                hint: hint.to_owned(),
+                desc: desc.to_owned(),
                 hasarg: Yes,
                 occur: Req};
     }
@@ -510,10 +510,10 @@ pub mod groups {
                   desc: &str, hint: &str) -> OptGroup {
         let len = short_name.len();
         assert!(len == 1 || len == 0);
-        return OptGroup {short_name: str::to_owned(short_name),
-                long_name: str::to_owned(long_name),
-                hint: str::to_owned(hint),
-                desc: str::to_owned(desc),
+        return OptGroup {short_name: short_name.to_owned(),
+                long_name: long_name.to_owned(),
+                hint: hint.to_owned(),
+                desc: desc.to_owned(),
                 hasarg: Yes,
                 occur: Optional};
     }
@@ -523,10 +523,10 @@ pub mod groups {
                    desc: &str) -> OptGroup {
         let len = short_name.len();
         assert!(len == 1 || len == 0);
-        return OptGroup {short_name: str::to_owned(short_name),
-                long_name: str::to_owned(long_name),
+        return OptGroup {short_name: short_name.to_owned(),
+                long_name: long_name.to_owned(),
                 hint: ~"",
-                desc: str::to_owned(desc),
+                desc: desc.to_owned(),
                 hasarg: No,
                 occur: Optional};
     }
@@ -536,10 +536,10 @@ pub mod groups {
                       desc: &str, hint: &str) -> OptGroup {
         let len = short_name.len();
         assert!(len == 1 || len == 0);
-        return OptGroup {short_name: str::to_owned(short_name),
-                long_name: str::to_owned(long_name),
-                hint: str::to_owned(hint),
-                desc: str::to_owned(desc),
+        return OptGroup {short_name: short_name.to_owned(),
+                long_name: long_name.to_owned(),
+                hint: hint.to_owned(),
+                desc: desc.to_owned(),
                 hasarg: Maybe,
                 occur: Optional};
     }
@@ -552,10 +552,10 @@ pub mod groups {
                     desc: &str, hint: &str) -> OptGroup {
         let len = short_name.len();
         assert!(len == 1 || len == 0);
-        return OptGroup {short_name: str::to_owned(short_name),
-                long_name: str::to_owned(long_name),
-                hint: str::to_owned(hint),
-                desc: str::to_owned(desc),
+        return OptGroup {short_name: short_name.to_owned(),
+                long_name: long_name.to_owned(),
+                hint: hint.to_owned(),
+                desc: desc.to_owned(),
                 hasarg: Yes,
                 occur: Multi};
     }
@@ -678,7 +678,7 @@ pub mod groups {
             row
         });
 
-        return str::to_owned(brief) +
+        return brief.to_owned() +
                "\n\nOptions:\n" +
                rows.collect::<~[~str]>().connect("\n") +
                "\n\n";

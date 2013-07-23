@@ -12,7 +12,6 @@
 use std::option;
 use std::os;
 use std::result;
-use std::str;
 
 // A module for searching for libraries
 // FIXME (#2658): I'm not happy how this module turned out. Should
@@ -83,7 +82,7 @@ pub fn mk_filesearch(maybe_sysroot: &Option<@Path>,
     @FileSearchImpl {
         sysroot: sysroot,
         addl_lib_search_paths: addl_lib_search_paths,
-        target_triple: str::to_owned(target_triple)
+        target_triple: target_triple.to_owned()
     } as @FileSearch
 }
 
@@ -110,7 +109,7 @@ pub fn search<T>(filesearch: @FileSearch, pick: pick<T>) -> Option<T> {
 
 pub fn relative_target_lib_path(target_triple: &str) -> Path {
     Path(libdir()).push_many([~"rustc",
-                              str::to_owned(target_triple),
+                              target_triple.to_owned(),
                               libdir()])
 }
 
