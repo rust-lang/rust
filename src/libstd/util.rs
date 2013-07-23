@@ -234,7 +234,7 @@ mod tests {
             assert_eq!(*v, 5);
             ~3
         }
-        assert_eq!(*v, 3);
+        assert_eq!(*val, 3);
     }
 
     #[test]
