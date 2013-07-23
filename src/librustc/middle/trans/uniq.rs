@@ -17,8 +17,8 @@ use middle::trans::datum::immediate_rvalue;
 use middle::trans::glue;
 use middle::ty;
 
-pub fn make_free_glue(bcx: block, vptrptr: ValueRef, box_ty: ty::t)
-    -> block {
+pub fn make_free_glue(bcx: @mut Block, vptrptr: ValueRef, box_ty: ty::t)
+    -> @mut Block {
     let _icx = push_ctxt("uniq::make_free_glue");
     let box_datum = immediate_rvalue(Load(bcx, vptrptr), box_ty);
 

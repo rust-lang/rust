@@ -128,11 +128,11 @@ fn shim_types(ccx: @mut CrateContext, id: ast::node_id) -> ShimTypes {
 }
 
 type shim_arg_builder<'self> =
-    &'self fn(bcx: block, tys: &ShimTypes,
+    &'self fn(bcx: @mut Block, tys: &ShimTypes,
               llargbundle: ValueRef) -> ~[ValueRef];
 
 type shim_ret_builder<'self> =
-    &'self fn(bcx: block, tys: &ShimTypes,
+    &'self fn(bcx: @mut Block, tys: &ShimTypes,
               llargbundle: ValueRef,
               llretval: ValueRef);
 
@@ -171,12 +171,12 @@ fn build_shim_fn_(ccx: @mut CrateContext,
     return llshimfn;
 }
 
-type wrap_arg_builder<'self> = &'self fn(bcx: block,
+type wrap_arg_builder<'self> = &'self fn(bcx: @mut Block,
                                          tys: &ShimTypes,
                                          llwrapfn: ValueRef,
                                          llargbundle: ValueRef);
 
-type wrap_ret_builder<'self> = &'self fn(bcx: block,
+type wrap_ret_builder<'self> = &'self fn(bcx: @mut Block,
                                          tys: &ShimTypes,
                                          llargbundle: ValueRef);
 
@@ -369,13 +369,13 @@ pub fn trans_foreign_mod(ccx: @mut CrateContext,
 
         let _icx = push_ctxt("foreign::build_shim_fn");
 
-        fn build_args(bcx: block, tys: &ShimTypes, llargbundle: ValueRef)
+        fn build_args(bcx: @mut Block, tys: &ShimTypes, llargbundle: ValueRef)
                    -> ~[ValueRef] {
             let _icx = push_ctxt("foreign::shim::build_args");
             tys.fn_ty.build_shim_args(bcx, tys.llsig.llarg_tys, llargbundle)
         }
 
-        fn build_ret(bcx: block,
+        fn build_ret(bcx: @mut Block,
                      tys: &ShimTypes,
                      llargbundle: ValueRef,
                      llretval: ValueRef) {
@@ -491,7 +491,7 @@ pub fn trans_foreign_mod(ccx: @mut CrateContext,
                        build_args,
                        build_ret);
 
-        fn build_args(bcx: block,
+        fn build_args(bcx: @mut Block,
                       tys: &ShimTypes,
                       llwrapfn: ValueRef,
                       llargbundle: ValueRef) {
@@ -517,7 +517,7 @@ pub fn trans_foreign_mod(ccx: @mut CrateContext,
             }
         }
 
-        fn build_ret(bcx: block,
+        fn build_ret(bcx: @mut Block,
                      shim_types: &ShimTypes,
                      llargbundle: ValueRef) {
             let _icx = push_ctxt("foreign::wrap::build_ret");
@@ -539,7 +539,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
                        ref_id: Option<ast::node_id>) {
     debug!("trans_intrinsic(item.ident=%s)", ccx.sess.str_of(item.ident));
 
-    fn simple_llvm_intrinsic(bcx: block, name: &'static str, num_args: uint) {
+    fn simple_llvm_intrinsic(bcx: @mut Block, name: &'static str, num_args: uint) {
         assert!(num_args <= 4);
         let mut args = [0 as ValueRef, ..4];
         let first_real_arg = bcx.fcx.arg_pos(0u);
@@ -550,7 +550,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
         Ret(bcx, Call(bcx, llfn, args.slice(0, num_args)));
     }
 
-    fn memcpy_intrinsic(bcx: block, name: &'static str, tp_ty: ty::t, sizebits: u8) {
+    fn memcpy_intrinsic(bcx: @mut Block, name: &'static str, tp_ty: ty::t, sizebits: u8) {
         let ccx = bcx.ccx();
         let lltp_ty = type_of::type_of(ccx, tp_ty);
         let align = C_i32(machine::llalign_of_min(ccx, lltp_ty) as i32);
@@ -571,7 +571,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
         RetVoid(bcx);
     }
 
-    fn memset_intrinsic(bcx: block, name: &'static str, tp_ty: ty::t, sizebits: u8) {
+    fn memset_intrinsic(bcx: @mut Block, name: &'static str, tp_ty: ty::t, sizebits: u8) {
         let ccx = bcx.ccx();
         let lltp_ty = type_of::type_of(ccx, tp_ty);
         let align = C_i32(machine::llalign_of_min(ccx, lltp_ty) as i32);
@@ -592,7 +592,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
         RetVoid(bcx);
     }
 
-    fn count_zeros_intrinsic(bcx: block, name: &'static str) {
+    fn count_zeros_intrinsic(bcx: @mut Block, name: &'static str) {
         let x = get_param(bcx.fcx.llfn, bcx.fcx.arg_pos(0u));
         let y = C_i1(false);
         let llfn = bcx.ccx().intrinsics.get_copy(&name);
@@ -1020,7 +1020,7 @@ pub fn trans_foreign_fn(ccx: @mut CrateContext,
 
         let _icx = push_ctxt("foreign::foreign::build_shim_fn");
 
-        fn build_args(bcx: block, tys: &ShimTypes, llargbundle: ValueRef)
+        fn build_args(bcx: @mut Block, tys: &ShimTypes, llargbundle: ValueRef)
                       -> ~[ValueRef] {
             let _icx = push_ctxt("foreign::extern::shim::build_args");
             let ccx = bcx.ccx();
@@ -1050,7 +1050,7 @@ pub fn trans_foreign_fn(ccx: @mut CrateContext,
             return llargvals;
         }
 
-        fn build_ret(bcx: block,
+        fn build_ret(bcx: @mut Block,
                      shim_types: &ShimTypes,
                      llargbundle: ValueRef,
                      llretval: ValueRef) {
@@ -1107,7 +1107,7 @@ pub fn trans_foreign_fn(ccx: @mut CrateContext,
                        build_args,
                        build_ret);
 
-        fn build_args(bcx: block,
+        fn build_args(bcx: @mut Block,
                       tys: &ShimTypes,
                       llwrapfn: ValueRef,
                       llargbundle: ValueRef) {
@@ -1118,7 +1118,7 @@ pub fn trans_foreign_fn(ccx: @mut CrateContext,
                                       llargbundle);
         }
 
-        fn build_ret(bcx: block, tys: &ShimTypes, llargbundle: ValueRef) {
+        fn build_ret(bcx: @mut Block, tys: &ShimTypes, llargbundle: ValueRef) {
             let _icx = push_ctxt("foreign::foreign::wrap::build_ret");
             tys.fn_ty.build_wrap_ret(bcx, tys.llsig.llarg_tys, llargbundle);
         }

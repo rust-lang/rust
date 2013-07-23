@@ -37,9 +37,9 @@ use middle::trans::type_::Type;
 pub struct Reflector {
     visitor_val: ValueRef,
     visitor_methods: @~[@ty::Method],
-    final_bcx: block,
+    final_bcx: @mut Block,
     tydesc_ty: Type,
-    bcx: block
+    bcx: @mut Block
 }
 
 impl Reflector {
@@ -374,11 +374,11 @@ impl Reflector {
 }
 
 // Emit a sequence of calls to visit_ty::visit_foo
-pub fn emit_calls_to_trait_visit_ty(bcx: block,
+pub fn emit_calls_to_trait_visit_ty(bcx: @mut Block,
                                     t: ty::t,
                                     visitor_val: ValueRef,
                                     visitor_trait_id: def_id)
-                                 -> block {
+                                 -> @mut Block {
     let final = sub_block(bcx, "final");
     let tydesc_ty = ty::get_tydesc_ty(bcx.ccx().tcx).unwrap();
     let tydesc_ty = type_of(bcx.ccx(), tydesc_ty);
