@@ -322,3 +322,31 @@ for it.invert().advance |x| {
     printfln!("%?", x);
 }
 ~~~
+
+## Random-access iterators
+
+The `RandomAccessIterator` trait represents an iterator offering random access
+to the whole range. The `indexable` method retrieves the number of elements
+accessible with the `idx` method.
+
+The `chain_` adaptor is an implementation of `RandomAccessIterator` if the
+underlying iterators are.
+
+~~~
+let xs = [1, 2, 3, 4, 5];
+let ys = ~[7, 9, 11];
+let mut it = xs.iter().chain_(ys.iter());
+printfln!("%?", it.idx(0)); // prints `Some(&1)`
+printfln!("%?", it.idx(5)); // prints `Some(&7)`
+printfln!("%?", it.idx(7)); // prints `Some(&11)`
+printfln!("%?", it.idx(8)); // prints `None`
+
+// yield two elements from the beginning, and one from the end
+it.next();
+it.next();
+it.next_back();
+
+printfln!("%?", it.idx(0)); // prints `Some(&3)`
+printfln!("%?", it.idx(4)); // prints `Some(&9)`
+printfln!("%?", it.idx(6)); // prints `None`
+~~~
