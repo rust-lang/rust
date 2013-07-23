@@ -1,4 +1,3 @@
-
 // Copyright 2012 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
@@ -9,30 +8,32 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait Positioned {
-  fn SetX(&mut self, int);
-  fn X(&self) -> int;
+// There is some other borrowck bug, so we make the stuff not mut.
+
+trait Positioned<S> {
+  fn SetX(&mut self, S);
+  fn X(&self) -> S;
 }
 
-trait Movable: Positioned {
-  fn translate(&mut self, dx: int) {
-    let x = self.X();
-    self.SetX(x + dx);
+trait Movable<S: Add<S, S>>: Positioned<S> {
+  fn translate(&mut self, dx: S) {
+    let x = self.X() + dx;
+    self.SetX(x);
   }
 }
 
-struct Point { x: int, y: int }
+struct Point<S> { x: S, y: S }
 
-impl Positioned for Point {
-    fn SetX(&mut self, x: int) {
+impl<S: Clone> Positioned<S> for Point<S> {
+    fn SetX(&mut self, x: S) {
         self.x = x;
     }
-    fn X(&self) -> int {
-        self.x
+    fn X(&self) -> S {
+        self.x.clone()
     }
 }
 
-impl Movable for Point;
+impl<S: Clone + Add<S, S>> Movable<S> for Point<S>;
 
 pub fn main() {
     let mut p = Point{ x: 1, y: 2};
