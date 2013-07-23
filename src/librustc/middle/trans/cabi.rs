@@ -56,7 +56,7 @@ impl FnType {
         return llfn;
     }
 
-    pub fn build_shim_args(&self, bcx: block, arg_tys: &[Type], llargbundle: ValueRef)
+    pub fn build_shim_args(&self, bcx: @mut Block, arg_tys: &[Type], llargbundle: ValueRef)
                            -> ~[ValueRef] {
         let mut atys: &[LLVMType] = self.arg_tys;
         let mut attrs: &[option::Option<Attribute>] = self.attrs;
@@ -90,7 +90,7 @@ impl FnType {
         return llargvals;
     }
 
-    pub fn build_shim_ret(&self, bcx: block, arg_tys: &[Type], ret_def: bool,
+    pub fn build_shim_ret(&self, bcx: @mut Block, arg_tys: &[Type], ret_def: bool,
                           llargbundle: ValueRef, llretval: ValueRef) {
         for self.attrs.iter().enumerate().advance |(i, a)| {
             match *a {
@@ -120,7 +120,7 @@ impl FnType {
         };
     }
 
-    pub fn build_wrap_args(&self, bcx: block, ret_ty: Type,
+    pub fn build_wrap_args(&self, bcx: @mut Block, ret_ty: Type,
                            llwrapfn: ValueRef, llargbundle: ValueRef) {
         let mut atys: &[LLVMType] = self.arg_tys;
         let mut attrs: &[option::Option<Attribute>] = self.attrs;
@@ -156,7 +156,7 @@ impl FnType {
         store_inbounds(bcx, llretptr, llargbundle, [0u, n]);
     }
 
-    pub fn build_wrap_ret(&self, bcx: block, arg_tys: &[Type], llargbundle: ValueRef) {
+    pub fn build_wrap_ret(&self, bcx: @mut Block, arg_tys: &[Type], llargbundle: ValueRef) {
         if self.ret_ty.ty.kind() == Void {
             return;
         }
