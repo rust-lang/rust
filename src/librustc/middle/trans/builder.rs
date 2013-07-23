@@ -20,7 +20,6 @@ use middle::trans::type_::Type;
 use std::cast;
 use std::hashmap::HashMap;
 use std::libc::{c_uint, c_ulonglong, c_char};
-use std::str;
 use std::vec;
 use syntax::codemap::span;
 
@@ -424,9 +423,9 @@ impl Builder {
             if name.is_empty() {
                 llvm::LLVMBuildAlloca(self.llbuilder, ty.to_ref(), noname())
             } else {
-                str::as_c_str(
-                    name,
-                    |c| llvm::LLVMBuildAlloca(self.llbuilder, ty.to_ref(), c))
+                do name.as_c_str |c| {
+                    llvm::LLVMBuildAlloca(self.llbuilder, ty.to_ref(), c)
+                }
             }
         }
     }
@@ -896,9 +895,9 @@ impl Builder {
             let BB: BasicBlockRef = llvm::LLVMGetInsertBlock(self.llbuilder);
             let FN: ValueRef = llvm::LLVMGetBasicBlockParent(BB);
             let M: ModuleRef = llvm::LLVMGetGlobalParent(FN);
-            let T: ValueRef = str::as_c_str("llvm.trap", |buf| {
+            let T: ValueRef = do "llvm.trap".as_c_str |buf| {
                 llvm::LLVMGetNamedFunction(M, buf)
-            });
+            };
             assert!((T as int != 0));
             let args: &[ValueRef] = [];
             self.count_insn("trap");

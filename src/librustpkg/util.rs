@@ -382,8 +382,8 @@ pub fn link_exe(_src: &Path, _dest: &Path) -> bool {
 pub fn link_exe(src: &Path, dest: &Path) -> bool {
     use std::{libc, str};
     unsafe {
-        do str::as_c_str(src.to_str()) |src_buf| {
-            do str::as_c_str(dest.to_str()) |dest_buf| {
+        do src.to_str().as_c_str |src_buf| {
+            do dest.to_str().as_c_str |dest_buf| {
                 libc::link(src_buf, dest_buf) == 0 as libc::c_int &&
                     libc::chmod(dest_buf, 755) == 0 as libc::c_int
             }

@@ -63,7 +63,7 @@ use iterator::IteratorUtil;
 use ptr;
 use result;
 use str;
-use str::{StrSlice, OwnedStr, StrUtil};
+use str::{StrSlice, OwnedStr};
 use to_str::ToStr;
 use uint;
 use vec;

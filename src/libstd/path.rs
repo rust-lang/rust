@@ -23,7 +23,6 @@ use iterator::IteratorUtil;
 use libc;
 use option::{None, Option, Some};
 use str::{OwnedStr, Str, StrSlice, StrVector};
-use str;
 use to_str::ToStr;
 use ascii::{AsciiCast, AsciiStr};
 use vec::{OwnedVector, ImmutableVector};
@@ -342,13 +341,11 @@ mod stat {
 #[cfg(target_os = "win32")]
 impl WindowsPath {
     pub fn stat(&self) -> Option<libc::stat> {
-        unsafe {
-             do str::as_c_str(self.to_str()) |buf| {
-                let mut st = stat::arch::default_stat();
-                match libc::stat(buf, &mut st) {
-                    0 => Some(st),
-                    _ => None,
-                }
+        do self.to_str().as_c_str |buf| {
+            let mut st = stat::arch::default_stat();
+            match unsafe { libc::stat(buf, &mut st) } {
+                0 => Some(st),
+                _ => None,
             }
         }
     }
@@ -378,13 +375,11 @@ impl WindowsPath {
 #[cfg(not(target_os = "win32"))]
 impl PosixPath {
     pub fn stat(&self) -> Option<libc::stat> {
-        unsafe {
-             do str::as_c_str(self.to_str()) |buf| {
-                let mut st = stat::arch::default_stat();
-                match libc::stat(buf, &mut st) {
-                    0 => Some(st),
-                    _ => None,
-                }
+        do self.to_str().as_c_str |buf| {
+            let mut st = stat::arch::default_stat();
+            match unsafe { libc::stat(buf as *libc::c_char, &mut st) } {
+                0 => Some(st),
+                _ => None,
             }
         }
     }
@@ -458,13 +453,11 @@ impl PosixPath {
 #[cfg(unix)]
 impl PosixPath {
     pub fn lstat(&self) -> Option<libc::stat> {
-        unsafe {
-            do str::as_c_str(self.to_str()) |buf| {
-                let mut st = stat::arch::default_stat();
-                match libc::lstat(buf, &mut st) {
-                    0 => Some(st),
-                    _ => None,
-                }
+        do self.to_str().as_c_str |buf| {
+            let mut st = stat::arch::default_stat();
+            match unsafe { libc::lstat(buf, &mut st) } {
+                0 => Some(st),
+                _ => None,
             }
         }
     }

@@ -12,7 +12,6 @@
 use std::hashmap::HashMap;
 use std::libc::{c_uint, c_ushort};
 use std::option;
-use std::str;
 
 use middle::trans::type_::Type;
 
@@ -2287,10 +2286,9 @@ pub struct TargetData {
 }
 
 pub fn mk_target_data(string_rep: &str) -> TargetData {
-    let lltd =
-        str::as_c_str(string_rep, |buf| unsafe {
-            llvm::LLVMCreateTargetData(buf)
-        });
+    let lltd = do string_rep.as_c_str |buf| {
+        unsafe { llvm::LLVMCreateTargetData(buf) }
+    };
 
     TargetData {
         lltd: lltd,
