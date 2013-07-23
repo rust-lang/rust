@@ -328,7 +328,7 @@ impl KillHandle {
         }
 
         // Try to see if all our children are gone already.
-        match unsafe { self.try_unwrap() } {
+        match self.try_unwrap() {
             // Couldn't unwrap; children still alive. Reparent entire handle as
             // our own tombstone, to be unwrapped later.
             Left(this) => {
@@ -340,7 +340,7 @@ impl KillHandle {
                         // Prefer to check tombstones that were there first,
                         // being "more fair" at the expense of tail-recursion.
                         others.take().map_consume_default(true, |f| f()) && {
-                            let mut inner = unsafe { this.take().unwrap() };
+                            let mut inner = this.take().unwrap();
                             (!inner.any_child_failed) &&
                                 inner.child_tombstones.take_map_default(true, |f| f())
                         }
@@ -429,7 +429,7 @@ impl Death {
         do self.on_exit.take_map |on_exit| {
             if success {
                 // We succeeded, but our children might not. Need to wait for them.
-                let mut inner = unsafe { self.kill_handle.take_unwrap().unwrap() };
+                let mut inner = self.kill_handle.take_unwrap().unwrap();
                 if inner.any_child_failed {
                     success = false;
                 } else {
@@ -555,7 +555,7 @@ mod test {
 
             // Without another handle to child, the try unwrap should succeed.
             child.reparent_children_to(&mut parent);
-            let mut parent_inner = unsafe { parent.unwrap() };
+            let mut parent_inner = parent.unwrap();
             assert!(parent_inner.child_tombstones.is_none());
             assert!(parent_inner.any_child_failed == false);
         }
@@ -570,7 +570,7 @@ mod test {
             child.notify_immediate_failure();
             // Without another handle to child, the try unwrap should succeed.
             child.reparent_children_to(&mut parent);
-            let mut parent_inner = unsafe { parent.unwrap() };
+            let mut parent_inner = parent.unwrap();
             assert!(parent_inner.child_tombstones.is_none());
             // Immediate failure should have been propagated.
             assert!(parent_inner.any_child_failed);
@@ -592,7 +592,7 @@ mod test {
             // Otherwise, due to 'link', it would try to tombstone.
             child2.reparent_children_to(&mut parent);
             // Should successfully unwrap even though 'link' is still alive.
-            let mut parent_inner = unsafe { parent.unwrap() };
+            let mut parent_inner = parent.unwrap();
             assert!(parent_inner.child_tombstones.is_none());
             // Immediate failure should have been propagated by first child.
             assert!(parent_inner.any_child_failed);
@@ -611,7 +611,7 @@ mod test {
             // Let parent collect tombstones.
             util::ignore(link);
             // Must have created a tombstone
-            let mut parent_inner = unsafe { parent.unwrap() };
+            let mut parent_inner = parent.unwrap();
             assert!(parent_inner.child_tombstones.take_unwrap()());
             assert!(parent_inner.any_child_failed == false);
         }
@@ -630,7 +630,7 @@ mod test {
             // Let parent collect tombstones.
             util::ignore(link);
             // Must have created a tombstone
-            let mut parent_inner = unsafe { parent.unwrap() };
+            let mut parent_inner = parent.unwrap();
             // Failure must be seen in the tombstone.
             assert!(parent_inner.child_tombstones.take_unwrap()() == false);
             assert!(parent_inner.any_child_failed == false);
@@ -650,7 +650,7 @@ mod test {
             // Let parent collect tombstones.
             util::ignore(link);
             // Must have created a tombstone
-            let mut parent_inner = unsafe { parent.unwrap() };
+            let mut parent_inner = parent.unwrap();
             assert!(parent_inner.child_tombstones.take_unwrap()());
             assert!(parent_inner.any_child_failed == false);
         }
@@ -671,7 +671,7 @@ mod test {
             // Let parent collect tombstones.
             util::ignore(link);
             // Must have created a tombstone
-            let mut parent_inner = unsafe { parent.unwrap() };
+            let mut parent_inner = parent.unwrap();
             // Failure must be seen in the tombstone.
             assert!(parent_inner.child_tombstones.take_unwrap()() == false);
             assert!(parent_inner.any_child_failed == false);
