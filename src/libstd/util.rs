@@ -227,45 +227,36 @@ mod tests {
         assert!(y.is_some());
     }
 
-    #[deriving(Eq)]
-    enum IntExp {
-        Literal(int),
-        AddExp(~IntExp, ~IntExp)
-    }
-
     #[test]
     fn test_reset() {
-        let mut exp = Literal(1);
-        do reset(&mut exp) |e| {
-            assert_eq!(e, Literal(1));
-            AddExp(~e, ~e)
-        };
-        assert_eq!(exp, AddExp(~Literal(1), ~Literal(1)));
+        let mut val = ~5;
+        do reset(&mut val) |v| {
+            assert_eq!(*v, 5);
+            ~3
+        }
+        assert_eq!(*v, 3);
     }
 
     #[test]
     fn test_pack() {
-        let mut exp = Literal(5);
-        do pack(&mut exp, 3) |e, i| {
-            assert_eq!(e, Literal(5));
+        let mut val = ~7;
+        do pack(&mut val, 3) |v, i| {
+            assert_eq!(*v, 7);
             assert_eq!(i, 3);
-            AddExp(~exp, ~Literal(i))
-        };
-        assert_eq!(exp, AddExp(~Literal(5), ~Literal(3)));
+            ~(*v + i)
+        }
+        assert_eq!(*val, 10);
     }
 
     #[test]
     fn test_unpack() {
-        let mut exp = AddExp(~Literal(2), ~Literal(7));
-        let res = do unpack(&mut exp) |e| {
-            assert_eq!(e,AddExp(~Literal(2), ~Literal(7)));
-            match exp {
-                AddExp(~Literal(x), ~Literal(y)) => (Literal(x+y), x+y),
-                _                                => fail!()
-            }
+        let mut val = ~11;
+        let m = do unpack(&val) |v| {
+            assert_eq!(*v, 11);
+            (v / 5, v % 5)
         };
-        assert_eq!(exp, Literal(9));
-        assert_eq!(res, 9);
+        assert_eq!(val, 2);
+        assert_eq!(m, 1);
     }
 
     #[test]
