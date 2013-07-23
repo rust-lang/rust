@@ -23,7 +23,6 @@ use option::{Some, None};
 use os;
 use prelude::*;
 use ptr;
-use str;
 use task;
 use vec::ImmutableVector;
 
