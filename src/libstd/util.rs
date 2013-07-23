@@ -251,7 +251,7 @@ mod tests {
     #[test]
     fn test_unpack() {
         let mut val = ~11;
-        let m = do unpack(&val) |v| {
+        let m = do unpack(&mut val) |v| {
             assert_eq!(*v, 11);
             (~(*v / 5), *v % 5)
         };
