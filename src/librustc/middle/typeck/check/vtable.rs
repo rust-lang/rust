@@ -18,7 +18,7 @@ use middle::typeck::infer::{resolve_and_force_all_but_regions, resolve_type};
 use middle::typeck::infer;
 use middle::typeck::{CrateCtxt, vtable_origin, vtable_res, vtable_param_res};
 use middle::typeck::{vtable_static, vtable_param, impl_res};
-use middle::typeck::{param_numbered, param_self};
+use middle::typeck::{param_numbered, param_self, param_index};
 use middle::subst::Subst;
 use util::common::indenter;
 use util::ppaux;
@@ -244,49 +244,67 @@ fn lookup_vtable(vcx: &VtableContext,
         }
     };
 
-    match ty::get(ty).sty {
+    // If the type is self or a param, we look at the trait/supertrait
+    // bounds to see if they include the trait we are looking for.
+    let vtable_opt = match ty::get(ty).sty {
         ty::ty_param(param_ty {idx: n, def_id: did}) => {
-            let mut n_bound = 0;
             let type_param_def = tcx.ty_param_defs.get(&did.node);
-            for ty::each_bound_trait_and_supertraits(
-                tcx, type_param_def.bounds.trait_bounds) |bound_trait_ref|
-            {
-                debug!("checking bounds trait %s", bound_trait_ref.repr(vcx.tcx()));
-
-                if bound_trait_ref.def_id == trait_ref.def_id {
-                    relate_trait_refs(vcx,
-                                      location_info,
-                                      bound_trait_ref,
-                                      trait_ref);
-                    let vtable = vtable_param(param_numbered(n), n_bound);
-                    debug!("found param vtable: %?",
-                           vtable);
-                    return Some(vtable);
-                }
-
-                n_bound += 1;
-            }
+            lookup_vtable_from_bounds(vcx, location_info,
+                                      type_param_def.bounds.trait_bounds,
+                                      param_numbered(n),
+                                      trait_ref)
         }
 
         ty::ty_self(trait_id) => {
-            debug!("trying to find %? vtable for type %?",
-                   trait_ref.def_id, trait_id);
-
-            if trait_id == trait_ref.def_id {
-                let vtable = vtable_param(param_self, 0);
-                debug!("found self vtable: %?", vtable);
-                return Some(vtable);
-            }
+            let self_trait_ref = ty::lookup_trait_def(tcx, trait_id).trait_ref;
+            lookup_vtable_from_bounds(vcx, location_info,
+                                      &[self_trait_ref],
+                                      param_self,
+                                      trait_ref)
         }
 
         // Default case just falls through
-        _ => { }
-    }
+        _ => None
+    };
+
+    if vtable_opt.is_some() { return vtable_opt; }
 
     // If we aren't a self type or param, or it was, but we didn't find it,
     // do a search.
     return search_for_vtable(vcx, location_info,
                              ty, trait_ref, is_early)
+}
+
+// Given a list of bounds on a type, search those bounds to see if any
+// of them are the vtable we are looking for.
+fn lookup_vtable_from_bounds(vcx: &VtableContext,
+                             location_info: &LocationInfo,
+                             bounds: &[@ty::TraitRef],
+                             param: param_index,
+                             trait_ref: @ty::TraitRef)
+    -> Option<vtable_origin> {
+    let tcx = vcx.tcx();
+
+    let mut n_bound = 0;
+    for ty::each_bound_trait_and_supertraits(tcx, bounds) |bound_trait_ref| {
+        debug!("checking bounds trait %s",
+               bound_trait_ref.repr(vcx.tcx()));
+
+        if bound_trait_ref.def_id == trait_ref.def_id {
+            relate_trait_refs(vcx,
+                              location_info,
+                              bound_trait_ref,
+                              trait_ref);
+            let vtable = vtable_param(param, n_bound);
+            debug!("found param vtable: %?",
+                   vtable);
+            return Some(vtable);
+        }
+
+        n_bound += 1;
+    }
+
+    return None;
 }
 
 fn search_for_vtable(vcx: &VtableContext,
