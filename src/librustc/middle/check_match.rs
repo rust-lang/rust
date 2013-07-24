@@ -10,7 +10,7 @@
 
 
 use middle::const_eval::{compare_const_vals, lookup_const_by_id};
-use middle::const_eval::{eval_const_expr, const_val, const_bool};
+use middle::const_eval::{eval_const_expr, const_val, const_bool, const_float};
 use middle::pat_util::*;
 use middle::ty::*;
 use middle::ty;
@@ -102,6 +102,22 @@ pub fn check_arms(cx: &MatchCheckCtxt, arms: &[arm]) {
     let mut seen = ~[];
     for arms.iter().advance |arm| {
         for arm.pats.iter().advance |pat| {
+
+            // Check that we do not match against a static NaN (#6804)
+            match cx.tcx.def_map.find(&pat.id) {
+                Some(&def_static(did, false)) => {
+                    let const_expr = lookup_const_by_id(cx.tcx, did).get();
+                    match eval_const_expr(cx.tcx, const_expr) {
+                        const_float(f) if f.is_NaN() => {
+                            let msg = "unmatchable NaN in pattern, use is_NaN() in a guard instead";
+                            cx.tcx.sess.span_warn(pat.span, msg);
+                        }
+                        _ => {}
+                    }
+                }
+                _ => {}
+            }
+
             let v = ~[*pat];
             match is_useful(cx, &seen, v) {
               not_useful => {
