@@ -335,7 +335,7 @@ pub fn normalize_for_monomorphization(tcx: ty::ctxt,
             // Traits have the same runtime representation as closures.
             Some(normalized_closure_ty(tcx, sigil))
         }
-        ty::ty_ptr(_) => {
+        ty::ty_ptr(*) => {
             Some(ty::mk_uint())
         }
         _ => {

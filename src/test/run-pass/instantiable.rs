@@ -14,7 +14,7 @@ use std::ptr;
 // even though it would be if the nxt field had type @foo:
 struct foo(X);
 
-struct X { x: uint, nxt: *foo }
+struct X { x: uint, nxt: *'static foo }
 
 pub fn main() {
     let x = foo(X {x: 0, nxt: ptr::null()});

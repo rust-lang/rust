@@ -13,7 +13,7 @@
 
 extern mod cci_const;
 use cci_const::bar;
-static foo: *u8 = bar;
+static foo: *'static u8 = bar;
 
 pub fn main() {
     assert_eq!(foo, cci_const::bar);

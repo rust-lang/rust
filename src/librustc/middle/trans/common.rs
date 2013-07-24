@@ -678,6 +678,7 @@ pub fn block_parent(cx: @mut Block) -> @mut Block {
 pub fn tuplify_box_ty(tcx: ty::ctxt, t: ty::t) -> ty::t {
     let ptr = ty::mk_ptr(
         tcx,
+        ty::re_static,
         ty::mt {ty: ty::mk_i8(), mutbl: ast::m_imm}
     );
     return ty::mk_tup(tcx, ~[ty::mk_uint(), ty::mk_type(tcx),

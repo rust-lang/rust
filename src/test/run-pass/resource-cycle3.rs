@@ -17,13 +17,13 @@ use std::cast;
 struct U {
     a: int,
     b: int,
-    c: *int
+    c: *'static int
 }
 
 struct R {
   v: U,
   w: int,
-  x: *int,
+  x: *'static int,
 }
 
 impl Drop for R {

@@ -12,7 +12,7 @@
 use std::cast::transmute;
 use std::libc::c_void;
 
-struct NonCopyable(*c_void);
+struct NonCopyable(*'static c_void);
 
 impl Drop for NonCopyable {
     fn drop(&self) {

@@ -121,7 +121,7 @@ impl Coerce {
                 };
             }
 
-            ty::ty_ptr(mt_b) => {
+            ty::ty_ptr(_, mt_b) => {
                 return do self.unpack_actual_value(a) |sty_a| {
                     self.coerce_unsafe_ptr(a, sty_a, b, mt_b)
                 };
@@ -357,6 +357,14 @@ impl Coerce {
                a.inf_str(self.infcx), sty_a,
                b.inf_str(self.infcx));
 
+        // If we have a parameter of type `&M T_a` and the value
+        // provided is `expr`, we will be adding an implicit borrow,
+        // meaning that we convert `f(expr)` to `f(&M *expr)`.  Therefore,
+        // to type check, we will construct the type that `&M*expr` would
+        // yield.
+
+        let r_borrow = self.infcx.next_region_var(Coercion(self.trace));
+
         let mt_a = match *sty_a {
             ty::ty_rptr(_, mt) => mt,
             _ => {
@@ -365,7 +373,7 @@ impl Coerce {
         };
 
         // check that the types which they point at are compatible
-        let a_unsafe = ty::mk_ptr(self.infcx.tcx, mt_a);
+        let a_unsafe = ty::mk_ptr(self.infcx.tcx, r_borrow, mt_a);
         if_ok!(self.subtype(a_unsafe, b));
 
         // although borrowed ptrs and unsafe ptrs have the same
@@ -373,7 +381,7 @@ impl Coerce {
         // regionck knows that the region for `a` must be valid here
         Ok(Some(@AutoDerefRef(AutoDerefRef {
             autoderefs: 1,
-            autoref: Some(ty::AutoUnsafe(mt_b.mutbl))
+            autoref: Some(ty::AutoUnsafe(r_borrow, mt_b.mutbl))
         })))
     }
 }

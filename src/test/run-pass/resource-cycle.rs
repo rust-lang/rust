@@ -12,35 +12,33 @@
 
 use std::cast;
 
-struct r {
-  v: *int,
+struct r<'self> {
+  v: *'self int,
 }
 
-impl Drop for r {
+impl<'self> Drop for r<'self> {
     fn drop(&self) {
         unsafe {
             info!("r's dtor: self = %x, self.v = %x, self.v's value = %x",
               cast::transmute::<*r, uint>(self),
               cast::transmute::<**int, uint>(&(self.v)),
               cast::transmute::<*int, uint>(self.v));
-            let v2: ~int = cast::transmute(self.v);
+            let _v2: ~int = cast::transmute(self.v);
         }
     }
 }
 
-fn r(v: *int) -> r {
-    unsafe {
-        r {
-            v: v
-        }
+fn r<'a>(v: *'a int) -> r<'a> {
+    r {
+        v: v
     }
 }
 
-struct t(Node);
+struct t<'self>(Node<'self>);
 
-struct Node {
-    next: Option<@mut t>,
-    r: r
+struct Node<'self> {
+    next: Option<@mut t<'self>>,
+    r: r<'self>
 }
 
 pub fn main() {
@@ -52,7 +50,7 @@ pub fn main() {
         let i2p = cast::transmute_copy(&i2);
         cast::forget(i2);
 
-        let mut x1 = @mut t(Node{
+        let x1 = @mut t(Node{
             next: None,
               r: {
               let rs = r(i1p);
@@ -64,7 +62,7 @@ pub fn main() {
                cast::transmute::<@mut t, uint>(x1),
                cast::transmute::<*r, uint>(&x1.r));
 
-        let mut x2 = @mut t(Node{
+        let x2 = @mut t(Node{
             next: None,
               r: {
               let rs = r(i2p);

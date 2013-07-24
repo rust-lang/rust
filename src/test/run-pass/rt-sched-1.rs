@@ -15,10 +15,10 @@ use std::comm::*;
 use std::libc;
 
 pub type sched_id = int;
-pub type task_id = *libc::c_void;
+pub type task_id = *'static libc::c_void;
 
-pub type task = *libc::c_void;
-pub type closure = *libc::c_void;
+pub type task = *'static libc::c_void;
+pub type closure = *'static libc::c_void;
 
 mod rustrt {
     use super::{closure, sched_id, task, task_id};

@@ -486,8 +486,8 @@ impl<V:TyVisitor + movable_ptr> TyVisitor for ptr_visit_adaptor<V> {
 struct my_visitor(@mut Stuff);
 
 struct Stuff {
-    ptr1: *c_void,
-    ptr2: *c_void,
+    ptr1: *'static c_void,
+    ptr2: *'static c_void,
     vals: ~[~str]
 }
 
@@ -643,7 +643,7 @@ impl TyVisitor for my_visitor {
     fn visit_closure_ptr(&self, _ck: uint) -> bool { true }
 }
 
-fn get_tydesc_for<T>(_t: T) -> *TyDesc {
+fn get_tydesc_for<T>(_t: T) -> *'static TyDesc {
     unsafe {
         get_tydesc::<T>()
     }

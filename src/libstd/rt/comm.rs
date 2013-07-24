@@ -57,12 +57,12 @@ pub struct PortOne<T> {
 }
 
 pub struct ChanOneHack<T> {
-    void_packet: *mut Void,
+    void_packet: *'static mut Void,
     suppress_finalize: bool
 }
 
 pub struct PortOneHack<T> {
-    void_packet: *mut Void,
+    void_packet: *'static mut Void,
     suppress_finalize: bool
 }
 

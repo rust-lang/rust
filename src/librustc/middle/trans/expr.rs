@@ -784,6 +784,7 @@ fn trans_def_datum_unadjusted(bcx: @mut Block,
         let (rust_ty, llval) = if is_extern {
             let rust_ty = ty::mk_ptr(
                 bcx.tcx(),
+                ty::re_static,
                 ty::mt {
                     ty: ty::mk_mach_uint(ast::ty_u8),
                     mutbl: ast::m_imm

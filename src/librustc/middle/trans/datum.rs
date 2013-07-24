@@ -631,7 +631,7 @@ impl Datum {
             ty::ty_box(_) | ty::ty_uniq(_) => {
                 return (Some(self.box_body(bcx)), bcx);
             }
-            ty::ty_ptr(mt) => {
+            ty::ty_ptr(_, mt) => {
                 if is_auto { // unsafe ptrs are not AUTO-derefable
                     return (None, bcx);
                 } else {

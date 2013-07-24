@@ -15,7 +15,7 @@ use rt::uv::{Request, NativeHandle, Loop, FsCallback};
 use rt::uv::uvll;
 use rt::uv::uvll::*;
 
-pub struct FsRequest(*uvll::uv_fs_t);
+pub struct FsRequest(*'static uvll::uv_fs_t);
 impl Request for FsRequest;
 
 impl FsRequest {
@@ -38,8 +38,8 @@ impl FsRequest {
     }
 }
 
-impl NativeHandle<*uvll::uv_fs_t> for FsRequest {
-    fn from_native_handle(handle: *uvll:: uv_fs_t) -> FsRequest {
+impl NativeHandle<*'static uvll::uv_fs_t> for FsRequest {
+    fn from_native_handle(handle: *'static uvll:: uv_fs_t) -> FsRequest {
         FsRequest(handle)
     }
     fn native_handle(&self) -> *uvll::uv_fs_t {

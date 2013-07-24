@@ -156,13 +156,13 @@ use std::unstable::intrinsics;
 
 // a wrapper around the handle returned by the foreign code
 pub struct Unique<T> {
-    priv ptr: *mut T
+    priv ptr: *'static mut T
 }
 
 impl<T: Send> Unique<T> {
     pub fn new(value: T) -> Unique<T> {
         unsafe {
-            let ptr = malloc(std::sys::size_of::<T>() as size_t) as *mut T;
+            let ptr = malloc(std::sys::size_of::<T>() as size_t) as *'static mut T;
             assert!(!ptr::is_null(ptr));
             // `*ptr` is uninitialized, and `*ptr = value` would attempt to destroy it
             intrinsics::move_val_init(&mut *ptr, value);

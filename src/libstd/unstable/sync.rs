@@ -27,7 +27,7 @@ use kinds::Send;
 ///
 /// Enforces no shared-memory safety.
 pub struct UnsafeAtomicRcBox<T> {
-    data: *mut libc::c_void,
+    data: *'static mut libc::c_void,
 }
 
 struct AtomicRcBoxData<T> {
@@ -237,7 +237,7 @@ impl<T> Drop for UnsafeAtomicRcBox<T>{
 /****************************************************************************/
 
 #[allow(non_camel_case_types)] // runtime type
-type rust_little_lock = *libc::c_void;
+type rust_little_lock = *'static libc::c_void;
 
 pub struct LittleLock {
     l: rust_little_lock,

@@ -158,7 +158,7 @@ pub struct creader_cache_key {
 type creader_cache = @mut HashMap<creader_cache_key, t>;
 
 struct intern_key {
-    sty: *sty,
+    sty: *'static sty,
 }
 
 // NB: Do not replace this with #[deriving(Eq)]. The automatically-derived
@@ -226,7 +226,7 @@ pub enum AutoRef {
     AutoBorrowFn(Region),
 
     /// Convert from T to *T
-    AutoUnsafe(ast::mutability)
+    AutoUnsafe(Region, ast::mutability)
 }
 
 pub type ctxt = @ctxt_;
@@ -346,7 +346,7 @@ pub struct t_box_ {
 // ~15%.) This does mean that a t value relies on the ctxt to keep its box
 // alive, and using ty::get is unsafe when the ctxt is no longer alive.
 enum t_opaque {}
-pub type t = *t_opaque;
+pub type t = *'static t_opaque;
 
 pub fn get(t: t) -> t_box {
     unsafe {
@@ -574,7 +574,7 @@ pub enum sty {
     ty_box(mt),
     ty_uniq(mt),
     ty_evec(mt, vstore),
-    ty_ptr(mt),
+    ty_ptr(Region, mt),
     ty_rptr(Region, mt),
     ty_bare_fn(BareFnTy),
     ty_closure(ClosureTy),
@@ -930,7 +930,9 @@ fn mk_t(cx: ctxt, st: sty) -> t {
         _ => {}
     };
 
-    let key = intern_key { sty: to_unsafe_ptr(&st) };
+    let key = intern_key {
+        sty: unsafe { cast::transmute(to_unsafe_ptr(&st)) }
+    };
     match cx.interner.find(&key) {
       Some(t) => unsafe { return cast::transmute(&t.sty); },
       _ => ()
@@ -979,10 +981,10 @@ fn mk_t(cx: ctxt, st: sty) -> t {
         flags |= sflags(substs);
       }
       &ty_box(ref m) | &ty_uniq(ref m) | &ty_evec(ref m, _) |
-      &ty_ptr(ref m) | &ty_unboxed_vec(ref m) => {
+      &ty_unboxed_vec(ref m) => {
         flags |= get(m.ty).flags;
       }
-      &ty_rptr(r, ref m) => {
+      &ty_ptr(r, ref m) | &ty_rptr(r, ref m) => {
         flags |= rflags(r);
         flags |= get(m.ty).flags;
       }
@@ -1008,7 +1010,7 @@ fn mk_t(cx: ctxt, st: sty) -> t {
         flags: flags,
     };
 
-    let sty_ptr = to_unsafe_ptr(&t.sty);
+    let sty_ptr = unsafe { cast::transmute(to_unsafe_ptr(&t.sty)) };
 
     let key = intern_key {
         sty: sty_ptr,
@@ -1134,9 +1136,13 @@ pub fn mk_imm_uniq(cx: ctxt, ty: t) -> t {
     mk_uniq(cx, mt {ty: ty, mutbl: ast::m_imm})
 }
 
-pub fn mk_ptr(cx: ctxt, tm: mt) -> t { mk_t(cx, ty_ptr(tm)) }
+pub fn mk_ptr(cx: ctxt, r: Region, tm: mt) -> t {
+    mk_t(cx, ty_ptr(r, tm))
+}
 
-pub fn mk_rptr(cx: ctxt, r: Region, tm: mt) -> t { mk_t(cx, ty_rptr(r, tm)) }
+pub fn mk_rptr(cx: ctxt, r: Region, tm: mt) -> t {
+    mk_t(cx, ty_rptr(r, tm))
+}
 
 pub fn mk_mut_rptr(cx: ctxt, r: Region, ty: t) -> t {
     mk_rptr(cx, r, mt {ty: ty, mutbl: ast::m_mutbl})
@@ -1145,16 +1151,16 @@ pub fn mk_imm_rptr(cx: ctxt, r: Region, ty: t) -> t {
     mk_rptr(cx, r, mt {ty: ty, mutbl: ast::m_imm})
 }
 
-pub fn mk_mut_ptr(cx: ctxt, ty: t) -> t {
-    mk_ptr(cx, mt {ty: ty, mutbl: ast::m_mutbl})
+pub fn mk_mut_ptr(cx: ctxt, r: Region, ty: t) -> t {
+    mk_ptr(cx, r, mt {ty: ty, mutbl: ast::m_mutbl})
 }
 
-pub fn mk_imm_ptr(cx: ctxt, ty: t) -> t {
-    mk_ptr(cx, mt {ty: ty, mutbl: ast::m_imm})
+pub fn mk_imm_ptr(cx: ctxt, r: Region, ty: t) -> t {
+    mk_ptr(cx, r, mt {ty: ty, mutbl: ast::m_imm})
 }
 
-pub fn mk_nil_ptr(cx: ctxt) -> t {
-    mk_ptr(cx, mt {ty: mk_nil(), mutbl: ast::m_imm})
+pub fn mk_nil_ptr(cx: ctxt, r: Region) -> t {
+    mk_ptr(cx, r, mt {ty: mk_nil(), mutbl: ast::m_imm})
 }
 
 pub fn mk_evec(cx: ctxt, tm: mt, t: vstore) -> t {
@@ -1245,7 +1251,7 @@ pub fn maybe_walk_ty(ty: t, f: &fn(t) -> bool) {
       ty_opaque_closure_ptr(_) | ty_infer(_) | ty_param(_) | ty_err => {
       }
       ty_box(ref tm) | ty_evec(ref tm, _) | ty_unboxed_vec(ref tm) |
-      ty_ptr(ref tm) | ty_rptr(_, ref tm) | ty_uniq(ref tm) => {
+      ty_ptr(_, ref tm) | ty_rptr(_, ref tm) | ty_uniq(ref tm) => {
         maybe_walk_ty(tm.ty, f);
       }
       ty_enum(_, ref substs) | ty_struct(_, ref substs) |
@@ -1298,8 +1304,8 @@ fn fold_sty(sty: &sty, fldop: &fn(t) -> t) -> sty {
         ty_uniq(ref tm) => {
             ty_uniq(mt {ty: fldop(tm.ty), mutbl: tm.mutbl})
         }
-        ty_ptr(ref tm) => {
-            ty_ptr(mt {ty: fldop(tm.ty), mutbl: tm.mutbl})
+        ty_ptr(r, ref tm) => {
+            ty_ptr(r, mt {ty: fldop(tm.ty), mutbl: tm.mutbl})
         }
         ty_unboxed_vec(ref tm) => {
             ty_unboxed_vec(mt {ty: fldop(tm.ty), mutbl: tm.mutbl})
@@ -1387,6 +1393,11 @@ pub fn fold_regions_and_ty(
 
     let tb = ty::get(ty);
     match tb.sty {
+      ty::ty_ptr(r, mt) => {
+        let m_r = fldr(r);
+        let m_t = fldt(mt.ty);
+        ty::mk_ptr(cx, m_r, mt {ty: m_t, mutbl: mt.mutbl})
+      }
       ty::ty_rptr(r, mt) => {
         let m_r = fldr(r);
         let m_t = fldt(mt.ty);
@@ -1635,7 +1646,7 @@ pub fn type_is_unique_box(ty: t) -> bool {
 
 pub fn type_is_unsafe_ptr(ty: t) -> bool {
     match get(ty).sty {
-      ty_ptr(_) => return true,
+      ty_ptr(*) => return true,
       _ => return false
     }
 }
@@ -1667,7 +1678,7 @@ pub fn type_is_scalar(ty: t) -> bool {
     match get(ty).sty {
       ty_nil | ty_bool | ty_int(_) | ty_float(_) | ty_uint(_) |
       ty_infer(IntVar(_)) | ty_infer(FloatVar(_)) | ty_type |
-      ty_bare_fn(*) | ty_ptr(_) => true,
+      ty_bare_fn(*) | ty_ptr(*) => true,
       _ => false
     }
 }
@@ -1731,7 +1742,7 @@ fn type_needs_unwind_cleanup_(cx: ctxt, ty: t,
             true
           }
           ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
-          ty_tup(_) | ty_ptr(_) => {
+          ty_tup(_) | ty_ptr(*) => {
             true
           }
           ty_enum(did, ref substs) => {
@@ -2000,7 +2011,7 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
         let result = match get(ty).sty {
             // Scalar and unique types are sendable, freezable, and durable
             ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
-            ty_bare_fn(_) | ty_ptr(_) => {
+            ty_bare_fn(_) | ty_ptr(*) => {
                 TC_NONE
             }
 
@@ -2492,7 +2503,7 @@ pub fn type_is_pod(cx: ctxt, ty: t) -> bool {
     match get(ty).sty {
       // Scalar types
       ty_nil | ty_bot | ty_bool | ty_int(_) | ty_float(_) | ty_uint(_) |
-      ty_type | ty_ptr(_) | ty_bare_fn(_) => result = true,
+      ty_type | ty_ptr(*) | ty_bare_fn(_) => result = true,
       // Boxed types
       ty_box(_) | ty_uniq(_) | ty_closure(_) |
       ty_estr(vstore_uniq) | ty_estr(vstore_box) |
@@ -2601,7 +2612,7 @@ pub fn deref_sty(cx: ctxt, sty: &sty, explicit: bool) -> Option<mt> {
         Some(mt)
       }
 
-      ty_ptr(mt) if explicit => {
+      ty_ptr(_, mt) if explicit => {
         Some(mt)
       }
 
@@ -2804,6 +2815,7 @@ pub fn ty_region(tcx: ctxt,
                  span: span,
                  ty: t) -> Region {
     match get(ty).sty {
+        ty_ptr(r, _) => r,
         ty_rptr(r, _) => r,
         ty_evec(_, vstore_slice(r)) => r,
         ty_estr(vstore_slice(r)) => r,
@@ -2966,8 +2978,8 @@ pub fn adjust_ty(cx: ctxt,
                             borrow_fn(cx, span, r, adjusted_ty)
                         }
 
-                        AutoUnsafe(m) => {
-                            mk_ptr(cx, mt {ty: adjusted_ty, mutbl: m})
+                        AutoUnsafe(r, m) => {
+                            mk_ptr(cx, r, mt {ty: adjusted_ty, mutbl: m})
                         }
                     }
                 }
@@ -3023,7 +3035,7 @@ impl AutoRef {
             ty::AutoBorrowVec(r, m) => ty::AutoBorrowVec(f(r), m),
             ty::AutoBorrowVecRef(r, m) => ty::AutoBorrowVecRef(f(r), m),
             ty::AutoBorrowFn(r) => ty::AutoBorrowFn(f(r)),
-            ty::AutoUnsafe(m) => ty::AutoUnsafe(m),
+            ty::AutoUnsafe(r, m) => ty::AutoUnsafe(f(r), m),
         }
     }
 }
@@ -3320,7 +3332,7 @@ pub fn ty_sort_str(cx: ctxt, t: t) -> ~str {
       ty_uniq(_) => ~"~-ptr",
       ty_evec(_, _) => ~"vector",
       ty_unboxed_vec(_) => ~"unboxed vector",
-      ty_ptr(_) => ~"*-ptr",
+      ty_ptr(_, _) => ~"*-ptr",
       ty_rptr(_, _) => ~"&-ptr",
       ty_bare_fn(_) => ~"extern fn",
       ty_closure(_) => ~"fn",
@@ -4215,6 +4227,10 @@ pub fn normalize_ty(cx: ctxt, t: t) -> t {
         ty_estr(vstore) =>
             // This type has a vstore. Get rid of it
             mk_estr(cx, normalize_vstore(vstore)),
+
+        ty_ptr(_, mt) =>
+            // This type has a region. Get rid of it
+            mk_ptr(cx, re_static, normalize_mt(cx, mt)),
 
         ty_rptr(_, mt) =>
             // This type has a region. Get rid of it

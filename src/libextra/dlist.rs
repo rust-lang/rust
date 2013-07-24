@@ -37,7 +37,7 @@ pub struct DList<T> {
 }
 
 type Link<T> = Option<~Node<T>>;
-struct Rawlink<T> { priv p: *mut T }
+struct Rawlink<T> { priv p: *'static mut T }
 
 struct Node<T> {
     priv next: Link<T>,
@@ -76,7 +76,11 @@ impl<T> Rawlink<T> {
 
     /// Like Option::Some for Rawlink
     fn some(n: &mut T) -> Rawlink<T> {
-        Rawlink{p: ptr::to_mut_unsafe_ptr(n)}
+        unsafe {
+            Rawlink {
+                p: cast::transmute(ptr::to_mut_unsafe_ptr(n))
+            }
+        }
     }
 
     /// Convert the `Rawlink` into an Option value

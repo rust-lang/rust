@@ -23,8 +23,8 @@ use unstable::intrinsics;
 
 /// The representation of a Rust closure
 pub struct Closure {
-    code: *(),
-    env: *(),
+    code: *'static (),
+    env: *'static (),
 }
 
 pub mod rustrt {

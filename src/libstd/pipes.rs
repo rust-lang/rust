@@ -85,7 +85,7 @@ bounded and unbounded protocols allows for less code duplication.
 #[allow(missing_doc)];
 
 use container::Container;
-use cast::{forget, transmute, transmute_copy, transmute_mut};
+use cast::{forget, transmute, transmute_copy, transmute_mut, transmute_mut_region};
 use either::{Either, Left, Right};
 use iterator::IteratorUtil;
 use kinds::Send;
@@ -133,11 +133,11 @@ pub struct Buffer<T> {
 
 pub struct PacketHeader {
     state: State,
-    blocked_task: *rust_task,
+    blocked_task: *'static rust_task,
 
     // This is a transmute_copy of a ~buffer, that can also be cast
     // to a buffer_header if need be.
-    buffer: *libc::c_void,
+    buffer: *'static libc::c_void,
 }
 
 pub fn PacketHeader() -> PacketHeader {
@@ -190,11 +190,11 @@ pub struct Packet<T> {
 }
 
 pub trait HasBuffer {
-    fn set_buffer(&mut self, b: *libc::c_void);
+    fn set_buffer(&mut self, b: *'static libc::c_void);
 }
 
 impl<T:Send> HasBuffer for Packet<T> {
-    fn set_buffer(&mut self, b: *libc::c_void) {
+    fn set_buffer(&mut self, b: *'static libc::c_void) {
         self.header.buffer = b;
     }
 }
@@ -222,20 +222,20 @@ fn unibuffer<T>() -> ~Buffer<Packet<T>> {
 
 pub fn packet<T>() -> *mut Packet<T> {
     let mut b = unibuffer();
-    let p = ptr::to_mut_unsafe_ptr(&mut b.data);
-    // We'll take over memory management from here.
     unsafe {
+        let p = ptr::to_mut_unsafe_ptr(transmute_mut_region(&mut b.data));
+        // We'll take over memory management from here.
         forget(b);
+        p
     }
-    p
 }
 
-pub fn entangle_buffer<T:Send,Tstart:Send>(
+pub fn entangle_buffer<'a, T:Send, Tstart:Send>(
     mut buffer: ~Buffer<T>,
-    init: &fn(*libc::c_void, x: &mut T) -> *mut Packet<Tstart>)
+    init: &fn(*'static libc::c_void, x: &'a mut T) -> *'a mut Packet<Tstart>)
     -> (RecvPacketBuffered<Tstart, T>, SendPacketBuffered<Tstart, T>) {
     unsafe {
-        let p = init(transmute_copy(&buffer), &mut buffer.data);
+        let p = init(transmute_copy(&buffer), transmute_mut_region(&mut buffer.data));
         forget(buffer);
         (RecvPacketBuffered(p), SendPacketBuffered(p))
     }
@@ -662,12 +662,12 @@ message.
 */
 pub type SendPacket<T> = SendPacketBuffered<T, Packet<T>>;
 
-pub fn SendPacket<T>(p: *mut Packet<T>) -> SendPacket<T> {
+pub fn SendPacket<T>(p: *'static mut Packet<T>) -> SendPacket<T> {
     SendPacketBuffered(p)
 }
 
 pub struct SendPacketBuffered<T, Tbuffer> {
-    p: Option<*mut Packet<T>>,
+    p: Option<*'static mut Packet<T>>,
     buffer: Option<BufferResource<Tbuffer>>,
 }
 
@@ -683,7 +683,7 @@ impl<T:Send,Tbuffer:Send> Drop for SendPacketBuffered<T,Tbuffer> {
     }
 }
 
-pub fn SendPacketBuffered<T,Tbuffer>(p: *mut Packet<T>)
+pub fn SendPacketBuffered<T,Tbuffer>(p: *'static mut Packet<T>)
                                      -> SendPacketBuffered<T,Tbuffer> {
     SendPacketBuffered {
         p: Some(p),
@@ -719,12 +719,12 @@ impl<T,Tbuffer> SendPacketBuffered<T,Tbuffer> {
 /// message.
 pub type RecvPacket<T> = RecvPacketBuffered<T, Packet<T>>;
 
-pub fn RecvPacket<T>(p: *mut Packet<T>) -> RecvPacket<T> {
+pub fn RecvPacket<T>(p: *'static mut Packet<T>) -> RecvPacket<T> {
     RecvPacketBuffered(p)
 }
 
 pub struct RecvPacketBuffered<T, Tbuffer> {
-    p: Option<*mut Packet<T>>,
+    p: Option<*'static mut Packet<T>>,
     buffer: Option<BufferResource<Tbuffer>>,
 }
 
@@ -763,7 +763,7 @@ impl<T:Send,Tbuffer:Send> Selectable for RecvPacketBuffered<T, Tbuffer> {
     }
 }
 
-pub fn RecvPacketBuffered<T,Tbuffer>(p: *mut Packet<T>)
+pub fn RecvPacketBuffered<T,Tbuffer>(p: *'static mut Packet<T>)
                                      -> RecvPacketBuffered<T,Tbuffer> {
     RecvPacketBuffered {
         p: Some(p),
@@ -824,7 +824,7 @@ pub trait Selectable {
     fn header(&mut self) -> *mut PacketHeader;
 }
 
-impl Selectable for *mut PacketHeader {
+impl Selectable for *'static mut PacketHeader {
     fn header(&mut self) -> *mut PacketHeader { *self }
 }
 

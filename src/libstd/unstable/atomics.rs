@@ -56,7 +56,7 @@ pub struct AtomicUint {
  * An unsafe atomic pointer. Only supports basic atomic operations
  */
 pub struct AtomicPtr<T> {
-    priv p: *mut T
+    priv p: *'static mut T
 }
 
 /**
@@ -64,7 +64,7 @@ pub struct AtomicPtr<T> {
  */
 #[unsafe_no_drop_flag]
 pub struct AtomicOption<T> {
-    priv p: *mut c_void
+    priv p: *'static mut c_void
 }
 
 pub enum Ordering {
@@ -210,7 +210,7 @@ impl AtomicUint {
 }
 
 impl<T> AtomicPtr<T> {
-    pub fn new(p: *mut T) -> AtomicPtr<T> {
+    pub fn new(p: *'static mut T) -> AtomicPtr<T> {
         AtomicPtr { p:p }
     }
 
@@ -220,17 +220,20 @@ impl<T> AtomicPtr<T> {
     }
 
     #[inline]
-    pub fn store(&mut self, ptr: *mut T, order: Ordering) {
+    pub fn store(&mut self, ptr: *'static mut T, order: Ordering) {
         unsafe { atomic_store(&mut self.p, ptr, order); }
     }
 
     #[inline]
-    pub fn swap(&mut self, ptr: *mut T, order: Ordering) -> *mut T {
+    pub fn swap(&mut self, ptr: *'static mut T, order: Ordering) -> *mut T {
         unsafe { atomic_swap(&mut self.p, ptr, order) }
     }
 
     #[inline]
-    pub fn compare_and_swap(&mut self, old: *mut T, new: *mut T, order: Ordering) -> *mut T {
+    pub fn compare_and_swap(&mut self,
+                            old: *'static mut T,
+                            new: *'static mut T,
+                            order: Ordering) -> *mut T {
         unsafe { atomic_compare_and_swap(&mut self.p, old, new, order) }
     }
 }

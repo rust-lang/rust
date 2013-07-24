@@ -357,7 +357,7 @@ impl GatherLoanCtxt {
                                              m_imm,
                                              r)
                     }
-                    ty::AutoUnsafe(_) => {}
+                    ty::AutoUnsafe(*) => {}
                 }
             }
         }

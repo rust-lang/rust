@@ -916,7 +916,7 @@ fn convert_whence(whence: SeekStyle) -> i32 {
     };
 }
 
-impl Reader for *libc::FILE {
+impl<'self> Reader for *'self libc::FILE {
     fn read(&self, bytes: &mut [u8], len: uint) -> uint {
         unsafe {
             do bytes.as_mut_buf |buf_p, buf_len| {
@@ -984,11 +984,11 @@ impl<R:Reader,C> Reader for Wrapper<R, C> {
 }
 
 pub struct FILERes {
-    f: *libc::FILE,
+    f: *'static libc::FILE,
 }
 
 impl FILERes {
-    pub fn new(f: *libc::FILE) -> FILERes {
+    pub fn new(f: *'static libc::FILE) -> FILERes {
         FILERes { f: f }
     }
 }
@@ -1001,7 +1001,7 @@ impl Drop for FILERes {
     }
 }
 
-pub fn FILE_reader(f: *libc::FILE, cleanup: bool) -> @Reader {
+pub fn FILE_reader(f: *'static libc::FILE, cleanup: bool) -> @Reader {
     if cleanup {
         @Wrapper { base: f, cleanup: FILERes::new(f) } as @Reader
     } else {
@@ -1151,7 +1151,7 @@ impl<W:Writer,C> Writer for Wrapper<W, C> {
     fn get_type(&self) -> WriterType { File }
 }
 
-impl Writer for *libc::FILE {
+impl<'self> Writer for *'self libc::FILE {
     fn write(&self, v: &[u8]) {
         unsafe {
             do v.as_imm_buf |vbuf, len| {
@@ -1193,7 +1193,7 @@ impl Writer for *libc::FILE {
     }
 }
 
-pub fn FILE_writer(f: *libc::FILE, cleanup: bool) -> @Writer {
+pub fn FILE_writer(f: *'static libc::FILE, cleanup: bool) -> @Writer {
     if cleanup {
         @Wrapper { base: f, cleanup: FILERes::new(f) } as @Writer
     } else {

@@ -194,7 +194,7 @@ impl RestrictionsContext {
                 }
             }
 
-            mc::cat_deref(_, _, mc::unsafe_ptr) => {
+            mc::cat_deref(_, _, mc::unsafe_ptr(*)) => {
                 // We are very trusting when working with unsafe pointers.
                 Safe
             }

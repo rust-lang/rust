@@ -201,7 +201,7 @@ impl Reflector {
                   self.visit("uniq", extra)
               }
           }
-          ty::ty_ptr(ref mt) => {
+          ty::ty_ptr(_, ref mt) => {
               let extra = self.c_mt(mt);
               self.visit("ptr", extra)
           }
@@ -280,7 +280,9 @@ impl Reflector {
             let variants = ty::substd_enum_variants(ccx.tcx, did, substs);
             let llptrty = type_of(ccx, t).ptr_to();
             let opaquety = ty::get_opaque_ty(ccx.tcx).unwrap();
-            let opaqueptrty = ty::mk_ptr(ccx.tcx, ty::mt { ty: opaquety, mutbl: ast::m_imm });
+            let opaqueptrty = ty::mk_ptr(ccx.tcx,
+                                         ty::re_bound(ty::br_anon(0)),
+                                         ty::mt { ty: opaquety, mutbl: ast::m_imm });
 
             let make_get_disr = || {
                 let sub_path = bcx.fcx.path + &[path_name(special_idents::anon)];

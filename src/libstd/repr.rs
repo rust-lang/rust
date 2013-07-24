@@ -117,12 +117,12 @@ enum VariantState {
 }
 
 pub struct ReprVisitor {
-    ptr: @mut *c_void,
-    ptr_stk: @mut ~[*c_void],
+    ptr: @mut *'static c_void,
+    ptr_stk: @mut ~[*'static c_void],
     var_stk: @mut ~[VariantState],
     writer: @Writer
 }
-pub fn ReprVisitor(ptr: *c_void, writer: @Writer) -> ReprVisitor {
+pub fn ReprVisitor(ptr: *'static c_void, writer: @Writer) -> ReprVisitor {
     ReprVisitor {
         ptr: @mut ptr,
         ptr_stk: @mut ~[],
@@ -161,7 +161,7 @@ impl ReprVisitor {
     }
 
     #[inline]
-    pub fn visit_ptr_inner(&self, ptr: *c_void, inner: *TyDesc) -> bool {
+    pub fn visit_ptr_inner(&self, ptr: *'static c_void, inner: *TyDesc) -> bool {
         unsafe {
             let u = ReprVisitor(ptr, self.writer);
             let v = reflect::MovePtrAdaptor(u);
@@ -377,8 +377,11 @@ impl TyVisitor for ReprVisitor {
         true
     }
 
-    fn visit_rec_field(&self, i: uint, name: &str,
-                       mtbl: uint, inner: *TyDesc) -> bool {
+    fn visit_rec_field(&self,
+                       i: uint,
+                       name: &str,
+                       mtbl: uint,
+                       inner: *TyDesc) -> bool {
         if i != 0 {
             self.writer.write_str(", ");
         }
@@ -400,8 +403,11 @@ impl TyVisitor for ReprVisitor {
         self.writer.write_char('{');
         true
     }
-    fn visit_class_field(&self, i: uint, name: &str,
-                         mtbl: uint, inner: *TyDesc) -> bool {
+    fn visit_class_field(&self,
+                         i: uint,
+                         name: &str,
+                         mtbl: uint,
+                         inner: *TyDesc) -> bool {
         if i != 0 {
             self.writer.write_str(", ");
         }
@@ -440,7 +446,7 @@ impl TyVisitor for ReprVisitor {
 
     fn visit_enter_enum(&self,
                         _n_variants: uint,
-                        get_disr: extern unsafe fn(ptr: *Opaque) -> int,
+                        get_disr: extern unsafe fn(ptr: *'static Opaque) -> int,
                         _sz: uint,
                         _align: uint) -> bool {
         let var_stk: &mut ~[VariantState] = self.var_stk;
@@ -515,7 +521,7 @@ impl TyVisitor for ReprVisitor {
 
     fn visit_leave_enum(&self,
                         _n_variants: uint,
-                        _get_disr: extern unsafe fn(ptr: *Opaque) -> int,
+                        _get_disr: extern unsafe fn(ptr: *'static Opaque) -> int,
                         _sz: uint,
                         _align: uint)
                         -> bool {

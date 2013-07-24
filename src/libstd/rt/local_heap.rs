@@ -24,17 +24,17 @@ type MemoryRegion = c_void;
 struct Env { priv opaque: () }
 
 struct BoxedRegion {
-    env: *Env,
-    backing_region: *MemoryRegion,
-    live_allocs: *BoxRepr
+    env: *'static Env,
+    backing_region: *'static MemoryRegion,
+    live_allocs: *'static BoxRepr
 }
 
 pub type OpaqueBox = c_void;
 pub type TypeDesc = c_void;
 
 pub struct LocalHeap {
-    memory_region: *MemoryRegion,
-    boxed_region: *BoxedRegion
+    memory_region: *'static MemoryRegion,
+    boxed_region: *'static BoxedRegion
 }
 
 impl LocalHeap {

@@ -748,6 +748,16 @@ fn determine_rp_in_ty(ty: &ast::Ty,
     // locations)
     let sess = cx.sess;
     match ty.node {
+        ast::ty_ptr(ref r, _) => {
+            debug!("referenced ptr type %s",
+                   pprust::ty_to_str(ty, sess.intr()));
+
+            if cx.region_is_relevant(r) {
+                let rv = cx.add_variance(rv_contravariant);
+                cx.add_rp(cx.item_id, rv)
+            }
+        }
+
         ast::ty_rptr(ref r, _) => {
             debug!("referenced rptr type %s",
                    pprust::ty_to_str(ty, sess.intr()));
@@ -817,7 +827,7 @@ fn determine_rp_in_ty(ty: &ast::Ty,
 
     match ty.node {
       ast::ty_box(ref mt) | ast::ty_uniq(ref mt) | ast::ty_vec(ref mt) |
-      ast::ty_rptr(_, ref mt) | ast::ty_ptr(ref mt) => {
+      ast::ty_rptr(_, ref mt) | ast::ty_ptr(_, ref mt) => {
         visit_mt(mt, (cx, visitor));
       }
 

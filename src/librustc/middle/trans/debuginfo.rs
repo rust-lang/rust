@@ -849,7 +849,7 @@ fn boxed_type_metadata(cx: &mut CrateContext,
     assert!(box_layout_is_correct(cx, member_llvm_types, content_llvm_type));
 
     let int_type = ty::mk_int();
-    let nil_pointer_type = ty::mk_nil_ptr(cx.tcx);
+    let nil_pointer_type = ty::mk_nil_ptr(cx.tcx, ty::re_static);
 
     let member_types_metadata = [
         type_metadata(cx, int_type, span),
@@ -982,7 +982,9 @@ fn vec_slice_metadata(cx: &mut CrateContext,
 
     assert!(slice_layout_is_correct(cx, member_llvm_types, element_type));
 
-    let data_ptr_type = ty::mk_ptr(cx.tcx, ty::mt { ty: element_type, mutbl: ast::m_imm });
+    let data_ptr_type = ty::mk_ptr(cx.tcx,
+                                   ty::re_static,
+                                   ty::mt { ty: element_type, mutbl: ast::m_imm });
 
     let member_type_metadata = &[type_metadata(cx, data_ptr_type, span),
                                  type_metadata(cx, ty::mk_uint(), span)];
@@ -1018,7 +1020,9 @@ fn bare_fn_metadata(cx: &mut CrateContext,
     let loc = span_start(cx, span);
     let file_metadata = file_metadata(cx, loc.file.name);
 
-    let nil_pointer_type_metadata = type_metadata(cx, ty::mk_nil_ptr(cx.tcx), span);
+    let nil_pointer_type_metadata = type_metadata(cx,
+                                                  ty::mk_nil_ptr(cx.tcx, ty::re_static),
+                                                  span);
     let output_metadata = type_metadata(cx, output, span);
     let output_ptr_metadata = pointer_type_metadata(cx, output, output_metadata);
 
@@ -1145,8 +1149,8 @@ fn type_metadata(cx: &mut CrateContext,
         ty::ty_uniq(ref mt) if ty::type_contents(cx.tcx, mt.ty).contains_managed() => {
             create_pointer_to_box_metadata(cx, t, mt.ty)
         },
-        ty::ty_uniq(ref mt)    |
-        ty::ty_ptr(ref mt)     |
+        ty::ty_uniq(ref mt) |
+        ty::ty_ptr(_, ref mt) |
         ty::ty_rptr(_, ref mt) => {
             let pointee = type_metadata(cx, mt.ty, span);
             pointer_type_metadata(cx, t, pointee)

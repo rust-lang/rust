@@ -278,7 +278,11 @@ fn enc_sty(w: @io::Writer, cx: @ctxt, st: &ty::sty) {
       }
       ty::ty_box(mt) => { w.write_char('@'); enc_mt(w, cx, mt); }
       ty::ty_uniq(mt) => { w.write_char('~'); enc_mt(w, cx, mt); }
-      ty::ty_ptr(mt) => { w.write_char('*'); enc_mt(w, cx, mt); }
+      ty::ty_ptr(r, mt) => {
+        w.write_char('*');
+        enc_region(w, cx, r);
+        enc_mt(w, cx, mt);
+      }
       ty::ty_rptr(r, mt) => {
         w.write_char('&');
         enc_region(w, cx, r);

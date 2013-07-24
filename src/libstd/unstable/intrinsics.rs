@@ -101,15 +101,21 @@ pub trait TyVisitor {
 
     fn visit_enter_rec(&self, n_fields: uint,
                        sz: uint, align: uint) -> bool;
-    fn visit_rec_field(&self, i: uint, name: &str,
-                       mtbl: uint, inner: *TyDesc) -> bool;
+    fn visit_rec_field(&self,
+                       i: uint,
+                       name: &str,
+                       mtbl: uint,
+                       inner: *TyDesc) -> bool;
     fn visit_leave_rec(&self, n_fields: uint,
                        sz: uint, align: uint) -> bool;
 
     fn visit_enter_class(&self, n_fields: uint,
                          sz: uint, align: uint) -> bool;
-    fn visit_class_field(&self, i: uint, name: &str,
-                         mtbl: uint, inner: *TyDesc) -> bool;
+    fn visit_class_field(&self,
+                         i: uint,
+                         name: &str,
+                         mtbl: uint,
+                         inner: *TyDesc) -> bool;
     fn visit_leave_class(&self, n_fields: uint,
                          sz: uint, align: uint) -> bool;
 
@@ -280,7 +286,7 @@ extern "rust-intrinsic" {
     pub fn pref_align_of<T>() -> uint;
 
     /// Get a static pointer to a type descriptor.
-    pub fn get_tydesc<T>() -> *TyDesc;
+    pub fn get_tydesc<T>() -> *'static TyDesc;
 
     /// Create a value initialized to zero.
     ///
@@ -310,7 +316,7 @@ extern "rust-intrinsic" {
     pub fn frame_address(f: &once fn(*u8));
 
     /// Get the address of the `__morestack` stack growth function.
-    pub fn morestack_addr() -> *();
+    pub fn morestack_addr() -> *'static ();
 
     /// Equivalent to the `llvm.memcpy.p0i8.0i8.i32` intrinsic, with a size of
     /// `count` * `size_of::<T>()` and an alignment of `min_align_of::<T>()`

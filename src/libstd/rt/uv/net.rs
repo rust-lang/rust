@@ -23,8 +23,8 @@ use from_str::{FromStr};
 use num;
 
 enum UvIpAddr {
-    UvIpv4(*sockaddr_in),
-    UvIpv6(*sockaddr_in6),
+    UvIpv4(*'static sockaddr_in),
+    UvIpv6(*'static sockaddr_in6),
 }
 
 fn sockaddr_to_UvIpAddr(addr: *uvll::sockaddr) -> UvIpAddr {
@@ -156,7 +156,7 @@ fn test_ip6_conversion() {
 
 // uv_stream t is the parent class of uv_tcp_t, uv_pipe_t, uv_tty_t
 // and uv_file_t
-pub struct StreamWatcher(*uvll::uv_stream_t);
+pub struct StreamWatcher(*'static uvll::uv_stream_t);
 impl Watcher for StreamWatcher { }
 
 impl StreamWatcher {
@@ -169,13 +169,13 @@ impl StreamWatcher {
 
         unsafe { uvll::read_start(self.native_handle(), alloc_cb, read_cb); }
 
-        extern fn alloc_cb(stream: *uvll::uv_stream_t, suggested_size: size_t) -> Buf {
+        extern fn alloc_cb(stream: *'static uvll::uv_stream_t, suggested_size: size_t) -> Buf {
             let mut stream_watcher: StreamWatcher = NativeHandle::from_native_handle(stream);
             let alloc_cb = stream_watcher.get_watcher_data().alloc_cb.get_ref();
             return (*alloc_cb)(suggested_size as uint);
         }
 
-        extern fn read_cb(stream: *uvll::uv_stream_t, nread: ssize_t, buf: Buf) {
+        extern fn read_cb(stream: *'static uvll::uv_stream_t, nread: ssize_t, buf: Buf) {
             rtdebug!("buf addr: %x", buf.base as uint);
             rtdebug!("buf len: %d", buf.len as int);
             let mut stream_watcher: StreamWatcher = NativeHandle::from_native_handle(stream);
@@ -205,7 +205,7 @@ impl StreamWatcher {
         assert_eq!(0, uvll::write(req.native_handle(), self.native_handle(), [buf], write_cb));
         }
 
-        extern fn write_cb(req: *uvll::uv_write_t, status: c_int) {
+        extern fn write_cb(req: *'static uvll::uv_write_t, status: c_int) {
             let write_request: WriteRequest = NativeHandle::from_native_handle(req);
             let mut stream_watcher = write_request.stream();
             write_request.delete();
@@ -231,7 +231,7 @@ impl StreamWatcher {
 
         unsafe { uvll::close(self.native_handle(), close_cb); }
 
-        extern fn close_cb(handle: *uvll::uv_stream_t) {
+        extern fn close_cb(handle: *'static uvll::uv_stream_t) {
             let mut stream_watcher: StreamWatcher = NativeHandle::from_native_handle(handle);
             stream_watcher.get_watcher_data().close_cb.take_unwrap()();
             stream_watcher.drop_watcher_data();
@@ -240,8 +240,8 @@ impl StreamWatcher {
     }
 }
 
-impl NativeHandle<*uvll::uv_stream_t> for StreamWatcher {
-    fn from_native_handle(handle: *uvll::uv_stream_t) -> StreamWatcher {
+impl NativeHandle<*'static uvll::uv_stream_t> for StreamWatcher {
+    fn from_native_handle(handle: *'static uvll::uv_stream_t) -> StreamWatcher {
         StreamWatcher(handle)
     }
     fn native_handle(&self) -> *uvll::uv_stream_t {
@@ -249,7 +249,7 @@ impl NativeHandle<*uvll::uv_stream_t> for StreamWatcher {
     }
 }
 
-pub struct TcpWatcher(*uvll::uv_tcp_t);
+pub struct TcpWatcher(*'static uvll::uv_tcp_t);
 impl Watcher for TcpWatcher { }
 
 impl TcpWatcher {
@@ -296,7 +296,7 @@ impl TcpWatcher {
                 assert_eq!(0, result);
             }
 
-            extern fn connect_cb(req: *uvll::uv_connect_t, status: c_int) {
+            extern fn connect_cb(req: *'static uvll::uv_connect_t, status: c_int) {
                 rtdebug!("connect_t: %x", req as uint);
                 let connect_request: ConnectRequest = NativeHandle::from_native_handle(req);
                 let mut stream_watcher = connect_request.stream();
@@ -321,7 +321,7 @@ impl TcpWatcher {
             assert_eq!(0, uvll::listen(self.native_handle(), BACKLOG, connection_cb));
         }
 
-        extern fn connection_cb(handle: *uvll::uv_stream_t, status: c_int) {
+        extern fn connection_cb(handle: *'static uvll::uv_stream_t, status: c_int) {
             rtdebug!("connection_cb");
             let mut stream_watcher: StreamWatcher = NativeHandle::from_native_handle(handle);
             let cb = stream_watcher.get_watcher_data().connect_cb.get_ref();
@@ -335,8 +335,8 @@ impl TcpWatcher {
     }
 }
 
-impl NativeHandle<*uvll::uv_tcp_t> for TcpWatcher {
-    fn from_native_handle(handle: *uvll::uv_tcp_t) -> TcpWatcher {
+impl NativeHandle<*'static uvll::uv_tcp_t> for TcpWatcher {
+    fn from_native_handle(handle: *'static uvll::uv_tcp_t) -> TcpWatcher {
         TcpWatcher(handle)
     }
     fn native_handle(&self) -> *uvll::uv_tcp_t {
@@ -344,7 +344,7 @@ impl NativeHandle<*uvll::uv_tcp_t> for TcpWatcher {
     }
 }
 
-pub struct UdpWatcher(*uvll::uv_udp_t);
+pub struct UdpWatcher(*'static uvll::uv_udp_t);
 impl Watcher for UdpWatcher { }
 
 impl UdpWatcher {
@@ -383,13 +383,13 @@ impl UdpWatcher {
 
         unsafe { uvll::udp_recv_start(self.native_handle(), alloc_cb, recv_cb); }
 
-        extern fn alloc_cb(handle: *uvll::uv_udp_t, suggested_size: size_t) -> Buf {
+        extern fn alloc_cb(handle: *'static uvll::uv_udp_t, suggested_size: size_t) -> Buf {
             let mut udp_watcher: UdpWatcher = NativeHandle::from_native_handle(handle);
             let alloc_cb = udp_watcher.get_watcher_data().alloc_cb.get_ref();
             return (*alloc_cb)(suggested_size as uint);
         }
 
-        extern fn recv_cb(handle: *uvll::uv_udp_t, nread: ssize_t, buf: Buf,
+        extern fn recv_cb(handle: *'static uvll::uv_udp_t, nread: ssize_t, buf: Buf,
                           addr: *uvll::sockaddr, flags: c_uint) {
             // When there's no data to read the recv callback can be a no-op.
             // This can happen if read returns EAGAIN/EWOULDBLOCK. By ignoring
@@ -432,7 +432,7 @@ impl UdpWatcher {
             assert_eq!(0, result);
         }
 
-        extern fn send_cb(req: *uvll::uv_udp_send_t, status: c_int) {
+        extern fn send_cb(req: *'static uvll::uv_udp_send_t, status: c_int) {
             let send_request: UdpSendRequest = NativeHandle::from_native_handle(req);
             let mut udp_watcher = send_request.handle();
             send_request.delete();
@@ -452,7 +452,7 @@ impl UdpWatcher {
 
         unsafe { uvll::close(self.native_handle(), close_cb); }
 
-        extern fn close_cb(handle: *uvll::uv_udp_t) {
+        extern fn close_cb(handle: *'static uvll::uv_udp_t) {
             let mut udp_watcher: UdpWatcher = NativeHandle::from_native_handle(handle);
             udp_watcher.get_watcher_data().close_cb.take_unwrap()();
             udp_watcher.drop_watcher_data();
@@ -461,8 +461,8 @@ impl UdpWatcher {
     }
 }
 
-impl NativeHandle<*uvll::uv_udp_t> for UdpWatcher {
-    fn from_native_handle(handle: *uvll::uv_udp_t) -> UdpWatcher {
+impl NativeHandle<*'static uvll::uv_udp_t> for UdpWatcher {
+    fn from_native_handle(handle: *'static uvll::uv_udp_t) -> UdpWatcher {
         UdpWatcher(handle)
     }
     fn native_handle(&self) -> *uvll::uv_udp_t {
@@ -471,7 +471,7 @@ impl NativeHandle<*uvll::uv_udp_t> for UdpWatcher {
 }
 
 // uv_connect_t is a subclass of uv_req_t
-struct ConnectRequest(*uvll::uv_connect_t);
+struct ConnectRequest(*'static uvll::uv_connect_t);
 impl Request for ConnectRequest { }
 
 impl ConnectRequest {
@@ -494,8 +494,8 @@ impl ConnectRequest {
     }
 }
 
-impl NativeHandle<*uvll::uv_connect_t> for ConnectRequest {
-    fn from_native_handle(handle: *uvll:: uv_connect_t) -> ConnectRequest {
+impl NativeHandle<*'static uvll::uv_connect_t> for ConnectRequest {
+    fn from_native_handle(handle: *'static uvll:: uv_connect_t) -> ConnectRequest {
         ConnectRequest(handle)
     }
     fn native_handle(&self) -> *uvll::uv_connect_t {
@@ -503,7 +503,7 @@ impl NativeHandle<*uvll::uv_connect_t> for ConnectRequest {
     }
 }
 
-pub struct WriteRequest(*uvll::uv_write_t);
+pub struct WriteRequest(*'static uvll::uv_write_t);
 
 impl Request for WriteRequest { }
 
@@ -526,8 +526,8 @@ impl WriteRequest {
     }
 }
 
-impl NativeHandle<*uvll::uv_write_t> for WriteRequest {
-    fn from_native_handle(handle: *uvll:: uv_write_t) -> WriteRequest {
+impl NativeHandle<*'static uvll::uv_write_t> for WriteRequest {
+    fn from_native_handle(handle: *'static uvll:: uv_write_t) -> WriteRequest {
         WriteRequest(handle)
     }
     fn native_handle(&self) -> *uvll::uv_write_t {
@@ -535,7 +535,7 @@ impl NativeHandle<*uvll::uv_write_t> for WriteRequest {
     }
 }
 
-pub struct UdpSendRequest(*uvll::uv_udp_send_t);
+pub struct UdpSendRequest(*'static uvll::uv_udp_send_t);
 impl Request for UdpSendRequest { }
 
 impl UdpSendRequest {
@@ -557,8 +557,8 @@ impl UdpSendRequest {
     }
 }
 
-impl NativeHandle<*uvll::uv_udp_send_t> for UdpSendRequest {
-    fn from_native_handle(handle: *uvll::uv_udp_send_t) -> UdpSendRequest {
+impl NativeHandle<*'static uvll::uv_udp_send_t> for UdpSendRequest {
+    fn from_native_handle(handle: *'static uvll::uv_udp_send_t) -> UdpSendRequest {
         UdpSendRequest(handle)
     }
     fn native_handle(&self) -> *uvll::uv_udp_send_t {

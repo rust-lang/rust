@@ -246,7 +246,7 @@ pub fn skip_ty<E>(_t: &Ty, (_e,_v): (E, vt<E>)) {}
 pub fn visit_ty<E:Clone>(t: &Ty, (e, v): (E, vt<E>)) {
     match t.node {
         ty_box(ref mt) | ty_uniq(ref mt) |
-        ty_vec(ref mt) | ty_ptr(ref mt) | ty_rptr(_, ref mt) => {
+        ty_vec(ref mt) | ty_ptr(_, ref mt) | ty_rptr(_, ref mt) => {
             (v.visit_ty)(mt.ty, (e, v));
         },
         ty_tup(ref ts) => {

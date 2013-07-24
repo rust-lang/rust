@@ -31,7 +31,8 @@ pub trait region_scope {
 }
 
 #[deriving(Clone)]
-pub enum empty_rscope { empty_rscope }
+pub struct empty_rscope;
+
 impl region_scope for empty_rscope {
     fn anon_region(&self, _span: span) -> Result<ty::Region, RegionError> {
         result::Err(RegionError {

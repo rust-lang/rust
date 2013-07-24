@@ -106,7 +106,7 @@ use iterator::IteratorUtil;
 // Transitionary.
 #[deriving(Eq)]
 enum TaskHandle {
-    OldTask(*rust_task),
+    OldTask(*'static rust_task),
     NewTask(KillHandle),
 }
 
@@ -765,8 +765,10 @@ fn spawn_raw_oldsched(mut opts: TaskOpts, f: ~fn()) {
     // (3a) If any of those fails, it leaves all groups, and does nothing.
     // (3b) Otherwise it builds a task control structure and puts it in TLS,
     // (4) ...and runs the provided body function.
-    fn make_child_wrapper(child: *rust_task, child_arc: TaskGroupArc,
-                          ancestors: AncestorList, is_main: bool,
+    fn make_child_wrapper(child: *'static rust_task,
+                          child_arc: TaskGroupArc,
+                          ancestors: AncestorList,
+                          is_main: bool,
                           notify_chan: Option<Chan<TaskResult>>,
                           f: ~fn())
                        -> ~fn() {

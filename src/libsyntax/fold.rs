@@ -666,7 +666,7 @@ pub fn noop_fold_ty(t: &ty_, fld: @ast_fold) -> ty_ {
         ty_box(ref mt) => ty_box(fold_mt(mt, fld)),
         ty_uniq(ref mt) => ty_uniq(fold_mt(mt, fld)),
         ty_vec(ref mt) => ty_vec(fold_mt(mt, fld)),
-        ty_ptr(ref mt) => ty_ptr(fold_mt(mt, fld)),
+        ty_ptr(region, ref mt) => ty_ptr(region, fold_mt(mt, fld)),
         ty_rptr(region, ref mt) => ty_rptr(region, fold_mt(mt, fld)),
         ty_closure(ref f) => {
             ty_closure(@TyClosure {

@@ -47,8 +47,8 @@ pub unsafe fn buf_len<T>(buf: **T) -> uint {
     position(buf, |i| *i == null())
 }
 
-impl<T> Clone for *T {
-    fn clone(&self) -> *T {
+impl<'self, T> Clone for *'self T {
+    fn clone(&self) -> *'self T {
         *self
     }
 }
@@ -65,11 +65,11 @@ pub unsafe fn position<T>(buf: *T, f: &fn(&T) -> bool) -> uint {
 
 /// Create an unsafe null pointer
 #[inline]
-pub fn null<T>() -> *T { 0 as *T }
+pub fn null<'a, T>() -> *'a T { 0 as *'a T }
 
 /// Create an unsafe mutable null pointer
 #[inline]
-pub fn mut_null<T>() -> *mut T { 0 as *mut T }
+pub fn mut_null<'a, T>() -> *'a mut T { 0 as *'a mut T }
 
 /// Returns true if the pointer is equal to the null pointer.
 #[inline]
@@ -160,7 +160,7 @@ pub unsafe fn zero_memory<T>(dst: *mut T, count: uint) {
  * deinitialising or copying either one.
  */
 #[inline]
-pub unsafe fn swap_ptr<T>(x: *mut T, y: *mut T) {
+pub unsafe fn swap_ptr<T>(x: *'static mut T, y: *'static mut T) {
     // Give ourselves some scratch space to work with
     let mut tmp: T = intrinsics::uninit();
     let t: *mut T = &mut tmp;
@@ -180,7 +180,7 @@ pub unsafe fn swap_ptr<T>(x: *mut T, y: *mut T) {
  * value, without deinitialising or copying either one.
  */
 #[inline]
-pub unsafe fn replace_ptr<T>(dest: *mut T, mut src: T) -> T {
+pub unsafe fn replace_ptr<T>(dest: *'static mut T, mut src: T) -> T {
     swap(cast::transmute(dest), &mut src); // cannot overlap
     src
 }
@@ -189,7 +189,7 @@ pub unsafe fn replace_ptr<T>(dest: *mut T, mut src: T) -> T {
  * Reads the value from `*src` and returns it. Does not copy `*src`.
  */
 #[inline(always)]
-pub unsafe fn read_ptr<T>(src: *mut T) -> T {
+pub unsafe fn read_ptr<T>(src: *'static mut T) -> T {
     let mut tmp: T = intrinsics::uninit();
     copy_nonoverlapping_memory(&mut tmp, src, 1);
     tmp
@@ -200,7 +200,7 @@ pub unsafe fn read_ptr<T>(src: *mut T) -> T {
  * This currently prevents destructors from executing.
  */
 #[inline(always)]
-pub unsafe fn read_and_zero_ptr<T>(dest: *mut T) -> T {
+pub unsafe fn read_and_zero_ptr<T>(dest: *'static mut T) -> T {
     // Copy the data out from `dest`:
     let tmp = read_ptr(dest);
 
@@ -212,19 +212,19 @@ pub unsafe fn read_and_zero_ptr<T>(dest: *mut T) -> T {
 
 /// Transform a region pointer - &T - to an unsafe pointer - *T.
 #[inline]
-pub fn to_unsafe_ptr<T>(thing: &T) -> *T {
+pub fn to_unsafe_ptr<'a, T>(thing: &'a T) -> *'a T {
     thing as *T
 }
 
 /// Transform a const region pointer - &const T - to a const unsafe pointer - *const T.
 #[inline]
-pub fn to_const_unsafe_ptr<T>(thing: &const T) -> *const T {
+pub fn to_const_unsafe_ptr<'a, T>(thing: &'a const T) -> *'a const T {
     thing as *const T
 }
 
 /// Transform a mutable region pointer - &mut T - to a mutable unsafe pointer - *mut T.
 #[inline]
-pub fn to_mut_unsafe_ptr<T>(thing: &mut T) -> *mut T {
+pub fn to_mut_unsafe_ptr<'a, T>(thing: &'a mut T) -> *'a mut T {
     thing as *mut T
 }
 
@@ -277,7 +277,7 @@ pub trait RawPtr<T> {
 }
 
 /// Extension methods for immutable pointers
-impl<T> RawPtr<T> for *T {
+impl<'self, T> RawPtr<T> for *'self T {
     /// Returns true if the pointer is equal to the null pointer.
     #[inline]
     fn is_null(&self) -> bool { is_null(*self) }
@@ -309,7 +309,7 @@ impl<T> RawPtr<T> for *T {
 }
 
 /// Extension methods for mutable pointers
-impl<T> RawPtr<T> for *mut T {
+impl<'self, T> RawPtr<T> for *'self mut T {
     /// Returns true if the pointer is equal to the null pointer.
     #[inline]
     fn is_null(&self) -> bool { is_null(*self) }
@@ -342,7 +342,7 @@ impl<T> RawPtr<T> for *mut T {
 
 // Equality for pointers
 #[cfg(not(test))]
-impl<T> Eq for *const T {
+impl<'self, T> Eq for *'self const T {
     #[inline]
     fn eq(&self, other: &*const T) -> bool {
         (*self as uint) == (*other as uint)
@@ -353,7 +353,7 @@ impl<T> Eq for *const T {
 
 // Comparison for pointers
 #[cfg(not(test))]
-impl<T> Ord for *const T {
+impl<'self, T> Ord for *'self const T {
     #[inline]
     fn lt(&self, other: &*const T) -> bool {
         (*self as uint) < (*other as uint)
@@ -373,41 +373,41 @@ impl<T> Ord for *const T {
 }
 
 #[cfg(not(test))]
-impl<T, I: Int> Add<I, *T> for *T {
+impl<'self, T, I: Int> Add<I, *'self T> for *'self T {
     /// Add an integer value to a pointer to get an offset pointer.
     /// Is calculated according to the size of the type pointed to.
     #[inline]
-    pub fn add(&self, rhs: &I) -> *T {
+    pub fn add(&self, rhs: &I) -> *'self T {
         self.offset(rhs.to_int() as uint)
     }
 }
 
 #[cfg(not(test))]
-impl<T, I: Int> Sub<I, *T> for *T {
+impl<'self, T, I: Int> Sub<I, *'self T> for *'self T {
     /// Subtract an integer value from a pointer to get an offset pointer.
     /// Is calculated according to the size of the type pointed to.
     #[inline]
-    pub fn sub(&self, rhs: &I) -> *T {
+    pub fn sub(&self, rhs: &I) -> *'self T {
         self.offset(-rhs.to_int() as uint)
     }
 }
 
 #[cfg(not(test))]
-impl<T, I: Int> Add<I, *mut T> for *mut T {
+impl<'self, T, I: Int> Add<I, *'self mut T> for *'self mut T {
     /// Add an integer value to a pointer to get an offset pointer.
     /// Is calculated according to the size of the type pointed to.
     #[inline]
-    pub fn add(&self, rhs: &I) -> *mut T {
+    pub fn add(&self, rhs: &I) -> *'self mut T {
         self.offset(rhs.to_int() as uint)
     }
 }
 
 #[cfg(not(test))]
-impl<T, I: Int> Sub<I, *mut T> for *mut T {
+impl<'self, T, I: Int> Sub<I, *'self mut T> for *'self mut T {
     /// Subtract an integer value from a pointer to get an offset pointer.
     /// Is calculated according to the size of the type pointed to.
     #[inline]
-    pub fn sub(&self, rhs: &I) -> *mut T {
+    pub fn sub(&self, rhs: &I) -> *'self mut T {
         self.offset(-rhs.to_int() as uint)
     }
 }
@@ -477,19 +477,11 @@ pub mod ptr_tests {
 
     #[test]
     fn test_buf_len() {
-        let s0 = ~"hello";
-        let s1 = ~"there";
-        let s2 = ~"thing";
-        do str::as_c_str(s0) |p0| {
-            do str::as_c_str(s1) |p1| {
-                do str::as_c_str(s2) |p2| {
-                    let v = ~[p0, p1, p2, null()];
-                    do v.as_imm_buf |vp, len| {
-                        assert_eq!(unsafe { buf_len(vp) }, 3u);
-                        assert_eq!(len, 4u);
-                    }
-                }
-            }
+        let v = ~[1 as *int, 1 as *int, 1 as *int, null()];
+
+        do v.as_imm_buf |vp, len| {
+            assert_eq!(unsafe { buf_len(vp) }, 3u);
+            assert_eq!(len, 4u);
         }
     }
 

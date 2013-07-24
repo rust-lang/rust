@@ -155,7 +155,7 @@ pub mod pipes {
     }
 
     pub struct send_packet<T> {
-        p: Option<*packet<T>>,
+        p: Option<*'static packet<T>>,
     }
 
     #[unsafe_destructor]
@@ -178,14 +178,14 @@ pub mod pipes {
         }
     }
 
-    pub fn send_packet<T:Send>(p: *packet<T>) -> send_packet<T> {
+    pub fn send_packet<T:Send>(p: *'static packet<T>) -> send_packet<T> {
         send_packet {
             p: Some(p)
         }
     }
 
     pub struct recv_packet<T> {
-        p: Option<*packet<T>>,
+        p: Option<*'static packet<T>>,
     }
 
     #[unsafe_destructor]
@@ -208,7 +208,7 @@ pub mod pipes {
         }
     }
 
-    pub fn recv_packet<T:Send>(p: *packet<T>) -> recv_packet<T> {
+    pub fn recv_packet<T:Send>(p: *'static packet<T>) -> recv_packet<T> {
         recv_packet {
             p: Some(p)
         }

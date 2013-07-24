@@ -416,7 +416,9 @@ pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
       ty_float(t) => ast_util::float_ty_to_str(t),
       ty_box(ref tm) => ~"@" + mt_to_str(cx, tm),
       ty_uniq(ref tm) => ~"~" + mt_to_str(cx, tm),
-      ty_ptr(ref tm) => ~"*" + mt_to_str(cx, tm),
+      ty_ptr(r, ref tm) => {
+          region_to_str(cx, "*", true, r) + mt_to_str(cx, tm)
+      }
       ty_rptr(r, ref tm) => {
         region_ptr_to_str(cx, r) + mt_to_str(cx, tm)
       }

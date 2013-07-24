@@ -12,6 +12,6 @@ extern fn f() {
 }
 
 fn main() {
-    // extern functions are *u8 types
-    let _x: &fn() = f; //~ ERROR found `*u8`
+    // extern functions are *'static u8 types
+    let _x: &fn() = f; //~ ERROR found `*'static u8`
 }

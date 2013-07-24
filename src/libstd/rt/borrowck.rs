@@ -29,8 +29,8 @@ static ALL_BITS: uint = FROZEN_BIT | MUT_BIT;
 
 #[deriving(Eq)]
 struct BorrowRecord {
-    box: *mut BoxRepr,
-    file: *c_char,
+    box: *'static mut BoxRepr,
+    file: *'static c_char,
     line: size_t
 }
 
@@ -204,8 +204,8 @@ pub unsafe fn borrow_as_mut(a: *u8, file: *c_char, line: size_t) -> uint {
     old_ref_count
 }
 
-pub unsafe fn record_borrow(a: *u8, old_ref_count: uint,
-                            file: *c_char, line: size_t) {
+pub unsafe fn record_borrow(a: *'static u8, old_ref_count: uint,
+                            file: *'static c_char, line: size_t) {
     if (old_ref_count & ALL_BITS) == 0 {
         // was not borrowed before
         let a: *mut BoxRepr = transmute(a);

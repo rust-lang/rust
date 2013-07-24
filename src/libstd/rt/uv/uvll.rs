@@ -52,7 +52,7 @@ pub struct uv_err_t {
 }
 
 pub struct uv_buf_t {
-    base: *u8,
+    base: *'static u8,
     len: libc::size_t,
 }
 
@@ -69,10 +69,10 @@ pub type uv_stream_t = c_void;
 pub type uv_fs_t = c_void;
 pub type uv_udp_send_t = c_void;
 
-pub type uv_idle_cb = *u8;
-pub type uv_alloc_cb = *u8;
-pub type uv_udp_send_cb = *u8;
-pub type uv_udp_recv_cb = *u8;
+pub type uv_idle_cb = *'static u8;
+pub type uv_alloc_cb = *'static u8;
+pub type uv_udp_send_cb = *'static u8;
+pub type uv_udp_recv_cb = *'static u8;
 
 pub type sockaddr = c_void;
 pub type sockaddr_in = c_void;

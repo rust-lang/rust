@@ -316,8 +316,11 @@ impl<V:TyVisitor + MovePtr> TyVisitor for MovePtrAdaptor<V> {
         true
     }
 
-    fn visit_rec_field(&self, i: uint, name: &str,
-                       mtbl: uint, inner: *TyDesc) -> bool {
+    fn visit_rec_field(&self,
+                       i: uint,
+                       name: &str,
+                       mtbl: uint,
+                       inner: *TyDesc) -> bool {
         unsafe { self.align((*inner).align); }
         if ! self.inner.visit_rec_field(i, name, mtbl, inner) {
             return false;

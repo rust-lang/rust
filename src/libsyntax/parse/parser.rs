@@ -983,7 +983,7 @@ impl Parser {
         } else if *self.token == token::BINOP(token::STAR) {
             // STAR POINTER (bare pointer?)
             self.bump();
-            ty_ptr(self.parse_mt())
+            self.parse_star_pointee()
         } else if *self.token == token::LBRACE {
             // STRUCTURAL RECORD (remove?)
             let elems = self.parse_unspanned_seq(
@@ -1081,16 +1081,21 @@ impl Parser {
         ctor(mt)
     }
 
+    pub fn parse_star_pointee(&self) -> ty_ {
+        // look for `*'lt` or `*'foo ` and interpret `foo` as the region name:
+        let opt_lifetime = self.parse_opt_lifetime();
+        ty_ptr(opt_lifetime, self.parse_mt())
+    }
+
     pub fn parse_borrowed_pointee(&self) -> ty_ {
         // look for `&'lt` or `&'foo ` and interpret `foo` as the region name:
         let opt_lifetime = self.parse_opt_lifetime();
 
         if self.token_is_closure_keyword(self.token) {
-            return self.parse_ty_closure(BorrowedSigil, opt_lifetime);
+            self.parse_ty_closure(BorrowedSigil, opt_lifetime)
+        } else {
+            ty_rptr(opt_lifetime, self.parse_mt())
         }
-
-        let mt = self.parse_mt();
-        return ty_rptr(opt_lifetime, mt);
     }
 
     // parse an optional, obsolete argument mode.

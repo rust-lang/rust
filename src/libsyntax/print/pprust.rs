@@ -394,7 +394,11 @@ pub fn print_type(s: @ps, ty: &ast::Ty) {
         print_type(s, mt.ty);
         word(s.s, "]");
       }
-      ast::ty_ptr(ref mt) => { word(s.s, "*"); print_mt(s, mt); }
+      ast::ty_ptr(ref lifetime, ref mt) => {
+          word(s.s, "*");
+          print_opt_lifetime(s, lifetime);
+          print_mt(s, mt);
+      }
       ast::ty_rptr(ref lifetime, ref mt) => {
           word(s.s, "&");
           print_opt_lifetime(s, lifetime);

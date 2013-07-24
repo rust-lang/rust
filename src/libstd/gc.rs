@@ -53,8 +53,8 @@ pub use stackwalk::Word;
 
 // Mirrors rust_stack.h stk_seg
 pub struct StackSegment {
-    prev: *StackSegment,
-    next: *StackSegment,
+    prev: *'static StackSegment,
+    next: *'static StackSegment,
     end: uintptr_t,
     // And other fields which we don't care about...
 }
@@ -90,8 +90,8 @@ unsafe fn get_safe_point_count() -> uint {
 }
 
 struct SafePoint {
-    sp_meta: *Word,
-    fn_meta: *Word,
+    sp_meta: *'static Word,
+    fn_meta: *'static Word,
 }
 
 // Returns the safe point metadata for the given program counter, if
@@ -121,7 +121,7 @@ unsafe fn is_safe_point(pc: *Word) -> Option<SafePoint> {
     return None;
 }
 
-type Visitor<'self> = &'self fn(root: **Word, tydesc: *TyDesc) -> bool;
+type Visitor<'self> = &'self fn(root: *'static *'static Word, tydesc: *'static TyDesc) -> bool;
 
 // Walks the list of roots for the given safe point, and calls visitor
 // on each root.
@@ -180,13 +180,13 @@ unsafe fn is_frame_in_segment(fp: *Word, segment: *StackSegment) -> bool {
     return begin <= frame && frame <= end;
 }
 
-struct Segment { segment: *StackSegment, boundary: bool }
+struct Segment { segment: *'static StackSegment, boundary: bool }
 
 // Find and return the segment containing the given frame pointer. At
 // stack segment boundaries, returns true for boundary, so that the
 // caller can do any special handling to identify where the correct
 // return address is in the stack frame.
-unsafe fn find_segment_for_frame(fp: *Word, segment: *StackSegment)
+unsafe fn find_segment_for_frame(fp: *Word, segment: *'static StackSegment)
     -> Segment {
     // Check if frame is in either current frame or previous frame.
     let in_segment = is_frame_in_segment(fp, segment);

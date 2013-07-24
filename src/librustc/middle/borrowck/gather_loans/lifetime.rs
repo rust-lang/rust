@@ -74,7 +74,7 @@ impl GuaranteeLifetimeContext {
             mc::cat_arg(*) |                           // L-Local
             mc::cat_self(*) |                          // L-Local
             mc::cat_deref(_, _, mc::region_ptr(*)) |   // L-Deref-Borrowed
-            mc::cat_deref(_, _, mc::unsafe_ptr) => {
+            mc::cat_deref(_, _, mc::unsafe_ptr(*)) => {
                 let scope = self.scope(cmt);
                 self.check_scope(scope)
             }

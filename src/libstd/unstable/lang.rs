@@ -101,14 +101,14 @@ pub unsafe fn borrow_as_mut(a: *u8, file: *c_char, line: size_t) -> uint {
 }
 
 #[lang="record_borrow"]
-pub unsafe fn record_borrow(a: *u8, old_ref_count: uint,
-                            file: *c_char, line: size_t) {
+pub unsafe fn record_borrow(a: *'static u8, old_ref_count: uint,
+                            file: *'static c_char, line: size_t) {
     borrowck::record_borrow(a, old_ref_count, file, line)
 }
 
 #[lang="unrecord_borrow"]
-pub unsafe fn unrecord_borrow(a: *u8, old_ref_count: uint,
-                              file: *c_char, line: size_t) {
+pub unsafe fn unrecord_borrow(a: *'static u8, old_ref_count: uint,
+                              file: *'static c_char, line: size_t) {
     borrowck::unrecord_borrow(a, old_ref_count, file, line)
 }
 

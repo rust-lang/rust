@@ -16,10 +16,10 @@ use unstable::intrinsics;
 pub type Word = uint;
 
 pub struct Frame {
-    fp: *Word
+    fp: *'static Word
 }
 
-pub fn Frame(fp: *Word) -> Frame {
+pub fn Frame(fp: *'static Word) -> Frame {
     Frame {
         fp: fp
     }

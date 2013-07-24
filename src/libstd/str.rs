@@ -793,12 +793,12 @@ pub trait StrUtil {
      * let s = "PATH".as_c_str(|path| libc::getenv(path));
      * ~~~
      */
-    fn as_c_str<T>(self, f: &fn(*libc::c_char) -> T) -> T;
+    fn as_c_str<T>(self, f: &fn(*'static libc::c_char) -> T) -> T;
 }
 
 impl<'self> StrUtil for &'self str {
     #[inline]
-    fn as_c_str<T>(self, f: &fn(*libc::c_char) -> T) -> T {
+    fn as_c_str<T>(self, f: &fn(*'static libc::c_char) -> T) -> T {
         do as_buf(self) |buf, len| {
             // NB: len includes the trailing null.
             assert!(len > 0);
@@ -815,7 +815,7 @@ impl<'self> StrUtil for &'self str {
  * Deprecated. Use the `as_c_str` method on strings instead.
  */
 #[inline]
-pub fn as_c_str<T>(s: &str, f: &fn(*libc::c_char) -> T) -> T {
+pub fn as_c_str<T>(s: &str, f: &fn(*'static libc::c_char) -> T) -> T {
     s.as_c_str(f)
 }
 
@@ -828,10 +828,10 @@ pub fn as_c_str<T>(s: &str, f: &fn(*libc::c_char) -> T) -> T {
  * to full strings, or suffixes of them.
  */
 #[inline]
-pub fn as_buf<T>(s: &str, f: &fn(*u8, uint) -> T) -> T {
+pub fn as_buf<'a, T>(s: &'a str, f: &fn(*'a u8, uint) -> T) -> T {
     unsafe {
-        let v : *(*u8,uint) = transmute(&s);
-        let (buf,len) = *v;
+        let v : *(*u8, uint) = transmute(&s);
+        let (buf, len) = *v;
         f(buf, len)
     }
 }
@@ -847,18 +847,18 @@ pub mod raw {
     use vec::MutableVector;
 
     /// Create a Rust string from a null-terminated *u8 buffer
-    pub unsafe fn from_buf(buf: *u8) -> ~str {
+    pub unsafe fn from_buf(buf: *const u8) -> ~str {
         let mut curr = buf;
         let mut i = 0u;
         while *curr != 0u8 {
             i += 1u;
-            curr = ptr::offset(buf, i);
+            curr = ptr::const_offset(buf, i);
         }
         return from_buf_len(buf, i);
     }
 
     /// Create a Rust string from a *u8 buffer of the given length
-    pub unsafe fn from_buf_len(buf: *u8, len: uint) -> ~str {
+    pub unsafe fn from_buf_len(buf: *const u8, len: uint) -> ~str {
         let mut v: ~[u8] = vec::with_capacity(len + 1);
         v.as_mut_buf(|vbuf, _len| {
             ptr::copy_memory(vbuf, buf as *u8, len)
@@ -871,12 +871,12 @@ pub mod raw {
     }
 
     /// Create a Rust string from a null-terminated C string
-    pub unsafe fn from_c_str(c_str: *libc::c_char) -> ~str {
+    pub unsafe fn from_c_str(c_str: *const libc::c_char) -> ~str {
         from_buf(::cast::transmute(c_str))
     }
 
     /// Create a Rust string from a `*c_char` buffer of the given length
-    pub unsafe fn from_c_str_len(c_str: *libc::c_char, len: uint) -> ~str {
+    pub unsafe fn from_c_str_len(c_str: *const libc::c_char, len: uint) -> ~str {
         from_buf_len(::cast::transmute(c_str), len)
     }
 
@@ -3113,9 +3113,10 @@ mod tests {
     fn test_as_buf2() {
         unsafe {
             let s = ~"hello";
-            let sb = as_buf(s, |b, _l| b);
-            let s_cstr = raw::from_buf(sb);
-            assert_eq!(s_cstr, s);
+            do as_buf(s) |b, _l| {
+                let s_cstr = raw::from_buf(b);
+                assert_eq!(s_cstr, s.clone());
+            }
         }
     }
 

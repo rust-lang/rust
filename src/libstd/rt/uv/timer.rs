@@ -14,7 +14,7 @@ use rt::uv::uvll;
 use rt::uv::{Watcher, Loop, NativeHandle, TimerCallback, NullCallback};
 use rt::uv::status_to_maybe_uv_error;
 
-pub struct TimerWatcher(*uvll::uv_timer_t);
+pub struct TimerWatcher(*'static uvll::uv_timer_t);
 impl Watcher for TimerWatcher { }
 
 impl TimerWatcher {
@@ -39,7 +39,7 @@ impl TimerWatcher {
             uvll::timer_start(self.native_handle(), timer_cb, timeout, repeat);
         }
 
-        extern fn timer_cb(handle: *uvll::uv_timer_t, status: c_int) {
+        extern fn timer_cb(handle: *'static uvll::uv_timer_t, status: c_int) {
             let mut watcher: TimerWatcher = NativeHandle::from_native_handle(handle);
             let data = watcher.get_watcher_data();
             let cb = data.timer_cb.get_ref();
@@ -66,7 +66,7 @@ impl TimerWatcher {
             uvll::close(watcher.native_handle(), close_cb);
         }
 
-        extern fn close_cb(handle: *uvll::uv_timer_t) {
+        extern fn close_cb(handle: *'static uvll::uv_timer_t) {
             let mut watcher: TimerWatcher = NativeHandle::from_native_handle(handle);
             {
                 let data = watcher.get_watcher_data();
@@ -80,8 +80,8 @@ impl TimerWatcher {
     }
 }
 
-impl NativeHandle<*uvll::uv_timer_t> for TimerWatcher {
-    fn from_native_handle(handle: *uvll::uv_timer_t) -> TimerWatcher {
+impl NativeHandle<*'static uvll::uv_timer_t> for TimerWatcher {
+    fn from_native_handle(handle: *'static uvll::uv_timer_t) -> TimerWatcher {
         TimerWatcher(handle)
     }
     fn native_handle(&self) -> *uvll::uv_idle_t {

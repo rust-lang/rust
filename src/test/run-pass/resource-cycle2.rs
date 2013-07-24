@@ -15,7 +15,7 @@ use std::cast;
 struct U {
     a: int,
     b: int,
-    c: *int
+    c: *'static int
 }
 
 struct r {
