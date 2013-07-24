@@ -74,6 +74,72 @@ pub fn replace<T>(dest: &mut T, mut src: T) -> T {
     src
 }
 
+/**
+ * Trasform a value without copying or deinitializing it.
+ *
+ * Replaces illegal statements of the form:
+ * x = trans(x);
+ */
+#[inline]
+pub fn reset<T>(val: &mut T, trans: &fn(T) -> T) {
+    unsafe {
+        let mut tmp: T = intrinsics::uninit();
+        ptr::copy_nonoverlapping_memory(&mut tmp, val, 1);
+
+        let mut res = trans(tmp);
+
+        ptr::copy_nonoverlapping_memory(val, &mut res, 1);
+        cast::forget(res);
+    }
+}
+
+/**
+ * Combine two values and replace the original without copying or deinitializing
+ * either one.
+ *
+ * Replaces illegal statements of the form:
+ * x = comb(x, y);
+ */
+#[inline]
+pub fn pack<T, U>(val: &mut T, param: U, comb: &fn(T, U) -> T) {
+    unsafe {
+        let mut tmp: T = intrinsics::uninit();
+
+        ptr::copy_nonoverlapping_memory(&mut tmp, val, 1);
+
+        // Perform the combination into a new T
+        let mut new = comb(tmp, param);
+
+        ptr::copy_nonoverlapping_memory(val, &mut new, 1);
+        cast::forget(new);
+    }
+}
+
+/**
+ * Split one value into two and replace the original, returning the remainder.
+ *
+ * Replaces illegal expressions of the form:
+ * (x, y) = split(x);
+ * y
+ */
+#[inline]
+pub fn unpack<T, U>(val: &mut T, split: &fn(T) -> (T, U)) -> U {
+    unsafe {
+        let mut tmp: T = intrinsics::uninit();
+
+        ptr::copy_nonoverlapping_memory(&mut tmp, val, 1);
+
+        let (t, result) = split(tmp);
+        let mut new = t;
+
+        ptr::copy_nonoverlapping_memory(val, &mut new, 1);
+        cast::forget(new);
+
+        // Return the unpacked value
+        result
+    }
+}
+
 /// A non-copyable dummy type.
 #[deriving(Eq, TotalEq, Ord, TotalOrd)]
 #[unsafe_no_drop_flag]
@@ -158,6 +224,38 @@ mod tests {
         let y = replace(&mut x, None);
         assert!(x.is_none());
         assert!(y.is_some());
+    }
+
+    #[test]
+    fn test_reset() {
+        let mut val = ~5;
+        do reset(&mut val) |v| {
+            assert_eq!(*v, 5);
+            ~3
+        }
+        assert_eq!(*val, 3);
+    }
+
+    #[test]
+    fn test_pack() {
+        let mut val = ~7;
+        do pack(&mut val, 3) |v, i| {
+            assert_eq!(*v, 7);
+            assert_eq!(i, 3);
+            ~(*v + i)
+        }
+        assert_eq!(*val, 10);
+    }
+
+    #[test]
+    fn test_unpack() {
+        let mut val = ~11;
+        let m = do unpack(&mut val) |v| {
+            assert_eq!(*v, 11);
+            (~(*v / 5), *v % 5)
+        };
+        assert_eq!(*val, 2);
+        assert_eq!(m, 1);
     }
 
     #[test]
