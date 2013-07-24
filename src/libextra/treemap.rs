@@ -204,6 +204,19 @@ impl<K: TotalOrd, V> TreeMap<K, V> {
     pub fn iter<'a>(&'a self) -> TreeMapIterator<'a, K, V> {
         TreeMapIterator{stack: ~[], node: &self.root, remaining: self.length}
     }
+
+    /// Get a lazy iterator that consumes the treemap.
+    pub fn consume_iter(self) -> TreeMapConsumeIterator<K, V> {
+        let TreeMap { root: root, length: length } = self;
+        let stk = match root {
+            None => ~[],
+            Some(~tn) => ~[tn]
+        };
+        TreeMapConsumeIterator {
+            stack: stk,
+            remaining: length
+        }
+    }
 }
 
 /// Lazy forward iterator over a map
@@ -239,6 +252,56 @@ impl<'self, K, V> Iterator<(&'self K, &'self V)> for TreeMapIterator<'self, K, V
     fn size_hint(&self) -> (uint, Option<uint>) {
         (self.remaining, Some(self.remaining))
     }
+}
+
+/// Lazy forward iterator over a map that consumes the map while iterating
+pub struct TreeMapConsumeIterator<K, V> {
+    priv stack: ~[TreeNode<K, V>],
+    priv remaining: uint
+}
+
+impl<K, V> Iterator<(K, V)> for TreeMapConsumeIterator<K,V> {
+    #[inline]
+    fn next(&mut self) -> Option<(K, V)> {
+        while !self.stack.is_empty() {
+            let TreeNode {
+                key: key,
+                value: value,
+                left: left,
+                right: right,
+                level: level
+            } = self.stack.pop();
+
+            match left {
+                Some(~left) => {
+                    let n = TreeNode {
+                        key: key,
+                        value: value,
+                        left: None,
+                        right: right,
+                        level: level
+                    };
+                    self.stack.push(n);
+                    self.stack.push(left);
+                }
+                None => {
+                    match right {
+                        Some(~right) => self.stack.push(right),
+                        None => ()
+                    }
+                    self.remaining -= 1;
+                    return Some((key, value))
+                }
+            }
+        }
+        None
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        (self.remaining, Some(self.remaining))
+    }
+
 }
 
 impl<'self, T> Iterator<&'self T> for TreeSetIterator<'self, T> {
