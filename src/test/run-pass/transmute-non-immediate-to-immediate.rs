@@ -13,6 +13,6 @@
 
 fn main() {
     unsafe {
-        std::cast::transmute::<[int,..1],int>([1])
+        ::std::cast::transmute::<[int,..1],int>([1])
     };
 }
