@@ -21,7 +21,6 @@ and `Eq` to overload the `==` and `!=` operators.
 */
 
 #[allow(missing_doc)];
-#[allow(default_methods)]; // NOTE: Remove when allowed in stage0
 
 /**
 * Trait for values that can be compared for equality and inequality.

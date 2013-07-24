@@ -10,8 +10,6 @@
 
 // compile-flags:-Z debug-info
 
-#[allow(default_methods)];
-
 pub trait TraitWithDefaultMethod {
     pub fn method(self) {
         ()
