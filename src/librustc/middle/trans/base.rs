@@ -2449,7 +2449,7 @@ pub fn get_item_val(ccx: @mut CrateContext, id: ast::node_id) -> ValueRef {
         let val = match item {
           ast_map::node_item(i, pth) => {
             let my_path = vec::append((*pth).clone(), [path_name(i.ident)]);
-            match i.node {
+            let v = match i.node {
               ast::item_static(_, m, expr) => {
                 let typ = ty::node_id_to_type(ccx.tcx, i.id);
                 let s = mangle_exported_name(ccx, my_path, typ);
@@ -2481,7 +2481,16 @@ pub fn get_item_val(ccx: @mut CrateContext, id: ast::node_id) -> ValueRef {
                 llfn
               }
               _ => fail!("get_item_val: weird result in table")
+            };
+            match (attr::first_attr_value_str_by_name(i.attrs, "link_section")) {
+                Some(sect) => unsafe {
+                    do sect.as_c_str |buf| {
+                        llvm::LLVMSetSection(v, buf);
+                    }
+                },
+                None => ()
             }
+            v
           }
           ast_map::node_trait_method(trait_method, _, pth) => {
             debug!("get_item_val(): processing a node_trait_method");
