@@ -13,5 +13,5 @@ use std::io::println;
 static FOO: int = 3;
 
 pub fn main() {
-    println(fmt!("%d", FOO));
+    printfln!("%d", FOO);
 }

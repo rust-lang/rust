@@ -34,7 +34,7 @@ pub fn main() {
     }
 
     if args[2] != ~"install" {
-        io::println(fmt!("Warning: I don't know how to %s", args[2]));
+        printfln!("Warning: I don't know how to %s", args[2]);
         return;
     }
 

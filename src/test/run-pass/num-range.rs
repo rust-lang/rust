@@ -28,7 +28,7 @@ fn uint_range_step(a: uint, b: uint, s: int, it: &fn(uint) -> bool) -> bool {
 }
 
 pub fn main() {
-    println(fmt!("num-range start"));
+    println("num-range start");
     // int and uint have same result for
     //   Sum{2 <= i < 100} == (Sum{1 <= i <= 99} - 1) == n*(n+1)/2 - 1 for n=99
     let mut sum = 0u;
@@ -105,7 +105,7 @@ pub fn main() {
     let mut saw21 = false;
     for uint::range_step_inclusive(0, 21, 3) |x| {
         assert!(x <= 21);
-        println(fmt!("saw: %u", x));
+        printfln!("saw: %u", x);
         if x == 21 { saw21 = true; }
     }
     assert!(saw21);

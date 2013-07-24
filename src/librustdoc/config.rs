@@ -74,7 +74,7 @@ pub fn usage() {
     println("Options:\n");
     let r = opts();
     for r.iter().advance |opt| {
-        println(fmt!("    %s", opt.second()));
+        printfln!("    %s", opt.second());
     }
     println("");
 }

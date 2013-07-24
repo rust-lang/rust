@@ -14,112 +14,167 @@
 //! the processes `argc` and `argv` arguments to be stored
 //! in a globally-accessible location for use by the `os` module.
 //!
+//! Only valid to call on linux. Mac and Windows use syscalls to
+//! discover the command line arguments.
+//!
 //! XXX: Would be nice for this to not exist.
 //! XXX: This has a lot of C glue for lack of globals.
 
-use libc;
-use option::{Option, Some, None};
-use str;
-use uint;
-use unstable::finally::Finally;
-use util;
+use option::Option;
 
 /// One-time global initialization.
 pub unsafe fn init(argc: int, argv: **u8) {
-    let args = load_argc_and_argv(argc, argv);
-    put(args);
+    imp::init(argc, argv)
 }
 
 /// One-time global cleanup.
 pub fn cleanup() {
-    rtassert!(take().is_some());
+    imp::cleanup()
 }
 
 /// Take the global arguments from global storage.
 pub fn take() -> Option<~[~str]> {
-    with_lock(|| unsafe {
-        let ptr = get_global_ptr();
-        let val = util::replace(&mut *ptr, None);
-        val.map(|s: &~~[~str]| (**s).clone())
-    })
+    imp::take()
 }
 
 /// Give the global arguments to global storage.
 ///
 /// It is an error if the arguments already exist.
 pub fn put(args: ~[~str]) {
-    with_lock(|| unsafe {
-        let ptr = get_global_ptr();
-        rtassert!((*ptr).is_none());
-        (*ptr) = Some(~args.clone());
-    })
+    imp::put(args)
 }
 
 /// Make a clone of the global arguments.
 pub fn clone() -> Option<~[~str]> {
-    with_lock(|| unsafe {
-        let ptr = get_global_ptr();
-        (*ptr).map(|s: &~~[~str]| (**s).clone())
-    })
+    imp::clone()
 }
 
-fn with_lock<T>(f: &fn() -> T) -> T {
-    do (|| {
-        unsafe {
-            rust_take_global_args_lock();
-            f()
-        }
-    }).finally {
-        unsafe {
-            rust_drop_global_args_lock();
-        }
-    }
-}
+#[cfg(target_os = "linux")]
+#[cfg(target_os = "android")]
+#[cfg(target_os = "freebsd")]
+mod imp {
 
-fn get_global_ptr() -> *mut Option<~~[~str]> {
-    unsafe { rust_get_global_args_ptr() }
-}
-
-// Copied from `os`.
-unsafe fn load_argc_and_argv(argc: int, argv: **u8) -> ~[~str] {
-    let mut args = ~[];
-    for uint::range(0, argc as uint) |i| {
-        args.push(str::raw::from_c_str(*(argv as **libc::c_char).offset(i)));
-    }
-    return args;
-}
-
-extern {
-    fn rust_take_global_args_lock();
-    fn rust_drop_global_args_lock();
-    fn rust_get_global_args_ptr() -> *mut Option<~~[~str]>;
-}
-
-#[cfg(test)]
-mod tests {
-    use option::{Some, None};
-    use super::*;
+    use libc;
+    use option::{Option, Some, None};
+    use str;
+    use uint;
     use unstable::finally::Finally;
+    use util;
 
-    #[test]
-    fn smoke_test() {
-        // Preserve the actual global state.
-        let saved_value = take();
+    pub unsafe fn init(argc: int, argv: **u8) {
+        let args = load_argc_and_argv(argc, argv);
+        put(args);
+    }
 
-        let expected = ~[~"happy", ~"today?"];
+    pub fn cleanup() {
+        rtassert!(take().is_some());
+    }
 
-        put(expected.clone());
-        assert!(clone() == Some(expected.clone()));
-        assert!(take() == Some(expected.clone()));
-        assert!(take() == None);
+    pub fn take() -> Option<~[~str]> {
+        with_lock(|| unsafe {
+            let ptr = get_global_ptr();
+            let val = util::replace(&mut *ptr, None);
+            val.map(|s: &~~[~str]| (**s).clone())
+        })
+    }
 
+    pub fn put(args: ~[~str]) {
+        with_lock(|| unsafe {
+            let ptr = get_global_ptr();
+            rtassert!((*ptr).is_none());
+            (*ptr) = Some(~args.clone());
+        })
+    }
+
+    pub fn clone() -> Option<~[~str]> {
+        with_lock(|| unsafe {
+            let ptr = get_global_ptr();
+            (*ptr).map(|s: &~~[~str]| (**s).clone())
+        })
+    }
+
+    fn with_lock<T>(f: &fn() -> T) -> T {
         do (|| {
+            unsafe {
+                rust_take_global_args_lock();
+                f()
+            }
         }).finally {
-            // Restore the actual global state.
-            match saved_value {
-                Some(ref args) => put(args.clone()),
-                None => ()
+            unsafe {
+                rust_drop_global_args_lock();
             }
         }
+    }
+
+    fn get_global_ptr() -> *mut Option<~~[~str]> {
+        unsafe { rust_get_global_args_ptr() }
+    }
+
+    // Copied from `os`.
+    unsafe fn load_argc_and_argv(argc: int, argv: **u8) -> ~[~str] {
+        let mut args = ~[];
+        for uint::range(0, argc as uint) |i| {
+            args.push(str::raw::from_c_str(*(argv as **libc::c_char).offset(i)));
+        }
+        return args;
+    }
+
+    extern {
+        fn rust_take_global_args_lock();
+        fn rust_drop_global_args_lock();
+        fn rust_get_global_args_ptr() -> *mut Option<~~[~str]>;
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use option::{Some, None};
+        use super::*;
+        use unstable::finally::Finally;
+
+        #[test]
+        fn smoke_test() {
+            // Preserve the actual global state.
+            let saved_value = take();
+
+            let expected = ~[~"happy", ~"today?"];
+
+            put(expected.clone());
+            assert!(clone() == Some(expected.clone()));
+            assert!(take() == Some(expected.clone()));
+            assert!(take() == None);
+
+            do (|| {
+            }).finally {
+                // Restore the actual global state.
+                match saved_value {
+                    Some(ref args) => put(args.clone()),
+                    None => ()
+                }
+            }
+        }
+    }
+}
+
+#[cfg(target_os = "macos")]
+#[cfg(target_os = "win32")]
+mod imp {
+    use option::Option;
+
+    pub unsafe fn init(_argc: int, _argv: **u8) {
+    }
+
+    pub fn cleanup() {
+    }
+
+    pub fn take() -> Option<~[~str]> {
+        fail!()
+    }
+
+    pub fn put(_args: ~[~str]) {
+        fail!()
+    }
+
+    pub fn clone() -> Option<~[~str]> {
+        fail!()
     }
 }

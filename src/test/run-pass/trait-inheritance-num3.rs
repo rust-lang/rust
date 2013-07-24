@@ -16,7 +16,7 @@ pub trait NumExt: Eq + Ord + Num + NumCast {}
 impl NumExt for f32 {}
 
 fn num_eq_one<T:NumExt>(n: T) {
-    println(fmt!("%?", n == NumCast::from(1)))
+    printfln!(n == NumCast::from(1))
 }
 
 pub fn main() {

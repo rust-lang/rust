@@ -35,5 +35,5 @@ fn Foo(x: int, y: int) -> Foo {
 
 pub fn main() {
     let foo = Foo(3, 20);
-    println(fmt!("%d %d", foo.sum(), foo.product()));
+    printfln!("%d %d", foo.sum(), foo.product());
 }

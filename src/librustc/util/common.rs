@@ -14,7 +14,6 @@ use syntax::codemap::{span};
 use syntax::visit;
 
 use std::hashmap::HashSet;
-use std::io;
 use extra;
 
 pub fn time<T>(do_it: bool, what: ~str, thunk: &fn() -> T) -> T {
@@ -22,7 +21,7 @@ pub fn time<T>(do_it: bool, what: ~str, thunk: &fn() -> T) -> T {
     let start = extra::time::precise_time_s();
     let rv = thunk();
     let end = extra::time::precise_time_s();
-    io::println(fmt!("time: %3.3f s\t%s", end - start, what));
+    printfln!("time: %3.3f s\t%s", end - start, what);
     rv
 }
 
