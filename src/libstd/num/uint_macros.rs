@@ -103,7 +103,7 @@ fn range_step_core(start: $T, stop: $T, step: $T_SIGNED, r: Range, it: &fn($T) -
 /// let nums = [1,2,3,4,5,6,7];
 ///
 /// for uint::range_step(0, nums.len() - 1, 2) |i| {
-///     println(fmt!("%d & %d", nums[i], nums[i+1]));
+///     printfln!("%d & %d", nums[i], nums[i+1]);
 /// }
 /// ~~~
 ///

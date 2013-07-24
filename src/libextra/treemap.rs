@@ -1263,7 +1263,7 @@ mod test_set {
 
         let mut n = 0;
         for m.iter().advance |x| {
-            println(fmt!("%?", x));
+            printfln!(x);
             assert_eq!(*x, n);
             n += 1
         }

@@ -27,9 +27,9 @@ static k : K = K {a: 10, b: 20, c: D {d: 30, e: 40}};
 static m : int = k.c.e;
 
 pub fn main() {
-    io::println(fmt!("%?", p));
-    io::println(fmt!("%?", q));
-    io::println(fmt!("%?", t));
+    printfln!(p);
+    printfln!(q);
+    printfln!(t);
     assert_eq!(p, 3);
     assert_eq!(q, 3);
     assert_eq!(t, 20);

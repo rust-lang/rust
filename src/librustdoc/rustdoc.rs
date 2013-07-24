@@ -23,7 +23,6 @@ extern mod extra;
 extern mod rustc;
 extern mod syntax;
 
-use std::io;
 use std::os;
 
 use config::Config;
@@ -69,7 +68,7 @@ pub fn main() {
     let config = match config::parse_config(args) {
       Ok(config) => config,
       Err(err) => {
-        io::println(fmt!("error: %s", err));
+        printfln!("error: %s", err);
         return;
       }
     };

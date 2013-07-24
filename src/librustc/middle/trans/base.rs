@@ -3011,17 +3011,15 @@ pub fn trans_crate(sess: session::Session,
     write_metadata(ccx, crate);
     if ccx.sess.trans_stats() {
         io::println("--- trans stats ---");
-        io::println(fmt!("n_static_tydescs: %u",
-                         ccx.stats.n_static_tydescs));
-        io::println(fmt!("n_glues_created: %u",
-                         ccx.stats.n_glues_created));
-        io::println(fmt!("n_null_glues: %u", ccx.stats.n_null_glues));
-        io::println(fmt!("n_real_glues: %u", ccx.stats.n_real_glues));
+        printfln!("n_static_tydescs: %u", ccx.stats.n_static_tydescs);
+        printfln!("n_glues_created: %u", ccx.stats.n_glues_created);
+        printfln!("n_null_glues: %u", ccx.stats.n_null_glues);
+        printfln!("n_real_glues: %u", ccx.stats.n_real_glues);
 
-        io::println(fmt!("n_fns: %u", ccx.stats.n_fns));
-        io::println(fmt!("n_monos: %u", ccx.stats.n_monos));
-        io::println(fmt!("n_inlines: %u", ccx.stats.n_inlines));
-        io::println(fmt!("n_closures: %u", ccx.stats.n_closures));
+        printfln!("n_fns: %u", ccx.stats.n_fns);
+        printfln!("n_monos: %u", ccx.stats.n_monos);
+        printfln!("n_inlines: %u", ccx.stats.n_inlines);
+        printfln!("n_closures: %u", ccx.stats.n_closures);
         io::println("fn stats:");
         do sort::quick_sort(ccx.stats.fn_stats) |&(_, _, insns_a), &(_, _, insns_b)| {
             insns_a > insns_b
@@ -3029,14 +3027,14 @@ pub fn trans_crate(sess: session::Session,
         for ccx.stats.fn_stats.iter().advance |tuple| {
             match *tuple {
                 (ref name, ms, insns) => {
-                    io::println(fmt!("%u insns, %u ms, %s", insns, ms, *name));
+                    printfln!("%u insns, %u ms, %s", insns, ms, *name);
                 }
             }
         }
     }
     if ccx.sess.count_llvm_insns() {
         for ccx.stats.llvm_insns.iter().advance |(k, v)| {
-            io::println(fmt!("%-7u %s", *v, *k));
+            printfln!("%-7u %s", *v, *k);
         }
     }
 

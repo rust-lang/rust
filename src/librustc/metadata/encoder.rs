@@ -1624,16 +1624,16 @@ pub fn encode_metadata(parms: EncodeParams, crate: &Crate) -> ~[u8] {
         }
 
         io::println("metadata stats:");
-        io::println(fmt!("    inline bytes: %u", ecx.stats.inline_bytes));
-        io::println(fmt!(" attribute bytes: %u", ecx.stats.attr_bytes));
-        io::println(fmt!("       dep bytes: %u", ecx.stats.dep_bytes));
-        io::println(fmt!(" lang item bytes: %u", ecx.stats.lang_item_bytes));
-        io::println(fmt!(" link args bytes: %u", ecx.stats.link_args_bytes));
-        io::println(fmt!("      misc bytes: %u", ecx.stats.misc_bytes));
-        io::println(fmt!("      item bytes: %u", ecx.stats.item_bytes));
-        io::println(fmt!("     index bytes: %u", ecx.stats.index_bytes));
-        io::println(fmt!("      zero bytes: %u", ecx.stats.zero_bytes));
-        io::println(fmt!("     total bytes: %u", ecx.stats.total_bytes));
+        printfln!("    inline bytes: %u", ecx.stats.inline_bytes);
+        printfln!(" attribute bytes: %u", ecx.stats.attr_bytes);
+        printfln!("       dep bytes: %u", ecx.stats.dep_bytes);
+        printfln!(" lang item bytes: %u", ecx.stats.lang_item_bytes);
+        printfln!(" link args bytes: %u", ecx.stats.link_args_bytes);
+        printfln!("      misc bytes: %u", ecx.stats.misc_bytes);
+        printfln!("      item bytes: %u", ecx.stats.item_bytes);
+        printfln!("     index bytes: %u", ecx.stats.index_bytes);
+        printfln!("      zero bytes: %u", ecx.stats.zero_bytes);
+        printfln!("     total bytes: %u", ecx.stats.total_bytes);
     }
 
     // Pad this, since something (LLVM, presumably) is cutting off the

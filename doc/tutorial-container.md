@@ -192,7 +192,7 @@ let mut it = xs.iter().zip(ys.iter());
 
 // print out the pairs of elements up to (&3, &"baz")
 for it.advance |(x, y)| {
-    println(fmt!("%d %s", *x, *y));
+    printfln!("%d %s", *x, *y);
 
     if *x == 3 {
         break;
@@ -200,7 +200,7 @@ for it.advance |(x, y)| {
 }
 
 // yield and print the last pair from the iterator
-println(fmt!("last: %?", it.next()));
+printfln!("last: %?", it.next());
 
 // the iterator is now fully consumed
 assert!(it.next().is_none());
@@ -294,15 +294,59 @@ another `DoubleEndedIterator` with `next` and `next_back` exchanged.
 ~~~
 let xs = [1, 2, 3, 4, 5, 6];
 let mut it = xs.iter();
-println(fmt!("%?", it.next())); // prints `Some(&1)`
-println(fmt!("%?", it.next())); // prints `Some(&2)`
-println(fmt!("%?", it.next_back())); // prints `Some(&6)`
+printfln!("%?", it.next()); // prints `Some(&1)`
+printfln!("%?", it.next()); // prints `Some(&2)`
+printfln!("%?", it.next_back()); // prints `Some(&6)`
 
 // prints `5`, `4` and `3`
 for it.invert().advance |&x| {
-    println(fmt!("%?", x))
+    printfln!("%?", x)
 }
 ~~~
 
 The `rev_iter` and `mut_rev_iter` methods on vectors just return an inverted
 version of the standard immutable and mutable vector iterators.
+
+The `chain_`, `transform`, `filter`, `filter_map` and `peek` adaptors are
+`DoubleEndedIterator` implementations if the underlying iterators are.
+
+~~~
+let xs = [1, 2, 3, 4];
+let ys = [5, 6, 7, 8];
+let mut it = xs.iter().chain_(ys.iter()).transform(|&x| x * 2);
+
+printfln!("%?", it.next()); // prints `Some(2)`
+
+// prints `16`, `14`, `12`, `10`, `8`, `6`, `4`
+for it.invert().advance |x| {
+    printfln!("%?", x);
+}
+~~~
+
+## Random-access iterators
+
+The `RandomAccessIterator` trait represents an iterator offering random access
+to the whole range. The `indexable` method retrieves the number of elements
+accessible with the `idx` method.
+
+The `chain_` adaptor is an implementation of `RandomAccessIterator` if the
+underlying iterators are.
+
+~~~
+let xs = [1, 2, 3, 4, 5];
+let ys = ~[7, 9, 11];
+let mut it = xs.iter().chain_(ys.iter());
+printfln!("%?", it.idx(0)); // prints `Some(&1)`
+printfln!("%?", it.idx(5)); // prints `Some(&7)`
+printfln!("%?", it.idx(7)); // prints `Some(&11)`
+printfln!("%?", it.idx(8)); // prints `None`
+
+// yield two elements from the beginning, and one from the end
+it.next();
+it.next();
+it.next_back();
+
+printfln!("%?", it.idx(0)); // prints `Some(&3)`
+printfln!("%?", it.idx(4)); // prints `Some(&9)`
+printfln!("%?", it.idx(6)); // prints `None`
+~~~
