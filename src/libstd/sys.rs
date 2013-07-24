@@ -18,6 +18,7 @@ use io;
 use libc;
 use libc::{c_char, size_t};
 use repr;
+use str::StrSlice;
 use str;
 use unstable::intrinsics;
 
@@ -122,13 +123,9 @@ pub trait FailWithCause {
 
 impl FailWithCause for ~str {
     fn fail_with(cause: ~str, file: &'static str, line: uint) -> ! {
-        do str::as_buf(cause) |msg_buf, _msg_len| {
-            do str::as_buf(file) |file_buf, _file_len| {
-                unsafe {
-                    let msg_buf = cast::transmute(msg_buf);
-                    let file_buf = cast::transmute(file_buf);
-                    begin_unwind_(msg_buf, file_buf, line as libc::size_t)
-                }
+        do cause.as_c_str |msg_buf| {
+            do file.as_c_str |file_buf| {
+                begin_unwind_(msg_buf, file_buf, line as libc::size_t)
             }
         }
     }
@@ -136,13 +133,9 @@ impl FailWithCause for ~str {
 
 impl FailWithCause for &'static str {
     fn fail_with(cause: &'static str, file: &'static str, line: uint) -> ! {
-        do str::as_buf(cause) |msg_buf, _msg_len| {
-            do str::as_buf(file) |file_buf, _file_len| {
-                unsafe {
-                    let msg_buf = cast::transmute(msg_buf);
-                    let file_buf = cast::transmute(file_buf);
-                    begin_unwind_(msg_buf, file_buf, line as libc::size_t)
-                }
+        do cause.as_c_str |msg_buf| {
+            do file.as_c_str |file_buf| {
+                begin_unwind_(msg_buf, file_buf, line as libc::size_t)
             }
         }
     }

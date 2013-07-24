@@ -783,15 +783,6 @@ pub fn C_estr_slice(cx: &mut CrateContext, s: @str) -> ValueRef {
     }
 }
 
-// Returns a Plain Old LLVM String:
-pub fn C_postr(s: &str) -> ValueRef {
-    unsafe {
-        do s.as_c_str |buf| {
-            llvm::LLVMConstStringInContext(base::task_llcx(), buf, s.len() as c_uint, False)
-        }
-    }
-}
-
 pub fn C_zero_byte_arr(size: uint) -> ValueRef {
     unsafe {
         let mut i = 0u;
@@ -836,14 +827,6 @@ pub fn C_bytes(bytes: &[u8]) -> ValueRef {
     unsafe {
         let ptr = cast::transmute(vec::raw::to_ptr(bytes));
         return llvm::LLVMConstStringInContext(base::task_llcx(), ptr, bytes.len() as c_uint, True);
-    }
-}
-
-pub fn C_bytes_plus_null(bytes: &[u8]) -> ValueRef {
-    unsafe {
-        return llvm::LLVMConstStringInContext(base::task_llcx(),
-            cast::transmute(vec::raw::to_ptr(bytes)),
-            bytes.len() as c_uint, False);
     }
 }
 
