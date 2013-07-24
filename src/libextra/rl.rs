@@ -32,7 +32,7 @@ pub mod rustrt {
 
 /// Add a line to history
 pub unsafe fn add_history(line: &str) -> bool {
-    do str::as_c_str(line) |buf| {
+    do line.as_c_str |buf| {
         rustrt::linenoiseHistoryAdd(buf) == 1 as c_int
     }
 }
@@ -44,21 +44,21 @@ pub unsafe fn set_history_max_len(len: int) -> bool {
 
 /// Save line history to a file
 pub unsafe fn save_history(file: &str) -> bool {
-    do str::as_c_str(file) |buf| {
+    do file.as_c_str |buf| {
         rustrt::linenoiseHistorySave(buf) == 1 as c_int
     }
 }
 
 /// Load line history from a file
 pub unsafe fn load_history(file: &str) -> bool {
-    do str::as_c_str(file) |buf| {
+    do file.as_c_str |buf| {
         rustrt::linenoiseHistoryLoad(buf) == 1 as c_int
     }
 }
 
 /// Print out a prompt and then wait for input and return it
 pub unsafe fn read(prompt: &str) -> Option<~str> {
-    do str::as_c_str(prompt) |buf| {
+    do prompt.as_c_str |buf| {
         let line = rustrt::linenoise(buf);
 
         if line.is_null() { None }
@@ -80,7 +80,7 @@ pub unsafe fn complete(cb: CompletionCb) {
 
             unsafe {
                 do cb(str::raw::from_c_str(line)) |suggestion| {
-                    do str::as_c_str(suggestion) |buf| {
+                    do suggestion.as_c_str |buf| {
                         rustrt::linenoiseAddCompletion(completions, buf);
                     }
                 }

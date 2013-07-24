@@ -50,7 +50,6 @@ use iterator::Iterator;
 use str::StrSlice;
 use clone::DeepClone;
 
-#[cfg(test)] use str;
 #[cfg(test)] use iterator::IteratorUtil;
 
 /// The option type
@@ -446,10 +445,10 @@ fn test_unwrap_ptr() {
 #[test]
 fn test_unwrap_str() {
     let x = ~"test";
-    let addr_x = str::as_buf(x, |buf, _len| buf);
+    let addr_x = x.as_imm_buf(|buf, _len| buf);
     let opt = Some(x);
     let y = opt.unwrap();
-    let addr_y = str::as_buf(y, |buf, _len| buf);
+    let addr_y = y.as_imm_buf(|buf, _len| buf);
     assert_eq!(addr_x, addr_y);
 }
 

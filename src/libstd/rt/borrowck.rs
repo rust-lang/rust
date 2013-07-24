@@ -16,7 +16,7 @@ use managed::raw::BoxRepr;
 use option::{Option, None, Some};
 use uint;
 use str;
-use str::OwnedStr;
+use str::{OwnedStr, StrSlice};
 use sys;
 use vec::ImmutableVector;
 
@@ -76,7 +76,7 @@ unsafe fn fail_borrowed(box: *mut BoxRepr, file: *c_char, line: size_t) {
     match try_take_task_borrow_list() {
         None => { // not recording borrows
             let msg = "borrowed";
-            do str::as_buf(msg) |msg_p, _| {
+            do msg.as_c_str |msg_p| {
                 sys::begin_unwind_(msg_p as *c_char, file, line);
             }
         }
@@ -92,7 +92,7 @@ unsafe fn fail_borrowed(box: *mut BoxRepr, file: *c_char, line: size_t) {
                     sep = " and at ";
                 }
             }
-            do str::as_buf(msg) |msg_p, _| {
+            do msg.as_c_str |msg_p| {
                 sys::begin_unwind_(msg_p as *c_char, file, line)
             }
         }
@@ -231,7 +231,7 @@ pub unsafe fn unrecord_borrow(a: *u8, old_ref_count: uint,
             let br = borrow_list.pop();
             if br.box != a || br.file != file || br.line != line {
                 let err = fmt!("wrong borrow found, br=%?", br);
-                do str::as_buf(err) |msg_p, _| {
+                do err.as_c_str |msg_p| {
                     sys::begin_unwind_(msg_p as *c_char, file, line)
                 }
             }

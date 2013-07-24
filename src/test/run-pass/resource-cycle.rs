@@ -23,16 +23,14 @@ impl Drop for r {
               cast::transmute::<*r, uint>(self),
               cast::transmute::<**int, uint>(&(self.v)),
               cast::transmute::<*int, uint>(self.v));
-            let v2: ~int = cast::transmute(self.v);
+            let _v2: ~int = cast::transmute(self.v);
         }
     }
 }
 
 fn r(v: *int) -> r {
-    unsafe {
-        r {
-            v: v
-        }
+    r {
+        v: v
     }
 }
 
@@ -52,7 +50,7 @@ pub fn main() {
         let i2p = cast::transmute_copy(&i2);
         cast::forget(i2);
 
-        let mut x1 = @mut t(Node{
+        let x1 = @mut t(Node{
             next: None,
               r: {
               let rs = r(i1p);
@@ -64,7 +62,7 @@ pub fn main() {
                cast::transmute::<@mut t, uint>(x1),
                cast::transmute::<*r, uint>(&x1.r));
 
-        let mut x2 = @mut t(Node{
+        let x2 = @mut t(Node{
             next: None,
               r: {
               let rs = r(i2p);

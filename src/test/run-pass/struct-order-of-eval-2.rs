@@ -14,5 +14,5 @@ struct S { f0: ~str, f1: ~str }
 
 pub fn main() {
     let s = ~"Hello, world!";
-    let _s = S { f1: str::to_owned(s), f0: s };
+    let _s = S { f1: s.to_owned(), f0: s };
 }

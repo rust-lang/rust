@@ -80,7 +80,7 @@ fn libname(cx: &Context) -> (~str, ~str) {
         os_freebsd => (freebsd::DLL_PREFIX, freebsd::DLL_SUFFIX),
     };
 
-    (str::to_owned(dll_prefix), str::to_owned(dll_suffix))
+    (dll_prefix.to_owned(), dll_suffix.to_owned())
 }
 
 fn find_library_crate_aux(
@@ -186,9 +186,9 @@ pub fn metadata_matches(extern_metas: &[@ast::MetaItem],
 fn get_metadata_section(os: os,
                         filename: &Path) -> Option<@~[u8]> {
     unsafe {
-        let mb = str::as_c_str(filename.to_str(), |buf| {
+        let mb = do filename.to_str().as_c_str |buf| {
             llvm::LLVMRustCreateMemoryBufferWithContentsOfFile(buf)
-        });
+        };
         if mb as int == 0 { return option::None::<@~[u8]>; }
         let of = match mk_object_file(mb) {
             option::Some(of) => of,

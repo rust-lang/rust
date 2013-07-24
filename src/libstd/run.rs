@@ -23,7 +23,6 @@ use option::{Some, None};
 use os;
 use prelude::*;
 use ptr;
-use str;
 use task;
 use vec::ImmutableVector;
 
@@ -507,7 +506,7 @@ fn spawn_process_os(prog: &str, args: &[~str],
 
         do with_envp(env) |envp| {
             do with_dirp(dir) |dirp| {
-                do str::as_c_str(cmd) |cmdp| {
+                do cmd.as_c_str |cmdp| {
                     let created = CreateProcessA(ptr::null(), cast::transmute(cmdp),
                                                  ptr::mut_null(), ptr::mut_null(), TRUE,
                                                  0, envp, dirp, &mut si, &mut pi);
@@ -696,12 +695,12 @@ fn spawn_process_os(prog: &str, args: &[~str],
 #[cfg(unix)]
 fn with_argv<T>(prog: &str, args: &[~str],
                 cb: &fn(**libc::c_char) -> T) -> T {
-    let mut argptrs = ~[str::as_c_str(prog, |b| b)];
+    let mut argptrs = ~[prog.as_c_str(|b| b)];
     let mut tmps = ~[];
     for args.iter().advance |arg| {
         let t = @(*arg).clone();
         tmps.push(t);
-        argptrs.push(str::as_c_str(*t, |b| b));
+        argptrs.push(t.as_c_str(|b| b));
     }
     argptrs.push(ptr::null());
     argptrs.as_imm_buf(|buf, _len| cb(buf))
@@ -723,7 +722,7 @@ fn with_envp<T>(env: Option<&[(~str, ~str)]>, cb: &fn(*c_void) -> T) -> T {
                 &(ref k, ref v) => {
                     let kv = @fmt!("%s=%s", *k, *v);
                     tmps.push(kv);
-                    ptrs.push(str::as_c_str(*kv, |b| b));
+                    ptrs.push(kv.as_c_str(|b| b));
                 }
             }
         }
@@ -747,7 +746,7 @@ fn with_envp<T>(env: Option<&[(~str, ~str)]>, cb: &fn(*mut c_void) -> T) -> T {
         let mut blk = ~[];
         for es.iter().advance |pair| {
             let kv = fmt!("%s=%s", pair.first(), pair.second());
-            blk.push_all(kv.as_bytes_with_null_consume());
+            blk.push_all(kv.to_bytes_with_null());
         }
         blk.push(0);
         blk.as_imm_buf(|p, _len|
@@ -761,7 +760,7 @@ fn with_envp<T>(env: Option<&[(~str, ~str)]>, cb: &fn(*mut c_void) -> T) -> T {
 fn with_dirp<T>(d: Option<&Path>,
                 cb: &fn(*libc::c_char) -> T) -> T {
     match d {
-      Some(dir) => str::as_c_str(dir.to_str(), cb),
+      Some(dir) => dir.to_str().as_c_str(cb),
       None => cb(ptr::null())
     }
 }
