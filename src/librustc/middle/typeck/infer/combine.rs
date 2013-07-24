@@ -197,56 +197,67 @@ pub fn super_substs<C:Combine>(
     this: &C, generics: &ty::Generics,
     a: &ty::substs, b: &ty::substs) -> cres<ty::substs> {
 
-    fn relate_region_param<C:Combine>(
+    fn relate_region_params<C:Combine>(
         this: &C,
         generics: &ty::Generics,
-        a: Option<ty::Region>,
-        b: Option<ty::Region>)
-        -> cres<Option<ty::Region>>
+        a: &ty::RegionSubsts,
+        b: &ty::RegionSubsts)
+        -> cres<ty::RegionSubsts>
     {
-        match (&generics.region_param, &a, &b) {
-          (&None, &None, &None) => {
-            Ok(None)
-          }
-          (&Some(ty::rv_invariant), &Some(a), &Some(b)) => {
-            do eq_regions(this, a, b).then {
-                Ok(Some(a))
+        match (a, b) {
+            (&ty::ErasedRegions, _) |
+            (_, &ty::ErasedRegions) => {
+                Ok(ty::ErasedRegions)
             }
-          }
-          (&Some(ty::rv_covariant), &Some(a), &Some(b)) => {
-            do this.regions(a, b).chain |r| {
-                Ok(Some(r))
+
+            (&ty::NonerasedRegions(ref a_rs),
+             &ty::NonerasedRegions(ref b_rs)) => {
+                match generics.region_param {
+                    None => {
+                        assert!(a_rs.is_empty());
+                        assert!(b_rs.is_empty());
+                        Ok(ty::NonerasedRegions(opt_vec::Empty))
+                    }
+
+                    Some(variance) => {
+                        assert_eq!(a_rs.len(), 1);
+                        assert_eq!(b_rs.len(), 1);
+                        let a_r = *a_rs.get(0);
+                        let b_r = *b_rs.get(0);
+
+                        match variance {
+                            ty::rv_invariant => {
+                                do eq_regions(this, a_r, b_r).then {
+                                    Ok(ty::NonerasedRegions(opt_vec::with(a_r)))
+                                }
+                            }
+
+                            ty::rv_covariant => {
+                                do this.regions(a_r, b_r).chain |r| {
+                                    Ok(ty::NonerasedRegions(opt_vec::with(r)))
+                                }
+                            }
+
+                            ty::rv_contravariant => {
+                                do this.contraregions(a_r, b_r).chain |r| {
+                                    Ok(ty::NonerasedRegions(opt_vec::with(r)))
+                                }
+                            }
+                        }
+                    }
+                }
             }
-          }
-          (&Some(ty::rv_contravariant), &Some(a), &Some(b)) => {
-            do this.contraregions(a, b).chain |r| {
-                Ok(Some(r))
-            }
-          }
-          (_, _, _) => {
-            // If these two substitutions are for the same type (and
-            // they should be), then the type should either
-            // consistently have a region parameter or not have a
-            // region parameter, and that should match with the
-            // polytype.
-            this.infcx().tcx.sess.bug(
-                fmt!("substitution a had opt_region %s and \
-                      b had opt_region %s with variance %?",
-                      a.inf_str(this.infcx()),
-                      b.inf_str(this.infcx()),
-                     generics.region_param));
-          }
         }
     }
 
     do this.tps(a.tps, b.tps).chain |tps| {
         do this.self_tys(a.self_ty, b.self_ty).chain |self_ty| {
-            do relate_region_param(this,
-                                   generics,
-                                   a.self_r,
-                                   b.self_r).chain |self_r| {
+            do relate_region_params(this,
+                                    generics,
+                                    &a.regions,
+                                    &b.regions).chain |regions| {
                 Ok(substs {
-                    self_r: self_r,
+                    regions: regions,
                     self_ty: self_ty,
                     tps: tps.clone()
                 })
