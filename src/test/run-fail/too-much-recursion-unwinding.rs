@@ -15,7 +15,7 @@
 // during unwinding
 
 fn recurse() {
-    log(debug, "don't optimize me out");
+    info!("don't optimize me out");
     recurse();
 }
 
@@ -35,9 +35,7 @@ impl Drop for r {
 }
 
 fn r(recursed: *mut bool) -> r {
-    unsafe {
-        r { recursed: recursed }
-    }
+    r { recursed: recursed }
 }
 
 fn main() {

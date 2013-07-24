@@ -11,6 +11,8 @@
 // xfail-test
 // error-pattern:index out of bounds
 
+use std::u64;
+
 #[cfg(target_arch="x86")]
 fn main() {
     let x = ~[1u,2u,3u];
