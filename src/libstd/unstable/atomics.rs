@@ -68,8 +68,10 @@ pub struct AtomicOption<T> {
 }
 
 pub enum Ordering {
+    Relaxed,
     Release,
     Acquire,
+    AcqRel,
     SeqCst
 }
 
@@ -318,6 +320,7 @@ pub unsafe fn atomic_store<T>(dst: &mut T, val: T, order:Ordering) {
 
     match order {
         Release => intrinsics::atomic_store_rel(dst, val),
+        Relaxed => intrinsics::atomic_store_relaxed(dst, val),
         _       => intrinsics::atomic_store(dst, val)
     }
 }
@@ -328,6 +331,7 @@ pub unsafe fn atomic_load<T>(dst: &T, order:Ordering) -> T {
 
     cast::transmute(match order {
         Acquire => intrinsics::atomic_load_acq(dst),
+        Relaxed => intrinsics::atomic_load_relaxed(dst),
         _       => intrinsics::atomic_load(dst)
     })
 }
@@ -340,6 +344,8 @@ pub unsafe fn atomic_swap<T>(dst: &mut T, val: T, order: Ordering) -> T {
     cast::transmute(match order {
         Acquire => intrinsics::atomic_xchg_acq(dst, val),
         Release => intrinsics::atomic_xchg_rel(dst, val),
+        AcqRel  => intrinsics::atomic_xchg_acqrel(dst, val),
+        Relaxed => intrinsics::atomic_xchg_relaxed(dst, val),
         _       => intrinsics::atomic_xchg(dst, val)
     })
 }
@@ -353,6 +359,8 @@ pub unsafe fn atomic_add<T>(dst: &mut T, val: T, order: Ordering) -> T {
     cast::transmute(match order {
         Acquire => intrinsics::atomic_xadd_acq(dst, val),
         Release => intrinsics::atomic_xadd_rel(dst, val),
+        AcqRel  => intrinsics::atomic_xadd_acqrel(dst, val),
+        Relaxed => intrinsics::atomic_xadd_relaxed(dst, val),
         _       => intrinsics::atomic_xadd(dst, val)
     })
 }
@@ -366,6 +374,8 @@ pub unsafe fn atomic_sub<T>(dst: &mut T, val: T, order: Ordering) -> T {
     cast::transmute(match order {
         Acquire => intrinsics::atomic_xsub_acq(dst, val),
         Release => intrinsics::atomic_xsub_rel(dst, val),
+        AcqRel  => intrinsics::atomic_xsub_acqrel(dst, val),
+        Relaxed => intrinsics::atomic_xsub_relaxed(dst, val),
         _       => intrinsics::atomic_xsub(dst, val)
     })
 }
@@ -379,6 +389,8 @@ pub unsafe fn atomic_compare_and_swap<T>(dst:&mut T, old:T, new:T, order: Orderi
     cast::transmute(match order {
         Acquire => intrinsics::atomic_cxchg_acq(dst, old, new),
         Release => intrinsics::atomic_cxchg_rel(dst, old, new),
+        AcqRel  => intrinsics::atomic_cxchg_acqrel(dst, old, new),
+        Relaxed => intrinsics::atomic_cxchg_relaxed(dst, old, new),
         _       => intrinsics::atomic_cxchg(dst, old, new),
     })
 }
