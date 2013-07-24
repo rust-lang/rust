@@ -23,10 +23,16 @@ cycle cannot be created with `Rc<T>` because there is no way to modify it after 
 
 
 use std::cast;
-use std::libc::{c_void, size_t, malloc, free};
 use std::ptr;
-use std::sys;
 use std::unstable::intrinsics;
+
+// Convert ~T into *mut T without dropping it
+#[inline]
+unsafe fn owned_to_raw<T>(mut box: ~T) -> *mut T {
+    let ptr = ptr::to_mut_unsafe_ptr(box);
+    intrinsics::forget(box);
+    ptr
+}
 
 struct RcBox<T> {
     value: T,
@@ -42,21 +48,20 @@ pub struct Rc<T> {
 
 impl<T> Rc<T> {
     unsafe fn new(value: T) -> Rc<T> {
-        let ptr = malloc(sys::size_of::<RcBox<T>>() as size_t) as *mut RcBox<T>;
-        assert!(!ptr::is_null(ptr));
-        intrinsics::move_val_init(&mut *ptr, RcBox{value: value, count: 1});
-        Rc{ptr: ptr}
+        Rc{ptr: owned_to_raw(~RcBox{value: value, count: 1})}
     }
 }
 
-// FIXME: #6516: should be a static method
-pub fn rc_from_owned<T: Send>(value: T) -> Rc<T> {
-    unsafe { Rc::new(value) }
+impl<T: Send> Rc<T> {
+    pub fn from_owned(value: T) -> Rc<T> {
+        unsafe { Rc::new(value) }
+    }
 }
 
-// FIXME: #6516: should be a static method
-pub fn rc_from_const<T: Freeze>(value: T) -> Rc<T> {
-    unsafe { Rc::new(value) }
+impl<T: Freeze> Rc<T> {
+    pub fn from_const(value: T) -> Rc<T> {
+        unsafe { Rc::new(value) }
+    }
 }
 
 impl<T> Rc<T> {
@@ -73,8 +78,7 @@ impl<T> Drop for Rc<T> {
             if self.ptr.is_not_null() {
                 (*self.ptr).count -= 1;
                 if (*self.ptr).count == 0 {
-                    ptr::read_ptr(self.ptr);
-                    free(self.ptr as *c_void)
+                    let _: ~T = cast::transmute(self.ptr);
                 }
             }
         }
@@ -107,7 +111,7 @@ mod test_rc {
 
     #[test]
     fn test_clone() {
-        let x = rc_from_owned(Cell::new(5));
+        let x = Rc::from_owned(Cell::new(5));
         let y = x.clone();
         do x.borrow().with_mut_ref |inner| {
             *inner = 20;
@@ -117,7 +121,7 @@ mod test_rc {
 
     #[test]
     fn test_deep_clone() {
-        let x = rc_from_owned(Cell::new(5));
+        let x = Rc::from_owned(Cell::new(5));
         let y = x.deep_clone();
         do x.borrow().with_mut_ref |inner| {
             *inner = 20;
@@ -127,13 +131,13 @@ mod test_rc {
 
     #[test]
     fn test_simple() {
-        let x = rc_from_const(5);
+        let x = Rc::from_const(5);
         assert_eq!(*x.borrow(), 5);
     }
 
     #[test]
     fn test_simple_clone() {
-        let x = rc_from_const(5);
+        let x = Rc::from_const(5);
         let y = x.clone();
         assert_eq!(*x.borrow(), 5);
         assert_eq!(*y.borrow(), 5);
@@ -141,15 +145,9 @@ mod test_rc {
 
     #[test]
     fn test_destructor() {
-        let x = rc_from_owned(~5);
+        let x = Rc::from_owned(~5);
         assert_eq!(**x.borrow(), 5);
     }
-}
-
-#[abi = "rust-intrinsic"]
-extern "rust-intrinsic" {
-    fn init<T>() -> T;
-    fn uninit<T>() -> T;
 }
 
 #[deriving(Eq)]
@@ -175,21 +173,20 @@ pub struct RcMut<T> {
 
 impl<T> RcMut<T> {
     unsafe fn new(value: T) -> RcMut<T> {
-        let ptr = malloc(sys::size_of::<RcMutBox<T>>() as size_t) as *mut RcMutBox<T>;
-        assert!(!ptr::is_null(ptr));
-        intrinsics::move_val_init(&mut *ptr, RcMutBox{value: value, count: 1, borrow: Nothing});
-        RcMut{ptr: ptr}
+        RcMut{ptr: owned_to_raw(~RcMutBox{value: value, count: 1, borrow: Nothing})}
     }
 }
 
-// FIXME: #6516: should be a static method
-pub fn rc_mut_from_owned<T: Send>(value: T) -> RcMut<T> {
-    unsafe { RcMut::new(value) }
+impl<T: Send> RcMut<T> {
+    pub fn from_owned(value: T) -> RcMut<T> {
+        unsafe { RcMut::new(value) }
+    }
 }
 
-// FIXME: #6516: should be a static method
-pub fn rc_mut_from_const<T: Freeze>(value: T) -> RcMut<T> {
-    unsafe { RcMut::new(value) }
+impl<T: Freeze> RcMut<T> {
+    pub fn from_const(value: T) -> RcMut<T> {
+        unsafe { RcMut::new(value) }
+    }
 }
 
 impl<T> RcMut<T> {
@@ -226,8 +223,7 @@ impl<T> Drop for RcMut<T> {
             if self.ptr.is_not_null() {
                 (*self.ptr).count -= 1;
                 if (*self.ptr).count == 0 {
-                    ptr::replace_ptr(self.ptr, uninit());
-                    free(self.ptr as *c_void)
+                    let _: ~T = cast::transmute(self.ptr);
                 }
             }
         }
@@ -262,7 +258,7 @@ mod test_rc_mut {
 
     #[test]
     fn test_clone() {
-        let x = rc_mut_from_owned(5);
+        let x = RcMut::from_owned(5);
         let y = x.clone();
         do x.with_mut_borrow |value| {
             *value = 20;
@@ -274,7 +270,7 @@ mod test_rc_mut {
 
     #[test]
     fn test_deep_clone() {
-        let x = rc_mut_from_const(5);
+        let x = RcMut::from_const(5);
         let y = x.deep_clone();
         do x.with_mut_borrow |value| {
             *value = 20;
@@ -286,7 +282,7 @@ mod test_rc_mut {
 
     #[test]
     fn borrow_many() {
-        let x = rc_mut_from_owned(5);
+        let x = RcMut::from_owned(5);
         let y = x.clone();
 
         do x.with_borrow |a| {
@@ -302,7 +298,7 @@ mod test_rc_mut {
 
     #[test]
     fn modify() {
-        let x = rc_mut_from_const(5);
+        let x = RcMut::from_const(5);
         let y = x.clone();
 
         do y.with_mut_borrow |a| {
@@ -317,14 +313,14 @@ mod test_rc_mut {
 
     #[test]
     fn release_immutable() {
-        let x = rc_mut_from_owned(5);
+        let x = RcMut::from_owned(5);
         do x.with_borrow |_| {}
         do x.with_mut_borrow |_| {}
     }
 
     #[test]
     fn release_mutable() {
-        let x = rc_mut_from_const(5);
+        let x = RcMut::from_const(5);
         do x.with_mut_borrow |_| {}
         do x.with_borrow |_| {}
     }
@@ -332,7 +328,7 @@ mod test_rc_mut {
     #[test]
     #[should_fail]
     fn frozen() {
-        let x = rc_mut_from_owned(5);
+        let x = RcMut::from_owned(5);
         let y = x.clone();
 
         do x.with_borrow |_| {
@@ -344,7 +340,7 @@ mod test_rc_mut {
     #[test]
     #[should_fail]
     fn mutable_dupe() {
-        let x = rc_mut_from_const(5);
+        let x = RcMut::from_const(5);
         let y = x.clone();
 
         do x.with_mut_borrow |_| {
@@ -356,7 +352,7 @@ mod test_rc_mut {
     #[test]
     #[should_fail]
     fn mutable_freeze() {
-        let x = rc_mut_from_owned(5);
+        let x = RcMut::from_owned(5);
         let y = x.clone();
 
         do x.with_mut_borrow |_| {
@@ -368,7 +364,7 @@ mod test_rc_mut {
     #[test]
     #[should_fail]
     fn restore_freeze() {
-        let x = rc_mut_from_const(5);
+        let x = RcMut::from_const(5);
         let y = x.clone();
 
         do x.with_borrow |_| {
