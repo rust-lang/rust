@@ -890,7 +890,7 @@ pub fn random<T: Rand>() -> T {
 }
 
 #[cfg(test)]
-mod tests {
+mod test {
     use option::{Option, Some};
     use super::*;
 
@@ -1106,6 +1106,40 @@ mod tests {
                 }
                 rustrt::rand_free(rt_rng);
             }
+        }
+    }
+}
+
+#[cfg(test)]
+mod bench {
+    use extra::test::BenchHarness;
+    use rand::*;
+    use sys::size_of;
+
+    #[bench]
+    fn rand_xorshift(bh: &mut BenchHarness) {
+        let mut rng = XorShiftRng::new();
+        do bh.iter {
+            rng.gen::<uint>();
+        }
+        bh.bytes = size_of::<uint>() as u64;
+    }
+
+    #[bench]
+    fn rand_isaac(bh: &mut BenchHarness) {
+        let mut rng = IsaacRng::new();
+        do bh.iter {
+            rng.gen::<uint>();
+        }
+        bh.bytes = size_of::<uint>() as u64;
+    }
+
+    #[bench]
+    fn rand_shuffle_100(bh: &mut BenchHarness) {
+        let mut rng = XorShiftRng::new();
+        let x : &mut[uint] = [1,..100];
+        do bh.iter {
+            rng.shuffle_mut(x);
         }
     }
 }
