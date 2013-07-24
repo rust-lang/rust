@@ -104,18 +104,23 @@ pub fn check_arms(cx: &MatchCheckCtxt, arms: &[arm]) {
         for arm.pats.iter().advance |pat| {
 
             // Check that we do not match against a static NaN (#6804)
-            match cx.tcx.def_map.find(&pat.id) {
-                Some(&def_static(did, false)) => {
-                    let const_expr = lookup_const_by_id(cx.tcx, did).get();
-                    match eval_const_expr(cx.tcx, const_expr) {
-                        const_float(f) if f.is_NaN() => {
-                            let msg = "unmatchable NaN in pattern, use is_NaN() in a guard instead";
-                            cx.tcx.sess.span_warn(pat.span, msg);
+            let pat_matches_nan: &fn(@pat) -> bool = |p| {
+                match cx.tcx.def_map.find(&p.id) {
+                    Some(&def_static(did, false)) => {
+                        let const_expr = lookup_const_by_id(cx.tcx, did).get();
+                        match eval_const_expr(cx.tcx, const_expr) {
+                            const_float(f) if f.is_NaN() => true,
+                            _ => false
                         }
-                        _ => {}
                     }
+                    _ => false
                 }
-                _ => {}
+            };
+            for walk_pat(*pat) |p| {
+                if pat_matches_nan(p) {
+                    cx.tcx.sess.span_warn(p.span, "unmatchable NaN in pattern, \
+                                                   use is_NaN() in a guard instead");
+                }
             }
 
             let v = ~[*pat];
