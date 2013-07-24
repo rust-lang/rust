@@ -103,6 +103,8 @@ pub mod semver;
 pub mod fileinput;
 pub mod flate;
 pub mod hex;
+pub mod uuid;
+
 
 #[cfg(unicode)]
 mod unicode;
