@@ -45,6 +45,16 @@ use syntax::visit;
 // *fully* resolved. (We could be less restrictive than that, but it
 // would require much more care, and this seems to work decently in
 // practice.)
+//
+// While resolution on a single type requires the type to be fully
+// resolved, when resolving a substitution against a list of bounds,
+// we do not require all of the types to be resolved in advance.
+// Furthermore, we process substitutions in reverse order, which
+// allows resolution on later parameters to give information on
+// earlier params referenced by the typeclass bounds.
+// It may be better to do something more clever, like processing fully
+// resolved types first.
+
 
 /// Location info records the span and ID of the expression or item that is
 /// responsible for this vtable instantiation. (This may not be an expression
@@ -83,11 +93,19 @@ fn lookup_vtables(vcx: &VtableContext,
            substs.repr(vcx.tcx()));
     let _i = indenter();
 
-    let mut result = ~[];
-    for substs.tps.iter().zip(type_param_defs.iter()).advance |(ty, def)| {
-        result.push(lookup_vtables_for_param(vcx, location_info, Some(substs),
-                                             &*def.bounds, *ty, is_early));
-    }
+
+    // We do this backwards for reasons discussed above.
+    assert_eq!(substs.tps.len(), type_param_defs.len());
+    let mut result =
+        substs.tps.rev_iter()
+        .zip(type_param_defs.rev_iter())
+        .transform(|(ty, def)|
+                   lookup_vtables_for_param(vcx, location_info, Some(substs),
+                                            &*def.bounds, *ty, is_early))
+        .to_owned_vec();
+    result.reverse();
+
+    assert_eq!(substs.tps.len(), result.len());
     debug!("lookup_vtables result(\
             location_info=%?, \
             type_param_defs=%s, \
@@ -198,8 +216,7 @@ fn relate_trait_refs(vcx: &VtableContext,
     }
 }
 
-// Look up the vtable to use when treating an item of type `t` as if it has
-// type `trait_ty`
+// Look up the vtable implementing the trait `trait_ref` at type `t`
 fn lookup_vtable(vcx: &VtableContext,
                  location_info: &LocationInfo,
                  ty: ty::t,
@@ -261,13 +278,14 @@ fn lookup_vtable(vcx: &VtableContext,
             }
         }
 
-        _ => {
-            return search_for_vtable(vcx, location_info,
-                                     ty, trait_ref, is_early)
-        }
+        // Default case just falls through
+        _ => { }
     }
 
-    return None;
+    // If we aren't a self type or param, or it was, but we didn't find it,
+    // do a search.
+    return search_for_vtable(vcx, location_info,
+                             ty, trait_ref, is_early)
 }
 
 fn search_for_vtable(vcx: &VtableContext,
@@ -359,16 +377,23 @@ fn search_for_vtable(vcx: &VtableContext,
         let of_trait_ref = of_trait_ref.subst(tcx, &substs);
         relate_trait_refs(vcx, location_info, of_trait_ref, trait_ref);
 
+
         // Recall that trait_ref -- the trait type we're casting to --
         // is the trait with id trait_ref.def_id applied to the substs
-        // trait_ref.substs. Now we extract out the types themselves
-        // from trait_ref.substs.
+        // trait_ref.substs.
 
-        // Recall that substs is the impl self type's list of
-        // substitutions. That is, if this is an impl of some trait
-        // for foo<T, U>, then substs is [T, U]. substs might contain
-        // type variables, so we call fixup_substs to resolve them.
+        // Resolve any sub bounds. Note that there still may be free
+        // type variables in substs. This might still be OK: the
+        // process of looking up bounds might constrain some of them.
+        let im_generics =
+            ty::lookup_item_type(tcx, im.did).generics;
+        let subres = lookup_vtables(vcx, location_info,
+                                    *im_generics.type_param_defs, &substs,
+                                    is_early);
 
+
+        // substs might contain type variables, so we call
+        // fixup_substs to resolve them.
         let substs_f = match fixup_substs(vcx,
                                           location_info,
                                           trait_ref.def_id,
@@ -392,13 +417,10 @@ fn search_for_vtable(vcx: &VtableContext,
         // ty with the substitutions from the trait type that we're
         // trying to cast to. connect_trait_tps requires these lists
         // of types to unify pairwise.
-
-        let im_generics =
-            ty::lookup_item_type(tcx, im.did).generics;
+        // I am a little confused about this, since it seems to be
+        // very similar to the relate_trait_refs we already do,
+        // but problems crop up if it is removed, so... -sully
         connect_trait_tps(vcx, location_info, &substs_f, trait_ref, im.did);
-        let subres = lookup_vtables(vcx, location_info,
-                                    *im_generics.type_param_defs, &substs_f,
-                                    is_early);
 
         // Finally, we register that we found a matching impl, and
         // record the def ID of the impl as well as the resolved list
