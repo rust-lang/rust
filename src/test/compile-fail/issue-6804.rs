@@ -9,6 +9,11 @@ fn main() {
         _ => {},
     };
     //~^^^ WARNING unmatchable NaN in pattern, use is_NaN() in a guard instead
+    match [x, 1.0] {
+        [NaN, _] => {},
+        _ => {},
+    };
+    //~^^^ WARNING unmatchable NaN in pattern, use is_NaN() in a guard instead
 }
 
 // At least one error is needed so that compilation fails
