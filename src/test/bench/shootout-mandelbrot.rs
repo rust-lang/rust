@@ -15,7 +15,7 @@ fn main() {
         let mut byte_acc: i8 = 0;
         let mut bit_num: i32 = 0;
 
-        println(fmt!("P4\n%d %d", w as int, h as int));
+        printfln!("P4\n%d %d", w as int, h as int);
 
         let mode = "w";
         let stdout = fdopen(STDOUT_FILENO as c_int, transmute(&mode[0]));

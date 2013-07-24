@@ -316,7 +316,7 @@ pub trait IteratorUtil<A> {
     /// use std::iterator::Counter;
     ///
     /// for Counter::new(0, 10).advance |i| {
-    ///     io::println(fmt!("%d", i));
+    ///     printfln!("%d", i);
     /// }
     /// ~~~
     fn advance(&mut self, f: &fn(A) -> bool) -> bool;

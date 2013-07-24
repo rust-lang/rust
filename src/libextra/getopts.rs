@@ -44,7 +44,7 @@
  *    }
  *
  *    fn print_usage(program: &str, _opts: &[Opt]) {
- *        println(fmt!("Usage: %s [options]", program));
+ *        printfln!("Usage: %s [options]", program);
  *        println("-o\t\tOutput");
  *        println("-h --help\tUsage");
  *    }

@@ -56,13 +56,13 @@ pub fn main() {
     let primes = [2,3,5,7,11];
     let mut prod = 1i;
     for uint_range_rev(5, 0) |i| {
-        println(fmt!("uint 4 downto 0: %u", i));
+        printfln!("uint 4 downto 0: %u", i);
         prod *= int::pow(primes[i], i);
     }
     assert_eq!(prod, 11*11*11*11*7*7*7*5*5*3*1);
     let mut prod = 1i;
     for int_range_rev(5, 0) |i| {
-        println(fmt!("int 4 downto 0: %d", i));
+        printfln!("int 4 downto 0: %d", i);
         prod *= int::pow(primes[i], i as uint);
     }
     assert_eq!(prod, 11*11*11*11*7*7*7*5*5*3*1);

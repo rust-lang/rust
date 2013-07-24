@@ -4,5 +4,5 @@ pub fn main() {
         count += 1;
     }
     assert_eq!(count, 999_999);
-    println(fmt!("%u", count));
+    printfln!("%u", count);
 }

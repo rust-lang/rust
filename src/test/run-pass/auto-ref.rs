@@ -18,7 +18,7 @@ trait Stuff {
 
 impl Stuff for Foo {
     fn printme(&self) {
-        println(fmt!("%d", self.x));
+        printfln!("%d", self.x);
     }
 }
 

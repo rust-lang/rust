@@ -36,5 +36,5 @@ fn main() {
         args
     };
     let n = int::from_str(args[1]).get();
-    io::println(fmt!("Ack(3,%d): %d\n", n, ack(3, n)));
+    printfln!("Ack(3,%d): %d\n", n, ack(3, n));
 }

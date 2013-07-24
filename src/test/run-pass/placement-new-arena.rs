@@ -17,6 +17,6 @@ pub fn main() {
     let mut arena = arena::Arena();
     let p = &mut arena;
     let x = p.alloc(|| 4u);
-    print(fmt!("%u", *x));
+    printf!("%u", *x);
     assert_eq!(*x, 4u);
 }

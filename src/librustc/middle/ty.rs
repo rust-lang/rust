@@ -2712,7 +2712,7 @@ pub fn node_id_to_trait_ref(cx: ctxt, id: ast::node_id) -> @ty::TraitRef {
 }
 
 pub fn node_id_to_type(cx: ctxt, id: ast::node_id) -> t {
-    //io::println(fmt!("%?/%?", id, cx.node_types.len()));
+    //printfln!("%?/%?", id, cx.node_types.len());
     match cx.node_types.find(&(id as uint)) {
        Some(&t) => t,
        None => cx.sess.bug(

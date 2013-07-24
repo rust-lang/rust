@@ -1727,7 +1727,7 @@ impl<'self> StrSlice<'self> for &'self str {
      * let i = 0u;
      * while i < s.len() {
      *     let CharRange {ch, next} = s.char_range_at(i);
-     *     std::io::println(fmt!("%u: %c",i,ch));
+     *     printfln!("%u: %c", i, ch);
      *     i = next;
      * }
      * ~~~

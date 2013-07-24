@@ -93,16 +93,16 @@ pub fn check_crate(
 
     if tcx.sess.borrowck_stats() {
         io::println("--- borrowck stats ---");
-        io::println(fmt!("paths requiring guarantees: %u",
-                        bccx.stats.guaranteed_paths));
-        io::println(fmt!("paths requiring loans     : %s",
-                         make_stat(bccx, bccx.stats.loaned_paths_same)));
-        io::println(fmt!("paths requiring imm loans : %s",
-                         make_stat(bccx, bccx.stats.loaned_paths_imm)));
-        io::println(fmt!("stable paths              : %s",
-                         make_stat(bccx, bccx.stats.stable_paths)));
-        io::println(fmt!("paths requiring purity    : %s",
-                         make_stat(bccx, bccx.stats.req_pure_paths)));
+        printfln!("paths requiring guarantees: %u",
+                  bccx.stats.guaranteed_paths);
+        printfln!("paths requiring loans     : %s",
+                  make_stat(bccx, bccx.stats.loaned_paths_same));
+        printfln!("paths requiring imm loans : %s",
+                  make_stat(bccx, bccx.stats.loaned_paths_imm));
+        printfln!("stable paths              : %s",
+                  make_stat(bccx, bccx.stats.stable_paths));
+        printfln!("paths requiring purity    : %s",
+                  make_stat(bccx, bccx.stats.req_pure_paths));
     }
 
     return (bccx.root_map, bccx.write_guard_map);

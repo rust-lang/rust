@@ -12,7 +12,7 @@
 type ErrPrinter = &fn(&str, &str);
 
 fn example_err(prog: &str, arg: &str) {
-    io::println(fmt!("%s: %s", prog, arg))
+    printfln!("%s: %s", prog, arg)
 }
 
 fn exit(+print: ErrPrinter, prog: &str, arg: &str) {
