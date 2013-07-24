@@ -686,7 +686,7 @@ mod test {
     use std::io;
     #[test] fn t1() {
         let a = fresh_name("ghi");
-        io::println(fmt!("interned name: %u,\ntextual name: %s\n",
-                         a,interner_get(a)));
+        printfln!("interned name: %u,\ntextual name: %s\n",
+                  a, interner_get(a));
     }
 }

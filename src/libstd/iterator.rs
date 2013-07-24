@@ -53,6 +53,16 @@ pub trait DoubleEndedIterator<A>: Iterator<A> {
     fn next_back(&mut self) -> Option<A>;
 }
 
+/// An object implementing random access indexing by `uint`
+pub trait RandomAccessIterator<A> {
+    /// Return the number of indexable elements. At most `std::uint::max_value`
+    /// elements are indexable, even if the iterator represents a longer range.
+    fn indexable(&self) -> uint;
+
+    /// Return an element at an index
+    fn idx(&self, index: uint) -> Option<A>;
+}
+
 /// Iterator adaptors provided for every `DoubleEndedIterator` implementation.
 ///
 /// In the future these will be default methods instead of a utility trait.
@@ -316,7 +326,7 @@ pub trait IteratorUtil<A> {
     /// use std::iterator::Counter;
     ///
     /// for Counter::new(0, 10).advance |i| {
-    ///     io::println(fmt!("%d", i));
+    ///     printfln!("%d", i);
     /// }
     /// ~~~
     fn advance(&mut self, f: &fn(A) -> bool) -> bool;
@@ -832,6 +842,30 @@ for ChainIterator<A, T, U> {
         match self.b.next_back() {
             Some(x) => Some(x),
             None => self.a.next_back()
+        }
+    }
+}
+
+impl<A, T: RandomAccessIterator<A>, U: RandomAccessIterator<A>> RandomAccessIterator<A>
+for ChainIterator<A, T, U> {
+    #[inline]
+    fn indexable(&self) -> uint {
+        let (a, b) = (self.a.indexable(), self.b.indexable());
+        let total = a + b;
+        if total < a || total < b {
+            uint::max_value
+        } else {
+            total
+        }
+    }
+
+    #[inline]
+    fn idx(&self, index: uint) -> Option<A> {
+        let len = self.a.indexable();
+        if index < len {
+            self.a.idx(index)
+        } else {
+            self.b.idx(index - len)
         }
     }
 }
@@ -1717,5 +1751,24 @@ mod tests {
         assert_eq!(it.next_back().unwrap(), &5)
         assert_eq!(it.next_back().unwrap(), &7)
         assert_eq!(it.next_back(), None)
+    }
+
+    #[test]
+    fn test_random_access_chain() {
+        let xs = [1, 2, 3, 4, 5];
+        let ys = ~[7, 9, 11];
+        let mut it = xs.iter().chain_(ys.iter());
+        assert_eq!(it.idx(0).unwrap(), &1);
+        assert_eq!(it.idx(5).unwrap(), &7);
+        assert_eq!(it.idx(7).unwrap(), &11);
+        assert!(it.idx(8).is_none());
+
+        it.next();
+        it.next();
+        it.next_back();
+
+        assert_eq!(it.idx(0).unwrap(), &3);
+        assert_eq!(it.idx(4).unwrap(), &9);
+        assert!(it.idx(6).is_none());
     }
 }

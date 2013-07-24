@@ -128,28 +128,28 @@ pub fn version(argv0: &str) {
     let mut vers = ~"unknown version";
     let env_vers = env!("CFG_VERSION");
     if env_vers.len() != 0 { vers = env_vers.to_owned(); }
-    io::println(fmt!("%s %s", argv0, vers));
-    io::println(fmt!("host: %s", host_triple()));
+    printfln!("%s %s", argv0, vers);
+    printfln!("host: %s", host_triple());
 }
 
 pub fn usage(argv0: &str) {
     let message = fmt!("Usage: %s [OPTIONS] INPUT", argv0);
-    io::println(fmt!("%s\
+    printfln!("%s\
 Additional help:
     -W help             Print 'lint' options and default settings
     -Z help             Print internal options for debugging rustc\n",
-                     groups::usage(message, optgroups())));
+              groups::usage(message, optgroups()));
 }
 
 pub fn describe_warnings() {
     use extra::sort::Sort;
-    io::println(fmt!("
+    printfln!("
 Available lint options:
     -W <foo>           Warn about <foo>
     -A <foo>           Allow <foo>
     -D <foo>           Deny <foo>
     -F <foo>           Forbid <foo> (deny, and deny all overrides)
-"));
+");
 
     let lint_dict = lint::get_lint_dict();
     let mut lint_dict = lint_dict.consume()
@@ -164,28 +164,28 @@ Available lint options:
     fn padded(max: uint, s: &str) -> ~str {
         str::from_bytes(vec::from_elem(max - s.len(), ' ' as u8)) + s
     }
-    io::println(fmt!("\nAvailable lint checks:\n"));
-    io::println(fmt!("    %s  %7.7s  %s",
-                     padded(max_key, "name"), "default", "meaning"));
-    io::println(fmt!("    %s  %7.7s  %s\n",
-                     padded(max_key, "----"), "-------", "-------"));
+    printfln!("\nAvailable lint checks:\n");
+    printfln!("    %s  %7.7s  %s",
+              padded(max_key, "name"), "default", "meaning");
+    printfln!("    %s  %7.7s  %s\n",
+              padded(max_key, "----"), "-------", "-------");
     for lint_dict.consume_iter().advance |(spec, name)| {
         let name = name.replace("_", "-");
-        io::println(fmt!("    %s  %7.7s  %s",
-                         padded(max_key, name),
-                         lint::level_to_str(spec.default),
-                         spec.desc));
+        printfln!("    %s  %7.7s  %s",
+                  padded(max_key, name),
+                  lint::level_to_str(spec.default),
+                  spec.desc);
     }
     io::println("");
 }
 
 pub fn describe_debug_flags() {
-    io::println(fmt!("\nAvailable debug options:\n"));
+    printfln!("\nAvailable debug options:\n");
     let r = session::debugging_opts_map();
     for r.iter().advance |tuple| {
         match *tuple {
             (ref name, ref desc, _) => {
-                io::println(fmt!("    -Z %-20s -- %s", *name, *desc));
+                printfln!("    -Z %-20s -- %s", *name, *desc);
             }
         }
     }

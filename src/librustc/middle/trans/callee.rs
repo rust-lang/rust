@@ -654,9 +654,9 @@ pub fn trans_call_inner(in_cx: @mut Block,
 
         // Uncomment this to debug calls.
         /*
-        io::println(fmt!("calling: %s", bcx.val_to_str(llfn)));
+        printfln!("calling: %s", bcx.val_to_str(llfn));
         for llargs.iter().advance |llarg| {
-            io::println(fmt!("arg: %s", bcx.val_to_str(*llarg)));
+            printfln!("arg: %s", bcx.val_to_str(*llarg));
         }
         io::println("---");
         */

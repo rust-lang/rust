@@ -23,7 +23,7 @@ pub fn main() {
     //let bt0 = sys::frame_address();
     //info!("%?", bt0);
     do iter(~[1u, 2u, 3u]) |i| {
-        print(fmt!("%u\n", i));
+        printfln!("%u", i);
 
         //let bt1 = sys::frame_address();
         //info!("%?", bt1);

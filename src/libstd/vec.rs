@@ -833,7 +833,7 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
      * ~~~ {.rust}
      * let v = &[1,2,3,4];
      * for v.window_iter().advance |win| {
-     *     io::println(fmt!("%?", win));
+     *     printfln!(win);
      * }
      * ~~~
      *
@@ -862,7 +862,7 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
      * ~~~ {.rust}
      * let v = &[1,2,3,4,5];
      * for v.chunk_iter().advance |win| {
-     *     io::println(fmt!("%?", win));
+     *     printfln!(win);
      * }
      * ~~~
      *
@@ -2116,8 +2116,7 @@ macro_rules! iterator {
 
             #[inline]
             fn size_hint(&self) -> (uint, Option<uint>) {
-                let diff = (self.end as uint) - (self.ptr as uint);
-                let exact = diff / sys::nonzero_size_of::<$elem>();
+                let exact = self.indexable();
                 (exact, Some(exact))
             }
         }
@@ -2145,6 +2144,28 @@ macro_rules! double_ended_iterator {
     }
 }
 
+macro_rules! random_access_iterator {
+    (impl $name:ident -> $elem:ty) => {
+        impl<'self, T> RandomAccessIterator<$elem> for $name<'self, T> {
+            #[inline]
+            fn indexable(&self) -> uint {
+                let diff = (self.end as uint) - (self.ptr as uint);
+                diff / sys::nonzero_size_of::<T>()
+            }
+
+            fn idx(&self, index: uint) -> Option<$elem> {
+                unsafe {
+                    if index < self.indexable() {
+                        cast::transmute(self.ptr.offset(index))
+                    } else {
+                        None
+                    }
+                }
+            }
+        }
+    }
+}
+
 //iterator!{struct VecIterator -> *T, &'self T}
 /// An iterator for iterating over a vector.
 pub struct VecIterator<'self, T> {
@@ -2154,6 +2175,7 @@ pub struct VecIterator<'self, T> {
 }
 iterator!{impl VecIterator -> &'self T}
 double_ended_iterator!{impl VecIterator -> &'self T}
+random_access_iterator!{impl VecIterator -> &'self T}
 pub type VecRevIterator<'self, T> = InvertIterator<&'self T, VecIterator<'self, T>>;
 
 impl<'self, T> Clone for VecIterator<'self, T> {
@@ -2169,6 +2191,7 @@ pub struct VecMutIterator<'self, T> {
 }
 iterator!{impl VecMutIterator -> &'self mut T}
 double_ended_iterator!{impl VecMutIterator -> &'self mut T}
+random_access_iterator!{impl VecMutIterator -> &'self mut T}
 pub type VecMutRevIterator<'self, T> = InvertIterator<&'self mut T, VecMutIterator<'self, T>>;
 
 /// An iterator that moves out of a vector.
@@ -3105,6 +3128,45 @@ mod tests {
         assert_eq!(it.size_hint(), (1, Some(1)));
         assert_eq!(it.next().unwrap(), &11);
         assert_eq!(it.size_hint(), (0, Some(0)));
+        assert!(it.next().is_none());
+    }
+
+    #[test]
+    fn test_random_access_iterator() {
+        use iterator::*;
+        let xs = [1, 2, 5, 10, 11];
+        let mut it = xs.iter();
+
+        assert_eq!(it.indexable(), 5);
+        assert_eq!(it.idx(0).unwrap(), &1);
+        assert_eq!(it.idx(2).unwrap(), &5);
+        assert_eq!(it.idx(4).unwrap(), &11);
+        assert!(it.idx(5).is_none());
+
+        assert_eq!(it.next().unwrap(), &1);
+        assert_eq!(it.indexable(), 4);
+        assert_eq!(it.idx(0).unwrap(), &2);
+        assert_eq!(it.idx(3).unwrap(), &11);
+        assert!(it.idx(4).is_none());
+
+        assert_eq!(it.next().unwrap(), &2);
+        assert_eq!(it.indexable(), 3);
+        assert_eq!(it.idx(1).unwrap(), &10);
+        assert!(it.idx(3).is_none());
+
+        assert_eq!(it.next().unwrap(), &5);
+        assert_eq!(it.indexable(), 2);
+        assert_eq!(it.idx(1).unwrap(), &11);
+
+        assert_eq!(it.next().unwrap(), &10);
+        assert_eq!(it.indexable(), 1);
+        assert_eq!(it.idx(0).unwrap(), &11);
+        assert!(it.idx(1).is_none());
+
+        assert_eq!(it.next().unwrap(), &11);
+        assert_eq!(it.indexable(), 0);
+        assert!(it.idx(0).is_none());
+
         assert!(it.next().is_none());
     }
 

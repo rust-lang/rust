@@ -30,6 +30,6 @@ pub fn main() {
     assert_eq!(x.b, 2);
     assert_eq!(x, y);
     assert_eq!(z.b, 22);
-    io::println(fmt!("0x%x", x.b as uint));
-    io::println(fmt!("0x%x", z.c as uint));
+    printfln!("0x%x", x.b as uint);
+    printfln!("0x%x", z.c as uint);
 }

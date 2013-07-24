@@ -28,7 +28,7 @@ use std::rand::RngUtil;
 fn main() {
     let mut rng = rand::rng();
     if rng.gen() { // bool
-        println(fmt!("int: %d, uint: %u", rng.gen(), rng.gen()))
+        printfln!("int: %d, uint: %u", rng.gen(), rng.gen())
     }
 }
 ~~~
@@ -38,7 +38,7 @@ use std::rand;
 
 fn main () {
     let tuple_ptr = rand::random::<~(f64, char)>();
-    println(fmt!("%?", tuple_ptr))
+    printfln!(tuple_ptr)
 }
 ~~~
 */
@@ -301,7 +301,7 @@ pub trait RngUtil {
      *
      * fn main() {
      *     let mut rng = rand::rng();
-     *     println(fmt!("%b",rng.gen_weighted_bool(3)));
+     *     printfln!("%b", rng.gen_weighted_bool(3));
      * }
      * ~~~
      */
@@ -335,7 +335,7 @@ pub trait RngUtil {
      *
      * fn main() {
      *     let mut rng = rand::rng();
-     *     println(fmt!("%?",rng.gen_bytes(8)));
+     *     printfln!(rng.gen_bytes(8));
      * }
      * ~~~
      */
@@ -352,7 +352,7 @@ pub trait RngUtil {
      *
      * fn main() {
      *     let mut rng = rand::rng();
-     *     println(fmt!("%d",rng.choose([1,2,4,8,16,32])));
+     *     printfln!("%d", rng.choose([1,2,4,8,16,32]));
      * }
      * ~~~
      */
@@ -375,7 +375,7 @@ pub trait RngUtil {
      *     let x = [rand::Weighted {weight: 4, item: 'a'},
      *              rand::Weighted {weight: 2, item: 'b'},
      *              rand::Weighted {weight: 2, item: 'c'}];
-     *     println(fmt!("%c",rng.choose_weighted(x)));
+     *     printfln!("%c", rng.choose_weighted(x));
      * }
      * ~~~
      */
@@ -396,7 +396,7 @@ pub trait RngUtil {
      *     let x = [rand::Weighted {weight: 4, item: 'a'},
      *              rand::Weighted {weight: 2, item: 'b'},
      *              rand::Weighted {weight: 2, item: 'c'}];
-     *     println(fmt!("%?",rng.choose_weighted_option(x)));
+     *     printfln!(rng.choose_weighted_option(x));
      * }
      * ~~~
      */
@@ -418,7 +418,7 @@ pub trait RngUtil {
      *     let x = [rand::Weighted {weight: 4, item: 'a'},
      *              rand::Weighted {weight: 2, item: 'b'},
      *              rand::Weighted {weight: 2, item: 'c'}];
-     *     println(fmt!("%?",rng.weighted_vec(x)));
+     *     printfln!(rng.weighted_vec(x));
      * }
      * ~~~
      */
@@ -435,7 +435,7 @@ pub trait RngUtil {
      *
      * fn main() {
      *     let mut rng = rand::rng();
-     *     println(fmt!("%?",rng.shuffle([1,2,3])));
+     *     printfln!(rng.shuffle([1,2,3]));
      * }
      * ~~~
      */
@@ -454,9 +454,9 @@ pub trait RngUtil {
      *     let mut rng = rand::rng();
      *     let mut y = [1,2,3];
      *     rng.shuffle_mut(y);
-     *     println(fmt!("%?",y));
+     *     printfln!(y);
      *     rng.shuffle_mut(y);
-     *     println(fmt!("%?",y));
+     *     printfln!(y);
      * }
      * ~~~
      */

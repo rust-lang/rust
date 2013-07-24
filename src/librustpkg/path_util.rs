@@ -400,7 +400,7 @@ pub fn mk_output_path(what: OutputType, where: Target,
                                Test => "test",
                                Bench => "bench",
                                _     => ""
-                           }
+                           },
                            os::EXE_SUFFIX))
     };
     if !output_path.is_absolute() {

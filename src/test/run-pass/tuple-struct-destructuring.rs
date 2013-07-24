@@ -13,7 +13,7 @@ struct Foo(int, int);
 pub fn main() {
     let x = Foo(1, 2);
     let Foo(y, z) = x;
-    println(fmt!("%d %d", y, z));
+    printfln!("%d %d", y, z);
     assert_eq!(y, 1);
     assert_eq!(z, 2);
 }

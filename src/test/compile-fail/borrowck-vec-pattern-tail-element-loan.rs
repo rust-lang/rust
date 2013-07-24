@@ -9,5 +9,5 @@ fn a() -> &int {
 
 fn main() {
     let fifth = a();
-    println(fmt!("%d", *fifth));
+    printfln!("%d", *fifth);
 }

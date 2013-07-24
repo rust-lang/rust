@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,15 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::io;
+// Issue #7988
+// Transmuting non-immediate type to immediate type
 
-static x : [int, ..4] = [1,2,3,4];
-static y : &'static [int] = &[1,2,3,4];
-
-pub fn main() {
-    printfln!(x[1]);
-    printfln!(y[1]);
-    assert_eq!(x[1], 2);
-    assert_eq!(x[3], 4);
-    assert_eq!(x[3], y[3]);
+fn main() {
+    unsafe {
+        ::std::cast::transmute::<[int,..1],int>([1])
+    };
 }

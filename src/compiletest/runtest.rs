@@ -292,7 +292,7 @@ fn run_debuginfo_test(config: &config, props: &TestProps, testfile: &Path) {
             }
         }
         if i != num_check_lines {
-            fatal_ProcRes(fmt!("line not found in debugger output: %s"
+            fatal_ProcRes(fmt!("line not found in debugger output: %s",
                                check_lines[i]), &ProcRes);
         }
     }
