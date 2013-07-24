@@ -17,6 +17,7 @@ use util::ppaux;
 use middle::trans::type_::Type;
 
 use syntax::ast;
+use syntax::opt_vec;
 
 pub fn arg_is_indirect(ccx: &CrateContext, arg_ty: &ty::t) -> bool {
     !ty::type_is_immediate(ccx.tcx, *arg_ty)
@@ -312,7 +313,8 @@ pub fn llvm_type_name(cx: &CrateContext,
         a_struct => { "struct" }
         an_enum => { "enum" }
     };
-    let tstr = ppaux::parameterized(cx.tcx, ty::item_path_str(cx.tcx, did), None, tps);
+    let tstr = ppaux::parameterized(cx.tcx, ty::item_path_str(cx.tcx, did),
+                                    &ty::NonerasedRegions(opt_vec::Empty), tps);
     if did.crate == 0 {
         fmt!("%s.%s", name, tstr)
     } else {

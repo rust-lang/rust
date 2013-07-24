@@ -260,10 +260,10 @@ impl region_scope for type_rscope {
 }
 
 pub fn bound_self_region(rp: Option<ty::region_variance>)
-                      -> Option<ty::Region> {
+                      -> OptVec<ty::Region> {
     match rp {
-      Some(_) => Some(ty::re_bound(ty::br_self)),
-      None => None
+      Some(_) => opt_vec::with(ty::re_bound(ty::br_self)),
+      None => opt_vec::Empty
     }
 }
 

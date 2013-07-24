@@ -150,26 +150,27 @@ fn ast_path_substs<AC:AstConv,RS:region_scope + Clone + 'static>(
     // If the type is parameterized by the this region, then replace this
     // region with the current anon region binding (in other words,
     // whatever & would get replaced with).
-    let self_r = match (&decl_generics.region_param, &path.rp) {
-      (&None, &None) => {
-        None
-      }
-      (&None, &Some(_)) => {
-        tcx.sess.span_err(
-            path.span,
-            fmt!("no region bound is allowed on `%s`, \
-                  which is not declared as containing region pointers",
-                 ty::item_path_str(tcx, def_id)));
-        None
-      }
-      (&Some(_), &None) => {
-        let res = rscope.anon_region(path.span);
-        let r = get_region_reporting_err(this.tcx(), path.span, &None, res);
-        Some(r)
-      }
-      (&Some(_), &Some(_)) => {
-        Some(ast_region_to_region(this, rscope, path.span, &path.rp))
-      }
+    let regions = match (&decl_generics.region_param, &path.rp) {
+        (&None, &None) => {
+            opt_vec::Empty
+        }
+        (&None, &Some(_)) => {
+            tcx.sess.span_err(
+                path.span,
+                fmt!("no region bound is allowed on `%s`, \
+                      which is not declared as containing region pointers",
+                     ty::item_path_str(tcx, def_id)));
+            opt_vec::Empty
+        }
+        (&Some(_), &None) => {
+            let res = rscope.anon_region(path.span);
+            let r = get_region_reporting_err(this.tcx(), path.span, &None, res);
+            opt_vec::with(r)
+        }
+        (&Some(_), &Some(_)) => {
+            opt_vec::with(
+                ast_region_to_region(this, rscope, path.span, &path.rp))
+        }
     };
 
     // Convert the type parameters supplied by the user.
@@ -181,7 +182,7 @@ fn ast_path_substs<AC:AstConv,RS:region_scope + Clone + 'static>(
     }
     let tps = path.types.map(|a_t| ast_ty_to_ty(this, rscope, a_t));
 
-    substs {self_r:self_r, self_ty:self_ty, tps:tps}
+    substs {regions:ty::NonerasedRegions(regions), self_ty:self_ty, tps:tps}
 }
 
 pub fn ast_path_to_substs_and_ty<AC:AstConv,
