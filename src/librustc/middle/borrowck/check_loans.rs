@@ -232,7 +232,7 @@ impl<'self> CheckLoanCtxt<'self> {
                     self.bccx.span_err(
                         new_loan.span,
                         fmt!("cannot borrow `%s` as %s because \
-                              it is also borrowed as %s"
+                              it is also borrowed as %s",
                              self.bccx.loan_path_to_str(new_loan.loan_path),
                              self.bccx.mut_to_str(new_loan.mutbl),
                              self.bccx.mut_to_str(old_loan.mutbl)));
@@ -320,7 +320,7 @@ impl<'self> CheckLoanCtxt<'self> {
         // Otherwise, just a plain error.
         self.bccx.span_err(
             expr.span,
-            fmt!("cannot assign to %s %s"
+            fmt!("cannot assign to %s %s",
                  cmt.mutbl.to_user_str(),
                  self.bccx.cmt_to_str(cmt)));
         return;

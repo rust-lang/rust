@@ -26,7 +26,7 @@ use parse::token::{str_to_ident};
 
 pub fn expand_syntax_ext(cx: @ExtCtxt, sp: span, tts: &[ast::token_tree])
     -> base::MacResult {
-    let args = get_exprs_from_tts(cx, tts);
+    let args = get_exprs_from_tts(cx, sp, tts);
     if args.len() == 0 {
         cx.span_fatal(sp, "fmt! takes at least 1 argument.");
     }
