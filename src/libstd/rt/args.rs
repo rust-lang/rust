@@ -158,6 +158,7 @@ mod imp {
 #[cfg(target_os = "macos")]
 #[cfg(target_os = "win32")]
 mod imp {
+    use option::Option;
 
     pub unsafe fn init(_argc: int, _argv: **u8) {
     }
