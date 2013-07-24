@@ -80,7 +80,7 @@ fn main() {
             i += 1;
         }
         printfln!("%d\t trees of depth %d\t check: %d",
-                  iterations * 2, depth, chk));
+                  iterations * 2, depth, chk);
         depth += 2;
     }
     printfln!("long lived tree of depth %d\t check: %d",
