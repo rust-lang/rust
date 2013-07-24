@@ -21,7 +21,6 @@ use middle::ty;
 
 use middle::trans::type_::Type;
 
-use std::str;
 use syntax::ast;
 
 // Take an inline assembly expression and splat it out via LLVM
@@ -123,8 +122,8 @@ pub fn trans_inline_asm(bcx: @mut Block, ia: &ast::inline_asm) -> @mut Block {
         ast::asm_intel => lib::llvm::AD_Intel
     };
 
-    let r = do str::as_c_str(ia.asm) |a| {
-        do str::as_c_str(constraints) |c| {
+    let r = do ia.asm.as_c_str |a| {
+        do constraints.as_c_str |c| {
             InlineAsmCall(bcx, a, c, inputs, output, ia.volatile, ia.alignstack, dialect)
         }
     };

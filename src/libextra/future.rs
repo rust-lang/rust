@@ -194,7 +194,7 @@ mod test {
 
     #[test]
     fn test_interface_unwrap() {
-        let mut f = from_value(~"fail");
+        let f = from_value(~"fail");
         assert_eq!(f.unwrap(), ~"fail");
     }
 

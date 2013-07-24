@@ -17,7 +17,6 @@
  */
 
 use at_vec;
-use cast::transmute;
 use cast;
 use char;
 use char::Char;
@@ -33,7 +32,7 @@ use ptr::RawPtr;
 use to_str::ToStr;
 use uint;
 use vec;
-use vec::{OwnedVector, OwnedCopyableVector, ImmutableVector};
+use vec::{OwnedVector, OwnedCopyableVector, ImmutableVector, MutableVector};
 
 /*
 Section: Conditions
@@ -121,23 +120,17 @@ pub fn from_bytes_slice<'a>(vector: &'a [u8]) -> &'a str {
     }
 }
 
-/// Copy a slice into a new unique str
-#[inline]
-pub fn to_owned(s: &str) -> ~str {
-    unsafe { raw::slice_bytes_owned(s, 0, s.len()) }
-}
-
 impl ToStr for ~str {
     #[inline]
-    fn to_str(&self) -> ~str { to_owned(*self) }
+    fn to_str(&self) -> ~str { self.to_owned() }
 }
 impl<'self> ToStr for &'self str {
     #[inline]
-    fn to_str(&self) -> ~str { to_owned(*self) }
+    fn to_str(&self) -> ~str { self.to_owned() }
 }
 impl ToStr for @str {
     #[inline]
-    fn to_str(&self) -> ~str { to_owned(*self) }
+    fn to_str(&self) -> ~str { self.to_owned() }
 }
 
 /**
@@ -187,15 +180,13 @@ impl<'self, S: Str> StrVector for &'self [S] {
 
         let len = self.iter().transform(|s| s.as_slice().len()).sum();
 
-        let mut s = ~"";
-
-        s.reserve(len);
+        let mut s = with_capacity(len);
 
         unsafe {
-            do as_buf(s) |buf, _| {
-                let mut buf = ::cast::transmute_mut_unsafe(buf);
+            do s.as_mut_buf |buf, _| {
+                let mut buf = buf;
                 for self.iter().advance |ss| {
-                    do as_buf(ss.as_slice()) |ssbuf, sslen| {
+                    do ss.as_slice().as_imm_buf |ssbuf, sslen| {
                         let sslen = sslen - 1;
                         ptr::copy_memory(buf, ssbuf, sslen);
                         buf = buf.offset(sslen);
@@ -223,12 +214,12 @@ impl<'self, S: Str> StrVector for &'self [S] {
         s.reserve(len);
 
         unsafe {
-            do as_buf(s) |buf, _| {
-                do as_buf(sep) |sepbuf, seplen| {
+            do s.as_mut_buf |buf, _| {
+                do sep.as_imm_buf |sepbuf, seplen| {
                     let seplen = seplen - 1;
                     let mut buf = ::cast::transmute_mut_unsafe(buf);
                     for self.iter().advance |ss| {
-                        do as_buf(ss.as_slice()) |ssbuf, sslen| {
+                        do ss.as_slice().as_imm_buf |ssbuf, sslen| {
                             let sslen = sslen - 1;
                             if first {
                                 first = false;
@@ -534,8 +525,8 @@ Section: Comparing strings
 #[lang="str_eq"]
 #[inline]
 pub fn eq_slice(a: &str, b: &str) -> bool {
-    do as_buf(a) |ap, alen| {
-        do as_buf(b) |bp, blen| {
+    do a.as_imm_buf |ap, alen| {
+        do b.as_imm_buf |bp, blen| {
             if (alen != blen) { false }
             else {
                 unsafe {
@@ -551,8 +542,8 @@ pub fn eq_slice(a: &str, b: &str) -> bool {
 #[cfg(test)]
 #[inline]
 pub fn eq_slice(a: &str, b: &str) -> bool {
-    do as_buf(a) |ap, alen| {
-        do as_buf(b) |bp, blen| {
+    do a.as_imm_buf |ap, alen| {
+        do b.as_imm_buf |bp, blen| {
             if (alen != blen) { false }
             else {
                 unsafe {
@@ -685,6 +676,7 @@ pub fn from_utf16(v: &[u16]) -> ~str {
  * Allocates a new string with the specified capacity. The string returned is
  * the empty string, but has capacity for much more.
  */
+#[inline]
 pub fn with_capacity(capacity: uint) -> ~str {
     let mut buf = ~"";
     buf.reserve(capacity);
@@ -774,75 +766,13 @@ static TAG_THREE_B: uint = 224u;
 static MAX_THREE_B: uint = 65536u;
 static TAG_FOUR_B: uint = 240u;
 
-/**
- * A dummy trait to hold all the utility methods that we implement on strings.
- */
-pub trait StrUtil {
-    /**
-     * Work with the byte buffer of a string as a null-terminated C string.
-     *
-     * Allows for unsafe manipulation of strings, which is useful for foreign
-     * interop. This is similar to `str::as_buf`, but guarantees null-termination.
-     * If the given slice is not already null-terminated, this function will
-     * allocate a temporary, copy the slice, null terminate it, and pass
-     * that instead.
-     *
-     * # Example
-     *
-     * ~~~ {.rust}
-     * let s = "PATH".as_c_str(|path| libc::getenv(path));
-     * ~~~
-     */
-    fn as_c_str<T>(self, f: &fn(*libc::c_char) -> T) -> T;
-}
-
-impl<'self> StrUtil for &'self str {
-    #[inline]
-    fn as_c_str<T>(self, f: &fn(*libc::c_char) -> T) -> T {
-        do as_buf(self) |buf, len| {
-            // NB: len includes the trailing null.
-            assert!(len > 0);
-            if unsafe { *(ptr::offset(buf,len-1)) != 0 } {
-                to_owned(self).as_c_str(|s| f(s))
-            } else {
-                f(buf as *libc::c_char)
-            }
-        }
-    }
-}
-
-/**
- * Deprecated. Use the `as_c_str` method on strings instead.
- */
-#[inline]
-pub fn as_c_str<T>(s: &str, f: &fn(*libc::c_char) -> T) -> T {
-    s.as_c_str(f)
-}
-
-/**
- * Work with the byte buffer and length of a slice.
- *
- * The given length is one byte longer than the 'official' indexable
- * length of the string. This is to permit probing the byte past the
- * indexable area for a null byte, as is the case in slices pointing
- * to full strings, or suffixes of them.
- */
-#[inline]
-pub fn as_buf<T>(s: &str, f: &fn(*u8, uint) -> T) -> T {
-    unsafe {
-        let v : *(*u8,uint) = transmute(&s);
-        let (buf,len) = *v;
-        f(buf, len)
-    }
-}
-
 /// Unsafe operations
 pub mod raw {
     use cast;
     use libc;
     use ptr;
     use str::raw;
-    use str::{as_buf, is_utf8};
+    use str::{is_utf8};
     use vec;
     use vec::MutableVector;
 
@@ -930,36 +860,9 @@ pub mod raw {
      * If begin is greater than end.
      * If end is greater than the length of the string.
      */
-    pub unsafe fn slice_bytes_owned(s: &str, begin: uint, end: uint) -> ~str {
-        do as_buf(s) |sbuf, n| {
-            assert!((begin <= end));
-            assert!((end <= n));
-
-            let mut v = vec::with_capacity(end - begin + 1u);
-            do v.as_imm_buf |vbuf, _vlen| {
-                let vbuf = ::cast::transmute_mut_unsafe(vbuf);
-                let src = ptr::offset(sbuf, begin);
-                ptr::copy_memory(vbuf, src, end - begin);
-            }
-            vec::raw::set_len(&mut v, end - begin);
-            v.push(0u8);
-            ::cast::transmute(v)
-        }
-    }
-
-    /**
-     * Takes a bytewise (not UTF-8) slice from a string.
-     *
-     * Returns the substring from [`begin`..`end`).
-     *
-     * # Failure
-     *
-     * If begin is greater than end.
-     * If end is greater than the length of the string.
-     */
     #[inline]
     pub unsafe fn slice_bytes(s: &str, begin: uint, end: uint) -> &str {
-        do as_buf(s) |sbuf, n| {
+        do s.as_imm_buf |sbuf, n| {
              assert!((begin <= end));
              assert!((end <= n));
 
@@ -972,8 +875,7 @@ pub mod raw {
     pub unsafe fn push_byte(s: &mut ~str, b: u8) {
         let new_len = s.len() + 1;
         s.reserve_at_least(new_len);
-        do as_buf(*s) |buf, len| {
-            let buf: *mut u8 = ::cast::transmute(buf);
+        do s.as_mut_buf |buf, len| {
             *ptr::mut_offset(buf, len) = b;
         }
         set_len(&mut *s, new_len);
@@ -1000,7 +902,7 @@ pub mod raw {
         let len = s.len();
         assert!((len > 0u));
         let b = s[0];
-        *s = raw::slice_bytes_owned(*s, 1u, len);
+        *s = s.slice(1, len).to_owned();
         return b;
     }
 
@@ -1193,7 +1095,7 @@ impl<'self> Str for @str {
 impl<'self> Container for &'self str {
     #[inline]
     fn len(&self) -> uint {
-        do as_buf(*self) |_p, n| { n - 1u }
+        do self.as_imm_buf |_p, n| { n - 1u }
     }
     #[inline]
     fn is_empty(&self) -> bool {
@@ -1287,6 +1189,9 @@ pub trait StrSlice<'self> {
     fn lev_distance(&self, t: &str) -> uint;
 
     fn subslice_offset(&self, inner: &str) -> uint;
+
+    fn as_imm_buf<T>(&self, f: &fn(*u8, uint) -> T) -> T;
+    fn as_c_str<T>(&self, f: &fn(*libc::c_char) -> T) -> T;
 }
 
 /// Extension methods for strings
@@ -1669,7 +1574,21 @@ impl<'self> StrSlice<'self> for &'self str {
 
     /// Copy a slice into a new unique str
     #[inline]
-    fn to_owned(&self) -> ~str { to_owned(*self) }
+    fn to_owned(&self) -> ~str {
+        do self.as_imm_buf |src, len| {
+            assert!(len > 0);
+            unsafe {
+                let mut v = vec::with_capacity(len);
+
+                do v.as_mut_buf |dst, _| {
+                    ptr::copy_memory(dst, src, len - 1);
+                }
+                vec::raw::set_len(&mut v, len - 1);
+                v.push(0u8);
+                ::cast::transmute(v)
+            }
+        }
+    }
 
     #[inline]
     fn to_managed(&self) -> @str {
@@ -1909,15 +1828,14 @@ impl<'self> StrSlice<'self> for &'self str {
 
     /// Given a string, make a new string with repeated copies of it.
     fn repeat(&self, nn: uint) -> ~str {
-        do as_buf(*self) |buf, len| {
-            let mut ret = ~"";
+        do self.as_imm_buf |buf, len| {
             // ignore the NULL terminator
             let len = len - 1;
-            ret.reserve(nn * len);
+            let mut ret = with_capacity(nn * len);
 
             unsafe {
-                do as_buf(ret) |rbuf, _len| {
-                    let mut rbuf = ::cast::transmute_mut_unsafe(rbuf);
+                do ret.as_mut_buf |rbuf, _len| {
+                    let mut rbuf = rbuf;
 
                     for nn.times {
                         ptr::copy_memory(rbuf, buf, len);
@@ -2010,8 +1928,8 @@ impl<'self> StrSlice<'self> for &'self str {
      */
     #[inline]
     fn subslice_offset(&self, inner: &str) -> uint {
-        do as_buf(*self) |a, a_len| {
-            do as_buf(inner) |b, b_len| {
+        do self.as_imm_buf |a, a_len| {
+            do inner.as_imm_buf |b, b_len| {
                 let a_start: uint;
                 let a_end: uint;
                 let b_start: uint;
@@ -2027,6 +1945,47 @@ impl<'self> StrSlice<'self> for &'self str {
         }
     }
 
+    /**
+     * Work with the byte buffer and length of a slice.
+     *
+     * The given length is one byte longer than the 'official' indexable
+     * length of the string. This is to permit probing the byte past the
+     * indexable area for a null byte, as is the case in slices pointing
+     * to full strings, or suffixes of them.
+     */
+    #[inline]
+    fn as_imm_buf<T>(&self, f: &fn(*u8, uint) -> T) -> T {
+        let v: &[u8] = unsafe { cast::transmute(*self) };
+        v.as_imm_buf(f)
+    }
+
+    /**
+     * Work with the byte buffer of a string as a null-terminated C string.
+     *
+     * Allows for unsafe manipulation of strings, which is useful for foreign
+     * interop. This is similar to `str::as_buf`, but guarantees null-termination.
+     * If the given slice is not already null-terminated, this function will
+     * allocate a temporary, copy the slice, null terminate it, and pass
+     * that instead.
+     *
+     * # Example
+     *
+     * ~~~ {.rust}
+     * let s = "PATH".as_c_str(|path| libc::getenv(path));
+     * ~~~
+     */
+    #[inline]
+    fn as_c_str<T>(&self, f: &fn(*libc::c_char) -> T) -> T {
+        do self.as_imm_buf |buf, len| {
+            // NB: len includes the trailing null.
+            assert!(len > 0);
+            if unsafe { *(ptr::offset(buf, len - 1)) != 0 } {
+                self.to_owned().as_c_str(|s| f(s))
+            } else {
+                f(buf as *libc::c_char)
+            }
+        }
+    }
 }
 
 #[allow(missing_doc)]
@@ -2069,12 +2028,23 @@ pub trait OwnedStr {
     fn pop_char(&mut self) -> char;
     fn shift_char(&mut self) -> char;
     fn unshift_char(&mut self, ch: char);
-    fn append(&self, rhs: &str) -> ~str; // FIXME #4850: this should consume self.
+    fn append(self, rhs: &str) -> ~str;
     fn reserve(&mut self, n: uint);
     fn reserve_at_least(&mut self, n: uint);
     fn capacity(&self) -> uint;
+    fn to_bytes_with_null(self) -> ~[u8];
 
-    fn as_bytes_with_null_consume(self) -> ~[u8];
+    /**
+     * Work with the mutable byte buffer and length of a slice.
+     *
+     * The given length is one byte longer than the 'official' indexable
+     * length of the string. This is to permit probing the byte past the
+     * indexable area for a null byte, as is the case in slices pointing
+     * to full strings, or suffixes of them.
+     *
+     * Make sure any mutations to this buffer keep this string valid UTF8.
+     */
+    fn as_mut_buf<T>(&mut self, f: &fn(*mut u8, uint) -> T) -> T;
 }
 
 impl OwnedStr for ~str {
@@ -2085,8 +2055,8 @@ impl OwnedStr for ~str {
             let llen = self.len();
             let rlen = rhs.len();
             self.reserve(llen + rlen);
-            do as_buf(*self) |lbuf, _llen| {
-                do as_buf(rhs) |rbuf, _rlen| {
+            do self.as_imm_buf |lbuf, _llen| {
+                do rhs.as_imm_buf |rbuf, _rlen| {
                     let dst = ptr::offset(lbuf, llen);
                     let dst = ::cast::transmute_mut_unsafe(dst);
                     ptr::copy_memory(dst, rbuf, rlen);
@@ -2103,8 +2073,8 @@ impl OwnedStr for ~str {
             let llen = self.len();
             let rlen = rhs.len();
             self.reserve_at_least(llen + rlen);
-            do as_buf(*self) |lbuf, _llen| {
-                do as_buf(rhs) |rbuf, _rlen| {
+            do self.as_imm_buf |lbuf, _llen| {
+                do rhs.as_imm_buf |rbuf, _rlen| {
                     let dst = ptr::offset(lbuf, llen);
                     let dst = ::cast::transmute_mut_unsafe(dst);
                     ptr::copy_memory(dst, rbuf, rlen);
@@ -2127,8 +2097,7 @@ impl OwnedStr for ~str {
             let new_len = len + nb;
             self.reserve_at_least(new_len);
             let off = len;
-            do as_buf(*self) |buf, _len| {
-                let buf: *mut u8 = ::cast::transmute(buf);
+            do self.as_mut_buf |buf, _len| {
                 match nb {
                     1u => {
                         *ptr::mut_offset(buf, off) = code as u8;
@@ -2178,7 +2147,7 @@ impl OwnedStr for ~str {
      */
     fn shift_char(&mut self) -> char {
         let CharRange {ch, next} = self.char_range_at(0u);
-        *self = unsafe { raw::slice_bytes_owned(*self, next, self.len()) };
+        *self = self.slice(next, self.len()).to_owned();
         return ch;
     }
 
@@ -2193,11 +2162,10 @@ impl OwnedStr for ~str {
 
     /// Concatenate two strings together.
     #[inline]
-    fn append(&self, rhs: &str) -> ~str {
-        // FIXME #4850: this should consume self, but that causes segfaults
-        let mut v = self.clone();
-        v.push_str_no_overallocate(rhs);
-        v
+    fn append(self, rhs: &str) -> ~str {
+        let mut new_str = self;
+        new_str.push_str_no_overallocate(rhs);
+        new_str
     }
 
     /**
@@ -2263,15 +2231,21 @@ impl OwnedStr for ~str {
     /// Convert to a vector of bytes. This does not allocate a new
     /// string, and includes the null terminator.
     #[inline]
-    fn as_bytes_with_null_consume(self) -> ~[u8] {
+    fn to_bytes_with_null(self) -> ~[u8] {
         unsafe { ::cast::transmute(self) }
+    }
+
+    #[inline]
+    fn as_mut_buf<T>(&mut self, f: &fn(*mut u8, uint) -> T) -> T {
+        let v: &mut ~[u8] = unsafe { cast::transmute(self) };
+        v.as_mut_buf(f)
     }
 }
 
 impl Clone for ~str {
     #[inline]
     fn clone(&self) -> ~str {
-        to_owned(*self)
+        self.to_owned()
     }
 }
 
@@ -3065,17 +3039,17 @@ mod tests {
     }
 
     #[test]
-    fn test_as_bytes_with_null_consume() {
+    fn test_to_bytes_with_null() {
         let s = ~"ศไทย中华Việt Nam";
         let v = ~[
             224, 184, 168, 224, 185, 132, 224, 184, 151, 224, 184, 162, 228,
             184, 173, 229, 141, 142, 86, 105, 225, 187, 135, 116, 32, 78, 97,
             109, 0
         ];
-        assert_eq!((~"").as_bytes_with_null_consume(), ~[0]);
-        assert_eq!((~"abc").as_bytes_with_null_consume(),
+        assert_eq!((~"").to_bytes_with_null(), ~[0]);
+        assert_eq!((~"abc").to_bytes_with_null(),
                    ~['a' as u8, 'b' as u8, 'c' as u8, 0]);
-        assert_eq!(s.as_bytes_with_null_consume(), v);
+        assert_eq!(s.to_bytes_with_null(), v);
     }
 
     #[test]
@@ -3090,45 +3064,45 @@ mod tests {
     }
 
     #[test]
-    fn test_as_buf() {
-        let a = "Abcdefg";
-        let b = as_buf(a, |buf, _l| {
-            assert_eq!(unsafe { *buf }, 65u8);
-            100
-        });
-        assert_eq!(b, 100);
-    }
+    fn test_as_imm_buf() {
+        do "".as_imm_buf |buf, len| {
+            assert_eq!(len, 1);
+            unsafe {
+                assert_eq!(*ptr::offset(buf, 0), 0);
+            }
+        }
 
-    #[test]
-    fn test_as_buf_small() {
-        let a = "A";
-        let b = as_buf(a, |buf, _l| {
-            assert_eq!(unsafe { *buf }, 65u8);
-            100
-        });
-        assert_eq!(b, 100);
-    }
-
-    #[test]
-    fn test_as_buf2() {
-        unsafe {
-            let s = ~"hello";
-            let sb = as_buf(s, |b, _l| b);
-            let s_cstr = raw::from_buf(sb);
-            assert_eq!(s_cstr, s);
+        do "hello".as_imm_buf |buf, len| {
+            assert_eq!(len, 6);
+            unsafe {
+                assert_eq!(*ptr::offset(buf, 0), 'h' as u8);
+                assert_eq!(*ptr::offset(buf, 1), 'e' as u8);
+                assert_eq!(*ptr::offset(buf, 2), 'l' as u8);
+                assert_eq!(*ptr::offset(buf, 3), 'l' as u8);
+                assert_eq!(*ptr::offset(buf, 4), 'o' as u8);
+                assert_eq!(*ptr::offset(buf, 5), 0);
+            }
         }
     }
 
     #[test]
-    fn test_as_buf_3() {
-        let a = ~"hello";
-        do as_buf(a) |buf, len| {
+    fn test_as_c_str() {
+        let a = ~"";
+        do a.as_c_str |buf| {
             unsafe {
-                assert_eq!(a[0], 'h' as u8);
-                assert_eq!(*buf, 'h' as u8);
-                assert_eq!(len, 6u);
-                assert_eq!(*ptr::offset(buf,4u), 'o' as u8);
-                assert_eq!(*ptr::offset(buf,5u), 0u8);
+                assert_eq!(*ptr::offset(buf, 0), 0);
+            }
+        }
+
+        let a = ~"hello";
+        do a.as_c_str |buf| {
+            unsafe {
+                assert_eq!(*ptr::offset(buf, 0), 'h' as libc::c_char);
+                assert_eq!(*ptr::offset(buf, 1), 'e' as libc::c_char);
+                assert_eq!(*ptr::offset(buf, 2), 'l' as libc::c_char);
+                assert_eq!(*ptr::offset(buf, 3), 'l' as libc::c_char);
+                assert_eq!(*ptr::offset(buf, 4), 'o' as libc::c_char);
+                assert_eq!(*ptr::offset(buf, 5), 0);
             }
         }
     }

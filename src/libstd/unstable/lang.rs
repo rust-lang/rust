@@ -56,8 +56,8 @@ pub fn fail_bounds_check(file: *c_char, line: size_t,
                          index: size_t, len: size_t) {
     let msg = fmt!("index out of bounds: the len is %d but the index is %d",
                     len as int, index as int);
-    do str::as_buf(msg) |p, _len| {
-        fail_(p as *c_char, file, line);
+    do msg.as_c_str |buf| {
+        fail_(buf, file, line);
     }
 }
 

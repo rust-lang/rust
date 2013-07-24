@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::str;
 use std::io;
 
 use driver::session::{OptLevel, No, Less, Aggressive};
@@ -174,7 +173,7 @@ pub fn populate_pass_manager(sess: Session, pm: &mut PassManager, pass_list:&[~s
 }
 
 pub fn create_pass(name:&str) -> Option<PassRef> {
-    do str::as_c_str(name) |s| {
+    do name.as_c_str |s| {
         unsafe {
             let p = llvm::LLVMCreatePass(s);
             if p.is_null() {
