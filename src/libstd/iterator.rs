@@ -17,8 +17,6 @@ implementing the `Iterator` trait.
 
 */
 
-#[allow(default_methods)]; // still off by default in stage0
-
 use cmp;
 use iter::Times;
 use num::{Zero, One};
