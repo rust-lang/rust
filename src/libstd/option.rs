@@ -271,7 +271,7 @@ impl<T> Option<T> {
     pub fn get_ref<'a>(&'a self) -> &'a T {
         match *self {
           Some(ref x) => x,
-          None => fail!("option::get_ref None")
+          None => fail!("option::get_ref `None`"),
         }
     }
 
@@ -293,7 +293,7 @@ impl<T> Option<T> {
     pub fn get_mut_ref<'a>(&'a mut self) -> &'a mut T {
         match *self {
           Some(ref mut x) => x,
-          None => fail!("option::get_mut_ref None")
+          None => fail!("option::get_mut_ref `None`"),
         }
     }
 
@@ -317,7 +317,7 @@ impl<T> Option<T> {
          */
         match self {
           Some(x) => x,
-          None => fail!("option::unwrap None")
+          None => fail!("option::unwrap `None`"),
         }
     }
 
@@ -331,7 +331,7 @@ impl<T> Option<T> {
      */
     #[inline]
     pub fn take_unwrap(&mut self) -> T {
-        if self.is_none() { fail!("option::take_unwrap None") }
+        if self.is_none() { fail!("option::take_unwrap `None`") }
         self.take().unwrap()
     }
 
@@ -369,7 +369,7 @@ impl<T> Option<T> {
     pub fn get(self) -> T {
         match self {
           Some(x) => return x,
-          None => fail!("option::get None")
+          None => fail!("option::get `None`")
         }
     }
 
@@ -379,7 +379,7 @@ impl<T> Option<T> {
         match self { Some(x) => x, None => def }
     }
 
-    /// Applies a function zero or more times until the result is None.
+    /// Applies a function zero or more times until the result is `None`.
     #[inline]
     pub fn while_some(self, blk: &fn(v: T) -> Option<T>) {
         let mut opt = self;
