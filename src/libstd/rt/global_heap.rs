@@ -101,3 +101,22 @@ pub unsafe fn exchange_free_(ptr: *c_char) {
 pub unsafe fn exchange_free(ptr: *c_char) {
     free(ptr as *c_void);
 }
+
+#[cfg(test)]
+mod bench {
+    use extra::test::BenchHarness;
+
+    #[bench]
+    fn alloc_owned_small(bh: &mut BenchHarness) {
+        do bh.iter {
+            ~10;
+        }
+    }
+
+    #[bench]
+    fn alloc_owned_big(bh: &mut BenchHarness) {
+        do bh.iter {
+            ~[10, ..1000];
+        }
+    }
+}

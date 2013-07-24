@@ -68,7 +68,7 @@ public:
             return &reinterpret_cast<const cratemap_v0 *>(this)->
                 m_children[0];
         case 1:
-            return &m_children[1];
+            return &m_children[0];
         default: assert(false && "Unknown crate map version!");
             return NULL; // Appease -Werror=return-type
         }

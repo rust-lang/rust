@@ -3532,3 +3532,50 @@ mod tests {
         assert_eq!(5, sum_len([s.as_slice()]));
     }
 }
+
+#[cfg(test)]
+mod bench {
+    use extra::test::BenchHarness;
+    use str;
+
+    #[bench]
+    fn is_utf8_100_ascii(bh: &mut BenchHarness) {
+
+        let s = bytes!("Hello there, the quick brown fox jumped over the lazy dog! \
+                        Lorem ipsum dolor sit amet, consectetur. ");
+
+        assert_eq!(100, s.len());
+        do bh.iter {
+            str::is_utf8(s);
+        }
+    }
+
+    #[bench]
+    fn is_utf8_100_multibyte(bh: &mut BenchHarness) {
+        let s = bytes!("𐌀𐌖𐌋𐌄𐌑𐌉ปรدولة الكويتทศไทย中华𐍅𐌿𐌻𐍆𐌹𐌻𐌰");
+        assert_eq!(100, s.len());
+        do bh.iter {
+            str::is_utf8(s);
+        }
+    }
+
+    #[bench]
+    fn map_chars_100_ascii(bh: &mut BenchHarness) {
+        let s = "HelloHelloHelloHelloHelloHelloHelloHelloHelloHello\
+                 HelloHelloHelloHelloHelloHelloHelloHelloHelloHello";
+        do bh.iter {
+            s.map_chars(|c| ((c as uint) + 1) as char);
+        }
+    }
+
+    #[bench]
+    fn map_chars_100_multibytes(bh: &mut BenchHarness) {
+        let s = "𐌀𐌖𐌋𐌄𐌑𐌀𐌖𐌋𐌄𐌑𐌀𐌖𐌋𐌄𐌑𐌀𐌖𐌋𐌄𐌑𐌀𐌖𐌋𐌄𐌑\
+                 𐌀𐌖𐌋𐌄𐌑𐌀𐌖𐌋𐌄𐌑𐌀𐌖𐌋𐌄𐌑𐌀𐌖𐌋𐌄𐌑𐌀𐌖𐌋𐌄𐌑\
+                 𐌀𐌖𐌋𐌄𐌑𐌀𐌖𐌋𐌄𐌑𐌀𐌖𐌋𐌄𐌑𐌀𐌖𐌋𐌄𐌑𐌀𐌖𐌋𐌄𐌑\
+                 𐌀𐌖𐌋𐌄𐌑𐌀𐌖𐌋𐌄𐌑𐌀𐌖𐌋𐌄𐌑𐌀𐌖𐌋𐌄𐌑𐌀𐌖𐌋𐌄𐌑";
+        do bh.iter {
+            s.map_chars(|c| ((c as uint) + 1) as char);
+        }
+    }
+}
