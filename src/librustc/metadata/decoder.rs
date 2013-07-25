@@ -21,6 +21,9 @@ use metadata::tydecode::{parse_ty_data, parse_def_id,
                          parse_type_param_def_data,
                          parse_bare_fn_ty_data, parse_trait_ref_data};
 use middle::ty;
+use middle::typeck;
+use middle::astencode::vtable_decoder_helpers;
+
 
 use std::hash::HashUtil;
 use std::uint;
@@ -409,6 +412,21 @@ pub fn get_impl_trait(cdata: cmd,
         @doc_trait_ref(tp, tcx, cdata)
     }
 }
+
+pub fn get_impl_vtables(cdata: cmd,
+                        id: ast::node_id,
+                        tcx: ty::ctxt) -> typeck::impl_res
+{
+    let item_doc = lookup_item(id, cdata.data);
+    let vtables_doc = reader::get_doc(item_doc, tag_item_impl_vtables);
+    let mut decoder = reader::Decoder(vtables_doc);
+
+    typeck::impl_res {
+        trait_vtables: decoder.read_vtable_res(tcx, cdata),
+        self_vtables: decoder.read_vtable_param_res(tcx, cdata)
+    }
+}
+
 
 pub fn get_impl_method(intr: @ident_interner, cdata: cmd, id: ast::node_id,
                        name: ast::ident) -> Option<ast::def_id> {

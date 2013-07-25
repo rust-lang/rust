@@ -317,6 +317,9 @@ struct ctxt_ {
     // some point. Local variable definitions not in this set can be warned
     // about.
     used_mut_nodes: @mut HashSet<ast::node_id>,
+
+    // vtable resolution information for impl declarations
+    impl_vtables: typeck::impl_vtable_map
 }
 
 pub enum tbox_flag {
@@ -911,6 +914,7 @@ pub fn mk_ctxt(s: session::Session,
         impls:  @mut HashMap::new(),
         used_unsafe: @mut HashSet::new(),
         used_mut_nodes: @mut HashSet::new(),
+        impl_vtables: @mut HashMap::new(),
      }
 }
 
@@ -3061,9 +3065,7 @@ pub fn method_call_type_param_defs(tcx: ctxt,
           typeck::method_param(typeck::method_param {
               trait_id: trt_id,
               method_num: n_mth, _}) |
-          typeck::method_trait(trt_id, n_mth, _) |
-          typeck::method_self(trt_id, n_mth) |
-          typeck::method_super(trt_id, n_mth) => {
+          typeck::method_trait(trt_id, n_mth, _) => {
             // ...trait methods bounds, in contrast, include only the
             // method bounds, so we must preprend the tps from the
             // trait itself.  This ought to be harmonized.
@@ -3956,6 +3958,14 @@ pub fn lookup_item_type(cx: ctxt,
         || csearch::get_type(cx, did))
 }
 
+pub fn lookup_impl_vtables(cx: ctxt,
+                           did: ast::def_id)
+                     -> typeck::impl_res {
+    lookup_locally_or_in_crate_store(
+        "impl_vtables", did, cx.impl_vtables,
+        || csearch::get_impl_vtables(cx, did) )
+}
+
 /// Given the did of a trait, returns its canonical trait ref.
 pub fn lookup_trait_def(cx: ctxt, did: ast::def_id) -> @ty::TraitDef {
     match cx.trait_defs.find(&did) {
@@ -4339,9 +4349,9 @@ pub fn determine_inherited_purity(parent: (ast::purity, ast::node_id),
 // relation on the supertraits from each bounded trait's constraint
 // list.
 pub fn each_bound_trait_and_supertraits(tcx: ctxt,
-                                        bounds: &ParamBounds,
+                                        bounds: &[@TraitRef],
                                         f: &fn(@TraitRef) -> bool) -> bool {
-    for bounds.trait_bounds.iter().advance |&bound_trait_ref| {
+    for bounds.iter().advance |&bound_trait_ref| {
         let mut supertrait_set = HashMap::new();
         let mut trait_refs = ~[];
         let mut i = 0;
@@ -4383,36 +4393,12 @@ pub fn count_traits_and_supertraits(tcx: ctxt,
                                     type_param_defs: &[TypeParameterDef]) -> uint {
     let mut total = 0;
     for type_param_defs.iter().advance |type_param_def| {
-        for each_bound_trait_and_supertraits(tcx, type_param_def.bounds) |_| {
+        for each_bound_trait_and_supertraits(
+            tcx, type_param_def.bounds.trait_bounds) |_| {
             total += 1;
         }
     }
     return total;
-}
-
-// Given a trait and a type, returns the impl of that type.
-// This is broken, of course, by parametric impls. This used to use
-// a table specifically for this mapping, but I removed that table.
-// This is only used when calling a supertrait method from a default method,
-// and should go away once I fix how that works. -sully
-pub fn bogus_get_impl_id_from_ty(tcx: ctxt,
-                                 trait_id: def_id, self_ty: t) -> def_id {
-    match tcx.trait_impls.find(&trait_id) {
-        Some(ty_to_impl) => {
-            for ty_to_impl.iter().advance |imp| {
-                let impl_ty = tcx.tcache.get_copy(&imp.did);
-                if impl_ty.ty == self_ty { return imp.did; }
-            }
-            // try autoderef!
-            match deref(tcx, self_ty, false) {
-                Some(some_ty) =>
-                  bogus_get_impl_id_from_ty(tcx, trait_id, some_ty.ty),
-                None => tcx.sess.bug("get_impl_id: no impl of trait for \
-                                      this type")
-            }
-        },
-        None => tcx.sess.bug("get_impl_id: trait isn't in trait_impls")
-    }
 }
 
 pub fn get_tydesc_ty(tcx: ctxt) -> Result<t, ~str> {
