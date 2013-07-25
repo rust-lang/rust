@@ -16,6 +16,7 @@ use metadata::cstore;
 use metadata::decoder;
 use metadata;
 use middle::ty;
+use middle::typeck;
 
 use std::vec;
 use reader = extra::ebml::reader;
@@ -214,6 +215,14 @@ pub fn get_impl_trait(tcx: ty::ctxt,
     let cstore = tcx.cstore;
     let cdata = cstore::get_crate_data(cstore, def.crate);
     decoder::get_impl_trait(cdata, def.node, tcx)
+}
+
+// Given a def_id for an impl, return information about its vtables
+pub fn get_impl_vtables(tcx: ty::ctxt,
+                        def: ast::def_id) -> typeck::impl_res {
+    let cstore = tcx.cstore;
+    let cdata = cstore::get_crate_data(cstore, def.crate);
+    decoder::get_impl_vtables(cdata, def.node, tcx)
 }
 
 pub fn get_impl_method(cstore: @mut cstore::CStore,

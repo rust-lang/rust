@@ -17,6 +17,8 @@ use metadata::decoder;
 use metadata::tyencode;
 use middle::ty::{node_id_to_type, lookup_item_type};
 use middle::ty;
+use middle::typeck;
+use middle::astencode;
 use middle;
 
 use std::hash::HashUtil;
@@ -158,6 +160,15 @@ fn encode_trait_ref(ebml_w: &mut writer::Encoder,
 
     ebml_w.start_tag(tag);
     tyencode::enc_trait_ref(ebml_w.writer, ty_str_ctxt, trait_ref);
+    ebml_w.end_tag();
+}
+
+fn encode_impl_vtables(ebml_w: &mut writer::Encoder,
+                       ecx: &EncodeContext,
+                       vtables: &typeck::impl_res) {
+    ebml_w.start_tag(tag_item_impl_vtables);
+    astencode::encode_vtable_res(ecx, ebml_w, vtables.trait_vtables);
+    astencode::encode_vtable_param_res(ecx, ebml_w, vtables.self_vtables);
     ebml_w.end_tag();
 }
 
@@ -1008,6 +1019,8 @@ fn encode_info_for_item(ecx: &EncodeContext,
             let trait_ref = ty::node_id_to_trait_ref(
                 tcx, ast_trait_ref.ref_id);
             encode_trait_ref(ebml_w, ecx, trait_ref, tag_item_trait_ref);
+            let impl_vtables = ty::lookup_impl_vtables(tcx, def_id);
+            encode_impl_vtables(ebml_w, ecx, &impl_vtables);
         }
         encode_path(ecx, ebml_w, path, ast_map::path_name(item.ident));
         ebml_w.end_tag();

@@ -133,7 +133,7 @@ pub struct param_substs {
     tys: ~[ty::t],
     self_ty: Option<ty::t>,
     vtables: Option<typeck::vtable_res>,
-    self_vtable: Option<typeck::vtable_origin>
+    self_vtables: Option<typeck::vtable_param_res>
 }
 
 impl param_substs {
@@ -1020,13 +1020,24 @@ pub fn resolve_vtables_under_param_substs(tcx: ty::ctxt,
                                           vts: typeck::vtable_res)
     -> typeck::vtable_res {
     @vts.iter().transform(|ds|
-      @ds.iter().transform(
-          |d| resolve_vtable_under_param_substs(tcx,
-                                                param_substs,
-                                                d))
-                          .collect::<~[typeck::vtable_origin]>())
-        .collect::<~[typeck::vtable_param_res]>()
+      resolve_param_vtables_under_param_substs(tcx,
+                                               param_substs,
+                                               *ds))
+        .collect()
 }
+
+pub fn resolve_param_vtables_under_param_substs(
+    tcx: ty::ctxt,
+    param_substs: Option<@param_substs>,
+    ds: typeck::vtable_param_res)
+    -> typeck::vtable_param_res {
+    @ds.iter().transform(
+        |d| resolve_vtable_under_param_substs(tcx,
+                                              param_substs,
+                                              d))
+        .collect()
+}
+
 
 
 // Apply the typaram substitutions in the FunctionContext to a vtable. This should
@@ -1068,31 +1079,26 @@ pub fn resolve_vtable_under_param_substs(tcx: ty::ctxt,
                 }
             }
         }
-        typeck::vtable_self(_trait_id) => {
-            match param_substs {
-                Some(@param_substs
-                     {self_vtable: Some(ref self_vtable), _}) => {
-                    (*self_vtable).clone()
-                }
-                _ => {
-                    tcx.sess.bug(fmt!(
-                        "resolve_vtable_in_fn_ctxt: asked to lookup but \
-                         no self_vtable in the fn_ctxt!"))
-                }
-            }
-        }
     }
 }
 
 pub fn find_vtable(tcx: ty::ctxt,
                    ps: &param_substs,
-                   n_param: uint,
+                   n_param: typeck::param_index,
                    n_bound: uint)
                    -> typeck::vtable_origin {
-    debug!("find_vtable(n_param=%u, n_bound=%u, ps=%s)",
+    debug!("find_vtable(n_param=%?, n_bound=%u, ps=%s)",
            n_param, n_bound, ps.repr(tcx));
 
-    ps.vtables.get()[n_param][n_bound].clone()
+    let param_bounds = match n_param {
+        typeck::param_self => ps.self_vtables.expect("self vtables missing"),
+        typeck::param_numbered(n) => {
+            let tables = ps.vtables
+                .expect("vtables missing where they are needed");
+            tables[n]
+        }
+    };
+    param_bounds[n_bound].clone()
 }
 
 pub fn dummy_substs(tps: ~[ty::t]) -> ty::substs {

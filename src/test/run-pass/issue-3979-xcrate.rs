@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-test // tjc: ???
+// xfail-fast
 // aux-build:issue_3979_traits.rs
 extern mod issue_3979_traits;
 use issue_3979_traits::*;

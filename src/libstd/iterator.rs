@@ -96,7 +96,7 @@ impl<A, T: DoubleEndedIterator<A>> Iterator<A> for InvertIterator<A, T> {
     fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
 }
 
-impl<A, T: Iterator<A>> DoubleEndedIterator<A> for InvertIterator<A, T> {
+impl<A, T: DoubleEndedIterator<A>> DoubleEndedIterator<A> for InvertIterator<A, T> {
     #[inline]
     fn next_back(&mut self) -> Option<A> { self.iter.next() }
 }
@@ -343,6 +343,18 @@ pub trait IteratorUtil<A> {
     /// ~~~
     fn collect<B: FromIterator<A, Self>>(&mut self) -> B;
 
+    /// Loops through the entire iterator, collecting all of the elements into
+    /// a unique vector. This is simply collect() specialized for vectors.
+    ///
+    /// # Example
+    ///
+    /// ~~~ {.rust}
+    /// let a = [1, 2, 3, 4, 5];
+    /// let b: ~[int] = a.iter().transform(|&x| x).to_owned_vec();
+    /// assert!(a == b);
+    /// ~~~
+    fn to_owned_vec(&mut self) -> ~[A];
+
     /// Loops through `n` iterations, returning the `n`th element of the
     /// iterator.
     ///
@@ -537,6 +549,11 @@ impl<A, T: Iterator<A>> IteratorUtil<A> for T {
     #[inline]
     fn collect<B: FromIterator<A, T>>(&mut self) -> B {
         FromIterator::from_iterator(self)
+    }
+
+    #[inline]
+    fn to_owned_vec(&mut self) -> ~[A] {
+        self.collect()
     }
 
     /// Return the `n`th item yielded by an iterator.
