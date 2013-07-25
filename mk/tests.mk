@@ -537,6 +537,10 @@ TEST_SREQ$(1)_T_$(2)_H_$(3) = \
 
 # Rules for the cfail/rfail/rpass/bench/perf test runner
 
+# The tests select when to use debug configuration on their own;
+# remove directive, if present, from CFG_RUSTC_FLAGS (issue #7898).
+CTEST_RUSTC_FLAGS = $$(subst --cfg debug,,$$(CFG_RUSTC_FLAGS))
+
 CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3) :=						\
 		--compile-lib-path $$(HLIB$(1)_H_$(3))				\
         --run-lib-path $$(TLIB$(1)_T_$(2)_H_$(3))			\
@@ -548,7 +552,7 @@ CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3) :=						\
         --target $(2)                                       \
         --adb-path=$(CFG_ADB)                          \
         --adb-test-dir=$(CFG_ADB_TEST_DIR)                  \
-        --rustcflags "$(RUSTC_FLAGS_$(2)) $$(CFG_RUSTC_FLAGS) --target=$(2)" \
+        --rustcflags "$(RUSTC_FLAGS_$(2)) $$(CTEST_RUSTC_FLAGS) --target=$(2)" \
         $$(CTEST_TESTARGS)
 
 CTEST_DEPS_rpass_$(1)-T-$(2)-H-$(3) = $$(RPASS_TESTS)
