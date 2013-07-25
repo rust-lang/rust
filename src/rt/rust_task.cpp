@@ -152,8 +152,6 @@ cleanup_task(cleanup_args *args) {
 #endif
 }
 
-extern "C" CDECL void upcall_exchange_free(void *ptr);
-
 // This runs on the Rust stack
 void task_start_wrapper(spawn_args *a)
 {
