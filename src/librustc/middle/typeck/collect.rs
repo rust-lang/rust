@@ -301,7 +301,7 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt,
         //     Self => D'
         //     D,E,F => E',F',G'
         let substs = substs {
-            self_r: None,
+            regions: ty::NonerasedRegions(opt_vec::Empty),
             self_ty: Some(self_param),
             tps: non_shifted_trait_tps + shifted_method_tps
         };
@@ -622,7 +622,7 @@ pub fn compare_impl_method(tcx: ty::ctxt,
         let trait_tps = trait_substs.tps.map(
             |t| replace_bound_self(tcx, *t, dummy_self_r));
         let substs = substs {
-            self_r: Some(dummy_self_r),
+            regions: ty::NonerasedRegions(opt_vec::with(dummy_self_r)),
             self_ty: Some(self_ty),
             tps: vec::append(trait_tps, dummy_tps)
         };
@@ -1268,6 +1268,8 @@ pub fn mk_item_substs(ccx: &CrateCtxt,
         i += 1u;
         t
     });
-    let self_r = rscope::bound_self_region(rp);
-    (ty_generics, substs {self_r: self_r, self_ty: self_ty, tps: params})
+    let regions = rscope::bound_self_region(rp);
+    (ty_generics, substs {regions: ty::NonerasedRegions(regions),
+                          self_ty: self_ty,
+                          tps: params})
 }

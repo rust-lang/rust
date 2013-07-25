@@ -925,10 +925,15 @@ impl FnCtxt {
     pub fn region_var_if_parameterized(&self,
                                        rp: Option<ty::region_variance>,
                                        span: span)
-                                       -> Option<ty::Region> {
-        rp.map(
-            |_| self.infcx().next_region_var(
-                infer::BoundRegionInTypeOrImpl(span)))
+                                       -> OptVec<ty::Region> {
+        match rp {
+            None => opt_vec::Empty,
+            Some(_) => {
+                opt_vec::with(
+                    self.infcx().next_region_var(
+                        infer::BoundRegionInTypeOrImpl(span)))
+            }
+        }
     }
 
     pub fn type_error_message(&self,
@@ -1111,15 +1116,15 @@ pub fn impl_self_ty(vcx: &VtableContext,
         (ity.generics.type_param_defs.len(), ity.generics.region_param, ity.ty)
     };
 
-    let self_r = if region_param.is_some() {
-        Some(vcx.infcx.next_region_var(
+    let regions = ty::NonerasedRegions(if region_param.is_some() {
+        opt_vec::with(vcx.infcx.next_region_var(
             infer::BoundRegionInTypeOrImpl(location_info.span)))
     } else {
-        None
-    };
+        opt_vec::Empty
+    });
     let tps = vcx.infcx.next_ty_vars(n_tps);
 
-    let substs = substs { self_r: self_r, self_ty: None, tps: tps };
+    let substs = substs {regions: regions, self_ty: None, tps: tps};
     let substd_ty = ty::subst(tcx, &substs, raw_ty);
 
     ty_param_substs_and_ty { substs: substs, ty: substd_ty }
@@ -1986,7 +1991,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                         bound_self_region(region_parameterized);
 
                     raw_type = ty::mk_struct(tcx, class_id, substs {
-                        self_r: self_region,
+                        regions: ty::NonerasedRegions(self_region),
                         self_ty: None,
                         tps: ty::ty_params_to_tys(
                             tcx,
@@ -2006,11 +2011,11 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         }
 
         // Generate the struct type.
-        let self_region =
+        let regions =
             fcx.region_var_if_parameterized(region_parameterized, span);
         let type_parameters = fcx.infcx().next_ty_vars(type_parameter_count);
         let substitutions = substs {
-            self_r: self_region,
+            regions: ty::NonerasedRegions(regions),
             self_ty: None,
             tps: type_parameters
         };
@@ -2070,11 +2075,10 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
 
                     type_parameter_count = generics.ty_params.len();
 
-                    let self_region =
-                        bound_self_region(region_parameterized);
+                    let regions = bound_self_region(region_parameterized);
 
                     raw_type = ty::mk_enum(tcx, enum_id, substs {
-                        self_r: self_region,
+                        regions: ty::NonerasedRegions(regions),
                         self_ty: None,
                         tps: ty::ty_params_to_tys(
                             tcx,
@@ -2094,11 +2098,11 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         }
 
         // Generate the enum type.
-        let self_region =
+        let regions =
             fcx.region_var_if_parameterized(region_parameterized, span);
         let type_parameters = fcx.infcx().next_ty_vars(type_parameter_count);
         let substitutions = substs {
-            self_r: self_region,
+            regions: ty::NonerasedRegions(regions),
             self_ty: None,
             tps: type_parameters
         };
@@ -3310,22 +3314,23 @@ pub fn instantiate_path(fcx: @mut FnCtxt,
 
     // determine the region bound, using the value given by the user
     // (if any) and otherwise using a fresh region variable
-    let self_r = match pth.rp {
-      Some(_) => { // user supplied a lifetime parameter...
-        match tpt.generics.region_param {
-          None => { // ...but the type is not lifetime parameterized!
-            fcx.ccx.tcx.sess.span_err
-                (span, "this item is not region-parameterized");
-            None
-          }
-          Some(_) => { // ...and the type is lifetime parameterized, ok.
-            Some(ast_region_to_region(fcx, fcx, span, &pth.rp))
-          }
+    let regions = match pth.rp {
+        Some(_) => { // user supplied a lifetime parameter...
+            match tpt.generics.region_param {
+                None => { // ...but the type is not lifetime parameterized!
+                    fcx.ccx.tcx.sess.span_err
+                        (span, "this item is not region-parameterized");
+                    opt_vec::Empty
+                }
+                Some(_) => { // ...and the type is lifetime parameterized, ok.
+                    opt_vec::with(
+                        ast_region_to_region(fcx, fcx, span, &pth.rp))
+                }
+            }
         }
-      }
-      None => { // no lifetime parameter supplied, insert default
-        fcx.region_var_if_parameterized(tpt.generics.region_param, span)
-      }
+        None => { // no lifetime parameter supplied, insert default
+            fcx.region_var_if_parameterized(tpt.generics.region_param, span)
+        }
     };
 
     // determine values for type parameters, using the values given by
@@ -3352,7 +3357,9 @@ pub fn instantiate_path(fcx: @mut FnCtxt,
         pth.types.map(|aty| fcx.to_ty(aty))
     };
 
-    let substs = substs { self_r: self_r, self_ty: None, tps: tps };
+    let substs = substs {regions: ty::NonerasedRegions(regions),
+                         self_ty: None,
+                         tps: tps };
     fcx.write_ty_substs(node_id, tpt.ty, substs);
 
     debug!("<<<");

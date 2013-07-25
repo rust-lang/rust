@@ -274,14 +274,9 @@ pub fn trans_fn_ref_with_vtables(
     // Polytype of the function item (may have type params)
     let fn_tpt = ty::lookup_item_type(tcx, def_id);
 
-    // For simplicity, we want to use the Subst trait when composing
-    // substitutions for default methods.  The subst trait does
-    // substitutions with regions, though, so we put a dummy self
-    // region parameter in to keep it from failing. This is a hack.
-    let substs = ty::substs { self_r: Some(ty::re_empty),
+    let substs = ty::substs { regions: ty::ErasedRegions,
                               self_ty: None,
                               tps: /*bad*/ type_params.to_owned() };
-
 
     // We need to do a bunch of special handling for default methods.
     // We need to modify the def_id and our substs in order to monomorphize

@@ -641,7 +641,7 @@ pub fn early_resolve_expr(ex: @ast::expr,
                               def_id: target_def_id,
                               substs: ty::substs {
                                   tps: target_substs.tps.clone(),
-                                  self_r: target_substs.self_r,
+                                  regions: target_substs.regions.clone(),
                                   self_ty: Some(mt.ty)
                               }
                           };

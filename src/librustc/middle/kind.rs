@@ -19,6 +19,7 @@ use util::ppaux::UserString;
 use syntax::ast::*;
 use syntax::attr;
 use syntax::codemap::span;
+use syntax::opt_vec;
 use syntax::print::pprust::expr_to_str;
 use syntax::{visit, ast_util};
 
@@ -83,7 +84,7 @@ fn check_struct_safe_for_destructor(cx: Context,
     let struct_tpt = ty::lookup_item_type(cx.tcx, struct_did);
     if !struct_tpt.generics.has_type_params() {
         let struct_ty = ty::mk_struct(cx.tcx, struct_did, ty::substs {
-            self_r: None,
+            regions: ty::NonerasedRegions(opt_vec::Empty),
             self_ty: None,
             tps: ~[]
         });
