@@ -46,28 +46,26 @@ implement `Reader` and `Writer`, where appropriate.
 
 #[allow(missing_doc)];
 
-use result::Result;
-
+use cast;
 use clone::Clone;
 use container::Container;
 use int;
-use libc;
-use libc::{c_int, c_long, c_void, size_t, ssize_t};
-use libc::consts::os::posix88::*;
-use num;
-use os;
-use cast;
-use path::Path;
-use ops::Drop;
 use iterator::IteratorUtil;
+use libc::consts::os::posix88::*;
+use libc::{c_int, c_long, c_void, size_t, ssize_t};
+use libc;
+use num;
+use ops::Drop;
+use os;
+use path::Path;
 use ptr;
-use result;
-use str;
+use result::{Result, Ok, Err};
 use str::{StrSlice, OwnedStr};
+use str;
 use to_str::ToStr;
 use uint;
-use vec;
 use vec::{MutableVector, ImmutableVector, OwnedVector, OwnedCopyableVector, CopyableVector};
+use vec;
 
 #[allow(non_camel_case_types)] // not sure what to do about this
 pub type fd_t = c_int;
@@ -1038,9 +1036,9 @@ pub fn file_reader(path: &Path) -> Result<@Reader, ~str> {
     };
 
     if f as uint == 0u {
-        result::Err(~"error opening " + path.to_str())
+        Err(~"error opening " + path.to_str())
     } else {
-        result::Ok(FILE_reader(f, true))
+        Ok(FILE_reader(f, true))
     }
 }
 
@@ -1287,10 +1285,9 @@ pub fn mk_file_writer(path: &Path, flags: &[FileFlag])
         }
     };
     if fd < (0 as c_int) {
-        result::Err(fmt!("error opening %s: %s", path.to_str(),
-                         os::last_os_error()))
+        Err(fmt!("error opening %s: %s", path.to_str(), os::last_os_error()))
     } else {
-        result::Ok(fd_writer(fd, true))
+        Ok(fd_writer(fd, true))
     }
 }
 
@@ -1559,7 +1556,7 @@ impl<T:Writer> WriterUtil for T {
 }
 
 pub fn file_writer(path: &Path, flags: &[FileFlag]) -> Result<@Writer, ~str> {
-    mk_file_writer(path, flags).chain(|w| result::Ok(w))
+    mk_file_writer(path, flags).chain(|w| Ok(w))
 }
 
 
@@ -1572,9 +1569,9 @@ pub fn buffered_file_writer(path: &Path) -> Result<@Writer, ~str> {
             }
         };
         return if f as uint == 0u {
-            result::Err(~"error opening " + path.to_str())
+            Err(~"error opening " + path.to_str())
         } else {
-            result::Ok(FILE_writer(f, true))
+            Ok(FILE_writer(f, true))
         }
     }
 }
@@ -1728,9 +1725,9 @@ pub fn seek_in_buf(offset: int, pos: uint, len: uint, whence: SeekStyle) ->
 pub fn read_whole_file_str(file: &Path) -> Result<~str, ~str> {
     do read_whole_file(file).chain |bytes| {
         if str::is_utf8(bytes) {
-            result::Ok(str::from_bytes(bytes))
+            Ok(str::from_bytes(bytes))
         } else {
-            result::Err(file.to_str() + " is not UTF-8")
+            Err(file.to_str() + " is not UTF-8")
         }
     }
 }
@@ -1739,7 +1736,7 @@ pub fn read_whole_file_str(file: &Path) -> Result<~str, ~str> {
 // abstractions is pointless.
 pub fn read_whole_file(file: &Path) -> Result<~[u8], ~str> {
     do file_reader(file).chain |rdr| {
-        result::Ok(rdr.read_whole_stream())
+        Ok(rdr.read_whole_stream())
     }
 }
 
@@ -1839,6 +1836,7 @@ mod tests {
     use io::{BytesWriter, SeekCur, SeekEnd, SeekSet};
     use io;
     use path::Path;
+    use result::{Ok, Err};
     use result;
     use u64;
     use vec;
@@ -1939,10 +1937,10 @@ mod tests {
     #[test]
     fn file_reader_not_exist() {
         match io::file_reader(&Path("not a file")) {
-          result::Err(e) => {
+          Err(e) => {
             assert_eq!(e, ~"error opening not a file");
           }
-          result::Ok(_) => fail!()
+          Ok(_) => fail!()
         }
     }
 
@@ -1980,20 +1978,20 @@ mod tests {
     #[test]
     fn file_writer_bad_name() {
         match io::file_writer(&Path("?/?"), []) {
-          result::Err(e) => {
+          Err(e) => {
             assert!(e.starts_with("error opening"));
           }
-          result::Ok(_) => fail!()
+          Ok(_) => fail!()
         }
     }
 
     #[test]
     fn buffered_file_writer_bad_name() {
         match io::buffered_file_writer(&Path("?/?")) {
-          result::Err(e) => {
+          Err(e) => {
             assert!(e.starts_with("error opening"));
           }
-          result::Ok(_) => fail!()
+          Ok(_) => fail!()
         }
     }
 
