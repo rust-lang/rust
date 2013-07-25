@@ -384,12 +384,10 @@ mod test {
                               span:sp(0,6)})
     }
 
-    // FIXME (#6416): For some reason, this fails and causes a test failure, even though it's
-    // marked as `#[should_fail]`.
-    /*#[should_fail]
+    #[should_fail]
     #[test] fn bad_path_expr_1() {
         string_to_expr(@"::abc::def::return");
-    }*/
+    }
 
     #[test] fn string_to_tts_1 () {
         let (tts,_ps) = string_to_tts_and_sess(@"fn a (b : int) { b; }");
