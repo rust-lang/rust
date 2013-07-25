@@ -65,43 +65,37 @@ pub fn trans_if(bcx: @mut Block,
 
     let _icx = push_ctxt("trans_if");
 
-    match cond.node {
-        // `if true` and `if false` can be trans'd more efficiently,
-        // by dropping branches that are known to be impossible.
-        ast::expr_lit(@ref l) => match l.node {
-            ast::lit_bool(true) => {
-                // if true { .. } [else { .. }]
-                let then_bcx_in = scope_block(bcx, thn.info(), "if_true_then");
-                let then_bcx_out = trans_block(then_bcx_in, thn, dest);
-                let then_bcx_out = trans_block_cleanups(then_bcx_out,
-                                                        block_cleanups(then_bcx_in));
-                Br(bcx, then_bcx_in.llbb);
-                return then_bcx_out;
-            }
-            ast::lit_bool(false) => {
-                match els {
-                    // if false { .. } else { .. }
-                    Some(elexpr) => {
-                        let (else_bcx_in, else_bcx_out) =
-                            trans_if_else(bcx, elexpr, dest, "if_false_else");
-                        Br(bcx, else_bcx_in.llbb);
-                        return else_bcx_out;
-                    }
-                    // if false { .. }
-                    None => return bcx,
-                }
-            }
-            _ => {}
-        },
-        _ => {}
-    }
-
     let Result {bcx, val: cond_val} =
         expr::trans_to_datum(bcx, cond).to_result();
 
-    let then_bcx_in = scope_block(bcx, thn.info(), "then");
-
     let cond_val = bool_to_i1(bcx, cond_val);
+
+    // Drop branches that are known to be impossible
+    if is_const(cond_val) && !is_undef(cond_val) {
+        if const_to_uint(cond_val) == 1 {
+            // if true { .. } [else { .. }]
+            let then_bcx_in = scope_block(bcx, thn.info(), "if_true_then");
+            let then_bcx_out = trans_block(then_bcx_in, thn, dest);
+            let then_bcx_out = trans_block_cleanups(then_bcx_out,
+                                                    block_cleanups(then_bcx_in));
+            Br(bcx, then_bcx_in.llbb);
+            return then_bcx_out;
+        } else {
+            match els {
+                // if false { .. } else { .. }
+                Some(elexpr) => {
+                    let (else_bcx_in, else_bcx_out) =
+                        trans_if_else(bcx, elexpr, dest, "if_false_else");
+                    Br(bcx, else_bcx_in.llbb);
+                    return else_bcx_out;
+                }
+                // if false { .. }
+                None => return bcx,
+            }
+        }
+    }
+
+    let then_bcx_in = scope_block(bcx, thn.info(), "then");
 
     let then_bcx_out = trans_block(then_bcx_in, thn, dest);
     let then_bcx_out = trans_block_cleanups(then_bcx_out,
