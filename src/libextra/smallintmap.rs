@@ -37,9 +37,6 @@ impl<V> Container for SmallIntMap<V> {
         }
         sz
     }
-
-    /// Return true if the map contains no elements
-    fn is_empty(&self) -> bool { self.len() == 0 }
 }
 
 impl<V> Mutable for SmallIntMap<V> {

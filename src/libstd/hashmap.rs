@@ -282,9 +282,6 @@ impl<K:Hash + Eq,V> HashMap<K, V> {
 impl<K:Hash + Eq,V> Container for HashMap<K, V> {
     /// Return the number of elements in the map
     fn len(&self) -> uint { self.size }
-
-    /// Return true if the map contains no elements
-    fn is_empty(&self) -> bool { self.len() == 0 }
 }
 
 impl<K:Hash + Eq,V> Mutable for HashMap<K, V> {
@@ -323,19 +320,6 @@ impl<K:Hash + Eq,V> MutableMap<K, V> for HashMap<K, V> {
             TableFull | FoundHole(_) => return None
         };
         Some(self.mut_value_for_bucket(idx))
-    }
-
-    /// Insert a key-value pair into the map. An existing value for a
-    /// key is replaced by the new value. Return true if the key did
-    /// not already exist in the map.
-    fn insert(&mut self, k: K, v: V) -> bool {
-        self.swap(k, v).is_none()
-    }
-
-    /// Remove a key-value pair from the map. Return true if the key
-    /// was present in the map, otherwise false.
-    fn remove(&mut self, k: &K) -> bool {
-        self.pop(k).is_some()
     }
 
     /// Insert a key-value pair from the map. If the key already had a value
@@ -661,9 +645,6 @@ impl<T:Hash + Eq> Eq for HashSet<T> {
 impl<T:Hash + Eq> Container for HashSet<T> {
     /// Return the number of elements in the set
     fn len(&self) -> uint { self.map.len() }
-
-    /// Return true if the set contains no elements
-    fn is_empty(&self) -> bool { self.map.is_empty() }
 }
 
 impl<T:Hash + Eq> Mutable for HashSet<T> {

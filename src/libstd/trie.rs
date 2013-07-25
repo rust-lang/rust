@@ -36,10 +36,6 @@ impl<T> Container for TrieMap<T> {
     /// Return the number of elements in the map
     #[inline]
     fn len(&self) -> uint { self.length }
-
-    /// Return true if the map contains no elements
-    #[inline]
-    fn is_empty(&self) -> bool { self.len() == 0 }
 }
 
 impl<T> Mutable for TrieMap<T> {
@@ -85,21 +81,6 @@ impl<T> MutableMap<uint, T> for TrieMap<T> {
     #[inline]
     fn find_mut<'a>(&'a mut self, key: &uint) -> Option<&'a mut T> {
         find_mut(&mut self.root.children[chunk(*key, 0)], *key, 1)
-    }
-
-    /// Insert a key-value pair into the map. An existing value for a
-    /// key is replaced by the new value. Return true if the key did
-    /// not already exist in the map.
-    #[inline]
-    fn insert(&mut self, key: uint, value: T) -> bool {
-        self.swap(key, value).is_none()
-    }
-
-    /// Remove a key-value pair from the map. Return true if the key
-    /// was present in the map, otherwise false.
-    #[inline]
-    fn remove(&mut self, key: &uint) -> bool {
-        self.pop(key).is_some()
     }
 
     /// Insert a key-value pair from the map. If the key already had a value
@@ -194,10 +175,6 @@ impl Container for TrieSet {
     /// Return the number of elements in the set
     #[inline]
     fn len(&self) -> uint { self.map.len() }
-
-    /// Return true if the set contains no elements
-    #[inline]
-    fn is_empty(&self) -> bool { self.map.is_empty() }
 }
 
 impl Mutable for TrieSet {

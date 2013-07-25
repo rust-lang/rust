@@ -27,9 +27,6 @@ pub struct PriorityQueue<T> {
 impl<T:Ord> Container for PriorityQueue<T> {
     /// Returns the length of the queue
     fn len(&self) -> uint { self.data.len() }
-
-    /// Returns true if a queue contains no elements
-    fn is_empty(&self) -> bool { self.len() == 0 }
 }
 
 impl<T:Ord> Mutable for PriorityQueue<T> {
