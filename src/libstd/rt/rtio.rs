@@ -59,7 +59,7 @@ pub trait RtioTcpListener : RtioSocket {
 pub trait RtioTcpStream : RtioSocket {
     fn read(&mut self, buf: &mut [u8]) -> Result<uint, IoError>;
     fn write(&mut self, buf: &[u8]) -> Result<(), IoError>;
-    fn peer_name(&mut self) -> IpAddr;
+    fn peer_name(&mut self) -> Result<IpAddr, IoError>;
     fn control_congestion(&mut self);
     fn nodelay(&mut self);
     fn keepalive(&mut self, delay_in_seconds: uint);
@@ -67,7 +67,7 @@ pub trait RtioTcpStream : RtioSocket {
 }
 
 pub trait RtioSocket {
-    fn socket_name(&mut self) -> IpAddr;
+    fn socket_name(&mut self) -> Result<IpAddr, IoError>;
 }
 
 pub trait RtioUdpSocket : RtioSocket {
