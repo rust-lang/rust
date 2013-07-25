@@ -45,7 +45,7 @@ impl TcpStream {
     }
 
     pub fn peer_name(&mut self) -> Option<IpAddr> {
-        match (***self).peer_name() {
+        match (**self).peer_name() {
             Ok(pn) => Some(pn),
             Err(ioerr) => {
                 rtdebug!("failed to get peer name: %?", ioerr);
@@ -56,7 +56,7 @@ impl TcpStream {
     }
 
     pub fn socket_name(&mut self) -> Option<IpAddr> {
-        match (***self).socket_name() {
+        match (**self).socket_name() {
             Ok(sn) => Some(sn),
             Err(ioerr) => {
                 rtdebug!("failed to get socket name: %?", ioerr);
@@ -115,7 +115,7 @@ impl TcpListener {
     }
 
     pub fn socket_name(&mut self) -> Option<IpAddr> {
-        match (***self).socket_name() {
+        match (**self).socket_name() {
             Ok(sn) => Some(sn),
             Err(ioerr) => {
                 rtdebug!("failed to get socket name: %?", ioerr);
