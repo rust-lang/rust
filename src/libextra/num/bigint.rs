@@ -828,7 +828,7 @@ impl FromStr for BigInt {
     }
 }
 
-impl Semiring for BigUint;
+impl Semiring for BigInt;
 
 impl Ring for BigInt;
 
