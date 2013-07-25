@@ -34,7 +34,7 @@ pub type Complex = Cmplx<float>;
 pub type Complex32 = Cmplx<f32>;
 pub type Complex64 = Cmplx<f64>;
 
-impl<T: Clone + Num> Cmplx<T> {
+impl<T: Clone + Field> Cmplx<T> {
     /// Create a new Cmplx
     #[inline]
     pub fn new(re: T, im: T) -> Cmplx<T> {
@@ -79,7 +79,7 @@ impl<T: Clone + Num> Cmplx<T> {
     }
 }
 
-impl<T: Clone + Algebraic + Num> Cmplx<T> {
+impl<T: Clone + Algebraic + Field> Cmplx<T> {
     /// Calculate |self|
     #[inline]
     pub fn norm(&self) -> T {
@@ -87,7 +87,7 @@ impl<T: Clone + Algebraic + Num> Cmplx<T> {
     }
 }
 
-impl<T: Clone + Trigonometric + Algebraic + Num> Cmplx<T> {
+impl<T: Clone + Trigonometric + Algebraic + Field> Cmplx<T> {
     /// Calculate the principal Arg of self.
     #[inline]
     pub fn arg(&self) -> T {
@@ -108,21 +108,21 @@ impl<T: Clone + Trigonometric + Algebraic + Num> Cmplx<T> {
 
 /* arithmetic */
 // (a + i b) + (c + i d) == (a + c) + i (b + d)
-impl<T: Clone + Num> Add<Cmplx<T>, Cmplx<T>> for Cmplx<T> {
+impl<T: Clone + Field> Add<Cmplx<T>, Cmplx<T>> for Cmplx<T> {
     #[inline]
     fn add(&self, other: &Cmplx<T>) -> Cmplx<T> {
         Cmplx::new(self.re + other.re, self.im + other.im)
     }
 }
 // (a + i b) - (c + i d) == (a - c) + i (b - d)
-impl<T: Clone + Num> Sub<Cmplx<T>, Cmplx<T>> for Cmplx<T> {
+impl<T: Clone + Field> Sub<Cmplx<T>, Cmplx<T>> for Cmplx<T> {
     #[inline]
     fn sub(&self, other: &Cmplx<T>) -> Cmplx<T> {
         Cmplx::new(self.re - other.re, self.im - other.im)
     }
 }
 // (a + i b) * (c + i d) == (a*c - b*d) + i (a*d + b*c)
-impl<T: Clone + Num> Mul<Cmplx<T>, Cmplx<T>> for Cmplx<T> {
+impl<T: Clone + Field> Mul<Cmplx<T>, Cmplx<T>> for Cmplx<T> {
     #[inline]
     fn mul(&self, other: &Cmplx<T>) -> Cmplx<T> {
         Cmplx::new(self.re*other.re - self.im*other.im,
@@ -132,7 +132,7 @@ impl<T: Clone + Num> Mul<Cmplx<T>, Cmplx<T>> for Cmplx<T> {
 
 // (a + i b) / (c + i d) == [(a + i b) * (c - i d)] / (c*c + d*d)
 //   == [(a*c + b*d) / (c*c + d*d)] + i [(b*c - a*d) / (c*c + d*d)]
-impl<T: Clone + Num> Div<Cmplx<T>, Cmplx<T>> for Cmplx<T> {
+impl<T: Clone + Field> Div<Cmplx<T>, Cmplx<T>> for Cmplx<T> {
     #[inline]
     fn div(&self, other: &Cmplx<T>) -> Cmplx<T> {
         let norm_sqr = other.norm_sqr();
@@ -141,7 +141,7 @@ impl<T: Clone + Num> Div<Cmplx<T>, Cmplx<T>> for Cmplx<T> {
     }
 }
 
-impl<T: Clone + Num> Neg<Cmplx<T>> for Cmplx<T> {
+impl<T: Clone + Field> Neg<Cmplx<T>> for Cmplx<T> {
     #[inline]
     fn neg(&self) -> Cmplx<T> {
         Cmplx::new(-self.re, -self.im)
@@ -149,7 +149,7 @@ impl<T: Clone + Num> Neg<Cmplx<T>> for Cmplx<T> {
 }
 
 /* constants */
-impl<T: Clone + Num> Zero for Cmplx<T> {
+impl<T: Clone + Field> Zero for Cmplx<T> {
     #[inline]
     fn zero() -> Cmplx<T> {
         Cmplx::new(Zero::zero(), Zero::zero())
@@ -161,7 +161,7 @@ impl<T: Clone + Num> Zero for Cmplx<T> {
     }
 }
 
-impl<T: Clone + Num> One for Cmplx<T> {
+impl<T: Clone + Field> One for Cmplx<T> {
     #[inline]
     fn one() -> Cmplx<T> {
         Cmplx::new(One::one(), Zero::zero())
@@ -169,7 +169,7 @@ impl<T: Clone + Num> One for Cmplx<T> {
 }
 
 /* string conversions */
-impl<T: ToStr + Num + Ord> ToStr for Cmplx<T> {
+impl<T: ToStr + Field + Ord> ToStr for Cmplx<T> {
     fn to_str(&self) -> ~str {
         if self.im < Zero::zero() {
             fmt!("%s-%si", self.re.to_str(), (-self.im).to_str())
@@ -179,7 +179,7 @@ impl<T: ToStr + Num + Ord> ToStr for Cmplx<T> {
     }
 }
 
-impl<T: ToStrRadix + Num + Ord> ToStrRadix for Cmplx<T> {
+impl<T: ToStrRadix + Field + Ord> ToStrRadix for Cmplx<T> {
     fn to_str_radix(&self, radix: uint) -> ~str {
         if self.im < Zero::zero() {
             fmt!("%s-%si", self.re.to_str_radix(radix), (-self.im).to_str_radix(radix))

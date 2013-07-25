@@ -138,7 +138,9 @@ pub fn range_rev(hi: $T, lo: $T, it: &fn($T) -> bool) -> bool {
     range_step_inclusive(hi-1, lo, -1 as $T_SIGNED, it)
 }
 
-impl Num for $T {}
+impl Semiring for $T;
+
+impl Ring for $T;
 
 #[cfg(not(test))]
 impl Ord for $T {
@@ -160,7 +162,7 @@ impl Eq for $T {
     fn ne(&self, other: &$T) -> bool { return (*self) != (*other); }
 }
 
-impl Orderable for $T {
+impl OrderedRing for $T {
     #[inline]
     fn min(&self, other: &$T) -> $T {
         if *self < *other { *self } else { *other }

@@ -110,7 +110,7 @@ cmp_impl!(impl TotalEq, equals)
 cmp_impl!(impl Ord, lt, gt, le, ge)
 cmp_impl!(impl TotalOrd, cmp -> cmp::Ordering)
 
-impl<T: Clone + Integer + Ord> Orderable for Ratio<T> {
+impl<T: Clone + Integer + Ord> OrderedRing for Ratio<T> {
     #[inline]
     fn min(&self, other: &Ratio<T>) -> Ratio<T> {
         if *self < *other { self.clone() } else { other.clone() }
@@ -201,8 +201,9 @@ impl<T: Clone + Integer + Ord>
     }
 }
 
-impl<T: Clone + Integer + Ord>
-    Num for Ratio<T> {}
+impl<T: Clone + Integer + Ord> Semiring for Ratio<T>;
+
+impl<T: Clone + Integer + Ord> Ring for Ratio<T>;
 
 /* Utils */
 impl<T: Clone + Integer + Ord>
@@ -243,12 +244,14 @@ impl<T: Clone + Integer + Ord>
     }
 }
 
-impl<T: Clone + Integer + Ord> Fractional for Ratio<T> {
+impl<T: Clone + Integer + Ord> Field for Ratio<T> {
     #[inline]
     fn recip(&self) -> Ratio<T> {
         Ratio::new_raw(self.denom.clone(), self.numer.clone())
     }
 }
+
+impl<T: Clone + Integer + Ord> Fractional for Ratio<T>;
 
 /* String conversions */
 impl<T: ToStr> ToStr for Ratio<T> {
