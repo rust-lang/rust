@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:get called on error result: ~"kitty"
+// error-pattern:get called on `Err` result: ~"kitty"
 
 use std::result;
 
