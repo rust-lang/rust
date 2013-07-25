@@ -120,11 +120,26 @@ fn enc_opt<T>(w: @io::Writer, t: Option<T>, enc_f: &fn(T)) {
 }
 
 fn enc_substs(w: @io::Writer, cx: @ctxt, substs: &ty::substs) {
-    do enc_opt(w, substs.self_r) |r| { enc_region(w, cx, r) }
+    enc_region_substs(w, cx, &substs.regions);
     do enc_opt(w, substs.self_ty) |t| { enc_ty(w, cx, t) }
     w.write_char('[');
     for substs.tps.iter().advance |t| { enc_ty(w, cx, *t); }
     w.write_char(']');
+}
+
+fn enc_region_substs(w: @io::Writer, cx: @ctxt, substs: &ty::RegionSubsts) {
+    match *substs {
+        ty::ErasedRegions => {
+            w.write_char('e');
+        }
+        ty::NonerasedRegions(ref regions) => {
+            w.write_char('n');
+            for regions.iter().advance |&r| {
+                enc_region(w, cx, r);
+            }
+            w.write_char('.');
+        }
+    }
 }
 
 fn enc_region(w: @io::Writer, cx: @ctxt, r: ty::Region) {

@@ -30,6 +30,8 @@ use syntax::codemap::span;
 use syntax::parse::token;
 use syntax::print::pprust;
 use syntax::{ast, ast_util};
+use syntax::opt_vec;
+use syntax::opt_vec::OptVec;
 
 /// Produces a string suitable for debugging output.
 pub trait Repr {
@@ -451,12 +453,12 @@ pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
       ty_enum(did, ref substs) | ty_struct(did, ref substs) => {
         let path = ty::item_path(cx, did);
         let base = ast_map::path_to_str(path, cx.sess.intr());
-        parameterized(cx, base, substs.self_r, substs.tps)
+        parameterized(cx, base, &substs.regions, substs.tps)
       }
       ty_trait(did, ref substs, s, mutbl, ref bounds) => {
         let path = ty::item_path(cx, did);
         let base = ast_map::path_to_str(path, cx.sess.intr());
-        let ty = parameterized(cx, base, substs.self_r, substs.tps);
+        let ty = parameterized(cx, base, &substs.regions, substs.tps);
         let bound_sep = if bounds.is_empty() { "" } else { ":" };
         let bound_str = bounds.repr(cx);
         fmt!("%s%s%s%s%s", trait_store_to_str(cx, s), mutability_to_str(mutbl), ty,
@@ -475,16 +477,18 @@ pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
 
 pub fn parameterized(cx: ctxt,
                      base: &str,
-                     self_r: Option<ty::Region>,
+                     regions: &ty::RegionSubsts,
                      tps: &[ty::t]) -> ~str {
 
     let mut strs = ~[];
-    match self_r {
-        None => (),
-        Some(r) => {
-            strs.push(region_to_str(cx, "", false, r))
+    match *regions {
+        ty::ErasedRegions => { }
+        ty::NonerasedRegions(ref regions) => {
+            for regions.iter().advance |&r| {
+                strs.push(region_to_str(cx, "", false, r))
+            }
         }
-    };
+    }
 
     for tps.iter().advance |t| {
         strs.push(ty_to_str(cx, *t))
@@ -534,6 +538,15 @@ impl<'self, T:Repr> Repr for &'self [T] {
     }
 }
 
+impl<T:Repr> Repr for OptVec<T> {
+    fn repr(&self, tcx: ctxt) -> ~str {
+        match *self {
+            opt_vec::Empty => ~"[]",
+            opt_vec::Vec(ref v) => repr_vec(tcx, *v)
+        }
+    }
+}
+
 // This is necessary to handle types like Option<~[T]>, for which
 // autoderef cannot convert the &[T] handler
 impl<T:Repr> Repr for ~[T] {
@@ -557,10 +570,19 @@ impl Repr for ty::t {
 
 impl Repr for ty::substs {
     fn repr(&self, tcx: ctxt) -> ~str {
-        fmt!("substs(self_r=%s, self_ty=%s, tps=%s)",
-             self.self_r.repr(tcx),
+        fmt!("substs(regions=%s, self_ty=%s, tps=%s)",
+             self.regions.repr(tcx),
              self.self_ty.repr(tcx),
              self.tps.repr(tcx))
+    }
+}
+
+impl Repr for ty::RegionSubsts {
+    fn repr(&self, tcx: ctxt) -> ~str {
+        match *self {
+            ty::ErasedRegions => ~"erased",
+            ty::NonerasedRegions(ref regions) => regions.repr(tcx)
+        }
     }
 }
 
@@ -825,10 +847,9 @@ impl UserString for ty::TraitRef {
         if tcx.sess.verbose() && self.substs.self_ty.is_some() {
             let mut all_tps = self.substs.tps.clone();
             for self.substs.self_ty.iter().advance |&t| { all_tps.push(t); }
-            parameterized(tcx, base, self.substs.self_r, all_tps)
+            parameterized(tcx, base, &self.substs.regions, all_tps)
         } else {
-            parameterized(tcx, base, self.substs.self_r,
-                          self.substs.tps)
+            parameterized(tcx, base, &self.substs.regions, self.substs.tps)
         }
     }
 }

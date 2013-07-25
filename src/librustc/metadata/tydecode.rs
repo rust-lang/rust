@@ -186,7 +186,7 @@ fn parse_trait_store(st: &mut PState) -> ty::TraitStore {
 }
 
 fn parse_substs(st: &mut PState, conv: conv_did) -> ty::substs {
-    let self_r = parse_opt(st, |st| parse_region(st) );
+    let regions = parse_region_substs(st, |x,y| conv(x,y));
 
     let self_ty = parse_opt(st, |st| parse_ty(st, |x,y| conv(x,y)) );
 
@@ -196,10 +196,26 @@ fn parse_substs(st: &mut PState, conv: conv_did) -> ty::substs {
     st.pos = st.pos + 1u;
 
     return ty::substs {
-        self_r: self_r,
+        regions: regions,
         self_ty: self_ty,
         tps: params
     };
+}
+
+fn parse_region_substs(st: &mut PState, conv: conv_did) -> ty::RegionSubsts {
+    match next(st) {
+        'e' => ty::ErasedRegions,
+        'n' => {
+            let mut regions = opt_vec::Empty;
+            while peek(st) != '.' {
+                let r = parse_region(st);
+                regions.push(r);
+            }
+            assert_eq!(next(st), '.');
+            ty::NonerasedRegions(regions)
+        }
+        _ => fail!("parse_bound_region: bad input")
+    }
 }
 
 fn parse_bound_region(st: &mut PState) -> ty::bound_region {

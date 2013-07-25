@@ -45,6 +45,7 @@ use syntax::ast_map;
 use syntax::ast_util::{def_id_of_def, local_def};
 use syntax::codemap::{span, dummy_sp};
 use syntax::parse;
+use syntax::opt_vec;
 use syntax::visit::{default_simple_visitor, default_visitor};
 use syntax::visit::{mk_simple_visitor, mk_vt, visit_crate, visit_item};
 use syntax::visit::{Visitor, SimpleVisitor};
@@ -436,16 +437,20 @@ impl CoherenceChecker {
     pub fn universally_quantify_polytype(&self,
                                          polytype: ty_param_bounds_and_ty)
                                          -> UniversalQuantificationResult {
-        let self_region =
-            polytype.generics.region_param.map(
-                |_| self.inference_context.next_region_var(
-                    infer::BoundRegionInCoherence));
+        let regions = match polytype.generics.region_param {
+            None => opt_vec::Empty,
+            Some(r) => {
+                opt_vec::with(
+                    self.inference_context.next_region_var(
+                        infer::BoundRegionInCoherence))
+            }
+        };
 
         let bounds_count = polytype.generics.type_param_defs.len();
         let type_parameters = self.inference_context.next_ty_vars(bounds_count);
 
         let substitutions = substs {
-            self_r: self_region,
+            regions: ty::NonerasedRegions(regions),
             self_ty: None,
             tps: type_parameters
         };
@@ -453,13 +458,9 @@ impl CoherenceChecker {
                              &substitutions,
                              polytype.ty);
 
-        // Get our type parameters back.
-        let substs { self_r: _, self_ty: _, tps: type_parameters } =
-            substitutions;
-
         UniversalQuantificationResult {
             monotype: monotype,
-            type_variables: type_parameters,
+            type_variables: substitutions.tps,
             type_param_defs: polytype.generics.type_param_defs
         }
     }
@@ -845,7 +846,7 @@ pub fn make_substs_for_receiver_types(tcx: ty::ctxt,
     });
 
     return ty::substs {
-        self_r: trait_ref.substs.self_r,
+        regions: trait_ref.substs.regions.clone(),
         self_ty: trait_ref.substs.self_ty,
         tps: combined_tps
     };

@@ -9,7 +9,6 @@
 // except according to those terms.
 
 /*!
- *
  * Defines a type OptVec<T> that can be used in place of ~[T].
  * OptVec avoids the need for allocation for empty vectors.
  * OptVec implements the iterable interface as well as

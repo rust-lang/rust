@@ -489,7 +489,15 @@ pub enum bound_region {
     br_cap_avoid(ast::node_id, @bound_region),
 }
 
-type opt_region = Option<Region>;
+/**
+ * Represents the values to use when substituting lifetime parameters.
+ * If the value is `ErasedRegions`, then this subst is occurring during
+ * trans, and all region parameters will be replaced with `ty::re_static`. */
+#[deriving(Clone, Eq, IterBytes)]
+pub enum RegionSubsts {
+    ErasedRegions,
+    NonerasedRegions(OptVec<ty::Region>)
+}
 
 /**
  * The type substs represents the kinds of things that can be substituted to
@@ -510,9 +518,9 @@ type opt_region = Option<Region>;
  *   always substituted away to the implementing type for a trait. */
 #[deriving(Clone, Eq, IterBytes)]
 pub struct substs {
-    self_r: opt_region,
     self_ty: Option<ty::t>,
-    tps: ~[t]
+    tps: ~[t],
+    regions: RegionSubsts,
 }
 
 mod primitives {
@@ -952,7 +960,14 @@ fn mk_t(cx: ctxt, st: sty) -> t {
     fn sflags(substs: &substs) -> uint {
         let mut f = 0u;
         for substs.tps.iter().advance |tt| { f |= get(*tt).flags; }
-        for substs.self_r.iter().advance |r| { f |= rflags(*r) }
+        match substs.regions {
+            ErasedRegions => {}
+            NonerasedRegions(ref regions) => {
+                for regions.iter().advance |r| {
+                    f |= rflags(*r)
+                }
+            }
+        }
         return f;
     }
     match &st {
@@ -1290,7 +1305,7 @@ pub fn fold_bare_fn_ty(fty: &BareFnTy, fldop: &fn(t) -> t) -> BareFnTy {
 
 fn fold_sty(sty: &sty, fldop: &fn(t) -> t) -> sty {
     fn fold_substs(substs: &substs, fldop: &fn(t) -> t) -> substs {
-        substs {self_r: substs.self_r,
+        substs {regions: substs.regions.clone(),
                 self_ty: substs.self_ty.map(|t| fldop(*t)),
                 tps: substs.tps.map(|t| fldop(*t))}
     }
@@ -1382,8 +1397,15 @@ pub fn fold_regions_and_ty(
         fldr: &fn(r: Region) -> Region,
         fldt: &fn(t: t) -> t)
      -> substs {
+        let regions = match substs.regions {
+            ErasedRegions => ErasedRegions,
+            NonerasedRegions(ref regions) => {
+                NonerasedRegions(regions.map(|r| fldr(*r)))
+            }
+        };
+
         substs {
-            self_r: substs.self_r.map(|r| fldr(*r)),
+            regions: regions,
             self_ty: substs.self_ty.map(|t| fldt(*t)),
             tps: substs.tps.map(|t| fldt(*t))
         }
@@ -1482,8 +1504,13 @@ pub fn subst_tps(cx: ctxt, tps: &[t], self_ty_opt: Option<t>, typ: t) -> t {
 }
 
 pub fn substs_is_noop(substs: &substs) -> bool {
+    let regions_is_noop = match substs.regions {
+        ErasedRegions => false, // may be used to canonicalize
+        NonerasedRegions(ref regions) => regions.is_empty()
+    };
+
     substs.tps.len() == 0u &&
-        substs.self_r.is_none() &&
+        regions_is_noop &&
         substs.self_ty.is_none()
 }
 
@@ -4238,30 +4265,33 @@ pub fn normalize_ty(cx: ctxt, t: t) -> t {
             })
         }
 
-        ty_enum(did, ref r) =>
-            match (*r).self_r {
-                Some(_) =>
-                    // Use re_static since trans doesn't care about regions
-                    mk_enum(cx, did,
-                     substs {
-                        self_r: Some(ty::re_static),
-                        self_ty: None,
-                        tps: (*r).tps.clone()
-                     }),
-                None =>
+        ty_enum(did, ref r) => {
+            match (*r).regions {
+                NonerasedRegions(_) => {
+                    // trans doesn't care about regions
+                    mk_enum(cx, did, substs {regions: ty::ErasedRegions,
+                                             self_ty: None,
+                                             tps: (*r).tps.clone()})
+                }
+                ErasedRegions => {
                     t
-            },
+                }
+            }
+        }
 
-        ty_struct(did, ref r) =>
-            match (*r).self_r {
-              Some(_) =>
-                // Ditto.
-                mk_struct(cx, did, substs {self_r: Some(ty::re_static),
-                                           self_ty: None,
-                                           tps: (*r).tps.clone()}),
-              None =>
-                t
-            },
+        ty_struct(did, ref r) => {
+            match (*r).regions {
+                NonerasedRegions(_) => {
+                    // Ditto.
+                    mk_struct(cx, did, substs {regions: ty::ErasedRegions,
+                                               self_ty: None,
+                                               tps: (*r).tps.clone()})
+                }
+                ErasedRegions => {
+                    t
+                }
+            }
+        }
 
         _ =>
             t
@@ -4421,7 +4451,7 @@ pub fn visitor_object_ty(tcx: ctxt) -> Result<(@TraitRef, t), ~str> {
         Err(s) => { return Err(s); }
     };
     let substs = substs {
-        self_r: None,
+        regions: ty::NonerasedRegions(opt_vec::Empty),
         self_ty: None,
         tps: ~[]
     };
