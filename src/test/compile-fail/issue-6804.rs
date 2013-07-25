@@ -1,0 +1,21 @@
+// Matching against NaN should result in a warning
+
+use std::float::NaN;
+
+fn main() {
+    let x = NaN;
+    match x {
+        NaN => {},
+        _ => {},
+    };
+    //~^^^ WARNING unmatchable NaN in pattern, use the is_NaN method in a guard instead
+    match [x, 1.0] {
+        [NaN, _] => {},
+        _ => {},
+    };
+    //~^^^ WARNING unmatchable NaN in pattern, use the is_NaN method in a guard instead
+}
+
+// At least one error is needed so that compilation fails
+#[static_assert]
+static b: bool = false; //~ ERROR static assertion failed
