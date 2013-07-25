@@ -1,331 +1,222 @@
 ;;; rust-mode.el --- A major emacs mode for editing Rust source code
 
-;; Version: 0.1.0
+;; Version: 0.2.0
 ;; Author: Mozilla
-;; Package-Requires: ((cm-mode "0.1.0"))
 ;; Url: https://github.com/mozilla/rust
 
-(require 'cm-mode)
-(require 'cc-mode)
 (eval-when-compile (require 'cl))
 
-(defun rust-electric-brace (arg)
-  (interactive "*P")
-  (self-insert-command (prefix-numeric-value arg))
-  (when (and c-electric-flag
-             (not (member (get-text-property (point) 'face)
-                          '(font-lock-comment-face font-lock-string-face))))
-    (cm-indent)))
+;; Syntax definitions and helpers
+(defvar rust-mode-syntax-table
+  (let ((table (make-syntax-table)))
 
-(defcustom rust-capitalized-idents-are-types t
-  "If non-nil, capitalized identifiers will be treated as types for the purposes of font-lock mode"
-  :type 'boolean
-  :require 'rust-mode
-  :group 'rust-mode)
+    ;; Operators
+    (loop for i in '(?+ ?- ?* ?/ ?& ?| ?^ ?! ?< ?> ?~ ?@)
+          do (modify-syntax-entry i "." table))
 
-(defcustom rust-indent-unit 4
-  "Amount of offset per level of indentation"
-  :type 'integer
-  :require 'rust-mode
-  :group 'rust-mode)
+    ;; Strings
+    (modify-syntax-entry ?\" "\"" table)
+    (modify-syntax-entry ?\\ "\\" table)
 
-(defvar rust-syntax-table (let ((table (make-syntax-table)))
-                            (c-populate-syntax-table table)
-                            table))
+    ;; _ is a word-char
+    (modify-syntax-entry ?_ "w" table)
 
-(defun make-rust-state ()
-  (vector 'rust-token-base
-          (list (vector 'top (- rust-indent-unit) nil nil nil))
-          0
-          nil))
-(defmacro rust-state-tokenize (x) `(aref ,x 0))
-(defmacro rust-state-context (x) `(aref ,x 1))
-(defmacro rust-state-indent (x) `(aref ,x 2))
-(defmacro rust-state-last-token (x) `(aref ,x 3))
+    ;; Comments
+    (modify-syntax-entry ?/  ". 124b" table)
+    (modify-syntax-entry ?*  ". 23"   table)
+    (modify-syntax-entry ?\n "> b"    table)
+    (modify-syntax-entry ?\^m "> b"   table)
 
-(defmacro rust-context-type (x) `(aref ,x 0))
-(defmacro rust-context-indent (x) `(aref ,x 1))
-(defmacro rust-context-column (x) `(aref ,x 2))
-(defmacro rust-context-align (x) `(aref ,x 3))
-(defmacro rust-context-info (x) `(aref ,x 4))
-
-(defun rust-push-context (st type &optional align-column auto-align)
-  (let ((ctx (vector type (rust-state-indent st) align-column
-                     (if align-column (if auto-align t 'unset) nil) nil)))
-    (push ctx (rust-state-context st))
-    ctx))
-(defun rust-pop-context (st)
-  (let ((old (pop (rust-state-context st))))
-    (setf (rust-state-indent st) (rust-context-indent old))
-    old))
-(defun rust-dup-context (st)
-  (let* ((list (rust-state-context st))
-         (dup (copy-sequence (car list))))
-    (setf (rust-state-context st) (cons dup (cdr list)))
-    dup))
-
-(defvar rust-operator-chars "-+/%=<>!*&|@~^")
-(defvar rust-punc-chars "()[].,{}:;")
-(defvar rust-value-keywords
-  (let ((table (make-hash-table :test 'equal)))
-    (dolist (word '("mod" "const" "class" "type"
-                    "trait" "struct" "fn" "enum"
-                    "impl"))
-      (puthash word 'def table))
-    (dolist (word '("as" "break"
-                    "copy" "do" "drop" "else"
-                    "extern" "for" "if" "let" "log"
-                    "loop" "once" "priv" "pub" "pure"
-                    "ref" "return" "static" "unsafe" "use"
-                    "while" "while"
-                    "assert"
-                    "mut"))
-      (puthash word t table))
-    (puthash "match" 'alt table)
-    (dolist (word '("self" "true" "false")) (puthash word 'atom table))
     table))
-;; FIXME type-context keywords
 
-(defvar rust-tcat nil "Kludge for multiple returns without consing")
+(defun rust-paren-level () (nth 0 (syntax-ppss)))
+(defun rust-in-str-or-cmnt () (nth 8 (syntax-ppss)))
+(defun rust-rewind-past-str-cmnt () (goto-char (nth 8 (syntax-ppss))))
+(defun rust-rewind-irrelevant ()
+  (let ((starting (point)))
+    (skip-chars-backward "[:space:]\n")
+    (if (looking-back "\\*/") (backward-char))
+    (if (rust-in-str-or-cmnt)
+        (rust-rewind-past-str-cmnt))
+    (if (/= starting (point))
+        (rust-rewind-irrelevant))))
 
-(defmacro rust-eat-re (re)
-  `(when (looking-at ,re) (goto-char (match-end 0)) t))
+(defun rust-mode-indent-line ()
+  (interactive)
+  (let ((indent
+         (save-excursion
+           (back-to-indentation)
+           (let ((level (rust-paren-level)))
+             (cond
+              ;; A function return type is 1 level indented
+              ((looking-at "->") (* default-tab-width (+ level 1)))
 
-(defvar rust-char-table
-  (let ((table (make-char-table 'syntax-table)))
-    (macrolet ((def (range &rest body)
-                    `(let ((--b (lambda (st) ,@body)))
-                       ,@(mapcar (lambda (elt)
-	                           (if (consp elt)
-                                       `(loop for ch from ,(car elt) to ,(cdr elt) collect
-                                              (set-char-table-range table ch --b))
-                                     `(set-char-table-range table ',elt --b)))
-                                 (if (consp range) range (list range))))))
-      (def t (forward-char) nil)
-      (def (32 ?\t) (skip-chars-forward " \t") nil)
-      (def ?\" (forward-char)
-           (rust-push-context st 'string (current-column) t)
-           (setf (rust-state-tokenize st) 'rust-token-string)
-           (rust-token-string st))
-      (def ?\' (rust-single-quote))
-      (def ?/ (forward-char)
-           (case (char-after)
-             (?/ (end-of-line) 'font-lock-comment-face)
-             (?* (forward-char)
-                 (rust-push-context st 'comment)
-                 (setf (rust-state-tokenize st) 'rust-token-comment)
-                 (rust-token-comment st))
-             (t (skip-chars-forward rust-operator-chars) (setf rust-tcat 'op) nil)))
-      (def ?# (forward-char)
-           (cond ((eq (char-after) ?\[) (forward-char) (setf rust-tcat 'open-attr))
-                 ((rust-eat-re "[a-z_]+") (setf rust-tcat 'macro)))
-           'font-lock-preprocessor-face)
-      (def ((?a . ?z) (?A . ?Z) ?_)
-           (rust-token-identifier))
-      (def ((?0 . ?9))
-           (rust-eat-re "0x[0-9a-fA-F_]+\\|0b[01_]+\\|[0-9_]+\\(\\.[0-9_]+\\)?\\(e[+\\-]?[0-9_]+\\)?")
-           (setf rust-tcat 'atom)
-           (rust-eat-re "[iuf][0-9_]*")
-           'font-lock-constant-face)
-      (def ?. (forward-char)
-           (cond ((rust-eat-re "[0-9]+\\(e[+\\-]?[0-9]+\\)?")
-                  (setf rust-tcat 'atom)
-                  (rust-eat-re "f[0-9]+")
-                  'font-lock-constant-face)
-                 (t (setf rust-tcat (char-before)) nil)))
-      (def (?\( ?\) ?\[ ?\] ?\{ ?\} ?: ?\; ?,)
-           (forward-char)
-           (setf rust-tcat (char-before)) nil)
-      (def ?|
-           (skip-chars-forward rust-operator-chars)
-           (setf rust-tcat 'pipe) nil)
-      (def (?+ ?- ?% ?= ?< ?> ?! ?* ?& ?@ ?~)
-           (skip-chars-forward rust-operator-chars)
-           (setf rust-tcat 'op) nil)
-      table)))
+              ;; A closing brace is 1 level unindended
+              ((looking-at "}") (* default-tab-width (- level 1)))
 
-(defun rust-token-identifier ()
-  (rust-eat-re "[a-zA-Z_][a-zA-Z0-9_]*")
-  (setf rust-tcat 'ident)
-  (if (and (eq (char-after) ?:) (eq (char-after (+ (point) 1)) ?:)
-           (not (eq (char-after (+ (point) 2)) ?:)))
-      (progn (forward-char 2) 'font-lock-builtin-face)
-    (match-string 0)))
+              ;; If we're in any other token-tree / sexp, then:
+              ;;  - [ or ( means line up with the opening token
+              ;;  - { means indent to either nesting-level * tab width,
+              ;;    or one further indent from that if either current line
+              ;;    begins with 'else', or previous line didn't end in
+              ;;    semi, comma or brace, and wasn't an attribute. PHEW.
+              ((> level 0)
+               (let ((pt (point)))
+                 (rust-rewind-irrelevant)
+                 (backward-up-list)
+                 (if (looking-at "[[(]")
+                     (+ 1 (current-column))
+                   (progn
+                     (goto-char pt)
+                     (back-to-indentation)
+                     (if (looking-at "\\<else\\>")
+                         (* default-tab-width (+ 1 level))
+                       (progn
+                         (goto-char pt)
+                         (beginning-of-line)
+                         (rust-rewind-irrelevant)
+                         (end-of-line)
+                         (if (looking-back "[{};,]")
+                             (* default-tab-width level)
+                           (back-to-indentation)
+                           (if (looking-at "#")
+                               (* default-tab-width level)
+                             (* default-tab-width (+ 1 level))))))))))
 
-(defun rust-single-quote ()
-  (forward-char)
-  (setf rust-tcat 'atom)
-  ; Is this a lifetime?
-  (if (or (looking-at "[a-zA-Z_]$")
-          (looking-at "[a-zA-Z_][^']"))
-      ; If what we see is 'abc, use font-lock-builtin-face:
-      (progn (rust-eat-re "[a-zA-Z_][a-zA-Z_0-9]*")
-             'font-lock-builtin-face)
-    ; Otherwise, handle as a character constant:
-    (let ((is-escape (eq (char-after) ?\\))
-          (start (point)))
-      (if (not (rust-eat-until-unescaped ?\'))
-          'font-lock-warning-face
-        (if (or is-escape (= (point) (+ start 2)))
-            'font-lock-string-face 'font-lock-warning-face)))))
+              ;; Otherwise we're in a column-zero definition
+              (t 0))))))
+    (cond
+     ;; If we're to the left of the indentation, reindent and jump to it.
+     ((<= (current-column) indent)
+      (indent-line-to indent))
 
-(defun rust-token-base (st)
-  (funcall (char-table-range rust-char-table (char-after)) st))
+     ;; We're to the right; if it needs indent, do so but save excursion.
+     ((not (eq (current-indentation) indent))
+      (save-excursion (indent-line-to indent))))))
 
-(defun rust-eat-until-unescaped (ch)
-  (let (escaped)
-    (loop
-     (let ((cur (char-after)))
-       (when (or (eq cur ?\n) (not cur)) (return nil))
-       (forward-char)
-       (when (and (eq cur ch) (not escaped)) (return t))
-       (setf escaped (and (not escaped) (eq cur ?\\)))))))
 
-(defun rust-token-string (st)
-  (setf rust-tcat 'atom)
-  (cond ((rust-eat-until-unescaped ?\")
-         (setf (rust-state-tokenize st) 'rust-token-base)
-         (rust-pop-context st))
-        (t (let ((align (eq (char-before) ?\\)))
-             (unless (eq align (rust-context-align (car (rust-state-context st))))
-               (setf (rust-context-align (rust-dup-context st)) align)))))
-  'font-lock-string-face)
+;; Font-locking definitions and helpers
+(defconst rust-mode-keywords
+  '("as"
+    "break"
+    "do"
+    "else" "enum" "extern"
+    "false" "fn" "for"
+    "if" "impl"
+    "let" "loop"
+    "match" "mod" "mut"
+    "priv" "pub"
+    "ref" "return"
+    "self" "static" "struct" "super"
+    "true" "trait" "type"
+    "unsafe" "use"
+    "while"))
 
-(defun rust-token-comment (st)
-  (let ((eol (point-at-eol)))
-    (loop
-     (unless (re-search-forward "\\(/\\*\\)\\|\\(\\*/\\)" eol t)
-       (goto-char eol)
-       (return))
-     (if (match-beginning 1)
-         (push (car (rust-state-context st)) (rust-state-context st))
-       (rust-pop-context st)
-       (unless (eq (rust-context-type (car (rust-state-context st))) 'comment)
-         (setf (rust-state-tokenize st) 'rust-token-base)
-         (return))))
-    'font-lock-comment-face))
+(defconst rust-special-types
+  '("u8" "i8"
+    "u16" "i16"
+    "u32" "i32"
+    "u64" "i64"
 
-(defun rust-next-block-info (st)
-  (dolist (cx (rust-state-context st))
-    (when (eq (rust-context-type cx) ?\}) (return (rust-context-info cx)))))
+    "f32" "f64"
+    "float" "int" "uint"
+    "bool"
+    "str" "char"))
 
-(defun rust-is-capitalized (string)
-  (let ((case-fold-search nil))
-    (string-match-p "[A-Z]" string)))
+(defconst rust-re-ident "[[:word:][:multibyte:]_][[:word:][:multibyte:]_[:digit:]]*")
+(defconst rust-re-CamelCase "[[:upper:]][[:word:][:multibyte:]_[:digit:]]*")
+(defun rust-re-word (inner) (concat "\\<" inner "\\>"))
+(defun rust-re-grab (inner) (concat "\\(" inner "\\)"))
+(defun rust-re-grabword (inner) (rust-re-grab (rust-re-word inner)))
+(defun rust-re-item-def (itype)
+  (concat (rust-re-word itype) "[[:space:]]+" (rust-re-grab rust-re-ident)))
 
-(defun rust-token (st)
-  (let ((cx (car (rust-state-context st))))
-    (when (bolp)
-      (setf (rust-state-indent st) (current-indentation))
-      (when (eq (rust-context-align cx) 'unset)
-        (setf (rust-context-align cx) nil)))
-    (setf rust-tcat nil)
-    (let* ((tok (funcall (rust-state-tokenize st) st))
-           (tok-id (or tok rust-tcat))
-           (cur-cx (rust-context-type cx))
-           (cx-info (rust-context-info cx)))
-      (when (stringp tok)
-        (setf tok-id (gethash tok rust-value-keywords nil))
-        (setf tok (cond ((eq tok-id 'atom) 'font-lock-constant-face)
-                        (tok-id 'font-lock-keyword-face)
-                        ((equal (rust-state-last-token st) 'def) 'font-lock-function-name-face)
-                        ((and rust-capitalized-idents-are-types
-                              (rust-is-capitalized tok)) 'font-lock-type-face)
-                        (t nil))))
-      (when rust-tcat
-        (when (eq (rust-context-align cx) 'unset)
-          (setf (rust-context-align cx) t))
-        (when (eq cx-info 'alt-1)
-          (setf cx (rust-dup-context st))
-          (setf (rust-context-info cx) 'alt-2))
-        (when (and (eq rust-tcat 'pipe) (eq (rust-state-last-token st) ?{))
-          (setf cx (rust-dup-context st))
-          (setf (rust-context-info cx) 'block))
-        (case rust-tcat
-          ((?\; ?,) (when (eq cur-cx 'statement) (rust-pop-context st)))
-          (?\{
-           (when (and (eq cur-cx 'statement) (not (member cx-info '(alt-1 alt-2))))
-             (rust-pop-context st))
-           (when (eq cx-info 'alt-2)
-             (setf cx (rust-dup-context st))
-             (setf (rust-context-info cx) nil))
-           (let ((next-info (rust-next-block-info st))
-                 (newcx (rust-push-context st ?\} (current-column))))
-             (cond ((eq cx-info 'alt-2) (setf (rust-context-info newcx) 'alt-outer))
-                   ((eq next-info 'alt-outer) (setf (rust-context-info newcx) 'alt-inner)))))
-          ((?\[ open-attr)
-           (let ((newcx (rust-push-context st ?\] (current-column))))
-             (when (eq rust-tcat 'open-attr)
-               (setf (rust-context-info newcx) 'attr))))
-          (?\( (rust-push-context st ?\) (current-column))
-               (when (eq (rust-context-info cx) 'attr)
-                 (setf (rust-context-info (car (rust-state-context st))) 'attr)))
-          (?\} (when (eq cur-cx 'statement) (rust-pop-context st))
-               (when (eq (rust-context-type (car (rust-state-context st))) ?})
-                 (rust-pop-context st))
-               (setf cx (car (rust-state-context st)))
-               (when (and (eq (rust-context-type cx) 'statement)
-                          (not (eq (rust-context-info cx) 'alt-2)))
-                 (rust-pop-context st)))
-          (t (cond ((eq cur-cx rust-tcat)
-                    (when (eq (rust-context-info (rust-pop-context st)) 'attr)
-                      (setf tok 'font-lock-preprocessor-face)
-                      (when (eq (rust-context-type (car (rust-state-context st))) 'statement)
-                        (rust-pop-context st))))
-                   ((or (and (eq cur-cx ?\}) (not (eq (rust-context-info cx) 'alt-outer)))
-                        (eq cur-cx 'top))
-                    (rust-push-context st 'statement)))))
-        (setf (rust-state-last-token st) tok-id))
-      (setf cx (car (rust-state-context st)))
-      (when (and (eq tok-id 'alt) (eq (rust-context-type cx) 'statement))
-        (setf (rust-context-info cx) 'alt-1))
-      (when (and (eq (rust-state-last-token st) 'pipe)
-                 (eq (rust-next-block-info st) 'block) (eolp))
-        (when (eq (rust-context-type cx) 'statement) (rust-pop-context st))
-        (setf cx (rust-dup-context st)
-              (rust-context-info cx) nil
-              (rust-context-align cx) nil))
-      (if (eq (rust-context-info cx) 'attr)
-          'font-lock-preprocessor-face
-        tok))))
+(defvar rust-mode-font-lock-keywords
+  (append
+   `(
+     ;; Keywords proper
+     (,(regexp-opt rust-mode-keywords 'words) . font-lock-keyword-face)
 
-(defun rust-indent (st)
-  (let ((cx (car (rust-state-context st)))
-        (parent (cadr (rust-state-context st))))
-    (when (and (eq (rust-context-type cx) 'statement)
-               (or (eq (char-after) ?\}) (looking-at "with \\|{[ 	]*$")))
-      (setf cx parent parent (caddr (rust-state-context st))))
-    (let* ((tp (rust-context-type cx))
-           (closing (eq tp (char-after)))
-           (unit rust-indent-unit)
-           (base (if (and (eq tp 'statement) parent (rust-context-align parent))
-                     (rust-context-column parent) (rust-context-indent cx))))
-      (cond ((eq tp 'comment) base)
-            ((eq tp 'string) (if (rust-context-align cx) (rust-context-column cx) 0))
-            ((eq tp 'statement) (+ base (if (eq (char-after) ?\}) 0 unit)))
-            ((eq (rust-context-align cx) t) (+ (rust-context-column cx) (if closing -1 0)))
-            (t (+ base (if closing 0 unit)))))))
+     ;; Special types
+     (,(regexp-opt rust-special-types 'words) . font-lock-type-face)
+
+     ;; Attributes like `#[bar(baz)]`
+     (,(rust-re-grab (concat "#\\[" rust-re-ident "[^]]*\\]"))
+      1 font-lock-preprocessor-face)
+
+     ;; Syntax extension invocations like `foo!`, highlight including the !
+     (,(concat (rust-re-grab (concat rust-re-ident "!")) "[({[:space:]]")
+      1 font-lock-preprocessor-face)
+
+     ;; Field names like `foo:`, highlight excluding the :
+     (,(concat (rust-re-grab rust-re-ident) ":[^:]") 1 font-lock-variable-name-face)
+
+     ;; Module names like `foo::`, highlight including the ::
+     (,(rust-re-grab (concat rust-re-ident "::")) 1 font-lock-type-face)
+
+     ;; Lifetimes like `'foo`
+     (,(concat "'" (rust-re-grab rust-re-ident) "[^']") 1 font-lock-variable-name-face)
+
+     ;; Character constants, since they're not treated as strings
+     ;; in order to have sufficient leeway to parse 'lifetime above.
+     (,(rust-re-grab "'[^']'") 1 font-lock-string-face)
+     (,(rust-re-grab "'\\\\[nrt]'") 1 font-lock-string-face)
+     (,(rust-re-grab "'\\\\x[[:xdigit:]]\\{2\\}'") 1 font-lock-string-face)
+     (,(rust-re-grab "'\\\\u[[:xdigit:]]\\{4\\}'") 1 font-lock-string-face)
+     (,(rust-re-grab "'\\\\U[[:xdigit:]]\\{8\\}'") 1 font-lock-string-face)
+
+     ;; CamelCase Means Type Or Constructor
+     (,(rust-re-grabword rust-re-CamelCase) 1 font-lock-type-face)
+     )
+
+   ;; Item definitions
+   (loop for (item . face) in
+
+         '(("enum" . font-lock-type-face)
+           ("struct" . font-lock-type-face)
+           ("type" . font-lock-type-face)
+           ("mod" . font-lock-type-face)
+           ("use" . font-lock-type-face)
+           ("fn" . font-lock-function-name-face)
+           ("static" . font-lock-constant-face))
+
+         collect `(,(rust-re-item-def item) 1 ,face))))
+
+
+;; For compatibility with Emacs < 24, derive conditionally
+(defalias 'rust-parent-mode
+  (if (fboundp 'prog-mode) 'prog-mode 'fundamental-mode))
+
 
 ;;;###autoload
-(define-derived-mode rust-mode fundamental-mode "Rust"
-  "Major mode for editing Rust source files."
-  (set-syntax-table rust-syntax-table)
-  (setq major-mode 'rust-mode mode-name "Rust")
-  (run-hooks 'rust-mode-hook)
-  (set (make-local-variable 'indent-tabs-mode) nil)
-  (let ((par "[ 	]*\\(//+\\|\\**\\)[ 	]*$"))
-    (set (make-local-variable 'paragraph-start) par)
-    (set (make-local-variable 'paragraph-separate) par))
-  (set (make-local-variable 'comment-start) "//")
-  (cm-mode (make-cm-mode 'rust-token 'make-rust-state 'copy-sequence 'equal 'rust-indent)))
+(define-derived-mode rust-mode rust-parent-mode "Rust"
+  "Major mode for Rust code."
 
-(define-key rust-mode-map "}" 'rust-electric-brace)
-(define-key rust-mode-map "{" 'rust-electric-brace)
+  ;; Basic syntax
+  (set-syntax-table rust-mode-syntax-table)
+
+  ;; Indentation
+  (set (make-local-variable 'indent-line-function)
+       'rust-mode-indent-line)
+
+  ;; Fonts
+  (set (make-local-variable 'font-lock-defaults)
+       '(rust-mode-font-lock-keywords nil nil nil nil))
+
+  ;; Misc
+  (set (make-local-variable 'comment-start) "// ")
+  (set (make-local-variable 'comment-end)   "")
+  (set (make-local-variable 'indent-tabs-mode) nil))
+
 
 ;;;###autoload
-(progn
-  (add-to-list 'auto-mode-alist '("\\.rs$" . rust-mode))
-  (add-to-list 'auto-mode-alist '("\\.rc$" . rust-mode)))
+(add-to-list 'auto-mode-alist '("\\.rs$" . rust-mode))
+
+(defun rust-mode-reload ()
+  (interactive)
+  (unload-feature 'rust-mode)
+  (require 'rust-mode)
+  (rust-mode))
 
 (provide 'rust-mode)
 

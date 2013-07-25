@@ -13,21 +13,8 @@ file:
     (add-to-list 'load-path "/path/to/rust-mode/")
     (require 'rust-mode)
 
-Make sure you byte-compile the .el files first, or the mode will be
-painfully slow. There is an included `Makefile` which will do it for
-you, so in the simplest case you can just run `make` and everything
-should Just Work.
-
-If for some reason that doesn't work, you can byte compile manually,
-by pasting this in your `*scratch*` buffer, moving the cursor below
-it, and pressing `C-j`:
-
-    (progn
-      (byte-compile-file "/path/to/rust-mode/cm-mode.el" t)
-      (byte-compile-file "/path/to/rust-mode/rust-mode.el" t))
-
-Rust mode will automatically be associated with .rs and .rc files. To
-enable it explicitly, do `M-x rust-mode`.
+Rust mode will automatically be associated with .rs files. To enable it
+explicitly, do `M-x rust-mode`.
 
 ### package.el installation via Marmalade or MELPA
 
@@ -66,24 +53,6 @@ If you have an older ELPA package.el installed from tromey.com, you
 should upgrade in order to support installation from multiple sources.
 The ELPA archive is deprecated and no longer accepting new packages,
 so the version there (1.7.1) is very outdated.
-
-#### Important
-
-In order to have cm-mode properly initialized after compilation prior
-to rust-mode.el compilation you will need to add these `advices` to
-your init file or if you are a melpa user install the `melpa` package.
-
-```lisp
-(defadvice package-download-tar
-  (after package-download-tar-initialize activate compile)
-  "initialize the package after compilation"
-  (package-initialize))
-
-(defadvice package-download-single
-  (after package-download-single-initialize activate compile)
-  "initialize the package after compilation"
-  (package-initialize))
-```
 
 #### Install rust-mode
 
