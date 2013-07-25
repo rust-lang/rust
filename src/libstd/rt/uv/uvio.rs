@@ -15,6 +15,7 @@ use cell::Cell;
 use cast;
 use cast::transmute;
 use clone::Clone;
+use libc::c_void;
 use rt::io::IoError;
 use rt::io::net::ip::IpAddr;
 use rt::uv::*;
@@ -34,6 +35,47 @@ use unstable::sync::{Exclusive, exclusive};
                             next_test_ip4,
                             run_in_newsched_task};
 
+enum SocketNameKind {
+    TcpPeer,
+    Tcp,
+    Udp
+}
+
+fn socket_name<T, U: Watcher + NativeHandle<*T>>(sk: SocketNameKind,
+                                                 handle: U) -> Result<IpAddr, IoError> {
+
+    let getsockname = match sk {
+        TcpPeer => uvll::rust_uv_tcp_getpeername,
+        Tcp     => uvll::rust_uv_tcp_getsockname,
+        Udp     => uvll::rust_uv_udp_getsockname
+    };
+
+    // Allocate a sockaddr_storage
+    // since we don't know if it's ipv4 or ipv6
+    let r_addr = unsafe { uvll::malloc_sockaddr_storage() };
+
+    let r = unsafe {
+        getsockname(handle.native_handle() as *c_void, r_addr as *uvll::sockaddr_storage)
+    };
+
+    if r != 0 {
+        let status = status_to_maybe_uv_error(handle, r);
+        return Err(uv_error_to_io_error(status.unwrap()));
+    }
+
+    let addr = unsafe {
+        if uvll::is_ip6_addr(r_addr as *uvll::sockaddr) {
+            net::uv_ip_to_ip(UvIpv6(r_addr as *uvll::sockaddr_in6))
+        } else {
+            net::uv_ip_to_ip(UvIpv4(r_addr as *uvll::sockaddr_in))
+        }
+    };
+
+    unsafe { uvll::free_sockaddr_storage(r_addr); }
+
+    Ok(addr)
+
+}
 
 pub struct UvEventLoop {
     uvio: UvIoFactory
@@ -323,31 +365,7 @@ impl Drop for UvTcpListener {
 
 impl RtioSocket for UvTcpListener {
     fn socket_name(&mut self) -> Result<IpAddr, IoError> {
-        // Allocate a sockaddr_storage
-        // since we don't know if it's ipv4 or ipv6
-        let r_addr = unsafe { uvll::malloc_sockaddr_storage() };
-
-        let r = unsafe {
-            uvll::rust_uv_tcp_getsockname(self.watcher.native_handle(),
-                                          r_addr as *uvll::sockaddr_storage)
-        };
-
-        if r != 0 {
-            let status = status_to_maybe_uv_error(self.watcher, r);
-            return Err(uv_error_to_io_error(status.unwrap()));
-        }
-
-        let addr = unsafe {
-            if uvll::is_ip6_addr(r_addr as *uvll::sockaddr) {
-                net::uv_ip_to_ip(UvIpv6(r_addr as *uvll::sockaddr_in6))
-            } else {
-                net::uv_ip_to_ip(UvIpv4(r_addr as *uvll::sockaddr_in))
-            }
-        };
-
-        unsafe { uvll::free_sockaddr_storage(r_addr); }
-
-        Ok(addr)
+        socket_name(Tcp, self.watcher)
     }
 }
 
@@ -409,31 +427,7 @@ impl Drop for UvTcpStream {
 
 impl RtioSocket for UvTcpStream {
     fn socket_name(&mut self) -> Result<IpAddr, IoError> {
-        // Allocate a sockaddr_storage
-        // since we don't know if it's ipv4 or ipv6
-        let r_addr = unsafe { uvll::malloc_sockaddr_storage() };
-
-        let r = unsafe {
-            uvll::rust_uv_tcp_getsockname(self.native_handle(),
-                                          r_addr as *uvll::sockaddr_storage)
-        };
-
-        if r != 0 {
-            let status = status_to_maybe_uv_error(**self, r);
-            return Err(uv_error_to_io_error(status.unwrap()));
-        }
-
-        let addr = unsafe {
-            if uvll::is_ip6_addr(r_addr as *uvll::sockaddr) {
-                net::uv_ip_to_ip(UvIpv6(r_addr as *uvll::sockaddr_in6))
-            } else {
-                net::uv_ip_to_ip(UvIpv4(r_addr as *uvll::sockaddr_in))
-            }
-        };
-
-        unsafe { uvll::free_sockaddr_storage(r_addr); }
-
-        Ok(addr)
+        socket_name(Tcp, **self)
     }
 }
 
@@ -510,31 +504,7 @@ impl RtioTcpStream for UvTcpStream {
     }
 
     fn peer_name(&mut self) -> Result<IpAddr, IoError> {
-        // Allocate a sockaddr_storage
-        // since we don't know if it's ipv4 or ipv6
-        let r_addr = unsafe { uvll::malloc_sockaddr_storage() };
-
-        let r = unsafe {
-            uvll::rust_uv_tcp_getpeername(self.native_handle(),
-                                          r_addr as *uvll::sockaddr_storage)
-        };
-
-        if r != 0 {
-            let status = status_to_maybe_uv_error(**self, r);
-            return Err(uv_error_to_io_error(status.unwrap()));
-        }
-
-        let addr = unsafe {
-            if uvll::is_ip6_addr(r_addr as *uvll::sockaddr) {
-                net::uv_ip_to_ip(UvIpv6(r_addr as *uvll::sockaddr_in6))
-            } else {
-                net::uv_ip_to_ip(UvIpv4(r_addr as *uvll::sockaddr_in))
-            }
-        };
-
-        unsafe { uvll::free_sockaddr_storage(r_addr); }
-
-        Ok(addr)
+        socket_name(TcpPeer, **self)
     }
 
     // XXX implement
@@ -562,31 +532,7 @@ impl Drop for UvUdpSocket {
 
 impl RtioSocket for UvUdpSocket {
     fn socket_name(&mut self) -> Result<IpAddr, IoError> {
-        // Allocate a sockaddr_storage
-        // since we don't know if it's ipv4 or ipv6
-        let r_addr = unsafe { uvll::malloc_sockaddr_storage() };
-
-        let r = unsafe {
-            uvll::rust_uv_udp_getsockname(self.native_handle(),
-                                          r_addr as *uvll::sockaddr_storage)
-        };
-
-        if r != 0 {
-            let status = status_to_maybe_uv_error(**self, r);
-            return Err(uv_error_to_io_error(status.unwrap()));
-        }
-
-        let addr = unsafe {
-            if uvll::is_ip6_addr(r_addr as *uvll::sockaddr) {
-                net::uv_ip_to_ip(UvIpv6(r_addr as *uvll::sockaddr_in6))
-            } else {
-                net::uv_ip_to_ip(UvIpv4(r_addr as *uvll::sockaddr_in))
-            }
-        };
-
-        unsafe { uvll::free_sockaddr_storage(r_addr); }
-
-        Ok(addr)
+        socket_name(Udp, **self)
     }
 }
 
