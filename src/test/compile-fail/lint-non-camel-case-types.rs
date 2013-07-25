@@ -10,25 +10,25 @@
 
 #[forbid(non_camel_case_types)];
 
-struct foo { //~ ERROR type, variant, or trait should have a camel case identifier
+struct foo { //~ ERROR type `foo` should have a camel case identifier
     bar: int,
 }
 
-enum foo2 { //~ ERROR type, variant, or trait should have a camel case identifier
+enum foo2 { //~ ERROR type `foo2` should have a camel case identifier
     Bar
 }
 
-struct foo3 { //~ ERROR type, variant, or trait should have a camel case identifier
+struct foo3 { //~ ERROR type `foo3` should have a camel case identifier
     bar: int
 }
 
-type foo4 = int; //~ ERROR type, variant, or trait should have a camel case identifier
+type foo4 = int; //~ ERROR type `foo4` should have a camel case identifier
 
 enum Foo5 {
-    bar //~ ERROR type, variant, or trait should have a camel case identifier
+    bar //~ ERROR variant `bar` should have a camel case identifier
 }
 
-trait foo6 { //~ ERROR type, variant, or trait should have a camel case identifier
+trait foo6 { //~ ERROR trait `foo6` should have a camel case identifier
 }
 
 fn main() { }
