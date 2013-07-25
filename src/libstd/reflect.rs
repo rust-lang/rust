@@ -238,6 +238,7 @@ impl<V:TyVisitor + MovePtr> TyVisitor for MovePtrAdaptor<V> {
         true
     }
 
+    #[cfg(stage0)]
     fn visit_uniq_managed(&self, mtbl: uint, inner: *TyDesc) -> bool {
         self.align_to::<~u8>();
         if ! self.inner.visit_uniq_managed(mtbl, inner) { return false; }
@@ -286,6 +287,7 @@ impl<V:TyVisitor + MovePtr> TyVisitor for MovePtrAdaptor<V> {
         true
     }
 
+    #[cfg(stage0)]
     fn visit_evec_uniq_managed(&self, mtbl: uint, inner: *TyDesc) -> bool {
         self.align_to::<~[@u8]>();
         if ! self.inner.visit_evec_uniq_managed(mtbl, inner) { return false; }

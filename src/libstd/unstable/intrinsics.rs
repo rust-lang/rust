@@ -86,6 +86,7 @@ pub trait TyVisitor {
 
     fn visit_box(&self, mtbl: uint, inner: *TyDesc) -> bool;
     fn visit_uniq(&self, mtbl: uint, inner: *TyDesc) -> bool;
+    #[cfg(stage0)]
     fn visit_uniq_managed(&self, mtbl: uint, inner: *TyDesc) -> bool;
     fn visit_ptr(&self, mtbl: uint, inner: *TyDesc) -> bool;
     fn visit_rptr(&self, mtbl: uint, inner: *TyDesc) -> bool;
@@ -94,6 +95,7 @@ pub trait TyVisitor {
     fn visit_unboxed_vec(&self, mtbl: uint, inner: *TyDesc) -> bool;
     fn visit_evec_box(&self, mtbl: uint, inner: *TyDesc) -> bool;
     fn visit_evec_uniq(&self, mtbl: uint, inner: *TyDesc) -> bool;
+    #[cfg(stage0)]
     fn visit_evec_uniq_managed(&self, mtbl: uint, inner: *TyDesc) -> bool;
     fn visit_evec_slice(&self, mtbl: uint, inner: *TyDesc) -> bool;
     fn visit_evec_fixed(&self, n: uint, sz: uint, align: uint,
