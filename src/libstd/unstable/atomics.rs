@@ -96,7 +96,7 @@ impl AtomicFlag {
      */
     #[inline]
     pub fn test_and_set(&mut self, order: Ordering) -> bool {
-        unsafe {atomic_compare_and_swap(&mut self.v, 0, 1, order) > 0}
+        unsafe { atomic_compare_and_swap(&mut self.v, 0, 1, order) > 0 }
     }
 }
 
@@ -121,7 +121,7 @@ impl AtomicBool {
     pub fn swap(&mut self, val: bool, order: Ordering) -> bool {
         let val = if val { 1 } else { 0 };
 
-        unsafe { atomic_swap(&mut self.v, val, order) > 0}
+        unsafe { atomic_swap(&mut self.v, val, order) > 0 }
     }
 
     #[inline]
@@ -130,6 +130,38 @@ impl AtomicBool {
         let new = if new { 1 } else { 0 };
 
         unsafe { atomic_compare_and_swap(&mut self.v, old, new, order) > 0 }
+    }
+
+    /// Returns the old value
+    #[inline]
+    pub fn fetch_and(&mut self, val: bool, order: Ordering) -> bool {
+        let val = if val { 1 } else { 0 };
+
+        unsafe { atomic_and(&mut self.v, val, order) > 0 }
+    }
+
+    /// Returns the old value
+    #[inline]
+    pub fn fetch_nand(&mut self, val: bool, order: Ordering) -> bool {
+        let val = if val { 1 } else { 0 };
+
+        unsafe { atomic_nand(&mut self.v, val, order) > 0 }
+    }
+
+    /// Returns the old value
+    #[inline]
+    pub fn fetch_or(&mut self, val: bool, order: Ordering) -> bool {
+        let val = if val { 1 } else { 0 };
+
+        unsafe { atomic_or(&mut self.v, val, order) > 0 }
+    }
+
+    /// Returns the old value
+    #[inline]
+    pub fn fetch_xor(&mut self, val: bool, order: Ordering) -> bool {
+        let val = if val { 1 } else { 0 };
+
+        unsafe { atomic_xor(&mut self.v, val, order) > 0 }
     }
 }
 
@@ -169,6 +201,18 @@ impl AtomicInt {
     pub fn fetch_sub(&mut self, val: int, order: Ordering) -> int {
         unsafe { atomic_sub(&mut self.v, val, order) }
     }
+
+    /// Returns the old value
+    #[inline]
+    pub fn fetch_min(&mut self, val: int, order: Ordering) -> int {
+        unsafe { atomic_min(&mut self.v, val, order) }
+    }
+
+    /// Returns the old value
+    #[inline]
+    pub fn fetch_max(&mut self, val: int, order: Ordering) -> int {
+        unsafe { atomic_max(&mut self.v, val, order) }
+    }
 }
 
 impl AtomicUint {
@@ -206,6 +250,18 @@ impl AtomicUint {
     #[inline]
     pub fn fetch_sub(&mut self, val: uint, order: Ordering) -> uint {
         unsafe { atomic_sub(&mut self.v, val, order) }
+    }
+
+    /// Returns the old value
+    #[inline]
+    pub fn fetch_min(&mut self, val: uint, order: Ordering) -> uint {
+        unsafe { atomic_umin(&mut self.v, val, order) }
+    }
+
+    /// Returns the old value
+    #[inline]
+    pub fn fetch_max(&mut self, val: uint, order: Ordering) -> uint {
+        unsafe { atomic_umax(&mut self.v, val, order) }
     }
 }
 
@@ -395,6 +451,125 @@ pub unsafe fn atomic_compare_and_swap<T>(dst:&mut T, old:T, new:T, order: Orderi
     })
 }
 
+#[inline]
+pub unsafe fn atomic_and<T>(dst: &mut T, val: T, order: Ordering) -> T {
+    let dst = cast::transmute(dst);
+    let val = cast::transmute(val);
+
+    cast::transmute(match order {
+        Acquire => intrinsics::atomic_and_acq(dst, val),
+        Release => intrinsics::atomic_and_rel(dst, val),
+        AcqRel  => intrinsics::atomic_and_acqrel(dst, val),
+        Relaxed => intrinsics::atomic_and_relaxed(dst, val),
+        _       => intrinsics::atomic_and(dst, val)
+    })
+}
+
+
+#[inline]
+pub unsafe fn atomic_nand<T>(dst: &mut T, val: T, order: Ordering) -> T {
+    let dst = cast::transmute(dst);
+    let val = cast::transmute(val);
+
+    cast::transmute(match order {
+        Acquire => intrinsics::atomic_nand_acq(dst, val),
+        Release => intrinsics::atomic_nand_rel(dst, val),
+        AcqRel  => intrinsics::atomic_nand_acqrel(dst, val),
+        Relaxed => intrinsics::atomic_nand_relaxed(dst, val),
+        _       => intrinsics::atomic_nand(dst, val)
+    })
+}
+
+
+#[inline]
+pub unsafe fn atomic_or<T>(dst: &mut T, val: T, order: Ordering) -> T {
+    let dst = cast::transmute(dst);
+    let val = cast::transmute(val);
+
+    cast::transmute(match order {
+        Acquire => intrinsics::atomic_or_acq(dst, val),
+        Release => intrinsics::atomic_or_rel(dst, val),
+        AcqRel  => intrinsics::atomic_or_acqrel(dst, val),
+        Relaxed => intrinsics::atomic_or_relaxed(dst, val),
+        _       => intrinsics::atomic_or(dst, val)
+    })
+}
+
+
+#[inline]
+pub unsafe fn atomic_xor<T>(dst: &mut T, val: T, order: Ordering) -> T {
+    let dst = cast::transmute(dst);
+    let val = cast::transmute(val);
+
+    cast::transmute(match order {
+        Acquire => intrinsics::atomic_xor_acq(dst, val),
+        Release => intrinsics::atomic_xor_rel(dst, val),
+        AcqRel  => intrinsics::atomic_xor_acqrel(dst, val),
+        Relaxed => intrinsics::atomic_xor_relaxed(dst, val),
+        _       => intrinsics::atomic_xor(dst, val)
+    })
+}
+
+
+#[inline]
+pub unsafe fn atomic_max<T>(dst: &mut T, val: T, order: Ordering) -> T {
+    let dst = cast::transmute(dst);
+    let val = cast::transmute(val);
+
+    cast::transmute(match order {
+        Acquire => intrinsics::atomic_max_acq(dst, val),
+        Release => intrinsics::atomic_max_rel(dst, val),
+        AcqRel  => intrinsics::atomic_max_acqrel(dst, val),
+        Relaxed => intrinsics::atomic_max_relaxed(dst, val),
+        _       => intrinsics::atomic_max(dst, val)
+    })
+}
+
+
+#[inline]
+pub unsafe fn atomic_min<T>(dst: &mut T, val: T, order: Ordering) -> T {
+    let dst = cast::transmute(dst);
+    let val = cast::transmute(val);
+
+    cast::transmute(match order {
+        Acquire => intrinsics::atomic_min_acq(dst, val),
+        Release => intrinsics::atomic_min_rel(dst, val),
+        AcqRel  => intrinsics::atomic_min_acqrel(dst, val),
+        Relaxed => intrinsics::atomic_min_relaxed(dst, val),
+        _       => intrinsics::atomic_min(dst, val)
+    })
+}
+
+#[inline]
+pub unsafe fn atomic_umax<T>(dst: &mut T, val: T, order: Ordering) -> T {
+    let dst = cast::transmute(dst);
+    let val = cast::transmute(val);
+
+    cast::transmute(match order {
+        Acquire => intrinsics::atomic_umax_acq(dst, val),
+        Release => intrinsics::atomic_umax_rel(dst, val),
+        AcqRel  => intrinsics::atomic_umax_acqrel(dst, val),
+        Relaxed => intrinsics::atomic_umax_relaxed(dst, val),
+        _       => intrinsics::atomic_umax(dst, val)
+    })
+}
+
+
+#[inline]
+pub unsafe fn atomic_umin<T>(dst: &mut T, val: T, order: Ordering) -> T {
+    let dst = cast::transmute(dst);
+    let val = cast::transmute(val);
+
+    cast::transmute(match order {
+        Acquire => intrinsics::atomic_umin_acq(dst, val),
+        Release => intrinsics::atomic_umin_rel(dst, val),
+        AcqRel  => intrinsics::atomic_umin_acqrel(dst, val),
+        Relaxed => intrinsics::atomic_umin_relaxed(dst, val),
+        _       => intrinsics::atomic_umin(dst, val)
+    })
+}
+
+
 #[cfg(test)]
 mod test {
     use option::*;
@@ -447,5 +622,12 @@ mod test {
 
         assert!(p.fill(~2, SeqCst).is_none()); // shouldn't fail
         assert_eq!(p.take(SeqCst), Some(~2));
+    }
+
+    #[test]
+    fn bool_and() {
+        let mut a = AtomicBool::new(true);
+        assert_eq!(a.fetch_and(false, SeqCst),true);
+        assert_eq!(a.load(SeqCst),false);
     }
 }
