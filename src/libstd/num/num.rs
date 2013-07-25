@@ -28,6 +28,9 @@ pub trait One {
     fn one() -> Self;       // FIXME (#5527): This should be an associated constant
 }
 
+#[inline] pub fn zero<T:Zero>() -> T { Zero::zero() }
+#[inline] pub fn one<T:One>() -> T { One::one() }
+
 pub trait IntConvertible {
     fn to_int(&self) -> int;
     fn from_int(n: int) -> Self;
