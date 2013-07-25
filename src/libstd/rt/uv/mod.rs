@@ -288,7 +288,7 @@ pub fn status_to_maybe_uv_error<T, U: Watcher + NativeHandle<*T>>(handle: U,
         None
     } else {
         unsafe {
-            rtdebug!("handle: %x", handle as uint);
+            rtdebug!("handle: %x", handle.native_handle() as uint);
             let loop_ = uvll::get_loop_for_uv_handle(handle.native_handle());
             rtdebug!("loop: %x", loop_ as uint);
             let err = uvll::last_error(loop_);
