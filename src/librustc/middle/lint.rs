@@ -79,7 +79,6 @@ pub enum lint {
     non_camel_case_types,
     non_uppercase_statics,
     type_limits,
-    default_methods,
     unused_unsafe,
 
     managed_heap_memory,
@@ -220,13 +219,6 @@ static lint_table: &'static [(&'static str, LintSpec)] = &[
         lint: type_limits,
         desc: "comparisons made useless by limits of the types involved",
         default: warn
-     }),
-
-    ("default_methods",
-     LintSpec {
-        lint: default_methods,
-        desc: "allow default methods",
-        default: allow
      }),
 
     ("unused_unsafe",
@@ -690,23 +682,6 @@ fn lint_type_limits() -> visit::vt<@mut Context> {
     })
 }
 
-fn check_item_default_methods(cx: &Context, item: &ast::item) {
-    match item.node {
-        ast::item_trait(_, _, ref methods) => {
-            for methods.iter().advance |method| {
-                match *method {
-                    ast::required(*) => {}
-                    ast::provided(*) => {
-                        cx.span_lint(default_methods, item.span,
-                                     "default methods are experimental");
-                    }
-                }
-            }
-        }
-        _ => {}
-    }
-}
-
 fn check_item_ctypes(cx: &Context, it: &ast::item) {
     fn check_ty(cx: &Context, ty: &ast::Ty) {
         match ty.node {
@@ -1143,7 +1118,6 @@ pub fn check_crate(tcx: ty::ctxt, crate: @ast::Crate) {
                     check_item_ctypes(cx, it);
                     check_item_non_camel_case_types(cx, it);
                     check_item_non_uppercase_statics(cx, it);
-                    check_item_default_methods(cx, it);
                     check_item_heap(cx, it);
 
                     cx.process(Item(it));

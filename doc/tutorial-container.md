@@ -108,12 +108,14 @@ impl Iterator<int> for ZeroStream {
 ## Container iterators
 
 Containers implement iteration over the contained elements by returning an
-iterator object. For example, vector slices have four iterators available:
+iterator object. For example, vector slices several iterators available:
 
-* `vector.iter()`, for immutable references to the elements
-* `vector.mut_iter()`, for mutable references to the elements
-* `vector.rev_iter()`, for immutable references to the elements in reverse order
-* `vector.mut_rev_iter()`, for mutable references to the elements in reverse order
+* `iter()` and `rev_iter()`, for immutable references to the elements
+* `mut_iter()` and `mut_rev_iter()`, for mutable references to the elements
+* `consume_iter()` and `consume_rev_iter`, to move the elements out by-value
+
+A typical mutable container will implement at least `iter()`, `mut_iter()` and
+`consume_iter()` along with the reverse variants if it maintains an order.
 
 ### Freezing
 
