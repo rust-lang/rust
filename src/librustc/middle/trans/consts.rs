@@ -446,7 +446,7 @@ fn const_expr_unadjusted(cx: @mut CrateContext, e: &ast::expr) -> ValueRef {
               (expr::cast_enum, expr::cast_float)  => {
                 let repr = adt::represent_type(cx, basety);
                 let discr = adt::const_get_discrim(cx, repr, v);
-                let iv = C_int(cx, discr);
+                let iv = C_uint(cx, discr);
                 let ety_cast = expr::cast_type_kind(ety);
                 match ety_cast {
                     expr::cast_integral => {

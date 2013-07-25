@@ -3139,8 +3139,8 @@ pub fn check_enum_variants(ccx: @mut CrateCtxt,
 
         let rty = ty::node_id_to_type(ccx.tcx, id);
         let mut variants: ~[@ty::VariantInfo] = ~[];
-        let mut disr_vals: ~[int] = ~[];
-        let mut prev_disr_val: Option<int> = None;
+        let mut disr_vals: ~[uint] = ~[];
+        let mut prev_disr_val: Option<uint> = None;
 
         for vs.iter().advance |v| {
 
@@ -3155,15 +3155,16 @@ pub fn check_enum_variants(ccx: @mut CrateCtxt,
                 Some(e) => {
                     debug!("disr expr, checking %s", pprust::expr_to_str(e, ccx.tcx.sess.intr()));
 
-                    let declty = ty::mk_int();
                     let fcx = blank_fn_ctxt(ccx, rty, e.id);
+                    let declty = ty::mk_int_var(ccx.tcx, fcx.infcx().next_int_var_id());
                     check_const_with_ty(fcx, e.span, e, declty);
                     // check_expr (from check_const pass) doesn't guarantee
                     // that the expression is in an form that eval_const_expr can
                     // handle, so we may still get an internal compiler error
 
                     match const_eval::eval_const_expr_partial(&ccx.tcx, e) {
-                        Ok(const_eval::const_int(val)) => current_disr_val = val as int,
+                        Ok(const_eval::const_int(val)) => current_disr_val = val as uint,
+                        Ok(const_eval::const_uint(val)) => current_disr_val = val as uint,
                         Ok(_) => {
                             ccx.tcx.sess.span_err(e.span, "expected signed integer constant");
                         }
