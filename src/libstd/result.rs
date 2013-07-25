@@ -35,8 +35,8 @@ impl<T, E> Result<T, E> {
     /**
      * Convert to the `either` type
      *
-     * `ok` result variants are converted to `either::right` variants, `err`
-     * result variants are converted to `either::left`.
+     * `Ok` result variants are converted to `either::Right` variants, `Err`
+     * result variants are converted to `either::Left`.
      */
     #[inline]
     pub fn to_either(self)-> Either<E, T>{
@@ -56,13 +56,12 @@ impl<T, E> Result<T, E> {
     #[inline]
     pub fn get_ref<'a>(&'a self) -> &'a T {
         match *self {
-        Ok(ref t) => t,
-        Err(ref the_err) =>
-            fail!("get_ref called on error result: %?", *the_err)
+            Ok(ref t) => t,
+            Err(ref e) => fail!("get_ref called on `Err` result: %?", *e),
         }
     }
 
-    /// Returns true if the result is `ok`
+    /// Returns true if the result is `Ok`
     #[inline]
     pub fn is_ok(&self) -> bool {
         match *self {
@@ -71,7 +70,7 @@ impl<T, E> Result<T, E> {
         }
     }
 
-    /// Returns true if the result is `err`
+    /// Returns true if the result is `Err`
     #[inline]
     pub fn is_err(&self) -> bool {
         !self.is_ok()
@@ -80,14 +79,14 @@ impl<T, E> Result<T, E> {
     /**
      * Call a method based on a previous result
      *
-     * If `*self` is `ok` then the value is extracted and passed to `op` whereupon
-     * `op`s result is returned. if `*self` is `err` then it is immediately
-     * returned. This function can be used to compose the results of two
-     * functions.
+     * If `self` is `Ok` then the value is extracted and passed to `op`
+     * whereupon `op`s result is returned. if `self` is `Err` then it is
+     * immediately returned. This function can be used to compose the results
+     * of two functions.
      *
      * Example:
      *
-     *     read_file(file).iter() { |buf|
+     *     do read_file(file).iter |buf| {
      *         print_buf(buf)
      *     }
      */
@@ -95,84 +94,84 @@ impl<T, E> Result<T, E> {
     pub fn iter(&self, f: &fn(&T)) {
         match *self {
             Ok(ref t) => f(t),
-            Err(_) => ()
+            Err(_) => (),
         }
     }
 
     /**
      * Call a method based on a previous result
      *
-     * If `*self` is `err` then the value is extracted and passed to `op` whereupon
-     * `op`s result is returned. if `*self` is `ok` then it is immediately returned.
-     * This function can be used to pass through a successful result while
-     * handling an error.
+     * If `self` is `Err` then the value is extracted and passed to `op`
+     * whereupon `op`s result is returned. if `self` is `Ok` then it is
+     * immediately returned.  This function can be used to pass through a
+     * successful result while handling an error.
      */
     #[inline]
     pub fn iter_err(&self, f: &fn(&E)) {
         match *self {
             Ok(_) => (),
-            Err(ref e) => f(e)
+            Err(ref e) => f(e),
         }
     }
 
-    /// Unwraps a result, assuming it is an `ok(T)`
+    /// Unwraps a result, assuming it is an `Ok(T)`
     #[inline]
     pub fn unwrap(self) -> T {
         match self {
             Ok(t) => t,
-            Err(_) => fail!("unwrap called on an err result")
+            Err(_) => fail!("unwrap called on an `Err` result"),
         }
     }
 
-    /// Unwraps a result, assuming it is an `err(U)`
+    /// Unwraps a result, assuming it is an `Err(U)`
     #[inline]
     pub fn unwrap_err(self) -> E {
         match self {
-            Err(u) => u,
-            Ok(_) => fail!("unwrap called on an ok result")
+            Err(e) => e,
+            Ok(_) => fail!("unwrap called on an `Ok` result"),
         }
     }
 
     /**
      * Call a method based on a previous result
      *
-     * If `self` is `ok` then the value is extracted and passed to `op` whereupon
-     * `op`s result is returned. if `self` is `err` then it is immediately
-     * returned. This function can be used to compose the results of two
-     * functions.
+     * If `self` is `Ok` then the value is extracted and passed to `op`
+     * whereupon `op`s result is returned. if `self` is `Err` then it is
+     * immediately returned. This function can be used to compose the results
+     * of two functions.
      *
      * Example:
      *
-     *     let res = do read_file(file).chain |buf| {
-     *         ok(parse_bytes(buf))
+     *     let res = do read_file(file) |buf| {
+     *         Ok(parse_bytes(buf))
      *     };
      */
     #[inline]
-    pub fn chain<U>(self, op: &fn(T) -> Result<U,E>) -> Result<U,E> {
+    pub fn chain<U>(self, op: &fn(T) -> Result<U, E>) -> Result<U, E> {
         match self {
             Ok(t) => op(t),
-            Err(e) => Err(e)
+            Err(e) => Err(e),
         }
     }
 
     /**
-    * Call a method based on a previous result
-    *
-    * If `self` is `err` then the value is extracted and passed to `op`
-    * whereupon `op`s result is returned. if `self` is `ok` then it is
-    * immediately returned.  This function can be used to pass through a
-    * successful result while handling an error.
-    */
+     * Call a function based on a previous result
+     *
+     * If `self` is `Err` then the value is extracted and passed to `op`
+     * whereupon `op`s result is returned. if `self` is `Ok` then it is
+     * immediately returned.  This function can be used to pass through a
+     * successful result while handling an error.
+     */
     #[inline]
-    pub fn chain_err<F>(self, op: &fn(E) -> Result<T,F>) -> Result<T,F> {
+    pub fn chain_err<F>(self, op: &fn(E) -> Result<T, F>) -> Result<T, F> {
         match self {
             Ok(t) => Ok(t),
-            Err(v) => op(v)
+            Err(e) => op(e),
         }
     }
 }
 
-impl<T:Clone,E> Result<T, E> {
+impl<T: Clone, E> Result<T, E> {
     /**
      * Get the value out of a successful result
      *
@@ -183,18 +182,18 @@ impl<T:Clone,E> Result<T, E> {
     #[inline]
     pub fn get(&self) -> T {
         match *self {
-            Ok(ref t) => (*t).clone(),
-            Err(ref e) => fail!("get called on error result: %?", *e),
+            Ok(ref t) => t.clone(),
+            Err(ref e) => fail!("get called on `Err` result: %?", *e),
         }
     }
 
     /**
      * Call a method based on a previous result
      *
-     * If `*self` is `err` then the value is extracted and passed to `op` whereupon
-     * `op`s result is wrapped in an `err` and returned. if `*self` is `ok` then it
-     * is immediately returned.  This function can be used to pass through a
-     * successful result while handling an error.
+     * If `self` is `Err` then the value is extracted and passed to `op`
+     * whereupon `op`s result is wrapped in an `Err` and returned. if `self` is
+     * `Ok` then it is immediately returned.  This function can be used to pass
+     * through a successful result while handling an error.
      */
     #[inline]
     pub fn map_err<F:Clone>(&self, op: &fn(&E) -> F) -> Result<T,F> {
@@ -205,7 +204,7 @@ impl<T:Clone,E> Result<T, E> {
     }
 }
 
-impl<T, E:Clone> Result<T, E> {
+impl<T, E: Clone> Result<T, E> {
     /**
      * Get the value out of an error result
      *
@@ -216,24 +215,24 @@ impl<T, E:Clone> Result<T, E> {
     #[inline]
     pub fn get_err(&self) -> E {
         match *self {
-            Err(ref u) => (*u).clone(),
-            Ok(_) => fail!("get_err called on ok result"),
+            Err(ref e) => e.clone(),
+            Ok(_) => fail!("get_err called on `Ok` result")
         }
     }
 
     /**
      * Call a method based on a previous result
      *
-     * If `res` is `ok` then the value is extracted and passed to `op` whereupon
-     * `op`s result is wrapped in `ok` and returned. if `res` is `err` then it is
-     * immediately returned.  This function can be used to compose the results of
-     * two functions.
+     * If `self` is `Ok` then the value is extracted and passed to `op`
+     * whereupon `op`s result is wrapped in `Ok` and returned. if `self` is
+     * `Err` then it is immediately returned.  This function can be used to
+     * compose the results of two functions.
      *
      * Example:
      *
-     *     let res = read_file(file).map() { |buf|
+     *     let res = do read_file(file).map |buf| {
      *         parse_bytes(buf)
-     *     });
+     *     };
      */
     #[inline]
     pub fn map<U:Clone>(&self, op: &fn(&T) -> U) -> Result<U,E> {
@@ -254,8 +253,8 @@ impl<T, E:Clone> Result<T, E> {
  * checking for overflow:
  *
  *     fn inc_conditionally(x: uint) -> result<uint,str> {
- *         if x == uint::max_value { return err("overflow"); }
- *         else { return ok(x+1u); }
+ *         if x == uint::max_value { return Err("overflow"); }
+ *         else { return Ok(x+1u); }
  *     }
  *     map(~[1u, 2u, 3u], inc_conditionally).chain {|incd|
  *         assert!(incd == ~[2u, 3u, 4u]);
@@ -339,7 +338,6 @@ pub fn iter_vec2<S,T,U>(ss: &[S], ts: &[T],
     }
     return Ok(());
 }
-
 
 #[cfg(test)]
 mod tests {
