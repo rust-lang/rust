@@ -899,7 +899,7 @@ impl<'self> LookupContext<'self> {
         // which is equal to the class tps + the method tps.
         let all_substs = substs {
             tps: vec::append(candidate.rcvr_substs.tps.clone(), m_substs),
-            self_r: candidate.rcvr_substs.self_r,
+            regions: candidate.rcvr_substs.regions.clone(),
             self_ty: candidate.rcvr_substs.self_ty,
         };
 

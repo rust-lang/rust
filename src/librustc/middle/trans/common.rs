@@ -1103,7 +1103,7 @@ pub fn find_vtable(tcx: ty::ctxt,
 
 pub fn dummy_substs(tps: ~[ty::t]) -> ty::substs {
     substs {
-        self_r: Some(ty::re_bound(ty::br_self)),
+        regions: ty::ErasedRegions,
         self_ty: None,
         tps: tps
     }
