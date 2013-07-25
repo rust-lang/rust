@@ -119,7 +119,7 @@ pub fn check_arms(cx: &MatchCheckCtxt, arms: &[arm]) {
             for walk_pat(*pat) |p| {
                 if pat_matches_nan(p) {
                     cx.tcx.sess.span_warn(p.span, "unmatchable NaN in pattern, \
-                                                   use is_NaN() in a guard instead");
+                                                   use the is_NaN method in a guard instead");
                 }
             }
 
