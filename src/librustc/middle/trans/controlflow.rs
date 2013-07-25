@@ -74,20 +74,18 @@ pub fn trans_if(bcx: @mut Block,
     if is_const(cond_val) && !is_undef(cond_val) {
         if const_to_uint(cond_val) == 1 {
             // if true { .. } [else { .. }]
-            let then_bcx_in = scope_block(bcx, thn.info(), "if_true_then");
-            let then_bcx_out = trans_block(then_bcx_in, thn, dest);
-            let then_bcx_out = trans_block_cleanups(then_bcx_out,
-                                                    block_cleanups(then_bcx_in));
-            Br(bcx, then_bcx_in.llbb);
-            return then_bcx_out;
+            return do with_scope(bcx, thn.info(), "if_true_then") |bcx| {
+                let bcx_out = trans_block(bcx, thn, dest);
+                trans_block_cleanups(bcx_out, block_cleanups(bcx))
+            }
         } else {
             match els {
                 // if false { .. } else { .. }
                 Some(elexpr) => {
-                    let (else_bcx_in, else_bcx_out) =
-                        trans_if_else(bcx, elexpr, dest, "if_false_else");
-                    Br(bcx, else_bcx_in.llbb);
-                    return else_bcx_out;
+                    return do with_scope(bcx, elexpr.info(), "if_false_then") |bcx| {
+                        let bcx_out = trans_if_else(bcx, elexpr, dest);
+                        trans_block_cleanups(bcx_out, block_cleanups(bcx))
+                    }
                 }
                 // if false { .. }
                 None => return bcx,
@@ -107,7 +105,8 @@ pub fn trans_if(bcx: @mut Block,
     // 'else' context
     let (else_bcx_in, next_bcx) = match els {
       Some(elexpr) => {
-          let (else_bcx_in, else_bcx_out) = trans_if_else(bcx, elexpr, dest, "else");
+          let else_bcx_in = scope_block(bcx, elexpr.info(), "else");
+          let else_bcx_out = trans_if_else(else_bcx_in, elexpr, dest);
           (else_bcx_in, join_blocks(bcx, [then_bcx_out, else_bcx_out]))
       }
       _ => {
@@ -125,9 +124,8 @@ pub fn trans_if(bcx: @mut Block,
     return next_bcx;
 
     // trans `else [ if { .. } ... | { .. } ]`
-    fn trans_if_else(bcx: @mut Block, elexpr: @ast::expr,
-                     dest: expr::Dest, scope_name: &str) -> (@mut Block, @mut Block) {
-        let else_bcx_in = scope_block(bcx, elexpr.info(), scope_name);
+    fn trans_if_else(else_bcx_in: @mut Block, elexpr: @ast::expr,
+                     dest: expr::Dest) -> @mut Block {
         let else_bcx_out = match elexpr.node {
             ast::expr_if(_, _, _) => {
                 let elseif_blk = ast_util::block_from_expr(elexpr);
@@ -137,11 +135,9 @@ pub fn trans_if(bcx: @mut Block,
                 trans_block(else_bcx_in, blk, dest)
             }
             // would be nice to have a constraint on ifs
-            _ => bcx.tcx().sess.bug("strange alternative in if")
+            _ => else_bcx_in.tcx().sess.bug("strange alternative in if")
         };
-        let else_bcx_out = trans_block_cleanups(else_bcx_out,
-                                                block_cleanups(else_bcx_in));
-        (else_bcx_in, else_bcx_out)
+        trans_block_cleanups(else_bcx_out, block_cleanups(else_bcx_in))
     }
 }
 
