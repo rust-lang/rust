@@ -52,18 +52,18 @@ pub trait IoFactory {
 
 pub trait RtioTcpListener : RtioSocket {
     fn accept(&mut self) -> Result<~RtioTcpStreamObject, IoError>;
-    fn accept_simultaneously(&mut self);
-    fn dont_accept_simultaneously(&mut self);
+    fn accept_simultaneously(&mut self) -> Result<(), IoError>;
+    fn dont_accept_simultaneously(&mut self) -> Result<(), IoError>;
 }
 
 pub trait RtioTcpStream : RtioSocket {
     fn read(&mut self, buf: &mut [u8]) -> Result<uint, IoError>;
     fn write(&mut self, buf: &[u8]) -> Result<(), IoError>;
     fn peer_name(&mut self) -> Result<IpAddr, IoError>;
-    fn control_congestion(&mut self);
-    fn nodelay(&mut self);
-    fn keepalive(&mut self, delay_in_seconds: uint);
-    fn letdie(&mut self);
+    fn control_congestion(&mut self) -> Result<(), IoError>;
+    fn nodelay(&mut self) -> Result<(), IoError>;
+    fn keepalive(&mut self, delay_in_seconds: uint) -> Result<(), IoError>;
+    fn letdie(&mut self) -> Result<(), IoError>;
 }
 
 pub trait RtioSocket {

@@ -15,7 +15,7 @@ use cell::Cell;
 use cast;
 use cast::transmute;
 use clone::Clone;
-use libc::c_void;
+use libc::{c_int, c_uint, c_void};
 use rt::io::IoError;
 use rt::io::net::ip::IpAddr;
 use rt::uv::*;
@@ -404,9 +404,27 @@ impl RtioTcpListener for UvTcpListener {
         return self.incoming_streams.recv();
     }
 
-    // XXX implement
-    fn accept_simultaneously(&mut self) { fail!(); }
-    fn dont_accept_simultaneously(&mut self) { fail!(); }
+    fn accept_simultaneously(&mut self) -> Result<(), IoError> {
+        let r = unsafe {
+            uvll::rust_uv_tcp_simultaneous_accepts(self.watcher.native_handle(), 1 as c_int)
+        };
+
+        match status_to_maybe_uv_error(self.watcher, r) {
+            Some(err) => Err(uv_error_to_io_error(err)),
+            None => Ok(())
+        }
+    }
+
+    fn dont_accept_simultaneously(&mut self) -> Result<(), IoError> {
+        let r = unsafe {
+            uvll::rust_uv_tcp_simultaneous_accepts(self.watcher.native_handle(), 0 as c_int)
+        };
+
+        match status_to_maybe_uv_error(self.watcher, r) {
+            Some(err) => Err(uv_error_to_io_error(err)),
+            None => Ok(())
+        }
+    }
 }
 
 pub struct UvTcpStream(TcpWatcher);
@@ -507,11 +525,50 @@ impl RtioTcpStream for UvTcpStream {
         socket_name(TcpPeer, **self)
     }
 
-    // XXX implement
-    fn control_congestion(&mut self) { fail!(); }
-    fn nodelay(&mut self) { fail!(); }
-    fn keepalive(&mut self, _delay_in_seconds: uint) { fail!(); }
-    fn letdie(&mut self) { fail!(); }
+    fn control_congestion(&mut self) -> Result<(), IoError> {
+        let r = unsafe {
+            uvll::rust_uv_tcp_nodelay(self.native_handle(), 0 as c_int)
+        };
+
+        match status_to_maybe_uv_error(**self, r) {
+            Some(err) => Err(uv_error_to_io_error(err)),
+            None => Ok(())
+        }
+    }
+
+    fn nodelay(&mut self) -> Result<(), IoError> {
+        let r = unsafe {
+            uvll::rust_uv_tcp_nodelay(self.native_handle(), 1 as c_int)
+        };
+
+        match status_to_maybe_uv_error(**self, r) {
+            Some(err) => Err(uv_error_to_io_error(err)),
+            None => Ok(())
+        }
+    }
+
+    fn keepalive(&mut self, delay_in_seconds: uint) -> Result<(), IoError> {
+        let r = unsafe {
+            uvll::rust_uv_tcp_keepalive(self.native_handle(), 1 as c_int,
+                                        delay_in_seconds as c_uint)
+        };
+
+        match status_to_maybe_uv_error(**self, r) {
+            Some(err) => Err(uv_error_to_io_error(err)),
+            None => Ok(())
+        }
+    }
+
+    fn letdie(&mut self) -> Result<(), IoError> {
+        let r = unsafe {
+            uvll::rust_uv_tcp_keepalive(self.native_handle(), 0 as c_int, 0 as c_uint)
+        };
+
+        match status_to_maybe_uv_error(**self, r) {
+            Some(err) => Err(uv_error_to_io_error(err)),
+            None => Ok(())
+        }
+    }
 }
 
 pub struct UvUdpSocket(UdpWatcher);
