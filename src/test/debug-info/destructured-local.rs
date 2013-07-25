@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// xfail-win32 Broken because of LLVM bug: http://llvm.org/bugs/show_bug.cgi?id=16249
+
 // compile-flags:-Z extra-debug-info
 // debugger:break zzz
 // debugger:run
@@ -125,8 +127,8 @@
 
 
 struct Struct {
-	a: i64,
-	b: i32
+    a: i64,
+    b: i32
 }
 
 enum Univariant {
@@ -137,7 +139,7 @@ struct TupleStruct (float, int);
 
 
 fn main() {
-	// simple tuple
+    // simple tuple
     let (a, b) : (int, bool) = (1, false);
 
     // nested tuple
@@ -162,14 +164,14 @@ fn main() {
     let (Struct { a: p, b: q }, r) = (Struct { a: 19, b: 20 }, Struct { a: 21, b: 22 });
 
     // different order of struct fields
-	let Struct { b: s, a: t } = Struct { a: 23, b: 24 };
+    let Struct { b: s, a: t } = Struct { a: 23, b: 24 };
 
-	// complex nesting
-	let ((u, v), ((w, (x, Struct { a: y, b: z})), Struct { a: ae, b: oe }), ue) =
-		((25, 26), ((27, (28, Struct { a: 29, b: 30})), Struct { a: 31, b: 32 }), 33);
+    // complex nesting
+    let ((u, v), ((w, (x, Struct { a: y, b: z})), Struct { a: ae, b: oe }), ue) =
+        ((25, 26), ((27, (28, Struct { a: 29, b: 30})), Struct { a: 31, b: 32 }), 33);
 
-	// managed box
-	let @aa = @(34, 35);
+    // managed box
+    let @aa = @(34, 35);
 
     // borrowed pointer
     let &bb = &(36, 37);
@@ -192,7 +194,7 @@ fn main() {
     // univariant enum
     let Unit(ii) = Unit(51);
 
-    // univariant enum with ref binding
+    // univariant enum with ref      binding
     let Unit(ref jj) = Unit(52);
 
     // tuple struct

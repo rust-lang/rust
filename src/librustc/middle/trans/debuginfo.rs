@@ -99,7 +99,8 @@ pub struct DebugContext {
     priv created_functions: HashMap<ast::node_id, DISubprogram>,
     priv created_blocks: HashMap<ast::node_id, DILexicalBlock>,
     priv created_types: HashMap<uint, DIType>,
-    priv argument_index_counters: HashMap<ast::node_id, uint>,
+    priv last_function_context_id: ast::node_id,
+    priv argument_counter: uint,
 }
 
 impl DebugContext {
@@ -117,7 +118,8 @@ impl DebugContext {
             created_functions: HashMap::new(),
             created_blocks: HashMap::new(),
             created_types: HashMap::new(),
-            argument_index_counters: HashMap::new(),
+            last_function_context_id: -1, // magic value :(
+            argument_counter: 1,
         };
     }
 }
@@ -196,25 +198,35 @@ pub fn create_local_var_metadata(bcx: @mut Block, local: &ast::Local) {
 /// Creates debug information for the given function argument.
 ///
 /// Adds the created metadata nodes directly to the crate's IR.
-pub fn create_argument_metadata(bcx: @mut Block, arg: &ast::arg, span: span) {
+pub fn create_argument_metadata(bcx: @mut Block,
+                                arg: &ast::arg) {
     let fcx = bcx.fcx;
     let cx = fcx.ccx;
 
+    let pattern = arg.pat;
+    let filename = span_start(cx, pattern.span).file.name;
+
     if fcx.id == -1 ||
        fcx.span.is_none() ||
-       "<intrinsic>" == span_start(cx, span).file.name {
+       "<intrinsic>" == filename {
         return;
     }
 
+    // Limited the scope within which `debug_context` is live,
+    // otherwise => borrowing errors
+    {
+        let debug_context = dbg_cx(cx);
+
+        // If this is a new function, reset the counter. llvm::DIBuilder
+        // wants arguments to be indexed starting from 1.
+        if fcx.id != debug_context.last_function_context_id {
+                    debug_context.argument_counter = 1;
+        }
+        // Keep track of the function we are in
+        debug_context.last_function_context_id = fcx.id;
+    }
+
     let def_map = cx.tcx.def_map;
-    let pattern = arg.pat;
-
-    let mut argument_index = match dbg_cx(cx).argument_index_counters.find_copy(&fcx.id) {
-        Some(value) => value,
-        None => 0
-    };
-
-    let filename = span_start(cx, span).file.name;
     let file_metadata = file_metadata(cx, filename);
     let scope = create_function_metadata(fcx);
 
@@ -226,6 +238,13 @@ pub fn create_argument_metadata(bcx: @mut Block, arg: &ast::arg, span: span) {
         let ident = ast_util::path_to_ident(path_ref);
         let name: &str = cx.sess.str_of(ident);
         debug!("create_argument_metadata: %s", name);
+
+        let argument_index = {
+            let debug_context = dbg_cx(cx);
+            let argument_index = debug_context.argument_counter;
+            debug_context.argument_counter += 1;
+            argument_index as c_uint
+        };
 
         let arg_metadata = do name.as_c_str |name| {
             unsafe {
@@ -239,11 +258,9 @@ pub fn create_argument_metadata(bcx: @mut Block, arg: &ast::arg, span: span) {
                     type_metadata,
                     false,
                     0,
-                    argument_index as c_uint)
+                    argument_index)
             }
         };
-
-        argument_index += 1;
 
         let llptr = match bcx.fcx.llargs.find_copy(&node_id) {
             Some(v) => v,
@@ -263,8 +280,6 @@ pub fn create_argument_metadata(bcx: @mut Block, arg: &ast::arg, span: span) {
             llvm::LLVMSetInstDebugLocation(trans::build::B(bcx).llbuilder, instr);
         }
     }
-
-    dbg_cx(cx).argument_index_counters.insert(fcx.id, argument_index);
 }
 
 /// Sets the current debug location at the beginning of the span
