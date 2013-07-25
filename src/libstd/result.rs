@@ -15,7 +15,6 @@
 use clone::Clone;
 use cmp::Eq;
 use either;
-use either::Either;
 use iterator::IteratorUtil;
 use option::{None, Option, Some};
 use vec;
@@ -39,7 +38,7 @@ impl<T, E> Result<T, E> {
      * result variants are converted to `either::Left`.
      */
     #[inline]
-    pub fn to_either(self)-> Either<E, T>{
+    pub fn to_either(self)-> either::Either<E, T>{
         match self {
             Ok(t) => either::Right(t),
             Err(e) => either::Left(e),
@@ -341,17 +340,16 @@ pub fn iter_vec2<S,T,U>(ss: &[S], ts: &[T],
 
 #[cfg(test)]
 mod tests {
-    use result::{Err, Ok, Result};
-    use result;
+    use super::*;
     use either;
 
-    pub fn op1() -> result::Result<int, ~str> { result::Ok(666) }
+    pub fn op1() -> Result<int, ~str> { Ok(666) }
 
-    pub fn op2(i: int) -> result::Result<uint, ~str> {
-        result::Ok(i as uint + 1u)
+    pub fn op2(i: int) -> Result<uint, ~str> {
+        Ok(i as uint + 1u)
     }
 
-    pub fn op3() -> result::Result<int, ~str> { result::Err(~"sadface") }
+    pub fn op3() -> Result<int, ~str> { Err(~"sadface") }
 
     #[test]
     pub fn chain_success() {
