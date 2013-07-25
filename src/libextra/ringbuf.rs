@@ -184,7 +184,7 @@ impl<T> RingBuf<T> {
     }
 
     /// Back-to-front iterator.
-    pub fn rev_iter<'a>(&'a self) -> InvertIterator<&'a T, RingBufIterator<'a, T>> {
+    pub fn rev_iter<'a>(&'a self) -> InvertIterator<RingBufIterator<'a, T>> {
         self.iter().invert()
     }
 
@@ -195,7 +195,7 @@ impl<T> RingBuf<T> {
     }
 
     /// Back-to-front iterator which returns mutable values.
-    pub fn mut_rev_iter<'a>(&'a mut self) -> InvertIterator<&'a mut T, RingBufMutIterator<'a, T>> {
+    pub fn mut_rev_iter<'a>(&'a mut self) -> InvertIterator<RingBufMutIterator<'a, T>> {
         self.mut_iter().invert()
     }
 }
