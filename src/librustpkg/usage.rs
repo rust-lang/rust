@@ -63,20 +63,17 @@ List all installed packages.");
 }
 
 pub fn install() {
-    io::println("rustpkg [options..] install [url] [target]
+    io::println("rustpkg [options..] install [package-ID]
 
-Install a package from a URL by Git or cURL (FTP, HTTP, etc.).
-If target is provided, Git will checkout the branch or tag before
-continuing. If the URL is a TAR file (with or without compression),
-extract it before installing. If a URL isn't provided, the package will
-be built and installed from the current directory (which is
-functionally the same as `rustpkg build` and installing the result).
+Install the given package ID if specified. With no package ID
+argument, install the package in the current directory.
+In that case, the current directory must be a direct child of a
+`src` directory in a workspace.
 
 Examples:
     rustpkg install
-    rustpkg install git://github.com/mozilla/servo.git
-    rustpkg install git://github.com/mozilla/servo.git v0.1.2
-    rustpkg install http://rust-lang.org/servo-0.1.2.tar.gz
+    rustpkg install github.com/mozilla/servo
+    rustpkg install github.com/mozilla/servo#0.1.2
 
 Options:
     -c, --cfg      Pass a cfg flag to the package script");
