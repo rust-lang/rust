@@ -377,14 +377,6 @@ pub fn malloc_boxed(bcx: @mut Block, t: ty::t)
     malloc_general(bcx, t, heap_managed)
 }
 
-pub fn heap_for_unique(bcx: @mut Block, t: ty::t) -> heap {
-    if ty::type_contents(bcx.tcx(), t).contains_managed() {
-        heap_managed_unique
-    } else {
-        heap_exchange
-    }
-}
-
 pub fn maybe_set_managed_unique_rc(bcx: @mut Block, bx: ValueRef, heap: heap) {
     assert!(heap != heap_exchange);
     if heap == heap_managed_unique {

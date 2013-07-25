@@ -30,6 +30,7 @@ use sys;
 use sys::size_of;
 use uint;
 use unstable::intrinsics;
+#[cfg(stage0)]
 use unstable::intrinsics::{get_tydesc, contains_managed};
 use unstable::raw::{Box, Repr, Slice, Vec};
 use vec;
@@ -88,6 +89,19 @@ pub fn from_elem<T:Clone>(n_elts: uint, t: T) -> ~[T] {
 
 /// Creates a new vector with a capacity of `capacity`
 #[inline]
+#[cfg(not(stage0))]
+pub fn with_capacity<T>(capacity: uint) -> ~[T] {
+    unsafe {
+        let alloc = capacity * sys::nonzero_size_of::<T>();
+        let ptr = malloc_raw(alloc + sys::size_of::<Vec<()>>()) as *mut Vec<()>;
+        (*ptr).alloc = alloc;
+        (*ptr).fill = 0;
+        cast::transmute(ptr)
+    }
+}
+#[inline]
+#[cfg(stage0)]
+#[allow(missing_doc)]
 pub fn with_capacity<T>(capacity: uint) -> ~[T] {
     unsafe {
         if contains_managed::<T>() {
@@ -1150,6 +1164,23 @@ impl<T> OwnedVector<T> for ~[T] {
      *
      * * n - The number of elements to reserve space for
      */
+    #[cfg(not(stage0))]
+    fn reserve(&mut self, n: uint) {
+        // Only make the (slow) call into the runtime if we have to
+        if self.capacity() < n {
+            unsafe {
+                let ptr: *mut *mut Vec<()> = cast::transmute(self);
+                let alloc = n * sys::nonzero_size_of::<T>();
+                let size = alloc + sys::size_of::<Vec<()>>();
+                if alloc / sys::nonzero_size_of::<T>() != n || size < alloc {
+                    fail!("vector size is too large: %u", n);
+                }
+                *ptr = realloc_raw(*ptr as *mut c_void, size) as *mut Vec<()>;
+                (**ptr).alloc = alloc;
+            }
+        }
+    }
+    #[cfg(stage0)]
     fn reserve(&mut self, n: uint) {
         // Only make the (slow) call into the runtime if we have to
         if self.capacity() < n {
@@ -1193,6 +1224,15 @@ impl<T> OwnedVector<T> for ~[T] {
 
     /// Returns the number of elements the vector can hold without reallocating.
     #[inline]
+    #[cfg(not(stage0))]
+    fn capacity(&self) -> uint {
+        unsafe {
+            let repr: **Vec<()> = transmute(self);
+            (**repr).alloc / sys::nonzero_size_of::<T>()
+        }
+    }
+    #[inline]
+    #[cfg(stage0)]
     fn capacity(&self) -> uint {
         unsafe {
             if contains_managed::<T>() {
@@ -1207,6 +1247,21 @@ impl<T> OwnedVector<T> for ~[T] {
 
     /// Append an element to a vector
     #[inline]
+    #[cfg(not(stage0))]
+    fn push(&mut self, t: T) {
+        unsafe {
+            let repr: **Vec<()> = transmute(&mut *self);
+            let fill = (**repr).fill;
+            if (**repr).alloc <= fill {
+                let new_len = self.len() + 1;
+                self.reserve_at_least(new_len);
+            }
+
+            self.push_fast(t);
+        }
+    }
+    #[inline]
+    #[cfg(stage0)]
     fn push(&mut self, t: T) {
         unsafe {
             if contains_managed::<T>() {
@@ -1233,6 +1288,17 @@ impl<T> OwnedVector<T> for ~[T] {
 
     // This doesn't bother to make sure we have space.
     #[inline] // really pretty please
+    #[cfg(not(stage0))]
+    unsafe fn push_fast(&mut self, t: T) {
+        let repr: **mut Vec<()> = transmute(self);
+        let fill = (**repr).fill;
+        (**repr).fill += sys::nonzero_size_of::<T>();
+        let p = to_unsafe_ptr(&((**repr).data));
+        let p = ptr::offset(p, fill) as *mut T;
+        intrinsics::move_val_init(&mut(*p), t);
+    }
+    #[inline] // really pretty please
+    #[cfg(stage0)]
     unsafe fn push_fast(&mut self, t: T) {
         if contains_managed::<T>() {
             let repr: **mut Box<Vec<u8>> = cast::transmute(self);
@@ -1828,6 +1894,7 @@ pub mod raw {
     use sys;
     use unstable::intrinsics;
     use vec::{with_capacity, ImmutableVector, MutableVector};
+    #[cfg(stage0)]
     use unstable::intrinsics::contains_managed;
     use unstable::raw::{Box, Vec, Slice};
 
@@ -1839,6 +1906,13 @@ pub mod raw {
      * the vector is actually the specified size.
      */
     #[inline]
+    #[cfg(not(stage0))]
+    pub unsafe fn set_len<T>(v: &mut ~[T], new_len: uint) {
+        let repr: **mut Vec<()> = transmute(v);
+        (**repr).fill = new_len * sys::nonzero_size_of::<T>();
+    }
+    #[cfg(stage0)]
+    #[allow(missing_doc)]
     pub unsafe fn set_len<T>(v: &mut ~[T], new_len: uint) {
         if contains_managed::<T>() {
             let repr: **mut Box<Vec<()>> = cast::transmute(v);

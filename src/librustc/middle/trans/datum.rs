@@ -570,7 +570,7 @@ impl Datum {
             ty::ty_evec(_, ty::vstore_uniq) | ty::ty_estr(ty::vstore_uniq) => {
                 let unit_ty = ty::sequence_element_type(bcx.tcx(), self.ty);
                 let unboxed_vec_ty = ty::mk_mut_unboxed_vec(bcx.tcx(), unit_ty);
-                (unboxed_vec_ty, true)
+                (unboxed_vec_ty, false)
             }
             _ => {
                 bcx.tcx().sess.bug(fmt!(
@@ -579,7 +579,7 @@ impl Datum {
             }
         };
 
-        if !header && !ty::type_contents(bcx.tcx(), content_ty).contains_managed() {
+        if !header {
             let ptr = self.to_value_llval(bcx);
             let ty = type_of(bcx.ccx(), content_ty);
             let body = PointerCast(bcx, ptr, ty.ptr_to());

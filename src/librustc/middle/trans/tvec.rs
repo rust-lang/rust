@@ -65,10 +65,12 @@ pub fn get_alloc(bcx: @mut Block, vptr: ValueRef) -> ValueRef {
 }
 
 pub fn get_bodyptr(bcx: @mut Block, vptr: ValueRef, t: ty::t) -> ValueRef {
-    if ty::type_contents(bcx.tcx(), t).contains_managed() {
-        GEPi(bcx, vptr, [0u, abi::box_field_body])
-    } else {
-        vptr
+    info!("%?", ty::get(t).sty);
+    match ty::get(t).sty {
+        ty::ty_estr(ty::vstore_box) | ty::ty_evec(_, ty::vstore_box) => {
+            GEPi(bcx, vptr, [0u, abi::box_field_body])
+        }
+        _ => { vptr }
     }
 }
 
@@ -109,7 +111,7 @@ pub fn alloc_raw(bcx: @mut Block, unit_ty: ty::t,
 
 pub fn alloc_uniq_raw(bcx: @mut Block, unit_ty: ty::t,
                       fill: ValueRef, alloc: ValueRef) -> Result {
-    alloc_raw(bcx, unit_ty, fill, alloc, base::heap_for_unique(bcx, unit_ty))
+    alloc_raw(bcx, unit_ty, fill, alloc, heap_exchange)
 }
 
 pub fn alloc_vec(bcx: @mut Block,

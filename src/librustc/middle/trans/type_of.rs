@@ -209,20 +209,12 @@ pub fn type_of(cx: &mut CrateContext, t: ty::t) -> Type {
       ty::ty_opaque_box => Type::opaque_box(cx).ptr_to(),
       ty::ty_uniq(ref mt) => {
           let ty = type_of(cx, mt.ty);
-          if ty::type_contents(cx.tcx, mt.ty).contains_managed() {
-              Type::unique(cx, &ty).ptr_to()
-          } else {
-              ty.ptr_to()
-          }
+          ty.ptr_to()
       }
       ty::ty_evec(ref mt, ty::vstore_uniq) => {
           let ty = type_of(cx, mt.ty);
           let ty = Type::vec(cx.sess.targ_cfg.arch, &ty);
-          if ty::type_contents(cx.tcx, mt.ty).contains_managed() {
-              Type::unique(cx, &ty).ptr_to()
-          } else {
-              ty.ptr_to()
-          }
+          ty.ptr_to()
       }
       ty::ty_unboxed_vec(ref mt) => {
           let ty = type_of(cx, mt.ty);

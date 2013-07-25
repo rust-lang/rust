@@ -183,11 +183,7 @@ impl Reflector {
           ty::ty_evec(ref mt, vst) => {
               let (name, extra) = self.vstore_name_and_extra(t, vst);
               let extra = extra + self.c_mt(mt);
-              if "uniq" == name && ty::type_contents(bcx.tcx(), t).contains_managed() {
-                  self.visit("evec_uniq_managed", extra)
-              } else {
-                  self.visit(~"evec_" + name, extra)
-              }
+              self.visit(~"evec_" + name, extra)
           }
           ty::ty_box(ref mt) => {
               let extra = self.c_mt(mt);
@@ -195,11 +191,7 @@ impl Reflector {
           }
           ty::ty_uniq(ref mt) => {
               let extra = self.c_mt(mt);
-              if ty::type_contents(bcx.tcx(), t).contains_managed() {
-                  self.visit("uniq_managed", extra)
-              } else {
-                  self.visit("uniq", extra)
-              }
+              self.visit("uniq", extra)
           }
           ty::ty_ptr(ref mt) => {
               let extra = self.c_mt(mt);
