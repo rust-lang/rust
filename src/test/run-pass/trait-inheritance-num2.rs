@@ -14,8 +14,6 @@
 
 extern mod extra;
 
-use std::cmp::{Eq, Ord};
-
 pub trait TypeExt {}
 
 
@@ -36,7 +34,7 @@ impl TypeExt for f64 {}
 impl TypeExt for float {}
 
 
-pub trait NumExt: TypeExt + Eq + Ord + Num + NumCast {}
+pub trait NumExt: TypeExt + OrderedRing + NumCast {}
 
 impl NumExt for u8 {}
 impl NumExt for u16 {}

@@ -12,10 +12,9 @@
 
 extern mod extra;
 
-use std::cmp::{Eq, Ord};
 use std::num::NumCast;
 
-pub trait NumExt: Num + NumCast + Eq + Ord {}
+pub trait NumExt: OrderedRing + NumCast {}
 
 pub trait FloatExt: NumExt + ApproxEq<Self> {}
 
