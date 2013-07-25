@@ -13,7 +13,7 @@ use result::{Ok, Err};
 use rt::io::net::ip::IpAddr;
 use rt::io::{Reader, Writer};
 use rt::io::{io_error, read_error, EndOfFile};
-use rt::rtio::{RtioUdpSocketObject, RtioUdpSocket, IoFactory, IoFactoryObject};
+use rt::rtio::{RtioSocket, RtioUdpSocketObject, RtioUdpSocket, IoFactory, IoFactoryObject};
 use rt::local::Local;
 
 pub struct UdpSocket(~RtioUdpSocketObject);
@@ -52,6 +52,17 @@ impl UdpSocket {
 
     pub fn connect(self, other: IpAddr) -> UdpStream {
         UdpStream { socket: self, connectedTo: other }
+    }
+
+    pub fn socket_name(&mut self) -> Option<IpAddr> {
+        match (***self).socket_name() {
+            Ok(sn) => Some(sn),
+            Err(ioerr) => {
+                rtdebug!("failed to get socket name: %?", ioerr);
+                io_error::cond.raise(ioerr);
+                None
+            }
+        }
     }
 }
 

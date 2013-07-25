@@ -22,7 +22,7 @@ use str;
 use from_str::{FromStr};
 use num;
 
-enum UvIpAddr {
+pub enum UvIpAddr {
     UvIpv4(*sockaddr_in),
     UvIpv6(*sockaddr_in6),
 }
@@ -32,8 +32,8 @@ fn sockaddr_to_UvIpAddr(addr: *uvll::sockaddr) -> UvIpAddr {
         assert!((is_ip4_addr(addr) || is_ip6_addr(addr)));
         assert!(!(is_ip4_addr(addr) && is_ip6_addr(addr)));
         match addr {
-            _ if is_ip4_addr(addr) => UvIpv4(as_sockaddr_in(addr)),
-            _ if is_ip6_addr(addr) => UvIpv6(as_sockaddr_in6(addr)),
+            _ if is_ip4_addr(addr) => UvIpv4(addr as *uvll::sockaddr_in),
+            _ if is_ip6_addr(addr) => UvIpv6(addr as *uvll::sockaddr_in6),
             _ => fail!(),
         }
     }
@@ -133,7 +133,7 @@ fn uv_ip_as_ip<T>(addr: UvIpAddr, f: &fn(IpAddr) -> T) -> T {
     f(ip)
 }
 
-fn uv_ip_to_ip(addr: UvIpAddr) -> IpAddr {
+pub fn uv_ip_to_ip(addr: UvIpAddr) -> IpAddr {
     use util;
     uv_ip_as_ip(addr, util::id)
 }
@@ -154,7 +154,7 @@ fn test_ip6_conversion() {
     assert_eq!(ip6, ip_as_uv_ip(ip6, uv_ip_to_ip));
 }
 
-// uv_stream t is the parent class of uv_tcp_t, uv_pipe_t, uv_tty_t
+// uv_stream_t is the parent class of uv_tcp_t, uv_pipe_t, uv_tty_t
 // and uv_file_t
 pub struct StreamWatcher(*uvll::uv_stream_t);
 impl Watcher for StreamWatcher { }
@@ -180,7 +180,7 @@ impl StreamWatcher {
             rtdebug!("buf len: %d", buf.len as int);
             let mut stream_watcher: StreamWatcher = NativeHandle::from_native_handle(stream);
             let cb = stream_watcher.get_watcher_data().read_cb.get_ref();
-            let status = status_to_maybe_uv_error(stream, nread as c_int);
+            let status = status_to_maybe_uv_error(stream_watcher, nread as c_int);
             (*cb)(stream_watcher, nread as int, buf, status);
         }
     }
@@ -210,7 +210,7 @@ impl StreamWatcher {
             let mut stream_watcher = write_request.stream();
             write_request.delete();
             let cb = stream_watcher.get_watcher_data().write_cb.take_unwrap();
-            let status = status_to_maybe_uv_error(stream_watcher.native_handle(), status);
+            let status = status_to_maybe_uv_error(stream_watcher, status);
             cb(stream_watcher, status);
         }
     }
@@ -302,7 +302,7 @@ impl TcpWatcher {
                 let mut stream_watcher = connect_request.stream();
                 connect_request.delete();
                 let cb = stream_watcher.get_watcher_data().connect_cb.take_unwrap();
-                let status = status_to_maybe_uv_error(stream_watcher.native_handle(), status);
+                let status = status_to_maybe_uv_error(stream_watcher, status);
                 cb(stream_watcher, status);
             }
         }
@@ -325,7 +325,7 @@ impl TcpWatcher {
             rtdebug!("connection_cb");
             let mut stream_watcher: StreamWatcher = NativeHandle::from_native_handle(handle);
             let cb = stream_watcher.get_watcher_data().connect_cb.get_ref();
-            let status = status_to_maybe_uv_error(handle, status);
+            let status = status_to_maybe_uv_error(stream_watcher, status);
             (*cb)(stream_watcher, status);
         }
     }
@@ -402,7 +402,7 @@ impl UdpWatcher {
             rtdebug!("buf len: %d", buf.len as int);
             let mut udp_watcher: UdpWatcher = NativeHandle::from_native_handle(handle);
             let cb = udp_watcher.get_watcher_data().udp_recv_cb.get_ref();
-            let status = status_to_maybe_uv_error(handle, nread as c_int);
+            let status = status_to_maybe_uv_error(udp_watcher, nread as c_int);
             let addr = uv_ip_to_ip(sockaddr_to_UvIpAddr(addr));
             (*cb)(udp_watcher, nread as int, buf, addr, flags as uint, status);
         }
@@ -437,7 +437,7 @@ impl UdpWatcher {
             let mut udp_watcher = send_request.handle();
             send_request.delete();
             let cb = udp_watcher.get_watcher_data().udp_send_cb.take_unwrap();
-            let status = status_to_maybe_uv_error(udp_watcher.native_handle(), status);
+            let status = status_to_maybe_uv_error(udp_watcher, status);
             cb(udp_watcher, status);
         }
     }

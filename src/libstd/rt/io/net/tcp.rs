@@ -14,8 +14,9 @@ use rt::io::net::ip::IpAddr;
 use rt::io::{Reader, Writer, Listener};
 use rt::io::{io_error, read_error, EndOfFile};
 use rt::rtio::{IoFactory, IoFactoryObject,
-               RtioTcpListener, RtioTcpListenerObject,
-               RtioTcpStream, RtioTcpStreamObject};
+               RtioSocket, RtioTcpListener,
+               RtioTcpListenerObject, RtioTcpStream,
+               RtioTcpStreamObject};
 use rt::local::Local;
 
 pub struct TcpStream(~RtioTcpStreamObject);
@@ -37,6 +38,28 @@ impl TcpStream {
             Ok(s) => Some(TcpStream::new(s)),
             Err(ioerr) => {
                 rtdebug!("failed to connect: %?", ioerr);
+                io_error::cond.raise(ioerr);
+                None
+            }
+        }
+    }
+
+    pub fn peer_name(&mut self) -> Option<IpAddr> {
+        match (***self).peer_name() {
+            Ok(pn) => Some(pn),
+            Err(ioerr) => {
+                rtdebug!("failed to get peer name: %?", ioerr);
+                io_error::cond.raise(ioerr);
+                None
+            }
+        }
+    }
+
+    pub fn socket_name(&mut self) -> Option<IpAddr> {
+        match (***self).socket_name() {
+            Ok(sn) => Some(sn),
+            Err(ioerr) => {
+                rtdebug!("failed to get socket name: %?", ioerr);
                 io_error::cond.raise(ioerr);
                 None
             }
@@ -87,6 +110,17 @@ impl TcpListener {
             Err(ioerr) => {
                 io_error::cond.raise(ioerr);
                 return None;
+            }
+        }
+    }
+
+    pub fn socket_name(&mut self) -> Option<IpAddr> {
+        match (***self).socket_name() {
+            Ok(sn) => Some(sn),
+            Err(ioerr) => {
+                rtdebug!("failed to get socket name: %?", ioerr);
+                io_error::cond.raise(ioerr);
+                None
             }
         }
     }

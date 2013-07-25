@@ -43,7 +43,7 @@ impl IdleWatcher {
             let mut idle_watcher: IdleWatcher = NativeHandle::from_native_handle(handle);
             let data = idle_watcher.get_watcher_data();
             let cb: &IdleCallback = data.idle_cb.get_ref();
-            let status = status_to_maybe_uv_error(handle, status);
+            let status = status_to_maybe_uv_error(idle_watcher, status);
             (*cb)(idle_watcher, status);
         }
     }
