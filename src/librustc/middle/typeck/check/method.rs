@@ -90,7 +90,8 @@ use middle::typeck::check::vtable;
 use middle::typeck::check;
 use middle::typeck::infer;
 use middle::typeck::{method_map_entry, method_origin, method_param};
-use middle::typeck::{method_self, method_static, method_trait, method_super};
+use middle::typeck::{method_static, method_trait};
+use middle::typeck::{param_numbered, param_self, param_index};
 use middle::typeck::check::regionmanip::replace_bound_regions_in_fn_sig;
 use util::common::indenter;
 
@@ -328,64 +329,6 @@ impl<'self> LookupContext<'self> {
         }
     }
 
-    pub fn push_inherent_candidates_from_param(&self,
-                                               rcvr_ty: ty::t,
-                                               param_ty: param_ty) {
-        debug!("push_inherent_candidates_from_param(param_ty=%?)",
-               param_ty);
-        let _indenter = indenter();
-
-        let tcx = self.tcx();
-        let mut next_bound_idx = 0; // count only trait bounds
-        let type_param_def = match tcx.ty_param_defs.find(&param_ty.def_id.node) {
-            Some(t) => t,
-            None => {
-                tcx.sess.span_bug(
-                    self.expr.span,
-                    fmt!("No param def for %?", param_ty));
-            }
-        };
-
-        for ty::each_bound_trait_and_supertraits(tcx, type_param_def.bounds)
-            |bound_trait_ref|
-        {
-            let this_bound_idx = next_bound_idx;
-            next_bound_idx += 1;
-
-            let trait_methods = ty::trait_methods(tcx, bound_trait_ref.def_id);
-            let pos = {
-                match trait_methods.iter().position(|m| {
-                    m.explicit_self != ast::sty_static &&
-                        m.ident == self.m_name })
-                {
-                    Some(pos) => pos,
-                    None => {
-                        debug!("trait doesn't contain method: %?",
-                               bound_trait_ref.def_id);
-                        loop; // check next trait or bound
-                    }
-                }
-            };
-            let method = trait_methods[pos];
-
-            let cand = Candidate {
-                rcvr_ty: rcvr_ty,
-                rcvr_substs: bound_trait_ref.substs.clone(),
-                method_ty: method,
-                origin: method_param(
-                    method_param {
-                        trait_id: bound_trait_ref.def_id,
-                        method_num: pos,
-                        param_num: param_ty.idx,
-                        bound_num: this_bound_idx,
-                    })
-            };
-
-            debug!("pushing inherent candidate for param: %?", cand);
-            self.inherent_candidates.push(cand);
-        }
-    }
-
     pub fn push_inherent_candidates_from_trait(&self,
                                                self_ty: ty::t,
                                                did: def_id,
@@ -438,68 +381,86 @@ impl<'self> LookupContext<'self> {
         });
     }
 
+    pub fn push_inherent_candidates_from_param(&self,
+                                               rcvr_ty: ty::t,
+                                               param_ty: param_ty) {
+        debug!("push_inherent_candidates_from_param(param_ty=%?)",
+               param_ty);
+        let _indenter = indenter();
+
+        let tcx = self.tcx();
+        let type_param_def = match tcx.ty_param_defs.find(&param_ty.def_id.node) {
+            Some(t) => t,
+            None => {
+                tcx.sess.span_bug(
+                    self.expr.span,
+                    fmt!("No param def for %?", param_ty));
+            }
+        };
+
+        self.push_inherent_candidates_from_bounds(
+            rcvr_ty, type_param_def.bounds.trait_bounds,
+            param_numbered(param_ty.idx));
+    }
+
+
     pub fn push_inherent_candidates_from_self(&self,
                                               self_ty: ty::t,
                                               did: def_id) {
-        struct MethodInfo {
-            method_ty: @ty::Method,
-            trait_def_id: ast::def_id,
-            index: uint,
-            trait_ref: @ty::TraitRef
-        }
-
         let tcx = self.tcx();
-        // First, try self methods
-        let mut method_info: Option<MethodInfo> = None;
-        let methods = ty::trait_methods(tcx, did);
-        match methods.iter().position(|m| m.ident == self.m_name) {
-            Some(i) => {
-                method_info = Some(MethodInfo {
-                    method_ty: methods[i],
-                    index: i,
-                    trait_def_id: did,
-                    trait_ref: ty::lookup_trait_def(tcx, did).trait_ref
-                });
-            }
-            None => ()
-        }
-        // No method found yet? Check each supertrait
-        if method_info.is_none() {
-            for ty::trait_supertraits(tcx, did).iter().advance |trait_ref| {
-                let supertrait_methods =
-                    ty::trait_methods(tcx, trait_ref.def_id);
-                match supertrait_methods.iter().position(|m| m.ident == self.m_name) {
-                    Some(i) => {
-                        method_info = Some(MethodInfo {
-                            method_ty: supertrait_methods[i],
-                            index: i,
-                            trait_def_id: trait_ref.def_id,
-                            trait_ref: *trait_ref
-                        });
-                        break;
+
+        let trait_ref = ty::lookup_trait_def(tcx, did).trait_ref;
+        self.push_inherent_candidates_from_bounds(
+            self_ty, &[trait_ref], param_self);
+    }
+
+    pub fn push_inherent_candidates_from_bounds(&self,
+                                                self_ty: ty::t,
+                                                bounds: &[@TraitRef],
+                                                param: param_index) {
+        let tcx = self.tcx();
+        let mut next_bound_idx = 0; // count only trait bounds
+
+        for ty::each_bound_trait_and_supertraits(tcx, bounds)
+            |bound_trait_ref|
+        {
+            let this_bound_idx = next_bound_idx;
+            next_bound_idx += 1;
+
+            let trait_methods = ty::trait_methods(tcx, bound_trait_ref.def_id);
+            let pos = {
+                match trait_methods.iter().position(|m| {
+                    m.explicit_self != ast::sty_static &&
+                        m.ident == self.m_name })
+                {
+                    Some(pos) => pos,
+                    None => {
+                        debug!("trait doesn't contain method: %?",
+                               bound_trait_ref.def_id);
+                        loop; // check next trait or bound
                     }
-                    None => ()
                 }
-            }
-        }
-        match method_info {
-            Some(ref info) => {
-                // We've found a method -- return it
-                let origin = if did == info.trait_def_id {
-                    method_self(info.trait_def_id, info.index)
-                } else {
-                    method_super(info.trait_def_id, info.index)
-                };
-                self.inherent_candidates.push(Candidate {
-                    rcvr_ty: self_ty,
-                    rcvr_substs: info.trait_ref.substs.clone(),
-                    method_ty: info.method_ty,
-                    origin: origin
-                });
-            }
-            _ => return
+            };
+            let method = trait_methods[pos];
+
+            let cand = Candidate {
+                rcvr_ty: self_ty,
+                rcvr_substs: bound_trait_ref.substs.clone(),
+                method_ty: method,
+                origin: method_param(
+                    method_param {
+                        trait_id: bound_trait_ref.def_id,
+                        method_num: pos,
+                        param_num: param,
+                        bound_num: this_bound_idx,
+                    })
+            };
+
+            debug!("pushing inherent candidate for param: %?", cand);
+            self.inherent_candidates.push(cand);
         }
     }
+
 
     pub fn push_inherent_impl_candidates_for_type(&self, did: def_id) {
         let opt_impl_infos = self.tcx().inherent_impls.find(&did);
@@ -1005,14 +966,13 @@ impl<'self> LookupContext<'self> {
         /*!
          *
          * There are some limitations to calling functions through a
-         * traint instance, because (a) the self type is not known
+         * trait instance, because (a) the self type is not known
          * (that's the whole point of a trait instance, after all, to
          * obscure the self type) and (b) the call must go through a
          * vtable and hence cannot be monomorphized. */
 
         match candidate.origin {
-            method_static(*) | method_param(*) |
-                method_self(*) | method_super(*) => {
+            method_static(*) | method_param(*) => {
                 return; // not a call to a trait instance
             }
             method_trait(*) => {}
@@ -1036,10 +996,11 @@ impl<'self> LookupContext<'self> {
         // No code can call the finalize method explicitly.
         let bad;
         match candidate.origin {
-            method_static(method_id) | method_self(method_id, _)
-                | method_super(method_id, _) => {
+            method_static(method_id) => {
                 bad = self.tcx().destructors.contains(&method_id);
             }
+            // XXX: does this properly enforce this on everything now
+            // that self has been merged in? -sully
             method_param(method_param { trait_id: trait_id, _ }) |
             method_trait(trait_id, _, _) => {
                 bad = self.tcx().destructor_for_type.contains_key(&trait_id);
@@ -1158,8 +1119,7 @@ impl<'self> LookupContext<'self> {
             method_param(ref mp) => {
                 type_of_trait_method(self.tcx(), mp.trait_id, mp.method_num)
             }
-            method_trait(did, idx, _) | method_self(did, idx) |
-                method_super(did, idx) => {
+            method_trait(did, idx, _) => {
                 type_of_trait_method(self.tcx(), did, idx)
             }
         };
@@ -1180,8 +1140,7 @@ impl<'self> LookupContext<'self> {
             method_param(ref mp) => {
                 self.report_param_candidate(idx, (*mp).trait_id)
             }
-            method_trait(trait_did, _, _) | method_self(trait_did, _)
-                | method_super(trait_did, _) => {
+            method_trait(trait_did, _, _) => {
                 self.report_trait_candidate(idx, trait_did)
             }
         }

@@ -8,15 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-test FIXME #5946
 trait Positioned<S> {
   fn SetX(&mut self, S);
   fn X(&self) -> S;
 }
 
-trait Movable<S, T>: Positioned<T> {
-  fn translate(&self, dx: T) {
-    self.SetX(self.X() + dx);
+trait Movable<S: Add<S, S>>: Positioned<S> {
+  fn translate(&mut self, dx: S) {
+    let x = self.X() + dx;
+    self.SetX(x);
   }
 }
 
@@ -31,10 +31,10 @@ impl Positioned<int> for Point {
     }
 }
 
-impl Movable<int, int> for Point;
+impl Movable<int> for Point;
 
 pub fn main() {
-    let p = Point{ x: 1, y: 2};
+    let mut p = Point{ x: 1, y: 2};
     p.translate(3);
     assert_eq!(p.X(), 4);
 }

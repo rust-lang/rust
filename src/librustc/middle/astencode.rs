@@ -250,12 +250,20 @@ impl<S:serialize::Encoder> def_id_encoder_helpers for S {
 
 trait def_id_decoder_helpers {
     fn read_def_id(&mut self, xcx: @ExtendedDecodeContext) -> ast::def_id;
+    fn read_def_id_noxcx(&mut self,
+                         cdata: @cstore::crate_metadata) -> ast::def_id;
 }
 
 impl<D:serialize::Decoder> def_id_decoder_helpers for D {
     fn read_def_id(&mut self, xcx: @ExtendedDecodeContext) -> ast::def_id {
         let did: ast::def_id = Decodable::decode(self);
         did.tr(xcx)
+    }
+
+    fn read_def_id_noxcx(&mut self,
+                         cdata: @cstore::crate_metadata) -> ast::def_id {
+        let did: ast::def_id = Decodable::decode(self);
+        decoder::translate_def_id(cdata, did)
     }
 }
 
@@ -582,12 +590,6 @@ impl tr for method_origin {
           typeck::method_trait(did, m, vstore) => {
               typeck::method_trait(did.tr(xcx), m, vstore)
           }
-          typeck::method_self(did, m) => {
-              typeck::method_self(did.tr(xcx), m)
-          }
-          typeck::method_super(trait_did, m) => {
-              typeck::method_super(trait_did.tr(xcx), m)
-          }
         }
     }
 }
@@ -595,7 +597,7 @@ impl tr for method_origin {
 // ______________________________________________________________________
 // Encoding and decoding vtable_res
 
-fn encode_vtable_res(ecx: &e::EncodeContext,
+pub fn encode_vtable_res(ecx: &e::EncodeContext,
                      ebml_w: &mut writer::Encoder,
                      dr: typeck::vtable_res) {
     // can't autogenerate this code because automatic code of
@@ -603,13 +605,20 @@ fn encode_vtable_res(ecx: &e::EncodeContext,
     // hand-written encoding routines combine with auto-generated
     // ones.  perhaps we should fix this.
     do ebml_w.emit_from_vec(*dr) |ebml_w, param_tables| {
-        do ebml_w.emit_from_vec(**param_tables) |ebml_w, vtable_origin| {
-            encode_vtable_origin(ecx, ebml_w, vtable_origin)
-        }
+        encode_vtable_param_res(ecx, ebml_w, *param_tables);
     }
 }
 
-fn encode_vtable_origin(ecx: &e::EncodeContext,
+pub fn encode_vtable_param_res(ecx: &e::EncodeContext,
+                     ebml_w: &mut writer::Encoder,
+                     param_tables: typeck::vtable_param_res) {
+    do ebml_w.emit_from_vec(*param_tables) |ebml_w, vtable_origin| {
+        encode_vtable_origin(ecx, ebml_w, vtable_origin)
+    }
+}
+
+
+pub fn encode_vtable_origin(ecx: &e::EncodeContext,
                         ebml_w: &mut writer::Encoder,
                         vtable_origin: &typeck::vtable_origin) {
     do ebml_w.emit_enum("vtable_origin") |ebml_w| {
@@ -630,17 +639,10 @@ fn encode_vtable_origin(ecx: &e::EncodeContext,
           typeck::vtable_param(pn, bn) => {
             do ebml_w.emit_enum_variant("vtable_param", 1u, 2u) |ebml_w| {
                 do ebml_w.emit_enum_variant_arg(0u) |ebml_w| {
-                    ebml_w.emit_uint(pn);
+                    pn.encode(ebml_w);
                 }
                 do ebml_w.emit_enum_variant_arg(1u) |ebml_w| {
                     ebml_w.emit_uint(bn);
-                }
-            }
-          }
-          typeck::vtable_self(def_id) => {
-            do ebml_w.emit_enum_variant("vtable_self", 2u, 1u) |ebml_w| {
-                do ebml_w.emit_enum_variant_arg(0u) |ebml_w| {
-                    ebml_w.emit_def_id(def_id)
                 }
             }
           }
@@ -648,22 +650,35 @@ fn encode_vtable_origin(ecx: &e::EncodeContext,
     }
 }
 
-trait vtable_decoder_helpers {
-    fn read_vtable_res(&mut self, xcx: @ExtendedDecodeContext)
+pub trait vtable_decoder_helpers {
+    fn read_vtable_res(&mut self,
+                       tcx: ty::ctxt, cdata: @cstore::crate_metadata)
                       -> typeck::vtable_res;
-    fn read_vtable_origin(&mut self, xcx: @ExtendedDecodeContext)
+    fn read_vtable_param_res(&mut self,
+                       tcx: ty::ctxt, cdata: @cstore::crate_metadata)
+                      -> typeck::vtable_param_res;
+    fn read_vtable_origin(&mut self,
+                          tcx: ty::ctxt, cdata: @cstore::crate_metadata)
                           -> typeck::vtable_origin;
 }
 
 impl vtable_decoder_helpers for reader::Decoder {
-    fn read_vtable_res(&mut self, xcx: @ExtendedDecodeContext)
+    fn read_vtable_res(&mut self,
+                       tcx: ty::ctxt, cdata: @cstore::crate_metadata)
                       -> typeck::vtable_res {
         @self.read_to_vec(|this|
-           @this.read_to_vec(|this|
-               this.read_vtable_origin(xcx)))
+                          this.read_vtable_param_res(tcx, cdata))
     }
 
-    fn read_vtable_origin(&mut self, xcx: @ExtendedDecodeContext)
+    fn read_vtable_param_res(&mut self,
+                             tcx: ty::ctxt, cdata: @cstore::crate_metadata)
+                      -> typeck::vtable_param_res {
+        @self.read_to_vec(|this|
+                          this.read_vtable_origin(tcx, cdata))
+    }
+
+    fn read_vtable_origin(&mut self,
+                          tcx: ty::ctxt, cdata: @cstore::crate_metadata)
         -> typeck::vtable_origin {
         do self.read_enum("vtable_origin") |this| {
             do this.read_enum_variant(["vtable_static",
@@ -674,30 +689,23 @@ impl vtable_decoder_helpers for reader::Decoder {
                   0 => {
                     typeck::vtable_static(
                         do this.read_enum_variant_arg(0u) |this| {
-                            this.read_def_id(xcx)
+                            this.read_def_id_noxcx(cdata)
                         },
                         do this.read_enum_variant_arg(1u) |this| {
-                            this.read_tys(xcx)
+                            this.read_tys_noxcx(tcx, cdata)
                         },
                         do this.read_enum_variant_arg(2u) |this| {
-                            this.read_vtable_res(xcx)
+                            this.read_vtable_res(tcx, cdata)
                         }
                     )
                   }
                   1 => {
                     typeck::vtable_param(
                         do this.read_enum_variant_arg(0u) |this| {
-                            this.read_uint()
+                            Decodable::decode(this)
                         },
                         do this.read_enum_variant_arg(1u) |this| {
                             this.read_uint()
-                        }
-                    )
-                  }
-                  2 => {
-                    typeck::vtable_self(
-                        do this.read_enum_variant_arg(0u) |this| {
-                            this.read_def_id(xcx)
                         }
                     )
                   }
@@ -995,9 +1003,35 @@ trait ebml_decoder_decoder_helpers {
                       source: DefIdSource,
                       did: ast::def_id)
                       -> ast::def_id;
+
+    // Versions of the type reading functions that don't need the full
+    // ExtendedDecodeContext.
+    fn read_ty_noxcx(&mut self,
+                     tcx: ty::ctxt, cdata: @cstore::crate_metadata) -> ty::t;
+    fn read_tys_noxcx(&mut self,
+                      tcx: ty::ctxt,
+                      cdata: @cstore::crate_metadata) -> ~[ty::t];
 }
 
 impl ebml_decoder_decoder_helpers for reader::Decoder {
+    fn read_ty_noxcx(&mut self,
+                     tcx: ty::ctxt, cdata: @cstore::crate_metadata) -> ty::t {
+        do self.read_opaque |_, doc| {
+            tydecode::parse_ty_data(
+                *doc.data,
+                cdata.cnum,
+                doc.start,
+                tcx,
+                |_, id| decoder::translate_def_id(cdata, id))
+        }
+    }
+
+    fn read_tys_noxcx(&mut self,
+                      tcx: ty::ctxt,
+                      cdata: @cstore::crate_metadata) -> ~[ty::t] {
+        self.read_to_vec(|this| this.read_ty_noxcx(tcx, cdata) )
+    }
+
     fn read_ty(&mut self, xcx: @ExtendedDecodeContext) -> ty::t {
         // Note: regions types embed local node ids.  In principle, we
         // should translate these node ids into the new decode
@@ -1160,8 +1194,9 @@ fn decode_side_tables(xcx: @ExtendedDecodeContext,
                             val_dsr.read_method_map_entry(xcx));
                     }
                     c::tag_table_vtable_map => {
-                        dcx.maps.vtable_map.insert(id,
-                                                   val_dsr.read_vtable_res(xcx));
+                        dcx.maps.vtable_map.insert(
+                            id,
+                            val_dsr.read_vtable_res(xcx.dcx.tcx, xcx.dcx.cdata));
                     }
                     c::tag_table_adjustments => {
                         let adj: @ty::AutoAdjustment = @Decodable::decode(val_dsr);

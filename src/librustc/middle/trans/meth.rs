@@ -147,46 +147,13 @@ pub fn trans_method_callee(bcx: @mut Block,
                            mentry: typeck::method_map_entry)
                            -> Callee {
     let _icx = push_ctxt("impl::trans_method_callee");
-    let tcx = bcx.tcx();
 
     debug!("trans_method_callee(callee_id=%?, this=%s, mentry=%s)",
            callee_id,
            bcx.expr_to_str(this),
            mentry.repr(bcx.tcx()));
 
-    // Replace method_self with method_static here.
-    let mut origin = mentry.origin;
-    match origin {
-        typeck::method_super(trait_id, method_index) => {
-            // <self_ty> is the self type for this method call
-            let self_ty = node_id_type(bcx, this.id);
-            // <impl_id> is the ID of the implementation of
-            // trait <trait_id> for type <self_ty>
-            let impl_id = ty::bogus_get_impl_id_from_ty(tcx, trait_id, self_ty);
-            // Get the supertrait's methods
-            let supertrait_method_def_ids = ty::trait_method_def_ids(tcx, trait_id);
-            // Make sure to fail with a readable error message if
-            // there's some internal error here
-            if !(method_index < supertrait_method_def_ids.len()) {
-                tcx.sess.bug("trans_method_callee: supertrait method \
-                              index is out of bounds");
-            }
-            // Get the method name using the method index in the origin
-            let method_name =
-                ty::method(tcx, supertrait_method_def_ids[method_index]).ident;
-            // Now that we know the impl ID, we can look up the method
-            // ID from its name
-            origin = typeck::method_static(
-                method_with_name(bcx.ccx(), impl_id, method_name));
-        }
-        typeck::method_self(*) |
-        typeck::method_static(*) | typeck::method_param(*) |
-        typeck::method_trait(*) => {}
-    }
-
-    debug!("origin=%?", origin);
-
-    match origin {
+    match mentry.origin {
         typeck::method_static(did) => {
             let callee_fn = callee::trans_fn_ref(bcx, did, callee_id);
             let mut temp_cleanups = ~[];
@@ -210,30 +177,13 @@ pub fn trans_method_callee(bcx: @mut Block,
         }) => {
             match bcx.fcx.param_substs {
                 Some(substs) => {
-                    let vtbl = find_vtable(bcx.tcx(), substs, p, b);
+                    let vtbl = find_vtable(bcx.tcx(), substs,
+                                           p, b);
                     trans_monomorphized_callee(bcx, callee_id, this, mentry,
                                                trait_id, off, vtbl)
                 }
                 // how to get rid of this?
                 None => fail!("trans_method_callee: missing param_substs")
-            }
-        }
-
-        typeck::method_self(trait_id, method_index) => {
-            match bcx.fcx.param_substs {
-                Some(@param_substs
-                     {self_vtable: Some(ref vtbl), _}) => {
-                    trans_monomorphized_callee(bcx,
-                                               callee_id,
-                                               this,
-                                               mentry,
-                                               trait_id,
-                                               method_index,
-                                               (*vtbl).clone())
-                }
-                _ => {
-                    fail!("trans_method_callee: missing self_vtable")
-                }
             }
         }
 
@@ -244,9 +194,6 @@ pub fn trans_method_callee(bcx: @mut Block,
                                this,
                                store,
                                mentry.explicit_self)
-        }
-        typeck::method_super(*) => {
-            fail!("method_super should have been handled above")
         }
     }
 }
@@ -401,9 +348,6 @@ pub fn trans_monomorphized_callee(bcx: @mut Block,
       }
       typeck::vtable_param(*) => {
           fail!("vtable_param left in monomorphized function's vtable substs");
-      }
-      typeck::vtable_self(*) => {
-          fail!("vtable_self left in monomorphized function's vtable substs");
       }
     };
 
@@ -611,7 +555,7 @@ pub fn vtable_id(ccx: @mut CrateContext,
                 tys: (*substs).clone(),
                 vtables: Some(sub_vtables),
                 self_ty: None,
-                self_vtable: None
+                self_vtables: None
             };
 
             monomorphize::make_mono_id(

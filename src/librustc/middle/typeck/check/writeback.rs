@@ -20,7 +20,7 @@ use middle::typeck::infer::{force_all, resolve_all, resolve_region};
 use middle::typeck::infer::resolve_type;
 use middle::typeck::infer;
 use middle::typeck::{vtable_res, vtable_origin};
-use middle::typeck::{vtable_static, vtable_param, vtable_self};
+use middle::typeck::{vtable_static, vtable_param};
 use middle::typeck::method_map_entry;
 use middle::typeck::write_substs_to_tcx;
 use middle::typeck::write_ty_to_tcx;
@@ -108,9 +108,6 @@ fn resolve_vtable_map_entry(fcx: @mut FnCtxt, sp: span, id: ast::node_id) {
             }
             &vtable_param(n, b) => {
                 vtable_param(n, b)
-            }
-            &vtable_self(def_id) => {
-                vtable_self(def_id)
             }
         }
     }

@@ -193,30 +193,15 @@ pub fn trans_fn_ref_with_vtables_to_callee(
                                                type_params, vtables))}
 }
 
-fn get_impl_resolutions(bcx: @mut Block,
-                        impl_id: ast::def_id)
-                         -> typeck::vtable_res {
-    if impl_id.crate == ast::local_crate {
-        bcx.ccx().maps.vtable_map.get_copy(&impl_id.node)
-    } else {
-        // XXX: This is a temporary hack to work around not properly
-        // exporting information about resolutions for impls.
-        // This doesn't actually work if the trait has param bounds,
-        // but it does allow us to survive the case when it does not.
-        let trait_ref = ty::impl_trait_ref(bcx.tcx(), impl_id).get();
-        @vec::from_elem(trait_ref.substs.tps.len(), @~[])
-    }
-}
-
 fn resolve_default_method_vtables(bcx: @mut Block,
                                   impl_id: ast::def_id,
                                   method: &ty::Method,
                                   substs: &ty::substs,
                                   impl_vtables: Option<typeck::vtable_res>)
-                                 -> typeck::vtable_res {
+                          -> (typeck::vtable_res, typeck::vtable_param_res) {
 
     // Get the vtables that the impl implements the trait at
-    let trait_vtables = get_impl_resolutions(bcx, impl_id);
+    let impl_res = ty::lookup_impl_vtables(bcx.tcx(), impl_id);
 
     // Build up a param_substs that we are going to resolve the
     // trait_vtables under.
@@ -224,11 +209,11 @@ fn resolve_default_method_vtables(bcx: @mut Block,
         tys: substs.tps.clone(),
         self_ty: substs.self_ty,
         vtables: impl_vtables,
-        self_vtable: None
+        self_vtables: None
     });
 
     let trait_vtables_fixed = resolve_vtables_under_param_substs(
-        bcx.tcx(), param_substs, trait_vtables);
+        bcx.tcx(), param_substs, impl_res.trait_vtables);
 
     // Now we pull any vtables for parameters on the actual method.
     let num_method_vtables = method.generics.type_param_defs.len();
@@ -241,7 +226,12 @@ fn resolve_default_method_vtables(bcx: @mut Block,
         None => vec::from_elem(num_method_vtables, @~[])
     };
 
-    @(*trait_vtables_fixed + method_vtables)
+    let param_vtables = @(*trait_vtables_fixed + method_vtables);
+
+    let self_vtables = resolve_param_vtables_under_param_substs(
+        bcx.tcx(), param_substs, impl_res.self_vtables);
+
+    (param_vtables, self_vtables)
 }
 
 
@@ -296,7 +286,7 @@ pub fn trans_fn_ref_with_vtables(
     // We need to do a bunch of special handling for default methods.
     // We need to modify the def_id and our substs in order to monomorphize
     // the function.
-    let (is_default, def_id, substs, self_vtable, vtables) =
+    let (is_default, def_id, substs, self_vtables, vtables) =
         match ty::provided_source(tcx, def_id) {
         None => (false, def_id, substs, None, vtables),
         Some(source_id) => {
@@ -319,20 +309,6 @@ pub fn trans_fn_ref_with_vtables(
                 .expect("could not find trait_ref for impl with \
                          default methods");
 
-            // Get all of the type params for the receiver
-            let param_defs = method.generics.type_param_defs;
-            let receiver_substs =
-                type_params.initn(param_defs.len()).to_owned();
-            let receiver_vtables = match vtables {
-                None => @~[],
-                Some(call_vtables) => {
-                    @call_vtables.initn(param_defs.len()).to_owned()
-                }
-            };
-
-            let self_vtable =
-                typeck::vtable_static(impl_id, receiver_substs,
-                                      receiver_vtables);
             // Compute the first substitution
             let first_subst = make_substs_for_receiver_types(
                 tcx, impl_id, trait_ref, method);
@@ -341,20 +317,22 @@ pub fn trans_fn_ref_with_vtables(
             let new_substs = first_subst.subst(tcx, &substs);
 
 
-            let vtables =
+            let (param_vtables, self_vtables) =
                 resolve_default_method_vtables(bcx, impl_id,
-                                               method, &new_substs, vtables);
+                                               method, &substs, vtables);
 
             debug!("trans_fn_with_vtables - default method: \
                     substs = %s, trait_subst = %s, \
                     first_subst = %s, new_subst = %s, \
-                    self_vtable = %s, vtables = %s",
+                    vtables = %s, \
+                    self_vtable = %s, param_vtables = %s",
                    substs.repr(tcx), trait_ref.substs.repr(tcx),
                    first_subst.repr(tcx), new_substs.repr(tcx),
-                   self_vtable.repr(tcx), vtables.repr(tcx));
+                   vtables.repr(tcx),
+                   self_vtables.repr(tcx), param_vtables.repr(tcx));
 
             (true, source_id,
-             new_substs, Some(self_vtable), Some(vtables))
+             new_substs, Some(self_vtables), Some(param_vtables))
         }
     };
 
@@ -400,7 +378,7 @@ pub fn trans_fn_ref_with_vtables(
 
         let (val, must_cast) =
             monomorphize::monomorphic_fn(ccx, def_id, &substs,
-                                         vtables, self_vtable,
+                                         vtables, self_vtables,
                                          Some(ref_id));
         let mut val = val;
         if must_cast && ref_id != 0 {

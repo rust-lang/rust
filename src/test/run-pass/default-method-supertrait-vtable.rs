@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,18 +8,29 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait A {
-    fn a_method(&self);
+
+// Tests that we can call a function bounded over a supertrait from
+// a default method
+
+fn require_y<T: Y>(x: T) -> int { x.y() }
+
+trait Y {
+    fn y(self) -> int;
 }
 
-trait B: A {
-    fn b_method(&self);
-}
 
-trait C: B {
-    fn c_method(&self) {
-        self.a_method();
+trait Z: Y {
+    fn x(self) -> int {
+        require_y(self)
     }
 }
 
-pub fn main() {}
+impl Y for int {
+    fn y(self) -> int { self }
+}
+
+impl Z for int;
+
+fn main() {
+    assert_eq!(12.x(), 12);
+}
