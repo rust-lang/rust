@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-enum test { thing = 3u } //~ ERROR mismatched types
-//~^ ERROR expected signed integer constant
-fn main() {
-    error!(thing as int);
-    assert_eq!(thing as int, 3);
+enum color {
+    red = 1u,
+    blue = 2,
 }
+
+fn main() {}
