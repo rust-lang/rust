@@ -24,6 +24,7 @@ Implementations of the following traits:
 * `Ord`
 * `TotalOrd`
 * `Eq`
+* `Zero`
 
 ## Various functions to compare `bool`s
 
@@ -36,13 +37,13 @@ Finally, some inquries into the nature of truth: `is_true` and `is_false`.
 
 */
 
-#[cfg(not(test))]
-use cmp::{Eq, Ord, TotalOrd, Ordering};
-#[cfg(not(test))]
-use ops::Not;
 use option::{None, Option, Some};
 use from_str::FromStr;
 use to_str::ToStr;
+
+#[cfg(not(test))] use cmp::{Eq, Ord, TotalOrd, Ordering};
+#[cfg(not(test))] use ops::Not;
+#[cfg(not(test))] use num::Zero;
 
 /**
 * Negation of a boolean value.
@@ -328,6 +329,12 @@ impl Eq for bool {
     fn eq(&self, other: &bool) -> bool { (*self) == (*other) }
     #[inline]
     fn ne(&self, other: &bool) -> bool { (*self) != (*other) }
+}
+
+#[cfg(not(test))]
+impl Zero for bool {
+    fn zero() -> bool { false }
+    fn is_zero(&self) -> bool { *self == false }
 }
 
 #[cfg(test)]
