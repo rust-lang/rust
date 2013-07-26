@@ -717,6 +717,15 @@ pub fn get_sctable() -> @mut SCTable {
     }
 }
 
+/// print out an SCTable for debugging
+pub fn display_sctable(table : &SCTable) {
+    debug!("SC table:");
+    for table.table.iter().enumerate().advance |(idx,val)| {
+        debug!("%4u : %?",idx,val);
+    }
+}
+
+
 /// Add a value to the end of a vec, return its index
 fn idx_push<T>(vec: &mut ~[T], val: T) -> uint {
     vec.push(val);
