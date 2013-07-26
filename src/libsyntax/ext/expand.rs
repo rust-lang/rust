@@ -336,25 +336,16 @@ pub fn expand_item(extsbox: @mut SyntaxEnv,
                    fld: @ast_fold,
                    orig: @fn(@ast::item, @ast_fold) -> Option<@ast::item>)
                 -> Option<@ast::item> {
-    // need to do expansion first... it might turn out to be a module.
-    let maybe_it = match it.node {
-      ast::item_mac(*) => expand_item_mac(extsbox, cx, it, fld),
-      _ => Some(it)
-    };
-    match maybe_it {
-      Some(it) => {
-          match it.node {
-              ast::item_mod(_) | ast::item_foreign_mod(_) => {
-                  cx.mod_push(it.ident);
-                  let macro_escape = contains_macro_escape(it.attrs);
-                  let result = with_exts_frame!(extsbox,macro_escape,orig(it,fld));
-                  cx.mod_pop();
-                  result
-              }
-              _ => orig(it,fld)
-          }
-      }
-      None => None
+    match it.node {
+        ast::item_mac(*) => expand_item_mac(extsbox, cx, it, fld),
+        ast::item_mod(_) | ast::item_foreign_mod(_) => {
+            cx.mod_push(it.ident);
+            let macro_escape = contains_macro_escape(it.attrs);
+            let result = with_exts_frame!(extsbox,macro_escape,orig(it,fld));
+            cx.mod_pop();
+            result
+        },
+        _ => orig(it,fld)
     }
 }
 
