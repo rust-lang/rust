@@ -29,7 +29,7 @@ use uint;
 /// Conversion from an `Iterator`
 pub trait FromIterator<A, T: Iterator<A>> {
     /// Build a container with elements from an external iterator.
-    pub fn from_iterator(iterator: &mut T) -> Self;
+    fn from_iterator(iterator: &mut T) -> Self;
 }
 
 /// An interface for dealing with "external iterators". These types of iterators
@@ -52,7 +52,9 @@ pub trait DoubleEndedIterator<A>: Iterator<A> {
 }
 
 /// An object implementing random access indexing by `uint`
-pub trait RandomAccessIterator<A> {
+///
+/// A `RandomAccessIterator` should be either infinite or a `DoubleEndedIterator`.
+pub trait RandomAccessIterator<A>: Iterator<A> {
     /// Return the number of indexable elements. At most `std::uint::max_value`
     /// elements are indexable, even if the iterator represents a longer range.
     fn indexable(&self) -> uint;
