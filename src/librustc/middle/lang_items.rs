@@ -92,8 +92,8 @@ impl LanguageItems {
         }
     }
 
-    pub fn each_item(&self, f: &fn(def_id: def_id, i: uint) -> bool) -> bool {
-        self.items.iter().enumerate().advance(|(i, &item)| f(item.get(), i))
+    pub fn each_item(&self, f: &fn(Option<def_id>, uint) -> bool) -> bool {
+        self.items.iter().enumerate().advance(|(i, &item)| f(item, i))
     }
 
     pub fn item_name(index: uint) -> &'static str {
