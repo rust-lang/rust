@@ -10,7 +10,8 @@
 
 // Utils for working with version control repositories. Just git right now.
 
-use std::{io, os, run, str};
+use std::{os, run, str};
+use std::run::{ProcessOutput, ProcessOptions, Process};
 use version::*;
 
 /// For a local git repo
@@ -47,7 +48,7 @@ pub fn git_clone_general(source: &str, target: &Path, v: &Version) -> bool {
     else {
         match v {
             &ExactRevision(ref s) | &Tagged(ref s) => {
-                    let outp = run::process_output_in_cwd("git", [~"checkout", fmt!("tags/%s", *s)],
+                    let outp = process_output_in_cwd("git", [~"checkout", fmt!("%s", *s)],
                                                          target);
                     if outp.status != 0 {
                         debug!(str::from_bytes_owned(outp.output.clone()));
@@ -61,6 +62,12 @@ pub fn git_clone_general(source: &str, target: &Path, v: &Version) -> bool {
                 _ => true
             }
         }
+}
+
+fn process_output_in_cwd(prog: &str, args: &[~str], cwd: &Path) -> ProcessOutput {
+    let mut prog = Process::new(prog, args, ProcessOptions{ dir: Some(cwd)
+                                ,..ProcessOptions::new()});
+    prog.finish_with_output()
 }
 
 pub fn is_git_dir(p: &Path) -> bool {

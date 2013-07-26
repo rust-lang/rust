@@ -1029,6 +1029,6 @@ fn test_non_numeric_tag() {
                                 "test_pkg", "testbranch_only"]);
     let file2 = repo.push_many(["mockgithub.com", "catamorphism", "test_pkg",
                                 "master_only"]);
-    assert!(os::path_exists(&file1));'
+    assert!(os::path_exists(&file1));
     assert!(!os::path_exists(&file2));
 }
