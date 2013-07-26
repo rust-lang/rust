@@ -74,17 +74,17 @@ pub trait RtioUdpSocket : RtioSocket {
     fn recvfrom(&mut self, buf: &mut [u8]) -> Result<(uint, IpAddr), IoError>;
     fn sendto(&mut self, buf: &[u8], dst: IpAddr) -> Result<(), IoError>;
 
-    fn join_multicast(&mut self, multi: IpAddr);
-    fn leave_multicast(&mut self, multi: IpAddr);
+    fn join_multicast(&mut self, multi: IpAddr) -> Result<(), IoError>;
+    fn leave_multicast(&mut self, multi: IpAddr) -> Result<(), IoError>;
 
-    fn loop_multicast_locally(&mut self);
-    fn dont_loop_multicast_locally(&mut self);
+    fn loop_multicast_locally(&mut self) -> Result<(), IoError>;
+    fn dont_loop_multicast_locally(&mut self) -> Result<(), IoError>;
 
-    fn multicast_time_to_live(&mut self, ttl: int);
-    fn time_to_live(&mut self, ttl: int);
+    fn multicast_time_to_live(&mut self, ttl: int) -> Result<(), IoError>;
+    fn time_to_live(&mut self, ttl: int) -> Result<(), IoError>;
 
-    fn hear_broadcasts(&mut self);
-    fn ignore_broadcasts(&mut self);
+    fn hear_broadcasts(&mut self) -> Result<(), IoError>;
+    fn ignore_broadcasts(&mut self) -> Result<(), IoError>;
 }
 
 pub trait RtioTimer {

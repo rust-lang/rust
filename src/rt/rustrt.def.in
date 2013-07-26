@@ -121,6 +121,7 @@ rust_uv_udp_getsockname
 rust_uv_udp_set_membership
 rust_uv_udp_set_multicast_loop
 rust_uv_udp_set_multicast_ttl
+rust_uv_udp_set_ttl
 rust_uv_udp_set_broadcast
 rust_uv_is_ipv4_sockaddr
 rust_uv_is_ipv6_sockaddr
