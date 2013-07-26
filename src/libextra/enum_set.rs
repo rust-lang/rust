@@ -11,14 +11,18 @@
 use std::iterator::Iterator;
 
 #[deriving(Clone, Eq, IterBytes, ToStr)]
+/// A specialized Set implementation to use enum types.
 pub struct EnumSet<E> {
     // We must maintain the invariant that no bits are set
     // for which no variant exists
     priv bits: uint
 }
 
+/// An iterface for casting C-like enum to uint and back.
 pub trait CLike {
+    /// Converts C-like enum to uint.
     pub fn to_uint(&self) -> uint;
+    /// Converts uint to C-like enum.
     pub fn from_uint(uint) -> Self;
 }
 
@@ -27,54 +31,47 @@ fn bit<E:CLike>(e: E) -> uint {
 }
 
 impl<E:CLike> EnumSet<E> {
+    /// Returns an empty EnumSet.
     pub fn empty() -> EnumSet<E> {
         EnumSet {bits: 0}
     }
 
+    /// Returns true if an EnumSet is empty.
     pub fn is_empty(&self) -> bool {
         self.bits == 0
     }
 
+    /// Returns true if an EnumSet contains any enum of a given EnumSet
     pub fn intersects(&self, e: EnumSet<E>) -> bool {
         (self.bits & e.bits) != 0
     }
 
+    /// Returns an intersection of both EnumSets.
     pub fn intersection(&self, e: EnumSet<E>) -> EnumSet<E> {
         EnumSet {bits: self.bits & e.bits}
     }
 
+    /// Returns true if a given EnumSet is included in an EnumSet.
     pub fn contains(&self, e: EnumSet<E>) -> bool {
         (self.bits & e.bits) == e.bits
     }
 
+    /// Returns a union of both EnumSets.
     pub fn union(&self, e: EnumSet<E>) -> EnumSet<E> {
         EnumSet {bits: self.bits | e.bits}
     }
 
+    /// Add an enum to an EnumSet
     pub fn add(&mut self, e: E) {
         self.bits |= bit(e);
     }
 
+    /// Returns true if an EnumSet contains a given enum
     pub fn contains_elem(&self, e: E) -> bool {
         (self.bits & bit(e)) != 0
     }
 
-    pub fn each(&self, f: &fn(E) -> bool) -> bool {
-        let mut bits = self.bits;
-        let mut index = 0;
-        while bits != 0 {
-            if (bits & 1) != 0 {
-                let e = CLike::from_uint(index);
-                if !f(e) {
-                    return false;
-                }
-            }
-            index += 1;
-            bits >>= 1;
-        }
-        return true;
-    }
-
+    /// Returns an iterator over an EnumSet
     pub fn iter(&self) -> EnumSetIterator<E> {
         EnumSetIterator::new(self.bits)
     }
@@ -98,6 +95,7 @@ impl<E:CLike> BitAnd<EnumSet<E>, EnumSet<E>> for EnumSet<E> {
     }
 }
 
+/// An iterator over an EnumSet
 pub struct EnumSetIterator<E> {
     priv index: uint,
     priv bits: uint,
@@ -136,7 +134,7 @@ mod test {
 
     use std::cast;
 
-    use util::enum_set::*;
+    use enum_set::*;
 
     #[deriving(Eq)]
     enum Foo {
@@ -236,7 +234,7 @@ mod test {
     }
 
     ///////////////////////////////////////////////////////////////////////////
-    // iter / each
+    // iter
 
     #[test]
     fn test_iterator() {
@@ -260,34 +258,6 @@ mod test {
         e1.add(B);
         let elems: ~[Foo] = e1.iter().collect();
         assert_eq!(~[A,B,C], elems)
-    }
-
-    #[test]
-    fn test_each() {
-        let mut e1: EnumSet<Foo> = EnumSet::empty();
-
-        assert_eq!(~[], collect(e1))
-
-        e1.add(A);
-        assert_eq!(~[A], collect(e1))
-
-        e1.add(C);
-        assert_eq!(~[A,C], collect(e1))
-
-        e1.add(C);
-        assert_eq!(~[A,C], collect(e1))
-
-        e1.add(B);
-        assert_eq!(~[A,B,C], collect(e1))
-    }
-
-    fn collect(e: EnumSet<Foo>) -> ~[Foo] {
-        let mut elems = ~[];
-        e.each(|elem| {
-           elems.push(elem);
-           true
-        });
-        elems
     }
 
     ///////////////////////////////////////////////////////////////////////////

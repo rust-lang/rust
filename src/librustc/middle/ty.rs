@@ -25,7 +25,6 @@ use util::ppaux::{note_and_explain_region, bound_region_ptr_to_str};
 use util::ppaux::{trait_store_to_str, ty_to_str, vstore_to_str};
 use util::ppaux::{Repr, UserString};
 use util::common::{indenter};
-use util::enum_set::{EnumSet, CLike};
 
 use std::cast;
 use std::cmp;
@@ -48,6 +47,7 @@ use syntax::opt_vec::OptVec;
 use syntax::opt_vec;
 use syntax::abi::AbiSet;
 use syntax;
+use extra::enum_set::{EnumSet, CLike};
 
 pub static INITIAL_DISCRIMINANT_VALUE: uint = 0;
 
@@ -2287,7 +2287,7 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
         // This is like with typarams below, but less "pessimistic" and also
         // dependent on the trait store.
         let mut bt = TC_NONE;
-        do (AllBuiltinBounds() - bounds).each |bound| {
+        for bound in (AllBuiltinBounds() - bounds).iter() {
             bt = bt + match bound {
                 BoundStatic if bounds.contains_elem(BoundSend)
                             => TC_NONE, // Send bound implies static bound.
@@ -2296,8 +2296,7 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
                 BoundFreeze => TC_MUTABLE,
                 BoundSized  => TC_NONE, // don't care if interior is sized
             };
-            true
-        };
+        }
         st + mt + bt
     }
 
@@ -2308,7 +2307,7 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
         let _i = indenter();
 
         let mut tc = TC_ALL;
-        do type_param_def.bounds.builtin_bounds.each |bound| {
+        for bound in type_param_def.bounds.builtin_bounds.iter() {
             debug!("tc = %s, bound = %?", tc.to_str(), bound);
             tc = tc - match bound {
                 BoundStatic => TypeContents::nonstatic(cx),
@@ -2317,8 +2316,7 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
                 // The dynamic-size bit can be removed at pointer-level, etc.
                 BoundSized => TypeContents::dynamically_sized(cx),
             };
-            true
-        };
+        }
 
         debug!("result = %s", tc.to_str());
         return tc;
