@@ -723,8 +723,6 @@ mod test {
     use ast;
     use ast_util;
     use super::*;
-    use std::io;
-    use std::managed;
 
     fn mark_ident(id : ast::ident, m : ast::Mrk) -> ast::ident {
         ast::ident{name:id.name,ctxt:ast_util::new_mark(m,id.ctxt)}
