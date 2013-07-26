@@ -63,4 +63,14 @@ fn obsolete_moves() {
     //~^ ERROR obsolete syntax: binary move
 }
 
+extern mod obsolete_name {
+    //~^ ERROR obsolete syntax: named external module
+    fn bar();
+}
+
+pub extern {
+    //~^ ERROR obsolete syntax: `pub extern`
+    pub fn bar();
+}
+
 fn main() { }
