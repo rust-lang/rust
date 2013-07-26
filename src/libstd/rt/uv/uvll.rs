@@ -78,7 +78,6 @@ pub type sockaddr = c_void;
 pub type sockaddr_in = c_void;
 pub type sockaddr_in6 = c_void;
 pub type sockaddr_storage = c_void;
-pub type uv_membership = c_void;
 
 #[deriving(Eq)]
 pub enum uv_handle_type {
@@ -115,6 +114,12 @@ pub enum uv_req_type {
     UV_WORK,
     UV_GETADDRINFO,
     UV_REQ_TYPE_MAX
+}
+
+#[deriving(Eq)]
+pub enum uv_membership {
+    UV_LEAVE_GROUP,
+    UV_JOIN_GROUP
 }
 
 pub unsafe fn malloc_handle(handle: uv_handle_type) -> *c_void {
@@ -240,7 +245,7 @@ pub unsafe fn udp_get_sockname(handle: *uv_udp_t, name: *sockaddr_storage) -> c_
 
 pub unsafe fn udp_set_membership(handle: *uv_udp_t, multicast_addr: *c_char,
                                  interface_addr: *c_char, membership: uv_membership) -> c_int {
-    return rust_uv_udp_set_membership(handle, multicast_addr, interface_addr, membership);
+    return rust_uv_udp_set_membership(handle, multicast_addr, interface_addr, membership as c_int);
 }
 
 pub unsafe fn udp_set_multicast_loop(handle: *uv_udp_t, on: c_int) -> c_int {
@@ -249,6 +254,10 @@ pub unsafe fn udp_set_multicast_loop(handle: *uv_udp_t, on: c_int) -> c_int {
 
 pub unsafe fn udp_set_multicast_ttl(handle: *uv_udp_t, ttl: c_int) -> c_int {
     return rust_uv_udp_set_multicast_ttl(handle, ttl);
+}
+
+pub unsafe fn udp_set_ttl(handle: *uv_udp_t, ttl: c_int) -> c_int {
+    return rust_uv_udp_set_ttl(handle, ttl);
 }
 
 pub unsafe fn udp_set_broadcast(handle: *uv_udp_t, on: c_int) -> c_int {
@@ -527,9 +536,10 @@ extern {
     fn rust_uv_get_udp_handle_from_send_req(req: *uv_udp_send_t) -> *uv_udp_t;
     fn rust_uv_udp_getsockname(handle: *uv_udp_t, name: *sockaddr_storage) -> c_int;
     fn rust_uv_udp_set_membership(handle: *uv_udp_t, multicast_addr: *c_char,
-                                  interface_addr: *c_char, membership: uv_membership) -> c_int;
+                                  interface_addr: *c_char, membership: c_int) -> c_int;
     fn rust_uv_udp_set_multicast_loop(handle: *uv_udp_t, on: c_int) -> c_int;
     fn rust_uv_udp_set_multicast_ttl(handle: *uv_udp_t, ttl: c_int) -> c_int;
+    fn rust_uv_udp_set_ttl(handle: *uv_udp_t, ttl: c_int) -> c_int;
     fn rust_uv_udp_set_broadcast(handle: *uv_udp_t, on: c_int) -> c_int;
 
     fn rust_uv_is_ipv4_sockaddr(addr: *sockaddr) -> c_int;

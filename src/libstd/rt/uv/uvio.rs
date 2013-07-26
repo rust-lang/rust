@@ -16,8 +16,9 @@ use cast;
 use cast::transmute;
 use clone::Clone;
 use libc::{c_int, c_uint, c_void};
+use ptr;
 use rt::io::IoError;
-use rt::io::net::ip::IpAddr;
+use rt::io::net::ip::{IpAddr, Ipv4, Ipv6};
 use rt::uv::*;
 use rt::uv::idle::IdleWatcher;
 use rt::uv::net::{UvIpv4, UvIpv6};
@@ -26,6 +27,7 @@ use rt::sched::Scheduler;
 use rt::io::{standard_error, OtherIoError};
 use rt::tube::Tube;
 use rt::local::Local;
+use str::StrSlice;
 use unstable::sync::{Exclusive, exclusive};
 
 #[cfg(test)] use container::Container;
@@ -657,18 +659,117 @@ impl RtioUdpSocket for UvUdpSocket {
         return result_cell.take();
     }
 
-    // XXX implement
-    fn join_multicast(&mut self, _multi: IpAddr) { fail!(); }
-    fn leave_multicast(&mut self, _multi: IpAddr) { fail!(); }
+    fn join_multicast(&mut self, multi: IpAddr) -> Result<(), IoError> {
+        let ip_str = match multi {
+            Ipv4(x1, x2, x3, x4, _) =>
+                fmt!("%u.%u.%u.%u", x1 as uint, x2 as uint, x3 as uint, x4 as uint),
+            Ipv6(x1, x2, x3, x4, x5, x6, x7, x8, _) =>
+                fmt!("%x:%x:%x:%x:%x:%x:%x:%x",
+                      x1 as uint, x2 as uint, x3 as uint, x4 as uint,
+                      x5 as uint, x6 as uint, x7 as uint, x8 as uint),
+        };
 
-    fn loop_multicast_locally(&mut self) { fail!(); }
-    fn dont_loop_multicast_locally(&mut self) { fail!(); }
+        let r = unsafe {
+            do ip_str.as_c_str |m_addr| {
+                uvll::udp_set_membership(self.native_handle(), m_addr,
+                                         ptr::null(), uvll::UV_JOIN_GROUP)
+            }
+        };
 
-    fn multicast_time_to_live(&mut self, _ttl: int) { fail!(); }
-    fn time_to_live(&mut self, _ttl: int) { fail!(); }
+        match status_to_maybe_uv_error(**self, r) {
+            Some(err) => Err(uv_error_to_io_error(err)),
+            None => Ok(())
+        }
+    }
 
-    fn hear_broadcasts(&mut self) { fail!(); }
-    fn ignore_broadcasts(&mut self) { fail!(); }
+    fn leave_multicast(&mut self, multi: IpAddr) -> Result<(), IoError> {
+        let ip_str = match multi {
+            Ipv4(x1, x2, x3, x4, _) =>
+                fmt!("%u.%u.%u.%u", x1 as uint, x2 as uint, x3 as uint, x4 as uint),
+            Ipv6(x1, x2, x3, x4, x5, x6, x7, x8, _) =>
+                fmt!("%x:%x:%x:%x:%x:%x:%x:%x",
+                      x1 as uint, x2 as uint, x3 as uint, x4 as uint,
+                      x5 as uint, x6 as uint, x7 as uint, x8 as uint),
+        };
+
+        let r = unsafe {
+            do ip_str.as_c_str |m_addr| {
+                uvll::udp_set_membership(self.native_handle(), m_addr,
+                                         ptr::null(), uvll::UV_LEAVE_GROUP)
+            }
+        };
+
+        match status_to_maybe_uv_error(**self, r) {
+            Some(err) => Err(uv_error_to_io_error(err)),
+            None => Ok(())
+        }
+    }
+
+    fn loop_multicast_locally(&mut self) -> Result<(), IoError> {
+        let r = unsafe {
+            uvll::udp_set_multicast_loop(self.native_handle(), 1 as c_int)
+        };
+
+        match status_to_maybe_uv_error(**self, r) {
+            Some(err) => Err(uv_error_to_io_error(err)),
+            None => Ok(())
+        }
+    }
+
+    fn dont_loop_multicast_locally(&mut self) -> Result<(), IoError> {
+        let r = unsafe {
+            uvll::udp_set_multicast_loop(self.native_handle(), 0 as c_int)
+        };
+
+        match status_to_maybe_uv_error(**self, r) {
+            Some(err) => Err(uv_error_to_io_error(err)),
+            None => Ok(())
+        }
+    }
+
+    fn multicast_time_to_live(&mut self, ttl: int) -> Result<(), IoError> {
+        let r = unsafe {
+            uvll::udp_set_multicast_ttl(self.native_handle(), ttl as c_int)
+        };
+
+        match status_to_maybe_uv_error(**self, r) {
+            Some(err) => Err(uv_error_to_io_error(err)),
+            None => Ok(())
+        }
+    }
+
+    fn time_to_live(&mut self, ttl: int) -> Result<(), IoError> {
+        let r = unsafe {
+            uvll::udp_set_ttl(self.native_handle(), ttl as c_int)
+        };
+
+        match status_to_maybe_uv_error(**self, r) {
+            Some(err) => Err(uv_error_to_io_error(err)),
+            None => Ok(())
+        }
+    }
+
+    fn hear_broadcasts(&mut self) -> Result<(), IoError> {
+        let r = unsafe {
+            uvll::udp_set_broadcast(self.native_handle(), 1 as c_int)
+        };
+
+        match status_to_maybe_uv_error(**self, r) {
+            Some(err) => Err(uv_error_to_io_error(err)),
+            None => Ok(())
+        }
+    }
+
+    fn ignore_broadcasts(&mut self) -> Result<(), IoError> {
+        let r = unsafe {
+            uvll::udp_set_broadcast(self.native_handle(), 0 as c_int)
+        };
+
+        match status_to_maybe_uv_error(**self, r) {
+            Some(err) => Err(uv_error_to_io_error(err)),
+            None => Ok(())
+        }
+    }
 }
 
 pub struct UvTimer(timer::TimerWatcher);

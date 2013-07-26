@@ -386,6 +386,12 @@ rust_uv_udp_set_multicast_ttl
 }
 
 extern "C" int
+rust_uv_udp_set_ttl
+(uv_udp_t* handle, int ttl) {
+    return uv_udp_set_ttl(handle, ttl);
+}
+
+extern "C" int
 rust_uv_udp_set_broadcast
 (uv_udp_t* handle, int on) {
     return uv_udp_set_broadcast(handle, on);
