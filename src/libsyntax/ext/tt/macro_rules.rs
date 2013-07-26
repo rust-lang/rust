@@ -11,6 +11,7 @@
 use ast::{ident, matcher_, matcher, match_tok, match_nonterminal, match_seq};
 use ast::{tt_delim};
 use ast;
+use ast_util;
 use codemap::{span, spanned, dummy_sp};
 use ext::base::{ExtCtxt, MacResult, MRAny, MRDef, MacroDef, NormalTT};
 use ext::base;
@@ -22,6 +23,7 @@ use parse::lexer::{new_tt_reader, reader};
 use parse::parser::Parser;
 use parse::token::{get_ident_interner, special_idents, gensym_ident, ident_to_str};
 use parse::token::{FAT_ARROW, SEMI, nt_matchers, nt_tt};
+use parse::token;
 use print;
 
 // this procedure performs the expansion of the
