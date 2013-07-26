@@ -589,15 +589,14 @@ impl Repr for ty::RegionSubsts {
 impl Repr for ty::ParamBounds {
     fn repr(&self, tcx: ctxt) -> ~str {
         let mut res = ~[];
-        do self.builtin_bounds.each |b| {
+        for b in self.builtin_bounds.iter() {
             res.push(match b {
                 ty::BoundStatic => ~"'static",
                 ty::BoundSend => ~"Send",
                 ty::BoundFreeze => ~"Freeze",
                 ty::BoundSized => ~"Sized",
             });
-            true
-        };
+        }
         for t in self.trait_bounds.iter() {
             res.push(t.repr(tcx));
         }
@@ -833,10 +832,9 @@ impl UserString for ty::BuiltinBounds {
     fn user_string(&self, tcx: ctxt) -> ~str {
         if self.is_empty() { ~"<no-bounds>" } else {
             let mut result = ~[];
-            do self.each |bb| {
+            for bb in self.iter() {
                 result.push(bb.user_string(tcx));
-                true
-            };
+            }
             result.connect("+")
         }
     }

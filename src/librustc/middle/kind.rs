@@ -338,12 +338,11 @@ pub fn check_builtin_bounds(cx: Context, ty: ty::t, bounds: ty::BuiltinBounds,
 {
     let kind = ty::type_contents(cx.tcx, ty);
     let mut missing = ty::EmptyBuiltinBounds();
-    do bounds.each |bound| {
+    for bound in bounds.iter() {
         if !kind.meets_bound(cx.tcx, bound) {
             missing.add(bound);
         }
-        true
-    };
+    }
     if !missing.is_empty() {
         any_missing(missing);
     }

@@ -413,15 +413,14 @@ fn enc_fn_sig(w: @io::Writer, cx: @ctxt, fsig: &ty::FnSig) {
 }
 
 fn enc_bounds(w: @io::Writer, cx: @ctxt, bs: &ty::ParamBounds) {
-    do bs.builtin_bounds.each |bound| {
+    for bound in bs.builtin_bounds.iter() {
         match bound {
             ty::BoundSend => w.write_char('S'),
             ty::BoundFreeze => w.write_char('K'),
             ty::BoundStatic => w.write_char('O'),
             ty::BoundSized => w.write_char('Z'),
         }
-        true
-    };
+    }
 
     for &tp in bs.trait_bounds.iter() {
         w.write_char('I');
