@@ -1455,6 +1455,9 @@ fn encode_lang_items(ecx: &EncodeContext, ebml_w: &mut writer::Encoder) {
     ebml_w.start_tag(tag_lang_items);
 
     for ecx.tcx.lang_items.each_item |def_id, i| {
+        let def_id = match def_id {
+            Some(id) => id, None => { loop }
+        };
         if def_id.crate != local_crate {
             loop;
         }
