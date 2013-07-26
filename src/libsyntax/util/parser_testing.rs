@@ -33,29 +33,46 @@ pub fn string_to_parser(source_str: @str) -> Parser {
     p
 }
 
+fn with_error_checking_parse<T>(s: @str, f: &fn(&mut Parser) -> T) -> T {
+    let mut p = string_to_parser(s);
+    let x = f(&mut p);
+    p.abort_if_errors();
+    x
+}
+
 pub fn string_to_crate (source_str : @str) -> @ast::Crate {
-    string_to_parser(source_str).parse_crate_mod()
+    do with_error_checking_parse(source_str) |p| {
+        p.parse_crate_mod()
+    }
 }
 
 // parse a string, return an expr
 pub fn string_to_expr (source_str : @str) -> @ast::expr {
-    string_to_parser(source_str).parse_expr()
+    do with_error_checking_parse(source_str) |p| {
+        p.parse_expr()
+    }
 }
 
 // parse a string, return an item
 pub fn string_to_item (source_str : @str) -> Option<@ast::item> {
-    string_to_parser(source_str).parse_item(~[])
+    do with_error_checking_parse(source_str) |p| {
+        p.parse_item(~[])
+    }
 }
 
 // parse a string, return an item and the ParseSess
 pub fn string_to_item_and_sess (source_str : @str) -> (Option<@ast::item>,@mut ParseSess) {
     let (p,ps) = string_to_parser_and_sess(source_str);
-    (p.parse_item(~[]),ps)
+    let io = p.parse_item(~[]);
+    p.abort_if_errors();
+    (io,ps)
 }
 
 // parse a string, return a stmt
 pub fn string_to_stmt(source_str : @str) -> @ast::stmt {
-    string_to_parser(source_str).parse_stmt(~[])
+    do with_error_checking_parse(source_str) |p| {
+        p.parse_stmt(~[])
+    }
 }
 
 // parse a string, return a pat. Uses "irrefutable"... which doesn't
