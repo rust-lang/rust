@@ -22,20 +22,20 @@ use std::util;
 use std::vec;
 
 macro_rules! bench (
-    ($id:ident) => (maybe_run_test(argv, stringify!($id).to_owned(), $id))
+    ($argv:expr, $id:ident) => (maybe_run_test($argv, stringify!($id).to_owned(), $id))
 )
 
 fn main() {
     let argv = os::args();
     let _tests = argv.slice(1, argv.len());
 
-    bench!(shift_push);
-    bench!(read_line);
-    bench!(vec_plus);
-    bench!(vec_append);
-    bench!(vec_push_all);
-    bench!(is_utf8_ascii);
-    bench!(is_utf8_multibyte);
+    bench!(argv, shift_push);
+    bench!(argv, read_line);
+    bench!(argv, vec_plus);
+    bench!(argv, vec_append);
+    bench!(argv, vec_push_all);
+    bench!(argv, is_utf8_ascii);
+    bench!(argv, is_utf8_multibyte);
 }
 
 fn maybe_run_test(argv: &[~str], name: ~str, test: &fn()) {
