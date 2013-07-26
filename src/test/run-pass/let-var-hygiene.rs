@@ -8,14 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-mod x {
-    pub fn g() -> uint {14}
-}
-
-fn main(){
-    // should *not* shadow the module x:
-    let x = 9;
-    // use it to avoid warnings:
-    x+3;
-    assert_eq!(x::g(),14);
+// shouldn't affect evaluation of $ex:
+macro_rules! bad_macro (($ex:expr) => ({let _x = 9; $ex}))
+fn main() {
+    let _x = 8;
+    assert_eq!(bad_macro!(_x),8)
 }
