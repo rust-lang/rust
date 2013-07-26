@@ -263,4 +263,33 @@ mod test {
             }
         }
     }
+
+    #[cfg(test)]
+    fn socket_name(addr: IpAddr) {
+        do run_in_newsched_task {
+            do spawntask_immediately {
+                let server = UdpSocket::bind(addr);
+
+                assert!(server.is_some());
+                let mut server = server.unwrap();
+
+                // Make sure socket_name gives
+                // us the socket we binded to.
+                let so_name = server.socket_name();
+                assert!(so_name.is_some());
+                assert_eq!(addr, so_name.unwrap());
+
+            }
+        }
+    }
+
+    #[test]
+    fn socket_name_ip4() {
+        socket_name(next_test_ip4());
+    }
+
+    #[test]
+    fn socket_name_ip6() {
+        socket_name(next_test_ip6());
+    }
 }
