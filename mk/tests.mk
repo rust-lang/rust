@@ -319,18 +319,21 @@ endif
 
 $(3)/stage$(1)/test/stdtest-$(2)$$(X_$(2)):			\
 		$$(STDLIB_CRATE) $$(STDLIB_INPUTS)	\
+		$$(SREQ$(1)_T_$(2)_H_$(3)) \
 		$$(STDTESTDEP_$(1)_$(2)_$(3))
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test
 
 $(3)/stage$(1)/test/extratest-$(2)$$(X_$(2)):			\
 		$$(EXTRALIB_CRATE) $$(EXTRALIB_INPUTS)	\
+		$$(SREQ$(1)_T_$(2)_H_$(3)) \
 		$$(STDTESTDEP_$(1)_$(2)_$(3))
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test
 
 $(3)/stage$(1)/test/syntaxtest-$(2)$$(X_$(2)):			\
 		$$(LIBSYNTAX_CRATE) $$(LIBSYNTAX_INPUTS)	\
+		$$(SREQ$(1)_T_$(2)_H_$(3)) \
 		$$(STDTESTDEP_$(1)_$(2)_$(3))
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test
@@ -338,6 +341,7 @@ $(3)/stage$(1)/test/syntaxtest-$(2)$$(X_$(2)):			\
 $(3)/stage$(1)/test/rustctest-$(2)$$(X_$(2)): CFG_COMPILER_TRIPLE = $(2)
 $(3)/stage$(1)/test/rustctest-$(2)$$(X_$(2)):					\
 		$$(COMPILER_CRATE) $$(COMPILER_INPUTS) \
+		$$(SREQ$(1)_T_$(2)_H_$(3)) \
 		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_RUSTLLVM_$(2)) \
                 $$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBSYNTAX_$(2))
 	@$$(call E, compile_and_link: $$@)
@@ -345,24 +349,28 @@ $(3)/stage$(1)/test/rustctest-$(2)$$(X_$(2)):					\
 
 $(3)/stage$(1)/test/rustpkgtest-$(2)$$(X_$(2)):					\
 		$$(RUSTPKG_LIB) $$(RUSTPKG_INPUTS)		\
+		$$(SREQ$(1)_T_$(2)_H_$(3)) \
 		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBRUSTC_$(2))
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test
 
 $(3)/stage$(1)/test/rustitest-$(2)$$(X_$(2)):					\
 		$$(RUSTI_LIB) $$(RUSTI_INPUTS)		\
+		$$(SREQ$(1)_T_$(2)_H_$(3)) \
 		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBRUSTC_$(2))
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test
 
 $(3)/stage$(1)/test/rusttest-$(2)$$(X_$(2)):					\
 		$$(RUST_LIB) $$(RUST_INPUTS)		\
+		$$(SREQ$(1)_T_$(2)_H_$(3)) \
 		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBRUSTC_$(2))
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test
 
 $(3)/stage$(1)/test/rustdoctest-$(2)$$(X_$(2)):					\
 		$$(RUSTDOC_LIB) $$(RUSTDOC_INPUTS)		\
+		$$(SREQ$(1)_T_$(2)_H_$(3)) \
 		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBRUSTC_$(2))
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test

@@ -84,6 +84,7 @@ $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_RUSTLLVM_$(3)): \
 $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTC_$(3)): CFG_COMPILER_TRIPLE = $(2)
 $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTC_$(3)):		\
 		$$(COMPILER_CRATE) $$(COMPILER_INPUTS)		\
+		$$(TSREQ$(1)_T_$(2)_H_$(3)) \
                 $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBSYNTAX_$(3)) \
                 $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_RUSTLLVM_$(3)) \
 		| $$(TLIB$(1)_T_$(2)_H_$(3))/
@@ -94,6 +95,7 @@ $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTC_$(3)):		\
 
 $$(TBIN$(1)_T_$(2)_H_$(3))/rustc$$(X_$(3)):			\
 		$$(DRIVER_CRATE)				\
+		$$(TSREQ$(1)_T_$(2)_H_$(3)) \
 		$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTC_$(3)) \
 		| $$(TBIN$(1)_T_$(2)_H_$(3))/
 	@$$(call E, compile_and_link: $$@)
