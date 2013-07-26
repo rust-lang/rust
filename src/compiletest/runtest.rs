@@ -681,7 +681,7 @@ fn make_out_name(config: &config, testfile: &Path, extension: &str) -> Path {
 }
 
 fn aux_output_dir_name(config: &config, testfile: &Path) -> Path {
-    output_base_name(config, testfile).with_filetype("libaux")
+    Path(output_base_name(config, testfile).to_str() + ".libaux")
 }
 
 fn output_testname(testfile: &Path) -> Path {
