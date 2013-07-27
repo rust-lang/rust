@@ -49,12 +49,11 @@ pub fn same_length<T, U>(xs: &[T], ys: &[U]) -> bool {
 pub fn from_fn<T>(n_elts: uint, op: &fn(uint) -> T) -> ~[T] {
     unsafe {
         let mut v = with_capacity(n_elts);
-        do v.as_mut_buf |p, _len| {
-            let mut i: uint = 0u;
-            while i < n_elts {
-                intrinsics::move_val_init(&mut(*ptr::mut_offset(p, i)), op(i));
-                i += 1u;
-            }
+        let p = raw::to_mut_ptr(v);
+        let mut i: uint = 0u;
+        while i < n_elts {
+            intrinsics::move_val_init(&mut(*ptr::mut_offset(p, i)), op(i));
+            i += 1u;
         }
         raw::set_len(&mut v, n_elts);
         v
@@ -74,12 +73,11 @@ pub fn from_elem<T:Clone>(n_elts: uint, t: T) -> ~[T] {
     // vec::with_capacity/ptr::set_memory for primitive types.
     unsafe {
         let mut v = with_capacity(n_elts);
-        do v.as_mut_buf |p, _len| {
-            let mut i = 0u;
-            while i < n_elts {
-                intrinsics::move_val_init(&mut(*ptr::mut_offset(p, i)), t.clone());
-                i += 1u;
-            }
+        let p = raw::to_mut_ptr(v);
+        let mut i = 0u;
+        while i < n_elts {
+            intrinsics::move_val_init(&mut(*ptr::mut_offset(p, i)), t.clone());
+            i += 1u;
         }
         raw::set_len(&mut v, n_elts);
         v
@@ -1656,6 +1654,8 @@ impl<T:Eq> OwnedEqVector<T> for ~[T] {
 #[allow(missing_doc)]
 pub trait MutableVector<'self, T> {
     fn mut_slice(self, start: uint, end: uint) -> &'self mut [T];
+    fn mut_slice_from(self, start: uint) -> &'self mut [T];
+    fn mut_slice_to(self, end: uint) -> &'self mut [T];
     fn mut_iter(self) -> VecMutIterator<'self, T>;
     fn mut_rev_iter(self) -> VecMutRevIterator<'self, T>;
 
@@ -1707,6 +1707,27 @@ impl<'self,T> MutableVector<'self, T> for &'self mut [T] {
                 })
             }
         }
+    }
+
+    /**
+     * Returns a slice of self from `start` to the end of the vec.
+     *
+     * Fails when `start` points outside the bounds of self.
+     */
+    #[inline]
+    fn mut_slice_from(self, start: uint) -> &'self mut [T] {
+        let len = self.len();
+        self.mut_slice(start, len)
+    }
+
+    /**
+     * Returns a slice of self from the start of the vec to `end`.
+     *
+     * Fails when `end` points outside the bounds of self.
+     */
+    #[inline]
+    fn mut_slice_to(self, end: uint) -> &'self mut [T] {
+        self.mut_slice(0, end)
     }
 
     #[inline]
@@ -2145,7 +2166,7 @@ pub struct VecIterator<'self, T> {
 iterator!{impl VecIterator -> &'self T}
 double_ended_iterator!{impl VecIterator -> &'self T}
 random_access_iterator!{impl VecIterator -> &'self T}
-pub type VecRevIterator<'self, T> = InvertIterator<&'self T, VecIterator<'self, T>>;
+pub type VecRevIterator<'self, T> = InvertIterator<VecIterator<'self, T>>;
 
 impl<'self, T> Clone for VecIterator<'self, T> {
     fn clone(&self) -> VecIterator<'self, T> { *self }
@@ -2161,7 +2182,7 @@ pub struct VecMutIterator<'self, T> {
 iterator!{impl VecMutIterator -> &'self mut T}
 double_ended_iterator!{impl VecMutIterator -> &'self mut T}
 random_access_iterator!{impl VecMutIterator -> &'self mut T}
-pub type VecMutRevIterator<'self, T> = InvertIterator<&'self mut T, VecMutIterator<'self, T>>;
+pub type VecMutRevIterator<'self, T> = InvertIterator<VecMutIterator<'self, T>>;
 
 /// An iterator that moves out of a vector.
 #[deriving(Clone)]
@@ -2203,13 +2224,24 @@ impl<T> Iterator<T> for VecConsumeRevIterator<T> {
 }
 
 impl<A, T: Iterator<A>> FromIterator<A, T> for ~[A] {
-    pub fn from_iterator(iterator: &mut T) -> ~[A] {
+    fn from_iterator(iterator: &mut T) -> ~[A] {
         let (lower, _) = iterator.size_hint();
         let mut xs = with_capacity(lower);
         for iterator.advance |x| {
             xs.push(x);
         }
         xs
+    }
+}
+
+impl<A, T: Iterator<A>> Extendable<A, T> for ~[A] {
+    fn extend(&mut self, iterator: &mut T) {
+        let (lower, _) = iterator.size_hint();
+        let len = self.len();
+        self.reserve(len + lower);
+        for iterator.advance |x| {
+            self.push(x);
+        }
     }
 }
 
