@@ -1851,12 +1851,10 @@ mod tests {
             ~"A hoopy frood who really knows where his towel is.";
         debug!(frood.clone());
         {
-            let out: @io::Writer =
-                result::unwrap(
-                    io::file_writer(tmpfile, [io::Create, io::Truncate]));
+            let out: @io::Writer = io::file_writer(tmpfile, [io::Create, io::Truncate]).unwrap();
             out.write_str(frood);
         }
-        let inp: @io::Reader = result::unwrap(io::file_reader(tmpfile));
+        let inp: @io::Reader = io::file_reader(tmpfile).unwrap();
         let frood2: ~str = inp.read_c_str();
         debug!(frood2.clone());
         assert_eq!(frood, frood2);
