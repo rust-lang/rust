@@ -46,45 +46,10 @@ pub fn to_either<T:Clone,U:Clone>(res: &Result<U, T>)
     }
 }
 
-/**
- * Call a function based on a previous result
- *
- * If `res` is `ok` then the value is extracted and passed to `op` whereupon
- * `op`s result is wrapped in `ok` and returned. if `res` is `err` then it is
- * immediately returned.  This function can be used to compose the results of
- * two functions.
- *
- * Example:
- *
- *     let res = map(read_file(file)) { |buf|
- *         parse_bytes(buf)
- *     }
- */
-#[inline]
-pub fn map<T, E: Clone, U: Clone>(res: &Result<T, E>, op: &fn(&T) -> U)
-  -> Result<U, E> {
-    match *res {
-      Ok(ref t) => Ok(op(t)),
-      Err(ref e) => Err((*e).clone())
-    }
-}
 
-/**
- * Call a function based on a previous result
- *
- * If `res` is `err` then the value is extracted and passed to `op` whereupon
- * `op`s result is wrapped in an `err` and returned. if `res` is `ok` then it
- * is immediately returned.  This function can be used to pass through a
- * successful result while handling an error.
- */
-#[inline]
-pub fn map_err<T:Clone,E,F:Clone>(res: &Result<T, E>, op: &fn(&E) -> F)
-  -> Result<T, F> {
-    match *res {
-      Ok(ref t) => Ok((*t).clone()),
-      Err(ref e) => Err(op(e))
-    }
-}
+
+
+
 
 impl<T, E> Result<T, E> {
     /**
@@ -229,9 +194,20 @@ impl<T:Clone,E> Result<T, E> {
         }
     }
 
+    /**
+    * Call a function based on a previous result
+    *
+    * If `*self` is `err` then the value is extracted and passed to `op` whereupon
+    * `op`s result is wrapped in an `err` and returned. if `*self` is `ok` then it
+    * is immediately returned.  This function can be used to pass through a
+    * successful result while handling an error.
+    */
     #[inline]
     pub fn map_err<F:Clone>(&self, op: &fn(&E) -> F) -> Result<T,F> {
-        map_err(self, op)
+        match *self {
+            Ok(ref t) => Ok(t.clone()),
+            Err(ref e) => Err(op(e))
+        }
     }
 }
 
@@ -251,9 +227,26 @@ impl<T, E:Clone> Result<T, E> {
         }
     }
 
+    /**
+    * Call a function based on a previous result
+    *
+    * If `res` is `ok` then the value is extracted and passed to `op` whereupon
+    * `op`s result is wrapped in `ok` and returned. if `res` is `err` then it is
+    * immediately returned.  This function can be used to compose the results of
+    * two functions.
+    *
+    * Example:
+    *
+    *     let res = map(read_file(file)) { |buf|
+    *         parse_bytes(buf)
+    *     }
+    */
     #[inline]
     pub fn map<U:Clone>(&self, op: &fn(&T) -> U) -> Result<U,E> {
-        map(self, op)
+        match *self {
+            Ok(ref t) => Ok(op(t)),
+            Err(ref e) => Err(e.clone())
+        }
     }
 }
 
