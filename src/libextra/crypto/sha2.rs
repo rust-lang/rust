@@ -13,6 +13,7 @@ use std::uint;
 
 use digest::Digest;
 
+
 // BitCounter is a specialized structure intended simply for counting the
 // number of bits that have been processed by the SHA-2 512 family of functions.
 // It does very little overflow checking since such checking is not necessary
@@ -45,6 +46,7 @@ impl BitCounter {
         self.high_bit_count
     }
 }
+
 
 // A structure that represents that state of a digest computation
 // for the SHA-2 512 family of digest functions
@@ -336,6 +338,231 @@ static K64: [u64, ..80] = [
     0x4cc5d4becb3e42b6, 0x597f299cfc657e2a, 0x5fcb6fab3ad6faec, 0x6c44198c4a475817
 ];
 
+
+struct Sha512 {
+    priv engine: Engine512
+}
+
+impl Sha512 {
+    /**
+     * Construct an new instance of a SHA-512 digest.
+     */
+    pub fn new() -> Sha512 {
+        Sha512 {
+            engine: Engine512 {
+                input_buffer: [0u8, ..8],
+                input_buffer_idx: 0,
+                bit_counter: BitCounter { high_bit_count: 0, low_byte_count: 0 },
+                H0: 0x6a09e667f3bcc908u64,
+                H1: 0xbb67ae8584caa73bu64,
+                H2: 0x3c6ef372fe94f82bu64,
+                H3: 0xa54ff53a5f1d36f1u64,
+                H4: 0x510e527fade682d1u64,
+                H5: 0x9b05688c2b3e6c1fu64,
+                H6: 0x1f83d9abfb41bd6bu64,
+                H7: 0x5be0cd19137e2179u64,
+                W: [0u64, ..80],
+                W_idx: 0,
+                finished: false,
+            }
+        }
+    }
+}
+
+impl Digest for Sha512 {
+    fn input(&mut self, d: &[u8]) {
+        self.engine.input_vec(d);
+    }
+
+    fn result(&mut self, out: &mut [u8]) {
+        self.engine.result_512(out)
+    }
+
+    fn reset(&mut self) {
+        self.engine.reset();
+
+        self.engine.H0 = 0x6a09e667f3bcc908u64;
+        self.engine.H1 = 0xbb67ae8584caa73bu64;
+        self.engine.H2 = 0x3c6ef372fe94f82bu64;
+        self.engine.H3 = 0xa54ff53a5f1d36f1u64;
+        self.engine.H4 = 0x510e527fade682d1u64;
+        self.engine.H5 = 0x9b05688c2b3e6c1fu64;
+        self.engine.H6 = 0x1f83d9abfb41bd6bu64;
+        self.engine.H7 = 0x5be0cd19137e2179u64;
+    }
+
+    fn output_bits(&self) -> uint { 512 }
+}
+
+
+struct Sha384 {
+    priv engine: Engine512
+}
+
+impl Sha384 {
+    /**
+     * Construct an new instance of a SHA-384 digest.
+     */
+    pub fn new() -> Sha384 {
+        Sha384 {
+            engine: Engine512 {
+                input_buffer: [0u8, ..8],
+                input_buffer_idx: 0,
+                bit_counter: BitCounter { high_bit_count: 0, low_byte_count: 0 },
+                H0: 0xcbbb9d5dc1059ed8u64,
+                H1: 0x629a292a367cd507u64,
+                H2: 0x9159015a3070dd17u64,
+                H3: 0x152fecd8f70e5939u64,
+                H4: 0x67332667ffc00b31u64,
+                H5: 0x8eb44a8768581511u64,
+                H6: 0xdb0c2e0d64f98fa7u64,
+                H7: 0x47b5481dbefa4fa4u64,
+                W: [0u64, ..80],
+                W_idx: 0,
+                finished: false,
+            }
+        }
+    }
+}
+
+impl Digest for Sha384 {
+    fn input(&mut self, d: &[u8]) {
+        self.engine.input_vec(d);
+    }
+
+    fn result(&mut self, out: &mut [u8]) {
+        self.engine.result_384(out)
+    }
+
+    fn reset(&mut self) {
+        self.engine.reset();
+
+        self.engine.H0 = 0xcbbb9d5dc1059ed8u64;
+        self.engine.H1 = 0x629a292a367cd507u64;
+        self.engine.H2 = 0x9159015a3070dd17u64;
+        self.engine.H3 = 0x152fecd8f70e5939u64;
+        self.engine.H4 = 0x67332667ffc00b31u64;
+        self.engine.H5 = 0x8eb44a8768581511u64;
+        self.engine.H6 = 0xdb0c2e0d64f98fa7u64;
+        self.engine.H7 = 0x47b5481dbefa4fa4u64;
+    }
+
+    fn output_bits(&self) -> uint { 384 }
+}
+
+
+struct Sha512Trunc256 {
+    priv engine: Engine512
+}
+
+impl Sha512Trunc256 {
+    /**
+     * Construct an new instance of a SHA-512/256 digest.
+     */
+    pub fn new() -> Sha512Trunc256 {
+        Sha512Trunc256 {
+            engine: Engine512 {
+                input_buffer: [0u8, ..8],
+                input_buffer_idx: 0,
+                bit_counter: BitCounter { high_bit_count: 0, low_byte_count: 0 },
+                H0: 0x22312194fc2bf72cu64,
+                H1: 0x9f555fa3c84c64c2u64,
+                H2: 0x2393b86b6f53b151u64,
+                H3: 0x963877195940eabdu64,
+                H4: 0x96283ee2a88effe3u64,
+                H5: 0xbe5e1e2553863992u64,
+                H6: 0x2b0199fc2c85b8aau64,
+                H7: 0x0eb72ddc81c52ca2u64,
+                W: [0u64, ..80],
+                W_idx: 0,
+                finished: false,
+            }
+        }
+    }
+}
+
+impl Digest for Sha512Trunc256 {
+    fn input(&mut self, d: &[u8]) {
+        self.engine.input_vec(d);
+    }
+
+    fn result(&mut self, out: &mut [u8]) {
+        self.engine.result_256(out)
+    }
+
+    fn reset(&mut self) {
+        self.engine.reset();
+
+        self.engine.H0 = 0x22312194fc2bf72cu64;
+        self.engine.H1 = 0x9f555fa3c84c64c2u64;
+        self.engine.H2 = 0x2393b86b6f53b151u64;
+        self.engine.H3 = 0x963877195940eabdu64;
+        self.engine.H4 = 0x96283ee2a88effe3u64;
+        self.engine.H5 = 0xbe5e1e2553863992u64;
+        self.engine.H6 = 0x2b0199fc2c85b8aau64;
+        self.engine.H7 = 0x0eb72ddc81c52ca2u64;
+    }
+
+    fn output_bits(&self) -> uint { 256 }
+}
+
+
+struct Sha512Trunc224 {
+    priv engine: Engine512
+}
+
+impl Sha512Trunc224 {
+    /**
+     * Construct an new instance of a SHA-512/224 digest.
+     */
+    pub fn new() -> Sha512Trunc224 {
+        Sha512Trunc224 {
+            engine: Engine512 {
+                input_buffer: [0u8, ..8],
+                input_buffer_idx: 0,
+                bit_counter: BitCounter { high_bit_count: 0, low_byte_count: 0 },
+                H0: 0x8c3d37c819544da2u64,
+                H1: 0x73e1996689dcd4d6u64,
+                H2: 0x1dfab7ae32ff9c82u64,
+                H3: 0x679dd514582f9fcfu64,
+                H4: 0x0f6d2b697bd44da8u64,
+                H5: 0x77e36f7304c48942u64,
+                H6: 0x3f9d85a86a1d36c8u64,
+                H7: 0x1112e6ad91d692a1u64,
+                W: [0u64, ..80],
+                W_idx: 0,
+                finished: false,
+            }
+        }
+    }
+}
+
+impl Digest for Sha512Trunc224 {
+    fn input(&mut self, d: &[u8]) {
+        self.engine.input_vec(d);
+    }
+
+    fn result(&mut self, out: &mut [u8]) {
+        self.engine.result_224(out)
+    }
+
+    fn reset(&mut self) {
+        self.engine.reset();
+
+        self.engine.H0 = 0x8c3d37c819544da2u64;
+        self.engine.H1 = 0x73e1996689dcd4d6u64;
+        self.engine.H2 = 0x1dfab7ae32ff9c82u64;
+        self.engine.H3 = 0x679dd514582f9fcfu64;
+        self.engine.H4 = 0x0f6d2b697bd44da8u64;
+        self.engine.H5 = 0x77e36f7304c48942u64;
+        self.engine.H6 = 0x3f9d85a86a1d36c8u64;
+        self.engine.H7 = 0x1112e6ad91d692a1u64;
+    }
+
+    fn output_bits(&self) -> uint { 224 }
+}
+
+
 // A structure that represents that state of a digest computation
 // for the SHA-2 256 family of digest functions
 struct Engine256 {
@@ -596,132 +823,9 @@ static K32: [u32, ..64] = [
     0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2
 ];
 
-struct Sha512 {
-    priv engine: Engine512
-}
-
-struct Sha384 {
-    priv engine: Engine512
-}
-
-struct Sha512Trunc256 {
-    priv engine: Engine512
-}
-
-struct Sha512Trunc224 {
-    priv engine: Engine512
-}
 
 struct Sha256 {
     priv engine: Engine256
-}
-
-struct Sha224 {
-    priv engine: Engine256
-}
-
-impl Sha512 {
-    /**
-     * Construct an new instance of a SHA-512 digest.
-     */
-    pub fn new() -> Sha512 {
-        Sha512 {
-            engine: Engine512 {
-                input_buffer: [0u8, ..8],
-                input_buffer_idx: 0,
-                bit_counter: BitCounter { high_bit_count: 0, low_byte_count: 0 },
-                H0: 0x6a09e667f3bcc908u64,
-                H1: 0xbb67ae8584caa73bu64,
-                H2: 0x3c6ef372fe94f82bu64,
-                H3: 0xa54ff53a5f1d36f1u64,
-                H4: 0x510e527fade682d1u64,
-                H5: 0x9b05688c2b3e6c1fu64,
-                H6: 0x1f83d9abfb41bd6bu64,
-                H7: 0x5be0cd19137e2179u64,
-                W: [0u64, ..80],
-                W_idx: 0,
-                finished: false,
-            }
-        }
-    }
-}
-
-impl Sha384 {
-    /**
-     * Construct an new instance of a SHA-384 digest.
-     */
-    pub fn new() -> Sha384 {
-        Sha384 {
-            engine: Engine512 {
-                input_buffer: [0u8, ..8],
-                input_buffer_idx: 0,
-                bit_counter: BitCounter { high_bit_count: 0, low_byte_count: 0 },
-                H0: 0xcbbb9d5dc1059ed8u64,
-                H1: 0x629a292a367cd507u64,
-                H2: 0x9159015a3070dd17u64,
-                H3: 0x152fecd8f70e5939u64,
-                H4: 0x67332667ffc00b31u64,
-                H5: 0x8eb44a8768581511u64,
-                H6: 0xdb0c2e0d64f98fa7u64,
-                H7: 0x47b5481dbefa4fa4u64,
-                W: [0u64, ..80],
-                W_idx: 0,
-                finished: false,
-            }
-        }
-    }
-}
-
-impl Sha512Trunc256 {
-    /**
-     * Construct an new instance of a SHA-512/256 digest.
-     */
-    pub fn new() -> Sha512Trunc256 {
-        Sha512Trunc256 {
-            engine: Engine512 {
-                input_buffer: [0u8, ..8],
-                input_buffer_idx: 0,
-                bit_counter: BitCounter { high_bit_count: 0, low_byte_count: 0 },
-                H0: 0x22312194fc2bf72cu64,
-                H1: 0x9f555fa3c84c64c2u64,
-                H2: 0x2393b86b6f53b151u64,
-                H3: 0x963877195940eabdu64,
-                H4: 0x96283ee2a88effe3u64,
-                H5: 0xbe5e1e2553863992u64,
-                H6: 0x2b0199fc2c85b8aau64,
-                H7: 0x0eb72ddc81c52ca2u64,
-                W: [0u64, ..80],
-                W_idx: 0,
-                finished: false,
-            }
-        }
-    }
-}
-
-impl Sha512Trunc224 {
-    /**
-     * Construct an new instance of a SHA-512/224 digest.
-     */
-    pub fn new() -> Sha512Trunc224 {
-        Sha512Trunc224 {
-            engine: Engine512 {
-                input_buffer: [0u8, ..8],
-                input_buffer_idx: 0,
-                bit_counter: BitCounter { high_bit_count: 0, low_byte_count: 0 },
-                H0: 0x8c3d37c819544da2u64,
-                H1: 0x73e1996689dcd4d6u64,
-                H2: 0x1dfab7ae32ff9c82u64,
-                H3: 0x679dd514582f9fcfu64,
-                H4: 0x0f6d2b697bd44da8u64,
-                H5: 0x77e36f7304c48942u64,
-                H6: 0x3f9d85a86a1d36c8u64,
-                H7: 0x1112e6ad91d692a1u64,
-                W: [0u64, ..80],
-                W_idx: 0,
-                finished: false,
-            }
-        }
-    }
 }
 
 impl Sha256 {
@@ -750,6 +854,36 @@ impl Sha256 {
     }
 }
 
+impl Digest for Sha256 {
+    fn input(&mut self, d: &[u8]) {
+        self.engine.input_vec(d);
+    }
+
+    fn result(&mut self, out: &mut [u8]) {
+        self.engine.result_256(out)
+    }
+
+    fn reset(&mut self) {
+        self.engine.reset();
+
+        self.engine.H0 = 0x6a09e667u32;
+        self.engine.H1 = 0xbb67ae85u32;
+        self.engine.H2 = 0x3c6ef372u32;
+        self.engine.H3 = 0xa54ff53au32;
+        self.engine.H4 = 0x510e527fu32;
+        self.engine.H5 = 0x9b05688cu32;
+        self.engine.H6 = 0x1f83d9abu32;
+        self.engine.H7 = 0x5be0cd19u32;
+    }
+
+    fn output_bits(&self) -> uint { 256 }
+}
+
+
+struct Sha224 {
+    priv engine: Engine256
+}
+
 impl Sha224 {
     /**
      * Construct an new instance of a SHA-224 digest.
@@ -774,131 +908,6 @@ impl Sha224 {
             }
         }
     }
-}
-
-impl Digest for Sha512 {
-    fn input(&mut self, d: &[u8]) {
-        self.engine.input_vec(d);
-    }
-
-    fn result(&mut self, out: &mut [u8]) {
-        self.engine.result_512(out)
-    }
-
-    fn reset(&mut self) {
-        self.engine.reset();
-
-        self.engine.H0 = 0x6a09e667f3bcc908u64;
-        self.engine.H1 = 0xbb67ae8584caa73bu64;
-        self.engine.H2 = 0x3c6ef372fe94f82bu64;
-        self.engine.H3 = 0xa54ff53a5f1d36f1u64;
-        self.engine.H4 = 0x510e527fade682d1u64;
-        self.engine.H5 = 0x9b05688c2b3e6c1fu64;
-        self.engine.H6 = 0x1f83d9abfb41bd6bu64;
-        self.engine.H7 = 0x5be0cd19137e2179u64;
-    }
-
-    fn output_bits(&self) -> uint { 512 }
-}
-
-impl Digest for Sha384 {
-    fn input(&mut self, d: &[u8]) {
-        self.engine.input_vec(d);
-    }
-
-    fn result(&mut self, out: &mut [u8]) {
-        self.engine.result_384(out)
-    }
-
-    fn reset(&mut self) {
-        self.engine.reset();
-
-        self.engine.H0 = 0xcbbb9d5dc1059ed8u64;
-        self.engine.H1 = 0x629a292a367cd507u64;
-        self.engine.H2 = 0x9159015a3070dd17u64;
-        self.engine.H3 = 0x152fecd8f70e5939u64;
-        self.engine.H4 = 0x67332667ffc00b31u64;
-        self.engine.H5 = 0x8eb44a8768581511u64;
-        self.engine.H6 = 0xdb0c2e0d64f98fa7u64;
-        self.engine.H7 = 0x47b5481dbefa4fa4u64;
-    }
-
-    fn output_bits(&self) -> uint { 384 }
-}
-
-impl Digest for Sha512Trunc256 {
-    fn input(&mut self, d: &[u8]) {
-        self.engine.input_vec(d);
-    }
-
-    fn result(&mut self, out: &mut [u8]) {
-        self.engine.result_256(out)
-    }
-
-    fn reset(&mut self) {
-        self.engine.reset();
-
-        self.engine.H0 = 0x22312194fc2bf72cu64;
-        self.engine.H1 = 0x9f555fa3c84c64c2u64;
-        self.engine.H2 = 0x2393b86b6f53b151u64;
-        self.engine.H3 = 0x963877195940eabdu64;
-        self.engine.H4 = 0x96283ee2a88effe3u64;
-        self.engine.H5 = 0xbe5e1e2553863992u64;
-        self.engine.H6 = 0x2b0199fc2c85b8aau64;
-        self.engine.H7 = 0x0eb72ddc81c52ca2u64;
-    }
-
-    fn output_bits(&self) -> uint { 256 }
-}
-
-impl Digest for Sha512Trunc224 {
-    fn input(&mut self, d: &[u8]) {
-        self.engine.input_vec(d);
-    }
-
-    fn result(&mut self, out: &mut [u8]) {
-        self.engine.result_224(out)
-    }
-
-    fn reset(&mut self) {
-        self.engine.reset();
-
-        self.engine.H0 = 0x8c3d37c819544da2u64;
-        self.engine.H1 = 0x73e1996689dcd4d6u64;
-        self.engine.H2 = 0x1dfab7ae32ff9c82u64;
-        self.engine.H3 = 0x679dd514582f9fcfu64;
-        self.engine.H4 = 0x0f6d2b697bd44da8u64;
-        self.engine.H5 = 0x77e36f7304c48942u64;
-        self.engine.H6 = 0x3f9d85a86a1d36c8u64;
-        self.engine.H7 = 0x1112e6ad91d692a1u64;
-    }
-
-    fn output_bits(&self) -> uint { 224 }
-}
-
-impl Digest for Sha256 {
-    fn input(&mut self, d: &[u8]) {
-        self.engine.input_vec(d);
-    }
-
-    fn result(&mut self, out: &mut [u8]) {
-        self.engine.result_256(out)
-    }
-
-    fn reset(&mut self) {
-        self.engine.reset();
-
-        self.engine.H0 = 0x6a09e667u32;
-        self.engine.H1 = 0xbb67ae85u32;
-        self.engine.H2 = 0x3c6ef372u32;
-        self.engine.H3 = 0xa54ff53au32;
-        self.engine.H4 = 0x510e527fu32;
-        self.engine.H5 = 0x9b05688cu32;
-        self.engine.H6 = 0x1f83d9abu32;
-        self.engine.H7 = 0x5be0cd19u32;
-    }
-
-    fn output_bits(&self) -> uint { 256 }
 }
 
 impl Digest for Sha224 {
