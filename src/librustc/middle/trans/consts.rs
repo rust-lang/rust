@@ -211,11 +211,16 @@ pub fn const_expr(cx: @mut CrateContext, e: @ast::expr) -> ValueRef {
                         }
                         ty::AutoBorrowVec(ty::re_static, m) => {
                             assert!(m != ast::m_mutbl);
-                            let size = machine::llsize_of(cx,
-                                                          val_ty(llconst));
                             assert_eq!(abi::slice_elt_base, 0);
                             assert_eq!(abi::slice_elt_len, 1);
-                            llconst = C_struct([llptr, size]);
+
+                            match ty::get(ty).sty {
+                                ty::ty_evec(_, ty::vstore_fixed(*)) => {
+                                    let size = machine::llsize_of(cx, val_ty(llconst));
+                                    llconst = C_struct([llptr, size]);
+                                }
+                                _ => {}
+                            }
                         }
                         _ => {
                             cx.sess.span_bug(e.span,
