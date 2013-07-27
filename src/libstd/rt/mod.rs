@@ -90,14 +90,12 @@ mod kill;
 mod sched;
 
 /// Synchronous I/O.
-#[path = "io/mod.rs"]
 pub mod io;
 
 /// The EventLoop and internal synchronous I/O interface.
 mod rtio;
 
 /// libuv and default rtio implementation.
-#[path = "uv/mod.rs"]
 pub mod uv;
 
 /// The Local trait for types that are accessible via thread-local
