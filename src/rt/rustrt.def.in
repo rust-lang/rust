@@ -106,7 +106,6 @@ rust_uv_tcp_bind
 rust_uv_tcp_connect6
 rust_uv_tcp_bind6
 rust_uv_tcp_getsockname
-rust_uv_tcp_getsockname6
 rust_uv_tcp_nodelay
 rust_uv_tcp_keepalive
 rust_uv_tcp_simultaneous_accepts
@@ -119,15 +118,15 @@ rust_uv_udp_recv_start
 rust_uv_udp_recv_stop
 rust_uv_get_udp_handle_from_send_req
 rust_uv_udp_getsockname
-rust_uv_udp_getsockname6
 rust_uv_udp_set_membership
 rust_uv_udp_set_multicast_loop
 rust_uv_udp_set_multicast_ttl
+rust_uv_udp_set_ttl
 rust_uv_udp_set_broadcast
 rust_uv_is_ipv4_sockaddr
 rust_uv_is_ipv6_sockaddr
-rust_uv_sockaddr_as_sockaddr_in
-rust_uv_sockaddr_as_sockaddr_in6
+rust_uv_malloc_sockaddr_storage
+rust_uv_free_sockaddr_storage
 rust_uv_listen
 rust_uv_accept
 rust_uv_write
@@ -204,7 +203,6 @@ rust_update_gc_metadata
 rust_uv_ip4_port
 rust_uv_ip6_port
 rust_uv_tcp_getpeername
-rust_uv_tcp_getpeername6
 linenoise
 linenoiseSetCompletionCallback
 linenoiseAddCompletion

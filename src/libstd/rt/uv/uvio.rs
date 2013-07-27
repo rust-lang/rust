@@ -15,15 +15,19 @@ use cell::Cell;
 use cast;
 use cast::transmute;
 use clone::Clone;
+use libc::{c_int, c_uint, c_void};
+use ptr;
 use rt::io::IoError;
-use rt::io::net::ip::IpAddr;
+use rt::io::net::ip::{IpAddr, Ipv4, Ipv6};
 use rt::uv::*;
 use rt::uv::idle::IdleWatcher;
+use rt::uv::net::{UvIpv4, UvIpv6};
 use rt::rtio::*;
 use rt::sched::Scheduler;
 use rt::io::{standard_error, OtherIoError};
 use rt::tube::Tube;
 use rt::local::Local;
+use str::StrSlice;
 use unstable::sync::{Exclusive, exclusive};
 
 #[cfg(test)] use container::Container;
@@ -33,6 +37,47 @@ use unstable::sync::{Exclusive, exclusive};
                             next_test_ip4,
                             run_in_newsched_task};
 
+enum SocketNameKind {
+    TcpPeer,
+    Tcp,
+    Udp
+}
+
+fn socket_name<T, U: Watcher + NativeHandle<*T>>(sk: SocketNameKind,
+                                                 handle: U) -> Result<IpAddr, IoError> {
+
+    let getsockname = match sk {
+        TcpPeer => uvll::rust_uv_tcp_getpeername,
+        Tcp     => uvll::rust_uv_tcp_getsockname,
+        Udp     => uvll::rust_uv_udp_getsockname
+    };
+
+    // Allocate a sockaddr_storage
+    // since we don't know if it's ipv4 or ipv6
+    let r_addr = unsafe { uvll::malloc_sockaddr_storage() };
+
+    let r = unsafe {
+        getsockname(handle.native_handle() as *c_void, r_addr as *uvll::sockaddr_storage)
+    };
+
+    if r != 0 {
+        let status = status_to_maybe_uv_error(handle, r);
+        return Err(uv_error_to_io_error(status.unwrap()));
+    }
+
+    let addr = unsafe {
+        if uvll::is_ip6_addr(r_addr as *uvll::sockaddr) {
+            net::uv_ip_to_ip(UvIpv6(r_addr as *uvll::sockaddr_in6))
+        } else {
+            net::uv_ip_to_ip(UvIpv4(r_addr as *uvll::sockaddr_in))
+        }
+    };
+
+    unsafe { uvll::free_sockaddr_storage(r_addr); }
+
+    Ok(addr)
+
+}
 
 pub struct UvEventLoop {
     uvio: UvIoFactory
@@ -220,7 +265,9 @@ impl IoFactory for UvIoFactory {
                 rtdebug!("connect: in connect callback");
                 if status.is_none() {
                     rtdebug!("status is none");
-                    let res = Ok(~UvTcpStream(stream_watcher));
+                    let tcp_watcher =
+                        NativeHandle::from_native_handle(stream_watcher.native_handle());
+                    let res = Ok(~UvTcpStream(tcp_watcher));
 
                     // Store the stream in the task's stack
                     unsafe { (*result_cell_ptr).put_back(res); }
@@ -286,7 +333,6 @@ impl IoFactory for UvIoFactory {
     }
 }
 
-// FIXME #6090: Prefer newtype structs but Drop doesn't work
 pub struct UvTcpListener {
     watcher: TcpWatcher,
     listening: bool,
@@ -320,8 +366,9 @@ impl Drop for UvTcpListener {
 }
 
 impl RtioSocket for UvTcpListener {
-    // XXX implement
-    fn socket_name(&mut self) -> IpAddr { fail!(); }
+    fn socket_name(&mut self) -> Result<IpAddr, IoError> {
+        socket_name(Tcp, self.watcher)
+    }
 }
 
 impl RtioTcpListener for UvTcpListener {
@@ -344,9 +391,8 @@ impl RtioTcpListener for UvTcpListener {
             let maybe_stream = if status.is_none() {
                 let mut loop_ = server_stream_watcher.event_loop();
                 let client_tcp_watcher = TcpWatcher::new(&mut loop_);
-                let client_tcp_watcher = client_tcp_watcher.as_stream();
                 // XXX: Need's to be surfaced in interface
-                server_stream_watcher.accept(client_tcp_watcher);
+                server_stream_watcher.accept(client_tcp_watcher.as_stream());
                 Ok(~UvTcpStream(client_tcp_watcher))
             } else {
                 Err(standard_error(OtherIoError))
@@ -360,13 +406,30 @@ impl RtioTcpListener for UvTcpListener {
         return self.incoming_streams.recv();
     }
 
-    // XXX implement
-    fn accept_simultaneously(&mut self) { fail!(); }
-    fn dont_accept_simultaneously(&mut self) { fail!(); }
+    fn accept_simultaneously(&mut self) -> Result<(), IoError> {
+        let r = unsafe {
+            uvll::rust_uv_tcp_simultaneous_accepts(self.watcher.native_handle(), 1 as c_int)
+        };
+
+        match status_to_maybe_uv_error(self.watcher, r) {
+            Some(err) => Err(uv_error_to_io_error(err)),
+            None => Ok(())
+        }
+    }
+
+    fn dont_accept_simultaneously(&mut self) -> Result<(), IoError> {
+        let r = unsafe {
+            uvll::rust_uv_tcp_simultaneous_accepts(self.watcher.native_handle(), 0 as c_int)
+        };
+
+        match status_to_maybe_uv_error(self.watcher, r) {
+            Some(err) => Err(uv_error_to_io_error(err)),
+            None => Ok(())
+        }
+    }
 }
 
-// FIXME #6090: Prefer newtype structs but Drop doesn't work
-pub struct UvTcpStream(StreamWatcher);
+pub struct UvTcpStream(TcpWatcher);
 
 impl Drop for UvTcpStream {
     fn drop(&self) {
@@ -374,7 +437,7 @@ impl Drop for UvTcpStream {
         let scheduler = Local::take::<Scheduler>();
         do scheduler.deschedule_running_task_and_then |_, task| {
             let task_cell = Cell::new(task);
-            do self.close {
+            do self.as_stream().close {
                 let scheduler = Local::take::<Scheduler>();
                 scheduler.resume_blocked_task_immediately(task_cell.take());
             }
@@ -383,8 +446,9 @@ impl Drop for UvTcpStream {
 }
 
 impl RtioSocket for UvTcpStream {
-    // XXX implement
-    fn socket_name(&mut self) -> IpAddr { fail!(); }
+    fn socket_name(&mut self) -> Result<IpAddr, IoError> {
+        socket_name(Tcp, **self)
+    }
 }
 
 impl RtioTcpStream for UvTcpStream {
@@ -404,7 +468,7 @@ impl RtioTcpStream for UvTcpStream {
             let alloc: AllocCallback = |_| unsafe {
                 slice_to_uv_buf(*buf_ptr)
             };
-            let mut watcher = **self;
+            let mut watcher = self.as_stream();
             do watcher.read_start(alloc) |mut watcher, nread, _buf, status| {
 
                 // Stop reading so that no read callbacks are
@@ -440,7 +504,7 @@ impl RtioTcpStream for UvTcpStream {
         do scheduler.deschedule_running_task_and_then |_, task| {
             let task_cell = Cell::new(task);
             let buf = unsafe { slice_to_uv_buf(*buf_ptr) };
-            let mut watcher = **self;
+            let mut watcher = self.as_stream();
             do watcher.write(buf) |_watcher, status| {
                 let result = if status.is_none() {
                     Ok(())
@@ -459,12 +523,54 @@ impl RtioTcpStream for UvTcpStream {
         return result_cell.take();
     }
 
-    // XXX implement
-    fn peer_name(&mut self) -> IpAddr { fail!(); }
-    fn control_congestion(&mut self) { fail!(); }
-    fn nodelay(&mut self) { fail!(); }
-    fn keepalive(&mut self, _delay_in_seconds: uint) { fail!(); }
-    fn letdie(&mut self) { fail!(); }
+    fn peer_name(&mut self) -> Result<IpAddr, IoError> {
+        socket_name(TcpPeer, **self)
+    }
+
+    fn control_congestion(&mut self) -> Result<(), IoError> {
+        let r = unsafe {
+            uvll::rust_uv_tcp_nodelay(self.native_handle(), 0 as c_int)
+        };
+
+        match status_to_maybe_uv_error(**self, r) {
+            Some(err) => Err(uv_error_to_io_error(err)),
+            None => Ok(())
+        }
+    }
+
+    fn nodelay(&mut self) -> Result<(), IoError> {
+        let r = unsafe {
+            uvll::rust_uv_tcp_nodelay(self.native_handle(), 1 as c_int)
+        };
+
+        match status_to_maybe_uv_error(**self, r) {
+            Some(err) => Err(uv_error_to_io_error(err)),
+            None => Ok(())
+        }
+    }
+
+    fn keepalive(&mut self, delay_in_seconds: uint) -> Result<(), IoError> {
+        let r = unsafe {
+            uvll::rust_uv_tcp_keepalive(self.native_handle(), 1 as c_int,
+                                        delay_in_seconds as c_uint)
+        };
+
+        match status_to_maybe_uv_error(**self, r) {
+            Some(err) => Err(uv_error_to_io_error(err)),
+            None => Ok(())
+        }
+    }
+
+    fn letdie(&mut self) -> Result<(), IoError> {
+        let r = unsafe {
+            uvll::rust_uv_tcp_keepalive(self.native_handle(), 0 as c_int, 0 as c_uint)
+        };
+
+        match status_to_maybe_uv_error(**self, r) {
+            Some(err) => Err(uv_error_to_io_error(err)),
+            None => Ok(())
+        }
+    }
 }
 
 pub struct UvUdpSocket(UdpWatcher);
@@ -484,8 +590,9 @@ impl Drop for UvUdpSocket {
 }
 
 impl RtioSocket for UvUdpSocket {
-    // XXX implement
-    fn socket_name(&mut self) -> IpAddr { fail!(); }
+    fn socket_name(&mut self) -> Result<IpAddr, IoError> {
+        socket_name(Udp, **self)
+    }
 }
 
 impl RtioUdpSocket for UvUdpSocket {
@@ -552,18 +659,117 @@ impl RtioUdpSocket for UvUdpSocket {
         return result_cell.take();
     }
 
-    // XXX implement
-    fn join_multicast(&mut self, _multi: IpAddr) { fail!(); }
-    fn leave_multicast(&mut self, _multi: IpAddr) { fail!(); }
+    fn join_multicast(&mut self, multi: IpAddr) -> Result<(), IoError> {
+        let ip_str = match multi {
+            Ipv4(x1, x2, x3, x4, _) =>
+                fmt!("%u.%u.%u.%u", x1 as uint, x2 as uint, x3 as uint, x4 as uint),
+            Ipv6(x1, x2, x3, x4, x5, x6, x7, x8, _) =>
+                fmt!("%x:%x:%x:%x:%x:%x:%x:%x",
+                      x1 as uint, x2 as uint, x3 as uint, x4 as uint,
+                      x5 as uint, x6 as uint, x7 as uint, x8 as uint),
+        };
 
-    fn loop_multicast_locally(&mut self) { fail!(); }
-    fn dont_loop_multicast_locally(&mut self) { fail!(); }
+        let r = unsafe {
+            do ip_str.as_c_str |m_addr| {
+                uvll::udp_set_membership(self.native_handle(), m_addr,
+                                         ptr::null(), uvll::UV_JOIN_GROUP)
+            }
+        };
 
-    fn multicast_time_to_live(&mut self, _ttl: int) { fail!(); }
-    fn time_to_live(&mut self, _ttl: int) { fail!(); }
+        match status_to_maybe_uv_error(**self, r) {
+            Some(err) => Err(uv_error_to_io_error(err)),
+            None => Ok(())
+        }
+    }
 
-    fn hear_broadcasts(&mut self) { fail!(); }
-    fn ignore_broadcasts(&mut self) { fail!(); }
+    fn leave_multicast(&mut self, multi: IpAddr) -> Result<(), IoError> {
+        let ip_str = match multi {
+            Ipv4(x1, x2, x3, x4, _) =>
+                fmt!("%u.%u.%u.%u", x1 as uint, x2 as uint, x3 as uint, x4 as uint),
+            Ipv6(x1, x2, x3, x4, x5, x6, x7, x8, _) =>
+                fmt!("%x:%x:%x:%x:%x:%x:%x:%x",
+                      x1 as uint, x2 as uint, x3 as uint, x4 as uint,
+                      x5 as uint, x6 as uint, x7 as uint, x8 as uint),
+        };
+
+        let r = unsafe {
+            do ip_str.as_c_str |m_addr| {
+                uvll::udp_set_membership(self.native_handle(), m_addr,
+                                         ptr::null(), uvll::UV_LEAVE_GROUP)
+            }
+        };
+
+        match status_to_maybe_uv_error(**self, r) {
+            Some(err) => Err(uv_error_to_io_error(err)),
+            None => Ok(())
+        }
+    }
+
+    fn loop_multicast_locally(&mut self) -> Result<(), IoError> {
+        let r = unsafe {
+            uvll::udp_set_multicast_loop(self.native_handle(), 1 as c_int)
+        };
+
+        match status_to_maybe_uv_error(**self, r) {
+            Some(err) => Err(uv_error_to_io_error(err)),
+            None => Ok(())
+        }
+    }
+
+    fn dont_loop_multicast_locally(&mut self) -> Result<(), IoError> {
+        let r = unsafe {
+            uvll::udp_set_multicast_loop(self.native_handle(), 0 as c_int)
+        };
+
+        match status_to_maybe_uv_error(**self, r) {
+            Some(err) => Err(uv_error_to_io_error(err)),
+            None => Ok(())
+        }
+    }
+
+    fn multicast_time_to_live(&mut self, ttl: int) -> Result<(), IoError> {
+        let r = unsafe {
+            uvll::udp_set_multicast_ttl(self.native_handle(), ttl as c_int)
+        };
+
+        match status_to_maybe_uv_error(**self, r) {
+            Some(err) => Err(uv_error_to_io_error(err)),
+            None => Ok(())
+        }
+    }
+
+    fn time_to_live(&mut self, ttl: int) -> Result<(), IoError> {
+        let r = unsafe {
+            uvll::udp_set_ttl(self.native_handle(), ttl as c_int)
+        };
+
+        match status_to_maybe_uv_error(**self, r) {
+            Some(err) => Err(uv_error_to_io_error(err)),
+            None => Ok(())
+        }
+    }
+
+    fn hear_broadcasts(&mut self) -> Result<(), IoError> {
+        let r = unsafe {
+            uvll::udp_set_broadcast(self.native_handle(), 1 as c_int)
+        };
+
+        match status_to_maybe_uv_error(**self, r) {
+            Some(err) => Err(uv_error_to_io_error(err)),
+            None => Ok(())
+        }
+    }
+
+    fn ignore_broadcasts(&mut self) -> Result<(), IoError> {
+        let r = unsafe {
+            uvll::udp_set_broadcast(self.native_handle(), 0 as c_int)
+        };
+
+        match status_to_maybe_uv_error(**self, r) {
+            Some(err) => Err(uv_error_to_io_error(err)),
+            None => Ok(())
+        }
+    }
 }
 
 pub struct UvTimer(timer::TimerWatcher);
