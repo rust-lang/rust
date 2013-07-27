@@ -751,9 +751,14 @@ rust_raw_thread_start(fn_env_pair *fn) {
 }
 
 extern "C" void
-rust_raw_thread_join_delete(raw_thread *thread) {
+rust_raw_thread_join(raw_thread *thread) {
     assert(thread);
     thread->join();
+}
+
+extern "C" void
+rust_raw_thread_delete(raw_thread *thread) {
+    assert(thread);
     delete thread;
 }
 

@@ -715,7 +715,7 @@ mod test {
                 }
             }
 
-            let _client_thread = do Thread::start {
+            let client_thread = do Thread::start {
                 rtdebug!("starting client thread");
                 let mut loop_ = Loop::new();
                 let mut tcp_watcher = { TcpWatcher::new(&mut loop_) };
@@ -739,6 +739,7 @@ mod test {
             let mut loop_ = loop_;
             loop_.run();
             loop_.close();
+            client_thread.join();
         }
     }
 
@@ -790,7 +791,7 @@ mod test {
                 }
             }
 
-            let _client_thread = do Thread::start {
+            let client_thread = do Thread::start {
                 rtdebug!("starting client thread");
                 let mut loop_ = Loop::new();
                 let mut tcp_watcher = { TcpWatcher::new(&mut loop_) };
@@ -814,6 +815,7 @@ mod test {
             let mut loop_ = loop_;
             loop_.run();
             loop_.close();
+            client_thread.join();
         }
     }
 
@@ -855,7 +857,7 @@ mod test {
                 server.close(||{});
             }
 
-            do Thread::start {
+            let thread = do Thread::start {
                 let mut loop_ = Loop::new();
                 let mut client = UdpWatcher::new(&loop_);
                 assert!(client.bind(client_addr).is_ok());
@@ -873,6 +875,7 @@ mod test {
 
             loop_.run();
             loop_.close();
+            thread.join();
         }
     }
 
@@ -914,7 +917,7 @@ mod test {
                 server.close(||{});
             }
 
-            do Thread::start {
+            let thread = do Thread::start {
                 let mut loop_ = Loop::new();
                 let mut client = UdpWatcher::new(&loop_);
                 assert!(client.bind(client_addr).is_ok());
@@ -932,6 +935,7 @@ mod test {
 
             loop_.run();
             loop_.close();
+            thread.join();
         }
     }
 }
