@@ -48,22 +48,6 @@ pub fn get<T:Clone,U>(res: &Result<T, U>) -> T {
 }
 
 /**
- * Get a reference to the value out of a successful result
- *
- * # Failure
- *
- * If the result is an error
- */
-#[inline]
-pub fn get_ref<'a, T, U>(res: &'a Result<T, U>) -> &'a T {
-    match *res {
-        Ok(ref t) => t,
-        Err(ref the_err) =>
-            fail!("get_ref called on error result: %?", *the_err)
-    }
-}
-
-/**
  * Get the value out of an error result
  *
  * # Failure
@@ -229,8 +213,21 @@ pub fn map_err<T:Clone,E,F:Clone>(res: &Result<T, E>, op: &fn(&E) -> F)
 }
 
 impl<T, E> Result<T, E> {
+    /**
+     * Get a reference to the value out of a successful result
+     *
+     * # Failure
+     *
+     * If the result is an error
+     */
     #[inline]
-    pub fn get_ref<'a>(&'a self) -> &'a T { get_ref(self) }
+    pub fn get_ref<'a>(&'a self) -> &'a T {
+        match *self {
+        Ok(ref t) => t,
+        Err(ref the_err) =>
+            fail!("get_ref called on error result: %?", *the_err)
+        }
+    }
 
     #[inline]
     pub fn is_ok(&self) -> bool { is_ok(self) }
