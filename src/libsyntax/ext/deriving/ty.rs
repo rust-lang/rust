@@ -209,7 +209,7 @@ pub struct LifetimeBounds<'self> {
 }
 
 impl<'self> LifetimeBounds<'self> {
-    pub fn empty() -> LifetimeBounds<'static> {
+    pub fn empty<'r>() -> LifetimeBounds<'r> {
         LifetimeBounds {
             lifetimes: ~[], bounds: ~[]
         }

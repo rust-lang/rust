@@ -15,12 +15,18 @@ use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use ext::deriving::generic::*;
 use ext::deriving::DerivingOptions;
+use ext::deriving::cmp::CmpOptions;
 
 pub fn expand_deriving_ord(cx: @ExtCtxt,
                            span: span,
-                           _options: DerivingOptions,
+                           options: DerivingOptions,
                            mitem: @MetaItem,
                            in_items: ~[@item]) -> ~[@item] {
+    let mut options = match CmpOptions::parse(cx, span, "Ord", options, true, true) {
+        Some(o) => o,
+        None => return in_items
+    };
+
     macro_rules! md (
         ($name:expr, $op:expr, $equal:expr) => {
             MethodDef {
@@ -30,7 +36,11 @@ pub fn expand_deriving_ord(cx: @ExtCtxt,
                 args: ~[borrowed_self()],
                 ret_ty: Literal(Path::new(~["bool"])),
                 const_nonmatching: false,
-                combine_substructure: |cx, span, substr| cs_op($op, $equal, cx, span, substr)
+                combine_substructure: |cx, span, substr| {
+                    options.call_substructure(
+                        cx, span, substr,
+                        |cx, span, substr| cs_op($op, $equal, cx, span, substr))
+                }
             }
         }
     );
@@ -40,8 +50,8 @@ pub fn expand_deriving_ord(cx: @ExtCtxt,
         additional_bounds: ~[],
         generics: LifetimeBounds::empty(),
         methods: ~[
-            md!("lt", true, false),
-            md!("le", true, true),
+            md!("lt", true,  false),
+            md!("le", true,  true),
             md!("gt", false, false),
             md!("ge", false, true)
         ]

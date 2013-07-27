@@ -31,15 +31,8 @@ pub mod rand;
 pub mod to_str;
 pub mod zero;
 
-#[path="cmp/eq.rs"]
-pub mod eq;
-#[path="cmp/totaleq.rs"]
-pub mod totaleq;
-#[path="cmp/ord.rs"]
-pub mod ord;
-#[path="cmp/totalord.rs"]
-pub mod totalord;
-
+#[path="cmp/mod.rs"]
+pub mod cmp;
 
 pub mod generic;
 
@@ -76,10 +69,10 @@ pub fn expand_meta_deriving(cx: @ExtCtxt,
                     "Encodable" => expand!(encodable::expand_deriving_encodable),
                     "Decodable" => expand!(decodable::expand_deriving_decodable),
 
-                    "Eq" => expand!(eq::expand_deriving_eq),
-                    "TotalEq" => expand!(totaleq::expand_deriving_totaleq),
-                    "Ord" => expand!(ord::expand_deriving_ord),
-                    "TotalOrd" => expand!(totalord::expand_deriving_totalord),
+                    "Eq" => expand!(cmp::eq::expand_deriving_eq),
+                    "TotalEq" => expand!(cmp::totaleq::expand_deriving_totaleq),
+                    "Ord" => expand!(cmp::ord::expand_deriving_ord),
+                    "TotalOrd" => expand!(cmp::totalord::expand_deriving_totalord),
 
                     "Rand" => expand!(rand::expand_deriving_rand),
 

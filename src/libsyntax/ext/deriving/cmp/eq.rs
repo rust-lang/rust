@@ -14,17 +14,23 @@ use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use ext::deriving::generic::*;
 use ext::deriving::DerivingOptions;
+use ext::deriving::cmp::CmpOptions;
 
 pub fn expand_deriving_eq(cx: @ExtCtxt,
                           span: span,
-                          _options: DerivingOptions,
+                          options: DerivingOptions,
                           mitem: @MetaItem,
                           in_items: ~[@item]) -> ~[@item] {
+    let mut options = match CmpOptions::parse(cx, span, "Eq", options, true, false) {
+        Some(o) => o,
+        None => return in_items
+    };
+
     // structures are equal if all fields are equal, and non equal, if
     // any fields are not equal or if the enum variants are different
     fn cs_eq(cx: @ExtCtxt, span: span, substr: &Substructure) -> @expr {
         cs_and(|cx, span, _, _| cx.expr_bool(span, false),
-                                 cx, span, substr)
+               cx, span, substr)
     }
     fn cs_ne(cx: @ExtCtxt, span: span, substr: &Substructure) -> @expr {
         cs_or(|cx, span, _, _| cx.expr_bool(span, true),
@@ -32,7 +38,7 @@ pub fn expand_deriving_eq(cx: @ExtCtxt,
     }
 
     macro_rules! md (
-        ($name:expr, $f:ident) => {
+        ($name:expr, $f:ident) => {{
             MethodDef {
                 name: $name,
                 generics: LifetimeBounds::empty(),
@@ -40,9 +46,11 @@ pub fn expand_deriving_eq(cx: @ExtCtxt,
                 args: ~[borrowed_self()],
                 ret_ty: Literal(Path::new(~["bool"])),
                 const_nonmatching: true,
-                combine_substructure: $f
-            },
-        }
+                combine_substructure: |cx, span, substr| {
+                    options.call_substructure(cx, span, substr, $f)
+                }
+            }
+        }}
     );
 
     let trait_def = TraitDef {
