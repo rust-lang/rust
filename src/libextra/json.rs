@@ -1867,27 +1867,26 @@ mod tests {
                 col: 8u,
                 msg: @~"EOF while parsing object"}));
 
-        assert_eq!(result::unwrap(from_str("{}")), mk_object([]));
-        assert_eq!(result::unwrap(from_str("{\"a\": 3}")),
+        assert_eq!(from_str("{}").unwrap(), mk_object([]));
+        assert_eq!(from_str("{\"a\": 3}").unwrap(),
                   mk_object([(~"a", Number(3.0f))]));
 
-        assert_eq!(result::unwrap(from_str(
-                      "{ \"a\": null, \"b\" : true }")),
+        assert_eq!(from_str(
+                      "{ \"a\": null, \"b\" : true }").unwrap(),
                   mk_object([
                       (~"a", Null),
                       (~"b", Boolean(true))]));
-        assert_eq!(result::unwrap(
-                      from_str("\n{ \"a\": null, \"b\" : true }\n")),
+        assert_eq!(from_str("\n{ \"a\": null, \"b\" : true }\n").unwrap(),
                   mk_object([
                       (~"a", Null),
                       (~"b", Boolean(true))]));
-        assert_eq!(result::unwrap(from_str(
-                      "{\"a\" : 1.0 ,\"b\": [ true ]}")),
+        assert_eq!(from_str(
+                      "{\"a\" : 1.0 ,\"b\": [ true ]}").unwrap(),
                   mk_object([
                       (~"a", Number(1.0)),
                       (~"b", List(~[Boolean(true)]))
                   ]));
-        assert_eq!(result::unwrap(from_str(
+        assert_eq!(from_str(
                       ~"{" +
                           "\"a\": 1.0, " +
                           "\"b\": [" +
@@ -1895,7 +1894,7 @@ mod tests {
                               "\"foo\\nbar\", " +
                               "{ \"c\": {\"d\": null} } " +
                           "]" +
-                      "}")),
+                      "}").unwrap(),
                   mk_object([
                       (~"a", Number(1.0f)),
                       (~"b", List(~[

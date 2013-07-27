@@ -161,7 +161,7 @@ fn main() {
        // get to this massive data set, but include_bin! chokes on it (#2598)
        let path = Path(env!("CFG_SRC_DIR"))
            .push_rel(&Path("src/test/bench/shootout-k-nucleotide.data"));
-       result::unwrap(io::file_reader(&path))
+       io::file_reader(&path).unwrap()
    } else {
       io::stdin()
    };

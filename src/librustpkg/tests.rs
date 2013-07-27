@@ -62,9 +62,7 @@ fn git_repo_pkg() -> PkgId {
 }
 
 fn writeFile(file_path: &Path, contents: &str) {
-    let out: @io::Writer =
-        result::unwrap(io::file_writer(file_path,
-                                       [io::Create, io::Truncate]));
+    let out = io::file_writer(file_path, [io::Create, io::Truncate]).unwrap();
     out.write_line(contents);
 }
 

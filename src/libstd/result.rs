@@ -31,27 +31,21 @@ pub enum Result<T, U> {
     Err(U)
 }
 
-/**
- * Convert to the `either` type
- *
- * `ok` result variants are converted to `either::right` variants, `err`
- * result variants are converted to `either::left`.
- */
-#[inline]
-pub fn to_either<T:Clone,U:Clone>(res: &Result<U, T>)
-    -> Either<T, U> {
-    match *res {
-      Ok(ref res) => either::Right((*res).clone()),
-      Err(ref fail_) => either::Left((*fail_).clone())
-    }
-}
-
-
-
-
-
-
 impl<T, E> Result<T, E> {
+    /**
+     * Convert to the `either` type
+     *
+     * `ok` result variants are converted to `either::right` variants, `err`
+     * result variants are converted to `either::left`.
+     */
+    #[inline]
+    pub fn to_either(self)-> Either<E, T>{
+        match self {
+            Ok(t) => either::Right(t),
+            Err(e) => either::Left(e),
+        }
+    }
+
     /**
      * Get a reference to the value out of a successful result
      *
@@ -84,7 +78,7 @@ impl<T, E> Result<T, E> {
     }
 
     /**
-     * Call a function based on a previous result
+     * Call a method based on a previous result
      *
      * If `*self` is `ok` then the value is extracted and passed to `op` whereupon
      * `op`s result is returned. if `*self` is `err` then it is immediately
@@ -106,7 +100,7 @@ impl<T, E> Result<T, E> {
     }
 
     /**
-     * Call a function based on a previous result
+     * Call a method based on a previous result
      *
      * If `*self` is `err` then the value is extracted and passed to `op` whereupon
      * `op`s result is returned. if `*self` is `ok` then it is immediately returned.
@@ -140,7 +134,7 @@ impl<T, E> Result<T, E> {
     }
 
     /**
-     * Call a function based on a previous result
+     * Call a method based on a previous result
      *
      * If `self` is `ok` then the value is extracted and passed to `op` whereupon
      * `op`s result is returned. if `self` is `err` then it is immediately
@@ -149,9 +143,9 @@ impl<T, E> Result<T, E> {
      *
      * Example:
      *
-     *     let res = read_file(file).chain(op) { |buf|
+     *     let res = do read_file(file).chain |buf| {
      *         ok(parse_bytes(buf))
-     *     }
+     *     };
      */
     #[inline]
     pub fn chain<U>(self, op: &fn(T) -> Result<U,E>) -> Result<U,E> {
@@ -162,7 +156,7 @@ impl<T, E> Result<T, E> {
     }
 
     /**
-    * Call a function based on a previous result
+    * Call a method based on a previous result
     *
     * If `self` is `err` then the value is extracted and passed to `op`
     * whereupon `op`s result is returned. if `self` is `ok` then it is
@@ -195,13 +189,13 @@ impl<T:Clone,E> Result<T, E> {
     }
 
     /**
-    * Call a function based on a previous result
-    *
-    * If `*self` is `err` then the value is extracted and passed to `op` whereupon
-    * `op`s result is wrapped in an `err` and returned. if `*self` is `ok` then it
-    * is immediately returned.  This function can be used to pass through a
-    * successful result while handling an error.
-    */
+     * Call a method based on a previous result
+     *
+     * If `*self` is `err` then the value is extracted and passed to `op` whereupon
+     * `op`s result is wrapped in an `err` and returned. if `*self` is `ok` then it
+     * is immediately returned.  This function can be used to pass through a
+     * successful result while handling an error.
+     */
     #[inline]
     pub fn map_err<F:Clone>(&self, op: &fn(&E) -> F) -> Result<T,F> {
         match *self {
@@ -228,19 +222,19 @@ impl<T, E:Clone> Result<T, E> {
     }
 
     /**
-    * Call a function based on a previous result
-    *
-    * If `res` is `ok` then the value is extracted and passed to `op` whereupon
-    * `op`s result is wrapped in `ok` and returned. if `res` is `err` then it is
-    * immediately returned.  This function can be used to compose the results of
-    * two functions.
-    *
-    * Example:
-    *
-    *     let res = map(read_file(file)) { |buf|
-    *         parse_bytes(buf)
-    *     }
-    */
+     * Call a method based on a previous result
+     *
+     * If `res` is `ok` then the value is extracted and passed to `op` whereupon
+     * `op`s result is wrapped in `ok` and returned. if `res` is `err` then it is
+     * immediately returned.  This function can be used to compose the results of
+     * two functions.
+     *
+     * Example:
+     *
+     *     let res = read_file(file).map() { |buf|
+     *         parse_bytes(buf)
+     *     });
+     */
     #[inline]
     pub fn map<U:Clone>(&self, op: &fn(&T) -> U) -> Result<U,E> {
         match *self {
@@ -351,6 +345,7 @@ pub fn iter_vec2<S,T,U>(ss: &[S], ts: &[T],
 mod tests {
     use result::{Err, Ok, Result};
     use result;
+    use either;
 
     pub fn op1() -> result::Result<int, ~str> { result::Ok(666) }
 
@@ -407,5 +402,14 @@ mod tests {
     pub fn test_get_ref_method() {
         let foo: Result<int, ()> = Ok(100);
         assert_eq!(*foo.get_ref(), 100);
+    }
+
+    #[test]
+    pub fn test_to_either() {
+        let r: Result<int, ()> = Ok(100);
+        let err: Result<(), int> = Err(404);
+
+        assert_eq!(r.to_either(), either::Right(100));
+        assert_eq!(err.to_either(), either::Left(404));
     }
 }
