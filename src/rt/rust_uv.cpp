@@ -282,29 +282,19 @@ rust_uv_tcp_bind6
 
 extern "C" int
 rust_uv_tcp_getpeername
-(uv_tcp_t* handle, sockaddr_in* name) {
+(uv_tcp_t* handle, sockaddr_storage* name) {
+    // sockaddr_storage is big enough to hold either
+    // sockaddr_in or sockaddr_in6
     int namelen = sizeof(sockaddr_in);
-    return uv_tcp_getpeername(handle, (sockaddr*)name, &namelen);
-}
-
-extern "C" int
-rust_uv_tcp_getpeername6
-(uv_tcp_t* handle, sockaddr_in6* name) {
-    int namelen = sizeof(sockaddr_in6);
     return uv_tcp_getpeername(handle, (sockaddr*)name, &namelen);
 }
 
 extern "C" int
 rust_uv_tcp_getsockname
-(uv_tcp_t* handle, sockaddr_in* name) {
-    int namelen = sizeof(sockaddr_in);
-    return uv_tcp_getsockname(handle, (sockaddr*)name, &namelen);
-}
-
-extern "C" int
-rust_uv_tcp_getsockname6
-(uv_tcp_t* handle, sockaddr_in6* name) {
-    int namelen = sizeof(sockaddr_in6);
+(uv_tcp_t* handle, sockaddr_storage* name) {
+    // sockaddr_storage is big enough to hold either
+    // sockaddr_in or sockaddr_in6
+    int namelen = sizeof(sockaddr_storage);
     return uv_tcp_getsockname(handle, (sockaddr*)name, &namelen);
 }
 
@@ -370,15 +360,10 @@ rust_uv_get_udp_handle_from_send_req(uv_udp_send_t* send_req) {
 
 extern "C" int
 rust_uv_udp_getsockname
-(uv_udp_t* handle, sockaddr_in* name) {
-    int namelen = sizeof(sockaddr_in);
-    return uv_udp_getsockname(handle, (sockaddr*)name, &namelen);
-}
-
-extern "C" int
-rust_uv_udp_getsockname6
-(uv_udp_t* handle, sockaddr_in6* name) {
-    int namelen = sizeof(sockaddr_in6);
+(uv_udp_t* handle, sockaddr_storage* name) {
+    // sockaddr_storage is big enough to hold either
+    // sockaddr_in or sockaddr_in6
+    int namelen = sizeof(sockaddr_storage);
     return uv_udp_getsockname(handle, (sockaddr*)name, &namelen);
 }
 
@@ -398,6 +383,12 @@ extern "C" int
 rust_uv_udp_set_multicast_ttl
 (uv_udp_t* handle, int ttl) {
     return uv_udp_set_multicast_ttl(handle, ttl);
+}
+
+extern "C" int
+rust_uv_udp_set_ttl
+(uv_udp_t* handle, int ttl) {
+    return uv_udp_set_ttl(handle, ttl);
 }
 
 extern "C" int
@@ -609,6 +600,17 @@ rust_uv_ip6_addrp(const char* ip, int port) {
   return addrp;
 }
 
+extern "C" struct sockaddr_storage *
+rust_uv_malloc_sockaddr_storage() {
+    struct sockaddr_storage *ss = (sockaddr_storage *)malloc(sizeof(struct sockaddr_storage));
+    return ss;
+}
+
+extern "C" void
+rust_uv_free_sockaddr_storage(struct sockaddr_storage *ss) {
+    free(ss);
+}
+
 extern "C" void
 rust_uv_free_ip4_addr(sockaddr_in *addrp) {
   free(addrp);
@@ -667,18 +669,6 @@ rust_uv_is_ipv4_sockaddr(sockaddr* addr) {
 extern "C" int
 rust_uv_is_ipv6_sockaddr(sockaddr* addr) {
     return addr->sa_family == AF_INET6;
-}
-
-extern "C" sockaddr_in*
-rust_uv_sockaddr_as_sockaddr_in(sockaddr* addr) {
-//    return (sockaddr_in*)addr->sa_data;
-    return (sockaddr_in*)addr;
-}
-
-extern "C" sockaddr_in6*
-rust_uv_sockaddr_as_sockaddr_in6(sockaddr* addr) {
-    //return (sockaddr_in6*)addr->sa_data;
-    return (sockaddr_in6*)addr;
 }
 
 extern "C" bool
