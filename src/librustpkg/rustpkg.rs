@@ -109,7 +109,8 @@ impl<'self> PkgScript<'self> {
         let input = driver::file_input(script);
         let sess = driver::build_session(options, diagnostic::emit);
         let cfg = driver::build_configuration(sess, binary, &input);
-        let (crate, _) = driver::compile_upto(sess, cfg.clone(), &input, driver::cu_parse, None);
+        let crate = driver::phase_1_parse_input(sess, cfg.clone(), &input);
+        let crate = driver::phase_2_configure_and_expand(sess, cfg.clone(), crate);
         let work_dir = build_pkg_id_in_workspace(id, workspace);
 
         debug!("Returning package script with id %?", id);
@@ -119,7 +120,7 @@ impl<'self> PkgScript<'self> {
             input: input,
             sess: sess,
             cfg: cfg,
-            crate: crate.unwrap(),
+            crate: crate,
             build_dir: work_dir
         }
     }
@@ -142,14 +143,10 @@ impl<'self> PkgScript<'self> {
                 let root = r.pop().pop().pop().pop(); // :-\
                 debug!("Root is %s, calling compile_rest", root.to_str());
                 let exe = self.build_dir.push(~"pkg" + util::exe_suffix());
-                let binary = os::args()[0].to_managed();
                 util::compile_crate_from_input(&self.input,
                                                &self.build_dir,
                                                sess,
-                                               crate,
-                                               driver::build_configuration(sess,
-                                                                           binary, &self.input),
-                                               driver::cu_parse);
+                                               crate);
                 debug!("Running program: %s %s %s %s", exe.to_str(),
                        sysroot.to_str(), root.to_str(), "install");
                 // FIXME #7401 should support commands besides `install`
