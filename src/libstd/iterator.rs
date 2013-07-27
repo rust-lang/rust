@@ -32,6 +32,12 @@ pub trait FromIterator<A, T: Iterator<A>> {
     fn from_iterator(iterator: &mut T) -> Self;
 }
 
+/// A type growable from an `Iterator` implementation
+pub trait Extendable<A, T: Iterator<A>>: FromIterator<A, T> {
+    /// Extend a container with the elements yielded by an iterator
+    fn extend(&mut self, iterator: &mut T);
+}
+
 /// An interface for dealing with "external iterators". These types of iterators
 /// can be resumed at any time as all state is stored internally as opposed to
 /// being located on the call stack.
