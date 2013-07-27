@@ -16,6 +16,7 @@
 use uint;
 use int;
 use vec;
+use str;
 use rt::io::{Reader, Writer};
 use rt::io::{read_error, standard_error, EndOfFile, DEFAULT_BUF_SIZE};
 use option::{Option, Some, None};
@@ -271,6 +272,32 @@ pub trait WriterByteConversions {
 
     /// Write a i8 (1 byte).
     fn write_i8(&mut self, n: i8);
+}
+
+pub trait StringWriter {
+    /// Write a single utf-8 encoded char.
+    fn write_char(&mut self, ch: char);
+
+    /// Write every char in the given str, encoded as utf-8.
+    fn write_str(&mut self, s: &str);
+
+    /// Write the given str, as utf-8, followed by '\n'.
+    fn write_line(&mut self, s: &str);
+}
+
+impl<T: Writer> StringWriter for T {
+    fn write_char(&mut self, ch: char) {
+        if (ch as uint) < 128u {
+            self.write(&[ch as u8]);
+        } else {
+            self.write_str(str::from_char(ch));
+        }
+    }
+    fn write_str(&mut self, s: &str) { self.write(s.as_bytes()) }
+    fn write_line(&mut self, s: &str) {
+        self.write_str(s);
+        self.write_str(&"\n");
+    }
 }
 
 impl<T: Reader> ReaderUtil for T {
