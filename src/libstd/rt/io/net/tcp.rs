@@ -14,8 +14,9 @@ use rt::io::net::ip::IpAddr;
 use rt::io::{Reader, Writer, Listener};
 use rt::io::{io_error, read_error, EndOfFile};
 use rt::rtio::{IoFactory, IoFactoryObject,
-               RtioTcpListener, RtioTcpListenerObject,
-               RtioTcpStream, RtioTcpStreamObject};
+               RtioSocket, RtioTcpListener,
+               RtioTcpListenerObject, RtioTcpStream,
+               RtioTcpStreamObject};
 use rt::local::Local;
 
 pub struct TcpStream(~RtioTcpStreamObject);
@@ -37,6 +38,28 @@ impl TcpStream {
             Ok(s) => Some(TcpStream::new(s)),
             Err(ioerr) => {
                 rtdebug!("failed to connect: %?", ioerr);
+                io_error::cond.raise(ioerr);
+                None
+            }
+        }
+    }
+
+    pub fn peer_name(&mut self) -> Option<IpAddr> {
+        match (**self).peer_name() {
+            Ok(pn) => Some(pn),
+            Err(ioerr) => {
+                rtdebug!("failed to get peer name: %?", ioerr);
+                io_error::cond.raise(ioerr);
+                None
+            }
+        }
+    }
+
+    pub fn socket_name(&mut self) -> Option<IpAddr> {
+        match (**self).socket_name() {
+            Ok(sn) => Some(sn),
+            Err(ioerr) => {
+                rtdebug!("failed to get socket name: %?", ioerr);
                 io_error::cond.raise(ioerr);
                 None
             }
@@ -87,6 +110,17 @@ impl TcpListener {
             Err(ioerr) => {
                 io_error::cond.raise(ioerr);
                 return None;
+            }
+        }
+    }
+
+    pub fn socket_name(&mut self) -> Option<IpAddr> {
+        match (**self).socket_name() {
+            Ok(sn) => Some(sn),
+            Err(ioerr) => {
+                rtdebug!("failed to get socket name: %?", ioerr);
+                io_error::cond.raise(ioerr);
+                None
             }
         }
     }
@@ -532,6 +566,63 @@ mod test {
                 }
             }
         }
+    }
+
+    #[cfg(test)]
+    fn socket_name(addr: IpAddr) {
+        do run_in_newsched_task {
+            do spawntask_immediately {
+                let listener = TcpListener::bind(addr);
+
+                assert!(listener.is_some());
+                let mut listener = listener.unwrap();
+
+                // Make sure socket_name gives
+                // us the socket we binded to.
+                let so_name = listener.socket_name();
+                assert!(so_name.is_some());
+                assert_eq!(addr, so_name.unwrap());
+
+            }
+        }
+    }
+
+    #[cfg(test)]
+    fn peer_name(addr: IpAddr) {
+        do run_in_newsched_task {
+            do spawntask_immediately {
+                let mut listener = TcpListener::bind(addr);
+
+                listener.accept();
+            }
+
+            do spawntask_immediately {
+                let stream = TcpStream::connect(addr);
+
+                assert!(stream.is_some());
+                let mut stream = stream.unwrap();
+
+                // Make sure peer_name gives us the
+                // address/port of the peer we've
+                // connected to.
+                let peer_name = stream.peer_name();
+                assert!(peer_name.is_some());
+                assert_eq!(addr, peer_name.unwrap());
+            }
+        }
+    }
+
+    #[test]
+    fn socket_and_peer_name_ip4() {
+        peer_name(next_test_ip4());
+        socket_name(next_test_ip4());
+    }
+
+    #[test]
+    fn socket_and_peer_name_ip6() {
+        // XXX: peer name is not consistent
+        //peer_name(next_test_ip6());
+        socket_name(next_test_ip6());
     }
 
 }

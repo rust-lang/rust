@@ -50,7 +50,7 @@ pub fn run_in_newsched_task(f: ~fn()) {
         let on_exit: ~fn(bool) = |exit_status| rtassert!(exit_status);
         let mut task = ~Task::new_root(&mut sched.stack_pool,
                                        f.take());
-        rtdebug!("newsched_task: %x", to_uint(task));
+        rtdebug!("newsched_task: %x", ::borrow::to_uint(task));
         task.death.on_exit = Some(on_exit);
         sched.enqueue_task(task);
         sched.run();
@@ -145,7 +145,7 @@ pub fn spawntask(f: ~fn()) {
         }
     };
 
-    rtdebug!("new task pointer: %x", to_uint(task));
+    rtdebug!("new task pointer: %x", ::borrow::to_uint(task));
 
     let sched = Local::take::<Scheduler>();
     rtdebug!("spawntask scheduling the new task");
