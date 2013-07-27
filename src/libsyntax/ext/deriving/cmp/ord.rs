@@ -14,9 +14,11 @@ use codemap::span;
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use ext::deriving::generic::*;
+use ext::deriving::DerivingOptions;
 
 pub fn expand_deriving_ord(cx: @ExtCtxt,
                            span: span,
+                           _options: DerivingOptions,
                            mitem: @MetaItem,
                            in_items: ~[@item]) -> ~[@item] {
     macro_rules! md (

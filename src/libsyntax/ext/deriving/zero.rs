@@ -13,14 +13,17 @@ use codemap::span;
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use ext::deriving::generic::*;
-
+use ext::deriving::DerivingOptions;
 use std::vec;
 
 pub fn expand_deriving_zero(cx: @ExtCtxt,
                             span: span,
+                            options: DerivingOptions,
                             mitem: @MetaItem,
                             in_items: ~[@item])
     -> ~[@item] {
+    options.unused_options_maybe_warn(cx, span, "Zero");
+
     let trait_def = TraitDef {
         path: Path::new(~["std", "num", "Zero"]),
         additional_bounds: ~[],

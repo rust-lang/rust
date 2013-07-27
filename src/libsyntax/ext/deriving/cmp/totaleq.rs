@@ -13,9 +13,11 @@ use codemap::span;
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use ext::deriving::generic::*;
+use ext::deriving::DerivingOptions;
 
 pub fn expand_deriving_totaleq(cx: @ExtCtxt,
                                span: span,
+                               _options: DerivingOptions,
                                mitem: @MetaItem,
                                in_items: ~[@item]) -> ~[@item] {
     fn cs_equals(cx: @ExtCtxt, span: span, substr: &Substructure) -> @expr {
