@@ -28,7 +28,8 @@ use back::link::{mangle_exported_name};
 use back::{link, abi};
 use driver::session;
 use driver::session::Session;
-use lib::llvm::{ContextRef, ModuleRef, ValueRef, BasicBlockRef};
+use driver::driver::{CrateAnalysis, CrateTranslation};
+use lib::llvm::{ModuleRef, ValueRef, BasicBlockRef};
 use lib::llvm::{llvm, True};
 use lib;
 use metadata::common::LinkMeta;
@@ -36,7 +37,6 @@ use metadata::{csearch, cstore, encoder};
 use middle::astencode;
 use middle::lang_items::{LangItem, ExchangeMallocFnLangItem, StartFnLangItem};
 use middle::lang_items::{MallocFnLangItem, ClosureExchangeMallocFnLangItem};
-use middle::resolve;
 use middle::trans::_match;
 use middle::trans::adt;
 use middle::trans::base;
@@ -66,7 +66,7 @@ use util::ppaux::{Repr, ty_to_str};
 use middle::trans::type_::Type;
 
 use std::hash;
-use std::hashmap::{HashMap, HashSet};
+use std::hashmap::HashMap;
 use std::io;
 use std::libc::c_uint;
 use std::uint;
@@ -2970,12 +2970,8 @@ pub fn write_abi_version(ccx: &mut CrateContext) {
 
 pub fn trans_crate(sess: session::Session,
                    crate: &ast::Crate,
-                   tcx: ty::ctxt,
-                   output: &Path,
-                   emap2: resolve::ExportMap2,
-                   reachable_map: @mut HashSet<ast::node_id>,
-                   maps: astencode::Maps)
-                   -> (ContextRef, ModuleRef, LinkMeta) {
+                   analysis: &CrateAnalysis,
+                   output: &Path) -> CrateTranslation {
     // Before we touch LLVM, make sure that multithreading is enabled.
     if unsafe { !llvm::LLVMRustStartMultithreading() } {
         //sess.bug("couldn't enable multi-threaded LLVM");
@@ -2996,12 +2992,12 @@ pub fn trans_crate(sess: session::Session,
 
     let ccx = @mut CrateContext::new(sess,
                                      llmod_id,
-                                     tcx,
-                                     emap2,
-                                     maps,
+                                     analysis.ty_cx,
+                                     analysis.exp_map2,
+                                     analysis.maps,
                                      symbol_hasher,
                                      link_meta,
-                                     reachable_map);
+                                     analysis.reachable);
 
     {
         let _icx = push_ctxt("data");
@@ -3056,5 +3052,9 @@ pub fn trans_crate(sess: session::Session,
     let link_meta = ccx.link_meta;
     let llmod = ccx.llmod;
 
-    return (llcx, llmod, link_meta);
+    return CrateTranslation {
+        context: llcx,
+        module: llmod,
+        link: link_meta
+    };
 }
