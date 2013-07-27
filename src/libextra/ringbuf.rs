@@ -34,9 +34,6 @@ pub struct RingBuf<T> {
 impl<T> Container for RingBuf<T> {
     /// Return the number of elements in the RingBuf
     fn len(&self) -> uint { self.nelts }
-
-    /// Return true if the RingBufcontains no elements
-    fn is_empty(&self) -> bool { self.len() == 0 }
 }
 
 impl<T> Mutable for RingBuf<T> {

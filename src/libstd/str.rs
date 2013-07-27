@@ -1099,24 +1099,16 @@ impl<'self> Container for &'self str {
     fn len(&self) -> uint {
         do self.as_imm_buf |_p, n| { n - 1u }
     }
-    #[inline]
-    fn is_empty(&self) -> bool {
-        self.len() == 0
-    }
 }
 
 impl Container for ~str {
     #[inline]
     fn len(&self) -> uint { self.as_slice().len() }
-    #[inline]
-    fn is_empty(&self) -> bool { self.len() == 0 }
 }
 
 impl Container for @str {
     #[inline]
     fn len(&self) -> uint { self.as_slice().len() }
-    #[inline]
-    fn is_empty(&self) -> bool { self.len() == 0 }
 }
 
 impl Mutable for ~str {
