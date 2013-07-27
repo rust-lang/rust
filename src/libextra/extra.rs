@@ -67,6 +67,8 @@ pub mod dlist;
 pub mod treemap;
 
 // Crypto
+#[path="crypto/cryptoutil.rs"]
+mod cryptoutil;
 #[path="crypto/digest.rs"]
 pub mod digest;
 #[path="crypto/sha1.rs"]
