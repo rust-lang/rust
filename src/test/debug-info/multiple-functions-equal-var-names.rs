@@ -15,34 +15,40 @@
 // debugger:run
 // debugger:finish
 
-// debugger:print x
-// check:$1 = 111102
-// debugger:print y
-// check:$2 = true
-
+// debugger:print abc
+// check:$1 = 10101
 // debugger:continue
+
 // debugger:finish
+// debugger:print abc
+// check:$2 = 20202
+// debugger:continue
 
-// debugger:print a
-// check:$3 = 2000
-// debugger:print b
-// check:$4 = 3000
+// debugger:finish
+// debugger:print abc
+// check:$3 = 30303
 
-fn main() {
-
-    fun(111102, true);
-    nested(2000, 3000);
-
-    fn nested(a: i32, b: i64) -> (i32, i64) {
-        zzz();
-        (a, b)
-    }
+fn function_one() {
+	let abc = 10101;
+	zzz();
 }
 
-fn fun(x: int, y: bool) -> (int, bool) {
-    zzz();
+fn function_two() {
+	let abc = 20202;
+	zzz();
+}
 
-    (x, y)
+
+fn function_three() {
+	let abc = 30303;
+	zzz();
+}
+
+
+fn main() {
+	function_one();
+	function_two();
+	function_three();
 }
 
 fn zzz() {()}

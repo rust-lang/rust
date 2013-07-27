@@ -1791,7 +1791,7 @@ pub fn copy_args_to_allocas(fcx: @mut FunctionContext,
         bcx = _match::store_arg(bcx, args[arg_n].pat, llarg);
 
         if fcx.ccx.sess.opts.extra_debuginfo && fcx_has_nonzero_span(fcx) {
-            debuginfo::create_argument_metadata(bcx, &args[arg_n], args[arg_n].ty.span);
+            debuginfo::create_argument_metadata(bcx, &args[arg_n]);
         }
     }
 
