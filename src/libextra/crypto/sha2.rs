@@ -756,7 +756,7 @@ static H224: [u32, ..8] = [
 
 #[cfg(test)]
 mod tests {
-    use digest::{Digest, DigestUtil};
+    use digest::Digest;
     use sha2::{Sha512, Sha384, Sha512Trunc256, Sha512Trunc224, Sha256, Sha224};
 
     struct Test {
