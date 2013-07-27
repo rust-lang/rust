@@ -2453,7 +2453,12 @@ pub fn get_item_val(ccx: @mut CrateContext, id: ast::node_id) -> ValueRef {
             let v = match i.node {
               ast::item_static(_, m, expr) => {
                 let typ = ty::node_id_to_type(ccx.tcx, i.id);
-                let s = mangle_exported_name(ccx, my_path, typ);
+                let s =
+                    if attr::contains_name(i.attrs, "no_mangle") {
+                        path_elt_to_str(*my_path.last(), token::get_ident_interner())
+                    } else {
+                        mangle_exported_name(ccx, my_path, typ)
+                    };
                 // We need the translated value here, because for enums the
                 // LLVM type is not fully determined by the Rust type.
                 let v = consts::const_expr(ccx, expr);
