@@ -281,7 +281,7 @@ static UNWIND_TOKEN: uintptr_t = 839147;
 
 impl Unwinder {
     pub fn try(&mut self, f: &fn()) {
-        use sys::Closure;
+        use unstable::raw::Closure;
 
         unsafe {
             let closure: Closure = transmute(f);

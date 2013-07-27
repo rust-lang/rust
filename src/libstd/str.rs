@@ -31,6 +31,7 @@ use ptr;
 use ptr::RawPtr;
 use to_str::ToStr;
 use uint;
+use unstable::raw::Repr;
 use vec;
 use vec::{OwnedVector, OwnedCopyableVector, ImmutableVector, MutableVector};
 
@@ -114,9 +115,9 @@ pub fn from_bytes_with_null<'a>(vv: &'a [u8]) -> &'a str {
 pub fn from_bytes_slice<'a>(vector: &'a [u8]) -> &'a str {
     unsafe {
         assert!(is_utf8(vector));
-        let (ptr, len): (*u8, uint) = ::cast::transmute(vector);
-        let string: &'a str = ::cast::transmute((ptr, len + 1));
-        string
+        let mut s = vector.repr();
+        s.len += 1;
+        cast::transmute(s)
     }
 }
 
@@ -142,7 +143,7 @@ impl ToStr for @str {
  */
 pub fn from_byte(b: u8) -> ~str {
     assert!(b < 128u8);
-    unsafe { ::cast::transmute(~[b, 0u8]) }
+    unsafe { cast::transmute(~[b, 0u8]) }
 }
 
 /// Convert a char to a string
@@ -217,7 +218,7 @@ impl<'self, S: Str> StrVector for &'self [S] {
             do s.as_mut_buf |buf, _| {
                 do sep.as_imm_buf |sepbuf, seplen| {
                     let seplen = seplen - 1;
-                    let mut buf = ::cast::transmute_mut_unsafe(buf);
+                    let mut buf = cast::transmute_mut_unsafe(buf);
                     for self.iter().advance |ss| {
                         do ss.as_slice().as_imm_buf |ssbuf, sslen| {
                             let sslen = sslen - 1;
@@ -771,10 +772,10 @@ pub mod raw {
     use cast;
     use libc;
     use ptr;
-    use str::raw;
-    use str::{is_utf8};
+    use str::is_utf8;
     use vec;
     use vec::MutableVector;
+    use unstable::raw::{Slice, String};
 
     /// Create a Rust string from a null-terminated *u8 buffer
     pub unsafe fn from_buf(buf: *u8) -> ~str {
@@ -797,17 +798,17 @@ pub mod raw {
         v.push(0u8);
 
         assert!(is_utf8(v));
-        return ::cast::transmute(v);
+        return cast::transmute(v);
     }
 
     /// Create a Rust string from a null-terminated C string
     pub unsafe fn from_c_str(c_str: *libc::c_char) -> ~str {
-        from_buf(::cast::transmute(c_str))
+        from_buf(c_str as *u8)
     }
 
     /// Create a Rust string from a `*c_char` buffer of the given length
     pub unsafe fn from_c_str_len(c_str: *libc::c_char, len: uint) -> ~str {
-        from_buf_len(::cast::transmute(c_str), len)
+        from_buf_len(c_str as *u8, len)
     }
 
     /// Converts a vector of bytes to a new owned string.
@@ -832,7 +833,7 @@ pub mod raw {
     }
 
     /// Converts a byte to a string.
-    pub unsafe fn from_byte(u: u8) -> ~str { raw::from_bytes([u]) }
+    pub unsafe fn from_byte(u: u8) -> ~str { from_bytes([u]) }
 
     /// Form a slice from a C string. Unsafe because the caller must ensure the
     /// C string has the static lifetime, or else the return value may be
@@ -845,9 +846,9 @@ pub mod raw {
             len += 1u;
             curr = ptr::offset(s, len);
         }
-        let v = (s, len + 1);
-        assert!(is_utf8(::cast::transmute(v)));
-        ::cast::transmute(v)
+        let v = Slice { data: s, len: len + 1 };
+        assert!(is_utf8(cast::transmute(v)));
+        cast::transmute(v)
     }
 
     /**
@@ -866,8 +867,10 @@ pub mod raw {
              assert!((begin <= end));
              assert!((end <= n));
 
-             let tuple = (ptr::offset(sbuf, begin), end - begin + 1);
-             ::cast::transmute(tuple)
+             cast::transmute(Slice {
+                 data: ptr::offset(sbuf, begin),
+                 len: end - begin + 1,
+             })
         }
     }
 
@@ -909,11 +912,10 @@ pub mod raw {
     /// Sets the length of the string and adds the null terminator
     #[inline]
     pub unsafe fn set_len(v: &mut ~str, new_len: uint) {
-        let v: **mut vec::UnboxedVecRepr = cast::transmute(v);
-        let repr: *mut vec::UnboxedVecRepr = *v;
+        let v: **mut String = cast::transmute(v);
+        let repr = *v;
         (*repr).fill = new_len + 1u;
-        let null = ptr::mut_offset(cast::transmute(&((*repr).data)),
-                                   new_len);
+        let null = ptr::mut_offset(&mut ((*repr).data), new_len);
         *null = 0u8;
     }
 
@@ -1595,7 +1597,7 @@ impl<'self> StrSlice<'self> for &'self str {
         let v = at_vec::from_fn(self.len() + 1, |i| {
             if i == self.len() { 0 } else { self[i] }
         });
-        unsafe { ::cast::transmute(v) }
+        unsafe { cast::transmute(v) }
     }
 
     /// Converts to a vector of `u16` encoded as UTF-16.
@@ -1750,9 +1752,9 @@ impl<'self> StrSlice<'self> for &'self str {
      */
     fn as_bytes(&self) -> &'self [u8] {
         unsafe {
-            let (ptr, len): (*u8, uint) = ::cast::transmute(*self);
-            let outgoing_tuple: (*u8, uint) = (ptr, len - 1);
-            ::cast::transmute(outgoing_tuple)
+            let mut slice = self.repr();
+            slice.len -= 1;
+            cast::transmute(slice)
         }
     }
 
@@ -2001,7 +2003,7 @@ impl NullTerminatedStr for ~str {
      */
     #[inline]
     fn as_bytes_with_null<'a>(&'a self) -> &'a [u8] {
-        let ptr: &'a ~[u8] = unsafe { ::cast::transmute(self) };
+        let ptr: &'a ~[u8] = unsafe { cast::transmute(self) };
         let slice: &'a [u8] = *ptr;
         slice
     }
@@ -2014,7 +2016,7 @@ impl NullTerminatedStr for @str {
      */
     #[inline]
     fn as_bytes_with_null<'a>(&'a self) -> &'a [u8] {
-        let ptr: &'a @[u8] = unsafe { ::cast::transmute(self) };
+        let ptr: &'a @[u8] = unsafe { cast::transmute(self) };
         let slice: &'a [u8] = *ptr;
         slice
     }
@@ -2058,7 +2060,7 @@ impl OwnedStr for ~str {
             do self.as_imm_buf |lbuf, _llen| {
                 do rhs.as_imm_buf |rbuf, _rlen| {
                     let dst = ptr::offset(lbuf, llen);
-                    let dst = ::cast::transmute_mut_unsafe(dst);
+                    let dst = cast::transmute_mut_unsafe(dst);
                     ptr::copy_memory(dst, rbuf, rlen);
                 }
             }
@@ -2076,7 +2078,7 @@ impl OwnedStr for ~str {
             do self.as_imm_buf |lbuf, _llen| {
                 do rhs.as_imm_buf |rbuf, _rlen| {
                     let dst = ptr::offset(lbuf, llen);
-                    let dst = ::cast::transmute_mut_unsafe(dst);
+                    let dst = cast::transmute_mut_unsafe(dst);
                     ptr::copy_memory(dst, rbuf, rlen);
                 }
             }
@@ -2232,7 +2234,7 @@ impl OwnedStr for ~str {
     /// string, and includes the null terminator.
     #[inline]
     fn to_bytes_with_null(self) -> ~[u8] {
-        unsafe { ::cast::transmute(self) }
+        unsafe { cast::transmute(self) }
     }
 
     #[inline]

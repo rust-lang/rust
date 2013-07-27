@@ -1,0 +1,61 @@
+// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// file at the top-level directory of this distribution and at
+// http://rust-lang.org/COPYRIGHT.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+
+use cast;
+use unstable::intrinsics::TyDesc;
+
+/// The representation of a Rust managed box
+pub struct Box<T> {
+    ref_count: uint,
+    type_desc: *TyDesc,
+    prev: *Box<T>,
+    next: *Box<T>,
+    data: T
+}
+
+/// The representation of a Rust vector
+pub struct Vec<T> {
+    fill: uint,
+    alloc: uint,
+    data: T
+}
+
+/// The representation of a Rust string
+pub type String = Vec<u8>;
+
+/// The representation of a Rust slice
+pub struct Slice<T> {
+    data: *T,
+    len: uint
+}
+
+/// The representation of a Rust closure
+pub struct Closure {
+    code: *(),
+    env: *(),
+}
+
+/// This trait is meant to map equivalences between raw structs and their
+/// corresponding rust values.
+pub trait Repr<T> {
+    /// This function "unwraps" a rust value (without consuming it) into its raw
+    /// struct representation. This can be used to read/write different values
+    /// for the struct. This is a safe method because by default it does not
+    /// give write-access to the struct returned.
+    fn repr(&self) -> T { unsafe { cast::transmute_copy(self) } }
+}
+
+impl<'self, T> Repr<Slice<T>> for &'self [T] {}
+impl<'self> Repr<Slice<u8>> for &'self str {}
+impl<T> Repr<*Box<T>> for @T {}
+impl<T> Repr<*Box<Vec<T>>> for @[T] {}
+
+// sure would be nice to have this
+// impl<T> Repr<*Vec<T>> for ~[T] {}
