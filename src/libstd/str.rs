@@ -23,7 +23,7 @@ use char::Char;
 use clone::Clone;
 use container::{Container, Mutable};
 use iter::Times;
-use iterator::{Iterator, FromIterator, IteratorUtil, FilterIterator, AdditiveIterator, MapIterator};
+use iterator::{Iterator, FromIterator, IteratorUtil, Filter, AdditiveIterator, Map};
 use libc;
 use num::Zero;
 use option::{None, Option, Some};
@@ -295,12 +295,11 @@ pub struct CharSplitIterator<'self,Sep> {
 
 /// An iterator over the words of a string, separated by an sequence of whitespace
 pub type WordIterator<'self> =
-    FilterIterator<'self, &'self str,
-             CharSplitIterator<'self, extern "Rust" fn(char) -> bool>>;
+    Filter<'self, &'self str, CharSplitIterator<'self, extern "Rust" fn(char) -> bool>>;
 
 /// An iterator over the lines of a string, separated by either `\n` or (`\r\n`).
 pub type AnyLineIterator<'self> =
-    MapIterator<'self, &'self str, &'self str, CharSplitIterator<'self, char>>;
+    Map<'self, &'self str, &'self str, CharSplitIterator<'self, char>>;
 
 impl<'self, Sep: CharEq> Iterator<&'self str> for CharSplitIterator<'self, Sep> {
     #[inline]

@@ -19,7 +19,7 @@ use container::{Container, Mutable, Map, MutableMap, Set, MutableSet};
 use clone::Clone;
 use cmp::{Eq, Equiv};
 use hash::Hash;
-use iterator::{Iterator, IteratorUtil, FromIterator, ChainIterator};
+use iterator::{Iterator, IteratorUtil, FromIterator, Chain};
 use num;
 use option::{None, Option, Some};
 use rand::RngUtil;
@@ -751,7 +751,7 @@ impl<T:Hash + Eq> HashSet<T> {
 
     /// Visit the values representing the symmetric difference
     pub fn symmetric_difference_iter<'a>(&'a self, other: &'a HashSet<T>)
-        -> ChainIterator<SetAlgebraIter<'a, T>, SetAlgebraIter<'a, T>> {
+        -> Chain<SetAlgebraIter<'a, T>, SetAlgebraIter<'a, T>> {
         self.difference_iter(other).chain_(other.difference_iter(self))
     }
 
@@ -764,7 +764,7 @@ impl<T:Hash + Eq> HashSet<T> {
 
     /// Visit the values representing the union
     pub fn union_iter<'a>(&'a self, other: &'a HashSet<T>)
-        -> ChainIterator<HashSetIterator<'a, T>, SetAlgebraIter<'a, T>> {
+        -> Chain<HashSetIterator<'a, T>, SetAlgebraIter<'a, T>> {
         self.iter().chain_(other.difference_iter(self))
     }
 
