@@ -8,10 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::cmp::{Eq, Ord};
 use std::num::NumCast;
 
-pub trait NumExt: Eq + Num + NumCast {}
+pub trait NumExt: OrderedRing + NumCast {}
 
 impl NumExt for f32 {}
 impl NumExt for int {}

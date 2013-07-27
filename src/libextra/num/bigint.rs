@@ -22,7 +22,7 @@ A BigInt is a combination of BigUint and Sign.
 use std::cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering, Less, Equal, Greater};
 use std::int;
 use std::num;
-use std::num::{IntConvertible, Zero, One, ToStrRadix, FromStrRadix, Orderable};
+use std::num::{IntConvertible, Zero, One, ToStrRadix, FromStrRadix, OrderedRing};
 use std::str;
 use std::uint;
 use std::vec;
@@ -151,9 +151,11 @@ impl FromStr for BigUint {
     }
 }
 
-impl Num for BigUint {}
+impl Semiring for BigUint;
 
-impl Orderable for BigUint {
+impl Ring for BigUint;
+
+impl OrderedRing for BigUint {
 
     fn min(&self, other: &BigUint) -> BigUint {
         if self < other { self.clone() } else { other.clone() }
@@ -202,7 +204,7 @@ impl One for BigUint {
     fn one() -> BigUint { BigUint::new(~[1]) }
 }
 
-impl Unsigned for BigUint {}
+impl Unsigned for BigUint;
 
 impl Add<BigUint, BigUint> for BigUint {
 
@@ -826,9 +828,11 @@ impl FromStr for BigInt {
     }
 }
 
-impl Num for BigInt {}
+impl Semiring for BigInt;
 
-impl Orderable for BigInt {
+impl Ring for BigInt;
+
+impl OrderedRing for BigInt {
 
     fn min(&self, other: &BigInt) -> BigInt {
         if self < other { self.clone() } else { other.clone() }

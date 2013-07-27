@@ -332,7 +332,9 @@ pub fn pow_with_uint(base: uint, pow: uint) -> float {
     return total;
 }
 
-impl Num for float {}
+impl Semiring for float;
+
+impl Ring for float;
 
 #[cfg(not(test))]
 impl Eq for float {
@@ -370,7 +372,7 @@ impl Ord for float {
     fn gt(&self, other: &float) -> bool { (*self) > (*other) }
 }
 
-impl Orderable for float {
+impl OrderedRing for float {
     /// Returns `NaN` if either of the numbers are `NaN`.
     #[inline]
     fn min(&self, other: &float) -> float {
@@ -433,11 +435,13 @@ impl Round for float {
     fn fract(&self) -> float { *self - self.trunc() }
 }
 
-impl Fractional for float {
+impl Field for float {
     /// The reciprocal (multiplicative inverse) of the number
     #[inline]
     fn recip(&self) -> float { 1.0 / *self }
 }
+
+impl Fractional for float;
 
 impl Algebraic for float {
     #[inline]

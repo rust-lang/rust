@@ -19,35 +19,6 @@ use option::Option;
 
 pub mod strconv;
 
-///
-/// The base trait for numeric types
-///
-pub trait Num: Eq + Zero + One
-             + Neg<Self>
-             + Add<Self,Self>
-             + Sub<Self,Self>
-             + Mul<Self,Self>
-             + Div<Self,Self>
-             + Rem<Self,Self> {}
-
-pub trait IntConvertible {
-    fn to_int(&self) -> int;
-    fn from_int(n: int) -> Self;
-}
-
-pub trait Orderable: Ord {
-    // These should be methods on `Ord`, with overridable default implementations. We don't want
-    // to encumber all implementors of Ord by requiring them to implement these functions, but at
-    // the same time we want to be able to take advantage of the speed of the specific numeric
-    // functions (like the `fmin` and `fmax` intrinsics).
-    fn min(&self, other: &Self) -> Self;
-    fn max(&self, other: &Self) -> Self;
-    fn clamp(&self, mn: &Self, mx: &Self) -> Self;
-}
-
-#[inline(always)] pub fn min<T: Orderable>(a: T, b: T) -> T { a.min(&b) }
-#[inline(always)] pub fn max<T: Orderable>(a: T, b: T) -> T { a.max(&b) }
-
 pub trait Zero {
     fn zero() -> Self;      // FIXME (#5527): This should be an associated constant
     fn is_zero(&self) -> bool;
@@ -57,7 +28,47 @@ pub trait One {
     fn one() -> Self;       // FIXME (#5527): This should be an associated constant
 }
 
-pub trait Signed: Num
+#[inline] pub fn zero<T:Zero>() -> T { Zero::zero() }
+#[inline] pub fn one<T:One>() -> T { One::one() }
+
+pub trait IntConvertible {
+    fn to_int(&self) -> int;
+    fn from_int(n: int) -> Self;
+}
+
+/// An algebraic structure that generalizes the addition and multiplication
+/// operations and their respective identities (`Zero` and `One`).
+pub trait Semiring: Eq
+                  + Add<Self,Self>
+                  + Mul<Self,Self>
+                  + Zero + One {}
+
+/// A `Semiring` that also requires the additive inverse operation (subtraction).
+pub trait Ring: Semiring
+              + Neg<Self>
+              + Sub<Self,Self> {}
+
+/// A `Ring` that also requires the multiplicative inverse operation (division).
+pub trait Field: Ring
+               + Div<Self,Self>
+               + Rem<Self,Self> {
+    fn recip(&self) -> Self;
+}
+
+pub trait OrderedRing: Ring + Ord {
+    // These should be methods on `Ord`, with overridable default implementations. We don't want
+    // to encumber all implementors of Ord by requiring them to implement these functions, but at
+    // the same time we want to be able to take advantage of the speed of the specific numeric
+    // functions (like the `fmin` and `fmax` intrinsics).
+    fn min(&self, other: &Self) -> Self;
+    fn max(&self, other: &Self) -> Self;
+    fn clamp(&self, mn: &Self, mx: &Self) -> Self;
+}
+
+#[inline(always)] pub fn min<T: OrderedRing>(a: T, b: T) -> T { a.min(&b) }
+#[inline(always)] pub fn max<T: OrderedRing>(a: T, b: T) -> T { a.max(&b) }
+
+pub trait Signed: Ring
                 + Neg<Self> {
     fn abs(&self) -> Self;
     fn abs_sub(&self, other: &Self) -> Self;
@@ -70,10 +81,9 @@ pub trait Signed: Num
 #[inline(always)] pub fn abs<T: Signed>(value: T) -> T { value.abs() }
 #[inline(always)] pub fn signum<T: Signed>(value: T) -> T { value.signum() }
 
-pub trait Unsigned: Num {}
+pub trait Unsigned: Ring {}
 
-pub trait Integer: Num
-                 + Orderable
+pub trait Integer: OrderedRing
                  + Div<Self,Self>
                  + Rem<Self,Self> {
     fn div_rem(&self, other: &Self) -> (Self,Self);
@@ -98,12 +108,9 @@ pub trait Round {
     fn fract(&self) -> Self;
 }
 
-pub trait Fractional: Num
-                    + Orderable
-                    + Round
-                    + Div<Self,Self> {
-    fn recip(&self) -> Self;
-}
+pub trait Fractional: Field
+                    + OrderedRing
+                    + Round {}
 
 pub trait Algebraic {
     fn pow(&self, n: &Self) -> Self;
@@ -250,7 +257,7 @@ pub trait Bounded {
 /// These may not always make sense from a purely mathematical point of view, but
 /// may be useful for systems programming.
 ///
-pub trait Primitive: Num
+pub trait Primitive: OrderedRing
                    + NumCast
                    + Bounded
                    + Neg<Self>
@@ -293,7 +300,6 @@ pub enum FPCategory {
 /// Primitive floating point numbers
 ///
 pub trait Float: Real
-               + Signed
                + Primitive
                + ApproxEq<Self> {
     // FIXME (#5527): These should be associated constants
@@ -461,9 +467,9 @@ impl<T: Zero> Zero for ~T {
     fn is_zero(&self) -> bool { (**self).is_zero() }
 }
 
-/// Helper function for testing numeric operations
+/// Helper function for testing numeric primitives
 #[cfg(test)]
-pub fn test_num<T:Num + NumCast>(ten: T, two: T) {
+pub fn test_num<T:Primitive>(ten: T, two: T) {
     assert_eq!(ten.add(&two),  cast(12));
     assert_eq!(ten.sub(&two),  cast(8));
     assert_eq!(ten.mul(&two),  cast(20));

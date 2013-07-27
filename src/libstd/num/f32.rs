@@ -165,7 +165,9 @@ pub mod consts {
     pub static ln_10: f32 = 2.30258509299404568401799145468436421_f32;
 }
 
-impl Num for f32 {}
+impl Semiring for f32;
+
+impl Ring for f32;
 
 #[cfg(not(test))]
 impl Eq for f32 {
@@ -203,7 +205,7 @@ impl Ord for f32 {
     fn gt(&self, other: &f32) -> bool { (*self) > (*other) }
 }
 
-impl Orderable for f32 {
+impl OrderedRing for f32 {
     /// Returns `NaN` if either of the numbers are `NaN`.
     #[inline]
     fn min(&self, other: &f32) -> f32 {
@@ -350,11 +352,13 @@ impl Round for f32 {
     fn fract(&self) -> f32 { *self - self.trunc() }
 }
 
-impl Fractional for f32 {
+impl Field for f32 {
     /// The reciprocal (multiplicative inverse) of the number
     #[inline]
     fn recip(&self) -> f32 { 1.0 / *self }
 }
+
+impl Fractional for f32;
 
 impl Algebraic for f32 {
     #[inline]

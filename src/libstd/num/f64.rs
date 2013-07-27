@@ -188,7 +188,9 @@ pub mod consts {
     pub static ln_10: f64 = 2.30258509299404568401799145468436421_f64;
 }
 
-impl Num for f64 {}
+impl Semiring for f64;
+
+impl Ring for f64;
 
 #[cfg(not(test))]
 impl Eq for f64 {
@@ -226,7 +228,7 @@ impl Ord for f64 {
     fn gt(&self, other: &f64) -> bool { (*self) > (*other) }
 }
 
-impl Orderable for f64 {
+impl OrderedRing for f64 {
     /// Returns `NaN` if either of the numbers are `NaN`.
     #[inline]
     fn min(&self, other: &f64) -> f64 {
@@ -363,11 +365,13 @@ impl Round for f64 {
     fn fract(&self) -> f64 { *self - self.trunc() }
 }
 
-impl Fractional for f64 {
+impl Field for f64 {
     /// The reciprocal (multiplicative inverse) of the number
     #[inline]
     fn recip(&self) -> f64 { 1.0 / *self }
 }
+
+impl Fractional for f64;
 
 impl Algebraic for f64 {
     #[inline]
