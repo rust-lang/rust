@@ -18,7 +18,6 @@ use syntax::ext::base::ExtCtxt;
 use syntax::{ast, attr, codemap, diagnostic, fold};
 use syntax::attr::AttrMetaMethods;
 use rustc::back::link::output_type_exe;
-use rustc::driver::driver::compile_upto;
 use rustc::driver::session::{lib_crate, bin_crate};
 use context::Ctx;
 use package_id::PkgId;
@@ -220,12 +219,8 @@ pub fn compile_input(ctxt: &Ctx,
     // Infer dependencies that rustpkg needs to build, by scanning for
     // `extern mod` directives.
     let cfg = driver::build_configuration(sess, binary, &input);
-    let (crate_opt, _) = driver::compile_upto(sess, cfg.clone(), &input, driver::cu_expand, None);
-
-    let mut crate = match crate_opt {
-        Some(c) => c,
-        None => fail!("compile_input expected...")
-    };
+    let mut crate = driver::phase_1_parse_input(sess, cfg.clone(), &input);
+    crate = driver::phase_2_configure_and_expand(sess, cfg, crate);
 
     // Not really right. Should search other workspaces too, and the installed
     // database (which doesn't exist yet)
@@ -257,7 +252,7 @@ pub fn compile_input(ctxt: &Ctx,
 
     debug!("calling compile_crate_from_input, out_dir = %s,
            building_library = %?", out_dir.to_str(), sess.building_library);
-    compile_crate_from_input(&input, out_dir, sess, crate, cfg.clone(), driver::cu_expand);
+    compile_crate_from_input(&input, out_dir, sess, crate);
     true
 }
 
@@ -269,9 +264,7 @@ pub fn compile_input(ctxt: &Ctx,
 pub fn compile_crate_from_input(input: &driver::input,
                                 build_dir: &Path,
                                 sess: session::Session,
-                                crate: @ast::Crate,
-                                cfg: ast::CrateConfig,
-                                compile_from: driver::compile_phase) {
+                                crate: @ast::Crate) {
     debug!("Calling build_output_filenames with %s, building library? %?",
            build_dir.to_str(), sess.building_library);
 
@@ -284,15 +277,13 @@ pub fn compile_crate_from_input(input: &driver::input,
     for sess.opts.addl_lib_search_paths.iter().advance |lib| {
         debug!("an additional library: %s", lib.to_str());
     }
-
-    driver::compile_rest(sess,
-                         cfg,
-                         compile_upto {
-                             from: compile_from,
-                             to: driver::cu_everything
-                         },
-                         Some(outputs),
-                         Some(crate));
+    let analysis = driver::phase_3_run_analysis_passes(sess, crate);
+    let translation = driver::phase_4_translate_to_llvm(sess, crate,
+                                                        &analysis,
+                                                        outputs);
+    driver::phase_5_run_llvm_passes(sess, &translation, outputs);
+    if driver::stop_after_phase_5(sess) { return; }
+    driver::phase_6_link_output(sess, &translation, outputs);
 }
 
 #[cfg(windows)]
