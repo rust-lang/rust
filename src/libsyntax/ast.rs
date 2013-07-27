@@ -498,7 +498,7 @@ pub enum expr_ {
     expr_mac(mac),
 
     // A struct literal expression.
-    expr_struct(Path, ~[Field], Option<@expr>),
+    expr_struct(Path, ~[Field], Option<@expr> /* base */),
 
     // A vector literal constructed from one repeated element.
     expr_repeat(@expr /* element */, @expr /* count */, mutability),
