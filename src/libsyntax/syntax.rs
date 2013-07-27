@@ -45,7 +45,6 @@ pub mod visit;
 pub mod fold;
 
 
-#[path = "parse/mod.rs"]
 pub mod parse;
 
 pub mod print {
@@ -60,7 +59,6 @@ pub mod ext {
 
     pub mod quote;
 
-    #[path = "deriving/mod.rs"]
     pub mod deriving;
 
     pub mod build;
@@ -80,7 +78,6 @@ pub mod ext {
     pub mod auto_encode;
     pub mod source_util;
 
-    #[path = "pipes/mod.rs"]
     pub mod pipes;
 
     pub mod trace_macros;

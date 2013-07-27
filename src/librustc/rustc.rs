@@ -41,18 +41,15 @@ use syntax::codemap;
 use syntax::diagnostic;
 
 pub mod middle {
-    #[path = "trans/mod.rs"]
     pub mod trans;
     pub mod ty;
     pub mod subst;
     pub mod resolve;
-    #[path = "typeck/mod.rs"]
     pub mod typeck;
     pub mod check_loop;
     pub mod check_match;
     pub mod check_const;
     pub mod lint;
-    #[path = "borrowck/mod.rs"]
     pub mod borrowck;
     pub mod dataflow;
     pub mod mem_categorization;
@@ -70,7 +67,6 @@ pub mod middle {
     pub mod effect;
     pub mod reachable;
     pub mod graph;
-    #[path = "cfg/mod.rs"]
     pub mod cfg;
 }
 
@@ -93,10 +89,8 @@ pub mod back {
     pub mod passes;
 }
 
-#[path = "metadata/mod.rs"]
 pub mod metadata;
 
-#[path = "driver/mod.rs"]
 pub mod driver;
 
 pub mod util {
