@@ -1154,6 +1154,7 @@ let mut x = 5;
     let y = &x; // x is now frozen, it cannot be modified
 }
 // x is now unfrozen again
+# x = 3;
 ~~~~
 
 Mutable managed boxes handle freezing dynamically when any of their contents
