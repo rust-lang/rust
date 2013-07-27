@@ -32,6 +32,7 @@ use middle::ty;
 use middle::ty::FnSig;
 use util::ppaux::ty_to_str;
 
+use std::cell::Cell;
 use std::uint;
 use std::vec;
 use syntax::codemap::span;
@@ -1139,22 +1140,20 @@ pub fn trans_foreign_fn(ccx: @mut CrateContext,
 
 pub fn register_foreign_fn(ccx: @mut CrateContext,
                            sp: span,
-                           path: ast_map::path,
-                           node_id: ast::node_id,
-                           attrs: &[ast::Attribute])
+                           sym: ~str,
+                           node_id: ast::node_id)
                            -> ValueRef {
     let _icx = push_ctxt("foreign::register_foreign_fn");
 
     let t = ty::node_id_to_type(ccx.tcx, node_id);
+    let sym = Cell::new(sym);
 
     let tys = shim_types(ccx, node_id);
     do tys.fn_ty.decl_fn |fnty| {
-        // XXX(pcwalton): We should not copy the path.
         register_fn_fuller(ccx,
                            sp,
-                           path.clone(),
+                           sym.take(),
                            node_id,
-                           attrs,
                            t,
                            lib::llvm::CCallConv,
                            fnty)
