@@ -15,6 +15,25 @@ use cryptoutil::{write_u64_be, write_u32_be, read_u64v_be, read_u32v_be, FixedBu
 use digest::Digest;
 
 
+// Sha-512 and Sha-256 use basically the same calculations which are implemented by these macros.
+// Inlining the calculations seems to result in better generated code.
+macro_rules! schedule_round( ($t:expr) => (
+        W[$t] = sigma1(W[$t - 2]) + W[$t - 7] + sigma0(W[$t - 15]) + W[$t - 16];
+    )
+)
+
+macro_rules! sha2_round(
+    ($A:ident, $B:ident, $C:ident, $D:ident,
+     $E:ident, $F:ident, $G:ident, $H:ident, $K:ident, $t:expr) => (
+        {
+            $H += sum1($E) + ch($E, $F, $G) + $K[$t] + W[$t];
+            $D += $H;
+            $H += sum0($A) + maj($A, $B, $C);
+        }
+    )
+)
+
+
 // BitCounter is a specialized structure intended simply for counting the
 // number of bits that have been processed by the SHA-2 512 family of functions.
 // It does very little overflow checking since such checking is not necessary
@@ -119,15 +138,6 @@ impl Engine512State {
             ((x << 45) | (x >> 19)) ^ ((x << 3) | (x >> 61)) ^ (x >> 6)
         }
 
-        let mut W = [0u64, ..80];
-
-        read_u64v_be(W.mut_slice(0, 16), data);
-
-        for uint::range(16, 80) |t| {
-            W[t] = sigma1(W[t - 2]) + W[t - 7] + sigma0(W[t - 15]) +
-                W[t - 16];
-        }
-
         let mut a = self.H0;
         let mut b = self.H1;
         let mut c = self.H2;
@@ -137,47 +147,41 @@ impl Engine512State {
         let mut g = self.H6;
         let mut h = self.H7;
 
-        let mut t = 0;
-        for uint::range(0, 10) |_| {
-            h += sum1(e) + ch(e, f, g) + K64[t] + W[t];
-            d += h;
-            h += sum0(a) + maj(a, b, c);
-            t += 1;
+        let mut W = [0u64, ..80];
 
-            g += sum1(d) + ch(d, e, f) + K64[t] + W[t];
-            c += g;
-            g += sum0(h) + maj(h, a, b);
-            t += 1;
+        read_u64v_be(W.mut_slice(0, 16), data);
 
-            f += sum1(c) + ch(c, d, e) + K64[t] + W[t];
-            b += f;
-            f += sum0(g) + maj(g, h, a);
-            t += 1;
+        // Putting the message schedule inside the same loop as the round calculations allows for
+        // the compiler to generate better code.
+        for uint::range_step(0, 64, 8) |t| {
+            schedule_round!(t + 16);
+            schedule_round!(t + 17);
+            schedule_round!(t + 18);
+            schedule_round!(t + 19);
+            schedule_round!(t + 20);
+            schedule_round!(t + 21);
+            schedule_round!(t + 22);
+            schedule_round!(t + 23);
 
-            e += sum1(b) + ch(b, c, d) + K64[t] + W[t];
-            a += e;
-            e += sum0(f) + maj(f, g, h);
-            t += 1;
+            sha2_round!(a, b, c, d, e, f, g, h, K64, t);
+            sha2_round!(h, a, b, c, d, e, f, g, K64, t + 1);
+            sha2_round!(g, h, a, b, c, d, e, f, K64, t + 2);
+            sha2_round!(f, g, h, a, b, c, d, e, K64, t + 3);
+            sha2_round!(e, f, g, h, a, b, c, d, K64, t + 4);
+            sha2_round!(d, e, f, g, h, a, b, c, K64, t + 5);
+            sha2_round!(c, d, e, f, g, h, a, b, K64, t + 6);
+            sha2_round!(b, c, d, e, f, g, h, a, K64, t + 7);
+        }
 
-            d += sum1(a) + ch(a, b, c) + K64[t] + W[t];
-            h += d;
-            d += sum0(e) + maj(e, f, g);
-            t += 1;
-
-            c += sum1(h) + ch(h, a, b) + K64[t] + W[t];
-            g += c;
-            c += sum0(d) + maj(d, e, f);
-            t += 1;
-
-            b += sum1(g) + ch(g, h, a) + K64[t] + W[t];
-            f += b;
-            b += sum0(c) + maj(c, d, e);
-            t += 1;
-
-            a += sum1(f) + ch(f, g, h) + K64[t] + W[t];
-            e += a;
-            a += sum0(b) + maj(b, c, d);
-            t += 1;
+        for uint::range_step(64, 80, 8) |t| {
+            sha2_round!(a, b, c, d, e, f, g, h, K64, t);
+            sha2_round!(h, a, b, c, d, e, f, g, K64, t + 1);
+            sha2_round!(g, h, a, b, c, d, e, f, K64, t + 2);
+            sha2_round!(f, g, h, a, b, c, d, e, K64, t + 3);
+            sha2_round!(e, f, g, h, a, b, c, d, K64, t + 4);
+            sha2_round!(d, e, f, g, h, a, b, c, K64, t + 5);
+            sha2_round!(c, d, e, f, g, h, a, b, K64, t + 6);
+            sha2_round!(b, c, d, e, f, g, h, a, K64, t + 7);
         }
 
         self.H0 += a;
@@ -524,15 +528,6 @@ impl Engine256State {
             ((x >> 17) | (x << 15)) ^ ((x >> 19) | (x << 13)) ^ (x >> 10)
         }
 
-        let mut W = [0u32, ..80];
-
-        read_u32v_be(W.mut_slice(0, 16), data);
-
-        for uint::range(16, 64) |t| {
-            W[t] = sigma1(W[t - 2]) + W[t - 7] + sigma0(W[t - 15]) +
-                W[t - 16];
-        }
-
         let mut a = self.H0;
         let mut b = self.H1;
         let mut c = self.H2;
@@ -542,47 +537,41 @@ impl Engine256State {
         let mut g = self.H6;
         let mut h = self.H7;
 
-        let mut t = 0;
-        for uint::range(0, 8) |_| {
-            h += sum1(e) + ch(e, f, g) + K32[t] + W[t];
-            d += h;
-            h += sum0(a) + maj(a, b, c);
-            t += 1;
+        let mut W = [0u32, ..64];
 
-            g += sum1(d) + ch(d, e, f) + K32[t] + W[t];
-            c += g;
-            g += sum0(h) + maj(h, a, b);
-            t += 1;
+        read_u32v_be(W.mut_slice(0, 16), data);
 
-            f += sum1(c) + ch(c, d, e) + K32[t] + W[t];
-            b += f;
-            f += sum0(g) + maj(g, h, a);
-            t += 1;
+        // Putting the message schedule inside the same loop as the round calculations allows for
+        // the compiler to generate better code.
+        for uint::range_step(0, 48, 8) |t| {
+            schedule_round!(t + 16);
+            schedule_round!(t + 17);
+            schedule_round!(t + 18);
+            schedule_round!(t + 19);
+            schedule_round!(t + 20);
+            schedule_round!(t + 21);
+            schedule_round!(t + 22);
+            schedule_round!(t + 23);
 
-            e += sum1(b) + ch(b, c, d) + K32[t] + W[t];
-            a += e;
-            e += sum0(f) + maj(f, g, h);
-            t += 1;
+            sha2_round!(a, b, c, d, e, f, g, h, K32, t);
+            sha2_round!(h, a, b, c, d, e, f, g, K32, t + 1);
+            sha2_round!(g, h, a, b, c, d, e, f, K32, t + 2);
+            sha2_round!(f, g, h, a, b, c, d, e, K32, t + 3);
+            sha2_round!(e, f, g, h, a, b, c, d, K32, t + 4);
+            sha2_round!(d, e, f, g, h, a, b, c, K32, t + 5);
+            sha2_round!(c, d, e, f, g, h, a, b, K32, t + 6);
+            sha2_round!(b, c, d, e, f, g, h, a, K32, t + 7);
+        }
 
-            d += sum1(a) + ch(a, b, c) + K32[t] + W[t];
-            h += d;
-            d += sum0(e) + maj(e, f, g);
-            t += 1;
-
-            c += sum1(h) + ch(h, a, b) + K32[t] + W[t];
-            g += c;
-            c += sum0(d) + maj(d, e, f);
-            t += 1;
-
-            b += sum1(g) + ch(g, h, a) + K32[t] + W[t];
-            f += b;
-            b += sum0(c) + maj(c, d, e);
-            t += 1;
-
-            a += sum1(f) + ch(f, g, h) + K32[t] + W[t];
-            e += a;
-            a += sum0(b) + maj(b, c, d);
-            t += 1;
+        for uint::range_step(48, 64, 8) |t| {
+            sha2_round!(a, b, c, d, e, f, g, h, K32, t);
+            sha2_round!(h, a, b, c, d, e, f, g, K32, t + 1);
+            sha2_round!(g, h, a, b, c, d, e, f, K32, t + 2);
+            sha2_round!(f, g, h, a, b, c, d, e, K32, t + 3);
+            sha2_round!(e, f, g, h, a, b, c, d, K32, t + 4);
+            sha2_round!(d, e, f, g, h, a, b, c, K32, t + 5);
+            sha2_round!(c, d, e, f, g, h, a, b, K32, t + 6);
+            sha2_round!(b, c, d, e, f, g, h, a, K32, t + 7);
         }
 
         self.H0 += a;
