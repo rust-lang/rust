@@ -135,19 +135,6 @@ impl<K: TotalOrd, V> MutableMap<K, V> for TreeMap<K, V> {
         find_mut(&mut self.root, key)
     }
 
-    /// Insert a key-value pair into the map. An existing value for a
-    /// key is replaced by the new value. Return true if the key did
-    /// not already exist in the map.
-    fn insert(&mut self, key: K, value: V) -> bool {
-        self.swap(key, value).is_none()
-    }
-
-    /// Remove a key-value pair from the map. Return true if the key
-    /// was present in the map, otherwise false.
-    fn remove(&mut self, key: &K) -> bool {
-        self.pop(key).is_some()
-    }
-
     /// Insert a key-value pair from the map. If the key already had a value
     /// present in the map, that value is returned. Otherwise None is returned.
     fn swap(&mut self, key: K, value: V) -> Option<V> {
