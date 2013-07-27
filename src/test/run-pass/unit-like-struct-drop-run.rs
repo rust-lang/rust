@@ -10,6 +10,7 @@
 
 // Make sure the destructor is run for unit-like structs.
 // xfail-fast
+// xfail-win32 #7999
 
 use std::task;
 
