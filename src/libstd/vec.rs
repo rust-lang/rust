@@ -2224,13 +2224,24 @@ impl<T> Iterator<T> for VecConsumeRevIterator<T> {
 }
 
 impl<A, T: Iterator<A>> FromIterator<A, T> for ~[A] {
-    pub fn from_iterator(iterator: &mut T) -> ~[A] {
+    fn from_iterator(iterator: &mut T) -> ~[A] {
         let (lower, _) = iterator.size_hint();
         let mut xs = with_capacity(lower);
         for iterator.advance |x| {
             xs.push(x);
         }
         xs
+    }
+}
+
+impl<A, T: Iterator<A>> Extendable<A, T> for ~[A] {
+    fn extend(&mut self, iterator: &mut T) {
+        let (lower, _) = iterator.size_hint();
+        let len = self.len();
+        self.reserve(len + lower);
+        for iterator.advance |x| {
+            self.push(x);
+        }
     }
 }
 
