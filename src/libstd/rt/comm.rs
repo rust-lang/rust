@@ -674,10 +674,11 @@ mod test {
             do run_in_newsched_task {
                 let (port, chan) = oneshot::<int>();
                 let port_cell = Cell::new(port);
-                let _thread = do spawntask_thread {
+                let thread = do spawntask_thread {
                     let _p = port_cell.take();
                 };
                 let _chan = chan;
+                thread.join();
             }
         }
     }
@@ -689,13 +690,15 @@ mod test {
                 let (port, chan) = oneshot::<int>();
                 let chan_cell = Cell::new(chan);
                 let port_cell = Cell::new(port);
-                let _thread1 = do spawntask_thread {
+                let thread1 = do spawntask_thread {
                     let _p = port_cell.take();
                 };
-                let _thread2 = do spawntask_thread {
+                let thread2 = do spawntask_thread {
                     let c = chan_cell.take();
                     c.send(1);
                 };
+                thread1.join();
+                thread2.join();
             }
         }
     }
@@ -707,19 +710,21 @@ mod test {
                 let (port, chan) = oneshot::<int>();
                 let chan_cell = Cell::new(chan);
                 let port_cell = Cell::new(port);
-                let _thread1 = do spawntask_thread {
+                let thread1 = do spawntask_thread {
                     let port_cell = Cell::new(port_cell.take());
                     let res = do spawntask_try {
                         port_cell.take().recv();
                     };
                     assert!(res.is_err());
                 };
-                let _thread2 = do spawntask_thread {
+                let thread2 = do spawntask_thread {
                     let chan_cell = Cell::new(chan_cell.take());
                     do spawntask {
                         chan_cell.take();
                     }
                 };
+                thread1.join();
+                thread2.join();
             }
         }
     }
@@ -731,12 +736,14 @@ mod test {
                 let (port, chan) = oneshot::<~int>();
                 let chan_cell = Cell::new(chan);
                 let port_cell = Cell::new(port);
-                let _thread1 = do spawntask_thread {
+                let thread1 = do spawntask_thread {
                     chan_cell.take().send(~10);
                 };
-                let _thread2 = do spawntask_thread {
+                let thread2 = do spawntask_thread {
                     assert!(port_cell.take().recv() == ~10);
                 };
+                thread1.join();
+                thread2.join();
             }
         }
     }
