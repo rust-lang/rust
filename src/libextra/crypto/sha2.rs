@@ -267,48 +267,6 @@ impl Engine512 {
 
         self.finished = true;
     }
-
-    fn result_512(&mut self, out: &mut [u8]) {
-        self.finish();
-
-        from_u64(self.H0, out.mut_slice(0, 8));
-        from_u64(self.H1, out.mut_slice(8, 16));
-        from_u64(self.H2, out.mut_slice(16, 24));
-        from_u64(self.H3, out.mut_slice(24, 32));
-        from_u64(self.H4, out.mut_slice(32, 40));
-        from_u64(self.H5, out.mut_slice(40, 48));
-        from_u64(self.H6, out.mut_slice(48, 56));
-        from_u64(self.H7, out.mut_slice(56, 64));
-    }
-
-    fn result_384(&mut self, out: &mut [u8]) {
-        self.finish();
-
-        from_u64(self.H0, out.mut_slice(0, 8));
-        from_u64(self.H1, out.mut_slice(8, 16));
-        from_u64(self.H2, out.mut_slice(16, 24));
-        from_u64(self.H3, out.mut_slice(24, 32));
-        from_u64(self.H4, out.mut_slice(32, 40));
-        from_u64(self.H5, out.mut_slice(40, 48));
-    }
-
-    fn result_256(&mut self, out: &mut [u8]) {
-        self.finish();
-
-        from_u64(self.H0, out.mut_slice(0, 8));
-        from_u64(self.H1, out.mut_slice(8, 16));
-        from_u64(self.H2, out.mut_slice(16, 24));
-        from_u64(self.H3, out.mut_slice(24, 32));
-    }
-
-    fn result_224(&mut self, out: &mut [u8]) {
-        self.finish();
-
-        from_u64(self.H0, out.mut_slice(0, 8));
-        from_u64(self.H1, out.mut_slice(8, 16));
-        from_u64(self.H2, out.mut_slice(16, 24));
-        from_u32((self.H3 >> 32) as u32, out.mut_slice(24, 28));
-    }
 }
 
 // Constants necessary for SHA-2 512 family of digests.
@@ -372,7 +330,17 @@ impl Digest for Sha512 {
     }
 
     fn result(&mut self, out: &mut [u8]) {
-        self.engine.result_512(out)
+        self.engine.finish();
+
+        from_u64(self.engine.H0, out.mut_slice(0, 8));
+        from_u64(self.engine.H1, out.mut_slice(8, 16));
+        from_u64(self.engine.H2, out.mut_slice(16, 24));
+        from_u64(self.engine.H3, out.mut_slice(24, 32));
+        from_u64(self.engine.H4, out.mut_slice(32, 40));
+        from_u64(self.engine.H5, out.mut_slice(40, 48));
+        from_u64(self.engine.H6, out.mut_slice(48, 56));
+        from_u64(self.engine.H7, out.mut_slice(56, 64));
+
     }
 
     fn reset(&mut self) {
@@ -428,7 +396,14 @@ impl Digest for Sha384 {
     }
 
     fn result(&mut self, out: &mut [u8]) {
-        self.engine.result_384(out)
+        self.engine.finish();
+
+        from_u64(self.engine.H0, out.mut_slice(0, 8));
+        from_u64(self.engine.H1, out.mut_slice(8, 16));
+        from_u64(self.engine.H2, out.mut_slice(16, 24));
+        from_u64(self.engine.H3, out.mut_slice(24, 32));
+        from_u64(self.engine.H4, out.mut_slice(32, 40));
+        from_u64(self.engine.H5, out.mut_slice(40, 48));
     }
 
     fn reset(&mut self) {
@@ -484,7 +459,12 @@ impl Digest for Sha512Trunc256 {
     }
 
     fn result(&mut self, out: &mut [u8]) {
-        self.engine.result_256(out)
+        self.engine.finish();
+
+        from_u64(self.engine.H0, out.mut_slice(0, 8));
+        from_u64(self.engine.H1, out.mut_slice(8, 16));
+        from_u64(self.engine.H2, out.mut_slice(16, 24));
+        from_u64(self.engine.H3, out.mut_slice(24, 32));
     }
 
     fn reset(&mut self) {
@@ -540,7 +520,12 @@ impl Digest for Sha512Trunc224 {
     }
 
     fn result(&mut self, out: &mut [u8]) {
-        self.engine.result_224(out)
+        self.engine.finish();
+
+        from_u64(self.engine.H0, out.mut_slice(0, 8));
+        from_u64(self.engine.H1, out.mut_slice(8, 16));
+        from_u64(self.engine.H2, out.mut_slice(16, 24));
+        from_u32((self.engine.H3 >> 32) as u32, out.mut_slice(24, 28));
     }
 
     fn reset(&mut self) {
@@ -774,31 +759,6 @@ impl Engine256 {
 
         self.finished = true;
     }
-
-    fn result_256(&mut self, out: &mut [u8]) {
-        self.finish();
-
-        from_u32(self.H0, out.mut_slice(0, 4));
-        from_u32(self.H1, out.mut_slice(4, 8));
-        from_u32(self.H2, out.mut_slice(8, 12));
-        from_u32(self.H3, out.mut_slice(12, 16));
-        from_u32(self.H4, out.mut_slice(16, 20));
-        from_u32(self.H5, out.mut_slice(20, 24));
-        from_u32(self.H6, out.mut_slice(24, 28));
-        from_u32(self.H7, out.mut_slice(28, 32));
-    }
-
-    fn result_224(&mut self, out: &mut [u8]) {
-        self.finish();
-
-        from_u32(self.H0, out.mut_slice(0, 4));
-        from_u32(self.H1, out.mut_slice(4, 8));
-        from_u32(self.H2, out.mut_slice(8, 12));
-        from_u32(self.H3, out.mut_slice(12, 16));
-        from_u32(self.H4, out.mut_slice(16, 20));
-        from_u32(self.H5, out.mut_slice(20, 24));
-        from_u32(self.H6, out.mut_slice(24, 28));
-    }
 }
 
 static K32: [u32, ..64] = [
@@ -857,7 +817,16 @@ impl Digest for Sha256 {
     }
 
     fn result(&mut self, out: &mut [u8]) {
-        self.engine.result_256(out)
+        self.engine.finish();
+
+        from_u32(self.engine.H0, out.mut_slice(0, 4));
+        from_u32(self.engine.H1, out.mut_slice(4, 8));
+        from_u32(self.engine.H2, out.mut_slice(8, 12));
+        from_u32(self.engine.H3, out.mut_slice(12, 16));
+        from_u32(self.engine.H4, out.mut_slice(16, 20));
+        from_u32(self.engine.H5, out.mut_slice(20, 24));
+        from_u32(self.engine.H6, out.mut_slice(24, 28));
+        from_u32(self.engine.H7, out.mut_slice(28, 32));
     }
 
     fn reset(&mut self) {
@@ -913,7 +882,15 @@ impl Digest for Sha224 {
     }
 
     fn result(&mut self, out: &mut [u8]) {
-        self.engine.result_224(out)
+        self.engine.finish();
+
+        from_u32(self.engine.H0, out.mut_slice(0, 4));
+        from_u32(self.engine.H1, out.mut_slice(4, 8));
+        from_u32(self.engine.H2, out.mut_slice(8, 12));
+        from_u32(self.engine.H3, out.mut_slice(12, 16));
+        from_u32(self.engine.H4, out.mut_slice(16, 20));
+        from_u32(self.engine.H5, out.mut_slice(20, 24));
+        from_u32(self.engine.H6, out.mut_slice(24, 28));
     }
 
     fn reset(&mut self) {
