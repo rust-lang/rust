@@ -2244,47 +2244,38 @@ pub fn trans_mod(ccx: @mut CrateContext, m: &ast::_mod) {
 
 pub fn register_fn(ccx: @mut CrateContext,
                    sp: span,
-                   path: path,
-                   node_id: ast::node_id,
-                   attrs: &[ast::Attribute])
+                   sym: ~str,
+                   node_id: ast::node_id)
                 -> ValueRef {
     let t = ty::node_id_to_type(ccx.tcx, node_id);
-    register_fn_full(ccx, sp, path, node_id, attrs, t)
+    register_fn_full(ccx, sp, sym, node_id, t)
 }
 
 pub fn register_fn_full(ccx: @mut CrateContext,
                         sp: span,
-                        path: path,
+                        sym: ~str,
                         node_id: ast::node_id,
-                        attrs: &[ast::Attribute],
                         node_type: ty::t)
                      -> ValueRef {
     let llfty = type_of_fn_from_ty(ccx, node_type);
-    register_fn_fuller(ccx, sp, path, node_id, attrs, node_type,
+    register_fn_fuller(ccx, sp, sym, node_id, node_type,
                        lib::llvm::CCallConv, llfty)
 }
 
 pub fn register_fn_fuller(ccx: @mut CrateContext,
                           sp: span,
-                          path: path,
+                          sym: ~str,
                           node_id: ast::node_id,
-                          attrs: &[ast::Attribute],
                           node_type: ty::t,
                           cc: lib::llvm::CallConv,
                           fn_ty: Type)
                           -> ValueRef {
     debug!("register_fn_fuller creating fn for item %d with path %s",
            node_id,
-           ast_map::path_to_str(path, token::get_ident_interner()));
+           ast_map::path_to_str(item_path(ccx, &node_id), token::get_ident_interner()));
 
-    let ps = if attr::contains_name(attrs, "no_mangle") {
-        path_elt_to_str(*path.last(), token::get_ident_interner())
-    } else {
-        mangle_exported_name(ccx, path, node_type)
-    };
-
-    let llfn = decl_fn(ccx.llmod, ps, cc, fn_ty);
-    ccx.item_symbols.insert(node_id, ps);
+    let llfn = decl_fn(ccx.llmod, sym, cc, fn_ty);
+    ccx.item_symbols.insert(node_id, sym);
 
     // FIXME #4404 android JNI hacks
     let is_entry = is_entry_fn(&ccx.sess, node_id) && (!*ccx.sess.building_library ||
@@ -2430,162 +2421,182 @@ pub fn fill_fn_pair(bcx: @mut Block, pair: ValueRef, llfn: ValueRef,
     Store(bcx, llenvblobptr, env_cell);
 }
 
-pub fn item_path(ccx: &CrateContext, i: &ast::item) -> path {
-    let base = match ccx.tcx.items.get_copy(&i.id) {
-        ast_map::node_item(_, p) => p,
-            // separate map for paths?
+pub fn item_path(ccx: &CrateContext, id: &ast::node_id) -> path {
+    match ccx.tcx.items.get_copy(id) {
+        ast_map::node_item(i, p) =>
+            vec::append((*p).clone(), [path_name(i.ident)]),
+        // separate map for paths?
         _ => fail!("item_path")
-    };
-    vec::append((*base).clone(), [path_name(i.ident)])
+    }
+}
+
+fn exported_name(ccx: @mut CrateContext, path: path, ty: ty::t, attrs: &[ast::Attribute]) -> ~str {
+    if attr::contains_name(attrs, "no_mangle") {
+        path_elt_to_str(*path.last(), token::get_ident_interner())
+    } else {
+        mangle_exported_name(ccx, path, ty)
+    }
 }
 
 pub fn get_item_val(ccx: @mut CrateContext, id: ast::node_id) -> ValueRef {
     debug!("get_item_val(id=`%?`)", id);
+
     let val = ccx.item_vals.find_copy(&id);
     match val {
-      Some(v) => v,
-      None => {
-        let mut exprt = false;
-        let item = ccx.tcx.items.get_copy(&id);
-        let val = match item {
-          ast_map::node_item(i, pth) => {
-            let my_path = vec::append((*pth).clone(), [path_name(i.ident)]);
-            let v = match i.node {
-              ast::item_static(_, m, expr) => {
-                let typ = ty::node_id_to_type(ccx.tcx, i.id);
-                let s = mangle_exported_name(ccx, my_path, typ);
-                // We need the translated value here, because for enums the
-                // LLVM type is not fully determined by the Rust type.
-                let v = consts::const_expr(ccx, expr);
-                ccx.const_values.insert(id, v);
-                exprt = m == ast::m_mutbl;
-                unsafe {
-                    let llty = llvm::LLVMTypeOf(v);
-                    let g = do s.as_c_str |buf| {
-                        llvm::LLVMAddGlobal(ccx.llmod, llty, buf)
-                    };
-                    ccx.item_symbols.insert(i.id, s);
-                    g
-                }
-              }
-              ast::item_fn(_, purity, _, _, _) => {
-                let llfn = if purity != ast::extern_fn {
-                    register_fn(ccx, i.span, my_path, i.id, i.attrs)
-                } else {
-                    foreign::register_foreign_fn(ccx,
-                                                 i.span,
-                                                 my_path,
-                                                 i.id,
-                                                 i.attrs)
-                };
-                set_inline_hint_if_appr(i.attrs, llfn);
-                llfn
-              }
-              _ => fail!("get_item_val: weird result in table")
-            };
-            match (attr::first_attr_value_str_by_name(i.attrs, "link_section")) {
-                Some(sect) => unsafe {
-                    do sect.as_c_str |buf| {
-                        llvm::LLVMSetSection(v, buf);
-                    }
-                },
-                None => ()
-            }
-            v
-          }
-          ast_map::node_trait_method(trait_method, _, pth) => {
-            debug!("get_item_val(): processing a node_trait_method");
-            match *trait_method {
-              ast::required(_) => {
-                ccx.sess.bug("unexpected variant: required trait method in \
-                              get_item_val()");
-              }
-              ast::provided(m) => {
-                exprt = true;
-                register_method(ccx, id, pth, m)
-              }
-            }
-          }
-          ast_map::node_method(m, _, pth) => {
-            register_method(ccx, id, pth, m)
-          }
-          ast_map::node_foreign_item(ni, _, _, pth) => {
-            exprt = true;
-            match ni.node {
-                ast::foreign_item_fn(*) => {
-                    register_fn(ccx, ni.span,
-                                vec::append((*pth).clone(),
-                                            [path_name(ni.ident)]),
-                                ni.id,
-                                ni.attrs)
-                }
-                ast::foreign_item_static(*) => {
-                    let typ = ty::node_id_to_type(ccx.tcx, ni.id);
-                    let ident = token::ident_to_str(&ni.ident);
-                    let g = do ident.as_c_str |buf| {
-                        unsafe {
-                            let ty = type_of(ccx, typ);
-                            llvm::LLVMAddGlobal(ccx.llmod, ty.to_ref(), buf)
+        Some(v) => v,
+        None => {
+            let mut exprt = false;
+            let item = ccx.tcx.items.get_copy(&id);
+            let val = match item {
+                ast_map::node_item(i, pth) => {
+
+                    let my_path = vec::append((*pth).clone(), [path_name(i.ident)]);
+                    let ty = ty::node_id_to_type(ccx.tcx, i.id);
+                    let sym = exported_name(ccx, my_path, ty, i.attrs);
+
+                    let v = match i.node {
+                        ast::item_static(_, m, expr) => {
+                            // We need the translated value here, because for enums the
+                            // LLVM type is not fully determined by the Rust type.
+                            let v = consts::const_expr(ccx, expr);
+                            ccx.const_values.insert(id, v);
+                            exprt = m == ast::m_mutbl;
+
+                            unsafe {
+                                let llty = llvm::LLVMTypeOf(v);
+                                let g = do sym.as_c_str |buf| {
+                                    llvm::LLVMAddGlobal(ccx.llmod, llty, buf)
+                                };
+
+                                ccx.item_symbols.insert(i.id, sym);
+                                g
+                            }
                         }
-                    };
-                    g
-                }
-            }
-          }
 
-          ast_map::node_variant(ref v, enm, pth) => {
-            let llfn;
-            match v.node.kind {
-                ast::tuple_variant_kind(ref args) => {
-                    assert!(args.len() != 0u);
-                    let pth = vec::append((*pth).clone(),
-                                          [path_name(enm.ident),
-                                           path_name((*v).node.name)]);
-                    llfn = match enm.node {
-                      ast::item_enum(_, _) => {
-                        register_fn(ccx, (*v).span, pth, id, enm.attrs)
-                      }
-                      _ => fail!("node_variant, shouldn't happen")
-                    };
-                }
-                ast::struct_variant_kind(_) => {
-                    fail!("struct variant kind unexpected in get_item_val")
-                }
-            }
-            set_inline_hint(llfn);
-            llfn
-          }
+                        ast::item_fn(_, purity, _, _, _) => {
+                            let llfn = if purity != ast::extern_fn {
+                                register_fn_full(ccx, i.span, sym, i.id, ty)
+                            } else {
+                                foreign::register_foreign_fn(ccx, i.span, sym, i.id)
+                            };
+                            set_inline_hint_if_appr(i.attrs, llfn);
+                            llfn
+                        }
 
-          ast_map::node_struct_ctor(struct_def, struct_item, struct_path) => {
-            // Only register the constructor if this is a tuple-like struct.
-            match struct_def.ctor_id {
-                None => {
-                    ccx.tcx.sess.bug("attempt to register a constructor of \
-                                  a non-tuple-like struct")
+                        _ => fail!("get_item_val: weird result in table")
+                    };
+
+                    match (attr::first_attr_value_str_by_name(i.attrs, "link_section")) {
+                        Some(sect) => unsafe {
+                            do sect.as_c_str |buf| {
+                                llvm::LLVMSetSection(v, buf);
+                            }
+                        },
+                        None => ()
+                    }
+
+                    v
                 }
-                Some(ctor_id) => {
-                    let llfn = register_fn(ccx,
-                                           struct_item.span,
-                                           (*struct_path).clone(),
-                                           ctor_id,
-                                           struct_item.attrs);
+
+                ast_map::node_trait_method(trait_method, _, pth) => {
+                    debug!("get_item_val(): processing a node_trait_method");
+                    match *trait_method {
+                        ast::required(_) => {
+                            ccx.sess.bug("unexpected variant: required trait method in \
+                                         get_item_val()");
+                        }
+                        ast::provided(m) => {
+                            exprt = true;
+                            register_method(ccx, id, pth, m)
+                        }
+                    }
+                }
+
+                ast_map::node_method(m, _, pth) => {
+                    register_method(ccx, id, pth, m)
+                }
+
+                ast_map::node_foreign_item(ni, _, _, pth) => {
+                    let ty = ty::node_id_to_type(ccx.tcx, ni.id);
+                    exprt = true;
+
+                    match ni.node {
+                        ast::foreign_item_fn(*) => {
+                            let path = vec::append((*pth).clone(), [path_name(ni.ident)]);
+                            let sym = exported_name(ccx, path, ty, ni.attrs);
+
+                            register_fn_full(ccx, ni.span, sym, ni.id, ty)
+                        }
+                        ast::foreign_item_static(*) => {
+                            let ident = token::ident_to_str(&ni.ident);
+                            let g = do ident.as_c_str |buf| {
+                                unsafe {
+                                    let ty = type_of(ccx, ty);
+                                    llvm::LLVMAddGlobal(ccx.llmod, ty.to_ref(), buf)
+                                }
+                            };
+                            g
+                        }
+                    }
+                }
+
+                ast_map::node_variant(ref v, enm, pth) => {
+                    let llfn;
+                    match v.node.kind {
+                        ast::tuple_variant_kind(ref args) => {
+                            assert!(args.len() != 0u);
+                            let pth = vec::append((*pth).clone(),
+                                                  [path_name(enm.ident),
+                                                   path_name((*v).node.name)]);
+                            let ty = ty::node_id_to_type(ccx.tcx, id);
+                            let sym = exported_name(ccx, pth, ty, enm.attrs);
+
+                            llfn = match enm.node {
+                                ast::item_enum(_, _) => {
+                                    register_fn_full(ccx, (*v).span, sym, id, ty)
+                                }
+                                _ => fail!("node_variant, shouldn't happen")
+                            };
+                        }
+                        ast::struct_variant_kind(_) => {
+                            fail!("struct variant kind unexpected in get_item_val")
+                        }
+                    }
                     set_inline_hint(llfn);
                     llfn
                 }
-            }
-          }
 
-          ref variant => {
-            ccx.sess.bug(fmt!("get_item_val(): unexpected variant: %?",
-                              variant))
-          }
-        };
-        if !exprt && !ccx.reachable.contains(&id) {
-            lib::llvm::SetLinkage(val, lib::llvm::InternalLinkage);
+                ast_map::node_struct_ctor(struct_def, struct_item, struct_path) => {
+                    // Only register the constructor if this is a tuple-like struct.
+                    match struct_def.ctor_id {
+                        None => {
+                            ccx.tcx.sess.bug("attempt to register a constructor of \
+                                              a non-tuple-like struct")
+                        }
+                        Some(ctor_id) => {
+                            let ty = ty::node_id_to_type(ccx.tcx, ctor_id);
+                            let sym = exported_name(ccx, (*struct_path).clone(), ty,
+                                                    struct_item.attrs);
+                            let llfn = register_fn_full(ccx, struct_item.span, sym, ctor_id, ty);
+                            set_inline_hint(llfn);
+                            llfn
+                        }
+                    }
+                }
+
+                ref variant => {
+                    ccx.sess.bug(fmt!("get_item_val(): unexpected variant: %?",
+                                 variant))
+                }
+            };
+
+            if !exprt && !ccx.reachable.contains(&id) {
+                lib::llvm::SetLinkage(val, lib::llvm::InternalLinkage);
+            }
+
+            ccx.item_vals.insert(id, val);
+            val
         }
-        ccx.item_vals.insert(id, val);
-        val
-      }
     }
 }
 
@@ -2599,7 +2610,9 @@ pub fn register_method(ccx: @mut CrateContext,
     path.push(path_name(gensym_name("meth")));
     path.push(path_name(m.ident));
 
-    let llfn = register_fn_full(ccx, m.span, path, id, m.attrs, mty);
+    let sym = exported_name(ccx, path, mty, m.attrs);
+
+    let llfn = register_fn_full(ccx, m.span, sym, id, mty);
     set_inline_hint_if_appr(m.attrs, llfn);
     llfn
 }
@@ -2613,7 +2626,7 @@ pub fn trans_constant(ccx: &mut CrateContext, it: @ast::item) {
                                    ast::def_id { crate: ast::local_crate,
                                                  node: it.id });
         let mut i = 0;
-        let path = item_path(ccx, it);
+        let path = item_path(ccx, &it.id);
         for (*enum_definition).variants.iter().advance |variant| {
             let p = vec::append(path.clone(), [
                 path_name(variant.node.name),
