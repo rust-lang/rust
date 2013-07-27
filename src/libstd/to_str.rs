@@ -21,12 +21,27 @@ use hashmap::HashSet;
 use hash::Hash;
 use iterator::Iterator;
 use cmp::Eq;
-use vec::ImmutableVector;
+use rt::io::{StringWriter, Decorator};
+use rt::io::mem::MemWriter;
+use str;
+use str::StrSlice;
+use vec::{Vector, ImmutableVector};
 
 /// A generic trait for converting a value to a string
 pub trait ToStr {
     /// Converts the value of `self` to an owned string
-    fn to_str(&self) -> ~str;
+    fn to_str(&self) -> ~str {
+        let mut wr = MemWriter::new();
+        self.to_str_writer(&mut wr);
+        str::from_bytes_owned(wr.inner())
+    }
+
+    /// Write a string representation of `self` to `w`
+    #[inline]
+    fn to_str_writer<W: StringWriter>(&self, w: &mut W) {
+        // Passing down `StringWriter` restricts implementors to writing string parts,
+        w.write_str(self.to_str());
+    }
 }
 
 /// Trait for converting a type to a string, consuming it in the process.
@@ -37,144 +52,162 @@ pub trait ToStrConsume {
 
 impl ToStr for () {
     #[inline]
-    fn to_str(&self) -> ~str { ~"()" }
+    fn to_str_writer<W: StringWriter>(&self, w: &mut W) { w.write_str("()"); }
 }
 
-impl<A:ToStr> ToStr for (A,) {
+/**
+* Convert a `bool` to a `str`.
+*
+* # Examples
+*
+* ~~~ {.rust}
+* rusti> true.to_str()
+* "true"
+* ~~~
+*
+* ~~~ {.rust}
+* rusti> false.to_str()
+* "false"
+* ~~~
+*/
+impl ToStr for bool {
     #[inline]
-    fn to_str(&self) -> ~str {
+    fn to_str_writer<W: StringWriter>(&self, w: &mut W) {
+        w.write_str(if *self { "true" } else { "false" })
+    }
+}
+
+impl ToStr for ~str {
+    #[inline]
+    fn to_str(&self) -> ~str { self.to_owned() }
+    #[inline]
+    fn to_str_writer<W: StringWriter>(&self, w: &mut W) { w.write_str(*self); }
+}
+impl<'self> ToStr for &'self str {
+    #[inline]
+    fn to_str(&self) -> ~str { self.to_owned() }
+    #[inline]
+    fn to_str_writer<W: StringWriter>(&self, w: &mut W) { w.write_str(*self); }
+}
+impl ToStr for @str {
+    #[inline]
+    fn to_str(&self) -> ~str { self.to_owned() }
+    #[inline]
+    fn to_str_writer<W: StringWriter>(&self, w: &mut W) { w.write_str(*self); }
+}
+
+impl<A: ToStr> ToStr for (A, ) {
+    #[inline]
+    fn to_str_writer<W: StringWriter>(&self, w: &mut W) {
+        w.write_char('(');
         match *self {
-            (ref a,) => {
-                fmt!("(%s,)", (*a).to_str())
-            }
+            (ref a, ) => a.to_str_writer(w),
         }
+        w.write_str(",)");
     }
 }
 
-impl<A:ToStr+Hash+Eq, B:ToStr> ToStr for HashMap<A, B> {
-    #[inline]
-    fn to_str(&self) -> ~str {
-        let mut acc = ~"{";
-        let mut first = true;
-        foreach (key, value) in self.iter() {
-            if first {
-                first = false;
+macro_rules! tuple_tostr(
+    ($A:ident, $($B:ident),+) => (
+        impl<$A: ToStr $(,$B: ToStr)+> ToStr for ($A, $($B),+) {
+            #[inline]
+            fn to_str_writer<W: StringWriter>(&self, w: &mut W) {
+                w.write_char('(');
+                match *self {
+                    (ref $A, $( ref $B ),+) => {
+                        ($A).to_str_writer(w);
+                        $(
+                            w.write_str(", ");
+                            ($B).to_str_writer(w);
+                        )*
+                    }
+                }
+                w.write_char(')');
             }
-            else {
-                acc.push_str(", ");
-            }
-            acc.push_str(key.to_str());
-            acc.push_str(": ");
-            acc.push_str(value.to_str());
         }
-        acc.push_char('}');
-        acc
-    }
-}
+    )
+)
 
-impl<A:ToStr+Hash+Eq> ToStr for HashSet<A> {
+tuple_tostr!(A, B)
+tuple_tostr!(A, B, C)
+tuple_tostr!(A, B, C, D)
+tuple_tostr!(A, B, C, D, E)
+tuple_tostr!(A, B, C, D, E, F)
+tuple_tostr!(A, B, C, D, E, F, G)
+tuple_tostr!(A, B, C, D, E, F, G, H)
+tuple_tostr!(A, B, C, D, E, F, G, H, I)
+tuple_tostr!(A, B, C, D, E, F, G, H, I, J)
+tuple_tostr!(A, B, C, D, E, F, G, H, I, J, K)
+tuple_tostr!(A, B, C, D, E, F, G, H, I, J, K, L)
+
+
+impl<'self, A: ToStr> ToStr for &'self [A] {
     #[inline]
-    fn to_str(&self) -> ~str {
-        let mut acc = ~"{";
+    fn to_str_writer<W: StringWriter>(&self, w: &mut W) {
+        w.write_char('[');
         let mut first = true;
         foreach element in self.iter() {
             if first {
                 first = false;
             }
             else {
-                acc.push_str(", ");
+                w.write_str(", ");
             }
-            acc.push_str(element.to_str());
+            element.to_str_writer(w);
         }
-        acc.push_char('}');
-        acc
+        w.write_char(']');
     }
 }
 
-impl<A:ToStr,B:ToStr> ToStr for (A, B) {
+impl<A: ToStr> ToStr for ~[A] {
     #[inline]
-    fn to_str(&self) -> ~str {
-        // FIXME(#4653): this causes an llvm assertion
-        //let &(ref a, ref b) = self;
-        match *self {
-            (ref a, ref b) => {
-                fmt!("(%s, %s)", (*a).to_str(), (*b).to_str())
-            }
-        }
-    }
-}
-
-impl<A:ToStr,B:ToStr,C:ToStr> ToStr for (A, B, C) {
-    #[inline]
-    fn to_str(&self) -> ~str {
-        // FIXME(#4653): this causes an llvm assertion
-        //let &(ref a, ref b, ref c) = self;
-        match *self {
-            (ref a, ref b, ref c) => {
-                fmt!("(%s, %s, %s)",
-                    (*a).to_str(),
-                    (*b).to_str(),
-                    (*c).to_str()
-                )
-            }
-        }
-    }
-}
-
-impl<'self,A:ToStr> ToStr for &'self [A] {
-    #[inline]
-    fn to_str(&self) -> ~str {
-        let mut acc = ~"[";
-        let mut first = true;
-        foreach elt in self.iter() {
-            if first {
-                first = false;
-            }
-            else {
-                acc.push_str(", ");
-            }
-            acc.push_str(elt.to_str());
-        }
-        acc.push_char(']');
-        acc
-    }
-}
-
-impl<A:ToStr> ToStr for ~[A] {
-    #[inline]
-    fn to_str(&self) -> ~str {
-        let mut acc = ~"[";
-        let mut first = true;
-        foreach elt in self.iter() {
-            if first {
-                first = false;
-            }
-            else {
-                acc.push_str(", ");
-            }
-            acc.push_str(elt.to_str());
-        }
-        acc.push_char(']');
-        acc
+    fn to_str_writer<W: StringWriter>(&self, w: &mut W) {
+        self.as_slice().to_str_writer(w)
     }
 }
 
 impl<A:ToStr> ToStr for @[A] {
     #[inline]
-    fn to_str(&self) -> ~str {
-        let mut acc = ~"[";
+    fn to_str_writer<W: StringWriter>(&self, w: &mut W) {
+        self.as_slice().to_str_writer(w)
+    }
+}
+
+impl<A:ToStr+Hash+Eq, B:ToStr> ToStr for HashMap<A, B> {
+    #[inline]
+    fn to_str_writer<W: StringWriter>(&self, w: &mut W) {
+        w.write_char('{');
         let mut first = true;
-        foreach elt in self.iter() {
+        foreach (key, value) in self.iter() {
             if first {
                 first = false;
             }
             else {
-                acc.push_str(", ");
+                w.write_str(", ");
             }
-            acc.push_str(elt.to_str());
+            key.to_str_writer(w);
+            w.write_str(": ");
+            value.to_str_writer(w);
         }
-        acc.push_char(']');
-        acc
+        w.write_char('}');
+    }
+}
+
+impl<A:ToStr+Hash+Eq> ToStr for HashSet<A> {
+    #[inline]
+    fn to_str_writer<W: StringWriter>(&self, w: &mut W) {
+        w.write_char('{');
+        let mut first = true;
+        foreach element in self.iter() {
+            if first {
+                first = false;
+            }
+            else {
+                w.write_str(", ");
+            }
+            element.to_str_writer(w);
+        }
+        w.write_char('}');
     }
 }
 

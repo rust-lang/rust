@@ -19,7 +19,6 @@ A quick summary:
 Implementations of the following traits:
 
 * `FromStr`
-* `ToStr`
 * `Not`
 * `Ord`
 * `TotalOrd`
@@ -39,7 +38,6 @@ Finally, some inquries into the nature of truth: `is_true` and `is_false`.
 
 use option::{None, Option, Some};
 use from_str::FromStr;
-use to_str::ToStr;
 
 #[cfg(not(test))] use cmp::{Eq, Ord, TotalOrd, Ordering};
 #[cfg(not(test))] use ops::Not;
@@ -199,28 +197,6 @@ impl FromStr for bool {
             "false" => Some(false),
             _       => None,
         }
-    }
-}
-
-/**
-* Convert a `bool` to a `str`.
-*
-* # Examples
-*
-* ~~~ {.rust}
-* rusti> true.to_str()
-* "true"
-* ~~~
-*
-* ~~~ {.rust}
-* rusti> false.to_str()
-* "false"
-* ~~~
-*/
-impl ToStr for bool {
-    #[inline]
-    fn to_str(&self) -> ~str {
-        if *self { ~"true" } else { ~"false" }
     }
 }
 
