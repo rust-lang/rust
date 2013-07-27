@@ -46,7 +46,7 @@ pub struct DataFlowContext<O> {
     priv words_per_id: uint,
 
     // mapping from node to bitset index.
-    priv nodeid_to_bitset: HashMap<ast::node_id,uint>,
+    priv nodeid_to_bitset: HashMap<ast::NodeId,uint>,
 
     // Bit sets per id.  The following three fields (`gens`, `kills`,
     // and `on_entry`) all have the same structure. For each id in
@@ -93,7 +93,7 @@ enum LoopKind {
 }
 
 struct LoopScope<'self> {
-    loop_id: ast::node_id,
+    loop_id: ast::NodeId,
     loop_kind: LoopKind,
     break_bits: ~[uint]
 }
@@ -126,7 +126,7 @@ impl<O:DataFlowOperator> DataFlowContext<O> {
         }
     }
 
-    pub fn add_gen(&mut self, id: ast::node_id, bit: uint) {
+    pub fn add_gen(&mut self, id: ast::NodeId, bit: uint) {
         //! Indicates that `id` generates `bit`
 
         debug!("add_gen(id=%?, bit=%?)", id, bit);
@@ -137,7 +137,7 @@ impl<O:DataFlowOperator> DataFlowContext<O> {
         }
     }
 
-    pub fn add_kill(&mut self, id: ast::node_id, bit: uint) {
+    pub fn add_kill(&mut self, id: ast::NodeId, bit: uint) {
         //! Indicates that `id` kills `bit`
 
         debug!("add_kill(id=%?, bit=%?)", id, bit);
@@ -148,7 +148,7 @@ impl<O:DataFlowOperator> DataFlowContext<O> {
         }
     }
 
-    fn apply_gen_kill(&mut self, id: ast::node_id, bits: &mut [uint]) {
+    fn apply_gen_kill(&mut self, id: ast::NodeId, bits: &mut [uint]) {
         //! Applies the gen and kill sets for `id` to `bits`
 
         debug!("apply_gen_kill(id=%?, bits=%s) [before]",
@@ -163,7 +163,7 @@ impl<O:DataFlowOperator> DataFlowContext<O> {
                id, mut_bits_to_str(bits));
     }
 
-    fn apply_kill(&mut self, id: ast::node_id, bits: &mut [uint]) {
+    fn apply_kill(&mut self, id: ast::NodeId, bits: &mut [uint]) {
         debug!("apply_kill(id=%?, bits=%s) [before]",
                id, mut_bits_to_str(bits));
         let (start, end) = self.compute_id_range(id);
@@ -173,14 +173,14 @@ impl<O:DataFlowOperator> DataFlowContext<O> {
                id, mut_bits_to_str(bits));
     }
 
-    fn compute_id_range_frozen(&self, id: ast::node_id) -> (uint, uint) {
+    fn compute_id_range_frozen(&self, id: ast::NodeId) -> (uint, uint) {
         let n = *self.nodeid_to_bitset.get(&id);
         let start = n * self.words_per_id;
         let end = start + self.words_per_id;
         (start, end)
     }
 
-    fn compute_id_range(&mut self, id: ast::node_id) -> (uint, uint) {
+    fn compute_id_range(&mut self, id: ast::NodeId) -> (uint, uint) {
         let mut expanded = false;
         let len = self.nodeid_to_bitset.len();
         let n = do self.nodeid_to_bitset.find_or_insert_with(id) |_| {
@@ -208,7 +208,7 @@ impl<O:DataFlowOperator> DataFlowContext<O> {
 
 
     pub fn each_bit_on_entry_frozen(&self,
-                                    id: ast::node_id,
+                                    id: ast::NodeId,
                                     f: &fn(uint) -> bool) -> bool {
         //! Iterates through each bit that is set on entry to `id`.
         //! Only useful after `propagate()` has been called.
@@ -223,7 +223,7 @@ impl<O:DataFlowOperator> DataFlowContext<O> {
     }
 
     pub fn each_bit_on_entry(&mut self,
-                             id: ast::node_id,
+                             id: ast::NodeId,
                              f: &fn(uint) -> bool) -> bool {
         //! Iterates through each bit that is set on entry to `id`.
         //! Only useful after `propagate()` has been called.
@@ -236,7 +236,7 @@ impl<O:DataFlowOperator> DataFlowContext<O> {
     }
 
     pub fn each_gen_bit(&mut self,
-                        id: ast::node_id,
+                        id: ast::NodeId,
                         f: &fn(uint) -> bool) -> bool {
         //! Iterates through each bit in the gen set for `id`.
 
@@ -248,7 +248,7 @@ impl<O:DataFlowOperator> DataFlowContext<O> {
     }
 
     pub fn each_gen_bit_frozen(&self,
-                               id: ast::node_id,
+                               id: ast::NodeId,
                                f: &fn(uint) -> bool) -> bool {
         //! Iterates through each bit in the gen set for `id`.
         if !self.nodeid_to_bitset.contains_key(&id) {
@@ -851,8 +851,8 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
     }
 
     fn walk_call(&mut self,
-                 _callee_id: ast::node_id,
-                 call_id: ast::node_id,
+                 _callee_id: ast::NodeId,
+                 call_id: ast::NodeId,
                  arg0: @ast::expr,
                  args: &[@ast::expr],
                  in_out: &mut [uint],
@@ -949,7 +949,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
         for bits.mut_iter().advance |b| { *b = e; }
     }
 
-    fn add_to_entry_set(&mut self, id: ast::node_id, pred_bits: &[uint]) {
+    fn add_to_entry_set(&mut self, id: ast::NodeId, pred_bits: &[uint]) {
         debug!("add_to_entry_set(id=%?, pred_bits=%s)",
                id, bits_to_str(pred_bits));
         let (start, end) = self.dfcx.compute_id_range(id);
@@ -965,7 +965,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
     }
 
     fn merge_with_entry_set(&mut self,
-                            id: ast::node_id,
+                            id: ast::NodeId,
                             pred_bits: &mut [uint]) {
         debug!("merge_with_entry_set(id=%?, pred_bits=%s)",
                id, mut_bits_to_str(pred_bits));

@@ -96,10 +96,10 @@ pub struct DebugContext {
     priv builder: DIBuilderRef,
     priv curr_loc: (uint, uint),
     priv created_files: HashMap<~str, DIFile>,
-    priv created_functions: HashMap<ast::node_id, DISubprogram>,
-    priv created_blocks: HashMap<ast::node_id, DILexicalBlock>,
+    priv created_functions: HashMap<ast::NodeId, DISubprogram>,
+    priv created_blocks: HashMap<ast::NodeId, DILexicalBlock>,
     priv created_types: HashMap<uint, DIType>,
-    priv last_function_context_id: ast::node_id,
+    priv last_function_context_id: ast::NodeId,
     priv argument_counter: uint,
 }
 

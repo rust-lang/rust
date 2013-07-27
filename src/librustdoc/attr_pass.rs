@@ -84,7 +84,7 @@ fn fold_item(
     let srv = fold.ctxt.clone();
     let doc = fold::default_seq_fold_item(fold, doc);
 
-    let desc = if doc.id == ast::crate_node_id {
+    let desc = if doc.id == ast::CRATE_NODE_ID {
         // This is the top-level mod, use the crate attributes
         do astsrv::exec(srv) |ctxt| {
             attr_parser::parse_desc(ctxt.ast.attrs.clone())

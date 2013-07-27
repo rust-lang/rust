@@ -66,7 +66,7 @@ fn fold_item(fold: &fold::Fold<Ctxt>, doc: doc::ItemDoc) -> doc::ItemDoc {
 }
 
 fn fold_mod(fold: &fold::Fold<Ctxt>, doc: doc::ModDoc) -> doc::ModDoc {
-    let is_topmod = doc.id() == ast::crate_node_id;
+    let is_topmod = doc.id() == ast::CRATE_NODE_ID;
 
     if !is_topmod { fold.ctxt.path.push(doc.name_()); }
     let doc = fold::default_any_fold_mod(fold, doc);

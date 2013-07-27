@@ -23,7 +23,7 @@ use syntax::ast::{decl_item, def, def_fn, def_id, def_static_method};
 use syntax::ast::{def_variant, expr_field, expr_method_call, expr_path};
 use syntax::ast::{expr_struct, expr_unary, ident, inherited, item_enum};
 use syntax::ast::{item_foreign_mod, item_fn, item_impl, item_struct};
-use syntax::ast::{item_trait, local_crate, node_id, pat_struct, Path};
+use syntax::ast::{item_trait, LOCAL_CRATE, NodeId, pat_struct, Path};
 use syntax::ast::{private, provided, public, required, stmt_decl, visibility};
 use syntax::ast;
 use syntax::ast_map::{node_foreign_item, node_item, node_method};
@@ -106,7 +106,7 @@ pub fn check_crate<'mm>(tcx: ty::ctxt,
     };
 
     // Returns true if a crate-local method is private and false otherwise.
-    let method_is_private: @fn(span: span, method_id: node_id) -> bool =
+    let method_is_private: @fn(span: span, method_id: NodeId) -> bool =
             |span, method_id| {
         let check = |vis: visibility, container_id: def_id| {
             let mut is_private = false;
@@ -116,7 +116,7 @@ pub fn check_crate<'mm>(tcx: ty::ctxt,
                 is_private = false;
             } else {
                 // Look up the enclosing impl.
-                if container_id.crate != local_crate {
+                if container_id.crate != LOCAL_CRATE {
                     tcx.sess.span_bug(span,
                                       "local method isn't in local \
                                        impl?!");
@@ -170,9 +170,9 @@ pub fn check_crate<'mm>(tcx: ty::ctxt,
     };
 
     // Returns true if the given local item is private and false otherwise.
-    let local_item_is_private: @fn(span: span, item_id: node_id) -> bool =
+    let local_item_is_private: @fn(span: span, item_id: NodeId) -> bool =
             |span, item_id| {
-        let mut f: &fn(node_id) -> bool = |_| false;
+        let mut f: &fn(NodeId) -> bool = |_| false;
         f = |item_id| {
             match tcx.items.find(&item_id) {
                 Some(&node_item(item, _)) => item.vis != public,
@@ -227,11 +227,11 @@ pub fn check_crate<'mm>(tcx: ty::ctxt,
         let method_id = ty::method(tcx, method_id).provided_source
             .get_or_default(method_id);
 
-        if method_id.crate == local_crate {
+        if method_id.crate == LOCAL_CRATE {
             let is_private = method_is_private(span, method_id.node);
             let container_id = ty::method(tcx, method_id).container_id;
             if is_private &&
-                    (container_id.crate != local_crate ||
+                    (container_id.crate != LOCAL_CRATE ||
                      !privileged_items.iter().any(|x| x == &(container_id.node))) {
                 tcx.sess.span_err(span,
                                   fmt!("method `%s` is private",
@@ -258,7 +258,7 @@ pub fn check_crate<'mm>(tcx: ty::ctxt,
                 check_method_common(span, method_id, path.idents.last())
             }
             def_fn(def_id, _) => {
-                if def_id.crate == local_crate {
+                if def_id.crate == LOCAL_CRATE {
                     if local_item_is_private(span, def_id.node) &&
                             !privileged_items.iter().any(|x| x == &def_id.node) {
                         tcx.sess.span_err(span,
@@ -291,7 +291,7 @@ pub fn check_crate<'mm>(tcx: ty::ctxt,
                  _
             }) |
             method_trait(trait_id, method_num, _) => {
-                if trait_id.crate == local_crate {
+                if trait_id.crate == LOCAL_CRATE {
                     match tcx.items.find(&trait_id.node) {
                         Some(&node_item(item, _)) => {
                             match item.node {
@@ -386,7 +386,7 @@ pub fn check_crate<'mm>(tcx: ty::ctxt,
                     match ty::get(ty::type_autoderef(tcx, ty::expr_ty(tcx,
                                                           base))).sty {
                         ty_struct(id, _)
-                        if id.crate != local_crate || !privileged_items.iter()
+                        if id.crate != LOCAL_CRATE || !privileged_items.iter()
                                 .any(|x| x == &(id.node)) => {
                             debug!("(privacy checking) checking field access");
                             check_field(expr.span, id, ident);
@@ -399,7 +399,7 @@ pub fn check_crate<'mm>(tcx: ty::ctxt,
                     match ty::get(ty::type_autoderef(tcx, ty::expr_ty(tcx,
                                                           base))).sty {
                         ty_struct(id, _)
-                        if id.crate != local_crate ||
+                        if id.crate != LOCAL_CRATE ||
                            !privileged_items.iter().any(|x| x == &(id.node)) => {
                             match method_map.find(&expr.id) {
                                 None => {
@@ -423,7 +423,7 @@ pub fn check_crate<'mm>(tcx: ty::ctxt,
                 expr_struct(_, ref fields, _) => {
                     match ty::get(ty::expr_ty(tcx, expr)).sty {
                         ty_struct(id, _) => {
-                            if id.crate != local_crate ||
+                            if id.crate != LOCAL_CRATE ||
                                     !privileged_items.iter().any(|x| x == &(id.node)) {
                                 for (*fields).iter().advance |field| {
                                         debug!("(privacy checking) checking \
@@ -433,7 +433,7 @@ pub fn check_crate<'mm>(tcx: ty::ctxt,
                             }
                         }
                         ty_enum(id, _) => {
-                            if id.crate != local_crate ||
+                            if id.crate != LOCAL_CRATE ||
                                     !privileged_items.iter().any(|x| x == &(id.node)) {
                                 match tcx.def_map.get_copy(&expr.id) {
                                     def_variant(_, variant_id) => {
@@ -469,7 +469,7 @@ pub fn check_crate<'mm>(tcx: ty::ctxt,
                     // since typeck already happened.)
                     match ty::get(ty::expr_ty(tcx, operand)).sty {
                         ty_enum(id, _) => {
-                            if id.crate != local_crate ||
+                            if id.crate != LOCAL_CRATE ||
                                 !privileged_items.iter().any(|x| x == &(id.node)) {
                                 check_variant(expr.span, id);
                             }
@@ -487,7 +487,7 @@ pub fn check_crate<'mm>(tcx: ty::ctxt,
                 pat_struct(_, ref fields, _) => {
                     match ty::get(ty::pat_ty(tcx, pattern)).sty {
                         ty_struct(id, _) => {
-                            if id.crate != local_crate ||
+                            if id.crate != LOCAL_CRATE ||
                                     !privileged_items.iter().any(|x| x == &(id.node)) {
                                 for fields.iter().advance |field| {
                                         debug!("(privacy checking) checking \
@@ -497,7 +497,7 @@ pub fn check_crate<'mm>(tcx: ty::ctxt,
                             }
                         }
                         ty_enum(enum_id, _) => {
-                            if enum_id.crate != local_crate ||
+                            if enum_id.crate != LOCAL_CRATE ||
                                     !privileged_items.iter().any(|x| x == &enum_id.node) {
                                 match tcx.def_map.find(&pattern.id) {
                                     Some(&def_variant(_, variant_id)) => {

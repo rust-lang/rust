@@ -107,7 +107,7 @@ impl AstConv for CrateCtxt {
     fn tcx(&self) -> ty::ctxt { self.tcx }
 
     fn get_item_ty(&self, id: ast::def_id) -> ty::ty_param_bounds_and_ty {
-        if id.crate != ast::local_crate {
+        if id.crate != ast::LOCAL_CRATE {
             csearch::get_type(self.tcx, id)
         } else {
             match self.tcx.items.find(&id.node) {
@@ -195,7 +195,7 @@ pub fn get_enum_variant_types(ccx: &CrateCtxt,
 }
 
 pub fn ensure_trait_methods(ccx: &CrateCtxt,
-                            trait_id: ast::node_id)
+                            trait_id: ast::NodeId)
 {
     let tcx = ccx.tcx;
     let region_paramd = tcx.region_paramd_items.find(&trait_id).map(|&x| *x);
@@ -248,7 +248,7 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt,
     }
 
     fn make_static_method_ty(ccx: &CrateCtxt,
-                             trait_id: ast::node_id,
+                             trait_id: ast::NodeId,
                              m: &ty::Method,
                              trait_ty_generics: &ty::Generics) {
         // If declaration is
@@ -352,10 +352,10 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt,
     }
 
     fn ty_method_of_trait_method(this: &CrateCtxt,
-                                 trait_id: ast::node_id,
+                                 trait_id: ast::NodeId,
                                  trait_rp: Option<ty::region_variance>,
                                  trait_generics: &ast::Generics,
-                                 m_id: &ast::node_id,
+                                 m_id: &ast::NodeId,
                                  m_ident: &ast::ident,
                                  m_explicit_self: &ast::explicit_self,
                                  m_generics: &ast::Generics,
@@ -384,7 +384,7 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt,
 }
 
 pub fn ensure_supertraits(ccx: &CrateCtxt,
-                          id: ast::node_id,
+                          id: ast::NodeId,
                           sp: codemap::span,
                           rp: Option<ty::region_variance>,
                           ast_trait_refs: &[ast::trait_ref],
@@ -666,7 +666,7 @@ pub fn check_methods_against_trait(ccx: &CrateCtxt,
     let trait_ref = instantiate_trait_ref(ccx, a_trait_ty, rp,
                                           generics, selfty);
 
-    if trait_ref.def_id.crate == ast::local_crate {
+    if trait_ref.def_id.crate == ast::LOCAL_CRATE {
         ensure_trait_methods(ccx, trait_ref.def_id.node);
     }
 
@@ -716,13 +716,13 @@ pub fn convert_field(ccx: &CrateCtxt,
 
 pub struct ConvertedMethod {
     mty: @ty::Method,
-    id: ast::node_id,
+    id: ast::NodeId,
     span: span,
-    body_id: ast::node_id
+    body_id: ast::NodeId
 }
 
 pub fn convert_methods(ccx: &CrateCtxt,
-                       container_id: ast::node_id,
+                       container_id: ast::NodeId,
                        ms: &[@ast::method],
                        untransformed_rcvr_ty: ty::t,
                        rcvr_ty_generics: &ty::Generics,
@@ -763,7 +763,7 @@ pub fn convert_methods(ccx: &CrateCtxt,
     }).collect();
 
     fn ty_of_method(ccx: &CrateCtxt,
-                    container_id: ast::node_id,
+                    container_id: ast::NodeId,
                     m: &ast::method,
                     rp: Option<ty::region_variance>,
                     untransformed_rcvr_ty: ty::t,
@@ -908,7 +908,7 @@ pub fn convert_struct(ccx: &CrateCtxt,
                       struct_def: &ast::struct_def,
                       generics: &ast::Generics,
                       tpt: ty::ty_param_bounds_and_ty,
-                      id: ast::node_id) {
+                      id: ast::NodeId) {
     let tcx = ccx.tcx;
 
     // Write the type of each of the members
@@ -1002,7 +1002,7 @@ pub fn instantiate_trait_ref(ccx: &CrateCtxt,
 }
 
 fn get_trait_def(ccx: &CrateCtxt, trait_id: ast::def_id) -> @ty::TraitDef {
-    if trait_id.crate != ast::local_crate {
+    if trait_id.crate != ast::LOCAL_CRATE {
         ty::lookup_trait_def(ccx.tcx, trait_id)
     } else {
         match ccx.tcx.items.get(&trait_id.node) {

@@ -38,7 +38,7 @@ use middle::typeck::infer::{new_infer_ctxt, resolve_ivar, resolve_type};
 use middle::typeck::infer;
 use syntax::ast::{Crate, def_id, def_struct, def_ty};
 use syntax::ast::{item, item_enum, item_impl, item_mod, item_struct};
-use syntax::ast::{local_crate, trait_ref, ty_path};
+use syntax::ast::{LOCAL_CRATE, trait_ref, ty_path};
 use syntax::ast;
 use syntax::ast_map::node_item;
 use syntax::ast_map;
@@ -114,7 +114,7 @@ pub fn type_is_defined_in_local_crate(original_type: t) -> bool {
             ty_enum(def_id, _) |
             ty_trait(def_id, _, _, _, _) |
             ty_struct(def_id, _) => {
-                if def_id.crate == ast::local_crate {
+                if def_id.crate == ast::LOCAL_CRATE {
                     found_nominal = true;
                 }
             }
@@ -513,7 +513,7 @@ impl CoherenceChecker {
                             let trait_def_id =
                                 self.trait_ref_to_trait_def_id(trait_ref);
 
-                            if trait_def_id.crate != local_crate {
+                            if trait_def_id.crate != LOCAL_CRATE {
                                 let session = self.crate_context.tcx.sess;
                                 session.span_err(item.span,
                                                  "cannot provide an extension implementation \
@@ -575,7 +575,7 @@ impl CoherenceChecker {
             ty_path(_, _, path_id) => {
                 match self.crate_context.tcx.def_map.get_copy(&path_id) {
                     def_ty(def_id) | def_struct(def_id) => {
-                        if def_id.crate != local_crate {
+                        if def_id.crate != LOCAL_CRATE {
                             return false;
                         }
 
@@ -647,7 +647,7 @@ impl CoherenceChecker {
     }
 
     pub fn span_of_impl(&self, implementation: @Impl) -> span {
-        assert_eq!(implementation.did.crate, local_crate);
+        assert_eq!(implementation.did.crate, LOCAL_CRATE);
         match self.crate_context.tcx.items.find(&implementation.did.node) {
             Some(&node_item(item, _)) => {
                 return item.span;
@@ -783,7 +783,7 @@ impl CoherenceChecker {
                 }
                 _ => {
                     // Destructors only work on nominal types.
-                    if impl_info.did.crate == ast::local_crate {
+                    if impl_info.did.crate == ast::LOCAL_CRATE {
                         match tcx.items.find(&impl_info.did.node) {
                             Some(&ast_map::node_item(@ref item, _)) => {
                                 tcx.sess.span_err((*item).span,

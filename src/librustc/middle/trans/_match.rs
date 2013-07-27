@@ -184,7 +184,7 @@ use syntax::print::pprust::pat_to_str;
 // An option identifying a literal: either a unit-like struct or an
 // expression.
 pub enum Lit {
-    UnitLikeStructLit(ast::node_id),    // the node ID of the pattern
+    UnitLikeStructLit(ast::NodeId),    // the node ID of the pattern
     ExprLit(@ast::expr),
     ConstLit(ast::def_id),              // the def ID of the constant
 }
@@ -292,7 +292,7 @@ pub fn trans_opt(bcx: @mut Block, o: &Opt) -> opt_result {
     }
 }
 
-pub fn variant_opt(bcx: @mut Block, pat_id: ast::node_id)
+pub fn variant_opt(bcx: @mut Block, pat_id: ast::NodeId)
     -> Opt {
     let ccx = bcx.ccx();
     match ccx.tcx.def_map.get_copy(&pat_id) {
@@ -334,7 +334,7 @@ pub enum TransBindingMode {
 pub struct BindingInfo {
     llmatch: ValueRef,
     trmode: TransBindingMode,
-    id: ast::node_id,
+    id: ast::NodeId,
     ty: ty::t,
 }
 
@@ -885,7 +885,7 @@ pub fn extract_variant_args(bcx: @mut Block,
     ExtractedBlock { vals: args, bcx: bcx }
 }
 
-fn match_datum(bcx: @mut Block, val: ValueRef, pat_id: ast::node_id) -> Datum {
+fn match_datum(bcx: @mut Block, val: ValueRef, pat_id: ast::NodeId) -> Datum {
     //! Helper for converting from the ValueRef that we pass around in
     //! the match code, which is always by ref, into a Datum. Eventually
     //! we should just pass around a Datum and be done with it.
@@ -897,7 +897,7 @@ fn match_datum(bcx: @mut Block, val: ValueRef, pat_id: ast::node_id) -> Datum {
 
 pub fn extract_vec_elems(bcx: @mut Block,
                          pat_span: span,
-                         pat_id: ast::node_id,
+                         pat_id: ast::NodeId,
                          elem_count: uint,
                          slice: Option<uint>,
                          val: ValueRef,
@@ -1871,7 +1871,7 @@ pub fn store_arg(mut bcx: @mut Block,
 }
 
 fn mk_binding_alloca(mut bcx: @mut Block,
-                     p_id: ast::node_id,
+                     p_id: ast::NodeId,
                      path: &ast::Path,
                      binding_mode: IrrefutablePatternBindingMode,
                      populate: &fn(@mut Block, ty::t, ValueRef) -> @mut Block) -> @mut Block {

@@ -49,7 +49,7 @@ pub struct MoveData {
     /// assigned dataflow bits, but we track them because they still
     /// kill move bits.
     path_assignments: ~[Assignment],
-    assignee_ids: HashSet<ast::node_id>,
+    assignee_ids: HashSet<ast::NodeId>,
 }
 
 pub struct FlowedMoveData {
@@ -118,7 +118,7 @@ pub struct Move {
     path: MovePathIndex,
 
     /// id of node that is doing the move.
-    id: ast::node_id,
+    id: ast::NodeId,
 
     /// Kind of move, for error messages.
     kind: MoveKind,
@@ -132,7 +132,7 @@ pub struct Assignment {
     path: MovePathIndex,
 
     /// id where assignment occurs
-    id: ast::node_id,
+    id: ast::NodeId,
 
     /// span of node where assignment occurs
     span: span,
@@ -296,7 +296,7 @@ impl MoveData {
     pub fn add_move(&mut self,
                     tcx: ty::ctxt,
                     lp: @LoanPath,
-                    id: ast::node_id,
+                    id: ast::NodeId,
                     kind: MoveKind) {
         /*!
          * Adds a new move entry for a move of `lp` that occurs at
@@ -325,9 +325,9 @@ impl MoveData {
     pub fn add_assignment(&mut self,
                           tcx: ty::ctxt,
                           lp: @LoanPath,
-                          assign_id: ast::node_id,
+                          assign_id: ast::NodeId,
                           span: span,
-                          assignee_id: ast::node_id) {
+                          assignee_id: ast::NodeId) {
         /*!
          * Adds a new record for an assignment to `lp` that occurs at
          * location `id` with the given `span`.
@@ -460,7 +460,7 @@ impl MoveData {
 
     fn kill_moves(&self,
                   path: MovePathIndex,
-                  kill_id: ast::node_id,
+                  kill_id: ast::NodeId,
                   dfcx_moves: &mut MoveDataFlow) {
         for self.each_applicable_move(path) |move_index| {
             dfcx_moves.add_kill(kill_id, *move_index);
@@ -499,7 +499,7 @@ impl FlowedMoveData {
     }
 
     pub fn each_path_moved_by(&self,
-                              id: ast::node_id,
+                              id: ast::NodeId,
                               f: &fn(&Move, @LoanPath) -> bool)
                               -> bool {
         /*!
@@ -517,7 +517,7 @@ impl FlowedMoveData {
     }
 
     pub fn each_move_of(&self,
-                        id: ast::node_id,
+                        id: ast::NodeId,
                         loan_path: @LoanPath,
                         f: &fn(&Move, @LoanPath) -> bool)
                         -> bool {
@@ -573,7 +573,7 @@ impl FlowedMoveData {
     }
 
     pub fn is_assignee(&self,
-                       id: ast::node_id)
+                       id: ast::NodeId)
                        -> bool {
         //! True if `id` is the id of the LHS of an assignment
 
@@ -581,7 +581,7 @@ impl FlowedMoveData {
     }
 
     pub fn each_assignment_of(&self,
-                              id: ast::node_id,
+                              id: ast::NodeId,
                               loan_path: @LoanPath,
                               f: &fn(&Assignment) -> bool)
                               -> bool {

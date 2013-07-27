@@ -12,7 +12,7 @@
 use driver::session;
 use driver::session::Session;
 use syntax::parse::token::special_idents;
-use syntax::ast::{Crate, node_id, item, item_fn};
+use syntax::ast::{Crate, NodeId, item, item_fn};
 use syntax::attr;
 use syntax::codemap::span;
 use syntax::visit::{default_visitor, mk_vt, vt, Visitor, visit_crate, visit_item};
@@ -25,17 +25,17 @@ struct EntryContext {
     ast_map: ast_map::map,
 
     // The top-level function called 'main'
-    main_fn: Option<(node_id, span)>,
+    main_fn: Option<(NodeId, span)>,
 
     // The function that has attribute named 'main'
-    attr_main_fn: Option<(node_id, span)>,
+    attr_main_fn: Option<(NodeId, span)>,
 
     // The function that has the attribute 'start' on it
-    start_fn: Option<(node_id, span)>,
+    start_fn: Option<(NodeId, span)>,
 
     // The functions that one might think are 'main' but aren't, e.g.
     // main functions not defined at the top level. For diagnostics.
-    non_main_fns: ~[(node_id, span)],
+    non_main_fns: ~[(NodeId, span)],
 }
 
 type EntryVisitor = vt<@mut EntryContext>;

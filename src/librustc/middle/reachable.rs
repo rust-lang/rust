@@ -59,7 +59,7 @@ fn item_might_be_inlined(item: @item) -> bool {
 
 // Returns true if the given type method must be inlined because it may be
 // monomorphized or it was marked with `#[inline]`.
-fn ty_method_might_be_inlined(ty_method: &ty_method) -> bool {
+fn ty_method_might_be_inlined(ty_method: &TypeMethod) -> bool {
     attributes_specify_inlining(ty_method.attrs) ||
         generics_require_inlining(&ty_method.generics)
 }
@@ -90,10 +90,10 @@ struct ReachableContext {
     // methods they've been resolved to.
     method_map: typeck::method_map,
     // The set of items which must be exported in the linkage sense.
-    reachable_symbols: @mut HashSet<node_id>,
+    reachable_symbols: @mut HashSet<NodeId>,
     // A worklist of item IDs. Each item ID in this worklist will be inlined
     // and will be scanned for further references.
-    worklist: @mut ~[node_id],
+    worklist: @mut ~[NodeId],
 }
 
 impl ReachableContext {
@@ -216,7 +216,7 @@ impl ReachableContext {
     // eligible for inlining and false otherwise.
     fn def_id_represents_local_inlined_item(tcx: ty::ctxt, def_id: def_id)
                                             -> bool {
-        if def_id.crate != local_crate {
+        if def_id.crate != LOCAL_CRATE {
             return false
         }
 
@@ -241,7 +241,7 @@ impl ReachableContext {
                 } else {
                     // Check the impl. If the generics on the self type of the
                     // impl require inlining, this method does too.
-                    assert!(impl_did.crate == local_crate);
+                    assert!(impl_did.crate == LOCAL_CRATE);
                     match tcx.items.find(&impl_did.node) {
                         Some(&ast_map::node_item(item, _)) => {
                             match item.node {
@@ -394,7 +394,7 @@ impl ReachableContext {
     fn mark_destructors_reachable(&self) {
         for self.tcx.destructor_for_type.iter().advance
                 |(_, destructor_def_id)| {
-            if destructor_def_id.crate == local_crate {
+            if destructor_def_id.crate == LOCAL_CRATE {
                 self.reachable_symbols.insert(destructor_def_id.node);
             }
         }
@@ -404,7 +404,7 @@ impl ReachableContext {
 pub fn find_reachable(tcx: ty::ctxt,
                       method_map: typeck::method_map,
                       crate: @Crate)
-                      -> @mut HashSet<node_id> {
+                      -> @mut HashSet<NodeId> {
     // XXX(pcwalton): We only need to mark symbols that are exported. But this
     // is more complicated than just looking at whether the symbol is `pub`,
     // because it might be the target of a `pub use` somewhere. For now, I

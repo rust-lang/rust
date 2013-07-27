@@ -27,7 +27,7 @@ pub struct freevar_entry {
     span: span     //< First span where it is accessed (there can be multiple)
 }
 pub type freevar_info = @~[@freevar_entry];
-pub type freevar_map = @mut HashMap<ast::node_id, freevar_info>;
+pub type freevar_map = @mut HashMap<ast::NodeId, freevar_info>;
 
 // Searches through part of the AST for all references to locals or
 // upvars in this frame and returns the list of definition IDs thus found.
@@ -95,7 +95,7 @@ pub fn annotate_freevars(def_map: resolve::DefMap, crate: &ast::Crate) ->
                      &ast::fn_decl,
                      &ast::Block,
                      span,
-                     ast::node_id) = |_, _, blk, _, nid| {
+                     ast::NodeId) = |_, _, blk, _, nid| {
         let vars = collect_freevars(def_map, blk);
         freevars.insert(nid, vars);
     };
@@ -109,13 +109,13 @@ pub fn annotate_freevars(def_map: resolve::DefMap, crate: &ast::Crate) ->
     return freevars;
 }
 
-pub fn get_freevars(tcx: ty::ctxt, fid: ast::node_id) -> freevar_info {
+pub fn get_freevars(tcx: ty::ctxt, fid: ast::NodeId) -> freevar_info {
     match tcx.freevars.find(&fid) {
       None => fail!("get_freevars: %d has no freevars", fid),
       Some(&d) => return d
     }
 }
 
-pub fn has_freevars(tcx: ty::ctxt, fid: ast::node_id) -> bool {
+pub fn has_freevars(tcx: ty::ctxt, fid: ast::NodeId) -> bool {
     !get_freevars(tcx, fid).is_empty()
 }

@@ -157,9 +157,9 @@ pub struct CaptureVar {
     mode: CaptureMode // How variable is being accessed
 }
 
-pub type CaptureMap = @mut HashMap<node_id, @[CaptureVar]>;
+pub type CaptureMap = @mut HashMap<NodeId, @[CaptureVar]>;
 
-pub type MovesMap = @mut HashSet<node_id>;
+pub type MovesMap = @mut HashSet<NodeId>;
 
 /**
  * Set of variable node-ids that are moved.
@@ -167,7 +167,7 @@ pub type MovesMap = @mut HashSet<node_id>;
  * Note: The `VariableMovesMap` stores expression ids that
  * are moves, whereas this set stores the ids of the variables
  * that are moved at some point */
-pub type MovedVariablesSet = @mut HashSet<node_id>;
+pub type MovedVariablesSet = @mut HashSet<NodeId>;
 
 /** See the section Output on the module comment for explanation. */
 #[deriving(Clone)]
@@ -213,7 +213,7 @@ pub fn compute_moves(tcx: ty::ctxt,
     return visit_cx.move_maps;
 }
 
-pub fn moved_variable_node_id_from_def(def: def) -> Option<node_id> {
+pub fn moved_variable_node_id_from_def(def: def) -> Option<NodeId> {
     match def {
       def_binding(nid, _) |
       def_arg(nid, _) |
@@ -240,7 +240,7 @@ fn compute_modes_for_fn(fk: &visit::fn_kind,
                         decl: &fn_decl,
                         body: &Block,
                         span: span,
-                        id: node_id,
+                        id: NodeId,
                         (cx, v): (VisitContext,
                                   vt<VisitContext>)) {
     for decl.inputs.iter().advance |a| {
@@ -634,7 +634,7 @@ impl VisitContext {
     }
 
     pub fn use_fn_args(&self,
-                       _: node_id,
+                       _: NodeId,
                        arg_exprs: &[@expr],
                        visitor: vt<VisitContext>) {
         //! Uses the argument expressions.
@@ -664,7 +664,7 @@ impl VisitContext {
         return None;
     }
 
-    pub fn compute_captures(&self, fn_expr_id: node_id) -> @[CaptureVar] {
+    pub fn compute_captures(&self, fn_expr_id: NodeId) -> @[CaptureVar] {
         debug!("compute_capture_vars(fn_expr_id=%?)", fn_expr_id);
         let _indenter = indenter();
 

@@ -943,7 +943,7 @@ fn trans_lvalue_unadjusted(bcx: @mut Block, expr: @ast::expr) -> DatumBlock {
 
                 fn get_did(ccx: @mut CrateContext, did: ast::def_id)
                     -> ast::def_id {
-                    if did.crate != ast::local_crate {
+                    if did.crate != ast::LOCAL_CRATE {
                         inline::maybe_instantiate_inline(ccx, did)
                     } else {
                         did
@@ -953,7 +953,7 @@ fn trans_lvalue_unadjusted(bcx: @mut Block, expr: @ast::expr) -> DatumBlock {
                 fn get_val(bcx: @mut Block, did: ast::def_id, const_ty: ty::t)
                            -> ValueRef {
                     // For external constants, we don't inline.
-                    if did.crate == ast::local_crate {
+                    if did.crate == ast::LOCAL_CRATE {
                         // The LLVM global has the type of its initializer,
                         // which may not be equal to the enum's type for
                         // non-C-like enums.
@@ -1057,8 +1057,8 @@ pub fn trans_local_var(bcx: @mut Block, def: ast::def) -> Datum {
     };
 
     fn take_local(bcx: @mut Block,
-                  table: &HashMap<ast::node_id, ValueRef>,
-                  nid: ast::node_id) -> Datum {
+                  table: &HashMap<ast::NodeId, ValueRef>,
+                  nid: ast::NodeId) -> Datum {
         let v = match table.find(&nid) {
             Some(&v) => v,
             None => {
@@ -1082,7 +1082,7 @@ pub fn trans_local_var(bcx: @mut Block, def: ast::def) -> Datum {
 // is and `node_id_opt` is none, this function fails).
 pub fn with_field_tys<R>(tcx: ty::ctxt,
                          ty: ty::t,
-                         node_id_opt: Option<ast::node_id>,
+                         node_id_opt: Option<ast::NodeId>,
                          op: &fn(uint, (&[ty::field])) -> R) -> R {
     match ty::get(ty).sty {
         ty::ty_struct(did, ref substs) => {
@@ -1127,7 +1127,7 @@ fn trans_rec_or_struct(bcx: @mut Block,
                        fields: &[ast::Field],
                        base: Option<@ast::expr>,
                        expr_span: codemap::span,
-                       id: ast::node_id,
+                       id: ast::NodeId,
                        dest: Dest) -> @mut Block
 {
     let _icx = push_ctxt("trans_rec");
@@ -1529,7 +1529,7 @@ fn trans_binary(bcx: @mut Block,
 
 fn trans_overloaded_op(bcx: @mut Block,
                        expr: &ast::expr,
-                       callee_id: ast::node_id,
+                       callee_id: ast::NodeId,
                        rcvr: @ast::expr,
                        args: ~[@ast::expr],
                        ret_ty: ty::t,
@@ -1605,7 +1605,7 @@ pub fn cast_type_kind(t: ty::t) -> cast_kind {
 }
 
 fn trans_imm_cast(bcx: @mut Block, expr: @ast::expr,
-                  id: ast::node_id) -> DatumBlock {
+                  id: ast::NodeId) -> DatumBlock {
     let _icx = push_ctxt("trans_cast");
     let ccx = bcx.ccx();
 
@@ -1668,7 +1668,7 @@ fn trans_imm_cast(bcx: @mut Block, expr: @ast::expr,
 
 fn trans_assign_op(bcx: @mut Block,
                    expr: @ast::expr,
-                   callee_id: ast::node_id,
+                   callee_id: ast::NodeId,
                    op: ast::binop,
                    dst: @ast::expr,
                    src: @ast::expr) -> @mut Block
