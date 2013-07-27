@@ -202,7 +202,7 @@ fn parse_substs(st: &mut PState, conv: conv_did) -> ty::substs {
     };
 }
 
-fn parse_region_substs(st: &mut PState, conv: conv_did) -> ty::RegionSubsts {
+fn parse_region_substs(st: &mut PState, _conv: conv_did) -> ty::RegionSubsts {
     match next(st) {
         'e' => ty::ErasedRegions,
         'n' => {

@@ -439,7 +439,7 @@ impl CoherenceChecker {
                                          -> UniversalQuantificationResult {
         let regions = match polytype.generics.region_param {
             None => opt_vec::Empty,
-            Some(r) => {
+            Some(_) => {
                 opt_vec::with(
                     self.inference_context.next_region_var(
                         infer::BoundRegionInCoherence))
@@ -490,7 +490,7 @@ impl CoherenceChecker {
                         // Then visit the module items.
                         visit_mod(module_, item.span, item.id, ((), visitor));
                     }
-                    item_impl(_, None, ref ast_ty, _) => {
+                    item_impl(_, None, ast_ty, _) => {
                         if !self.ast_type_is_defined_in_local_crate(ast_ty) {
                             // This is an error.
                             let session = self.crate_context.tcx.sess;
@@ -569,7 +569,7 @@ impl CoherenceChecker {
     /// For coherence, when we have `impl Type`, we need to guarantee that
     /// `Type` is "local" to the crate. For our purposes, this means that it
     /// must precisely name some nominal type defined in this crate.
-    pub fn ast_type_is_defined_in_local_crate(&self, original_type: &ast::Ty)
+    pub fn ast_type_is_defined_in_local_crate(&self, original_type: @ast::Ty)
                                               -> bool {
         match original_type.node {
             ty_path(_, _, path_id) => {

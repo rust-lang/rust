@@ -457,7 +457,7 @@ impl<'self> MethodDef<'self> {
     }
 
     fn get_ret_ty(&self, cx: @ExtCtxt, span: span,
-                     generics: &Generics, type_ident: ident) -> ast::Ty {
+                     generics: &Generics, type_ident: ident) -> @ast::Ty {
         self.ret_ty.to_ty(cx, span, type_ident, generics)
     }
 
@@ -467,7 +467,7 @@ impl<'self> MethodDef<'self> {
 
     fn split_self_nonself_args(&self, cx: @ExtCtxt, span: span,
                              type_ident: ident, generics: &Generics)
-        -> (ast::explicit_self, ~[@expr], ~[@expr], ~[(ident, ast::Ty)]) {
+        -> (ast::explicit_self, ~[@expr], ~[@expr], ~[(ident, @ast::Ty)]) {
 
         let mut self_args = ~[];
         let mut nonself_args = ~[];
@@ -515,7 +515,7 @@ impl<'self> MethodDef<'self> {
                      type_ident: ident,
                      generics: &Generics,
                      explicit_self: ast::explicit_self,
-                     arg_types: ~[(ident, ast::Ty)],
+                     arg_types: ~[(ident, @ast::Ty)],
                      body: @expr) -> @ast::method {
         // create the generics that aren't for Self
         let fn_generics = self.generics.to_generics(cx, span, type_ident, generics);
