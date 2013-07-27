@@ -223,13 +223,15 @@ fn run(mut program: ~Program, binary: ~str, lib_search_paths: ~[~str],
     debug!("testing with ^^^^^^ %?", (||{ println(test) })());
     let dinput = driver::str_input(test.to_managed());
     let cfg = driver::build_configuration(sess, binary, &dinput);
-    let outputs = driver::build_output_filenames(&dinput, &None, &None, [], sess);
-    let (crate, tcx) = driver::compile_upto(sess, cfg.clone(), &dinput,
-                                            driver::cu_typeck, Some(outputs));
+
+    let crate = driver::phase_1_parse_input(sess, cfg.clone(), &dinput);
+    let expanded_crate = driver::phase_2_configure_and_expand(sess, cfg, crate);
+    let analysis = driver::phase_3_run_analysis_passes(sess, expanded_crate);
+
     // Once we're typechecked, record the types of all local variables defined
     // in this input
-    do find_main(crate.expect("crate after cu_typeck"), sess) |blk| {
-        program.register_new_vars(blk, tcx.expect("tcx after cu_typeck"));
+    do find_main(crate, sess) |blk| {
+        program.register_new_vars(blk, analysis.ty_cx);
     }
 
     //
@@ -242,8 +244,12 @@ fn run(mut program: ~Program, binary: ~str, lib_search_paths: ~[~str],
     let cfg = driver::build_configuration(sess, binary, &input);
     let outputs = driver::build_output_filenames(&input, &None, &None, [], sess);
     let sess = driver::build_session(options, diagnostic::emit);
-    driver::compile_upto(sess, cfg, &input, driver::cu_everything,
-                         Some(outputs));
+
+    let crate = driver::phase_1_parse_input(sess, cfg.clone(), &input);
+    let expanded_crate = driver::phase_2_configure_and_expand(sess, cfg, crate);
+    let analysis = driver::phase_3_run_analysis_passes(sess, expanded_crate);
+    let trans = driver::phase_4_translate_to_llvm(sess, expanded_crate, &analysis, outputs);
+    driver::phase_5_run_llvm_passes(sess, &trans, outputs);
 
     //
     // Stage 4: Inform the program that computation is done so it can update all
@@ -265,10 +271,7 @@ fn run(mut program: ~Program, binary: ~str, lib_search_paths: ~[~str],
         let code = fmt!("fn main() {\n %s \n}", input);
         let input = driver::str_input(code.to_managed());
         let cfg = driver::build_configuration(sess, binary, &input);
-        let outputs = driver::build_output_filenames(&input, &None, &None, [], sess);
-        let (crate, _) = driver::compile_upto(sess, cfg, &input,
-                                              driver::cu_parse, Some(outputs));
-        crate.expect("parsing should return a crate")
+        driver::phase_1_parse_input(sess, cfg.clone(), &input)
     }
 
     fn find_main(crate: @ast::Crate, sess: session::Session,
@@ -334,9 +337,12 @@ fn compile_crate(src_filename: ~str, binary: ~str) -> Option<bool> {
             None => { },
         }
         if (should_compile) {
-            printfln!("compiling %s...", src_filename);
-            driver::compile_upto(sess, cfg, &input, driver::cu_everything,
-                                 Some(outputs));
+            println(fmt!("compiling %s...", src_filename));
+            let crate = driver::phase_1_parse_input(sess, cfg.clone(), &input);
+            let expanded_crate = driver::phase_2_configure_and_expand(sess, cfg, crate);
+            let analysis = driver::phase_3_run_analysis_passes(sess, expanded_crate);
+            let trans = driver::phase_4_translate_to_llvm(sess, expanded_crate, &analysis, outputs);
+            driver::phase_5_run_llvm_passes(sess, &trans, outputs);
             true
         } else { false }
     } {
