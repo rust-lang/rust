@@ -186,7 +186,7 @@ fn parse_trait_store(st: &mut PState) -> ty::TraitStore {
 }
 
 fn parse_substs(st: &mut PState, conv: conv_did) -> ty::substs {
-    let regions = parse_region_substs(st, |x,y| conv(x,y));
+    let regions = parse_region_substs(st);
 
     let self_ty = parse_opt(st, |st| parse_ty(st, |x,y| conv(x,y)) );
 
@@ -202,7 +202,7 @@ fn parse_substs(st: &mut PState, conv: conv_did) -> ty::substs {
     };
 }
 
-fn parse_region_substs(st: &mut PState, conv: conv_did) -> ty::RegionSubsts {
+fn parse_region_substs(st: &mut PState) -> ty::RegionSubsts {
     match next(st) {
         'e' => ty::ErasedRegions,
         'n' => {

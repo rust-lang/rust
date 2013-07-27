@@ -827,23 +827,26 @@ fn check_item_non_camel_case_types(cx: &Context, it: &ast::item) {
             !ident.contains_char('_')
     }
 
-    fn check_case(cx: &Context, ident: ast::ident, span: span) {
+    fn check_case(cx: &Context, sort: &str, ident: ast::ident, span: span) {
         if !is_camel_case(cx.tcx, ident) {
-            cx.span_lint(non_camel_case_types, span,
-                         "type, variant, or trait should have \
-                          a camel case identifier");
+            cx.span_lint(
+                non_camel_case_types, span,
+                fmt!("%s `%s` should have a camel case identifier",
+                    sort, cx.tcx.sess.str_of(ident)));
         }
     }
 
     match it.node {
-        ast::item_ty(*) | ast::item_struct(*) |
+        ast::item_ty(*) | ast::item_struct(*) => {
+            check_case(cx, "type", it.ident, it.span)
+        }
         ast::item_trait(*) => {
-            check_case(cx, it.ident, it.span)
+            check_case(cx, "trait", it.ident, it.span)
         }
         ast::item_enum(ref enum_definition, _) => {
-            check_case(cx, it.ident, it.span);
+            check_case(cx, "type", it.ident, it.span);
             for enum_definition.variants.iter().advance |variant| {
-                check_case(cx, variant.node.name, variant.span);
+                check_case(cx, "variant", variant.node.name, variant.span);
             }
         }
         _ => ()

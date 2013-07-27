@@ -439,7 +439,7 @@ impl CoherenceChecker {
                                          -> UniversalQuantificationResult {
         let regions = match polytype.generics.region_param {
             None => opt_vec::Empty,
-            Some(r) => {
+            Some(_) => {
                 opt_vec::with(
                     self.inference_context.next_region_var(
                         infer::BoundRegionInCoherence))
