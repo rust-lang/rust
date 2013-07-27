@@ -476,7 +476,6 @@ pub mod groups {
     use getopts::{HasArg, Long, Maybe, Multi, No, Occur, Opt, Optional, Req};
     use getopts::{Short, Yes};
 
-    use std::str;
     use std::vec;
 
     /** one group of options, e.g., both -h and --help, along with
@@ -667,7 +666,7 @@ pub mod groups {
 
             // FIXME: #5516
             let mut desc_rows = ~[];
-            for str::each_split_within(desc_normalized_whitespace, 54) |substr| {
+            for each_split_within(desc_normalized_whitespace, 54) |substr| {
                 desc_rows.push(substr.to_owned());
             }
 
@@ -682,6 +681,103 @@ pub mod groups {
                "\n\nOptions:\n" +
                rows.collect::<~[~str]>().connect("\n") +
                "\n\n";
+    }
+
+    /** Splits a string into substrings with possibly internal whitespace,
+     *  each of them at most `lim` bytes long. The substrings have leading and trailing
+     *  whitespace removed, and are only cut at whitespace boundaries.
+     *
+     *  Note: Function was moved here from `std::str` because this module is the only place that
+     *  uses it, and because it was to specific for a general string function.
+     *
+     *  #Failure:
+     *
+     *  Fails during iteration if the string contains a non-whitespace
+     *  sequence longer than the limit.
+     */
+    priv fn each_split_within<'a>(ss: &'a str,
+                                lim: uint,
+                                it: &fn(&'a str) -> bool) -> bool {
+        // Just for fun, let's write this as an state machine:
+
+        enum SplitWithinState {
+            A,  // leading whitespace, initial state
+            B,  // words
+            C,  // internal and trailing whitespace
+        }
+        enum Whitespace {
+            Ws, // current char is whitespace
+            Cr  // current char is not whitespace
+        }
+        enum LengthLimit {
+            UnderLim, // current char makes current substring still fit in limit
+            OverLim   // current char makes current substring no longer fit in limit
+        }
+
+        let mut slice_start = 0;
+        let mut last_start = 0;
+        let mut last_end = 0;
+        let mut state = A;
+        let mut fake_i = ss.len();
+        let mut lim = lim;
+
+        let mut cont = true;
+        let slice: &fn() = || { cont = it(ss.slice(slice_start, last_end)) };
+
+        // if the limit is larger than the string, lower it to save cycles
+        if (lim >= fake_i) {
+            lim = fake_i;
+        }
+
+        let machine: &fn((uint, char)) -> bool = |(i, c)| {
+            let whitespace = if ::std::char::is_whitespace(c) { Ws }       else { Cr };
+            let limit      = if (i - slice_start + 1) <= lim  { UnderLim } else { OverLim };
+
+            state = match (state, whitespace, limit) {
+                (A, Ws, _)        => { A }
+                (A, Cr, _)        => { slice_start = i; last_start = i; B }
+
+                (B, Cr, UnderLim) => { B }
+                (B, Cr, OverLim)  if (i - last_start + 1) > lim
+                                => fail!("word starting with %? longer than limit!",
+                                        ss.slice(last_start, i + 1)),
+                (B, Cr, OverLim)  => { slice(); slice_start = last_start; B }
+                (B, Ws, UnderLim) => { last_end = i; C }
+                (B, Ws, OverLim)  => { last_end = i; slice(); A }
+
+                (C, Cr, UnderLim) => { last_start = i; B }
+                (C, Cr, OverLim)  => { slice(); slice_start = i; last_start = i; last_end = i; B }
+                (C, Ws, OverLim)  => { slice(); A }
+                (C, Ws, UnderLim) => { C }
+            };
+
+            cont
+        };
+
+        ss.iter().enumerate().advance(|x| machine(x));
+
+        // Let the automaton 'run out' by supplying trailing whitespace
+        while cont && match state { B | C => true, A => false } {
+            machine((fake_i, ' '));
+            fake_i += 1;
+        }
+        return cont;
+    }
+
+    #[test]
+    priv fn test_split_within() {
+        fn t(s: &str, i: uint, u: &[~str]) {
+            let mut v = ~[];
+            for each_split_within(s, i) |s| { v.push(s.to_owned()) }
+            assert!(v.iter().zip(u.iter()).all(|(a,b)| a == b));
+        }
+        t("", 0, []);
+        t("", 15, []);
+        t("hello", 15, [~"hello"]);
+        t("\nMary had a little lamb\nLittle lamb\n", 15,
+            [~"Mary had a", ~"little lamb", ~"Little lamb"]);
+        t("\nMary had a little lamb\nLittle lamb\n", ::std::uint::max_value,
+            [~"Mary had a little lamb\nLittle lamb"]);
     }
 } // end groups module
 

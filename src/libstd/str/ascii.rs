@@ -115,7 +115,7 @@ impl<'self> AsciiCast<&'self[Ascii]> for &'self str {
 
     #[inline]
     fn is_ascii(&self) -> bool {
-        self.bytes_iter().all(|b| b.is_ascii())
+        self.byte_iter().all(|b| b.is_ascii())
     }
 }
 
