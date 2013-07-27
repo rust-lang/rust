@@ -55,7 +55,7 @@ pub static try_adding: &'static str = "Try adding a move";
 pub struct Context {
     tcx: ty::ctxt,
     method_map: typeck::method_map,
-    current_item: node_id
+    current_item: NodeId
 }
 
 pub fn check_crate(tcx: ty::ctxt,
@@ -156,9 +156,9 @@ fn check_item(item: @item, (cx, visitor): (Context, visit::vt<Context>)) {
 }
 
 // Yields the appropriate function to check the kind of closed over
-// variables. `id` is the node_id for some expression that creates the
+// variables. `id` is the NodeId for some expression that creates the
 // closure.
-fn with_appropriate_checker(cx: Context, id: node_id,
+fn with_appropriate_checker(cx: Context, id: NodeId,
                             b: &fn(checker: &fn(Context, @freevar_entry))) {
     fn check_for_uniq(cx: Context, fv: &freevar_entry, bounds: ty::BuiltinBounds) {
         // all captured data must be owned, regardless of whether it is
@@ -230,7 +230,7 @@ fn check_fn(
     decl: &fn_decl,
     body: &Block,
     sp: span,
-    fn_id: node_id,
+    fn_id: NodeId,
     (cx, v): (Context,
               visit::vt<Context>)) {
 
@@ -348,7 +348,7 @@ pub fn check_builtin_bounds(cx: Context, ty: ty::t, bounds: ty::BuiltinBounds,
 }
 
 pub fn check_typaram_bounds(cx: Context,
-                    _type_parameter_id: node_id,
+                    _type_parameter_id: NodeId,
                     sp: span,
                     ty: ty::t,
                     type_param_def: &ty::TypeParameterDef)

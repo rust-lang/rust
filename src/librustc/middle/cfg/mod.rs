@@ -25,18 +25,18 @@ use syntax::opt_vec::OptVec;
 mod construct;
 
 pub struct CFG {
-    exit_map: HashMap<ast::node_id, CFGIndex>,
+    exit_map: HashMap<ast::NodeId, CFGIndex>,
     graph: CFGGraph,
     entry: CFGIndex,
     exit: CFGIndex,
 }
 
 pub struct CFGNodeData {
-    id: ast::node_id
+    id: ast::NodeId
 }
 
 pub struct CFGEdgeData {
-    exiting_scopes: OptVec<ast::node_id>
+    exiting_scopes: OptVec<ast::NodeId>
 }
 
 pub type CFGIndex = graph::NodeIndex;

@@ -94,7 +94,7 @@ pub type fn_ident = Option<ident>;
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub struct Lifetime {
-    id: node_id,
+    id: NodeId,
     span: span,
     ident: ident
 }
@@ -119,16 +119,16 @@ pub struct Path {
 
 pub type CrateNum = int;
 
-pub type node_id = int;
+pub type NodeId = int;
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub struct def_id {
     crate: CrateNum,
-    node: node_id,
+    node: NodeId,
 }
 
-pub static local_crate: CrateNum = 0;
-pub static crate_node_id: node_id = 0;
+pub static LOCAL_CRATE: CrateNum = 0;
+pub static CRATE_NODE_ID: NodeId = 0;
 
 // The AST represents all type param bounds as types.
 // typeck::collect::compute_bounds matches these against
@@ -143,7 +143,7 @@ pub enum TyParamBound {
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub struct TyParam {
     ident: ident,
-    id: node_id,
+    id: NodeId,
     bounds: OptVec<TyParamBound>
 }
 
@@ -171,28 +171,28 @@ pub enum def {
     def_static_method(/* method */ def_id,
                       /* trait */  Option<def_id>,
                       purity),
-    def_self(node_id, bool /* is_implicit */),
-    def_self_ty(/* trait id */ node_id),
+    def_self(NodeId, bool /* is_implicit */),
+    def_self_ty(/* trait id */ NodeId),
     def_mod(def_id),
     def_foreign_mod(def_id),
     def_static(def_id, bool /* is_mutbl */),
-    def_arg(node_id, bool /* is_mutbl */),
-    def_local(node_id, bool /* is_mutbl */),
+    def_arg(NodeId, bool /* is_mutbl */),
+    def_local(NodeId, bool /* is_mutbl */),
     def_variant(def_id /* enum */, def_id /* variant */),
     def_ty(def_id),
     def_trait(def_id),
     def_prim_ty(prim_ty),
     def_ty_param(def_id, uint),
-    def_binding(node_id, binding_mode),
+    def_binding(NodeId, binding_mode),
     def_use(def_id),
-    def_upvar(node_id,  // id of closed over var
+    def_upvar(NodeId,  // id of closed over var
               @def,     // closed over def
-              node_id,  // expr node that creates the closure
-              node_id), // id for the block/body of the closure expr
+              NodeId,  // expr node that creates the closure
+              NodeId), // id for the block/body of the closure expr
     def_struct(def_id),
-    def_typaram_binder(node_id), /* struct, impl or trait with ty params */
-    def_region(node_id),
-    def_label(node_id),
+    def_typaram_binder(NodeId), /* struct, impl or trait with ty params */
+    def_region(NodeId),
+    def_label(NodeId),
     def_method(def_id /* method */, Option<def_id> /* trait */),
 }
 
@@ -248,14 +248,14 @@ pub struct Block {
     view_items: ~[view_item],
     stmts: ~[@stmt],
     expr: Option<@expr>,
-    id: node_id,
-    rules: blk_check_mode,
+    id: NodeId,
+    rules: BlockCheckMode,
     span: span,
 }
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub struct pat {
-    id: node_id,
+    id: NodeId,
     node: pat_,
     span: span,
 }
@@ -280,7 +280,7 @@ pub enum pat_ {
     // is None).
     // In the nullary enum case, the parser can't determine
     // which it is. The resolver determines this, and
-    // records this pattern's node_id in an auxiliary
+    // records this pattern's NodeId in an auxiliary
     // set (of "pat_idents that refer to nullary enums")
     pat_ident(binding_mode, Path, Option<@pat>),
     pat_enum(Path, Option<~[@pat]>), /* "none" means a * pattern where
@@ -371,13 +371,13 @@ pub type stmt = spanned<stmt_>;
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub enum stmt_ {
     // could be an item or a local (let) binding:
-    stmt_decl(@decl, node_id),
+    stmt_decl(@decl, NodeId),
 
     // expr without trailing semi-colon (must have unit type):
-    stmt_expr(@expr, node_id),
+    stmt_expr(@expr, NodeId),
 
     // expr with trailing semi-colon (may have any type):
-    stmt_semi(@expr, node_id),
+    stmt_semi(@expr, NodeId),
 
     // bool: is there a trailing sem-colon?
     stmt_mac(mac, bool),
@@ -391,7 +391,7 @@ pub struct Local {
     ty: Ty,
     pat: @pat,
     init: Option<@expr>,
-    id: node_id,
+    id: NodeId,
     span: span,
 }
 
@@ -420,20 +420,20 @@ pub struct Field {
 }
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
-pub enum blk_check_mode {
-    default_blk,
-    unsafe_blk,
+pub enum BlockCheckMode {
+    DefaultBlock,
+    UnsafeBlock,
 }
 
 #[deriving(Eq, Encodable, Decodable,IterBytes)]
 pub struct expr {
-    id: node_id,
+    id: NodeId,
     node: expr_,
     span: span,
 }
 
 impl expr {
-    pub fn get_callee_id(&self) -> Option<node_id> {
+    pub fn get_callee_id(&self) -> Option<NodeId> {
         match self.node {
             expr_method_call(callee_id, _, _, _, _, _) |
             expr_index(callee_id, _, _) |
@@ -457,10 +457,10 @@ pub enum expr_ {
     expr_vstore(@expr, expr_vstore),
     expr_vec(~[@expr], mutability),
     expr_call(@expr, ~[@expr], CallSugar),
-    expr_method_call(node_id, @expr, ident, ~[Ty], ~[@expr], CallSugar),
+    expr_method_call(NodeId, @expr, ident, ~[Ty], ~[@expr], CallSugar),
     expr_tup(~[@expr]),
-    expr_binary(node_id, binop, @expr, @expr),
-    expr_unary(node_id, unop, @expr),
+    expr_binary(NodeId, binop, @expr, @expr),
+    expr_unary(NodeId, unop, @expr),
     expr_lit(@lit),
     expr_cast(@expr, Ty),
     expr_if(@expr, Block, Option<@expr>),
@@ -480,9 +480,9 @@ pub enum expr_ {
     expr_block(Block),
 
     expr_assign(@expr, @expr),
-    expr_assign_op(node_id, binop, @expr, @expr),
+    expr_assign_op(NodeId, binop, @expr, @expr),
     expr_field(@expr, ident, ~[Ty]),
-    expr_index(node_id, @expr, @expr),
+    expr_index(NodeId, @expr, @expr),
     expr_path(Path),
 
     /// The special identifier `self`.
@@ -636,22 +636,21 @@ pub struct mt {
 }
 
 #[deriving(Eq, Encodable, Decodable,IterBytes)]
-pub struct ty_field_ {
+pub struct TypeField {
     ident: ident,
     mt: mt,
+    span: span,
 }
 
-pub type ty_field = spanned<ty_field_>;
-
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
-pub struct ty_method {
+pub struct TypeMethod {
     ident: ident,
     attrs: ~[Attribute],
     purity: purity,
     decl: fn_decl,
     generics: Generics,
     explicit_self: explicit_self,
-    id: node_id,
+    id: NodeId,
     span: span,
 }
 
@@ -660,7 +659,7 @@ pub struct ty_method {
 // implementation).
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub enum trait_method {
-    required(ty_method),
+    required(TypeMethod),
     provided(@method),
 }
 
@@ -711,7 +710,7 @@ impl ToStr for float_ty {
 // NB Eq method appears below.
 #[deriving(Clone, Eq, Encodable, Decodable,IterBytes)]
 pub struct Ty {
-    id: node_id,
+    id: NodeId,
     node: ty_,
     span: span,
 }
@@ -778,7 +777,7 @@ pub enum ty_ {
     ty_closure(@TyClosure),
     ty_bare_fn(@TyBareFn),
     ty_tup(~[Ty]),
-    ty_path(Path, Option<OptVec<TyParamBound>>, node_id), // for #7264; see above
+    ty_path(Path, Option<OptVec<TyParamBound>>, NodeId), // for #7264; see above
     ty_mac(mac),
     // ty_infer means the type should be inferred instead of it having been
     // specified. This should only appear at the "top level" of a type and not
@@ -808,7 +807,7 @@ pub struct arg {
     is_mutbl: bool,
     ty: Ty,
     pat: @pat,
-    id: node_id,
+    id: NodeId,
 }
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
@@ -863,9 +862,9 @@ pub struct method {
     purity: purity,
     decl: fn_decl,
     body: Block,
-    id: node_id,
+    id: NodeId,
     span: span,
-    self_id: node_id,
+    self_id: NodeId,
     vis: visibility,
 }
 
@@ -893,7 +892,7 @@ pub struct foreign_mod {
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub struct variant_arg {
     ty: Ty,
-    id: node_id,
+    id: NodeId,
 }
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
@@ -912,7 +911,7 @@ pub struct variant_ {
     name: ident,
     attrs: ~[Attribute],
     kind: variant_kind,
-    id: node_id,
+    id: NodeId,
     disr_expr: Option<@expr>,
     vis: visibility,
 }
@@ -922,7 +921,7 @@ pub type variant = spanned<variant_>;
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub struct path_list_ident_ {
     name: ident,
-    id: node_id,
+    id: NodeId,
 }
 
 pub type path_list_ident = spanned<path_list_ident_>;
@@ -937,13 +936,13 @@ pub enum view_path_ {
     // or just
     //
     // foo::bar::baz  (with 'baz =' implicitly on the left)
-    view_path_simple(ident, Path, node_id),
+    view_path_simple(ident, Path, NodeId),
 
     // foo::bar::*
-    view_path_glob(Path, node_id),
+    view_path_glob(Path, NodeId),
 
     // foo::bar::{a,b,c}
-    view_path_list(Path, ~[path_list_ident], node_id)
+    view_path_list(Path, ~[path_list_ident], NodeId)
 }
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
@@ -956,7 +955,7 @@ pub struct view_item {
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub enum view_item_ {
-    view_item_extern_mod(ident, ~[@MetaItem], node_id),
+    view_item_extern_mod(ident, ~[@MetaItem], NodeId),
     view_item_use(~[@view_path]),
 }
 
@@ -990,7 +989,7 @@ pub struct Attribute_ {
 #[deriving(Clone, Eq, Encodable, Decodable,IterBytes)]
 pub struct trait_ref {
     path: Path,
-    ref_id: node_id,
+    ref_id: NodeId,
 }
 
 #[deriving(Clone, Eq, Encodable, Decodable,IterBytes)]
@@ -1012,7 +1011,7 @@ impl visibility {
 #[deriving(Eq, Encodable, Decodable,IterBytes)]
 pub struct struct_field_ {
     kind: struct_field_kind,
-    id: node_id,
+    id: NodeId,
     ty: Ty,
     attrs: ~[Attribute],
 }
@@ -1030,7 +1029,7 @@ pub struct struct_def {
     fields: ~[@struct_field], /* fields, not including ctor */
     /* ID of the constructor. This is only used for tuple- or enum-like
      * structs. */
-    ctor_id: Option<node_id>
+    ctor_id: Option<NodeId>
 }
 
 /*
@@ -1041,7 +1040,7 @@ pub struct struct_def {
 pub struct item {
     ident: ident,
     attrs: ~[Attribute],
-    id: node_id,
+    id: NodeId,
     node: item_,
     vis: visibility,
     span: span,
@@ -1070,7 +1069,7 @@ pub struct foreign_item {
     ident: ident,
     attrs: ~[Attribute],
     node: foreign_item_,
-    id: node_id,
+    id: NodeId,
     span: span,
     vis: visibility,
 }

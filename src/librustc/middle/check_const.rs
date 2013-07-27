@@ -200,7 +200,7 @@ struct env {
     sess: Session,
     ast_map: ast_map::map,
     def_map: resolve::DefMap,
-    idstack: @mut ~[node_id]
+    idstack: @mut ~[NodeId]
 }
 
 // Make sure a const item doesn't recursively refer to itself

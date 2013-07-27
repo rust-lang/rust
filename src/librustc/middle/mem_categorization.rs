@@ -60,25 +60,25 @@ use syntax::print::pprust;
 
 #[deriving(Eq)]
 pub enum categorization {
-    cat_rvalue(ast::node_id),          // temporary val, argument is its scope
+    cat_rvalue(ast::NodeId),          // temporary val, argument is its scope
     cat_static_item,
     cat_implicit_self,
     cat_copied_upvar(CopiedUpvar),     // upvar copied into @fn or ~fn env
     cat_stack_upvar(cmt),              // by ref upvar from &fn
-    cat_local(ast::node_id),           // local variable
-    cat_arg(ast::node_id),             // formal argument
+    cat_local(ast::NodeId),           // local variable
+    cat_arg(ast::NodeId),             // formal argument
     cat_deref(cmt, uint, ptr_kind),    // deref of a ptr
     cat_interior(cmt, InteriorKind),   // something interior: field, tuple, etc
     cat_downcast(cmt),                 // selects a particular enum variant (*)
-    cat_discr(cmt, ast::node_id),      // match discriminant (see preserve())
-    cat_self(ast::node_id),            // explicit `self`
+    cat_discr(cmt, ast::NodeId),      // match discriminant (see preserve())
+    cat_self(ast::NodeId),            // explicit `self`
 
     // (*) downcast is only required if the enum has more than one variant
 }
 
 #[deriving(Eq)]
 pub struct CopiedUpvar {
-    upvar_id: ast::node_id,
+    upvar_id: ast::NodeId,
     onceness: ast::Onceness,
 }
 
@@ -136,7 +136,7 @@ pub enum MutabilityCategory {
 // fashion. For more details, see the method `cat_pattern`
 #[deriving(Eq)]
 pub struct cmt_ {
-    id: ast::node_id,          // id of expr/pat producing this value
+    id: ast::NodeId,          // id of expr/pat producing this value
     span: span,                // span of same expr/pat
     cat: categorization,       // categorization of expr
     mutbl: MutabilityCategory, // mutability of expr as lvalue
@@ -252,7 +252,7 @@ pub fn cat_expr_autoderefd(
 pub fn cat_def(
     tcx: ty::ctxt,
     method_map: typeck::method_map,
-    expr_id: ast::node_id,
+    expr_id: ast::NodeId,
     expr_span: span,
     expr_ty: ty::t,
     def: ast::def) -> cmt {
@@ -264,17 +264,17 @@ pub fn cat_def(
 }
 
 pub trait ast_node {
-    fn id(&self) -> ast::node_id;
+    fn id(&self) -> ast::NodeId;
     fn span(&self) -> span;
 }
 
 impl ast_node for @ast::expr {
-    fn id(&self) -> ast::node_id { self.id }
+    fn id(&self) -> ast::NodeId { self.id }
     fn span(&self) -> span { self.span }
 }
 
 impl ast_node for @ast::pat {
-    fn id(&self) -> ast::node_id { self.id }
+    fn id(&self) -> ast::NodeId { self.id }
     fn span(&self) -> span { self.span }
 }
 
@@ -439,7 +439,7 @@ impl mem_categorization_ctxt {
     }
 
     pub fn cat_def(&self,
-                   id: ast::node_id,
+                   id: ast::NodeId,
                    span: span,
                    expr_ty: ty::t,
                    def: ast::def)
@@ -587,9 +587,9 @@ impl mem_categorization_ctxt {
     }
 
     pub fn cat_rvalue(&self,
-                      cmt_id: ast::node_id,
+                      cmt_id: ast::NodeId,
                       span: span,
-                      cleanup_scope_id: ast::node_id,
+                      cleanup_scope_id: ast::NodeId,
                       expr_ty: ty::t) -> cmt {
         @cmt_ {
             id:cmt_id,
@@ -1069,7 +1069,7 @@ impl mem_categorization_ctxt {
 pub fn field_mutbl(tcx: ty::ctxt,
                    base_ty: ty::t,
                    f_name: ast::ident,
-                   node_id: ast::node_id)
+                   node_id: ast::NodeId)
                 -> Option<ast::mutability> {
     // Need to refactor so that struct/enum fields can be treated uniformly.
     match ty::get(base_ty).sty {

@@ -62,7 +62,7 @@ use syntax::visit;
 /// if the vtable instantiation is being performed as part of "deriving".)
 pub struct LocationInfo {
     span: span,
-    id: ast::node_id
+    id: ast::NodeId
 }
 
 /// A vtable context includes an inference context, a crate context, and a
@@ -522,7 +522,7 @@ fn connect_trait_tps(vcx: &VtableContext,
 }
 
 fn insert_vtables(fcx: @mut FnCtxt,
-                  callee_id: ast::node_id,
+                  callee_id: ast::NodeId,
                   vtables: vtable_res) {
     debug!("insert_vtables(callee_id=%d, vtables=%?)",
            callee_id, vtables.repr(fcx.tcx()));

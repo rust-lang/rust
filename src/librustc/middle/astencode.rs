@@ -165,7 +165,7 @@ fn reserve_id_range(sess: Session,
 }
 
 impl ExtendedDecodeContext {
-    pub fn tr_id(&self, id: ast::node_id) -> ast::node_id {
+    pub fn tr_id(&self, id: ast::NodeId) -> ast::NodeId {
         /*!
          * Translates an internal id, meaning a node id that is known
          * to refer to some part of the item currently being inlined,
@@ -212,8 +212,8 @@ impl ExtendedDecodeContext {
          * refer to the current crate and to the new, inlined node-id.
          */
 
-        assert_eq!(did.crate, ast::local_crate);
-        ast::def_id { crate: ast::local_crate, node: self.tr_id(did.node) }
+        assert_eq!(did.crate, ast::LOCAL_CRATE);
+        ast::def_id { crate: ast::LOCAL_CRATE, node: self.tr_id(did.node) }
     }
     pub fn tr_span(&self, _span: span) -> span {
         codemap::dummy_sp() // FIXME (#1972): handle span properly
@@ -802,7 +802,7 @@ impl ebml_writer_helpers for writer::Encoder {
 
 trait write_tag_and_id {
     fn tag(&mut self, tag_id: c::astencode_tag, f: &fn(&mut Self));
-    fn id(&mut self, id: ast::node_id);
+    fn id(&mut self, id: ast::NodeId);
 }
 
 impl write_tag_and_id for writer::Encoder {
@@ -814,7 +814,7 @@ impl write_tag_and_id for writer::Encoder {
         self.end_tag();
     }
 
-    fn id(&mut self, id: ast::node_id) {
+    fn id(&mut self, id: ast::NodeId) {
         self.wr_tagged_u64(c::tag_table_id as uint, id as u64)
     }
 }
@@ -833,7 +833,7 @@ fn encode_side_tables_for_ii(ecx: &e::EncodeContext,
     let ecx_ptr : *() = unsafe { cast::transmute(ecx) };
     ast_util::visit_ids_for_inlined_item(
         ii,
-        |id: ast::node_id| {
+        |id: ast::NodeId| {
             // Note: this will cause a copy of ebml_w, which is bad as
             // it is mutable. But I believe it's harmless since we generate
             // balanced EBML.
@@ -848,7 +848,7 @@ fn encode_side_tables_for_ii(ecx: &e::EncodeContext,
 fn encode_side_tables_for_id(ecx: &e::EncodeContext,
                              maps: Maps,
                              ebml_w: &mut writer::Encoder,
-                             id: ast::node_id) {
+                             id: ast::NodeId) {
     let tcx = ecx.tcx;
 
     debug!("Encoding side tables for id %d", id);
@@ -903,7 +903,7 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
         }
     }
 
-    let lid = ast::def_id { crate: ast::local_crate, node: id };
+    let lid = ast::def_id { crate: ast::LOCAL_CRATE, node: id };
     {
         let r = tcx.tcache.find(&lid);
         for r.iter().advance |&tpbt| {
@@ -1181,7 +1181,7 @@ fn decode_side_tables(xcx: @ExtendedDecodeContext,
                     }
                     c::tag_table_tcache => {
                         let tpbt = val_dsr.read_ty_param_bounds_and_ty(xcx);
-                        let lid = ast::def_id { crate: ast::local_crate, node: id };
+                        let lid = ast::def_id { crate: ast::LOCAL_CRATE, node: id };
                         dcx.tcx.tcache.insert(lid, tpbt);
                     }
                     c::tag_table_param_defs => {

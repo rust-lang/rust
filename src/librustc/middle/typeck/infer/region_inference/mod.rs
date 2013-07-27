@@ -686,8 +686,8 @@ impl RegionVarBindings {
     fn intersect_scopes(&self,
                         region_a: ty::Region,
                         region_b: ty::Region,
-                        scope_a: ast::node_id,
-                        scope_b: ast::node_id) -> cres<Region>
+                        scope_a: ast::NodeId,
+                        scope_b: ast::NodeId) -> cres<Region>
     {
         // We want to generate the intersection of two
         // scopes or two free regions.  So, if one of

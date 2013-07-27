@@ -55,9 +55,9 @@ The region maps encode information about region relationships.
     necessarily how I think things ought to work
 */
 pub struct RegionMaps {
-    priv scope_map: HashMap<ast::node_id, ast::node_id>,
+    priv scope_map: HashMap<ast::NodeId, ast::NodeId>,
     priv free_region_map: HashMap<FreeRegion, ~[FreeRegion]>,
-    priv cleanup_scopes: HashSet<ast::node_id>
+    priv cleanup_scopes: HashSet<ast::NodeId>
 }
 
 #[deriving(Clone)]
@@ -69,10 +69,10 @@ pub struct Context {
     region_maps: @mut RegionMaps,
 
     // Scope where variables should be parented to
-    var_parent: Option<ast::node_id>,
+    var_parent: Option<ast::NodeId>,
 
     // Innermost enclosing expression
-    parent: Option<ast::node_id>,
+    parent: Option<ast::NodeId>,
 }
 
 impl RegionMaps {
@@ -92,14 +92,14 @@ impl RegionMaps {
         self.free_region_map.insert(sub, ~[sup]);
     }
 
-    pub fn record_parent(&mut self, sub: ast::node_id, sup: ast::node_id) {
+    pub fn record_parent(&mut self, sub: ast::NodeId, sup: ast::NodeId) {
         debug!("record_parent(sub=%?, sup=%?)", sub, sup);
         assert!(sub != sup);
 
         self.scope_map.insert(sub, sup);
     }
 
-    pub fn record_cleanup_scope(&mut self, scope_id: ast::node_id) {
+    pub fn record_cleanup_scope(&mut self, scope_id: ast::NodeId) {
         //! Records that a scope is a CLEANUP SCOPE.  This is invoked
         //! from within regionck.  We wait until regionck because we do
         //! not know which operators are overloaded until that point,
@@ -108,13 +108,13 @@ impl RegionMaps {
         self.cleanup_scopes.insert(scope_id);
     }
 
-    pub fn opt_encl_scope(&self, id: ast::node_id) -> Option<ast::node_id> {
+    pub fn opt_encl_scope(&self, id: ast::NodeId) -> Option<ast::NodeId> {
         //! Returns the narrowest scope that encloses `id`, if any.
 
         self.scope_map.find(&id).map(|&x| *x)
     }
 
-    pub fn encl_scope(&self, id: ast::node_id) -> ast::node_id {
+    pub fn encl_scope(&self, id: ast::NodeId) -> ast::NodeId {
         //! Returns the narrowest scope that encloses `id`, if any.
 
         match self.scope_map.find(&id) {
@@ -123,11 +123,11 @@ impl RegionMaps {
         }
     }
 
-    pub fn is_cleanup_scope(&self, scope_id: ast::node_id) -> bool {
+    pub fn is_cleanup_scope(&self, scope_id: ast::NodeId) -> bool {
         self.cleanup_scopes.contains(&scope_id)
     }
 
-    pub fn cleanup_scope(&self, expr_id: ast::node_id) -> ast::node_id {
+    pub fn cleanup_scope(&self, expr_id: ast::NodeId) -> ast::NodeId {
         //! Returns the scope when temps in expr will be cleaned up
 
         let mut id = self.encl_scope(expr_id);
@@ -137,21 +137,21 @@ impl RegionMaps {
         return id;
     }
 
-    pub fn encl_region(&self, id: ast::node_id) -> ty::Region {
+    pub fn encl_region(&self, id: ast::NodeId) -> ty::Region {
         //! Returns the narrowest scope region that encloses `id`, if any.
 
         ty::re_scope(self.encl_scope(id))
     }
 
-    pub fn scopes_intersect(&self, scope1: ast::node_id, scope2: ast::node_id)
+    pub fn scopes_intersect(&self, scope1: ast::NodeId, scope2: ast::NodeId)
                             -> bool {
         self.is_subscope_of(scope1, scope2) ||
         self.is_subscope_of(scope2, scope1)
     }
 
     pub fn is_subscope_of(&self,
-                          subscope: ast::node_id,
-                          superscope: ast::node_id)
+                          subscope: ast::NodeId,
+                          superscope: ast::NodeId)
                           -> bool {
         /*!
          * Returns true if `subscope` is equal to or is lexically
@@ -254,9 +254,9 @@ impl RegionMaps {
     }
 
     pub fn nearest_common_ancestor(&self,
-                                   scope_a: ast::node_id,
-                                   scope_b: ast::node_id)
-                                   -> Option<ast::node_id> {
+                                   scope_a: ast::NodeId,
+                                   scope_b: ast::NodeId)
+                                   -> Option<ast::NodeId> {
         /*!
          * Finds the nearest common ancestor (if any) of two scopes.  That
          * is, finds the smallest scope which is greater than or equal to
@@ -294,8 +294,8 @@ impl RegionMaps {
             }
         }
 
-        fn ancestors_of(this: &RegionMaps, scope: ast::node_id)
-            -> ~[ast::node_id]
+        fn ancestors_of(this: &RegionMaps, scope: ast::NodeId)
+            -> ~[ast::NodeId]
         {
             // debug!("ancestors_of(scope=%d)", scope);
             let mut result = ~[scope];
@@ -315,7 +315,7 @@ impl RegionMaps {
 }
 
 /// Records the current parent (if any) as the parent of `child_id`.
-fn parent_to_expr(cx: Context, child_id: ast::node_id, sp: span) {
+fn parent_to_expr(cx: Context, child_id: ast::NodeId, sp: span) {
     debug!("region::parent_to_expr(span=%?)",
            cx.sess.codemap.span_to_str(sp));
     for cx.parent.iter().advance |parent_id| {
@@ -416,7 +416,7 @@ fn resolve_fn(fk: &visit::fn_kind,
               decl: &ast::fn_decl,
               body: &ast::Block,
               sp: span,
-              id: ast::node_id,
+              id: ast::NodeId,
               (cx, visitor): (Context,
                               visit::vt<Context>)) {
     debug!("region::resolve_fn(id=%?, \
@@ -503,12 +503,12 @@ pub fn resolve_crate(sess: Session,
 // a worklist.  We can then process the worklist, propagating indirect
 // dependencies until a fixed point is reached.
 
-pub type region_paramd_items = @mut HashMap<ast::node_id, region_variance>;
+pub type region_paramd_items = @mut HashMap<ast::NodeId, region_variance>;
 
 #[deriving(Eq)]
 pub struct region_dep {
     ambient_variance: region_variance,
-    id: ast::node_id
+    id: ast::NodeId
 }
 
 pub struct DetermineRpCtxt {
@@ -516,11 +516,11 @@ pub struct DetermineRpCtxt {
     ast_map: ast_map::map,
     def_map: resolve::DefMap,
     region_paramd_items: region_paramd_items,
-    dep_map: @mut HashMap<ast::node_id, @mut ~[region_dep]>,
-    worklist: ~[ast::node_id],
+    dep_map: @mut HashMap<ast::NodeId, @mut ~[region_dep]>,
+    worklist: ~[ast::NodeId],
 
     // the innermost enclosing item id
-    item_id: ast::node_id,
+    item_id: ast::NodeId,
 
     // true when we are within an item but not within a method.
     // see long discussion on region_is_relevant().
@@ -572,7 +572,7 @@ impl DetermineRpCtxt {
     /// Records that item `id` is region-parameterized with the
     /// variance `variance`.  If `id` was already parameterized, then
     /// the new variance is joined with the old variance.
-    pub fn add_rp(&mut self, id: ast::node_id, variance: region_variance) {
+    pub fn add_rp(&mut self, id: ast::NodeId, variance: region_variance) {
         assert!(id != 0);
         let old_variance = self.region_paramd_items.find(&id).
                                 map_consume(|x| *x);
@@ -598,7 +598,7 @@ impl DetermineRpCtxt {
     /// `from`.  Put another way, it indicates that the current item
     /// contains a value of type `from`, so if `from` is
     /// region-parameterized, so is the current item.
-    pub fn add_dep(&mut self, from: ast::node_id) {
+    pub fn add_dep(&mut self, from: ast::NodeId) {
         debug!("add dependency from %d -> %d (%s -> %s) with variance %?",
                from, self.item_id,
                ast_map::node_id_to_str(self.ast_map, from,
@@ -670,7 +670,7 @@ impl DetermineRpCtxt {
     }
 
     pub fn with(@mut self,
-                item_id: ast::node_id,
+                item_id: ast::NodeId,
                 anon_implies_rp: bool,
                 f: &fn()) {
         let old_item_id = self.item_id;
@@ -708,7 +708,7 @@ fn determine_rp_in_fn(fk: &visit::fn_kind,
                       decl: &ast::fn_decl,
                       body: &ast::Block,
                       _: span,
-                      _: ast::node_id,
+                      _: ast::NodeId,
                       (cx, visitor): (@mut DetermineRpCtxt,
                                       visit::vt<@mut DetermineRpCtxt>)) {
     do cx.with(cx.item_id, false) {
@@ -724,7 +724,7 @@ fn determine_rp_in_fn(fk: &visit::fn_kind,
     }
 }
 
-fn determine_rp_in_ty_method(ty_m: &ast::ty_method,
+fn determine_rp_in_ty_method(ty_m: &ast::TypeMethod,
                              (cx, visitor): (@mut DetermineRpCtxt,
                                              visit::vt<@mut DetermineRpCtxt>)) {
     do cx.with(cx.item_id, false) {
@@ -790,7 +790,7 @@ fn determine_rp_in_ty(ty: &ast::Ty,
           Some(&ast::def_ty(did)) |
           Some(&ast::def_trait(did)) |
           Some(&ast::def_struct(did)) => {
-            if did.crate == ast::local_crate {
+            if did.crate == ast::LOCAL_CRATE {
                 if cx.region_is_relevant(&path.rp) {
                     cx.add_dep(did.node);
                 }

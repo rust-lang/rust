@@ -807,7 +807,7 @@ pub fn print_variant(s: @ps, v: &ast::variant) {
     }
 }
 
-pub fn print_ty_method(s: @ps, m: &ast::ty_method) {
+pub fn print_ty_method(s: @ps, m: &ast::TypeMethod) {
     hardbreak_if_not_bol(s);
     maybe_print_comment(s, m.span.lo);
     print_outer_attributes(s, m.attrs);
@@ -948,8 +948,8 @@ pub fn print_possibly_embedded_block_(s: @ps,
                                       attrs: &[ast::Attribute],
                                       close_box: bool) {
     match blk.rules {
-      ast::unsafe_blk => word_space(s, "unsafe"),
-      ast::default_blk => ()
+      ast::UnsafeBlock => word_space(s, "unsafe"),
+      ast::DefaultBlock => ()
     }
     maybe_print_comment(s, blk.span.lo);
     let ann_node = node_block(s, blk);
@@ -1272,7 +1272,7 @@ pub fn print_expr(s: @ps, expr: &ast::expr) {
             // in the case of foo => expr
             if arm.body.view_items.is_empty() &&
                 arm.body.stmts.is_empty() &&
-                arm.body.rules == ast::default_blk &&
+                arm.body.rules == ast::DefaultBlock &&
                 arm.body.expr.is_some()
             {
                 match arm.body.expr {

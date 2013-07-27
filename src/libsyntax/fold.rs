@@ -36,7 +36,7 @@ pub trait ast_fold {
     fn fold_path(@self, &Path) -> Path;
     fn fold_local(@self, @Local) -> @Local;
     fn map_exprs(@self, @fn(@expr) -> @expr, &[@expr]) -> ~[@expr];
-    fn new_id(@self, node_id) -> node_id;
+    fn new_id(@self, NodeId) -> NodeId;
     fn new_span(@self, span) -> span;
 }
 
@@ -65,7 +65,7 @@ pub struct AstFoldFns {
     fold_path: @fn(&Path, @ast_fold) -> Path,
     fold_local: @fn(@Local, @ast_fold) -> @Local,
     map_exprs: @fn(@fn(@expr) -> @expr, &[@expr]) -> ~[@expr],
-    new_id: @fn(node_id) -> node_id,
+    new_id: @fn(NodeId) -> NodeId,
     new_span: @fn(span) -> span
 }
 
@@ -646,12 +646,10 @@ pub fn noop_fold_ty(t: &ty_, fld: @ast_fold) -> ty_ {
             mutbl: mt.mutbl,
         }
     }
-    fn fold_field(f: ty_field, fld: @ast_fold) -> ty_field {
-        spanned {
-            node: ast::ty_field_ {
-                ident: fld.fold_ident(f.node.ident),
-                mt: fold_mt(&f.node.mt, fld),
-            },
+    fn fold_field(f: TypeField, fld: @ast_fold) -> TypeField {
+        ast::TypeField {
+            ident: fld.fold_ident(f.ident),
+            mt: fold_mt(&f.mt, fld),
             span: fld.new_span(f.span),
         }
     }
@@ -787,7 +785,7 @@ fn noop_map_exprs(f: @fn(@expr) -> @expr, es: &[@expr]) -> ~[@expr] {
     es.map(|x| f(*x))
 }
 
-fn noop_id(i: node_id) -> node_id { return i; }
+fn noop_id(i: NodeId) -> NodeId { return i; }
 
 fn noop_span(sp: span) -> span { return sp; }
 
@@ -924,7 +922,7 @@ impl ast_fold for AstFoldFns {
               -> ~[@expr] {
         (self.map_exprs)(f, e)
     }
-    fn new_id(@self, node_id: ast::node_id) -> node_id {
+    fn new_id(@self, node_id: ast::NodeId) -> NodeId {
         (self.new_id)(node_id)
     }
     fn new_span(@self, span: span) -> span {
