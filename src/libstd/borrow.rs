@@ -58,3 +58,15 @@ impl<'self, T: Ord> Ord for &'self T {
         *(*self) > *(*other)
     }
 }
+
+#[cfg(not(test))]
+impl<'self, T: TotalOrd> TotalOrd for &'self T {
+    #[inline]
+    fn cmp(&self, other: & &'self T) -> Ordering { (**self).cmp(*other) }
+}
+
+#[cfg(not(test))]
+impl<'self, T: TotalEq> TotalEq for &'self T {
+    #[inline]
+    fn equals(&self, other: & &'self T) -> bool { (**self).equals(*other) }
+}
