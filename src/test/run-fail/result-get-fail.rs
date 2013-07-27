@@ -13,5 +13,5 @@
 use std::result;
 
 fn main() {
-  error!(result::get(&result::Err::<int,~str>(~"kitty")));
+  error!(result::Err::<int,~str>(~"kitty").get());
 }
