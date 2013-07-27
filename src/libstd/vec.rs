@@ -1656,6 +1656,8 @@ impl<T:Eq> OwnedEqVector<T> for ~[T] {
 #[allow(missing_doc)]
 pub trait MutableVector<'self, T> {
     fn mut_slice(self, start: uint, end: uint) -> &'self mut [T];
+    fn mut_slice_from(self, start: uint) -> &'self mut [T];
+    fn mut_slice_to(self, end: uint) -> &'self mut [T];
     fn mut_iter(self) -> VecMutIterator<'self, T>;
     fn mut_rev_iter(self) -> VecMutRevIterator<'self, T>;
 
@@ -1707,6 +1709,27 @@ impl<'self,T> MutableVector<'self, T> for &'self mut [T] {
                 })
             }
         }
+    }
+
+    /**
+     * Returns a slice of self from `start` to the end of the vec.
+     *
+     * Fails when `start` points outside the bounds of self.
+     */
+    #[inline]
+    fn mut_slice_from(self, start: uint) -> &'self mut [T] {
+        let len = self.len();
+        self.mut_slice(start, len)
+    }
+
+    /**
+     * Returns a slice of self from the start of the vec to `end`.
+     *
+     * Fails when `end` points outside the bounds of self.
+     */
+    #[inline]
+    fn mut_slice_to(self, end: uint) -> &'self mut [T] {
+        self.mut_slice(0, end)
     }
 
     #[inline]
