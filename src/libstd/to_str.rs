@@ -180,9 +180,14 @@ impl<A:ToStr> ToStr for @[A] {
 
 #[cfg(test)]
 mod tests {
+    extern mod extra;
+    use extra::test::BenchHarness;
+
     use hashmap::HashMap;
     use hashmap::HashSet;
-    use container::{MutableSet, MutableMap};
+    use uint;
+    use container::{Container, MutableSet, MutableMap};
+    use str::StrSlice;
     use super::*;
 
     #[test]
@@ -251,5 +256,17 @@ mod tests {
 
         assert!(set_str == ~"{1, 2}" || set_str == ~"{2, 1}");
         assert_eq!(empty_set.to_str(), ~"{}");
+    }
+
+    #[bench]
+    fn bench_hashmap(b: &mut BenchHarness) {
+        let mut map = HashMap::new::<uint, &str>();
+        let s = "0123456789";
+        for uint::range(0, 100) |i| {
+            map.insert(i, s.slice(0, i % s.len()));
+        }
+        do b.iter {
+            let s = map.to_str(); s.len();
+        }
     }
 }
