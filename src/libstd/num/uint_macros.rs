@@ -20,6 +20,7 @@ use num::BitCount;
 use num::{ToStrRadix, FromStrRadix};
 use num::{Zero, One, strconv};
 use prelude::*;
+use rt::io::StringWriter;
 use str;
 
 pub use cmp::{min, max};
@@ -410,6 +411,13 @@ impl ToStr for $T {
     #[inline]
     fn to_str(&self) -> ~str {
         to_str(*self)
+    }
+
+    #[inline]
+    fn to_str_writer<W: StringWriter>(&self, w: &mut W) {
+        do strconv::int_to_str_bytes_common(*self, 10u, strconv::SignNeg) |c| {
+           w.write_char(c as char)
+        }
     }
 }
 
