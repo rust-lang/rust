@@ -883,7 +883,7 @@ impl Parser {
     // parse a possibly mutable type
     pub fn parse_mt(&self) -> mt {
         let mutbl = self.parse_mutability();
-        let t = ~self.parse_ty(false);
+        let t = self.parse_ty(false);
         mt { ty: t, mutbl: mutbl }
     }
 
@@ -894,7 +894,7 @@ impl Parser {
         let mutbl = self.parse_mutability();
         let id = self.parse_ident();
         self.expect(&token::COLON);
-        let ty = ~self.parse_ty(false);
+        let ty = self.parse_ty(false);
         spanned(
             lo,
             ty.span.hi,
@@ -906,13 +906,13 @@ impl Parser {
     }
 
     // parse optional return type [ -> TY ] in function decl
-    pub fn parse_ret_ty(&self) -> (ret_style, Ty) {
+    pub fn parse_ret_ty(&self) -> (ret_style, @Ty) {
         return if self.eat(&token::RARROW) {
             let lo = self.span.lo;
             if self.eat(&token::NOT) {
                 (
                     noreturn,
-                    Ty {
+                    @Ty {
                         id: self.get_id(),
                         node: ty_bot,
                         span: mk_sp(lo, self.last_span.hi)
@@ -925,7 +925,7 @@ impl Parser {
             let pos = self.span.lo;
             (
                 return_val,
-                Ty {
+                @Ty {
                     id: self.get_id(),
                     node: ty_nil,
                     span: mk_sp(pos, pos),
@@ -937,7 +937,7 @@ impl Parser {
     // parse a type.
     // Useless second parameter for compatibility with quasiquote macros.
     // Bleh!
-    pub fn parse_ty(&self, _: bool) -> Ty {
+    pub fn parse_ty(&self, _: bool) -> @Ty {
         maybe_whole!(self, nt_ty);
 
         let lo = self.span.lo;
@@ -1036,7 +1036,7 @@ impl Parser {
         };
 
         let sp = mk_sp(lo, self.last_span.hi);
-        Ty {id: self.get_id(), node: t, span: sp}
+        @Ty {id: self.get_id(), node: t, span: sp}
     }
 
     // parse the type following a @ or a ~
@@ -1177,7 +1177,7 @@ impl Parser {
         let t = if self.eat(&token::COLON) {
             self.parse_ty(false)
         } else {
-            Ty {
+            @Ty {
                 id: self.get_id(),
                 node: ty_infer,
                 span: mk_sp(self.span.lo, self.span.hi),
@@ -1531,7 +1531,7 @@ impl Parser {
     pub fn mk_method_call(&self,
                       rcvr: @expr,
                       ident: ident,
-                      tps: ~[Ty],
+                      tps: ~[@Ty],
                       args: ~[@expr],
                       sugar: CallSugar) -> ast::expr_ {
         expr_method_call(self.get_id(), rcvr, ident, tps, args, sugar)
@@ -1541,7 +1541,7 @@ impl Parser {
         expr_index(self.get_id(), expr, idx)
     }
 
-    pub fn mk_field(&self, expr: @expr, ident: ident, tys: ~[Ty]) -> ast::expr_ {
+    pub fn mk_field(&self, expr: @expr, ident: ident, tys: ~[@Ty]) -> ast::expr_ {
         expr_field(expr, ident, tys)
     }
 
@@ -2271,7 +2271,7 @@ impl Parser {
                     // No argument list - `do foo {`
                       ast::fn_decl {
                           inputs: ~[],
-                          output: Ty {
+                          output: @Ty {
                               id: self.get_id(),
                               node: ty_infer,
                               span: *self.span
@@ -2934,7 +2934,7 @@ impl Parser {
             self.obsolete(*self.span, ObsoleteMutWithMultipleBindings)
         }
 
-        let mut ty = Ty {
+        let mut ty = @Ty {
             id: self.get_id(),
             node: ty_infer,
             span: mk_sp(lo, lo),
@@ -3356,7 +3356,7 @@ impl Parser {
     }
 
     // parse a generic use site
-    fn parse_generic_values(&self) -> (OptVec<ast::Lifetime>, ~[Ty]) {
+    fn parse_generic_values(&self) -> (OptVec<ast::Lifetime>, ~[@Ty]) {
         if !self.eat(&token::LT) {
             (opt_vec::Empty, ~[])
         } else {
@@ -3364,7 +3364,7 @@ impl Parser {
         }
     }
 
-    fn parse_generic_values_after_lt(&self) -> (OptVec<ast::Lifetime>, ~[Ty]) {
+    fn parse_generic_values_after_lt(&self) -> (OptVec<ast::Lifetime>, ~[@Ty]) {
         let lifetimes = self.parse_lifetimes();
         let result = self.parse_seq_to_gt(
             Some(token::COMMA),
@@ -3574,7 +3574,7 @@ impl Parser {
         let output = if self.eat(&token::RARROW) {
             self.parse_ty(false)
         } else {
-            Ty { id: self.get_id(), node: ty_infer, span: *self.span }
+            @Ty { id: self.get_id(), node: ty_infer, span: *self.span }
         };
 
         ast::fn_decl {
@@ -4293,9 +4293,9 @@ impl Parser {
                     seq_sep_trailing_disallowed(token::COMMA),
                     |p| p.parse_ty(false)
                 );
-                for arg_tys.consume_iter().advance |ty| {
+                for arg_tys.iter().advance |ty| {
                     args.push(ast::variant_arg {
-                        ty: ty,
+                        ty: *ty,
                         id: self.get_id(),
                     });
                 }

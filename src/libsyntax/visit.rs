@@ -83,7 +83,7 @@ pub struct Visitor<E> {
     visit_decl: @fn(@decl, (E, vt<E>)),
     visit_expr: @fn(@expr, (E, vt<E>)),
     visit_expr_post: @fn(@expr, (E, vt<E>)),
-    visit_ty: @fn(&Ty, (E, vt<E>)),
+    visit_ty: @fn(@Ty, (E, vt<E>)),
     visit_generics: @fn(&Generics, (E, vt<E>)),
     visit_fn: @fn(&fn_kind, &fn_decl, &Block, span, node_id, (E, vt<E>)),
     visit_ty_method: @fn(&ty_method, (E, vt<E>)),
@@ -138,7 +138,7 @@ pub fn visit_view_item<E>(_vi: &view_item, (_e, _v): (E, vt<E>)) { }
 
 pub fn visit_local<E:Clone>(loc: &Local, (e, v): (E, vt<E>)) {
     (v.visit_pat)(loc.pat, (e.clone(), v));
-    (v.visit_ty)(&loc.ty, (e.clone(), v));
+    (v.visit_ty)(loc.ty, (e.clone(), v));
     match loc.init {
       None => (),
       Some(ex) => (v.visit_expr)(ex, (e, v))
@@ -151,7 +151,7 @@ fn visit_trait_ref<E:Clone>(tref: &ast::trait_ref, (e, v): (E, vt<E>)) {
 
 pub fn visit_item<E:Clone>(i: &item, (e, v): (E, vt<E>)) {
     match i.node {
-        item_static(ref t, _, ex) => {
+        item_static(t, _, ex) => {
             (v.visit_ty)(t, (e.clone(), v));
             (v.visit_expr)(ex, (e.clone(), v));
         }
@@ -180,7 +180,7 @@ pub fn visit_item<E:Clone>(i: &item, (e, v): (E, vt<E>)) {
                 (v.visit_foreign_item)(*ni, (e.clone(), v));
             }
         }
-        item_ty(ref t, ref tps) => {
+        item_ty(t, ref tps) => {
             (v.visit_ty)(t, (e.clone(), v));
             (v.visit_generics)(tps, (e, v));
         }
@@ -192,7 +192,7 @@ pub fn visit_item<E:Clone>(i: &item, (e, v): (E, vt<E>)) {
                 (e, v)
             );
         }
-        item_impl(ref tps, ref traits, ref ty, ref methods) => {
+        item_impl(ref tps, ref traits, ty, ref methods) => {
             (v.visit_generics)(tps, (e.clone(), v));
             for traits.iter().advance |p| {
                 visit_trait_ref(p, (e.clone(), v));
@@ -226,7 +226,7 @@ pub fn visit_enum_def<E:Clone>(enum_definition: &ast::enum_def,
         match vr.node.kind {
             tuple_variant_kind(ref variant_args) => {
                 for variant_args.iter().advance |va| {
-                    (v.visit_ty)(&va.ty, (e.clone(), v));
+                    (v.visit_ty)(va.ty, (e.clone(), v));
                 }
             }
             struct_variant_kind(struct_def) => {
@@ -245,29 +245,29 @@ pub fn skip_ty<E>(_t: &Ty, (_e,_v): (E, vt<E>)) {}
 
 pub fn visit_ty<E:Clone>(t: &Ty, (e, v): (E, vt<E>)) {
     match t.node {
-        ty_box(ref mt) | ty_uniq(ref mt) |
-        ty_vec(ref mt) | ty_ptr(ref mt) | ty_rptr(_, ref mt) => {
+        ty_box(mt) | ty_uniq(mt) |
+        ty_vec(mt) | ty_ptr(mt) | ty_rptr(_, mt) => {
             (v.visit_ty)(mt.ty, (e, v));
         },
         ty_tup(ref ts) => {
             for ts.iter().advance |tt| {
-                (v.visit_ty)(tt, (e.clone(), v));
+                (v.visit_ty)(*tt, (e.clone(), v));
             }
         },
         ty_closure(ref f) => {
             for f.decl.inputs.iter().advance |a| {
-                (v.visit_ty)(&a.ty, (e.clone(), v));
+                (v.visit_ty)(a.ty, (e.clone(), v));
             }
-            (v.visit_ty)(&f.decl.output, (e.clone(), v));
+            (v.visit_ty)(f.decl.output, (e.clone(), v));
             do f.bounds.map |bounds| {
                 visit_ty_param_bounds(bounds, (e.clone(), v));
             };
         },
         ty_bare_fn(ref f) => {
             for f.decl.inputs.iter().advance |a| {
-                (v.visit_ty)(&a.ty, (e.clone(), v));
+                (v.visit_ty)(a.ty, (e.clone(), v));
             }
-            (v.visit_ty)(&f.decl.output, (e, v));
+            (v.visit_ty)(f.decl.output, (e, v));
         },
         ty_path(ref p, ref bounds, _) => {
             visit_path(p, (e.clone(), v));
@@ -284,7 +284,7 @@ pub fn visit_ty<E:Clone>(t: &Ty, (e, v): (E, vt<E>)) {
 }
 
 pub fn visit_path<E:Clone>(p: &Path, (e, v): (E, vt<E>)) {
-    for p.types.iter().advance |tp| { (v.visit_ty)(tp, (e.clone(), v)); }
+    for p.types.iter().advance |tp| { (v.visit_ty)(*tp, (e.clone(), v)); }
 }
 
 pub fn visit_pat<E:Clone>(p: &pat, (e, v): (E, vt<E>)) {
@@ -343,7 +343,7 @@ pub fn visit_foreign_item<E:Clone>(ni: &foreign_item, (e, v): (E, vt<E>)) {
             visit_fn_decl(fd, (e.clone(), v));
             (v.visit_generics)(generics, (e, v));
         }
-        foreign_item_static(ref t, _) => {
+        foreign_item_static(t, _) => {
             (v.visit_ty)(t, (e, v));
         }
     }
@@ -368,9 +368,9 @@ pub fn visit_generics<E:Clone>(generics: &Generics, (e, v): (E, vt<E>)) {
 pub fn visit_fn_decl<E:Clone>(fd: &fn_decl, (e, v): (E, vt<E>)) {
     for fd.inputs.iter().advance |a| {
         (v.visit_pat)(a.pat, (e.clone(), v));
-        (v.visit_ty)(&a.ty, (e.clone(), v));
+        (v.visit_ty)(a.ty, (e.clone(), v));
     }
-    (v.visit_ty)(&fd.output, (e, v));
+    (v.visit_ty)(fd.output, (e, v));
 }
 
 // Note: there is no visit_method() method in the visitor, instead override
@@ -396,10 +396,10 @@ pub fn visit_fn<E:Clone>(fk: &fn_kind, decl: &fn_decl, body: &Block, _sp: span,
 
 pub fn visit_ty_method<E:Clone>(m: &ty_method, (e, v): (E, vt<E>)) {
     for m.decl.inputs.iter().advance |a| {
-        (v.visit_ty)(&a.ty, (e.clone(), v));
+        (v.visit_ty)(a.ty, (e.clone(), v));
     }
     (v.visit_generics)(&m.generics, (e.clone(), v));
-    (v.visit_ty)(&m.decl.output, (e, v));
+    (v.visit_ty)(m.decl.output, (e, v));
 }
 
 pub fn visit_trait_method<E:Clone>(m: &trait_method, (e, v): (E, vt<E>)) {
@@ -422,7 +422,7 @@ pub fn visit_struct_def<E:Clone>(
 }
 
 pub fn visit_struct_field<E:Clone>(sf: &struct_field, (e, v): (E, vt<E>)) {
-    (v.visit_ty)(&sf.node.ty, (e, v));
+    (v.visit_ty)(sf.node.ty, (e, v));
 }
 
 pub fn visit_block<E:Clone>(b: &Block, (e, v): (E, vt<E>)) {
@@ -488,7 +488,7 @@ pub fn visit_expr<E:Clone>(ex: @expr, (e, v): (E, vt<E>)) {
         expr_method_call(_, callee, _, ref tys, ref args, _) => {
             visit_exprs(*args, (e.clone(), v));
             for tys.iter().advance |tp| {
-                (v.visit_ty)(tp, (e.clone(), v));
+                (v.visit_ty)(*tp, (e.clone(), v));
             }
             (v.visit_expr)(callee, (e.clone(), v));
         }
@@ -499,7 +499,7 @@ pub fn visit_expr<E:Clone>(ex: @expr, (e, v): (E, vt<E>)) {
         expr_addr_of(_, x) | expr_unary(_, _, x) |
         expr_loop_body(x) | expr_do_body(x) => (v.visit_expr)(x, (e.clone(), v)),
         expr_lit(_) => (),
-        expr_cast(x, ref t) => {
+        expr_cast(x, t) => {
             (v.visit_expr)(x, (e.clone(), v));
             (v.visit_ty)(t, (e.clone(), v));
         }
@@ -539,7 +539,7 @@ pub fn visit_expr<E:Clone>(ex: @expr, (e, v): (E, vt<E>)) {
         expr_field(x, _, ref tys) => {
             (v.visit_expr)(x, (e.clone(), v));
             for tys.iter().advance |tp| {
-                (v.visit_ty)(tp, (e.clone(), v));
+                (v.visit_ty)(*tp, (e.clone(), v));
             }
         }
         expr_index(_, a, b) => {
@@ -591,7 +591,7 @@ pub struct SimpleVisitor {
     visit_decl: @fn(@decl),
     visit_expr: @fn(@expr),
     visit_expr_post: @fn(@expr),
-    visit_ty: @fn(&Ty),
+    visit_ty: @fn(@Ty),
     visit_generics: @fn(&Generics),
     visit_fn: @fn(&fn_kind, &fn_decl, &Block, span, node_id),
     visit_ty_method: @fn(&ty_method),
@@ -603,7 +603,7 @@ pub struct SimpleVisitor {
 
 pub type simple_visitor = @SimpleVisitor;
 
-pub fn simple_ignore_ty(_t: &Ty) {}
+pub fn simple_ignore_ty(_t: @Ty) {}
 
 pub fn default_simple_visitor() -> @SimpleVisitor {
     @SimpleVisitor {
@@ -684,7 +684,7 @@ pub fn mk_simple_visitor(v: simple_visitor) -> vt<()> {
     fn v_expr_post(f: @fn(@expr), ex: @expr, (_e, _v): ((), vt<()>)) {
         f(ex);
     }
-    fn v_ty(f: @fn(&Ty), ty: &Ty, (e, v): ((), vt<()>)) {
+    fn v_ty(f: @fn(@Ty), ty: @Ty, (e, v): ((), vt<()>)) {
         f(ty);
         visit_ty(ty, (e, v));
     }
@@ -729,7 +729,7 @@ pub fn mk_simple_visitor(v: simple_visitor) -> vt<()> {
         f(fk, decl, body, sp, id);
         visit_fn(fk, decl, body, sp, id, (e, v));
     }
-    let visit_ty: @fn(&Ty, ((), vt<()>)) =
+    let visit_ty: @fn(@Ty, ((), vt<()>)) =
         |a,b| v_ty(v.visit_ty, a, b);
     fn v_struct_field(f: @fn(@struct_field), sf: @struct_field, (e, v): ((), vt<()>)) {
         f(sf);

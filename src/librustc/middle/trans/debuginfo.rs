@@ -197,7 +197,7 @@ pub fn create_local_var_metadata(bcx: @mut Block, local: @ast::Local) -> DIVaria
 ///
 /// Adds the created metadata nodes directly to the crate's IR.
 /// The return value should be ignored if called from outside of the debuginfo module.
-pub fn create_argument_metadata(bcx: @mut Block, arg: &ast::arg, span: span) -> Option<DIVariable> {
+pub fn create_argument_metadata(bcx: @mut Block, arg: ast::arg, span: span) -> Option<DIVariable> {
     debug!("create_argument_metadata");
     if true {
         // XXX create_argument_metadata disabled for now because "node_id_type(bcx, arg.id)" below
@@ -278,9 +278,9 @@ pub fn create_function_metadata(fcx: &FunctionContext) -> DISubprogram {
 
     let fnitem = cx.tcx.items.get_copy(&fcx.id);
     let (ident, ret_ty, id) = match fnitem {
-        ast_map::node_item(ref item, _) => {
+        ast_map::node_item(item, _) => {
             match item.node {
-                ast::item_fn(ast::fn_decl { output: ref ty, _}, _, _, _, _) => {
+                ast::item_fn(ast::fn_decl { output: ty, _}, _, _, _, _) => {
                     (item.ident, ty, item.id)
                 }
                 _ => fcx.ccx.sess.span_bug(item.span,
@@ -289,7 +289,7 @@ pub fn create_function_metadata(fcx: &FunctionContext) -> DISubprogram {
         }
         ast_map::node_method(
             @ast::method {
-                decl: ast::fn_decl { output: ref ty, _ },
+                decl: ast::fn_decl { output: ty, _ },
                 id: id,
                 ident: ident,
                 _
@@ -302,7 +302,7 @@ pub fn create_function_metadata(fcx: &FunctionContext) -> DISubprogram {
             match expr.node {
                 ast::expr_fn_block(ref decl, _) => {
                     let name = gensym_name("fn");
-                    (name, &decl.output, expr.id)
+                    (name, decl.output, expr.id)
                 }
                 _ => fcx.ccx.sess.span_bug(expr.span,
                         "create_function_metadata: expected an expr_fn_block here")
@@ -311,7 +311,7 @@ pub fn create_function_metadata(fcx: &FunctionContext) -> DISubprogram {
         ast_map::node_trait_method(
             @ast::provided(
                 @ast::method {
-                    decl: ast::fn_decl { output: ref ty, _ },
+                    decl: ast::fn_decl { output: ty, _ },
                     id: id,
                     ident: ident,
                     _
