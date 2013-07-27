@@ -460,8 +460,7 @@ fn trans_rvalue_datum_unadjusted(bcx: @mut Block, expr: @ast::expr) -> DatumBloc
                                                       expr, contents);
         }
         ast::expr_vstore(contents, ast::expr_vstore_uniq) => {
-            let heap = heap_for_unique(bcx, expr_ty(bcx, contents));
-            return tvec::trans_uniq_or_managed_vstore(bcx, heap,
+            return tvec::trans_uniq_or_managed_vstore(bcx, heap_exchange,
                                                       expr, contents);
         }
         ast::expr_lit(lit) => {
@@ -1306,8 +1305,7 @@ fn trans_unary_datum(bcx: @mut Block,
                              heap_managed)
         }
         ast::uniq => {
-            let heap  = heap_for_unique(bcx, un_ty);
-            trans_boxed_expr(bcx, un_ty, sub_expr, sub_ty, heap)
+            trans_boxed_expr(bcx, un_ty, sub_expr, sub_ty, heap_exchange)
         }
         ast::deref => {
             bcx.sess().bug("deref expressions should have been \

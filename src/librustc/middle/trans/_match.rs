@@ -1410,7 +1410,7 @@ fn compile_submatch_continue(mut bcx: @mut Block,
         let pat_ty = node_id_type(bcx, pat_id);
         let llbox = Load(bcx, val);
         let unboxed = match ty::get(pat_ty).sty {
-            ty::ty_uniq(*) if !ty::type_contents(bcx.tcx(), pat_ty).contains_managed() => llbox,
+            ty::ty_uniq(*) => llbox,
             _ => GEPi(bcx, llbox, [0u, abi::box_field_body])
         };
         compile_submatch(bcx, enter_uniq(bcx, dm, m, col, val),

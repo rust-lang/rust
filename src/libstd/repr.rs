@@ -298,6 +298,7 @@ impl TyVisitor for ReprVisitor {
         }
     }
 
+    #[cfg(stage0)]
     fn visit_uniq_managed(&self, _mtbl: uint, inner: *TyDesc) -> bool {
         self.writer.write_char('~');
         do self.get::<&raw::Box<()>> |b| {
@@ -346,6 +347,7 @@ impl TyVisitor for ReprVisitor {
         }
     }
 
+    #[cfg(stage0)]
     fn visit_evec_uniq_managed(&self, mtbl: uint, inner: *TyDesc) -> bool {
         do self.get::<&raw::Box<raw::Vec<()>>> |b| {
             self.writer.write_char('~');
