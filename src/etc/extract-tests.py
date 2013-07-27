@@ -59,14 +59,10 @@ while cur < len(lines):
                 block = "fn main() {\n" + block + "\n}\n"
             if not re.search(r"\bextern mod extra\b", block):
                 block = "extern mod extra;\n" + block
-            block = """#[ forbid(ctypes) ];
-#[ forbid(path_statement) ];
-#[ forbid(type_limits) ];
-#[ forbid(unrecognized_lint) ];
-#[ forbid(unused_imports) ];
-#[ forbid(while_true) ];
-
-#[ warn(non_camel_case_types) ];\n
+            block = """#[ deny(warnings) ];
+#[ allow(unused_variable) ];\n
+#[ allow(dead_assignment) ];\n
+#[ allow(unused_mut) ];\n
 """ + block
             if xfail:
                 block = "// xfail-test\n" + block
