@@ -4196,7 +4196,7 @@ impl Parser {
 
             // Do not allow visibility to be specified.
             if visibility != ast::inherited {
-                self.obsolete(*self.span, ObsoleteExternVisibility);
+                self.obsolete(*self.last_span, ObsoleteExternVisibility);
             }
 
             let abis = opt_abis.get_or_default(AbiSet::C());
