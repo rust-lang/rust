@@ -241,7 +241,7 @@ impl Digest for Sha1 {
 #[cfg(test)]
 mod tests {
 
-    use digest::{Digest, DigestUtil};
+    use digest::Digest;
     use sha1::Sha1;
 
     #[deriving(Clone)]
