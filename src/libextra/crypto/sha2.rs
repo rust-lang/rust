@@ -8,9 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 use std::uint;
 
+use cryptoutil::{write_u64_be, write_u32_be, read_u64v_be, read_u32v_be, FixedBuffer,
+    FixedBuffer128, FixedBuffer64, StandardPadding};
 use digest::Digest;
 
 
@@ -25,6 +26,13 @@ struct BitCounter {
 }
 
 impl BitCounter {
+    fn new() -> BitCounter {
+        return BitCounter {
+            high_bit_count: 0,
+            low_byte_count: 0
+        };
+    }
+
     fn add_bytes(&mut self, bytes: uint) {
         self.low_byte_count += bytes as u64;
         if(self.low_byte_count > 0x1fffffffffffffffu64) {
@@ -48,12 +56,9 @@ impl BitCounter {
 }
 
 
-// A structure that represents that state of a digest computation
-// for the SHA-2 512 family of digest functions
-struct Engine512 {
-    input_buffer: [u8, ..8],
-    input_buffer_idx: uint,
-    bit_counter: BitCounter,
+// A structure that represents that state of a digest computation for the SHA-2 512 family of digest
+// functions
+struct Engine512State {
     H0: u64,
     H1: u64,
     H2: u64,
@@ -62,91 +67,34 @@ struct Engine512 {
     H5: u64,
     H6: u64,
     H7: u64,
-    W: [u64, ..80],
-    W_idx: uint,
-    finished: bool,
 }
 
-// Convert a [u8] to a u64 in big-endian format
-fn to_u64(in: &[u8]) -> u64 {
-    (in[0] as u64) << 56 |
-    (in[1] as u64) << 48 |
-    (in[2] as u64) << 40 |
-    (in[3] as u64) << 32 |
-    (in[4] as u64) << 24 |
-    (in[5] as u64) << 16 |
-    (in[6] as u64) << 8 |
-    (in[7] as u64)
-}
-
-// Convert a u64 to a [u8] in big endian format
-fn from_u64(in: u64, out: &mut [u8]) {
-    out[0] = (in >> 56) as u8;
-    out[1] = (in >> 48) as u8;
-    out[2] = (in >> 40) as u8;
-    out[3] = (in >> 32) as u8;
-    out[4] = (in >> 24) as u8;
-    out[5] = (in >> 16) as u8;
-    out[6] = (in >> 8) as u8;
-    out[7] = in as u8;
-}
-
-impl Engine512 {
-    fn input_byte(&mut self, in: u8) {
-        assert!(!self.finished)
-
-        self.input_buffer[self.input_buffer_idx] = in;
-        self.input_buffer_idx += 1;
-
-        if (self.input_buffer_idx == 8) {
-            self.input_buffer_idx = 0;
-            let w = to_u64(self.input_buffer);
-            self.process_word(w);
-        }
-
-        self.bit_counter.add_bytes(1);
+impl Engine512State {
+    fn new(h: &[u64, ..8]) -> Engine512State {
+        return Engine512State {
+            H0: h[0],
+            H1: h[1],
+            H2: h[2],
+            H3: h[3],
+            H4: h[4],
+            H5: h[5],
+            H6: h[6],
+            H7: h[7]
+        };
     }
 
-    fn input_vec(&mut self, in: &[u8]) {
-        assert!(!self.finished)
-
-        let mut i = 0;
-
-        while i < in.len() && self.input_buffer_idx != 0 {
-            self.input_byte(in[i]);
-            i += 1;
-        }
-
-        while in.len() - i >= 8 {
-            let w = to_u64(in.slice(i, i + 8));
-            self.process_word(w);
-            self.bit_counter.add_bytes(8);
-            i += 8;
-        }
-
-        while i < in.len() {
-            self.input_byte(in[i]);
-            i += 1;
-        }
+    fn reset(&mut self, h: &[u64, ..8]) {
+        self.H0 = h[0];
+        self.H1 = h[1];
+        self.H2 = h[2];
+        self.H3 = h[3];
+        self.H4 = h[4];
+        self.H5 = h[5];
+        self.H6 = h[6];
+        self.H7 = h[7];
     }
 
-    fn reset(&mut self) {
-        self.bit_counter.reset();
-        self.finished = false;
-        self.input_buffer_idx = 0;
-        self.W_idx = 0;
-    }
-
-    fn process_word(&mut self, in: u64) {
-        self.W[self.W_idx] = in;
-        self.W_idx += 1;
-        if (self.W_idx == 16) {
-            self.W_idx = 0;
-            self.process_block();
-        }
-    }
-
-    fn process_block(&mut self) {
+    fn process_block(&mut self, data: &[u8]) {
         fn ch(x: u64, y: u64, z: u64) -> u64 {
             ((x & y) ^ ((!x) & z))
         }
@@ -171,9 +119,13 @@ impl Engine512 {
             ((x << 45) | (x >> 19)) ^ ((x << 3) | (x >> 61)) ^ (x >> 6)
         }
 
+        let mut W = [0u64, ..80];
+
+        read_u64v_be(W.mut_slice(0, 16), data);
+
         for uint::range(16, 80) |t| {
-            self.W[t] = sigma1(self.W[t - 2]) + self.W[t - 7] + sigma0(self.W[t - 15]) +
-                self.W[t - 16];
+            W[t] = sigma1(W[t - 2]) + W[t - 7] + sigma0(W[t - 15]) +
+                W[t - 16];
         }
 
         let mut a = self.H0;
@@ -187,42 +139,42 @@ impl Engine512 {
 
         let mut t = 0;
         for uint::range(0, 10) |_| {
-            h += sum1(e) + ch(e, f, g) + K64[t] + self.W[t];
+            h += sum1(e) + ch(e, f, g) + K64[t] + W[t];
             d += h;
             h += sum0(a) + maj(a, b, c);
             t += 1;
 
-            g += sum1(d) + ch(d, e, f) + K64[t] + self.W[t];
+            g += sum1(d) + ch(d, e, f) + K64[t] + W[t];
             c += g;
             g += sum0(h) + maj(h, a, b);
             t += 1;
 
-            f += sum1(c) + ch(c, d, e) + K64[t] + self.W[t];
+            f += sum1(c) + ch(c, d, e) + K64[t] + W[t];
             b += f;
             f += sum0(g) + maj(g, h, a);
             t += 1;
 
-            e += sum1(b) + ch(b, c, d) + K64[t] + self.W[t];
+            e += sum1(b) + ch(b, c, d) + K64[t] + W[t];
             a += e;
             e += sum0(f) + maj(f, g, h);
             t += 1;
 
-            d += sum1(a) + ch(a, b, c) + K64[t] + self.W[t];
+            d += sum1(a) + ch(a, b, c) + K64[t] + W[t];
             h += d;
             d += sum0(e) + maj(e, f, g);
             t += 1;
 
-            c += sum1(h) + ch(h, a, b) + K64[t] + self.W[t];
+            c += sum1(h) + ch(h, a, b) + K64[t] + W[t];
             g += c;
             c += sum0(d) + maj(d, e, f);
             t += 1;
 
-            b += sum1(g) + ch(g, h, a) + K64[t] + self.W[t];
+            b += sum1(g) + ch(g, h, a) + K64[t] + W[t];
             f += b;
             b += sum0(c) + maj(c, d, e);
             t += 1;
 
-            a += sum1(f) + ch(f, g, h) + K64[t] + self.W[t];
+            a += sum1(f) + ch(f, g, h) + K64[t] + W[t];
             e += a;
             a += sum0(b) + maj(b, c, d);
             t += 1;
@@ -236,39 +188,6 @@ impl Engine512 {
         self.H5 += f;
         self.H6 += g;
         self.H7 += h;
-    }
-
-    fn finish(&mut self) {
-        if (self.finished) {
-            return;
-        }
-
-        // must get message length before padding is added
-        let high_bit_count = self.bit_counter.get_high_bit_count();
-        let low_bit_count = self.bit_counter.get_low_bit_count();
-
-        // add padding
-        self.input_byte(128u8);
-
-        while self.input_buffer_idx != 0 {
-            self.input_byte(0u8);
-        }
-
-        // add length
-        if (self.W_idx > 14) {
-            for uint::range(self.W_idx, 16) |_| {
-                self.process_word(0);
-            }
-        }
-
-        while self.W_idx < 14 {
-            self.process_word(0);
-        }
-
-        self.process_word(high_bit_count);
-        self.process_word(low_bit_count);
-
-        self.finished = true;
     }
 }
 
@@ -297,6 +216,53 @@ static K64: [u64, ..80] = [
 ];
 
 
+// A structure that keeps track of the state of the Sha-512 operation and contains the logic
+// necessary to perform the final calculations.
+struct Engine512 {
+    bit_counter: BitCounter,
+    buffer: FixedBuffer128,
+    state: Engine512State,
+    finished: bool,
+}
+
+impl Engine512 {
+    fn new(h: &[u64, ..8]) -> Engine512 {
+        return Engine512 {
+            bit_counter: BitCounter::new(),
+            buffer: FixedBuffer128::new(),
+            state: Engine512State::new(h),
+            finished: false
+        }
+    }
+
+    fn reset(&mut self, h: &[u64, ..8]) {
+        self.bit_counter.reset();
+        self.buffer.reset();
+        self.state.reset(h);
+        self.finished = false;
+    }
+
+    fn input(&mut self, in: &[u8]) {
+        assert!(!self.finished)
+        self.bit_counter.add_bytes(in.len());
+        self.buffer.input(in, |in: &[u8]| { self.state.process_block(in) });
+    }
+
+    fn finish(&mut self) {
+        if self.finished {
+            return;
+        }
+
+        self.buffer.standard_padding(16, |in: &[u8]| { self.state.process_block(in) });
+        write_u64_be(self.buffer.next(8), self.bit_counter.get_high_bit_count());
+        write_u64_be(self.buffer.next(8), self.bit_counter.get_low_bit_count());
+        self.state.process_block(self.buffer.full_buffer());
+
+        self.finished = true;
+    }
+}
+
+
 struct Sha512 {
     priv engine: Engine512
 }
@@ -306,61 +272,47 @@ impl Sha512 {
      * Construct an new instance of a SHA-512 digest.
      */
     pub fn new() -> Sha512 {
-        Sha512 {
-            engine: Engine512 {
-                input_buffer: [0u8, ..8],
-                input_buffer_idx: 0,
-                bit_counter: BitCounter { high_bit_count: 0, low_byte_count: 0 },
-                H0: 0x6a09e667f3bcc908u64,
-                H1: 0xbb67ae8584caa73bu64,
-                H2: 0x3c6ef372fe94f82bu64,
-                H3: 0xa54ff53a5f1d36f1u64,
-                H4: 0x510e527fade682d1u64,
-                H5: 0x9b05688c2b3e6c1fu64,
-                H6: 0x1f83d9abfb41bd6bu64,
-                H7: 0x5be0cd19137e2179u64,
-                W: [0u64, ..80],
-                W_idx: 0,
-                finished: false,
-            }
-        }
+        return Sha512 {
+            engine: Engine512::new(&H512)
+        };
     }
 }
 
 impl Digest for Sha512 {
     fn input(&mut self, d: &[u8]) {
-        self.engine.input_vec(d);
+        self.engine.input(d);
     }
 
     fn result(&mut self, out: &mut [u8]) {
         self.engine.finish();
 
-        from_u64(self.engine.H0, out.mut_slice(0, 8));
-        from_u64(self.engine.H1, out.mut_slice(8, 16));
-        from_u64(self.engine.H2, out.mut_slice(16, 24));
-        from_u64(self.engine.H3, out.mut_slice(24, 32));
-        from_u64(self.engine.H4, out.mut_slice(32, 40));
-        from_u64(self.engine.H5, out.mut_slice(40, 48));
-        from_u64(self.engine.H6, out.mut_slice(48, 56));
-        from_u64(self.engine.H7, out.mut_slice(56, 64));
-
+        write_u64_be(out.mut_slice(0, 8), self.engine.state.H0);
+        write_u64_be(out.mut_slice(8, 16), self.engine.state.H1);
+        write_u64_be(out.mut_slice(16, 24), self.engine.state.H2);
+        write_u64_be(out.mut_slice(24, 32), self.engine.state.H3);
+        write_u64_be(out.mut_slice(32, 40), self.engine.state.H4);
+        write_u64_be(out.mut_slice(40, 48), self.engine.state.H5);
+        write_u64_be(out.mut_slice(48, 56), self.engine.state.H6);
+        write_u64_be(out.mut_slice(56, 64), self.engine.state.H7);
     }
 
     fn reset(&mut self) {
-        self.engine.reset();
-
-        self.engine.H0 = 0x6a09e667f3bcc908u64;
-        self.engine.H1 = 0xbb67ae8584caa73bu64;
-        self.engine.H2 = 0x3c6ef372fe94f82bu64;
-        self.engine.H3 = 0xa54ff53a5f1d36f1u64;
-        self.engine.H4 = 0x510e527fade682d1u64;
-        self.engine.H5 = 0x9b05688c2b3e6c1fu64;
-        self.engine.H6 = 0x1f83d9abfb41bd6bu64;
-        self.engine.H7 = 0x5be0cd19137e2179u64;
+        self.engine.reset(&H512);
     }
 
     fn output_bits(&self) -> uint { 512 }
 }
+
+static H512: [u64, ..8] = [
+    0x6a09e667f3bcc908,
+    0xbb67ae8584caa73b,
+    0x3c6ef372fe94f82b,
+    0xa54ff53a5f1d36f1,
+    0x510e527fade682d1,
+    0x9b05688c2b3e6c1f,
+    0x1f83d9abfb41bd6b,
+    0x5be0cd19137e2179
+];
 
 
 struct Sha384 {
@@ -373,57 +325,44 @@ impl Sha384 {
      */
     pub fn new() -> Sha384 {
         Sha384 {
-            engine: Engine512 {
-                input_buffer: [0u8, ..8],
-                input_buffer_idx: 0,
-                bit_counter: BitCounter { high_bit_count: 0, low_byte_count: 0 },
-                H0: 0xcbbb9d5dc1059ed8u64,
-                H1: 0x629a292a367cd507u64,
-                H2: 0x9159015a3070dd17u64,
-                H3: 0x152fecd8f70e5939u64,
-                H4: 0x67332667ffc00b31u64,
-                H5: 0x8eb44a8768581511u64,
-                H6: 0xdb0c2e0d64f98fa7u64,
-                H7: 0x47b5481dbefa4fa4u64,
-                W: [0u64, ..80],
-                W_idx: 0,
-                finished: false,
-            }
+            engine: Engine512::new(&H384)
         }
     }
 }
 
 impl Digest for Sha384 {
     fn input(&mut self, d: &[u8]) {
-        self.engine.input_vec(d);
+        self.engine.input(d);
     }
 
     fn result(&mut self, out: &mut [u8]) {
         self.engine.finish();
 
-        from_u64(self.engine.H0, out.mut_slice(0, 8));
-        from_u64(self.engine.H1, out.mut_slice(8, 16));
-        from_u64(self.engine.H2, out.mut_slice(16, 24));
-        from_u64(self.engine.H3, out.mut_slice(24, 32));
-        from_u64(self.engine.H4, out.mut_slice(32, 40));
-        from_u64(self.engine.H5, out.mut_slice(40, 48));
+        write_u64_be(out.mut_slice(0, 8), self.engine.state.H0);
+        write_u64_be(out.mut_slice(8, 16), self.engine.state.H1);
+        write_u64_be(out.mut_slice(16, 24), self.engine.state.H2);
+        write_u64_be(out.mut_slice(24, 32), self.engine.state.H3);
+        write_u64_be(out.mut_slice(32, 40), self.engine.state.H4);
+        write_u64_be(out.mut_slice(40, 48), self.engine.state.H5);
     }
 
     fn reset(&mut self) {
-        self.engine.reset();
-
-        self.engine.H0 = 0xcbbb9d5dc1059ed8u64;
-        self.engine.H1 = 0x629a292a367cd507u64;
-        self.engine.H2 = 0x9159015a3070dd17u64;
-        self.engine.H3 = 0x152fecd8f70e5939u64;
-        self.engine.H4 = 0x67332667ffc00b31u64;
-        self.engine.H5 = 0x8eb44a8768581511u64;
-        self.engine.H6 = 0xdb0c2e0d64f98fa7u64;
-        self.engine.H7 = 0x47b5481dbefa4fa4u64;
+        self.engine.reset(&H384);
     }
 
     fn output_bits(&self) -> uint { 384 }
 }
+
+static H384: [u64, ..8] = [
+    0xcbbb9d5dc1059ed8,
+    0x629a292a367cd507,
+    0x9159015a3070dd17,
+    0x152fecd8f70e5939,
+    0x67332667ffc00b31,
+    0x8eb44a8768581511,
+    0xdb0c2e0d64f98fa7,
+    0x47b5481dbefa4fa4
+];
 
 
 struct Sha512Trunc256 {
@@ -436,55 +375,42 @@ impl Sha512Trunc256 {
      */
     pub fn new() -> Sha512Trunc256 {
         Sha512Trunc256 {
-            engine: Engine512 {
-                input_buffer: [0u8, ..8],
-                input_buffer_idx: 0,
-                bit_counter: BitCounter { high_bit_count: 0, low_byte_count: 0 },
-                H0: 0x22312194fc2bf72cu64,
-                H1: 0x9f555fa3c84c64c2u64,
-                H2: 0x2393b86b6f53b151u64,
-                H3: 0x963877195940eabdu64,
-                H4: 0x96283ee2a88effe3u64,
-                H5: 0xbe5e1e2553863992u64,
-                H6: 0x2b0199fc2c85b8aau64,
-                H7: 0x0eb72ddc81c52ca2u64,
-                W: [0u64, ..80],
-                W_idx: 0,
-                finished: false,
-            }
+            engine: Engine512::new(&H512_TRUNC_256)
         }
     }
 }
 
 impl Digest for Sha512Trunc256 {
     fn input(&mut self, d: &[u8]) {
-        self.engine.input_vec(d);
+        self.engine.input(d);
     }
 
     fn result(&mut self, out: &mut [u8]) {
         self.engine.finish();
 
-        from_u64(self.engine.H0, out.mut_slice(0, 8));
-        from_u64(self.engine.H1, out.mut_slice(8, 16));
-        from_u64(self.engine.H2, out.mut_slice(16, 24));
-        from_u64(self.engine.H3, out.mut_slice(24, 32));
+        write_u64_be(out.mut_slice(0, 8), self.engine.state.H0);
+        write_u64_be(out.mut_slice(8, 16), self.engine.state.H1);
+        write_u64_be(out.mut_slice(16, 24), self.engine.state.H2);
+        write_u64_be(out.mut_slice(24, 32), self.engine.state.H3);
     }
 
     fn reset(&mut self) {
-        self.engine.reset();
-
-        self.engine.H0 = 0x22312194fc2bf72cu64;
-        self.engine.H1 = 0x9f555fa3c84c64c2u64;
-        self.engine.H2 = 0x2393b86b6f53b151u64;
-        self.engine.H3 = 0x963877195940eabdu64;
-        self.engine.H4 = 0x96283ee2a88effe3u64;
-        self.engine.H5 = 0xbe5e1e2553863992u64;
-        self.engine.H6 = 0x2b0199fc2c85b8aau64;
-        self.engine.H7 = 0x0eb72ddc81c52ca2u64;
+        self.engine.reset(&H512_TRUNC_256);
     }
 
     fn output_bits(&self) -> uint { 256 }
 }
+
+static H512_TRUNC_256: [u64, ..8] = [
+    0x22312194fc2bf72c,
+    0x9f555fa3c84c64c2,
+    0x2393b86b6f53b151,
+    0x963877195940eabd,
+    0x96283ee2a88effe3,
+    0xbe5e1e2553863992,
+    0x2b0199fc2c85b8aa,
+    0x0eb72ddc81c52ca2
+];
 
 
 struct Sha512Trunc224 {
@@ -497,63 +423,47 @@ impl Sha512Trunc224 {
      */
     pub fn new() -> Sha512Trunc224 {
         Sha512Trunc224 {
-            engine: Engine512 {
-                input_buffer: [0u8, ..8],
-                input_buffer_idx: 0,
-                bit_counter: BitCounter { high_bit_count: 0, low_byte_count: 0 },
-                H0: 0x8c3d37c819544da2u64,
-                H1: 0x73e1996689dcd4d6u64,
-                H2: 0x1dfab7ae32ff9c82u64,
-                H3: 0x679dd514582f9fcfu64,
-                H4: 0x0f6d2b697bd44da8u64,
-                H5: 0x77e36f7304c48942u64,
-                H6: 0x3f9d85a86a1d36c8u64,
-                H7: 0x1112e6ad91d692a1u64,
-                W: [0u64, ..80],
-                W_idx: 0,
-                finished: false,
-            }
+            engine: Engine512::new(&H512_TRUNC_224)
         }
     }
 }
 
 impl Digest for Sha512Trunc224 {
     fn input(&mut self, d: &[u8]) {
-        self.engine.input_vec(d);
+        self.engine.input(d);
     }
 
     fn result(&mut self, out: &mut [u8]) {
         self.engine.finish();
 
-        from_u64(self.engine.H0, out.mut_slice(0, 8));
-        from_u64(self.engine.H1, out.mut_slice(8, 16));
-        from_u64(self.engine.H2, out.mut_slice(16, 24));
-        from_u32((self.engine.H3 >> 32) as u32, out.mut_slice(24, 28));
+        write_u64_be(out.mut_slice(0, 8), self.engine.state.H0);
+        write_u64_be(out.mut_slice(8, 16), self.engine.state.H1);
+        write_u64_be(out.mut_slice(16, 24), self.engine.state.H2);
+        write_u32_be(out.mut_slice(24, 28), (self.engine.state.H3 >> 32) as u32);
     }
 
     fn reset(&mut self) {
-        self.engine.reset();
-
-        self.engine.H0 = 0x8c3d37c819544da2u64;
-        self.engine.H1 = 0x73e1996689dcd4d6u64;
-        self.engine.H2 = 0x1dfab7ae32ff9c82u64;
-        self.engine.H3 = 0x679dd514582f9fcfu64;
-        self.engine.H4 = 0x0f6d2b697bd44da8u64;
-        self.engine.H5 = 0x77e36f7304c48942u64;
-        self.engine.H6 = 0x3f9d85a86a1d36c8u64;
-        self.engine.H7 = 0x1112e6ad91d692a1u64;
+        self.engine.reset(&H512_TRUNC_224);
     }
 
     fn output_bits(&self) -> uint { 224 }
 }
 
+static H512_TRUNC_224: [u64, ..8] = [
+    0x8c3d37c819544da2,
+    0x73e1996689dcd4d6,
+    0x1dfab7ae32ff9c82,
+    0x679dd514582f9fcf,
+    0x0f6d2b697bd44da8,
+    0x77e36f7304c48942,
+    0x3f9d85a86a1d36c8,
+    0x1112e6ad91d692a1,
+];
 
-// A structure that represents that state of a digest computation
-// for the SHA-2 256 family of digest functions
-struct Engine256 {
-    input_buffer: [u8, ..4],
-    input_buffer_idx: uint,
-    length_bytes: u64,
+
+// A structure that represents that state of a digest computation for the SHA-2 512 family of digest
+// functions
+struct Engine256State {
     H0: u32,
     H1: u32,
     H2: u32,
@@ -562,84 +472,34 @@ struct Engine256 {
     H5: u32,
     H6: u32,
     H7: u32,
-    W: [u32, ..64],
-    W_idx: uint,
-    finished: bool
 }
 
-// Convert a [u8] to a u32 in big endian format
-fn to_u32(in: &[u8]) -> u32 {
-    (in[0] as u32) << 24 |
-    (in[1] as u32) << 16 |
-    (in[2] as u32) << 8 |
-    (in[3] as u32)
-}
-
-// Convert a u32 to a [u8] in big endian format
-fn from_u32(in: u32, out: &mut [u8]) {
-    out[0] = (in >> 24) as u8;
-    out[1] = (in >> 16) as u8;
-    out[2] = (in >> 8) as u8;
-    out[3] = in as u8;
-}
-
-impl Engine256 {
-    fn input_byte(&mut self, in: u8) {
-        assert!(!self.finished)
-
-        self.input_buffer[self.input_buffer_idx] = in;
-        self.input_buffer_idx += 1;
-
-        if (self.input_buffer_idx == 4) {
-            self.input_buffer_idx = 0;
-            let w = to_u32(self.input_buffer);
-            self.process_word(w);
-        }
-
-        self.length_bytes += 1;
+impl Engine256State {
+    fn new(h: &[u32, ..8]) -> Engine256State {
+        return Engine256State {
+            H0: h[0],
+            H1: h[1],
+            H2: h[2],
+            H3: h[3],
+            H4: h[4],
+            H5: h[5],
+            H6: h[6],
+            H7: h[7]
+        };
     }
 
-    fn input_vec(&mut self, in: &[u8]) {
-        assert!(!self.finished)
-
-        let mut i = 0;
-
-        while i < in.len() && self.input_buffer_idx != 0 {
-            self.input_byte(in[i]);
-            i += 1;
-        }
-
-        while in.len() - i >= 4 {
-            let w = to_u32(in.slice(i, i + 4));
-            self.process_word(w);
-            self.length_bytes += 4;
-            i += 4;
-        }
-
-        while i < in.len() {
-            self.input_byte(in[i]);
-            i += 1;
-        }
-
+    fn reset(&mut self, h: &[u32, ..8]) {
+        self.H0 = h[0];
+        self.H1 = h[1];
+        self.H2 = h[2];
+        self.H3 = h[3];
+        self.H4 = h[4];
+        self.H5 = h[5];
+        self.H6 = h[6];
+        self.H7 = h[7];
     }
 
-    fn reset(&mut self) {
-        self.length_bytes = 0;
-        self.finished = false;
-        self.input_buffer_idx = 0;
-        self.W_idx = 0;
-    }
-
-    fn process_word(&mut self, in: u32) {
-        self.W[self.W_idx] = in;
-        self.W_idx += 1;
-        if (self.W_idx == 16) {
-            self.W_idx = 0;
-            self.process_block();
-        }
-    }
-
-    fn process_block(&mut self) {
+    fn process_block(&mut self, data: &[u8]) {
         fn ch(x: u32, y: u32, z: u32) -> u32 {
             ((x & y) ^ ((!x) & z))
         }
@@ -664,9 +524,13 @@ impl Engine256 {
             ((x >> 17) | (x << 15)) ^ ((x >> 19) | (x << 13)) ^ (x >> 10)
         }
 
+        let mut W = [0u32, ..80];
+
+        read_u32v_be(W.mut_slice(0, 16), data);
+
         for uint::range(16, 64) |t| {
-            self.W[t] = sigma1(self.W[t - 2]) + self.W[t - 7] + sigma0(self.W[t - 15]) +
-                self.W[t - 16];
+            W[t] = sigma1(W[t - 2]) + W[t - 7] + sigma0(W[t - 15]) +
+                W[t - 16];
         }
 
         let mut a = self.H0;
@@ -680,42 +544,42 @@ impl Engine256 {
 
         let mut t = 0;
         for uint::range(0, 8) |_| {
-            h += sum1(e) + ch(e, f, g) + K32[t] + self.W[t];
+            h += sum1(e) + ch(e, f, g) + K32[t] + W[t];
             d += h;
             h += sum0(a) + maj(a, b, c);
             t += 1;
 
-            g += sum1(d) + ch(d, e, f) + K32[t] + self.W[t];
+            g += sum1(d) + ch(d, e, f) + K32[t] + W[t];
             c += g;
             g += sum0(h) + maj(h, a, b);
             t += 1;
 
-            f += sum1(c) + ch(c, d, e) + K32[t] + self.W[t];
+            f += sum1(c) + ch(c, d, e) + K32[t] + W[t];
             b += f;
             f += sum0(g) + maj(g, h, a);
             t += 1;
 
-            e += sum1(b) + ch(b, c, d) + K32[t] + self.W[t];
+            e += sum1(b) + ch(b, c, d) + K32[t] + W[t];
             a += e;
             e += sum0(f) + maj(f, g, h);
             t += 1;
 
-            d += sum1(a) + ch(a, b, c) + K32[t] + self.W[t];
+            d += sum1(a) + ch(a, b, c) + K32[t] + W[t];
             h += d;
             d += sum0(e) + maj(e, f, g);
             t += 1;
 
-            c += sum1(h) + ch(h, a, b) + K32[t] + self.W[t];
+            c += sum1(h) + ch(h, a, b) + K32[t] + W[t];
             g += c;
             c += sum0(d) + maj(d, e, f);
             t += 1;
 
-            b += sum1(g) + ch(g, h, a) + K32[t] + self.W[t];
+            b += sum1(g) + ch(g, h, a) + K32[t] + W[t];
             f += b;
             b += sum0(c) + maj(c, d, e);
             t += 1;
 
-            a += sum1(f) + ch(f, g, h) + K32[t] + self.W[t];
+            a += sum1(f) + ch(f, g, h) + K32[t] + W[t];
             e += a;
             a += sum0(b) + maj(b, c, d);
             t += 1;
@@ -729,38 +593,6 @@ impl Engine256 {
         self.H5 += f;
         self.H6 += g;
         self.H7 += h;
-    }
-
-    fn finish(&mut self) {
-        if (self.finished) {
-            return;
-        }
-
-        // must get length before adding padding
-        let bit_length = self.length_bytes << 3;
-
-        // add padding
-        self.input_byte(128u8);
-
-        while self.input_buffer_idx != 0 {
-            self.input_byte(0u8);
-        }
-
-        // add length
-        if (self.W_idx > 14) {
-            for uint::range(self.W_idx, 16) |_| {
-                self.process_word(0);
-            }
-        }
-
-        while self.W_idx < 14 {
-            self.process_word(0);
-        }
-
-        self.process_word((bit_length >> 32) as u32);
-        self.process_word(bit_length as u32);
-
-        self.finished = true;
     }
 }
 
@@ -784,6 +616,53 @@ static K32: [u32, ..64] = [
 ];
 
 
+// A structure that keeps track of the state of the Sha-256 operation and contains the logic
+// necessary to perform the final calculations.
+struct Engine256 {
+    length: u64,
+    buffer: FixedBuffer64,
+    state: Engine256State,
+    finished: bool,
+}
+
+impl Engine256 {
+    fn new(h: &[u32, ..8]) -> Engine256 {
+        return Engine256 {
+            length: 0,
+            buffer: FixedBuffer64::new(),
+            state: Engine256State::new(h),
+            finished: false
+        }
+    }
+
+    fn reset(&mut self, h: &[u32, ..8]) {
+        self.length = 0;
+        self.buffer.reset();
+        self.state.reset(h);
+        self.finished = false;
+    }
+
+    fn input(&mut self, in: &[u8]) {
+        assert!(!self.finished)
+        self.length += in.len() as u64;
+        self.buffer.input(in, |in: &[u8]| { self.state.process_block(in) });
+    }
+
+    fn finish(&mut self) {
+        if self.finished {
+            return;
+        }
+
+        self.buffer.standard_padding(8, |in: &[u8]| { self.state.process_block(in) });
+        write_u32_be(self.buffer.next(4), (self.length >> 29) as u32 );
+        write_u32_be(self.buffer.next(4), (self.length << 3) as u32);
+        self.state.process_block(self.buffer.full_buffer());
+
+        self.finished = true;
+    }
+}
+
+
 struct Sha256 {
     priv engine: Engine256
 }
@@ -794,59 +673,46 @@ impl Sha256 {
      */
     pub fn new() -> Sha256 {
         Sha256 {
-            engine: Engine256 {
-                input_buffer: [0u8, ..4],
-                input_buffer_idx: 0,
-                length_bytes: 0,
-                H0: 0x6a09e667u32,
-                H1: 0xbb67ae85u32,
-                H2: 0x3c6ef372u32,
-                H3: 0xa54ff53au32,
-                H4: 0x510e527fu32,
-                H5: 0x9b05688cu32,
-                H6: 0x1f83d9abu32,
-                H7: 0x5be0cd19u32,
-                W: [0u32, ..64],
-                W_idx: 0,
-                finished: false,
-            }
+            engine: Engine256::new(&H256)
         }
     }
 }
 
 impl Digest for Sha256 {
     fn input(&mut self, d: &[u8]) {
-        self.engine.input_vec(d);
+        self.engine.input(d);
     }
 
     fn result(&mut self, out: &mut [u8]) {
         self.engine.finish();
 
-        from_u32(self.engine.H0, out.mut_slice(0, 4));
-        from_u32(self.engine.H1, out.mut_slice(4, 8));
-        from_u32(self.engine.H2, out.mut_slice(8, 12));
-        from_u32(self.engine.H3, out.mut_slice(12, 16));
-        from_u32(self.engine.H4, out.mut_slice(16, 20));
-        from_u32(self.engine.H5, out.mut_slice(20, 24));
-        from_u32(self.engine.H6, out.mut_slice(24, 28));
-        from_u32(self.engine.H7, out.mut_slice(28, 32));
+        write_u32_be(out.mut_slice(0, 4), self.engine.state.H0);
+        write_u32_be(out.mut_slice(4, 8), self.engine.state.H1);
+        write_u32_be(out.mut_slice(8, 12), self.engine.state.H2);
+        write_u32_be(out.mut_slice(12, 16), self.engine.state.H3);
+        write_u32_be(out.mut_slice(16, 20), self.engine.state.H4);
+        write_u32_be(out.mut_slice(20, 24), self.engine.state.H5);
+        write_u32_be(out.mut_slice(24, 28), self.engine.state.H6);
+        write_u32_be(out.mut_slice(28, 32), self.engine.state.H7);
     }
 
     fn reset(&mut self) {
-        self.engine.reset();
-
-        self.engine.H0 = 0x6a09e667u32;
-        self.engine.H1 = 0xbb67ae85u32;
-        self.engine.H2 = 0x3c6ef372u32;
-        self.engine.H3 = 0xa54ff53au32;
-        self.engine.H4 = 0x510e527fu32;
-        self.engine.H5 = 0x9b05688cu32;
-        self.engine.H6 = 0x1f83d9abu32;
-        self.engine.H7 = 0x5be0cd19u32;
+        self.engine.reset(&H256);
     }
 
     fn output_bits(&self) -> uint { 256 }
 }
+
+static H256: [u32, ..8] = [
+    0x6a09e667,
+    0xbb67ae85,
+    0x3c6ef372,
+    0xa54ff53a,
+    0x510e527f,
+    0x9b05688c,
+    0x1f83d9ab,
+    0x5be0cd19
+];
 
 
 struct Sha224 {
@@ -859,58 +725,44 @@ impl Sha224 {
      */
     pub fn new() -> Sha224 {
         Sha224 {
-            engine: Engine256 {
-                input_buffer: [0u8, ..4],
-                input_buffer_idx: 0,
-                length_bytes: 0,
-                H0: 0xc1059ed8u32,
-                H1: 0x367cd507u32,
-                H2: 0x3070dd17u32,
-                H3: 0xf70e5939u32,
-                H4: 0xffc00b31u32,
-                H5: 0x68581511u32,
-                H6: 0x64f98fa7u32,
-                H7: 0xbefa4fa4u32,
-                W: [0u32, ..64],
-                W_idx: 0,
-                finished: false,
-            }
+            engine: Engine256::new(&H224)
         }
     }
 }
 
 impl Digest for Sha224 {
     fn input(&mut self, d: &[u8]) {
-        self.engine.input_vec(d);
+        self.engine.input(d);
     }
 
     fn result(&mut self, out: &mut [u8]) {
         self.engine.finish();
-
-        from_u32(self.engine.H0, out.mut_slice(0, 4));
-        from_u32(self.engine.H1, out.mut_slice(4, 8));
-        from_u32(self.engine.H2, out.mut_slice(8, 12));
-        from_u32(self.engine.H3, out.mut_slice(12, 16));
-        from_u32(self.engine.H4, out.mut_slice(16, 20));
-        from_u32(self.engine.H5, out.mut_slice(20, 24));
-        from_u32(self.engine.H6, out.mut_slice(24, 28));
+        write_u32_be(out.mut_slice(0, 4), self.engine.state.H0);
+        write_u32_be(out.mut_slice(4, 8), self.engine.state.H1);
+        write_u32_be(out.mut_slice(8, 12), self.engine.state.H2);
+        write_u32_be(out.mut_slice(12, 16), self.engine.state.H3);
+        write_u32_be(out.mut_slice(16, 20), self.engine.state.H4);
+        write_u32_be(out.mut_slice(20, 24), self.engine.state.H5);
+        write_u32_be(out.mut_slice(24, 28), self.engine.state.H6);
     }
 
     fn reset(&mut self) {
-        self.engine.reset();
-
-        self.engine.H0 = 0xc1059ed8u32;
-        self.engine.H1 = 0x367cd507u32;
-        self.engine.H2 = 0x3070dd17u32;
-        self.engine.H3 = 0xf70e5939u32;
-        self.engine.H4 = 0xffc00b31u32;
-        self.engine.H5 = 0x68581511u32;
-        self.engine.H6 = 0x64f98fa7u32;
-        self.engine.H7 = 0xbefa4fa4u32;
+        self.engine.reset(&H224);
     }
 
     fn output_bits(&self) -> uint { 224 }
 }
+
+static H224: [u32, ..8] = [
+    0xc1059ed8,
+    0x367cd507,
+    0x3070dd17,
+    0xf70e5939,
+    0xffc00b31,
+    0x68581511,
+    0x64f98fa7,
+    0xbefa4fa4
+];
 
 
 #[cfg(test)]
