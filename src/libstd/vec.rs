@@ -49,12 +49,11 @@ pub fn same_length<T, U>(xs: &[T], ys: &[U]) -> bool {
 pub fn from_fn<T>(n_elts: uint, op: &fn(uint) -> T) -> ~[T] {
     unsafe {
         let mut v = with_capacity(n_elts);
-        do v.as_mut_buf |p, _len| {
-            let mut i: uint = 0u;
-            while i < n_elts {
-                intrinsics::move_val_init(&mut(*ptr::mut_offset(p, i)), op(i));
-                i += 1u;
-            }
+        let p = raw::to_mut_ptr(v);
+        let mut i: uint = 0u;
+        while i < n_elts {
+            intrinsics::move_val_init(&mut(*ptr::mut_offset(p, i)), op(i));
+            i += 1u;
         }
         raw::set_len(&mut v, n_elts);
         v
@@ -74,12 +73,11 @@ pub fn from_elem<T:Clone>(n_elts: uint, t: T) -> ~[T] {
     // vec::with_capacity/ptr::set_memory for primitive types.
     unsafe {
         let mut v = with_capacity(n_elts);
-        do v.as_mut_buf |p, _len| {
-            let mut i = 0u;
-            while i < n_elts {
-                intrinsics::move_val_init(&mut(*ptr::mut_offset(p, i)), t.clone());
-                i += 1u;
-            }
+        let p = raw::to_mut_ptr(v);
+        let mut i = 0u;
+        while i < n_elts {
+            intrinsics::move_val_init(&mut(*ptr::mut_offset(p, i)), t.clone());
+            i += 1u;
         }
         raw::set_len(&mut v, n_elts);
         v
