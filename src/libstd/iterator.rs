@@ -29,7 +29,13 @@ use uint;
 /// Conversion from an `Iterator`
 pub trait FromIterator<A, T: Iterator<A>> {
     /// Build a container with elements from an external iterator.
-    pub fn from_iterator(iterator: &mut T) -> Self;
+    fn from_iterator(iterator: &mut T) -> Self;
+}
+
+/// A type growable from an `Iterator` implementation
+pub trait Extendable<A, T: Iterator<A>>: FromIterator<A, T> {
+    /// Extend a container with the elements yielded by an iterator
+    fn extend(&mut self, iterator: &mut T);
 }
 
 /// An interface for dealing with "external iterators". These types of iterators
@@ -52,7 +58,9 @@ pub trait DoubleEndedIterator<A>: Iterator<A> {
 }
 
 /// An object implementing random access indexing by `uint`
-pub trait RandomAccessIterator<A> {
+///
+/// A `RandomAccessIterator` should be either infinite or a `DoubleEndedIterator`.
+pub trait RandomAccessIterator<A>: Iterator<A> {
     /// Return the number of indexable elements. At most `std::uint::max_value`
     /// elements are indexable, even if the iterator represents a longer range.
     fn indexable(&self) -> uint;
@@ -64,37 +72,36 @@ pub trait RandomAccessIterator<A> {
 /// Iterator adaptors provided for every `DoubleEndedIterator` implementation.
 ///
 /// In the future these will be default methods instead of a utility trait.
-pub trait DoubleEndedIteratorUtil<A> {
+pub trait DoubleEndedIteratorUtil {
     /// Flip the direction of the iterator
-    fn invert(self) -> InvertIterator<A, Self>;
+    fn invert(self) -> InvertIterator<Self>;
 }
 
 /// Iterator adaptors provided for every `DoubleEndedIterator` implementation.
 ///
 /// In the future these will be default methods instead of a utility trait.
-impl<A, T: DoubleEndedIterator<A>> DoubleEndedIteratorUtil<A> for T {
+impl<A, T: DoubleEndedIterator<A>> DoubleEndedIteratorUtil for T {
     /// Flip the direction of the iterator
     #[inline]
-    fn invert(self) -> InvertIterator<A, T> {
+    fn invert(self) -> InvertIterator<T> {
         InvertIterator{iter: self}
     }
 }
 
 /// An double-ended iterator with the direction inverted
-// FIXME #6967: Dummy A parameter to get around type inference bug
 #[deriving(Clone)]
-pub struct InvertIterator<A, T> {
+pub struct InvertIterator<T> {
     priv iter: T
 }
 
-impl<A, T: DoubleEndedIterator<A>> Iterator<A> for InvertIterator<A, T> {
+impl<A, T: DoubleEndedIterator<A>> Iterator<A> for InvertIterator<T> {
     #[inline]
     fn next(&mut self) -> Option<A> { self.iter.next_back() }
     #[inline]
     fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
 }
 
-impl<A, T: DoubleEndedIterator<A>> DoubleEndedIterator<A> for InvertIterator<A, T> {
+impl<A, T: DoubleEndedIterator<A>> DoubleEndedIterator<A> for InvertIterator<T> {
     #[inline]
     fn next_back(&mut self) -> Option<A> { self.iter.next() }
 }
@@ -118,7 +125,7 @@ pub trait IteratorUtil<A> {
     /// assert_eq!(it.next().get(), &1);
     /// assert!(it.next().is_none());
     /// ~~~
-    fn chain_<U: Iterator<A>>(self, other: U) -> ChainIterator<A, Self, U>;
+    fn chain_<U: Iterator<A>>(self, other: U) -> ChainIterator<Self, U>;
 
     /// Creates an iterator which iterates over both this and the specified
     /// iterators simultaneously, yielding the two elements as pairs. When
@@ -134,7 +141,7 @@ pub trait IteratorUtil<A> {
     /// assert_eq!(it.next().get(), (&0, &1));
     /// assert!(it.next().is_none());
     /// ~~~
-    fn zip<B, U: Iterator<B>>(self, other: U) -> ZipIterator<A, Self, B, U>;
+    fn zip<B, U: Iterator<B>>(self, other: U) -> ZipIterator<Self, U>;
 
     // FIXME: #5898: should be called map
     /// Creates a new iterator which will apply the specified function to each
@@ -191,7 +198,7 @@ pub trait IteratorUtil<A> {
     /// assert_eq!(it.next().get(), (1, &200));
     /// assert!(it.next().is_none());
     /// ~~~
-    fn enumerate(self) -> EnumerateIterator<A, Self>;
+    fn enumerate(self) -> EnumerateIterator<Self>;
 
     /// Creates an iterator which invokes the predicate on elements until it
     /// returns false. Once the predicate returns false, all further elements are
@@ -236,7 +243,7 @@ pub trait IteratorUtil<A> {
     /// assert_eq!(it.next().get(), &5);
     /// assert!(it.next().is_none());
     /// ~~~
-    fn skip(self, n: uint) -> SkipIterator<A, Self>;
+    fn skip(self, n: uint) -> SkipIterator<Self>;
 
     // FIXME: #5898: should be called take
     /// Creates an iterator which yields the first `n` elements of this
@@ -252,7 +259,7 @@ pub trait IteratorUtil<A> {
     /// assert_eq!(it.next().get(), &3);
     /// assert!(it.next().is_none());
     /// ~~~
-    fn take_(self, n: uint) -> TakeIterator<A, Self>;
+    fn take_(self, n: uint) -> TakeIterator<Self>;
 
     /// Creates a new iterator which behaves in a similar fashion to foldl.
     /// There is a state which is passed between each iteration and can be
@@ -295,7 +302,7 @@ pub trait IteratorUtil<A> {
     /// ~~~
     // FIXME: #5898: should be called `flat_map`
     fn flat_map_<'r, B, U: Iterator<B>>(self, f: &'r fn(A) -> U)
-        -> FlatMapIterator<'r, A, B, Self, U>;
+        -> FlatMapIterator<'r, A, Self, U>;
 
     /// Creates an iterator that calls a function with a reference to each
     /// element before yielding it. This is often useful for debugging an
@@ -462,12 +469,12 @@ pub trait IteratorUtil<A> {
 /// In the future these will be default methods instead of a utility trait.
 impl<A, T: Iterator<A>> IteratorUtil<A> for T {
     #[inline]
-    fn chain_<U: Iterator<A>>(self, other: U) -> ChainIterator<A, T, U> {
+    fn chain_<U: Iterator<A>>(self, other: U) -> ChainIterator<T, U> {
         ChainIterator{a: self, b: other, flag: false}
     }
 
     #[inline]
-    fn zip<B, U: Iterator<B>>(self, other: U) -> ZipIterator<A, T, B, U> {
+    fn zip<B, U: Iterator<B>>(self, other: U) -> ZipIterator<T, U> {
         ZipIterator{a: self, b: other}
     }
 
@@ -488,7 +495,7 @@ impl<A, T: Iterator<A>> IteratorUtil<A> for T {
     }
 
     #[inline]
-    fn enumerate(self) -> EnumerateIterator<A, T> {
+    fn enumerate(self) -> EnumerateIterator<T> {
         EnumerateIterator{iter: self, count: 0}
     }
 
@@ -503,13 +510,13 @@ impl<A, T: Iterator<A>> IteratorUtil<A> for T {
     }
 
     #[inline]
-    fn skip(self, n: uint) -> SkipIterator<A, T> {
+    fn skip(self, n: uint) -> SkipIterator<T> {
         SkipIterator{iter: self, n: n}
     }
 
     // FIXME: #5898: should be called take
     #[inline]
-    fn take_(self, n: uint) -> TakeIterator<A, T> {
+    fn take_(self, n: uint) -> TakeIterator<T> {
         TakeIterator{iter: self, n: n}
     }
 
@@ -521,7 +528,7 @@ impl<A, T: Iterator<A>> IteratorUtil<A> for T {
 
     #[inline]
     fn flat_map_<'r, B, U: Iterator<B>>(self, f: &'r fn(A) -> U)
-        -> FlatMapIterator<'r, A, B, T, U> {
+        -> FlatMapIterator<'r, A, T, U> {
         FlatMapIterator{iter: self, f: f, subiter: None }
     }
 
@@ -756,8 +763,7 @@ impl<A: Ord, T: Iterator<A>> OrdIterator<A> for T {
 }
 
 /// A trait for iterators that are clonable.
-// FIXME #6967: Dummy A parameter to get around type inference bug
-pub trait ClonableIterator<A> {
+pub trait ClonableIterator {
     /// Repeats an iterator endlessly
     ///
     /// # Example
@@ -768,24 +774,24 @@ pub trait ClonableIterator<A> {
     /// assert_eq!(cy.next(), Some(1));
     /// assert_eq!(cy.next(), Some(1));
     /// ~~~
-    fn cycle(self) -> CycleIterator<A, Self>;
+    fn cycle(self) -> CycleIterator<Self>;
 }
 
-impl<A, T: Clone + Iterator<A>> ClonableIterator<A> for T {
+impl<A, T: Clone + Iterator<A>> ClonableIterator for T {
     #[inline]
-    fn cycle(self) -> CycleIterator<A, T> {
+    fn cycle(self) -> CycleIterator<T> {
         CycleIterator{orig: self.clone(), iter: self}
     }
 }
 
 /// An iterator that repeats endlessly
 #[deriving(Clone)]
-pub struct CycleIterator<A, T> {
+pub struct CycleIterator<T> {
     priv orig: T,
     priv iter: T,
 }
 
-impl<A, T: Clone + Iterator<A>> Iterator<A> for CycleIterator<A, T> {
+impl<A, T: Clone + Iterator<A>> Iterator<A> for CycleIterator<T> {
     #[inline]
     fn next(&mut self) -> Option<A> {
         match self.iter.next() {
@@ -806,15 +812,14 @@ impl<A, T: Clone + Iterator<A>> Iterator<A> for CycleIterator<A, T> {
 }
 
 /// An iterator which strings two iterators together
-// FIXME #6967: Dummy A parameter to get around type inference bug
 #[deriving(Clone)]
-pub struct ChainIterator<A, T, U> {
+pub struct ChainIterator<T, U> {
     priv a: T,
     priv b: U,
     priv flag: bool
 }
 
-impl<A, T: Iterator<A>, U: Iterator<A>> Iterator<A> for ChainIterator<A, T, U> {
+impl<A, T: Iterator<A>, U: Iterator<A>> Iterator<A> for ChainIterator<T, U> {
     #[inline]
     fn next(&mut self) -> Option<A> {
         if self.flag {
@@ -851,7 +856,7 @@ impl<A, T: Iterator<A>, U: Iterator<A>> Iterator<A> for ChainIterator<A, T, U> {
 }
 
 impl<A, T: DoubleEndedIterator<A>, U: DoubleEndedIterator<A>> DoubleEndedIterator<A>
-for ChainIterator<A, T, U> {
+for ChainIterator<T, U> {
     #[inline]
     fn next_back(&mut self) -> Option<A> {
         match self.b.next_back() {
@@ -862,7 +867,7 @@ for ChainIterator<A, T, U> {
 }
 
 impl<A, T: RandomAccessIterator<A>, U: RandomAccessIterator<A>> RandomAccessIterator<A>
-for ChainIterator<A, T, U> {
+for ChainIterator<T, U> {
     #[inline]
     fn indexable(&self) -> uint {
         let (a, b) = (self.a.indexable(), self.b.indexable());
@@ -886,14 +891,13 @@ for ChainIterator<A, T, U> {
 }
 
 /// An iterator which iterates two other iterators simultaneously
-// FIXME #6967: Dummy A & B parameters to get around type inference bug
 #[deriving(Clone)]
-pub struct ZipIterator<A, T, B, U> {
+pub struct ZipIterator<T, U> {
     priv a: T,
     priv b: U
 }
 
-impl<A, B, T: Iterator<A>, U: Iterator<B>> Iterator<(A, B)> for ZipIterator<A, T, B, U> {
+impl<A, B, T: Iterator<A>, U: Iterator<B>> Iterator<(A, B)> for ZipIterator<T, U> {
     #[inline]
     fn next(&mut self) -> Option<(A, B)> {
         match (self.a.next(), self.b.next()) {
@@ -1040,14 +1044,13 @@ for FilterMapIterator<'self, A, B, T> {
 }
 
 /// An iterator which yields the current count and the element during iteration
-// FIXME #6967: Dummy A parameter to get around type inference bug
 #[deriving(Clone)]
-pub struct EnumerateIterator<A, T> {
+pub struct EnumerateIterator<T> {
     priv iter: T,
     priv count: uint
 }
 
-impl<A, T: Iterator<A>> Iterator<(uint, A)> for EnumerateIterator<A, T> {
+impl<A, T: Iterator<A>> Iterator<(uint, A)> for EnumerateIterator<T> {
     #[inline]
     fn next(&mut self) -> Option<(uint, A)> {
         match self.iter.next() {
@@ -1139,14 +1142,13 @@ impl<'self, A, T: Iterator<A>> Iterator<A> for TakeWhileIterator<'self, A, T> {
 }
 
 /// An iterator which skips over `n` elements of `iter`.
-// FIXME #6967: Dummy A parameter to get around type inference bug
 #[deriving(Clone)]
-pub struct SkipIterator<A, T> {
+pub struct SkipIterator<T> {
     priv iter: T,
     priv n: uint
 }
 
-impl<A, T: Iterator<A>> Iterator<A> for SkipIterator<A, T> {
+impl<A, T: Iterator<A>> Iterator<A> for SkipIterator<T> {
     #[inline]
     fn next(&mut self) -> Option<A> {
         let mut next = self.iter.next();
@@ -1188,14 +1190,13 @@ impl<A, T: Iterator<A>> Iterator<A> for SkipIterator<A, T> {
 }
 
 /// An iterator which only iterates over the first `n` iterations of `iter`.
-// FIXME #6967: Dummy A parameter to get around type inference bug
 #[deriving(Clone)]
-pub struct TakeIterator<A, T> {
+pub struct TakeIterator<T> {
     priv iter: T,
     priv n: uint
 }
 
-impl<A, T: Iterator<A>> Iterator<A> for TakeIterator<A, T> {
+impl<A, T: Iterator<A>> Iterator<A> for TakeIterator<T> {
     #[inline]
     fn next(&mut self) -> Option<A> {
         let next = self.iter.next();
@@ -1247,15 +1248,14 @@ impl<'self, A, B, T: Iterator<A>, St> Iterator<B> for ScanIterator<'self, A, B, 
 /// An iterator that maps each element to an iterator,
 /// and yields the elements of the produced iterators
 ///
-// FIXME #6967: Dummy B parameter to get around type inference bug
-pub struct FlatMapIterator<'self, A, B, T, U> {
+pub struct FlatMapIterator<'self, A, T, U> {
     priv iter: T,
     priv f: &'self fn(A) -> U,
     priv subiter: Option<U>,
 }
 
 impl<'self, A, T: Iterator<A>, B, U: Iterator<B>> Iterator<B> for
-    FlatMapIterator<'self, A, B, T, U> {
+    FlatMapIterator<'self, A, T, U> {
     #[inline]
     fn next(&mut self) -> Option<B> {
         loop {
