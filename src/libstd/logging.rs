@@ -56,15 +56,19 @@ pub fn console_off() {
 pub fn log_type<T>(level: u32, object: &T) {
     use cast;
     use container::Container;
-    use io;
+    use rt::io::Decorator;
+    use rt::io::mem::MemWriter;
     use libc;
     use repr;
     use rt;
     use str;
+    use util;
     use vec;
 
-    let bytes = do io::with_bytes_writer |writer| {
-        repr::write_repr(writer, object);
+    let bytes = {
+        let wr = @mut MemWriter::new();
+        repr::write_repr(wr, object);
+        util::replace(wr, MemWriter::new()).inner()
     };
 
     match rt::context() {
