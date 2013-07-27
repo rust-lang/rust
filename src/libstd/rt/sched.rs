@@ -10,9 +10,9 @@
 
 use either::{Left, Right};
 use option::{Option, Some, None};
-use sys;
 use cast::transmute;
 use clone::Clone;
+use unstable::raw;
 
 use super::sleeper_list::SleeperList;
 use super::work_queue::WorkQueue;
@@ -698,7 +698,7 @@ impl SchedHandle {
 
 // XXX: Some hacks to put a &fn in Scheduler without borrowck
 // complaining
-type UnsafeTaskReceiver = sys::Closure;
+type UnsafeTaskReceiver = raw::Closure;
 trait ClosureConverter {
     fn from_fn(&fn(&mut Scheduler, BlockedTask)) -> Self;
     fn to_fn(self) -> &fn(&mut Scheduler, BlockedTask);

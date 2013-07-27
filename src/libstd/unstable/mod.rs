@@ -26,6 +26,7 @@ pub mod extfmt;
 pub mod lang;
 pub mod sync;
 pub mod atomics;
+pub mod raw;
 
 /**
 

@@ -14,27 +14,8 @@ use ptr::to_unsafe_ptr;
 
 #[cfg(not(test))] use cmp::{Eq, Ord};
 
-pub mod raw {
-    use std::unstable::intrinsics::TyDesc;
-
-    pub static RC_MANAGED_UNIQUE : uint = (-2) as uint;
-    pub static RC_IMMORTAL : uint = 0x77777777;
-
-    #[allow(missing_doc)]
-    pub struct BoxHeaderRepr {
-        ref_count: uint,
-        type_desc: *TyDesc,
-        prev: *BoxRepr,
-        next: *BoxRepr,
-    }
-
-    #[allow(missing_doc)]
-    pub struct BoxRepr {
-        header: BoxHeaderRepr,
-        data: u8
-    }
-
-}
+pub static RC_MANAGED_UNIQUE : uint = (-2) as uint;
+pub static RC_IMMORTAL : uint = 0x77777777;
 
 /// Determine if two shared boxes point to the same object
 #[inline]

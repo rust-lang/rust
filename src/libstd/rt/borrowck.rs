@@ -12,12 +12,12 @@ use cast::transmute;
 use libc::{c_char, c_void, size_t, STDERR_FILENO};
 use io;
 use io::{Writer, WriterUtil};
-use managed::raw::BoxRepr;
 use option::{Option, None, Some};
 use uint;
 use str;
 use str::{OwnedStr, StrSlice};
 use sys;
+use unstable::raw;
 use vec::ImmutableVector;
 
 #[allow(non_camel_case_types)]
@@ -29,7 +29,7 @@ static ALL_BITS: uint = FROZEN_BIT | MUT_BIT;
 
 #[deriving(Eq)]
 struct BorrowRecord {
-    box: *mut BoxRepr,
+    box: *mut raw::Box<()>,
     file: *c_char,
     line: size_t
 }
@@ -70,7 +70,7 @@ pub unsafe fn clear_task_borrow_list() {
     let _ = try_take_task_borrow_list();
 }
 
-unsafe fn fail_borrowed(box: *mut BoxRepr, file: *c_char, line: size_t) {
+unsafe fn fail_borrowed(box: *mut raw::Box<()>, file: *c_char, line: size_t) {
     debug_borrow("fail_borrowed: ", box, 0, 0, file, line);
 
     match try_take_task_borrow_list() {
@@ -172,8 +172,8 @@ impl DebugPrints for io::fd_t {
 
 #[inline]
 pub unsafe fn borrow_as_imm(a: *u8, file: *c_char, line: size_t) -> uint {
-    let a: *mut BoxRepr = transmute(a);
-    let old_ref_count = (*a).header.ref_count;
+    let a = a as *mut raw::Box<()>;
+    let old_ref_count = (*a).ref_count;
     let new_ref_count = old_ref_count | FROZEN_BIT;
 
     debug_borrow("borrow_as_imm:", a, old_ref_count, new_ref_count, file, line);
@@ -182,15 +182,15 @@ pub unsafe fn borrow_as_imm(a: *u8, file: *c_char, line: size_t) -> uint {
         fail_borrowed(a, file, line);
     }
 
-    (*a).header.ref_count = new_ref_count;
+    (*a).ref_count = new_ref_count;
 
     old_ref_count
 }
 
 #[inline]
 pub unsafe fn borrow_as_mut(a: *u8, file: *c_char, line: size_t) -> uint {
-    let a: *mut BoxRepr = transmute(a);
-    let old_ref_count = (*a).header.ref_count;
+    let a = a as *mut raw::Box<()>;
+    let old_ref_count = (*a).ref_count;
     let new_ref_count = old_ref_count | MUT_BIT | FROZEN_BIT;
 
     debug_borrow("borrow_as_mut:", a, old_ref_count, new_ref_count, file, line);
@@ -199,7 +199,7 @@ pub unsafe fn borrow_as_mut(a: *u8, file: *c_char, line: size_t) -> uint {
         fail_borrowed(a, file, line);
     }
 
-    (*a).header.ref_count = new_ref_count;
+    (*a).ref_count = new_ref_count;
 
     old_ref_count
 }
@@ -208,7 +208,7 @@ pub unsafe fn record_borrow(a: *u8, old_ref_count: uint,
                             file: *c_char, line: size_t) {
     if (old_ref_count & ALL_BITS) == 0 {
         // was not borrowed before
-        let a: *mut BoxRepr = transmute(a);
+        let a = a as *mut raw::Box<()>;
         debug_borrow("record_borrow:", a, old_ref_count, 0, file, line);
         do swap_task_borrow_list |borrow_list| {
             let mut borrow_list = borrow_list;
@@ -223,7 +223,7 @@ pub unsafe fn unrecord_borrow(a: *u8, old_ref_count: uint,
     if (old_ref_count & ALL_BITS) == 0 {
         // was not borrowed before, so we should find the record at
         // the end of the list
-        let a: *mut BoxRepr = transmute(a);
+        let a = a as *mut raw::Box<()>;
         debug_borrow("unrecord_borrow:", a, old_ref_count, 0, file, line);
         do swap_task_borrow_list |borrow_list| {
             let mut borrow_list = borrow_list;
@@ -246,15 +246,15 @@ pub unsafe fn return_to_mut(a: *u8, orig_ref_count: uint,
     // Sometimes the box is null, if it is conditionally frozen.
     // See e.g. #4904.
     if !a.is_null() {
-        let a: *mut BoxRepr = transmute(a);
-        let old_ref_count = (*a).header.ref_count;
+        let a = a as *mut raw::Box<()>;
+        let old_ref_count = (*a).ref_count;
         let new_ref_count =
             (old_ref_count & !ALL_BITS) | (orig_ref_count & ALL_BITS);
 
         debug_borrow("return_to_mut:",
                      a, old_ref_count, new_ref_count, file, line);
 
-        (*a).header.ref_count = new_ref_count;
+        (*a).ref_count = new_ref_count;
     }
 }
 
@@ -262,8 +262,8 @@ pub unsafe fn return_to_mut(a: *u8, orig_ref_count: uint,
 pub unsafe fn check_not_borrowed(a: *u8,
                                  file: *c_char,
                                  line: size_t) {
-    let a: *mut BoxRepr = transmute(a);
-    let ref_count = (*a).header.ref_count;
+    let a = a as *mut raw::Box<()>;
+    let ref_count = (*a).ref_count;
     debug_borrow("check_not_borrowed:", a, ref_count, 0, file, line);
     if (ref_count & FROZEN_BIT) != 0 {
         fail_borrowed(a, file, line);
