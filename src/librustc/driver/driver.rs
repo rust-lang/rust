@@ -396,12 +396,13 @@ pub fn compile_upto(sess: Session,
 }
 
 pub fn compile_input(sess: Session, cfg: ast::CrateConfig, input: &input,
-                     outdir: &Option<Path>, output: &Option<Path>) {
+                     outdir: &Option<Path>, output: &Option<Path>)
+                     -> (Option<@ast::Crate>, Option<ty::ctxt>) {
     let upto = if sess.opts.parse_only { cu_parse }
                else if sess.opts.no_trans { cu_no_trans }
                else { cu_everything };
     let outputs = build_output_filenames(input, outdir, output, [], sess); // ???
-    compile_upto(sess, cfg, input, upto, Some(outputs));
+    compile_upto(sess, cfg, input, upto, Some(outputs))
 }
 
 pub fn pretty_print_input(sess: Session, cfg: ast::CrateConfig, input: &input,

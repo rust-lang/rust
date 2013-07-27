@@ -38,6 +38,7 @@ use std::vec;
 use extra::getopts::{groups, opt_present};
 use extra::getopts;
 use syntax::codemap;
+use syntax::ast;
 use syntax::diagnostic;
 
 pub mod middle {
@@ -191,14 +192,15 @@ pub fn describe_debug_flags() {
     }
 }
 
-pub fn run_compiler(args: &~[~str], demitter: diagnostic::Emitter) {
+pub fn run_compiler(args: &~[~str], demitter: diagnostic::Emitter)
+                    -> (Option<@ast::Crate>, Option<middle::ty::ctxt>) {
     // Don't display log spew by default. Can override with RUST_LOG.
     ::std::logging::console_off();
 
     let mut args = (*args).clone();
     let binary = args.shift().to_managed();
 
-    if args.is_empty() { usage(binary); return; }
+    if args.is_empty() { usage(binary); return (None, None); }
 
     let matches =
         &match getopts::groups::getopts(args, optgroups()) {
@@ -210,7 +212,7 @@ pub fn run_compiler(args: &~[~str], demitter: diagnostic::Emitter) {
 
     if opt_present(matches, "h") || opt_present(matches, "help") {
         usage(binary);
-        return;
+        return (None, None);
     }
 
     // Display the available lint options if "-W help" or only "-W" is given.
@@ -222,23 +224,23 @@ pub fn run_compiler(args: &~[~str], demitter: diagnostic::Emitter) {
 
     if show_lint_options {
         describe_warnings();
-        return;
+        return (None, None);
     }
 
     let r = getopts::opt_strs(matches, "Z");
     if r.iter().any(|x| x == &~"help") {
         describe_debug_flags();
-        return;
+        return (None, None);
     }
 
     if getopts::opt_maybe_str(matches, "passes") == Some(~"list") {
         back::passes::list_passes();
-        return;
+        return (None, None);
     }
 
     if opt_present(matches, "v") || opt_present(matches, "version") {
         version(binary);
-        return;
+        return (None, None);
     }
     let input = match matches.free.len() {
       0u => early_error(demitter, ~"no input filename given"),
@@ -266,7 +268,7 @@ pub fn run_compiler(args: &~[~str], demitter: diagnostic::Emitter) {
     match pretty {
       Some::<pp_mode>(ppm) => {
         pretty_print_input(sess, cfg, &input, ppm);
-        return;
+        return (None, None);
       }
       None::<pp_mode> => {/* continue */ }
     }
@@ -280,10 +282,10 @@ pub fn run_compiler(args: &~[~str], demitter: diagnostic::Emitter) {
             early_error(demitter, ~"can not list metadata for stdin");
           }
         }
-        return;
+        return (None, None);
     }
 
-    compile_input(sess, cfg, &input, &odir, &ofile);
+    compile_input(sess, cfg, &input, &odir, &ofile)
 }
 
 #[deriving(Eq)]
