@@ -84,7 +84,7 @@ use local_data;
 use task::local_data_priv::{local_get, local_set, OldHandle};
 use task::rt::rust_task;
 use task::rt;
-use task::{Failure, ManualThreads, PlatformThread, SchedOpts, SingleThreaded};
+use task::{Failure, PlatformThread, SchedOpts, SingleThreaded};
 use task::{Success, TaskOpts, TaskResult, ThreadPerTask};
 use task::{ExistingScheduler, SchedulerHandle};
 use task::unkillable;
@@ -813,12 +813,6 @@ fn spawn_raw_oldsched(mut opts: TaskOpts, f: ~fn()) {
             SingleThreaded => 1u,
             ThreadPerTask => {
                 fail!("ThreadPerTask scheduling mode unimplemented")
-            }
-            ManualThreads(threads) => {
-                if threads == 0u {
-                    fail!("can not create a scheduler with no threads");
-                }
-                threads
             }
         };
 

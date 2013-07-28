@@ -107,8 +107,6 @@ pub enum SchedMode {
     SingleThreaded,
     /// Tasks are distributed among available CPUs
     ThreadPerTask,
-    /// Tasks are distributed among a fixed number of OS threads
-    ManualThreads(uint),
 }
 
 /**
@@ -933,13 +931,6 @@ fn test_try_fail() {
 }
 
 #[test]
-#[should_fail]
-#[ignore(cfg(windows))]
-fn test_spawn_sched_no_threads() {
-    do spawn_sched(ManualThreads(0u)) { }
-}
-
-#[test]
 fn test_spawn_sched() {
     let (po, ch) = stream::<()>();
     let ch = SharedChan::new(ch);
@@ -1217,34 +1208,6 @@ fn test_child_doesnt_ref_parent() {
         }
     }
     task::spawn(child_no(0));
-}
-
-#[test]
-fn test_spawn_thread_on_demand() {
-    let (port, chan) = comm::stream();
-
-    do spawn_sched(ManualThreads(2)) || {
-        unsafe {
-            let max_threads = rt::rust_sched_threads();
-            assert_eq!(max_threads as int, 2);
-            let running_threads = rt::rust_sched_current_nonlazy_threads();
-            assert_eq!(running_threads as int, 1);
-
-            let (port2, chan2) = comm::stream();
-
-            do spawn_sched(CurrentScheduler) || {
-                chan2.send(());
-            }
-
-            let running_threads2 = rt::rust_sched_current_nonlazy_threads();
-            assert_eq!(running_threads2 as int, 2);
-
-            port2.recv();
-            chan.send(());
-        }
-    }
-
-    port.recv();
 }
 
 #[test]

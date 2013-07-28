@@ -41,8 +41,6 @@ rust_log_console_off
 rust_should_log_console
 rust_set_environ
 rust_unset_sigprocmask
-rust_sched_current_nonlazy_threads
-rust_sched_threads
 rust_set_exit_status
 rust_start
 rust_env_pairs
