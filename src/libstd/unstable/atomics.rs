@@ -577,8 +577,8 @@ pub unsafe fn atomic_umin<T>(dst: &mut T, val: T, order: Ordering) -> T {
  * An atomic fence.
  *
  * A fence 'A' which has `Release` ordering semantics, synchronizes with a
- * fence 'B' with (at least) `Aquire` semantics, if and only if there exists
- * atomic operations X and Y, bother operating on some atomic object 'M' such
+ * fence 'B' with (at least) `Acquire` semantics, if and only if there exists
+ * atomic operations X and Y, both operating on some atomic object 'M' such
  * that A is sequenced before X, Y is synchronized before B and Y obsevers
  * the change to M. This provides a happens-before dependence between A and B.
  *
