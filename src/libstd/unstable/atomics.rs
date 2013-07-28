@@ -569,6 +569,33 @@ pub unsafe fn atomic_umin<T>(dst: &mut T, val: T, order: Ordering) -> T {
     })
 }
 
+/**
+ * An atomic fence.
+ *
+ * A fence 'A' which has `Release` ordering semantics, synchronizes with a
+ * fence 'B' with (at least) `Aquire` semantics, if and only if there exists
+ * atomic operations X and Y, bother operating on some atomic object 'M' such
+ * that A is sequenced before X, Y is synchronized before B and Y obsevers
+ * the change to M. This provides a happens-before dependence between A and B.
+ *
+ * Atomic operations with `Release` or `Acquire` semantics can also synchronize
+ * with a fence.
+ *
+ * A fence with has `SeqCst` ordering, in addition to having both `Acquire` and
+ * `Release` semantics, participates in the global program order of the other
+ * `SeqCst` operations and/or fences.
+ *
+ * Accepts `Acquire`, `Release`, `AcqRel` and `SeqCst` orderings.
+ */
+#[inline] #[cfg(not(stage0))]
+pub fn fence(order: Ordering) {
+    match order {
+        Acquire => intrinsics::atomic_fence_acq(),
+        Release => intrinsics::atomic_fence_rel(),
+        AcqRel  => intrinsics::atomic_fence_rel(),
+        _       => intrinsics::atomic_fence(),
+    }
+}
 
 #[cfg(test)]
 mod test {

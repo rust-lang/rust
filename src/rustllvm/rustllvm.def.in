@@ -90,6 +90,7 @@ LLVMBuildAtomicLoad
 LLVMBuildAtomicStore
 LLVMBuildAtomicCmpXchg
 LLVMBuildAtomicRMW
+LLVMBuildAtomicFence
 LLVMBuildAdd
 LLVMBuildAggregateRet
 LLVMBuildAlloca
