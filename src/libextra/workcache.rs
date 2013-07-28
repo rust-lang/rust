@@ -22,7 +22,6 @@ use std::cell::Cell;
 use std::comm::{PortOne, oneshot, send_one, recv_one};
 use std::either::{Either, Left, Right};
 use std::io;
-use std::result;
 use std::run;
 use std::task;
 
@@ -208,7 +207,7 @@ fn json_encode<T:Encodable<json::Encoder>>(t: &T) -> ~str {
 // FIXME(#5121)
 fn json_decode<T:Decodable<json::Decoder>>(s: &str) -> T {
     do io::with_str_reader(s) |rdr| {
-        let j = result::unwrap(json::from_reader(rdr));
+        let j = json::from_reader(rdr).unwrap();
         let mut decoder = json::Decoder(j);
         Decodable::decode(&mut decoder)
     }

@@ -271,7 +271,7 @@ impl<T> Option<T> {
     pub fn get_ref<'a>(&'a self) -> &'a T {
         match *self {
           Some(ref x) => x,
-          None => fail!("option::get_ref None")
+          None => fail!("option::get_ref `None`"),
         }
     }
 
@@ -293,7 +293,7 @@ impl<T> Option<T> {
     pub fn get_mut_ref<'a>(&'a mut self) -> &'a mut T {
         match *self {
           Some(ref mut x) => x,
-          None => fail!("option::get_mut_ref None")
+          None => fail!("option::get_mut_ref `None`"),
         }
     }
 
@@ -317,7 +317,7 @@ impl<T> Option<T> {
          */
         match self {
           Some(x) => x,
-          None => fail!("option::unwrap None")
+          None => fail!("option::unwrap `None`"),
         }
     }
 
@@ -331,7 +331,7 @@ impl<T> Option<T> {
      */
     #[inline]
     pub fn take_unwrap(&mut self) -> T {
-        if self.is_none() { fail!("option::take_unwrap None") }
+        if self.is_none() { fail!("option::take_unwrap `None`") }
         self.take().unwrap()
     }
 
@@ -369,7 +369,7 @@ impl<T> Option<T> {
     pub fn get(self) -> T {
         match self {
           Some(x) => return x,
-          None => fail!("option::get None")
+          None => fail!("option::get `None`")
         }
     }
 
@@ -379,7 +379,7 @@ impl<T> Option<T> {
         match self { Some(x) => x, None => def }
     }
 
-    /// Applies a function zero or more times until the result is None.
+    /// Applies a function zero or more times until the result is `None`.
     #[inline]
     pub fn while_some(self, blk: &fn(v: T) -> Option<T>) {
         let mut opt = self;
@@ -441,134 +441,140 @@ impl<'self, A> Iterator<&'self mut A> for OptionMutIterator<'self, A> {
     }
 }
 
-#[test]
-fn test_unwrap_ptr() {
-    unsafe {
-        let x = ~0;
-        let addr_x: *int = ::cast::transmute(&*x);
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use util;
+
+    #[test]
+    fn test_unwrap_ptr() {
+        unsafe {
+            let x = ~0;
+            let addr_x: *int = ::cast::transmute(&*x);
+            let opt = Some(x);
+            let y = opt.unwrap();
+            let addr_y: *int = ::cast::transmute(&*y);
+            assert_eq!(addr_x, addr_y);
+        }
+    }
+
+    #[test]
+    fn test_unwrap_str() {
+        let x = ~"test";
+        let addr_x = x.as_imm_buf(|buf, _len| buf);
         let opt = Some(x);
         let y = opt.unwrap();
-        let addr_y: *int = ::cast::transmute(&*y);
+        let addr_y = y.as_imm_buf(|buf, _len| buf);
         assert_eq!(addr_x, addr_y);
     }
-}
 
-#[test]
-fn test_unwrap_str() {
-    let x = ~"test";
-    let addr_x = x.as_imm_buf(|buf, _len| buf);
-    let opt = Some(x);
-    let y = opt.unwrap();
-    let addr_y = y.as_imm_buf(|buf, _len| buf);
-    assert_eq!(addr_x, addr_y);
-}
-
-#[test]
-fn test_unwrap_resource() {
-    struct R {
-       i: @mut int,
-    }
-
-    #[unsafe_destructor]
-    impl ::ops::Drop for R {
-       fn drop(&self) { *(self.i) += 1; }
-    }
-
-    fn R(i: @mut int) -> R {
-        R {
-            i: i
+    #[test]
+    fn test_unwrap_resource() {
+        struct R {
+           i: @mut int,
         }
-    }
 
-    let i = @mut 0;
-    {
-        let x = R(i);
-        let opt = Some(x);
-        let _y = opt.unwrap();
-    }
-    assert_eq!(*i, 1);
-}
-
-#[test]
-fn test_option_dance() {
-    let x = Some(());
-    let mut y = Some(5);
-    let mut y2 = 0;
-    for x.iter().advance |_x| {
-        y2 = y.take_unwrap();
-    }
-    assert_eq!(y2, 5);
-    assert!(y.is_none());
-}
-#[test] #[should_fail] #[ignore(cfg(windows))]
-fn test_option_too_much_dance() {
-    let mut y = Some(util::NonCopyable);
-    let _y2 = y.take_unwrap();
-    let _y3 = y.take_unwrap();
-}
-
-#[test]
-fn test_option_while_some() {
-    let mut i = 0;
-    do Some(10).while_some |j| {
-        i += 1;
-        if (j > 0) {
-            Some(j-1)
-        } else {
-            None
+        #[unsafe_destructor]
+        impl ::ops::Drop for R {
+           fn drop(&self) { *(self.i) += 1; }
         }
-    }
-    assert_eq!(i, 11);
-}
 
-#[test]
-fn test_get_or_zero() {
-    let some_stuff = Some(42);
-    assert_eq!(some_stuff.get_or_zero(), 42);
-    let no_stuff: Option<int> = None;
-    assert_eq!(no_stuff.get_or_zero(), 0);
-}
-
-#[test]
-fn test_filtered() {
-    let some_stuff = Some(42);
-    let modified_stuff = some_stuff.filtered(|&x| {x < 10});
-    assert_eq!(some_stuff.get(), 42);
-    assert!(modified_stuff.is_none());
-}
-
-#[test]
-fn test_iter() {
-    let val = 5;
-
-    let x = Some(val);
-    let mut it = x.iter();
-
-    assert_eq!(it.size_hint(), (1, Some(1)));
-    assert_eq!(it.next(), Some(&val));
-    assert_eq!(it.size_hint(), (0, Some(0)));
-    assert!(it.next().is_none());
-}
-
-#[test]
-fn test_mut_iter() {
-    let val = 5;
-    let new_val = 11;
-
-    let mut x = Some(val);
-    let mut it = x.mut_iter();
-
-    assert_eq!(it.size_hint(), (1, Some(1)));
-
-    match it.next() {
-        Some(interior) => {
-            assert_eq!(*interior, val);
-            *interior = new_val;
-            assert_eq!(x, Some(new_val));
+        fn R(i: @mut int) -> R {
+            R {
+                i: i
+            }
         }
-        None => assert!(false),
+
+        let i = @mut 0;
+        {
+            let x = R(i);
+            let opt = Some(x);
+            let _y = opt.unwrap();
+        }
+        assert_eq!(*i, 1);
     }
 
-    assert_eq!(it.size_hint(), (0, Some(0)));
-    assert!(it.next().is_none());
+    #[test]
+    fn test_option_dance() {
+        let x = Some(());
+        let mut y = Some(5);
+        let mut y2 = 0;
+        for x.iter().advance |_x| {
+            y2 = y.take_unwrap();
+        }
+        assert_eq!(y2, 5);
+        assert!(y.is_none());
+    }
+    #[test] #[should_fail] #[ignore(cfg(windows))]
+    fn test_option_too_much_dance() {
+        let mut y = Some(util::NonCopyable);
+        let _y2 = y.take_unwrap();
+        let _y3 = y.take_unwrap();
+    }
+
+    #[test]
+    fn test_option_while_some() {
+        let mut i = 0;
+        do Some(10).while_some |j| {
+            i += 1;
+            if (j > 0) {
+                Some(j-1)
+            } else {
+                None
+            }
+        }
+        assert_eq!(i, 11);
+    }
+
+    #[test]
+    fn test_get_or_zero() {
+        let some_stuff = Some(42);
+        assert_eq!(some_stuff.get_or_zero(), 42);
+        let no_stuff: Option<int> = None;
+        assert_eq!(no_stuff.get_or_zero(), 0);
+    }
+
+    #[test]
+    fn test_filtered() {
+        let some_stuff = Some(42);
+        let modified_stuff = some_stuff.filtered(|&x| {x < 10});
+        assert_eq!(some_stuff.get(), 42);
+        assert!(modified_stuff.is_none());
+    }
+
+    #[test]
+    fn test_iter() {
+        let val = 5;
+
+        let x = Some(val);
+        let mut it = x.iter();
+
+        assert_eq!(it.size_hint(), (1, Some(1)));
+        assert_eq!(it.next(), Some(&val));
+        assert_eq!(it.size_hint(), (0, Some(0)));
+        assert!(it.next().is_none());
+    }
+
+    #[test]
+    fn test_mut_iter() {
+        let val = 5;
+        let new_val = 11;
+
+        let mut x = Some(val);
+        let mut it = x.mut_iter();
+
+        assert_eq!(it.size_hint(), (1, Some(1)));
+
+        match it.next() {
+            Some(interior) => {
+                assert_eq!(*interior, val);
+                *interior = new_val;
+                assert_eq!(x, Some(new_val));
+            }
+            None => assert!(false),
+        }
+
+        assert_eq!(it.size_hint(), (0, Some(0)));
+        assert!(it.next().is_none());
+    }
 }
