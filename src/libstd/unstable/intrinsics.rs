@@ -256,6 +256,15 @@ extern "rust-intrinsic" {
     pub fn atomic_umax_acqrel(dst: &mut int, src: int) -> int;
     pub fn atomic_umax_relaxed(dst: &mut int, src: int) -> int;
 
+    #[cfg(not(stage0))]
+    pub fn atomic_fence();
+    #[cfg(not(stage0))]
+    pub fn atomic_fence_acq();
+    #[cfg(not(stage0))]
+    pub fn atomic_fence_rel();
+    #[cfg(not(stage0))]
+    pub fn atomic_fence_acqrel();
+
     /// The size of a type in bytes.
     ///
     /// This is the exact number of bytes in memory taken up by a

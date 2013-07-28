@@ -661,6 +661,10 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
                             order);
                 RetVoid(bcx);
             }
+            "fence" => {
+                AtomicFence(bcx, order);
+                RetVoid(bcx);
+            }
             op => {
                 // These are all AtomicRMW ops
                 let atom_op = match op {

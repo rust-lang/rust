@@ -1594,6 +1594,9 @@ pub mod llvm {
                                          Order: AtomicOrdering)
                                          -> ValueRef;
 
+        pub unsafe fn LLVMBuildAtomicFence(B: BuilderRef, Order: AtomicOrdering);
+
+
         /* Selected entries from the downcasts. */
         #[fast_ffi]
         pub unsafe fn LLVMIsATerminatorInst(Inst: ValueRef) -> ValueRef;
