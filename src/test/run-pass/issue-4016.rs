@@ -11,14 +11,13 @@
 
 extern mod extra;
 
-use std::result;
 use extra::json;
 use extra::serialize::Decodable;
 
 trait JD : Decodable<json::Decoder> { }
 
 fn exec<T: JD>() {
-    let doc = result::unwrap(json::from_str(""));
+    let doc = json::from_str("").unwrap();
     let mut decoder = json::Decoder(doc);
     let _v: T = Decodable::decode(&mut decoder);
     fail!()
