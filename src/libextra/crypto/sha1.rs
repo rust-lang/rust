@@ -32,13 +32,13 @@ use digest::Digest;
  */
 
 // Some unexported constants
-static DIGEST_BUF_LEN: uint = 5u;
-static MSG_BLOCK_LEN: uint = 64u;
-static WORK_BUF_LEN: uint = 80u;
-static K0: u32 = 0x5A827999u32;
-static K1: u32 = 0x6ED9EBA1u32;
-static K2: u32 = 0x8F1BBCDCu32;
-static K3: u32 = 0xCA62C1D6u32;
+priv static DIGEST_BUF_LEN: uint = 5u;
+priv static MSG_BLOCK_LEN: uint = 64u;
+priv static WORK_BUF_LEN: uint = 80u;
+priv static K0: u32 = 0x5A827999u32;
+priv static K1: u32 = 0x6ED9EBA1u32;
+priv static K2: u32 = 0x8F1BBCDCu32;
+priv static K3: u32 = 0xCA62C1D6u32;
 
 /// Structure representing the state of a Sha1 computation
 pub struct Sha1 {
