@@ -85,7 +85,7 @@ impl<T: Send> UnsafeAtomicRcBox<T> {
     }
 
     /// Wait until all other handles are dropped, then retrieve the enclosed
-    /// data. See extra::arc::ARC for specific semantics documentation.
+    /// data. See extra::arc::Arc for specific semantics documentation.
     /// If called when the task is already unkillable, unwrap will unkillably
     /// block; otherwise, an unwrapping task can be killed by linked failure.
     pub unsafe fn unwrap(self) -> T {
@@ -146,7 +146,7 @@ impl<T: Send> UnsafeAtomicRcBox<T> {
                 // If 'put' returns the server end back to us, we were rejected;
                 // someone else was trying to unwrap. Avoid guaranteed deadlock.
                 cast::forget(data);
-                fail!("Another task is already unwrapping this ARC!");
+                fail!("Another task is already unwrapping this Arc!");
             }
         }
     }
@@ -251,15 +251,15 @@ impl Drop for LittleLock {
     }
 }
 
-pub fn LittleLock() -> LittleLock {
-    unsafe {
-        LittleLock {
-            l: rust_create_little_lock()
+impl LittleLock {
+    pub fn new() -> LittleLock {
+        unsafe {
+            LittleLock {
+                l: rust_create_little_lock()
+            }
         }
     }
-}
 
-impl LittleLock {
     #[inline]
     pub unsafe fn lock<T>(&self, f: &fn() -> T) -> T {
         do atomically {
@@ -285,45 +285,45 @@ struct ExData<T> {
  * # Safety note
  *
  * This uses a pthread mutex, not one that's aware of the userspace scheduler.
- * The user of an exclusive must be careful not to invoke any functions that may
+ * The user of an Exclusive must be careful not to invoke any functions that may
  * reschedule the task while holding the lock, or deadlock may result. If you
- * need to block or yield while accessing shared state, use extra::sync::RWARC.
+ * need to block or yield while accessing shared state, use extra::sync::RWArc.
  */
 pub struct Exclusive<T> {
     x: UnsafeAtomicRcBox<ExData<T>>
 }
 
-pub fn exclusive<T:Send>(user_data: T) -> Exclusive<T> {
-    let data = ExData {
-        lock: LittleLock(),
-        failed: false,
-        data: user_data
-    };
-    Exclusive {
-        x: UnsafeAtomicRcBox::new(data)
-    }
-}
-
 impl<T:Send> Clone for Exclusive<T> {
-    // Duplicate an exclusive ARC, as std::arc::clone.
+    // Duplicate an Exclusive Arc, as std::arc::clone.
     fn clone(&self) -> Exclusive<T> {
         Exclusive { x: self.x.clone() }
     }
 }
 
 impl<T:Send> Exclusive<T> {
-    // Exactly like std::arc::mutex_arc,access(), but with the little_lock
+    pub fn new(user_data: T) -> Exclusive<T> {
+        let data = ExData {
+            lock: LittleLock::new(),
+            failed: false,
+            data: user_data
+        };
+        Exclusive {
+            x: UnsafeAtomicRcBox::new(data)
+        }
+    }
+
+    // Exactly like std::arc::MutexArc,access(), but with the LittleLock
     // instead of a proper mutex. Same reason for being unsafe.
     //
     // Currently, scheduling operations (i.e., yielding, receiving on a pipe,
     // accessing the provided condition variable) are prohibited while inside
-    // the exclusive. Supporting that is a work in progress.
+    // the Exclusive. Supporting that is a work in progress.
     #[inline]
     pub unsafe fn with<U>(&self, f: &fn(x: &mut T) -> U) -> U {
         let rec = self.x.get();
         do (*rec).lock.lock {
             if (*rec).failed {
-                fail!("Poisoned exclusive - another task failed inside!");
+                fail!("Poisoned Exclusive::new - another task failed inside!");
             }
             (*rec).failed = true;
             let result = f(&mut (*rec).data);
@@ -341,7 +341,7 @@ impl<T:Send> Exclusive<T> {
 
     pub fn unwrap(self) -> T {
         let Exclusive { x: x } = self;
-        // Someday we might need to unkillably unwrap an exclusive, but not today.
+        // Someday we might need to unkillably unwrap an Exclusive, but not today.
         let inner = unsafe { x.unwrap() };
         let ExData { data: user_data, _ } = inner; // will destroy the LittleLock
         user_data
@@ -360,20 +360,20 @@ mod tests {
     use cell::Cell;
     use comm;
     use option::*;
-    use super::{exclusive, UnsafeAtomicRcBox};
+    use super::{Exclusive, UnsafeAtomicRcBox};
     use task;
     use uint;
     use util;
 
     #[test]
-    fn exclusive_arc() {
+    fn exclusive_new_arc() {
         unsafe {
             let mut futures = ~[];
 
             let num_tasks = 10;
             let count = 10;
 
-            let total = exclusive(~0);
+            let total = Exclusive::new(~0);
 
             for uint::range(0, num_tasks) |_i| {
                 let total = total.clone();
@@ -399,11 +399,11 @@ mod tests {
     }
 
     #[test] #[should_fail] #[ignore(cfg(windows))]
-    fn exclusive_poison() {
+    fn exclusive_new_poison() {
         unsafe {
-            // Tests that if one task fails inside of an exclusive, subsequent
+            // Tests that if one task fails inside of an Exclusive::new, subsequent
             // accesses will also fail.
-            let x = exclusive(1);
+            let x = Exclusive::new(1);
             let x2 = x.clone();
             do task::try || {
                 do x2.with |one| {
@@ -466,15 +466,15 @@ mod tests {
     }
 
     #[test]
-    fn exclusive_unwrap_basic() {
+    fn exclusive_new_unwrap_basic() {
         // Unlike the above, also tests no double-freeing of the LittleLock.
-        let x = exclusive(~~"hello");
+        let x = Exclusive::new(~~"hello");
         assert!(x.unwrap() == ~~"hello");
     }
 
     #[test]
-    fn exclusive_unwrap_contended() {
-        let x = exclusive(~~"hello");
+    fn exclusive_new_unwrap_contended() {
+        let x = Exclusive::new(~~"hello");
         let x2 = Cell::new(x.clone());
         do task::spawn {
             let x2 = x2.take();
@@ -484,7 +484,7 @@ mod tests {
         assert!(x.unwrap() == ~~"hello");
 
         // Now try the same thing, but with the child task blocking.
-        let x = exclusive(~~"hello");
+        let x = Exclusive::new(~~"hello");
         let x2 = Cell::new(x.clone());
         let mut res = None;
         let mut builder = task::task();
@@ -499,8 +499,8 @@ mod tests {
     }
 
     #[test] #[should_fail] #[ignore(cfg(windows))]
-    fn exclusive_unwrap_conflict() {
-        let x = exclusive(~~"hello");
+    fn exclusive_new_unwrap_conflict() {
+        let x = Exclusive::new(~~"hello");
         let x2 = Cell::new(x.clone());
         let mut res = None;
         let mut builder = task::task();
@@ -515,14 +515,14 @@ mod tests {
     }
 
     #[test] #[ignore(cfg(windows))]
-    fn exclusive_unwrap_deadlock() {
+    fn exclusive_new_unwrap_deadlock() {
         // This is not guaranteed to get to the deadlock before being killed,
         // but it will show up sometimes, and if the deadlock were not there,
         // the test would nondeterministically fail.
         let result = do task::try {
-            // a task that has two references to the same exclusive will
+            // a task that has two references to the same Exclusive::new will
             // deadlock when it unwraps. nothing to be done about that.
-            let x = exclusive(~~"hello");
+            let x = Exclusive::new(~~"hello");
             let x2 = x.clone();
             do task::spawn {
                 for 10.times { task::yield(); } // try to let the unwrapper go

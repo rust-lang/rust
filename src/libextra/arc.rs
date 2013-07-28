@@ -15,13 +15,13 @@
  * # Example
  *
  * In this example, a large vector of floats is shared between several tasks.
- * With simple pipes, without ARC, a copy would have to be made for each task.
+ * With simple pipes, without Arc, a copy would have to be made for each task.
  *
  * ~~~ {.rust}
  * extern mod std;
  * use extra::arc;
  * let numbers=vec::from_fn(100, |ind| (ind as float)*rand::random());
- * let shared_numbers=arc::ARC(numbers);
+ * let shared_numbers=arc::Arc::new(numbers);
  *
  *   for 10.times {
  *       let (port, chan)  = stream();
@@ -41,7 +41,7 @@
 
 
 use sync;
-use sync::{Mutex, mutex_with_condvars, RWlock, rwlock_with_condvars};
+use sync::{Mutex, RWLock};
 
 use std::cast;
 use std::unstable::sync::UnsafeAtomicRcBox;
@@ -56,12 +56,12 @@ pub struct Condvar<'self> {
 }
 
 impl<'self> Condvar<'self> {
-    /// Atomically exit the associated ARC and block until a signal is sent.
+    /// Atomically exit the associated Arc and block until a signal is sent.
     #[inline]
     pub fn wait(&self) { self.wait_on(0) }
 
     /**
-     * Atomically exit the associated ARC and block on a specified condvar
+     * Atomically exit the associated Arc and block on a specified condvar
      * until a signal is sent on that same condvar (as sync::cond.wait_on).
      *
      * wait() is equivalent to wait_on(0).
@@ -104,37 +104,38 @@ impl<'self> Condvar<'self> {
 }
 
 /****************************************************************************
- * Immutable ARC
+ * Immutable Arc
  ****************************************************************************/
 
 /// An atomically reference counted wrapper for shared immutable state.
-pub struct ARC<T> { priv x: UnsafeAtomicRcBox<T> }
+pub struct Arc<T> { priv x: UnsafeAtomicRcBox<T> }
 
-/// Create an atomically reference counted wrapper.
-pub fn ARC<T:Freeze + Send>(data: T) -> ARC<T> {
-    ARC { x: UnsafeAtomicRcBox::new(data) }
-}
 
 /**
  * Access the underlying data in an atomically reference counted
  * wrapper.
  */
-impl<T:Freeze+Send> ARC<T> {
+impl<T:Freeze+Send> Arc<T> {
+    /// Create an atomically reference counted wrapper.
+    pub fn new(data: T) -> Arc<T> {
+        Arc { x: UnsafeAtomicRcBox::new(data) }
+    }
+
     pub fn get<'a>(&'a self) -> &'a T {
         unsafe { &*self.x.get_immut() }
     }
 
     /**
-     * Retrieve the data back out of the ARC. This function blocks until the
+     * Retrieve the data back out of the Arc. This function blocks until the
      * reference given to it is the last existing one, and then unwrap the data
      * instead of destroying it.
      *
      * If multiple tasks call unwrap, all but the first will fail. Do not call
-     * unwrap from a task that holds another reference to the same ARC; it is
+     * unwrap from a task that holds another reference to the same Arc; it is
      * guaranteed to deadlock.
      */
     pub fn unwrap(self) -> T {
-        let ARC { x: x } = self;
+        let Arc { x: x } = self;
         unsafe { x.unwrap() }
     }
 }
@@ -146,47 +147,48 @@ impl<T:Freeze+Send> ARC<T> {
  * object. However, one of the `arc` objects can be sent to another task,
  * allowing them to share the underlying data.
  */
-impl<T:Freeze + Send> Clone for ARC<T> {
-    fn clone(&self) -> ARC<T> {
-        ARC { x: self.x.clone() }
+impl<T:Freeze + Send> Clone for Arc<T> {
+    fn clone(&self) -> Arc<T> {
+        Arc { x: self.x.clone() }
     }
 }
 
 /****************************************************************************
- * Mutex protected ARC (unsafe)
+ * Mutex protected Arc (unsafe)
  ****************************************************************************/
 
 #[doc(hidden)]
-struct MutexARCInner<T> { priv lock: Mutex, priv failed: bool, priv data: T }
-/// An ARC with mutable data protected by a blocking mutex.
-struct MutexARC<T> { priv x: UnsafeAtomicRcBox<MutexARCInner<T>> }
+struct MutexArcInner<T> { priv lock: Mutex, priv failed: bool, priv data: T }
+/// An Arc with mutable data protected by a blocking mutex.
+struct MutexArc<T> { priv x: UnsafeAtomicRcBox<MutexArcInner<T>> }
 
-/// Create a mutex-protected ARC with the supplied data.
-pub fn MutexARC<T:Send>(user_data: T) -> MutexARC<T> {
-    mutex_arc_with_condvars(user_data, 1)
-}
-/**
- * Create a mutex-protected ARC with the supplied data and a specified number
- * of condvars (as sync::mutex_with_condvars).
- */
-pub fn mutex_arc_with_condvars<T:Send>(user_data: T,
-                                    num_condvars: uint) -> MutexARC<T> {
-    let data =
-        MutexARCInner { lock: mutex_with_condvars(num_condvars),
-                          failed: false, data: user_data };
-    MutexARC { x: UnsafeAtomicRcBox::new(data) }
-}
 
-impl<T:Send> Clone for MutexARC<T> {
-    /// Duplicate a mutex-protected ARC, as arc::clone.
-    fn clone(&self) -> MutexARC<T> {
+impl<T:Send> Clone for MutexArc<T> {
+    /// Duplicate a mutex-protected Arc, as arc::clone.
+    fn clone(&self) -> MutexArc<T> {
         // NB: Cloning the underlying mutex is not necessary. Its reference
         // count would be exactly the same as the shared state's.
-        MutexARC { x: self.x.clone() }
+        MutexArc { x: self.x.clone() }
     }
 }
 
-impl<T:Send> MutexARC<T> {
+impl<T:Send> MutexArc<T> {
+    /// Create a mutex-protected Arc with the supplied data.
+    pub fn new(user_data: T) -> MutexArc<T> {
+        MutexArc::new_with_condvars(user_data, 1)
+    }
+
+    /**
+     * Create a mutex-protected Arc with the supplied data and a specified number
+     * of condvars (as sync::Mutex::new_with_condvars).
+     */
+    pub fn new_with_condvars(user_data: T, num_condvars: uint) -> MutexArc<T> {
+        let data = MutexArcInner {
+            lock: Mutex::new_with_condvars(num_condvars),
+            failed: false, data: user_data
+        };
+        MutexArc { x: UnsafeAtomicRcBox::new(data) }
+    }
 
     /**
      * Access the underlying mutable data with mutual exclusion from other
@@ -195,10 +197,10 @@ impl<T:Send> MutexARC<T> {
      * finishes running.
      *
      * The reason this function is 'unsafe' is because it is possible to
-     * construct a circular reference among multiple ARCs by mutating the
+     * construct a circular reference among multiple Arcs by mutating the
      * underlying data. This creates potential for deadlock, but worse, this
-     * will guarantee a memory leak of all involved ARCs. Using mutex ARCs
-     * inside of other ARCs is safe in absence of circular references.
+     * will guarantee a memory leak of all involved Arcs. Using mutex Arcs
+     * inside of other Arcs is safe in absence of circular references.
      *
      * If you wish to nest mutex_arcs, one strategy for ensuring safety at
      * runtime is to add a "nesting level counter" inside the stored data, and
@@ -206,8 +208,8 @@ impl<T:Send> MutexARC<T> {
      *
      * # Failure
      *
-     * Failing while inside the ARC will unlock the ARC while unwinding, so
-     * that other tasks won't block forever. It will also poison the ARC:
+     * Failing while inside the Arc will unlock the Arc while unwinding, so
+     * that other tasks won't block forever. It will also poison the Arc:
      * any tasks that subsequently try to access it (including those already
      * blocked on the mutex) will also fail immediately.
      */
@@ -247,11 +249,11 @@ impl<T:Send> MutexARC<T> {
      * Will additionally fail if another task has failed while accessing the arc.
      */
     pub fn unwrap(self) -> T {
-        let MutexARC { x: x } = self;
+        let MutexArc { x: x } = self;
         let inner = unsafe { x.unwrap() };
-        let MutexARCInner { failed: failed, data: data, _ } = inner;
+        let MutexArcInner { failed: failed, data: data, _ } = inner;
         if failed {
-            fail!(~"Can't unwrap poisoned MutexARC - another task failed inside!");
+            fail!(~"Can't unwrap poisoned MutexArc - another task failed inside!");
         }
         data
     }
@@ -263,7 +265,7 @@ impl<T:Send> MutexARC<T> {
 fn check_poison(is_mutex: bool, failed: bool) {
     if failed {
         if is_mutex {
-            fail!("Poisoned MutexARC - another task failed inside!");
+            fail!("Poisoned MutexArc - another task failed inside!");
         } else {
             fail!("Poisoned rw_arc - another task failed inside!");
         }
@@ -294,60 +296,59 @@ fn PoisonOnFail<'r>(failed: &'r mut bool) -> PoisonOnFail {
 }
 
 /****************************************************************************
- * R/W lock protected ARC
+ * R/W lock protected Arc
  ****************************************************************************/
 
 #[doc(hidden)]
-struct RWARCInner<T> { priv lock: RWlock, priv failed: bool, priv data: T }
+struct RWArcInner<T> { priv lock: RWLock, priv failed: bool, priv data: T }
 /**
- * A dual-mode ARC protected by a reader-writer lock. The data can be accessed
+ * A dual-mode Arc protected by a reader-writer lock. The data can be accessed
  * mutably or immutably, and immutably-accessing tasks may run concurrently.
  *
  * Unlike mutex_arcs, rw_arcs are safe, because they cannot be nested.
  */
 #[no_freeze]
-struct RWARC<T> {
-    priv x: UnsafeAtomicRcBox<RWARCInner<T>>,
+struct RWArc<T> {
+    priv x: UnsafeAtomicRcBox<RWArcInner<T>>,
 }
 
-/// Create a reader/writer ARC with the supplied data.
-pub fn RWARC<T:Freeze + Send>(user_data: T) -> RWARC<T> {
-    rw_arc_with_condvars(user_data, 1)
-}
-/**
- * Create a reader/writer ARC with the supplied data and a specified number
- * of condvars (as sync::rwlock_with_condvars).
- */
-pub fn rw_arc_with_condvars<T:Freeze + Send>(
-    user_data: T,
-    num_condvars: uint) -> RWARC<T>
-{
-    let data =
-        RWARCInner { lock: rwlock_with_condvars(num_condvars),
-                     failed: false, data: user_data };
-    RWARC { x: UnsafeAtomicRcBox::new(data), }
-}
-
-impl<T:Freeze + Send> RWARC<T> {
-    /// Duplicate a rwlock-protected ARC, as arc::clone.
-    pub fn clone(&self) -> RWARC<T> {
-        RWARC {
+impl<T:Freeze + Send> RWArc<T> {
+    /// Duplicate a rwlock-protected Arc, as arc::clone.
+    pub fn clone(&self) -> RWArc<T> {
+        RWArc {
             x: self.x.clone(),
         }
     }
 
 }
 
-impl<T:Freeze + Send> RWARC<T> {
+impl<T:Freeze + Send> RWArc<T> {
+    /// Create a reader/writer Arc with the supplied data.
+    pub fn new(user_data: T) -> RWArc<T> {
+        RWArc::new_with_condvars(user_data, 1)
+    }
+
+    /**
+     * Create a reader/writer Arc with the supplied data and a specified number
+     * of condvars (as sync::RWLock::new_with_condvars).
+     */
+    pub fn new_with_condvars(user_data: T, num_condvars: uint) -> RWArc<T> {
+        let data = RWArcInner {
+            lock: RWLock::new_with_condvars(num_condvars),
+            failed: false, data: user_data
+        };
+        RWArc { x: UnsafeAtomicRcBox::new(data), }
+    }
+
     /**
      * Access the underlying data mutably. Locks the rwlock in write mode;
      * other readers and writers will block.
      *
      * # Failure
      *
-     * Failing while inside the ARC will unlock the ARC while unwinding, so
-     * that other tasks won't block forever. As MutexARC.access, it will also
-     * poison the ARC, so subsequent readers and writers will both also fail.
+     * Failing while inside the Arc will unlock the Arc while unwinding, so
+     * that other tasks won't block forever. As MutexArc.access, it will also
+     * poison the Arc, so subsequent readers and writers will both also fail.
      */
     #[inline]
     pub fn write<U>(&self, blk: &fn(x: &mut T) -> U) -> U {
@@ -385,8 +386,8 @@ impl<T:Freeze + Send> RWARC<T> {
      *
      * # Failure
      *
-     * Failing will unlock the ARC while unwinding. However, unlike all other
-     * access modes, this will not poison the ARC.
+     * Failing will unlock the Arc while unwinding. However, unlike all other
+     * access modes, this will not poison the Arc.
      */
     pub fn read<U>(&self, blk: &fn(x: &T) -> U) -> U {
         unsafe {
@@ -467,11 +468,11 @@ impl<T:Freeze + Send> RWARC<T> {
      * in write mode.
      */
     pub fn unwrap(self) -> T {
-        let RWARC { x: x, _ } = self;
+        let RWArc { x: x, _ } = self;
         let inner = unsafe { x.unwrap() };
-        let RWARCInner { failed: failed, data: data, _ } = inner;
+        let RWArcInner { failed: failed, data: data, _ } = inner;
         if failed {
-            fail!(~"Can't unwrap poisoned RWARC - another task failed inside!")
+            fail!(~"Can't unwrap poisoned RWArc - another task failed inside!")
         }
         data
     }
@@ -481,25 +482,25 @@ impl<T:Freeze + Send> RWARC<T> {
 // lock it. This wraps the unsafety, with the justification that the 'lock'
 // field is never overwritten; only 'failed' and 'data'.
 #[doc(hidden)]
-fn borrow_rwlock<T:Freeze + Send>(state: *mut RWARCInner<T>) -> *RWlock {
+fn borrow_rwlock<T:Freeze + Send>(state: *mut RWArcInner<T>) -> *RWLock {
     unsafe { cast::transmute(&(*state).lock) }
 }
 
-/// The "write permission" token used for RWARC.write_downgrade().
+/// The "write permission" token used for RWArc.write_downgrade().
 pub struct RWWriteMode<'self, T> {
     data: &'self mut T,
-    token: sync::RWlockWriteMode<'self>,
+    token: sync::RWLockWriteMode<'self>,
     poison: PoisonOnFail,
 }
 
-/// The "read permission" token used for RWARC.write_downgrade().
+/// The "read permission" token used for RWArc.write_downgrade().
 pub struct RWReadMode<'self, T> {
     data: &'self T,
-    token: sync::RWlockReadMode<'self>,
+    token: sync::RWLockReadMode<'self>,
 }
 
 impl<'self, T:Freeze + Send> RWWriteMode<'self, T> {
-    /// Access the pre-downgrade RWARC in write mode.
+    /// Access the pre-downgrade RWArc in write mode.
     pub fn write<U>(&mut self, blk: &fn(x: &mut T) -> U) -> U {
         match *self {
             RWWriteMode {
@@ -514,7 +515,7 @@ impl<'self, T:Freeze + Send> RWWriteMode<'self, T> {
         }
     }
 
-    /// Access the pre-downgrade RWARC in write mode with a condvar.
+    /// Access the pre-downgrade RWArc in write mode with a condvar.
     pub fn write_cond<'x, 'c, U>(&mut self,
                                  blk: &fn(x: &'x mut T, c: &'c Condvar) -> U)
                                  -> U {
@@ -570,7 +571,7 @@ mod tests {
     #[test]
     fn manually_share_arc() {
         let v = ~[1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-        let arc_v = ARC(v);
+        let arc_v = Arc::new(v);
 
         let (p, c) = comm::stream();
 
@@ -578,7 +579,7 @@ mod tests {
             let p = comm::PortSet::new();
             c.send(p.chan());
 
-            let arc_v : ARC<~[int]> = p.recv();
+            let arc_v : Arc<~[int]> = p.recv();
 
             let v = (*arc_v.get()).clone();
             assert_eq!(v[3], 4);
@@ -596,7 +597,7 @@ mod tests {
     #[test]
     fn test_mutex_arc_condvar() {
         unsafe {
-            let arc = ~MutexARC(false);
+            let arc = ~MutexArc::new(false);
             let arc2 = ~arc.clone();
             let (p,c) = comm::oneshot();
             let (c,p) = (Cell::new(c), Cell::new(p));
@@ -620,7 +621,7 @@ mod tests {
     #[test] #[should_fail] #[ignore(cfg(windows))]
     fn test_arc_condvar_poison() {
         unsafe {
-            let arc = ~MutexARC(1);
+            let arc = ~MutexArc::new(1);
             let arc2 = ~arc.clone();
             let (p, c) = comm::stream();
 
@@ -644,7 +645,7 @@ mod tests {
     #[test] #[should_fail] #[ignore(cfg(windows))]
     fn test_mutex_arc_poison() {
         unsafe {
-            let arc = ~MutexARC(1);
+            let arc = ~MutexArc::new(1);
             let arc2 = ~arc.clone();
             do task::try || {
                 do arc2.access |one| {
@@ -658,7 +659,7 @@ mod tests {
     }
     #[test] #[should_fail] #[ignore(cfg(windows))]
     pub fn test_mutex_arc_unwrap_poison() {
-        let arc = MutexARC(1);
+        let arc = MutexArc::new(1);
         let arc2 = ~(&arc).clone();
         let (p, c) = comm::stream();
         do task::spawn {
@@ -675,7 +676,7 @@ mod tests {
     }
     #[test] #[should_fail] #[ignore(cfg(windows))]
     fn test_rw_arc_poison_wr() {
-        let arc = ~RWARC(1);
+        let arc = ~RWArc::new(1);
         let arc2 = (*arc).clone();
         do task::try || {
             do arc2.write |one| {
@@ -688,7 +689,7 @@ mod tests {
     }
     #[test] #[should_fail] #[ignore(cfg(windows))]
     fn test_rw_arc_poison_ww() {
-        let arc = ~RWARC(1);
+        let arc = ~RWArc::new(1);
         let arc2 = (*arc).clone();
         do task::try || {
             do arc2.write |one| {
@@ -701,7 +702,7 @@ mod tests {
     }
     #[test] #[should_fail] #[ignore(cfg(windows))]
     fn test_rw_arc_poison_dw() {
-        let arc = ~RWARC(1);
+        let arc = ~RWArc::new(1);
         let arc2 = (*arc).clone();
         do task::try || {
             do arc2.write_downgrade |mut write_mode| {
@@ -716,7 +717,7 @@ mod tests {
     }
     #[test] #[ignore(cfg(windows))]
     fn test_rw_arc_no_poison_rr() {
-        let arc = ~RWARC(1);
+        let arc = ~RWArc::new(1);
         let arc2 = (*arc).clone();
         do task::try || {
             do arc2.read |one| {
@@ -729,7 +730,7 @@ mod tests {
     }
     #[test] #[ignore(cfg(windows))]
     fn test_rw_arc_no_poison_rw() {
-        let arc = ~RWARC(1);
+        let arc = ~RWArc::new(1);
         let arc2 = (*arc).clone();
         do task::try || {
             do arc2.read |one| {
@@ -742,7 +743,7 @@ mod tests {
     }
     #[test] #[ignore(cfg(windows))]
     fn test_rw_arc_no_poison_dr() {
-        let arc = ~RWARC(1);
+        let arc = ~RWArc::new(1);
         let arc2 = (*arc).clone();
         do task::try || {
             do arc2.write_downgrade |write_mode| {
@@ -758,7 +759,7 @@ mod tests {
     }
     #[test]
     fn test_rw_arc() {
-        let arc = ~RWARC(0);
+        let arc = ~RWArc::new(0);
         let arc2 = (*arc).clone();
         let (p,c) = comm::stream();
 
@@ -806,7 +807,7 @@ mod tests {
         // (4) tells writer and all other readers to contend as it downgrades.
         // (5) Writer attempts to set state back to 42, while downgraded task
         //     and all reader tasks assert that it's 31337.
-        let arc = ~RWARC(0);
+        let arc = ~RWArc::new(0);
 
         // Reader tasks
         let mut reader_convos = ~[];
@@ -884,10 +885,10 @@ mod tests {
         // the sync module rather than this one, but it's here because an
         // rwarc gives us extra shared state to help check for the race.
         // If you want to see this test fail, go to sync.rs and replace the
-        // line in RWlock::write_cond() that looks like:
+        // line in RWLock::write_cond() that looks like:
         //     "blk(&Condvar { order: opt_lock, ..*cond })"
         // with just "blk(cond)".
-        let x = ~RWARC(true);
+        let x = ~RWArc::new(true);
         let (wp, wc) = comm::stream();
 
         // writer task

@@ -230,7 +230,7 @@ fn bfs2(graph: graph, key: node_id) -> bfs_result {
 }
 
 /// A parallel version of the bfs function.
-fn pbfs(graph: &arc::ARC<graph>, key: node_id) -> bfs_result {
+fn pbfs(graph: &arc::Arc<graph>, key: node_id) -> bfs_result {
     // This works by doing functional updates of a color vector.
 
     let graph_vec = graph.get(); // FIXME #3387 requires this temp
@@ -263,7 +263,7 @@ fn pbfs(graph: &arc::ARC<graph>, key: node_id) -> bfs_result {
         i += 1;
         let old_len = colors.len();
 
-        let color = arc::ARC(colors);
+        let color = arc::Arc::new(colors);
 
         let color_vec = color.get(); // FIXME #3387 requires this temp
         colors = do par::mapi(*color_vec) {
@@ -444,7 +444,7 @@ fn main() {
     let mut total_seq = 0.0;
     let mut total_par = 0.0;
 
-    let graph_arc = arc::ARC(graph.clone());
+    let graph_arc = arc::Arc::new(graph.clone());
 
     do gen_search_keys(graph, num_keys).map() |root| {
         io::stdout().write_line("");

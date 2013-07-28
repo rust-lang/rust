@@ -135,7 +135,7 @@ msgstr ""
 #. type: Bullet: '* '
 #: doc/tutorial-tasks.md:56
 msgid ""
-"[`extra::arc`] - The ARC (atomically reference counted) type, for safely "
+"[`extra::arc`] - The Arc (atomically reference counted) type, for safely "
 "sharing immutable data,"
 msgstr ""
 
@@ -597,7 +597,7 @@ msgstr ""
 
 #. type: Plain text
 #: doc/tutorial-tasks.md:338
-msgid "## Sharing immutable data without copy: ARC"
+msgid "## Sharing immutable data without copy: Arc"
 msgstr ""
 
 #. type: Plain text
@@ -613,18 +613,18 @@ msgstr ""
 #: doc/tutorial-tasks.md:347
 msgid ""
 "To tackle this issue, one can use an Atomically Reference Counted wrapper "
-"(`ARC`) as implemented in the `extra` library of Rust. With an ARC, the data "
-"will no longer be copied for each task. The ARC acts as a reference to the "
+"(`Arc`) as implemented in the `extra` library of Rust. With an Arc, the data "
+"will no longer be copied for each task. The Arc acts as a reference to the "
 "shared data and only this reference is shared and cloned."
 msgstr ""
 
 #. type: Plain text
 #: doc/tutorial-tasks.md:355
 msgid ""
-"Here is a small example showing how to use ARCs. We wish to run concurrently "
+"Here is a small example showing how to use Arcs. We wish to run concurrently "
 "several computations on a single large vector of floats. Each task needs the "
 "full vector to perform its duty.  ~~~ # use std::vec; # use std::uint; # use "
-"std::rand; use extra::arc::ARC;"
+"std::rand; use extra::arc::Arc;"
 msgstr ""
 
 #. type: Plain text
@@ -648,7 +648,7 @@ msgstr ""
 #. type: Plain text
 #: doc/tutorial-tasks.md:365
 #, no-wrap
-msgid "    let numbers_arc = ARC(numbers);\n"
+msgid "    let numbers_arc = Arc::new(numbers);\n"
 msgstr ""
 
 #. type: Plain text
@@ -665,7 +665,7 @@ msgstr ""
 #, no-wrap
 msgid ""
 "        do spawn {\n"
-"            let local_arc : ARC<~[float]> = port.recv();\n"
+"            let local_arc : Arc<~[float]> = port.recv();\n"
 "            let task_numbers = local_arc.get();\n"
 "            println(fmt!(\"%u-norm = %?\", num, pnorm(task_numbers, num)));\n"
 "        }\n"
@@ -679,23 +679,23 @@ msgstr ""
 msgid ""
 "The function `pnorm` performs a simple computation on the vector (it "
 "computes the sum of its items at the power given as argument and takes the "
-"inverse power of this value). The ARC on the vector is created by the line "
-"~~~ # use extra::arc::ARC; # use std::vec; # use std::rand; # let numbers = "
+"inverse power of this value). The Arc on the vector is created by the line "
+"~~~ # use extra::arc::Arc; # use std::vec; # use std::rand; # let numbers = "
 "vec::from_fn(1000000, |_| rand::random::<float>()); let "
-"numbers_arc=ARC(numbers); ~~~ and a clone of it is sent to each task ~~~ # "
-"use extra::arc::ARC; # use std::vec; # use std::rand; # let numbers=vec::"
+"numbers_arc=Arc::new(numbers); ~~~ and a clone of it is sent to each task ~~~ # "
+"use extra::arc::Arc; # use std::vec; # use std::rand; # let numbers=vec::"
 "from_fn(1000000, |_| rand::random::<float>()); # let numbers_arc = "
-"ARC(numbers); # let (port, chan)  = stream(); chan.send(numbers_arc."
+"Arc::new(numbers); # let (port, chan)  = stream(); chan.send(numbers_arc."
 "clone()); ~~~ copying only the wrapper and not its contents."
 msgstr ""
 
 #. type: Plain text
 #: doc/tutorial-tasks.md:414
 msgid ""
-"Each task recovers the underlying data by ~~~ # use extra::arc::ARC; # use "
+"Each task recovers the underlying data by ~~~ # use extra::arc::Arc; # use "
 "std::vec; # use std::rand; # let numbers=vec::from_fn(1000000, |_| rand::"
-"random::<float>()); # let numbers_arc=ARC(numbers); # let (port, chan)  = "
-"stream(); # chan.send(numbers_arc.clone()); # let local_arc : ARC<~[float]> "
+"random::<float>()); # let numbers_arc=Arc::new(numbers); # let (port, chan)  = "
+"stream(); # chan.send(numbers_arc.clone()); # let local_arc : Arc<~[float]> "
 "= port.recv(); let task_numbers = local_arc.get(); ~~~ and can use it as if "
 "it were local."
 msgstr ""
@@ -703,7 +703,7 @@ msgstr ""
 #. type: Plain text
 #: doc/tutorial-tasks.md:416
 msgid ""
-"The `arc` module also implements ARCs around mutable data that are not "
+"The `arc` module also implements Arcs around mutable data that are not "
 "covered here."
 msgstr ""
 
