@@ -1217,8 +1217,9 @@ impl Writer for fd_t {
         }
     }
     fn seek(&self, _offset: int, _whence: SeekStyle) {
-        error!("need 64-bit foreign calls for seek, sorry");
-        fail!();
+        unsafe {
+            assert!(libc::lseek(*self, _offset as libc::c_long, convert_whence(_whence)) != -1);
+        }
     }
     fn tell(&self) -> uint {
         error!("need 64-bit foreign calls for tell, sorry");

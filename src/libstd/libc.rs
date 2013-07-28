@@ -270,7 +270,12 @@ pub mod types {
             #[cfg(target_arch = "x86")]
             #[cfg(target_arch = "mips")]
             pub mod posix88 {
+                #[cfg(target_os = "android")]
                 pub type off_t = i32;
+
+                #[cfg(target_os = "linux")]
+                pub type off_t = i64;
+
                 pub type dev_t = u64;
                 pub type ino_t = u32;
                 pub type pid_t = i32;
@@ -282,7 +287,12 @@ pub mod types {
             }
             #[cfg(target_arch = "arm")]
             pub mod posix88 {
+                #[cfg(target_os = "android")]
                 pub type off_t = i32;
+
+                #[cfg(target_os = "linux")]
+                pub type off_t = i64;
+
                 pub type dev_t = u32;
                 pub type ino_t = u32;
                 pub type pid_t = i32;
@@ -416,7 +426,12 @@ pub mod types {
                 pub type uintptr_t = uint;
             }
             pub mod posix88 {
+                #[cfg(target_os = "android")]
+                pub type off_t = i32;
+
+                #[cfg(target_os = "linux")]
                 pub type off_t = i64;
+
                 pub type dev_t = u64;
                 pub type ino_t = u64;
                 pub type pid_t = i32;
@@ -2765,8 +2780,16 @@ pub mod funcs {
                 pub unsafe fn getuid() -> uid_t;
                 pub unsafe fn isatty(fd: c_int) -> c_int;
                 pub unsafe fn link(src: *c_char, dst: *c_char) -> c_int;
-                pub unsafe fn lseek(fd: c_int, offset: off_t, whence: c_int)
-                                    -> off_t;
+
+                #[cfg(target_os = "linux")]
+                #[link_name = "lseek64"]
+                pub unsafe fn lseek(fd: c_int, offset: off_t, whence: c_int) -> off_t;
+
+                #[cfg(target_os = "macos")]
+                #[cfg(target_os = "freebsd")]
+                #[cfg(target_os = "android")]
+                pub unsafe fn lseek(fd: c_int, offset: off_t, whence: c_int) -> off_t;
+
                 pub unsafe fn pathconf(path: *c_char, name: c_int) -> c_long;
                 pub unsafe fn pause() -> c_int;
                 pub unsafe fn pipe(fds: *mut c_int) -> c_int;
