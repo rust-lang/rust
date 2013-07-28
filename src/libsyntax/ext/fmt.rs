@@ -191,6 +191,7 @@ fn pieces_to_expr(cx: @ExtCtxt, sp: span,
             TyChar => ("char", arg),
             TyBits | TyOctal | TyHex(_) | TyInt(Unsigned) => ("uint", arg),
             TyFloat => ("float", arg),
+            TyPointer => ("pointer", arg),
             TyPoly => ("poly", cx.expr_addr_of(sp, arg))
         };
         return make_conv_call(cx, arg.span, name, cnv, actual_arg,
@@ -242,6 +243,7 @@ fn pieces_to_expr(cx: @ExtCtxt, sp: span,
           },
           TyOctal => debug!("type: octal"),
           TyFloat => debug!("type: float"),
+          TyPointer => debug!("type: pointer"),
           TyPoly => debug!("type: poly")
         }
     }
