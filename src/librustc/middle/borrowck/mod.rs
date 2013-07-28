@@ -43,7 +43,6 @@ pub mod doc;
 
 pub mod check_loans;
 
-#[path="gather_loans/mod.rs"]
 pub mod gather_loans;
 
 pub mod move_data;
