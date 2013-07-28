@@ -148,6 +148,9 @@ pub trait Reader {
     /**
     * Returns a boolean value: are we currently at EOF?
     *
+    * Note that stream position may be already at the end-of-file point,
+    * but `eof` returns false until an attempt to read at that position.
+    *
     * `eof` is conceptually similar to C's `feof` function.
     *
     * # Examples
@@ -724,15 +727,21 @@ impl<T:Reader> ReaderUtil for T {
     }
 
     fn each_byte(&self, it: &fn(int) -> bool) -> bool {
-        while !self.eof() {
-            if !it(self.read_byte()) { return false; }
+        loop {
+            match self.read_byte() {
+                -1 => break,
+                ch => if !it(ch) { return false; }
+            }
         }
         return true;
     }
 
     fn each_char(&self, it: &fn(char) -> bool) -> bool {
-        while !self.eof() {
-            if !it(self.read_char()) { return false; }
+        loop {
+            match self.read_char() {
+                eof if eof == (-1 as char) => break,
+                ch => if !it(ch) { return false; }
+            }
         }
         return true;
     }
@@ -1856,6 +1865,31 @@ mod tests {
         let frood2: ~str = inp.read_c_str();
         debug!(frood2.clone());
         assert_eq!(frood, frood2);
+    }
+
+    #[test]
+    fn test_each_byte_each_char_file() {
+        // Issue #5056 -- shouldn't include trailing EOF.
+        let path = Path("tmp/lib-io-test-each-byte-each-char-file.tmp");
+
+        {
+            // create empty, enough to reproduce a problem
+            io::file_writer(&path, [io::Create]).unwrap();
+        }
+
+        {
+            let file = io::file_reader(&path).unwrap();
+            for file.each_byte() |_| {
+                fail!("must be empty");
+            }
+        }
+
+        {
+            let file = io::file_reader(&path).unwrap();
+            for file.each_char() |_| {
+                fail!("must be empty");
+            }
+        }
     }
 
     #[test]
