@@ -479,7 +479,7 @@ fn noop_fold_decl(d: &decl_, fld: @ast_fold) -> Option<decl_> {
 }
 
 // lift a function in ast-thingy X fold -> ast-thingy to a function
-// in (ast-thingy X span X fold) -> (ast-thingy X fold). Basically,
+// in (ast-thingy X span X fold) -> (ast-thingy X span). Basically,
 // carries the span around.
 // It seems strange to me that the call to new_fold doesn't happen
 // here but instead in the impl down below.... probably just an
