@@ -943,4 +943,10 @@ impl Builder {
             llvm::LLVMBuildAtomicRMW(self.llbuilder, op, dst, src, order)
         }
     }
+
+    pub fn atomic_fence(&self, order: AtomicOrdering) {
+        unsafe {
+            llvm::LLVMBuildAtomicFence(self.llbuilder, order);
+        }
+    }
 }

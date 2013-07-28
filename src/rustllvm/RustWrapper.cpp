@@ -513,6 +513,9 @@ extern "C" LLVMValueRef LLVMBuildAtomicCmpXchg(LLVMBuilderRef B,
     return wrap(unwrap(B)->CreateAtomicCmpXchg(unwrap(target), unwrap(old),
                                                unwrap(source), order));
 }
+extern "C" LLVMValueRef LLVMBuildAtomicFence(LLVMBuilderRef B, AtomicOrdering order) {
+    return wrap(unwrap(B)->CreateFence(order));
+}
 extern "C" LLVMValueRef LLVMBuildAtomicRMW(LLVMBuilderRef B,
                                            AtomicRMWInst::BinOp op,
                                            LLVMValueRef target,

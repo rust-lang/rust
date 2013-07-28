@@ -75,6 +75,10 @@ pub enum Ordering {
     SeqCst
 }
 
+pub static INIT_ATOMIC_FLAG : AtomicFlag = AtomicFlag { v: 0 };
+pub static INIT_ATOMIC_BOOL : AtomicBool = AtomicBool { v: 0 };
+pub static INIT_ATOMIC_INT  : AtomicInt  = AtomicInt  { v: 0 };
+pub static INIT_ATOMIC_UINT : AtomicUint = AtomicUint { v: 0 };
 
 impl AtomicFlag {
 
@@ -569,6 +573,35 @@ pub unsafe fn atomic_umin<T>(dst: &mut T, val: T, order: Ordering) -> T {
     })
 }
 
+/**
+ * An atomic fence.
+ *
+ * A fence 'A' which has `Release` ordering semantics, synchronizes with a
+ * fence 'B' with (at least) `Acquire` semantics, if and only if there exists
+ * atomic operations X and Y, both operating on some atomic object 'M' such
+ * that A is sequenced before X, Y is synchronized before B and Y obsevers
+ * the change to M. This provides a happens-before dependence between A and B.
+ *
+ * Atomic operations with `Release` or `Acquire` semantics can also synchronize
+ * with a fence.
+ *
+ * A fence with has `SeqCst` ordering, in addition to having both `Acquire` and
+ * `Release` semantics, participates in the global program order of the other
+ * `SeqCst` operations and/or fences.
+ *
+ * Accepts `Acquire`, `Release`, `AcqRel` and `SeqCst` orderings.
+ */
+#[inline] #[cfg(not(stage0))]
+pub fn fence(order: Ordering) {
+    unsafe {
+        match order {
+            Acquire => intrinsics::atomic_fence_acq(),
+            Release => intrinsics::atomic_fence_rel(),
+            AcqRel  => intrinsics::atomic_fence_rel(),
+            _       => intrinsics::atomic_fence(),
+        }
+    }
+}
 
 #[cfg(test)]
 mod test {
@@ -629,5 +662,20 @@ mod test {
         let mut a = AtomicBool::new(true);
         assert_eq!(a.fetch_and(false, SeqCst),true);
         assert_eq!(a.load(SeqCst),false);
+    }
+
+    static mut S_FLAG : AtomicFlag = INIT_ATOMIC_FLAG;
+    static mut S_BOOL : AtomicBool = INIT_ATOMIC_BOOL;
+    static mut S_INT  : AtomicInt  = INIT_ATOMIC_INT;
+    static mut S_UINT : AtomicUint = INIT_ATOMIC_UINT;
+
+    #[test]
+    fn static_init() {
+        unsafe {
+            assert!(!S_FLAG.test_and_set(SeqCst));
+            assert!(!S_BOOL.load(SeqCst));
+            assert!(S_INT.load(SeqCst) == 0);
+            assert!(S_UINT.load(SeqCst) == 0);
+        }
     }
 }

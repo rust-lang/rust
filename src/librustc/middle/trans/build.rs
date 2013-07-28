@@ -660,6 +660,11 @@ pub fn CallWithConv(cx: @mut Block, Fn: ValueRef, Args: &[ValueRef],
     B(cx).call_with_conv(Fn, Args, Conv)
 }
 
+pub fn AtomicFence(cx: @mut Block, order: AtomicOrdering) {
+    if cx.unreachable { return; }
+    B(cx).atomic_fence(order)
+}
+
 pub fn Select(cx: @mut Block, If: ValueRef, Then: ValueRef, Else: ValueRef) -> ValueRef {
     if cx.unreachable { return _Undef(Then); }
     B(cx).select(If, Then, Else)
