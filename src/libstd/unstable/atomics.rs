@@ -75,6 +75,10 @@ pub enum Ordering {
     SeqCst
 }
 
+pub static INIT_ATOMIC_FLAG : AtomicFlag = AtomicFlag { v: 0 };
+pub static INIT_ATOMIC_BOOL : AtomicBool = AtomicBool { v: 0 };
+pub static INIT_ATOMIC_INT  : AtomicInt  = AtomicInt  { v: 0 };
+pub static INIT_ATOMIC_UINT : AtomicUint = AtomicUint { v: 0 };
 
 impl AtomicFlag {
 
@@ -589,11 +593,13 @@ pub unsafe fn atomic_umin<T>(dst: &mut T, val: T, order: Ordering) -> T {
  */
 #[inline] #[cfg(not(stage0))]
 pub fn fence(order: Ordering) {
-    match order {
-        Acquire => intrinsics::atomic_fence_acq(),
-        Release => intrinsics::atomic_fence_rel(),
-        AcqRel  => intrinsics::atomic_fence_rel(),
-        _       => intrinsics::atomic_fence(),
+    unsafe {
+        match order {
+            Acquire => intrinsics::atomic_fence_acq(),
+            Release => intrinsics::atomic_fence_rel(),
+            AcqRel  => intrinsics::atomic_fence_rel(),
+            _       => intrinsics::atomic_fence(),
+        }
     }
 }
 
@@ -656,5 +662,20 @@ mod test {
         let mut a = AtomicBool::new(true);
         assert_eq!(a.fetch_and(false, SeqCst),true);
         assert_eq!(a.load(SeqCst),false);
+    }
+
+    static mut S_FLAG : AtomicFlag = INIT_ATOMIC_FLAG;
+    static mut S_BOOL : AtomicBool = INIT_ATOMIC_BOOL;
+    static mut S_INT  : AtomicInt  = INIT_ATOMIC_INT;
+    static mut S_UINT : AtomicUint = INIT_ATOMIC_UINT;
+
+    #[test]
+    fn static_init() {
+        unsafe {
+            assert!(!S_FLAG.test_and_set(SeqCst));
+            assert!(!S_BOOL.load(SeqCst));
+            assert!(S_INT.load(SeqCst) == 0);
+            assert!(S_UINT.load(SeqCst) == 0);
+        }
     }
 }
