@@ -1667,6 +1667,39 @@ Supported traits for `deriving` are:
   each constituent field of the type must also implement `ToStr` and will have
   `field.to_str()` invoked to build up the result.
 
+#### Derived comparison options
+
+The `deriving` instances of `Eq`, `TotalEq`, `Ord`, `TotalOrd` all
+support some options that allow control of their behaviour when used
+on structs. These are specified as follows:
+
+~~~
+#[deriving(Eq(test_order(d, c), ignore(b)),
+           TotalEq(test_order(c)),
+           Ord(reverse(a, c)),
+           TotalOrd(reverse(a, c)))]
+struct Options {
+    a: float,
+    b: int,
+    c: uint,
+    d: uint
+}
+~~~
+
+* `test_order` prioritizes the fields listed, testing them first, in
+  the order in which they are listed. That is, the `Eq` instance for
+  `Options` will test `d`, and then `c`, and then the remaining fields
+  (subject to `ignore`). All four traits support this.
+* `ignore` excludes the given field from the comparison, so `Options {
+  .., b: 1, ..} == Options {.., b: 2, .. }` if the rest of the fields
+  are identical. Only `Eq` and `Ord` support `ignore`.
+* `reverse` flips the ordering used for that field, so `Options { a:
+  10.0, ... } < Options { a: 0.0, .. }`. Only `Ord` and `TotalOrd`
+  support `reverse`.
+
+Using an option not listed here is an error. These options are only
+supported on normal structs, not on tuple-structs or enums.
+
 # Statements and expressions
 
 Rust is _primarily_ an expression language. This means that most forms of
