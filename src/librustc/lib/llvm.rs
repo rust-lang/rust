@@ -1553,6 +1553,8 @@ pub mod llvm {
         /* Selected entries from the downcasts. */
         #[fast_ffi]
         pub fn LLVMIsATerminatorInst(Inst: ValueRef) -> ValueRef;
+        #[fast_ffi]
+        pub fn LLVMIsAStoreInst(Inst: ValueRef) -> ValueRef;
 
         /** Writes a module to the specified path. Returns 0 on success. */
         #[fast_ffi]
