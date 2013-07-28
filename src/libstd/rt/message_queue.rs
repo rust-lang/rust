@@ -16,7 +16,7 @@ use kinds::Send;
 use vec::OwnedVector;
 use cell::Cell;
 use option::*;
-use unstable::sync::{Exclusive, exclusive};
+use unstable::sync::Exclusive;
 use clone::Clone;
 
 pub struct MessageQueue<T> {
@@ -27,7 +27,7 @@ pub struct MessageQueue<T> {
 impl<T: Send> MessageQueue<T> {
     pub fn new() -> MessageQueue<T> {
         MessageQueue {
-            queue: ~exclusive(~[])
+            queue: ~Exclusive::new(~[])
         }
     }
 

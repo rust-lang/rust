@@ -57,7 +57,7 @@ struct KillHandleInner {
 
     // Shared state between task and children for exit code propagation. These
     // are here so we can re-use the kill handle to implement watched children
-    // tasks. Using a separate ARClike would introduce extra atomic adds/subs
+    // tasks. Using a separate Arc-like would introduce extra atomic adds/subs
     // into common spawn paths, so this is just for speed.
 
     // Locklessly accessed; protected by the enclosing refcount's barriers.
@@ -217,7 +217,7 @@ impl KillHandle {
             // Exit code propagation fields
             any_child_failed: false,
             child_tombstones: None,
-            graveyard_lock:   LittleLock(),
+            graveyard_lock:   LittleLock::new(),
         }));
         (handle, flag_clone)
     }

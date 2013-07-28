@@ -15,7 +15,7 @@ use std::task;
 
 fn main() {
     let v = ~[1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-    let arc_v = arc::ARC(v);
+    let arc_v = arc::Arc::new(v);
 
     do task::spawn() {
         let v = arc_v.get();

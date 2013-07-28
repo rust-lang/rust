@@ -15,7 +15,7 @@ use digest::DigestUtil;
 use json;
 use sha1::Sha1;
 use serialize::{Encoder, Encodable, Decoder, Decodable};
-use arc::{ARC,RWARC};
+use arc::{Arc,RWArc};
 use treemap::TreeMap;
 
 use std::cell::Cell;
@@ -176,10 +176,10 @@ impl Logger {
 
 #[deriving(Clone)]
 struct Context {
-    db: RWARC<Database>,
-    logger: RWARC<Logger>,
-    cfg: ARC<json::Object>,
-    freshness: ARC<TreeMap<~str,extern fn(&str,&str)->bool>>
+    db: RWArc<Database>,
+    logger: RWArc<Logger>,
+    cfg: Arc<json::Object>,
+    freshness: Arc<TreeMap<~str,extern fn(&str,&str)->bool>>
 }
 
 struct Prep<'self> {
@@ -229,14 +229,14 @@ fn digest_file(path: &Path) -> ~str {
 
 impl Context {
 
-    pub fn new(db: RWARC<Database>,
-               lg: RWARC<Logger>,
-               cfg: ARC<json::Object>) -> Context {
+    pub fn new(db: RWArc<Database>,
+               lg: RWArc<Logger>,
+               cfg: Arc<json::Object>) -> Context {
         Context {
             db: db,
             logger: lg,
             cfg: cfg,
-            freshness: ARC(TreeMap::new())
+            freshness: Arc::new(TreeMap::new())
         }
     }
 
@@ -383,9 +383,9 @@ fn test() {
         r.get_ref().write_str("int main() { return 0; }");
     }
 
-    let cx = Context::new(RWARC(Database::new(Path("db.json"))),
-                          RWARC(Logger::new()),
-                          ARC(TreeMap::new()));
+    let cx = Context::new(RWArc::new(Database::new(Path("db.json"))),
+                          RWArc::new(Logger::new()),
+                          Arc::new(TreeMap::new()));
 
     let s = do cx.with_prep("test1") |prep| {
 
