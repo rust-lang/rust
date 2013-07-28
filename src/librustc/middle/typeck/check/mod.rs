@@ -3521,7 +3521,9 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
                                       ty::re_bound(ty::br_anon(0)),
                                       ty::mk_int()), ty::mk_int() ], ty::mk_int())
             }
-
+            "fence" => {
+                (0, ~[], ty::mk_nil())
+            }
             op => {
                 tcx.sess.span_err(it.span,
                                   fmt!("unrecognized atomic operation function: `%s`",
