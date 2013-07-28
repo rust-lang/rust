@@ -114,6 +114,7 @@ pub mod ct {
         TyHex(Caseness),
         TyOctal,
         TyFloat,
+        TyPointer,
         TyPoly,
     }
 
@@ -325,6 +326,7 @@ pub mod ct {
             't' => TyBits,
             'o' => TyOctal,
             'f' => TyFloat,
+            'p' => TyPointer,
             '?' => TyPoly,
             _ => err(fmt!("unknown type in conversion: %c", s.char_at(i)))
         };
@@ -434,6 +436,7 @@ pub mod ct {
         assert!(test("t", TyBits));
         assert!(test("x", TyHex(CaseLower)));
         assert!(test("X", TyHex(CaseUpper)));
+        assert!(test("p", TyPointer));
         assert!(test("?", TyPoly));
     }
 
@@ -572,6 +575,10 @@ pub mod rt {
             }
         } else { None };
         pad(cv, s, head, PadFloat, buf);
+    }
+    pub fn conv_pointer<T>(cv: Conv, ptr: *T, buf: &mut ~str) {
+        let s = ~"0x" + uint_to_str_prec(ptr as uint, 16, 1u);
+        pad(cv, s, None, PadNozero, buf);
     }
     pub fn conv_poly<T>(cv: Conv, v: &T, buf: &mut ~str) {
         let s = sys::log_str(v);

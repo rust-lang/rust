@@ -32,6 +32,7 @@ pub fn main() {
     part6();
     percent();
     more_floats();
+    pointer();
 }
 
 fn part1() {
@@ -262,4 +263,14 @@ fn more_floats() {
     assert_eq!(~"99", fmt!("%.0f", 98.5));
     assert_eq!(~"7.0000", fmt!("%.4f", 6.999999999));
     assert_eq!(~"3.141590000", fmt!("%.9f", 3.14159));
+}
+
+fn pointer() {
+    for 10.times {
+        let x: uint = ::std::rand::random();
+        assert_eq!(fmt!("%p", x as *uint), fmt!("0x%x", x));
+    }
+
+    let i = &1;
+    assert_eq!(fmt!("%p", i), fmt!("0x%x", i as *uint as uint));
 }
