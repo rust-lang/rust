@@ -52,7 +52,6 @@ pub mod combine;
 pub mod glb;
 pub mod lattice;
 pub mod lub;
-#[path = "region_inference/mod.rs"]
 pub mod region_inference;
 pub mod resolve;
 pub mod sub;

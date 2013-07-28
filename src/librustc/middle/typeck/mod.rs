@@ -66,11 +66,9 @@ use syntax::print::pprust::*;
 use syntax::{ast, ast_map, abi};
 use syntax::opt_vec;
 
-#[path = "check/mod.rs"]
 pub mod check;
 pub mod rscope;
 pub mod astconv;
-#[path = "infer/mod.rs"]
 pub mod infer;
 pub mod collect;
 pub mod coherence;
