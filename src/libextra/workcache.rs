@@ -221,7 +221,7 @@ fn digest<T:Encodable<json::Encoder>>(t: &T) -> ~str {
 fn digest_file(path: &Path) -> ~str {
     let mut sha = ~Sha1::new();
     let s = io::read_whole_file_str(path);
-    (*sha).input_str(*s.get_ref());
+    (*sha).input_str(s.unwrap());
     (*sha).result_str()
 }
 
@@ -378,7 +378,7 @@ fn test() {
     let pth = Path("foo.c");
     {
         let r = io::file_writer(&pth, [io::Create]);
-        r.get_ref().write_str("int main() { return 0; }");
+        r.unwrap().write_str("int main() { return 0; }");
     }
 
     let cx = Context::new(RWArc::new(Database::new(Path("db.json"))),
