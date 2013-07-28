@@ -22,7 +22,7 @@ use option::{Option, Some, None};
 use uint;
 use vec::OwnedVector;
 use util::replace;
-use unstable::sync::{Exclusive, exclusive};
+use unstable::sync::Exclusive;
 use rtcomm = rt::comm;
 use rt;
 
@@ -228,7 +228,7 @@ impl<T: Send> SharedChan<T> {
     pub fn new(c: Chan<T>) -> SharedChan<T> {
         let Chan { inner } = c;
         let c = match inner {
-            Left(c) => Left(exclusive(c)),
+            Left(c) => Left(Exclusive::new(c)),
             Right(c) => Right(rtcomm::SharedChan::new(c))
         };
         SharedChan { inner: c }

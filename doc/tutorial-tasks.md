@@ -50,7 +50,7 @@ concurrency at this writing:
 * [`std::pipes`] - The underlying messaging infrastructure,
 * [`extra::comm`] - Additional messaging types based on `std::pipes`,
 * [`extra::sync`] - More exotic synchronization tools, including locks,
-* [`extra::arc`] - The ARC (atomically reference counted) type,
+* [`extra::arc`] - The Arc (atomically reference counted) type,
   for safely sharing immutable data,
 * [`extra::future`] - A type representing values that may be computed concurrently and retrieved at a later time.
 
@@ -334,24 +334,24 @@ fn main() {
 }
 ~~~
 
-## Sharing immutable data without copy: ARC
+## Sharing immutable data without copy: Arc
 
 To share immutable data between tasks, a first approach would be to only use pipes as we have seen
 previously. A copy of the data to share would then be made for each task. In some cases, this would
 add up to a significant amount of wasted memory and would require copying the same data more than
 necessary.
 
-To tackle this issue, one can use an Atomically Reference Counted wrapper (`ARC`) as implemented in
-the `extra` library of Rust. With an ARC, the data will no longer be copied for each task. The ARC
+To tackle this issue, one can use an Atomically Reference Counted wrapper (`Arc`) as implemented in
+the `extra` library of Rust. With an Arc, the data will no longer be copied for each task. The Arc
 acts as a reference to the shared data and only this reference is shared and cloned.
 
-Here is a small example showing how to use ARCs. We wish to run concurrently several computations on
+Here is a small example showing how to use Arcs. We wish to run concurrently several computations on
 a single large vector of floats. Each task needs the full vector to perform its duty.
 ~~~
 # use std::vec;
 # use std::uint;
 # use std::rand;
-use extra::arc::ARC;
+use extra::arc::Arc;
 
 fn pnorm(nums: &~[float], p: uint) -> float {
     nums.iter().fold(0.0, |a,b| a+(*b).pow(&(p as float)) ).pow(&(1f / (p as float)))
@@ -361,14 +361,14 @@ fn main() {
     let numbers = vec::from_fn(1000000, |_| rand::random::<float>());
     println(fmt!("Inf-norm = %?",  *numbers.iter().max().unwrap()));
 
-    let numbers_arc = ARC(numbers);
+    let numbers_arc = Arc::new(numbers);
 
     for uint::range(1,10) |num| {
         let (port, chan)  = stream();
         chan.send(numbers_arc.clone());
 
         do spawn {
-            let local_arc : ARC<~[float]> = port.recv();
+            let local_arc : Arc<~[float]> = port.recv();
             let task_numbers = local_arc.get();
             println(fmt!("%u-norm = %?", num, pnorm(task_numbers, num)));
         }
@@ -377,22 +377,22 @@ fn main() {
 ~~~
 
 The function `pnorm` performs a simple computation on the vector (it computes the sum of its items
-at the power given as argument and takes the inverse power of this value). The ARC on the vector is
+at the power given as argument and takes the inverse power of this value). The Arc on the vector is
 created by the line
 ~~~
-# use extra::arc::ARC;
+# use extra::arc::Arc;
 # use std::vec;
 # use std::rand;
 # let numbers = vec::from_fn(1000000, |_| rand::random::<float>());
-let numbers_arc=ARC(numbers);
+let numbers_arc=Arc::new(numbers);
 ~~~
 and a clone of it is sent to each task
 ~~~
-# use extra::arc::ARC;
+# use extra::arc::Arc;
 # use std::vec;
 # use std::rand;
 # let numbers=vec::from_fn(1000000, |_| rand::random::<float>());
-# let numbers_arc = ARC(numbers);
+# let numbers_arc = Arc::new(numbers);
 # let (port, chan)  = stream();
 chan.send(numbers_arc.clone());
 ~~~
@@ -400,19 +400,19 @@ copying only the wrapper and not its contents.
 
 Each task recovers the underlying data by
 ~~~
-# use extra::arc::ARC;
+# use extra::arc::Arc;
 # use std::vec;
 # use std::rand;
 # let numbers=vec::from_fn(1000000, |_| rand::random::<float>());
-# let numbers_arc=ARC(numbers);
+# let numbers_arc=Arc::new(numbers);
 # let (port, chan)  = stream();
 # chan.send(numbers_arc.clone());
-# let local_arc : ARC<~[float]> = port.recv();
+# let local_arc : Arc<~[float]> = port.recv();
 let task_numbers = local_arc.get();
 ~~~
 and can use it as if it were local.
 
-The `arc` module also implements ARCs around mutable data that are not covered here.
+The `arc` module also implements Arcs around mutable data that are not covered here.
 
 # Handling task failure
 
