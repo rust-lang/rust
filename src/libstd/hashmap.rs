@@ -538,7 +538,7 @@ pub struct HashMapMutIterator<'self, K, V> {
 
 /// HashMap consume iterator
 pub struct HashMapConsumeIterator<K, V> {
-    priv iter: vec::VecConsumeRevIterator<Option<Bucket<K, V>>>,
+    priv iter: vec::ConsumeRevIterator<Option<Bucket<K, V>>>,
 }
 
 /// HashSet iterator
@@ -549,7 +549,7 @@ pub struct HashSetIterator<'self, K> {
 
 /// HashSet consume iterator
 pub struct HashSetConsumeIterator<K> {
-    priv iter: vec::VecConsumeRevIterator<Option<Bucket<K, ()>>>,
+    priv iter: vec::ConsumeRevIterator<Option<Bucket<K, ()>>>,
 }
 
 impl<'self, K, V> Iterator<(&'self K, &'self V)> for HashMapIterator<'self, K, V> {

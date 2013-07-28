@@ -18,7 +18,8 @@
 use std::iterator::{Iterator, IteratorUtil, EnumerateIterator, FilterMapIterator, InvertIterator};
 use std::uint;
 use std::util::replace;
-use std::vec::{VecIterator, VecMutIterator, VecConsumeIterator};
+use std::vec::{VecIterator, VecMutIterator};
+use std::vec;
 
 #[allow(missing_doc)]
 pub struct SmallIntMap<T> {
@@ -204,7 +205,7 @@ impl<V> SmallIntMap<V> {
     /// Empties the hash map, moving all values into the specified closure
     pub fn consume(&mut self)
         -> FilterMapIterator<(uint, Option<V>), (uint, V),
-                EnumerateIterator<VecConsumeIterator<Option<V>>>>
+                EnumerateIterator<vec::ConsumeIterator<Option<V>>>>
     {
         let values = replace(&mut self.v, ~[]);
         values.consume_iter().enumerate().filter_map(|(i, v)| {

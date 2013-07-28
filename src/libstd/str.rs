@@ -281,7 +281,7 @@ impl<'self, C: CharEq> CharEq for &'self [C] {
 
 /// An iterator over the substrings of a string, separated by `sep`.
 #[deriving(Clone)]
-pub struct StrCharSplitIterator<'self,Sep> {
+pub struct CharSplitIterator<'self,Sep> {
     priv string: &'self str,
     priv position: uint,
     priv sep: Sep,
@@ -296,13 +296,13 @@ pub struct StrCharSplitIterator<'self,Sep> {
 /// An iterator over the words of a string, separated by an sequence of whitespace
 pub type WordIterator<'self> =
     FilterIterator<'self, &'self str,
-             StrCharSplitIterator<'self, extern "Rust" fn(char) -> bool>>;
+             CharSplitIterator<'self, extern "Rust" fn(char) -> bool>>;
 
 /// An iterator over the lines of a string, separated by either `\n` or (`\r\n`).
 pub type AnyLineIterator<'self> =
-    MapIterator<'self, &'self str, &'self str, StrCharSplitIterator<'self, char>>;
+    MapIterator<'self, &'self str, &'self str, CharSplitIterator<'self, char>>;
 
-impl<'self, Sep: CharEq> Iterator<&'self str> for StrCharSplitIterator<'self, Sep> {
+impl<'self, Sep: CharEq> Iterator<&'self str> for CharSplitIterator<'self, Sep> {
     #[inline]
     fn next(&mut self) -> Option<&'self str> {
         if self.finished { return None }
@@ -349,7 +349,7 @@ impl<'self, Sep: CharEq> Iterator<&'self str> for StrCharSplitIterator<'self, Se
 /// An iterator over the start and end indicies of the matches of a
 /// substring within a larger string
 #[deriving(Clone)]
-pub struct StrMatchesIndexIterator<'self> {
+pub struct MatchesIndexIterator<'self> {
     priv haystack: &'self str,
     priv needle: &'self str,
     priv position: uint,
@@ -358,13 +358,13 @@ pub struct StrMatchesIndexIterator<'self> {
 /// An iterator over the substrings of a string separated by a given
 /// search string
 #[deriving(Clone)]
-pub struct StrStrSplitIterator<'self> {
-    priv it: StrMatchesIndexIterator<'self>,
+pub struct StrSplitIterator<'self> {
+    priv it: MatchesIndexIterator<'self>,
     priv last_end: uint,
     priv finished: bool
 }
 
-impl<'self> Iterator<(uint, uint)> for StrMatchesIndexIterator<'self> {
+impl<'self> Iterator<(uint, uint)> for MatchesIndexIterator<'self> {
     #[inline]
     fn next(&mut self) -> Option<(uint, uint)> {
         // See Issue #1932 for why this is a naive search
@@ -395,7 +395,7 @@ impl<'self> Iterator<(uint, uint)> for StrMatchesIndexIterator<'self> {
     }
 }
 
-impl<'self> Iterator<&'self str> for StrStrSplitIterator<'self> {
+impl<'self> Iterator<&'self str> for StrSplitIterator<'self> {
     #[inline]
     fn next(&mut self) -> Option<&'self str> {
         if self.finished { return None; }
@@ -1126,17 +1126,17 @@ impl Mutable for ~str {
 pub trait StrSlice<'self> {
     fn contains<'a>(&self, needle: &'a str) -> bool;
     fn contains_char(&self, needle: char) -> bool;
-    fn iter(&self) -> StrCharIterator<'self>;
-    fn rev_iter(&self) -> StrCharRevIterator<'self>;
-    fn bytes_iter(&self) -> StrBytesIterator<'self>;
-    fn bytes_rev_iter(&self) -> StrBytesRevIterator<'self>;
-    fn split_iter<Sep: CharEq>(&self, sep: Sep) -> StrCharSplitIterator<'self, Sep>;
-    fn splitn_iter<Sep: CharEq>(&self, sep: Sep, count: uint) -> StrCharSplitIterator<'self, Sep>;
+    fn iter(&self) -> CharIterator<'self>;
+    fn rev_iter(&self) -> CharRevIterator<'self>;
+    fn bytes_iter(&self) -> BytesIterator<'self>;
+    fn bytes_rev_iter(&self) -> BytesRevIterator<'self>;
+    fn split_iter<Sep: CharEq>(&self, sep: Sep) -> CharSplitIterator<'self, Sep>;
+    fn splitn_iter<Sep: CharEq>(&self, sep: Sep, count: uint) -> CharSplitIterator<'self, Sep>;
     fn split_options_iter<Sep: CharEq>(&self, sep: Sep, count: uint, allow_trailing_empty: bool)
-        -> StrCharSplitIterator<'self, Sep>;
-    fn matches_index_iter(&self, sep: &'self str) -> StrMatchesIndexIterator<'self>;
-    fn split_str_iter(&self, &'self str) -> StrStrSplitIterator<'self>;
-    fn line_iter(&self) -> StrCharSplitIterator<'self, char>;
+        -> CharSplitIterator<'self, Sep>;
+    fn matches_index_iter(&self, sep: &'self str) -> MatchesIndexIterator<'self>;
+    fn split_str_iter(&self, &'self str) -> StrSplitIterator<'self>;
+    fn line_iter(&self) -> CharSplitIterator<'self, char>;
     fn any_line_iter(&self) -> AnyLineIterator<'self>;
     fn word_iter(&self) -> WordIterator<'self>;
     fn ends_with(&self, needle: &str) -> bool;
@@ -1222,16 +1222,16 @@ impl<'self> StrSlice<'self> for &'self str {
     /// assert_eq!(v, ~['a', 'b', 'c', ' ', 'å', 'ä', 'ö']);
     /// ~~~
     #[inline]
-    fn iter(&self) -> StrCharIterator<'self> {
-        StrCharIterator {
+    fn iter(&self) -> CharIterator<'self> {
+        CharIterator {
             index: 0,
             string: *self
         }
     }
     /// An iterator over the characters of `self`, in reverse order.
     #[inline]
-    fn rev_iter(&self) -> StrCharRevIterator<'self> {
-        StrCharRevIterator {
+    fn rev_iter(&self) -> CharRevIterator<'self> {
+        CharRevIterator {
             index: self.len(),
             string: *self
         }
@@ -1239,13 +1239,13 @@ impl<'self> StrSlice<'self> for &'self str {
 
     /// An iterator over the bytes of `self`
     #[inline]
-    fn bytes_iter(&self) -> StrBytesIterator<'self> {
-        StrBytesIterator { it: self.as_bytes().iter() }
+    fn bytes_iter(&self) -> BytesIterator<'self> {
+        BytesIterator { it: self.as_bytes().iter() }
     }
     /// An iterator over the bytes of `self`, in reverse order
     #[inline]
-    fn bytes_rev_iter(&self) -> StrBytesRevIterator<'self> {
-        StrBytesRevIterator { it: self.as_bytes().rev_iter() }
+    fn bytes_rev_iter(&self) -> BytesRevIterator<'self> {
+        BytesRevIterator { it: self.as_bytes().rev_iter() }
     }
 
     /// An iterator over substrings of `self`, separated by characters
@@ -1261,7 +1261,7 @@ impl<'self> StrSlice<'self> for &'self str {
     /// assert_eq!(v, ~["abc", "def", "ghi"]);
     /// ~~~
     #[inline]
-    fn split_iter<Sep: CharEq>(&self, sep: Sep) -> StrCharSplitIterator<'self, Sep> {
+    fn split_iter<Sep: CharEq>(&self, sep: Sep) -> CharSplitIterator<'self, Sep> {
         self.split_options_iter(sep, self.len(), true)
     }
 
@@ -1269,7 +1269,7 @@ impl<'self> StrSlice<'self> for &'self str {
     /// matched by `sep`, restricted to splitting at most `count`
     /// times.
     #[inline]
-    fn splitn_iter<Sep: CharEq>(&self, sep: Sep, count: uint) -> StrCharSplitIterator<'self, Sep> {
+    fn splitn_iter<Sep: CharEq>(&self, sep: Sep, count: uint) -> CharSplitIterator<'self, Sep> {
         self.split_options_iter(sep, count, true)
     }
 
@@ -1279,9 +1279,9 @@ impl<'self> StrSlice<'self> for &'self str {
     /// exists.
     #[inline]
     fn split_options_iter<Sep: CharEq>(&self, sep: Sep, count: uint, allow_trailing_empty: bool)
-        -> StrCharSplitIterator<'self, Sep> {
+        -> CharSplitIterator<'self, Sep> {
         let only_ascii = sep.only_ascii();
-        StrCharSplitIterator {
+        CharSplitIterator {
             string: *self,
             position: 0,
             sep: sep,
@@ -1294,9 +1294,9 @@ impl<'self> StrSlice<'self> for &'self str {
     /// An iterator over the start and end indices of each match of
     /// `sep` within `self`.
     #[inline]
-    fn matches_index_iter(&self, sep: &'self str) -> StrMatchesIndexIterator<'self> {
+    fn matches_index_iter(&self, sep: &'self str) -> MatchesIndexIterator<'self> {
         assert!(!sep.is_empty())
-        StrMatchesIndexIterator {
+        MatchesIndexIterator {
             haystack: *self,
             needle: sep,
             position: 0
@@ -1313,8 +1313,8 @@ impl<'self> StrSlice<'self> for &'self str {
      * ~~~
      */
     #[inline]
-    fn split_str_iter(&self, sep: &'self str) -> StrStrSplitIterator<'self> {
-        StrStrSplitIterator {
+    fn split_str_iter(&self, sep: &'self str) -> StrSplitIterator<'self> {
+        StrSplitIterator {
             it: self.matches_index_iter(sep),
             last_end: 0,
             finished: false
@@ -1324,7 +1324,7 @@ impl<'self> StrSlice<'self> for &'self str {
     /// An iterator over the lines of a string (subsequences separated
     /// by `\n`).
     #[inline]
-    fn line_iter(&self) -> StrCharSplitIterator<'self, char> {
+    fn line_iter(&self) -> CharSplitIterator<'self, char> {
         self.split_options_iter('\n', self.len(), false)
     }
 
@@ -2253,12 +2253,12 @@ impl Clone for @str {
 /// External iterator for a string's characters. Use with the `std::iterator`
 /// module.
 #[deriving(Clone)]
-pub struct StrCharIterator<'self> {
+pub struct CharIterator<'self> {
     priv index: uint,
     priv string: &'self str,
 }
 
-impl<'self> Iterator<char> for StrCharIterator<'self> {
+impl<'self> Iterator<char> for CharIterator<'self> {
     #[inline]
     fn next(&mut self) -> Option<char> {
         if self.index < self.string.len() {
@@ -2273,12 +2273,12 @@ impl<'self> Iterator<char> for StrCharIterator<'self> {
 /// External iterator for a string's characters in reverse order. Use
 /// with the `std::iterator` module.
 #[deriving(Clone)]
-pub struct StrCharRevIterator<'self> {
+pub struct CharRevIterator<'self> {
     priv index: uint,
     priv string: &'self str,
 }
 
-impl<'self> Iterator<char> for StrCharRevIterator<'self> {
+impl<'self> Iterator<char> for CharRevIterator<'self> {
     #[inline]
     fn next(&mut self) -> Option<char> {
         if self.index > 0 {
@@ -2294,11 +2294,11 @@ impl<'self> Iterator<char> for StrCharRevIterator<'self> {
 /// External iterator for a string's bytes. Use with the `std::iterator`
 /// module.
 #[deriving(Clone)]
-pub struct StrBytesIterator<'self> {
+pub struct BytesIterator<'self> {
     priv it: vec::VecIterator<'self, u8>
 }
 
-impl<'self> Iterator<u8> for StrBytesIterator<'self> {
+impl<'self> Iterator<u8> for BytesIterator<'self> {
     #[inline]
     fn next(&mut self) -> Option<u8> {
         self.it.next().map_consume(|&x| x)
@@ -2308,11 +2308,11 @@ impl<'self> Iterator<u8> for StrBytesIterator<'self> {
 /// External iterator for a string's bytes in reverse order. Use with
 /// the `std::iterator` module.
 #[deriving(Clone)]
-pub struct StrBytesRevIterator<'self> {
-    priv it: vec::VecRevIterator<'self, u8>
+pub struct BytesRevIterator<'self> {
+    priv it: vec::RevIterator<'self, u8>
 }
 
-impl<'self> Iterator<u8> for StrBytesRevIterator<'self> {
+impl<'self> Iterator<u8> for BytesRevIterator<'self> {
     #[inline]
     fn next(&mut self) -> Option<u8> {
         self.it.next().map_consume(|&x| x)
