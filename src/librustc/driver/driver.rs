@@ -409,12 +409,19 @@ pub fn stop_after_phase_5(sess: Session) -> bool {
 pub fn compile_input(sess: Session, cfg: ast::CrateConfig, input: &input,
                      outdir: &Option<Path>, output: &Option<Path>) {
     let outputs = build_output_filenames(input, outdir, output, [], sess);
-    let crate = phase_1_parse_input(sess, cfg.clone(), input);
-    if stop_after_phase_1(sess) { return; }
-    let expanded_crate = phase_2_configure_and_expand(sess, cfg, crate);
-    let analysis = phase_3_run_analysis_passes(sess, expanded_crate);
-    if stop_after_phase_3(sess) { return; }
-    let trans = phase_4_translate_to_llvm(sess, expanded_crate, &analysis, outputs);
+    // We need nested scopes here, because the intermediate results can keep
+    // large chunks of memory alive and we want to free them as soon as
+    // possible to keep the peak memory usage low
+    let trans = {
+        let expanded_crate = {
+            let crate = phase_1_parse_input(sess, cfg.clone(), input);
+            if stop_after_phase_1(sess) { return; }
+            phase_2_configure_and_expand(sess, cfg, crate)
+        };
+        let analysis = phase_3_run_analysis_passes(sess, expanded_crate);
+        if stop_after_phase_3(sess) { return; }
+        phase_4_translate_to_llvm(sess, expanded_crate, &analysis, outputs)
+    };
     phase_5_run_llvm_passes(sess, &trans, outputs);
     if stop_after_phase_5(sess) { return; }
     phase_6_link_output(sess, &trans, outputs);
