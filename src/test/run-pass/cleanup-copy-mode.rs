@@ -16,7 +16,7 @@ use std::task;
 fn adder(x: @int, y: @int) -> int { return *x + *y; }
 fn failer() -> @int { fail!(); }
 pub fn main() {
-    assert!(result::is_err(&task::try(|| {
+    assert!(task::try(|| {
         adder(@2, failer()); ()
-    })));
+    }).is_err());
 }
