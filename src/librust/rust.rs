@@ -60,7 +60,13 @@ struct Command<'self> {
     usage_full: UsageSource<'self>,
 }
 
-static COMMANDS: &'static [Command<'static>] = &[
+static NUM_OF_COMMANDS: uint = 7;
+
+// FIXME(#7617): should just be &'static [Command<'static>]
+// but mac os doesn't seem to like that and tries to loop
+// past the end of COMMANDS in usage thus passing garbage
+// to str::repeat and eventually malloc and crashing.
+static COMMANDS: [Command<'static>, .. NUM_OF_COMMANDS] = [
     Command{
         cmd: "build",
         action: CallMain("rustc", rustc::main),
