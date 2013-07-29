@@ -86,7 +86,6 @@ use task::rt::rust_task;
 use task::rt;
 use task::{Failure, SchedOpts, SingleThreaded};
 use task::{Success, TaskOpts, TaskResult};
-use task::{ExistingScheduler, SchedulerHandle};
 use task::unkillable;
 use to_bytes::IterBytes;
 use uint;
@@ -807,15 +806,13 @@ fn spawn_raw_oldsched(mut opts: TaskOpts, f: ~fn()) {
 
         let num_threads = match opts.mode {
             DefaultScheduler
-            | CurrentScheduler
-            | ExistingScheduler(*) => 0u, /* Won't be used */
+            | CurrentScheduler => 0u, /* Won't be used */
             SingleThreaded => 1u,
         };
 
         unsafe {
             let sched_id = match opts.mode {
                 CurrentScheduler => rt::rust_get_sched_id(),
-                ExistingScheduler(SchedulerHandle(id)) => id,
                 _ => rt::rust_new_sched(num_threads)
             };
             rt::rust_new_task_in_sched(sched_id)
