@@ -485,20 +485,30 @@ fn const_expr_unadjusted(cx: @mut CrateContext, e: &ast::expr) -> ValueRef {
               let vals = es.map(|&e| const_expr(cx, e));
               adt::trans_const(cx, repr, 0, vals)
           }
-          ast::expr_struct(_, ref fs, None) => {
+          ast::expr_struct(_, ref fs, ref base_opt) => {
               let ety = ty::expr_ty(cx.tcx, e);
               let repr = adt::represent_type(cx, ety);
               let tcx = cx.tcx;
+
+              let base_val = match *base_opt {
+                Some(base) => Some(const_expr(cx, base)),
+                None => None
+              };
+
               do expr::with_field_tys(tcx, ety, Some(e.id))
                   |discr, field_tys| {
-                  let cs = field_tys.map(|field_ty| {
+                  let cs: ~[ValueRef] = field_tys.iter().enumerate()
+                      .transform(|(ix, &field_ty)| {
                       match fs.iter().find_(|f| field_ty.ident == f.ident) {
                           Some(f) => const_expr(cx, (*f).expr),
                           None => {
-                              cx.tcx.sess.span_bug(e.span, "missing struct field");
+                              match base_val {
+                                Some(bv) => adt::const_get_field(cx, repr, bv, discr, ix),
+                                None => cx.tcx.sess.span_bug(e.span, "missing struct field")
+                              }
                           }
                       }
-                  });
+                  }).collect();
                   adt::trans_const(cx, repr, discr, cs)
               }
           }

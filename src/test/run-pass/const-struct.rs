@@ -25,11 +25,14 @@ impl cmp::Eq for foo {
 static x : foo = foo { a:1, b:2, c: 3 };
 static y : foo = foo { b:2, c:3, a: 1 };
 static z : &'static foo = &foo { a: 10, b: 22, c: 12 };
+static w : foo = foo { a:5, ..x };
 
 pub fn main() {
     assert_eq!(x.b, 2);
     assert_eq!(x, y);
     assert_eq!(z.b, 22);
+    assert_eq!(w.a, 5);
+    assert_eq!(w.c, 3);
     printfln!("0x%x", x.b as uint);
     printfln!("0x%x", z.c as uint);
 }
