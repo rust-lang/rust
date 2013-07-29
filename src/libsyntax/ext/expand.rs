@@ -1014,7 +1014,9 @@ pub fn expand_crate(parse_sess: @mut parse::ParseSess,
         .. *afp};
     let f = make_fold(f_pre);
 
-    @f.fold_crate(c)
+    let ret = @f.fold_crate(c);
+    parse_sess.span_diagnostic.handler().abort_if_errors();
+    return ret;
 }
 
 // given a function from idents to idents, produce
