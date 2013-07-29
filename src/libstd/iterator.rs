@@ -1532,6 +1532,7 @@ mod tests {
     use super::*;
     use prelude::*;
 
+    use cmp;
     use uint;
 
     #[test]
@@ -1924,6 +1925,26 @@ mod tests {
         assert_eq!(it.next_back(), None)
     }
 
+    #[cfg(test)]
+    fn check_randacc_iter<A: Eq, T: Clone + RandomAccessIterator<A>>(a: T, len: uint)
+    {
+        let mut b = a.clone();
+        assert_eq!(len, b.indexable());
+        let mut n = 0;
+        for a.enumerate().advance |(i, elt)| {
+            assert_eq!(Some(elt), b.idx(i));
+            n += 1;
+        }
+        assert_eq!(n, len);
+        assert_eq!(None, b.idx(n));
+        // call recursively to check after picking off an element
+        if len > 0 {
+            b.next();
+            check_randacc_iter(b, len-1);
+        }
+    }
+
+
     #[test]
     fn test_double_ended_flat_map() {
         let u = [0u,1];
@@ -1958,5 +1979,71 @@ mod tests {
         assert_eq!(it.idx(0).unwrap(), &3);
         assert_eq!(it.idx(4).unwrap(), &9);
         assert!(it.idx(6).is_none());
+
+        check_randacc_iter(it, xs.len() + ys.len() - 3);
+    }
+
+    #[test]
+    fn test_random_access_enumerate() {
+        let xs = [1, 2, 3, 4, 5];
+        check_randacc_iter(xs.iter().enumerate(), xs.len());
+    }
+
+    #[test]
+    fn test_random_access_zip() {
+        let xs = [1, 2, 3, 4, 5];
+        let ys = [7, 9, 11];
+        check_randacc_iter(xs.iter().zip(ys.iter()), cmp::min(xs.len(), ys.len()));
+    }
+
+    #[test]
+    fn test_random_access_take() {
+        let xs = [1, 2, 3, 4, 5];
+        let empty: &[int] = [];
+        check_randacc_iter(xs.iter().take_(3), 3);
+        check_randacc_iter(xs.iter().take_(20), xs.len());
+        check_randacc_iter(xs.iter().take_(0), 0);
+        check_randacc_iter(empty.iter().take_(2), 0);
+    }
+
+    #[test]
+    fn test_random_access_skip() {
+        let xs = [1, 2, 3, 4, 5];
+        let empty: &[int] = [];
+        check_randacc_iter(xs.iter().skip(2), xs.len() - 2);
+        check_randacc_iter(empty.iter().skip(2), 0);
+    }
+
+    #[test]
+    fn test_random_access_peek() {
+        let xs = [1, 2, 3, 4, 5];
+
+        // test .transform and .peek_ that don't implement Clone
+        let it = xs.iter().peek_(|_| {});
+        assert_eq!(xs.len(), it.indexable());
+        for xs.iter().enumerate().advance |(i, elt)| {
+            assert_eq!(Some(elt), it.idx(i));
+        }
+
+    }
+
+    #[test]
+    fn test_random_access_transform() {
+        let xs = [1, 2, 3, 4, 5];
+
+        // test .transform and .peek_ that don't implement Clone
+        let it = xs.iter().transform(|x| *x);
+        assert_eq!(xs.len(), it.indexable());
+        for xs.iter().enumerate().advance |(i, elt)| {
+            assert_eq!(Some(*elt), it.idx(i));
+        }
+    }
+
+    #[test]
+    fn test_random_access_cycle() {
+        let xs = [1, 2, 3, 4, 5];
+        let empty: &[int] = [];
+        check_randacc_iter(xs.iter().cycle().take_(27), 27);
+        check_randacc_iter(empty.iter().cycle(), 0);
     }
 }
