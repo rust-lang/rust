@@ -27,6 +27,7 @@ use str;
 use str::StrSlice;
 use vec::{Vector, ImmutableVector};
 
+// FIXME #7771: Needs to be marked that at least one method should be impl
 /// A generic trait for converting a value to a string
 pub trait ToStr {
     /// Converts the value of `self` to an owned string
