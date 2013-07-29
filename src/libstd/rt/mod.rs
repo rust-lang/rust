@@ -70,7 +70,7 @@ use ptr::RawPtr;
 use rt::local::Local;
 use rt::sched::{Scheduler, Shutdown};
 use rt::sleeper_list::SleeperList;
-use rt::task::{Task, SchedTask, GreenTask};
+use rt::task::{Task, SchedTask, GreenTask, Sched};
 use rt::thread::Thread;
 use rt::work_queue::WorkQueue;
 use rt::uv::uvio::UvEventLoop;
@@ -244,6 +244,8 @@ fn run_(main: ~fn(), use_main_sched: bool) -> int {
 
     let nscheds = util::default_sched_threads();
 
+    let main = Cell::new(main);
+
     // The shared list of sleeping schedulers. Schedulers wake each other
     // occassionally to do new work.
     let sleepers = SleeperList::new();
@@ -268,12 +270,19 @@ fn run_(main: ~fn(), use_main_sched: bool) -> int {
 
     // If we need a main-thread task then create a main thread scheduler
     // that will reject any task that isn't pinned to it
-    let mut main_sched = if use_main_sched {
+    let main_sched = if use_main_sched {
+
+        // Create a friend handle.
+        let mut friend_sched = scheds.pop();
+        let friend_handle = friend_sched.make_handle();
+        scheds.push(friend_sched);
+
         let main_loop = ~UvEventLoop::new();
         let mut main_sched = ~Scheduler::new_special(main_loop,
                                                      work_queue.clone(),
                                                      sleepers.clone(),
-                                                     false);
+                                                     false,
+                                                     Some(friend_handle));
         let main_handle = main_sched.make_handle();
         handles.push(main_handle);
         Some(main_sched)
@@ -312,15 +321,16 @@ fn run_(main: ~fn(), use_main_sched: bool) -> int {
 
     let mut threads = ~[];
 
+    let on_exit = Cell::new(on_exit);
+
     if !use_main_sched {
 
         // In the case where we do not use a main_thread scheduler we
         // run the main task in one of our threads.
-        
-        let main_cell = Cell::new(main);
+
         let mut main_task = ~Task::new_root(&mut scheds[0].stack_pool,
-                                            main_cell.take());
-        main_task.death.on_exit = Some(on_exit);
+                                            main.take());
+        main_task.death.on_exit = Some(on_exit.take());
         let main_task_cell = Cell::new(main_task);
 
         let sched = scheds.pop();
@@ -347,16 +357,18 @@ fn run_(main: ~fn(), use_main_sched: bool) -> int {
     }
 
     // If we do have a main thread scheduler, run it now.
-    
+
     if use_main_sched {
+
+        let mut main_sched = main_sched.get();
+
         let home = Sched(main_sched.make_handle());
-        let mut main_task = ~Task::new_root_homed(&mut scheds[0].stack_pool, 
-                                                  home, main);
-        main_task.death.on_exit = Some(on_exit);
-        let main_task_cell = Cell::new(main_task);
-        sched.bootstrap(main_task);
+        let mut main_task = ~Task::new_root_homed(&mut scheds[0].stack_pool,
+                                                  home, main.take());
+        main_task.death.on_exit = Some(on_exit.take());
+        main_sched.bootstrap(main_task);
     }
-        
+
     // Wait for schedulers
     foreach thread in threads.consume_iter() {
         thread.join();

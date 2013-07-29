@@ -267,7 +267,7 @@ mod test {
     #[cfg(test)]
     fn socket_name(addr: IpAddr) {
         do run_in_newsched_task {
-            do spawntask_immediately {
+            do spawntask {
                 let server = UdpSocket::bind(addr);
 
                 assert!(server.is_some());

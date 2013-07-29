@@ -120,9 +120,7 @@ impl Local for IoFactoryObject {
 
 #[cfg(test)]
 mod test {
-//    use unstable::run_in_bare_thread;
     use rt::test::*;
-//    use rt::sched::Scheduler;
     use super::*;
     use rt::task::Task;
     use rt::local_ptr;

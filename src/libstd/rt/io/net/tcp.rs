@@ -571,7 +571,7 @@ mod test {
     #[cfg(test)]
     fn socket_name(addr: IpAddr) {
         do run_in_newsched_task {
-            do spawntask_immediately {
+            do spawntask {
                 let listener = TcpListener::bind(addr);
 
                 assert!(listener.is_some());
@@ -590,13 +590,13 @@ mod test {
     #[cfg(test)]
     fn peer_name(addr: IpAddr) {
         do run_in_newsched_task {
-            do spawntask_immediately {
+            do spawntask {
                 let mut listener = TcpListener::bind(addr);
 
                 listener.accept();
             }
 
-            do spawntask_immediately {
+            do spawntask {
                 let stream = TcpStream::connect(addr);
 
                 assert!(stream.is_some());
