@@ -12,8 +12,11 @@
 
 use std::util;
 
+pub type Task = int;
+
 // tjc: I don't know why
 pub mod pipes {
+    use super::Task;
     use std::cast::{forget, transmute};
     use std::cast;
     use std::task;
@@ -21,7 +24,7 @@ pub mod pipes {
 
     pub struct Stuff<T> {
         state: state,
-        blocked_task: Option<task::Task>,
+        blocked_task: Option<Task>,
         payload: Option<T>
     }
 
@@ -35,7 +38,7 @@ pub mod pipes {
 
     pub struct packet<T> {
         state: state,
-        blocked_task: Option<task::Task>,
+        blocked_task: Option<Task>,
         payload: Option<T>
     }
 
@@ -43,7 +46,7 @@ pub mod pipes {
         unsafe {
             let p: *packet<T> = cast::transmute(~Stuff{
                 state: empty,
-                blocked_task: None::<task::Task>,
+                blocked_task: None::<Task>,
                 payload: None::<T>
             });
             p

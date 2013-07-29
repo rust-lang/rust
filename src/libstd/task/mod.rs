@@ -44,7 +44,6 @@ use result::Result;
 use result;
 use rt::{context, OldTaskContext, TaskContext};
 use rt::local::Local;
-use task::rt::task_id;
 use unstable::finally::Finally;
 use util;
 
@@ -57,12 +56,6 @@ use util;
 mod local_data_priv;
 pub mod rt;
 pub mod spawn;
-
-/// A handle to a task
-#[deriving(Eq)]
-pub enum Task {
-    TaskHandle(task_id)
-}
 
 /**
  * Indicates the manner in which a task exited.
@@ -567,14 +560,6 @@ pub fn failing() -> bool {
                 local.unwinder.unwinding
             }
         }
-    }
-}
-
-pub fn get_task() -> Task {
-    //! Get a handle to the running task
-
-    unsafe {
-        TaskHandle(rt::get_task_id())
     }
 }
 
