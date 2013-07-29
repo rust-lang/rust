@@ -7,13 +7,13 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Rust 0.8-pre\n"
-"POT-Creation-Date: 2013-07-17 07:18+0900\n"
+"POT-Creation-Date: 2013-07-30 07:07+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "Language: \n"
 "MIME-Version: 1.0\n"
-"Content-Type: text/plain; charset=CHARSET\n"
+"Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
 #. type: Plain text
@@ -160,7 +160,7 @@ msgid "# Package identifiers"
 msgstr ""
 
 #. type: Plain text
-#: doc/rustpkg.md:79
+#: doc/rustpkg.md:87
 msgid ""
 "A package identifier identifies a package uniquely.  A package can be stored "
 "in a workspace on the local file system, or on a remote Web server, in which "
@@ -169,51 +169,59 @@ msgid ""
 "github.com/mozilla/rust`.  A package ID can also specify a version, like: "
 "`github.com/mozilla/rust#0.3`.  In this case, `rustpkg` will check that the "
 "repository `github.com/mozilla/rust` has a tag named `0.3`, and report an "
-"error otherwise."
+"error otherwise.  A package ID can also specify a particular revision of a "
+"repository, like: `github.com/mozilla/rust#release-0.7`.  When the refspec "
+"(portion of the package ID after the `#`) can't be parsed as a decimal "
+"number, rustpkg passes the refspec along to the version control system "
+"without interpreting it.  rustpkg also interprets any dependencies on such a "
+"package ID literally (as opposed to versions, where a newer version "
+"satisfies a dependency on an older version).  Thus, `github.com/mozilla/"
+"rust#5c4cd30f80` is also a valid package ID, since git can deduce that "
+"5c4cd30f80 refers to a revision of the desired repository."
 msgstr ""
 
 #. type: Plain text
-#: doc/rustpkg.md:81
+#: doc/rustpkg.md:89
 msgid "## Source files"
 msgstr ""
 
 #. type: Plain text
-#: doc/rustpkg.md:83
+#: doc/rustpkg.md:91
 msgid ""
 "rustpkg searches for four different fixed filenames in order to determine "
 "the crates to build:"
 msgstr ""
 
 #. type: Bullet: '* '
-#: doc/rustpkg.md:88
+#: doc/rustpkg.md:96
 msgid "`main.rs`: Assumed to be a main entry point for building an executable."
 msgstr ""
 
 #. type: Bullet: '* '
-#: doc/rustpkg.md:88
+#: doc/rustpkg.md:96
 msgid "`lib.rs`: Assumed to be a library crate."
 msgstr ""
 
 #. type: Bullet: '* '
-#: doc/rustpkg.md:88
+#: doc/rustpkg.md:96
 msgid ""
 "`test.rs`: Assumed to contain tests declared with the `#[test]` attribute."
 msgstr ""
 
 #. type: Bullet: '* '
-#: doc/rustpkg.md:88
+#: doc/rustpkg.md:96
 msgid ""
 "`bench.rs`: Assumed to contain benchmarks declared with the `#[bench]` "
 "attribute."
 msgstr ""
 
 #. type: Plain text
-#: doc/rustpkg.md:90
+#: doc/rustpkg.md:98
 msgid "## Versions"
 msgstr ""
 
 #. type: Plain text
-#: doc/rustpkg.md:97
+#: doc/rustpkg.md:105
 msgid ""
 "`rustpkg` packages do not need to declare their versions with an attribute "
 "inside one of the source files, because `rustpkg` infers it from the version "
@@ -224,12 +232,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rustpkg.md:99
+#: doc/rustpkg.md:107
 msgid "# Dependencies"
 msgstr ""
 
 #. type: Plain text
-#: doc/rustpkg.md:103
+#: doc/rustpkg.md:111
 msgid ""
 "rustpkg infers dependencies from `extern mod` directives.  Thus, there "
 "should be no need to pass a `-L` flag to rustpkg to tell it where to find a "
@@ -238,12 +246,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rustpkg.md:105
+#: doc/rustpkg.md:113
 msgid "# Custom build scripts"
 msgstr ""
 
 #. type: Plain text
-#: doc/rustpkg.md:109
+#: doc/rustpkg.md:117
 msgid ""
 "A file called `pkg.rs` at the root level in a workspace is called a *package "
 "script*.  If a package script exists, rustpkg executes it to build the "
@@ -251,7 +259,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rustpkg.md:113
+#: doc/rustpkg.md:121
 msgid ""
 "Inside `pkg.rs`, it's possible to call back into rustpkg to finish up the "
 "build.  `rustpkg::api` contains functions to build, install, or clean "
@@ -260,17 +268,17 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rustpkg.md:115
+#: doc/rustpkg.md:123
 msgid "# Command reference"
 msgstr ""
 
 #. type: Plain text
-#: doc/rustpkg.md:117
+#: doc/rustpkg.md:125
 msgid "## build"
 msgstr ""
 
 #. type: Plain text
-#: doc/rustpkg.md:123
+#: doc/rustpkg.md:131
 msgid ""
 "`rustpkg build foo` searches for a package with ID `foo` and builds it in "
 "any workspace(s) where it finds one.  Supposing such packages are found in "
@@ -279,22 +287,22 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rustpkg.md:125
+#: doc/rustpkg.md:133
 msgid "## clean"
 msgstr ""
 
 #. type: Plain text
-#: doc/rustpkg.md:127
+#: doc/rustpkg.md:135
 msgid "`rustpkg clean foo` deletes the contents of `foo`'s `build` directory."
 msgstr ""
 
 #. type: Plain text
-#: doc/rustpkg.md:129
+#: doc/rustpkg.md:137
 msgid "## install"
 msgstr ""
 
 #. type: Plain text
-#: doc/rustpkg.md:133
+#: doc/rustpkg.md:141
 msgid ""
 "`rustpkg install foo` builds the libraries and/or executables that are "
 "targets for `foo`, and then installs them either into `foo`'s `lib` and "
@@ -303,12 +311,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rustpkg.md:135
+#: doc/rustpkg.md:143
 msgid "## test"
 msgstr ""
 
 #. type: Plain text
-#: doc/rustpkg.md:137
+#: doc/rustpkg.md:145
 msgid ""
 "`rustpkg test foo` builds `foo`'s `test.rs` file if necessary, then runs the "
 "resulting test executable."

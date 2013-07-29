@@ -7,13 +7,13 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Rust 0.8-pre\n"
-"POT-Creation-Date: 2013-07-17 07:18+0900\n"
+"POT-Creation-Date: 2013-08-12 02:06+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "Language: \n"
 "MIME-Version: 1.0\n"
-"Content-Type: text/plain; charset=CHARSET\n"
+"Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
 #. type: Plain text
@@ -24,7 +24,7 @@ msgid "# Introduction"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1231 doc/tutorial.md:2177
+#: doc/rust.md:1277 doc/tutorial.md:2176
 msgid ""
 "In type-parameterized functions, methods of the supertrait may be called on "
 "values of subtrait-bound type parameters.  Refering to the previous example "
@@ -32,7 +32,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1240 doc/tutorial.md:2186
+#: doc/rust.md:1286 doc/tutorial.md:2185
 #, no-wrap
 msgid ""
 "~~~\n"
@@ -46,7 +46,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1242 doc/tutorial.md:2188
+#: doc/rust.md:1288 doc/tutorial.md:2187
 msgid "Likewise, supertrait methods may also be called on trait objects."
 msgstr ""
 
@@ -226,8 +226,8 @@ msgstr ""
 #. type: Plain text
 #: doc/tutorial.md:88
 msgid ""
-"[bug-3319]: https://github.com/mozilla/rust/issues/3319 [wiki-start]:"
-"\thttps://github.com/mozilla/rust/wiki/Note-getting-started-developing-Rust"
+"[bug-3319]: https://github.com/mozilla/rust/issues/3319 [wiki-start]: "
+"https://github.com/mozilla/rust/wiki/Note-getting-started-developing-Rust"
 msgstr ""
 
 #. type: Plain text
@@ -296,27 +296,26 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:124
+#: doc/tutorial.md:123
 msgid ""
-"[wiki-start]: https://github.com/mozilla/rust/wiki/Note-getting-started-"
-"developing-Rust [tarball]: http://static.rust-lang.org/dist/rust-0.7.tar.gz "
-"[win-exe]: http://static.rust-lang.org/dist/rust-0.7-install.exe"
+"[tarball]: http://static.rust-lang.org/dist/rust-0.7.tar.gz [win-exe]: "
+"http://static.rust-lang.org/dist/rust-0.7-install.exe"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:126
+#: doc/tutorial.md:125
 msgid "## Compiling your first program"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:129
+#: doc/tutorial.md:128
 msgid ""
 "Rust program files are, by convention, given the extension `.rs`. Say we "
 "have a file `hello.rs` containing this program:"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:135
+#: doc/tutorial.md:134
 #, no-wrap
 msgid ""
 "~~~~\n"
@@ -327,7 +326,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:139
+#: doc/tutorial.md:138
 msgid ""
 "If the Rust compiler was installed successfully, running `rustc hello.rs` "
 "will produce an executable called `hello` (or `hello.exe` on Windows) which, "
@@ -335,7 +334,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:144
+#: doc/tutorial.md:143
 msgid ""
 "The Rust compiler tries to provide useful information when it encounters an "
 "error. If you introduce an error into the program (for example, by changing "
@@ -344,7 +343,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:150
+#: doc/tutorial.md:149
 #, no-wrap
 msgid ""
 "~~~~ {.notrust}\n"
@@ -355,7 +354,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:157
+#: doc/tutorial.md:156
 msgid ""
 "In its simplest form, a Rust program is a `.rs` file with some types and "
 "functions defined in it. If it has a `main` function, it can be compiled to "
@@ -366,12 +365,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:159
+#: doc/tutorial.md:158
 msgid "## Using the rust tool"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:164
+#: doc/tutorial.md:163
 msgid ""
 "While using `rustc` directly to generate your executables, and then running "
 "them manually is a perfectly valid way to test your code, for smaller "
@@ -380,7 +379,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:170
+#: doc/tutorial.md:169
 msgid ""
 "The `rust` tool provides central access to the other rust tools, as well as "
 "handy shortcuts for directly running source files.  For example, if you have "
@@ -389,19 +388,19 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:173
+#: doc/tutorial.md:172
 msgid ""
 "To get a list of all available commands, simply call `rust` without any "
 "argument."
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:175
+#: doc/tutorial.md:174
 msgid "## Editing Rust code"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:185
+#: doc/tutorial.md:184
 msgid ""
 "There are vim highlighting and indentation scripts in the Rust source "
 "distribution under `src/etc/vim/`. There is an emacs mode under `src/etc/"
@@ -414,7 +413,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:189
+#: doc/tutorial.md:188
 msgid ""
 "There is ctags support via `src/etc/ctags.rust`, but many other tools and "
 "editors are not yet supported. If you end up writing a Rust mode for your "
@@ -422,19 +421,19 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:192
+#: doc/tutorial.md:191
 msgid ""
 "[sublime]: http://github.com/dbp/sublime-rust [sublime-pkg]: http://wbond."
 "net/sublime_packages/package_control"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:194
+#: doc/tutorial.md:193
 msgid "# Syntax basics"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:202
+#: doc/tutorial.md:201
 msgid ""
 "Assuming you've programmed in any C-family language (C++, Java, JavaScript, "
 "C#, or PHP), Rust will feel familiar. Code is arranged in blocks delineated "
@@ -446,7 +445,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:207
+#: doc/tutorial.md:206
 msgid ""
 "The main surface difference to be aware of is that the condition at the head "
 "of control structures like `if` and `while` does not require parentheses, "
@@ -455,7 +454,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:220
+#: doc/tutorial.md:219
 #, no-wrap
 msgid ""
 "~~~~\n"
@@ -473,7 +472,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:224
+#: doc/tutorial.md:223
 msgid ""
 "The `let` keyword introduces a local variable. Variables are immutable by "
 "default. To introduce a local variable that you can re-assign later, use "
@@ -481,12 +480,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:228
+#: doc/tutorial.md:227
 msgid "~~~~ let hi = \"hi\"; let mut count = 0;"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:234
+#: doc/tutorial.md:233
 #, no-wrap
 msgid ""
 "while count < 10 {\n"
@@ -497,7 +496,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:238
+#: doc/tutorial.md:237
 msgid ""
 "Although Rust can almost always infer the types of local variables, you can "
 "specify a variable's type by following it with a colon, then the type name. "
@@ -505,14 +504,14 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:244
+#: doc/tutorial.md:243
 msgid ""
 "~~~~ static MONSTER_FACTOR: float = 57.8; let monster_size = MONSTER_FACTOR "
 "* 10.0; let monster_size: int = 50; ~~~~"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:253
+#: doc/tutorial.md:252
 msgid ""
 "Local variables may shadow earlier declarations, as in the previous example: "
 "`monster_size` was first declared as a `float`, and then a second "
@@ -525,7 +524,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:259
+#: doc/tutorial.md:258
 msgid ""
 "Rust identifiers start with an alphabetic character or an underscore, and "
 "after that may contain any sequence of alphabetic characters, numbers, or "
@@ -535,7 +534,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:264
+#: doc/tutorial.md:263
 #, no-wrap
 msgid ""
 "~~~\n"
@@ -545,12 +544,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:266
+#: doc/tutorial.md:265
 msgid "## Expressions and semicolons"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:272
+#: doc/tutorial.md:271
 msgid ""
 "Though it isn't apparent in all code, there is a fundamental difference "
 "between Rust's syntax and predecessors like C.  Many constructs that are "
@@ -559,7 +558,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:284
+#: doc/tutorial.md:283
 #, no-wrap
 msgid ""
 "~~~~\n"
@@ -576,12 +575,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:286
+#: doc/tutorial.md:285
 msgid "But, in Rust, you don't have to repeat the name `price`:"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:298
+#: doc/tutorial.md:297
 #, no-wrap
 msgid ""
 "~~~~\n"
@@ -598,7 +597,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:304
+#: doc/tutorial.md:303
 msgid ""
 "Both pieces of code are exactly equivalent: they assign a value to `price` "
 "depending on the condition that holds. Note that there are no semicolons in "
@@ -608,7 +607,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:310
+#: doc/tutorial.md:309
 msgid ""
 "Put another way, the semicolon in Rust *ignores the value of an "
 "expression*.  Thus, if the branches of the `if` had looked like `{ 4; }`, "
@@ -618,16 +617,16 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:315
+#: doc/tutorial.md:314
 msgid ""
 "In short, everything that's not a declaration (declarations are `let` for "
 "variables; `fn` for functions; and any top-level named items such as [traits]"
-"(#traits), [enum types](#enums), and [constants](#constants)) is an "
-"expression, including function bodies."
+"(#traits), [enum types](#enums), and static items) is an expression, "
+"including function bodies."
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:323
+#: doc/tutorial.md:322
 #, no-wrap
 msgid ""
 "~~~~\n"
@@ -640,12 +639,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:325
+#: doc/tutorial.md:324
 msgid "## Primitive types and literals"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:332
+#: doc/tutorial.md:331
 msgid ""
 "There are general signed and unsigned integer types, `int` and `uint`, as "
 "well as 8-, 16-, 32-, and 64-bit variants, `i8`, `u16`, etc.  Integers can "
@@ -656,7 +655,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:338
+#: doc/tutorial.md:337
 msgid ""
 "In the absence of an integer literal suffix, Rust will infer the integer "
 "type based on type annotations and function signatures in the surrounding "
@@ -665,7 +664,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:345
+#: doc/tutorial.md:344
 #, no-wrap
 msgid ""
 "~~~~\n"
@@ -677,7 +676,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:350
+#: doc/tutorial.md:349
 msgid ""
 "There are three floating-point types: `float`, `f32`, and `f64`.  Floating-"
 "point numbers are written `0.0`, `1e6`, or `2.1e-4`.  Like integers, "
@@ -686,12 +685,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:352
+#: doc/tutorial.md:351
 msgid "The keywords `true` and `false` produce literals of type `bool`."
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:359
+#: doc/tutorial.md:358
 msgid ""
 "Characters, the `char` type, are four-byte Unicode codepoints, whose "
 "literals are written between single quotes, as in `'x'`.  Just like C, Rust "
@@ -702,17 +701,17 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:361
+#: doc/tutorial.md:360
 msgid "The nil type, written `()`, has a single value, also written `()`."
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:363
+#: doc/tutorial.md:362
 msgid "## Operators"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:368
+#: doc/tutorial.md:367
 msgid ""
 "Rust's set of operators contains very few surprises. Arithmetic is done with "
 "`*`, `/`, `%`, `+`, and `-` (multiply, quotient, remainder, add, and "
@@ -721,14 +720,14 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:371
+#: doc/tutorial.md:370
 msgid ""
 "Note that, if applied to an integer value, `!` flips all the bits (like `~` "
 "in C)."
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:375
+#: doc/tutorial.md:374
 msgid ""
 "The comparison operators are the traditional `==`, `!=`, `<`, `>`, `<=`, and "
 "`>=`. Short-circuiting (lazy) boolean operators are written `&&` (and) and "
@@ -736,7 +735,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:380
+#: doc/tutorial.md:379
 msgid ""
 "For type casting, Rust uses the binary `as` operator.  It takes an "
 "expression on the left side and a type on the right side and will, if a "
@@ -745,18 +744,18 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:386
+#: doc/tutorial.md:385
 msgid ""
 "~~~~ let x: float = 4.0; let y: uint = x as uint; assert!(y == 4u); ~~~~"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:388
+#: doc/tutorial.md:387
 msgid "## Syntax extensions"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:395
+#: doc/tutorial.md:394
 #, no-wrap
 msgid ""
 "*Syntax extensions* are special forms that are not built into the language,\n"
@@ -768,7 +767,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:399
+#: doc/tutorial.md:398
 msgid ""
 "`fmt!` supports most of the directives that [printf][pf] supports, but "
 "unlike printf, will give you a compile-time error when the types of the "
@@ -776,51 +775,46 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:402
+#: doc/tutorial.md:401
 msgid "~~~~ # let mystery_object = ();"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:404
+#: doc/tutorial.md:403
 msgid "println(fmt!(\"%s is %d\", \"the answer\", 43));"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:408
+#: doc/tutorial.md:407
 msgid ""
 "// %? will conveniently print any type println(fmt!(\"what is this thing: %?"
 "\", mystery_object)); ~~~~"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:410
+#: doc/tutorial.md:409
 msgid "[pf]: http://en.cppreference.com/w/cpp/io/c/fprintf"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:412
+#: doc/tutorial.md:411
 msgid ""
 "You can define your own syntax extensions with the macro system. For "
 "details, see the [macro tutorial][macros]."
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:414
-msgid "[macros]: tutorial-macros.html"
-msgstr ""
-
-#. type: Plain text
-#: doc/tutorial.md:416
+#: doc/tutorial.md:413
 msgid "# Control structures"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:418
+#: doc/tutorial.md:415
 msgid "## Conditionals"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:422
+#: doc/tutorial.md:419
 msgid ""
 "We've seen `if` expressions a few times already. To recap, braces are "
 "compulsory, an `if` can have an optional `else` clause, and multiple `if`/"
@@ -828,7 +822,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:432
+#: doc/tutorial.md:429
 #, no-wrap
 msgid ""
 "~~~~\n"
@@ -843,7 +837,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:437
+#: doc/tutorial.md:434
 msgid ""
 "The condition given to an `if` construct *must* be of type `bool` (no "
 "implicit conversion happens). If the arms are blocks that have a value, this "
@@ -852,7 +846,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:445
+#: doc/tutorial.md:442
 #, no-wrap
 msgid ""
 "~~~~\n"
@@ -865,12 +859,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:447
+#: doc/tutorial.md:444
 msgid "## Pattern matching"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:453
+#: doc/tutorial.md:450
 msgid ""
 "Rust's `match` construct is a generalized, cleaned-up version of C's "
 "`switch` construct. You provide it with a value and a number of *arms*, each "
@@ -880,7 +874,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:463
+#: doc/tutorial.md:460
 #, no-wrap
 msgid ""
 "~~~~\n"
@@ -895,7 +889,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:467
+#: doc/tutorial.md:464
 msgid ""
 "Unlike in C, there is no \"falling through\" between arms: only one arm "
 "executes, and it doesn't have to explicitly `break` out of the construct "
@@ -903,7 +897,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:477
+#: doc/tutorial.md:474
 msgid ""
 "A `match` arm consists of a *pattern*, then an arrow `=>`, followed by an "
 "*action* (expression). Literals are valid patterns and match only their own "
@@ -916,7 +910,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:482
+#: doc/tutorial.md:479
 msgid ""
 "The patterns in a match arm are followed by a fat arrow, `=>`, then an "
 "expression to evaluate. Each case is separated by commas. It's often "
@@ -925,7 +919,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:490
+#: doc/tutorial.md:487
 #, no-wrap
 msgid ""
 "~~~\n"
@@ -938,7 +932,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:495
+#: doc/tutorial.md:492
 msgid ""
 "`match` constructs must be *exhaustive*: they must have an arm covering "
 "every possible case. For example, the typechecker would reject the previous "
@@ -946,14 +940,14 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:499
+#: doc/tutorial.md:496
 msgid ""
 "A powerful application of pattern matching is *destructuring*: matching in "
 "order to bind names to the contents of data types."
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:503
+#: doc/tutorial.md:500
 msgid ""
 "> ***Note:*** The following code makes use of tuples (`(float, float)`) "
 "which > are explained in section 5.3. For now you can think of tuples as a "
@@ -961,12 +955,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:516
+#: doc/tutorial.md:513
 #, no-wrap
 msgid ""
 "~~~~\n"
-"# use std::float;\n"
-"# use std::num::atan;\n"
+"use std::float;\n"
+"use std::num::atan;\n"
 "fn angle(vector: (float, float)) -> float {\n"
 "    let pi = float::consts::pi;\n"
 "    match vector {\n"
@@ -979,7 +973,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:522
+#: doc/tutorial.md:519
 msgid ""
 "A variable name in a pattern matches any value, *and* binds that name to the "
 "value of the matched value inside of the arm's action. Thus, `(0f, y)` "
@@ -989,7 +983,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:529
+#: doc/tutorial.md:526
 msgid ""
 "Any `match` arm can have a guard clause (written `if EXPR`), called a "
 "*pattern guard*, which is an expression of type `bool` that determines, "
@@ -999,7 +993,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:534
+#: doc/tutorial.md:531
 msgid ""
 "You've already seen simple `let` bindings, but `let` is a little fancier "
 "than you've been led to believe. It, too, supports destructuring patterns. "
@@ -1008,14 +1002,14 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:539
+#: doc/tutorial.md:536
 msgid ""
 "~~~~ # fn get_tuple_of_two_ints() -> (int, int) { (1, 1) } let (a, b) = "
 "get_tuple_of_two_ints(); ~~~~"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:543
+#: doc/tutorial.md:540
 msgid ""
 "Let bindings only work with _irrefutable_ patterns: that is, patterns that "
 "can never fail to match. This excludes `let` from matching literals and most "
@@ -1023,12 +1017,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:545
+#: doc/tutorial.md:542
 msgid "## Loops"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:550
+#: doc/tutorial.md:547
 msgid ""
 "`while` denotes a loop that iterates as long as its given condition (which "
 "must have type `bool`) evaluates to `true`. Inside a loop, the keyword "
@@ -1037,7 +1031,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:557
+#: doc/tutorial.md:554
 #, no-wrap
 msgid ""
 "~~~~\n"
@@ -1049,18 +1043,18 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:559
+#: doc/tutorial.md:556
 msgid ""
 "`loop` denotes an infinite loop, and is the preferred way of writing `while "
 "true`:"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:569
+#: doc/tutorial.md:566
 #, no-wrap
 msgid ""
 "~~~~\n"
-"# use std::int;\n"
+"use std::int;\n"
 "let mut x = 5;\n"
 "loop {\n"
 "    x += x - 3;\n"
@@ -1071,33 +1065,24 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:572
+#: doc/tutorial.md:569
 msgid ""
 "This code prints out a weird sequence of numbers and stops as soon as it "
 "finds one that can be divided by five."
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:577
-msgid ""
-"Rust also has a `for` construct. It's different from C's `for` and it works "
-"best when iterating over collections. See the section on [closures]"
-"(#closures)  to find out how to use `for` and higher-order functions for "
-"enumerating elements of a collection."
-msgstr ""
-
-#. type: Plain text
-#: doc/tutorial.md:579
+#: doc/tutorial.md:571
 msgid "# Data structures"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:581
+#: doc/tutorial.md:573
 msgid "## Structs"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:586
+#: doc/tutorial.md:578
 msgid ""
 "Rust struct types must be declared before they are used using the `struct` "
 "syntax: `struct Name { field1: T1, field2: T2 [, ...] }`, where `T1`, "
@@ -1106,7 +1091,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:590
+#: doc/tutorial.md:582
 msgid ""
 "Structs are quite similar to C structs and are even laid out the same way in "
 "memory (so you can read from a Rust struct in C, and vice-versa). Use the "
@@ -1114,7 +1099,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:597
+#: doc/tutorial.md:589
 #, no-wrap
 msgid ""
 "~~~~\n"
@@ -1126,7 +1111,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:601
+#: doc/tutorial.md:593
 msgid ""
 "Inherited mutability means that any field of a struct may be mutable, if the "
 "struct is in a mutable slot (or a field of a struct in a mutable slot, and "
@@ -1134,7 +1119,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:605
+#: doc/tutorial.md:597
 msgid ""
 "With a value (say, `mypoint`) of such a type in a mutable location, you can "
 "do `mypoint.y += 1.0`. But in an immutable location, such an assignment to a "
@@ -1142,28 +1127,28 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:610
+#: doc/tutorial.md:602
 msgid ""
 "~~~~ {.xfail-test} # struct Point { x: float, y: float } let mut mypoint = "
 "Point { x: 1.0, y: 1.0 }; let origin = Point { x: 0.0, y: 0.0 };"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:614
+#: doc/tutorial.md:606
 msgid ""
 "mypoint.y += 1.0; // mypoint is mutable, and its fields as well origin.y += "
 "1.0; // ERROR: assigning to immutable field ~~~~"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:617
+#: doc/tutorial.md:609
 msgid ""
 "`match` patterns destructure structs. The basic syntax is `Name { fieldname: "
 "pattern, ... }`:"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:626
+#: doc/tutorial.md:618
 #, no-wrap
 msgid ""
 "~~~~\n"
@@ -1177,7 +1162,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:633
+#: doc/tutorial.md:625
 msgid ""
 "In general, the field names of a struct do not have to appear in the same "
 "order they appear in the type. When you are not interested in all the fields "
@@ -1188,7 +1173,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:641
+#: doc/tutorial.md:633
 #, no-wrap
 msgid ""
 "~~~\n"
@@ -1201,19 +1186,19 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:643
+#: doc/tutorial.md:635
 msgid "## Enums"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:646
+#: doc/tutorial.md:638
 msgid ""
 "Enums are datatypes that have several alternate representations. For "
 "example, consider the type shown earlier:"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:654
+#: doc/tutorial.md:646
 #, no-wrap
 msgid ""
 "~~~~\n"
@@ -1226,7 +1211,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:660
+#: doc/tutorial.md:652
 msgid ""
 "A value of this type is either a `Circle`, in which case it contains a "
 "`Point` struct and a float, or a `Rectangle`, in which case it contains two "
@@ -1236,7 +1221,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:666
+#: doc/tutorial.md:658
 msgid ""
 "The above declaration will define a type `Shape` that can refer to such "
 "shapes, and two functions, `Circle` and `Rectangle`, which can be used to "
@@ -1245,14 +1230,14 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:669
+#: doc/tutorial.md:661
 msgid ""
 "Enum variants need not have parameters. This `enum` declaration, for "
 "example, is equivalent to a C enum:"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:678
+#: doc/tutorial.md:670
 #, no-wrap
 msgid ""
 "~~~~\n"
@@ -1266,14 +1251,14 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:681
+#: doc/tutorial.md:673
 msgid ""
 "This declaration defines `North`, `East`, `South`, and `West` as constants, "
 "all of which have type `Direction`."
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:685
+#: doc/tutorial.md:677
 msgid ""
 "When an enum is C-like (that is, when none of the variants have parameters), "
 "it is possible to explicitly set the discriminator values to a constant "
@@ -1281,7 +1266,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:693
+#: doc/tutorial.md:685
 #, no-wrap
 msgid ""
 "~~~~\n"
@@ -1294,7 +1279,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:698
+#: doc/tutorial.md:690
 msgid ""
 "If an explicit discriminator is not specified for a variant, the value "
 "defaults to the value of the previous variant plus one. If the first variant "
@@ -1303,14 +1288,14 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:701
+#: doc/tutorial.md:693
 msgid ""
 "When an enum is C-like, you can apply the `as` cast operator to convert it "
 "to its discriminator value as an `int`."
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:705
+#: doc/tutorial.md:697
 msgid ""
 "For enum types with multiple variants, destructuring is the only way to get "
 "at their contents. All variant constructors can be used as patterns, as in "
@@ -1318,11 +1303,11 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:717
+#: doc/tutorial.md:709
 #, no-wrap
 msgid ""
 "~~~~\n"
-"# use std::float;\n"
+"use std::float;\n"
 "# struct Point {x: float, y: float}\n"
 "# enum Shape { Circle(Point, float), Rectangle(Point, Point) }\n"
 "fn area(sh: Shape) -> float {\n"
@@ -1335,7 +1320,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:722
+#: doc/tutorial.md:714
 msgid ""
 "You can write a lone `_` to ignore an individual field, and can ignore all "
 "fields of a variant like: `Circle(*)`. As in their introduction form, "
@@ -1343,7 +1328,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:735
+#: doc/tutorial.md:727
 #, no-wrap
 msgid ""
 "~~~~\n"
@@ -1361,16 +1346,16 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:737
+#: doc/tutorial.md:729
 msgid "Enum variants may also be structs. For example:"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:755
+#: doc/tutorial.md:747
 #, no-wrap
 msgid ""
 "~~~~\n"
-"# use std::float;\n"
+"use std::float;\n"
 "# struct Point { x: float, y: float }\n"
 "# fn square(x: float) -> float { x * x }\n"
 "enum Shape {\n"
@@ -1389,12 +1374,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:757
+#: doc/tutorial.md:749
 msgid "## Tuples"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:762
+#: doc/tutorial.md:754
 msgid ""
 "Tuples in Rust behave exactly like structs, except that their fields do not "
 "have names. Thus, you cannot access their fields with dot notation.  Tuples "
@@ -1403,7 +1388,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:769
+#: doc/tutorial.md:761
 #, no-wrap
 msgid ""
 "~~~~\n"
@@ -1415,12 +1400,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:771
+#: doc/tutorial.md:763
 msgid "## Tuple structs"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:776
+#: doc/tutorial.md:768
 msgid ""
 "Rust also has _tuple structs_, which behave like both structs and tuples, "
 "except that, unlike tuples, tuple structs have names (so `Foo(1, 2)` has a "
@@ -1429,7 +1414,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:785
+#: doc/tutorial.md:777
 #, no-wrap
 msgid ""
 "For example:\n"
@@ -1443,12 +1428,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:787
+#: doc/tutorial.md:779
 msgid "<a name=\"newtype\"></a>"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:792
+#: doc/tutorial.md:784
 msgid ""
 "There is a special case for tuple structs with a single field, which are "
 "sometimes called \"newtypes\" (after Haskell's \"newtype\" feature). These "
@@ -1457,50 +1442,50 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:796
+#: doc/tutorial.md:788
 msgid "~~~~ struct GizmoId(int); ~~~~"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:799
+#: doc/tutorial.md:791
 msgid ""
 "For convenience, you can extract the contents of such a struct with the "
 "dereference (`*`) unary operator:"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:805
+#: doc/tutorial.md:797
 msgid ""
 "~~~~ # struct GizmoId(int); let my_gizmo_id: GizmoId = GizmoId(10); let "
 "id_int: int = *my_gizmo_id; ~~~~"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:808
+#: doc/tutorial.md:800
 msgid ""
 "Types like this can be useful to differentiate between data that have the "
 "same type but must be used in different ways."
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:813
+#: doc/tutorial.md:805
 msgid "~~~~ struct Inches(int); struct Centimeters(int); ~~~~"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:816
+#: doc/tutorial.md:808
 msgid ""
 "The above definitions allow for a simple way for programs to avoid confusing "
 "numbers that correspond to different units."
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:818
+#: doc/tutorial.md:810
 msgid "# Functions"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:826
+#: doc/tutorial.md:818
 msgid ""
 "We've already seen several function definitions. Like all other static "
 "declarations, such as `type`, functions can be declared both at the top "
@@ -1512,7 +1497,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:832
+#: doc/tutorial.md:824
 #, no-wrap
 msgid ""
 "~~~~\n"
@@ -1523,7 +1508,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:837
+#: doc/tutorial.md:829
 msgid ""
 "The `return` keyword immediately returns from the body of a function. It is "
 "optionally followed by an expression to return. A function can also return a "
@@ -1531,7 +1516,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:843
+#: doc/tutorial.md:835
 #, no-wrap
 msgid ""
 "~~~~\n"
@@ -1542,7 +1527,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:850
+#: doc/tutorial.md:842
 msgid ""
 "It's better Rust style to write a return value this way instead of writing "
 "an explicit `return`. The utility of `return` comes in when returning early "
@@ -1552,35 +1537,35 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:853
+#: doc/tutorial.md:845
 msgid "~~~~ fn do_nothing_the_hard_way() -> () { return (); }"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:856
+#: doc/tutorial.md:848
 msgid "fn do_nothing_the_easy_way() { } ~~~~"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:858
+#: doc/tutorial.md:850
 msgid ""
 "Ending the function with a semicolon like so is equivalent to returning `()`."
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:862
+#: doc/tutorial.md:854
 msgid ""
 "~~~~ fn line(a: int, b: int, x: int) -> int { a * x + b } fn oops(a: int, b: "
 "int, x: int) -> ()  { a * x + b; }"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:866
+#: doc/tutorial.md:858
 msgid "assert!(8 == line(5, 3, 1)); assert!(() == oops(5, 3, 1)); ~~~~"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:870
+#: doc/tutorial.md:862
 msgid ""
 "As with `match` expressions and `let` bindings, function arguments support "
 "pattern destructuring. Like `let`, argument patterns must be irrefutable, as "
@@ -1588,17 +1573,17 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:874
+#: doc/tutorial.md:866
 msgid "~~~ fn first((value, _): (int, float)) -> int { value } ~~~"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:876 doc/tutorial-ffi.md:143
+#: doc/tutorial.md:868 doc/tutorial-ffi.md:143
 msgid "# Destructors"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:880
+#: doc/tutorial.md:872
 msgid ""
 "A *destructor* is a function responsible for cleaning up the resources used "
 "by an object when it is no longer accessible. Destructors can be defined to "
@@ -1606,7 +1591,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:884
+#: doc/tutorial.md:876
 msgid ""
 "Objects are never accessible after their destructor has been called, so "
 "there are no dynamic failures from accessing freed resources. When a task "
@@ -1614,13 +1599,13 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:886
+#: doc/tutorial.md:878
 msgid ""
 "The `~` sigil represents a unique handle for a memory allocation on the heap:"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:894
+#: doc/tutorial.md:886
 #, no-wrap
 msgid ""
 "~~~~\n"
@@ -1633,7 +1618,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:898
+#: doc/tutorial.md:890
 msgid ""
 "Rust includes syntax for heap memory allocation in the language since it's "
 "commonly used, but the same semantics can be implemented by a type with a "
@@ -1641,12 +1626,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:900
+#: doc/tutorial.md:892
 msgid "# Ownership"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:905
+#: doc/tutorial.md:897
 msgid ""
 "Rust formalizes the concept of object ownership to delegate management of an "
 "object's lifetime to either a variable or a task-local garbage collector. An "
@@ -1656,7 +1641,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:911
+#: doc/tutorial.md:903
 msgid ""
 "Ownership is recursive, so mutability is inherited recursively and a "
 "destructor destroys the contained tree of owned objects. Variables are top-"
@@ -1666,14 +1651,14 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:915
+#: doc/tutorial.md:907
 msgid ""
 "~~~~ // the struct owns the objects contained in the `x` and `y` fields "
 "struct Foo { x: int, y: ~int }"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:922
+#: doc/tutorial.md:914
 #, no-wrap
 msgid ""
 "{\n"
@@ -1685,14 +1670,14 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:927
+#: doc/tutorial.md:919
 msgid ""
 "// `b` is mutable, and the mutability is inherited by the objects it owns "
 "let mut b = Foo { x: 5, y: ~10 }; b.x = 10; ~~~~"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:933
+#: doc/tutorial.md:925
 msgid ""
 "If an object doesn't contain garbage-collected boxes, it consists of a "
 "single ownership tree and is given the `Owned` trait which allows it to be "
@@ -1702,12 +1687,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:935
+#: doc/tutorial.md:927
 msgid "# Boxes"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:942
+#: doc/tutorial.md:934
 msgid ""
 "Many modern languages represent values as pointers to heap memory by "
 "default. In contrast, Rust, like C and C++, represents such types directly.  "
@@ -1718,7 +1703,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:947
+#: doc/tutorial.md:939
 msgid ""
 "For small structs like `Point`, this is usually more efficient than "
 "allocating memory and indirecting through a pointer. But for big structs, or "
@@ -1727,31 +1712,31 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:949
+#: doc/tutorial.md:941
 msgid "## Owned boxes"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:952
+#: doc/tutorial.md:944
 msgid ""
 "An owned box (`~`) is a uniquely owned allocation on the heap. It inherits "
 "the mutability and lifetime of the owner as it would if there was no box:"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:957
+#: doc/tutorial.md:949
 msgid "~~~~ let x = 5; // immutable let mut y = 5; // mutable y += 2;"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:962
+#: doc/tutorial.md:954
 msgid ""
 "let x = ~5; // immutable let mut y = ~5; // mutable *y += 2; // the * "
 "operator is needed to access the contained value ~~~~"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:967
+#: doc/tutorial.md:959
 msgid ""
 "The purpose of an owned box is to add a layer of indirection in order to "
 "create recursive data structures or cheaply pass around an object larger "
@@ -1760,14 +1745,14 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:970
+#: doc/tutorial.md:962
 msgid ""
 "The following struct won't compile, because the lack of indirection would "
 "mean it has an infinite size:"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:976
+#: doc/tutorial.md:968
 #, no-wrap
 msgid ""
 "~~~~ {.xfail-test}\n"
@@ -1778,7 +1763,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:980
+#: doc/tutorial.md:972
 msgid ""
 "> ***Note:*** The `Option` type is an enum that represents an *optional* "
 "value.  > It's comparable to a nullable pointer in many other languages, but "
@@ -1786,7 +1771,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:984
+#: doc/tutorial.md:976
 msgid ""
 "Adding indirection with an owned pointer allocates the child outside of the "
 "struct on the heap, which makes it a finite size and won't result in a "
@@ -1794,7 +1779,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:990
+#: doc/tutorial.md:982
 #, no-wrap
 msgid ""
 "~~~~\n"
@@ -1805,46 +1790,46 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:992
+#: doc/tutorial.md:984
 msgid "## Managed boxes"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1000
+#: doc/tutorial.md:992
 msgid ""
 "A managed box (`@`) is a heap allocation with the lifetime managed by a task-"
 "local garbage collector. It will be destroyed at some point after there are "
 "no references left to the box, no later than the end of the task. Managed "
 "boxes lack an owner, so they start a new ownership tree and don't inherit "
 "mutability. They do own the contained object, and mutability is defined by "
-"the type of the shared box (`@` or `@mut`). An object containing a managed "
+"the type of the managed box (`@` or `@mut`). An object containing a managed "
 "box is not `Owned`, and can't be sent between tasks."
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1003
+#: doc/tutorial.md:995
 msgid "~~~~ let a = @5; // immutable"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1006
+#: doc/tutorial.md:998
 msgid "let mut b = @5; // mutable variable, immutable box b = @10;"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1009
+#: doc/tutorial.md:1001
 msgid "let c = @mut 5; // immutable variable, mutable box *c = 10;"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1014
+#: doc/tutorial.md:1006
 msgid ""
 "let mut d = @mut 5; // mutable variable, mutable box *d += 5; d = @mut 15; "
 "~~~~"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1019
+#: doc/tutorial.md:1011
 msgid ""
 "A mutable variable and an immutable variable can refer to the same box, "
 "given that their types are compatible. Mutability of a box is a property of "
@@ -1853,7 +1838,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1023
+#: doc/tutorial.md:1015
 #, no-wrap
 msgid ""
 "~~~~\n"
@@ -1862,7 +1847,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1026
+#: doc/tutorial.md:1018
 #, no-wrap
 msgid ""
 "let mut c : @int;       // declare a variable with type managed immutable int\n"
@@ -1870,7 +1855,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1030
+#: doc/tutorial.md:1022
 #, no-wrap
 msgid ""
 "c = a;          // box type is the same, okay\n"
@@ -1879,7 +1864,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1035
+#: doc/tutorial.md:1027
 #, no-wrap
 msgid ""
 "~~~~ {.xfail-test}\n"
@@ -1889,12 +1874,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1037
+#: doc/tutorial.md:1029
 msgid "# Move semantics"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1043
+#: doc/tutorial.md:1035
 msgid ""
 "Rust uses a shallow copy for parameter passing, assignment and returning "
 "values from functions. A shallow copy is considered a move of ownership if "
@@ -1904,33 +1889,33 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1049
+#: doc/tutorial.md:1041
 msgid ""
 "~~~~ let x = ~5; let y = x.clone(); // y is a newly allocated box let z = "
 "x; // no new memory allocated, x can no longer be used ~~~~"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1052
+#: doc/tutorial.md:1044
 msgid ""
 "Since in owned boxes mutability is a property of the owner, not the box, "
 "mutable boxes may become immutable when they are moved, and vice-versa."
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1059
+#: doc/tutorial.md:1051
 msgid ""
 "~~~~ let r = ~13; let mut s = r; // box becomes mutable *s += 1; let t = "
 "s; // box becomes immutable ~~~~"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1061
+#: doc/tutorial.md:1053
 msgid "# Borrowed pointers"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1067
+#: doc/tutorial.md:1059
 msgid ""
 "Rust's borrowed pointers are a general purpose reference type. In contrast "
 "with owned boxes, where the holder of an owned box is the owner of the "
@@ -1940,12 +1925,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1069
+#: doc/tutorial.md:1061
 msgid "As an example, consider a simple struct type, `Point`:"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1076
+#: doc/tutorial.md:1068
 #, no-wrap
 msgid ""
 "~~~\n"
@@ -1957,7 +1942,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1080
+#: doc/tutorial.md:1072
 msgid ""
 "We can use this simple definition to allocate points in many different ways. "
 "For example, in this code, each of these three local variables contains a "
@@ -1965,7 +1950,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1087
+#: doc/tutorial.md:1079
 #, no-wrap
 msgid ""
 "~~~\n"
@@ -1977,22 +1962,21 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1099
+#: doc/tutorial.md:1089
 msgid ""
 "Suppose we want to write a procedure that computes the distance between any "
 "two points, no matter where they are stored. For example, we might like to "
 "compute the distance between `on_the_stack` and `managed_box`, or between "
 "`managed_box` and `owned_box`. One option is to define a function that takes "
-"two arguments of type pointthat is, it takes the points by value. But this "
+"two arguments of type point—that is, it takes the points by value. But this "
 "will cause the points to be copied when we call the function. For points, "
-"this is probably not so bad, but often copies are expensive or, worse, if "
-"there are mutable fields, they can change the semantics of your program. So "
-"wed like to define a function that takes the points by pointer. We can use "
-"borrowed pointers to do this:"
+"this is probably not so bad, but often copies are expensive. So we’d like to "
+"define a function that takes the points by pointer. We can use borrowed "
+"pointers to do this:"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1109
+#: doc/tutorial.md:1099
 #, no-wrap
 msgid ""
 "~~~\n"
@@ -2007,12 +1991,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1111 doc/tutorial-borrowed-ptr.md:72
+#: doc/tutorial.md:1101 doc/tutorial-borrowed-ptr.md:72
 msgid "Now we can call `compute_distance()` in various ways:"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1121
+#: doc/tutorial.md:1111
 #, no-wrap
 msgid ""
 "~~~\n"
@@ -2027,7 +2011,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1128
+#: doc/tutorial.md:1118
 msgid ""
 "Here the `&` operator is used to take the address of the variable "
 "`on_the_stack`; this is because `on_the_stack` has the type `Point` (that "
@@ -2037,7 +2021,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1134
+#: doc/tutorial.md:1124
 msgid ""
 "In the case of the boxes `managed_box` and `owned_box`, however, no explicit "
 "action is necessary. The compiler will automatically convert a box like "
@@ -2047,7 +2031,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1143
+#: doc/tutorial.md:1133
 msgid ""
 "Whenever a value is borrowed, there are some limitations on what you can do "
 "with the original. For example, if the contents of a variable have been lent "
@@ -2059,31 +2043,31 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1146
+#: doc/tutorial.md:1136
 msgid ""
 "For a more in-depth explanation of borrowed pointers, read the [borrowed "
 "pointer tutorial][borrowtut]."
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1148
+#: doc/tutorial.md:1138
 msgid "[borrowtut]: tutorial-borrowed-ptr.html"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1150
+#: doc/tutorial.md:1140
 msgid "## Freezing"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1153
+#: doc/tutorial.md:1143
 msgid ""
 "Borrowing an immutable pointer to an object freezes it and prevents "
 "mutation.  `Owned` objects have freezing enforced statically at compile-time."
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1161
+#: doc/tutorial.md:1152
 #, no-wrap
 msgid ""
 "~~~~\n"
@@ -2092,11 +2076,12 @@ msgid ""
 "    let y = &x; // x is now frozen, it cannot be modified\n"
 "}\n"
 "// x is now unfrozen again\n"
+"# x = 3;\n"
 "~~~~\n"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1165
+#: doc/tutorial.md:1156
 msgid ""
 "Mutable managed boxes handle freezing dynamically when any of their contents "
 "are borrowed, and the task will fail if an attempt to modify them is made "
@@ -2104,7 +2089,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1175
+#: doc/tutorial.md:1166
 #, no-wrap
 msgid ""
 "~~~~\n"
@@ -2119,29 +2104,29 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1177
+#: doc/tutorial.md:1168
 msgid "# Dereferencing pointers"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1180
+#: doc/tutorial.md:1171
 msgid ""
 "Rust uses the unary star operator (`*`) to access the contents of a box or "
 "pointer, similarly to C."
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1185
+#: doc/tutorial.md:1176
 msgid "~~~ let managed = @10; let owned = ~20; let borrowed = &30;"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1188
+#: doc/tutorial.md:1179
 msgid "let sum = *managed + *owned + *borrowed; ~~~"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1192
+#: doc/tutorial.md:1183
 msgid ""
 "Dereferenced mutable pointers may appear on the left hand side of "
 "assignments. Such an assignment modifies the value that the pointer points "
@@ -2149,17 +2134,17 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1196
+#: doc/tutorial.md:1187
 msgid "~~~ let managed = @mut 10; let mut owned = ~20;"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1199
+#: doc/tutorial.md:1190
 msgid "let mut value = 30; let borrowed = &mut value;"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1204
+#: doc/tutorial.md:1195
 #, no-wrap
 msgid ""
 "*managed = *owned + 10;\n"
@@ -2169,7 +2154,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1208
+#: doc/tutorial.md:1199
 msgid ""
 "Pointers have high operator precedence, but lower precedence than the dot "
 "operator used for field and method access. This precedence order can "
@@ -2177,7 +2162,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1218
+#: doc/tutorial.md:1209
 msgid ""
 "~~~ # struct Point { x: float, y: float } # enum Shape { Rectangle(Point, "
 "Point) } # impl Shape { fn area(&self) -> int { 0 } } let start = @Point "
@@ -2186,7 +2171,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1222
+#: doc/tutorial.md:1213
 msgid ""
 "To combat this ugliness the dot operator applies _automatic pointer "
 "dereferencing_ to the receiver (the value on the left-hand side of the dot), "
@@ -2194,7 +2179,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1232
+#: doc/tutorial.md:1223
 msgid ""
 "~~~ # struct Point { x: float, y: float } # enum Shape { Rectangle(Point, "
 "Point) } # impl Shape { fn area(&self) -> int { 0 } } let start = @Point "
@@ -2203,7 +2188,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1236
+#: doc/tutorial.md:1227
 msgid ""
 "You can write an expression that dereferences any number of pointers "
 "automatically. For example, if you feel inclined, you could write something "
@@ -2211,24 +2196,24 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1242
+#: doc/tutorial.md:1233
 msgid ""
 "~~~ # struct Point { x: float, y: float } let point = &@~Point { x: 10f, y: "
 "20f }; println(fmt!(\"%f\", point.x)); ~~~"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1244
+#: doc/tutorial.md:1235
 msgid "The indexing operator (`[]`) also auto-dereferences."
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1246
+#: doc/tutorial.md:1237
 msgid "# Vectors and strings"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1251
+#: doc/tutorial.md:1242
 msgid ""
 "A vector is a contiguous section of memory containing zero or more values of "
 "the same type. Like other types in Rust, vectors can be stored on the stack, "
@@ -2237,7 +2222,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1261
+#: doc/tutorial.md:1252
 #, no-wrap
 msgid ""
 "~~~\n"
@@ -2252,64 +2237,69 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1264
+#: doc/tutorial.md:1255
 msgid ""
 "// A borrowed pointer to stack-allocated vector let stack_crayons: &[Crayon] "
 "= &[Aquamarine, Asparagus, AtomicTangerine];"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1267
+#: doc/tutorial.md:1258
 msgid ""
 "// A local heap (managed) vector of crayons let local_crayons: @[Crayon] = "
 "@[BananaMania, Beaver, Bittersweet];"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1271
+#: doc/tutorial.md:1262
 msgid ""
 "// An exchange heap (owned) vector of crayons let exchange_crayons: "
 "~[Crayon] = ~[Black, BlizzardBlue, Blue]; ~~~"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1273
+#: doc/tutorial.md:1264
 msgid "The `+` operator means concatenation when applied to vector types."
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1278
+#: doc/tutorial.md:1274
 #, no-wrap
 msgid ""
 "~~~~\n"
 "# enum Crayon { Almond, AntiqueBrass, Apricot,\n"
 "#               Aquamarine, Asparagus, AtomicTangerine,\n"
 "#               BananaMania, Beaver, Bittersweet };\n"
+"# impl Clone for Crayon {\n"
+"#     fn clone(&self) -> Crayon {\n"
+"#         *self\n"
+"#     }\n"
+"# }\n"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1281
+#: doc/tutorial.md:1277
 msgid ""
 "let my_crayons = ~[Almond, AntiqueBrass, Apricot]; let your_crayons = "
 "~[BananaMania, Beaver, Bittersweet];"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1284
+#: doc/tutorial.md:1280
 msgid ""
 "// Add two vectors to create a new one let our_crayons = my_crayons + "
 "your_crayons;"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1289
+#: doc/tutorial.md:1285
 msgid ""
 "// .push_all() will append to a vector, provided it lives in a mutable slot "
 "let mut my_crayons = my_crayons; my_crayons.push_all(your_crayons); ~~~~"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1294
+#: doc/tutorial.md:1290
 msgid ""
 "> ***Note:*** The above examples of vector addition use owned > vectors. "
 "Some operations on slices and stack vectors are > not yet well-supported. "
@@ -2317,12 +2307,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1296
+#: doc/tutorial.md:1292
 msgid "Square brackets denote indexing into a vector:"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1308
+#: doc/tutorial.md:1304
 #, no-wrap
 msgid ""
 "~~~~\n"
@@ -2339,16 +2329,16 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1310
+#: doc/tutorial.md:1306
 msgid "A vector can be destructured using pattern matching:"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1320
+#: doc/tutorial.md:1316
 #, no-wrap
 msgid ""
 "~~~~\n"
-"let numbers: [int, ..3] = [1, 2, 3];\n"
+"let numbers: &[int] = &[1, 2, 3];\n"
 "let score = match numbers {\n"
 "    [] => 0,\n"
 "    [a] => a * 10,\n"
@@ -2359,7 +2349,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1324
+#: doc/tutorial.md:1320
 msgid ""
 "The elements of a vector _inherit the mutability of the vector_, and as "
 "such, individual elements may not be reassigned when the vector lives in an "
@@ -2367,7 +2357,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1330
+#: doc/tutorial.md:1326
 #, no-wrap
 msgid ""
 "~~~ {.xfail-test}\n"
@@ -2378,17 +2368,17 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1333
+#: doc/tutorial.md:1329
 msgid "crayons[0] = Apricot; // ERROR: Can't assign to immutable vector ~~~"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1335
+#: doc/tutorial.md:1331
 msgid "Moving it into a mutable slot makes the elements assignable."
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1341
+#: doc/tutorial.md:1337
 #, no-wrap
 msgid ""
 "~~~\n"
@@ -2399,25 +2389,25 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1344
+#: doc/tutorial.md:1340
 msgid ""
 "// Put the vector into a mutable slot let mut mutable_crayons = crayons;"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1348
+#: doc/tutorial.md:1344
 msgid "// Now it's mutable to the bone mutable_crayons[0] = Apricot; ~~~"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1351
+#: doc/tutorial.md:1347
 msgid ""
 "This is a simple example of Rust's _dual-mode data structures_, also "
 "referred to as _freezing and thawing_."
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1359
+#: doc/tutorial.md:1355
 msgid ""
 "Strings are implemented with vectors of `u8`, though they have a distinct "
 "type. They support most of the same allocation options as vectors, though "
@@ -2428,47 +2418,47 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1363
+#: doc/tutorial.md:1359
 msgid ""
 "~~~ // A plain string is a slice to read-only (static) memory let "
 "stack_crayons: &str = \"Almond, AntiqueBrass, Apricot\";"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1366
+#: doc/tutorial.md:1362
 msgid ""
 "// The same thing, but with the `&` let stack_crayons: &str = &\"Aquamarine, "
 "Asparagus, AtomicTangerine\";"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1369
+#: doc/tutorial.md:1365
 msgid ""
 "// A local heap (managed) string let local_crayons: @str = @\"BananaMania, "
 "Beaver, Bittersweet\";"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1373
+#: doc/tutorial.md:1369
 msgid ""
 "// An exchange heap (owned) string let exchange_crayons: ~str = ~\"Black, "
 "BlizzardBlue, Blue\"; ~~~"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1377
+#: doc/tutorial.md:1373
 msgid ""
-"Both vectors and strings support a number of useful [methods](#functions-and-"
-"methods), defined in [`std::vec`] and [`std::str`]. Here are some examples."
+"Both vectors and strings support a number of useful [methods](#methods), "
+"defined in [`std::vec`] and [`std::str`]. Here are some examples."
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1380
+#: doc/tutorial.md:1376
 msgid "[`std::vec`]: std/vec.html [`std::str`]: std/str.html"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1391
+#: doc/tutorial.md:1387
 #, no-wrap
 msgid ""
 "~~~\n"
@@ -2484,23 +2474,23 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1393
+#: doc/tutorial.md:1389
 msgid "let crayons = [Almond, AntiqueBrass, Apricot];"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1397
+#: doc/tutorial.md:1393
 msgid ""
 "// Check the length of the vector assert!(crayons.len() == 3); assert!(!"
 "crayons.is_empty());"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1404
+#: doc/tutorial.md:1400
 #, no-wrap
 msgid ""
 "// Iterate over a vector, obtaining a pointer to each element\n"
-"// (`for` is explained in the next section)\n"
+"// (`for` is explained in the container/iterator tutorial)\n"
 "for crayon in crayons.iter() {\n"
 "    let delicious_crayon_wax = unwrap_crayon(*crayon);\n"
 "    eat_crayon_wax(delicious_crayon_wax);\n"
@@ -2508,21 +2498,21 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1408
+#: doc/tutorial.md:1404
 msgid ""
 "// Map vector elements let crayon_names = crayons.map(|v| "
 "crayon_to_str(*v)); let favorite_crayon_name = crayon_names[0];"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1411
+#: doc/tutorial.md:1407
 msgid ""
 "// Remove whitespace from before and after the string let "
 "new_favorite_crayon_name = favorite_crayon_name.trim();"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1417
+#: doc/tutorial.md:1413
 #, no-wrap
 msgid ""
 "if favorite_crayon_name.len() > 5 {\n"
@@ -2533,12 +2523,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1419
+#: doc/tutorial.md:1415
 msgid "# Closures"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1424
+#: doc/tutorial.md:1420
 msgid ""
 "Named functions, like those we've seen so far, may not refer to local "
 "variables declared outside the function: they do not close over their "
@@ -2547,12 +2537,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1427
+#: doc/tutorial.md:1423
 msgid "~~~~ {.ignore} let foo = 10;"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1432
+#: doc/tutorial.md:1428
 #, no-wrap
 msgid ""
 "fn bar() -> int {\n"
@@ -2562,31 +2552,31 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1435
+#: doc/tutorial.md:1431
 msgid ""
 "Rust also supports _closures_, functions that can access variables in the "
 "enclosing scope."
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1438
+#: doc/tutorial.md:1434
 msgid "~~~~ fn call_closure_with_ten(b: &fn(int)) { b(10); }"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1441
+#: doc/tutorial.md:1437
 msgid ""
 "let captured_var = 20; let closure = |arg| println(fmt!(\"captured_var=%d, "
 "arg=%d\", captured_var, arg));"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1444
+#: doc/tutorial.md:1440
 msgid "call_closure_with_ten(closure); ~~~~"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1450
+#: doc/tutorial.md:1446
 msgid ""
 "Closures begin with the argument list between vertical bars and are followed "
 "by a single expression. Remember that a block, `{ <expr1>; <expr2>; ... }`, "
@@ -2596,7 +2586,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1455
+#: doc/tutorial.md:1451
 msgid ""
 "The types of the arguments are generally omitted, as is the return type, "
 "because the compiler can almost always infer them. In the rare case where "
@@ -2605,12 +2595,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1459
-msgid "~~~~ let square = |x: int| -> uint { x * x as uint }; ~~~~"
+#: doc/tutorial.md:1455
+msgid "~~~~ let square = |x: int| -> uint { (x * x) as uint }; ~~~~"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1463
+#: doc/tutorial.md:1459
 msgid ""
 "There are several forms of closure, each with its own role. The most common, "
 "called a _stack closure_, has type `&fn` and can directly access local "
@@ -2618,12 +2608,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1468
+#: doc/tutorial.md:1464
 msgid "~~~~ let mut max = 0; [1, 2, 3].map(|x| if *x > max { max = *x }); ~~~~"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1477
+#: doc/tutorial.md:1473
 msgid ""
 "Stack closures are very efficient because their environment is allocated on "
 "the call stack and refers by pointer to captured locals. To ensure that "
@@ -2635,12 +2625,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1479
+#: doc/tutorial.md:1475
 msgid "## Managed closures"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1485
+#: doc/tutorial.md:1481
 msgid ""
 "When you need to store a closure in a data structure, a stack closure will "
 "not do, since the compiler will refuse to let you store it. For this "
@@ -2650,7 +2640,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1490
+#: doc/tutorial.md:1486
 msgid ""
 "A managed closure does not directly access its environment, but merely "
 "copies out the values that it closes over into a private data structure. "
@@ -2659,14 +2649,14 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1493
+#: doc/tutorial.md:1489
 msgid ""
 "This code creates a closure that adds a given string to its argument, "
 "returns it from a function, and then calls it:"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1499
+#: doc/tutorial.md:1495
 #, no-wrap
 msgid ""
 "~~~~\n"
@@ -2677,7 +2667,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1505
+#: doc/tutorial.md:1501
 #, no-wrap
 msgid ""
 "fn main() {\n"
@@ -2688,12 +2678,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1507
+#: doc/tutorial.md:1503
 msgid "## Owned closures"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1514
+#: doc/tutorial.md:1510
 msgid ""
 "Owned closures, written `~fn` in analogy to the `~` pointer type, hold on to "
 "things that can safely be sent between processes. They copy the values they "
@@ -2703,17 +2693,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1516
-msgid "[tasks]: tutorial-tasks.html"
-msgstr ""
-
-#. type: Plain text
-#: doc/tutorial.md:1518
+#: doc/tutorial.md:1512
 msgid "## Closure compatibility"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1525
+#: doc/tutorial.md:1519
 msgid ""
 "Rust closures have a convenient subtyping property: you can pass any kind of "
 "closure (as long as the arguments and return types match) to functions that "
@@ -2724,7 +2709,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1533
+#: doc/tutorial.md:1527
 msgid ""
 "~~~~ fn call_twice(f: &fn()) { f(); f(); } let closure = || { \"I'm a "
 "closure, and it doesn't matter what type I am\"; }; fn function() { \"I'm a "
@@ -2732,7 +2717,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1537
+#: doc/tutorial.md:1531
 msgid ""
 "> ***Note:*** Both the syntax and the semantics will be changing > in small "
 "ways. At the moment they can be unsound in some > scenarios, particularly "
@@ -2740,26 +2725,26 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1539
+#: doc/tutorial.md:1533
 msgid "## Do syntax"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1542
+#: doc/tutorial.md:1536
 msgid ""
 "The `do` expression provides a way to treat higher-order functions "
 "(functions that take closures as arguments) as control structures."
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1545
+#: doc/tutorial.md:1539
 msgid ""
 "Consider this function that iterates over a vector of integers, passing in a "
 "pointer to each integer in the vector:"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1555
+#: doc/tutorial.md:1549
 #, no-wrap
 msgid ""
 "~~~~\n"
@@ -2774,14 +2759,14 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1559
+#: doc/tutorial.md:1553
 msgid ""
 "As a caller, if we use a closure to provide the final operator argument, we "
 "can write it in a way that has a pleasant, block-like structure."
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1567
+#: doc/tutorial.md:1561
 #, no-wrap
 msgid ""
 "~~~~\n"
@@ -2794,14 +2779,14 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1570
+#: doc/tutorial.md:1564
 msgid ""
 "This is such a useful pattern that Rust has a special form of function call "
 "that can be written more like a built-in control structure:"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1578
+#: doc/tutorial.md:1572
 #, no-wrap
 msgid ""
 "~~~~\n"
@@ -2814,7 +2799,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1583
+#: doc/tutorial.md:1577
 msgid ""
 "The call is prefixed with the keyword `do` and, instead of writing the final "
 "closure inside the argument list, it appears outside of the parentheses, "
@@ -2822,7 +2807,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1588
+#: doc/tutorial.md:1582
 msgid ""
 "`do` is a convenient way to create tasks with the `task::spawn` function.  "
 "`spawn` has the signature `spawn(fn: ~fn())`. In other words, it is a "
@@ -2830,12 +2815,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1591
+#: doc/tutorial.md:1585 doc/tutorial.md:1597
 msgid "~~~~ use std::task::spawn;"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1596
+#: doc/tutorial.md:1590
 #, no-wrap
 msgid ""
 "do spawn() || {\n"
@@ -2845,7 +2830,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1600
+#: doc/tutorial.md:1594
 msgid ""
 "Look at all those bars and parentheses -- that's two empty argument lists "
 "back to back. Since that is so unsightly, empty argument lists may be "
@@ -2853,11 +2838,9 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1607
+#: doc/tutorial.md:1602
 #, no-wrap
 msgid ""
-"~~~~\n"
-"# use std::task::spawn;\n"
 "do spawn {\n"
 "   debug!(\"Kablam!\");\n"
 "}\n"
@@ -2865,7 +2848,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1610
+#: doc/tutorial.md:1605
 msgid ""
 "If you want to see the output of `debug!` statements, you will need to turn "
 "on `debug!` logging.  To enable `debug!` logging, set the RUST_LOG "
@@ -2874,12 +2857,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1612
+#: doc/tutorial.md:1607
 msgid "# Methods"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1618
+#: doc/tutorial.md:1613
 msgid ""
 "Methods are like functions except that they always begin with a special "
 "argument, called `self`, which has the type of the method's receiver. The "
@@ -2888,7 +2871,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1622
+#: doc/tutorial.md:1617
 msgid ""
 "_Implementations_, written with the `impl` keyword, can define methods on "
 "most Rust types, including structs and enums.  As an example, let's define a "
@@ -2896,7 +2879,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1630
+#: doc/tutorial.md:1625
 #, no-wrap
 msgid ""
 "~~~\n"
@@ -2909,7 +2892,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1635
+#: doc/tutorial.md:1630
 #, no-wrap
 msgid ""
 "enum Shape {\n"
@@ -2919,7 +2902,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1644
+#: doc/tutorial.md:1639
 #, no-wrap
 msgid ""
 "impl Shape {\n"
@@ -2933,12 +2916,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1648
+#: doc/tutorial.md:1643
 msgid "let s = Circle(Point { x: 1f, y: 2f }, 3f); s.draw(); ~~~"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1652
+#: doc/tutorial.md:1647
 msgid ""
 "This defines an _implementation_ for `Shape` containing a single method, "
 "`draw`. In most respects the `draw` method is defined like any other "
@@ -2946,7 +2929,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1657
+#: doc/tutorial.md:1652
 msgid ""
 "The type of `self` is the type on which the method is implemented, or a "
 "pointer thereof. As an argument it is written either `self`, `&self`, "
@@ -2955,7 +2938,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1672
+#: doc/tutorial.md:1667
 #, no-wrap
 msgid ""
 "~~~\n"
@@ -2975,26 +2958,26 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1674
+#: doc/tutorial.md:1669
 msgid "let s = Circle(Point { x: 1f, y: 2f }, 3f);"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1680
+#: doc/tutorial.md:1675
 msgid ""
 "(@s).draw_managed(); (~s).draw_owned(); (&s).draw_borrowed(); s."
 "draw_value(); ~~~"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1684
+#: doc/tutorial.md:1679
 msgid ""
 "Methods typically take a borrowed pointer self type, so the compiler will go "
 "to great lengths to convert a callee to a borrowed pointer."
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1702
+#: doc/tutorial.md:1697
 #, no-wrap
 msgid ""
 "~~~\n"
@@ -3017,29 +3000,29 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1705
+#: doc/tutorial.md:1700
 msgid "(@s).draw_borrowed(); (~s).draw_borrowed();"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1709
+#: doc/tutorial.md:1704
 msgid ""
 "// Unlike typical function arguments, the self value will // automatically "
 "be referenced ...  s.draw_borrowed();"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1712
+#: doc/tutorial.md:1707
 msgid "// ... and dereferenced (& &s).draw_borrowed();"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1716
+#: doc/tutorial.md:1711
 msgid "// ... and dereferenced and borrowed (&@~s).draw_borrowed(); ~~~"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1720
+#: doc/tutorial.md:1715
 msgid ""
 "Implementations may also define standalone (sometimes called \"static\")  "
 "methods. The absence of a `self` parameter distinguishes such methods.  "
@@ -3047,7 +3030,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1727
+#: doc/tutorial.md:1722
 #, no-wrap
 msgid ""
 "~~~~ {.xfail-test}\n"
@@ -3059,17 +3042,17 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1729
+#: doc/tutorial.md:1724
 msgid ""
 "To call such a method, just prefix it with the type name and a double colon:"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1738
+#: doc/tutorial.md:1733
 #, no-wrap
 msgid ""
 "~~~~\n"
-"# use std::float::consts::pi;\n"
+"use std::float::consts::pi;\n"
 "struct Circle { radius: float }\n"
 "impl Circle {\n"
 "    fn new(area: float) -> Circle { Circle { radius: (area / pi).sqrt() } }\n"
@@ -3079,12 +3062,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1740
+#: doc/tutorial.md:1735
 msgid "# Generics"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1748
+#: doc/tutorial.md:1743
 msgid ""
 "Throughout this tutorial, we've been defining functions that act only on "
 "specific data types. With type parameters we can also define functions whose "
@@ -3095,7 +3078,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1758
+#: doc/tutorial.md:1753
 #, no-wrap
 msgid ""
 "~~~~\n"
@@ -3110,7 +3093,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1763
+#: doc/tutorial.md:1758
 msgid ""
 "When defined with type parameters, as denoted by `<T, U>`, this function can "
 "be applied to any type of vector, as long as the type of `function`'s "
@@ -3118,7 +3101,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1773
+#: doc/tutorial.md:1768
 msgid ""
 "Inside a generic function, the names of the type parameters (capitalized by "
 "convention) stand for opaque types. All you can do with instances of these "
@@ -3131,18 +3114,18 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1775
+#: doc/tutorial.md:1770
 msgid ""
 "Generic `type`, `struct`, and `enum` declarations follow the same pattern:"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1779
-msgid "~~~~ # use std::hashmap::HashMap; type Set<T> = HashMap<T, ()>;"
+#: doc/tutorial.md:1774
+msgid "~~~~ use std::hashmap::HashMap; type Set<T> = HashMap<T, ()>;"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1783
+#: doc/tutorial.md:1778
 #, no-wrap
 msgid ""
 "struct Stack<T> {\n"
@@ -3151,7 +3134,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1789
+#: doc/tutorial.md:1784
 #, no-wrap
 msgid ""
 "enum Option<T> {\n"
@@ -3162,14 +3145,14 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1792
+#: doc/tutorial.md:1787
 msgid ""
 "These declarations can be instantiated to valid types like `Set<int>`, "
 "`Stack<int>`, and `Option<int>`."
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1798
+#: doc/tutorial.md:1793
 msgid ""
 "The last type in that example, `Option`, appears frequently in Rust code.  "
 "Because Rust does not have null pointers (except in unsafe code), we need "
@@ -3179,7 +3162,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1809
+#: doc/tutorial.md:1804
 #, no-wrap
 msgid ""
 "~~~~\n"
@@ -3195,7 +3178,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1817
+#: doc/tutorial.md:1812
 msgid ""
 "The Rust compiler compiles generic functions very efficiently by "
 "*monomorphizing* them. *Monomorphization* is a fancy name for a simple idea: "
@@ -3206,12 +3189,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1819
+#: doc/tutorial.md:1814
 msgid "## Traits"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1829
+#: doc/tutorial.md:1824
 msgid ""
 "Within a generic function the operations available on generic types are very "
 "limited. After all, since the function doesn't know what types it is "
@@ -3224,26 +3207,25 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1836
+#: doc/tutorial.md:1832
 msgid ""
-"As motivation, let us consider copying in Rust. The `copy` operation is not "
-"defined for all Rust types. One reason is user-defined destructors: copying "
+"As motivation, let us consider copying in Rust.  The `clone` method is not "
+"defined for all Rust types.  One reason is user-defined destructors: copying "
 "a type that has a destructor could result in the destructor running multiple "
-"times. Therefore, types with user-defined destructors cannot be copied, "
-"either implicitly or explicitly, and neither can types that own other types "
-"containing destructors."
+"times.  Therefore, types with destructors cannot be copied unless you "
+"explicitly implement `Clone` for them."
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1840
+#: doc/tutorial.md:1837
 msgid ""
-"This complicates handling of generic functions. If you have a type parameter "
-"`T`, can you copy values of that type? In Rust, you can't, and if you try to "
-"run the following code the compiler will complain."
+"This complicates handling of generic functions.  If you have a type "
+"parameter `T`, can you copy values of that type? In Rust, you can't, and if "
+"you try to run the following code the compiler will complain."
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1847
+#: doc/tutorial.md:1844
 #, no-wrap
 msgid ""
 "~~~~ {.xfail-test}\n"
@@ -3255,77 +3237,71 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1852
+#: doc/tutorial.md:1851
 msgid ""
 "However, we can tell the compiler that the `head` function is only for "
-"copyable types: that is, those that have the `Copy` trait. In that case, we "
-"can explicitly create a second copy of the value we are returning using the "
-"`copy` keyword:"
+"copyable types: that is, those that implement the `Clone` trait.  In that "
+"case, we can explicitly create a second copy of the value we are returning "
+"using the `clone` keyword:"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1859
+#: doc/tutorial.md:1858
 #, no-wrap
 msgid ""
 "~~~~\n"
 "// This does\n"
-"fn head<T: Copy>(v: &[T]) -> T {\n"
-"    copy v[0]\n"
+"fn head<T: Clone>(v: &[T]) -> T {\n"
+"    v[0].clone()\n"
 "}\n"
 "~~~~\n"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1867
+#: doc/tutorial.md:1866
 msgid ""
 "This says that we can call `head` on any type `T` as long as that type "
-"implements the `Copy` trait. When instantiating a generic function, you can "
-"only instantiate it with types that implement the correct trait, so you "
-"could not apply `head` to a type with a destructor. (`Copy` is a special "
-"trait that is built in to the compiler, making it possible for the compiler "
-"to enforce this restriction.)"
+"implements the `Clone` trait.  When instantiating a generic function, you "
+"can only instantiate it with types that implement the correct trait, so you "
+"could not apply `head` to a type that does not implement `Clone`."
 msgstr ""
 
 #. type: Plain text
 #: doc/tutorial.md:1871
 msgid ""
-"While most traits can be defined and implemented by user code, three traits "
+"While most traits can be defined and implemented by user code, two traits "
 "are automatically derived and implemented for all applicable types by the "
 "compiler, and may not be overridden:"
 msgstr ""
 
-#. type: Bullet: '* '
+#. type: Plain text
 #: doc/tutorial.md:1875
+#, no-wrap
 msgid ""
-"`Copy` - Types that can be copied, either implicitly, or explicitly with the "
-"`copy` operator. All types are copyable unless they have destructors or "
-"contain types with destructors."
-msgstr ""
-
-#. type: Bullet: '* '
-#: doc/tutorial.md:1879
-msgid ""
-"`Owned` - Owned types. Types are owned unless they contain managed boxes, "
-"managed closures, or borrowed pointers. Owned types may or may not be "
-"copyable."
-msgstr ""
-
-#. type: Bullet: '* '
-#: doc/tutorial.md:1882
-msgid ""
-"`Const` - Constant (immutable) types. These are types that do not contain "
-"mutable fields."
+"* `Send` - Sendable types.\n"
+"Types are sendable\n"
+"unless they contain managed boxes, managed closures, or borrowed pointers.\n"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1885
+#: doc/tutorial.md:1880
+#, no-wrap
 msgid ""
-"> ***Note:*** These three traits were referred to as 'kinds' in earlier > "
+"* `Freeze` - Constant (immutable) types.\n"
+"These are types that do not contain anything intrinsically mutable.\n"
+"Intrinsically mutable values include `@mut`\n"
+"and `Cell` in the standard library.\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial.md:1883
+msgid ""
+"> ***Note:*** These two traits were referred to as 'kinds' in earlier > "
 "iterations of the language, and often still are."
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1891
+#: doc/tutorial.md:1889
 msgid ""
 "Additionally, the `Drop` trait is used to define destructors. This trait "
 "defines one method called `drop`, which is automatically called when a value "
@@ -3334,7 +3310,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1896
+#: doc/tutorial.md:1894
 #, no-wrap
 msgid ""
 "~~~\n"
@@ -3344,12 +3320,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1905
+#: doc/tutorial.md:1903
 #, no-wrap
 msgid ""
 "impl Drop for TimeBomb {\n"
 "    fn drop(&self) {\n"
-"        for self.explosivity.times {\n"
+"        for _ in range(0, self.explosivity) {\n"
 "            println(\"blam!\");\n"
 "        }\n"
 "    }\n"
@@ -3358,28 +3334,28 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1908
+#: doc/tutorial.md:1906
 msgid ""
 "It is illegal to call `drop` directly. Only code inserted by the compiler "
 "may call it."
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1910
+#: doc/tutorial.md:1908
 msgid "## Declaring and implementing traits"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1915
+#: doc/tutorial.md:1914
 msgid ""
-"A trait consists of a set of methods, without bodies, or may be empty, as is "
-"the case with `Copy`, `Owned`, and `Const`. For example, we could declare "
-"the trait `Printable` for things that can be printed to the console, with a "
-"single method:"
+"A trait consists of a set of methods without bodies, or may be empty, as is "
+"the case with `Send` and `Freeze`.  For example, we could declare the trait "
+"`Printable` for things that can be printed to the console, with a single "
+"method:"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1921
+#: doc/tutorial.md:1920
 #, no-wrap
 msgid ""
 "~~~~\n"
@@ -3390,7 +3366,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1926
+#: doc/tutorial.md:1925
 msgid ""
 "Traits may be implemented for specific types with [impls]. An impl that "
 "implements a trait includes the name of the trait at the start of the "
@@ -3398,12 +3374,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1928
-msgid "[impls]: #functions-and-methods"
+#: doc/tutorial.md:1927
+msgid "[impls]: #methods"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1934
+#: doc/tutorial.md:1933
 #, no-wrap
 msgid ""
 "~~~~\n"
@@ -3414,7 +3390,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1938
+#: doc/tutorial.md:1937
 #, no-wrap
 msgid ""
 "impl Printable for ~str {\n"
@@ -3423,12 +3399,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1942
+#: doc/tutorial.md:1941
 msgid "# 1.print(); # (~\"foo\").print(); ~~~~"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1947
+#: doc/tutorial.md:1946
 msgid ""
 "Methods defined in an implementation of a trait may be called just like any "
 "other method, using dot notation, as in `1.print()`. Traits may themselves "
@@ -3437,7 +3413,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1952
+#: doc/tutorial.md:1951
 #, no-wrap
 msgid ""
 "~~~~\n"
@@ -3447,7 +3423,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1957
+#: doc/tutorial.md:1956
 #, no-wrap
 msgid ""
 "impl<T> Seq<T> for ~[T] {\n"
@@ -3457,7 +3433,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1964
+#: doc/tutorial.md:1963
 msgid ""
 "The implementation has to explicitly declare the type parameter that it "
 "binds, `T`, before using it to specify its trait type. Rust requires this "
@@ -3467,7 +3443,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1969
+#: doc/tutorial.md:1968
 msgid ""
 "The type parameters bound by a trait are in scope in each of the method "
 "declarations. So, re-declaring the type parameter `T` as an explicit type "
@@ -3476,7 +3452,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1974
+#: doc/tutorial.md:1973
 msgid ""
 "Within a trait definition, `Self` is a special type that you can think of as "
 "a type parameter. An implementation of the trait for any given type `T` "
@@ -3485,7 +3461,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1981
+#: doc/tutorial.md:1980
 #, no-wrap
 msgid ""
 "~~~~\n"
@@ -3497,7 +3473,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1987
+#: doc/tutorial.md:1986
 #, no-wrap
 msgid ""
 "// In an impl, `self` refers just to the value of the receiver\n"
@@ -3508,7 +3484,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1992
+#: doc/tutorial.md:1991
 msgid ""
 "Notice that in the trait definition, `equals` takes a second parameter of "
 "type `Self`.  In contrast, in the `impl`, `equals` takes a second parameter "
@@ -3516,7 +3492,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1997
+#: doc/tutorial.md:1996
 msgid ""
 "Just as in type implementations, traits can define standalone (static)  "
 "methods.  These methods are called by prefixing the method name with the "
@@ -3525,14 +3501,14 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2003
+#: doc/tutorial.md:2002
 msgid ""
-"~~~~ # use std::float::consts::pi; trait Shape { fn new(area: float) -> "
+"~~~~ use std::float::consts::pi; trait Shape { fn new(area: float) -> "
 "Self; } struct Circle { radius: float } struct Square { length: float }"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2010
+#: doc/tutorial.md:2009
 #, no-wrap
 msgid ""
 "impl Shape for Circle {\n"
@@ -3544,19 +3520,19 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2015
+#: doc/tutorial.md:2014
 msgid ""
 "let area = 42.5; let c: Circle = Shape::new(area); let s: Square = Shape::"
 "new(area); ~~~~"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2017
+#: doc/tutorial.md:2016
 msgid "## Bounded type parameters and static method dispatch"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2022
+#: doc/tutorial.md:2021
 msgid ""
 "Traits give us a language for defining predicates on types, or abstract "
 "properties that types can have. We can use this language to define _bounds_ "
@@ -3564,7 +3540,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2031
+#: doc/tutorial.md:2030
 #, no-wrap
 msgid ""
 "~~~~\n"
@@ -3578,32 +3554,32 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2037
+#: doc/tutorial.md:2036
 msgid ""
 "Declaring `T` as conforming to the `Printable` trait (as we earlier did with "
-"`Copy`) makes it possible to call methods from that trait on values of type "
+"`Clone`) makes it possible to call methods from that trait on values of type "
 "`T` inside the function. It will also cause a compile-time error when anyone "
 "tries to call `print_all` on an array whose element type does not have a "
 "`Printable` implementation."
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2040
+#: doc/tutorial.md:2039
 msgid ""
 "Type parameters can have multiple bounds by separating them with `+`, as in "
 "this version of `print_all` that copies elements."
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2052
+#: doc/tutorial.md:2051
 #, no-wrap
 msgid ""
 "~~~\n"
 "# trait Printable { fn print(&self); }\n"
-"fn print_all<T: Printable + Copy>(printable_things: ~[T]) {\n"
+"fn print_all<T: Printable + Clone>(printable_things: ~[T]) {\n"
 "    let mut i = 0;\n"
 "    while i < printable_things.len() {\n"
-"        let copy_of_thing = copy printable_things[i];\n"
+"        let copy_of_thing = printable_things[i].clone();\n"
 "        copy_of_thing.print();\n"
 "        i += 1;\n"
 "    }\n"
@@ -3612,7 +3588,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2056
+#: doc/tutorial.md:2055
 msgid ""
 "Method calls to bounded type parameters are _statically dispatched_, "
 "imposing no more overhead than normal function invocation, so are the "
@@ -3620,17 +3596,17 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2058
+#: doc/tutorial.md:2057
 msgid "This usage of traits is similar to Haskell type classes."
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2060
+#: doc/tutorial.md:2059
 msgid "## Trait objects and dynamic method dispatch"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2064
+#: doc/tutorial.md:2063
 msgid ""
 "The above allows us to define functions that polymorphically act on values "
 "of a single unknown type that conforms to a given trait.  However, consider "
@@ -3638,7 +3614,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2070
+#: doc/tutorial.md:2069
 msgid ""
 "~~~~ # type Circle = int; type Rectangle = int; # impl Drawable for int { fn "
 "draw(&self) {} } # fn new_circle() -> int { 1 } trait Drawable { fn "
@@ -3646,7 +3622,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2077
+#: doc/tutorial.md:2076
 #, no-wrap
 msgid ""
 "fn draw_all<T: Drawable>(shapes: ~[T]) {\n"
@@ -3658,7 +3634,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2083
+#: doc/tutorial.md:2082
 msgid ""
 "You can call that on an array of circles, or an array of rectangles "
 "(assuming those have suitable `Drawable` traits defined), but not on an "
@@ -3667,7 +3643,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2090
+#: doc/tutorial.md:2089
 #, no-wrap
 msgid ""
 "~~~~\n"
@@ -3679,7 +3655,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2095
+#: doc/tutorial.md:2094
 msgid ""
 "In this example, there is no type parameter. Instead, the `@Drawable` type "
 "denotes any managed box value that implements the `Drawable` trait. To "
@@ -3688,7 +3664,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2102
+#: doc/tutorial.md:2101
 msgid ""
 "~~~~ # type Circle = int; type Rectangle = bool; # trait Drawable { fn "
 "draw(&self); } # fn new_circle() -> Circle { 1 } # fn new_rectangle() -> "
@@ -3696,21 +3672,21 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2105
+#: doc/tutorial.md:2104
 msgid ""
 "impl Drawable for Circle { fn draw(&self) { ... } } impl Drawable for "
 "Rectangle { fn draw(&self) { ... } }"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2110
+#: doc/tutorial.md:2109
 msgid ""
 "let c: @Circle = @new_circle(); let r: @Rectangle = @new_rectangle(); "
 "draw_all([c as @Drawable, r as @Drawable]); ~~~~"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2118
+#: doc/tutorial.md:2117
 msgid ""
 "We omit the code for `new_circle` and `new_rectangle`; imagine that these "
 "just return `Circle`s and `Rectangle`s with a default size. Note that, like "
@@ -3721,7 +3697,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2132
+#: doc/tutorial.md:2131
 msgid ""
 "~~~ # type Circle = int; type Rectangle = int; # trait Drawable { fn "
 "draw(&self); } # impl Drawable for int { fn draw(&self) {} } # fn "
@@ -3732,7 +3708,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2137
+#: doc/tutorial.md:2136
 msgid ""
 "Method calls to trait types are _dynamically dispatched_. Since the compiler "
 "doesn't know specifically which functions to call at compile time, it uses a "
@@ -3741,17 +3717,17 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2139
+#: doc/tutorial.md:2138
 msgid "This usage of traits is similar to Java interfaces."
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2141
+#: doc/tutorial.md:2140
 msgid "## Trait inheritance"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2146
+#: doc/tutorial.md:2145
 msgid ""
 "We can write a trait declaration that _inherits_ from other traits, called "
 "_supertraits_.  Types that implement a trait must also implement its "
@@ -3760,24 +3736,24 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2151
+#: doc/tutorial.md:2150
 msgid ""
 "~~~~ trait Shape { fn area(&self) -> float; } trait Circle : Shape { fn "
 "radius(&self) -> float; } ~~~~"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2153
+#: doc/tutorial.md:2152
 msgid ""
 "Now, we can implement `Circle` on a type only if we also implement `Shape`."
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2168
+#: doc/tutorial.md:2167
 #, no-wrap
 msgid ""
 "~~~~\n"
-"# use std::float::consts::pi;\n"
+"use std::float::consts::pi;\n"
 "# trait Shape { fn area(&self) -> float; }\n"
 "# trait Circle : Shape { fn radius(&self) -> float; }\n"
 "# struct Point { x: float, y: float }\n"
@@ -3793,7 +3769,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2173
+#: doc/tutorial.md:2172
 msgid ""
 "Notice that methods of `Circle` can call methods on `Shape`, as our `radius` "
 "implementation calls the `area` method.  This is a silly way to compute the "
@@ -3802,36 +3778,36 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2197
+#: doc/tutorial.md:2196
 msgid ""
-"~~~ {.xfail-test} # use std::float::consts::pi; # trait Shape { fn "
-"area(&self) -> float; } # trait Circle : Shape { fn radius(&self) -> "
-"float; } # struct Point { x: float, y: float } # struct CircleStruct "
-"{ center: Point, radius: float } # impl Circle for CircleStruct { fn "
-"radius(&self) -> float { (self.area() / pi).sqrt() } } # impl Shape for "
-"CircleStruct { fn area(&self) -> float { pi * square(self.radius) } }"
+"~~~ {.xfail-test} use std::float::consts::pi; # trait Shape { fn area(&self) "
+"-> float; } # trait Circle : Shape { fn radius(&self) -> float; } # struct "
+"Point { x: float, y: float } # struct CircleStruct { center: Point, radius: "
+"float } # impl Circle for CircleStruct { fn radius(&self) -> float { (self."
+"area() / pi).sqrt() } } # impl Shape for CircleStruct { fn area(&self) -> "
+"float { pi * square(self.radius) } }"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2202
+#: doc/tutorial.md:2201
 msgid ""
 "let concrete = @CircleStruct{center:Point{x:3f,y:4f},radius:5f}; let "
-"mycircle: Circle = concrete as @Circle; let nonsense = mycircle.radius() * "
+"mycircle: @Circle = concrete as @Circle; let nonsense = mycircle.radius() * "
 "mycircle.area(); ~~~"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2204
+#: doc/tutorial.md:2203
 msgid "> ***Note:*** Trait inheritance does not actually work with objects yet"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2206
+#: doc/tutorial.md:2205
 msgid "## Deriving implementations for traits"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2213
+#: doc/tutorial.md:2212
 msgid ""
 "A small number of traits in `std` and `extra` can have implementations that "
 "can be automatically derived. These instances are specified by placing the "
@@ -3842,17 +3818,17 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2217
+#: doc/tutorial.md:2216
 msgid "~~~ #[deriving(Eq)] struct Circle { radius: float }"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2221
+#: doc/tutorial.md:2220
 msgid "#[deriving(Rand, ToStr)] enum ABC { A, B, C } ~~~"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2225
+#: doc/tutorial.md:2224
 msgid ""
 "The full list of derivable traits is `Eq`, `TotalEq`, `Ord`, `TotalOrd`, "
 "`Encodable` `Decodable`, `Clone`, `DeepClone`, `IterBytes`, `Rand`, `Zero`, "
@@ -3860,19 +3836,19 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2227
+#: doc/tutorial.md:2226
 msgid "# Modules and crates"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2231
+#: doc/tutorial.md:2230
 msgid ""
 "The Rust namespace is arranged in a hierarchy of modules. Each source (.rs) "
 "file represents a single module and may in turn contain additional modules."
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2237
+#: doc/tutorial.md:2236
 #, no-wrap
 msgid ""
 "~~~~\n"
@@ -3883,7 +3859,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2242
+#: doc/tutorial.md:2241
 #, no-wrap
 msgid ""
 "fn main() {\n"
@@ -3893,7 +3869,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2247
+#: doc/tutorial.md:2246
 msgid ""
 "The contents of modules can be imported into the current scope with the "
 "`use` keyword, optionally giving it an alias. `use` may appear at the "
@@ -3901,14 +3877,14 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2253
+#: doc/tutorial.md:2252
 msgid ""
 "~~~ # mod farm { pub fn chicken() { } } # fn main() { // Bring `chicken` "
 "into scope use farm::chicken;"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2263
+#: doc/tutorial.md:2262
 #, no-wrap
 msgid ""
 "fn chicken_farmer() {\n"
@@ -3923,7 +3899,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2270
+#: doc/tutorial.md:2269
 msgid ""
 "These farm animal functions have a new keyword, `pub`, attached to them. The "
 "`pub` keyword modifies an item's visibility, making it visible outside its "
@@ -3933,7 +3909,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2277
+#: doc/tutorial.md:2276
 msgid ""
 "Visibility restrictions in Rust exist only at module boundaries. This is "
 "quite different from most object-oriented languages that also enforce "
@@ -3944,7 +3920,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2290
+#: doc/tutorial.md:2289
 #, no-wrap
 msgid ""
 "~~~\n"
@@ -3962,18 +3938,18 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2296
+#: doc/tutorial.md:2295
 #, no-wrap
 msgid ""
 "    impl Farm {\n"
-"        priv fn feed_chickens(&self) { ... }\n"
-"        priv fn feed_cows(&self) { ... }\n"
+"        fn feed_chickens(&self) { ... }\n"
+"        fn feed_cows(&self) { ... }\n"
 "        pub fn add_chicken(&self, c: Chicken) { ... }\n"
 "    }\n"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2302
+#: doc/tutorial.md:2301
 #, no-wrap
 msgid ""
 "    pub fn feed_animals(farm: &Farm) {\n"
@@ -3984,7 +3960,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2312
+#: doc/tutorial.md:2311
 #, no-wrap
 msgid ""
 "fn main() {\n"
@@ -3999,12 +3975,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2314
+#: doc/tutorial.md:2313
 msgid "## Crates"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2318
+#: doc/tutorial.md:2317
 msgid ""
 "The unit of independent compilation in Rust is the crate: rustc compiles a "
 "single crate at a time, from which it produces either a library or an "
@@ -4012,7 +3988,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2323
+#: doc/tutorial.md:2322
 msgid ""
 "When compiling a single `.rs` source file, the file acts as the whole "
 "crate.  You can compile it with the `--lib` compiler switch to create a "
@@ -4021,7 +3997,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2328
+#: doc/tutorial.md:2327
 msgid ""
 "Larger crates typically span multiple files and are, by convention, compiled "
 "from a source file with the `.rc` extension, called a *crate file*.  The "
@@ -4030,7 +4006,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2337
+#: doc/tutorial.md:2336
 msgid ""
 "A typical crate file declares attributes associated with the crate that may "
 "affect how the compiler processes the source.  Crate attributes specify "
@@ -4041,34 +4017,34 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2341
+#: doc/tutorial.md:2340
 msgid ""
 "~~~~ { .xfail-test } // Crate linkage metadata #[link(name = \"farm\", vers "
 "= \"2.5\", author = \"mjh\")];"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2344
+#: doc/tutorial.md:2343
 msgid "// Make a library (\"bin\" is the default)  #[crate_type = \"lib\"];"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2347
+#: doc/tutorial.md:2346
 msgid "// Turn on a warning #[warn(non_camel_case_types)]"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2350
+#: doc/tutorial.md:2349
 msgid "// Link to the standard library extern mod std;"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2355
+#: doc/tutorial.md:2354
 msgid "// Load some modules from other files mod cow; mod chicken; mod horse;"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2360
+#: doc/tutorial.md:2359
 #, no-wrap
 msgid ""
 "fn main() {\n"
@@ -4078,7 +4054,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2367
+#: doc/tutorial.md:2366
 msgid ""
 "Compiling this file will cause `rustc` to look for files named `cow.rs`, "
 "`chicken.rs`, and `horse.rs` in the same directory as the `.rc` file, "
@@ -4088,21 +4064,21 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2371
+#: doc/tutorial.md:2370
 msgid ""
 "The `#[link(...)]` attribute provides meta information about the module, "
 "which other crates can use to load the right module. More about that later."
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2374
+#: doc/tutorial.md:2373
 msgid ""
 "To have a nested directory structure for your source files, you can nest "
 "mods:"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2381
+#: doc/tutorial.md:2380
 #, no-wrap
 msgid ""
 "~~~~ {.ignore}\n"
@@ -4114,7 +4090,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2386
+#: doc/tutorial.md:2385
 msgid ""
 "The compiler will now look for `poultry/chicken.rs` and `poultry/turkey.rs`, "
 "and export their content in `poultry::chicken` and `poultry::turkey`. You "
@@ -4123,12 +4099,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2388
+#: doc/tutorial.md:2387
 msgid "## Using other crates"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2396
+#: doc/tutorial.md:2395
 msgid ""
 "The `extern mod` directive lets you use a crate (once it's been compiled "
 "into a library) from inside another crate. `extern mod` can appear at the "
@@ -4139,17 +4115,17 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2398
+#: doc/tutorial.md:2397
 msgid "For example, `extern mod std` links the [standard library]."
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2400
+#: doc/tutorial.md:2399
 msgid "[standard library]: std/index.html"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2407
+#: doc/tutorial.md:2406
 msgid ""
 "When a comma-separated list of name/value pairs appears after `extern mod`, "
 "the compiler front-end matches these pairs against the attributes provided "
@@ -4159,22 +4135,22 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2409
+#: doc/tutorial.md:2408
 msgid "Our example crate declared this set of `link` attributes:"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2413
+#: doc/tutorial.md:2412
 msgid "~~~~ #[link(name = \"farm\", vers = \"2.5\", author = \"mjh\")]; ~~~~"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2415
+#: doc/tutorial.md:2414
 msgid "Which you can then link with any (or all) of the following:"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2421
+#: doc/tutorial.md:2420
 msgid ""
 "~~~~ {.xfail-test} extern mod farm; extern mod my_farm (name = \"farm\", "
 "vers = \"2.5\"); extern mod my_auxiliary_farm (name = \"farm\", author = "
@@ -4182,45 +4158,45 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2424
+#: doc/tutorial.md:2423
 msgid ""
 "If any of the requested metadata do not match, then the crate will not be "
 "compiled successfully."
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2426
+#: doc/tutorial.md:2425
 msgid "## A minimal example"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2429
+#: doc/tutorial.md:2428
 msgid ""
 "Now for something that you can actually compile yourself, we have these two "
 "files:"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2435
+#: doc/tutorial.md:2434
 msgid ""
 "~~~~ // world.rs #[link(name = \"world\", vers = \"1.0\")]; pub fn explore() "
 "-> &str { \"world\" } ~~~~"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2441
+#: doc/tutorial.md:2440
 msgid ""
 "~~~~ {.xfail-test} // main.rs extern mod world; fn main() { println(~\"hello "
 "\" + world::explore()); } ~~~~"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2443
+#: doc/tutorial.md:2442
 msgid "Now compile and run like this (adjust to your platform if necessary):"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2450
+#: doc/tutorial.md:2449
 #, no-wrap
 msgid ""
 "~~~~ {.notrust}\n"
@@ -4232,7 +4208,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2455
+#: doc/tutorial.md:2454
 msgid ""
 "Notice that the library produced contains the version in the filename as "
 "well as an inscrutable string of alphanumerics. These are both part of "
@@ -4241,12 +4217,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2457
+#: doc/tutorial.md:2456
 msgid "## The standard library"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2462
+#: doc/tutorial.md:2461
 msgid ""
 "The Rust standard library provides runtime features required by the "
 "language, including the task scheduler and memory allocators, as well as "
@@ -4255,7 +4231,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2473
+#: doc/tutorial.md:2472
 msgid ""
 "[`std`] includes modules corresponding to each of the integer types, each of "
 "the floating point types, the [`bool`] type, [tuples], [characters], "
@@ -4269,25 +4245,25 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2475
+#: doc/tutorial.md:2474
 msgid "### Standard Library injection and the Rust prelude"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2478
+#: doc/tutorial.md:2477
 msgid ""
 "`std` is imported at the topmost level of every crate by default, as if the "
 "first line of each crate was"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2480
+#: doc/tutorial.md:2479
 #, no-wrap
 msgid "    extern mod std;\n"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2484
+#: doc/tutorial.md:2483
 msgid ""
 "This means that the contents of std can be accessed from from any context "
 "with the `std::` path prefix, as in `use std::vec`, `use std::task::spawn`, "
@@ -4295,7 +4271,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2489
+#: doc/tutorial.md:2488
 msgid ""
 "Additionally, `std` contains a `prelude` module that reexports many of the "
 "most common standard modules, types and traits. The contents of the prelude "
@@ -4304,13 +4280,13 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2491
+#: doc/tutorial.md:2490
 #, no-wrap
 msgid "    use std::prelude::*;\n"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2517
+#: doc/tutorial.md:2516
 msgid ""
 "[`std`]: std/index.html [`bool`]: std/bool.html [tuples]: std/tuple.html "
 "[characters]: std/char.html [strings]: std/str.html [vectors]: std/vec.html "
@@ -4324,66 +4300,55 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2519
+#: doc/tutorial.md:2518
 msgid "# What next?"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2522
+#: doc/tutorial.md:2521
 msgid ""
 "Now that you know the essentials, check out any of the additional tutorials "
 "on individual topics."
 msgstr ""
 
 #. type: Bullet: '* '
-#: doc/tutorial.md:2528
+#: doc/tutorial.md:2527
 msgid "[Borrowed pointers][borrow]"
 msgstr ""
 
 #. type: Bullet: '* '
-#: doc/tutorial.md:2528
+#: doc/tutorial.md:2527
 msgid "[Tasks and communication][tasks]"
 msgstr ""
 
 #. type: Bullet: '* '
-#: doc/tutorial.md:2528
+#: doc/tutorial.md:2527
 msgid "[Macros][macros]"
 msgstr ""
 
 #. type: Bullet: '* '
-#: doc/tutorial.md:2528
+#: doc/tutorial.md:2527
 msgid "[The foreign function interface][ffi]"
 msgstr ""
 
 #. type: Bullet: '* '
-#: doc/tutorial.md:2528
+#: doc/tutorial.md:2527
 msgid "[Containers and iterators](tutorial-container.html)"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2530
+#: doc/tutorial.md:2529
 msgid "There is further documentation on the [wiki]."
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2535
+#: doc/tutorial.md:2534
 msgid ""
 "[borrow]: tutorial-borrowed-ptr.html [tasks]: tutorial-tasks.html [macros]: "
 "tutorial-macros.html [ffi]: tutorial-ffi.html"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:2541
-msgid ""
-"[wiki]: https://github.com/mozilla/rust/wiki/Docs [unit testing]: https://"
-"github.com/mozilla/rust/wiki/Doc-unit-testing [rustdoc]: https://github.com/"
-"mozilla/rust/wiki/Doc-using-rustdoc [cargo]: https://github.com/mozilla/rust/"
-"wiki/Doc-using-cargo-to-manage-packages [attributes]: https://github.com/"
-"mozilla/rust/wiki/Doc-attributes"
-msgstr ""
-
-#. type: Plain text
-#: doc/tutorial.md:2542
-msgid ""
-"[pound-rust]: http://chat.mibbit.com/?server=irc.mozilla.org&channel=%23rust"
+#: doc/tutorial.md:2536
+msgid "[wiki]: https://github.com/mozilla/rust/wiki/Docs"
 msgstr ""

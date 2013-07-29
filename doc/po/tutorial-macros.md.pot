@@ -7,13 +7,13 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Rust 0.8-pre\n"
-"POT-Creation-Date: 2013-07-17 07:18+0900\n"
+"POT-Creation-Date: 2013-07-22 23:37+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "Language: \n"
 "MIME-Version: 1.0\n"
-"Content-Type: text/plain; charset=CHARSET\n"
+"Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
 #. type: Plain text
@@ -24,7 +24,7 @@ msgid "# Introduction"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:2033 doc/rust.md:2174 doc/tutorial-macros.md:323
+#: doc/rust.md:2136 doc/rust.md:2223 doc/tutorial-macros.md:323
 msgid "~~~~"
 msgstr ""
 

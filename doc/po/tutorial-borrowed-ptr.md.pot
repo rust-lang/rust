@@ -7,13 +7,13 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Rust 0.8-pre\n"
-"POT-Creation-Date: 2013-07-17 07:18+0900\n"
+"POT-Creation-Date: 2013-07-22 23:37+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "Language: \n"
 "MIME-Version: 1.0\n"
-"Content-Type: text/plain; charset=CHARSET\n"
+"Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
 #. type: Plain text
@@ -24,7 +24,7 @@ msgid "# Introduction"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:1111 doc/tutorial-borrowed-ptr.md:72
+#: doc/tutorial.md:1108 doc/tutorial-borrowed-ptr.md:72
 msgid "Now we can call `compute_distance()` in various ways:"
 msgstr ""
 
@@ -60,8 +60,8 @@ msgstr ""
 msgid ""
 "Although borrowed pointers have rather elaborate theoretical underpinnings "
 "(region pointers), the core concepts will be familiar to anyone who has "
-"worked with C or C++. Therefore, the best way to explain how they are "
-"usedand their limitationsis probably just to work through several examples."
+"worked with C or C++. Therefore, the best way to explain how they are used—"
+"and their limitations—is probably just to work through several examples."
 msgstr ""
 
 #. type: Plain text
@@ -115,7 +115,7 @@ msgid ""
 "any two points, no matter where they were stored. For example, we might like "
 "to compute the distance between `on_the_stack` and `managed_box`, or between "
 "`managed_box` and `owned_box`. One option is to define a function that takes "
-"two arguments of type `Point`that is, it takes the points by value. But if "
+"two arguments of type `Point`—that is, it takes the points by value. But if "
 "we define it this way, calling the function will cause the points to be "
 "copied. For points, this is probably not so bad, but often copies are "
 "expensive. Worse, if the data type contains mutable fields, copying can "
@@ -313,8 +313,8 @@ msgstr ""
 #. type: Plain text
 #: doc/tutorial-borrowed-ptr.md:186
 msgid ""
-"Weve seen a few examples so far of borrowing heap boxes, both managed and "
-"owned. Up till this point, weve glossed over issues of safety. As stated in "
+"We’ve seen a few examples so far of borrowing heap boxes, both managed and "
+"owned. Up till this point, we’ve glossed over issues of safety. As stated in "
 "the introduction, at runtime a borrowed pointer is simply a pointer, nothing "
 "more. Therefore, avoiding C's problems with dangling pointers requires a "
 "compile-time safety check."
@@ -626,7 +626,7 @@ msgstr ""
 #. type: Plain text
 #: doc/tutorial-borrowed-ptr.md:376
 msgid ""
-"As an example, lets look at the following `shape` type that can represent "
+"As an example, let’s look at the following `shape` type that can represent "
 "both rectangles and circles:"
 msgstr ""
 
@@ -792,7 +792,7 @@ msgstr ""
 #: doc/tutorial-borrowed-ptr.md:483
 msgid ""
 "So far, all of the examples we have looked at, use borrowed pointers in a "
-"downward direction. That is, a method or code block creates a borrowed "
+"“downward” direction. That is, a method or code block creates a borrowed "
 "pointer, then uses it within the same scope. It is also possible to return "
 "borrowed pointers as the result of a function, but as we'll see, doing so "
 "requires some explicit annotation."
@@ -844,7 +844,7 @@ msgstr ""
 msgid ""
 "Named lifetimes that appear in function signatures are conceptually the same "
 "as the other lifetimes we have seen before, but they are a bit abstract: "
-"they dont refer to a specific expression within `get_x()`, but rather to "
+"they don’t refer to a specific expression within `get_x()`, but rather to "
 "some expression within the *caller of `get_x()`*.  The lifetime `r` is "
 "actually a kind of *lifetime parameter*: it is defined by the caller to "
 "`get_x()`, just as the value for the parameter `p` is defined by that caller."
@@ -862,7 +862,7 @@ msgstr ""
 #. type: Plain text
 #: doc/tutorial-borrowed-ptr.md:526
 msgid ""
-"To emphasize this point, lets look at a variation on the example, this time "
+"To emphasize this point, let’s look at a variation on the example, this time "
 "one that does not compile:"
 msgstr ""
 
