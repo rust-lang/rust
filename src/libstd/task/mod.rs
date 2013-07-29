@@ -86,8 +86,6 @@ pub enum TaskResult {
 pub enum SchedMode {
     /// Run task on the default scheduler
     DefaultScheduler,
-    /// Run task on the current scheduler
-    CurrentScheduler,
     /// All tasks run in the same OS thread
     SingleThreaded,
 }
