@@ -475,6 +475,7 @@ fn mk_fresh_ident_interner() -> @ident_interner {
 
         "be",                 // 65
         "in",                 // 66
+        "foreach",            // 67
     ];
 
     @ident_interner {
@@ -571,6 +572,7 @@ pub mod keywords {
         False,
         Fn,
         For,
+        ForEach,
         If,
         Impl,
         In,
@@ -614,6 +616,7 @@ pub mod keywords {
                 False => ident { name: 40, ctxt: 0 },
                 Fn => ident { name: 41, ctxt: 0 },
                 For => ident { name: 42, ctxt: 0 },
+                ForEach => ident { name: 67, ctxt: 0 },
                 If => ident { name: 43, ctxt: 0 },
                 Impl => ident { name: 44, ctxt: 0 },
                 In => ident { name: 66, ctxt: 0 },
