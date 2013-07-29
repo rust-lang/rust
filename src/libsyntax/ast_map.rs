@@ -466,11 +466,11 @@ pub fn node_id_to_str(map: map, id: NodeId, itr: @ident_interner) -> ~str {
       Some(&node_local(ident)) => {
         fmt!("local (id=%?, name=%s)", id, itr.get(ident.name))
       }
-      Some(&node_block(_)) => {
-        fmt!("block")
+      Some(&node_block(ref block)) => {
+        fmt!("block %s (id=%?)", pprust::block_to_str(block, itr), id)
       }
-      Some(&node_struct_ctor(*)) => {
-        fmt!("struct_ctor")
+      Some(&node_struct_ctor(_, _, path)) => {
+        fmt!("struct_ctor %s (id=%?)", path_to_str(*path, itr), id)
       }
     }
 }
