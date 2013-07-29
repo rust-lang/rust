@@ -500,13 +500,12 @@ types.
 
 ~~~~
 use std::float;
-use std::num::atan;
 fn angle(vector: (float, float)) -> float {
     let pi = float::consts::pi;
     match vector {
       (0f, y) if y < 0f => 1.5 * pi,
       (0f, y) => 0.5 * pi,
-      (x, y) => atan(y / x)
+      (x, y) => (y / x).atan()
     }
 }
 ~~~~
