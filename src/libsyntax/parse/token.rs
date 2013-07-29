@@ -474,6 +474,7 @@ fn mk_fresh_ident_interner() -> @ident_interner {
         "while",              // 64
 
         "be",                 // 65
+        "in",                 // 66
     ];
 
     @ident_interner {
@@ -572,6 +573,7 @@ pub mod keywords {
         For,
         If,
         Impl,
+        In,
         Let,
         __Log,
         Loop,
@@ -614,6 +616,7 @@ pub mod keywords {
                 For => ident { name: 42, ctxt: 0 },
                 If => ident { name: 43, ctxt: 0 },
                 Impl => ident { name: 44, ctxt: 0 },
+                In => ident { name: 66, ctxt: 0 },
                 Let => ident { name: 45, ctxt: 0 },
                 __Log => ident { name: 46, ctxt: 0 },
                 Loop => ident { name: 47, ctxt: 0 },
