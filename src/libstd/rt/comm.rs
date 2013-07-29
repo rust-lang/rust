@@ -24,6 +24,7 @@ use util::Void;
 use comm::{GenericChan, GenericSmartChan, GenericPort, Peekable};
 use cell::Cell;
 use clone::Clone;
+use rt::{context, SchedulerContext};
 
 /// A combined refcount / BlockedTask-as-uint pointer.
 ///
@@ -90,6 +91,9 @@ impl<T> ChanOne<T> {
     }
 
     pub fn try_send(self, val: T) -> bool {
+
+        rtassert!(context() != SchedulerContext);
+
         let mut this = self;
         let mut recvr_active = true;
         let packet = this.packet();

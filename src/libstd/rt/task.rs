@@ -45,9 +45,9 @@ pub struct Task {
     taskgroup: Option<Taskgroup>,
     death: Death,
     destroyed: bool,
-    coroutine: Option<~Coroutine>,
     // FIXME(#6874/#7599) use StringRef to save on allocations
     name: Option<~str>,
+    coroutine: Option<Coroutine>,
     sched: Option<~Scheduler>,
     task_type: TaskType
 }
@@ -128,7 +128,7 @@ impl Task {
             taskgroup: None,
             death: Death::new(),
             destroyed: false,
-            coroutine: Some(~Coroutine::empty()),
+            coroutine: Some(Coroutine::empty()),
             sched: None,
             task_type: SchedTask
         }
@@ -157,8 +157,8 @@ impl Task {
             taskgroup: None,
             death: Death::new(),
             destroyed: false,
-            coroutine: Some(~Coroutine::new(stack_pool, start)),
             name: None,
+            coroutine: Some(Coroutine::new(stack_pool, start)),
             sched: None,
             task_type: GreenTask(Some(~home))
         }
@@ -178,8 +178,8 @@ impl Task {
             // FIXME(#7544) make watching optional
             death: self.death.new_child(),
             destroyed: false,
-            coroutine: Some(~Coroutine::new(stack_pool, start)),
             name: None,
+            coroutine: Some(Coroutine::new(stack_pool, start)),
             sched: None,
             task_type: GreenTask(Some(~home))
         }
@@ -375,9 +375,9 @@ impl Coroutine {
     }
 
     /// Destroy coroutine and try to reuse stack segment.
-    pub fn recycle(~self, stack_pool: &mut StackPool) {
+    pub fn recycle(self, stack_pool: &mut StackPool) {
         match self {
-            ~Coroutine { current_stack_segment, _ } => {
+            Coroutine { current_stack_segment, _ } => {
                 stack_pool.give_segment(current_stack_segment);
             }
         }

@@ -790,10 +790,8 @@ impl Drop for UvTimer {
 impl RtioTimer for UvTimer {
     fn sleep(&self, msecs: u64) {
         let scheduler = Local::take::<Scheduler>();
-        assert!(scheduler.in_task_context());
-        do scheduler.deschedule_running_task_and_then |sched, task| {
+        do scheduler.deschedule_running_task_and_then |_sched, task| {
             rtdebug!("sleep: entered scheduler context");
-            assert!(!sched.in_task_context());
             let task_cell = Cell::new(task);
             let mut watcher = **self;
             do watcher.start(msecs, 0) |_, status| {
