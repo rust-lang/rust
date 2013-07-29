@@ -105,8 +105,6 @@ pub enum SchedMode {
     PlatformThread,
     /// All tasks run in the same OS thread
     SingleThreaded,
-    /// Tasks are distributed among available CPUs
-    ThreadPerTask,
 }
 
 /**
