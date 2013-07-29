@@ -117,6 +117,23 @@ impl StrInterner {
         new_idx
     }
 
+    // I want these gensyms to share name pointers
+    // with existing entries. This would be automatic,
+    // except that the existing gensym creates its
+    // own managed ptr using to_managed. I think that
+    // adding this utility function is the most
+    // lightweight way to get what I want, though not
+    // necessarily the cleanest.
+
+    // create a gensym with the same name as an existing
+    // entry.
+    pub fn gensym_copy(&self, idx : uint) -> uint {
+        let new_idx = self.len();
+        // leave out of map to avoid colliding
+        self.vect.push(self.vect[idx]);
+        new_idx
+    }
+
     // this isn't "pure" in the traditional sense, because it can go from
     // failing to returning a value as items are interned. But for typestate,
     // where we first check a pred and then rely on it, ceasing to fail is ok.
@@ -144,23 +161,23 @@ mod tests {
     }
 
     #[test]
-    fn i2 () {
+    fn interner_tests () {
         let i : Interner<@str> = Interner::new();
         // first one is zero:
-        assert_eq!(i.intern (@"dog"), 0);
+        assert_eq!(i.intern(@"dog"), 0);
         // re-use gets the same entry:
-        assert_eq!(i.intern (@"dog"), 0);
+        assert_eq!(i.intern(@"dog"), 0);
         // different string gets a different #:
-        assert_eq!(i.intern (@"cat"), 1);
-        assert_eq!(i.intern (@"cat"), 1);
+        assert_eq!(i.intern(@"cat"), 1);
+        assert_eq!(i.intern(@"cat"), 1);
         // dog is still at zero
-        assert_eq!(i.intern (@"dog"), 0);
+        assert_eq!(i.intern(@"dog"), 0);
         // gensym gets 3
-        assert_eq!(i.gensym (@"zebra" ), 2);
+        assert_eq!(i.gensym(@"zebra" ), 2);
         // gensym of same string gets new number :
         assert_eq!(i.gensym (@"zebra" ), 3);
         // gensym of *existing* string gets new number:
-        assert_eq!(i.gensym (@"dog"), 4);
+        assert_eq!(i.gensym(@"dog"), 4);
         assert_eq!(i.get(0), @"dog");
         assert_eq!(i.get(1), @"cat");
         assert_eq!(i.get(2), @"zebra");
@@ -175,5 +192,35 @@ mod tests {
         assert_eq!(i.get(1), @"Bob");
         assert_eq!(i.get(2), @"Carol");
         assert_eq!(i.intern(@"Bob"), 1);
+    }
+
+    #[test]
+    fn string_interner_tests() {
+        let i : StrInterner = StrInterner::new();
+        // first one is zero:
+        assert_eq!(i.intern("dog"), 0);
+        // re-use gets the same entry:
+        assert_eq!(i.intern ("dog"), 0);
+        // different string gets a different #:
+        assert_eq!(i.intern("cat"), 1);
+        assert_eq!(i.intern("cat"), 1);
+        // dog is still at zero
+        assert_eq!(i.intern("dog"), 0);
+        // gensym gets 3
+        assert_eq!(i.gensym("zebra"), 2);
+        // gensym of same string gets new number :
+        assert_eq!(i.gensym("zebra"), 3);
+        // gensym of *existing* string gets new number:
+        assert_eq!(i.gensym("dog"), 4);
+        // gensym tests again with gensym_copy:
+        assert_eq!(i.gensym_copy(2), 5);
+        assert_eq!(i.get(5), @"zebra");
+        assert_eq!(i.gensym_copy(2), 6);
+        assert_eq!(i.get(6), @"zebra");
+        assert_eq!(i.get(0), @"dog");
+        assert_eq!(i.get(1), @"cat");
+        assert_eq!(i.get(2), @"zebra");
+        assert_eq!(i.get(3), @"zebra");
+        assert_eq!(i.get(4), @"dog");
     }
 }

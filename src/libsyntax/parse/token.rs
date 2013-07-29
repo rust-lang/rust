@@ -9,16 +9,14 @@
 // except according to those terms.
 
 use ast;
-use ast::Name;
+use ast::{Name, Mrk};
 use ast_util;
 use parse::token;
 use util::interner::StrInterner;
 use util::interner;
 
-use std::cmp::Equiv;
+use std::cast;
 use std::local_data;
-use std::rand;
-use std::rand::RngUtil;
 
 #[deriving(Clone, Encodable, Decodable, Eq, IterBytes)]
 pub enum binop {
@@ -302,22 +300,23 @@ pub fn is_bar(t: &Token) -> bool {
     match *t { BINOP(OR) | OROR => true, _ => false }
 }
 
-
 pub mod special_idents {
     use ast::ident;
 
-    pub static underscore : ident = ident { name: 0, ctxt: 0};
+    pub static underscore : ident = ident { name: 0, ctxt: 0}; // apparently unused?
     pub static anon : ident = ident { name: 1, ctxt: 0};
     pub static invalid : ident = ident { name: 2, ctxt: 0}; // ''
-    pub static unary : ident = ident { name: 3, ctxt: 0};
-    pub static not_fn : ident = ident { name: 4, ctxt: 0};
-    pub static idx_fn : ident = ident { name: 5, ctxt: 0};
-    pub static unary_minus_fn : ident = ident { name: 6, ctxt: 0};
+    pub static unary : ident = ident { name: 3, ctxt: 0}; // apparently unused?
+    pub static not_fn : ident = ident { name: 4, ctxt: 0}; // apparently unused?
+    pub static idx_fn : ident = ident { name: 5, ctxt: 0}; // apparently unused?
+    pub static unary_minus_fn : ident = ident { name: 6, ctxt: 0}; // apparently unused?
     pub static clownshoes_extensions : ident = ident { name: 7, ctxt: 0};
 
     pub static self_ : ident = ident { name: 8, ctxt: 0}; // 'self'
 
     /* for matcher NTs */
+    // none of these appear to be used, but perhaps references to
+    // these are artificially fabricated by the macro system....
     pub static item : ident = ident { name: 9, ctxt: 0};
     pub static block : ident = ident { name: 10, ctxt: 0};
     pub static stmt : ident = ident { name: 11, ctxt: 0};
@@ -329,7 +328,7 @@ pub mod special_idents {
     pub static tt : ident = ident { name: 17, ctxt: 0};
     pub static matchers : ident = ident { name: 18, ctxt: 0};
 
-    pub static str : ident = ident { name: 19, ctxt: 0}; // for the type
+    pub static str : ident = ident { name: 19, ctxt: 0}; // for the type // apparently unused?
 
     /* outside of libsyntax */
     pub static arg : ident = ident { name: 20, ctxt: 0};
@@ -342,9 +341,31 @@ pub mod special_idents {
     pub static statik : ident = ident { name: 27, ctxt: 0};
     pub static clownshoes_foreign_mod: ident = ident { name: 28, ctxt: 0};
     pub static unnamed_field: ident = ident { name: 29, ctxt: 0};
-    pub static c_abi: ident = ident { name: 30, ctxt: 0};
+    pub static c_abi: ident = ident { name: 30, ctxt: 0}; // apparently unused?
     pub static type_self: ident = ident { name: 31, ctxt: 0};    // `Self`
 }
+
+// here are the ones that actually occur in the source. Maybe the rest
+// should be removed?
+/*
+special_idents::anon
+special_idents::arg
+special_idents::blk
+special_idents::clownshoe_abi
+special_idents::clownshoe_stack_shim
+special_idents::clownshoes_extensions
+special_idents::clownshoes_foreign_mod
+special_idents::descrim
+special_idents::invalid
+special_idents::main
+special_idents::matchers
+special_idents::opaque
+special_idents::self_
+special_idents::statik
+special_idents::tt
+special_idents::type_self
+special_idents::unnamed_field
+*/
 
 /**
  * Maps a token to a record specifying the corresponding binary
@@ -374,30 +395,8 @@ pub fn token_to_binop(tok: &Token) -> Option<ast::binop> {
   }
 }
 
-pub struct ident_interner {
-    priv interner: StrInterner,
-}
-
-impl ident_interner {
-    pub fn intern(&self, val: &str) -> Name {
-        self.interner.intern(val)
-    }
-    pub fn gensym(&self, val: &str) -> Name {
-        self.interner.gensym(val)
-    }
-    pub fn get(&self, idx: Name) -> @str {
-        self.interner.get(idx)
-    }
-    // is this really something that should be exposed?
-    pub fn len(&self) -> uint {
-        self.interner.len()
-    }
-    pub fn find_equiv<Q:Hash + IterBytes + Equiv<@str>>(&self, val: &Q)
-                                                     -> Option<Name> {
-        self.interner.find_equiv(val)
-    }
-}
-
+// looks like we can get rid of this completely...
+pub type ident_interner = StrInterner;
 
 // return a fresh interner, preloaded with special identifiers.
 fn mk_fresh_ident_interner() -> @ident_interner {
@@ -476,9 +475,7 @@ fn mk_fresh_ident_interner() -> @ident_interner {
         "be",                 // 65
     ];
 
-    @ident_interner {
-        interner: interner::StrInterner::prefill(init_vec)
-    }
+    @interner::StrInterner::prefill(init_vec)
 }
 
 // if an interner exists in TLS, return it. Otherwise, prepare a
@@ -499,7 +496,7 @@ pub fn get_ident_interner() -> @ident_interner {
 /* for when we don't care about the contents; doesn't interact with TLD or
    serialization */
 pub fn mk_fake_ident_interner() -> @ident_interner {
-    @ident_interner { interner: interner::StrInterner::new() }
+    @interner::StrInterner::new()
 }
 
 // maps a string to its interned representation
@@ -534,18 +531,44 @@ pub fn gensym_ident(str : &str) -> ast::ident {
     ast::new_ident(gensym(str))
 }
 
+// create a fresh name that maps to the same string as the old one.
+// note that this guarantees that str_ptr_eq(ident_to_str(src),interner_get(fresh_name(src)));
+// that is, that the new name and the old one are connected to ptr_eq strings.
+pub fn fresh_name(src : &ast::ident) -> Name {
+    let interner = get_ident_interner();
+    interner.gensym_copy(src.name)
+    // following: debug version. Could work in final except that it's incompatible with
+    // good error messages and uses of struct names in ambiguous could-be-binding
+    // locations. Also definitely destroys the guarantee given above about ptr_eq.
+    /*let num = rand::rng().gen_uint_range(0,0xffff);
+    gensym(fmt!("%s_%u",ident_to_str(src),num))*/
+}
 
-// create a fresh name. In principle, this is just a
-// gensym, but for debugging purposes, you'd like the
-// resulting name to have a suggestive stringify, without
-// paying the cost of guaranteeing that the name is
-// truly unique.  I'm going to try to strike a balance
-// by using a gensym with a name that has a random number
-// at the end. So, the gensym guarantees the uniqueness,
-// and the int helps to avoid confusion.
-pub fn fresh_name(src_name : &str) -> Name {
-    let num = rand::rng().gen_uint_range(0,0xffff);
-   gensym(fmt!("%s_%u",src_name,num))
+// it looks like there oughta be a str_ptr_eq fn, but no one bothered to implement it?
+
+// determine whether two @str values are pointer-equal
+pub fn str_ptr_eq(a : @str, b : @str) -> bool {
+    unsafe {
+        let p : uint = cast::transmute(a);
+        let q : uint = cast::transmute(b);
+        let result = p == q;
+        // got to transmute them back, to make sure the ref count is correct:
+        let _junk1 : @str = cast::transmute(p);
+        let _junk2 : @str = cast::transmute(q);
+        result
+    }
+}
+
+// return true when two identifiers refer (through the intern table) to the same ptr_eq
+// string. This is used to compare identifiers in places where hygienic comparison is
+// not wanted (i.e. not lexical vars).
+pub fn ident_spelling_eq(a : &ast::ident, b : &ast::ident) -> bool {
+    str_ptr_eq(interner_get(a.name),interner_get(b.name))
+}
+
+// create a fresh mark.
+pub fn fresh_mark() -> Mrk {
+    gensym("mark")
 }
 
 /**
@@ -679,14 +702,48 @@ pub fn is_reserved_keyword(tok: &Token) -> bool {
     }
 }
 
+// not currently used anywhere...
+pub fn mtwt_token_eq(t1 : &Token, t2 : &Token) -> bool {
+    match (t1,t2) {
+        (&IDENT(id1,_),&IDENT(id2,_)) =>
+        ast_util::mtwt_resolve(id1) == ast_util::mtwt_resolve(id2),
+        _ => *t1 == *t2
+    }
+}
+
 
 #[cfg(test)]
 mod test {
+    use ast;
+    use ast_util;
     use super::*;
-    use std::io;
-    #[test] fn t1() {
-        let a = fresh_name("ghi");
-        printfln!("interned name: %u,\ntextual name: %s\n",
-                  a, interner_get(a));
+
+    fn mark_ident(id : ast::ident, m : ast::Mrk) -> ast::ident {
+        ast::ident{name:id.name,ctxt:ast_util::new_mark(m,id.ctxt)}
     }
+
+    #[test] fn mtwt_token_eq_test() {
+        assert!(mtwt_token_eq(&GT,&GT));
+        let a = str_to_ident("bac");
+        let a1 = mark_ident(a,92);
+        assert!(mtwt_token_eq(&IDENT(a,true),&IDENT(a1,false)));
+    }
+
+    #[test] fn str_ptr_eq_tests(){
+        let a = @"abc";
+        let b = @"abc";
+        let c = a;
+        assert!(str_ptr_eq(a,c));
+        assert!(!str_ptr_eq(a,b));
+    }
+
+    #[test] fn fresh_name_pointer_sharing() {
+        let ghi = str_to_ident("ghi");
+        assert_eq!(ident_to_str(&ghi),@"ghi");
+        assert!(str_ptr_eq(ident_to_str(&ghi),ident_to_str(&ghi)))
+        let fresh = ast::new_ident(fresh_name(&ghi));
+        assert_eq!(ident_to_str(&fresh),@"ghi");
+        assert!(str_ptr_eq(ident_to_str(&ghi),ident_to_str(&fresh)));
+    }
+
 }

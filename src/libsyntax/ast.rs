@@ -20,12 +20,35 @@ use std::option::Option;
 use std::to_str::ToStr;
 use extra::serialize::{Encodable, Decodable, Encoder, Decoder};
 
+
+// FIXME #6993: in librustc, uses of "ident" should be replaced
+// by just "Name".
+
 // an identifier contains a Name (index into the interner
 // table) and a SyntaxContext to track renaming and
 // macro expansion per Flatt et al., "Macros
 // That Work Together"
-#[deriving(Clone, Eq, IterBytes)]
+#[deriving(Clone, IterBytes)]
 pub struct ident { name: Name, ctxt: SyntaxContext }
+
+impl Eq for ident {
+    fn eq(&self, other: &ident) -> bool {
+        if (self.ctxt == other.ctxt) {
+            self.name == other.name
+        } else {
+            // IF YOU SEE ONE OF THESE FAILS: it means that you're comparing
+            // idents that have different contexts. You can't fix this without
+            // knowing whether the comparison should be hygienic or non-hygienic.
+            // if it should be non-hygienic (most things are), just compare the
+            // 'name' fields of the idents. Or, even better, replace the idents
+            // with Name's.
+            fail!(fmt!("not allowed to compare these idents: %?, %?", self, other));
+        }
+    }
+    fn ne(&self, other: &ident) -> bool {
+        ! self.eq(other)
+    }
+}
 
 /// Construct an identifier with the given name and an empty context:
 pub fn new_ident(name: Name) -> ident { ident {name: name, ctxt: empty_ctxt}}
@@ -45,6 +68,15 @@ pub fn new_ident(name: Name) -> ident { ident {name: name, ctxt: empty_ctxt}}
 // storage.
 pub type SyntaxContext = uint;
 
+// the SCTable contains a table of SyntaxContext_'s. It
+// represents a flattened tree structure, to avoid having
+// managed pointers everywhere (that caused an ICE).
+// the mark_memo and rename_memo fields are side-tables
+// that ensure that adding the same mark to the same context
+// gives you back the same context as before. This shouldn't
+// change the semantics--everything here is immutable--but
+// it should cut down on memory use *a lot*; applying a mark
+// to a tree containing 50 identifiers would otherwise generate
 pub struct SCTable {
     table : ~[SyntaxContext_],
     mark_memo : HashMap<(SyntaxContext,Mrk),SyntaxContext>,
@@ -67,6 +99,7 @@ pub enum SyntaxContext_ {
     // in the "from" slot. In essence, they're all
     // pointers to a single "rename" event node.
     Rename (ident,Name,SyntaxContext),
+    // actually, IllegalCtxt may not be necessary.
     IllegalCtxt()
 }
 
@@ -96,6 +129,7 @@ pub type fn_ident = Option<ident>;
 pub struct Lifetime {
     id: node_id,
     span: span,
+    // FIXME #7743 : change this to Name!
     ident: ident
 }
 
@@ -530,10 +564,11 @@ pub enum token_tree {
     // a delimited sequence (the delimiters appear as the first
     // and last elements of the vector)
     tt_delim(@mut ~[token_tree]),
+
     // These only make sense for right-hand-sides of MBE macros:
 
     // a kleene-style repetition sequence with a span, a tt_forest,
-    // an optional separator (?), and a boolean where true indicates
+    // an optional separator, and a boolean where true indicates
     // zero or more (*), and false indicates one or more (+).
     tt_seq(span, @mut ~[token_tree], Option<::parse::token::Token>, bool),
 
@@ -608,9 +643,13 @@ pub enum matcher_ {
 
 pub type mac = spanned<mac_>;
 
+// represents a macro invocation. The Path indicates which macro
+// is being invoked, and the vector of token-trees contains the source
+// of the macro invocation.
+// There's only one flavor, now, so this could presumably be simplified.
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub enum mac_ {
-    mac_invoc_tt(Path,~[token_tree]),   // new macro-invocation
+    mac_invoc_tt(Path,~[token_tree],SyntaxContext),   // new macro-invocation
 }
 
 pub type lit = spanned<lit_>;
