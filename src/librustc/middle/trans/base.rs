@@ -2218,23 +2218,14 @@ pub fn trans_mod(ccx: @mut CrateContext, m: &ast::_mod) {
 pub fn register_fn(ccx: @mut CrateContext,
                    sp: span,
                    sym: ~str,
-                   node_id: ast::NodeId)
-                -> ValueRef {
-    let t = ty::node_id_to_type(ccx.tcx, node_id);
-    register_fn_full(ccx, sp, sym, node_id, t)
-}
-
-pub fn register_fn_full(ccx: @mut CrateContext,
-                        sp: span,
-                        sym: ~str,
-                        node_id: ast::NodeId,
-                        node_type: ty::t)
-                     -> ValueRef {
+                   node_id: ast::NodeId,
+                   node_type: ty::t)
+                   -> ValueRef {
     let llfty = type_of_fn_from_ty(ccx, node_type);
-    register_fn_fuller(ccx, sp, sym, node_id, lib::llvm::CCallConv, llfty)
+    register_fn_llvmty(ccx, sp, sym, node_id, lib::llvm::CCallConv, llfty)
 }
 
-pub fn register_fn_fuller(ccx: @mut CrateContext,
+pub fn register_fn_llvmty(ccx: @mut CrateContext,
                           sp: span,
                           sym: ~str,
                           node_id: ast::NodeId,
@@ -2449,7 +2440,7 @@ pub fn get_item_val(ccx: @mut CrateContext, id: ast::NodeId) -> ValueRef {
 
                         ast::item_fn(_, purity, _, _, _) => {
                             let llfn = if purity != ast::extern_fn {
-                                register_fn_full(ccx, i.span, sym, i.id, ty)
+                                register_fn(ccx, i.span, sym, i.id, ty)
                             } else {
                                 foreign::register_foreign_fn(ccx, i.span, sym, i.id)
                             };
@@ -2499,7 +2490,7 @@ pub fn get_item_val(ccx: @mut CrateContext, id: ast::NodeId) -> ValueRef {
                             let path = vec::append((*pth).clone(), [path_name(ni.ident)]);
                             let sym = exported_name(ccx, path, ty, ni.attrs);
 
-                            register_fn_full(ccx, ni.span, sym, ni.id, ty)
+                            register_fn(ccx, ni.span, sym, ni.id, ty)
                         }
                         ast::foreign_item_static(*) => {
                             let ident = token::ident_to_str(&ni.ident);
@@ -2527,7 +2518,7 @@ pub fn get_item_val(ccx: @mut CrateContext, id: ast::NodeId) -> ValueRef {
 
                             llfn = match enm.node {
                                 ast::item_enum(_, _) => {
-                                    register_fn_full(ccx, (*v).span, sym, id, ty)
+                                    register_fn(ccx, (*v).span, sym, id, ty)
                                 }
                                 _ => fail!("node_variant, shouldn't happen")
                             };
@@ -2551,7 +2542,8 @@ pub fn get_item_val(ccx: @mut CrateContext, id: ast::NodeId) -> ValueRef {
                             let ty = ty::node_id_to_type(ccx.tcx, ctor_id);
                             let sym = exported_name(ccx, (*struct_path).clone(), ty,
                                                     struct_item.attrs);
-                            let llfn = register_fn_full(ccx, struct_item.span, sym, ctor_id, ty);
+                            let llfn = register_fn(ccx, struct_item.span,
+                                                   sym, ctor_id, ty);
                             set_inline_hint(llfn);
                             llfn
                         }
@@ -2586,7 +2578,7 @@ pub fn register_method(ccx: @mut CrateContext,
 
     let sym = exported_name(ccx, path, mty, m.attrs);
 
-    let llfn = register_fn_full(ccx, m.span, sym, id, mty);
+    let llfn = register_fn(ccx, m.span, sym, id, mty);
     set_inline_hint_if_appr(m.attrs, llfn);
     llfn
 }
