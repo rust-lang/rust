@@ -52,6 +52,7 @@ pub fn rust_path() -> ~[Path] {
         }
         None => ~[]
     };
+    debug!("RUST_PATH entries from environment: %?", env_rust_path);
     let cwd = os::getcwd();
     // now add in default entries
     env_rust_path.push(cwd.clone());
@@ -345,7 +346,12 @@ fn target_file_in_workspace(pkgid: &PkgId, workspace: &Path,
     let subdir = match what {
         Lib => "lib", Main | Test | Bench => "bin"
     };
-    let result = workspace.push(subdir);
+    // Artifacts in the build directory live in a package-ID-specific subdirectory,
+    // but installed ones don't.
+    let result = match where {
+                Build => workspace.push(subdir).push_rel(&*pkgid.local_path),
+                _     => workspace.push(subdir)
+    };
     if !os::path_exists(&result) && !mkdir_recursive(&result, U_RWX) {
         cond.raise((result.clone(), fmt!("target_file_in_workspace couldn't \
             create the %s dir (pkgid=%s, workspace=%s, what=%?, where=%?",

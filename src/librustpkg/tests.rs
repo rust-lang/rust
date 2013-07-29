@@ -18,7 +18,7 @@ use std::run::ProcessOutput;
 use installed_packages::list_installed_packages;
 use package_path::*;
 use package_id::{PkgId};
-use version::{ExactRevision, NoVersion, Version};
+use version::{ExactRevision, NoVersion, Version, Tagged};
 use path_util::{target_executable_in_workspace, target_library_in_workspace,
                target_test_in_workspace, target_bench_in_workspace,
                make_dir_rwx, U_RWX, library_in_workspace,
@@ -58,6 +58,16 @@ fn git_repo_pkg() -> PkgId {
         remote_path: remote,
         short_name: ~"test_pkg",
         version: NoVersion
+    }
+}
+
+fn git_repo_pkg_with_tag(a_tag: ~str) -> PkgId {
+    let remote = RemotePath(Path("mockgithub.com/catamorphism/test-pkg"));
+    PkgId {
+        local_path: normalize(remote.clone()),
+        remote_path: remote,
+        short_name: ~"test_pkg",
+        version: Tagged(a_tag)
     }
 }
 
@@ -148,8 +158,28 @@ fn init_git_repo(p: &Path) -> Path {
     }
 }
 
-fn add_git_tag(repo: &Path, tag: ~str) {
-    assert!(repo.is_absolute());
+fn add_all_and_commit(repo: &Path) {
+    git_add_all(repo);
+    git_commit(repo, ~"floop");
+}
+
+fn git_commit(repo: &Path, msg: ~str) {
+    let mut prog = run::Process::new("git", [~"commit", ~"-m", msg],
+                                     run::ProcessOptions { env: None,
+                                                          dir: Some(repo),
+                                                          in_fd: None,
+                                                          out_fd: None,
+                                                          err_fd: None
+                                                         });
+    let output = prog.finish_with_output();
+    if output.status != 0 {
+        fail!("Couldn't commit in %s: output was %s", repo.to_str(),
+              str::from_bytes(output.output + output.error))
+    }
+
+}
+
+fn git_add_all(repo: &Path) {
     let mut prog = run::Process::new("git", [~"add", ~"-A"],
                                      run::ProcessOptions { env: None,
                                                           dir: Some(repo),
@@ -159,21 +189,16 @@ fn add_git_tag(repo: &Path, tag: ~str) {
                                                          });
     let output = prog.finish_with_output();
     if output.status != 0 {
-        fail!("Couldn't add all files in %s", repo.to_str())
+        fail!("Couldn't add all files in %s: output was %s",
+              repo.to_str(), str::from_bytes(output.output + output.error))
     }
-    prog = run::Process::new("git", [~"commit", ~"-m", ~"whatever"],
-                                     run::ProcessOptions { env: None,
-                                                          dir: Some(repo),
-                                                          in_fd: None,
-                                                          out_fd: None,
-                                                          err_fd: None
-                                                         });
-    let output = prog.finish_with_output();
-    if output.status != 0 {
-        fail!("Couldn't commit in %s", repo.to_str())
-    }
+}
 
-    prog = run::Process::new("git", [~"tag", tag.clone()],
+fn add_git_tag(repo: &Path, tag: ~str) {
+    assert!(repo.is_absolute());
+    git_add_all(repo);
+    git_commit(repo, ~"whatever");
+    let mut prog = run::Process::new("git", [~"tag", tag.clone()],
                                      run::ProcessOptions { env: None,
                                                           dir: Some(repo),
                                                           in_fd: None,
@@ -622,31 +647,6 @@ fn test_package_request_version() {
     writeFile(&repo_subdir.push("version-0.4-file.txt"), "hello");
     add_git_tag(&repo_subdir, ~"0.4");
 
-/*
-
-    let pkg_src = PkgSrc::new(&repo, &repo, &temp_pkg_id);
-    match temp_pkg_id.version {
-        ExactRevision(~"0.3") => {
-            debug!("Version matches, calling fetch_git");
-            match pkg_src.fetch_git() {
-                Some(p) => {
-                    debug!("does version-0.3-file exist?");
-                    assert!(os::path_exists(&p.push("version-0.3-file.txt")));
-                    debug!("does version-0.4-file exist?");
-                    assert!(!os::path_exists(&p.push("version-0.4-file.txt")));
-
-                }
-                None => fail!("test_package_request_version: fetch_git failed")
-            }
-        }
-        ExactRevision(n) => {
-            fail!("n is %? and %? %s %?", n, n, if n == ~"0.3" { "==" } else { "!=" }, "0.3");
-        }
-        _ => fail!(fmt!("test_package_version: package version was %?, expected ExactRevision(0.3)",
-                        temp_pkg_id.version))
-    }
-*/
-
     command_line_test([~"install", fmt!("%s#0.3", local_path)], &repo);
 
     assert!(match installed_library_in_workspace("test_pkg_version", &repo.push(".rust")) {
@@ -679,6 +679,7 @@ fn rustpkg_install_url_2() {
 }
 
 // FIXME: #7956: temporarily disabled
+#[test]
 fn rustpkg_library_target() {
     let foo_repo = init_git_repo(&Path("foo"));
     let package_dir = foo_repo.push("foo");
@@ -705,8 +706,10 @@ fn rustpkg_local_pkg() {
     assert_executable_exists(&dir, "foo");
 }
 
+// FIXME: #7956: temporarily disabled
+//  Failing on dist-linux bot
 #[test]
-#[ignore] // XXX Failing on dist-linux bot
+#[ignore]
 fn package_script_with_default_build() {
     let dir = create_local_package(&PkgId::new("fancy-lib", &os::getcwd()));
     debug!("dir = %s", dir.to_str());
@@ -765,7 +768,7 @@ fn rustpkg_clean_no_arg() {
 }
 
 #[test]
-#[ignore (reason = "Un-ignore when #7071 is fixed")]
+#[ignore (reason = "Specifying env doesn't work -- see #8028")]
 fn rust_path_test() {
     let dir_for_path = mkdtemp(&os::tmpdir(), "more_rust").expect("rust_path_test failed");
     let dir = mk_workspace(&dir_for_path, &normalize(RemotePath(Path("foo"))), &NoVersion);
@@ -774,9 +777,13 @@ fn rust_path_test() {
 
     let cwd = os::getcwd();
     debug!("cwd = %s", cwd.to_str());
+    debug!("Running command: cd %s; RUST_LOG=rustpkg RUST_PATH=%s rustpkg install foo",
+           cwd.to_str(), dir_for_path.to_str());
     let mut prog = run::Process::new("rustpkg",
                                      [~"install", ~"foo"],
-                                     run::ProcessOptions { env: Some(&[(~"RUST_PATH",
+                                     run::ProcessOptions { env: Some(&[(~"RUST_LOG",
+                                                                        ~"rustpkg"),
+                                                                       (~"RUST_PATH",
                                                                        dir_for_path.to_str())]),
                                                           dir: Some(&cwd),
                                                           in_fd: None,
@@ -954,7 +961,6 @@ fn do_rebuild_dep_only_contents_change() {
 }
 
 #[test]
-#[ignore(reason = "list not yet implemented")]
 fn test_versions() {
     let workspace = create_local_package(&PkgId::new("foo#0.1", &os::getcwd()));
     create_local_package(&PkgId::new("foo#0.2", &os::getcwd()));
@@ -992,11 +998,35 @@ fn test_rustpkg_test() {
 }
 
 #[test]
-#[ignore(reason = "uninstall not yet implemented")]
 fn test_uninstall() {
     let workspace = create_local_package(&PkgId::new("foo", &os::getcwd()));
     let _output = command_line_test([~"info", ~"foo"], &workspace);
     command_line_test([~"uninstall", ~"foo"], &workspace);
     let output = command_line_test([~"list"], &workspace);
     assert!(!str::from_bytes(output.output).contains("foo"));
+}
+
+#[test]
+fn test_non_numeric_tag() {
+    let temp_pkg_id = git_repo_pkg();
+    let repo = init_git_repo(&Path(temp_pkg_id.local_path.to_str()));
+    let repo_subdir = repo.push("mockgithub.com").push("catamorphism").push("test_pkg");
+    writeFile(&repo_subdir.push("foo"), "foo");
+    writeFile(&repo_subdir.push("lib.rs"),
+              "pub fn f() { let _x = (); }");
+    add_git_tag(&repo_subdir, ~"testbranch");
+    writeFile(&repo_subdir.push("testbranch_only"), "hello");
+    add_git_tag(&repo_subdir, ~"another_tag");
+    writeFile(&repo_subdir.push("not_on_testbranch_only"), "bye bye");
+    add_all_and_commit(&repo_subdir);
+
+
+    command_line_test([~"install", fmt!("%s#testbranch", temp_pkg_id.remote_path.to_str())],
+                      &repo);
+    let file1 = repo.push_many(["mockgithub.com", "catamorphism",
+                                "test_pkg", "testbranch_only"]);
+    let file2 = repo.push_many(["mockgithub.com", "catamorphism", "test_pkg",
+                                "master_only"]);
+    assert!(os::path_exists(&file1));
+    assert!(!os::path_exists(&file2));
 }

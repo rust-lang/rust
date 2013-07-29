@@ -76,6 +76,14 @@ A package ID can also specify a version, like:
 `github.com/mozilla/rust#0.3`.
 In this case, `rustpkg` will check that the repository `github.com/mozilla/rust` has a tag named `0.3`,
 and report an error otherwise.
+A package ID can also specify a particular revision of a repository, like:
+`github.com/mozilla/rust#release-0.7`.
+When the refspec (portion of the package ID after the `#`) can't be parsed as a decimal number,
+rustpkg passes the refspec along to the version control system without interpreting it.
+rustpkg also interprets any dependencies on such a package ID literally
+(as opposed to versions, where a newer version satisfies a dependency on an older version).
+Thus, `github.com/mozilla/rust#5c4cd30f80` is also a valid package ID,
+since git can deduce that 5c4cd30f80 refers to a revision of the desired repository.
 
 ## Source files
 

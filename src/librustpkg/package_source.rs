@@ -11,14 +11,13 @@
 use target::*;
 use package_id::PkgId;
 use std::path::Path;
-use std::{os, run, str};
+use std::{os, str};
 use context::*;
 use crate::Crate;
 use messages::*;
-use source_control::git_clone;
+use source_control::{git_clone, git_clone_general};
 use path_util::pkgid_src_in_workspace;
 use util::compile_crate;
-use version::{ExactRevision, SemanticVersion, NoVersion};
 
 // An enumeration of the unpacked source of a package workspace.
 // This contains a list of files found in the source workspace.
@@ -102,22 +101,13 @@ impl PkgSrc {
         }
 
         let url = fmt!("https://%s", self.id.remote_path.to_str());
-        let branch_args = match self.id.version {
-                      NoVersion => ~[],
-                      ExactRevision(ref s) => ~[~"--branch", (*s).clone()],
-                      SemanticVersion(ref s) => ~[~"--branch", s.to_str()]
-        };
-
-
-        note(fmt!("Fetching package: git clone %s %s %?", url, local.to_str(), branch_args));
-
-        if run::process_output("git",
-                               ~[~"clone", url.clone(), local.to_str()] + branch_args).status != 0 {
-            note(fmt!("fetching %s failed: can't clone repository", url));
-            None
+        note(fmt!("Fetching package: git clone %s %s [version=%s]",
+                  url, local.to_str(), self.id.version.to_str()));
+        if git_clone_general(url, &local, &self.id.version) {
+            Some(local)
         }
         else {
-            Some(local)
+            None
         }
     }
 
