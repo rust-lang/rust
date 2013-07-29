@@ -42,6 +42,10 @@ ifdef CFG_VALGRIND
   TEST_BENCH =
 endif
 
+ifdef NO_BENCH
+  TEST_BENCH =
+endif
+
 # Arguments to the perf tests
 ifdef CFG_PERF_TOOL
   CTEST_PERF_RUNTOOL = --runtool "$(CFG_PERF_TOOL)"
