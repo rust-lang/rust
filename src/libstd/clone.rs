@@ -97,6 +97,26 @@ clone_impl!(())
 clone_impl!(bool)
 clone_impl!(char)
 
+macro_rules! extern_fn_clone(
+    ($($A:ident),*) => (
+        impl<$($A,)* ReturnType> Clone for extern "Rust" fn($($A),*) -> ReturnType {
+            /// Return a copy of a function pointer
+            #[inline]
+            fn clone(&self) -> extern "Rust" fn($($A),*) -> ReturnType { *self }
+        }
+    )
+)
+
+extern_fn_clone!()
+extern_fn_clone!(A)
+extern_fn_clone!(A, B)
+extern_fn_clone!(A, B, C)
+extern_fn_clone!(A, B, C, D)
+extern_fn_clone!(A, B, C, D, E)
+extern_fn_clone!(A, B, C, D, E, F)
+extern_fn_clone!(A, B, C, D, E, F, G)
+extern_fn_clone!(A, B, C, D, E, F, G, H)
+
 /// A trait distinct from `Clone` which represents "deep copies" of things like
 /// managed boxes which would otherwise not be copied.
 pub trait DeepClone {
@@ -157,6 +177,26 @@ deep_clone_impl!(())
 deep_clone_impl!(bool)
 deep_clone_impl!(char)
 
+macro_rules! extern_fn_deep_clone(
+    ($($A:ident),*) => (
+        impl<$($A,)* ReturnType> DeepClone for extern "Rust" fn($($A),*) -> ReturnType {
+            /// Return a copy of a function pointer
+            #[inline]
+            fn deep_clone(&self) -> extern "Rust" fn($($A),*) -> ReturnType { *self }
+        }
+    )
+)
+
+extern_fn_deep_clone!()
+extern_fn_deep_clone!(A)
+extern_fn_deep_clone!(A, B)
+extern_fn_deep_clone!(A, B, C)
+extern_fn_deep_clone!(A, B, C, D)
+extern_fn_deep_clone!(A, B, C, D, E)
+extern_fn_deep_clone!(A, B, C, D, E, F)
+extern_fn_deep_clone!(A, B, C, D, E, F, G)
+extern_fn_deep_clone!(A, B, C, D, E, F, G, H)
+
 #[test]
 fn test_owned_clone() {
     let a = ~5i;
@@ -194,4 +234,22 @@ fn test_borrowed_clone() {
     let y: &int = &x;
     let z: &int = (&y).clone();
     assert_eq!(*z, 5);
+}
+
+#[test]
+fn test_extern_fn_clone() {
+    trait Empty {}
+    impl Empty for int {}
+
+    fn test_fn_a() -> float { 1.0 }
+    fn test_fn_b<T: Empty>(x: T) -> T { x }
+    fn test_fn_c(_: int, _: float, _: ~[int], _: int, _: int, _: int) {}
+
+    let _ = test_fn_a.clone();
+    let _ = test_fn_b::<int>.clone();
+    let _ = test_fn_c.clone();
+
+    let _ = test_fn_a.deep_clone();
+    let _ = test_fn_b::<int>.deep_clone();
+    let _ = test_fn_c.deep_clone();
 }
