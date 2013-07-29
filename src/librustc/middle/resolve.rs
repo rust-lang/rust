@@ -18,6 +18,7 @@ use metadata::cstore::find_extern_mod_stmt_cnum;
 use metadata::decoder::{def_like, dl_def, dl_field, dl_impl};
 use middle::lang_items::LanguageItems;
 use middle::lint::{unnecessary_qualification, unused_imports};
+use middle::fmt;
 use middle::pat_util::pat_bindings;
 
 use syntax::ast::*;
@@ -764,6 +765,7 @@ pub fn namespace_error_to_str(ns: NamespaceError) -> &'static str {
 
 pub fn Resolver(session: Session,
                 lang_items: LanguageItems,
+                fmt_traits: @fmt::TraitMap,
                 crate: @Crate)
              -> Resolver {
     let graph_root = @mut NameBindings();
@@ -779,6 +781,7 @@ pub fn Resolver(session: Session,
     let this = Resolver {
         session: @session,
         lang_items: lang_items,
+        fmt_traits: fmt_traits,
         crate: crate,
 
         // The outermost module has def ID 0; this is not reflected in the
@@ -821,6 +824,7 @@ pub fn Resolver(session: Session,
 pub struct Resolver {
     session: @Session,
     lang_items: LanguageItems,
+    fmt_traits: @fmt::TraitMap,
     crate: @Crate,
 
     intr: @ident_interner,
@@ -5047,6 +5051,17 @@ impl Resolver {
                 }
             }
 
+            expr_extfmt_fn(ref name) => {
+                match self.fmt_traits.find(name) {
+                    None => {
+                        self.session.span_err(expr.span,
+                                              fmt!("unknown format trait `%s`",
+                                                   *name));
+                    }
+                    Some(&(_, def)) => self.record_def(expr.id, def),
+                }
+            }
+
             _ => {
                 visit_expr(expr, ((), visitor));
             }
@@ -5407,9 +5422,10 @@ pub struct CrateMap {
 /// Entry point to crate resolution.
 pub fn resolve_crate(session: Session,
                      lang_items: LanguageItems,
+                     fmt_traits: @fmt::TraitMap,
                      crate: @Crate)
                   -> CrateMap {
-    let resolver = @mut Resolver(session, lang_items, crate);
+    let resolver = @mut Resolver(session, lang_items, fmt_traits, crate);
     resolver.resolve();
     CrateMap {
         def_map: resolver.def_map,

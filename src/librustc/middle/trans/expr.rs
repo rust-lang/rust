@@ -451,7 +451,7 @@ fn trans_rvalue_datum_unadjusted(bcx: @mut Block, expr: @ast::expr) -> DatumBloc
     trace_span!(bcx, expr.span, shorten(bcx.expr_to_str(expr)));
 
     match expr.node {
-        ast::expr_path(_) | ast::expr_self => {
+        ast::expr_path(*) | ast::expr_self | ast::expr_extfmt_fn(*) => {
             return trans_def_datum_unadjusted(bcx, expr, bcx.def(expr.id));
         }
         ast::expr_vstore(contents, ast::expr_vstore_box) |

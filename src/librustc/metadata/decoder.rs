@@ -479,6 +479,35 @@ pub fn each_lang_item(cdata: cmd, f: &fn(ast::NodeId, uint) -> bool) -> bool {
     return true;
 }
 
+/// Iterates over the fmt trait items in the given crate.
+#[cfg(stage0)]
+pub fn each_fmt_trait(_: cmd, _: &fn(@str, ast::NodeId, ast::NodeId) -> bool) -> bool {
+    true
+}
+
+/// Iterates over the fmt trait items in the given crate.
+#[cfg(not(stage0))]
+pub fn each_fmt_trait(cdata: cmd,
+                      f: &fn(@str, ast::NodeId, ast::NodeId) -> bool) -> bool {
+    let root = reader::Doc(cdata.data);
+    let fmt_traits = reader::get_doc(root, tag_fmt_traits);
+    for reader::tagged_docs(fmt_traits, tag_fmt_traits_item) |trait_doc| {
+        let id_doc = reader::get_doc(trait_doc, tag_fmt_traits_item_node_id);
+        let node_id = reader::doc_as_u32(id_doc) as ast::NodeId;
+
+        let trait_id_doc = reader::get_doc(trait_doc, tag_fmt_traits_item_trait_id);
+        let trait_id = reader::doc_as_u32(trait_id_doc) as ast::NodeId;
+
+        let name_doc = reader::get_doc(trait_doc, tag_fmt_traits_item_name);
+        let name = name_doc.as_str().to_managed();
+
+        if !f(name, node_id, trait_id) {
+            return false;
+        }
+    }
+    return true;
+}
+
 struct EachItemContext<'self> {
     intr: @ident_interner,
     cdata: cmd,

@@ -224,13 +224,16 @@ pub fn phase_3_run_analysis_passes(sess: Session,
     let lang_items = time(time_passes, ~"language item collection", ||
                           middle::lang_items::collect_language_items(crate, sess));
 
+    let fmt_traits = time(time_passes, ~"finding fmt traits", ||
+                          middle::fmt::find_fmt_traits(crate, sess));
+
     let middle::resolve::CrateMap {
         def_map: def_map,
         exp_map2: exp_map2,
         trait_map: trait_map
     } =
         time(time_passes, ~"resolution", ||
-             middle::resolve::resolve_crate(sess, lang_items, crate));
+             middle::resolve::resolve_crate(sess, lang_items, fmt_traits, crate));
 
     time(time_passes, ~"looking for entry point",
          || middle::entry::find_entry_point(sess, crate, ast_map));
@@ -245,7 +248,7 @@ pub fn phase_3_run_analysis_passes(sess: Session,
                       middle::region::determine_rp_in_crate(sess, ast_map, def_map, crate));
 
     let ty_cx = ty::mk_ctxt(sess, def_map, ast_map, freevars,
-                            region_map, rp_set, lang_items);
+                            region_map, rp_set, lang_items, fmt_traits);
 
     // passes are timed inside typeck
     let (method_map, vtable_map) = typeck::check_crate(

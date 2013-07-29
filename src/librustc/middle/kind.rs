@@ -257,7 +257,7 @@ pub fn check_expr(e: @expr, (cx, v): (Context, visit::vt<Context>)) {
         let r = cx.tcx.node_type_substs.find(&type_parameter_id);
         for r.iter().advance |ts| {
             let type_param_defs = match e.node {
-              expr_path(_) => {
+              expr_path(*) | expr_extfmt_fn(*) => {
                 let did = ast_util::def_id_of_def(cx.tcx.def_map.get_copy(&e.id));
                 ty::lookup_item_type(cx.tcx, did).generics.type_param_defs
               }

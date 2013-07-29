@@ -469,6 +469,7 @@ impl VisitContext {
             }
 
             expr_inline_asm(*) |
+            expr_extfmt_fn(*) |
             expr_break(*) |
             expr_again(*) |
             expr_lit(*) => {}

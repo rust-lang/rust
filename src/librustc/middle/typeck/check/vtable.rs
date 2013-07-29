@@ -551,7 +551,7 @@ pub fn early_resolve_expr(ex: @ast::expr,
 
     let cx = fcx.ccx;
     match ex.node {
-      ast::expr_path(*) => {
+      ast::expr_path(*) | ast::expr_extfmt_fn(*) => {
         for fcx.opt_node_ty_substs(ex.id) |substs| {
             debug!("vtable resolution on parameter bounds for expr %s",
                    ex.repr(fcx.tcx()));

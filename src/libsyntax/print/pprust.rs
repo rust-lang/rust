@@ -1442,6 +1442,11 @@ pub fn print_expr(s: @ps, expr: &ast::expr) {
           print_expr(s, e);
           pclose(s);
       }
+      ast::expr_extfmt_fn(ty) => {
+          word(s.s, "FormatTrait{");
+          word(s.s, ty);
+          word(s.s, "}");
+      }
     }
     (s.ann.post)(ann_node);
     end(s);

@@ -282,6 +282,7 @@ struct ctxt_ {
     adjustments: @mut HashMap<ast::NodeId, @AutoAdjustment>,
     normalized_cache: @mut HashMap<t, t>,
     lang_items: middle::lang_items::LanguageItems,
+    fmt_traits: @middle::fmt::TraitMap,
     // A mapping of fake provided method def_ids to the default implementation
     provided_method_sources: @mut HashMap<ast::def_id, ast::def_id>,
     supertraits: @mut HashMap<ast::def_id, @~[@TraitRef]>,
@@ -879,7 +880,8 @@ pub fn mk_ctxt(s: session::Session,
                freevars: freevars::freevar_map,
                region_maps: @mut middle::region::RegionMaps,
                region_paramd_items: middle::region::region_paramd_items,
-               lang_items: middle::lang_items::LanguageItems)
+               lang_items: middle::lang_items::LanguageItems,
+               fmt_traits: @middle::fmt::TraitMap)
             -> ctxt {
     @ctxt_ {
         diag: s.diagnostic(),
@@ -913,6 +915,7 @@ pub fn mk_ctxt(s: session::Session,
         adjustments: @mut HashMap::new(),
         normalized_cache: new_ty_hash(),
         lang_items: lang_items,
+        fmt_traits: fmt_traits,
         provided_method_sources: @mut HashMap::new(),
         supertraits: @mut HashMap::new(),
         destructor_for_type: @mut HashMap::new(),
@@ -3153,7 +3156,7 @@ pub fn expr_kind(tcx: ctxt,
     }
 
     match expr.node {
-        ast::expr_path(*) | ast::expr_self => {
+        ast::expr_path(*) | ast::expr_self | ast::expr_extfmt_fn(*) => {
             match resolve_expr(tcx, expr) {
                 ast::def_variant(*) | ast::def_struct(*) => RvalueDpsExpr,
 

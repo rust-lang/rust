@@ -2471,6 +2471,19 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         let tpt = ty_param_bounds_and_ty_for_def(fcx, expr.span, defn);
         instantiate_path(fcx, pth, tpt, expr.span, expr.id);
       }
+      ast::expr_extfmt_fn(ref name) => {
+        // emulate the functionality of expr_path(*), but we have some
+        // hardcoded assumptions here (about path tys and the def_id)
+        let (def_id, _) = *fcx.tcx().fmt_traits.get(name);
+        let tpt = ty::lookup_item_type(fcx.tcx(), def_id);
+        let tps = fcx.infcx().next_ty_vars(tpt.generics.type_param_defs.len());
+        let regions = fcx.region_var_if_parameterized(tpt.generics.region_param,
+                                                      expr.span);
+        let substs = substs {regions: ty::NonerasedRegions(regions),
+                             self_ty: None,
+                             tps: tps };
+        fcx.write_ty_substs(id, tpt.ty, substs);
+      }
       ast::expr_self => {
         let definition = lookup_def(fcx, expr.span, id);
         let ty_param_bounds_and_ty =

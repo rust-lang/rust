@@ -750,6 +750,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
 
             ast::expr_lit(*) |
             ast::expr_path(*) |
+            ast::expr_extfmt_fn(*) |
             ast::expr_self => {
             }
 
