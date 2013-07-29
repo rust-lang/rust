@@ -15,7 +15,7 @@
 
 #[allow(missing_doc)];
 
-use std::iterator::{Iterator, IteratorUtil, EnumerateIterator, FilterMapIterator, InvertIterator};
+use std::iterator::{Iterator, IteratorUtil, Enumerate, FilterMap, Invert};
 use std::uint;
 use std::util::replace;
 use std::vec::{VecIterator, VecMutIterator};
@@ -204,8 +204,8 @@ impl<V> SmallIntMap<V> {
 
     /// Empties the hash map, moving all values into the specified closure
     pub fn consume(&mut self)
-        -> FilterMapIterator<(uint, Option<V>), (uint, V),
-                EnumerateIterator<vec::ConsumeIterator<Option<V>>>>
+        -> FilterMap<(uint, Option<V>), (uint, V),
+                Enumerate<vec::ConsumeIterator<Option<V>>>>
     {
         let values = replace(&mut self.v, ~[]);
         values.consume_iter().enumerate().filter_map(|(i, v)| {
@@ -291,7 +291,7 @@ pub struct SmallIntMapIterator<'self, T> {
 
 iterator!(impl SmallIntMapIterator -> (uint, &'self T), get_ref)
 double_ended_iterator!(impl SmallIntMapIterator -> (uint, &'self T), get_ref)
-pub type SmallIntMapRevIterator<'self, T> = InvertIterator<SmallIntMapIterator<'self, T>>;
+pub type SmallIntMapRevIterator<'self, T> = Invert<SmallIntMapIterator<'self, T>>;
 
 pub struct SmallIntMapMutIterator<'self, T> {
     priv front: uint,
@@ -301,7 +301,7 @@ pub struct SmallIntMapMutIterator<'self, T> {
 
 iterator!(impl SmallIntMapMutIterator -> (uint, &'self mut T), get_mut_ref)
 double_ended_iterator!(impl SmallIntMapMutIterator -> (uint, &'self mut T), get_mut_ref)
-pub type SmallIntMapMutRevIterator<'self, T> = InvertIterator<SmallIntMapMutIterator<'self, T>>;
+pub type SmallIntMapMutRevIterator<'self, T> = Invert<SmallIntMapMutIterator<'self, T>>;
 
 #[cfg(test)]
 mod test_map {
