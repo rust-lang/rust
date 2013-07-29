@@ -44,7 +44,7 @@ use result::Result;
 use result;
 use rt::{context, OldTaskContext, TaskContext};
 use rt::local::Local;
-use task::rt::{task_id, sched_id};
+use task::rt::task_id;
 use unstable::finally::Finally;
 use util;
 
@@ -57,12 +57,6 @@ use util;
 mod local_data_priv;
 pub mod rt;
 pub mod spawn;
-
-/// A handle to a scheduler
-#[deriving(Eq)]
-pub enum Scheduler {
-    SchedulerHandle(sched_id)
-}
 
 /// A handle to a task
 #[deriving(Eq)]
@@ -94,8 +88,6 @@ pub enum SchedMode {
     DefaultScheduler,
     /// Run task on the current scheduler
     CurrentScheduler,
-    /// Run task on a specific scheduler
-    ExistingScheduler(Scheduler),
     /// All tasks run in the same OS thread
     SingleThreaded,
 }
@@ -586,10 +578,6 @@ pub fn get_task() -> Task {
     unsafe {
         TaskHandle(rt::get_task_id())
     }
-}
-
-pub fn get_scheduler() -> Scheduler {
-    SchedulerHandle(unsafe { rt::rust_get_sched_id() })
 }
 
 /**
