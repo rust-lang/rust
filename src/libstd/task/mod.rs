@@ -90,17 +90,9 @@ pub enum SchedMode {
  *
  * * sched_mode - The operating mode of the scheduler
  *
- * * foreign_stack_size - The size of the foreign stack, in bytes
- *
- *     Rust code runs on Rust-specific stacks. When Rust code calls foreign
- *     code (via functions in foreign modules) it switches to a typical, large
- *     stack appropriate for running code written in languages like C. By
- *     default these foreign stacks have unspecified size, but with this
- *     option their size can be precisely specified.
  */
 pub struct SchedOpts {
     mode: SchedMode,
-    foreign_stack_size: Option<uint>,
 }
 
 /**
@@ -418,7 +410,6 @@ pub fn default_task_opts() -> TaskOpts {
         notify_chan: None,
         sched: SchedOpts {
             mode: DefaultScheduler,
-            foreign_stack_size: None
         }
     }
 }
