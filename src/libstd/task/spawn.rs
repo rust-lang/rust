@@ -85,7 +85,7 @@ use task::local_data_priv::{local_get, local_set, OldHandle};
 use task::rt::rust_task;
 use task::rt;
 use task::{Failure, PlatformThread, SchedOpts, SingleThreaded};
-use task::{Success, TaskOpts, TaskResult, ThreadPerTask};
+use task::{Success, TaskOpts, TaskResult};
 use task::{ExistingScheduler, SchedulerHandle};
 use task::unkillable;
 use to_bytes::IterBytes;
@@ -811,9 +811,6 @@ fn spawn_raw_oldsched(mut opts: TaskOpts, f: ~fn()) {
             | ExistingScheduler(*)
             | PlatformThread => 0u, /* Won't be used */
             SingleThreaded => 1u,
-            ThreadPerTask => {
-                fail!("ThreadPerTask scheduling mode unimplemented")
-            }
         };
 
         unsafe {
