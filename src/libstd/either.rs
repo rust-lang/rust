@@ -24,7 +24,7 @@ use vec;
 use vec::{OwnedVector, ImmutableVector};
 
 /// `Either` is a type that represents one of two alternatives
-#[deriving(Clone, Eq)]
+#[deriving(Clone, Eq, IterBytes)]
 pub enum Either<L, R> {
     Left(L),
     Right(R)
