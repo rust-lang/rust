@@ -309,7 +309,7 @@ was taken.
 
 In short, everything that's not a declaration (declarations are `let` for
 variables; `fn` for functions; and any top-level named items such as
-[traits](#traits), [enum types](#enums), and [constants](#constants)) is an
+[traits](#traits), [enum types](#enums), and static items) is an
 expression, including function bodies.
 
 ~~~~
@@ -992,7 +992,7 @@ task-local garbage collector. It will be destroyed at some point after there
 are no references left to the box, no later than the end of the task. Managed
 boxes lack an owner, so they start a new ownership tree and don't inherit
 mutability. They do own the contained object, and mutability is defined by the
-type of the shared box (`@` or `@mut`). An object containing a managed box is
+type of the managed box (`@` or `@mut`). An object containing a managed box is
 not `Owned`, and can't be sent between tasks.
 
 ~~~~
@@ -1089,10 +1089,8 @@ we might like to compute the distance between `on_the_stack` and
 to define a function that takes two arguments of type point—that is,
 it takes the points by value. But this will cause the points to be
 copied when we call the function. For points, this is probably not so
-bad, but often copies are expensive or, worse, if there are mutable
-fields, they can change the semantics of your program. So we’d like to
-define a function that takes the points by pointer. We can use
-borrowed pointers to do this:
+bad, but often copies are expensive. So we’d like to define a function
+that takes the points by pointer. We can use borrowed pointers to do this:
 
 ~~~
 # struct Point { x: float, y: float }
@@ -1375,7 +1373,7 @@ let exchange_crayons: ~str = ~"Black, BlizzardBlue, Blue";
 ~~~
 
 Both vectors and strings support a number of useful
-[methods](#functions-and-methods), defined in [`std::vec`]
+[methods](#methods), defined in [`std::vec`]
 and [`std::str`]. Here are some examples.
 
 [`std::vec`]: std/vec.html
@@ -1930,7 +1928,7 @@ that implements a trait includes the name of the trait at the start of
 the definition, as in the following impls of `Printable` for `int`
 and `~str`.
 
-[impls]: #functions-and-methods
+[impls]: #methods
 
 ~~~~
 # trait Printable { fn print(&self); }
